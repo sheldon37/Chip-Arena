@@ -1,0 +1,125 @@
+# Chip Arena — playable prototype
+
+An original, fully 3D, voxel-styled 1v1 arena combat game. This is a new project, with no Embertrail assets, repository, database, or deployment dependencies.
+
+**Publicly hosted multiplayer is not included.** The hosted client runs local practice in your browser. Online rooms require this project's persistent Node.js server. The same authoritative Rapier simulation powers both modes.
+
+## Run it
+
+Requires Node.js 22.14+ (tested with Node 24.19.0) and npm.
+
+```sh
+npm ci
+npm run dev
+```
+
+Open `http://localhost:4173`. The development command starts the browser client and multiplayer server together. Open two independent browser windows, create a room in one, and join its code in the other. The development proxy uses `ws://localhost:4173/socket`.
+
+To run the components separately:
+
+```sh
+# Terminal 1
+npm run server
+# Terminal 2 (client only)
+npx vite --host 0.0.0.0 --port 4173
+```
+
+To build and serve production locally:
+
+```sh
+npm run build
+npm run server:build
+npm start
+```
+
+Open `http://localhost:8788`, with server URL `ws://localhost:8788/socket`.
+
+`npm start` serves `dist` and the persistent authoritative WebSocket endpoint from one process. No accounts, secrets, paid services, or database are needed. The example `.env.example` documents server and client settings. Copy it to `.env` and use `node --env-file=.env server-dist/server/index.js` if you want Node to load that file explicitly.
+
+## Play
+
+Main menu → Play vs Bot → class and difficulty → specialization → fight → Chip draft → next round. First to five wins. A draw replays the round with no Chip. Rematch resets scores and Chips and returns to specialization selection. The default loser-only drafting rule can be changed to both players in the lobby.
+
+Click the arena to capture the mouse. `Escape` releases it and opens the match menu. Local practice pauses in that menu; online matches continue.
+
+| Control | Action |
+|---|---|
+| WASD | Move relative to camera direction |
+| Mouse | Aim and camera |
+| Left mouse | Primary attack |
+| Right mouse | Specialization secondary; hold for Shield guard |
+| Space | Jump |
+| Shift | Dash |
+| R | Reload when applicable |
+| Escape | Menu / release pointer lock |
+
+Designed for a desktop mouse and keyboard. Menus adapt to small displays, but touch combat controls are not implemented.
+
+## Implemented content
+
+- Pistol, Rifle, Machine Gun; Fire, Water, Lightning, Darkness; Sword, Daggers, Shield, Greatsword.
+- Fifteen working Chip definitions with compatibility filters, per-Chip stack caps, descriptions and numerical effects. No global equipment-slot limit.
+- Stationary dummy plus Easy, Normal and Hard bots, with no damage bonuses. Bots submit the same input structure as human clients.
+- One compact arena with durable foundations, elevation, breakable wall sections, loose crates, dense metal boxes and a supported stone beam.
+- Actual dynamic debris, support collapse, mass-conserving fracture, CCD and physical impact damage using pre-solver point velocities.
+- Private rooms, two ready states, synchronized choices, authoritative match state, 12-second disconnect forfeits, rematch votes and return to lobby.
+- Persistent local name/class/color/settings preferences.
+- Developer sandbox with specialization, Chip add/remove, dummy/bot changes, healing, reset, collider/support display, launcher and impact diagnostics.
+
+## The defining physics demonstration
+
+1. Open **Developer Sandbox**. The target waits on the far spawn.
+2. Set mass to `8`, speed to `15`, material to `wood`, mode to `Direct`.
+3. Launch. Observe the physical chunk travel and the target's health change. The impact panel shows mass, pre-impact normal speed, energy, damage and source.
+4. Restore health and reset the arena before comparisons. Compare `8 kg / 8 m/s` with `16 kg / 8 m/s`, then `8 kg / 12 m/s`. These values avoid the per-impact cap in many contacts.
+5. Compare Direct, Glancing, Falling and Settled. Settled contact should not repeatedly hurt the target. Falling debris has zero launch velocity and gains speed from gravity.
+6. In ordinary combat, hit a loose crate to launch it; destroy the center wall to open a real firing line. Destroy **both** orange wooden supports under the gray beam. The beam becomes dynamic and falls/tips as its support fragments move away.
+
+The launcher creates a chunk five meters in front of the target for repeatable measurements. It is a test fixture, not a combat ability. Regular combat can damage either player with debris, including the launcher.
+
+For a two-client authoritative launcher test, start the server with `ALLOW_TEST_ROOMS=true` and run `tests/debris-network.ts`. Only the creating player in an explicitly requested test room can send debug mutations. A normal room rejects those commands, regardless of UI visibility.
+
+## Edit the balance and content
+
+| File | Settings and responsibilities |
+|---|---|
+| `src/shared/config.ts` | Match timing, tick/snapshot rates, movement, impact energy thresholds, limits, materials |
+| `src/shared/content.ts` | All 11 weapons and 15 Chips; compatibility, stacking and stat effect handlers |
+| `src/shared/arena.ts` | Authored collision blocks, spawn routes, supports and materials |
+| `src/shared/impact.ts` | Point velocity, normal closing speed, energy/damage formula, impact deduplication and fragment budget |
+| `src/shared/simulation.ts` | Authoritative movement, attacks, statuses, projectiles, bots, destruction, round progression |
+| `src/server/index.ts` | Private room protocol, input validation, message limits, fixed-step loop and debug authorization |
+| `src/client/prediction.ts` | Collision-aware movement prediction, pending input replay and reconciliation |
+| `src/client/renderer.ts` | Three.js voxel rigs, sockets, weapon animation, camera collision, effects and rendering |
+| `src/client/main.ts` / `style.css` | UI, controls, network client, interpolation, audio and preferences |
+
+## Architecture and deliberate prototype decisions
+
+The server advances at 60 Hz and sends full snapshots at 20 Hz. Clients send movement/aim/button intentions and selections. They never supply authoritative health, damage, grants, projectile hits or final body positions. Bots run in the simulation. Local practice instantiates the same simulation directly.
+
+Players are rotation-locked dynamic capsules. Input movement and external knockback are stored separately. The physics solver handles debris collision impulses; debris damage does not add a second launch impulse. Attack impulses use the external velocity component. Melee uses an angularly swept segment/volume during a defined attack window and remembers already-hit target IDs. Projectiles use swept spheres and a server-reconstructed camera-to-target, body-to-muzzle obstruction check.
+
+Destruction uses four authored cuboid fragments, dividing parent mass and inheriting linear and angular motion. A small, symmetric fracture separation velocity is an intentional arcade effect. Static durability and finite mass are independent. The bridge attachment fails only when both explicit supports fail; this is not a general structural engineering solver.
+
+Energy is `0.5 * finiteMass * normalClosingSpeed^2`, with minimum speed 3.6 m/s, safe energy 45 J, scale 0.035, and maximum 65 damage per impact. Pair separation plus a 0.4-second cooldown prevents resting or duplicated contacts from damaging every step. A shared destruction event is capped at 75 pre-mitigation damage per target over 0.35 seconds. Cosmetic particles have no collider or damage authority. Source attribution expires after seven seconds.
+
+Secondary projectiles, burns, blasts and electrical discharges cannot recursively fire direct-hit effects. Splitter is bounded; a single melee swing only procs Shrapnel once. Burn refreshes for two seconds per source without stacking its duration.
+
+No rewind / lag compensation is implemented. Online hits use present server state. Client prediction uses a cheaper kinematic collision model, so interactions with moving debris, ramps and knockback can need correction. This is a prototype limitation, not lockstep or deterministic client physics. Remote players and debris interpolate over about 100 ms.
+
+## Test and deployment guides
+
+See [docs/TESTING.md](docs/TESTING.md), [docs/TEST-RESULTS.md](docs/TEST-RESULTS.md), and [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Run `npm test` for the automated calculation, combat, destruction and match-state suite. `npm run test:network:local` starts and tests a temporary backend automatically; `npm run test:debris` does the same for the impact assertion. `npm run test:stress` runs 15 combined-Chip stress cases. Every production client build also produces `dist/chip-arena-source.zip`.
+
+## Current limits
+
+- No publicly deployed persistent backend, accounts, ranked matchmaking, persistence, room recovery or reconnection tokens.
+- Full-state JSON networking is simple and comparatively bandwidth-heavy. One Node process owns its rooms; multi-instance routing is not implemented.
+- Art, sound and secondary VFX are prototype quality. Water and darkness use basic particles/pulses; they do not simulate fluid or volumetric smoke.
+- Bot navigation is heuristic, not a navmesh. Debris piles can cause temporary blocking.
+- WebGL hardware performance must be measured on a real desktop GPU. The automated browser environment has WebGL disabled.
+- If WebGL fails, an SVG-based **3D** compatibility renderer uses the same Three.js scene/camera and simulation. It has visible painter-order artifacts and lower performance; it is not the intended high-quality rendering path.
+- No mobile touch gameplay support.
+- WebMCP registration is feature-detected; browser-context validation was unavailable in this environment.
+
+Official API references verified during implementation: [Rapier rigid bodies and CCD](https://rapier.rs/docs/user_guides/javascript/rigid_bodies/), [Rapier RigidBody API](https://rapier.rs/javascript3d/classes/RigidBody.html), [Three.js Raycaster](https://threejs.org/docs/pages/Raycaster.html), [ws server examples](https://github.com/websockets/ws).
