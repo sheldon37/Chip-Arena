@@ -35,7 +35,7 @@ This explicitly creates a private test room, rejects the non-owner's debug comma
 ## Manual browser coverage
 
 1. Complete each of Pistol / Fire / Sword against a bot; draft a Chip; finish a match; rematch; return to lobby.
-2. Try every specialization and its secondary. Verify machine-gun heat, magazine reloads, mana regeneration, sword parry timing, Shield's finite frontal guard and rear vulnerability.
+2. Try every specialization and its secondary. Verify every gun reloads (Machine Gun: 48 rounds / 2.4 s), mana regeneration, stamina costs/regeneration, sword parry timing, and Shield's stamina-limited frontal guard and rear vulnerability.
 3. In Sandbox, install a Chip twice. Observe numerical changes and installed count. Test Reach by comparing visible sword reach, Kinetic by launching crates, Demolition against walls, and Salvage using identical launcher hits.
 4. Shoot a wall, then fire through the gap. Test muzzle obstruction with the player pressed against cover. Shoot from both sides and above.
 5. Break both supports beneath the gray beam. It should fall or tip as its remaining fragment contacts give way.
@@ -47,3 +47,16 @@ This explicitly creates a private test room, rejects the non-owner's debug comma
 Development builds include **Run Input Test** in the match menu to drive the local pilot with ordinary movement/attack intentions. It is not present in production menus. It never supplies trusted damage or body positions.
 
 The browser's optional WebMCP tools are `read_arena_state` and `start_local_practice`; the dev input-test tool is development-only. Feature detection preserves ordinary play if the browser does not support this API.
+
+## Modifier checks
+
+In Developer Sandbox, switch weapon and confirm the Chip picker changes: guns offer Magazine Bank/Rapid Cycle, magic offers Mana Reservoir/Spell Clock, and melee offers Stamina Cell/Flurry Clock/Echo Strike. Projectile-only Chips must disappear for melee.
+
+- Install Magazine Bank twice on Machine Gun: the HUD should show 72 rounds. Fire until empty and reload; there must be no heat lockout. Its secondary spends six rounds.
+- Install Mana Reservoir or Stamina Cell twice: that resource should display 150 maximum. Check spells and melee actions actually spend the appropriate resource.
+- Compare Parallel Shot with Echo Strike; the first emits additional projectiles, the second adds delayed damaging melee sweeps. Both have explicit costs and per-stack caps.
+- Fire past an exposed opponent with Tracking Circuit; the projectile bends within its turn limit. Repeat with a wall in the path; cover must stop it.
+- Compare Velocity Coil and the relevant rate Chip independently. Projectile speed keeps range fixed; rate changes cadence.
+- Remove Chips and reset the arena to compare the base build.
+
+`tests/modifiers.test.ts` exercises these effects through the authoritative simulation, including real damage, ammo exhaustion/reload, resource blocking, homing occlusion and nonrecursive split metadata.

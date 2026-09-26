@@ -1,6 +1,17 @@
 # Executed test results — 2026-09-26
 
-## Summary
+## Modifier update verification
+
+Executed after the ammo/mana/stamina and weapon-compatible modifier changes:
+
+- **43 automated tests passed**, 0 failed. The 11 new assertions cover eligibility for every specialization, expanded gun magazines/reload, six-round Machine Gun secondary, actual multishot damage/cost/budget, one hit per Echo Strike sweep, resource blocking/regeneration, Shield stamina costs, rate stacking, projectile speed/range, homing/cover/secondary metadata, and resource/combo resets.
+- Input-driven Pistol-versus-Normal-Sword match finished **5–2** in **29.25 simulated seconds**; rematch/reset passed.
+- **15 all-Chip stress cases completed**, 424 simulation steps. This run includes all 25 Chips, so stacked attacks end many cases quickly. This is a crash/regression check, not a balance certification.
+- Two independent local WebSocket clients completed a first-to-five match and rematch in **41.727 s**, with exact state agreement at **781 shared ticks** and destruction observed by both. Disconnect timeout passed. Sampled tick median **0.084 ms**, P95 **0.545 ms**, maximum **2.733 ms**; stress tests ran concurrently, so these timings are not directly comparable to the earlier isolated run.
+- Browser UI check: Machine Gun displayed **48/48 Ammo**, then **72/72** after two Magazine Banks. Switching to Sword refreshed the picker to melee-compatible Chips, excluding projectile/ammo Chips; two Stamina Cells displayed **150/150 Stamina** and the installed `×2` marker. These checks used the existing SVG 3D compatibility renderer because WebGL is disabled in the test browser. Screenshot: `stamina-update-compatibility.jpg`.
+- The browser and Node production builds passed. The hosting service confirmed public access (policy revision 2). A live anonymous browser session is unavailable from the preview environment, so access verification uses the hosting service's confirmed public policy and successful deployment status.
+
+## Initial prototype verification (before the modifier update)
 
 - **32 automated tests passed**, 0 failed, in the final unit/integration run.
 - **15 combined-Chip stress cases passed** (2,361 simulation steps in the final run).

@@ -7,6 +7,11 @@ export const CONFIG = {
   minimumImpactSpeed: 3.6, safeEnergy: 45, damageScale: .035,
   maximumDamagePerImpact: 65, impactPairCooldown: .4,
   fragmentWindow: .35, fragmentDamageCap: 75, attributionSeconds: 7,
+  manaRegen: 12, staminaRegen: 24, staminaRegenDelay: .45,
+  shieldDrain: 33, shieldImpactCost: .9,
+  volleyDamage: .75, volleyFanDegrees: 7,
+  followupDamage: .45, followupCost: 5, followupGap: .08,
+  homingRange: 16, homingConeDegrees: 50,
   maxBodies: 150, maxProjectiles: 100, maxEvents: 80,
   maxInputRate: 100, staleInputSeconds: .3, maxRooms: 24,
 } as const;

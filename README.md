@@ -2,7 +2,7 @@
 
 An original, fully 3D, voxel-styled 1v1 arena combat game. This is a new project, with no Embertrail assets, repository, database, or deployment dependencies.
 
-**Publicly hosted multiplayer is not included.** The hosted client runs local practice in your browser. Online rooms require this project's persistent Node.js server. The same authoritative Rapier simulation powers both modes.
+**Publicly hosted multiplayer is not included.** The public hosted client runs local practice in your browser with no ChatGPT login or game account. Online rooms require this project's persistent Node.js server. The same authoritative Rapier simulation powers both modes.
 
 ## Run it
 
@@ -58,13 +58,32 @@ Designed for a desktop mouse and keyboard. Menus adapt to small displays, but to
 ## Implemented content
 
 - Pistol, Rifle, Machine Gun; Fire, Water, Lightning, Darkness; Sword, Daggers, Shield, Greatsword.
-- Fifteen working Chip definitions with compatibility filters, per-Chip stack caps, descriptions and numerical effects. No global equipment-slot limit.
+- Twenty-five working Chip definitions with compatibility filters, per-Chip stack caps, descriptions and numerical effects. No global equipment-slot limit.
 - Stationary dummy plus Easy, Normal and Hard bots, with no damage bonuses. Bots submit the same input structure as human clients.
 - One compact arena with durable foundations, elevation, breakable wall sections, loose crates, dense metal boxes and a supported stone beam.
 - Actual dynamic debris, support collapse, mass-conserving fracture, CCD and physical impact damage using pre-solver point velocities.
 - Private rooms, two ready states, synchronized choices, authoritative match state, 12-second disconnect forfeits, rematch votes and return to lobby.
 - Persistent local name/class/color/settings preferences.
 - Developer sandbox with specialization, Chip add/remove, dummy/bot changes, healing, reset, collider/support display, launcher and impact diagnostics.
+
+## Weapon resources and modifiers
+
+Guns use ammo and reloads, magic uses mana, and melee uses stamina. Machine Gun has a 48-round base magazine and a 2.4-second reload; its secondary consumes six rounds for a suppression burst. There is no heat or overheating system.
+
+Magic starts at 100 mana and regenerates 12/s. Melee starts at 100 stamina and regenerates 24/s after 0.45 seconds without spending stamina. Sword/Daggers/Shield/Greatsword attacks cost 14/7/18/26 stamina; their parry/sidestep/guard/charge uses the same pool. Shield drains 33/s while held and 0.9 stamina per incoming frontal damage point. Other movement uses the existing movement and dash cooldown rules.
+
+| Modifier | Guns | Magic | Melee |
+|---|---|---|---|
+| Extra attacks | Parallel Shot: +1 projectile/stack, max +3 | Parallel Shot | Echo Strike: +1 follow-up sweep/stack, max 2 |
+| Bounces | Ricochet: +1/stack, max 3, 70% retained damage | Ricochet | Not offered |
+| Capacity | Magazine Bank: +25% base magazine/stack, rounded up | Mana Reservoir: +25 mana/stack | Stamina Cell: +25 stamina/stack |
+| Projectile speed | Velocity Coil: ×1.25/stack, max 4 | Velocity Coil | Not offered |
+| Homing | Tracking Circuit: +35°/s/stack, max 105°/s | Tracking Circuit | Not offered |
+| Attack rate | Rapid Cycle: ×1.15/stack | Spell Clock: ×1.15/stack | Flurry Clock: ×1.15/stack |
+
+Parallel Shot costs one ammo or the normal spell cost per volley. With it installed, every projectile in that volley deals 75% damage across a 7° fan. Echo Strike costs five extra stamina per follow-up sweep, each at 45% damage/impulse; each sweep can hit each target once, and the combo extends recovery. Homing requires a visible target within 16 m and a 50° forward cone; it cannot pass through cover. Projectile speed upgrades preserve range. Split fragments never home or recursively trigger effects. Capacity Chips cap at eight stacks; rate Chips cap at six and multiply with Overclock. Installed effects persist only for the match.
+
+Drafting and the sandbox Chip picker filter by the equipped weapon. The HUD shows current and upgraded maximum ammo, mana, or stamina. Every Chip describes its exact effects and cap. In the sandbox, installing/removing a Chip refills resources for immediate comparison; normal drafts refill them at the next round reset.
 
 ## The defining physics demonstration
 
@@ -83,9 +102,10 @@ For a two-client authoritative launcher test, start the server with `ALLOW_TEST_
 
 | File | Settings and responsibilities |
 |---|---|
-| `src/shared/config.ts` | Match timing, tick/snapshot rates, movement, impact energy thresholds, limits, materials |
-| `src/shared/content.ts` | All 11 weapons and 15 Chips; compatibility, stacking and stat effect handlers |
+| `src/shared/config.ts` | Match timing, tick/snapshot rates, movement, impact energy thresholds, resource regeneration, modifier tuning, limits, materials |
+| `src/shared/content.ts` | All 11 weapons and 25 Chips; compatibility, stacking and stat effect handlers |
 | `src/shared/arena.ts` | Authored collision blocks, spawn routes, supports and materials |
+| `src/shared/projectiles.ts` | Bounded homing rotation with conserved speed |
 | `src/shared/impact.ts` | Point velocity, normal closing speed, energy/damage formula, impact deduplication and fragment budget |
 | `src/shared/simulation.ts` | Authoritative movement, attacks, statuses, projectiles, bots, destruction, round progression |
 | `src/server/index.ts` | Private room protocol, input validation, message limits, fixed-step loop and debug authorization |
@@ -103,7 +123,7 @@ Destruction uses four authored cuboid fragments, dividing parent mass and inheri
 
 Energy is `0.5 * finiteMass * normalClosingSpeed^2`, with minimum speed 3.6 m/s, safe energy 45 J, scale 0.035, and maximum 65 damage per impact. Pair separation plus a 0.4-second cooldown prevents resting or duplicated contacts from damaging every step. A shared destruction event is capped at 75 pre-mitigation damage per target over 0.35 seconds. Cosmetic particles have no collider or damage authority. Source attribution expires after seven seconds.
 
-Secondary projectiles, burns, blasts and electrical discharges cannot recursively fire direct-hit effects. Splitter is bounded; a single melee swing only procs Shrapnel once. Burn refreshes for two seconds per source without stacking its duration.
+Secondary projectiles, burns, blasts and electrical discharges cannot recursively fire direct-hit effects. Splitter is bounded; a projectile volley or complete melee combo only procs Shrapnel once. Burn refreshes for two seconds per source without stacking its duration.
 
 No rewind / lag compensation is implemented. Online hits use present server state. Client prediction uses a cheaper kinematic collision model, so interactions with moving debris, ramps and knockback can need correction. This is a prototype limitation, not lockstep or deterministic client physics. Remote players and debris interpolate over about 100 ms.
 

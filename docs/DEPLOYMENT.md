@@ -1,6 +1,6 @@
 # Deployment
 
-The hosted Site publishes the static browser build and local practice only. Its request-based Worker runtime is not used to pretend to run a continuous physics server. No paid infrastructure was provisioned.
+The hosted Site is public and does not require a ChatGPT login. The game itself has no authentication or account dependency. It publishes the static browser build and local practice only. Its request-based Worker runtime is not used to pretend to run a continuous physics server. No paid infrastructure was provisioned.
 
 ## Persistent backend
 
@@ -24,7 +24,7 @@ docker run --rm -p 8788:8788 \
   chip-arena
 ```
 
-Set the browser's Settings → Multiplayer Server URL, or build with `VITE_SERVER_URL=wss://your-backend.example/socket`. Both users need access to the client and that backend. Creating or sharing a room code does not publish a server.
+Set the browser's Settings → Multiplayer Server URL, or build with `VITE_SERVER_URL=wss://your-backend.example/socket`. Both users need access to the client and that backend; neither the client nor this server requires a ChatGPT login. Rebuild and deploy the client and server from the same source revision after protocol/content changes. Creating or sharing a room code does not publish a server.
 
 ## Static client
 
