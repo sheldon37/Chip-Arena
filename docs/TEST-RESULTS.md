@@ -1,3 +1,18 @@
+# Portable server, animation and knockout presentation — 2026-09-27
+
+Executed with Node.js 24.19.0 on Linux, Rapier 0.19.3, Three.js 0.180.0; one room/two clients. Windows runtime in the release is official Node.js 24.21.0 x64, checksum verified.
+
+- `npm test`: **122/122 passed**, including all prior tests and new Windows/POSIX path traversal/asset checks, five-second ordinary/final result states, simultaneous deaths, protected preview commands, all-specialization finite poses and bounded/deduplicated cosmetic voxel effects. The input-driven full bot match/rematch test is included (shortened presentation timings in that automated fixture).
+- `npm run build`: passed TypeScript, Vite client build, source packaging and Worker relay build.
+- `TEST_PORT=8795 npm run test:network:local`: two real WebSocket clients completed a full first-to-five-set match plus rematch in **119.497 seconds**. **2,336** shared snapshots agreed exactly; 10 round results, 5 set results, drafts only after sets 1–4, destruction agreed, disconnect timeout passed. Sampled simulation tick median **0.097 ms**, P95 **0.386 ms**, maximum **2.953 ms**. This is not a server-capacity claim.
+- `TEST_PORT=8796 TEST_LATENCY_MS=80 npm run test:motion:network`: 80 ms delay plus 40 ms jitter each direction, 20 seconds moving; 46.06 m guest travel, 1,200 floor checks, 469 identical snapshots. Raw correction median 0.0000014 m, P95 **0.082 m**, maximum **1.421 m**; largest immediate visual correction **0.000981 m**. Moving-debris corrections and no historical hit rewind remain limitations.
+- Portable bundle smoke test: started **the generated bundled server through its launcher** from an extracted folder containing spaces, using Linux Node in place of Windows node.exe. Client/assets/audio loaded; path traversal and unauthorized debug commands were rejected. Two independent clients produced the same authoritative death ID/winner, stayed in the five-second result, and received a clean next round. Stopping the launcher stopped its server child.
+- Browser preview: observed articulated running/melee and Fire casting, and the live voxel self-death/5-second banner. Cloud Chrome has no WebGL; the compatibility renderer was used. Hardware rendering, Windows .bat execution and the optional internet tunnel were **not** end-to-end tested. Browser compatibility HUD observations were approximately 56–60 FPS in this simple sandbox, not a desktop GPU benchmark.
+
+The downloadable release includes the complete editable source and runtime license. Public Site rooms still use the existing HTTPS fallback; no permanent public WebSocket deployment was provisioned. The optional online launcher is an on-demand laptop tunnel, not a deployed always-on server.
+
+Earlier sections below are historical test reports; the newest results above supersede old implementation descriptions.
+
 # Movement replay, smoothing and automatic WebSocket routing — 2026-09-27
 
 Implemented shared dynamic-capsule locomotion for authority and prediction, matching friction/restitution, ordered input batches with per-tick consumption and acknowledgements, round-generation rejection, one-shot tap handling across gaps, render-only local correction smoothing and adaptive remote interpolation. Dedicated Node deployments now automatically expose their WebSocket endpoint through `/api/network`; Sites can select one through `MULTIPLAYER_URL`. The public Site has no connected persistent backend and therefore still uses the improved HTTPS fallback.

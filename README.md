@@ -6,6 +6,14 @@ The public client supports local practice and **browser-hosted rooms through a s
 
 The previous direct PeerJS connection is replaced. The new transport follows the useful part of Embertrail invasion’s approach: normal HTTPS keeps the session connected even on networks that cannot establish peer data channels. It uses only Chip Arena’s own code, server and database. Local/supervised verification and public deployment verification are distinguished in [test results](docs/TEST-RESULTS.md).
 
+## Double-click Windows server
+
+A portable Windows x64 release is supplied as `Chip-Arena-Windows.zip`. Extract All, then double-click **Start-Chip-Arena.bat**. The runtime, game and server are included. Keep its window open. **Start-Online.bat** optionally opens a temporary shareable game link for friends on other networks (first run downloads a verified connector). Both players must use that launcher's link; the usual website's rooms remain separate. No login is required.
+
+See [Windows package, animation and knockout notes](docs/WINDOWS-AND-ANIMATION.md) for source, rebuild steps, checksums and limitations.
+
+The game now has articulated locomotion, gun recoil/reloads, spell gestures, weapon-specific melee motion, and voxel death breakup. Every knockout result—including the final one—stays on the arena for five seconds before drafting/reset/results. Future kill effects have a dedicated registry.
+
 ## Run it
 
 Requires Node.js 22.14+ (tested with Node 24.19.0) and npm.

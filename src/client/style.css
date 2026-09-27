@@ -11,3 +11,8 @@
 .room-code-input{text-transform:uppercase;letter-spacing:.25em;font:26px var(--mono);max-width:360px}.room-invite{display:flex;align-items:center;justify-content:space-between;gap:20px;background:#0e222c;border:1px solid #6aa79f;padding:18px 20px;margin:20px 0}.room-invite strong{font-family:monospace;letter-spacing:.2em;font-size:28px;display:block;color:#b7f4df}.room-invite small{color:#8da7ae;font-size:10px;letter-spacing:.16em}.room-invite .actions{margin:0;gap:8px;flex-wrap:wrap}.room-invite .btn{font-size:12px;padding:12px}.advanced-network{margin-top:20px;border-top:1px solid #40535e;padding-top:14px}.advanced-network summary{cursor:pointer;color:#9eb5bf;font-size:13px}@media(max-width:650px){.room-invite{flex-direction:column;align-items:flex-start}.cooldowns{transform:scale(.8);transform-origin:bottom right}}
 
 .connection-error{border:1px solid #bc775f;background:#70382640;padding:12px;color:#f1bba3;font-size:13px}.invite-url{font-size:12px;margin-bottom:18px;color:#a9d2cc}
+
+/* Preserve the arena view throughout the authoritative five-second knockout. */
+.result-sequence{position:fixed;top:19%;left:50%;transform:translateX(-50%);width:min(680px,85vw);text-align:center;pointer-events:none;padding:16px 28px;background:linear-gradient(90deg,transparent,rgba(10,23,31,.86) 22%,rgba(10,23,31,.86) 78%,transparent);animation:result-arrive .28s ease-out}
+.result-sequence .eyebrow{color:#aaf6d7;letter-spacing:.24em;font-size:13px}.result-sequence h2{font-size:clamp(18px,2.2vw,28px);margin:10px 0}.result-sequence p{color:#b4cbd2;font-size:13px;margin:8px 0}@keyframes result-arrive{from{opacity:0;transform:translate(-50%,-12px)}to{opacity:1;transform:translate(-50%,0)}}
+@media(prefers-reduced-motion:reduce){.result-sequence{animation:none}}

@@ -35,12 +35,13 @@ export class ArenaAudio {
    else if(e.type==='blockPulse')this.play('explosion',e.pos,.35);
    else if(e.type==='blockStart')this.play('parry',e.pos,.3);
    else if(['blockHit','reflect','blockAbsorb'].includes(e.type))this.play('parry',e.pos,.65);
+   else if(e.type==='death'){this.play('stone',e.pos,.65);this.play('explosion',e.pos,.3);}
    else if(e.type==='debrisHit')this.play('stone',e.pos,.5);
    else if(e.type==='push')this.play('water',e.pos,.65);
    else if(e.type==='pull')this.play('darkness',e.pos,.65);
    else if(e.type==='nova'||e.type==='arc')this.play('lightning',e.pos,.5);
   }
   if(state.phase==='countdown'){const n=Math.ceil(state.remaining);if(n!==this.countdown&&n>0)this.play('countdown',undefined,.7);this.countdown=n;}else this.countdown=-1;
-  if(this.phase!==state.phase){if(state.phase==='fight')this.play('go',undefined,.7);if(['result','match'].includes(state.phase)&&state.winner)this.play(state.winner===me?'win':'lose',undefined,.65);this.phase=state.phase;}
+  if(this.phase!==state.phase){if(state.phase==='fight')this.play('go',undefined,.7);if((state.phase==='result'||state.phase==='match'&&this.phase!=='result')&&state.winner)this.play(state.winner===me?'win':'lose',undefined,.65);this.phase=state.phase;}
  }
 }
