@@ -54,7 +54,7 @@ function socketEndpoint(value, origin) {
 
 // src/shared/cosmetics.ts
 var HATS = { none: "No hat", cap: "Ball cap", beanie: "Beanie", top: "Top hat", wizard: "Wizard hat", crown: "Crown", cone: "Traffic cone", antenna: "Antenna", halo: "Halo", cowboy: "Cowboy hat" };
-var KILL_STYLES = { "voxel-burst": "Voxel breakup", confetti: "Confetti cannon", ascension: "Beam me up", shrink: "Pocket-sized", launch: "Team Rocket", ghost: "Ghost escape", "dev-clown": "Clown getaway \xB7 DEV ONLY", "dev-clown-love": "Clown Love \xB7 DEV ONLY" };
+var KILL_STYLES = { "voxel-burst": "Voxel breakup", confetti: "Confetti cannon", ascension: "Beam me up", shrink: "Pocket-sized", launch: "Team Rocket", ghost: "Ghost escape", "dev-clown": "Clown getaway \xB7 DEV ONLY", "dev-clown-love": "Clown Love \xB7 DEV ONLY", "dev-bass-van": "Bass Van \xB7 DEV ONLY" };
 var developerKillEffect = (id) => id.startsWith("dev-");
 var DEFAULT_COSMETICS = { bodyColor: "#e5e7eb", hat: "none", killEffect: "voxel-burst" };
 function cosmetics(raw, dev = false) {

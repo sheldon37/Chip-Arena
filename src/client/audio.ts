@@ -1,5 +1,6 @@
 import {ArenaMusic} from './music.js';
 import {CLOWN_LOVE} from './clown-love-timing.js';
+import {BASS_VAN} from './bass-van-timing.js';
 import type {GameEvent,Snapshot} from '../shared/simulation.js';
 import type {Vec} from '../shared/config.js';
 export const AUDIO_CLIPS=['pistol','rifle','machinegun','fire','water','lightning','darkness','sword','daggers','shield','greatsword','reload-start','reload-end','dash','jump','hit','hurt','parry','wood','stone','metal','explosion','burn-tick','poison-tick','ui','install','countdown','go','win','lose'] as const;
@@ -12,7 +13,7 @@ export class AudioCursor {
 }
 export class ArenaAudio {
  music=new ArenaMusic();
- private loveBuffer:AudioBuffer|null=null;private loveSources=new Map<string,Set<AudioBufferSourceNode>>();private loveSeen=new Set<string>();private loveEpoch='';
+ private loveBuffer:AudioBuffer|null=null;private vanBuffer:AudioBuffer|null=null;private loveSources=new Map<string,Set<AudioBufferSourceNode>>();private loveSeen=new Set<string>();private loveEpoch='';
  context:AudioContext|null=null;master:GainNode|null=null;buffers=new Map<Sound,AudioBuffer>();voices=new Set<AudioBufferSourceNode>();cursor=new AudioCursor();loading:Promise<void>|null=null;volume=.3;muted=false;played=0;error='';phase='';countdown=-1;listener:Vec={x:0,y:0,z:0};yaw=0;
  configure(volume:number,muted:boolean){this.volume=Math.max(0,Math.min(1,volume));this.muted=muted;if(this.master&&this.context)this.master.gain.setTargetAtTime(muted?0:this.volume,this.context.currentTime,.015);}
  async unlock(){
@@ -21,20 +22,21 @@ export class ArenaAudio {
   if(!this.loading)this.loading=Promise.all(AUDIO_CLIPS.map(async name=>{const response=await fetch(`${(import.meta as any).env.BASE_URL}audio/${name}.wav`);if(!response.ok)throw Error(name);const buffer=await this.context!.decodeAudioData(await response.arrayBuffer());this.buffers.set(name,buffer);})).then(()=>{this.error='';}).catch(()=>{this.error='Some sound files could not load';});
   await this.loading;
   if(!this.loveBuffer)try{const r=await fetch(`${(import.meta as any).env.BASE_URL}audio/clown-love.mp3`);if(r.ok)this.loveBuffer=await this.context.decodeAudioData(await r.arrayBuffer());}catch{/* Ordinary game sounds remain available if the optional clip fails. */}
+  if(!this.vanBuffer)try{const r=await fetch(`${(import.meta as any).env.BASE_URL}audio/bass-van.mp3`);if(r.ok)this.vanBuffer=await this.context.decodeAudioData(await r.arrayBuffer());}catch{/* Other effects remain available if the optional clip fails. */}
   this.music.unlock();
  }
  private stopLove(){for(const sources of this.loveSources.values())for(const source of sources)source.stop();this.loveSources.clear();this.loveSeen.clear();this.music.setDucked(false);}
  private updateLove(state:Snapshot){
   const epoch=String(state.generation)+':'+state.setNumber+':'+state.round;if(epoch!==this.loveEpoch){this.stopLove();this.loveEpoch=epoch;}
-  const deaths=state.players.filter(p=>p.hp<=0&&p.death?.effect==='dev-clown-love'&&state.time>=p.death.at&&state.time-p.death.at<CLOWN_LOVE.end).map(p=>p.death!);
+  const deaths=state.players.filter(p=>p.hp<=0&&p.death&&['dev-clown-love','dev-bass-van'].includes(p.death.effect)&&state.time>=p.death.at&&state.time-p.death.at<CLOWN_LOVE.end).map(p=>p.death!);
   for(const [id,sources]of this.loveSources)if(!deaths.some(d=>d.id===id)){for(const source of sources)source.stop();this.loveSources.delete(id);}
-  this.music.setDucked(deaths.length>0&&!this.muted&&this.volume>0&&!!this.loveBuffer);
-  const context=this.context,master=this.master,violin=this.loveBuffer,hit=this.buffers.get('hit');if(!context||context.state!=='running'||!master||!violin||!hit)return;
-  for(const death of deaths){if(this.loveSeen.has(death.id))continue;this.loveSeen.add(death.id);const sources=new Set<AudioBufferSourceNode>();this.loveSources.set(death.id,sources);
+  this.music.setDucked(!this.muted&&this.volume>0&&deaths.some(d=>d.effect==='dev-bass-van'?!!this.vanBuffer&&state.time-d.at>=BASS_VAN.musicStart:!!this.loveBuffer));
+  const context=this.context,master=this.master,hit=this.buffers.get('hit');if(!context||context.state!=='running'||!master)return;
+  for(const death of deaths){const van=death.effect==='dev-bass-van',clip=van?this.vanBuffer:this.loveBuffer;if(this.loveSeen.has(death.id)||!clip||!van&&!hit)continue;this.loveSeen.add(death.id);const sources=new Set<AudioBufferSourceNode>();this.loveSources.set(death.id,sources);
    const age=state.time-death.at,now=context.currentTime;
    const schedule=(buffer:AudioBuffer,delay:number,offset:number,gain:number)=>{if(offset>=buffer.duration)return;const source=context.createBufferSource(),level=context.createGain();source.buffer=buffer;level.gain.value=gain;source.connect(level).connect(master);sources.add(source);source.onended=()=>{sources.delete(source);source.disconnect();level.disconnect();};source.start(now+delay,offset,Math.min(buffer.duration-offset,CLOWN_LOVE.end-age-delay));};
-   schedule(violin,0,age,1.15);
-   for(const at of CLOWN_LOVE.beats)if(at>=age)schedule(hit,at-age,0,.9);
+   if(van)schedule(clip,Math.max(0,BASS_VAN.musicStart-age),Math.max(0,age-BASS_VAN.musicStart),1.15);
+   else{schedule(clip,0,age,1.15);for(const at of CLOWN_LOVE.beats)if(at>=age)schedule(hit!,at-age,0,.9);}
   }
  }
  clownLaugh(){const c=this.context;if(!c||!this.master||this.muted)return;for(let n=0;n<9;n++){const at=c.currentTime+1.65+n*.22,voice=c.createOscillator(),formant=c.createBiquadFilter(),gain=c.createGain();voice.type='sawtooth';voice.frequency.setValueAtTime(185+(n%3)*30,at);voice.frequency.exponentialRampToValueAtTime(115+(n%2)*30,at+.17);formant.type='bandpass';formant.frequency.value=800;formant.Q.value=.9;gain.gain.setValueAtTime(0,at);gain.gain.linearRampToValueAtTime(.22,at+.025);gain.gain.exponentialRampToValueAtTime(.001,at+.18);voice.connect(formant).connect(gain).connect(this.master);voice.start(at);voice.stop(at+.2);voice.onended=()=>{voice.disconnect();formant.disconnect();gain.disconnect();};}}
