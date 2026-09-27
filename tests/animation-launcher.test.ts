@@ -10,7 +10,7 @@ import {animateCharacter,attackPose,ANIMATION,AnimatedRig} from '../src/client/c
 import {createCharacterRig} from '../src/client/character-rig.js';
 import {DeathEffects} from '../src/client/death-effects.js';
 await initPhysics();
-function fight(options={}){const s=new Simulation({countdown:.01,...options});s.addPlayer('a');s.addPlayer('b');s.start();s.selectSpec('a','pistol');s.selectSpec('b','pistol');s.step();return s;}
+function fight(options={}){const s=new Simulation({skipIntros:true,countdown:.01,...options});s.addPlayer('a');s.addPlayer('b');s.start();s.selectSpec('a','pistol');s.selectSpec('b','pistol');s.step();return s;}
 test('Windows and POSIX static paths serve assets without permitting traversal',()=>{
  for(const paths of [path.win32,path.posix]){const root=paths.resolve('dist/client');assert.equal(staticPath(root,'/',paths),paths.join(root,'index.html'));assert.equal(staticPath(root,'/assets/game.js',paths),paths.join(root,'assets/game.js'));assert.equal(staticPath(root,'/../../server.mjs',paths),null);assert.equal(staticPath(root,'/../client-evil/secrets',paths),null);}
  assert.equal(staticPath('C:\\arena\\dist\\client','/..\\..\\server.mjs',path.win32),null);

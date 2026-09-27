@@ -15,7 +15,7 @@ export class BlockCooldownTint {
     const original=o.material as Colored,material=original.clone() as Colored;o.material=material;entries!.push({mesh:o,original,material});
    });this.rigs.set(group,entries);}
   const pulse=.70+.30*Math.cos(time*Math.PI*2*1.5),factor=1-(1-pulse)*Math.min(1,p.blockCd/.25);
-  for(const tint of entries){if(tint.mesh.material!==tint.material){tint.original=tint.mesh.material as Colored;tint.mesh.material=tint.material;}tint.material.color.copy(tint.original.color).multiplyScalar(factor);}
+  for(const tint of entries){if(tint.mesh.material!==tint.material){tint.original=tint.mesh.material as Colored;tint.mesh.material=tint.material;}tint.material.color.copy(tint.original.color).multiplyScalar(factor);if('emissive'in tint.material&&'emissive'in tint.original)tint.material.emissive.copy(tint.original.emissive).multiplyScalar(factor);}
  }
  release(group:T.Group){const entries=this.rigs.get(group);if(!entries)return;for(const {mesh,original,material}of entries){if(mesh.material===material)mesh.material=original;material.dispose();}this.rigs.delete(group);}
  clear(){for(const group of this.rigs.keys())this.release(group);}

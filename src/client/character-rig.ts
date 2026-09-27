@@ -4,11 +4,11 @@ import * as T from 'three';
 export const RIG_VERSION = 2;
 export const RIG_LENGTHS = { upperArm:.27, forearm:.25, thigh:.25, shin:.25 } as const;
 const cube=new T.BoxGeometry(1,1,1),palette=new Map<string,T.MeshLambertMaterial>();
-function mat(color:T.ColorRepresentation){const key=String(color);if(!palette.has(key))palette.set(key,new T.MeshLambertMaterial({color}));return palette.get(key)!;}
+function mat(color:T.ColorRepresentation,glow=0){const key=String(color)+":"+glow;if(!palette.has(key))palette.set(key,new T.MeshLambertMaterial({color,emissive:glow?new T.Color(color).lerp(new T.Color(0xc3e5ff),.18):0,emissiveIntensity:glow}));return palette.get(key)!;}
 export function rigBox(parent:T.Object3D,name:string,x:number,y:number,z:number,sx:number,sy:number,sz:number,color:T.ColorRepresentation){const m=new T.Mesh(cube,mat(color));m.name=name;m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.castShadow=m.receiveShadow=true;parent.add(m);return m;}
 function joint(parent:T.Object3D,name:string,x=0,y=0,z=0){const g=new T.Group();g.name=name;g.position.set(x,y,z);parent.add(g);return g;}
-export function createCharacterRig(color:string,bodyColor:T.ColorRepresentation=0xdce5e8){
- const group=new T.Group();group.name='blank-mannequin-v2';group.userData.rigVersion=RIG_VERSION;
+export function createCharacterRig(color:string,bodyColor:T.ColorRepresentation=0xdce5e8,glow=false){
+ const group=new T.Group();group.name='blank-mannequin-v2';group.userData.rigVersion=RIG_VERSION;group.userData.armorGlow=glow;
  const body=joint(group,'motion-root'),pelvis=joint(body,'pelvis',0,-.24),spine=joint(pelvis,'spine',0,.105),chest=joint(spine,'chest',0,.19),neck=joint(chest,'neck',0,.32),head=joint(neck,'head',0,.10);
  const shell=bodyColor,edge=0xb5c4ca,flex=0x354853;
  rigBox(pelvis,'hip-shell',0,0,0,.43,.22,.28,shell);rigBox(pelvis,'waist-band',0,.08,0,.44,.055,.29,color);
@@ -25,6 +25,11 @@ export function createCharacterRig(color:string,bodyColor:T.ColorRepresentation=
   rigBox(hip,side+'-thigh',0,-.13,0,.195,.23,.22,shell);rigBox(knee,side+'-knee-joint',0,0,0,.17,.09,.18,flex);rigBox(knee,side+'-kneecap',0,-.01,.105,.16,.12,.075,color);rigBox(knee,side+'-shin',0,-.14,0,.175,.22,.20,shell);rigBox(ankle,side+'-heel',0,-.025,-.025,.195,.09,.22,flex);rigBox(toe,side+'-foot',0,-.01,.045,.21,.08,.22,edge);return {hip,knee,ankle,toe};};
  const ll=leg('left',1),rl=leg('right',-1),weapon=joint(right.socket,'weapon-socket'),offWeapon=joint(left.socket,'offhand-weapon-socket');
  const sockets={head:joint(head,'head-cosmetic'),chest:joint(chest,'chest-cosmetic'),back:joint(chest,'back-socket',0,.12,-.2),rightHand:right.socket,leftHand:left.socket,weapon,offWeapon};
+ if(glow){
+  rigBox(chest,'armor-back-light',0,.12,-.174,.24,.032,.015,color);
+  for(const knee of [ll.knee,rl.knee])rigBox(knee,'armor-shin-light',0,-.15,.108,.035,.15,.018,color);
+  lightArmor(group,color,bodyColor);
+ }
  return {group,body,pelvis,spine,chest,neck,head,leftShoulder:left.shoulder,rightShoulder:right.shoulder,leftArm:left.upper,rightArm:right.upper,leftElbow:left.elbow,rightElbow:right.elbow,leftHand:left.hand,rightHand:right.hand,leftLeg:ll.hip,rightLeg:rl.hip,leftKnee:ll.knee,rightKnee:rl.knee,leftFoot:ll.ankle,rightFoot:rl.ankle,leftToe:ll.toe,rightToe:rl.toe,weapon,offWeapon,sockets,stride:0,motion:0,aimWeight:0,groundWeight:1,land:0,wasGrounded:true};
 }
 export type CharacterRig=ReturnType<typeof createCharacterRig>;
@@ -52,4 +57,6 @@ export function braceWeapon(r:CharacterRig,target:T.Vector3,rotation:T.Euler,wei
  r.weapon.position.set(0,.065,-.055);r.weapon.rotation.set(0,0,0);r.group.updateMatrixWorld(true);const grip=r.weapon.getObjectByName('support-grip');if(grip)supportHand(r,grip,weight);
 }
 
-export function recolorCharacterRig(r:CharacterRig,accent:string,body:string){const key=accent+body;if(r.group.userData.colorKey===key)return;r.group.userData.colorKey=key;r.group.traverse(o=>{if(!(o instanceof T.Mesh))return;if(/^(hip-shell|abdomen-shell|ribcage|upper-chest|blank-head|crown)$/.test(o.name)||/-(upper-arm|forearm|thumb|thigh|shin)$/.test(o.name))o.material=mat(body);else if(/^(waist-band|sternum)$/.test(o.name)||/-(shoulder-cap|cuff|kneecap)$/.test(o.name))o.material=mat(accent);});}
+export function recolorCharacterRig(r:CharacterRig,accent:string,body:string){const key=accent+body;if(r.group.userData.colorKey===key)return;r.group.userData.colorKey=key;r.group.traverse(o=>{if(!(o instanceof T.Mesh))return;if(/^(hip-shell|abdomen-shell|ribcage|upper-chest|blank-head|crown)$/.test(o.name)||/-(upper-arm|forearm|thumb|thigh|shin)$/.test(o.name))o.material=mat(body,r.group.userData.armorGlow?.14:0);else if(/^(waist-band|sternum)$/.test(o.name)||/-(shoulder-cap|cuff|kneecap)$/.test(o.name))o.material=mat(accent,r.group.userData.armorGlow?.95:0);else if(o.name.startsWith('armor-'))o.material=mat(accent,.95);});}
+
+function lightArmor(group:T.Group,accent:string,body:T.ColorRepresentation){group.traverse(o=>{if(!(o instanceof T.Mesh))return;if(/^(hip-shell|abdomen-shell|ribcage|upper-chest)$/.test(o.name)||/-(upper-arm|forearm|thigh|shin)$/.test(o.name))o.material=mat(body,.14);else if(/^(waist-band|sternum|armor-)/.test(o.name)||/-(shoulder-cap|cuff|kneecap)$/.test(o.name))o.material=mat(accent,.95);});}

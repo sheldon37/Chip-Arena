@@ -1,7 +1,7 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import * as T from 'three';
 import {Simulation,initPhysics} from '../src/shared/simulation.js';import {CHIPS,statsFor} from '../src/shared/content.js';import {v,CONFIG} from '../src/shared/config.js';import {refreshDot} from '../src/shared/elements.js';import {PlayerStatusEffects} from '../src/client/status-effects.js';
 await initPhysics();
-function game(options={}){const s=new Simulation({countdown:.01,resultSeconds:.01,selectionSeconds:.08,...options});s.addPlayer('a','A');s.addPlayer('b','B');s.start();s.selectSpec('a','pistol');s.selectSpec('b','pistol');s.step();return s;}
+function game(options={}){const s=new Simulation({skipIntros:true,countdown:.01,resultSeconds:.01,selectionSeconds:.08,...options});s.addPlayer('a','A');s.addPlayer('b','B');s.start();s.selectSpec('a','pistol');s.selectSpec('b','pistol');s.step();return s;}
 function win(s:Simulation,id:string){assert.equal(s.phase,'fight');s.players.get(id==='a'?'b':'a')!.hp=0;s.resolveRound();}
 function nextRound(s:Simulation){s.step();s.step();assert.equal(s.phase,'fight');}
 test('first round win restores all temporary state and keeps Chips, without score or draft',()=>{

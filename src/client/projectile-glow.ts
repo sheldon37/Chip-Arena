@@ -3,7 +3,7 @@ import type {Snapshot} from '../shared/simulation.js';
 import {WEAPONS} from '../shared/content.js';
 import {ELEMENTS} from '../shared/elements.js';
 
-function glowTexture(){
+export function glowTexture(){
  const size=64,data=new Uint8Array(size*size*4);
  for(let y=0;y<size;y++)for(let x=0;x<size;x++){const r=Math.hypot((x+.5)/size*2-1,(y+.5)/size*2-1),i=(y*size+x)*4;data[i]=data[i+1]=data[i+2]=255;data[i+3]=Math.round(255*Math.exp(-r*r*4.5)*Math.max(0,1-r*r));}
  const texture=new T.DataTexture(data,size,size);texture.needsUpdate=true;texture.magFilter=texture.minFilter=T.LinearFilter;return texture;

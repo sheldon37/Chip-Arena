@@ -52,13 +52,22 @@ function socketEndpoint(value, origin) {
   }
 }
 
+// src/shared/intros.ts
+var INTRO_STYLES = {
+  "neon-drop": "Neon Drop",
+  "vector-slide": "Vector Slide",
+  "signal-spin": "Signal Spin",
+  "arc-salute": "Arc Salute",
+  "pulse-wave": "Pulse Wave"
+};
+
 // src/shared/cosmetics.ts
 var HATS = { none: "No hat", cap: "Ball cap", beanie: "Beanie", top: "Top hat", wizard: "Wizard hat", crown: "Crown", cone: "Traffic cone", antenna: "Antenna", halo: "Halo", cowboy: "Cowboy hat" };
 var KILL_STYLES = { "voxel-burst": "Voxel breakup", confetti: "Confetti cannon", ascension: "Beam me up", shrink: "Pocket-sized", launch: "Team Rocket", ghost: "Ghost escape", "dev-clown": "Clown getaway \xB7 DEV ONLY", "dev-clown-love": "Clown Love \xB7 DEV ONLY", "dev-bass-van": "Bass Van \xB7 DEV ONLY" };
 var developerKillEffect = (id) => id.startsWith("dev-");
-var DEFAULT_COSMETICS = { bodyColor: "#e5e7eb", hat: "none", killEffect: "voxel-burst" };
+var DEFAULT_COSMETICS = { intro: "neon-drop", bodyColor: "#e5e7eb", hat: "none", killEffect: "voxel-burst" };
 function cosmetics(raw, dev = false) {
-  return { bodyColor: typeof raw?.bodyColor === "string" && /^#[0-9a-f]{6}$/i.test(raw.bodyColor) ? raw.bodyColor : DEFAULT_COSMETICS.bodyColor, hat: raw && Object.hasOwn(HATS, raw.hat) ? raw.hat : "none", killEffect: raw && Object.hasOwn(KILL_STYLES, raw.killEffect) && (dev || !developerKillEffect(raw.killEffect)) ? raw.killEffect : "voxel-burst" };
+  return { intro: raw && Object.hasOwn(INTRO_STYLES, raw.intro) ? raw.intro : "neon-drop", bodyColor: typeof raw?.bodyColor === "string" && /^#[0-9a-f]{6}$/i.test(raw.bodyColor) ? raw.bodyColor : DEFAULT_COSMETICS.bodyColor, hat: raw && Object.hasOwn(HATS, raw.hat) ? raw.hat : "none", killEffect: raw && Object.hasOwn(KILL_STYLES, raw.killEffect) && (dev || !developerKillEffect(raw.killEffect)) ? raw.killEffect : "voxel-burst" };
 }
 
 // src/shared/network-config.ts
