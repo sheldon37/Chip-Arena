@@ -8,7 +8,7 @@ export const INTRO_STYLES={
  'pulse-wave':'Pulse Wave',
 } as const;
 export type IntroStyle=keyof typeof INTRO_STYLES;
-export const INTRO={seconds:3.6,nameAt:2.25} as const;
+export const INTRO={seconds:4.8,nameAt:3.2} as const;
 export interface IntroSequence {started:number;players:string[];}
 /** One authority-owned timeline. Joining a snapshot mid-intro never restarts it. */
 export function introFrame(state:Pick<Snapshot,'phase'|'intro'|'time'|'players'>){

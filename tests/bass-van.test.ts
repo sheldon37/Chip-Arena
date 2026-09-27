@@ -15,7 +15,7 @@ test('Bass Van is developer-only, including forged host settings, and affects th
  assert.equal(room.sim.players.get('host')!.cosmetics.killEffect,'voxel-burst');room.dispose();
  const s=fixture();assert.equal(s.players.get('other')!.death!.effect,'dev-bass-van');assert.equal(s.players.get('dev')!.death,undefined);s.dispose();
 });
-test('Bass Van has finite rewindable poses, doors that close after boarding, speakers, departure and cleanup at every quality',()=>{
+test('Bass Van has finite rewindable poses, doors that close after boarding, waiting passengers, departure and cleanup at every quality',()=>{
  for(const quality of [.3,1]){
   const s=fixture(),p=s.snapshot().players[1],scene=new T.Scene(),effect=KILL_EFFECTS['dev-bass-van'](scene,new T.Group(),p,p.death!,quality,280);
   const van=scene.getObjectByName('bass-van-vehicle')!,passenger=scene.getObjectByName('bass-passenger')!,driver=scene.getObjectByName('bass-driver')!,cargo=scene.getObjectByName('bass-cargo-door')!,cab=scene.getObjectByName('bass-cab-door')!;
@@ -31,8 +31,8 @@ test('Bass Van has finite rewindable poses, doors that close after boarding, spe
   effect.update(2.9);scene.updateMatrixWorld(true);const pose=passenger.matrixWorld.clone();
   assert.ok(passenger.visible&&passenger.getObjectByName('blank-head')!.visible);assert.ok(driver.position.x-passenger.position.x>1.4);
   const local=van.worldToLocal(passenger.getWorldPosition(new T.Vector3()));assert.ok(local.distanceTo(new T.Vector3(-.4,.13,.02))<1e-6);
-  assert.ok(scene.getObjectByName('bass-speaker-cone'));assert.ok(scene.getObjectByName('bass-music-note')!.visible);
-  effect.update(.5);assert.ok(van.position.x<.65);assert.ok(passenger.position.length()<1e-6);assert.equal(scene.getObjectByName('bass-music-note')!.visible,false);
+  assert.equal(scene.getObjectByName('bass-speaker-cone'),undefined);assert.equal(scene.getObjectByName('bass-music-note'),undefined);assert.equal(scene.getObjectByName('roof-speaker-cabinet'),undefined);assert.equal(scene.getObjectByName('boombox-handle'),undefined);for(let i=1;i<=3;i++){const waiting=scene.getObjectByName('bass-waiting-passenger-'+i)!;assert.ok(waiting&&waiting.parent===van);const box=new T.Box3().setFromObject(waiting);assert.ok(Number.isFinite(box.min.x));}
+  effect.update(.5);assert.ok(van.position.x<.65);assert.ok(passenger.position.length()<1e-6);assert.equal(scene.getObjectByName('bass-music-note'),undefined);
   effect.update(2.9);scene.updateMatrixWorld(true);assert.deepEqual(passenger.matrixWorld.elements,pose.elements);
   effect.dispose();assert.equal(scene.children.length,0);s.dispose();
  }
@@ -65,4 +65,8 @@ test('late van snapshots seek the music and resurrection cancels it without a hi
 test('bass envelope stays bounded and stops outside the audible timeline',()=>{
  assert.equal(vanBass(0),0);assert.equal(vanBass(5),0);let peak=0;
  for(let t=0;t<6;t+=1/120){const bass=vanBass(t);assert.ok(Number.isFinite(bass)&&bass>=0&&bass<=1);peak=Math.max(peak,bass);}assert.ok(peak>.9);
+});
+test('departure scream starts on drive-off, seeks delayed snapshots once, and is cancelled on restore',()=>{
+ const s=fixture(),state=s.snapshot(),a=audioFixture();(a.audio as any).screamBuffer={duration:.78};a.update(state);assert.equal(a.calls.length,2);assert.deepEqual(a.calls[1].start,[10+BASS_VAN.drive,0,.78]);state.time=BASS_VAN.drive+.2;a.update(state);assert.equal(a.calls.length,2);state.players[1].hp=100;a.update(state);assert.ok(a.calls.every(c=>c.stopped));
+ const b=audioFixture();(b.audio as any).screamBuffer={duration:.78};state.players[1].hp=0;b.update(state);assert.ok(Math.abs(b.calls[1].start[1]-.2)<1e-8);b.audio.reset();assert.ok(b.calls.every(c=>c.stopped));s.dispose();
 });

@@ -17,7 +17,7 @@ export const bassVan:KillEffectFactory=(scene,_original,p,d,quality)=>{
  victim.group.name='bass-passenger';dressRig(victim,p.cosmetics);root.add(van,guy.group,victim.group);
  const seat=new T.Vector3(-.40,.13,.02),driverSeat=new T.Vector3(1.2,.12,.12),cabStep=new T.Vector3(1.2,.02,1.35),grabPos=new T.Vector3(-.67,.02,.1);
  const inVan=(r:CharacterRig,position:T.Vector3,yaw:number)=>{r.group.position.copy(position).applyMatrix4(van.matrix);r.group.quaternion.copy(van.quaternion).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),yaw));};
- return {count:quality<.5?52:56,update(age){
+ return {count:quality<.5?98:104,update(age){
   const t=Math.max(0,age),arrive=smooth(t/BASS_VAN.arrive),depart=Math.max(0,t-BASS_VAN.drive),bass=vanBass(t);
   reset(victim);reset(guy);victim.group.position.set(0,0,0);victim.weapon.visible=victim.offWeapon.visible=false;
   van.position.set(T.MathUtils.lerp(-10,.65,arrive)+depart*depart*17,bass*.20,-1.65);
@@ -25,8 +25,8 @@ export const bassVan:KillEffectFactory=(scene,_original,p,d,quality)=>{
   const close=smooth((t-BASS_VAN.doorClose)/(BASS_VAN.musicStart-BASS_VAN.doorClose)),open=smooth((t-.52)/.18)*(1-close);
   vehicle.cargoDoor.position.set(-.08-open*1.65,0,.82+Math.min(1,open*5)*.09);vehicle.cabDoor.rotation.y=open*1.25;
   for(const wheel of vehicle.wheels)wheel.rotation.z=-van.position.x/.33;
-  vehicle.cones.forEach(cone=>{cone.position.z=.369+bass*.06;});vehicle.rings.forEach(ring=>ring.scale.setScalar(1+bass*.07));
-  vehicle.notes.forEach((note,i)=>{note.visible=t>=BASS_VAN.musicStart&&t<BASS_VAN.end;const phase=((t-BASS_VAN.musicStart)*1.4+i*.27)%1;note.position.set(-1.2+i*.6+Math.sin(i+t*2)*.12,2.17+phase*.8,.25);note.rotation.z=Math.sin(t*5+i)*.2;note.scale.setScalar((.7+bass*.4)*(1-phase*.45));});
+  vehicle.cabinLight.intensity=(quality<.5?1.8:3.5)*open;
+  vehicle.passengers.forEach((r,i)=>{r.head.rotation.set(Math.sin(t*2+i)*.05,Math.sin(t*1.4+i)*.13,Math.sin(t*9+i)*bass*.06);r.chest.rotation.z=Math.sin(t*2.5+i)*.035;r.leftArm.rotation.x=-.55;r.rightArm.rotation.x=-.55;});
   if(t<BASS_VAN.arrive){inVan(guy,driverSeat,Math.PI/2);seated(guy);}
   else if(t<BASS_VAN.grab){const walk=smooth((t-BASS_VAN.arrive)/(BASS_VAN.grab-BASS_VAN.arrive));guy.group.position.copy(driverSeat).applyMatrix4(van.matrix).lerp(grabPos,walk);guy.group.rotation.y=Math.PI/2;run(guy,t);}
   else if(t<BASS_VAN.toss+.1){guy.group.position.copy(grabPos);const wind=smooth((t-BASS_VAN.grab)/.17);guy.group.rotation.y=Math.PI/2+wind*.45;guy.spine.rotation.x=.17*(1-wind);guy.leftArm.rotation.x=guy.rightArm.rotation.x=-1.15-wind*.8;guy.leftElbow.rotation.x=guy.rightElbow.rotation.x=-.25;}

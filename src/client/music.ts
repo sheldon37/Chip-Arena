@@ -5,6 +5,7 @@ export class ArenaMusic {
  private get level(){return this.muted?0:this.volume*.55*(this.ducked?.12:1);}
  setDucked(ducked:boolean){if(this.ducked===ducked)return;this.ducked=ducked;if(this.audio)this.audio.volume=this.level;}
  configure(volume:number,muted:boolean){this.volume=Number.isFinite(volume)?Math.max(0,Math.min(1,volume)):.35;this.muted=muted;if(this.audio)this.audio.volume=this.level;}
+ get cueVolume(){return this.muted?0:this.volume*.80;}
  get title(){return this.current<0?'':MUSIC_TRACKS[this.current][1];}
  setActive(active:boolean){if(active===this.active)return;this.active=active;if(!active){this.audio?.pause();return;}if(this.audio&&!this.audio.ended){void this.audio.play().catch(()=>{});}else this.next();}
  unlock(){if(this.active&&this.audio)void this.audio.play().catch(()=>{});}

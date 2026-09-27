@@ -70,24 +70,18 @@ export function createBassVan(quality:number){
  box('bench-back',-.45,.12,-.47,1.35,.60,.13,0x536781);
  box('driver-seat',1.16,-.20,.13,.47,.18,.52,0x536781);
  box('driver-seat-back',.93,.12,.13,.12,.62,.52,0x536781);
- // Windowed doors enclose the van; the driver stays in the front cab.
- const wheelGeo=new T.CylinderGeometry(.33,.33,.18,quality<.5?10:16),rimGeo=new T.CylinderGeometry(.16,.16,.195,12),speakerGeo=new T.CylinderGeometry(.30,.35,.055,quality<.5?12:20),capGeo=new T.CylinderGeometry(.11,.11,.06,12),ringGeo=new T.TorusGeometry(.35,.025,5,quality<.5?12:24),steeringGeo=new T.TorusGeometry(.18,.025,5,12);
- const rubber=new T.MeshLambertMaterial({color:0x141923}),silver=new T.MeshLambertMaterial({color:0xb6c5d4}),coneMat=new T.MeshLambertMaterial({color:0x2c3547}),cyan=new T.MeshBasicMaterial({color:0x6af3e8}),pink=new T.MeshBasicMaterial({color:0xf386ff});
- const wheels:T.Group[]=[],cones:T.Mesh[]=[],rings:T.Mesh[]=[];
+ // Solid cargo doors; the cabin light reveals the waiting passengers during boarding.
+ const wheelGeo=new T.CylinderGeometry(.33,.33,.18,quality<.5?10:16),rimGeo=new T.CylinderGeometry(.16,.16,.195,12),steeringGeo=new T.TorusGeometry(.18,.025,5,12);
+ const rubber=new T.MeshLambertMaterial({color:0x141923}),silver=new T.MeshLambertMaterial({color:0xb6c5d4});
+ const wheels:T.Group[]=[];
  const steering=new T.Mesh(steeringGeo,rubber);steering.rotation.y=Math.PI/2;steering.position.set(1.64,.32,.12);van.add(steering);
  for(const x of [-1.18,1.22])for(const side of [-1,1]){const wheel=new T.Group();wheel.position.set(x,-.52,side*.80);van.add(wheel);for(const [geo,mat]of [[wheelGeo,rubber],[rimGeo,silver]] as const){const m=new T.Mesh(geo,mat);m.rotation.x=Math.PI/2;wheel.add(m);}wheels.push(wheel);}
- for(const [i,x]of [-.93,.05].entries()){
-  box('roof-speaker-cabinet',x,1.65,.06,.87,.82,.55,0x202a3b);
-  const cone=new T.Mesh(speakerGeo,coneMat);cone.name='bass-speaker-cone';cone.rotation.x=Math.PI/2;cone.position.set(x,1.66,.369);van.add(cone);cones.push(cone);
-  const cap=new T.Mesh(capGeo,silver);cap.position.y=.039;cone.add(cap);
-  const ring=new T.Mesh(ringGeo,i?pink:cyan);ring.position.set(x,1.66,.375);van.add(ring);rings.push(ring);
- }
- box('boombox-handle',-.44,2.17,.04,1.1,.08,.12,trim);
- for(const x of [-.95,.07])box('handle-support',x,2.07,.04,.08,.18,.12,trim);
- const notes:T.Group[]=[];
- for(let i=0;i<(quality<.5?2:4);i++){
-  const note=new T.Group();note.name='bass-music-note';const color=i%2?0xf386ff:0x6af3e8;
-  rigBox(note,'note-head',-.055,0,0,.18,.12,.045,color);rigBox(note,'note-stem',.016,.16,0,.055,.35,.045,color);rigBox(note,'note-flag',.11,.30,0,.19,.065,.045,color);van.add(note);notes.push(note);
- }
- return {van,cargoDoor,cabDoor,wheels,cones,rings,notes,dispose(){for(const g of [wheelGeo,rimGeo,speakerGeo,capGeo,ringGeo,steeringGeo])g.dispose();for(const m of [rubber,silver,coneMat,cyan,pink,glass])m.dispose();}};
+ const passengers=[['#8c593b','#70452d'],['#ac754d','#8b5a3c'],['#794930','#5d3826']].map(([accent,body],i)=>{
+  const r=createCharacterRig(accent,body);r.group.name='bass-waiting-passenger-'+(i+1);r.group.scale.setScalar(.67);r.group.position.set(-1.37+i*.74,.13,-.37);r.weapon.visible=r.offWeapon.visible=false;
+  r.leftLeg.rotation.x=r.rightLeg.rotation.x=-Math.PI/2;r.leftKnee.rotation.x=r.rightKnee.rotation.x=Math.PI/2;r.leftArm.rotation.x=r.rightArm.rotation.x=-.55;r.leftElbow.rotation.x=r.rightElbow.rotation.x=-.9;
+  van.add(r.group);return r;
+ });
+ const cabinLight=new T.PointLight(0xffdbb1,3.5,2.6,2);cabinLight.name='bass-cabin-light';cabinLight.position.set(-.5,.84,.1);van.add(cabinLight);
+ const ceiling=new T.Mesh(new T.BoxGeometry(.65,.025,.18),new T.MeshBasicMaterial({color:0xffe3b9,toneMapped:false}));ceiling.name='cargo-ceiling-lamp';ceiling.position.set(-.5,1.09,0);van.add(ceiling);
+ return {van,cargoDoor,cabDoor,wheels,passengers,cabinLight,dispose(){for(const g of [wheelGeo,rimGeo,steeringGeo,ceiling.geometry])g.dispose();for(const m of [rubber,silver,glass,ceiling.material])m.dispose();}};
 }
