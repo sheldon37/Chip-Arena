@@ -29,6 +29,8 @@ Packaging verifies the runtime checksum and bundles dependencies into `server.mj
 
 ## Character animation
 
+Updated by [RIG-ARENA-SNIPER.md](RIG-ARENA-SNIPER.md): the new blank articulated rig, two-hand grip IK and shared first-person arms replace the original limited rig below.
+
 `src/client/character-animation.ts` contains the shared presentation pose sampler and tuning constants. The rig has shoulder/elbow and hip/knee joints, torso/head motion and a named `weapon-socket` under the right hand. All weapons remain automatically attached; no manual per-frame alignment.
 
 - Velocity-driven strides blend idle, walking/running and dash lean, with bent knees and airborne leg tuck.
@@ -45,7 +47,7 @@ The authority emits one persistent `DeathPresentation` record per killed player:
 
 `src/client/death-effects.ts` owns a `KILL_EFFECTS` factory registry. The current `voxel-burst` implementation samples the actual posed rig's boxes/colors, then animates bounded, seeded fragments with a simple visual floor bounce and fade. Unknown effect IDs fall back to voxel breakup. Future kill animations can add a factory and an authoritative effect-selection policy without changing match progression. No custom effect selection menu/content is implemented yet.
 
-Death fragments are strictly cosmetic (100 maximum per pilot, 40 with reduced effects); they create no colliders, mass or damage. Existing gameplay destruction/debris remains authoritative and damaging during combat. Cosmetic bounce uses a simplified floor, so visual fragments can pass through cover.
+Death fragments are strictly cosmetic (120 maximum per pilot, 48 with reduced effects); they create no colliders, mass or damage. Existing gameplay destruction/debris remains authoritative and damaging during combat. Cosmetic bounce uses a simplified floor, so visual fragments can pass through cover.
 
 Every resolved round—including the final match-winning round—enters `result` for `CONFIG.resultSeconds = 5`. The winner/score lock immediately; new damage and attacks stop. Existing physics props settle while the unobtrusive result banner leaves the arena visible. Draft/reset/match controls appear only after the delay. Draws also hold, then replay without awarding a win/Chip. Disconnect forfeits still resolve at their existing timeout. Rooms remain 1v1; future larger matches need roster/team changes, but a death alone is not the presentation trigger when more than one survivor remains.
 

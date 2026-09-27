@@ -183,3 +183,9 @@ The cloud Chrome environment reported WebGL disabled. The actual 3D scene/camera
 - Docker packaging was supplied but no Docker image was built/run here. The production Node build was typechecked.
 - WebMCP was feature-detected and registered in source; this browser reported `modelContext` unavailable, so tool-context execution validation was unavailable.
 - No touch combat, reconnection/resume, multi-server scaling, bandwidth optimization, ranked play or persistence is claimed.
+
+## Articulated rig / sniper update
+
+See [RIG-ARENA-SNIPER.md](RIG-ARENA-SNIPER.md) for the latest validation scope. Automated suite: 128 passed; combined-Chip stress: 15 cases, 12,392 steps. Browser visual checks used the compatibility renderer.
+
+Expanded-arena network regression: two Rifle clients, 100 ms each direction, 2,822 identical snapshots, full five-set match, four drafts, rematch and disconnect handling passed.

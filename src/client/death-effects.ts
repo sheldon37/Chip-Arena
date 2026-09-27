@@ -1,5 +1,6 @@
 import * as T from 'three';
 import type {DeathPresentation,PlayerView,Snapshot} from '../shared/simulation.js';
+import {ARENA} from '../shared/arena.js';
 import {ANIMATION} from './character-animation.js';
 
 interface Voxel {mesh:T.Mesh;start:T.Vector3;velocity:T.Vector3;spin:T.Vector3;floor:number;size:number;}
@@ -23,7 +24,7 @@ function voxelBurst(scene:T.Scene,rig:T.Group,p:PlayerView,death:DeathPresentati
   const mesh=new T.Mesh(geometry,mat),spread=c.pos.clone().sub(new T.Vector3(death.pos.x,death.pos.y,death.pos.z));mesh.scale.setScalar(c.size*.92);scene.add(mesh);
   const inherited=new T.Vector3(death.velocity.x,death.velocity.y,death.velocity.z).clampLength(0,7).multiplyScalar(.35);
   const velocity=spread.multiplyScalar(3.5).add(new T.Vector3((random()-.5)*3,2+random()*3,(random()-.5)*3)).add(inherited).add(new T.Vector3(death.direction.x,death.direction.y,death.direction.z).multiplyScalar(2));
-  chunks.push({mesh,start:c.pos,velocity,spin:new T.Vector3(random()*9-4.5,random()*9-4.5,random()*9-4.5),floor:c.pos.x*c.pos.x+c.pos.z*c.pos.z<144?.05:-8,size:c.size});
+  chunks.push({mesh,start:c.pos,velocity,spin:new T.Vector3(random()*9-4.5,random()*9-4.5,random()*9-4.5),floor:Math.abs(c.pos.x)<ARENA.width/2&&Math.abs(c.pos.z)<ARENA.depth/2?.05:-8,size:c.size});
  }
  return {count:chunks.length,update(age){const t=Math.max(0,age);for(const c of chunks){const hit=(c.velocity.y+Math.sqrt(Math.max(0,c.velocity.y*c.velocity.y+2*12*Math.max(0,c.start.y-c.floor))))/12;
    const travel=Math.min(t,hit)+Math.max(0,t-hit)*.1;c.mesh.position.copy(c.start).addScaledVector(c.velocity,travel);c.mesh.position.y=t<hit?c.start.y+c.velocity.y*t-6*t*t:c.floor+c.size*.5+Math.max(0,Math.sin(Math.min(Math.PI,(t-hit)*7)))*.15;

@@ -10,7 +10,7 @@ function shotArena(spec:SpecId='pistol',stacks=0){
  a.spec=spec;a.chips={velocity:stacks};a.stats=statsFor(a.chips);s.phase='fight';
  for(const prop of [...s.props.values()])s.removeProp(prop.id);
  a.body.setTranslation(v(0,1,0),true);b.body.setTranslation(v(-40,1,30),true);
- s.addProp({id:'test-floor',pos:v(0,-.75,0),size:v(80,1.5,80),material:'foundation'});s.world.step();s.spawnProjectile(a);
+ s.addProp({id:'test-floor',pos:v(0,-.75,0),size:v(240,1.5,240),material:'foundation'});s.world.step();s.spawnProjectile(a);
  const shot=[...s.projectiles.values()][0];shot.pos=v(0,1.6,0);shot.vel=v(len(shot.vel),0,0);return {s,a,b,shot};
 }
 test('ballistic integration gives constant acceleration and is independent of tick partition',()=>{

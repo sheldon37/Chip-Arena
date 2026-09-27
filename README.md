@@ -248,3 +248,7 @@ See [docs/TESTING.md](docs/TESTING.md), [docs/TEST-RESULTS.md](docs/TEST-RESULTS
 - WebMCP registration is feature-detected; browser-context validation was unavailable in this environment.
 
 Official API references verified during implementation: [Rapier rigid bodies and CCD](https://rapier.rs/docs/user_guides/javascript/rigid_bodies/), [Rapier RigidBody API](https://rapier.rs/javascript3d/classes/RigidBody.html), [Three.js Raycaster](https://threejs.org/docs/pages/Raycaster.html), [ws server examples](https://github.com/websockets/ws).
+
+## Latest rig / arena update
+
+See [RIG-ARENA-SNIPER.md](docs/RIG-ARENA-SNIPER.md) for the blank articulated model, visible Chip modules, 64 × 56 m arena and 3-round sniper Rifle. Hold **Q** to scope with Rifle. Developer Sandbox → Animation Inspector previews the rig and installed Chips.
