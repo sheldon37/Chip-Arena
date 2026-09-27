@@ -44,10 +44,10 @@ test('Bass Van is removed at the five-second boundary and when the player is res
  effects.clear();state.time=0;effects.update(state,rigs,1);state.players[1].hp=100;effects.update(state,rigs,1);assert.equal(scene.children.length,0);s.dispose();
 });
 function audioFixture(){
- const calls:{start:number[];stopped:boolean}[]=[],duck:boolean[]=[];
- const context={state:'running',currentTime:10,createGain:()=>({gain:{value:1},connect(){return this;},disconnect(){}}),createBufferSource:()=>{const call={start:[] as number[],stopped:false};calls.push(call);return {buffer:null,connect(){return this;},disconnect(){},start(...args:number[]){call.start=args;},stop(){call.stopped=true;}};}};
+ const calls:{start:number[];stopped:boolean}[]=[],duck:boolean[]=[],levels:{gain:{value:number}}[]=[];
+ const context={state:'running',currentTime:10,createGain:()=>{const level={gain:{value:1},connect(){return this;},disconnect(){}};levels.push(level);return level;},createBufferSource:()=>{const call={start:[] as number[],stopped:false};calls.push(call);return {buffer:null,connect(){return this;},disconnect(){},start(...args:number[]){call.start=args;},stop(){call.stopped=true;}};}};
  const audio=new ArenaAudio();audio.context=context as any;audio.master={gain:{setTargetAtTime(){}}} as any;(audio as any).vanBuffer={duration:2.65};audio.music={setActive(){},setDucked(v:boolean){duck.push(v);}} as any;
- return {audio,calls,duck,update:(state:any)=>(audio as any).updateLove(state)};
+ return {audio,calls,duck,levels,update:(state:any)=>(audio as any).updateLove(state)};
 }
 test('van music waits for the doors to close, ducks during playback, deduplicates, and cancels scheduled playback on reset',()=>{
  const s=fixture(),state=s.snapshot(),a=audioFixture();a.update(state);
@@ -66,7 +66,9 @@ test('bass envelope stays bounded and stops outside the audible timeline',()=>{
  assert.equal(vanBass(0),0);assert.equal(vanBass(5),0);let peak=0;
  for(let t=0;t<6;t+=1/120){const bass=vanBass(t);assert.ok(Number.isFinite(bass)&&bass>=0&&bass<=1);peak=Math.max(peak,bass);}assert.ok(peak>.9);
 });
-test('departure scream starts on drive-off, seeks delayed snapshots once, and is cancelled on restore',()=>{
- const s=fixture(),state=s.snapshot(),a=audioFixture();(a.audio as any).screamBuffer={duration:.78};a.update(state);assert.equal(a.calls.length,2);assert.deepEqual(a.calls[1].start,[10+BASS_VAN.drive,0,.78]);state.time=BASS_VAN.drive+.2;a.update(state);assert.equal(a.calls.length,2);state.players[1].hp=100;a.update(state);assert.ok(a.calls.every(c=>c.stopped));
- const b=audioFixture();(b.audio as any).screamBuffer={duration:.78};state.players[1].hp=0;b.update(state);assert.ok(Math.abs(b.calls[1].start[1]-.2)<1e-8);b.audio.reset();assert.ok(b.calls.every(c=>c.stopped));s.dispose();
+test('van drive-off keeps only the louder music playing',()=>{
+ const s=fixture(),state=s.snapshot(),a=audioFixture();a.update(state);
+ assert.equal(a.calls.length,1);assert.equal(a.levels[0].gain.value,2.3);
+ state.time=BASS_VAN.drive+.2;a.update(state);assert.equal(a.calls.length,1);
+ state.players[1].hp=100;a.update(state);assert.ok(a.calls[0].stopped);s.dispose();
 });

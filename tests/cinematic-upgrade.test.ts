@@ -31,7 +31,6 @@ test('intro songs seek late snapshots, deduplicate, switch players, honor music 
  audio.update(state,context as any,0);assert.equal(calls[1].stops.at(-1),0);audio.update(state,context as any,.3);assert.equal(calls.length,3);audio.stop();assert.equal(calls[2].stops.at(-1),0);audio.update({...state,phase:'fight'},context as any,.3);assert.equal(calls.length,3);
  const music=new ArenaMusic();music.configure(.5,false);assert.equal(music.cueVolume,.4);music.configure(.5,true);assert.equal(music.cueVolume,0);s.dispose();
 });
-test('all five original music assets are distinct and the departure scream is a bounded audible PCM clip',()=>{
+test('all five original intro music assets are distinct',()=>{
  const hashes=new Set<string>();for(const style of Object.keys(INTRO_STYLES)){const bytes=readFileSync(`public/audio/intros/${style}.mp3`);assert.ok(bytes.length>20000);hashes.add(createHash('sha256').update(bytes).digest('hex'));}assert.equal(hashes.size,5);
- const wave=readFileSync('public/audio/van-scream.wav');assert.equal(wave.toString('ascii',0,4),'RIFF');const seconds=wave.readUInt32LE(40)/wave.readUInt32LE(28);assert.ok(seconds>.5&&seconds<.9);let peak=0,energy=0;for(let i=44;i<wave.length;i+=2){const n=wave.readInt16LE(i)/32768;peak=Math.max(peak,Math.abs(n));energy+=n*n;}assert.ok(peak>.2&&peak<.95);assert.ok(Math.sqrt(energy/((wave.length-44)/2))>.025);
 });

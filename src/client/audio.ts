@@ -14,7 +14,7 @@ export class AudioCursor {
 }
 export class ArenaAudio {
  music=new ArenaMusic();intros=new IntroAudio();
- private screamBuffer:AudioBuffer|null=null;private loveBuffer:AudioBuffer|null=null;private vanBuffer:AudioBuffer|null=null;private loveSources=new Map<string,Set<AudioBufferSourceNode>>();private loveSeen=new Set<string>();private loveEpoch='';
+ private loveBuffer:AudioBuffer|null=null;private vanBuffer:AudioBuffer|null=null;private loveSources=new Map<string,Set<AudioBufferSourceNode>>();private loveSeen=new Set<string>();private loveEpoch='';
  context:AudioContext|null=null;master:GainNode|null=null;buffers=new Map<Sound,AudioBuffer>();voices=new Set<AudioBufferSourceNode>();cursor=new AudioCursor();loading:Promise<void>|null=null;volume=.3;muted=false;played=0;error='';phase='';countdown=-1;listener:Vec={x:0,y:0,z:0};yaw=0;
  configure(volume:number,muted:boolean){this.volume=Math.max(0,Math.min(1,volume));this.muted=muted;if(this.master&&this.context)this.master.gain.setTargetAtTime(muted?0:this.volume,this.context.currentTime,.015);}
  async unlock(){
@@ -24,7 +24,6 @@ export class ArenaAudio {
   await this.loading;
   if(!this.loveBuffer)try{const r=await fetch(`${(import.meta as any).env.BASE_URL}audio/clown-love.mp3`);if(r.ok)this.loveBuffer=await this.context.decodeAudioData(await r.arrayBuffer());}catch{/* Ordinary game sounds remain available if the optional clip fails. */}
   if(!this.vanBuffer)try{const r=await fetch(`${(import.meta as any).env.BASE_URL}audio/bass-van.mp3`);if(r.ok)this.vanBuffer=await this.context.decodeAudioData(await r.arrayBuffer());}catch{/* Other effects remain available if the optional clip fails. */}
-  if(!this.screamBuffer)try{const r=await fetch(`${(import.meta as any).env.BASE_URL}audio/van-scream.wav`);if(r.ok)this.screamBuffer=await this.context.decodeAudioData(await r.arrayBuffer());}catch{/* Optional departure cue. */}
   void this.intros.load(this.context,(import.meta as any).env.BASE_URL);this.music.unlock();
  }
  private stopLove(){for(const sources of this.loveSources.values())for(const source of sources)source.stop();this.loveSources.clear();this.loveSeen.clear();this.music.setDucked(false);}
@@ -38,7 +37,7 @@ export class ArenaAudio {
    const schedule=(key:string,buffer:AudioBuffer|null|undefined,at:number,gain:number)=>{const cue=death.id+':'+key;if(!buffer||this.loveSeen.has(cue))return;const delay=Math.max(0,at-age),offset=Math.max(0,age-at),duration=Math.min(buffer.duration-offset,CLOWN_LOVE.end-age-delay);this.loveSeen.add(cue);if(duration<=0)return;
     const sources=this.loveSources.get(death.id)||new Set<AudioBufferSourceNode>();this.loveSources.set(death.id,sources);const source=context.createBufferSource(),level=context.createGain();source.buffer=buffer;level.gain.value=gain;source.connect(level).connect(master);sources.add(source);source.onended=()=>{sources.delete(source);source.disconnect();level.disconnect();};source.start(now+delay,offset,duration);
    };
-   if(van){schedule('music',this.vanBuffer,BASS_VAN.musicStart,1.15);schedule('scream',this.screamBuffer,BASS_VAN.drive,1.05);}
+   if(van){schedule('music',this.vanBuffer,BASS_VAN.musicStart,2.3);}
    else{schedule('music',this.loveBuffer,0,1.15);for(const at of CLOWN_LOVE.beats)if(at>=age)schedule('hit-'+at,hit,at,.9);}
   }
  }

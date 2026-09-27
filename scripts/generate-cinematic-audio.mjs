@@ -1,4 +1,4 @@
-// Original synth stings and a short cartoon vocal yelp. Deterministic, with no external recordings.
+// Original synth stings. Deterministic, with no external recordings.
 import {mkdirSync,writeFileSync,unlinkSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 const rate=44100,tau=Math.PI*2,hz=m=>440*2**((m-69)/12);
@@ -31,6 +31,3 @@ for(const [index,[id,key,impact,melody]]of styles.entries()){
  kick(3.2);pluck(3.2,key+24,.20,.25);pluck(3.6,key+19,.10,-.35);pluck(4,key+12,.10,.35);
  const temp='/tmp/chip-intro-'+id+'.wav';writeFileSync(temp,wav(left,right));const result=spawnSync('ffmpeg',['-hide_banner','-loglevel','error','-y','-i',temp,'-codec:a','libmp3lame','-b:a','128k','-metadata','artist=Chip Arena','-metadata','title='+id,'public/audio/intros/'+id+'.mp3']);if(result.status!==0)throw Error(result.stderr.toString());unlinkSync(temp);console.log('Intro:',id,'4.8s');
 }
-// Falling voiced "aaah": harmonics shaped by vocal formants, vibrato and a breathy onset.
-const scream=new Float32Array(Math.round(.78*rate));let phase=0,seed=821;for(let i=0;i<scream.length;i++){const t=i/rate,u=t/.78,f=650-340*u+22*Math.sin(tau*8*t);phase+=tau*f/rate;let voice=0;for(let h=1;h<=14;h++){const harmonic=f*h,formant=Math.exp(-(((harmonic-850)/320)**2))+.55*Math.exp(-(((harmonic-1450)/420)**2))+.15*Math.exp(-(((harmonic-2850)/600)**2));voice+=Math.sin(phase*h)*formant/h;}seed=(Math.imul(seed,1664525)+1013904223)>>>0;const breath=(seed/2**31-1)*.08,env=Math.min(1,t/.045)*Math.pow(1-u,.55);scream[i]=(voice*.9+breath)*env;}
-writeFileSync('public/audio/van-scream.wav',wav(scream));console.log('Van departure: 0.78s cartoon scream');
