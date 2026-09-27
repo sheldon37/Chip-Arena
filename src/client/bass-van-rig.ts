@@ -28,6 +28,8 @@ export function createBassVan(quality:number){
  const van=new T.Group();van.name='bass-van-vehicle';
  const box=(name:string,x:number,y:number,z:number,sx:number,sy:number,sz:number,color:T.ColorRepresentation)=>rigBox(van,name,x,y,z,sx,sy,sz,color);
  const white=0xf0f1e9,trim=0x303d4c;
+ const glass=new T.MeshLambertMaterial({color:0x9bd7e2,transparent:true,opacity:.22,depthWrite:false,side:T.DoubleSide});
+ const pane=(parent:T.Object3D,name:string,x:number,y:number,z:number,sx:number,sy:number,sz:number)=>{const m=rigBox(parent,name,x,y,z,sx,sy,sz,0x9bd7e2);m.material=glass;return m;};
  box('chassis',0,-.59,0,3.85,.20,1.6,trim);
  box('cargo-floor',-.4,-.42,0,2.8,.16,1.5,0x455267);
  box('roof',-.04,1.19,0,3.78,.14,1.66,white);
@@ -37,8 +39,23 @@ export function createBassVan(quality:number){
  box('rear-pillar',-1.68,.6,.75,.18,1.04,.14,white);
  box('cab-pillar',.85,.53,.75,.15,1.18,.14,white);
  box('hood',1.49,-.05,0,.93,.49,1.57,white);
- box('cab-door',1.26,-.17,.76,.72,.53,.12,white);
- box('cab-door-handle',1.04,.04,.84,.18,.04,.04,trim);
+ box('rear-side-panel',-1.32,.34,.77,.69,1.55,.12,white);
+ box('sliding-door-track',-.44,1.115,.855,2.7,.045,.05,trim);
+ const cargoDoor=new T.Group();cargoDoor.name='bass-cargo-door';cargoDoor.position.set(-.08,0,.82);van.add(cargoDoor);
+ rigBox(cargoDoor,'cargo-door-panel',0,-.035,0,1.8,.79,.10,white);
+ rigBox(cargoDoor,'cargo-door-top',0,1.055,0,1.8,.16,.10,white);
+ for(const side of [-1,1])rigBox(cargoDoor,'cargo-window-frame',side*.79,.665,0,.22,.63,.10,white);
+ pane(cargoDoor,'cargo-door-window',0,.665,0,1.36,.62,.025);
+ rigBox(cargoDoor,'cargo-door-handle',.66,.21,.08,.19,.05,.055,trim);
+ const cabDoor=new T.Group();cabDoor.name='bass-cab-door';cabDoor.position.set(1.68,0,.78);van.add(cabDoor);
+ rigBox(cabDoor,'cab-door-panel',-.365,-.09,0,.73,.66,.10,white);
+ rigBox(cabDoor,'cab-door-top',-.365,1.04,0,.73,.10,.10,white);
+ for(const x of [-.69,-.04])rigBox(cabDoor,'cab-window-frame',x,.62,0,.08,.76,.10,white);
+ pane(cabDoor,'cab-door-window',-.365,.62,0,.57,.74,.025);
+ rigBox(cabDoor,'cab-door-handle',-.59,.14,.075,.16,.045,.045,trim);
+ box('far-cab-door',1.29,-.09,-.76,.73,.66,.10,white);
+ pane(van,'far-cab-window',1.29,.62,-.76,.57,.74,.025);
+ pane(van,'windshield',1.70,.675,0,.025,.75,1.36);
  box('windscreen-top',1.62,1.10,0,.12,.13,1.57,white);
  for(const side of [-1,1]){
   box('windshield-pillar',1.68,.71,side*.72,.11,.85,.10,white);
@@ -53,7 +70,7 @@ export function createBassVan(quality:number){
  box('bench-back',-.45,.12,-.47,1.35,.60,.13,0x536781);
  box('driver-seat',1.16,-.20,.13,.47,.18,.52,0x536781);
  box('driver-seat-back',.93,.12,.13,.12,.62,.52,0x536781);
- // Open concert-style side and windshield keep both passengers visible.
+ // Windowed doors enclose the van; the driver stays in the front cab.
  const wheelGeo=new T.CylinderGeometry(.33,.33,.18,quality<.5?10:16),rimGeo=new T.CylinderGeometry(.16,.16,.195,12),speakerGeo=new T.CylinderGeometry(.30,.35,.055,quality<.5?12:20),capGeo=new T.CylinderGeometry(.11,.11,.06,12),ringGeo=new T.TorusGeometry(.35,.025,5,quality<.5?12:24),steeringGeo=new T.TorusGeometry(.18,.025,5,12);
  const rubber=new T.MeshLambertMaterial({color:0x141923}),silver=new T.MeshLambertMaterial({color:0xb6c5d4}),coneMat=new T.MeshLambertMaterial({color:0x2c3547}),cyan=new T.MeshBasicMaterial({color:0x6af3e8}),pink=new T.MeshBasicMaterial({color:0xf386ff});
  const wheels:T.Group[]=[],cones:T.Mesh[]=[],rings:T.Mesh[]=[];
@@ -72,5 +89,5 @@ export function createBassVan(quality:number){
   const note=new T.Group();note.name='bass-music-note';const color=i%2?0xf386ff:0x6af3e8;
   rigBox(note,'note-head',-.055,0,0,.18,.12,.045,color);rigBox(note,'note-stem',.016,.16,0,.055,.35,.045,color);rigBox(note,'note-flag',.11,.30,0,.19,.065,.045,color);van.add(note);notes.push(note);
  }
- return {van,wheels,cones,rings,notes,dispose(){for(const g of [wheelGeo,rimGeo,speakerGeo,capGeo,ringGeo,steeringGeo])g.dispose();for(const m of [rubber,silver,coneMat,cyan,pink])m.dispose();}};
+ return {van,cargoDoor,cabDoor,wheels,cones,rings,notes,dispose(){for(const g of [wheelGeo,rimGeo,speakerGeo,capGeo,ringGeo,steeringGeo])g.dispose();for(const m of [rubber,silver,coneMat,cyan,pink,glass])m.dispose();}};
 }

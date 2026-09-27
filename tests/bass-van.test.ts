@@ -15,11 +15,18 @@ test('Bass Van is developer-only, including forged host settings, and affects th
  assert.equal(room.sim.players.get('host')!.cosmetics.killEffect,'voxel-burst');room.dispose();
  const s=fixture();assert.equal(s.players.get('other')!.death!.effect,'dev-bass-van');assert.equal(s.players.get('dev')!.death,undefined);s.dispose();
 });
-test('Bass Van has finite rewindable poses, a visible seated passenger, speakers, departure and cleanup at every quality',()=>{
+test('Bass Van has finite rewindable poses, doors that close after boarding, speakers, departure and cleanup at every quality',()=>{
  for(const quality of [.3,1]){
   const s=fixture(),p=s.snapshot().players[1],scene=new T.Scene(),effect=KILL_EFFECTS['dev-bass-van'](scene,new T.Group(),p,p.death!,quality,280);
-  const van=scene.getObjectByName('bass-van-vehicle')!,passenger=scene.getObjectByName('bass-passenger')!,driver=scene.getObjectByName('bass-driver')!;
+  const van=scene.getObjectByName('bass-van-vehicle')!,passenger=scene.getObjectByName('bass-passenger')!,driver=scene.getObjectByName('bass-driver')!,cargo=scene.getObjectByName('bass-cargo-door')!,cab=scene.getObjectByName('bass-cab-door')!;
   for(let frame=0;frame<300;frame++){effect.update(frame/60);scene.updateMatrixWorld(true);scene.traverse(o=>assert.ok(o.matrixWorld.elements.every(Number.isFinite)));}
+  effect.update(.3);assert.equal(cab.rotation.y,0);assert.equal(cargo.position.x,-.08);
+  effect.update(1.5);assert.ok(cab.rotation.y>1);assert.ok(cargo.position.x<-1.5);
+  effect.update((BASS_VAN.jumpStart+BASS_VAN.driverSeated)/2);assert.ok(driver.position.y>.18,'driver hops above the step');assert.ok(cab.rotation.y>1);
+  effect.update(BASS_VAN.doorClose);scene.updateMatrixWorld(true);assert.ok(cab.rotation.y>1);assert.ok(van.worldToLocal(driver.getWorldPosition(new T.Vector3())).distanceTo(new T.Vector3(1.2,.12,.12))<1e-6);
+  assert.ok(van.worldToLocal(passenger.getWorldPosition(new T.Vector3())).distanceTo(new T.Vector3(-.4,.13,.17))<1e-6);
+  effect.update(BASS_VAN.musicStart);assert.equal(cab.rotation.y,0);assert.equal(cargo.position.x,-.08);assert.equal(cargo.position.z,.82);
+  const window=scene.getObjectByName('cargo-door-window')! as T.Mesh;assert.ok((window.material as T.Material).transparent);
   effect.update(4.9);assert.ok(van.position.x>11);
   effect.update(2.9);scene.updateMatrixWorld(true);const pose=passenger.matrixWorld.clone();
   assert.ok(passenger.visible&&passenger.getObjectByName('blank-head')!.visible);assert.ok(driver.position.x-passenger.position.x>1.4);
@@ -39,19 +46,20 @@ test('Bass Van is removed at the five-second boundary and when the player is res
 function audioFixture(){
  const calls:{start:number[];stopped:boolean}[]=[],duck:boolean[]=[];
  const context={state:'running',currentTime:10,createGain:()=>({gain:{value:1},connect(){return this;},disconnect(){}}),createBufferSource:()=>{const call={start:[] as number[],stopped:false};calls.push(call);return {buffer:null,connect(){return this;},disconnect(){},start(...args:number[]){call.start=args;},stop(){call.stopped=true;}};}};
- const audio=new ArenaAudio();audio.context=context as any;audio.master={gain:{setTargetAtTime(){}}} as any;(audio as any).vanBuffer={duration:3.15};audio.music={setActive(){},setDucked(v:boolean){duck.push(v);}} as any;
+ const audio=new ArenaAudio();audio.context=context as any;audio.master={gain:{setTargetAtTime(){}}} as any;(audio as any).vanBuffer={duration:2.65};audio.music={setActive(){},setDucked(v:boolean){duck.push(v);}} as any;
  return {audio,calls,duck,update:(state:any)=>(audio as any).updateLove(state)};
 }
-test('van music waits for landing, ducks during playback, deduplicates, and cancels scheduled playback on reset',()=>{
+test('van music waits for the doors to close, ducks during playback, deduplicates, and cancels scheduled playback on reset',()=>{
  const s=fixture(),state=s.snapshot(),a=audioFixture();a.update(state);
- assert.equal(a.calls.length,1);assert.deepEqual(a.calls[0].start,[10+BASS_VAN.musicStart,0,3.15]);assert.equal(a.duck.at(-1),false);
- state.time=2.2;a.update(state);assert.equal(a.calls.length,1);assert.equal(a.duck.at(-1),true);
+ assert.equal(a.calls.length,1);assert.deepEqual(a.calls[0].start,[10+BASS_VAN.musicStart,0,2.65]);assert.equal(a.duck.at(-1),false);
+ state.time=2.2;a.update(state);assert.equal(a.duck.at(-1),false);
+ state.time=2.4;a.update(state);assert.equal(a.calls.length,1);assert.equal(a.duck.at(-1),true);
  a.audio.configure(.3,true);a.update(state);assert.equal(a.duck.at(-1),false);
  a.audio.reset();assert.ok(a.calls.every(c=>c.stopped));assert.equal(a.duck.at(-1),false);s.dispose();
 });
 test('late van snapshots seek the music and resurrection cancels it without a hit buffer dependency',()=>{
  const s=fixture(),state=s.snapshot(),a=audioFixture();state.time=3;a.update(state);
- assert.equal(a.calls.length,1);assert.ok(Math.abs(a.calls[0].start[1]-1.15)<1e-8);assert.equal(a.calls[0].start[2],2);
+ assert.equal(a.calls.length,1);assert.ok(Math.abs(a.calls[0].start[1]-.65)<1e-8);assert.equal(a.calls[0].start[2],2);
  state.players[1].hp=100;a.update(state);assert.ok(a.calls[0].stopped);assert.equal(a.duck.at(-1),false);s.dispose();
 });
 test('bass envelope stays bounded and stops outside the audible timeline',()=>{
