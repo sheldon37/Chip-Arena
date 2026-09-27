@@ -32,3 +32,10 @@ export function arenaBlocks():ArenaBlock[]{const a:ArenaBlock[]=[];const block=(
   block(`home-cover${side}`,side*4,1.05,side*21,2.6,2.1,1.2,'stone');
  }
  return a;}
+
+/** Safe clear perimeter positions; first two preserve the original duel layout. */
+export function playerSpawn(index:number,sandbox=false):Vec {
+ if(sandbox&&index<2)return v(0,1.1,index?-1:-8);
+ const points=[[0,-21],[0,21],[-23,0],[23,0],[-20,-22],[20,22],[20,-22],[-20,22]];
+ const [x,z]=points[index%points.length];return v(x,1.1,z);
+}

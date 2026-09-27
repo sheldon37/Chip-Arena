@@ -14,7 +14,7 @@ const hostTypes=new Set(['welcome','error','notice','pong','rematchVotes']);
 export function validPacket(p:any,host:boolean):p is RelayPacket {
  if(!p||!Number.isSafeInteger(p.seq)||p.seq<1||!Number.isSafeInteger(p.ack)||p.ack<0||!Array.isArray(p.events)||p.events.length>RELAY.maxEvents)return false;
  let id=0;for(const e of p.events){if(!Number.isSafeInteger(e?.id)||e.id<=id||!e.message||!(host?hostTypes:guestTypes).has(e.message.type))return false;id=e.id;if(JSON.stringify(e.message).length>4096)return false;}
- if(p.latest!==undefined){if(host){const s=p.latest;if(s?.type!=='snapshot'||!s.state||!Number.isFinite(s.state.tick)||!Array.isArray(s.state.players)||s.state.players.length>2||!Array.isArray(s.state.props)||s.state.props.length>300)return false;}
+ if(p.latest!==undefined){if(host){const s=p.latest;if(s?.type!=='snapshot'||!s.state||!Number.isFinite(s.state.tick)||!Array.isArray(s.state.players)||s.state.players.length>8||!Array.isArray(s.state.props)||s.state.props.length>300)return false;}
  else {const latest=p.latest;const inputs=latest?.type==='inputs'?latest.inputs:latest?.type==='input'?[latest.input]:null;
  if(!Array.isArray(inputs)||!inputs.length||inputs.length>NETWORK.maxInputBatch)return false;
  if(latest.type==='inputs'&&(typeof latest.epoch!=='string'||!/^\d+:\d+:\d+$/.test(latest.epoch)))return false;

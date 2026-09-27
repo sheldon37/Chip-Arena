@@ -1,5 +1,5 @@
 export const CONFIG = {
-  simulationHz: 60, snapshotHz: 20, wins: 5, roundsPerSet: 2, countdown: 3, resultSeconds: 5,
+  maxPlayers: 8, simulationHz: 60, snapshotHz: 20, wins: 5, roundsPerSet: 2, countdown: 3, resultSeconds: 5,
   selectionSeconds: 18, disconnectSeconds: 12, maxRoundSeconds: 100,
   speed: 6.8, acceleration: 35, jumpSpeed: 8.5, gravity: -23, dashSpeed: 15,
   dashDuration: 0.18, dashCooldown: 2.8, externalDrag: 3.1,

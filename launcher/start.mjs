@@ -28,7 +28,7 @@ async function tunnel(){
   await mkdir(resolve(root,'runtime'),{recursive:true});await writeFile(file+'.download',bytes);await rename(file+'.download',file);
  }
  // An explicit empty config avoids interfering with any existing tunnel configuration.
- const config=resolve(root,'runtime/quick-tunnel.yml');await writeFile(config,'# Chip Arena temporary tunnel\n');
+ const config=resolve(root,'runtime/quick-tunnel.yml');await writeFile(config,'{}\n');
  const child=start(file,['tunnel','--config',config,'--no-autoupdate','--url',local],['ignore','pipe','pipe']);
  let buffer='',shown=false;const timer=setTimeout(()=>{if(!shown){console.error('No online link received. Check your internet connection; local play is still available at '+local);}},45000);timer.unref();
  const output=chunk=>{const text=chunk.toString();process.stdout.write(text);buffer=(buffer+text).slice(-6000);const match=buffer.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/);if(match&&!shown){shown=true;clearTimeout(timer);console.log('\nSHARE THIS GAME LINK: '+match[0]+'\nBoth players: open this link, then Create Room / Join Room.\nKeep this window open. The link expires when you close it.\n');open(match[0]);}};
