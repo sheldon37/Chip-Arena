@@ -1,5 +1,16 @@
 # Executed test results — 2026-09-26
 
+## Sets, visible statuses and player board — 2026-09-27
+
+- **76 automated tests passed**, 0 failed. Ten new cases cover two wins before a draft, 1–1 deciding rounds, draws preserving progress, both-player draft timeouts, final-set handling, rematch/lobby reset, exhausted Chip pools, bounded status geometry, first-person status cues, numerical stack summaries and selecting a duplicate Chip.
+- Input-driven Pistol-versus-Normal-Sword bot match completed **5–1 sets** in **70.133 simulated seconds**; rematch passed.
+- Two independent local WebSocket clients completed match/rematch in **96.445 seconds**, with **100 ms delay each direction**. Both agreed exactly at **1,867 shared snapshot ticks** and observed destruction. The runner saw nine nonfinal round results, four nonfinal set results and drafts after sets 1–4 only; every draft required two round wins. Final set and rematch state assertions passed. Disconnect forfeit passed. Sampled server tick median **0.086 ms**, P95 **0.440 ms**, maximum **11.438 ms**; browser QA/build work overlapped, so this is not an isolated capacity benchmark.
+- Browser preview: both players’ board entries, specializations and counts rendered. Two Ember plus two Venom Chips displayed four copies/two types. The Ember tooltip showed +6 burn DPS and 2/6 copies; its description retained the duration/refresh rules. The HUD button, × close and quick Tab press/release worked. A sustained physical Tab hold and pointer-lock recapture were not manually certified in this automation environment.
+- An ordinary input-driven Pistol hit visibly applied **Burning 6 DPS** and **Poisoned 5 DPS**, with orange/yellow flames on the target and green bubbles above it. Screenshot captured both effects together. Tests also verify expiry, death/reset cleanup, and that merely owning enchantments does not activate victim effects.
+- Browser QA used the SVG 3D compatibility renderer at **1363 × 936**, because this browser disables WebGL. The captured enchanted hit displayed **52 FPS / 0.30 ms simulation tick**; these are short HUD observations, not a GPU benchmark. Hardware WebGL remains unverified. Evidence: `chip-arena-stacked-board.jpg` and `chip-arena-status-effects.jpg`.
+- Server TypeScript build passed. Public hosting remains account-free local practice; the persistent public multiplayer backend is still undeployed. Network checks above used the included local Node backend.
+
+
 ## First-person, audio, fire and poison update verification
 
 - **66 automated tests passed**, 0 failed. Sixteen new cases cover validated camera-mode input, reconstructed camera/muzzle positions, actual shots and blocking cover in both views, fire/poison compatibility and stacking, exact duration and tick cadence, real attacks from all three guns and all four melee specializations, nonrecursive secondary effects, kill credit, reset/restore, audio deduplication, and PCM asset integrity.

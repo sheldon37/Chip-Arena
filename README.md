@@ -38,7 +38,7 @@ Open `http://localhost:8788`, with server URL `ws://localhost:8788/socket`.
 
 ## Play
 
-Main menu → Play vs Bot → class and difficulty → specialization → fight → Chip draft → next round. First to five wins. A draw replays the round with no Chip. Rematch resets scores and Chips and returns to specialization selection. The default loser-only drafting rule can be changed to both players in the lobby.
+Main menu → Play vs Bot → class and difficulty → specialization → fight through a set → Chip draft → next set. A player must win **two rounds to win a set** (2–0 or 2–1). The match is first to **five set wins**. The set loser drafts one Chip only after that second round win; there is no draft after the first win or the final set. A draw replays the round without changing either score or awarding a Chip. Rematch resets set/round scores and Chips and returns to specialization selection. The lobby can instead let both players draft after each nonfinal set. Tune `CONFIG.wins` (sets) and `CONFIG.roundsPerSet` centrally in `src/shared/config.ts`.
 
 Click the arena to capture the mouse. `Escape` releases it and opens the match menu. Local practice pauses in that menu; online matches continue.
 
@@ -53,7 +53,12 @@ Click the arena to capture the mouse. `Escape` releases it and opens the match m
 | R | Reload when applicable |
 | V | Toggle first / third person (saved locally) |
 | M | Mute / unmute sound |
+| Hold Tab | Player board; hover Chips for effects and stacked values |
 | Escape | Menu / release pointer lock |
+
+The player board shows both players’ specialization, installed Chips, duplicate counts, health, round progress and set scores. Hold Tab to release the pointer and inspect; release it to return. The **Builds TAB** button also opens a persistent board, with an × close button. Matches continue while inspecting; movement and attack input stop while the board is open. Click the arena if the browser requires a gesture to recapture the mouse.
+
+Duplicate Chips remain eligible in future drafts until their individual stack cap. Each copy modifies the build; the board reports combined numerical effects for that Chip (additive or multiplicative as defined), alongside its cap. For example, two Ember Circuits add 6 burn DPS and two Venom Circuits add 5 poison DPS. There is no global slot limit.
 
 Designed for a desktop mouse and keyboard. Menus adapt to small displays, but touch combat controls are not implemented.
 
@@ -96,7 +101,7 @@ Both elements work with every gun and melee specialization, including Shield, an
 | Ember Circuit (`ember`) | 3 burn DPS; 6 total before mitigation | 2 seconds | 6 | Orange flame/ember bullets and animated blade-edge flames |
 | Venom Circuit (`poison`) | 2.5 poison DPS; 10 total before mitigation | 4 seconds | 6 | Green toxic bullets and pulsing green blade enchantment |
 
-Eligible direct hits apply these statuses. A repeated hit refreshes that element's duration and retains its strongest DPS per source; it never delays the existing 0.25-second tick cadence. Installation stacks add DPS, not duration. Fire and poison tick independently and can kill, with attacker attribution. General incoming-damage reduction applies to their ticks; directional guarding does not remove an already applied status. Burning and Poisoned badges show the remaining duration and DPS on the HUD, with matching particles on affected players. The Fire specialization's native 4 burn DPS adds to Ember Circuit.
+Eligible direct hits apply these statuses. A repeated hit refreshes that element's duration and retains its strongest DPS per source; it never delays the existing 0.25-second tick cadence. Installation stacks add DPS, not duration. Fire and poison tick independently and can kill, with attacker attribution. General incoming-damage reduction applies to their ticks; directional guarding does not remove an already applied status. Burning and Poisoned badges show the remaining duration and DPS on the HUD, with distinct effects on affected players: layered orange/yellow body flames and rising embers while burning, and translucent green bubbles that rise and pop while poisoned. Both effects coexist, follow the character and disappear when the status expires, the player dies, or the round resets. In first person, matching effects appear around your hands plus subtle screen-edge cues; they do not cover the crosshair. Full/reduced quality uses bounded, reusable cosmetic meshes without damage colliders. The Fire specialization's native 4 burn DPS adds to Ember Circuit.
 
 DoT ticks, explosions, discharges and split secondary projectiles cannot apply another enchantment or trigger direct-hit effects. Primary ricochets/piercing remain eligible direct attacks. Round resets and Sandbox Restore clear both statuses. Projectile element flags and victim statuses come from the authoritative simulation; cosmetic effects never decide damage.
 
@@ -155,10 +160,12 @@ For a two-client authoritative launcher test, start the server with `ALLOW_TEST_
 | `src/shared/elements.ts` | Fire/poison duration, cadence, color, per-stack DPS and refresh handlers |
 | `src/shared/view.ts` | Shared eye/camera/muzzle offsets, camera collision and FOV |
 | `src/client/audio.ts` / `scripts/generate-audio.mjs` | Sound mapping, audio mix, voice budget and editable synthesized assets |
+| `src/client/status-effects.ts` | Authoritative-status-driven body flames, poison bubbles, first-person cues and fixed mesh budgets |
+| `src/client/player-board.ts` / `src/shared/chip-inspection.ts` | Player board, duplicate counts and numerical stack tooltips |
 | `src/client/projectile-trails.ts` | Cosmetic trail duration, width, sampling and budget |
 | `src/shared/projectiles.ts` | Ballistic flight, low-arc bot aiming, and bounded homing rotation |
 | `src/shared/impact.ts` | Point velocity, normal closing speed, energy/damage formula, impact deduplication and fragment budget |
-| `src/shared/simulation.ts` | Authoritative movement, attacks, statuses, projectiles, bots, destruction, round progression |
+| `src/shared/simulation.ts` | Authoritative movement, attacks, statuses, projectiles, bots, destruction, round/set progression |
 | `src/server/index.ts` | Private room protocol, input validation, message limits, fixed-step loop and debug authorization |
 | `src/client/prediction.ts` | Collision-aware movement prediction, pending input replay and reconciliation |
 | `src/client/renderer.ts` | Three.js voxel rigs, sockets, weapon animation, camera collision, effects and rendering |
