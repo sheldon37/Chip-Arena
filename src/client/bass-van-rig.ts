@@ -45,7 +45,7 @@ export function createBassVan(quality:number){
  rigBox(cargoDoor,'cargo-door-panel',0,-.035,0,1.8,.79,.10,white);
  rigBox(cargoDoor,'cargo-door-top',0,1.055,0,1.8,.16,.10,white);
  for(const side of [-1,1])rigBox(cargoDoor,'cargo-window-frame',side*.79,.665,0,.22,.63,.10,white);
- pane(cargoDoor,'cargo-door-window',0,.665,0,1.36,.62,.025);
+ rigBox(cargoDoor,'cargo-door-solid-panel',0,.665,0,1.36,.62,.10,white);
  rigBox(cargoDoor,'cargo-door-handle',.66,.21,.08,.19,.05,.055,trim);
  const cabDoor=new T.Group();cabDoor.name='bass-cab-door';cabDoor.position.set(1.68,0,.78);van.add(cabDoor);
  rigBox(cabDoor,'cab-door-panel',-.365,-.09,0,.73,.66,.10,white);

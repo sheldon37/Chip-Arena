@@ -42,6 +42,13 @@ Included runtime: Node.js 24.21.0, official Windows x64 release.
 Runtime license: runtime/NODE-LICENSE.txt
 Editable game source and technical notes: chip-arena-source.zip
 
+NIGHT ARENA UPDATE
+Darker arena lighting, glowing projectiles and luminous trails. Player colors
+pulse darker while Block is recharging and return to normal when ready.
+Knockback Chips and melee Block retaliation now push much farther; resistance
+Chips and solid cover still matter. Bass Van has a solid passenger door and
+plays the supplied music from 0:04 after boarding and closing the doors.
+
 THIS UPDATE
 100 weapon-compatible Chips in six rarity tiers. Draft six by default, or
 choose 1-12 in match setup. Try Pong Shot, Hurricane Edge, Meteor Foundry,

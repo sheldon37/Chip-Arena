@@ -12,7 +12,7 @@ export class ProjectileTrails {
    const geometry=new T.BufferGeometry(),positions=new Float32Array((this.maxPoints-1)*12),colors=new Float32Array(positions.length),indices=[];
    for(let n=0;n<this.maxPoints-1;n++){const i=n*4;indices.push(i,i+1,i+2,i+2,i+1,i+3);}
    geometry.setAttribute('position',new T.BufferAttribute(positions,3).setUsage(T.DynamicDrawUsage));geometry.setAttribute('color',new T.BufferAttribute(colors,3).setUsage(T.DynamicDrawUsage));geometry.setIndex(indices);geometry.setDrawRange(0,0);
-   const mesh=new T.Mesh(geometry,new T.MeshBasicMaterial({color,vertexColors:true,transparent:true,opacity:.85,depthWrite:false,side:T.DoubleSide}));mesh.frustumCulled=false;this.scene.add(mesh);t={mesh,points:[],seen:now,width};this.traces.set(id,t);
+   const mesh=new T.Mesh(geometry,new T.MeshBasicMaterial({color,vertexColors:true,transparent:true,opacity:.85,depthWrite:false,side:T.DoubleSide,blending:T.AdditiveBlending,toneMapped:false}));mesh.frustumCulled=false;this.scene.add(mesh);t={mesh,points:[],seen:now,width};this.traces.set(id,t);
   }
   const point=new T.Vector3(pos.x,pos.y,pos.z),last=t.points.at(-1);if(!last||last.pos.distanceToSquared(point)>.0025)t.points.push({pos:point,at:now});else last.at=now;
   t.seen=now;t.width=width;t.points=t.points.filter(p=>now-p.at<this.lifetime).slice(-this.maxPoints);

@@ -13,10 +13,17 @@ export function prepareMotion(world:RAPIER.World,body:RAPIER.RigidBody,collider:
  const speed=C.speed*stats.speed*(guarding?.45:1)*(swinging?.85:1),desired=mul(direction,speed);
  const approach=(a:number,b:number)=>a+clamp(b-a,-C.acceleration*dt,C.acceleration*dt);
  state.move=v(approach(state.move.x,desired.x),0,approach(state.move.z,desired.z));
+ // External Y is a one-shot kick, not an acceleration spread over many frames.
+ const lift=clamp(state.ext.y,-24,24);state.ext.y=0;
  if(state.dashTime<=0)state.ext=mul(state.ext,Math.exp(-C.externalDrag*dt));
+ const externalSpeed=Math.hypot(state.ext.x,state.ext.z);
+ if(externalSpeed>C.maxExternalSpeed)state.ext=mul(state.ext,C.maxExternalSpeed/externalSpeed);
+ // Counter-steering softens a launch without instantly cancelling it; lateral input stays responsive.
+ let controlled=state.move;
+ if(state.dashTime<=0&&externalSpeed>.01){const away=norm(state.ext),against=Math.min(0,state.move.x*away.x+state.move.z*away.z),cancel=against*(1-1/(1+(externalSpeed/4)**2));controlled=add(state.move,mul(away,-cancel));}
  let vy=body.linvel().y;const jumped=input.jump&&state.grounded;
  if(jumped){vy=C.jumpSpeed*(stats.jumpPower??1);state.grounded=false;}
- body.setLinvel(v(state.move.x+state.ext.x,vy+state.ext.y*dt*4,state.move.z+state.ext.z),true);
+ body.setLinvel(v(controlled.x+state.ext.x,vy+lift,controlled.z+state.ext.z),true);
  return {dashed,jumped};
 }
 export function finishMotion(state:Motion,before:Vec,after:Vec,knockbackTaken:number,dt:number){

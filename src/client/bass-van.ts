@@ -15,7 +15,7 @@ export const bassVan:KillEffectFactory=(scene,_original,p,d,quality)=>{
  const root=new T.Group();root.name='bass-van';root.position.set(d.pos.x,d.pos.y,d.pos.z);root.rotation.y=d.yaw;scene.add(root);
  const vehicle=createBassVan(quality),driver=createVanDriver(),guy=driver.rig,victim=createCharacterRig(p.color,p.cosmetics?.bodyColor),van=vehicle.van;
  victim.group.name='bass-passenger';dressRig(victim,p.cosmetics);root.add(van,guy.group,victim.group);
- const seat=new T.Vector3(-.40,.13,.17),driverSeat=new T.Vector3(1.2,.12,.12),cabStep=new T.Vector3(1.2,.02,1.35),grabPos=new T.Vector3(-.67,.02,.1);
+ const seat=new T.Vector3(-.40,.13,.02),driverSeat=new T.Vector3(1.2,.12,.12),cabStep=new T.Vector3(1.2,.02,1.35),grabPos=new T.Vector3(-.67,.02,.1);
  const inVan=(r:CharacterRig,position:T.Vector3,yaw:number)=>{r.group.position.copy(position).applyMatrix4(van.matrix);r.group.quaternion.copy(van.quaternion).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),yaw));};
  return {count:quality<.5?52:56,update(age){
   const t=Math.max(0,age),arrive=smooth(t/BASS_VAN.arrive),depart=Math.max(0,t-BASS_VAN.drive),bass=vanBass(t);

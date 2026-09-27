@@ -24,13 +24,13 @@ test('Bass Van has finite rewindable poses, doors that close after boarding, spe
   effect.update(1.5);assert.ok(cab.rotation.y>1);assert.ok(cargo.position.x<-1.5);
   effect.update((BASS_VAN.jumpStart+BASS_VAN.driverSeated)/2);assert.ok(driver.position.y>.18,'driver hops above the step');assert.ok(cab.rotation.y>1);
   effect.update(BASS_VAN.doorClose);scene.updateMatrixWorld(true);assert.ok(cab.rotation.y>1);assert.ok(van.worldToLocal(driver.getWorldPosition(new T.Vector3())).distanceTo(new T.Vector3(1.2,.12,.12))<1e-6);
-  assert.ok(van.worldToLocal(passenger.getWorldPosition(new T.Vector3())).distanceTo(new T.Vector3(-.4,.13,.17))<1e-6);
+  assert.ok(van.worldToLocal(passenger.getWorldPosition(new T.Vector3())).distanceTo(new T.Vector3(-.4,.13,.02))<1e-6);
   effect.update(BASS_VAN.musicStart);assert.equal(cab.rotation.y,0);assert.equal(cargo.position.x,-.08);assert.equal(cargo.position.z,.82);
-  const window=scene.getObjectByName('cargo-door-window')! as T.Mesh;assert.ok((window.material as T.Material).transparent);
+  assert.equal(scene.getObjectByName('cargo-door-window'),undefined);const panel=scene.getObjectByName('cargo-door-solid-panel')! as T.Mesh;assert.ok(panel);assert.equal((panel.material as T.Material).transparent,false);
   effect.update(4.9);assert.ok(van.position.x>11);
   effect.update(2.9);scene.updateMatrixWorld(true);const pose=passenger.matrixWorld.clone();
   assert.ok(passenger.visible&&passenger.getObjectByName('blank-head')!.visible);assert.ok(driver.position.x-passenger.position.x>1.4);
-  const local=van.worldToLocal(passenger.getWorldPosition(new T.Vector3()));assert.ok(local.distanceTo(new T.Vector3(-.4,.13,.17))<1e-6);
+  const local=van.worldToLocal(passenger.getWorldPosition(new T.Vector3()));assert.ok(local.distanceTo(new T.Vector3(-.4,.13,.02))<1e-6);
   assert.ok(scene.getObjectByName('bass-speaker-cone'));assert.ok(scene.getObjectByName('bass-music-note')!.visible);
   effect.update(.5);assert.ok(van.position.x<.65);assert.ok(passenger.position.length()<1e-6);assert.equal(scene.getObjectByName('bass-music-note')!.visible,false);
   effect.update(2.9);scene.updateMatrixWorld(true);assert.deepEqual(passenger.matrixWorld.elements,pose.elements);
