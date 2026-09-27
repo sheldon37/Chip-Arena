@@ -1,10 +1,27 @@
 # Deployment
 
-The hosted Site is public and does not require a ChatGPT login. The game itself has no authentication or account dependency. It publishes the static browser build and local practice only. Its request-based Worker runtime is not used to pretend to run a continuous physics server. No paid infrastructure was provisioned.
+Chip Arena's public Site has no ChatGPT/game login. It includes its own HTTPS room relay, D1 room mailbox database, browser client, and local practice. The creator's Web Worker owns continuous Rapier simulation. The request-based server relays bounded snapshots/intentions; it does not pretend to run a persistent 60 Hz physics loop.
 
-## Persistent backend
+## Sites build
 
-Use a service that supports a long-running Node.js process, WebSockets, and the memory/CPU required by Rapier. A single process must own each room. Do not run multiple replicas behind random load balancing without sticky routing or room-aware dispatch.
+```sh
+npm ci
+npm run build
+```
+
+The artifact contains `dist/client` (browser assets/source ZIP), `dist/server/index.js` (Cloudflare Worker), and `dist/.openai` (hosting manifest and Drizzle migrations). `.openai/hosting.json` preserves Chip Arena's independent project identity and declares its own `DB` binding. Deploy the whole Worker artifact through Sites; do not publish only static assets when online rooms are needed. Generated migrations are applied by deployment. No Embertrail database, account, service endpoint, repository or asset is used.
+
+The relay uses same-origin `/api/rooms/{create,join,exchange,leave}` POST requests. Room codes are eight characters. Each browser generates a separate random 256-bit session token; only hashes are stored. Guest claims are atomic; a room code cannot impersonate the host. Tokens remain in memory and are not included in invite URLs. No provider keys or secrets are required. Rooms expire after two hours, stale hosts prevent joining, and cleanup removes expired/closed mailboxes on creation. Guest seats are not transferable after leaving; create a fresh room for a replacement player.
+
+HTTPS exchanges target 80 ms with one request in flight. Network/D1 time can reduce effective snapshot delivery below the simulation's 20 Hz output. Reliable selection events retain IDs until acknowledged; retries are idempotent. Latest inputs/snapshots coalesce to avoid a stale backlog. This improves reachability through restrictive networks but adds latency compared with a direct data channel or dedicated WebSocket backend. No external TURN/signaling service or paid infrastructure was provisioned.
+
+## Local development
+
+`npm run dev` starts Vite plus the Node server; `/api/rooms` and `/socket` proxy to it. The Node relay uses SQLite with the same migrations and HTTP handler as the deployed D1 relay. Its mailboxes are ephemeral in-memory data. Both ordinary browser rooms and advanced dedicated rooms can be tested locally.
+
+## Persistent dedicated backend
+
+A dedicated server offers independent authority and a continuous WebSocket transport. Use a host supporting a long-running Node 24 process and WebSockets. A single process must own each room; multiple replicas require room-aware routing.
 
 ```sh
 npm ci
@@ -13,34 +30,15 @@ npm run server:build
 PORT=8788 ALLOWED_ORIGINS=https://your-client.example npm start
 ```
 
-The process serves `dist` over HTTP, `/health` for readiness, and `/socket` for WebSockets. Put it behind a TLS reverse proxy. HTTPS clients must use `wss://`. Configure proxy WebSocket upgrades and long idle timeouts (greater than the 15-second heartbeat interval). Limit incoming HTTP/WebSocket traffic at the deployment edge as appropriate. Rooms are ephemeral and vanish when the process restarts.
-
-Alternatively build the included Dockerfile. Docker deployment was not executed in this environment; the Node production build and process are tested separately.
+This serves `dist/client`, `/api/rooms`, `/health`, and `/socket`. Put it behind TLS; HTTPS clients need `wss://` for the dedicated path. Configure WebSocket upgrades and idle timeouts above 15 seconds. Set Settings → Advanced connection settings → Use a dedicated server, or provide the optional build-time `VITE_SERVER_URL`. Normal players need no address for browser-hosted rooms. Rebuild client/server together when protocols change.
 
 ```sh
 docker build -t chip-arena .
-docker run --rm -p 8788:8788 \
-  -e ALLOWED_ORIGINS=http://localhost:8788 \
-  chip-arena
+docker run --rm -p 8788:8788 -e ALLOWED_ORIGINS=http://localhost:8788 chip-arena
 ```
 
-Set the browser's Settings → Multiplayer Server URL, or build with `VITE_SERVER_URL=wss://your-backend.example/socket`. Both users need access to the client and that backend; neither the client nor this server requires a ChatGPT login. Rebuild and deploy the client and server from the same source revision after protocol/content changes. Creating or sharing a room code does not publish a server.
+Docker deployment was not run here; Node compilation, HTTP and WebSocket integration tests were run separately. No external dedicated backend has been provisioned. A modified browser host can cheat; this prototype has no independent anti-cheat, host migration, or refresh recovery.
 
-## Static client
+## Verification boundary
 
-```sh
-npm ci
-npm run build
-```
-
-Publish `dist`. The source includes a separate Sites identity in `.openai/hosting.json`; it is unrelated to any other game. Use the existing identity for subsequent Site updates. All dependencies are bundled into the browser output, including the Rapier compatibility WASM; there are no remote art, font, or script CDN requirements.
-
-## Before calling a deployment online multiplayer
-
-Connect two independent browsers through the **deployed** backend, ready both, choose different specializations, destroy a wall or launch a prop, compare authoritative damage and the score, finish the match, and rematch. Local/supervised test results do not establish public-deployment reachability. This project currently makes no claim of publicly deployed multiplayer.
-
-## Browser-hosted rooms
-
-The static client now defaults to experimental PeerJS rooms: creator = authoritative host in a Web Worker, guest = input client. Normal players use room codes/invite links and enter no address. Hosting on HTTPS enables normal clipboard/WebRTC browser behavior. The build includes the worker and bundled PeerJS code; public PeerServer Cloud handles signaling only. No TURN credentials or relay backend have been provisioned. Direct connectivity is network-dependent and the preview did not complete the peer data channel.
-
-Keep the dedicated Node server option for independent server authority. Settings → Advanced connection settings enables it; `VITE_SERVER_URL` remains its optional build-time default. Browser rooms are a trusted-host prototype path, with no host migration, account persistence or anti-cheat claim. A future relay integration should fetch short-lived ICE credentials from a controlled backend; never bundle a TURN provider’s master API key.
+Two browser clients and complete input-driven HTTP matches are tested against the supervised/local backend. Those results do not certify public deployment performance. Public internet end-to-end verification still requires two players to connect through the published backend, complete a match and rematch. See TEST-RESULTS.md for actual runs and latency measurements.

@@ -1,3 +1,20 @@
+# HTTPS room relay — 2026-09-27
+
+This update replaces the failed PeerJS-only path with a Chip Arena-owned HTTPS/D1 relay. Embertrail invasion source was inspected read-only as an architectural reference; its checkout remained clean and no source, deployment, database or assets were modified.
+
+Actual runs on Node 24.19 in this workspace:
+
+- `npm test`: **101 passed, 0 failed** (2.72 seconds in the last run). Includes new SQL-backed relay tests: session/seat isolation, atomic concurrent joins, race-free mailbox writes, stale retry ordering, forbidden guest messages, origin/body limits, host expiry, guest leave, and coalesced Block taps.
+- `TEST_LATENCY_MS=100 npm run test:https`: **passed** through a real HTTP server with the deployed Worker handler and SQLite-backed mailboxes. Two independent HttpsRoom clients completed five sets/four drafts and rematched in **95.17 seconds**. **397 serialized authoritative snapshots** agreed exactly, including health, physics/destruction and results. One intentionally lost response was retried after the server committed it; welcome/commands were not duplicated. Guest leave reached the host.
+- With 100 ms added on *each* request/response leg, guest snapshot intervals measured **234.95 ms median / 239.92 ms P95**, with **923.23 ms median input-to-acknowledgement**. That acknowledgement crosses guest→service→host→service→guest and includes mailbox cadence; it is not one-way movement latency. This deliberately adverse test exposes substantial guest latency. Local prediction is present; timed Block has no rewind. Maximum snapshot in this match: **20,604 bytes**.
+- Two actual supervised-browser clients successfully registered, joined via invite, displayed the same two-player roster, and synchronized ready and specialization states over the new HTTP service. The browser match advanced through two round wins into the losing guest’s first Chip draft (see `docs/chip-arena-https-room.jpg`). The test browser disables WebGL and uses the existing 3D compatibility renderer; this is not a GPU frame-rate benchmark.
+
+Initial test-harness assertions compared raw JS objects with JSON-decoded packets (undefined fields differ). Those checks were corrected to compare serialized wire state; the successful run above is the rerun. An earlier repeated-selection flood revealed redundant queued commands; transport deduplication now prevents that backlog. Short action taps remain latched during input coalescing.
+
+Public deployment internet performance is not established by local/supervised tests. No claim is made that two browser clients completed a match through the public deployed backend. Browser-hosted authority remains a trusted-host prototype. HTTPS reliability comes with more latency than a dedicated WebSocket server. Host migration and refresh recovery are not implemented.
+
+---
+
 # Executed test results — 2026-09-26
 
 ## Timed Block and browser-room update — 2026-09-27

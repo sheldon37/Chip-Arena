@@ -11,6 +11,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/server-dist ./server-dist
+COPY --from=build /app/drizzle ./drizzle
 USER node
 EXPOSE 8788
 CMD ["node","server-dist/server/index.js"]

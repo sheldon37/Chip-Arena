@@ -1,4 +1,6 @@
 import http from 'node:http';
+import {LocalRoomDatabase,serveRelay} from '../relay/local.js';
+const relayDb=new LocalRoomDatabase();
 import {readFile} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
 import {randomBytes} from 'node:crypto';
@@ -11,8 +13,8 @@ const port=Number(process.env.PORT)||8788;
 const origins=(process.env.ALLOWED_ORIGINS||'').split(',').filter(Boolean);
 interface Room{code:string;sim:Simulation;clients:Map<string,WebSocket>;owner:string;lastUsed:number;rematch:Set<string>;}
 const rooms=new Map<string,Room>();
-const server=http.createServer(async(req,res)=>{if(req.url==='/health'){res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({ok:true,rooms:rooms.size,simulationHz:CONFIG.simulationHz,snapshotHz:CONFIG.snapshotHz}));return;}
- let pathname:string;try{pathname=decodeURIComponent((req.url||'/').split('?')[0]);}catch{res.writeHead(400);res.end('Invalid path');return;}const path=resolve('dist','.'+(pathname==='/'?'/index.html':pathname));if(!path.startsWith(resolve('dist')+'/')){res.writeHead(403);res.end();return;}try{const bytes=await readFile(path);res.writeHead(200,{'Content-Type':({'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.wasm':'application/wasm'} as Record<string,string>)[extname(path)]||'application/octet-stream','Cache-Control':'no-cache'});res.end(bytes);}catch{res.writeHead(404);res.end('Build the client with npm run build, or use npm run dev.');}});
+const server=http.createServer(async(req,res)=>{if(req.url?.startsWith('/api/rooms/')){await serveRelay(req,res,relayDb);return;}if(req.url==='/health'){res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({ok:true,rooms:rooms.size,simulationHz:CONFIG.simulationHz,snapshotHz:CONFIG.snapshotHz}));return;}
+ let pathname:string;try{pathname=decodeURIComponent((req.url||'/').split('?')[0]);}catch{res.writeHead(400);res.end('Invalid path');return;}const path=resolve('dist/client','.'+(pathname==='/'?'/index.html':pathname));if(!path.startsWith(resolve('dist/client')+'/')){res.writeHead(403);res.end();return;}try{const bytes=await readFile(path);res.writeHead(200,{'Content-Type':({'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.wasm':'application/wasm'} as Record<string,string>)[extname(path)]||'application/octet-stream','Cache-Control':'no-cache'});res.end(bytes);}catch{res.writeHead(404);res.end('Build the client with npm run build, or use npm run dev.');}});
 const wss=new WebSocketServer({server,path:'/socket',maxPayload:4096,perMessageDeflate:false});
 const send=(ws:WebSocket,value:unknown)=>{if(ws.readyState===WebSocket.OPEN&&ws.bufferedAmount<1_000_000)ws.send(JSON.stringify(value));};
 const broadcast=(r:Room,value:unknown)=>{for(const ws of r.clients.values())send(ws,value);};

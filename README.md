@@ -2,9 +2,9 @@
 
 An original, fully 3D, voxel-styled 1v1 arena combat game. This is a new project, with no Embertrail assets, repository, database, or deployment dependencies.
 
-The public client supports local practice and **experimental browser-hosted rooms**, without a ChatGPT login or game account. Create Room makes you the host; guests enter an eight-character code or use an invite link. No server address is needed in the normal flow. The creator runs the authoritative simulation in a Web Worker, while the guest sends validated input intentions over a PeerJS/WebRTC data channel.
+The public client supports local practice and **browser-hosted rooms through a same-origin HTTPS relay**, without a ChatGPT login or game account. Create Room makes you the host; guests enter an eight-character code or use an invite link. No server address is needed in the normal flow. The creator runs the authoritative simulation in a Web Worker, while the guest sends validated input intentions through the website’s own HTTPS room service.
 
-**Verification limitation:** public signaling registration plus offer/answer exchange succeeded in the preview, but its two browser clients never established the data channel. Browser-hosted internet play is therefore implemented but not certified end to end. No TURN relay is configured; restrictive NAT/firewall setups may fail. The original dedicated Node server remains available and its two-client match, reflection and rematch tests passed.
+The previous direct PeerJS connection is replaced. The new transport follows the useful part of Embertrail invasion’s approach: normal HTTPS keeps the session connected even on networks that cannot establish peer data channels. It uses only Chip Arena’s own code, server and database. Local/supervised verification and public deployment verification are distinguished in [test results](docs/TEST-RESULTS.md).
 
 ## Run it
 
@@ -36,7 +36,7 @@ npm start
 
 Open `http://localhost:8788`, with server URL `ws://localhost:8788/socket`.
 
-`npm start` serves `dist` and the persistent authoritative WebSocket endpoint from one process. No accounts, secrets, paid services, or database are needed. The example `.env.example` documents server and client settings. Copy it to `.env` and use `node --env-file=.env server-dist/server/index.js` if you want Node to load that file explicitly.
+`npm start` serves `dist/client`, a local SQLite-backed room relay, and the persistent authoritative WebSocket endpoint from one process. No accounts, secrets or paid services are needed for local development; SQLite room storage initializes from the included migrations. The example `.env.example` documents server and client settings. Copy it to `.env` and use `node --env-file=.env server-dist/server/index.js` if you want Node to load that file explicitly.
 
 ## Play
 
@@ -100,13 +100,13 @@ All four are offered to every class and stack explicitly. Counter Pulse affects 
 3. The guest opens the website, chooses Join Room and enters the code, or opens the invite directly.
 4. Both ready, then choose specializations. The creator remains HOST and the other player GUEST.
 
-The creator’s worker runs shared Rapier physics at 60 Hz and broadcasts snapshots at 20 Hz. Guest movement prediction/reconciliation and remote interpolation use the same existing client path. The host accepts only input, ready/class/spec/draft selections, ping, rematch votes and match-end lobby requests. No browser-hosted room permits gameplay debug mutations, including by the host through the protocol. Names/classes/colors, finite inputs, sequence numbers, payload sizes and message rates are validated.
+The creator’s worker runs shared Rapier physics at 60 Hz and produces snapshots at 20 Hz. HTTPS exchanges target 80 ms and coalesce snapshots; effective guest delivery depends on network/D1 latency. Guest movement prediction/reconciliation and remote interpolation use the same existing client path. The host accepts only input, ready/class/spec/draft selections, ping, rematch votes and match-end lobby requests. No browser-hosted room permits gameplay debug mutations, including by the host through the protocol. Names/classes/colors, finite inputs, sequence numbers, payload sizes and message rates are validated.
 
 This is **trusted-host authority**, not an independent anti-cheat server: a modified host can cheat. A closed host closes the room; host migration/reconnection are not implemented. A disconnected guest forfeits after 12 simulation seconds. A stalled host closes the guest’s UI session after 12 seconds without snapshots rather than inventing a new authoritative match result. Host hardware, background throttling and network conditions affect the match.
 
-PeerJS 1.5.5 is bundled locally. The free PeerServer Cloud brokers connection metadata; STUN uses Google/Cloudflare public endpoints. Gameplay travels on the encrypted WebRTC data channel once connected. No webcam/microphone access is requested. There is currently **no TURN fallback**, so some peers cannot connect. Failures leave a persistent explanation and an editable join screen. The dedicated server path remains under Advanced settings for deployments that need independent authority and predictable connectivity.
+The website relays gameplay over normal HTTPS. No PeerJS, STUN, TURN, webcam or microphone permission is required. Room registration and atomic guest joining use a separate Chip Arena D1 database. Each seat has a random token kept in memory; the service stores its hash. The guest cannot publish authoritative snapshots or issue debug mutations. Selection messages use IDs/acknowledgements; retries do not apply them twice. Movement is coalesced while preserving brief action taps. Only one request is in flight per client, with bounded queues, bodies and payload sizes. Brief outages retry automatically; a prolonged outage closes the session clearly.
 
-API references checked: [PeerJS Peer API](https://peerjs.com/client/api/peer), [PeerServer Cloud](https://peerjs.com/server/cloud), [PeerJS announcement ending its free TURN relay](https://github.com/orgs/peers/discussions/1172). No paid infrastructure or relay account was provisioned.
+A guest who leaves cannot be replaced within the same HTTPS room; create a fresh room for another guest. Room lifetime is two hours. HTTPS polling improves connection reliability but has more latency than WebSockets. The dedicated server path remains in Advanced settings for independently authoritative deployments. All relay settings live in `src/shared/relay-protocol.ts`.
 
 ## Weapon resources and modifiers
 
@@ -192,7 +192,7 @@ For a two-client authoritative launcher test, start the server with `ALLOW_TEST_
 | `src/shared/config.ts` | Match timing, tick/snapshot rates, movement, impact energy thresholds, resource regeneration, modifier tuning, limits, materials |
 | `src/shared/blocking.ts` | Block duration/cooldown helpers; numerical tuning is centralized in config and Chip definitions |
 | `src/shared/host-room.ts` | Browser-hosted room rules, input/selection validation, rematch votes and disconnects |
-| `src/client/browser-room.ts` / `host-worker.ts` | PeerJS signaling/data channel, host simulation worker, timeout and cleanup |
+| `src/client/browser-room.ts` / `host-worker.ts` | HTTPS relay adapter, host simulation worker, timeout and cleanup |
 | `src/shared/content.ts` | All 11 weapons and 30 Chips; compatibility, stacking and stat effect handlers |
 | `src/shared/arena.ts` | Authored collision blocks, spawn routes, supports and materials |
 | `src/shared/elements.ts` | Fire/poison duration, cadence, color, per-stack DPS and refresh handlers |
@@ -225,11 +225,11 @@ No rewind / lag compensation is implemented. Online hits use present server stat
 
 ## Test and deployment guides
 
-See [docs/TESTING.md](docs/TESTING.md), [docs/TEST-RESULTS.md](docs/TEST-RESULTS.md), and [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Run `npm test` for the automated calculation, combat, destruction and match-state suite. `npm run test:network:local` starts and tests a temporary backend automatically; `npm run test:debris` does the same for the impact assertion. `npm run test:stress` runs 15 combined-Chip stress cases. Every production client build also produces `dist/chip-arena-source.zip`.
+See [docs/TESTING.md](docs/TESTING.md), [docs/TEST-RESULTS.md](docs/TEST-RESULTS.md), and [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Run `npm test` for the automated calculation, combat, destruction and match-state suite. `npm run test:network:local` starts and tests a temporary backend automatically; `npm run test:debris` does the same for the impact assertion. `npm run test:stress` runs 15 combined-Chip stress cases. Every production build also produces `dist/client/chip-arena-source.zip`. `npm run test:https` exercises two real HTTP clients through the shared relay handler.
 
 ## Current limits
 
-- Browser-hosted direct connections remain experimental and unverified end to end in this test browser. No TURN relay or publicly deployed dedicated backend; no accounts, ranked matchmaking, persistence, host migration, room recovery or reconnection tokens.
+- Browser-hosted rooms use HTTPS and trusted-host authority. No independent dedicated backend is publicly deployed; no accounts, ranked matchmaking, host migration, refresh recovery, or reconnection tokens. Public internet match validation is separate from the local/supervised tests.
 - Full-state JSON networking is simple and comparatively bandwidth-heavy. One Node process owns its rooms; multi-instance routing is not implemented.
 - Art, sound and secondary VFX are prototype quality. Water and darkness use basic particles/pulses; they do not simulate fluid or volumetric smoke.
 - Bot navigation is heuristic, not a navmesh. Debris piles can cause temporary blocking.
