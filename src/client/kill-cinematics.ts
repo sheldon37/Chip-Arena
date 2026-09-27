@@ -1,7 +1,8 @@
 import * as T from 'three';
 import type {KillEffectFactory} from './death-effects.js';
-import {createCharacterRig,rigBox} from './character-rig.js';
+import {createCharacterRig} from './character-rig.js';
 import {buildWeapon} from './weapon-visuals.js';
+import {createClownRig} from './clown-rig.js';
 import {dressRig} from './cosmetics.js';
 /** Cosmetic only. Timelines use authoritative death age, so observers stay in sync. */
 export const cinematic=(kind:string):KillEffectFactory=>(scene,_original,p,d)=>{
@@ -9,11 +10,7 @@ export const cinematic=(kind:string):KillEffectFactory=>(scene,_original,p,d)=>{
  const victim=createCharacterRig(p.color,p.cosmetics?.bodyColor);dressRig(victim,p.cosmetics);root.add(victim.group);buildWeapon(victim.weapon,p.spec);if(p.spec==='daggers')buildWeapon(victim.offWeapon,p.spec,true);
  const dropped=new T.Group();buildWeapon(dropped,p.spec);root.add(dropped);dropped.visible=false;dropped.position.set(-.5,.1,.15);
  const props:T.Object3D[]=[];let clown:ReturnType<typeof createCharacterRig>|undefined;
- if(kind==='dev-clown'){
-  clown=createCharacterRig('#e94967',0xf3d777);root.add(clown.group);clown.group.scale.setScalar(1.2);
-  rigBox(clown.head,'red-nose',0,.14,.22,.13,.12,.14,0xff354f);rigBox(clown.head,'left-eye',-.08,.23,.165,.055,.07,.025,0x181820);rigBox(clown.head,'right-eye',.08,.23,.165,.055,.07,.025,0x181820);rigBox(clown.head,'grin',0,.06,.18,.2,.045,.03,0xfbfcff);
-  for(const side of [-1,1])rigBox(clown.head,'hair',side*.22,.25,0,.17,.3,.3,0xfc445e);rigBox(clown.head,'hat',0,.47,0,.25,.24,.23,0x734aea);rigBox(clown.leftFoot,'shoe',0,-.01,.16,.28,.16,.43,0xff385b);rigBox(clown.rightFoot,'shoe',0,-.01,.16,.28,.16,.43,0xff385b);
- }
+ if(kind==='dev-clown'){clown=createClownRig();root.add(clown.group);}
  if(kind==='confetti')for(let n=0;n<65;n++){const m=new T.Mesh(new T.BoxGeometry(.05,.12,.025),new T.MeshBasicMaterial({color:new T.Color().setHSL(n/65,.85,.6)}));root.add(m);props.push(m);}
  if(kind==='ascension'){const beam=new T.Mesh(new T.CylinderGeometry(.8,.8,10,20,1,true),new T.MeshBasicMaterial({color:0x95ddff,transparent:true,opacity:.22,side:T.DoubleSide,depthWrite:false}));beam.position.y=4;root.add(beam);props.push(beam);}
  if(kind==='ghost')victim.group.traverse(o=>{if(o instanceof T.Mesh){o.material=new T.MeshBasicMaterial({color:0xc7e4ff,transparent:true,opacity:.6});}});

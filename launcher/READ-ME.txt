@@ -63,6 +63,14 @@ Passwords are verified by the game's HTTPS service, not stored in this ZIP.
 A verified developer session lasts up to 8 hours in the current browser tab.
 Login needs internet; ordinary local play still works offline.
 
+CLOWN LOVE
+Developer accounts can select Clown Love in Customize > Kill Effect or the
+Developer Sandbox. The clown takes the opponent's hands for a face-to-face
+dance, with six dips, hearts and 1 UP pop-ups, then carries them away.
+The supplied violin clip and hit-marker accents follow the same five-second
+timeline. Effects volume / mute controls this audio; arena music ducks briefly.
+In Developer Sandbox, select Clown Love and use Preview Knockout to try it.
+
 FUTURE UPDATES
 The launcher checks the game's official update channel before starting.
 Updates replace the client, game server and migration files together. Checksums
