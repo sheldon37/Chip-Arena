@@ -5,3 +5,5 @@ server-dist/
 *.log
 
 .dev-logs/
+
+__pycache__/
