@@ -1,5 +1,5 @@
 /** HTTPS mailbox transport; combat remains in the creator's authoritative worker. */
-export const RELAY = {protocol:'chip-arena-https-v1', intervalMs:80, timeoutMs:12000, requestTimeoutMs:4000, maxEvents:48, maxHostBytes:384000, maxGuestBytes:24000, ttlMs:7200000} as const;
+export const RELAY = {protocol:'chip-arena-https-v1', intervalMs:50, inputHoldSeconds:.75, timeoutMs:12000, requestTimeoutMs:4000, maxEvents:48, maxHostBytes:384000, maxGuestBytes:24000, ttlMs:7200000} as const;
 export const ROOM_ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 export function normalizeRoomCode(value:string){const code=value.trim().toUpperCase().replace(/[\s-]/g,'');return /^[A-HJ-NP-Z2-9]{8}$/.test(code)?code:null;}
 export function newRoomCode(){return [...crypto.getRandomValues(new Uint8Array(8))].map(n=>ROOM_ALPHABET[n%32]).join('');}

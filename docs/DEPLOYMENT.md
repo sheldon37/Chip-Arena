@@ -13,7 +13,7 @@ The artifact contains `dist/client` (browser assets/source ZIP), `dist/server/in
 
 The relay uses same-origin `/api/rooms/{create,join,exchange,leave}` POST requests. Room codes are eight characters. Each browser generates a separate random 256-bit session token; only hashes are stored. Guest claims are atomic; a room code cannot impersonate the host. Tokens remain in memory and are not included in invite URLs. No provider keys or secrets are required. Rooms expire after two hours, stale hosts prevent joining, and cleanup removes expired/closed mailboxes on creation. Guest seats are not transferable after leaving; create a fresh room for a replacement player.
 
-HTTPS exchanges target 80 ms with one request in flight. Network/D1 time can reduce effective snapshot delivery below the simulation's 20 Hz output. Reliable selection events retain IDs until acknowledged; retries are idempotent. Latest inputs/snapshots coalesce to avoid a stale backlog. This improves reachability through restrictive networks but adds latency compared with a direct data channel or dedicated WebSocket backend. No external TURN/signaling service or paid infrastructure was provisioned.
+HTTPS exchanges target 50 ms with one request in flight. Network/D1 time can reduce effective snapshot delivery below the simulation's 20 Hz output. Reliable selection events retain IDs until acknowledged; retries are idempotent. Latest inputs/snapshots coalesce to avoid a stale backlog. This improves reachability through restrictive networks but adds latency compared with a direct data channel or dedicated WebSocket backend. No external TURN/signaling service or paid infrastructure was provisioned.
 
 ## Local development
 

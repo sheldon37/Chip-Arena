@@ -1,3 +1,20 @@
+# Guest floor and relay-latency correction — 2026-09-27
+
+The reported guest floor bug was reproduced before the fix: starting from an airborne authoritative Y=2, one second of prediction reached Y=-9.692 while the collision capsule still remained at Y=2. The old predictor updated the rigid body without propagating its transform to its collider between sweeps.
+
+The fix propagates collider transforms every predicted/replayed movement step. Reconciliation restores movement speed and external knockback separately rather than resetting movement to zero. There is no artificial floor-height clamp; legitimate ring-outs still fall. Browser-hosted input expiry is now 0.75 seconds instead of the dedicated server's 0.3 seconds. HTTPS exchanges target 50 ms and use one authenticated D1 batch instead of a separate pre-read; the supplied seat role never replaces token validation. Legacy clients remain accepted.
+
+Actual verification:
+
+- `npm test`: **108 passed, 0 failed**. Five new predictor cases cover airborne landing with a long update gap, jumping and replay, cover collision, legitimate edge falls, and retained locomotion/knockback. New relay tests verify the one-batch path cannot impersonate the host, and the input hold expires safely.
+- `TEST_LATENCY_MS=100 npm run test:https`: **passed**, five sets/four drafts/rematch, **455 identical wire snapshots** and **2,393 guest floor assertions**, including a lost response/retry. Destruction agreement and guest leave also passed. Wall time **99.79 seconds**.
+- Two supervised browser clients also completed a full five-set match with the **connecting guest** running the ordinary input-only test pilot (movement, jumps and attacks) against the idle host. The guest stayed above the foundation and reached the 5–0 Match won screen at 100 HP; the captured HUD showed 177 ms RTT and 0.00 m correction. Evidence: `docs/chip-arena-guest-movement.jpg`. This preview uses the SVG compatibility renderer because WebGL is disabled; its FPS is not a GPU benchmark or public-internet latency measurement.
+- In that controlled test, with 100 ms added to each HTTP request and response leg, guest snapshot intervals measured **215.34 ms median / 220.85 ms P95**, compared with 234.95 / 239.92 ms in the preceding run. Median input-to-acknowledgement was **872.04 ms**, versus 923.23 ms previously. This round trip crosses all four relay legs; it is not one-way latency. The SQLite test does not model D1 query latency, so the reduction from eliminating a database round trip is not included in these numbers.
+
+HTTPS still has more latency than a dedicated WebSocket transport. This correction fixes floor penetration and reduces avoidable overhead; it does not claim lag-free internet combat or add lag-compensated hit/block rewind.
+
+---
+
 # HTTPS room relay — 2026-09-27
 
 This update replaces the failed PeerJS-only path with a Chip Arena-owned HTTPS/D1 relay. Embertrail invasion source was inspected read-only as an architectural reference; its checkout remained clean and no source, deployment, database or assets were modified.

@@ -7,6 +7,21 @@ const json=(body:any,status=200)=>Response.json(body,{status,headers:{'Cache-Con
 const fail=(message:string,status=400)=>Object.assign(new Error(message),{status});
 async function hash(s:string){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))].map(n=>n.toString(16).padStart(2,'0')).join('');}
 async function body(request:Request){if(!request.headers.get('content-type')?.includes('application/json'))throw fail('Expected JSON.',415);const reader=request.body?.getReader();if(!reader)throw fail('Missing request.');let size=0;const chunks:Uint8Array[]=[];while(true){const r=await reader.read();if(r.done)break;size+=r.value.length;if(size>RELAY.maxHostBytes){await reader.cancel();throw fail('Room message is too large.',413);}chunks.push(r.value);}const bytes=new Uint8Array(size);let at=0;for(const c of chunks){bytes.set(c,at);at+=c.length;}try{return JSON.parse(new TextDecoder().decode(bytes));}catch{throw fail('Invalid JSON.');}}
+async function exchange(db:Database,input:any,code:string,key:string,host:boolean,now:number){
+ const packet=input.packet;if(!validPacket(packet,host))throw fail('Invalid room packet.');
+ if(!host&&JSON.stringify(input).length>RELAY.maxGuestBytes)throw fail('Guest message is too large.',413);
+ const side=host?'host':'guest',other=host?'guest':'host';
+ // The declared role only selects a SQL column; its hashed seat token must match.
+ // Auth, expiry, rate checks, sequence and mutation share one DB round trip.
+ const result=await db.batch([
+ db.prepare(`UPDATE relay_rooms SET ${side}_packet=?,${side}_seq=?,${side}_ack=?,${side}_seen=? WHERE code=? AND ${side}_key=? AND closed=0 AND expires>? AND ${side}_seq<=? AND (${side}_seen<=? OR ${side}_seq=?) ${host?'':'AND guest_left=0 AND host_seen>?'} `).bind(JSON.stringify(packet),packet.seq,packet.ack,now,code,key,now,packet.seq,now-10,packet.seq,...(host?[]:[now-RELAY.timeoutMs])),
+ db.prepare(`SELECT * FROM relay_rooms WHERE code=? AND ${side}_key=?`).bind(code,key)]);
+ const row=result[1].results[0];if(!row)throw fail('Room closed or this seat is not authorized.',403);
+ if(row.closed||row.expires<=now)throw fail('The host closed this room.',410);
+ if(!host&&(row.guest_left||now-row.host_seen>RELAY.timeoutMs))throw fail('The host disconnected or this guest session has ended.',410);
+ if(packet.seq>row[side+'_seq'])throw fail('Room messages are arriving too quickly.',429);
+ return json({protocol:RELAY.protocol,packet:row[other+'_packet']?JSON.parse(row[other+'_packet']):null,ack:row[other+'_ack'],peerSeen:row[other+'_seen'],serverNow:now,guest:host&&row.guest_profile?JSON.parse(row.guest_profile):null,guestLeft:row.guest_left===1});
+}
 export async function relay(request:Request,env:Env,now=Date.now()){
  const url=new URL(request.url);if(request.method!=='POST')throw fail('Method not allowed.',405);
  if(request.headers.get('origin')&&request.headers.get('origin')!==url.origin)throw fail('Use the Chip Arena website to connect.',403);
@@ -14,6 +29,7 @@ export async function relay(request:Request,env:Env,now=Date.now()){
  const token=request.headers.get('authorization')?.replace(/^Bearer /,'');if(!/^[a-f0-9]{64}$/.test(token||''))throw fail('Invalid room session.',401);
  const input=await body(request),code=typeof input?.code==='string'?normalizeRoomCode(input.code):null;if(!code||input.protocol!==RELAY.protocol)throw fail('Reload the game and use a current 8-character room code.',400);
  const db=env.DB,key=await hash(token!),action=url.pathname.split('/').at(-1);
+ if(action==='exchange'&&(input.role==='host'||input.role==='guest'))return exchange(db,input,code,key,input.role==='host',now);
  let row=await db.prepare('SELECT * FROM relay_rooms WHERE code=?').bind(code).first();
  if(action==='create'){
   if(row){if(row.host_key===key&&!row.closed&&row.expires>now)return json({code,protocol:RELAY.protocol});throw fail('Room code is taken. Create another room.',409);}
@@ -33,18 +49,6 @@ export async function relay(request:Request,env:Env,now=Date.now()){
  const host=row.host_key===key;if(!host&&row.guest_key!==key)throw fail('This room session is not authorized.',403);
  if(action==='leave'){await db.prepare(host?'UPDATE relay_rooms SET closed=1 WHERE code=?':'UPDATE relay_rooms SET guest_left=1 WHERE code=?').bind(code).run();return json({ok:true});}
  if(action!=='exchange')throw fail('Unknown room operation.',404);
- if(!host&&row.guest_left)throw fail('You have left this room.',410);
- if(!host&&now-row.host_seen>RELAY.timeoutMs)throw fail('The host disconnected. This room has closed.',410);
- const packet=input.packet;if(!validPacket(packet,host))throw fail('Invalid room packet.');
- if(!host&&JSON.stringify(input).length>RELAY.maxGuestBytes)throw fail('Guest message is too large.',413);
- const side=host?'host':'guest',other=host?'guest':'host';
- // One in-flight exchange per client; retries reuse sequence and payload. Separate
- // columns avoid host/guest read-modify-write races. Reads follow writes in D1 batch.
- if(now-row[side+'_seen']<25&&packet.seq>row[side+'_seq'])throw fail('Room messages are arriving too quickly.',429);
- const result=await db.batch([
- db.prepare(`UPDATE relay_rooms SET ${side}_packet=?,${side}_seq=?,${side}_ack=?,${side}_seen=? WHERE code=? AND closed=0 AND ${side}_seq<=?`).bind(JSON.stringify(packet),packet.seq,packet.ack,now,code,packet.seq),
- db.prepare('SELECT * FROM relay_rooms WHERE code=?').bind(code)]);
- row=result[1].results[0];if(!row||row.closed)throw fail('The host closed this room.',410);
- return json({protocol:RELAY.protocol,packet:row[other+'_packet']?JSON.parse(row[other+'_packet']):null,ack:row[other+'_ack'],peerSeen:row[other+'_seen'],serverNow:now,guest:host&&row.guest_profile?JSON.parse(row.guest_profile):null,guestLeft:row.guest_left===1});
+ return exchange(db,input,code,key,host,now);
 }
 export default {async fetch(request:Request,env:Env){if(new URL(request.url).pathname.startsWith('/api/rooms/')){try{return await relay(request,env);}catch(e:any){if(!e.status)console.error('Chip Arena relay failed',e.message);return json({error:e.status?e.message:'Room service interrupted. Retrying…'},e.status||503);}}return env.ASSETS?env.ASSETS.fetch(request):new Response('Not found',{status:404});}};

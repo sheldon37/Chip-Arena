@@ -109,3 +109,7 @@ The full-match runner uses first person for the attacking pilot and third person
 ## HTTPS relay verification
 
 `npm run test:https` starts a real HTTP server using the production Worker handler and SQLite mailboxes, connects two independent transport clients, completes five sets and four Chip drafts, compares received authority snapshots, tests a lost response/retry and rematch, then leaves. `TEST_LATENCY_MS=100 npm run test:https` adds 100 ms on each request and response leg. This is in addition to relay cadence. `tests/relay.test.ts` checks seat isolation, concurrent joins, mailbox races, duplicate retry ordering, malformed packets, server debug/snapshot restrictions, expiry, origin/body limits and quick input taps.
+
+## Guest movement regression
+
+Create a room in one client and join in another. Use the guest to walk, jump, dash and approach cover. Compare standing on the foundation with a legitimate edge fall. Test at 100 ms each-way simulated transport latency; prediction must keep its capsule synchronized on every replayed frame. In `tests/prediction.test.ts`, the pre-fix airborne regression fell from Y=2 to Y=-9.692 while its collider stayed at Y=2. `test:https` now also runs guest prediction and asserts floor clearance during the delayed full match.

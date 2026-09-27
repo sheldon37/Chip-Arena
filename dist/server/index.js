@@ -1,5 +1,5 @@
 // src/shared/relay-protocol.ts
-var RELAY = { protocol: "chip-arena-https-v1", intervalMs: 80, timeoutMs: 12e3, requestTimeoutMs: 4e3, maxEvents: 48, maxHostBytes: 384e3, maxGuestBytes: 24e3, ttlMs: 72e5 };
+var RELAY = { protocol: "chip-arena-https-v1", intervalMs: 50, inputHoldSeconds: 0.75, timeoutMs: 12e3, requestTimeoutMs: 4e3, maxEvents: 48, maxHostBytes: 384e3, maxGuestBytes: 24e3, ttlMs: 72e5 };
 function normalizeRoomCode(value) {
   const code = value.trim().toUpperCase().replace(/[\s-]/g, "");
   return /^[A-HJ-NP-Z2-9]{8}$/.test(code) ? code : null;
@@ -63,6 +63,22 @@ async function body(request) {
     throw fail("Invalid JSON.");
   }
 }
+async function exchange(db, input, code, key, host, now) {
+  const packet = input.packet;
+  if (!validPacket(packet, host)) throw fail("Invalid room packet.");
+  if (!host && JSON.stringify(input).length > RELAY.maxGuestBytes) throw fail("Guest message is too large.", 413);
+  const side = host ? "host" : "guest", other = host ? "guest" : "host";
+  const result = await db.batch([
+    db.prepare(`UPDATE relay_rooms SET ${side}_packet=?,${side}_seq=?,${side}_ack=?,${side}_seen=? WHERE code=? AND ${side}_key=? AND closed=0 AND expires>? AND ${side}_seq<=? AND (${side}_seen<=? OR ${side}_seq=?) ${host ? "" : "AND guest_left=0 AND host_seen>?"} `).bind(JSON.stringify(packet), packet.seq, packet.ack, now, code, key, now, packet.seq, now - 10, packet.seq, ...host ? [] : [now - RELAY.timeoutMs]),
+    db.prepare(`SELECT * FROM relay_rooms WHERE code=? AND ${side}_key=?`).bind(code, key)
+  ]);
+  const row = result[1].results[0];
+  if (!row) throw fail("Room closed or this seat is not authorized.", 403);
+  if (row.closed || row.expires <= now) throw fail("The host closed this room.", 410);
+  if (!host && (row.guest_left || now - row.host_seen > RELAY.timeoutMs)) throw fail("The host disconnected or this guest session has ended.", 410);
+  if (packet.seq > row[side + "_seq"]) throw fail("Room messages are arriving too quickly.", 429);
+  return json({ protocol: RELAY.protocol, packet: row[other + "_packet"] ? JSON.parse(row[other + "_packet"]) : null, ack: row[other + "_ack"], peerSeen: row[other + "_seen"], serverNow: now, guest: host && row.guest_profile ? JSON.parse(row.guest_profile) : null, guestLeft: row.guest_left === 1 });
+}
 async function relay(request, env, now = Date.now()) {
   const url = new URL(request.url);
   if (request.method !== "POST") throw fail("Method not allowed.", 405);
@@ -73,6 +89,7 @@ async function relay(request, env, now = Date.now()) {
   const input = await body(request), code = typeof input?.code === "string" ? normalizeRoomCode(input.code) : null;
   if (!code || input.protocol !== RELAY.protocol) throw fail("Reload the game and use a current 8-character room code.", 400);
   const db = env.DB, key = await hash(token), action = url.pathname.split("/").at(-1);
+  if (action === "exchange" && (input.role === "host" || input.role === "guest")) return exchange(db, input, code, key, input.role === "host", now);
   let row = await db.prepare("SELECT * FROM relay_rooms WHERE code=?").bind(code).first();
   if (action === "create") {
     if (row) {
@@ -90,8 +107,8 @@ async function relay(request, env, now = Date.now()) {
   if (action === "join") {
     if (now - row.host_seen > RELAY.timeoutMs) throw fail("The host is offline. Ask them to create a new room.", 410);
     if (row.host_key === key) throw fail("The host cannot join its own guest seat.", 403);
-    const result2 = await db.prepare("UPDATE relay_rooms SET guest_key=?,guest_profile=?,guest_seen=? WHERE code=? AND closed=0 AND guest_left=0 AND (guest_key IS NULL OR guest_key=?)").bind(key, JSON.stringify(cleanProfile(input.profile)), now, code, key).run();
-    if (!result2.meta.changes) throw fail("Room is full. Ask the host for a new room.", 409);
+    const result = await db.prepare("UPDATE relay_rooms SET guest_key=?,guest_profile=?,guest_seen=? WHERE code=? AND closed=0 AND guest_left=0 AND (guest_key IS NULL OR guest_key=?)").bind(key, JSON.stringify(cleanProfile(input.profile)), now, code, key).run();
+    if (!result.meta.changes) throw fail("Room is full. Ask the host for a new room.", 409);
     return json({ code, protocol: RELAY.protocol });
   }
   const host = row.host_key === key;
@@ -101,20 +118,7 @@ async function relay(request, env, now = Date.now()) {
     return json({ ok: true });
   }
   if (action !== "exchange") throw fail("Unknown room operation.", 404);
-  if (!host && row.guest_left) throw fail("You have left this room.", 410);
-  if (!host && now - row.host_seen > RELAY.timeoutMs) throw fail("The host disconnected. This room has closed.", 410);
-  const packet = input.packet;
-  if (!validPacket(packet, host)) throw fail("Invalid room packet.");
-  if (!host && JSON.stringify(input).length > RELAY.maxGuestBytes) throw fail("Guest message is too large.", 413);
-  const side = host ? "host" : "guest", other = host ? "guest" : "host";
-  if (now - row[side + "_seen"] < 25 && packet.seq > row[side + "_seq"]) throw fail("Room messages are arriving too quickly.", 429);
-  const result = await db.batch([
-    db.prepare(`UPDATE relay_rooms SET ${side}_packet=?,${side}_seq=?,${side}_ack=?,${side}_seen=? WHERE code=? AND closed=0 AND ${side}_seq<=?`).bind(JSON.stringify(packet), packet.seq, packet.ack, now, code, packet.seq),
-    db.prepare("SELECT * FROM relay_rooms WHERE code=?").bind(code)
-  ]);
-  row = result[1].results[0];
-  if (!row || row.closed) throw fail("The host closed this room.", 410);
-  return json({ protocol: RELAY.protocol, packet: row[other + "_packet"] ? JSON.parse(row[other + "_packet"]) : null, ack: row[other + "_ack"], peerSeen: row[other + "_seen"], serverNow: now, guest: host && row.guest_profile ? JSON.parse(row.guest_profile) : null, guestLeft: row.guest_left === 1 });
+  return exchange(db, input, code, key, host, now);
 }
 var worker_default = { async fetch(request, env) {
   if (new URL(request.url).pathname.startsWith("/api/rooms/")) {
