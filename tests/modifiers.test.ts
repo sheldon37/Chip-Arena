@@ -71,18 +71,18 @@ test('shield guarding spends stamina over time and on frontal impacts; no guard 
 test('class-specific rate modifiers reduce actual cooldown and melee windup with explicit stacking',()=>{
  for(const [spec,chip]of [['pistol','fire-rate'],['fire','cast-rate'],['sword','swing-rate']] as [SpecId,string][]){const {s,a}=arena(spec,{[chip]:2,overclock:1});s.primary(a);near(a.cooldown,WEAPONS[spec].interval/(1.15**2*1.18));if(a.swing)near(a.swing.at-s.time,WEAPONS[spec].windup/(1.15**2*1.18));s.dispose();}
 });
-test('projectile speed stacks without increasing range, and homing preserves speed with bounded turning',()=>{
- const {s,a}=arena('pistol',{velocity:2,homing:2});s.spawnProjectile(a);const shot=[...s.projectiles.values()][0];near(len(shot.vel),52*1.25**2);near(shot.distanceLeft,55);
+test('projectile speed stacks, homing turning preserves speed, and travel remains bounded',()=>{
+ const {s,a}=arena('pistol',{velocity:2,homing:2});s.spawnProjectile(a);const shot=[...s.projectiles.values()][0];near(len(shot.vel),52*1.25**2);near(shot.distanceLeft,C.projectileMaxTravel);
  const turn=steerVelocity(v(0,0,40),v(1,0,1),35*Math.PI/180/60);near(len(turn),40);near(Math.acos(dot(norm(turn),v(0,0,1))),35*Math.PI/180/60);
  s.players.get('b')!.body.setTranslation(v(20,1,20),true);s.world.step();shot.pos=v(-20,5,-20);shot.vel=v(0,0,len(shot.vel));const start=shot.pos.z;
- for(let n=0;n<100;n++)s.stepProjectiles(1/60);assert.ok(shot.pos.z-start<=55+1e-6);assert.equal(s.projectiles.size,0);s.dispose();
+ for(let n=0;n<240;n++)s.stepProjectiles(1/60);assert.ok(shot.pos.z-start<=C.projectileMaxTravel+1e-6);assert.equal(s.projectiles.size,0);s.dispose();
 });
 test('homing bends toward visible opponents, respects cover, and does not transfer to split fragments',()=>{
  const {s,a,b}=arena('pistol',{homing:3,splitter:1});a.body.setTranslation(v(0,1,-8),true);b.body.setTranslation(v(2,1,-2),true);a.input.yaw=0;s.world.step();s.spawnProjectile(a);
  const shot=[...s.projectiles.values()][0];shot.pos=v(0,1.1,-7);shot.vel=v(0,0,20);s.stepProjectiles(1/60);assert.ok(shot.vel.x>0);
  const wall=s.addProp({id:'homing-wall',pos:v(0,1.5,-4),size:v(7,3,.5),material:'stone'})!;s.world.step();shot.pos=v(0,1.1,-7);shot.vel=v(0,0,20);s.stepProjectiles(1/60);near(shot.vel.x,0);
- for(let n=0;n<12;n++)s.stepProjectiles(1/60);assert.equal(b.hp,100);assert.ok(wall.hp<wall.maxHp);
- const fragments=[...s.projectiles.values()].filter(p=>!p.direct);assert.ok(fragments.length>0);assert.ok(fragments.every(p=>p.homing===0&&p.bounces===0&&p.effectsUsed));s.dispose();
+ const fragments=[];for(let n=0;n<12;n++){s.stepProjectiles(1/60);fragments.push(...[...s.projectiles.values()].filter(p=>!p.direct));}assert.equal(b.hp,100);assert.ok(wall.hp<wall.maxHp);
+ assert.ok(fragments.length>0);assert.ok(fragments.every(p=>p.homing===0&&p.bounces===0&&p.effectsUsed));s.dispose();
 });
 test('round reset restores expanded pools and clears temporary combo and burst state',()=>{
  const {s,a}=arena('machinegun',{magazine:2,mana:2,stamina:2});s.secondary(a);a.stamina=3;a.mana=2;a.staminaAt=10;s.resetRound();const view=s.snapshot().players[0];

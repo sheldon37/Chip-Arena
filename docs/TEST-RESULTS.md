@@ -1,6 +1,17 @@
 # Executed test results — 2026-09-26
 
-## Modifier update verification
+## Projectile-drop update verification
+
+- **50 automated tests passed**, 0 failed, including seven new ballistic checks. Every gun and spell hit the floor before expiry; one Velocity Coil extended the controlled flat-shot landing distance by approximately 25%. At the same 10 m horizontal distance, the upgraded Pistol had exactly 36% less gravitational drop within numerical tolerance.
+- Landing tests use a projectile center 1.6 m above an 80 × 80 m flat floor, no homing or bounces, and 60 Hz stepping. Measured distances for all seven projectile specializations are in README. Real arena pitch, elevation and cover change those distances.
+- Fast downward shots still hit players through swept collision. Ricochets retain gravity, split projectiles inherit gravity, and homing without an acquired target still falls.
+- A pre-existing Splitter collision-mask issue was exposed by the new falling trajectories: children ignored the intact surface they had just struck. They now ignore only an already-hit player, so intact cover blocks them. Both existing and new regression checks pass.
+- Input-driven Pistol-versus-Normal-Sword match finished **4–5** in **38.5 simulated seconds**, followed by a passing rematch/reset. Bots compensate for drop with imperfect aim inputs.
+- **15 all-Chip stress cases completed**, 411 simulation steps. These heavily stacked builds can finish rapidly; this is a crash check, not a balance certification.
+- Two independent local WebSocket clients completed a match and rematch in **57.389 s** with **100 ms added each direction** (~200 ms artificial RTT). Both observed destruction and agreed exactly at **1,085 shared snapshot ticks**. Disconnect forfeit passed. Sampled tick median **0.120 ms**, P95 **0.392 ms**, maximum **1.803 ms**. The browser and Node production builds passed.
+- Browser visual QA was not repeated for this update. The renderer consumes the authoritative projectile positions/velocities already exercised by the existing renderer; GPU performance remains unverified.
+
+## Modifier update verification (before projectile drop)
 
 Executed after the ammo/mana/stamina and weapon-compatible modifier changes:
 

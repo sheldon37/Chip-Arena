@@ -11,6 +11,7 @@ export const CONFIG = {
   shieldDrain: 33, shieldImpactCost: .9,
   volleyDamage: .75, volleyFanDegrees: 7,
   followupDamage: .45, followupCost: 5, followupGap: .08,
+  projectileLifetime: 3, projectileMaxTravel: 160, splitLifetime: 1.2, splitMaxTravel: 18,
   homingRange: 16, homingConeDegrees: 50,
   maxBodies: 150, maxProjectiles: 100, maxEvents: 80,
   maxInputRate: 100, staleInputSeconds: .3, maxRooms: 24,

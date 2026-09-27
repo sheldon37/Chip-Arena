@@ -56,7 +56,13 @@ In Developer Sandbox, switch weapon and confirm the Chip picker changes: guns of
 - Install Mana Reservoir or Stamina Cell twice: that resource should display 150 maximum. Check spells and melee actions actually spend the appropriate resource.
 - Compare Parallel Shot with Echo Strike; the first emits additional projectiles, the second adds delayed damaging melee sweeps. Both have explicit costs and per-stack caps.
 - Fire past an exposed opponent with Tracking Circuit; the projectile bends within its turn limit. Repeat with a wall in the path; cover must stop it.
-- Compare Velocity Coil and the relevant rate Chip independently. Projectile speed keeps range fixed; rate changes cadence.
+- Compare Velocity Coil and the relevant rate Chip independently. Projectile speed reduces drop and extends travel before landing; rate changes cadence.
 - Remove Chips and reset the arena to compare the base build.
 
 `tests/modifiers.test.ts` exercises these effects through the authoritative simulation, including real damage, ammo exhaustion/reload, resource blocking, homing occlusion and nonrecursive split metadata.
+
+## Projectile drop checks
+
+Use Developer Sandbox with a dummy. Aim level across an open lane, fire, then install Velocity Coil and repeat from the same position and aim. The upgraded projectile should land farther away. Aim higher to lob shots; compare guns and the slower Fire/Darkness spells. Ricochets and split shots should also fall. Repeat a shot with intact cover between the shooter and target; split shots must not ignore the cover they struck.
+
+`tests/projectile-drop.test.ts` measures every gun/spell on a level test floor, compares speed upgrades at the same range, checks fast descending player hits, falling ricochets, intact-cover collision, nonrecursive split gravity, and bounded homing/bot aiming. Floor-contact assertions allow 2 cm for shape-cast tolerance; the no-contact integration assertion uses a strict numerical tolerance.

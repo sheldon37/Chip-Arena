@@ -81,9 +81,31 @@ Magic starts at 100 mana and regenerates 12/s. Melee starts at 100 stamina and r
 | Homing | Tracking Circuit: +35°/s/stack, max 105°/s | Tracking Circuit | Not offered |
 | Attack rate | Rapid Cycle: ×1.15/stack | Spell Clock: ×1.15/stack | Flurry Clock: ×1.15/stack |
 
-Parallel Shot costs one ammo or the normal spell cost per volley. With it installed, every projectile in that volley deals 75% damage across a 7° fan. Echo Strike costs five extra stamina per follow-up sweep, each at 45% damage/impulse; each sweep can hit each target once, and the combo extends recovery. Homing requires a visible target within 16 m and a 50° forward cone; it cannot pass through cover. Projectile speed upgrades preserve range. Split fragments never home or recursively trigger effects. Capacity Chips cap at eight stacks; rate Chips cap at six and multiply with Overclock. Installed effects persist only for the match.
+Parallel Shot costs one ammo or the normal spell cost per volley. With it installed, every projectile in that volley deals 75% damage across a 7° fan. Echo Strike costs five extra stamina per follow-up sweep, each at 45% damage/impulse; each sweep can hit each target once, and the combo extends recovery. Homing requires a visible target within 16 m and a 50° forward cone; it cannot pass through cover. Projectile speed upgrades flatten the trajectory and extend effective range before landing. Split fragments never home or recursively trigger effects. Capacity Chips cap at eight stacks; rate Chips cap at six and multiply with Overclock. Installed effects persist only for the match.
 
 Drafting and the sandbox Chip picker filter by the equipped weapon. The HUD shows current and upgraded maximum ammo, mana, or stamina. Every Chip describes its exact effects and cap. In the sandbox, installing/removing a Chip refills resources for immediate comparison; normal drafts refill them at the next round reset.
+
+## Projectile drop
+
+Every gun bullet and magic projectile accelerates downward. Launch speed and gravity are separate weapon settings. Velocity Coil multiplies launch speed by 1.25 per stack; it does not cancel gravity. At the same horizontal distance, a flat shot with one Coil has 36% less gravitational drop. Aiming higher allows longer arcs. Damage does not decrease solely because of distance.
+
+Measured flat-shot landing distances from a projectile center 1.6 m above a level test floor (no homing, no ricochet, no cover):
+
+| Weapon | Base speed (m/s) | Gravity (m/s²) | Base landing distance | One Velocity Coil |
+|---|---:|---:|---:|---:|
+| Pistol | 52 | 32 | 16.19 m | 20.25 m |
+| Rifle | 60 | 30 | 19.30 m | 24.11 m |
+| Machine Gun | 49 | 36 | 14.38 m | 17.98 m |
+| Fire | 24 | 12 | 11.84 m | 14.76 m |
+| Water | 31 | 16 | 13.24 m | 16.51 m |
+| Lightning | 85 | 40 | 22.93 m | 28.68 m |
+| Darkness | 15 | 5 | 11.43 m | 14.28 m |
+
+These are prototype settings and controlled test measurements, not guaranteed range from every arena position. Projectile radius, elevation, pitch, cover, bounces and homing change landing distance. The slower secondary fireball uses 78% of Fire's launch speed and the same gravity. Split projectiles inherit their parent's gravity. Ricochets reflect contact velocity and continue falling; homing steers within its existing limit before gravity is applied each tick.
+
+The shared authoritative simulation integrates each ballistic step and sweeps its complete displacement against collision geometry at 60 Hz. The renderer follows those positions and velocities. Bots compensate for drop through ordinary aim inputs, while retaining reaction delays and aim error. Primary projectiles are bounded by a 3-second lifetime and 160 m travel budget; split shots by 1.2 seconds and 18 m. Those are cleanup limits, not the old weapon-specific flat-flight range cutoff. `Weapon.range` remains the aiming-ray distance (and melee reach for melee weapons).
+
+Tune per-weapon `speed` and `gravity` in `src/shared/content.ts`; flight budgets in `src/shared/config.ts`; integration/aim helpers in `src/shared/projectiles.ts`.
 
 ## The defining physics demonstration
 
@@ -105,7 +127,7 @@ For a two-client authoritative launcher test, start the server with `ALLOW_TEST_
 | `src/shared/config.ts` | Match timing, tick/snapshot rates, movement, impact energy thresholds, resource regeneration, modifier tuning, limits, materials |
 | `src/shared/content.ts` | All 11 weapons and 25 Chips; compatibility, stacking and stat effect handlers |
 | `src/shared/arena.ts` | Authored collision blocks, spawn routes, supports and materials |
-| `src/shared/projectiles.ts` | Bounded homing rotation with conserved speed |
+| `src/shared/projectiles.ts` | Ballistic flight, low-arc bot aiming, and bounded homing rotation |
 | `src/shared/impact.ts` | Point velocity, normal closing speed, energy/damage formula, impact deduplication and fragment budget |
 | `src/shared/simulation.ts` | Authoritative movement, attacks, statuses, projectiles, bots, destruction, round progression |
 | `src/server/index.ts` | Private room protocol, input validation, message limits, fixed-step loop and debug authorization |
