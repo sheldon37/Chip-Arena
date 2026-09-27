@@ -31,7 +31,14 @@ export class ChipEffects{
   }
   for(let n=this.pulses.length-1;n>=0;n--){const p=this.pulses[n],u=(time-p.at)/p.life;if(u>=1){p.mesh.removeFromParent();(p.mesh.material as T.Material).dispose();this.pulses.splice(n,1);}else{p.mesh.scale.setScalar(.1+p.size*u);(p.mesh.material as T.MeshBasicMaterial).opacity=1-u;}}
  }
- pulse(pos:{x:number;y:number;z:number},color:number,time:number,size:number,life=.35){if(this.pulses.length>=40)return;const m=new T.Mesh(ring,new T.MeshBasicMaterial({color,transparent:true,opacity:1,depthWrite:false}));m.position.set(pos.x,pos.y,pos.z);this.scene.add(m);this.pulses.push({mesh:m,at:time,size,life});}
- event(e:GameEvent,time:number){const c=e.mods||{};if(e.type==='meleeRebound'){this.pulse(e.pos,0x91f7eb,time,e.radius||1.5,.4);this.pulse(e.pos,0xffffff,time,(e.radius||1.5)*.7,.25);}if(e.type==='critical')this.pulse(e.pos,0xffd66c,time,1.5);if(e.type==='catch')this.pulse(e.pos,0x7fffe0,time,.9);if(e.type==='vacuum')for(let n=0;n<3;n++)this.pulse(e.pos,0xbc72ff,time,2+n,.4+n*.08);if(e.type==='ricochet')this.pulse(e.pos,c.pong?0xff5269:0xffcc49,time,c.pong?1.2:.8);if(e.type==='split')this.pulse(e.pos,0x96ffb7,time,1.1);if(e.type==='impact'||e.type==='slash'){if(c.kinetic)this.pulse(e.pos,0xffaa64,time,.65+Math.min(3,c.kinetic)*.25);if(c.demolition)this.pulse(e.pos,0xffd45f,time,.5+.12*c.demolition,.23);if(c.shrapnel)this.pulse(e.pos,0xff855c,time,1.4);}}
+ pulse(pos:{x:number;y:number;z:number},color:number,time:number,size:number,life=.35){if(this.pulses.length>=40)return;const m=new T.Mesh(ring,new T.MeshBasicMaterial({color,transparent:true,opacity:1,depthWrite:false}));m.position.set(pos.x,pos.y,pos.z);m.scale.setScalar(.1);this.scene.add(m);this.pulses.push({mesh:m,at:time,size,life});return m;}
+ event(e:GameEvent,time:number){const c=e.mods||{};
+  if(e.type==='blockPulse'){
+   const nova=!!c.supernova,radius=e.radius||3;
+   // Three planes make a successful pulse visible from first/third person and either side.
+   for(let n=0;n<3;n++){const mesh=this.pulse(e.pos,nova?(n===1?0xfff3b1:0xffac4b):0x91f7eb,time,radius,nova?.7:.5);if(mesh){mesh.name=nova?'supernova-blast':'counter-pulse';mesh.rotation.set(n===0?Math.PI/2:0,n===2?Math.PI/2:0,0);}}
+   if(nova){const core=this.pulse(e.pos,0xffffff,time,radius*.72,.4);if(core){core.name='supernova-core';core.rotation.x=Math.PI/2;}}
+  }
+  if(e.type==='meleeRebound'){this.pulse(e.pos,0x91f7eb,time,e.radius||1.5,.4);this.pulse(e.pos,0xffffff,time,(e.radius||1.5)*.7,.25);}if(e.type==='critical')this.pulse(e.pos,0xffd66c,time,1.5);if(e.type==='catch')this.pulse(e.pos,0x7fffe0,time,.9);if(e.type==='vacuum')for(let n=0;n<3;n++)this.pulse(e.pos,0xbc72ff,time,2+n,.4+n*.08);if(e.type==='ricochet')this.pulse(e.pos,c.pong?0xff5269:0xffcc49,time,c.pong?1.2:.8);if(e.type==='split')this.pulse(e.pos,0x96ffb7,time,1.1);if(e.type==='impact'||e.type==='slash'){if(c.kinetic)this.pulse(e.pos,0xffaa64,time,.65+Math.min(3,c.kinetic)*.25);if(c.demolition)this.pulse(e.pos,0xffd45f,time,.5+.12*c.demolition,.23);if(c.shrapnel)this.pulse(e.pos,0xff855c,time,1.4);}}
  clear(){for(const g of this.shots.values())g.removeFromParent();this.shots.clear();for(const p of this.pulses){p.mesh.removeFromParent();(p.mesh.material as T.Material).dispose();}this.pulses=[];}
 }

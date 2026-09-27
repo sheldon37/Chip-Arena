@@ -72,6 +72,11 @@ timeline. Effects volume / mute controls this audio; arena music ducks briefly.
 In Developer Sandbox, select Clown Love and use Preview Knockout to try it.
 
 FUTURE UPDATES
+First-block fixes: Supernova Guard and Counter Pulse have visible shockwaves;
+first-block Chips show an activation label. Pulses now hit nearby enemy summons
+without being obstructed by the blocker's own collider. Supernova is a 3 m blast
+around the blocker, so distant shooters are outside its blast range.
+
 The launcher checks the game's official update channel before starting.
 Updates replace the client, game server and migration files together. Checksums
 are checked before installation, and interrupted installs recover on startup.
