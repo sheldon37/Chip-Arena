@@ -1,3 +1,4 @@
+import {publicInviteOrigin} from '../shared/invite-url.js';
 import {verifyDevToken} from '../shared/dev-auth.js';
 import {authProxy} from './auth-proxy.js';
 import {newRoomCode,normalizeRoomCode} from '../shared/relay-protocol.js';
@@ -17,7 +18,9 @@ const port=Number(process.env.PORT)||8788;
 const origins=(process.env.ALLOWED_ORIGINS||'').split(',').filter(Boolean);
 interface Room{code:string;sim:Simulation;clients:Map<string,WebSocket>;owner:string;lastUsed:number;rematch:Set<string>;}
 const rooms=new Map<string,Room>();
-const server=http.createServer(async(req,res)=>{if(req.url==='/api/auth/login'){await authProxy(req,res);return;}if(req.url==='/api/network'){res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({transport:'websocket',endpoint:'/socket'}));return;}if(req.url?.startsWith('/api/rooms/')){await serveRelay(req,res,relayDb);return;}if(req.url==='/health'){res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({ok:true,application:'chip-arena',rooms:rooms.size,simulationHz:CONFIG.simulationHz,snapshotHz:CONFIG.snapshotHz}));return;}
+let inviteOrigin:string|null=null;
+process.on('message',(message:any)=>{if(message?.type!=='public-invite')return;const origin=publicInviteOrigin(message.url);if(!origin)return;inviteOrigin=origin;if(process.connected)process.send?.({type:'public-invite-ready',url:origin});});
+const server=http.createServer(async(req,res)=>{if(req.url==='/api/auth/login'){await authProxy(req,res);return;}if(req.url==='/api/network'){res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({transport:'websocket',endpoint:'/socket',inviteOrigin}));return;}if(req.url?.startsWith('/api/rooms/')){await serveRelay(req,res,relayDb);return;}if(req.url==='/health'){res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({ok:true,application:'chip-arena',rooms:rooms.size,simulationHz:CONFIG.simulationHz,snapshotHz:CONFIG.snapshotHz}));return;}
  let pathname:string;try{pathname=decodeURIComponent((req.url||'/').split('?')[0]);}catch{res.writeHead(400);res.end('Invalid path');return;}const path=staticPath('dist/client',pathname);if(!path){res.writeHead(403);res.end();return;}try{const bytes=await readFile(path);res.writeHead(200,{'Content-Type':({'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.wasm':'application/wasm','.mp3':'audio/mpeg','.wav':'audio/wav'} as Record<string,string>)[extname(path)]||'application/octet-stream','Cache-Control':'no-cache'});res.end(bytes);}catch{res.writeHead(404);res.end('Build the client with npm run build, or use npm run dev.');}});
 const wss=new WebSocketServer({server,path:'/socket',maxPayload:24000,perMessageDeflate:false});
 const send=(ws:WebSocket,value:unknown)=>{if(ws.readyState===WebSocket.OPEN&&ws.bufferedAmount<1_000_000)ws.send(JSON.stringify(value));};

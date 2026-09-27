@@ -10,7 +10,7 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 process.chdir(root);
 const port=Number(process.env.PORT||8788),online=process.argv.includes('--online');
 if(!Number.isInteger(port)||port<1024||port>65535)throw new Error('PORT must be between 1024 and 65535.');
-const local=`http://127.0.0.1:${port}`,children=new Set();let stopping=false;
+const local=`http://127.0.0.1:${port}`,children=new Set();let stopping=false,gameServer;
 function start(file,args,stdio='inherit'){const child=spawn(file,args,{cwd:root,stdio,windowsHide:true,env:{...process.env,PORT:String(port),ALLOW_TEST_ROOMS:'false'}});children.add(child);child.on('error',e=>{console.error(e.message);stop(1);});child.on('exit',()=>{children.delete(child);if(!stopping){console.error('A server process stopped. Restart the launcher to play again.');stop(1);}});return child;}
 function stop(code=0){if(stopping)return;stopping=true;for(const child of children)child.kill();process.exitCode=code;setTimeout(()=>process.exit(code),500).unref();}
 process.on('SIGINT',()=>stop());process.on('SIGTERM',()=>stop());
@@ -30,15 +30,19 @@ async function tunnel(){
  // An explicit empty config avoids interfering with any existing tunnel configuration.
  const config=resolve(root,'runtime/quick-tunnel.yml');await writeFile(config,'{}\n');
  const child=start(file,['tunnel','--config',config,'--no-autoupdate','--url',local],['ignore','pipe','pipe']);
- let buffer='',shown=false;const timer=setTimeout(()=>{if(!shown){console.error('No online link received. Check your internet connection; local play is still available at '+local);}},45000);timer.unref();
- const output=chunk=>{const text=chunk.toString();process.stdout.write(text);buffer=(buffer+text).slice(-6000);const match=buffer.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/);if(match&&!shown){shown=true;clearTimeout(timer);console.log('\nSHARE THIS GAME LINK: '+match[0]+'\nBoth players: open this link, then Create Room / Join Room.\nKeep this window open. The link expires when you close it.\n');open(match[0]);}};
+ let buffer='',shown=false,announced=false;const timer=setTimeout(()=>{if(!shown){console.error('No online link received. Check your internet connection; local play is still available at '+local);}},45000);timer.unref();
+ const output=chunk=>{const text=chunk.toString();process.stdout.write(text);buffer=(buffer+text).slice(-8000);const match=buffer.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/);
+  if(match&&!shown){shown=true;clearTimeout(timer);console.log('\nSHARE THIS GAME LINK: '+match[0]+'\nFriends: open this link, then Join Room. The host connects locally.\nKeep this window open. The link expires when you close it.\n');}
+  if(match&&!announced&&buffer.includes('Registered tunnel connection')&&gameServer?.connected){announced=true;gameServer.send({type:'public-invite',url:match[0]});}
+ };
  child.stdout.on('data',output);child.stderr.on('data',output);
 }
 try{
  const existing=await health();if(existing)throw new Error('Port '+port+' is already in use. Close the previous launcher before starting another.');
  await applyUpdates(root);
  console.log('Starting Chip Arena. Keep this window open; Ctrl+C stops the server.');
- start(process.execPath,['--disable-warning=ExperimentalWarning','server.mjs']);
+ gameServer=start(process.execPath,['--disable-warning=ExperimentalWarning','server.mjs'],['inherit','inherit','inherit','ipc']);
+ gameServer.on('message',message=>{if(message?.type==='public-invite-ready'&&/^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/.test(message.url)){console.log('PUBLIC INVITE READY: '+message.url);if(online)open(local);}});
  let ready=false;for(let n=0;n<80&&!stopping;n++){const h=await health();if(h?.application==='chip-arena'){ready=true;break;}await new Promise(r=>setTimeout(r,150));}
  if(!ready)throw new Error('The server did not start. Check the error above.');
  console.log('\nYOUR GAME: '+local+'\n');

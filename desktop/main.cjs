@@ -6,10 +6,13 @@ const {gameUrl,tunnelUrl,freePort}=require('./policy.cjs');
 const {openReachableWindow}=require('./connection.cjs');
 app.setName('Chip Arena');
 protocol.registerSchemesAsPrivileged([{scheme:'arena',privileges:{standard:true,secure:true,supportFetchAPI:true}}]);
-let home,game,child,closing=false,busy=false,stopping=false,shared='',pendingReject,lastTarget='',connectionAbort;
+let home,game,child,closing=false,busy=false,stopping=false,shared='',pendingReject,lastTarget='',connectionAbort,localAddress='',serverLog='';
 const root=join(process.resourcesPath,'game');
 function status(text){if(home&&!home.isDestroyed())home.webContents.send('arena:status',String(text).slice(-1500));}
-function stopServer(){return new Promise(resolve=>{connectionAbort?.abort(Error('Launch cancelled.'));const processToStop=child;child=null;shared='';lastTarget='';pendingReject?.(Error('Launch cancelled.'));pendingReject=null;if(!processToStop?.pid){resolve();return;}stopping=true;
+function diagnostics(){return `Chip Arena desktop 0.3.2\nServer process: ${child?.pid?'running (PID '+child.pid+')':'stopped'}\nLocal server: ${localAddress||'not ready'}\nPublic invite: ${shared||'not registered'}\n\n${serverLog}`;}
+function log(text){serverLog=(serverLog+String(text)).slice(-16000);}
+async function checkConnections(){const hosted=child,local=localAddress,invite=shared;if(!hosted||!local)throw Error('Start a server first.');status('Checking the local server and public invite…');const check=async(label,url)=>{if(!url)return label+': not registered';try{const response=await electronNet.fetch(url+'/health',{signal:AbortSignal.timeout(5000),cache:'no-store',redirect:'error'});if(!response.ok)throw Error('HTTP '+response.status);if((await response.json()).application!=='chip-arena')throw Error('Unexpected health response');return label+': healthy';}catch(e){return label+': '+e.message;}};const results=await Promise.all([check('Local server',local),check('Public invite',invite)]);if(child!==hosted)return diagnostics();log('\nConnection check: '+results.join(' | ')+'\n');status(results.join(' | '));return diagnostics();}
+function stopServer(){return new Promise(resolve=>{connectionAbort?.abort(Error('Launch cancelled.'));const processToStop=child;child=null;shared='';lastTarget='';localAddress='';pendingReject?.(Error('Launch cancelled.'));pendingReject=null;if(!processToStop?.pid){resolve();return;}stopping=true;
  if(process.platform==='win32'){const killer=spawn('taskkill',['/pid',String(processToStop.pid),'/T','/F'],{windowsHide:true,stdio:'ignore'});killer.once('exit',()=>{stopping=false;resolve();});killer.once('error',()=>{processToStop.kill();stopping=false;resolve();});}
  else{try{process.kill(-processToStop.pid,'SIGTERM');}catch{processToStop.kill();}stopping=false;resolve();}
  });}
@@ -27,21 +30,21 @@ async function openGame(raw){const url=gameUrl(raw);if(game&&!game.isDestroyed()
  lastTarget=url;const controller=new AbortController();connectionAbort=controller;let entered=false;
  game=new BrowserWindow({show:false,width:1440,height:900,minWidth:960,minHeight:600,title:'Chip Arena',backgroundColor:'#060810',autoHideMenuBar:true,webPreferences:{nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,partition:'persist:chip-arena-game'}});
  const current=game;configureGame(current,url);current.on('closed',()=>{if(game===current)game=null;if(!closing){home.show();if(entered){status('Game closed.');void stopServer();}}});
- try{status('Checking game connection…');await openReachableWindow(current,url,{signal:controller.signal,onRetry:(attempt,seconds)=>status(`Waiting for the server address… retry ${attempt} · up to ${seconds}s remaining. Keep the host running.`)});controller.signal.throwIfAborted();entered=true;current.show();home.hide();}
+ try{status(child?'Opening your local server…':'Checking game connection…');await openReachableWindow(current,url,{signal:controller.signal,onRetry:(attempt,seconds)=>status(`Waiting for the server address… retry ${attempt} · up to ${seconds}s remaining. Keep the host running.`)});controller.signal.throwIfAborted();entered=true;current.show();home.hide();}
  catch(e){if(!current.isDestroyed())current.destroy();if(!closing)home.show();throw e;}
  finally{if(connectionAbort===controller)connectionAbort=null;}
 }
-async function retryConnection(){if(busy||stopping)throw Error('A connection attempt is already running.');if(!lastTarget)throw Error('Host online or paste an invite first.');busy=true;try{await openGame(lastTarget);status(shared?'Hosting: '+shared:'Connected.');return true;}catch(e){const error=Error(e.message+(child?' Your server is still running.':''),{cause:e});status(error.message);throw error;}finally{busy=false;}}
+async function retryConnection(){if(busy||stopping)throw Error('A connection attempt is already running.');if(!lastTarget)throw Error('Host online or paste an invite first.');busy=true;try{await openGame(lastTarget);status(shared?'Local server connected. Share with friends: '+shared:'Connected.');return true;}catch(e){const error=Error(e.message+(child?' Your server is still running.':''),{cause:e});log('\n'+error.message+'\n');status(error.message);throw error;}finally{busy=false;}}
 
-async function launch(online){if(online&&child&&shared&&!game&&!busy&&!stopping)return retryConnection();if(busy||stopping||child||game)throw Error('Close the current game before starting another.');busy=true;status(online?'Starting your online server…':'Starting local play…');
+async function launch(online){if(online&&child&&shared&&!game&&!busy&&!stopping)return retryConnection();if(busy||stopping||child||game)throw Error('Close the current game before starting another.');busy=true;serverLog='';localAddress='';status(online?'Starting your online server…':'Starting local play…');
  try{const port=await freePort(),local='http://127.0.0.1:'+port;const exe=join(root,'runtime','node.exe');
  const target=await new Promise((resolve,reject)=>{let output='',ready=false,finished=false;const timer=setTimeout(()=>finish(Error('Server startup timed out. Check your connection and try again.')),120000);
  const finish=(error,url)=>{if(finished)return;finished=true;clearTimeout(timer);pendingReject=null;error?reject(error):resolve(url);};pendingReject=error=>finish(error);
  child=spawn(exe,[join(root,'launcher','start.mjs'),...(online?['--online']:[])],{cwd:root,env:{...process.env,PORT:String(port),CHIP_NO_BROWSER:'1'},windowsHide:true,detached:process.platform!=='win32',stdio:['ignore','pipe','pipe']});
- const consume=chunk=>{const text=chunk.toString();output=(output+text).slice(-8000);if(text.includes('Updating Chip Arena'))status('Downloading the latest game update…');if(text.includes('YOUR GAME:')){ready=true;status(online?'Connecting your public invite…':'Local server ready.');}const tunnel=tunnelUrl(output);if(online&&tunnel&&output.includes('Registered tunnel connection')){shared=tunnel;finish(null,tunnel);}else if(!online&&ready)finish(null,local);};
+ const consume=chunk=>{const text=chunk.toString();log(text);output=(output+text).slice(-8000);if(text.includes('Updating Chip Arena'))status('Downloading the latest game update…');if(!ready&&output.includes('YOUR GAME:')){ready=true;localAddress=local;status(online?'Local server is healthy. Registering your public invite…':'Local server is healthy.');}const tunnel=tunnelUrl(output.match(/PUBLIC INVITE READY: https:\/\/[a-z0-9-]+\.trycloudflare\.com/)?.[0]||'');if(online&&ready&&tunnel){shared=tunnel;finish(null,local);}else if(!online&&ready)finish(null,local);};
  const launched=child;child.stdout.on('data',consume);child.stderr.on('data',consume);child.once('error',e=>finish(e));child.once('exit',code=>{if(!finished)finish(Error('Server could not start. '+output.slice(-700)));else if(!closing&&!stopping&&child){status('Server stopped. Reopen the game to restart it.');home.show();}if(child===launched)child=null;});
- });await openGame(target);status(shared?'Hosting: '+shared:'Local play is running.');return {url:target};
- }catch(e){if(!online||!child||!lastTarget)await stopServer();const error=Error(e.message+(child?' Your server is still running; use Retry connection.':''),{cause:e});status(error.message);throw error;}finally{busy=false;}}
+ });await openGame(target);status(shared?'Local server connected. Share with friends: '+shared:'Local play is running.');return {url:target};
+ }catch(e){if(!online||!child||!lastTarget)await stopServer();const error=Error(e.message+(child?' Your server is still running; use Retry connection.':''),{cause:e});log('\n'+error.message+'\n');status(error.message);throw error;}finally{busy=false;}}
 function validSender(event){if(event.sender!==home?.webContents||event.senderFrame?.url!=='arena://launcher/index.html')throw Error('Request not authorized.');}
 if(!app.requestSingleInstanceLock())app.quit();else{
  app.on('second-instance',()=>{const win=game||home;if(win){if(win.isMinimized())win.restore();win.show();win.focus();}});
@@ -53,6 +56,8 @@ if(!app.requestSingleInstanceLock())app.quit();else{
  ipcMain.handle('arena:launch',async(event,mode)=>{validSender(event);if(!['local','online'].includes(mode))throw Error('Unknown launch mode.');return launch(mode==='online');});
  ipcMain.handle('arena:join',async(event,url)=>{validSender(event);if(busy||stopping||child||game)throw Error('Close the current game first.');busy=true;try{await openGame(url);return true;}catch(e){status(e.message);throw e;}finally{busy=false;}});
  ipcMain.handle('arena:retry',async event=>{validSender(event);return retryConnection();});
+ ipcMain.handle('arena:logs',event=>{validSender(event);return diagnostics();});
+ ipcMain.handle('arena:check',async event=>{validSender(event);return checkConnections();});
  ipcMain.handle('arena:copy',event=>{validSender(event);if(shared)clipboard.writeText(shared);return shared;});
  ipcMain.handle('arena:stop',async event=>{validSender(event);if(game&&!game.isDestroyed())game.close();await stopServer();status('Server stopped.');return true;});
  }).catch(e=>{dialog.showErrorBox('Chip Arena',e.message);app.quit();});
