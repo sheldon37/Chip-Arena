@@ -20,3 +20,31 @@
 .scope-overlay{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at center,transparent 0 33vh,rgba(5,12,18,.75) 33.3vh);z-index:1}.scope-overlay i{position:absolute;inset:calc(50% - 32vh) calc(50% - 32vh);border:1px solid #d5ece099;border-radius:50%;background:linear-gradient(transparent calc(50% - .5px),#c9e5d988 50%,transparent calc(50% + .5px)),linear-gradient(90deg,transparent calc(50% - .5px),#c9e5d988 50%,transparent calc(50% + .5px))}.scope-overlay span{position:absolute;top:calc(50% + 23vh);left:0;right:0;text-align:center;color:#cde7e0;font:12px/1.6 monospace}.scope-overlay~.crosshair{z-index:2}
 
 .animation-caption{position:fixed;bottom:36px;left:30%;right:20%;text-align:center;color:#dce9e5;letter-spacing:.14em;font-size:14px}.animation-caption small{display:block;letter-spacing:.02em;color:#93a9b1;font-size:12px;margin-top:8px}.sandbox{max-height:calc(100vh - 135px);overflow-y:auto}
+/* Socketed processor cards: rarity is visible in text as well as color. */
+.panel.wide:has(.chip-grid){width:min(1120px,100%)}
+.chip-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:30px 28px;padding:12px 8px;margin-top:24px}
+.circuit-chip{--rarity:#f1f5f9;position:relative;isolation:isolate;min-height:245px;padding:20px 18px 16px;border:2px solid var(--rarity);border-radius:7px;background:linear-gradient(135deg,#213b36,#102723);box-shadow:inset 0 0 0 5px #091c19,0 7px 0 #071513;transition:transform .18s,box-shadow .18s;text-align:left;display:flex;flex-direction:column;overflow:visible}
+.circuit-chip:before,.circuit-chip:after{left:16px;right:16px;height:9px;background:repeating-linear-gradient(90deg,#b7b8a0 0 8px,#737e75 8px 10px,transparent 10px 20px);border:0}
+.circuit-chip:before{top:-11px}.circuit-chip:after{bottom:-11px}
+.circuit-chip:hover,.circuit-chip:focus-visible{transform:translateY(-4px);background:linear-gradient(135deg,#2a4c41,#142e28);border-color:var(--rarity);outline:2px solid var(--rarity);outline-offset:5px}
+.circuit-header{display:flex;align-items:center;gap:14px;margin-bottom:8px;position:relative}
+.circuit-chip .chip-icon{width:49px;height:49px;flex:0 0 49px;margin:0;border:1px solid var(--rarity);border-radius:3px;color:var(--rarity);background:#0a1718;box-shadow:0 0 0 4px #405c4d;font-size:27px}
+.circuit-chip strong{display:block;color:var(--rarity);font-size:18px;line-height:1.15;margin-top:5px}
+.rarity-label{font:10px ui-monospace,monospace;text-transform:uppercase;letter-spacing:.17em;color:var(--rarity)}
+.circuit-chip p{color:#d7e2dc;font-size:14px;line-height:1.5;margin:12px 0 18px}
+.chip-footer{display:flex;justify-content:space-between;gap:8px;margin-top:auto;padding-top:12px;border-top:1px solid #49675a;color:#adbfad;font:10px ui-monospace,monospace;letter-spacing:.05em}
+.chip-notch{position:absolute;right:11px;top:10px;width:4px;height:4px;border-radius:50%;background:var(--rarity)}
+.rarity-epic.circuit-chip{box-shadow:inset 0 0 20px #ce8aff18,0 0 15px #ce8aff44,0 7px 0 #071513}
+.rarity-legendary.circuit-chip{box-shadow:inset 0 0 28px #ffae551c,0 0 20px #ffae5559,0 7px 0 #071513}
+.rarity-mythic.circuit-chip{box-shadow:inset 0 0 30px #ff64751e,0 0 25px #ff64756b,0 7px 0 #071513}
+.chip-particles{position:absolute;inset:0;pointer-events:none;z-index:-1;border-radius:inherit}
+.chip-particles i{position:absolute;left:var(--x);top:2px;width:3px;height:3px;background:var(--rarity);box-shadow:0 0 6px var(--rarity);animation:chip-spark 2.8s var(--delay) infinite linear;opacity:0}
+.rarity-mythic .chip-particles i{width:4px;height:4px;animation-duration:1.7s}.chip-particles i:nth-child(even){top:auto;bottom:0;animation-direction:reverse}
+@keyframes chip-spark{0%{transform:translate(0,3px) scale(.4);opacity:0}20%{opacity:.9}100%{transform:translate(calc((var(--n) - 6) * 3px),-32px) scale(.2);opacity:0}}
+.board-chip[class*=rarity-],.installed-chip[class*=rarity-]{border-color:var(--rarity);color:var(--rarity)}.board-chip[class*=rarity-] strong{color:var(--rarity)}
+.board-chip.rarity-epic,.board-chip.rarity-legendary,.board-chip.rarity-mythic{box-shadow:0 0 9px color-mix(in srgb,var(--rarity),transparent 65%)}
+@media(max-width:850px){.chip-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 22px}.circuit-chip{padding:17px;min-height:250px}}
+@media(max-width:580px){.chip-grid{grid-template-columns:1fr}.circuit-chip{min-height:210px}}
+@media(prefers-reduced-motion:reduce){.chip-particles i{animation:none;opacity:.6}.circuit-chip{transition:none}.circuit-chip:hover{transform:none}}
+
+#ui[data-phase="draft"] #hud,#ui[data-phase="draft"] #sandbox,#ui[data-phase="specialization"] #hud{display:none}

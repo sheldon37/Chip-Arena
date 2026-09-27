@@ -18,3 +18,10 @@ export function ballisticPitch(distance:number,height:number,speed:number,gravit
  const squared=speed*speed,discriminant=squared*squared-gravity*(gravity*distance*distance+2*height*squared);
  return discriminant<0?Math.PI/4:Math.atan((squared-Math.sqrt(discriminant))/(gravity*distance));
 }
+
+/** Boomerangs turn in yaw while smoothly tracking height, avoiding a downward 180-degree loop into the floor. */
+export function returnVelocity(velocity:Vec,toward:Vec,maxRadians:number):Vec {
+ const speed=Math.min(60,len(velocity)),yaw=Math.atan2(velocity.x,velocity.z),targetYaw=Math.atan2(toward.x,toward.z),delta=Math.atan2(Math.sin(targetYaw-yaw),Math.cos(targetYaw-yaw)),nextYaw=yaw+clamp(delta,-maxRadians,maxRadians);
+ const pitch=Math.atan2(velocity.y,Math.hypot(velocity.x,velocity.z)),targetPitch=Math.atan2(toward.y,Math.hypot(toward.x,toward.z)),nextPitch=pitch+clamp(targetPitch-pitch,-maxRadians,maxRadians);
+ return v(Math.sin(nextYaw)*Math.cos(nextPitch)*speed,Math.sin(nextPitch)*speed,Math.cos(nextYaw)*Math.cos(nextPitch)*speed);
+}

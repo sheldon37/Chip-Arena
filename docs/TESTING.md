@@ -117,3 +117,7 @@ Create a room in one client and join in another. Use the guest to walk, jump, da
 ## Movement under latency and jitter
 
 Run `TEST_LATENCY_MS=100 TEST_JITTER_MS=40 npm run test:motion:network` for two real WebSocket clients and measured guest correction/visual jump/update gaps. Run `TEST_LATENCY_MS=100 TEST_JITTER_MS=40 npm run test:https` for the separate relay's moving-guest full match/rematch. `npm run dev` automatically uses the local dedicated server; create and join by code/invite without filling an address. The debug HUD reports raw correction, snapshot interval P95 and interpolation buffer. Judge moving/jumping/turning and debris contacts, not only whether a round completes. Test in two independent browser clients with the guest moving; a stationary guest is insufficient to certify smoothness.
+
+## Rarity and casting regression
+
+`npm test` includes `rarity-combat.test.ts`. Run `TEST_PORT=8793 node tests/run-network.mjs rarity` for a short two-client test covering custom draft counts, spell release, alternating daggers and persistent Pong replacement. Use Developer Sandbox → Preview Rarities to inspect all six styles, or Preview Draft to sample real weighted offers. The animation inspector provides Wind-up pose, Release pose and individual dagger hands.

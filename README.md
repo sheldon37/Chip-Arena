@@ -78,19 +78,35 @@ Designed for a desktop mouse and keyboard. Menus adapt to small displays, but to
 - Pistol, Rifle, Machine Gun; Fire, Water, Lightning, Darkness; Sword, Daggers, Shield, Greatsword.
 - Thirty working Chip definitions with compatibility filters, per-Chip stack caps, descriptions and numerical effects. No global equipment-slot limit.
 - Stationary dummy plus Easy, Normal and Hard bots, with no damage bonuses. Bots submit the same input structure as human clients.
-- One compact arena with durable foundations, elevation, breakable wall sections, loose crates, dense metal boxes and a supported stone beam.
+- One 64 × 56 m arena with durable foundations, elevation, breakable wall sections, loose crates, dense metal boxes and a supported stone beam.
 - Actual dynamic debris, support collapse, mass-conserving fracture, CCD and physical impact damage using pre-solver point velocities.
 - Private rooms, two ready states, synchronized choices, authoritative match state, 12-second disconnect forfeits, rematch votes and return to lobby.
 - Persistent local name/class/color/settings preferences.
 - Developer sandbox with specialization, Chip add/remove, dummy/bot changes, healing, reset, collider/support display, launcher and impact diagnostics.
 
+## Rarity and the 100-Chip catalog
+
+Drafts default to **six choices**, adjustable from **1–12** in match setup. Every choice rolls a weighted rarity and then a weapon-compatible Chip without replacement in the current draft. Initial tier weights are Common 42, Uncommon 28, Rare 17, Epic 8, Legendary 4, Mythic 1; unavailable tiers renormalize. Future drafts can offer additional copies up to the Chip cap.
+
+The six tiers use white, green, blue, purple, orange and red titles/borders. Epic and higher glow; Legendary emits six sparks, Mythic fourteen faster sparks. Processor-shaped selection cards include metal pins, recessed cores and rarity labels. The player board and installed HUD preserve rarity colors. A local sandbox can preview real drafts or all six tiers.
+
+See [the complete catalog](docs/CHIP-CATALOG.md) for all 100 effects, caps and combination rules. Highlights include Pong Shot, Return to Sender, Vacuum Impact, Meteor Foundry, Hurricane Edge, Dice Reactor, Supernova Guard and Repulsor Crown. New hooks cover recoil movement, critical hits, life drain, low-health execution, range/backstab bonuses, thorns, quiet healing, reload healing, last-round amplification, block recovery, dash pulses, wider sweeps, personal gravity and resource efficiency.
+
+Pong Shot is ranged-only: fixed 40% base projectile speed, one projectile per original shooter, unlimited full-damage contact/arena-edge bounces, no gravity. A new shot replaces the old one even after reflection. It overrides multishot/splits/homing/returning/weaving behavior; timed Block can still absorb it after three returns.
+
+## Casting and alternating daggers
+
+Mages keep their staff in the support hand. The free hand gathers energy above one shoulder, the torso coils, then the hand drives forward and settles. Fire, water, lightning and darkness have different wind-ups (0.16 / 0.12 / 0.065 / 0.22 seconds before attack-rate scaling). The authority releases the projectile at the extension pose; Block cancels a pending cast. Both first-person and world models use the same articulated rig and named customization sockets.
+
+Dagger primaries and echo sweeps alternate an authoritative hand index. Pose, torso twist, blade trail and swept attack direction alternate together. Sandbox animation inspection includes wind-up/release frames and individual left/right dagger strikes; these preview poses never change gameplay state.
+
 ## Timed Block
 
-Every specialization has the same right-click Block: **0.30 s active, 4.00 s cooldown measured from activation**. The cooldown is fixed and does not scale with weapon, fire rate, Overclock, mana, stamina or movement upgrades. Only explicit Block cooldown modifiers change it. Each press activates once; holding does not auto-repeat. A quick tap is latched for at least one input tick. Blocking cancels pending swing/burst attacks, prevents attacks during its active window, and leaves ordinary movement available. It has no ammo/mana/stamina cost. Existing secondary actions are on **E**.
+Every specialization has the same right-click Block: **0.30 s active, 4.00 s cooldown measured from activation**. The cooldown is fixed and does not scale with weapon, fire rate, Overclock, mana, stamina or movement upgrades. Only explicit Block cooldown modifiers change it. Each press activates once; holding does not auto-repeat. A quick tap is latched for at least one input tick. Blocking cancels pending swing/burst/spell attacks, prevents attacks during its active window, and leaves ordinary movement available. It has no ammo/mana/stamina cost. Existing secondary actions are on **E**.
 
 The short window protects from all directions. An incoming projectile reverses its pre-impact flight velocity, changes responsibility to the blocker, and can hit its original shooter. It retains original damage, gravity, remaining lifetime/travel, elemental payload and an unused native blast. Reflections do not borrow the blocker’s weapon effects, trigger direct-hit counters, split, home or generate Shrapnel. A projectile may reflect three times; the next successful Block absorbs it. Reflections cap at 100 direct damage and 120 m/s. Swept collision and cover remain authoritative.
 
-A correctly timed melee hit is fully negated, including knockback, burn/poison application and direct-hit triggers. The swing still records that contact, so it cannot retry every frame. Existing burns, poison, falling, debris impacts and area damage are not negated. Both players’ Block activation is processed before any attack resolution in that tick. There is no lag-compensated Block rewind; online timing follows host/server time.
+A correctly timed melee hit is fully negated, including knockback, burn/poison application and direct-hit triggers. The attacker is shoved away with damage-scaled recoil: `(180 + blocked damage × 8) × blockForce`, capped at 1,500 impulse before the attacker’s knockback resistance. Heavy attacks rebound farther. The swing still records that contact, so it cannot retry every frame. Existing burns, poison, falling, debris impacts and area damage are not negated. Both players’ Block activation is processed before any attack resolution in that tick. There is no lag-compensated Block rewind; online timing follows host/server time.
 
 | Block Chip | Per-copy effect | Cap |
 |---|---|---:|
@@ -99,7 +115,7 @@ A correctly timed melee hit is fully negated, including knockback, burn/poison a
 | Return Amplifier | Reflected damage ×1.15 and speed ×1.10 | 4 |
 | Counter Pulse | First success per activation: 3 m pulse, +6 base damage and +120 impulse, with distance falloff and cover | 4 |
 
-All four are offered to every class and stack explicitly. Counter Pulse affects opponents and loose props; it cannot apply DoTs or recursively trigger Chips. Even maximum duration/cooldown stacking leaves a vulnerability gap: 0.62 s active per 1.775 s cooldown. The HUD shows Block readiness, active state and recharge. Other players see rotating mint-colored rings; first person shows a defensive hand pose and an open diamond around the crosshair. The parry sound differentiates activation and successful impact by gain. Developer Sandbox includes **Test Block**, using ordinary input intentions.
+All four are offered to every class and stack explicitly. Counter Pulse affects opponents and loose props; it cannot apply DoTs or recursively trigger Chips. Across the expanded catalog, hard bounds preserve a vulnerability gap: at most 0.65 s active and at least 1.5 s cooldown. The HUD shows Block readiness, active state and recharge. Other players see rotating mint-colored rings; first person shows a defensive hand pose and an open diamond around the crosshair. The parry sound differentiates activation and successful impact by gain. Developer Sandbox includes **Test Block**, using ordinary input intentions.
 
 ## Room codes and browser hosting
 
@@ -201,7 +217,7 @@ For a two-client authoritative launcher test, start the server with `ALLOW_TEST_
 | `src/shared/blocking.ts` | Block duration/cooldown helpers; numerical tuning is centralized in config and Chip definitions |
 | `src/shared/host-room.ts` | Browser-hosted room rules, input/selection validation, rematch votes and disconnects |
 | `src/client/browser-room.ts` / `host-worker.ts` | HTTPS relay adapter, host simulation worker, timeout and cleanup |
-| `src/shared/content.ts` | All 11 weapons and 30 Chips; compatibility, stacking and stat effect handlers |
+| `src/shared/content.ts` | All 11 weapons and 100 Chips; compatibility, stacking and stat effect handlers |
 | `src/shared/arena.ts` | Authored collision blocks, spawn routes, supports and materials |
 | `src/shared/elements.ts` | Fire/poison duration, cadence, color, per-stack DPS and refresh handlers |
 | `src/shared/view.ts` | Shared eye/camera/muzzle offsets, camera collision and FOV |

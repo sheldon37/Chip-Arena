@@ -1,5 +1,6 @@
 import * as T from 'three';
-import {WEAPONS} from '../shared/content.js';
+import {spellPose} from './character-animation.js';
+import {WEAPONS,statsFor} from '../shared/content.js';
 import {ElementId} from '../shared/elements.js';
 import type {PlayerView} from '../shared/simulation.js';
 import type {CharacterRig} from './character-rig.js';
@@ -36,33 +37,40 @@ export function buildWeapon(weapon:T.Group,spec:string,offhand=false){
 }
 /** Modular equipment silhouettes communicate builds even before an attack fires. */
 export function weaponModifiers(weapon:T.Group,p:PlayerView,time:number){
- const key=JSON.stringify(p.chips);if(weapon.userData.modifierKey!==key){weapon.userData.modifierKey=key;weapon.getObjectByName('chip-modules')?.removeFromParent();const group=socket(weapon,'chip-modules',0,0,0),c=p.chips,w=WEAPONS[p.spec],tip=weapon.getObjectByName('muzzle')?.position.z??.8;
-  for(let n=0;n<(c.multishot||0);n++){const x=(n%2?1:-1)*(.18+Math.floor(n/2)*.14);if(w.class==='ranged'){box(group,0x647e89,x,0,tip-.23,.11,.13,.48);box(group,0xffd88d,x,0,tip+.015,.12,.14,.075,true);}else{const orb=mesh(group,sphere,w.color,x,.08,tip-.06,.085,.085,.085,true);orb.userData.orbit=n;}}
+ const key=JSON.stringify(p.chips);if(weapon.userData.modifierKey!==key){weapon.userData.modifierKey=key;weapon.getObjectByName('chip-modules')?.removeFromParent();const group=socket(weapon,'chip-modules',0,0,0),c={...p.chips},s=statsFor(c),w=WEAPONS[p.spec],tip=weapon.getObjectByName('muzzle')?.position.z??.8;
+  for(let n=0;n<Math.min(6,s.extraProjectiles);n++){const x=(n%2?1:-1)*(.18+Math.floor(n/2)*.14);if(w.class==='ranged'){box(group,0x647e89,x,0,tip-.23,.11,.13,.48);box(group,0xffd88d,x,0,tip+.015,.12,.14,.075,true);}else{const orb=mesh(group,sphere,w.color,x,.08,tip-.06,.085,.085,.085,true);orb.userData.orbit=n;}}
   for(let n=0;n<(c.ricochet||0);n++)mesh(group,ring,0xffcc49,0,0,tip-.08-n*.11,.17,.17,.17,true);
   for(let n=0;n<(c.velocity||0);n++)mesh(group,ring,0x79eaff,0,0,tip-.35-n*.09,.13,.13,.13,true);
-  if(c.homing)for(let side of [-1,1]){const fin=mesh(group,flame,0xf482d4,side*.19,0,tip-.15,.10,.25,.06,true);fin.rotation.z=side*-.9;}
-  if(c.splitter)for(let side of [-1,1]){const fork=box(group,0x96ffb7,side*.16,-.13,tip-.05,.06,.06,.30,true);fork.rotation.y=side*.3;}
-  if(c.piercing)box(group,0xffffff,0,.12,tip+.1,.035,.035,.35,true);
+  if(s.homing)for(let side of [-1,1]){const fin=mesh(group,flame,0xf482d4,side*.19,0,tip-.15,.10,.25,.06,true);fin.rotation.z=side*-.9;}
+  if(s.split)for(let side of [-1,1]){const fork=box(group,0x96ffb7,side*.16,-.13,tip-.05,.06,.06,.30,true);fork.rotation.y=side*.3;}
+  if(s.pierces)box(group,0xffffff,0,.12,tip+.1,.035,.035,.35,true);
   if(c.magazine)box(group,0xe3b779,0,-.30,.1,.15+Math.min(c.magazine,8)*.025,.26,.19);
+  if(s.pong)for(let n=0;n<3;n++){const halo=mesh(group,ring,0xff5269,0,0,tip-.10+n*.09,.27,.27,.27,true);halo.rotation.y=n*Math.PI/3;}
+  if(s.boomerang)for(const side of [-1,1]){const wing=box(group,0x7fffe0,side*.2,0,tip-.1,.08,.04,.4,true);wing.rotation.y=side*.6;}
+  if(s.vacuum){const halo=mesh(group,ring,0xbc72ff,0,0,tip,.3,.3,.3,true);halo.rotation.x=Math.PI/2;}
   const rate=(c['fire-rate']||c['cast-rate']||c['swing-rate']||0)+(c.overclock||0);if(rate){const gear=mesh(group,ring,0xffae64,0,0,.12,.21,.21,.21,true);gear.name='rate-coil';}
-  if(c.kinetic)for(let n=0;n<2;n++)box(group,0xffad68,(n?1:-1)*.12,.02,.35,.085,.085,.45,true);
+  if(s.impulse>1.3)for(let n=0;n<2;n++)box(group,0xffad68,(n?1:-1)*.12,.02,.35,.085,.085,.45,true);
   if(c.demolition)for(let n=0;n<3;n++)box(group,0xffd45f,(n-1)*.09,.12,.35,.045,.04,.20,true);
-  if(c.shrapnel)mesh(group,sphere,0xff855c,0,-.12,.35,.13,.13,.13,true);
-  if(c.static)for(let n=0;n<3;n++)box(group,0xc4a0ff,(n-1)*.08,-.12,.08,.04,.12,.04,true);
-  if(c.reach){const length=p.spec==='daggers'?.5:p.spec==='greatsword'?1.35:.94;box(group,0x92f5e5,.12,0,.26+length/2,.025,.06,length,true);}
-  if(c['echo-strike'])for(let side of [-1,1])box(group,0xc1a1ff,side*.16,0,.6,.025,.04,.6,true);
+  if(s.shrapnel)mesh(group,sphere,0xff855c,0,-.12,.35,.13,.13,.13,true);
+  if(s.staticEvery)for(let n=0;n<3;n++)box(group,0xc4a0ff,(n-1)*.08,-.12,.08,.04,.12,.04,true);
+  if(s.reach>1){const length=p.spec==='daggers'?.5:p.spec==='greatsword'?1.35:.94;box(group,0x92f5e5,.12,0,.26+length/2,.025,.06,length,true);}
+  if(s.extraStrikes)for(let side of [-1,1])box(group,0xc1a1ff,side*.16,0,.6,.025,.04,.6,true);
  }
  const flash=weapon.getObjectByName('muzzle-flash');if(flash){const age=time-(p.lastShot??-10);flash.visible=age>=0&&age<.075;flash.scale.x=flash.scale.z=p.spec==='rifle'?.16:.10;}
  const group=weapon.getObjectByName('chip-modules');if(group){const gear=group.getObjectByName('rate-coil');if(gear)gear.rotation.z=time*8;for(const child of group.children)if(child.userData.orbit!==undefined){const a=time*2+child.userData.orbit*2.1;child.position.y=Math.sin(a)*.15;}}
 }
 export function bodyModifiers(r:CharacterRig,p:PlayerView,time:number){
- const c=p.chips,key=JSON.stringify(c);if(r.group.userData.bodyChips!==key){r.group.userData.bodyChips=key;for(const parent of [r.chest,r.leftFoot,r.rightFoot,r.leftArm,r.rightArm])parent.getObjectByName('body-chips')?.removeFromParent();
+ let charge=r.rightHand.getObjectByName('spell-charge') as T.Group|undefined;
+ if(charge?.userData.spec!==p.spec){charge?.removeFromParent();charge=socket(r.rightHand,'spell-charge',0,-.09,.02);charge.userData.spec=p.spec;mesh(charge,sphere,WEAPONS[p.spec].color,0,0,0,.14,.14,.14,true);for(let n=0;n<2;n++){const halo=mesh(charge,ring,WEAPONS[p.spec].color,0,0,0,.22,.22,.22,true);halo.rotation.x=n*Math.PI/2;}}
+ const phrase=spellPose(p,time);charge.visible=p.hp>0&&phrase.active;charge.scale.setScalar(Math.max(.01,phrase.weight*(phrase.drive<.2?1+phrase.coil:.8)));charge.rotation.y=time*8;
+
+ const c=p.chips,s=statsFor(c),key=JSON.stringify(c);if(r.group.userData.bodyChips!==key){r.group.userData.bodyChips=key;for(const parent of [r.chest,r.leftFoot,r.rightFoot,r.leftArm,r.rightArm])parent.getObjectByName('body-chips')?.removeFromParent();
   const chest=socket(r.chest,'body-chips',0,0,0);for(let n=0;n<Math.min(6,c.vital||0);n++)box(chest,0xff7478,(n%3-1)*.12,.12+Math.floor(n/3)*.1,.18,.085,.06,.045,true);
-  if(c.frame){box(chest,0x718899,0,.1,.19,.59,.25,.09);for(const arm of [r.leftArm,r.rightArm])box(socket(arm,'body-chips',0,0,0),0x718899,0,-.065,0,.26,.16,.26);}
-  for(let n=0;n<Math.min(6,c.mana||0);n++){const orb=mesh(chest,sphere,0xad8cff,0,.2,-.28,.065,.065,.065,true);orb.userData.orbit=n;}
-  if(c.stamina)for(const side of [-1,1])for(let n=0;n<Math.min(5,c.stamina);n++)box(chest,0x8bffb6,side*.25,.02+n*.05,.18,.035,.025,.025,true);
-  for(const foot of [r.leftFoot,r.rightFoot]){const g=socket(foot,'body-chips',0,0,0);if(c.stabilizer||c.salvage)box(g,c.salvage?0xdab078:0x7e97ab,0,.06,0,.26,.13,.28);if(c.dash){const jet=mesh(g,flame,0x63e5ff,0,0,-.17,.075,.30,.075,true);jet.rotation.x=-Math.PI/2;jet.name='dash-jet';}}
-  if(c['block-recharge']||c['block-window']||c['block-return']||c['block-pulse'])for(let n=0;n<3;n++)box(chest,0x78f7e7,(n-1)*.12,.27,.17,.075,.04,.045,true);
+  if(c.frame||c.fortress||c.juggernaut||c.thorns){box(chest,0x718899,0,.1,.19,.59,.25,.09);for(const arm of [r.leftArm,r.rightArm])box(socket(arm,'body-chips',0,0,0),0x718899,0,-.065,0,.26,.16,.26);}
+  for(let n=0;n<Math.min(6,Math.ceil((s.maxMana-100)/25));n++){const orb=mesh(chest,sphere,0xad8cff,0,.2,-.28,.065,.065,.065,true);orb.userData.orbit=n;}
+  if(s.maxStamina>100)for(const side of [-1,1])for(let n=0;n<Math.min(5,Math.ceil((s.maxStamina-100)/25));n++)box(chest,0x8bffb6,side*.25,.02+n*.05,.18,.035,.025,.025,true);
+  for(const foot of [r.leftFoot,r.rightFoot]){const g=socket(foot,'body-chips',0,0,0);if(s.knockbackTaken<1||s.debrisTaken<1)box(g,c.salvage?0xdab078:0x7e97ab,0,.06,0,.26,.13,.28);if(s.dashCooldown<1){const jet=mesh(g,flame,0x63e5ff,0,0,-.17,.075,.30,.075,true);jet.rotation.x=-Math.PI/2;jet.name='dash-jet';}}
+  if(s.blockForce>1||s.blockHeal||s.blockAmmo||s.blockCooldown!==1||s.blockWindow||s.reflectDamage>1||s.blockPulseDamage)for(let n=0;n<3;n++)box(chest,0x78f7e7,(n-1)*.12,.27,.17,.075,.04,.045,true);
  }
  const nodes=r.chest.getObjectByName('body-chips');nodes?.children.forEach(o=>{if(o.userData.orbit!==undefined){const a=time*1.5+o.userData.orbit*Math.PI/3;o.position.set(Math.cos(a)*.40,.26+Math.sin(a*2)*.10,Math.sin(a)*.36);}});
  for(const foot of [r.leftFoot,r.rightFoot]){const jet=foot.getObjectByName('dash-jet');if(jet){jet.visible=(p.dashTime||0)>0;jet.scale.y=(p.dashTime||0)>0?.5:.1;}}

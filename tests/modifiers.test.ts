@@ -40,7 +40,7 @@ test('machine-gun secondary spends six ammo and schedules exactly six authoritat
 });
 test('parallel shots share one volley cost and proc identity, deal real hits, and obey the budget',()=>{
  for(const spec of ['pistol','fire'] as SpecId[]){const {s,a,b}=arena(spec,{multishot:2});b.body.setTranslation(v(-1.5,1,-7),true);s.world.step();
-  const ammo=a.ammo,mana=a.mana;s.primary(a);assert.equal(s.projectiles.size,3);
+  const ammo=a.ammo,mana=a.mana;s.primary(a);if(a.cast){s.time=a.cast.at;s.updatePlayer(a,0);}assert.equal(s.projectiles.size,3);
   assert.equal(a.ammo,ammo-(WEAPONS[spec].ammo?1:0));assert.equal(a.mana,mana-WEAPONS[spec].cost);
   assert.equal(new Set([...s.projectiles.values()].map(p=>p.attackId)).size,1);
   for(const p of s.projectiles.values())near(p.damage,WEAPONS[spec].damage*.75);

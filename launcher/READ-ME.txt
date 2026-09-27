@@ -29,7 +29,7 @@ rooms are not automatically redirected to your laptop.
 CONTROLS
 WASD move | Mouse aim | Left click attack | Right click timed block
 Space jump | Shift dash | R reload | E specialization secondary
-V first/third person | Tab player/chip board | M mute | Escape menu
+V first/third person | Q rifle scope | Tab player/chip board | M mute | Escape menu
 
 TROUBLESHOOTING
 Port in use: close your previous launcher. Changing launcher/start.mjs is
@@ -41,3 +41,10 @@ background service is created. Match state ends when the server stops.
 Included runtime: Node.js 24.21.0, official Windows x64 release.
 Runtime license: runtime/NODE-LICENSE.txt
 Editable game source and technical notes: chip-arena-source.zip
+
+THIS UPDATE
+100 weapon-compatible Chips in six rarity tiers. Draft six by default, or
+choose 1-12 in match setup. Try Pong Shot, Hurricane Edge, Meteor Foundry,
+Return to Sender and Repulsor Crown. Blocking melee knocks the attacker back;
+heavier blows rebound farther. Mages gather then release from one hand, and
+daggers alternate left/right. Sandbox includes rarity and animation previews.

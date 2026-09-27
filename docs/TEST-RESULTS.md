@@ -1,3 +1,18 @@
+# Rarity, casting, dagger and block update — 2026-09-27
+
+- `npm test`: **144 passed, 0 failed**. Includes weighted rarity distribution, 1–12 draft counts, exhausted pools, host ownership, six-tier UI metadata, Pong replacement/reflection/bounce persistence, physical return-shot catches and cover, health-drain/thorns limits, block recoil scaling, recovery/refund deduplication, mage release/cancellation, and dagger/echo alternation.
+- `TEST_PORT=8793 node tests/run-network.mjs rarity`: **passed**, two real WebSocket clients, **113 identical shared snapshots**, custom 9-choice draft and installation, pending mage casts, dagger hand sequence, and repeated Pong replacement with one live projectile at 20.8 m/s.
+- `TEST_SPEC=rifle TEST_LATENCY_MS=75 npm run test:network:local`: **passed**; 10 rounds / 5 sets / 4 drafts, rematch and disconnect forfeit; **2,342 identical snapshots**, 120.08 seconds for match/rematch. Simulation tick median 0.128 ms, P95 0.504 ms, max 2.876 ms. This is a controlled local server test with delay each direction.
+- `npm run test:stress`: **15 all-Chip combat/destruction cases completed**, 19,531 simulation steps in the initial expanded-pool run. This checks bounded combinations, not competitive balance.
+- Browser: default six and 1–12 choices visible in setup; six-tier draft preview rendered with 6 Legendary / 14 Mythic particles; selecting Vital Core installed it and restored 125 HP. Mage shoulder gather/release and separate right/left dagger poses inspected. Draft UI now hides overlapping HUD/sandbox controls.
+- Visual screenshots use the available SVG compatibility renderer because cloud Chrome has no WebGL. Desktop GPU quality/performance and native Windows batch execution have not been measured here.
+
+See [CHIP-CATALOG.md](CHIP-CATALOG.md) for the complete catalog and hard combination bounds. Public hosting retains the existing HTTPS relay; a dedicated portable server is included in the Windows ZIP.
+
+Earlier sections below are historical results.
+
+---
+
 # Portable server, animation and knockout presentation — 2026-09-27
 
 Executed with Node.js 24.19.0 on Linux, Rapier 0.19.3, Three.js 0.180.0; one room/two clients. Windows runtime in the release is official Node.js 24.21.0 x64, checksum verified.
