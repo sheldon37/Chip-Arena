@@ -1,5 +1,17 @@
 # Executed test results — 2026-09-26
 
+## First-person, audio, fire and poison update verification
+
+- **66 automated tests passed**, 0 failed. Sixteen new cases cover validated camera-mode input, reconstructed camera/muzzle positions, actual shots and blocking cover in both views, fire/poison compatibility and stacking, exact duration and tick cadence, real attacks from all three guns and all four melee specializations, nonrecursive secondary effects, kill credit, reset/restore, audio deduplication, and PCM asset integrity.
+- Found and fixed the previous burn-refresh behavior: rapid hits reset the next tick and could postpone all burn damage. Both statuses now refresh duration while preserving cadence and process the final due tick before expiry.
+- Input-driven Pistol-versus-Normal-Sword bot match completed **5–3** in **31.5 simulated seconds**; rematch/reset passed. Fifteen all-Chip stress cases completed **385 steps** with all 26 Chips.
+- Two independent local WebSocket clients, one sending first-person aim intentions and one third-person, completed match/rematch in **47.609 s** under **100 ms delay in each direction**. They agreed exactly at **890 shared snapshot ticks**, both observed destruction, and the disconnect forfeit passed. Sampled server tick median **0.088 ms**, P95 **0.563 ms**, maximum **12.902 ms**. Browser/build/stress work overlapped this run; it is not an isolated capacity benchmark.
+- A dedicated two-client elemental test passed. One first-person Pistol hit applied **3 burn DPS / 2 s** plus **2.5 poison DPS / 4 s**. Both received identical authoritative statuses and health: **77 immediately after the direct hit**, then **72.875** after the sampled DoT ticks. Reset cleared both statuses and restored health. A non-owner Chip grant was rejected.
+- Browser QA: saved first-person preference survived a preview reload; V switched both ways; the gun/hands and enchanted Sword rendered; both Chip installation indicators appeared; M mute/unmute worked; the sound test reported **30/30 loaded effects**. A real input-driven Pistol hit visibly applied Burning and Poisoned with separate countdown/DPS badges; combat increased the audio playback counter. Sound decoding and playback scheduling were verified; subjective listening quality was not certified.
+- The 30 original mono PCM WAVs total **437,926 bytes**. Automated checks confirm distinct sample content, non-silent RMS, 22,050 Hz / 16-bit headers, and peaks below 0.73 full scale.
+- Browser and server TypeScript/production builds passed. Browser QA still used the SVG 3D compatibility renderer because WebGL is disabled. The first-person idle sandbox displayed roughly **50–60 FPS**, while a captured attack showed **42 FPS** at 1363 × 936; these are short HUD observations, not a GPU performance benchmark. Hardware WebGL/trail appearance still needs human playtesting. Screenshot: `first-person-enchantments-compatibility.jpg`.
+- Public hosting remains account-free local practice. The persistent public multiplayer backend remains undeployed; all network results above used local Node servers.
+
 ## Projectile-drop update verification
 
 - **50 automated tests passed**, 0 failed, including seven new ballistic checks. Every gun and spell hit the floor before expiry; one Velocity Coil extended the controlled flat-shot landing distance by approximately 25%. At the same 10 m horizontal distance, the upgraded Pistol had exactly 36% less gravitational drop within numerical tolerance.

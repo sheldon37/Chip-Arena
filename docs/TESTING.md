@@ -41,7 +41,7 @@ This explicitly creates a private test room, rejects the non-owner's debug comma
 5. Break both supports beneath the gray beam. It should fall or tip as its remaining fragment contacts give way.
 6. Compare launcher mass, speed, direction and gravity cases; restore between each trial. Check resting debris for at least 10 seconds.
 7. Create a room, join from a second browser, ready both, and confirm matching health/scores and matching wall/prop IDs. Close one client and verify the 12-second forfeit.
-8. Verify round resets remove bullets, burns, old chunks, cooldowns and lost health.
+8. Verify round resets remove bullets, burns, poison, old chunks, cooldowns and lost health.
 9. Add latency using the network harness. Moving-obstacle prediction and lack of lag compensation are documented limitations.
 
 Development builds include **Run Input Test** in the match menu to drive the local pilot with ordinary movement/attack intentions. It is not present in production menus. It never supplies trusted damage or body positions.
@@ -66,3 +66,23 @@ In Developer Sandbox, switch weapon and confirm the Chip picker changes: guns of
 Use Developer Sandbox with a dummy. Aim level across an open lane, fire, then install Velocity Coil and repeat from the same position and aim. The upgraded projectile should land farther away. Aim higher to lob shots; compare guns and the slower Fire/Darkness spells. Ricochets and split shots should also fall. Repeat a shot with intact cover between the shooter and target; split shots must not ignore the cover they struck.
 
 `tests/projectile-drop.test.ts` measures every gun/spell on a level test floor, compares speed upgrades at the same range, checks fast descending player hits, falling ricochets, intact-cover collision, nonrecursive split gravity, and bounded homing/bot aiming. Floor-contact assertions allow 2 cm for shape-cast tolerance; the no-contact integration assertion uses a strict numerical tolerance.
+
+## First-person, enchantments and sound
+
+1. Settings → Camera view → First person → Save. Enter Sandbox. Press V twice and verify the view switches without changing health, ammo or installed Chips. Reopening the game should retain the chosen view. Fire against cover in both modes; neither camera may bypass it.
+2. Install Ember Circuit and Venom Circuit on Pistol. Shoot the dummy once and stop: the hit applies both statuses, then damage continues over time. Fire is 3 DPS for 2 s; poison is 2.5 DPS for 4 s per installation. Install twice to compare additive DPS. Rapid repeat hits refresh the timers without postponing ticks.
+3. Switch to a melee weapon: the blade (or Shield edge) shows orange flames and green enchantment. Strike the dummy and check both status badges. Restore/reset must clear them. Compare with both Chips removed.
+4. Observe bright projectile cores, colored enchantment particles and short trails. Compare Projectile trails on/off in Settings and full/reduced Effects. Gravity and collision remain the same.
+5. Settings → Test Sound should report 30/30 effects loaded after the click. Test volume and M mute/unmute. Check actual gunshot, melee, elemental hit, reload, destruction and countdown cues in combat. Audio should not replay every time a snapshot repeats.
+
+`tests/view-elements-audio.test.ts` checks both camera modes and muzzle cover, damage/status application from all guns and melee weapons, exact DoT duration and cadence, refresh/stacking, nonrecursive metadata, kill attribution, resets, event deduplication and all 30 WAV files (headers, audible PCM, distinct samples, peak headroom).
+
+Self-contained network runners launch and stop their own backend:
+
+```sh
+TEST_LATENCY_MS=100 npm run test:network:local
+npm run test:elements:network
+npm run test:debris
+```
+
+The full-match runner uses first person for the attacking pilot and third person for its opponent. The elemental runner creates an authorized private test room, installs both Chips through the owner's debug permissions, fires using normal input, and compares both clients' statuses/health at identical ticks. Non-owner debug grants must be rejected. Use `TEST_PORT` to override port 8792 when another runner is active.

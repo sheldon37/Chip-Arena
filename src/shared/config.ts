@@ -36,6 +36,6 @@ export const norm=(a:Vec)=>mul(a,1/(len(a)||1));
 export const cross=(a:Vec,b:Vec)=>v(a.y*b.z-a.z*b.y,a.z*b.x-a.x*b.z,a.x*b.y-a.y*b.x);
 export const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
 export const forward=(yaw:number,pitch=0):Vec=>v(Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch));
-export interface Input {seq:number; x:number;z:number;yaw:number;pitch:number;attack:boolean;secondary:boolean;jump:boolean;dash:boolean;reload:boolean;}
+export interface Input {camera?:'first'|'third';seq:number; x:number;z:number;yaw:number;pitch:number;attack:boolean;secondary:boolean;jump:boolean;dash:boolean;reload:boolean;}
 export const idleInput=():Input=>({seq:0,x:0,z:0,yaw:0,pitch:0,attack:false,secondary:false,jump:false,dash:false,reload:false});
 export type Difficulty='dummy'|'easy'|'normal'|'hard';

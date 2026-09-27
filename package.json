@@ -13,7 +13,9 @@
     "test:network": "node --import tsx tests/network.ts",
     "test:network:local": "node tests/run-network.mjs",
     "test:debris": "node tests/run-network.mjs debris",
-    "test:stress": "node --import tsx tests/stress.ts"
+    "test:stress": "node --import tsx tests/stress.ts",
+    "audio:generate": "node scripts/generate-audio.mjs",
+    "test:elements:network": "node tests/run-network.mjs elements"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.19.3",
