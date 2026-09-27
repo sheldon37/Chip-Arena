@@ -9,7 +9,7 @@ Windows 10/11 x64. The game application is not signed with a publisher certifica
 PLAY
 Play locally: opens the bundled game. Choose Play vs Bot, or create a LAN room.
 Host online: starts the authoritative server and public tunnel for you. Once the
-connection is registered, the game opens. Choose Create Room, wait for friends,
+connection is reachable, the game opens. Choose Create Room, wait for friends,
 then all players press Ready. A room accepts 2-8 players.
 Join invite: paste the host's complete server or room URL. Choose Join Room and
 enter the room code if the invite does not already contain it.
@@ -54,3 +54,9 @@ Built on Linux; Windows x64 binary/archive structure and runtime checksums check
 Eight-client WebSocket and HTTPS relay integration tests cover connections,
 shared snapshots, input acknowledgements, rejection of a ninth client, chip draft
 turns and disconnects. Actual Windows startup and GPU FPS need local verification.
+
+CONNECTION RETRY UPDATE (0.3.1)
+New tunnel addresses are checked before opening. Temporary DNS or gateway errors
+retry automatically for up to two minutes. A failed connection keeps your hosted
+server running. Use Retry connection for the same address; use Stop server only
+when you want to end hosting. This does not change Windows DNS settings.
