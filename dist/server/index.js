@@ -1,3 +1,20 @@
+// src/shared/connection.ts
+function socketEndpoint(value, origin) {
+  if (typeof value !== "string" || !value) return null;
+  try {
+    const base = new URL(origin), url = new URL(value, origin);
+    if (url.username || url.password) return null;
+    if (value.startsWith("/")) url.protocol = base.protocol === "https:" ? "wss:" : "ws:";
+    if (!["ws:", "wss:"].includes(url.protocol) || base.protocol === "https:" && url.protocol !== "wss:") return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+// src/shared/network-config.ts
+var NETWORK = { maxPendingInputs: 180, maxInputBatch: 60, inputQueueLimit: 90, correctionDecay: 18, hardSnapDistance: 2.5, interpolationMinMs: 75, interpolationMaxMs: 350, extrapolationMaxMs: 80 };
+
 // src/shared/relay-protocol.ts
 var RELAY = { protocol: "chip-arena-https-v1", intervalMs: 50, inputHoldSeconds: 0.75, timeoutMs: 12e3, requestTimeoutMs: 4e3, maxEvents: 48, maxHostBytes: 384e3, maxGuestBytes: 24e3, ttlMs: 72e5 };
 function normalizeRoomCode(value) {
@@ -22,8 +39,11 @@ function validPacket(p, host) {
       const s = p.latest;
       if (s?.type !== "snapshot" || !s.state || !Number.isFinite(s.state.tick) || !Array.isArray(s.state.players) || s.state.players.length > 2 || !Array.isArray(s.state.props) || s.state.props.length > 300) return false;
     } else {
-      const i = p.latest?.input;
-      if (p.latest?.type !== "input" || !i || !["seq", "x", "z", "yaw", "pitch"].every((k) => typeof i[k] === "number" && Number.isFinite(i[k])) || !Number.isSafeInteger(i.seq) || i.seq < 0 || JSON.stringify(i).length > 2e3) return false;
+      const latest = p.latest;
+      const inputs = latest?.type === "inputs" ? latest.inputs : latest?.type === "input" ? [latest.input] : null;
+      if (!Array.isArray(inputs) || !inputs.length || inputs.length > NETWORK.maxInputBatch) return false;
+      if (latest.type === "inputs" && (typeof latest.epoch !== "string" || !/^\d+:\d+:\d+$/.test(latest.epoch))) return false;
+      if (inputs.some((i, n) => !i || !["seq", "x", "z", "yaw", "pitch"].every((k) => typeof i[k] === "number" && Number.isFinite(i[k])) || !Number.isSafeInteger(i.seq) || i.seq < 0 || JSON.stringify(i).length > 2e3 || n > 0 && i.seq <= inputs[n - 1].seq)) return false;
     }
   }
   return true;
@@ -121,6 +141,10 @@ async function relay(request, env, now = Date.now()) {
   return exchange(db, input, code, key, host, now);
 }
 var worker_default = { async fetch(request, env) {
+  if (new URL(request.url).pathname === "/api/network") {
+    const endpoint = socketEndpoint(env.MULTIPLAYER_URL, new URL(request.url).origin);
+    return json({ transport: endpoint ? "websocket" : "https-relay", endpoint });
+  }
   if (new URL(request.url).pathname.startsWith("/api/rooms/")) {
     try {
       return await relay(request, env);

@@ -18,7 +18,8 @@
     "test:elements:network": "node tests/run-network.mjs elements",
     "test:block:network": "node tests/run-network.mjs block",
     "db:generate": "drizzle-kit generate",
-    "test:https": "node --import tsx tests/https-network.ts"
+    "test:https": "node --import tsx tests/https-network.ts",
+    "test:motion:network": "node tests/run-network.mjs motion"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.19.3",

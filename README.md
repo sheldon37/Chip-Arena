@@ -15,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-Open `http://localhost:4173`. The development command starts the browser client and multiplayer server together. Open two independent browser windows, create a room in one, and join its code in the other. Default rooms use browser hosting. To exercise the dedicated server, enable Settings → Advanced connection settings → Use a dedicated server, with `ws://localhost:4173/socket`. The development proxy forwards that path.
+Open `http://localhost:4173`. The development command starts the browser client and multiplayer server together. Open two independent browser windows, create a room in one, and join its code in the other. Default development rooms automatically use the persistent authoritative WebSocket server. No endpoint entry or settings change is needed. The development proxy forwards `/api/network` and `/socket`.
 
 To run the components separately:
 
@@ -34,7 +34,7 @@ npm run server:build
 npm start
 ```
 
-Open `http://localhost:8788`, with server URL `ws://localhost:8788/socket`.
+Open `http://localhost:8788`. Create/Join automatically use the same-origin WebSocket server.
 
 `npm start` serves `dist/client`, a local SQLite-backed room relay, and the persistent authoritative WebSocket endpoint from one process. No accounts, secrets or paid services are needed for local development; SQLite room storage initializes from the included migrations. The example `.env.example` documents server and client settings. Copy it to `.env` and use `node --env-file=.env server-dist/server/index.js` if you want Node to load that file explicitly.
 
@@ -104,9 +104,9 @@ The creator’s worker runs shared Rapier physics at 60 Hz and produces snapshot
 
 This is **trusted-host authority**, not an independent anti-cheat server: a modified host can cheat. A closed host closes the room; host migration/reconnection are not implemented. A disconnected guest forfeits after 12 simulation seconds. A stalled host closes the guest’s UI session after 12 seconds without snapshots rather than inventing a new authoritative match result. Host hardware, background throttling and network conditions affect the match.
 
-The website relays gameplay over normal HTTPS. No PeerJS, STUN, TURN, webcam or microphone permission is required. Room registration and atomic guest joining use a separate Chip Arena D1 database. Each seat has a random token kept in memory; the service stores its hash. The guest cannot publish authoritative snapshots or issue debug mutations. Selection messages use IDs/acknowledgements; retries do not apply them twice. Movement is coalesced while preserving brief action taps. Only one request is in flight per client, with bounded queues, bodies and payload sizes. Brief outages retry automatically; a prolonged outage closes the session clearly. Authenticated exchanges now validate and update a seat in one database batch. Browser-hosted input intentions hold for up to 0.75 seconds before stopping, so ordinary relay jitter does not repeatedly cancel movement. The dedicated server keeps its 0.3-second stale-input cutoff. Guest collision capsules update every prediction/replay step; locomotion and external velocity are restored separately during reconciliation.
+The website relays gameplay over normal HTTPS. No PeerJS, STUN, TURN, webcam or microphone permission is required. Room registration and atomic guest joining use a separate Chip Arena D1 database. Each seat has a random token kept in memory; the service stores its hash. The guest cannot publish authoritative snapshots or issue debug mutations. Selection messages use IDs/acknowledgements; retries do not apply them twice. New clients retain ordered per-tick input batches until the authoritative input acknowledgement. The authority consumes at most one queued input per simulation tick; duplicate batches and old round generations cannot replay actions. Snapshots still coalesce to the newest state. Only one request is in flight per client, with bounded queues, bodies and payload sizes. Brief outages retry automatically; a prolonged outage closes the session clearly. Authenticated exchanges now validate and update a seat in one database batch. Browser-hosted input intentions hold for up to 0.75 seconds before stopping, so ordinary relay jitter does not repeatedly cancel movement. The dedicated server keeps its 0.3-second stale-input cutoff. Guest prediction uses the same dynamic capsule, material friction/restitution and shared locomotion functions as the authority. Locomotion and external velocity remain separate; small corrections ease visually while physics updates immediately.
 
-A guest who leaves cannot be replaced within the same HTTPS room; create a fresh room for another guest. Room lifetime is two hours. HTTPS polling improves connection reliability but has more latency than WebSockets. The dedicated server path remains in Advanced settings for independently authoritative deployments. All relay settings live in `src/shared/relay-protocol.ts`.
+A guest who leaves cannot be replaced within the same HTTPS room; create a fresh room for another guest. Room lifetime is two hours. HTTPS polling improves connection reliability but has more latency than WebSockets. `/api/network` automatically selects an available dedicated backend. On Sites, set `MULTIPLAYER_URL` to a deployed secure WebSocket endpoint to activate it for every player without address entry; until then, the public Site uses this relay. The room creator remains room owner. Relay settings live in `src/shared/relay-protocol.ts`; replay/smoothing/buffering settings live in `src/shared/network-config.ts`.
 
 ## Weapon resources and modifiers
 
@@ -205,7 +205,8 @@ For a two-client authoritative launcher test, start the server with `ALLOW_TEST_
 | `src/shared/impact.ts` | Point velocity, normal closing speed, energy/damage formula, impact deduplication and fragment budget |
 | `src/shared/simulation.ts` | Authoritative movement, attacks, statuses, projectiles, bots, destruction, round/set progression |
 | `src/server/index.ts` | Private room protocol, input validation, message limits, fixed-step loop and debug authorization |
-| `src/client/prediction.ts` | Collision-aware movement prediction, pending input replay and reconciliation |
+| `src/client/prediction.ts` / `src/shared/movement.ts` | Shared dynamic movement, per-tick replay and render-only reconciliation smoothing |
+| `src/client/snapshots.ts` / `src/shared/network-config.ts` | Adaptive remote interpolation and tunable network budgets |
 | `src/client/renderer.ts` | Three.js voxel rigs, sockets, weapon animation, camera collision, effects and rendering |
 | `src/client/main.ts` / `style.css` | UI, controls, network client, interpolation, audio and preferences |
 
@@ -221,7 +222,7 @@ Energy is `0.5 * finiteMass * normalClosingSpeed^2`, with minimum speed 3.6 m/s,
 
 Secondary projectiles, burns, poison, blasts and electrical discharges cannot recursively fire direct-hit effects. Splitter is bounded; a projectile volley or complete melee combo only procs Shrapnel once. Burn refreshes for two seconds and poison for four seconds per source, preserving their tick cadence without stacking duration.
 
-No rewind / lag compensation is implemented. Online hits use present server state. Client prediction uses a cheaper kinematic collision model, so interactions with moving debris, ramps and knockback can need correction. This is a prototype limitation, not lockstep or deterministic client physics. Remote players, projectiles and debris interpolate over about 100 ms.
+No rewind / lag compensation is implemented. Online hits use present server state. Client prediction shares dynamic-capsule locomotion with the authority. It freezes prop collision geometry at the latest snapshot, so independently moving debris/opponent contacts and unpredicted combat impulses still need corrections; damage stays authoritative. Remote transforms use server-time interpolation with an adaptive 75–350 ms buffer and at most 80 ms of visual extrapolation. Small local corrections decay at 18/s; errors at least 2.5 m, round resets and deaths snap immediately. No lockstep or full-world deterministic rollback is claimed.
 
 ## Test and deployment guides
 

@@ -11,8 +11,9 @@ export class HostedRoom {
  constructor(readonly code:string,host:PilotProfile,bothDraft:boolean,private emit:(target:string|'all',message:any)=>void){this.sim=new Simulation({bothDraft,sandbox:false,inputHoldSeconds:RELAY.inputHoldSeconds});const p=profile(host);this.sim.addPlayer('host',p.name,p.class,null,p.color);}
  welcome(id:string){this.emit(id,{type:'welcome',id,owner:'host',code:this.code,transport:'https-relay'});this.broadcast();}
  join(raw:any){if(this.sim.players.has('guest')||this.sim.phase!=='lobby')return false;const p=profile(raw);this.sim.addPlayer('guest',p.name,p.class,null,p.color);this.welcome('guest');return true;}
- receive(id:string,raw:unknown,now=performance.now()){if(!this.sim.players.has(id))return false;let msg:any;try{if(typeof raw==='string'){if(raw.length>4096)return false;msg=JSON.parse(raw);}else {if(JSON.stringify(raw).length>4096)return false;msg=raw;}}catch{return false;}if(!msg||typeof msg.type!=='string')return false;
+ receive(id:string,raw:unknown,now=performance.now()){if(!this.sim.players.has(id))return false;let msg:any;try{if(typeof raw==='string'){if(raw.length>24000)return false;msg=JSON.parse(raw);}else {if(JSON.stringify(raw).length>24000)return false;msg=raw;}}catch{return false;}if(!msg||typeof msg.type!=='string')return false;
  let rate=this.rates.get(id);if(!rate||now-rate.at>=1000){rate={at:now,count:0};this.rates.set(id,rate);}if(++rate.count>CONFIG.maxInputRate+20)return false;
+ if(msg.type==='inputs')return this.sim.queueInputs(id,msg.inputs,msg.epoch);
  if(msg.type==='input'){const i=sanitizeInput(msg.input);return !!i&&this.sim.setInput(id,i);}
  if(msg.type==='ping'){this.emit(id,{type:'pong',at:Number.isFinite(msg.at)?msg.at:0});return true;}
  if(msg.type==='ready')return this.sim.setReady(id,msg.ready===true);

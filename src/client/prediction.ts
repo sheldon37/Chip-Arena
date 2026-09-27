@@ -1,18 +1,37 @@
 import {RAPIER,Snapshot,PlayerView} from '../shared/simulation.js';
-import {Vec,Input,CONFIG as C,v,forward,add,mul,len,norm,clamp} from '../shared/config.js';
+import {Vec,Input,CONFIG as C,MATERIALS,v,add,sub,mul,len} from '../shared/config.js';
 import {statsFor} from '../shared/content.js';
-// A collision-aware local predictor. Only the server decides hits and damage.
-export class Predictor{
- world=new RAPIER.World(v(0,C.gravity,0));body:RAPIER.RigidBody;collider:RAPIER.Collider;controller:RAPIER.KinematicCharacterController;props=new Map<string,RAPIER.RigidBody>();pending:{input:Input;dt:number}[]=[];pos=v();velocity=v();move=v();external=v();dashTime=0;dash=0;error=0;phase='';initialized=false;
- constructor(){this.body=this.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased());this.collider=this.world.createCollider(RAPIER.ColliderDesc.capsule(C.playerHalfHeight,C.playerRadius),this.body);this.controller=this.world.createCharacterController(.025);this.controller.enableAutostep(.24,.2,false);this.controller.enableSnapToGround(.14);}
- reconcile(s:Snapshot,me:PlayerView){const ids=new Set(s.props.map(p=>p.id));for(const[id,b]of this.props)if(!ids.has(id)){this.world.removeRigidBody(b);this.props.delete(id);}for(const p of s.props){let b=this.props.get(p.id);if(!b){b=this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed());this.world.createCollider(RAPIER.ColliderDesc.cuboid(p.size.x/2,p.size.y/2,p.size.z/2),b);this.props.set(p.id,b);}b.setTranslation(p.pos,false);b.setRotation(p.rot,false);}const old=this.pos;this.pos={...me.pos};this.velocity={...me.vel};this.move=me.move?{...me.move}:v(me.vel.x,0,me.vel.z);this.external=me.external?{...me.external}:v();this.dashTime=me.dashTime||0;this.dash=me.dashCd;this.body.setTranslation(this.pos,false);this.world.step();this.pending=this.pending.filter(p=>p.input.seq>me.ack);if(this.phase!==s.phase||!this.initialized){this.pending=[];this.phase=s.phase;this.initialized=true;}for(const p of this.pending)this.integrate(p.input,p.dt,me);this.error=Math.hypot(old.x-this.pos.x,old.y-this.pos.y,old.z-this.pos.z);}
- step(input:Input,dt:number,me:PlayerView){this.pending.push({input:{...input},dt});if(this.pending.length>120)this.pending.shift();this.integrate(input,dt,me);}
- integrate(input:Input,dt:number,me:PlayerView){const stats=statsFor(me.chips);let dir=v(input.x,0,input.z);if(len(dir)>1)dir=norm(dir);const desired=mul(dir,C.speed*stats.speed*(me.guarding?.45:1));const approach=(a:number,b:number)=>a+clamp(b-a,-C.acceleration*dt,C.acceleration*dt);this.move=v(approach(this.move.x,desired.x),0,approach(this.move.z,desired.z));this.velocity.y+=C.gravity*dt;const grounded=this.controller.computedGrounded()||me.grounded&&Math.abs(this.pos.y-me.pos.y)<.05;if(input.jump&&grounded)this.velocity.y=C.jumpSpeed;
- this.dash=Math.max(0,this.dash-dt);this.dashTime=Math.max(0,this.dashTime-dt);if(input.dash&&this.dash<=0){this.external=add(this.external,mul(len(dir)>.1?norm(dir):forward(input.yaw),C.dashSpeed));this.dashTime=C.dashDuration;this.dash=Math.max(.5,C.dashCooldown*stats.dashCooldown);}
- if(this.dashTime<=0)this.external=mul(this.external,Math.exp(-C.externalDrag*dt));this.velocity.x=this.move.x+this.external.x;this.velocity.z=this.move.z+this.external.z;
- // Moving a rigid body does not immediately move its collider in Rapier.
- // Replays may contain many steps between snapshots: every sweep must start
- // from the updated capsule, not repeatedly from the last server position.
- this.body.setTranslation(this.pos,false);this.world.propagateModifiedBodyPositionsToColliders();this.controller.computeColliderMovement(this.collider,mul(this.velocity,dt),undefined,undefined,c=>c.handle!==this.collider.handle);const movement=this.controller.computedMovement();this.pos=add(this.pos,movement);if(this.controller.computedGrounded())this.velocity.y=Math.max(0,this.velocity.y);this.body.setTranslation(this.pos,false);this.world.propagateModifiedBodyPositionsToColliders();}
+import {prepareMotion,finishMotion,Motion} from '../shared/movement.js';
+import {NETWORK} from '../shared/network-config.js';
+/** Replays the authority's dynamic capsule and locomotion. Damage remains authoritative. */
+export class Predictor {
+ world=new RAPIER.World(v(0,C.gravity,0));body:RAPIER.RigidBody;collider:RAPIER.Collider;
+ props=new Map<string,RAPIER.RigidBody>();pending:{input:Input;dt:number}[]=[];
+ pos=v();velocity=v();move=v();external=v();dashTime=0;dash=0;error=0;phase='';initialized=false;
+ private offset=v();private epoch='';private grounded=false;
+ constructor(){this.world.timestep=1/C.simulationHz;this.world.maxCcdSubsteps=4;this.body=this.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().lockRotations().setCcdEnabled(true).setLinearDamping(0).setCanSleep(false));this.collider=this.world.createCollider(RAPIER.ColliderDesc.capsule(C.playerHalfHeight,C.playerRadius).setMass(C.playerMass).setFriction(0).setRestitution(0),this.body);}
+ reconcile(s:Snapshot,me:PlayerView){
+  const ids=new Set(s.props.map(p=>p.id));for(const[id,b]of this.props)if(!ids.has(id)){this.world.removeRigidBody(b);this.props.delete(id);}
+  for(const p of s.props){let b=this.props.get(p.id);if(!b){b=this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed());this.world.createCollider(RAPIER.ColliderDesc.cuboid(p.size.x/2,p.size.y/2,p.size.z/2).setFriction(MATERIALS[p.material].friction).setRestitution(.12),b);this.props.set(p.id,b);}b.setTranslation(p.pos,false);b.setRotation(p.rot,false);}
+  const previous={...this.pos},old=add(this.pos,this.offset),epoch=`${s.generation||0}:${s.setNumber}:${s.round}:${s.phase}:${me.hp>0}`,reset=this.epoch!==epoch||!this.initialized;
+  this.pos={...me.pos};this.velocity={...me.vel};this.move=me.move?{...me.move}:v(me.vel.x,0,me.vel.z);this.external=me.external?{...me.external}:v();this.dashTime=me.dashTime||0;this.dash=me.dashCd;this.grounded=me.grounded;
+  this.body.setTranslation(this.pos,true);this.body.setLinvel(this.velocity,true);this.world.propagateModifiedBodyPositionsToColliders();
+  this.pending=this.pending.filter(p=>p.input.seq>me.ack);if(reset)this.pending=[];
+  this.phase=s.phase;this.epoch=epoch;this.initialized=true;
+  for(const p of this.pending)this.integrate(p.input,p.dt,me);
+  this.error=len(sub(previous,this.pos));
+  // Rendering only: simulation/collisions use the corrected position immediately.
+  // Large errors, death and round teleports never ease across the arena.
+  this.offset=!reset&&this.error<NETWORK.hardSnapDistance?sub(old,this.pos):v();
+ }
+ step(input:Input,dt:number,me:PlayerView){this.pending.push({input:{...input},dt});if(this.pending.length>NETWORK.maxPendingInputs)this.pending.shift();this.integrate(input,dt,me);}
+ integrate(input:Input,dt:number,me:PlayerView){
+  const stats=statsFor(me.chips),motion:Motion={move:this.move,ext:this.external,dashCd:this.dash,dashTime:this.dashTime,grounded:this.grounded};
+  prepareMotion(this.world,this.body,this.collider,motion,input,stats,dt,me.guarding,me.swinging);
+  const before={...this.body.linvel()};this.world.timestep=dt;this.world.step();finishMotion(motion,before,this.body.linvel(),stats.knockbackTaken,dt);
+  this.pos={...this.body.translation()};this.velocity={...this.body.linvel()};this.move=motion.move;this.external=motion.ext;this.dash=motion.dashCd;this.dashTime=motion.dashTime;this.grounded=motion.grounded;
+ }
+ renderPosition(dt:number){this.offset=mul(this.offset,Math.exp(-NETWORK.correctionDecay*dt));if(len(this.offset)<.001)this.offset=v();return add(this.pos,this.offset);}
+ get visualOffset(){return len(this.offset);}
  dispose(){this.world.free();}
 }

@@ -113,3 +113,7 @@ The full-match runner uses first person for the attacking pilot and third person
 ## Guest movement regression
 
 Create a room in one client and join in another. Use the guest to walk, jump, dash and approach cover. Compare standing on the foundation with a legitimate edge fall. Test at 100 ms each-way simulated transport latency; prediction must keep its capsule synchronized on every replayed frame. In `tests/prediction.test.ts`, the pre-fix airborne regression fell from Y=2 to Y=-9.692 while its collider stayed at Y=2. `test:https` now also runs guest prediction and asserts floor clearance during the delayed full match.
+
+## Movement under latency and jitter
+
+Run `TEST_LATENCY_MS=100 TEST_JITTER_MS=40 npm run test:motion:network` for two real WebSocket clients and measured guest correction/visual jump/update gaps. Run `TEST_LATENCY_MS=100 TEST_JITTER_MS=40 npm run test:https` for the separate relay's moving-guest full match/rematch. `npm run dev` automatically uses the local dedicated server; create and join by code/invite without filling an address. The debug HUD reports raw correction, snapshot interval P95 and interpolation buffer. Judge moving/jumping/turning and debris contacts, not only whether a round completes. Test in two independent browser clients with the guest moving; a stationary guest is insufficient to certify smoothness.

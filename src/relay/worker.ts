@@ -1,8 +1,9 @@
+import {socketEndpoint} from '../shared/connection.js';
 import {RELAY,normalizeRoomCode,cleanProfile,validPacket} from '../shared/relay-protocol.js';
 // Only this Site's DB binding is used. No accounts and no other project's services.
 interface Statement {bind(...values:any[]):Statement;first<T=any>():Promise<T|null>;run():Promise<any>;}
 export interface Database {prepare(sql:string):Statement;batch(statements:Statement[]):Promise<any[]>;}
-type Env={DB:Database;ASSETS?:{fetch(request:Request):Promise<Response>}};
+type Env={MULTIPLAYER_URL?:string;DB:Database;ASSETS?:{fetch(request:Request):Promise<Response>}};
 const json=(body:any,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 const fail=(message:string,status=400)=>Object.assign(new Error(message),{status});
 async function hash(s:string){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))].map(n=>n.toString(16).padStart(2,'0')).join('');}
@@ -51,4 +52,4 @@ export async function relay(request:Request,env:Env,now=Date.now()){
  if(action!=='exchange')throw fail('Unknown room operation.',404);
  return exchange(db,input,code,key,host,now);
 }
-export default {async fetch(request:Request,env:Env){if(new URL(request.url).pathname.startsWith('/api/rooms/')){try{return await relay(request,env);}catch(e:any){if(!e.status)console.error('Chip Arena relay failed',e.message);return json({error:e.status?e.message:'Room service interrupted. Retrying…'},e.status||503);}}return env.ASSETS?env.ASSETS.fetch(request):new Response('Not found',{status:404});}};
+export default {async fetch(request:Request,env:Env){if(new URL(request.url).pathname==='/api/network'){const endpoint=socketEndpoint(env.MULTIPLAYER_URL,new URL(request.url).origin);return json({transport:endpoint?'websocket':'https-relay',endpoint});}if(new URL(request.url).pathname.startsWith('/api/rooms/')){try{return await relay(request,env);}catch(e:any){if(!e.status)console.error('Chip Arena relay failed',e.message);return json({error:e.status?e.message:'Room service interrupted. Retrying…'},e.status||503);}}return env.ASSETS?env.ASSETS.fetch(request):new Response('Not found',{status:404});}};
