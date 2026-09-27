@@ -72,3 +72,13 @@ Cloudflare output, and separate local/public health results. Press Alt, then Gam
 Launcher to return there without closing your game. A registered tunnel does not
 prove your friend's DNS/network can reach its URL. Check connections reports the
 result from your PC; friends can still have a different DNS result.
+
+COMBAT NETWORKING UPDATE
+The server negotiates fast WebSocket compression and bounds pending snapshots,
+reducing upload traffic and preventing slow clients from queuing obsolete states.
+Ping uses a monotonic local clock. Lobby / Esc > Connection report shows the actual
+endpoint, FPS, ping, server simulation cost, event-loop delay, queue sizes and
+compression status. Copy reports from both players while lag is happening.
+This game update installs through the existing updater when the host restarts.
+No new .bat or desktop runtime is required. Network route and PC performance can
+still cause latency; this update does not guarantee a particular Internet ping.

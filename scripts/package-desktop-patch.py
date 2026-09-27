@@ -4,9 +4,9 @@ from pathlib import Path
 from zipfile import ZipFile,ZIP_DEFLATED
 p=argparse.ArgumentParser();p.add_argument('--full',required=True);p.add_argument('--base',action='append',required=True);p.add_argument('--out',required=True);a=p.parse_args()
 prefix='Chip-Arena-Desktop/';out=Path(a.out).resolve();out.parent.mkdir(parents=True,exist_ok=True)
-readme='''CHIP ARENA - LOCAL HOST CONNECTION FIX 0.3.2
+readme='''CHIP ARENA - CONNECTION AND COMBAT NETWORKING UPDATE
 
-For the existing Windows desktop edition (0.3.0 or 0.3.1).
+For the existing Windows desktop edition (0.3.0, 0.3.1 or 0.3.2).
 
 INSTALL
 1. Close Chip Arena completely.
@@ -15,6 +15,11 @@ INSTALL
    beside Chip Arena.exe. Merge folders and replace matching files.
    Do not delete your existing resources folder: it also contains the runtimes.
 4. Open Chip Arena.exe and choose Host online. No .bat file is needed.
+
+The server now compresses world updates and bounds outgoing snapshot queues.
+In a lobby or the Esc menu, Connection report shows FPS, ping, server timing,
+compression and queue details. Copy reports from both players if combat still
+lags. The game updater also delivers these networking changes on host restart.
 
 The host now connects directly to its local Node server. It does not wait for
 public DNS to open the game. Friends still use the public invite. In the lobby,

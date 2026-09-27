@@ -1,3 +1,5 @@
+import {monitorEventLoopDelay} from 'node:perf_hooks';
+import {SocketOutput,SOCKET_COMPRESSION} from './socket-output.js';
 import {publicInviteOrigin} from '../shared/invite-url.js';
 import {verifyDevToken} from '../shared/dev-auth.js';
 import {authProxy} from './auth-proxy.js';
@@ -18,20 +20,22 @@ const port=Number(process.env.PORT)||8788;
 const origins=(process.env.ALLOWED_ORIGINS||'').split(',').filter(Boolean);
 interface Room{code:string;sim:Simulation;clients:Map<string,WebSocket>;owner:string;lastUsed:number;rematch:Set<string>;}
 const rooms=new Map<string,Room>();
+const loop=monitorEventLoopDelay({resolution:10});loop.enable();let loopP95Ms=0;setInterval(()=>{loopP95Ms=Math.round(loop.percentile(95)/1e6);loop.reset();},2000).unref();
 let inviteOrigin:string|null=null;
 process.on('message',(message:any)=>{if(message?.type!=='public-invite')return;const origin=publicInviteOrigin(message.url);if(!origin)return;inviteOrigin=origin;if(process.connected)process.send?.({type:'public-invite-ready',url:origin});});
-const server=http.createServer(async(req,res)=>{if(req.url==='/api/auth/login'){await authProxy(req,res);return;}if(req.url==='/api/network'){res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({transport:'websocket',endpoint:'/socket',inviteOrigin}));return;}if(req.url?.startsWith('/api/rooms/')){await serveRelay(req,res,relayDb);return;}if(req.url==='/health'){res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({ok:true,application:'chip-arena',rooms:rooms.size,simulationHz:CONFIG.simulationHz,snapshotHz:CONFIG.snapshotHz}));return;}
+const server=http.createServer(async(req,res)=>{if(req.url==='/api/auth/login'){await authProxy(req,res);return;}if(req.url==='/api/network'){res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({transport:'websocket',endpoint:'/socket',inviteOrigin}));return;}if(req.url?.startsWith('/api/rooms/')){await serveRelay(req,res,relayDb);return;}if(req.url==='/health'){res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({ok:true,application:'chip-arena',rooms:rooms.size,simulationHz:CONFIG.simulationHz,snapshotHz:CONFIG.snapshotHz,loopP95Ms}));return;}
  let pathname:string;try{pathname=decodeURIComponent((req.url||'/').split('?')[0]);}catch{res.writeHead(400);res.end('Invalid path');return;}const path=staticPath('dist/client',pathname);if(!path){res.writeHead(403);res.end();return;}try{const bytes=await readFile(path);res.writeHead(200,{'Content-Type':({'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.wasm':'application/wasm','.mp3':'audio/mpeg','.wav':'audio/wav'} as Record<string,string>)[extname(path)]||'application/octet-stream','Cache-Control':'no-cache'});res.end(bytes);}catch{res.writeHead(404);res.end('Build the client with npm run build, or use npm run dev.');}});
-const wss=new WebSocketServer({server,path:'/socket',maxPayload:24000,perMessageDeflate:false});
-const send=(ws:WebSocket,value:unknown)=>{if(ws.readyState===WebSocket.OPEN&&ws.bufferedAmount<1_000_000)ws.send(JSON.stringify(value));};
-const broadcast=(r:Room,value:unknown)=>{const packet=JSON.stringify(value);for(const ws of r.clients.values())if(ws.readyState===WebSocket.OPEN&&ws.bufferedAmount<1_000_000)ws.send(packet);};
+const wss=new WebSocketServer({server,path:'/socket',maxPayload:24000,perMessageDeflate:SOCKET_COMPRESSION});
+const output=new SocketOutput();
+const send=(ws:WebSocket,value:unknown)=>output.send(ws,JSON.stringify(value));
+const broadcast=(r:Room,value:{type:string;[key:string]:unknown})=>{const packet=JSON.stringify(value);for(const ws of r.clients.values())output.send(ws,packet,value.type==='snapshot');};
 const maxConnections=100;let connections=0;
 wss.on('connection',(ws,req)=>{if(++connections>maxConnections){ws.close(1013,'Server full');connections--;return;}if(origins.length&&(!req.headers.origin||!origins.includes(req.headers.origin))){ws.close(1008,'Origin not allowed');connections--;return;}
  const id=randomBytes(8).toString('hex');let room:Room|undefined;let messages=0,windowStart=Date.now();let alive=true,joining=false;
  ws.on('pong',()=>alive=true);const heartbeat=setInterval(()=>{if(!alive){ws.terminate();return;}alive=false;ws.ping();},15000);
  ws.on('message',async buffer=>{if(Date.now()-windowStart>1000){messages=0;windowStart=Date.now();}if(++messages>CONFIG.maxInputRate+20){ws.close(1008,'Message rate exceeded');return;}let msg:any;try{msg=JSON.parse(buffer.toString());}catch{return;}if(!msg||typeof msg.type!=='string')return;
  const fail=(message:string)=>send(ws,{type:'error',message});
- if(msg.type==='ping'){send(ws,{type:'pong',at:typeof msg.at==='number'&&Number.isFinite(msg.at)?msg.at:0});return;}
+ if(msg.type==='ping'){send(ws,{type:'pong',at:typeof msg.at==='number'&&Number.isFinite(msg.at)?msg.at:0,network:{loopP95Ms,tickMs:room?.sim.tickMs||0,...output.diagnostics(ws)}});return;}
  if(msg.type==='create'||msg.type==='join'){if(joining)return;joining=true;const developer=await verifyDevToken(msg.authToken);joining=false;if(ws.readyState!==WebSocket.OPEN)return;if(room)return fail('Already in a room. Leave first.');if(msg.type==='create'){if(rooms.size>=CONFIG.maxRooms)return fail('Server room limit reached.');let code:string;do{code=newRoomCode();}while(rooms.has(code));const sandbox=process.env.ALLOW_TEST_ROOMS==='true'&&msg.testRoom===true;room={code,sim:new Simulation({skipIntros:msg.skipIntros===true,bothDraft:msg.bothDraft===true,draftChoices:msg.draftChoices,sandbox}),clients:new Map(),owner:id,lastUsed:Date.now(),rematch:new Set()};rooms.set(code,room);}else{if(typeof msg.code!=='string'||!normalizeRoomCode(msg.code)&&!/^[A-F0-9]{6}$/i.test(msg.code))return fail('Enter the room code from your host.');room=rooms.get(msg.code.toUpperCase());if(!room)return fail('Room not found.');if(room.sim.players.size>=CONFIG.maxPlayers){room=undefined;return fail('Room is full.');}if(room.sim.phase!=='lobby'){room=undefined;return fail('This match has already started.');}}
  const cls:ClassId=Object.hasOwn(CLASS_INFO,msg.class)?msg.class:'ranged';room.sim.addPlayer(id,typeof msg.name==='string'?msg.name:'Pilot',cls,null,typeof msg.color==='string'?msg.color:'#ff6b35',msg.cosmetics,developer);room.clients.set(id,ws);send(ws,{type:'welcome',id,code:room.code,testRoom:room.sim.options.sandbox,owner:room.owner});broadcast(room,{type:'snapshot',state:room.sim.snapshot()});return;}
  if(!room)return fail('Create or join a room first.');room.lastUsed=Date.now();
