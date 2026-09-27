@@ -38,3 +38,9 @@ Publish `dist`. The source includes a separate Sites identity in `.openai/hostin
 ## Before calling a deployment online multiplayer
 
 Connect two independent browsers through the **deployed** backend, ready both, choose different specializations, destroy a wall or launch a prop, compare authoritative damage and the score, finish the match, and rematch. Local/supervised test results do not establish public-deployment reachability. This project currently makes no claim of publicly deployed multiplayer.
+
+## Browser-hosted rooms
+
+The static client now defaults to experimental PeerJS rooms: creator = authoritative host in a Web Worker, guest = input client. Normal players use room codes/invite links and enter no address. Hosting on HTTPS enables normal clipboard/WebRTC browser behavior. The build includes the worker and bundled PeerJS code; public PeerServer Cloud handles signaling only. No TURN credentials or relay backend have been provisioned. Direct connectivity is network-dependent and the preview did not complete the peer data channel.
+
+Keep the dedicated Node server option for independent server authority. Settings → Advanced connection settings enables it; `VITE_SERVER_URL` remains its optional build-time default. Browser rooms are a trusted-host prototype path, with no host migration, account persistence or anti-cheat claim. A future relay integration should fetch short-lived ICE credentials from a controlled backend; never bundle a TURN provider’s master API key.

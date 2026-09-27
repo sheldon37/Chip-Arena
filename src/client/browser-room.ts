@@ -1,0 +1,29 @@
+import Peer,{DataConnection} from 'peerjs';
+import {newRoomCode,normalizeRoomCode,ROOM_PROTOCOL,PilotProfile} from '../shared/host-room.js';
+export class BrowserRoom {
+ peer:Peer;channel:DataConnection|null=null;worker:Worker|null=null;closed=false;connected=false;code='';private timer:ReturnType<typeof setTimeout>|null=null;private joinTimer:ReturnType<typeof setTimeout>|null=null;private beat:ReturnType<typeof setInterval>;private lastTraffic=performance.now();private welcomed=false;
+ constructor(readonly host:boolean,code:string,private profile:PilotProfile,bothDraft:boolean,private receive:(m:any)=>void,private status:(label:string)=>void,private ended:(reason:string)=>void){
+ this.code=host?newRoomCode():normalizeRoomCode(code)||'';if(!this.code)throw Error('Enter the 8-character room code.');
+ const options={secure:true,debug:0,config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun.cloudflare.com:3478'}]}};
+ this.peer=host?new Peer('chiparena-v1-'+this.code,options):new Peer('chiparena-guest-'+newRoomCode()+'-'+newRoomCode(),options);
+ this.timer=setTimeout(()=>this.fail('Connection timed out. Check the room code and keep the host’s game open. This network may block direct connections.'),18000);
+ this.peer.on('open',()=>{if(this.closed)return;if(host){this.clearTimer();this.worker=new Worker(new URL('./host-worker.ts',import.meta.url),{type:'module'});this.worker.onmessage=e=>{const {target,message}=e.data;if(target==='host'||target==='all')this.receive(message);if(target==='guest'||target==='all')this.transmit(message);};this.worker.onerror=()=>this.fail('Host simulation stopped. Create a new room.');this.worker.postMessage({type:'create',code:this.code,profile:this.profile,bothDraft});this.status('HOST · WAITING');}else {this.status('CONNECTING TO HOST');this.attach(this.peer.connect('chiparena-v1-'+this.code,{reliable:true,serialization:'json',metadata:{protocol:ROOM_PROTOCOL}}));}});
+ this.peer.on('connection',conn=>{if(!host||this.channel||conn.metadata?.protocol!==ROOM_PROTOCOL){conn.on('open',()=>{conn.send({type:'error',fatal:true,message:'Room is full or uses a different game version.'});setTimeout(()=>conn.close(),200);});return;}this.status('HOST · CONNECTING GUEST');this.attach(conn);});
+ this.peer.on('error',error=>{if(error.type==='peer-unavailable')this.fail('Room not found. Ask the host for a fresh code.');else if(!this.connected)this.fail(error.type==='unavailable-id'?'Room code collision. Create a new room.':'Could not reach the room service. Check your connection and try again.');else this.status('CONNECTED · ROOM SERVICE OFFLINE');});
+ this.peer.on('disconnected',()=>{if(!this.closed){if(this.connected)this.status('CONNECTED · ROOM SERVICE OFFLINE');else this.fail('Room service disconnected. Create or join again.');}});
+ this.beat=setInterval(()=>{if(this.closed||!this.connected)return;if(performance.now()-this.lastTraffic>12000){this.lost('Opponent connection timed out.');return;}this.transmit({type:'peerHeartbeat'});},1000);
+ }
+ private clearTimer(){if(this.timer)clearTimeout(this.timer);this.timer=null;}
+ private attach(conn:DataConnection){this.channel=conn;conn.peerConnection?.addEventListener('iceconnectionstatechange',()=>{const ice=conn.peerConnection?.iceConnectionState;if(ice==='checking')this.status(this.host?'HOST · CONNECTING GUEST':'CONNECTING DIRECTLY');if(ice==='failed')this.lost('Direct connection failed on this network.');});this.joinTimer=setTimeout(()=>{if(!this.welcomed){conn.close();if(this.host){this.channel=null;this.status('HOST · WAITING');}else this.fail('The direct connection did not complete. Keep the host’s game open; some networks require a relay service.');}},15000);
+ conn.on('open',()=>{if(this.closed)return;this.status(this.host?'HOST · SYNCING GUEST':'SYNCING WITH HOST');this.connected=true;this.lastTraffic=performance.now();if(!this.host)this.transmit({type:'hello',protocol:ROOM_PROTOCOL,profile:this.profile});});
+ conn.on('data',raw=>{if(this.closed||this.channel!==conn)return;this.lastTraffic=performance.now();if(!raw||typeof raw!=='object')return;const m=raw as any;if(this.host&&JSON.stringify(m).length>4096){this.lost('Guest message exceeded the room limit.');return;}if(m.type==='peerHeartbeat')return;
+ if(this.host){if(m.type==='hello'&&!this.welcomed&&m.protocol===ROOM_PROTOCOL){this.welcomed=true;if(this.joinTimer)clearTimeout(this.joinTimer);this.worker?.postMessage({type:'join',profile:m.profile});this.status('HOST · CONNECTED');}else if(this.welcomed)this.worker?.postMessage({type:'message',id:'guest',message:m});}
+ else {if(m.type==='welcome'){this.welcomed=true;this.clearTimer();if(this.joinTimer)clearTimeout(this.joinTimer);this.status('GUEST · CONNECTED');}if(m.type==='error'&&m.fatal){this.fail(m.message);return;}this.receive(m);}});
+ conn.on('close',()=>{if(!this.closed&&this.channel===conn)this.lost('Opponent left the room.');});conn.on('error',()=>{if(!this.closed&&this.channel===conn)this.lost('Peer connection failed.');});
+ }
+ private transmit(message:any){if(this.channel?.open&&this.channel.dataChannel.bufferedAmount<500000)this.channel.send(message);}
+ send(message:any){if(this.closed)return;if(this.host)this.worker?.postMessage({type:'message',id:'host',message});else this.transmit(message);}
+ private lost(reason:string){const conn=this.channel;this.channel=null;this.connected=false;this.welcomed=false;if(this.joinTimer)clearTimeout(this.joinTimer);conn?.close();if(this.host){this.worker?.postMessage({type:'disconnect'});this.status('HOST · GUEST DISCONNECTED');}else this.fail(reason+' The host’s room has closed.');}
+ private fail(reason:string){if(this.closed)return;this.close();this.status('DISCONNECTED');this.ended(reason);}
+ close(){this.closed=true;this.clearTimer();if(this.joinTimer)clearTimeout(this.joinTimer);clearInterval(this.beat);this.worker?.terminate();this.channel?.close();this.peer.destroy();}
+}

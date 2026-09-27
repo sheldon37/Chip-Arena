@@ -9,6 +9,10 @@ export const CONFIG = {
   fragmentWindow: .35, fragmentDamageCap: 75, attributionSeconds: 7,
   manaRegen: 12, staminaRegen: 24, staminaRegenDelay: .45,
   shieldDrain: 33, shieldImpactCost: .9,
+  blockDuration: .30, blockCooldown: 4, blockMaximumDuration: .65, blockMinimumCooldown: 1.5,
+  blockCooldownChip: .85, blockWindowChip: .08, blockReflectDamageChip: 1.15, blockReflectSpeedChip: 1.10,
+  blockPulseRadius: 3, blockPulseDamageChip: 6, blockPulseImpulseChip: 120,
+  maxReflections: 3, maxReflectedDamage: 100, maxReflectedSpeed: 120,
   volleyDamage: .75, volleyFanDegrees: 7,
   followupDamage: .45, followupCost: 5, followupGap: .08,
   projectileLifetime: 3, projectileMaxTravel: 160, splitLifetime: 1.2, splitMaxTravel: 18,
@@ -36,6 +40,6 @@ export const norm=(a:Vec)=>mul(a,1/(len(a)||1));
 export const cross=(a:Vec,b:Vec)=>v(a.y*b.z-a.z*b.y,a.z*b.x-a.x*b.z,a.x*b.y-a.y*b.x);
 export const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
 export const forward=(yaw:number,pitch=0):Vec=>v(Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch));
-export interface Input {camera?:'first'|'third';seq:number; x:number;z:number;yaw:number;pitch:number;attack:boolean;secondary:boolean;jump:boolean;dash:boolean;reload:boolean;}
-export const idleInput=():Input=>({seq:0,x:0,z:0,yaw:0,pitch:0,attack:false,secondary:false,jump:false,dash:false,reload:false});
+export interface Input {camera?:'first'|'third';seq:number; x:number;z:number;yaw:number;pitch:number;attack:boolean;block?:boolean;secondary:boolean;jump:boolean;dash:boolean;reload:boolean;}
+export const idleInput=():Input=>({seq:0,x:0,z:0,yaw:0,pitch:0,attack:false,block:false,secondary:false,jump:false,dash:false,reload:false});
 export type Difficulty='dummy'|'easy'|'normal'|'hard';

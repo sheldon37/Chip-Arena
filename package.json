@@ -15,10 +15,12 @@
     "test:debris": "node tests/run-network.mjs debris",
     "test:stress": "node --import tsx tests/stress.ts",
     "audio:generate": "node scripts/generate-audio.mjs",
-    "test:elements:network": "node tests/run-network.mjs elements"
+    "test:elements:network": "node tests/run-network.mjs elements",
+    "test:block:network": "node tests/run-network.mjs block"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.19.3",
+    "peerjs": "^1.5.5",
     "three": "^0.180.0",
     "ws": "^8.18.3"
   },

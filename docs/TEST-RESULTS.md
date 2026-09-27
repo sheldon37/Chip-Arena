@@ -1,5 +1,16 @@
 # Executed test results — 2026-09-26
 
+## Timed Block and browser-room update — 2026-09-27
+
+- **94 automated tests passed**, zero failed. The 18 new cases cover fixed Block cooldown for all weapons and attack rates, validated input/rising-edge behavior, explicit Chip stacking/caps, real reflection/damage/attribution, preserved elemental payload, no recursive direct-hit procs, melee damage/impulse/status negation, order-independent activation, cooldown/late presses, reflection lifetime/count/speed/damage bounds, cover, once-per-activation Counter Pulse, DoT/debris exceptions and resets. Browser-host authority tests cover code/profile normalization, two-player limits, debug/damage/Chip grant rejection, finite inputs, rate limits, selections and disconnects.
+- A full input-driven host-wrapper match completed **five sets / four drafts in 89.667 simulated seconds**, followed by passing two-vote rematch/reset. This validates the host authority module, **not PeerJS transport**.
+- A real two-WebSocket-client Block test passed: defender **100 HP**, reflected shooter **77 HP**, **23 damage** credited to the blocker, and **4.00 s** Block cooldown. Both clients received identical player/projectile state at shared tick 204.
+- The full dedicated-server match/rematch test passed with **100 ms delay each way**, **2,014 identical shared snapshot ticks**, destruction on both clients, two wins before each draft and passing disconnect forfeit. Elapsed **103.802 s**; sampled tick median **0.101 ms**, P95 **0.415 ms**, maximum **11.734 ms**. Concurrent browser/build work means this is not an isolated capacity benchmark.
+- Browser sandbox displayed base **0.30 s / 4.00 s**, then **0.46 s / 2.89 s** after two Phase Buffers and two Rebound Capacitors. Test Block showed the active HUD, open mint diamond, defensive first-person pose and sound playback. Screenshot: `chip-arena-timed-block.jpg`; the captured compatibility renderer showed 58 FPS / 0.10 ms sim, not a hardware GPU benchmark.
+- Browser room QA: creator registered with the public broker, ran its worker and displayed HOST plus a code/invite; an invite opened a separate guest client with its code prefilled. Clipboard writing was denied in the HTTP preview, so a selectable invite field was added. Guest and host exchanged a WebRTC offer/answer through the public broker, but **no data channel opened**. The connection timed out and the UI returned an explicit failure. No successful browser-hosted match or public internet gameplay is claimed. The precise environment/network cause was not proven; direct-only ICE cannot guarantee connectivity.
+- No TURN relay, paid service or dedicated public backend was provisioned. The first-person/WebGL hardware limitation remains unchanged.
+
+
 ## Sets, visible statuses and player board — 2026-09-27
 
 - **76 automated tests passed**, 0 failed. Ten new cases cover two wins before a draft, 1–1 deciding rounds, draws preserving progress, both-player draft timeouts, final-set handling, rematch/lobby reset, exhausted Chip pools, bounded status geometry, first-person status cues, numerical stack summaries and selecting a duplicate Chip.

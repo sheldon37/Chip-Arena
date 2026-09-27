@@ -95,3 +95,13 @@ The full-match runner uses first person for the attacking pilot and third person
 - Repeat in first person while receiving a status: see hand effects and subtle side cues. Compare reduced quality; both elements should remain identifiable.
 
 `tests/sets-status-vfx.test.ts` covers set transitions, draws, both-draft timeouts, final sets, rematch/lobby resets, exhausted Chip pools, actual status-driven flame/bubble geometry, fixed mesh reuse, quality changes and first-person cues. `tests/chip-inspection.test.ts` checks exact additive/multiplicative summaries and a real duplicate selection through the draft path.
+
+## Block and browser-hosted rooms
+
+- Right-click has a 0.30 s active window and 4.00 s cooldown for every weapon. E keeps the previous secondary action. Test early, correctly timed and late defense against projectiles and melee. Check that an existing DoT and falling debris still hurt during Block. Hold right-click through the full cooldown: it must not automatically repeat.
+- Install Rebound Capacitor twice (2.89 s cooldown) and Phase Buffer twice (0.46 s active). Inspect both on the player board. Overclock and all weapon-specific rate Chips must not change Block cooldown.
+- Return Amplifier strengthens reflected shots; Counter Pulse triggers only once per activation after a successful defense. Check cover, projectile reflection limit, and no recursive Shrapnel/splitting/elemental application from the pulse.
+- In browser-hosted mode: create a room, copy the eight-character code or invite link, and join from another computer. Ready both and play to match end, draft compatible Chips, rematch, then close the host. The guest must see a closed room and a Return to Main Menu control. A closed guest should forfeit after 12 seconds.
+- Repeat over different home networks and a restrictive network. Public signaling can succeed while the data channel fails; this version has no TURN fallback. The preview environment did not complete this connection. Do not treat browser-hosted public play as certified until an actual two-client match succeeds on that path.
+
+`npm run test:block:network` tests a real reflected shot across two WebSocket clients and compares health, cooldown and reflection attribution. `tests/blocking.test.ts` covers all Block rules and modifiers; `tests/host-room.test.ts` checks host-side authority, validation, join limits, disconnects, full set/draft progression and rematch. Its input-driven match tests the host simulation wrapper, not the PeerJS transport.

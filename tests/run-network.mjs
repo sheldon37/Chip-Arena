@@ -1,5 +1,5 @@
 import {spawn} from 'node:child_process';
 const port=process.env.TEST_PORT||'8792';const server=spawn(process.execPath,['--import','tsx','src/server/index.ts'],{stdio:'inherit',env:{...process.env,PORT:port,ALLOW_TEST_ROOMS:'true'}});
 server.on('error',err=>{console.error(err);process.exit(1);});
-const kind=process.argv[2]==='debris'?'tests/debris-network.ts':process.argv[2]==='elements'?'tests/elements-network.ts':'tests/network.ts';const child=spawn(process.execPath,['--import','tsx',kind],{stdio:'inherit',env:{...process.env,TEST_ENDPOINT:`ws://localhost:${port}/socket`}});
+const kind=process.argv[2]==='block'?'tests/block-network.ts':process.argv[2]==='debris'?'tests/debris-network.ts':process.argv[2]==='elements'?'tests/elements-network.ts':'tests/network.ts';const child=spawn(process.execPath,['--import','tsx',kind],{stdio:'inherit',env:{...process.env,TEST_ENDPOINT:`ws://localhost:${port}/socket`}});
 child.on('exit',code=>{server.kill();process.exit(code||0);});process.on('SIGINT',()=>{child.kill();server.kill();});

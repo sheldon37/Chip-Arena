@@ -2,7 +2,9 @@
 
 An original, fully 3D, voxel-styled 1v1 arena combat game. This is a new project, with no Embertrail assets, repository, database, or deployment dependencies.
 
-**Publicly hosted multiplayer is not included.** The public hosted client runs local practice in your browser with no ChatGPT login or game account. Online rooms require this project's persistent Node.js server. The same authoritative Rapier simulation powers both modes.
+The public client supports local practice and **experimental browser-hosted rooms**, without a ChatGPT login or game account. Create Room makes you the host; guests enter an eight-character code or use an invite link. No server address is needed in the normal flow. The creator runs the authoritative simulation in a Web Worker, while the guest sends validated input intentions over a PeerJS/WebRTC data channel.
+
+**Verification limitation:** public signaling registration plus offer/answer exchange succeeded in the preview, but its two browser clients never established the data channel. Browser-hosted internet play is therefore implemented but not certified end to end. No TURN relay is configured; restrictive NAT/firewall setups may fail. The original dedicated Node server remains available and its two-client match, reflection and rematch tests passed.
 
 ## Run it
 
@@ -13,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-Open `http://localhost:4173`. The development command starts the browser client and multiplayer server together. Open two independent browser windows, create a room in one, and join its code in the other. The development proxy uses `ws://localhost:4173/socket`.
+Open `http://localhost:4173`. The development command starts the browser client and multiplayer server together. Open two independent browser windows, create a room in one, and join its code in the other. Default rooms use browser hosting. To exercise the dedicated server, enable Settings → Advanced connection settings → Use a dedicated server, with `ws://localhost:4173/socket`. The development proxy forwards that path.
 
 To run the components separately:
 
@@ -47,7 +49,8 @@ Click the arena to capture the mouse. `Escape` releases it and opens the match m
 | WASD | Move relative to camera direction |
 | Mouse | Aim and camera |
 | Left mouse | Primary attack |
-| Right mouse | Specialization secondary; hold for Shield guard |
+| Right mouse | Timed Block: reflect projectiles / negate melee |
+| E | Specialization secondary; hold for Shield guard |
 | Space | Jump |
 | Shift | Dash |
 | R | Reload when applicable |
@@ -65,13 +68,45 @@ Designed for a desktop mouse and keyboard. Menus adapt to small displays, but to
 ## Implemented content
 
 - Pistol, Rifle, Machine Gun; Fire, Water, Lightning, Darkness; Sword, Daggers, Shield, Greatsword.
-- Twenty-six working Chip definitions with compatibility filters, per-Chip stack caps, descriptions and numerical effects. No global equipment-slot limit.
+- Thirty working Chip definitions with compatibility filters, per-Chip stack caps, descriptions and numerical effects. No global equipment-slot limit.
 - Stationary dummy plus Easy, Normal and Hard bots, with no damage bonuses. Bots submit the same input structure as human clients.
 - One compact arena with durable foundations, elevation, breakable wall sections, loose crates, dense metal boxes and a supported stone beam.
 - Actual dynamic debris, support collapse, mass-conserving fracture, CCD and physical impact damage using pre-solver point velocities.
 - Private rooms, two ready states, synchronized choices, authoritative match state, 12-second disconnect forfeits, rematch votes and return to lobby.
 - Persistent local name/class/color/settings preferences.
 - Developer sandbox with specialization, Chip add/remove, dummy/bot changes, healing, reset, collider/support display, launcher and impact diagnostics.
+
+## Timed Block
+
+Every specialization has the same right-click Block: **0.30 s active, 4.00 s cooldown measured from activation**. The cooldown is fixed and does not scale with weapon, fire rate, Overclock, mana, stamina or movement upgrades. Only explicit Block cooldown modifiers change it. Each press activates once; holding does not auto-repeat. A quick tap is latched for at least one input tick. Blocking cancels pending swing/burst attacks, prevents attacks during its active window, and leaves ordinary movement available. It has no ammo/mana/stamina cost. Existing secondary actions are on **E**.
+
+The short window protects from all directions. An incoming projectile reverses its pre-impact flight velocity, changes responsibility to the blocker, and can hit its original shooter. It retains original damage, gravity, remaining lifetime/travel, elemental payload and an unused native blast. Reflections do not borrow the blocker’s weapon effects, trigger direct-hit counters, split, home or generate Shrapnel. A projectile may reflect three times; the next successful Block absorbs it. Reflections cap at 100 direct damage and 120 m/s. Swept collision and cover remain authoritative.
+
+A correctly timed melee hit is fully negated, including knockback, burn/poison application and direct-hit triggers. The swing still records that contact, so it cannot retry every frame. Existing burns, poison, falling, debris impacts and area damage are not negated. Both players’ Block activation is processed before any attack resolution in that tick. There is no lag-compensated Block rewind; online timing follows host/server time.
+
+| Block Chip | Per-copy effect | Cap |
+|---|---|---:|
+| Rebound Capacitor | Cooldown ×0.85; 2 copies = 2.89 s | 5 |
+| Phase Buffer | Active window +0.08 s; 2 copies = 0.46 s | 4 |
+| Return Amplifier | Reflected damage ×1.15 and speed ×1.10 | 4 |
+| Counter Pulse | First success per activation: 3 m pulse, +6 base damage and +120 impulse, with distance falloff and cover | 4 |
+
+All four are offered to every class and stack explicitly. Counter Pulse affects opponents and loose props; it cannot apply DoTs or recursively trigger Chips. Even maximum duration/cooldown stacking leaves a vulnerability gap: 0.62 s active per 1.775 s cooldown. The HUD shows Block readiness, active state and recharge. Other players see rotating mint-colored rings; first person shows a defensive hand pose and an open diamond around the crosshair. The parry sound differentiates activation and successful impact by gain. Developer Sandbox includes **Test Block**, using ordinary input intentions.
+
+## Room codes and browser hosting
+
+1. Create Room → choose class → Create Room. Keep this page open.
+2. Copy the code or invite link; the link pre-fills the guest’s code. A selectable link field remains available if clipboard access is denied.
+3. The guest opens the website, chooses Join Room and enters the code, or opens the invite directly.
+4. Both ready, then choose specializations. The creator remains HOST and the other player GUEST.
+
+The creator’s worker runs shared Rapier physics at 60 Hz and broadcasts snapshots at 20 Hz. Guest movement prediction/reconciliation and remote interpolation use the same existing client path. The host accepts only input, ready/class/spec/draft selections, ping, rematch votes and match-end lobby requests. No browser-hosted room permits gameplay debug mutations, including by the host through the protocol. Names/classes/colors, finite inputs, sequence numbers, payload sizes and message rates are validated.
+
+This is **trusted-host authority**, not an independent anti-cheat server: a modified host can cheat. A closed host closes the room; host migration/reconnection are not implemented. A disconnected guest forfeits after 12 simulation seconds. A stalled host closes the guest’s UI session after 12 seconds without snapshots rather than inventing a new authoritative match result. Host hardware, background throttling and network conditions affect the match.
+
+PeerJS 1.5.5 is bundled locally. The free PeerServer Cloud brokers connection metadata; STUN uses Google/Cloudflare public endpoints. Gameplay travels on the encrypted WebRTC data channel once connected. No webcam/microphone access is requested. There is currently **no TURN fallback**, so some peers cannot connect. Failures leave a persistent explanation and an editable join screen. The dedicated server path remains under Advanced settings for deployments that need independent authority and predictable connectivity.
+
+API references checked: [PeerJS Peer API](https://peerjs.com/client/api/peer), [PeerServer Cloud](https://peerjs.com/server/cloud), [PeerJS announcement ending its free TURN relay](https://github.com/orgs/peers/discussions/1172). No paid infrastructure or relay account was provisioned.
 
 ## Weapon resources and modifiers
 
@@ -155,7 +190,10 @@ For a two-client authoritative launcher test, start the server with `ALLOW_TEST_
 | File | Settings and responsibilities |
 |---|---|
 | `src/shared/config.ts` | Match timing, tick/snapshot rates, movement, impact energy thresholds, resource regeneration, modifier tuning, limits, materials |
-| `src/shared/content.ts` | All 11 weapons and 26 Chips; compatibility, stacking and stat effect handlers |
+| `src/shared/blocking.ts` | Block duration/cooldown helpers; numerical tuning is centralized in config and Chip definitions |
+| `src/shared/host-room.ts` | Browser-hosted room rules, input/selection validation, rematch votes and disconnects |
+| `src/client/browser-room.ts` / `host-worker.ts` | PeerJS signaling/data channel, host simulation worker, timeout and cleanup |
+| `src/shared/content.ts` | All 11 weapons and 30 Chips; compatibility, stacking and stat effect handlers |
 | `src/shared/arena.ts` | Authored collision blocks, spawn routes, supports and materials |
 | `src/shared/elements.ts` | Fire/poison duration, cadence, color, per-stack DPS and refresh handlers |
 | `src/shared/view.ts` | Shared eye/camera/muzzle offsets, camera collision and FOV |
@@ -191,7 +229,7 @@ See [docs/TESTING.md](docs/TESTING.md), [docs/TEST-RESULTS.md](docs/TEST-RESULTS
 
 ## Current limits
 
-- No publicly deployed persistent backend, accounts, ranked matchmaking, persistence, room recovery or reconnection tokens.
+- Browser-hosted direct connections remain experimental and unverified end to end in this test browser. No TURN relay or publicly deployed dedicated backend; no accounts, ranked matchmaking, persistence, host migration, room recovery or reconnection tokens.
 - Full-state JSON networking is simple and comparatively bandwidth-heavy. One Node process owns its rooms; multi-instance routing is not implemented.
 - Art, sound and secondary VFX are prototype quality. Water and darkness use basic particles/pulses; they do not simulate fluid or volumetric smoke.
 - Bot navigation is heuristic, not a navmesh. Debris piles can cause temporary blocking.
