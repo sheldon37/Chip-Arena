@@ -217,7 +217,7 @@ For a two-client authoritative launcher test, start the server with `ALLOW_TEST_
 | `src/shared/blocking.ts` | Block duration/cooldown helpers; numerical tuning is centralized in config and Chip definitions |
 | `src/shared/host-room.ts` | Browser-hosted room rules, input/selection validation, rematch votes and disconnects |
 | `src/client/browser-room.ts` / `host-worker.ts` | HTTPS relay adapter, host simulation worker, timeout and cleanup |
-| `src/shared/content.ts` | All 11 weapons and 100 Chips; compatibility, stacking and stat effect handlers |
+| `src/shared/content.ts` | All 11 weapons and 150 Chips; compatibility, stacking and stat effect handlers |
 | `src/shared/arena.ts` | Authored collision blocks, spawn routes, supports and materials |
 | `src/shared/elements.ts` | Fire/poison duration, cadence, color, per-stack DPS and refresh handlers |
 | `src/shared/view.ts` | Shared eye/camera/muzzle offsets, camera collision and FOV |
@@ -268,3 +268,49 @@ Official API references verified during implementation: [Rapier rigid bodies and
 ## Latest rig / arena update
 
 See [RIG-ARENA-SNIPER.md](docs/RIG-ARENA-SNIPER.md) for the blank articulated model, visible Chip modules, 64 × 56 m arena and 3-round sniper Rifle. Hold **Q** to scope with Rifle. Developer Sandbox → Animation Inspector previews the rig and installed Chips.
+
+## Chaos update — 150 Chips
+
+The latest release adds 50 behavior Chips, persistent black holes/fields, delayed
+and sticky bombs, mines, portals, alternate projectile trajectories, melee beams,
+and authoritative zombie/toy minions. The complete descriptions and budgets are
+in `docs/CHIP-CATALOG.md`. Necronomicon replaces a mage's E: 3 + extra-projectile
+count zombies, each at twice the player's max HP and half their movement speed.
+A summon replaces the previous zombie army; default lifetime is 14 seconds.
+
+Upgrade drafts now have an authoritative turn queue. The set loser picks first
+when both-draft is enabled. All clients see the active player's offers, sequenced
+reveals, and selected Chip before the next turn. Defaults remain six choices,
+configurable from 1 to 12. Body/accent colors, nine hats, and six standard kill
+effects travel with each pilot's profile. Ten original procedural electronic
+tracks shuffle without repetition, with a separate music volume slider.
+
+### Optional developer identity
+
+Regular play stays anonymous. The optional login is a small single-account gate,
+not a registration/account-management product. The production Worker keeps a
+salted PBKDF2 verifier and an ECDSA private key in secret environment values:
+`DEV_ACCOUNT_VERIFIER` and `DEV_SIGNING_KEY`. No password or private key belongs
+in source, archives, logs, `.env.example`, or client state. D1 limits login attempts.
+Signed claims expire after eight hours; browser hosts and dedicated servers verify
+the public key before enabling developer cosmetics. Client-supplied role flags
+are ignored. Clown Getaway is gated by that verified identity. Logout clears the
+current tab's token; an already-issued token expires on its normal deadline.
+
+The portable backend proxies login to the official HTTPS service and needs no
+private account material. Local play works offline; developer login needs internet.
+
+### Portable update channel
+
+`npm run build` also writes `dist/client/updates/latest.json` and a checksummed
+compressed client/server payload. Keep this build step in future releases.
+`launcher/update.mjs` checks the stable game origin before startup; it verifies the
+manifest, compressed payload and each file, stages a full release, and journals
+replacement for recovery. Data and browser preferences remain outside the update.
+Set `CHIP_AUTO_UPDATE=0` to skip automatic checks, or run `Update-Chip-Arena.bat`
+for a manual update. Existing games must be closed first. Node 24 and launcher
+format changes remain explicit portable-package upgrades.
+
+Additional checks: `node tests/run-network.mjs chaos` exercises two real clients
+with summons, persistent fields, shared drafts, cosmetics and forged-role rejection.
+`npm run music:generate` regenerates the ten original MP3 tracks (requires ffmpeg).

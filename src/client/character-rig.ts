@@ -7,10 +7,10 @@ const cube=new T.BoxGeometry(1,1,1),palette=new Map<string,T.MeshLambertMaterial
 function mat(color:T.ColorRepresentation){const key=String(color);if(!palette.has(key))palette.set(key,new T.MeshLambertMaterial({color}));return palette.get(key)!;}
 export function rigBox(parent:T.Object3D,name:string,x:number,y:number,z:number,sx:number,sy:number,sz:number,color:T.ColorRepresentation){const m=new T.Mesh(cube,mat(color));m.name=name;m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.castShadow=m.receiveShadow=true;parent.add(m);return m;}
 function joint(parent:T.Object3D,name:string,x=0,y=0,z=0){const g=new T.Group();g.name=name;g.position.set(x,y,z);parent.add(g);return g;}
-export function createCharacterRig(color:string){
+export function createCharacterRig(color:string,bodyColor:T.ColorRepresentation=0xdce5e8){
  const group=new T.Group();group.name='blank-mannequin-v2';group.userData.rigVersion=RIG_VERSION;
  const body=joint(group,'motion-root'),pelvis=joint(body,'pelvis',0,-.24),spine=joint(pelvis,'spine',0,.105),chest=joint(spine,'chest',0,.19),neck=joint(chest,'neck',0,.32),head=joint(neck,'head',0,.10);
- const shell=0xdce5e8,edge=0xb5c4ca,flex=0x354853;
+ const shell=bodyColor,edge=0xb5c4ca,flex=0x354853;
  rigBox(pelvis,'hip-shell',0,0,0,.43,.22,.28,shell);rigBox(pelvis,'waist-band',0,.08,0,.44,.055,.29,color);
  rigBox(spine,'abdomen',0,.075,0,.35,.18,.25,flex);rigBox(spine,'abdomen-shell',0,.07,.04,.36,.12,.23,shell);
  rigBox(chest,'ribcage',0,.10,0,.53,.30,.30,shell);rigBox(chest,'upper-chest',0,.235,0,.47,.075,.28,shell);rigBox(chest,'sternum',0,.13,.158,.075,.22,.022,color);
@@ -51,3 +51,5 @@ export function braceWeapon(r:CharacterRig,target:T.Vector3,rotation:T.Euler,wei
  const orientation=r.chest.getWorldQuaternion(new T.Quaternion()).multiply(new T.Quaternion().setFromEuler(rotation)),wrist=r.rightHand.parent!.getWorldQuaternion(new T.Quaternion()).invert().multiply(orientation);r.rightHand.quaternion.slerp(wrist,weight);
  r.weapon.position.set(0,.065,-.055);r.weapon.rotation.set(0,0,0);r.group.updateMatrixWorld(true);const grip=r.weapon.getObjectByName('support-grip');if(grip)supportHand(r,grip,weight);
 }
+
+export function recolorCharacterRig(r:CharacterRig,accent:string,body:string){const key=accent+body;if(r.group.userData.colorKey===key)return;r.group.userData.colorKey=key;r.group.traverse(o=>{if(!(o instanceof T.Mesh))return;if(/^(hip-shell|abdomen-shell|ribcage|upper-chest|blank-head|crown)$/.test(o.name)||/-(upper-arm|forearm|thumb|thigh|shin)$/.test(o.name))o.material=mat(body);else if(/^(waist-band|sternum)$/.test(o.name)||/-(shoulder-cap|cuff|kneecap)$/.test(o.name))o.material=mat(accent);});}

@@ -27,7 +27,7 @@ export class Predictor {
  step(input:Input,dt:number,me:PlayerView){this.pending.push({input:{...input},dt});if(this.pending.length>NETWORK.maxPendingInputs)this.pending.shift();this.integrate(input,dt,me);}
  integrate(input:Input,dt:number,me:PlayerView){
   const stats=statsFor(me.chips),motion:Motion={move:this.move,ext:this.external,dashCd:this.dash,dashTime:this.dashTime,grounded:this.grounded};
-  prepareMotion(this.world,this.body,this.collider,motion,input,stats,dt,me.guarding,me.swinging);
+  prepareMotion(this.world,this.body,this.collider,motion,input,{...stats,speed:stats.speed*(me.motionScale??1)},dt,me.guarding,me.swinging);
   const before={...this.body.linvel()};this.world.timestep=dt;this.world.step();finishMotion(motion,before,this.body.linvel(),stats.knockbackTaken,dt);
   this.pos={...this.body.translation()};this.velocity={...this.body.linvel()};this.move=motion.move;this.external=motion.ext;this.dash=motion.dashCd;this.dashTime=motion.dashTime;this.grounded=motion.grounded;
  }

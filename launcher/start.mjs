@@ -1,3 +1,4 @@
+import {applyUpdates} from './update.mjs';
 import {spawn} from 'node:child_process';
 import {networkInterfaces} from 'node:os';
 import {readFile,writeFile,mkdir,rename} from 'node:fs/promises';
@@ -35,6 +36,7 @@ async function tunnel(){
 }
 try{
  const existing=await health();if(existing)throw new Error('Port '+port+' is already in use. Close the previous launcher before starting another.');
+ await applyUpdates(root);
  console.log('Starting Chip Arena. Keep this window open; Ctrl+C stops the server.');
  start(process.execPath,['--disable-warning=ExperimentalWarning','server.mjs']);
  let ready=false;for(let n=0;n<80&&!stopping;n++){const h=await health();if(h?.application==='chip-arena'){ready=true;break;}await new Promise(r=>setTimeout(r,150));}

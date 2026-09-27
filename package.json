@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev.mjs",
-    "build": "tsc --noEmit && node scripts/clean-build.mjs && vite build && node scripts/package-source.mjs && node scripts/build-relay.mjs",
+    "build": "tsc --noEmit && node scripts/clean-build.mjs && vite build && node scripts/package-source.mjs && node scripts/build-relay.mjs && node scripts/package-update.mjs",
     "server": "node --import tsx src/server/index.ts",
     "server:build": "tsc -p tsconfig.server.json",
     "start": "node server-dist/server/index.js",
@@ -20,7 +20,8 @@
     "db:generate": "drizzle-kit generate",
     "test:https": "node --import tsx tests/https-network.ts",
     "test:motion:network": "node tests/run-network.mjs motion",
-    "package:windows": "node scripts/package-windows.mjs"
+    "package:windows": "node scripts/package-windows.mjs",
+    "music:generate": "node scripts/generate-music.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.19.3",

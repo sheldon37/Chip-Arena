@@ -48,3 +48,27 @@ choose 1-12 in match setup. Try Pong Shot, Hurricane Edge, Meteor Foundry,
 Return to Sender and Repulsor Crown. Blocking melee knocks the attacker back;
 heavier blows rebound farther. Mages gather then release from one hand, and
 daggers alternate left/right. Sandbox includes rarity and animation previews.
+
+CHAOS UPDATE
+150 Chips including Event Horizon black holes, Necronomicon zombies, sticky
+bombs, time bubbles, portals, toy soldiers and more. Draft choices reveal in
+player turns; both pilots watch each selection. Customize body/accent colors,
+choose from 9 hats, and select a knockout effect. Ten original music tracks
+shuffle during combat; adjust music separately in Settings.
+
+OPTIONAL DEVELOPER LOGIN
+Use Log in from the main menu. Regular play needs no account. The developer
+account unlocks Clown Getaway in Customize > Kill Effect and the local sandbox.
+Passwords are verified by the game's HTTPS service, not stored in this ZIP.
+A verified developer session lasts up to 8 hours in the current browser tab.
+Login needs internet; ordinary local play still works offline.
+
+FUTURE UPDATES
+The launcher checks the game's official update channel before starting.
+Updates replace the client, game server and migration files together. Checksums
+are checked before installation, and interrupted installs recover on startup.
+If offline or a check fails, your installed version starts normally.
+Update-Chip-Arena.bat runs a manual check. Close active game servers first.
+To skip automatic checks, set CHIP_AUTO_UPDATE=0 before launching.
+The included Node 24 runtime stays installed. Releases that need a different
+runtime or launcher format will require a new portable package.

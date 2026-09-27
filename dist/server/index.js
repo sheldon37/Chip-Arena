@@ -1,3 +1,43 @@
+// src/shared/dev-auth.ts
+var base64url = (b) => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+
+// src/relay/auth.ts
+var result = (body2, status = 200) => Response.json(body2, { status, headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
+var from64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+async function login(request, env, now = Date.now()) {
+  if (request.method !== "POST") return result({ error: "Use the login form." }, 405);
+  const origin = request.headers.get("origin");
+  if (origin && origin !== new URL(request.url).origin) return result({ error: "Use this game\u2019s login form." }, 403);
+  if (!env.DEV_ACCOUNT_VERIFIER || !env.DEV_SIGNING_KEY) return result({ error: "Developer login is not configured." }, 503);
+  const text = await request.text();
+  if (text.length > 2048) return result({ error: "Login request too large." }, 413);
+  let input;
+  try {
+    input = JSON.parse(text);
+  } catch {
+    return result({ error: "Invalid login request." }, 400);
+  }
+  if (typeof input.username !== "string" || typeof input.password !== "string" || input.username.length > 64 || input.password.length > 128) return result({ error: "Enter your username and password." }, 400);
+  const ip = request.headers.get("CF-Connecting-IP") || "local";
+  const digest = base64url(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(ip)));
+  for (const [id, limit, window] of [[digest, 6, 6e4], ["account", 45, 3e5]]) {
+    const key2 = id + ":" + Math.floor(now / window);
+    await env.DB.prepare("INSERT INTO dev_login_rates(id,hits,expires) VALUES(?,1,?) ON CONFLICT(id) DO UPDATE SET hits=hits+1").bind(key2, now + window * 2).run();
+    const count = await env.DB.prepare("SELECT hits FROM dev_login_rates WHERE id=?").bind(key2).first();
+    if (count.hits > limit) return result({ error: "Too many attempts. Try again in a few minutes." }, 429);
+  }
+  await env.DB.prepare("DELETE FROM dev_login_rates WHERE id IN (SELECT id FROM dev_login_rates WHERE expires<? LIMIT 50)").bind(now).run();
+  const account = JSON.parse(env.DEV_ACCOUNT_VERIFIER);
+  const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(input.password), "PBKDF2", false, ["deriveBits"]);
+  const actual = new Uint8Array(await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: from64(account.salt), iterations: account.iterations }, material, 256)), expected = from64(account.hash);
+  let difference = actual.length ^ expected.length;
+  for (let n = 0; n < actual.length; n++) difference |= actual[n] ^ (expected[n] || 0);
+  if (difference || input.username !== account.username) return result({ error: "Username or password is incorrect." }, 401);
+  const payload = base64url(new TextEncoder().encode(JSON.stringify({ user: "Sheldon", role: "dev", iat: now, exp: now + 8 * 36e5, nonce: crypto.randomUUID() }))), key = await crypto.subtle.importKey("jwk", JSON.parse(env.DEV_SIGNING_KEY), { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+  const signature = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(payload));
+  return result({ token: payload + "." + base64url(signature), user: "Sheldon", expires: now + 8 * 36e5 });
+}
+
 // src/shared/connection.ts
 function socketEndpoint(value, origin) {
   if (typeof value !== "string" || !value) return null;
@@ -12,6 +52,14 @@ function socketEndpoint(value, origin) {
   }
 }
 
+// src/shared/cosmetics.ts
+var HATS = { none: "No hat", cap: "Ball cap", beanie: "Beanie", top: "Top hat", wizard: "Wizard hat", crown: "Crown", cone: "Traffic cone", antenna: "Antenna", halo: "Halo", cowboy: "Cowboy hat" };
+var KILL_STYLES = { "voxel-burst": "Voxel breakup", confetti: "Confetti cannon", ascension: "Beam me up", shrink: "Pocket-sized", launch: "Team Rocket", ghost: "Ghost escape", "dev-clown": "Clown getaway \xB7 DEV ONLY" };
+var DEFAULT_COSMETICS = { bodyColor: "#e5e7eb", hat: "none", killEffect: "voxel-burst" };
+function cosmetics(raw, dev = false) {
+  return { bodyColor: typeof raw?.bodyColor === "string" && /^#[0-9a-f]{6}$/i.test(raw.bodyColor) ? raw.bodyColor : DEFAULT_COSMETICS.bodyColor, hat: raw && Object.hasOwn(HATS, raw.hat) ? raw.hat : "none", killEffect: raw && Object.hasOwn(KILL_STYLES, raw.killEffect) && (dev || raw.killEffect !== "dev-clown") ? raw.killEffect : "voxel-burst" };
+}
+
 // src/shared/network-config.ts
 var NETWORK = { maxPendingInputs: 180, maxInputBatch: 60, inputQueueLimit: 90, correctionDecay: 18, hardSnapDistance: 2.5, interpolationMinMs: 75, interpolationMaxMs: 350, extrapolationMaxMs: 80 };
 
@@ -22,7 +70,7 @@ function normalizeRoomCode(value) {
   return /^[A-HJ-NP-Z2-9]{8}$/.test(code) ? code : null;
 }
 function cleanProfile(p) {
-  return { name: typeof p?.name === "string" ? p.name.replace(/[<>]/g, "").slice(0, 20) || "Pilot" : "Pilot", class: ["ranged", "magic", "melee"].includes(p?.class) ? p.class : "ranged", color: /^#[0-9a-f]{6}$/i.test(p?.color || "") ? p.color : "#97e4d0" };
+  return { cosmetics: cosmetics(p?.cosmetics, true), authToken: typeof p?.authToken === "string" && p.authToken.length <= 1500 ? p.authToken : void 0, name: typeof p?.name === "string" ? p.name.replace(/[<>]/g, "").slice(0, 20) || "Pilot" : "Pilot", class: ["ranged", "magic", "melee"].includes(p?.class) ? p.class : "ranged", color: /^#[0-9a-f]{6}$/i.test(p?.color || "") ? p.color : "#97e4d0" };
 }
 var guestTypes = /* @__PURE__ */ new Set(["ready", "class", "spec", "chip", "ping", "rematch", "lobby"]);
 var hostTypes = /* @__PURE__ */ new Set(["welcome", "error", "notice", "pong", "rematchVotes"]);
@@ -88,11 +136,11 @@ async function exchange(db, input, code, key, host, now) {
   if (!validPacket(packet, host)) throw fail("Invalid room packet.");
   if (!host && JSON.stringify(input).length > RELAY.maxGuestBytes) throw fail("Guest message is too large.", 413);
   const side = host ? "host" : "guest", other = host ? "guest" : "host";
-  const result = await db.batch([
+  const result2 = await db.batch([
     db.prepare(`UPDATE relay_rooms SET ${side}_packet=?,${side}_seq=?,${side}_ack=?,${side}_seen=? WHERE code=? AND ${side}_key=? AND closed=0 AND expires>? AND ${side}_seq<=? AND (${side}_seen<=? OR ${side}_seq=?) ${host ? "" : "AND guest_left=0 AND host_seen>?"} `).bind(JSON.stringify(packet), packet.seq, packet.ack, now, code, key, now, packet.seq, now - 10, packet.seq, ...host ? [] : [now - RELAY.timeoutMs]),
     db.prepare(`SELECT * FROM relay_rooms WHERE code=? AND ${side}_key=?`).bind(code, key)
   ]);
-  const row = result[1].results[0];
+  const row = result2[1].results[0];
   if (!row) throw fail("Room closed or this seat is not authorized.", 403);
   if (row.closed || row.expires <= now) throw fail("The host closed this room.", 410);
   if (!host && (row.guest_left || now - row.host_seen > RELAY.timeoutMs)) throw fail("The host disconnected or this guest session has ended.", 410);
@@ -127,8 +175,8 @@ async function relay(request, env, now = Date.now()) {
   if (action === "join") {
     if (now - row.host_seen > RELAY.timeoutMs) throw fail("The host is offline. Ask them to create a new room.", 410);
     if (row.host_key === key) throw fail("The host cannot join its own guest seat.", 403);
-    const result = await db.prepare("UPDATE relay_rooms SET guest_key=?,guest_profile=?,guest_seen=? WHERE code=? AND closed=0 AND guest_left=0 AND (guest_key IS NULL OR guest_key=?)").bind(key, JSON.stringify(cleanProfile(input.profile)), now, code, key).run();
-    if (!result.meta.changes) throw fail("Room is full. Ask the host for a new room.", 409);
+    const result2 = await db.prepare("UPDATE relay_rooms SET guest_key=?,guest_profile=?,guest_seen=? WHERE code=? AND closed=0 AND guest_left=0 AND (guest_key IS NULL OR guest_key=?)").bind(key, JSON.stringify(cleanProfile(input.profile)), now, code, key).run();
+    if (!result2.meta.changes) throw fail("Room is full. Ask the host for a new room.", 409);
     return json({ code, protocol: RELAY.protocol });
   }
   const host = row.host_key === key;
@@ -141,6 +189,13 @@ async function relay(request, env, now = Date.now()) {
   return exchange(db, input, code, key, host, now);
 }
 var worker_default = { async fetch(request, env) {
+  if (new URL(request.url).pathname === "/api/auth/login") {
+    try {
+      return await login(request, env);
+    } catch {
+      return json({ error: "Login temporarily unavailable." }, 503);
+    }
+  }
   if (new URL(request.url).pathname === "/api/network") {
     const endpoint = socketEndpoint(env.MULTIPLAYER_URL, new URL(request.url).origin);
     return json({ transport: endpoint ? "websocket" : "https-relay", endpoint });

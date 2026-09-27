@@ -1,3 +1,4 @@
+import {CHAOS_CHIPS} from './chaos-content.js';
 import {CONFIG as C} from './config.js';
 import type {ClassId,SpecId} from './config.js';
 import {ELEMENTS} from './elements.js';
@@ -21,7 +22,7 @@ type Effect={stat:keyof Stats;op:'add'|'mul'|'set';value:number};
 export type Rarity='common'|'uncommon'|'rare'|'epic'|'legendary'|'mythic';
 export const RARITIES:Record<Rarity,{name:string;color:string;weight:number}>={common:{name:'Common',color:'#f1f5f9',weight:42},uncommon:{name:'Uncommon',color:'#79e59a',weight:28},rare:{name:'Rare',color:'#70b5ff',weight:17},epic:{name:'Epic',color:'#ce8aff',weight:8},legendary:{name:'Legendary',color:'#ffae55',weight:4},mythic:{name:'Mythic',color:'#ff6475',weight:1}};
 export const draftChoiceCount=(n:unknown)=>typeof n==='number'&&Number.isFinite(n)?Math.max(1,Math.min(12,Math.floor(n))):6;
-export interface Chip{rarity:Rarity;id:string;name:string;description:string;tags:string[];max:number;icon:string;effects:Effect[];}
+export interface Chip{mechanic?:string;rarity:Rarity;id:string;name:string;description:string;tags:string[];max:number;icon:string;effects:Effect[];}
 const e=(stat:keyof Stats,op:Effect['op'],value:number):Effect=>({stat,op,value});
 export const CHIPS:Chip[]=[
 {id:'vital',rarity:'common',name:'Vital Core',description:'+25 maximum health per installation. Additive.',tags:['all'],max:12,icon:'+',effects:[e('hp','add',25)]},
@@ -124,6 +125,7 @@ export const CHIPS:Chip[]=[
 {id:"rubber",rarity:"epic",name:"Rubber Soul",description:"\u00d72 jump speed and \u00d71.7 attack impulse; \u00d71.5 received knockback. Everyone goes flying.",tags:["all"],max:1,icon:"\u2195",effects:[e("jumpPower","mul",2),e("impulse","mul",1.7),e("knockbackTaken","mul",1.5)]},
 {id:"comet",rarity:"legendary",name:"Comet Dash",description:"Dash pulse: +30 damage and corresponding impulse, \u00d70.6 dash cooldown, \u00d70.6 personal gravity. Mind the arena edge.",tags:["all"],max:1,icon:"\u2604",effects:[e("dashBlast","add",30),e("dashCooldown","mul",0.6),e("playerGravity","mul",0.6)]},
 {id:"repulsor",rarity:"mythic",name:"Repulsor Crown",description:"\u00d73 attack impulse and \u00d72 melee Block retaliation; \u00d70.65 damage. Become the ring-out specialist.",tags:["all"],max:1,icon:"\u21c8",effects:[e("impulse","mul",3),e("blockForce","mul",2),e("damage","mul",0.65)]},
+...CHAOS_CHIPS,
 ];
 export function statsFor(chips:Record<string,number>):Stats {const s={...BASE_STATS}; for(const c of CHIPS)for(let n=0;n<Math.min(c.max,chips[c.id]||0);n++)for(const f of c.effects){if(f.op==='add')s[f.stat]+=f.value;else if(f.op==='mul')s[f.stat]*=f.value;else s[f.stat]=f.value;}s.hp=Math.max(15,s.hp);s.speed=Math.max(.25,Math.min(2.5,s.speed));s.attackRate=Math.max(.15,Math.min(5,s.attackRate));s.extraProjectiles=Math.min(11,s.extraProjectiles);s.extraStrikes=Math.min(4,s.extraStrikes);s.split=Math.min(6,s.split);s.projectileSize=Math.max(.4,Math.min(6,s.projectileSize));s.projectileSpeed=Math.min(4,s.projectileSpeed);s.critical=Math.min(.75,s.critical);s.lifeSteal=Math.min(1,s.lifeSteal);s.jumpPower=Math.min(2.5,s.jumpPower);s.impulse=Math.min(12,s.impulse);s.blockForce=Math.min(6,s.blockForce);s.knockbackTaken=Math.max(.04,Math.min(3,s.knockbackTaken));return s;}
 export function eligibleChips(spec:SpecId,chips:Record<string,number>){const cls=WEAPONS[spec].class,tags=['all',cls,...(cls==='melee'?[]:['projectile'])];return CHIPS.filter(c=>c.tags.some(tag=>tags.includes(tag))&&(chips[c.id]||0)<c.max);}

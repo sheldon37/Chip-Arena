@@ -1,3 +1,4 @@
+import {cinematic} from './kill-cinematics.js';
 import * as T from 'three';
 import type {DeathPresentation,PlayerView,Snapshot} from '../shared/simulation.js';
 import {ARENA} from '../shared/arena.js';
@@ -33,7 +34,7 @@ function voxelBurst(scene:T.Scene,rig:T.Group,p:PlayerView,death:DeathPresentati
 }
 /** Add future kill animations here. Only the server chooses the effect identifier.
  * Unknown identifiers fall back to voxel breakup. These pieces never deal damage. */
-export const KILL_EFFECTS:Record<string,KillEffectFactory>={'voxel-burst':voxelBurst};
+export const KILL_EFFECTS:Record<string,KillEffectFactory>={'voxel-burst':voxelBurst,...Object.fromEntries(['confetti','ascension','shrink','launch','ghost','dev-clown'].map(kind=>[kind,cinematic(kind)]))};
 export class DeathEffects {
  private active=new Map<string,{effect:Effect;at:number}>();private seen=new Set<string>();private epoch='';
  constructor(private scene:T.Scene){}

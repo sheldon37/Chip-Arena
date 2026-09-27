@@ -1,3 +1,18 @@
+# Chaos, customization, login and updater verification — 27 September 2026
+
+- TypeScript and production client/Worker/server builds: passed.
+- Automated suite: 160/160 passed; 3 additional visual/music checks passed (163 total). These cover the new field/projectile/summon mechanics, turn order and reveal locks, developer permissions, signed login expiry/tampering/rate limits, safe updater paths/checksums/offline fallback/interrupted-install recovery, all nine hats, every five-second kill cinematic, and ten distinct MP3 assets.
+- Supplied developer account: real verifier accepted the supplied credentials; its session signature verified against the shipped public key. No credentials or signing keys appear in source or packages. Secret environment values were configured for the existing Site.
+- Two real WebSocket clients, new-feature scenario: 157 identical shared snapshots, five correctly scaled zombies, persistent black holes, replicated cosmetics, forged developer rejection, shared visible choices and selected-card hold, and round cleanup.
+- Full WebSocket match with 75 ms delay each way: 3,050 identical snapshots, ten round results, five sets, four drafts, destruction agreement, rematch and disconnect timeout. Simulation median 0.128 ms, p95 0.480 ms, max 3.364 ms. Wall time 155.468 seconds.
+- Full same-origin HTTPS/D1 transport match: 3,570 shared snapshots, destruction agreement, round/set/draft flow, rematch, lost-response retry and guest leave. Snapshot interval p95 52.195 ms; maximum snapshot 40,829 bytes. Wall time 180.759 seconds.
+- Stress: 15 all-Chip combat/destruction combinations, 33,065 simulation steps, completed within the enforced entity limits.
+- Portable bundled server from a path containing spaces: client/audio serving, traversal rejection, debug rejection, two-client death agreement, five-second death hold, next-round reset and clean launcher shutdown passed. Automatic network updating was disabled for this packaged-build test; updater behavior is covered separately.
+- Browser: redesigned six-rarity draft and chosen-card state, optional login form, and persistent wizard-hat customization inspected. Proofs: `chip-arena-chaos-draft.jpg` and `chip-arena-chaos-customization.jpg`.
+- Environment limits: cloud browser has WebGL disabled and used the SVG compatibility renderer. Native Windows batch files and the optional public tunnel were not executed here; the packaged Node server/launcher were exercised on Linux. GPU rendering performance and final music/cinematic feel need a normal desktop play session.
+
+## Earlier verification history
+
 # Rarity, casting, dagger and block update — 2026-09-27
 
 - `npm test`: **144 passed, 0 failed**. Includes weighted rarity distribution, 1–12 draft counts, exhausted pools, host ownership, six-tier UI metadata, Pong replacement/reflection/bounce persistence, physical return-shot catches and cover, health-drain/thorns limits, block recoil scaling, recovery/refund deduplication, mage release/cancellation, and dagger/echo alternation.

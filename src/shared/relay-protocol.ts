@@ -1,3 +1,4 @@
+import {cosmetics} from './cosmetics.js';
 import {NETWORK} from './network-config.js';
 /** HTTPS mailbox transport; combat remains in the creator's authoritative worker. */
 export const RELAY = {protocol:'chip-arena-https-v1', intervalMs:50, inputHoldSeconds:.75, timeoutMs:12000, requestTimeoutMs:4000, maxEvents:48, maxHostBytes:384000, maxGuestBytes:24000, ttlMs:7200000} as const;
@@ -7,7 +8,7 @@ export function newRoomCode(){return [...crypto.getRandomValues(new Uint8Array(8
 export function newRoomToken(){return [...crypto.getRandomValues(new Uint8Array(32))].map(n=>n.toString(16).padStart(2,'0')).join('');}
 export type RelayEvent={id:number;message:any};
 export type RelayPacket={seq:number;ack:number;events:RelayEvent[];latest?:any};
-export function cleanProfile(p:any){return {name:typeof p?.name==='string'?p.name.replace(/[<>]/g,'').slice(0,20)||'Pilot':'Pilot',class:['ranged','magic','melee'].includes(p?.class)?p.class:'ranged',color:/^#[0-9a-f]{6}$/i.test(p?.color||'')?p.color:'#97e4d0'};}
+export function cleanProfile(p:any){return {cosmetics:cosmetics(p?.cosmetics,true),authToken:typeof p?.authToken==='string'&&p.authToken.length<=1500?p.authToken:undefined,name:typeof p?.name==='string'?p.name.replace(/[<>]/g,'').slice(0,20)||'Pilot':'Pilot',class:['ranged','magic','melee'].includes(p?.class)?p.class:'ranged',color:/^#[0-9a-f]{6}$/i.test(p?.color||'')?p.color:'#97e4d0'};}
 const guestTypes=new Set(['ready','class','spec','chip','ping','rematch','lobby']);
 const hostTypes=new Set(['welcome','error','notice','pong','rematchVotes']);
 export function validPacket(p:any,host:boolean):p is RelayPacket {
