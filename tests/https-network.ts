@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {curlFetch} from './curl-fetch.js';
 import {createLocalRelay} from '../src/relay/local.js';
 import {HttpsRoom} from '../src/client/https-room.js';
 import {HostedRoom} from '../src/shared/host-room.js';
@@ -6,7 +7,7 @@ import {initPhysics} from '../src/shared/simulation.js';
 import {testPilot} from '../src/shared/test-driver.js';
 await initPhysics();const {server,db}=createLocalRelay();await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));const base=process.env.RELAY_URL||'http://127.0.0.1:'+(server.address() as any).port;
 const delay=Number(process.env.TEST_LATENCY_MS||0),wait=(ms:number)=>new Promise(r=>setTimeout(r,ms));let dropped=false,retries=0,requestCount=0;
-const delayedFetch:typeof fetch=async(url,init)=>{requestCount++;if(delay)await wait(delay);const r=await fetch(url,init);if(delay)await wait(delay);if(!dropped&&String(url).endsWith('/exchange')&&requestCount>20){dropped=true;retries++;throw Error('Test: response lost after server committed');}return r;};
+const delayedFetch:typeof fetch=async(url,init)=>{requestCount++;if(delay)await wait(delay);const r=await (process.env.RELAY_CURL==='1'?curlFetch:fetch)(url,init);if(delay)await wait(delay);if(!dropped&&String(url).endsWith('/exchange')&&requestCount>20){dropped=true;retries++;throw Error('Test: response lost after server committed');}return r;};
 let hostRoom:HostedRoom,guestState:any,guestWelcome=false,guestGone=false,matchCount=0,compared=0,maxBytes=0,seq=0,drafts=new Set<number>(),destroyed=false;const states=new Map<number,any>(),snapshotTimes:number[]=[],inputAges:number[]=[],sentAt=new Map<number,number>();let lastSnapshot=0;const started=performance.now();const errors:string[]=[];
 const profile={name:'HTTP Host',class:'ranged' as const,color:'#97e4d0'};
 const host=new HttpsRoom({host:true,code:'',profile,base,fetch:delayedFetch,status:()=>{},ended:e=>errors.push(e),receive:m=>hostRoom.receive('guest',m),guest:p=>hostRoom.join(p),guestGone:()=>{guestGone=true;hostRoom.disconnect();}});
