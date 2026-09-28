@@ -4,7 +4,7 @@ import {CLOWN_LOVE} from './clown-love-timing.js';
 import {BASS_VAN} from './bass-van-timing.js';
 import type {GameEvent,Snapshot} from '../shared/simulation.js';
 import type {Vec} from '../shared/config.js';
-export const AUDIO_CLIPS=['pistol','rifle','machinegun','fire','water','lightning','darkness','sword','daggers','shield','greatsword','reload-start','reload-end','dash','jump','hit','hurt','parry','wood','stone','metal','explosion','burn-tick','poison-tick','ui','install','countdown','go','win','lose'] as const;
+export const AUDIO_CLIPS=['arcade-punch','arcade-kick','arcade-heavy','arcade-parry','pistol','rifle','machinegun','fire','water','lightning','darkness','sword','daggers','shield','greatsword','reload-start','reload-end','dash','jump','hit','hurt','parry','wood','stone','metal','explosion','burn-tick','poison-tick','ui','install','countdown','go','win','lose'] as const;
 export type Sound=typeof AUDIO_CLIPS[number];
 /** Event IDs are server-issued; never replay old snapshots or reconnect history. */
 export class AudioCursor {
@@ -55,7 +55,8 @@ export class ArenaAudio {
  update(state:Snapshot,me:string,yaw:number,presentation=state){this.intros.update(presentation,this.context,this.music.cueVolume);this.music.setActive(['fight','countdown','result'].includes(state.phase));this.updateLove(state);const self=state.players.find(p=>p.id===me);if(self)this.listener=self.pos;this.yaw=yaw;
   for(const e of this.cursor.consume(state.events,state.time)){
    if(e.type==='shot'||e.type==='windup'){if(e.spec)this.play(e.spec==='leet'?'lightning':e.spec==='ansatsuken'?'fire':e.spec,e.pos,.65);}
-   else if(e.type==='arcade-hit'){this.play('hit',e.pos,.5);this.arcadeTone(e.amount||1,false,e.message==='FINISH');}
+   else if(e.type==='arcade-hit'){this.play(e.message==='FINISH'?'arcade-heavy':e.impact==='kick'?'arcade-kick':e.impact==='punch'?'arcade-punch':'fire',e.pos,.95);}
+   else if(e.type==='arcade-parry')this.play('arcade-parry',e.pos,.95);
    else if(e.type==='arcade-move'){if(e.message)this.arcadeTone(3,true,e.message.includes('SHINKU'));}
    else if(e.type==='arcade-strike')this.play('sword',e.pos,.25);
    else if(e.type==='leet-scare'&&e.target===me){this.play('darkness',undefined,.9);this.play('metal',undefined,.6);}
@@ -70,8 +71,8 @@ export class ArenaAudio {
    else if(e.type==='dash'||e.type==='jump'||e.type==='parry')this.play(e.type,e.pos,.5);
    else if(e.type==='meleeRebound')this.play('metal',e.pos,Math.min(.7,.2+(e.amount||0)/2000));
    else if(e.type==='blockPulse')this.play('explosion',e.pos,e.mods?.supernova?.8:.35);
-   else if(e.type==='blockStart')this.play('parry',e.pos,.3);
-   else if(['blockHit','reflect','blockAbsorb'].includes(e.type))this.play('parry',e.pos,.65);
+   else if(e.type==='blockStart'&&e.spec!=='ansatsuken')this.play('parry',e.pos,.3);
+   else if(['blockHit','reflect','blockAbsorb'].includes(e.type)&&state.players.find(p=>p.id===e.source)?.spec!=='ansatsuken')this.play('parry',e.pos,.65);
    else if(e.type==='death'){this.play('stone',e.pos,.65);this.play('explosion',e.pos,.3);if(state.players.find(p=>p.id===e.target)?.death?.effect==='dev-clown')this.clownLaugh();}
    else if(e.type==='debrisHit')this.play('stone',e.pos,.5);
    else if(e.type==='push')this.play('water',e.pos,.65);

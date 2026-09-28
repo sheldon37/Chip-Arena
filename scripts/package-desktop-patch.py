@@ -4,9 +4,9 @@ from pathlib import Path
 from zipfile import ZipFile,ZIP_DEFLATED
 p=argparse.ArgumentParser();p.add_argument('--full',required=True);p.add_argument('--base',action='append',required=True);p.add_argument('--out',required=True);a=p.parse_args()
 prefix='Chip-Arena-Desktop/';out=Path(a.out).resolve();out.parent.mkdir(parents=True,exist_ok=True)
-readme='''CHIP ARENA - ACCOUNTS + ANSATSUKEN UPDATE
+readme='''CHIP ARENA - PARRY + REMEMBERED LOGIN UPDATE
 
-For the existing Windows desktop edition (0.3.0 through 0.3.3).
+For the existing Windows desktop edition (0.3.0 through 0.3.4).
 
 1. Close Chip Arena completely.
 2. Extract this patch ZIP.
@@ -15,7 +15,8 @@ For the existing Windows desktop edition (0.3.0 through 0.3.3).
    Keep the rest of resources: it contains the runtimes.
 4. Open Chip Arena.exe. No new .bat is needed.
 
-The existing updater also installs this game update when the host restarts.
+The existing updater installs game content when the host restarts.
+Apply this patch once for the new desktop remembered-login feature.
 This cumulative patch includes the earlier launcher connection and room-code fixes.
 
 Home > Log in / Register saves your pilot across computers. Keep the recovery code.
@@ -23,9 +24,11 @@ Existing DEV credentials still work; log in once to create the saved DEV account
 Home > DEV Menu grants registered players restricted weapons, intros and flags.
 After a grant changes, reload Account and rejoin the room.
 
-DEV/granted player: Melee > Ansatsuken. LMB: three-hit combo. RMB: burning Hadoken.
-E: Tatsumaki Senpukyaku. 1: Shoryuken. Twelve exclusive arcade Chips include
-charge/release Shinku Hadoken and Ten-Hit Rush. Customize > DEV / Rain Warrior intro.
+DEV/granted player: Melee > Ansatsuken. LMB: three-hit combo. RMB: no-cooldown parry. 1: burning Hadoken.
+E: Tatsumaki Senpukyaku. 2: Shoryuken. Twelve exclusive arcade Chips include
+hold/release 1 for Shinku Hadoken and Ten-Hit Rush.
+Two exclusive Chips are guaranteed when available; extras get 85% exclusive odds.
+Sign in once with Remember me checked to stay signed in for 30 days. Customize > DEV / Rain Warrior intro.
 The L33T staff, previous content and easy room-code joining remain included.
 
 Host online > Create Room > Copy Code. Friends enter CA-XXXX-XXXX in Join a friend.
@@ -47,7 +50,7 @@ try:
   patch.writestr('APPLY-FIX.txt',readme)
  with ZipFile(out) as patch,ZipFile(a.full) as full:
   assert patch.testzip() is None
-  assert json.loads(patch.read('resources/app/package.json'))['version']=='0.3.3'
+  assert json.loads(patch.read('resources/app/package.json'))['version']=='0.3.4'
   for base in bases:
    for name in full.namelist():
     if name.endswith('/'):continue

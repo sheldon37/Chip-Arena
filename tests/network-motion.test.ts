@@ -25,7 +25,7 @@ for(const cadence of [3,12])test(`dynamic movement replay remains within 2 cm wi
  }
  const max=Math.max(...errors);assert.ok(max<.02,`largest correction ${max} m`);pred.dispose();sim.dispose();
 });
-test('an input gap cannot replay a one-frame jump or Block tap',()=>{const sim=fixture();sim.queueInputs('guest',[{...idleInput(),seq:1,jump:true,block:true}], '1:1:0');sim.step();const player=sim.players.get('guest')!;assert.equal(player.input.jump,true);const vy=player.body.linvel().y;sim.step();assert.equal(player.input.jump,false);assert.equal(player.input.block,false);assert.ok(player.body.linvel().y<vy);assert.equal(player.ack,1);sim.dispose();});
+test('an input gap cannot replay a one-frame jump or Block tap',()=>{const sim=fixture();sim.queueInputs('guest',[{...idleInput(),seq:1,jump:true,block:true}], '1:1:0');sim.step();const player=sim.players.get('guest')!;assert.equal(player.input.jump,true);const vy=player.body.linvel().y;sim.step();assert.equal(player.input.jump,false);assert.equal(player.input.block,true);assert.equal(player.blockHeld,true);assert.equal(sim.events.filter(e=>e.type==='blockStart').length,1);assert.ok(player.body.linvel().y<vy);assert.equal(player.ack,1);sim.dispose();});
 test('small reconciliation errors ease visually while authority is corrected immediately; resets snap',()=>{
  const sim=fixture(),pred=new Predictor(),s=sim.snapshot(),me=s.players[0];pred.reconcile(s,me);const before=pred.renderPosition(0);me.pos.x+=.4;pred.reconcile(s,me);assert.ok(Math.abs(pred.pos.x-me.pos.x)<1e-6);assert.ok(Math.abs(pred.renderPosition(0).x-before.x)<1e-6);pred.renderPosition(.2);assert.ok(pred.visualOffset<.012);
  s.generation=1;me.pos.x+=4;pred.reconcile(s,me);assert.equal(pred.visualOffset,0);pred.dispose();sim.dispose();

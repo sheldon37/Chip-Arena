@@ -72,12 +72,13 @@ test('desktop hosts locally despite public DNS failure, exposes server checks, a
   isDestroyed(){return this.destroyed;}show(){this.visible=true;}hide(){this.visible=false;}focus(){}loadURL(){return Promise.resolve();}
   destroy(){this.destroyed=true;this.emit('closed');}close(){this.destroy();}
  }
- const app=Object.assign(new EventEmitter(),{setName:()=>{},requestSingleInstanceLock:()=>true,whenReady:async()=>{},quit:()=>{}});
+ const app=Object.assign(new EventEmitter(),{getPath:()=>'/mock-user-data',setName:()=>{},requestSingleInstanceLock:()=>true,whenReady:async()=>{},quit:()=>{}});
  const electron={app,BrowserWindow:Window,ipcMain:{handle:(name:string,handler:Function)=>handlers.set(name,handler)},Menu:{setApplicationMenu:()=>{},buildFromTemplate:()=>{}},clipboard:{writeText:()=>{}},dialog:{showErrorBox:()=>{}},protocol:{registerSchemesAsPrivileged:()=>{},handle:()=>{}},net:{fetch:async(url:string)=>{if(url.includes('trycloudflare.com'))throw Error('ERR_NAME_NOT_RESOLVED');return {ok:true,json:async()=>({application:'chip-arena'})};}}};
  const policy=require('../desktop/policy.cjs');
  const sandbox={require:(name:string)=>{
   if(name==='electron')return electron;
   if(name==='node:child_process')return {spawn:(exe:string,args:string[])=>{const child=Object.assign(new EventEmitter(),{pid:100,stdout:new EventEmitter(),stderr:new EventEmitter(),kill:()=>{}});spawns.push({exe,args,child});if(exe==='taskkill')setImmediate(()=>child.emit('exit',0));return child;}};
+  if(name==='./accounts.cjs')return require('../desktop/accounts.cjs');
   if(name==='./join.cjs')return require('../desktop/join.cjs');
   if(name==='./policy.cjs')return {...policy,freePort:async()=>8788};
   if(name==='./connection.cjs')return {openReachableWindow:async(_win:any,url:string)=>{opened.push(url);if(failLoad)throw Error("ERR_CONNECTION_REFUSED (-102)");}};

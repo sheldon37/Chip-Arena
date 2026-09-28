@@ -12,9 +12,16 @@ export function fighterGuard(r:CharacterRig,time:number,weight=1){
  blend(r.leftArm,-.91+bounce*2,-.18,.12);blend(r.leftElbow,-1.16,0,0);blend(r.rightArm,-.58+bounce*2,.16,-.2);blend(r.rightElbow,-1.98,0,0);
  blend(r.leftHand,.06,0,.13);blend(r.rightHand,.02,0,-.10);
 }
+export function fighterParry(r:CharacterRig,time:number){
+ r.body.position.y=-.13;r.body.rotation.set(0,-.32,0);r.pelvis.rotation.set(0,-.15,0);r.chest.rotation.set(0,.22,0);
+ r.leftLeg.rotation.set(-.12,0,.45);r.rightLeg.rotation.set(.05,0,-.45);r.leftKnee.rotation.x=.58;r.rightKnee.rotation.x=.58;
+ r.leftFoot.rotation.x=r.rightFoot.rotation.x=-.42;r.leftArm.rotation.set(-1.45,-.18,.18);r.leftElbow.rotation.x=-.12;r.leftHand.rotation.set(-.95,0,-.12);
+ r.rightArm.rotation.set(.14,.12,-.16);r.rightElbow.rotation.x=-1.6;r.rightHand.rotation.set(0,0,-.16);r.offWeapon.scale.setScalar(1);const fist=r.offWeapon.getObjectByName('fighter-fist'),palm=r.offWeapon.getObjectByName('fighter-palm');if(fist)fist.visible=false;if(palm)palm.visible=true;
+}
 export function animateAnsatsuken(r:CharacterRig,p:PlayerView,time:number){
  const speed=Math.hypot(p.vel.x,p.vel.z);fighterGuard(r,time,1-clamp(speed/9)*.35);r.weapon.rotation.set(0,0,0);r.offWeapon.rotation.set(0,0,0);r.weapon.scale.setScalar(1);r.offWeapon.scale.setScalar(1);r.weapon.visible=r.offWeapon.visible=true;
- const a=p.arcade;if(!a?.action||time>a.until+.1)return;const age=Math.max(0,time-a.at),hitAge=Math.max(0,time-p.lastAttack);
+ const fist=r.offWeapon.getObjectByName('fighter-fist'),palm=r.offWeapon.getObjectByName('fighter-palm');if(fist)fist.visible=true;if(palm)palm.visible=false;
+ const a=p.arcade;if(p.blockTime>0||time-(a?.parryAt??-10)<.22){fighterParry(r,time);return;}if(!a?.action||time>a.until+.1)return;const age=Math.max(0,time-a.at),hitAge=Math.max(0,time-p.lastAttack);
  if(a.action==='combo'){
   const u=Math.exp(-hitAge*17),last=a.index===a.total-1;
   if((p.attackIndex||0)===0){r.chest.rotation.y-=.25;return;}

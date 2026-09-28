@@ -4,7 +4,7 @@ import {GAME_CLAIM_MS} from '../shared/account-auth.js';
 import {cleanGrants,cleanFlags,Access} from '../shared/access.js';
 import {cosmetics} from '../shared/cosmetics.js';
 import type {AuthEnv} from './auth.js';
-const encoder=new TextEncoder(),SESSION_MS=12*3600000;
+const encoder=new TextEncoder(),SESSION_MS=12*3600000,REMEMBER_MS=30*24*3600000;
 const bytes=(s:string)=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
 const random=()=>base64url(crypto.getRandomValues(new Uint8Array(32)));
 const digest=async(s:string)=>base64url(await crypto.subtle.digest('SHA-256',encoder.encode(s)));
@@ -65,9 +65,9 @@ export async function accounts(request:Request,env:AuthEnv,now=Date.now()){
     }else if(!row){await passwordHash(input.password,'AAAAAAAAAAAAAAAAAAAAAA');throw fail('Username or password is incorrect.',401);}
     if(!row||!await passwordMatches(input.password,row.password))throw fail('Username or password is incorrect.',401);
    }
-   const session=random(),hash=await digest(session);
-   await env.DB.batch([env.DB.prepare('DELETE FROM player_sessions WHERE hash IN (SELECT hash FROM player_sessions WHERE expires<? LIMIT 100)').bind(now),env.DB.prepare('DELETE FROM dev_login_rates WHERE id IN (SELECT id FROM dev_login_rates WHERE expires<? LIMIT 100)').bind(now),env.DB.prepare('INSERT INTO player_sessions(hash,account_id,expires) VALUES(?,?,?)').bind(hash,row.id,now+SESSION_MS)]);
-   return response({session,expires:now+SESSION_MS,account:view(row),token:await sign(row,env,now),recoveryCode});
+   const session=random(),hash=await digest(session),expires=now+(input.remember===true?REMEMBER_MS:SESSION_MS);
+   await env.DB.batch([env.DB.prepare('DELETE FROM player_sessions WHERE hash IN (SELECT hash FROM player_sessions WHERE expires<? LIMIT 100)').bind(now),env.DB.prepare('DELETE FROM dev_login_rates WHERE id IN (SELECT id FROM dev_login_rates WHERE expires<? LIMIT 100)').bind(now),env.DB.prepare('INSERT INTO player_sessions(hash,account_id,expires) VALUES(?,?,?)').bind(hash,row.id,expires)]);
+   return response({session,expires:expires,account:view(row),token:await sign(row,env,now),recoveryCode});
   }
   const session=request.headers.get('authorization')?.replace(/^Bearer /,'');if(!session||!/^[-\w]{43}$/.test(session))throw fail('Please log in.',401);
   const hash=await digest(session);let row=await env.DB.prepare('SELECT a.* FROM player_accounts a JOIN player_sessions s ON s.account_id=a.id WHERE s.hash=? AND s.expires>?').bind(hash,now).first();if(!row)throw fail('Session expired. Please log in again.',401);

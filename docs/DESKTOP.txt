@@ -111,7 +111,7 @@ Home > Log in / Register creates a username/password account. Guest play remains
 available. Save the recovery code shown after registration: there is no email
 reset service. Customize > Save Pilot saves your appearance and intro text to
 your account. Account > Reload saved pilot loads it on another computer.
-Sign in again after closing the game. Internet access is needed for accounts;
+Remember me keeps you signed in for 30 days. Internet access is needed for accounts;
 local guest practice still works offline. Passwords go directly to the central
 HTTPS account service, not to the friend's match server.
 
@@ -125,9 +125,10 @@ access granted when that player joined. DEV roles cannot be assigned in this men
 
 DEV or granted player: choose Melee > Ansatsuken.
 LMB starts the left straight / right straight / rising knee combo.
-RMB fires a Hadoken that burns enemies (replaces Block).
-E performs Tatsumaki Senpukyaku. 1 performs Shoryuken.
-The Shinku Hadoken Chip enables hold RMB to charge, then release at full charge.
+RMB parries: no cooldown, blue success flash, brief invulnerability and a chime.
+1 fires a Hadoken that burns enemies.
+E performs Tatsumaki Senpukyaku. 2 performs Shoryuken.
+The Shinku Hadoken Chip enables hold 1 to charge, then release at full charge.
 Ten-Hit Rush turns the basic chain into ten hits. Twelve exclusive arcade Chips
 also add hurricane kicks, triple uppercuts, cancels, focus armor, air juggles,
 counters, afterimages, stamina recovery and a once-per-round second wind.
@@ -137,3 +138,15 @@ Customize > Match Intro > DEV / Rain Warrior selects the new rain entrance.
 Restart the host to receive the game update. The existing executable and .bat
 launchers continue working; no new runtime is required. Update all clients and
 hosts together so the new moves and signed item grants are recognized.
+
+PARRY + REMEMBERED LOGIN (DESKTOP 0.3.4)
+Apply the new patch once, or use the full download, to keep login across desktop
+restarts and changing room addresses. Game-only automatic updates cannot install
+this launcher feature. Keep the same Chip Arena.exe and existing .bat files.
+Sign in once with Remember me checked (default). No password is stored.
+Native DEV grant management is available while hosting your own game.
+RMB uses a 0.30-second parry window; release and tap again to repeat.
+A successful parry grants 0.10 seconds of invulnerability and no cooldown.
+Hits now stun targets and show a combo counter, damage total and distinct impacts.
+Ansatsuken drafts guarantee two available exclusive Chips; remaining slots have
+an 85% chance to draw from its exclusive pool before normal rarity selection.

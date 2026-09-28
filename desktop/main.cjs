@@ -1,16 +1,18 @@
-const {app,BrowserWindow,ipcMain,Menu,clipboard,dialog,protocol,net:electronNet}=require('electron');
+const {app,BrowserWindow,ipcMain,Menu,clipboard,dialog,protocol,safeStorage,net:electronNet}=require('electron');
 const {spawn}=require('node:child_process');
 const {join}=require('node:path');
 const {pathToFileURL}=require('node:url');
 const {gameUrl,tunnelUrl,freePort}=require('./policy.cjs');
 const {resolveJoin}=require('./join.cjs');
 const {openReachableWindow}=require('./connection.cjs');
+const {DesktopAccounts,validAccountSender,AUTH_ORIGIN}=require('./accounts.cjs');
+let accountBroker;
 app.setName('Chip Arena');
 protocol.registerSchemesAsPrivileged([{scheme:'arena',privileges:{standard:true,secure:true,supportFetchAPI:true}}]);
 let home,game,child,closing=false,busy=false,stopping=false,shared='',pendingReject,lastTarget='',connectionAbort,localAddress='',serverLog='';
 const root=join(process.resourcesPath,'game');
 function status(text){if(home&&!home.isDestroyed())home.webContents.send('arena:status',String(text).slice(-1500));}
-function diagnostics(){return `Chip Arena desktop 0.3.3\nServer process: ${child?.pid?'running (PID '+child.pid+')':'stopped'}\nLocal server: ${localAddress||'not ready'}\nPublic invite: ${shared||'not registered'}\n\n${serverLog}`;}
+function diagnostics(){return `Chip Arena desktop 0.3.4\nServer process: ${child?.pid?'running (PID '+child.pid+')':'stopped'}\nLocal server: ${localAddress||'not ready'}\nPublic invite: ${shared||'not registered'}\n\n${serverLog}`;}
 function log(text){serverLog=(serverLog+String(text)).slice(-16000);}
 async function checkConnections(){const hosted=child,local=localAddress,invite=shared;if(!hosted||!local)throw Error('Start a server first.');status('Checking the local server and public invite…');const check=async(label,url)=>{if(!url)return label+': not registered';try{const response=await electronNet.fetch(url+'/health',{signal:AbortSignal.timeout(5000),cache:'no-store',redirect:'error'});if(!response.ok)throw Error('HTTP '+response.status);if((await response.json()).application!=='chip-arena')throw Error('Unexpected health response');return label+': healthy';}catch(e){return label+': '+e.message;}};const results=await Promise.all([check('Local server',local),check('Public invite',invite)]);if(child!==hosted)return diagnostics();log('\nConnection check: '+results.join(' | ')+'\n');status(results.join(' | '));return diagnostics();}
 function stopServer(){return new Promise(resolve=>{connectionAbort?.abort(Error('Launch cancelled.'));const processToStop=child;child=null;shared='';lastTarget='';localAddress='';pendingReject?.(Error('Launch cancelled.'));pendingReject=null;if(!processToStop?.pid){resolve();return;}stopping=true;
@@ -18,7 +20,7 @@ function stopServer(){return new Promise(resolve=>{connectionAbort?.abort(Error(
  else{try{process.kill(-processToStop.pid,'SIGTERM');}catch{processToStop.kill();}stopping=false;resolve();}
  });}
 function configureGame(win,url){
- const origin=new URL(url).origin;
+ const origin=new URL(url).origin;win.accountOrigin=origin;
  win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
  win.webContents.on('will-navigate',(event,target)=>{try{if(new URL(target).origin!==origin)event.preventDefault();}catch{event.preventDefault();}});
  win.webContents.on('will-redirect',(event,target)=>{try{if(new URL(target).origin!==origin)event.preventDefault();}catch{event.preventDefault();}});
@@ -29,7 +31,7 @@ function configureGame(win,url){
 }
 async function openGame(raw){const url=gameUrl(raw);if(game&&!game.isDestroyed()){game.focus();return;}
  lastTarget=url;const controller=new AbortController();connectionAbort=controller;let entered=false;
- game=new BrowserWindow({show:false,width:1440,height:900,minWidth:960,minHeight:600,title:'Chip Arena',backgroundColor:'#060810',autoHideMenuBar:true,webPreferences:{nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,partition:'persist:chip-arena-game'}});
+ game=new BrowserWindow({show:false,width:1440,height:900,minWidth:960,minHeight:600,title:'Chip Arena',backgroundColor:'#060810',autoHideMenuBar:true,webPreferences:{preload:join(__dirname,'game-preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,partition:'persist:chip-arena-game'}});
  const current=game;configureGame(current,url);current.on('closed',()=>{if(game===current)game=null;if(!closing){home.show();if(entered){status('Game closed.');void stopServer();}}});
  try{status(child?'Opening your local server…':'Checking game connection…');await openReachableWindow(current,url,{signal:controller.signal,onRetry:(attempt,seconds)=>status(`Waiting for the server address… retry ${attempt} · up to ${seconds}s remaining. Keep the host running.`)});controller.signal.throwIfAborted();entered=true;current.show();home.hide();}
  catch(e){if(!current.isDestroyed())current.destroy();if(!closing)home.show();throw e;}
@@ -50,6 +52,8 @@ function validSender(event){if(event.sender!==home?.webContents||event.senderFra
 if(!app.requestSingleInstanceLock())app.quit();else{
  app.on('second-instance',()=>{const win=game||home;if(win){if(win.isMinimized())win.restore();win.show();win.focus();}});
  app.whenReady().then(()=>{
+ accountBroker=new DesktopAccounts(join(app.getPath('userData'),'account-session.dat'),safeStorage,(...args)=>electronNet.fetch(...args));
+ ipcMain.handle('arena:account',(event,action,body)=>{if(!validAccountSender(event,game,game?.accountOrigin))throw Error('Request not authorized.');if(['players','grant'].includes(action)&&![AUTH_ORIGIN,localAddress].includes(game.accountOrigin))return {ok:false,status:403,data:{error:'Open a game you host to manage DEV grants.'}};return accountBroker.request(action,body);});
  protocol.handle('arena',request=>{const url=new URL(request.url);if(url.hostname!=='launcher'||!['/index.html','/launcher.css','/launcher.js'].includes(url.pathname))return new Response('Not found',{status:404});return electronNet.fetch(pathToFileURL(join(__dirname,url.pathname.slice(1))).toString());});
  home=new BrowserWindow({width:1000,height:740,minWidth:880,minHeight:640,title:'Chip Arena',backgroundColor:'#090c14',autoHideMenuBar:true,webPreferences:{preload:join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true}});
  home.webContents.setWindowOpenHandler(()=>({action:'deny'}));home.webContents.on('will-navigate',event=>event.preventDefault());home.on('closed',()=>app.quit());home.loadURL('arena://launcher/index.html');

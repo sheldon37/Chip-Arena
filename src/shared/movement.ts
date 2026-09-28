@@ -4,11 +4,12 @@ import {CONFIG as C,Input,Vec,v,add,mul,len,norm,forward,clamp,sub} from './conf
  * contact response belong to Rapier, not a separate client character controller. */
 export interface Motion {move:Vec;ext:Vec;dashCd:number;dashTime:number;grounded:boolean;}
 export interface MotionRules {maxExternalSpeed?:number;maxExternalLift?:number;speed:number;dashCooldown:number;knockbackTaken:number;jumpPower?:number;playerGravity?:number;}
-export function prepareMotion(world:RAPIER.World,body:RAPIER.RigidBody,collider:RAPIER.Collider,state:Motion,input:Input,stats:MotionRules,dt:number,guarding=false,swinging=false){
+export function prepareMotion(world:RAPIER.World,body:RAPIER.RigidBody,collider:RAPIER.Collider,state:Motion,input:Input,stats:MotionRules,dt:number,guarding=false,swinging=false,stunned=false){
  state.dashCd=Math.max(0,state.dashCd-dt);state.dashTime=Math.max(0,state.dashTime-dt);
  body.setGravityScale(stats.playerGravity??1,true);const pos=body.translation();state.grounded=!!world.castRay(new RAPIER.Ray(pos,v(0,-1,0)),C.playerHalfHeight+C.playerRadius+.16,true,undefined,undefined,collider);
- let direction=v(input.x,0,input.z);if(len(direction)>1)direction=norm(direction);
- const dashed=input.dash&&state.dashCd<=0;
+ if(stunned){state.move=v();state.dashTime=0;}
+ let direction=stunned?v():v(input.x,0,input.z);if(len(direction)>1)direction=norm(direction);
+ const dashed=!stunned&&input.dash&&state.dashCd<=0;
  if(dashed){state.dashCd=Math.max(.5,C.dashCooldown*stats.dashCooldown);state.dashTime=C.dashDuration;state.ext=add(state.ext,mul(len(direction)>.1?norm(direction):forward(input.yaw),C.dashSpeed));}
  const speed=C.speed*stats.speed*(guarding?.45:1)*(swinging?.85:1),desired=mul(direction,speed);
  const approach=(a:number,b:number)=>a+clamp(b-a,-C.acceleration*dt,C.acceleration*dt);
@@ -21,7 +22,7 @@ export function prepareMotion(world:RAPIER.World,body:RAPIER.RigidBody,collider:
  // Counter-steering softens a launch without instantly cancelling it; lateral input stays responsive.
  let controlled=state.move;
  if(state.dashTime<=0&&externalSpeed>.01){const away=norm(state.ext),against=Math.min(0,state.move.x*away.x+state.move.z*away.z),cancel=against*(1-1/(1+(externalSpeed/4)**2));controlled=add(state.move,mul(away,-cancel));}
- let vy=body.linvel().y;const jumped=input.jump&&state.grounded;
+ let vy=body.linvel().y;const jumped=!stunned&&input.jump&&state.grounded;
  if(jumped){vy=C.jumpSpeed*(stats.jumpPower??1);state.grounded=false;}
  body.setLinvel(v(controlled.x+state.ext.x,vy+lift,controlled.z+state.ext.z),true);
  return {dashed,jumped};

@@ -685,6 +685,7 @@ function introText(value) {
 // src/relay/accounts.ts
 var encoder = new TextEncoder();
 var SESSION_MS = 12 * 36e5;
+var REMEMBER_MS = 30 * 24 * 36e5;
 var bytes = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
 var random = () => base64url(crypto.getRandomValues(new Uint8Array(32)));
 var digest = async (s) => base64url(await crypto.subtle.digest("SHA-256", encoder.encode(s)));
@@ -816,9 +817,9 @@ async function accounts(request, env, now = Date.now()) {
         }
         if (!row2 || !await passwordMatches(input.password, row2.password)) throw fail("Username or password is incorrect.", 401);
       }
-      const session2 = random(), hash5 = await digest(session2);
-      await env.DB.batch([env.DB.prepare("DELETE FROM player_sessions WHERE hash IN (SELECT hash FROM player_sessions WHERE expires<? LIMIT 100)").bind(now), env.DB.prepare("DELETE FROM dev_login_rates WHERE id IN (SELECT id FROM dev_login_rates WHERE expires<? LIMIT 100)").bind(now), env.DB.prepare("INSERT INTO player_sessions(hash,account_id,expires) VALUES(?,?,?)").bind(hash5, row2.id, now + SESSION_MS)]);
-      return response({ session: session2, expires: now + SESSION_MS, account: view(row2), token: await sign(row2, env, now), recoveryCode });
+      const session2 = random(), hash5 = await digest(session2), expires = now + (input.remember === true ? REMEMBER_MS : SESSION_MS);
+      await env.DB.batch([env.DB.prepare("DELETE FROM player_sessions WHERE hash IN (SELECT hash FROM player_sessions WHERE expires<? LIMIT 100)").bind(now), env.DB.prepare("DELETE FROM dev_login_rates WHERE id IN (SELECT id FROM dev_login_rates WHERE expires<? LIMIT 100)").bind(now), env.DB.prepare("INSERT INTO player_sessions(hash,account_id,expires) VALUES(?,?,?)").bind(hash5, row2.id, expires)]);
+      return response({ session: session2, expires, account: view(row2), token: await sign(row2, env, now), recoveryCode });
     }
     const session = request.headers.get("authorization")?.replace(/^Bearer /, "");
     if (!session || !/^[-\w]{43}$/.test(session)) throw fail("Please log in.", 401);

@@ -20,9 +20,15 @@ include its arcade pool. Intros can be granted independently.
 After a grant/revoke, reload the account and rejoin the room. The account service
 issues signed gameplay claims valid for 15 minutes, refreshed every five minutes.
 The host verifies claims at room entry; existing seats retain their permissions
-until they leave. Online grants are not a live moderation/kick system. Logins use
-12-hour revocable sessions in sessionStorage, so a closed game requires signing
-in again. Recovery rotates its code and revokes existing account sessions. It does
+until they leave. Online grants are not a live moderation/kick system. Remember me is enabled by default and issues a revocable 30-day session.
+Without it, sessions expire after 12 hours. Browsers store remembered sessions
+per origin; desktop 0.3.4 stores its session with OS-backed encryption, independent
+of changing host ports or invite URLs. The desktop account broker contacts only
+the fixed HTTPS account origin and never sends the long-lived credential into
+a game renderer. Logout forgets it even when offline. No password is saved.
+Native DEV grant management is available in a game you host or the official Site,
+not in a remote host page. Install the desktop patch once for this feature; the
+game-content updater does not replace desktop application code. Recovery rotates its code and revokes existing account sessions. It does
 not terminate an already-running match seat.
 
 ## Data and authorization
@@ -54,10 +60,11 @@ and [noble-hashes](https://github.com/paulmillr/noble-hashes).
 | Input | Move |
 | --- | --- |
 | LMB | Left straight, right straight, knee finisher; holding repeats the chain |
-| RMB | Burning Hadoken; replaces Block |
+| RMB | Tap to parry: no cooldown, blue flash and brief invulnerability on success |
+| 1 | Burning Hadoken |
 | E | Tatsumaki Senpukyaku, spinning multi-hit kick |
-| 1 | Shoryuken, forward/rising uppercut |
-| Hold/release RMB with Shinku Chip | Charge for 1.4 seconds; release a full charge for Shinku Hadoken |
+| 2 | Shoryuken, forward/rising uppercut |
+| Hold/release 1 with Shinku Chip | Charge for 1.4 seconds; release a full charge for Shinku Hadoken |
 
 Normal Hadoken costs 12 stamina; Shinku costs 30. A normal combo costs 12, ten-hit
 combo 22, Tatsu 22 and Shoryuken 25, before resource modifiers. Shinku pierces players
@@ -93,14 +100,49 @@ Move names and inspiration: [Capcom Ryu move list](https://game.capcom.com/cfn/s
 and [Capcom's Shinku Hadoken discussion](https://game.capcom.com/cfn/sfv/column/132046?lang=en).
 The mechanics/timings here are custom Chip Arena rules.
 
+## Parry and hit feedback update
+
+A parry uses the existing 0.30-second timed Block window (Block-window Chips
+can extend it), with zero cooldown even on a miss. Release and tap RMB again to
+rearm; holding does not auto-repeat. A successful parry keeps projectile reflection,
+melee recoil and compatible first-block procs, clears attack recovery and grants
+0.10 seconds / six simulation ticks of damage immunity. Falling and the scripted
+L44T scare kill still bypass it. The blue character flash lasts 0.22 seconds.
+Hadoken now has its own cooldown independent of the parry.
+
+Confirmed strikes interrupt the target's attacks, block, movement, jump and dash.
+They preserve physical knockback. At base attack rate, normal punches stun for
+0.30 seconds, rapid-chain punches 0.15, Tatsu kicks 0.22 and finishers 0.38.
+Hadoken stuns for 0.26 seconds; Shinku's repeated impacts keep shorter 0.14–0.15
+windows. Attack-rate modifiers shorten these with a 0.09-second floor. Authority
+and client movement prediction share the lock; remote snapshots include it.
+The counter tracks confirmed hits/damage on one opponent across attacks, resets
+when the target changes or after a 1.1-second gap, and excludes blocked/missed hits.
+Punches, kicks, finishers and parries use four original PCM sounds; no game audio
+was extracted. The open-palm pose uses the supplied parry reference.
+
+Each Ansatsuken draft guarantees two exclusive Chips if enough remain. Each
+remaining slot has an 85% exclusive-pool roll, then the ordinary compatible roll.
+Choices stay unique and exhausted exclusive pools fall back to normal Chips.
+Normal weapons retain their previous odds; L33T retains its own pool. Block
+cooldown reduction is excluded because the parry is already cooldown-free.
+
+Visual reference: [Capcom's parry effects discussion](https://www.streetfighter.com/6/column/detail/effects003)
+and [official Fighting Ground guide](https://www.streetfighter.com/6/en-us/mode/fightingground).
+These are custom DEV timings, not a claim to reproduce the current SF6 balance.
+Desktop storage follows [Electron safeStorage](https://www.electronjs.org/docs/latest/api/safe-storage).
+
 ## Verification
 
-- 260 automated tests passed, including new account and combat coverage.
+- 269 automated tests passed, covering accounts, combat, movement, audio
+  and desktop transport.
 - Password KDF output cross-checked against Node's independent scrypt implementation.
 - Registration, reserved DEV migration, safe profile persistence, version conflicts,
   unauthorized/forged grants, token tampering/expiry, logout and recovery verified.
-- Eight real WebSocket clients saw 69 identical shared snapshots, charged/released
-  Shinku, key 1 uppercut, ten-hit chain, and a granted non-DEV account.
+- Eight real WebSocket clients saw 100 identical shared snapshots, charged/released
+  Shinku, key 2 uppercut, ten-hit chain, parry flash and authoritative hit stun.
+- Native session tests restart the broker, verify encrypted persistence, token
+  isolation, sender checks and logout. Windows DPAPI needs native playtesting.
 - Final intro poses fit 4:3, 16:9 and 21:9 framing in geometry projection checks.
 - Original music file, migrations, source package and Windows archive integrity checked.
 - Windows startup, GPU rendering, and real Internet latency require local playtesting.

@@ -324,3 +324,7 @@ DEVs manage registered players through the DEV Menu; grants do not give DEV powe
 Ansatsuken adds arcade melee, Hadoken, Tatsumaki, Shoryuken, twelve exclusive Chips,
 and a rain intro. See [accounts and Ansatsuken](docs/ACCOUNTS-ANSATSUKEN.md) for setup,
 controls, security boundaries and validation. Guests can still play without logging in.
+
+Desktop 0.3.4 adds remembered login across host addresses. Ansatsuken now parries
+on RMB, uses 1 for Hadoken and 2 for Shoryuken, applies hit stun, tracks combos
+and heavily favors its exclusive Chips. See the guide above for exact timings.

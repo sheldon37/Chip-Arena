@@ -48,6 +48,7 @@ export function animateCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:numbe
  r.leftElbow.rotation.set(-.22-Math.max(0,gait)*.5*run,0,0);r.rightElbow.rotation.set(-.25-Math.max(0,-gait)*.5*run,0,0);
  r.leftHand.rotation.set(Math.sin(r.stride-.5)*.13*run,0,.06);r.rightHand.rotation.set(-Math.sin(r.stride-.5)*.13*run,0,-.06);
  r.weapon.position.set(0,0,0);r.weapon.rotation.set(.5,0,0);r.weapon.scale.set(1,1,w.class==='melee'?p.reach/w.range:1);r.offWeapon.rotation.set(.55,0,0);r.offWeapon.scale.copy(r.weapon.scale);
+ if((p.hitStunUntil||0)>time){const flinch=Math.min(1,((p.hitStunUntil||0)-time)/.12);r.body.rotation.x=-.23*flinch;r.chest.rotation.y=.20*flinch;r.head.rotation.x=-.22;r.leftArm.rotation.set(-.5,0,.45);r.rightArm.rotation.set(-.5,0,-.45);r.leftElbow.rotation.x=r.rightElbow.rotation.x=-.8;return pose;}
  if(p.spec==='ansatsuken'){animateAnsatsuken(r,p,time);return pose;}
  const aimTarget=w.class==='ranged'?(pose.shotAge<Math.min(.9,w.interval+.25)||p.reloadTime>0?1:run>.15?0:1):0;r.aimWeight+=(aimTarget-r.aimWeight)*(1-Math.exp(-dt*24));
  if(w.class!=='magic'&&r.weapon.parent!==r.sockets.rightHand)r.sockets.rightHand.add(r.weapon);

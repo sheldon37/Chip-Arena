@@ -26,6 +26,8 @@ test('eight fighting clients negotiate compression, receive identical states and
   await until(()=>states.length===8&&states.every(s=>s?.players.length===8),'join eight');clients.forEach(c=>c.send(JSON.stringify({type:'ready',ready:true})));
   await until(()=>states.every(s=>s.phase==='specialization'),'specialize');clients.forEach((c,i)=>c.send(JSON.stringify({type:'spec',id:i%2?'fire':'pistol'})));
   await until(()=>states.every(s=>s.phase==='fight'),'combat');
+  // Lobby joins can broadcast different rosters at the same tick; compare combat only.
+  hashes.forEach(h=>h.clear());
   const received=clients.map(c=>(c as any)._socket.bytesRead),began=performance.now();let seq=0;
   driver=setInterval(()=>{seq++;clients.forEach((c,i)=>{const s=states[i];if(s.phase==='fight')c.send(JSON.stringify({type:'inputs',epoch:`${s.setNumber}:${s.round}:${s.generation||0}`,inputs:[testPilot(s,ids[i],seq)]}));});},1000/60);
   pings=setInterval(()=>clients.forEach(c=>c.send(JSON.stringify({type:'ping',at:performance.now()}))),200);

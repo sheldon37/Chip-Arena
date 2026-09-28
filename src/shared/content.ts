@@ -1,4 +1,4 @@
-import {ARCADE_CHIPS,ARCADE_INCOMPATIBLE} from './arcade-content.js';
+import {ARCADE,ARCADE_CHIPS,ARCADE_INCOMPATIBLE} from './arcade-content.js';
 import {LEET_CHIPS,LEET_WEIGHTS,LEET_INCOMPATIBLE} from './leet-content.js';
 import {CHAOS_CHIPS} from './chaos-content.js';
 import {CONFIG as C} from './config.js';
@@ -6,7 +6,7 @@ import type {ClassId,SpecId} from './config.js';
 import {ELEMENTS} from './elements.js';
 export interface Weapon {devOnly?:boolean;id:SpecId;name:string;class:ClassId;description:string;damage:number;interval:number;speed:number;gravity:number;range:number;impulse:number;ammo:number;reload:number;cost:number;spread:number;windup:number;arc:number;secondary:string;secondaryCooldown:number;color:number;burn?:number;blast?:number;drain?:number;chain?:number;burstCount?:number;secondaryCost?:number;}
 export const WEAPONS:Record<SpecId,Weapon>={
- ansatsuken:{id:'ansatsuken',name:'Ansatsuken',devOnly:true,class:'melee',description:'DEV · LMB: left straight, right straight, knee. RMB: burning Hadoken. E: Tatsumaki Senpukyaku. 1: Shoryuken. Exclusive arcade Chips evolve your moves.',damage:39,interval:.9,speed:23,gravity:0,range:2,impulse:650,ammo:0,reload:0,cost:12,spread:0,windup:.12,arc:1.6,secondary:'tatsu',secondaryCooldown:5,color:0x80dfff},
+ ansatsuken:{id:'ansatsuken',name:'Ansatsuken',devOnly:true,class:'melee',description:'DEV · LMB: left straight, right straight, knee. RMB: no-cooldown parry. 1: burning Hadoken. E: Tatsumaki Senpukyaku. 2: Shoryuken. Exclusive arcade Chips evolve your moves.',damage:39,interval:.9,speed:23,gravity:0,range:2,impulse:650,ammo:0,reload:0,cost:12,spread:0,windup:.12,arc:1.6,secondary:'tatsu',secondaryCooldown:5,color:0x80dfff},
  leet:{id:'leet',name:'L33T H4x',devOnly:true,class:'magic',description:'DEV · Binary bolts pause when they detect a visible enemy, then launch at that captured position. E: Root Command. Unlocks L44T Chips and greatly improves legendary / mythic odds.',damage:32,interval:.6,speed:19,gravity:0,range:60,impulse:260,ammo:0,reload:0,cost:7,spread:0,windup:0,arc:0,secondary:'root',secondaryCooldown:12,color:0x52ff83},
  pistol:{id:'pistol',name:'Pistol',class:'ranged',description:'Precise shots. 7-round magazine. E secondary: braced shot (2× damage, 2 ammo).',damage:23,interval:.42,speed:52,gravity:32,range:55,impulse:175,ammo:7,reload:1.1,cost:0,spread:.008,windup:0,arc:0,secondary:'power',secondaryCooldown:2.2,color:0xffd88d},
  rifle:{id:'rifle',name:'Rifle',class:'ranged',description:'Sniper: 58 damage, 3 rounds, 1.15 s between shots, 2.6 s reload. Fast 150 m/s shots retain gravity. Hold Q: 3× scope. E: 78-damage braced shot (2 ammo).',damage:58,interval:1.15,speed:150,gravity:12,range:140,impulse:350,ammo:3,reload:2.6,cost:0,spread:.0015,windup:0,arc:0,secondary:'snipe',secondaryCooldown:3.8,color:0xffe7aa},
@@ -132,12 +132,14 @@ export const CHIPS:Chip[]=[
 ...CHAOS_CHIPS,...ARCADE_CHIPS,...LEET_CHIPS,
 ];
 export function statsFor(chips:Record<string,number>):Stats {const s={...BASE_STATS}; for(const c of CHIPS)for(let n=0;n<Math.min(c.max,chips[c.id]||0);n++)for(const f of c.effects){if(f.op==='add')s[f.stat]+=f.value;else if(f.op==='mul')s[f.stat]*=f.value;else s[f.stat]=f.value;}s.hp=Math.max(15,s.hp);s.speed=Math.max(.25,Math.min(2.5,s.speed));s.attackRate=Math.max(.15,Math.min(5,s.attackRate));s.extraProjectiles=Math.min(11,s.extraProjectiles);s.extraStrikes=Math.min(4,s.extraStrikes);s.split=Math.min(6,s.split);s.projectileSize=Math.max(.4,Math.min(6,s.projectileSize));s.projectileSpeed=Math.min(4,s.projectileSpeed);s.critical=Math.min(.75,s.critical);s.lifeSteal=Math.min(1,s.lifeSteal);s.jumpPower=Math.min(2.5,s.jumpPower);s.impulse=Math.min(12,s.impulse);s.blockForce=Math.min(6,s.blockForce);s.knockbackTaken=Math.max(.04,Math.min(3,s.knockbackTaken));return s;}
-export function eligibleChips(spec:SpecId,chips:Record<string,number>){const cls=WEAPONS[spec].class,tags=['all',cls,...(spec==='leet'?['leet']:spec==='ansatsuken'?['ansatsuken']:[]),...(cls==='melee'?[]:['projectile'])];return CHIPS.filter(c=>c.tags.some(tag=>tags.includes(tag))&&(chips[c.id]||0)<c.max&&(spec!=='leet'||!LEET_INCOMPATIBLE.has(c.id))&&(spec!=='ansatsuken'||!ARCADE_INCOMPATIBLE.has(c.id)&&!c.effects.some(e=>e.stat.startsWith('block')||e.stat.startsWith('reflect'))&&!c.description.includes('first successful Block')));}
+export function eligibleChips(spec:SpecId,chips:Record<string,number>){const cls=WEAPONS[spec].class,tags=['all',cls,...(spec==='leet'?['leet']:spec==='ansatsuken'?['ansatsuken']:[]),...(cls==='melee'?[]:['projectile'])];return CHIPS.filter(c=>c.tags.some(tag=>tags.includes(tag))&&(chips[c.id]||0)<c.max&&(spec!=='leet'||!LEET_INCOMPATIBLE.has(c.id))&&(spec!=='ansatsuken'||!ARCADE_INCOMPATIBLE.has(c.id)));}
 export const magazineCapacity=(spec:SpecId,stats:Stats)=>Math.ceil(WEAPONS[spec].ammo*stats.ammoCapacity);
 /** Roll a rarity, then a compatible Chip in that tier, without replacement. Empty tiers renormalize. */
 export function offerChips(spec:SpecId,chips:Record<string,number>,random:()=>number,count=6){
  const pool=eligibleChips(spec,chips),result:string[]=[];
  while(pool.length&&result.length<draftChoiceCount(count)){
+  const exclusive=spec==='ansatsuken'?pool.filter(c=>c.tags.includes('ansatsuken')):[];
+  if(exclusive.length&&(result.length<ARCADE.guaranteedExclusives||random()<ARCADE.exclusiveChance)){const pick=exclusive[Math.min(exclusive.length-1,Math.floor(Math.max(0,random())*exclusive.length))];result.push(pick.id);pool.splice(pool.indexOf(pick),1);continue;}
   const tiers=(Object.keys(RARITIES) as Rarity[]).filter(r=>pool.some(c=>c.rarity===r));
   const weight=(r:Rarity)=>spec==='leet'?(tiers.some(t=>LEET_WEIGHTS[t]>0)?LEET_WEIGHTS[r]:1):RARITIES[r].weight;
   let roll=Math.max(0,Math.min(.999999999,random()))*tiers.reduce((n,r)=>n+weight(r),0),tier=tiers[tiers.length-1];
