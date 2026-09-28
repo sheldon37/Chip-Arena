@@ -8,7 +8,7 @@ import {createCharacterRig} from '../src/client/character-rig.js';
 import {poseIntro,introCamera} from '../src/client/intro-choreography.js';
 import {IntroAudio} from '../src/client/intro-audio.js';
 import {ArenaMusic} from '../src/client/music.js';
-import {INTRO,INTRO_STYLES,IntroStyle} from '../src/shared/intros.js';
+import {INTRO,INTRO_STYLES,IntroStyle,introDuration,introNameAt} from '../src/shared/intros.js';
 import {Simulation,initPhysics} from '../src/shared/simulation.js';
 await initPhysics();
 test('armor lights illuminate the scene, pulse with cooldown, avoid first-person torso ghosts, and clean up',()=>{
@@ -19,8 +19,8 @@ test('armor lights illuminate the scene, pulse with cooldown, avoid first-person
 });
 test('five camera sequences are rewindable and keep the final full-body pose in frame at desktop aspect ratios',()=>{
  for(const style of Object.keys(INTRO_STYLES) as IntroStyle[]){const rig=createCharacterRig('#44ddff'),camera=new T.PerspectiveCamera(43,1,.1,80),shots=new Set<number>();
-  for(let t=0;t<INTRO.seconds;t+=.1){poseIntro(rig,style,t);shots.add(introCamera(camera,style,t,rig.group.position,16/9).shot);assert.ok([...camera.position.toArray(),...camera.quaternion.toArray()].every(Number.isFinite));}assert.equal(shots.size,4,style);
-  for(const aspect of [4/3,16/9,21/9])for(const t of [INTRO.nameAt,INTRO.seconds-.1]){poseIntro(rig,style,t);introCamera(camera,style,t,rig.group.position,aspect);rig.group.updateMatrixWorld(true);camera.updateMatrixWorld(true);const box=new T.Box3().setFromObject(rig.group);for(const x of [box.min.x,box.max.x])for(const y of [box.min.y,box.max.y])for(const z of [box.min.z,box.max.z]){const screen=new T.Vector3(x,y,z).project(camera);assert.ok(Math.abs(screen.x)<.92&&Math.abs(screen.y)<.92&&screen.z>-1&&screen.z<1,`${style}: ${screen.toArray()}`);}}
+  for(let t=0;t<introDuration(style);t+=.1){poseIntro(rig,style,t);shots.add(introCamera(camera,style,t,rig.group.position,16/9).shot);assert.ok([...camera.position.toArray(),...camera.quaternion.toArray()].every(Number.isFinite));}assert.equal(shots.size,4,style);
+  for(const aspect of [4/3,16/9,21/9])for(const t of [introNameAt(style),introDuration(style)-.1]){poseIntro(rig,style,t);introCamera(camera,style,t,rig.group.position,aspect);rig.group.updateMatrixWorld(true);camera.updateMatrixWorld(true);const box=new T.Box3().setFromObject(rig.group);for(const x of [box.min.x,box.max.x])for(const y of [box.min.y,box.max.y])for(const z of [box.min.z,box.max.z]){const screen=new T.Vector3(x,y,z).project(camera);assert.ok(Math.abs(screen.x)<.92&&Math.abs(screen.y)<.92&&screen.z>-1&&screen.z<1,`${style}: ${screen.toArray()}`);}}
   poseIntro(rig,style,2);introCamera(camera,style,2,rig.group.position,16/9);const expected=[...camera.position.toArray(),...camera.quaternion.toArray()];poseIntro(rig,style,.2);introCamera(camera,style,.2,rig.group.position,16/9);poseIntro(rig,style,2);introCamera(camera,style,2,rig.group.position,16/9);assert.deepEqual([...camera.position.toArray(),...camera.quaternion.toArray()],expected);
  }
 });
@@ -32,5 +32,5 @@ test('intro songs seek late snapshots, deduplicate, switch players, honor music 
  const music=new ArenaMusic();music.configure(.5,false);assert.equal(music.cueVolume,.4);music.configure(.5,true);assert.equal(music.cueVolume,0);s.dispose();
 });
 test('all five original intro music assets are distinct',()=>{
- const hashes=new Set<string>();for(const style of Object.keys(INTRO_STYLES)){const bytes=readFileSync(`public/audio/intros/${style}.mp3`);assert.ok(bytes.length>20000);hashes.add(createHash('sha256').update(bytes).digest('hex'));}assert.equal(hashes.size,5);
+ const hashes=new Set<string>();for(const style of Object.keys(INTRO_STYLES)){const bytes=readFileSync(`public/audio/intros/${style}.mp3`);assert.ok(bytes.length>20000);hashes.add(createHash('sha256').update(bytes).digest('hex'));}assert.equal(hashes.size,6);
 });

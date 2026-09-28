@@ -1,5 +1,6 @@
 // src/shared/intros.ts
 var INTRO_STYLES = {
+  "dev-matrix": "DEV \xB7 L33T Throne",
   "neon-drop": "Neon Drop",
   "vector-slide": "Vector Slide",
   "signal-spin": "Signal Spin",
@@ -13,7 +14,7 @@ var KILL_STYLES = { "voxel-burst": "Voxel breakup", confetti: "Confetti cannon",
 var developerKillEffect = (id) => id.startsWith("dev-");
 var DEFAULT_COSMETICS = { intro: "neon-drop", introText: "Ready to make an impact", bodyColor: "#e5e7eb", hat: "none", killEffect: "voxel-burst" };
 function cosmetics(raw, dev = false) {
-  return { introText: introText(raw?.introText), intro: raw && Object.hasOwn(INTRO_STYLES, raw.intro) ? raw.intro : "neon-drop", bodyColor: typeof raw?.bodyColor === "string" && /^#[0-9a-f]{6}$/i.test(raw.bodyColor) ? raw.bodyColor : DEFAULT_COSMETICS.bodyColor, hat: raw && Object.hasOwn(HATS, raw.hat) ? raw.hat : "none", killEffect: raw && Object.hasOwn(KILL_STYLES, raw.killEffect) && (dev || !developerKillEffect(raw.killEffect)) ? raw.killEffect : "voxel-burst" };
+  return { introText: introText(raw?.introText), intro: raw && Object.hasOwn(INTRO_STYLES, raw.intro) && (dev || raw.intro !== "dev-matrix") ? raw.intro : "neon-drop", bodyColor: typeof raw?.bodyColor === "string" && /^#[0-9a-f]{6}$/i.test(raw.bodyColor) ? raw.bodyColor : DEFAULT_COSMETICS.bodyColor, hat: raw && Object.hasOwn(HATS, raw.hat) ? raw.hat : "none", killEffect: raw && Object.hasOwn(KILL_STYLES, raw.killEffect) && (dev || !developerKillEffect(raw.killEffect)) ? raw.killEffect : "voxel-burst" };
 }
 function introText(value) {
   return typeof value === "string" ? Array.from(value.replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g, " ").replace(/\s+/g, " ").trim()).slice(0, 64).join("") || DEFAULT_COSMETICS.introText : DEFAULT_COSMETICS.introText;

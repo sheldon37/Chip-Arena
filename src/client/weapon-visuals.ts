@@ -1,3 +1,4 @@
+import {matrixStaff,animateStaff} from './matrix-effects.js';
 import * as T from 'three';
 import {spellPose} from './character-animation.js';
 import {WEAPONS,statsFor} from '../shared/content.js';
@@ -12,7 +13,7 @@ const box=(p:T.Object3D,c:number,x:number,y:number,z:number,sx:number,sy:number,
 function socket(parent:T.Object3D,name:string,x:number,y:number,z:number){const g=new T.Group();g.name=name;g.position.set(x,y,z);parent.add(g);return g;}
 export function buildWeapon(weapon:T.Group,spec:string,offhand=false){
  weapon.clear();weapon.userData={spec,enchant:'',modifierKey:''};const w=WEAPONS[spec as keyof typeof WEAPONS];const steel=0x81999f,dark=0x263a43,gold=0xe3b779;
- if(w.class==='ranged'){
+ if(spec==='leet'){matrixStaff(weapon);}else if(w.class==='ranged'){
   const rifle=spec==='rifle',mg=spec==='machinegun',tip=rifle?1.18:mg?.87:.47;
   box(weapon,dark,0,0,.16,.16,.20,rifle?.64:mg?.7:.39);box(weapon,steel,0,.09,.16,.145,.075,rifle?.68:mg?.7:.38);
   box(weapon,dark,0,0,tip-.17,.075,.075,rifle?.60:.34);box(weapon,gold,0,0,tip,.12,.12,.07);
@@ -37,7 +38,7 @@ export function buildWeapon(weapon:T.Group,spec:string,offhand=false){
 }
 /** Modular equipment silhouettes communicate builds even before an attack fires. */
 export function weaponModifiers(weapon:T.Group,p:PlayerView,time:number){
- const key=JSON.stringify(p.chips);if(weapon.userData.modifierKey!==key){weapon.userData.modifierKey=key;weapon.getObjectByName('chip-modules')?.removeFromParent();const group=socket(weapon,'chip-modules',0,0,0),c={...p.chips},s=statsFor(c),w=WEAPONS[p.spec],tip=weapon.getObjectByName('muzzle')?.position.z??.8;
+ if(p.spec==='leet')animateStaff(weapon,time);const key=JSON.stringify(p.chips);if(weapon.userData.modifierKey!==key){weapon.userData.modifierKey=key;weapon.getObjectByName('chip-modules')?.removeFromParent();const group=socket(weapon,'chip-modules',0,0,0),c={...p.chips},s=statsFor(c),w=WEAPONS[p.spec],tip=weapon.getObjectByName('muzzle')?.position.z??.8;
   for(let n=0;n<Math.min(6,s.extraProjectiles);n++){const x=(n%2?1:-1)*(.18+Math.floor(n/2)*.14);if(w.class==='ranged'){box(group,0x647e89,x,0,tip-.23,.11,.13,.48);box(group,0xffd88d,x,0,tip+.015,.12,.14,.075,true);}else{const orb=mesh(group,sphere,w.color,x,.08,tip-.06,.085,.085,.085,true);orb.userData.orbit=n;}}
   for(let n=0;n<(c.ricochet||0);n++)mesh(group,ring,0xffcc49,0,0,tip-.08-n*.11,.17,.17,.17,true);
   for(let n=0;n<(c.velocity||0);n++)mesh(group,ring,0x79eaff,0,0,tip-.35-n*.09,.13,.13,.13,true);

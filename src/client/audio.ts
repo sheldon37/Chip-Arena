@@ -52,7 +52,11 @@ export class ArenaAudio {
  }
  update(state:Snapshot,me:string,yaw:number,presentation=state){this.intros.update(presentation,this.context,this.music.cueVolume);this.music.setActive(['fight','countdown','result'].includes(state.phase));this.updateLove(state);const self=state.players.find(p=>p.id===me);if(self)this.listener=self.pos;this.yaw=yaw;
   for(const e of this.cursor.consume(state.events,state.time)){
-   if(e.type==='shot'||e.type==='windup'){if(e.spec)this.play(e.spec,e.pos,.65);}
+   if(e.type==='shot'||e.type==='windup'){if(e.spec)this.play(e.spec==='leet'?'lightning':e.spec,e.pos,.65);}
+   else if(e.type==='leet-scare'&&e.target===me){this.play('darkness',undefined,.9);this.play('metal',undefined,.6);}
+   else if(e.type==='leet-lock'||e.type==='leet-control'||e.type==='leet-brain')this.play('lightning',e.pos,.35);
+   else if(e.type==='leet-nuke')this.play('explosion',e.pos,1);
+   else if(e.type==='leet-freeze'||e.type==='leet-undo')this.play('darkness',e.pos,.6);
    else if(e.type==='reloadStart'||e.type==='reloadEnd'){if(e.source===me)this.play(e.type==='reloadStart'?'reload-start':'reload-end',undefined,.6);}
    else if(e.type==='hit'){if(e.message==='burn'||e.message==='poison')this.play(e.message==='burn'?'burn-tick':'poison-tick',e.pos,.24);else if(e.target===me)this.play('hurt',undefined,.6);else if(e.source===me)this.play('hit',undefined,.7);}
    else if(e.type==='impact')this.play(e.material==='metal'?'metal':e.material==='wood'?'wood':'stone',e.pos,.22);

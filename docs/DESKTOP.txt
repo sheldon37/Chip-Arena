@@ -97,3 +97,11 @@ Online CA codes are registered automatically when an online room is created.
 Keep the game open; inactive listings expire in about three minutes. Existing
 HTTPS invites and website-hosted room codes remain supported. The directory
 only looks up addresses; it never carries gameplay inputs or snapshots.
+
+L33T H4X GAME UPDATE
+Chip descriptions now use plain stat changes. Exact stacked values stay in Tab.
+Developer account: Magic > L33T H4x. Customize > Match Intro > DEV / L33T Throne.
+The animated matrix staff unlocks eight L44T Chips and much better top-tier odds.
+Brain Steal replaces RMB Block; Scare Tactics and Admin Pause use E.
+This is intentionally overpowered DEV content. Other players keep normal choices.
+The existing executable/updater and room-code flow still work. No new .bat needed.

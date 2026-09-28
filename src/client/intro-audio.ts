@@ -12,7 +12,7 @@ export class IntroAudio {
   if(this.key===key){if(this.gain)this.gain.gain.setTargetAtTime(volume,context.currentTime,.04);return;}
   const buffer=this.buffers.get(frame.style);if(!buffer||frame.age>=buffer.duration)return;
   const source=context.createBufferSource(),gain=context.createGain();source.buffer=buffer;gain.gain.value=volume;source.connect(gain).connect(context.destination);this.key=key;this.source=source;this.gain=gain;
-  source.onended=()=>{source.disconnect();gain.disconnect();if(this.source===source){this.source=null;this.gain=null;}};source.start(context.currentTime,frame.age);source.stop(context.currentTime+Math.min(buffer.duration-frame.age,INTRO.seconds-frame.age));
+  source.onended=()=>{source.disconnect();gain.disconnect();if(this.source===source){this.source=null;this.gain=null;}};source.start(context.currentTime,frame.age);source.stop(context.currentTime+Math.min(buffer.duration-frame.age,frame.duration-frame.age));
  }
  stop(){if(this.source){this.source.stop();this.source.disconnect();this.gain?.disconnect();}this.source=null;this.gain=null;this.key='';this.previousAge=-1;}
 }

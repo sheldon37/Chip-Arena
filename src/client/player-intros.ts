@@ -1,3 +1,4 @@
+import {MatrixThrone} from './leet-intro.js';
 import * as T from 'three';
 import {CharacterRig,createCharacterRig} from './character-rig.js';
 import {dressRig} from './cosmetics.js';
@@ -9,7 +10,7 @@ export {poseIntro} from './intro-choreography.js';
 
 /** A self-contained stage with absolute-time choreography and four authored shots per entrance. */
 export class PlayerIntros {
- readonly scene=new T.Scene();readonly camera=new T.PerspectiveCamera(43,1,.1,80);readonly armor=new ArmorGlow(this.scene);
+ readonly scene=new T.Scene();readonly throne=new MatrixThrone(this.scene);readonly camera=new T.PerspectiveCamera(43,1,.1,80);readonly armor=new ArmorGlow(this.scene);
  private rig:CharacterRig|undefined;private key='';private rings:T.Mesh[]=[];private sparks:T.Mesh[]=[];private streaks:T.Mesh[]=[];private arcs:T.Mesh[]=[];private columns:T.Mesh[]=[];private pulses:T.Mesh[]=[];private core:T.Mesh;private shell:T.Mesh;private accent=new T.MeshBasicMaterial({color:0x75eeff,toneMapped:false});private rim:T.PointLight;
  constructor(){
   this.scene.background=new T.Color(0x040611);this.scene.fog=new T.Fog(0x040611,9,26);this.scene.add(new T.HemisphereLight(0x9fbcdf,0x14101d,.6));const key=new T.DirectionalLight(0xd9e6ff,1.35);key.position.set(-3,5,4);this.scene.add(key);this.rim=new T.PointLight(0x56eaff,7,9);this.rim.position.set(1,2,-2);this.scene.add(this.rim);const fill=new T.PointLight(0xf369db,4,8);fill.position.set(-3,1.3,1);this.scene.add(fill);
@@ -28,8 +29,8 @@ export class PlayerIntros {
  }
  update(state:Snapshot,aspect:number,quality=1,compatibility=false){
   const frame=introFrame(state);if(!frame){this.clear();return false;}const {player:p,style,age}=frame,key=p.id+JSON.stringify(p.cosmetics)+p.color;
-  if(this.key!==key){this.clear();this.key=key;this.rig=createCharacterRig(p.color,p.cosmetics?.bodyColor,true);dressRig(this.rig,p.cosmetics);this.scene.add(this.rig.group);this.accent.color.set(p.color).lerp(new T.Color(0x89eaff),.48);this.rim.color.copy(this.accent.color);}
-  poseIntro(this.rig!,style,age);introCamera(this.camera,style,age,this.rig!.group.position,aspect);this.armor.update([{rig:this.rig!,player:p}],state.time,quality,compatibility);
+  if(this.key!==key){this.clear();this.key=key;this.rig=createCharacterRig(p.color,p.cosmetics?.bodyColor,true);dressRig(this.rig,p.cosmetics);this.scene.add(this.rig.group);this.accent.color.set(p.color).lerp(new T.Color(0x89eaff),.48);this.rim.color.copy(this.accent.color);if(style==='dev-matrix')this.rim.color.set(0x55ff88);}
+  this.throne.group.visible=style==='dev-matrix';poseIntro(this.rig!,style,age);if(style==='dev-matrix')this.throne.update(age,this.rig!);introCamera(this.camera,style,age,this.rig!.group.position,aspect);this.armor.update([{rig:this.rig!,player:p}],state.time,quality,compatibility);
   const hit=INTRO_HIT[style],burst=Math.max(0,age-hit),fade=Math.max(0,1-burst/1.2),active=age>=hit&&fade>0;
   this.pulses.forEach((ring,i)=>{const elapsed=burst-i*.09;ring.visible=active&&elapsed>=0;ring.rotation.set(style==='pulse-wave'?0:-Math.PI/2,0,0);ring.position.set(0,style==='pulse-wave'?1.13:.015+i*.003,style==='pulse-wave'?.3:0);ring.scale.setScalar(.12+elapsed*(style==='pulse-wave'?3.5:2.7));(ring.material as T.MeshBasicMaterial).opacity=fade*.9;});
   this.sparks.forEach((spark,i)=>{spark.visible=active&&(quality>=.5||i%2===0);const a=i*2.39996,d=.2+burst*(1.3+i%5*.23);spark.position.set(Math.cos(a)*d,.06+Math.max(0,burst*(1.3+i%3*.25)-burst*burst*1.7),Math.sin(a)*d);spark.scale.set(.035,.05+.08*fade,.035).multiplyScalar(fade);spark.rotation.set(burst*3,a,burst*4);});

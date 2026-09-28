@@ -13,10 +13,10 @@ export class Predictor {
  reconcile(s:Snapshot,me:PlayerView){
   const ids=new Set(s.props.map(p=>p.id));for(const[id,b]of this.props)if(!ids.has(id)){this.world.removeRigidBody(b);this.props.delete(id);}
   for(const p of s.props){let b=this.props.get(p.id);if(!b){b=this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed());this.world.createCollider(RAPIER.ColliderDesc.cuboid(p.size.x/2,p.size.y/2,p.size.z/2).setFriction(MATERIALS[p.material].friction).setRestitution(.12),b);this.props.set(p.id,b);}b.setTranslation(p.pos,false);b.setRotation(p.rot,false);}
-  const previous={...this.pos},old=add(this.pos,this.offset),epoch=`${s.generation||0}:${s.setNumber}:${s.round}:${s.phase}:${me.hp>0}`,reset=this.epoch!==epoch||!this.initialized;
+  const previous={...this.pos},old=add(this.pos,this.offset),epoch=`${s.generation||0}:${s.setNumber}:${s.round}:${s.phase}:${me.hp>0}:${me.leet?.controlling||''}:${me.leet?.controlledBy||''}:${!!me.leet?.scare}:${(me.leet?.frozenUntil||0)>s.time}:${(me.leet?.launchUntil||0)>s.time}`,reset=this.epoch!==epoch||!this.initialized;
   this.pos={...me.pos};this.velocity={...me.vel};this.move=me.move?{...me.move}:v(me.vel.x,0,me.vel.z);this.external=me.external?{...me.external}:v();this.dashTime=me.dashTime||0;this.dash=me.dashCd;this.grounded=me.grounded;
   this.body.setTranslation(this.pos,true);this.body.setLinvel(this.velocity,true);this.world.propagateModifiedBodyPositionsToColliders();
-  this.pending=this.pending.filter(p=>p.input.seq>me.ack);if(reset)this.pending=[];
+  this.pending=this.pending.filter(p=>p.input.seq>me.ack);if(reset||me.leet?.controlling||me.leet?.controlledBy||me.leet?.scare||(me.leet?.frozenUntil||0)>s.time||(me.leet?.launchUntil||0)>s.time)this.pending=[];
   this.phase=s.phase;this.epoch=epoch;this.initialized=true;
   for(const p of this.pending)this.integrate(p.input,p.dt,me);
   this.error=len(sub(previous,this.pos));

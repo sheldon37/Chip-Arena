@@ -29,7 +29,7 @@ export const MATERIALS = {
 };
 export type Material = keyof typeof MATERIALS;
 export type ClassId='ranged'|'magic'|'melee';
-export type SpecId='pistol'|'rifle'|'machinegun'|'fire'|'water'|'lightning'|'darkness'|'sword'|'daggers'|'shield'|'greatsword';
+export type SpecId='leet'|'pistol'|'rifle'|'machinegun'|'fire'|'water'|'lightning'|'darkness'|'sword'|'daggers'|'shield'|'greatsword';
 export type Vec = {x:number;y:number;z:number};
 export const v=(x=0,y=0,z=0):Vec=>({x,y,z});
 export const add=(a:Vec,b:Vec):Vec=>v(a.x+b.x,a.y+b.y,a.z+b.z);

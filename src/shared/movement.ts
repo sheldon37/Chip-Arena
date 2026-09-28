@@ -3,7 +3,7 @@ import {CONFIG as C,Input,Vec,v,add,mul,len,norm,forward,clamp,sub} from './conf
 /** Identical locomotion integration for authority and client replay. Gravity and
  * contact response belong to Rapier, not a separate client character controller. */
 export interface Motion {move:Vec;ext:Vec;dashCd:number;dashTime:number;grounded:boolean;}
-export interface MotionRules {speed:number;dashCooldown:number;knockbackTaken:number;jumpPower?:number;playerGravity?:number;}
+export interface MotionRules {maxExternalSpeed?:number;maxExternalLift?:number;speed:number;dashCooldown:number;knockbackTaken:number;jumpPower?:number;playerGravity?:number;}
 export function prepareMotion(world:RAPIER.World,body:RAPIER.RigidBody,collider:RAPIER.Collider,state:Motion,input:Input,stats:MotionRules,dt:number,guarding=false,swinging=false){
  state.dashCd=Math.max(0,state.dashCd-dt);state.dashTime=Math.max(0,state.dashTime-dt);
  body.setGravityScale(stats.playerGravity??1,true);const pos=body.translation();state.grounded=!!world.castRay(new RAPIER.Ray(pos,v(0,-1,0)),C.playerHalfHeight+C.playerRadius+.16,true,undefined,undefined,collider);
@@ -14,10 +14,10 @@ export function prepareMotion(world:RAPIER.World,body:RAPIER.RigidBody,collider:
  const approach=(a:number,b:number)=>a+clamp(b-a,-C.acceleration*dt,C.acceleration*dt);
  state.move=v(approach(state.move.x,desired.x),0,approach(state.move.z,desired.z));
  // External Y is a one-shot kick, not an acceleration spread over many frames.
- const lift=clamp(state.ext.y,-24,24);state.ext.y=0;
+ const lift=clamp(state.ext.y,-(stats.maxExternalLift??24),stats.maxExternalLift??24);state.ext.y=0;
  if(state.dashTime<=0)state.ext=mul(state.ext,Math.exp(-C.externalDrag*dt));
  const externalSpeed=Math.hypot(state.ext.x,state.ext.z);
- if(externalSpeed>C.maxExternalSpeed)state.ext=mul(state.ext,C.maxExternalSpeed/externalSpeed);
+ const limit=stats.maxExternalSpeed??C.maxExternalSpeed;if(externalSpeed>limit)state.ext=mul(state.ext,limit/externalSpeed);
  // Counter-steering softens a launch without instantly cancelling it; lateral input stays responsive.
  let controlled=state.move;
  if(state.dashTime<=0&&externalSpeed>.01){const away=norm(state.ext),against=Math.min(0,state.move.x*away.x+state.move.z*away.z),cancel=against*(1-1/(1+(externalSpeed/4)**2));controlled=add(state.move,mul(away,-cancel));}

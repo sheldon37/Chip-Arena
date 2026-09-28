@@ -4,34 +4,34 @@ from pathlib import Path
 from zipfile import ZipFile,ZIP_DEFLATED
 p=argparse.ArgumentParser();p.add_argument('--full',required=True);p.add_argument('--base',action='append',required=True);p.add_argument('--out',required=True);a=p.parse_args()
 prefix='Chip-Arena-Desktop/';out=Path(a.out).resolve();out.parent.mkdir(parents=True,exist_ok=True)
-readme='''CHIP ARENA - SELECTIONS AND EASY JOIN UPDATE (0.3.3)
+readme='''CHIP ARENA - L33T H4X DEV CONTENT UPDATE
 
-For the existing Windows desktop edition (0.3.0, 0.3.1 or 0.3.2).
+For the existing Windows desktop edition (0.3.0 through 0.3.3).
 
-INSTALL
 1. Close Chip Arena completely.
 2. Extract this patch ZIP.
 3. Copy its resources folder into your existing Chip-Arena-Desktop folder,
    beside Chip Arena.exe. Merge folders and replace matching files.
-   Keep the rest of your existing resources folder: it contains the runtimes.
+   Keep the rest of resources: it contains the runtimes.
 4. Open Chip Arena.exe. No new .bat is needed.
 
-HOST: Host online > Create Room > Copy Code. Share CA-XXXX-XXXX with friends.
-JOIN: Enter that code under Join a friend in the updated desktop launcher.
-The code finds the host's current address. Keep the host and room open.
-Full invite links still work. Code lookup is separate from gameplay traffic.
-Both host and guests should apply this update for launcher code entry.
+The existing updater also installs this game update when the host restarts.
+This cumulative patch includes the earlier launcher connection and room-code fixes.
 
-Chip selection now shatters the other Chips, centers the installed upgrade,
-shows the player's name and holds the result before fading it out for everyone.
-Create Room / Play vs Bot: set the selection timer to 5-120 seconds per player.
-Customize > Intro text: write the line that appears beneath your intro name.
+Sign in with your developer account. Select Magic > L33T H4x.
+Customize > Match Intro > DEV / L33T Throne selects the new throne entrance.
+The weapon unlocks eight L44T Chips, green binary trails, fixed-position targeting,
+and greatly increased legendary/mythic chances. Chip descriptions are simplified.
+Brain Steal replaces RMB Block. Scare Tactics / Admin Pause use E.
+Normal players retain their usual weapon and Chip choices.
 
-This patch includes the prior connection retries, local-host connection and
-combat compression fixes. Lobby / Esc > Connection report remains available.
-READ-ME.txt is the full guide. chip-arena-source.zip includes editable source.
-Built and checked on Linux. Native Windows display and GPU checks remain local.
+Host online > Create Room > Copy Code. Friends enter CA-XXXX-XXXX in Join a friend.
+Keep the host open. Settings and saved room-code behavior are unchanged.
+
+READ-ME.txt has the full guide. chip-arena-source.zip includes editable source.
+Built and checked on Linux. Native Windows display/GPU playtesting remains local.
 '''
+
 bases=[ZipFile(path) for path in a.base]
 try:
  with ZipFile(a.full) as full,ZipFile(out,'w',ZIP_DEFLATED,compresslevel=9) as patch:
@@ -40,7 +40,7 @@ try:
    relative=name.removeprefix(prefix)
    if not (relative.startswith(('resources/app/','resources/game/launcher/','resources/game/dist/client/','resources/game/drizzle/')) or relative in ('resources/game/server.mjs','resources/game/release.json','chip-arena-source.zip','READ-ME.txt')):continue
    data=full.read(name)
-   if relative.startswith(('resources/app/','resources/game/launcher/')) or any(name not in base.namelist() or base.read(name)!=data for base in bases):selected[relative]=data;patch.writestr(relative,data)
+   selected[relative]=data;patch.writestr(relative,data)
   patch.writestr('APPLY-FIX.txt',readme)
  with ZipFile(out) as patch,ZipFile(a.full) as full:
   assert patch.testzip() is None

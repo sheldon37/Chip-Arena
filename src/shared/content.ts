@@ -1,9 +1,11 @@
+import {LEET_CHIPS,LEET_WEIGHTS,LEET_INCOMPATIBLE} from './leet-content.js';
 import {CHAOS_CHIPS} from './chaos-content.js';
 import {CONFIG as C} from './config.js';
 import type {ClassId,SpecId} from './config.js';
 import {ELEMENTS} from './elements.js';
-export interface Weapon {id:SpecId;name:string;class:ClassId;description:string;damage:number;interval:number;speed:number;gravity:number;range:number;impulse:number;ammo:number;reload:number;cost:number;spread:number;windup:number;arc:number;secondary:string;secondaryCooldown:number;color:number;burn?:number;blast?:number;drain?:number;chain?:number;burstCount?:number;secondaryCost?:number;}
+export interface Weapon {devOnly?:boolean;id:SpecId;name:string;class:ClassId;description:string;damage:number;interval:number;speed:number;gravity:number;range:number;impulse:number;ammo:number;reload:number;cost:number;spread:number;windup:number;arc:number;secondary:string;secondaryCooldown:number;color:number;burn?:number;blast?:number;drain?:number;chain?:number;burstCount?:number;secondaryCost?:number;}
 export const WEAPONS:Record<SpecId,Weapon>={
+ leet:{id:'leet',name:'L33T H4x',devOnly:true,class:'magic',description:'DEV · Binary bolts pause when they detect a visible enemy, then launch at that captured position. E: Root Command. Unlocks L44T Chips and greatly improves legendary / mythic odds.',damage:32,interval:.6,speed:19,gravity:0,range:60,impulse:260,ammo:0,reload:0,cost:7,spread:0,windup:0,arc:0,secondary:'root',secondaryCooldown:12,color:0x52ff83},
  pistol:{id:'pistol',name:'Pistol',class:'ranged',description:'Precise shots. 7-round magazine. E secondary: braced shot (2× damage, 2 ammo).',damage:23,interval:.42,speed:52,gravity:32,range:55,impulse:175,ammo:7,reload:1.1,cost:0,spread:.008,windup:0,arc:0,secondary:'power',secondaryCooldown:2.2,color:0xffd88d},
  rifle:{id:'rifle',name:'Rifle',class:'ranged',description:'Sniper: 58 damage, 3 rounds, 1.15 s between shots, 2.6 s reload. Fast 150 m/s shots retain gravity. Hold Q: 3× scope. E: 78-damage braced shot (2 ammo).',damage:58,interval:1.15,speed:150,gravity:12,range:140,impulse:350,ammo:3,reload:2.6,cost:0,spread:.0015,windup:0,arc:0,secondary:'snipe',secondaryCooldown:3.8,color:0xffe7aa},
  machinegun:{id:'machinegun',name:'Machine Gun',class:'ranged',description:'Rapid automatic fire, 48-round magazine, 2.4 s reload. E secondary: six-round suppression burst (6 ammo).',damage:8,interval:.085,speed:49,gravity:36,range:48,impulse:65,ammo:48,reload:2.4,cost:0,spread:.025,windup:0,arc:0,secondary:'burst',secondaryCooldown:3,color:0xffc269,burstCount:6},
@@ -19,8 +21,8 @@ export const WEAPONS:Record<SpecId,Weapon>={
 export interface Stats {reloadSpeed:number;resourceCost:number;manaRegen:number;staminaRegen:number;projectileGravity:number;projectileSize:number;fanDegrees:number;bounceRetention:number;lifeSteal:number;execute:number;closeDamage:number;farDamage:number;backstab:number;thorns:number;regeneration:number;reloadHeal:number;lastRound:number;blockHeal:number;blockAmmo:number;blockForce:number;dashBlast:number;meleeArc:number;jumpPower:number;playerGravity:number;recoil:number;critical:number;vacuum:number;pong:number;boomerang:number;zigzag:number;chaos:number;hp:number;speed:number;attackRate:number;damage:number;damageTaken:number;knockbackTaken:number;dashCooldown:number;bounces:number;split:number;pierces:number;burn:number;poison:number;staticEvery:number;staticDamage:number;reach:number;impulse:number;demolition:number;shrapnel:number;debrisTaken:number;extraProjectiles:number;extraStrikes:number;ammoCapacity:number;maxMana:number;maxStamina:number;projectileSpeed:number;homing:number;blockCooldown:number;blockWindow:number;reflectDamage:number;reflectSpeed:number;blockPulseDamage:number;blockPulseImpulse:number;}
 export const BASE_STATS:Stats={reloadSpeed:1,resourceCost:1,manaRegen:1,staminaRegen:1,projectileGravity:1,projectileSize:1,fanDegrees:7,bounceRetention:0.7,lifeSteal:0,execute:0,closeDamage:0,farDamage:0,backstab:0,thorns:0,regeneration:0,reloadHeal:0,lastRound:0,blockHeal:0,blockAmmo:0,blockForce:1,dashBlast:0,meleeArc:1,jumpPower:1,playerGravity:1,recoil:0,critical:0,vacuum:0,pong:0,boomerang:0,zigzag:0,chaos:0,hp:100,speed:1,attackRate:1,damage:1,damageTaken:1,knockbackTaken:1,dashCooldown:1,bounces:0,split:0,pierces:0,burn:0,poison:0,staticEvery:0,staticDamage:0,reach:1,impulse:1,demolition:1,shrapnel:0,debrisTaken:1,extraProjectiles:0,extraStrikes:0,ammoCapacity:1,maxMana:100,maxStamina:100,projectileSpeed:1,homing:0,blockCooldown:1,blockWindow:0,reflectDamage:1,reflectSpeed:1,blockPulseDamage:0,blockPulseImpulse:0};
 type Effect={stat:keyof Stats;op:'add'|'mul'|'set';value:number};
-export type Rarity='common'|'uncommon'|'rare'|'epic'|'legendary'|'mythic';
-export const RARITIES:Record<Rarity,{name:string;color:string;weight:number}>={common:{name:'Common',color:'#f1f5f9',weight:42},uncommon:{name:'Uncommon',color:'#79e59a',weight:28},rare:{name:'Rare',color:'#70b5ff',weight:17},epic:{name:'Epic',color:'#ce8aff',weight:8},legendary:{name:'Legendary',color:'#ffae55',weight:4},mythic:{name:'Mythic',color:'#ff6475',weight:1}};
+export type Rarity='l44t'|'common'|'uncommon'|'rare'|'epic'|'legendary'|'mythic';
+export const RARITIES:Record<Rarity,{name:string;color:string;weight:number}>={l44t:{name:'L44T',color:'#4dff83',weight:0},common:{name:'Common',color:'#f1f5f9',weight:42},uncommon:{name:'Uncommon',color:'#79e59a',weight:28},rare:{name:'Rare',color:'#70b5ff',weight:17},epic:{name:'Epic',color:'#ce8aff',weight:8},legendary:{name:'Legendary',color:'#ffae55',weight:4},mythic:{name:'Mythic',color:'#ff6475',weight:1}};
 export const draftChoiceCount=(n:unknown)=>typeof n==='number'&&Number.isFinite(n)?Math.max(1,Math.min(12,Math.floor(n))):6;
 export interface Chip{mechanic?:string;rarity:Rarity;id:string;name:string;description:string;tags:string[];max:number;icon:string;effects:Effect[];}
 const e=(stat:keyof Stats,op:Effect['op'],value:number):Effect=>({stat,op,value});
@@ -125,21 +127,22 @@ export const CHIPS:Chip[]=[
 {id:"rubber",rarity:"epic",name:"Rubber Soul",description:"\u00d72 jump speed and \u00d72.8 attack impulse; \u00d71.5 received knockback. Everyone goes flying.",tags:["all"],max:1,icon:"\u2195",effects:[e("jumpPower","mul",2),e("impulse","mul",2.8),e("knockbackTaken","mul",1.5)]},
 {id:"comet",rarity:"legendary",name:"Comet Dash",description:"Dash pulse: +30 damage and corresponding impulse, \u00d70.6 dash cooldown, \u00d70.6 personal gravity. Mind the arena edge.",tags:["all"],max:1,icon:"\u2604",effects:[e("dashBlast","add",30),e("dashCooldown","mul",0.6),e("playerGravity","mul",0.6)]},
 {id:"repulsor",rarity:"mythic",name:"Repulsor Crown",description:"\u00d76 attack impulse and \u00d73 melee Block retaliation; \u00d70.65 damage. Become the ring-out specialist.",tags:["all"],max:1,icon:"\u21c8",effects:[e("impulse","mul",6),e("blockForce","mul",3),e("damage","mul",0.65)]},
-...CHAOS_CHIPS,
+...CHAOS_CHIPS,...LEET_CHIPS,
 ];
 export function statsFor(chips:Record<string,number>):Stats {const s={...BASE_STATS}; for(const c of CHIPS)for(let n=0;n<Math.min(c.max,chips[c.id]||0);n++)for(const f of c.effects){if(f.op==='add')s[f.stat]+=f.value;else if(f.op==='mul')s[f.stat]*=f.value;else s[f.stat]=f.value;}s.hp=Math.max(15,s.hp);s.speed=Math.max(.25,Math.min(2.5,s.speed));s.attackRate=Math.max(.15,Math.min(5,s.attackRate));s.extraProjectiles=Math.min(11,s.extraProjectiles);s.extraStrikes=Math.min(4,s.extraStrikes);s.split=Math.min(6,s.split);s.projectileSize=Math.max(.4,Math.min(6,s.projectileSize));s.projectileSpeed=Math.min(4,s.projectileSpeed);s.critical=Math.min(.75,s.critical);s.lifeSteal=Math.min(1,s.lifeSteal);s.jumpPower=Math.min(2.5,s.jumpPower);s.impulse=Math.min(12,s.impulse);s.blockForce=Math.min(6,s.blockForce);s.knockbackTaken=Math.max(.04,Math.min(3,s.knockbackTaken));return s;}
-export function eligibleChips(spec:SpecId,chips:Record<string,number>){const cls=WEAPONS[spec].class,tags=['all',cls,...(cls==='melee'?[]:['projectile'])];return CHIPS.filter(c=>c.tags.some(tag=>tags.includes(tag))&&(chips[c.id]||0)<c.max);}
+export function eligibleChips(spec:SpecId,chips:Record<string,number>){const cls=WEAPONS[spec].class,tags=['all',cls,...(spec==='leet'?['leet']:[]),...(cls==='melee'?[]:['projectile'])];return CHIPS.filter(c=>c.tags.some(tag=>tags.includes(tag))&&(chips[c.id]||0)<c.max&&(spec!=='leet'||!LEET_INCOMPATIBLE.has(c.id)));}
 export const magazineCapacity=(spec:SpecId,stats:Stats)=>Math.ceil(WEAPONS[spec].ammo*stats.ammoCapacity);
 /** Roll a rarity, then a compatible Chip in that tier, without replacement. Empty tiers renormalize. */
 export function offerChips(spec:SpecId,chips:Record<string,number>,random:()=>number,count=6){
  const pool=eligibleChips(spec,chips),result:string[]=[];
  while(pool.length&&result.length<draftChoiceCount(count)){
   const tiers=(Object.keys(RARITIES) as Rarity[]).filter(r=>pool.some(c=>c.rarity===r));
-  let roll=Math.max(0,Math.min(.999999999,random()))*tiers.reduce((n,r)=>n+RARITIES[r].weight,0),tier=tiers[tiers.length-1];
-  for(const r of tiers){roll-=RARITIES[r].weight;if(roll<0){tier=r;break;}}
+  const weight=(r:Rarity)=>spec==='leet'?(tiers.some(t=>LEET_WEIGHTS[t]>0)?LEET_WEIGHTS[r]:1):RARITIES[r].weight;
+  let roll=Math.max(0,Math.min(.999999999,random()))*tiers.reduce((n,r)=>n+weight(r),0),tier=tiers[tiers.length-1];
+  for(const r of tiers){roll-=weight(r);if(roll<0){tier=r;break;}}
   const choices=pool.filter(c=>c.rarity===tier),pick=choices[Math.min(choices.length-1,Math.floor(Math.max(0,random())*choices.length))];
   result.push(pick.id);pool.splice(pool.indexOf(pick),1);
  }return result;
 }
-export const castWindup=(spec:SpecId,rate=1)=>(({fire:.16,water:.12,lightning:.065,darkness:.22} as Partial<Record<SpecId,number>>)[spec]||0)/rate;
+export const castWindup=(spec:SpecId,rate=1)=>(({leet:.18,fire:.16,water:.12,lightning:.065,darkness:.22} as Partial<Record<SpecId,number>>)[spec]||0)/rate;
 export const CLASS_INFO={ranged:{name:'Ranged',color:'#f4c170',default:'pistol' as SpecId},magic:{name:'Magic',color:'#bc9ff3',default:'fire' as SpecId},melee:{name:'Melee',color:'#8ee2cb',default:'sword' as SpecId}};

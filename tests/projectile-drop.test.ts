@@ -20,7 +20,7 @@ test('ballistic integration gives constant acceleration and is independent of ti
 });
 test('every gun and spell lands from gravity; one speed Chip extends horizontal travel by approximately 25%',()=>{
  const results=[];
- for(const w of Object.values(WEAPONS).filter(w=>w.class!=='melee')){
+ for(const w of Object.values(WEAPONS).filter(w=>w.class!=='melee'&&!w.devOnly)){
   const distances=[];for(const stacks of [0,1]){const {s,shot}=shotArena(w.id,stacks);for(let n=0;n<180&&s.projectiles.has(shot.id);n++)s.stepProjectiles(1/60);
    const impact=s.events.find(e=>e.type==='impact');assert.ok(impact,`${w.id} must hit the floor`);assert.ok(Math.abs(impact.pos.y-shot.radius)<.02,`${w.id} impact y=${impact.pos.y}, radius=${shot.radius}, pos=${JSON.stringify(impact.pos)}`);assert.ok(shot.life>1,'the floor, not expiry, must stop the shot');distances.push(impact.pos.x);s.dispose();}
   assert.ok(Math.abs(distances[1]/distances[0]-1.25)<.01,`${w.id}: ${distances}`);results.push({weapon:w.id,baseGroundRangeM:+distances[0].toFixed(2),oneCoilGroundRangeM:+distances[1].toFixed(2)});
