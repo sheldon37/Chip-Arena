@@ -43,13 +43,12 @@ export async function accounts(request:Request,env:AuthEnv,now=Date.now()){
    const reserved=env.DEV_ACCOUNT_VERIFIER?JSON.parse(env.DEV_ACCOUNT_VERIFIER).username.toLowerCase():'';
    let recoveryCode:string|undefined;
    if(action==='register'){
-    if(input.password.length<12)throw fail('Use a password with at least 12 characters.');
     if(row||username===reserved)throw fail('That username is unavailable.',409);
     const hash=await passwordHash(input.password);recoveryCode=random();const id=crypto.randomUUID();
     try{await env.DB.prepare('INSERT INTO player_accounts(id,username,password,recovery,created,updated) VALUES(?,?,?,?,?,?)').bind(id,username,hash,await digest(recoveryCode),now,now).run();}catch{throw fail('That username is unavailable.',409);}
     row=await env.DB.prepare('SELECT * FROM player_accounts WHERE id=?').bind(id).first();
    }else if(action==='recover'){
-    if(input.password.length<12||typeof input.recoveryCode!=='string'||input.recoveryCode.length>80)throw fail('Enter your recovery code and a new password of at least 12 characters.');
+    if(typeof input.recoveryCode!=='string'||input.recoveryCode.length>80)throw fail('Enter your recovery code and a new password.');
     const recovery=await digest(input.recoveryCode.trim());if(!row||!equal(encoder.encode(recovery),encoder.encode(row.recovery)))throw fail('Username or recovery code is incorrect.',401);
     const hash=await passwordHash(input.password);recoveryCode=random();
     // Atomic compare-and-swap consumes each recovery code once, even across simultaneous requests.

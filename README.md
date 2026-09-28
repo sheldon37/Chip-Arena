@@ -378,3 +378,19 @@ connections use normal secure WebSockets. Login stays in encrypted OS storage.
 
 See `docs/ASSET-CREDITS.md` for supplied versus generated music and
 `docs/TEST-RESULTS.md` for verification scope.
+
+
+## Rotating arenas and score circles
+
+Practice and room settings offer **Randomize map after each set** (off by default).
+The first set uses the selected arena. After the completed set's chip draft, the
+host chooses a different arena for the next set. Every client receives the same
+map; builds and won sets carry over. The final match result keeps its arena.
+
+The HUD now lists every player's score above the alive list. Each circle is one
+set: a round win fills half, the second round completes it. The set-winning round
+is not counted twice, and unfinished round progress clears for the next set.
+
+Registration and recovery no longer require twelve-character passwords. Passwords
+must still be nonempty and may contain up to 128 characters. Existing accounts,
+password hashes, saved login and recovery-code handling are preserved.

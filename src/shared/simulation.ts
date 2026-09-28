@@ -1,4 +1,4 @@
-import {mapId,MapId} from './maps.js';
+import {MAPS,mapId,MapId} from './maps.js';
 import {DEMON_STEP,demonStepUser} from './demon-step.js';
 import {EmperorSystem,EmperorState,Juggle,EmperorTrail} from './emperor.js';
 import {EMPEROR} from './emperor-content.js';
@@ -46,7 +46,7 @@ export interface Prop {id:string;body:RAPIER.RigidBody;collider:RAPIER.Collider;
 export interface Projectile {arcade?:ArcadeShot;leet?:LeetShot;chaos?:{base:Vec;scale:number};originOwner?:string;born?:number;pong?:boolean;returning?:boolean;contacts?:Record<string,number>;fixedSpeed?:number;bounceRetention?:number;zigzag?:boolean;mods?:Record<string,number>;reflections?:number;burnDps?:number;poisonDps?:number;demolition?:number;elements?:ElementId[];id:string;pos:Vec;vel:Vec;owner:string;spec:SpecId;damage:number;impulse:number;life:number;radius:number;direct:boolean;attackId:string;bounces:number;pierces:number;hit:Set<string>;effectsUsed:boolean;homing:number;distanceLeft:number;gravity:number;}
 export interface GameEvent{impact?:'punch'|'kick'|'fireball';surface?:Vec;normal?:Vec;mods?:Record<string,number>;time:number;spec?:SpecId;material?:Material;id:number;type:string;pos:Vec;from?:Vec;target?:string;source?:string|null;amount?:number;color?:number;radius?:number;message?:string;}
 export interface ImpactDebug{mass:number;speed:number;energy:number;damage:number;source:string;object:string;time:number;}
-export interface Options{map?:MapId;botCount?:number;botDifficulty?:Difficulty;skipIntros?:boolean;draftChoices?:number;inputHoldSeconds?:number;bothDraft?:boolean;sandbox?:boolean;wins?:number;roundsPerSet?:number;selectionSeconds?:number;countdown?:number;resultSeconds?:number;seed?:number;}
+export interface Options{randomMapEachSet?:boolean;map?:MapId;botCount?:number;botDifficulty?:Difficulty;skipIntros?:boolean;draftChoices?:number;inputHoldSeconds?:number;bothDraft?:boolean;sandbox?:boolean;wins?:number;roundsPerSet?:number;selectionSeconds?:number;countdown?:number;resultSeconds?:number;seed?:number;}
 export interface PlayerView {electricStepTime?:number;waveTime?:number;emperor?:EmperorState;juggle?:Juggle;knockdown?:Knockdown;hitStunUntil?:number;arcade?:ArcadeState;leet?:LeetStatus;unlocks?:string[];accountId?:string;flags?:string[];developer?:boolean;cosmetics?:Cosmetics;motionScale?:number;attackIndex?:number;castAt?:number;death?:DeathPresentation;lastShot?:number;attackRate?:number;swingAt?:number;swingUntil?:number;move?:Vec;external?:Vec;dashTime?:number;swinging?:boolean;statuses:{element:ElementId;dps:number;remaining:number}[];id:string;name:string;color:string;class:ClassId;spec:SpecId;pos:Vec;vel:Vec;yaw:number;pitch:number;hp:number;maxHp:number;mana:number;maxMana:number;ammo:number;maxAmmo:number;stamina:number;maxStamina:number;blockTime:number;blockCd:number;blockCooldown:number;blockDuration:number;lastBlock:number;guarding:boolean;dashCd:number;secondaryCd:number;cooldown:number;reloadTime:number;score:number;roundWins:number;chips:Record<string,number>;ready:boolean;selected:boolean;offers:string[];connected:boolean;bot:Difficulty|null;ack:number;grounded:boolean;lastAttack:number;lastSecondary:number;reach:number;windup:number;}
 export interface PropView {id:string;pos:Vec;rot:{x:number;y:number;z:number;w:number};size:Vec;material:Material;hp:number;maxHp:number;mass:number;dynamic:boolean;support?:string[];fragment:boolean;vel:Vec;}
 export interface Snapshot {emperorTrails?:EmperorTrail[];leetFields?:LeetField[];intro?:IntroSequence;fields?:FieldView[];minions?:MinionView[];draft?:{player:string;turn:number;total:number;started:number;readyAt:number;chosen?:string;chosenAt?:number};generation?:number;time:number;tick:number;phase:Phase;remaining:number;round:number;setNumber:number;setWinner:string|null;winner:string|null;result:string;players:PlayerView[];props:PropView[];projectiles:{arcade?:ArcadeShot;leet?:LeetShot;mods?:Record<string,number>;owner:string;reflections:number;elements:ElementId[];id:string;pos:Vec;vel:Vec;spec:SpecId;radius:number}[];events:GameEvent[];impact:ImpactDebug|null;metrics:{bodies:number;projectiles:number;tickMs:number};options:Options;}
@@ -59,7 +59,7 @@ export class Simulation {
  world:RAPIER.World;players=new Map<string,Player>();props=new Map<string,Prop>();projectiles=new Map<string,Projectile>();
  colliderOwners=new Map<number,string>();time=0;tick=0;phase:Phase='lobby';phaseEnd=0;fightStart=0;round=1;setNumber=1;setWinner:string|null=null;winner:string|null=null;result='';
  intro:IntroSequence|undefined;events:GameEvent[]=[];impact:ImpactDebug|null=null;ledger=new ImpactLedger();options:Options;tickMs=0;private serial=0;private seed:number;private procAttacks=new Set<string>();
- constructor(options:Options={}){this.options={wins:C.wins,roundsPerSet:C.roundsPerSet,bothDraft:false,sandbox:false,selectionSeconds:C.selectionSeconds,countdown:C.countdown,resultSeconds:C.resultSeconds,...options,map:mapId(options.map),skipIntros:options.skipIntros===true,draftChoices:draftChoiceCount(options.draftChoices)};this.seed=options.seed||23819;this.world=new RAPIER.World(v(0,C.gravity,0));this.world.timestep=1/C.simulationHz;this.world.maxCcdSubsteps=4;this.resetArena();}
+ constructor(options:Options={}){this.options={wins:C.wins,roundsPerSet:C.roundsPerSet,bothDraft:false,sandbox:false,selectionSeconds:C.selectionSeconds,countdown:C.countdown,resultSeconds:C.resultSeconds,...options,randomMapEachSet:options.randomMapEachSet===true,map:mapId(options.map),skipIntros:options.skipIntros===true,draftChoices:draftChoiceCount(options.draftChoices)};this.seed=options.seed||23819;this.world=new RAPIER.World(v(0,C.gravity,0));this.world.timestep=1/C.simulationHz;this.world.maxCcdSubsteps=4;this.resetArena();}
  random(){this.seed=(Math.imul(this.seed,1664525)+1013904223)>>>0;return this.seed/4294967296;}
  uid(prefix:string){return `${prefix}-${++this.serial}`;}
  emit(type:string,pos:Vec,extra:Partial<GameEvent>={}){this.events.push({id:++this.serial,time:this.time,type,pos:copy(pos),...extra});if(this.events.length>C.maxEvents)this.events.shift();}
@@ -71,9 +71,10 @@ export class Simulation {
  this.players.set(id,p);this.colliderOwners.set(collider.handle,id);return p;
  }
  /** Lobby-only map and bot settings. Existing humans always reserve their seats. */
- configureLobby(raw:{map?:unknown;botCount?:unknown;botDifficulty?:unknown}){
+ configureLobby(raw:{randomMapEachSet?:unknown;map?:unknown;botCount?:unknown;botDifficulty?:unknown}){
  if(this.phase!=='lobby'||!raw||typeof raw!=='object')return false;
  if(raw.map!==undefined)this.options.map=mapId(raw.map);
+ if(raw.randomMapEachSet!==undefined)this.options.randomMapEachSet=raw.randomMapEachSet===true;
  const humans=[...this.players.values()].filter(p=>!p.bot).length,requested=raw.botCount===undefined?[...this.players.values()].filter(p=>p.bot).length:typeof raw.botCount==='number'&&Number.isFinite(raw.botCount)?Math.floor(raw.botCount):0,count=clamp(requested,0,Math.max(0,C.maxPlayers-humans));
  const difficulty:Difficulty=['dummy','easy','normal','hard'].includes(String(raw.botDifficulty))?raw.botDifficulty as Difficulty:this.options.botDifficulty||'normal';
  for(const p of [...this.players.values()])if(p.bot)this.disconnect(p.id);
@@ -284,7 +285,7 @@ export class Simulation {
  this.ledger.endTick(this.time);
  for(const prop of [...this.props.values()])if(prop.dynamic&&prop.body.translation().y<-15)this.removeProp(prop.id);
  }
- beginNextSet(){this.setNumber++;this.round=1;for(const p of this.players.values()){p.roundWins=0;p.offers=[];}this.resetRound();this.countdown();}
+ beginNextSet(){if(this.options.randomMapEachSet){const choices=MAPS.filter(m=>m.id!==this.options.map);this.options.map=choices[Math.floor(this.random()*choices.length)].id;}this.setNumber++;this.round=1;for(const p of this.players.values()){p.roundWins=0;p.offers=[];}this.resetRound();this.countdown();}
  resolveRound(){
  if(this.phase!=='fight')return;
  const alive=[...this.players.values()].filter(p=>p.hp>0);if(alive.length>1)return;

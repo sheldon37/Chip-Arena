@@ -1,3 +1,11 @@
+## Passwords, rotating arenas and score circles — 2026-09-28
+
+- The account and set-progress checks pass: 11 targeted tests, including one-character registration/login/recovery, unchanged hash/session handling, rejection of empty or oversized passwords, host-owned map settings, and map changes only when the next set begins.
+- Rotation keeps builds and awarded scores, excludes the current arena, resets round progress, and does not run after the match-winning set. It defaults off.
+- Score checks cover empty/half/full circles, set-win results and draft states without double counting, eight players, eliminated/disconnected pilots, escaped names, and scoreboard placement before the alive list.
+- Two real WebSocket clients plus six bots received 36 identical fight snapshots. The rotation option was transmitted on room creation, and guest setting changes were rejected.
+- The score panel is hidden while paused or selecting chips/specializations so it does not cover those controls. Native Windows/browser visual playtesting was not performed for this update.
+
 ## Maps, bots and direct desktop startup — 2026-09-28
 
 - **306 automated tests pass, 0 failures.** TypeScript and desktop JavaScript syntax checks pass. The production build repeats the TypeScript gate.

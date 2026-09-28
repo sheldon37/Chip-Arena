@@ -788,7 +788,6 @@ async function accounts(request, env, now = Date.now()) {
       const reserved = env.DEV_ACCOUNT_VERIFIER ? JSON.parse(env.DEV_ACCOUNT_VERIFIER).username.toLowerCase() : "";
       let recoveryCode;
       if (action === "register") {
-        if (input.password.length < 12) throw fail("Use a password with at least 12 characters.");
         if (row2 || username === reserved) throw fail("That username is unavailable.", 409);
         const hash6 = await passwordHash(input.password);
         recoveryCode = random();
@@ -800,7 +799,7 @@ async function accounts(request, env, now = Date.now()) {
         }
         row2 = await env.DB.prepare("SELECT * FROM player_accounts WHERE id=?").bind(id).first();
       } else if (action === "recover") {
-        if (input.password.length < 12 || typeof input.recoveryCode !== "string" || input.recoveryCode.length > 80) throw fail("Enter your recovery code and a new password of at least 12 characters.");
+        if (typeof input.recoveryCode !== "string" || input.recoveryCode.length > 80) throw fail("Enter your recovery code and a new password.");
         const recovery = await digest(input.recoveryCode.trim());
         if (!row2 || !equal(encoder.encode(recovery), encoder.encode(row2.recovery))) throw fail("Username or recovery code is incorrect.", 401);
         const hash6 = await passwordHash(input.password);
