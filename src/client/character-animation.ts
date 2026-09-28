@@ -53,11 +53,11 @@ export function animateCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:numbe
  r.weapon.position.set(0,0,0);r.weapon.rotation.set(.5,0,0);r.weapon.scale.set(1,1,w.class==='melee'?p.reach/w.range:1);r.offWeapon.rotation.set(.55,0,0);r.offWeapon.scale.copy(r.weapon.scale);
  if(p.juggle&&time<p.juggle.until){animateJuggle(r,p,time);return pose;}
  if(p.knockdown&&time<p.knockdown.until){
-  const k=p.knockdown,air=k.landedAt===undefined,age=time-k.at,landAge=air?0:time-k.landedAt!,rise=air?0:smooth((landAge-.45)/.45);
-  r.body.rotation.set(air?-Math.min(1.3,.2+age*2):-Math.PI/2*(1-rise),0,air?Math.sin(age*5)*.12:0);
-  r.body.position.y=air?0:-.64*(1-rise)+Math.sin(Math.min(.2,landAge)*Math.PI/.2)*.06;
-  r.leftArm.rotation.set(-.45,0,.7*(1-rise));r.rightArm.rotation.set(-.45,0,-.7*(1-rise));r.leftElbow.rotation.x=r.rightElbow.rotation.x=-.3;
-  r.leftLeg.rotation.set(air?-.5:0,0,.12);r.rightLeg.rotation.set(air?.3:0,0,-.12);r.leftKnee.rotation.x=air?.65:.08+.85*rise*(1-rise);r.rightKnee.rotation.x=air?.25:.08+.85*rise*(1-rise);r.head.rotation.x=air?-.3:0;return pose;
+  const k=p.knockdown,air=k.landedAt===undefined,age=time-k.at,legsUp=!air&&!k.pickupUsed&&time<(k.pickupUntil||0),rolling=!air&&k.rollAt!==undefined&&time>=k.rollAt&&time<(k.rollUntil||0),rolled=!air&&k.rollUntil!==undefined&&time>=k.rollUntil,rise=rolled?smooth((time-k.rollUntil!)/Math.max(.01,k.until-k.rollUntil!)):0,u=rolling?smooth((time-k.rollAt!)/Math.max(.01,k.rollUntil!-k.rollAt!)):0;
+  r.body.rotation.set(air?-Math.min(1.3,.2+age*2):-Math.PI/2*(1-rise)-Math.PI*2*u,rolling||rolled?(Math.atan2(k.rollX??0,k.rollZ??-1)-p.yaw)*(1-rise):0,air?Math.sin(age*5)*.12:0);
+  r.body.position.y=air?0:-.64*(1-rise)+(rolling?Math.sin(u*Math.PI)*.12:0);
+  r.leftArm.rotation.set(rolling?-1.1:-.45,0,.7*(1-rise));r.rightArm.rotation.set(rolling?-1.1:-.45,0,-.7*(1-rise));r.leftElbow.rotation.x=r.rightElbow.rotation.x=rolling?-1.4:-.3;
+  r.leftLeg.rotation.set(legsUp||rolling?-1.15:air?-.5:0,0,.12);r.rightLeg.rotation.set(legsUp||rolling?-.9:air?.3:0,0,-.12);r.leftKnee.rotation.x=legsUp||rolling?1.25:air?.65:.08+.85*rise*(1-rise);r.rightKnee.rotation.x=legsUp||rolling?1.1:air?.25:.08+.85*rise*(1-rise);r.head.rotation.x=air?-.3:rolling?.3:0;return pose;
  }
  if((p.hitStunUntil||0)>time){const flinch=Math.min(1,((p.hitStunUntil||0)-time)/.12);r.body.rotation.x=-.23*flinch;r.chest.rotation.y=.20*flinch;r.head.rotation.x=-.22;r.leftArm.rotation.set(-.5,0,.45);r.rightArm.rotation.set(-.5,0,-.45);r.leftElbow.rotation.x=r.rightElbow.rotation.x=-.8;return pose;}
  if(p.spec==='emperor'){animateEmperor(r,p,time);return pose;}

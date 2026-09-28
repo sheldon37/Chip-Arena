@@ -1,3 +1,5 @@
+import {downProtected,recoveryMotion,type Knockdown} from './recovery.js';
+export type {Knockdown} from './recovery.js';
 import {MAPS,mapId,MapId} from './maps.js';
 import {DEMON_STEP,demonStepUser} from './demon-step.js';
 import {EmperorSystem,EmperorState,Juggle,EmperorTrail} from './emperor.js';
@@ -27,7 +29,7 @@ export {RAPIER};
 let initializing:Promise<void>|undefined;
 export const initPhysics=()=>initializing??=(RAPIER.init());
 export type Phase='intro'|'lobby'|'specialization'|'countdown'|'fight'|'result'|'draft'|'match';
-export interface Knockdown {at:number;until:number;landedAt?:number;}
+
 export interface DeathPresentation {hitPoint?:Vec;melee?:boolean;force?:number;attacker?:{pos:Vec;yaw:number;color:string;cosmetics:Cosmetics;spec:SpecId};id:string;at:number;effect:string;seed:number;pos:Vec;velocity:Vec;direction:Vec;source:string|null;kind:string;yaw:number;}
 export interface Player {
  electricStepTime?:number;waveTime?:number;emperor?:EmperorState;juggle?:Juggle;knockdown?:Knockdown;hitStunUntil?:number;arcade?:ArcadeState;leet?:LeetStatus;unlocks:string[];accountId?:string;flags:string[];developer:boolean;cosmetics:Cosmetics;
@@ -129,7 +131,7 @@ export class Simulation {
  this.checkSupports(source);
  }
  checkSupports(source:string|null){for(const p of this.props.values())if(p.support&&!p.dynamic&&p.support.every(id=>!this.props.has(id)||this.props.get(id)!.hp<=0)){p.dynamic=true;p.body.setBodyType(RAPIER.RigidBodyType.Dynamic,true);p.body.enableCcd(true);p.body.setLinearDamping(.12);p.source=source;p.sourceAt=this.time;p.group=this.uid('collapse');this.emit('collapse',p.body.translation(),{source,radius:3});}}
- damage(p:Player,amount:number,source:string|null,kind:string,direction=v(),impulse=0,hitPoint?:Vec,melee=false){if(this.phase!=='fight'||p.hp<=0||!Number.isFinite(amount))return 0;if(p.leet?.scare&&kind!=='leet-scare')return 0;if(this.arcade.invulnerable(p)&&kind!=='fall'&&kind!=='leet-scare')return 0;let scale=kind==='leet-scare'?1:p.stats.damageTaken;if(this.arcade.active(p)&&p.arcade?.action==='charge'&&p.chips['arcade-focus']&&kind!=='leet-scare')scale*=.5;
+ damage(p:Player,amount:number,source:string|null,kind:string,direction=v(),impulse=0,hitPoint?:Vec,melee=false,hitsGrounded=false){if(!hitsGrounded&&downProtected(p.knockdown,this.time)&&!['fall','overtime'].includes(kind))return 0;if(this.phase!=='fight'||p.hp<=0||!Number.isFinite(amount))return 0;if(p.leet?.scare&&kind!=='leet-scare')return 0;if(this.arcade.invulnerable(p)&&kind!=='fall'&&kind!=='leet-scare')return 0;let scale=kind==='leet-scare'?1:p.stats.damageTaken;if(this.arcade.active(p)&&p.arcade?.action==='charge'&&p.chips['arcade-focus']&&kind!=='leet-scare')scale*=.5;
  const incoming=norm(mul(direction,-1));const frontal=dot(forward(p.input.yaw),incoming)>.25;
  if(kind!=='debris'&&kind!=='leet-scare'&&frontal){if(p.parryTime>0){scale*=.12;impulse*=.25;this.emit('parry',p.body.translation(),{target:p.id});}else if(p.guarding&&p.stamina>0){scale*=.25;p.stamina=Math.max(0,p.stamina-amount*C.shieldImpactCost);p.staminaAt=this.time;impulse*=.35;}}
  if(this.emperor.active(p)&&p.chips['mishima-armor']&&(p.waveTime||0)>0&&!['fall','leet-scare'].includes(kind))scale*=.5;
@@ -145,12 +147,12 @@ export class Simulation {
  const attacker=this.players.get(source||'');if(p.death.effect==='dev-raging-demon'&&attacker)p.death.attacker={pos:copy(attacker.body.translation()),yaw:attacker.input.yaw,color:attacker.color,cosmetics:{...attacker.cosmetics},spec:attacker.spec};
  this.emit('death',p.death.pos,{target:p.id,source,message:kind});
  }
- directHit(p:Player,target:Player|Prop,point:Vec,dir:Vec,damage:number,impulse:number,attackId:string,melee=WEAPONS[p.spec].class==='melee'){const w=WEAPONS[p.spec],isPlayer='stats'in target;if(isPlayer&&this.arcade.invulnerable(target))return;if(this.leet.active(p,'yeet'))impulse*=1000;if(isPlayer&&target.hp>0&&target.blockTime>0&&w.class==='melee'){this.successfulBlock(target,'melee',point,p.id,damage,dir);return;}if(isPlayer){
+ directHit(p:Player,target:Player|Prop,point:Vec,dir:Vec,damage:number,impulse:number,attackId:string,melee=WEAPONS[p.spec].class==='melee',hitsGrounded=false){const w=WEAPONS[p.spec],isPlayer='stats'in target;if(isPlayer&&(this.arcade.invulnerable(target)||!hitsGrounded&&downProtected(target.knockdown,this.time)))return;if(this.leet.active(p,'yeet'))impulse*=1000;if(isPlayer&&target.hp>0&&target.blockTime>0&&w.class==='melee'){this.successfulBlock(target,'melee',point,p.id,damage,dir);return;}if(isPlayer){
  const distance=len(sub(target.body.translation(),p.body.translation()));
  damage*=1+(target.hp<target.stats.hp*.3?p.stats.execute:0)+(distance<5?p.stats.closeDamage:0)+(distance>=20?p.stats.farDamage:0)+(w.class==='melee'&&dot(forward(target.input.yaw),norm(sub(p.body.translation(),target.body.translation())))<-.35?p.stats.backstab:0);
  if(p.stats.chaos)damage*=.5+this.random()*2;
  if(p.stats.critical&&this.random()<p.stats.critical){damage*=2;this.emit('critical',point,{source:p.id,color:0xffd66c});}
- const actual=this.damage(target,Math.min(1000,damage),p.id,'direct',dir,p.chips['grappling-shot']?0:impulse,point,melee);if(actual>0){refreshDot(target.burns,p.id,(w.burn||0)+p.stats.burn,this.time,'fire');refreshDot(target.poisons,p.id,p.stats.poison,this.time,'poison');if(p.hp>0&&(w.drain||p.stats.lifeSteal))p.hp=Math.min(p.stats.hp,p.hp+actual*((w.drain||0)+p.stats.lifeSteal));if(target.stats.thorns)this.damage(p,actual*target.stats.thorns,target.id,'thorns');p.hits++;if(p.stats.staticEvery&&p.hits%p.stats.staticEvery===0)this.explode(p,point,3,p.stats.staticDamage,60,'static',false);if(w.chain){for(const other of this.props.values())if(other.material!=='foundation'&&len(sub(other.body.translation(),point))<3&&this.lineOfSight(point,other.body.translation(),target.id,other.id)){const arcEnd=copy(other.body.translation());this.damageProp(other,w.chain,v(),p.id,arcEnd);this.emit('arc',point,{from:arcEnd,color:w.color});break;}}}}
+ const actual=this.damage(target,Math.min(1000,damage),p.id,'direct',dir,p.chips['grappling-shot']?0:impulse,point,melee,hitsGrounded);if(actual>0){refreshDot(target.burns,p.id,(w.burn||0)+p.stats.burn,this.time,'fire');refreshDot(target.poisons,p.id,p.stats.poison,this.time,'poison');if(p.hp>0&&(w.drain||p.stats.lifeSteal))p.hp=Math.min(p.stats.hp,p.hp+actual*((w.drain||0)+p.stats.lifeSteal));if(target.stats.thorns)this.damage(p,actual*target.stats.thorns,target.id,'thorns');p.hits++;if(p.stats.staticEvery&&p.hits%p.stats.staticEvery===0)this.explode(p,point,3,p.stats.staticDamage,60,'static',false);if(w.chain){for(const other of this.props.values())if(other.material!=='foundation'&&len(sub(other.body.translation(),point))<3&&this.lineOfSight(point,other.body.translation(),target.id,other.id)){const arcEnd=copy(other.body.translation());this.damageProp(other,w.chain,v(),p.id,arcEnd);this.emit('arc',point,{from:arcEnd,color:w.color});break;}}}}
  else this.damageProp(target,damage*p.stats.demolition,dir?mul(dir,impulse):v(),p.id,point);
  this.chaos.direct(p,target,point,dir,attackId);
  if(p.stats.vacuum&&!this.procAttacks.has('vacuum:'+attackId)){this.procAttacks.add('vacuum:'+attackId);this.vacuum(p,point,p.stats.vacuum);}
@@ -267,7 +269,7 @@ export class Simulation {
  if(p.input.secondary&&w.secondary!=='guard')this.secondary(p);if(p.input.attack&&!p.guarding)this.primary(p);
  if(p.burst>0&&this.time>=p.burstAt){p.burst--;p.burstAt=this.time+.08/p.stats.attackRate;this.spawnProjectile(p,.9);}
  this.melee(p);this.chaos.melee(p);
- const motion=prepareMotion(this.world,p.body,p.collider,p,p.input,{...p.stats,dashSpeed:demonStepUser(p)?DEMON_STEP.speed:undefined,dashDuration:demonStepUser(p)?DEMON_STEP.seconds:undefined,waveSpeed:this.emperor.waveSpeed(p),electricStepSpeed:this.emperor.active(p)?EMPEROR.electricStepSpeed:undefined,maxExternalSpeed:(p.leet?.launchUntil||0)>this.time?100000:undefined,maxExternalLift:(p.leet?.launchUntil||0)>this.time?100000:undefined,speed:p.stats.speed*fieldSpeed([...this.chaos.fields.values()],p.id,p.body.translation())},dt,p.guarding,!!p.swing,this.arcade.stunned(p));
+ const motion=prepareMotion(this.world,p.body,p.collider,p,p.input,{...p.stats,recoveryRoll:recoveryMotion(p.knockdown,this.time,p.input),dashSpeed:demonStepUser(p)?DEMON_STEP.speed:undefined,dashDuration:demonStepUser(p)?DEMON_STEP.seconds:undefined,waveSpeed:this.emperor.waveSpeed(p),electricStepSpeed:this.emperor.active(p)?EMPEROR.electricStepSpeed:undefined,maxExternalSpeed:(p.leet?.launchUntil||0)>this.time?100000:undefined,maxExternalLift:(p.leet?.launchUntil||0)>this.time?100000:undefined,speed:p.stats.speed*fieldSpeed([...this.chaos.fields.values()],p.id,p.body.translation())},dt,p.guarding,!!p.swing,this.arcade.stunned(p));
  if(motion.waved)this.emperor.wave(p);if(motion.dashed){this.chaos.dash(p,{...pos});if(demonStepUser(p)){const a=this.arcade.state(p);a.demonStepAt=this.time;this.emit('demon-step',pos,{source:p.id,spec:p.spec,color:0x8371ff});}else this.emit('dash',pos,{source:p.id,color:0x91f7df});if(p.stats.dashBlast)this.explode(p,pos,3,p.stats.dashBlast,p.stats.dashBlast/14*380,'dashBlast',true);}if(motion.jumped){this.chaos.jump(p);this.emit('jump',pos,{source:p.id});}
  if(pos.y<-6)this.damage(p,100000,null,'fall');
  }

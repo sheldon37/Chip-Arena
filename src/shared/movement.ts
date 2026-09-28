@@ -3,7 +3,7 @@ import {CONFIG as C,Input,Vec,v,add,mul,len,norm,forward,clamp,sub} from './conf
 /** Identical locomotion integration for authority and client replay. Gravity and
  * contact response belong to Rapier, not a separate client character controller. */
 export interface Motion {electricStepTime?:number;waveTime?:number;move:Vec;ext:Vec;dashCd:number;dashTime:number;grounded:boolean;}
-export interface MotionRules {electricStepSpeed?:number;dashSpeed?:number;dashDuration?:number;groundedHint?:boolean;waveSpeed?:number;maxExternalSpeed?:number;maxExternalLift?:number;speed:number;dashCooldown:number;knockbackTaken:number;jumpPower?:number;playerGravity?:number;}
+export interface MotionRules {recoveryRoll?:Vec;electricStepSpeed?:number;dashSpeed?:number;dashDuration?:number;groundedHint?:boolean;waveSpeed?:number;maxExternalSpeed?:number;maxExternalLift?:number;speed:number;dashCooldown:number;knockbackTaken:number;jumpPower?:number;playerGravity?:number;}
 export function prepareMotion(world:RAPIER.World,body:RAPIER.RigidBody,collider:RAPIER.Collider,state:Motion,input:Input,stats:MotionRules,dt:number,guarding=false,swinging=false,stunned=false){
  state.dashCd=Math.max(0,state.dashCd-dt);state.dashTime=Math.max(0,state.dashTime-dt);
  body.setGravityScale(stats.playerGravity??1,true);const pos=body.translation();state.grounded=stats.groundedHint??!!world.castRay(new RAPIER.Ray(pos,v(0,-1,0)),C.playerHalfHeight+C.playerRadius+.16,true,undefined,undefined,collider);
@@ -28,6 +28,7 @@ export function prepareMotion(world:RAPIER.World,body:RAPIER.RigidBody,collider:
  if(jumped){vy=C.jumpSpeed*(stats.jumpPower??1);state.grounded=false;}
  const electricStep=!stunned&&!guarding&&state.grounded&&(state.electricStepTime||0)>1e-6?mul(forward(input.yaw),stats.electricStepSpeed||0):v();
  state.electricStepTime=Math.max(0,(state.electricStepTime||0)-dt);
+ if(stats.recoveryRoll){state.move=v();state.ext=v();body.setLinvel(v(stats.recoveryRoll.x,vy,stats.recoveryRoll.z),true);return {dashed:false,jumped:false,waved:false};}
  body.setLinvel(v(controlled.x+state.ext.x+electricStep.x,vy+lift,controlled.z+state.ext.z+electricStep.z),true);
  return {dashed,jumped,waved};
 }

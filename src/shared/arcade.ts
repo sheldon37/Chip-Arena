@@ -1,3 +1,4 @@
+import {landRecovery,recoveryMotion,pickupOpen} from './recovery.js';
 import type {Player,Projectile,Simulation,Prop} from './simulation.js';
 import {CONFIG,v,Vec,add,sub,mul,norm,len,dot,forward,clamp} from './config.js';
 import {ARCADE} from './arcade-content.js';
@@ -41,8 +42,8 @@ export class ArcadeSystem {
   s.emit('arcade-move',pos,{source:p.id,spec:p.spec,message:superShot?'SHINKU HADOKEN':'HADOKEN',color:red?0xff6038:0x78dfff,radius:superShot?3:1});s.emit('shot',pos,{source:p.id,spec:p.spec,color:0x78dfff});
  }
  stunned(p:Player){return (p.hitStunUntil||0)>this.sim.time||(p.knockdown?.until||0)>this.sim.time||(p.juggle?.until||0)>this.sim.time;}
- stepKnockdown(p:Player){const k=p.knockdown;if(!k)return;const now=this.sim.time;if(p.hp<=0||now>=k.until){p.knockdown=undefined;return;}if(k.landedAt===undefined&&now-k.at>.18&&p.grounded&&p.body.linvel().y<.5){k.landedAt=now;k.until=now+ARCADE.knockdownRecovery;this.sim.emit('arcade-land',p.body.translation(),{target:p.id,color:0x7edbff});}}
- knockDown(p:Player){p.juggle=undefined;p.knockdown={at:this.sim.time,until:this.sim.time+5};p.grounded=false;p.move=v();p.dashTime=0;this.cancel(p);}
+ stepKnockdown(p:Player){const k=p.knockdown;if(!k)return;const now=this.sim.time;if(p.hp<=0||now>=k.until){p.knockdown=undefined;return;}if(k.landedAt===undefined&&now-k.at>.18&&p.grounded&&p.body.linvel().y<.5){landRecovery(k,now);this.sim.emit('arcade-land',p.body.translation(),{target:p.id,color:0x7edbff});}recoveryMotion(k,now,p.input);}
+ knockDown(p:Player){const pickupUsed=p.juggle?.pickupUsed||p.knockdown?.pickupUsed||pickupOpen(p.knockdown,this.sim.time);p.juggle=undefined;p.knockdown={at:this.sim.time,until:this.sim.time+5,pickupUsed};p.grounded=false;p.move=v();p.dashTime=0;this.cancel(p);}
  invulnerable(p:Player){return this.active(p)&&(p.arcade?.parryUntil||0)>this.sim.time;}
  parry(p:Player,point:Vec,source:string){if(!this.active(p))return;const a=this.state(p);this.cancel(p);p.blockCd=0;p.blockTime=0;p.cooldown=0;p.hitStunUntil=0;a.parryAt=this.sim.time;a.parryUntil=this.sim.time+ARCADE.parryInvulnerability;this.sim.emit('arcade-parry',point,{source:p.id,target:source,spec:p.spec,message:'PARRY',color:0x9ce7ff,radius:1.4});}
  confirmHit(p:Player,t:Player,damage:number,impact:'punch'|'kick'|'fireball',stun:number,message:string,big=false){
