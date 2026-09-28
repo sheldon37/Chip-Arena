@@ -1,0 +1,4 @@
+import type {SpecId} from '../shared/config.js';
+import {WEAPONS} from '../shared/content.js';
+/** Only relevant keys; named DEV moves belong in loadout descriptions. */
+export function controlHints(spec?:SpecId){const keys=[['WASD','Move'],['LMB','Attack'],['RMB','Block'],['E','Special']];if(spec==='emperor')keys.push(['Q','Ability']);else if(spec==='ansatsuken')keys.push(['1 / 2','Abilities']);else if(spec==='rifle')keys.push(['Q','Scope']);if(spec&&WEAPONS[spec].class==='ranged')keys.push(['R','Reload']);keys.push(['SPACE / SHIFT','Jump / Dash'],['ESC','Menu']);return `<div class="controls">${keys.map(([key,label])=>`<span><kbd>${key}</kbd>${label}</span>`).join('')}</div>`;}

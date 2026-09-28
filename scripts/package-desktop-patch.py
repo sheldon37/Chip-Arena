@@ -4,7 +4,7 @@ from pathlib import Path
 from zipfile import ZipFile,ZIP_DEFLATED
 p=argparse.ArgumentParser();p.add_argument('--full',required=True);p.add_argument('--base',action='append',required=True);p.add_argument('--out',required=True);a=p.parse_args()
 prefix='Chip-Arena-Desktop/';out=Path(a.out).resolve();out.parent.mkdir(parents=True,exist_ok=True)
-readme='''CHIP ARENA - ANSATSUKEN CINEMATIC UPDATE
+readme='''CHIP ARENA - EMPEROR STYLE UPDATE
 
 For the existing Windows desktop edition (0.3.0 through 0.3.4).
 
@@ -24,15 +24,21 @@ Existing DEV credentials still work; log in once to create the saved DEV account
 Home > DEV Menu grants registered players restricted weapons, intros and flags.
 After a grant changes, reload Account and rejoin the room.
 
-DEV/granted player: Melee > Ansatsuken. LMB: punch, punch, high kick. RMB: no-cooldown parry. 1: burning Hadoken.
-E: Tatsumaki Senpukyaku. 2: Shoryuken. Twelve exclusive arcade Chips include
-hold/release 1 for Shinku Hadoken and Ten-Hit Rush.
-All twelve fighting Chips use the new red Ansatsuken rarity and selection cinematic.
-Two exclusive Chips are guaranteed when available; extras get 85% exclusive odds.
-Shoryuken now spins, launches opponents and knocks them down until they get up.
-DEV/granted cosmetics: Raging Demon kill effect and animated Auditor Halo.
-Sign in once with Remember me checked to stay signed in for 30 days. Exclusive weapons automatically use their matching intro (unless intros are skipped).
-The L33T staff, previous content and easy room-code joining remain included.
+DEV/granted player: Melee > Emperor Style. LMB: left jab, right jab.
+Q: Electric Wind Hook Fist; hold/repeat to sustain an airborne juggle.
+E: Wavedash, with no cooldown. RMB retains the normal block.
+Twelve slate/red Mishima Chips add electric echoes, screw spins, ground/wall
+bounces, magnetic punches, armored steps, lightning trails and more.
+Two exclusive Chips are guaranteed when available; extra slots have 85% odds.
+Emperor Style automatically uses Emperor's Oath, with an original 7.8s music cue.
+DEV Menu can grant the style without granting DEV status.
+
+Everyone: Customize > Kill effect > Ragdoll. Hit location affects the fall;
+melee launches are stronger than projectile knockouts. Connected limbs react
+against nearby cover. The bottom controls now show only relevant generic hints.
+
+The Ansatsuken/Matrix styles, prior cosmetics, remembered login and easy joining
+are included. Sign in once with Remember me checked to stay signed in for 30 days.
 
 Host online > Create Room > Copy Code. Friends enter CA-XXXX-XXXX in Join a friend.
 Keep the host open. Settings and saved room-code behavior are unchanged.

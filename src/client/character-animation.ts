@@ -1,3 +1,4 @@
+import {animateEmperor,animateJuggle} from './emperor-animation.js';
 import {animateCosmetics} from './auditor-halo.js';
 import {animateAnsatsuken} from './ansatsuken-animation.js';
 import * as T from 'three';
@@ -50,6 +51,7 @@ export function animateCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:numbe
  r.leftElbow.rotation.set(-.22-Math.max(0,gait)*.5*run,0,0);r.rightElbow.rotation.set(-.25-Math.max(0,-gait)*.5*run,0,0);
  r.leftHand.rotation.set(Math.sin(r.stride-.5)*.13*run,0,.06);r.rightHand.rotation.set(-Math.sin(r.stride-.5)*.13*run,0,-.06);
  r.weapon.position.set(0,0,0);r.weapon.rotation.set(.5,0,0);r.weapon.scale.set(1,1,w.class==='melee'?p.reach/w.range:1);r.offWeapon.rotation.set(.55,0,0);r.offWeapon.scale.copy(r.weapon.scale);
+ if(p.juggle&&time<p.juggle.until){animateJuggle(r,p,time);return pose;}
  if(p.knockdown&&time<p.knockdown.until){
   const k=p.knockdown,air=k.landedAt===undefined,age=time-k.at,landAge=air?0:time-k.landedAt!,rise=air?0:smooth((landAge-.45)/.45);
   r.body.rotation.set(air?-Math.min(1.3,.2+age*2):-Math.PI/2*(1-rise),0,air?Math.sin(age*5)*.12:0);
@@ -58,6 +60,7 @@ export function animateCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:numbe
   r.leftLeg.rotation.set(air?-.5:0,0,.12);r.rightLeg.rotation.set(air?.3:0,0,-.12);r.leftKnee.rotation.x=air?.65:.08+.85*rise*(1-rise);r.rightKnee.rotation.x=air?.25:.08+.85*rise*(1-rise);r.head.rotation.x=air?-.3:0;return pose;
  }
  if((p.hitStunUntil||0)>time){const flinch=Math.min(1,((p.hitStunUntil||0)-time)/.12);r.body.rotation.x=-.23*flinch;r.chest.rotation.y=.20*flinch;r.head.rotation.x=-.22;r.leftArm.rotation.set(-.5,0,.45);r.rightArm.rotation.set(-.5,0,-.45);r.leftElbow.rotation.x=r.rightElbow.rotation.x=-.8;return pose;}
+ if(p.spec==='emperor'){animateEmperor(r,p,time);return pose;}
  if(p.spec==='ansatsuken'){animateAnsatsuken(r,p,time);return pose;}
  const aimTarget=w.class==='ranged'?(pose.shotAge<Math.min(.9,w.interval+.25)||p.reloadTime>0?1:run>.15?0:1):0;r.aimWeight+=(aimTarget-r.aimWeight)*(1-Math.exp(-dt*24));
  if(w.class!=='magic'&&r.weapon.parent!==r.sockets.rightHand)r.sockets.rightHand.add(r.weapon);

@@ -164,3 +164,26 @@ DEV Menu can grant Auditor Halo and Raging Demon to registered players.
 Customize > Headwear > Auditor Halo: broken red ring with animated black flames.
 Customize > Kill Effect > Raging Demon: attacker afterimages, victim-only
 blackout and red symbol, then the defeated pilot lies flat.
+
+EMPEROR STYLE UPDATE
+DEV or granted player: Melee > Emperor Style.
+LMB: left jab, right jab. Q: Electric Wind Hook Fist (repeat/hold for juggles).
+E: rapid Wavedash with no cooldown. RMB keeps the normal block.
+Twelve exclusive Mishima Chips use slate plates, red/black lightning and a
+4.8-second selection cinematic. Two available exclusives are guaranteed and
+remaining slots have 85% exclusive odds, as with Ansatsuken.
+Perfect Electric, Twin Thunder, Screwdriver, Bound Breaker, Magnetic Fists,
+Wall Tyrant, Iron Wavedash, Storm Footwork, Pressure String, Counter Voltage,
+Emperor's Rage and Bloodline Surge each change the moveset.
+Airborne victims fold/spin during juggles and recover after falling. Attacks
+respect cover and blocks; wavedash collides with the arena.
+Equipping this style forces Emperor's Oath: wrist-grip close-up, electric fist,
+raised-arm orbit, final guard/name, with original dramatic music. Skip intros
+still applies. DEV Menu can grant Emperor Style to any registered player.
+
+Customize > Kill effect > Ragdoll is available to everyone. Hit location and
+impact type change the fall: ranged knockouts collapse, melee hits launch and
+spin harder. Limbs stay joined and collide with nearby cover. These cosmetic
+bodies run on each client and never deal damage or add server physics load.
+Bottom hints now show only relevant controls, without exclusive move names.
+No new .bat is needed. Close the game before applying the cumulative patch.

@@ -171,3 +171,24 @@ Weights renormalize when no eligible Chips remain in a tier. Chips cannot exceed
 Fields: up to 3 per owner per kind, 40 total. Mines arm in 0.6 seconds. Direct impact mechanics trigger once per volley/attack and never recursively from explosions or extra shots. Friendly fields do not hurt their owner. Fields expire and all clear each round. Time/frost movement slows are shared with client prediction.
 
 Necronomicon: 3 + extraProjectiles zombies, maximum 14 per owner. Each zombie snapshots 2× player max HP and 0.5× player movement speed on summon; base bite damage is 12× player damage, one bite per 0.9 s. 35 mana times resource-cost modifiers, 10 s secondary cooldown, 14 s lifespan. E replaces the existing mage secondary. New armies replace old ones. Toy Soldier: maximum 3 toys per owner, 25 HP, 8× player damage, 6 s lifespan. Total minions capped at 34.
+
+## Emperor Style — Mishima rarity
+
+DEV/granted Emperor Style only. Two available exclusives are guaranteed per draft (up to offer count), then remaining slots have an 85% exclusive roll. Every Chip has one copy maximum; slate/red electric cards use a synchronized 4.8-second selection cinematic.
+
+| Chip | Effect |
+| --- | --- |
+| Perfect Electric | Faster electric recovery |
+| Twin Thunder | Delayed second strike at the captured impact position |
+| Screwdriver | Every third airborne hit spins and deals extra damage |
+| Bound Breaker | One damaging ground bounce per juggle |
+| Magnetic Fists | Electric hits draw the victim toward the next punch |
+| Wall Tyrant | Greater carry plus one damaging wall bounce |
+| Iron Wavedash | Half incoming damage while stepping; interruption still applies |
+| Storm Footwork | Short lightning trails, one hit per victim per trail |
+| Pressure String | Adds a heavy third punch |
+| Counter Voltage | Greater electric damage against an attacking opponent |
+| Emperor’s Rage | Greater move damage below one-third health |
+| Bloodline Surge | Confirmed electric hits restore health and stamina |
+
+Electric recovery is 0.40 seconds before rate modifiers. Juggle height is stabilized by replacing upward velocity according to target height; attacks do not home, ignore cover, or teleport victims. Wavedash moves at 18 m/s for 0.18 seconds and can be repeated without cooldown. Trail/echo lists and client lightning are bounded.

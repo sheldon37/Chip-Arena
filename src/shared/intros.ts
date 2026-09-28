@@ -2,6 +2,7 @@ import {canUse} from './access.js';
 import type {PlayerView,Snapshot} from './simulation.js';
 
 export const INTRO_STYLES={
+ 'dev-emperor':'DEV · Emperor’s Oath',
  'dev-ansatsuken':'DEV · Rain Warrior',
  'dev-matrix':'DEV · L33T Throne',
  'neon-drop':'Neon Drop',
@@ -11,10 +12,10 @@ export const INTRO_STYLES={
  'pulse-wave':'Pulse Wave',
 } as const;
 export type IntroStyle=keyof typeof INTRO_STYLES;
-export function effectiveIntro(p?:Pick<PlayerView,'spec'|'cosmetics'|'developer'|'unlocks'>):IntroStyle{if(p?.spec==='leet'&&canUse(p,'weapon:leet'))return 'dev-matrix';if(p?.spec==='ansatsuken'&&canUse(p,'weapon:ansatsuken'))return 'dev-ansatsuken';return p?.cosmetics?.intro||'neon-drop';}
+export function effectiveIntro(p?:Pick<PlayerView,'spec'|'cosmetics'|'developer'|'unlocks'>):IntroStyle{if(p?.spec==='emperor'&&canUse(p,'weapon:emperor'))return 'dev-emperor';if(p?.spec==='leet'&&canUse(p,'weapon:leet'))return 'dev-matrix';if(p?.spec==='ansatsuken'&&canUse(p,'weapon:ansatsuken'))return 'dev-ansatsuken';return p?.cosmetics?.intro||'neon-drop';}
 export const INTRO={seconds:4.8,nameAt:3.2} as const;
-export const introDuration=(style?:string)=>style==='dev-matrix'?8:style==='dev-ansatsuken'?7.2:INTRO.seconds;
-export const introNameAt=(style?:string)=>style==='dev-matrix'?6.25:style==='dev-ansatsuken'?5.45:INTRO.nameAt;
+export const introDuration=(style?:string)=>style==='dev-emperor'?7.8:style==='dev-matrix'?8:style==='dev-ansatsuken'?7.2:INTRO.seconds;
+export const introNameAt=(style?:string)=>style==='dev-emperor'?5.95:style==='dev-matrix'?6.25:style==='dev-ansatsuken'?5.45:INTRO.nameAt;
 export interface IntroSequence {started:number;players:string[];}
 /** One authority-owned timeline. Joining a snapshot mid-intro never restarts it. */
 export function introFrame(state:Pick<Snapshot,'phase'|'intro'|'time'|'players'>){

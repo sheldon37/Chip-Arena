@@ -1,7 +1,7 @@
 import {AccessInput,canUse} from './access.js';
 import {INTRO_STYLES,IntroStyle} from './intros.js';
 export const HATS={'auditor-halo':'Auditor Halo · DEV ONLY',none:'No hat',cap:'Ball cap',beanie:'Beanie',top:'Top hat',wizard:'Wizard hat',crown:'Crown',cone:'Traffic cone',antenna:'Antenna',halo:'Halo',cowboy:'Cowboy hat'} as const;
-export const KILL_STYLES={'dev-raging-demon':'Raging Demon · DEV ONLY','voxel-burst':'Voxel breakup',confetti:'Confetti cannon',ascension:'Beam me up',shrink:'Pocket-sized',launch:'Team Rocket',ghost:'Ghost escape','dev-clown':'Clown getaway · DEV ONLY','dev-clown-love':'Clown Love · DEV ONLY','dev-bass-van':'Bass Van · DEV ONLY'} as const;
+export const KILL_STYLES={ragdoll:'Ragdoll','dev-raging-demon':'Raging Demon · DEV ONLY','voxel-burst':'Voxel breakup',confetti:'Confetti cannon',ascension:'Beam me up',shrink:'Pocket-sized',launch:'Team Rocket',ghost:'Ghost escape','dev-clown':'Clown getaway · DEV ONLY','dev-clown-love':'Clown Love · DEV ONLY','dev-bass-van':'Bass Van · DEV ONLY'} as const;
 export const developerKillEffect=(id:string)=>id.startsWith('dev-');
 export interface Cosmetics {intro?:IntroStyle;introText?:string;bodyColor:string;hat:keyof typeof HATS;killEffect:keyof typeof KILL_STYLES;}
 export const DEFAULT_COSMETICS:Cosmetics={intro:'neon-drop',introText:'Ready to make an impact',bodyColor:'#e5e7eb',hat:'none',killEffect:'voxel-burst'};

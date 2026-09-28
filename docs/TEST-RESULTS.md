@@ -1,3 +1,13 @@
+## Emperor Style update — 2026-09-28
+
+- Full automated suite: **289 passed, 0 failed**. TypeScript passes.
+- Eleven Emperor-specific tests cover access checks, high exclusive draft odds, reveal timing, two/three jab strings, cover/block rejection, repeatable height-bounded electric juggles, victim input lock and recovery, collision-checked no-cooldown wavedash, authority/prediction agreement, and all twelve Mishima mechanics.
+- Ragdoll checks cover public access, authoritative hit metadata, projectile classification for melee-style fireballs, connected limbs, stronger melee launch, hit-location-dependent rotation, late-snapshot determinism, finite transforms and disposal.
+- Eight real local WebSocket clients: **107 identical shared snapshots**, verified weapon-only grant, forged access rejection, shared six-hit airborne juggle/landing/recovery, repeated wavedash and ragdoll impact metadata. Reported final snapshot was 16,416 bytes; final sampled tick was 0.234 ms. This is a local transport test, not an Internet latency or GPU benchmark.
+- The 7.8-second Emperor cue is original synthesis. All eight intro cues are distinct, camera sequences rewind correctly, and final poses fit desktop aspect ratios.
+- An offline geometry contact sheet was visually inspected for jab/hook/wavedash/juggle/intro silhouettes. Browser-control capability and native Windows/GPU playback are unavailable here; final in-game cinematic feel and GPU performance still need desktop playtesting.
+- Windows packaging verifies pinned runtime hashes, ZIP integrity, the new intro asset and update-version identity. The cumulative patch is compared byte-for-byte with the full release after merging over supported archives.
+
 ## Selection and join update — 2026-09-28
 
 - All 228 automated tests passed, including existing combat networking checks.

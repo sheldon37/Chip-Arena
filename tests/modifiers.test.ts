@@ -16,7 +16,7 @@ test('every weapon receives only useful projectile, resource and attack-rate mod
  for(const w of Object.values(WEAPONS)){
   const ids=new Set(eligibleChips(w.id,{}).map(c=>c.id));
   for(const id of ['multishot','ricochet','velocity','homing'])assert.equal(ids.has(id),w.class!=='melee'&&!(w.id==='leet'&&id==='homing'),`${w.id}: ${id}`);
-  assert.equal(ids.has('echo-strike'),w.class==='melee'&&w.id!=='ansatsuken');
+  assert.equal(ids.has('echo-strike'),w.class==='melee'&&w.id!=='ansatsuken'&&w.id!=='emperor');
   for(const [cls,resource,rate]of [['ranged','magazine','fire-rate'],['magic','mana','cast-rate'],['melee','stamina','swing-rate']]){
    assert.equal(ids.has(resource),w.class===cls);assert.equal(ids.has(rate),w.class===cls);
   }

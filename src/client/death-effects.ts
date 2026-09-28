@@ -1,3 +1,4 @@
+import {ragdoll} from './ragdoll.js';
 import {ragingDemon} from './raging-demon.js';
 import {clownLove} from './clown-love.js';
 import {bassVan} from './bass-van.js';
@@ -9,7 +10,7 @@ import {ANIMATION} from './character-animation.js';
 
 interface Voxel {mesh:T.Mesh;start:T.Vector3;velocity:T.Vector3;spin:T.Vector3;floor:number;size:number;}
 interface Effect {update(age:number):void;dispose():void;count:number;}
-export type KillEffectFactory=(scene:T.Scene,rig:T.Group,p:PlayerView,death:DeathPresentation,quality:number,budget:number)=>Effect;
+export type KillEffectFactory=(scene:T.Scene,rig:T.Group,p:PlayerView,death:DeathPresentation,quality:number,budget:number,state?:Snapshot)=>Effect;
 const geometry=new T.BoxGeometry(1,1,1);
 function voxelBurst(scene:T.Scene,rig:T.Group,p:PlayerView,death:DeathPresentation,quality:number,budget:number):Effect {
  let seed=death.seed;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
@@ -37,7 +38,7 @@ function voxelBurst(scene:T.Scene,rig:T.Group,p:PlayerView,death:DeathPresentati
 }
 /** Add future kill animations here. Only the server chooses the effect identifier.
  * Unknown identifiers fall back to voxel breakup. These pieces never deal damage. */
-export const KILL_EFFECTS:Record<string,KillEffectFactory>={'dev-raging-demon':ragingDemon,'voxel-burst':voxelBurst,'dev-clown-love':clownLove,'dev-bass-van':bassVan,...Object.fromEntries(['confetti','ascension','shrink','launch','ghost','dev-clown'].map(kind=>[kind,cinematic(kind)]))};
+export const KILL_EFFECTS:Record<string,KillEffectFactory>={ragdoll,'dev-raging-demon':ragingDemon,'voxel-burst':voxelBurst,'dev-clown-love':clownLove,'dev-bass-van':bassVan,...Object.fromEntries(['confetti','ascension','shrink','launch','ghost','dev-clown'].map(kind=>[kind,cinematic(kind)]))};
 export class DeathEffects {
  private active=new Map<string,{effect:Effect;at:number}>();private seen=new Set<string>();private epoch='';
  constructor(private scene:T.Scene){}
@@ -46,7 +47,7 @@ export class DeathEffects {
   if(epoch!==this.epoch){this.clear();this.epoch=epoch;}
   for(const p of state.players){const d=p.death,rig=rigs.get(p.id);if(!d||p.hp>0||!rig||this.seen.has(d.id))continue;this.seen.add(d.id);
    if(state.time-d.at>=ANIMATION.deathSeconds||this.count>=ANIMATION.maxDeathVoxels)continue;
-   const effect=(KILL_EFFECTS[d.effect]||KILL_EFFECTS['voxel-burst'])(this.scene,rig.group,p,d,quality,ANIMATION.maxDeathVoxels-this.count);this.active.set(d.id,{effect,at:d.at});
+   const effect=(KILL_EFFECTS[d.effect]||KILL_EFFECTS['voxel-burst'])(this.scene,rig.group,p,d,quality,ANIMATION.maxDeathVoxels-this.count,state);this.active.set(d.id,{effect,at:d.at});
   }
   for(const[id,e]of this.active){const age=state.time-e.at;if(age>=ANIMATION.deathSeconds||!state.players.some(p=>p.hp<=0&&p.death?.id===id)){e.effect.dispose();this.active.delete(id);}else e.effect.update(age);}
  }

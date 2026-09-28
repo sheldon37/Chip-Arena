@@ -1,0 +1,3 @@
+export const stormMark=()=>`<svg class="storm-mark" viewBox="0 0 100 100" aria-hidden="true"><path d="M60 4L18 54H43L33 96L86 37H57Z" fill="currentColor"/></svg>`;
+export function emperorAura(){return `<span class="emperor-aura" aria-hidden="true">${stormMark()}<i class="storm-arc arc-a"></i><i class="storm-arc arc-b"></i><i class="storm-arc arc-c"></i><span class="storm-grid"></span></span>`;}
+export function emperorCinematic(){return `<div class="emperor-cinema" aria-hidden="true"><div class="storm-crown">${stormMark()}</div><i class="storm-split split-a"></i><i class="storm-split split-b"></i><span class="storm-word">IRON WILL</span><div class="storm-fragments">${Array.from({length:16},(_,i)=>`<i style="--n:${i};--angle:${i*22.5}deg"></i>`).join('')}</div></div>`;}

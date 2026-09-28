@@ -32,5 +32,5 @@ test('intro songs seek late snapshots, deduplicate, switch players, honor music 
  const music=new ArenaMusic();music.configure(.5,false);assert.equal(music.cueVolume,.4);music.configure(.5,true);assert.equal(music.cueVolume,0);s.dispose();
 });
 test('all original intro music assets are distinct',()=>{
- const hashes=new Set<string>();for(const style of Object.keys(INTRO_STYLES)){const bytes=readFileSync(`public/audio/intros/${style}.mp3`);assert.ok(bytes.length>20000);hashes.add(createHash('sha256').update(bytes).digest('hex'));}assert.equal(hashes.size,7);
+ const hashes=new Set<string>();for(const style of Object.keys(INTRO_STYLES)){const bytes=readFileSync(`public/audio/intros/${style}.mp3`);assert.ok(bytes.length>20000);hashes.add(createHash('sha256').update(bytes).digest('hex'));}assert.equal(hashes.size,8);
 });

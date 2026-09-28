@@ -1,6 +1,6 @@
 /** Only verified server claims may populate this structure. Item grants never confer DEV. */
 export const GRANTABLE_CONTENT={
- 'weapon:leet':'L33T H4x staff + L44T Chips','weapon:ansatsuken':'Ansatsuken + arcade Chips',
+ 'weapon:emperor':'Emperor Style + Mishima Chips','intro:dev-emperor':'Emperor storm intro','weapon:leet':'L33T H4x staff + L44T Chips','weapon:ansatsuken':'Ansatsuken + arcade Chips',
  'intro:dev-matrix':'Matrix throne intro','intro:dev-ansatsuken':'Rain warrior intro',
  'hat:auditor-halo':'Auditor Halo','effect:dev-raging-demon':'Raging Demon','effect:dev-clown':'Clown getaway','effect:dev-clown-love':'Clown Love','effect:dev-bass-van':'Bass Van'
 } as const;

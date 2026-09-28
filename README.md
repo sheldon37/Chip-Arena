@@ -328,3 +328,11 @@ controls, security boundaries and validation. Guests can still play without logg
 Desktop 0.3.4 adds remembered login across host addresses. Ansatsuken now parries
 on RMB, uses 1 for Hadoken and 2 for Shoryuken, applies hit stun, tracks combos
 and heavily favors its exclusive Chips. See the guide above for exact timings.
+
+## Emperor Style
+
+DEV/granted players can select **Melee → Emperor Style**. LMB alternates left/right jabs; Q performs an electric upward hook that sustains juggles; E wavedashes without cooldown; RMB keeps normal block. Twelve exclusive **Mishima** Chips have slate/red electric presentation and their own selection cinematic. The forced **Emperor’s Oath** intro combines a wrist-grip close-up, fist detail, raised-arm orbit and final guard, with an original 7.8-second cue. Intro skipping still applies.
+
+Everyone can choose **Customize → Kill effect → Ragdoll**. The server records hit position, direction, strength and melee/projectile classification; disposable client physics makes joined limbs collapse or launch accordingly. Effects never add damage or server bodies. The bottom controls show only relevant keys and generic labels.
+
+Mechanic/presentation tests: `node --import tsx --test tests/emperor.test.ts`. Eight-client transport check: `node --import tsx tests/emperor-network.ts`.

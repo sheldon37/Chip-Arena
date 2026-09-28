@@ -13,7 +13,8 @@ const box=(p:T.Object3D,c:number,x:number,y:number,z:number,sx:number,sy:number,
 function socket(parent:T.Object3D,name:string,x:number,y:number,z:number){const g=new T.Group();g.name=name;g.position.set(x,y,z);parent.add(g);return g;}
 export function buildWeapon(weapon:T.Group,spec:string,offhand=false){
  weapon.clear();weapon.userData={spec,enchant:'',modifierKey:''};const w=WEAPONS[spec as keyof typeof WEAPONS];const steel=0x81999f,dark=0x263a43,gold=0xe3b779;
- if(spec==='ansatsuken'){const fist=socket(weapon,'fighter-fist',0,0,0);box(fist,0x931f31,0,-.015,-.01,.205,.175,.19);box(fist,0xec3c43,0,-.04,.07,.205,.13,.065);box(weapon,0xe8d6ad,0,.06,-.01,.21,.045,.2);const palm=socket(weapon,'fighter-palm',0,0,0);palm.visible=false;box(palm,0xb42638,0,-.01,0,.19,.14,.08);for(let i=0;i<4;i++){const finger=box(palm,0xec3c43,(i-1.5)*.049,-.14+(i===0||i===3?.012:0),0,.039,.15,.066);finger.rotation.z=(i-1.5)*-.045;}const thumb=box(palm,0xec3c43,.125,-.018,.035,.057,.095,.075);thumb.rotation.z=.5;socket(weapon,'blade-tip',0,-.045,.115);}
+ if(spec==='emperor'){box(weapon,0x1b1b25,0,-.01,0,.22,.20,.23);box(weapon,0x62636f,0,.075,-.01,.225,.08,.215);box(weapon,0xef1e43,0,-.04,.12,.22,.05,.025,true);for(let i=0;i<3;i++)box(weapon,0xa9aab3,(i-1)*.07,-.10,.1,.045,.04,.05);socket(weapon,'blade-tip',0,-.045,.14);}
+ else if(spec==='ansatsuken'){const fist=socket(weapon,'fighter-fist',0,0,0);box(fist,0x931f31,0,-.015,-.01,.205,.175,.19);box(fist,0xec3c43,0,-.04,.07,.205,.13,.065);box(weapon,0xe8d6ad,0,.06,-.01,.21,.045,.2);const palm=socket(weapon,'fighter-palm',0,0,0);palm.visible=false;box(palm,0xb42638,0,-.01,0,.19,.14,.08);for(let i=0;i<4;i++){const finger=box(palm,0xec3c43,(i-1.5)*.049,-.14+(i===0||i===3?.012:0),0,.039,.15,.066);finger.rotation.z=(i-1.5)*-.045;}const thumb=box(palm,0xec3c43,.125,-.018,.035,.057,.095,.075);thumb.rotation.z=.5;socket(weapon,'blade-tip',0,-.045,.115);}
  else if(spec==='leet'){matrixStaff(weapon);}else if(w.class==='ranged'){
   const rifle=spec==='rifle',mg=spec==='machinegun',tip=rifle?1.18:mg?.87:.47;
   box(weapon,dark,0,0,.16,.16,.20,rifle?.64:mg?.7:.39);box(weapon,steel,0,.09,.16,.145,.075,rifle?.68:mg?.7:.38);
@@ -39,7 +40,7 @@ export function buildWeapon(weapon:T.Group,spec:string,offhand=false){
 }
 /** Modular equipment silhouettes communicate builds even before an attack fires. */
 export function weaponModifiers(weapon:T.Group,p:PlayerView,time:number){
- if(p.spec==='ansatsuken')return;
+ if(p.spec==='ansatsuken'||p.spec==='emperor')return;
  if(p.spec==='leet')animateStaff(weapon,time);const key=JSON.stringify(p.chips);if(weapon.userData.modifierKey!==key){weapon.userData.modifierKey=key;weapon.getObjectByName('chip-modules')?.removeFromParent();const group=socket(weapon,'chip-modules',0,0,0),c={...p.chips},s=statsFor(c),w=WEAPONS[p.spec],tip=weapon.getObjectByName('muzzle')?.position.z??.8;
   for(let n=0;n<Math.min(6,s.extraProjectiles);n++){const x=(n%2?1:-1)*(.18+Math.floor(n/2)*.14);if(w.class==='ranged'){box(group,0x647e89,x,0,tip-.23,.11,.13,.48);box(group,0xffd88d,x,0,tip+.015,.12,.14,.075,true);}else{const orb=mesh(group,sphere,w.color,x,.08,tip-.06,.085,.085,.085,true);orb.userData.orbit=n;}}
   for(let n=0;n<(c.ricochet||0);n++)mesh(group,ring,0xffcc49,0,0,tip-.08-n*.11,.17,.17,.17,true);
@@ -80,7 +81,7 @@ export function bodyModifiers(r:CharacterRig,p:PlayerView,time:number){
 }
 export function enchantWeapon(weapon:T.Group,elements:ElementId[],time:number,stacks:Record<string,number>={}){
  const key=elements.join(',')+':'+(stacks.ember||0)+':'+(stacks.poison||0),spec=weapon.userData.spec;
- if(spec==='ansatsuken'){weapon.getObjectByName('enchantment')?.removeFromParent();return;}
+ if(spec==='ansatsuken'||spec==='emperor'){weapon.getObjectByName('enchantment')?.removeFromParent();return;}
  if(weapon.userData.enchant!==key){weapon.userData.enchant=key;weapon.getObjectByName('enchantment')?.removeFromParent();const g=socket(weapon,'enchantment',0,0,0),length=spec==='daggers'?.5:spec==='greatsword'?1.35:spec==='shield'?.7:.94;
   for(const e of elements){const count=10+Math.min(6,stacks[e==='fire'?'ember':'poison']||1);for(let n=0;n<count;n++){const z=spec==='shield'?.34:.28+n/(count-1)*length,y=spec==='shield'?-.30+n/(count-1)*.7:0,side=n%2?1:-1;
    const m=mesh(g,e==='fire'?flame:sphere,e==='fire'?(n%3?0xff6c27:0xffd06a):0x88f37f,side*(spec==='shield'?.27:.10),y,z,e==='fire'?.065:.045,e==='fire'?.24:.045,e==='fire'?.08:.045,true);m.userData={element:e,baseY:y,phase:n*.81};

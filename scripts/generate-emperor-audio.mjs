@@ -1,0 +1,12 @@
+// Original cinematic martial entrance; additive synthesis and seeded percussion. No sampled game music or voices.
+import {writeFileSync,mkdirSync,unlinkSync} from 'node:fs';import {spawnSync} from 'node:child_process';
+const rate=44100,seconds=7.8,n=Math.round(rate*seconds),samples=new Float32Array(n),tau=Math.PI*2;let seed=8901;const noise=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/2**31-1;};
+const add=(at,duration,fn)=>{const start=Math.floor(at*rate),count=Math.floor(duration*rate);for(let j=0;j<count&&start+j<n;j++)samples[start+j]+=fn(j/rate,j/count);};const hz=m=>440*2**((m-69)/12);
+let low=0;
+for(const note of [29,36,41,48]){const f=hz(note);add(0,7.8,(t,u)=>{const swell=Math.min(1,t/1.7)*(1-u*.3);return (Math.sin(f*tau*t)+.35*Math.sin(f*2*tau*t)+.18*Math.sin(f*3*tau*t))*.035*swell;});}
+const drum=at=>{add(at,.42,t=>Math.sin(tau*(43*t+1.8*(1-Math.exp(-t*28))))*Math.exp(-t*10)*.46);add(at,.09,t=>noise()*.11*Math.exp(-t*35));};
+for(let i=0;i<16;i++){const at=.8+i*.3;drum(at);if(i>7)add(at+.15,.08,t=>noise()*.075*Math.exp(-t*30));const f=hz([53,55,56,60,65,63,60,56][i%8]);add(at,.29,(t,u)=>(Math.sin(f*tau*t)+.3*Math.sin(f*2.003*tau*t)+.2*Math.sin(f*3*tau*t))*.065*Math.sin(Math.PI*u));}
+add(2.4,1.7,(t,u)=>{low+=.045*(noise()-low);return (low*.6+Math.sin(tau*(70*t+55*t*t))*.035)*Math.sin(Math.PI*u);});drum(4.1);drum(5.95);
+for(const note of [29,41,48,53,56,60,65]){const f=hz(note);add(5.95,1.85,(t,u)=>(Math.sin(f*tau*t)+.25*Math.sin(f*2*tau*t))*.065*Math.min(1,t*70)*(1-u)**1.4);}
+const b=Buffer.alloc(44+n*2);b.write('RIFF');b.writeUInt32LE(b.length-8,4);b.write('WAVEfmt ',8);b.writeUInt32LE(16,16);b.writeUInt16LE(1,20);b.writeUInt16LE(1,22);b.writeUInt32LE(rate,24);b.writeUInt32LE(rate*2,28);b.writeUInt16LE(2,32);b.writeUInt16LE(16,34);b.write('data',36);b.writeUInt32LE(n*2,40);for(let i=0;i<n;i++)b.writeInt16LE(Math.round(Math.tanh(samples[i]*1.7)*30000*Math.min(1,i/(rate*.01),(n-i)/(rate*.12))),44+i*2);
+mkdirSync('public/audio/intros',{recursive:true});const temp='/tmp/chip-arena-emperor-oath.wav';writeFileSync(temp,b);const out=spawnSync('ffmpeg',['-hide_banner','-loglevel','error','-y','-i',temp,'-codec:a','libmp3lame','-b:a','128k','-metadata','artist=Chip Arena','-metadata','title=Emperor Oath','public/audio/intros/dev-emperor.mp3']);if(out.status!==0)throw Error(out.stderr.toString());unlinkSync(temp);console.log('Original Emperor Oath intro: 7.8 seconds.');

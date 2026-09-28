@@ -54,7 +54,12 @@ export class ArenaAudio {
  arcadeTone(hit:number,move:boolean,superMove=false){const c=this.context;if(!c||!this.master||this.muted||c.state!=='running'||this.arcadeVoices>=8)return;this.arcadeVoices++;const osc=c.createOscillator(),gain=c.createGain(),at=c.currentTime;osc.type=move?'sawtooth':'square';osc.frequency.setValueAtTime(move?120:360+Math.min(hit,10)*55,at);osc.frequency.exponentialRampToValueAtTime(move?(superMove?920:420):160,at+(move?.25:.08));gain.gain.setValueAtTime(move?.09:.06,at);gain.gain.exponentialRampToValueAtTime(.001,at+(move?.35:.10));osc.connect(gain).connect(this.master);osc.start();osc.stop(at+(move?.38:.12));osc.onended=()=>{this.arcadeVoices--;osc.disconnect();gain.disconnect();};}
  update(state:Snapshot,me:string,yaw:number,presentation=state){this.intros.update(presentation,this.context,this.music.cueVolume);this.music.setActive(['fight','countdown','result'].includes(state.phase));this.updateLove(state);const self=state.players.find(p=>p.id===me);if(self)this.listener=self.pos;this.yaw=yaw;
   for(const e of this.cursor.consume(state.events,state.time)){
-   if(e.type==='shot'||e.type==='windup'){if(e.spec)this.play(e.spec==='leet'?'lightning':e.spec==='ansatsuken'?'fire':e.spec,e.pos,.65);}
+   if(e.type==='shot'||e.type==='windup'){if(e.spec)this.play(e.spec==='leet'||e.spec==='emperor'?'lightning':e.spec==='ansatsuken'?'fire':e.spec,e.pos,.65);}
+   else if(e.type==='emperor-electric')this.play('lightning',e.pos,.6);
+   else if(e.type==='emperor-hit'){this.play(e.message==='ELECTRIC'?'arcade-heavy':'arcade-punch',e.pos,.9);}
+   else if(e.type==='emperor-wave')this.play('dash',e.pos,.3);
+   else if(e.type==='emperor-bound')this.play('arcade-heavy',e.pos,.8);
+   else if(e.type==='install'&&e.message?.startsWith('mishima-')){this.play('lightning',undefined,.9);this.play('arcade-heavy',undefined,.8);}
    else if(e.type==='arcade-hit'){this.play(e.message==='FINISH'?'arcade-heavy':e.impact==='kick'?'arcade-kick':e.impact==='punch'?'arcade-punch':'fire',e.pos,.95);}
    else if(e.type==='arcade-land')this.play('arcade-heavy',e.pos,.5);
    else if(e.type==='install'&&e.message?.startsWith('arcade-')){this.arcadeTone(5,true,true);this.play('arcade-heavy',undefined,.7);}

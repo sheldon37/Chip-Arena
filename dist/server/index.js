@@ -643,6 +643,8 @@ var base64url = (b) => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/
 
 // src/shared/access.ts
 var GRANTABLE_CONTENT = {
+  "weapon:emperor": "Emperor Style + Mishima Chips",
+  "intro:dev-emperor": "Emperor storm intro",
   "weapon:leet": "L33T H4x staff + L44T Chips",
   "weapon:ansatsuken": "Ansatsuken + arcade Chips",
   "intro:dev-matrix": "Matrix throne intro",
@@ -663,6 +665,7 @@ var GAME_CLAIM_MS = 15 * 60 * 1e3;
 
 // src/shared/intros.ts
 var INTRO_STYLES = {
+  "dev-emperor": "DEV \xB7 Emperor\u2019s Oath",
   "dev-ansatsuken": "DEV \xB7 Rain Warrior",
   "dev-matrix": "DEV \xB7 L33T Throne",
   "neon-drop": "Neon Drop",
@@ -674,7 +677,7 @@ var INTRO_STYLES = {
 
 // src/shared/cosmetics.ts
 var HATS = { "auditor-halo": "Auditor Halo \xB7 DEV ONLY", none: "No hat", cap: "Ball cap", beanie: "Beanie", top: "Top hat", wizard: "Wizard hat", crown: "Crown", cone: "Traffic cone", antenna: "Antenna", halo: "Halo", cowboy: "Cowboy hat" };
-var KILL_STYLES = { "dev-raging-demon": "Raging Demon \xB7 DEV ONLY", "voxel-burst": "Voxel breakup", confetti: "Confetti cannon", ascension: "Beam me up", shrink: "Pocket-sized", launch: "Team Rocket", ghost: "Ghost escape", "dev-clown": "Clown getaway \xB7 DEV ONLY", "dev-clown-love": "Clown Love \xB7 DEV ONLY", "dev-bass-van": "Bass Van \xB7 DEV ONLY" };
+var KILL_STYLES = { ragdoll: "Ragdoll", "dev-raging-demon": "Raging Demon \xB7 DEV ONLY", "voxel-burst": "Voxel breakup", confetti: "Confetti cannon", ascension: "Beam me up", shrink: "Pocket-sized", launch: "Team Rocket", ghost: "Ghost escape", "dev-clown": "Clown getaway \xB7 DEV ONLY", "dev-clown-love": "Clown Love \xB7 DEV ONLY", "dev-bass-van": "Bass Van \xB7 DEV ONLY" };
 var developerKillEffect = (id) => id.startsWith("dev-");
 var DEFAULT_COSMETICS = { intro: "neon-drop", introText: "Ready to make an impact", bodyColor: "#e5e7eb", hat: "none", killEffect: "voxel-burst" };
 function cosmetics(raw, dev = false) {
