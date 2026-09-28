@@ -1,11 +1,12 @@
+import {NightWorld} from './night-world.js';
 import * as T from 'three';
 import {arenaMap,MapId,mapId} from '../shared/maps.js';
 /** Scenery is batched and has no physics bodies. Only shared arena blocks affect combat. */
 export class MapScenery {
- readonly group=new T.Group();current:MapId|null=null;private materials:T.Material[]=[];private geometries:T.BufferGeometry[]=[];private water:T.Mesh|undefined;private snow:T.InstancedMesh|undefined;private snowSeeds:{x:number;y:number;z:number;speed:number}[]=[];private textures:T.Texture[]=[];
- constructor(private scene:T.Scene){scene.add(this.group);this.group.name='map-scenery';}
+ readonly group=new T.Group();readonly world:NightWorld;current:MapId|null=null;private materials:T.Material[]=[];private geometries:T.BufferGeometry[]=[];private water:T.Mesh|undefined;private snow:T.InstancedMesh|undefined;private snowSeeds:{x:number;y:number;z:number;speed:number}[]=[];private textures:T.Texture[]=[];
+ constructor(private scene:T.Scene){this.world=new NightWorld(scene);scene.add(this.group);this.group.name='map-scenery';}
  set(raw:unknown){const id=mapId(raw);if(id===this.current)return;this.current=id;this.group.clear();this.materials.forEach(m=>m.dispose());this.geometries.forEach(g=>g.dispose());this.materials=[];this.geometries=[];this.water=undefined;this.snow=undefined;this.snowSeeds=[];this.textures.forEach(t=>t.dispose());this.textures=[];
- const m=arenaMap(id);this.scene.background=new T.Color(m.sky);this.scene.fog=new T.Fog(m.sky,id==='foundry'?30:55,id==='foundry'?105:180);
+ this.world.set(id);const m=arenaMap(id);this.scene.background=new T.Color(m.sky);this.scene.fog=new T.Fog(new T.Color(m.sky).lerp(new T.Color(0x405677),.42),65,210);
  const moon=this.scene.getObjectByName('night-moon') as T.DirectionalLight;moon?.color.set(id==='outpost'?0xffc5a5:id==='forge'?0xffac9c:0xb2ceff);const rim=this.scene.getObjectByName('night-rim') as T.DirectionalLight;rim?.color.set(m.accent);
  const box=this.geometry(new T.BoxGeometry(1,1,1)),cone=this.geometry(new T.ConeGeometry(1,1,8)),sphere=this.geometry(new T.IcosahedronGeometry(1,1));
  type Part={x:number;y:number;z:number;sx:number;sy:number;sz:number;ry?:number};
@@ -13,8 +14,6 @@ export class MapScenery {
  const part=(x:number,y:number,z:number,sx:number,sy:number,sz:number,ry=0):Part=>({x,y,z,sx,sy,sz,ry});let seed=239+id.length*71;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/2**32;};
  const trims:Part[]=[];for(const s of [-1,1]){for(const x of [-23,-9,9,23])trims.push(part(x,.025,s*27.4,7,.04,.07));for(const z of [-20,-10,0,10,20])trims.push(part(s*31.6,.025,z,.07,.04,6));}batch(box,trims,m.accent,true);
  if(id==='moonlit'){
- const moonMat=new T.MeshBasicMaterial({color:0xe1ecff,fog:false});this.materials.push(moonMat);const moonMesh=new T.Mesh(sphere,moonMat);moonMesh.position.set(-29,34,-76);moonMesh.scale.setScalar(13);this.group.add(moonMesh);
- const craters:Part[]=[];for(let n=0;n<24;n++){const x=(random()-.5)*18,y=(random()-.5)*18;if(x*x+y*y>118)continue;craters.push(part(-29+x,34+y,-76+Math.sqrt(169-x*x-y*y)+.05,.7+random()*1.8,.6+random()*1.4,.18));}const craterMesh=batch(sphere,craters,0xafc7e6,true);if(craterMesh)(craterMesh.material as T.MeshBasicMaterial).fog=false;
  const castle:Part[]=[],spires:Part[]=[],windows:Part[]=[],teeth:Part[]=[];castle.push(part(17,5,-54,36,10,8));for(const [x,z,h,w]of [[0,-54,18,5],[12,-53,25,7],[27,-56,31,6],[35,-57,20,5]]){castle.push(part(x,h/2,z,w,h,w));spires.push(part(x,h+4,z,w*.8,9,w*.8));for(let y=6;y<h-2;y+=5){windows.push(part(x,y,z+w/2+.06,.65,2.4,.08),part(x+1.6,y,z+w/2+.06,.65,2.4,.08));}}for(let x=-1;x<36;x+=2.3)teeth.push(part(x,10.8,-49.6,1.1,1.6,1.2));batch(box,castle,0x253247);batch(cone,spires,0x161f35);batch(box,teeth,0x30425a);batch(box,windows,0x7898c4,true);
  // A mottled, rough snow surface replaces the unbroken blue floor.
  const texels=new Uint8Array(256*256*4);for(let y=0;y<256;y++)for(let x=0;x<256;x++){const i=(y*256+x)*4,grain=random()*20,wave=Math.sin(x*.055+Math.sin(y*.07)*2)*9;texels[i]=205+grain+wave;texels[i+1]=216+grain*.8+wave;texels[i+2]=230+grain*.55+wave;texels[i+3]=255;}const snowTexture=new T.DataTexture(texels,256,256,T.RGBAFormat);snowTexture.wrapS=snowTexture.wrapT=T.RepeatWrapping;snowTexture.repeat.set(5,4);snowTexture.colorSpace=T.SRGBColorSpace;snowTexture.needsUpdate=true;this.textures.push(snowTexture);
@@ -35,5 +34,5 @@ export class MapScenery {
  if(id!=='moonlit'&&id!=='outpost'&&id!=='frozen'){const grid=new T.GridHelper(64,32,0x334651,0x24343e);grid.scale.z=56/64;grid.position.y=.014;this.group.add(grid);this.geometries.push(grid.geometry);this.materials.push(...(Array.isArray(grid.material)?grid.material:[grid.material]));}
  }
  private geometry<G extends T.BufferGeometry>(g:G){this.geometries.push(g);return g;}
- update(time:number){if(this.snow){const o=new T.Object3D();this.snowSeeds.forEach((p,i)=>{o.position.set(p.x+Math.sin(time*.4+i)*.55,((p.y-time*p.speed)%24+24)%24,p.z+Math.sin(time*.25+i*.4)*.35);o.scale.set(.025,.075,.025);o.updateMatrix();this.snow!.setMatrixAt(i,o.matrix);});this.snow.instanceMatrix.needsUpdate=true;}if(this.water)(this.water.material as T.MeshBasicMaterial).opacity=.85+Math.sin(time*.8)*.04;}
+ update(time:number){this.world.update(time);if(this.snow){const o=new T.Object3D();this.snowSeeds.forEach((p,i)=>{o.position.set(p.x+Math.sin(time*.4+i)*.55,((p.y-time*p.speed)%24+24)%24,p.z+Math.sin(time*.25+i*.4)*.35);o.scale.set(.025,.075,.025);o.updateMatrix();this.snow!.setMatrixAt(i,o.matrix);});this.snow.instanceMatrix.needsUpdate=true;}if(this.water)(this.water.material as T.MeshBasicMaterial).opacity=.85+Math.sin(time*.8)*.04;}
 }
