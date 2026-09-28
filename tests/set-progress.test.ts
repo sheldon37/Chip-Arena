@@ -22,3 +22,11 @@ test('score circles show half rounds and full sets without double-counting the s
 test('eight-player score panel precedes alive status, includes own and eliminated players, and escapes names',()=>{
  const s=new Simulation();try{for(let i=0;i<8;i++)s.addPlayer(String(i),'Player '+i);const snap=s.snapshot();snap.players[0].name='<img onerror="bad">';snap.players[0].roundWins=1;snap.players[7].hp=0;snap.players[6].connected=false;const html=matchScoreHud(snap,'0');assert.equal((html.match(/class="score-pilot /g)||[]).length,8);assert.equal((html.match(/class="set-circle /g)||[]).length,40);assert.ok(html.indexOf('set-scoreboard')<html.indexOf('alive-roster'));assert.match(html,/6 \/ 8 ALIVE/);assert.match(html,/Player 7/);assert.match(html,/partial/);assert.match(html,/&lt;img/);assert.doesNotMatch(html,/<img/);}finally{s.dispose();}
 });
+test('custom round targets control set wins and score fractions; only the host can change them in the lobby',()=>{
+ for(const target of [1,3,10]){const room=new HostedRoom('ABCD2345',{name:'Host',class:'ranged',color:'#abcdef'},false,()=>{},6,false,true,5,{roundsPerSet:target});try{
+ room.join({name:'Guest'});assert.equal(room.sim.options.roundsPerSet,target);assert.equal(room.receive('guest',{type:'settings',roundsPerSet:2}),false);assert.equal(room.sim.options.roundsPerSet,target);
+ room.receive('host',{type:'ready',ready:true});room.receive('guest',{type:'ready',ready:true});assert.equal(room.receive('host',{type:'settings',roundsPerSet:2}),false);
+ const s=room.sim;for(let n=1;n<=target;n++){s.phase='fight';s.players.get('guest')!.hp=0;s.resolveRound();const snap=s.snapshot();assert.equal(s.players.get('host')!.score,n===target?1:0);assert.equal(scoreCircles(snap,snap.players.find(p=>p.id==='host')!)[0],n/target);if(n<target){s.time=s.phaseEnd;s.advance();}}
+ }finally{room.dispose();}}
+ const s=new Simulation({roundsPerSet:Infinity});try{assert.equal(s.options.roundsPerSet,2);for(const [raw,expected] of [[0,1],[100,10],[3.9,3],['4',2],[NaN,2]] as const){s.configureLobby({roundsPerSet:raw});assert.equal(s.options.roundsPerSet,expected);}}finally{s.dispose();}
+});
