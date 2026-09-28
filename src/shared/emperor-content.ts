@@ -5,7 +5,7 @@ export const MISHIMA_CHIPS:Chip[]=[
  chip('twin','Twin Thunder','Each electric hook leaves a second lightning strike at the impact point.','Ⅱ'),
  chip('screw','Screwdriver','Every third airborne hit spins the enemy sideways and deals extra damage.','⟳'),
  chip('bound','Bound Breaker','The first landing in each juggle bounces the enemy back up and deals damage.','↟'),
- chip('magnet','Magnetic Fists','Electric hooks pull airborne enemies toward your next punch.','⌁'),
+ chip('magnet','Magnetic Fists','Electric hooks steer airborne enemies into your next punch while still carrying them back.','⌁'),
  chip('wall','Wall Tyrant','Electric hooks carry enemies farther. Their first wall collision adds a damaging wall bounce.','▥'),
  chip('armor','Iron Wavedash','Take half damage while wavedashing. You can still be interrupted and knocked back.','◇'),
  chip('trail','Storm Footwork','Wavedashes leave short-lived lightning that shocks enemies crossing your path.','≋'),
@@ -14,5 +14,5 @@ export const MISHIMA_CHIPS:Chip[]=[
  chip('rage','Emperor’s Rage','Below one-third health, your punches and electric hooks deal greatly increased damage.','♜'),
  chip('bloodline','Bloodline Surge','Confirmed electric hits restore a little health and stamina.','♥'),
 ];
-export const EMPEROR={exclusiveChance:.85,guaranteedExclusives:2,chipRevealSeconds:4.8,electricDamage:8,echoDamage:3,electricRecovery:.40,electricHit:.10,waveSeconds:.18,waveSpeed:18,juggleSeconds:1.25,comboMemory:1.35} as const;
+export const EMPEROR={exclusiveChance:.85,guaranteedExclusives:2,chipRevealSeconds:4.8,electricDamage:8,electricStepSeconds:.10,electricStepSpeed:6,electricPush:2.8,electricPushGrowth:1.7,electricPushMax:14,echoDamage:3,electricRecovery:.40,electricHit:.10,waveSeconds:.18,waveSpeed:18,juggleSeconds:1.25,comboMemory:1.35} as const;
 export const MISHIMA_INCOMPATIBLE=new Set(['echo-strike','hurricane']);

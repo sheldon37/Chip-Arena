@@ -1,12 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
-import {readFileSync} from 'node:fs';
-import {EventEmitter} from 'node:events';
-import vm from 'node:vm';
 const require=createRequire(import.meta.url);
 const {connectWithRetry,openReachableWindow}=require('../desktop/connection.cjs');
-const nextTurn=()=>new Promise<void>(resolve=>setImmediate(resolve));
 
 test('fresh DNS failures retry and clear the app resolver cache until connected',async()=>{
  let clock=0,attempts=0,resets=0;const notices:number[]=[];
@@ -61,49 +57,4 @@ test('local games do not depend on public tunnel DNS or its health endpoint',asy
  const win=mockWindow(()=>{throw Error('Unexpected remote request');});
  await openReachableWindow(win,'http://127.0.0.1:8788/');
  assert.deepEqual(win.loaded,['http://127.0.0.1:8788/']);assert.equal(win.resets,0);
-});
-
-test('desktop hosts locally despite public DNS failure, exposes server checks, and retains the process for retries',async()=>{
- const handlers=new Map<string,Function>(),windows:any[]=[],spawns:any[]=[],opened:string[]=[],messages:string[]=[];
- let failLoad=true;
- class Window extends EventEmitter{
-  destroyed=false;visible=true;webContents:any;
-  constructor(_options:any){super();windows.push(this);this.webContents=Object.assign(new EventEmitter(),{setWindowOpenHandler:()=>{},send:(_channel:string,text:string)=>messages.push(text),session:{setPermissionRequestHandler:()=>{},setPermissionCheckHandler:()=>{}}});}
-  isDestroyed(){return this.destroyed;}show(){this.visible=true;}hide(){this.visible=false;}focus(){}loadURL(){return Promise.resolve();}
-  destroy(){this.destroyed=true;this.emit('closed');}close(){this.destroy();}
- }
- const app=Object.assign(new EventEmitter(),{getPath:()=>'/mock-user-data',setName:()=>{},requestSingleInstanceLock:()=>true,whenReady:async()=>{},quit:()=>{}});
- const electron={app,BrowserWindow:Window,ipcMain:{handle:(name:string,handler:Function)=>handlers.set(name,handler)},Menu:{setApplicationMenu:()=>{},buildFromTemplate:()=>{}},clipboard:{writeText:()=>{}},dialog:{showErrorBox:()=>{}},protocol:{registerSchemesAsPrivileged:()=>{},handle:()=>{}},net:{fetch:async(url:string)=>{if(url.includes('trycloudflare.com'))throw Error('ERR_NAME_NOT_RESOLVED');return {ok:true,json:async()=>({application:'chip-arena'})};}}};
- const policy=require('../desktop/policy.cjs');
- const sandbox={require:(name:string)=>{
-  if(name==='electron')return electron;
-  if(name==='node:child_process')return {spawn:(exe:string,args:string[])=>{const child=Object.assign(new EventEmitter(),{pid:100,stdout:new EventEmitter(),stderr:new EventEmitter(),kill:()=>{}});spawns.push({exe,args,child});if(exe==='taskkill')setImmediate(()=>child.emit('exit',0));return child;}};
-  if(name==='./update.cjs')return require('../desktop/update.cjs');
-  if(name==='./accounts.cjs')return require('../desktop/accounts.cjs');
-  if(name==='./join.cjs')return require('../desktop/join.cjs');
-  if(name==='./policy.cjs')return {...policy,freePort:async()=>8788};
-  if(name==='./connection.cjs')return {openReachableWindow:async(_win:any,url:string)=>{opened.push(url);if(failLoad)throw Error("ERR_CONNECTION_REFUSED (-102)");}};
-  return require(name);
- },__dirname:'/app',AbortSignal,process:{resourcesPath:'/resources',platform:'win32',env:{}},URL,AbortController,setTimeout,clearTimeout};
- vm.runInNewContext(readFileSync(new URL('../desktop/main.cjs',import.meta.url),'utf8'),sandbox);
- await nextTurn();
- windows[0].webContents.mainFrame={url:'arena://launcher/index.html'};const event={sender:windows[0].webContents,senderFrame:windows[0].webContents.mainFrame};
- const first=handlers.get('arena:launch')!(event,'online');
- const firstFailed=assert.rejects(first,/server is still running/);
- await nextTurn();assert.equal(spawns.length,1);
- spawns[0].child.stdout.emit('data','YOUR GAME: http://127.0.0.1:8788\nhttps://fresh-invite.trycloudflare.com\nRegistered tunnel connection\nPUBLIC INVITE READY: https://fresh-invite.trycloudflare.com');
- await firstFailed;
- assert.equal(spawns.length,1,'a failed page load must not taskkill the host');
- assert.equal(windows[1].destroyed,true);assert.equal(windows[0].visible,true);
- await assert.rejects(handlers.get('arena:launch')!(event,'online'),/server is still running/);
- assert.equal(spawns.length,1,'Host online retries its existing host instead of creating a second process');
- failLoad=false;await handlers.get('arena:retry')!(event);
- assert.deepEqual(opened,Array(3).fill('http://127.0.0.1:8788/'));
- assert.equal(windows[0].visible,false);assert.equal(windows[3].visible,true);
- const report=await handlers.get('arena:check')!(event);assert.match(report,/running \(PID 100\)/);assert.match(report,/Local server: healthy/);assert.match(report,/Public invite: ERR_NAME_NOT_RESOLVED/);assert.equal(spawns.length,1);assert.equal(windows[3].destroyed,false);
- assert.throws(()=>handlers.get('arena:logs')!({sender:{},senderFrame:{url:'https://untrusted.example/'}}),/not authorized/);
- assert.ok(messages.some(text=>text.includes('Your server is still running')));
- await handlers.get('arena:stop')!(event);await nextTurn();
- assert.equal(spawns.length,2);assert.equal(spawns[1].exe,'taskkill');
- assert.deepEqual(Array.from(spawns[1].args),['/pid','100','/T','/F']);
 });

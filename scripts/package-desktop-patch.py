@@ -4,53 +4,41 @@ from pathlib import Path
 from zipfile import ZipFile,ZIP_DEFLATED
 p=argparse.ArgumentParser();p.add_argument('--full',required=True);p.add_argument('--base',action='append',required=True);p.add_argument('--out',required=True);a=p.parse_args()
 prefix='Chip-Arena-Desktop/';out=Path(a.out).resolve();out.parent.mkdir(parents=True,exist_ok=True)
-readme='''CHIP ARENA - DEMON STEP + ELECTRIC UPDATE
+readme='''CHIP ARENA - MAPS, BOTS & DIRECT START (DESKTOP 0.3.6)
 
-For the existing Windows desktop edition (0.3.0 through 0.3.4).
+For the existing Windows desktop edition. Verified against desktop 0.3.5.
 
 1. Close Chip Arena completely.
 2. Extract this patch ZIP.
 3. Copy its resources folder into your existing Chip-Arena-Desktop folder,
    beside Chip Arena.exe. Merge folders and replace matching files.
    Keep the rest of resources: it contains the runtimes.
-4. Open Chip Arena.exe. No new .bat is needed.
+4. Open Chip Arena.exe. No new .bat or separate server launch is needed.
 
-This patch adds the Update Game button to the launcher and Settings.
-Apply it once. Afterward, use Update Game to install game-content updates.
-It asks before closing an active game. Login and settings are preserved.
-Desktop application/runtime upgrades still require a new patch or full download.
+The game now opens directly to its main menu. Play vs Bots runs locally;
+Create Room starts the authoritative server. Online rooms also start the
+public connector. Turn Online room off for LAN-only hosting.
+Share Copy Code with friends; they enter it in Join Room. Keep the host open.
+For LAN rooms, share Copy Invite Link with friends on the same network.
 
-Ansatsuken: Shift is Demon Step, a longer glide with afterimages and PL02 audio.
-Raging Demon now shows an eight-hit afterimage combo before the finishing symbol.
-The defeated player sees a private red/black cinematic. Auditor Halo is smaller/lower.
-Emperor: the Electric Hook uses your supplied AkBank sound and a planted rising
-hook pose. Lightning has bright white cores, red edges and a red glow.
-Electric base damage is now 8 (was 22); Twin Thunder echoes deal 3 (was 7).
-Its intro is the wrist-to-raised-hand gesture in a dark, blue-lit rainy rock scene.
+Update Game is on the main menu and in Settings. Apply this desktop patch
+once to get the new startup flow; afterward the button installs game-content
+updates. Desktop shell/runtime upgrades still require a patch or full ZIP.
+Your saved account login is retained. Account customization syncs after login.
 
-Home > Log in / Register saves your pilot across computers. Keep the recovery code.
-Existing DEV credentials still work; log in once to create the saved DEV account.
-Home > DEV Menu grants registered players restricted weapons, intros and flags.
-After a grant changes, reload Account and rejoin the room.
+Ten new maps join Shatter Foundry, with buildings, varied cover and scenery.
+Moonlit Wilderness has a flat dandelion field, a huge moon and a castle.
+It uses your supplied full Moonlite Wilderness track. The other new maps
+have nine new original electronic tracks. Music volume and mute still apply.
 
-DEV/granted player: Melee > Emperor Style. LMB: left jab, right jab.
-Q: Electric Wind Hook Fist; hold/repeat to sustain an airborne juggle.
-E: Wavedash, with no cooldown. RMB retains the normal block.
-Twelve slate/red Mishima Chips add electric echoes, screw spins, ground/wall
-bounces, magnetic punches, armored steps, lightning trails and more.
-Two exclusive Chips are guaranteed when available; extra slots have 85% odds.
-Emperor Style automatically uses the rainy entrance, with an original 7.8s music cue.
-DEV Menu can grant the style without granting DEV status.
+Choose 1-7 bots in Play vs Bots, or 0-7 bots when creating a room, subject to
+the eight-pilot limit. The host can change map, bot count and difficulty in
+the lobby. Changing settings clears human Ready states. Bots ready themselves.
 
-Everyone: Customize > Kill effect > Ragdoll. Hit location affects the fall;
-melee launches are stronger than projectile knockouts. Connected limbs react
-against nearby cover. The bottom controls now show only relevant generic hints.
-
-The Ansatsuken/Matrix styles, prior cosmetics, remembered login and easy joining
-are included. Sign in once with Remember me checked to stay signed in for 30 days.
-
-Host online > Create Room > Copy Code. Friends enter CA-XXXX-XXXX in Join a friend.
-Keep the host open. Settings and saved room-code behavior are unchanged.
+Emperor Electric Hook adds a short forward step, much shorter than E Wavedash.
+Successive electrics build capped knockback so enemies drift out of range;
+walls still pin them. Landing/recovery resets the build-up. Damage remains
+8 base / 3 echo before modifiers. All previous content is included.
 
 READ-ME.txt has the full guide. chip-arena-source.zip includes editable source.
 Built and checked on Linux. Native Windows display/GPU playtesting remains local.
@@ -68,7 +56,7 @@ try:
   patch.writestr('APPLY-FIX.txt',readme)
  with ZipFile(out) as patch,ZipFile(a.full) as full:
   assert patch.testzip() is None
-  assert json.loads(patch.read('resources/app/package.json'))['version']=='0.3.5'
+  assert json.loads(patch.read('resources/app/package.json'))['version']=='0.3.6'
   for base in bases:
    for name in full.namelist():
     if name.endswith('/'):continue

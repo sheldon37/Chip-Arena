@@ -7,24 +7,36 @@ SETUP
 Windows 10/11 x64. The game application is not signed with a publisher certificate.
 
 PLAY
-Play locally: opens the bundled game. Choose Play vs Bot, or create a LAN room.
-Host online: starts the authoritative server and public tunnel for you. Once the
-tunnel is registered, the game opens using your local server. Choose Create Room, wait for friends,
-then all players press Ready. A room accepts 2-8 players.
-Join a friend: enter the host's CA-XXXX-XXXX code in the launcher. The game
-opens the correct server with its room code filled in; choose your class and Join Room.
-Complete server or room invite links also work.
+Chip Arena.exe opens directly to the game main menu. No server starts yet.
+Play vs Bots: choose an arena, 1-7 bots, and their difficulty; runs locally.
+Create Room: starts the authoritative server automatically. Online room is
+on by default and creates a public connection for friends. Turn it off for LAN.
+Choose a map and 0-7 bots (eight pilots total). In the lobby, the host can
+change arena, bot count and difficulty. Changes reset human Ready states.
+Bots are ready automatically. Wait for your group, then everyone presses Ready.
+Join Room: enter the host's CA-XXXX-XXXX code or complete room invite link.
+Website-hosted eight-character room codes also work. Joining starts no server.
 
 SHARING
 In an online room, use Copy Code after the online join code appears. Friends
-enter it in their updated launcher, or Join Room on the Chip Arena website.
-Code lookup finds the host's public link; gameplay still connects straight to
-the authoritative server. The host keeps its fast local connection.
-If code lookup is unavailable, Copy Invite Link remains a fallback. LAN-only
-rooms have a local code; use Host online for an online CA code.
-Each newly created room has a new code. The public link changes on restart. Closing the game or quitting the app stops
-your hosted server and disconnects its players. Return to the launcher through
-the Game menu (press Alt if the menu is hidden). F11 toggles fullscreen.
+enter it in Join Room on the updated app or Chip Arena website. Code lookup
+finds the host's public link; gameplay connects to the authoritative server.
+The host uses a fast local connection even while public DNS warms up.
+If code lookup is unavailable, use Copy Invite Link. For LAN-only rooms,
+share the local-network invite link with friends on the same Wi-Fi/network.
+Each newly created room has a new code. Keep the host open. Leaving your room
+or closing the app stops your hosted server and disconnects its players.
+Game > Connection tools shows server logs and local/public health checks.
+Press Alt to show the app menu; F11 toggles fullscreen.
+
+ARENAS & MUSIC
+Eleven arenas: Shatter Foundry, Moonlit Wilderness, Neon District,
+Freight Terminal, Skyline Exchange, Reactor Nine, Dusk Outpost,
+Fallen Citadel, Frostline Depot, Canal Night Market and Obsidian Forge.
+Moonlit Wilderness has a flat dandelion field, moon and castle backdrop, with
+your full supplied Tekken 5 Moonlite Wilderness song. Other new arenas have
+nine original map tracks; Foundry shuffles the original ten tracks.
+Use Settings > Soundtrack volume to adjust music separately from effects.
 
 EIGHT-PLAYER RULES
 Free-for-all. One life each round; the last living player wins that round.
@@ -45,14 +57,14 @@ glows. Settings has Auto / High / Performance; try Performance if frames stutter
 Network delay and FPS drops are different problems: a tunnel may still add latency.
 
 UPDATES
-The game checks the existing update channel before starting local/hosted play.
-Use Update Game in the launcher, or Settings > Update Game, to check manually.
-It asks before closing your current session and keeps login/settings. It can
-start the bundled version offline. Desktop application/runtime upgrades require
-a new patch or ZIP. Settings for this desktop app are separate from your browser's settings.
-Updates and local-server state are stored beside the game inside resources/game;
-extract to a folder you can write to, such as Downloads or your own Games folder.
-The first run includes both the Node runtime and the public tunnel connector.
+Use Update Game on the main menu or in Settings. It checks for game-content
+updates, asks before closing a hosted room, and keeps the saved account login.
+Startup and practice work from the installed copy without an update request.
+This 0.3.6 startup change requires the desktop patch or full ZIP once, because
+the in-game updater does not replace the desktop shell or its runtimes.
+Updates are stored in resources/game; extract to a writable Games folder.
+The Node runtime and public connector are included. No separate download or
+server .bat is needed. Account customization syncs when connected to the service.
 
 SOURCE & VALIDATION
 Editable source: chip-arena-source.zip. Desktop source: desktop/.
@@ -60,6 +72,8 @@ Built on Linux; Windows x64 binary/archive structure and runtime checksums check
 Eight-client WebSocket and HTTPS relay integration tests cover connections,
 shared snapshots, input acknowledgements, rejection of a ninth client, chip draft
 turns and disconnects. Actual Windows startup and GPU FPS need local verification.
+
+HISTORICAL NOTES (0.3.1-0.3.5; current instructions are above)
 
 CONNECTION RETRY UPDATE (0.3.1)
 New tunnel addresses are checked before opening. Temporary DNS or gateway errors
@@ -205,3 +219,10 @@ white lightning cores with red edges/glow. Base damage: 8 instead of 22 (64% les
 Twin Thunder echo damage: 3 instead of 7. Juggle launches and jabs are unchanged.
 The Emperor entrance now follows only the raised-hand reference, with rain,
 a wet floor and blue-lit rocks. No second salute or return to guard.
+
+ELECTRIC HOOK CARRY (0.3.6)
+Q takes a small collision-checked forward step, about 0.6 m unimpeded, much
+less than E Wavedash. Repeated confirmed electric hits progressively push the
+target away, up to a cap; nearby walls still block their movement. Landing
+and recovery reset the carry count. Echoes and jabs do not increase it.
+Electric damage stays at 8 base / 3 echo before modifiers.

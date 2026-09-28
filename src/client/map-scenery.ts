@@ -1,0 +1,34 @@
+import * as T from 'three';
+import {arenaMap,MapId,mapId} from '../shared/maps.js';
+/** Scenery is batched and has no physics bodies. Only shared arena blocks affect combat. */
+export class MapScenery {
+ readonly group=new T.Group();current:MapId|null=null;private materials:T.Material[]=[];private geometries:T.BufferGeometry[]=[];private water:T.Mesh|undefined;
+ constructor(private scene:T.Scene){scene.add(this.group);this.group.name='map-scenery';}
+ set(raw:unknown){const id=mapId(raw);if(id===this.current)return;this.current=id;this.group.clear();this.materials.forEach(m=>m.dispose());this.geometries.forEach(g=>g.dispose());this.materials=[];this.geometries=[];this.water=undefined;
+ const m=arenaMap(id);this.scene.background=new T.Color(m.sky);this.scene.fog=new T.Fog(m.sky,id==='foundry'?30:55,id==='foundry'?105:180);
+ const moon=this.scene.getObjectByName('night-moon') as T.DirectionalLight;moon?.color.set(id==='outpost'?0xffc5a5:id==='forge'?0xffac9c:0xb2ceff);const rim=this.scene.getObjectByName('night-rim') as T.DirectionalLight;rim?.color.set(m.accent);
+ const box=this.geometry(new T.BoxGeometry(1,1,1)),cone=this.geometry(new T.ConeGeometry(1,1,8)),sphere=this.geometry(new T.IcosahedronGeometry(1,1));
+ type Part={x:number;y:number;z:number;sx:number;sy:number;sz:number;ry?:number};
+ const batch=(geo:T.BufferGeometry,parts:Part[],color:number,glow=false)=>{if(!parts.length)return;const mat=glow?new T.MeshBasicMaterial({color}):new T.MeshStandardMaterial({color,roughness:.87});this.materials.push(mat);const mesh=new T.InstancedMesh(geo,mat,parts.length);mesh.frustumCulled=false;const o=new T.Object3D();parts.forEach((p,i)=>{o.position.set(p.x,p.y,p.z);o.scale.set(p.sx,p.sy,p.sz);o.rotation.set(0,p.ry||0,0);o.updateMatrix();mesh.setMatrixAt(i,o.matrix);});this.group.add(mesh);return mesh;};
+ const part=(x:number,y:number,z:number,sx:number,sy:number,sz:number,ry=0):Part=>({x,y,z,sx,sy,sz,ry});let seed=239+id.length*71;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/2**32;};
+ const trims:Part[]=[];for(const s of [-1,1]){for(const x of [-23,-9,9,23])trims.push(part(x,.025,s*27.4,7,.04,.07));for(const z of [-20,-10,0,10,20])trims.push(part(s*31.6,.025,z,.07,.04,6));}batch(box,trims,m.accent,true);
+ if(id==='moonlit'){
+ const moonMat=new T.MeshBasicMaterial({color:0xe1ecff,fog:false});this.materials.push(moonMat);const moonMesh=new T.Mesh(sphere,moonMat);moonMesh.position.set(-29,34,-76);moonMesh.scale.setScalar(13);this.group.add(moonMesh);
+ const craters:Part[]=[];for(let n=0;n<24;n++){const x=(random()-.5)*18,y=(random()-.5)*18;if(x*x+y*y>118)continue;craters.push(part(-29+x,34+y,-76+Math.sqrt(169-x*x-y*y)+.05,.7+random()*1.8,.6+random()*1.4,.18));}const craterMesh=batch(sphere,craters,0xafc7e6,true);if(craterMesh)(craterMesh.material as T.MeshBasicMaterial).fog=false;
+ const castle:Part[]=[],spires:Part[]=[],windows:Part[]=[],teeth:Part[]=[];castle.push(part(17,5,-54,36,10,8));for(const [x,z,h,w]of [[0,-54,18,5],[12,-53,25,7],[27,-56,31,6],[35,-57,20,5]]){castle.push(part(x,h/2,z,w,h,w));spires.push(part(x,h+4,z,w*.8,9,w*.8));for(let y=6;y<h-2;y+=5){windows.push(part(x,y,z+w/2+.06,.65,2.4,.08),part(x+1.6,y,z+w/2+.06,.65,2.4,.08));}}for(let x=-1;x<36;x+=2.3)teeth.push(part(x,10.8,-49.6,1.1,1.6,1.2));batch(box,castle,0x253247);batch(cone,spires,0x161f35);batch(box,teeth,0x30425a);batch(box,windows,0x7898c4,true);
+ const stems:Part[]=[],flowers:Part[]=[],leaves:Part[]=[];for(let n=0;n<1400;n++){const x=(random()-.5)*63,z=(random()-.5)*55;if(Math.abs(x)<3&&Math.abs(z)>18)continue;const h=.18+random()*.35;stems.push(part(x,h/2,z,.018,h,.018));flowers.push(part(x,h+.045,z,.06+random()*.06,.07,.07));if(n%2===0)leaves.push(part(x+.045,.08,z,.12,.11,.02,random()*6.28));}batch(box,stems,0x48665a);batch(sphere,flowers,0xc9dfec);batch(box,leaves,0x415a4d);
+ const hills:Part[]=[],trees:Part[]=[];for(let n=0;n<24;n++){hills.push(part(-85+n*7,-6,-83-random()*8,7+random()*11,12+random()*12,9));if(n<10)trees.push(part(-43-n*2,5+random()*3,-34-n*3,3,10+random()*6,3));}batch(cone,hills,0x131e31);batch(cone,trees,0x16262c);
+ }else{
+ const city:Part[]=[],tops:Part[]=[],windows:Part[]=[],land:Part[]=[];for(let n=0;n<26;n++){const edge=n<14,axis=edge?-66+n*10:(n-14)*11-60,x=edge?axis:(n%2?-46:46),z=edge?-46-random()*12:axis,h=8+random()*25,w=4+random()*5;if(['desert','castle','forge','snow'].includes(m.theme)){land.push(part(x,h/3-2,z,w*1.4,h*.7,w*1.2));if(n%3===0){city.push(part(x,h/3,z,w,h*.7,w));tops.push(part(x,h*.7+1,z,w*.7,5,w*.7));}}else{city.push(part(x,h/2-2,z,w,h,w));for(let y=2;y<h-2;y+=3)for(let dx=-1;dx<=1;dx++)if(random()>.25)windows.push(part(x+dx*w*.23,y,z+w/2+.01,.8,1.2,.05));tops.push(part(x,h-1,z,.4,4,.4));}}
+ batch(box,city,m.theme==='snow'?0x536b80:m.theme==='desert'?0x58404a:0x202a3d);batch(cone,land,m.theme==='desert'?0x553c4c:m.theme==='snow'?0x7990aa:0x292439);batch(cone,tops,0x293349);batch(box,windows,m.accent,true);
+ if(id==='freight'){const cranes:Part[]=[];for(const s of [-1,1])cranes.push(part(s*37,10,-24,1,20,1),part(s*37,19,-24,18,1,1),part(s*31,14,-24,.18,10,.18));batch(box,cranes,0x578b8e);}
+ if(id==='reactor'){const reactors:Part[]=[],bands:Part[]=[];for(const s of [-1,1]){reactors.push(part(s*39,9,-13,7,18,7));for(let y=3;y<15;y+=3)bands.push(part(s*39,y,-9.45,5,.25,.1));}batch(cone,reactors,0x314c50);batch(box,bands,m.accent,true);}
+ if(id==='canal'){const waterMat=new T.MeshBasicMaterial({color:0x163f59,transparent:true,opacity:.9});this.materials.push(waterMat);this.water=new T.Mesh(box,waterMat);this.water.position.set(0,.018,0);this.water.scale.set(6,.02,53);this.group.add(this.water);const lanterns:Part[]=[],strings:Part[]=[];for(const z of [-16,-4,8,20]){strings.push(part(0,5.3,z,49,.035,.035));for(let x=-24;x<=24;x+=4)lanterns.push(part(x,5,z,.32,.55,.32));}batch(box,strings,0x242d3b);batch(sphere,lanterns,0xffcf82,true);}
+ if(id==='frozen'){const snow:Part[]=[];for(let n=0;n<250;n++)snow.push(part((random()-.5)*90,1+random()*18,(random()-.5)*85,.035,.035,.035));batch(sphere,snow,0xb8d7ee,true);}
+ if(id==='forge'){const lava:Part[]=[];for(const s of [-1,1])lava.push(part(s*34,-1,0,2,.2,60),part(0,-1,s*30,68,.2,2));batch(box,lava,0xff5a30,true);}
+ }
+ if(id!=='moonlit'&&id!=='outpost'&&id!=='frozen'){const grid=new T.GridHelper(64,32,0x334651,0x24343e);grid.scale.z=56/64;grid.position.y=.014;this.group.add(grid);this.geometries.push(grid.geometry);this.materials.push(...(Array.isArray(grid.material)?grid.material:[grid.material]));}
+ }
+ private geometry<G extends T.BufferGeometry>(g:G){this.geometries.push(g);return g;}
+ update(time:number){if(this.water)(this.water.material as T.MeshBasicMaterial).opacity=.85+Math.sin(time*.8)*.04;}
+}

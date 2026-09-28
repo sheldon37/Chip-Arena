@@ -1,3 +1,16 @@
+## Maps, bots and direct desktop startup — 2026-09-28
+
+- **306 automated tests pass, 0 failures.** TypeScript and desktop JavaScript syntax checks pass. The production build repeats the TypeScript gate.
+- All eleven deterministic maps were checked for distinct layouts, clear eight-player spawn pads, a 30-body destruction reserve, finite physics, bot attacks, and correct arena reset after 900 simulation steps per map.
+- A real Node server with two human WebSocket clients and six bots switched through all eleven maps. Guest setting changes were rejected; all **34 shared fight snapshots** were identical.
+- The eight-human regression passed with **96 identical WebSocket snapshots**, all input acknowledgements, and ninth-player rejection. The HTTPS party relay compared **3,367 snapshots**, completed seven sequential chip drafts, retried a lost response and continued after one guest left. Its test now waits for actual reveal completion rather than assuming every cinematic lasts 1.4 seconds.
+- Desktop lifecycle tests verify no server on startup, the bundled menu URL, protocol registration for both sessions, host-only on-demand server launch, loopback hosting despite public DNS failure, leave/cancel cleanup and trusted main-frame enforcement. A real local WebSocket server verifies the native LAN bridge and its endpoint/message restrictions.
+- Electric tests cover progressive capped carry, counter reset, echoes/jabs not increasing the count, solid-wall collision, a mini-step less than one quarter of full wavedash, stun rejection and authority/prediction agreement within 3.5 cm. The 8/3 damage reduction is retained.
+- Music tests verify twenty distinct audible MP3 files and map-specific stream changes, loop, mute and pause behavior. The supplied Moonlite Wilderness recording is included in full, approximately 226 seconds. Nine new cues are original procedural compositions.
+- Offline geometry studies were visually inspected for Moonlit Wilderness, Neon District, Canal Night Market and Fallen Citadel. All maps pass bounded scene-batch, finite-transform and resource-disposal checks. These studies approximate shading and are not browser/GPU screenshots.
+- Native Windows startup, final audio playback and hardware WebGL frame rate require local playtesting. Network results above use local transports and do not measure Internet tunnel latency.
+- Desktop 0.3.6 keeps the previously verified runtime binaries. The packaging scripts verify archive integrity, new native/map assets, matching game release IDs and a patch merged byte-for-byte over the recovered 0.3.5 release. Older desktop patch bases were not available for this run.
+
 ## Demon Step, electric revision and desktop updater — 2026-09-28
 
 - 298 automated checks pass after the targeted camera-framing rerun. TypeScript and desktop JavaScript syntax checks pass. The production build also type-checks all source/tests.

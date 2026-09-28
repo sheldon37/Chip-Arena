@@ -2,12 +2,12 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import {CONFIG as C,Input,Vec,v,add,mul,len,norm,forward,clamp,sub} from './config.js';
 /** Identical locomotion integration for authority and client replay. Gravity and
  * contact response belong to Rapier, not a separate client character controller. */
-export interface Motion {waveTime?:number;move:Vec;ext:Vec;dashCd:number;dashTime:number;grounded:boolean;}
-export interface MotionRules {dashSpeed?:number;dashDuration?:number;groundedHint?:boolean;waveSpeed?:number;maxExternalSpeed?:number;maxExternalLift?:number;speed:number;dashCooldown:number;knockbackTaken:number;jumpPower?:number;playerGravity?:number;}
+export interface Motion {electricStepTime?:number;waveTime?:number;move:Vec;ext:Vec;dashCd:number;dashTime:number;grounded:boolean;}
+export interface MotionRules {electricStepSpeed?:number;dashSpeed?:number;dashDuration?:number;groundedHint?:boolean;waveSpeed?:number;maxExternalSpeed?:number;maxExternalLift?:number;speed:number;dashCooldown:number;knockbackTaken:number;jumpPower?:number;playerGravity?:number;}
 export function prepareMotion(world:RAPIER.World,body:RAPIER.RigidBody,collider:RAPIER.Collider,state:Motion,input:Input,stats:MotionRules,dt:number,guarding=false,swinging=false,stunned=false){
  state.dashCd=Math.max(0,state.dashCd-dt);state.dashTime=Math.max(0,state.dashTime-dt);
  body.setGravityScale(stats.playerGravity??1,true);const pos=body.translation();state.grounded=stats.groundedHint??!!world.castRay(new RAPIER.Ray(pos,v(0,-1,0)),C.playerHalfHeight+C.playerRadius+.16,true,undefined,undefined,collider);
- state.waveTime=Math.max(0,(state.waveTime||0)-dt);if(stunned){state.move=v();state.dashTime=0;state.waveTime=0;}
+ state.waveTime=Math.max(0,(state.waveTime||0)-dt);if(stunned){state.electricStepTime=0;state.move=v();state.dashTime=0;state.waveTime=0;}
  let direction=stunned?v():v(input.x,0,input.z);if(len(direction)>1)direction=norm(direction);
  const waved=!stunned&&!guarding&&!!stats.waveSpeed&&input.secondary&&state.grounded&&state.waveTime<=0;
  if(waved){state.waveTime=.18;state.dashTime=.18;state.ext=add(mul(forward(input.yaw),stats.waveSpeed!),v(0,state.ext.y,0));}
@@ -26,7 +26,9 @@ export function prepareMotion(world:RAPIER.World,body:RAPIER.RigidBody,collider:
  if(state.dashTime<=0&&externalSpeed>.01){const away=norm(state.ext),against=Math.min(0,state.move.x*away.x+state.move.z*away.z),cancel=against*(1-1/(1+(externalSpeed/4)**2));controlled=add(state.move,mul(away,-cancel));}
  let vy=body.linvel().y;const jumped=!stunned&&input.jump&&state.grounded;
  if(jumped){vy=C.jumpSpeed*(stats.jumpPower??1);state.grounded=false;}
- body.setLinvel(v(controlled.x+state.ext.x,vy+lift,controlled.z+state.ext.z),true);
+ const electricStep=!stunned&&!guarding&&state.grounded&&(state.electricStepTime||0)>1e-6?mul(forward(input.yaw),stats.electricStepSpeed||0):v();
+ state.electricStepTime=Math.max(0,(state.electricStepTime||0)-dt);
+ body.setLinvel(v(controlled.x+state.ext.x+electricStep.x,vy+lift,controlled.z+state.ext.z+electricStep.z),true);
  return {dashed,jumped,waved};
 }
 export function finishMotion(state:Motion,before:Vec,after:Vec,knockbackTaken:number,dt:number){

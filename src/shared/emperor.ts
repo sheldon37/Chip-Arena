@@ -3,7 +3,7 @@ import {EMPEROR} from './emperor-content.js';
 import {canUse} from './access.js';
 import {v,Vec,add,sub,mul,len,norm,dot,forward,clamp} from './config.js';
 export interface EmperorState {action?:'jab'|'electric'|'wave';at:number;until:number;index:number;total:number;hits:number;lastHit:number;comboTarget?:string;comboDamage:number;electricAt:number;}
-export interface Juggle {at:number;until:number;hits:number;lastHit:number;source:string;spinUntil:number;bounced:boolean;wallUsed:boolean;}
+export interface Juggle {electricHits?:number;at:number;until:number;hits:number;lastHit:number;source:string;spinUntil:number;bounced:boolean;wallUsed:boolean;}
 export interface EmperorTrail {id:string;owner:string;pos:Vec;at:number;until:number;}
 type Action={at:number;gap:number;next:number;total:number;kind:'jab'|'electric';id:string};
 export class EmperorSystem {
@@ -11,8 +11,8 @@ export class EmperorSystem {
  constructor(private sim:Simulation){}
  active(p:Player|undefined){return !!p&&p.spec==='emperor'&&canUse(p,'weapon:emperor');}
  state(p:Player):EmperorState{return p.emperor??={at:0,until:0,index:0,total:0,hits:0,lastHit:-10,comboDamage:0,electricAt:-10};}
- cancel(p:Player){this.actions.delete(p.id);if(p.emperor){p.emperor.action=undefined;p.emperor.until=0;}}
- clear(){this.actions.clear();this.echoes=[];this.trails=[];for(const p of this.sim.players.values()){p.emperor=undefined;p.juggle=undefined;p.waveTime=0;}}
+ cancel(p:Player){p.electricStepTime=0;this.actions.delete(p.id);if(p.emperor){p.emperor.action=undefined;p.emperor.until=0;}}
+ clear(){this.actions.clear();this.echoes=[];this.trails=[];for(const p of this.sim.players.values()){p.emperor=undefined;p.juggle=undefined;p.waveTime=0;p.electricStepTime=0;}}
  ready(p:Player){return this.active(p)&&p.hp>0&&p.connected&&!this.sim.leet.frozen(p)&&!this.sim.arcade.stunned(p)&&p.blockTime<=0;}
  waveSpeed(p:Player){return this.ready(p)&&p.cooldown<=0&&!this.actions.has(p.id)?EMPEROR.waveSpeed:undefined;}
  wave(p:Player){const s=this.sim,a=this.state(p);Object.assign(a,{action:'wave',at:s.time,until:s.time+EMPEROR.waveSeconds});p.lastSecondary=s.time;p.secondaryCd=0;s.emit('emperor-wave',p.body.translation(),{source:p.id,spec:p.spec,color:0xff2846});if(p.chips['mishima-trail']&&this.trails.length<24)this.trails.push({id:s.uid('storm-step'),owner:p.id,pos:{...p.body.translation()},at:s.time,until:s.time+.7,hit:new Set()});}
@@ -21,15 +21,17 @@ export class EmperorSystem {
   if(kind==='jab'&&!s.spendResource(p,6))return false;
   const first=s.time+(kind==='electric'?EMPEROR.electricHit:.075)/rate,until=kind==='electric'?s.time+EMPEROR.electricRecovery/rate:first+(total-1)*gap+.14/rate;
   this.actions.set(p.id,{at:first,gap,next:0,total,kind,id:s.uid('emperor')});Object.assign(a,{action:kind,at:s.time,until,index:0,total});p.cooldown=until-s.time;p.lastAttack=s.time;p.attackIndex=0;p.waveTime=0;
-  if(kind==='electric'){a.electricAt=s.time;s.emit('emperor-electric',p.body.translation(),{source:p.id,spec:p.spec,color:0xff2846});}return true;
+  if(kind==='electric'){p.electricStepTime=p.grounded?EMPEROR.electricStepSeconds:0;a.electricAt=s.time;s.emit('emperor-electric',p.body.translation(),{source:p.id,spec:p.spec,color:0xff2846});}return true;
  }
  confirm(p:Player,t:Player,actual:number,electric:boolean,echo=false){const s=this.sim,a=this.state(p),air=!!t.juggle||!t.grounded;
   if(a.comboTarget!==t.id||s.time-a.lastHit>EMPEROR.comboMemory){a.hits=0;a.comboDamage=0;}a.comboTarget=t.id;a.hits++;a.comboDamage+=actual;a.lastHit=s.time;
-  if(t.hp>0){t.hitStunUntil=Math.max(t.hitStunUntil||0,s.time+(electric?.42:.25)/p.stats.attackRate);t.move=v();t.dashTime=0;t.waveTime=0;t.blockTime=0;t.guarding=false;t.parryTime=0;t.swing=null;t.cast=undefined;t.burst=0;s.arcade.cancel(t);this.cancel(t);
-   if(electric||air){const old=t.juggle&&s.time-t.juggle.lastHit<EMPEROR.juggleSeconds?t.juggle:undefined,hits=(old?.hits||0)+1;const spin=!!p.chips['mishima-screw']&&hits%3===0;t.knockdown=undefined;t.juggle={at:old?.at??s.time,until:s.time+EMPEROR.juggleSeconds,lastHit:s.time,hits,source:p.id,spinUntil:spin?s.time+.65:old?.spinUntil||0,bounced:old?.bounced||false,wallUsed:old?.wallUsed||false};
+  if(t.hp>0){t.hitStunUntil=Math.max(t.hitStunUntil||0,s.time+(electric?.42:.25)/p.stats.attackRate);t.move=v();t.electricStepTime=0;t.dashTime=0;t.waveTime=0;t.blockTime=0;t.guarding=false;t.parryTime=0;t.swing=null;t.cast=undefined;t.burst=0;s.arcade.cancel(t);this.cancel(t);
+   if(electric||air){const old=t.juggle&&s.time-t.juggle.lastHit<EMPEROR.juggleSeconds?t.juggle:undefined,hits=(old?.hits||0)+1;const spin=!!p.chips['mishima-screw']&&hits%3===0;t.knockdown=undefined;const electricHits=(old?.electricHits||0)+(electric&&!echo?1:0);t.juggle={electricHits,at:old?.at??s.time,until:s.time+EMPEROR.juggleSeconds,lastHit:s.time,hits,source:p.id,spinUntil:spin?s.time+.65:old?.spinUntil||0,bounced:old?.bounced||false,wallUsed:old?.wallUsed||false};
     const height=t.body.translation().y-p.body.translation().y,vy=electric?clamp(7.7-height*3.5,1.5,10):clamp(5-height*2,1,6);t.ext.y=vy-t.body.linvel().y;t.grounded=false;
-    const dir=forward(p.input.yaw),push=p.chips['mishima-wall']?6:.25;t.ext.x=dir.x*push;t.ext.z=dir.z*push;
-    if(p.chips['mishima-magnet']){const delta=sub(add(p.body.translation(),mul(dir,1.45)),t.body.translation());t.ext.x=clamp(delta.x*5,-10,10);t.ext.z=clamp(delta.z*5,-10,10);}
+    const dir=forward(p.input.yaw),built=Math.min(EMPEROR.electricPushMax,EMPEROR.electricPush+Math.max(0,electricHits-1)*EMPEROR.electricPushGrowth),push=(built+(p.chips['mishima-wall']?4:0))*p.stats.impulse*t.stats.knockbackTaken;
+    t.ext.x=dir.x*push;t.ext.z=dir.z*push;
+    if(p.chips['mishima-magnet']){const delta=sub(add(p.body.translation(),mul(dir,1.45)),t.body.translation()),lateral=sub(delta,mul(dir,dot(delta,dir))),steer=mul(norm(v(lateral.x,0,lateral.z)),Math.min(6,Math.hypot(lateral.x,lateral.z)*5));t.ext.x+=steer.x;t.ext.z+=steer.z;}
+
    }
   }
   if(electric&&p.hp>0&&p.chips['mishima-bloodline']){p.hp=Math.min(p.stats.hp,p.hp+5);p.stamina=Math.min(p.stats.maxStamina,p.stamina+12);}

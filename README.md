@@ -8,7 +8,7 @@ The previous direct PeerJS connection is replaced. The new transport follows the
 
 ## Double-click Windows server
 
-The Windows x64 desktop release is supplied as `Chip-Arena-Windows.zip`. Extract all files and run **Chip Arena.exe** inside `Chip-Arena-Desktop`. Choose **Host online → Create Room → Copy Code** and send friends the `CA-XXXX-XXXX` code. They enter it in the updated desktop launcher or **Join Room** on the Chip Arena website. The host stays connected locally; friends use its public tunnel. The address directory only resolves the code and never carries gameplay. Full invite links remain available as a fallback. Keep the host and room open. No .bat is needed for this edition; the older portable .bat launcher remains supported.
+The Windows x64 desktop release is supplied as `Chip-Arena-Windows.zip`. Extract all files and run **Chip Arena.exe** inside `Chip-Arena-Desktop`. Desktop 0.3.6 opens directly to the game menu. **Play vs Bots** runs locally; **Create Room** starts the server and, for online rooms, the public tunnel. Use **Copy Code** and send friends the `CA-XXXX-XXXX` code for **Join Room**. The host stays connected locally. Keep the host and room open. **Update Game** is on the main menu. Apply the desktop patch once for the new startup flow; future game-content updates use that button. No .bat is needed.
 
 Room setup includes a **5–120 second Chip selection timer** (also used for specialization). After a pick, the other Chips shatter and the installed Chip is shown at the center with the selecting player's name for a shared 3.2-second reveal. **Customize → Intro text** edits the line beneath your intro name (64 characters).
 
@@ -344,3 +344,37 @@ Desktop 0.3.5 adds **Update Game** to the launcher and game Settings. Apply the 
 Ansatsuken's Shift dash is **Demon Step**, with the supplied PL02 sound, a 22 m/s × 0.30 s burst and bounded fading player afterimages. Collision and normal dash cooldown rules remain. Raging Demon now has eight synchronized afterimage strikes, a private victim camera with red/black cuts, and the finishing symbol; it adds no damage or server actors. Auditor Halo is smaller and lower.
 
 Electric Hook uses the supplied AkBank sound, a planted crouch-to-hook motion and red lightning with white cores. Base damage drops from 22 to 8 and Twin Thunder echoes from 7 to 3. Its launch/juggle rules remain intact. The Emperor intro follows the single raised-hand reference in rain.
+
+
+## Arena expansion and direct startup (desktop 0.3.6)
+
+Ten arenas join Shatter Foundry. Select the map in practice or room settings:
+Moonlit Wilderness, Neon District, Freight Terminal, Skyline Exchange, Reactor
+Nine, Dusk Outpost, Fallen Citadel, Frostline Depot, Canal Night Market and
+Obsidian Forge. Each has a deterministic authoritative collision layout with
+clear spawn pads and room for destruction. Background scenery uses instanced
+batches without physics bodies. Moonlit Wilderness follows the supplied
+moon/castle/flower-field reference and loops the full user-supplied soundtrack.
+Nine new original map cues bring the soundtrack to twenty tracks total.
+`node scripts/generate-map-music.mjs` regenerates only those nine original cues.
+
+Practice supports 1-7 bots. Rooms support 0-7 bots, bounded by eight total pilots.
+Only the owner can change map, count or difficulty in the lobby. Existing human
+seats are preserved, human ready states reset, and bots ready automatically.
+Rematch voting requires connected humans only.
+
+Electric Hook now includes a 0.10-second forward step at 6 m/s, mirrored by local
+prediction and constrained by collisions/stun. Successive confirmed electrics
+increase carry from 2.8 m/s by 1.7 per contact up to 14, before modifiers. Echoes
+and jabs preserve the counter; grounded recovery clears it. Walls still block
+carry. The earlier damage reduction remains 8 base and 3 for echoes.
+
+The bundled menu is served through a confined secure Electron protocol, registered
+on the game's persistent session as well as the launcher session. No Node server
+runs during startup or practice. Only Create Room launches the fixed server
+entrypoint; Leave Room stops it. The native LAN socket bridge preserves renderer
+web security and accepts only local/private-network `/socket` endpoints. Online
+connections use normal secure WebSockets. Login stays in encrypted OS storage.
+
+See `docs/ASSET-CREDITS.md` for supplied versus generated music and
+`docs/TEST-RESULTS.md` for verification scope.

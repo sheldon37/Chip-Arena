@@ -112,3 +112,6 @@ body{background:#111216;color:#f4f4f5;font-family:Inter,Arial,sans-serif}.home-s
 @media(prefers-reduced-motion:reduce){.storm-arc{animation:none}.draft-reveal.rarity-mishima{animation:chipBoot .01s both}.emperor-selection .selection-focus{animation:none}.storm-split,.storm-word,.storm-fragments{display:none}.storm-crown{animation:none;opacity:.15}}
 
 .demon-cinema-overlay.black{background:#000}
+
+.match-options{margin:20px 0;padding:17px 20px;border:1px solid #314357;border-radius:10px;background:linear-gradient(125deg,#142630d9,#141d2bd9)}
+.match-options select{width:100%;min-height:40px}.match-options .row>div{flex:1;min-width:0}.match-options .field{margin-top:8px}.map-description{color:#a8c9e6;margin-top:8px}.match-scores{margin:12px 0;max-height:250px;overflow:auto}

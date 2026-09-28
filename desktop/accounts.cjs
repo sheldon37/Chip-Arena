@@ -1,8 +1,9 @@
+const {pageOrigin}=require('./bundled.cjs');
 const fs=require('node:fs');
 const {dirname}=require('node:path');
 const AUTH_ORIGIN='https://chip-arena-prototype.sheldon37.chatgpt.site';
 const actions=new Set(['me','login','register','recover','profile','players','grant','logout']);
-function validAccountSender(event,win,origin){if(!win||win.isDestroyed()||event.sender!==win.webContents||event.senderFrame!==win.webContents.mainFrame)return false;try{return new URL(event.senderFrame.url).origin===origin;}catch{return false;}}
+function validAccountSender(event,win,origin){if(!win||win.isDestroyed()||event.sender!==win.webContents||event.senderFrame!==win.webContents.mainFrame)return false;try{return !!origin&&pageOrigin(event.senderFrame.url)===origin;}catch{return false;}}
 /** Main-process broker: never exposes the long-lived credential to hosted game pages. */
 class DesktopAccounts {
  constructor(path,safeStorage,fetch){this.path=path;this.crypto=safeStorage;this.fetch=fetch;this.session='';this.loaded=false;this.queue=Promise.resolve();}
