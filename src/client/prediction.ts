@@ -1,3 +1,4 @@
+import {DEMON_STEP,demonStepUser} from '../shared/demon-step.js';
 import {RAPIER,Snapshot,PlayerView} from '../shared/simulation.js';
 import {Vec,Input,CONFIG as C,MATERIALS,v,add,sub,mul,len} from '../shared/config.js';
 import {statsFor} from '../shared/content.js';
@@ -27,7 +28,7 @@ export class Predictor {
  step(input:Input,dt:number,me:PlayerView){this.pending.push({input:{...input},dt});if(this.pending.length>NETWORK.maxPendingInputs)this.pending.shift();this.integrate(input,dt,me);}
  integrate(input:Input,dt:number,me:PlayerView){
   const stats=statsFor(me.chips),motion:Motion={move:this.move,ext:this.external,dashCd:this.dash,dashTime:this.dashTime,waveTime:this.waveTime,grounded:this.grounded};
-  prepareMotion(this.world,this.body,this.collider,motion,input,{...stats,groundedHint:this.groundHint,waveSpeed:me.spec==='emperor'&&!input.attack&&!input.electric&&me.blockTime<=0&&me.cooldown<=0?18:undefined,speed:stats.speed*(me.motionScale??1)},dt,me.guarding,me.swinging,this.stunRemaining>0);this.groundHint=undefined;this.stunRemaining=Math.max(0,this.stunRemaining-dt);
+  prepareMotion(this.world,this.body,this.collider,motion,input,{...stats,dashSpeed:demonStepUser(me)?DEMON_STEP.speed:undefined,dashDuration:demonStepUser(me)?DEMON_STEP.seconds:undefined,groundedHint:this.groundHint,waveSpeed:me.spec==='emperor'&&!input.attack&&!input.electric&&me.blockTime<=0&&me.cooldown<=0?18:undefined,speed:stats.speed*(me.motionScale??1)},dt,me.guarding,me.swinging,this.stunRemaining>0);this.groundHint=undefined;this.stunRemaining=Math.max(0,this.stunRemaining-dt);
   const before={...this.body.linvel()};this.world.timestep=dt;this.world.step();finishMotion(motion,before,this.body.linvel(),stats.knockbackTaken,dt);
   this.pos={...this.body.translation()};this.velocity={...this.body.linvel()};this.move=motion.move;this.external=motion.ext;this.dash=motion.dashCd;this.dashTime=motion.dashTime;this.waveTime=motion.waveTime||0;this.grounded=motion.grounded;
  }

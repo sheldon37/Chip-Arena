@@ -3,7 +3,7 @@ import {CONFIG,v,Vec,add,sub,mul,norm,len,dot,forward,clamp} from './config.js';
 import {ARCADE} from './arcade-content.js';
 import {canUse} from './access.js';
 import {refreshDot} from './elements.js';
-export interface ArcadeState {action?:'combo'|'tatsu'|'shoryuken'|'charge'|'hadoken'|'shinku';at:number;until:number;index:number;total:number;charge:number;uppercutCd:number;hadokenCd:number;hits:number;lastHit:number;comboTarget?:string;comboDamage:number;parryUntil:number;parryAt:number;secondWind?:boolean;}
+export interface ArcadeState {demonStepAt?:number;action?:'combo'|'tatsu'|'shoryuken'|'charge'|'hadoken'|'shinku';at:number;until:number;index:number;total:number;charge:number;uppercutCd:number;hadokenCd:number;hits:number;lastHit:number;comboTarget?:string;comboDamage:number;parryUntil:number;parryAt:number;secondWind?:boolean;}
 export interface ArcadeShot {super:boolean;red:boolean;}
 type Action={kind:'combo'|'tatsu'|'shoryuken';at:number;gap:number;next:number;total:number;id:string};
 type Echo={at:number;until:number;source:string;pos:Vec;dir:Vec;radius:number;damage:number;impulse:number;remaining:number;gap:number;id:string;impact:'punch'|'fireball';};

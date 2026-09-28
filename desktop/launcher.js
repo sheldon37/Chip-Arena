@@ -1,7 +1,7 @@
 const status=document.querySelector('#status');
 function message(text){status.textContent=text;}
 window.arena.onStatus(message);
-async function run(action){const buttons=[...document.querySelectorAll('#local,#online,#join button,#retry')];buttons.forEach(b=>b.disabled=true);try{await action();}catch(e){message(e.message.replace(/^Error invoking remote method '[^']+': Error: /,''));}finally{buttons.forEach(b=>b.disabled=false);}}
+async function run(action){const buttons=[...document.querySelectorAll('#local,#online,#join button,#retry,#update,#stop')];buttons.forEach(b=>b.disabled=true);try{await action();}catch(e){message(e.message.replace(/^Error invoking remote method '[^']+': Error: /,''));}finally{buttons.forEach(b=>b.disabled=false);}}
 document.querySelector('#local').onclick=()=>run(()=>window.arena.launch('local'));
 document.querySelector('#online').onclick=()=>run(()=>window.arena.launch('online'));
 document.querySelector('#join').onsubmit=e=>{e.preventDefault();run(()=>window.arena.join(document.querySelector('#invite').value));};
@@ -15,3 +15,7 @@ async function refreshLog(){try{log.textContent=await window.arena.logs();}catch
 details.ontoggle=()=>{if(details.open)void refreshLog();};
 document.querySelector('#refresh-log').onclick=refreshLog;
 document.querySelector('#check').onclick=async()=>{const button=document.querySelector('#check');button.disabled=true;try{log.textContent=await window.arena.check();}catch(e){message(e.message.replace(/^Error invoking remote method '[^']+': Error: /,''));}finally{button.disabled=false;}};
+
+async function refreshVersion(){try{document.querySelector('#game-version').textContent='Installed: '+await window.arena.version();}catch{document.querySelector('#game-version').textContent='Version unavailable';}}
+document.querySelector('#update').onclick=()=>run(async()=>{await window.arena.update();await refreshVersion();});
+window.arena.onUpdateFocus(()=>document.querySelector('#update').focus());void refreshVersion();

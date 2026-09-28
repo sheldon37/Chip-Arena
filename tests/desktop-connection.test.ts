@@ -78,6 +78,7 @@ test('desktop hosts locally despite public DNS failure, exposes server checks, a
  const sandbox={require:(name:string)=>{
   if(name==='electron')return electron;
   if(name==='node:child_process')return {spawn:(exe:string,args:string[])=>{const child=Object.assign(new EventEmitter(),{pid:100,stdout:new EventEmitter(),stderr:new EventEmitter(),kill:()=>{}});spawns.push({exe,args,child});if(exe==='taskkill')setImmediate(()=>child.emit('exit',0));return child;}};
+  if(name==='./update.cjs')return require('../desktop/update.cjs');
   if(name==='./accounts.cjs')return require('../desktop/accounts.cjs');
   if(name==='./join.cjs')return require('../desktop/join.cjs');
   if(name==='./policy.cjs')return {...policy,freePort:async()=>8788};
@@ -86,7 +87,7 @@ test('desktop hosts locally despite public DNS failure, exposes server checks, a
  },__dirname:'/app',AbortSignal,process:{resourcesPath:'/resources',platform:'win32',env:{}},URL,AbortController,setTimeout,clearTimeout};
  vm.runInNewContext(readFileSync(new URL('../desktop/main.cjs',import.meta.url),'utf8'),sandbox);
  await nextTurn();
- const event={sender:windows[0].webContents,senderFrame:{url:'arena://launcher/index.html'}};
+ windows[0].webContents.mainFrame={url:'arena://launcher/index.html'};const event={sender:windows[0].webContents,senderFrame:windows[0].webContents.mainFrame};
  const first=handlers.get('arena:launch')!(event,'online');
  const firstFailed=assert.rejects(first,/server is still running/);
  await nextTurn();assert.equal(spawns.length,1);

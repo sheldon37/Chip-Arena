@@ -1,3 +1,15 @@
+## Demon Step, electric revision and desktop updater — 2026-09-28
+
+- 298 automated checks pass after the targeted camera-framing rerun. TypeScript and desktop JavaScript syntax checks pass. The production build also type-checks all source/tests.
+- Demon Step tests measure 6.60 m of burst travel versus 4.18 m for an ordinary dash over the same 0.30 seconds (including ordinary dash coast). Authority/prediction agree within 5 cm. Tests cover missing access, normal cooldown, wall collision, round reset and bounded/fading afterimages.
+- The revised electric deals exactly 8 base damage and 3 echo damage, while retaining its launch. Poses coil low, hit with a bent elbow at the authority's contact time, keep the feet low, and recover. The lightning uses a white core, red edge and additive red aura.
+- Raging Demon tests cover eight distinct absolute-time poses, rewind/late entry, a victim-only camera, landing, removal and finite transforms. It creates no extra simulation attacks.
+- Eight real local WebSocket clients received **187 identical shared snapshots**, including Demon Step timing, existing charged Hadoken/combo/parry/knockdown and Raging Demon metadata. This measures local transport, not Internet latency or GPU performance.
+- Manual updater tests cover trusted launcher main-frame enforcement, cancellation without closing the session, concurrent-operation rejection, fixed child-process paths, fragmented progress/results, failure reporting and saved-settings preservation. Existing package checksum/path/atomic recovery checks still pass.
+- Both supplied sound files are included at their original pitch/duration, resampled to the game's PCM format with peak headroom.
+- Offline geometry contact sheets were visually inspected for the rainy Emperor intro and red/black afterimage combo. Camera framing passes at 4:3, 16:9 and 21:9. Browser control and native Windows/GPU playback remain unavailable here; the final animation feel and desktop display need local playtesting.
+- Desktop 0.3.5 keeps the verified runtime binaries. Packaging validates new sounds/updater files, ZIP integrity, game-version identity and the cumulative patch against supported full archives.
+
 ## Emperor Style update — 2026-09-28
 
 - Full automated suite: **289 passed, 0 failed**. TypeScript passes.

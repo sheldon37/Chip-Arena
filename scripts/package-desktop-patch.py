@@ -4,7 +4,7 @@ from pathlib import Path
 from zipfile import ZipFile,ZIP_DEFLATED
 p=argparse.ArgumentParser();p.add_argument('--full',required=True);p.add_argument('--base',action='append',required=True);p.add_argument('--out',required=True);a=p.parse_args()
 prefix='Chip-Arena-Desktop/';out=Path(a.out).resolve();out.parent.mkdir(parents=True,exist_ok=True)
-readme='''CHIP ARENA - EMPEROR STYLE UPDATE
+readme='''CHIP ARENA - DEMON STEP + ELECTRIC UPDATE
 
 For the existing Windows desktop edition (0.3.0 through 0.3.4).
 
@@ -15,9 +15,18 @@ For the existing Windows desktop edition (0.3.0 through 0.3.4).
    Keep the rest of resources: it contains the runtimes.
 4. Open Chip Arena.exe. No new .bat is needed.
 
-The existing updater installs game content when the host restarts.
-Apply this patch to install the full update, including remembered login.
-This cumulative patch includes the earlier launcher connection and room-code fixes.
+This patch adds the Update Game button to the launcher and Settings.
+Apply it once. Afterward, use Update Game to install game-content updates.
+It asks before closing an active game. Login and settings are preserved.
+Desktop application/runtime upgrades still require a new patch or full download.
+
+Ansatsuken: Shift is Demon Step, a longer glide with afterimages and PL02 audio.
+Raging Demon now shows an eight-hit afterimage combo before the finishing symbol.
+The defeated player sees a private red/black cinematic. Auditor Halo is smaller/lower.
+Emperor: the Electric Hook uses your supplied AkBank sound and a planted rising
+hook pose. Lightning has bright white cores, red edges and a red glow.
+Electric base damage is now 8 (was 22); Twin Thunder echoes deal 3 (was 7).
+Its intro is the wrist-to-raised-hand gesture in a dark, blue-lit rainy rock scene.
 
 Home > Log in / Register saves your pilot across computers. Keep the recovery code.
 Existing DEV credentials still work; log in once to create the saved DEV account.
@@ -30,7 +39,7 @@ E: Wavedash, with no cooldown. RMB retains the normal block.
 Twelve slate/red Mishima Chips add electric echoes, screw spins, ground/wall
 bounces, magnetic punches, armored steps, lightning trails and more.
 Two exclusive Chips are guaranteed when available; extra slots have 85% odds.
-Emperor Style automatically uses Emperor's Oath, with an original 7.8s music cue.
+Emperor Style automatically uses the rainy entrance, with an original 7.8s music cue.
 DEV Menu can grant the style without granting DEV status.
 
 Everyone: Customize > Kill effect > Ragdoll. Hit location affects the fall;
@@ -59,7 +68,7 @@ try:
   patch.writestr('APPLY-FIX.txt',readme)
  with ZipFile(out) as patch,ZipFile(a.full) as full:
   assert patch.testzip() is None
-  assert json.loads(patch.read('resources/app/package.json'))['version']=='0.3.4'
+  assert json.loads(patch.read('resources/app/package.json'))['version']=='0.3.5'
   for base in bases:
    for name in full.namelist():
     if name.endswith('/'):continue

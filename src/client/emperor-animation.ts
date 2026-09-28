@@ -24,10 +24,15 @@ export function animateEmperor(r:CharacterRig,p:PlayerView,time:number){
  if(a.action==='wave'){
   const u=sat(age/.18),dip=Math.sin(u*Math.PI);r.body.position.y=-.08-.28*dip;r.body.position.z=.12*dip;r.body.rotation.x=.28*dip;r.leftLeg.rotation.x=-.75*dip;r.leftKnee.rotation.x=1.45*dip;r.rightLeg.rotation.x=.35*dip;r.rightKnee.rotation.x=.75*dip;r.leftFoot.rotation.x=-.65*dip;r.rightFoot.rotation.x=-.6*dip;r.rightArm.rotation.x=-.4;r.leftArm.rotation.x=-1;
  }else if(a.action==='electric'){
-  const u=sat(age/duration),drive=ease((u-.13)/.23),settle=1-ease((u-.62)/.38),coil=(1-drive)*Math.sin(Math.min(1,u/.13)*Math.PI/2);
-  r.body.position.y=-.25*coil+.07*drive*settle;r.body.position.z=.16*drive*settle;r.body.rotation.set(.35*coil-.15*drive*settle,-.65+.92*drive*settle,0);r.pelvis.rotation.y=-.2+.4*drive*settle;r.chest.rotation.y=.1+.38*drive*settle;
-  r.rightArm.rotation.set(-.35-2.4*drive*settle,.14,-.16);r.rightElbow.rotation.x=-1.5+.65*drive*settle;r.leftArm.rotation.set(-.8,0,.15);r.leftElbow.rotation.x=-1.65;
-  r.leftLeg.rotation.x=-.4*coil;r.rightLeg.rotation.x=-.65*drive*settle;r.leftKnee.rotation.x=.35+.7*coil;r.rightKnee.rotation.x=.35+1.05*drive*settle;r.head.rotation.x=-.12*drive*settle;
+  // The planted crouch-dash unwinds into a bent-elbow hook at the authority's hit frame.
+  const u=sat(age/duration),coil=ease(u/.115)*(1-ease((u-.115)/.135)),drive=ease((u-.115)/.135),hold=1-ease((u-.48)/.52),power=drive*hold;
+  r.body.position.y=-.23*coil+.025*power;r.body.position.z=.09*coil+.17*power;
+  r.body.rotation.set(.24*coil-.09*power,-.3-.42*coil+.5*power,-.06*power);r.pelvis.rotation.y=-.12-.2*coil+.25*power;r.chest.rotation.y=.28-.35*coil+.18*power;r.head.rotation.set(-.08*power,.12-.4*power,0);
+  r.rightArm.rotation.set(-.55+.45*coil-1.25*power,.12+.32*power,-.18-.22*power);r.rightElbow.rotation.x=-1.95+.85*coil+.73*power;r.rightHand.rotation.y=-.4*power;
+  r.leftArm.rotation.set(-.8+.35*power,-.15,.08+.16*power);r.leftElbow.rotation.x=-1.4-.35*power;
+  r.leftLeg.rotation.set(-.23-.4*coil-.12*power,0,.14);r.leftKnee.rotation.x=.3+.7*coil+.12*power;
+  r.rightLeg.rotation.set(.2-.2*coil+.18*power,0,-.18);r.rightKnee.rotation.x=.2+.75*coil;r.leftFoot.rotation.x=-.1;r.rightFoot.rotation.x=-.25-.15*power;
+
  }else{
   const rate=p.attackRate||1,gap=.17/rate,index=Math.min(a.total-1,Math.max(0,Math.floor((age-.075/rate+.05/rate)/gap))),phase=(age-.075/rate-index*gap)*rate,u=phase<0?ease((phase+.08)/.08):1-ease((phase-.025)/.115),left=index%2===0,sign=left?1:-1,arm=left?r.leftArm:r.rightArm,elbow=left?r.leftElbow:r.rightElbow;
   r.body.rotation.y=-.3+.42*sign*u;r.chest.rotation.y=.28+.25*sign*u;r.head.rotation.y=.12-.28*sign*u;r.body.position.z=.13*u;arm.rotation.set(-1.48,-.08*sign,.08*sign);elbow.rotation.x=-1.4*(1-u)-.03;r.rightKnee.rotation.x+=.12*u;

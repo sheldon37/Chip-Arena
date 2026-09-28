@@ -46,8 +46,10 @@ Network delay and FPS drops are different problems: a tunnel may still add laten
 
 UPDATES
 The game checks the existing update channel before starting local/hosted play.
-It can start the bundled version offline. Desktop runtime upgrades require a new
-ZIP. Settings for this desktop app are separate from your browser's settings.
+Use Update Game in the launcher, or Settings > Update Game, to check manually.
+It asks before closing your current session and keeps login/settings. It can
+start the bundled version offline. Desktop application/runtime upgrades require
+a new patch or ZIP. Settings for this desktop app are separate from your browser's settings.
 Updates and local-server state are stored beside the game inside resources/game;
 extract to a folder you can write to, such as Downloads or your own Games folder.
 The first run includes both the Node runtime and the public tunnel connector.
@@ -177,8 +179,9 @@ Wall Tyrant, Iron Wavedash, Storm Footwork, Pressure String, Counter Voltage,
 Emperor's Rage and Bloodline Surge each change the moveset.
 Airborne victims fold/spin during juggles and recover after falling. Attacks
 respect cover and blocks; wavedash collides with the arena.
-Equipping this style forces Emperor's Oath: wrist-grip close-up, electric fist,
-raised-arm orbit, final guard/name, with original dramatic music. Skip intros
+Equipping this style forces Emperor's Oath: a wrist-at-brow close-up into the
+raised-hand challenge, on a dark, blue-lit rocky stage with rain and puddles.
+It holds the gesture through the name reveal, with original dramatic music. Skip intros
 still applies. DEV Menu can grant Emperor Style to any registered player.
 
 Customize > Kill effect > Ragdoll is available to everyone. Hit location and
@@ -187,3 +190,18 @@ spin harder. Limbs stay joined and collide with nearby cover. These cosmetic
 bodies run on each client and never deal damage or add server physics load.
 Bottom hints now show only relevant controls, without exclusive move names.
 No new .bat is needed. Close the game before applying the cumulative patch.
+
+DEMON STEP + ELECTRIC UPDATE (DESKTOP 0.3.5)
+Apply this patch once to add Update Game; no new .bat or executable is required.
+Future game-content updates can be installed from the launcher or Settings.
+
+Ansatsuken Shift: Demon Step. 22 m/s for 0.30 seconds with PL02 audio and purple
+player afterimages. The ordinary dash cooldown, chip effects and collisions apply.
+Raging Demon: the attacker's afterimage performs eight timed strikes and finishes
+with the red symbol. Only the defeated player sees the full-screen cinematic.
+Auditor Halo is 28% smaller and sits closer to the head.
+Electric Hook: planted low wind-up and rising bent-arm hook, supplied AkBank audio,
+white lightning cores with red edges/glow. Base damage: 8 instead of 22 (64% less).
+Twin Thunder echo damage: 3 instead of 7. Juggle launches and jabs are unchanged.
+The Emperor entrance now follows only the raised-hand reference, with rain,
+a wet floor and blue-lit rocks. No second salute or return to guard.

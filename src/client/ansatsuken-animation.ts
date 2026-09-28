@@ -18,10 +18,16 @@ export function fighterParry(r:CharacterRig,time:number){
  r.leftFoot.rotation.x=r.rightFoot.rotation.x=-.42;r.leftArm.rotation.set(-1.45,-.18,.18);r.leftElbow.rotation.x=-.12;r.leftHand.rotation.set(-.95,0,-.12);
  r.rightArm.rotation.set(.14,.12,-.16);r.rightElbow.rotation.x=-1.6;r.rightHand.rotation.set(0,0,-.16);r.offWeapon.scale.setScalar(1);const fist=r.offWeapon.getObjectByName('fighter-fist'),palm=r.offWeapon.getObjectByName('fighter-palm');if(fist)fist.visible=false;if(palm)palm.visible=true;
 }
+/** The gliding stance from the supplied reference, with no running cycle. */
+export function demonStepPose(r:CharacterRig,time:number){
+ r.body.position.set(0,-.04,0);r.body.rotation.set(.04,-.3,0);r.pelvis.rotation.set(0,-.12,0);r.chest.rotation.set(0,.2,0);r.head.rotation.set(0,.1,0);
+ r.leftArm.rotation.set(-1.35,-.2,-.18);r.rightArm.rotation.set(-1.35,.2,.18);r.leftElbow.rotation.set(-1.1,0,-.25);r.rightElbow.rotation.set(-1.1,0,.25);
+ r.leftLeg.rotation.set(-1.12,0,.08);r.leftKnee.rotation.set(1.9,0,0);r.rightLeg.rotation.set(.1,0,-.12);r.rightKnee.rotation.set(.2,0,0);r.leftFoot.rotation.x=-.45;r.rightFoot.rotation.x=-.2;r.body.position.y+=Math.sin(time*9)*.006;
+}
 export function animateAnsatsuken(r:CharacterRig,p:PlayerView,time:number){
  const speed=Math.hypot(p.vel.x,p.vel.z);fighterGuard(r,time,1-clamp(speed/9)*.35);r.weapon.rotation.set(0,0,0);r.offWeapon.rotation.set(0,0,0);r.weapon.scale.setScalar(1);r.offWeapon.scale.setScalar(1);r.weapon.visible=r.offWeapon.visible=true;
  const fist=r.offWeapon.getObjectByName('fighter-fist'),palm=r.offWeapon.getObjectByName('fighter-palm');if(fist)fist.visible=true;if(palm)palm.visible=false;
- const a=p.arcade;if(p.blockTime>0||time-(a?.parryAt??-10)<.22){fighterParry(r,time);return;}if(!a?.action||time>a.until+.1)return;const age=Math.max(0,time-a.at),hitAge=Math.max(0,time-p.lastAttack);
+ const a=p.arcade;if(p.dashTime&&a?.demonStepAt!==undefined&&time>=a.demonStepAt&&time-a.demonStepAt<.30){demonStepPose(r,time);return;}if(p.blockTime>0||time-(a?.parryAt??-10)<.22){fighterParry(r,time);return;}if(!a?.action||time>a.until+.1)return;const age=Math.max(0,time-a.at),hitAge=Math.max(0,time-p.lastAttack);
  if(a.action==='combo'){
   const rate=p.attackRate||1,first=.12/rate,gap=(a.total===10?.115:.25)/rate;
   // Anticipation leads the authority's strike; each impact has a readable hold and recoil.

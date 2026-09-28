@@ -1,10 +1,11 @@
+import {RAGING_DEMON} from '../shared/raging-demon.js';
 import {IntroAudio} from './intro-audio.js';
 import {ArenaMusic} from './music.js';
 import {CLOWN_LOVE} from './clown-love-timing.js';
 import {BASS_VAN} from './bass-van-timing.js';
 import type {GameEvent,Snapshot} from '../shared/simulation.js';
 import type {Vec} from '../shared/config.js';
-export const AUDIO_CLIPS=['arcade-punch','arcade-kick','arcade-heavy','arcade-parry','pistol','rifle','machinegun','fire','water','lightning','darkness','sword','daggers','shield','greatsword','reload-start','reload-end','dash','jump','hit','hurt','parry','wood','stone','metal','explosion','burn-tick','poison-tick','ui','install','countdown','go','win','lose'] as const;
+export const AUDIO_CLIPS=['electric-hook','demon-step','arcade-punch','arcade-kick','arcade-heavy','arcade-parry','pistol','rifle','machinegun','fire','water','lightning','darkness','sword','daggers','shield','greatsword','reload-start','reload-end','dash','jump','hit','hurt','parry','wood','stone','metal','explosion','burn-tick','poison-tick','ui','install','countdown','go','win','lose'] as const;
 export type Sound=typeof AUDIO_CLIPS[number];
 /** Event IDs are server-issued; never replay old snapshots or reconnect history. */
 export class AudioCursor {
@@ -14,6 +15,7 @@ export class AudioCursor {
 }
 export class ArenaAudio {
  music=new ArenaMusic();intros=new IntroAudio();
+ private demonSeen=new Set<string>();private demonEpoch='';
  private loveBuffer:AudioBuffer|null=null;private vanBuffer:AudioBuffer|null=null;private loveSources=new Map<string,Set<AudioBufferSourceNode>>();private loveSeen=new Set<string>();private loveEpoch='';
  context:AudioContext|null=null;master:GainNode|null=null;buffers=new Map<Sound,AudioBuffer>();voices=new Set<AudioBufferSourceNode>();cursor=new AudioCursor();loading:Promise<void>|null=null;volume=.3;muted=false;played=0;error='';phase='';countdown=-1;listener:Vec={x:0,y:0,z:0};yaw=0;
  configure(volume:number,muted:boolean){this.volume=Math.max(0,Math.min(1,volume));this.muted=muted;if(this.master&&this.context)this.master.gain.setTargetAtTime(muted?0:this.volume,this.context.currentTime,.015);}
@@ -41,21 +43,23 @@ export class ArenaAudio {
    else{schedule('music',this.loveBuffer,0,1.15);for(const at of CLOWN_LOVE.beats)if(at>=age)schedule('hit-'+at,hit,at,.9);}
   }
  }
+ private updateDemon(state:Snapshot){const epoch=`${state.generation}:${state.setNumber}:${state.round}`;if(epoch!==this.demonEpoch){this.demonSeen.clear();this.demonEpoch=epoch;}for(const p of state.players){const d=p.death;if(p.hp>0||d?.effect!=='dev-raging-demon')continue;const age=state.time-d.at;RAGING_DEMON.hits.forEach((at,i)=>{const key=d.id+':'+i;if(age<at||this.demonSeen.has(key))return;this.demonSeen.add(key);if(age-at<.12)this.play(i===7?'arcade-heavy':i===3||i===5?'arcade-kick':'arcade-punch',d.pos,i===7?1.1:.85);});}}
  clownLaugh(){const c=this.context;if(!c||!this.master||this.muted)return;for(let n=0;n<9;n++){const at=c.currentTime+1.65+n*.22,voice=c.createOscillator(),formant=c.createBiquadFilter(),gain=c.createGain();voice.type='sawtooth';voice.frequency.setValueAtTime(185+(n%3)*30,at);voice.frequency.exponentialRampToValueAtTime(115+(n%2)*30,at+.17);formant.type='bandpass';formant.frequency.value=800;formant.Q.value=.9;gain.gain.setValueAtTime(0,at);gain.gain.linearRampToValueAtTime(.22,at+.025);gain.gain.exponentialRampToValueAtTime(.001,at+.18);voice.connect(formant).connect(gain).connect(this.master);voice.start(at);voice.stop(at+.2);voice.onended=()=>{voice.disconnect();formant.disconnect();gain.disconnect();};}}
  get status(){return this.error||(this.context&&this.buffers.size<AUDIO_CLIPS.length?`Loading sound · ${this.buffers.size}/${AUDIO_CLIPS.length} effects`:!this.context?'Click Test Sound to enable audio':`${this.muted?'Muted':this.context.state==='running'?'Sound ready':'Audio paused'} · ${this.buffers.size}/${AUDIO_CLIPS.length} effects loaded`);}
  pausePresentation(){this.intros.stop();this.music.setActive(false);}
  previewIntro(state:Snapshot){this.music.setActive(false);this.intros.update(state,this.context,this.music.cueVolume);}
- reset(){this.intros.stop();this.stopLove();this.music.setActive(false);this.cursor.reset();this.phase='';this.countdown=-1;for(const voice of this.voices)voice.stop();this.voices.clear();}
+ reset(){this.demonSeen.clear();this.demonEpoch='';this.intros.stop();this.stopLove();this.music.setActive(false);this.cursor.reset();this.phase='';this.countdown=-1;for(const voice of this.voices)voice.stop();this.voices.clear();}
  play(name:Sound,position?:Vec,gain=1){const context=this.context,buffer=this.buffers.get(name);if(!context||context.state!=='running'||!buffer||this.muted||!this.volume||this.voices.size>=24)return;
   let volume=gain,pan=0;if(position){const dx=position.x-this.listener.x,dy=position.y-this.listener.y,dz=position.z-this.listener.z,d=Math.hypot(dx,dy,dz);volume*=1/(1+Math.max(0,d-2)*.13);pan=Math.max(-.85,Math.min(.85,(-Math.cos(this.yaw)*dx+Math.sin(this.yaw)*dz)/Math.max(2,d)));}
-  const source=context.createBufferSource(),level=context.createGain(),panner=context.createStereoPanner();source.buffer=buffer;source.playbackRate.value=name==='ui'||name==='countdown'?1:.97+Math.random()*.06;level.gain.value=volume;panner.pan.value=pan;source.connect(level).connect(panner).connect(this.master!);this.voices.add(source);source.onended=()=>{this.voices.delete(source);source.disconnect();level.disconnect();panner.disconnect();};source.start();this.played++;
+  const source=context.createBufferSource(),level=context.createGain(),panner=context.createStereoPanner();source.buffer=buffer;source.playbackRate.value=name==='ui'||name==='countdown'||name==='demon-step'||name==='electric-hook'?1:.97+Math.random()*.06;level.gain.value=volume;panner.pan.value=pan;source.connect(level).connect(panner).connect(this.master!);this.voices.add(source);source.onended=()=>{this.voices.delete(source);source.disconnect();level.disconnect();panner.disconnect();};source.start();this.played++;
  }
  private arcadeVoices=0;
  arcadeTone(hit:number,move:boolean,superMove=false){const c=this.context;if(!c||!this.master||this.muted||c.state!=='running'||this.arcadeVoices>=8)return;this.arcadeVoices++;const osc=c.createOscillator(),gain=c.createGain(),at=c.currentTime;osc.type=move?'sawtooth':'square';osc.frequency.setValueAtTime(move?120:360+Math.min(hit,10)*55,at);osc.frequency.exponentialRampToValueAtTime(move?(superMove?920:420):160,at+(move?.25:.08));gain.gain.setValueAtTime(move?.09:.06,at);gain.gain.exponentialRampToValueAtTime(.001,at+(move?.35:.10));osc.connect(gain).connect(this.master);osc.start();osc.stop(at+(move?.38:.12));osc.onended=()=>{this.arcadeVoices--;osc.disconnect();gain.disconnect();};}
- update(state:Snapshot,me:string,yaw:number,presentation=state){this.intros.update(presentation,this.context,this.music.cueVolume);this.music.setActive(['fight','countdown','result'].includes(state.phase));this.updateLove(state);const self=state.players.find(p=>p.id===me);if(self)this.listener=self.pos;this.yaw=yaw;
+ update(state:Snapshot,me:string,yaw:number,presentation=state){this.intros.update(presentation,this.context,this.music.cueVolume);this.music.setActive(['fight','countdown','result'].includes(state.phase));this.updateLove(state);const self=state.players.find(p=>p.id===me);if(self)this.listener=self.pos;this.yaw=yaw;this.updateDemon(presentation);
   for(const e of this.cursor.consume(state.events,state.time)){
    if(e.type==='shot'||e.type==='windup'){if(e.spec)this.play(e.spec==='leet'||e.spec==='emperor'?'lightning':e.spec==='ansatsuken'?'fire':e.spec,e.pos,.65);}
-   else if(e.type==='emperor-electric')this.play('lightning',e.pos,.6);
+   else if(e.type==='demon-step')this.play('demon-step',e.pos,.95);
+   else if(e.type==='emperor-electric')this.play('electric-hook',e.pos,.95);
    else if(e.type==='emperor-hit'){this.play(e.message==='ELECTRIC'?'arcade-heavy':'arcade-punch',e.pos,.9);}
    else if(e.type==='emperor-wave')this.play('dash',e.pos,.3);
    else if(e.type==='emperor-bound')this.play('arcade-heavy',e.pos,.8);

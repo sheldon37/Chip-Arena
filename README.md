@@ -331,8 +331,16 @@ and heavily favors its exclusive Chips. See the guide above for exact timings.
 
 ## Emperor Style
 
-DEV/granted players can select **Melee → Emperor Style**. LMB alternates left/right jabs; Q performs an electric upward hook that sustains juggles; E wavedashes without cooldown; RMB keeps normal block. Twelve exclusive **Mishima** Chips have slate/red electric presentation and their own selection cinematic. The forced **Emperor’s Oath** intro combines a wrist-grip close-up, fist detail, raised-arm orbit and final guard, with an original 7.8-second cue. Intro skipping still applies.
+DEV/granted players can select **Melee → Emperor Style**. LMB alternates left/right jabs; Q performs an electric upward hook that sustains juggles; E wavedashes without cooldown; RMB keeps normal block. Twelve exclusive **Mishima** Chips have slate/red electric presentation and their own selection cinematic. The forced **Emperor’s Oath** intro moves from the wrist-at-brow close-up into a held raised-hand gesture on a dark, blue-lit rocky stage with rain, with an original 7.8-second cue. Intro skipping still applies.
 
 Everyone can choose **Customize → Kill effect → Ragdoll**. The server records hit position, direction, strength and melee/projectile classification; disposable client physics makes joined limbs collapse or launch accordingly. Effects never add damage or server bodies. The bottom controls show only relevant keys and generic labels.
 
 Mechanic/presentation tests: `node --import tsx --test tests/emperor.test.ts`. Eight-client transport check: `node --import tsx tests/emperor-network.ts`.
+
+## Demon Step and desktop updates
+
+Desktop 0.3.5 adds **Update Game** to the launcher and game Settings. Apply the cumulative desktop patch once; subsequent game-content updates use the existing verified update channel. Manual updates report failures, require confirmation before closing a session, block conflicting launch operations and preserve saved login/settings. Desktop shell/runtime changes still require a patch or full download.
+
+Ansatsuken's Shift dash is **Demon Step**, with the supplied PL02 sound, a 22 m/s × 0.30 s burst and bounded fading player afterimages. Collision and normal dash cooldown rules remain. Raging Demon now has eight synchronized afterimage strikes, a private victim camera with red/black cuts, and the finishing symbol; it adds no damage or server actors. Auditor Halo is smaller and lower.
+
+Electric Hook uses the supplied AkBank sound, a planted crouch-to-hook motion and red lightning with white cores. Base damage drops from 22 to 8 and Twin Thunder echoes from 7 to 3. Its launch/juggle rules remain intact. The Emperor intro follows the single raised-hand reference in rain.
