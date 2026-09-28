@@ -20,6 +20,7 @@ export class ArenaAudio {
  context:AudioContext|null=null;master:GainNode|null=null;buffers=new Map<Sound,AudioBuffer>();voices=new Set<AudioBufferSourceNode>();cursor=new AudioCursor();loading:Promise<void>|null=null;volume=.3;muted=false;played=0;error='';phase='';countdown=-1;listener:Vec={x:0,y:0,z:0};yaw=0;
  configure(volume:number,muted:boolean){this.volume=Math.max(0,Math.min(1,volume));this.muted=muted;if(this.master&&this.context)this.master.gain.setTargetAtTime(muted?0:this.volume,this.context.currentTime,.015);}
  async unlock(){
+  this.music.unlock();
   if(!this.context)try{this.context=new AudioContext();this.master=this.context.createGain();const limiter=this.context.createDynamicsCompressor();limiter.threshold.value=-13;limiter.knee.value=14;limiter.ratio.value=5;limiter.attack.value=.004;limiter.release.value=.15;this.master.connect(limiter).connect(this.context.destination);this.configure(this.volume,this.muted);}catch{this.error='Audio unavailable';return;}
   try{await this.context.resume();}catch{this.error='Click Test Sound to enable audio';}
   if(!this.loading)this.loading=Promise.all(AUDIO_CLIPS.map(async name=>{const response=await fetch(`${(import.meta as any).env.BASE_URL}audio/${name}.wav`);if(!response.ok)throw Error(name);const buffer=await this.context!.decodeAudioData(await response.arrayBuffer());this.buffers.set(name,buffer);})).then(()=>{this.error='';}).catch(()=>{this.error='Some sound files could not load';});
