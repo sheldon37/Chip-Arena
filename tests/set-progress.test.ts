@@ -30,3 +30,11 @@ test('custom round targets control set wins and score fractions; only the host c
  }finally{room.dispose();}}
  const s=new Simulation({roundsPerSet:Infinity});try{assert.equal(s.options.roundsPerSet,2);for(const [raw,expected] of [[0,1],[100,10],[3.9,3],['4',2],[NaN,2]] as const){s.configureLobby({roundsPerSet:raw});assert.equal(s.options.roundsPerSet,expected);}}finally{s.dispose();}
 });
+test('custom set targets finish the match at the selected score and size the scoreboard',()=>{
+ for(const wins of [1,3,10]){const room=new HostedRoom('ABCD2345',{name:'Host',class:'ranged',color:'#abcdef'},false,()=>{},6,false,true,5,{wins,roundsPerSet:1});try{
+ room.join({name:'Guest'});assert.equal(room.sim.options.wins,wins);assert.equal(room.receive('guest',{type:'settings',wins:2}),false);assert.equal(room.sim.options.wins,wins);
+ room.receive('host',{type:'ready',ready:true});room.receive('guest',{type:'ready',ready:true});assert.equal(room.receive('host',{type:'settings',wins:2}),false);
+ const s=room.sim;s.players.get('host')!.score=wins-1;s.phase='fight';s.players.get('guest')!.hp=0;s.resolveRound();s.time=s.phaseEnd;s.advance();assert.equal(s.phase,'match');assert.equal(s.winner,'host');const snap=s.snapshot();assert.deepEqual(scoreCircles(snap,snap.players.find(p=>p.id==='host')!),Array(wins).fill(1));
+ }finally{room.dispose();}}
+ const s=new Simulation({wins:NaN});try{assert.equal(s.options.wins,5);for(const [raw,expected] of [[0,1],[100,10],[3.9,3],['4',5],[Infinity,5]] as const){s.configureLobby({wins:raw});assert.equal(s.options.wins,expected);}}finally{s.dispose();}
+});
