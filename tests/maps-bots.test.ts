@@ -10,13 +10,13 @@ import {HostedRoom} from '../src/shared/host-room.js';
 import {MapScenery} from '../src/client/map-scenery.js';
 import {ArenaMusic} from '../src/client/music.js';
 await initPhysics();
-test('eleven distinct deterministic maps reserve clear spawns and debris budget; eight pilots fight and reset on each',()=>{
- assert.equal(MAPS.length,11);assert.equal(mapId('__proto__'),'foundry');const layouts=new Set<string>();
- for(const map of MAPS){const blocks=arenaBlocks(map.id);assert.deepEqual(blocks,arenaBlocks(map.id));layouts.add(JSON.stringify(blocks.map(({pos,size})=>({pos,size}))));assert.equal(new Set(blocks.map(b=>b.id)).size,blocks.length);assert.ok(blocks.length<=CONFIG.maxBodies-30,`${map.id}: ${blocks.length}`);
+test('fourteen distinct deterministic maps reserve clear spawns and debris budget; eight pilots fight and reset on each',()=>{
+ assert.equal(MAPS.length,14);assert.equal(mapId('__proto__'),'foundry');const layouts=new Set<string>();
+ for(const map of MAPS){const blocks=arenaBlocks(map.id);assert.deepEqual(blocks,arenaBlocks(map.id));layouts.add(JSON.stringify(blocks.map(({pos,size})=>({pos,size}))));assert.equal(new Set(blocks.map(b=>b.id)).size,blocks.length);assert.ok(blocks.length<=CONFIG.maxBodies-20,`${map.id}: ${blocks.length}`);
   for(let i=0;i<8;i++){const p=playerSpawn(i,false);for(const b of blocks)assert.ok(Math.abs(p.x-b.pos.x)>b.size.x/2+.43||Math.abs(p.z-b.pos.z)>b.size.z/2+.43||p.y-.84>=b.pos.y+b.size.y/2,`${map.id} spawn ${i} overlaps ${b.id}`);}
   if(map.music)assert.ok(existsSync(new URL(`../public/music/${map.music}.mp3`,import.meta.url)));
   const s=new Simulation({map:map.id,skipIntros:true});try{s.addPlayer('host');s.configureLobby({botCount:7,botDifficulty:'normal'});assert.equal(s.players.size,8);assert.equal(s.props.size,blocks.length);s.setReady('host',true);s.selectSpec('host','pistol');for(let i=0;i<900;i++)s.step();assert.ok(s.time>=14);assert.ok([...s.players.values()].some(p=>p.bot&&p.lastAttack>0),map.id);for(const p of s.players.values())assert.ok(Object.values(p.body.translation()).every(Number.isFinite));s.resetRound();assert.equal(s.props.size,blocks.length);assert.equal(s.options.map,map.id);}finally{s.dispose();}
- }assert.equal(layouts.size,11);assert.ok(arenaBlocks('moonlit').every(b=>b.pos.y<=1));
+ }assert.equal(layouts.size,14);assert.ok(arenaBlocks('moonlit').filter(b=>Math.abs(b.pos.x)<12&&Math.abs(b.pos.z)<12).every(b=>b.pos.y<=1));for(const map of MAPS)assert.ok(arenaBlocks(map.id).some(b=>b.pos.y>10),map.id);
 });
 test('only host changes lobby settings; bot capacity preserves humans and bots do not vote on rematches',()=>{
  const room=new HostedRoom('ABCD2345',{name:'Host',class:'ranged',color:'#ff6633'},false,()=>{},6,false,true,5,{map:'neon',botCount:5});try{

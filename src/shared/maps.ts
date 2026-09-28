@@ -2,7 +2,7 @@ import type {ArenaBlock} from './arena.js';
 import {v,Material} from './config.js';
 export const MAPS=[
  {id:'foundry',name:'Shatter Foundry',tag:'Breakable cover · raised flanks',theme:'industrial',sky:0x060810,floor:0x26333e,accent:0xff7848,music:null},
- {id:'moonlit',name:'Moonlit Wilderness',tag:'Flat dandelion field · ruined castle',theme:'moonlit',sky:0x080e23,floor:0x1b2930,accent:0xb4d9ff,music:'moonlit-wilderness'},
+ {id:'moonlit',name:'Moonlit Wilderness',tag:'Moonlit snowfield · high ruins · drifting flurries',theme:'moonlit',sky:0x080e23,floor:0xa6b8cd,accent:0xb4d9ff,music:'moonlit-wilderness'},
  {id:'neon',name:'Neon District',tag:'Shopfronts · cross streets · rooftop steps',theme:'city',sky:0x110b20,floor:0x252235,accent:0xfa62df,music:'violet-avenue'},
  {id:'freight',name:'Freight Terminal',tag:'Container lanes · loading bays',theme:'freight',sky:0x08161d,floor:0x23363a,accent:0x51e5ca,music:'cargo-pulse'},
  {id:'rooftops',name:'Skyline Exchange',tag:'Rooftop structures · aerial walkways',theme:'rooftops',sky:0x0b132c,floor:0x2c3247,accent:0x9da6ff,music:'skyline-run'},
@@ -12,6 +12,9 @@ export const MAPS=[
  {id:'frozen',name:'Frostline Depot',tag:'Snowbound warehouses · supply cover',theme:'snow',sky:0x0c1c30,floor:0x7b8d9f,accent:0x80e4ff,music:'cold-current'},
  {id:'canal',name:'Canal Night Market',tag:'Market stalls · canal bridges',theme:'canal',sky:0x111a27,floor:0x38414d,accent:0xffd389,music:'lantern-drift'},
  {id:'forge',name:'Obsidian Forge',tag:'Smelter halls · basalt cover',theme:'forge',sky:0x210b14,floor:0x31262d,accent:0xff654c,music:'cinder-engine'},
+ {id:'sawmill',name:'Razorworks',tag:'HAZARD · moving buzzsaws · timber towers',theme:'industrial',sky:0x151018,floor:0x36313b,accent:0xffae57,music:'foundry-rush'},
+ {id:'spikevault',name:'Thornfall Vault',tag:'HAZARD · timed spikes · ruined galleries',theme:'castle',sky:0x111322,floor:0x403c4c,accent:0xf37885,music:'stone-oath'},
+ {id:'lavaworks',name:'Cinder Crossing',tag:'HAZARD · lava channels · elevated crossings',theme:'forge',sky:0x240b13,floor:0x302831,accent:0xff713c,music:'cinder-engine'},
 ] as const;
 export type MapId=typeof MAPS[number]['id'];
 export function mapId(raw:unknown):MapId{return MAPS.some(m=>m.id===raw)?raw as MapId:'foundry';}
@@ -28,6 +31,9 @@ export function expansionBlocks(id:Exclude<MapId,'foundry'>):ArenaBlock[]{
  const arch=(x:number,z:number,w=7)=>{const l=b(x-w/2,1.6,z,.9,3.2,1),r=b(x+w/2,1.6,z,.9,3.2,1);b(x,3.5,z,w+1,.6,1,'stone',{mass:100,support:[l,r]});};
  for(const s of [-1,1])for(const x of [-13,13])b(x,.4,s*27.5,13,.8,.8,'foundation');
  switch(id){
+ case 'sawmill':for(const side of [-1,1]){building(side*11,side*13,7,7,4.5,'wood');for(const z of [-6,6]){b(side*15,1,z,4,2,1,'wood');crate(side*5,z);}}break;
+ case 'spikevault':for(const side of [-1,1]){arch(0,side*13,10);building(side*13,side*12,6,7,5);for(const z of [-5,5])column(side*15,z,6);}break;
+ case 'lavaworks':for(const x of [-10,10]){b(x,1.6,0,5,.5,42,'foundation');for(const z of [-18,18]){b(x,.5,z,5,1,3);b(x,1,z-Math.sign(z)*2,5,2,2);}}for(const z of [-15,0,15])b(0,1.6,z,25,.5,3,'foundation');for(const side of [-1,1])building(side*19,side*10,6,6,4,'metal');break;
  case 'moonlit':for(const s of [-1,1]){for(const z of [-12,12]){b(s*18,.7,z,3.3,1.4,1.2);b(s*25,.5,z+s*3,2,1,2);}b(s*8,.5,s*14,3,1,1);}break;
  case 'neon':for(const x of [-13,13])for(const z of [-10,10])building(x,z,8,7,3.2);for(const s of [-1,1]){step(s*13,s*10-7.5,4,3.4);for(const z of [-4,4])crate(s*6,z);b(s*26,.7,s*14,4,1.4,2,'metal');}b(0,.6,0,3,1.2,3,'metal');break;
  case 'freight':for(const s of [-1,1]){building(s*18,s*12,8,10,3.3,'metal');for(const z of [-12,0,12]){b(s*8,1.35,z,4,2.7,6,'metal');crate(s*11,z+4);}step(s*18,s*12-9,4,3.5);}for(const x of [-3,3])for(const z of [-5,5])crate(x,z);break;
