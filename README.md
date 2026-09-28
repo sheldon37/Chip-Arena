@@ -8,7 +8,9 @@ The previous direct PeerJS connection is replaced. The new transport follows the
 
 ## Double-click Windows server
 
-A portable Windows x64 release is supplied as `Chip-Arena-Windows.zip`. Extract All, then double-click **Start-Chip-Arena.bat**. The runtime, game and server are included. Keep its window open. **Start-Online.bat** optionally opens a temporary shareable game link for friends on other networks (first run downloads a verified connector). Both players must use that launcher's link; the usual website's rooms remain separate. No login is required.
+The Windows x64 desktop release is supplied as `Chip-Arena-Windows.zip`. Extract all files and run **Chip Arena.exe** inside `Chip-Arena-Desktop`. Choose **Host online → Create Room → Copy Code** and send friends the `CA-XXXX-XXXX` code. They enter it in the updated desktop launcher or **Join Room** on the Chip Arena website. The host stays connected locally; friends use its public tunnel. The address directory only resolves the code and never carries gameplay. Full invite links remain available as a fallback. Keep the host and room open. No .bat is needed for this edition; the older portable .bat launcher remains supported.
+
+Room setup includes a **5–120 second Chip selection timer** (also used for specialization). After a pick, the other Chips shatter and the installed Chip is shown at the center with the selecting player's name for a shared 3.2-second reveal. **Customize → Intro text** edits the line beneath your intro name (64 characters).
 
 See [Windows package, animation and knockout notes](docs/WINDOWS-AND-ANIMATION.md) for source, rebuild steps, checksums and limitations.
 

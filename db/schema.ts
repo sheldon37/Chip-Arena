@@ -9,3 +9,5 @@ export const partyRooms=sqliteTable('party_rooms',{
 export const partySeats=sqliteTable('party_seats',{
  id:text('id').primaryKey(),code:text('code').notNull(),key:text('seat_key').notNull(),profile:text('profile').notNull(),seen:integer('seen').notNull(),left:integer('has_left').notNull().default(0),guestSeq:integer('guest_seq').notNull().default(0),guestPacket:text('guest_packet'),hostPacket:text('host_packet')
 },t=>[index('party_seat_room').on(t.code)]);
+
+export const onlineRooms=sqliteTable('online_rooms',{code:text('code').primaryKey(),hostKey:text('host_key').notNull(),creator:text('creator').notNull(),origin:text('origin').notNull(),expires:integer('expires').notNull()},t=>[index('online_expiry').on(t.expires),index('online_creator').on(t.creator)]);

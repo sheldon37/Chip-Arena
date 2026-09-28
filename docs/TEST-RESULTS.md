@@ -1,3 +1,12 @@
+## Selection and join update — 2026-09-28
+
+- All 228 automated tests passed, including existing combat networking checks.
+- A real Node server registers its room against the same directory handler with local SQLite. A local host and proxied guest use the formatted code, receive matching custom intro text and the host's 45-second timer, and observe the same authoritative selected Chip and 3.2-second reveal.
+- Directory tests cover owner-only renewal, competing registrations, expiry, address validation, bounded requests, code normalization, and native resolver failures. No gameplay traffic uses the directory.
+- Eight-player draft order and host-owned settings are covered. Intro text is bounded, normalized and escaped in the UI.
+- TypeScript and the production build pass. The patch is verified by merging it over each supported desktop archive and comparing every packaged file with the new full release.
+- Browser-control support is unavailable in this environment. Visual animation review and native Windows startup/GPU behavior have not been manually verified. The directory network test uses a local service, not an Internet tunnel.
+
 # Chaos, customization, login and updater verification — 27 September 2026
 
 - TypeScript and production client/Worker/server builds: passed.

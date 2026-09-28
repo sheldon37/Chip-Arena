@@ -41,7 +41,7 @@ with ZipFile(a.base) as base,ZipFile(a.electron) as runtime,ZipFile(out,'w',ZIP_
 with ZipFile(out) as z:
  assert z.testzip() is None
  pe64(z.read(prefix+'Chip Arena.exe'))
- for name in ('resources/app/main.cjs','resources/app/preload.cjs','resources/app/index.html','resources/game/runtime/node.exe','resources/game/runtime/cloudflared.exe','resources/game/dist/client/index.html','resources/game/server.mjs','resources/game/drizzle/0002_wide_shinko_yamashiro.sql'):assert name and prefix+name in z.namelist(),name
+ for name in ('resources/app/main.cjs','resources/app/join.cjs','resources/app/preload.cjs','resources/app/index.html','resources/game/runtime/node.exe','resources/game/runtime/cloudflared.exe','resources/game/dist/client/index.html','resources/game/server.mjs','resources/game/drizzle/0002_wide_shinko_yamashiro.sql','resources/game/drizzle/0003_classy_tana_nile.sql'):assert name and prefix+name in z.namelist(),name
  release=json.loads(z.read(prefix+'resources/game/release.json'))
  assert release['version']==json.loads((repo/'dist/client/updates/latest.json').read_text())['version']
  assert prefix+'resources/game/dist/client/audio/van-scream.wav' not in z.namelist()

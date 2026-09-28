@@ -1,3 +1,5 @@
+import {createLocalRelay} from '../src/relay/local.js';
+import {formatOnlineCode} from '../src/shared/room-directory.js';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
@@ -19,8 +21,9 @@ test('public room invites preserve the code without exposing a localhost address
 });
 
 test('real local server and proxied guest share a room; only launcher IPC can set the public invite',async()=>{
+ const central=createLocalRelay();await new Promise<void>(r=>central.server.listen(0,'127.0.0.1',r));const directoryOrigin='http://127.0.0.1:'+(central.server.address() as net.AddressInfo).port;
  const port=await freePort(),local='http://127.0.0.1:'+port;
- const server=spawn(process.execPath,['--import','tsx','src/server/index.ts'],{env:{...process.env,PORT:String(port),ALLOWED_ORIGINS:''},stdio:['ignore','pipe','pipe','ipc']});
+ const server=spawn(process.execPath,['--import','tsx','--import','./tests/fixtures/directory-fetch.mjs','src/server/index.ts'],{env:{...process.env,PORT:String(port),ALLOWED_ORIGINS:'',CHIP_TEST_DIRECTORY_ORIGIN:directoryOrigin,ALLOW_TEST_ROOMS:'true'},stdio:['ignore','pipe','pipe','ipc']});
  let logs='',announced='';server.stdout!.on('data',b=>logs+=b);server.stderr!.on('data',b=>logs+=b);server.on('message',(m:any)=>{if(m.type==='public-invite-ready')announced=m.url;});
  const sockets=new Set<Duplex>();const clients:WebSocket[]=[];
  const proxy=http.createServer((req,res)=>{const upstream=http.request(new URL(req.url||'/',local),{method:req.method,headers:req.headers},response=>{res.writeHead(response.statusCode||502,response.headers);response.pipe(res);});upstream.on('error',()=>{res.writeHead(502);res.end();});req.pipe(upstream);});
@@ -38,13 +41,20 @@ test('real local server and proxied guest share a room; only launcher IPC can se
   await new Promise<void>(r=>proxy.listen(0,'127.0.0.1',r));const forwarded='http://127.0.0.1:'+(proxy.address() as net.AddressInfo).port;
   assert.equal((await(await fetch(forwarded+'/health')).json()).application,'chip-arena');
   const host=new WebSocket(local.replace('http:','ws:')+'/socket',{origin:local}),guest=new WebSocket(forwarded.replace('http:','ws:')+'/socket',{origin:routing.inviteOrigin});clients.push(host,guest);
-  let code='';const states:any[]=[],welcomes:string[]=[],errors:string[]=[];
-  clients.forEach((ws,i)=>ws.on('message',raw=>{const message=JSON.parse(raw.toString());if(message.type==='welcome'){welcomes[i]=message.id;code=message.code;}if(message.type==='snapshot')states[i]=message.state;if(message.type==='error')errors.push(message.message);}));
+  let code='',onlineCode='';const states:any[]=[],welcomes:string[]=[],errors:string[]=[];const selected:any[][]=[[],[]];
+  clients.forEach((ws,i)=>ws.on('message',raw=>{const message=JSON.parse(raw.toString());if(message.type==='welcome'){welcomes[i]=message.id;code=message.code;}if(message.type==='invite'&&message.onlineCode)onlineCode=message.onlineCode;if(message.type==='snapshot'){states[i]=message.state;if(message.state.draft?.chosen)selected[i].push(message.state);}if(message.type==='error')errors.push(message.message);}));
   await until(()=>clients.every(ws=>ws.readyState===WebSocket.OPEN),'local host and proxy guest connect');
-  host.send(JSON.stringify({type:'create',name:'Local host',skipIntros:true}));await until(()=>!!code,'host creates room');
+  host.send(JSON.stringify({type:'create',name:'Local host',skipIntros:true,selectionSeconds:45,cosmetics:{introText:'Host entrance'},testRoom:true}));await until(()=>!!code,'host creates room');
+  await until(()=>!!onlineCode,'online code registered');assert.equal(onlineCode,formatOnlineCode(code));const found=await(await fetch(directoryOrigin+'/api/directory/'+code)).json();assert.equal(found.origin,routing.inviteOrigin);
   const invite=roomInviteUrl(local,code,routing.inviteOrigin);assert.equal(new URL(invite).origin,routing.inviteOrigin);
-  guest.send(JSON.stringify({type:'join',code:new URL(invite).searchParams.get('room'),name:'Tunnel guest'}));
+  guest.send(JSON.stringify({type:'join',code:onlineCode,name:'Tunnel guest',selectionSeconds:120,cosmetics:{introText:'Guest entrance'}}));
   await until(()=>states.length===2&&states.every(s=>s?.players.length===2),'both clients see both players');
   assert.equal(new Set(welcomes).size,2);assert.deepEqual(states[0].players.map((p:any)=>p.id).sort(),states[1].players.map((p:any)=>p.id).sort());assert.deepEqual(errors,[]);
- }finally{clients.forEach(ws=>ws.terminate());sockets.forEach(s=>s.destroy());proxy.close();const ended=once(server,'exit');server.kill();await ended;}
+  for(const state of states){assert.equal(state.options.selectionSeconds,45);assert.deepEqual(state.players.map((p:any)=>p.cosmetics.introText),['Host entrance','Guest entrance']);}
+  host.send(JSON.stringify({type:'debug',command:{action:'draft-preview'}}));await until(()=>states.every(s=>s.draft&&s.time>=s.draft.readyAt),'draft ready');
+  const pick=states[0].players[0].offers[0];host.send(JSON.stringify({type:'chip',id:pick}));await until(()=>selected.every(a=>a.length>0),'both clients see selected Chip');
+  await until(()=>states.every(s=>s.phase==='countdown'||s.phase==='fight'),'reveal completed');
+  for(const snapshots of selected){assert.ok(snapshots.length>=40);assert.ok(snapshots.at(-1).time-snapshots[0].time>3);assert.ok(snapshots.every(s=>s.draft.chosen===pick&&s.draft.chosenAt===selected[0][0].draft.chosenAt));}
+  console.log('Native code registration, proxied join, timer, intro text and synchronized 3.2s reveal passed.');
+ }finally{clients.forEach(ws=>ws.terminate());sockets.forEach(s=>s.destroy());proxy.close();const ended=once(server,'exit');server.kill();await ended;central.server.close();central.db.close();}
 });

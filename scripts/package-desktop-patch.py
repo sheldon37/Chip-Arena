@@ -4,7 +4,7 @@ from pathlib import Path
 from zipfile import ZipFile,ZIP_DEFLATED
 p=argparse.ArgumentParser();p.add_argument('--full',required=True);p.add_argument('--base',action='append',required=True);p.add_argument('--out',required=True);a=p.parse_args()
 prefix='Chip-Arena-Desktop/';out=Path(a.out).resolve();out.parent.mkdir(parents=True,exist_ok=True)
-readme='''CHIP ARENA - CONNECTION AND COMBAT NETWORKING UPDATE
+readme='''CHIP ARENA - SELECTIONS AND EASY JOIN UPDATE (0.3.3)
 
 For the existing Windows desktop edition (0.3.0, 0.3.1 or 0.3.2).
 
@@ -13,31 +13,24 @@ INSTALL
 2. Extract this patch ZIP.
 3. Copy its resources folder into your existing Chip-Arena-Desktop folder,
    beside Chip Arena.exe. Merge folders and replace matching files.
-   Do not delete your existing resources folder: it also contains the runtimes.
-4. Open Chip Arena.exe and choose Host online. No .bat file is needed.
+   Keep the rest of your existing resources folder: it contains the runtimes.
+4. Open Chip Arena.exe. No new .bat is needed.
 
-The server now compresses world updates and bounds outgoing snapshot queues.
-In a lobby or the Esc menu, Connection report shows FPS, ping, server timing,
-compression and queue details. Copy reports from both players if combat still
-lags. The game updater also delivers these networking changes on host restart.
+HOST: Host online > Create Room > Copy Code. Share CA-XXXX-XXXX with friends.
+JOIN: Enter that code under Join a friend in the updated desktop launcher.
+The code finds the host's current address. Keep the host and room open.
+Full invite links still work. Code lookup is separate from gameplay traffic.
+Both host and guests should apply this update for launcher code entry.
 
-The host now connects directly to its local Node server. It does not wait for
-public DNS to open the game. Friends still use the public invite. In the lobby,
-Copy Invite Link includes the public address and room code, not localhost.
+Chip selection now shatters the other Chips, centers the installed upgrade,
+shows the player's name and holds the result before fading it out for everyone.
+Create Room / Play vs Bot: set the selection timer to 5-120 seconds per player.
+Customize > Intro text: write the line that appears beneath your intro name.
 
-To diagnose an invite problem: press Alt, choose Game > Launcher, expand Server
-log & connection checks, and click Check connections. It reports your server
-process ID, local server health, public link health and raw tunnel output.
-If the local server is healthy but the public link fails, the remaining problem
-is reaching the public tunnel, not starting the game server. DNS results on a
-friend's PC can differ. Keep hosting open while friends connect.
-
-Closing the game or choosing Stop server ends hosting and expires the public
-link. The patch preserves runtime files and saved data. chip-arena-source.zip
-contains the updated editable source. READ-ME.txt is the full desktop guide.
-
-Validation: automated launcher checks and a real Node server with a local host
-and proxied guest passed on Linux. Windows execution still needs local testing.
+This patch includes the prior connection retries, local-host connection and
+combat compression fixes. Lobby / Esc > Connection report remains available.
+READ-ME.txt is the full guide. chip-arena-source.zip includes editable source.
+Built and checked on Linux. Native Windows display and GPU checks remain local.
 '''
 bases=[ZipFile(path) for path in a.base]
 try:
@@ -45,13 +38,13 @@ try:
   selected={}
   for name in full.namelist():
    relative=name.removeprefix(prefix)
-   if not (relative.startswith(('resources/app/','resources/game/launcher/','resources/game/dist/client/')) or relative in ('resources/game/server.mjs','resources/game/release.json','chip-arena-source.zip','READ-ME.txt')):continue
+   if not (relative.startswith(('resources/app/','resources/game/launcher/','resources/game/dist/client/','resources/game/drizzle/')) or relative in ('resources/game/server.mjs','resources/game/release.json','chip-arena-source.zip','READ-ME.txt')):continue
    data=full.read(name)
    if relative.startswith(('resources/app/','resources/game/launcher/')) or any(name not in base.namelist() or base.read(name)!=data for base in bases):selected[relative]=data;patch.writestr(relative,data)
   patch.writestr('APPLY-FIX.txt',readme)
  with ZipFile(out) as patch,ZipFile(a.full) as full:
   assert patch.testzip() is None
-  assert json.loads(patch.read('resources/app/package.json'))['version']=='0.3.2'
+  assert json.loads(patch.read('resources/app/package.json'))['version']=='0.3.3'
   for base in bases:
    for name in full.namelist():
     if name.endswith('/'):continue

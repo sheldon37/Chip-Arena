@@ -1,3 +1,4 @@
+import {DRAFT_REVEAL_SECONDS} from './draft-settings.js';
 import {playerSpawn} from './arena.js';
 import {INTRO,IntroSequence} from './intros.js';
 import {ChaosSystem,FieldView,MinionView,fieldSpeed} from './chaos.js';
@@ -271,7 +272,7 @@ export class Simulation {
  this.phase='result';this.phaseEnd=this.time+this.options.resultSeconds!;
  }
  advance(){if(this.phase==='specialization'){for(const p of this.players.values())if(!p.selected&&(p.bot||this.time>=this.phaseEnd))this.selectSpec(p.id,p.spec);}
- else if(this.phase==='draft'){const d=this.draft,p=d?this.players.get(d.player):undefined;if(d&&(!p||!p.connected)){this.nextDraft(d.turn);}else if(d?.chosen){if(this.time>=(d.chosenAt||0)+1.3)this.nextDraft(d.turn);}else if(d&&p&&this.time>=d.readyAt&&(this.time>=this.phaseEnd||(p.bot&&this.time>=d.readyAt+1.4)))this.selectChip(p.id,p.offers[0]);}
+ else if(this.phase==='draft'){const d=this.draft,p=d?this.players.get(d.player):undefined;if(d&&(!p||!p.connected)){this.nextDraft(d.turn);}else if(d?.chosen){if(this.time>=(d.chosenAt||0)+DRAFT_REVEAL_SECONDS)this.nextDraft(d.turn);}else if(d&&p&&this.time>=d.readyAt&&(this.time>=this.phaseEnd||(p.bot&&this.time>=d.readyAt+1.4)))this.selectChip(p.id,p.offers[0]);}
  else if(this.phase==='intro'&&this.time>=this.phaseEnd)this.countdown();
  else if(this.phase==='countdown'&&this.time>=this.phaseEnd){this.phase='fight';this.fightStart=this.time;}
  else if(this.phase==='result'&&this.time>=this.phaseEnd){

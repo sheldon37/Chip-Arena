@@ -1,3 +1,4 @@
+import {DRAFT_REVEAL_SECONDS} from '../src/shared/draft-settings.js';
 import {test} from 'node:test';import assert from 'node:assert/strict';
 import {CHIPS,offerChips,eligibleChips,statsFor} from '../src/shared/content.js';
 import {chipStackEffects} from '../src/shared/chip-inspection.js';
@@ -13,5 +14,5 @@ test('board stack summaries show additive values, multiplicative tradeoffs, fixe
 test('owned Chips remain eligible until their cap; a repeated authoritative draft installs the second copy',()=>{
  const s=new Simulation({skipIntros:true,countdown:.01,resultSeconds:.01});const a=s.addPlayer('a')!,b=s.addPlayer('b')!;s.start();s.selectSpec('a','pistol');s.selectSpec('b','pistol');s.step();b.chips.vital=1;b.stats=statsFor(b.chips);
  assert.ok(offerChips('pistol',b.chips,()=>0).includes('vital'));assert.ok(eligibleChips('pistol',{vital:1}).some(c=>c.id==='vital'));assert.ok(!eligibleChips('pistol',{vital:12}).some(c=>c.id==='vital'));
- for(let n=0;n<2;n++){b.hp=0;s.resolveRound();s.step();if(n===0)s.step();}assert.equal(s.phase,'draft');b.offers=offerChips(b.spec,b.chips,()=>0);s.time=s.draft!.readyAt;assert.ok(s.selectChip('b','vital'));s.time+=1.31;s.advance();assert.equal(b.chips.vital,2);assert.equal(b.stats.hp,150);assert.equal(b.hp,150);assert.equal(a.score,1);assert.equal(s.snapshot().players[1].chips.vital,2);s.dispose();
+ for(let n=0;n<2;n++){b.hp=0;s.resolveRound();s.step();if(n===0)s.step();}assert.equal(s.phase,'draft');b.offers=offerChips(b.spec,b.chips,()=>0);s.time=s.draft!.readyAt;assert.ok(s.selectChip('b','vital'));s.time+=DRAFT_REVEAL_SECONDS+.01;s.advance();assert.equal(b.chips.vital,2);assert.equal(b.stats.hp,150);assert.equal(b.hp,150);assert.equal(a.score,1);assert.equal(s.snapshot().players[1].chips.vital,2);s.dispose();
 });

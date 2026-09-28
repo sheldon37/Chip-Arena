@@ -78,6 +78,7 @@ test('desktop hosts locally despite public DNS failure, exposes server checks, a
  const sandbox={require:(name:string)=>{
   if(name==='electron')return electron;
   if(name==='node:child_process')return {spawn:(exe:string,args:string[])=>{const child=Object.assign(new EventEmitter(),{pid:100,stdout:new EventEmitter(),stderr:new EventEmitter(),kill:()=>{}});spawns.push({exe,args,child});if(exe==='taskkill')setImmediate(()=>child.emit('exit',0));return child;}};
+  if(name==='./join.cjs')return require('../desktop/join.cjs');
   if(name==='./policy.cjs')return {...policy,freePort:async()=>8788};
   if(name==='./connection.cjs')return {openReachableWindow:async(_win:any,url:string)=>{opened.push(url);if(failLoad)throw Error("ERR_CONNECTION_REFUSED (-102)");}};
   return require(name);
