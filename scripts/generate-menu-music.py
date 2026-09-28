@@ -52,5 +52,5 @@ peak=np.max(np.abs(mix));mix*=.78/max(peak,.78)
 path=Path('/tmp/chip-menu-synth.wav')
 with wave.open(str(path),'wb') as w:
     w.setnchannels(2);w.setsampwidth(2);w.setframerate(rate);w.writeframes((mix*32767).astype('<i2').tobytes())
-subprocess.run(['ffmpeg','-v','error','-y','-i',str(path),'-c:a','libvorbis','-q:a','4','public/music/menu-afterglow.ogg'],check=True)
+subprocess.run(['ffmpeg','-v','error','-y','-i',str(path),'-c:a','libmp3lame','-q:a','3','public/music/menu-afterglow.mp3'],check=True)
 print(f'Afterglow: {length:.0f}s, 90 BPM, stereo, peak {np.max(np.abs(mix)):.3f}')

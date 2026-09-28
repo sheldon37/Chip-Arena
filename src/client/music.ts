@@ -3,7 +3,7 @@ export const MUSIC_TRACKS=[['foundry-rush','Foundry Rush',138],['orange-line','O
 /** One decode/stream at a time. Shuffle bag prevents repeats until all ten have played. */
 export class ArenaMusic {
  private menu:HTMLAudioElement|null=null;private menuActive=false;
- setMenuActive(active:boolean){if(active===this.menuActive)return;this.menuActive=active;if(!active){this.menu?.pause();return;}if(!this.menu){this.menu=new Audio(`${((import.meta as any).env?.BASE_URL||'/')}music/menu-afterglow.ogg`);this.menu.loop=true;this.menu.preload='auto';}this.menu.volume=this.muted?0:this.volume*.42;void this.menu.play().catch(()=>{});}
+ setMenuActive(active:boolean){if(active===this.menuActive)return;this.menuActive=active;if(!active){this.menu?.pause();return;}if(!this.menu){this.menu=new Audio(`${((import.meta as any).env?.BASE_URL||'/')}music/menu-afterglow.mp3`);this.menu.loop=true;this.menu.preload='auto';}this.menu.volume=this.muted?0:this.volume*.42;void this.menu.play().catch(()=>{});}
  private map='foundry';private theme:number|null=null;private audio:HTMLAudioElement|null=null;private bag:number[]=[];private current=-1;private active=false;private volume=.35;private muted=false;private failed=false;private ducked=false;
  setMap(raw:unknown){const id=mapId(raw);if(id===this.map)return;this.map=id;const music=arenaMap(id).music;this.theme=music?MUSIC_TRACKS.findIndex(t=>t[0]===music):null;this.audio?.pause();if(this.audio){this.audio.onended=null;this.audio.onerror=null;this.audio.removeAttribute('src');this.audio.load();}this.audio=null;this.current=-1;this.failed=false;if(this.active)this.next();}
  private get level(){return this.muted?0:this.volume*.55*(this.ducked?.12:1);}
