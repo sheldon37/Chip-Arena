@@ -14,5 +14,5 @@ export const MISHIMA_CHIPS:Chip[]=[
  chip('rage','Emperor’s Rage','Below one-third health, your punches and electric hooks deal greatly increased damage.','♜'),
  chip('bloodline','Bloodline Surge','Confirmed electric hits restore a little health and stamina.','♥'),
 ];
-export const EMPEROR={exclusiveChance:.85,guaranteedExclusives:2,chipRevealSeconds:4.8,electricDamage:8,electricStepSeconds:.10,electricStepSpeed:6,electricPush:2.8,electricPushGrowth:1.7,electricPushMax:14,echoDamage:3,electricRecovery:.40,electricHit:.10,waveSeconds:.18,waveSpeed:18,juggleSeconds:1.25,comboMemory:1.35} as const;
+export const EMPEROR={exclusiveChance:.85,guaranteedExclusives:2,chipRevealSeconds:4.8,electricDamage:8,electricStepSeconds:.10,electricStepSpeed:6,electricPush:1.5,electricPushGrowth:3,electricPushMax:24,echoDamage:3,electricRecovery:.40,electricHit:.10,waveSeconds:.18,waveSpeed:18,juggleSeconds:1.25,comboMemory:1.35} as const;
 export const MISHIMA_INCOMPATIBLE=new Set(['echo-strike','hurricane']);
