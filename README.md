@@ -305,7 +305,7 @@ private account material. Local play works offline; developer login needs intern
 ### Portable update channel
 
 `npm run build` also writes `dist/client/updates/latest.json` and a checksummed
-compressed client/server payload. Keep this build step in future releases.
+compressed client/server payload. Editable source is a separate download and is not duplicated inside automatic updates. Keep this build step in future releases.
 `launcher/update.mjs` checks the stable game origin before startup; it verifies the
 manifest, compressed payload and each file, stages a full release, and journals
 replacement for recovery. Data and browser preferences remain outside the update.

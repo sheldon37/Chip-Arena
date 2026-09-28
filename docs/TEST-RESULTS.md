@@ -9,6 +9,7 @@
 - Music tests verify twenty distinct audible MP3 files and map-specific stream changes, loop, mute and pause behavior. The supplied Moonlite Wilderness recording is included in full, approximately 226 seconds. Nine new cues are original procedural compositions.
 - Offline geometry studies were visually inspected for Moonlit Wilderness, Neon District, Canal Night Market and Fallen Citadel. All maps pass bounded scene-batch, finite-transform and resource-disposal checks. These studies approximate shading and are not browser/GPU screenshots.
 - Native Windows startup, final audio playback and hardware WebGL frame rate require local playtesting. Network results above use local transports and do not measure Internet tunnel latency.
+- The automatic-update payload excludes the separately supplied source ZIP and has an enforced 25 MiB hosting limit; content hashes are verified for every included file.
 - Desktop 0.3.6 keeps the previously verified runtime binaries. The packaging scripts verify archive integrity, new native/map assets, matching game release IDs and a patch merged byte-for-byte over the recovered 0.3.5 release. Older desktop patch bases were not available for this run.
 
 ## Demon Step, electric revision and desktop updater — 2026-09-28
