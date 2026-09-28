@@ -316,3 +316,11 @@ format changes remain explicit portable-package upgrades.
 Additional checks: `node tests/run-network.mjs chaos` exercises two real clients
 with summons, persistent fields, shared drafts, cosmetics and forged-role rejection.
 `npm run music:generate` regenerates the ten original MP3 tracks (requires ffmpeg).
+
+## Player accounts and Ansatsuken
+
+Optional persistent accounts now save player customization and restricted item grants.
+DEVs manage registered players through the DEV Menu; grants do not give DEV powers.
+Ansatsuken adds arcade melee, Hadoken, Tatsumaki, Shoryuken, twelve exclusive Chips,
+and a rain intro. See [accounts and Ansatsuken](docs/ACCOUNTS-ANSATSUKEN.md) for setup,
+controls, security boundaries and validation. Guests can still play without logging in.

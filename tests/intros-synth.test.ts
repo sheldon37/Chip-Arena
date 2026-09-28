@@ -21,8 +21,8 @@ test('intros default on, lock combat, sequence both names from authority time, t
  s.time=started+2*INTRO.seconds;s.advance();assert.equal(s.phase,'countdown');assert.equal(s.intro,undefined);s.time=s.phaseEnd;s.advance();assert.equal(s.phase,'fight');
  s.beginNextSet();assert.equal(s.phase,'countdown','later sets do not replay intros');s.phase='match';s.rematch();s.selectSpec('a','pistol');s.selectSpec('b','sword');assert.equal(s.phase,'intro','rematch does replay intros');s.dispose();
 });
-test('skip is a host-owned boolean; old and malformed cosmetics default safely; all five styles propagate',()=>{
- assert.equal(cosmetics({intro:'__proto__'}).intro,'neon-drop');assert.equal(cosmetics({}).intro,'neon-drop');assert.equal(Object.keys(INTRO_STYLES).length,6);
+test('skip is a host-owned boolean; old and malformed cosmetics default safely; all styles propagate',()=>{
+ assert.equal(cosmetics({intro:'__proto__'}).intro,'neon-drop');assert.equal(cosmetics({}).intro,'neon-drop');assert.equal(Object.keys(INTRO_STYLES).length,7);
  for(const intro of Object.keys(INTRO_STYLES))assert.equal(cosmetics({intro},true).intro,intro);
  for(const skip of [false,true,'true']){const s=new Simulation({skipIntros:skip as boolean});ready(s);assert.equal(s.phase,skip===true?'countdown':'intro');s.dispose();}
  const room=new HostedRoom('ABCDEFGH',{name:'Host',class:'ranged',color:'#12ccff',cosmetics:cosmetics({intro:'pulse-wave'})},false,()=>{},6,false,true);room.join({name:'Guest',cosmetics:{intro:'vector-slide'},skipIntros:false});assert.equal(room.receive('guest',{type:'options',skipIntros:false}),false);assert.equal(room.sim.snapshot().options.skipIntros,true);assert.equal(room.sim.snapshot().players[1].cosmetics?.intro,'vector-slide');room.dispose();
@@ -31,7 +31,7 @@ test('every intro is finite, deterministic after a time jump, distinctive and le
  const s=new Simulation();ready(s);const state=s.snapshot(),stage=new PlayerIntros(),root=state.players[0].pos,poses=new Set<string>();
  for(const style of Object.keys(INTRO_STYLES) as IntroStyle[]){const r=createCharacterRig('#44ddff',undefined,true);for(const age of [0,.35,.65,1,1.4,2.25,3.59]){poseIntro(r,style,age);r.group.updateMatrixWorld(true);r.group.traverse(o=>assert.ok(o.matrixWorld.elements.every(Number.isFinite),style));}poseIntro(r,style,1);poses.add(JSON.stringify([r.group.position.toArray(),r.group.rotation.toArray(),r.rightArm.rotation.toArray()]));const expected=r.group.matrixWorld.clone();poseIntro(r,style,.2);poseIntro(r,style,3.59);r.group.updateMatrixWorld(true);assert.deepEqual(r.group.matrixWorld.elements,expected.elements);
   state.players[0].cosmetics=cosmetics({intro:style});state.time=2.6;assert.ok(stage.update(state,16/9));assert.deepEqual(state.players[0].pos,root);
- }assert.equal(poses.size,6);stage.update({...state,phase:'fight'},16/9);assert.equal(stage.scene.getObjectByName('blank-mannequin-v2'),undefined);stage.dispose();s.dispose();
+ }assert.equal(poses.size,7);stage.update({...state,phase:'fight'},16/9);assert.equal(stage.scene.getObjectByName('blank-mannequin-v2'),undefined);stage.dispose();s.dispose();
 });
 test('armor emits its accent and still pulses during block cooldown without changing another pilot',()=>{
  const a=createCharacterRig('#55ddff','#111111',true),b=createCharacterRig('#55ddff','#111111',true),tint=new BlockCooldownTint(),mesh=a.group.getObjectByName('sternum') as T.Mesh,other=b.group.getObjectByName('sternum') as T.Mesh,original=mesh.material as T.MeshLambertMaterial,base=original.emissive.clone();assert.ok(original.emissiveIntensity>.5);assert.ok(base.r+base.g+base.b>0);

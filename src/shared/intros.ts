@@ -1,6 +1,7 @@
 import type {Snapshot} from './simulation.js';
 
 export const INTRO_STYLES={
+ 'dev-ansatsuken':'DEV · Rain Warrior',
  'dev-matrix':'DEV · L33T Throne',
  'neon-drop':'Neon Drop',
  'vector-slide':'Vector Slide',
@@ -10,8 +11,8 @@ export const INTRO_STYLES={
 } as const;
 export type IntroStyle=keyof typeof INTRO_STYLES;
 export const INTRO={seconds:4.8,nameAt:3.2} as const;
-export const introDuration=(style?:string)=>style==='dev-matrix'?8:INTRO.seconds;
-export const introNameAt=(style?:string)=>style==='dev-matrix'?6.25:INTRO.nameAt;
+export const introDuration=(style?:string)=>style==='dev-matrix'?8:style==='dev-ansatsuken'?7.2:INTRO.seconds;
+export const introNameAt=(style?:string)=>style==='dev-matrix'?6.25:style==='dev-ansatsuken'?5.45:INTRO.nameAt;
 export interface IntroSequence {started:number;players:string[];}
 /** One authority-owned timeline. Joining a snapshot mid-intro never restarts it. */
 export function introFrame(state:Pick<Snapshot,'phase'|'intro'|'time'|'players'>){

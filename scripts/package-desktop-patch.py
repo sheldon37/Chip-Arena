@@ -4,7 +4,7 @@ from pathlib import Path
 from zipfile import ZipFile,ZIP_DEFLATED
 p=argparse.ArgumentParser();p.add_argument('--full',required=True);p.add_argument('--base',action='append',required=True);p.add_argument('--out',required=True);a=p.parse_args()
 prefix='Chip-Arena-Desktop/';out=Path(a.out).resolve();out.parent.mkdir(parents=True,exist_ok=True)
-readme='''CHIP ARENA - L33T H4X DEV CONTENT UPDATE
+readme='''CHIP ARENA - ACCOUNTS + ANSATSUKEN UPDATE
 
 For the existing Windows desktop edition (0.3.0 through 0.3.3).
 
@@ -18,12 +18,15 @@ For the existing Windows desktop edition (0.3.0 through 0.3.3).
 The existing updater also installs this game update when the host restarts.
 This cumulative patch includes the earlier launcher connection and room-code fixes.
 
-Sign in with your developer account. Select Magic > L33T H4x.
-Customize > Match Intro > DEV / L33T Throne selects the new throne entrance.
-The weapon unlocks eight L44T Chips, green binary trails, fixed-position targeting,
-and greatly increased legendary/mythic chances. Chip descriptions are simplified.
-Brain Steal replaces RMB Block. Scare Tactics / Admin Pause use E.
-Normal players retain their usual weapon and Chip choices.
+Home > Log in / Register saves your pilot across computers. Keep the recovery code.
+Existing DEV credentials still work; log in once to create the saved DEV account.
+Home > DEV Menu grants registered players restricted weapons, intros and flags.
+After a grant changes, reload Account and rejoin the room.
+
+DEV/granted player: Melee > Ansatsuken. LMB: three-hit combo. RMB: burning Hadoken.
+E: Tatsumaki Senpukyaku. 1: Shoryuken. Twelve exclusive arcade Chips include
+charge/release Shinku Hadoken and Ten-Hit Rush. Customize > DEV / Rain Warrior intro.
+The L33T staff, previous content and easy room-code joining remain included.
 
 Host online > Create Room > Copy Code. Friends enter CA-XXXX-XXXX in Join a friend.
 Keep the host open. Settings and saved room-code behavior are unchanged.

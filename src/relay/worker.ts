@@ -1,9 +1,10 @@
+import {accounts} from './accounts.js';
 import {directory} from './directory.js';
 import {party} from './party.js';
 import {login} from './auth.js';
 import {socketEndpoint} from '../shared/connection.js';
 import {RELAY,normalizeRoomCode,cleanProfile,validPacket} from '../shared/relay-protocol.js';
-// Only this Site's DB binding is used. No accounts and no other project's services.
+// Only this Site’s isolated DB binding is used.
 interface Statement {bind(...values:any[]):Statement;first<T=any>():Promise<T|null>;run():Promise<any>;}
 export interface Database {prepare(sql:string):Statement;batch(statements:Statement[]):Promise<any[]>;}
 type Env={DEV_ACCOUNT_VERIFIER?:string;DEV_SIGNING_KEY?:string;MULTIPLAYER_URL?:string;DB:Database;ASSETS?:{fetch(request:Request):Promise<Response>}};
@@ -55,4 +56,4 @@ export async function relay(request:Request,env:Env,now=Date.now()){
  if(action!=='exchange')throw fail('Unknown room operation.',404);
  return exchange(db,input,code,key,host,now);
 }
-export default {async fetch(request:Request,env:Env){if(new URL(request.url).pathname.startsWith('/api/directory/')){try{return await directory(request,env.DB);}catch{return Response.json({error:'Room lookup is temporarily unavailable. Use an invite link.'},{status:503,headers:{'Cache-Control':'no-store','Access-Control-Allow-Origin':'*'}});}}if(new URL(request.url).pathname==='/api/auth/login'){try{return await login(request,env);}catch{return json({error:'Login temporarily unavailable.'},503);}}if(new URL(request.url).pathname==='/api/network'){const endpoint=socketEndpoint(env.MULTIPLAYER_URL,new URL(request.url).origin);return json({transport:endpoint?'websocket':'https-relay',endpoint});}if(new URL(request.url).pathname.startsWith('/api/rooms/')){try{return new URL(request.url).pathname.startsWith('/api/rooms/v2/')?await party(request,env.DB):await relay(request,env);}catch(e:any){if(!e.status)console.error('Chip Arena relay failed',e.message);return json({error:e.status?e.message:'Room service interrupted. Retrying…'},e.status||503);}}return env.ASSETS?env.ASSETS.fetch(request):new Response('Not found',{status:404});}};
+export default {async fetch(request:Request,env:Env){if(new URL(request.url).pathname.startsWith('/api/accounts/'))return accounts(request,env);if(new URL(request.url).pathname.startsWith('/api/directory/')){try{return await directory(request,env.DB);}catch{return Response.json({error:'Room lookup is temporarily unavailable. Use an invite link.'},{status:503,headers:{'Cache-Control':'no-store','Access-Control-Allow-Origin':'*'}});}}if(new URL(request.url).pathname==='/api/auth/login'){try{return await login(request,env);}catch{return json({error:'Login temporarily unavailable.'},503);}}if(new URL(request.url).pathname==='/api/network'){const endpoint=socketEndpoint(env.MULTIPLAYER_URL,new URL(request.url).origin);return json({transport:endpoint?'websocket':'https-relay',endpoint});}if(new URL(request.url).pathname.startsWith('/api/rooms/')){try{return new URL(request.url).pathname.startsWith('/api/rooms/v2/')?await party(request,env.DB):await relay(request,env);}catch(e:any){if(!e.status)console.error('Chip Arena relay failed',e.message);return json({error:e.status?e.message:'Room service interrupted. Retrying…'},e.status||503);}}return env.ASSETS?env.ASSETS.fetch(request):new Response('Not found',{status:404});}};

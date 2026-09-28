@@ -1,6 +1,7 @@
 import type {Player,Projectile,Simulation} from './simulation.js';
 import {CONFIG,Input,Vec,v,add,sub,mul,len,norm,forward,idleInput} from './config.js';
 import {ARENA} from './arena.js';
+import {canUse} from './access.js';
 import {LEET} from './leet-content.js';
 export interface LeetStatus {controlling?:string;controlledBy?:string;controlUntil?:number;frozenUntil?:number;scare?:{at:number;until:number;source:string};launchUntil?:number;viewYaw?:number;viewPitch?:number;}
 export interface LeetField {id:string;kind:'nuke'|'tree';owner:string;pos:Vec;at:number;until:number;target?:string;walker?:Vec;}
@@ -9,7 +10,7 @@ const inactive=(p:Player)=>({...idleInput(),seq:p.input.seq,yaw:p.input.yaw,pitc
 export class LeetSystem {
  fields=new Map<string,LeetField>();private originals=new Map<string,Input>();private anchors=new Map<string,Vec>();private used=new Set<string>();private procs=new Map<string,number>();private history=new Map<string,{at:number;pos:Vec}[]>();
  constructor(readonly sim:Simulation){}
- active(p:Player|undefined,chip?:string):boolean{return !!p&&p.developer&&p.spec==='leet'&&(!chip||!!p.chips['l44t-'+chip]);}
+ active(p:Player|undefined,chip?:string):boolean{return !!p&&canUse(p,'weapon:leet')&&p.spec==='leet'&&(!chip||!!p.chips['l44t-'+chip]);}
  clear(){this.fields.clear();this.used.clear();this.procs.clear();this.history.clear();this.originals.clear();this.anchors.clear();for(const p of this.sim.players.values())p.leet={};}
  frozen(p:Player|undefined){return !!p?.leet?.scare||(p?.leet?.frozenUntil||0)>this.sim.time;}
  release(p:Player){const s=this.sim,ids=[p.id,p.leet?.controlling,p.leet?.controlledBy];for(const id of ids){const q=id?s.players.get(id):undefined;if(q?.leet){delete q.leet.controlling;delete q.leet.controlledBy;delete q.leet.controlUntil;delete q.leet.viewYaw;delete q.leet.viewPitch;}}}

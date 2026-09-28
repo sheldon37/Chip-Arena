@@ -50,9 +50,14 @@ export class ArenaAudio {
   let volume=gain,pan=0;if(position){const dx=position.x-this.listener.x,dy=position.y-this.listener.y,dz=position.z-this.listener.z,d=Math.hypot(dx,dy,dz);volume*=1/(1+Math.max(0,d-2)*.13);pan=Math.max(-.85,Math.min(.85,(-Math.cos(this.yaw)*dx+Math.sin(this.yaw)*dz)/Math.max(2,d)));}
   const source=context.createBufferSource(),level=context.createGain(),panner=context.createStereoPanner();source.buffer=buffer;source.playbackRate.value=name==='ui'||name==='countdown'?1:.97+Math.random()*.06;level.gain.value=volume;panner.pan.value=pan;source.connect(level).connect(panner).connect(this.master!);this.voices.add(source);source.onended=()=>{this.voices.delete(source);source.disconnect();level.disconnect();panner.disconnect();};source.start();this.played++;
  }
+ private arcadeVoices=0;
+ arcadeTone(hit:number,move:boolean,superMove=false){const c=this.context;if(!c||!this.master||this.muted||c.state!=='running'||this.arcadeVoices>=8)return;this.arcadeVoices++;const osc=c.createOscillator(),gain=c.createGain(),at=c.currentTime;osc.type=move?'sawtooth':'square';osc.frequency.setValueAtTime(move?120:360+Math.min(hit,10)*55,at);osc.frequency.exponentialRampToValueAtTime(move?(superMove?920:420):160,at+(move?.25:.08));gain.gain.setValueAtTime(move?.09:.06,at);gain.gain.exponentialRampToValueAtTime(.001,at+(move?.35:.10));osc.connect(gain).connect(this.master);osc.start();osc.stop(at+(move?.38:.12));osc.onended=()=>{this.arcadeVoices--;osc.disconnect();gain.disconnect();};}
  update(state:Snapshot,me:string,yaw:number,presentation=state){this.intros.update(presentation,this.context,this.music.cueVolume);this.music.setActive(['fight','countdown','result'].includes(state.phase));this.updateLove(state);const self=state.players.find(p=>p.id===me);if(self)this.listener=self.pos;this.yaw=yaw;
   for(const e of this.cursor.consume(state.events,state.time)){
-   if(e.type==='shot'||e.type==='windup'){if(e.spec)this.play(e.spec==='leet'?'lightning':e.spec,e.pos,.65);}
+   if(e.type==='shot'||e.type==='windup'){if(e.spec)this.play(e.spec==='leet'?'lightning':e.spec==='ansatsuken'?'fire':e.spec,e.pos,.65);}
+   else if(e.type==='arcade-hit'){this.play('hit',e.pos,.5);this.arcadeTone(e.amount||1,false,e.message==='FINISH');}
+   else if(e.type==='arcade-move'){if(e.message)this.arcadeTone(3,true,e.message.includes('SHINKU'));}
+   else if(e.type==='arcade-strike')this.play('sword',e.pos,.25);
    else if(e.type==='leet-scare'&&e.target===me){this.play('darkness',undefined,.9);this.play('metal',undefined,.6);}
    else if(e.type==='leet-lock'||e.type==='leet-control'||e.type==='leet-brain')this.play('lightning',e.pos,.35);
    else if(e.type==='leet-nuke')this.play('explosion',e.pos,1);

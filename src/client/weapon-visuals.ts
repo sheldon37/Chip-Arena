@@ -13,7 +13,8 @@ const box=(p:T.Object3D,c:number,x:number,y:number,z:number,sx:number,sy:number,
 function socket(parent:T.Object3D,name:string,x:number,y:number,z:number){const g=new T.Group();g.name=name;g.position.set(x,y,z);parent.add(g);return g;}
 export function buildWeapon(weapon:T.Group,spec:string,offhand=false){
  weapon.clear();weapon.userData={spec,enchant:'',modifierKey:''};const w=WEAPONS[spec as keyof typeof WEAPONS];const steel=0x81999f,dark=0x263a43,gold=0xe3b779;
- if(spec==='leet'){matrixStaff(weapon);}else if(w.class==='ranged'){
+ if(spec==='ansatsuken'){box(weapon,0x931f31,0,-.015,-.01,.205,.175,.19);box(weapon,0xec3c43,0,-.04,.07,.205,.13,.065);box(weapon,0xe8d6ad,0,.06,-.01,.21,.045,.2);socket(weapon,'blade-tip',0,-.045,.115);}
+ else if(spec==='leet'){matrixStaff(weapon);}else if(w.class==='ranged'){
   const rifle=spec==='rifle',mg=spec==='machinegun',tip=rifle?1.18:mg?.87:.47;
   box(weapon,dark,0,0,.16,.16,.20,rifle?.64:mg?.7:.39);box(weapon,steel,0,.09,.16,.145,.075,rifle?.68:mg?.7:.38);
   box(weapon,dark,0,0,tip-.17,.075,.075,rifle?.60:.34);box(weapon,gold,0,0,tip,.12,.12,.07);
@@ -38,6 +39,7 @@ export function buildWeapon(weapon:T.Group,spec:string,offhand=false){
 }
 /** Modular equipment silhouettes communicate builds even before an attack fires. */
 export function weaponModifiers(weapon:T.Group,p:PlayerView,time:number){
+ if(p.spec==='ansatsuken')return;
  if(p.spec==='leet')animateStaff(weapon,time);const key=JSON.stringify(p.chips);if(weapon.userData.modifierKey!==key){weapon.userData.modifierKey=key;weapon.getObjectByName('chip-modules')?.removeFromParent();const group=socket(weapon,'chip-modules',0,0,0),c={...p.chips},s=statsFor(c),w=WEAPONS[p.spec],tip=weapon.getObjectByName('muzzle')?.position.z??.8;
   for(let n=0;n<Math.min(6,s.extraProjectiles);n++){const x=(n%2?1:-1)*(.18+Math.floor(n/2)*.14);if(w.class==='ranged'){box(group,0x647e89,x,0,tip-.23,.11,.13,.48);box(group,0xffd88d,x,0,tip+.015,.12,.14,.075,true);}else{const orb=mesh(group,sphere,w.color,x,.08,tip-.06,.085,.085,.085,true);orb.userData.orbit=n;}}
   for(let n=0;n<(c.ricochet||0);n++)mesh(group,ring,0xffcc49,0,0,tip-.08-n*.11,.17,.17,.17,true);
@@ -63,7 +65,7 @@ export function weaponModifiers(weapon:T.Group,p:PlayerView,time:number){
 export function bodyModifiers(r:CharacterRig,p:PlayerView,time:number){
  let charge=r.rightHand.getObjectByName('spell-charge') as T.Group|undefined;
  if(charge?.userData.spec!==p.spec){charge?.removeFromParent();charge=socket(r.rightHand,'spell-charge',0,-.09,.02);charge.userData.spec=p.spec;mesh(charge,sphere,WEAPONS[p.spec].color,0,0,0,.14,.14,.14,true);for(let n=0;n<2;n++){const halo=mesh(charge,ring,WEAPONS[p.spec].color,0,0,0,.22,.22,.22,true);halo.rotation.x=n*Math.PI/2;}}
- const phrase=spellPose(p,time);charge.visible=p.hp>0&&phrase.active;charge.scale.setScalar(Math.max(.01,phrase.weight*(phrase.drive<.2?1+phrase.coil:.8)));charge.rotation.y=time*8;
+ const phrase=spellPose(p,time);charge.visible=p.hp>0&&(p.spec==='ansatsuken'?p.arcade?.action==='charge':phrase.active);charge.scale.setScalar(Math.max(.01,phrase.weight*(phrase.drive<.2?1+phrase.coil:.8)));charge.rotation.y=time*8;if(p.spec==='ansatsuken'&&p.arcade?.action==='charge')charge.scale.setScalar(.5+p.arcade.charge*1.2);
 
  const c=p.chips,s=statsFor(c),key=JSON.stringify(c);if(r.group.userData.bodyChips!==key){r.group.userData.bodyChips=key;for(const parent of [r.chest,r.leftFoot,r.rightFoot,r.leftArm,r.rightArm])parent.getObjectByName('body-chips')?.removeFromParent();
   const chest=socket(r.chest,'body-chips',0,0,0);for(let n=0;n<Math.min(6,c.vital||0);n++)box(chest,0xff7478,(n%3-1)*.12,.12+Math.floor(n/3)*.1,.18,.085,.06,.045,true);
@@ -78,6 +80,7 @@ export function bodyModifiers(r:CharacterRig,p:PlayerView,time:number){
 }
 export function enchantWeapon(weapon:T.Group,elements:ElementId[],time:number,stacks:Record<string,number>={}){
  const key=elements.join(',')+':'+(stacks.ember||0)+':'+(stacks.poison||0),spec=weapon.userData.spec;
+ if(spec==='ansatsuken'){weapon.getObjectByName('enchantment')?.removeFromParent();return;}
  if(weapon.userData.enchant!==key){weapon.userData.enchant=key;weapon.getObjectByName('enchantment')?.removeFromParent();const g=socket(weapon,'enchantment',0,0,0),length=spec==='daggers'?.5:spec==='greatsword'?1.35:spec==='shield'?.7:.94;
   for(const e of elements){const count=10+Math.min(6,stacks[e==='fire'?'ember':'poison']||1);for(let n=0;n<count;n++){const z=spec==='shield'?.34:.28+n/(count-1)*length,y=spec==='shield'?-.30+n/(count-1)*.7:0,side=n%2?1:-1;
    const m=mesh(g,e==='fire'?flame:sphere,e==='fire'?(n%3?0xff6c27:0xffd06a):0x88f37f,side*(spec==='shield'?.27:.10),y,z,e==='fire'?.065:.045,e==='fire'?.24:.045,e==='fire'?.08:.045,true);m.userData={element:e,baseY:y,phase:n*.81};

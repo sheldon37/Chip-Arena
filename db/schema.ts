@@ -11,3 +11,14 @@ export const partySeats=sqliteTable('party_seats',{
 },t=>[index('party_seat_room').on(t.code)]);
 
 export const onlineRooms=sqliteTable('online_rooms',{code:text('code').primaryKey(),hostKey:text('host_key').notNull(),creator:text('creator').notNull(),origin:text('origin').notNull(),expires:integer('expires').notNull()},t=>[index('online_expiry').on(t.expires),index('online_creator').on(t.creator)]);
+
+// Account data lives on the central Site, never inside a friend's game host.
+export const playerAccounts=sqliteTable('player_accounts',{
+ id:text('id').primaryKey(),username:text('username').notNull().unique(),password:text('password').notNull(),recovery:text('recovery').notNull(),developer:integer('developer').notNull().default(0),unlocks:text('unlocks').notNull().default('[]'),flags:text('flags').notNull().default('[]'),profile:text('profile').notNull().default('{}'),revision:integer('revision').notNull().default(0),grantVersion:integer('grant_version').notNull().default(0),created:integer('created').notNull(),updated:integer('updated').notNull()
+});
+export const playerSessions=sqliteTable('player_sessions',{
+ hash:text('hash').primaryKey(),accountId:text('account_id').notNull().references(()=>playerAccounts.id,{onDelete:'cascade'}),expires:integer('expires').notNull()
+},t=>[index('player_session_account').on(t.accountId),index('player_session_expiry').on(t.expires)]);
+export const accountAudit=sqliteTable('account_audit',{
+ id:text('id').primaryKey(),actor:text('actor').notNull(),target:text('target').notNull(),action:text('action').notNull(),detail:text('detail').notNull(),created:integer('created').notNull()
+},t=>[index('account_audit_target').on(t.target,t.created)]);

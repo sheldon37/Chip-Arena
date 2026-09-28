@@ -105,3 +105,35 @@ The animated matrix staff unlocks eight L44T Chips and much better top-tier odds
 Brain Steal replaces RMB Block; Scare Tactics and Admin Pause use E.
 This is intentionally overpowered DEV content. Other players keep normal choices.
 The existing executable/updater and room-code flow still work. No new .bat needed.
+
+ACCOUNTS + ANSATSUKEN UPDATE
+Home > Log in / Register creates a username/password account. Guest play remains
+available. Save the recovery code shown after registration: there is no email
+reset service. Customize > Save Pilot saves your appearance and intro text to
+your account. Account > Reload saved pilot loads it on another computer.
+Sign in again after closing the game. Internet access is needed for accounts;
+local guest practice still works offline. Passwords go directly to the central
+HTTPS account service, not to the friend's match server.
+
+Existing DEV: log in with the same username and password to create your saved
+DEV account automatically. Home > DEV Menu > find a registered username > select
+items/flags > Save grants. You can grant/revoke the L33T staff, Ansatsuken, their
+intros, and DEV kill effects separately. Playtester and VIP flags are available.
+Grants do not give DEV powers. Ask the player to reload their Account, then
+rejoin the room. Signed access is checked on room entry; ongoing rooms keep the
+access granted when that player joined. DEV roles cannot be assigned in this menu.
+
+DEV or granted player: choose Melee > Ansatsuken.
+LMB starts the left straight / right straight / rising knee combo.
+RMB fires a Hadoken that burns enemies (replaces Block).
+E performs Tatsumaki Senpukyaku. 1 performs Shoryuken.
+The Shinku Hadoken Chip enables hold RMB to charge, then release at full charge.
+Ten-Hit Rush turns the basic chain into ten hits. Twelve exclusive arcade Chips
+also add hurricane kicks, triple uppercuts, cancels, focus armor, air juggles,
+counters, afterimages, stamina recovery and a once-per-round second wind.
+These are custom arena rules inspired by arcade fighters, not an exact port.
+Customize > Match Intro > DEV / Rain Warrior selects the new rain entrance.
+
+Restart the host to receive the game update. The existing executable and .bat
+launchers continue working; no new runtime is required. Update all clients and
+hosts together so the new moves and signed item grants are recognized.
