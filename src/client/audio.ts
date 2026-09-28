@@ -5,7 +5,7 @@ import {CLOWN_LOVE} from './clown-love-timing.js';
 import {BASS_VAN} from './bass-van-timing.js';
 import type {GameEvent,Snapshot} from '../shared/simulation.js';
 import type {Vec} from '../shared/config.js';
-export const AUDIO_CLIPS=['electric-hook-hit','electric-hook','demon-step','arcade-punch','arcade-kick','arcade-heavy','arcade-parry','pistol','rifle','machinegun','fire','water','lightning','darkness','sword','daggers','shield','greatsword','reload-start','reload-end','dash','jump','hit','hurt','parry','wood','stone','metal','explosion','burn-tick','poison-tick','ui','install','countdown','go','win','lose'] as const;
+export const AUDIO_CLIPS=['saw-cut','spike-rise','electric-hook-hit','electric-hook','demon-step','arcade-punch','arcade-kick','arcade-heavy','arcade-parry','pistol','rifle','machinegun','fire','water','lightning','darkness','sword','daggers','shield','greatsword','reload-start','reload-end','dash','jump','hit','hurt','parry','wood','stone','metal','explosion','burn-tick','poison-tick','ui','install','countdown','go','win','lose'] as const;
 export type Sound=typeof AUDIO_CLIPS[number];
 /** Event IDs are server-issued; never replay old snapshots or reconnect history. */
 export class AudioCursor {
@@ -59,6 +59,8 @@ export class ArenaAudio {
  update(state:Snapshot,me:string,yaw:number,presentation=state){this.intros.update(presentation,this.context,this.music.cueVolume);this.music.setMap(state.options.map);this.music.setActive(['fight','countdown','result'].includes(state.phase));this.updateLove(state);const self=state.players.find(p=>p.id===me);if(self)this.listener=self.pos;this.yaw=yaw;this.updateDemon(presentation);
   for(const e of this.cursor.consume(state.events,state.time)){
    if(e.type==='shot'||e.type==='windup'){if(e.spec)this.play(e.spec==='leet'||e.spec==='emperor'?'lightning':e.spec==='ansatsuken'?'fire':e.spec,e.pos,.65);}
+   else if(e.type==='stage-saw-hit')this.play('saw-cut',e.pos,1.1);
+   else if(e.type==='stage-spikes-rise')this.play('spike-rise',e.pos,1);
    else if(e.type==='demon-step')this.play('demon-step',e.pos,.95);
    else if(e.type==='emperor-electric')this.play('electric-hook',e.pos,.95);
    else if(e.type==='emperor-hit'){this.play(e.message==='ELECTRIC'?'electric-hook-hit':'arcade-punch',e.pos,.9);}

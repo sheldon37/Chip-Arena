@@ -14,7 +14,7 @@ export const MAPS=[
  {id:'forge',name:'Obsidian Forge',tag:'Smelter halls · basalt cover',theme:'forge',sky:0x210b14,floor:0x31262d,accent:0xff654c,music:'cinder-engine'},
  {id:'sawmill',name:'Razorworks',tag:'HAZARD · moving buzzsaws · timber towers',theme:'industrial',sky:0x151018,floor:0x36313b,accent:0xffae57,music:'foundry-rush'},
  {id:'spikevault',name:'Thornfall Vault',tag:'HAZARD · timed spikes · ruined galleries',theme:'castle',sky:0x111322,floor:0x403c4c,accent:0xf37885,music:'stone-oath'},
- {id:'lavaworks',name:'Cinder Crossing',tag:'HAZARD · lava channels · elevated crossings',theme:'forge',sky:0x240b13,floor:0x302831,accent:0xff713c,music:'cinder-engine'},
+ {id:'lavaworks',name:'Cinder Crossing',tag:'HAZARD · lava pits · move to swim, jump to escape',theme:'forge',sky:0x240b13,floor:0x302831,accent:0xff713c,music:'cinder-engine'},
 ] as const;
 export type MapId=typeof MAPS[number]['id'];
 export function mapId(raw:unknown):MapId{return MAPS.some(m=>m.id===raw)?raw as MapId:'foundry';}
@@ -23,7 +23,13 @@ export function arenaMap(raw:unknown){return MAPS.find(m=>m.id===mapId(raw))!;}
 export function expansionBlocks(id:Exclude<MapId,'foundry'>):ArenaBlock[]{
  const out:ArenaBlock[]=[];let serial=0;
  const b=(x:number,y:number,z:number,sx:number,sy:number,sz:number,material:Material='stone',extra:Partial<ArenaBlock>={})=>{const key=`${id}-${++serial}`;out.push({id:key,pos:v(x,y,z),size:v(sx,sy,sz),material,...extra});return key;};
- b(0,-.75,0,64,1.5,56,'foundation');
+ if(id==='lavaworks'){
+  // Solid banks and deep channel floors leave two real openings in the arena.
+  b(0,-1.75,0,6,3.5,34,'foundation');
+  for(const x of [-19.5,19.5])b(x,-1.75,0,25,3.5,34,'foundation');
+  for(const z of [-22.5,22.5])b(0,-1.75,z,64,3.5,11,'foundation');
+  for(const x of [-5,5])b(x,-3.75,0,4,.5,34,'foundation');
+ }else b(0,-.75,0,64,1.5,56,'foundation');
  const crate=(x:number,z:number,y=.65)=>b(x,y,z,1.3,1.3,1.3,'wood',{dynamic:true,mass:10});
  const step=(x:number,z:number,width=4,height=1.6)=>{const count=Math.ceil(height/.18);for(let n=0;n<count;n++)b(x,(n+1)*height/(count*2),z+n*.26,width,(n+1)*height/count,.28,'foundation');};
  const building=(x:number,z:number,w:number,d:number,h:number,material:Material='stone')=>{b(x-w/2,h/2,z,.65,h,d,material);b(x+w/2,h/2,z,.65,h,d,material);for(const s of [-1,1]){for(const side of [-1,1])b(x+side*(w/4+1),h/2,z+s*d/2,Math.max(.7,w/2-2),h,.65,material);b(x,h-.45,z+s*d/2,4,.9,.65,material);}b(x,h+.2,z,w+1,.4,d+1,'foundation');};
