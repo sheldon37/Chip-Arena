@@ -1,3 +1,4 @@
+import {animateCosmetics} from './auditor-halo.js';
 import {animateAnsatsuken} from './ansatsuken-animation.js';
 import * as T from 'three';
 import type {PlayerView} from '../shared/simulation.js';
@@ -33,6 +34,7 @@ export function spellPose(p:PlayerView,time:number){
 function blendRotation(node:T.Object3D,x:number,y:number,z:number,weight:number){node.quaternion.slerp(new T.Quaternion().setFromEuler(new T.Euler(x,y,z)),clamp(weight,0,1));}
 /** Distance-driven locomotion under action layers. Authoritative attack timestamps keep the hit phase aligned. */
 export function animateCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=p.pitch){
+ animateCosmetics(r,time);
  const w=WEAPONS[p.spec],speed=Math.hypot(p.vel.x,p.vel.z),target=p.grounded?clamp(speed/6.8,0,1.25):0;
  r.motion+=(target-r.motion)*(1-Math.exp(-ANIMATION.blendSpeed*dt));r.stride+=Math.min(speed,15)*dt*ANIMATION.stridePerMetre;
  const run=r.motion,gait=Math.sin(r.stride),opposite=-gait,pose=attackPose(p,time),forward=(p.vel.x*Math.sin(p.yaw)+p.vel.z*Math.cos(p.yaw))/Math.max(.1,speed),strafe=(p.vel.x*Math.cos(p.yaw)-p.vel.z*Math.sin(p.yaw))/Math.max(.1,speed),travel=forward<-.2?-1:1;
@@ -48,6 +50,13 @@ export function animateCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:numbe
  r.leftElbow.rotation.set(-.22-Math.max(0,gait)*.5*run,0,0);r.rightElbow.rotation.set(-.25-Math.max(0,-gait)*.5*run,0,0);
  r.leftHand.rotation.set(Math.sin(r.stride-.5)*.13*run,0,.06);r.rightHand.rotation.set(-Math.sin(r.stride-.5)*.13*run,0,-.06);
  r.weapon.position.set(0,0,0);r.weapon.rotation.set(.5,0,0);r.weapon.scale.set(1,1,w.class==='melee'?p.reach/w.range:1);r.offWeapon.rotation.set(.55,0,0);r.offWeapon.scale.copy(r.weapon.scale);
+ if(p.knockdown&&time<p.knockdown.until){
+  const k=p.knockdown,air=k.landedAt===undefined,age=time-k.at,landAge=air?0:time-k.landedAt!,rise=air?0:smooth((landAge-.45)/.45);
+  r.body.rotation.set(air?-Math.min(1.3,.2+age*2):-Math.PI/2*(1-rise),0,air?Math.sin(age*5)*.12:0);
+  r.body.position.y=air?0:-.64*(1-rise)+Math.sin(Math.min(.2,landAge)*Math.PI/.2)*.06;
+  r.leftArm.rotation.set(-.45,0,.7*(1-rise));r.rightArm.rotation.set(-.45,0,-.7*(1-rise));r.leftElbow.rotation.x=r.rightElbow.rotation.x=-.3;
+  r.leftLeg.rotation.set(air?-.5:0,0,.12);r.rightLeg.rotation.set(air?.3:0,0,-.12);r.leftKnee.rotation.x=air?.65:.08+.85*rise*(1-rise);r.rightKnee.rotation.x=air?.25:.08+.85*rise*(1-rise);r.head.rotation.x=air?-.3:0;return pose;
+ }
  if((p.hitStunUntil||0)>time){const flinch=Math.min(1,((p.hitStunUntil||0)-time)/.12);r.body.rotation.x=-.23*flinch;r.chest.rotation.y=.20*flinch;r.head.rotation.x=-.22;r.leftArm.rotation.set(-.5,0,.45);r.rightArm.rotation.set(-.5,0,-.45);r.leftElbow.rotation.x=r.rightElbow.rotation.x=-.8;return pose;}
  if(p.spec==='ansatsuken'){animateAnsatsuken(r,p,time);return pose;}
  const aimTarget=w.class==='ranged'?(pose.shotAge<Math.min(.9,w.interval+.25)||p.reloadTime>0?1:run>.15?0:1):0;r.aimWeight+=(aimTarget-r.aimWeight)*(1-Math.exp(-dt*24));

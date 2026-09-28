@@ -124,7 +124,7 @@ rejoin the room. Signed access is checked on room entry; ongoing rooms keep the
 access granted when that player joined. DEV roles cannot be assigned in this menu.
 
 DEV or granted player: choose Melee > Ansatsuken.
-LMB starts the left straight / right straight / rising knee combo.
+LMB starts the right straight / left straight / high kick combo.
 RMB parries: no cooldown, blue success flash, brief invulnerability and a chime.
 1 fires a Hadoken that burns enemies.
 E performs Tatsumaki Senpukyaku. 2 performs Shoryuken.
@@ -150,3 +150,17 @@ A successful parry grants 0.10 seconds of invulnerability and no cooldown.
 Hits now stun targets and show a combo counter, damage total and distinct impacts.
 Ansatsuken drafts guarantee two available exclusive Chips; remaining slots have
 an 85% chance to draw from its exclusive pool before normal rarity selection.
+
+ANSATSUKEN CINEMATIC UPDATE
+The combo now follows the supplied two punches / high-kick reference.
+Shoryuken turns through the air, launches the opponent, then knocks them down.
+Knocked-down players cannot attack, block, jump or dash until they get up.
+Impacts have blue-white starbursts and sweeping blue arcs.
+All twelve exclusive fighting Chips have red Ansatsuken rarity, animated
+headband / ki effects, and a synchronized 4.8-second selection cinematic.
+Choosing L33T automatically uses the L33T Throne intro; choosing Ansatsuken
+uses Rain Warrior. The host's Skip Intros setting still applies.
+DEV Menu can grant Auditor Halo and Raging Demon to registered players.
+Customize > Headwear > Auditor Halo: broken red ring with animated black flames.
+Customize > Kill Effect > Raging Demon: attacker afterimages, victim-only
+blackout and red symbol, then the defeated pilot lies flat.

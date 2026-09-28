@@ -56,6 +56,8 @@ export class ArenaAudio {
   for(const e of this.cursor.consume(state.events,state.time)){
    if(e.type==='shot'||e.type==='windup'){if(e.spec)this.play(e.spec==='leet'?'lightning':e.spec==='ansatsuken'?'fire':e.spec,e.pos,.65);}
    else if(e.type==='arcade-hit'){this.play(e.message==='FINISH'?'arcade-heavy':e.impact==='kick'?'arcade-kick':e.impact==='punch'?'arcade-punch':'fire',e.pos,.95);}
+   else if(e.type==='arcade-land')this.play('arcade-heavy',e.pos,.5);
+   else if(e.type==='install'&&e.message?.startsWith('arcade-')){this.arcadeTone(5,true,true);this.play('arcade-heavy',undefined,.7);}
    else if(e.type==='arcade-parry')this.play('arcade-parry',e.pos,.95);
    else if(e.type==='arcade-move'){if(e.message)this.arcadeTone(3,true,e.message.includes('SHINKU'));}
    else if(e.type==='arcade-strike')this.play('sword',e.pos,.25);

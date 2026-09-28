@@ -24,7 +24,7 @@ export class ArcadeSystem {
   if(kind==='combo')this.sim.chaos.meleeStart(p);
   const total=kind==='combo'?(p.chips['arcade-rush']?10:3):kind==='tatsu'?(p.chips['arcade-cyclone']?7:4):(p.chips['arcade-rising']?3:1);
   const gap=(kind==='combo'?(total===10?.115:.25):kind==='tatsu'?.18:.16)/p.stats.attackRate;
-  const first=now+(kind==='shoryuken'?.08:.12)/p.stats.attackRate,until=first+(total-1)*gap+.22;
+  const first=now+(kind==='shoryuken'?.08:.12)/p.stats.attackRate,until=first+(total-1)*gap+(kind==='shoryuken'?.68:.22);
   this.actions.set(p.id,{kind,at:first,gap,next:0,total,id:this.sim.uid('arcade')});Object.assign(a,{action:kind,at:now,until,index:0,total,charge:0});p.cooldown=until-now;p.lastAttack=now;p.attackIndex=0;
   const recovery=p.chips['arcade-cancel']?.72:1;
   if(kind==='tatsu'){p.secondaryCd=ARCADE.tatsuCooldown*recovery;p.lastSecondary=now;p.ext=add(p.ext,add(mul(forward(p.input.yaw),5),v(0,3,0)));}
@@ -40,13 +40,15 @@ export class ArcadeSystem {
   Object.assign(a,{action:superShot?'shinku':'hadoken',at:s.time,until:s.time+.48,charge:0,total:superShot?5:1,index:0});p.cooldown=.48;a.hadokenCd=superShot?3.4:ARCADE.hadokenCooldown;p.blockTime=0;p.lastAttack=p.lastShot=s.time;
   s.emit('arcade-move',pos,{source:p.id,spec:p.spec,message:superShot?'SHINKU HADOKEN':'HADOKEN',color:red?0xff6038:0x78dfff,radius:superShot?3:1});s.emit('shot',pos,{source:p.id,spec:p.spec,color:0x78dfff});
  }
- stunned(p:Player){return (p.hitStunUntil||0)>this.sim.time;}
+ stunned(p:Player){return (p.hitStunUntil||0)>this.sim.time||(p.knockdown?.until||0)>this.sim.time;}
+ stepKnockdown(p:Player){const k=p.knockdown;if(!k)return;const now=this.sim.time;if(p.hp<=0||now>=k.until){p.knockdown=undefined;return;}if(k.landedAt===undefined&&now-k.at>.18&&p.grounded&&p.body.linvel().y<.5){k.landedAt=now;k.until=now+ARCADE.knockdownRecovery;this.sim.emit('arcade-land',p.body.translation(),{target:p.id,color:0x7edbff});}}
+ knockDown(p:Player){p.knockdown={at:this.sim.time,until:this.sim.time+5};p.grounded=false;p.move=v();p.dashTime=0;this.cancel(p);}
  invulnerable(p:Player){return this.active(p)&&(p.arcade?.parryUntil||0)>this.sim.time;}
  parry(p:Player,point:Vec,source:string){if(!this.active(p))return;const a=this.state(p);this.cancel(p);p.blockCd=0;p.blockTime=0;p.cooldown=0;p.hitStunUntil=0;a.parryAt=this.sim.time;a.parryUntil=this.sim.time+ARCADE.parryInvulnerability;this.sim.emit('arcade-parry',point,{source:p.id,target:source,spec:p.spec,message:'PARRY',color:0x9ce7ff,radius:1.4});}
  confirmHit(p:Player,t:Player,damage:number,impact:'punch'|'kick'|'fireball',stun:number,message:string,big=false){
   const s=this.sim,a=this.state(p);if(a.comboTarget!==t.id||s.time-a.lastHit>ARCADE.comboMemory){a.hits=0;a.comboDamage=0;}a.comboTarget=t.id;a.hits++;a.comboDamage+=damage;a.lastHit=s.time;
   if(t.hp>0){t.hitStunUntil=Math.max(t.hitStunUntil||0,s.time+Math.max(.09,stun/p.stats.attackRate));t.move=v();t.dashTime=0;t.blockTime=0;t.guarding=false;t.parryTime=0;t.swing=null;t.cast=undefined;t.burst=0;this.cancel(t);}
-  s.emit('arcade-hit',t.body.translation(),{source:p.id,target:t.id,spec:'ansatsuken',amount:a.hits,message,impact,radius:big?1.2:.7,color:impact==='kick'?0xffbc69:impact==='punch'?0xffecb0:0x83e7ff});
+  s.emit('arcade-hit',t.body.translation(),{source:p.id,target:t.id,spec:'ansatsuken',amount:a.hits,message,impact,radius:big?1.2:.7,color:0x83e7ff});
  }
  damageScale(p:Player,t:Player){return (p.chips['arcade-juggle']&&!t.grounded?1.45:1)*(p.chips['arcade-counter']&&this.sim.time-t.lastAttack<.35?1.35:1);}
  strike(p:Player,kind:Action['kind'],index:number,total:number,id:string){const s=this.sim,a=this.state(p),last=index===total-1,pos=add(p.body.translation(),v(0,.15,0)),dir=forward(p.input.yaw),radius=(kind==='tatsu'?2.65:kind==='shoryuken'?2.05:2)*p.stats.reach;
@@ -57,7 +59,7 @@ export class ArcadeSystem {
    const before='stats'in target?target.hp:target.hp,blocked='stats'in target&&target.blockTime>0;
    const strikeDir=kind==='shoryuken'?norm(add(mul(dir,.3),v(0,1,0))):norm(add(norm(d),v(0,last?.25:0,0)));
    s.directHit(p,target,target.body.translation(),strikeDir,base*p.stats.damage*('stats'in target?this.damageScale(p,target):1),impulse*('stats'in target&&p.chips['arcade-counter']&&s.time-target.lastAttack<.35?1.4:1),`${id}:${index}`);
-   if('stats'in target&&!blocked&&target.hp<before){this.confirmHit(p,target,before-target.hp,kind==='tatsu'||last&&kind==='combo'?'kick':'punch',last?.38:kind==='tatsu'?.22:total===10?.15:.30,p.chips['arcade-counter']&&s.time-target.lastAttack<.35?'COUNTER':last?'FINISH':'HIT',last);if(last&&p.chips['arcade-perfect']){p.stamina=Math.min(p.stats.maxStamina,p.stamina+22);p.hp=Math.min(p.stats.hp,p.hp+8);}}
+   if('stats'in target&&!blocked&&target.hp<before){this.confirmHit(p,target,before-target.hp,kind==='tatsu'||last&&kind==='combo'?'kick':'punch',last?.38:kind==='tatsu'?.22:total===10?.15:.30,p.chips['arcade-counter']&&s.time-target.lastAttack<.35?'COUNTER':last?'FINISH':'HIT',last);if(last&&kind==='shoryuken'&&target.hp>0)this.knockDown(target);if(last&&p.chips['arcade-perfect']){p.stamina=Math.min(p.stats.maxStamina,p.stamina+22);p.hp=Math.min(p.stats.hp,p.hp+8);}}
   }
   for(const m of [...s.chaos.minions.values()]){const d=sub(m.body.translation(),pos);if(m.owner!==p.id&&len(d)<radius+.4&&(kind==='tatsu'||dot(norm(d),dir)>.25)&&s.lineOfSight(pos,m.body.translation(),p.id,m.id))s.chaos.hitMinion(m,base*p.stats.damage,p.id,impulse,norm(d));}
   if(p.chips['arcade-afterimage']&&kind==='combo'&&this.echoes.length<64)this.echoes.push({at:s.time+.22,until:s.time+.3,source:p.id,pos:add(pos,mul(dir,1.1)),dir,radius:1.1*p.stats.reach,damage:base*.38*p.stats.damage,impulse:50,remaining:1,gap:0,id:id+':echo:'+index,impact:'punch'});

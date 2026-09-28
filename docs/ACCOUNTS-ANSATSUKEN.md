@@ -59,7 +59,7 @@ and [noble-hashes](https://github.com/paulmillr/noble-hashes).
 
 | Input | Move |
 | --- | --- |
-| LMB | Left straight, right straight, knee finisher; holding repeats the chain |
+| LMB | Right straight, left straight, high-kick finisher; holding repeats the chain |
 | RMB | Tap to parry: no cooldown, blue flash and brief invulnerability on success |
 | 1 | Burning Hadoken |
 | E | Tatsumaki Senpukyaku, spinning multi-hit kick |
@@ -75,7 +75,7 @@ reflected burn belongs to the blocker. Melee obeys cover, active Block and range
 | Exclusive Chip | Effect |
 | --- | --- |
 | Shinku Hadoken | Charge and release a piercing five-hit fireball |
-| Ten-Hit Rush | Ten attacks ending with a flying knee |
+| Ten-Hit Rush | Ten attacks ending with a high kick |
 | Shakunetsu | Crimson Hadokens with much stronger burn |
 | Hurricane Tatsu | Longer spin, extra kicks and an inward pull |
 | Shin Shoryuken | Three uppercut hits and cover-shattering finisher |
@@ -88,7 +88,7 @@ reflected burn belongs to the blocker. Melee obeys cover, active Block and range
 | Round Two | Survive one lethal hit per round at 1 HP and recover stamina |
 
 The guarded idle is based on the supplied stance GIF. Red gloves, alternating
-straights, knee lift, spin and uppercut use the existing articulated pilot.
+straights, high kick, spin and uppercut use the existing articulated pilot.
 Arcade hit sparks have a fixed pool; projectile shells are bounded by the existing
 projectile limit. Impact text and synthesized sound give fighting-game feedback.
 There is no server-wide hit-stop, and no full-screen flashing effect.
@@ -147,3 +147,28 @@ Desktop storage follows [Electron safeStorage](https://www.electronjs.org/docs/l
 - Original music file, migrations, source package and Windows archive integrity checked.
 - Windows startup, GPU rendering, and real Internet latency require local playtesting.
   Browser visual QA was unavailable in this session.
+
+## Reference animation and presentation update
+
+The supplied animated references are used for pose and timing guidance. The
+original game rig performs a right straight, left straight and high kick;
+Shoryuken coils low, raises the fist and tucked knee, and turns once in flight.
+Its final confirmed hit applies authority-owned knockdown. Movement, attack,
+block and dash remain locked through landing and a 0.9-second get-up; prediction
+uses the same timestamps. Blocked hits do not knock down. Reset/heal clear it.
+
+Every `arcade-*` Chip has rarity `ansatsuken`. The 85% exclusive pool rule and two
+guaranteed offers remain. Red ink, headband ribbons and ki rings decorate the
+card. Selection uses a shared 4.8-second slash / seal / card-reveal timeline.
+The host waits for that cinematic before moving to the next player.
+
+`effectiveIntro` resolves weapon grants before the saved intro: L33T uses the
+throne and Ansatsuken uses Rain Warrior, including authority duration, camera,
+name timing and music. The saved preference stays intact and Skip Intros applies.
+
+`hat:auditor-halo` and `effect:dev-raging-demon` are individually grantable DEV
+items. Normalization rejects ungranted selections. The halo uses three broken
+red arcs and twelve animated black flames. Raging Demon snapshots the attacker's
+appearance at the knockout and batches up to three silhouettes. Only the victim
+gets the blackout and seal; observers see the approach and flat body. The effect
+is cosmetic and does not move, damage, or take control of the attacker.

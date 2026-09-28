@@ -1,3 +1,4 @@
+import {animateCosmetics,disposeAuditorHalo} from './auditor-halo.js';
 import {RainWarrior} from './ansatsuken-intro.js';
 import {MatrixThrone} from './leet-intro.js';
 import * as T from 'three';
@@ -29,9 +30,9 @@ export class PlayerIntros {
   for(const side of [-1,1])for(let n=0;n<4;n++){const bar=new T.Mesh(cube,new T.MeshBasicMaterial({color:side<0?0x276979:0x743465,toneMapped:false}));bar.position.set(side*(3.4+n*.75),.8+n*.15,-3.2-n*.5);bar.scale.set(.035,1.6+n*.3,.035);this.scene.add(bar);}
  }
  update(state:Snapshot,aspect:number,quality=1,compatibility=false){
-  const frame=introFrame(state);if(!frame){this.clear();return false;}const {player:p,style,age}=frame,key=p.id+JSON.stringify(p.cosmetics)+p.color;
+  const frame=introFrame(state);if(!frame){this.clear();return false;}const {player:p,style,age}=frame,key=style+p.id+JSON.stringify(p.cosmetics)+p.color;
   if(this.key!==key){this.clear();this.key=key;this.rig=createCharacterRig(p.color,p.cosmetics?.bodyColor,true);dressRig(this.rig,p.cosmetics);this.scene.add(this.rig.group);this.accent.color.set(p.color).lerp(new T.Color(0x89eaff),.48);this.rim.color.copy(this.accent.color);if(style==='dev-matrix')this.rim.color.set(0x55ff88);}
-  this.rain.group.visible=style==='dev-ansatsuken';this.throne.group.visible=style==='dev-matrix';poseIntro(this.rig!,style,age);if(style==='dev-matrix')this.throne.update(age,this.rig!);if(style==='dev-ansatsuken')this.rain.update(age,this.rig!,quality);introCamera(this.camera,style,age,this.rig!.group.position,aspect);this.armor.update([{rig:this.rig!,player:p}],state.time,quality,compatibility);
+  this.rain.group.visible=style==='dev-ansatsuken';this.throne.group.visible=style==='dev-matrix';poseIntro(this.rig!,style,age);animateCosmetics(this.rig!,age);if(style==='dev-matrix')this.throne.update(age,this.rig!);if(style==='dev-ansatsuken')this.rain.update(age,this.rig!,quality);introCamera(this.camera,style,age,this.rig!.group.position,aspect);this.armor.update([{rig:this.rig!,player:p}],state.time,quality,compatibility);
   const hit=INTRO_HIT[style],burst=Math.max(0,age-hit),fade=Math.max(0,1-burst/1.2),active=age>=hit&&fade>0;
   this.pulses.forEach((ring,i)=>{const elapsed=burst-i*.09;ring.visible=active&&elapsed>=0;ring.rotation.set(style==='pulse-wave'?0:-Math.PI/2,0,0);ring.position.set(0,style==='pulse-wave'?1.13:.015+i*.003,style==='pulse-wave'?.3:0);ring.scale.setScalar(.12+elapsed*(style==='pulse-wave'?3.5:2.7));(ring.material as T.MeshBasicMaterial).opacity=fade*.9;});
   this.sparks.forEach((spark,i)=>{spark.visible=active&&(quality>=.5||i%2===0);const a=i*2.39996,d=.2+burst*(1.3+i%5*.23);spark.position.set(Math.cos(a)*d,.06+Math.max(0,burst*(1.3+i%3*.25)-burst*burst*1.7),Math.sin(a)*d);spark.scale.set(.035,.05+.08*fade,.035).multiplyScalar(fade);spark.rotation.set(burst*3,a,burst*4);});
@@ -41,6 +42,6 @@ export class PlayerIntros {
   this.core.visible=this.shell.visible=style==='pulse-wave'&&age<1.7;const charge=ease(age/1.45),pop=ease((age-1.55)/.15);for(const orb of [this.core,this.shell]){orb.position.copy(this.rig!.group.position).add(new T.Vector3(0,.15,.47));orb.scale.setScalar((.35+charge*.85)*(1+pop*3));orb.rotation.set(age*2,age*4,age);(orb.material as T.MeshBasicMaterial).opacity=(1-pop)*.85;}
   this.rings.forEach((r,i)=>{r.visible=style!=='dev-ansatsuken';r.rotation.z=age*(i%2?-.18:.14);});return true;
  }
- clear(){this.armor.clear();if(this.rig){this.rig.group.removeFromParent();this.rig.sockets.head.traverse(o=>{if(o instanceof T.Mesh&&o.geometry.type!=='BoxGeometry')o.geometry.dispose();});}this.rig=undefined;this.key='';}
+ clear(){this.armor.clear();if(this.rig){disposeAuditorHalo(this.rig);this.rig.group.removeFromParent();this.rig.sockets.head.traverse(o=>{if(o instanceof T.Mesh&&o.geometry.type!=='BoxGeometry')o.geometry.dispose();});}this.rig=undefined;this.key='';}
  dispose(){this.clear();this.armor.dispose();const geometries=new Set<T.BufferGeometry>(),materials=new Set<T.Material>();this.scene.traverse(o=>{if(o instanceof T.Mesh||o instanceof T.LineSegments){geometries.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material])materials.add(m);}});geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());this.scene.clear();}
 }

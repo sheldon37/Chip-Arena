@@ -1,8 +1,10 @@
+import {auditorHalo,disposeAuditorHalo} from './auditor-halo.js';
 import * as T from 'three';
 import {CharacterRig,rigBox} from './character-rig.js';
 import {Cosmetics,cosmetics} from '../shared/cosmetics.js';
-export function dressRig(r:CharacterRig,raw?:Cosmetics){const c=cosmetics(raw,true),key=JSON.stringify(c);if(r.group.userData.cosmeticKey===key)return;r.group.userData.cosmeticKey=key;const g=r.sockets.head;g.traverse(o=>{if(o instanceof T.Mesh&&o.geometry.type!=='BoxGeometry')o.geometry.dispose();});g.clear();const color=0xff6b35,box=(name:string,x:number,y:number,z:number,sx:number,sy:number,sz:number,col:T.ColorRepresentation=color)=>rigBox(g,name,x,y,z,sx,sy,sz,col);
+export function dressRig(r:CharacterRig,raw?:Cosmetics){const c=cosmetics(raw,true),key=JSON.stringify(c);if(r.group.userData.cosmeticKey===key)return;r.group.userData.cosmeticKey=key;disposeAuditorHalo(r);const g=r.sockets.head;g.traverse(o=>{if(o instanceof T.Mesh&&o.geometry.type!=='BoxGeometry')o.geometry.dispose();});g.clear();const color=0xff6b35,box=(name:string,x:number,y:number,z:number,sx:number,sy:number,sz:number,col:T.ColorRepresentation=color)=>rigBox(g,name,x,y,z,sx,sy,sz,col);
  const round=(name:string,geo:T.BufferGeometry,col:T.ColorRepresentation,y:number)=>{const m=new T.Mesh(geo,new T.MeshLambertMaterial({color:col}));m.name=name;m.position.y=y;g.add(m);return m;};
+ if(c.hat==='auditor-halo')g.add(auditorHalo());
  if(c.hat==='cap'){box('cap',0,.39,0,.4,.12,.37,0xff6b35);box('brim',0,.345,.2,.43,.035,.23,0x24252d);}
  if(c.hat==='beanie'){round('beanie',new T.SphereGeometry(.225,8,6,0,Math.PI*2,0,Math.PI/2),0xd277ff,.34);round('pom',new T.SphereGeometry(.07,6,4),0xf5dcff,.57);}
  if(c.hat==='top'){box('brim',0,.355,0,.51,.05,.46,0x15151a);box('top',0,.53,0,.33,.32,.30,0x191a20);box('band',0,.425,0,.34,.055,.31,0xff6b35);}
