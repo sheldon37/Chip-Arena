@@ -1,1 +1,1 @@
-{"extends":"./tsconfig.json","compilerOptions":{"module":"NodeNext","moduleResolution":"NodeNext","noEmit":false,"outDir":"server-dist","rootDir":"src","declaration":true},"include":["src/shared","src/server"]}
+{"extends":"./tsconfig.json","compilerOptions":{"module":"ESNext","moduleResolution":"Bundler","noEmit":false,"outDir":"server-dist","rootDir":"src","declaration":true},"include":["src/shared","src/server"]}
