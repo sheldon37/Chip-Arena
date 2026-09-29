@@ -1,3 +1,4 @@
+import {gibPartAt,type GibPart} from './body-hit.js';
 import {projectileHeadshot,HEADSHOT_MULTIPLIER} from './headshots.js';
 import {StandardMelee,normalMelee,meleeMotionInput,type MeleeAction,type MeleeShot} from './standard-melee.js';
 import {TEAMS,teamId,gameMode,sameTeam,wonWith,type TeamId,type GameMode} from './teams.js';
@@ -36,7 +37,7 @@ let initializing:Promise<void>|undefined;
 export const initPhysics=()=>initializing??=(RAPIER.init());
 export type Phase='intro'|'lobby'|'specialization'|'countdown'|'fight'|'result'|'draft'|'match';
 
-export interface DeathPresentation {announcement?:{victim:string;killer:string|null};hitPoint?:Vec;melee?:boolean;force?:number;attacker?:{pos:Vec;yaw:number;color:string;cosmetics:Cosmetics;spec:SpecId};id:string;at:number;effect:string;seed:number;pos:Vec;velocity:Vec;direction:Vec;source:string|null;kind:string;yaw:number;}
+export interface DeathPresentation {gibPart?:GibPart;announcement?:{victim:string;killer:string|null};hitPoint?:Vec;melee?:boolean;force?:number;attacker?:{pos:Vec;yaw:number;color:string;cosmetics:Cosmetics;spec:SpecId};id:string;at:number;effect:string;seed:number;pos:Vec;velocity:Vec;direction:Vec;source:string|null;kind:string;yaw:number;}
 export interface Player {
  meleeAction?:MeleeAction;lastDamager?:{id:string;name:string};
  team?:TeamId;
@@ -163,7 +164,8 @@ export class Simulation {
  if(p.death)return;this.standardMelee.cancel(p);this.emperor.cancel(p);this.arcade.cancel(p);this.leet.release(p);
  const source=p.lastSource&&this.time-p.sourceAt<C.attributionSeconds?p.lastSource:null;
  p.death={announcement:{victim:p.name,killer:p.lastDamager?.name||null},id:this.uid('death'),at:this.time,effect:cosmetics(this.players.get(source||'')?.cosmetics,this.players.get(source||'')||false).killEffect,seed:this.serial,pos:copy(p.body.translation()),velocity:add(copy(p.body.linvel()),p.ext),direction:copy(direction),source,kind,yaw:p.input.yaw};
- if(p.death.effect==='ragdoll'||p.death.effect.startsWith('ragdoll-')||p.death.effect==='dev-singularity'){p.death.hitPoint=copy(hitPoint||p.body.translation());p.death.melee=melee;p.death.force=force;}
+ if(p.death.effect==='dev-gibber')p.death.gibPart=gibPartAt(p.death.pos,p.death.yaw,hitPoint||p.death.pos);
+ if(p.death.effect==='ragdoll'||p.death.effect.startsWith('ragdoll-')||p.death.effect==='dev-singularity'||p.death.effect==='dev-gibber'){p.death.hitPoint=copy(hitPoint||p.body.translation());p.death.melee=melee;p.death.force=force;}
  const attacker=this.players.get(source||'');if(p.death.effect==='dev-raging-demon'&&attacker)p.death.attacker={pos:copy(attacker.body.translation()),yaw:attacker.input.yaw,color:attacker.color,cosmetics:{...attacker.cosmetics},spec:attacker.spec};
  this.emit('death',p.death.pos,{target:p.id,source,message:kind});
  }

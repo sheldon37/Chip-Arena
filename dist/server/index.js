@@ -657,6 +657,7 @@ var GRANTABLE_CONTENT = {
   "effect:dev-bass-van": "Bass Van"
 };
 var ACCOUNT_FLAGS = { playtester: "Playtester", vip: "VIP" };
+var accessOf = (a) => typeof a === "boolean" ? { developer: a, unlocks: [] } : a || { developer: false, unlocks: [] };
 var canUse = (a, key) => typeof a === "boolean" ? a : !!a?.developer || !!a?.unlocks?.includes(key);
 var cleanGrants = (x) => Array.isArray(x) ? [...new Set(x.filter((k) => typeof k === "string" && Object.hasOwn(GRANTABLE_CONTENT, k)))] : [];
 var cleanFlags = (x) => Array.isArray(x) ? [...new Set(x.filter((k) => typeof k === "string" && Object.hasOwn(ACCOUNT_FLAGS, k)))] : [];
@@ -677,12 +678,28 @@ var RAGDOLL_STYLES = {
   "dev-singularity": "Singularity Override \xB7 DEV ONLY"
 };
 
+// src/shared/weapon-intros.ts
+var WEAPON_INTROS = {
+  "weapon-sword": { spec: "sword", name: "Flash Draw", hit: 1.8, color: 11993072 },
+  "weapon-daggers": { spec: "daggers", name: "Twin Phantom", hit: 2.12, color: 8912853 },
+  "weapon-greatsword": { spec: "greatsword", name: "Colossus Oath", hit: 1.8, color: 16763783 },
+  "weapon-shield": { spec: "shield", name: "Bastion Drop", hit: 1.45, color: 9228031 },
+  "weapon-pistol": { spec: "pistol", name: "Deadeye", hit: 2.12, color: 16767391 },
+  "weapon-rifle": { spec: "rifle", name: "Longwatch", hit: 1.8, color: 11330047 },
+  "weapon-machinegun": { spec: "machinegun", name: "Belt Rattle", hit: 2.12, color: 16758887 },
+  "weapon-fire": { spec: "fire", name: "Cinder Crown", hit: 1.8, color: 16739378 },
+  "weapon-water": { spec: "water", name: "Tidal Serpent", hit: 2.12, color: 6546175 },
+  "weapon-lightning": { spec: "lightning", name: "Thunderstep", hit: 1.45, color: 13024511 },
+  "weapon-darkness": { spec: "darkness", name: "Eventide Gate", hit: 2.12, color: 11497215 }
+};
+
 // src/shared/intros.ts
 var INTRO_STYLES = {
   "dev-emperor": "DEV \xB7 Emperor\u2019s Oath",
   "dev-ansatsuken": "DEV \xB7 Rain Warrior",
   "dev-matrix": "DEV \xB7 L33T Throne",
-  "neon-drop": "Neon Drop",
+  ...Object.fromEntries(Object.entries(WEAPON_INTROS).map(([key, value]) => [key, value.name])),
+  "neon-drop": "Weapon Signature",
   "vector-slide": "Vector Slide",
   "signal-spin": "Signal Spin",
   "arc-salute": "Arc Salute",
@@ -881,8 +898,8 @@ var WEAPONS = {
   darkness: { id: "darkness", name: "Darkness", class: "magic", description: "27-damage slow orbs restore 15% of direct damage. E secondary: short-range pull (20 mana).", damage: 27, interval: 0.7, speed: 15, gravity: 5, range: 36, impulse: 140, ammo: 0, reload: 0, cost: 10, spread: 0, windup: 0, arc: 0, secondary: "pull", secondaryCooldown: 3.8, color: 11368658, drain: 0.15 },
   sword: { id: "sword", name: "One-Handed Sword", class: "melee", description: "Three flowing cuts: cross cut, backhand, overhead. E: rising slash launches enemies for a brief aerial juggle (18 stamina).", damage: 30, interval: 0.62, speed: 0, gravity: 0, range: 2.5, impulse: 300, ammo: 0, reload: 0, cost: 14, spread: 0, windup: 0.14, arc: 1.6, secondary: "sword-launch", secondaryCooldown: 3, secondaryCost: 18, color: 11984855 },
   daggers: { id: "daggers", name: "Daggers", class: "melee", description: "Alternating cross-body cuts and low lunges. E: throw one dagger with all your melee on-hit effects (16 stamina).", damage: 15, interval: 0.34, speed: 0, gravity: 0, range: 1.75, impulse: 95, ammo: 0, reload: 0, cost: 7, spread: 0, windup: 0.09, arc: 1.3, secondary: "dagger-throw", secondaryCooldown: 2.2, secondaryCost: 16, color: 9891013 },
-  shield: { id: "shield", name: "Shield", class: "melee", description: "Shield slam knocks enemies back with hitstun. E: throw the shield to knock down one enemy; it returns after impact (22 stamina).", damage: 23, interval: 0.75, speed: 0, gravity: 0, range: 2.1, impulse: 610, ammo: 0, reload: 0, cost: 18, spread: 0, windup: 0.2, arc: 1.2, secondary: "shield-throw", secondaryCooldown: 4, secondaryCost: 22, color: 9223910 },
-  greatsword: { id: "greatsword", name: "Greatsword", class: "melee", description: "Heavy two-handed cuts with committed follow-through. E: Wolf Knight somersault, then an impact shockwave on landing (28 stamina; grounded start).", damage: 52, interval: 1.18, speed: 0, gravity: 0, range: 3.4, impulse: 560, ammo: 0, reload: 0, cost: 26, spread: 0, windup: 0.42, arc: 2.4, secondary: "wolf-spin", secondaryCooldown: 5, secondaryCost: 28, color: 15386784 }
+  shield: { id: "shield", name: "Shield", class: "melee", description: "Shield slam knocks enemies back and down with hitstun. E: throw the shield to knock down one enemy; it returns after impact (22 stamina).", damage: 23, interval: 0.75, speed: 0, gravity: 0, range: 2.1, impulse: 610, ammo: 0, reload: 0, cost: 18, spread: 0, windup: 0.2, arc: 1.2, secondary: "shield-throw", secondaryCooldown: 4, secondaryCost: 22, color: 9223910 },
+  greatsword: { id: "greatsword", name: "Greatsword", class: "melee", description: "Heavy two-handed cuts with committed follow-through. E: Wolf Knight somersault ragdolls direct hits, then creates an impact shockwave on landing (28 stamina; grounded start).", damage: 52, interval: 1.18, speed: 0, gravity: 0, range: 3.4, impulse: 560, ammo: 0, reload: 0, cost: 26, spread: 0, windup: 0.42, arc: 2.4, secondary: "wolf-spin", secondaryCooldown: 5, secondaryCost: 28, color: 15386784 }
 };
 var e = (stat, op, value) => ({ stat, op, value });
 var CHIPS = [
@@ -1001,11 +1018,12 @@ var BOT_WEAPONS = Object.values(WEAPONS).filter((w) => !w.devOnly);
 
 // src/shared/cosmetics.ts
 var HATS = { "auditor-halo": "Auditor Halo \xB7 DEV ONLY", none: "No hat", cap: "Ball cap", beanie: "Beanie", top: "Top hat", wizard: "Wizard hat", crown: "Crown", cone: "Traffic cone", antenna: "Antenna", halo: "Halo", cowboy: "Cowboy hat" };
-var KILL_STYLES = { ragdoll: "Ragdoll", ...RAGDOLL_STYLES, "dev-raging-demon": "Raging Demon \xB7 DEV ONLY", "voxel-burst": "Voxel breakup", confetti: "Confetti cannon", ascension: "Beam me up", shrink: "Pocket-sized", launch: "Team Rocket", ghost: "Ghost escape", "dev-clown": "Clown getaway \xB7 DEV ONLY", "dev-clown-love": "Clown Love \xB7 DEV ONLY", "dev-bass-van": "Bass Van \xB7 DEV ONLY" };
+var KILL_STYLES = { "dev-gibber": "Gibber \xB7 DEV ONLY", ragdoll: "Ragdoll", ...RAGDOLL_STYLES, "dev-raging-demon": "Raging Demon \xB7 DEV ONLY", "voxel-burst": "Voxel breakup", confetti: "Confetti cannon", ascension: "Beam me up", shrink: "Pocket-sized", launch: "Team Rocket", ghost: "Ghost escape", "dev-clown": "Clown getaway \xB7 DEV ONLY", "dev-clown-love": "Clown Love \xB7 DEV ONLY", "dev-bass-van": "Bass Van \xB7 DEV ONLY" };
 var developerKillEffect = (id) => id.startsWith("dev-");
+var canUseKillEffect = (a, id) => id === "dev-gibber" ? accessOf(a).developer : !developerKillEffect(id) || canUse(a, "effect:" + id);
 var DEFAULT_COSMETICS = { lobbyPose: "weapon", intro: "neon-drop", introText: "Ready to make an impact", bodyColor: "#e5e7eb", hat: "none", killEffect: "voxel-burst" };
 function cosmetics(raw, dev = false) {
-  return { lobbyPose: lobbyPose(raw?.lobbyPose), preferredSpec: typeof raw?.preferredSpec === "string" && Object.hasOwn(WEAPONS, raw.preferredSpec) && (!WEAPONS[raw.preferredSpec].devOnly || canUse(dev, "weapon:" + raw.preferredSpec)) ? raw.preferredSpec : void 0, introText: introText(raw?.introText), intro: raw && Object.hasOwn(INTRO_STYLES, raw.intro) && (!raw.intro.startsWith("dev-") || canUse(dev, "intro:" + raw.intro)) ? raw.intro : "neon-drop", bodyColor: typeof raw?.bodyColor === "string" && /^#[0-9a-f]{6}$/i.test(raw.bodyColor) ? raw.bodyColor : DEFAULT_COSMETICS.bodyColor, hat: raw && Object.hasOwn(HATS, raw.hat) && (raw.hat !== "auditor-halo" || canUse(dev, "hat:auditor-halo")) ? raw.hat : "none", killEffect: raw && Object.hasOwn(KILL_STYLES, raw.killEffect) && (!developerKillEffect(raw.killEffect) || canUse(dev, "effect:" + raw.killEffect)) ? raw.killEffect : "voxel-burst" };
+  return { lobbyPose: lobbyPose(raw?.lobbyPose), preferredSpec: typeof raw?.preferredSpec === "string" && Object.hasOwn(WEAPONS, raw.preferredSpec) && (!WEAPONS[raw.preferredSpec].devOnly || canUse(dev, "weapon:" + raw.preferredSpec)) ? raw.preferredSpec : void 0, introText: introText(raw?.introText), intro: raw && Object.hasOwn(INTRO_STYLES, raw.intro) && (!raw.intro.startsWith("dev-") || canUse(dev, "intro:" + raw.intro)) ? raw.intro : "neon-drop", bodyColor: typeof raw?.bodyColor === "string" && /^#[0-9a-f]{6}$/i.test(raw.bodyColor) ? raw.bodyColor : DEFAULT_COSMETICS.bodyColor, hat: raw && Object.hasOwn(HATS, raw.hat) && (raw.hat !== "auditor-halo" || canUse(dev, "hat:auditor-halo")) ? raw.hat : "none", killEffect: raw && Object.hasOwn(KILL_STYLES, raw.killEffect) && canUseKillEffect(dev, raw.killEffect) ? raw.killEffect : "voxel-burst" };
 }
 function introText(value) {
   return typeof value === "string" ? Array.from(value.replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g, " ").replace(/\s+/g, " ").trim()).slice(0, 64).join("") || DEFAULT_COSMETICS.introText : DEFAULT_COSMETICS.introText;

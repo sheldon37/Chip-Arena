@@ -8,7 +8,7 @@ import {attackElements,refreshDot} from './elements.js';
 import {ceilingContact} from './ceiling-field.js';
 import {downProtected,pickupOpen} from './recovery.js';
 export type MeleeActionKind='dagger-throw'|'wolf-spin'|'sword-launch'|'shield-throw';
-export interface MeleeAction {kind:MeleeActionKind;at:number;releaseAt:number;until:number;yaw:number;released?:boolean;landedAt?:number;shotId?:string;}
+export interface MeleeAction {kind:MeleeActionKind;at:number;releaseAt:number;until:number;yaw:number;released?:boolean;landedAt?:number;shotId?:string;hitIds?:string[];attackId?:string;}
 export interface MeleeShot {kind:'dagger'|'shield';returning?:boolean;}
 export function meleeMotionInput(input:Input,action:MeleeAction|undefined,time:number):Input{return action?.kind==='wolf-spin'&&time<action.until?{...input,jump:false,dash:false}:input;}
 export const normalMelee=(spec:SpecId)=>['sword','daggers','greatsword','shield'].includes(spec);
@@ -28,7 +28,7 @@ export class StandardMelee {
   if((p.spec==='daggers'||p.spec==='shield')&&s.projectiles.size>=C.maxProjectiles)return;
   if(!s.spendResource(p,w.secondaryCost||0))return;
   const info=MELEE_SPECIALS[p.spec as keyof typeof MELEE_SPECIALS],rate=p.stats.attackRate;
-  p.meleeAction={kind:info.kind,at:s.time,releaseAt:s.time+info.windup/rate,until:s.time+(info.windup+info.recover)/rate,yaw:p.input.yaw};
+  p.meleeAction={attackId:s.uid('melee-special'),kind:info.kind,at:s.time,releaseAt:s.time+info.windup/rate,until:s.time+(info.windup+info.recover)/rate,yaw:p.input.yaw};
   if(p.spec==='greatsword')p.meleeAction.until=s.time+3.5;
   p.lastSecondary=p.lastAttack=s.time;p.secondaryCd=w.secondaryCooldown;p.cooldown=(info.windup+info.recover)/rate;p.swing=null;
   s.emit('melee-special',p.body.translation(),{source:p.id,spec:p.spec,message:info.kind,color:w.color});
@@ -41,7 +41,7 @@ export class StandardMelee {
   target.ext.y=Math.max(0,lift-target.body.linvel().y);target.grounded=false;
  }
  primaryImpact(owner:Player,target:Player,hpBefore:number){if(target.hp>=hpBefore||target.hp<=0||!normalMelee(owner.spec))return;
-  if(owner.spec==='shield')this.stun(target,.36/Math.sqrt(owner.stats.attackRate));
+  if(owner.spec==='shield'){this.launch(target,owner,3.8);this.stun(target,.36/Math.sqrt(owner.stats.attackRate));}
   else if(pickupOpen(target.knockdown,this.s.time))this.launch(target,owner,4.8);
   else if(target.knockdown&&target.knockdown.landedAt===undefined&&this.s.time<(target.knockdown.juggleUntil||0)&&(target.knockdown.juggleHits||0)<2){target.knockdown.juggleHits=(target.knockdown.juggleHits||0)+1;target.ext.y=Math.max(0,2.5-target.body.linvel().y);}
  }
@@ -54,21 +54,25 @@ export class StandardMelee {
    else if(a.kind==='sword-launch'){this.strike(p,WEAPONS.sword.range*p.stats.reach,1.12,240,'launch');s.emit('melee-launch',p.body.translation(),{source:p.id,spec:p.spec,color:WEAPONS.sword.color});}
    else {p.ext=add(mul(forward(a.yaw),7),v(0,10-p.body.linvel().y,0));p.grounded=false;}
   }
+  if(a.kind==='wolf-spin'&&a.released&&a.landedAt===undefined&&s.time>a.releaseAt+.04)this.strike(p,2.15*p.stats.reach,1.12,760,'spin-direct');
+  if(p.hp<=0||p.meleeAction!==a)return;
   // The impact is triggered by a real landing, never by an animation-only timer.
   if(a.kind==='wolf-spin'&&a.released&&a.landedAt===undefined&&s.time>a.releaseAt+.20&&p.grounded&&p.body.linvel().y<1){
    a.landedAt=s.time;a.until=s.time+.55/p.stats.attackRate;p.cooldown=Math.max(p.cooldown,.55/p.stats.attackRate);p.ext.x*=.25;p.ext.z*=.25;
    this.strike(p,3.7*p.stats.reach,1.12,760,'slam');s.emit('melee-slam',add(p.body.translation(),v(0,-.75,0)),{source:p.id,spec:p.spec,radius:3.7*p.stats.reach,color:0xe8d4b2});
   }
  }
- private strike(p:Player,range:number,multiplier:number,impulse:number,kind:'slam'|'launch'){
-  const s=this.s,origin=add(p.body.translation(),v(0,.1,0)),f=forward(p.meleeAction!.yaw),attack=s.uid('melee-special');
+ private strike(p:Player,range:number,multiplier:number,impulse:number,kind:'slam'|'launch'|'spin-direct'){
+  const s=this.s,a=p.meleeAction;if(!a)return;const origin=add(p.body.translation(),v(0,.1,0)),f=forward(a.yaw),attack=a.attackId||s.uid('melee-special');
   for(const target of [...s.players.values(),...s.props.values()]){
-   if(target.id===p.id||'stats'in target&&(target.hp<=0||!s.canHit(p.id,target.id)||downProtected(target.knockdown,s.time)))continue;
+   if(a.hitIds?.includes(target.id)||target.id===p.id||'stats'in target&&(target.hp<=0||!s.canHit(p.id,target.id)||downProtected(target.knockdown,s.time)))continue;
    const d=sub(target.body.translation(),origin),extra='stats'in target?.45:Math.min(.8,len(target.size)*.3);
-   if(len(d)>range+extra||Math.abs(d.y)>(kind==='launch'?2.5:1.8)+extra||kind==='launch'&&dot(norm(v(d.x,0,d.z)),f)<.45||!s.lineOfSight(origin,target.body.translation(),p.id,target.id))continue;
-   const hp='stats'in target?target.hp:0,dir=norm(add(d,v(0,kind==='slam'?.2:.5,0)));
+   if(len(d)>range+extra||Math.abs(d.y)>(kind==='launch'?2.5:1.8)+extra||kind!=='slam'&&dot(norm(v(d.x,0,d.z)),f)<(kind==='launch'?.45:.15)||!s.lineOfSight(origin,target.body.translation(),p.id,target.id))continue;
+   const hp=target.hp,dir=norm(add(d,v(0,kind==='slam'?.2:.5,0)));
+   a.hitIds=[...(a.hitIds||[]),target.id];
    s.directHit(p,target,target.body.translation(),dir,WEAPONS[p.spec].damage*p.stats.damage*multiplier,impulse*p.stats.impulse,attack);
-   if('stats'in target&&target.hp<hp&&target.hp>0){if(kind==='launch')this.launch(target,p,7.4);else {this.launch(target,p,4.4);target.ext=add(target.ext,mul(norm(v(d.x,0,d.z)),3));}}
+   if('stats'in target&&target.hp<hp&&target.hp>0){if(kind==='launch')this.launch(target,p,7.4);else {this.launch(target,p,kind==='spin-direct'?6.1:4.4);if(kind==='spin-direct')target.knockdown!.ragdoll=true;target.ext=add(target.ext,mul(norm(v(d.x,0,d.z)),3));}}
+   if(p.hp<=0||p.meleeAction!==a)break;
   }
  }
  private throw(p:Player,a:MeleeAction){

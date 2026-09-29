@@ -6,7 +6,7 @@ import {poseCurve} from './pose-curves.js';
 import {smoothMotion as ease} from './motion-quality.js';
 const down=new T.Vector3(0,-1,0),keys=[0,.55,1,1.28,1.65,2,2.4,3];
 /** Analytic limb placement keeps the planted foot on the floor while the pelvis turns and drops. */
-function foot(r:CharacterRig,left:boolean,target:T.Vector3,yaw:number,heel:number,weight:number){
+export function foot(r:CharacterRig,left:boolean,target:T.Vector3,yaw:number,heel:number,weight:number){
  const hip=left?r.leftLeg:r.rightLeg,knee=left?r.leftKnee:r.rightKnee,ankle=left?r.leftFoot:r.rightFoot,toe=left?r.leftToe:r.rightToe;
  r.group.updateMatrixWorld(true);const placed=r.group.worldToLocal(ankle.getWorldPosition(new T.Vector3())).lerp(target,weight);placed.y=Math.max(-.795,placed.y);const parent=hip.parent!,start=hip.position.clone(),end=parent.worldToLocal(r.group.localToWorld(placed)),delta=end.sub(start),d=T.MathUtils.clamp(delta.length(),.045,.497),dir=delta.normalize();
  const pole=new T.Vector3(0,0,1).applyQuaternion(r.group.getWorldQuaternion(new T.Quaternion())).applyQuaternion(parent.getWorldQuaternion(new T.Quaternion()).invert());pole.addScaledVector(dir,-pole.dot(dir)).normalize();
@@ -15,7 +15,7 @@ function foot(r:CharacterRig,left:boolean,target:T.Vector3,yaw:number,heel:numbe
  const desired=r.group.getWorldQuaternion(new T.Quaternion()).multiply(new T.Quaternion().setFromEuler(new T.Euler(heel,yaw,0)));ankle.quaternion.slerp(ankle.parent!.getWorldQuaternion(new T.Quaternion()).invert().multiply(desired),weight);toe.rotation.x=-heel*.45*weight;
 }
 /** Independent hand targets let the blades describe arcs while the shoulders and elbows fold. */
-function hand(r:CharacterRig,left:boolean,target:T.Vector3,orientation:T.Euler,weight:number){
+export function hand(r:CharacterRig,left:boolean,target:T.Vector3,orientation:T.Euler,weight:number){
  const arm=left?r.leftArm:r.rightArm,elbow=left?r.leftElbow:r.rightElbow,wrist=left?r.leftHand:r.rightHand,weapon=left?r.offWeapon:r.weapon;
  r.group.updateMatrixWorld(true);const parent=arm.parent!,start=arm.position.clone(),end=parent.worldToLocal(r.chest.localToWorld(target.clone())),delta=end.sub(start),d=T.MathUtils.clamp(delta.length(),.045,.518),dir=delta.normalize(),along=(.27*.27-.25*.25+d*d)/(2*d),pole=new T.Vector3(left?1:-1,-.65,-.3);pole.addScaledVector(dir,-pole.dot(dir)).normalize();
  const bend=dir.clone().multiplyScalar(along).addScaledVector(pole,Math.sqrt(Math.max(0,.27*.27-along*along))),upper=new T.Quaternion().setFromUnitVectors(down,bend.clone().normalize()),lower=new T.Quaternion().setFromUnitVectors(down,dir.clone().multiplyScalar(d).sub(bend).normalize().applyQuaternion(upper.clone().invert()));
