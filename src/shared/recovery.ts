@@ -1,5 +1,5 @@
 import {Input,v,norm,forward,mul} from './config.js';
-export interface Knockdown {at:number;until:number;landedAt?:number;pickupUntil?:number;pickupUsed?:boolean;rollAt?:number;rollUntil?:number;rollX?:number;rollZ?:number;electricHits?:number;hits?:number;source?:string;bounced?:boolean;wallUsed?:boolean;}
+export interface Knockdown {juggleUntil?:number;juggleHits?:number;at:number;until:number;landedAt?:number;pickupUntil?:number;pickupUsed?:boolean;rollAt?:number;rollUntil?:number;rollX?:number;rollZ?:number;electricHits?:number;hits?:number;source?:string;bounced?:boolean;wallUsed?:boolean;}
 export const RECOVERY={pickup:.22,rollDelay:.4,rollSeconds:.4,seconds:1,rollSpeed:6} as const;
 export function landRecovery(k:Knockdown,time:number){k.landedAt=time;k.pickupUntil=k.pickupUsed?time:time+RECOVERY.pickup;k.rollAt=time+RECOVERY.rollDelay;k.rollUntil=k.rollAt+RECOVERY.rollSeconds;k.until=time+RECOVERY.seconds;}
 export function pickupOpen(k:Knockdown|undefined,time:number){return !!k&&k.landedAt!==undefined&&!k.pickupUsed&&time<(k.pickupUntil??0);}

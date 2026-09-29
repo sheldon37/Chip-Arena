@@ -17,7 +17,7 @@ test('camera preference is a validated intention; server reconstructs eyes and c
  assert.ok(weaponMuzzle(origin,0,()=>.4).z<.4);
 });
 for(const camera of ['first','third'] as const)test(`${camera} person aims from physical muzzle and cannot shoot through obstructing cover`,()=>{
- const {s,a,b}=arena();a.input={...idleInput(),camera};s.spawnProjectile(a);const initial=[...s.projectiles.values()][0];assert.ok(initial.pos.z<1);for(let n=0;n<10;n++)s.stepProjectiles(1/60);assert.equal(b.hp,77);
+ const {s,a,b}=arena();a.input={...idleInput(),camera};s.spawnProjectile(a);const initial=[...s.projectiles.values()][0];assert.ok(initial.pos.z<1);for(let n=0;n<10;n++)s.stepProjectiles(1/60);assert.equal(b.hp,65.5);assert.ok(s.events.some(e=>e.target===b.id&&e.headshot));
  s.projectiles.clear();b.hp=100;s.addProp({id:'muzzle-cover',pos:v(0,1.6,.52),size:v(2,2,.1),material:'foundation'});s.world.step();s.spawnProjectile(a);const blocked=[...s.projectiles.values()][0];assert.ok(blocked.pos.z<.47,'muzzle is moved behind cover');for(let n=0;n<20;n++)s.stepProjectiles(1/60);assert.equal(b.hp,100);assert.equal(s.projectiles.size,0);s.dispose();
 });
 test('fire and poison are compatible with every gun and melee weapon, additive, bounded and independent',()=>{

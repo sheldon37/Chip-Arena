@@ -39,7 +39,7 @@ function blendRotation(node:T.Object3D,x:number,y:number,z:number,weight:number)
 function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=p.pitch){
  animateCosmetics(r,time);
  const w=WEAPONS[p.spec];locomotion(r,{...p,pitch},time,dt);const pose=attackPose(p,time);
- r.weapon.position.set(0,0,0);r.weapon.rotation.set(.5,0,0);r.weapon.scale.set(1,1,w.class==='melee'?p.reach/w.range:1);r.offWeapon.rotation.set(.55,0,0);r.offWeapon.scale.copy(r.weapon.scale);
+ r.weapon.visible=!p.weaponAway;r.weapon.position.set(0,0,0);r.weapon.rotation.set(.5,0,0);r.weapon.scale.set(1,1,w.class==='melee'?p.reach/w.range:1);r.offWeapon.rotation.set(.55,0,0);r.offWeapon.scale.copy(r.weapon.scale);
  if(p.juggle&&time<p.juggle.until){animateJuggle(r,p,time);return pose;}
  if(p.knockdown&&time<p.knockdown.until){
   const k=p.knockdown,air=k.landedAt===undefined,age=time-k.at,legsUp=!air&&!k.pickupUsed&&time<(k.pickupUntil||0),rolling=!air&&k.rollAt!==undefined&&time>=k.rollAt&&time<(k.rollUntil||0),rolled=!air&&k.rollUntil!==undefined&&time>=k.rollUntil,rise=rolled?smooth((time-k.rollUntil!)/Math.max(.01,k.until-k.rollUntil!)):0,u=rolling?smooth((time-k.rollAt!)/Math.max(.01,k.rollUntil!-k.rollAt!)):0;
@@ -79,7 +79,7 @@ function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=
    blendRotation(r.rightArm,arm,(water?-.5:.28)*(1-u),-(water?.65:.42)*(1-u)-.04*u,c);
    blendRotation(r.rightElbow,elbow,0,0,c);r.rightHand.rotation.set(-.18*u*c,(water?-.7:.45)*(1-u)*c,.45*(1-u)*c);
   }
- }else{meleeMotion(r,p,pose);}
+ }else{meleeMotion(r,p,pose,time);}
 
  if(p.guarding||p.blockTime>0){r.spine.rotation.y=0;r.chest.rotation.set(-.06,0,0);r.leftArm.rotation.set(-1.4,-.25,.35);r.rightArm.rotation.set(-1.3,.25,-.35);r.leftElbow.rotation.x=-.8;r.rightElbow.rotation.x=-.8;r.leftHand.rotation.set(0,0,.25);r.rightHand.rotation.set(0,0,-.25);r.weapon.rotation.x=1.9;}
  return pose;

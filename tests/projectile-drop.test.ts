@@ -33,7 +33,7 @@ test('one Velocity Coil reduces drop by 36% at the same horizontal distance',()=
 });
 test('a fast falling projectile hits a player using the authoritative sweep',()=>{
  const {s,b,shot}=shotArena();b.body.setTranslation(v(0,1,1),true);s.world.step();shot.pos=v(0,2,-5);shot.vel=v(0,-20,240);for(let n=0;n<4;n++)s.stepProjectiles(1/60);
- assert.equal(b.hp,77);assert.ok(!s.projectiles.has(shot.id));s.dispose();
+ assert.equal(b.hp,65.5);assert.ok(!s.projectiles.has(shot.id));s.dispose();
 });
 test('ricochets retain gravity, fall again, and remain bounded',()=>{
  const {s,shot}=shotArena();shot.bounces=3;shot.vel=v(10,-5,0);let bounced=false;

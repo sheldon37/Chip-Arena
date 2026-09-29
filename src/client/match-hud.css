@@ -13,3 +13,7 @@
 @media(prefers-reduced-motion:reduce){.update-alert.available{animation:none}}
 
 #ui:not([data-screen=home]) #update-control{display:none}
+
+.healthbox .bar:not(.resource)>div{background:#59dd83}
+.death-announcement{position:fixed;top:16%;left:50%;transform:translateX(-50%);z-index:8;pointer-events:none;width:max-content;max-width:min(560px,88vw);padding:9px 18px;border:1px solid #96e9ff45;border-radius:999px;background:linear-gradient(100deg,#0c203ad9,#16313ae8);box-shadow:0 0 28px #65dfff18;color:#d9f6ff;text-align:center;font:500 14px/1.5 system-ui;letter-spacing:.02em;text-shadow:0 0 12px #68dbff55}.death-announcement[hidden]{display:none}
+.combat-hitmarker{position:fixed;left:50%;top:50%;width:42px;height:42px;transform:translate(-50%,-50%);z-index:6;pointer-events:none;color:#fff;filter:drop-shadow(0 1px 2px #0009)}.combat-hitmarker[hidden]{display:none}.hitmark-cross{display:block;width:100%;height:100%;overflow:visible;transform-origin:center}.combat-hitmarker.headshot{color:#ff394d}.hitmark-elements{position:absolute;top:calc(100% + 3px);left:50%;transform:translateX(-50%);display:flex;gap:4px}.hitmark-elements svg{width:15px;height:15px}.hitmark-fire{color:#ffab59}.hitmark-poison{color:#91e47a}.dot-tick .hitmark-tips{display:none}

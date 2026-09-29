@@ -64,7 +64,7 @@ const transitions=new WeakMap<CharacterRig,Transition>();
 /** Preserve the incoming pose, decay its offset, and keep sampling the live attack underneath.
  * This is a transition correction, not an all-frame low-pass that would delay hit poses. */
 export function finishPose(r:CharacterRig,p:PlayerView,time:number){
- const action=p.juggle?'juggle':p.knockdown?'down':(p.hitStunUntil||0)>time?'flinch':p.blockTime>0?'block':p.emperor?.action&&time<p.emperor.until?p.emperor.action:p.arcade?.action&&time<p.arcade.until?p.arcade.action:WEAPONS[p.spec].class==='melee'&&time-p.lastAttack<.8/(p.attackRate||1)?'attack-'+p.attackIndex:'base';
+ const action=p.juggle?'juggle':p.knockdown?'down':(p.hitStunUntil||0)>time?'flinch':p.blockTime>0?'block':p.emperor?.action&&time<p.emperor.until?p.emperor.action:p.arcade?.action&&time<p.arcade.until?p.arcade.action:p.meleeAction&&time<p.meleeAction.until?p.meleeAction.kind:WEAPONS[p.spec].class==='melee'&&time-p.lastAttack<.8/(p.attackRate||1)?'attack-'+p.attackIndex:'base';
  const key=p.spec+':'+action+':'+p.grounded,current:StoredPose={q:bones.map(k=>r[k].quaternion.clone()),position:r.body.position.clone()};let s=transitions.get(r);
  if(!s||time<s.time||time-s.time>.35||action==='juggle'||action==='down'||action==='flinch'){s={key,time,at:time,duration:0,last:current};transitions.set(r,s);return;}
  if(key!==s.key){s.offset={q:current.q.map((q,i)=>q.clone().invert().multiply(s!.last.q[i])),position:s.last.position.clone().sub(current.position)};s.key=key;s.at=time;s.duration=action==='base'?.13:.055;}

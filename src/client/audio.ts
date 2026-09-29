@@ -1,3 +1,5 @@
+import {DeathAnnouncementTrack,DEATH_ANNOUNCEMENT} from './death-announcements.js';
+import {enemyHit} from './hitmarker.js';
 import {RAGING_DEMON} from '../shared/raging-demon.js';
 import {IntroAudio} from './intro-audio.js';
 import {ArenaMusic} from './music.js';
@@ -14,6 +16,7 @@ export class AudioCursor {
  reset(){this.last=0;}
 }
 export class ArenaAudio {
+ private deathTrack=new DeathAnnouncementTrack();private deathCues=new Map<string,number>();
  music=new ArenaMusic();intros=new IntroAudio();
  private demonSeen=new Set<string>();private demonEpoch='';
  private loveBuffer:AudioBuffer|null=null;private vanBuffer:AudioBuffer|null=null;private loveSources=new Map<string,Set<AudioBufferSourceNode>>();private loveSeen=new Set<string>();private loveEpoch='';
@@ -49,16 +52,24 @@ export class ArenaAudio {
  get status(){return this.error||(this.context&&this.buffers.size<AUDIO_CLIPS.length?`Loading sound · ${this.buffers.size}/${AUDIO_CLIPS.length} effects`:!this.context?'Click Test Sound to enable audio':`${this.muted?'Muted':this.context.state==='running'?'Sound ready':'Audio paused'} · ${this.buffers.size}/${AUDIO_CLIPS.length} effects loaded`);}
  pausePresentation(){this.intros.stop();this.music.setActive(false);}
  previewIntro(state:Snapshot){this.music.setActive(false);this.intros.update(state,this.context,this.music.cueVolume);}
- reset(){this.demonSeen.clear();this.demonEpoch='';this.intros.stop();this.stopLove();this.music.setActive(false);this.cursor.reset();this.phase='';this.countdown=-1;for(const voice of this.voices)voice.stop();this.voices.clear();}
+ reset(){this.deathTrack.clear();this.deathCues.clear();this.demonSeen.clear();this.demonEpoch='';this.intros.stop();this.stopLove();this.music.setActive(false);this.cursor.reset();this.phase='';this.countdown=-1;for(const voice of this.voices)voice.stop();this.voices.clear();}
  play(name:Sound,position?:Vec,gain=1){const context=this.context,buffer=this.buffers.get(name);if(!context||context.state!=='running'||!buffer||this.muted||!this.volume||this.voices.size>=24)return;
   let volume=gain,pan=0;if(position){const dx=position.x-this.listener.x,dy=position.y-this.listener.y,dz=position.z-this.listener.z,d=Math.hypot(dx,dy,dz);volume*=1/(1+Math.max(0,d-2)*.13);pan=Math.max(-.85,Math.min(.85,(-Math.cos(this.yaw)*dx+Math.sin(this.yaw)*dz)/Math.max(2,d)));}
-  const source=context.createBufferSource(),level=context.createGain(),panner=context.createStereoPanner();source.buffer=buffer;source.playbackRate.value=name==='ui'||name==='countdown'||name==='demon-step'||name==='electric-hook'||name==='electric-hook-hit'?1:.97+Math.random()*.06;level.gain.value=volume;panner.pan.value=pan;source.connect(level).connect(panner).connect(this.master!);this.voices.add(source);source.onended=()=>{this.voices.delete(source);source.disconnect();level.disconnect();panner.disconnect();};source.start();this.played++;
+  const source=context.createBufferSource(),level=context.createGain(),panner=context.createStereoPanner();source.buffer=buffer;source.playbackRate.value=name==='hit'||name==='ui'||name==='countdown'||name==='demon-step'||name==='electric-hook'||name==='electric-hook-hit'?1:.97+Math.random()*.06;level.gain.value=volume;panner.pan.value=pan;source.connect(level).connect(panner).connect(this.master!);this.voices.add(source);source.onended=()=>{this.voices.delete(source);source.disconnect();level.disconnect();panner.disconnect();};source.start();this.played++;
  }
  private arcadeVoices=0;
  arcadeTone(hit:number,move:boolean,superMove=false){const c=this.context;if(!c||!this.master||this.muted||c.state!=='running'||this.arcadeVoices>=8)return;this.arcadeVoices++;const osc=c.createOscillator(),gain=c.createGain(),at=c.currentTime;osc.type=move?'sawtooth':'square';osc.frequency.setValueAtTime(move?120:360+Math.min(hit,10)*55,at);osc.frequency.exponentialRampToValueAtTime(move?(superMove?920:420):160,at+(move?.25:.08));gain.gain.setValueAtTime(move?.09:.06,at);gain.gain.exponentialRampToValueAtTime(.001,at+(move?.35:.10));osc.connect(gain).connect(this.master);osc.start();osc.stop(at+(move?.38:.12));osc.onended=()=>{this.arcadeVoices--;osc.disconnect();gain.disconnect();};}
- update(state:Snapshot,me:string,yaw:number,presentation=state){this.intros.update(presentation,this.context,this.music.cueVolume);this.music.setMap(state.options.map);this.music.setActive(['fight','countdown','result'].includes(state.phase));this.updateLove(state);const self=state.players.find(p=>p.id===me);if(self)this.listener=self.pos;this.yaw=yaw;this.updateDemon(presentation);
+ deathCue(burst:boolean){const c=this.context;if(!c||!this.master||this.muted||c.state!=='running')return;
+  if(burst)this.play('explosion',undefined,.7);
+  for(let i=0;i<(burst?3:1);i++){const voice=c.createOscillator(),gain=c.createGain(),at=c.currentTime+i*.11;voice.type=burst?'sine':'triangle';voice.frequency.setValueAtTime(burst?[660,880,1100][i]:240,at);voice.frequency.exponentialRampToValueAtTime(burst?[650,870,1090][i]:1700,at+(burst?.4:.8));gain.gain.setValueAtTime(.001,at);gain.gain.linearRampToValueAtTime(burst?.14:.10,at+.025);gain.gain.exponentialRampToValueAtTime(.001,at+(burst?.65:.95));voice.connect(gain).connect(this.master);voice.start(at);voice.stop(at+(burst?.7:1));voice.onended=()=>{voice.disconnect();gain.disconnect();};}
+ }
+ private updateDeathAnnouncements(state:Snapshot){for(const a of this.deathTrack.update(state))for(const [part,offset]of [['launch',0],['burst',DEATH_ANNOUNCEMENT.launch]] as const){const key=a.id+':'+part,age=state.time-a.at-offset;if(age<0||this.deathCues.has(key))continue;this.deathCues.set(key,state.time);if(age<.25)this.deathCue(part==='burst');}for(const[key,at]of this.deathCues)if(state.time-at>30)this.deathCues.delete(key);}
+ update(state:Snapshot,me:string,yaw:number,presentation=state){this.intros.update(presentation,this.context,this.music.cueVolume);this.music.setMap(state.options.map);this.music.setActive(['fight','countdown','result'].includes(state.phase));this.updateLove(state);const self=state.players.find(p=>p.id===me);if(self)this.listener=self.pos;this.yaw=yaw;this.updateDemon(presentation);this.updateDeathAnnouncements(presentation);
   for(const e of this.cursor.consume(state.events,state.time)){
-   if(e.type==='shot'||e.type==='windup'){if(e.spec)this.play(e.spec==='leet'||e.spec==='emperor'?'lightning':e.spec==='ansatsuken'?'fire':e.spec,e.pos,.65);}
+   if(e.type==='melee-slam'){this.play('stone',e.pos,1);this.play('greatsword',e.pos,.65);}
+   else if(e.type==='melee-special'){if(e.spec)this.play(e.spec as Sound,e.pos,.4);}
+   else if(e.type==='catch'&&e.spec==='shield')this.play('shield',e.pos,.45);
+   else if(e.type==='shot'||e.type==='windup'){if(e.spec)this.play(e.spec==='leet'||e.spec==='emperor'?'lightning':e.spec==='ansatsuken'?'fire':e.spec,e.pos,.65);}
    else if(e.type==='ceiling-hit')this.play('parry',e.pos,.45);
    else if(e.type==='stage-saw-hit')this.play('saw-cut',e.pos,1.1);
    else if(e.type==='stage-spikes-rise')this.play('spike-rise',e.pos,1);
@@ -79,7 +90,7 @@ export class ArenaAudio {
    else if(e.type==='leet-nuke')this.play('explosion',e.pos,1);
    else if(e.type==='leet-freeze'||e.type==='leet-undo')this.play('darkness',e.pos,.6);
    else if(e.type==='reloadStart'||e.type==='reloadEnd'){if(e.source===me)this.play(e.type==='reloadStart'?'reload-start':'reload-end',undefined,.6);}
-   else if(e.type==='hit'){if(e.message==='burn'||e.message==='poison')this.play(e.message==='burn'?'burn-tick':'poison-tick',e.pos,.24);else if(e.target===me)this.play('hurt',undefined,.6);else if(e.source===me)this.play('hit',undefined,.7);}
+   else if(e.type==='hit'){if(e.message==='burn'||e.message==='poison')this.play(e.message==='burn'?'burn-tick':'poison-tick',e.pos,.24);else if(e.target===me)this.play('hurt',undefined,.6);else if(enemyHit(e,state,me))this.play('hit',undefined,.9);}
    else if(e.type==='impact')this.play(e.material==='metal'?'metal':e.material==='wood'?'wood':'stone',e.pos,.22);
    else if(e.type==='break')this.play(e.material==='metal'?'metal':e.material==='wood'?'wood':'stone',e.pos,.65);
    else if(e.type==='explosion'||e.type==='collapse')this.play('explosion',e.pos,.65);

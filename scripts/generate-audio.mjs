@@ -1,4 +1,4 @@
-// Original deterministic synthesized effects. No recordings or third-party assets.
+// Deterministic synthesized effects; hit.wav is the user-supplied hitmarker recording.
 import {mkdirSync,writeFileSync} from 'node:fs';
 const rate=22050,TAU=Math.PI*2;
 let seed=1234567;const noise=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/2147483648-1;};
@@ -37,6 +37,7 @@ const clips={
 };
 mkdirSync('public/audio',{recursive:true});
 for(const [name,[seconds,fn]]of Object.entries(clips)){
+ if(name==='hit')continue; // Preserve the approved recording in assets/audio/hitmarker_2.mp3.
  const length=Math.ceil(rate*seconds),pcm=new Float32Array(length);let peak=0;
  for(let i=0;i<length;i++){const t=i/rate,fade=Math.min(1,t/.0015,(seconds-t)/.02);pcm[i]=fn(t,noise())*fade;peak=Math.max(peak,Math.abs(pcm[i]));}
  const gain=.72/Math.max(1,peak),buffer=Buffer.alloc(44+length*2);
