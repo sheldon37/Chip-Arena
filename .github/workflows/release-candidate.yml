@@ -1,0 +1,47 @@
+name: Prepare unpublished release candidate
+on:
+  workflow_dispatch:
+    inputs:
+      source_commit:
+        description: 'Full 40-character source commit selected for candidate review'
+        required: true
+        type: string
+      test_only:
+        description: 'Allow diagnostic packaging after failed checks; run still fails'
+        default: false
+        type: boolean
+permissions:
+  contents: read
+concurrency:
+  group: release-candidate-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Build isolated candidate (never publish)
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          TEST_ONLY: ${{ inputs.test_only }}
+        run: |
+          args=()
+          if [ "$TEST_ONLY" = true ]; then args+=(--test-only); fi
+          python3 scripts/release/candidate.py --commit "$SOURCE_COMMIT" --output "$RUNNER_TEMP/candidate" "${args[@]}"
+      - name: Retain candidate and failure evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: unpublished-candidate-${{ github.run_id }}
+          path: ${{ runner.temp }}/candidate
+          retention-days: 7
+          if-no-files-found: error
