@@ -52,3 +52,19 @@ In the PR/final handoff state the branch, pushed commit, scope, actual checks,
 unrun checks, known risks, and release status. The next agent must be able to
 continue from GitHub without access to this conversation. Owner controls merges
 and releases unless a specific request authorizes otherwise.
+
+## Shared development log (Astra and Claude)
+Before each task, read recent entries in `docs/DEV_LOG.md` and inspect relevant
+open PRs as well as PROJECT_STATE. Confirm your checkout includes the intended
+base commit; logs and pushes do not automatically synchronize another checkout.
+Until migration PR #1 merges, use current `migration/shared-development` as the
+base for new task branches unless the owner names another ref; afterward use main.
+At completion or handoff, add a concise entry to DEV_LOG on your own task branch:
+date/agent/task, branch and base, PR or implementation commit if known, changes and
+rationale, affected systems, actual checks/results, remaining risks and next step.
+Distinguish implemented-on-branch, merged, and released; verify current GitHub
+status rather than assuming historical log status is current. Record animation
+impacts on hit timing, hitboxes, damage, cooldowns, movement and networking.
+Keep PROJECT_STATE short. Preserve other agents' entries when resolving conflicts;
+do not overwrite their work. Coordinate overlapping files/systems before editing.
+Do not append long transcripts or duplicate full diffs. No automatic review loop.
