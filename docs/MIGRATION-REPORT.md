@@ -176,14 +176,27 @@ failures still need investigation. Full CI should remain red until they are reso
 
 ## Handoff status
 
-GitHub destination is confirmed private and empty; no pushed commit or PR exists.
-Final evidence-only commit follows the tested code commit; it changes docs only.
-The source-only export records its exact SHA, all file hashes, baseline provenance,
-test outputs and an incremental Git bundle. It excludes generated player packages.
-The local source branch and unchanged original baseline are recoverable; see the
-export's MIGRATION-HANDOFF.md before importing. Remaining access need: authenticated
-Git transport. Browser sign-in does not authenticate this workspace's Git client.
-Direct SSH connection checks failed at DNS resolution; no network bypass was used.
-Use the complete history bundle from an authenticated Git client. Recheck remote
-refs and publishing settings at import time; do not assume they stay unchanged.
-Production and the old working installation remain unchanged; phase 2 not started.
+The owner successfully imported the verified full-history bundle using their
+Windows Git client. GitHub API independently confirms main at
+`18231698c7c79a7a604e567b933eb2d0155d7a3e` and the initial migration branch at
+`6e488a09d72cf04f9315e7738adf7c1131306bfb`. All 68 original commits are retained;
+the branch included four migration/documentation commits. The subsequent
+connector commit updates documentation only. No gameplay checks were rerun for it.
+
+Earlier access-blocker descriptions above record the migration's preparation
+stage. The one-time import blocker is resolved. This workspace still has no
+command-line Git credential; the connected app can now perform supported branch,
+source and PR operations on the initialized repository.
+
+The draft migration PR targets main; its description records actual command
+results and the tested implementation commit. Shared instructions, exclusions
+and CI remain on the migration branch until owner review/merge. No automatic
+merge, production deployment, release or update-feed cutover occurred.
+
+The source-only archive and four full-history backup parts record the imported
+SHA and remain recovery artifacts; GitHub is now the development source of truth.
+They exclude live player data and credentials. Historic generated builds remain
+in Git history; new generated output is excluded from the migration branch.
+The owner verified bundle reconstruction and cloned it successfully on Windows;
+that does not test the Windows game executable. Native Windows gameplay remains
+unverified. Known unit/server/WebSocket failures require a separate repair task.

@@ -95,7 +95,9 @@ empty. Authorized browser inspection found no webhooks or environments, Pages
 unavailable on the current private plan, and only ChatGPT Codex Connector installed.
 Actions defaults to read-only access; no settings were changed. Ruleset inspection
 returned a private-plan HTTP 403. Local Git transport still lacks authentication;
-browser sign-in does not supply it. Do not bypass this by pushing to the live Site.
+browser sign-in does not supply it. The owner completed the initial Git import
+from Windows; the connected app can now operate on the initialized repository.
+Do not use the live Site as a source-import shortcut.
 Recheck publishing controls and refs at import time, without changing live
 infrastructure. If the destination is still empty and safe, push the original baseline
 to main once and this migration branch separately, then open a PR. If nonempty,

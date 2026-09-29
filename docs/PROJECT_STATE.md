@@ -1,11 +1,11 @@
 # Chip Arena — current state
 
-Migration prepared locally; not pushed and not released (2026-09-29).
+Migration imported to private GitHub; not merged or released (2026-09-29).
 
-- Confirmed destination: `sheldon37/Chip-Arena`, private and empty; owner access
-  verified. `origin` points there. Browser audit found no publishing hooks,
-  environments or Pages; only the Codex Connector app. Git authentication still
-  blocks push/PR. Ruleset API returns a private-plan restriction.
+- Destination: `sheldon37/Chip-Arena`, private. Owner pushed the verified baseline
+  and migration branch; remote SHAs match the history bundle. Browser audit found
+  no publishing hooks, environments or Pages; only the Codex Connector app.
+  Ruleset API returns a private-plan restriction; no admin policies changed.
 - Source baseline: `18231698c7c79a7a604e567b933eb2d0155d7a3e`, clean `main`,
   68 existing commits; matches latest successfully published Site source (version 64).
   Work branch: `migration/shared-development`; full history retained.
@@ -23,7 +23,7 @@ Migration prepared locally; not pushed and not released (2026-09-29).
   identical after clean restore. WebSocket rematch/server build remain failing;
   HTTPS integration and Windows ZIP construction passed. Native Windows untested.
 
-Next: use authenticated Git transport; recheck refs and publishing settings, import
-the audited baseline if still empty, then branch/PR. Full history export is provided.
-Resolve recorded baseline failures before enforcing a green merge/release gate.
+Next: review the migration PR against `main`; shared policy and CI remain on
+`migration/shared-development` until the owner merges. Resolve recorded baseline
+failures before enforcing a green merge/release gate. No automatic merge.
 Windows validation and desktop distribution cutover remain separate work.
