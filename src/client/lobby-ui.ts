@@ -1,7 +1,8 @@
+import type {AccessInput} from '../shared/access.js';
 import type {ClassId} from '../shared/config.js';
 import type {PlayerView} from '../shared/simulation.js';
 import {WEAPONS,CLASS_INFO} from '../shared/content.js';
-import {LOBBY_POSES,lobbyPose,BOT_WEAPONS,PREFERRED_WEAPONS,preferredWeapon,type BotWeapon} from '../shared/lobby-presentation.js';
+import {LOBBY_POSES,lobbyPose,BOT_WEAPONS,preferredWeapons,preferredWeapon,type BotWeapon} from '../shared/lobby-presentation.js';
 import {classIcon,icon} from './icons.js';
 const esc=(value:unknown)=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 export function pilotCard(p:PlayerView,tag:string,index=0,ready?:boolean){
@@ -13,7 +14,7 @@ export function botLoadouts(count:number,choices:BotWeapon[]){
 }
 
 export function lobbyDensity(count:number){return count<=2?'large':count<=4?'medium':'compact';}
-export function preferredWeaponOptions(cls:ClassId,value:unknown){
- const selected=preferredWeapon(value,cls);
- return PREFERRED_WEAPONS.filter(w=>w.class===cls).map(w=>`<option value="${w.id}" ${w.id===selected?'selected':''}>${esc(w.name)}</option>`).join('');
+export function preferredWeaponOptions(cls:ClassId,value:unknown,access:AccessInput=false){
+ const selected=preferredWeapon(value,cls,access);
+ return preferredWeapons(access).filter(w=>w.class===cls).map(w=>`<option value="${w.id}" ${w.id===selected?'selected':''}>${esc(w.name)}</option>`).join('');
 }

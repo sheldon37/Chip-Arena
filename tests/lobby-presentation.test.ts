@@ -16,7 +16,7 @@ test('lobby pose and preferred weapon survive host/guest snapshots and preserve 
  try{room.join({name:'Guest',class:'melee',cosmetics:{lobbyPose:'sleep',preferredSpec:'daggers'}});const players=room.sim.snapshot().players;
   assert.equal(players[0].cosmetics?.lobbyPose,'chair');assert.equal(players[0].spec,'rifle');assert.equal(players[1].cosmetics?.lobbyPose,'sleep');assert.equal(players[1].spec,'daggers');
   assert.equal(cosmetics({lobbyPose:'__proto__',preferredSpec:'emperor'}).lobbyPose,'weapon');assert.equal(cosmetics({preferredSpec:'emperor'}).preferredSpec,undefined);
-  assert.equal(cosmetics({preferredSpec:'emperor'},true).preferredSpec,undefined);assert.equal(preferredWeapon('rifle','magic'),'fire');
+  assert.equal(cosmetics({preferredSpec:'emperor'},true).preferredSpec,'emperor');assert.equal(preferredWeapon('rifle','magic'),'fire');
  }finally{room.dispose();}
 });
 test('each configured bot keeps its chosen weapon through selection, rounds and rematches; malformed inputs cannot grant dev classes',()=>{
@@ -47,13 +47,23 @@ test('lobby cards escape player text and seven bot selectors expose all ordinary
  }finally{s.dispose();}
 });
 
-test('preferred weapon choices never expose special weapons, even for privileged or stale profiles',()=>{
- for(const weapon of Object.values(WEAPONS).filter(w=>w.devOnly)){
-  for(const access of [false,true,{developer:true,unlocks:['weapon:'+weapon.id]}])assert.equal(cosmetics({preferredSpec:weapon.id},access).preferredSpec,undefined);
-  assert.equal(preferredWeapon(weapon.id,weapon.class),CLASS_INFO[weapon.class].default);
-  const html=preferredWeaponOptions(weapon.class,weapon.id);
-  for(const special of Object.values(WEAPONS).filter(w=>w.devOnly)){assert.ok(!html.includes(special.id));assert.ok(!html.includes(special.name));}
-  assert.ok(html.includes(`value="${CLASS_INFO[weapon.class].default}" selected`));
+test('special pose weapons require developer access or the exact item grant, including saved preferences and snapshots',()=>{
+ const specials=Object.values(WEAPONS).filter(w=>w.devOnly);
+ for(const weapon of specials){
+  for(const access of [false,{developer:false,unlocks:['intro:dev-emperor']},true,{developer:false,unlocks:['weapon:'+weapon.id]}]){
+   const allowed=access===true||typeof access==='object'&&access.unlocks.includes('weapon:'+weapon.id);
+   assert.equal(cosmetics({preferredSpec:weapon.id},access).preferredSpec,allowed?weapon.id:undefined);
+   assert.equal(preferredWeapon(weapon.id,weapon.class,access),allowed?weapon.id:CLASS_INFO[weapon.class].default);
+   const html=preferredWeaponOptions(weapon.class,weapon.id,access);
+   assert.equal(html.includes(`value="${weapon.id}"`),allowed);
+   assert.ok(html.includes(`value="${allowed?weapon.id:CLASS_INFO[weapon.class].default}" selected`));
+   for(const special of specials.filter(w=>w.id!==weapon.id))assert.equal(html.includes(`value="${special.id}"`),access===true&&special.class===weapon.class,'an individual grant must not expose other special weapons');
+   const sim=new Simulation();try{
+    sim.addPlayer('p','Pilot',weapon.class,null,'#ff6b35',{preferredSpec:weapon.id},access);
+    const player=sim.snapshot().players[0];assert.equal(player.spec,allowed?weapon.id:CLASS_INFO[weapon.class].default);assert.equal(player.cosmetics?.preferredSpec,allowed?weapon.id:undefined);
+    sim.setClass('p',weapon.class);assert.equal(sim.snapshot().players[0].spec,player.spec);
+   }finally{sim.dispose();}
+  }
  }
 });
 test('portraits display only class names, use distinct style effects and shrink in populated rooms',()=>{
