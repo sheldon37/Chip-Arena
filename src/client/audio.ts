@@ -59,6 +59,7 @@ export class ArenaAudio {
  update(state:Snapshot,me:string,yaw:number,presentation=state){this.intros.update(presentation,this.context,this.music.cueVolume);this.music.setMap(state.options.map);this.music.setActive(['fight','countdown','result'].includes(state.phase));this.updateLove(state);const self=state.players.find(p=>p.id===me);if(self)this.listener=self.pos;this.yaw=yaw;this.updateDemon(presentation);
   for(const e of this.cursor.consume(state.events,state.time)){
    if(e.type==='shot'||e.type==='windup'){if(e.spec)this.play(e.spec==='leet'||e.spec==='emperor'?'lightning':e.spec==='ansatsuken'?'fire':e.spec,e.pos,.65);}
+   else if(e.type==='ceiling-hit')this.play('parry',e.pos,.45);
    else if(e.type==='stage-saw-hit')this.play('saw-cut',e.pos,1.1);
    else if(e.type==='stage-spikes-rise')this.play('spike-rise',e.pos,1);
    else if(e.type==='demon-step')this.play('demon-step',e.pos,.95);

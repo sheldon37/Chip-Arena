@@ -9,7 +9,7 @@ export function poseRainWarrior(r:CharacterRig,age:number){
  r.group.position.set(0,.88,0);r.group.scale.setScalar(1);r.body.position.set(0,0,0);r.weapon.visible=r.offWeapon.visible=false;
  const turn=ease((age-3.15)/1.15),guard=ease((age-4.05)/.7);r.group.rotation.set(0,Math.PI*(1-turn)-.12*turn,0);
  r.head.rotation.x=.18*(1-guard);r.leftLeg.rotation.z=.12;r.rightLeg.rotation.z=-.12;r.leftArm.rotation.set(.12,0,.2);r.rightArm.rotation.set(.12,0,-.2);r.leftElbow.rotation.x=r.rightElbow.rotation.x=-.25;
- if(age>2.45&&age<3.9)r.head.rotation.y=-.5*Math.sin(Math.PI*ease((age-2.45)/1.45));fighterGuard(r,age,guard);
+ if(age>2.45&&age<3.9)r.head.rotation.y=-.5*Math.sin(Math.PI*ease((age-2.45)/1.45));fighterGuard(r,age,guard);const pivot=Math.sin(turn*Math.PI);r.pelvis.rotation.y-=.16*pivot;r.chest.rotation.y+=.12*pivot;r.body.position.y-=.025*pivot;r.rightFoot.rotation.y-=.32*pivot;r.leftKnee.rotation.x+=.12*pivot;r.rightShoulder.rotation.y=-.06*guard;r.spine.rotation.x+=Math.sin(age*2.1)*.008;
 }
 export function rainCamera(camera:T.PerspectiveCamera,age:number,aspect:number){
  const t=ease(age/2.4),turn=ease((age-3.15)/1.6),reveal=ease((age-4.75)/.75);

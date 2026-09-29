@@ -126,3 +126,11 @@ body{background:#111216;color:#f4f4f5;font-family:Inter,Arial,sans-serif}.home-s
 @media(max-width:1050px){.match-heading{top:70px;left:24px;transform:none}.match-overview{right:16px}}
 @media(max-width:600px){.match-overview{width:min(310px,calc(100vw - 32px));top:144px;max-height:calc(100dvh - 224px);padding:10px}.set-circles{grid-template-columns:repeat(min(var(--score-columns,5),5),15px)}}
 @media(max-height:700px){.match-overview{max-height:calc(100dvh - 176px)}.score-pilot{min-height:26px}.alive-pilot{min-height:20px}.alive-roster{margin-top:8px;padding-top:8px}}
+/* Shared vector icon scale: crisp silhouettes, one stroke language at every size. */
+.game-icon{display:inline-block;width:1.25em;height:1.25em;flex:0 0 auto;vertical-align:-.24em;overflow:visible}
+.btn .game-icon{width:19px;height:19px;margin-right:9px;vertical-align:-4px}.close .game-icon{width:21px;height:21px}
+.class-symbol{display:flex;align-items:center;justify-content:center;height:48px;margin-bottom:10px}.class-symbol .game-icon{width:38px;height:38px;stroke-width:1.6}
+.chip-icon{display:flex!important;align-items:center;justify-content:center}.chip-icon>.game-icon{width:34px;height:34px;stroke-width:1.65}.spec-grid .chip-icon{width:50px;height:50px;border:1px solid #666874;border-radius:10px;color:#ffc1a5}
+.installed-chip .game-icon{width:23px;height:23px}.board-chip-symbol .game-icon{width:25px;height:25px}.board-specialization>span>.game-icon{width:32px;height:32px}.board-tooltip h3 .game-icon{width:24px;height:24px;margin-right:5px}
+.icon-composite{position:relative;display:inline-flex;width:1.4em;height:1.4em;align-items:center;justify-content:center}.chip-icon .icon-composite{width:34px;height:34px}.icon-composite>.game-icon{width:100%;height:100%}.icon-composite>i{display:flex;position:absolute;right:-18%;bottom:-14%;width:53%;height:53%;background:#191a21;border-radius:50%;box-shadow:0 0 0 2px #191a21}.icon-composite>i .game-icon{width:100%;height:100%;stroke-width:2}
+.weapon-info .game-icon,.enchant-label .game-icon{width:16px;height:16px}.pilot-custom .class-symbol{display:flex;height:28px;margin:0 0 8px}.pilot-custom .class-symbol .game-icon{width:26px;height:26px}

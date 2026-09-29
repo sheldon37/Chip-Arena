@@ -1,3 +1,5 @@
+import {locomotion,finishPose} from './motion-quality.js';
+import {meleeMotion} from './melee-motion.js';
 import {animateEmperor,animateJuggle} from './emperor-animation.js';
 import {animateCosmetics} from './auditor-halo.js';
 import {animateAnsatsuken} from './ansatsuken-animation.js';
@@ -34,22 +36,9 @@ export function spellPose(p:PlayerView,time:number){
 }
 function blendRotation(node:T.Object3D,x:number,y:number,z:number,weight:number){node.quaternion.slerp(new T.Quaternion().setFromEuler(new T.Euler(x,y,z)),clamp(weight,0,1));}
 /** Distance-driven locomotion under action layers. Authoritative attack timestamps keep the hit phase aligned. */
-export function animateCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=p.pitch){
+function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=p.pitch){
  animateCosmetics(r,time);
- const w=WEAPONS[p.spec],speed=Math.hypot(p.vel.x,p.vel.z),target=p.grounded?clamp(speed/6.8,0,1.25):0;
- r.motion+=(target-r.motion)*(1-Math.exp(-ANIMATION.blendSpeed*dt));r.stride+=Math.min(speed,15)*dt*ANIMATION.stridePerMetre;
- const run=r.motion,gait=Math.sin(r.stride),opposite=-gait,pose=attackPose(p,time),forward=(p.vel.x*Math.sin(p.yaw)+p.vel.z*Math.cos(p.yaw))/Math.max(.1,speed),strafe=(p.vel.x*Math.cos(p.yaw)-p.vel.z*Math.sin(p.yaw))/Math.max(.1,speed),travel=forward<-.2?-1:1;
- if(p.grounded&&!r.wasGrounded)r.land=.10;r.wasGrounded=p.grounded;r.land*=Math.exp(-dt*15);r.groundWeight+=(Number(p.grounded)-r.groundWeight)*(1-Math.exp(-dt*12));const air=1-r.groundWeight;
- r.body.position.set(0,Math.abs(Math.cos(r.stride))*.04*run+Math.sin(time*2.3)*.006*(1-Math.min(run,1))-r.land,0);r.body.rotation.set(run*.13*forward+(p.dashTime?.22:0),0,-strafe*run*.08);
- r.pelvis.rotation.set(0,gait*.13*run,-gait*.055*run);r.spine.rotation.set(run*.07, -gait*.12*run,0);r.chest.rotation.set(0,-gait*.11*run,0);r.neck.rotation.set(0,0,0);r.head.rotation.set(-pitch*.55-r.body.rotation.x*.6,gait*.08*run,0);
- r.leftLeg.rotation.set(gait*.86*run*travel-.45*air,0,strafe*.23*run);r.rightLeg.rotation.set(opposite*.86*run*travel+.15*air,0,strafe*.23*run);
- r.leftKnee.rotation.set(Math.max(0,-gait)*1.1*run+.8*air,0,0);r.rightKnee.rotation.set(Math.max(0,gait)*1.1*run+.35*air,0,0);
- r.leftFoot.rotation.set(-r.leftLeg.rotation.x*.45-r.leftKnee.rotation.x*.65,0,0);r.rightFoot.rotation.set(-r.rightLeg.rotation.x*.45-r.rightKnee.rotation.x*.65,0,0);r.leftToe.rotation.x=Math.max(0,gait)*.35*run;r.rightToe.rotation.x=Math.max(0,-gait)*.35*run;
- r.leftShoulder.rotation.set(0,0,.025);r.rightShoulder.rotation.set(0,0,-.025);
- // Unarmed travel remains visible with every class: large opposing shoulder swings, elbows and wrist lag.
- r.leftArm.rotation.set(-gait*.95*run-.12,0,.10+air*.25);r.rightArm.rotation.set(gait*.9*run-.16,0,-.10-air*.25);
- r.leftElbow.rotation.set(-.22-Math.max(0,gait)*.5*run,0,0);r.rightElbow.rotation.set(-.25-Math.max(0,-gait)*.5*run,0,0);
- r.leftHand.rotation.set(Math.sin(r.stride-.5)*.13*run,0,.06);r.rightHand.rotation.set(-Math.sin(r.stride-.5)*.13*run,0,-.06);
+ const w=WEAPONS[p.spec],{run}=locomotion(r,{...p,pitch},time,dt),pose=attackPose(p,time);
  r.weapon.position.set(0,0,0);r.weapon.rotation.set(.5,0,0);r.weapon.scale.set(1,1,w.class==='melee'?p.reach/w.range:1);r.offWeapon.rotation.set(.55,0,0);r.offWeapon.scale.copy(r.weapon.scale);
  if(p.juggle&&time<p.juggle.until){animateJuggle(r,p,time);return pose;}
  if(p.knockdown&&time<p.knockdown.until){
@@ -88,25 +77,13 @@ export function animateCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:numbe
    blendRotation(r.rightArm,arm,(water?-.5:.28)*(1-u),-(water?.65:.42)*(1-u)-.04*u,c);
    blendRotation(r.rightElbow,elbow,0,0,c);r.rightHand.rotation.set(-.18*u*c,(water?-.7:.45)*(1-u)*c,.45*(1-u)*c);
   }
- }else{
-  const heavy=p.spec==='greatsword',dagger=p.spec==='daggers',shield=p.spec==='shield';
-  if(pose.active){const wind=pose.load,hit=smooth(pose.strike),recover=pose.recovery,action=pose.age<pose.windup?wind:recover,sw=(pose.age<pose.windup?-wind:-1+2.3*hit)*recover;
-   r.pelvis.rotation.y=-sw*(heavy?.24:.16);r.spine.rotation.y=sw*(heavy?.54:.37);r.chest.rotation.y=sw*.34;r.head.rotation.y=-sw*.3;r.body.rotation.x+=(shield?hit*.18:heavy?hit*.21:hit*.07)*recover;r.body.position.z=(shield?.18:.10)*hit*recover;
-   if(p.chips.hurricane)r.body.rotation.y=hit*Math.PI*2*recover;
-   r.leftLeg.rotation.x-=action*.17;r.rightLeg.rotation.x+=action*.22;r.leftKnee.rotation.x+=action*.25;r.rightKnee.rotation.x+=action*.32;
-   if(shield){r.rightArm.rotation.set(-.85-hit*.5,-.08,-.17);r.rightElbow.rotation.x=-.95+hit*.8;r.rightHand.rotation.set(0,0,0);r.weapon.rotation.x=1.7;r.leftArm.rotation.set(.25+hit*.6,0,.25);}
-   else if(dagger){const left=(p.attackIndex||1)%2===0,sign=left?-1:1,lead=left?r.leftArm:r.rightArm,elbow=left?r.leftElbow:r.rightElbow,wrist=left?r.leftHand:r.rightHand,trail=left?r.rightArm:r.leftArm,trailElbow=left?r.rightElbow:r.leftElbow;
-    r.pelvis.rotation.y*=sign;r.spine.rotation.y*=sign;r.chest.rotation.y*=sign;r.head.rotation.y*=sign;
-    lead.rotation.set(-.65-hit*.65,sw*.65*sign,-.26*sign);elbow.rotation.x=-1.45+hit*1.32;wrist.rotation.set(hit*.22,-sw*.35*sign,-.12*sign);
-    trail.rotation.set(-.45+hit*.3,-sw*.22*sign,.28*sign);trailElbow.rotation.x=-.9-hit*.35;
-    r.weapon.rotation.x=left?.7:1.45;r.offWeapon.rotation.x=left?1.45:.7;
-   }
-   else{r.rightArm.rotation.set(-.95-action*(heavy?1.05:.45)+hit*.7,sw*(heavy?.5:.8),-.15-action*.45);r.rightElbow.rotation.x=-.6-wind*.6+hit*.25;r.weapon.rotation.x=1.4+wind*.3;r.rightHand.rotation.set(hit*.28,sw*.18,sw*.18);r.leftArm.rotation.set(.3+sw*.4,0,.35+action*.2);r.leftElbow.rotation.x=-.6;if(heavy){braceWeapon(r,new T.Vector3(-.03,.12+wind*.32,.22+hit*.07),new T.Euler(-wind*1.35+hit*.5,sw*.55,sw*.3),action);}}
-  }else {r.weapon.rotation.x=.3;if(dagger){r.leftArm.rotation.x-=.15;r.offWeapon.rotation.x=.3;}}
- }
+ }else{meleeMotion(r,p,pose);}
+
  if(p.guarding||p.blockTime>0){r.spine.rotation.y=0;r.chest.rotation.set(-.06,0,0);r.leftArm.rotation.set(-1.4,-.25,.35);r.rightArm.rotation.set(-1.3,.25,-.35);r.leftElbow.rotation.x=-.8;r.rightElbow.rotation.x=-.8;r.leftHand.rotation.set(0,0,.25);r.rightHand.rotation.set(0,0,-.25);r.weapon.rotation.x=1.9;}
  return pose;
 }
+
+export function animateCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=p.pitch){const pose=sampleCharacter(r,p,time,dt,pitch);finishPose(r,p,time);return pose;}
 
 /** Sandbox-only presentation sampler: never writes simulation, attacks, inputs, or health. */
 export function animationPreviewPlayer(p:PlayerView,mode:string,time:number):PlayerView{

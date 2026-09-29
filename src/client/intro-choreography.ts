@@ -1,3 +1,4 @@
+import {poseCurve} from './pose-curves.js';
 import {poseEmperor,emperorCamera} from './emperor-intro.js';
 import {poseRainWarrior,rainCamera} from './ansatsuken-intro.js';
 import {poseMatrixThrone,matrixCamera} from './leet-intro.js';
@@ -53,10 +54,13 @@ const poses:Record<Exclude<IntroStyle,'dev-emperor'|'dev-matrix'|'dev-ansatsuken
 };
 /** Complete keyed poses, sampled from absolute time: no accumulated rotations or stale preview state. */
 export function poseIntro(r:CharacterRig,style:IntroStyle,age:number){
- if(style==='dev-emperor'){poseEmperor(r,age);return;}if(style==='dev-ansatsuken'){poseRainWarrior(r,age);return;}if(style==='dev-matrix'){poseMatrixThrone(r,age);return;}const t=Math.max(0,age),frames=poses[style];let a=frames[0],b=a;for(const frame of frames){if(frame.at<=t)a=frame;else{b=frame;break;}b=a;}const u=a===b?0:ease((t-a.at)/(b.at-a.at));
+ if(style==='dev-emperor'){poseEmperor(r,age);return;}if(style==='dev-ansatsuken'){poseRainWarrior(r,age);return;}if(style==='dev-matrix'){poseMatrixThrone(r,age);return;}const t=Math.max(0,age),frames=poses[style];
  for(const node of [r.body,r.pelvis,r.spine,r.chest,r.neck,r.head,r.leftShoulder,r.rightShoulder,r.leftArm,r.rightArm,r.leftElbow,r.rightElbow,r.leftHand,r.rightHand,r.leftLeg,r.rightLeg,r.leftKnee,r.rightKnee,r.leftFoot,r.rightFoot,r.leftToe,r.rightToe])node.rotation.set(0,0,0);
- const pa=a.position||[0,.88,0],pb=b.position||[0,.88,0];r.group.position.set(...pa).lerp(new T.Vector3(...pb),u);r.group.rotation.set(0,T.MathUtils.lerp(a.turn??-.12,b.turn??-.12,u),0);r.group.scale.setScalar(1);r.body.position.set(0,T.MathUtils.lerp(a.bodyY||0,b.bodyY||0,u),0);r.weapon.visible=r.offWeapon.visible=false;
- for(const key of ['body','pelvis','spine','chest','head','leftArm','rightArm','leftElbow','rightElbow','leftLeg','rightLeg','leftKnee','rightKnee','leftFoot','rightFoot'] as Joint[]){const x=a.joints?.[key]||neutral[key]||[0,0,0],y=b.joints?.[key]||neutral[key]||[0,0,0];r[key].rotation.set(T.MathUtils.lerp(x[0],y[0],u),T.MathUtils.lerp(x[1],y[1],u),T.MathUtils.lerp(x[2],y[2],u));}
+ const times=frames.map(f=>f.at),sample=(get:(f:Pose)=>number,offset=0)=>poseCurve(times,frames.map(get),t-offset);
+ r.group.position.set(sample(f=>f.position?.[0]??0),sample(f=>f.position?.[1]??.88),sample(f=>f.position?.[2]??0));r.group.rotation.set(0,sample(f=>f.turn??-.12),0);r.group.scale.setScalar(1);r.body.position.set(0,sample(f=>f.bodyY??0),0);r.weapon.visible=r.offWeapon.visible=false;
+ for(const key of ['body','pelvis','spine','chest','head','leftArm','rightArm','leftElbow','rightElbow','leftLeg','rightLeg','leftKnee','rightKnee','leftFoot','rightFoot'] as Joint[]){const lag=key.includes('Elbow')?.025:key==='chest'?.016:key==='head'?-.025:0;r[key].rotation.set(...[0,1,2].map(axis=>sample(f=>(f.joints?.[key]||neutral[key]||[0,0,0])[axis],lag)) as V);}
+ const breathing=Math.sin(t*2.2)*.007;r.spine.rotation.x+=breathing;r.neck.rotation.x-=breathing*.6;r.leftShoulder.rotation.z=breathing;r.rightShoulder.rotation.z=-breathing;
+ r.leftHand.rotation.x=-r.leftElbow.rotation.x*.07;r.rightHand.rotation.x=-r.rightElbow.rotation.x*.07;
  if(style==='vector-slide'){const cross=ease((t-1.75)/.9);braceWeapon(r,new T.Vector3(.16,.09,.24),new T.Euler(0,0,.6),cross);const target=new T.Object3D();target.position.set(-.16,.025,.28);target.rotation.z=-.6;r.chest.add(target);supportHand(r,target,cross);target.removeFromParent();}
  if(style==='arc-salute'){const salute=ease((t-1.15)/.41)*(1-ease((t-2.25)/.55));braceWeapon(r,new T.Vector3(-.19,.48,.18),new T.Euler(0,0,-.5),salute);}
  // A restrained breathing hold keeps the final card alive.

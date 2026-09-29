@@ -7,10 +7,10 @@ const ease=(x:number)=>{x=T.MathUtils.clamp(x,0,1);return x*x*(3-2*x);};
 export function poseEmperor(r:CharacterRig,t:number){
  for(const o of [r.body,r.pelvis,r.spine,r.chest,r.neck,r.head,r.leftShoulder,r.rightShoulder,r.leftArm,r.rightArm,r.leftElbow,r.rightElbow,r.leftHand,r.rightHand,r.leftLeg,r.rightLeg,r.leftKnee,r.rightKnee,r.leftFoot,r.rightFoot,r.leftToe,r.rightToe])o.rotation.set(0,0,0);
  r.group.position.set(0,.88,0);r.group.rotation.set(0,-.1,0);r.group.scale.setScalar(1);r.body.position.set(0,0,0);r.weapon.visible=r.offWeapon.visible=true;r.weapon.rotation.set(0,0,0);r.offWeapon.rotation.set(0,0,0);emperorGuard(r,t);
- const lift=ease((t-.8)/1.6),breathe=Math.sin(t*2.2)*.008;
+ const lift=ease((t-.8)/1.6),lead=ease((t-.65)/1.5),breathe=Math.sin(t*2.2)*.008;
  r.rightArm.rotation.set(-1.65-1.28*lift,.1,-.08-.22*lift);r.rightElbow.rotation.x=-1.5+1.34*lift;r.rightHand.rotation.set(.18*lift,0,.16-.32*lift);
  r.leftArm.rotation.set(-.65+.8*lift,0,.17);r.leftElbow.rotation.x=-1.7+.65*lift;r.leftHand.rotation.z=-.12;
- r.body.rotation.x=-.045*lift;r.chest.rotation.y=.28-.18*lift;r.head.rotation.set(.17*(1-lift)-.04*lift,.12-.22*lift,0);r.body.position.y+=breathe;
+ r.rightShoulder.rotation.set(-.06*lead,.08*lead,-.09*lift);r.spine.rotation.y-=.06*lead;r.pelvis.rotation.y+=.05*lift;r.rightFoot.rotation.y-=.06*lift;r.body.rotation.x=-.045*lift;r.chest.rotation.y=.28-.18*lift;r.head.rotation.set(.17*(1-lift)-.04*lift,.12-.22*lift,0);r.body.position.y+=breathe;
  if(lift<1){const target=new T.Object3D();target.position.set(.035,.045,0);r.rightHand.add(target);supportHand(r,target,1-ease(lift/.6));target.removeFromParent();}
 }
 export function emperorCamera(camera:T.PerspectiveCamera,t:number,aspect:number){
