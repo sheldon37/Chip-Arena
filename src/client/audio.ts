@@ -94,6 +94,7 @@ export class ArenaAudio {
    else if(e.type==='impact')this.play(e.material==='metal'?'metal':e.material==='wood'?'wood':'stone',e.pos,.22);
    else if(e.type==='break')this.play(e.material==='metal'?'metal':e.material==='wood'?'wood':'stone',e.pos,.65);
    else if(e.type==='explosion'||e.type==='collapse')this.play('explosion',e.pos,.65);
+   else if(e.type==='roll'&&e.spec!=='emperor')this.play('dash',e.pos,.36);
    else if(e.type==='dash'||e.type==='jump'||e.type==='parry')this.play(e.type,e.pos,.5);
    else if(e.type==='meleeRebound')this.play('metal',e.pos,Math.min(.7,.2+(e.amount||0)/2000));
    else if(e.type==='blockPulse')this.play('explosion',e.pos,e.mods?.supernova?.8:.35);

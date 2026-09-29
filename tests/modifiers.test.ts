@@ -51,22 +51,21 @@ test('parallel shots share one volley cost and proc identity, deal real hits, an
 });
 test('echo strikes hit once per sweep, charge stamina once, and retain recovery',()=>{
  const {s,a,b}=arena('sword',{'echo-strike':2});b.body.setTranslation(v(-1.5,1,-7),true);s.world.step();
- s.primary(a);assert.equal(a.stamina,76);assert.ok(a.cooldown>WEAPONS.sword.interval);
+ s.primary(a);assert.equal(a.stamina,100-WEAPONS.sword.cost-2*C.followupCost);assert.ok(a.cooldown>WEAPONS.sword.interval);
  for(let n=0;n<80;n++){s.time=n/120;s.melee(a);s.melee(a);}
  // Third sweep occurs after 0.62 seconds and completes by 0.78.
  for(let n=80;n<110;n++){s.time=n/120;s.melee(a);s.melee(a);}
- near(b.hp,43);assert.equal(a.stamina,76);assert.equal(a.swing,null);s.dispose();
+ near(b.hp,43);assert.equal(a.stamina,100-WEAPONS.sword.cost-2*C.followupCost);assert.equal(a.swing,null);s.dispose();
 });
 test('mana and stamina upgrades set real caps; insufficient resources block combat and regenerate',()=>{
  const magic=arena('fire',{mana:2});assert.equal(magic.a.mana,150);magic.a.mana=7;magic.s.primary(magic.a);assert.equal(magic.s.projectiles.size,0);
  magic.s.time+=1;magic.s.updatePlayer(magic.a,1);near(magic.a.mana,19);magic.s.primary(magic.a);near(magic.a.mana,11);magic.s.dispose();
  const {s,a}=arena('sword',{stamina:2});assert.equal(a.stamina,150);a.stamina=13;s.primary(a);assert.equal(a.swing,null);assert.equal(a.mana,100);
- a.staminaAt=s.time;s.time+=.2;s.updatePlayer(a,.2);near(a.stamina,13);s.time+=.5;s.updatePlayer(a,.5);near(a.stamina,25);s.primary(a);near(a.stamina,11);s.dispose();
+ a.staminaAt=s.time;s.time+=.2;s.updatePlayer(a,.2);near(a.stamina,13);s.time+=.5;s.updatePlayer(a,.5);near(a.stamina,25);s.primary(a);assert.equal(a.swing,null);s.time+=.5;s.updatePlayer(a,.5);s.primary(a);near(a.stamina,37-WEAPONS.sword.cost);s.dispose();
 });
-test('shield guarding spends stamina over time and on frontal impacts; no guard at exhaustion',()=>{
- const {s,a}=arena('shield');a.input={...idleInput(),seq:1,yaw:Math.PI/2,secondary:true};a.inputAt=s.time;s.updatePlayer(a,.1);assert.equal(a.guarding,true);near(a.stamina,96.7);
- s.damage(a,20,'b','direct',v(-1,0,0));near(a.hp,95);near(a.stamina,78.7);
- a.stamina=0;s.updatePlayer(a,.01);assert.equal(a.guarding,false);s.dispose();
+test('shield throw spends stamina upfront and does not enable the retired held guard',()=>{
+ const {s,a}=arena('shield');a.input={...idleInput(),seq:1,yaw:Math.PI/2,secondary:true};a.inputAt=s.time;s.updatePlayer(a,.1);assert.equal(a.guarding,false);near(a.stamina,100-WEAPONS.shield.secondaryCost!);assert.equal(a.meleeAction?.kind,'shield-throw');
+ s.damage(a,20,'b','direct',v(-1,0,0));near(a.hp,80);a.stamina=0;s.updatePlayer(a,.01);assert.equal(a.guarding,false);s.dispose();
 });
 test('class-specific rate modifiers reduce actual cooldown and melee windup with explicit stacking',()=>{
  for(const [spec,chip]of [['pistol','fire-rate'],['fire','cast-rate'],['sword','swing-rate']] as [SpecId,string][]){const {s,a}=arena(spec,{[chip]:2,overclock:1});s.primary(a);near(a.cooldown,WEAPONS[spec].interval/(1.15**2*1.18));if(a.swing)near(a.swing.at-s.time,WEAPONS[spec].windup/(1.15**2*1.18));s.dispose();}

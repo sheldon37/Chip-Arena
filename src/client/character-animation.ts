@@ -1,3 +1,5 @@
+import {dodgeRollMotion} from './dodge-roll-motion.js';
+import {committed,meleeRecovery} from '../shared/souls-combat.js';
 import {locomotion,finishPose,smoothMotion} from './motion-quality.js';
 import {meleeMotion} from './melee-motion.js';
 import {animateEmperor,animateJuggle} from './emperor-animation.js';
@@ -14,7 +16,7 @@ export type AnimatedRig=CharacterRig;
 const smooth=(a:number)=>{a=clamp(a,0,1);return a*a*(3-2*a);};
 export function attackPose(p:PlayerView,time:number){
  const w=WEAPONS[p.spec],rate=p.attackRate||1,age=Math.max(0,time-p.lastAttack),windup=p.swingAt!==undefined?Math.max(.025,p.swingAt-p.lastAttack):Math.max(.025,p.windup),window=p.swingUntil!==undefined&&p.swingAt!==undefined?p.swingUntil-p.swingAt:.16/rate;
- const recoverySeconds=(p.spec==='greatsword'?.5:p.spec==='daggers'?.15:.3)/rate;
+ const recoverySeconds=meleeRecovery(p.spec)/rate;
  const active=w.class==='melee'&&age<windup+window+recoverySeconds;
  const load=active&&age<windup?smooth(age/windup):0;
  const strike=active&&age>=windup?clamp((age-windup)/Math.max(.025,window),0,1):0;
@@ -38,7 +40,7 @@ function blendRotation(node:T.Object3D,x:number,y:number,z:number,weight:number)
 /** Distance-driven locomotion under action layers. Authoritative attack timestamps keep the hit phase aligned. */
 function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=p.pitch){
  animateCosmetics(r,time);
- const w=WEAPONS[p.spec];locomotion(r,{...p,pitch},time,dt);const pose=attackPose(p,time);
+ const w=WEAPONS[p.spec],planted=committed(p,time);if(planted)r.motion=0;locomotion(r,{...p,pitch,vel:planted?{x:0,y:p.vel.y,z:0}:p.vel},time,dt);const pose=attackPose(p,time);
  r.weapon.visible=!p.weaponAway;r.weapon.position.set(0,0,0);r.weapon.rotation.set(.5,0,0);r.weapon.scale.set(1,1,w.class==='melee'?p.reach/w.range:1);r.offWeapon.position.set(0,0,0);r.offWeapon.rotation.set(.55,0,0);r.offWeapon.scale.copy(r.weapon.scale);
  if(p.juggle&&time<p.juggle.until){animateJuggle(r,p,time);return pose;}
  if(p.knockdown&&time<p.knockdown.until){
@@ -49,6 +51,7 @@ function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=
   r.leftLeg.rotation.set(legsUp||rolling?-1.15:air?-.5:0,0,.12);r.rightLeg.rotation.set(legsUp||rolling?-.9:air?.3:0,0,-.12);r.leftKnee.rotation.x=legsUp||rolling?1.25:air?.65:.08+.85*rise*(1-rise);r.rightKnee.rotation.x=legsUp||rolling?1.1:air?.25:.08+.85*rise*(1-rise);r.head.rotation.x=air?-.3:rolling?.3:0;return pose;
  }
  if((p.hitStunUntil||0)>time){const flinch=Math.min(1,((p.hitStunUntil||0)-time)/.12);r.body.rotation.x=-.23*flinch;r.chest.rotation.y=.20*flinch;r.head.rotation.x=-.22;r.leftArm.rotation.set(-.5,0,.45);r.rightArm.rotation.set(-.5,0,-.45);r.leftElbow.rotation.x=r.rightElbow.rotation.x=-.8;return pose;}
+ if(dodgeRollMotion(r,p,time))return pose;
  if(p.spec==='emperor'){animateEmperor(r,p,time);return pose;}
  if(p.spec==='ansatsuken'){animateAnsatsuken(r,p,time);return pose;}
  // Swing during travel; settle into the usual aiming stance when stopping or firing.
@@ -90,7 +93,7 @@ export function animateCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:numbe
 /** Sandbox-only presentation sampler: never writes simulation, attacks, inputs, or health. */
 export function animationPreviewPlayer(p:PlayerView,mode:string,time:number):PlayerView{
  const w=WEAPONS[p.spec],cycle=w.class==='melee'?Math.max(.75,w.interval+.45):w.class==='magic'?1.25:1.6,sampleAge=time%cycle;
- const out:PlayerView={...p,animationTime:undefined,vel:{x:0,y:0,z:0},grounded:true,lastAttack:-10,lastShot:-10,blockTime:0,guarding:false,reloadTime:0,swingAt:undefined,swingUntil:undefined,attackRate:1,dashTime:0};
+ const out:PlayerView={...p,roll:undefined,attackCommitment:undefined,animationTime:undefined,vel:{x:0,y:0,z:0},grounded:true,lastAttack:-10,lastShot:-10,blockTime:0,guarding:false,reloadTime:0,swingAt:undefined,swingUntil:undefined,attackRate:1,dashTime:0};
  if(mode==='walk'||mode==='run'){out.vel={x:Math.sin(p.yaw)*(mode==='walk'?2.8:6.8),y:0,z:Math.cos(p.yaw)*(mode==='walk'?2.8:6.8)};}
  if(['attack','windup','release','left-strike','right-strike'].includes(mode)){const age=mode==='windup'?(w.class==='magic'?castWindup(p.spec)*.58:Math.max(.01,w.windup*.92)):mode==='release'?(w.class==='magic'?castWindup(p.spec)+.025:w.windup+.10):mode.endsWith('strike')?w.windup+.10:sampleAge;out.attackIndex=mode==='left-strike'?2:mode==='right-strike'?1:Math.floor(time/cycle)+1;out.lastAttack=time-age;out.lastShot=out.lastAttack+castWindup(p.spec);out.swingAt=out.lastAttack+w.windup;out.swingUntil=out.swingAt+.16;}
  if(mode==='reload')out.reloadTime=w.reload?Math.max(.01,w.reload-time%w.reload):0;

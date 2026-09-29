@@ -1,3 +1,4 @@
+import {rolling,meleeRecovery} from '../shared/souls-combat.js';
 import * as T from 'three';
 import type {CharacterRig} from './character-rig.js';
 import type {PlayerView} from '../shared/simulation.js';
@@ -65,8 +66,8 @@ const transitions=new WeakMap<CharacterRig,Transition>();
  * This is a transition correction, not an all-frame low-pass that would delay hit poses. */
 export function finishPose(r:CharacterRig,p:PlayerView,time:number){
  const standard=['sword','daggers','greatsword','shield'].includes(p.spec),rate=p.attackRate||1,windup=p.swingAt!==undefined?Math.max(.025,p.swingAt-p.lastAttack):Math.max(.025,p.windup),window=p.swingUntil!==undefined&&p.swingAt!==undefined?p.swingUntil-p.swingAt:.16/rate;
- const attackDuration=standard?windup+window+(p.spec==='greatsword'?.5:p.spec==='daggers'?.15:.3)/rate:.8/rate;
- const action=p.juggle?'juggle':p.knockdown?'down':(p.hitStunUntil||0)>time?'flinch':p.blockTime>0?'block':p.emperor?.action&&time<p.emperor.until?p.emperor.action:p.arcade?.action&&time<p.arcade.until?p.arcade.action:p.meleeAction&&time<p.meleeAction.until?p.meleeAction.kind:WEAPONS[p.spec].class==='melee'&&time-p.lastAttack<attackDuration?'attack-'+p.attackIndex:'base';
+ const attackDuration=standard?windup+window+meleeRecovery(p.spec)/rate:.8/rate;
+ const action=p.juggle?'juggle':p.knockdown?'down':(p.hitStunUntil||0)>time?'flinch':rolling(p,time)?'roll':p.blockTime>0?'block':p.emperor?.action&&time<p.emperor.until?p.emperor.action:p.arcade?.action&&time<p.arcade.until?p.arcade.action:p.meleeAction&&time<p.meleeAction.until?p.meleeAction.kind:WEAPONS[p.spec].class==='melee'&&time-p.lastAttack<attackDuration?'attack-'+p.attackIndex:'base';
  const key=p.spec+':'+action+':'+p.grounded,current:StoredPose={q:bones.map(k=>r[k].quaternion.clone()),position:r.body.position.clone()};let s=transitions.get(r);
  if(!s||time<s.time||time-s.time>.35||action==='juggle'||action==='down'||action==='flinch'){s={key,time,at:time,duration:0,last:current};transitions.set(r,s);return;}
  if(key!==s.key){s.offset={q:current.q.map((q,i)=>q.clone().invert().multiply(s!.last.q[i])),position:s.last.position.clone().sub(current.position)};s.key=key;s.at=time;s.duration=action==='base'?.13:.055;}
