@@ -1,9 +1,9 @@
-import {verticalBlocks} from './vertical-arena.js';
+import {addVerticalBuildings} from './vertical-arena.js';
 import {mapId,expansionBlocks} from './maps.js';
 import {Material,Vec,v} from './config.js';
 export const ARENA={width:64,depth:56,spawnZ:21,edgeMargin:2.5} as const;
 export interface ArenaBlock {id:string;pos:Vec;size:Vec;material:Material;dynamic?:boolean;mass?:number;support?:string[];rotation?:{x:number;y:number;z:number;w:number};}
-export function arenaBlocks(map:unknown='foundry'):ArenaBlock[]{const key=mapId(map);if(key!=='foundry')return [...expansionBlocks(key),...verticalBlocks(key)];const a:ArenaBlock[]=[];const block=(id:string,x:number,y:number,z:number,sx:number,sy:number,sz:number,material:Material,extra:Partial<ArenaBlock>={})=>a.push({id,pos:v(x,y,z),size:v(sx,sy,sz),material,...extra});
+export function arenaBlocks(map:unknown='foundry'):ArenaBlock[]{const key=mapId(map);if(key!=='foundry')return addVerticalBuildings(expansionBlocks(key),key);const a:ArenaBlock[]=[];const block=(id:string,x:number,y:number,z:number,sx:number,sy:number,sz:number,material:Material,extra:Partial<ArenaBlock>={})=>a.push({id,pos:v(x,y,z),size:v(sx,sy,sz),material,...extra});
  block('foundation',0,-.75,0,ARENA.width,1.5,ARENA.depth,'foundation');
  // Low perimeter walls leave deliberate, readable open ends for ring-outs.
  for(const x of [-31.5,31.5]){block(`rail${x}a`,x,.55,-17,1,1.1,18,'foundation');block(`rail${x}b`,x,.55,17,1,1.1,18,'foundation');}
@@ -33,7 +33,7 @@ export function arenaBlocks(map:unknown='foundry'):ArenaBlock[]{const key=mapId(
   block(`deck-cover${side}`,side*25,2.05,side*17.5,2,1.7,.8,'metal',{mass:60});
   block(`home-cover${side}`,side*4,1.05,side*21,2.6,2.1,1.2,'stone');
  }
- return [...a,...verticalBlocks(key)];}
+ return addVerticalBuildings(a,key);}
 
 /** Safe clear perimeter positions; first two preserve the original duel layout. */
 export function playerSpawn(index:number,sandbox=false):Vec {

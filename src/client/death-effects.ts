@@ -1,4 +1,5 @@
-import {ragdoll} from './ragdoll.js';
+import {RAGDOLL_STYLES,type RagdollStyle} from '../shared/ragdoll-styles.js';
+import {ragdoll,ragdollVariant} from './ragdoll.js';
 import {ragingDemon} from './raging-demon.js';
 import {clownLove} from './clown-love.js';
 import {bassVan} from './bass-van.js';
@@ -38,7 +39,7 @@ function voxelBurst(scene:T.Scene,rig:T.Group,p:PlayerView,death:DeathPresentati
 }
 /** Add future kill animations here. Only the server chooses the effect identifier.
  * Unknown identifiers fall back to voxel breakup. These pieces never deal damage. */
-export const KILL_EFFECTS:Record<string,KillEffectFactory>={ragdoll,'dev-raging-demon':ragingDemon,'voxel-burst':voxelBurst,'dev-clown-love':clownLove,'dev-bass-van':bassVan,...Object.fromEntries(['confetti','ascension','shrink','launch','ghost','dev-clown'].map(kind=>[kind,cinematic(kind)]))};
+export const KILL_EFFECTS:Record<string,KillEffectFactory>={ragdoll,...Object.fromEntries(Object.keys(RAGDOLL_STYLES).map(id=>[id,ragdollVariant(id as RagdollStyle)])),'dev-raging-demon':ragingDemon,'voxel-burst':voxelBurst,'dev-clown-love':clownLove,'dev-bass-van':bassVan,...Object.fromEntries(['confetti','ascension','shrink','launch','ghost','dev-clown'].map(kind=>[kind,cinematic(kind)]))};
 export class DeathEffects {
  private active=new Map<string,{effect:Effect;at:number}>();private seen=new Set<string>();private epoch='';
  constructor(private scene:T.Scene){}

@@ -650,6 +650,7 @@ var GRANTABLE_CONTENT = {
   "intro:dev-matrix": "Matrix throne intro",
   "intro:dev-ansatsuken": "Rain warrior intro",
   "hat:auditor-halo": "Auditor Halo",
+  "effect:dev-singularity": "Singularity Override",
   "effect:dev-raging-demon": "Raging Demon",
   "effect:dev-clown": "Clown getaway",
   "effect:dev-clown-love": "Clown Love",
@@ -662,6 +663,19 @@ var cleanFlags = (x) => Array.isArray(x) ? [...new Set(x.filter((k) => typeof k 
 
 // src/shared/account-auth.ts
 var GAME_CLAIM_MS = 15 * 60 * 1e3;
+
+// src/shared/ragdoll-styles.ts
+var RAGDOLL_STYLES = {
+  "ragdoll-ember": "Emberfall",
+  "ragdoll-frost": "Frostbreak",
+  "ragdoll-static": "Static Aftershock",
+  "ragdoll-gravity": "Gravity Collapse",
+  "ragdoll-pinball": "Pinball",
+  "ragdoll-fireworks": "Firework Finale",
+  "ragdoll-soul": "Soul Drift",
+  "ragdoll-petals": "Petal Scatter",
+  "dev-singularity": "Singularity Override \xB7 DEV ONLY"
+};
 
 // src/shared/intros.ts
 var INTRO_STYLES = {
@@ -839,7 +853,7 @@ var CONFIG = {
   splitMaxTravel: 18,
   homingRange: 16,
   homingConeDegrees: 50,
-  maxBodies: 150,
+  maxBodies: 360,
   maxProjectiles: 100,
   maxEvents: 80,
   maxInputRate: 100,
@@ -987,7 +1001,7 @@ var BOT_WEAPONS = Object.values(WEAPONS).filter((w) => !w.devOnly);
 
 // src/shared/cosmetics.ts
 var HATS = { "auditor-halo": "Auditor Halo \xB7 DEV ONLY", none: "No hat", cap: "Ball cap", beanie: "Beanie", top: "Top hat", wizard: "Wizard hat", crown: "Crown", cone: "Traffic cone", antenna: "Antenna", halo: "Halo", cowboy: "Cowboy hat" };
-var KILL_STYLES = { ragdoll: "Ragdoll", "dev-raging-demon": "Raging Demon \xB7 DEV ONLY", "voxel-burst": "Voxel breakup", confetti: "Confetti cannon", ascension: "Beam me up", shrink: "Pocket-sized", launch: "Team Rocket", ghost: "Ghost escape", "dev-clown": "Clown getaway \xB7 DEV ONLY", "dev-clown-love": "Clown Love \xB7 DEV ONLY", "dev-bass-van": "Bass Van \xB7 DEV ONLY" };
+var KILL_STYLES = { ragdoll: "Ragdoll", ...RAGDOLL_STYLES, "dev-raging-demon": "Raging Demon \xB7 DEV ONLY", "voxel-burst": "Voxel breakup", confetti: "Confetti cannon", ascension: "Beam me up", shrink: "Pocket-sized", launch: "Team Rocket", ghost: "Ghost escape", "dev-clown": "Clown getaway \xB7 DEV ONLY", "dev-clown-love": "Clown Love \xB7 DEV ONLY", "dev-bass-van": "Bass Van \xB7 DEV ONLY" };
 var developerKillEffect = (id) => id.startsWith("dev-");
 var DEFAULT_COSMETICS = { lobbyPose: "weapon", intro: "neon-drop", introText: "Ready to make an impact", bodyColor: "#e5e7eb", hat: "none", killEffect: "voxel-burst" };
 function cosmetics(raw, dev = false) {
