@@ -31,6 +31,7 @@ export class SnapshotBuffer {
   return {...current,time:this.cursor,
    players:current.players.map(p=>{const pa=a.players.find(x=>x.id===p.id),pb=b.players.find(x=>x.id===p.id);let frame=p.id!==localId&&pa&&pb?{...p,pos:mix(pa.pos,pb.pos,pb.vel),yaw:angle(pa.yaw,pb.yaw),pitch:pa.pitch+(pb.pitch-pa.pitch)*f}:p;
     const roll=p.id===localId?p.roll:pb?.roll&&pb.roll.at<=this.cursor!?pb.roll:pa?.roll;frame={...frame,roll,animationTime:p.id===localId?newest.state.time+clamp((now-newest.at)/1000,0,N.extrapolationMaxMs/1000):this.cursor!};
+    if(p.id!==localId){const reaction=pb?.hitReaction&&pb.hitReaction.at<=this.cursor!?pb.hitReaction:pa?.hitReaction;const stun=(pb?.hitReaction&&pb.hitReaction.at<=this.cursor!||b.time<=this.cursor!)?pb?.hitStunUntil:pa?.hitStunUntil;frame={...frame,hitReaction:reaction,hitStunUntil:stun};}
     if(!normalMelee(p.spec))return frame;
     // Never pair an old render time with a future combo index: it discards the strike we are displaying.
     if(p.id===localId)return {...frame,animationTime:newest.state.time+clamp((now-newest.at)/1000,0,N.extrapolationMaxMs/1000)};

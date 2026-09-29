@@ -7,10 +7,14 @@ import {WEAPONS} from './content.js';
 import {attackElements,refreshDot} from './elements.js';
 import {ceilingContact} from './ceiling-field.js';
 import {downProtected,pickupOpen} from './recovery.js';
-import {committed,rolling,rollInvulnerable,meleeHitStun,STAGGER_ESCAPE_SECONDS} from './souls-combat.js';
+import {ballisticStep} from './projectiles.js';
+import {committed,rolling,rollInvulnerable,meleeHitStun,meleeRecovery,STAGGER_ESCAPE_SECONDS} from './souls-combat.js';
 export type MeleeActionKind='dagger-throw'|'wolf-spin'|'sword-launch'|'shield-throw';
 export interface MeleeAction {kind:MeleeActionKind;at:number;releaseAt:number;until:number;yaw:number;released?:boolean;landedAt?:number;shotId?:string;hitIds?:string[];attackId?:string;}
-export interface MeleeShot {kind:'dagger'|'shield';returning?:boolean;}
+export interface MeleeShot {kind:'dagger'|'shield';at?:number;returning?:boolean;}
+export const DAGGER_THROW={speed:30,gravity:18,maxTravel:32,life:2,spinSpeed:Math.PI*12} as const;
+/** Covers the next complete swing's latest contact, without refreshing on later hits. */
+export function daggerPairStun(rate:number){const w=WEAPONS.daggers;return (Math.max(w.interval,w.windup+.16+meleeRecovery('daggers'))+.16)/rate+1/30;}
 export function meleeMotionInput(input:Input,action:MeleeAction|undefined,time:number):Input{return action?.kind==='wolf-spin'&&time<action.until?{...input,jump:false,dash:false}:input;}
 export const normalMelee=(spec:SpecId)=>['sword','daggers','greatsword','shield'].includes(spec);
 /** Action times are shared by simulation, animation, and network snapshots. */
@@ -35,7 +39,7 @@ export class StandardMelee {
   p.lastSecondary=p.lastAttack=s.time;p.secondaryCd=w.secondaryCooldown;p.cooldown=(info.windup+info.recover)/rate;p.swing=null;
   s.emit('melee-special',p.body.translation(),{source:p.id,spec:p.spec,message:info.kind,color:w.color});
  }
- stun(target:Player,seconds:number){const s=this.s;if(target.hp<=0)return;target.attackCommitment=undefined;target.roll=undefined;target.lastAttack=-10;target.hitStunUntil=Math.max(target.hitStunUntil||0,s.time+seconds);target.move=v();target.dashTime=target.waveTime=target.electricStepTime=0;target.swing=null;target.cast=undefined;target.burst=0;target.parryTime=target.blockTime=0;target.guarding=false;this.cancel(target);s.arcade.cancel(target);s.emperor.cancel(target);}
+ stun(target:Player,seconds:number){const s=this.s;if(target.hp<=0)return;target.attackCommitment=undefined;target.roll=undefined;target.lastAttack=-10;target.hitStunUntil=Math.max(target.hitStunUntil||0,s.time+seconds);if(target.hitReaction)target.hitReaction.until=Math.max(target.hitReaction.until,target.hitStunUntil);target.move=v();target.dashTime=target.waveTime=target.electricStepTime=0;target.swing=null;target.cast=undefined;target.burst=0;target.parryTime=target.blockTime=0;target.guarding=false;this.cancel(target);s.arcade.cancel(target);s.emperor.cancel(target);}
  stagger(target:Player,seconds:number){const s=this.s;if(target.hp<=0||s.arcade.stunned(target)||(target.staggerImmuneUntil||0)>s.time)return false;this.stun(target,seconds);target.staggerImmuneUntil=target.hitStunUntil!+STAGGER_ESCAPE_SECONDS;return true;}
  /** Reuses the single legs-up pickup and roll-away recovery, including existing protection. */
  launch(target:Player,owner:Player,lift:number,pickup=false){
@@ -48,7 +52,7 @@ export class StandardMelee {
   if(pickupOpen(target.knockdown,this.s.time))this.launch(target,owner,4.8,true);
   else if(target.knockdown&&target.knockdown.landedAt===undefined&&this.s.time<(target.knockdown.juggleUntil||0)&&(target.knockdown.juggleHits||0)<2){target.knockdown.juggleHits=(target.knockdown.juggleHits||0)+1;target.ext.y=Math.max(0,2.5-target.body.linvel().y);}
   else if(owner.spec==='shield')this.launch(target,owner,3.8);
-  else this.stagger(target,meleeHitStun(owner.spec));
+  else this.stagger(target,owner.spec==='daggers'?daggerPairStun(owner.stats.attackRate):meleeHitStun(owner.spec));
  }
  step(p:Player){const s=this.s,a=p.meleeAction;if(!a)return;
   if(p.hp<=0||!p.connected||!normalMelee(p.spec)||s.arcade.stunned(p)||s.leet.frozen(p)||p.blockTime>0){this.cancel(p);return;}
@@ -82,8 +86,8 @@ export class StandardMelee {
  }
  private throw(p:Player,a:MeleeAction){
   const s=this.s;if(s.projectiles.size>=C.maxProjectiles)return;const shield=a.kind==='shield-throw',w=WEAPONS[p.spec],id=s.uid('melee-shot');
-  const pos=add(p.body.translation(),v(0,.3,0)),aim=forward(p.input.yaw,p.input.pitch),camera=cameraPosition(p.body.translation(),p.input.yaw,p.input.pitch,p.input.camera||'third',(o,d,n)=>s.ray(o,d,n,p.id)?.timeOfImpact??null),hit=s.ray(camera,aim,shield?25:48,p.id),target=add(camera,mul(aim,hit?.timeOfImpact??48)),dir=norm(sub(target,pos)),speed=(shield?24:35)*p.stats.projectileSpeed;
-  s.projectiles.set(id,{melee:{kind:shield?'shield':'dagger'},id,originOwner:p.id,born:s.time,pos,vel:mul(dir,speed),owner:p.id,spec:p.spec,damage:w.damage*p.stats.damage,impulse:(shield?280:95)*p.stats.impulse,life:shield?3:2,radius:shield?.28:.095,direct:true,attackId:id,bounces:p.stats.bounces,pierces:0,hit:new Set(),effectsUsed:false,homing:0,distanceLeft:shield?19:48,gravity:shield?0:3,elements:attackElements(p.stats.burn,p.stats.poison),burnDps:p.stats.burn,poisonDps:p.stats.poison,mods:{...p.chips}});
+  const pos=add(p.body.translation(),v(0,.3,0)),aim=forward(p.input.yaw,p.input.pitch),camera=cameraPosition(p.body.translation(),p.input.yaw,p.input.pitch,p.input.camera||'third',(o,d,n)=>s.ray(o,d,n,p.id)?.timeOfImpact??null),hit=s.ray(camera,aim,shield?25:48,p.id),target=add(camera,mul(aim,hit?.timeOfImpact??48)),dir=norm(sub(target,pos)),speed=(shield?24:DAGGER_THROW.speed)*p.stats.projectileSpeed;
+  s.projectiles.set(id,{melee:{kind:shield?'shield':'dagger',at:s.time},id,originOwner:p.id,born:s.time,pos,vel:mul(dir,speed),owner:p.id,spec:p.spec,damage:w.damage*p.stats.damage,impulse:(shield?280:95)*p.stats.impulse,life:shield?3:DAGGER_THROW.life,radius:shield?.28:.095,direct:true,attackId:id,bounces:p.stats.bounces,pierces:0,hit:new Set(),effectsUsed:false,homing:0,distanceLeft:shield?19:DAGGER_THROW.maxTravel,gravity:shield?0:DAGGER_THROW.gravity*p.stats.projectileGravity,elements:attackElements(p.stats.burn,p.stats.poison),burnDps:p.stats.burn,poisonDps:p.stats.poison,mods:{...p.chips}});
   a.shotId=id;p.lastShot=s.time;s.emit('shot',pos,{source:p.id,spec:p.spec,color:w.color});
  }
  /** Returning shields are visual retrievals: they cannot damage a second time or grant resources. */
@@ -94,8 +98,8 @@ export class StandardMelee {
    if(distance<step+.4){s.projectiles.delete(shot.id);if(original!.meleeAction?.shotId===shot.id)original!.meleeAction.until=s.time+.15;s.emit('catch',shot.pos,{source:original!.id,spec:'shield',color:0x9ddfff});}
    else {shot.vel=mul(norm(delta),40);shot.pos=add(shot.pos,mul(norm(delta),step));}return true;
   }
-  shot.life-=dt;if(shot.life<=0||shot.distanceLeft<=0){s.projectiles.delete(shot.id);return true;}
-  shot.vel.y-=shot.gravity*dt;const displacement=mul(shot.vel,dt),distance=Math.min(len(displacement),shot.distanceLeft),dir=norm(displacement);
+  if(shot.life<=0||shot.distanceLeft<=0){s.projectiles.delete(shot.id);return true;}
+  const h=Math.min(dt,shot.life),flight=ballisticStep(shot.vel,shot.gravity,h);shot.life-=h;shot.vel=flight.velocity;const displacement=flight.displacement,distance=Math.min(len(displacement),shot.distanceLeft),dir=norm(displacement);
   shot.distanceLeft-=distance;const hit=s.world.castShape(shot.pos,{x:0,y:0,z:0,w:1},dir,new RAPIER.Ball(shot.radius),0,distance,true,undefined,undefined,undefined,undefined,c=>{const id=s.colliderOwners.get(c.handle)||'',minion=s.chaos.minions.get(id);return id!==shot.owner&&!rollInvulnerable(s.players.get(id)||{},s.time)&&!shot.hit.has(id)&&s.canHit(shot.owner,minion?.owner||id)&&minion?.owner!==shot.owner;});
   const field=ceilingContact(shot.pos,mul(dir,distance),shot.radius);
   if(field&&(!hit||field.distance<=hit.time_of_impact)){s.emit('ceiling-hit',field.point,{source:shot.owner,spec:shot.spec,radius:shot.radius,color:0x75ddff,message:shot.bounces?'BOUNCE':'ABSORB'});

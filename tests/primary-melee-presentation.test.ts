@@ -21,8 +21,8 @@ test('daggers use both hands, a low third cut and a forward full turn on the fou
  const a=sample('daggers',.09,1),b=sample('daggers',.09,2),low=sample('daggers',.20,3);assert.ok(a.rightHand.getWorldPosition(new T.Vector3()).distanceTo(b.rightHand.getWorldPosition(new T.Vector3()))>.3);assert.ok(low.body.position.y<-.31);
  const turn=[.18,.25,.30,.34,.39].map(age=>sample('daggers',age,4).body.rotation.y);for(let i=1;i<turn.length;i++)assert.ok(turn[i]>turn[i-1],'spin follows through rather than unwinding');assert.ok(turn.at(-1)!>6.2);
 });
-test('greatsword rises overhead then chops down; sword combo alternates turn and adds an overhead cut',()=>{
- const raised=sample('greatsword',.42),down=sample('greatsword',.58),tip=(r:ReturnType<typeof rigFor>)=>r.weapon.getObjectByName('blade-tip')!.getWorldPosition(new T.Vector3());assert.ok(tip(raised).y-tip(down).y>1.5);assert.ok(raised.body.position.y-down.body.position.y>.3);
+test('greatsword sweeps low then rises; sword combo alternates turn and adds an overhead cut',()=>{
+ const low=sample('greatsword',.48),rise=sample('greatsword',.8),tip=(r:ReturnType<typeof rigFor>)=>r.weapon.getObjectByName('blade-tip')!.getWorldPosition(new T.Vector3());assert.ok(tip(rise).y-tip(low).y>.6);assert.ok(low.body.position.y<-.30);assert.ok(rise.body.position.y>low.body.position.y+.1);
  const cuts=[1,2,3].map(i=>sample('sword',.14,i));assert.ok(cuts[0].body.rotation.y<-.7);assert.ok(cuts[1].body.rotation.y>.7);assert.ok(tip(cuts[2]).y>tip(cuts[0]).y+.8);
 });
 test('new combo and return-to-stance transitions preserve the previous pose at the boundary',()=>{

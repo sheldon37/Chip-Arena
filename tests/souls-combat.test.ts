@@ -22,7 +22,7 @@ function input(s:Simulation,p:Player,patch:Partial<Input>={}){s.setInput(p.id,{.
 function advance(s:Simulation,seconds:number){for(let i=0;i<Math.ceil(seconds*60);i++)s.step();}
 test('standard weapon costs scale with weight and failed attacks spend nothing',()=>{
  const costs=[];for(const spec of standard){const {s,a}=arena(spec);try{const before=a.stamina;s.primary(a);costs.push(before-a.stamina);assert.equal(before-a.stamina,WEAPONS[spec].cost);assert.ok(committed(a,s.time));assert.equal(a.move.z,0);s.primary(a);assert.equal(a.stamina,before-WEAPONS[spec].cost);s.resetRound();s.phase='fight';a.stamina=WEAPONS[spec].cost-.1;s.primary(a);assert.equal(a.swing,null);assert.equal(a.attackCommitment,undefined);}finally{s.dispose();}}
- assert.deepEqual(costs,[24,30,36,44]);
+ assert.deepEqual(costs,[16,30,36,44]);
 });
 test('WASD stops through attack recovery while the authored step advances the body',()=>{
  const {s,a}=arena();try{input(s,a,{z:1});advance(s,.3);const start={...a.body.translation()};s.primary(a);input(s,a,{x:1,z:1,jump:true,dash:true});assert.equal(s.beginBlock(a),false);while(committed(a,s.time)){s.step();if(committed(a,s.time)){assert.equal(a.move.x,0);assert.equal(a.move.z,0);assert.equal(a.roll,undefined);assert.ok(a.body.translation().y<1.05);}}

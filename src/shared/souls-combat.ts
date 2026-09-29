@@ -4,8 +4,8 @@ import {clamp,forward,mul,v,type Vec,type SpecId} from './config.js';
 export const WEAPON_WEIGHT:Record<SpecId,number>={daggers:2,sword:5,shield:8,greatsword:12,pistol:2,rifle:7,machinegun:10,fire:4,water:4,lightning:3,darkness:5,leet:3,emperor:1,ansatsuken:1};
 export const standardWeapon=(spec:SpecId)=>['daggers','sword','shield','greatsword'].includes(spec);
 export const usesRoll=(spec:SpecId)=>spec!=='ansatsuken';
-export const meleeCost=(spec:SpecId)=>20+2*WEAPON_WEIGHT[spec];
-export const meleeSpecialCost=(spec:SpecId)=>Math.ceil(meleeCost(spec)*1.25);
+export const meleeCost=(spec:SpecId)=>spec==='daggers'?16:20+2*WEAPON_WEIGHT[spec];
+export const meleeSpecialCost=(spec:SpecId)=>spec==='daggers'?30:Math.ceil(meleeCost(spec)*1.25);
 export const meleeRecovery=(spec:SpecId)=>(spec==='greatsword'?.5:spec==='daggers'?.15:.3);
 export const meleeHitStun=(spec:SpecId)=>.16+WEAPON_WEIGHT[spec]*.018;
 export const STAGGER_ESCAPE_SECONDS=.75;
@@ -17,6 +17,7 @@ export function attackCommitment(spec:SpecId,at:number,windup:number,window:numb
 }
 export const committed=(p:{attackCommitment?:AttackCommitment},time:number)=>!!p.attackCommitment&&time<p.attackCommitment.until;
 const smooth=(u:number)=>{u=clamp(u,0,1);return u*u*(3-2*u);};
+export const attackTravel=(a:AttackCommitment,time:number)=>a.distance*smooth((time-a.stepAt)/Math.max(.01,a.stepUntil-a.stepAt));
 export function attackStep(a:AttackCommitment|undefined,time:number,dt:number):Vec {
  if(!a||dt<=0)return v();const duration=Math.max(.01,a.stepUntil-a.stepAt);
  return mul(forward(a.yaw),a.distance*(smooth((time+dt-a.stepAt)/duration)-smooth((time-a.stepAt)/duration))/dt);

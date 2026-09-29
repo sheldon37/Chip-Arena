@@ -1,3 +1,4 @@
+import {DAGGER_THROW} from '../shared/standard-melee.js';
 import * as T from 'three';
 import type {Snapshot,GameEvent} from '../shared/simulation.js';
 import {buildWeapon,enchantWeapon} from './weapon-visuals.js';
@@ -8,8 +9,8 @@ export class StandardMeleeEffects {
  constructor(private scene:T.Scene){}
  update(s:Snapshot){
   const shots=s.projectiles.filter(p=>p.melee);for(const[id,g]of this.shots)if(!shots.some(p=>p.id===id)){g.removeFromParent();this.shots.delete(id);}
-  for(const p of shots){let group=this.shots.get(p.id);if(!group){group=new T.Group();const weapon=new T.Group();buildWeapon(weapon,p.spec);group.add(weapon);group.name='thrown-'+p.melee!.kind;this.shots.set(p.id,group);this.scene.add(group);}group.position.set(p.pos.x,p.pos.y,p.pos.z);group.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),new T.Vector3(p.vel.x,p.vel.y,p.vel.z).normalize());const weapon=group.children[0] as T.Group;
-   weapon.rotation.set(p.melee!.kind==='shield'?Math.PI/2:0,0,p.melee!.kind==='shield'?s.time*24:0);enchantWeapon(weapon,p.elements,s.time,p.mods||{});
+  for(const p of shots){let group=this.shots.get(p.id);if(!group){group=new T.Group();const spin=new T.Group(),weapon=new T.Group();buildWeapon(weapon,p.spec);weapon.position.z=p.melee!.kind==='dagger'?-.44:0;spin.add(weapon);group.add(spin);group.name='thrown-'+p.melee!.kind;this.shots.set(p.id,group);this.scene.add(group);}group.position.set(p.pos.x,p.pos.y,p.pos.z);group.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),new T.Vector3(p.vel.x,p.vel.y,p.vel.z).normalize());const spin=group.children[0] as T.Group,weapon=spin.children[0] as T.Group;
+   const age=Math.max(0,s.time-(p.melee!.at??0));spin.rotation.set(p.melee!.kind==='shield'?Math.PI/2:age*DAGGER_THROW.spinSpeed,0,p.melee!.kind==='shield'?age*24:0);enchantWeapon(weapon,p.elements,s.time,p.mods||{});
   }
   for(const impact of [...this.impacts]){const age=s.time-impact.at;if(age<0||age>1.1){impact.root.removeFromParent();impact.root.traverse(o=>{if(o instanceof T.Mesh||o instanceof T.Points){o.geometry.dispose();(o.material as T.Material).dispose();}});this.impacts.splice(this.impacts.indexOf(impact),1);continue;}
    impact.ring.scale.setScalar(.2+age*3);impact.ring.material.opacity=Math.max(0,.55-age);impact.dust.material.opacity=Math.max(0,.46-age*.4);impact.dust.scale.setScalar(.4+age*1.6);impact.dust.position.y=age*.35;impact.stones.forEach((stone,i)=>{const a=i*2.39996,speed=1.7+(i%3)*.6;stone.position.set(Math.cos(a)*speed*age,Math.max(0,(1.8+i%3*.45)*age-4*age*age),Math.sin(a)*speed*age);stone.rotation.set(age*(i+2),0,age*3);stone.scale.setScalar(.075*(1-age/1.1));});

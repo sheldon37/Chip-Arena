@@ -1,3 +1,4 @@
+import {hitReactionMotion} from './hit-reaction-motion.js';
 import {dodgeRollMotion} from './dodge-roll-motion.js';
 import {committed,meleeRecovery} from '../shared/souls-combat.js';
 import {locomotion,finishPose,smoothMotion} from './motion-quality.js';
@@ -40,7 +41,7 @@ function blendRotation(node:T.Object3D,x:number,y:number,z:number,weight:number)
 /** Distance-driven locomotion under action layers. Authoritative attack timestamps keep the hit phase aligned. */
 function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=p.pitch){
  animateCosmetics(r,time);
- const w=WEAPONS[p.spec],planted=committed(p,time);if(planted)r.motion=0;locomotion(r,{...p,pitch,vel:planted?{x:0,y:p.vel.y,z:0}:p.vel},time,dt);const pose=attackPose(p,time);
+ const w=WEAPONS[p.spec],planted=committed(p,time)||(p.hitStunUntil||0)>time;if(planted)r.motion=0;locomotion(r,{...p,pitch,vel:planted?{x:0,y:p.vel.y,z:0}:p.vel},time,dt);const pose=attackPose(p,time);
  r.weapon.visible=!p.weaponAway;r.weapon.position.set(0,0,0);r.weapon.rotation.set(.5,0,0);r.weapon.scale.set(1,1,w.class==='melee'?p.reach/w.range:1);r.offWeapon.position.set(0,0,0);r.offWeapon.rotation.set(.55,0,0);r.offWeapon.scale.copy(r.weapon.scale);
  if(p.juggle&&time<p.juggle.until){animateJuggle(r,p,time);return pose;}
  if(p.knockdown&&time<p.knockdown.until){
@@ -50,10 +51,10 @@ function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=
   r.leftArm.rotation.set(rolling?-1.1:-.45,0,.7*(1-rise));r.rightArm.rotation.set(rolling?-1.1:-.45,0,-.7*(1-rise));r.leftElbow.rotation.x=r.rightElbow.rotation.x=rolling?-1.4:-.3;
   r.leftLeg.rotation.set(legsUp||rolling?-1.15:air?-.5:0,0,.12);r.rightLeg.rotation.set(legsUp||rolling?-.9:air?.3:0,0,-.12);r.leftKnee.rotation.x=legsUp||rolling?1.25:air?.65:.08+.85*rise*(1-rise);r.rightKnee.rotation.x=legsUp||rolling?1.1:air?.25:.08+.85*rise*(1-rise);r.head.rotation.x=air?-.3:rolling?.3:0;return pose;
  }
- if((p.hitStunUntil||0)>time){const flinch=Math.min(1,((p.hitStunUntil||0)-time)/.12);r.body.rotation.x=-.23*flinch;r.chest.rotation.y=.20*flinch;r.head.rotation.x=-.22;r.leftArm.rotation.set(-.5,0,.45);r.rightArm.rotation.set(-.5,0,-.45);r.leftElbow.rotation.x=r.rightElbow.rotation.x=-.8;return pose;}
+ if((p.hitStunUntil||0)>time){if(hitReactionMotion(r,p,time,true))return pose;const flinch=Math.min(1,((p.hitStunUntil||0)-time)/.12);r.body.rotation.x=-.23*flinch;r.chest.rotation.y=.20*flinch;r.head.rotation.x=-.22;r.leftArm.rotation.set(-.5,0,.45);r.rightArm.rotation.set(-.5,0,-.45);r.leftElbow.rotation.x=r.rightElbow.rotation.x=-.8;return pose;}
  if(dodgeRollMotion(r,p,time))return pose;
- if(p.spec==='emperor'){animateEmperor(r,p,time);return pose;}
- if(p.spec==='ansatsuken'){animateAnsatsuken(r,p,time);return pose;}
+ if(p.spec==='emperor'){animateEmperor(r,p,time);hitReactionMotion(r,p,time);return pose;}
+ if(p.spec==='ansatsuken'){animateAnsatsuken(r,p,time);hitReactionMotion(r,p,time);return pose;}
  // Swing during travel; settle into the usual aiming stance when stopping or firing.
  const aimTarget=w.class==='ranged'?(pose.shotAge<Math.max(.38,w.interval+.15)||p.reloadTime>0||r.motion<.18?1:0):0;r.aimWeight+=(aimTarget-r.aimWeight)*(1-Math.exp(-dt*24));
  if(w.class!=='magic'&&r.weapon.parent!==r.sockets.rightHand)r.sockets.rightHand.add(r.weapon);
@@ -85,6 +86,7 @@ function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=
  }else{meleeMotion(r,p,pose,time);}
 
  if(p.guarding||p.blockTime>0){r.spine.rotation.y=0;r.chest.rotation.set(-.06,0,0);r.leftArm.rotation.set(-1.4,-.25,.35);r.rightArm.rotation.set(-1.3,.25,-.35);r.leftElbow.rotation.x=-.8;r.rightElbow.rotation.x=-.8;r.leftHand.rotation.set(0,0,.25);r.rightHand.rotation.set(0,0,-.25);r.weapon.rotation.x=1.9;}
+ hitReactionMotion(r,p,time);
  return pose;
 }
 
@@ -93,7 +95,7 @@ export function animateCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:numbe
 /** Sandbox-only presentation sampler: never writes simulation, attacks, inputs, or health. */
 export function animationPreviewPlayer(p:PlayerView,mode:string,time:number):PlayerView{
  const w=WEAPONS[p.spec],cycle=w.class==='melee'?Math.max(.75,w.interval+.45):w.class==='magic'?1.25:1.6,sampleAge=time%cycle;
- const out:PlayerView={...p,roll:undefined,attackCommitment:undefined,animationTime:undefined,vel:{x:0,y:0,z:0},grounded:true,lastAttack:-10,lastShot:-10,blockTime:0,guarding:false,reloadTime:0,swingAt:undefined,swingUntil:undefined,attackRate:1,dashTime:0};
+ const out:PlayerView={...p,hitReaction:undefined,hitStunUntil:0,roll:undefined,attackCommitment:undefined,animationTime:undefined,vel:{x:0,y:0,z:0},grounded:true,lastAttack:-10,lastShot:-10,blockTime:0,guarding:false,reloadTime:0,swingAt:undefined,swingUntil:undefined,attackRate:1,dashTime:0};
  if(mode==='walk'||mode==='run'){out.vel={x:Math.sin(p.yaw)*(mode==='walk'?2.8:6.8),y:0,z:Math.cos(p.yaw)*(mode==='walk'?2.8:6.8)};}
  if(['attack','windup','release','left-strike','right-strike'].includes(mode)){const age=mode==='windup'?(w.class==='magic'?castWindup(p.spec)*.58:Math.max(.01,w.windup*.92)):mode==='release'?(w.class==='magic'?castWindup(p.spec)+.025:w.windup+.10):mode.endsWith('strike')?w.windup+.10:sampleAge;out.attackIndex=mode==='left-strike'?2:mode==='right-strike'?1:Math.floor(time/cycle)+1;out.lastAttack=time-age;out.lastShot=out.lastAttack+castWindup(p.spec);out.swingAt=out.lastAttack+w.windup;out.swingUntil=out.swingAt+.16;}
  if(mode==='reload')out.reloadTime=w.reload?Math.max(.01,w.reload-time%w.reload):0;
