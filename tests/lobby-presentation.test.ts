@@ -3,18 +3,20 @@ import assert from 'node:assert/strict';
 import * as T from 'three';
 import {Simulation,initPhysics} from '../src/shared/simulation.js';
 import {HostedRoom} from '../src/shared/host-room.js';
+import {WEAPONS,CLASS_INFO} from '../src/shared/content.js';
+import {framePortrait} from '../src/client/menu-portraits.js';
 import {cosmetics} from '../src/shared/cosmetics.js';
 import {LOBBY_POSES,BOT_WEAPONS,preferredWeapon} from '../src/shared/lobby-presentation.js';
 import {createCharacterRig} from '../src/client/character-rig.js';
 import {animateLobbyPose,lobbyChair} from '../src/client/lobby-poses.js';
-import {pilotCard,botLoadouts} from '../src/client/lobby-ui.js';
+import {pilotCard,botLoadouts,preferredWeaponOptions,lobbyDensity} from '../src/client/lobby-ui.js';
 await initPhysics();
 test('lobby pose and preferred weapon survive host/guest snapshots and preserve restricted weapon checks',()=>{
  const room=new HostedRoom('ABCD2345',{name:'Host',class:'ranged',color:'#ffaa66',cosmetics:cosmetics({lobbyPose:'chair',preferredSpec:'rifle'})},false,()=>{});
  try{room.join({name:'Guest',class:'melee',cosmetics:{lobbyPose:'sleep',preferredSpec:'daggers'}});const players=room.sim.snapshot().players;
   assert.equal(players[0].cosmetics?.lobbyPose,'chair');assert.equal(players[0].spec,'rifle');assert.equal(players[1].cosmetics?.lobbyPose,'sleep');assert.equal(players[1].spec,'daggers');
   assert.equal(cosmetics({lobbyPose:'__proto__',preferredSpec:'emperor'}).lobbyPose,'weapon');assert.equal(cosmetics({preferredSpec:'emperor'}).preferredSpec,undefined);
-  assert.equal(cosmetics({preferredSpec:'emperor'},true).preferredSpec,'emperor');assert.equal(preferredWeapon('rifle','magic'),'fire');
+  assert.equal(cosmetics({preferredSpec:'emperor'},true).preferredSpec,undefined);assert.equal(preferredWeapon('rifle','magic'),'fire');
  }finally{room.dispose();}
 });
 test('each configured bot keeps its chosen weapon through selection, rounds and rematches; malformed inputs cannot grant dev classes',()=>{
@@ -42,5 +44,29 @@ test('four idle poses animate independently of live combat, preserve the rig and
 test('lobby cards escape player text and seven bot selectors expose all ordinary weapons with distinct labels',()=>{
  const s=new Simulation();try{s.addPlayer('p');const p={...s.snapshot().players[0],name:'<img onerror=alert(1)>',id:'\" onclick=bad'};const html=pilotCard(p,'YOU');assert.ok(!html.includes('<img'));assert.ok(html.includes('&lt;img'));assert.ok(html.includes('data-pilot-preview="&quot; onclick=bad"'));
   const bots=botLoadouts(7,['rifle','water']);assert.equal((bots.match(/data-bot-weapon=/g)||[]).length,7);for(const weapon of BOT_WEAPONS)assert.ok(bots.includes(`value="${weapon.id}"`));assert.ok(bots.includes('value="rifle" selected'));assert.ok(!bots.includes('value="emperor"'));
+ }finally{s.dispose();}
+});
+
+test('preferred weapon choices never expose special weapons, even for privileged or stale profiles',()=>{
+ for(const weapon of Object.values(WEAPONS).filter(w=>w.devOnly)){
+  for(const access of [false,true,{developer:true,unlocks:['weapon:'+weapon.id]}])assert.equal(cosmetics({preferredSpec:weapon.id},access).preferredSpec,undefined);
+  assert.equal(preferredWeapon(weapon.id,weapon.class),CLASS_INFO[weapon.class].default);
+  const html=preferredWeaponOptions(weapon.class,weapon.id);
+  for(const special of Object.values(WEAPONS).filter(w=>w.devOnly)){assert.ok(!html.includes(special.id));assert.ok(!html.includes(special.name));}
+  assert.ok(html.includes(`value="${CLASS_INFO[weapon.class].default}" selected`));
+ }
+});
+test('portraits display only class names, use distinct style effects and shrink in populated rooms',()=>{
+ const s=new Simulation();try{s.addPlayer('p');const base=s.snapshot().players[0];
+  for(const weapon of Object.values(WEAPONS)){
+   const html=pilotCard({...base,spec:weapon.id,class:weapon.class},'YOU');
+   assert.ok(html.includes(`data-style="${weapon.id}"`));assert.ok(html.includes(`--style-color:#${weapon.color.toString(16).padStart(6,'0')}`));
+   assert.ok(html.includes(`<span>${CLASS_INFO[weapon.class].name}</span>`));assert.ok(!html.includes(weapon.name));assert.ok(!html.includes('pilot-card-bottom'));
+  }
+  assert.deepEqual(Array.from({length:8},(_,i)=>lobbyDensity(i+1)),['large','large','medium','medium','compact','compact','compact','compact']);
+  for(const pose of Object.keys(LOBBY_POSES) as (keyof typeof LOBBY_POSES)[])for(const aspect of [.6,1,2]){
+   const camera=new T.OrthographicCamera();framePortrait(camera,pose,aspect);
+   assert.equal(camera.position.x,0,'camera faces the front');assert.ok(camera.position.z>0);assert.ok(camera.right>=.95,'narrow portraits retain the full character width');assert.ok(camera.projectionMatrix.elements.every(Number.isFinite));
+  }
  }finally{s.dispose();}
 });

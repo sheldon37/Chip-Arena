@@ -5,8 +5,16 @@ import {dressRig} from './cosmetics.js';
 import {disposeAuditorHalo} from './auditor-halo.js';
 import {buildWeapon} from './weapon-visuals.js';
 import {animateLobbyPose,lobbyChair} from './lobby-poses.js';
-import {lobbyPose} from '../shared/lobby-presentation.js';
+import {lobbyPose,type LobbyPose} from '../shared/lobby-presentation.js';
 import type {PlayerView} from '../shared/simulation.js';
+
+/** Centered on the face, with a higher view for the reclining pose. */
+export function framePortrait(camera:T.OrthographicCamera,pose:LobbyPose,aspect:number){
+ const half=Math.max(pose==='sleep'?1.12:1.28,.95/aspect);
+ camera.left=-half*aspect;camera.right=half*aspect;camera.top=half;camera.bottom=-half;
+ camera.position.set(0,pose==='sleep'?4.8:1.85,pose==='sleep'?3.2:5.2);
+ camera.lookAt(0,pose==='sleep'?.35:.91,0);camera.updateProjectionMatrix();
+}
 
 type Actor={scene:T.Scene;rig:CharacterRig;chair:T.Group;decor:T.Group;spec:string};
 /** One shared render context serves every lobby card, including an eight-player room. */
@@ -49,9 +57,7 @@ export class MenuPortraits {
    const p=updated?.get(slot.player.id)||slot.player,pose=lobbyPose(p.cosmetics?.lobbyPose),a=this.actor(p);slot.player=p;
    canvas.parentElement!.dataset.pose=pose;a.chair.visible=pose==='chair';
    animateLobbyPose(a.rig,p,reduced?0:this.time,.033,pose);
-   const aspect=rect.width/rect.height,half=pose==='sleep'?1.20:1.28;
-   this.camera.left=-half*aspect;this.camera.right=half*aspect;this.camera.top=half;this.camera.bottom=-half;
-   this.camera.position.set(3.2,pose==='sleep'?3.8:2.1,4.8);this.camera.lookAt(0,pose==='sleep'?.35:.91,0);this.camera.updateProjectionMatrix();
+   framePortrait(this.camera,pose,rect.width/rect.height);
    if(this.renderer instanceof T.WebGLRenderer){
     if(!context)continue;
     const width=Math.max(1,Math.round(rect.width*Math.min(devicePixelRatio,1.5))),height=Math.max(1,Math.round(rect.height*Math.min(devicePixelRatio,1.5)));

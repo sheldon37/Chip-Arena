@@ -28,6 +28,16 @@ function stepLeg(r:CharacterRig,left:boolean,phase:number,run:number,forward:num
  const ankle=poseCurve(keys,[-.14,0,.42,.55,.04,-.18,-.14],u);
  foot.rotateX(ankle*run);toe.rotation.set(stance?Math.max(0,u/contact-.65)*run*.8:0,0,0);
 }
+/** Bent elbows pump past the hip and forward; opposite the same-side foot. */
+function swingArm(r:CharacterRig,left:boolean,phase:number,run:number,air:number){
+ const arm=left?r.leftArm:r.rightArm,elbow=left?r.leftElbow:r.rightElbow,hand=left?r.leftHand:r.rightHand,sign=left?1:-1;
+ const u=((phase/(Math.PI*2)+(left?0:.5))%1+1)%1,keys=[0,.17,.38,.55,.73,.90,1],weight=clamp(run,0,1);
+ const shoulder=poseCurve(keys,[.66,.18,-.86,-.55,.18,.63,.66],u);
+ const bend=poseCurve(keys,[-1.05,-1.25,-1.42,-1.55,-1.16,-1.04,-1.05],u);
+ arm.rotation.set(T.MathUtils.lerp(left?-.12:-.16,shoulder,weight),0,sign*(.10+air*.22));
+ elbow.rotation.set(T.MathUtils.lerp(-.26,bend,weight),0,0);
+ hand.rotation.set(Math.sin(phase+(left?0:Math.PI)-.65)*.075*weight,0,sign*.05);
+}
 type Travel={forward:number;strafe:number;lean:number;lastSpeed:number};const travelState=new WeakMap<CharacterRig,Travel>();
 export function locomotion(r:CharacterRig,p:PlayerView,time:number,dt:number){
  dt=clamp(dt,0,.05);const speed=Math.hypot(p.vel.x,p.vel.z),rawForward=(p.vel.x*Math.sin(p.yaw)+p.vel.z*Math.cos(p.yaw))/Math.max(.1,speed),rawStrafe=(p.vel.x*Math.cos(p.yaw)-p.vel.z*Math.sin(p.yaw))/Math.max(.1,speed);
@@ -44,9 +54,7 @@ export function locomotion(r:CharacterRig,p:PlayerView,time:number,dt:number){
  r.neck.rotation.set(-r.body.rotation.x*.25,0,0);r.head.rotation.set(-p.pitch*.55-r.body.rotation.x*.4,gait*.07*run+Math.sin(time*.6)*.014*idle,shift*.009*idle);
  stepLeg(r,true,r.stride,run,state.forward,state.strafe,air);stepLeg(r,false,r.stride,run,state.forward,state.strafe,air);
  r.leftShoulder.rotation.set(-breath*.009*idle,gait*.045*run,.03+breath*.008*idle);r.rightShoulder.rotation.set(-breath*.009*idle,-gait*.045*run,-.03-breath*.008*idle);
- r.leftArm.rotation.set(-gait*.62*run-.12,0,.10+air*.22);r.rightArm.rotation.set(gait*.62*run-.16,0,-.10-air*.22);
- r.leftElbow.rotation.set(-.26-(.24+.18*Math.sin(r.stride-.45))*run,0,0);r.rightElbow.rotation.set(-.26-(.24-.18*Math.sin(r.stride-.45))*run,0,0);
- r.leftHand.rotation.set(Math.sin(r.stride-.65)*.11*run,0,.05);r.rightHand.rotation.set(-Math.sin(r.stride-.65)*.11*run,0,-.05);
+ swingArm(r,true,r.stride,run,air);swingArm(r,false,r.stride,run,air);
  return {speed,run};
 }
 const bones=['body','pelvis','spine','chest','neck','head','leftShoulder','rightShoulder','leftArm','rightArm','leftElbow','rightElbow','leftHand','rightHand','leftLeg','rightLeg','leftKnee','rightKnee','leftFoot','rightFoot','leftToe','rightToe'] as const;

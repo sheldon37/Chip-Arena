@@ -7,7 +7,7 @@ import type {attackPose} from './character-animation.js';
 /** Weapon-specific full-body phrases. Contact stays aligned to the authority's sweep. */
 export function meleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>){
  const heavy=p.spec==='greatsword',dagger=p.spec==='daggers',shield=p.spec==='shield',left=dagger&&(p.attackIndex||1)%2===0,sign=left?-1:1;
- if(!a.active){r.weapon.rotation.x=.35;if(dagger){r.leftElbow.rotation.x-=.2;r.offWeapon.rotation.x=.35;}return;}
+ if(!a.active){const carry=ease((r.motion-.10)/.65);r.weapon.rotation.x=T.MathUtils.lerp(.35,.15,carry);if(dagger){r.leftElbow.rotation.x-=.2*(1-carry);r.offWeapon.rotation.x=r.weapon.rotation.x;}return;}
  const wind=ease(a.age/a.windup),strike=ease(a.strike),settle=a.recovery,weight=ease(a.age/Math.min(.065,a.windup))*settle;
  const coil=wind*(1-strike),drive=strike*settle,torque=(-.68*coil+.88*drive)*sign;
  r.pelvis.rotation.y+=torque*(heavy?.30:.21);r.spine.rotation.y+=torque*(heavy?.55:.42);r.chest.rotation.y+=torque*.38;r.head.rotation.y-=torque*.42;

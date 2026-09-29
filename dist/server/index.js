@@ -983,7 +983,7 @@ var LOBBY_POSES = { weapon: "Standing with weapon", chair: "Sitting on chair", s
 function lobbyPose(value) {
   return typeof value === "string" && Object.hasOwn(LOBBY_POSES, value) ? value : "weapon";
 }
-var BOT_WEAPONS = Object.values(WEAPONS).filter((w) => !w.devOnly);
+var PREFERRED_WEAPONS = Object.values(WEAPONS).filter((w) => !w.devOnly);
 
 // src/shared/cosmetics.ts
 var HATS = { "auditor-halo": "Auditor Halo \xB7 DEV ONLY", none: "No hat", cap: "Ball cap", beanie: "Beanie", top: "Top hat", wizard: "Wizard hat", crown: "Crown", cone: "Traffic cone", antenna: "Antenna", halo: "Halo", cowboy: "Cowboy hat" };
@@ -991,7 +991,7 @@ var KILL_STYLES = { ragdoll: "Ragdoll", "dev-raging-demon": "Raging Demon \xB7 D
 var developerKillEffect = (id) => id.startsWith("dev-");
 var DEFAULT_COSMETICS = { lobbyPose: "weapon", intro: "neon-drop", introText: "Ready to make an impact", bodyColor: "#e5e7eb", hat: "none", killEffect: "voxel-burst" };
 function cosmetics(raw, dev = false) {
-  return { lobbyPose: lobbyPose(raw?.lobbyPose), preferredSpec: typeof raw?.preferredSpec === "string" && Object.hasOwn(WEAPONS, raw.preferredSpec) && (!WEAPONS[raw.preferredSpec].devOnly || canUse(dev, "weapon:" + raw.preferredSpec)) ? raw.preferredSpec : void 0, introText: introText(raw?.introText), intro: raw && Object.hasOwn(INTRO_STYLES, raw.intro) && (!raw.intro.startsWith("dev-") || canUse(dev, "intro:" + raw.intro)) ? raw.intro : "neon-drop", bodyColor: typeof raw?.bodyColor === "string" && /^#[0-9a-f]{6}$/i.test(raw.bodyColor) ? raw.bodyColor : DEFAULT_COSMETICS.bodyColor, hat: raw && Object.hasOwn(HATS, raw.hat) && (raw.hat !== "auditor-halo" || canUse(dev, "hat:auditor-halo")) ? raw.hat : "none", killEffect: raw && Object.hasOwn(KILL_STYLES, raw.killEffect) && (!developerKillEffect(raw.killEffect) || canUse(dev, "effect:" + raw.killEffect)) ? raw.killEffect : "voxel-burst" };
+  return { lobbyPose: lobbyPose(raw?.lobbyPose), preferredSpec: typeof raw?.preferredSpec === "string" && Object.hasOwn(WEAPONS, raw.preferredSpec) && !WEAPONS[raw.preferredSpec].devOnly ? raw.preferredSpec : void 0, introText: introText(raw?.introText), intro: raw && Object.hasOwn(INTRO_STYLES, raw.intro) && (!raw.intro.startsWith("dev-") || canUse(dev, "intro:" + raw.intro)) ? raw.intro : "neon-drop", bodyColor: typeof raw?.bodyColor === "string" && /^#[0-9a-f]{6}$/i.test(raw.bodyColor) ? raw.bodyColor : DEFAULT_COSMETICS.bodyColor, hat: raw && Object.hasOwn(HATS, raw.hat) && (raw.hat !== "auditor-halo" || canUse(dev, "hat:auditor-halo")) ? raw.hat : "none", killEffect: raw && Object.hasOwn(KILL_STYLES, raw.killEffect) && (!developerKillEffect(raw.killEffect) || canUse(dev, "effect:" + raw.killEffect)) ? raw.killEffect : "voxel-burst" };
 }
 function introText(value) {
   return typeof value === "string" ? Array.from(value.replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g, " ").replace(/\s+/g, " ").trim()).slice(0, 64).join("") || DEFAULT_COSMETICS.introText : DEFAULT_COSMETICS.introText;

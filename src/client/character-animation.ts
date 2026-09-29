@@ -1,4 +1,4 @@
-import {locomotion,finishPose} from './motion-quality.js';
+import {locomotion,finishPose,smoothMotion} from './motion-quality.js';
 import {meleeMotion} from './melee-motion.js';
 import {animateEmperor,animateJuggle} from './emperor-animation.js';
 import {animateCosmetics} from './auditor-halo.js';
@@ -55,10 +55,10 @@ function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=
  const aimTarget=w.class==='ranged'?(pose.shotAge<Math.max(.38,w.interval+.15)||p.reloadTime>0||r.motion<.18?1:0):0;r.aimWeight+=(aimTarget-r.aimWeight)*(1-Math.exp(-dt*24));
  if(w.class!=='magic'&&r.weapon.parent!==r.sockets.rightHand)r.sockets.rightHand.add(r.weapon);
  if(w.class==='ranged'){
-  r.spine.rotation.x=-r.body.rotation.x;r.chest.rotation.z=-r.body.rotation.z-r.pelvis.rotation.z;
   const a=r.aimWeight,kick=pose.recoil*(p.spec==='rifle'?1.7:p.spec==='machinegun'?.65:1);
+  r.spine.rotation.x=T.MathUtils.lerp(r.spine.rotation.x,-r.body.rotation.x,a);r.chest.rotation.z=T.MathUtils.lerp(r.chest.rotation.z,-r.body.rotation.z-r.pelvis.rotation.z,a);
   blendRotation(r.rightArm,-1.0-pitch*.6-kick*.28,0,-.04,a);blendRotation(r.rightElbow,-.5+kick*.18,0,0,a);blendRotation(r.rightHand,-pitch*.4-kick*.12,0,0,a);
-  r.weapon.rotation.x=T.MathUtils.lerp(.5,1.5,a);r.chest.rotation.x=-kick*.12*a;r.spine.rotation.y=-.15*a;r.head.rotation.z=-.08*a;
+  r.weapon.rotation.x=T.MathUtils.lerp(.15,1.5,a);r.chest.rotation.x=T.MathUtils.lerp(r.chest.rotation.x,-kick*.12,a);r.spine.rotation.y=T.MathUtils.lerp(r.spine.rotation.y,-.15,a);r.head.rotation.z=T.MathUtils.lerp(r.head.rotation.z,-.08,a);
   if(p.spec==='pistol'){blendRotation(r.leftArm,-.6-pitch*.5,-.4,-.4,a*.75);blendRotation(r.leftElbow,-1.25,0,0,a*.75);}
   if(p.reloadTime>0){const u=clamp(1-p.reloadTime/w.reload,0,1),reach=Math.sin(Math.PI*clamp(u/.7,0,1));r.rightArm.rotation.set(-.65, .25, -.3);r.rightElbow.rotation.x=-.8;r.rightHand.rotation.z=-.28;r.weapon.rotation.x=1.45;r.leftArm.rotation.set(-.4-reach*.85,-.45,-.5);r.leftElbow.rotation.x=-.7-reach*.65;r.leftHand.rotation.z=reach*.8;r.chest.rotation.y=.25*pose.reload;r.head.rotation.x=.15*pose.reload;const mag=r.weapon.getObjectByName('magazine');if(mag)mag.position.y=-.19-Math.sin(Math.PI*clamp((u-.16)/.52,0,1))*.3;}
   else {const mag=r.weapon.getObjectByName('magazine');if(mag)mag.position.y=-.19;if(p.spec!=='pistol')braceWeapon(r,new T.Vector3(-.02,.12,.16-kick*.045),new T.Euler(-pitch-kick*.13,.12,0),a);}
@@ -67,8 +67,8 @@ function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=
   // then drives through the target; pelvis and chest lead the follow-through.
   if(r.weapon.parent!==r.sockets.leftHand)r.sockets.leftHand.add(r.weapon);
   const m=pose.magic,c=m.weight,water=p.spec==='water',dark=p.spec==='darkness',lightning=p.spec==='lightning',u=m.drive,load=m.coil;
-  const carry=1-Math.min(.65,r.motion*.7);blendRotation(r.leftArm,-.24-pitch*.08,-.08,.16,carry);blendRotation(r.leftElbow,-.42,0,0,carry);r.leftHand.rotation.set(0,0,0);
-  r.weapon.rotation.set(-Math.PI/2-r.leftArm.rotation.x-r.leftElbow.rotation.x,0,0);
+  const carry=1-smoothMotion((r.motion-.10)/.65);blendRotation(r.leftArm,-.24-pitch*.08,-.08,.16,carry);blendRotation(r.leftElbow,-.42,0,0,carry);r.leftHand.rotation.set(0,0,0);
+  r.weapon.rotation.set(T.MathUtils.lerp(.15,-Math.PI/2-r.leftArm.rotation.x-r.leftElbow.rotation.x,m.active?1:carry),0,0);
   if(m.active){
    const twist=(m.age<m.windup?-.48*load:(-.48+.88*u)*m.settle)*(dark?1.15:water?1.1:1);
    r.pelvis.rotation.y+=twist*.35;r.spine.rotation.y+=twist*.65;r.chest.rotation.y+=twist*.48;r.head.rotation.y=-twist*.55;
