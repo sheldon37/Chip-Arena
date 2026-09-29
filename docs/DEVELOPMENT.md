@@ -84,8 +84,12 @@ Windows package workflow; the local procedure above is the phase-1 build path.
 
 Destination metadata confirms private visibility and owner push/admin access.
 Ruleset inspection returned HTTP 403: the private repository's current plan does
-not support that feature. Deployment hooks/apps remain uninspected; the connector
-does not expose them. No branch rules, required reviews, visibility, billing or
+not support that feature. Authorized browser inspection found no webhooks or
+environments, Pages unavailable, and only ChatGPT Codex Connector installed.
+Actions permits all actions, defaults to read-only contents/packages, disables
+fork PR workflows and creating/approving PRs, and denies cross-repository access.
+Repository retention is 90 days; the new workflow sets its artifacts to 7 days.
+No branch rules, required reviews, visibility, billing or
 administrative policy were changed. No upgrade is needed for the source import.
 After owner review of
 the existing failures, `Required checks` is the suggested merge check, not a

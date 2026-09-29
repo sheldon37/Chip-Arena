@@ -91,11 +91,13 @@ Source privacy does not hide readable code in existing desktop/source packages.
 
 No imported GitHub workflow exists at the original baseline. The new workflow
 only verifies PRs/manual runs. The selected destination is confirmed private and
-empty, but the connector does not expose webhooks, installed publishing Apps or
-deployment settings. Ruleset inspection returned a private-plan HTTP 403. Local
-Git transport also lacks authentication. These prevent a safe first push; do not
-bypass them by pushing to the live Site. Inspect publishing controls first, without changing live
-infrastructure. If the destination is empty and safe, push the original baseline
+empty. Authorized browser inspection found no webhooks or environments, Pages
+unavailable on the current private plan, and only ChatGPT Codex Connector installed.
+Actions defaults to read-only access; no settings were changed. Ruleset inspection
+returned a private-plan HTTP 403. Local Git transport still lacks authentication;
+browser sign-in does not supply it. Do not bypass this by pushing to the live Site.
+Recheck publishing controls and refs at import time, without changing live
+infrastructure. If the destination is still empty and safe, push the original baseline
 to main once and this migration branch separately, then open a PR. If nonempty,
 fetch and reconcile its actual history without force-push; do not assume main
 can be replaced. Owner retains merge/release policy.

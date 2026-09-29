@@ -3,8 +3,9 @@
 Migration prepared locally; not pushed and not released (2026-09-29).
 
 - Confirmed destination: `sheldon37/Chip-Arena`, private and empty; owner access
-  verified. `origin` points there. Git authentication and deployment-hook audit
-  remain blocked; no push or PR. Ruleset API returns a private-plan restriction.
+  verified. `origin` points there. Browser audit found no publishing hooks,
+  environments or Pages; only the Codex Connector app. Git authentication still
+  blocks push/PR. Ruleset API returns a private-plan restriction.
 - Source baseline: `18231698c7c79a7a604e567b933eb2d0155d7a3e`, clean `main`,
   68 existing commits; matches latest successfully published Site source (version 64).
   Work branch: `migration/shared-development`; full history retained.
@@ -22,7 +23,7 @@ Migration prepared locally; not pushed and not released (2026-09-29).
   identical after clean restore. WebSocket rematch/server build remain failing;
   HTTPS integration and Windows ZIP construction passed. Native Windows untested.
 
-Next: establish authenticated Git transport and inspect destination publishing
-hooks; recheck refs, import the audited baseline if still empty, then branch/PR.
+Next: use authenticated Git transport; recheck refs and publishing settings, import
+the audited baseline if still empty, then branch/PR. Full history export is provided.
 Resolve recorded baseline failures before enforcing a green merge/release gate.
 Windows validation and desktop distribution cutover remain separate work.

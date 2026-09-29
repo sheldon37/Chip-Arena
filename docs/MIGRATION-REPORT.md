@@ -12,8 +12,10 @@ Before edits, created `recovery/chip-arena-original.bundle` in the migration tas
 workspace; `git bundle verify` passed and confirmed complete history. Created an
 independent clone (no hardlinks), branch `migration/shared-development`; retained
 the original main and all ancestors. Original checkout and live Site unchanged.
-The full bundle is local; do not assume scratch retention. The original baseline
-also remains in the existing Site source history. The final source export includes
+The original baseline also remains in the existing Site source history. A separate
+self-contained full-history migration bundle is prepared for an authenticated
+Git client. It retains historical generated files to preserve existing commits.
+The source-only export includes
 an incremental migration bundle with the original SHA as its required prerequisite,
 not a replacement/squashed history. Restore/apply instructions accompany that export.
 
@@ -43,8 +45,12 @@ those services. On the owner's follow-up, destination `sheldon37/Chip-Arena`
 (repository ID 1396444968) became accessible: private, empty (no branches, size 0),
 default main, owner push/admin permission. Added its exact URL as local `origin`;
 retained `source-local`. The original checkout's remotes remain unchanged.
-Deployment webhooks/apps remain uninspected because the connector exposes no
-supported endpoint for them. Ruleset GET returned HTTP 403 with a private-plan
+The owner authorized a browser fallback and completed secure GitHub sign-in.
+Read-only inspection found no repository webhooks, no deployment environments,
+Pages unavailable on the private plan, and only ChatGPT Codex Connector installed.
+Actions defaults to read-only contents/packages; workflow PR creation/approval,
+fork PR workflows and cross-repository access are disabled. No settings changed.
+No publishing trigger was identified. Ruleset GET returned HTTP 403 with a private-plan
 restriction. No upgrade or policy change was made. `GIT_TERMINAL_PROMPT=0 git
 ls-remote https://github.com/sheldon37/Chip-Arena.git` failed because Git could
 not read a username; no credential helper, askpass or gh CLI is configured.
@@ -175,8 +181,9 @@ Final evidence-only commit follows the tested code commit; it changes docs only.
 The source-only export records its exact SHA, all file hashes, baseline provenance,
 test outputs and an incremental Git bundle. It excludes generated player packages.
 The local source branch and unchanged original baseline are recoverable; see the
-export's MIGRATION-HANDOFF.md before importing. Remaining access needs: authenticated
-Git transport and inspection of deployment hooks/apps before the first push. Recheck
-the remote refs at import time; do not assume it stays empty. A browser fallback
-requires owner approval because the connector lacks those settings operations.
+export's MIGRATION-HANDOFF.md before importing. Remaining access need: authenticated
+Git transport. Browser sign-in does not authenticate this workspace's Git client.
+Direct SSH connection checks failed at DNS resolution; no network bypass was used.
+Use the complete history bundle from an authenticated Git client. Recheck remote
+refs and publishing settings at import time; do not assume they stay unchanged.
 Production and the old working installation remain unchanged; phase 2 not started.
