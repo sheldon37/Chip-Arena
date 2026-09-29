@@ -122,6 +122,19 @@ explicitly; do not publish the test candidate to silence the badge.
   show Latest build before the artificial version self-install. After an update or
   reopen it must not compare against the live feed.
 
+## Owner follow-up: fresh r2 label passes — 2026-09-29
+
+The owner reports that the small patch on the existing test copy still showed
+Update Available, while a fresh extraction of the full r2 package looks correct.
+The fresh r2 update-label check is now owner-reported passed on Windows. This
+supersedes the earlier not-run status for that specific check only. Other r2
+account/multiplayer/historical-upgrade/failure-recovery checks remain unverified.
+
+The reason the patched copy behaved differently is unresolved. File placement,
+launching another copy, and a still-running process are possible explanations,
+not confirmed diagnoses. Use the fresh r2 fixture for continued validation.
+The small patch has not been confirmed successful on the owner's existing copy.
+
 ## Reproduce
 
 Check out GitHub tooling commit b9147c394e1ba1592b9d2cb0a3c9bf1d42dc1154 in an
