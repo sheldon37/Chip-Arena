@@ -12,6 +12,7 @@ Python 3 is needed only for desktop packaging. Put its executable on PATH as
 | --- | --- | --- |
 | Restore | `npm run setup` | Thin `npm ci --no-audit --no-fund`; requires registry access or a complete npm cache. |
 | Develop | `npm run dev` | Vite http://localhost:4173 and Node authority :8788; stop with Ctrl+C. |
+| Cloud loopback dev | `npm run dev -- --host 127.0.0.1` | Verified here; default all-interface Vite startup is blocked by this container's network-interface enumeration restriction. |
 | Types only | `npm run verify:fast` | No packaging. |
 | Affected tests | `npm run verify:fast -- tests/desktop.test.ts tests/desktop-connection.test.ts` | Types plus explicit existing test files. |
 | Unit regression | `npm test` | Existing suite, known baseline failures; nonzero exit remains a failure. |
