@@ -16,6 +16,18 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-09-29 — owner Windows follow-up — fresh r2 label works
+
+- Owner reports that applying the small patch to the existing test copy still showed
+  Update Available, but a fresh extraction of the full r2 package looks correct.
+- Record the fresh r2 update-label Windows check as owner-reported passed. This does
+  not independently verify all r2 account/multiplayer/upgrade/failure-recovery checks.
+- Why the patched existing copy differed is unresolved. Incorrect file placement,
+  launching a different copy, or a still-running process are possibilities, not
+  established causes. No additional code changes based on speculation.
+- Use the fresh r2 test copy for further validation. The small patch is not confirmed
+  successful on the owner's existing copy. No merge, publication or live-feed change.
+
 ## 2026-09-29 — Astra — fix isolated update label and recover game history
 
 - Target release/candidate-workflow / PR #3; remote base
