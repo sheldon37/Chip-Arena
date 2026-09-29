@@ -2,7 +2,7 @@ import {test} from 'node:test';import assert from 'node:assert/strict';
 import {Simulation,initPhysics,sanitizeInput} from '../src/shared/simulation.js';
 import {CONFIG as C,v,idleInput,SpecId,len} from '../src/shared/config.js';
 import {statsFor,WEAPONS,CHIPS,eligibleChips} from '../src/shared/content.js';
-import {blockDuration,blockCooldown} from '../src/shared/blocking.js';import {chipStackEffects} from '../src/shared/chip-inspection.js';
+import {blockDuration,blockCooldown,meleeBlockStun} from '../src/shared/blocking.js';import {Predictor} from '../src/client/prediction.js';import {chipStackEffects} from '../src/shared/chip-inspection.js';
 await initPhysics();
 function arena(spec:SpecId='pistol') {const s=new Simulation({sandbox:true}),a=s.addPlayer('a','Attacker',WEAPONS[spec].class)!,b=s.addPlayer('b','Blocker')!;s.phase='fight';a.spec=spec;a.ammo=WEAPONS[spec].ammo;for(const p of [...s.props.values()])s.removeProp(p.id);s.addProp({id:'floor',pos:v(0,-.5,0),size:v(30,1,30),material:'foundation'});a.body.setTranslation(v(0,1,0),true);b.body.setTranslation(v(0,1,4),true);a.input={...idleInput(),camera:'first'};b.input={...idleInput(),yaw:Math.PI};s.world.step();return {s,a,b};}
 function shoot(s:Simulation,a:any,b:any){s.spawnProjectile(a);const shot=[...s.projectiles.values()][0];for(let n=0;n<20&&shot.owner!==b.id&&s.projectiles.has(shot.id);n++)s.stepProjectiles(1/60);return shot;}
@@ -18,3 +18,30 @@ test('reflection bounds speed, damage, lifetime and count; next successful block
 test('reflected projectile remains swept against cover',()=>{const {s,a,b}=arena();s.beginBlock(b);const shot=shoot(s,a,b);s.addProp({id:'return-cover',pos:v(0,1.5,2),size:v(3,3,.2),material:'foundation'});s.world.step();for(let n=0;n<20;n++)s.stepProjectiles(1/60);assert.equal(a.hp,100);assert.equal(s.projectiles.size,0);assert.equal(shot.owner,b.id);s.dispose();});
 test('Counter Pulse triggers only after success, once per activation, obeys cover and cannot apply DoTs',()=>{const {s,a,b}=arena();a.body.setTranslation(v(0,1,2),true);s.world.step();b.stats=statsFor({'block-pulse':2,ember:6,poison:6});s.beginBlock(b);assert.equal(a.hp,100);s.successfulBlock(b,'melee',b.body.translation(),'a');const hp=a.hp;assert.ok(hp<100);assert.ok(a.ext.z<0);assert.equal(a.burns.size+a.poisons.size,0);s.successfulBlock(b,'melee',b.body.translation(),'a');assert.equal(a.hp,hp);b.blockProcUsed=false;s.addProp({id:'cover',pos:v(0,1.5,3),size:v(3,3,.2),material:'foundation'});s.world.step();s.successfulBlock(b,'melee',b.body.translation(),'a');assert.equal(a.hp,hp);s.dispose();});
 test('burn, poison and physical debris bypass timed Block; reset/restore clear defense state',()=>{const {s,a}=arena();s.beginBlock(a);for(const kind of ['burn','poison','debris'])assert.equal(s.damage(a,5,'b',kind),5);assert.equal(a.hp,85);s.debug({action:'heal'},a.id);assert.equal(a.blockTime+a.blockCd,0);s.beginBlock(a);s.resetRound();assert.equal(a.blockTime+a.blockCd,0);assert.equal(a.blockHeld,false);assert.equal(a.blockProcUsed,false);assert.equal(s.snapshot().players[0].blockCooldown,4);s.dispose();});
+
+test('blocked melee strength sets bounded stun, interrupts followups and preserves a short recoil',()=>{
+ const durations:number[]=[];
+ for(const spec of ['daggers','sword','shield','greatsword'] as SpecId[]){const {s,a,b}=arena(spec);try{
+  b.body.setTranslation(v(0,1,1.3),true);s.world.step();a.stats.extraStrikes=3;s.primary(a);const swing=a.swing!;assert.ok(swing);s.time=(swing.at+swing.until)/2;b.blockTime=2;s.melee(a);
+  assert.equal(b.hp,100);assert.equal(a.swing,null);assert.ok(len(a.ext)>0&&len(a.ext)<6);const duration=a.hitStunUntil!-s.time;durations.push(duration);assert.ok(Math.abs(duration-meleeBlockStun(WEAPONS[spec].damage,WEAPONS[spec].impulse))<1e-9);assert.equal(s.events.filter(e=>e.type==='blockHit').length,1);
+  s.time+=.1;s.melee(a);assert.equal(s.events.filter(e=>e.type==='blockHit').length,1);
+ }finally{s.dispose();}}
+ assert.ok(durations.every((d,i)=>i===0||d>durations[i-1]));assert.equal(meleeBlockStun(-5,-10),.25);assert.equal(meleeBlockStun(1e9,1e9),.95);assert.ok(meleeBlockStun(60,300)>meleeBlockStun(30,300));assert.ok(meleeBlockStun(30,600)>meleeBlockStun(30,300));
+});
+test('block stun locks attacks, defense and movement on authority and prediction, then releases',()=>{const {s,a,b}=arena('sword'),pred=new Predictor();try{
+ a.move=v(5,0,0);a.dashTime=a.waveTime=a.electricStepTime=.2;a.cast={at:0,multiplier:1,secondary:false};a.burst=3;
+ s.successfulBlock(b,'melee',b.body.translation(),a.id,30,v(0,0,1),300);const until=a.hitStunUntil!;assert.equal(a.cast,undefined);assert.equal(a.burst,0);assert.equal(a.dashTime+a.waveTime!+a.electricStepTime!,0);assert.equal(s.beginBlock(a),false);a.cooldown=0;s.primary(a);s.secondary(a);assert.equal(a.swing,null);assert.equal(a.meleeAction,undefined);
+ const input={...idleInput(),seq:1,x:1,jump:true,dash:true,secondary:true,attack:true};a.input=input;const snapshot=s.snapshot(),view=snapshot.players.find(p=>p.id===a.id)!;assert.equal(view.hitStunUntil,until);pred.reconcile(snapshot,view);pred.step(input,1/60,view);assert.equal(pred.move.x,0);assert.equal(pred.dashTime,0);assert.equal(pred.waveTime,0);
+ s.updatePlayer(a,1/60);assert.equal(a.move.x,0);assert.equal(a.dashTime,0);assert.equal(a.swing,null);s.time=until+.001;a.cooldown=0;a.input={...idleInput(),x:1,dash:true};s.updatePlayer(a,1/60);assert.ok(a.move.x>0);assert.ok(a.dashTime>0);s.primary(a);assert.ok(a.swing);
+ }finally{pred.dispose();s.dispose();}});
+test('a block immediately cancels dev combo catch-up strikes and follow-on echoes',()=>{
+ for(const spec of ['emperor','ansatsuken'] as SpecId[]){const {s,a,b}=arena(spec);try{
+ a.developer=true;a.chips={'arcade-afterimage':1,'mishima-twin':1};b.body.setTranslation(v(0,1,1.5),true);s.world.step();b.blockTime=2;s.primary(a);s.time+=.8;
+ if(spec==='emperor')s.emperor.stepPlayer(a);else s.arcade.stepPlayer(a,1/60);
+ assert.equal(b.hp,100);assert.ok((a.hitStunUntil||0)>s.time);assert.equal(s.events.filter(e=>e.type==='blockHit').length,1);assert.equal(s.emperor.actions.has(a.id)||s.arcade.actions.has(a.id),false);assert.equal(s.emperor.echoes.length+s.arcade.echoes.length,0);
+ }finally{s.dispose();}}
+});
+test('blocked Greatsword special stops its direct strike and later landing damage',()=>{const {s,a,b}=arena('greatsword');try{
+ a.grounded=true;b.body.setTranslation(v(0,1,1.5),true);s.world.step();s.secondary(a);const action=a.meleeAction!;assert.ok(action);action.released=true;s.time=action.releaseAt+.06;b.blockTime=2;s.standardMelee.step(a);assert.equal(a.meleeAction,undefined);assert.ok((a.hitStunUntil||0)>s.time);assert.equal(b.hp,100);assert.equal(b.knockdown,undefined);s.time+=.5;s.standardMelee.step(a);assert.ok(!s.events.some(e=>e.type==='melee-slam'));
+ }finally{s.dispose();}});
+test('projectile blocks never stun the distant owner, including thrown melee weapons',()=>{for(const spec of ['pistol','daggers','shield','ansatsuken'] as SpecId[]){const {s,a,b}=arena(spec);try{s.successfulBlock(b,'projectile',b.body.translation(),a.id,50,v(0,0,1),500);assert.ok(!a.hitStunUntil);assert.equal(len(a.ext),0);}finally{s.dispose();}}});

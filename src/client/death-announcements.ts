@@ -4,42 +4,40 @@ import {createCharacterRig,type CharacterRig} from './character-rig.js';
 import {dressRig} from './cosmetics.js';
 import {disposeAuditorHalo} from './auditor-halo.js';
 export const DEATH_ANNOUNCEMENT={launch:1.05,duration:5.6,spacing:1.5};
-export interface Announcement {id:string;at:number;player:PlayerView;text:string;}
+export interface Announcement {id:string;at:number;slot:number;player:PlayerView;text:string;}
 /** Persistent death records survive dropped event packets. Simultaneous deaths get separate launches. */
 export class DeathAnnouncementTrack {
- items:Announcement[]=[];private seen=new Map<string,number>();private lastTime=-1;private nextLaunch=-1;
- clear(){this.items=[];this.seen.clear();this.lastTime=-1;this.nextLaunch=-1;}
+ items:Announcement[]=[];private seen=new Map<string,number>();private lastTime=-1;private nextLaunch=-1;private nextSlot=0;
+ clear(){this.items=[];this.seen.clear();this.lastTime=-1;this.nextLaunch=-1;this.nextSlot=0;}
  update(s:Snapshot){
   if(s.time<this.lastTime||['lobby','intro','specialization'].includes(s.phase))this.clear();this.lastTime=s.time;
   for(const p of [...s.players].sort((a,b)=>(a.death?.at||0)-(b.death?.at||0)||String(a.death?.id).localeCompare(String(b.death?.id)))){
    const d=p.death;if(p.hp>0||!d||this.seen.has(d.id)||!['fight','result','match','countdown','draft'].includes(s.phase))continue;
    this.seen.set(d.id,d.at);if(s.time-d.at>2||s.time<d.at)continue;
    const at=Math.max(d.at,this.nextLaunch),name=d.announcement?.victim||p.name,killer=d.announcement?.killer??null;
-   this.items.push({id:d.id,at,player:{...p,cosmetics:p.cosmetics?{...p.cosmetics}:undefined},text:killer?`${name} was killed by ${killer}.`:`${name} made an oopsie.`});this.nextLaunch=at+DEATH_ANNOUNCEMENT.spacing;
+   this.items.push({id:d.id,at,slot:this.nextSlot++%3,player:{...p,cosmetics:p.cosmetics?{...p.cosmetics}:undefined},text:killer?`${name} was killed by ${killer}.`:`${name} made an oopsie.`});this.nextLaunch=at+DEATH_ANNOUNCEMENT.spacing;
   }
   this.items=this.items.filter(a=>s.time-a.at<DEATH_ANNOUNCEMENT.duration);for(const[id,at]of this.seen)if(s.time-at>30)this.seen.delete(id);
   return this.items;
  }
 }
-/** A sky broadcast has a stable angular size for every spectator, including scoped and indoor views. */
-export function skyBroadcastFrame(camera:T.Camera,slot=0,count=1){
- camera.updateMatrixWorld(true);const distance=120,aspect=camera.projectionMatrix.elements[5]/camera.projectionMatrix.elements[0],halfHeight=distance/camera.projectionMatrix.elements[5];
- const height=Math.min(count===1?.64:.57,1.8*aspect/(count*(6.8/8.4))),scale=halfHeight*height/8.4,x=(slot-(count-1)/2)*6.8*scale;
- const quaternion=camera.getWorldQuaternion(new T.Quaternion()),position=new T.Vector3(x,halfHeight*.59,-distance).applyQuaternion(quaternion).add(camera.getWorldPosition(new T.Vector3()));
- return {position,quaternion,scale};
+/** Fixed world-space broadcast above the northern skyline: never follows the viewer or scope. */
+export function skyBroadcastFrame(slot=0){
+ return {position:new T.Vector3([0,-43,43][slot%3],72,-115),quaternion:new T.Quaternion(),scale:5.5};
 }
+
 interface Stage {root:T.Group;rig:CharacterRig;rocket:T.Mesh;trail:T.Line;stars:T.Points<T.BufferGeometry,T.PointsMaterial>;holo:T.Group;material:T.MeshBasicMaterial;lines:T.LineSegments;frame:T.LineSegments;directions:T.Vector3[];nameplate?:T.Mesh<T.PlaneGeometry,T.MeshBasicMaterial>;}
 export class DeathAnnouncements {
  readonly track=new DeathAnnouncementTrack();private stages=new Map<string,Stage>();private label?:HTMLDivElement;
  constructor(private scene:T.Scene){if(typeof document!=='undefined'&&document.createElement){this.label=document.createElement('div');this.label.className='death-announcement';this.label.setAttribute('role','status');this.label.setAttribute('aria-live','polite');this.label.hidden=true;document.body.append(this.label);}}
  private create(a:Announcement):Stage{
   const root=new T.Group();root.name='death-firework-'+a.id;
-  const material=new T.MeshBasicMaterial({color:0x62dcff,transparent:true,opacity:.6,depthTest:false,depthWrite:false,toneMapped:false,fog:false,side:T.DoubleSide});
-  const lineMaterial=new T.LineBasicMaterial({color:0x8eedff,transparent:true,opacity:.6,depthTest:false,depthWrite:false,toneMapped:false,fog:false});
-  const rocket=new T.Mesh(new T.SphereGeometry(.09,8,5),new T.MeshBasicMaterial({color:0xf0fbff,depthTest:false,depthWrite:false,toneMapped:false,fog:false}));root.add(rocket);
+  const material=new T.MeshBasicMaterial({color:0x62dcff,transparent:true,opacity:.6,depthTest:true,depthWrite:false,toneMapped:false,fog:false,side:T.DoubleSide});
+  const lineMaterial=new T.LineBasicMaterial({color:0x8eedff,transparent:true,opacity:.6,depthTest:true,depthWrite:false,toneMapped:false,fog:false});
+  const rocket=new T.Mesh(new T.SphereGeometry(.09,8,5),new T.MeshBasicMaterial({color:0xf0fbff,depthTest:true,depthWrite:false,toneMapped:false,fog:false}));root.add(rocket);
   const trail=new T.Line(new T.BufferGeometry().setFromPoints([new T.Vector3(),new T.Vector3()]),lineMaterial.clone());root.add(trail);
   const dirs=Array.from({length:72},(_,i)=>{const y=1-2*(i+.5)/72,phi=i*2.399963229728653;return new T.Vector3(Math.cos(phi)*Math.sqrt(1-y*y),y,Math.sin(phi)*Math.sqrt(1-y*y)).multiplyScalar(2+(i%7)*.22);});
-  const stars=new T.Points(new T.BufferGeometry().setAttribute('position',new T.Float32BufferAttribute(new Float32Array(dirs.length*3),3)),new T.PointsMaterial({color:0xa6f4ff,size:.10,transparent:true,opacity:1,depthTest:false,depthWrite:false,toneMapped:false,fog:false}));root.add(stars);
+  const stars=new T.Points(new T.BufferGeometry().setAttribute('position',new T.Float32BufferAttribute(new Float32Array(dirs.length*3),3)),new T.PointsMaterial({color:0xa6f4ff,size:.10,transparent:true,opacity:1,depthTest:true,depthWrite:false,toneMapped:false,fog:false}));root.add(stars);
   const holo=new T.Group(),rig=createCharacterRig(a.player.color,a.player.cosmetics?.bodyColor);holo.name='sky-portrait';dressRig(rig,a.player.cosmetics);rig.weapon.visible=rig.offWeapon.visible=false;
   // Crop to the player's actual head, hat and shoulders; blank mannequin faces stay blank.
   rig.leftLeg.visible=rig.rightLeg.visible=rig.leftArm.visible=rig.rightArm.visible=false;
@@ -55,16 +53,16 @@ export class DeathAnnouncements {
   for(const x of [-1,1])for(let i=0;i<9;i++)brackets.push(new T.Vector3(x*3.12,-2.8+i*.75,1.45),new T.Vector3(x*3.3,-2.8+i*.75,1.45));
   brackets.push(new T.Vector3(-2.5,-3.55,1.45),new T.Vector3(2.5,-3.55,1.45));
   const frame=new T.LineSegments(new T.BufferGeometry().setFromPoints(brackets),lineMaterial.clone());frame.name='portrait-frame';holo.add(frame);
-  let nameplate:Stage['nameplate'];if(typeof document!=='undefined'&&document.createElement){const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=128;const ctx=canvas.getContext('2d');if(ctx){ctx.clearRect(0,0,1024,128);ctx.fillStyle='#b8f4ff';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='500 52px system-ui';const name=(a.player.death?.announcement?.victim||a.player.name).toUpperCase();ctx.fillText(name,512,64,940);const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;nameplate=new T.Mesh(new T.PlaneGeometry(6.2,.775),new T.MeshBasicMaterial({map:texture,transparent:true,depthTest:false,depthWrite:false,toneMapped:false,fog:false}));nameplate.name='portrait-name';nameplate.position.set(0,-3.96,1.5);holo.add(nameplate);}}
-  root.add(holo);root.traverse(o=>{o.renderOrder=90;o.frustumCulled=false;});lines.renderOrder=91;frame.renderOrder=92;if(nameplate)nameplate.renderOrder=93;this.scene.add(root);
+  let nameplate:Stage['nameplate'];if(typeof document!=='undefined'&&document.createElement){const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=224;const ctx=canvas.getContext('2d');if(ctx){ctx.clearRect(0,0,1024,224);ctx.fillStyle='#b8f4ff';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='500 52px system-ui';const name=(a.player.death?.announcement?.victim||a.player.name).toUpperCase(),killer=a.player.death?.announcement?.killer;ctx.fillText(name,512,48,940);ctx.font='400 36px system-ui';ctx.fillText(killer?'was killed by':'made an oopsie.',512,118,940);if(killer){ctx.font='500 44px system-ui';ctx.fillText(killer,512,178,940);}const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;nameplate=new T.Mesh(new T.PlaneGeometry(6.2,1.356),new T.MeshBasicMaterial({map:texture,transparent:true,depthTest:true,depthWrite:false,toneMapped:false,fog:false}));nameplate.name='portrait-name';nameplate.position.set(0,-4.26,1.5);holo.add(nameplate);}}
+  root.add(holo);root.traverse(o=>{o.renderOrder=3;});lines.renderOrder=4;frame.renderOrder=5;if(nameplate)nameplate.renderOrder=6;this.scene.add(root);
   const stage={root,rig,rocket,trail,stars,holo,material,lines,frame,directions:dirs,nameplate};this.stages.set(a.id,stage);return stage;
  }
- update(s:Snapshot,camera:T.Camera,visible:boolean){
+ update(s:Snapshot,_camera:T.Camera,visible:boolean){
   if(!visible){this.clear();return;}
   const active=this.track.update(s);for(const[id,stage]of this.stages)if(!active.some(a=>a.id===id)){this.disposeStage(stage);this.stages.delete(id);}
   const showing=active.filter(a=>s.time>=a.at).slice(-3),texts:string[]=[];
   for(const stage of this.stages.values())stage.root.visible=false;
-  for(const [slot,a]of showing.entries()){const age=s.time-a.at,stage=this.stages.get(a.id)||this.create(a),layout=skyBroadcastFrame(camera,slot,showing.length),u=Math.min(1,age/DEATH_ANNOUNCEMENT.launch),burst=age-DEATH_ANNOUNCEMENT.launch,fade=Math.min(1,Math.max(0,(DEATH_ANNOUNCEMENT.duration-age)/.8));
+  for(const a of showing){const age=s.time-a.at,stage=this.stages.get(a.id)||this.create(a),layout=skyBroadcastFrame(a.slot),u=Math.min(1,age/DEATH_ANNOUNCEMENT.launch),burst=age-DEATH_ANNOUNCEMENT.launch,fade=Math.min(1,Math.max(0,(DEATH_ANNOUNCEMENT.duration-age)/.8));
    stage.root.visible=true;stage.root.position.copy(layout.position);stage.root.quaternion.copy(layout.quaternion);stage.root.scale.setScalar(layout.scale);
    stage.rocket.visible=stage.trail.visible=burst<0;const y=-25*(1-u)**2;stage.rocket.position.set(Math.sin(u*8)*.12,y,0);const line=stage.trail.geometry.getAttribute('position') as T.BufferAttribute;line.setXYZ(0,stage.rocket.position.x,y,0);line.setXYZ(1,0,y-3*(1-u*.5),0);line.needsUpdate=true;
    stage.stars.material.size=.12*layout.scale;stage.stars.visible=burst>=0&&burst<2.2;if(stage.stars.visible){const positions=stage.stars.geometry.getAttribute('position') as T.BufferAttribute;stage.directions.forEach((d,i)=>positions.setXYZ(i,d.x*burst,d.y*burst-burst*burst*.4,d.z*burst));positions.needsUpdate=true;stage.stars.material.opacity=Math.max(0,1-burst/2.2);}

@@ -33,7 +33,7 @@ export class StandardMelee {
   p.lastSecondary=p.lastAttack=s.time;p.secondaryCd=w.secondaryCooldown;p.cooldown=(info.windup+info.recover)/rate;p.swing=null;
   s.emit('melee-special',p.body.translation(),{source:p.id,spec:p.spec,message:info.kind,color:w.color});
  }
- stun(target:Player,seconds:number){const s=this.s;if(target.hp<=0)return;target.hitStunUntil=Math.max(target.hitStunUntil||0,s.time+seconds);target.move=v();target.dashTime=0;target.swing=null;target.cast=undefined;target.burst=0;target.parryTime=target.blockTime=0;target.guarding=false;this.cancel(target);s.arcade.cancel(target);s.emperor.cancel(target);}
+ stun(target:Player,seconds:number){const s=this.s;if(target.hp<=0)return;target.hitStunUntil=Math.max(target.hitStunUntil||0,s.time+seconds);target.move=v();target.dashTime=target.waveTime=target.electricStepTime=0;target.swing=null;target.cast=undefined;target.burst=0;target.parryTime=target.blockTime=0;target.guarding=false;this.cancel(target);s.arcade.cancel(target);s.emperor.cancel(target);}
  /** Reuses the single legs-up pickup and roll-away recovery, including existing protection. */
  launch(target:Player,owner:Player,lift:number){
   const s=this.s,used=!!target.knockdown?.pickupUsed||!!target.juggle?.pickupUsed||pickupOpen(target.knockdown,s.time);

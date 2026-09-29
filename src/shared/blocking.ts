@@ -4,3 +4,5 @@ export const FIRST_BLOCK_CHIPS=['supernova','block-pulse','block-medic','block-l
 export const firstBlockChips=(chips:Record<string,number>)=>Object.fromEntries(FIRST_BLOCK_CHIPS.filter(id=>chips[id]>0).map(id=>[id,chips[id]]));
 export const blockCooldown=(stats:Stats)=>Math.max(CONFIG.blockMinimumCooldown,CONFIG.blockCooldown*stats.blockCooldown);
 export const blockDuration=(stats:Stats)=>Math.max(.1,Math.min(CONFIG.blockMaximumDuration,CONFIG.blockDuration+stats.blockWindow));
+/** Incoming damage and physical impact determine recovery; attack speed cannot erase a block punish. */
+export const meleeBlockStun=(damage:number,impulse=0)=>Math.max(.25,Math.min(.95,.18+Math.max(0,damage)*.008+Math.max(0,impulse)*.00025));
