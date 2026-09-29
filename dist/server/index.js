@@ -1193,7 +1193,7 @@ function newRoomToken() {
 function cleanProfile(p) {
   return { cosmetics: cosmetics(p?.cosmetics, true), authToken: typeof p?.authToken === "string" && p.authToken.length <= 3e3 ? p.authToken : void 0, name: typeof p?.name === "string" ? p.name.replace(/[<>]/g, "").slice(0, 20) || "Pilot" : "Pilot", class: ["ranged", "magic", "melee"].includes(p?.class) ? p.class : "ranged", color: /^#[0-9a-f]{6}$/i.test(p?.color || "") ? p.color : "#97e4d0" };
 }
-var guestTypes = /* @__PURE__ */ new Set(["ready", "class", "spec", "chip", "ping", "rematch", "lobby"]);
+var guestTypes = /* @__PURE__ */ new Set(["ready", "class", "team", "spec", "chip", "ping", "rematch", "lobby"]);
 var hostTypes = /* @__PURE__ */ new Set(["welcome", "error", "notice", "pong", "rematchVotes"]);
 function validPacket(p, host) {
   if (!p || !Number.isSafeInteger(p.seq) || p.seq < 1 || !Number.isSafeInteger(p.ack) || p.ack < 0 || !Array.isArray(p.events) || p.events.length > RELAY.maxEvents) return false;
@@ -1513,7 +1513,21 @@ async function relay(request, env, now = Date.now()) {
   if (action !== "exchange") throw fail3("Unknown room operation.", 404);
   return exchange(db, input, code, key, host, now);
 }
+async function updateCheck(request, env) {
+  const headers = { "Cache-Control": "no-store", "Access-Control-Allow-Origin": "*", "X-Content-Type-Options": "nosniff" };
+  if (request.method !== "GET") return new Response(null, { status: 405, headers });
+  try {
+    const asset = await env.ASSETS?.fetch(new Request(new URL("/updates/latest.json", request.url), { headers: { "Cache-Control": "no-cache" } }));
+    if (!asset?.ok) throw Error();
+    const m = await asset.json();
+    if (!/^[a-f0-9]{24}$/.test(m.build) || typeof m.version !== "string") throw Error();
+    return Response.json({ build: m.build, version: m.version }, { headers });
+  } catch {
+    return Response.json({ error: "Update check unavailable" }, { status: 503, headers });
+  }
+}
 var worker_default = { async fetch(request, env) {
+  if (new URL(request.url).pathname === "/api/update-check") return updateCheck(request, env);
   if (new URL(request.url).pathname.startsWith("/api/accounts/")) return accounts(request, env);
   if (new URL(request.url).pathname.startsWith("/api/directory/")) {
     try {
@@ -1545,7 +1559,8 @@ var worker_default = { async fetch(request, env) {
 } };
 export {
   worker_default as default,
-  relay
+  relay,
+  updateCheck
 };
 /*! Bundled license information:
 

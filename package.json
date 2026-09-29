@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev.mjs",
-    "build": "node --import tsx scripts/generate-icons.mjs && tsc --noEmit && node scripts/clean-build.mjs && vite build && node scripts/package-source.mjs && node scripts/build-relay.mjs && node scripts/package-update.mjs",
+    "build": "node --import tsx scripts/generate-icons.mjs && node scripts/generate-build-info.mjs && tsc --noEmit && node scripts/clean-build.mjs && vite build && node scripts/package-source.mjs && node scripts/build-relay.mjs && node scripts/package-update.mjs",
     "server": "node --import tsx src/server/index.ts",
     "server:build": "tsc -p tsconfig.server.json",
     "start": "node server-dist/server/index.js",
