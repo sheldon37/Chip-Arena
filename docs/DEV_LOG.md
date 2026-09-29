@@ -16,6 +16,35 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-09-29 — Astra — owner Windows results and mixed-feed label diagnosis
+
+- Branch release/candidate-workflow, PR #3, previous head 467eb23152b1451b5121163c3ae9daab17b2e887.
+  Evidence added in commit 686ffeaf26e66f796395c03dd46f7910501efea3.
+- Owner reports Candidate 001 update/restart, preference persistence after reopening,
+  offline bots, and subsequent up-to-date result passed on Windows. Screenshot
+  confirms running menu and candidate version 0.2.729db3cf3b99. Other Windows
+  checklist items and actual old-to-new/account/two-machine tests remain unverified.
+- Diagnosed contradictory Update Available badge: client startup check reads live
+  /api/update-check; test manual updater reads bundled test-feed. Any unequal
+  build ID is treated as available, including an older/different live build.
+- Verification: targeted offline execution of existing checkGameUpdate reproduced
+  available for a simulated different live build and current for the actual bundled
+  manifest. Current live manifest was not retrieved. No gameplay/build/package
+  rerun needed for this documentation-only update.
+- No code fix yet; next fixture revision should use one feed for status/install or
+  explicitly distinguish its channels. Do not publish a candidate to clear the badge.
+- Handoff context: CLAUDE.md imports AGENTS.md. Read PROJECT_STATE, recent DEV_LOG,
+  DEVELOPMENT and DESIGN_INTENT, relevant historical docs and Git history. Inspect
+  open PRs #1 (migration), #2 (server types), #3 (candidate tooling) individually:
+  all were open/unmerged when checked. PR #2 is excluded from Candidate 001.
+  Main does not yet contain the shared migration docs; normal new work uses
+  migration/shared-development until PR #1 merges, unless a task names another ref.
+- Working preference: explicit PR/commit handoffs; no routine PR polling, scheduled
+  hourly checks, or automatic review/fix loop. Cancellation of Claude's previously
+  scheduled monitoring has not been independently verified from this environment.
+- Status: documentation on branch only, unmerged/unreleased. Existing automated
+  failures remain blockers; no accounts/services/live-feed/installation changed.
+
 ## 2026-09-29 — Astra — unpublished candidate workflow — validated test fixture
 
 - Branch release/candidate-workflow; source baseline dfb90c854e9b7b48e8982819a9fcbe786b1263f1.
