@@ -20,8 +20,11 @@ Migration imported to private GitHub; not merged or released (2026-09-29).
 - Settings use `chip-arena-preferences`; desktop uses persistent
   `arena://game` storage and an encrypted account-session file under userData.
 - Baseline: typecheck passed; unit tests 406/419 passed (13 failed);
-  identical after clean restore. WebSocket rematch/server build remain failing;
+  identical after clean restore. WebSocket rematch remains failing;
   HTTPS integration and Windows ZIP construction passed. Native Windows untested.
+- Server build: `npm run server:build` fixed on task branch
+  `claude/chip-arena-typescript-errors-v9ljw8` (Bundler resolution; Rapier types
+  did not resolve under NodeNext). Emitted server JS unchanged. Pending review.
 
 Next: review the migration PR against `main`; shared policy and CI remain on
 `migration/shared-development` until the owner merges. Resolve recorded baseline
