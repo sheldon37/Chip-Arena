@@ -225,13 +225,12 @@ export class Simulation {
  
  }
  beginRoll(p:Player){
- const requested=p.input.dash||(this.emperor.active(p)&&p.input.secondary),pressed=requested&&!p.rollHeld;p.rollHeld=requested;
+ const requested=p.input.dash,pressed=requested&&!p.rollHeld;p.rollHeld=requested;
  if(!usesRoll(p.spec)||!pressed||this.phase!=='fight'||!p.connected||p.hp<=0||!p.grounded||p.dashCd>0||rolling(p,this.time)||committed(p,this.time)||this.arcade.stunned(p)||this.leet.frozen(p)||p.blockTime>0||p.guarding||p.swing||p.cast||p.burst>0||p.reloadTime>0||this.standardMelee.busy(p)||this.emperor.active(p)&&p.cooldown>0)return false;
  const profile=rollProfile(p.spec,p.stats);if(p.stamina<profile.cost)return false;
  const direction=Math.hypot(p.input.x,p.input.z)>.1?norm(v(p.input.x,0,p.input.z)):forward(p.input.yaw);
  p.roll={at:this.time,until:this.time+profile.duration,invulnerableAt:this.time+profile.iframeStart,invulnerableUntil:this.time+profile.iframeStart+profile.iframeSeconds,direction,distance:profile.distance};
  p.stamina-=profile.cost;p.staminaAt=p.roll.until;p.dashCd=profile.cooldown;p.move=v();p.parryTime=0;p.waveTime=0;p.electricStepTime=0;
- if(this.emperor.active(p)){this.emperor.wave(p);p.waveTime=profile.duration;}
  const pos=copy(p.body.translation());this.chaos.dash(p,pos);this.emit('roll',pos,{source:p.id,spec:p.spec,color:0xa6db8a});
  if(p.stats.dashBlast)this.explode(p,pos,3,p.stats.dashBlast,p.stats.dashBlast/14*380,'dashBlast',true);return true;
  }
@@ -313,7 +312,7 @@ export class Simulation {
  if(p.input.secondary&&w.secondary!=='guard')this.secondary(p);if(p.input.attack&&!p.guarding)this.primary(p);
  if(p.burst>0&&this.time>=p.burstAt){p.burst--;p.burstAt=this.time+.08/p.stats.attackRate;this.spawnProjectile(p,.9);}
  this.melee(p);this.chaos.melee(p);
- const motion=prepareMotion(this.world,p.body,p.collider,p,meleeMotionInput(usesRoll(p.spec)?{...p.input,dash:false}:p.input,p.meleeAction,this.time),{...p.stats,time:this.time,roll:p.roll,locomotionLock:committed(p,this.time),attackStep:attackStep(p.attackCommitment,this.time,dt),map:this.options.map,recoveryRoll:recoveryMotion(p.knockdown,this.time,p.input),dashSpeed:demonStepUser(p)?DEMON_STEP.speed:undefined,dashDuration:demonStepUser(p)?DEMON_STEP.seconds:undefined,waveSpeed:undefined,electricStepSpeed:this.emperor.active(p)?EMPEROR.electricStepSpeed:undefined,maxExternalSpeed:(p.leet?.launchUntil||0)>this.time?100000:undefined,maxExternalLift:(p.leet?.launchUntil||0)>this.time?100000:undefined,speed:p.stats.speed*fieldSpeed([...this.chaos.fields.values()],p.id,p.body.translation(),owner=>this.canHit(owner,p.id))},dt,p.guarding,!!p.swing,this.arcade.stunned(p));
+ const motion=prepareMotion(this.world,p.body,p.collider,p,meleeMotionInput(usesRoll(p.spec)?{...p.input,dash:false}:p.input,p.meleeAction,this.time),{...p.stats,time:this.time,roll:p.roll,locomotionLock:committed(p,this.time),attackStep:attackStep(p.attackCommitment,this.time,dt),map:this.options.map,recoveryRoll:recoveryMotion(p.knockdown,this.time,p.input),dashSpeed:demonStepUser(p)?DEMON_STEP.speed:undefined,dashDuration:demonStepUser(p)?DEMON_STEP.seconds:undefined,waveSpeed:this.emperor.waveSpeed(p),electricStepSpeed:this.emperor.active(p)?EMPEROR.electricStepSpeed:undefined,maxExternalSpeed:(p.leet?.launchUntil||0)>this.time?100000:undefined,maxExternalLift:(p.leet?.launchUntil||0)>this.time?100000:undefined,speed:p.stats.speed*fieldSpeed([...this.chaos.fields.values()],p.id,p.body.translation(),owner=>this.canHit(owner,p.id))},dt,p.guarding,!!p.swing,this.arcade.stunned(p));
  if(motion.waved)this.emperor.wave(p);if(motion.dashed){this.chaos.dash(p,{...pos});if(demonStepUser(p)){const a=this.arcade.state(p);a.demonStepAt=this.time;this.emit('demon-step',pos,{source:p.id,spec:p.spec,color:0x8371ff});}else this.emit('dash',pos,{source:p.id,color:0x91f7df});if(p.stats.dashBlast)this.explode(p,pos,3,p.stats.dashBlast,p.stats.dashBlast/14*380,'dashBlast',true);}if(motion.jumped){this.chaos.jump(p);this.emit('jump',pos,{source:p.id});}
  if(pos.y<-6)this.damage(p,100000,null,'fall');
  }
