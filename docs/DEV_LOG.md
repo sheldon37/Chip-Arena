@@ -16,16 +16,18 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
-## 2026-09-29 — Astra — unpublished candidate workflow (in progress)
+## 2026-09-29 — Astra — unpublished candidate workflow — validated test fixture
 
 - Branch release/candidate-workflow; source baseline dfb90c854e9b7b48e8982819a9fcbe786b1263f1.
 - Added exact-commit isolated builds, a manual-only artifact workflow, repeat-payload
   validation, a local-feed Windows fixture with isolated profile, and release/Windows
   validation instructions. No gameplay, production updater, account or network changes.
 - Claude PR #2 is open for server build errors; deliberately not merged into this baseline.
-- Validation results are recorded in the candidate report; release remains blocked by
-  baseline failures and unperformed Windows testing. Not merged or released.
-- Next: validate generated artifacts, review the workflow PR, resolve baseline blockers,
+- PR #3; results in docs/CANDIDATE-001.md. Clean restore, 7 updater tests, HTTPS,
+  repeat-payload equality, all 101 installed files, ZIP integrity and Linux fixture
+  smoke passed. Unit suite 406/419, four server type errors and rematch timeout
+  remain failures. Windows/GPU/real old-install upgrade not run. Not merged/released.
+- Next: review the workflow PR, resolve baseline blockers,
   complete Windows validation, then obtain separate approval before live publication.
 
 
