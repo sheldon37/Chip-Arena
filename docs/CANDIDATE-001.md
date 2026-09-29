@@ -53,6 +53,37 @@ not be applied to Candidate 001. The owner's screenshot reports 407/419 passing
 there; the compression test passed in that run but failed here, so timing-sensitive
 results vary. Unit issues and WebSocket timeout still require separate resolution.
 
+## Owner Windows results and update-label diagnosis — 2026-09-29
+
+The owner tested the isolated Candidate 001 ZIP on Windows and reported:
+- The first update installed and restarted the game.
+- Settings survived the update and a subsequent manual reopen.
+- Play vs Bots worked.
+- A subsequent check displayed "You're up to date (0.2.729db3cf3b99)".
+The supplied screenshot shows the running menu and that version, alongside an
+"Update Available!" badge. These are owner-reported basic Windows results;
+account flows, two-machine multiplayer, failure/recovery, and historical-version
+upgrade compatibility remain unverified. Candidate 001 remains BLOCKED.
+
+Cause of the contradictory label: src/client/update-status.ts checks the live
+DIRECTORY_ORIGIN + /api/update-check and compares GAME_BUILD by inequality.
+The fixture's scripts/release/test-manual-update.mjs instead supplies localFeed
+to the real updater using the bundled test-feed. Only the manual update was
+redirected for this fixture; the startup label still reads production.
+Any different live build (including an older build) yields "available"; it is
+not a newer-version comparison.
+
+A targeted offline reproduction executed the existing checkGameUpdate function:
+a simulated different live build returned "available", while the real bundled
+manifest returned "current" for candidate build dee9d7ad42bbf9697cc55e63.
+The exact current live manifest was not retrieved; the external read was
+unavailable. No production availability/version claim is made.
+This finding explains the fixture's inconsistent display and does not invalidate
+the owner's successful local update. No implementation fix or rebuilt package
+is included in this documentation update. Follow-up: have the fixture's status
+check and updater consult the same bundled feed, or label the two channels
+explicitly; do not publish the test candidate to silence the badge.
+
 ## Reproduce
 
 Check out GitHub tooling commit b9147c394e1ba1592b9d2cb0a3c9bf1d42dc1154 in an
