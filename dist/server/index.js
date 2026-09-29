@@ -675,13 +675,323 @@ var INTRO_STYLES = {
   "pulse-wave": "Pulse Wave"
 };
 
+// src/shared/emperor-content.ts
+var chip = (id, name, description, icon) => ({ id: "mishima-" + id, name, description, icon, rarity: "mishima", tags: ["emperor"], max: 1, effects: [], mechanic: "mishima-" + id });
+var MISHIMA_CHIPS = [
+  chip("godfist", "Perfect Electric", "Electric hooks recover much faster. Keep the lightning chain alive.", "\u03DF"),
+  chip("twin", "Twin Thunder", "Each electric hook leaves a second lightning strike at the impact point.", "\u2161"),
+  chip("screw", "Screwdriver", "Every third airborne hit spins the enemy sideways and deals extra damage.", "\u27F3"),
+  chip("bound", "Bound Breaker", "The first landing in each juggle bounces the enemy back up and deals damage.", "\u219F"),
+  chip("magnet", "Magnetic Fists", "Electric hooks steer airborne enemies into your next punch while still carrying them back.", "\u2301"),
+  chip("wall", "Wall Tyrant", "Electric hooks carry enemies farther. Their first wall collision adds a damaging wall bounce.", "\u25A5"),
+  chip("armor", "Iron Wavedash", "Take half damage while wavedashing. You can still be interrupted and knocked back.", "\u25C7"),
+  chip("trail", "Storm Footwork", "Wavedashes leave short-lived lightning that shocks enemies crossing your path.", "\u224B"),
+  chip("pressure", "Pressure String", "Your two jabs become a three-punch string with a heavier final hit.", "\u2162"),
+  chip("counter", "Counter Voltage", "Electric hooks deal greatly increased damage when they catch an enemy attacking.", "!"),
+  chip("rage", "Emperor\u2019s Rage", "Below one-third health, your punches and electric hooks deal greatly increased damage.", "\u265C"),
+  chip("bloodline", "Bloodline Surge", "Confirmed electric hits restore a little health and stamina.", "\u2665")
+];
+
+// src/shared/arcade-content.ts
+var chip2 = (id, name, description, icon) => ({ id: "arcade-" + id, name, rarity: "ansatsuken", tags: ["ansatsuken"], max: 1, icon, mechanic: "arcade-" + id, effects: [], description });
+var ARCADE_CHIPS = [
+  chip2("shinku", "Shinku Hadoken", "Hold 1 to charge. Release a full charge to fire a huge, piercing five-hit Hadoken.", "\u25CE"),
+  chip2("rush", "Ten-Hit Rush", "Your punch\u2013punch\u2013high-kick chain becomes a rapid ten-hit combo with a high-kick finisher.", "10"),
+  chip2("red", "Shakunetsu", "Hadokens turn crimson and inflict a much stronger burn.", "\u2668"),
+  chip2("cyclone", "Hurricane Tatsu", "Tatsumaki spins longer, pulls nearby enemies inward and lands more kicks.", "\u27F3"),
+  chip2("rising", "Shin Shoryuken", "Shoryuken becomes three rising hits. The final hit launches enemies and shatters nearby cover.", "\u21C8"),
+  chip2("cancel", "Special Cancel", "After a combo hit, interrupt your punches with Tatsumaki or Shoryuken. Special moves recover faster.", "\xBB"),
+  chip2("focus", "Focus Armor", "Take greatly reduced damage while charging Hadoken. You can still be knocked back.", "\u25C7"),
+  chip2("perfect", "Perfect Rhythm", "Landing the final combo hit restores stamina and a little health.", "\u266A"),
+  chip2("juggle", "Air Juggle", "Hits deal greatly increased damage to airborne enemies. Keep them off the ground.", "\u2191"),
+  chip2("afterimage", "Afterimage Assault", "Each punch leaves a delayed echo that strikes the same location. Enemies can move away.", "\u25A5"),
+  chip2("counter", "Counter Hit", "Striking an enemy during their attack deals extra damage and knockback.", "!"),
+  chip2("secondwind", "Round Two", "Once per round, survive a lethal hit with a sliver of health and recover all stamina.", "\u2161")
+];
+
+// src/shared/leet-content.ts
+var chip3 = (id, name, description, icon) => ({ id: "l44t-" + id, name: "L44T " + name, rarity: "l44t", tags: ["leet"], max: 1, icon, mechanic: "l44t-" + id, effects: [], description });
+var LEET_CHIPS = [
+  chip3("brain", "Brain Steal", "Replaces Block with a possession orb. Hit an enemy to control their movement and attacks for 5 seconds. Your own body stays vulnerable.", "\u25CE"),
+  chip3("scare", "Scare Tactics", "E summons a haunted tree. Slenderman emerges and stalks an enemy. If he reaches them, a fullscreen jumpscare ends in an instant knockout.", "\u265C"),
+  chip3("nuke", "Nuke", "Projectile impacts mark the area with green sparks, then unleash a massive explosion that hurls nearby cover away.", "\u2622"),
+  chip3("yeet", "Y33t", "Hits launch enemies and cover with a thousand times the knockback. Goodbye, arena.", "\u21C8"),
+  chip3("time", "Admin Pause", "E freezes every enemy and their projectiles for 4 seconds. You keep moving.", "\u2161"),
+  chip3("undo", "CTRL + Z", "Once per round, a lethal hit rewinds you to an earlier safe position and completely restores your health.", "\u21B6"),
+  chip3("copy", "Copy / Paste", "Hits print three delayed attack orbs above the impact. They fire at the original target position like a matrix firing squad.", "\u25A5"),
+  chip3("uprising", "Object Uprising", "Projectile impacts commandeer nearby loose cover and launch it at a visible enemy. The map works for you now.", "\u2317")
+];
+
+// src/shared/chaos-content.ts
+var chip4 = (id, name, rarity, tags, description, icon = "\u2726") => ({ id, name, rarity, tags: [tags], description, max: 1, icon, mechanic: id, effects: [] });
+var CHAOS_CHIPS = [
+  chip4("black-hole", "Event Horizon", "mythic", "projectile", "Impacts open a 5 m black hole for 3.5 s: pulls enemies, loose cover and enemy shots inward; 10 DPS. One field per volley, at most 3 of each field per owner.", "\u25C9"),
+  chip4("necronomicon", "Necronomicon", "mythic", "magic", "E becomes Raise the Dead: 3 zombies + 1 per extra projectile (max 14), each with 2\xD7 your maximum HP and 0.5\xD7 your movement speed. 12-damage bites scale with damage. 35 mana, 10 s cooldown, 14 s lifetime; a new summon replaces your old army.", "\u2620"),
+  chip4("acid-rain", "Chemical Spill", "epic", "projectile", "Impacts leave a luminous 3 m acid pool for 4 s. Enemies inside take 12 DPS; cover corrodes. One pool per volley.", "\u2623"),
+  chip4("wildfire", "Bonfire Permit", "rare", "projectile", "Impacts plant a 2.5 m bonfire for 3 s, dealing 15 DPS to enemies and cover. One fire per volley.", "\u2668"),
+  chip4("blizzard", "Deep Freeze", "epic", "projectile", "Impacts create a 3.5 m frost field for 3 s. Enemies move at 45% speed inside and take 4 DPS. One field per volley.", "\u2744"),
+  chip4("time-warp", "Pocket Slow-Mo", "legendary", "projectile", "Impacts create a 4 m time bubble for 4 s. Enemy projectiles travel at 20% speed while inside; enemies move at 60%. One bubble per volley.", "\u25F7"),
+  chip4("repulsion-pad", "Personal Space", "epic", "projectile", "Impacts create a 3.5 m repulsion field for 3 s, pushing enemies and loose cover outward continuously. One field per volley.", "\u2194"),
+  chip4("med-garden", "Friendly Fungus", "rare", "projectile", "Impacts grow a 2.5 m healing garden for 4 s. Restore 6 HP/s while you stand inside. No enemy healing; one garden per volley.", "\u271A"),
+  chip4("lightning-rod", "Storm In A Jar", "legendary", "projectile", "Impacts plant a 4 m electrical field for 3 s. Enemies inside take 18 DPS through visible arcs. One storm per volley.", "\u03DF"),
+  chip4("bubble-mine", "Pop Quiz", "rare", "projectile", "Impacts leave a 3 m bubble that detonates after 1 s for 25 damage and strong outward knockback. One bubble per volley.", "\u25CB"),
+  chip4("sticky-bomb", "Sticky Situation", "epic", "projectile", "First impact attaches a visible bomb to its target. After 1.2 s it explodes in 3 m for 28 damage. Follows moving targets; one per volley.", "\u25CF"),
+  chip4("cluster-mine", "Mine Sweeper", "legendary", "projectile", "Each volley plants 3 proximity mines around its first impact. Arm after 0.6 s, last 6 s; each explodes for 16 damage in 2.3 m.", "\u22EE"),
+  chip4("proximity-mail", "Special Delivery", "rare", "projectile", "Impacts leave an armed parcel. After 0.6 s, an enemy within 2.5 m detonates it for 32 damage; expires after 6 s. One per volley.", "\u25A3"),
+  chip4("delayed-gratification", "Wait For It", "epic", "all", "A direct impact marks a 4 m blast for 2.2 s later: 48 damage, huge knockback. Escape the warning circle. One per attack.", "\u2026"),
+  chip4("implosion-bomb", "Reverse Grenade", "legendary", "projectile", "Impacts mark a 4 m implosion for 0.9 s later: 30 damage, pulling enemies into the blast center. One per volley.", "\u2299"),
+  chip4("wormhole", "Pocket Portal", "mythic", "projectile", "First surface impact per volley blinks you toward the impact, stopping at cover and a maximum of 12 m. 2 s shared portal cooldown. Never places you inside a wall.", "\u25CE"),
+  chip4("swap-shop", "Trading Places", "mythic", "all", "Direct opponent hits swap your positions, once per 5 s. Both endpoints must have room for a pilot. Momentum is cleared.", "\u21C4"),
+  chip4("grappling-shot", "Yoink!", "rare", "projectile", "Direct hits pull the opponent toward you with 1800 impulse instead of ordinary knockback.", "\u21A4"),
+  chip4("uppercut", "Air Mail", "rare", "all", "Direct hits add an upward 8 m/s kick, scaled by the target\u2019s knockback resistance.", "\u2191"),
+  chip4("bowling-ball", "Bowling Club", "epic", "projectile", "Shots grow into heavy balls at 45% launch speed and twice the radius. +4 bounces; direct hits launch enemies and loose cover with 3\xD7 impulse.", "\u25CF"),
+  chip4("orbitals", "Satellite Office", "legendary", "projectile", "Shots orbit your muzzle for 0.65 s, then launch toward your original aim. Cannot combine with Pong flight.", "\u25CC"),
+  chip4("corkscrew", "Drill Sergeant", "epic", "projectile", "Shots corkscrew around their flight axis. Actual curved paths use collision sweeps; cover still blocks them.", "\u27F3"),
+  chip4("elevator-shot", "Going Up", "rare", "projectile", "Shots accelerate upward instead of falling. +50% radius; aim low to curve over cover. Pong retains its fixed flight.", "\u2197"),
+  chip4("stop-go", "Red Light, Green Light", "legendary", "projectile", "Shots pause every other 0.35 s, then resume. Their lifetime extends to 6 s. Pong keeps moving.", "\u2161"),
+  chip4("accelerating-shot", "Late Bloomer", "rare", "projectile", "Shots start at 25% speed, accelerating to 200% over 1 s. Their lifetime becomes 5 s. Pong keeps its fixed speed.", "\xBB"),
+  chip4("backfire", "Rear Guard", "uncommon", "projectile", "Every volley also fires a 40%-damage shot directly backward. The extra shot cannot trigger Chips. Disabled by Pong.", "\u2194"),
+  chip4("crossfire", "Four-Way Stop", "epic", "projectile", "Every volley adds 3 shots at 90\xB0, 180\xB0 and 270\xB0, each at 35% damage. Extra shots cannot trigger Chips. Disabled by Pong.", "\u271B"),
+  chip4("helix", "Double Helix", "epic", "projectile", "Each volley adds two shots offset to either side, twisting in opposite directions at 45% damage. No recursive effects. Disabled by Pong.", "\u221E"),
+  chip4("coin-toss", "Heads Or Tails", "uncommon", "all", "Each direct hit rolls either 2\xD7 knockback or a 6 HP heal. The authority flips the coin.", "\u25D0"),
+  chip4("artillery", "Meteor Shower", "mythic", "projectile", "The first impact per volley calls down 3 warned explosions, 0.35 s apart, for 22 damage each in 2.8 m. No recursive effects.", "\u2604"),
+  chip4("sword-beam", "Blade Runner", "legendary", "melee", "Each primary swing launches a visible energy blade: 18 base damage, 24 m/s, 30 m range. Scales with damage; can be Blocked.", "\u2571"),
+  chip4("aftershock", "Ground Pound", "epic", "melee", "Direct hits schedule a 3.5 m shockwave after 0.45 s: 20 damage and heavy knockback. One per sweep.", "\u224B"),
+  chip4("blink-cut", "Now You See Me", "legendary", "melee", "Your primary swing steps up to 2.5 m toward your aim before winding up. Cover stops the blink.", "\u2301"),
+  chip4("vampire-dash", "Blood Trail", "rare", "all", "Dashing drains 12 health from a visible enemy within 3 m and restores actual damage dealt. Once per dash.", "\u2665"),
+  chip4("bread-crumbs", "Exit Gift", "rare", "all", "Dashing drops a proximity mine: 24 damage in 2.8 m, arms in 0.6 s, lasts 5 s.", "\u25C6"),
+  chip4("hot-foot", "Hot Foot", "epic", "all", "Each dash leaves a 3 m fire field for 3 s, dealing 15 DPS to enemies and cover.", "\u2668"),
+  chip4("thunderstep", "Thunder Step", "legendary", "all", "Each dash schedules a 4 m lightning strike at your starting point after 0.5 s, dealing 35 damage.", "\u03DF"),
+  chip4("trampoline", "Bounce House", "rare", "all", "Jumping kicks off a 3 m shockwave: 10 damage and upward knockback to visible enemies. Triggers only on a grounded jump.", "\u219F"),
+  chip4("second-chance", "Emergency Exit", "legendary", "all", "Once per round, surviving damage below 25% HP restores 20 HP and blinks you backward up to 6 m. Cover stops the blink.", "\u21B6"),
+  chip4("revenge-mail", "Return Address", "epic", "all", "Taking damage marks the attacker\u2019s position for a 25-damage, 3 m explosion after 1 s. 4 s cooldown. No recursive damage triggers.", "\u2709"),
+  chip4("mirror-mine", "Block Party", "epic", "all", "First successful Block per activation drops 3 proximity mines around you. Each deals 16 damage in 2.3 m; 6 s lifetime.", "\u25C7"),
+  chip4("freezer-block", "Time Out", "legendary", "all", "First successful Block creates a 5 m time bubble for 3 s: enemy shots move at 20%, enemy pilots at 60%.", "\u25F7"),
+  chip4("pickpocket", "Five Finger Discount", "uncommon", "ranged", "Direct opponent hits steal 1 of their available rounds into your magazine. Against spells or melee, steal up to 8 of their active resource instead.", "\u25A5"),
+  chip4("mana-leech", "Mana Muncher", "uncommon", "magic", "Direct opponent hits drain up to 10 mana or stamina and restore the amount as your mana. Guns lose up to 1 round instead, restoring 8 mana.", "\u25C8"),
+  chip4("demolition-charge", "Load-Bearing Surprise", "rare", "all", "Direct cover impacts plant a 1 s demolition charge: 3 m blast, 18 player damage and strong structural damage. One per attack.", "\u2317"),
+  chip4("puppet-master", "Toy Soldier", "legendary", "projectile", "First impact per volley raises a tiny 25 HP, 8-damage toy soldier for 6 s. Up to 3 toys per owner.", "\u265F"),
+  chip4("graveyard-shift", "Graveyard Shift", "epic", "magic", "First successful Block raises one zombie for 10 s: 2\xD7 your max HP, 0.5\xD7 your speed, 12-damage bites. Shared limit 14 zombies.", "\u2620"),
+  chip4("corpse-party", "Corpse Party", "legendary", "magic", "Your summoned zombies explode when destroyed or expired: 30 damage in 3.5 m. Also raise one zombie on each successful Block activation.", "\u2733"),
+  chip4("poltergeist", "Poltergeist", "epic", "all", "First successful Block launches nearby loose cover away from you with 900 impulse, within 6 m and line of sight.", "\u219D"),
+  chip4("panic-button", "Do Not Press", "mythic", "all", "Once per round, surviving damage below 30% HP creates a 6 m repulsion field for 4 s and restores your Block and dash cooldowns.", "!")
+];
+
+// src/shared/config.ts
+var CONFIG = {
+  maxPlayers: 8,
+  simulationHz: 60,
+  snapshotHz: 20,
+  wins: 5,
+  roundsPerSet: 2,
+  countdown: 3,
+  resultSeconds: 5,
+  selectionSeconds: 18,
+  disconnectSeconds: 12,
+  maxRoundSeconds: 100,
+  speed: 6.8,
+  acceleration: 35,
+  jumpSpeed: 8.5,
+  gravity: -23,
+  dashSpeed: 15,
+  dashDuration: 0.18,
+  dashCooldown: 2.8,
+  externalDrag: 3.1,
+  maxExternalSpeed: 70,
+  playerMass: 65,
+  playerRadius: 0.42,
+  playerHalfHeight: 0.43,
+  minimumImpactSpeed: 3.6,
+  safeEnergy: 45,
+  damageScale: 0.035,
+  maximumDamagePerImpact: 65,
+  impactPairCooldown: 0.4,
+  fragmentWindow: 0.35,
+  fragmentDamageCap: 75,
+  attributionSeconds: 7,
+  manaRegen: 12,
+  staminaRegen: 24,
+  staminaRegenDelay: 0.45,
+  shieldDrain: 33,
+  shieldImpactCost: 0.9,
+  blockDuration: 0.3,
+  blockCooldown: 4,
+  blockMaximumDuration: 0.65,
+  blockMinimumCooldown: 1.5,
+  blockCooldownChip: 0.85,
+  blockWindowChip: 0.08,
+  blockReflectDamageChip: 1.15,
+  blockReflectSpeedChip: 1.1,
+  blockPulseRadius: 3,
+  blockPulseDamageChip: 6,
+  blockPulseImpulseChip: 360,
+  maxReflections: 3,
+  maxReflectedDamage: 100,
+  maxReflectedSpeed: 120,
+  volleyDamage: 0.75,
+  volleyFanDegrees: 7,
+  followupDamage: 0.45,
+  followupCost: 5,
+  followupGap: 0.08,
+  projectileLifetime: 3,
+  projectileMaxTravel: 160,
+  splitLifetime: 1.2,
+  splitMaxTravel: 18,
+  homingRange: 16,
+  homingConeDegrees: 50,
+  maxBodies: 150,
+  maxProjectiles: 100,
+  maxEvents: 80,
+  maxInputRate: 100,
+  staleInputSeconds: 0.3,
+  maxRooms: 24
+};
+
+// src/shared/elements.ts
+var ELEMENTS = {
+  fire: { name: "Burning", stat: "burn", duration: 2, tick: 0.25, color: 16745007, dpsPerChip: 3, max: 6 },
+  poison: { name: "Poisoned", stat: "poison", duration: 4, tick: 0.25, color: 10347341, dpsPerChip: 2.5, max: 6 }
+};
+
+// src/shared/content.ts
+var WEAPONS = {
+  emperor: { id: "emperor", name: "Emperor Style", devOnly: true, class: "melee", description: "DEV \xB7 LMB: left jab, right jab. Q: electric wind hook fist launches and juggles. E: repeatable wavedash with no cooldown. Mishima Chips evolve your style.", damage: 20, interval: 0.39, speed: 0, gravity: 0, range: 2.4, impulse: 120, ammo: 0, reload: 0, cost: 6, spread: 0, windup: 0.075, arc: 1.8, secondary: "wavedash", secondaryCooldown: 0, color: 16724047 },
+  ansatsuken: { id: "ansatsuken", name: "Ansatsuken", devOnly: true, class: "melee", description: "DEV \xB7 LMB: right straight, left straight, high kick. RMB: no-cooldown parry. 1: burning Hadoken. E: Tatsumaki Senpukyaku. 2: Shoryuken. Shift: Demon Step, a longer afterimage dash. Exclusive arcade Chips evolve your moves.", damage: 39, interval: 0.9, speed: 23, gravity: 0, range: 2, impulse: 650, ammo: 0, reload: 0, cost: 12, spread: 0, windup: 0.12, arc: 1.6, secondary: "tatsu", secondaryCooldown: 5, color: 8445951 },
+  leet: { id: "leet", name: "L33T H4x", devOnly: true, class: "magic", description: "DEV \xB7 Binary bolts pause when they detect a visible enemy, then launch at that captured position. E: Root Command. Unlocks L44T Chips and greatly improves legendary / mythic odds.", damage: 32, interval: 0.6, speed: 19, gravity: 0, range: 60, impulse: 260, ammo: 0, reload: 0, cost: 7, spread: 0, windup: 0, arc: 0, secondary: "root", secondaryCooldown: 12, color: 5439363 },
+  pistol: { id: "pistol", name: "Pistol", class: "ranged", description: "Precise shots. 7-round magazine. E secondary: braced shot (2\xD7 damage, 2 ammo).", damage: 23, interval: 0.42, speed: 52, gravity: 32, range: 55, impulse: 175, ammo: 7, reload: 1.1, cost: 0, spread: 8e-3, windup: 0, arc: 0, secondary: "power", secondaryCooldown: 2.2, color: 16767117 },
+  rifle: { id: "rifle", name: "Rifle", class: "ranged", description: "Sniper: 58 damage, 3 rounds, 1.15 s between shots, 2.6 s reload. Fast 150 m/s shots retain gravity. Hold Q: 3\xD7 scope. E: 78-damage braced shot (2 ammo).", damage: 58, interval: 1.15, speed: 150, gravity: 12, range: 140, impulse: 350, ammo: 3, reload: 2.6, cost: 0, spread: 15e-4, windup: 0, arc: 0, secondary: "snipe", secondaryCooldown: 3.8, color: 16770986 },
+  machinegun: { id: "machinegun", name: "Machine Gun", class: "ranged", description: "Rapid automatic fire, 48-round magazine, 2.4 s reload. E secondary: six-round suppression burst (6 ammo).", damage: 8, interval: 0.085, speed: 49, gravity: 36, range: 48, impulse: 65, ammo: 48, reload: 2.4, cost: 0, spread: 0.025, windup: 0, arc: 0, secondary: "burst", secondaryCooldown: 3, color: 16761449, burstCount: 6 },
+  fire: { id: "fire", name: "Fire", class: "magic", description: "22-damage firebolts, 1.5 m blast and 4 burn DPS for 2 s. E secondary: explosive fireball (25 mana).", damage: 22, interval: 0.56, speed: 24, gravity: 12, range: 42, impulse: 210, ammo: 0, reload: 0, cost: 8, spread: 6e-3, windup: 0, arc: 0, secondary: "fireball", secondaryCooldown: 3.4, color: 16743742, burn: 4, blast: 1.5 },
+  water: { id: "water", name: "Water", class: "magic", description: "18-damage fast water globes. E secondary: wide pressure wave pushes players and props (22 mana).", damage: 18, interval: 0.4, speed: 31, gravity: 16, range: 40, impulse: 340, ammo: 0, reload: 0, cost: 6, spread: 0.01, windup: 0, arc: 0, secondary: "push", secondaryCooldown: 3, color: 6674413 },
+  lightning: { id: "lightning", name: "Lightning", class: "magic", description: "12-damage rapid bolts. Chains 6 damage to one nearby target. E secondary: close electrical nova (24 mana).", damage: 12, interval: 0.27, speed: 85, gravity: 40, range: 45, impulse: 75, ammo: 0, reload: 0, cost: 5, spread: 6e-3, windup: 0, arc: 0, secondary: "nova", secondaryCooldown: 3.5, color: 12755967, chain: 6 },
+  darkness: { id: "darkness", name: "Darkness", class: "magic", description: "27-damage slow orbs restore 15% of direct damage. E secondary: short-range pull (20 mana).", damage: 27, interval: 0.7, speed: 15, gravity: 5, range: 36, impulse: 140, ammo: 0, reload: 0, cost: 10, spread: 0, windup: 0, arc: 0, secondary: "pull", secondaryCooldown: 3.8, color: 11368658, drain: 0.15 },
+  sword: { id: "sword", name: "One-Handed Sword", class: "melee", description: "30-damage 2.5 m swing; 14 stamina, 0.14 s windup. E secondary: 0.4 s frontal parry and forward step (18 stamina).", damage: 30, interval: 0.62, speed: 0, gravity: 0, range: 2.5, impulse: 300, ammo: 0, reload: 0, cost: 14, spread: 0, windup: 0.14, arc: 1.6, secondary: "parry", secondaryCooldown: 1.5, secondaryCost: 18, color: 11984855 },
+  daggers: { id: "daggers", name: "Daggers", class: "melee", description: "15-damage 1.75 m fast strikes; 7 stamina. E secondary: 3 m evasive sidestep (16 stamina); no invulnerability.", damage: 15, interval: 0.28, speed: 0, gravity: 0, range: 1.75, impulse: 95, ammo: 0, reload: 0, cost: 7, spread: 0, windup: 0.06, arc: 1.3, secondary: "sidestep", secondaryCooldown: 1.3, secondaryCost: 16, color: 9891013 },
+  shield: { id: "shield", name: "Shield", class: "melee", description: "23-damage bash, 18 stamina, heavy impulse. Hold E: 75% frontal reduction, drains 33 stamina/s plus impact cost; rear exposed.", damage: 23, interval: 0.75, speed: 0, gravity: 0, range: 2.1, impulse: 610, ammo: 0, reload: 0, cost: 18, spread: 0, windup: 0.2, arc: 1.2, secondary: "guard", secondaryCooldown: 0, secondaryCost: 0, color: 9223910 },
+  greatsword: { id: "greatsword", name: "Greatsword", class: "melee", description: "52-damage 3.4 m arc; 26 stamina, 0.42 s windup. E secondary: shoulder charge with frontal guard (24 stamina).", damage: 52, interval: 1.18, speed: 0, gravity: 0, range: 3.4, impulse: 560, ammo: 0, reload: 0, cost: 26, spread: 0, windup: 0.42, arc: 2.4, secondary: "charge", secondaryCooldown: 3, secondaryCost: 24, color: 15386784 }
+};
+var e = (stat, op, value) => ({ stat, op, value });
+var CHIPS = [
+  { id: "vital", rarity: "common", name: "Vital Core", description: "+25 maximum health per installation. Additive.", tags: ["all"], max: 12, icon: "+", effects: [e("hp", "add", 25)] },
+  { id: "overclock", rarity: "common", name: "Overclock", description: "\xD71.18 attack rate; \xD70.92 damage per hit per stack. Multiplicative.", tags: ["all"], max: 8, icon: "\xBB", effects: [e("attackRate", "mul", 1.18), e("damage", "mul", 0.92)] },
+  { id: "dash", rarity: "common", name: "Dash Capacitor", description: "\xD70.82 dash cooldown per stack. Minimum 0.5 s.", tags: ["all"], max: 8, icon: "\u2197", effects: [e("dashCooldown", "mul", 0.82)] },
+  { id: "frame", rarity: "common", name: "Reinforced Frame", description: "\xD70.88 incoming damage; \xD70.94 movement speed per stack.", tags: ["all"], max: 6, icon: "\u25A3", effects: [e("damageTaken", "mul", 0.88), e("speed", "mul", 0.94)] },
+  { id: "stabilizer", rarity: "common", name: "Stabilizer", description: "\xD70.72 received attack knockback per stack. Physics impulses are also damped.", tags: ["all"], max: 5, icon: "\xB1", effects: [e("knockbackTaken", "mul", 0.72)] },
+  { id: "ricochet", rarity: "uncommon", name: "Ricochet", description: "+1 direct projectile bounce per stack (max 3). Retains 70% damage on each bounce.", tags: ["projectile"], max: 3, icon: "\u2301", effects: [e("bounces", "add", 1)] },
+  { id: "splitter", rarity: "epic", name: "Splitter", description: "Primary impact produces 2 + stacks secondary shots, each 22% direct damage. Max 5; no recursive effects.", tags: ["projectile"], max: 3, icon: "\u22D4", effects: [e("split", "add", 1)] },
+  { id: "piercing", rarity: "rare", name: "Piercing", description: "Pass through 1 opponent and continue into props behind them. Cannot pierce cover; each target hit once. Single installation in 1v1.", tags: ["projectile"], max: 1, icon: "\u2192", effects: [e("pierces", "add", 1)] },
+  { id: "ember", rarity: "uncommon", name: "Ember Circuit", description: "FIRE ENCHANT: +3 burn DPS per stack for 2 s (6 damage). Flaming shots / blade. Direct hits refresh, never delay ticks. Strongest per source; stacks with poison.", tags: ["all"], max: ELEMENTS.fire.max, icon: "\u2668", effects: [e("burn", "add", ELEMENTS.fire.dpsPerChip)] },
+  { id: "poison", rarity: "uncommon", name: "Venom Circuit", description: "POISON ENCHANT: +2.5 poison DPS per stack for 4 s (10 damage). Toxic shots / blade. Direct hits refresh, never delay ticks. Strongest per source; stacks with fire. No recursive procs.", tags: ["all"], max: ELEMENTS.poison.max, icon: "\u2623", effects: [e("poison", "add", ELEMENTS.poison.dpsPerChip)] },
+  { id: "static", rarity: "rare", name: "Static Discharge", description: "Every 4 direct opponent hits: up to 7 electrical damage per stack within 3 m, with radial falloff and line of sight. No proc recursion.", tags: ["all"], max: 6, icon: "\u03DF", effects: [e("staticEvery", "set", 4), e("staticDamage", "add", 7)] },
+  { id: "reach", rarity: "common", name: "Extended Reach", description: "+20% base melee reach per stack. Arc and visible sweep extend with the hit volume.", tags: ["melee"], max: 5, icon: "\u2922", effects: [e("reach", "add", 0.2)] },
+  { id: "kinetic", rarity: "common", name: "Kinetic Driver", description: "\xD72.4 outgoing attack impulse; \xD70.93 attack rate per stack.", tags: ["all"], max: 6, icon: "\u226B", effects: [e("impulse", "mul", 2.4), e("attackRate", "mul", 0.93)] },
+  { id: "demolition", rarity: "common", name: "Demolition Module", description: "+60% base structural damage per stack. Mass and launch impulse stay independent.", tags: ["all"], max: 8, icon: "\u2317", effects: [e("demolition", "add", 0.6)] },
+  { id: "shrapnel", rarity: "rare", name: "Shrapnel Protocol", description: "Direct impact: 1.8 m blast, up to 6 damage per stack and 220 impulse, with radial falloff. Once per attack; no recursion.", tags: ["all"], max: 5, icon: "\u2733", effects: [e("shrapnel", "add", 6)] },
+  { id: "salvage", rarity: "common", name: "Salvage Plating", description: "\xD70.65 environmental debris damage per stack. Applies after fragment-event cap.", tags: ["all"], max: 5, icon: "\u2B21", effects: [e("debrisTaken", "mul", 0.65)] },
+  { id: "multishot", rarity: "rare", name: "Parallel Shot", description: "+1 primary projectile per stack (max +3), in a 7\xB0 fan. Each projectile deals 75% damage while installed. One ammo or normal mana cost per volley.", tags: ["projectile"], max: 3, icon: "\u22EE", effects: [e("extraProjectiles", "add", 1)] },
+  { id: "echo-strike", rarity: "epic", name: "Echo Strike", description: "+1 follow-up melee sweep per stack (max 2), each at 45% damage and impulse. +5 stamina per sweep; one hit per target per sweep. Extends recovery.", tags: ["melee"], max: 2, icon: "\u3003", effects: [e("extraStrikes", "add", 1)] },
+  { id: "magazine", rarity: "common", name: "Magazine Bank", description: "+25% base magazine capacity per stack (rounded up). Applies to every gun, including Machine Gun. Reload fills the expanded magazine.", tags: ["ranged"], max: 8, icon: "\u25A5", effects: [e("ammoCapacity", "add", 0.25)] },
+  { id: "mana", rarity: "common", name: "Mana Reservoir", description: "+25 maximum mana per stack. Spells use mana; regeneration stays 12 mana/s.", tags: ["magic"], max: 8, icon: "\u25C8", effects: [e("maxMana", "add", 25)] },
+  { id: "stamina", rarity: "common", name: "Stamina Cell", description: "+25 maximum stamina per stack. Melee attacks and defenses use stamina; regenerates 24/s after 0.45 s without spending it.", tags: ["melee"], max: 8, icon: "\u223F", effects: [e("maxStamina", "add", 25)] },
+  { id: "velocity", rarity: "common", name: "Velocity Coil", description: "\xD71.25 projectile launch speed per stack (max 4). Flatter flight and farther travel before landing; gravity is unchanged. Split fragments inherit speed and fall, but cannot home.", tags: ["projectile"], max: 4, icon: "\u21E2", effects: [e("projectileSpeed", "mul", 1.25)] },
+  { id: "homing", rarity: "epic", name: "Tracking Circuit", description: "+35\xB0/s homing turn rate per stack (max 105\xB0/s). Direct projectiles acquire a visible opponent within 16 m and a 50\xB0 cone. Cover still blocks shots.", tags: ["projectile"], max: 3, icon: "\u25CE", effects: [e("homing", "add", 35)] },
+  { id: "fire-rate", rarity: "common", name: "Rapid Cycle", description: "\xD71.15 gun fire rate per stack, including burst cadence. Reload speed is unchanged. Multiplicative; combines with Overclock.", tags: ["ranged"], max: 6, icon: "\xBB", effects: [e("attackRate", "mul", 1.15)] },
+  { id: "cast-rate", rarity: "common", name: "Spell Clock", description: "\xD71.15 spell casting rate per stack. Mana cost per cast is unchanged. Multiplicative; combines with Overclock.", tags: ["magic"], max: 6, icon: "\u03DF", effects: [e("attackRate", "mul", 1.15)] },
+  { id: "swing-rate", rarity: "common", name: "Flurry Clock", description: "\xD71.15 melee swing rate per stack, including windup and follow-up sweeps. Stamina cost is unchanged. Multiplicative; combines with Overclock.", tags: ["melee"], max: 6, icon: "\u2571", effects: [e("attackRate", "mul", 1.15)] },
+  { id: "block-recharge", rarity: "common", name: "Rebound Capacitor", description: `Block cooldown \xD7${CONFIG.blockCooldownChip} per copy (max 5). Base ${CONFIG.blockCooldown}s; two copies = ${(CONFIG.blockCooldown * CONFIG.blockCooldownChip ** 2).toFixed(2)}s. Minimum ${CONFIG.blockMinimumCooldown}s. Hold does not auto-repeat.`, tags: ["all"], max: 5, icon: "\u21BB", effects: [e("blockCooldown", "mul", CONFIG.blockCooldownChip)] },
+  { id: "block-window", rarity: "common", name: "Phase Buffer", description: `+${CONFIG.blockWindowChip.toFixed(2)}s Block window per copy (max 4). Base ${CONFIG.blockDuration.toFixed(2)}s; maximum with this Chip ${(CONFIG.blockDuration + CONFIG.blockWindowChip * 4).toFixed(2)}s. No attacks during Block.`, tags: ["all"], max: 4, icon: "\u25C8", effects: [e("blockWindow", "add", CONFIG.blockWindowChip)] },
+  { id: "block-return", rarity: "uncommon", name: "Return Amplifier", description: `Reflected projectile damage \xD7${CONFIG.blockReflectDamageChip} and speed \xD7${CONFIG.blockReflectSpeedChip.toFixed(2)} per copy (max 4). Per-projectile limits: ${CONFIG.maxReflectedDamage} damage, ${CONFIG.maxReflectedSpeed} m/s, ${CONFIG.maxReflections} reflections; the next Block absorbs it.`, tags: ["all"], max: 4, icon: "\u21B6", effects: [e("reflectDamage", "mul", CONFIG.blockReflectDamageChip), e("reflectSpeed", "mul", CONFIG.blockReflectSpeedChip)] },
+  { id: "block-pulse", rarity: "rare", name: "Counter Pulse", description: `First successful Block per activation emits a ${CONFIG.blockPulseRadius}m pulse: +${CONFIG.blockPulseDamageChip} damage and +${CONFIG.blockPulseImpulseChip} impulse per copy (max 4), reduced by distance. Pushes loose props; cover blocks it. No elemental or recursive procs.`, tags: ["all"], max: 4, icon: "\u25C9", effects: [e("blockPulseDamage", "add", CONFIG.blockPulseDamageChip), e("blockPulseImpulse", "add", CONFIG.blockPulseImpulseChip)] },
+  { id: "fleet", rarity: "common", name: "Fleet Feet", description: "\xD71.12 movement speed; \xD70.94 maximum health per copy.", tags: ["all"], max: 5, icon: "\u2197", effects: [e("speed", "mul", 1.12), e("hp", "mul", 0.94)] },
+  { id: "hard-hitter", rarity: "common", name: "Heavy Hitter", description: "\xD71.18 damage; \xD70.93 attack rate per copy.", tags: ["all"], max: 5, icon: "\u25C6", effects: [e("damage", "mul", 1.18), e("attackRate", "mul", 0.93)] },
+  { id: "quick-loader", rarity: "common", name: "Quick Loader", description: "\xD70.84 reload duration per copy. Minimum 0.2 s.", tags: ["ranged"], max: 5, icon: "\u21BB", effects: [e("reloadSpeed", "mul", 0.84)] },
+  { id: "efficient", rarity: "common", name: "Efficient Channels", description: "\xD70.86 mana cost per cast, including secondary spells.", tags: ["magic"], max: 5, icon: "\u25C7", effects: [e("resourceCost", "mul", 0.86)] },
+  { id: "footwork", rarity: "common", name: "Efficient Footwork", description: "\xD70.86 stamina cost for attacks and secondary skills. Held shield drain is unchanged.", tags: ["melee"], max: 5, icon: "\u2301", effects: [e("resourceCost", "mul", 0.86)] },
+  { id: "spring", rarity: "common", name: "Spring Soles", description: "\xD71.18 jump launch speed per copy.", tags: ["all"], max: 3, icon: "\u2191", effects: [e("jumpPower", "mul", 1.18)] },
+  { id: "focus", rarity: "common", name: "Deep Focus", description: "\xD71.3 mana regeneration; \xD70.96 movement speed per copy.", tags: ["magic"], max: 4, icon: "\u2727", effects: [e("manaRegen", "mul", 1.3), e("speed", "mul", 0.96)] },
+  { id: "second-wind", rarity: "common", name: "Second Wind", description: "\xD71.3 stamina regeneration after the usual recovery delay.", tags: ["melee"], max: 4, icon: "\u2248", effects: [e("staminaRegen", "mul", 1.3)] },
+  { id: "broadside", rarity: "uncommon", name: "Broadside", description: "+2 projectiles, +18\xB0 volley fan; \xD70.75 damage. Volleys also use the normal 75% per-projectile damage rule.", tags: ["projectile"], max: 2, icon: "\u22EE", effects: [e("extraProjectiles", "add", 2), e("fanDegrees", "add", 18), e("damage", "mul", 0.75)] },
+  { id: "dense-core", rarity: "uncommon", name: "Dense Core", description: "\xD71.7 projectile radius; \xD70.85 launch speed; \xD71.7 impulse.", tags: ["projectile"], max: 3, icon: "\u25CF", effects: [e("projectileSize", "mul", 1.7), e("projectileSpeed", "mul", 0.85), e("impulse", "mul", 1.7)] },
+  { id: "feather", rarity: "uncommon", name: "Feather Rounds", description: "\xD70.45 projectile gravity; \xD70.9 damage per copy.", tags: ["projectile"], max: 3, icon: "\u2303", effects: [e("projectileGravity", "mul", 0.45), e("damage", "mul", 0.9)] },
+  { id: "lobber", rarity: "rare", name: "Lobber", description: "\xD72.2 projectile gravity; \xD71.45 damage; \xD71.5 projectile radius.", tags: ["projectile"], max: 2, icon: "\u2312", effects: [e("projectileGravity", "mul", 2.2), e("damage", "mul", 1.45), e("projectileSize", "mul", 1.5)] },
+  { id: "banker", rarity: "rare", name: "Bank Shot", description: "+2 bounces. +0.2 bounce damage retention (base 0.7; two copies retain 1.1\xD7).", tags: ["projectile"], max: 2, icon: "\u2194", effects: [e("bounces", "add", 2), e("bounceRetention", "add", 0.2)] },
+  { id: "buckshot", rarity: "epic", name: "Pocket Shotgun", description: "+5 pellets in a 38\xB0 fan; \xD70.65 damage, \xD70.6 fire rate. Every pellet also uses the normal 75% volley multiplier.", tags: ["ranged"], max: 1, icon: "\u2059", effects: [e("extraProjectiles", "add", 5), e("fanDegrees", "set", 38), e("damage", "mul", 0.65), e("attackRate", "mul", 0.6)] },
+  { id: "leech", rarity: "rare", name: "Leech Circuit", description: "Heal for 12% of direct health damage dealt per copy. Cannot heal past maximum HP; no splash or DoT drain.", tags: ["all"], max: 3, icon: "\u2665", effects: [e("lifeSteal", "add", 0.12)] },
+  { id: "executioner", rarity: "epic", name: "Executioner", description: "+50% direct damage per copy to opponents already below 30% health.", tags: ["all"], max: 2, icon: "\xD7", effects: [e("execute", "add", 0.5)] },
+  { id: "brawler", rarity: "uncommon", name: "Brawler", description: "+25% direct damage per copy while the opponent is within 5 m of you.", tags: ["all"], max: 3, icon: "\u270A", effects: [e("closeDamage", "add", 0.25)] },
+  { id: "marksman", rarity: "rare", name: "Horizon Hunter", description: "+35% direct damage per copy when the opponent is at least 20 m away from you.", tags: ["projectile"], max: 3, icon: "\u2316", effects: [e("farDamage", "add", 0.35)] },
+  { id: "backstab", rarity: "rare", name: "Blind Spot", description: "+60% direct damage per copy when striking from behind the opponent.", tags: ["melee"], max: 2, icon: "\u25C0", effects: [e("backstab", "add", 0.6)] },
+  { id: "thorns", rarity: "rare", name: "Spite Plating", description: "Return 15% of actual direct health damage to the attacker per copy. Cannot recursively trigger thorns.", tags: ["all"], max: 3, icon: "\u2733", effects: [e("thorns", "add", 0.15)] },
+  { id: "repair", rarity: "uncommon", name: "Repair Nanites", description: "Regenerate 2 HP/s per copy after 3 seconds without taking damage.", tags: ["all"], max: 4, icon: "+", effects: [e("regeneration", "add", 2)] },
+  { id: "med-loader", rarity: "rare", name: "Medic Magazine", description: "Heal 7 HP per completed reload per copy. \xD71.12 reload duration; firing at least one round is required.", tags: ["ranged"], max: 3, icon: "\u271A", effects: [e("reloadHeal", "add", 7), e("reloadSpeed", "mul", 1.12)] },
+  { id: "last-word", rarity: "epic", name: "Last Word", description: "+65% projectile damage per copy when the shot empties your magazine. Applies to a volley; bursts check each emitted shot.", tags: ["ranged"], max: 2, icon: "!", effects: [e("lastRound", "add", 0.65)] },
+  { id: "block-medic", rarity: "uncommon", name: "Field Dressing", description: "First successful Block per activation restores 9 HP per copy.", tags: ["all"], max: 3, icon: "\u271A", effects: [e("blockHeal", "add", 9)] },
+  { id: "block-loader", rarity: "rare", name: "Catch and Load", description: "First successful Block per activation restores 1 round per copy, up to magazine capacity.", tags: ["ranged"], max: 3, icon: "\u21B6", effects: [e("blockAmmo", "add", 1)] },
+  { id: "rebound", rarity: "uncommon", name: "Rebound Engine", description: "\xD71.75 melee Block retaliation impulse per copy. Harder-hitting melee attacks rebound farther.", tags: ["all"], max: 4, icon: "\u21E0", effects: [e("blockForce", "mul", 1.75)] },
+  { id: "bulldozer", rarity: "rare", name: "Bulldozer", description: "\xD73.2 attack impulse; \xD70.85 damage per copy. Throw opponents and loose cover around.", tags: ["all"], max: 3, icon: "\u226B", effects: [e("impulse", "mul", 3.2), e("damage", "mul", 0.85)] },
+  { id: "anchor", rarity: "uncommon", name: "Anchor Boots", description: "\xD70.5 received knockback; \xD70.88 movement speed; \xD70.9 jump speed.", tags: ["all"], max: 3, icon: "\u22A5", effects: [e("knockbackTaken", "mul", 0.5), e("speed", "mul", 0.88), e("jumpPower", "mul", 0.9)] },
+  { id: "blast-dash", rarity: "epic", name: "Blast Dash", description: "Starting a dash creates a 3 m pulse: 14 damage and 380 impulse per copy, with distance falloff and line of sight.", tags: ["all"], max: 2, icon: "\u2739", effects: [e("dashBlast", "add", 14)] },
+  { id: "sweeper", rarity: "uncommon", name: "Sweeper", description: "\xD71.3 melee sweep arc per copy (up to 360\xB0). \xD70.95 attack rate.", tags: ["melee"], max: 3, icon: "\u2312", effects: [e("meleeArc", "mul", 1.3), e("attackRate", "mul", 0.95)] },
+  { id: "moonboots", rarity: "epic", name: "Moon Boots", description: "Personal gravity \xD70.3; jump speed \xD70.8. Float through long jumps; props keep normal gravity.", tags: ["all"], max: 1, icon: "\u263E", effects: [e("playerGravity", "mul", 0.3), e("jumpPower", "mul", 0.8)] },
+  { id: "kickback", rarity: "rare", name: "Kickback Thruster", description: "Firing pushes you opposite your aim by 5 m/s per copy. Aim down to launch yourself; once per volley.", tags: ["projectile"], max: 2, icon: "\u21E4", effects: [e("recoil", "add", 5)] },
+  { id: "lucky", rarity: "rare", name: "Lucky Circuit", description: "+15 percentage points critical chance per copy (maximum 75%). Direct hits can deal double damage.", tags: ["all"], max: 3, icon: "\u2726", effects: [e("critical", "add", 0.15)] },
+  { id: "vacuum", rarity: "legendary", name: "Vacuum Impact", description: "Each direct attack impact pulls nearby opponents and loose props toward it within 5 m. 1400 impulse, distance falloff and line of sight; once per attack.", tags: ["all"], max: 1, icon: "\u25CE", effects: [e("vacuum", "add", 1400)] },
+  { id: "pong", rarity: "mythic", name: "Pong Shot", description: "One persistent shot at fixed 40% base speed, no gravity, unlimited full-damage bounces including arena edges. Next shot replaces it, even if reflected. Overrides volleys, splits, homing and returning flight; Block can still absorb it after 3 returns.", tags: ["ranged"], max: 1, icon: "\u2194", effects: [e("pong", "set", 1)] },
+  { id: "boomerang", rarity: "legendary", name: "Return to Sender", description: "Shots fly without gravity and turn back after 24 m or 0.65 s, whichever comes first, at 240\xB0/s. Catch an original shot to recover 1 ammo or half its base mana cost. Once per volley; return speed caps at 60 m/s, flight at 4 s / 320 m. Cover can destroy it.", tags: ["projectile"], max: 1, icon: "\u21A9", effects: [e("boomerang", "set", 1)] },
+  { id: "zigzag", rarity: "epic", name: "Sidewinder", description: "Shots weave left and right in a 6 Hz pattern, with swept collisions along their curved path.", tags: ["projectile"], max: 1, icon: "\u223F", effects: [e("zigzag", "set", 1)] },
+  { id: "chaos", rarity: "mythic", name: "Dice Reactor", description: "Each direct hit rolls \xD70.5 to \xD72.5 damage on the authority. +20% critical chance. Every hit is a gamble.", tags: ["all"], max: 1, icon: "\u2684", effects: [e("chaos", "set", 1), e("critical", "add", 0.2)] },
+  { id: "glass", rarity: "legendary", name: "Glass Reactor", description: "\xD72.4 damage, \xD70.45 maximum health. A dangerous all-or-nothing build.", tags: ["all"], max: 1, icon: "\u25C7", effects: [e("damage", "mul", 2.4), e("hp", "mul", 0.45)] },
+  { id: "fortress", rarity: "legendary", name: "Walking Fortress", description: "\xD71.8 maximum health, \xD70.7 incoming damage and \xD70.35 knockback received; \xD70.65 movement speed.", tags: ["all"], max: 1, icon: "\u25A3", effects: [e("hp", "mul", 1.8), e("damageTaken", "mul", 0.7), e("knockbackTaken", "mul", 0.35), e("speed", "mul", 0.65)] },
+  { id: "meteor", rarity: "mythic", name: "Meteor Foundry", description: "\xD72.5 damage, \xD73 projectile gravity, \xD73 projectile radius, \xD70.45 cast rate, \xD71.8 mana cost; +24 impact blast damage.", tags: ["magic"], max: 1, icon: "\u2604", effects: [e("damage", "mul", 2.5), e("projectileGravity", "mul", 3), e("projectileSize", "mul", 3), e("attackRate", "mul", 0.45), e("resourceCost", "mul", 1.8), e("shrapnel", "add", 24)] },
+  { id: "hurricane", rarity: "mythic", name: "Hurricane Edge", description: "A full 360\xB0 sweep, +2 echo sweeps, +35% base reach, \xD72.8 impulse and \xD70.6 damage. Echoes retain their extra stamina cost and 45% damage.", tags: ["melee"], max: 1, icon: "\u25CE", effects: [e("meleeArc", "set", 8), e("extraStrikes", "add", 2), e("reach", "add", 0.35), e("impulse", "mul", 2.8), e("damage", "mul", 0.6)] },
+  { id: "supernova", rarity: "mythic", name: "Supernova Guard", description: "First successful Block per activation, including bullets and spells, explodes around YOU in a 3 m pulse: +45 base damage and +1800 impulse, reduced by distance; cover blocks it. +0.1 s Block window, but \xD71.5 Block cooldown.", tags: ["all"], max: 1, icon: "\u273A", effects: [e("blockPulseDamage", "add", 45), e("blockPulseImpulse", "add", 1800), e("blockWindow", "add", 0.1), e("blockCooldown", "mul", 1.5)] },
+  { id: "fireworks", rarity: "legendary", name: "Firework Factory", description: "+3 Splitter levels (five fragments at base), +12 impact blast damage, \xD71.5 radius. Fragments deal 22% damage and never recursively split.", tags: ["projectile"], max: 1, icon: "\u2733", effects: [e("split", "add", 3), e("shrapnel", "add", 12), e("projectileSize", "mul", 1.5)] },
+  { id: "vampire", rarity: "mythic", name: "Vampire King", description: "Drain 50% of direct health damage, +50 max HP; \xD70.7 damage and \xD70.8 resource regeneration.", tags: ["all"], max: 1, icon: "\u2665", effects: [e("lifeSteal", "add", 0.5), e("hp", "add", 50), e("damage", "mul", 0.7), e("manaRegen", "mul", 0.8), e("staminaRegen", "mul", 0.8)] },
+  { id: "pinball", rarity: "legendary", name: "Pinball Wizard", description: "+8 bounces; each bounce retains full damage before other retention Chips. \xD70.65 projectile gravity, \xD72.4 impulse.", tags: ["projectile"], max: 1, icon: "\u2301", effects: [e("bounces", "add", 8), e("bounceRetention", "add", 0.3), e("projectileGravity", "mul", 0.65), e("impulse", "mul", 2.4)] },
+  { id: "rail", rarity: "epic", name: "Rail Driver", description: "\xD71.8 launch speed; \xD71.6 damage; \xD70.65 fire rate; \xD70.5 magazine capacity (rounded up).", tags: ["ranged"], max: 1, icon: "\u2192", effects: [e("projectileSpeed", "mul", 1.8), e("damage", "mul", 1.6), e("attackRate", "mul", 0.65), e("ammoCapacity", "mul", 0.5)] },
+  { id: "torrent", rarity: "epic", name: "Torrent Engine", description: "+3 parallel projectiles, \xD70.6 spell damage, \xD71.25 mana cost. The normal 75% volley multiplier also applies.", tags: ["magic"], max: 1, icon: "\u224B", effects: [e("extraProjectiles", "add", 3), e("damage", "mul", 0.6), e("resourceCost", "mul", 1.25)] },
+  { id: "duelist", rarity: "rare", name: "Duelist", description: "\xD71.2 damage, \xD71.15 attack rate, \xD70.9 received damage; \u221210 maximum HP per copy.", tags: ["melee"], max: 2, icon: "\u2573", effects: [e("damage", "mul", 1.2), e("attackRate", "mul", 1.15), e("damageTaken", "mul", 0.9), e("hp", "add", -10)] },
+  { id: "juggernaut", rarity: "epic", name: "Juggernaut", description: "+40 max HP, \xD72.5 impulse, \xD70.8 received knockback; \xD70.85 attack rate.", tags: ["melee"], max: 2, icon: "\u25A3", effects: [e("hp", "add", 40), e("impulse", "mul", 2.5), e("knockbackTaken", "mul", 0.8), e("attackRate", "mul", 0.85)] },
+  { id: "needle", rarity: "rare", name: "Needle Storm", description: "+2 parallel shots, \xD71.2 projectile speed, \xD70.7 projectile radius and \xD70.65 damage. Normal volley penalty also applies.", tags: ["projectile"], max: 2, icon: "\u22EE", effects: [e("extraProjectiles", "add", 2), e("projectileSpeed", "mul", 1.2), e("projectileSize", "mul", 0.7), e("damage", "mul", 0.65)] },
+  { id: "plague", rarity: "epic", name: "Plague Engine", description: "+8 poison DPS for 4 s, refreshed on direct hits; \xD70.8 direct damage.", tags: ["all"], max: 2, icon: "\u2623", effects: [e("poison", "add", 8), e("damage", "mul", 0.8)] },
+  { id: "inferno", rarity: "epic", name: "Inferno Coil", description: "+10 burn DPS for 2 s, refreshed on direct hits; \xD71.5 attack impulse.", tags: ["all"], max: 2, icon: "\u2668", effects: [e("burn", "add", 10), e("impulse", "mul", 1.5)] },
+  { id: "tesla", rarity: "epic", name: "Tesla Rhythm", description: "Discharge every 3 direct hits for +18 base electrical damage within 3 m per copy. Replaces the four-hit cadence.", tags: ["all"], max: 2, icon: "\u03DF", effects: [e("staticEvery", "set", 3), e("staticDamage", "add", 18)] },
+  { id: "wrecking", rarity: "rare", name: "Wrecking Crew", description: "\xD72.5 structural damage, \xD72.4 outgoing impulse; \xD70.85 attack rate.", tags: ["all"], max: 2, icon: "\u2317", effects: [e("demolition", "mul", 2.5), e("impulse", "mul", 2.4), e("attackRate", "mul", 0.85)] },
+  { id: "recycler", rarity: "uncommon", name: "Scrap Knight", description: "\xD70.6 debris damage received, +10 max HP; \xD70.97 movement speed.", tags: ["all"], max: 3, icon: "\u2B21", effects: [e("debrisTaken", "mul", 0.6), e("hp", "add", 10), e("speed", "mul", 0.97)] },
+  { id: "quickguard", rarity: "rare", name: "Quick Guard", description: "\xD70.7 Block cooldown; \u22120.04 s Block window. Timing matters (window minimum 0.1 s).", tags: ["all"], max: 2, icon: "\u25C8", effects: [e("blockCooldown", "mul", 0.7), e("blockWindow", "add", -0.04)] },
+  { id: "bulwark", rarity: "epic", name: "Bulwark Timing", description: "+0.18 s Block window, \xD71.8 melee retaliation impulse, \xD71.2 Block cooldown.", tags: ["all"], max: 2, icon: "\u25A3", effects: [e("blockWindow", "add", 0.18), e("blockForce", "mul", 1.8), e("blockCooldown", "mul", 1.2)] },
+  { id: "counterweight", rarity: "rare", name: "Counterweight", description: "\xD71.4 reflected damage; \xD71.4 melee retaliation impulse; \xD70.9 incoming attack impulse. Reflection safety limits still apply.", tags: ["all"], max: 3, icon: "\u21CB", effects: [e("reflectDamage", "mul", 1.4), e("blockForce", "mul", 1.4), e("knockbackTaken", "mul", 0.9)] },
+  { id: "skirmisher", rarity: "uncommon", name: "Skirmisher", description: "\xD70.8 dash cooldown and \xD71.08 movement speed; \xD70.92 maximum HP.", tags: ["all"], max: 3, icon: "\u2197", effects: [e("dashCooldown", "mul", 0.8), e("speed", "mul", 1.08), e("hp", "mul", 0.92)] },
+  { id: "reservoir", rarity: "rare", name: "Arcane Battery", description: "+60 maximum mana and \xD71.15 mana regeneration; \xD70.93 movement speed.", tags: ["magic"], max: 2, icon: "\u25C8", effects: [e("maxMana", "add", 60), e("manaRegen", "mul", 1.15), e("speed", "mul", 0.93)] },
+  { id: "endurance", rarity: "rare", name: "Marathon Cell", description: "+60 maximum stamina and \xD71.15 stamina regeneration; \xD70.93 movement speed.", tags: ["melee"], max: 2, icon: "\u223F", effects: [e("maxStamina", "add", 60), e("staminaRegen", "mul", 1.15), e("speed", "mul", 0.93)] },
+  { id: "drum", rarity: "uncommon", name: "Drum Magazine", description: "+60% base magazine capacity; \xD71.2 reload duration.", tags: ["ranged"], max: 3, icon: "\u25A5", effects: [e("ammoCapacity", "add", 0.6), e("reloadSpeed", "mul", 1.2)] },
+  { id: "chamber", rarity: "legendary", name: "Single Chamber", description: "\xD70.15 magazine capacity (minimum 1, rounded up), \xD72.0 damage, \xD70.6 reload duration. Braced shot still needs 2 rounds.", tags: ["ranged"], max: 1, icon: "\u2160", effects: [e("ammoCapacity", "mul", 0.15), e("damage", "mul", 2), e("reloadSpeed", "mul", 0.6)] },
+  { id: "sniper-focus", rarity: "rare", name: "Dead Calm", description: "\xD71.3 damage and \xD71.25 launch speed; \xD70.82 fire rate.", tags: ["ranged"], max: 2, icon: "\u2316", effects: [e("damage", "mul", 1.3), e("projectileSpeed", "mul", 1.25), e("attackRate", "mul", 0.82)] },
+  { id: "siphon", rarity: "uncommon", name: "Mana Siphon", description: "Drain 8% of direct health damage; \xD70.9 mana cost per copy.", tags: ["magic"], max: 3, icon: "\u2661", effects: [e("lifeSteal", "add", 0.08), e("resourceCost", "mul", 0.9)] },
+  { id: "bloodblade", rarity: "epic", name: "Bloodblade", description: "Drain 25% of direct health damage; +20% base reach; \xD71.15 stamina cost.", tags: ["melee"], max: 2, icon: "\u2665", effects: [e("lifeSteal", "add", 0.25), e("reach", "add", 0.2), e("resourceCost", "mul", 1.15)] },
+  { id: "rubber", rarity: "epic", name: "Rubber Soul", description: "\xD72 jump speed and \xD72.8 attack impulse; \xD71.5 received knockback. Everyone goes flying.", tags: ["all"], max: 1, icon: "\u2195", effects: [e("jumpPower", "mul", 2), e("impulse", "mul", 2.8), e("knockbackTaken", "mul", 1.5)] },
+  { id: "comet", rarity: "legendary", name: "Comet Dash", description: "Dash pulse: +30 damage and corresponding impulse, \xD70.6 dash cooldown, \xD70.6 personal gravity. Mind the arena edge.", tags: ["all"], max: 1, icon: "\u2604", effects: [e("dashBlast", "add", 30), e("dashCooldown", "mul", 0.6), e("playerGravity", "mul", 0.6)] },
+  { id: "repulsor", rarity: "mythic", name: "Repulsor Crown", description: "\xD76 attack impulse and \xD73 melee Block retaliation; \xD70.65 damage. Become the ring-out specialist.", tags: ["all"], max: 1, icon: "\u21C8", effects: [e("impulse", "mul", 6), e("blockForce", "mul", 3), e("damage", "mul", 0.65)] },
+  ...CHAOS_CHIPS,
+  ...MISHIMA_CHIPS,
+  ...ARCADE_CHIPS,
+  ...LEET_CHIPS
+];
+
+// src/shared/lobby-presentation.ts
+var LOBBY_POSES = { weapon: "Standing with weapon", chair: "Sitting on chair", sleep: "Sleeping", crossed: "Arms crossed" };
+function lobbyPose(value) {
+  return typeof value === "string" && Object.hasOwn(LOBBY_POSES, value) ? value : "weapon";
+}
+var BOT_WEAPONS = Object.values(WEAPONS).filter((w) => !w.devOnly);
+
 // src/shared/cosmetics.ts
 var HATS = { "auditor-halo": "Auditor Halo \xB7 DEV ONLY", none: "No hat", cap: "Ball cap", beanie: "Beanie", top: "Top hat", wizard: "Wizard hat", crown: "Crown", cone: "Traffic cone", antenna: "Antenna", halo: "Halo", cowboy: "Cowboy hat" };
 var KILL_STYLES = { ragdoll: "Ragdoll", "dev-raging-demon": "Raging Demon \xB7 DEV ONLY", "voxel-burst": "Voxel breakup", confetti: "Confetti cannon", ascension: "Beam me up", shrink: "Pocket-sized", launch: "Team Rocket", ghost: "Ghost escape", "dev-clown": "Clown getaway \xB7 DEV ONLY", "dev-clown-love": "Clown Love \xB7 DEV ONLY", "dev-bass-van": "Bass Van \xB7 DEV ONLY" };
 var developerKillEffect = (id) => id.startsWith("dev-");
-var DEFAULT_COSMETICS = { intro: "neon-drop", introText: "Ready to make an impact", bodyColor: "#e5e7eb", hat: "none", killEffect: "voxel-burst" };
+var DEFAULT_COSMETICS = { lobbyPose: "weapon", intro: "neon-drop", introText: "Ready to make an impact", bodyColor: "#e5e7eb", hat: "none", killEffect: "voxel-burst" };
 function cosmetics(raw, dev = false) {
-  return { introText: introText(raw?.introText), intro: raw && Object.hasOwn(INTRO_STYLES, raw.intro) && (!raw.intro.startsWith("dev-") || canUse(dev, "intro:" + raw.intro)) ? raw.intro : "neon-drop", bodyColor: typeof raw?.bodyColor === "string" && /^#[0-9a-f]{6}$/i.test(raw.bodyColor) ? raw.bodyColor : DEFAULT_COSMETICS.bodyColor, hat: raw && Object.hasOwn(HATS, raw.hat) && (raw.hat !== "auditor-halo" || canUse(dev, "hat:auditor-halo")) ? raw.hat : "none", killEffect: raw && Object.hasOwn(KILL_STYLES, raw.killEffect) && (!developerKillEffect(raw.killEffect) || canUse(dev, "effect:" + raw.killEffect)) ? raw.killEffect : "voxel-burst" };
+  return { lobbyPose: lobbyPose(raw?.lobbyPose), preferredSpec: typeof raw?.preferredSpec === "string" && Object.hasOwn(WEAPONS, raw.preferredSpec) && (!WEAPONS[raw.preferredSpec].devOnly || canUse(dev, "weapon:" + raw.preferredSpec)) ? raw.preferredSpec : void 0, introText: introText(raw?.introText), intro: raw && Object.hasOwn(INTRO_STYLES, raw.intro) && (!raw.intro.startsWith("dev-") || canUse(dev, "intro:" + raw.intro)) ? raw.intro : "neon-drop", bodyColor: typeof raw?.bodyColor === "string" && /^#[0-9a-f]{6}$/i.test(raw.bodyColor) ? raw.bodyColor : DEFAULT_COSMETICS.bodyColor, hat: raw && Object.hasOwn(HATS, raw.hat) && (raw.hat !== "auditor-halo" || canUse(dev, "hat:auditor-halo")) ? raw.hat : "none", killEffect: raw && Object.hasOwn(KILL_STYLES, raw.killEffect) && (!developerKillEffect(raw.killEffect) || canUse(dev, "effect:" + raw.killEffect)) ? raw.killEffect : "voxel-burst" };
 }
 function introText(value) {
   return typeof value === "string" ? Array.from(value.replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g, " ").replace(/\s+/g, " ").trim()).slice(0, 64).join("") || DEFAULT_COSMETICS.introText : DEFAULT_COSMETICS.introText;
@@ -863,8 +1173,8 @@ async function accounts(request, env, now = Date.now()) {
       return response({ account: view(await env.DB.prepare("SELECT * FROM player_accounts WHERE id=?").bind(target.id).first()) });
     }
     throw fail("Unknown account action.", 404);
-  } catch (e) {
-    return response({ error: e.status ? e.message : "Account service is temporarily unavailable." }, e.status || 503);
+  } catch (e2) {
+    return response({ error: e2.status ? e2.message : "Account service is temporarily unavailable." }, e2.status || 503);
   }
 }
 
@@ -888,10 +1198,10 @@ var hostTypes = /* @__PURE__ */ new Set(["welcome", "error", "notice", "pong", "
 function validPacket(p, host) {
   if (!p || !Number.isSafeInteger(p.seq) || p.seq < 1 || !Number.isSafeInteger(p.ack) || p.ack < 0 || !Array.isArray(p.events) || p.events.length > RELAY.maxEvents) return false;
   let id = 0;
-  for (const e of p.events) {
-    if (!Number.isSafeInteger(e?.id) || e.id <= id || !e.message || !(host ? hostTypes : guestTypes).has(e.message.type)) return false;
-    id = e.id;
-    if (JSON.stringify(e.message).length > 4096) return false;
+  for (const e2 of p.events) {
+    if (!Number.isSafeInteger(e2?.id) || e2.id <= id || !e2.message || !(host ? hostTypes : guestTypes).has(e2.message.type)) return false;
+    id = e2.id;
+    if (JSON.stringify(e2.message).length > 4096) return false;
   }
   if (p.latest !== void 0) {
     if (host) {
@@ -975,76 +1285,6 @@ async function directory(request, db, now = Date.now()) {
   if (!result2.meta.changes) return json({ error: "Room code is already in use. Create another room." }, 409);
   return json({ code, expires });
 }
-
-// src/shared/config.ts
-var CONFIG = {
-  maxPlayers: 8,
-  simulationHz: 60,
-  snapshotHz: 20,
-  wins: 5,
-  roundsPerSet: 2,
-  countdown: 3,
-  resultSeconds: 5,
-  selectionSeconds: 18,
-  disconnectSeconds: 12,
-  maxRoundSeconds: 100,
-  speed: 6.8,
-  acceleration: 35,
-  jumpSpeed: 8.5,
-  gravity: -23,
-  dashSpeed: 15,
-  dashDuration: 0.18,
-  dashCooldown: 2.8,
-  externalDrag: 3.1,
-  maxExternalSpeed: 70,
-  playerMass: 65,
-  playerRadius: 0.42,
-  playerHalfHeight: 0.43,
-  minimumImpactSpeed: 3.6,
-  safeEnergy: 45,
-  damageScale: 0.035,
-  maximumDamagePerImpact: 65,
-  impactPairCooldown: 0.4,
-  fragmentWindow: 0.35,
-  fragmentDamageCap: 75,
-  attributionSeconds: 7,
-  manaRegen: 12,
-  staminaRegen: 24,
-  staminaRegenDelay: 0.45,
-  shieldDrain: 33,
-  shieldImpactCost: 0.9,
-  blockDuration: 0.3,
-  blockCooldown: 4,
-  blockMaximumDuration: 0.65,
-  blockMinimumCooldown: 1.5,
-  blockCooldownChip: 0.85,
-  blockWindowChip: 0.08,
-  blockReflectDamageChip: 1.15,
-  blockReflectSpeedChip: 1.1,
-  blockPulseRadius: 3,
-  blockPulseDamageChip: 6,
-  blockPulseImpulseChip: 360,
-  maxReflections: 3,
-  maxReflectedDamage: 100,
-  maxReflectedSpeed: 120,
-  volleyDamage: 0.75,
-  volleyFanDegrees: 7,
-  followupDamage: 0.45,
-  followupCost: 5,
-  followupGap: 0.08,
-  projectileLifetime: 3,
-  projectileMaxTravel: 160,
-  splitLifetime: 1.2,
-  splitMaxTravel: 18,
-  homingRange: 16,
-  homingConeDegrees: 50,
-  maxBodies: 150,
-  maxProjectiles: 100,
-  maxEvents: 80,
-  maxInputRate: 100,
-  staleInputSeconds: 0.3,
-  maxRooms: 24
-};
 
 // src/relay/party.ts
 var protocol = "chip-arena-party-v2";
@@ -1296,9 +1536,9 @@ var worker_default = { async fetch(request, env) {
   if (new URL(request.url).pathname.startsWith("/api/rooms/")) {
     try {
       return new URL(request.url).pathname.startsWith("/api/rooms/v2/") ? await party(request, env.DB) : await relay(request, env);
-    } catch (e) {
-      if (!e.status) console.error("Chip Arena relay failed", e.message);
-      return json3({ error: e.status ? e.message : "Room service interrupted. Retrying\u2026" }, e.status || 503);
+    } catch (e2) {
+      if (!e2.status) console.error("Chip Arena relay failed", e2.message);
+      return json3({ error: e2.status ? e2.message : "Room service interrupted. Retrying\u2026" }, e2.status || 503);
     }
   }
   return env.ASSETS ? env.ASSETS.fetch(request) : new Response("Not found", { status: 404 });

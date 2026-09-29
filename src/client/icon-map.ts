@@ -70,4 +70,4 @@ export const CHIP_ICONS:Record<string,string>=Object.fromEntries(Object.entries(
 export const CLASS_ICONS:Record<string,string>={ranged:'crosshair',magic:'wand-sparkles',melee:'swords'};
 export const SPEC_ICONS:Record<string,string>={pistol:'crosshair',rifle:'scan-line',machinegun:'scan',fire:'flame',water:'waves',lightning:'zap',darkness:'eclipse',sword:'sword',daggers:'swords',shield:'shield',greatsword:'axe',ansatsuken:'hand-fist',emperor:'cloud-lightning',leet:'terminal'};
 export const ACTION_ICONS:Record<string,string>={practice:'swords',create:'network',join:'users',sandbox:'flask-conical',customize:'palette',settings:'settings',home:'house',resume:'play',leave:'log-out',board:'layers','network-report':'activity','game-settings':'settings',download:'download',update:'download','test-sound':'volume-2'};
-export const EXTRA_ICONS=['cpu','x','shield','wind','sparkles','flame','biohazard','skull','book-open','circle-help'];
+export const EXTRA_ICONS=['cpu','x','shield','wind','sparkles','flame','biohazard','skull','book-open','circle-help','check','clock-3','armchair','moon','person-standing','hand'];

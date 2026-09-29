@@ -51,8 +51,8 @@ function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=
  if((p.hitStunUntil||0)>time){const flinch=Math.min(1,((p.hitStunUntil||0)-time)/.12);r.body.rotation.x=-.23*flinch;r.chest.rotation.y=.20*flinch;r.head.rotation.x=-.22;r.leftArm.rotation.set(-.5,0,.45);r.rightArm.rotation.set(-.5,0,-.45);r.leftElbow.rotation.x=r.rightElbow.rotation.x=-.8;return pose;}
  if(p.spec==='emperor'){animateEmperor(r,p,time);return pose;}
  if(p.spec==='ansatsuken'){animateAnsatsuken(r,p,time);return pose;}
- // Locomotion drives the legs; movement never lowers the aiming layer.
- const aimTarget=w.class==='ranged'?1:0;r.aimWeight+=(aimTarget-r.aimWeight)*(1-Math.exp(-dt*24));
+ // Swing during travel; settle into the usual aiming stance when stopping or firing.
+ const aimTarget=w.class==='ranged'?(pose.shotAge<Math.max(.38,w.interval+.15)||p.reloadTime>0||r.motion<.18?1:0):0;r.aimWeight+=(aimTarget-r.aimWeight)*(1-Math.exp(-dt*24));
  if(w.class!=='magic'&&r.weapon.parent!==r.sockets.rightHand)r.sockets.rightHand.add(r.weapon);
  if(w.class==='ranged'){
   r.spine.rotation.x=-r.body.rotation.x;r.chest.rotation.z=-r.body.rotation.z-r.pelvis.rotation.z;
@@ -67,7 +67,7 @@ function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=
   // then drives through the target; pelvis and chest lead the follow-through.
   if(r.weapon.parent!==r.sockets.leftHand)r.sockets.leftHand.add(r.weapon);
   const m=pose.magic,c=m.weight,water=p.spec==='water',dark=p.spec==='darkness',lightning=p.spec==='lightning',u=m.drive,load=m.coil;
-  blendRotation(r.leftArm,-.24-pitch*.08,-.08,.16,.9);blendRotation(r.leftElbow,-.42,0,0,.9);r.leftHand.rotation.set(0,0,0);
+  const carry=1-Math.min(.65,r.motion*.7);blendRotation(r.leftArm,-.24-pitch*.08,-.08,.16,carry);blendRotation(r.leftElbow,-.42,0,0,carry);r.leftHand.rotation.set(0,0,0);
   r.weapon.rotation.set(-Math.PI/2-r.leftArm.rotation.x-r.leftElbow.rotation.x,0,0);
   if(m.active){
    const twist=(m.age<m.windup?-.48*load:(-.48+.88*u)*m.settle)*(dark?1.15:water?1.1:1);

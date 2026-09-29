@@ -26,6 +26,10 @@ function orient(r:CharacterRig,node:T.Object3D,rotation:T.Quaternion,weight=1){
 function leg(r:CharacterRig,left:boolean,target:T.Vector3,pole=new T.Vector3(0,0,1)){
  limb(r,left?r.leftLeg:r.rightLeg,left?r.leftKnee:r.rightKnee,left?r.leftFoot:r.rightFoot,target,pole,RIG_LENGTHS.thigh,RIG_LENGTHS.shin);
 }
+/** Place an idle hand without changing bone lengths or detaching its weapon socket. */
+export function placeHand(r:CharacterRig,left:boolean,target:T.Vector3,pole:T.Vector3){
+ limb(r,left?r.leftArm:r.rightArm,left?r.leftElbow:r.rightElbow,left?r.leftHand:r.rightHand,target,pole,RIG_LENGTHS.upperArm,RIG_LENGTHS.forearm);
+}
 
 /** Alternate from the authority's contact times. Overlapping recoil and preparation
  * prevent the previous fist snapping back when the next punch begins. */
