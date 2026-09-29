@@ -39,8 +39,17 @@ No live provider secrets or database rows were retrieved. DEV_PUBLIC_KEY contain
 public verification material only. Source's .env.example has placeholders/names.
 Original and imported baseline have no .github/workflows or deployment script.
 Existing .openai/hosting.json and Worker/db code remain because desktop depends on
-those services. Destination webhooks/apps/branch policies remain uninspected because
-`sheldon37/Chip-Arena` is not found by the connected GitHub account/installation.
+those services. On the owner's follow-up, destination `sheldon37/Chip-Arena`
+(repository ID 1396444968) became accessible: private, empty (no branches, size 0),
+default main, owner push/admin permission. Added its exact URL as local `origin`;
+retained `source-local`. The original checkout's remotes remain unchanged.
+Deployment webhooks/apps remain uninspected because the connector exposes no
+supported endpoint for them. Ruleset GET returned HTTP 403 with a private-plan
+restriction. No upgrade or policy change was made. `GIT_TERMINAL_PROMPT=0 git
+ls-remote https://github.com/sheldon37/Chip-Arena.git` failed because Git could
+not read a username; no credential helper, askpass or gh CLI is configured.
+The connector's commit API cannot preserve original commit authors/dates and
+root commits, so it is not a substitute for authenticated Git history transfer.
 No push, repository creation, remote replacement, PR, or admin policy change occurred.
 
 Generated dist (104 files, roughly 53 MiB) is removed from the migration branch's
@@ -161,11 +170,13 @@ failures still need investigation. Full CI should remain red until they are reso
 
 ## Handoff status
 
-GitHub destination is unconfirmed/inaccessible, so no pushed commit or PR exists.
+GitHub destination is confirmed private and empty; no pushed commit or PR exists.
 Final evidence-only commit follows the tested code commit; it changes docs only.
 The source-only export records its exact SHA, all file hashes, baseline provenance,
 test outputs and an incremental Git bundle. It excludes generated player packages.
 The local source branch and unchanged original baseline are recoverable; see the
-export's MIGRATION-HANDOFF.md before importing. Owner action: provide/connect the
-exact private repository, then inspect its history and hooks before the first push.
+export's MIGRATION-HANDOFF.md before importing. Remaining access needs: authenticated
+Git transport and inspection of deployment hooks/apps before the first push. Recheck
+the remote refs at import time; do not assume it stays empty. A browser fallback
+requires owner approval because the connector lacks those settings operations.
 Production and the old working installation remain unchanged; phase 2 not started.

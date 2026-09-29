@@ -90,10 +90,11 @@ as existing required source; its inclusion does not establish redistribution rig
 Source privacy does not hide readable code in existing desktop/source packages.
 
 No imported GitHub workflow exists at the original baseline. The new workflow
-only verifies PRs/manual runs. Destination webhooks, GitHub Apps, environments,
-Pages/Actions publication and branch rules cannot be inspected until that private
-repository is accessible. This prevents a safe first push; do not bypass it by
-pushing to the live Site. Inspect these controls first, without changing live
+only verifies PRs/manual runs. The selected destination is confirmed private and
+empty, but the connector does not expose webhooks, installed publishing Apps or
+deployment settings. Ruleset inspection returned a private-plan HTTP 403. Local
+Git transport also lacks authentication. These prevent a safe first push; do not
+bypass them by pushing to the live Site. Inspect publishing controls first, without changing live
 infrastructure. If the destination is empty and safe, push the original baseline
 to main once and this migration branch separately, then open a PR. If nonempty,
 fetch and reconcile its actual history without force-push; do not assume main

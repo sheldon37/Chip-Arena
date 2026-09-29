@@ -82,8 +82,12 @@ run standard checks; cross-cutting edits run broad checks. There is one stable
 lockfile through setup-node. Logs expire after 7 days. There is no automatic
 Windows package workflow; the local procedure above is the phase-1 build path.
 
-Repository settings could not be inspected. No branch rules, required reviews,
-visibility, billing or administrative policy were changed. After owner review of
+Destination metadata confirms private visibility and owner push/admin access.
+Ruleset inspection returned HTTP 403: the private repository's current plan does
+not support that feature. Deployment hooks/apps remain uninspected; the connector
+does not expose them. No branch rules, required reviews, visibility, billing or
+administrative policy were changed. No upgrade is needed for the source import.
+After owner review of
 the existing failures, `Required checks` is the suggested merge check, not a
 claim that protection has been enabled. A solo owner must not be required to
 obtain their own approving PR review. AGENTS.md is guidance, not access control.
