@@ -38,7 +38,7 @@ function blendRotation(node:T.Object3D,x:number,y:number,z:number,weight:number)
 /** Distance-driven locomotion under action layers. Authoritative attack timestamps keep the hit phase aligned. */
 function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=p.pitch){
  animateCosmetics(r,time);
- const w=WEAPONS[p.spec],{run}=locomotion(r,{...p,pitch},time,dt),pose=attackPose(p,time);
+ const w=WEAPONS[p.spec];locomotion(r,{...p,pitch},time,dt);const pose=attackPose(p,time);
  r.weapon.position.set(0,0,0);r.weapon.rotation.set(.5,0,0);r.weapon.scale.set(1,1,w.class==='melee'?p.reach/w.range:1);r.offWeapon.rotation.set(.55,0,0);r.offWeapon.scale.copy(r.weapon.scale);
  if(p.juggle&&time<p.juggle.until){animateJuggle(r,p,time);return pose;}
  if(p.knockdown&&time<p.knockdown.until){
@@ -51,9 +51,11 @@ function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=
  if((p.hitStunUntil||0)>time){const flinch=Math.min(1,((p.hitStunUntil||0)-time)/.12);r.body.rotation.x=-.23*flinch;r.chest.rotation.y=.20*flinch;r.head.rotation.x=-.22;r.leftArm.rotation.set(-.5,0,.45);r.rightArm.rotation.set(-.5,0,-.45);r.leftElbow.rotation.x=r.rightElbow.rotation.x=-.8;return pose;}
  if(p.spec==='emperor'){animateEmperor(r,p,time);return pose;}
  if(p.spec==='ansatsuken'){animateAnsatsuken(r,p,time);return pose;}
- const aimTarget=w.class==='ranged'?(pose.shotAge<Math.min(.9,w.interval+.25)||p.reloadTime>0?1:run>.15?0:1):0;r.aimWeight+=(aimTarget-r.aimWeight)*(1-Math.exp(-dt*24));
+ // Locomotion drives the legs; movement never lowers the aiming layer.
+ const aimTarget=w.class==='ranged'?1:0;r.aimWeight+=(aimTarget-r.aimWeight)*(1-Math.exp(-dt*24));
  if(w.class!=='magic'&&r.weapon.parent!==r.sockets.rightHand)r.sockets.rightHand.add(r.weapon);
  if(w.class==='ranged'){
+  r.spine.rotation.x=-r.body.rotation.x;r.chest.rotation.z=-r.body.rotation.z-r.pelvis.rotation.z;
   const a=r.aimWeight,kick=pose.recoil*(p.spec==='rifle'?1.7:p.spec==='machinegun'?.65:1);
   blendRotation(r.rightArm,-1.0-pitch*.6-kick*.28,0,-.04,a);blendRotation(r.rightElbow,-.5+kick*.18,0,0,a);blendRotation(r.rightHand,-pitch*.4-kick*.12,0,0,a);
   r.weapon.rotation.x=T.MathUtils.lerp(.5,1.5,a);r.chest.rotation.x=-kick*.12*a;r.spine.rotation.y=-.15*a;r.head.rotation.z=-.08*a;

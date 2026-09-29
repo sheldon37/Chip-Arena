@@ -1,4 +1,5 @@
 import * as T from 'three';
+import {punchString,donkeyKick} from './fighter-motion.js';
 import type {CharacterRig} from './character-rig.js';
 import type {PlayerView} from '../shared/simulation.js';
 const clamp=(n:number)=>T.MathUtils.clamp(n,0,1),ease=(n:number)=>{n=clamp(n);return n*n*n*(n*(n*6-15)+10);};
@@ -25,16 +26,13 @@ export function demonStepPose(r:CharacterRig,time:number){
  r.leftLeg.rotation.set(-1.12,0,.08);r.leftKnee.rotation.set(1.9,0,0);r.rightLeg.rotation.set(.1,0,-.12);r.rightKnee.rotation.set(.2,0,0);r.leftFoot.rotation.x=-.45;r.rightFoot.rotation.x=-.2;r.body.position.y+=Math.sin(time*9)*.006;
 }
 export function animateAnsatsuken(r:CharacterRig,p:PlayerView,time:number){
- const speed=Math.hypot(p.vel.x,p.vel.z),lower=[r.leftLeg,r.rightLeg,r.leftKnee,r.rightKnee,r.leftFoot,r.rightFoot],base=lower.map(n=>n.quaternion.clone()),body=r.body.position.clone(),travel=clamp(r.motion*1.4);fighterGuard(r,time,1-travel*.15);if(p.grounded){lower.forEach((n,i)=>n.quaternion.slerp(base[i],travel));r.body.position.lerp(body,travel*.85);r.pelvis.rotation.y+=Math.sin(r.stride)*.07*travel;r.chest.rotation.y-=Math.sin(r.stride)*.1*travel;r.rightArm.rotation.x+=Math.sin(r.stride)*.25*travel;r.leftArm.rotation.x-=Math.sin(r.stride)*.25*travel;}r.weapon.rotation.set(0,0,0);r.offWeapon.rotation.set(0,0,0);r.weapon.scale.setScalar(1);r.offWeapon.scale.setScalar(1);r.weapon.visible=r.offWeapon.visible=true;
+ const speed=Math.hypot(p.vel.x,p.vel.z),lower=[r.leftLeg,r.rightLeg,r.leftKnee,r.rightKnee,r.leftFoot,r.rightFoot],base=lower.map(n=>n.quaternion.clone()),body=r.body.position.clone(),travel=clamp(r.motion*1.4);fighterGuard(r,time,1-travel*.15);if(p.grounded){lower.forEach((n,i)=>n.quaternion.slerp(base[i],travel));r.body.position.lerp(body,travel*.85);r.pelvis.rotation.y+=Math.sin(r.stride)*.07*travel;r.chest.rotation.y-=Math.sin(r.stride)*.1*travel;}r.weapon.rotation.set(0,0,0);r.offWeapon.rotation.set(0,0,0);r.weapon.scale.setScalar(1);r.offWeapon.scale.setScalar(1);r.weapon.visible=r.offWeapon.visible=true;
  const fist=r.offWeapon.getObjectByName('fighter-fist'),palm=r.offWeapon.getObjectByName('fighter-palm');if(fist)fist.visible=true;if(palm)palm.visible=false;
  const a=p.arcade;if(p.dashTime&&a?.demonStepAt!==undefined&&time>=a.demonStepAt&&time-a.demonStepAt<.30){demonStepPose(r,time);return;}if(p.blockTime>0||time-(a?.parryAt??-10)<.22){fighterParry(r,time);return;}if(!a?.action||time>a.until)return;const age=Math.max(0,time-a.at),hitAge=Math.max(0,time-p.lastAttack);
  if(a.action==='combo'){
-  const rate=p.attackRate||1,first=.12/rate,gap=(a.total===10?.115:.25)/rate;
-  // Anticipation leads the authority's strike; each impact has a readable hold and recoil.
-  const index=Math.min(a.total-1,Math.max(0,Math.floor((age-first+.055/rate)/gap))),impactAt=a.at+first+index*gap;
-  const phase=(time-impactAt)*rate,u=phase<0?ease((phase+.12)/.12):1-ease((phase-.045)/.17),last=index===a.total-1;
-  if(last){const chamber=phase<0?ease((phase+.14)/.1):0;r.body.rotation.x=-.19*u;r.body.rotation.y=-.26*u;r.pelvis.rotation.y=-.22*u;r.rightLeg.rotation.set(-2.7*u-.85*chamber,.04,-.12*u);r.rightKnee.rotation.x=.12*u+1.45*chamber;r.rightFoot.rotation.x=-.22*u;r.leftLeg.rotation.x=.06;r.leftKnee.rotation.x=.18;r.leftArm.quaternion.slerp(new T.Quaternion().setFromEuler(new T.Euler(-1.1,0,.25)),u);r.rightArm.quaternion.slerp(new T.Quaternion().setFromEuler(new T.Euler(-.7,0,-.35)),u);r.leftElbow.rotation.x=T.MathUtils.lerp(r.leftElbow.rotation.x,-1.65,u);r.rightElbow.rotation.x=T.MathUtils.lerp(r.rightElbow.rotation.x,-1.7,u);r.chest.rotation.y=.24*u;r.body.position.z=.16*u;}
-  else{const left=index%2===1,arm=left?r.leftArm:r.rightArm,elbow=left?r.leftElbow:r.rightElbow,sign=left?1:-1;r.body.rotation.y=.28*sign*u;r.pelvis.rotation.y=.32*sign*u;r.chest.rotation.y=.48*sign*u;r.head.rotation.y=-.3*sign*u;arm.quaternion.slerp(new T.Quaternion().setFromEuler(new T.Euler(-1.45,-.12*sign,.05*sign)),u);elbow.rotation.x=T.MathUtils.lerp(elbow.rotation.x,-.12,u);(left?r.leftHand:r.rightHand).rotation.y=-sign*.24*u;(left?r.rightArm:r.leftArm).rotation.x+=.18*u;r.spine.rotation.y+=.16*sign*u;(left?r.rightFoot:r.leftFoot).rotation.y+=.17*sign*u;r.body.position.z=.15*u;r.body.position.y-=.06*u;r.leftKnee.rotation.x+=.2*u;r.rightKnee.rotation.x+=.12*u;}
+  const rate=p.attackRate||1,gap=a.total===10?.115:.25,first=.12,lastAt=first+(a.total-1)*gap;
+  punchString(r,age*rate,first,gap,a.total-1,false,'karate');
+  donkeyKick(r,age*rate-lastAt,Math.min(.16,gap*.68),Math.max(.06,(a.until-a.at)*rate-lastAt));
  }else if(a.action==='tatsu'){
   const end=ease((a.until-time)/.18);r.body.rotation.y+=age*Math.PI*9;r.body.rotation.x=-.1;r.body.position.y+=.16*end;r.rightLeg.rotation.set(-.12,0,-1.47*end);r.rightKnee.rotation.x=.13;r.rightFoot.rotation.x=.1;r.leftLeg.rotation.x=-.15;r.leftKnee.rotation.x=.5;r.leftArm.rotation.set(-.75,0,.65);r.rightArm.rotation.set(-.75,0,-.65);r.leftElbow.rotation.x=r.rightElbow.rotation.x=-1.3;
  }else if(a.action==='shoryuken'){
