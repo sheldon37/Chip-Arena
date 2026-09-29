@@ -1,3 +1,4 @@
+import {normalMelee} from '../shared/standard-melee.js';
 import type {Snapshot} from '../shared/simulation.js';
 import {Vec,v,clamp} from '../shared/config.js';
 import {NETWORK as N} from '../shared/network-config.js';
@@ -28,7 +29,13 @@ export class SnapshotBuffer {
   const angle=(x:number,y:number)=>x+Math.atan2(Math.sin(y-x),Math.cos(y-x))*f;
   const quaternion=(x:{x:number;y:number;z:number;w:number},y:typeof x)=>{const sign=x.x*y.x+x.y*y.y+x.z*y.z+x.w*y.w<0?-1:1;const q={x:x.x+(sign*y.x-x.x)*f,y:x.y+(sign*y.y-x.y)*f,z:x.z+(sign*y.z-x.z)*f,w:x.w+(sign*y.w-x.w)*f};const length=Math.hypot(q.x,q.y,q.z,q.w)||1;return {x:q.x/length,y:q.y/length,z:q.z/length,w:q.w/length};};
   return {...current,time:this.cursor,
-   players:current.players.map(p=>{const pa=a.players.find(x=>x.id===p.id),pb=b.players.find(x=>x.id===p.id);return p.id!==localId&&pa&&pb?{...p,pos:mix(pa.pos,pb.pos,pb.vel),yaw:angle(pa.yaw,pb.yaw),pitch:pa.pitch+(pb.pitch-pa.pitch)*f}:p;}),
+   players:current.players.map(p=>{const pa=a.players.find(x=>x.id===p.id),pb=b.players.find(x=>x.id===p.id),frame=p.id!==localId&&pa&&pb?{...p,pos:mix(pa.pos,pb.pos,pb.vel),yaw:angle(pa.yaw,pb.yaw),pitch:pa.pitch+(pb.pitch-pa.pitch)*f}:p;
+    if(!normalMelee(p.spec))return frame;
+    // Never pair an old render time with a future combo index: it discards the strike we are displaying.
+    if(p.id===localId)return {...frame,animationTime:newest.state.time+clamp((now-newest.at)/1000,0,N.extrapolationMaxMs/1000)};
+    const action=pb&&pb.lastAttack<=this.cursor!?pb:pa;if(!action||action.spec!==p.spec)return frame;
+    return {...frame,animationTime:this.cursor!,attackIndex:action.attackIndex,lastAttack:action.lastAttack,lastSecondary:action.lastSecondary,swingAt:action.swingAt,swingUntil:action.swingUntil,swinging:action.swinging,meleeAction:action.meleeAction,weaponAway:action.weaponAway};
+   }),
    props:current.props.map(p=>{const pa=a.props.find(x=>x.id===p.id),pb=b.props.find(x=>x.id===p.id);return p.dynamic&&pa&&pb?{...p,pos:mix(pa.pos,pb.pos,pb.vel),rot:quaternion(pa.rot,pb.rot)}:p;}),
    projectiles:current.projectiles.map(p=>{const pa=a.projectiles.find(x=>x.id===p.id),pb=b.projectiles.find(x=>x.id===p.id);return pa&&pb?{...p,pos:mix(pa.pos,pb.pos,pb.vel),vel:mix(pa.vel,pb.vel)}:p;})};
  }

@@ -39,7 +39,7 @@ function blendRotation(node:T.Object3D,x:number,y:number,z:number,weight:number)
 function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=p.pitch){
  animateCosmetics(r,time);
  const w=WEAPONS[p.spec];locomotion(r,{...p,pitch},time,dt);const pose=attackPose(p,time);
- r.weapon.visible=!p.weaponAway;r.weapon.position.set(0,0,0);r.weapon.rotation.set(.5,0,0);r.weapon.scale.set(1,1,w.class==='melee'?p.reach/w.range:1);r.offWeapon.rotation.set(.55,0,0);r.offWeapon.scale.copy(r.weapon.scale);
+ r.weapon.visible=!p.weaponAway;r.weapon.position.set(0,0,0);r.weapon.rotation.set(.5,0,0);r.weapon.scale.set(1,1,w.class==='melee'?p.reach/w.range:1);r.offWeapon.position.set(0,0,0);r.offWeapon.rotation.set(.55,0,0);r.offWeapon.scale.copy(r.weapon.scale);
  if(p.juggle&&time<p.juggle.until){animateJuggle(r,p,time);return pose;}
  if(p.knockdown&&time<p.knockdown.until){
   const k=p.knockdown,air=k.landedAt===undefined,age=time-k.at,legsUp=!air&&!k.pickupUsed&&time<(k.pickupUntil||0),rolling=!air&&k.rollAt!==undefined&&time>=k.rollAt&&time<(k.rollUntil||0),rolled=!air&&k.rollUntil!==undefined&&time>=k.rollUntil,rise=rolled?smooth((time-k.rollUntil!)/Math.max(.01,k.until-k.rollUntil!)):0,u=rolling?smooth((time-k.rollAt!)/Math.max(.01,k.rollUntil!-k.rollAt!)):0;
@@ -85,12 +85,12 @@ function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=
  return pose;
 }
 
-export function animateCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=p.pitch){const pose=sampleCharacter(r,p,time,dt,pitch);finishPose(r,p,time);return pose;}
+export function animateCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=p.pitch){time=p.hp>0?(p.animationTime??time):time;const pose=sampleCharacter(r,p,time,dt,pitch);finishPose(r,p,time);return pose;}
 
 /** Sandbox-only presentation sampler: never writes simulation, attacks, inputs, or health. */
 export function animationPreviewPlayer(p:PlayerView,mode:string,time:number):PlayerView{
  const w=WEAPONS[p.spec],cycle=w.class==='melee'?Math.max(.75,w.interval+.45):w.class==='magic'?1.25:1.6,sampleAge=time%cycle;
- const out:PlayerView={...p,vel:{x:0,y:0,z:0},grounded:true,lastAttack:-10,lastShot:-10,blockTime:0,guarding:false,reloadTime:0,swingAt:undefined,swingUntil:undefined,attackRate:1,dashTime:0};
+ const out:PlayerView={...p,animationTime:undefined,vel:{x:0,y:0,z:0},grounded:true,lastAttack:-10,lastShot:-10,blockTime:0,guarding:false,reloadTime:0,swingAt:undefined,swingUntil:undefined,attackRate:1,dashTime:0};
  if(mode==='walk'||mode==='run'){out.vel={x:Math.sin(p.yaw)*(mode==='walk'?2.8:6.8),y:0,z:Math.cos(p.yaw)*(mode==='walk'?2.8:6.8)};}
  if(['attack','windup','release','left-strike','right-strike'].includes(mode)){const age=mode==='windup'?(w.class==='magic'?castWindup(p.spec)*.58:Math.max(.01,w.windup*.92)):mode==='release'?(w.class==='magic'?castWindup(p.spec)+.025:w.windup+.10):mode.endsWith('strike')?w.windup+.10:sampleAge;out.attackIndex=mode==='left-strike'?2:mode==='right-strike'?1:Math.floor(time/cycle)+1;out.lastAttack=time-age;out.lastShot=out.lastAttack+castWindup(p.spec);out.swingAt=out.lastAttack+w.windup;out.swingUntil=out.swingAt+.16;}
  if(mode==='reload')out.reloadTime=w.reload?Math.max(.01,w.reload-time%w.reload):0;
