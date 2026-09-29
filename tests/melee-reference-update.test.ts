@@ -19,6 +19,32 @@ function arena(spec:SpecId='daggers',distance=1.6){
  for(let i=0;i<15;i++)s.step();return {s,a,b};
 }
 function pose(p:PlayerView,time:number){const r=createCharacterRig('#79ccef');buildWeapon(r.weapon,p.spec);if(p.spec==='daggers')buildWeapon(r.offWeapon,p.spec,true);animateCharacter(r,p,time,1/60);r.group.updateMatrixWorld(true);return r;}
+test('impact blends from the interrupted swing and repeated hits blend from the current recoil',()=>{
+ const {s,a}=arena('sword',30);try{
+  s.primary(a);const p=s.snapshot().players[0],at=p.lastAttack+.12,r=pose(p,at-.01);
+  const nodes=[r.body,r.chest,r.head,r.leftArm,r.rightArm,r.leftElbow,r.rightElbow,r.leftLeg,r.rightLeg,r.weapon];
+  const before=nodes.map(n=>n.quaternion.clone()),position=r.body.position.clone();
+  const h={kind:'hit' as const,at,until:at+.5,yaw:0,direction:v(0,0,-1),point:v(.2,.1,0),zone:'torso' as const,turn:.45,strength:1};
+  const struck={...p,lastAttack:-10,swingAt:undefined,swingUntil:undefined,attackCommitment:undefined,hitReaction:h,hitStunUntil:h.until};
+  animateCharacter(r,struck,at,1/120);
+  nodes.forEach((n,i)=>assert.ok(n.quaternion.angleTo(before[i])<1e-6,'no jump at contact'));assert.ok(r.body.position.distanceTo(position)<1e-8);
+  for(let t=at+1/120;t<=at+.15;t+=1/120)animateCharacter(r,struck,t,1/120);
+  assert.ok(r.body.quaternion.angleTo(before[0])>.2,'body visibly recoils');
+  const prior=nodes.map(n=>n.quaternion.clone()),second={...struck,hitReaction:{...h,at:at+.16,direction:v(1,0,0),turn:-.35}};
+  animateCharacter(r,second,at+.16,1/120);nodes.forEach((n,i)=>assert.ok(n.quaternion.angleTo(prior[i])<1e-6,'second hit starts from current recoil'));
+  assert.equal(second.hitStunUntil,h.until,'visual reaction does not extend stun');
+ }finally{s.dispose();}
+});
+test('hit recoil builds over multiple frames and settles before its existing deadline',()=>{
+ const {s}=arena();try{
+  const p=s.snapshot().players[0],h={kind:'hit' as const,at:2,until:2.5,yaw:0,direction:v(0,0,-1),point:v(0,.1,0),zone:'torso' as const,turn:0,strength:1};
+  const struck={...p,lastAttack:-10,hitReaction:h,hitStunUntil:h.until};
+  const early=pose(struck,2.015),middle=pose(struck,2.05),peak=pose(struck,2.095),end=pose(struck,2.499);
+  assert.ok(Math.abs(early.body.rotation.x)<Math.abs(middle.body.rotation.x));assert.ok(Math.abs(middle.body.rotation.x)<Math.abs(peak.body.rotation.x));
+  assert.ok(Math.abs(peak.body.rotation.x)>.3);assert.ok(Math.abs(end.body.rotation.x)<.01,'torso settles');
+  const neutral=pose({...struck,hitReaction:undefined,hitStunUntil:0},2.499);assert.ok(end.rightArm.quaternion.angleTo(neutral.rightArm.quaternion)<.01,'arm settles instead of holding a fixed pose');
+ }finally{s.dispose();}
+});
 test('two actual dagger swings land during one fixed stun at slow, normal and fast attack rates',()=>{
  for(const rate of [.75,1,1.6,2.5]){const {s,a,b}=arena();try{
   a.stats.attackRate=rate;const hits:number[]=[];let deadline=0,prior=b.hp;
