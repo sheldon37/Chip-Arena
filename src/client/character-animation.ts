@@ -1,3 +1,4 @@
+import {meleeBlockMotion} from './melee-block-motion.js';
 import {hitReactionMotion} from './hit-reaction-motion.js';
 import {dodgeRollMotion} from './dodge-roll-motion.js';
 import {committed,meleeRecovery} from '../shared/souls-combat.js';
@@ -83,9 +84,9 @@ function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=
    blendRotation(r.rightArm,arm,(water?-.5:.28)*(1-u),-(water?.65:.42)*(1-u)-.04*u,c);
    blendRotation(r.rightElbow,elbow,0,0,c);r.rightHand.rotation.set(-.18*u*c,(water?-.7:.45)*(1-u)*c,.45*(1-u)*c);
   }
- }else{meleeMotion(r,p,pose,time);}
+ }else if(p.guarding||p.blockTime>0){meleeBlockMotion(r,p,time);}else{meleeMotion(r,p,pose,time);}
 
- if(p.guarding||p.blockTime>0){r.spine.rotation.y=0;r.chest.rotation.set(-.06,0,0);r.leftArm.rotation.set(-1.4,-.25,.35);r.rightArm.rotation.set(-1.3,.25,-.35);r.leftElbow.rotation.x=-.8;r.rightElbow.rotation.x=-.8;r.leftHand.rotation.set(0,0,.25);r.rightHand.rotation.set(0,0,-.25);r.weapon.rotation.x=1.9;}
+ if(w.class!=='melee'&&(p.guarding||p.blockTime>0)){r.spine.rotation.y=0;r.chest.rotation.set(-.06,0,0);r.leftArm.rotation.set(-1.4,-.25,.35);r.rightArm.rotation.set(-1.3,.25,-.35);r.leftElbow.rotation.x=-.8;r.rightElbow.rotation.x=-.8;r.leftHand.rotation.set(0,0,.25);r.rightHand.rotation.set(0,0,-.25);r.weapon.rotation.x=1.9;}
  hitReactionMotion(r,p,time);
  return pose;
 }

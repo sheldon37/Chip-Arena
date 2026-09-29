@@ -14,6 +14,23 @@ function fixture(){const sim=new Simulation({sandbox:true});sim.addPlayer('a','N
 function player(spec:SpecId,index=1):PlayerView{const w=WEAPONS[spec];return {...fixture().players[0],spec,class:'melee',grounded:true,vel:v(),yaw:0,pitch:0,lastAttack:0,attackIndex:index,windup:w.windup,swingAt:w.windup,swingUntil:w.windup+.16,reach:w.range};}
 function rigFor(spec:SpecId){const r=createCharacterRig('#70e1d0');buildWeapon(r.weapon,spec);if(spec==='daggers')buildWeapon(r.offWeapon,spec,true);return r;}
 function sample(spec:SpecId,age:number,index=1){const r=rigFor(spec);animateCharacter(r,player(spec,index),age,1/60);r.group.updateMatrixWorld(true);return r;}
+test('melee guards put the weapon above the grip and in front of the torso, with grounded feet',()=>{
+ for(const spec of ['sword','daggers','greatsword','shield'] as SpecId[])for(const held of [false,true]){
+  const r=rigFor(spec),p={...player(spec),lastAttack:-10,swingAt:undefined,swingUntil:undefined,guarding:held,blockTime:held?0:.3};
+  animateCharacter(r,p,1,1/60);r.group.updateMatrixWorld(true);
+  const grip=r.weapon.getWorldPosition(new T.Vector3()),tip=r.weapon.getObjectByName('blade-tip')!.getWorldPosition(new T.Vector3());
+  assert.ok(grip.z>.18,spec+' weapon ahead of torso');assert.ok(tip.y-grip.y>.28,spec+' raised guard');
+  for(const f of [r.leftFoot,r.rightFoot])assert.ok(Math.abs(f.getWorldPosition(new T.Vector3()).y+.795)<.008,spec+' braced foot');
+  if(spec==='daggers')assert.ok(r.offWeapon.getObjectByName('blade-tip')!.getWorldPosition(new T.Vector3()).y>grip.y+.25,'both daggers raised');
+  if(spec==='greatsword')assert.ok(r.leftHand.getWorldPosition(new T.Vector3()).distanceTo(r.weapon.getObjectByName('support-grip')!.getWorldPosition(new T.Vector3()))<.025,'support hand stays on hilt');
+ }
+});
+test('greatsword maintains its two-hand grip through the loaded cut and rising follow-through',()=>{
+ for(const index of [1,2])for(let age=.08;age<.96;age+=1/60){
+  const r=sample('greatsword',age,index),grip=r.weapon.getObjectByName('support-grip')!.getWorldPosition(new T.Vector3());
+  assert.ok(r.leftHand.getWorldPosition(new T.Vector3()).distanceTo(grip)<.04,`grip at ${age}, cut ${index}`);
+ }
+});
 test('primary contact plants the leading ankle while the hips crouch, turn and step through',()=>{
  for(const spec of ['daggers','sword','greatsword','shield'] as SpecId[]){const r=sample(spec,WEAPONS[spec].windup+.104),foot=r.leftFoot.getWorldPosition(new T.Vector3());assert.ok(Math.abs(foot.y+.795)<.008,spec+' planted ankle');assert.ok(foot.z>.29,spec+' forward step');assert.ok(r.body.position.y<-.16,spec+' body drop');assert.ok(r.body.rotation.y>.15,spec+' hips drive contact');assert.ok(r.leftKnee.quaternion.angleTo(new T.Quaternion())>.5,spec+' knee bends');}
 });
