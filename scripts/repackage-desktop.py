@@ -24,9 +24,9 @@ with ZipFile(a.base) as base,ZipFile(out,'w',ZIP_DEFLATED,compresslevel=6) as z:
   for f in (repo/directory).rglob('*'):
    if not f.is_file() or 'updates' in f.relative_to(repo).parts:continue
    if directory=='launcher' and f.suffix!='.mjs':continue
-   z.writestr(prefix+'resources/game/'+str(f.relative_to(repo)),f.read_bytes())
- z.writestr(prefix+'resources/game/server.mjs',Path('/tmp/chip-arena-update-server.mjs').read_bytes())
- z.writestr(prefix+'resources/game/release.json',Path('/tmp/chip-arena-release.json').read_bytes())
+   z.writestr(prefix+'resources/game/'+f.relative_to(repo).as_posix(),f.read_bytes())
+ z.writestr(prefix+'resources/game/server.mjs',(repo/'.cache/release/server.mjs').read_bytes())
+ z.writestr(prefix+'resources/game/release.json',(repo/'.cache/release/release.json').read_bytes())
  z.writestr(prefix+'chip-arena-source.zip',(repo/'dist/client/chip-arena-source.zip').read_bytes())
  z.writestr(prefix+'READ-ME.txt',(repo/'docs/DESKTOP.txt').read_bytes())
 with ZipFile(out) as z:

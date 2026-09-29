@@ -1,4 +1,10 @@
-# Chip Arena — playable prototype
+# Chip Arena
+
+Current development: [DEVELOPMENT](docs/DEVELOPMENT.md), [PROJECT_STATE](docs/PROJECT_STATE.md), and [migration evidence](docs/MIGRATION-REPORT.md).
+The baseline has known failing tests; this migration does not certify a player release.
+The older feature descriptions below are historical and must be checked against current source.
+
+## Original prototype notes
 
 An original, fully 3D, voxel-styled 1v1 arena combat game. This is a new project, with no Embertrail assets, repository, database, or deployment dependencies.
 
