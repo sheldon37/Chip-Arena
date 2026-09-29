@@ -32,6 +32,7 @@ try:
  report['environment']={'node':actual,'npm':actual_npm,'python':sys.version.split()[0],'platform':sys.platform}
  if actual!=expected or actual_npm!=expected_npm:raise RuntimeError(f'Use pinned Node {expected} and npm {expected_npm}; found {actual}/{actual_npm}')
  if not run('setup',[npm,'run','setup']):raise RuntimeError('Dependency restoration failed')
+ if not run('fixture-tests',[node,'--test',str(tool/'test-update-status.test.cjs')],180):raise RuntimeError('Test fixture regression failed')
  gate=run('verify',[npm,'run','verify'],1200)
  targeted=run('updater-tests',[node,'--import','tsx','--test','tests/auth-updater.test.ts','tests/manual-updater.test.ts'],180)
  if not(gate and targeted) and not a.test_only:raise RuntimeError('Verification failed; packaging blocked. --test-only is for diagnostics, never publication.')

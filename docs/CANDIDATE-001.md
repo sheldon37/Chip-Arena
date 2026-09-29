@@ -84,6 +84,44 @@ is included in this documentation update. Follow-up: have the fixture's status
 check and updater consult the same bundled feed, or label the two channels
 explicitly; do not publish the test candidate to silence the badge.
 
+## Corrected test fixture r2 — 2026-09-29
+
+- Fix: the isolated Electron game session now serves its exact /api/update-check
+  request from resources/game/test-feed/latest.json. The manual updater already
+  uses that feed. Missing/malformed feed metadata reports unavailable; no live fallback.
+- A session-specific handler forwards all other HTTPS requests unchanged via
+  bypassCustomProtocolHandlers. Production shell, updater and gameplay source are
+  unchanged. This follows Electron's documented protocol/session APIs:
+  https://www.electronjs.org/docs/latest/api/session#sesfetchinput-init
+- Archive comparison: only resources/app/test-bootstrap.cjs changed, and
+  resources/app/test-update-status.cjs was added; every other archive entry is
+  byte-identical to original Candidate 001, including the bundled feed/payload.
+- The source SHA, content build/version and payload checksum above are unchanged.
+  This is a corrected diagnostic fixture, not a new game release.
+- Chip-Arena-TEST-ONLY-r2.zip SHA256:
+  fb518e3802fa3bcd80a78e2ab706ba326732d0cf56943ebdf26228e836fd99fb
+- Chip-Arena-Test-Label-Fix.zip SHA256:
+  7946c325bf9d386f15bafa46b973c8b1a91b539c4ea97025299a45b4e4ed1555
+  The small patch contains those two files and instructions to merge them into
+  an existing TEST-ONLY folder after closing the app. It preserves TEST-PROFILE.
+- New regression checks: 3 passed (local/missing/malformed metadata, unrelated
+  request forwarding with original method/headers/body, correct Electron partition).
+  They run in npm test and as a hard prerequisite in the candidate builder.
+- The actual existing renderer check, executed against the packaged handler, reports
+  current for the real bundled manifest and unavailable when it is missing, without
+  network calls. Extracted manual updater installs then reports current; status checks
+  still pass after installation. Linux Node smoke, not native Electron/Windows.
+- Broad verification: typecheck passed; 410/422 unit tests passed; all 12 failures
+  are in original Candidate 001's 13-failure set. The compression test passed this
+  time. The four baseline server TypeScript errors and WebSocket rematch timeout
+  remain. This does not clear the release gate.
+- Native Windows behavior of r2 still needs owner validation. Original Candidate 001
+  owner tests remain evidence for the earlier package; they do not prove this new
+  Electron handler has run on Windows.
+- A fresh fixture seed already has candidate content, so its build-based badge can
+  show Latest build before the artificial version self-install. After an update or
+  reopen it must not compare against the live feed.
+
 ## Reproduce
 
 Check out GitHub tooling commit b9147c394e1ba1592b9d2cb0a3c9bf1d42dc1154 in an

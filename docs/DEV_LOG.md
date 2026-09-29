@@ -16,6 +16,30 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-09-29 — Astra — fix isolated update label and recover game history
+
+- Target release/candidate-workflow / PR #3; remote base
+  1e82fc29a3fa90804ae11ee32f9252e2aa67d3ff. Separate local worktree fix/test-feed-status.
+- Added test-only session handler so the menu update check reads the bundled feed
+  already used by the fixture updater. All other HTTPS requests use the original
+  session/network handler. Missing/bad test feed reports unavailable, with no live
+  fallback. Production/gameplay/accounts/saves/network rules unchanged.
+- Updated fixture packager and candidate-builder regression gate. Repacked original
+  Candidate 001 without changing game content or feed; only bootstrap+handler differ.
+  Provided a two-file patch preserving the existing TEST-PROFILE and a full r2 ZIP.
+  Exact hashes and limitations are in CANDIDATE-001.md.
+- Checks: 3 new tests passed; original renderer + packaged-handler integration passed
+  before/after actual fixture install/current; ZIP integrity and exact file-delta
+  comparison passed. Broad verify types passed, unit 410/422 (12 known failures),
+  server build's four existing TS errors and rematch timeout remain. Windows r2 not run.
+- Added UPDATE-HISTORY.md: every one of the 68 original source snapshots with links,
+  feature-document index, later GitHub preparation, and explicit source/release
+  distinctions. AGENTS.md points future agents there. Prior test claims remain historical.
+- Next: owner applies patch ONLY to test installation, reopens, checks Latest build
+  plus up-to-date result. Baseline failures and real upgrade/account/multiplayer
+  validation remain separate release blockers. No merge, publication or monitoring.
+- Status: implemented/tested on branch; not merged or released.
+
 ## 2026-09-29 — Astra — owner Windows results and mixed-feed label diagnosis
 
 - Branch release/candidate-workflow, PR #3, previous head 467eb23152b1451b5121163c3ae9daab17b2e887.

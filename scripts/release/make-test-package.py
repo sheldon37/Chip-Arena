@@ -14,6 +14,7 @@ with ZipFile(a.desktop) as src,ZipFile(a.output,'w',ZIP_DEFLATED,compresslevel=6
    obj=json.loads(data);obj['version']='test-seed';data=json.dumps(obj).encode()
   dst.writestr(new+relative,data)
  dst.writestr(new+'resources/app/test-bootstrap.cjs',(repo/'scripts/release/test-bootstrap.cjs').read_bytes())
+ dst.writestr(new+'resources/app/test-update-status.cjs',(repo/'scripts/release/test-update-status.cjs').read_bytes())
  dst.writestr(new+'resources/game/launcher/local-feed.mjs',(repo/'scripts/release/local-feed.mjs').read_bytes())
  for f in Path(a.feed).iterdir():
   if f.is_file():dst.writestr(new+'resources/game/test-feed/'+f.name,f.read_bytes())

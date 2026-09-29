@@ -61,12 +61,19 @@ because the existing single-instance behavior has not been tested on Windows her
 For strongest isolation use a separate Windows account or VM.
 
 The test ZIP replaces only its manual updater wrapper with a local-file fetch adapter,
-adds the candidate files under resources/game/test-feed, and marks its initial content
-version test-seed. The actual launcher/update.mjs, desktop update IPC/controller and
+adds the candidate files under resources/game/test-feed, routes the game session's exact
+startup update-check request to that same local manifest, and marks its initial content
+version test-seed. The test-only HTTPS handler forwards every other request through the same session
+with Electron's bypassCustomProtocolHandlers option; a missing/bad local feed returns
+unavailable instead of falling back to live metadata. The handler is registered before
+the game window opens and is outside replaceable game payload files. The actual
+launcher/update.mjs, desktop update IPC/controller and
 candidate runtime/game code are unchanged. Clicking Update installs the real candidate
 payload from local files; clicking again should report current. The test-seed content
 already contains candidate game files: this validates UI/application mechanics, not
-compatibility with every historical installed version. Full old-to-new testing remains
+compatibility with every historical installed version. Since the seed already contains
+the candidate content build, its badge can correctly say Latest build before the first
+diagnostic self-install changes the artificial seed version. Full old-to-new testing remains
 a separate release gate. Test-only files are outside replaceable payload units and
 must never be placed in a production package or published to the feed.
 

@@ -14,7 +14,10 @@
 4. Set an obvious local preference (e.g. volume). Click the in-game Update button.
    It should report installation of candidate.json's content version, reopen the game,
    and retain that preference. Click Update again: it should report up to date.
-   Restart the test game and confirm the preference remains. Inspect
+   Restart the test game and confirm the preference remains. In the corrected r2 fixture,
+   the badge should read Latest build instead of comparing against the live service.
+   A fresh r2 seed can also show Latest build because its actual content is already
+   the candidate; the first update still exercises the artificial version change. Inspect
    resources/game/release.json for the candidate version. Do not replace this file in
    the working installation. The seed is an artificial previous version, not old code.
 5. Close the test game. In THIS TEST FOLDER ONLY, rename

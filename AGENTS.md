@@ -65,6 +65,8 @@ rationale, affected systems, actual checks/results, remaining risks and next ste
 Distinguish implemented-on-branch, merged, and released; verify current GitHub
 status rather than assuming historical log status is current. Record animation
 impacts on hit timing, hitboxes, damage, cooldowns, movement and networking.
+Use docs/UPDATE-HISTORY.md for earlier game updates and add a concise entry when
+a game update is completed; distinguish source changes from verified player releases.
 Keep PROJECT_STATE short. Preserve other agents' entries when resolving conflicts;
 do not overwrite their work. Coordinate overlapping files/systems before editing.
 Do not append long transcripts or duplicate full diffs. No automatic review loop.
