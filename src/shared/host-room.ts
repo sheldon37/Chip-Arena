@@ -25,8 +25,8 @@ export class HostedRoom {
  if(msg.type==='class')return this.sim.setClass(id,msg.class);
  if(msg.type==='spec')return this.sim.selectSpec(id,msg.id);
  if(msg.type==='chip')return this.sim.selectChip(id,msg.id);
- if(msg.type==='rematch'&&this.sim.phase==='match'){this.rematch.add(id);this.emit('all',{type:'rematchVotes',count:this.rematch.size});if([...this.sim.players.values()].filter(p=>p.connected&&!p.bot).every(p=>this.rematch.has(p.id))){this.rematch.clear();this.sim.rematch();}return true;}
- if(id==='host'&&msg.type==='lobby'&&this.sim.phase==='match'){this.sim.returnLobby();this.rematch.clear();return true;}
+ if(msg.type==='rematch'&&!this.sim.lobbyReturn&&this.sim.phase==='match'){this.rematch.add(id);this.emit('all',{type:'rematchVotes',count:this.rematch.size});if([...this.sim.players.values()].filter(p=>p.connected&&!p.bot).every(p=>this.rematch.has(p.id))){this.rematch.clear();this.sim.rematch();}return true;}
+ if(id==='host'&&(msg.type==='lobby'||msg.type==='cancel-lobby')){const changed=msg.type==='lobby'?this.sim.requestLobbyReturn():this.sim.cancelLobbyReturn();if(changed){this.rematch.clear();this.broadcast();}return changed;}
  if(msg.type==='debug')this.emit(id,{type:'error',message:'Debug commands are disabled in browser-hosted rooms.'});return false;
  }
  disconnect(id='guest'){this.sim.disconnect(id);this.rates.delete(id);this.rematch.delete(id);this.emit('all',{type:'notice',message:`Player disconnected. ${this.sim.phase==='lobby'?'Seat is open again.':CONFIG.disconnectSeconds+' seconds to forfeit.'}`});this.broadcast();}

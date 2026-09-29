@@ -1,2 +1,2 @@
 // Generated from the current game source and assets.
-export const GAME_BUILD='5fc227a6d46ba2fa92ebc475';
+export const GAME_BUILD='6fe2f168cd96f869bb4eda30';

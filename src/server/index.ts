@@ -52,8 +52,8 @@ wss.on('connection',(ws,req)=>{if(++connections>maxConnections){ws.close(1013,'S
  else if(msg.type==='spec')room.sim.selectSpec(id,msg.id);
  else if(msg.type==='chip')room.sim.selectChip(id,msg.id);
  else if(msg.type==='settings'&&room.owner===id){if(room.sim.configureLobby(msg))broadcast(room,{type:'snapshot',state:room.sim.snapshot()});}
- else if(msg.type==='rematch'&&room.sim.phase==='match'){room.rematch.add(id);broadcast(room,{type:'rematchVotes',count:room.rematch.size});if([...room.sim.players.values()].filter(p=>p.connected&&!p.bot).every(p=>room!.rematch.has(p.id))){room.rematch.clear();room.sim.rematch();}}
- else if(msg.type==='lobby'&&room.sim.phase==='match'){if(room.owner===id){room.sim.returnLobby();room.rematch.clear();}}
+ else if(msg.type==='rematch'&&!room.sim.lobbyReturn&&room.sim.phase==='match'){room.rematch.add(id);broadcast(room,{type:'rematchVotes',count:room.rematch.size});if([...room.sim.players.values()].filter(p=>p.connected&&!p.bot).every(p=>room!.rematch.has(p.id))){room.rematch.clear();room.sim.rematch();}}
+ else if((msg.type==='lobby'||msg.type==='cancel-lobby')&&room.owner===id){const changed=msg.type==='lobby'?room.sim.requestLobbyReturn():room.sim.cancelLobbyReturn();if(changed){room.rematch.clear();broadcast(room,{type:'snapshot',state:room.sim.snapshot()});}}
  else if(msg.type==='debug'){if(!room.sim.options.sandbox||room.owner!==id)return fail('Debug commands are disabled for this player and room.');room.sim.debug(msg.command,id);}
  else if(msg.type==='leave')ws.close(1000,'Left room');
  });

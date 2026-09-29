@@ -14,7 +14,17 @@ export const INTRO_STYLES={
  'pulse-wave':'Pulse Wave',
 } as const;
 export type IntroStyle=keyof typeof INTRO_STYLES;
-export function effectiveIntro(p?:Pick<PlayerView,'spec'|'cosmetics'|'developer'|'unlocks'>):IntroStyle{if(p?.spec==='emperor'&&canUse(p,'weapon:emperor'))return 'dev-emperor';if(p?.spec==='leet'&&canUse(p,'weapon:leet'))return 'dev-matrix';if(p?.spec==='ansatsuken'&&canUse(p,'weapon:ansatsuken'))return 'dev-ansatsuken';const selected=p?.cosmetics?.intro;if((!selected||selected==='neon-drop')&&p){const signature=weaponIntroFor(p.spec);if(signature)return signature;}return selected||'neon-drop';}
+export function effectiveIntro(p?:Pick<PlayerView,'spec'|'cosmetics'|'developer'|'unlocks'>):IntroStyle{
+ const selected=p?.cosmetics?.intro,allowed=selected&&Object.hasOwn(INTRO_STYLES,selected)&&(!selected.startsWith('dev-')||canUse(p,'intro:'+selected));
+ if(p?.cosmetics?.overrideWeaponIntro===true&&allowed)return selected;
+ if(p?.spec==='emperor'&&canUse(p,'weapon:emperor'))return 'dev-emperor';
+ if(p?.spec==='leet'&&canUse(p,'weapon:leet'))return 'dev-matrix';
+ if(p?.spec==='ansatsuken'&&canUse(p,'weapon:ansatsuken'))return 'dev-ansatsuken';
+ // Older unsanitized snapshots retain their selected custom intro.
+ if(p?.cosmetics?.overrideWeaponIntro===undefined&&allowed&&selected!=='neon-drop')return selected;
+ return p?weaponIntroFor(p.spec)||'neon-drop':'neon-drop';
+}
+
 export const INTRO={seconds:4.8,nameAt:3.2} as const;
 export const introDuration=(style?:string)=>style==='dev-emperor'?7.8:style==='dev-matrix'?8:style==='dev-ansatsuken'?7.2:INTRO.seconds;
 export const introNameAt=(style?:string)=>style==='dev-emperor'?5.95:style==='dev-matrix'?6.25:style==='dev-ansatsuken'?5.45:INTRO.nameAt;

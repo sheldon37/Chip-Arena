@@ -11,7 +11,7 @@ export class BlockCooldownTint {
   let entries=this.rigs.get(group);
   if(!cooling&&!flash){this.release(group);return;}
   if(!entries){entries=[];group.traverse(o=>{if(!(o instanceof T.Mesh)||Array.isArray(o.material)||!('color'in o.material))return;
-    for(let a:T.Object3D|null=o;a&&a!==group;a=a.parent)if(['timed-block','timed-guard','enchantment','spell-charge','body-chips'].includes(a.name))return;
+    for(let a:T.Object3D|null=o;a&&a!==group;a=a.parent)if(['team-identity','timed-block','timed-guard','enchantment','spell-charge','body-chips'].includes(a.name))return;
     const original=o.material as Colored,material=original.clone() as Colored;o.material=material;entries!.push({mesh:o,original,material});
    });this.rigs.set(group,entries);}
   const pulse=.70+.30*Math.cos(time*Math.PI*2*1.5),factor=1-(1-pulse)*Math.min(1,p.blockCd/.25);
