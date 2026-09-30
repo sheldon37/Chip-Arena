@@ -29,7 +29,7 @@ const table:Record<SpecId,Readonly<Stance>>={
  fire:MAGIC,water:MAGIC,lightning:MAGIC,darkness:MAGIC,
  sword:MELEE,shield:MELEE,
  // Daggers (owner reference): a low, wide crouch, lead foot well forward and the rear heel turned out, ready to spring.
- daggers:stance([.19,.13,.2],[-.2,-.12,.5],-.09,-.15,.07,.12),
+ daggers:stance([.19,.13,.2],[-.2,-.12,.5],-.07,-.15,.03,.1),
  greatsword:stance([.19,.12,.2],[-.19,-.11,.5],-.045,-.14,.05),
 };
 export const STANCES:Readonly<Record<SpecId,Readonly<Stance>>>=Object.freeze(table);
