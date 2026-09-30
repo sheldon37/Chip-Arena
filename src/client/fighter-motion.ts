@@ -2,6 +2,7 @@ import * as T from 'three';
 import type {CharacterRig} from './character-rig.js';
 import {RIG_LENGTHS} from './character-rig.js';
 import {smoothMotion as ease} from './motion-quality.js';
+import type {PlayerView} from '../shared/simulation.js';
 
 const down=new T.Vector3(0,-1,0);
 const point=(r:CharacterRig,node:T.Object3D)=>r.group.worldToLocal(node.getWorldPosition(new T.Vector3()));
@@ -97,4 +98,38 @@ export function donkeyKick(r:CharacterRig,phase:number,prep:number,recovery:numb
  r.group.updateMatrixWorld(true);
  const guard=point(r,r.leftHand).lerp(point(r,r.head).add(new T.Vector3(.08,-.05,.18)),weight);
  limb(r,r.leftArm,r.leftElbow,r.leftHand,guard,new T.Vector3(1,-1,0),RIG_LENGTHS.upperArm,RIG_LENGTHS.forearm);
+}
+
+/** Fighting-game combo-ready stance (emperor, ansatsuken): after a string ends the fighter drops into a bouncier stance with
+ * the next string's first fist chambered, held for the style's combo memory (the authority's comboMemory window), then eases
+ * back into the plain guard. Only a `chains` string (the jab / punch string) is held; any action hands over from the hold. A roll, hit reaction, knockdown, juggle or block after the string releases it over .2 s from its
+ * timestamp; a new string starts from it (the chamber hands over to the first coil over the first .1 s, from the hold this
+ * rig showed when the string began). Pure in the action timestamps apart from that per-rig record. Returns the weight shown. */
+type ReadyRec={time:number;k:number;at:number;entryAt:number;entry:number};const readyRecs=new WeakMap<object,ReadyRec>();
+export function fighterReady(r:CharacterRig,p:PlayerView,time:number,action:{at:number;until:number;action?:string}|undefined,chains:string,memory:number,style:'emperor'|'karate',carry:number){
+ let s=readyRecs.get(r);if(!s){s={time,k:0,at:NaN,entryAt:NaN,entry:0};readyRecs.set(r,s);}
+ let k=0;
+ if(action&&time>=action.at&&time<action.until){
+  // Entering a string: the hold this rig showed just before it began, handed over to the first strike's coil.
+  if(s.entryAt!==action.at){s.entryAt=action.at;s.entry=s.at!==action.at&&time>=s.time&&time-s.time<.2?s.k:0;}
+  k=s.entry*(1-ease((time-action.at)/.1));
+ }else if(action&&action.action===chains&&time>=action.until&&!(p.blockTime>0||p.guarding)){
+  const since=time-action.until;let cut=Infinity;
+  for(const t of [p.roll?.at,p.hitReaction?.at,p.knockdown?.at,p.juggle?.at,p.lastBlock])if(t!==undefined&&t>=action.until&&t<=time)cut=Math.min(cut,t);
+  k=ease(since/.14)*(1-ease((since-memory)/.35))*(cut<Infinity?1-ease((time-cut)/.2):1);
+ }
+ k*=1-carry;s.time=time;s.k=k;s.at=action?.at??NaN;
+ if(k<=1e-4)return 0;
+ // A quicker, deeper bounce on the balls of the feet, weight settled back over the rear leg.
+ const bounce=Math.sin(time*(style==='karate'?6.2:7.4))*.016;r.body.position.y+=(-.035+bounce)*k;r.rightFoot.rotation.x-=.12*k;
+ if(style==='emperor'){
+  // The next jab is the lead (left) fist: hips and chest wound toward the rear, the fist drawn in and low, rear hand high.
+  r.body.rotation.y+=.07*k;r.pelvis.rotation.y+=.10*k;r.chest.rotation.y+=.08*k;r.head.rotation.y-=.1*k;
+  r.leftArm.rotation.x+=.22*k;r.leftElbow.rotation.x-=.3*k;r.rightArm.rotation.x-=.12*k;
+ }else{
+  // Karate: the rear (right) fist chambered at the hip (hikite) with the lead hand out in front, hips wound back.
+  r.body.rotation.y-=.08*k;r.pelvis.rotation.y-=.10*k;r.chest.rotation.y-=.06*k;r.head.rotation.y+=.08*k;
+  r.rightArm.rotation.x+=.4*k;r.rightElbow.rotation.x-=.25*k;r.leftArm.rotation.x-=.12*k;r.leftElbow.rotation.x+=.2*k;
+ }
+ return k;
 }

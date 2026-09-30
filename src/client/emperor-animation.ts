@@ -1,5 +1,6 @@
 import * as T from 'three';
-import {punchString} from './fighter-motion.js';
+import {punchString,fighterReady} from './fighter-motion.js';
+import {EMPEROR} from '../shared/emperor-content.js';
 import type {CharacterRig} from './character-rig.js';
 import type {PlayerView} from '../shared/simulation.js';
 const sat=(x:number)=>T.MathUtils.clamp(x,0,1),ease=(x:number)=>{x=sat(x);return x*x*x*(x*(x*6-15)+10);};
@@ -38,7 +39,9 @@ export function animateEmperor(r:CharacterRig,p:PlayerView,time:number){
  if(p.grounded&&!p.waveTime){lower.forEach((n,i)=>n.quaternion.slerp(base[i],travel));r.body.position.lerp(body,travel*.8);r.pelvis.rotation.y+=Math.sin(r.stride)*.07*travel;r.chest.rotation.y-=Math.sin(r.stride)*.05*travel;}
  r.weapon.rotation.set(0,0,0);r.offWeapon.rotation.set(0,0,0);r.weapon.scale.setScalar(1);r.offWeapon.scale.setScalar(1);r.weapon.visible=r.offWeapon.visible=true;
  if(p.blockTime>0){r.leftArm.rotation.set(-1.3,0,.08);r.rightArm.rotation.set(-1.2,0,-.08);r.leftElbow.rotation.x=r.rightElbow.rotation.x=-1.55;return;}
- const a=p.emperor;if((!a?.action||time>=a.until)&&p.grounded&&!p.guarding){const carry=ease((r.motion-.10)/.65);upper.forEach((n,i)=>n.quaternion.slerp(upperBase[i],carry));r.body.position.lerp(body,carry);}if(!a?.action||time>=a.until)return;const age=Math.max(0,time-a.at),duration=a.until-a.at;
+ const a=p.emperor;if((!a?.action||time>=a.until)&&p.grounded&&!p.guarding){const carry=ease((r.motion-.10)/.65);upper.forEach((n,i)=>n.quaternion.slerp(upperBase[i],carry));r.body.position.lerp(body,carry);}
+ // Combo-ready: after a jab string the next jab stays chambered in a bouncier stance (EMPEROR.comboMemory).
+ fighterReady(r,p,time,a?.action?a:undefined,'jab',EMPEROR.comboMemory,'emperor',ease((r.motion-.10)/.65));if(!a?.action||time>=a.until)return;const age=Math.max(0,time-a.at),duration=a.until-a.at;
  if(a.action==='wave'){
   const u=sat(age/.18),dip=Math.sin(u*Math.PI);r.body.position.y=-.08-.28*dip;r.body.position.z=.12*dip;r.body.rotation.x=.28*dip;r.leftLeg.rotation.x=-.75*dip;r.leftKnee.rotation.x=1.45*dip;r.rightLeg.rotation.x=.35*dip;r.rightKnee.rotation.x=.75*dip;r.leftFoot.rotation.x=-.65*dip;r.rightFoot.rotation.x=-.6*dip;r.rightArm.rotation.x=-.4;r.leftArm.rotation.x=-1;
  }else if(a.action==='electric'){

@@ -7,6 +7,8 @@ import {attackCommitment,attackTravel,meleeRecovery} from '../src/shared/souls-c
 import {animateCharacter,attackPose} from '../src/client/character-animation.js';
 import {lowestShell,ROLL_FLOOR} from '../src/client/dodge-roll-motion.js';
 import {comboReadyMotion,primaryMeleeMotion} from '../src/client/primary-melee-motion.js';
+import {animateEmperor} from '../src/client/emperor-animation.js';
+import {animateAnsatsuken} from '../src/client/ansatsuken-animation.js';
 import {PROBE_RATES,probeBase,probeMotion,probeRig,weaponTip} from './helpers/motion-probe.js';
 
 await initPhysics();
@@ -117,6 +119,36 @@ test('combo-ready: the next cut, a roll and the timeout all leave the hold witho
    // A snap keeps its size per frame as the rate doubles; continuous motion halves.
    assert.ok(s120<=s60*.7+.3,`${spec} ${name}: ${s60.toFixed(1)} deg/frame at 60 Hz vs ${s120.toFixed(1)} at 120 Hz`);
    assert.ok(s120<=bound,`${spec} ${name}: ${s120.toFixed(1)} deg per 120 Hz frame`);
+  }
+ }
+});
+
+// ---- DEV fighting styles: combo-ready stance between strings ----
+const DEV={emperor:{key:'emperor',action:'jab',len:.385,memory:1.35},ansatsuken:{key:'arcade',action:'combo',len:.84,memory:1.1}} as const;
+const devString=(spec:'emperor'|'ansatsuken',at:number)=>{const d=DEV[spec];return {lastAttack:at,attackIndex:0,[d.key]:spec==='emperor'?{action:'jab',at,until:at+d.len,index:0,total:2,hits:0,lastHit:0,comboDamage:0,electricAt:-10}:{action:'combo',at,until:at+d.len,index:0,total:3,charge:0,uppercutCd:0,hadokenCd:0,hits:0,lastHit:0,comboDamage:0,parryUntil:0,parryAt:-10}} as Partial<PlayerView>;};
+test('DEV styles: a string ends in a chambered fighting stance that the next string starts from',()=>{
+ for(const spec of ['emperor','ansatsuken'] as const){
+  const animate=spec==='emperor'?animateEmperor:animateAnsatsuken,base={...probeBase(spec),grounded:true,vel:{x:0,y:0,z:0},hitStunUntil:-1e9} as PlayerView,t=1+DEV[spec].len+.5;
+  const prev={...base,...devString(spec,1)} as PlayerView,next={...base,...devString(spec,t)} as PlayerView,fresh=probeRig(spec),held=probeRig(spec),entered=probeRig(spec),guard=probeRig(spec);
+  animate(held,prev,t-.001);animate(entered,prev,t-.002);rest(entered,fresh);animate(entered,next,t);animate(guard,{...base,[DEV[spec].key]:undefined} as PlayerView,t-.001);
+  for(const r of [held,entered,guard])r.group.updateMatrixWorld(true);
+  let worst=0,at='',chamber=0;for(const b of UPPER){const q=held[b].getWorldQuaternion(new T.Quaternion());const d=q.angleTo(entered[b].getWorldQuaternion(new T.Quaternion()));if(d>worst){worst=d;at=b;}chamber=Math.max(chamber,q.angleTo(guard[b].getWorldQuaternion(new T.Quaternion())));}
+  assert.ok(worst<.035,`${spec}: ${at} differs by ${(worst*180/Math.PI).toFixed(1)} deg between the held stance and the next string's first frame`);
+  assert.ok(chamber>.15,`${spec}: the held stance is chambered (${(chamber*180/Math.PI).toFixed(1)} deg from the plain guard)`);
+ }
+});
+test('DEV styles: the next string, a roll, a hit and the combo-memory timeout leave the stance without snaps',()=>{
+ for(const spec of ['emperor','ansatsuken'] as const){
+  const end=1+DEV[spec].len,t2=end+.5,R={at:end+.4,until:end+.9,invulnerableAt:end+.48,invulnerableUntil:end+.7,direction:{x:0,y:0,z:1},distance:3.2};
+  const hit={kind:'hit',at:end+.4,until:end+.64,zone:'torso',turn:.3,strength:.6,yaw:0,direction:{x:0,y:0,z:1},point:{x:0,y:1,z:.3}};
+  const cases:[string,(t:number,b:PlayerView)=>PlayerView,number,number][]=[
+   ['next string',(t,b)=>({...b,...devString(spec,t<t2?1:t2)}) as PlayerView,t2-.1,t2+.1],
+   ['hit',(t,b)=>({...b,...devString(spec,1),hitReaction:t>=hit.at?hit:undefined,hitStunUntil:t>=hit.at?hit.until:-1e9}) as unknown as PlayerView,hit.at-.05,hit.at+.3],
+   ['timeout',(t,b)=>({...b,...devString(spec,1)}) as PlayerView,end+DEV[spec].memory-.1,end+DEV[spec].memory+.5]];
+  if(spec==='emperor')cases.push(['roll',(t,b)=>({...b,...devString(spec,1),roll:t>=R.at?R:undefined}) as PlayerView,R.at-.05,R.at+.1]);
+  for(const [name,view,from,to] of cases){
+   const [s60,s120]=[60,120].map(hz=>steps(spec,hz,view,from,to));
+   assert.ok(s120<=s60*.7+.3,`${spec} ${name}: ${s60.toFixed(1)} deg/frame at 60 Hz vs ${s120.toFixed(1)} at 120 Hz`);
   }
  }
 });
