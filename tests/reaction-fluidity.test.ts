@@ -9,6 +9,7 @@ import {finishPose,seedTransition,transitionAction,transitionDuration,TRANSITION
 import {knockdownPhase} from '../src/client/knockdown-motion.js';
 import {probeBase,probeRig,probeRates,describeProbe,weaponTip} from './helpers/motion-probe.js';
 import {KnockdownRagdolls} from '../src/client/knockdown-ragdolls.js';
+import {KILL_EFFECTS} from '../src/client/death-effects.js';
 
 await initPhysics();
 const quats=(r:CharacterRig)=>TRANSITION_BONES.map(b=>r[b].quaternion.clone());
@@ -149,4 +150,19 @@ test('a knockdown ragdoll hands its final limb pose back to the rig at the recov
   const moved=Math.max(...TRANSITION_BONES.map((b,i)=>r[b].getWorldQuaternion(new T.Quaternion()).angleTo(handed[i])));assert.ok(moved<.35,`the rig blends from the ragdoll pose (max ${moved.toFixed(3)} rad in one frame)`);
   fx.clear();
  }finally{s.dispose();}
+});
+
+test('kill cinematic victims are the live model and start from the pose the fighter died in, rewindably',()=>{
+ const joints=['motion-root','spine','head','left-shoulder','right-elbow','left-hip','right-knee'];
+ for(const effect of ['launch','shrink','ascension','ghost','confetti','dev-clown','dev-clown-love','dev-bass-van','dev-raging-demon']){
+  const base=probeBase('sword'),live=probeRig('sword',true);for(let t=0;t<.6;t+=1/60)animateCharacter(live,{...animationPreviewPlayer(base,'run',t),hitStunUntil:-1e9} as PlayerView,t,1/60);live.group.updateMatrixWorld(true);
+  const p={...base,hp:0} as PlayerView,death={id:'x',at:0,effect,seed:7,pos:{...base.pos},velocity:{x:0,y:0,z:0},direction:{x:0,y:.1,z:-1},source:'k',kind:'direct',yaw:0,melee:true,force:300,attacker:{pos:{x:0,y:base.pos.y,z:2},yaw:Math.PI,color:'#3af',cosmetics:base.cosmetics!,spec:'sword'}} as unknown as NonNullable<PlayerView['death']>;
+  const scene=new T.Scene(),fx=KILL_EFFECTS[effect](scene,live.group,{...p,death},death,1,100);let victim:T.Object3D|undefined;
+  scene.traverse(o=>{if(!victim&&o!==live.group&&(o.name==='love-partner'||o.name==='bass-passenger'||o.name==='blank-mannequin-v2'&&o.userData.armorGlow!==undefined&&o.getObjectByName('motion-root')))victim=o;});
+  assert.ok(victim,effect);assert.ok(victim!.getObjectByName('armor-back-light'),`${effect}: the victim keeps the live rig's armor glow model`);
+  const pose=()=>joints.map(n=>victim!.getObjectByName(n)!.quaternion.clone());
+  fx.update(0);pose().forEach((q,i)=>assert.ok(q.angleTo(live.group.getObjectByName(joints[i])!.quaternion)<1e-6,`${effect}: ${joints[i]} starts in the death pose`));
+  fx.update(1.3);const late=pose();fx.update(.1);fx.update(1.3);pose().forEach((q,i)=>assert.ok(q.angleTo(late[i])<1e-6,`${effect}: rewindable ${joints[i]}`));
+  fx.dispose();
+ }
 });
