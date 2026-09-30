@@ -15,14 +15,14 @@ export function meleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<typeof atta
  if(special&&time<special.until){meleeReady(r,p,time);specialMotion(r,p,time);return;}
  if(!a.active){meleeReady(r,p,time);return;}
  // The pose the phrase blends in over (it records how this attack was entered on its first frame). Out of the running
- // carry the sword keeps the orientation the carry (at the weight it had as the attack began; the eased carry itself fades
- // over the top) gives the hand the phrase is raising, and turns by the shortest arc onto the phrase's blade as the phrase
- // blends in, instead of keeping the pumping hand's twist, which swung the tip up through vertical. The braced greatsword
- // goes straight to its load (the support hand holds the grip); the daggers' and shield's carries are grip turns the
- // phrase's own grip blend already unwinds.
- settleCarry(r,p,time);const entry=phraseEntry(r,p,a.windup);
- if(a.age<entry){
-  const lean=meleeEntry(r,p).carry;meleeReady(r,p,time,1,lean);const k=p.spec==='sword'?lean*(1-ease(a.age/entry)):0;if(k>.001)weaponOrientation(r,p,r.weapon,_w0,lean);
+ // carry the sword keeps the orientation the carry (at the weight it had as the attack began) gives the hand the phrase is
+ // raising, and turns at a near-steady rate over the whole windup by the shortest arc onto the phrase's blade (the forward-down
+ // sprint blade has far to travel to the load, so an eased turn would whip the tip). The braced greatsword goes straight to
+ // its load (the support hand holds the grip); the daggers' and shield's carries are grip turns the phrase's own grip blend
+ // already unwinds.
+ settleCarry(r,p,time);const entry=phraseEntry(r,p,a.windup),steer=p.spec==='sword'?Math.max(entry,a.windup):0;
+ if(a.age<entry||a.age<steer){
+  const lean=meleeEntry(r,p).carry;if(a.age<entry)meleeReady(r,p,time,1,lean);const k=steer?lean*(1-a.age/steer)**.75:0;if(k>.001)weaponOrientation(r,p,r.weapon,_w0,lean);
   primaryMeleeMotion(r,p,a);if(k>.001)steerWeapon(r,r.weapon,_w0,k);return;
  }
  primaryMeleeMotion(r,p,a);

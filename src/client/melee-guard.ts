@@ -1,7 +1,7 @@
 import * as T from 'three';
 import type {CharacterRig} from './character-rig.js';
 import type {PlayerView} from '../shared/simulation.js';
-import {hand,braceWeapon} from './rig-ik.js';
+import {hand,braceWeapon,supportHand} from './rig-ik.js';
 import {smoothMotion as ease,timeJumped} from './motion-quality.js';
 import {meleeRecovery} from '../shared/souls-combat.js';
 import {isFirstPersonRig} from './pose-flags.js';
@@ -10,9 +10,10 @@ import {isFirstPersonRig} from './pose-flags.js';
  * from it) and the idle the melee weapons rest in, so combos and idles flow through one stance instead of a neutral.
  * Hand targets are chest space (x is the rig's left, y up, z forward); rotations are the wrist's chest-space Euler (XYZ),
  * the blade runs along the weapon's +z. The feet, crouch and hip yaw come from the melee entries in stances.ts.
- * While running, the arms keep locomotion's pump and only the weapon turns into a carry that reads the class:
- * sword and greatsword trail tip-back (held near a fixed angle in the rig's frame so they never windmill overhead),
- * daggers turn to a reverse grip along the forearms and the shield rides flat on its forearm.
+ * While running the weapon turns into a Dark Souls style sprint carry: the sword and daggers keep locomotion's arm pump and
+ * hold their blades forward-down (a fixed angle in the rig's frame, pitching a little with the arm, never back past
+ * vertical), the shield rides its pumping forearm face-forward and the greatsword is braced two-handed low to the
+ * right-front, tip down near the floor.
  * The guard is combat readiness, not a permanent idle: it is up through every attack, special and timed block and for a
  * few seconds after, then the fighter relaxes into the plain idle (arms from locomotion, weapon resting in the hand).
  * Readiness is a pure function of authoritative timestamps (never of hits: a hit-stunned pose settles into the same idle
@@ -32,7 +33,7 @@ const GUARDS:Record<string,Readonly<MeleeGuard>>={
 };
 /** The spec's melee guard (undefined for non-melee specs). */
 export function meleeGuard(spec:string):Readonly<MeleeGuard>|undefined{return GUARDS[spec];}
-const _v=new T.Vector3(),_e=new T.Euler(),_h=new T.Quaternion();
+const _v=new T.Vector3(),_e=new T.Euler();
 const hashPhase=(id:string)=>{let h=2166136261;for(let i=0;i<id.length;i++){h^=id.charCodeAt(i);h=Math.imul(h,16777619);}return ((h>>>0)%9973)/9973*Math.PI*2;};
 /** Pose the guard at `weight` (hands by IK from whatever the layers below posed). A slow, per-player blade drift keeps the
  * held guard alive (deterministic: a pure function of time and the player id). */
@@ -42,27 +43,38 @@ export function applyMeleeGuard(r:CharacterRig,p:PlayerView,time:number,weight:n
  if(G.brace){braceWeapon(r,_v,_e,weight);return;}
  hand(r,false,_v,_e,weight);const o=G.off;hand(r,true,_v.set(o.x,o.y-bob,o.z),_e.set(o.rx-drift*.5,o.ry,o.rz),weight);
 }
-/** Running blade carry: the rig-group direction the blade trails toward (tip back and a little down and out) and how much
- * of the arm pump it cancels. The blade only turns about the hand's own x axis (it stays in the plane the fist holds it
- * in), so the grip still reads and the pose stays a plain hand-relative rotation. */
-const CARRY:Record<string,{x:number;y:number;z:number;hold:number}>={sword:{x:-.25,y:.2,z:-1,hold:.85},greatsword:{x:-.3,y:.06,z:-1,hold:.92}};
-const _y=new T.Vector3(),_z=new T.Vector3(),_t=new T.Vector3();
-/** Running carry at `carry` (0..1): counter-rotates the weapon(s) under locomotion's arm pump (sword and greatsword trail
- * tip-back instead of windmilling overhead), daggers turn to a reverse grip, the shield rides flat on its forearm.
- * Chain rotations are read from local quaternions (no world matrix update). */
+/** Sprint carries. Sword, daggers and shield: the weapon's orientation in the rig group's frame (Euler XYZ; the blade runs
+ * along +z, rx tips it down, ry turns it toward the rig's left; mirrored for the left dagger), pitched by `swing` per radian
+ * of its arm's pump (the arm forward lifts the tip a little, back drops it), and extra elbow flex (`elbow`, rad). The
+ * greatsword is braced (both hands on the grip; the left takes the support grip) at a chest-space grip, so the arms ride
+ * the torso's bob instead of pumping. */
+const SPRINT:Record<string,{rx:number;ry:number;rz:number;swing:number;elbow:number}>={sword:{rx:.45,ry:-.14,rz:0,swing:-.2,elbow:0},daggers:{rx:.5,ry:.16,rz:0,swing:-.15,elbow:0},shield:{rx:-.08,ry:.35,rz:0,swing:.12,elbow:.15}};
+const GS_CARRY={x:-.06,y:-.11,z:.18,rx:.2,ry:-.8,rz:1.45};
+const _sp=new T.Euler(),_cq=new T.Quaternion(),_gq=new T.Quaternion();
+/** The sprint carry's rig-group orientation for `w` (sword, daggers, shield), from its arm's current pump. */
+function sprintOrientation(r:CharacterRig,c:{rx:number;ry:number;rz:number;swing:number},w:T.Object3D,out:T.Quaternion){
+ const left=w===r.offWeapon,arm=left?r.leftArm:r.rightArm;return out.setFromEuler(_sp.set(c.rx+c.swing*T.MathUtils.clamp(arm.rotation.x,-1.2,1),left?-c.ry:c.ry,left?-c.rz:c.rz));
+}
+/** Running carry at `carry` (0..1): sword, daggers and shield turn their weapon(s) in the hand toward the sprint carry (a
+ * slerp of the hand-relative rotation, so it fades in and out continuously); the greatsword braces into its two-handed low
+ * carry (its support hand is re-seated on the grip part way in). */
 export function carryMeleeWeapon(r:CharacterRig,p:PlayerView,carry:number){
  if(carry<=.001)return;
- if(p.spec==='daggers'){for(const w of [r.weapon,r.offWeapon]){w.rotation.x=T.MathUtils.lerp(w.rotation.x,-1.38,carry);w.rotation.z=T.MathUtils.lerp(w.rotation.z,w===r.weapon?.35:-.35,carry);}return;}
- if(p.spec==='shield'){r.weapon.rotation.x=T.MathUtils.lerp(r.weapon.rotation.x,.04,carry);return;}
- const c=CARRY[p.spec];if(!c)return;
- // The hand socket's y and z axes in the rig group's frame; the x rotation that best points the blade (+z) along the carry.
- _h.identity();for(let n:T.Object3D|null=r.weapon.parent;n&&n!==r.group;n=n.parent)_h.premultiply(n.quaternion);
- _y.set(0,1,0).applyQuaternion(_h);_z.set(0,0,1).applyQuaternion(_h);_t.set(c.x,c.y,c.z).normalize();
- // The turn always runs back over the top (decreasing x) and never through the floor, so the direction never flips
- // while the carry fades in or out (the target sits well away from the incoming hold, so there is no branch to cross).
- const best=Math.atan2(-_y.dot(_t),_z.dot(_t)),from=r.weapon.rotation.x,turn=T.MathUtils.euclideanModulo(best-from,Math.PI*2)-Math.PI*2;
- r.weapon.rotation.x=from+turn*c.hold*carry;
+ if(p.spec==='greatsword'){
+  // Part way in (a walk, or the carry easing in and out) the blade turns in the rig's frame from the hold it had toward
+  // the carry's, instead of following the half-blended wrist and grip (which lifted the tip above the horizontal).
+  const g=GS_CARRY;socket(r,r.weapon,_hq);_sq.copy(_hq).multiply(r.weapon.quaternion);braceWeapon(r,_v.set(g.x,g.y,g.z),_e.set(g.rx,g.ry,g.rz),carry);
+  if(carry<.999){_cq.identity();for(let n:T.Object3D|null=r.chest;n&&n!==r.group;n=n.parent)_cq.premultiply(n.quaternion);steerWeapon(r,r.weapon,_sq.slerp(_cq.multiply(_gq.setFromEuler(_e)),carry),1);const grip=r.weapon.getObjectByName('support-grip');if(grip)supportHand(r,grip,carry);}
+  return;
+ }
+ const c=SPRINT[p.spec];if(!c)return;
+ if(c.elbow)r.rightElbow.rotation.x-=c.elbow*carry;
+ for(const w of p.spec==='daggers'?[r.weapon,r.offWeapon]:[r.weapon]){socket(r,w,_hq);sprintOrientation(r,c,w,_sq);w.quaternion.slerp(_hq.invert().multiply(_sq),carry);}
 }
+/** Forward sprint lean under the melee carries (spine pitch, rad), building from a walk to a run on the stride blend, so it
+ * collapses with the stride when an action plants the feet. Not on the first-person view model. */
+const LEAN:Record<string,number>={sword:.1,daggers:.12,shield:.08,greatsword:.14};
+export function sprintLean(r:CharacterRig,p:PlayerView){const k=LEAN[p.spec];if(k&&!isFirstPersonRig(r))r.spine.rotation.x+=k*ease((r.motion-.1)/.65);}
 /** Seconds the guard stays up after the last melee action, then the time it takes to lower. */
 export const GUARD_HOLD=2.4,GUARD_FADE=.8;
 /** Combat readiness 0..1: 1 during a melee attack, special or timed block and for GUARD_HOLD s after it, then easing to 0
@@ -110,18 +122,16 @@ const _entry={carry:0,guard:1};
 /** Advance the carry hold on a melee frame that does not pose the guard (the body of an attack), so the next entry sees the
  * carry the fighter actually shows, not the value from the attack's first frames. */
 export function settleCarry(r:CharacterRig,p:PlayerView,time:number){carryHold(r,runCarry(r),time,p);}
-/** The running carry's target weight from the stride blend. The first-person view model never carries (a trailing blade
- * would leave the camera's view); it keeps the guard or the relaxed hold while running. */
-const runCarry=(r:CharacterRig)=>isFirstPersonRig(r)?0:ease((r.motion-.10)/.65);
+/** The running carry's target weight from the stride blend (full from a brisk walk, so walking shows the carry rather
+ * than the pumping relaxed hold). The first-person view model never carries; it keeps the guard or the relaxed hold. */
+const runCarry=(r:CharacterRig)=>isFirstPersonRig(r)?0:ease((r.motion-.06)/.45);
 const _hq=new T.Quaternion(),_sq=new T.Quaternion(),_xq=new T.Quaternion(),_X=new T.Vector3(1,0,0);
 const socket=(r:CharacterRig,w:T.Object3D,out:T.Quaternion)=>{out.identity();for(let n:T.Object3D|null=w.parent;n&&n!==r.group;n=n.parent)out.premultiply(n.quaternion);return out;};
-/** A weapon's orientation in the rig group's frame, from local quaternions. For the sword and greatsword `carry` gives the
- * orientation the running carry at that weight would give the hand as it is posed now (the weapon itself is not moved). */
+/** A weapon's orientation in the rig group's frame, from local quaternions. For the sword, daggers and shield `carry` gives
+ * the orientation the running carry at that weight would give the hand as it is posed now (the weapon itself is not moved). */
 export function weaponOrientation(r:CharacterRig,p:PlayerView,w:T.Object3D,out:T.Quaternion,carry?:number){
- socket(r,w,out);const c=w===r.weapon&&carry!==undefined?CARRY[p.spec]:undefined;if(!c)return out.multiply(w.quaternion);
- _y.set(0,1,0).applyQuaternion(out);_z.set(0,0,1).applyQuaternion(out);_t.set(c.x,c.y,c.z).normalize();
- const from=RELAXED[p.spec]??.5,turn=T.MathUtils.euclideanModulo(Math.atan2(-_y.dot(_t),_z.dot(_t))-from,Math.PI*2)-Math.PI*2;
- return out.multiply(_xq.setFromAxisAngle(_X,from+turn*c.hold*carry!));
+ socket(r,w,out);const c=carry!==undefined?SPRINT[p.spec]:undefined;if(!c)return out.multiply(w.quaternion);
+ sprintOrientation(r,c,w,_sq);_hq.copy(out).invert().multiply(_sq);return out.multiply(_xq.setFromAxisAngle(_X,RELAXED[p.spec]??.5).slerp(_hq,carry!));
 }
 /** Turn a weapon in its hand so its orientation (rig group frame) moves from where the layers above left it toward `to`
  * by `weight`: an attack blending in over the running carry keeps the trailing blade (and its roll) while the hand under it
