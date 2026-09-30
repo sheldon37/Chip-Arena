@@ -18,9 +18,13 @@ export function meleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<typeof atta
  primaryMeleeMotion(r,p,a);
 }
 
+/** Special phrases (sword launcher, shield and dagger throws, wolf spin), driven by the authoritative at/releaseAt/until.
+ * Past the release the pose keeps travelling (a slow ~12% drift beyond the throw) instead of freezing at full extension,
+ * and it eases back to the guard from releaseAt+.06; the weapon's own hold blends by the same weight. */
 function specialMotion(r:CharacterRig,p:PlayerView,time:number){
- const a=p.meleeAction!,age=time-a.at,wind=Math.max(.025,a.releaseAt-a.at),drive=ease((age-wind*.55)/(wind*.55)),coil=ease(age/(wind*.65))*(1-drive),recovery=a.kind==='shield-throw'?1-ease((time-a.releaseAt-.16)/.25):a.kind==='wolf-spin'?1:1-ease((time-a.releaseAt-.1)/Math.max(.1,a.until-a.releaseAt-.1)),weight=ease(age/.055)*recovery;
- const blend=(node:T.Object3D,x:number,y=0,z=0)=>node.quaternion.slerp(new T.Quaternion().setFromEuler(new T.Euler(x,y,z)),weight);
+ const a=p.meleeAction!,age=time-a.at,wind=Math.max(.025,a.releaseAt-a.at),drive=ease((age-wind*.5)/(wind*.5)),coil=ease(age/(wind*.65))*(1-drive),drift=ease((age-wind)/.22)*.12;
+ const settleFrom=a.releaseAt+.06,recovery=a.kind==='wolf-spin'?1:1-ease((time-settleFrom)/Math.max(.12,a.until-settleFrom)),weight=ease(age/.055)*recovery,d=drive+drift;
+ const blend=(node:T.Object3D,x:number,y=0,z=0)=>node.quaternion.slerp(_q.setFromEuler(_e.set(x,y,z)),weight);
  if(a.kind==='wolf-spin'){
   const air=Math.max(0,time-a.releaseAt),land=a.landedAt===undefined?0:ease((time-a.landedAt)/.55),flight=ease(Math.min(1,air/.76)),squat=a.released?0:coil;
   // Full forward somersault around the hips, then planted two-handed landing.
@@ -31,15 +35,20 @@ function specialMotion(r:CharacterRig,p:PlayerView,time:number){
   const impact=a.landedAt!==undefined?1:Math.max(0,(flight-.72)/.28),settle=a.landedAt!==undefined?land:0;
   braceWeapon(r,new T.Vector3(-.06,.42*(1-impact)-.19*impact+.24*settle,.12+.28*impact),new T.Euler(-1.75*(1-impact)+.7*impact-.85*settle,0,-.08),ease(age/.06));return;
  }
- const torque=(-.65*coil+.95*drive)*recovery;r.pelvis.rotation.y+=torque*.45;r.spine.rotation.y+=torque*.5;r.chest.rotation.y+=torque*.35;r.head.rotation.y-=torque*.65;
- r.body.position.z+=(-.08*coil+.16*drive)*weight;r.body.position.y-=.07*coil*weight;r.body.rotation.x+=(-.08*coil+.16*drive)*weight;
- blend(r.leftLeg,-.3-.25*drive);blend(r.leftKnee,.42+.25*drive);blend(r.rightLeg,.15+.2*drive);blend(r.rightKnee,.32);
+ const torque=(-.65*coil+.95*d)*recovery;r.pelvis.rotation.y+=torque*.45;r.spine.rotation.y+=torque*.5;r.chest.rotation.y+=torque*.35;r.head.rotation.y-=torque*.65;
+ r.body.position.z+=(-.08*coil+.16*d)*weight;r.body.position.y-=.07*coil*weight;r.body.rotation.x+=(-.08*coil+.16*d)*weight;
+ blend(r.leftLeg,-.3-.25*d);blend(r.leftKnee,.42+.25*d);blend(r.rightLeg,.15+.2*d);blend(r.rightKnee,.32+(a.kind==='dagger-throw'?.18*d:0));
  if(a.kind==='sword-launch'){
-  blend(r.rightArm,-.1-2.3*drive,-.65*coil+.1*drive,-.2-.15*coil);blend(r.rightElbow,-1.0+.65*drive);blend(r.rightHand,-.15+.35*drive,0,-.12);r.weapon.rotation.set(1.45,0,0);
-  r.body.position.y+=(-.16*coil+.13*drive)*weight;r.body.rotation.x-=.23*drive*weight;blend(r.leftArm,.3-.9*drive,.1,.4);blend(r.leftElbow,-.85);r.rightFoot.rotation.x+=.3*drive*weight;
+  // Rising cut: heel lifts, the back arches and the chest opens, the arm finishes high with a soft elbow.
+  blend(r.rightArm,-.1-2.3*d,-.65*coil+.1*d,-.2-.15*coil);blend(r.rightElbow,-1.0+.45*d);blend(r.rightHand,-.15+.35*d,0,-.12);r.weapon.quaternion.slerp(_q.setFromEuler(_e.set(1.45,0,0)),weight);
+  r.body.position.y+=(-.16*coil+.13*d)*weight;r.body.rotation.x-=.23*d*weight;r.spine.rotation.x-=.12*d*weight;r.chest.rotation.x-=.06*d*weight;
+  blend(r.leftArm,.3-.9*d,.1,.4);blend(r.leftElbow,-.85);blend(r.leftHand,.1,0,0);r.rightFoot.rotation.x+=.3*d*weight;r.leftFoot.rotation.x+=.35*d*weight;
  }else{
-  const shield=a.kind==='shield-throw';
-  blend(r.rightArm,shield?-.3-.08*coil-1.1*drive:-1.25-.3*coil-.10*drive,(-1.15*coil+1.1*drive)*(shield?1:.7),-.45-(shield?.05:.25)*coil);blend(r.rightElbow,-(shield?1.1:1.7)*coil-.25*drive-.15);blend(r.rightHand,-.15*coil+.3*drive,-.35*coil+.5*drive,shield?.15:-.3);
-  r.weapon.rotation.set(shield?1.65:1.5,0,shield?.5*coil:0);blend(r.leftArm,-.3-.65*drive,.4-.9*drive,.4);blend(r.leftElbow,-1.1);r.offWeapon.rotation.set(1.5,0,0);
+  // Throws: the throwing arm follows through across the body after the release; the dagger throw pushes off the rear toes.
+  const shield=a.kind==='shield-throw',follow=ease((time-a.releaseAt)/.18)*(shield?.45:.3);
+  blend(r.rightArm,shield?-.3-.08*coil-1.1*d:-1.25-.3*coil-.10*d,(-1.15*coil+1.1*d)*(shield?1:.7)+follow,-.45-(shield?.05:.25)*coil+follow*.4);blend(r.rightElbow,-(shield?1.1:1.7)*coil-.25*d-.15);blend(r.rightHand,-.15*coil+.3*d,-.35*coil+.5*d,shield?.15:-.3);
+  r.weapon.quaternion.slerp(_q.setFromEuler(_e.set(shield?1.65:1.5,0,shield?.5*coil:0)),weight);blend(r.leftArm,-.3-.65*d,.4-.9*d,.4);blend(r.leftElbow,-1.1);blend(r.leftHand,.1,0,0);r.offWeapon.quaternion.slerp(_q.setFromEuler(_e.set(1.5,0,0)),weight);
+  if(!shield){r.rightFoot.rotation.x+=.4*d*weight;r.body.position.z+=.04*d*weight;}
  }
 }
+const _q=new T.Quaternion(),_e=new T.Euler();
