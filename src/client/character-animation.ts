@@ -13,7 +13,7 @@ import {clamp} from '../shared/config.js';
 import {CharacterRig,settleJointCovers} from './character-rig.js';
 import {smooth} from './pose-math.js';
 import {knockdownMotion} from './knockdown-motion.js';
-import {updateAimWeight,rangedLayer,nonMeleeGuard} from './ranged-motion.js';
+import {updateAimWeight,rangedLayer,nonMeleeGuard,restoreHeldParts} from './ranged-motion.js';
 import {magicLayer} from './magic-motion.js';
 import {clearLegsAuthored} from './pose-flags.js';
 
@@ -47,7 +47,7 @@ function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=
  clearLegsAuthored(r);animateCosmetics(r,time);
  // Commitment, hitstun and dodge rolls hold the stride: the root is moved by the action, not by running steps.
  const w=WEAPONS[p.spec],planted=committed(p,time)||(p.hitStunUntil||0)>time||rolling(p,time);if(planted)r.motion*=Math.exp(-clamp(dt,0,.05)*22);locomotion(r,{...p,pitch,vel:planted?{x:0,y:p.vel.y,z:0}:p.vel},time,dt,planted);const pose=attackPose(p,time);
- r.weapon.visible=!p.weaponAway;r.weapon.position.set(0,0,0);r.weapon.rotation.set(.5,0,0);r.weapon.scale.set(1,1,w.class==='melee'?p.reach/w.range:1);r.offWeapon.position.set(0,0,0);r.offWeapon.rotation.set(.55,0,0);r.offWeapon.scale.copy(r.weapon.scale);
+ r.weapon.visible=!p.weaponAway;r.weapon.position.set(0,0,0);r.weapon.rotation.set(.5,0,0);r.weapon.scale.set(1,1,w.class==='melee'?p.reach/w.range:1);r.offWeapon.position.set(0,0,0);r.offWeapon.rotation.set(.55,0,0);r.offWeapon.scale.copy(r.weapon.scale);restoreHeldParts(r);
  if(p.juggle&&time<p.juggle.until){animateJuggle(r,p,time);return pose;}
  if(p.knockdown&&time<p.knockdown.until){knockdownMotion(r,p,time);return pose;}
  if((p.hitStunUntil||0)>time){if(w.class==='melee')meleeReady(r,p,time);if(hitReactionMotion(r,p,time,true))return pose;fallbackFlinch(r,p,time);return pose;}
