@@ -8,20 +8,35 @@ import {smoothMotion as ease,ankleInGroup} from './motion-quality.js';
 import {stanceFor} from './stances.js';
 import {meleeGuard,meleeEntry,type GuardHand} from './melee-guard.js';
 import {foot,hand} from './rig-ik.js';
+import {meleeHitAt} from './block-impacts.js';
 export {foot,hand};
 /** Phrase keys: 0..1 windup (swingAt at 1), 1..2 the active window (swingUntil at 2), 2..3 recovery (commitment end at 3).
  * 2.3 is the follow-through extreme: the blade still carries momentum past swingUntil and eases out instead of stopping
  * dead on the hit window's last frame; 2.65 is the return, which comes back low and close instead of retracing the cut. */
 const keys=[0,.55,1,1.28,1.65,2,2.3,2.65,3];
+/** Share of the greatsword's and the shield's recovery their follow-through drags on before the return (meleePhase `drag`). */
+const DRAG=.3,SHIELD_DRAG=.35;
+/** Phase speed kept at the drag extreme, as a share of the return's mean speed (the hang drifts; the two beats join C1). */
+const DRIFT=1;
+/** Cubic Hermite from p0 to p1 over s in 0..1 with end slopes t0, t1 (per unit s). */
+const herm=(s:number,p0:number,p1:number,t0:number,t1:number)=>{const s2=s*s,s3=s2*s;return p0+(p1-p0)*(3*s2-2*s3)+t0*(s3-2*s2+s)+t1*(s3-s2);};
 /** The fourth dagger cut's body turn: a full forward turn over .8..3 that never unwinds. */
 const SPIN_TURN=[0,-.35,-.6,.9,2.4,3.9,5.0,5.9,Math.PI*2],SPIN_FROM=poseCurve(keys,SPIN_TURN,1.1);
 type Arr=number[];
 /** Phase of an attack from authoritative timestamps. The recovery's phase starts at the strike's phase speed (so the
  * follow-through keeps the blade's momentum) and settles with zero speed at the commitment end. */
-export function meleePhase(a:Pick<ReturnType<typeof attackPose>,'age'|'windup'|'window'>,recoverySeconds:number,age=a.age){
+export function meleePhase(a:Pick<ReturnType<typeof attackPose>,'age'|'windup'|'window'>,recoverySeconds:number,age=a.age,drag=0){
  if(age<a.windup)return Math.max(0,age)/a.windup;
  if(age<a.windup+a.window)return 1+(age-a.windup)/a.window;
  const u=Math.min(1,(age-a.windup-a.window)/Math.max(.01,recoverySeconds)),m=Math.min(2.1,recoverySeconds/Math.max(.01,a.window));
+ if(drag>0){
+  // A heavy blade's recovery in two C1 beats: the follow-through keeps the strike's phase speed and decelerates onto the
+  // drag extreme (2.65) over the first `drag` of the recovery, still drifting at DRIFT of the return's mean speed (a hang,
+  // never a dead stop), then the return picks up from that drift and settles to zero speed at the guard, so the reset
+  // reads as a deliberate lift back instead of a stop-then-whip or a fast second drop.
+  const v=DRIFT*.35/(1-drag);
+  return u<drag?herm(u/drag,2,2.65,m*drag,v*drag):herm((u-drag)/(1-drag),2.65,3,v*(1-drag),0);
+ }
  return 2+u*(m+u*((3-2*m)+u*(m-2)));
 }
 /** A guard-anchored curve: the first and last keys are the guard value, the middle seven are the phrase (times `f`). The
@@ -43,21 +58,21 @@ export function phraseEntry(r:object,p:PlayerView,windup:number){const base=Math
  * sweep stays 1..2; anticipation, follow-through and recovery carry the body's weight around it, and every phrase starts and
  * ends in the weapon's combat-ready guard (melee-guard.ts), so a held combo flows through one stance. */
 export function primaryMeleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>){
- const rate=p.attackRate||1,recoverySeconds=meleeRecovery(p.spec)/rate,phase=meleePhase(a,recoverySeconds),weight=ease(a.age/phraseEntry(r,p,a.windup)),lean=meleeEntry(r,p).carry,c=(values:Arr)=>poseCurve(keys,values,phase),ca=(values:Arr)=>curve(values,phase,lean);
+ const rate=p.attackRate||1,recoverySeconds=meleeRecovery(p.spec)/rate,drag=p.spec==='greatsword'?DRAG:p.spec==='shield'?SHIELD_DRAG:0,stop=hitStop(r,p,a),phase=meleePhase(a,recoverySeconds,a.age-stop,drag),weight=ease(a.age/phraseEntry(r,p,a.windup)),lean=meleeEntry(r,p).carry,c=(values:Arr)=>poseCurve(keys,values,phase),ca=(values:Arr)=>curve(values,phase,lean);
  const index=Math.max(0,(p.attackIndex||1)-1),dagger=p.spec==='daggers',heavy=p.spec==='greatsword',shield=p.spec==='shield',reverse=dagger||heavy||shield?index%2===1:index%3===1,sign=reverse?-1:1,overhead=!heavy&&!dagger&&!shield&&index%3===2,spin=dagger&&index%4===3,low=heavy||dagger&&index%4===2;
  const G=meleeGuard(p.spec)!;
  // Where the incoming layers planted the ankles, before this phrase moves the body (the plant blends from there).
  if(weight<1){ankleInGroup(r,true,_in[0]);ankleInGroup(r,false,_in[1]);}
  // Whole-body turn (hips lead) and torso twist on top of it (shoulders trail the hips, most for the greatsword).
- const turnArr=spin?SPIN_TURN:heavy?[0,-.42,-1.05,-.90,.45,.95,1.32,1.12,0]:overhead?[0,-.26,-.40,-.15,.14,.30,.42,.20,0]:shield?[0,-.36,-.62,-.24,.45,.66,.95,.40,0]:dagger?[0,-.25,-.45,-.15,.20,.40,.46,.34,0]:[0,-.45,-.85,-.35,.30,.62,1.02,.55,0];
- const twistArr=heavy?[0,-.22,-.48,-.62,-.45,.40,.52,.35,0]:dagger?[0,-.10,-.20,-.16,.06,.22,.26,.18,0]:[0,-.18,-.38,-.20,.24,.40,.44,.16,0];
+ const turnArr=spin?SPIN_TURN:heavy?[0,-.42,-1.05,-.90,.45,.92,1.06,1.12,0]:overhead?[0,-.26,-.40,-.15,.14,.30,.42,.20,0]:shield?[0,.30,.62,.46,.20,-.20,-.34,-.26,0]:dagger?[0,-.25,-.45,-.15,.20,.40,.46,.34,0]:[0,-.45,-.85,-.35,.30,.62,1.02,.55,0];
+ const twistArr=heavy?[0,-.22,-.48,-.62,-.45,.40,.50,.55,0]:shield?[0,.14,.28,.06,-.26,-.36,-.36,-.20,0]:dagger?[0,-.10,-.20,-.16,.06,.22,.26,.18,0]:[0,-.18,-.38,-.20,.24,.40,.44,.16,0];
  const turnScale=spin?1:sign,twistScale=(overhead?.5:1)*sign;
  const turn=c(turnArr)*turnScale,twist=c(twistArr)*twistScale;
- const crouch=c(heavy?[0,-.12,-.30,-.37,-.33,-.18,-.10,-.06,0]:overhead?[0,-.12,.06,0,-.24,-.30,-.28,-.14,0]:shield?[0,-.05,-.12,-.13,-.22,-.25,-.20,-.09,0]:low?[0,-.19,-.28,-.25,-.34,-.30,-.22,-.10,0]:[0,-.10,-.16,-.13,-.22,-.26,-.21,-.09,0]);
- r.body.position.x+=c(heavy?[0,-.05,-.10,-.08,.07,.11,.10,.06,0]:[0,-.035,-.07,-.02,.065,.09,.08,.035,0])*sign;
+ const crouch=c(heavy?[0,-.12,-.30,-.37,-.33,-.25,-.19,-.13,0]:overhead?[0,-.14,.10,-.06,-.34,-.42,-.40,-.22,0]:shield?[0,-.12,-.20,-.18,-.14,-.10,-.08,-.05,0]:low?[0,-.19,-.28,-.25,-.34,-.30,-.22,-.10,0]:dagger?[0,-.14,-.22,-.19,-.28,-.30,-.24,-.11,0]:[0,-.10,-.16,-.13,-.22,-.26,-.21,-.09,0]);
+ r.body.position.x+=c(heavy?[0,-.05,-.10,-.08,.07,.11,.10,.06,0]:shield?[0,.03,.05,.01,-.05,-.08,-.07,-.03,0]:[0,-.035,-.07,-.02,.065,.09,.08,.035,0])*sign;
  r.body.position.z+=c(heavy?[0,-.06,-.12,-.09,.13,.18,.15,.08,0]:[0,-.05,-.08,0,.14,.17,.15,.07,0]);r.body.position.y+=crouch;
- r.body.rotation.y+=turn;r.body.rotation.x+=c(heavy?[0,-.09,.22,.30,.26,0,-.08,-.06,0]:overhead?[0,-.15,-.26,-.14,.34,.40,.34,.16,0]:[0,-.07,-.15,.04,.20,.26,.22,.10,0]);
- r.body.rotation.z+=c(heavy?[0,-.10,-.20,-.24,.16,.22,.18,.08,0]:[0,-.05,-.11,-.06,.12,.16,.13,.05,0])*sign;
+ r.body.rotation.y+=turn;r.body.rotation.x+=c(heavy?[0,-.09,.22,.30,.28,.20,.13,.08,0]:shield?[0,.03,.07,.05,.06,.05,.04,.02,0]:overhead?[0,-.15,-.28,-.10,.38,.48,.42,.18,0]:[0,-.07,-.15,.04,.20,.26,.22,.10,0]);
+ r.body.rotation.z+=c(heavy?[0,-.10,-.20,-.24,.16,.22,.18,.08,0]:shield?[0,.04,.07,.02,-.07,-.10,-.08,-.03,0]:[0,-.05,-.11,-.06,.12,.16,.13,.05,0])*sign;
  r.pelvis.rotation.y+=twist*.5;r.spine.rotation.y+=twist*.65;r.chest.rotation.y+=twist*.55;
  r.spine.rotation.x+=c(heavy?[0,-.10,-.16,-.04,.14,.18,.10,.04,0]:overhead?[0,-.03,-.12,-.08,.10,.18,.14,.05,0]:[0,-.025,-.08,-.03,.09,.13,.10,.04,0]);
  r.chest.rotation.z+=c([0,-.04,-.10,-.06,.07,.11,.09,.04,0])*sign;
@@ -80,8 +95,24 @@ export function primaryMeleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<type
   const phrase=shield?reverse?'shieldRise':'shield':overhead?'swordOverhead':reverse?'swordBackhand':'swordForehand',set=MELEE_PHRASES[phrase];
   arm(r,false,set,G.main,false,ca,weight);arm(r,true,shield?MELEE_PHRASES.shieldOff:reverse?MELEE_PHRASES.swordOffTucked:MELEE_PHRASES.swordOff,G.off,false,ca,weight);
  }
- headTrack(r,p,a,recoverySeconds,turnArr,twistArr,turnScale,twistScale,crouch,spin,weight);
+ headTrack(r,p,a,recoverySeconds,turnArr,twistArr,turnScale,twistScale,crouch,spin,weight,stop);
  if(p.chips.hurricane&&!spin)r.body.rotation.y+=ease(a.strike)*Math.PI*2; // A complete turn never unwinds during recovery.
+}
+/** Hit-stop (presentation only): when this attack's blade lands (the attacker's 'hit' event, block-impacts.ts), the phrase
+ * all but stops for a beat, then catches up. Returned is the phrase's lag behind the authoritative age: it rises at 1-slow
+ * over `hold` seconds from the first frame that knew of the hit (so the pose never jumps backward), then eases back to zero
+ * over `catchUp`, so the phrase is back on the authoritative clock within ~.16 s of contact; the pose clock never runs
+ * backward (its speed is `slow` at least). The root travel, feet anchors and every authoritative timestamp are untouched.
+ * A hit that reaches this rig more than ~80 ms after it happened (two 30 Hz frames: rigs animate before the frame's events are
+ * read; later is a late network event) shows no stop rather than a pop. */
+const HIT_STOP:Record<string,[hold:number,slow:number,catchUp:number]>={greatsword:[.075,.1,.09],sword:[.05,.18,.08],shield:[.06,.14,.08],daggers:[.028,.3,.05]};
+type StopGate={attack:number;at:number;from:number;on:boolean};const gates=new WeakMap<object,StopGate>();
+export function hitStop(r:object,p:PlayerView,a:Pick<ReturnType<typeof attackPose>,'age'|'windup'|'window'>){
+ const k=HIT_STOP[p.spec],t=p.lastAttack+a.age;if(!k||!p.id)return 0;const h=meleeHitAt(p.id,t,.5);
+ if(h===undefined||h<p.lastAttack+a.windup-.03||h>p.lastAttack+a.windup+a.window+.05)return 0;
+ let g=gates.get(r);if(!g||g.attack!==p.lastAttack||g.at!==h||t<g.from){g={attack:p.lastAttack,at:h,from:t,on:t-h<=.08};gates.set(r,g);}
+ if(!g.on)return 0;const [hold,slow,catchUp]=k,u=t-g.from,max=hold*(1-slow);
+ return u<=0?0:u<hold?u*(1-slow):u<hold+catchUp?max*(1-ease((u-hold)/catchUp)):0;
 }
 /** One arm's phrase: the seven middle keys (.55..2.65) of the chest-space hand target (x is the rig's left) and the wrist's
  * chest-space Euler; the first and last keys are the guard's. Dagger tables are written for a right-hand strike and are
@@ -98,17 +129,21 @@ const mix=(a:[number,number,number],b:[number,number,number]):[number,number,num
 export const MELEE_PHRASES={
  swordForehand:{x:[-.62,-.60,-.52,-.16,.04,.18,-.04],y:[.16,.28,.16,.02,-.08,-.18,-.22],z:[.10,-.16,.22,.44,.42,.28,.28],rx:[-.30,-.50,-.20,.16,.22,.20,.25],ry:[-.75,-1.10,-.55,.30,.68,1.10,.45],rz:[-.20,-.30,-.10,.20,.30,.34,.12]},
  swordBackhand:{x:[-.04,.08,-.06,-.28,-.42,-.52,-.36],y:[.16,.24,.14,.02,-.06,-.12,-.18],z:[.18,.10,.26,.44,.34,.20,.22],rx:[-.35,-.50,-.20,.16,.22,.18,.20],ry:[.75,1.15,.55,-.35,-.75,-1.10,-.45],rz:[.20,.30,.10,-.18,-.28,-.32,-.10],pole:[PB,PB,PB,mix(PB,PR),PR,PR,PR]},
- swordOverhead:{x:[-.24,-.18,-.16,-.10,-.06,-.04,-.12],y:[.30,.58,.46,.04,-.12,-.26,-.18],z:[.20,-.06,.18,.42,.42,.36,.30],rx:[-1.1,-2.05,-1.65,-.7,-.50,-.36,-.2],ry:[-.1,-.1,0,.05,.1,.08,.02],rz:[-.18,-.32,-.08,.25,.38,.30,.14],pole:[PO,PO,PO,PO,PO,PO,PO]},
+ // Finisher (reference: a leaping overhead slam): the blade is raised behind the head as the body rises off the floor, then
+ // driven down through the front into a deep crouch with the tip planted at the floor, held, and drawn back up to the guard.
+ swordOverhead:{x:[-.24,-.18,-.16,-.10,-.06,-.05,-.12],y:[.30,.58,.46,.04,-.22,-.26,-.16],z:[.20,-.06,.18,.42,.40,.36,.30],rx:[-1.1,-2.05,-1.65,-.6,-.45,-.35,-.1],ry:[-.1,-.1,0,.05,.1,.08,.02],rz:[-.18,-.32,-.08,.25,.38,.30,.14],pole:[PO,PO,PO,PO,PO,PO,PO]},
  swordOff:{x:[.38,.42,.44,.30,.22,.24,.26],y:[-.05,-.06,-.02,.04,.10,.08,0],z:[-.02,.02,.06,.24,.26,.24,.20],rx:[-.4,-.4,-.35,-.3,-.35,-.5,-.75],ry:[.4,.6,.4,-.2,-.45,-.35,-.05],rz:[.3,.3,.3,.3,.3,.28,.26]},
  swordOffTucked:{x:[.34,.36,.36,.32,.26,.26,.26],y:[-.10,-.12,-.08,.02,.08,.04,-.02],z:[.04,.02,.04,.14,.22,.22,.18],rx:[-.4,-.4,-.35,-.3,-.35,-.5,-.75],ry:[.4,.6,.4,-.2,-.45,-.35,-.05],rz:[.3,.3,.3,.3,.3,.28,.26]},
- shield:{x:[-.14,-.06,-.20,-.40,-.48,-.52,-.32],y:[.06,.04,.09,.15,.14,.12,.08],z:[.22,.12,.24,.32,.30,.26,.24],rx:[.10,.18,.10,0,-.06,-.06,-.03],ry:[-.2,-.3,-.3,-.55,-.76,-1.02,-.5],rz:[-.18,-.25,-.1,.12,.18,.14,.06]},
- // Second shield cut: a rising edge bash from across the body, turning the other way.
- shieldRise:{x:[-.02,.08,.02,-.24,-.40,-.44,-.30],y:[-.06,-.10,-.04,.14,.24,.22,.12],z:[.22,.14,.26,.36,.32,.26,.24],rx:[.2,.35,.2,-.25,-.45,-.40,-.15],ry:[.2,.35,.2,-.3,-.55,-.65,-.35],rz:[.3,.45,.3,-.1,-.25,-.2,-.05]},
- shieldOff:{x:[.36,.39,.38,.36,.34,.33,.32],y:[-.10,-.16,-.13,-.04,0,-.04,-.08],z:[.02,-.10,-.04,.04,.12,.12,.12],rx:[-.5,-.4,-.4,-.5,-.6,-.7,-.8],ry:[.1,0,0,.1,.2,.2,.2],rz:[.25,.25,.25,.25,.25,.25,.25]},
- dagger:{x:[-.50,-.58,-.36,-.10,0,.02,-.06],y:[.14,.16,.10,-.04,-.14,-.18,-.14],z:[.14,.02,.26,.44,.38,.30,.28],rx:[-.7,-.95,-.55,.2,.45,.50,.35],ry:[-.55,-.8,-.4,.40,.72,.84,.66],rz:[-.2,-.35,-.15,.2,.3,.26,.18],pole:[PD,PD,PD,PD,PD,PD,PD]},
- daggerLow:{x:[-.50,-.58,-.36,-.10,0,.02,-.06],y:[.02,-.06,-.10,-.14,.06,.14,.06],z:[.14,.02,.26,.44,.36,.28,.26],rx:[.1,.2,.12,-.15,-.2,-.25,-.2],ry:[-.55,-.8,-.4,.40,.72,.84,.66],rz:[-.2,-.35,-.15,.2,.3,.26,.18],pole:[PL,PL,PL,mix(PL,PR),PR,PR,PR]},
- daggerOther:{x:[.20,.24,.28,.34,.30,.24,.18],y:[.06,.10,0,-.12,-.04,.02,.06],z:[.30,.26,.22,.10,.16,.22,.26],rx:[-.3,-.2,-.3,-.55,-.75,-.55,-.4],ry:[.3,.55,.85,.7,.25,.15,.1],rz:[.2,.3,.35,.25,.05,.05,.1]},
- greatsword:{x:[-.02,0,.02,.04,.06,.05,.04],y:[.10,.02,-.16,-.06,.13,.31,.36],z:[.14,.14,.24,.32,.28,.22,.20],rx:[-.75,-.45,-.33,-.40,-.64,-.97,-1.05],ry:[-.25,-.15,.40,.75,.50,.05,-.15],rz:[-.2,-.3,-.2,-.1,.1,.18,.2]},
+ // Shield slam (reference: a backhand bash): the shield is drawn across the chest to the far side in the windup, whips out
+ // across the front to the shield side on the release and is held there, face out at shoulder height, before the return.
+ shield:{x:[.02,.10,-.10,-.42,-.54,-.56,-.52],y:[.02,.04,.10,.15,.17,.17,.15],z:[.22,.18,.30,.26,.20,.19,.20],rx:[.10,.12,.05,0,0,0,0],ry:[.35,.60,.05,-.75,-1.10,-1.18,-1.05],rz:[.18,.22,.05,-.05,-.08,-.08,-.06]},
+ // Second shield cut: the answer to the slam, a rising edge bash from low on the shield side up and across the front.
+ shieldRise:{x:[-.40,-.48,-.30,-.05,.06,.08,.02],y:[-.02,-.06,.04,.16,.22,.22,.16],z:[.20,.14,.30,.38,.34,.30,.28],rx:[.25,.35,.1,-.25,-.4,-.4,-.25],ry:[-.6,-.8,-.4,.1,.35,.4,.25],rz:[.1,.15,.1,-.1,-.2,-.2,-.1]},
+ shieldOff:{x:[.30,.28,.32,.36,.36,.35,.33],y:[-.06,-.04,-.08,-.12,-.12,-.12,-.10],z:[.14,.18,.06,-.06,-.08,-.06,0],rx:[-.5,-.4,-.4,-.5,-.6,-.7,-.8],ry:[.1,0,0,.1,.2,.2,.2],rz:[.25,.25,.25,.25,.25,.25,.25]},
+ dagger:{x:[-.32,-.38,-.34,-.10,0,.02,-.06],y:[.08,.12,.10,-.04,-.14,-.18,-.14],z:[.18,.12,.28,.44,.38,.30,.28],rx:[-.55,-.72,-.55,.2,.45,.50,.35],ry:[-.1,-.3,-.35,.40,.72,.84,.66],rz:[-.2,-.35,-.15,.2,.3,.26,.18],pole:[PD,PD,PD,PD,PD,PD,PD]},
+ daggerLow:{x:[-.32,-.38,-.34,-.10,0,.02,-.06],y:[.0,-.04,-.10,-.14,.06,.14,.06],z:[.18,.12,.28,.44,.36,.28,.26],rx:[-.1,.05,.12,-.15,-.2,-.25,-.2],ry:[-.1,-.3,-.35,.40,.72,.84,.66],rz:[-.2,-.35,-.15,.2,.3,.26,.18],pole:[PL,PL,PL,mix(PL,PR),PR,PR,PR]},
+ daggerOther:{x:[.20,.24,.28,.32,.30,.24,.18],y:[.10,.16,.12,.08,.14,.16,.12],z:[.30,.26,.22,.10,.16,.22,.26],rx:[-.3,-.2,-.3,-.55,-.75,-.55,-.4],ry:[.3,.55,.85,.7,.25,.15,.1],rz:[.2,.3,.35,.25,.05,.05,.1]},
+ greatsword:{x:[-.02,0,.02,.04,.07,.09,.10],y:[.10,.02,-.16,-.06,-.08,-.04,.06],z:[.14,.14,.24,.32,.30,.26,.22],rx:[-.75,-.45,-.33,-.40,-.20,-.30,-.45],ry:[-.25,-.15,.40,.75,.85,.92,.95],rz:[-.2,-.3,-.2,-.1,.1,.16,.2]},
 } satisfies Record<string,ArmPhrase>;
 const _t=new T.Vector3(),_eu=new T.Euler(),_pole=new T.Vector3(),_pk:Arr=new Array(7).fill(0);
 /** Pose one arm through a phrase from and back to its guard hand (`mirror` flips a right-hand table onto the left). */
@@ -121,8 +156,8 @@ function arm(r:CharacterRig,left:boolean,set:ArmPhrase,guard:GuardHand,mirror:bo
 const _q=new T.Quaternion(),_h=new T.Quaternion(),_e=new T.Euler(),_f=new T.Vector3();
 /** Gaze stabilisation in the rig group's frame: the head follows a fraction of the lagged body turn (it trails the chest by
  * ~40 ms; a spin spots ahead instead), pitches with the aim and never rolls, however the torso under it pitches and rolls. */
-function headTrack(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,recoverySeconds:number,turnArr:Arr,twistArr:Arr,turnScale:number,twistScale:number,crouch:number,spin:boolean,weight:number){
- const lagged=meleePhase(a,recoverySeconds,a.age+(spin?.04:-.04)),turn=poseCurve(keys,turnArr,lagged)*turnScale,twist=poseCurve(keys,twistArr,lagged)*twistScale;
+function headTrack(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,recoverySeconds:number,turnArr:Arr,twistArr:Arr,turnScale:number,twistScale:number,crouch:number,spin:boolean,weight:number,stop:number){
+ const lagged=meleePhase(a,recoverySeconds,a.age-stop+(spin?.04:-.04),p.spec==='greatsword'?DRAG:p.spec==='shield'?SHIELD_DRAG:0),turn=poseCurve(keys,turnArr,lagged)*turnScale,twist=poseCurve(keys,twistArr,lagged)*twistScale;
  // The neck takes up about half of the chest's pitch and roll (it stays over the chest's heading), so the head sits
  // upright on a proud neck instead of being carried forward by a pitched torso.
  _h.identity();for(let n:T.Object3D|null=r.chest;n&&n!==r.group;n=n.parent)_h.premultiply(n.quaternion);_f.set(0,0,1).applyQuaternion(_h);
@@ -143,26 +178,41 @@ function feet(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,phase:
  // Each step moves its foot only while it is lifted: the horizontal travel runs (eased) from 10% to 85% of the step while
  // the lift is a full arc, so the foot leaves and meets the floor vertically instead of skimming it.
  const step=(u:number)=>ease((u-.1)/.75),arc=(u:number)=>Math.sin(Math.PI*u);
+ // The lead step rides the authoritative travel (its progress is the share of the travel done by the plant), so the foot
+ // never runs ahead of the hips it hangs from: it stays within leg reach and lands with zero floor speed as the travel plants.
  // Lead: a lifted step to the contact spot, planted (world-fixed) from the contact frame, a lifted step back to its guard spot.
- const cx=(leadingLeft?1:-1)*(heavy?.30:.25),worldPlant=.31+plantTravel,su=T.MathUtils.clamp(phase/1.65,0,1),bu=T.MathUtils.clamp((phase-2.45)/.5,0,1),s=step(su),back=step(bu);
+ const cx=(leadingLeft?1:-1)*(heavy?.27:dagger?.29:.25),worldPlant=.31+plantTravel,su=T.MathUtils.clamp(travel/Math.max(.01,plantTravel),0,1),bu=T.MathUtils.clamp((phase-2.45)/.5,0,1),s=su*su*(3-2*su),back=step(bu);
  const lift=(overhead?.18:heavy?.14:dagger?.07:.09)*arc(su)+.07*arc(bu),cyaw=.15*sign;
  const lz=phase<2.45?lf.z+(worldPlant-lf.z)*s-travel:(worldPlant-full)*(1-back)+lf.z*back;
  _lead.set(phase<2.45?lx+(cx-lx)*s:cx+(lx-cx)*back,-.795+lift,lz);
  const lyaw=phase<2.45?lyaw0+(cyaw-lyaw0)*s:cyaw+(lyaw0-cyaw)*back,lheel=-.12*arc(su)+.22*arc(bu);
  // Rear: holds its floor spot while the root travels, drags up on its toes through the lunge and settles by 2.4.
  const qu=T.MathUtils.clamp((phase-.75)/1.65,0,1),q=step(qu);
- _rear.set(rx*(1+.18*arc(qu)),-.795+(heavy?.05:.065)*arc(qu),rf.z+full*q-travel);
+ _rear.set(rx*(1+.18*arc(qu)),-.795+(heavy?.05:.065)*arc(qu)+(overhead?.09*arc(T.MathUtils.clamp((phase-.45)/.85,0,1)):0),rf.z+full*q-travel);
  const ryaw=ryaw0-.35*sign*arc(qu),rheel=(heavy?.38:.32)*Math.sin(Math.PI*Math.min(1,qu*1.15));
  const lin=weight<1?_in[leadingLeft?0:1]:undefined,rin=weight<1?_in[leadingLeft?1:0]:undefined;
  if(spin){
   // The spin is a hopped turn: both feet hold their floor spots through the windup, leave the floor as the turn speeds up,
-  // circle with the body (in the air, so nothing skates) and land back on the guard stance as the turn completes.
-  const u=T.MathUtils.clamp((phase-1.1)/1.75,0,1),b=step(u),hop=arc(u),rot=SPIN_FROM+(Math.PI*2-SPIN_FROM)*b,cxs=r.body.position.x,czs=r.body.position.z,c=Math.cos(rot),sn=Math.sin(rot);
+  // circle about the body just behind its turn (in the air, so nothing skates; never across the chord, which put a foot
+  // far outside leg reach) and land back on the guard stance as the turn completes.
+  const u=T.MathUtils.clamp((phase-1.1)/1.75,0,1),b=step(u),hop=arc(u),air=ease((u-.05)/.25),rot=air*(SPIN_FROM+(Math.PI*2-SPIN_FROM)*Math.max(b,(turn-SPIN_FROM)/(Math.PI*2-SPIN_FROM))),cxs=r.body.position.x,czs=r.body.position.z,c=Math.cos(rot),sn=Math.sin(rot);
   r.body.position.y+=.045*hop;
-  const place=(out:T.Vector3,x:number,z:number)=>{const ox=x-cxs,oz=z-czs,px=cxs+ox*c+oz*sn,pz=czs-ox*sn+oz*c;out.set(x+(px-x)*b,-.795+.075*hop,(z-travel)+(pz-(z-travel))*b);};
-  place(_lead,lx,lf.z);place(_rear,rx,rf.z);
+  const place=(out:T.Vector3,x:number,z:number)=>{const ox=x-cxs,oz=z-travel*(1-air)-czs;out.set(cxs+ox*c+oz*sn,-.795+.075*hop,czs-ox*sn+oz*c);};
+  place(_lead,lx,lf.z);place(_rear,rx,rf.z);reachable(r,leadingLeft,_lead);reachable(r,!leadingLeft,_rear);
   // In the air the feet turn with the body (they leave the floor at its heading and land a full turn later).
   const spinYaw=turn*b;foot(r,leadingLeft,_lead,lyaw0+spinYaw,.3*hop,weight,lin);foot(r,!leadingLeft,_rear,ryaw0+spinYaw,.3*hop,weight,rin);return;
  }
+ reachable(r,leadingLeft,_lead);reachable(r,!leadingLeft,_rear);
  foot(r,leadingLeft,_lead,lyaw,lheel,weight,lin);foot(r,!leadingLeft,_rear,ryaw,rheel,weight,rin);
+}
+/** Leg reach a lifted step keeps inside (just under rig-ik's combat LEG_MAX .485, so the leg never locks straight). */
+const STEP_REACH=.475,_hip=new T.Vector3(),_to=new T.Vector3();
+/** A lifted foot target the hip cannot reach (a step still in flight while the hips load back or turn away) is drawn toward
+ * the hip, which lifts and shortens the step instead of leaving the foot hanging short of its path. The pull fades out as
+ * the foot comes down (it is zero on the floor), so a planted foot is never moved and the landing stays continuous. */
+function reachable(r:CharacterRig,left:boolean,target:T.Vector3){
+ const k=T.MathUtils.clamp((target.y+.795)/.03,0,1);if(k<=0)return;
+ _hip.set(0,0,0);for(let n:T.Object3D|null=left?r.leftLeg:r.rightLeg;n&&n!==r.group;n=n.parent)_hip.applyQuaternion(n.quaternion).add(n.position);
+ _to.subVectors(target,_hip);const d=_to.length();if(d<=STEP_REACH)return;
+ target.addScaledVector(_to,(STEP_REACH/d-1)*k);
 }
