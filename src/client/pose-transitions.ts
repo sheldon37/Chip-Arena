@@ -11,12 +11,17 @@ export type TransitionBone=typeof bones[number];
 /** The joints finishPose preserves and decays; seedTransition accepts a quaternion array in this order. */
 export const TRANSITION_BONES:readonly TransitionBone[]=bones;
 type StoredPose={q:T.Quaternion[];position:T.Vector3;weapon:T.Vector3;offWeapon:T.Vector3};
-type Transition={id:string;key:string;action:string;time:number;prevTime:number;at:number;duration:number;last:StoredPose;prev:StoredPose;hasPrev:boolean;offset:StoredPose;active:boolean;hold:boolean};
+type Transition={id:string;key:string;action:string;time:number;prevTime:number;at:number;duration:number;last:StoredPose;prev:StoredPose;hasPrev:boolean;offset:StoredPose;active:boolean;hold:boolean;holdAll:boolean};
 const transitions=new WeakMap<CharacterRig,Transition>(),seeds=new WeakMap<CharacterRig,{pose:StoredPose;duration:number}>();
 const stored=():StoredPose=>({q:bones.map(()=>new T.Quaternion()),position:new T.Vector3(),weapon:new T.Vector3(),offWeapon:new T.Vector3()});
 const capture=(r:CharacterRig,out:StoredPose)=>{for(let i=0;i<bones.length;i++)out.q[i].copy(r[bones[i]].quaternion);out.position.copy(r.body.position);out.weapon.copy(r.weapon.position);out.offWeapon.copy(r.offWeapon.position);return out;};
 const identity=new T.Quaternion(),scratch=new T.Quaternion(),current=stored(),projected=stored();
 const standardSpec=(spec:string)=>['sword','daggers','greatsword','shield'].includes(spec);
+/** DEV fighting-style keys whose legs stand on the gait's planted feet (strings, grounded specials, guard, parry): their
+ * transitions keep the ankles where they are instead of dragging them with the blended hips. (A string's tail after its
+ * `until` reads as the generic 'attack-N' key for these melee-class specs.) */
+const DEV_GROUNDED=new Set(['base','jab','combo','electric','hadoken','charge','shinku','guard','block']);
+const devGrounded=(spec:string,action:string)=>(spec==='emperor'||spec==='ansatsuken')&&(DEV_GROUNDED.has(action)||action.startsWith('attack-'));
 /** Knockdown and juggle sub-phases are continuous poses: their key changes blend from the extrapolated incoming pose,
  * so the offset holds only a real discontinuity, never one frozen frame of motion. */
 const reactionFamily=(action:string)=>action==='juggle'||action.startsWith('down:');
@@ -61,7 +66,7 @@ export function finishPose(r:CharacterRig,p:PlayerView,time:number){
  const reaction=p.hitReaction&&time>=p.hitReaction.at&&time<Math.max(p.hitReaction.until,p.hitStunUntil||0)?p.hitReaction:undefined;
  // Grounded is not part of the key: jumps and landings are animated continuously by locomotion.
  const key=p.spec+':'+action+(reaction?':impact-'+reaction.at+':'+reaction.kind:'');let s=transitions.get(r);const seed=seeds.get(r);seeds.delete(r);
- if(!s){s={id:p.id,key,action,time,prevTime:time,at:time,duration:0,last:capture(r,stored()),prev:stored(),hasPrev:false,offset:stored(),active:false,hold:false};transitions.set(r,s);if(!seed)return;}
+ if(!s){s={id:p.id,key,action,time,prevTime:time,at:time,duration:0,last:capture(r,stored()),prev:stored(),hasPrev:false,offset:stored(),active:false,hold:false,holdAll:false};transitions.set(r,s);if(!seed)return;}
  else if(time<s.time||time-s.time>.35||p.id!==s.id){s.id=p.id;s.key=key;s.action=action;s.time=s.prevTime=s.at=time;s.active=false;s.hasPrev=false;capture(r,s.last);if(!seed)return;}
  capture(r,current);let incoming:StoredPose|undefined,duration=0;
  if(seed){incoming=seed.pose;duration=seed.duration;}
@@ -78,7 +83,7 @@ export function finishPose(r:CharacterRig,p:PlayerView,time:number){
  if(incoming){
   // Leaving an attack into the base pose: locomotion resumes from the feet the attack planted (groundPass synced them), so
   // the blend keeps those ankles instead of dragging rig-relative leg offsets along with a root that starts moving.
-  s.hold=!seed&&action==='base'&&s.action.startsWith('attack-');
+  s.hold=!seed&&action==='base'&&s.action.startsWith('attack-');s.holdAll=!seed&&!reaction&&devGrounded(p.spec,action)&&devGrounded(p.spec,s.action);
   s.key=key;s.action=action;s.at=time;s.duration=duration;s.active=duration>1e-4;
   if(s.active){for(let i=0;i<bones.length;i++)s.offset.q[i].copy(current.q[i]).invert().multiply(incoming.q[i]);for(const k of ['position','weapon','offWeapon'] as const)s.offset[k].copy(incoming[k]).sub(current[k]);}
  }
@@ -89,7 +94,7 @@ export function finishPose(r:CharacterRig,p:PlayerView,time:number){
   else{
    const blend=()=>{for(let i=0;i<bones.length;i++)r[bones[i]].quaternion.multiply(scratch.copy(s!.offset.q[i]).slerp(identity,u));r.body.position.addScaledVector(s!.offset.position,1-u);r.weapon.position.addScaledVector(s!.offset.weapon,1-u);r.offWeapon.position.addScaledVector(s!.offset.offWeapon,1-u);};
    // Weighted by the travel speed: a standing recovery keeps its joint-space leg blend, a run resuming keeps its planted feet.
-   if(s.hold&&p.grounded&&p.hp>0&&!isFirstPersonRig(r))holdAnkles(r,blend,Math.min(1,Math.hypot(p.vel.x,p.vel.z)/1.5));else blend();
+   if((s.hold||s.holdAll)&&p.grounded&&p.hp>0&&!isFirstPersonRig(r))holdAnkles(r,blend,s.holdAll?1:Math.min(1,Math.hypot(p.vel.x,p.vel.z)/1.5));else blend();
   }
  }
  const spare=s.prev;s.prev=s.last;s.last=capture(r,spare);s.hasPrev=true;s.prevTime=s.time;s.time=time;

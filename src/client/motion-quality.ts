@@ -2,7 +2,7 @@ import * as T from 'three';
 import type {CharacterRig} from './character-rig.js';
 import type {PlayerView} from '../shared/simulation.js';
 import {poseCurve} from './pose-curves.js';
-import {legsAuthored,isFirstPersonRig} from './pose-flags.js';
+import {legsAuthored,legsLayered,markLegsLayered,isFirstPersonRig} from './pose-flags.js';
 import {stanceFor} from './stances.js';
 import {committed,rolling} from '../shared/souls-combat.js';
 const clamp=T.MathUtils.clamp,lerp=T.MathUtils.lerp,TAU=Math.PI*2,FLOOR=-.795,REACH=.485,LAND_REACH=.47;
@@ -67,6 +67,27 @@ function solveLeg(r:CharacterRig,left:boolean,target:T.Vector3,yaw:number,pitch:
  ankle.quaternion.copy(_qh).multiply(knee.quaternion).invert().multiply(_qf);if(!orient)toeJ.rotation.set(toe,0,0);
 }
 const _keep=[new T.Quaternion(),new T.Quaternion(),new T.Quaternion()],_kneeNow=new T.Vector3();
+/** This sample's gait target for a foot in rig-group space (the ankle, heading, pitch and toe the ground pass holds), or
+ * undefined before locomotion has run on the rig. The returned object is module scratch (read it before the next call). */
+export type GaitFoot={x:number;y:number;z:number;yaw:number;pitch:number;toe:number;planted:boolean};
+const _gaitFoot:GaitFoot={x:0,y:0,z:0,yaw:0,pitch:0,toe:0,planted:true};
+export function gaitFoot(r:CharacterRig,left:boolean):GaitFoot|undefined{
+ const s=travelState.get(r);if(!s)return undefined;const f=s.feet[left?0:1],o=_gaitFoot;
+ o.x=f.sx;o.y=f.sy;o.z=f.sz;o.yaw=f.syaw;o.pitch=f.spitch;o.toe=f.toe;o.planted=f.planted;return o;
+}
+/** A leg layered on the gait (DEV fighting styles): solved onto a rig-group ankle target exactly as the gait solves its legs
+ * (knee hinged toward the foot heading, floor-clamped by the caller), so a target equal to gaitFoot() reproduces the gait leg.
+ * `orient` overrides the foot's group orientation; `pole` (a group-space direction) turns the knee plane away from the gait's
+ * by `poleWeight`, so the knee never swaps planes in one frame. Marks the legs as layered for the ground pass. */
+export function layerLeg(r:CharacterRig,left:boolean,target:T.Vector3,yaw:number,pitch:number,toe:number,orient?:T.Quaternion,pole?:T.Vector3,poleWeight=0){
+ let knee:T.Vector3|undefined;
+ if(pole&&poleWeight>0){
+  const [hip]=legBones(r,left);pelvisFrame(r);_kneeNow.copy(hip.position).applyQuaternion(_pq).add(_pp);
+  _fwd.set(0,0,1).applyQuaternion(_pq);_perp.set(Math.sin(yaw),0,Math.cos(yaw)).multiplyScalar(.7).addScaledVector(_fwd,.3).normalize();
+  _perp.lerp(_t.copy(pole).normalize(),clamp(poleWeight,0,1));knee=_kneeNow.add(_perp);
+ }
+ solveLeg(r,left,target,yaw,pitch,toe,orient,knee);if(orient)legBones(r,left)[3].rotation.set(toe,0,0);markLegsLayered(r);
+}
 /** Blend a leg toward a planted rig-group ankle target (knee-hinged IK, flat foot with the given heading) by weight. */
 export function plantLeg(r:CharacterRig,left:boolean,target:T.Vector3,yaw:number,weight:number,footWeight=weight){
  if(weight<=1e-4)return;const [hip,knee,ankle]=legBones(r,left);_keep[0].copy(hip.quaternion);_keep[1].copy(knee.quaternion);
@@ -272,12 +293,13 @@ export function locomotion(r:CharacterRig,p:PlayerView,time:number,dt:number,pla
  * Legs an action layer placed (rig-ik foot() or direct writes) keep their ankles, and the gait state follows them. */
 export function groundPass(r:CharacterRig,p:PlayerView,time:number,dt:number){
  const s=travelState.get(r);if(!s||!s.solved||s.raw!==time)return;s.solved=false;dt=clamp(dt,0,.05);
- const skip=isFirstPersonRig(r)||p.hp<=0||p.spec==='emperor'||p.spec==='ansatsuken'||!!(p.juggle&&time<p.juggle.until)||!!(p.knockdown&&time<p.knockdown.until)||rolling(p,time);
- let changed=legsAuthored(r);for(let k=0;k<6&&!changed;k++)changed=!legBones(r,k<3)[k%3].quaternion.equals(s.legQ[k]);
+ const skip=isFirstPersonRig(r)||p.hp<=0||!!(p.juggle&&time<p.juggle.until)||!!(p.knockdown&&time<p.knockdown.until)||rolling(p,time);
+ // Layered legs (offsets from this sample's gait targets) keep the hip follow and the gait's own foot state.
+ const layered=legsLayered(r)&&!legsAuthored(r);let changed=legsAuthored(r)||layered;for(let k=0;k<6&&!changed;k++)changed=!legBones(r,k<3)[k%3].quaternion.equals(s.legQ[k]);
  if(skip){s.legYaw=0;s.legYawV=0;s.fresh=false;syncFeet(r,s,p);return;}
  // Critically damped hip follow (implicit, frame-rate independent); layers that own the legs let it relax to zero.
  // It starts on its target on the rig's first sample (a spawn or reset never twists the pelvis in from zero).
- const target=changed?0:s.hipYaw,w=GAIT.legYawOmega;if(s.fresh){s.fresh=false;s.legYaw=target;s.legYawV=0;}else{s.legYawV=(s.legYawV-(s.legYaw-target)*w*w*dt)/(1+2*w*dt+w*w*dt*dt);s.legYaw+=s.legYawV*dt;}
+ const target=changed&&!layered?0:s.hipYaw,w=GAIT.legYawOmega;if(s.fresh){s.fresh=false;s.legYaw=target;s.legYawV=0;}else{s.legYawV=(s.legYawV-(s.legYaw-target)*w*w*dt)/(1+2*w*dt+w*w*dt*dt);s.legYaw+=s.legYawV*dt;}
  const L=s.legYaw;if(changed)for(let i=0;i<2;i++)readAnkle(r,i===0,_cap[i],_capQ[i],_capK[i]);
  if(Math.abs(L)>1e-5){
   const P=_q1.copy(r.pelvis.quaternion),S=_q2.copy(r.spine.quaternion),C=_q3.copy(r.chest.quaternion),Pi=_q4.copy(P).invert();
@@ -288,7 +310,7 @@ export function groundPass(r:CharacterRig,p:PlayerView,time:number,dt:number){
  if(!p.grounded)return;
  // Layer-placed legs are always re-solved (never toggled): same ankle, foot orientation and knee direction, floor-clamped,
  // with the knee as a clean hinge, so the hip turn above cannot move them and no frame flips the twist convention.
- if(changed){for(let i=0;i<2;i++){const c=_cap[i];c.y=Math.max(c.y,FLOOR);solveLeg(r,i===0,c,0,0,0,_capQ[i],_capK[i]);}syncFeet(r,s,p,true);return;}
+ if(changed){for(let i=0;i<2;i++){const c=_cap[i];c.y=Math.max(c.y,FLOOR);solveLeg(r,i===0,c,0,0,0,_capQ[i],_capK[i]);}if(!layered)syncFeet(r,s,p,true);return;}
  // Untouched legs under an unmoved body and pelvis already sit on their targets.
  if(Math.abs(L)<=1e-5&&r.body.position.equals(s.solvedBody[0])&&r.body.quaternion.equals(s.solvedBody[1])&&r.pelvis.quaternion.equals(s.solvedBody[2]))return;
  for(let i=0;i<2;i++){const f=s.feet[i];_target.set(f.sx,f.sy,f.sz);solveLeg(r,i===0,_target,f.syaw,f.spitch,f.toe);}

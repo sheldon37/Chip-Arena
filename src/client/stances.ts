@@ -17,8 +17,11 @@ const stance=(lead:[number,number,number],rear:[number,number,number],crouch:num
 const MELEE=stance([.16,.09,.17],[-.17,-.08,.44],-.03,-.12,.03);
 /** Magic: planted stagger with the staff side back. Pistol: shoulder width with a slight lean. */
 const MAGIC=stance([.15,.08,.14],[-.16,-.07,.36],-.02,-.08,.02);
+/** DEV fighting styles: the guards turn the body ~.42 rad off the lead side, so the stances are bladed to match: Mishima
+ * half-bladed and compact, karate longer and lower. The guards set their own hip height, hip turn and lean. */
+const EMPEROR_STANCE=stance([.17,.08,-.3],[-.13,-.23,.62],0,0,0),KARATE_STANCE=stance([.17,.13,-.15],[-.15,-.21,.55],0,0,0);
 const table:Record<SpecId,Readonly<Stance>>={
- emperor:NEUTRAL_STANCE,ansatsuken:NEUTRAL_STANCE,leet:MAGIC,
+ emperor:EMPEROR_STANCE,ansatsuken:KARATE_STANCE,leet:MAGIC,
  pistol:stance([.15,.04,.12],[-.15,-.03,.2],-.015,-.05,.035),
  // Rifle: bladed stance behind the gun; the pelvis turn is scaled by the aim weight (the chest stays on aim). The hips sit
  // between the feet line (~.86) and the forward aim, and both toes turn with the blade (the lead toe no longer points
