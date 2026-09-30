@@ -7,6 +7,7 @@ import type {attackPose} from './character-animation.js';
 import {braceWeapon,hand} from './rig-ik.js';
 import {poseCurve} from './pose-curves.js';
 import {smoothMotion} from './motion-quality.js';
+import {isFirstPersonRig} from './pose-flags.js';
 type Pose=ReturnType<typeof attackPose>;
 /*
  * Gun handling (presentation only). Every pose derives from authoritative timestamps (lastShot, reloadTime, guarding,
@@ -84,9 +85,10 @@ function weaponPoint(r:CharacterRig,local:T.Vector3,out:T.Vector3){r.weapon.upda
 export function updateAimWeight(r:CharacterRig,p:PlayerView,pose:Pose,w:Weapon,dt:number){
  let aimTarget=0;
  if(w.class==='ranged'){
-  // Combat strafe and backpedal keep the gun up; only running forward lowers it into the travel carry.
+  // Combat strafe and backpedal keep the gun up; only running forward lowers it into the travel carry. The first-person
+  // view model always keeps the gun in hand (first-person-view.ts lowers the whole view model while running).
   const speed=Math.hypot(p.vel.x,p.vel.z),ahead=speed>1?(p.vel.x*Math.sin(p.yaw)+p.vel.z*Math.cos(p.yaw))/speed:1;
-  aimTarget=pose.shotAge<Math.max(.38,w.interval+.15)||p.reloadTime>0||r.motion<.18||ahead<.6||p.guarding||p.blockTime>0?1:0;
+  aimTarget=pose.shotAge<Math.max(.38,w.interval+.15)||p.reloadTime>0||r.motion<.18||ahead<.6||p.guarding||p.blockTime>0||isFirstPersonRig(r)?1:0;
  }
  // Critically damped (starts at rest, so raising the gun out of a run eases in); stiffer when a shot fires from a low carry.
  const s=aimSprings.get(r),h=clamp(dt,0,.05),omega=w.class==='ranged'&&aimTarget>r.aimWeight&&pose.shotAge<.1&&r.aimWeight<.6?32:24;
