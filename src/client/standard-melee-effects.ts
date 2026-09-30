@@ -21,7 +21,7 @@ export class StandardMeleeEffects {
   }
   this.specs.clear();for(const p of s.players)this.specs.set(p.id,p.spec);
   for(const f of [...this.flashes]){const age=s.time-f.at;if(age<0||age>FLASH_LIFE){this.removeFlash(f);continue;}const u=age/FLASH_LIFE,out=1-(1-u)**3;
-   f.ring.scale.setScalar((.25+out*1.1)*(.6+.6*f.weight));f.ringMaterial.opacity=.7*(1-u)**2;f.material.opacity=(1-u)**1.5;
+   f.ring.scale.setScalar((.2+out*.6)*(.5+.5*f.weight));f.ringMaterial.opacity=.5*(1-u)**2.5;f.material.opacity=(1-u)**1.5;
    f.sparks.forEach((spark,i)=>{const a=i*2.39996+f.at*7,d=(.15+out*(.6+.7*f.weight))*(.8+.1*(i%3));const x=Math.cos(a)*d,y=Math.sin(a*1.7)*.25*d+.1*out,z=Math.sin(a)*d;spark.position.set(x,y,z);spark.rotation.set(-Math.atan2(y,Math.hypot(x,z)),Math.atan2(x,z),0);spark.scale.set(1,1,.3+1.2*(1-u));});}
   for(const impact of [...this.impacts]){const age=s.time-impact.at;if(age<0||age>1.1){impact.root.removeFromParent();impact.root.traverse(o=>{if(o instanceof T.Mesh||o instanceof T.Points){o.geometry.dispose();(o.material as T.Material).dispose();}});this.impacts.splice(this.impacts.indexOf(impact),1);continue;}
    impact.ring.scale.setScalar(.2+age*3);impact.ring.material.opacity=Math.max(0,.55-age);impact.dust.material.opacity=Math.max(0,.46-age*.4);impact.dust.scale.setScalar(.4+age*1.6);impact.dust.position.y=age*.35;impact.stones.forEach((stone,i)=>{const a=i*2.39996,speed=1.7+(i%3)*.6;stone.position.set(Math.cos(a)*speed*age,Math.max(0,(1.8+i%3*.45)*age-4*age*age),Math.sin(a)*speed*age);stone.rotation.set(age*(i+2),0,age*3);stone.scale.setScalar(.075*(1-age/1.1));});
@@ -34,8 +34,8 @@ export class StandardMeleeEffects {
   const weight=e.source?HIT_WEIGHT[this.specs.get(e.source)??'']:undefined;if(weight===undefined||e.message==='burn'||e.message==='poison')return;
   if(this.flashes.length>=8)this.removeFlash(this.flashes[0]);
   const root=new T.Group();root.name='melee-hit-flash';root.position.set(e.pos.x,e.pos.y,e.pos.z);
-  const ringMaterial=new T.MeshBasicMaterial({color:0xfff1d6,transparent:true,opacity:.7,side:T.DoubleSide,depthWrite:false}),material=new T.MeshBasicMaterial({color:0xffd9a0,transparent:true,depthWrite:false});
-  const ring=new T.Mesh(FLASH_RING,ringMaterial);ring.rotation.set(Math.PI/2*.6,e.time*3%Math.PI,0);root.add(ring);
+  const ringMaterial=new T.MeshBasicMaterial({color:0xffe2b0,transparent:true,opacity:.5,side:T.DoubleSide,depthWrite:false}),material=new T.MeshBasicMaterial({color:0xffd9a0,transparent:true,depthWrite:false});
+  const ring=new T.Mesh(FLASH_RING,ringMaterial);ring.rotation.set(Math.PI/2*.85,0,e.time*3%Math.PI);root.add(ring);
   const sparks=Array.from({length:3+Math.round(4*weight)},()=>{const m=new T.Mesh(SPARK,material);root.add(m);return m;});
   this.scene.add(root);this.flashes.push({at:e.time,weight,root,ring,sparks,material,ringMaterial});
  }
