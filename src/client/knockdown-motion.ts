@@ -44,6 +44,15 @@ function airPose(age:number,vy:number):Pose{
  * the fighter stands facing the aim again. */
 const rollHeading=(psi:number,u:number,time:number,from:number,until:number)=>psi*sm(u/(.25+.45*Math.abs(psi)/Math.PI))*(1-sm((time-from)/Math.max(.01,until-from)));
 const airTilt=(age:number)=>-1.3*outCubic(age/.5);
+/** The fall and the landing rotate the body backward while it sinks, which can swing a foot or hand through the floor just
+ * before and after landedAt. Lift the body by the deepest limb's penetration below the floor (rig-group space, a pure
+ * function of the pose, so it stays continuous and rewindable). */
+const limbPoint=new T.Vector3();
+function liftOffFloor(r:CharacterRig){
+ // Floors per joint: braced ankles sit at -.795, the toe joints of a standing foot at about -.815.
+ let low=0;for(const [n,floor] of [[r.leftFoot,-.795],[r.rightFoot,-.795],[r.leftToe,-.82],[r.rightToe,-.82],[r.leftHand,-.8],[r.rightHand,-.8]] as const){limbPoint.set(0,0,0);for(let o:T.Object3D|null=n;o&&o!==r.group;o=o.parent)limbPoint.applyQuaternion(o.quaternion).add(o.position);low=Math.min(low,limbPoint.y-floor);}
+ r.body.position.y-=low;return -low;
+}
 /** While falling, the tilted body sinks inside the upright capsule (never below its base), so the landing only finishes a fall
  * that is already under way instead of teleporting .64 m. The landing estimates its impact speed from the flight time. */
 const GRAVITY=23,airDrop=(vy:number)=>-.64*sm((-vy-.5)/12);
@@ -76,8 +85,8 @@ export function knockdownMotion(r:CharacterRig,p:PlayerView,time:number){
  joints.forEach((j,i)=>stand[i].copy(r[j].quaternion));standBody.copy(r.body.quaternion);standPos.copy(r.body.position);
  const grip=weaponRelax(k,time,age);r.weapon.rotation.set(.5+grip,0,0);r.offWeapon.rotation.set(.55+grip,0,0);
  if(phase==='air'){
-  const w=sm(age/.12),drop=airDrop(p.vel.y)*w;mix(r,airPose(age,p.vel.y),w);rememberAir(r,k.at,time,p.vel.y,drop);
-  r.body.rotation.set(airTilt(age),0,Math.sin(age*5)*.12*sm(age/.2));r.body.position.set(standPos.x*(1-w),standPos.y*(1-w)+drop,0);return;
+  const w=sm(age/.12),drop=airDrop(p.vel.y)*w;mix(r,airPose(age,p.vel.y),w);
+  r.body.rotation.set(airTilt(age),0,Math.sin(age*5)*.12*sm(age/.2));r.body.position.set(standPos.x*(1-w),standPos.y*(1-w)+drop,0);rememberAir(r,k.at,time,p.vel.y,drop+liftOffFloor(r));return;
  }
  const landed=k.landedAt!,lt=time-landed,landAge=Math.max(0,landed-k.at),tilt=airTilt(landAge);
  const pickup=!k.pickupUsed&&(k.pickupUntil??landed)>landed,legsUp=pickup?sm(lt/.12)*(1-sm((time-k.pickupUntil!)/.12)):0;
@@ -92,7 +101,7 @@ export function knockdownMotion(r:CharacterRig,p:PlayerView,time:number){
   r.leftArm.rotation.z+=bump((lt-.07)/.12)*.12;r.rightArm.rotation.z-=bump((lt-.07)/.12)*.12;r.head.rotation.x-=bump((lt-.09)/.1)*.12;
   mix(r,LEGS_UP,legsUp,legs);
   const turn=Math.min(.18,.1+.08*Math.abs(-Math.PI/2-tilt)/(Math.PI/2)),x=lt<turn?tilt+(-Math.PI/2-tilt)*inQuad(lt/turn):-Math.PI/2+bump((lt-turn)/(KNOCKDOWN_LANDING-turn))*.035*Math.min(1,(KNOCKDOWN_LANDING-turn)/.1);
-  r.body.rotation.set(x,0,Math.sin(landAge*5)*.12*(1-sm(lt/.1)));r.body.position.set(0,drop+(-.64-drop)*hips+bounce,0);return;
+  r.body.rotation.set(x,0,Math.sin(landAge*5)*.12*(1-sm(lt/.1)));r.body.position.set(0,drop+(-.64-drop)*hips+bounce,0);liftOffFloor(r);return;
  }
  if(phase==='legs-up'||phase==='flat'){
   set(r,FLAT);mix(r,LEGS_UP,legsUp,legs);
