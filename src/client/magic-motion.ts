@@ -104,7 +104,7 @@ export function magicLayer(r:CharacterRig,p:PlayerView,pose:ReturnType<typeof at
 function magicGuard(r:CharacterRig,p:PlayerView,time:number){
  let s=states.get(r);const clock=clockStep(s,time),target=p.guarding||p.blockTime>0?1:0;
  if(!s){s={t:time,guard:target,guardV:0};states.set(r,s);}
- s.t=time;if(clock.fresh){s.guard=target;s.guardV=0;}else{const o:[number,number]=[0,0];springStep(s.guard,s.guardV,target,target>s.guard?24:16,1,clock.dt,o);s.guard=clamp(o[0],0,1);s.guardV=o[1];}
+ s.t=time;if(clock.fresh){s.guard=target;s.guardV=0;}else{const o:[number,number]=[0,0];springStep(s.guard,s.guardV,target,target>s.guard?17:14,1,clock.dt,o);s.guard=clamp(o[0],0,1);s.guardV=o[1];}
  const g=s.guard;if(g<=.001)return;
  r.spine.rotation.y*=1-g;r.chest.rotation.x+=.1*g;r.head.rotation.x+=.15*g;
  // Left hand out front at the left of the chest, the staff laid across toward the right.

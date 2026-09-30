@@ -122,7 +122,7 @@ export function rangedLayer(r:CharacterRig,p:PlayerView,pose:Pose,time:number,dt
  const headKick=fresh?kick:s.headKick;s.headKick=kick;
  // Guard weight: critically damped, ~70 ms in and ~150 ms out.
  const guarding=p.guarding||p.blockTime>0?1:0;
- if(fresh){s.guard=guarding;s.guardV=0;}else{springStep(s.guard,s.guardV,guarding,guarding>s.guard?24:16,1,step,_s);s.guard=clamp(_s[0],0,1);s.guardV=_s[1];}
+ if(fresh){s.guard=guarding;s.guardV=0;}else{springStep(s.guard,s.guardV,guarding,guarding>s.guard?22:16,1,step,_s);s.guard=clamp(_s[0],0,1);s.guardV=_s[1];}
  const g=s.guard,a=r.aimWeight,hold=a+(1-a)*g;
  const reload=reloadPhase(p,w),e=reload.envelope*(1-g),u=reload.u,tuck=poseCurve(TUCK_T,TUCK_V,u)*e;
  const firing=mg?smoothMotion(1-shotAge/.3)*a:0;
@@ -168,7 +168,7 @@ const _op=new T.Vector3(),_oq=new T.Quaternion();
 function supportReach(r:CharacterRig,target:T.Vector3,orientation:T.Euler,weight:number){_op.copy(r.offWeapon.position);_oq.copy(r.offWeapon.quaternion);hand(r,true,target,orientation,weight);r.offWeapon.position.copy(_op);r.offWeapon.quaternion.copy(_oq);}
 /** Weapon-space key points for the support hand: magwell (wrist below the magazine) and the charge (bolt knob, top cover, slide). */
 const MAGWELL:Record<string,T.Vector3>={pistol:new T.Vector3(0,-.30,-.07),rifle:new T.Vector3(0,-.27,.16),machinegun:new T.Vector3(.02,-.27,.2)};
-const CHARGE:Record<string,[T.Vector3,T.Vector3]>={pistol:[new T.Vector3(0,.12,-.03),new T.Vector3(0,.12,-.08)],rifle:[new T.Vector3(-.12,.06,-.02),new T.Vector3(-.12,.06,-.09)],machinegun:[new T.Vector3(0,.24,.02),new T.Vector3(0,.16,.02)]};
+const CHARGE:Record<string,[T.Vector3,T.Vector3]>={pistol:[new T.Vector3(.06,.02,-.04),new T.Vector3(.06,.02,-.1)],rifle:[new T.Vector3(-.12,.06,-.02),new T.Vector3(-.12,.06,-.09)],machinegun:[new T.Vector3(0,.24,.02),new T.Vector3(0,.16,.02)]};
 const _k=[new T.Vector3(),new T.Vector3(),new T.Vector3(),new T.Vector3(),new T.Vector3(),new T.Vector3()];
 const HAND_T=[0,.1,.2,.3,.42,.5,.6,.68,.71,.74,.83,.89,.97,1];
 /** Support-hand reload choreography over the normalised phase u, faded by the envelope e. */
