@@ -7,7 +7,7 @@ import {createCharacterRig,type CharacterRig} from '../src/client/character-rig.
 import {animateCharacter,animationPreviewPlayer} from '../src/client/character-animation.js';
 import {finishPose,seedTransition,transitionAction,transitionDuration,TRANSITION_BONES} from '../src/client/pose-transitions.js';
 import {knockdownPhase} from '../src/client/knockdown-motion.js';
-import {probeBase,probeRig} from './helpers/motion-probe.js';
+import {probeBase,probeRig,probeRates,describeProbe,weaponTip} from './helpers/motion-probe.js';
 
 await initPhysics();
 const quats=(r:CharacterRig)=>TRANSITION_BONES.map(b=>r[b].quaternion.clone());
@@ -66,4 +66,35 @@ test('seedTransition hands an external pose to the rig and decays it over the gi
  for(let t=1.2+1/60;t<1.2+.17;t+=1/60)animateCharacter(r,p,t,1/60);assert.ok(maxAngle(quats(r),quats(reference))<1e-6,'the seeded offset is gone after its duration');
  const byName=probeRig('sword');animateCharacter(byName,p,1,1/60);seedTransition(byName,{head:new T.Quaternion().setFromEuler(new T.Euler(.7,0,0))},undefined,.1);animateCharacter(byName,p,1+1/60,1/60);
  assert.ok(Math.abs(byName.head.quaternion.angleTo(new T.Quaternion().setFromEuler(new T.Euler(.7,0,0))))<1e-6,'a partial map seeds only the named joints');
+});
+
+// The audit's scripted knockdown: launched at T0, lands at +.55 with a .22 s pickup window, rolls .95-1.35, stands at 1.55.
+const T0=3,L=.55;
+const knockdown=(r:number,rollX=0,rollZ=-1)=>({at:T0,landedAt:r>=L?T0+L:undefined,pickupUntil:r>=L?T0+L+.22:undefined,rollAt:r>=L?T0+L+.4:undefined,rollUntil:r>=L?T0+L+.8:undefined,until:r>=L?T0+L+1:T0+5,rollX,rollZ});
+const knockdownPatch=(rollX=0,rollZ=-1)=>(t:number):Partial<PlayerView>=>{const r=t-T0;return r<0?{}:{knockdown:knockdown(r,rollX,rollZ),grounded:r>=L,vel:{x:0,y:r<L?15.9*(L-2*r):0,z:0}};};
+
+test('knockdown fall, landing, roll-to-crouch and rise are continuous at 30, 60 and 120 Hz (no pops or teleports)',()=>{
+ for(const [rollX,rollZ] of [[0,-1],[1,0]]){
+  const rates=probeRates({spec:'sword',mode:'idle',from:T0-.1,to:T0+1.8,patch:knockdownPatch(rollX,rollZ)}),at=`roll (${rollX},${rollZ})`;
+  // Baseline: a .64 m body teleport at landing and 39-180 degree single-frame flips. The fall and landing move the body
+  // at most .06 m per 60 Hz frame; the fast roll itself (the hips pass over the head in about .15 s) stays under .08.
+  const landing=probeRates({spec:'sword',mode:'idle',from:T0-.1,to:T0+L+.4,patch:knockdownPatch(rollX,rollZ)},[60])[60];
+  assert.ok(landing.maxBodyStep<=.06,`${at}: ${describeProbe(landing)}`);assert.ok(rates[60].maxBodyStep<=.08,`${at}: ${describeProbe(rates[60])}`);
+  assert.ok(rates[120].maxJointStepDeg<=20,`${at}: ${describeProbe(rates[120])}`);
+  assert.ok(rates[120].maxJointStepDeg<=rates[60].maxJointStepDeg*.65&&rates[60].maxJointStepDeg<=rates[30].maxJointStepDeg*.65,`${at}: steps shrink with the frame time, so nothing snaps: ${describeProbe(rates[30])} / ${describeProbe(rates[60])} / ${describeProbe(rates[120])}`);
+ }
+ const juggleFree=probeRates({spec:'sword',mode:'idle',from:T0-.1,to:T0+1.8,patch:knockdownPatch()},[60])[60];assert.ok(juggleFree.maxJointStepDeg<=32,describeProbe(juggleFree));
+});
+
+test('knockdown poses: flat on the floor, the roll keeps limbs and blade above the floor and opens into a planted crouch',()=>{
+ for(const spec of ['sword','daggers','greatsword','shield']){
+  const r=probeRig(spec),base=probeBase(spec),patch=knockdownPatch();let crouch=false;
+  for(let t=T0-.5;t<=T0+1.6;t+=1/60){const p={...animationPreviewPlayer(base,'idle',t),hitStunUntil:-1e9,...patch(t)} as PlayerView;r.group.rotation.y=p.yaw;animateCharacter(r,p,t,1/60);r.group.updateMatrixWorld(true);const rel=t-T0;
+   if(rel>=L+.25&&rel<L+.32){assert.equal(r.body.rotation.x,-Math.PI/2);assert.ok(Math.abs(r.body.position.y+.64)<1e-9,'lying on the floor');}
+   if(rel>=L+.12){for(const n of [r.leftFoot,r.rightFoot,r.leftHand,r.rightHand])assert.ok(n.getWorldPosition(new T.Vector3()).y>=-.81,`${spec} ${n.name} at +${rel.toFixed(3)}`);
+    assert.ok(weaponTip(r,p).y>=-.84,`${spec} blade tip at +${rel.toFixed(3)}: ${weaponTip(r,p).y.toFixed(3)}`);}
+   if(!crouch&&rel>=L+.8-1e-9){crouch=true;assert.ok(Math.abs(r.leftFoot.getWorldPosition(new T.Vector3()).y+.795)<.01,`${spec} lead foot planted`);
+    assert.ok(r.body.quaternion.angleTo(new T.Quaternion().setFromEuler(new T.Euler(.3,0,0)))<.15,`${spec} the roll ends upright in a crouch`);assert.ok(r.body.position.y<-.25,'crouched');}
+  }
+ }
 });
