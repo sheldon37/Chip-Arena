@@ -36,8 +36,8 @@ export function primaryMeleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<type
  // Where the incoming layers planted the ankles, before this phrase moves the body (the plant blends from there).
  if(weight<1){ankleInGroup(r,true,_in[0]);ankleInGroup(r,false,_in[1]);}
  // Whole-body turn (hips lead) and torso twist on top of it (shoulders trail the hips, most for the greatsword).
- const turnArr=spin?SPIN_TURN:heavy?[0,-.42,-1.05,-.90,.45,1.00,1.25,1.10,0]:overhead?[0,-.26,-.40,-.15,.14,.30,.42,.20,0]:shield?[0,-.36,-.62,-.24,.45,.66,.95,.40,0]:dagger?[0,-.25,-.45,-.15,.20,.42,.58,.25,0]:[0,-.45,-.85,-.35,.30,.62,1.02,.55,0];
- const twistArr=heavy?[0,-.22,-.48,-.62,-.45,.40,.52,.35,0]:dagger?[0,-.10,-.20,-.16,.06,.22,.26,.08,0]:[0,-.18,-.38,-.20,.24,.40,.44,.16,0];
+ const turnArr=spin?SPIN_TURN:heavy?[0,-.42,-1.05,-.90,.45,.95,1.32,1.12,0]:overhead?[0,-.26,-.40,-.15,.14,.30,.42,.20,0]:shield?[0,-.36,-.62,-.24,.45,.66,.95,.40,0]:dagger?[0,-.25,-.45,-.15,.20,.40,.46,.34,0]:[0,-.45,-.85,-.35,.30,.62,1.02,.55,0];
+ const twistArr=heavy?[0,-.22,-.48,-.62,-.45,.40,.52,.35,0]:dagger?[0,-.10,-.20,-.16,.06,.22,.26,.18,0]:[0,-.18,-.38,-.20,.24,.40,.44,.16,0];
  const turnScale=spin?1:sign,twistScale=(overhead?.5:1)*sign;
  const turn=c(turnArr)*turnScale,twist=c(twistArr)*twistScale;
  const crouch=c(heavy?[0,-.12,-.30,-.37,-.33,-.18,-.10,-.06,0]:overhead?[0,-.12,.06,0,-.24,-.30,-.28,-.14,0]:shield?[0,-.05,-.12,-.13,-.22,-.25,-.20,-.09,0]:low?[0,-.19,-.28,-.25,-.34,-.30,-.22,-.10,0]:[0,-.10,-.16,-.13,-.22,-.26,-.21,-.09,0]);
@@ -90,10 +90,10 @@ export const MELEE_PHRASES={
  swordOffTucked:{x:[.34,.36,.36,.32,.26,.26,.26],y:[-.10,-.12,-.08,.02,.08,.04,-.02],z:[.04,.02,.04,.14,.22,.22,.18],rx:[-.4,-.4,-.35,-.3,-.35,-.5,-.75],ry:[.4,.6,.4,-.2,-.45,-.35,-.05],rz:[.3,.3,.3,.3,.3,.28,.26]},
  shield:{x:[-.14,-.06,-.20,-.40,-.48,-.52,-.32],y:[.06,.04,.09,.15,.14,.12,.08],z:[.22,.12,.24,.32,.30,.26,.24],rx:[.10,.18,.10,0,-.06,-.06,-.03],ry:[-.2,-.3,-.3,-.55,-.76,-1.02,-.5],rz:[-.18,-.25,-.1,.12,.18,.14,.06]},
  shieldOff:{x:[.36,.39,.38,.36,.34,.33,.32],y:[-.10,-.16,-.13,-.04,0,-.04,-.08],z:[.02,-.10,-.04,.04,.12,.12,.12],rx:[-.5,-.4,-.4,-.5,-.6,-.7,-.8],ry:[.1,0,0,.1,.2,.2,.2],rz:[.25,.25,.25,.25,.25,.25,.25]},
- dagger:{x:[-.50,-.58,-.36,-.10,0,.04,-.12],y:[.14,.16,.10,-.04,-.14,-.22,-.12],z:[.14,.02,.26,.44,.38,.28,.26],rx:[-.7,-.95,-.55,.2,.45,.55,.1],ry:[-.55,-.8,-.4,.40,.80,1.05,.35],rz:[-.2,-.35,-.15,.2,.3,.22,.08],pole:[PD,PD,PD,PD,PD,PD,PD]},
- daggerLow:{x:[-.50,-.58,-.36,-.10,0,.04,-.12],y:[.02,-.06,-.10,-.14,.06,.14,.06],z:[.14,.02,.26,.44,.36,.28,.26],rx:[.1,.2,.12,-.15,-.2,-.3,-.2],ry:[-.55,-.8,-.4,.40,.80,1.05,.35],rz:[-.2,-.35,-.15,.2,.3,.22,.08],pole:[PL,PL,PL,mix(PL,PR),PR,PR,PR]},
+ dagger:{x:[-.50,-.58,-.36,-.10,0,.02,-.06],y:[.14,.16,.10,-.04,-.14,-.18,-.14],z:[.14,.02,.26,.44,.38,.30,.28],rx:[-.7,-.95,-.55,.2,.45,.50,.35],ry:[-.55,-.8,-.4,.40,.72,.84,.66],rz:[-.2,-.35,-.15,.2,.3,.26,.18],pole:[PD,PD,PD,PD,PD,PD,PD]},
+ daggerLow:{x:[-.50,-.58,-.36,-.10,0,.02,-.06],y:[.02,-.06,-.10,-.14,.06,.14,.06],z:[.14,.02,.26,.44,.36,.28,.26],rx:[.1,.2,.12,-.15,-.2,-.25,-.2],ry:[-.55,-.8,-.4,.40,.72,.84,.66],rz:[-.2,-.35,-.15,.2,.3,.26,.18],pole:[PL,PL,PL,mix(PL,PR),PR,PR,PR]},
  daggerOther:{x:[.20,.24,.28,.34,.30,.24,.18],y:[.06,.10,0,-.12,-.04,.02,.06],z:[.30,.26,.22,.10,.16,.22,.26],rx:[-.3,-.2,-.3,-.55,-.75,-.55,-.4],ry:[.3,.55,.85,.7,.25,.15,.1],rz:[.2,.3,.35,.25,.05,.05,.1]},
- greatsword:{x:[-.02,0,.02,.04,.06,.05,.04],y:[.10,.02,-.16,-.06,.16,.30,.36],z:[.14,.14,.24,.32,.28,.22,.20],rx:[-.75,-.45,-.33,-.40,-.70,-.95,-1.05],ry:[-.25,-.15,.40,.75,.50,.05,-.15],rz:[-.2,-.3,-.2,-.1,.1,.18,.2]},
+ greatsword:{x:[-.02,0,.02,.04,.06,.05,.04],y:[.10,.02,-.16,-.06,.13,.31,.36],z:[.14,.14,.24,.32,.28,.22,.20],rx:[-.75,-.45,-.33,-.40,-.64,-.97,-1.05],ry:[-.25,-.15,.40,.75,.50,.05,-.15],rz:[-.2,-.3,-.2,-.1,.1,.18,.2]},
 } satisfies Record<string,ArmPhrase>;
 const _t=new T.Vector3(),_eu=new T.Euler(),_pole=new T.Vector3();
 /** Pose one arm through a phrase from and back to its guard hand (`mirror` flips a right-hand table onto the left). */
@@ -125,9 +125,9 @@ function feet(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,phase:
  const commitment=p.attackCommitment||attackCommitment(p.spec,p.lastAttack,a.windup,a.window,p.attackRate||1,a.windup+a.window),now=p.lastAttack+a.age,travel=attackTravel(commitment,now),plantTravel=attackTravel(commitment,p.lastAttack+a.windup+a.window*.65),full=attackTravel(commitment,commitment.stepUntil);
  const st=stanceFor(p.spec),leadingLeft=sign>0,lf=leadingLeft===st.leadLeft?st.lead:st.rear,rf=leadingLeft===st.leadLeft?st.rear:st.lead,lx=(leadingLeft?1:-1)*Math.abs(lf.x),rx=(leadingLeft?-1:1)*Math.abs(rf.x);
  const lyaw0=(leadingLeft?1:-1)*lf.toeOut,ryaw0=(leadingLeft?-1:1)*rf.toeOut;
- // Each step moves its foot only while it is lifted: the horizontal travel finishes (eased) at 85% of the step while the
- // lift is a full arc, so the foot comes down vertically onto its spot instead of skimming the floor.
- const step=(u:number)=>ease(Math.min(1,u/.85)),arc=(u:number)=>Math.sin(Math.PI*u);
+ // Each step moves its foot only while it is lifted: the horizontal travel runs (eased) from 10% to 85% of the step while
+ // the lift is a full arc, so the foot leaves and meets the floor vertically instead of skimming it.
+ const step=(u:number)=>ease((u-.1)/.75),arc=(u:number)=>Math.sin(Math.PI*u);
  // Lead: a lifted step to the contact spot, planted (world-fixed) from the contact frame, a lifted step back to its guard spot.
  const cx=(leadingLeft?1:-1)*(heavy?.30:.25),worldPlant=.31+plantTravel,su=T.MathUtils.clamp(phase/1.65,0,1),bu=T.MathUtils.clamp((phase-2.45)/.5,0,1),s=step(su),back=step(bu);
  const lift=(overhead?.18:heavy?.14:dagger?.07:.09)*arc(su)+.07*arc(bu),cyaw=.15*sign;
