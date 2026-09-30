@@ -99,3 +99,11 @@
 .spectator-label{z-index:90;bottom:32px;text-align:center;min-width:300px;max-width:calc(100vw - 32px);border-radius:12px;pointer-events:auto}.spectator-label strong,.spectator-label span{display:block;margin-bottom:6px}.spectator-label strong{font-size:18px}.spectator-label span,.spectator-label small{font-size:14px}.spectator-label .actions{justify-content:center;margin:10px 0}.spectator-label .btn{width:auto}
 
 .intro-team{background:transparent;border:0;padding:0;margin:8px 0 4px;font-size:14px;text-shadow:0 1px 4px #000}
+/* Visual revision: host controls use full-width selects in the narrow column (no '5 (defa' truncation). */
+.lobby-room-settings .settings-row{grid-template-columns:1fr;gap:6px}.lobby-room-settings .settings-row>select,.lobby-room-settings .settings-row select#match-mode{width:100%}.lobby-room-settings .settings-row:has(>input[type=checkbox]){grid-template-columns:1fr auto}.lobby-room-settings .settings-row>input[type=checkbox]{grid-column:auto;justify-self:end}.lobby-room-settings .match-options>.row select{padding-left:10px;padding-right:6px}
+.pilot-showcase>p{background:#101114a6;border-radius:8px;padding:8px 12px}
+.update-alert{background:#101114cc;padding:3px 8px;border-radius:6px}
+.panel .lobby-actions{position:sticky;bottom:0;z-index:2;background:linear-gradient(to bottom,#17181d00,#17181d 26%);box-shadow:0 34px 0 #17181d}
+/* Visual revision: in the room lobby the class cards lay out as icon + label rows, so at 1920x1080 their names and
+   subtitles sit fully above the sticky Ready bar instead of being cut through by it. */
+.lobby-room .class-option{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto;align-items:center;column-gap:14px;min-height:0;padding:11px 16px}.lobby-room .class-option .class-symbol{grid-row:1/3;height:40px;margin:0}.lobby-room .class-option .class-symbol .game-icon{width:32px;height:32px}.lobby-room .class-option strong{margin:0 0 3px;align-self:end}.lobby-room .class-option small{min-height:0;align-self:start}

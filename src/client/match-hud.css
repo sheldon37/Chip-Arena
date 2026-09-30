@@ -20,3 +20,15 @@
 .combat-hitmarker{position:fixed;left:50%;top:50%;width:42px;height:42px;transform:translate(-50%,-50%);z-index:6;pointer-events:none;color:#fff;filter:drop-shadow(0 1px 2px #0009)}.combat-hitmarker[hidden]{display:none}.hitmark-cross{display:block;width:100%;height:100%;overflow:visible;transform-origin:center}.combat-hitmarker.headshot{color:#ff394d}.hitmark-elements{position:absolute;top:calc(100% + 3px);left:50%;transform:translateX(-50%);display:flex;gap:4px}.hitmark-elements svg{width:15px;height:15px}.hitmark-fire{color:#ffab59}.hitmark-poison{color:#91e47a}.dot-tick .hitmark-tips{display:none}
 
 .healthbox .bar.resource.stamina>div{background:#bfdc77}.stamina-label{color:#c6dba0}.cooldown:has(small:nth-of-type(2)){min-width:116px}.cooldown strong{font-size:14px}.cooldown>small:nth-of-type(2){font-size:11px;margin-top:5px;color:#bcc8ab}
+/* Visual revision: readable death announcements on a backing plate with an entrance (the 'is-new' class restarts it), cool stamina. */
+.death-announcement{font:500 13px/1.45 var(--font-ui,system-ui);padding:7px 11px;background:#0d0f16b8;border-left:2px solid var(--accent,#ff6b35);border-radius:6px;backdrop-filter:blur(4px);text-shadow:0 1px 2px #000}
+.death-announcement.is-new{animation:death-line-in .26s cubic-bezier(.2,.8,.2,1) both}
+@keyframes death-line-in{from{opacity:0;transform:translateX(-10px)}}
+.block-cooldown.blocking{border-color:var(--accent,#ff6b35)}
+.healthbox .bar.resource.stamina>div{background:#7cc4ff}.stamina-label{color:#b8dcf5}.stamina-label .ammo,.weapon-info:has(+.bar.resource.stamina) .ammo{color:#9fd3ff}
+@media(max-width:580px){.death-announcement{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.death-announcement.is-new{animation:none}}
+/* Visual revision P2: the fight HUD scales on tall screens; ready cooldowns read as a word in the good colour. */
+.cooldown strong.ready,.cooldown .ready{color:var(--good,#59dd83);font-size:12px;letter-spacing:.08em}
+@media(min-height:1000px){.healthbox,.cooldowns,.match-tools,.match-heading,.death-announcement,.arcade-hud{zoom:1.2}}
+@media(min-height:1300px){.healthbox,.cooldowns,.match-tools,.match-heading,.death-announcement,.arcade-hud{zoom:1.45}}
