@@ -12,7 +12,7 @@ import * as T from 'three';
  *  - Box3.setFromObject uses the instance bounds, which stay inside the part's box unless a layout deliberately adds
  *    a proud plate.
  * Layouts are built once per key and their instance attributes are SHARED by every rig (one GPU buffer per layout).
- * Nothing here runs per frame. setVoxelDetail swaps a part back to the plain box for low detail.
+ * Per frame there is only a material check in VoxelPart.onBeforeRender (no allocation). setVoxelDetail swaps a part back to the plain box for low detail.
  */
 export const VOXEL=.025;
 
@@ -53,9 +53,40 @@ export function bevel(out:VoxelBox[],x:number,y:number,z:number,w:number,h:numbe
  out.push([x,y,z,w-2*b,h,d,shade],[x,y,z,w,h-2*b,d,shade]);return out;
 }
 
+/**
+ * A voxel part. See-through use draws the plain box: when a consumer swaps in a transparent material (death-announcement
+ * hologram, ghost kill cinematic, dagger phantom afterimages, soul ragdoll) the overlapping and interior faces of the
+ * layout would all blend together into a near-opaque blob, and edge lines built from the cube would not match the sculpt.
+ * Assigning `material` switches the layout at once (the renderer uploads instance buffers before onBeforeRender, so the
+ * switch must happen before the frame). onBeforeRender is only a safety net for a `transparent` flag flipped later on
+ * an already assigned material; that path may skip the part for one frame. Clones keep the class, and copy() re-resolves
+ * the shared layout, so a clone never writes into a shared instance buffer.
+ * The layout itself lives in a non-enumerable userData field: Object3D.copy JSON-copies userData, and a clone must not
+ * carry a serialized copy of the instance arrays. Clones find the shared layout again through userData.voxelKey.
+ */
+const partMaterial=new WeakMap<T.Object3D,T.Material|T.Material[]>(),copying=new WeakSet<T.Object3D>();
+export class VoxelPart extends T.InstancedMesh{
+ constructor(geometry?:T.BufferGeometry,material?:T.Material,count=0){super(geometry,material,count);}
+ override copy(source:this,recursive?:boolean){copying.add(this);try{super.copy(source,recursive);}finally{copying.delete(this);}syncPart(this);return this;}
+ override onBeforeRender(){syncPart(this);}
+}
+Object.defineProperty(VoxelPart.prototype,'material',{configurable:true,enumerable:true,
+ get(this:VoxelPart){return partMaterial.get(this);},
+ set(this:VoxelPart,material:T.Material|T.Material[]){partMaterial.set(this,material);if(this.instanceMatrix&&!copying.has(this))syncPart(this);}});
+const seeThrough=(material:T.Material|T.Material[]|undefined)=>!!material&&(Array.isArray(material)?material.some(m=>m.transparent):material.transparent);
+function syncPart(mesh:T.InstancedMesh){const layout=partLayout(mesh);if(layout)useLayout(mesh,mesh.userData.voxelLow||seeThrough(mesh.material)?PLAIN_LAYOUT:layout);}
+function partLayout(mesh:T.Object3D):VoxelLayout|undefined{return (mesh.userData.voxel as VoxelLayout|undefined)||layouts.get(mesh.userData.voxelKey);}
+function tag(mesh:T.Object3D,layout:VoxelLayout){Object.defineProperty(mesh.userData,'voxel',{value:layout,enumerable:false,configurable:true,writable:true});mesh.userData.voxelKey=layout.key;}
+
 /** Turns a mesh of the shared cube into a voxel part (same name, material, transform and geometry). */
 export function voxelMesh(geometry:T.BufferGeometry,material:T.Material,layout:VoxelLayout){
- const mesh=new T.InstancedMesh(geometry,material,0);mesh.userData.voxel=layout;useLayout(mesh,layout);return mesh;
+ const mesh=new VoxelPart(geometry,material,0);tag(mesh,layout);syncPart(mesh);return mesh;
+}
+/** A copy of a rig mesh with another material that keeps its voxel sculpt (ragdoll pieces): a VoxelPart for a voxel
+ * part, else a plain T.Mesh, exactly like `new T.Mesh(node.geometry,material)`. */
+export function copyVoxelPart(node:T.Mesh,material:T.Material|T.Material[]=node.material):T.Mesh{
+ const layout=partLayout(node);if(!layout||!(node instanceof T.InstancedMesh))return new T.Mesh(node.geometry,material);
+ const copy=new VoxelPart(node.geometry,material as T.Material,0);tag(copy,layout);if(node.userData.voxelLow)copy.userData.voxelLow=true;syncPart(copy);return copy;
 }
 function useLayout(mesh:T.InstancedMesh,layout:VoxelLayout){
  if(mesh.instanceMatrix===layout.matrix)return;
@@ -63,6 +94,6 @@ function useLayout(mesh:T.InstancedMesh,layout:VoxelLayout){
 }
 /** Low detail (SVG compatibility, 'performance' graphics): the part becomes its plain box again. */
 export function setVoxelDetail(mesh:T.Object3D,low:boolean){
- const layout=mesh.userData.voxel as VoxelLayout|undefined;
- if(layout&&mesh instanceof T.InstancedMesh)useLayout(mesh,low?PLAIN_LAYOUT:layout);
+ const layout=partLayout(mesh);if(!layout||!(mesh instanceof T.InstancedMesh))return;
+ if(low)mesh.userData.voxelLow=true;else delete mesh.userData.voxelLow;syncPart(mesh);
 }
