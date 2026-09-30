@@ -18,12 +18,16 @@ import type {ProjectileTrails} from './projectile-trails.js';
  * Without `enabled` (a renderer that does not pass the setting yet) it falls back to the previous tip ribbon through the
  * shared ProjectileTrails, which the renderer already hides when trails are off. */
 const MAX_SWEEPS=16,MAX_SAMPLES=48,BASE=.35,LIFE:Record<string,number>={daggers:.12,sword:.16,greatsword:.22,shield:.16};
+/** Where the ribbon's inner edge sits along the blade: heavier weapons sweep a deeper band (the greatsword from a quarter of its length). */
+const BASES:Record<string,number>={daggers:.4,sword:.32,greatsword:.25,shield:.35};
 type Sample={g:T.Vector3;d:T.Vector3;len:number;at:number};
-type Sweep={mesh:T.Mesh;samples:Sample[];seen:number;life:number};
+type Sweep={mesh:T.Mesh;samples:Sample[];seen:number;life:number;base:number};
 const _g=new T.Vector3(),_t=new T.Vector3(),_d=new T.Vector3(),_q=new T.Quaternion(),_s=new T.Quaternion(),_c=new T.Color(),IDENTITY=new T.Quaternion(),_sg=new T.Vector3(),_sd=new T.Vector3();
 /** Recycled samples (bounded by the live maximum), so a sweeping frame allocates nothing once the pool is warm. */
 const spare:Sample[]=[];
 const take=(g:T.Vector3,d:T.Vector3,len:number,at:number)=>{const k=spare.pop()??{g:new T.Vector3(),d:new T.Vector3(),len:0,at:0};k.g.copy(g);k.d.copy(d);k.len=len;k.at=at;return k;};
+/** Tip speed between two samples (m/s; 0 for coincident times). */
+const tipSpeed=(a:Sample,b:Sample)=>{const dt=b.at-a.at;if(dt<=1e-6)return 0;const x=b.g.x+b.d.x*b.len-a.g.x-a.d.x*a.len,y=b.g.y+b.d.y*b.len-a.g.y-a.d.y*a.len,z=b.g.z+b.d.z*b.len-a.g.z-a.d.z*a.len;return Math.hypot(x,y,z)/dt;};
 const give=(k:Sample|undefined)=>{if(k&&spare.length<MAX_SWEEPS*MAX_SAMPLES)spare.push(k);};
 /** The blade's grip and tip in world space (the off-hand blade on even dagger strikes), or undefined without a blade tip. */
 function blade(r:CharacterRig,p:PlayerView){
@@ -48,7 +52,7 @@ export class MeleeTrails{
   if(!this.root){let root:T.Object3D=r.group;while(root.parent)root=root.parent;if(root===r.group)return;this.root=root;}
   const key=p.id+':'+(p.meleeAction?.released?p.meleeAction.kind+p.meleeAction.at:p.lastAttack+':'+p.attackIndex);
   let s=this.sweeps.get(key);
-  if(!s){if(this.sweeps.size>=MAX_SWEEPS)return;s={mesh:this.acquire(color),samples:[],seen:visualTime,life:(LIFE[p.spec]??.16)*(this.quality<1?.7:1)};this.sweeps.set(key,s);}
+  if(!s){if(this.sweeps.size>=MAX_SWEEPS)return;s={mesh:this.acquire(color),samples:[],seen:visualTime,life:(LIFE[p.spec]??.16)*(this.quality<1?.7:1),base:BASES[p.spec]??BASE};this.sweeps.set(key,s);}
   (s.mesh.material as T.MeshBasicMaterial).color.setHex(color);
   const len=b.tip.distanceTo(b.grip),dir=_d.copy(b.tip).sub(b.grip).divideScalar(Math.max(1e-6,len)),last=s.samples.at(-1);
   // Sub-frame samples: the blade turns about the grip between frames, so fast arcs stay curved.
@@ -86,10 +90,12 @@ export class MeleeTrails{
  }
  private release(mesh:T.Mesh){mesh.removeFromParent();mesh.geometry.setDrawRange(0,0);if(this.pool.length<MAX_SWEEPS)this.pool.push(mesh);else{mesh.geometry.dispose();(mesh.material as T.Material).dispose();}}
  private build(s:Sweep,time:number){
-  const position=s.mesh.geometry.getAttribute('position') as T.BufferAttribute,color=s.mesh.geometry.getAttribute('color') as T.BufferAttribute,n=s.samples.length;
+  const position=s.mesh.geometry.getAttribute('position') as T.BufferAttribute,color=s.mesh.geometry.getAttribute('color') as T.BufferAttribute,n=s.samples.length,B=s.base;
+  // The fastest stretch of the sweep (the contact) burns brightest: each sample's tip speed against the sweep's fastest.
+  let top=1e-6;for(let i=1;i<n;i++)top=Math.max(top,tipSpeed(s.samples[i-1],s.samples[i]));
   for(let i=0;i<n;i++){
-   const k=s.samples[i],fade=Math.max(0,1-(time-k.at)/s.life),glow=fade*fade*(.2+.8*(i+1)/n);
-   position.setXYZ(i*2,k.g.x+k.d.x*k.len*BASE,k.g.y+k.d.y*k.len*BASE,k.g.z+k.d.z*k.len*BASE);position.setXYZ(i*2+1,k.g.x+k.d.x*k.len,k.g.y+k.d.y*k.len,k.g.z+k.d.z*k.len);
+   const k=s.samples[i],fade=Math.max(0,1-(time-k.at)/s.life),speed=tipSpeed(s.samples[Math.max(0,i-1)],s.samples[Math.min(n-1,Math.max(1,i))])/top,glow=fade*fade*(.2+.8*(i+1)/n)*(.7+.45*speed);
+   position.setXYZ(i*2,k.g.x+k.d.x*k.len*B,k.g.y+k.d.y*k.len*B,k.g.z+k.d.z*k.len*B);position.setXYZ(i*2+1,k.g.x+k.d.x*k.len,k.g.y+k.d.y*k.len,k.g.z+k.d.z*k.len);
    _c.setScalar(glow*.04);color.setXYZ(i*2,_c.r,_c.g,_c.b);_c.setScalar(glow*.62);color.setXYZ(i*2+1,_c.r,_c.g,_c.b);
   }
   position.needsUpdate=true;color.needsUpdate=true;s.mesh.geometry.setDrawRange(0,Math.max(0,n-1)*6);
