@@ -30,7 +30,7 @@ containing an entry; no self-referential commit hash is required.
   existing status test); real-network install from the channel verified (installed, then
   current).
 - Published: content 0.2.4d3dcebad34a from `claude/visual-revision` 0e82a31 (channel repo
-  7757039, logged in its PUBLISHED.md). Channel seed ZIP (SHA256 ca49c0df...) built from
+  7757039, logged in its PUBLISHED.md). Channel seed ZIP (SHA256 205883b4...905b) built from
   0e82a31; packaging step re-run manually after fixing a packager bug (fd13d5a).
 - Cross-development (Claude or Astra): to ship a new test version, build a candidate from
   the exact commit with `--test-only --channel <feed url>` using the PR #5 tooling, then
