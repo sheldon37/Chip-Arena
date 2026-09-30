@@ -20,8 +20,10 @@ const MAGIC=stance([.15,.08,.14],[-.16,-.07,.36],-.02,-.08,.02);
 const table:Record<SpecId,Readonly<Stance>>={
  emperor:NEUTRAL_STANCE,ansatsuken:NEUTRAL_STANCE,leet:MAGIC,
  pistol:stance([.15,.04,.12],[-.15,-.03,.2],-.015,-.05,.035),
- // Rifle: bladed stance behind the gun; the pelvis turn is scaled by the aim weight (the chest stays on aim).
- rifle:stance([.09,.12,.12],[-.10,-.10,.5],-.025,-.35,.04),
+ // Rifle: bladed stance behind the gun; the pelvis turn is scaled by the aim weight (the chest stays on aim). The hips sit
+ // between the feet line (~.86) and the forward aim, and both toes turn with the blade (the lead toe no longer points
+ // away from it), so the knees track over the toes under the .75 torso blade.
+ rifle:stance([.09,.12,-.3],[-.10,-.10,.85],-.025,-.55,.04),
  // Machine gun: wide and braced, knees soft, leaning into the weight.
  machinegun:stance([.19,.10,.2],[-.19,-.04,.4],-.03,-.1,.08,.15),
  fire:MAGIC,water:MAGIC,lightning:MAGIC,darkness:MAGIC,
