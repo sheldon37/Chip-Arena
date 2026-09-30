@@ -3,7 +3,7 @@ import {hitReactionMotion,fallbackFlinch} from './hit-reaction-motion.js';
 import {dodgeRollMotion} from './dodge-roll-motion.js';
 import {committed,meleeRecovery,rolling} from '../shared/souls-combat.js';
 import {locomotion,groundPass,finishPose,GAIT} from './motion-quality.js';
-import {meleeMotion} from './melee-motion.js';
+import {meleeMotion,meleeReady} from './melee-motion.js';
 import {animateEmperor,animateJuggle} from './emperor-animation.js';
 import {animateCosmetics} from './auditor-halo.js';
 import {animateAnsatsuken} from './ansatsuken-animation.js';
@@ -50,7 +50,7 @@ function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=
  r.weapon.visible=!p.weaponAway;r.weapon.position.set(0,0,0);r.weapon.rotation.set(.5,0,0);r.weapon.scale.set(1,1,w.class==='melee'?p.reach/w.range:1);r.offWeapon.position.set(0,0,0);r.offWeapon.rotation.set(.55,0,0);r.offWeapon.scale.copy(r.weapon.scale);
  if(p.juggle&&time<p.juggle.until){animateJuggle(r,p,time);return pose;}
  if(p.knockdown&&time<p.knockdown.until){knockdownMotion(r,p,time);return pose;}
- if((p.hitStunUntil||0)>time){if(hitReactionMotion(r,p,time,true))return pose;fallbackFlinch(r,p,time);return pose;}
+ if((p.hitStunUntil||0)>time){if(w.class==='melee')meleeReady(r,p,time);if(hitReactionMotion(r,p,time,true))return pose;fallbackFlinch(r,p,time);return pose;}
  if(dodgeRollMotion(r,p,time))return pose;
  if(p.spec==='emperor'){animateEmperor(r,p,time);hitReactionMotion(r,p,time);return pose;}
  if(p.spec==='ansatsuken'){animateAnsatsuken(r,p,time);hitReactionMotion(r,p,time);return pose;}
