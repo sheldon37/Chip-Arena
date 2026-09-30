@@ -108,3 +108,14 @@ offline test. Test profiles can be discarded only after the owner is done with t
 This workflow deliberately has no publishing step. Existing Site publishing capability
 is preserved, not yet automated from GitHub. A private GitHub asset URL is not a
 replacement for the anonymous feed, and no access token belongs in the game.
+
+## Remote test channel (owner-requested, 2026-09-30)
+
+For testers only. `candidate.py ... --test-only --channel https://raw.githubusercontent.com/sheldon37/chip-arena-test-updates/main/feed/`
+builds the same isolated TEST-ONLY ZIP, but its Update button and menu update badge read
+`latest.json` and `arena-*.json.gz` from that public test channel instead of the bundled feed
+(`remote-feed.mjs`, `test-remote-update.mjs`, `test-remote-status.cjs`, `test-remote-bootstrap.cjs`).
+The real `launcher/update.mjs` still verifies manifest schema, SHA256 and size; a missing or bad
+channel reports unavailable and never falls back to the live feed. To ship a new test version,
+copy a candidate's `feed/` files into the channel repo's `feed/` folder (remove the old payload).
+The channel is public: anyone with the URL can download the test game files. Not a player release.

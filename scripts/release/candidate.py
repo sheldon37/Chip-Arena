@@ -4,7 +4,7 @@ failed checks but retains the failures and exits nonzero. Never a release bypass
 """
 import argparse,hashlib,json,os,re,shutil,subprocess,sys,tempfile,time
 from pathlib import Path
-p=argparse.ArgumentParser();p.add_argument('--commit',required=True);p.add_argument('--output',required=True);p.add_argument('--test-only',action='store_true');p.add_argument('--runtime-cache');a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--commit',required=True);p.add_argument('--output',required=True);p.add_argument('--test-only',action='store_true');p.add_argument('--runtime-cache');p.add_argument('--channel');a=p.parse_args()
 repo=Path(__file__).resolve().parents[2];out=Path(a.output).resolve();tool=Path(__file__).resolve().parent
 if not re.fullmatch('[0-9a-f]{40}',a.commit):p.error('--commit must be a full 40-character Git SHA')
 def git(*args):return subprocess.check_output(['git','-C',str(repo),*args],text=True).strip()
@@ -51,7 +51,7 @@ try:
  if not run('actual-payload',[node,str(tool/'check-payload.mjs'),str(feed),str(source)]):raise RuntimeError('Actual update payload validation failed')
  for name,cmd in [('windows-package',[npm,'run','package:windows']),('desktop-package',[npm,'run','package:desktop'])]:
   if not run(name,cmd):raise RuntimeError(name+' failed')
- if not run('isolated-test-package',[sys.executable,str(tool/'make-test-package.py'),str(out/'packages/Chip-Arena-Desktop.zip'),str(feed),str(out/'Chip-Arena-TEST-ONLY.zip'),str(source)]):raise RuntimeError('Test package creation failed')
+ if not run('isolated-test-package',[sys.executable,str(tool/'make-test-package.py'),str(out/'packages/Chip-Arena-Desktop.zip'),str(feed),str(out/'Chip-Arena-TEST-ONLY.zip'),str(source)]+(['--channel',a.channel] if a.channel else [])):raise RuntimeError('Test package creation failed')
  report['update']=manifest;report['status']='BLOCKED' if not(gate and targeted) else 'AWAITING WINDOWS VALIDATION AND APPROVAL'
  # Full standard desktop ZIP is an intermediate, not the user-facing test artifact.
  shutil.rmtree(out/'packages')
