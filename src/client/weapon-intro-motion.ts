@@ -82,7 +82,7 @@ function footAt(left:boolean,t:number,start:{x:number;z:number;yaw:number},steps
  return {x:anchor.x,z:anchor.z,yaw:anchor.yaw,y:0,heel,weight:1};
 }
 /** Lightning falls from above frame: hovering high, then a gravity-accelerated drop that lands exactly on the hit. */
-export function lightningHeight(age:number,hit:number){const fall=hit-.35,drop=2.2,speed=2*drop/(hit-fall);if(age>=hit){const tau=age-hit,w=speed/(.4*Math.E);return -speed*tau*Math.exp(-w*tau);}if(age<=fall)return drop+.3*(1-smooth(age/fall))+.06*Math.sin(age*2.3)*(1-smooth(age/fall));const u=(age-fall)/(hit-fall);return drop*(1-u*u);}
+export function lightningHeight(age:number,hit:number){const fall=hit-.35,drop=2.2,speed=2*drop/(hit-fall);if(age>=hit){const tau=age-hit,w=speed/(.3*Math.E);return -speed*tau*Math.exp(-w*tau);}if(age<=fall)return drop+.3*(1-smooth(age/fall))+.06*Math.sin(age*2.3)*(1-smooth(age/fall));const u=(age-fall)/(hit-fall);return drop*(1-u*u);}
 /** Authored full-body entrance phrases. Absolute sampling makes previews and late joins identical. */
 export function poseWeaponIntro(r:CharacterRig,style:WeaponIntro,age:number){
  const spec=WEAPON_INTROS[style].spec,hit=WEAPON_INTROS[style].hit,keys=keysFor(hit),t=Math.max(0,age),ch=CHOREO[spec],magic=['fire','water','lightning','darkness'].includes(spec),gun=['pistol','rifle','machinegun'].includes(spec);
