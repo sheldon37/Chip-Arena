@@ -100,7 +100,7 @@
 
 .intro-team{background:transparent;border:0;padding:0;margin:8px 0 4px;font-size:14px;text-shadow:0 1px 4px #000}
 /* Visual revision: host controls use full-width selects in the narrow column (no '5 (defa' truncation). */
-.lobby-room-settings .settings-row{grid-template-columns:1fr;gap:6px}.lobby-room-settings .settings-row>select,.lobby-room-settings .settings-row select#match-mode{width:100%}.lobby-room-settings .settings-row>input[type=checkbox]{grid-column:auto;justify-self:start}
+.lobby-room-settings .settings-row{grid-template-columns:1fr;gap:6px}.lobby-room-settings .settings-row>select,.lobby-room-settings .settings-row select#match-mode{width:100%}.lobby-room-settings .settings-row:has(>input[type=checkbox]){grid-template-columns:1fr auto}.lobby-room-settings .settings-row>input[type=checkbox]{grid-column:auto;justify-self:end}.lobby-room-settings .match-options>.row select{padding-left:10px;padding-right:6px}
 .pilot-showcase>p{background:#101114a6;border-radius:8px;padding:8px 12px}
 .update-alert{background:#101114cc;padding:3px 8px;border-radius:6px}
 .panel .lobby-actions{position:sticky;bottom:0;z-index:2;background:linear-gradient(to bottom,#17181d00,#17181d 26%);box-shadow:0 34px 0 #17181d}
