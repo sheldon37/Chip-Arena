@@ -4,6 +4,7 @@ import type {PlayerView} from '../shared/simulation.js';
 import {foot,hand,braceWeapon,supportHand} from './rig-ik.js';
 import {smoothMotion as ease} from './motion-quality.js';
 import {WEAPON_WEIGHT} from '../shared/souls-combat.js';
+import {WEAPONS} from '../shared/content.js';
 
 /** Damped impulse response of a struck joint chain: 0 at the impact with its fastest rise there, exactly 1 at `tp`
  * (a ~6% overshoot peaks near .79 tp), then an opposite follow-through lobe scaled by `rebound`, decaying with `z`. */
@@ -16,13 +17,13 @@ const nudge=(node:T.Object3D,x:number,y:number,z:number,local=false)=>{q.setFrom
 /** Impact drives the pelvis first; the chest follows 16 ms later, the head 33 ms and the arms 45 ms later, each with its own
  * damping (the head and arms whip, the hips stay heavy). Arms add a weight-scaled delta to the held weapon pose, and the
  * wrist counter-rotates so blades lag instead of flipping. A light hit without stun is a .35 recoil of the body with a
- * stronger head snap and aim-arm kick so it still reads. Every chain is exactly 0 at the authoritative end of the stun;
+ * stronger head snap and, for guns and staves, an aim-arm kick so it still reads (a melee swing's arms are left alone). Every chain is exactly 0 at the authoritative end of the stun;
  * presentation never extends the lockout. */
 export function hitReactionMotion(r:CharacterRig,p:PlayerView,time:number,stunned=false){
  const h=p.hitReaction;if(!h)return false;const until=stunned?Math.max(h.until,p.hitStunUntil||0):h.until;if(time<h.at||time>=until)return false;
  const duration=Math.max(.04,until-h.at),age=time-h.at,u=age/duration,tp=Math.min(.095,duration*.26),end=1-ease((u-.72)/.28),scale=stunned?1:.35,d=h.direction;
  if(h.kind==='parry'){parryMotion(r,p,age,u,tp,end);return true;}
- const pelvis=hitImpulse(age,tp,.55,.6)*end*scale,chest=hitImpulse(age-.016,tp,.45,.6)*1.1*end*scale,head=hitImpulse(age-.033,tp,.25,.45)*1.25*end*(stunned?1:.6),arms=hitImpulse(age-.045,tp,.2,.5)*end*(stunned?1:.55);
+ const pelvis=hitImpulse(age,tp,.55,.6)*end*scale,chest=hitImpulse(age-.016,tp,.45,.6)*1.1*end*scale,head=hitImpulse(age-.033,tp,.25,.45)*1.25*end*(stunned?1:.6),arms=hitImpulse(age-.045,tp,.2,.5)*end*(stunned?1:WEAPONS[p.spec].class==='melee'?0:.55);
  const strength=pelvis*h.strength,torso=chest*h.strength,low=h.zone==='legs',headHit=h.zone==='head',side=h.point.x>=0?1:-1;
  // A two-handed hold (greatsword, shield, long guns) keeps its support hand on the grip through the recoil.
  const support=r.weapon.getObjectByName('support-grip');let twoHand=false;
