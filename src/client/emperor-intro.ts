@@ -11,6 +11,11 @@ export function poseEmperor(r:CharacterRig,t:number){
  r.rightArm.rotation.set(-1.65-1.28*lift,.1,-.08-.22*lift);r.rightElbow.rotation.x=-1.5+1.34*lift;r.rightHand.rotation.set(.18*lift,0,.16-.32*lift);
  r.leftArm.rotation.set(-.65+.8*lift,0,.17);r.leftElbow.rotation.x=-1.7+.65*lift;r.leftHand.rotation.z=-.12;
  r.rightShoulder.rotation.set(-.06*lead,.08*lead,-.09*lift);r.spine.rotation.y-=.06*lead;r.pelvis.rotation.y+=.05*lift;r.rightFoot.rotation.y-=.06*lift;r.body.rotation.x=-.045*lift;r.chest.rotation.y=.28-.18*lift;r.head.rotation.set(.17*(1-lift)-.04*lift,.12-.22*lift,0);r.body.position.y+=breathe;
+ // Living hold (never the raised right arm): the weight drifts between the feet with the chest counter-rolled, the free
+ // arm settles, and the chest swells and the chin lifts on the 4.1 s beat.
+ const hold=ease((t-2.4)/.8),drift=Math.sin(2*Math.PI*(t-2.4)/3.4)*hold,beat=Math.sin(Math.PI*T.MathUtils.clamp((t-3.98)/.5,0,1))**2;
+ r.pelvis.rotation.z+=.02*drift;for(const leg of [r.leftLeg,r.rightLeg])leg.rotation.z-=.02*drift;r.chest.rotation.z-=.02*drift;r.leftArm.rotation.z+=.025*drift;r.leftElbow.rotation.x-=.04*hold*Math.sin(2*Math.PI*(t-2.4)/2.9);r.head.rotation.z-=.015*Math.sin(2*Math.PI*(t-2.55)/3.4)*hold;
+ r.chest.rotation.x-=.03*beat;r.head.rotation.x-=.06*beat;r.body.position.y+=.008*beat;
  if(lift<1){const target=new T.Object3D();target.position.set(.035,.045,0);r.rightHand.add(target);supportHand(r,target,1-ease(lift/.6));target.removeFromParent();}
 }
 export function emperorCamera(camera:T.PerspectiveCamera,t:number,aspect:number){

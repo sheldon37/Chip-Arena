@@ -1,15 +1,26 @@
 import * as T from 'three';
 import {CharacterRig} from './character-rig.js';
 import {fighterGuard} from './ansatsuken-animation.js';
+import {foot as placeFoot,STANDING_REACH} from './rig-ik.js';
 const ease=(n:number)=>{n=T.MathUtils.clamp(n,0,1);return n*n*(3-2*n);};
 /** The strokes of 天, constructed in the game's geometry style. */
 export function heavenMark(){const g=new T.Group(),geometry=new T.BoxGeometry(1,1,1),material=new T.MeshBasicMaterial({color:0xff481d,toneMapped:false});for(const [x,y,sx,sy,angle]of [[0,.18,.22,.038,0],[0,.065,.36,.038,0],[-.065,-.075,.038,.27,-.48],[.075,-.075,.038,.29,.5]]){const m=new T.Mesh(geometry,material);m.position.set(x,y,0);m.scale.set(sx,sy,.012);m.rotation.z=angle;g.add(m);}g.name='heaven-mark';return g;}
 export function poseRainWarrior(r:CharacterRig,age:number){
  for(const o of [r.body,r.pelvis,r.spine,r.chest,r.neck,r.head,r.leftShoulder,r.rightShoulder,r.leftArm,r.rightArm,r.leftElbow,r.rightElbow,r.leftHand,r.rightHand,r.leftLeg,r.rightLeg,r.leftKnee,r.rightKnee,r.leftFoot,r.rightFoot,r.leftToe,r.rightToe])o.rotation.set(0,0,0);
  r.group.position.set(0,.88,0);r.group.scale.setScalar(1);r.body.position.set(0,0,0);r.weapon.visible=r.offWeapon.visible=false;
- const turn=ease((age-3.15)/1.15),guard=ease((age-4.05)/.7);r.group.rotation.set(0,Math.PI*(1-turn)-.12*turn,0);
- r.head.rotation.x=.18*(1-guard);r.leftLeg.rotation.z=.12;r.rightLeg.rotation.z=-.12;r.leftArm.rotation.set(.12,0,.2);r.rightArm.rotation.set(.12,0,-.2);r.leftElbow.rotation.x=r.rightElbow.rotation.x=-.25;
- if(age>2.45&&age<3.9)r.head.rotation.y=-.5*Math.sin(Math.PI*ease((age-2.45)/1.45));fighterGuard(r,age,guard);const pivot=Math.sin(turn*Math.PI);r.pelvis.rotation.y-=.16*pivot;r.chest.rotation.y+=.12*pivot;r.body.position.y-=.025*pivot;r.rightFoot.rotation.y-=.32*pivot;r.leftKnee.rotation.x+=.12*pivot;r.rightShoulder.rotation.y=-.06*guard;r.spine.rotation.x+=Math.sin(age*2.1)*.008;
+ const turn=ease((age-3.15)/1.15),guard=ease((age-4.05)/.7),yaw=Math.PI*(1-turn)-.12*turn;r.group.rotation.set(0,yaw,0);
+ // The half turn is two pivot steps instead of a turntable: the root swings around the planted right foot for the first
+ // half (the left foot steps round with a knee lift), then around the planted left foot. Pure function of age.
+ const foot=.19,mid=Math.PI*.5-.06,around=(y:number,side:number,ox:number,oz:number)=>{const c=Math.cos(y),s=Math.sin(y);return [ox-side*foot*c,oz+side*foot*s];};
+ const [mx,mz]=around(mid,-1,foot,0),lx=mx+foot*Math.cos(mid),lz=mz-foot*Math.sin(mid),[px,pz]=turn<=.5?around(yaw,-1,foot,0):around(yaw,1,lx,lz);r.group.position.set(px,.88,pz);
+ const stepL=Math.sin(Math.PI*T.MathUtils.clamp(turn/.5,0,1)),stepR=Math.sin(Math.PI*T.MathUtils.clamp((turn-.5)/.5,0,1));
+ r.head.rotation.x=.18*(1-guard);r.leftLeg.rotation.set(-.45*stepL,0,.12);r.rightLeg.rotation.set(-.45*stepR,0,-.12);r.leftKnee.rotation.x=.9*stepL;r.rightKnee.rotation.x=.9*stepR;r.body.position.x=.05*(stepR-stepL);r.leftArm.rotation.set(.12,0,.2);r.rightArm.rotation.set(.12,0,-.2);r.leftElbow.rotation.x=r.rightElbow.rotation.x=-.25;
+ if(age>2.45&&age<3.9)r.head.rotation.y=-.5*Math.sin(Math.PI*ease((age-2.45)/1.45));fighterGuard(r,age,guard);const pivot=Math.sin(turn*Math.PI);r.pelvis.rotation.y-=.16*pivot;r.chest.rotation.y+=.12*pivot;r.body.position.y-=.025*pivot;r.leftKnee.rotation.x+=.12*pivot;r.rightShoulder.rotation.y=-.06*guard;r.spine.rotation.x+=Math.sin(age*2.1)*.008+.014*Math.sin(age*1.4)*(1-turn);r.chest.rotation.x-=.01*Math.sin(age*1.4-.3)*(1-turn);
+ // Feet on world anchors: each stays planted while it is the pivot and steps round on a small arc when it is free, so the
+ // turn and the guard crouch neither slide nor sink them.
+ const end=-.12,[ex,ez]=around(end,1,lx,lz),anchors:[number,number,number][][]=[[[-foot,0,Math.PI],[lx,lz,mid]],[[foot,0,Math.PI],[ex-foot*Math.cos(end),ez+foot*Math.sin(end),end]]];
+ for(const left of [true,false]){const [from,to]=anchors[left?0:1],u=left?T.MathUtils.clamp(turn/.5,0,1):T.MathUtils.clamp((turn-.5)/.5,0,1),e=ease(u),wx=from[0]+(to[0]-from[0])*e,wz=from[1]+(to[1]-from[1])*e,wy=from[2]+(to[2]-from[2])*e,dx=wx-px,dz=wz-pz,c=Math.cos(yaw),sn=Math.sin(yaw);
+  placeFoot(r,left,new T.Vector3(dx*c-dz*sn,-.795+.1*Math.sin(Math.PI*u),dx*sn+dz*c),wy-yaw,.25*Math.sin(Math.PI*u),1,undefined,STANDING_REACH);}
 }
 export function rainCamera(camera:T.PerspectiveCamera,age:number,aspect:number){
  const t=ease(age/2.4),turn=ease((age-3.15)/1.6),reveal=ease((age-4.75)/.75);
