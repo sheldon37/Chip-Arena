@@ -62,7 +62,7 @@ export function primaryMeleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<type
  const twistArr=heavy?[0,-.22,-.48,-.62,-.45,.40,.50,.55,0]:shield?[0,.14,.28,.06,-.26,-.36,-.36,-.20,0]:dagger?[0,-.10,-.20,-.16,.06,.22,.26,.18,0]:[0,-.18,-.38,-.20,.24,.40,.44,.16,0];
  const turnScale=spin?1:sign,twistScale=(overhead?.5:1)*sign;
  const turn=c(turnArr)*turnScale,twist=c(twistArr)*twistScale;
- const crouch=c(heavy?[0,-.12,-.30,-.37,-.33,-.25,-.19,-.13,0]:overhead?[0,-.14,.10,-.06,-.34,-.42,-.40,-.22,0]:shield?[0,-.12,-.20,-.18,-.14,-.10,-.08,-.05,0]:low?[0,-.19,-.28,-.25,-.34,-.30,-.22,-.10,0]:[0,-.10,-.16,-.13,-.22,-.26,-.21,-.09,0]);
+ const crouch=c(heavy?[0,-.12,-.30,-.37,-.33,-.25,-.19,-.13,0]:overhead?[0,-.14,.10,-.06,-.34,-.42,-.40,-.22,0]:shield?[0,-.12,-.20,-.18,-.14,-.10,-.08,-.05,0]:low?[0,-.19,-.28,-.25,-.34,-.30,-.22,-.10,0]:dagger?[0,-.14,-.22,-.19,-.28,-.30,-.24,-.11,0]:[0,-.10,-.16,-.13,-.22,-.26,-.21,-.09,0]);
  r.body.position.x+=c(heavy?[0,-.05,-.10,-.08,.07,.11,.10,.06,0]:shield?[0,.03,.05,.01,-.05,-.08,-.07,-.03,0]:[0,-.035,-.07,-.02,.065,.09,.08,.035,0])*sign;
  r.body.position.z+=c(heavy?[0,-.06,-.12,-.09,.13,.18,.15,.08,0]:[0,-.05,-.08,0,.14,.17,.15,.07,0]);r.body.position.y+=crouch;
  r.body.rotation.y+=turn;r.body.rotation.x+=c(heavy?[0,-.09,.22,.30,.28,.20,.13,.08,0]:shield?[0,.03,.07,.05,.06,.05,.04,.02,0]:overhead?[0,-.15,-.28,-.10,.38,.48,.42,.18,0]:[0,-.07,-.15,.04,.20,.26,.22,.10,0]);
@@ -120,7 +120,7 @@ export const MELEE_PHRASES={
  shieldOff:{x:[.30,.28,.32,.36,.36,.35,.33],y:[-.06,-.04,-.08,-.12,-.12,-.12,-.10],z:[.14,.18,.06,-.06,-.08,-.06,0],rx:[-.5,-.4,-.4,-.5,-.6,-.7,-.8],ry:[.1,0,0,.1,.2,.2,.2],rz:[.25,.25,.25,.25,.25,.25,.25]},
  dagger:{x:[-.50,-.58,-.36,-.10,0,.02,-.06],y:[.14,.16,.10,-.04,-.14,-.18,-.14],z:[.14,.02,.26,.44,.38,.30,.28],rx:[-.7,-.95,-.55,.2,.45,.50,.35],ry:[-.55,-.8,-.4,.40,.72,.84,.66],rz:[-.2,-.35,-.15,.2,.3,.26,.18],pole:[PD,PD,PD,PD,PD,PD,PD]},
  daggerLow:{x:[-.50,-.58,-.36,-.10,0,.02,-.06],y:[.02,-.06,-.10,-.14,.06,.14,.06],z:[.14,.02,.26,.44,.36,.28,.26],rx:[.1,.2,.12,-.15,-.2,-.25,-.2],ry:[-.55,-.8,-.4,.40,.72,.84,.66],rz:[-.2,-.35,-.15,.2,.3,.26,.18],pole:[PL,PL,PL,mix(PL,PR),PR,PR,PR]},
- daggerOther:{x:[.20,.24,.28,.34,.30,.24,.18],y:[.06,.10,0,-.12,-.04,.02,.06],z:[.30,.26,.22,.10,.16,.22,.26],rx:[-.3,-.2,-.3,-.55,-.75,-.55,-.4],ry:[.3,.55,.85,.7,.25,.15,.1],rz:[.2,.3,.35,.25,.05,.05,.1]},
+ daggerOther:{x:[.20,.24,.28,.32,.30,.24,.18],y:[.10,.16,.12,.08,.14,.16,.12],z:[.30,.26,.22,.10,.16,.22,.26],rx:[-.3,-.2,-.3,-.55,-.75,-.55,-.4],ry:[.3,.55,.85,.7,.25,.15,.1],rz:[.2,.3,.35,.25,.05,.05,.1]},
  greatsword:{x:[-.02,0,.02,.04,.07,.09,.10],y:[.10,.02,-.16,-.06,-.08,-.04,.06],z:[.14,.14,.24,.32,.30,.26,.22],rx:[-.75,-.45,-.33,-.40,-.20,-.30,-.45],ry:[-.25,-.15,.40,.75,.85,.92,.95],rz:[-.2,-.3,-.2,-.1,.1,.16,.2]},
 } satisfies Record<string,ArmPhrase>;
 const _t=new T.Vector3(),_eu=new T.Euler(),_pole=new T.Vector3(),_pk:Arr=new Array(7).fill(0);
@@ -159,7 +159,7 @@ function feet(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,phase:
  // The lead step rides the authoritative travel (its progress is the share of the travel done by the plant), so the foot
  // never runs ahead of the hips it hangs from: it stays within leg reach and lands with zero floor speed as the travel plants.
  // Lead: a lifted step to the contact spot, planted (world-fixed) from the contact frame, a lifted step back to its guard spot.
- const cx=(leadingLeft?1:-1)*(heavy?.27:.25),worldPlant=.31+plantTravel,su=T.MathUtils.clamp(travel/Math.max(.01,plantTravel),0,1),bu=T.MathUtils.clamp((phase-2.45)/.5,0,1),s=ease(su),back=step(bu);
+ const cx=(leadingLeft?1:-1)*(heavy?.27:dagger?.29:.25),worldPlant=.31+plantTravel,su=T.MathUtils.clamp(travel/Math.max(.01,plantTravel),0,1),bu=T.MathUtils.clamp((phase-2.45)/.5,0,1),s=ease(su),back=step(bu);
  const lift=(overhead?.18:heavy?.14:dagger?.07:.09)*arc(su)+.07*arc(bu),cyaw=.15*sign;
  const lz=phase<2.45?lf.z+(worldPlant-lf.z)*s-travel:(worldPlant-full)*(1-back)+lf.z*back;
  _lead.set(phase<2.45?lx+(cx-lx)*s:cx+(lx-cx)*back,-.795+lift,lz);
