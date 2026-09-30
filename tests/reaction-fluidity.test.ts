@@ -123,3 +123,13 @@ test('a greatsword parry keeps both hands on the grip; a stun without a hitReact
  const s=probeRig('sword'),sb=probeBase('sword');let seen=0;for(let t=T0-.2;t<T0+.3;t+=1/60){animateCharacter(s,{...animationPreviewPlayer(sb,'idle',t),hitStunUntil:t>=T0?T0+.3:-1e9} as PlayerView,t,1/60);if(t>=T0+.08&&t<T0+.12)seen=Math.max(seen,Math.abs(s.body.rotation.x));}
  assert.ok(seen>.08,'the fallback flinch visibly recoils');
 });
+
+test('juggle launches out of the caught pose, kicks without resetting, spins a whole turn from 0 and never snaps',()=>{
+ const J=(t:number)=>{const r=t-T0,second=r>=.45;return {at:T0,until:T0+1.2,hits:second?2:1,lastHit:T0+(second?.45:0),source:'x',spinUntil:second?T0+.45+.65:0,bounced:false,wallUsed:false};};
+ const rates=probeRates({spec:'sword',mode:'idle',from:T0-.1,to:T0+1.5,patch:t=>t>=T0?{juggle:J(t),grounded:false,vel:{x:0,y:6*(1.2-2*(t-T0)),z:0}}:{}});
+ // Baseline: a 155 degree entry pop, a 27 degree jolt on every hit and a 44 degree exit snap.
+ assert.ok(rates[60].maxJointStepDeg<=22,describeProbe(rates[60]));assert.ok(rates[120].maxJointStepDeg<=rates[60].maxJointStepDeg*.65,describeProbe(rates[120]));
+ assert.ok([rates[30],rates[60],rates[120]].every(x=>Number.isFinite(x.minAnkleY)&&Number.isFinite(x.minTipY)),'finite poses');
+ const r=probeRig('sword'),base=probeBase('sword'),yaw=(t:number)=>{animateCharacter(r,{...animationPreviewPlayer(base,'idle',t),hitStunUntil:-1e9,juggle:J(t),grounded:false} as PlayerView,t,1/60);return new T.Euler().setFromQuaternion(r.body.quaternion,'YXZ').y;};
+ for(let t=T0;t<T0+.45;t+=1/60)yaw(t);const before=yaw(T0+.45);assert.ok(Math.abs(before-yaw(T0+.45+1/60))<.2,'the screw spin starts from the current heading');
+});
