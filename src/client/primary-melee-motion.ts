@@ -13,6 +13,8 @@ export {foot,hand};
  * 2.3 is the follow-through extreme: the blade still carries momentum past swingUntil and eases out instead of stopping
  * dead on the hit window's last frame; 2.65 is the return, which comes back low and close instead of retracing the cut. */
 const keys=[0,.55,1,1.28,1.65,2,2.3,2.65,3];
+/** The fourth dagger cut's body turn: a full forward turn over .8..3 that never unwinds. */
+const SPIN_TURN=[0,-.35,-.6,.9,2.4,3.9,5.0,5.9,Math.PI*2],SPIN_FROM=poseCurve(keys,SPIN_TURN,1.1);
 type Arr=number[];
 /** Phase of an attack from authoritative timestamps. The recovery's phase starts at the strike's phase speed (so the
  * follow-through keeps the blade's momentum) and settles with zero speed at the commitment end. */
@@ -34,7 +36,7 @@ export function primaryMeleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<type
  // Where the incoming layers planted the ankles, before this phrase moves the body (the plant blends from there).
  if(weight<1){ankleInGroup(r,true,_in[0]);ankleInGroup(r,false,_in[1]);}
  // Whole-body turn (hips lead) and torso twist on top of it (shoulders trail the hips, most for the greatsword).
- const turnArr=spin?[0,-.35,-.6,.9,2.4,3.9,5.0,5.9,Math.PI*2]:heavy?[0,-.42,-1.05,-.90,.45,1.00,1.25,1.10,0]:overhead?[0,-.26,-.40,-.15,.14,.30,.42,.20,0]:shield?[0,-.36,-.62,-.24,.45,.66,.95,.40,0]:dagger?[0,-.25,-.45,-.15,.20,.42,.58,.25,0]:[0,-.45,-.85,-.35,.30,.62,1.02,.55,0];
+ const turnArr=spin?SPIN_TURN:heavy?[0,-.42,-1.05,-.90,.45,1.00,1.25,1.10,0]:overhead?[0,-.26,-.40,-.15,.14,.30,.42,.20,0]:shield?[0,-.36,-.62,-.24,.45,.66,.95,.40,0]:dagger?[0,-.25,-.45,-.15,.20,.42,.58,.25,0]:[0,-.45,-.85,-.35,.30,.62,1.02,.55,0];
  const twistArr=heavy?[0,-.22,-.48,-.62,-.45,.40,.52,.35,0]:dagger?[0,-.10,-.20,-.16,.06,.22,.26,.08,0]:[0,-.18,-.38,-.20,.24,.40,.44,.16,0];
  const turnScale=spin?1:sign,twistScale=(overhead?.5:1)*sign;
  const turn=c(turnArr)*turnScale,twist=c(twistArr)*twistScale;
@@ -50,7 +52,7 @@ export function primaryMeleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<type
  const pitch=r.body.rotation.x;if(pitch>.2){r.spine.rotation.x-=.45*(pitch-.2);r.chest.rotation.x-=.2*(pitch-.2);}
  r.leftShoulder.rotation.x+=c([0,.06,.13,.07,-.10,-.16,-.12,-.04,0]);r.rightShoulder.rotation.x-=c([0,.08,.18,.11,-.15,-.21,-.16,-.05,0]);
  r.leftShoulder.rotation.y+=twist*.35;r.rightShoulder.rotation.y-=twist*.35;
- feet(r,p,a,phase,sign,heavy,dagger,overhead,spin,turn,weight);
+ feet(r,p,a,phase,sign,heavy,dagger,overhead,spin,weight);
  if(heavy){
   // Rear-leg load, stamped lead foot, low diagonal sweep, rise ~60 degrees over the lead shoulder, then a heavy drop
   // through the front into the two-hand low guard. The blade's yaw trails the hands (it accelerates last).
@@ -119,7 +121,7 @@ const _v=new T.Vector3(),_lead=new T.Vector3(),_rear=new T.Vector3(),_in=[new T.
  * is subtracted), and a foot only moves while it is lifted. The lead foot steps from its guard spot and lands with zero
  * floor speed on the contact frame; the rear foot holds, then drags up behind the lunge on its toes; after the cut the
  * rear foot has already settled and the lead foot steps back, ending in the staggered guard from stances.ts. */
-function feet(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,phase:number,sign:number,heavy:boolean,dagger:boolean,overhead:boolean,spin:boolean,turn:number,weight:number){
+function feet(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,phase:number,sign:number,heavy:boolean,dagger:boolean,overhead:boolean,spin:boolean,weight:number){
  const commitment=p.attackCommitment||attackCommitment(p.spec,p.lastAttack,a.windup,a.window,p.attackRate||1,a.windup+a.window),now=p.lastAttack+a.age,travel=attackTravel(commitment,now),plantTravel=attackTravel(commitment,p.lastAttack+a.windup+a.window*.65),full=attackTravel(commitment,commitment.stepUntil);
  const st=stanceFor(p.spec),leadingLeft=sign>0,lf=leadingLeft===st.leadLeft?st.lead:st.rear,rf=leadingLeft===st.leadLeft?st.rear:st.lead,lx=(leadingLeft?1:-1)*Math.abs(lf.x),rx=(leadingLeft?-1:1)*Math.abs(rf.x);
  const lyaw0=(leadingLeft?1:-1)*lf.toeOut,ryaw0=(leadingLeft?-1:1)*rf.toeOut;
@@ -138,10 +140,13 @@ function feet(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,phase:
  const ryaw=ryaw0-.35*sign*arc(qu),rheel=(heavy?.38:.32)*Math.sin(Math.PI*Math.min(1,qu*1.15));
  const lin=weight<1?_in[leadingLeft?0:1]:undefined,rin=weight<1?_in[leadingLeft?1:0]:undefined;
  if(spin){
-  // The spin pivots on the planted lead foot: the rear foot orbits it and the hips ride over it.
-  const pivot=ease((phase-.8)/2.2)*Math.PI*2;_v.copy(_rear).sub(_lead);_v.y=0;_v.applyAxisAngle(T.Object3D.DEFAULT_UP,pivot);_rear.x=_lead.x+_v.x;_rear.z=_lead.z+_v.z;
-  const over=Math.sin(Math.PI*ease((phase-.8)/2.2));_rear.y=-.795+.08*over;r.body.position.x+=_lead.x*.55*over;r.body.position.z+=_lead.z*.35*over;
-  foot(r,leadingLeft,_lead,lyaw+turn,lheel,weight,lin);foot(r,!leadingLeft,_rear,ryaw+turn,rheel,weight,rin);return;
+  // The spin is a hopped turn: both feet hold their floor spots through the windup, leave the floor as the turn speeds up,
+  // circle with the body (in the air, so nothing skates) and land back on the guard stance as the turn completes.
+  const u=T.MathUtils.clamp((phase-1.1)/1.75,0,1),b=step(u),hop=arc(u),rot=SPIN_FROM+(Math.PI*2-SPIN_FROM)*b,cxs=r.body.position.x,czs=r.body.position.z,c=Math.cos(rot),sn=Math.sin(rot);
+  r.body.position.y+=.045*hop;
+  const place=(out:T.Vector3,x:number,z:number)=>{const ox=x-cxs,oz=z-czs,px=cxs+ox*c+oz*sn,pz=czs-ox*sn+oz*c;out.set(x+(px-x)*b,-.795+.075*hop,(z-travel)+(pz-(z-travel))*b);};
+  place(_lead,lx,lf.z);place(_rear,rx,rf.z);
+  foot(r,leadingLeft,_lead,lyaw0+rot*b,.3*hop,weight,lin);foot(r,!leadingLeft,_rear,ryaw0+rot*b,.3*hop,weight,rin);return;
  }
  foot(r,leadingLeft,_lead,lyaw,lheel,weight,lin);foot(r,!leadingLeft,_rear,ryaw,rheel,weight,rin);
 }

@@ -2,7 +2,7 @@ import * as T from 'three';
 import type {CharacterRig} from './character-rig.js';
 import type {PlayerView} from '../shared/simulation.js';
 import {hand,braceWeapon} from './rig-ik.js';
-import {smoothMotion as ease} from './motion-quality.js';
+import {smoothMotion as ease,timeJumped} from './motion-quality.js';
 import {meleeRecovery} from '../shared/souls-combat.js';
 /** Combat-ready melee guard and running carry (presentation only).
  * The guard is the pose every standard melee phrase starts and ends in (primary-melee-motion derives its first and last keys
@@ -57,8 +57,10 @@ export function carryMeleeWeapon(r:CharacterRig,p:PlayerView,carry:number){
  // The hand socket's y and z axes in the rig group's frame; the x rotation that best points the blade (+z) along the carry.
  _h.identity();for(let n:T.Object3D|null=r.weapon.parent;n&&n!==r.group;n=n.parent)_h.premultiply(n.quaternion);
  _y.set(0,1,0).applyQuaternion(_h);_z.set(0,0,1).applyQuaternion(_h);_t.set(c.x,c.y,c.z).normalize();
- const best=Math.atan2(-_y.dot(_t),_z.dot(_t)),from=r.weapon.rotation.x;r.weapon.rotation.x=from+T.MathUtils.euclideanModulo(best-from+Math.PI,Math.PI*2)-Math.PI;
- r.weapon.rotation.x=from+(r.weapon.rotation.x-from)*c.hold*carry;
+ // The turn always runs back over the top (decreasing x) and never through the floor, so the direction never flips
+ // while the carry fades in or out (the target sits well away from the incoming hold, so there is no branch to cross).
+ const best=Math.atan2(-_y.dot(_t),_z.dot(_t)),from=r.weapon.rotation.x,turn=T.MathUtils.euclideanModulo(best-from,Math.PI*2)-Math.PI*2;
+ r.weapon.rotation.x=from+turn*c.hold*carry;
 }
 /** Seconds the guard stays up after the last melee action, then the time it takes to lower. */
 export const GUARD_HOLD=2.4,GUARD_FADE=.8;
@@ -77,5 +79,13 @@ const RELAXED:Record<string,number>={greatsword:.27};
  * builds, and into the relaxed idle as readiness lapses. */
 export function meleeReady(r:CharacterRig,p:PlayerView,time:number,weight=1){
  const carry=ease((r.motion-.10)/.65),relaxed=RELAXED[p.spec];if(relaxed!==undefined)r.weapon.rotation.x=relaxed;
- carryMeleeWeapon(r,p,carry*weight);applyMeleeGuard(r,p,time,(1-carry)*meleeReadiness(p,time)*weight);return carry;
+ carryMeleeWeapon(r,p,carryHold(r,carry,time)*weight);applyMeleeGuard(r,p,time,(1-carry)*meleeReadiness(p,time)*weight);return carry;
+}
+/** The weapon carry eases toward the run's carry weight (time constant ~.16 s) instead of following the stride blend,
+ * which collapses in a few frames when an action plants the feet, so a hit or a stop turns the blade over ~.4 s rather
+ * than in two frames. Per rig, dt-clamped, deterministic; it starts on its target and restarts after a rewind or jump. */
+type Hold={value:number;time:number};const holds=new WeakMap<object,Hold>();
+function carryHold(r:object,target:number,time:number){
+ let s=holds.get(r);if(!s||timeJumped(s.time,time)){s={value:target,time};holds.set(r,s);return target;}
+ const dt=T.MathUtils.clamp(time-s.time,0,.05);s.time=Math.max(time,s.time);s.value+=(target-s.value)*(1-Math.exp(-dt*6));return s.value;
 }
