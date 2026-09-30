@@ -16,6 +16,19 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-09-30 — Claude — visual revision TEST-ONLY Windows build
+
+- Owner requested a Windows test build of `claude/visual-revision` at 2557a12. Built with
+  PR #3 tooling (release/candidate-workflow 7ff6462) `candidate.py --test-only`, Node
+  24.19.0 / npm 11.9.0 (Python 3.11): Chip-Arena-TEST-ONLY.zip, SHA256 0f4df606...71c5,
+  content 0.2.754d8ed53b1b, build 8d4cb82a5c68b3f79c2e3b0b. Status BLOCKED/publishable:false.
+- Passed: setup, fixture tests, updater tests, runtime pins, two builds with identical
+  payload, actual payload install, Windows/desktop/isolated packaging. `verify` failed only
+  on known items: 12 known unit failures (portable-update passes on Node 24), the 4 server
+  TS errors (PR #2), WebSocket rematch timeout.
+- Delivered to the owner as 10 split parts; not published, no live feed change. Native
+  Windows run pending owner test.
+
 ## 2026-09-30 — Claude — complete visual revision
 
 - Task: owner-requested complete visual revision (animations, intros, model, UI),
