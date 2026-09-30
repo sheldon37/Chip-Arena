@@ -107,7 +107,7 @@ test('the HUD is rewritten only when its markup changes, and the intro card is t
  assert.ok(intro.length>0&&!/opacity:\$\{|transform:translate\(-50%,\$\{/.test(intro),'no per-redraw inline opacity/transform steps');
  for(const v of ['--intro-age','--name-delay','--exit-delay','--intro-duration'])assert.ok(intro.includes(v),v+' keyed from intro age');
  assert.match(main,/--tick-delay/);assert.match(css,/@keyframes count-tick/);assert.match(css,/@keyframes intro-name-in/);
- const reduced=css.slice(css.lastIndexOf('@media(prefers-reduced-motion:reduce)'));for(const k of ['.intro-name','.intro-progress','.countdown b'])assert.ok(reduced.includes(k),k+' has a reduced-motion fallback');
+ const reduced=[...css.matchAll(/@media\(prefers-reduced-motion:reduce\)\{([\s\S]*?)\}\s*\n/g)].map(m=>m[1]).join(' ');for(const k of ['.intro-name','.intro-progress','.countdown b'])assert.ok(reduced.includes(k),k+' has a reduced-motion fallback');
  assert.match(main,/data-action="update-game"/);assert.match(main,/control.hidden=screen!=='home'/);
 });
 
@@ -138,4 +138,14 @@ test('portrait framing grows with a tall hat and keeps the front camera',()=>{
  for(const c of [bare,tall]){assert.equal(c.position.x,0);assert.ok(c.position.z>0&&c.right>=.95);}
  const top=(c:T.OrthographicCamera)=>{const d=new T.Vector3();c.getWorldDirection(d);return c.position.y+d.y*(c.position.z/Math.abs(d.z))+c.top;};
  assert.ok(top(tall)>2.45&&top(bare)>1.72,'hat and head stay inside the card');assert.ok(bare.top<1.28,'a bare pilot fills more of the card than the fixed framing');
+});
+
+test('UI polish: every action button has a real icon, the result banner is keyed to authoritative time, new motion respects reduced motion',async()=>{
+ const {ACTION_ICONS}=await import('../src/client/icon-map.js'),{ICON_PATHS}=await import('../src/client/icons.generated.js');
+ for(const id of ['login','account','lobby','test-driver','ready','rematch','copy-code','copy-invite','connect','start','spectate'])assert.ok(ICON_PATHS[ACTION_ICONS[id]],id+' icon');
+ const main=source('main.ts'),css=source('style.css'),hud=source('match-hud.css');
+ assert.match(main,/class="result-sequence" data-outcome="\$\{/);assert.match(main,/syncClock\(result,Number\(result\.dataset\.left\)-state\.remaining\)/);assert.ok(!main.includes("'#97f0d0'"),'connection light uses the good token');
+ const reduced=(text:string)=>[...text.matchAll(/@media\(prefers-reduced-motion:reduce\)\{([\s\S]*?)\}\s*\n/g)].map(m=>m[1]).join(' ');
+ for(const sel of ['.notice','.result-sequence .eyebrow','.result-sequence p:after','.click-resume'])assert.ok(reduced(css).includes(sel),sel+' has a reduced-motion fallback');
+ assert.ok(reduced(hud).includes('.death-announcement.is-new'));assert.match(hud,/\.death-announcement\{font:500 13px/);
 });
