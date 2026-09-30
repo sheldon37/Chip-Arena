@@ -34,7 +34,7 @@ export function cycleLength(speed:number){const g=GAIT;return speed<=g.runSpeed?
 /** Per-foot gait state in rig-group space: x/y/z/yaw/pitch/toe is the live foot, f* the lift-off point, l* the landing
  * target and s* the last solved ankle target (what the ground pass re-solves to). */
 type Foot={x:number;y:number;z:number;yaw:number;pitch:number;toe:number;planted:boolean;fx:number;fy:number;fz:number;fyaw:number;uLift:number;lx:number;lz:number;lyaw:number;sx:number;sy:number;sz:number;syaw:number;spitch:number};
-type Travel={time:number;raw:number;px:number;pz:number;still:number;rvx:number;rvz:number;clock:number;forward:number;strafe:number;lean:number;bank:number;vx:number;vz:number;mvx:number;mvz:number;yaw:number;feet:[Foot,Foot];hipYaw:number;legYaw:number;legYawV:number;settling:boolean;airAt:number;airVy:number;airLead:number;onGround:boolean;phaseOffset:number;landAt:number;landDepth:number;dashLean:number;phase:number;armPrev:[number,number];hand:[number,number,number,number];legQ:T.Quaternion[];hips:[T.Vector3,T.Vector3];solvedBody:[T.Vector3,T.Quaternion,T.Quaternion];solved:boolean};
+type Travel={time:number;raw:number;px:number;pz:number;still:number;rvx:number;rvz:number;clock:number;forward:number;strafe:number;lean:number;bank:number;vx:number;vz:number;mvx:number;mvz:number;yaw:number;feet:[Foot,Foot];hipYaw:number;legYaw:number;legYawV:number;settling:boolean;airAt:number;airVy:number;airLead:number;onGround:boolean;phaseOffset:number;landAt:number;landDepth:number;dashLean:number;phase:number;armPrev:[number,number];hand:[number,number,number,number];legQ:T.Quaternion[];hips:[T.Vector3,T.Vector3];solvedBody:[T.Vector3,T.Quaternion,T.Quaternion];solved:boolean;id:string;fresh:boolean};
 const travelState=new WeakMap<CharacterRig,Travel>();
 const newFoot=(x:number,z:number,yaw:number):Foot=>({x,y:FLOOR,z,yaw,pitch:0,toe:0,planted:true,fx:x,fy:FLOOR,fz:z,fyaw:yaw,uLift:0,lx:x,lz:z,lyaw:yaw,sx:x,sy:FLOOR,sz:z,syaw:yaw,spitch:0});
 /** Idle stance ankle target (group space) for the left/right foot from stances.ts. */
@@ -120,7 +120,9 @@ function swingArm(r:CharacterRig,s:Travel,left:boolean,phase:number,run:number,a
 export function locomotion(r:CharacterRig,p:PlayerView,time:number,dt:number,planted=false){
  const frameDt=Math.max(0,dt);dt=clamp(dt,0,.05);const fp=isFirstPersonRig(r),yawNow=r.group.rotation.y,gp=r.group.position;
  let s=travelState.get(r);
- if(!s||timeJumped(s.time,time)){const l=idleFoot(p.spec,true),rt=idleFoot(p.spec,false);s={time,raw:time,px:gp.x,pz:gp.z,still:1,rvx:p.vel.x,rvz:p.vel.z,clock:-1,forward:1,strafe:0,lean:0,bank:0,vx:0,vz:0,mvx:0,mvz:0,yaw:yawNow,feet:[newFoot(l.x,l.z,l.yaw),newFoot(rt.x,rt.z,rt.yaw)],hipYaw:0,legYaw:0,legYawV:0,settling:false,airAt:time,airVy:0,airLead:0,phaseOffset:0,onGround:p.grounded&&!(p.dashTime&&p.dashTime>0),landAt:-1e9,landDepth:0,dashLean:0,phase:p.id?hashPhase(p.id):0,armPrev:[NaN,NaN],hand:[0,0,0,0],legQ:Array.from({length:6},()=>new T.Quaternion()),hips:[new T.Vector3(.13,-.32,0),new T.Vector3(-.13,-.32,0)],solvedBody:[new T.Vector3(),new T.Quaternion(),new T.Quaternion()],solved:false};travelState.set(r,s);r.wasGrounded=p.grounded;}
+ // A rig that starts showing another player starts fresh, exactly as a new rig would: no feet, springs or idle phase carry over.
+ if(s&&s.id!==p.id){r.motion=0;r.stride=0;r.groundWeight=1;r.land=0;}
+ if(!s||timeJumped(s.time,time)||s.id!==p.id){const l=idleFoot(p.spec,true),rt=idleFoot(p.spec,false);s={time,raw:time,px:gp.x,pz:gp.z,still:1,rvx:p.vel.x,rvz:p.vel.z,clock:-1,forward:1,strafe:0,lean:0,bank:0,vx:0,vz:0,mvx:0,mvz:0,yaw:yawNow,feet:[newFoot(l.x,l.z,l.yaw),newFoot(rt.x,rt.z,rt.yaw)],hipYaw:0,legYaw:0,legYawV:0,settling:false,airAt:time,airVy:0,airLead:0,phaseOffset:0,onGround:p.grounded&&!(p.dashTime&&p.dashTime>0),landAt:-1e9,landDepth:0,dashLean:0,phase:p.id?hashPhase(p.id):0,armPrev:[NaN,NaN],hand:[0,0,0,0],legQ:Array.from({length:6},()=>new T.Quaternion()),hips:[new T.Vector3(.13,-.32,0),new T.Vector3(-.13,-.32,0)],solvedBody:[new T.Vector3(),new T.Quaternion(),new T.Quaternion()],solved:false,id:p.id,fresh:true};travelState.set(r,s);r.wasGrounded=p.grounded;}
  // A small backward step holds the stateful clock (see REWIND); authoritative phases below still read `time`.
  const st=s,now=Math.max(time,st.time),dNow=now-st.time;st.time=now;st.raw=time;
  // Root travel since the last frame (world). Planted feet lock to it, so they stay put however the root is fed (a fixed
@@ -263,9 +265,10 @@ export function groundPass(r:CharacterRig,p:PlayerView,time:number,dt:number){
  const s=travelState.get(r);if(!s||!s.solved||s.raw!==time)return;s.solved=false;dt=clamp(dt,0,.05);
  const skip=isFirstPersonRig(r)||p.hp<=0||p.spec==='emperor'||p.spec==='ansatsuken'||!!(p.juggle&&time<p.juggle.until)||!!(p.knockdown&&time<p.knockdown.until)||rolling(p,time);
  let changed=legsAuthored(r);for(let k=0;k<6&&!changed;k++)changed=!legBones(r,k<3)[k%3].quaternion.equals(s.legQ[k]);
- if(skip){s.legYaw=0;s.legYawV=0;syncFeet(r,s,p);return;}
+ if(skip){s.legYaw=0;s.legYawV=0;s.fresh=false;syncFeet(r,s,p);return;}
  // Critically damped hip follow (implicit, frame-rate independent); layers that own the legs let it relax to zero.
- const target=changed?0:s.hipYaw,w=GAIT.legYawOmega;s.legYawV=(s.legYawV-(s.legYaw-target)*w*w*dt)/(1+2*w*dt+w*w*dt*dt);s.legYaw+=s.legYawV*dt;
+ // It starts on its target on the rig's first sample (a spawn or reset never twists the pelvis in from zero).
+ const target=changed?0:s.hipYaw,w=GAIT.legYawOmega;if(s.fresh){s.fresh=false;s.legYaw=target;s.legYawV=0;}else{s.legYawV=(s.legYawV-(s.legYaw-target)*w*w*dt)/(1+2*w*dt+w*w*dt*dt);s.legYaw+=s.legYawV*dt;}
  const L=s.legYaw;if(changed)for(let i=0;i<2;i++)readAnkle(r,i===0,_cap[i],_capQ[i],_capK[i]);
  if(Math.abs(L)>1e-5){
   const P=_q1.copy(r.pelvis.quaternion),S=_q2.copy(r.spine.quaternion),C=_q3.copy(r.chest.quaternion),Pi=_q4.copy(P).invert();
