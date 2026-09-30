@@ -143,7 +143,7 @@ test('a knockdown ragdoll hands its final limb pose back to the rig at the recov
   p.knockdown={at,until:at+2,ragdoll:true,landedAt:at+.5,pickupUntil:at+.5,pickupUsed:true,rollAt:at+.9,rollUntil:at+1.3,rollX:0,rollZ:-1};p.vel={x:0,y:0,z:-4};p.hitStunUntil=0;
   const step=(t:number)=>{state.time=t;r.group.visible=true;animateCharacter(r,p,t,1/60);fx.update(state,rigs);r.group.updateMatrixWorld(true);};
   for(let t=at;t<at+.9-1e-9;t+=1/60)step(t);
-  const ragdoll=scene.getObjectByName('knockdown-ragdoll')!,parts=['left-shoulder','right-knee','head'].map(n=>ragdoll.getObjectByName(n)!.getWorldQuaternion(new T.Quaternion()));
+  const ragdoll=scene.getObjectByName('knockdown-ragdoll')!,parts=['left-shoulder','right-knee','head'].map(n=>{const part=ragdoll.getObjectByName(n)!,q=part.getWorldQuaternion(new T.Quaternion());return part.userData.jointOffset?q.multiply(part.userData.jointOffset):q;});
   step(at+.9);assert.equal(scene.getObjectByName('knockdown-ragdoll'),undefined,'the ragdoll yields at rollAt');
   [r.leftArm,r.rightKnee,r.head].forEach((bone,i)=>assert.ok(bone.getWorldQuaternion(new T.Quaternion()).angleTo(parts[i])<.02,`${bone.name} shows the ragdoll's final pose on the handoff frame`));
   const handed=TRANSITION_BONES.map(b=>r[b].getWorldQuaternion(new T.Quaternion()));step(at+.9+1/60);
@@ -165,4 +165,20 @@ test('kill cinematic victims are the live model and start from the pose the figh
   fx.update(1.3);const late=pose();fx.update(.1);fx.update(1.3);pose().forEach((q,i)=>assert.ok(q.angleTo(late[i])<1e-6,`${effect}: rewindable ${joints[i]}`));
   fx.dispose();
  }
+});
+
+test('death ragdolls: hinged elbows, knees and neck never hyperextend, the fling stays comedic, bodies sink instead of vanishing',()=>{
+ const travel:number[]=[];
+ for(const spec of ['sword','rifle'])for(const seed of [1,424242,99]){
+  const base=probeBase(spec),rig=probeRig(spec,true);for(let t=0;t<.5;t+=1/60)animateCharacter(rig,{...animationPreviewPlayer(base,'run',t),hitStunUntil:-1e9} as PlayerView,t,1/60);rig.group.position.set(base.pos.x,base.pos.y,base.pos.z);rig.group.updateMatrixWorld(true);
+  const death={id:'d',at:0,effect:'ragdoll',seed,pos:{...base.pos},velocity:{x:0,y:0,z:0},direction:{x:0,y:.1,z:-1},source:'k',kind:'direct',yaw:0,melee:true,force:300,hitPoint:{x:base.pos.x,y:base.pos.y+.2,z:base.pos.z+.3}} as unknown as NonNullable<PlayerView['death']>;
+  const scene=new T.Scene(),fx=KILL_EFFECTS.ragdoll(scene,rig.group,{...base,hp:0,death} as PlayerView,death,1,100),group=scene.getObjectByName('ragdoll')!;
+  const bend=(parent:string,child:string)=>{const a=group.getObjectByName(parent)!.quaternion,b=group.getObjectByName(child)!.quaternion,rel=a.clone().invert().multiply(b);return {twist:2*Math.atan2(rel.x,rel.w),swing:Math.hypot(rel.y,rel.z)};};
+  for(let age=.1;age<=3;age+=.1){fx.update(age);
+   for(const [parent,child,lo,hi] of [['left-shoulder','left-elbow',-2.65,.1],['right-shoulder','right-elbow',-2.65,.1],['left-hip','left-knee',-.1,2.65],['right-hip','right-knee',-.1,2.65]] as const){const b=bend(parent,child);assert.ok(b.twist>=lo&&b.twist<=hi&&b.swing<.05,`${spec} seed ${seed} ${child} at ${age.toFixed(1)}: ${b.twist.toFixed(2)} (swing ${b.swing.toFixed(3)})`);}}
+  const pelvis=group.getObjectByName('pelvis')!;travel.push(Math.hypot(pelvis.position.x-base.pos.x,pelvis.position.z-base.pos.z));
+  fx.update(4.95);group.children.forEach(part=>assert.ok(part.scale.x>=.85-1e-9,'parts shrink at most to .85'));fx.dispose();
+ }
+ // Owner direction: keep the comedic long melee fling (it was about 9.6 m on average before the hinge/collider work).
+ assert.ok(travel.reduce((a,b)=>a+b,0)/travel.length>8,`mean melee fling ${(travel.reduce((a,b)=>a+b,0)/travel.length).toFixed(2)} m`);
 });

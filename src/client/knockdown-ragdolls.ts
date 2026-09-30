@@ -15,7 +15,7 @@ function launchDirection(p:PlayerView){
 function handBack(r:CharacterRig,effect:RagdollEffect){
  const root=effect.root;root.updateMatrixWorld(true);r.group.updateMatrixWorld(true);
  for(const [name,bone] of PARTS){const part=root.getObjectByName(name);if(!part||bone==='pelvis')continue;const joint=r[bone];
-  joint.quaternion.copy(joint.parent!.getWorldQuaternion(parent).invert().multiply(part.getWorldQuaternion(world)));joint.updateMatrixWorld(true);}
+  part.getWorldQuaternion(world);if(part.userData.jointOffset)world.multiply(part.userData.jointOffset);joint.quaternion.copy(joint.parent!.getWorldQuaternion(parent).invert().multiply(world));joint.updateMatrixWorld(true);}
  seedTransition(r,TRANSITION_BONES.map(b=>r[b].quaternion.clone()),r.body.position,.16);
 }
 /** The capsule remains authoritative; articulated limbs follow its pelvis until the recovery roll, then hand their pose back. */
