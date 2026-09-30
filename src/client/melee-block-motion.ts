@@ -2,35 +2,65 @@ import * as T from 'three';
 import {braceWeapon,type CharacterRig} from './character-rig.js';
 import {foot,hand} from './primary-melee-motion.js';
 import type {PlayerView} from '../shared/simulation.js';
+import {meleeGuard,meleeReady,type GuardHand} from './melee-guard.js';
+import {blockImpact} from './block-impacts.js';
+import {timeJumped} from './motion-quality.js';
 
-/** Defensive silhouettes keep the actual weapon between the face/chest and the threat. */
+/** Raised guard per weapon (chest-space hand targets and wrist Eulers, as in melee-guard; main is the right hand). */
+const BLOCK:Record<string,{main:GuardHand;off?:GuardHand}>={
+ // Two hands on the hilt, blade raised diagonally across the upper body.
+ greatsword:{main:{x:-.03,y:.16,z:.24,rx:-1.10,ry:.88,rz:-.12}},
+ shield:{main:{x:-.025,y:.16,z:.30,rx:-.10,ry:-.08,rz:0},off:{x:.25,y:.12,z:.18,rx:-.9,ry:-.2,rz:.25}},
+ // Cross the two blades in front of the chest, with the wrists kept apart.
+ daggers:{main:{x:-.20,y:.12,z:.32,rx:-.78,ry:.70,rz:-.2},off:{x:.20,y:.15,z:.34,rx:-.78,ry:-.70,rz:.2}},
+ sword:{main:{x:-.27,y:.14,z:.31,rx:-1.05,ry:.76,rz:-.14},off:{x:.27,y:.17,z:.22,rx:-.7,ry:-.25,rz:.25}},
+};
+/** Raise envelope: ~80% in 60 ms (ease-out), a ~5% overshoot near 90 ms, settled by 130 ms. */
+export function blockRaise(t:number){
+ if(t<=0)return 0;if(t>=.13)return 1;
+ if(t<.09){const u=t/.09;return 1.05*(1-(1-u)**2.6);}
+ const u=(t-.09)/.04;return 1.05-.05*u*u*(3-2*u);
+}
+/** Recoil after a successful block: a fast shove (peak ~35 ms) that decays by ~160 ms; heavy guards move less but longer. */
+export function blockRecoil(t:number,heavy:boolean){const tp=heavy?.05:.035;return t<=0||t>(heavy?.26:.2)?0:(t/tp)*Math.exp(1-t/tp)*(1-T.MathUtils.smoothstep(t,heavy?.18:.14,heavy?.26:.2));}
+type Raise={since:number;time:number};const raises=new WeakMap<object,Raise>();
+/** When this guard started rising. A timed block starts at its authoritative lastBlock; a held guard has no timestamp, so
+ * the rising edge is detected per rig (a gap of more than .2 s since the rig last showed a guard). A rig's first sample,
+ * a rewind or a time jump shows the guard already raised. */
+function raiseStart(r:object,p:PlayerView,time:number){
+ let s=raises.get(r);
+ if(!s||timeJumped(s.time,time)){s={since:time-1,time};raises.set(r,s);}else if(time-s.time>.2)s.since=time;
+ s.time=Math.max(time,s.time);
+ return p.blockTime>0&&p.lastBlock!==undefined&&p.lastBlock<=time&&time-p.lastBlock<.5?Math.max(s.since,p.lastBlock):s.since;
+}
+const _v=new T.Vector3(),_e=new T.Euler(),lerp=T.MathUtils.lerp;
+/** Defensive silhouettes keep the actual weapon between the face/chest and the threat. The guard rises from the combat-ready
+ * guard with a quick overshoot and settle, breathes and sways slightly while held with the weight on the rear foot, and
+ * gives under a successful block (the weapon shoves toward the chest, the chest rocks back, the knees take it). The fully
+ * raised pose at rest is the same silhouette as before. */
 export function meleeBlockMotion(r:CharacterRig,p:PlayerView,time:number){
- const heavy=p.spec==='greatsword',shield=p.spec==='shield',daggers=p.spec==='daggers';
- const breath=Math.sin(time*2.15)*.008,still=1-T.MathUtils.clamp(r.motion/.32,0,1);
- r.body.position.y-=heavy?.13:shield?.11:.09;
- r.body.position.z-=.035;
- r.body.rotation.x+=.09;
- r.body.rotation.y=shield?-.22:daggers?0:-.18;
- r.pelvis.rotation.y=-.10;r.spine.rotation.set(-.06,.12,0);r.chest.rotation.set(-.04+breath,.10,0);
- r.head.rotation.y=-.06;r.head.rotation.x=-p.pitch*.35-.06;
- r.leftShoulder.rotation.set(-.06,-.10,.06);r.rightShoulder.rotation.set(-.06,.10,-.06);
+ const heavy=p.spec==='greatsword',shield=p.spec==='shield',daggers=p.spec==='daggers',G=meleeGuard(p.spec),B=BLOCK[p.spec]??BLOCK.sword;
+ meleeReady(r,p,time);
+ const raise=blockRaise(time-raiseStart(r,p,time)),rw=Math.min(1,raise),arm=Math.min(1,raise*1.6);
+ const impact=blockImpact(p.id,time,.3),k=impact?blockRecoil(time-impact.at,heavy||shield)*(daggers?1.3:heavy?.75:shield?.8:1):0;
+ const breath=Math.sin(time*2.15)*.015,sway=Math.sin(time*1.7+(p.id?p.id.length:0))*.018,still=1-T.MathUtils.clamp(r.motion/.32,0,1);
+ r.body.position.y-=(heavy?.13:shield?.11:.09)*raise+.03*k;
+ r.body.position.z-=.035*raise+.025*k;r.body.position.x-=.012*still*rw;
+ r.body.rotation.x+=.09*raise;
+ r.body.rotation.y=lerp(r.body.rotation.y,shield?-.22:daggers?0:-.18,rw);
+ r.pelvis.rotation.y=lerp(r.pelvis.rotation.y,-.10,rw);r.spine.rotation.set(lerp(r.spine.rotation.x,-.06,rw),lerp(r.spine.rotation.y,.12,rw),r.spine.rotation.z*(1-rw));
+ r.chest.rotation.set(lerp(r.chest.rotation.x,-.04+breath,rw)-.08*k,lerp(r.chest.rotation.y,.10,rw),r.chest.rotation.z*(1-rw));
+ r.head.rotation.y=lerp(r.head.rotation.y,-.06,rw);r.head.rotation.x=lerp(r.head.rotation.x,-p.pitch*.35-.06,rw);
+ r.leftShoulder.rotation.set(lerp(r.leftShoulder.rotation.x,-.06,rw),lerp(r.leftShoulder.rotation.y,-.10,rw),lerp(r.leftShoulder.rotation.z,.06,rw));
+ r.rightShoulder.rotation.set(lerp(r.rightShoulder.rotation.x,-.06,rw),lerp(r.rightShoulder.rotation.y,.10,rw),lerp(r.rightShoulder.rotation.z,-.06,rw));
  // Keep walking feet live; at rest settle into a staggered, bent-knee brace.
  if(p.grounded&&still>.001){
-  foot(r,true,new T.Vector3(heavy?.22:.19,-.795,.14),.16,0,still);
-  foot(r,false,new T.Vector3(heavy?-.22:-.19,-.795,-.12),-.28,0,still);
+  foot(r,true,_v.set(heavy?.22:.19,-.795,.14),.16,0,still);
+  foot(r,false,_v.set(heavy?-.22:-.19,-.795,-.12),-.28,0,still);
  }
- if(heavy){
-  // Two hands on the hilt, blade raised diagonally across the upper body.
-  braceWeapon(r,new T.Vector3(-.03,.16,.24),new T.Euler(-1.10,.88,-.12),1);
- }else if(shield){
-  hand(r,false,new T.Vector3(-.025,.16,.30),new T.Euler(-.10,-.08,0),1);
-  hand(r,true,new T.Vector3(.25,.12,.18),new T.Euler(-.9,-.2,.25),1);
- }else if(daggers){
-  // Cross the two blades in front of the chest, with the wrists kept apart.
-  hand(r,false,new T.Vector3(-.20,.12,.32),new T.Euler(-.78,.70,-.2),1);
-  hand(r,true,new T.Vector3(.20,.15,.34),new T.Euler(-.78,-.70,.2),1);
- }else{
-  hand(r,false,new T.Vector3(-.27,.14,.31),new T.Euler(-1.05,.76,-.14),1);
-  hand(r,true,new T.Vector3(.27,.17,.22),new T.Euler(-.7,-.25,.25),1);
- }
+ // Hands rise from the guard (overshooting slightly), sway while held and are shoved toward the chest by an impact.
+ const put=(b:GuardHand,g:GuardHand|undefined)=>{const s=g??b;_v.set(s.x+(b.x-s.x)*raise,s.y+(b.y-s.y)*raise-.012*k+breath*.3,s.z+(b.z-s.z)*raise-.05*k);_e.set(s.rx+(b.rx-s.rx)*raise+sway,s.ry+(b.ry-s.ry)*raise+sway*.6,s.rz+(b.rz-s.rz)*raise);};
+ if(heavy){put(B.main,G?.main);braceWeapon(r,_v,_e,arm);return;}
+ put(B.main,G?.main);hand(r,false,_v,_e,arm);
+ put(B.off!,G?.off);hand(r,true,_v,_e,arm);
 }
