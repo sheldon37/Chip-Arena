@@ -16,6 +16,21 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-09-30 — Claude — Dark Souls sprint carries, intro label, test build 2
+
+- Owner feedback on test build 1: melee blades faced backwards while running; wanted a
+  Dark Souls sprint and a two-handed greatsword low carry (owner reference image), and the
+  intro weapon pill removed so the weapon name fades in with the pilot name.
+- Changes (7c735d3, f688db0, a3b40e8): forward-down sprint carries for sword, daggers,
+  shield (right-hand forearm ride; still meets the arm-swing test) and a two-handed
+  greatsword carry with sprint lean; walk uses the same carry. Intro weapon name is plain
+  text animated with the name. Tests: owner-approved greatsword exemption in the
+  rig-arena-sniper arm-swing clause (replaced by a grip/blade-position assertion); two
+  new-in-revision tests that pinned the rejected tip-back carry now pin forward-down
+  (verified failing on the old carry). Full suite: only the 13 known failures.
+- Test build 2 from a3b40e8 (same tooling/flags as build 1): SHA256 7ab1728b...9c9a,
+  content 0.2.4d3dcebad34a; verify failed only on known items. Not published.
+
 ## 2026-09-30 — Claude — visual revision TEST-ONLY Windows build
 
 - Owner requested a Windows test build of `claude/visual-revision` at 2557a12. Built with
