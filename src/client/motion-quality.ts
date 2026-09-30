@@ -35,16 +35,16 @@ function idleFoot(spec:string,left:boolean){const st=stanceFor(spec),f=left===st
 function hashPhase(id:string){let h=2166136261;for(let i=0;i<id.length;i++){h^=id.charCodeAt(i);h=Math.imul(h,16777619);}return ((h>>>0)%9973)/9973*TAU;}
 // Module scratch objects (no per-frame allocation).
 const UP=new T.Vector3(0,1,0),X_AXIS=new T.Vector3(1,0,0),_pq=new T.Quaternion(),_pp=new T.Vector3(),_hip=new T.Vector3(),_dir=new T.Vector3(),_pole=new T.Vector3(),_perp=new T.Vector3(),_fwd=new T.Vector3(),_knee=new T.Vector3(),_t=new T.Vector3(),_sh=new T.Vector3(),_x=new T.Vector3(),_y=new T.Vector3(),_z=new T.Vector3(),_m=new T.Matrix4(),_qh=new T.Quaternion(),_qi=new T.Quaternion(),_qf=new T.Quaternion(),_e=new T.Euler(),_target=new T.Vector3(),_air=new T.Vector3(),_q1=new T.Quaternion(),_q2=new T.Quaternion(),_q3=new T.Quaternion(),_q4=new T.Quaternion(),_ry=new T.Quaternion();
-const _cap=[new T.Vector3(),new T.Vector3()],_capQ=[new T.Quaternion(),new T.Quaternion()];
+const _cap=[new T.Vector3(),new T.Vector3()],_capQ=[new T.Quaternion(),new T.Quaternion()],_capK=[new T.Vector3(),new T.Vector3()];
 const legBones=(r:CharacterRig,left:boolean)=>left?[r.leftLeg,r.leftKnee,r.leftFoot,r.leftToe] as const:[r.rightLeg,r.rightKnee,r.rightFoot,r.rightToe] as const;
 /** Pelvis orientation/position in rig-group space from the live body and pelvis joints. */
 function pelvisFrame(r:CharacterRig){_pq.copy(r.body.quaternion).multiply(r.pelvis.quaternion);_pp.copy(r.pelvis.position).applyQuaternion(r.body.quaternion).add(r.body.position);}
 /** Two-bone leg solve in rig-group space: the knee hinges toward the foot heading, so the knee joint is a pure x rotation
  * (no knee flips), and the foot takes a group-space heading/pitch (or an exact orientation when `orient` is given). */
-function solveLeg(r:CharacterRig,left:boolean,target:T.Vector3,yaw:number,pitch:number,toe:number,orient?:T.Quaternion){
+function solveLeg(r:CharacterRig,left:boolean,target:T.Vector3,yaw:number,pitch:number,toe:number,orient?:T.Quaternion,knee0?:T.Vector3){
  const [hip,knee,ankle,toeJ]=legBones(r,left);pelvisFrame(r);_hip.copy(hip.position).applyQuaternion(_pq).add(_pp);
  _dir.subVectors(target,_hip);let d=_dir.length();if(d<1e-6){_dir.set(0,-1,0);d=.1;}else _dir.divideScalar(d);d=clamp(d,.1,.497);
- _fwd.set(0,0,1).applyQuaternion(_pq);_pole.set(Math.sin(yaw),0,Math.cos(yaw)).multiplyScalar(.7).addScaledVector(_fwd,.3);
+ _fwd.set(0,0,1).applyQuaternion(_pq);if(knee0)_pole.subVectors(knee0,_hip);else _pole.set(Math.sin(yaw),0,Math.cos(yaw)).multiplyScalar(.7).addScaledVector(_fwd,.3);
  _perp.copy(_pole).addScaledVector(_dir,-_pole.dot(_dir));if(_perp.lengthSq()<1e-8)_perp.copy(_fwd).addScaledVector(_dir,-_fwd.dot(_dir));_perp.normalize();
  const half=d/2;_knee.copy(_hip).addScaledVector(_dir,half).addScaledVector(_perp,Math.sqrt(Math.max(0,.0625-half*half)));
  _t.subVectors(_knee,_hip).normalize();_y.copy(_t).negate();_z.copy(_perp).addScaledVector(_t,-_perp.dot(_t)).normalize();_x.crossVectors(_y,_z);
@@ -53,10 +53,10 @@ function solveLeg(r:CharacterRig,left:boolean,target:T.Vector3,yaw:number,pitch:
  if(orient)_qf.copy(orient);else _qf.setFromEuler(_e.set(pitch,yaw,0,'YXZ'));
  ankle.quaternion.copy(_qh).multiply(knee.quaternion).invert().multiply(_qf);if(!orient)toeJ.rotation.set(toe,0,0);
 }
-/** Current ankle position and foot orientation in rig-group space, read from the joints. */
-function readAnkle(r:CharacterRig,left:boolean,out:T.Vector3,q:T.Quaternion){
+/** Current ankle position, foot orientation and (optionally) knee position in rig-group space, read from the joints. */
+function readAnkle(r:CharacterRig,left:boolean,out:T.Vector3,q:T.Quaternion,kneeOut?:T.Vector3){
  const [hip,knee,ankle]=legBones(r,left);pelvisFrame(r);q.copy(_pq).multiply(hip.quaternion);out.copy(hip.position).applyQuaternion(_pq).add(_pp);
- _t.copy(knee.position).applyQuaternion(q);out.add(_t);q.multiply(knee.quaternion);_t.copy(ankle.position).applyQuaternion(q);out.add(_t);q.multiply(ankle.quaternion);
+ _t.copy(knee.position).applyQuaternion(q);out.add(_t);if(kneeOut)kneeOut.copy(out);q.multiply(knee.quaternion);_t.copy(ankle.position).applyQuaternion(q);out.add(_t);q.multiply(ankle.quaternion);
 }
 /** The yaw the rig group faces without the local camera: death, active hit reaction, attack commitment, else the player's yaw. */
 export function rigYaw(p:PlayerView,time:number){return p.death&&p.hp<=0?p.death.yaw:p.hitReaction&&(p.hitStunUntil||0)>time&&p.hitReaction.at<=time?p.hitReaction.yaw:committed(p,time)?p.attackCommitment!.yaw:p.yaw;}
@@ -72,8 +72,8 @@ export function presentedYaw(r:object,p:PlayerView,time:number,input:number){
  if(u<1&&!dead&&!commit&&!strike)yaw=s.from+wrapAngle(target-s.from)*(1-(1-u)**3);
  s.last=yaw;s.time=time;return yaw;
 }
-/** Landing compression: an under-damped spring impulse (omega 18, zeta .75) normalised to peak 1 at ~60 ms. */
-function landingCurve(t:number){return t<0||t>.6?0:Math.exp(-13.5*t)*Math.sin(11.9*t)/.291;}
+/** Landing compression: an under-damped spring impulse (omega 11, zeta .75) normalised to peak 1 at ~100 ms. */
+function landingCurve(t:number){return t<0||t>.8?0:Math.exp(-8.25*t)*Math.sin(7.27*t)/.2915;}
 /** Bent elbows pump past the hip and forward; opposite the same-side foot, lagging the legs slightly. */
 function swingArm(r:CharacterRig,s:Travel,left:boolean,phase:number,run:number,air:number,amp:number,back:number,push:number,reach:number,dt:number){
  const arm=left?r.leftArm:r.rightArm,elbow=left?r.leftElbow:r.rightElbow,hand=left?r.leftHand:r.rightHand,sign=left?1:-1,i=left?0:1;
@@ -112,7 +112,7 @@ export function locomotion(r:CharacterRig,p:PlayerView,time:number,dt:number,pla
  if(!p.grounded)st.airVy=Math.min(st.airVy,p.vel.y);
  const landing=onGround&&!st.onGround;st.onGround=onGround;
  if(p.grounded&&!r.wasGrounded){const airborne=time-st.airAt;st.landAt=time;st.landDepth=st.airVy<-2&&airborne>.08?clamp(-st.airVy*.012,.03,.12):0;st.airVy=0;}
- r.wasGrounded=p.grounded;r.groundWeight+=(Number(onGround)-r.groundWeight)*(1-Math.exp(-dt*(onGround?22:16)));const air=fp?0:1-r.groundWeight;
+ r.wasGrounded=p.grounded;r.groundWeight+=(Number(onGround)-r.groundWeight)*(1-Math.exp(-dt*(onGround?(r.wasGrounded&&time-st.landAt>.05?9:22):16)));const air=fp?0:1-r.groundWeight;
  const dip=st.landDepth*landingCurve(time-st.landAt);r.land=dip;
  // Cadence: stride length grows with speed, so a planted ankle's travel matches the ground (see GAIT).
  const run=r.motion,weight=Math.min(run,1),back=smoothMotion((-st.forward-.3)/.4)*clamp(speed/1.5,0,1),side=Math.abs(st.strafe)*clamp(speed/1.5,0,1);
@@ -217,7 +217,7 @@ export function groundPass(r:CharacterRig,p:PlayerView,time:number,dt:number){
  if(skip){s.legYaw=0;s.legYawV=0;syncFeet(r,s,p);return;}
  // Critically damped hip follow (implicit, frame-rate independent); layers that own the legs let it relax to zero.
  const target=changed?0:s.hipYaw,w=GAIT.legYawOmega;s.legYawV=(s.legYawV-(s.legYaw-target)*w*w*dt)/(1+2*w*dt+w*w*dt*dt);s.legYaw+=s.legYawV*dt;
- const L=s.legYaw;if(changed)for(let i=0;i<2;i++)readAnkle(r,i===0,_cap[i],_capQ[i]);
+ const L=s.legYaw;if(changed)for(let i=0;i<2;i++)readAnkle(r,i===0,_cap[i],_capQ[i],_capK[i]);
  if(Math.abs(L)>1e-5){
   const P=_q1.copy(r.pelvis.quaternion),S=_q2.copy(r.spine.quaternion),C=_q3.copy(r.chest.quaternion),Pi=_q4.copy(P).invert();
   r.pelvis.quaternion.copy(_ry.setFromAxisAngle(UP,L)).multiply(P);
@@ -225,7 +225,9 @@ export function groundPass(r:CharacterRig,p:PlayerView,time:number,dt:number){
   r.chest.quaternion.copy(S).invert().multiply(Pi).multiply(_ry.setFromAxisAngle(UP,-.55*L)).multiply(P).multiply(S).multiply(C);
  }
  if(!p.grounded)return;
- if(changed){for(let i=0;i<2;i++){const c=_cap[i],below=c.y<FLOOR;if(below)c.y=FLOOR;if(Math.abs(L)>1e-5||below)solveLeg(r,i===0,c,0,0,0,_capQ[i]);}syncFeet(r,s,p,true);return;}
+ // Layer-placed legs are always re-solved (never toggled): same ankle, foot orientation and knee direction, floor-clamped,
+ // with the knee as a clean hinge, so the hip turn above cannot move them and no frame flips the twist convention.
+ if(changed){for(let i=0;i<2;i++){const c=_cap[i];c.y=Math.max(c.y,FLOOR);solveLeg(r,i===0,c,0,0,0,_capQ[i],_capK[i]);}syncFeet(r,s,p,true);return;}
  for(let i=0;i<2;i++){const f=s.feet[i];_target.set(f.sx,f.sy,f.sz);solveLeg(r,i===0,_target,f.syaw,f.spitch,f.toe);}
 }
 /** The gait state follows ankles an action layer placed, so the gait resumes from them without a pop. */
