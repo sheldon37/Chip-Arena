@@ -165,3 +165,11 @@ body{background:#111216;color:#f4f4f5;font-family:var(--font-ui)}.home-shade{bac
 @keyframes engage-pulse{0%,100%{box-shadow:0 0 0 0 #ff6b3500}50%{box-shadow:0 0 0 7px #ff6b3522}}
 @media(max-width:850px){.click-resume{bottom:92px}}
 @media(prefers-reduced-motion:reduce){.btn,.close{transition:none}.btn:hover,.btn:active:not(:disabled){transform:none}.notice,.result-sequence .eyebrow,.result-sequence p:after,.click-resume{animation:none}}
+/* Visual revision P2: screen entrances (only when the screen changes), form details, draft density at 720p. */
+.panel.panel-enter,.pilot-lobby-layout.panel-enter,.home-lobby.panel-enter .menu-home{animation:panel-in .26s cubic-bezier(.2,.8,.2,1) both}.home-lobby.panel-enter .menu-list .btn{animation:panel-in .3s cubic-bezier(.2,.8,.2,1) both}.home-lobby.panel-enter .menu-list .btn:nth-child(2){animation-delay:.04s}.home-lobby.panel-enter .menu-list .btn:nth-child(3){animation-delay:.08s}
+@keyframes panel-in{from{opacity:0;transform:translateY(10px) scale(.99)}}
+.connection-error:empty{display:none}.room-code-input{max-width:100%}.room-code-input::placeholder{letter-spacing:.06em;font-size:15px}.class-option{display:flex;flex-direction:column;justify-content:flex-start}.class-option small{min-height:2.6em}
+#ui[data-paused=true] #hud .cooldowns,#ui[data-paused=true] #hud .healthbox{opacity:.35}
+@media(max-height:820px){.panel:has(.draft-grid) .circuit-chip{min-height:0;padding:14px 16px 12px}.panel:has(.draft-grid) .circuit-chip p{margin:8px 0 12px}.panel:has(.draft-grid) .chip-grid{gap:22px 20px;margin-top:12px}.panel:has(.draft-grid) h1{font-size:26px}}
+.panel:has(.draft-grid) .timer{display:inline-block;font:600 13px var(--font-mono);padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:var(--surface-2);color:var(--accent-soft)}
+@media(prefers-reduced-motion:reduce){.panel.panel-enter,.pilot-lobby-layout.panel-enter,.home-lobby.panel-enter .menu-home,.home-lobby.panel-enter .menu-list .btn{animation:none}}

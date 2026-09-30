@@ -2,7 +2,9 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import * as T from 'three';
-import {initPhysics} from '../src/shared/simulation.js';
+import {initPhysics,Simulation} from '../src/shared/simulation.js';
+import {OverheadHealth} from '../src/client/overhead-health.js';
+import {dressRig} from '../src/client/cosmetics.js';
 import {WEAPONS} from '../src/shared/content.js';
 import {createCharacterRig,recolorCharacterRig,settleJointCovers,setRigDetail,RIG_LENGTHS} from '../src/client/character-rig.js';
 import {buildWeapon,weaponModifiers,enchantWeapon,BLADE_LENGTH} from '../src/client/weapon-visuals.js';
@@ -148,4 +150,23 @@ test('UI polish: every action button has a real icon, the result banner is keyed
  const reduced=(text:string)=>[...text.matchAll(/@media\(prefers-reduced-motion:reduce\)\{([\s\S]*?)\}\s*\n/g)].map(m=>m[1]).join(' ');
  for(const sel of ['.notice','.result-sequence .eyebrow','.result-sequence p:after','.click-resume'])assert.ok(reduced(css).includes(sel),sel+' has a reduced-motion fallback');
  assert.ok(reduced(hud).includes('.death-announcement.is-new'));assert.match(hud,/\.death-announcement\{font:500 13px/);
+});
+
+test('overhead health: the fill stays children[1]; a damage-lag segment holds, drains on authoritative time and resets on a jump',()=>{
+ const sim=new Simulation({skipIntros:true});try{sim.addPlayer('a');sim.addPlayer('b','B','melee','dummy');const scene=new T.Scene(),camera=new T.PerspectiveCamera(),bars=new OverheadHealth(scene);
+  const snap=(time:number,hp:number)=>{const s=sim.snapshot();return {...s,time,players:s.players.map(p=>p.id==='b'?{...p,hp,pos:{x:0,y:0,z:-3}}:p)};};
+  bars.update(snap(10,100),camera,true,'a',false);const root=scene.getObjectByName('health-b')!,fill=root.children[1] as T.Mesh,lag=root.getObjectByName('health-lag')!;
+  assert.equal((fill.material as T.MeshBasicMaterial).color.getHex(),0x59dd83);assert.equal(lag.visible,false);
+  const max=sim.snapshot().players.find(p=>p.id==='b')!.maxHp;let t=10;const step=(until:number,hp:number)=>{for(;t<until-1e-9;t+=1/60)bars.update(snap(t,hp),camera,true,'a',false);};
+  step(10.1,max*.5);const held=lag.scale.x;assert.ok(lag.visible&&Math.abs(held-.72)<.02,'the lost health is held at first');
+  step(10.45,max*.5);assert.ok(lag.scale.x<held-.05&&lag.scale.x>fill.scale.x,'then drains toward the new health');
+  step(11.5,max*.5);assert.equal(lag.visible,false,'and settles on the fill');
+  bars.update(snap(11.6,max*.2),camera,true,'a',false);bars.update(snap(3,max*.2),camera,true,'a',false);assert.equal(lag.visible,false,'a backward time jump resets the lag');bars.clear();
+ }finally{sim.dispose();}
+});
+
+test('blocky hats: beanie and crown are shared-cube boxes and re-dressing reuses hat materials',()=>{
+ const r=createCharacterRig('#70e1d0');dressRig(r,{hat:'beanie',bodyColor:'#e5e7eb',killEffect:'voxel-burst'} as never);assert.ok(meshes(r.sockets.head).every(m=>m.geometry.type==='BoxGeometry'));
+ dressRig(r,{hat:'crown',bodyColor:'#e5e7eb',killEffect:'voxel-burst'} as never);const crown=meshes(r.sockets.head);assert.ok(crown.length>=9&&crown.every(m=>m.geometry.type==='BoxGeometry'),'crown points all round');
+ const a=createCharacterRig('#fff'),b=createCharacterRig('#fff');for(const x of [a,b])dressRig(x,{hat:'wizard',bodyColor:'#e5e7eb',killEffect:'voxel-burst'} as never);assert.equal((a.sockets.head.getObjectByName('hat') as T.Mesh).material,(b.sockets.head.getObjectByName('hat') as T.Mesh).material,'round hat materials are shared');
 });

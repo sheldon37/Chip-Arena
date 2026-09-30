@@ -28,3 +28,7 @@
 .healthbox .bar.resource.stamina>div{background:#7cc4ff}.stamina-label{color:#b8dcf5}
 @media(max-width:580px){.death-announcement{font-size:12px}}
 @media(prefers-reduced-motion:reduce){.death-announcement.is-new{animation:none}}
+/* Visual revision P2: the fight HUD scales on tall screens; ready cooldowns read as a word in the good colour. */
+.cooldown strong.ready,.cooldown .ready{color:var(--good,#59dd83);font-size:12px;letter-spacing:.08em}
+@media(min-height:1000px){.healthbox,.cooldowns,.match-tools,.match-heading,.death-announcement,.arcade-hud{zoom:1.2}}
+@media(min-height:1300px){.healthbox,.cooldowns,.match-tools,.match-heading,.death-announcement,.arcade-hud{zoom:1.45}}
