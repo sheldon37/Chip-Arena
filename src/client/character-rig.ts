@@ -6,13 +6,16 @@ import {armorBuilder,type ArmorBuilder} from './voxel-armor.js';
 export const RIG_VERSION = 2;
 export const RIG_LENGTHS = { upperArm:.27, forearm:.25, thigh:.25, shin:.25 } as const;
 const cube=new T.BoxGeometry(1,1,1),palette=new Map<string,T.MeshLambertMaterial>();
-function mat(color:T.ColorRepresentation,glow=0,tint=.18){const key=String(color)+":"+glow+(tint===.18?"":":"+tint);if(!palette.has(key))palette.set(key,new T.MeshLambertMaterial({color,emissive:glow?new T.Color(color).lerp(new T.Color(0xc3e5ff),tint):0,emissiveIntensity:glow}));return palette.get(key)!;}
+/** Armor glow keeps the player's hue: the emitted colour is the accent pushed toward full saturation and a mid lightness, so
+ * ACES rolls bright trims off into a deeper tone of the same hue instead of white (pale accents like #70e1d0 glow teal, not mint). */
+const ember=(color:T.ColorRepresentation)=>{const c=new T.Color(color),hsl={h:0,s:0,l:0};c.getHSL(hsl);return c.setHSL(hsl.h,Math.min(.9,hsl.s+(1-hsl.s)*.55),Math.min(hsl.l,.52));};
+function mat(color:T.ColorRepresentation,glow=0,tint=.18){const key=String(color)+":"+glow+(tint===.18?"":":"+tint);if(!palette.has(key))palette.set(key,new T.MeshLambertMaterial({color,emissive:glow?(tint<.1?ember(color):new T.Color(color).lerp(new T.Color(0xc3e5ff),tint)):0,emissiveIntensity:glow}));return palette.get(key)!;}
 /** A part of the shared cube; with an armor builder it becomes a voxel part (voxel-kit.ts), still one mesh of the same cube. */
 export function rigBox(parent:T.Object3D,name:string,x:number,y:number,z:number,sx:number,sy:number,sz:number,color:T.ColorRepresentation,armor?:ArmorBuilder){const m=armor?voxelMesh(cube,mat(color),voxelLayout(name,[sx,sy,sz],o=>armor(o,sx,sy,sz,name.startsWith('right-')?-1:1))):new T.Mesh(cube,mat(color));m.name=name;m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.castShadow=m.receiveShadow=true;parent.add(m);return m;}
 /** One part registry for both colour paths (glow creation and recolor), so a new part can never keep its creation colour. */
 const BODY_PARTS=/^(hip-shell|abdomen-shell|ribcage|upper-chest|collar|blank-head|crown)$|-(upper-arm|forearm|thumb|thigh|calf|shin)$/,ACCENT_PARTS=/^(waist-band|sternum)$|-(shoulder-cap|cuff|kneecap)$/,EDGE_PARTS=/^(back-panel|jaw)$|-(palm|fingers|foot)$/,FLEX_PARTS=/^(abdomen|neck-joint)$|-(elbow-joint|hip-joint|knee-joint|heel)$/;
 /** Arena glow: the whole shell (head included) is softly self-lit, accents keep their hue under ACES, and only the thin armor strips burn bright. */
-const GLOW={body:.24,accent:1.1,accentTint:.05,strip:2};
+const GLOW={body:.24,accent:1.4,accentTint:.05,strip:2.4};
 /** Gloves, boots and joints follow the body colour (joints always darker than the shell), staying close to the classic grey/slate on the default body. */
 const EDGE=new T.Color(0xb5c4ca),FLEX=new T.Color(0x354853),edgeOf=(body:T.ColorRepresentation)=>new T.Color(body).multiplyScalar(.6).lerp(EDGE,.1).getHex(),flexOf=(body:T.ColorRepresentation)=>{const shell=new T.Color(body),c=shell.clone().multiplyScalar(.08).lerp(FLEX,.6),lum=(x:T.Color)=>.2126*x.r+.7152*x.g+.0722*x.b;return (lum(c)<lum(shell)*.6?c:shell.multiplyScalar(.45)).getHex();};
 /** Small boxes that only refine the silhouette: no shadow, hidden in low detail (SVG compatibility, 'performance'). */
