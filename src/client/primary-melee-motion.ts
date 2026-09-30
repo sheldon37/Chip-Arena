@@ -62,7 +62,7 @@ export function primaryMeleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<type
  const twistArr=heavy?[0,-.22,-.48,-.62,-.45,.40,.50,.55,0]:dagger?[0,-.10,-.20,-.16,.06,.22,.26,.18,0]:[0,-.18,-.38,-.20,.24,.40,.44,.16,0];
  const turnScale=spin?1:sign,twistScale=(overhead?.5:1)*sign;
  const turn=c(turnArr)*turnScale,twist=c(twistArr)*twistScale;
- const crouch=c(heavy?[0,-.12,-.30,-.37,-.33,-.18,-.10,-.06,0]:overhead?[0,-.12,.06,0,-.24,-.30,-.28,-.14,0]:shield?[0,-.05,-.12,-.13,-.22,-.25,-.20,-.09,0]:low?[0,-.19,-.28,-.25,-.34,-.30,-.22,-.10,0]:[0,-.10,-.16,-.13,-.22,-.26,-.21,-.09,0]);
+ const crouch=c(heavy?[0,-.12,-.30,-.37,-.33,-.25,-.19,-.13,0]:overhead?[0,-.12,.06,0,-.24,-.30,-.28,-.14,0]:shield?[0,-.05,-.12,-.13,-.22,-.25,-.20,-.09,0]:low?[0,-.19,-.28,-.25,-.34,-.30,-.22,-.10,0]:[0,-.10,-.16,-.13,-.22,-.26,-.21,-.09,0]);
  r.body.position.x+=c(heavy?[0,-.05,-.10,-.08,.07,.11,.10,.06,0]:[0,-.035,-.07,-.02,.065,.09,.08,.035,0])*sign;
  r.body.position.z+=c(heavy?[0,-.06,-.12,-.09,.13,.18,.15,.08,0]:[0,-.05,-.08,0,.14,.17,.15,.07,0]);r.body.position.y+=crouch;
  r.body.rotation.y+=turn;r.body.rotation.x+=c(heavy?[0,-.09,.22,.30,.28,.20,.13,.08,0]:overhead?[0,-.15,-.26,-.14,.34,.40,.34,.16,0]:[0,-.07,-.15,.04,.20,.26,.22,.10,0]);
@@ -152,8 +152,10 @@ function feet(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,phase:
  // Each step moves its foot only while it is lifted: the horizontal travel runs (eased) from 10% to 85% of the step while
  // the lift is a full arc, so the foot leaves and meets the floor vertically instead of skimming it.
  const step=(u:number)=>ease((u-.1)/.75),arc=(u:number)=>Math.sin(Math.PI*u);
+ // The lead step rides the authoritative travel (its progress is the share of the travel done by the plant), so the foot
+ // never runs ahead of the hips it hangs from: it stays within leg reach and lands with zero floor speed as the travel plants.
  // Lead: a lifted step to the contact spot, planted (world-fixed) from the contact frame, a lifted step back to its guard spot.
- const cx=(leadingLeft?1:-1)*(heavy?.30:.25),worldPlant=.31+plantTravel,su=T.MathUtils.clamp(phase/1.65,0,1),bu=T.MathUtils.clamp((phase-2.45)/.5,0,1),s=step(su),back=step(bu);
+ const cx=(leadingLeft?1:-1)*(heavy?.27:.25),worldPlant=.31+plantTravel,su=T.MathUtils.clamp(travel/Math.max(.01,plantTravel),0,1),bu=T.MathUtils.clamp((phase-2.45)/.5,0,1),s=ease(su),back=step(bu);
  const lift=(overhead?.18:heavy?.14:dagger?.07:.09)*arc(su)+.07*arc(bu),cyaw=.15*sign;
  const lz=phase<2.45?lf.z+(worldPlant-lf.z)*s-travel:(worldPlant-full)*(1-back)+lf.z*back;
  _lead.set(phase<2.45?lx+(cx-lx)*s:cx+(lx-cx)*back,-.795+lift,lz);
@@ -165,13 +167,26 @@ function feet(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,phase:
  const lin=weight<1?_in[leadingLeft?0:1]:undefined,rin=weight<1?_in[leadingLeft?1:0]:undefined;
  if(spin){
   // The spin is a hopped turn: both feet hold their floor spots through the windup, leave the floor as the turn speeds up,
-  // circle with the body (in the air, so nothing skates) and land back on the guard stance as the turn completes.
-  const u=T.MathUtils.clamp((phase-1.1)/1.75,0,1),b=step(u),hop=arc(u),rot=SPIN_FROM+(Math.PI*2-SPIN_FROM)*b,cxs=r.body.position.x,czs=r.body.position.z,c=Math.cos(rot),sn=Math.sin(rot);
+  // circle about the body just behind its turn (in the air, so nothing skates; never across the chord, which put a foot
+  // far outside leg reach) and land back on the guard stance as the turn completes.
+  const u=T.MathUtils.clamp((phase-1.1)/1.75,0,1),b=step(u),hop=arc(u),air=ease((u-.05)/.25),rot=air*(SPIN_FROM+(Math.PI*2-SPIN_FROM)*Math.max(b,(turn-SPIN_FROM)/(Math.PI*2-SPIN_FROM))),cxs=r.body.position.x,czs=r.body.position.z,c=Math.cos(rot),sn=Math.sin(rot);
   r.body.position.y+=.045*hop;
-  const place=(out:T.Vector3,x:number,z:number)=>{const ox=x-cxs,oz=z-czs,px=cxs+ox*c+oz*sn,pz=czs-ox*sn+oz*c;out.set(x+(px-x)*b,-.795+.075*hop,(z-travel)+(pz-(z-travel))*b);};
-  place(_lead,lx,lf.z);place(_rear,rx,rf.z);
+  const place=(out:T.Vector3,x:number,z:number)=>{const ox=x-cxs,oz=z-travel*(1-air)-czs;out.set(cxs+ox*c+oz*sn,-.795+.075*hop,czs-ox*sn+oz*c);};
+  place(_lead,lx,lf.z);place(_rear,rx,rf.z);reachable(r,leadingLeft,_lead);reachable(r,!leadingLeft,_rear);
   // In the air the feet turn with the body (they leave the floor at its heading and land a full turn later).
   const spinYaw=turn*b;foot(r,leadingLeft,_lead,lyaw0+spinYaw,.3*hop,weight,lin);foot(r,!leadingLeft,_rear,ryaw0+spinYaw,.3*hop,weight,rin);return;
  }
+ reachable(r,leadingLeft,_lead);reachable(r,!leadingLeft,_rear);
  foot(r,leadingLeft,_lead,lyaw,lheel,weight,lin);foot(r,!leadingLeft,_rear,ryaw,rheel,weight,rin);
+}
+/** Leg reach a lifted step keeps inside (just under rig-ik's combat LEG_MAX .485, so the leg never locks straight). */
+const STEP_REACH=.475,_hip=new T.Vector3(),_to=new T.Vector3();
+/** A lifted foot target the hip cannot reach (a step still in flight while the hips load back or turn away) is drawn toward
+ * the hip, which lifts and shortens the step instead of leaving the foot hanging short of its path. The pull fades out as
+ * the foot comes down (it is zero on the floor), so a planted foot is never moved and the landing stays continuous. */
+function reachable(r:CharacterRig,left:boolean,target:T.Vector3){
+ const k=T.MathUtils.clamp((target.y+.795)/.03,0,1);if(k<=0)return;
+ _hip.set(0,0,0);for(let n:T.Object3D|null=left?r.leftLeg:r.rightLeg;n&&n!==r.group;n=n.parent)_hip.applyQuaternion(n.quaternion).add(n.position);
+ _to.subVectors(target,_hip);const d=_to.length();if(d<=STEP_REACH)return;
+ target.addScaledVector(_to,(STEP_REACH/d-1)*k);
 }
