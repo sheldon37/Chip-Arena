@@ -5,12 +5,16 @@ import {WEAPONS,statsFor} from '../shared/content.js';
 import {ElementId} from '../shared/elements.js';
 import type {PlayerView} from '../shared/simulation.js';
 import type {CharacterRig} from './character-rig.js';
+import {voxelMesh,voxelLayout,bevel,type VoxelBox} from './voxel-kit.js';
 const cube=new T.BoxGeometry(1,1,1),sphere=new T.SphereGeometry(1,8,6),flame=new T.ConeGeometry(1,1,5),ring=new T.TorusGeometry(1,.055,4,16);
 const gem=new T.OctahedronGeometry(.16),mats=new Map<string,T.Material>();
 /** Lambert (or unlit glow) materials. sheen adds a small self-lit term (a fraction of the colour) so edges and steel still read under the night moon. */
 function material(color:number,glow=false,sheen=0){const k=color+':'+glow+(sheen?':'+sheen:'');if(!mats.has(k))mats.set(k,glow?new T.MeshBasicMaterial({color}):new T.MeshLambertMaterial({color,emissive:sheen?new T.Color(color).multiplyScalar(sheen):0}));return mats.get(k)!;}
 function mesh(parent:T.Object3D,shape:T.BufferGeometry,color:number,x:number,y:number,z:number,sx:number,sy:number,sz:number,glow=false){const m=new T.Mesh(shape,material(color,glow));m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.castShadow=!glow;parent.add(m);return m;}
 const box=(p:T.Object3D,c:number,x:number,y:number,z:number,sx:number,sy:number,sz:number,g=false)=>mesh(p,cube,c,x,y,z,sx,sy,sz,g);
+/** A voxel-sculpted part (voxel-kit.ts): still one mesh of the shared cube with this box's transform, drawn as a cached box list. */
+function vox(p:T.Object3D,key:string,c:number,x:number,y:number,z:number,sx:number,sy:number,sz:number,build:(o:VoxelBox[],w:number,h:number,d:number)=>void,sheen=0){const m=voxelMesh(cube,material(c,false,sheen),voxelLayout('weapon:'+key,[sx,sy,sz],o=>build(o,sx,sy,sz)));m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.castShadow=true;p.add(m);return m;}
+const chamfer=(b:number,edges='xyz',shade=1)=>(o:VoxelBox[],w:number,h:number,d:number)=>{bevel(o,0,0,0,w,h,d,b,shade,edges);};
 /** Small trim: no shadow; optional sheen and rotation (x, y, z). */
 function trim(p:T.Object3D,c:number,x:number,y:number,z:number,sx:number,sy:number,sz:number,sheen=0,rx=0,ry=0,rz=0){const m=box(p,c,x,y,z,sx,sy,sz);if(sheen)m.material=material(c,false,sheen);m.castShadow=false;m.rotation.set(rx,ry,rz);return m;}
 /** Visual blade lengths. Reach modules and enchantment tracks use the same numbers; meshes never define reach or hit volumes. */
@@ -30,13 +34,13 @@ export function buildWeapon(weapon:T.Group,spec:string,offhand=false){
   const mag=socket(weapon,'magazine',0,-.19,.16);
   if(spec==='pistol'){
    // Slide over a short frame, a raked grip that holds the magazine, a trigger guard, sights and a steel muzzle ring.
-   box(weapon,steel,0,.035,.14,.125,.10,.40);box(weapon,dark,0,-.045,.12,.11,.06,.30);box(weapon,gunmetal,0,0,.40,.06,.06,.14);trim(weapon,steel,0,0,.465,.08,.08,.03,.18);
+   vox(weapon,'pistol-slide',steel,0,.035,.14,.125,.10,.40,(o,w,h,d)=>{bevel(o,0,0,0,w,h,d,.015,1,'z');for(let i=0;i<4;i++)o.push([0,.005,-d/2+.03+i*.022,w+.006,h-.035,.008,.7]);});box(weapon,dark,0,-.045,.12,.11,.06,.30);box(weapon,gunmetal,0,0,.40,.06,.06,.14);trim(weapon,steel,0,0,.465,.08,.08,.03,.18);
    box(weapon,dark,0,-.14,-.045,.11,.22,.12).rotation.x=.22;trim(weapon,guard,0,-.14,-.045,.118,.15,.085,0,.22);trim(weapon,steel,0,-.105,.07,.03,.022,.12);
    trim(weapon,steel,0,.095,.32,.022,.02,.025,.2);trim(weapon,steel,0,.095,-.03,.07,.02,.025,.2);
    trim(mag,steel,0,-.03,-.225,.095,.13,.10,0,.22);socket(weapon,'support-grip',.06,-.10,-.01);
   }else{
    // Receiver, pistol grip and a short dropped stock (butt ~.30 behind the grip, marked 'stock-butt').
-   box(weapon,dark,0,mg?.01:0,.09,mg?.17:.15,mg?.22:.16,mg?.44:.40);trim(weapon,steel,0,mg?.13:.09,.09,mg?.15:.10,.025,mg?.42:.40,.12);
+   vox(weapon,mg?'mg-receiver':'rifle-receiver',dark,0,mg?.01:0,.09,mg?.17:.15,mg?.22:.16,mg?.44:.40,(o,w,h,d)=>{bevel(o,0,0,0,w,h,d,.018,1,'z');for(const x of [-1,1])o.push([x*(w/2+.003),0,.02,.006,h*.45,d*.5,.75]);});trim(weapon,steel,0,mg?.13:.09,.09,mg?.15:.10,.025,mg?.42:.40,.12);
    box(weapon,dark,0,-.13,-.035,.11,.22,.11).rotation.x=.2;trim(weapon,steel,0,-.095,.06,.03,.02,.10);
    box(weapon,dark,0,-.03,-.20,.12,.15,.20);box(weapon,black,0,-.045,-.295,.13,.19,.03);socket(weapon,'stock-butt',0,-.04,-.30);socket(weapon,'support-grip',.025,-.03,.10);
    if(rifle){
@@ -55,8 +59,8 @@ export function buildWeapon(weapon:T.Group,spec:string,offhand=false){
   const muzzle=socket(weapon,'muzzle',0,0,tip+.04);const flash=mesh(muzzle,flame,0xffdb90,0,0,.14,.11,.30,.11,true);flash.rotation.x=Math.PI/2;flash.name='muzzle-flash';flash.visible=false;
  }else if(w.class==='magic'){
   // One long shaft held a third of the way up ('guard-grip' marks the second hand), a gold collar and the element head around the gem.
-  box(weapon,dark,0,0,.13,.065,.065,.94);box(weapon,gold,0,0,-.355,.085,.085,.05);trim(weapon,wrap,0,0,0,.082,.082,.17);trim(weapon,wrap,0,0,.40,.08,.08,.11);socket(weapon,'guard-grip',0,0,.40);
-  box(weapon,gold,0,0,.53,.15,.14,.08);mesh(weapon,gem,w.color,0,0,.72,1,1,1,true);
+  box(weapon,dark,0,0,.13,.065,.065,.94);vox(weapon,'staff-heel',gold,0,0,-.355,.085,.085,.05,chamfer(.014));trim(weapon,wrap,0,0,0,.082,.082,.17);trim(weapon,wrap,0,0,.40,.08,.08,.11);socket(weapon,'guard-grip',0,0,.40);
+  vox(weapon,'staff-collar',gold,0,0,.53,.15,.14,.08,(o,w,h,d)=>{bevel(o,0,0,0,w,h,d,.02,1,'z');bevel(o,0,0,-d/2-.01,w-.04,h-.04,.02,.01,.85,'z');});mesh(weapon,gem,w.color,0,0,.72,1,1,1,true);
   if(spec==='water'){for(const x of [-.19,.19])box(weapon,steel,x,0,.725,.035,.035,.32);box(weapon,steel,0,0,.885,.415,.035,.035);trim(weapon,w.color,0,0,.57,.26,.03,.03,.3);}
   else if(spec==='lightning'){for(const x of [-1,1])trim(weapon,steel,x*.09,0,.70,.035,.035,.32,.1,0,x*.32,0);for(const z of [.24,.30,.36])trim(weapon,0xb87333,0,0,z-.05,.095,.095,.022,.12);}
   else if(spec==='darkness'){const crook=0x5a4a70;trim(weapon,crook,-.13,0,.72,.04,.04,.30,.15);trim(weapon,crook,-.045,0,.885,.21,.04,.04,.15);trim(weapon,crook,.045,0,.835,.04,.04,.10,.15);trim(weapon,0x5b3c73,0,0,.58,.20,.03,.03,.2);}
@@ -64,15 +68,15 @@ export function buildWeapon(weapon:T.Group,spec:string,offhand=false){
   socket(weapon,'muzzle',0,0,.88);
  }else if(spec==='shield'){
   // Heater shield: steel rim around a dark field, stepped point, gold cross emblem and boss.
-  box(weapon,steel,0,.13,.18,.60,.58,.12);box(weapon,steel,0,-.20,.18,.46,.10,.12);box(weapon,steel,0,-.29,.18,.28,.09,.12);
+  vox(weapon,'shield-body',steel,0,.13,.18,.60,.58,.12,(o,w,h,d)=>{bevel(o,0,0,0,w,h,d,.03,1,'z');for(const [x,y] of [[-1,1],[1,1],[-1,-.3],[1,-.3],[0,1]])o.push([x*(w/2-.035),y*(h/2-.035),d/2+.006,.03,.03,.014,.8]);});box(weapon,steel,0,-.20,.18,.46,.10,.12);box(weapon,steel,0,-.29,.18,.28,.09,.12);
   box(weapon,dark,0,.13,.225,.50,.48,.035);box(weapon,dark,0,-.19,.225,.36,.16,.035);
   trim(weapon,gold,0,.05,.25,.09,.62,.025,.12);trim(weapon,gold,0,.17,.25,.36,.08,.025,.12);box(weapon,gold,0,.17,.27,.14,.14,.06).material=material(gold,false,.12);socket(weapon,'blade-tip',0,.4,.29);
  }else{
   // Grip wraps and a gold pommel, a guard, then a steel core between two bright edges, a fuller, and a stepped point.
   const great=spec==='greatsword',dagger=spec==='daggers',length=bladeLength(spec),width=great?.18:dagger?.09:.10,end=.26+length;
-  box(weapon,dark,0,0,.02,.09,.09,great?.4:.27);for(const z of great?[-.06,.12]:dagger?[.04]:[-.04,.08])trim(weapon,wrap,0,0,z,.097,.097,.03);box(weapon,gold,0,0,great?-.225:-.15,great?.10:.075,great?.10:.075,great?.09:.07);
-  box(weapon,gold,0,0,.22,great?.40:dagger?.20:.34,.065,.08);if(great){for(const x of [-1,1])trim(weapon,gold,x*.225,-.005,.245,.10,.05,.07,0,0,-x*.35,0);box(weapon,steel,0,0,.32,.14,.06,.12);}
-  box(weapon,steel,0,0,(.26+end-.08)/2,width*.6,.05,length-.08).material=material(steel,false,.08);box(weapon,edge,0,0,(.26+end-.08)/2,width,.03,length-.08).material=material(edge,false,.25);
+  vox(weapon,'grip-'+spec,dark,0,0,.02,.09,.09,great?.4:.27,chamfer(.015,'z'));for(const z of great?[-.06,.12]:dagger?[.04]:[-.04,.08])trim(weapon,wrap,0,0,z,.097,.097,.03);vox(weapon,'pommel-'+spec,gold,0,0,great?-.225:-.15,great?.10:.075,great?.10:.075,great?.09:.07,(o,w,h,d)=>{bevel(o,0,0,.004,w,h,d-.008,.018);bevel(o,0,0,-d/2+.006,w*.5,h*.5,.016,.008,.8,'z');},.1);
+  vox(weapon,'guard-'+spec,gold,0,0,.22,great?.40:dagger?.20:.34,.065,.08,(o,w,h,d)=>{bevel(o,0,0,0,w-.03,h,d,.012,1,'yz');for(const x of [-1,1])bevel(o,x*(w/2-.02),.006,0,.04,h+.012,d+.008,.01,1,'z');o.push([0,0,d/2+.004,.045,.045,.01,.75]);},.08);if(great){for(const x of [-1,1])trim(weapon,gold,x*.225,-.005,.245,.10,.05,.07,0,0,-x*.35,0);box(weapon,steel,0,0,.32,.14,.06,.12);}
+  vox(weapon,'blade-'+spec,steel,0,0,(.26+end-.08)/2,width*.6,.05,length-.08,(o,w,h,d)=>{o.push([0,0,0,w,h,d]);o.push([0,0,-d/2+.03,w+.012,h+.006,.05,.85]);},.08);box(weapon,edge,0,0,(.26+end-.08)/2,width,.03,length-.08).material=material(edge,false,.25);
   if(!dagger)trim(weapon,0x4c5f66,0,0,.26+.06+length*.3,.022,.054,length*.6);
   if(dagger)trim(weapon,edge,.01,0,end-.015,width*.8,.03,.15,.25,0,.35,0);else{trim(weapon,edge,0,0,end-.04,width*.66,.035,.08,.25);trim(weapon,edge,0,0,end+.035,width*.33,.035,.07,.25);}
   socket(weapon,'blade-tip',0,0,.34+length);socket(weapon,'support-grip',0,0,-.11);
