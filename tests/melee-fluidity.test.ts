@@ -69,13 +69,13 @@ test('planted feet hold their floor spot under the authored root travel; steps m
  }
 });
 
-test('running carries the sword and greatsword tip-back instead of windmilling them overhead',()=>{
+test('running carries the sword and greatsword forward-down (Dark Souls sprint) instead of windmilling them overhead or trailing them back',()=>{
  for(const spec of ['sword','greatsword']){
   const base=probeBase(spec),r=probeRig(spec);let above=0,frames=0,maxStep=0,prev:T.Quaternion|undefined;
   for(let n=0;n<90;n++){const t=n/60,p={...animationPreviewPlayer(base,'run',t),hitStunUntil:-1e9} as PlayerView;animateCharacter(r,p,t,1/60);r.group.updateMatrixWorld(true);if(n<40)continue;
    const grip=r.weapon.getWorldPosition(new T.Vector3()),tip=r.weapon.getObjectByName('blade-tip')!.getWorldPosition(new T.Vector3()),q=r.weapon.getWorldQuaternion(new T.Quaternion());
-   frames++;if(tip.y-grip.y>.9||tip.z>grip.z-.3)above++;if(prev)maxStep=Math.max(maxStep,q.angleTo(prev));prev=q;assert.ok(tip.y>-.84,`${spec} tip above the floor`);}
-  assert.equal(above,0,`${spec}: blade overhead or forward in ${above}/${frames} run frames (baseline: vertical every stride)`);
+   frames++;if(tip.y-grip.y>.9||tip.y>grip.y||tip.z<grip.z+.3)above++;if(prev)maxStep=Math.max(maxStep,q.angleTo(prev));prev=q;assert.ok(tip.y>-.84,`${spec} tip above the floor`);}
+  assert.equal(above,0,`${spec}: blade overhead, raised or behind the grip in ${above}/${frames} run frames (baseline: vertical every stride)`);
   assert.ok(maxStep*180/Math.PI<12,`${spec}: weapon turns ${(maxStep*180/Math.PI).toFixed(1)} deg in one frame`);
  }
 });
