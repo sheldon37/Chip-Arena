@@ -2,6 +2,7 @@ import {DAGGER_THROW} from '../shared/standard-melee.js';
 import * as T from 'three';
 import type {Snapshot,GameEvent} from '../shared/simulation.js';
 import {buildWeapon,enchantWeapon} from './weapon-visuals.js';
+import {recordMeleeHit} from './block-impacts.js';
 interface Impact {at:number;root:T.Group;ring:T.Mesh<T.RingGeometry,T.MeshBasicMaterial>;dust:T.Points<T.BufferGeometry,T.PointsMaterial>;stones:T.Mesh[];}
 /** Dedicated meshes retain the equipped weapon's silhouette during flight. */
 export class StandardMeleeEffects {
@@ -16,7 +17,7 @@ export class StandardMeleeEffects {
    impact.ring.scale.setScalar(.2+age*3);impact.ring.material.opacity=Math.max(0,.55-age);impact.dust.material.opacity=Math.max(0,.46-age*.4);impact.dust.scale.setScalar(.4+age*1.6);impact.dust.position.y=age*.35;impact.stones.forEach((stone,i)=>{const a=i*2.39996,speed=1.7+(i%3)*.6;stone.position.set(Math.cos(a)*speed*age,Math.max(0,(1.8+i%3*.45)*age-4*age*age),Math.sin(a)*speed*age);stone.rotation.set(age*(i+2),0,age*3);stone.scale.setScalar(.075*(1-age/1.1));});
   }
  }
- event(e:GameEvent){if(e.type!=='melee-slam')return;const root=new T.Group();root.position.set(e.pos.x,e.pos.y+.03,e.pos.z);root.name='wolf-landing-impact';const ring=new T.Mesh(new T.RingGeometry(.9,1,40),new T.MeshBasicMaterial({color:0xe9d4b2,transparent:true,opacity:.6,side:T.DoubleSide,depthWrite:false}));ring.rotation.x=-Math.PI/2;root.add(ring);
+ event(e:GameEvent){recordMeleeHit(e);if(e.type!=='melee-slam')return;const root=new T.Group();root.position.set(e.pos.x,e.pos.y+.03,e.pos.z);root.name='wolf-landing-impact';const ring=new T.Mesh(new T.RingGeometry(.9,1,40),new T.MeshBasicMaterial({color:0xe9d4b2,transparent:true,opacity:.6,side:T.DoubleSide,depthWrite:false}));ring.rotation.x=-Math.PI/2;root.add(ring);
   const points=[];for(let i=0;i<40;i++){const a=i*2.39996,r=.7+i%5*.25;points.push(Math.cos(a)*r,(i%4)*.05,Math.sin(a)*r);}const dust=new T.Points(new T.BufferGeometry().setAttribute('position',new T.Float32BufferAttribute(points,3)),new T.PointsMaterial({color:0xb6a895,size:.3,transparent:true,opacity:.45,depthWrite:false}));root.add(dust);const stones=Array.from({length:10},()=>new T.Mesh(new T.IcosahedronGeometry(1,0),new T.MeshLambertMaterial({color:0x8b8880})));stones.forEach(o=>root.add(o));this.scene.add(root);this.impacts.push({at:e.time,root,ring,dust,stones});
  }
 }
