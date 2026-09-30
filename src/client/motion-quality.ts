@@ -53,6 +53,12 @@ function solveLeg(r:CharacterRig,left:boolean,target:T.Vector3,yaw:number,pitch:
  if(orient)_qf.copy(orient);else _qf.setFromEuler(_e.set(pitch,yaw,0,'YXZ'));
  ankle.quaternion.copy(_qh).multiply(knee.quaternion).invert().multiply(_qf);if(!orient)toeJ.rotation.set(toe,0,0);
 }
+const _keep=[new T.Quaternion(),new T.Quaternion(),new T.Quaternion()];
+/** Blend a leg toward a planted rig-group ankle target (knee-hinged IK, flat foot with the given heading) by weight. */
+export function plantLeg(r:CharacterRig,left:boolean,target:T.Vector3,yaw:number,weight:number){
+ if(weight<=1e-4)return;const [hip,knee,ankle]=legBones(r,left);_keep[0].copy(hip.quaternion);_keep[1].copy(knee.quaternion);_keep[2].copy(ankle.quaternion);
+ solveLeg(r,left,target,yaw,0,0);if(weight>=1)return;hip.quaternion.copy(_keep[0].slerp(hip.quaternion,weight));knee.quaternion.copy(_keep[1].slerp(knee.quaternion,weight));ankle.quaternion.copy(_keep[2].slerp(ankle.quaternion,weight));
+}
 /** Current ankle position, foot orientation and (optionally) knee position in rig-group space, read from the joints. */
 function readAnkle(r:CharacterRig,left:boolean,out:T.Vector3,q:T.Quaternion,kneeOut?:T.Vector3){
  const [hip,knee,ankle]=legBones(r,left);pelvisFrame(r);q.copy(_pq).multiply(hip.quaternion);out.copy(hip.position).applyQuaternion(_pq).add(_pp);
