@@ -81,10 +81,10 @@ export function presentedYaw(r:object,p:PlayerView,time:number,input:number){
 /** Landing compression: an under-damped spring impulse (omega 11, zeta .75) normalised to peak 1 at ~100 ms. */
 function landingCurve(t:number){return t<0||t>.8?0:Math.exp(-8.25*t)*Math.sin(7.27*t)/.2915;}
 /** Bent elbows pump past the hip and forward; opposite the same-side foot, lagging the legs slightly. */
-function swingArm(r:CharacterRig,s:Travel,left:boolean,phase:number,run:number,air:number,amp:number,back:number,push:number,reach:number,dt:number){
+function swingArm(r:CharacterRig,s:Travel,left:boolean,phase:number,run:number,air:number,amp:number,back:number,push:number,reach:number,dt:number,elbowAmp=1){
  const arm=left?r.leftArm:r.rightArm,elbow=left?r.leftElbow:r.rightElbow,hand=left?r.leftHand:r.rightHand,sign=left?1:-1,i=left?0:1;
  const u=frac(phase/TAU+(left?0:.5)-.06),keys=[0,.17,.38,.55,.73,.90,1],weight=clamp(run,0,1);
- const shoulder=poseCurve(keys,[.66,.18,-.86,-.55,.18,.63,.66],u)*amp,bend=poseCurve(keys,[-1.05,-1.25,-1.42,-1.55,-1.16,-1.04,-1.05],u)-back*.3;
+ const shoulder=poseCurve(keys,[.66,.18,-.86,-.55,.18,.63,.66],u)*amp,bend=-1.3+(poseCurve(keys,[-1.05,-1.25,-1.42,-1.55,-1.16,-1.04,-1.05],u)+1.3)*elbowAmp-back*.3;
  const x=lerp(left?-.10:-.14,shoulder,weight)-push*.55-reach*.2;
  arm.rotation.set(x,0,sign*(.10+air*.18+reach*.2));elbow.rotation.set(lerp(-.22,bend,weight)-push*.35,0,0);
  // Hands trail the arm: a critically damped spring (implicit, rate independent) driven by the shoulder's angular velocity.
@@ -123,7 +123,7 @@ export function locomotion(r:CharacterRig,p:PlayerView,time:number,dt:number,pla
  // Cadence: stride length grows with speed, so a planted ankle's travel matches the ground (see GAIT).
  const run=r.motion,weight=Math.min(run,1),back=smoothMotion((-st.forward-.3)/.4)*clamp(speed/1.5,0,1),side=Math.abs(st.strafe)*clamp(speed/1.5,0,1);
  const D=cycleLength(speed)*lerp(1,.8,back),S=GAIT.stance*lerp(1,.8,back),contact=clamp(S/D,GAIT.contactMin,GAIT.contactMax);
- let rate=onGround&&speed>.05?Math.min(speed/D,GAIT.maxCadence):0;if(st.settling&&onGround)rate=Math.max(rate,GAIT.settleCadence);if(planted||fp)rate=0;
+ let rate=onGround&&speed>.05?Math.min(speed/D,GAIT.maxCadence):0;if(st.settling&&onGround&&!fp)rate=Math.max(rate,GAIT.settleCadence);if(planted)rate=0;
  let prevStride=r.stride;r.stride+=TAU*rate*dt;st.phaseOffset*=Math.exp(-dt*10);
  const sprint=smoothMotion((run-.32)/.65)*(1-back),moving=clamp(speed/2,0,1),heel=.1*weight,toeOff=(.22+.3*sprint)*moving;
  if(landing&&!fp){
@@ -207,9 +207,9 @@ export function locomotion(r:CharacterRig,p:PlayerView,time:number,dt:number,pla
  }
  [r.leftLeg,r.leftKnee,r.leftFoot,r.rightLeg,r.rightKnee,r.rightFoot].forEach((b,k)=>st.legQ[k].copy(b.quaternion));st.solved=true;
  // Arms: pump opposite the legs (reduced for the first-person view model and backpedal), rise on push-off, reach on descent.
- const armAmp=(fp?.25:1)*lerp(1,.4,back);
+ const armAmp=(fp?.15:1)*lerp(1,.4,back);
  r.leftShoulder.rotation.set(-breath*.009,gait*.045*weight,.03+breath*.006);r.rightShoulder.rotation.set(-breath*.009,-gait*.045*weight,-.03-breath*.006);
- swingArm(r,st,true,ph2,run,air,armAmp,back,push,descend,dt);swingArm(r,st,false,ph2,run,air,armAmp,back,push,descend,dt);
+ swingArm(r,st,true,ph2,run,air,armAmp,back,push,descend,dt,fp?.2:1);swingArm(r,st,false,ph2,run,air,armAmp,back,push,descend,dt,fp?.2:1);
  return {speed,run};
 }
 /** Ground pass, after every action layer and before finishPose. It turns the pelvis toward the feet/travel (the spine and
@@ -246,5 +246,12 @@ function syncFeet(r:CharacterRig,s:Travel,p:PlayerView,captured=false){
   f.x=f.fx=f.sx=c.x;f.z=f.fz=f.sz=c.z;f.y=f.fy=f.sy=Math.max(FLOOR,c.y);f.yaw=f.fyaw=f.syaw=Math.atan2(_fwd.x,_fwd.z);f.pitch=f.spitch=Math.asin(clamp(-_fwd.y,-1,1));f.toe=0;
   f.planted=c.y<FLOOR+.015;if(!f.planted)f.uLift=Math.min(frac(r.stride/TAU+(i?.5:0)),.97);
  }
+}
+const lavaWeight=new WeakMap<object,{w:number;time:number}>();
+/** Lava panic flail over the finished pose, ramped in and out per rig (~8/s) instead of a raw overwrite. */
+export function lavaFlail(r:Pick<CharacterRig,'leftArm'|'rightArm'|'leftLeg'|'rightLeg'>,on:boolean,time:number,dt:number){
+ let s=lavaWeight.get(r);if(!s||time<s.time-1e-6||time-s.time>.35){s={w:on?1:0,time};lavaWeight.set(r,s);}
+ s.w+=(Number(on)-s.w)*(1-Math.exp(-clamp(dt,0,.05)*8));s.time=time;const w=s.w;if(w<1e-3)return;const k=Math.sin(time*7)*.45;
+ r.leftArm.rotation.x=lerp(r.leftArm.rotation.x,-.7+k,w);r.rightArm.rotation.x=lerp(r.rightArm.rotation.x,-.7-k,w);r.leftLeg.rotation.x=lerp(r.leftLeg.rotation.x,k,w);r.rightLeg.rotation.x=lerp(r.rightLeg.rotation.x,-k,w);
 }
 export {finishPose} from './pose-transitions.js';

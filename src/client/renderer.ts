@@ -27,7 +27,7 @@ import {MatrixEffects} from './matrix-effects.js';
 import * as T from 'three';
 import {inLava} from '../shared/stage-hazards.js';
 import {AnimatedRig,animateCharacter,attackPose,animationPreviewPlayer} from './character-animation.js';
-import {presentedYaw} from './motion-quality.js';
+import {presentedYaw,lavaFlail} from './motion-quality.js';
 import {ChipEffects} from './chip-effects.js';
 import {createCharacterRig,recolorCharacterRig,setRigDetail} from './character-rig.js';
 import {MeleeTrails} from './melee-trails.js';
@@ -78,7 +78,7 @@ export class ArenaRenderer {
  update(state:Snapshot,me:string,yaw:number,pitch:number,dt:number,playing:boolean,localPos?:Vec,debug=false,spectatorId?:string){const started=performance.now();this.scenery.set(state.options.map);this.scenery.update(this.visualTime);this.stageHazards.update(state.options.map,state.time);this.ceilingField.update(state.time);if(this.budget.sample(dt,playing&&state.phase==='fight'&&!document.hidden))this.resize();this.visualTime+=dt;const targetFov=this.scoped?28:this.cameraMode==='first'?VIEW.firstFov:VIEW.thirdFov;this.camera.fov+=(targetFov-this.camera.fov)*(1-Math.exp(-dt*18));this.camera.updateProjectionMatrix();const preview=state.options.sandbox&&this.motionPreview!=='off';const first=state.phase!=='intro'&&!preview&&playing&&(this.cameraMode==='first'||this.scoped)&&(state.players.find(p=>p.id===me)?.hp??1)>0;const ids=new Set(state.props.map(p=>p.id));for(const[id,g]of this.props)if(!ids.has(id)){this.arenaGroup.remove(g);g.traverse(o=>{if(o instanceof T.LineSegments||o instanceof T.InstancedMesh){o.geometry.dispose();(o.material as T.Material).dispose();}});this.props.delete(id);}for(const p of state.props){const g=this.props.get(p.id)||this.makeProp(p);g.position.copy(tv(p.pos));g.quaternion.set(p.rot.x,p.rot.y,p.rot.z,p.rot.w);}
  for(const actual of state.players){const p=preview&&actual.id===me?animationPreviewPlayer(actual,this.motionPreview,this.visualTime):actual;let r=this.players.get(p.id);if(r&&(r.color!==p.color||r.group.userData.cosmeticKey!==JSON.stringify(cosmetics(p.cosmetics,true)))){this.cooldownTint.release(r.group);disposeAuditorHalo(r);this.scene.remove(r.group);this.players.delete(p.id);r=undefined;}r=r||this.makeRig(p);teamArmor(r,state.options.gameMode==='teams'?p.team:undefined);if(r.spec!==p.spec)this.equip(r,p.spec);r.group.visible=p.hp>0&&!(first&&p.id===me);const pos=p.death&&p.hp<=0?p.death.pos:p.id===me&&localPos?localPos:p.pos;r.group.position.copy(tv(pos));r.group.rotation.y=presentedYaw(r,p,p.animationTime??state.time,p.id===me&&playing?yaw:p.yaw);
  const visualStats=statsFor(p.chips),w=WEAPONS[p.spec],pose=animateCharacter(r,p,preview&&p.id===me?this.visualTime:p.death&&p.hp<=0?p.death.at:state.time,dt,p.id===me&&playing?pitch:p.pitch);
- if(p.hp>0&&inLava(state.options.map,pos)&&!p.swinging&&!p.knockdown){r.leftArm.rotation.x=-.7+Math.sin(state.time*7)*.45;r.rightArm.rotation.x=-.7-Math.sin(state.time*7)*.45;r.leftLeg.rotation.x=Math.sin(state.time*7)*.45;r.rightLeg.rotation.x=-Math.sin(state.time*7)*.45;}
+ lavaFlail(r,p.hp>0&&inLava(state.options.map,pos)&&!p.swinging&&!p.knockdown,state.time,dt);
  this.meleeTrails.sample(r,p,pose,this.visualTime);
 
  spellMotes(r,p,pose,dt,this.effectsQuality,this.spellBurst);
