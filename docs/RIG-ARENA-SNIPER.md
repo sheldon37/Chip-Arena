@@ -8,7 +8,13 @@ The blank mannequin has no permanent face, visor or helmet. `src/client/characte
 
 Developer Sandbox → **Animation Inspector** lets you view Idle, Walk, Run, Attack, Reload, Block or Airborne from an orbiting camera. It pauses only local sandbox simulation and does not issue attacks or alter health. Return to **Play** to resume. Specialization and Chip controls work in the inspector.
 
-Animations are authored procedural poses, not motion capture. Feet do not perform terrain-specific IK; some foot sliding remains on unusual slopes and while strafing. Weapon attachment sockets are reusable. Future custom death effects still use the `KILL_EFFECTS` registry; cosmetic voxel deaths and the five-second result hold remain.
+Animations are authored procedural poses, not motion capture. Weapon attachment sockets are reusable.
+
+### Ground-anchored locomotion (2026-09-30 visual revision)
+
+`motion-quality.ts` keeps a per-rig gait state in rig-group space. Planted feet are integrated against the ground velocity (and held against rig yaw changes), so they stay still on the floor while the hips travel over them; swing feet follow a heel-fold → knee-drive → reach path and land with ground-speed matching. Cadence follows speed (`ANIMATION.gait`: about 4.5 steps/s at 2.8 m/s and 6.5 steps/s at 6.8 m/s; dash bursts lengthen the stride instead). A ground pass after every action layer re-solves the legs with knee-hinged IK, so body drops (guard, landing, lean, stance crouch) bend the knees instead of sinking the feet, and applies the lower-body turn lag with the chest counter-rotated exactly onto aim. Strafes turn the hips into the travel direction; backpedals take short, low steps; turning in place beyond a ±40° dead zone plays a two-step pivot; jumps have push-off, apex and descent poses and a spring landing; stopping takes a settling step into the class stance from `stances.ts`.
+
+Measured on flat ground with the shared motion probe (`tests/helpers/motion-probe.ts`, root travel, 30/60/120 Hz): the median planted-ankle speed is 0 in run, walk, guard-walk, strafe, backpedal and diagonal travel (previously 75–91% of body speed), the largest planted slip is about 1 cm, and guard-walk ankles stay at the −0.795 floor (previously down to −0.946). `tests/locomotion-fluidity.test.ts` pins these. There is still no terrain-specific foot IK: slopes and steps are not probed, so feet can float or dip slightly on uneven ground. Future custom death effects still use the `KILL_EFFECTS` registry; cosmetic voxel deaths and the five-second result hold remain.
 
 ## Noticeable modifiers
 
