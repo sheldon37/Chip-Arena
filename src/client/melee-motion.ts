@@ -5,12 +5,16 @@ import {braceWeapon} from './character-rig.js';
 import type {PlayerView} from '../shared/simulation.js';
 import {smoothMotion as ease} from './motion-quality.js';
 import type {attackPose} from './character-animation.js';
+import {meleeReady} from './melee-guard.js';
+export {meleeReady};
 /** Passing keys preserve angular velocity; anticipation and recovery carry the body's weight. */
 export function meleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,time:number){
- const special=p.meleeAction,dagger=p.spec==='daggers';
+ const special=p.meleeAction;
  r.weapon.visible=!p.weaponAway&&!(special?.released&&special.kind==='dagger-throw'&&time<special.until-.12);
- if(special&&time<special.until){specialMotion(r,p,time);return;}
- if(!a.active){const carry=ease((r.motion-.10)/.65);r.weapon.rotation.x=T.MathUtils.lerp(.5,.15,carry);if(dagger)r.offWeapon.rotation.x=r.weapon.rotation.x;return;}
+ // Every melee layer sits on the combat-ready guard (idle) faded into the running carry, so entries and exits blend from it.
+ if(special&&time<special.until){meleeReady(r,p,time);specialMotion(r,p,time);return;}
+ if(!a.active){meleeReady(r,p,time);return;}
+ if(a.age<Math.min(.065,a.windup))meleeReady(r,p,time);
  primaryMeleeMotion(r,p,a);
 }
 
