@@ -46,3 +46,7 @@ export function hitReactionMotion(r:CharacterRig,p:PlayerView,time:number,stunne
  }
  return true;
 }
+/** Fallback hitstun flinch when no authoritative hitReaction covers the stun (moved verbatim from sampleCharacter). */
+export function fallbackFlinch(r:CharacterRig,p:PlayerView,time:number){
+ const flinch=Math.min(1,((p.hitStunUntil||0)-time)/.12);r.body.rotation.x=-.23*flinch;r.chest.rotation.y=.20*flinch;r.head.rotation.x=-.22;r.leftArm.rotation.set(-.5,0,.45);r.rightArm.rotation.set(-.5,0,-.45);r.leftElbow.rotation.x=r.rightElbow.rotation.x=-.8;
+}

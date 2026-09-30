@@ -1,6 +1,6 @@
 import {matrixStaff,animateStaff} from './matrix-effects.js';
 import * as T from 'three';
-import {spellPose} from './character-animation.js';
+import {spellCharge} from './ranged-vfx.js';
 import {WEAPONS,statsFor} from '../shared/content.js';
 import {ElementId} from '../shared/elements.js';
 import type {PlayerView} from '../shared/simulation.js';
@@ -64,9 +64,7 @@ export function weaponModifiers(weapon:T.Group,p:PlayerView,time:number){
  const group=weapon.getObjectByName('chip-modules');if(group){const gear=group.getObjectByName('rate-coil');if(gear)gear.rotation.z=time*8;for(const child of group.children)if(child.userData.orbit!==undefined){const a=time*2+child.userData.orbit*2.1;child.position.y=Math.sin(a)*.15;}}
 }
 export function bodyModifiers(r:CharacterRig,p:PlayerView,time:number){
- let charge=r.rightHand.getObjectByName('spell-charge') as T.Group|undefined;
- if(charge?.userData.spec!==p.spec){charge?.removeFromParent();charge=socket(r.rightHand,'spell-charge',0,-.09,.02);charge.userData.spec=p.spec;mesh(charge,sphere,WEAPONS[p.spec].color,0,0,0,.14,.14,.14,true);for(let n=0;n<2;n++){const halo=mesh(charge,ring,WEAPONS[p.spec].color,0,0,0,.22,.22,.22,true);halo.rotation.x=n*Math.PI/2;}}
- const phrase=spellPose(p,time);charge.visible=p.hp>0&&(p.spec==='ansatsuken'?p.arcade?.action==='charge':phrase.active);charge.scale.setScalar(Math.max(.01,phrase.weight*(phrase.drive<.2?1+phrase.coil:.8)));charge.rotation.y=time*8;if(p.spec==='ansatsuken'&&p.arcade?.action==='charge')charge.scale.setScalar(.5+p.arcade.charge*1.2);
+ spellCharge(r,p,time);
 
  const c=p.chips,s=statsFor(c),key=JSON.stringify(c);if(r.group.userData.bodyChips!==key){r.group.userData.bodyChips=key;for(const parent of [r.chest,r.leftFoot,r.rightFoot,r.leftArm,r.rightArm])parent.getObjectByName('body-chips')?.removeFromParent();
   const chest=socket(r.chest,'body-chips',0,0,0);for(let n=0;n<Math.min(6,c.vital||0);n++)box(chest,0xff7478,(n%3-1)*.12,.12+Math.floor(n/3)*.1,.18,.085,.06,.045,true);

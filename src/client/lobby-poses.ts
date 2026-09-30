@@ -1,5 +1,5 @@
 import * as T from 'three';
-import type {CharacterRig} from './character-rig.js';
+import {settleJointCovers,type CharacterRig} from './character-rig.js';
 import type {PlayerView} from '../shared/simulation.js';
 import {animateCharacter} from './character-animation.js';
 import {placeHand} from './fighter-motion.js';
@@ -30,6 +30,7 @@ export function animateLobbyPose(r:CharacterRig,p:PlayerView,time:number,dt:numb
   placeHand(r,false,new T.Vector3(.16,.035,.26),new T.Vector3(-.45,-1,.2));
   r.leftHand.rotation.x=.12;r.rightHand.rotation.x=-.08;
  }
+ settleJointCovers(r);
 }
 
 /** Chair dimensions match the mannequin's hip and shin lengths. */

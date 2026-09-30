@@ -33,29 +33,11 @@ export function createCharacterRig(color:string,bodyColor:T.ColorRepresentation=
  return {group,body,pelvis,spine,chest,neck,head,leftShoulder:left.shoulder,rightShoulder:right.shoulder,leftArm:left.upper,rightArm:right.upper,leftElbow:left.elbow,rightElbow:right.elbow,leftHand:left.hand,rightHand:right.hand,leftLeg:ll.hip,rightLeg:rl.hip,leftKnee:ll.knee,rightKnee:rl.knee,leftFoot:ll.ankle,rightFoot:rl.ankle,leftToe:ll.toe,rightToe:rl.toe,weapon,offWeapon,sockets,stride:0,motion:0,aimWeight:0,groundWeight:1,land:0,wasGrounded:true};
 }
 export type CharacterRig=ReturnType<typeof createCharacterRig>;
-const down=new T.Vector3(0,-1,0);
-/** Analytic two-link arm IK. Targets come from weapon sockets, never per-item frame offsets. */
-export function supportHand(r:CharacterRig,target:T.Object3D,weight:number){
- if(weight<=.001)return;r.group.updateMatrixWorld(true);
- const parent=r.leftArm.parent!,start=r.leftArm.position.clone(),end=parent.worldToLocal(target.getWorldPosition(new T.Vector3()));
- const delta=end.clone().sub(start),d=T.MathUtils.clamp(delta.length(),.045,RIG_LENGTHS.upperArm+RIG_LENGTHS.forearm-.002),dir=delta.normalize();
- end.copy(start).addScaledVector(dir,d);
- const a=RIG_LENGTHS.upperArm,b=RIG_LENGTHS.forearm,along=(a*a-b*b+d*d)/(2*d),height=Math.sqrt(Math.max(0,a*a-along*along));
- const pole=new T.Vector3(1,-.8,-.25);pole.addScaledVector(dir,-pole.dot(dir)).normalize();const elbow=start.clone().addScaledVector(dir,along).addScaledVector(pole,height);
- const upper=new T.Quaternion().setFromUnitVectors(down,elbow.clone().sub(start).normalize());const lower=new T.Quaternion().setFromUnitVectors(down,end.clone().sub(elbow).normalize().applyQuaternion(upper.clone().invert()));
- r.leftArm.quaternion.slerp(upper,weight);r.leftElbow.quaternion.slerp(lower,weight);r.group.updateMatrixWorld(true);
- const wrist=target.getWorldQuaternion(new T.Quaternion()).premultiply(r.leftHand.parent!.getWorldQuaternion(new T.Quaternion()).invert());r.leftHand.quaternion.slerp(wrist,weight);
-}
-
-/** Drive the main grip in chest space, solve both arms, then preserve the desired weapon orientation. */
-export function braceWeapon(r:CharacterRig,target:T.Vector3,rotation:T.Euler,weight:number){
- if(weight<.001)return;r.group.updateMatrixWorld(true);
- const parent=r.rightArm.parent!,start=r.rightArm.position.clone(),end=parent.worldToLocal(r.chest.localToWorld(target.clone())),delta=end.clone().sub(start),d=T.MathUtils.clamp(delta.length(),.045,RIG_LENGTHS.upperArm+RIG_LENGTHS.forearm-.002),dir=delta.normalize();end.copy(start).addScaledVector(dir,d);
- const a=RIG_LENGTHS.upperArm,b=RIG_LENGTHS.forearm,along=(a*a-b*b+d*d)/(2*d),height=Math.sqrt(Math.max(0,a*a-along*along)),pole=new T.Vector3(-1,-.7,-.2);pole.addScaledVector(dir,-pole.dot(dir)).normalize();const elbow=start.clone().addScaledVector(dir,along).addScaledVector(pole,height),upper=new T.Quaternion().setFromUnitVectors(down,elbow.clone().sub(start).normalize()),lower=new T.Quaternion().setFromUnitVectors(down,end.clone().sub(elbow).normalize().applyQuaternion(upper.clone().invert()));
- r.rightArm.quaternion.slerp(upper,weight);r.rightElbow.quaternion.slerp(lower,weight);r.group.updateMatrixWorld(true);
- const orientation=r.chest.getWorldQuaternion(new T.Quaternion()).multiply(new T.Quaternion().setFromEuler(rotation)),wrist=r.rightHand.parent!.getWorldQuaternion(new T.Quaternion()).invert().multiply(orientation);r.rightHand.quaternion.slerp(wrist,weight);
- r.weapon.position.set(0,.065,-.055);r.weapon.rotation.set(0,0,0);r.group.updateMatrixWorld(true);const grip=r.weapon.getObjectByName('support-grip');if(grip)supportHand(r,grip,weight);
-}
+export {supportHand,braceWeapon} from './rig-ik.js';
+/** Joint-cover hook, called after every full pose (animateCharacter, animateLobbyPose, PlayerIntros). No-op until the model pass implements it. */
+export function settleJointCovers(r:CharacterRig){void r;}
+/** Level-of-detail hook: low=true hides optional detail meshes (SVG compatibility or 'performance' graphics). No-op until the model pass implements it. */
+export function setRigDetail(r:CharacterRig,low:boolean){void r;void low;}
 
 export function recolorCharacterRig(r:CharacterRig,accent:string,body:string){const key=accent+body;if(r.group.userData.colorKey===key)return;r.group.userData.colorKey=key;r.group.traverse(o=>{if(!(o instanceof T.Mesh))return;if(/^(hip-shell|abdomen-shell|ribcage|upper-chest|blank-head|crown)$/.test(o.name)||/-(upper-arm|forearm|thumb|thigh|shin)$/.test(o.name))o.material=mat(body,r.group.userData.armorGlow?.24:0);else if(/^(waist-band|sternum)$/.test(o.name)||/-(shoulder-cap|cuff|kneecap)$/.test(o.name))o.material=mat(accent,r.group.userData.armorGlow?2.8:0);else if(o.name.startsWith('armor-'))o.material=mat(accent,2.8);});}
 
