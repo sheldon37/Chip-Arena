@@ -6,7 +6,7 @@ import {poseCurve} from './pose-curves.js';
 import {attackCommitment,attackTravel,meleeRecovery} from '../shared/souls-combat.js';
 import {smoothMotion as ease,ankleInGroup} from './motion-quality.js';
 import {stanceFor} from './stances.js';
-import {meleeGuard,type GuardHand} from './melee-guard.js';
+import {meleeGuard,meleeEntry,type GuardHand} from './melee-guard.js';
 import {foot,hand} from './rig-ik.js';
 export {foot,hand};
 /** Phrase keys: 0..1 windup (swingAt at 1), 1..2 the active window (swingUntil at 2), 2..3 recovery (commitment end at 3).
@@ -24,13 +24,26 @@ export function meleePhase(a:Pick<ReturnType<typeof attackPose>,'age'|'windup'|'
  const u=Math.min(1,(age-a.windup-a.window)/Math.max(.01,recoverySeconds)),m=Math.min(2.1,recoverySeconds/Math.max(.01,a.window));
  return 2+u*(m+u*((3-2*m)+u*(m-2)));
 }
-/** A guard-anchored curve: the first and last keys are the guard value, the middle seven are the phrase. */
-const w=(start:number,mid:Arr)=>[start,...mid,start];
+/** A guard-anchored curve: the first and last keys are the guard value, the middle seven are the phrase (times `f`). The
+ * keys are written into one reused array (poseCurve reads it at once), so a phrase frame allocates nothing per channel. */
+const _k:Arr=new Array(9).fill(0),_lk:Arr=new Array(9).fill(0);
+const w=(start:number,mid:Arr,f=1)=>{_k[0]=start;for(let i=0;i<7;i++)_k[i+1]=mid[i]*f;_k[8]=start;return _k;};
+/** An arm channel at `phase`, its first two keys leaned toward the load (the swingAt key) by `lean`. An attack out of the
+ * running carry starts its hands from the load: the trailing blade is already drawn back, so it goes straight into the
+ * load instead of detouring forward through the guard and the chamber (the body still winds up from neutral). */
+function curve(values:Arr,phase:number,lean:number){
+ if(lean<=0)return poseCurve(keys,values,phase);for(let i=2;i<9;i++)_lk[i]=values[i];
+ _lk[0]=values[0]+(values[2]-values[0])*lean;_lk[1]=values[1]+(values[2]-values[1])*lean;return poseCurve(keys,_lk,phase);
+}
+/** Seconds the phrase takes to blend in over the pose under it: .065 s out of the guard; out of the running carry or the
+ * relaxed idle, which are further from the phrase, .16 s (.6 of a longer windup), never past .85 of the windup, so the
+ * entry never snaps and the phrase is exact from swingAt. */
+export function phraseEntry(r:object,p:PlayerView,windup:number){const base=Math.min(.065,windup),e=meleeEntry(r,p);return base+Math.max(0,Math.min(.85*windup,Math.max(.16,.6*windup))-base)*(1-e.guard);}
 /** Reference phrases: paired dagger slashes, low heavy sweeps, a stepping sword combo, a hip-driven shield slam. The active
  * sweep stays 1..2; anticipation, follow-through and recovery carry the body's weight around it, and every phrase starts and
  * ends in the weapon's combat-ready guard (melee-guard.ts), so a held combo flows through one stance. */
 export function primaryMeleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>){
- const rate=p.attackRate||1,recoverySeconds=meleeRecovery(p.spec)/rate,phase=meleePhase(a,recoverySeconds),c=(values:Arr)=>poseCurve(keys,values,phase),weight=ease(a.age/Math.min(.065,a.windup));
+ const rate=p.attackRate||1,recoverySeconds=meleeRecovery(p.spec)/rate,phase=meleePhase(a,recoverySeconds),weight=ease(a.age/phraseEntry(r,p,a.windup)),lean=meleeEntry(r,p).carry,c=(values:Arr)=>poseCurve(keys,values,phase),ca=(values:Arr)=>curve(values,phase,lean);
  const index=Math.max(0,(p.attackIndex||1)-1),dagger=p.spec==='daggers',heavy=p.spec==='greatsword',shield=p.spec==='shield',reverse=dagger||heavy||shield?index%2===1:index%3===1,sign=reverse?-1:1,overhead=!heavy&&!dagger&&!shield&&index%3===2,spin=dagger&&index%4===3,low=heavy||dagger&&index%4===2;
  const G=meleeGuard(p.spec)!;
  // Where the incoming layers planted the ankles, before this phrase moves the body (the plant blends from there).
@@ -56,16 +69,16 @@ export function primaryMeleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<type
  if(heavy){
   // Rear-leg load, stamped lead foot, low diagonal sweep, rise ~60 degrees over the lead shoulder, then a heavy drop
   // through the front into the two-hand low guard. The blade's yaw trails the hands (it accelerates last).
-  const m=G.main,g=MELEE_PHRASES.greatsword;_t.set(c(w(m.x,g.x)),c(w(m.y,g.y)),c(w(m.z,g.z)));
-  braceWeapon(r,_t,_eu.set(c(w(m.rx,g.rx)),c(w(m.ry,g.ry.map(v=>v*sign))),c(w(m.rz,g.rz.map(v=>v*sign)))),weight);
+  const m=G.main,g=MELEE_PHRASES.greatsword;_t.set(ca(w(m.x,g.x)),ca(w(m.y,g.y)),ca(w(m.z,g.z)));
+  braceWeapon(r,_t,_eu.set(ca(w(m.rx,g.rx)),ca(w(m.ry,g.ry,sign)),ca(w(m.rz,g.rz,sign))),weight);
  }else if(dagger){
   // The striking hand alternates: the right-hand tables are mirrored for the left. Chambers stay clear of the shoulder
   // joint (a hand target passing through the shoulder is what flipped the elbow).
-  arm(r,reverse,low?MELEE_PHRASES.daggerLow:MELEE_PHRASES.dagger,reverse?G.off:G.main,reverse,c,weight);
-  arm(r,!reverse,MELEE_PHRASES.daggerOther,reverse?G.main:G.off,reverse,c,weight);
+  arm(r,reverse,low?MELEE_PHRASES.daggerLow:MELEE_PHRASES.dagger,reverse?G.off:G.main,reverse,ca,weight);
+  arm(r,!reverse,MELEE_PHRASES.daggerOther,reverse?G.main:G.off,reverse,ca,weight);
  }else{
   const phrase=shield?reverse?'shieldRise':'shield':overhead?'swordOverhead':reverse?'swordBackhand':'swordForehand',set=MELEE_PHRASES[phrase];
-  arm(r,false,set,G.main,false,c,weight);arm(r,true,shield?MELEE_PHRASES.shieldOff:reverse?MELEE_PHRASES.swordOffTucked:MELEE_PHRASES.swordOff,G.off,false,c,weight);
+  arm(r,false,set,G.main,false,ca,weight);arm(r,true,shield?MELEE_PHRASES.shieldOff:reverse?MELEE_PHRASES.swordOffTucked:MELEE_PHRASES.swordOff,G.off,false,ca,weight);
  }
  headTrack(r,p,a,recoverySeconds,turnArr,twistArr,turnScale,twistScale,crouch,spin,weight);
  if(p.chips.hurricane&&!spin)r.body.rotation.y+=ease(a.strike)*Math.PI*2; // A complete turn never unwinds during recovery.
@@ -97,12 +110,12 @@ export const MELEE_PHRASES={
  daggerOther:{x:[.20,.24,.28,.34,.30,.24,.18],y:[.06,.10,0,-.12,-.04,.02,.06],z:[.30,.26,.22,.10,.16,.22,.26],rx:[-.3,-.2,-.3,-.55,-.75,-.55,-.4],ry:[.3,.55,.85,.7,.25,.15,.1],rz:[.2,.3,.35,.25,.05,.05,.1]},
  greatsword:{x:[-.02,0,.02,.04,.06,.05,.04],y:[.10,.02,-.16,-.06,.13,.31,.36],z:[.14,.14,.24,.32,.28,.22,.20],rx:[-.75,-.45,-.33,-.40,-.64,-.97,-1.05],ry:[-.25,-.15,.40,.75,.50,.05,-.15],rz:[-.2,-.3,-.2,-.1,.1,.18,.2]},
 } satisfies Record<string,ArmPhrase>;
-const _t=new T.Vector3(),_eu=new T.Euler(),_pole=new T.Vector3();
+const _t=new T.Vector3(),_eu=new T.Euler(),_pole=new T.Vector3(),_pk:Arr=new Array(7).fill(0);
 /** Pose one arm through a phrase from and back to its guard hand (`mirror` flips a right-hand table onto the left). */
 function arm(r:CharacterRig,left:boolean,set:ArmPhrase,guard:GuardHand,mirror:boolean,c:(values:Arr)=>number,weight:number){
- const f=mirror?-1:1;_t.set(c(w(guard.x,set.x.map(v=>v*f))),c(w(guard.y,set.y)),c(w(guard.z,set.z)));_eu.set(c(w(guard.rx,set.rx)),c(w(guard.ry,set.ry.map(v=>v*f))),c(w(guard.rz,set.rz.map(v=>v*f))));
+ const f=mirror?-1:1;_t.set(c(w(guard.x,set.x,f)),c(w(guard.y,set.y)),c(w(guard.z,set.z)));_eu.set(c(w(guard.rx,set.rx)),c(w(guard.ry,set.ry,f)),c(w(guard.rz,set.rz,f)));
  let pole:T.Vector3|undefined;
- if(set.pole){const ends=[left?1:-1,-.65,-.3],k=(i:number)=>c(w(ends[i],set.pole!.map(v=>i===0?v[0]*f:v[i])));_pole.set(k(0),k(1),k(2));pole=_pole;}
+ if(set.pole){const P=set.pole,k=(i:number)=>{for(let j=0;j<7;j++)_pk[j]=P[j][i];return c(w(i===0?left?1:-1:i===1?-.65:-.3,_pk,i===0?f:1));};_pole.set(k(0),k(1),k(2));pole=_pole;}
  hand(r,left,_t,_eu,weight,pole);
 }
 const _q=new T.Quaternion(),_h=new T.Quaternion(),_e=new T.Euler(),_f=new T.Vector3();

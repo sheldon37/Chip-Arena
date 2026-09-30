@@ -20,7 +20,11 @@ import type {ProjectileTrails} from './projectile-trails.js';
 const MAX_SWEEPS=16,MAX_SAMPLES=48,BASE=.35,LIFE:Record<string,number>={daggers:.12,sword:.16,greatsword:.22,shield:.16};
 type Sample={g:T.Vector3;d:T.Vector3;len:number;at:number};
 type Sweep={mesh:T.Mesh;samples:Sample[];seen:number;life:number};
-const _g=new T.Vector3(),_t=new T.Vector3(),_d=new T.Vector3(),_q=new T.Quaternion(),_s=new T.Quaternion(),_c=new T.Color(),IDENTITY=new T.Quaternion();
+const _g=new T.Vector3(),_t=new T.Vector3(),_d=new T.Vector3(),_q=new T.Quaternion(),_s=new T.Quaternion(),_c=new T.Color(),IDENTITY=new T.Quaternion(),_sg=new T.Vector3(),_sd=new T.Vector3();
+/** Recycled samples (bounded by the live maximum), so a sweeping frame allocates nothing once the pool is warm. */
+const spare:Sample[]=[];
+const take=(g:T.Vector3,d:T.Vector3,len:number,at:number)=>{const k=spare.pop()??{g:new T.Vector3(),d:new T.Vector3(),len:0,at:0};k.g.copy(g);k.d.copy(d);k.len=len;k.at=at;return k;};
+const give=(k:Sample|undefined)=>{if(k&&spare.length<MAX_SWEEPS*MAX_SAMPLES)spare.push(k);};
 /** The blade's grip and tip in world space (the off-hand blade on even dagger strikes), or undefined without a blade tip. */
 function blade(r:CharacterRig,p:PlayerView){
  const weapon=p.spec==='daggers'&&(p.attackIndex||1)%2===0?r.offWeapon:r.weapon,tip=weapon.getObjectByName('blade-tip');if(!tip||!weapon.visible)return undefined;
@@ -50,17 +54,17 @@ export class MeleeTrails{
   // Sub-frame samples: the blade turns about the grip between frames, so fast arcs stay curved.
   if(last&&visualTime>last.at&&visualTime-last.at<.1){
    const steps=this.quality>=1?3:1;_q.setFromUnitVectors(last.d,dir);
-   for(let i=1;i<=steps;i++){const f=i/(steps+1);_s.slerpQuaternions(IDENTITY,_q,f);s.samples.push({g:last.g.clone().lerp(b.grip,f),d:last.d.clone().applyQuaternion(_s),len:last.len+(len-last.len)*f,at:last.at+(visualTime-last.at)*f});}
+   for(let i=1;i<=steps;i++){const f=i/(steps+1);_s.slerpQuaternions(IDENTITY,_q,f);s.samples.push(take(_sg.copy(last.g).lerp(b.grip,f),_sd.copy(last.d).applyQuaternion(_s),last.len+(len-last.len)*f,last.at+(visualTime-last.at)*f));}
   }
-  if(!last||visualTime>last.at)s.samples.push({g:b.grip.clone(),d:dir.clone(),len,at:visualTime});
-  if(s.samples.length>MAX_SAMPLES)s.samples.splice(0,s.samples.length-MAX_SAMPLES);s.seen=visualTime;
+  if(!last||visualTime>last.at)s.samples.push(take(b.grip,dir,len,visualTime));
+  while(s.samples.length>MAX_SAMPLES)give(s.samples.shift());s.seen=visualTime;
  }
  /** `enabled` is the renderer's trail setting and `quality` its effectsQuality; without them the legacy tip ribbon runs. */
  update(dt:number,time:number,enabled?:boolean,quality=1){
   void dt;if(enabled!==undefined){this.enabled=enabled;this.quality=quality;if(!enabled){this.clear();return;}}
   for(const [key,s] of this.sweeps){
-   while(s.samples.length&&time-s.samples[0].at>s.life)s.samples.shift();
-   if(s.samples.length<2){if(time-s.seen>s.life||time<s.seen-.1){this.release(s.mesh);this.sweeps.delete(key);}else s.mesh.geometry.setDrawRange(0,0);continue;}
+   while(s.samples.length&&time-s.samples[0].at>s.life)give(s.samples.shift());
+   if(s.samples.length<2){if(time-s.seen>s.life||time<s.seen-.1){this.release(s.mesh);s.samples.forEach(give);this.sweeps.delete(key);}else s.mesh.geometry.setDrawRange(0,0);continue;}
    this.build(s,time);
   }
  }
@@ -68,7 +72,7 @@ export class MeleeTrails{
  get size(){return this.sweeps.size;}
  /** The ribbon meshes currently in the scene. */
  meshes(){return [...this.sweeps.values()].map(s=>s.mesh);}
- clear(){for(const s of this.sweeps.values())this.release(s.mesh);this.sweeps.clear();}
+ clear(){for(const s of this.sweeps.values()){this.release(s.mesh);s.samples.forEach(give);}this.sweeps.clear();}
  dispose(){this.clear();for(const m of this.pool){m.geometry.dispose();(m.material as T.Material).dispose();}this.pool=[];this.root=undefined;}
  private acquire(color:number){
   let mesh=this.pool.pop();

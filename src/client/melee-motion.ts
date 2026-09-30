@@ -1,11 +1,11 @@
-import {primaryMeleeMotion} from './primary-melee-motion.js';
+import {primaryMeleeMotion,phraseEntry} from './primary-melee-motion.js';
 import * as T from 'three';
 import type {CharacterRig} from './character-rig.js';
 import {braceWeapon} from './character-rig.js';
 import type {PlayerView} from '../shared/simulation.js';
 import {smoothMotion as ease} from './motion-quality.js';
 import type {attackPose} from './character-animation.js';
-import {meleeReady} from './melee-guard.js';
+import {meleeReady,settleCarry,meleeEntry,weaponOrientation,steerWeapon} from './melee-guard.js';
 export {meleeReady};
 /** Passing keys preserve angular velocity; anticipation and recovery carry the body's weight. */
 export function meleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,time:number){
@@ -14,7 +14,17 @@ export function meleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<typeof atta
  // Every melee layer sits on the combat-ready guard (idle) faded into the running carry, so entries and exits blend from it.
  if(special&&time<special.until){meleeReady(r,p,time);specialMotion(r,p,time);return;}
  if(!a.active){meleeReady(r,p,time);return;}
- if(a.age<Math.min(.065,a.windup))meleeReady(r,p,time);
+ // The pose the phrase blends in over (it records how this attack was entered on its first frame). Out of the running
+ // carry the sword keeps the orientation the carry (at the weight it had as the attack began; the eased carry itself fades
+ // over the top) gives the hand the phrase is raising, and turns by the shortest arc onto the phrase's blade as the phrase
+ // blends in, instead of keeping the pumping hand's twist, which swung the tip up through vertical. The braced greatsword
+ // goes straight to its load (the support hand holds the grip); the daggers' and shield's carries are grip turns the
+ // phrase's own grip blend already unwinds.
+ settleCarry(r,p,time);const entry=phraseEntry(r,p,a.windup);
+ if(a.age<entry){
+  const lean=meleeEntry(r,p).carry;meleeReady(r,p,time,1,lean);const k=p.spec==='sword'?lean*(1-ease(a.age/entry)):0;if(k>.001)weaponOrientation(r,p,r.weapon,_w0,lean);
+  primaryMeleeMotion(r,p,a);if(k>.001)steerWeapon(r,r.weapon,_w0,k);return;
+ }
  primaryMeleeMotion(r,p,a);
 }
 
@@ -51,4 +61,4 @@ function specialMotion(r:CharacterRig,p:PlayerView,time:number){
   if(!shield){r.rightFoot.rotation.x+=.4*d*weight;r.body.position.z+=.04*d*weight;}
  }
 }
-const _q=new T.Quaternion(),_e=new T.Euler();
+const _q=new T.Quaternion(),_e=new T.Euler(),_w0=new T.Quaternion();

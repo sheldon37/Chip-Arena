@@ -4,6 +4,7 @@ import type {PlayerView} from '../shared/simulation.js';
 import {hand,braceWeapon} from './rig-ik.js';
 import {smoothMotion as ease,timeJumped} from './motion-quality.js';
 import {meleeRecovery} from '../shared/souls-combat.js';
+import {isFirstPersonRig} from './pose-flags.js';
 /** Combat-ready melee guard and running carry (presentation only).
  * The guard is the pose every standard melee phrase starts and ends in (primary-melee-motion derives its first and last keys
  * from it) and the idle the melee weapons rest in, so combos and idles flow through one stance instead of a neutral.
@@ -76,16 +77,55 @@ export function meleeReadiness(p:PlayerView,time:number){
  * above the floor instead of through it. */
 const RELAXED:Record<string,number>={greatsword:.27};
 /** Idle guard (at combat readiness) under the running carry: the arms fade from the guard into locomotion's pump as the run
- * builds, and into the relaxed idle as readiness lapses. */
-export function meleeReady(r:CharacterRig,p:PlayerView,time:number,weight=1){
- const carry=ease((r.motion-.10)/.65),relaxed=RELAXED[p.spec];if(relaxed!==undefined)r.weapon.rotation.x=relaxed;
- carryMeleeWeapon(r,p,carryHold(r,carry,time)*weight);applyMeleeGuard(r,p,time,(1-carry)*meleeReadiness(p,time)*weight);return carry;
+ * builds, and into the relaxed idle as readiness lapses. `carryShown` pins the carry weight (an attack blending in over the
+ * carry it started from, so the carry does not also fade over the top underneath the phrase). */
+export function meleeReady(r:CharacterRig,p:PlayerView,time:number,weight=1,carryShown?:number){
+ const carry=runCarry(r),relaxed=RELAXED[p.spec];if(relaxed!==undefined)r.weapon.rotation.x=relaxed;
+ // The guard fades against the eased carry too (not the stride blend), so an attack, hit or stop out of a run never
+ // flips the weapon from the carry to the guard in a frame or two.
+ const s=carryHold(r,carry,time,p),held=carryShown??s.value;carryMeleeWeapon(r,p,held*weight);applyMeleeGuard(r,p,time,(carryShown===undefined?s.guard:(1-held)*meleeReadiness(p,time))*weight);return held;
 }
 /** The weapon carry eases toward the run's carry weight (time constant ~.16 s) instead of following the stride blend,
  * which collapses in a few frames when an action plants the feet, so a hit or a stop turns the blade over ~.4 s rather
- * than in two frames. Per rig, dt-clamped, deterministic; it starts on its target and restarts after a rewind or jump. */
-type Hold={value:number;time:number};const holds=new WeakMap<object,Hold>();
-function carryHold(r:object,target:number,time:number){
- let s=holds.get(r);if(!s||timeJumped(s.time,time)){s={value:target,time};holds.set(r,s);return target;}
- const dt=T.MathUtils.clamp(time-s.time,0,.05);s.time=Math.max(time,s.time);s.value+=(target-s.value)*(1-Math.exp(-dt*6));return s.value;
+ * than in two frames. Per rig, deterministic; it starts on its target and restarts after a rewind or a jump over .35 s.
+ * The step is exact for any dt up to that (a frame the layer skipped, such as a short roll, advances it by the gap), so
+ * it settles the same at 30, 60 and 120 Hz. `guard` is the guard weight shown; `carry`/`ready` are the carry and guard
+ * shown just before the attack starting at `at` (recorded on its first melee frame). */
+type Hold={value:number;time:number;guard:number;at:number;carry:number;ready:number};const holds=new WeakMap<object,Hold>();
+function carryHold(r:object,target:number,time:number,p:PlayerView){
+ let s=holds.get(r);
+ if(!s||timeJumped(s.time,time)){s={value:target,time,guard:1-target,at:time>=p.lastAttack?p.lastAttack:NaN,carry:target,ready:1-target};holds.set(r,s);}
+ else{
+  if(s.at!==p.lastAttack&&time>=p.lastAttack){s.at=p.lastAttack;s.carry=s.value;s.ready=s.guard;}
+  const dt=T.MathUtils.clamp(time-s.time,0,.35);s.time=Math.max(time,s.time);s.value+=(target-s.value)*(1-Math.exp(-dt*6));
+ }
+ s.guard=(1-s.value)*meleeReadiness(p,time);return s;
+}
+/** How the current attack was entered, from the rig's own history (recorded on the attack's first melee frame): `carry` is
+ * the running carry shown just before it (0..1; 0 when this rig did not see the attack begin) and `guard` the combat-ready
+ * guard shown (1 when unknown). A phrase leaving the carry starts from its load instead of detouring through the guard, and
+ * one leaving the carry or the relaxed idle blends in over more of the windup (primary-melee-motion). */
+export function meleeEntry(r:object,p:PlayerView):{carry:number;guard:number}{const s=holds.get(r);if(s&&s.at===p.lastAttack){_entry.carry=s.carry;_entry.guard=s.ready;}else{_entry.carry=0;_entry.guard=1;}return _entry;}
+const _entry={carry:0,guard:1};
+/** Advance the carry hold on a melee frame that does not pose the guard (the body of an attack), so the next entry sees the
+ * carry the fighter actually shows, not the value from the attack's first frames. */
+export function settleCarry(r:CharacterRig,p:PlayerView,time:number){carryHold(r,runCarry(r),time,p);}
+/** The running carry's target weight from the stride blend. The first-person view model never carries (a trailing blade
+ * would leave the camera's view); it keeps the guard or the relaxed hold while running. */
+const runCarry=(r:CharacterRig)=>isFirstPersonRig(r)?0:ease((r.motion-.10)/.65);
+const _hq=new T.Quaternion(),_sq=new T.Quaternion(),_xq=new T.Quaternion(),_X=new T.Vector3(1,0,0);
+const socket=(r:CharacterRig,w:T.Object3D,out:T.Quaternion)=>{out.identity();for(let n:T.Object3D|null=w.parent;n&&n!==r.group;n=n.parent)out.premultiply(n.quaternion);return out;};
+/** A weapon's orientation in the rig group's frame, from local quaternions. For the sword and greatsword `carry` gives the
+ * orientation the running carry at that weight would give the hand as it is posed now (the weapon itself is not moved). */
+export function weaponOrientation(r:CharacterRig,p:PlayerView,w:T.Object3D,out:T.Quaternion,carry?:number){
+ socket(r,w,out);const c=w===r.weapon&&carry!==undefined?CARRY[p.spec]:undefined;if(!c)return out.multiply(w.quaternion);
+ _y.set(0,1,0).applyQuaternion(out);_z.set(0,0,1).applyQuaternion(out);_t.set(c.x,c.y,c.z).normalize();
+ const from=RELAXED[p.spec]??.5,turn=T.MathUtils.euclideanModulo(Math.atan2(-_y.dot(_t),_z.dot(_t))-from,Math.PI*2)-Math.PI*2;
+ return out.multiply(_xq.setFromAxisAngle(_X,from+turn*c.hold*carry!));
+}
+/** Turn a weapon in its hand so its orientation (rig group frame) moves from where the layers above left it toward `to`
+ * by `weight`: an attack blending in over the running carry keeps the trailing blade (and its roll) while the hand under it
+ * rises into the phrase, instead of carrying the pumping hand's twist up and over the top. */
+export function steerWeapon(r:CharacterRig,w:T.Object3D,to:T.Quaternion,weight:number){
+ if(weight<=.001)return;socket(r,w,_hq);_sq.copy(_hq).multiply(w.quaternion).slerp(to,weight);w.quaternion.copy(_hq.invert().multiply(_sq));
 }

@@ -25,13 +25,13 @@ export function blockRaise(t:number){
 export function blockRecoil(t:number,heavy:boolean){const tp=heavy?.05:.035;return t<=0||t>(heavy?.26:.2)?0:(t/tp)*Math.exp(1-t/tp)*(1-T.MathUtils.smoothstep(t,heavy?.18:.14,heavy?.26:.2));}
 type Raise={since:number;time:number};const raises=new WeakMap<object,Raise>();
 /** When this guard started rising. A timed block starts at its authoritative lastBlock; a held guard has no timestamp, so
- * the rising edge is detected per rig (a gap of more than .2 s since the rig last showed a guard). A rig's first sample,
- * a rewind or a time jump shows the guard already raised. */
+ * the rising edge is detected per rig (a gap of more than .2 s since the rig last showed a guard, however long; a timed
+ * block that began in the gap rises from its lastBlock). A rig's first sample or a rewind shows the guard already raised. */
 function raiseStart(r:object,p:PlayerView,time:number){
- let s=raises.get(r);
- if(!s||timeJumped(s.time,time)){s={since:time-1,time};raises.set(r,s);}else if(time-s.time>.2)s.since=time;
+ let s=raises.get(r);const timed=p.blockTime>0&&p.lastBlock!==undefined&&p.lastBlock<=time&&time-p.lastBlock<.5;
+ if(!s||time<s.time&&timeJumped(s.time,time)){s={since:time-1,time};raises.set(r,s);}else if(time-s.time>.2)s.since=timed&&p.lastBlock!>s.time?p.lastBlock!:time;
  s.time=Math.max(time,s.time);
- return p.blockTime>0&&p.lastBlock!==undefined&&p.lastBlock<=time&&time-p.lastBlock<.5?Math.max(s.since,p.lastBlock):s.since;
+ return timed?Math.max(s.since,p.lastBlock!):s.since;
 }
 const _v=new T.Vector3(),_e=new T.Euler(),lerp=T.MathUtils.lerp;
 /** Defensive silhouettes keep the actual weapon between the face/chest and the threat. The guard rises from the combat-ready
