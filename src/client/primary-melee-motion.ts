@@ -13,15 +13,24 @@ export {foot,hand};
  * 2.3 is the follow-through extreme: the blade still carries momentum past swingUntil and eases out instead of stopping
  * dead on the hit window's last frame; 2.65 is the return, which comes back low and close instead of retracing the cut. */
 const keys=[0,.55,1,1.28,1.65,2,2.3,2.65,3];
+/** Share of the greatsword's recovery its follow-through drags on before the return (meleePhase `drag`). */
+const DRAG=.4;
 /** The fourth dagger cut's body turn: a full forward turn over .8..3 that never unwinds. */
 const SPIN_TURN=[0,-.35,-.6,.9,2.4,3.9,5.0,5.9,Math.PI*2],SPIN_FROM=poseCurve(keys,SPIN_TURN,1.1);
 type Arr=number[];
 /** Phase of an attack from authoritative timestamps. The recovery's phase starts at the strike's phase speed (so the
  * follow-through keeps the blade's momentum) and settles with zero speed at the commitment end. */
-export function meleePhase(a:Pick<ReturnType<typeof attackPose>,'age'|'windup'|'window'>,recoverySeconds:number,age=a.age){
+export function meleePhase(a:Pick<ReturnType<typeof attackPose>,'age'|'windup'|'window'>,recoverySeconds:number,age=a.age,drag=0){
  if(age<a.windup)return Math.max(0,age)/a.windup;
  if(age<a.windup+a.window)return 1+(age-a.windup)/a.window;
  const u=Math.min(1,(age-a.windup-a.window)/Math.max(.01,recoverySeconds)),m=Math.min(2.1,recoverySeconds/Math.max(.01,a.window));
+ if(drag>0){
+  // A heavy blade's recovery in two beats: the follow-through keeps the strike's phase speed and decelerates to rest on the
+  // drag extreme (2.65) over the first `drag` of the recovery, then the return eases in and out over the rest, so the reset
+  // reads as a deliberate lift back to the guard instead of a fast second drop.
+  if(u<drag){const s=u/drag,f=m*drag;return 2+s*(f+s*((1.95-2*f)+s*(f-1.3)));}
+  const s=(u-drag)/(1-drag);return 2.65+.35*s*(1.5-.5*s);
+ }
  return 2+u*(m+u*((3-2*m)+u*(m-2)));
 }
 /** A guard-anchored curve: the first and last keys are the guard value, the middle seven are the phrase (times `f`). The
@@ -43,20 +52,20 @@ export function phraseEntry(r:object,p:PlayerView,windup:number){const base=Math
  * sweep stays 1..2; anticipation, follow-through and recovery carry the body's weight around it, and every phrase starts and
  * ends in the weapon's combat-ready guard (melee-guard.ts), so a held combo flows through one stance. */
 export function primaryMeleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>){
- const rate=p.attackRate||1,recoverySeconds=meleeRecovery(p.spec)/rate,phase=meleePhase(a,recoverySeconds),weight=ease(a.age/phraseEntry(r,p,a.windup)),lean=meleeEntry(r,p).carry,c=(values:Arr)=>poseCurve(keys,values,phase),ca=(values:Arr)=>curve(values,phase,lean);
+ const rate=p.attackRate||1,recoverySeconds=meleeRecovery(p.spec)/rate,drag=p.spec==='greatsword'?DRAG:0,phase=meleePhase(a,recoverySeconds,a.age,drag),weight=ease(a.age/phraseEntry(r,p,a.windup)),lean=meleeEntry(r,p).carry,c=(values:Arr)=>poseCurve(keys,values,phase),ca=(values:Arr)=>curve(values,phase,lean);
  const index=Math.max(0,(p.attackIndex||1)-1),dagger=p.spec==='daggers',heavy=p.spec==='greatsword',shield=p.spec==='shield',reverse=dagger||heavy||shield?index%2===1:index%3===1,sign=reverse?-1:1,overhead=!heavy&&!dagger&&!shield&&index%3===2,spin=dagger&&index%4===3,low=heavy||dagger&&index%4===2;
  const G=meleeGuard(p.spec)!;
  // Where the incoming layers planted the ankles, before this phrase moves the body (the plant blends from there).
  if(weight<1){ankleInGroup(r,true,_in[0]);ankleInGroup(r,false,_in[1]);}
  // Whole-body turn (hips lead) and torso twist on top of it (shoulders trail the hips, most for the greatsword).
- const turnArr=spin?SPIN_TURN:heavy?[0,-.42,-1.05,-.90,.45,.95,1.32,1.12,0]:overhead?[0,-.26,-.40,-.15,.14,.30,.42,.20,0]:shield?[0,-.36,-.62,-.24,.45,.66,.95,.40,0]:dagger?[0,-.25,-.45,-.15,.20,.40,.46,.34,0]:[0,-.45,-.85,-.35,.30,.62,1.02,.55,0];
- const twistArr=heavy?[0,-.22,-.48,-.62,-.45,.40,.52,.35,0]:dagger?[0,-.10,-.20,-.16,.06,.22,.26,.18,0]:[0,-.18,-.38,-.20,.24,.40,.44,.16,0];
+ const turnArr=spin?SPIN_TURN:heavy?[0,-.42,-1.05,-.90,.45,.92,1.06,1.12,0]:overhead?[0,-.26,-.40,-.15,.14,.30,.42,.20,0]:shield?[0,-.36,-.62,-.24,.45,.66,.95,.40,0]:dagger?[0,-.25,-.45,-.15,.20,.40,.46,.34,0]:[0,-.45,-.85,-.35,.30,.62,1.02,.55,0];
+ const twistArr=heavy?[0,-.22,-.48,-.62,-.45,.40,.50,.55,0]:dagger?[0,-.10,-.20,-.16,.06,.22,.26,.18,0]:[0,-.18,-.38,-.20,.24,.40,.44,.16,0];
  const turnScale=spin?1:sign,twistScale=(overhead?.5:1)*sign;
  const turn=c(turnArr)*turnScale,twist=c(twistArr)*twistScale;
  const crouch=c(heavy?[0,-.12,-.30,-.37,-.33,-.18,-.10,-.06,0]:overhead?[0,-.12,.06,0,-.24,-.30,-.28,-.14,0]:shield?[0,-.05,-.12,-.13,-.22,-.25,-.20,-.09,0]:low?[0,-.19,-.28,-.25,-.34,-.30,-.22,-.10,0]:[0,-.10,-.16,-.13,-.22,-.26,-.21,-.09,0]);
  r.body.position.x+=c(heavy?[0,-.05,-.10,-.08,.07,.11,.10,.06,0]:[0,-.035,-.07,-.02,.065,.09,.08,.035,0])*sign;
  r.body.position.z+=c(heavy?[0,-.06,-.12,-.09,.13,.18,.15,.08,0]:[0,-.05,-.08,0,.14,.17,.15,.07,0]);r.body.position.y+=crouch;
- r.body.rotation.y+=turn;r.body.rotation.x+=c(heavy?[0,-.09,.22,.30,.26,0,-.08,-.06,0]:overhead?[0,-.15,-.26,-.14,.34,.40,.34,.16,0]:[0,-.07,-.15,.04,.20,.26,.22,.10,0]);
+ r.body.rotation.y+=turn;r.body.rotation.x+=c(heavy?[0,-.09,.22,.30,.28,.20,.13,.08,0]:overhead?[0,-.15,-.26,-.14,.34,.40,.34,.16,0]:[0,-.07,-.15,.04,.20,.26,.22,.10,0]);
  r.body.rotation.z+=c(heavy?[0,-.10,-.20,-.24,.16,.22,.18,.08,0]:[0,-.05,-.11,-.06,.12,.16,.13,.05,0])*sign;
  r.pelvis.rotation.y+=twist*.5;r.spine.rotation.y+=twist*.65;r.chest.rotation.y+=twist*.55;
  r.spine.rotation.x+=c(heavy?[0,-.10,-.16,-.04,.14,.18,.10,.04,0]:overhead?[0,-.03,-.12,-.08,.10,.18,.14,.05,0]:[0,-.025,-.08,-.03,.09,.13,.10,.04,0]);
@@ -108,7 +117,7 @@ export const MELEE_PHRASES={
  dagger:{x:[-.50,-.58,-.36,-.10,0,.02,-.06],y:[.14,.16,.10,-.04,-.14,-.18,-.14],z:[.14,.02,.26,.44,.38,.30,.28],rx:[-.7,-.95,-.55,.2,.45,.50,.35],ry:[-.55,-.8,-.4,.40,.72,.84,.66],rz:[-.2,-.35,-.15,.2,.3,.26,.18],pole:[PD,PD,PD,PD,PD,PD,PD]},
  daggerLow:{x:[-.50,-.58,-.36,-.10,0,.02,-.06],y:[.02,-.06,-.10,-.14,.06,.14,.06],z:[.14,.02,.26,.44,.36,.28,.26],rx:[.1,.2,.12,-.15,-.2,-.25,-.2],ry:[-.55,-.8,-.4,.40,.72,.84,.66],rz:[-.2,-.35,-.15,.2,.3,.26,.18],pole:[PL,PL,PL,mix(PL,PR),PR,PR,PR]},
  daggerOther:{x:[.20,.24,.28,.34,.30,.24,.18],y:[.06,.10,0,-.12,-.04,.02,.06],z:[.30,.26,.22,.10,.16,.22,.26],rx:[-.3,-.2,-.3,-.55,-.75,-.55,-.4],ry:[.3,.55,.85,.7,.25,.15,.1],rz:[.2,.3,.35,.25,.05,.05,.1]},
- greatsword:{x:[-.02,0,.02,.04,.06,.05,.04],y:[.10,.02,-.16,-.06,.13,.31,.36],z:[.14,.14,.24,.32,.28,.22,.20],rx:[-.75,-.45,-.33,-.40,-.64,-.97,-1.05],ry:[-.25,-.15,.40,.75,.50,.05,-.15],rz:[-.2,-.3,-.2,-.1,.1,.18,.2]},
+ greatsword:{x:[-.02,0,.02,.04,.07,.09,.10],y:[.10,.02,-.16,-.06,-.08,-.04,.06],z:[.14,.14,.24,.32,.30,.26,.22],rx:[-.75,-.45,-.33,-.40,-.20,-.30,-.45],ry:[-.25,-.15,.40,.75,.85,.92,.95],rz:[-.2,-.3,-.2,-.1,.1,.16,.2]},
 } satisfies Record<string,ArmPhrase>;
 const _t=new T.Vector3(),_eu=new T.Euler(),_pole=new T.Vector3(),_pk:Arr=new Array(7).fill(0);
 /** Pose one arm through a phrase from and back to its guard hand (`mirror` flips a right-hand table onto the left). */
@@ -122,7 +131,7 @@ const _q=new T.Quaternion(),_h=new T.Quaternion(),_e=new T.Euler(),_f=new T.Vect
 /** Gaze stabilisation in the rig group's frame: the head follows a fraction of the lagged body turn (it trails the chest by
  * ~40 ms; a spin spots ahead instead), pitches with the aim and never rolls, however the torso under it pitches and rolls. */
 function headTrack(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,recoverySeconds:number,turnArr:Arr,twistArr:Arr,turnScale:number,twistScale:number,crouch:number,spin:boolean,weight:number){
- const lagged=meleePhase(a,recoverySeconds,a.age+(spin?.04:-.04)),turn=poseCurve(keys,turnArr,lagged)*turnScale,twist=poseCurve(keys,twistArr,lagged)*twistScale;
+ const lagged=meleePhase(a,recoverySeconds,a.age+(spin?.04:-.04),p.spec==='greatsword'?DRAG:0),turn=poseCurve(keys,turnArr,lagged)*turnScale,twist=poseCurve(keys,twistArr,lagged)*twistScale;
  // The neck takes up about half of the chest's pitch and roll (it stays over the chest's heading), so the head sits
  // upright on a proud neck instead of being carried forward by a pitched torso.
  _h.identity();for(let n:T.Object3D|null=r.chest;n&&n!==r.group;n=n.parent)_h.premultiply(n.quaternion);_f.set(0,0,1).applyQuaternion(_h);
