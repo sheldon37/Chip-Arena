@@ -8,6 +8,7 @@ import {animateCharacter,animationPreviewPlayer} from '../src/client/character-a
 import {finishPose,seedTransition,transitionAction,transitionDuration,TRANSITION_BONES} from '../src/client/pose-transitions.js';
 import {knockdownPhase} from '../src/client/knockdown-motion.js';
 import {probeBase,probeRig,probeRates,describeProbe,weaponTip} from './helpers/motion-probe.js';
+import {KnockdownRagdolls} from '../src/client/knockdown-ragdolls.js';
 
 await initPhysics();
 const quats=(r:CharacterRig)=>TRANSITION_BONES.map(b=>r[b].quaternion.clone());
@@ -132,4 +133,20 @@ test('juggle launches out of the caught pose, kicks without resetting, spins a w
  assert.ok([rates[30],rates[60],rates[120]].every(x=>Number.isFinite(x.minAnkleY)&&Number.isFinite(x.minTipY)),'finite poses');
  const r=probeRig('sword'),base=probeBase('sword'),yaw=(t:number)=>{animateCharacter(r,{...animationPreviewPlayer(base,'idle',t),hitStunUntil:-1e9,juggle:J(t),grounded:false} as PlayerView,t,1/60);return new T.Euler().setFromQuaternion(r.body.quaternion,'YXZ').y;};
  for(let t=T0;t<T0+.45;t+=1/60)yaw(t);const before=yaw(T0+.45);assert.ok(Math.abs(before-yaw(T0+.45+1/60))<.2,'the screw spin starts from the current heading');
+});
+
+test('a knockdown ragdoll hands its final limb pose back to the rig at the recovery roll, then blends into the roll',()=>{
+ const s=new Simulation({sandbox:true});s.addPlayer('a','A','melee');s.addPlayer('b','B');s.phase='fight';
+ try{
+  const state=s.snapshot(),p=state.players[1],r=createCharacterRig(p.color),scene=new T.Scene(),fx=new KnockdownRagdolls(scene),rigs=new Map([[p.id,r]]),at=state.time;scene.add(r.group);
+  p.knockdown={at,until:at+2,ragdoll:true,landedAt:at+.5,pickupUntil:at+.5,pickupUsed:true,rollAt:at+.9,rollUntil:at+1.3,rollX:0,rollZ:-1};p.vel={x:0,y:0,z:-4};p.hitStunUntil=0;
+  const step=(t:number)=>{state.time=t;r.group.visible=true;animateCharacter(r,p,t,1/60);fx.update(state,rigs);r.group.updateMatrixWorld(true);};
+  for(let t=at;t<at+.9-1e-9;t+=1/60)step(t);
+  const ragdoll=scene.getObjectByName('knockdown-ragdoll')!,parts=['left-shoulder','right-knee','head'].map(n=>ragdoll.getObjectByName(n)!.getWorldQuaternion(new T.Quaternion()));
+  step(at+.9);assert.equal(scene.getObjectByName('knockdown-ragdoll'),undefined,'the ragdoll yields at rollAt');
+  [r.leftArm,r.rightKnee,r.head].forEach((bone,i)=>assert.ok(bone.getWorldQuaternion(new T.Quaternion()).angleTo(parts[i])<.02,`${bone.name} shows the ragdoll's final pose on the handoff frame`));
+  const handed=TRANSITION_BONES.map(b=>r[b].getWorldQuaternion(new T.Quaternion()));step(at+.9+1/60);
+  const moved=Math.max(...TRANSITION_BONES.map((b,i)=>r[b].getWorldQuaternion(new T.Quaternion()).angleTo(handed[i])));assert.ok(moved<.35,`the rig blends from the ragdoll pose (max ${moved.toFixed(3)} rad in one frame)`);
+  fx.clear();
+ }finally{s.dispose();}
 });
