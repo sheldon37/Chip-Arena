@@ -1,0 +1,96 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import * as T from 'three';
+import {initPhysics} from '../src/shared/simulation.js';
+import {WEAPONS} from '../src/shared/content.js';
+import {createCharacterRig,recolorCharacterRig,settleJointCovers,setRigDetail,RIG_LENGTHS} from '../src/client/character-rig.js';
+import {buildWeapon,weaponModifiers,enchantWeapon,BLADE_LENGTH} from '../src/client/weapon-visuals.js';
+import {animateCharacter} from '../src/client/character-animation.js';
+import {PROBE_RATES,probeBase,probeMotion,probeRig} from './helpers/motion-probe.js';
+
+await initPhysics();
+const meshes=(o:T.Object3D)=>{const list:T.Mesh[]=[];o.traverse(x=>{if(x instanceof T.Mesh)list.push(x);});return list;};
+const part=(r:ReturnType<typeof createCharacterRig>,name:string)=>r.group.getObjectByName(name) as T.Mesh;
+const lambert=(m:T.Mesh)=>m.material as T.MeshLambertMaterial;
+const local=(weapon:T.Object3D,name:string)=>{const o=weapon.getObjectByName(name);assert.ok(o,name+' socket exists');weapon.updateMatrixWorld(true);return weapon.worldToLocal(o!.getWorldPosition(new T.Vector3()));};
+
+test('the arena glow and the recolor path paint every body part the same way (the head is lit like the torso)',()=>{
+ const glow=createCharacterRig('#70e1d0','#e5e7eb',true),plain=createCharacterRig('#70e1d0','#e5e7eb',false);recolorCharacterRig(plain,'#70e1d0','#e5e7eb');
+ const glowAgain=createCharacterRig('#ff6b35','#e5e7eb',true);recolorCharacterRig(glowAgain,'#70e1d0','#e5e7eb');
+ for(const name of ['blank-head','crown','left-thumb','right-thumb','collar','left-deltoid','right-calf','abdomen-shell'])assert.equal(part(glow,name).material,part(glow,'ribcage').material,name+' shares the lit body shell');
+ assert.ok(lambert(part(glow,'blank-head')).emissiveIntensity>.1,'the head is self-lit like the shell in the arena');
+ for(const m of meshes(glow.group))assert.equal(m.material,part(glowAgain,m.name).material,m.name+': creation glow and recolor pick the same shared material');
+ for(const m of meshes(plain.group))assert.equal(lambert(m).emissiveIntensity||0,0,m.name+' portrait parts stay unlit');
+});
+
+test('accents keep their hue under the arena tone mapping while the armor strips still burn',()=>{
+ const r=createCharacterRig('#9ede79','#e5e7eb',true),sternum=lambert(part(r,'sternum')),strip=lambert(part(r,'armor-back-light'));
+ assert.ok(sternum.emissiveIntensity>.5&&sternum.emissiveIntensity<1.5,'accent emissive '+sternum.emissiveIntensity);
+ const hsl={h:0,s:0,l:0};sternum.emissive.getHSL(hsl);const base={h:0,s:0,l:0};new T.Color('#9ede79').getHSL(base);assert.ok(Math.abs(hsl.h-base.h)<.03&&hsl.s>base.s*.8,'emissive keeps the accent hue');
+ assert.ok(strip.emissiveIntensity>sternum.emissiveIntensity*1.5,'thin strips stay the brightest glow');
+ for(const name of ['waist-band','left-shoulder-cap','right-cuff','left-kneecap'])assert.equal(part(r,name).material,sternum,name+' is an accent');
+});
+
+test('gloves, boots and joints follow the body colour; the default body stays close to the classic grey',()=>{
+ const light=createCharacterRig('#70e1d0','#e5e7eb'),dark=createCharacterRig('#70e1d0','#1b1d22');
+ const lum=(r:ReturnType<typeof createCharacterRig>,n:string)=>{const c=lambert(part(r,n)).color;return .2126*c.r+.7152*c.g+.0722*c.b;};
+ assert.ok(lum(dark,'left-foot')<lum(light,'left-foot')*.35,'dark bodies get dark boots');
+ for(const r of [light,dark])assert.ok(lum(r,'left-knee-joint')<lum(r,'left-shin'),'joints stay darker than shells');
+ const classic=new T.Color(0xb5c4ca),edge=lambert(part(light,'right-palm')).color;assert.ok(Math.abs(edge.r-classic.r)+Math.abs(edge.g-classic.g)+Math.abs(edge.b-classic.b)<.2,'default edge stays near the classic grey');
+});
+
+test('the model keeps the rig contract, closes the back and neck, and stays inside the mesh budget',()=>{
+ const r=createCharacterRig('#70e1d0',undefined,true),plain=createCharacterRig('#70e1d0'),list=meshes(r.group);
+ assert.ok(list.length<=50,'glow rig meshes '+list.length);assert.ok(meshes(plain.group).length<=47);
+ const cube=list[0].geometry;for(const m of list){assert.equal(m.geometry,cube,m.name+' uses the shared cube');assert.equal(m.geometry.type,'BoxGeometry');}
+ r.group.updateMatrixWorld(true);const head=part(r,'blank-head'),box=new T.Box3().setFromObject(head),centre=box.getCenter(new T.Vector3());
+ assert.ok(Math.abs(centre.y-.64)<1e-6&&Math.abs(box.max.y-box.min.y-.34)<1e-6,'rest head centre and size match the authoritative headshot box');
+ const at=(n:string)=>r.group.getObjectByName(n)!.getWorldPosition(new T.Vector3());
+ assert.ok(Math.abs(at('left-elbow').distanceTo(at('left-shoulder'))-RIG_LENGTHS.upperArm)<1e-9&&Math.abs(at('left-knee').distanceTo(at('left-hip'))-RIG_LENGTHS.thigh)<1e-9);
+ // Lower back: the abdomen shell's back face is flush with the hips and ribcage (no dark flex band from the chase camera).
+ const back=(n:string)=>new T.Box3().setFromObject(part(r,n)).min.z;assert.ok(back('abdomen-shell')<=back('hip-shell')+.005&&back('abdomen-shell')<-.13,'abdomen shell covers the back');
+ // Neck: nothing shows through between the upper chest and the neck joint.
+ const top=new T.Box3().setFromObject(part(r,'upper-chest')).max.y,neck=new T.Box3().setFromObject(part(r,'neck-joint')).min.y;assert.ok(neck<=top,'neck joint reaches the chest');
+ // Taper: the upper arm is at least as thick as the forearm.
+ assert.ok(part(r,'left-upper-arm').scale.x>=part(r,'left-forearm').scale.x);
+});
+
+test('joint covers bisect the knee and elbow without moving any joint, and low detail hides only what it hid',()=>{
+ const r=createCharacterRig('#70e1d0');r.leftKnee.rotation.x=1.4;r.rightElbow.rotation.x=-1.6;const before=[r.leftKnee.quaternion.clone(),r.rightElbow.quaternion.clone()];
+ settleJointCovers(r);assert.ok(r.leftKnee.quaternion.equals(before[0])&&r.rightElbow.quaternion.equals(before[1]),'joints untouched');
+ const cap=part(r,'left-kneecap'),elbow=part(r,'right-elbow-joint');assert.ok(Math.abs(cap.rotation.x+.7)<1e-9&&Math.abs(elbow.rotation.x-.8)<1e-9,'covers turn half the hinge');
+ assert.ok(Math.abs(cap.position.length()-Math.hypot(.01,.105))<1e-9,'the kneecap orbits the pivot');
+ r.leftKnee.rotation.x=0;settleJointCovers(r);assert.ok(Math.abs(cap.position.z-.105)<1e-9&&cap.rotation.x===0,'rest pose restores the cover');
+ const details=meshes(r.group).filter(m=>m.userData.detail);assert.ok(details.length>=5&&details.every(m=>!m.castShadow));
+ const collar=part(r,'collar');collar.visible=false;setRigDetail(r,true);assert.ok(details.every(m=>!m.visible));setRigDetail(r,false);
+ assert.equal(collar.visible,false,'a part hidden by another layer (first-person torso) stays hidden');assert.ok(details.filter(m=>m!==collar).every(m=>m.visible));
+});
+
+test('covers follow a run cycle at every rate: the kneecap bisects the knee on every frame, with no lag',()=>{
+ for(const hz of PROBE_RATES){const r=probeRig('sword');let frames=0;
+  probeMotion({spec:'sword',mode:'run',from:1,to:1.6,hz,rig:r,animate:(rig,p,t,dt)=>{animateCharacter(rig,p,t,dt,p.pitch);if(t<1)return;frames++;
+   for(const [cap,knee] of [[part(rig,'left-kneecap'),rig.leftKnee],[part(rig,'right-kneecap'),rig.rightKnee]] as const)assert.ok(Math.abs(cap.rotation.x+knee.rotation.x*.5)<1e-9,hz+' Hz: kneecap bisects the knee at '+t.toFixed(3));
+   assert.ok(Math.abs(part(rig,'left-elbow-joint').rotation.x+rig.leftElbow.rotation.x*.5)<1e-9);}});
+  assert.ok(frames>=hz*.5);}
+});
+
+test('weapon sockets: blade lengths, melee grips and the ranged/magic contracts',()=>{
+ for(const spec of ['sword','greatsword','daggers'] as const){const w=new T.Group();buildWeapon(w,spec);const tip=local(w,'blade-tip'),grip=local(w,'support-grip');
+  assert.ok(Math.abs(tip.z-(.34+BLADE_LENGTH[spec]))<1e-9&&tip.x===0&&tip.y===0,spec+' blade-tip');assert.ok(grip.distanceTo(new T.Vector3(0,0,-.11))<1e-9,spec+' support grip');}
+ const shield=new T.Group();buildWeapon(shield,'shield');assert.ok(local(shield,'blade-tip').distanceTo(new T.Vector3(0,.4,.29))<1e-9);
+ const pistol=new T.Group();buildWeapon(pistol,'pistol');assert.ok(local(pistol,'support-grip').distanceTo(new T.Vector3(.06,-.10,-.01))<.02,'pistol support grip');
+ for(const spec of ['rifle','machinegun']){const w=new T.Group();buildWeapon(w,spec);const butt=local(w,'stock-butt'),grip=local(w,'support-grip');
+  assert.ok(butt.z<=-.28&&butt.z>=-.30,spec+' stock butt '+butt.z);assert.ok(grip.z>=.08&&grip.z<=.12,spec+' support grip '+grip.z);
+  const box=new T.Box3().setFromObject(w);assert.ok(box.min.z>-.34,spec+' stock ends near the butt');}
+ for(const [spec,tip] of [['pistol',.51],['rifle',1.22],['machinegun',.91]] as const){const w=new T.Group();buildWeapon(w,spec);assert.ok(local(w,'muzzle').distanceTo(new T.Vector3(0,0,tip))<1e-9,spec+' muzzle');assert.ok(w.getObjectByName('magazine'),spec+' magazine');assert.ok(Math.abs(local(w,'magazine').y+.19)<1e-9,'magazine rests where the reload returns it');}
+ for(const spec of ['fire','water','lightning','darkness']){const w=new T.Group();buildWeapon(w,spec);assert.ok(local(w,'muzzle').distanceTo(new T.Vector3(0,0,.88))<1e-9);const guard=local(w,'guard-grip');assert.ok(guard.length()>.3&&guard.length()<.55,spec+' guard grip');}
+ const great=new T.Group();buildWeapon(great,'greatsword');assert.ok(meshes(great).length<=13);assert.ok(meshes(shield).length<=10);
+ const enchanted=new T.Group();buildWeapon(enchanted,'greatsword');enchantWeapon(enchanted,['fire'],0);const flames=enchanted.getObjectByName('enchantment')!.children.map(m=>m.position.z);assert.ok(Math.abs(Math.max(...flames)-(.28+BLADE_LENGTH.greatsword))<1e-9,'enchantment spans the blade');
+});
+
+test('muzzle flash: two frames per shot, rolled from the shot time, identical on replay',()=>{
+ const base=probeBase('rifle'),w=new T.Group();buildWeapon(w,'rifle');const flash=w.getObjectByName('muzzle-flash')!;
+ const sample=(shot:number,t:number)=>{weaponModifiers(w,{...base,lastShot:shot},t);return [flash.visible,flash.rotation.y,flash.scale.x,flash.scale.y] as const;};
+ const a=sample(3,3.01),b=sample(3,3.05),again=sample(3,3.01),other=sample(4,4.01);
+ assert.ok(a[0]&&b[0]);assert.deepEqual(a,again,'deterministic');assert.notEqual(a[1],b[1],'second frame turns');assert.notEqual(a[1],other[1],'each shot rolls differently');assert.equal(sample(3,3.08)[0],false);
+});
