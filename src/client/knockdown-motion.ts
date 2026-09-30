@@ -1,6 +1,18 @@
 import type {CharacterRig} from './character-rig.js';
 import type {PlayerView} from '../shared/simulation.js';
 import {smooth} from './pose-math.js';
+import type {Knockdown} from '../shared/recovery.js';
+export type KnockdownPhase='air'|'land'|'legs-up'|'flat'|'roll'|'rise';
+/** Seconds after landedAt that the landing (hips, then arms and head settling) lasts before the body lies flat. */
+export const KNOCKDOWN_LANDING=.2;
+/** The knockdown sub-phase at `time`, purely from the authoritative timestamps (landedAt, pickupUntil, rollAt, rollUntil). */
+export function knockdownPhase(k:Knockdown,time:number):KnockdownPhase{
+ if(k.landedAt===undefined||time<k.landedAt)return 'air';
+ if(k.rollUntil!==undefined&&time>=k.rollUntil)return 'rise';
+ if(k.rollAt!==undefined&&time>=k.rollAt)return 'roll';
+ if(!k.pickupUsed&&time<(k.pickupUntil??0))return 'legs-up';
+ return time<k.landedAt+KNOCKDOWN_LANDING?'land':'flat';
+}
 /** Knockdown presentation (air, flat, legs-up pickup, roll and rise), moved verbatim from sampleCharacter.
  * Pure function of time and the authoritative knockdown timestamps. Caller guarantees p.knockdown&&time<p.knockdown.until. */
 export function knockdownMotion(r:CharacterRig,p:PlayerView,time:number){
