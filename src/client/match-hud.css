@@ -32,3 +32,9 @@
 .cooldown strong.ready,.cooldown .ready{color:var(--good,#59dd83);font-size:12px;letter-spacing:.08em}
 @media(min-height:1000px){.healthbox,.cooldowns,.match-tools,.match-heading,.death-announcement,.arcade-hud{zoom:1.2}}
 @media(min-height:1300px){.healthbox,.cooldowns,.match-tools,.match-heading,.death-announcement,.arcade-hud{zoom:1.45}}
+/* The Developer Sandbox and the Scores overview both anchor top-right: while Scores is open the sandbox steps left of it
+   (both stay usable, the sandbox's Restore row is never under the overview); narrow screens keep the stacked layout. */
+#hud:has(.match-overview)~#sandbox .sandbox{right:342px}
+@media(max-width:850px){#hud:has(.match-overview)~#sandbox .sandbox{right:336px}}
+@media(max-width:620px){#hud:has(.match-overview)~#sandbox .sandbox{right:12px}}
+@media(max-height:700px) and (min-width:851px){.sandbox{max-height:calc(100vh - 215px)}}
