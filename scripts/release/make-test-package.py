@@ -10,7 +10,7 @@ with ZipFile(a.desktop) as src,ZipFile(a.output,'w',ZIP_DEFLATED,compresslevel=6
   data=src.read(n);relative=n.removeprefix(prefix)
   if relative=='resources/app/package.json':
    obj=json.loads(data);obj['main']='test-remote-bootstrap.cjs' if a.channel else 'test-bootstrap.cjs';data=json.dumps(obj).encode()
-  elif relative=='resources/game/launcher/manual-update.mjs':data=(repo/'scripts/release/'+('test-remote-update.mjs' if a.channel else 'test-manual-update.mjs')).read_bytes()
+  elif relative=='resources/game/launcher/manual-update.mjs':data=(repo/'scripts/release'/('test-remote-update.mjs' if a.channel else 'test-manual-update.mjs')).read_bytes()
   elif relative=='resources/game/release.json':
    obj=json.loads(data);obj['version']='test-seed';data=json.dumps(obj).encode()
   dst.writestr(new+relative,data)

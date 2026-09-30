@@ -21,3 +21,23 @@ test('status handler reports the channel manifest, forwards other requests, and 
  manifest=null;const down=await h(new Request(CHECK_URL));assert.equal(down.status,503);
  assert.ok(calls.every(c=>c[1]===true));assert.ok(!calls.some(c=>c[0].startsWith(BASE)));
 });
+test('packager wires the remote channel files only when --channel is given',async()=>{
+ const {execFileSync}=await import('node:child_process');const {ZipFile}=await import('node:zlib').then(()=>({ZipFile:null}));
+ const dir=await mkdtemp(join(tmpdir(),'pkg-'));const py=`import zipfile,json,sys
+d=sys.argv[1]
+with zipfile.ZipFile(d+'/Chip-Arena-Desktop.zip','w') as z:
+ p='Chip-Arena-Desktop/'
+ z.writestr(p+'resources/app/package.json',json.dumps({'main':'main.cjs'}))
+ z.writestr(p+'resources/game/launcher/manual-update.mjs','orig')
+ z.writestr(p+'resources/game/launcher/update.mjs','U')
+ z.writestr(p+'resources/game/release.json',json.dumps({'version':'x'}))`;
+ execFileSync('python3',['-c',py,dir]);const {mkdir}=await import('node:fs/promises');await mkdir(join(dir,'feed'));await writeFile(join(dir,'feed','latest.json'),'{}');await mkdir(join(dir,'src','launcher'),{recursive:true});await writeFile(join(dir,'src','launcher','update.mjs'),'U');
+ const pkg=new URL('./make-test-package.py',import.meta.url).pathname;
+ const list=out=>execFileSync('python3',['-c','import zipfile,sys;z=zipfile.ZipFile(sys.argv[1]);print("\\n".join(z.namelist()));print(z.read("Chip-Arena-TEST-ONLY/resources/app/package.json").decode());print(z.read("Chip-Arena-TEST-ONLY/resources/game/launcher/manual-update.mjs").decode()[:200])',out]).toString();
+ execFileSync('python3',[pkg,join(dir,'Chip-Arena-Desktop.zip'),join(dir,'feed'),join(dir,'remote.zip'),join(dir,'src'),'--channel',CH]);
+ execFileSync('python3',[pkg,join(dir,'Chip-Arena-Desktop.zip'),join(dir,'feed'),join(dir,'local.zip'),join(dir,'src')]);
+ const r=list(join(dir,'remote.zip')),l=list(join(dir,'local.zip'));
+ assert.match(r,/test-channel\.json/);assert.match(r,/test-remote-bootstrap\.cjs"?/);assert.match(r,/remoteFeed/);assert.match(r,/test-update-status\.cjs/);
+ assert.doesNotMatch(l,/test-channel\.json|remote-feed|remoteFeed/);assert.match(l,/"main": "test-bootstrap\.cjs"/);
+ assert.throws(()=>execFileSync('python3',[pkg,join(dir,'Chip-Arena-Desktop.zip'),join(dir,'feed'),join(dir,'bad.zip'),join(dir,'src'),'--channel','http://x/'],{stdio:'pipe'}));
+});
