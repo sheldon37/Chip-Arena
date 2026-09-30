@@ -1,7 +1,7 @@
 import {meleeBlockMotion} from './melee-block-motion.js';
 import {hitReactionMotion,fallbackFlinch} from './hit-reaction-motion.js';
 import {dodgeRollMotion} from './dodge-roll-motion.js';
-import {committed,meleeRecovery} from '../shared/souls-combat.js';
+import {committed,meleeRecovery,rolling} from '../shared/souls-combat.js';
 import {locomotion,groundPass,finishPose,GAIT} from './motion-quality.js';
 import {meleeMotion} from './melee-motion.js';
 import {animateEmperor,animateJuggle} from './emperor-animation.js';
@@ -45,7 +45,8 @@ export function spellPose(p:PlayerView,time:number){
 /** Distance-driven locomotion under action layers. Authoritative attack timestamps keep the hit phase aligned. */
 function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=p.pitch){
  clearLegsAuthored(r);animateCosmetics(r,time);
- const w=WEAPONS[p.spec],planted=committed(p,time)||(p.hitStunUntil||0)>time;if(planted)r.motion*=Math.exp(-clamp(dt,0,.05)*22);locomotion(r,{...p,pitch,vel:planted?{x:0,y:p.vel.y,z:0}:p.vel},time,dt,planted);const pose=attackPose(p,time);
+ // Commitment, hitstun and dodge rolls hold the stride: the root is moved by the action, not by running steps.
+ const w=WEAPONS[p.spec],planted=committed(p,time)||(p.hitStunUntil||0)>time||rolling(p,time);if(planted)r.motion*=Math.exp(-clamp(dt,0,.05)*22);locomotion(r,{...p,pitch,vel:planted?{x:0,y:p.vel.y,z:0}:p.vel},time,dt,planted);const pose=attackPose(p,time);
  r.weapon.visible=!p.weaponAway;r.weapon.position.set(0,0,0);r.weapon.rotation.set(.5,0,0);r.weapon.scale.set(1,1,w.class==='melee'?p.reach/w.range:1);r.offWeapon.position.set(0,0,0);r.offWeapon.rotation.set(.55,0,0);r.offWeapon.scale.copy(r.weapon.scale);
  if(p.juggle&&time<p.juggle.until){animateJuggle(r,p,time);return pose;}
  if(p.knockdown&&time<p.knockdown.until){knockdownMotion(r,p,time);return pose;}
