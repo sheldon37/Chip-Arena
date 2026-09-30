@@ -16,6 +16,20 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-09-30 — Claude — DEV fighting styles: ground-anchored feet (channel update)
+
+- Owner: emperor (Tekken) / ansatsuken (Street Fighter) feet looked wrong while running
+  and attacking; touch up moves. 2776860: the ground pass now covers both styles; fighter
+  moves layer per-foot edits on the gait (layerLeg/gaitFoot) instead of fixed leg angles;
+  bladed stances in stances.ts; kick chamber no longer flips the knee; combo-ready stance
+  now works in live play. Slip e.g. backpedal 6.0 m -> 0.003 m; ankles never below the
+  floor; knee flips gone. Guard bounce, hip-driven strikes, donkey kick, Shoryuken and
+  Demon Step touched up. Access control and gameplay unchanged.
+- Tests: new tests/devstyle-fluidity.test.ts (fails on old code); full suite only the 13
+  known failures; no existing test edited.
+- Published: content 0.2.87477529ed9b (channel e19eea3), verified network update; full
+  channel ZIP (SHA256 168f0a2c...07a3) sent to the owner in parts for a second PC.
+
 ## 2026-09-30 — Claude — souls roll, fluid greatsword, combo-ready holds (channel update)
 
 - Owner feedback: rolls levitated; greatsword looked robotic; after a hit, hold the pose
