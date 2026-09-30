@@ -16,6 +16,22 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-09-30 — Claude — souls roll, fluid greatsword, combo-ready holds (channel update)
+
+- Owner feedback: rolls levitated; greatsword looked robotic; after a hit, hold the pose
+  for the next swing (combo), exit by rolling or timing out to idle; same for DEV styles.
+- 587d99d roll: floor-solved shoulder roll (tuck was 13-65 cm above the floor, now within
+  ~2 cm in 6 directions), dip, 360-degree tumble, crouch exit. 9ab51ce greatsword: smooth
+  splines (old curves stopped at every reversal), hips-first chain (chest +71 ms), weight
+  shift, heel pivot; combo-ready holds for sword/daggers/shield/greatsword (next cut starts
+  from the hold; roll/hit/block/special release over .22 s; 2.4 s timeout). 35569fa
+  emperor/ansatsuken chambered fighting stance between strings (L33T unchanged).
+- Tests: new tests/roll-greatsword-fluidity.test.ts (8); full suite only the 13 known
+  failures; no existing test edited. Known: kneeling roll exit can graze ~2.5 cm, diagonal-
+  back exit bobs ~7 cm, greatsword reverse cut still raises high in windup.
+- Published to the test channel: content 0.2.da174b55f7c3 from 35569fa (channel 5842c18);
+  verified updating 0.2.4d3dcebad34a -> 0.2.da174b55f7c3 over the network, then current.
+
 ## 2026-09-30 — Claude — online test update channel (owner-requested)
 
 - Owner asked for a working Update button so testers stop downloading ZIPs; approved a
