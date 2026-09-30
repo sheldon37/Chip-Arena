@@ -75,6 +75,16 @@ const T0=3,L=.55;
 const knockdown=(r:number,rollX=0,rollZ=-1)=>({at:T0,landedAt:r>=L?T0+L:undefined,pickupUntil:r>=L?T0+L+.22:undefined,rollAt:r>=L?T0+L+.4:undefined,rollUntil:r>=L?T0+L+.8:undefined,until:r>=L?T0+L+1:T0+5,rollX,rollZ});
 const knockdownPatch=(rollX=0,rollZ=-1)=>(t:number):Partial<PlayerView>=>{const r=t-T0;return r<0?{}:{knockdown:knockdown(r,rollX,rollZ),grounded:r>=L,vel:{x:0,y:r<L?15.9*(L-2*r):0,z:0}};};
 
+// Keep this before the first test that plays a recovery roll: the roll must not leave state (an Euler order) behind that
+// changes a later knockdown's flat or crouch pose.
+test('knockdown poses are a pure function of time: an identical second knockdown in the same process matches the first',()=>{
+ const sample=()=>{const r=probeRig('sword'),base=probeBase('sword'),patch=knockdownPatch(),out:T.Quaternion[][]=[];
+  for(let i=-12;i<=100;i++){const t=T0+i/60;animateCharacter(r,{...animationPreviewPlayer(base,'idle',t),hitStunUntil:-1e9,...patch(t)} as PlayerView,t,1/60);if([54,72,81,87].includes(i))out.push([...quats(r),r.body.quaternion.clone()]);}
+  return out;};
+ const first=sample(),second=sample();assert.equal(first.length,4);
+ ['flat','roll','crouch','rise'].forEach((at,i)=>assert.ok(maxAngle(first[i],second[i])<1e-6,`${at}: ${maxAngle(first[i],second[i]).toExponential(2)} rad between the two runs`));
+});
+
 test('knockdown fall, landing, roll-to-crouch and rise are continuous at 30, 60 and 120 Hz (no pops or teleports)',()=>{
  for(const [rollX,rollZ] of [[0,-1],[1,0]]){
   const rates=probeRates({spec:'sword',mode:'idle',from:T0-.1,to:T0+1.8,patch:knockdownPatch(rollX,rollZ)}),at=`roll (${rollX},${rollZ})`;
@@ -98,6 +108,14 @@ test('knockdown poses: flat on the floor, the roll keeps limbs and blade above t
    if(!crouch&&rel>=L+.8-1e-9){crouch=true;assert.ok(Math.abs(r.leftFoot.getWorldPosition(new T.Vector3()).y+.795)<.01,`${spec} lead foot planted`);
     assert.ok(r.body.quaternion.angleTo(new T.Quaternion().setFromEuler(new T.Euler(.3,0,0)))<.15,`${spec} the roll ends upright in a crouch`);assert.ok(r.body.position.y<-.25,'crouched');}
   }
+ }
+});
+
+test('a knockdown with a turned roll heading leaves the rig group facing its yaw at every heading (the renderer only writes rotation.y)',()=>{
+ for(const yaw of [2.5,-2.5,Math.PI])for(const [rollX,rollZ] of [[1,0],[-1,0],[0,-1]]){
+  const r=probeRig('sword'),base={...probeBase('sword'),yaw},patch=knockdownPatch(rollX,rollZ),facing=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),yaw);
+  for(let i=-12;i<=120;i++){const t=T0+i/60;r.group.rotation.y=yaw;animateCharacter(r,{...animationPreviewPlayer(base,'idle',t),yaw,hitStunUntil:-1e9,...patch(t)} as PlayerView,t,1/60);
+   assert.ok(r.group.rotation.x===0&&r.group.rotation.z===0&&r.group.quaternion.angleTo(facing)<1e-6,`yaw ${yaw.toFixed(2)} roll (${rollX},${rollZ}) at +${(i/60).toFixed(3)}: group Euler ${r.group.rotation.x.toFixed(3)} ${r.group.rotation.y.toFixed(3)} ${r.group.rotation.z.toFixed(3)}`);}
  }
 });
 
@@ -142,7 +160,9 @@ test('a knockdown ragdoll hands its final limb pose back to the rig at the recov
   const state=s.snapshot(),p=state.players[1],r=createCharacterRig(p.color),scene=new T.Scene(),fx=new KnockdownRagdolls(scene),rigs=new Map([[p.id,r]]),at=state.time;scene.add(r.group);
   p.knockdown={at,until:at+2,ragdoll:true,landedAt:at+.5,pickupUntil:at+.5,pickupUsed:true,rollAt:at+.9,rollUntil:at+1.3,rollX:0,rollZ:-1};p.vel={x:0,y:0,z:-4};p.hitStunUntil=0;
   const step=(t:number)=>{state.time=t;r.group.visible=true;animateCharacter(r,p,t,1/60);fx.update(state,rigs);r.group.updateMatrixWorld(true);};
-  for(let t=at;t<at+.9-1e-9;t+=1/60)step(t);
+  // While it is shown, the live ragdoll's pelvis follows the rig's authoritative pelvis (the knockdown motion's fall, landing and flat pose).
+  let follow=0;for(let t=at;t<at+.9-1e-9;t+=1/60){step(t);const pelvis=scene.getObjectByName('knockdown-ragdoll')?.getObjectByName('pelvis');if(pelvis)follow=Math.max(follow,pelvis.position.distanceTo(r.pelvis.getWorldPosition(new T.Vector3())));}
+  assert.ok(follow<.02,`pelvis follow error ${follow.toFixed(4)} m`);
   const ragdoll=scene.getObjectByName('knockdown-ragdoll')!,parts=['left-shoulder','right-knee','head'].map(n=>{const part=ragdoll.getObjectByName(n)!,q=part.getWorldQuaternion(new T.Quaternion());return part.userData.jointOffset?q.multiply(part.userData.jointOffset):q;});
   step(at+.9);assert.equal(scene.getObjectByName('knockdown-ragdoll'),undefined,'the ragdoll yields at rollAt');
   [r.leftArm,r.rightKnee,r.head].forEach((bone,i)=>assert.ok(bone.getWorldQuaternion(new T.Quaternion()).angleTo(parts[i])<.02,`${bone.name} shows the ragdoll's final pose on the handoff frame`));
@@ -153,17 +173,21 @@ test('a knockdown ragdoll hands its final limb pose back to the rig at the recov
 });
 
 test('kill cinematic victims are the live model and start from the pose the fighter died in, rewindably',()=>{
- const joints=['motion-root','spine','head','left-shoulder','right-elbow','left-hip','right-knee'];
+ const joints=TRANSITION_BONES.filter(b=>b!=='weapon'&&b!=='offWeapon').map(b=>probeRig('sword')[b].name);assert.equal(joints.length,22);
  for(const effect of ['launch','shrink','ascension','ghost','confetti','dev-clown','dev-clown-love','dev-bass-van','dev-raging-demon']){
   const base=probeBase('sword'),live=probeRig('sword',true);for(let t=0;t<.6;t+=1/60)animateCharacter(live,{...animationPreviewPlayer(base,'run',t),hitStunUntil:-1e9} as PlayerView,t,1/60);live.group.updateMatrixWorld(true);
   const p={...base,hp:0} as PlayerView,death={id:'x',at:0,effect,seed:7,pos:{...base.pos},velocity:{x:0,y:0,z:0},direction:{x:0,y:.1,z:-1},source:'k',kind:'direct',yaw:0,melee:true,force:300,attacker:{pos:{x:0,y:base.pos.y,z:2},yaw:Math.PI,color:'#3af',cosmetics:base.cosmetics!,spec:'sword'}} as unknown as NonNullable<PlayerView['death']>;
-  const scene=new T.Scene(),fx=KILL_EFFECTS[effect](scene,live.group,{...p,death},death,1,100);let victim:T.Object3D|undefined;
-  scene.traverse(o=>{if(!victim&&o!==live.group&&(o.name==='love-partner'||o.name==='bass-passenger'||o.name==='blank-mannequin-v2'&&o.userData.armorGlow!==undefined&&o.getObjectByName('motion-root')))victim=o;});
-  assert.ok(victim,effect);assert.ok(victim!.getObjectByName('armor-back-light'),`${effect}: the victim keeps the live rig's armor glow model`);
-  const pose=()=>joints.map(n=>victim!.getObjectByName(n)!.quaternion.clone());
-  fx.update(0);pose().forEach((q,i)=>assert.ok(q.angleTo(live.group.getObjectByName(joints[i])!.quaternion)<1e-6,`${effect}: ${joints[i]} starts in the death pose`));
-  fx.update(1.3);const late=pose();fx.update(.1);fx.update(1.3);pose().forEach((q,i)=>assert.ok(q.angleTo(late[i])<1e-6,`${effect}: rewindable ${joints[i]}`));
-  fx.dispose();
+  const spawn=()=>{const scene=new T.Scene(),fx=KILL_EFFECTS[effect](scene,live.group,{...p,death},death,1,100);let victim:T.Object3D|undefined;
+   scene.traverse(o=>{if(!victim&&o!==live.group&&(o.name==='love-partner'||o.name==='bass-passenger'||o.name==='blank-mannequin-v2'&&o.userData.armorGlow!==undefined&&o.getObjectByName('motion-root')))victim=o;});
+   assert.ok(victim,effect);return {fx,victim:victim!,pose:()=>[...joints.map(n=>victim!.getObjectByName(n)!.quaternion.clone())]};};
+  const a=spawn();assert.ok(a.victim.getObjectByName('armor-back-light'),`${effect}: the victim keeps the live rig's armor glow model`);
+  a.fx.update(0);a.pose().forEach((q,i)=>assert.ok(q.angleTo(live.group.getObjectByName(joints[i])!.quaternion)<1e-6,`${effect}: ${joints[i]} starts in the death pose`));
+  a.fx.update(1.3);const late=a.pose();a.fx.update(.1);const early=a.pose();a.fx.update(1.3);a.pose().forEach((q,i)=>assert.ok(q.angleTo(late[i])<1e-6,`${effect}: rewindable ${joints[i]}`));
+  a.fx.update(3);const direct=a.pose();
+  // Every joint (also the ones a timeline never writes) is a pure function of age: 60 Hz playback equals a direct seek.
+  const b=spawn();for(let i=0;i<=180;i++){b.fx.update(i/60);if(i===6)b.pose().forEach((q,j)=>assert.ok(q.angleTo(early[j])<1e-6,`${effect}: ${joints[j]} at .1 s, playback vs seek`));}
+  b.pose().forEach((q,i)=>assert.ok(q.angleTo(direct[i])<1e-6,`${effect}: ${joints[i]} at 3 s, playback vs seek (${(q.angleTo(direct[i])*180/Math.PI).toFixed(1)} deg)`));
+  a.fx.dispose();b.fx.dispose();
  }
 });
 

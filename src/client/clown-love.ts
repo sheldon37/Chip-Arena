@@ -53,7 +53,7 @@ export const clownLove:KillEffectFactory=(scene,original,p,d,quality,_budget,sta
   for(const mesh of group.children as T.Mesh[])mesh.onBeforeRender=(_renderer,_scene,camera)=>{mesh.quaternion.copy(group.getWorldQuaternion(new T.Quaternion()).invert().multiply(camera.getWorldQuaternion(new T.Quaternion())));mesh.updateMatrixWorld(true);};
   return {group,at};});
  return {count:quality<.5?12:24,update(age){
-  const t=Math.max(0,age);resetPose(victim);resetPose(clown);victim.group.position.set(0,0,0);clown.group.position.set(-8,.09,-.6);
+  const t=Math.max(0,age);deathPose.reset();resetPose(victim);resetPose(clown);victim.group.position.set(0,0,0);clown.group.position.set(-8,.09,-.6);
   victim.weapon.visible=t<.25;victim.offWeapon.visible=t<.25&&p.spec==='daggers';dropped.visible=t>=.25;
   dropped.position.set(.3,Math.max(-.77,.05-(t-.25)**2*5),.35);dropped.rotation.set(Math.min(Math.PI/2,Math.max(0,t-.25)*7),.3,.3);
   const entrance=smooth((t-.15)/.85),takeHands=smooth((t-.8)/.25);

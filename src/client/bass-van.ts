@@ -20,7 +20,7 @@ export const bassVan:KillEffectFactory=(scene,original,p,d,quality,_budget,state
  const inVan=(r:CharacterRig,position:T.Vector3,yaw:number)=>{r.group.position.copy(position).applyMatrix4(van.matrix);r.group.quaternion.copy(van.quaternion).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),yaw));};
  return {count:quality<.5?98:104,update(age){
   const t=Math.max(0,age),arrive=smooth(t/BASS_VAN.arrive),depart=Math.max(0,t-BASS_VAN.drive),bass=vanBass(t);
-  reset(victim);reset(guy);victim.group.position.set(0,0,0);victim.weapon.visible=victim.offWeapon.visible=false;
+  carry.reset();reset(victim);reset(guy);victim.group.position.set(0,0,0);victim.weapon.visible=victim.offWeapon.visible=false;
   van.position.set(T.MathUtils.lerp(-10,.65,arrive)+depart*depart*17,bass*.20,-1.65);
   van.rotation.set(Math.sin((t-BASS_VAN.musicStart)*19)*bass*.035,0,0);van.updateMatrix();
   const close=smooth((t-BASS_VAN.doorClose)/(BASS_VAN.musicStart-BASS_VAN.doorClose)),open=smooth((t-.52)/.18)*(1-close);

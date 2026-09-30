@@ -26,7 +26,8 @@ export function transitionAction(p:PlayerView,time:number){
  const attackDuration=standardSpec(p.spec)?windup+window+meleeRecovery(p.spec)/rate:.8/rate,w=WEAPONS[p.spec];
  return p.juggle&&time<p.juggle.until?'juggle':p.knockdown&&time<p.knockdown.until?'down:'+knockdownPhase(p.knockdown,time):(p.hitStunUntil||0)>time?'flinch':rolling(p,time)?'roll':(p.guarding||p.blockTime>0)?(w.class==='melee'?'block':'guard'):p.emperor?.action&&time<p.emperor.until?p.emperor.action:p.arcade?.action&&time<p.arcade.until?p.arcade.action:p.meleeAction&&time<p.meleeAction.until?p.meleeAction.kind:w.class==='melee'&&time-p.lastAttack<attackDuration?'attack-'+p.attackIndex:w.class==='ranged'&&p.reloadTime>0?'reload':'base';
 }
-/** Transition length for a key change. Attack entries always end before the contact frame (swingAt). */
+/** Transition length for a key change. Attack entries always end before the contact frame (swingAt); an entry inside the
+ * active swing window is a cut (0), so the shown blade never lags the live hit window. */
 export function transitionDuration(p:PlayerView,time:number,action:string,previous:string,reaction?:PlayerView['hitReaction']){
  if(reaction)return Math.min(.075,Math.max(.02,(Math.max(reaction.until,p.hitStunUntil||0)-time)*.28));
  if(reactionFamily(action)){
@@ -36,7 +37,7 @@ export function transitionDuration(p:PlayerView,time:number,action:string,previo
   return d;
  }
  const heavy=p.spec==='greatsword';
- if(action.startsWith('attack-')){const windup=p.swingAt!==undefined?Math.max(.025,p.swingAt-p.lastAttack):Math.max(.025,p.windup);let d=Math.min(.55*windup,.09);if(p.swingAt!==undefined)d=Math.min(d,p.swingAt-time);return d;}
+ if(action.startsWith('attack-')){const windup=p.swingAt!==undefined?Math.max(.025,p.swingAt-p.lastAttack):Math.max(.025,p.windup);let d=Math.min(.55*windup,.09);if(p.swingAt!==undefined&&time<(p.swingUntil??p.swingAt))d=Math.max(0,Math.min(d,p.swingAt-time));return d;}
  if(action==='base')return previous.startsWith('attack-')&&standardSpec(p.spec)?(heavy?.28:.22):.13;
  if(action==='block')return heavy?.11:.09;
  if(action==='guard'||action==='reload')return .08;
@@ -52,14 +53,15 @@ export function seedTransition(r:CharacterRig,localQuats:ArrayLike<T.Quaternion|
 }
 /** Preserve the incoming pose, decay its offset, and keep sampling the live attack underneath.
  * This is a transition correction, not an all-frame low-pass that would delay hit poses. It starts fresh (no blend) on a
- * rig's first sample, when time runs backward or jumps by more than .35 s, and when the rig starts showing another player. */
+ * rig's first sample, when time runs backward or jumps by more than .35 s, and when the rig starts showing another player;
+ * a pending seedTransition still blends from its seeded pose on such a frame. */
 export function finishPose(r:CharacterRig,p:PlayerView,time:number){
  const action=transitionAction(p,time);
  const reaction=p.hitReaction&&time>=p.hitReaction.at&&time<Math.max(p.hitReaction.until,p.hitStunUntil||0)?p.hitReaction:undefined;
  // Grounded is not part of the key: jumps and landings are animated continuously by locomotion.
  const key=p.spec+':'+action+(reaction?':impact-'+reaction.at+':'+reaction.kind:'');let s=transitions.get(r);const seed=seeds.get(r);seeds.delete(r);
  if(!s){s={id:p.id,key,action,time,prevTime:time,at:time,duration:0,last:capture(r,stored()),prev:stored(),hasPrev:false,offset:stored(),active:false};transitions.set(r,s);if(!seed)return;}
- else if(time<s.time||time-s.time>.35||p.id!==s.id){s.id=p.id;s.key=key;s.action=action;s.time=s.prevTime=s.at=time;s.active=false;s.hasPrev=false;capture(r,s.last);return;}
+ else if(time<s.time||time-s.time>.35||p.id!==s.id){s.id=p.id;s.key=key;s.action=action;s.time=s.prevTime=s.at=time;s.active=false;s.hasPrev=false;capture(r,s.last);if(!seed)return;}
  capture(r,current);let incoming:StoredPose|undefined,duration=0;
  if(seed){incoming=seed.pose;duration=seed.duration;}
  else if(key!==s.key){
