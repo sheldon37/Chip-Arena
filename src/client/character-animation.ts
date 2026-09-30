@@ -2,7 +2,7 @@ import {meleeBlockMotion} from './melee-block-motion.js';
 import {hitReactionMotion,fallbackFlinch} from './hit-reaction-motion.js';
 import {dodgeRollMotion} from './dodge-roll-motion.js';
 import {committed,meleeRecovery} from '../shared/souls-combat.js';
-import {locomotion,finishPose} from './motion-quality.js';
+import {locomotion,groundPass,finishPose,GAIT} from './motion-quality.js';
 import {meleeMotion} from './melee-motion.js';
 import {animateEmperor,animateJuggle} from './emperor-animation.js';
 import {animateCosmetics} from './auditor-halo.js';
@@ -17,7 +17,8 @@ import {updateAimWeight,rangedLayer,nonMeleeGuard} from './ranged-motion.js';
 import {magicLayer} from './magic-motion.js';
 import {clearLegsAuthored} from './pose-flags.js';
 
-export const ANIMATION={blendSpeed:12,stridePerMetre:2.2,runLean:.20,deathSeconds:5,deathVoxels:120,reducedDeathVoxels:48,maxDeathVoxels:280} as const;
+/** Presentation tunables. `gait` is the live locomotion tuning table (cadence, stance length, lean, crouch, turn dead zone). */
+export const ANIMATION={gait:GAIT,deathSeconds:5,deathVoxels:120,reducedDeathVoxels:48,maxDeathVoxels:280} as const;
 export type AnimatedRig=CharacterRig;
 export function attackPose(p:PlayerView,time:number){
  const w=WEAPONS[p.spec],rate=p.attackRate||1,age=Math.max(0,time-p.lastAttack),windup=p.swingAt!==undefined?Math.max(.025,p.swingAt-p.lastAttack):Math.max(.025,p.windup),window=p.swingUntil!==undefined&&p.swingAt!==undefined?p.swingUntil-p.swingAt:.16/rate;
@@ -44,7 +45,7 @@ export function spellPose(p:PlayerView,time:number){
 /** Distance-driven locomotion under action layers. Authoritative attack timestamps keep the hit phase aligned. */
 function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=p.pitch){
  clearLegsAuthored(r);animateCosmetics(r,time);
- const w=WEAPONS[p.spec],planted=committed(p,time)||(p.hitStunUntil||0)>time;if(planted)r.motion=0;locomotion(r,{...p,pitch,vel:planted?{x:0,y:p.vel.y,z:0}:p.vel},time,dt);const pose=attackPose(p,time);
+ const w=WEAPONS[p.spec],planted=committed(p,time)||(p.hitStunUntil||0)>time;if(planted)r.motion*=Math.exp(-clamp(dt,0,.05)*22);locomotion(r,{...p,pitch,vel:planted?{x:0,y:p.vel.y,z:0}:p.vel},time,dt,planted);const pose=attackPose(p,time);
  r.weapon.visible=!p.weaponAway;r.weapon.position.set(0,0,0);r.weapon.rotation.set(.5,0,0);r.weapon.scale.set(1,1,w.class==='melee'?p.reach/w.range:1);r.offWeapon.position.set(0,0,0);r.offWeapon.rotation.set(.55,0,0);r.offWeapon.scale.copy(r.weapon.scale);
  if(p.juggle&&time<p.juggle.until){animateJuggle(r,p,time);return pose;}
  if(p.knockdown&&time<p.knockdown.until){knockdownMotion(r,p,time);return pose;}
@@ -66,7 +67,7 @@ function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=
  return pose;
 }
 
-export function animateCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=p.pitch){time=p.hp>0?(p.animationTime??time):time;const pose=sampleCharacter(r,p,time,dt,pitch);finishPose(r,p,time);settleJointCovers(r);return pose;}
+export function animateCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=p.pitch){time=p.hp>0?(p.animationTime??time):time;const pose=sampleCharacter(r,p,time,dt,pitch);groundPass(r,p,time,dt);finishPose(r,p,time);settleJointCovers(r);return pose;}
 
 /** Sandbox-only presentation sampler: never writes simulation, attacks, inputs, or health. */
 export function animationPreviewPlayer(p:PlayerView,mode:string,time:number):PlayerView{
