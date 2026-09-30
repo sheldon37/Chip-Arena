@@ -79,6 +79,15 @@ export function plantLeg(r:CharacterRig,left:boolean,target:T.Vector3,yaw:number
  if(footWeight<1){_qf.copy(_keep[2]).slerp(_qi.setFromEuler(_e.set(0,yaw,0,'YXZ')),footWeight);pelvisFrame(r);ankle.quaternion.copy(_pq).multiply(hip.quaternion).multiply(knee.quaternion).invert().multiply(_qf);}
  if(weight>=1)return;hip.quaternion.copy(_keep[0].slerp(hip.quaternion,weight));knee.quaternion.copy(_keep[1].slerp(knee.quaternion,weight));
 }
+const _hold=[new T.Vector3(),new T.Vector3()],_holdQ=[new T.Quaternion(),new T.Quaternion()],_holdK=[new T.Vector3(),new T.Vector3()],_holdLeg=[0,1,2,3].map(()=>new T.Quaternion()),_holdA=new T.Vector3(),_holdAq=new T.Quaternion();
+/** Keep both ankles (position and foot orientation) where they are while `change` moves the body, pelvis or legs (a
+ * finishPose blend over ground-planted legs): the legs are re-solved onto the captured ankles, floor-clamped, bending the
+ * knee toward where the changed leg put it, and blended from the changed legs by `weight`. */
+export function holdAnkles(r:CharacterRig,change:()=>void,weight=1){
+ if(weight<=1e-4){change();return;}
+ for(let i=0;i<2;i++)readAnkle(r,i===0,_hold[i],_holdQ[i]);change();
+ for(let i=0;i<2;i++){const bones=legBones(r,i===0);readAnkle(r,i===0,_holdA,_holdAq,_holdK[i]);if(weight<1)bones.forEach((b,k)=>_holdLeg[k].copy(b.quaternion));_hold[i].y=Math.max(_hold[i].y,FLOOR);solveLeg(r,i===0,_hold[i],0,0,0,_holdAq,_holdK[i]);if(weight<1)bones.forEach((b,k)=>b.quaternion.copy(_holdLeg[k].slerp(b.quaternion,weight)));}
+}
 /** The ankle's rig-group position from the live joints. */
 export function ankleInGroup(r:CharacterRig,left:boolean,out:T.Vector3){readAnkle(r,left,out,_keep[0]);return out;}
 /** Current ankle position, foot orientation and (optionally) knee position in rig-group space, read from the joints. */
