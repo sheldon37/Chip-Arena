@@ -1,4 +1,4 @@
-import {primaryMeleeMotion,phraseEntry} from './primary-melee-motion.js';
+import {primaryMeleeMotion,phraseEntry,comboReadyMotion} from './primary-melee-motion.js';
 import * as T from 'three';
 import type {CharacterRig} from './character-rig.js';
 import {braceWeapon} from './character-rig.js';
@@ -13,7 +13,8 @@ export function meleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<typeof atta
  r.weapon.visible=!p.weaponAway&&!(special?.released&&special.kind==='dagger-throw'&&time<special.until-.12);
  // Every melee layer sits on the combat-ready guard (idle) faded into the running carry, so entries and exits blend from it.
  if(special&&time<special.until){meleeReady(r,p,time);specialMotion(r,p,time);return;}
- if(!a.active){meleeReady(r,p,time);return;}
+ // After a cut the fighter holds the combo-ready chamber for the next cut (faded into the running carry), not the guard.
+ if(!a.active){const carry=meleeReady(r,p,time);comboReadyMotion(r,p,a,time,carry);return;}
  // The pose the phrase blends in over (it records how this attack was entered on its first frame). Out of the running
  // carry the sword keeps the orientation the carry (at the weight it had as the attack began) gives the hand the phrase is
  // raising, and turns at a near-steady rate over the whole windup by the shortest arc onto the phrase's blade (the forward-down

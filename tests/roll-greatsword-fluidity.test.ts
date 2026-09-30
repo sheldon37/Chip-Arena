@@ -1,10 +1,13 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from 'three';
-import {initPhysics} from '../src/shared/simulation.js';
-import {animateCharacter} from '../src/client/character-animation.js';
+import {initPhysics,type PlayerView} from '../src/shared/simulation.js';
+import {WEAPONS} from '../src/shared/content.js';
+import {attackCommitment,attackTravel,meleeRecovery} from '../src/shared/souls-combat.js';
+import {animateCharacter,attackPose} from '../src/client/character-animation.js';
 import {lowestShell,ROLL_FLOOR} from '../src/client/dodge-roll-motion.js';
-import {PROBE_RATES,probeMotion} from './helpers/motion-probe.js';
+import {comboReadyMotion,primaryMeleeMotion} from '../src/client/primary-melee-motion.js';
+import {PROBE_RATES,probeBase,probeMotion,probeRig,weaponTip} from './helpers/motion-probe.js';
 
 await initPhysics();
 type Rig=Parameters<typeof lowestShell>[0];
@@ -40,5 +43,80 @@ test('the roll is rate independent: the same authoritative phase gives the same 
   for(const [key,f] of runs[0]){const others=runs.slice(1).map(m=>m.get(key));if(others.some(o=>!o)||f.u<.1)continue;compared++;
    for(const o of others){assert.ok(Math.abs(o!.body-f.body)<.012,`(${x},${z}) u=${f.u.toFixed(2)}: body height ${f.body.toFixed(3)} vs ${o!.body.toFixed(3)}`);assert.ok(Math.abs(o!.shell-f.shell)<.012,`(${x},${z}) u=${f.u.toFixed(2)}: contact`);}}
   assert.ok(compared>8,'compared the shared 30 Hz frames');
+ }
+});
+
+// ---- Greatsword kinetic chain and smooth arcs ----
+const yawOf=(o:T.Object3D)=>{const f=new T.Vector3(0,0,1).applyQuaternion(o.getWorldQuaternion(new T.Quaternion()));return Math.atan2(f.x,f.z);};
+/** A standing greatsword cut at t=2 (root follows the authored travel); calls `each` after every frame from the attack on. */
+function greatswordCut(index:number,hz:number,each:(r:Rig,age:number,p:PlayerView)=>void){
+ const spec='greatsword',base={...probeBase(spec),grounded:true,vel:{x:0,y:0,z:0},hitStunUntil:-1e9,animationTime:undefined} as PlayerView,w=WEAPONS.greatsword,la=2,c=attackCommitment(base.spec,la,w.windup,.16,1,w.windup+.16);
+ const idle={...base,lastAttack:-10,swingAt:undefined,swingUntil:undefined} as PlayerView,p={...base,attackIndex:index,lastAttack:la,swingAt:la+w.windup,swingUntil:la+w.windup+.16,attackCommitment:c} as PlayerView,r=probeRig(spec);
+ for(let i=0;;i++){const t=1.9+i/hz;if(t>c.until)break;r.group.position.set(0,0,attackTravel(c,t));r.group.rotation.y=0;animateCharacter(r,t<la?idle:p,t,1/hz);r.group.updateMatrixWorld(true);if(t>=la)each(r,t-la,p);}
+}
+test('greatsword kinetic chain: the chest yaw trails the pelvis yaw by at least 40 ms through every cut',()=>{
+ for(const index of [1,2,3]){const hz=240,P:number[]=[],C:number[]=[];greatswordCut(index,hz,r=>{P.push(yawOf(r.pelvis));C.push(yawOf(r.chest));});
+  const vel=(a:number[])=>a.slice(1).map((x,i)=>x-a[i]),vp=vel(P),vc=vel(C);let best=0,err=Infinity;
+  // The shift that best lines the chest's yaw velocity up with the pelvis's (baseline: 13 ms, hips and chest turned together).
+  for(let s=-40;s<=40;s++){let e=0,n=0;for(let i=0;i<vp.length;i++){const j=i+s;if(j<0||j>=vc.length)continue;e+=(vc[j]-vp[i])**2;n++;}e/=n;if(e<err){err=e;best=s;}}
+  assert.ok(best/hz>=.04,`cut ${index}: chest trails the pelvis by ${(best/hz*1000).toFixed(0)} ms`);
+ }
+});
+test('greatsword blade tip follows smooth arcs: no velocity kinks (per-frame velocity jumps) from windup to recovery',()=>{
+ for(const index of [1,2]){
+  const jerk=[120,240].map(hz=>{const tips:T.Vector3[]=[];greatswordCut(index,hz,(r,age,p)=>{if(age>=.1)tips.push(weaponTip(r,p).sub(r.group.position));});
+   const v=tips.slice(1).map((x,i)=>x.clone().sub(tips[i]).multiplyScalar(hz)),raw=v.slice(1).map((x,i)=>x.distanceTo(v[i])*hz),acc=raw.slice(2).map((a,i)=>(a+raw[i]+raw[i+1])/3);
+   return Math.max(...acc.slice(1).map((a,i)=>Math.abs(a-acc[i])));});
+  // A velocity kink is an acceleration spike that grows with the rate (also over a 3-frame average), so its frame-to-frame jump
+  // roughly doubles from 120 to 240 Hz (baseline: the phase speed stepped at swingUntil and every key reversal stopped dead); a smooth arc's
+  // stays level.
+  assert.ok(jerk[1]<=1.3*jerk[0],`cut ${index}: acceleration jumps ${jerk[0].toFixed(0)} (120 Hz) vs ${jerk[1].toFixed(0)} (240 Hz)`);
+ }
+});
+
+// ---- Combo-ready holds ----
+const COMBO_BONES=['body','pelvis','spine','chest','head','leftArm','rightArm','leftElbow','rightElbow','leftHand','rightHand','leftLeg','rightLeg','leftKnee','rightKnee','weapon','offWeapon'] as const;
+/** Upper body: in the hold the legs belong to the ground pass (the feet are back on the guard stance). */
+const UPPER=COMBO_BONES.filter(b=>!/Leg|Knee/.test(b));
+const attackAt=(spec:string,at:number,index:number)=>{const w=WEAPONS[spec as 'sword'];return {attackIndex:index,lastAttack:at,swingAt:at+w.windup,swingUntil:at+w.windup+.16,attackCommitment:attackCommitment(spec as PlayerView['spec'],at,w.windup,.16,1,w.windup+.16),attackRate:1};};
+const rest=(r:Rig,from:Rig)=>{const a:T.Object3D[]=[],b:T.Object3D[]=[];from.group.traverse(o=>a.push(o));r.group.traverse(o=>b.push(o));a.forEach((o,i)=>{b[i].position.copy(o.position);b[i].quaternion.copy(o.quaternion);});};
+test('combo-ready: each cut ends in exactly the pose the next cut starts from',()=>{
+ for(const spec of ['greatsword','sword','daggers','shield'])for(let index=1;index<=4;index++){
+  const base={...probeBase(spec),grounded:true,vel:{x:0,y:0,z:0},hitStunUntil:-1e9} as PlayerView,w=WEAPONS[spec as 'sword'],end=1+w.windup+.16+meleeRecovery(spec as PlayerView['spec']),t=end+.4;
+  const p={...base,...attackAt(spec,1,index)} as PlayerView,next={...base,...attackAt(spec,t,index+1)} as PlayerView,fresh=probeRig(spec);
+  // The hold of cut N (at full weight) on one rig; on another, the same hold recorded, then cut N+1's first frame from rest.
+  const held=probeRig(spec),entered=probeRig(spec);
+  comboReadyMotion(held,p,attackPose(p,t-.01),t-.01,0);comboReadyMotion(entered,p,attackPose(p,t-.01),t-.01,0);rest(entered,fresh);
+  primaryMeleeMotion(entered,next,attackPose(next,t));
+  for(const r of [held,entered])r.group.updateMatrixWorld(true);
+  let worst=0,at='';for(const b of UPPER){const d=held[b].getWorldQuaternion(new T.Quaternion()).angleTo(entered[b].getWorldQuaternion(new T.Quaternion()));if(d>worst){worst=d;at=b;}}
+  assert.ok(worst<.035,`${spec} ${index} -> ${index+1}: ${at} differs by ${(worst*180/Math.PI).toFixed(1)} deg between the hold and the next cut's start`);
+  assert.ok(weaponTip(held,p).distanceTo(weaponTip(entered,p))<.03,`${spec} ${index} -> ${index+1}: blade tip`);
+  // The hold is a chamber, not the guard: the cut ends away from where a fresh cut starts.
+  const guard=probeRig(spec);primaryMeleeMotion(guard,next,attackPose(next,t));guard.group.updateMatrixWorld(true);
+  if(spec==='greatsword')assert.ok(weaponTip(guard,p).distanceTo(weaponTip(held,p))>.15,`${spec} ${index}: the hold is chambered for the next cut`);
+ }
+});
+/** Largest per-frame world rotation (deg) of the combo bones over [from,to] at `hz`, for a view timeline. */
+function steps(spec:string,hz:number,view:(t:number,b:PlayerView)=>PlayerView,from:number,to:number){
+ const base={...probeBase(spec),grounded:true,vel:{x:0,y:0,z:0},hitStunUntil:-1e9,animationTime:undefined} as PlayerView,r=probeRig(spec);let prev:T.Quaternion[]|undefined,max=0;
+ for(let i=0;;i++){const t=from-1+i/hz;if(t>to)break;r.group.position.set(0,0,0);r.group.rotation.y=0;animateCharacter(r,view(t,base),t,1/hz);r.group.updateMatrixWorld(true);
+  const q=COMBO_BONES.map(b=>r[b].getWorldQuaternion(new T.Quaternion()));if(prev&&t>=from)q.forEach((x,k)=>{max=Math.max(max,x.angleTo(prev![k])*180/Math.PI);});prev=q;}
+ return max;
+}
+test('combo-ready: the next cut, a roll and the timeout all leave the hold without single-frame snaps',()=>{
+ for(const spec of ['greatsword','sword','daggers','shield']){
+  const w=WEAPONS[spec as 'sword'],end=1+w.windup+.16+meleeRecovery(spec as PlayerView['spec']),t2=end+.5,R={at:end+.4,until:end+.9,invulnerableAt:end+.48,invulnerableUntil:end+.7,direction:{x:0,y:0,z:1},distance:3.2};
+  const cases:[string,(t:number,b:PlayerView)=>PlayerView,number,number,number][]=[
+   ['next cut',(t,b)=>({...b,...(t<t2?attackAt(spec,1,1):attackAt(spec,t2,2))}) as PlayerView,t2-.1,t2+.1,24],
+   ['roll',(t,b)=>({...b,...attackAt(spec,1,1),roll:t>=R.at?R:undefined}) as PlayerView,R.at-.05,R.at+.1,40],
+   ['after the roll',(t,b)=>({...b,...attackAt(spec,1,1),roll:t>=R.at?R:undefined}) as PlayerView,R.until-.03,R.until+.3,20],
+   ['timeout',(t,b)=>({...b,...attackAt(spec,1,1)}) as PlayerView,end+2.3,end+3.4,5]];
+  for(const [name,view,from,to,bound] of cases){
+   const [s60,s120]=[60,120].map(hz=>steps(spec,hz,view,from,to));
+   // A snap keeps its size per frame as the rate doubles; continuous motion halves.
+   assert.ok(s120<=s60*.7+.3,`${spec} ${name}: ${s60.toFixed(1)} deg/frame at 60 Hz vs ${s120.toFixed(1)} at 120 Hz`);
+   assert.ok(s120<=bound,`${spec} ${name}: ${s120.toFixed(1)} deg per 120 Hz frame`);
+  }
  }
 });
