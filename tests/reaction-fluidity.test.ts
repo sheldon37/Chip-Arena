@@ -98,3 +98,28 @@ test('knockdown poses: flat on the floor, the roll keeps limbs and blade above t
   }
  }
 });
+
+const torsoHit=(at:number,until:number,extra:Record<string,unknown>={})=>({kind:'hit' as const,at,until,yaw:0,direction:{x:0,y:0,z:-1},point:{x:.12,y:.1,z:.3},zone:'torso' as const,turn:.35,strength:.85,...extra});
+
+test('hit reactions start fast, follow through past neutral, settle by the stun end and keep blades from flipping up',()=>{
+ for(const [spec,rise] of [['sword',.65],['greatsword',.4],['daggers',.6]] as const){
+  const base=probeBase(spec),r=probeRig(spec),h=torsoHit(T0,T0+.34),tips:number[]=[],lean:number[]=[];let rest=0;
+  for(let t=T0-.5;t<T0+.34;t+=1/120){const p={...animationPreviewPlayer(base,'idle',t),...(t>=T0?{hitReaction:h,hitStunUntil:h.until}:{hitStunUntil:-1e9})} as PlayerView;animateCharacter(r,p,t,1/120);r.group.updateMatrixWorld(true);
+   if(t<T0)rest=weaponTip(r,p).y;else{tips.push(weaponTip(r,p).y);lean.push(r.body.rotation.x);}}
+  // Baseline: the stunned arms slerped to a canned splay and the sword tip rose about 1.05 m within 80 ms.
+  assert.ok(Math.max(...tips)-rest<rise,`${spec} blade tip rises ${(Math.max(...tips)-rest).toFixed(2)} m`);
+  const peak=Math.min(...lean),early=lean[2];assert.ok(early<.3*peak,`${spec}: the impact moves the torso at once (${early.toFixed(3)} vs peak ${peak.toFixed(3)})`);
+  assert.ok(Math.max(...lean.slice(lean.indexOf(peak)))>.02,`${spec}: the torso follows through past neutral`);assert.ok(Math.abs(lean[lean.length-1])<.01,`${spec} settles`);
+  const probe=probeRates({spec,mode:'idle',from:T0-.1,to:T0+.5,patch:t=>t>=T0?{hitReaction:h,hitStunUntil:h.until}:{}},[60])[60];assert.ok(probe.maxJointStepDeg<=20,describeProbe(probe));
+ }
+});
+
+test('a greatsword parry keeps both hands on the grip; a stun without a hitReaction uses the same smooth impulse',()=>{
+ const base=probeBase('greatsword'),h={...torsoHit(T0,T0+.5),kind:'parry' as const,turn:-.35,strength:1},r=probeRig('greatsword');
+ for(const f of [.25,.55]){const p={...animationPreviewPlayer(base,'idle',T0+.5*f),hitReaction:h,hitStunUntil:h.until} as PlayerView;animateCharacter(r,p,T0+.5*f,1/60);r.group.updateMatrixWorld(true);
+  assert.ok(r.weapon.getObjectByName('support-grip')!.getWorldPosition(new T.Vector3()).distanceTo(r.leftHand.getWorldPosition(new T.Vector3()))<.05,'two-hand parry at '+f);}
+ const flinch=probeRates({spec:'sword',mode:'idle',from:T0-.1,to:T0+.5,patch:t=>t>=T0?{hitStunUntil:T0+.3}:{}},[60,120]);
+ assert.ok(flinch[60].maxJointStepDeg<=20,describeProbe(flinch[60]));assert.ok(flinch[120].maxJointStepDeg<=flinch[60].maxJointStepDeg*.65,describeProbe(flinch[120]));
+ const s=probeRig('sword'),sb=probeBase('sword');let seen=0;for(let t=T0-.2;t<T0+.3;t+=1/60){animateCharacter(s,{...animationPreviewPlayer(sb,'idle',t),hitStunUntil:t>=T0?T0+.3:-1e9} as PlayerView,t,1/60);if(t>=T0+.08&&t<T0+.12)seen=Math.max(seen,Math.abs(s.body.rotation.x));}
+ assert.ok(seen>.08,'the fallback flinch visibly recoils');
+});
