@@ -27,7 +27,7 @@ export function cycleLength(speed:number){const g=GAIT;return speed<=g.runSpeed?
 /** Per-foot gait state in rig-group space: x/y/z/yaw/pitch/toe is the live foot, f* the lift-off point, l* the landing
  * target and s* the last solved ankle target (what the ground pass re-solves to). */
 type Foot={x:number;y:number;z:number;yaw:number;pitch:number;toe:number;planted:boolean;fx:number;fy:number;fz:number;fyaw:number;uLift:number;lx:number;lz:number;lyaw:number;sx:number;sy:number;sz:number;syaw:number;spitch:number};
-type Travel={time:number;forward:number;strafe:number;lean:number;bank:number;vx:number;vz:number;mvx:number;mvz:number;yaw:number;feet:[Foot,Foot];hipYaw:number;legYaw:number;legYawV:number;settling:boolean;airAt:number;airVy:number;airLead:number;onGround:boolean;phaseOffset:number;landAt:number;landDepth:number;dashLean:number;phase:number;armPrev:[number,number];hand:[number,number,number,number];legQ:T.Quaternion[];hips:[T.Vector3,T.Vector3];solved:boolean};
+type Travel={time:number;forward:number;strafe:number;lean:number;bank:number;vx:number;vz:number;mvx:number;mvz:number;yaw:number;feet:[Foot,Foot];hipYaw:number;legYaw:number;legYawV:number;settling:boolean;airAt:number;airVy:number;airLead:number;onGround:boolean;phaseOffset:number;landAt:number;landDepth:number;dashLean:number;phase:number;armPrev:[number,number];hand:[number,number,number,number];legQ:T.Quaternion[];hips:[T.Vector3,T.Vector3];solvedBody:[T.Vector3,T.Quaternion,T.Quaternion];solved:boolean};
 const travelState=new WeakMap<CharacterRig,Travel>();
 const newFoot=(x:number,z:number,yaw:number):Foot=>({x,y:FLOOR,z,yaw,pitch:0,toe:0,planted:true,fx:x,fy:FLOOR,fz:z,fyaw:yaw,uLift:0,lx:x,lz:z,lyaw:yaw,sx:x,sy:FLOOR,sz:z,syaw:yaw,spitch:0});
 /** Idle stance ankle target (group space) for the left/right foot from stances.ts. */
@@ -53,12 +53,21 @@ function solveLeg(r:CharacterRig,left:boolean,target:T.Vector3,yaw:number,pitch:
  if(orient)_qf.copy(orient);else _qf.setFromEuler(_e.set(pitch,yaw,0,'YXZ'));
  ankle.quaternion.copy(_qh).multiply(knee.quaternion).invert().multiply(_qf);if(!orient)toeJ.rotation.set(toe,0,0);
 }
-const _keep=[new T.Quaternion(),new T.Quaternion(),new T.Quaternion()];
+const _keep=[new T.Quaternion(),new T.Quaternion(),new T.Quaternion()],_kneeNow=new T.Vector3();
 /** Blend a leg toward a planted rig-group ankle target (knee-hinged IK, flat foot with the given heading) by weight. */
-export function plantLeg(r:CharacterRig,left:boolean,target:T.Vector3,yaw:number,weight:number){
- if(weight<=1e-4)return;const [hip,knee,ankle]=legBones(r,left);_keep[0].copy(hip.quaternion);_keep[1].copy(knee.quaternion);_keep[2].copy(ankle.quaternion);
- solveLeg(r,left,target,yaw,0,0);if(weight>=1)return;hip.quaternion.copy(_keep[0].slerp(hip.quaternion,weight));knee.quaternion.copy(_keep[1].slerp(knee.quaternion,weight));ankle.quaternion.copy(_keep[2].slerp(ankle.quaternion,weight));
+export function plantLeg(r:CharacterRig,left:boolean,target:T.Vector3,yaw:number,weight:number,footWeight=weight){
+ if(weight<=1e-4)return;const [hip,knee,ankle]=legBones(r,left);_keep[0].copy(hip.quaternion);_keep[1].copy(knee.quaternion);
+ // The knee keeps bending the way it already points and only turns toward the foot heading as footWeight rises.
+ readAnkle(r,left,_capK[0],_keep[2],_kneeNow);pelvisFrame(r);_hip.copy(hip.position).applyQuaternion(_pq).add(_pp);
+ _fwd.set(0,0,1).applyQuaternion(_pq);_pole.set(Math.sin(yaw),0,Math.cos(yaw)).multiplyScalar(.7).addScaledVector(_fwd,.3).normalize();
+ _kneeNow.sub(_hip).normalize().lerp(_pole,footWeight).add(_hip);
+ solveLeg(r,left,target,yaw,0,0,undefined,_kneeNow);
+ // The foot keeps its previous rig-group orientation until footWeight takes it to flat (so it never flips in one frame).
+ if(footWeight<1){_qf.copy(_keep[2]).slerp(_qi.setFromEuler(_e.set(0,yaw,0,'YXZ')),footWeight);pelvisFrame(r);ankle.quaternion.copy(_pq).multiply(hip.quaternion).multiply(knee.quaternion).invert().multiply(_qf);}
+ if(weight>=1)return;hip.quaternion.copy(_keep[0].slerp(hip.quaternion,weight));knee.quaternion.copy(_keep[1].slerp(knee.quaternion,weight));
 }
+/** The ankle's rig-group position from the live joints. */
+export function ankleInGroup(r:CharacterRig,left:boolean,out:T.Vector3){readAnkle(r,left,out,_keep[0]);return out;}
 /** Current ankle position, foot orientation and (optionally) knee position in rig-group space, read from the joints. */
 function readAnkle(r:CharacterRig,left:boolean,out:T.Vector3,q:T.Quaternion,kneeOut?:T.Vector3){
  const [hip,knee,ankle]=legBones(r,left);pelvisFrame(r);q.copy(_pq).multiply(hip.quaternion);out.copy(hip.position).applyQuaternion(_pq).add(_pp);
@@ -98,7 +107,7 @@ function swingArm(r:CharacterRig,s:Travel,left:boolean,phase:number,run:number,a
 export function locomotion(r:CharacterRig,p:PlayerView,time:number,dt:number,planted=false){
  dt=clamp(dt,0,.05);const fp=isFirstPersonRig(r),yawNow=r.group.rotation.y;
  let s=travelState.get(r);
- if(!s||time<s.time-1e-6||time-s.time>.35){const l=idleFoot(p.spec,true),rt=idleFoot(p.spec,false);s={time,forward:1,strafe:0,lean:0,bank:0,vx:0,vz:0,mvx:0,mvz:0,yaw:yawNow,feet:[newFoot(l.x,l.z,l.yaw),newFoot(rt.x,rt.z,rt.yaw)],hipYaw:0,legYaw:0,legYawV:0,settling:false,airAt:time,airVy:0,airLead:0,phaseOffset:0,onGround:p.grounded&&!(p.dashTime&&p.dashTime>0),landAt:-1e9,landDepth:0,dashLean:0,phase:p.id?hashPhase(p.id):0,armPrev:[0,0],hand:[0,0,0,0],legQ:Array.from({length:6},()=>new T.Quaternion()),hips:[new T.Vector3(.13,-.32,0),new T.Vector3(-.13,-.32,0)],solved:false};travelState.set(r,s);r.wasGrounded=p.grounded;}
+ if(!s||time<s.time-1e-6||time-s.time>.35){const l=idleFoot(p.spec,true),rt=idleFoot(p.spec,false);s={time,forward:1,strafe:0,lean:0,bank:0,vx:0,vz:0,mvx:0,mvz:0,yaw:yawNow,feet:[newFoot(l.x,l.z,l.yaw),newFoot(rt.x,rt.z,rt.yaw)],hipYaw:0,legYaw:0,legYawV:0,settling:false,airAt:time,airVy:0,airLead:0,phaseOffset:0,onGround:p.grounded&&!(p.dashTime&&p.dashTime>0),landAt:-1e9,landDepth:0,dashLean:0,phase:p.id?hashPhase(p.id):0,armPrev:[0,0],hand:[0,0,0,0],legQ:Array.from({length:6},()=>new T.Quaternion()),hips:[new T.Vector3(.13,-.32,0),new T.Vector3(-.13,-.32,0)],solvedBody:[new T.Vector3(),new T.Quaternion(),new T.Quaternion()],solved:false};travelState.set(r,s);r.wasGrounded=p.grounded;}
  const st=s;st.time=time;
  // Planted feet and the hips' yaw stay fixed in the world when the rig group turns (a near-instant flip re-seats them).
  const dyaw=wrapAngle(yawNow-st.yaw);st.yaw=yawNow;
@@ -122,7 +131,7 @@ export function locomotion(r:CharacterRig,p:PlayerView,time:number,dt:number,pla
  const dip=st.landDepth*landingCurve(time-st.landAt);r.land=dip;
  // Cadence: stride length grows with speed, so a planted ankle's travel matches the ground (see GAIT).
  const run=r.motion,weight=Math.min(run,1),back=smoothMotion((-st.forward-.3)/.4)*clamp(speed/1.5,0,1),side=Math.abs(st.strafe)*clamp(speed/1.5,0,1);
- const D=cycleLength(speed)*lerp(1,.8,back),S=GAIT.stance*lerp(1,.8,back),contact=clamp(S/D,GAIT.contactMin,GAIT.contactMax);
+ const D=cycleLength(speed)*lerp(1,.8,back),S=GAIT.stance*lerp(1,.7,back),contact=clamp(S/D,GAIT.contactMin,GAIT.contactMax);
  let rate=onGround&&speed>.05?Math.min(speed/D,GAIT.maxCadence):0;if(st.settling&&onGround&&!fp)rate=Math.max(rate,GAIT.settleCadence);if(planted)rate=0;
  let prevStride=r.stride;r.stride+=TAU*rate*dt;st.phaseOffset*=Math.exp(-dt*10);
  const sprint=smoothMotion((run-.32)/.65)*(1-back),moving=clamp(speed/2,0,1),heel=.1*weight,toeOff=(.22+.3*sprint)*moving;
@@ -141,7 +150,8 @@ export function locomotion(r:CharacterRig,p:PlayerView,time:number,dt:number,pla
   // Landing target: the stance (idle) or the running track turned with the hips, plus half a stance along the velocity.
   const ch=Math.cos(hipTravel),shy=Math.sin(hipTravel),nx=sx*lerp(.125,.1,sprint),land=rate>1e-3&&speed>1e-3?(speed*contact/(2*rate)-GAIT.stanceBias*sprint)/speed:0;
   f.lx=lerp(idle[i].x,nx*ch,moving)+vx*land;f.lz=lerp(idle[i].z,-nx*shy,moving)+vz*land;
-  {const h=st.hips[i],dy=h.y-FLOOR,reach=Math.sqrt(Math.max(.01,LAND_REACH*LAND_REACH-dy*dy)),ex=f.lx-h.x,ez=f.lz-h.z,e=Math.hypot(ex,ez);if(e>reach){f.lx=h.x+ex*reach/e;f.lz=h.z+ez*reach/e;}}f.lyaw=lerp(idle[i].yaw,hipTravel+sx*.05,moving);
+  // Landing stays within reach of the hip (a nominal running hip height keeps the clamp steady frame to frame).
+  {const h=st.hips[i],reach=Math.sqrt(LAND_REACH*LAND_REACH-.44*.44),ex=f.lx-h.x,ez=f.lz-h.z,e=Math.hypot(ex,ez);if(e>reach){f.lx=h.x+ex*reach/e;f.lz=h.z+ez*reach/e;}}f.lyaw=lerp(idle[i].yaw,hipTravel+sx*.05,moving);
   // Settled: the planted foot matches its stance target rotated with the feet (turns inside the dead zone hold still).
   const c=Math.cos(turn),sn=Math.sin(turn),ix=idle[i].x*c+idle[i].z*sn,iz=-idle[i].x*sn+idle[i].z*c;
   const settled=f.planted&&Math.hypot(f.x-ix,f.z-iz)<.05&&Math.abs(wrapAngle(f.yaw-idle[i].yaw))<GAIT.turnDeadZone;
@@ -163,7 +173,8 @@ export function locomotion(r:CharacterRig,p:PlayerView,time:number,dt:number,pla
     // Heel fold behind the hip, then knee drive and reach (sprint); a low arc when walking, backpedalling or stepping in place.
     const fold=lerp(1,.45,side),start=Math.max(0,f.fy-FLOOR),sprintH=sw<.84?poseCurve([0,.12,.3,.56,.84],[start,start+.09*fold,.24*fold,.19*fold,.07],sw):.07*((1-sw)/.16)**1.3;
     const walkH=start*(1-sw)*(1-sw)+4*sw*(1-sw)*lerp(GAIT.settleLift,.085*lerp(1,.6,back),moving);
-    f.y=FLOOR+lerp(walkH,sprintH,sprint);f.yaw=f.fyaw+wrapAngle(f.lyaw-f.fyaw)*smoothMotion(sw);
+    // A crisp contact: the swinging foot clears the floor until the last 2% of the swing instead of skimming along it.
+    f.y=FLOOR+Math.max(lerp(walkH,sprintH,sprint),.012*clamp((1-sw)*50,0,1)*clamp(speed/1.5,0,1));f.yaw=f.fyaw+wrapAngle(f.lyaw-f.fyaw)*smoothMotion(sw);
     f.pitch=poseCurve([0,.3,.72,1],[toeOff,toeOff+.12*sprint,.05,lerp(-heel,.22*weight,back)],sw)*clamp(speed/1.5+.001,0,1);f.toe=-Math.max(0,toeOff)*.85*(1-smoothMotion(sw/.35));
     if(sw>=1){const since=wrapped&&rate>1e-3?u/rate:0;f.planted=true;f.x=f.lx-vx*since;f.z=f.lz-vz*since;f.y=FLOOR;f.yaw=f.lyaw;}
    }
@@ -178,7 +189,9 @@ export function locomotion(r:CharacterRig,p:PlayerView,time:number,dt:number,pla
  const moveW=fp?0:weight,bob=-(.008+.010*sprint)*moveW*Math.cos(2*ph2-TAU*contact),sway=Math.cos(ph2-Math.PI*contact)*.012*(1-sprint*.4)*moveW;
  const lean=fp?0:GAIT.runLean*weight*Math.max(0,st.forward)*(1-back)+.05*weight*back+st.lean+st.dashLean+dip*1.1;
  const vy=p.grounded?0:p.vel.y,airAge=time-st.airAt,push=air*Math.max(smoothMotion((vy-3)/3),1-smoothMotion(airAge/.12),st.dashLean/.15),descend=air*smoothMotion((-vy-2)/3),apex=Math.max(0,air-push-descend);
- r.body.position.set(fp?0:sway+shift*.018,-.025-GAIT.runCrouch*moveW+(stance.crouch-stance.kneeSoft*.08)*idleW+bob+breath*.004-dip,fp?0:.295*Math.sin(lean));
+ // Rise out of a dodge roll's exit crouch (dodge-roll-motion ends at -.08) over ~.22 s after roll.until.
+ const sinceRoll=p.roll&&time>=p.roll.until?time-p.roll.until:1,postRoll=fp?0:.08*(1-smoothMotion(sinceRoll/.22));
+ r.body.position.set(fp?0:sway+shift*.018,-.025-GAIT.runCrouch*moveW+(stance.crouch-stance.kneeSoft*.08)*idleW+bob+breath*.004-dip-postRoll,fp?0:.295*Math.sin(lean));
  r.body.rotation.set(lean,0,fp?0:-st.strafe*weight*.08+st.bank);
  const twist=fp?0:weight*(1-back*.5),gait=Math.sin(ph2),pelvisRoll=Math.cos(ph2-Math.PI*contact)*.05*moveW+shift*.035;
  r.pelvis.rotation.set(0,gait*.14*twist,pelvisRoll);
@@ -205,7 +218,7 @@ export function locomotion(r:CharacterRig,p:PlayerView,time:number,dt:number,pla
   }
   solveLeg(r,left,_target,yaw,pitch,toe);st.hips[i].copy(_hip);f.sx=_target.x;f.sy=_target.y;f.sz=_target.z;f.syaw=yaw;f.spitch=pitch;
  }
- [r.leftLeg,r.leftKnee,r.leftFoot,r.rightLeg,r.rightKnee,r.rightFoot].forEach((b,k)=>st.legQ[k].copy(b.quaternion));st.solved=true;
+ [r.leftLeg,r.leftKnee,r.leftFoot,r.rightLeg,r.rightKnee,r.rightFoot].forEach((b,k)=>st.legQ[k].copy(b.quaternion));st.solvedBody[0].copy(r.body.position);st.solvedBody[1].copy(r.body.quaternion);st.solvedBody[2].copy(r.pelvis.quaternion);st.solved=true;
  // Arms: pump opposite the legs (reduced for the first-person view model and backpedal), rise on push-off, reach on descent.
  const armAmp=(fp?.15:1)*lerp(1,.4,back);
  r.leftShoulder.rotation.set(-breath*.009,gait*.045*weight,.03+breath*.006);r.rightShoulder.rotation.set(-breath*.009,-gait*.045*weight,-.03-breath*.006);
@@ -234,6 +247,8 @@ export function groundPass(r:CharacterRig,p:PlayerView,time:number,dt:number){
  // Layer-placed legs are always re-solved (never toggled): same ankle, foot orientation and knee direction, floor-clamped,
  // with the knee as a clean hinge, so the hip turn above cannot move them and no frame flips the twist convention.
  if(changed){for(let i=0;i<2;i++){const c=_cap[i];c.y=Math.max(c.y,FLOOR);solveLeg(r,i===0,c,0,0,0,_capQ[i],_capK[i]);}syncFeet(r,s,p,true);return;}
+ // Untouched legs under an unmoved body and pelvis already sit on their targets.
+ if(Math.abs(L)<=1e-5&&r.body.position.equals(s.solvedBody[0])&&r.body.quaternion.equals(s.solvedBody[1])&&r.pelvis.quaternion.equals(s.solvedBody[2]))return;
  for(let i=0;i<2;i++){const f=s.feet[i];_target.set(f.sx,f.sy,f.sz);solveLeg(r,i===0,_target,f.syaw,f.spitch,f.toe);}
 }
 /** The gait state follows ankles an action layer placed, so the gait resumes from them without a pop. */
