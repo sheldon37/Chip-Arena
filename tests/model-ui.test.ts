@@ -7,6 +7,8 @@ import {WEAPONS} from '../src/shared/content.js';
 import {createCharacterRig,recolorCharacterRig,settleJointCovers,setRigDetail,RIG_LENGTHS} from '../src/client/character-rig.js';
 import {buildWeapon,weaponModifiers,enchantWeapon,BLADE_LENGTH} from '../src/client/weapon-visuals.js';
 import {animateCharacter} from '../src/client/character-animation.js';
+import {animateLobbyPose} from '../src/client/lobby-poses.js';
+import {framePortrait} from '../src/client/menu-portraits.js';
 import {PROBE_RATES,probeBase,probeMotion,probeRig} from './helpers/motion-probe.js';
 
 await initPhysics();
@@ -114,4 +116,26 @@ test('UI bug fixes: special card art is not flattened, help text is small print,
  assert.ok(!/\.circuit-chip(:hover)?\{background:[^}]*!important/.test(css),'no !important card background');assert.ok(!/\.circuit-chip p\{[^}]*!important/.test(css));
  assert.match(css,/\.panel \.fine,\.panel p\.fine\{font:13px/);assert.match(css,/\.menus \.panel\{max-height:calc\(100dvh - 158px\)/);assert.ok(!css.includes('.menus .panel{max-height:90vh'));
  assert.ok(!/'[^'`]*\$\{this\.state[^'`]*'/.test(source('player-board.ts')),'the empty state is a template literal');
+});
+
+test('lobby hero stances: feet planted, weapon clear of the floor, two-hand grips held, and a pure function of time',()=>{
+ const joints=['body','pelvis','spine','chest','neck','head','leftArm','rightArm','leftElbow','rightElbow','leftHand','rightHand','leftLeg','rightLeg','leftKnee','rightKnee','leftFoot','rightFoot'] as const;
+ for(const spec of ['greatsword','sword','daggers','shield','pistol','rifle','machinegun','fire','water']){
+  const p={...probeBase(spec)},live=probeRig(spec),fresh=probeRig(spec);
+  for(let n=0;n<=90;n++)animateLobbyPose(live,p,n/30,1/30,'weapon');animateLobbyPose(fresh,p,3,1/30,'weapon');
+  for(const j of joints)assert.ok(live[j].quaternion.angleTo(fresh[j].quaternion)<1e-6,spec+' '+j+' depends only on time');
+  live.group.updateMatrixWorld(true);const y=(o:T.Object3D)=>live.group.worldToLocal(o.getWorldPosition(new T.Vector3())).y;
+  assert.ok(Math.abs(y(live.rightFoot)+.795)<.006,spec+' weight foot planted '+y(live.rightFoot).toFixed(3));assert.ok(y(live.leftFoot)>=-.796&&y(live.leftFoot)<-.74,spec+' free foot rests on its toes');
+  const knees=[live.leftKnee.rotation.x,live.rightKnee.rotation.x];assert.ok(Math.min(...knees)>-.01&&Math.max(...knees)<.75,spec+' relaxed standing knees '+knees.map(k=>k.toFixed(2)));
+  assert.ok(Math.abs(knees[0]-knees[1])>.08,spec+' contrapposto: one knee relaxed');
+  const box=new T.Box3();live.weapon.traverseVisible(o=>{if(o instanceof T.Mesh)box.expandByObject(o,false);});const floor=live.group.worldToLocal(box.min.clone()).y;assert.ok(live.weapon.visible&&floor>-.88,spec+' weapon stays above the floor '+floor.toFixed(3));
+  const grip=live.weapon.getObjectByName('support-grip');if(['rifle','machinegun'].includes(spec))assert.ok(grip!.getWorldPosition(new T.Vector3()).distanceTo(live.leftHand.getWorldPosition(new T.Vector3()))<.03,spec+' both hands on the weapon');
+ }
+});
+
+test('portrait framing grows with a tall hat and keeps the front camera',()=>{
+ const bare=new T.OrthographicCamera(),tall=new T.OrthographicCamera();framePortrait(bare,'weapon',.8);framePortrait(tall,'weapon',.8,2.45);
+ for(const c of [bare,tall]){assert.equal(c.position.x,0);assert.ok(c.position.z>0&&c.right>=.95);}
+ const top=(c:T.OrthographicCamera)=>{const d=new T.Vector3();c.getWorldDirection(d);return c.position.y+d.y*(c.position.z/Math.abs(d.z))+c.top;};
+ assert.ok(top(tall)>2.45&&top(bare)>1.72,'hat and head stay inside the card');assert.ok(bare.top<1.28,'a bare pilot fills more of the card than the fixed framing');
 });
