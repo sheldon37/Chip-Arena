@@ -62,10 +62,10 @@ export function primaryMeleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<type
  const twistArr=heavy?[0,-.22,-.48,-.62,-.45,.40,.50,.55,0]:shield?[0,.14,.28,.06,-.26,-.36,-.36,-.20,0]:dagger?[0,-.10,-.20,-.16,.06,.22,.26,.18,0]:[0,-.18,-.38,-.20,.24,.40,.44,.16,0];
  const turnScale=spin?1:sign,twistScale=(overhead?.5:1)*sign;
  const turn=c(turnArr)*turnScale,twist=c(twistArr)*twistScale;
- const crouch=c(heavy?[0,-.12,-.30,-.37,-.33,-.25,-.19,-.13,0]:overhead?[0,-.12,.06,0,-.24,-.30,-.28,-.14,0]:shield?[0,-.12,-.20,-.18,-.14,-.10,-.08,-.05,0]:low?[0,-.19,-.28,-.25,-.34,-.30,-.22,-.10,0]:[0,-.10,-.16,-.13,-.22,-.26,-.21,-.09,0]);
+ const crouch=c(heavy?[0,-.12,-.30,-.37,-.33,-.25,-.19,-.13,0]:overhead?[0,-.14,.10,-.06,-.34,-.42,-.40,-.22,0]:shield?[0,-.12,-.20,-.18,-.14,-.10,-.08,-.05,0]:low?[0,-.19,-.28,-.25,-.34,-.30,-.22,-.10,0]:[0,-.10,-.16,-.13,-.22,-.26,-.21,-.09,0]);
  r.body.position.x+=c(heavy?[0,-.05,-.10,-.08,.07,.11,.10,.06,0]:shield?[0,.03,.05,.01,-.05,-.08,-.07,-.03,0]:[0,-.035,-.07,-.02,.065,.09,.08,.035,0])*sign;
  r.body.position.z+=c(heavy?[0,-.06,-.12,-.09,.13,.18,.15,.08,0]:[0,-.05,-.08,0,.14,.17,.15,.07,0]);r.body.position.y+=crouch;
- r.body.rotation.y+=turn;r.body.rotation.x+=c(heavy?[0,-.09,.22,.30,.28,.20,.13,.08,0]:shield?[0,.03,.07,.05,.06,.05,.04,.02,0]:overhead?[0,-.15,-.26,-.14,.34,.40,.34,.16,0]:[0,-.07,-.15,.04,.20,.26,.22,.10,0]);
+ r.body.rotation.y+=turn;r.body.rotation.x+=c(heavy?[0,-.09,.22,.30,.28,.20,.13,.08,0]:shield?[0,.03,.07,.05,.06,.05,.04,.02,0]:overhead?[0,-.15,-.28,-.10,.38,.48,.42,.18,0]:[0,-.07,-.15,.04,.20,.26,.22,.10,0]);
  r.body.rotation.z+=c(heavy?[0,-.10,-.20,-.24,.16,.22,.18,.08,0]:shield?[0,.04,.07,.02,-.07,-.10,-.08,-.03,0]:[0,-.05,-.11,-.06,.12,.16,.13,.05,0])*sign;
  r.pelvis.rotation.y+=twist*.5;r.spine.rotation.y+=twist*.65;r.chest.rotation.y+=twist*.55;
  r.spine.rotation.x+=c(heavy?[0,-.10,-.16,-.04,.14,.18,.10,.04,0]:overhead?[0,-.03,-.12,-.08,.10,.18,.14,.05,0]:[0,-.025,-.08,-.03,.09,.13,.10,.04,0]);
@@ -107,7 +107,9 @@ const mix=(a:[number,number,number],b:[number,number,number]):[number,number,num
 export const MELEE_PHRASES={
  swordForehand:{x:[-.62,-.60,-.52,-.16,.04,.18,-.04],y:[.16,.28,.16,.02,-.08,-.18,-.22],z:[.10,-.16,.22,.44,.42,.28,.28],rx:[-.30,-.50,-.20,.16,.22,.20,.25],ry:[-.75,-1.10,-.55,.30,.68,1.10,.45],rz:[-.20,-.30,-.10,.20,.30,.34,.12]},
  swordBackhand:{x:[-.04,.08,-.06,-.28,-.42,-.52,-.36],y:[.16,.24,.14,.02,-.06,-.12,-.18],z:[.18,.10,.26,.44,.34,.20,.22],rx:[-.35,-.50,-.20,.16,.22,.18,.20],ry:[.75,1.15,.55,-.35,-.75,-1.10,-.45],rz:[.20,.30,.10,-.18,-.28,-.32,-.10],pole:[PB,PB,PB,mix(PB,PR),PR,PR,PR]},
- swordOverhead:{x:[-.24,-.18,-.16,-.10,-.06,-.04,-.12],y:[.30,.58,.46,.04,-.12,-.26,-.18],z:[.20,-.06,.18,.42,.42,.36,.30],rx:[-1.1,-2.05,-1.65,-.7,-.50,-.36,-.2],ry:[-.1,-.1,0,.05,.1,.08,.02],rz:[-.18,-.32,-.08,.25,.38,.30,.14],pole:[PO,PO,PO,PO,PO,PO,PO]},
+ // Finisher (reference: a leaping overhead slam): the blade is raised behind the head as the body rises off the floor, then
+ // driven down through the front into a deep crouch with the tip planted at the floor, held, and drawn back up to the guard.
+ swordOverhead:{x:[-.24,-.18,-.16,-.10,-.06,-.05,-.12],y:[.30,.58,.46,.04,-.22,-.26,-.16],z:[.20,-.06,.18,.42,.40,.36,.30],rx:[-1.1,-2.05,-1.65,-.6,-.45,-.35,-.1],ry:[-.1,-.1,0,.05,.1,.08,.02],rz:[-.18,-.32,-.08,.25,.38,.30,.14],pole:[PO,PO,PO,PO,PO,PO,PO]},
  swordOff:{x:[.38,.42,.44,.30,.22,.24,.26],y:[-.05,-.06,-.02,.04,.10,.08,0],z:[-.02,.02,.06,.24,.26,.24,.20],rx:[-.4,-.4,-.35,-.3,-.35,-.5,-.75],ry:[.4,.6,.4,-.2,-.45,-.35,-.05],rz:[.3,.3,.3,.3,.3,.28,.26]},
  swordOffTucked:{x:[.34,.36,.36,.32,.26,.26,.26],y:[-.10,-.12,-.08,.02,.08,.04,-.02],z:[.04,.02,.04,.14,.22,.22,.18],rx:[-.4,-.4,-.35,-.3,-.35,-.5,-.75],ry:[.4,.6,.4,-.2,-.45,-.35,-.05],rz:[.3,.3,.3,.3,.3,.28,.26]},
  // Shield slam (reference: a backhand bash): the shield is drawn across the chest to the far side in the windup, whips out
@@ -164,7 +166,7 @@ function feet(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,phase:
  const lyaw=phase<2.45?lyaw0+(cyaw-lyaw0)*s:cyaw+(lyaw0-cyaw)*back,lheel=-.12*arc(su)+.22*arc(bu);
  // Rear: holds its floor spot while the root travels, drags up on its toes through the lunge and settles by 2.4.
  const qu=T.MathUtils.clamp((phase-.75)/1.65,0,1),q=step(qu);
- _rear.set(rx*(1+.18*arc(qu)),-.795+(heavy?.05:.065)*arc(qu),rf.z+full*q-travel);
+ _rear.set(rx*(1+.18*arc(qu)),-.795+(heavy?.05:.065)*arc(qu)+(overhead?.09*arc(T.MathUtils.clamp((phase-.45)/.85,0,1)):0),rf.z+full*q-travel);
  const ryaw=ryaw0-.35*sign*arc(qu),rheel=(heavy?.38:.32)*Math.sin(Math.PI*Math.min(1,qu*1.15));
  const lin=weight<1?_in[leadingLeft?0:1]:undefined,rin=weight<1?_in[leadingLeft?1:0]:undefined;
  if(spin){
