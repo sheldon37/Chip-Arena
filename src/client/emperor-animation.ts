@@ -8,14 +8,30 @@ export function emperorGuard(r:CharacterRig,time:number){
  r.leftArm.rotation.set(-.8,-.15,.08);r.leftElbow.rotation.set(-1.4,0,0);r.rightArm.rotation.set(-.55,.12,-.18);r.rightElbow.rotation.set(-1.95,0,0);
  r.leftLeg.rotation.set(-.23,0,.14);r.rightLeg.rotation.set(.2,0,-.18);r.leftKnee.rotation.x=.3;r.rightKnee.rotation.x=.2;r.leftFoot.rotation.x=-.1;r.rightFoot.rotation.x=-.25;
 }
-/** Absolute authoritative hit times preserve the same launch and spin for all observers. */
+/** Seconds a Mishima-screw spin lasts (shared/emperor.ts sets spinUntil = hit + .65). */
+const SCREW_SPIN=.65;
+/** Absolute authoritative hit times preserve the same launch and spin for all observers. Each hit kicks the body with an
+ * impulse that rises over 65 ms (no single-frame jolt); a screw spin accumulates one whole turn from 0 at its hit and
+ * decelerates, so it neither pops in nor out; limbs trail the vertical velocity and flail with staggered, decaying phases. */
 export function animateJuggle(r:CharacterRig,p:PlayerView,time:number){
- const j=p.juggle!;const age=Math.max(0,time-j.lastHit),kick=Math.exp(-age*7),spin=j.spinUntil>time;
- r.body.position.y=.03;r.body.rotation.set(-.7-kick*.55,spin?(j.spinUntil-time)*9:Math.sin((time-j.at)*4)*.18,Math.sin(time*8)*.10);
- r.spine.rotation.set(.24,0,0);r.chest.rotation.set(.22,0,.13*kick);r.head.rotation.set(-.32,0,.08);
- r.leftArm.rotation.set(-.45,0,.65+.2*kick);r.rightArm.rotation.set(.25,0,-.75);r.leftElbow.rotation.x=-.75;r.rightElbow.rotation.x=-.4;
- r.leftLeg.rotation.set(-.85-.25*kick,0,.22);r.rightLeg.rotation.set(-.4,0,-.25);r.leftKnee.rotation.x=1.3;r.rightKnee.rotation.x=.85+.2*Math.sin(time*9);r.leftFoot.rotation.x=r.rightFoot.rotation.x=-.2;
+ const j=p.juggle!,age=Math.max(0,time-j.lastHit),pulse=(a:number)=>a<=0||a>2?0:a/.065*Math.exp(1-a/.065),kick=pulse(age)+pulse(time-previousHit(r,j,time)),start=j.spinUntil-SCREW_SPIN,spinU=j.spinUntil>time&&time>=start?sat((time-start)/Math.max(.05,j.spinUntil-start)):0,spin=Math.PI*2*ease(spinU);
+ const air=time-j.at,lift=T.MathUtils.clamp(-p.vel.y*.06,-.35,.45),decay=.05+Math.exp(-air*1.5)*.17,flail=(phase:number)=>Math.sin(air*9+phase)*decay;
+ JUGGLE_BONES.forEach((b,i)=>held[i].copy(r[b].quaternion));const launch=ease((time-j.at)/.16),rise=r.body.position.y;
+ r.body.position.y=.03;r.body.rotation.set(-.7-kick*.45,Math.sin((time-j.at)*4)*.18+(spinU>0?spin:0),Math.sin(time*8)*.10);
+ r.spine.rotation.set(.24-.08*kick,0,0);r.chest.rotation.set(.22,0,.13*kick);r.head.rotation.set(-.32+.3*kick*Math.exp(-age*6),0,.08);
+ r.leftArm.rotation.set(-.45-.3*lift+flail(0),0,.65+.2*kick+.2*lift+flail(.6)*.6);r.rightArm.rotation.set(.25-.25*lift+flail(.55),0,-.75-.15*lift-flail(1.2)*.6);r.leftElbow.rotation.x=-.75+flail(1.6)*.5;r.rightElbow.rotation.x=-.4+flail(2.1)*.5;
+ r.leftLeg.rotation.set(-.85-.25*kick-.2*lift+flail(.8),0,.22);r.rightLeg.rotation.set(-.4-.15*lift-flail(1.4),0,-.25);r.leftKnee.rotation.x=1.3+.2*lift+flail(2.4)*.4;r.rightKnee.rotation.x=.85+.2*Math.sin(time*9)+.25*lift;r.leftFoot.rotation.x=r.rightFoot.rotation.x=-.2;
+ // The launch grows out of whatever pose the hit caught (finishPose then only has to absorb the weapon layer).
+ if(launch<1){JUGGLE_BONES.forEach((b,i)=>r[b].quaternion.slerpQuaternions(held[i],launched.copy(r[b].quaternion),launch));r.body.position.y=rise+(.03-rise)*launch;}
 }
+const hitMemory=new WeakMap<CharacterRig,{at:number;last:number;previous:number}>();
+/** The hit before j.lastHit (client-only memory), so a new hit's kick adds to the previous one instead of resetting it. */
+function previousHit(r:CharacterRig,j:NonNullable<PlayerView['juggle']>,time:number){
+ let m=hitMemory.get(r);if(!m||m.at!==j.at||time<m.last||j.lastHit<m.last){m={at:j.at,last:j.lastHit,previous:-Infinity};hitMemory.set(r,m);}
+ else if(j.lastHit>m.last){m.previous=m.last;m.last=j.lastHit;}
+ return m.previous;
+}
+const JUGGLE_BONES=['body','spine','chest','head','leftArm','rightArm','leftElbow','rightElbow','leftLeg','rightLeg','leftKnee','rightKnee','leftFoot','rightFoot'] as const,held=JUGGLE_BONES.map(()=>new T.Quaternion()),launched=new T.Quaternion();
 export function animateEmperor(r:CharacterRig,p:PlayerView,time:number){
  const upper=[r.body,r.pelvis,r.spine,r.chest,r.neck,r.head,r.leftShoulder,r.rightShoulder,r.leftArm,r.rightArm,r.leftElbow,r.rightElbow,r.leftHand,r.rightHand],upperBase=upper.map(n=>n.quaternion.clone());
  const lower=[r.leftLeg,r.rightLeg,r.leftKnee,r.rightKnee,r.leftFoot,r.rightFoot],base=lower.map(n=>n.quaternion.clone()),body=r.body.position.clone(),travel=sat(r.motion*1.4);emperorGuard(r,time);

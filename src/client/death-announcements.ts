@@ -21,6 +21,8 @@ export class DeathAnnouncementTrack {
   return this.items;
  }
 }
+/** Hologram reveal: opacity eases in; the vertical unfold overshoots about 6% and settles (easeOutBack). */
+const revealEase=(x:number)=>{x=Math.min(1,Math.max(0,x));return x*x*(3-2*x);},revealBack=(x:number)=>{x=Math.min(1,Math.max(0,x))-1;return 1+2.3*x*x*x+1.3*x*x;};
 /** Fixed world-space broadcast above the northern skyline: never follows the viewer or scope. */
 export function skyBroadcastFrame(slot=0){
  return {position:new T.Vector3([0,-43,43][slot%3],72,-115),quaternion:new T.Quaternion(),scale:5.5};
@@ -34,7 +36,7 @@ export class DeathAnnouncements {
   const root=new T.Group();root.name='death-firework-'+a.id;
   const material=new T.MeshBasicMaterial({color:0x62dcff,transparent:true,opacity:.6,depthTest:true,depthWrite:false,toneMapped:false,fog:false,side:T.DoubleSide});
   const lineMaterial=new T.LineBasicMaterial({color:0x8eedff,transparent:true,opacity:.6,depthTest:true,depthWrite:false,toneMapped:false,fog:false});
-  const rocket=new T.Mesh(new T.SphereGeometry(.09,8,5),new T.MeshBasicMaterial({color:0xf0fbff,depthTest:true,depthWrite:false,toneMapped:false,fog:false}));root.add(rocket);
+  const rocket=new T.Mesh(new T.SphereGeometry(.27,8,5),new T.MeshBasicMaterial({color:0xf0fbff,depthTest:true,depthWrite:false,toneMapped:false,fog:false}));root.add(rocket);
   const trail=new T.Line(new T.BufferGeometry().setFromPoints([new T.Vector3(),new T.Vector3()]),lineMaterial.clone());root.add(trail);
   const dirs=Array.from({length:72},(_,i)=>{const y=1-2*(i+.5)/72,phi=i*2.399963229728653;return new T.Vector3(Math.cos(phi)*Math.sqrt(1-y*y),y,Math.sin(phi)*Math.sqrt(1-y*y)).multiplyScalar(2+(i%7)*.22);});
   const stars=new T.Points(new T.BufferGeometry().setAttribute('position',new T.Float32BufferAttribute(new Float32Array(dirs.length*3),3)),new T.PointsMaterial({color:0xa6f4ff,size:.10,transparent:true,opacity:1,depthTest:true,depthWrite:false,toneMapped:false,fog:false}));root.add(stars);
@@ -64,14 +66,16 @@ export class DeathAnnouncements {
   for(const stage of this.stages.values())stage.root.visible=false;
   for(const a of showing){const age=s.time-a.at,stage=this.stages.get(a.id)||this.create(a),layout=skyBroadcastFrame(a.slot),u=Math.min(1,age/DEATH_ANNOUNCEMENT.launch),burst=age-DEATH_ANNOUNCEMENT.launch,fade=Math.min(1,Math.max(0,(DEATH_ANNOUNCEMENT.duration-age)/.8));
    stage.root.visible=true;stage.root.position.copy(layout.position);stage.root.quaternion.copy(layout.quaternion);stage.root.scale.setScalar(layout.scale);
-   stage.rocket.visible=stage.trail.visible=burst<0;const y=-25*(1-u)**2;stage.rocket.position.set(Math.sin(u*8)*.12,y,0);const line=stage.trail.geometry.getAttribute('position') as T.BufferAttribute;line.setXYZ(0,stage.rocket.position.x,y,0);line.setXYZ(1,0,y-3*(1-u*.5),0);line.needsUpdate=true;
-   stage.stars.material.size=.12*layout.scale;stage.stars.visible=burst>=0&&burst<2.2;if(stage.stars.visible){const positions=stage.stars.geometry.getAttribute('position') as T.BufferAttribute;stage.directions.forEach((d,i)=>positions.setXYZ(i,d.x*burst,d.y*burst-burst*burst*.4,d.z*burst));positions.needsUpdate=true;stage.stars.material.opacity=Math.max(0,1-burst/2.2);}
-   stage.holo.visible=burst>=0;if(stage.holo.visible){const show=Math.min(1,burst/.26),flicker=.96+.04*Math.sin(age*29);stage.material.opacity=.55*fade*show*flicker;stage.holo.scale.set(1,Math.max(.01,show),1);stage.rig.head.rotation.y=Math.sin(age*.6)*.045;stage.rig.head.rotation.x=Math.sin(age*.85)*.018;stage.lines.position.y=Math.sin(age*1.7)*.09;(stage.lines.material as T.LineBasicMaterial).opacity=.12*fade*show;(stage.frame.material as T.LineBasicMaterial).opacity=.7*fade*show;if(stage.nameplate)stage.nameplate.material.opacity=fade*show;
+   stage.rocket.visible=stage.trail.visible=burst<0;const y=-25*(1-u)**2;stage.rocket.position.set(Math.sin(u*8)*.12,y,0);const line=stage.trail.geometry.getAttribute('position') as T.BufferAttribute;line.setXYZ(0,stage.rocket.position.x,y,0);line.setXYZ(1,0,y-6*(1-u*.5),0);line.needsUpdate=true;
+   stage.stars.material.size=.18*layout.scale;stage.stars.visible=burst>=0&&burst<2.2;if(stage.stars.visible){const positions=stage.stars.geometry.getAttribute('position') as T.BufferAttribute;stage.directions.forEach((d,i)=>positions.setXYZ(i,d.x*burst,d.y*burst-burst*burst*.4,d.z*burst));positions.needsUpdate=true;stage.stars.material.opacity=Math.max(0,1-burst/2.2);}
+   stage.holo.visible=burst>=0;if(stage.holo.visible){const show=revealEase(burst/.26),flicker=.96+.04*Math.sin(age*29);stage.material.opacity=.55*fade*show*flicker;stage.holo.scale.set(1,Math.max(.01,revealBack(burst/.32)),1);stage.rig.head.rotation.y=Math.sin(age*.6)*.045;stage.rig.head.rotation.x=Math.sin(age*.85)*.018;stage.lines.position.y=Math.sin(age*1.7)*.09;(stage.lines.material as T.LineBasicMaterial).opacity=.12*fade*show;(stage.frame.material as T.LineBasicMaterial).opacity=.7*fade*show;if(stage.nameplate)stage.nameplate.material.opacity=fade*show;
     stage.rig.group.traverse(o=>{if(o instanceof T.LineSegments)(o.material as T.LineBasicMaterial).opacity=.36*fade*show;});
     if(age<DEATH_ANNOUNCEMENT.duration-.45)texts.push(a.text);
    }
   }
-  if(this.label){const text=texts.join('\n');if(this.label.textContent!==text)this.label.textContent=text;this.label.hidden=!text;}
+  if(this.label){const text=texts.join('\n');if(this.label.textContent!==text){this.label.textContent=text;
+   // A new line restarts the entrance animation (styled by the .death-announcement.is-new rule).
+   this.label.classList.remove('is-new');if(text){void this.label.offsetWidth;this.label.classList.add('is-new');}}this.label.hidden=!text;}
  }
  private disposeStage(s:Stage){disposeAuditorHalo(s.rig);s.root.removeFromParent();const materials=new Set<T.Material>();s.root.traverse(o=>{if(o instanceof T.Mesh||o instanceof T.Line||o instanceof T.Points){o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])materials.add(m);}});materials.forEach(m=>{if(m instanceof T.MeshBasicMaterial)m.map?.dispose();m.dispose();});}
  clear(){this.track.clear();for(const stage of this.stages.values())this.disposeStage(stage);this.stages.clear();if(this.label)this.label.hidden=true;}
