@@ -27,7 +27,7 @@ const GUARDS:Record<string,Readonly<MeleeGuard>>={
  // Shield vertical on the forearm in front of the body, free hand at the hip.
  shield:Object.freeze({main:g(-.21,.06,.24,0,-.18,0),off:g(.30,-.10,.13,-.9,.25,.25),brace:false}),
  // Two-hand low guard (braceWeapon; the left hand takes the support grip), blade forward and down across the centre line.
- greatsword:Object.freeze({main:g(-.05,-.15,.25,.22,.34,-.1),off:g(0,0,0,0,0,0),brace:true}),
+ greatsword:Object.freeze({main:g(-.02,-.12,.24,.12,.34,-.1),off:g(0,0,0,0,0,0),brace:true}),
 };
 /** The spec's melee guard (undefined for non-melee specs). */
 export function meleeGuard(spec:string):Readonly<MeleeGuard>|undefined{return GUARDS[spec];}

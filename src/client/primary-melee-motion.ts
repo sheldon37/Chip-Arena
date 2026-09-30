@@ -19,7 +19,7 @@ type Arr=number[];
 export function meleePhase(a:Pick<ReturnType<typeof attackPose>,'age'|'windup'|'window'>,recoverySeconds:number,age=a.age){
  if(age<a.windup)return Math.max(0,age)/a.windup;
  if(age<a.windup+a.window)return 1+(age-a.windup)/a.window;
- const u=Math.min(1,(age-a.windup-a.window)/Math.max(.01,recoverySeconds)),m=Math.min(1.8,recoverySeconds/Math.max(.01,a.window));
+ const u=Math.min(1,(age-a.windup-a.window)/Math.max(.01,recoverySeconds)),m=Math.min(2.1,recoverySeconds/Math.max(.01,a.window));
  return 2+u*(m+u*((3-2*m)+u*(m-2)));
 }
 /** A guard-anchored curve: the first and last keys are the guard value, the middle seven are the phrase. */
@@ -34,14 +34,14 @@ export function primaryMeleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<type
  // Where the incoming layers planted the ankles, before this phrase moves the body (the plant blends from there).
  if(weight<1){ankleInGroup(r,true,_in[0]);ankleInGroup(r,false,_in[1]);}
  // Whole-body turn (hips lead) and torso twist on top of it (shoulders trail the hips, most for the greatsword).
- const turnArr=spin?[0,-.35,-.6,.9,2.4,3.9,5.0,5.9,Math.PI*2]:heavy?[0,-.42,-1.05,-.90,.55,1.10,1.25,.75,0]:overhead?[0,-.26,-.40,-.15,.16,.36,.40,.20,0]:shield?[0,-.36,-.62,-.24,.55,.78,.88,.40,0]:dagger?[0,-.25,-.45,-.15,.25,.50,.55,.25,0]:[0,-.45,-.85,-.35,.35,.80,.98,.55,0];
- const twistArr=heavy?[0,-.22,-.48,-.62,-.35,.52,.45,.20,0]:dagger?[0,-.10,-.20,-.10,.16,.24,.22,.08,0]:[0,-.18,-.38,-.20,.28,.44,.36,.14,0];
+ const turnArr=spin?[0,-.35,-.6,.9,2.4,3.9,5.0,5.9,Math.PI*2]:heavy?[0,-.42,-1.05,-.90,.45,1.00,1.25,1.10,0]:overhead?[0,-.26,-.40,-.15,.14,.30,.42,.20,0]:shield?[0,-.36,-.62,-.24,.45,.66,.95,.40,0]:dagger?[0,-.25,-.45,-.15,.20,.42,.58,.25,0]:[0,-.45,-.85,-.35,.30,.62,1.02,.55,0];
+ const twistArr=heavy?[0,-.22,-.48,-.62,-.45,.40,.52,.35,0]:dagger?[0,-.10,-.20,-.16,.06,.22,.26,.08,0]:[0,-.18,-.38,-.20,.24,.40,.44,.16,0];
  const turnScale=spin?1:sign,twistScale=(overhead?.5:1)*sign;
  const turn=c(turnArr)*turnScale,twist=c(twistArr)*twistScale;
- const crouch=c(heavy?[0,-.12,-.30,-.37,-.33,-.18,-.10,-.05,0]:overhead?[0,-.12,.06,0,-.24,-.30,-.28,-.14,0]:shield?[0,-.05,-.12,-.13,-.22,-.25,-.20,-.09,0]:low?[0,-.19,-.28,-.25,-.34,-.30,-.22,-.10,0]:[0,-.10,-.16,-.13,-.22,-.26,-.21,-.09,0]);
- r.body.position.x+=c(heavy?[0,-.05,-.10,-.08,.07,.11,.09,.04,0]:[0,-.035,-.07,-.02,.065,.09,.08,.035,0])*sign;
- r.body.position.z+=c(heavy?[0,-.06,-.12,-.09,.13,.18,.14,.06,0]:[0,-.05,-.08,0,.14,.17,.15,.07,0]);r.body.position.y+=crouch;
- r.body.rotation.y+=turn;r.body.rotation.x+=c(heavy?[0,-.09,.22,.30,.26,0,-.08,-.04,0]:overhead?[0,-.15,-.26,-.14,.34,.40,.34,.16,0]:[0,-.07,-.15,.04,.20,.26,.22,.10,0]);
+ const crouch=c(heavy?[0,-.12,-.30,-.37,-.33,-.18,-.10,-.06,0]:overhead?[0,-.12,.06,0,-.24,-.30,-.28,-.14,0]:shield?[0,-.05,-.12,-.13,-.22,-.25,-.20,-.09,0]:low?[0,-.19,-.28,-.25,-.34,-.30,-.22,-.10,0]:[0,-.10,-.16,-.13,-.22,-.26,-.21,-.09,0]);
+ r.body.position.x+=c(heavy?[0,-.05,-.10,-.08,.07,.11,.10,.06,0]:[0,-.035,-.07,-.02,.065,.09,.08,.035,0])*sign;
+ r.body.position.z+=c(heavy?[0,-.06,-.12,-.09,.13,.18,.15,.08,0]:[0,-.05,-.08,0,.14,.17,.15,.07,0]);r.body.position.y+=crouch;
+ r.body.rotation.y+=turn;r.body.rotation.x+=c(heavy?[0,-.09,.22,.30,.26,0,-.08,-.06,0]:overhead?[0,-.15,-.26,-.14,.34,.40,.34,.16,0]:[0,-.07,-.15,.04,.20,.26,.22,.10,0]);
  r.body.rotation.z+=c(heavy?[0,-.10,-.20,-.24,.16,.22,.18,.08,0]:[0,-.05,-.11,-.06,.12,.16,.13,.05,0])*sign;
  r.pelvis.rotation.y+=twist*.5;r.spine.rotation.y+=twist*.65;r.chest.rotation.y+=twist*.55;
  r.spine.rotation.x+=c(heavy?[0,-.10,-.16,-.04,.14,.18,.10,.04,0]:overhead?[0,-.03,-.12,-.08,.10,.18,.14,.05,0]:[0,-.025,-.08,-.03,.09,.13,.10,.04,0]);
@@ -55,7 +55,7 @@ export function primaryMeleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<type
   // Rear-leg load, stamped lead foot, low diagonal sweep, rise ~60 degrees over the lead shoulder, then a heavy drop
   // through the front into the two-hand low guard. The blade's yaw trails the hands (it accelerates last).
   const m=G.main,g=MELEE_PHRASES.greatsword;_t.set(c(w(m.x,g.x)),c(w(m.y,g.y)),c(w(m.z,g.z)));
-  braceWeapon(r,_t,_eu.set(c(w(m.rx,g.rx)),c(w(m.ry,g.ry))*sign,c(w(m.rz,g.rz))*sign),weight);
+  braceWeapon(r,_t,_eu.set(c(w(m.rx,g.rx)),c(w(m.ry,g.ry.map(v=>v*sign))),c(w(m.rz,g.rz.map(v=>v*sign)))),weight);
  }else if(dagger){
   // The striking hand alternates: the right-hand tables are mirrored for the left. Chambers stay clear of the shoulder
   // joint (a hand target passing through the shoulder is what flipped the elbow).
@@ -81,17 +81,17 @@ const mix=(a:[number,number,number],b:[number,number,number]):[number,number,num
  * (elbow down and forward), sweep out to the right. Overhead: raise behind the head (elbow out), chop, finish low in
  * front. Daggers: short arm-led slashes chambered beside the ribs, the other hand pulls back to the hip. */
 export const MELEE_PHRASES={
- swordForehand:{x:[-.62,-.60,-.52,-.16,.08,.16,-.04],y:[.16,.28,.16,.02,-.10,-.18,-.22],z:[.10,-.16,.22,.44,.40,.28,.28],rx:[-.30,-.50,-.20,.16,.24,.18,.25],ry:[-.75,-1.10,-.55,.40,.85,1.0,.45],rz:[-.20,-.30,-.10,.22,.34,.30,.12]},
- swordBackhand:{x:[-.04,.08,-.06,-.30,-.46,-.50,-.36],y:[.16,.24,.14,.02,-.06,-.12,-.18],z:[.18,.10,.26,.44,.34,.20,.22],rx:[-.35,-.50,-.20,.16,.22,.18,.20],ry:[.75,1.15,.55,-.40,-.85,-1.0,-.45],rz:[.20,.30,.10,-.20,-.30,-.28,-.10],pole:[PB,PB,PB,mix(PB,PR),PR,PR,PR]},
- swordOverhead:{x:[-.24,-.18,-.16,-.10,-.06,-.04,-.12],y:[.30,.58,.46,.04,-.16,-.24,-.18],z:[.20,-.06,.18,.42,.42,.36,.30],rx:[-1.1,-2.05,-1.65,-.7,-.45,-.38,-.2],ry:[-.1,-.1,0,.05,.1,.08,.02],rz:[-.18,-.32,-.08,.25,.38,.30,.14],pole:[PO,PO,PO,PO,PO,PO,PO]},
+ swordForehand:{x:[-.62,-.60,-.52,-.16,.04,.18,-.04],y:[.16,.28,.16,.02,-.08,-.18,-.22],z:[.10,-.16,.22,.44,.42,.28,.28],rx:[-.30,-.50,-.20,.16,.22,.20,.25],ry:[-.75,-1.10,-.55,.30,.68,1.10,.45],rz:[-.20,-.30,-.10,.20,.30,.34,.12]},
+ swordBackhand:{x:[-.04,.08,-.06,-.28,-.42,-.52,-.36],y:[.16,.24,.14,.02,-.06,-.12,-.18],z:[.18,.10,.26,.44,.34,.20,.22],rx:[-.35,-.50,-.20,.16,.22,.18,.20],ry:[.75,1.15,.55,-.35,-.75,-1.10,-.45],rz:[.20,.30,.10,-.18,-.28,-.32,-.10],pole:[PB,PB,PB,mix(PB,PR),PR,PR,PR]},
+ swordOverhead:{x:[-.24,-.18,-.16,-.10,-.06,-.04,-.12],y:[.30,.58,.46,.04,-.12,-.26,-.18],z:[.20,-.06,.18,.42,.42,.36,.30],rx:[-1.1,-2.05,-1.65,-.7,-.50,-.36,-.2],ry:[-.1,-.1,0,.05,.1,.08,.02],rz:[-.18,-.32,-.08,.25,.38,.30,.14],pole:[PO,PO,PO,PO,PO,PO,PO]},
  swordOff:{x:[.38,.42,.44,.30,.22,.24,.26],y:[-.05,-.06,-.02,.04,.10,.08,0],z:[-.02,.02,.06,.24,.26,.24,.20],rx:[-.4,-.4,-.35,-.3,-.35,-.5,-.75],ry:[.4,.6,.4,-.2,-.45,-.35,-.05],rz:[.3,.3,.3,.3,.3,.28,.26]},
  swordOffTucked:{x:[.34,.36,.36,.32,.26,.26,.26],y:[-.10,-.12,-.08,.02,.08,.04,-.02],z:[.04,.02,.04,.14,.22,.22,.18],rx:[-.4,-.4,-.35,-.3,-.35,-.5,-.75],ry:[.4,.6,.4,-.2,-.45,-.35,-.05],rz:[.3,.3,.3,.3,.3,.28,.26]},
- shield:{x:[-.14,-.06,-.20,-.42,-.50,-.46,-.32],y:[.06,.04,.09,.15,.14,.12,.08],z:[.22,.12,.24,.32,.30,.26,.24],rx:[.10,.18,.10,0,-.06,-.06,-.03],ry:[-.2,-.3,-.3,-.62,-.85,-.92,-.5],rz:[-.18,-.25,-.1,.12,.18,.14,.06]},
+ shield:{x:[-.14,-.06,-.20,-.40,-.48,-.52,-.32],y:[.06,.04,.09,.15,.14,.12,.08],z:[.22,.12,.24,.32,.30,.26,.24],rx:[.10,.18,.10,0,-.06,-.06,-.03],ry:[-.2,-.3,-.3,-.55,-.76,-1.02,-.5],rz:[-.18,-.25,-.1,.12,.18,.14,.06]},
  shieldOff:{x:[.36,.39,.38,.36,.34,.33,.32],y:[-.10,-.16,-.13,-.04,0,-.04,-.08],z:[.02,-.10,-.04,.04,.12,.12,.12],rx:[-.5,-.4,-.4,-.5,-.6,-.7,-.8],ry:[.1,0,0,.1,.2,.2,.2],rz:[.25,.25,.25,.25,.25,.25,.25]},
- dagger:{x:[-.50,-.58,-.36,-.08,-.02,-.06,-.12],y:[.14,.16,.10,-.04,-.18,-.20,-.12],z:[.14,.02,.26,.44,.36,.28,.26],rx:[-.7,-.95,-.55,.2,.55,.45,.1],ry:[-.55,-.8,-.4,.45,.95,.9,.35],rz:[-.2,-.35,-.15,.2,.3,.22,.08],pole:[PD,PD,PD,PD,PD,PD,PD]},
- daggerLow:{x:[-.50,-.58,-.36,-.08,-.02,-.06,-.12],y:[.02,-.06,-.10,-.14,.06,.14,.06],z:[.14,.02,.26,.44,.36,.28,.26],rx:[.1,.2,.12,-.15,-.2,-.3,-.2],ry:[-.55,-.8,-.4,.45,.95,.9,.35],rz:[-.2,-.35,-.15,.2,.3,.22,.08],pole:[PL,PL,PL,mix(PL,PR),PR,PR,PR]},
+ dagger:{x:[-.50,-.58,-.36,-.10,0,.04,-.12],y:[.14,.16,.10,-.04,-.14,-.22,-.12],z:[.14,.02,.26,.44,.38,.28,.26],rx:[-.7,-.95,-.55,.2,.45,.55,.1],ry:[-.55,-.8,-.4,.40,.80,1.05,.35],rz:[-.2,-.35,-.15,.2,.3,.22,.08],pole:[PD,PD,PD,PD,PD,PD,PD]},
+ daggerLow:{x:[-.50,-.58,-.36,-.10,0,.04,-.12],y:[.02,-.06,-.10,-.14,.06,.14,.06],z:[.14,.02,.26,.44,.36,.28,.26],rx:[.1,.2,.12,-.15,-.2,-.3,-.2],ry:[-.55,-.8,-.4,.40,.80,1.05,.35],rz:[-.2,-.35,-.15,.2,.3,.22,.08],pole:[PL,PL,PL,mix(PL,PR),PR,PR,PR]},
  daggerOther:{x:[.20,.24,.28,.34,.30,.24,.18],y:[.06,.10,0,-.12,-.04,.02,.06],z:[.30,.26,.22,.10,.16,.22,.26],rx:[-.3,-.2,-.3,-.55,-.75,-.55,-.4],ry:[.3,.55,.85,.7,.25,.15,.1],rz:[.2,.3,.35,.25,.05,.05,.1]},
- greatsword:{x:[-.02,0,.02,.04,.06,.04,0],y:[.10,.02,-.16,-.06,.22,.34,.10],z:[.14,.14,.24,.32,.26,.18,.24],rx:[-.75,-.45,-.33,-.40,-.85,-1.05,-.55],ry:[-.25,-.15,.40,.75,.35,-.15,.10],rz:[-.2,-.3,-.2,-.1,.1,.2,.05]},
+ greatsword:{x:[-.02,0,.02,.04,.06,.05,.04],y:[.10,.02,-.16,-.06,.16,.30,.36],z:[.14,.14,.24,.32,.28,.22,.20],rx:[-.75,-.45,-.33,-.40,-.70,-.95,-1.05],ry:[-.25,-.15,.40,.75,.50,.05,-.15],rz:[-.2,-.3,-.2,-.1,.1,.18,.2]},
 } satisfies Record<string,ArmPhrase>;
 const _t=new T.Vector3(),_eu=new T.Euler(),_pole=new T.Vector3();
 /** Pose one arm through a phrase from and back to its guard hand (`mirror` flips a right-hand table onto the left). */
@@ -101,11 +101,15 @@ function arm(r:CharacterRig,left:boolean,set:ArmPhrase,guard:GuardHand,mirror:bo
  if(set.pole){const ends=[left?1:-1,-.65,-.3],k=(i:number)=>c(w(ends[i],set.pole!.map(v=>i===0?v[0]*f:v[i])));_pole.set(k(0),k(1),k(2));pole=_pole;}
  hand(r,left,_t,_eu,weight,pole);
 }
-const _q=new T.Quaternion(),_h=new T.Quaternion(),_e=new T.Euler();
+const _q=new T.Quaternion(),_h=new T.Quaternion(),_e=new T.Euler(),_f=new T.Vector3();
 /** Gaze stabilisation in the rig group's frame: the head follows a fraction of the lagged body turn (it trails the chest by
  * ~40 ms; a spin spots ahead instead), pitches with the aim and never rolls, however the torso under it pitches and rolls. */
 function headTrack(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,recoverySeconds:number,turnArr:Arr,twistArr:Arr,turnScale:number,twistScale:number,crouch:number,spin:boolean,weight:number){
  const lagged=meleePhase(a,recoverySeconds,a.age+(spin?.04:-.04)),turn=poseCurve(keys,turnArr,lagged)*turnScale,twist=poseCurve(keys,twistArr,lagged)*twistScale;
+ // The neck takes up about half of the chest's pitch and roll (it stays over the chest's heading), so the head sits
+ // upright on a proud neck instead of being carried forward by a pitched torso.
+ _h.identity();for(let n:T.Object3D|null=r.chest;n&&n!==r.group;n=n.parent)_h.premultiply(n.quaternion);_f.set(0,0,1).applyQuaternion(_h);
+ _q.setFromEuler(_e.set(0,Math.atan2(_f.x,_f.z),0,'YXZ'));r.neck.quaternion.slerp(_h.invert().multiply(_q),.55*weight);
  _q.setFromEuler(_e.set(-p.pitch*.55-.05*crouch,spin?turn:.30*turn+.20*twist,0,'YXZ'));
  _h.identity();for(let n:T.Object3D|null=r.head.parent;n&&n!==r.group;n=n.parent)_h.premultiply(n.quaternion);
  r.head.quaternion.slerp(_h.invert().multiply(_q),.8*weight);
@@ -123,7 +127,7 @@ function feet(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,phase:
  // lift is a full arc, so the foot comes down vertically onto its spot instead of skimming the floor.
  const step=(u:number)=>ease(Math.min(1,u/.85)),arc=(u:number)=>Math.sin(Math.PI*u);
  // Lead: a lifted step to the contact spot, planted (world-fixed) from the contact frame, a lifted step back to its guard spot.
- const cx=(leadingLeft?1:-1)*(heavy?.30:.25),worldPlant=.31+plantTravel,su=T.MathUtils.clamp((phase-.3)/1.35,0,1),bu=T.MathUtils.clamp((phase-2.45)/.5,0,1),s=step(su),back=step(bu);
+ const cx=(leadingLeft?1:-1)*(heavy?.30:.25),worldPlant=.31+plantTravel,su=T.MathUtils.clamp(phase/1.65,0,1),bu=T.MathUtils.clamp((phase-2.45)/.5,0,1),s=step(su),back=step(bu);
  const lift=(overhead?.18:heavy?.14:dagger?.07:.09)*arc(su)+.07*arc(bu),cyaw=.15*sign;
  const lz=phase<2.45?lf.z+(worldPlant-lf.z)*s-travel:(worldPlant-full)*(1-back)+lf.z*back;
  _lead.set(phase<2.45?lx+(cx-lx)*s:cx+(lx-cx)*back,-.795+lift,lz);
