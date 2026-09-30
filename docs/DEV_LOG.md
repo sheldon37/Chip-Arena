@@ -16,6 +16,28 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-09-30 — Claude — online test update channel (owner-requested)
+
+- Owner asked for a working Update button so testers stop downloading ZIPs; approved a
+  PUBLIC test-only channel repo: https://github.com/sheldon37/chip-arena-test-updates
+  (feed at https://raw.githubusercontent.com/sheldon37/chip-arena-test-updates/main/feed/).
+  Live feed and Site untouched.
+- Tooling: branch `claude/test-update-channel` (base release/candidate-workflow 7ff6462),
+  PR #5, head fd13d5a. `candidate.py`/`make-test-package.py --channel <url>` builds a
+  TEST-ONLY ZIP whose Update button and menu badge read the channel through the unchanged
+  production updater (schema/SHA256/32 MB checks); no live fallback. Without --channel the
+  fixture is unchanged. Tests: scripts/release/test-remote-channel.test.mjs (6/6 with the
+  existing status test); real-network install from the channel verified (installed, then
+  current).
+- Published: content 0.2.4d3dcebad34a from `claude/visual-revision` 0e82a31 (channel repo
+  7757039, logged in its PUBLISHED.md). Channel seed ZIP (SHA256 ca49c0df...) built from
+  0e82a31; packaging step re-run manually after fixing a packager bug (fd13d5a).
+- Cross-development (Claude or Astra): to ship a new test version, build a candidate from
+  the exact commit with `--test-only --channel <feed url>` using the PR #5 tooling, then
+  replace the channel repo's `feed/` files (one payload only), add a PUBLISHED.md row,
+  push, and log it here. Testers press Update; raw GitHub may cache ~5 min.
+- Status: test channel live for testers; not a player release.
+
 ## 2026-09-30 — Claude — Dark Souls sprint carries, intro label, test build 2
 
 - Owner feedback on test build 1: melee blades faced backwards while running; wanted a

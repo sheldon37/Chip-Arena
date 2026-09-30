@@ -103,6 +103,24 @@ for routine coding. Astra and Claude use separate task branches/worktrees and on
 writer per branch. Claude imports `@AGENTS.md` from CLAUDE.md. Review the exact PR
 head when handing off unmerged work. No second AI review is automatically required.
 
+## Test update channel (TEST-ONLY builds)
+
+Testers' TEST-ONLY builds made with `--channel` update from the public channel repo
+`sheldon37/chip-arena-test-updates` (feed `https://raw.githubusercontent.com/sheldon37/chip-arena-test-updates/main/feed/`),
+never the live feed. Tooling is on `claude/test-update-channel` (PR #5; based on PR #3's
+release/candidate-workflow). Publishing a version:
+
+```sh
+python scripts/release/candidate.py --commit <40-char SHA> --output <new dir> --test-only \
+  --channel https://raw.githubusercontent.com/sheldon37/chip-arena-test-updates/main/feed/
+# then in the channel repo: replace feed/latest.json + the single arena-*.json.gz with the
+# candidate's feed/ files, add a PUBLISHED.md row, commit, push; log it in DEV_LOG.
+```
+
+Needs Node 24.19.0 / npm 11.9.0. Only a new tester needs the ZIP; later versions ship as
+feed files. Never put credentials or player data in the channel; live-feed publication
+remains a separate owner-approved release.
+
 ## Clean-checkout verification
 
 ```sh
