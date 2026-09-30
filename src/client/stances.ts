@@ -25,7 +25,9 @@ const table:Record<SpecId,Readonly<Stance>>={
  // Machine gun: wide and braced, knees soft, leaning into the weight.
  machinegun:stance([.19,.10,.2],[-.19,-.04,.4],-.03,-.1,.08,.15),
  fire:MAGIC,water:MAGIC,lightning:MAGIC,darkness:MAGIC,
- sword:MELEE,daggers:MELEE,shield:MELEE,
+ sword:MELEE,shield:MELEE,
+ // Daggers (owner reference): a low, wide crouch, lead foot well forward and the rear heel turned out, ready to spring.
+ daggers:stance([.19,.13,.2],[-.2,-.12,.5],-.09,-.15,.07,.12),
  greatsword:stance([.19,.12,.2],[-.19,-.11,.5],-.045,-.14,.05),
 };
 export const STANCES:Readonly<Record<SpecId,Readonly<Stance>>>=Object.freeze(table);
