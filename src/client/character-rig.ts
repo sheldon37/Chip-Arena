@@ -8,8 +8,13 @@ export const RIG_LENGTHS = { upperArm:.27, forearm:.25, thigh:.25, shin:.25 } as
 const cube=new T.BoxGeometry(1,1,1),palette=new Map<string,T.MeshLambertMaterial>();
 /** Armor glow keeps the player's hue: the emitted colour is the accent pushed toward full saturation and a mid lightness, so
  * ACES rolls bright trims off into a deeper tone of the same hue instead of white (pale accents like #70e1d0 glow teal, not mint). */
-const ember=(color:T.ColorRepresentation)=>{const c=new T.Color(color),hsl={h:0,s:0,l:0};c.getHSL(hsl);return c.setHSL(hsl.h,Math.min(.9,hsl.s+(1-hsl.s)*.55),Math.min(hsl.l,.52));};
-function mat(color:T.ColorRepresentation,glow=0,tint=.18){const key=String(color)+":"+glow+(tint===.18?"":":"+tint);if(!palette.has(key))palette.set(key,new T.MeshLambertMaterial({color,emissive:glow?(tint<.1?ember(color):new T.Color(color).lerp(new T.Color(0xc3e5ff),tint)):0,emissiveIntensity:glow}));return palette.get(key)!;}
+// Green/cyan/yellow hues are far more luminous than red/orange/purple at the same HSL lightness, so their glow is also
+// capped to the relative luminance of the default orange (scaling RGB keeps the hue and, below l=.5, the saturation):
+// pale teal, green, blue and yellow glow as saturated colour instead of washing out to pastel. Glowing accents also take
+// the saturated colour as their lit (diffuse) base, which otherwise adds the pale accent's near-white on top of the glow.
+const EMBER_LUMA=.4;
+const ember=(color:T.ColorRepresentation)=>{const c=new T.Color(color),hsl={h:0,s:0,l:0};c.getHSL(hsl);c.setHSL(hsl.h,Math.min(.9,hsl.s+(1-hsl.s)*.55),Math.min(hsl.l,.52));const y=.2126*c.r+.7152*c.g+.0722*c.b;return y>EMBER_LUMA?c.multiplyScalar(EMBER_LUMA/y):c;};
+function mat(color:T.ColorRepresentation,glow=0,tint=.18){const key=String(color)+":"+glow+(tint===.18?"":":"+tint);if(!palette.has(key))palette.set(key,new T.MeshLambertMaterial({color:glow&&tint<.1?ember(color):color,emissive:glow?(tint<.1?ember(color):new T.Color(color).lerp(new T.Color(0xc3e5ff),tint)):0,emissiveIntensity:glow}));return palette.get(key)!;}
 /** A part of the shared cube; with an armor builder it becomes a voxel part (voxel-kit.ts), still one mesh of the same cube. */
 export function rigBox(parent:T.Object3D,name:string,x:number,y:number,z:number,sx:number,sy:number,sz:number,color:T.ColorRepresentation,armor?:ArmorBuilder){const m=armor?voxelMesh(cube,mat(color),voxelLayout(name,[sx,sy,sz],o=>armor(o,sx,sy,sz,name.startsWith('right-')?-1:1))):new T.Mesh(cube,mat(color));m.name=name;m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.castShadow=m.receiveShadow=true;parent.add(m);return m;}
 /** One part registry for both colour paths (glow creation and recolor), so a new part can never keep its creation colour. */
