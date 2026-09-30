@@ -197,9 +197,7 @@ function reloadHands(r:CharacterRig,spec:string,u:number,e:number,elapsed:number
  // Charge: the pistol slide racks 4 cm while the hand pulls it; the long guns' hand does the work (bolt pull, top-cover slap).
  if(spec==='pistol'){const slide=r.weapon.getObjectByName('pistol-slide');if(slide){touch(r,slide);slide.position.z=(slide.userData.restPos as T.Vector3).z-.04*poseCurve([0,.83,.87,.9,.94,1],[0,0,1,1,0,0],u)*e;}}
 }
-/** Non-melee guard for magic (ranged guards are blended inside rangedLayer by a spring and braceWeapon). */
-export function nonMeleeGuard(r:CharacterRig,p:PlayerView){
- if(WEAPONS[p.spec].class==='magic'&&(p.guarding||p.blockTime>0)){r.spine.rotation.y=0;r.chest.rotation.set(-.06,0,0);r.leftArm.rotation.set(-1.4,-.25,.35);r.rightArm.rotation.set(-1.3,.25,-.35);r.leftElbow.rotation.x=-.8;r.rightElbow.rotation.x=-.8;r.leftHand.rotation.set(0,0,.25);r.rightHand.rotation.set(0,0,-.25);r.weapon.rotation.x=1.9;}
-}
+/** Non-melee guard hook: ranged guards blend inside rangedLayer and magic guards inside magicLayer (spring weights). */
+export function nonMeleeGuard(_r:CharacterRig,_p:PlayerView){}
 /** Renderer-side timed-block arm override for non-melee classes: superseded by the blended guards (kept as a no-op hook). */
 export function rangedBlockArms(_r:{block:T.Object3D;leftArm:T.Object3D;rightArm:T.Object3D},_w:{class:string}){}
