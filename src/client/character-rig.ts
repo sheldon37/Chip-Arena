@@ -20,7 +20,7 @@ function joint(parent:T.Object3D,name:string,x=0,y=0,z=0){const g=new T.Group();
 export function createCharacterRig(color:string,bodyColor:T.ColorRepresentation=0xdce5e8,glow=false){
  const group=new T.Group();group.name='blank-mannequin-v2';group.userData.rigVersion=RIG_VERSION;group.userData.armorGlow=glow;
  const body=joint(group,'motion-root'),pelvis=joint(body,'pelvis',0,-.24),spine=joint(pelvis,'spine',0,.105),chest=joint(spine,'chest',0,.19),neck=joint(chest,'neck',0,.32),head=joint(neck,'head',0,.10);
- const shell=bodyColor,edge=edgeOf(bodyColor),flex=flexOf(bodyColor),joints:Cover[]=[],cover=(mesh:T.Mesh,joint:T.Object3D)=>{joints.push({mesh,joint,y:mesh.position.y,z:mesh.position.z});return mesh;};
+ const shell=bodyColor,edge=edgeOf(bodyColor),flex=flexOf(bodyColor),joints:Cover[]=[],cover=(mesh:T.Mesh,joint:T.Object3D)=>{mesh.userData.jointCover=true;joints.push({mesh,joint,y:mesh.position.y,z:mesh.position.z});return mesh;};
  rigBox(pelvis,'hip-shell',0,0,0,.43,.22,.28,shell);rigBox(pelvis,'waist-band',0,.08,0,.44,.055,.29,color);
  // The abdomen shell wraps the back flush with the hips and ribcage, so no dark band shows from the chase camera.
  rigBox(spine,'abdomen',0,.075,0,.35,.18,.25,flex);rigBox(spine,'abdomen-shell',0,.07,0,.36,.13,.275,shell);
