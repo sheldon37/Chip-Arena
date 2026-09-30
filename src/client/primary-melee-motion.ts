@@ -14,8 +14,12 @@ export {foot,hand};
  * 2.3 is the follow-through extreme: the blade still carries momentum past swingUntil and eases out instead of stopping
  * dead on the hit window's last frame; 2.65 is the return, which comes back low and close instead of retracing the cut. */
 const keys=[0,.55,1,1.28,1.65,2,2.3,2.65,3];
-/** Share of the greatsword's recovery its follow-through drags on before the return (meleePhase `drag`). */
-const DRAG=.4;
+/** Share of the greatsword's and the shield's recovery their follow-through drags on before the return (meleePhase `drag`). */
+const DRAG=.3,SHIELD_DRAG=.35;
+/** Phase speed kept at the drag extreme, as a share of the return's mean speed (the hang drifts; the two beats join C1). */
+const DRIFT=1;
+/** Cubic Hermite from p0 to p1 over s in 0..1 with end slopes t0, t1 (per unit s). */
+const herm=(s:number,p0:number,p1:number,t0:number,t1:number)=>{const s2=s*s,s3=s2*s;return p0+(p1-p0)*(3*s2-2*s3)+t0*(s3-2*s2+s)+t1*(s3-s2);};
 /** The fourth dagger cut's body turn: a full forward turn over .8..3 that never unwinds. */
 const SPIN_TURN=[0,-.35,-.6,.9,2.4,3.9,5.0,5.9,Math.PI*2],SPIN_FROM=poseCurve(keys,SPIN_TURN,1.1);
 type Arr=number[];
@@ -26,11 +30,12 @@ export function meleePhase(a:Pick<ReturnType<typeof attackPose>,'age'|'windup'|'
  if(age<a.windup+a.window)return 1+(age-a.windup)/a.window;
  const u=Math.min(1,(age-a.windup-a.window)/Math.max(.01,recoverySeconds)),m=Math.min(2.1,recoverySeconds/Math.max(.01,a.window));
  if(drag>0){
-  // A heavy blade's recovery in two beats: the follow-through keeps the strike's phase speed and decelerates to rest on the
-  // drag extreme (2.65) over the first `drag` of the recovery, then the return eases in and out over the rest, so the reset
-  // reads as a deliberate lift back to the guard instead of a fast second drop.
-  if(u<drag){const s=u/drag,f=m*drag;return 2+s*(f+s*((1.95-2*f)+s*(f-1.3)));}
-  const s=(u-drag)/(1-drag);return 2.65+.35*s*(1.5-.5*s);
+  // A heavy blade's recovery in two C1 beats: the follow-through keeps the strike's phase speed and decelerates onto the
+  // drag extreme (2.65) over the first `drag` of the recovery, still drifting at DRIFT of the return's mean speed (a hang,
+  // never a dead stop), then the return picks up from that drift and settles to zero speed at the guard, so the reset
+  // reads as a deliberate lift back instead of a stop-then-whip or a fast second drop.
+  const v=DRIFT*.35/(1-drag);
+  return u<drag?herm(u/drag,2,2.65,m*drag,v*drag):herm((u-drag)/(1-drag),2.65,3,v*(1-drag),0);
  }
  return 2+u*(m+u*((3-2*m)+u*(m-2)));
 }
@@ -53,7 +58,7 @@ export function phraseEntry(r:object,p:PlayerView,windup:number){const base=Math
  * sweep stays 1..2; anticipation, follow-through and recovery carry the body's weight around it, and every phrase starts and
  * ends in the weapon's combat-ready guard (melee-guard.ts), so a held combo flows through one stance. */
 export function primaryMeleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>){
- const rate=p.attackRate||1,recoverySeconds=meleeRecovery(p.spec)/rate,drag=p.spec==='greatsword'?DRAG:p.spec==='shield'?.5:0,stop=hitStop(r,p,a),phase=meleePhase(a,recoverySeconds,a.age-stop,drag),weight=ease(a.age/phraseEntry(r,p,a.windup)),lean=meleeEntry(r,p).carry,c=(values:Arr)=>poseCurve(keys,values,phase),ca=(values:Arr)=>curve(values,phase,lean);
+ const rate=p.attackRate||1,recoverySeconds=meleeRecovery(p.spec)/rate,drag=p.spec==='greatsword'?DRAG:p.spec==='shield'?SHIELD_DRAG:0,stop=hitStop(r,p,a),phase=meleePhase(a,recoverySeconds,a.age-stop,drag),weight=ease(a.age/phraseEntry(r,p,a.windup)),lean=meleeEntry(r,p).carry,c=(values:Arr)=>poseCurve(keys,values,phase),ca=(values:Arr)=>curve(values,phase,lean);
  const index=Math.max(0,(p.attackIndex||1)-1),dagger=p.spec==='daggers',heavy=p.spec==='greatsword',shield=p.spec==='shield',reverse=dagger||heavy||shield?index%2===1:index%3===1,sign=reverse?-1:1,overhead=!heavy&&!dagger&&!shield&&index%3===2,spin=dagger&&index%4===3,low=heavy||dagger&&index%4===2;
  const G=meleeGuard(p.spec)!;
  // Where the incoming layers planted the ankles, before this phrase moves the body (the plant blends from there).
@@ -98,13 +103,14 @@ export function primaryMeleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<type
  * over `hold` seconds from the first frame that knew of the hit (so the pose never jumps backward), then eases back to zero
  * over `catchUp`, so the phrase is back on the authoritative clock within ~.16 s of contact; the pose clock never runs
  * backward (its speed is `slow` at least). The root travel, feet anchors and every authoritative timestamp are untouched.
- * A hit that reaches this rig more than a frame or two after it happened (a late event) shows no stop rather than a pop. */
+ * A hit that reaches this rig more than ~80 ms after it happened (two 30 Hz frames: rigs animate before the frame's events are
+ * read; later is a late network event) shows no stop rather than a pop. */
 const HIT_STOP:Record<string,[hold:number,slow:number,catchUp:number]>={greatsword:[.075,.1,.09],sword:[.05,.18,.08],shield:[.06,.14,.08],daggers:[.028,.3,.05]};
 type StopGate={attack:number;at:number;from:number;on:boolean};const gates=new WeakMap<object,StopGate>();
 export function hitStop(r:object,p:PlayerView,a:Pick<ReturnType<typeof attackPose>,'age'|'windup'|'window'>){
  const k=HIT_STOP[p.spec],t=p.lastAttack+a.age;if(!k||!p.id)return 0;const h=meleeHitAt(p.id,t,.5);
  if(h===undefined||h<p.lastAttack+a.windup-.03||h>p.lastAttack+a.windup+a.window+.05)return 0;
- let g=gates.get(r);if(!g||g.attack!==p.lastAttack||g.at!==h||t<g.from){g={attack:p.lastAttack,at:h,from:t,on:t-h<=.06};gates.set(r,g);}
+ let g=gates.get(r);if(!g||g.attack!==p.lastAttack||g.at!==h||t<g.from){g={attack:p.lastAttack,at:h,from:t,on:t-h<=.08};gates.set(r,g);}
  if(!g.on)return 0;const [hold,slow,catchUp]=k,u=t-g.from,max=hold*(1-slow);
  return u<=0?0:u<hold?u*(1-slow):u<hold+catchUp?max*(1-ease((u-hold)/catchUp)):0;
 }
@@ -151,7 +157,7 @@ const _q=new T.Quaternion(),_h=new T.Quaternion(),_e=new T.Euler(),_f=new T.Vect
 /** Gaze stabilisation in the rig group's frame: the head follows a fraction of the lagged body turn (it trails the chest by
  * ~40 ms; a spin spots ahead instead), pitches with the aim and never rolls, however the torso under it pitches and rolls. */
 function headTrack(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,recoverySeconds:number,turnArr:Arr,twistArr:Arr,turnScale:number,twistScale:number,crouch:number,spin:boolean,weight:number,stop:number){
- const lagged=meleePhase(a,recoverySeconds,a.age-stop+(spin?.04:-.04),p.spec==='greatsword'?DRAG:p.spec==='shield'?.5:0),turn=poseCurve(keys,turnArr,lagged)*turnScale,twist=poseCurve(keys,twistArr,lagged)*twistScale;
+ const lagged=meleePhase(a,recoverySeconds,a.age-stop+(spin?.04:-.04),p.spec==='greatsword'?DRAG:p.spec==='shield'?SHIELD_DRAG:0),turn=poseCurve(keys,turnArr,lagged)*turnScale,twist=poseCurve(keys,twistArr,lagged)*twistScale;
  // The neck takes up about half of the chest's pitch and roll (it stays over the chest's heading), so the head sits
  // upright on a proud neck instead of being carried forward by a pitched torso.
  _h.identity();for(let n:T.Object3D|null=r.chest;n&&n!==r.group;n=n.parent)_h.premultiply(n.quaternion);_f.set(0,0,1).applyQuaternion(_h);

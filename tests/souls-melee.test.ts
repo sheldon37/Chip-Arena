@@ -6,7 +6,7 @@ import {WEAPONS} from '../src/shared/content.js';
 import {attackCommitment,attackTravel} from '../src/shared/souls-combat.js';
 import {animateCharacter} from '../src/client/character-animation.js';
 import {type CharacterRig} from '../src/client/character-rig.js';
-import {hitStop} from '../src/client/primary-melee-motion.js';
+import {hitStop,meleePhase} from '../src/client/primary-melee-motion.js';
 import {recordMeleeHit,recordBlockHit,clearBlockImpacts} from '../src/client/block-impacts.js';
 import {probeBase,probeRig,weaponTip} from './helpers/motion-probe.js';
 
@@ -124,6 +124,47 @@ test('a blocked hit knocks the guard back far enough to read, then settles',()=>
   let shove=0,settled=0,jump=0,prev=still[29];for(let n=30;n<54;n++){const t=3+n/60,now=tip(r,t),d=now.distanceTo(still[n]);jump=Math.max(jump,now.distanceTo(prev)-still[n].distanceTo(still[n-1]));prev=now;if(t<3.62)shove=Math.max(shove,d);else settled=d;}
   if(process.env.SM_DEBUG)console.log(spec,shove,jump);assert.ok(jump<.3,`${spec}: the shove is a hit, not a teleport (${(jump*100).toFixed(0)} cm in one 60 Hz frame)`);
   assert.ok(shove>.2,`${spec}: blade tip knocked ${(shove*100).toFixed(0)} cm, ${(jump*100).toFixed(0)} cm/frame max (integration audit: ~15 cm)`);assert.ok(settled<.01,`${spec}: back in the guard (${settled.toFixed(3)} m)`);
+ }
+ clearBlockImpacts();
+});
+
+test('the heavy two-beat recovery joins its beats smoothly: no stop-then-whip at the drag boundary or jolt at the guard',()=>{
+ // Greatsword and shield recoveries drag, then return. Worst joint angular acceleration (deg/s^2, from per-frame joint speeds)
+ // over the recovery must stay bounded and consistent at 60 and 120 Hz, and the rig must arrive at the guard slowing down.
+ const BONES=['rightHand','leftHand','chest','rightElbow','leftElbow','body','weapon'] as const;
+ for(const rate of [.7,1,1.5])for(const [spec,index] of [['greatsword',1],['greatsword',2],['greatsword',3],['shield',1],['shield',2]] as [string,number][])for(const hz of [60,120]){
+  const s=scenario(spec,index,rate),rec=(spec==='greatsword'?.5:.3)/rate,from=s.lastAttack+s.windup+s.window+.02,to=s.lastAttack+s.windup+s.window+rec;
+  const pq:Record<string,T.Quaternion>={},speeds:[number,number][]=[];
+  run(s,hz,(r,t)=>{let w=0;for(const b of BONES){const q=(r as unknown as Record<string,T.Object3D>)[b].getWorldQuaternion(new T.Quaternion());if(pq[b])w=Math.max(w,pq[b].angleTo(q)*hz*180/Math.PI);pq[b]=q;}if(t>=from-2/hz&&t<=to+1/hz)speeds.push([t,w]);});
+  let acc=0,accAt=0;for(let i=1;i<speeds.length;i++){const a=(speeds[i][1]-speeds[i-1][1])*hz;if(speeds[i][0]>=from&&a>acc){acc=a;accAt=speeds[i][0]-s.lastAttack;}}
+  const end=speeds.filter(([t])=>t>to-.03&&t<=to).map(([,w])=>w),endMax=Math.max(...end);
+  if(process.env.MELEE_DEBUG)console.log(spec,index,rate,hz,'acc',acc.toFixed(0),'at',accAt.toFixed(3),'end',endMax.toFixed(0));
+  assert.ok(acc<=36000*rate*rate,`${spec} ${index} @${rate}x ${hz} Hz: joints jolt at ${acc.toFixed(0)} deg/s^2 at ${accAt.toFixed(3)} s in the recovery`);
+  assert.ok(endMax<=130*rate*rate,`${spec} ${index} @${rate}x ${hz} Hz: still turning ${endMax.toFixed(0)} deg/s over the last 30 ms of the recovery`);
+ }
+});
+
+test('the drag recovery phase is C1: no dead stop between the beats and zero speed at the guard',()=>{
+ const a={age:0,windup:.3,window:.16};
+ for(const [rec,drag] of [[.5,.3],[.3,.35],[.5,.4],[.3,.5]]){
+  const T0=a.windup+a.window,v=(t:number)=>(meleePhase(a,rec,t+1e-4,drag)-meleePhase(a,rec,t-1e-4,drag))/2e-4;
+  let prev=meleePhase(a,rec,T0,drag),min=Infinity;
+  for(let i=1;i<=400;i++){const t=T0+rec*i/400,ph=meleePhase(a,rec,t,drag);assert.ok(ph>=prev-1e-9&&ph<=3+1e-9,`drag ${drag}: phase not monotonic in 2..3 at ${t.toFixed(3)}`);prev=ph;if(i<=320)min=Math.min(min,v(t));}
+  const b=T0+rec*drag,h=1e-5,p=(t:number)=>meleePhase(a,rec,t,drag),jump=Math.abs((p(b+h)-p(b))/h-(p(b)-p(b-h))/h);
+  assert.ok(jump<.2,`drag ${drag}: phase speed jumps ${jump.toFixed(2)}/s across the drag boundary`);
+  assert.ok(min>.3/rec*.35,`drag ${drag}: the recovery stops dead (phase speed ${min.toFixed(2)}/s) in the first 80% of the recovery`);
+  assert.ok(v(T0+rec-2e-4)<.05,`drag ${drag}: still moving at ${v(T0+rec-2e-4).toFixed(2)} phase/s at the guard`);
+ }
+});
+
+test('hit-stop survives the renderer order at 30 Hz: rigs animate before the frame reads the hit event',()=>{
+ for(const hz of [30,60]){
+  clearBlockImpacts();const s=scenario('greatsword',1,1,'order'),h=s.attack.swingAt!+.05,r={};let recorded=false,peak=0;
+  for(let i=0;;i++){const t=s.lastAttack+i/hz;if(t>s.end)break;peak=Math.max(peak,hitStop(r,s.attack,{age:t-s.lastAttack,windup:s.windup,window:s.window}));
+   // The first frame whose state holds the hit poses its rigs before it reads the event: the stop starts a frame later,
+   // up to two 30 Hz frames after the hit.
+   if(!recorded&&t>=h){recordMeleeHit({type:'hit',time:h,source:'order'});recorded=true;}}
+  assert.ok(peak>.05,`${hz} Hz: a hit read one frame late still stops the greatsword (peak lag ${peak.toFixed(3)} s)`);
  }
  clearBlockImpacts();
 });
