@@ -22,10 +22,12 @@ export function animateLobbyPose(r:CharacterRig,p:PlayerView,time:number,dt:numb
   r.leftLeg.rotation.set(-1.44,.04,.12);r.rightLeg.rotation.set(-1.39,-.04,-.14);r.leftKnee.rotation.x=1.52;r.rightKnee.rotation.x=1.48;r.leftFoot.rotation.x=r.rightFoot.rotation.x=.02;
   r.leftArm.rotation.set(-.18,0,.16);r.rightArm.rotation.set(-.22,0,-.16);r.leftElbow.rotation.set(-1.28,0,0);r.rightElbow.rotation.set(-1.20,0,0);r.leftHand.rotation.x=r.rightHand.rotation.x=-.16;
  }else if(pose==='sleep'){
-  // Curled on the right side facing the camera: the lower arm pillows the head, the top arm rests on the hip, knees drawn up.
-  r.body.position.set(.24,-.5,-.05);r.body.rotation.set(0,0,1.47);r.pelvis.rotation.set(.05,0,.04);r.spine.rotation.set(.16+breath*.014,0,-.03);r.chest.rotation.set(.08+breath*.015,0,-.04);r.neck.rotation.set(.12,0,-.16);r.head.rotation.set(.06,.1+breath*.02+sway*.015,-.1);
-  r.leftLeg.rotation.set(-.95,0,.06);r.rightLeg.rotation.set(-.62,0,-.02);r.leftKnee.rotation.x=1.35;r.rightKnee.rotation.x=1.05;r.leftFoot.rotation.x=.35;r.rightFoot.rotation.x=.25;
-  r.rightArm.rotation.set(-2.55,0,-.35);r.rightElbow.rotation.set(-1.75,0,0);r.rightHand.rotation.set(.2,0,.3);r.leftArm.rotation.set(-.42,0,.05+breath*.01);r.leftElbow.rotation.set(-.55,0,0);r.leftHand.rotation.set(0,0,-.1);
+  // Curled on the right side facing the camera, resting on the lower shoulder, hip and knees (the blocky shoulder props the
+  // ribcage a little, as a real shoulder does); the neck bends down so the head lies on the lower hand, placed under it by IK.
+  r.body.position.set(.24,-.52,-.05);r.body.rotation.set(0,0,1.28);r.pelvis.rotation.set(.05,0,.04);r.spine.rotation.set(.16+breath*.014,0,-.03);r.chest.rotation.set(.08+breath*.015,0,-.04);r.neck.rotation.set(.12,0,.40);r.head.rotation.set(.06,.1+breath*.02+sway*.015,.36);
+  r.leftLeg.rotation.set(-.95,0,.22);r.rightLeg.rotation.set(-.62,0,.14);r.leftKnee.rotation.x=1.35;r.rightKnee.rotation.x=1.05;r.leftFoot.rotation.x=.35;r.rightFoot.rotation.x=.25;
+  r.rightArm.rotation.set(-2.55,0,-.35);r.rightElbow.rotation.set(-1.75,0,0);r.rightHand.rotation.set(0,0,0);r.leftArm.rotation.set(-.42,0,.05+breath*.01);r.leftElbow.rotation.set(-.55,0,0);r.leftHand.rotation.set(0,0,-.1);
+  placeHand(r,false,SLEEP_PILLOW,SLEEP_PILLOW_POLE);
  }else{
   // Weight on one leg (contrapposto), forearms stacked with the hands resting on the opposite biceps.
   r.body.rotation.set(.015,-.10,sway*.009);contrapposto(r,breath);r.spine.rotation.x+=breath*.012;r.head.rotation.set(-.055,sway*.075+.1,.03);
@@ -37,6 +39,8 @@ export function animateLobbyPose(r:CharacterRig,p:PlayerView,time:number,dt:numb
  settleJointCovers(r);
 }
 
+/** Rig-space wrist target for the sleeping pilot's lower hand: on the podium, under the head (elbow forward). */
+const SLEEP_PILLOW=new T.Vector3(-.24,-.80,.2),SLEEP_PILLOW_POLE=new T.Vector3(.3,.4,1);
 /** Standing weight shift: the pelvis settles over a straight weight leg and rolls toward the relaxed one, the chest counter-rolls,
  * the weight foot is planted and the free foot rests forward on its toes (foot IK), so the free knee bends. Pure function of time. */
 function contrapposto(r:CharacterRig,breath:number,shift=1){
@@ -51,8 +55,8 @@ function heroStance(r:CharacterRig,spec:string,time:number,breath:number,sway:nu
  r.body.rotation.set(0,.12+sway*.015,0);r.head.rotation.set(-.04+breath*.012,sway*.07-.1,.02);r.leftShoulder.rotation.set(0,0,.02+breath*.006);r.rightShoulder.rotation.set(0,0,-.02-breath*.006);
  contrapposto(r,breath);r.leftHand.rotation.set(0,0,0);r.rightHand.rotation.set(0,0,0);
  const lift=breath*.004;
- if(spec==='greatsword'){braceWeapon(r,new T.Vector3(-.2,-.04+lift,.25),aim(-.3,.6,-.74,1.35),1);relax(r,true,breath);}
- else if(spec==='sword'){braceWeapon(r,new T.Vector3(-.25,-.34+lift,.14),aim(-.45,-.36,.82,-.25),1);relax(r,true,breath);}
+ if(spec==='greatsword'){braceWeapon(r,new T.Vector3(-.27,-.04+lift,.30),aim(-.2,.62,-.76,2.1),1);relax(r,true,breath);}
+ else if(spec==='sword'){braceWeapon(r,new T.Vector3(-.31,-.34+lift,.19),aim(-.38,-.38,.84,-.25),1);relax(r,true,breath);}
  else if(spec==='daggers'){hand(r,false,new T.Vector3(-.27,-.33+lift,.13),aim(-.3,-.55,.78,-.4),1);hand(r,true,new T.Vector3(.27,-.33+lift,.13),aim(.3,-.55,.78,.4),1);}
  else if(spec==='shield'){hand(r,false,new T.Vector3(-.3,-.33+lift,.12),aim(-.3,-.12,.95),1);relax(r,true,breath);}
  else if(spec==='pistol'){hand(r,false,new T.Vector3(-.3,-.36+lift,.09),aim(-.32,-.8,.5,-.5),1);relax(r,true,breath);}

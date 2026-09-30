@@ -22,7 +22,7 @@ const local=(weapon:T.Object3D,name:string)=>{const o=weapon.getObjectByName(nam
 test('the arena glow and the recolor path paint every body part the same way (the head is lit like the torso)',()=>{
  const glow=createCharacterRig('#70e1d0','#e5e7eb',true),plain=createCharacterRig('#70e1d0','#e5e7eb',false);recolorCharacterRig(plain,'#70e1d0','#e5e7eb');
  const glowAgain=createCharacterRig('#ff6b35','#e5e7eb',true);recolorCharacterRig(glowAgain,'#70e1d0','#e5e7eb');
- for(const name of ['blank-head','crown','left-thumb','right-thumb','collar','left-deltoid','right-calf','abdomen-shell'])assert.equal(part(glow,name).material,part(glow,'ribcage').material,name+' shares the lit body shell');
+ for(const name of ['blank-head','crown','left-thumb','right-thumb','collar','left-upper-arm','right-calf','abdomen-shell'])assert.equal(part(glow,name).material,part(glow,'ribcage').material,name+' shares the lit body shell');
  assert.ok(lambert(part(glow,'blank-head')).emissiveIntensity>.1,'the head is self-lit like the shell in the arena');
  for(const m of meshes(glow.group))assert.equal(m.material,part(glowAgain,m.name).material,m.name+': creation glow and recolor pick the same shared material');
  for(const m of meshes(plain.group))assert.equal(lambert(m).emissiveIntensity||0,0,m.name+' portrait parts stay unlit');
@@ -46,7 +46,7 @@ test('gloves, boots and joints follow the body colour; the default body stays cl
 
 test('the model keeps the rig contract, closes the back and neck, and stays inside the mesh budget',()=>{
  const r=createCharacterRig('#70e1d0',undefined,true),plain=createCharacterRig('#70e1d0'),list=meshes(r.group);
- assert.ok(list.length<=50,'glow rig meshes '+list.length);assert.ok(meshes(plain.group).length<=47);
+ assert.ok(list.length<=48,'glow rig meshes '+list.length);assert.ok(meshes(plain.group).length<=45);
  const cube=list[0].geometry;for(const m of list){assert.equal(m.geometry,cube,m.name+' uses the shared cube');assert.equal(m.geometry.type,'BoxGeometry');}
  r.group.updateMatrixWorld(true);const head=part(r,'blank-head'),box=new T.Box3().setFromObject(head),centre=box.getCenter(new T.Vector3());
  assert.ok(Math.abs(centre.y-.64)<1e-6&&Math.abs(box.max.y-box.min.y-.34)<1e-6,'rest head centre and size match the authoritative headshot box');
@@ -87,7 +87,7 @@ test('weapon sockets: blade lengths, melee grips and the ranged/magic contracts'
  for(const spec of ['rifle','machinegun']){const w=new T.Group();buildWeapon(w,spec);const butt=local(w,'stock-butt'),grip=local(w,'support-grip');
   assert.ok(butt.z<=-.28&&butt.z>=-.30,spec+' stock butt '+butt.z);assert.ok(grip.z>=.08&&grip.z<=.12,spec+' support grip '+grip.z);
   const box=new T.Box3().setFromObject(w);assert.ok(box.min.z>-.34,spec+' stock ends near the butt');}
- for(const [spec,tip] of [['pistol',.51],['rifle',1.22],['machinegun',.91]] as const){const w=new T.Group();buildWeapon(w,spec);assert.ok(local(w,'muzzle').distanceTo(new T.Vector3(0,0,tip))<1e-9,spec+' muzzle');assert.ok(w.getObjectByName('magazine'),spec+' magazine');assert.ok(Math.abs(local(w,'magazine').y+.19)<1e-9,'magazine rests where the reload returns it');}
+ for(const [spec,tip] of [['pistol',.51],['rifle',1.22],['machinegun',.91]] as const){const w=new T.Group();buildWeapon(w,spec);assert.ok(local(w,'muzzle').distanceTo(new T.Vector3(0,0,tip))<1e-9,spec+' muzzle');assert.ok(w.getObjectByName('magazine'),spec+' magazine');assert.ok(local(w,'magazine').distanceTo(new T.Vector3(0,-.19,.16))<1e-9,spec+' magazine socket keeps the frozen (0,-.19,.16) origin the reload returns it to');}
  for(const spec of ['fire','water','lightning','darkness']){const w=new T.Group();buildWeapon(w,spec);assert.ok(local(w,'muzzle').distanceTo(new T.Vector3(0,0,.88))<1e-9);const guard=local(w,'guard-grip');assert.ok(guard.length()>.3&&guard.length()<.55,spec+' guard grip');}
  const great=new T.Group();buildWeapon(great,'greatsword');assert.ok(meshes(great).length<=13);assert.ok(meshes(shield).length<=10);
  const enchanted=new T.Group();buildWeapon(enchanted,'greatsword');enchantWeapon(enchanted,['fire'],0);const flames=enchanted.getObjectByName('enchantment')!.children.map(m=>m.position.z);assert.ok(Math.abs(Math.max(...flames)-(.28+BLADE_LENGTH.greatsword))<1e-9,'enchantment spans the blade');
@@ -133,6 +133,19 @@ test('lobby hero stances: feet planted, weapon clear of the floor, two-hand grip
   const box=new T.Box3();live.weapon.traverseVisible(o=>{if(o instanceof T.Mesh)box.expandByObject(o,false);});const floor=live.group.worldToLocal(box.min.clone()).y;assert.ok(live.weapon.visible&&floor>-.88,spec+' weapon stays above the floor '+floor.toFixed(3));
   const grip=live.weapon.getObjectByName('support-grip');if(['rifle','machinegun'].includes(spec))assert.ok(grip!.getWorldPosition(new T.Vector3()).distanceTo(live.leftHand.getWorldPosition(new T.Vector3()))<.03,spec+' both hands on the weapon');
  }
+});
+
+test('lobby hero blades stay out of the torso, and the sleeper lies on the podium with the head on the lower hand',()=>{
+ const inside=(point:T.Vector3,m:T.Mesh)=>{const q=point.clone().applyMatrix4(m.matrixWorld.clone().invert()),s=new T.Vector3().setFromMatrixScale(m.matrixWorld);return Math.min((.5-Math.abs(q.x))*s.x,(.5-Math.abs(q.y))*s.y,(.5-Math.abs(q.z))*s.z);};
+ const grid=[-.5,-.25,0,.25,.5];
+ for(const spec of ['greatsword','sword']){const r=probeRig(spec);for(const t of [0,1.3,2.9]){animateLobbyPose(r,probeBase(spec),t,1/30,'weapon');r.group.updateMatrixWorld(true);
+  const torso=['ribcage','upper-chest','abdomen-shell','hip-shell','collar'].map(n=>part(r,n)).filter(Boolean);let depth=0;
+  for(const w of meshes(r.weapon))if(!(w.material as T.Material&{isMeshBasicMaterial?:boolean}).isMeshBasicMaterial)for(const a of grid)for(const b of grid)for(const c of grid){const p=new T.Vector3(a,b,c).applyMatrix4(w.matrixWorld);for(const m of torso)depth=Math.max(depth,inside(p,m));}
+  assert.ok(depth<.03,spec+' weapon sinks '+depth.toFixed(3)+' into the torso at '+t);}}
+ const r=probeRig('sword'),podium=-.9075;for(const t of [0,1.7,3.4]){animateLobbyPose(r,probeBase('sword'),t,1/30,'sleep');r.group.updateMatrixWorld(true);
+  const low=(n:string)=>new T.Box3().setFromObject(part(r,n)).min.y;let lowest=Infinity;for(const m of meshes(r.group))if(m.visible&&!r.weapon.getObjectById(m.id))lowest=Math.min(lowest,new T.Box3().setFromObject(m).min.y);
+  assert.ok(lowest>podium-.02&&lowest<podium+.03,'the sleeper rests on the podium '+lowest.toFixed(3));assert.ok(low('hip-shell')<podium+.1&&low('right-shoulder-cap')<podium+.03,'hip and lower shoulder bear the weight');
+  const head=new T.Box3().setFromObject(part(r,'blank-head')),palm=new T.Box3().setFromObject(part(r,'right-palm'));assert.ok(Math.abs(head.min.y-palm.max.y)<.03&&palm.max.x>head.min.x&&palm.min.x<head.max.x&&palm.max.z>head.min.z&&palm.min.z<head.max.z,'the head lies on the lower hand');}
 });
 
 test('portrait framing grows with a tall hat and keeps the front camera',()=>{

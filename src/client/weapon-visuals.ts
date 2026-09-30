@@ -26,13 +26,14 @@ export function buildWeapon(weapon:T.Group,spec:string,offhand=false){
  else if(spec==='leet'){matrixStaff(weapon);}else if(w.class==='ranged'){
   // Every bore sits on y=0 through the muzzle socket; the hand socket is the pistol grip.
   const rifle=spec==='rifle',mg=spec==='machinegun',tip=rifle?1.18:mg?.87:.47,gunmetal=0x1d2a31,guard=0x5d7079;
-  const mag=socket(weapon,'magazine',0,-.19,spec==='pistol'?-.06:mg?.2:.16);
+  // Frozen contract: every gun's 'magazine' socket origin stays at (0,-.19,.16); the visible mag is offset inside it (reload only animates position.y).
+  const mag=socket(weapon,'magazine',0,-.19,.16);
   if(spec==='pistol'){
    // Slide over a short frame, a raked grip that holds the magazine, a trigger guard, sights and a steel muzzle ring.
    box(weapon,steel,0,.035,.14,.125,.10,.40);box(weapon,dark,0,-.045,.12,.11,.06,.30);box(weapon,gunmetal,0,0,.40,.06,.06,.14);trim(weapon,steel,0,0,.465,.08,.08,.03,.18);
    box(weapon,dark,0,-.14,-.045,.11,.22,.12).rotation.x=.22;trim(weapon,guard,0,-.14,-.045,.118,.15,.085,0,.22);trim(weapon,steel,0,-.105,.07,.03,.022,.12);
    trim(weapon,steel,0,.095,.32,.022,.02,.025,.2);trim(weapon,steel,0,.095,-.03,.07,.02,.025,.2);
-   trim(mag,steel,0,-.03,-.005,.095,.13,.10,0,.22);socket(weapon,'support-grip',.06,-.10,-.01);
+   trim(mag,steel,0,-.03,-.225,.095,.13,.10,0,.22);socket(weapon,'support-grip',.06,-.10,-.01);
   }else{
    // Receiver, pistol grip and a short dropped stock (butt ~.30 behind the grip, marked 'stock-butt').
    box(weapon,dark,0,mg?.01:0,.09,mg?.17:.15,mg?.22:.16,mg?.44:.40);trim(weapon,steel,0,mg?.13:.09,.09,mg?.15:.10,.025,mg?.42:.40,.12);
@@ -48,7 +49,7 @@ export function buildWeapon(weapon:T.Group,spec:string,offhand=false){
     // Tall receiver with a carry handle, perforated barrel shroud, flash hider, and a drum feeding a short belt.
     box(weapon,gunmetal,0,.01,.48,.11,.11,.40);for(const z of [.40,.52])trim(weapon,black,0,.01,z,.115,.035,.06);box(weapon,gunmetal,0,0,.77,.05,.05,.18);box(weapon,gold,0,0,.865,.10,.10,.07);
     trim(weapon,steel,0,.235,.09,.035,.03,.22);for(const z of [.0,.18])trim(weapon,steel,0,.19,z,.03,.07,.03);
-    box(mag,gold,0,0,0,.10,.24,.22);trim(mag,steel,-.01,.12,-.10,.06,.04,.08).rotation.x=-.4;
+    box(mag,gold,0,0,.04,.10,.24,.22);trim(mag,steel,-.01,.12,-.06,.06,.04,.08).rotation.x=-.4;
    }
   }
   const muzzle=socket(weapon,'muzzle',0,0,tip+.04);const flash=mesh(muzzle,flame,0xffdb90,0,0,.14,.11,.30,.11,true);flash.rotation.x=Math.PI/2;flash.name='muzzle-flash';flash.visible=false;

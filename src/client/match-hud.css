@@ -25,7 +25,7 @@
 .death-announcement.is-new{animation:death-line-in .26s cubic-bezier(.2,.8,.2,1) both}
 @keyframes death-line-in{from{opacity:0;transform:translateX(-10px)}}
 .block-cooldown.blocking{border-color:var(--accent,#ff6b35)}
-.healthbox .bar.resource.stamina>div{background:#7cc4ff}.stamina-label{color:#b8dcf5}
+.healthbox .bar.resource.stamina>div{background:#7cc4ff}.stamina-label{color:#b8dcf5}.stamina-label .ammo,.weapon-info:has(+.bar.resource.stamina) .ammo{color:#9fd3ff}
 @media(max-width:580px){.death-announcement{font-size:12px}}
 @media(prefers-reduced-motion:reduce){.death-announcement.is-new{animation:none}}
 /* Visual revision P2: the fight HUD scales on tall screens; ready cooldowns read as a word in the good colour. */
