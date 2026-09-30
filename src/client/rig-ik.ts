@@ -13,6 +13,10 @@ import {markLegsAuthored} from './pose-flags.js';
  * The weapon's grip transform blends by the same weight as the arm instead of snapping at any weight. */
 // Rig contract lengths (RIG_LENGTHS in character-rig.ts; literal here because character-rig re-exports this module).
 const UPPER=.27,FORE=.25,THIGH=.25,ARM_MIN=.20,ARM_MAX=.515,SUPPORT_MIN=.10,LEG_MIN=.1,LEG_MAX=.485;
+/** Hip-to-ankle reach of a locked standing leg (the ground pass in motion-quality.ts clamps at the same value). foot() keeps
+ * LEG_MAX's athletic bend by default; a standing pose that wants a straight, planted weight leg (the lobby contrapposto)
+ * passes this as `maxReach`, otherwise its foot stops short of the floor. */
+export const STANDING_REACH=.497;
 /** The grip offset that puts the weapon origin on the wrist joint (cancels the hand socket's (0,-.065,.055)). */
 const GRIP=new T.Vector3(0,.065,-.055),IDENTITY=new T.Quaternion(),X_AXIS=new T.Vector3(1,0,0),DOWN=new T.Vector3(0,-1,0);
 const _s=new T.Vector3(),_e=new T.Vector3(),_d=new T.Vector3(),_p=new T.Vector3(),_u=new T.Vector3(),_w=new T.Vector3(),_x=new T.Vector3(),_y=new T.Vector3(),_k=new T.Vector3(),_f=new T.Vector3(),_m=new T.Matrix4();
@@ -71,13 +75,13 @@ export function braceWeapon(r:CharacterRig,target:T.Vector3,rotation:T.Euler,wei
  * with any body offset a layer already applied) toward the target. The knee bends toward the
  * rig's forward with a lift that keeps a forward-reaching leg's bend plane well defined; the thigh is built from a basis and
  * the knee is a pure hinge. */
-export function foot(r:CharacterRig,left:boolean,target:T.Vector3,yaw:number,heel:number,weight:number,from?:T.Vector3){
+export function foot(r:CharacterRig,left:boolean,target:T.Vector3,yaw:number,heel:number,weight:number,from?:T.Vector3,maxReach=LEG_MAX){
  markLegsAuthored(r);
  const hip=left?r.leftLeg:r.rightLeg,knee=left?r.leftKnee:r.rightKnee,ankle=left?r.leftFoot:r.rightFoot,toe=left?r.leftToe:r.rightToe;
  // Pelvis frame in rig-group space (_q: pelvis to group, _k: pelvis origin).
  chainQuat(r.pelvis,r.group,_q);chainPoint(r.pelvis,r.group,_k);_q2.copy(_q).invert();
  const placed=(from?_e.copy(from):chainPoint(ankle,r.group,_e)).lerp(target,weight);placed.y=Math.max(-.795,placed.y);
- placed.sub(_k).applyQuaternion(_q2);_s.copy(hip.position);_d.subVectors(placed,_s);const raw=_d.length();if(raw<1e-6)_d.set(0,-1,0);else _d.divideScalar(raw);const d=T.MathUtils.clamp(raw,LEG_MIN,LEG_MAX);
+ placed.sub(_k).applyQuaternion(_q2);_s.copy(hip.position);_d.subVectors(placed,_s);const raw=_d.length();if(raw<1e-6)_d.set(0,-1,0);else _d.divideScalar(raw);const d=T.MathUtils.clamp(raw,LEG_MIN,maxReach);
  // Knee pole: the rig's forward, lifted as the leg reaches forward (a lunge), so the knee bends up and forward instead of
  // flipping its bend plane about a pole the leg nearly points along. A leg under the hips bends exactly as before.
  const reach=_w.copy(_d).applyQuaternion(_q).z;_p.set(0,.6*T.MathUtils.smoothstep(reach,.2,.65),1).applyQuaternion(_q2);

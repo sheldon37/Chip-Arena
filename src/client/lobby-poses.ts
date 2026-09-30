@@ -1,6 +1,6 @@
 import * as T from 'three';
 import {settleJointCovers,braceWeapon,type CharacterRig} from './character-rig.js';
-import {foot,hand} from './rig-ik.js';
+import {foot,hand,STANDING_REACH} from './rig-ik.js';
 import {WEAPONS} from '../shared/content.js';
 import type {PlayerView} from '../shared/simulation.js';
 import {animateCharacter} from './character-animation.js';
@@ -42,10 +42,11 @@ export function animateLobbyPose(r:CharacterRig,p:PlayerView,time:number,dt:numb
 /** Rig-space wrist target for the sleeping pilot's lower hand: on the podium, under the head (elbow forward). */
 const SLEEP_PILLOW=new T.Vector3(-.24,-.80,.2),SLEEP_PILLOW_POLE=new T.Vector3(.3,.4,1);
 /** Standing weight shift: the pelvis settles over a straight weight leg and rolls toward the relaxed one, the chest counter-rolls,
- * the weight foot is planted and the free foot rests forward on its toes (foot IK), so the free knee bends. Pure function of time. */
+ * the weight foot is planted and the free foot rests forward on its toes (foot IK at standing reach, so the weight leg can lock
+ * straight instead of keeping the combat IK's bend), so the free knee bends. Pure function of time. */
 function contrapposto(r:CharacterRig,breath:number,shift=1){
  r.body.position.set(-.022*shift,-.006+breath*.002,0);r.pelvis.rotation.set(0,.06*shift,-.035*shift);r.spine.rotation.set(.02,-.03*shift,.03*shift);r.chest.rotation.set(-.01+breath*.01,-.02*shift,.012*shift);r.neck.rotation.set(.02,0,-.02*shift);
- foot(r,false,new T.Vector3(-.13,-.795,-.02),-.12,0,1);foot(r,true,new T.Vector3(.19,-.795+.03*shift,.1),.3,.32*shift,1);
+ foot(r,false,new T.Vector3(-.13,-.795,-.02),-.12,0,1,undefined,STANDING_REACH);foot(r,true,new T.Vector3(.19,-.795+.03*shift,.1),.3,.32*shift,1,undefined,STANDING_REACH);
 }
 const relax=(r:CharacterRig,left:boolean,breath:number)=>{const s=left?1:-1;(left?r.leftArm:r.rightArm).rotation.set(-.06+breath*.01,0,s*.13);(left?r.leftElbow:r.rightElbow).rotation.set(-.32,0,0);(left?r.leftHand:r.rightHand).rotation.set(0,0,-s*.06);};
 const aim=(x:number,y:number,z:number,roll=0)=>{const q=new T.Quaternion().setFromUnitVectors(new T.Vector3(0,0,1),new T.Vector3(x,y,z).normalize());if(roll)q.multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,0,1),roll));return new T.Euler().setFromQuaternion(q);};
