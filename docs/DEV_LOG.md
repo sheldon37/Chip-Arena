@@ -16,26 +16,34 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
-## 2026-09-30 — Claude — visual revision (unfinished handoff)
+## 2026-09-30 — Claude — complete visual revision
 
 - Task: owner-requested complete visual revision (animations, intros, model, UI),
   presentation-only. Branch `claude/visual-revision`, base `migration/shared-development`
-  `dfb90c8`. Plan, owner direction, invariants and remaining task lists:
-  docs/VISUAL-REVISION-PLAN.md. Not merged, not released; no PR yet.
-- Done on branch: dev-only visual lab (tools/visual-lab); no-behaviour module split
-  (verified identical renders, pose dumps and test results); wave 1 merged: ground-
-  anchored locomotion (planted feet, cadence, turn lag, landing spring, roll blending,
-  class stances) and reactions (transition policy, continuous knockdown, layered hit
-  reactions, ragdoll joints, rewindable cinematics). Gameplay timing, hitboxes, damage,
-  cooldowns, movement rules and networking unchanged; comedic death fling kept.
-- Checks (Linux, Node 22.22.2): full `node --import tsx --test tests/*.test.ts` fails only
-  the 13 pre-existing failures; `npm run check:types` passes. Windows/GPU, multiplayer
-  playback and packaging not run.
-- In progress on local/backup branches: `claude/visual-revision-melee`,
-  `claude/visual-revision-look` (wave 2, under review). Remaining: Souls-feel melee pass
-  from owner reference GIFs, detailed voxel model with modular armor slots, ranged/magic,
-  intros, final polish/review, UPDATE-HISTORY entry and PR.
-- Overlap: PR #3 also edits DEV_LOG (keep both entries). No shared/server files touched.
+  `dfb90c8`; PR to migration/shared-development (see GitHub). Plan, owner direction,
+  invariants and ownership: docs/VISUAL-REVISION-PLAN.md. Player-facing summary:
+  docs/UPDATE-HISTORY.md (copied from PR #3's version 7ff6462 plus a new entry — on
+  merge conflict keep both sides' rows/sections).
+- Changes: dev-only visual lab (tools/visual-lab, not in the build); no-behaviour module
+  split; ground-anchored locomotion; continuous reactions/knockdown/ragdolls; Souls-like
+  melee from owner reference GIFs (DEV classes untouched); shouldered guns, reloads,
+  casting, first-person view model; detailed voxel model in armor slots with hue-true
+  glow; reworked intros; UI polish and in-place HUD updates. Unchanged: hit timing,
+  hitboxes, damage, cooldowns, movement rules, network/snapshot formats, saves, access
+  control; src/shared, server and relay untouched; no pre-existing test edited.
+- Checks (Linux, Node 22.22.2): full `node --import tsx --test tests/*.test.ts` 523 tests,
+  only the 13 pre-existing failures; `npm run check:types` passes; independent reviews
+  (invariants, animation quality, real-app smoke via Playwright/SwiftShader) passed.
+  `npm run build:check` still stops on the 4 known server TS errors (fixed by PR #2).
+- Not run: native Windows/GPU, real-hardware performance, online multiplayer, packaging.
+- Known open: jump airborne pose barely visible in lab strips; dagger idle guard less low
+  than the reference; warm accents pale under lobby/portrait lighting; intro close-ups
+  blow the chest glow to white (pre-existing); crossed-arms lobby fist clips (pre-existing);
+  Developer Sandbox buttons overflow at 1280x720 (pre-existing); intro scenes render
+  slower under software GL, so check frame rate on the owner's PC. Owner-gated stale tests
+  (fighter high kick, rarity-combat dagger mirror) still fail as before.
+- Next: owner playtest on Windows and review of feel (cadence, melee, glow); then merge
+  decisions. Status: implemented on branch; not merged; not released.
 
 ## 2026-09-29 — Astra — shared development log
 

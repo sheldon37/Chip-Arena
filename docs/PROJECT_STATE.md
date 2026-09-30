@@ -23,6 +23,9 @@ Migration imported to private GitHub; not merged or released (2026-09-29).
   identical after clean restore. WebSocket rematch/server build remain failing;
   HTTPS integration and Windows ZIP construction passed. Native Windows untested.
 
+- Visual revision (animation, melee, voxel model, intros, UI): implemented on
+  `claude/visual-revision`, PR pending review; presentation-only, not released.
+
 Next: review the migration PR against `main`; shared policy and CI remain on
 `migration/shared-development` until the owner merges. Resolve recorded baseline
 failures before enforcing a green merge/release gate. No automatic merge.
