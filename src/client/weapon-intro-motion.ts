@@ -17,34 +17,35 @@ type Stance=[number,number,number,number,number,number];
 type Beat={left:boolean;at:number;dur:number;h:number};
 interface Choreo{turn:number[];z:number[];crouch:number[];torque:number[];lean:number[];side:number;impact?:number[];
  /** Ideal stance over time (hit-relative windows): the planner steps whenever a planted foot drifts too far from it. */
- stance:(t:number,hit:number)=>Stance;beats?:(hit:number)=>Beat[];hop?:[number,number]}
+ stance:(t:number,hit:number)=>Stance;beats?:(hit:number)=>Beat[];hop?:[number,number,number]}
 const L=true,R=false;
 const SQUARED:Stance=[.16,.06,.12,-.16,-.1,-.22],READY:Stance=[.17,.1,.18,-.17,-.12,-.3];
 const phase=(t:number,...windows:[number,Stance][])=>{let s=windows[0][1];for(const [at,stance] of windows)if(t>=at)s=stance;return s;};
 const TORQUE=[-.05,-.18,-.30,-.32,.35,.22,.08,-.05,-.05],LEAN=[.08,.10,.15,-.13,.35,.2,.04,0,0];
 const caster=(t:number,h:number)=>phase(t,[0,SQUARED],[h-.4,[.19,.18,.2,-.16,-.12,-.3]],[h+.6,SQUARED]);
 const CHOREO:Record<Spec,Choreo>={
- sword:{side:-1,turn:[-.9,-.8,-.7,-.95,.55,.8,.15,-.25,-.25],z:[-.95,-.62,-.44,-.42,-.1,-.06,-.02,0,0],crouch:[-.03,-.04,-.10,-.2,-.26,-.12,-.04,-.03,-.03],torque:TORQUE,lean:LEAN,
-  stance:(t,h)=>phase(t,[0,READY],[h-.4,[.2,.32,.2,-.17,-.22,-.4]],[h+.5,SQUARED]),beats:h=>[{left:L,at:h-.33,dur:.27,h:.11}]},
- greatsword:{side:1,turn:[1.1,.85,.35,-.3,.5,.65,.25,-.25,-.25],z:[-.8,-.45,-.15,-.12,.08,.1,.04,0,0],crouch:[-.09,-.12,-.18,-.02,-.36,-.2,-.05,-.03,-.03],torque:TORQUE,lean:LEAN,impact:[4],
+ sword:{side:1,turn:[-.7,-.62,-.55,-.62,.1,.35,.05,-.25,-.25],z:[-.95,-.62,-.44,-.4,-.14,-.1,-.03,0,0],crouch:[-.03,-.04,-.10,-.2,-.26,-.12,-.04,-.03,-.03],torque:[-.05,-.18,-.35,-.5,.45,.4,.08,-.05,-.05],lean:LEAN,
+  stance:(t,h)=>phase(t,[0,READY],[h-.4,[.2,.32,.2,-.17,-.22,-.4]],[h+.5,SQUARED]),beats:h=>[{left:L,at:h-.33,dur:.27,h:.11},{left:R,at:h+.06,dur:.26,h:.07}]},
+ greatsword:{side:1,turn:[1.1,.85,.35,-.3,.5,.65,.25,-.25,-.25],z:[-.8,-.45,-.15,-.12,.08,.1,.04,0,0],crouch:[-.09,-.12,-.12,-.04,-.42,-.26,-.06,-.03,-.03],torque:TORQUE,lean:[.08,.1,.05,-.2,.45,.3,.06,0,0],impact:[4],
   stance:(t,h)=>phase(t,[0,READY],[h-.4,[.26,.24,.3,-.2,-.14,-.3]],[h+.6,SQUARED]),beats:h=>[{left:L,at:h-.32,dur:.24,h:.1}]},
  daggers:{side:1,turn:[-.3,-1.2,-2.8,-4.1,-5.3,-6.1,-6.5,-6.5,-6.5],z:[-.2,-.1,0,0,.1,.1,0,0,0],crouch:[-.28,-.2,.02,.14,-.17,-.32,-.12,-.05,-.05],torque:TORQUE,lean:LEAN,
-  stance:()=>READY,hop:[1.04,1.44]},
- shield:{side:1,turn:[.5,.25,.1,.05,-.15,-.4,-.25,-.25,-.25],z:[-.2,-.1,0,0,.1,.1,0,0,0],crouch:[-.34,-.38,-.2,-.3,-.18,-.05,-.03,-.03,-.03],torque:TORQUE,lean:LEAN,impact:[4],
-  stance:(t,h)=>phase(t,[0,[.18,.08,.2,-.18,-.12,-.25]],[h-.35,[.22,.18,.25,-.18,-.14,-.3]],[h+.6,SQUARED]),beats:h=>[{left:L,at:h-.3,dur:.28,h:.09}]},
+  stance:()=>READY,hop:[1.04,1.44,.13]},
+ shield:{side:1,turn:[.5,.25,.1,.05,-.15,-.4,-.25,-.25,-.25],z:[-.2,-.1,0,0,.1,.1,0,0,0],crouch:[-.12,-.16,-.1,-.02,-.42,-.22,-.06,-.03,-.03],torque:TORQUE,lean:[.08,.1,.12,-.15,.4,.25,.05,0,0],impact:[4],
+  stance:(t,h)=>phase(t,[0,[.18,.08,.2,-.18,-.12,-.25]],[h-.35,[.22,.14,.25,-.2,-.16,-.3]],[h+.6,SQUARED]),hop:[1.0,1.4,.09]},
  pistol:{side:1,turn:[-.7,-.4,-.25,-.1,.2,.1,-.1,-.2,-.2],z:[-.2,-.1,0,0,.1,.1,0,0,0],crouch:[-.03,-.04,-.10,-.15,-.13,-.06,-.03,-.03,-.03],torque:TORQUE,lean:LEAN,stance:caster},
- rifle:{side:-1,turn:[-.7,-.4,-.25,-.1,.2,.1,-.1,-.2,-.2],z:[-.2,-.1,0,0,.1,.1,0,0,0],crouch:[-.25,-.30,-.34,-.25,-.08,-.03,-.03,-.03,-.03],torque:TORQUE,lean:LEAN,stance:(t,h)=>phase(t,[0,[.17,.12,.2,-.17,-.14,-.3]],[h-.4,[.2,.2,.25,-.17,-.16,-.35]],[h+.6,SQUARED])},
+ rifle:{side:1,turn:[-.7,-.4,-.25,-.1,.2,.1,-.1,-.2,-.2],z:[-.2,-.1,0,0,.1,.1,0,0,0],crouch:[-.25,-.30,-.34,-.25,-.08,-.03,-.03,-.03,-.03],torque:TORQUE,lean:LEAN,stance:(t,h)=>phase(t,[0,[.17,.12,.2,-.17,-.14,-.3]],[h-.4,[.2,.2,.25,-.17,-.16,-.35]],[h+.6,SQUARED])},
  machinegun:{side:1,turn:[-.7,-.4,-.25,-.1,.2,.1,-.1,-.2,-.2],z:[-.2,-.1,0,0,.1,.1,0,0,0],crouch:[-.03,-.04,-.10,-.18,-.2,-.1,-.03,-.03,-.03],torque:TORQUE,lean:LEAN,stance:caster},
- fire:{side:1,turn:[.5,.25,-.15,-.4,.35,.15,-.2,-.2,-.2],z:[-.2,-.1,0,0,.1,.1,0,0,0],crouch:[-.03,-.04,-.10,-.15,-.13,-.06,-.03,-.03,-.03],torque:TORQUE,lean:LEAN,stance:caster},
- water:{side:1,turn:[.5,.25,-.15,-.4,.35,.15,-.2,-.2,-.2],z:[-.2,-.1,0,0,.1,.1,0,0,0],crouch:[-.03,-.04,-.10,-.15,-.13,-.06,-.03,-.03,-.03],torque:TORQUE,lean:LEAN,stance:caster},
- darkness:{side:1,turn:[.5,.25,-.15,-.4,.35,.15,-.2,-.2,-.2],z:[-.2,-.1,0,0,.1,.1,0,0,0],crouch:[-.03,-.04,-.10,-.15,-.13,-.06,-.03,-.03,-.03],torque:TORQUE,lean:LEAN,stance:caster},
+ fire:{side:1,turn:[.5,.25,-.15,-.4,.35,.15,-.2,-.2,-.2],z:[-.2,-.1,0,0,.1,.1,0,0,0],crouch:[-.03,-.04,-.10,-.15,-.2,-.1,-.04,-.03,-.03],torque:TORQUE,lean:LEAN,stance:caster},
+ water:{side:1,turn:[.3,-.2,.3,-.35,.2,-.1,.1,-.2,-.2],z:[-.2,-.1,0,0,.1,.1,0,0,0],crouch:[-.05,-.12,-.04,-.16,.02,-.08,-.05,-.03,-.03],torque:[-.05,.2,-.2,-.25,.2,-.1,.06,-.05,-.05],lean:[.06,.1,.02,.12,-.1,.08,.04,0,0],stance:caster},
+ darkness:{side:1,turn:[.6,.5,.35,.1,-.1,-.15,-.2,-.25,-.25],z:[-.2,-.1,0,0,.1,.1,0,0,0],crouch:[-.08,-.06,-.1,-.2,-.24,-.16,-.08,-.06,-.06],torque:[-.05,-.1,-.2,-.35,.25,.18,.05,-.05,-.05],lean:[.12,.1,.05,-.1,.25,.2,.1,.08,.08],stance:caster},
  lightning:{side:1,turn:[.5,.25,-.15,-.4,.35,.15,-.2,-.2,-.2],z:[-.7,-.7,-.55,-.25,0,0,0,0,0],crouch:[0,0,0,0,-.04,-.1,-.04,-.03,-.03],torque:TORQUE,lean:LEAN,
   stance:(t,h)=>phase(t,[0,[.18,.1,.2,-.18,-.1,-.25]],[h+.6,SQUARED])},
 };
 const plans=new Map<Spec,Step[]>();
 /** Deterministic footstep plan for a spec (a pure function of its choreography, memoised): walking the timeline at 60 Hz,
  * a planted foot steps when its world anchor has drifted more than 9 cm or .45 rad from the ideal stance, aiming where
- * that stance will be when it lands. One foot swings at a time (except an authored hop); beats force exact timings. */
+ * that stance will be when it lands. One foot swings at a time (except an authored hop); beats force exact timings, and
+ * both feet stay planted through the hit itself. */
 function planSteps(spec:Spec,hit:number):Step[]{
  const cached=plans.get(spec);if(cached)return cached;
  const ch=CHOREO[spec],keys=keysFor(hit),flow:IntroCurveOptions={pass:[1,2,7]},beats=ch.beats?.(hit)??[],steps:Step[]=[];
@@ -54,12 +55,14 @@ function planSteps(spec:Spec,hit:number):Step[]{
  for(let n=0;n<=Math.round(4.6*60);n++){const t=n/60;
   if(ch.hop&&Math.abs(t-ch.hop[0])<1e-6){for(const f of feet)go(f,t,ch.hop[1]-ch.hop[0],.1);continue;}
   for(const b of beats){const f=feet[b.left?0:1];if(Math.abs(t-b.at)<.5/60&&f.busy<=t)go(f,t,b.dur,b.h);}
-  if(feet.some(f=>f.busy>t))continue;
+  if(feet.some(f=>f.busy>t)||(t>hit-.3&&t<hit+.22))continue;
   const errors=feet.map(f=>{const want=ideal(t+.28,f.left),d=Math.hypot(want.x-f.at.x,want.z-f.at.z),a=Math.abs(Math.atan2(Math.sin(want.yaw-f.at.yaw),Math.cos(want.yaw-f.at.yaw)));
    const soon=beats.some(b=>b.left===f.left&&b.at>t&&b.at<t+.3)||(ch.hop&&t<ch.hop[0]&&t>ch.hop[0]-.3);return soon||t-f.landed<.15?0:Math.max(d/.09,a/.45);});
   const i=errors[0]>=errors[1]?0:1;if(errors[i]>1)go(feet[i],t,T.MathUtils.clamp(.2+errors[i]*.03,.24,.34),.07);}
  plans.set(spec,steps);return steps;
 }
+/** A shot's kick: snaps back in ~20 ms and recovers over ~.25 s (0 before the shot). */
+const recoil=(tau:number)=>tau<=0?0:(1-Math.exp(-90*tau))*Math.exp(-11*tau);
 const ROOT_Y=.88,FLOOR=-.795,LEG_REACH=.485;
 const _hip=new T.Vector3(),_t=new T.Vector3();
 interface Foot{x:number;z:number;y:number;yaw:number;heel:number;weight:number}
@@ -83,7 +86,7 @@ export function lightningHeight(age:number,hit:number){const fall=hit-.35,drop=2
 /** Authored full-body entrance phrases. Absolute sampling makes previews and late joins identical. */
 export function poseWeaponIntro(r:CharacterRig,style:WeaponIntro,age:number){
  const spec=WEAPON_INTROS[style].spec,hit=WEAPON_INTROS[style].hit,keys=keysFor(hit),t=Math.max(0,age),ch=CHOREO[spec],magic=['fire','water','lightning','darkness'].includes(spec),gun=['pistol','rifle','machinegun'].includes(spec);
- const flow:IntroCurveOptions={pass:[1,2,7]},impact:IntroCurveOptions={impact:ch.impact,pass:[1,2,7]},strike:IntroCurveOptions={impact:ch.impact,pass:[1,2,4,7]};
+ const flow:IntroCurveOptions={pass:[1,2,7]},drive:IntroCurveOptions={pass:[1,2,7],drive:[4]},impact:IntroCurveOptions={impact:ch.impact,pass:[1,2,7]},strike:IntroCurveOptions={impact:ch.impact,drive:[4],pass:[1,2,7]};
  /** Keyed channel sampled `lag` seconds late (positive: trails the action; negative: leads it). */
  const c=(v:number[],lag=0,o:IntroCurveOptions=flow)=>introCurve(keys,v,t-lag,o);
  for(const node of [r.body,r.pelvis,r.spine,r.chest,r.neck,r.head,r.leftShoulder,r.rightShoulder,r.leftArm,r.rightArm,r.leftElbow,r.rightElbow,r.leftHand,r.rightHand,r.leftLeg,r.rightLeg,r.leftKnee,r.rightKnee,r.leftFoot,r.rightFoot,r.leftToe,r.rightToe])node.rotation.set(0,0,0);
@@ -91,9 +94,9 @@ export function poseWeaponIntro(r:CharacterRig,style:WeaponIntro,age:number){
  const root=(time:number)=>({z:introCurve(keys,ch.z,time,flow),yaw:introCurve(keys,ch.turn,time,flow)}),g=root(t);
  r.group.position.set(0,ROOT_Y,g.z);r.group.rotation.set(0,g.yaw,0);
  // Kinetic chain: hips lead, spine and chest follow, the striking hand lands on the hit, the off hand and head trail.
- const hop=ch.hop&&t>ch.hop[0]&&t<ch.hop[1]?(t-ch.hop[0])/(ch.hop[1]-ch.hop[0]):0,air=spec==='lightning'?lightningHeight(t,hit):hop?.13*Math.sin(Math.PI*hop):0;
+ const hop=ch.hop&&t>ch.hop[0]&&t<ch.hop[1]?(t-ch.hop[0])/(ch.hop[1]-ch.hop[0]):0,air=spec==='lightning'?lightningHeight(t,hit):hop?ch.hop![2]*Math.sin(Math.PI*hop):0;
  r.body.position.y=c(ch.crouch,0,impact)+air;
- const torque=(lag:number)=>c(ch.torque,lag);r.pelvis.rotation.y=torque(-.07)*.4;r.spine.rotation.y=torque(-.05)*.6;r.chest.rotation.y=torque(-.03)*.45;r.head.rotation.y=-torque(.06)*.7;
+ const torque=(lag:number)=>c(ch.torque,lag,drive);r.pelvis.rotation.y=torque(-.07)*.4;r.spine.rotation.y=torque(-.05)*.6;r.chest.rotation.y=torque(-.03)*.45;r.head.rotation.y=-torque(.06)*.7;
  r.body.rotation.x=c(ch.lean,-.02,impact);r.head.rotation.x=-c(ch.lean,.06)*.5;r.spine.rotation.x=Math.sin(t*2.2)*.008;
  const idle=heroIdle(t);r.spine.rotation.x+=idle.breath;r.neck.rotation.x-=idle.breath*.5;r.head.rotation.z+=idle.headRoll;r.head.rotation.y+=idle.headYaw;
  // Feet: world anchors, weight shift toward the support foot, then drop the pelvis just enough that planted legs reach.
@@ -109,44 +112,75 @@ export function poseWeaponIntro(r:CharacterRig,style:WeaponIntro,age:number){
  const h=(left:boolean,x:number,y:number,z:number,rx=0,ry=0,rz=0,w=1)=>hand(r,left,_t.set(x,y,z),new T.Euler(rx,ry,rz),w);
  const off=.05,sway=idle.sway;
  if(spec==='greatsword'){
-  braceWeapon(r,new T.Vector3(c([-.28,-.30,-.12,-.14,-.06,.0,-.18,-.22,-.22],0,strike),c([-.30,-.28,.04,.40,-.23,-.04,.32,.3,.3],0,strike)+sway,c([-.05,.0,.2,-.16,.43,.32,.05,.1,.1],0,strike)),new T.Euler(c([.85,.7,-.1,-2.4,.8,.1,-.25,-.28,-.28],0,strike),c([.2,.25,-.25,-.3,.45,.7,2.6,2.8,2.8]),-.1),1);
+  // Dragged low on the walk-in, shouldered, wound up behind the shoulder, slammed flat through the hit so the blade bites
+  // the floor and rebounds, hoisted, then planted tip-down in the floor with both hands stacked on the grip for the hero oath.
+  braceWeapon(r,new T.Vector3(c([-.28,-.30,-.2,-.14,-.05,-.05,-.1,-.08,-.08],0,strike),c([-.30,-.28,.16,.40,-.26,-.22,-.02,-.04,-.04],0,strike)+sway,c([-.05,.0,.06,-.16,.34,.36,.3,.32,.32],0,strike)),new T.Euler(c([.85,.7,-2.1,-2.45,-.12,-.06,-.5,1.12,1.12],0,strike),c([.2,.25,-.25,-.3,.1,.12,-.1,-.25,-.25],0,strike),-.1),1);
  }else if(spec==='sword'){
-  // Hand to hilt on the walk-in, a crouched draw, the cut through the hit, a flourish, then the blade laid on the shoulder.
-  h(false,c([-.22,-.05,.10,.16,-.27,-.45,-.34,-.18,-.18],0,strike),c([-.26,-.22,-.2,-.17,.13,.2,.18,.02,.02],0,strike)+sway,c([.06,.1,.13,.13,.42,.24,.26,.16,.16],0,strike),c([.3,.1,-.1,-.2,.15,.25,-.4,-2.55,-2.55],0,strike),c([0,-.6,-1.4,-1.6,.8,1.5,.6,-.35,-.35],0,strike));
+  // Hand to hilt on the walk-in, a crouched draw, the cut through the hit, a flourish, then the blade raised on a diagonal.
+  h(false,c([-.22,-.05,.10,.16,-.27,-.5,-.34,-.25,-.25],0,strike),c([-.26,-.22,-.2,-.17,.13,.2,.18,.0,.0],0,strike)+sway,c([.06,.1,.13,.13,.42,.24,.26,.26,.26],0,strike),c([.3,.1,-.1,-.2,.15,.25,-.4,-.95,-.95],0,strike),c([0,-.6,-1.4,-1.6,.8,2.0,.8,-.55,-.55],0,strike));
   h(true,c([.24,.22,.16,.13,.3,.28,.22,.24,.24],off),c([-.2,-.2,-.19,-.17,-.02,-.08,-.14,-.18,-.18],off),c([.08,.1,.13,.14,-.04,.04,.1,.1,.1],off),c([0,0,0,.1,-.3,-.2,0,0,0],off),0,c([.3,.3,.3,.2,.6,.5,.35,.3,.3],off));
  }else if(spec==='daggers'){
-  const twirl=c([0,0,Math.PI,Math.PI*2,Math.PI*2,Math.PI*2,Math.PI*2,Math.PI*2,Math.PI*2]);
-  for(const left of [true,false]){const sign=left?1:-1,lag=left?off:0;h(left,sign*c([.22,.32,.45,.43,.24,.10,.08,.12,.12],lag),c([-.12,.08,.28,.42,.28,.12,.2,.16,.16],lag)+sway,c([-.12,-.02,.05,.15,.25,.33,.25,.28,.28],lag),twirl+c([.2,-.3,-.9,-1.2,-.6,0,-.2,-.2,-.2],lag),sign*c([.4,.8,1.1,.8,.1,-.65,-.65,-.65,-.65],lag),sign*.18);}
+  // Tucked spin, blades flipped in hand, arms bent (never a T), crossed high over the head, an X-cut through the hit,
+  // a flourish, then an asymmetric reverse-grip guard: one blade forward and high, one low and back.
+  const tw=Math.PI*2,twirl=c([0,0,tw,tw,tw,tw,2*tw,2*tw,2*tw]);
+  h(true,c([.2,.24,.22,.12,.3,.34,.24,.16,.16],off,strike),c([-.14,.02,.02,.34,-.08,-.14,.1,.16,.16],off,strike)+sway,c([-.05,.05,.18,.16,.36,.22,.2,.3,.3],off,strike),twirl+c([.3,-.2,.4,-1.4,.6,.9,-.2,-.9,-.9],off,strike),c([.4,.6,.3,-.3,.4,.8,.3,.5,.5],off,strike),.18);
+  h(false,c([-.2,-.24,-.22,-.1,-.3,-.34,-.26,-.28,-.28],0,strike),c([-.14,.02,.0,.36,-.06,-.16,0,-.18,-.18],0,strike)-sway,c([-.05,.05,.18,.14,.36,.2,.14,-.02,-.02],0,strike),twirl+c([.3,-.2,.4,-1.5,.7,1.0,.4,2.4,2.4],0,strike),c([-.4,-.6,-.3,.3,-.4,-.8,-.3,-.5,-.5],0,strike),-.18);
  }else if(spec==='shield'){
-  h(false,-.22,c([-.27,-.28,.10,-.15,.06,.20,.15,.15,.15],0,impact)+sway,c([.32,.34,.18,.47,.42,.30,.27,.30,.30]),c([.15,.2,.1,.02,-.05,-.1,-.08,-.08,-.08]),c([.15,.1,-.3,-.1,.2,.4,.25,.25,.25]));h(true,.37,c([-.18,-.22,-.05,.05,.12,.13,.1,.05,.05],off),.02,-.5,0,.35);
+  // The shield rides up through a small hop, then its rim is driven into the floor on the hit with a deep crouch; the free
+  // fist pulls back against it. Hero: shield low at the side, face turned to the lens.
+  h(false,c([-.22,-.22,-.24,-.18,-.14,-.2,-.26,-.3,-.3],0,strike),c([-.12,-.08,.02,.3,-.2,-.1,-.02,-.1,-.1],0,strike)+sway,c([.3,.32,.3,.3,.46,.4,.3,.22,.22],0,strike),c([.1,.12,.05,-.35,.4,.25,.05,.05,.05],0,strike),c([.15,.1,0,-.1,.1,.3,.45,.55,.55],0,strike));
+  h(true,c([.37,.36,.34,.3,.36,.34,.32,.3,.3],off),c([-.18,-.2,-.1,.12,-.02,-.08,-.14,-.18,-.18],off),c([.02,.04,.08,.18,-.1,-.04,0,.02,.02],off),-.5,0,.35);
  }else if(gun){
   if(spec==='pistol'){
-   h(false,c([-.28,-.30,-.18,-.14,-.18,-.25,-.24,-.24,-.24]),c([-.1,.1,.4,.38,.15,.1,.12,.12,.12])+sway,c([.12,.18,.12,.1,.25,.43,.34,.34,.34]),c([.3,-.35,-.9,-.7,-.15,0,-.1,-.1,-.1]),0,c([0,0,Math.PI,Math.PI*2,Math.PI*2,Math.PI*2,Math.PI*2,Math.PI*2,Math.PI*2]));h(true,.25,-.12,.08,-.2,0,.15);
+   // Twirled on the walk-in, pushed out to a two-hand aim, a recoil kick on the shot, then barrel up beside the head.
+   const kick=recoil(t-hit);
+   h(false,c([-.28,-.3,-.18,-.14,-.12,-.14,-.26,-.32,-.32],0,strike),c([-.1,.1,.4,.3,.12,.12,.14,.14,.14],0,strike)+sway+kick*.05,c([.12,.18,.12,.2,.42,.4,.26,.2,.2],0,strike)-kick*.05,c([.3,-.35,-.9,-.3,0,0,-.6,-1.45,-1.45],0,strike)-kick*.55,0,c([0,0,Math.PI,Math.PI*2,Math.PI*2,Math.PI*2,Math.PI*2,Math.PI*2,Math.PI*2]));
+   h(true,c([.25,.25,.24,.1,-.04,-.02,.18,.26,.26],off),c([-.12,-.12,-.1,.02,.08,.08,-.06,-.14,-.14],off)+kick*.04,c([.08,.08,.1,.24,.36,.34,.14,.06,.06],off),c([-.2,-.2,-.2,-.4,-.2,-.2,-.2,-.2,-.2],off),0,c([.15,.15,.15,-.6,-1.2,-1.1,-.2,.15,.15],off));
   }else{
-   const heavy=spec==='machinegun';braceWeapon(r,new T.Vector3(c([-.15,-.14,-.10,-.1,-.03,-.02,-.04,-.06,-.06]),c(heavy?[.37,.38,.24,.18,.14,.12,.14,.15,.15]:[-.08,-.06,.12,.14,.14,.13,.14,.15,.15])+sway*.5,c([.08,.12,.22,.24,.28,.27,.25,.25,.25])),new T.Euler(c(heavy?[-1,-.9,-.5,-.25,-.3,-.4,-.15,-.12,-.12]:[.2,.12,.04,-.05,-.1,-.15,-.10,-.10,-.10]),.1,0),1);
+   // Rifle: a single shouldered shot with a recoil kick, then port arms across the chest. Machinegun: a ~25 Hz judder
+   // through the burst, braced low, then rested on the hip pointing across the frame (never foreshortened at the lens).
+   const heavy=spec==='machinegun',burst=heavy&&t>1.93&&t<2.33?Math.sin(Math.PI*(t-1.93)/.4)**.5:0,judder=heavy?burst*(.5+.5*Math.sin(2*Math.PI*25*(t-1.93))):recoil(t-hit);
+   braceWeapon(r,new T.Vector3(c(heavy?[-.15,-.14,-.10,-.1,-.03,-.02,-.08,-.14,-.14]:[-.15,-.14,-.10,-.1,-.03,-.02,-.06,-.14,-.14],0,strike),c(heavy?[.37,.38,.24,.18,.14,.12,.0,-.16,-.16]:[-.08,-.06,.12,.14,.14,.13,.1,.04,.04])+sway*.5+judder*.02,c(heavy?[.08,.12,.22,.24,.28,.27,.26,.24,.24]:[.08,.12,.22,.24,.28,.27,.26,.24,.24])-judder*(heavy?.03:.05)),new T.Euler(c(heavy?[-1,-.9,-.5,-.25,-.3,-.4,-.1,.2,.2]:[.2,.12,.04,-.05,-.1,-.15,-.5,-1.0,-1.0])-judder*(heavy?.06:.35),c(heavy?[.1,.1,.1,.1,.1,.1,-.3,-.75,-.75]:[.1,.1,.1,.1,.1,.1,-.2,-.5,-.5]),0),1);
    if(spec==='rifle'){const w=1-smooth((t-1.55)/.25);if(w>0)h(true,c([.3,.28,-.05,-.12,.1,.1,.1,.1,.1],off),.07,c([.16,.2,.04,-.08,.12,.12,.12,.12,.12],off),-.3,0,.2,w);}
   }
  }else if(magic){
-  h(false,-.42,c([.05,.12,.3,.45,.15,.13,.15,.14,.14],off),.12,-Math.PI/2,.12,0);
-  const y=spec==='fire'?c([-.1,.02,.15,.35,.5,.35,.24,.2,.2]):spec==='water'?c([-.1,.12,.34,.25,.02,.25,.3,.22,.22]):spec==='lightning'?c([.1,.35,.5,-.24,.06,.2,.32,.25,.25]):c([-.3,-.13,.08,.3,.38,.30,.20,.17,.17]);
-  h(true,c([.2,.3,.39,.4,.3,.28,.28,.27,.27]),y+sway,c([.10,.14,.18,.18,.28,.30,.25,.25,.25]),-Math.PI/2,0,.3);r.leftHand.rotation.y+=Math.sin(t*1.8)*.1;
+  // Staff in the right hand, open left hand. Each element gets its own phrase: fire gathers, raises and thrusts; water
+  // sweeps side to side and lifts a wave on the hit; darkness drags the staff low and stabs it forward with a raised claw;
+  // lightning rides down with the staff overhead and slams it on landing. The staff hand rolls gently throughout.
+  const K:Record<string,number[][]>={
+   fire:[[.2,.26,.22,.18,.16,.2,.28,.3,.3],[-.1,0,.1,.42,.12,.08,0,-.02,-.02],[.1,.14,.22,.1,.38,.34,.2,.14,.14],[-1.57,-1.57,-1.4,-2.2,-.5,-.7,-1.4,-1.57,-1.57],[0,0,0,0,-.2,-.1,0,0,0],
+    [-.42,-.36,-.1,-.3,-.2,-.24,-.34,-.3,-.3],[.05,.12,.12,.2,.14,.1,-.05,-.16,-.16],[.12,.18,.3,.1,.44,.38,.2,.06,.06]],
+   water:[[.2,.26,.14,.26,.2,.24,.24,.2,.2],[-.1,.06,.14,-.1,.36,.5,.18,.12,.12],[.1,.18,.24,.2,.22,.2,.24,.22,.22],[-1.57,-1.4,-1.7,-1.1,-1.9,-2.3,-1.3,-1.0,-1.0],[0,.25,-.25,.3,-.2,-.3,.3,.5,.5],
+    [-.4,-.1,-.36,-.12,-.3,-.36,-.3,-.28,-.28],[0,.2,.05,-.08,.36,.46,.1,.04,.04],[.12,.3,.2,.3,.24,.3,.32,.3,.3]],
+   darkness:[[.28,.32,.3,.24,.14,.18,.24,.26,.26],[.2,.36,.3,-.02,.02,0,.04,.02,.02],[.05,.1,.12,.02,.42,.36,.24,.18,.18],[-1.57,-1.8,-1.7,-2.4,-.1,-.3,-1.0,-1.25,-1.25],[0,0,0,0,0,0,0,0,0],
+    [-.34,-.36,-.3,-.34,-.2,-.24,-.3,-.3,-.3],[-.1,0,.1,.2,.28,.2,.08,-.05,-.05],[.1,.14,.2,.1,.3,.3,.2,.14,.14]],
+   lightning:[[.18,.18,.16,.16,.2,.24,.28,.26,.26],[.46,.48,.5,.52,-.16,-.05,.22,.3,.3],[.08,.08,.1,.12,.36,.3,.18,.12,.12],[-1.57,-1.57,-1.57,-1.6,-.4,-.6,-1.4,-1.57,-1.57],[0,0,0,0,0,0,0,0,0],
+    [-.3,-.3,-.3,-.32,-.38,-.36,-.32,-.3,-.3],[.3,.32,.3,.2,-.1,-.08,-.1,-.14,-.14],[.1,.1,.1,.12,.2,.2,.14,.08,.08]]};
+  const k=K[spec],bob=idle.weight*Math.sin((t-3.2)*2.2)*.012;
+  h(true,-c(k[5],off),c(k[6],off)+sway,c(k[7],off),-Math.PI/2,-.12,0);
+  h(false,-c(k[0],0,strike),c(k[1],0,strike)+bob,c(k[2],0,strike),c(k[3],0,strike),-c(k[4],0,strike),-.3);r.rightHand.rotation.y+=Math.sin(t*1.8)*.1;r.rightHand.rotation.z+=Math.sin(t*1.3+.6)*.06;
+  if(spec==='darkness')r.head.rotation.x+=.14*smooth((t-2.5)/.7);
  }
  const flash=r.weapon.getObjectByName('muzzle-flash');if(flash)flash.visible=spec==='machinegun'&&t>1.93&&t<2.33&&Math.floor((t-1.93)*24)%2===0;
 }
-/** Which side of the root the camera favours for each weapon (the weapon arm faces the lens at the hit). */
-export const introSide=(style:WeaponIntro)=>CHOREO[WEAPON_INTROS[style].spec].side;
-/** Four authored shots: a weapon close-up, a travelling action shot, an opposite-side low impact shot from just before
- * the hit, and the hero shot under the name card. Moves ease out but are still travelling when the next shot cuts in. */
+/** Four authored shots framed from the character's heading at a reference moment (not world axes), so the lens sees the
+ * front whichever way the choreography turns: a weapon close-up, a travelling action shot on the off side, a low
+ * three-quarter impact shot on the weapon side from just before the hit, and the hero shot under the name card. Moves
+ * ease out but are still travelling when the next shot cuts in. `side` 1 puts the impact shot on the character's right
+ * (every intro weapon is carried in the right hand); -1 would mirror the coverage. */
 export function weaponIntroCamera(camera:T.PerspectiveCamera,style:WeaponIntro,age:number,root:T.Vector3,aspect:number,shake=false){
- const spec=WEAPON_INTROS[style].spec,hit=WEAPON_INTROS[style].hit,side=CHOREO[spec].side,closeEnd=Math.min(1.05,hit-.6),impactAt=hit-.15;
+ const spec=WEAPON_INTROS[style].spec,hit=WEAPON_INTROS[style].hit,ch=CHOREO[spec],side=ch.side,keys=keysFor(hit),closeEnd=Math.min(1.05,hit-.6),impactAt=hit-.15;
  const shot=age>=3.2?3:age>=impactAt?2:age>=closeEnd?1:0,from=[0,closeEnd,impactAt,3.2][shot],to=[closeEnd,impactAt,3.2,4.8][shot],u=easeOutLive((age-from)/(to-from));
+ const heading=introCurve(keys,ch.turn,[closeEnd*.6,hit-.35,hit,4][shot],{pass:[1,2,7]});
  const lift=spec==='lightning'?T.MathUtils.clamp(lightningHeight(age,hit),0,1.6):0;let eye:T.Vector3,look:T.Vector3,fov:number;
- if(shot===0){eye=new T.Vector3(side*(1.05-u*.25),.45+lift*.6,2.3-u*.35);look=new T.Vector3(side*.12,.3+lift,0);fov=44-u*3;}
- else if(shot===1){eye=new T.Vector3(side*(1.9-u*.4),.35+lift*.5,3.3-u*.2);look=new T.Vector3(0,.15+lift*.8,0);fov=42;}
- else if(shot===2){const push=u*.25;eye=new T.Vector3(-side*(1.75-push*.6),-.08,3.1-push);look=new T.Vector3(0,.02,0);fov=40;}
- else{eye=new T.Vector3(side*(1.15-u*.45),.2,3.9);look=new T.Vector3(0,.1,0);fov=40;}
+ if(shot===0){eye=new T.Vector3(-side*(1.1-u*.25),.4+lift*.9,2.65-u*.3);look=new T.Vector3(-side*.12,.2+lift,.1);fov=45-u*3;}
+ else if(shot===1){eye=new T.Vector3(side*(1.9-u*.4),.35+lift*.7,3.2-u*.2);look=new T.Vector3(0,.12+lift,0);fov=42;}
+ else if(shot===2){const push=u*.25;eye=new T.Vector3(-side*(1.75-push*.6),-.08,2.9-push);look=new T.Vector3(0,.02,.25);fov=40;}
+ else{eye=new T.Vector3(side*(1.0-u*.4),.12,3.9);look=new T.Vector3(0,-.1,.15);fov=40;}
  if(aspect<1.35)eye.multiplyScalar(1.35/Math.max(.65,aspect));
+ eye.applyAxisAngle(UP,heading);look.applyAxisAngle(UP,heading);
  const target=root.clone().add(look);camera.position.copy(root).add(eye);
  if(shake&&(spec==='greatsword'||spec==='shield'||spec==='lightning')&&age>hit){const a=age-hit,k=.035*Math.exp(-12*a);camera.position.x+=k*Math.sin(53*a);camera.position.y+=k*Math.sin(71*a);}
  camera.up.set(0,1,0);camera.lookAt(target);camera.fov=fov;camera.aspect=aspect;camera.updateProjectionMatrix();return {shot,target};
 }
+const UP=new T.Vector3(0,1,0);

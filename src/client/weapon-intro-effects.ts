@@ -1,6 +1,7 @@
 import * as T from 'three';
 import {WEAPON_INTROS,type WeaponIntro} from '../shared/weapon-intros.js';
 import type {CharacterRig} from './character-rig.js';
+import {poseWeaponIntro} from './weapon-intro-motion.js';
 const fade=(age:number,at:number,seconds:number)=>Math.max(0,1-Math.abs(age-at)/seconds);
 export class WeaponIntroEffects{
  readonly root=new T.Group();private ownGeometry=new Set<T.BufferGeometry>();private materials=new Set<T.Material>();private sparks:T.Mesh[]=[];private accents:T.Object3D[]=[];private ghosts:T.Group[]=[];private ghostSources:T.Object3D[]=[];private color:number;
@@ -22,7 +23,7 @@ export class WeaponIntroEffects{
  }
  update(age:number,r:CharacterRig,quality:number){const spec=WEAPON_INTROS[this.style].spec,hit=WEAPON_INTROS[this.style].hit,burst=Math.max(0,age-hit),alive=age>=hit&&burst<1.15;r.group.updateMatrixWorld(true);const hand=r.leftHand.getWorldPosition(new T.Vector3()),muzzle=r.weapon.getObjectByName('muzzle')?.getWorldPosition(new T.Vector3())||r.rightHand.getWorldPosition(new T.Vector3());
   this.sparks.forEach((spark,i)=>{spark.visible=alive&&(quality>.4||i%3===0);const a=i*2.39996,travel=burst*(1.3+i%5*.32);spark.position.set(Math.cos(a)*travel,.07+Math.max(0,burst*(2+i%4*.2)-burst*burst*2),Math.sin(a)*travel);spark.scale.set(.025,.04+(spec==='fire'?.13:.02),.025).multiplyScalar(1-burst/1.15);spark.rotation.set(age*3,a,age*5);});
-  this.ghosts.forEach((ghost,i)=>{ghost.visible=age>.5&&age<2.5&&quality>.3;let n=0;ghost.traverse(o=>{const source=this.ghostSources[n++];o.position.copy(source.position);o.quaternion.copy(source.quaternion);o.scale.copy(source.scale);if(o instanceof T.Mesh)(o.material as T.MeshBasicMaterial).opacity=.12*(1-i*.18)*fade(age,1.5,1.2);});ghost.position.x+=Math.sin(age*4-i*.4)*(.3+i*.22);ghost.position.z-=.2+i*.18;ghost.rotation.y-=.15*(i+1);});
+
   this.accents.forEach((o,i)=>{o.visible=true;const material=(o as T.Mesh).material as T.MeshBasicMaterial|T.LineBasicMaterial;
    if(spec==='sword'){o.visible=age>1.65&&age<2.3;o.position.set(0,1.05,0);o.rotation.set(-.3+i*.14,age*2,age*1.2+i*.2);o.scale.setScalar(.7+burst*1.8);material.opacity=fade(age,1.83,.4)*(.65-i*.15);}
    else if(spec==='greatsword'){o.visible=alive;material.opacity=(1-burst/1.15)*.8;}
@@ -31,10 +32,13 @@ export class WeaponIntroEffects{
    else if(spec==='rifle'){o.visible=age>1.75;if(i===0){const q=r.weapon.getWorldQuaternion(new T.Quaternion()),dir=new T.Vector3(0,0,1).applyQuaternion(q);o.position.copy(muzzle).addScaledVector(dir,2);o.quaternion.setFromUnitVectors(T.Object3D.DEFAULT_UP,dir);}else{o.position.copy(muzzle);o.quaternion.copy(r.weapon.getWorldQuaternion(new T.Quaternion()));}material.opacity=fade(age,2.25,1.2)*.6;}
    else if(spec==='machinegun'){const e=age-(1.93+i*.045);o.visible=e>=0&&e<1.1;o.position.copy(muzzle).add(new T.Vector3(.15+e*(1+i*.06),-.12+e*1.8-e*e*5,-.25+e*.2));o.rotation.set(e*9,i,e*14);}
    else if(spec==='fire'){o.visible=age>.4;if(i<7){const a=age*2+i*Math.PI*2/7,charge=Math.min(1,(age-.4)/1.3);o.position.copy(hand).add(new T.Vector3(Math.cos(a)*.18*charge,.1+Math.sin(age*7+i)*.04,Math.sin(a)*.18*charge));o.scale.setScalar(charge*(.6+.25*Math.sin(age*8+i)));}else{o.rotation.x=-Math.PI/2;o.position.y=.025;o.scale.setScalar(.5+Math.min(1,age/1.8));}material.opacity=.7;}
-   else if(spec==='water'){o.rotation.y=age*(i?-.8:.8);o.scale.setScalar(Math.min(1,age/.8));material.opacity=age>3.2?.25:.65;}
+   else if(spec==='water'){o.rotation.y=age*(i?-.8:.8);o.scale.setScalar(Math.min(1,age/.8));material.opacity=.65-.4*T.MathUtils.smoothstep(age,3.05,3.35);}
    else if(spec==='lightning'){o.visible=age>1.20&&age<2.3;material.opacity=fade(age,1.45,.8)*(Math.sin(age*70+i)>.1?1:.08);o.rotation.y=i*1.1;}
    else if(spec==='darkness'){const open=T.MathUtils.smoothstep(age,0,1),close=1-T.MathUtils.smoothstep(age,2.6,3.15);o.scale.set(open*close,1.2*open,1);if(i)o.rotation.z=age*(i%2?1:-1)*.7;material.opacity=i?.8:.95;}
   });
+  // Afterimages are the same choreography sampled a few frames in the past (a real motion trail along the path), then the
+  // rig is re-posed at the present age; everything stays a pure function of age.
+  if(this.ghosts.length){const live=age>.35&&age<2.7&&quality>.3;this.ghosts.forEach((ghost,i)=>{ghost.visible=live;if(!live)return;poseWeaponIntro(r,this.style,age-(i+1)*.065);let n=0;ghost.traverse(o=>{const source=this.ghostSources[n++];o.position.copy(source.position);o.quaternion.copy(source.quaternion);o.scale.copy(source.scale);if(o instanceof T.Mesh)(o.material as T.MeshBasicMaterial).opacity=.16*(1-i*.25)*fade(age,1.5,1.2);});});if(live)poseWeaponIntro(r,this.style,age);}
  }
  dispose(){this.root.removeFromParent();this.ownGeometry.forEach(g=>g.dispose());this.materials.forEach(m=>m.dispose());}
 }

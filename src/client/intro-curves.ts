@@ -8,6 +8,9 @@ export interface IntroCurveOptions{
  /** Key indices that are hits/landings: the curve arrives still travelling (1.3x the incoming slope), stops dead, then
   * rings out with a small analytic settle (exp(-18 tau) sin(38 tau), about `settle` of the incoming delta). */
  impact?:readonly number[];
+ /** Key indices a strike accelerates INTO and carries through (a slash at contact): the tangent is 1.6x the incoming
+  * slope, capped at 3x the outgoing one so the follow-through never overshoots its key. A reversal stops as usual. */
+ drive?:readonly number[];
  /** Settle amplitude as a fraction of the incoming delta (default .08). */
  settle?:number;
 }
@@ -22,6 +25,7 @@ export function introCurve(times:readonly number[],values:readonly number[],time
   const tangent=(n:number,arriving:boolean)=>{
    if(n===0||n===last)return 0;
    if(options.impact?.includes(n))return arriving?1.3*slope(n-1):0;
+   if(options.drive?.includes(n)){const a=slope(n-1),b=slope(n);return a*b<=0?0:Math.sign(a)*Math.min(1.6*Math.abs(a),3*Math.abs(b));}
    if(options.pass?.includes(n))return (values[n+1]-values[n-1])/(times[n+1]-times[n-1]);
    const a=slope(n-1),b=slope(n);return a*b<=0?0:2*a*b/(a+b);
   };
