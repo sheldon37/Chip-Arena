@@ -15,7 +15,7 @@ import type {ProjectileTrails} from '../src/client/projectile-trails.js';
 import {probeBase,probeRig,weaponTip} from './helpers/motion-probe.js';
 
 await initPhysics();
-const CUTS:[string,number][]=[['sword',1],['sword',2],['sword',3],['daggers',1],['daggers',2],['daggers',3],['daggers',4],['shield',1],['greatsword',1],['greatsword',2]];
+const CUTS:[string,number][]=[['sword',1],['sword',2],['sword',3],['daggers',1],['daggers',2],['daggers',3],['daggers',4],['shield',1],['shield',2],['greatsword',1],['greatsword',2]];
 const LIMBS=['leftElbow','rightElbow','leftKnee','rightKnee','leftArm','rightArm','leftLeg','rightLeg'] as const;
 /** A grounded standing player that attacks at t=2 with the synthesized commitment (the rig root follows its travel). */
 function attackScenario(spec:string,index:number){

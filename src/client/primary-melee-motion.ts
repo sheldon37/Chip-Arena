@@ -31,7 +31,7 @@ const w=(start:number,mid:Arr)=>[start,...mid,start];
  * ends in the weapon's combat-ready guard (melee-guard.ts), so a held combo flows through one stance. */
 export function primaryMeleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>){
  const rate=p.attackRate||1,recoverySeconds=meleeRecovery(p.spec)/rate,phase=meleePhase(a,recoverySeconds),c=(values:Arr)=>poseCurve(keys,values,phase),weight=ease(a.age/Math.min(.065,a.windup));
- const index=Math.max(0,(p.attackIndex||1)-1),dagger=p.spec==='daggers',heavy=p.spec==='greatsword',shield=p.spec==='shield',reverse=dagger||heavy?index%2===1:!shield&&index%3===1,sign=reverse?-1:1,overhead=!heavy&&!dagger&&!shield&&index%3===2,spin=dagger&&index%4===3,low=heavy||dagger&&index%4===2;
+ const index=Math.max(0,(p.attackIndex||1)-1),dagger=p.spec==='daggers',heavy=p.spec==='greatsword',shield=p.spec==='shield',reverse=dagger||heavy||shield?index%2===1:index%3===1,sign=reverse?-1:1,overhead=!heavy&&!dagger&&!shield&&index%3===2,spin=dagger&&index%4===3,low=heavy||dagger&&index%4===2;
  const G=meleeGuard(p.spec)!;
  // Where the incoming layers planted the ankles, before this phrase moves the body (the plant blends from there).
  if(weight<1){ankleInGroup(r,true,_in[0]);ankleInGroup(r,false,_in[1]);}
@@ -64,7 +64,7 @@ export function primaryMeleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<type
   arm(r,reverse,low?MELEE_PHRASES.daggerLow:MELEE_PHRASES.dagger,reverse?G.off:G.main,reverse,c,weight);
   arm(r,!reverse,MELEE_PHRASES.daggerOther,reverse?G.main:G.off,reverse,c,weight);
  }else{
-  const phrase=shield?'shield':overhead?'swordOverhead':reverse?'swordBackhand':'swordForehand',set=MELEE_PHRASES[phrase];
+  const phrase=shield?reverse?'shieldRise':'shield':overhead?'swordOverhead':reverse?'swordBackhand':'swordForehand',set=MELEE_PHRASES[phrase];
   arm(r,false,set,G.main,false,c,weight);arm(r,true,shield?MELEE_PHRASES.shieldOff:reverse?MELEE_PHRASES.swordOffTucked:MELEE_PHRASES.swordOff,G.off,false,c,weight);
  }
  headTrack(r,p,a,recoverySeconds,turnArr,twistArr,turnScale,twistScale,crouch,spin,weight);
@@ -89,6 +89,8 @@ export const MELEE_PHRASES={
  swordOff:{x:[.38,.42,.44,.30,.22,.24,.26],y:[-.05,-.06,-.02,.04,.10,.08,0],z:[-.02,.02,.06,.24,.26,.24,.20],rx:[-.4,-.4,-.35,-.3,-.35,-.5,-.75],ry:[.4,.6,.4,-.2,-.45,-.35,-.05],rz:[.3,.3,.3,.3,.3,.28,.26]},
  swordOffTucked:{x:[.34,.36,.36,.32,.26,.26,.26],y:[-.10,-.12,-.08,.02,.08,.04,-.02],z:[.04,.02,.04,.14,.22,.22,.18],rx:[-.4,-.4,-.35,-.3,-.35,-.5,-.75],ry:[.4,.6,.4,-.2,-.45,-.35,-.05],rz:[.3,.3,.3,.3,.3,.28,.26]},
  shield:{x:[-.14,-.06,-.20,-.40,-.48,-.52,-.32],y:[.06,.04,.09,.15,.14,.12,.08],z:[.22,.12,.24,.32,.30,.26,.24],rx:[.10,.18,.10,0,-.06,-.06,-.03],ry:[-.2,-.3,-.3,-.55,-.76,-1.02,-.5],rz:[-.18,-.25,-.1,.12,.18,.14,.06]},
+ // Second shield cut: a rising edge bash from across the body, turning the other way.
+ shieldRise:{x:[-.02,.08,.02,-.24,-.40,-.44,-.30],y:[-.06,-.10,-.04,.14,.24,.22,.12],z:[.22,.14,.26,.36,.32,.26,.24],rx:[.2,.35,.2,-.25,-.45,-.40,-.15],ry:[.2,.35,.2,-.3,-.55,-.65,-.35],rz:[.3,.45,.3,-.1,-.25,-.2,-.05]},
  shieldOff:{x:[.36,.39,.38,.36,.34,.33,.32],y:[-.10,-.16,-.13,-.04,0,-.04,-.08],z:[.02,-.10,-.04,.04,.12,.12,.12],rx:[-.5,-.4,-.4,-.5,-.6,-.7,-.8],ry:[.1,0,0,.1,.2,.2,.2],rz:[.25,.25,.25,.25,.25,.25,.25]},
  dagger:{x:[-.50,-.58,-.36,-.10,0,.02,-.06],y:[.14,.16,.10,-.04,-.14,-.18,-.14],z:[.14,.02,.26,.44,.38,.30,.28],rx:[-.7,-.95,-.55,.2,.45,.50,.35],ry:[-.55,-.8,-.4,.40,.72,.84,.66],rz:[-.2,-.35,-.15,.2,.3,.26,.18],pole:[PD,PD,PD,PD,PD,PD,PD]},
  daggerLow:{x:[-.50,-.58,-.36,-.10,0,.02,-.06],y:[.02,-.06,-.10,-.14,.06,.14,.06],z:[.14,.02,.26,.44,.36,.28,.26],rx:[.1,.2,.12,-.15,-.2,-.25,-.2],ry:[-.55,-.8,-.4,.40,.72,.84,.66],rz:[-.2,-.35,-.15,.2,.3,.26,.18],pole:[PL,PL,PL,mix(PL,PR),PR,PR,PR]},
