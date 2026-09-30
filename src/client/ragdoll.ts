@@ -6,6 +6,7 @@ import * as T from 'three';
 import RAPIER from '@dimforge/rapier3d-compat';
 import type {KillEffectFactory} from './death-effects.js';
 import {ARENA} from '../shared/arena.js';
+import {copyVoxelPart} from './voxel-kit.js';
 /** Cosmetic-only articulated bodies in a private, disposable world. Never adds server bodies or damage. */
 export interface RagdollOptions {gib?:boolean;anchor?:()=>{position:T.Vector3;rotation:T.Quaternion};}
 /** The effect ragdollVariant returns also exposes its part group (children named after the rig joints they copy), so a
@@ -50,7 +51,7 @@ export const ragdollVariant=(style:RagdollStyle='ragdoll',options:RagdollOptions
   const mesh=new T.Group(),inverse=new T.Matrix4().compose(pos,rotation,new T.Vector3(1,1,1)).invert();mesh.name=root.name;mesh.position.copy(pos);mesh.quaternion.copy(rotation);mesh.userData.jointOffset=rotation.clone().invert().multiply(joint);group.add(mesh);
   const bodyBounds=new T.Box3(),weaponBounds=new T.Box3(),box=new T.Box3();
   const collect=(node:T.Object3D,kind:'body'|'weapon'|'cosmetic')=>{if(node!==root&&rootSet.has(node))return;const zone=kind!=='body'?kind:node.name==='weapon-socket'||node.name==='offhand-weapon-socket'?'weapon':COSMETIC_SOCKETS.has(node.name)?'cosmetic':'body';
-   if(node instanceof T.Mesh&&node.visible){const copy=new T.Mesh(node.geometry,node.material);if(style!=='ragdoll'){copy.material=(node.material as T.Material).clone();ownMaterials.push(copy.material);if(style==='ragdoll-soul'){copy.material.transparent=true;copy.material.depthWrite=false;}}copy.name=node.name;const transform=inverse.clone().multiply(node.matrixWorld);transform.decompose(copy.position,copy.quaternion,copy.scale);mesh.add(copy);if(node.userData.jointCover){let list=coverCopies.get(root);if(!list)coverCopies.set(root,list=[]);list.push({mesh:copy,position:copy.position.clone(),quaternion:copy.quaternion.clone()});}
+   if(node instanceof T.Mesh&&node.visible){const copy=copyVoxelPart(node);if(style!=='ragdoll'){copy.material=(node.material as T.Material).clone();ownMaterials.push(copy.material);if(style==='ragdoll-soul'){copy.material.transparent=true;copy.material.depthWrite=false;}}copy.name=node.name;const transform=inverse.clone().multiply(node.matrixWorld);transform.decompose(copy.position,copy.quaternion,copy.scale);mesh.add(copy);if(node.userData.jointCover){let list=coverCopies.get(root);if(!list)coverCopies.set(root,list=[]);list.push({mesh:copy,position:copy.position.clone(),quaternion:copy.quaternion.clone()});}
     if(zone!=='cosmetic'){node.geometry.computeBoundingBox();copy.updateMatrix();box.copy(node.geometry.boundingBox!).applyMatrix4(copy.matrix);(zone==='weapon'?weaponBounds:bodyBounds).union(box);}}
    if(node.visible)for(const child of node.children)collect(child,zone);};collect(root,'body');
   if(bodyBounds.isEmpty())bodyBounds.set(new T.Vector3(-.07,-.07,-.07),new T.Vector3(.07,.07,.07));const size=bodyBounds.getSize(new T.Vector3()).multiplyScalar(.5).clamp(new T.Vector3(.05,.05,.05),new T.Vector3(.4,.45,.4)),center=bodyBounds.getCenter(new T.Vector3());
