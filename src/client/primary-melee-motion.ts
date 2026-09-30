@@ -52,7 +52,7 @@ export function primaryMeleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<type
  const pitch=r.body.rotation.x;if(pitch>.2){r.spine.rotation.x-=.45*(pitch-.2);r.chest.rotation.x-=.2*(pitch-.2);}
  r.leftShoulder.rotation.x+=c([0,.06,.13,.07,-.10,-.16,-.12,-.04,0]);r.rightShoulder.rotation.x-=c([0,.08,.18,.11,-.15,-.21,-.16,-.05,0]);
  r.leftShoulder.rotation.y+=twist*.35;r.rightShoulder.rotation.y-=twist*.35;
- feet(r,p,a,phase,sign,heavy,dagger,overhead,spin,weight);
+ feet(r,p,a,phase,sign,heavy,dagger,overhead,spin,turn,weight);
  if(heavy){
   // Rear-leg load, stamped lead foot, low diagonal sweep, rise ~60 degrees over the lead shoulder, then a heavy drop
   // through the front into the two-hand low guard. The blade's yaw trails the hands (it accelerates last).
@@ -123,7 +123,7 @@ const _v=new T.Vector3(),_lead=new T.Vector3(),_rear=new T.Vector3(),_in=[new T.
  * is subtracted), and a foot only moves while it is lifted. The lead foot steps from its guard spot and lands with zero
  * floor speed on the contact frame; the rear foot holds, then drags up behind the lunge on its toes; after the cut the
  * rear foot has already settled and the lead foot steps back, ending in the staggered guard from stances.ts. */
-function feet(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,phase:number,sign:number,heavy:boolean,dagger:boolean,overhead:boolean,spin:boolean,weight:number){
+function feet(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,phase:number,sign:number,heavy:boolean,dagger:boolean,overhead:boolean,spin:boolean,turn:number,weight:number){
  const commitment=p.attackCommitment||attackCommitment(p.spec,p.lastAttack,a.windup,a.window,p.attackRate||1,a.windup+a.window),now=p.lastAttack+a.age,travel=attackTravel(commitment,now),plantTravel=attackTravel(commitment,p.lastAttack+a.windup+a.window*.65),full=attackTravel(commitment,commitment.stepUntil);
  const st=stanceFor(p.spec),leadingLeft=sign>0,lf=leadingLeft===st.leadLeft?st.lead:st.rear,rf=leadingLeft===st.leadLeft?st.rear:st.lead,lx=(leadingLeft?1:-1)*Math.abs(lf.x),rx=(leadingLeft?-1:1)*Math.abs(rf.x);
  const lyaw0=(leadingLeft?1:-1)*lf.toeOut,ryaw0=(leadingLeft?-1:1)*rf.toeOut;
@@ -148,7 +148,8 @@ function feet(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,phase:
   r.body.position.y+=.045*hop;
   const place=(out:T.Vector3,x:number,z:number)=>{const ox=x-cxs,oz=z-czs,px=cxs+ox*c+oz*sn,pz=czs-ox*sn+oz*c;out.set(x+(px-x)*b,-.795+.075*hop,(z-travel)+(pz-(z-travel))*b);};
   place(_lead,lx,lf.z);place(_rear,rx,rf.z);
-  foot(r,leadingLeft,_lead,lyaw0+rot*b,.3*hop,weight,lin);foot(r,!leadingLeft,_rear,ryaw0+rot*b,.3*hop,weight,rin);return;
+  // In the air the feet turn with the body (they leave the floor at its heading and land a full turn later).
+  const spinYaw=turn*b;foot(r,leadingLeft,_lead,lyaw0+spinYaw,.3*hop,weight,lin);foot(r,!leadingLeft,_rear,ryaw0+spinYaw,.3*hop,weight,rin);return;
  }
  foot(r,leadingLeft,_lead,lyaw,lheel,weight,lin);foot(r,!leadingLeft,_rear,ryaw,rheel,weight,rin);
 }
