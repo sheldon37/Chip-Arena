@@ -35,6 +35,7 @@ import {BrowserRoom} from './browser-room.js';
 import {normalizeRoomCode} from '../shared/host-room.js';
 import './style.css';
 import './lobby.css';
+import {morphHud} from './hud-morph.js';
 import './match-hud.css';
 import {testPilot} from '../shared/test-driver.js';
 import {PlayerBoard} from './player-board.js';
@@ -209,7 +210,7 @@ function drawUpdateControl(){const control=document.querySelector<HTMLElement>('
  * rewrite, keyHud() gives the fresh nodes their phase from authoritative time (negative delays), so the 10 Hz redraw never
  * restarts or steps them and a static intro produces no DOM churn. */
 let lastHudHtml='';
-function setHud(hud:Element,html:string,keyHud?:(root:Element)=>void){if(html===lastHudHtml)return false;hud.innerHTML=html;lastHudHtml=html;keyHud?.(hud);return true;}
+function setHud(hud:Element,html:string,keyHud?:(root:Element)=>void){if(html===lastHudHtml)return false;if(!morphHud(hud,html))hud.innerHTML=html;lastHudHtml=html;keyHud?.(hud);return true;}
 /** If the simulation clock drifts from the CSS clock (frame-time clamping at very low frame rates), pull an element's
  * animations (all created with the element) back onto the authoritative time elapsed since the element was created.
  * A lagging animation seeks forward; one running ahead of the simulation is slowed, and held once 300 ms ahead
