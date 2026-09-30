@@ -99,3 +99,17 @@ test('first-person melee keeps the striking hand on screen',()=>{
   assert.ok(on/n>=.8,`${spec} right hand on screen ${(100*on/n).toFixed(0)}%`);
  }
 });
+
+test('first-person gun barrels point along the camera aim, idle and firing',()=>{
+ for(const spec of GUNS)for(const mode of ['idle','attack'] as const){
+  const cam=new T.PerspectiveCamera(75,16/9,.08,400),root=new T.Group();cam.add(root);const r=probeRig(spec);markFirstPersonRig(r);root.add(r.group);
+  const muzzle=r.weapon.getObjectByName('muzzle');assert.ok(muzzle,`${spec} has a muzzle marker`);
+  const a=new T.Vector3(),b=new T.Vector3();let worstYaw=0,sum=0,n=0;
+  for(let i=0;i<=120;i++){const t=1+i/60;poseFirstPersonView(r,root,{...animationPreviewPlayer(probeBase(spec),mode,t),hitStunUntil:-1e9},t,1/60,false);if(i<30)continue;cam.updateMatrixWorld(true);
+   muzzle!.getWorldPosition(a);r.weapon.getWorldPosition(b);const d=a.sub(b).normalize();
+   // Yaw across the view is the defect axis (every frame); the recoil rise is vertical and intended, so the total angle is bounded on average.
+   worstYaw=Math.max(worstYaw,Math.abs(Math.atan2(d.x,-d.z))*180/Math.PI);sum+=Math.acos(Math.max(-1,Math.min(1,-d.z)))*180/Math.PI;n++;}
+  assert.ok(worstYaw<5,`${spec} ${mode}: first-person barrel yawed ${worstYaw.toFixed(1)} deg across the view`);
+  assert.ok(sum/n<5,`${spec} ${mode}: first-person barrel ${(sum/n).toFixed(1)} deg off camera forward on average`);
+ }
+});

@@ -32,8 +32,10 @@ export function springStep(x:number,v:number,target:number,omega:number,zeta:num
  const n=Math.max(1,Math.ceil(dt*240)),h=dt/n;for(let i=0;i<n;i++){v+=(-(x-target)*omega*omega-2*zeta*omega*v)*h;x+=v*h;}out[0]=x;out[1]=v;return out;
 }
 const _s:[number,number]=[0,0];
-/** Per-rig clock: the step since the last sample clamped to .05; `fresh` on the first sample, backward time or a jump over .35 s. */
-export function clockStep(c:{t:number}|undefined,time:number){const step=c?time-c.t:-1;const fresh=!c||step<0||step>.35;return {fresh,dt:fresh?0:Math.min(step,.05)};}
+const _clock={fresh:true,dt:0};
+/** Per-rig clock: the step since the last sample clamped to .05; `fresh` on the first sample, backward time or a jump over .35 s.
+ * Returns a shared result object: read it before the next call. */
+export function clockStep(c:{t:number}|undefined,time:number){const step=c?time-c.t:-1;const fresh=!c||step<0||step>.35;_clock.fresh=fresh;_clock.dt=fresh?0:Math.min(step,.05);return _clock;}
 interface RangedState{t:number;spec:string;kick:number;kickV:number;shot:number;headKick:number;guard:number;guardV:number}
 const states=new WeakMap<CharacterRig,RangedState>();
 /** Reload duration exactly as the simulation sets it: max(.2, w.reload * statsFor(chips).reloadSpeed), memoised per chips. */
@@ -118,7 +120,7 @@ export function rangedLayer(r:CharacterRig,p:PlayerView,pose:Pose,time:number,dt
   if(fresh){s.kick=single(shotAge)*.55;s.kickV=0;s.shot=shotAt;}
   else{if(shotAt>s.shot+1e-6&&shotAge>=0&&shotAge<.2){s.kickV+=.35*28;s.shot=shotAt;}springStep(s.kick,s.kickV,0,28,.55,step,_s);s.kick=_s[0];s.kickV=_s[1];}
   kick=clamp(s.kick,-.4,1.4)*1.15;
- }else{kick=single(shotAge)*(spec==='rifle'?1.7:1);s.shot=shotAt;}
+ }else{kick=single(shotAge)*(spec==='rifle'?2.1:1);s.shot=shotAt;}
  const headKick=fresh?kick:s.headKick;s.headKick=kick;
  // Guard weight: critically damped, ~70 ms in and ~150 ms out.
  const guarding=p.guarding||p.blockTime>0?1:0;
@@ -126,8 +128,9 @@ export function rangedLayer(r:CharacterRig,p:PlayerView,pose:Pose,time:number,dt
  const g=s.guard,a=r.aimWeight,hold=a+(1-a)*g;
  const reload=reloadPhase(p,w),e=reload.envelope*(1-g),u=reload.u,tuck=poseCurve(TUCK_T,TUCK_V,u)*e;
  const firing=mg?smoothMotion(1-shotAge/.3)*a:0;
- // Torso: cancel the travel lean and roll, blade behind a long gun and take part of the pitch (the brace keeps the rest).
- const blade=(spec==='rifle'?RANGED_TUNE.rifleBlade:mg?RANGED_TUNE.mgBlade:.04)*a*(1-g);
+ // Torso: cancel the travel lean and roll, blade behind a long gun (not on the first-person rig, whose torso yaw the view
+ // model damps after this solve, which would yaw the barrel off the aim) and take part of the pitch (the brace keeps the rest).
+ const fpRig=isFirstPersonRig(r)?0:1,blade=(spec==='rifle'?RANGED_TUNE.rifleBlade:mg?RANGED_TUNE.mgBlade:.04)*a*(1-g)*fpRig;
  r.spine.rotation.x=T.MathUtils.lerp(r.spine.rotation.x,-r.body.rotation.x,hold)-pitch*.22*a+firing*.08+g*.12;
  r.chest.rotation.z=T.MathUtils.lerp(r.chest.rotation.z,-r.body.rotation.z-r.pelvis.rotation.z,hold);
  r.chest.rotation.x=T.MathUtils.lerp(r.chest.rotation.x,0,hold)-pitch*.18*a-kick*.05*a+tuck*.06;
@@ -135,7 +138,7 @@ export function rangedLayer(r:CharacterRig,p:PlayerView,pose:Pose,time:number,dt
  r.chest.rotation.y=T.MathUtils.lerp(r.chest.rotation.y,-blade*.55,hold)+tuck*.2;
  r.neck.rotation.x-=pitch*.10*a;
  // Head: counter the blade, keep the previous world pitch, and (rifle; lighter on the MG) settle the cheek toward the stock.
- const weld=(spec==='rifle'?1:mg?.55:0)*a*(1-g)*(1-e);
+ const weld=(spec==='rifle'?1:mg?.55:0)*a*(1-g)*(1-e)*fpRig;
  r.head.rotation.x+=pitch*.5*a+weld*.12+headKick*.05*a+g*.2+tuck*.25;
  r.head.rotation.y+=blade+weld*.06;
  r.head.rotation.z=T.MathUtils.lerp(r.head.rotation.z,long?0:-.08,hold)+weld*.06;r.neck.rotation.z+=weld*.12;r.neck.rotation.x+=weld*.15;

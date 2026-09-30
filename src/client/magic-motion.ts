@@ -72,7 +72,7 @@ export function castPose(p:PlayerView,time:number,m:ReturnType<typeof attackPose
 }
 interface MagicState{t:number;guard:number;guardV:number}
 const states=new WeakMap<CharacterRig,MagicState>();
-const _q=new T.Quaternion(),_eu=new T.Euler(),_v=new T.Vector3(),_wp=new T.Vector3(),_wq=new T.Quaternion(),_op=new T.Vector3(),_oq=new T.Quaternion();
+const _q=new T.Quaternion(),_eu=new T.Euler(),_v=new T.Vector3(),_wp=new T.Vector3(),_wq=new T.Quaternion(),_wp2=new T.Vector3(),_gs:[number,number]=[0,0],_op=new T.Vector3(),_oq=new T.Quaternion();
 /** Magic staff carry, the coil -> drive -> follow-through -> ready casting phrase, and the staff guard. */
 export function magicLayer(r:CharacterRig,p:PlayerView,pose:ReturnType<typeof attackPose>,time:number,dt:number,pitch:number){
  if(r.weapon.parent!==r.sockets.leftHand)r.sockets.leftHand.add(r.weapon);
@@ -104,7 +104,7 @@ export function magicLayer(r:CharacterRig,p:PlayerView,pose:ReturnType<typeof at
 function magicGuard(r:CharacterRig,p:PlayerView,time:number){
  let s=states.get(r);const clock=clockStep(s,time),target=p.guarding||p.blockTime>0?1:0;
  if(!s){s={t:time,guard:target,guardV:0};states.set(r,s);}
- s.t=time;if(clock.fresh){s.guard=target;s.guardV=0;}else{const o:[number,number]=[0,0];springStep(s.guard,s.guardV,target,target>s.guard?17:14,1,clock.dt,o);s.guard=clamp(o[0],0,1);s.guardV=o[1];}
+ s.t=time;if(clock.fresh){s.guard=target;s.guardV=0;}else{springStep(s.guard,s.guardV,target,target>s.guard?17:14,1,clock.dt,_gs);s.guard=clamp(_gs[0],0,1);s.guardV=_gs[1];}
  const g=s.guard;if(g<=.001)return;
  r.spine.rotation.y*=1-g;r.chest.rotation.x+=.1*g;r.head.rotation.x+=.15*g;
  // Left hand out front at the left of the chest, the staff laid across toward the right.
@@ -113,5 +113,5 @@ function magicGuard(r:CharacterRig,p:PlayerView,time:number){
  const grip=r.weapon.getObjectByName('guard-grip');
  if(grip){grip.getWorldPosition(_wp);r.chest.updateWorldMatrix(true,false);r.chest.worldToLocal(_wp);saveWeapon(r);hand(r,false,_wp,_eu.set(-1.5,0,.2),g);restoreWeapon(r);}
 }
-function saveWeapon(r:CharacterRig){_op.copy(r.weapon.position);_oq.copy(r.weapon.quaternion);_wq.copy(r.offWeapon.quaternion);}
-function restoreWeapon(r:CharacterRig){r.weapon.position.copy(_op);r.weapon.quaternion.copy(_oq);}
+function saveWeapon(r:CharacterRig){_op.copy(r.weapon.position);_oq.copy(r.weapon.quaternion);_wp2.copy(r.offWeapon.position);_wq.copy(r.offWeapon.quaternion);}
+function restoreWeapon(r:CharacterRig){r.weapon.position.copy(_op);r.weapon.quaternion.copy(_oq);r.offWeapon.position.copy(_wp2);r.offWeapon.quaternion.copy(_wq);}
