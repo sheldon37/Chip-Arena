@@ -1,5 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import * as T from 'three';
 import {initPhysics} from '../src/shared/simulation.js';
 import {WEAPONS} from '../src/shared/content.js';
@@ -93,4 +94,24 @@ test('muzzle flash: two frames per shot, rolled from the shot time, identical on
  const sample=(shot:number,t:number)=>{weaponModifiers(w,{...base,lastShot:shot},t);return [flash.visible,flash.rotation.y,flash.scale.x,flash.scale.y] as const;};
  const a=sample(3,3.01),b=sample(3,3.05),again=sample(3,3.01),other=sample(4,4.01);
  assert.ok(a[0]&&b[0]);assert.deepEqual(a,again,'deterministic');assert.notEqual(a[1],b[1],'second frame turns');assert.notEqual(a[1],other[1],'each shot rolls differently');assert.equal(sample(3,3.08)[0],false);
+});
+
+const source=(file:string)=>readFileSync(new URL('../src/client/'+file,import.meta.url),'utf8');
+
+test('the HUD is rewritten only when its markup changes, and the intro card is timed by CSS from authoritative age',()=>{
+ const main=source('main.ts'),css=source('style.css');
+ assert.equal((main.match(/hud\.innerHTML=/g)||[]).length,1,'every HUD write goes through setHud');assert.match(main,/if\(html===lastHudHtml\)return false/);
+ const intro=main.slice(main.indexOf('<div class="intro-overlay"'),main.indexOf('syncIntroClock(hud,intro.age)'));
+ assert.ok(intro.length>0&&!/opacity:\$\{|transform:translate\(-50%,\$\{/.test(intro),'no per-redraw inline opacity/transform steps');
+ for(const v of ['--intro-age','--name-delay','--exit-delay','--intro-duration'])assert.ok(intro.includes(v),v+' keyed from intro age');
+ assert.match(main,/--tick-delay/);assert.match(css,/@keyframes count-tick/);assert.match(css,/@keyframes intro-name-in/);
+ const reduced=css.slice(css.lastIndexOf('@media(prefers-reduced-motion:reduce)'));for(const k of ['.intro-name','.intro-progress','.countdown b'])assert.ok(reduced.includes(k),k+' has a reduced-motion fallback');
+ assert.match(main,/data-action="update-game"/);assert.match(main,/control.hidden=screen!=='home'/);
+});
+
+test('UI bug fixes: special card art is not flattened, help text is small print, panels clear the footer, the board interpolates',()=>{
+ const css=source('style.css');
+ assert.ok(!/\.circuit-chip(:hover)?\{background:[^}]*!important/.test(css),'no !important card background');assert.ok(!/\.circuit-chip p\{[^}]*!important/.test(css));
+ assert.match(css,/\.panel \.fine,\.panel p\.fine\{font:13px/);assert.match(css,/\.menus \.panel\{max-height:calc\(100dvh - 158px\)/);assert.ok(!css.includes('.menus .panel{max-height:90vh'));
+ assert.ok(!/'[^'`]*\$\{this\.state[^'`]*'/.test(source('player-board.ts')),'the empty state is a template literal');
 });
