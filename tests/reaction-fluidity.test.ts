@@ -10,6 +10,7 @@ import {knockdownPhase} from '../src/client/knockdown-motion.js';
 import {probeBase,probeRig,probeRates,describeProbe,weaponTip} from './helpers/motion-probe.js';
 import {KnockdownRagdolls} from '../src/client/knockdown-ragdolls.js';
 import {KILL_EFFECTS} from '../src/client/death-effects.js';
+import {stanceFor} from '../src/client/stances.js';
 
 await initPhysics();
 const quats=(r:CharacterRig)=>TRANSITION_BONES.map(b=>r[b].quaternion.clone());
@@ -43,7 +44,15 @@ test('attack entries always decay before the contact frame, even at high attack 
   const r=probeRig(spec);for(let t=1;t<lastAttack;t+=1/120)animateCharacter(r,{...attack,lastAttack:-10,swingAt:undefined,swingUntil:undefined},t,1/120);
   for(let t=lastAttack;t<attack.swingAt;t+=1/120)animateCharacter(r,attack,t,1/120);animateCharacter(r,attack,attack.swingAt,1/120);
   const d=transitionDuration(attack,lastAttack,'attack-1','base');assert.ok(d>0&&d<=Math.min(.09,.55*windup)+1e-9&&lastAttack+d<=attack.swingAt,`${spec} x${rate} entry ${d}`);
-  const fresh=probeRig(spec);animateCharacter(fresh,attack,attack.swingAt,1/120);assert.ok(maxAngle(quats(r),quats(fresh))<1e-6,`${spec} x${rate}: no entry offset remains at swingAt`);
+  const fresh=probeRig(spec);animateCharacter(fresh,attack,attack.swingAt,1/120);
+  // Locomotion's hip follow (groundPass) is intended history: the pelvis may still be relaxing from the idle stance yaw by a
+  // pure yaw, with spine and chest counter-rotated exactly onto aim. Every other joint, the chest in world space and the
+  // transition's position channels must match a fresh rig exactly, so no entry offset is left anywhere at swingAt.
+  const a=quats(r),b=quats(fresh),P=TRANSITION_BONES.indexOf('pelvis'),lag=a[P].clone().multiply(b[P].clone().invert());r.group.updateMatrixWorld(true);fresh.group.updateMatrixWorld(true);
+  TRANSITION_BONES.forEach((bone,i)=>{if(bone!=='pelvis'&&bone!=='spine'&&bone!=='chest')assert.ok(a[i].angleTo(b[i])<1e-6,`${spec} x${rate}: no entry offset remains at swingAt (${bone} ${a[i].angleTo(b[i]).toExponential(2)} rad)`);});
+  assert.ok(r.chest.getWorldQuaternion(new T.Quaternion()).angleTo(fresh.chest.getWorldQuaternion(new T.Quaternion()))<1e-6,`${spec} x${rate}: no entry offset remains at swingAt (chest in world space)`);
+  assert.ok(r.body.position.distanceTo(fresh.body.position)<1e-9&&r.weapon.position.distanceTo(fresh.weapon.position)<1e-9&&r.offWeapon.position.distanceTo(fresh.offWeapon.position)<1e-9,`${spec} x${rate}: no entry offset remains at swingAt (positions)`);
+  assert.ok(Math.hypot(lag.x,lag.z)<1e-9&&a[P].angleTo(b[P])<=Math.abs(stanceFor(spec).pelvisYaw)+1e-6,`${spec} x${rate}: the pelvis differs only by the hip-follow yaw (${lag.x.toExponential(1)} ${lag.y.toFixed(3)} ${lag.z.toExponential(1)})`);
  }
 });
 
