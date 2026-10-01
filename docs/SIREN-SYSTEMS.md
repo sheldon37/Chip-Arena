@@ -1,7 +1,8 @@
 # Siren systems handoff
 
 Status: PR #8 merged into `claude/visual-revision` at `9f010f5` on 2026-10-01;
-not published. Verified implementation: `1a8a5d0`. Base is
+test content `0.2.149269b37b5b` published from `abb0bbb` to the existing test Update
+channel at `3e9d5d9`. Verified implementation: `1a8a5d0`. Base is
 `cf5fa1c5548e66d1364c98f9ea053202f918ec50` on `claude/visual-revision`, followed by
 Claude's shared contract `84b692ffffb01618d2397175606d83597a878e9f`.
 PR #8 combines systems `514d784` with Claude's visual branch at `2e986f4`
@@ -34,8 +35,8 @@ deduplication and cancellation of interrupted locks. The optional intro laugh
 now follows the smile cue at 6.0082 s, rather than the reveal at 3.9184 s.
 
 Combined headless checks pass for the Siren feature, but these are not an in-game
-visual/GPU or audible-sync acceptance test. Perform the Windows checks below
-before publication.
+visual/GPU or audible-sync acceptance test. The owner authorized test publication
+to perform the Windows checks below; those checks remain pending.
 
 `MAPS`/`ROTATION_MAPS` retain the 14 public arenas. Siren is registered in
 `BOSS_MAPS` and `ALL_MAPS`; `mapId`/`arenaMap` recognize it. This preserves every
@@ -136,9 +137,15 @@ Linux Node 24.19.0 / npm 11.9.0:
   camera/song/hover paths, and authorized DEV primary fixtures. Public map tests
   keep their original 14-map semantics. Claude-owned files/tests match the imported visual branch exactly.
 
+Update publication checks: two identical release builds; actual payload install
+and all 102 file hashes; offline/corrupt-package refusal; 13/13 updater and channel
+tests. Real network upgrade from `0.2.f3f24aed59e8` to `0.2.149269b37b5b` passed,
+including settings preservation, same-version skip and menu status. Original MP3
+hash is unchanged. Source and channel SHAs are recorded in DEV_LOG.
+
 Not performed: Windows Electron/GPU execution, two physical PCs, audible
-headphone sync assessment, finished visual quality, or packaging/updater tests.
-The owner authorized the PR #8 merge. There was no channel upload, live feed
+headphone sync assessment, finished visual quality, or a new Windows seed ZIP.
+The owner authorized the merge and this test-channel publication. No live feed
 change or Site publication.
 
 Windows acceptance for the combined PR: confirm ??? is DEV-only; try two

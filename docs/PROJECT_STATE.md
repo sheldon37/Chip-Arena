@@ -32,9 +32,8 @@ Migration imported to private GitHub; not merged or released (2026-09-29).
 - DEV combo-ready holds and Demon Step's 0.20 s i-frame window (PR #6), plus
   individually controlled primary hits (PR #7), merged into the shared branch
   at `66451cd`. One hit per activation, per-hit stamina, 2.4 s continuation memory.
-  Latest test content `0.2.f3f24aed59e8` published (channel `873e23f`); existing
-  installations press Update. Native Windows playtest remains pending. DEV_LOG
-  records checks and the 12 unchanged baseline unit failures.
+  Included in the current Siren test update below. DEV_LOG records checks and
+  the 12 unchanged baseline unit failures.
 
 Next: review the migration PR against `main`; shared policy and CI remain on
 `migration/shared-development` until the owner merges. Resolve recorded baseline
@@ -44,5 +43,7 @@ Windows validation and desktop distribution cutover remain separate work.
 - Siren: PR #8 merged into `claude/visual-revision` at `9f010f5` (2026-10-01),
   combining systems `1a8a5d0`, Claude visuals `2e986f4`, DEV-only `???` category
   and original music. The merge tree matches the tested integration exactly.
-  Windows visual/audio acceptance and optional voice clips remain. Not published
-  to the test Update channel. See `docs/SIREN-SYSTEMS.md` and newest DEV_LOG entry.
+  Test content `0.2.149269b37b5b` published from `abb0bbb` at channel `3e9d5d9`;
+  existing test installations press Update. Real network upgrade, all 102 files,
+  settings preservation and menu status verified. Windows visual/audio acceptance
+  and optional voice clips remain. See `docs/SIREN-SYSTEMS.md` and DEV_LOG.
