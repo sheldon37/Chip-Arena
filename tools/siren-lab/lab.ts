@@ -11,7 +11,8 @@
  *  stage=1, song=<s>   (rig) put the Siren inside Ward Zero, at song time <s> for lab t=0
  *  move=death          the Siren's own death effect; whiff=1 makes Last Laugh miss
  *  hide=<regex>        hide objects whose name matches (debugging); probe=x,y,z logs small meshes containing a point
- *  frames, start, span   sample times start + i*span/(frames-1) (seconds on the move/song clock)
+ *  cutscene=victim|siren   (with move=laugh) render through the Last Laugh cutscene camera of that participant
+ *  frames, start, span   sample times start + i*span/(frames-1) (seconds on the move/song clock); times=a,b,c lists them
  *  warm=<s>              simulated before the first sample (default .6), dt=<s> (default 1/60)
  *  views=front,side,three,back,top,wide,behind   camera rows; dist, height, focus (look-at height), ahead (look-at z)
  *  cell=<px>, aspect=<w/h>, light=arena|ward|lab, quality=<0-1>
@@ -24,7 +25,7 @@ import {MATERIALS,type Vec} from '../../src/shared/config.js';
 import {VIEW} from '../../src/shared/view.js';
 import {hitReaction} from '../../src/shared/hit-reaction.js';
 import type {PlayerView,Snapshot,GameEvent} from '../../src/shared/simulation.js';
-import {sirenify,animateSiren,sirenFirstPerson,SirenEffects,SirenIntroStage,SirenStageVisuals,SIREN_KILL_EFFECTS} from '../../src/client/siren/index.js';
+import {sirenify,animateSiren,sirenFirstPerson,SirenEffects,SirenIntroStage,SirenStageVisuals,SirenCutscene,SIREN_KILL_EFFECTS} from '../../src/client/siren/index.js';
 import {poseFirstPersonView} from '../../src/client/first-person-view.js';
 import {markFirstPersonRig} from '../../src/client/pose-flags.js';
 import {SIREN,SIREN_TIMING,SIREN_SPAWN,sirenPoint,type SirenMoveId,type SirenMoveState,type SirenPlayerState,type SirenWorldView,type SirenShot,type SirenMode} from '../../src/shared/siren-contract.js';
@@ -34,7 +35,8 @@ import {SIREN_INTRO} from '../../src/shared/siren-contract.js';
 const q=new URLSearchParams(location.search);
 const num=(k:string,d:number)=>q.has(k)?Number(q.get(k)):d;
 const kind=q.get('kind')||'rig',move=q.get('move')||'idle';
-const frames=Math.max(1,num('frames',8)),cell=num('cell',240),aspect=num('aspect',1),cellW=Math.round(cell*aspect);
+const sampleList=q.get('times')?.split(',').map(Number).filter(Number.isFinite);
+const frames=sampleList?.length||Math.max(1,num('frames',8)),cell=num('cell',240),aspect=num('aspect',1),cellW=Math.round(cell*aspect);
 const dist=num('dist',4.2),camHeight=num('height',1.1),focus=num('focus',.9),ahead=num('ahead',0);
 const light=q.get('light')||'arena',quality=num('quality',1),dt=num('dt',1/60),warm=num('warm',.6);
 const status=document.getElementById('status')!;const sheet=document.getElementById('sheet') as HTMLCanvasElement;
@@ -140,11 +142,11 @@ function rigCamera(camera:T.PerspectiveCamera,view:string,target:T.Vector3){
 async function main(){
  const gl=new T.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});gl.setPixelRatio(1);gl.setSize(cellW,cell);gl.shadowMap.enabled=true;gl.shadowMap.type=T.PCFSoftShadowMap;
  if(light!=='lab'){gl.outputColorSpace=T.SRGBColorSpace;gl.toneMapping=T.ACESFilmicToneMapping;gl.toneMappingExposure=.92;}
- const views=(q.get('views')||(kind==='stage'?'overview,eye':'front,side,three')).split(',').filter(Boolean),rows=kind==='intro'||kind==='fp'?1:views.length;
+ const views=(q.get('views')||(kind==='stage'?'overview,eye':'front,side,three')).split(',').filter(Boolean),rows=kind==='intro'||kind==='fp'||q.has('cutscene')?1:views.length;
  sheet.width=frames*cellW;sheet.height=rows*cell+22;const ctx=sheet.getContext('2d')!;ctx.font='11px ui-monospace,monospace';ctx.fillStyle='#0c0b10';ctx.fillRect(0,0,sheet.width,sheet.height);
  ctx.fillStyle='#c9b8ff';ctx.fillText(`siren-lab · ${kind} · ${kind==='rig'?move:''} ${location.search.replace(/^\?/,'')}`,6,15);
  const camera=new T.PerspectiveCamera(kind==='intro'?43:38,cellW/cell,.05,300);
- const start=num('start',0),span=num('span',kind==='intro'?SIREN_INTRO.duration:1.2),times=Array.from({length:frames},(_,i)=>start+(frames===1?0:span*i/(frames-1)));
+ const start=num('start',0),span=num('span',kind==='intro'?SIREN_INTRO.duration:1.2),times=sampleList?.length?sampleList:Array.from({length:frames},(_,i)=>start+(frames===1?0:span*i/(frames-1)));
  const draw=(r:number,c:number,text:string)=>{ctx.drawImage(gl.domElement,c*cellW,22+r*cell);label(ctx,text,c*cellW+2,24+r*cell);};
 
  if(kind==='fp'){
@@ -182,7 +184,7 @@ async function main(){
  else floor(scene);
  const rigs=new Map<string,CharacterRig>(),effects=new SirenEffects(scene),kills=new Map<string,{update(age:number):void}>();
  const rigFor=(p:PlayerView)=>{let r=rigs.get(p.id);if(!r){r=createCharacterRig(p.color,undefined,true);if(p.id===SIREN.spec)sirenify(r);r.group.traverse(o=>{if(o instanceof T.Mesh){o.castShadow=true;o.receiveShadow=true;}});scene.add(r.group);rigs.set(p.id,r);}return r;};
- let lastEvent=0;
+ let lastEvent=0;const director=q.get('cutscene')?new SirenCutscene():undefined;if(director){camera.aspect=cellW/cell;scene.add(camera);}
  const step=(t:number,h:number)=>{
   const f=scenario(t),snap=snapshotAt(t,f);
   for(const p of f.players){const r=rigFor(p);r.group.position.set(p.pos.x,p.pos.y,p.pos.z);r.group.rotation.y=p.yaw;
@@ -198,6 +200,7 @@ async function main(){
  for(let i=0;i<times.length;i++){
   for(let t=prev;t<times[i]-1e-9;t+=dt)step(t,dt);prev=times[i];const f=step(times[i],1e-4);
   const target=new T.Vector3(f.players[0].pos.x,0,f.players[0].pos.z);
+  if(director){const who=q.get('cutscene')==='victim'?'victim':SIREN.spec,snap=snapshotAt(times[i],f);director.check(snap,who);director.update(snap,camera,rigs);effects.update(snap,times[i],rigs,quality,camera);gl.render(scene,camera);draw(0,i,`${q.get('cutscene')} cutscene ${times[i].toFixed(2)}s${director.active?'':' (off)'}`);continue;}
   if(q.get('hide')){const re=new RegExp(q.get('hide')!);scene.traverse(o=>{if(re.test(o.name))o.visible=false;});}
   for(let r=0;r<views.length;r++){rigCamera(camera,views[r],target);effects.update(snapshotAt(times[i],f),times[i],rigs,quality,camera);gl.render(scene,camera);draw(r,i,`${views[r]} ${times[i].toFixed(2)}s`);}
  }

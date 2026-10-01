@@ -92,11 +92,11 @@ function movePose(m:SirenMoveState,t:number,base:Pose,ranged:number,pitch:number
    p.lift-=.1*load*(1-go);p.squint=.9*Math.max(load,go)*(1-rec);p.open=.4*go;break;}
   case 'laugh':{
    const lunge=m.hitAt,lungeEnd=m.endAt??lunge+SIREN_TIMING.laugh.lunge,spread=sm(span(t,a,a+.35))*(1-sm(span(t,lunge-.12,lunge)));
-   // Arms flung out to the sides, head thrown back, shoulders bucking with the laugh.
-   const shake=Math.sin((t-a)*Math.PI*2*6.2)*sm(span(t,a+.2,a+.5))*(1-sm(span(t,lunge-.2,lunge)));
-   for(const s of [1,-1])arm(p,s,[mix(-.38,-.12,spread),0,mix(-.2,-1.45,spread)+.06*shake],mix(-.6,-.25,spread),[0,0,mix(0,-.5,spread)]);
-   add(p,'chest',-.32*spread+.06*shake,0,0);add(p,'spine',-.18*spread,0,0);add(p,'head',-.42*spread+.1*shake,0,-.2*spread);add(p,'lClav',0,0,.12*shake);add(p,'rClav',0,0,-.12*shake);
-   p.lift+=.12*spread+.02*shake;p.open=Math.max(.95*spread,0);p.squint=.85*spread;
+   // Arms spread wide and the head creeping over to one side while the grin widens: a silent, unblinking smile.
+   const creep=sm(span(t,a+.2,lunge-.15));
+   for(const s of [1,-1])arm(p,s,[mix(-.38,-.12,spread),0,mix(-.2,-1.45,spread)],mix(-.6,-.25,spread),[0,0,mix(0,-.5,spread)]);
+   add(p,'chest',-.18*spread,0,0);add(p,'spine',-.1*spread,0,0);add(p,'head',.1*creep,0,.38*creep-.08*spread);
+   p.lift+=.12*spread;p.open=.32*spread*(1-creep*.3);p.squint=.55*spread+.25*creep;
    // Lunge: the right claw reaches for the throat.
    const go=outExpo(span(t,lunge,lungeEnd)),reach=go*(1-sm(span(t,lungeEnd,lungeEnd+.25)));
    if(t>=lunge-.12){arm(p,1,[mix(-.2,-1.55,go),0,-.15],mix(-.5,-.08,go),[-.3*go,0,0]);arm(p,-1,[mix(-.12,.55,go),0,mix(-1.2,-.35,go)],-.7,[0,0,0]);add(p,'body',.45*reach,0,0);add(p,'head',.35*go,0,.2*go);p.fwd=.4*reach;}

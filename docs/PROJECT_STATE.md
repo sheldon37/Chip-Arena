@@ -46,4 +46,6 @@ Windows validation and desktop distribution cutover remain separate work.
   Test content `0.2.149269b37b5b` published from `abb0bbb` at channel `3e9d5d9`;
   existing test installations press Update. Real network upgrade, all 102 files,
   settings preservation and menu status verified. Windows visual/audio acceptance
-  and optional voice clips remain. See `docs/SIREN-SYSTEMS.md` and DEV_LOG.
+  remains. Owner dropped voice lines and laughter (2026-10-01): the silent smile and
+  the Last Laugh grab cutscene are on `claude/siren-cutscene`, not merged or published.
+  See `docs/SIREN.md`, `docs/SIREN-SYSTEMS.md` and DEV_LOG.

@@ -17,6 +17,30 @@ PR, test result, release, or earlier log history. Git history identifies the com
 containing an entry; no self-referential commit hash is required.
 
 
+## 2026-10-01 — Claude — Siren: silent smile and Last Laugh cutscene
+
+- Owner request after testing the merged Siren: no voice lines or laughter (the intro just smiles), and the Last
+  Laugh grab becomes a cutscene for the player being killed and for the Siren's player. Branch `claude/siren-cutscene`,
+  base `claude/visual-revision` `dd8bb6e` (Astra's PR #8 merge plus #9/#10 records; reviewed, no overlap problems).
+- Smile: intro bar 4 and the Last Laugh windup no longer shake or laugh; the grin draws open slowly, the head creeps
+  over, the eyes narrow, and the windup soot rings slow to one per 0.7 s. Same timings and cues.
+- Cutscene: new `src/client/siren/cutscene.ts`, wired in `renderer.ts`, `main.ts` and `style.css`. Letterboxed shots
+  from the catch: lift, close-up (victim: the grin from below; Siren: its grin from above, past the victim), grip
+  two-shot, crush from high on the front right with a jolt. The victim's continues 1.75 s past the crush as their death
+  camera; the Siren player's ends at `releaseAt`, when its movement unlocks; a hold broken before the crush cuts back.
+  HUD and combat numbers fade, overhead health and the first-person view model hide, and mouse look is ignored while it
+  runs (the Siren is locked in the move; this stops the held victim swinging under a directed camera). Other players
+  are unaffected. The camera eases after the Siren's facing.
+- Impact: camera, HUD and presentation only. No hit timing, hitboxes, damage, cooldowns, movement rules, network
+  schema or snapshot fields changed. Astra's optional `siren-laugh`/`siren-you` clip hooks in `siren-audio.ts` stay
+  silent without files; per the owner they should not be added (removing the hooks is a systems-file call).
+- Checks: tsx `tests/siren-cutscene.test.ts` (7 new), `siren-visuals`, `siren-contract` 25/25 pass. Scratch typecheck
+  of the changed files against three r180: same error set as base, none in changed files. Lab renders of both roles
+  inspected shot by shot (`times=` lab parameter added). Not run here: full units, `verify`, Vite build, Astra's
+  rapier-based Siren tests, in-game Windows and multiplayer checks (npm registry unreachable; rapier unavailable).
+- Status: implemented on branch and pushed; not merged or published. Next: owner/Astra review and merge into
+  `claude/visual-revision`, then an in-game check as both the victim and the Siren (optionally a test-channel update).
+
 ## 2026-10-01 — Astra — Siren test Update publication
 
 - Owner requested the in-game Update button delivery for testing. Built the exact

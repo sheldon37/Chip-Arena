@@ -14,6 +14,7 @@ import {sirenCrush,sirenDissipate} from './kills.js';
 import {SirenIntroScene} from './intro.js';
 import {WardZeroVisuals} from './stage.js';
 import {sirenViewModel} from './first-person.js';
+export {SirenCutscene,CUTSCENE_TAIL,type CutsceneOcclusion} from './cutscene.js';
 
 export {markBeeps};
 

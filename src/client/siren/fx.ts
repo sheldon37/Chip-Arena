@@ -265,12 +265,12 @@ export class SirenFx {
   }
  }
 
- /** Laugh / mark windups: soot rings pulse off the floor with each burst of laughter. */
+ /** Last Laugh windup: slow soot rings pulse off the floor while it stands there smiling. */
  private updateAuras(state:Snapshot,rigs:ReadonlyMap<string,CharacterRig>,time:number){
   for(const p of state.players as PlayerView[]){const s=sirenOf(p);if(!s)continue;const rig=rigs.get(p.id);this.lastYaw.set(p.id,rig?rig.group.rotation.y:p.yaw);
    // The Siren never wears the armor glow (the renderer should exclude it; this catches a halo that slipped through).
    rig?.group.traverse(o=>{if(o instanceof T.Sprite&&o.name==='armor-radiance')o.visible=false;});this.lastPos.set(p.id,{...p.pos});const m=s.move;if(!m||p.hp<=0)continue;
-   if(m.id==='laugh'&&time>=m.at&&time<m.hitAt){const last=this.auraAt.get(p.id)??-1;if(time-last>.32){this.auraAt.set(p.id,time);this.shock({x:p.pos.x,y:p.pos.y-.83,z:p.pos.z},1.9,.5,true);}}
+   if(m.id==='laugh'&&time>=m.at&&time<m.hitAt){const last=this.auraAt.get(p.id)??-1;if(time-last>.7){this.auraAt.set(p.id,time);this.shock({x:p.pos.x,y:p.pos.y-.83,z:p.pos.z},2.1,.8,true);}}
   }
  }
 }

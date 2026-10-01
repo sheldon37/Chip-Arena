@@ -63,7 +63,7 @@ function grinRow(upper:boolean){
 }
 const GRIN_UPPER=grinRow(true),GRIN_LOWER=grinRow(false);
 /** A blank oval eye whose top can be cut by a brow line sloping toward the nose: anger 0 is a pure oval (the blank
- * stare), anger 1 a slanted almond (attacks, laughter). The vertices are rewritten in place; side 1 = left eye. */
+ * stare), anger 1 a slanted almond (attacks, the smile). The vertices are rewritten in place; side 1 = left eye. */
 const EYE_SEGMENTS=40;
 function eyeGeometry(){
  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(new Float32Array(EYE_SEGMENTS*9),3));g.setAttribute('uv',new T.Float32BufferAttribute(new Float32Array(EYE_SEGMENTS*6),2));g.setAttribute('normal',new T.Float32BufferAttribute(new Float32Array(EYE_SEGMENTS*9).map((_,i)=>i%3===2?1:0),3));return g;
@@ -98,7 +98,7 @@ export function buildSiren(rig:CharacterRig):SirenParts{
  const eyes:T.Mesh[]=[],eyeHalos:T.Sprite[]=[];
  for(const side of [1,-1]){const geometry=eyeGeometry();shapeEye(geometry,side,.4);const eye=mesh(geometry,EYE,'siren-eye',rig.head);eye.userData.side=side;eye.position.set(side*.082,.206,.1645);eye.scale.set(.05,.08,1);eye.rotation.z=side*.12;eyes.push(eye);
   const halo=new T.Sprite(EYE_HALO);halo.name='siren-eye-halo';halo.position.set(side*.079,.21,.2);halo.scale.set(.26,.26,1);rig.head.add(halo);eyeHalos.push(halo);}
- // Grin: two rows so the jaw can open (laugh) without breaking the teeth.
+ // Grin: two rows so the jaw can part (the smile, the crush) without breaking the teeth.
  const grin=new T.Group();grin.name='siren-grin';grin.position.set(0,0,.1638);rig.head.add(grin);
  const grinUpper=mesh(GRIN_UPPER,TEETH,'siren-teeth-upper',grin),grinLower=mesh(GRIN_LOWER,TEETH,'siren-teeth-lower',grin);
 
