@@ -17,7 +17,7 @@ PR, test result, release, or earlier log history. Git history identifies the com
 containing an entry; no self-referential commit hash is required.
 
 
-## 2026-10-01 — Astra — body damage systems and Claude visual handoff (in progress)
+## 2026-10-01 — Astra — body damage systems and Claude visual handoff
 
 - Owner requested impact-driven bullet holes/cavities, blade cuts/stabs, lethal
   severing/crushing, public default ragdolls/gibs, and grounded fast-headshot
@@ -37,13 +37,26 @@ containing an entry; no self-referential commit hash is required.
   must implement holes, cavities, crushed fragments, live wounds and kneel/fall.
   Exact ownership, field semantics, timing and acceptance checklist are in
   `docs/BODY-DAMAGE-HANDOFF.md`.
-- Initial checks: 16/16 new functional tests pass on real Rapier, including real
+- Checks (Node 24.19.0/npm 11.9.0): 16/16 new real-Rapier tests pass, including
   projectile collisions, reflection, mitigation, blocked/allied hits, reset,
-  snapshot cloning and phase selection. Typecheck passes. Full verification is
-  running; final results will be appended. Baseline source-subset unit run has
-  25 failures, including known game failures and unavailable media/schema files;
-  do not claim a green full suite or Windows/GPU validation.
-- Status: systems handoff on task branch, visuals pending; not merged/published.
+  snapshot cloning and phase selection. Typecheck passes. New three-client real
+  WebSocket test receives four identical HostedRoom snapshots: living wounds,
+  fatal cavity/kneel choice, later death snapshot and reset. Focused death/default
+  tests pass 22/22. Existing selected-voxel effect test now explicitly selects it.
+- Full units: 643/658; fresh baseline 627/642 with exactly the same 15 failure
+  names. Four media tests cannot run from this source-only API checkout; remaining
+  failures reproduce on the base. An earlier incomplete-schema baseline had 25
+  failures; the fresh comparison supersedes that result. No dependency changes.
+  Client Vite build passes. Relay build passes after fetching its existing license
+  file; server build reproduces the four documented TS errors. Broad verify's
+  WebSocket suite reproduces the rematch timeout. HTTPS passes five sets/four
+  drafts, 3,314 matching snapshots, retry, rematch and leave (182.6 s). Full
+  `npm run verify` exits 1; recorded failures were not suppressed. After correcting
+  the selected-voxel fixture, the final unit run has no new failure names.
+- Windows/GPU, visual acceptance and two physical PCs are unrun. This branch does
+  not implement Claude's visuals and is not a green production release candidate.
+- Status: draft PR #14, initial systems handoff `fdaf42c`, visuals pending;
+  not merged/published.
   Claude should branch from this task head as `claude/body-damage-visuals` and
   preserve the shared contracts. Await owner-authorized integration and actual
   verification before the standing test-channel publication.

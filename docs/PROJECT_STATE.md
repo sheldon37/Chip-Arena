@@ -57,3 +57,9 @@ Windows validation and desktop distribution cutover remain separate work.
   Targeted local/network checks pass; full units retain exactly 12 known failures.
   Merge into `claude/visual-revision` and existing test-channel publication next.
   See newest DEV_LOG entry for actual checks and unrun Windows/visual acceptance.
+
+- Body damage systems: draft PR #14, `codex/body-damage-systems`, shared base
+  `a2480ba`, initial handoff `fdaf42c`. Authority wound outcomes, public default
+  impact-ragdoll and collapse timing are implemented on the task branch. Claude
+  owns the remaining wound/crush geometry and kneel/fall animation. Read
+  `docs/BODY-DAMAGE-HANDOFF.md` and the latest DEV_LOG checks. Not merged/released.

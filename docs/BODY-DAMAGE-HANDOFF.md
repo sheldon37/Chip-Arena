@@ -8,7 +8,7 @@ Owner request, 2026-10-01: Astra implements functions/authority/physics; Claude 
 - Claude: fetch this task branch and branch `claude/body-damage-visuals` from its latest head. Read `AGENTS.md`, recent `docs/DEV_LOG.md`, this file, then the contracts below. Do not replace the shared branch wholesale.
 - Astra owns `src/shared/body-damage.ts`, `body-ragdoll.ts`, simulation integration, damage profiles and authority tests. Request contract changes in your handoff instead of independently reimplementing the resolver.
 - Claude owns new client wound/crush/collapse presentation and may extend `src/client/ragdoll.ts`, `death-effects.ts`, `gibber-vfx.ts`, rig meshes and a visual lab. Preserve the small authority-contract/velocity adapters already present in those files.
-- Systems verification is in progress at the first handoff push. Consult the newest DEV_LOG entry/PR for final results. This is not a completed visual release; no merge/publication yet.
+- Draft PR #14 contains the systems handoff (`fdaf42c` initially). Consult the newest DEV_LOG entry/PR for actual verification results and fetch the latest task head. This is not a completed visual release; no merge/publication yet.
 
 ## Stable contract
 
