@@ -1,9 +1,10 @@
 # Siren systems handoff
 
-Status: implemented on `codex/siren-boss`; not merged or published. Base is
+Status: PR #8 merged into `claude/visual-revision` at `9f010f5` on 2026-10-01;
+not published. Verified implementation: `1a8a5d0`. Base is
 `cf5fa1c5548e66d1364c98f9ea053202f918ec50` on `claude/visual-revision`, followed by
 Claude's shared contract `84b692ffffb01618d2397175606d83597a878e9f`.
-PR #8 now combines systems `514d784` with Claude's visual branch at `2e986f4`
+PR #8 combines systems `514d784` with Claude's visual branch at `2e986f4`
 (including its first-pass and polish commits), plus the integration fixes below.
 
 ## Integration with Claude
@@ -137,7 +138,8 @@ Linux Node 24.19.0 / npm 11.9.0:
 
 Not performed: Windows Electron/GPU execution, two physical PCs, audible
 headphone sync assessment, finished visual quality, or packaging/updater tests.
-There was no merge, channel upload, live feed change or Site publication.
+The owner authorized the PR #8 merge. There was no channel upload, live feed
+change or Site publication.
 
 Windows acceptance for the combined PR: confirm ??? is DEV-only; try two
 DEVs selecting Siren; check solo taps/hold and Q/1–4 in both modes, wall collisions,
