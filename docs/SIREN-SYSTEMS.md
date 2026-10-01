@@ -3,20 +3,38 @@
 Status: implemented on `codex/siren-boss`; not merged or published. Base is
 `cf5fa1c5548e66d1364c98f9ea053202f918ec50` on `claude/visual-revision`, followed by
 Claude's shared contract `84b692ffffb01618d2397175606d83597a878e9f`.
+PR #8 now combines systems `514d784` with Claude's visual branch at `2e986f4`
+(including its first-pass and polish commits), plus the integration fixes below.
 
 ## Integration with Claude
 
-Claude's contract, beat map, stage layout, façade, contract tests and `SIREN.md`
-are unchanged. This branch calls the façade from world/first-person/lobby rigs,
-intro staging, projectiles, effects and death presentation. Ordinary melee pose
-evaluation is bypassed for Siren because it assumes one of the four standard
-weapon animation tables. Claude's `animateSiren` owns the pose completely.
+Claude's visual branch and updated `SIREN.md` handoff are integrated into PR #8.
+Its owned source files, shared contract, beat map, stage layout and visual tests
+are preserved exactly as supplied at `2e986f4`. The DEV_LOG merge preserves both
+agents' entries. No additional visual assets were authored by Astra.
 
-The contract façade currently has minimal implementations; its presence is not
-evidence that finished animation, warning markers, grabs, intro, stage dressing
-or deaths have shipped. Merge Claude's visual branch and perform the Windows
-checks below before publication. No additional placeholder visual implementation
-was authored on this branch.
+The world/first-person/lobby rigs, intro, projectiles, effects and deaths now call
+the completed first-pass façade. Siren is excluded from ordinary armor halos;
+effects run after armor glow and camera positioning. Ward Zero updates after the
+arena and camera, so light dimming and ceiling visibility use the current frame.
+The intro skips the generic camera/glow, preserves viewport aspect and ends with
+Claude's scene update. Ordinary melee pose evaluation remains bypassed for Siren.
+
+First-person rigs rebuild only on transitions into/out of Siren. The original
+integration checked for a world-rig marker absent from the first-person façade,
+which would have rebuilt the arms every frame. A real renderer view-model test
+now covers 120 frames plus switching back to a visible ordinary weapon.
+
+Black Rain starts 8 m above its landing point (previously 9 m), below the storm
+on the standard floor. Its vertical speed is 10 m/s (previously 11.25); the
+0.8-second warning/fall time, damage, cadence and cooldown are retained. Marked
+uses Claude's `markBeeps` pulse times with an 80 ms audio scheduling window,
+deduplication and cancellation of interrupted locks. The optional intro laugh
+now follows the smile cue at 6.0082 s, rather than the reveal at 3.9184 s.
+
+Combined headless checks pass for the Siren feature, but these are not an in-game
+visual/GPU or audible-sync acceptance test. Perform the Windows checks below
+before publication.
 
 `MAPS`/`ROTATION_MAPS` retain the 14 public arenas. Siren is registered in
 `BOSS_MAPS` and `ALL_MAPS`; `mapId`/`arenaMap` recognize it. This preserves every
@@ -100,28 +118,28 @@ Death/spec/disconnect cleanup and per-round reset clear temporary combat effects
 
 Linux Node 24.19.0 / npm 11.9.0:
 
-- Typecheck passed. Focused Siren/rig checks: 37/37 passed.
-- Final full unit run: **587/599 passed**, with exactly the **12 failure names**
+- Typecheck passed. All Siren contract/gameplay/client/visual/integration checks:
+  **42/42 passed**.
+- Final full unit run: **598/610 passed**, with exactly the **12 failure names**
   reproduced on clean base `cf5fa1c` (555/567). No newly failing tests.
 - Client and HTTPS relay compilation passed. Server compilation retains the four
   known Rapier/NodeNext errors; unrelated PR #2 remains separate.
-- Full `npm run verify` was attempted. Initial integration issues found in its
-  type/unit stages were fixed and those stages rerun as above. Generic WebSocket
-  suite retains its recorded rematch timeout. HTTPS/in-memory SQLite integration
-  passed: five sets, four drafts, 3,497 agreed snapshots, rematch, retry and leave
-  (177.6 s). Overall verification is **not green**.
+- Full `npm run verify` was rerun for this integration; results are recorded in
+  the newest DEV_LOG entry. The generic WebSocket suite retains its rematch
+  timeout. HTTPS passed five sets, four drafts, 3,509 matching snapshots, retry,
+  rematch and leave (177.4 s). Overall verification remains **not green**.
 - `node --import tsx tests/siren-network.ts`: three real loopback WebSocket
   clients, forged-access and duplicate selection refusal, shared damage/mode/
   Marked seeker, song continuity, **80 identical snapshots**.
 - Existing tests were adjusted only for the new intro count, separate Siren
   camera/song/hover paths, and authorized DEV primary fixtures. Public map tests
-  keep their original 14-map semantics. Contract files/tests were not changed.
+  keep their original 14-map semantics. Claude-owned files/tests match the imported visual branch exactly.
 
 Not performed: Windows Electron/GPU execution, two physical PCs, audible
 headphone sync assessment, finished visual quality, or packaging/updater tests.
 There was no merge, channel upload, live feed change or Site publication.
 
-Windows acceptance after merging both branches: confirm ??? is DEV-only; try two
+Windows acceptance for the combined PR: confirm ??? is DEV-only; try two
 DEVs selecting Siren; check solo taps/hold and Q/1–4 in both modes, wall collisions,
 Last Laugh evade/catch/kill-owner release, Marked through props/behind foundation,
 warning markers before eruption/rain, first-person and lobby appearance, intro

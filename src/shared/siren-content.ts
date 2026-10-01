@@ -7,7 +7,7 @@ export const SIREN_COMBAT={
  hellfire:{damage:10,speed:20,radius:.18,patchRadius:1.1,patchSeconds:10,patchCap:12},
  damnation:{damage:30,speed:13,gravity:8,radius:.42,blast:3.5,cooldown:6},
  eruption:{damage:28,radius:2.2,launch:10,cooldown:5},
- rain:{damage:9,radius:7,cooldown:18,dropEvery:.22,fallSeconds:.8,height:9},
+ rain:{damage:9,radius:7,cooldown:18,dropEvery:.22,fallSeconds:.8,height:8},
  mark:{damage:85,speed:3,radius:.32,cooldown:35,range:40},
  aimRange:28,fireDps:5,trailCap:24,fieldTick:.25,
 } as const;

@@ -43,5 +43,6 @@ Windows validation and desktop distribution cutover remain separate work.
 
 - Siren systems: implemented on `codex/siren-boss`, based on shared `cf5fa1c` plus
   contract `84b692f`; fourth DEV-only `???` category and original music included.
-  Pending Claude visual-branch integration and Windows acceptance; not merged or
-  published. See `docs/SIREN-SYSTEMS.md` and newest DEV_LOG entry.
+  PR #8 now integrates Claude visuals `2e986f4`, first-person/intro/glow wiring,
+  rain height and shared lock-audio timing. Windows visual/audio acceptance remains;
+  not merged into the shared branch or published. See `docs/SIREN-SYSTEMS.md`.

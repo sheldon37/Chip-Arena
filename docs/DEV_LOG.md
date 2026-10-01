@@ -17,6 +17,39 @@ PR, test result, release, or earlier log history. Git history identifies the com
 containing an entry; no self-referential commit hash is required.
 
 
+## 2026-10-01 — Astra — integrate Claude's Siren visuals into PR #8
+
+- Continuing `codex/siren-boss` / PR #8 from systems `514d784`; imported Claude's
+  `8062eb2` and `2e986f4` visual commits. Shared target remains `claude/visual-revision`
+  at `cf5fa1c`. Both DEV_LOG entries preserved; Claude-owned visual/contract/lab
+  files and tests match `2e986f4` exactly.
+- Completed the current `docs/SIREN.md` handoff: exclude world/first-person/intro
+  Siren armor halos, apply effects and Ward Zero lighting after the current camera,
+  skip the generic intro camera and preserve viewport aspect, call first-person
+  restoration for ordinary specs. Fixed first-person rig churn: the world-rig
+  marker does not exist on Claude's view model, so rebuild only on spec transition.
+- Lock beeps now use Claude's crosshair pulse schedule, with 80 ms audio lookahead,
+  deduplication, stale-cue rejection and interrupted-lock cancellation. Optional
+  intro laugh moves from reveal (3.9184 s) to smile (6.0082 s). Voice assets still
+  await the owner; the original song is already present.
+- Gameplay impact: Black Rain height 9 -> 8 m above the landing point and downward
+  speed 11.25 -> 10 m/s, keeping the 0.8 s fall/marker window. Damage, cooldowns,
+  input/network schema, other move timings and collision radii are unchanged.
+- Checks: types pass; all 42 Siren tests pass, including four new integration
+  regressions (120-frame view-model reuse/spec restoration, intro aspect/glow,
+  exact shared beep timing/cancellation, and smile-cue laugh). Full units 598/610;
+  exactly the same 12 failure names as the prior branch/clean shared base. Client
+  and relay builds pass; the same four server TS errors remain. General WebSocket
+  suite reproduces the known rematch timeout. HTTPS passed five sets,
+  four drafts, 3,509 matching snapshots, retry/rematch/leave (177.4 s).
+- Three real Siren WebSocket clients agree on 80 snapshots, including access and
+  duplicate refusal, melee, mode, Marked and music continuity. Overall verify is
+  still red due to baseline failures. No Windows/GPU/in-game visual pass, audible
+  sync assessment, physical two-PC check or packaging/updater test performed.
+- Status: combined on task branch / PR #8; not merged into the shared branch or
+  published. Next: owner Windows visual/audio acceptance, optional voices, then
+  owner-authorized merge/publication. Handoff: `docs/SIREN-SYSTEMS.md`.
+
 ## 2026-10-01 — Astra — Siren systems and DEV selection category
 
 - Branch `codex/siren-boss`, requested base `cf5fa1c5548e66d1364c98f9ea053202f918ec50`
@@ -56,6 +89,22 @@ containing an entry; no self-referential commit hash is required.
   Current façade is Claude's minimal contract implementation, not finished visuals.
   Status: implemented/tested on task branch; not merged or published. Updater, public
   test channel, live Site/feed, accounts database and installation untouched.
+
+## 2026-10-01 — Claude — Siren DEV boss visuals (first pass)
+
+- Branch `claude/visual-revision-siren` on top of the contract (`84b692f`). New files only under
+  `src/client/siren/**` and `tools/siren-lab/**`, plus the owned contract files; no existing file changed except this log.
+- Apparition (black-flame body, rim, flame tongues, leg wisps, hover, blank/angry eyes, jagged grin, claws and palm
+  orbs), the full floating stance and all ten moves keyed to `SirenMoveState` times, effects for every move and world
+  state, the Last Laugh hold/char/head crush, the Siren's own death, first-person claws, the dev-siren intro scene and
+  Ward Zero's dressing with beat/section-driven lights, beacons, painted grins, giant eyes and vent visuals.
+- `SIREN_STAGE_THEME.floor` lightened to `0x2a2731` for readability; `SIREN_VENTS` exported (additive).
+- Checks: `tests/siren-contract.test.ts` + `tests/siren-visuals.test.ts` 18/18 (tsx; every move animates to finite
+  poses, effects create/retire pieces, intro/stage/kill timelines, first-person restore). New files typecheck against
+  three r180 types. Lab renders inspected for idle, all moves, intro, stage, death and first person. Not run here: the
+  repo's full suite, `verify`, Vite build and an in-game check (npm registry unreachable; the systems are on Astra's
+  branch). No hit timing, hitbox, damage, cooldown, movement or network behavior is defined here.
+- Status: implemented on branch, not merged. Next: Astra wires the façade (docs/SIREN.md), then an in-game pass.
 
 ## 2026-10-01 — Claude — Siren DEV boss: shared contract for the Astra/Claude split
 
