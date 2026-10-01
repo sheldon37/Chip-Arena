@@ -22,6 +22,7 @@ import {animateCharacter} from '../../src/client/character-animation.js';
 import {arenaLighting} from '../../src/client/arena-lighting.js';
 import {MATERIALS,type Vec} from '../../src/shared/config.js';
 import {VIEW} from '../../src/shared/view.js';
+import {hitReaction} from '../../src/shared/hit-reaction.js';
 import type {PlayerView,Snapshot,GameEvent} from '../../src/shared/simulation.js';
 import {sirenify,animateSiren,sirenFirstPerson,SirenEffects,SirenIntroStage,SirenStageVisuals,SIREN_KILL_EFFECTS} from '../../src/client/siren/index.js';
 import {poseFirstPersonView} from '../../src/client/first-person-view.js';
@@ -98,15 +99,15 @@ function scenario(t:number):Frame{
     else{const p={x:from.x,y:0,z:from.z+vz*land};ev('siren-explode',at+land,{pos:p,radius:3.5});out.world.patches.push({id:'scorch',owner:SIREN.spec,kind:'scorch',pos:p,radius:2.2,at:at+land,until:at+land+4});}}}
   if(id==='eruption'){const at=m.hitAt,burst=at+SIREN_TIMING.eruption.warning;if(t>=at)out.world.eruptions.push({id:'er',owner:SIREN.spec,pos:m.aim!,radius:2.2,at,burstAt:burst,until:burst+SIREN_TIMING.eruption.burst});ev('siren-cast',at,{message:'eruption'});ev('siren-eruption',burst,{pos:m.aim!,radius:2.2});}
   if(id==='rain'){const at=m.hitAt,until=at+SIREN_TIMING.rain.duration,c=m.aim!;if(t>=at&&t<until+1)out.world.rains.push({id:'rn',owner:SIREN.spec,center:c,radius:7,at,until});ev('siren-cast',at,{message:'rain'});
-   const r=rng(7);for(let k=0;k<60;k++){const spawn=at+k/6,ang=r()*Math.PI*2,rad=Math.sqrt(r())*7,land={x:c.x+Math.cos(ang)*rad,y:0,z:c.z+Math.sin(ang)*rad},fall=.9,age=t-spawn;if(spawn>=until)break;
-    if(age>=0&&age<fall)out.projectiles.push({id:'drop-'+k,owner:SIREN.spec,spec:'sword' as never,pos:{x:land.x,y:14.4*(1-age/fall),z:land.z},vel:{x:0,y:-16,z:0},radius:.16,reflections:0,elements:[],siren:{kind:'drop',born:spawn,land,landAt:spawn+fall}});
+   const r=rng(7);for(let k=0;k<60;k++){const spawn=at+k/6,ang=r()*Math.PI*2,rad=Math.sqrt(r())*7,land={x:c.x+Math.cos(ang)*rad,y:0,z:c.z+Math.sin(ang)*rad},fall=.62,age=t-spawn;if(spawn>=until)break;
+    if(age>=0&&age<fall)out.projectiles.push({id:'drop-'+k,owner:SIREN.spec,spec:'sword' as never,pos:{x:land.x,y:8*(1-age/fall),z:land.z},vel:{x:0,y:-13,z:0},radius:.16,reflections:0,elements:[],siren:{kind:'drop',born:spawn,land,landAt:spawn+fall}});
     if(age>=fall)ev('siren-drop',spawn+fall,{pos:land});}}
   if(id==='mark'){const target={x:1.5,y:.85,z:13};out.players.push(player('target','#ffd04a',target,Math.PI,{}));ev('siren-mark',0,{target:'target'});ev('siren-lock',m.endAt!,{pos:target,target:'target'});
    const shotAge=t-m.hitAt,from=sirenPoint(base,yaw,SIREN_SPAWN.seeker);if(t<m.hitAt+20)out.world.marks.push({id:'mk',owner:SIREN.spec,target:'target',at:0,lockAt:m.endAt!,throwAt:m.hitAt,shot:shotAge>=0?'seeker':undefined});
    if(shotAge>=0){const d={x:target.x-from.x,y:target.y+.3-from.y,z:target.z-from.z},L=Math.hypot(d.x,d.y,d.z),u=Math.min(1,3.2*shotAge/L);out.projectiles.push({id:'seeker',owner:SIREN.spec,spec:'sword' as never,pos:{x:from.x+d.x*u,y:from.y+d.y*u,z:from.z+d.z*u},vel:{x:d.x/L*3.2,y:d.y/L*3.2,z:d.z/L*3.2},radius:.45,reflections:0,elements:[],siren:{kind:'seeker',born:m.hitAt,target:'target'}});}}
  }
  const extra:Partial<PlayerView>={};
- if(move==='hit')extra.hitReaction={at:.2,dir:{x:0,y:0,z:-1},point:{x:0,y:1.2,z:.2},strength:1} as never;
+ if(move==='hit'){extra.hitReaction=hitReaction({x:0,y:.85,z:0},0,{x:0,y:0,z:-1},{x:.1,y:1.25,z:.2},.2,24);extra.hitStunUntil=.2+.35;}
  if(move==='knockdown')extra.knockdown={at:.1,until:2.2} as never;
  const siren=player(SIREN.spec,'#b8b0ff',pos,yaw,{vel,...extra});(siren as unknown as {siren:SirenPlayerState}).siren=s;
  if(move==='death'&&t>=.2){siren.hp=0;out.deaths.push({victim:SIREN.spec,at:.2,effect:SIREN.deaths.dissipate});}

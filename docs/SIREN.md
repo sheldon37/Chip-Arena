@@ -46,6 +46,8 @@ hands the animation shows. Emit the events listed on `SirenEventType`.
   `SIREN_STAGE_THEME` values for its `MAPS` entry. Create `SirenStageVisuals(scene)`; `setActive(map === 'siren')` and
   `update(state, visualTime, effectsQuality, camera)` each frame (the camera lets it hide the ceiling for overview shots).
   While active it dims the arena's night lights and restores them on `setActive(false)`.
+- **Black Rain:** Ward Zero has a ceiling grid at about 9 m; spawn the drops around 8 m (the storm is drawn just
+  under the ceiling) and give each drop its `land`/`landAt` so its red floor marker is right.
 - **Stage hazards:** `sirenStageHazards(songTime)` returns the beat-synced vents (positions also in `SIREN_VENTS`).
   Apply contact damage and launch the same way as `StageHazards` (per-hazard, per-player hit cooldown, only in the
   fight phase).

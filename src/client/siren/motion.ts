@@ -165,7 +165,7 @@ export function animateSirenRig(rig:CharacterRig,p:PlayerView,state:Snapshot,tim
  const base=stance(time,sm0.ranged);
  // Floating locomotion: lean into the drift, arms and legs trail, no steps.
  const f=clamp(sm0.fwd/6.8,-1,1),l=clamp(sm0.lat/6.8,-1,1),speed=Math.hypot(f,l);
- add(base,'body',.28*f,0,-.22*l);add(base,'spine',.08*f,0,0);add(base,'head',-.18*f,0,0);
+ add(base,'body',.17*f,0,-.18*l);add(base,'spine',.06*f,0,0);add(base,'head',-.14*f,0,0);
  for(const j of ['lArm','rArm'] as const)add(base,j,.5*f*(1-sm0.ranged*.6),0,0);
  add(base,'lLeg',.55*f+.15*speed,0,.12*l);add(base,'rLeg',.48*f+.15*speed,0,.12*l);add(base,'lKnee',.2*speed);add(base,'rKnee',.25*speed);
  if(!p.grounded){add(base,'lKnee',.35);add(base,'rKnee',.3);base.lift-=SIREN_HOVER.bob;}
@@ -202,7 +202,7 @@ function apply(r:CharacterRig,p:Pose,_f:number,_l:number){
 /** Eyes, mouth, claws/orbs and the black flame emission. */
 function finishLook(rig:CharacterRig,parts:SirenParts,s:Smooth,open:number,squint:number,time:number,dt:number,p:PlayerView,state:Snapshot){
  const k=1-Math.exp(-dt*18);s.open+=(open-s.open)*k;s.squint+=(squint-s.squint)*k;
- const st=parts.state;st.ranged=s.ranged;st.open=s.open;st.squint=s.squint;st.anger=clamp(.3+s.squint*.9+s.open*.5);st.glow=p.hp>0?1:0;st.time=time;st.lean=clamp(s.fwd/6.8,-1,1);
+ const st=parts.state;st.ranged=s.ranged;st.open=s.open;st.squint=s.squint;st.anger=clamp(.5+s.squint*.8+s.open*.5);st.glow=p.hp>0?1:0;st.time=time;st.lean=clamp(s.fwd/6.8,-1,1);
  const move=sirenOf(p)?.move;st.flare=move&&(move.id==='hellfire'||move.id==='damnation')?Math.max(0,1-Math.abs(time-move.hitAt)/.2):0;
  applySirenLook(parts);
  // Damnation: the ball swells overhead through the windup and leaves the hands at release.
@@ -248,7 +248,7 @@ const EMITTERS:Emitter[]=[
 const acc=new WeakMap<object,number[]>(),TIPS=new WeakMap<object,number[]>();
 function emitFlames(rig:CharacterRig,parts:SirenParts,_time:number,dt:number,quality:number,vx:number,vz:number,grabbing:boolean){
  if(dt<=0)return;let a=acc.get(rig.group);if(!a){a=EMITTERS.map(()=>Math.random());acc.set(rig.group,a);}
- const q=quality<.5?.45:quality,ranged=parts.state.ranged,boost=1+parts.state.flare*2+(grabbing?.5:0);
+ const q=quality<.5?.45:quality,ranged=parts.state.ranged,boost=1+parts.state.flare*2+(grabbing?.5:0),fast=Math.min(1,Math.hypot(vx,vz)/6),lifeK=1-.45*fast;
  // Each flame tongue sheds small tongues from its tip, so the fire keeps rising off the body in columns.
  let tips=TIPS.get(rig.group);if(!tips){tips=parts.tongues.map(()=>Math.random());TIPS.set(rig.group,tips);}
  for(let i=0;i<parts.tongues.length;i++){const g=parts.tongues[i];tips[i]+=7*q*boost*dt;if(tips[i]<1)continue;wp.set(0,.36*g.group.scale.y,0);g.group.localToWorld(wp);
@@ -258,6 +258,6 @@ function emitFlames(rig:CharacterRig,parts:SirenParts,_time:number,dt:number,qua
   while(a[i]>=1){a[i]-=1;const r=e.spread,jx=(Math.random()-.5)*2*r,jy=(Math.random()-.5)*r,jz=(Math.random()-.5)*2*r,ember=Math.random()<(e.hands&&ranged>.5?.16:.06);
    const trail=e.tail?.45:.22;
    parts.flames.emit(wp.x+jx,wp.y+jy,wp.z+jz,-vx*trail+(Math.random()-.5)*.16,e.up*(.6+Math.random()*.6)*(e.tail?.5:1),-vz*trail+(Math.random()-.5)*.16,
-    (e.tail?.4:.55)*(.7+Math.random()*.6),e.size*.85*(ember?.45:1)*(.75+Math.random()*.5),ember?'ember':Math.random()<.18?'smoke':'black',e.tail?.6:2.6,e.tail?2.6:2.2);}
+    (e.tail?.4:.55)*(.7+Math.random()*.6)*lifeK,e.size*.85*(ember?.45:1)*(.75+Math.random()*.5),ember?'ember':Math.random()<.18?'smoke':'black',e.tail?.6:2.6,e.tail?2.6:2.2);}
  }
 }

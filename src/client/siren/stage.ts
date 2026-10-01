@@ -10,6 +10,7 @@ const clamp=(x:number,a=0,b=1)=>Math.min(b,Math.max(a,x));
 const sm=(x:number)=>{x=clamp(x);return x*x*(3-2*x);};
 const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
 const unit=new T.BoxGeometry(1,1,1),dummy=new T.Object3D(),col=new T.Color();
+const NIGHT_LIGHTS=new Set(['night-ambient','night-sky','night-moon','night-rim']);
 
 /** How each section of the song dresses the ward. Values blend over about a bar when the section changes. */
 interface Mood {tubes:number;strobe:number;erratic:number;beacons:number;spin:number;grins:number;eyes:number;circle:number;red:number;night:number}
@@ -156,7 +157,8 @@ export class WardZeroVisuals {
 
   // The arena's own night lights are mostly shut off in here: the ward is lit by its own tubes and beacons.
   // (Lights are re-collected about once a second rather than walking the scene every frame.)
-  if(time-this.scanned>1||time<this.scanned){this.scanned=time;this.scene.traverse(o=>{if(o instanceof T.Light&&!this.own(o)&&o.name!=='armor-light'&&!this.saved.has(o))this.saved.set(o,o.intensity);});}
+  // Only the arena's own night lights (arenaLighting) are dimmed; effect lights (projectile glow, the Marked seeker) keep their own levels.
+  if(time-this.scanned>1||time<this.scanned){this.scanned=time;this.scene.traverse(o=>{if(o instanceof T.Light&&NIGHT_LIGHTS.has(o.name)&&!this.own(o)&&!this.saved.has(o))this.saved.set(o,o.intensity);});}
   for(const [l,base] of this.saved)l.intensity=base*m.night;
 
   // Tubes: steady, pulsing with the beat, strobing in the climax, failing at random in the quiet parts.

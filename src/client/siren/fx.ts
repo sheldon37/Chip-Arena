@@ -211,7 +211,8 @@ export class SirenFx {
  private updateRains(list:SirenRain[],time:number,dt:number){
   const q=this.quality<.5?.45:1;
   for(const r of list){if(time>r.until)continue;let acc=this.rainAcc.get(r.id)??0;const k=sm((time-r.at)/.8)*(1-sm((time-(r.until-1))/1));acc+=dt*q*55*k*(r.radius/7)**2;
-   while(acc>=1){acc-=1;const a=Math.random()*Math.PI*2,d=Math.sqrt(Math.random())*r.radius*1.05;this.fire.emit(r.center.x+Math.cos(a)*d,13.2+Math.random()*1.2,r.center.z+Math.sin(a)*d,(Math.random()-.5)*.4,-.1+Math.random()*.2,(Math.random()-.5)*.4,1.6+Math.random()*1,.35+Math.random()*.35,Math.random()<.25?'smoke':'black',.05,.8);}
+   // The storm gathers just under Ward Zero's ceiling grid (about 9 m); drops should spawn around 8 m.
+   while(acc>=1){acc-=1;const a=Math.random()*Math.PI*2,d=Math.sqrt(Math.random())*r.radius*1.05;this.fire.emit(r.center.x+Math.cos(a)*d,r.center.y+8.2+Math.random()*.8,r.center.z+Math.sin(a)*d,(Math.random()-.5)*.4,-.1+Math.random()*.2,(Math.random()-.5)*.4,1.6+Math.random()*1,.35+Math.random()*.35,Math.random()<.25?'smoke':'black',.05,.8);}
    this.rainAcc.set(r.id,acc);
    // The edge of the storm on the floor.
    if(Math.random()<dt*q*20){const a=Math.random()*Math.PI*2;this.fire.emit(r.center.x+Math.cos(a)*r.radius,r.center.y+.05,r.center.z+Math.sin(a)*r.radius,0,.4,0,.6,.07,'warn',.6,2);}
