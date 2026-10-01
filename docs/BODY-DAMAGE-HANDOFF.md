@@ -5,10 +5,10 @@ Owner request, 2026-10-01: Astra implements functions/authority/physics; Claude 
 ## Branch and ownership
 
 - Systems task: `codex/body-damage-systems`, based on shared `claude/visual-revision` at `a2480ba6985bb8a60efc10f79839eeb7d3dc9a27`.
-- Claude: fetch this task branch and branch `claude/body-damage-visuals` from its latest head. Read `AGENTS.md`, recent `docs/DEV_LOG.md`, this file, then the contracts below. Do not replace the shared branch wholesale.
+- Claude's visual commit `afb7561075ba71cef78ff091f2a5e7cea6b2b725` is integrated into the PR #14 task history. For follow-up presentation work, fetch the latest `codex/body-damage-systems` head, including Astra's real-Rapier fixes. Read `AGENTS.md`, recent `docs/DEV_LOG.md`, this file, then the contracts below. Do not replace the shared branch wholesale.
 - Astra owns `src/shared/body-damage.ts`, `body-ragdoll.ts`, simulation integration, damage profiles and authority tests. Request contract changes in your handoff instead of independently reimplementing the resolver.
 - Claude owns new client wound/crush/collapse presentation and may extend `src/client/ragdoll.ts`, `death-effects.ts`, `gibber-vfx.ts`, rig meshes and a visual lab. Preserve the small authority-contract/velocity adapters already present in those files.
-- Draft PR #14 contains the systems handoff (`fdaf42c` initially). Consult the newest DEV_LOG entry/PR for actual verification results and fetch the latest task head. This is not a completed visual release; no merge/publication yet.
+- Draft PR #14 contains systems, Claude's visuals and Astra's physics fixes. Consult the newest DEV_LOG entry/PR for actual verification results and fetch the latest task head. The owner made merge/publication conditional on passing verification; the remaining failures and blocked visual gate prevent release.
 
 ## Stable contract
 
@@ -22,8 +22,15 @@ Owner request, 2026-10-01: Astra implements functions/authority/physics; Claude 
 - Kneel timing is currently .32 s to knees and .82 s to release into physics. Gate: lethal bullet head cavity/sever, relative speed >=110, grounded, not rolling/knocked down/juggled, resulting speed <8. Airborne, tumbling and strongly launched victims ragdoll immediately. Do not force them upright.
 - Authoritative HP reaches zero and gameplay control stops immediately. The brief collapse is visual; it does not delay scores, create damageable corpses or keep the victim alive.
 - Default effect ID: **`impact-ragdoll`**, public, no DEV check. Missing/invalid cosmetics use it; explicitly saved cosmetic choices (including legacy voxel-burst) remain selected. Keep special finishers and Siren death/crush overrides intact. If requested to migrate old selected cosmetics, coordinate that separately.
-- Existing fallback currently renders ordinary ragdoll and selected-part severing using old assets. It does NOT yet draw punctures/cavities, crushed fragments, living wounds or kneel/fall animation. Do not mistake the fallback for finished visuals.
-- Claude's visuals (branch `claude/body-damage-visuals`, not yet integrated): living wounds in `src/client/body-wounds.ts`, caps and crush fragments in `body-trauma.ts`, kneel/fall in `body-collapse.ts`, consumed by the `impact` mode of `ragdoll.ts`; review lab `tools/body-lab`. Physics after the collapse release still needs a real-Rapier run (see DEV_LOG).
+- Claude's visuals are now integrated on the task branch: living wounds in `src/client/body-wounds.ts`, caps and crush fragments in `body-trauma.ts`, kneel/fall in `body-collapse.ts`, consumed by the `impact` mode of `ragdoll.ts`; review lab `tools/body-lab`. Real Rapier 0.19.3 checks pass after Astra's adapter corrections below. This does not establish visual acceptance or mean the shared branch/test channel was updated.
+
+## Real-Rapier follow-up and remaining visual gate
+
+- `impact-ragdoll` with a motion contract consumes the authority velocity once, plus the bounded detached-subtree kick. It no longer adds the legacy per-part cosmetic angular launch (measured up to 18 rad/s). Contacts and joints create angular motion; the scripted collapse supplies its own pose velocities. Explicit cosmetic effects and old snapshots without motion retain their fallback.
+- At the step-aligned release (50/60 s for the current .82 s contract), the adapter synchronizes every driven body's exact pose and velocities once. Previously the displayed script switched to the last physics step's collision-corrected bodies: the right forearm jumped 9.2 cm for cavity / 9.9 cm for decap. Boundary measurements after the fix are below .05 mm across the tested connected parts (samples 10 microseconds apart). Detached heads remain physical from the first frame.
+- `tests/body-damage-visuals.test.ts` now runs seven tests with real Rapier, covering budgets, sever/crush, initial velocities/spin, all-part release continuity at 20/30/60/144 Hz, late snapshots after release, detached-head flight, freed children of a spine crush, and disposal. No damage, attack timing, hitbox, cooldown, gameplay knockback, movement rule or network contract changed.
+- Astra could start `npm run dev -- --host 127.0.0.1`, but Cloud Browser rejected the local lab URL with `net::ERR_BLOCKED_BY_CLIENT`. No rendered-scene or Windows/GPU acceptance is claimed. Claude's earlier stand-in review is not a substitute for a real-Rapier visual review.
+- Claude/owner: open `/tools/body-lab/index.html?scene=<name>` with real installed dependencies for `kneel`, `decap`, `cavity`, `crush`, `limb`, `cut`, `airborne`, `torso`, `finisher`, `low`, `gallery`. For the release, use `scene=kneel&times=0.8,0.82,0.8333333333,0.85,0.95,1.3&views=side,three,front`; repeat with `scene=decap`, `fps=20` / `fps=144`, and `late=1&repeat=3`. Check the first physical steps, head flight, freed crushed children and airborne landing. Return presentation issues with the scene/query and screenshot; preserve the adapter fixes. Until then this gate is blocked, not passed.
 
 ## Visual work
 

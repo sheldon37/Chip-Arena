@@ -17,6 +17,60 @@ PR, test result, release, or earlier log history. Git history identifies the com
 containing an entry; no self-referential commit hash is required.
 
 
+## 2026-10-01 — Astra — real-Rapier body damage verification and PR #14 integration
+
+- Integrated Claude `afb7561075ba71cef78ff091f2a5e7cea6b2b725` (parent systems
+  `2f148ad5dfaf1495ca9018633a454783bbf4d86c`) into `codex/body-damage-systems`,
+  draft PR #14. Physics fixes are commit `6148fe27b0684fbab3f50ac3ef1439225da9b2d9`.
+  Shared target remains `claude/visual-revision` at `a2480ba6985bb8a60efc10f79839eeb7d3dc9a27`.
+- Separate API-materialized verification checkout: all 549 tracked file bytes matched
+  Claude's Git blob hashes, including media recovered from the uploaded source/test ZIP.
+  Node 24.19.0, npm 11.9.0, fresh `npm ci --no-audit --no-fund`; runtime Rapier 0.19.3.
+  These results use real Rapier WASM, not Claude's stand-in. Local synthetic Git history
+  was not pushed; remote commits retain Claude's actual parent history and tree.
+- Fixed only the physics adapter and regression tests. Impact deaths with a motion
+  contract no longer receive the legacy per-part spin (measured up to 18 rad/s for a
+  melee victim inheriting only 0.3 m/s). Their initial linear velocity still consumes
+  the authority result once plus the existing bounded kick for a detached subtree.
+  Explicit cosmetics and old snapshots without motion retain their legacy fallback.
+- Real Rapier exposed a release discontinuity missed by the prior chest-only test:
+  the right forearm jumped 9.2 cm (cavity) / 9.9 cm (decap) when script visibility
+  switched to solver-corrected bodies. At the 50/60 s boundary, copy the exact scripted
+  pose and velocities once before physical steps continue. The same boundary probe
+  (10 microseconds apart) now measures <0.05 mm across connected parts in those fixtures.
+  Detached heads remain physical throughout. Claude's animation curves/meshes are unchanged.
+- New regression coverage observes real bodies/joints: no added spin or double force,
+  equal kick across a severed arm subtree, all-part release at 20/30/60/144 Hz, identical
+  late/stepped physics, immediate head flight, and head/arm subtrees freed by a spine crush.
+  `body-damage-visuals.test.ts` passes 7/7. Initial requested focused run passed 61/61;
+  the final full suite also passes all requested wound, visual, existing ragdoll and
+  body-damage tests, including the three added regressions. Wound tests pass 11/11.
+  `body-damage-network.ts`: three real WebSocket clients, four identical HostedRoom
+  snapshots (living wound, fatal cavity/kneel, later death, round reset).
+- Complete systems baseline `2f148ad`: 646/658 units. Claude before fixes: 661/673.
+  Final fixes: 664/676. Exactly the same 12 failure names on base and final; no new
+  failures. Restoring matching media made three of the previously reported 15 pass:
+  original intro music assets, fourteen-map budget/reset, and menu-music playback.
+  Remaining failures cover music catalog count, behavior/catalog counts, Demon Step,
+  reference poses, disconnect forfeit, block knockback, dagger leading-hand pose,
+  vertical-platform support, shield DoT and PCM sample rate. They were not suppressed.
+- `npm run check:types` and Vite pass. Broad `npm run verify` also passes client/relay
+  compilation, but server compilation retains the four known errors (chaos.ts,
+  leet.ts twice, standard-melee.ts); generic WebSocket integration times out at rematch.
+  HTTPS integration passes: five sets, four drafts, 3,430 identical shared snapshots,
+  destruction, retry, rematch and guest leave; 174.5 s. Broad verification is not green.
+- Visual gate BLOCKED: `npm run dev -- --host 127.0.0.1` started Vite and the authority,
+  but Cloud Browser rejected the kneel lab URL with `net::ERR_BLOCKED_BY_CLIENT`.
+  No real-Rapier rendered lab scenes/screenshots, Windows/GPU, first-person/spectating
+  or two-physical-PC visual acceptance is claimed. BODY-DAMAGE-HANDOFF lists the exact
+  scene queries for Claude/owner's remaining review; no presentation rewrite was made.
+- No gameplay damage, hit timing, hitboxes, cooldowns, knockback values, movement rules
+  or network contracts changed in this follow-up. Status: combined feature/fixes pushed
+  to draft PR #14; NOT merged or published. Owner explicitly required stopping after
+  integration if verification fails: baseline failures plus the blocked visual gate
+  prevent step 6. Next: complete real-Rapier visual review and resolve the failing gates
+  before merging/publishing; the existing test and live feeds are untouched.
+
 ## 2026-10-01 — Claude — body damage visuals: wounds, severing/crushing, kneel/fall
 
 - Task: Astra's `docs/BODY-DAMAGE-HANDOFF.md` (draft PR #14). Branch `claude/body-damage-visuals` from the
