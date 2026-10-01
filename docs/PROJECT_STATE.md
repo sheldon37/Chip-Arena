@@ -40,3 +40,9 @@ Next: review the migration PR against `main`; shared policy and CI remain on
 `migration/shared-development` until the owner merges. Resolve recorded baseline
 failures before enforcing a green merge/release gate. No automatic merge.
 Windows validation and desktop distribution cutover remain separate work.
+
+- Siren systems: implemented on `codex/siren-boss`, based on shared `cf5fa1c` plus
+  contract `84b692f`; fourth DEV-only `???` category and original music included.
+  PR #8 now integrates Claude visuals `2e986f4`, first-person/intro/glow wiring,
+  rain height and shared lock-audio timing. Windows visual/audio acceptance remains;
+  not merged into the shared branch or published. See `docs/SIREN-SYSTEMS.md`.

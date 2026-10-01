@@ -24,7 +24,7 @@ const bladeLength=(spec:string,shield=true)=>spec==='daggers'?BLADE_LENGTH.dagge
 const hash=(t:number)=>{const x=Math.sin(t*127.1+311.7)*43758.5453;return x-Math.floor(x);};
 function socket(parent:T.Object3D,name:string,x:number,y:number,z:number){const g=new T.Group();g.name=name;g.position.set(x,y,z);parent.add(g);return g;}
 export function buildWeapon(weapon:T.Group,spec:string,offhand=false){
- weapon.clear();weapon.userData={spec,enchant:'',modifierKey:''};const w=WEAPONS[spec as keyof typeof WEAPONS];const steel=0x81999f,dark=0x263a43,gold=0xe3b779,edge=0xeaf6f4,black=0x151c21,wrap=0x3b2a24;
+ weapon.clear();weapon.userData={spec,enchant:'',modifierKey:''};if(spec==='siren')return;const w=WEAPONS[spec as keyof typeof WEAPONS];const steel=0x81999f,dark=0x263a43,gold=0xe3b779,edge=0xeaf6f4,black=0x151c21,wrap=0x3b2a24;
  if(spec==='emperor'){box(weapon,0x1b1b25,0,-.01,0,.22,.20,.23);box(weapon,0x62636f,0,.075,-.01,.225,.08,.215);box(weapon,0xef1e43,0,-.04,.12,.22,.05,.025,true);for(let i=0;i<3;i++)box(weapon,0xa9aab3,(i-1)*.07,-.10,.1,.045,.04,.05);socket(weapon,'blade-tip',0,-.045,.14);}
  else if(spec==='ansatsuken'){const fist=socket(weapon,'fighter-fist',0,0,0);box(fist,0x931f31,0,-.015,-.01,.205,.175,.19);box(fist,0xec3c43,0,-.04,.07,.205,.13,.065);box(weapon,0xe8d6ad,0,.06,-.01,.21,.045,.2);const palm=socket(weapon,'fighter-palm',0,0,0);palm.visible=false;box(palm,0xb42638,0,-.01,0,.19,.14,.08);for(let i=0;i<4;i++){const finger=box(palm,0xec3c43,(i-1.5)*.049,-.14+(i===0||i===3?.012:0),0,.039,.15,.066);finger.rotation.z=(i-1.5)*-.045;}const thumb=box(palm,0xec3c43,.125,-.018,.035,.057,.095,.075);thumb.rotation.z=.5;socket(weapon,'blade-tip',0,-.045,.115);}
  else if(spec==='leet'){matrixStaff(weapon);}else if(w.class==='ranged'){

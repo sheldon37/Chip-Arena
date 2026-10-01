@@ -1,3 +1,4 @@
+import {SIREN_TIMING} from './siren-contract.js';
 import {WEAPON_WEIGHT,meleeCost,meleeSpecialCost,usesRoll} from './souls-combat.js';
 import {EMPEROR,MISHIMA_CHIPS,MISHIMA_INCOMPATIBLE} from './emperor-content.js';
 import {ARCADE,ARCADE_CHIPS,ARCADE_INCOMPATIBLE} from './arcade-content.js';
@@ -8,6 +9,7 @@ import type {ClassId,SpecId} from './config.js';
 import {ELEMENTS} from './elements.js';
 export interface Weapon {weight?:number;devOnly?:boolean;id:SpecId;name:string;class:ClassId;description:string;damage:number;interval:number;speed:number;gravity:number;range:number;impulse:number;ammo:number;reload:number;cost:number;spread:number;windup:number;arc:number;secondary:string;secondaryCooldown:number;color:number;burn?:number;blast?:number;drain?:number;chain?:number;burstCount?:number;secondaryCost?:number;}
 export const WEAPONS:Record<SpecId,Weapon>={
+ siren:{id:'siren',name:'Siren',devOnly:true,class:'melee',description:'DEV boss · Q toggles melee/ranged mode. LMB: Claw Swipe / Hellfire. 1–4: Rending Claw, Grave Slam, Shadow Rush, Last Laugh / Damnation, Eruption, Black Rain, Marked. One Siren per match.',damage:9,interval:SIREN_TIMING.swipe.windup+SIREN_TIMING.swipe.active+SIREN_TIMING.swipe.recover,speed:0,gravity:0,range:2.3,impulse:100,ammo:0,reload:0,cost:0,spread:0,windup:0,arc:2.4,secondary:'siren-mode',secondaryCooldown:0,color:0x8e65cc},
  emperor:{id:'emperor',name:'Emperor Style',devOnly:true,class:'melee',description:'DEV · LMB: one punch per activation; chain left then right (3 stamina each). Q: electric wind hook fist launches and juggles. E: chainable wavedash. Shift: stamina-based dodge roll. Mishima Chips evolve your style.',damage:20,interval:.39,speed:0,gravity:0,range:2.4,impulse:120,ammo:0,reload:0,cost:6,spread:0,windup:.075,arc:1.8,secondary:'wavedash',secondaryCooldown:0,color:0xff304f},
  ansatsuken:{id:'ansatsuken',name:'Ansatsuken',devOnly:true,class:'melee',description:'DEV · LMB: one hit per activation; chain right punch, left punch, high kick (4 stamina each). RMB: no-cooldown parry. 1: burning Hadoken. E: Tatsumaki Senpukyaku. 2: Shoryuken. Shift: Demon Step, a longer afterimage dash with a brief invulnerable window. Exclusive arcade Chips evolve your moves.',damage:39,interval:.9,speed:23,gravity:0,range:2,impulse:650,ammo:0,reload:0,cost:12,spread:0,windup:.12,arc:1.6,secondary:'tatsu',secondaryCooldown:5,color:0x80dfff},
  leet:{id:'leet',name:'L33T H4x',devOnly:true,class:'magic',description:'DEV · Binary bolts pause when they detect a visible enemy, then launch at that captured position. E: Root Command. Unlocks L44T Chips and greatly improves legendary / mythic odds.',damage:32,interval:.6,speed:19,gravity:0,range:60,impulse:260,ammo:0,reload:0,cost:7,spread:0,windup:0,arc:0,secondary:'root',secondaryCooldown:12,color:0x52ff83},
@@ -159,4 +161,4 @@ export function offerChips(spec:SpecId,chips:Record<string,number>,random:()=>nu
  }return result;
 }
 export const castWindup=(spec:SpecId,rate=1)=>(({leet:.18,fire:.16,water:.12,lightning:.065,darkness:.22} as Partial<Record<SpecId,number>>)[spec]||0)/rate;
-export const CLASS_INFO={ranged:{name:'Ranged',color:'#f4c170',default:'pistol' as SpecId},magic:{name:'Magic',color:'#bc9ff3',default:'fire' as SpecId},melee:{name:'Melee',color:'#8ee2cb',default:'sword' as SpecId}};
+export const CLASS_INFO={dev:{name:'???',color:'#bc9ff3',default:'emperor' as SpecId},ranged:{name:'Ranged',color:'#f4c170',default:'pistol' as SpecId},magic:{name:'Magic',color:'#bc9ff3',default:'fire' as SpecId},melee:{name:'Melee',color:'#8ee2cb',default:'sword' as SpecId}};

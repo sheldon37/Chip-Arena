@@ -1,3 +1,4 @@
+import {SIREN_STAGE_THEME} from './siren-stage-layout.js';
 import {interiorBuilding,type InteriorPlan} from './architecture.js';
 import type {ArenaBlock} from './arena.js';
 import {v,Material} from './config.js';
@@ -17,9 +18,13 @@ export const MAPS=[
  {id:'spikevault',name:'Thornfall Vault',tag:'HAZARD · timed spikes · ruined galleries',theme:'castle',sky:0x111322,floor:0x403c4c,accent:0xf37885,music:'stone-oath'},
  {id:'lavaworks',name:'Cinder Crossing',tag:'HAZARD · lava pits · move to swim, jump to escape',theme:'forge',sky:0x240b13,floor:0x302831,accent:0xff713c,music:'cinder-engine'},
 ] as const;
-export type MapId=typeof MAPS[number]['id'];
-export function mapId(raw:unknown):MapId{return MAPS.some(m=>m.id===raw)?raw as MapId:'foundry';}
-export function arenaMap(raw:unknown){return MAPS.find(m=>m.id===mapId(raw))!;}
+/** Ward Zero is forced by an authorized Siren, never drawn in normal rotation. */
+export const ROTATION_MAPS=MAPS;
+export const BOSS_MAPS=[{id:'siren',...SIREN_STAGE_THEME,music:null}] as const;
+export const ALL_MAPS=[...MAPS,...BOSS_MAPS] as const;
+export type MapId=typeof ALL_MAPS[number]['id'];
+export function mapId(raw:unknown):MapId{return ALL_MAPS.some(m=>m.id===raw)?raw as MapId:'foundry';}
+export function arenaMap(raw:unknown){return ALL_MAPS.find(m=>m.id===mapId(raw))!;}
 /** Authoritative, deterministic layouts with eight clear perimeter spawn pads. */
 export function expansionBlocks(id:Exclude<MapId,'foundry'>):ArenaBlock[]{
  const out:ArenaBlock[]=[];const interiors:InteriorPlan[]=[];let serial=0;

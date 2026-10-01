@@ -4,6 +4,9 @@ export const MUSIC_TRACKS=[['foundry-rush','Foundry Rush',138],['orange-line','O
 export class ArenaMusic {
  private menu:HTMLAudioElement|null=null;private menuActive=false;private menuVolume=.6;
  setMenuActive(active:boolean){if(active===this.menuActive)return;this.menuActive=active;if(!active){this.menu?.pause();return;}if(!this.menu){this.menu=new Audio(`${((import.meta as any).env?.BASE_URL||'/')}music/menu-afterglow.mp3`);this.menu.loop=true;this.menu.preload='auto';}this.menu.volume=this.muted?0:this.menuVolume;void this.menu.play().catch(()=>{});}
+ private bossActive=false;
+ setBossActive(active:boolean){this.bossActive=active;if(active)this.setActive(false);}
+ get playbackVolume(){return this.level;}
  private map='foundry';private theme:number|null=null;private audio:HTMLAudioElement|null=null;private bag:number[]=[];private current=-1;private active=false;private volume=.35;private muted=false;private failed=false;private ducked=false;
  setMap(raw:unknown){const id=mapId(raw);if(id===this.map)return;this.map=id;const music=arenaMap(id).music;this.theme=music?MUSIC_TRACKS.findIndex(t=>t[0]===music):null;this.audio?.pause();if(this.audio){this.audio.onended=null;this.audio.onerror=null;this.audio.removeAttribute('src');this.audio.load();}this.audio=null;this.current=-1;this.failed=false;if(this.active)this.next();}
  private get level(){return this.muted?0:this.volume*.55*(this.ducked?.12:1);}
@@ -11,7 +14,7 @@ export class ArenaMusic {
  configure(volume:number,muted:boolean,menuVolume=this.menuVolume){this.menuVolume=Number.isFinite(menuVolume)?Math.max(0,Math.min(1,menuVolume)):.6;this.volume=Number.isFinite(volume)?Math.max(0,Math.min(1,volume)):.35;this.muted=muted;if(this.menu)this.menu.volume=muted?0:this.menuVolume;if(this.audio)this.audio.volume=this.level;}
  get cueVolume(){return this.muted?0:this.volume*.80;}
  get title(){return this.current<0?'':MUSIC_TRACKS[this.current][1];}
- setActive(active:boolean){if(active===this.active)return;this.active=active;if(!active){this.audio?.pause();return;}if(this.audio&&!this.audio.ended){void this.audio.play().catch(()=>{});}else this.next();}
+ setActive(active:boolean){active=active&&!this.bossActive;if(active===this.active)return;this.active=active;if(!active){this.audio?.pause();return;}if(this.audio&&!this.audio.ended){void this.audio.play().catch(()=>{});}else this.next();}
  unlock(){if(this.menuActive&&this.menu)void this.menu.play().catch(()=>{});if(this.active&&this.audio)void this.audio.play().catch(()=>{});}
  private next(){if(!this.active)return;if(this.theme===null&&!this.bag.length){this.bag=Array.from({length:10},(_,i)=>i);for(let i=this.bag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[this.bag[i],this.bag[j]]=[this.bag[j],this.bag[i]];}if(this.bag.at(-1)===this.current)[this.bag[0],this.bag[this.bag.length-1]]=[this.bag.at(-1)!,this.bag[0]];}
  this.current=this.theme??this.bag.pop()!;this.audio?.pause();const a=this.audio=new Audio(`${((import.meta as any).env?.BASE_URL||'/')}music/${MUSIC_TRACKS[this.current][0]}.mp3`);a.preload='auto';a.loop=this.theme!==null;a.volume=this.level;a.onended=()=>this.next();a.onerror=()=>{if(!this.failed){this.failed=true;this.theme=null;this.next();}};void a.play().catch(()=>{});}

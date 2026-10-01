@@ -8,13 +8,13 @@ import {poseMatrixThrone,matrixCamera} from './leet-intro.js';
 import * as T from 'three';
 import {CharacterRig,braceWeapon,supportHand} from './character-rig.js';
 import {IntroStyle} from '../shared/intros.js';
-export const INTRO_HIT:Record<IntroStyle,number>={...Object.fromEntries(Object.entries(WEAPON_INTROS).map(([key,value])=>[key,value.hit])) as Record<WeaponIntro,number>,'dev-emperor':4.1,'dev-ansatsuken':4.6,'dev-matrix':5.9,'neon-drop':.88,'vector-slide':1.08,'signal-spin':1.36,'arc-salute':1.56,'pulse-wave':1.62};
+export const INTRO_HIT:Record<IntroStyle,number>={...Object.fromEntries(Object.entries(WEAPON_INTROS).map(([key,value])=>[key,value.hit])) as Record<WeaponIntro,number>,'dev-siren':Infinity,'dev-emperor':4.1,'dev-ansatsuken':4.6,'dev-matrix':5.9,'neon-drop':.88,'vector-slide':1.08,'signal-spin':1.36,'arc-salute':1.56,'pulse-wave':1.62};
 export const ease=(n:number)=>{n=T.MathUtils.clamp(n,0,1);return n*n*(3-2*n);};
 type V=[number,number,number];
 type Joint='body'|'pelvis'|'spine'|'chest'|'head'|'leftArm'|'rightArm'|'leftElbow'|'rightElbow'|'leftLeg'|'rightLeg'|'leftKnee'|'rightKnee'|'leftFoot'|'rightFoot';
 type Pose={at:number;position?:V;turn?:number;bodyY?:number;joints?:Partial<Record<Joint,V>>};
 const neutral:Partial<Record<Joint,V>>={leftArm:[-.10,0,.13],rightArm:[-.10,0,-.13],leftElbow:[-.18,0,0],rightElbow:[-.18,0,0]};
-const poses:Record<Exclude<IntroStyle,'dev-emperor'|'dev-matrix'|'dev-ansatsuken'|WeaponIntro>,Pose[]>={
+const poses:Record<Exclude<IntroStyle,'dev-siren'|'dev-emperor'|'dev-matrix'|'dev-ansatsuken'|WeaponIntro>,Pose[]>={
  'neon-drop':[
   {at:0,position:[0,4.1,0],turn:-.4,joints:{leftArm:[-2.3,0,.4],rightArm:[-2.5,0,-.4],leftLeg:[-.45,0,.1],rightLeg:[.3,0,-.1],leftKnee:[.9,0,0]}},
   {at:.32,position:[0,3.7,0],turn:-.25,joints:{leftArm:[-1.3,0,.5],rightArm:[-.9,0,-.3],leftLeg:[-.6,0,.1],rightLeg:[.25,0,-.1],leftKnee:[1.1,0,0]}},
@@ -57,6 +57,7 @@ const poses:Record<Exclude<IntroStyle,'dev-emperor'|'dev-matrix'|'dev-ansatsuken
 };
 /** Complete keyed poses, sampled from absolute time: no accumulated rotations or stale preview state. */
 export function poseIntro(r:CharacterRig,style:IntroStyle,age:number){
+ if(style==='dev-siren')return; // SirenIntroStage owns this pose.
  if(isWeaponIntro(style)){poseWeaponIntro(r,style,age);return;}
  if(style==='dev-emperor'){poseEmperor(r,age);return;}if(style==='dev-ansatsuken'){poseRainWarrior(r,age);return;}if(style==='dev-matrix'){poseMatrixThrone(r,age);return;}const t=Math.max(0,age),frames=poses[style];
  for(const node of [r.body,r.pelvis,r.spine,r.chest,r.neck,r.head,r.leftShoulder,r.rightShoulder,r.leftArm,r.rightArm,r.leftElbow,r.rightElbow,r.leftHand,r.rightHand,r.leftLeg,r.rightLeg,r.leftKnee,r.rightKnee,r.leftFoot,r.rightFoot,r.leftToe,r.rightToe])node.rotation.set(0,0,0);
@@ -100,7 +101,7 @@ function walkIn(r:CharacterRig,t:number,rootAt:(time:number)=>{x:number;z:number
  * the landing spot (a drop falls through a still frame instead of dragging the camera down with it). */
 type Shot={until:number;eye:V;end:V;target:V;targetEnd?:V;fov:number;endFov?:number;roll?:number;orbit?:boolean;anchor?:boolean};
 const hero:Shot={until:4.8,eye:[1.25,.16,4.1],end:[.65,.26,3.95],target:[0,-.08,0],fov:40};
-const shots:Record<Exclude<IntroStyle,'dev-emperor'|'dev-matrix'|'dev-ansatsuken'|WeaponIntro>,Shot[]>={
+const shots:Record<Exclude<IntroStyle,'dev-siren'|'dev-emperor'|'dev-matrix'|'dev-ansatsuken'|WeaponIntro>,Shot[]>={
  'neon-drop':[{until:.72,eye:[2.3,.5,4.8],end:[1.5,.2,4.3],target:[0,2.1,0],targetEnd:[0,.5,0],fov:42,roll:-.035,anchor:true},{until:1.55,eye:[2.4,-.4,3.8],end:[1.65,-.2,3.5],target:[0,-.13,0],fov:46,anchor:true},{until:3.2,eye:[-1.65,.25,2.65],end:[-.65,.38,3],target:[0,.25,0],fov:43},hero],
  'vector-slide':[{until:.62,eye:[1.6,-.52,2.4],end:[1,-.45,2.4],target:[0,-.44,0],fov:39,roll:.08},{until:1.65,eye:[2.8,.1,4.1],end:[1.5,.12,3.6],target:[0,0,0],fov:45},{until:3.2,eye:[-1.9,.4,3.2],end:[-.8,.34,3.1],target:[0,.23,0],fov:40},hero],
  'signal-spin':[{until:.48,eye:[-.9,.4,2.9],end:[-.5,.45,2.7],target:[0,.25,0],fov:39},{until:1.55,eye:[-3.3,.55,3.7],end:[3.1,.55,3.7],target:[0,.1,0],fov:48,roll:-.04,orbit:true},{until:3.2,eye:[2.1,.2,3.2],end:[.65,.4,3.1],target:[0,.28,0],fov:42},hero],
@@ -108,6 +109,7 @@ const shots:Record<Exclude<IntroStyle,'dev-emperor'|'dev-matrix'|'dev-ansatsuken
  'pulse-wave':[{until:1.28,eye:[1.3,.25,2.6],end:[.55,.3,2.35],target:[0,.17,.2],fov:42},{until:2.3,eye:[-.9,.15,3.1],end:[-2.4,1.6,5.2],target:[0,.1,0],fov:48,roll:.04},{until:3.2,eye:[2,.4,3.8],end:[1.25,.23,4.1],target:[0,.13,0],fov:43},hero],
 };
 export function introCamera(camera:T.PerspectiveCamera,style:IntroStyle,age:number,root:T.Vector3,aspect:number){
+ if(style==='dev-siren')return {shot:0,target:root}; // SirenIntroStage owns the camera.
  if(isWeaponIntro(style))return weaponIntroCamera(camera,style,age,root,aspect);
  if(style==='dev-emperor')return emperorCamera(camera,age,aspect);if(style==='dev-ansatsuken')return rainCamera(camera,age,aspect);if(style==='dev-matrix')return matrixCamera(camera,age,aspect);let start=0;const seq=shots[style];let shot=seq[seq.length-1];for(const candidate of seq){shot=candidate;if(age<candidate.until)break;start=candidate.until;}const u=ease((age-start)/Math.max(.01,shot.until-start));
  const offset=new T.Vector3(...shot.eye).lerp(new T.Vector3(...shot.end),u);if(shot.orbit){const a0=Math.atan2(shot.eye[0],shot.eye[2]),a1=Math.atan2(shot.end[0],shot.end[2]),radius=T.MathUtils.lerp(Math.hypot(shot.eye[0],shot.eye[2]),Math.hypot(shot.end[0],shot.end[2]),u),a=T.MathUtils.lerp(a0,a1,u);offset.x=radius*Math.sin(a);offset.z=radius*Math.cos(a);}

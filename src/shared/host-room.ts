@@ -3,11 +3,12 @@ import {selectionSeconds} from './draft-settings.js';
 import {Cosmetics,cosmetics} from './cosmetics.js';
 import {RELAY} from './relay-protocol.js';
 import {Simulation,sanitizeInput} from './simulation.js';
+import {allowedClass} from './lobby-presentation.js';
 import {CONFIG,ClassId} from './config.js';import {CLASS_INFO} from './content.js';
 export interface PilotProfile {authToken?:string;cosmetics?:Cosmetics;name:string;class:ClassId;color:string;}
 export const ROOM_PROTOCOL='chip-arena-rooms-v1';
 export {ROOM_ALPHABET,normalizeRoomCode,newRoomCode} from './relay-protocol.js';
-export function profile(raw:any,developer:AccessInput=false):PilotProfile {return {cosmetics:cosmetics(raw?.cosmetics,developer),name:typeof raw?.name==='string'?raw.name.slice(0,20):'Pilot',class:raw&&Object.hasOwn(CLASS_INFO,raw.class)?raw.class:'ranged',color:typeof raw?.color==='string'&&/^#[0-9a-f]{6}$/i.test(raw.color)?raw.color:'#97e4d0'};}
+export function profile(raw:any,developer:AccessInput=false):PilotProfile {return {cosmetics:cosmetics(raw?.cosmetics,developer),name:typeof raw?.name==='string'?raw.name.slice(0,20):'Pilot',class:allowedClass(raw?.class,developer),color:typeof raw?.color==='string'&&/^#[0-9a-f]{6}$/i.test(raw.color)?raw.color:'#97e4d0'};}
 /** The creator owns this authoritative simulation. Remote clients only submit intentions. */
 export class HostedRoom {
  sim:Simulation;rematch=new Set<string>();rates=new Map<string,{at:number;count:number}>();

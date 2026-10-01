@@ -1,3 +1,4 @@
+import {sirenify,animateSiren} from './siren/index.js';
 import * as T from 'three';
 import {SVGRenderer} from 'three/examples/jsm/renderers/SVGRenderer.js';
 import {createCharacterRig,recolorCharacterRig,setRigDetail,type CharacterRig} from './character-rig.js';
@@ -6,7 +7,7 @@ import {disposeAuditorHalo} from './auditor-halo.js';
 import {buildWeapon} from './weapon-visuals.js';
 import {animateLobbyPose,lobbyChair} from './lobby-poses.js';
 import {lobbyPose,type LobbyPose} from '../shared/lobby-presentation.js';
-import type {PlayerView} from '../shared/simulation.js';
+import type {PlayerView,Snapshot} from '../shared/simulation.js';
 
 /** Frames the pilot from the podium to the top of the head or hat (top, world y; default: a bare head), with a
  * higher view for the reclining pose. Narrow cards keep the full character width. */
@@ -40,7 +41,7 @@ export class MenuPortraits {
   if(this.slots.length)this.initialize();
  }
  private actor(p:PlayerView){
-  let a=this.actors.get(p.id);if(!a){
+  let a=this.actors.get(p.id);if(a&&(a.spec==='siren')!==(p.spec==='siren')){this.release(a);this.actors.delete(p.id);a=undefined;}if(!a){
    const scene=new T.Scene(),rig=createCharacterRig(p.color,p.cosmetics?.bodyColor),chair=lobbyChair(),decor=new T.Group();
    rig.group.position.y=.88;scene.add(rig.group);decor.add(chair);if(!(this.renderer instanceof T.WebGLRenderer))setRigDetail(rig,true);
    const podium=new T.Mesh(new T.CylinderGeometry(.96,1.02,.075,32),new T.MeshLambertMaterial({color:0x333440}));podium.position.y=-.065;decor.add(podium);scene.add(decor);
@@ -48,20 +49,20 @@ export class MenuPortraits {
    scene.add(new T.HemisphereLight(0xe3eeff,0x474054,1.7));const key=new T.DirectionalLight(0xffedda,2.6);key.position.set(3.5,4,2.5);scene.add(key);const rim=new T.DirectionalLight(0x849fe3,2);rim.position.set(-3,2,-2);scene.add(rim);
    a={scene,rig,chair,decor,spec:''};this.actors.set(p.id,a);
   }
-  recolorCharacterRig(a.rig,p.color,p.cosmetics?.bodyColor||'#e5e7eb');dressRig(a.rig,p.cosmetics);
+  if(p.spec!=='siren'){recolorCharacterRig(a.rig,p.color,p.cosmetics?.bodyColor||'#e5e7eb');dressRig(a.rig,p.cosmetics);}
   if(a.spec!==p.spec){a.spec=p.spec;a.rig.sockets.rightHand.add(a.rig.weapon);a.rig.sockets.leftHand.add(a.rig.offWeapon);buildWeapon(a.rig.weapon,p.spec);a.rig.offWeapon.clear();if(['daggers','emperor','ansatsuken'].includes(p.spec))buildWeapon(a.rig.offWeapon,p.spec,true);}
-  return a;
+  if(p.spec==='siren')sirenify(a.rig);return a;
  }
- render(dt:number,players?:PlayerView[]){
+ render(dt:number,players?:PlayerView[],state?:Snapshot){
   if(!this.renderer||!this.slots.length||document.hidden)return;this.time+=Math.min(dt,.05);
   const updated=players?new Map(players.map(p=>[p.id,p])):undefined;
   const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
   for(const slot of this.slots){
    const {canvas,context}=slot;if(!canvas.isConnected)continue;
    const rect=canvas.getBoundingClientRect();if(rect.width<2||rect.height<2||rect.bottom<0||rect.top>innerHeight)continue;
-   const p=updated?.get(slot.player.id)||slot.player,pose=lobbyPose(p.cosmetics?.lobbyPose),a=this.actor(p);slot.player=p;
+   const p=updated?.get(slot.player.id)||slot.player,pose=p.spec==='siren'?'weapon':lobbyPose(p.cosmetics?.lobbyPose),a=this.actor(p);slot.player=p;
    canvas.parentElement!.dataset.pose=pose;a.chair.visible=pose==='chair';
-   animateLobbyPose(a.rig,p,reduced?0:this.time,.033,pose);
+   if(p.spec==='siren'){if(state)animateSiren(a.rig,p,state,reduced?0:this.time,.033,0);}else animateLobbyPose(a.rig,p,reduced?0:this.time,.033,pose);
    framePortrait(this.camera,pose,rect.width/rect.height,hatTop(a.rig));
    if(this.renderer instanceof T.WebGLRenderer){
     if(!context)continue;

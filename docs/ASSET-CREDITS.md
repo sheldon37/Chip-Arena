@@ -18,3 +18,12 @@ full tails and combined peak headroom. The unmixed inputs are retained in
 `scripts/source-audio/`; `python scripts/mix-electric-hook.py` rebuilds the mix
 (requires ffmpeg). Existing move timing, positional attenuation, effects volume,
 mute and event deduplication still apply.
+
+## Black Siren Protocol
+
+`public/music/black-siren-protocol.mp3` is the owner's supplied recording,
+credited to **Xtrr - musiccreator**. Copied without transcoding: 193.632 seconds,
+48 kHz stereo, 4,547,059 bytes. SHA256:
+`5b2cdc75fef5c5087f6ecff2f13ccf1e0632937195e6427536b1f3cde18f213e`.
+The shared beat map must be measured against this exact playback file (or a
+verified sample-aligned analysis copy); no fixed-BPM beat calculation.
