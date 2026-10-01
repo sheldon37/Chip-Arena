@@ -1,25 +1,45 @@
 import * as T from 'three';
 import {CharacterRig,supportHand} from './character-rig.js';
-import {emperorGuard} from './emperor-animation.js';
+import {introCurve} from './intro-curves.js';
+import {footAt,plantFeet,plantOf,type IntroStep,type Plant} from './intro-footwork.js';
 import {EmperorEffects} from './emperor-effects.js';
 const ease=(x:number)=>{x=T.MathUtils.clamp(x,0,1);return x*x*(3-2*x);};
-/** Wrist at brow -> lift the hand -> hold the challenge. No second salute or stance reset. */
+/** Wrist at brow -> lift the hand -> hold the challenge. No second salute or stance reset.
+ * The fighter faces the camera (+z, chest square to it) on the bladed Mishima stance with world-planted feet: the hips
+ * lead the oath (they square up and rise first), the chest, head and free arm follow a beat later, and the rear foot steps
+ * up under the squared hips in time with the lift. The springy guard bounce fades into a slow, menacing hold that keeps
+ * breathing and shifting its weight between the planted feet. The raised right arm itself is constant from 2.4 s. */
+const OATH_YAW=.18,LEAD:Plant={x:.17,z:.08,yaw:-.3},REAR:Plant={x:-.13,z:-.23,yaw:-.62},SQUARE:Plant={x:-.16,z:-.13,yaw:-.36};
+const OATH_ROOT={x:0,z:0,yaw:OATH_YAW},OATH_LEFT=plantOf(OATH_ROOT,LEAD),OATH_RIGHT=plantOf(OATH_ROOT,REAR);
+const OATH_STEPS:IntroStep[]=[{...plantOf(OATH_ROOT,SQUARE),lift:1.02,land:1.46,h:.05}];
 export function poseEmperor(r:CharacterRig,t:number){
  for(const o of [r.body,r.pelvis,r.spine,r.chest,r.neck,r.head,r.leftShoulder,r.rightShoulder,r.leftArm,r.rightArm,r.leftElbow,r.rightElbow,r.leftHand,r.rightHand,r.leftLeg,r.rightLeg,r.leftKnee,r.rightKnee,r.leftFoot,r.rightFoot,r.leftToe,r.rightToe])o.rotation.set(0,0,0);
- r.group.position.set(0,.88,0);r.group.rotation.set(0,-.1,0);r.group.scale.setScalar(1);r.body.position.set(0,0,0);r.weapon.visible=r.offWeapon.visible=true;r.weapon.rotation.set(0,0,0);r.offWeapon.rotation.set(0,0,0);emperorGuard(r,t);
- const lift=ease((t-.8)/1.6),lead=ease((t-.65)/1.5),breathe=Math.sin(t*2.2)*.008;
+ r.group.position.set(0,.88,0);r.group.rotation.set(0,OATH_YAW,0);r.group.scale.setScalar(1);r.body.position.set(0,0,0);r.weapon.visible=r.offWeapon.visible=true;r.weapon.rotation.set(0,0,0);r.offWeapon.rotation.set(0,0,0);
+ // Kinetic chain: the hips lead the oath, the chest and free arm trail, the head arrives last; the right arm keeps the
+ // original lift (it reaches its held pose exactly at 2.4 s).
+ const lift=ease((t-.8)/1.6),hips=ease((t-.62)/1.5),chest=ease((t-.74)/1.62),head=ease((t-.9)/1.75),free=ease((t-.86)/1.7);
+ const spring=1-ease((t-.55)/1.3),beat=t*9.1,bounce=(Math.sin(beat)+.3*Math.sin(2*beat-.8))*spring,late=Math.sin(beat-.9)*spring;
+ // Living hold: slow breathing, a weight shift between the planted feet with a counter-rolled chest, the free arm settling,
+ // and the chest swelling with the chin lifting on the 4.1 s beat.
+ const hold=ease((t-2.2)/1),breath=Math.sin(2*Math.PI*t/3.1)*(.35+.65*hold),drift=Math.sin(2*Math.PI*(t-2.4)/3.4)*hold,swell=Math.sin(Math.PI*T.MathUtils.clamp((t-3.92)/.62,0,1))**2;
+ r.body.position.y=-.07+.011*bounce+.012*hips+.006*breath+.01*swell;r.body.position.x=.02*drift;
+ r.body.rotation.set(.04+.01*late-.05*chest,-.3+.18*hips,0);r.pelvis.rotation.set(0,-.12+.07*hips,.018*drift);
+ r.spine.rotation.set(.012*late+.008*breath,-.06*chest,Math.sin(t*.9)*.01*spring);
+ r.chest.rotation.set(-.008*late-.012*breath-.035*swell,.28-.23*chest,.006*Math.sin(beat*.5)*spring-.022*drift);
+ r.neck.rotation.x=.006*breath;r.head.rotation.set(-.01*late+.17*(1-head)-.03*head-.06*swell+.004*Math.sin(2*Math.PI*(t-.2)/3.1),.12-.12*head+.02*Math.sin(2*Math.PI*(t-2.6)/3.4)*hold,-.015*Math.sin(2*Math.PI*(t-2.55)/3.4)*hold);
+ r.rightShoulder.rotation.set(-.06*hips,.08*hips,-.09*lift);r.leftShoulder.rotation.z=.01*breath;
  r.rightArm.rotation.set(-1.65-1.28*lift,.1,-.08-.22*lift);r.rightElbow.rotation.x=-1.5+1.34*lift;r.rightHand.rotation.set(.18*lift,0,.16-.32*lift);
- r.leftArm.rotation.set(-.65+.8*lift,0,.17);r.leftElbow.rotation.x=-1.7+.65*lift;r.leftHand.rotation.z=-.12;
- r.rightShoulder.rotation.set(-.06*lead,.08*lead,-.09*lift);r.spine.rotation.y-=.06*lead;r.pelvis.rotation.y+=.05*lift;r.rightFoot.rotation.y-=.06*lift;r.body.rotation.x=-.045*lift;r.chest.rotation.y=.28-.18*lift;r.head.rotation.set(.17*(1-lift)-.04*lift,.12-.22*lift,0);r.body.position.y+=breathe;
- // Living hold (never the raised right arm): the weight drifts between the feet with the chest counter-rolled, the free
- // arm settles, and the chest swells and the chin lifts on the 4.1 s beat.
- const hold=ease((t-2.4)/.8),drift=Math.sin(2*Math.PI*(t-2.4)/3.4)*hold,beat=Math.sin(Math.PI*T.MathUtils.clamp((t-3.98)/.5,0,1))**2;
- r.pelvis.rotation.z+=.02*drift;for(const leg of [r.leftLeg,r.rightLeg])leg.rotation.z-=.02*drift;r.chest.rotation.z-=.02*drift;r.leftArm.rotation.z+=.025*drift;r.leftElbow.rotation.x-=.04*hold*Math.sin(2*Math.PI*(t-2.4)/2.9);r.head.rotation.z-=.015*Math.sin(2*Math.PI*(t-2.55)/3.4)*hold;
- r.chest.rotation.x-=.03*beat;r.head.rotation.x-=.06*beat;r.body.position.y+=.008*beat;
- if(lift<1){const target=new T.Object3D();target.position.set(.035,.045,0);r.rightHand.add(target);supportHand(r,target,1-ease(lift/.6));target.removeFromParent();}
+ r.leftArm.rotation.set(-.65+.8*free-.03*late,.0,.17+.025*drift);r.leftElbow.rotation.x=-1.7+.65*free-.04*hold*Math.sin(2*Math.PI*(t-2.4)/2.9);r.leftHand.rotation.z=-.12;
+ // The free hand starts on the raised wrist and lets go smoothly as the lift gets under way.
+ const grip=1-ease((t-.85)/1.05);if(grip>0){const target=new T.Object3D();target.position.set(.035,.045,0);r.rightHand.add(target);supportHand(r,target,grip);target.removeFromParent();}
+ plantFeet(r,[footAt(t,OATH_LEFT,[]),footAt(t,OATH_RIGHT,OATH_STEPS)],OATH_ROOT,.3);
 }
+/** Three shots on one eased, continuous path, all from the front (the fighter faces +z): a close-up of the wrist at the
+ * brow, a low pull-back as the hand rises, then a slow low-angle push on the oath. */
+const CAM_KEYS=[0,.8,2.4,7.8],CAM_EYE=[[.14,1.6,1.32],[.1,1.52,1.62],[.3,1.0,3.5],[.12,.98,3.4]],CAM_TARGET=[[-.06,1.5,0],[-.06,1.46,0],[0,1.0,0],[0,.98,0]];
+const camAt=(keys:number[][],t:number)=>new T.Vector3(...[0,1,2].map(i=>introCurve(CAM_KEYS,keys.map(k=>k[i]),t,{pass:[1,2]})) as [number,number,number]);
 export function emperorCamera(camera:T.PerspectiveCamera,t:number,aspect:number){
- const reveal=ease((t-.75)/2.0),drift=ease((t-2.75)/5.05),eye=new T.Vector3(.24,1.62,1.45).lerp(new T.Vector3(.95,1.35,3.7),reveal).lerp(new T.Vector3(.48,1.31,4.05),drift),target=new T.Vector3(-.05,1.43,.02).lerp(new T.Vector3(0,1.04,0),reveal);
+ const eye=camAt(CAM_EYE,t),target=camAt(CAM_TARGET,t);
  if(aspect<1.35)eye.z*=1.35/Math.max(.65,aspect);camera.position.copy(eye);camera.up.set(0,1,0);camera.lookAt(target);camera.fov=40;camera.aspect=aspect;camera.updateProjectionMatrix();return {shot:t<.8?0:t<2.4?1:2,target};
 }
 export class EmperorStage {
