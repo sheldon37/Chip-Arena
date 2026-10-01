@@ -17,6 +17,45 @@ PR, test result, release, or earlier log history. Git history identifies the com
 containing an entry; no self-referential commit hash is required.
 
 
+## 2026-10-01 — Astra — cutscene/bot test publication and standing channel instruction
+
+- Owner asked to publish the merged changes and continue using the Update channel
+  unless told otherwise. Recorded that standing instruction in AGENTS.md and
+  DEVELOPMENT.md for both agents. It covers this existing test channel; merge
+  authorization, live feed and Site publication remain separate.
+- PR #11 merged into `claude/visual-revision` at
+  `fd673130a56dac89db1df90133fda10ea0afc728`, with the exact verified task tree.
+  Built that source in a clean worktree. Documentation branch:
+  `codex/siren-bots-test-publication`, base `fd67313`.
+- Published content `0.2.c452eefcbbac`, build `bd733d69b623c360820e25b4`, to
+  `sheldon37/chip-arena-test-updates` at
+  `79e939f500d2147162428ac4cdeae82c2ed78a90`. Payload: 22,904,059 bytes / 102 files;
+  SHA256 `3212d9ce61a9515778588d783fbe371f591906a45f69e63f573b18c39098c5a0`.
+  Successful workflow `36821019040` verified and atomically published feed/history
+  and removed its temporary branch. Main contains only feed, README and history.
+- Includes Claude's silent smile/Last Laugh cutscene, removed voice hooks, Siren
+  15,000 base HP, DEV-only bot loadout choices, and normal/DEV bot abilities.
+  No gameplay, hit timing, hitboxes, damage, cooldowns, movement or networking
+  changed during publication; gameplay impacts of PR #11 are recorded below.
+- Node 24.19.0/npm 11.9.0: clean npm restore and two `release:prepare` builds
+  produced identical feed bytes. Actual payload checker passed all installed
+  hashes, same-version skip, offline/corrupt checksum refusal, settings sentinel
+  and test-feed URL restriction. Channel/status tests 6/6; auth/manual updater
+  tests 7/7. Original music MP3 hash unchanged.
+- Actual network updater installed previous `0.2.149269b37b5b` from immutable
+  channel `3e9d5d9`, then upgraded through main to `0.2.c452eefcbbac`. All 102
+  installed hashes, preserved settings, same-version skip and menu version/build
+  passed. The previous manifest needed one timeout retry; the new upgrade passed.
+- Reused exact-code PR #11 checks: 57/57 feature tests, full units 613/625 (same
+  12 baseline failures), three-client Siren 84 matching snapshots, HTTPS 3,505
+  matching snapshots. Known four server TS errors and generic WebSocket rematch
+  timeout remain; broad verification is not green. Windows Electron/GPU,
+  audible/visual acceptance and physical two-PC testing remain unrun.
+- Status: published to the existing test Update channel. Existing test installs
+  press Update. No new seed ZIP needed; live feed and Site unchanged. This
+  documentation follow-up is scope/whitespace checked. Next: Windows playtest
+  of the two cutscene roles, DEV bot choices/abilities and Siren HP.
+
 ## 2026-10-01 — Astra — cutscene integration, DEV bots, abilities and Siren HP
 
 - Owner requested merging `claude/siren-cutscene` `452bbe6` into the shared branch,

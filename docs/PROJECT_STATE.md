@@ -29,6 +29,8 @@ Migration imported to private GitHub; not merged or released (2026-09-29).
   this branch is already distributed through the test channel.
 - Test builds update online from the public test channel
   sheldon37/chip-arena-test-updates (tooling PR #5); live feed untouched. See DEVELOPMENT.md.
+  Standing owner instruction (2026-10-01): publish completed game updates to this
+  existing test Update channel unless told otherwise; no repeat publication approval.
 - DEV combo-ready holds and Demon Step's 0.20 s i-frame window (PR #6), plus
   individually controlled primary hits (PR #7), merged into the shared branch
   at `66451cd`. One hit per activation, per-hit stamina, 2.4 s continuation memory.
@@ -43,11 +45,9 @@ Windows validation and desktop distribution cutover remain separate work.
 - Siren: PR #8 merged into `claude/visual-revision` at `9f010f5` (2026-10-01),
   combining systems `1a8a5d0`, Claude visuals `2e986f4`, DEV-only `???` category
   and original music. The merge tree matches the tested integration exactly.
-  Test content `0.2.149269b37b5b` published from `abb0bbb` at channel `3e9d5d9`;
-  existing test installations press Update. Real network upgrade, all 102 files,
-  settings preservation and menu status verified. Windows visual/audio acceptance
-  remains. The follow-up incorporates Claude's silent smile/Last Laugh cutscene
-  `452bbe6`, removes voice hooks, gives Siren 15,000 base HP, adds verified-DEV bot
-  weapon choices and bot ability use. These changes are on
-  `codex/siren-cutscene-dev-bots` and are not in the published version above.
+  Follow-up PR #11 merged at `fd67313`: Claude's silent smile/Last Laugh cutscene
+  `452bbe6`, removed voice hooks, 15,000 base HP, verified-DEV bot weapon choices
+  and bot ability use. Test content `0.2.c452eefcbbac` published from `fd67313`
+  at channel `79e939f`; existing test installations press Update. Windows
+  visual/audio acceptance remains. Publication verification is recorded in DEV_LOG.
   See `docs/SIREN.md`, `docs/SIREN-SYSTEMS.md` and DEV_LOG.
