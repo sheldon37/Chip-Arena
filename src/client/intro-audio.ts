@@ -4,9 +4,9 @@ import type {Snapshot} from '../shared/simulation.js';
 /** One original sting per entrance, seeking into late snapshots and stopping on cancellation. */
 export class IntroAudio {
  readonly buffers=new Map<string,AudioBuffer>();private loading:Promise<void>|null=null;private key='';private source:AudioBufferSourceNode|null=null;private gain:GainNode|null=null;private previousAge=-1;
- load(context:AudioContext,base:string){return this.loading??=Promise.all(Object.keys(INTRO_STYLES).map(async style=>{try{const response=await fetch(`${base}audio/intros/${style}.mp3`);if(response.ok)this.buffers.set(style,await context.decodeAudioData(await response.arrayBuffer()));}catch{/* A missing optional sting does not block play. */}})).then(()=>{});}
+ load(context:AudioContext,base:string){return this.loading??=Promise.all(Object.keys(INTRO_STYLES).filter(style=>style!=='dev-siren').map(async style=>{try{const response=await fetch(`${base}audio/intros/${style}.mp3`);if(response.ok)this.buffers.set(style,await context.decodeAudioData(await response.arrayBuffer()));}catch{/* A missing optional sting does not block play. */}})).then(()=>{});}
  update(state:Snapshot,context:AudioContext|null,volume:number){
-  const frame=introFrame(state);if(!frame||!context||context.state!=='running'||volume<=0){this.stop();return;}
+  const frame=introFrame(state);if(!frame||frame.style==='dev-siren'||!context||context.state!=='running'||volume<=0){this.stop();return;}
   const key=`${state.generation}:${state.intro!.started}:${frame.player.id}:${frame.style}`;
   if(key!==this.key||frame.age<this.previousAge-.25)this.stop();this.previousAge=frame.age;
   if(this.key===key){if(this.gain)this.gain.gain.setTargetAtTime(volume,context.currentTime,.04);return;}

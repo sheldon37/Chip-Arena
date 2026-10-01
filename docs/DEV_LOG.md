@@ -16,6 +16,47 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+
+## 2026-10-01 — Astra — Siren systems and DEV selection category
+
+- Branch `codex/siren-boss`, requested base `cf5fa1c5548e66d1364c98f9ea053202f918ec50`
+  on `claude/visual-revision`. Imported Claude's contract `84b692f` before writing
+  snapshot/audio/façade integration. Claude-owned files and contract tests unchanged.
+- Added owner-requested fourth category `???` (verified DEV only), retaining the
+  original weapon resource classes, old loadouts and exact grants. Added Siren grants,
+  authority-enforced one-connected-Siren rule in all selection paths, TAKEN UI,
+  Q/F/V mode binding, 1–4 abilities, HUD and DEV beat overlay. Siren forces FFA/Ward
+  Zero, last intro, and continuous authoritative boss music; public rotation stays
+  at 14 arenas. Original owner MP3 included and credited Xtrr - musiccreator.
+- All ten move mechanics, seeded rain, capped fire patches, telegraphed launches,
+  dodgeable grab/head crush, destructible-piercing/foundation-stopped homing shot,
+  death/disconnect/reset cleanup, shared movement prediction, façade routing for
+  world/first-person/lobby/intro/effects/deaths, optional voice hooks and lock beeps.
+  Siren capsule locomotion stays standard with committed roots/rush/lunge; hover
+  belongs to Claude. No replacement/placeholder visuals authored by Astra.
+- Combat/network impact is intentional for Siren: shared contact/recovery times,
+  damage/ranges/cooldowns in `siren-content.ts`, optional input/player/world/shot/
+  song snapshot fields. Marked defaults to 85 damage, Last Laugh instant head crush
+  at catch +3.2 s. Generic chip procs/attack-rate timing do not all apply to this
+  custom boss kit; exact tuning/limits and manual checks in `SIREN-SYSTEMS.md`.
+  Existing weapon mechanics retained; DEV resource lookups now use weapon class.
+- Checks on Node 24.19.0/npm 11.9.0: types pass; focused Siren/rig 37/37; final unit
+  587/599 with exactly the same 12 failures as clean base (555/567). Client/relay
+  build passes, four known server TS errors remain. Full verify attempted: generic
+  WebSocket rematch timeout remains; HTTPS passed five sets/four drafts/3,497 agreed
+  snapshots, retry/rematch/leave (177.6 s). Fixed initial integration failures then
+  reran type/unit/build stages. Overall verify remains red. Existing tests updated
+  only for authorized DEV fixtures/new intro count and Siren's separate hover,
+  camera and music paths; no contract tests weakened or changed.
+- Three real Siren WebSocket clients passed access/duplicate refusal, shared melee,
+  mode, Marked seeker and song continuity with 80 identical snapshots. Native Windows,
+  finished visual quality, real-hardware/audio sync and physical two-PC tests unrun.
+- Next: owner/Claude integrate `claude/visual-revision-siren`, provide optional
+  laugh/You voice files, perform Windows acceptance, then owner decides merge/release.
+  Current façade is Claude's minimal contract implementation, not finished visuals.
+  Status: implemented/tested on task branch; not merged or published. Updater, public
+  test channel, live Site/feed, accounts database and installation untouched.
+
 ## 2026-10-01 — Claude — Siren DEV boss: shared contract for the Astra/Claude split
 
 - Owner: new playable DEV boss "Siren" (one per match, free-for-all for now, adds later) with a beat-synced intro and

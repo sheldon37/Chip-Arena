@@ -1,3 +1,6 @@
+import {introFrame} from '../shared/intros.js';
+import {BossTheme} from './boss-theme.js';
+import {SirenAudio} from './siren-audio.js';
 import {DeathAnnouncementTrack,DEATH_ANNOUNCEMENT} from './death-announcements.js';
 import {enemyHit} from './hitmarker.js';
 import {RAGING_DEMON} from '../shared/raging-demon.js';
@@ -17,6 +20,7 @@ export class AudioCursor {
 }
 export class ArenaAudio {
  private deathTrack=new DeathAnnouncementTrack();private deathCues=new Map<string,number>();
+ boss=new BossTheme();siren=new SirenAudio();
  music=new ArenaMusic();intros=new IntroAudio();
  private demonSeen=new Set<string>();private demonEpoch='';
  private loveBuffer:AudioBuffer|null=null;private vanBuffer:AudioBuffer|null=null;private loveSources=new Map<string,Set<AudioBufferSourceNode>>();private loveSeen=new Set<string>();private loveEpoch='';
@@ -50,9 +54,9 @@ export class ArenaAudio {
  private updateDemon(state:Snapshot){const epoch=`${state.generation}:${state.setNumber}:${state.round}`;if(epoch!==this.demonEpoch){this.demonSeen.clear();this.demonEpoch=epoch;}for(const p of state.players){const d=p.death;if(p.hp>0||d?.effect!=='dev-raging-demon')continue;const age=state.time-d.at;RAGING_DEMON.hits.forEach((at,i)=>{const key=d.id+':'+i;if(age<at||this.demonSeen.has(key))return;this.demonSeen.add(key);if(age-at<.12)this.play(i===7?'arcade-heavy':i===3||i===5?'arcade-kick':'arcade-punch',d.pos,i===7?1.1:.85);});}}
  clownLaugh(){const c=this.context;if(!c||!this.master||this.muted)return;for(let n=0;n<9;n++){const at=c.currentTime+1.65+n*.22,voice=c.createOscillator(),formant=c.createBiquadFilter(),gain=c.createGain();voice.type='sawtooth';voice.frequency.setValueAtTime(185+(n%3)*30,at);voice.frequency.exponentialRampToValueAtTime(115+(n%2)*30,at+.17);formant.type='bandpass';formant.frequency.value=800;formant.Q.value=.9;gain.gain.setValueAtTime(0,at);gain.gain.linearRampToValueAtTime(.22,at+.025);gain.gain.exponentialRampToValueAtTime(.001,at+.18);voice.connect(formant).connect(gain).connect(this.master);voice.start(at);voice.stop(at+.2);voice.onended=()=>{voice.disconnect();formant.disconnect();gain.disconnect();};}}
  get status(){return this.error||(this.context&&this.buffers.size<AUDIO_CLIPS.length?`Loading sound · ${this.buffers.size}/${AUDIO_CLIPS.length} effects`:!this.context?'Click Test Sound to enable audio':`${this.muted?'Muted':this.context.state==='running'?'Sound ready':'Audio paused'} · ${this.buffers.size}/${AUDIO_CLIPS.length} effects loaded`);}
- pausePresentation(){this.intros.stop();this.music.setActive(false);}
- previewIntro(state:Snapshot){this.music.setActive(false);this.intros.update(state,this.context,this.music.cueVolume);}
- reset(){this.deathTrack.clear();this.deathCues.clear();this.demonSeen.clear();this.demonEpoch='';this.intros.stop();this.stopLove();this.music.setActive(false);this.cursor.reset();this.phase='';this.countdown=-1;for(const voice of this.voices)voice.stop();this.voices.clear();}
+ pausePresentation(){this.boss.pause();this.intros.stop();this.music.setActive(false);}
+ previewIntro(state:Snapshot){this.music.setActive(false);const frame=introFrame(state);if(frame?.style==='dev-siren'){const preview={...state,bossSong:{track:'black-siren-protocol' as const,startedAt:state.time-frame.age}};this.boss.update(preview,this.context,this.music.playbackVolume);this.siren.update(preview,this.context,this.master);this.intros.stop();}else{this.boss.stop();this.intros.update(state,this.context,this.music.cueVolume);}}
+ reset(){this.boss.stop();this.siren.clear();this.deathTrack.clear();this.deathCues.clear();this.demonSeen.clear();this.demonEpoch='';this.intros.stop();this.stopLove();this.music.setActive(false);this.cursor.reset();this.phase='';this.countdown=-1;for(const voice of this.voices)voice.stop();this.voices.clear();}
  play(name:Sound,position?:Vec,gain=1){const context=this.context,buffer=this.buffers.get(name);if(!context||context.state!=='running'||!buffer||this.muted||!this.volume||this.voices.size>=24)return;
   let volume=gain,pan=0;if(position){const dx=position.x-this.listener.x,dy=position.y-this.listener.y,dz=position.z-this.listener.z,d=Math.hypot(dx,dy,dz);volume*=1/(1+Math.max(0,d-2)*.13);pan=Math.max(-.85,Math.min(.85,(-Math.cos(this.yaw)*dx+Math.sin(this.yaw)*dz)/Math.max(2,d)));}
   const source=context.createBufferSource(),level=context.createGain(),panner=context.createStereoPanner();source.buffer=buffer;source.playbackRate.value=name==='hit'||name==='ui'||name==='countdown'||name==='demon-step'||name==='electric-hook'||name==='electric-hook-hit'?1:.97+Math.random()*.06;level.gain.value=volume;panner.pan.value=pan;source.connect(level).connect(panner).connect(this.master!);this.voices.add(source);source.onended=()=>{this.voices.delete(source);source.disconnect();level.disconnect();panner.disconnect();};source.start();this.played++;
@@ -64,12 +68,12 @@ export class ArenaAudio {
   for(let i=0;i<(burst?3:1);i++){const voice=c.createOscillator(),gain=c.createGain(),at=c.currentTime+i*.11;voice.type=burst?'sine':'triangle';voice.frequency.setValueAtTime(burst?[660,880,1100][i]:240,at);voice.frequency.exponentialRampToValueAtTime(burst?[650,870,1090][i]:1700,at+(burst?.4:.8));gain.gain.setValueAtTime(.001,at);gain.gain.linearRampToValueAtTime(burst?.14:.10,at+.025);gain.gain.exponentialRampToValueAtTime(.001,at+(burst?.65:.95));voice.connect(gain).connect(this.master);voice.start(at);voice.stop(at+(burst?.7:1));voice.onended=()=>{voice.disconnect();gain.disconnect();};}
  }
  private updateDeathAnnouncements(state:Snapshot){for(const a of this.deathTrack.update(state))for(const [part,offset]of [['launch',0],['burst',DEATH_ANNOUNCEMENT.launch]] as const){const key=a.id+':'+part,age=state.time-a.at-offset;if(age<0||this.deathCues.has(key))continue;this.deathCues.set(key,state.time);if(age<.25)this.deathCue(part==='burst');}for(const[key,at]of this.deathCues)if(state.time-at>30)this.deathCues.delete(key);}
- update(state:Snapshot,me:string,yaw:number,presentation=state){this.intros.update(presentation,this.context,this.music.cueVolume);this.music.setMap(state.options.map);this.music.setActive(['fight','countdown','result'].includes(state.phase));this.updateLove(state);const self=state.players.find(p=>p.id===me);if(self)this.listener=self.pos;this.yaw=yaw;this.updateDemon(presentation);this.updateDeathAnnouncements(presentation);
-  for(const e of this.cursor.consume(state.events,state.time)){
+ update(state:Snapshot,me:string,yaw:number,presentation=state){this.intros.update(presentation,this.context,this.music.cueVolume);this.music.setMap(state.options.map);this.music.setBossActive(!!state.bossSong);this.music.setActive(!state.bossSong&&['fight','countdown','result'].includes(state.phase));this.updateLove(state);this.boss.update(presentation,this.context,this.music.playbackVolume);this.siren.update(presentation,this.context,this.master);const self=state.players.find(p=>p.id===me);if(self)this.listener=self.pos;this.yaw=yaw;this.updateDemon(presentation);this.updateDeathAnnouncements(presentation);
+  for(const e of this.cursor.consume(state.events,state.time)){this.siren.event(e,this.context,this.master);
    if(e.type==='melee-slam'){this.play('stone',e.pos,1);this.play('greatsword',e.pos,.65);}
    else if(e.type==='melee-special'){if(e.spec)this.play(e.spec as Sound,e.pos,.4);}
    else if(e.type==='catch'&&e.spec==='shield')this.play('shield',e.pos,.45);
-   else if(e.type==='shot'||e.type==='windup'){if(e.spec)this.play(e.spec==='leet'||e.spec==='emperor'?'lightning':e.spec==='ansatsuken'?'fire':e.spec,e.pos,.65);}
+   else if(e.type==='shot'||e.type==='windup'){if(e.spec&&e.spec!=='siren')this.play(e.spec==='leet'||e.spec==='emperor'?'lightning':e.spec==='ansatsuken'?'fire':e.spec,e.pos,.65);}
    else if(e.type==='ceiling-hit')this.play('parry',e.pos,.45);
    else if(e.type==='stage-saw-hit')this.play('saw-cut',e.pos,1.1);
    else if(e.type==='stage-spikes-rise')this.play('spike-rise',e.pos,1);

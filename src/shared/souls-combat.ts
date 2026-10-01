@@ -1,7 +1,7 @@
 import {clamp,forward,mul,v,type Vec,type SpecId} from './config.js';
 
 /** Gameplay load units, shared by authority, prediction, loadout and HUD. */
-export const WEAPON_WEIGHT:Record<SpecId,number>={daggers:2,sword:5,shield:8,greatsword:12,pistol:2,rifle:7,machinegun:10,fire:4,water:4,lightning:3,darkness:5,leet:3,emperor:1,ansatsuken:1};
+export const WEAPON_WEIGHT:Record<SpecId,number>={siren:4,daggers:2,sword:5,shield:8,greatsword:12,pistol:2,rifle:7,machinegun:10,fire:4,water:4,lightning:3,darkness:5,leet:3,emperor:1,ansatsuken:1};
 export const standardWeapon=(spec:SpecId)=>['daggers','sword','shield','greatsword'].includes(spec);
 export const usesRoll=(spec:SpecId)=>spec!=='ansatsuken';
 export const meleeCost=(spec:SpecId)=>spec==='daggers'?16:20+2*WEAPON_WEIGHT[spec];
