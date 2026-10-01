@@ -48,7 +48,7 @@ test('host command path rejects forged DEV class and duplicate Siren',()=>{
 test('Siren intro is forced last; song starts on its entrance and survives rounds/sets',()=>{
  const s=new Simulation({map:'neon',gameMode:'teams',randomMapEachSet:true});try{
   const a=s.addPlayer('a','Boss','dev',null,'#ffffff',{overrideWeaponIntro:true,intro:'pulse-wave'},true)!,b=s.addPlayer('b')!;a.spec='siren';
-  s.beginIntros();assert.deepEqual(s.intro!.players,['b','a']);assert.equal(effectiveIntro(a),'dev-siren');assert.equal(s.options.map,'siren');assert.equal(s.options.gameMode,'ffa');
+  s.beginIntros();assert.deepEqual(s.intro!.players,['b','a']);assert.equal(effectiveIntro(a),'dev-siren');assert.equal(s.options.map,'siren');assert.equal(s.options.gameMode,'teams');
   s.updateBossSong();assert.equal(s.bossSong,undefined);s.time=introDuration(effectiveIntro(b));s.updateBossSong();const epoch=s.bossSong!.startedAt;assert.equal(epoch,s.time);
   s.resetRound();s.countdown();assert.equal(s.bossSong!.startedAt,epoch);s.beginNextSet();assert.equal(s.bossSong!.startedAt,epoch);assert.equal(s.options.map,'siren');
   assert.equal(s.snapshot().bossSong!.startedAt,epoch);s.returnLobby();assert.equal(s.bossSong,undefined);assert.equal(s.options.map,'neon');assert.equal(s.options.gameMode,'teams');

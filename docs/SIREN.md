@@ -86,6 +86,24 @@ hands the animation shows. Emit the events listed on `SirenEventType`.
 - **Intro and stage:** see `SIREN_INTRO` and `siren-stage-layout.ts`; Ward Zero's lights, beacons, painted grins,
   giant eyes and containment circle follow the song's beats and sections.
 
+## Siren Chips
+Owner request (2026-10-01): Siren-exclusive Chips with their own animated card, plus a few boss Chips for testing.
+- **Content:** `src/shared/siren-chips.ts` (rarity `siren`, tag `siren`, one copy each). Only the Siren is offered
+  them, with the other DEV kits' exclusive odds (the first two offers are Siren Chips while any remain, later slots
+  85%). The draft and the sandbox refuse them for any other spec.
+  - Hollow Crown: +3,000 maximum health.
+  - Black Flame Hide: weapon hits on the Siren burn the attacker for 30% of the damage (thorns); half knockback.
+  - Psychotic Break: 25% more damage on every attack, 12% faster movement, 15% more incoming damage.
+  These use only stats the Siren already honours (`siren.ts` multiplies its hits by `stats.damage`; health, speed,
+  incoming damage, knockback and thorns go through the shared paths). Siren Chips with new mechanics need hooks in
+  `siren.ts`, like the Mishima and arcade Chips.
+- **Card:** `src/client/siren-card.ts` and `src/client/chip-cards.css`: a void-glass package with black flame
+  (violet-rimmed tongues with black cores), the grin watching from the fire, scanlines, and a glitch burst every
+  4.2 s, each card on its own beat. Picking one plays the Siren reveal on the normal 3.2 s draft timing: the fire
+  climbs, the eyes open and the grin draws open behind the Chip ("THE GRIN WIDENS").
+- **Preview:** `tools/chip-lab` (dev only), e.g. `/tools/chip-lab/index.html?chips=siren-crown,siren-hide,siren-break`
+  or `?view=spotlight&chip=siren-hide&t=1.5`.
+
 ## Siren lab
 `tools/siren-lab` renders the real Siren code as frame strips (dev only, not built). With `npm run dev`, open
 `/tools/siren-lab/index.html?move=rend&frames=6&span=1` (rig), `?kind=intro&aspect=1.778`, `?kind=stage&views=back,cells`,
