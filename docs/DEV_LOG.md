@@ -43,16 +43,20 @@ containing an entry; no self-referential commit hash is required.
   Animation impact: Claude's change is presentation-only. This follow-up changes
   HP, bot choices and bot approach movement; attack damage, hit timing, hitboxes,
   cooldown values, movement physics and snapshot/input schemas remain unchanged.
-- Checks completed at initial push (Node 24.19.0/npm 11.9.0): types pass; units
+- Implementation `8979723`, PR #11. Final checks (Node 24.19.0/npm 11.9.0): types pass; units
   613/625, with exactly the same 12 failure names as the previous verified source.
   All 57 Siren/cutscene/DEV-bot tests pass. Client and HTTPS relay build; existing
   four server TypeScript errors remain. Three real WebSocket clients agreed on 84
   snapshots, including DEV bot grants, guest refusal, duplicate Siren refusal,
-  15,000 HP, melee, mode, Marked and music continuity. Broad network checks pending.
-- Status at initial push: implemented on task branch for the owner-requested merge.
+  15,000 HP, melee, mode, Marked and music continuity. Full `npm run verify` also
+  reproduced the known generic WebSocket rematch timeout. HTTPS passed five sets,
+  four drafts, 3,505 matching snapshots, retry, rematch and leave (177.6 s).
+  Overall verification remains nonzero only for the documented baseline failures.
+- Status: implemented and verified on task branch / PR #11 for the owner-requested merge.
   No new test-channel or live publication. Published content remains
   `0.2.149269b37b5b`. Native Windows/GPU, visual/audio acceptance and physical two-PC
-  testing remain unrun. Next: finish broad verification, record results and merge.
+  testing remain unrun. Next: owner-requested shared-branch merge and Windows playtest;
+  publication of these follow-up changes remains separate from the prior test release.
 
 ## 2026-10-01 — Claude — Siren: silent smile and Last Laugh cutscene
 

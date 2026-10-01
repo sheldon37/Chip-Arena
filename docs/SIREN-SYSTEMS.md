@@ -148,19 +148,21 @@ cooldown values are unchanged; bot decision-making and approach behavior change.
 
 Linux Node 24.19.0 / npm 11.9.0:
 
-- Typecheck passed. All Siren contract/gameplay/client/visual/integration checks:
-  **42/42 passed**.
-- Final full unit run: **598/610 passed**, with exactly the **12 failure names**
-  reproduced on clean base `cf5fa1c` (555/567). No newly failing tests.
+- Typecheck passed. All Siren contract/gameplay/client/visual/integration/cutscene
+  and DEV bot checks: **57/57 passed**.
+- Final full unit run: **613/625 passed**, with exactly the **12 failure names**
+  from prior integration `1a8a5d0` (598/610), originally reproduced on clean base
+  `cf5fa1c` (555/567). No newly failing tests.
 - Client and HTTPS relay compilation passed. Server compilation retains the four
   known Rapier/NodeNext errors; unrelated PR #2 remains separate.
 - Full `npm run verify` was rerun for this integration; results are recorded in
   the newest DEV_LOG entry. The generic WebSocket suite retains its rematch
-  timeout. HTTPS passed five sets, four drafts, 3,509 matching snapshots, retry,
-  rematch and leave (177.4 s). Overall verification remains **not green**.
+  timeout. HTTPS passed five sets, four drafts, 3,505 matching snapshots, retry,
+  rematch and leave (177.6 s). Overall verification remains **not green**.
 - `node --import tsx tests/siren-network.ts`: three real loopback WebSocket
-  clients, forged-access and duplicate selection refusal, shared damage/mode/
-  Marked seeker, song continuity, **80 identical snapshots**.
+  clients, DEV bot loadouts and guest refusal, 15,000 HP, forged-access and duplicate
+  selection refusal, shared damage/mode/Marked seeker, song continuity,
+  **84 identical snapshots**.
 - Existing tests were adjusted only for the new intro count, separate Siren
   camera/song/hover paths, and authorized DEV primary fixtures. Public map tests
   keep their original 14-map semantics. Claude-owned files/tests match the imported visual branch exactly.
