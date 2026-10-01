@@ -51,3 +51,5 @@ Windows validation and desktop distribution cutover remain separate work.
   at channel `79e939f`; existing test installations press Update. Windows
   visual/audio acceptance remains. Publication verification is recorded in DEV_LOG.
   See `docs/SIREN.md`, `docs/SIREN-SYSTEMS.md` and DEV_LOG.
+- Chip card redesign and three Siren-only Chips: `claude/chip-cards` (2026-10-01), not merged or
+  published; awaiting owner merge, then the standing test-channel update.

@@ -38,6 +38,7 @@ import './style.css';
 import './lobby.css';
 import {morphHud} from './hud-morph.js';
 import './match-hud.css';
+import './chip-cards.css';
 import {testPilot} from '../shared/test-driver.js';
 import {PlayerBoard} from './player-board.js';
 import {ArenaAudio} from './audio.js';

@@ -9,7 +9,7 @@ export const CHIP_ICON_GROUPS:Record<string,string[]>={
  'corner-up-right':['tumble-engine','ricochet','banker','rebound','block-return'],
  'split':['splitter','multishot','broadside','buckshot','fireworks'],
  'move-right':['long-roll','piercing','velocity','rail','needle'],
- 'flame':['ember','wildfire','hot-foot','inferno','arcade-red'],
+ 'flame':['ember','wildfire','hot-foot','inferno','arcade-red','siren-hide'],
  'biohazard':['poison','acid-rain','plague'],
  'zap':['static','tesla','thunderstep','mishima-godfist','mishima-counter'],
  'expand':['reach'],
@@ -64,6 +64,8 @@ export const CHIP_ICON_GROUPS:Record<string,string[]>={
  'brain':['l44t-brain'],
  'radiation':['l44t-nuke'],
  'copy':['l44t-copy'],
+ 'eclipse':['siren-crown'],
+ 'activity':['siren-break'],
  'boxes':['l44t-uprising']
 };
 export const CHIP_ICONS:Record<string,string>=Object.fromEntries(Object.entries(CHIP_ICON_GROUPS).flatMap(([icon,ids])=>ids.map(id=>[id,icon])));

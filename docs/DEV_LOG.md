@@ -17,6 +17,35 @@ PR, test result, release, or earlier log history. Git history identifies the com
 containing an entry; no self-referential commit hash is required.
 
 
+## 2026-10-01 — Claude — Chip card redesign and Siren-exclusive Chips
+
+- Owner request: Chip cards looked too basic; make them more appealing, keep the DEV Chips' "wow", give the Siren
+  its own glitchy black-flame animated Chips, and add 2–3 boss Chips for testing. Branch `claude/chip-cards`, base
+  shared `claude/visual-revision` `256395d` (includes Astra's PR #11 and the bot test publication).
+- Cards (`chip-card.ts`, new `chip-cards.css`): each Chip is a processor package: metal legs, a raised heat spreader
+  holding the lit die (icon), grade with rank pips, name, effect, compatibility and stack slots. Legendary is
+  gold-plated with a gleam, Mythic holographic; Mishima, Ansatsuken and L44T keep their auras on their own packages
+  (Mishima's current now runs around the edge instead of across the title). Old card rules were removed from
+  `style.css` (72 rules; spotlight cards keep their package background). Player-board chips follow the same look.
+- Siren: new rarity `siren` (`content.ts`, `leet-content.ts` weight 0) and `src/shared/siren-chips.ts`: Hollow Crown
+  (+3,000 HP), Black Flame Hide (30% thorns, half knockback), Psychotic Break (damage ×1.25, speed ×1.12, incoming
+  damage ×1.15). Siren-only, offered with the other DEV kits' exclusive odds (two guaranteed while any remain).
+  `siren-card.ts`: black flame, the grin, scanlines and a glitch burst; picking one plays a Siren reveal on the
+  default 3.2 s draft timing. `simulation.ts` gets two guard clauses (draft pick and sandbox add refuse Siren Chips
+  for other specs). New dev-only `tools/chip-lab`; docs/SIREN.md has the details.
+- Gameplay impact: only when the Siren drafts these Chips (HP, thorns, received knockback, damage, movement speed,
+  incoming damage through existing stat paths). No hit timing, hitboxes, cooldowns, movement rules or network
+  schema changed; three new Chip ids travel in existing fields, so all clients need the update together.
+- Checks: new `tests/chip-cards.test.ts` 5/5 (tsx). `rarity-combat` tier-markup expectation adds Siren's 16
+  particles. With a temporary local physics stub (removed, not committed), the whole suite on base and branch:
+  0 tests that pass on base fail on the branch (186 vs 181 passing; +5 new). The catalog-count tests in core,
+  rarity-combat and chaos already fail on base (188 ≠ 182) and now report 191; names unchanged. Scratch typecheck
+  of client, simulation and the new test: no new errors (TS 6 flags the CSS import like the existing ones). Chip lab
+  renders reviewed: all tiers, hover, reveal, Siren glitch, spotlights, board, 720p, narrow and reduced motion.
+- Not run here: real-physics tests, `verify`, Vite build, Windows/in-game draft, multiplayer (npm registry blocked).
+- Status: implemented on branch and pushed; not merged or published. Next: owner-approved merge into
+  `claude/visual-revision`, then the standing test-channel publication from the merged commit (needs Node 24/npm).
+
 ## 2026-10-01 — Astra — cutscene/bot test publication and standing channel instruction
 
 - Owner asked to publish the merged changes and continue using the Update channel
