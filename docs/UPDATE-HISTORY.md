@@ -176,6 +176,8 @@ damage, cooldowns, movement rules, networking, saves and access control are unch
   full-string costs and per-hit damage are retained, including exclusive chips.
 - Animation and authoritative snapshots select the individual fist/kick. Demon
   Step i-frames retained. Tests and publication status are in the latest DEV_LOG.
+- PR #7 merged at `66451cd`; test content `0.2.f3f24aed59e8` published in channel
+  commit `873e23f`. Existing installations use the in-game Update button.
 
 ## Continuing with Claude or Astra
 

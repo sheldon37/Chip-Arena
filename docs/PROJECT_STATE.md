@@ -29,13 +29,12 @@ Migration imported to private GitHub; not merged or released (2026-09-29).
   this branch is already distributed through the test channel.
 - Test builds update online from the public test channel
   sheldon37/chip-arena-test-updates (tooling PR #5); live feed untouched. See DEVELOPMENT.md.
-- DEV combo-ready parity and Demon Step's 0.20 s i-frame window: PR #6 merged
-  into the shared branch at `5ecc20f`; test version `0.2.298dbb325341` published
-  (channel `2112c4a`). Existing channel installs use the in-game Update button.
-  Native Windows playtest remains pending. Details and checks: DEV_LOG.md.
-- Follow-up on `codex/dev-click-combos`: DEV primary chains now advance one hit
-  per activation, with per-hit stamina and 2.4 s continuation memory. Tested;
-  integration/publication pending. See latest DEV_LOG entry.
+- DEV combo-ready holds and Demon Step's 0.20 s i-frame window (PR #6), plus
+  individually controlled primary hits (PR #7), merged into the shared branch
+  at `66451cd`. One hit per activation, per-hit stamina, 2.4 s continuation memory.
+  Latest test content `0.2.f3f24aed59e8` published (channel `873e23f`); existing
+  installations press Update. Native Windows playtest remains pending. DEV_LOG
+  records checks and the 12 unchanged baseline unit failures.
 
 Next: review the migration PR against `main`; shared policy and CI remain on
 `migration/shared-development` until the owner merges. Resolve recorded baseline

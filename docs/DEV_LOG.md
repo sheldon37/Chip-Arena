@@ -44,9 +44,22 @@ containing an entry; no self-referential commit hash is required.
   steps and correct snapshot fist selection; tap tests fail on the prior source.
   Eight real WebSocket clients agreed on 200 snapshots, including stopping after
   one/two hits, special moves, Demon Step, parry and knockdown/recovery.
-- Status: implemented/tested; merging and publishing this follow-up through the
-  owner's requested shared test-channel workflow. Native Windows/GPU playtest
-  remains unrun; known baseline failures remain unresolved.
+- Final recoil-window animation checks: 32/32 passed. PR #7 merged into the shared
+  branch at `66451cdf8240b02c836741cfd1c0853ba9d7c5a1` (implementation `f5b28ec`).
+  Clean exact-commit release builds produced byte-identical payloads twice;
+  updater validation passed all 101 file hashes, settings preservation, same-version
+  skip and corrupt/offline refusal. Published test content `0.2.f3f24aed59e8`,
+  build `775161394d78cfecd5769154`, 18,267,588-byte payload, channel commit
+  `873e23fddca58ea05a57332ee4ca301a5dff9ae0`. The verified temporary split-upload
+  workflow succeeded and removed its branch. Existing testers press Update.
+- Real network installation verified `0.2.298dbb325341` -> `0.2.f3f24aed59e8`:
+  all 101 installed hashes matched, settings sentinel survived, second Update
+  reported current, and menu badge returned the new build/version. The historical
+  seed manifest needed one retry after the unchanged updater's 5 s timeout in
+  this Linux/proxy environment; the new-version upgrade itself passed directly.
+- Status: merged and published to the existing test channel; live Site/feed
+  untouched. Native Windows/GPU playtest remains unrun; known baseline failures
+  remain unresolved. Next: owner checks tap/hold/release feel on both DEV weapons.
 
 ## 2026-10-01 — Codex — merge and publish DEV combos / Demon Step to the shared test channel
 
