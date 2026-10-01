@@ -14,6 +14,12 @@ Follow-up PR #11 (`codex/siren-cutscene-dev-bots`) incorporates Claude's cutscen
 bot ability decisions, and raises Siren to 15,000 base HP. These changes are included
 in the published test content above.
 
+Pending integration: `codex/chip-cards-bot-draft` combines the isolated team fix
+(`a93d9eb`) with Claude's card redesign/three Siren Chips (`1d16c68`) and optional
+instant bot drafts. Ward Zero preserves the selected mode and team assignments.
+The owner now authorized their combined merge and test-channel publication;
+these changes are not yet included in the published version above.
+
 ## Integration with Claude
 
 Claude's visual branch and updated `SIREN.md` handoff are integrated into PR #8.
@@ -70,8 +76,9 @@ Claude's layout (no generic vertical buildings).
   The authority checks the one-connected-Siren limit in bot loadouts, saved
   loadouts, class changes, specialization commands and sandbox spec changes;
   disconnect frees the slot. The selection button displays TAKEN.
-- Siren forces FFA and Ward Zero at match start/intro. Lobby return restores the
-  previous map/mode. Normal matches and random rotation exclude Ward Zero.
+- Siren forces Ward Zero at match start/intro, preserving the selected FFA/Teams
+  mode, team assignments and friendly-fire option. Lobby return restores the
+  previous map. Normal matches and random rotation exclude Ward Zero.
 - Intro is always last and overrides cosmetic selection. Shared contract values:
   7.2678 s duration, 6.4261 s name card (the brief's rounded 6.43 s).
 

@@ -17,6 +17,42 @@ PR, test result, release, or earlier log history. Git history identifies the com
 containing an entry; no self-referential commit hash is required.
 
 
+## 2026-10-01 — Codex — combined Chip cards, Siren teams and instant bot drafts
+
+- Owner authorized merging Claude's `claude/chip-cards` at `1d16c68` and the
+  isolated team fix at `a93d9eb` into `claude/visual-revision`, adding optional
+  hidden bot selections, and publishing to the existing test Update channel.
+  Integration branch: `codex/chip-cards-bot-draft`; shared base `256395d`.
+- Added opt-in **Skip bot chip choices** in Practice draft settings, Create Room
+  and host-controlled lobby settings. Bots receive their usual first offered
+  Chip through normal eligibility/award checks immediately; their selection and
+  reveal screens are skipped. Human choices, timers and reveals are unchanged.
+  The saved preference defaults off; room settings survive lobby changes and
+  rematches. Guests cannot change it, and only literal true enables it.
+- Preserved Claude's card redesign and three Siren Chips (191 total). Combined
+  the narrow simulation changes with the team fix: Ward Zero overrides the map,
+  not the selected game mode or team assignments. All other Claude-owned card,
+  visual, contract and SIREN.md files retain their supplied contents.
+- Checks (Node 24.19.0/npm 11.9.0): types pass; focused card/team/skip/settings
+  regressions 19/19 pass. Three real WebSocket clients agree on 87 snapshots,
+  including instant bot awards, Siren's Crown raising HP to 18,000, preserved
+  teams and allied damage protection. Dedicated-server checks pass across 14
+  maps/eight players, with 35 identical fight snapshots and host-only settings.
+  Full units: 630/642, exactly the same 12 failure names as the isolated fix's
+  619/631 baseline, including stale catalog counts. Client/relay builds pass;
+  the four known server TypeScript errors and generic WebSocket rematch timeout
+  remain. HTTPS passes five sets/four drafts, 3,472 identical snapshots, retry,
+  rematch and leave (177.2 s). Full `npm run verify` exits 1 for those known
+  failures; broad verification is not green.
+- Gameplay changes are bot draft pacing, restored team rules and Claude's three
+  Chip stat effects. No attack timing, hitboxes, cooldowns or movement physics
+  changed. An optional boolean travels through existing settings/snapshot
+  objects; new Chip IDs require clients to update together. No save migration.
+- Not run: local visual preview (Chromium download failed), native Windows/GPU,
+  audible sync or two physical PCs. Claude's own visual review is recorded below.
+- Status: implemented and verified on integration branch; owner-authorized merge
+  and test publication next. Publication results will be recorded separately.
+
 ## 2026-10-01 — Claude — Chip card redesign and Siren-exclusive Chips
 
 - Owner request: Chip cards looked too basic; make them more appealing, keep the DEV Chips' "wow", give the Siren
@@ -45,6 +81,38 @@ containing an entry; no self-referential commit hash is required.
 - Not run here: real-physics tests, `verify`, Vite build, Windows/in-game draft, multiplayer (npm registry blocked).
 - Status: implemented on branch and pushed; not merged or published. Next: owner-approved merge into
   `claude/visual-revision`, then the standing test-channel publication from the merged commit (needs Node 24/npm).
+
+## 2026-10-01 — Astra — preserve teams in Siren matches (isolated branch)
+
+- Owner reported that a red squad versus blue Siren lost its team behavior and
+  requested a separate branch while Claude may be working on Chips. Branch
+  `codex/siren-team-preservation` starts at shared `256395d`; implementation
+  `9844501`. No shared-branch merge or test-channel publication for this task.
+- Root cause: `Simulation.syncSirenArena()` explicitly changed the selected mode
+  to FFA at match start/intro. Team IDs survived, but allied protection, bot target
+  filtering, team colors and shared wins stopped applying. Ward Zero now overrides
+  only the map; the selected mode, teams and friendly-fire option remain intact.
+- Six new regressions failed on the original code and pass after the fix. They
+  cover saved/newly selected/player/bot Siren, red-squad wins, colors, ally damage,
+  bot/Marked targeting, bot rebuilds, rounds, sets, rematches and lobby return.
+  Updated the old intro assertion that required FFA. Expanded the three-client
+  loopback test to submit team choices and verify them after selection and reset.
+- Targeted tests: 39/39 pass. Three real WebSocket clients agreed on 87 snapshots;
+  team assignments and allied damage protection passed alongside the existing
+  Siren checks. Types pass; full units 619/631 with exactly the same 12 baseline
+  failure names as PR #11, no new failures. Client/relay compilation passes;
+  the same four server TypeScript errors and generic WebSocket rematch timeout
+  remain. HTTPS passed five sets, four drafts, 3,679 matching snapshots, retry,
+  rematch and leave (187.5 s). Full `npm run verify` exits 1 for those known
+  baseline failures; broad verification is not green.
+- No Chip implementation, visuals, attack timing, hitboxes, damage values,
+  cooldowns, movement rules or network schemas changed. Team gameplay now follows
+  the lobby choice instead of being silently disabled by Siren. Windows/GPU and
+  physical two-PC playtesting remain unrun.
+- Status: implemented on the isolated branch, not merged or released. Published
+  content remains `0.2.c452eefcbbac`. Next: coordinate with Claude's Chip work,
+  integrate the narrow simulation hunks, then publish under the standing test
+  channel instruction. Do not replace the shared branch with this branch wholesale.
 
 ## 2026-10-01 — Astra — cutscene/bot test publication and standing channel instruction
 

@@ -51,5 +51,9 @@ Windows validation and desktop distribution cutover remain separate work.
   at channel `79e939f`; existing test installations press Update. Windows
   visual/audio acceptance remains. Publication verification is recorded in DEV_LOG.
   See `docs/SIREN.md`, `docs/SIREN-SYSTEMS.md` and DEV_LOG.
-- Chip card redesign and three Siren-only Chips: `claude/chip-cards` (2026-10-01), not merged or
-  published; awaiting owner merge, then the standing test-channel update.
+- Owner-authorized integration on `codex/chip-cards-bot-draft`: Claude's card
+  redesign/three Siren Chips (`1d16c68`), isolated Siren team preservation
+  (`a93d9eb`), and opt-in Skip bot chip choices (bots still receive Chips).
+  Targeted local/network checks pass; full units retain exactly 12 known failures.
+  Merge into `claude/visual-revision` and existing test-channel publication next.
+  See newest DEV_LOG entry for actual checks and unrun Windows/visual acceptance.
