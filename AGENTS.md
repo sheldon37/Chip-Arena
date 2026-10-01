@@ -32,7 +32,8 @@ multiplayer correctness, visual quality, or a functioning updater. Mark tests
 not run and their environment limitations. Never claim invented results.
 
 ## Release and cost boundaries
-A normal task ends with tested code and a pushed branch/PR, not a player release.
+A normal task ends with tested code and a pushed branch/PR. Completed game updates
+also follow the owner's standing test-channel publication instruction below.
 Do not routinely publish the browser Site or generate a full Windows package.
 Package when required to validate the task or explicitly requested. Preserve
 shared renderer/client code even if it also supports a browser. Keep hosting
@@ -60,9 +61,13 @@ base commit; logs and pushes do not automatically synchronize another checkout.
 Owner-confirmed shared game/test-development target (2026-10-01): use current
 `claude/visual-revision` as the base for continuing game changes and test updates.
 Repository migration work still uses `migration/shared-development` until PR #1
-merges; afterward use main unless the owner names another ref. Claude and Codex
-publish owner-requested test updates to the same existing test channel; follow
-DEVELOPMENT.md. This does not authorize automatic merges or live-feed releases.
+merges; afterward use main unless the owner names another ref.
+Owner standing instruction (2026-10-01): Claude and Codex publish completed game
+updates from the verified, approved shared-branch commit to the existing test
+Update channel unless the owner says otherwise. No per-update publication
+confirmation is required. Follow DEVELOPMENT.md and record actual verification
+and publication results. This does not authorize automatic merges, live-feed or
+Site releases, or bypassing verification.
 At completion or handoff, add a concise entry to DEV_LOG on your own task branch:
 date/agent/task, branch and base, PR or implementation commit if known, changes and
 rationale, affected systems, actual checks/results, remaining risks and next step.

@@ -1,17 +1,18 @@
 # Siren systems handoff
 
-Status: PR #8 merged into `claude/visual-revision` at `9f010f5` on 2026-10-01;
-test content `0.2.149269b37b5b` published from `abb0bbb` to the existing test Update
-channel at `3e9d5d9`. Verified implementation: `1a8a5d0`. Base is
+Status: PR #11 merged into `claude/visual-revision` at `fd67313` on 2026-10-01;
+test content `0.2.c452eefcbbac` published from that commit to the existing test
+Update channel at `79e939f`. Verified follow-up implementation: `8979723`.
+Original PR #8 merged at `9f010f5`; verified implementation: `1a8a5d0`. Base is
 `cf5fa1c5548e66d1364c98f9ea053202f918ec50` on `claude/visual-revision`, followed by
 Claude's shared contract `84b692ffffb01618d2397175606d83597a878e9f`.
 PR #8 combines systems `514d784` with Claude's visual branch at `2e986f4`
 (including its first-pass and polish commits), plus the integration fixes below.
 
-Follow-up: `codex/siren-cutscene-dev-bots` incorporates Claude's cutscene commit
+Follow-up PR #11 (`codex/siren-cutscene-dev-bots`) incorporates Claude's cutscene commit
 `452bbe6`, removes the dropped voice clips, adds DEV-configured bot weapons and
-bot ability decisions, and raises Siren to 15,000 base HP. These follow-up changes
-are not in published test content `0.2.149269b37b5b`.
+bot ability decisions, and raises Siren to 15,000 base HP. These changes are included
+in the published test content above.
 
 ## Integration with Claude
 
@@ -169,7 +170,7 @@ Linux Node 24.19.0 / npm 11.9.0:
 
 Update publication checks: two identical release builds; actual payload install
 and all 102 file hashes; offline/corrupt-package refusal; 13/13 updater and channel
-tests. Real network upgrade from `0.2.f3f24aed59e8` to `0.2.149269b37b5b` passed,
+tests. Real network upgrade from `0.2.149269b37b5b` to `0.2.c452eefcbbac` passed,
 including settings preservation, same-version skip and menu status. Original MP3
 hash is unchanged. Source and channel SHAs are recorded in DEV_LOG.
 
@@ -183,4 +184,6 @@ DEVs selecting Siren; check solo taps/hold and Q/1–4 in both modes, wall colli
 Last Laugh evade/catch/kill-owner release, Marked through props/behind foundation,
 warning markers before eruption/rain, first-person and lobby appearance, intro
 last, preview, music mute/ducking/loop and continuous song across sets. Check the
-DEV beat overlay for stable drift on both PCs. Owner controls merge/publication.
+DEV beat overlay for stable drift on both PCs. The owner's standing instruction
+publishes completed updates to this test channel unless told otherwise; merge
+and live-release authorization remain separate.

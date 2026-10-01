@@ -113,6 +113,12 @@ release/candidate-workflow).
 The owner confirmed `claude/visual-revision` as the shared test-development branch
 on 2026-10-01. Claude and Codex use this same source branch and update channel;
 fetch its current head before starting and preserve the other agent's changes.
+Standing owner instruction (2026-10-01): publish completed game updates from the
+verified, approved shared-branch commit to this existing test Update channel
+unless told otherwise; do not ask for publication confirmation each time. This
+does not authorize automatic merges or live-feed/Site releases. Keep recording
+actual verification results and unrun checks, including known baseline failures
+for diagnostic test builds.
 Publishing a version:
 
 ```sh
