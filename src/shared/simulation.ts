@@ -74,7 +74,7 @@ const copy=(a:Vec):Vec=>v(a.x,a.y,a.z);
 function rotate(q:{x:number;y:number;z:number;w:number},p:Vec):Vec{const tx=2*(q.y*p.z-q.z*p.y),ty=2*(q.z*p.x-q.x*p.z),tz=2*(q.x*p.y-q.y*p.x);return v(p.x+q.w*tx+q.y*tz-q.z*ty,p.y+q.w*ty+q.z*tx-q.x*tz,p.z+q.w*tz+q.x*ty-q.y*tx);}
 export function sanitizeInput(raw:any):Input|null {if(!raw||!['seq','x','z','yaw','pitch'].every(k=>typeof raw[k]==='number'&&Number.isFinite(raw[k])))return null;if(!Number.isSafeInteger(raw.seq)||raw.seq<0)return null;return {camera:raw.camera==='first'?'first':'third',seq:raw.seq,x:clamp(raw.x,-1,1),z:clamp(raw.z,-1,1),yaw:raw.yaw%(Math.PI*2),pitch:clamp(raw.pitch,-1.35,1.35),attack:raw.attack===true,sirenToggle:raw.sirenToggle===true,sirenAbility:[1,2,3,4].includes(raw.sirenAbility)?raw.sirenAbility:undefined,electric:raw.electric===true,block:raw.block===true,hadoken:raw.hadoken===true,uppercut:raw.uppercut===true,secondary:raw.secondary===true,jump:raw.jump===true,dash:raw.dash===true,reload:raw.reload===true};}
 export class Simulation {
- siren=new SirenSystem(this);bossSong?:BossSongState;private normalArena?:{map:MapId;gameMode:GameMode};
+ siren=new SirenSystem(this);bossSong?:BossSongState;private normalArena?:{map:MapId};
  standardMelee=new StandardMelee(this);emperor=new EmperorSystem(this);arcade=new ArcadeSystem(this);leet=new LeetSystem(this);chaos=new ChaosSystem(this);draft:Snapshot['draft'];private draftQueue:string[]=[];
  lobbyReturn:Snapshot['lobbyReturn'];
  generation=0;private inputQueues=new Map<string,{queue:Input[];received:number;window:number;count:number}>();
@@ -139,7 +139,8 @@ export class Simulation {
 
  syncSirenArena(){
   const present=[...this.players.values()].some(p=>p.connected&&this.siren.active(p));
-  if(present){this.normalArena??={map:mapId(this.options.map)==='siren'?'foundry':mapId(this.options.map),gameMode:gameMode(this.options.gameMode)};const changed=this.options.map!=='siren';this.options.map='siren';this.options.gameMode='ffa';if(changed)this.resetRound();}
+  // Ward Zero replaces the arena, while the lobby's mode and team assignments stay intact.
+  if(present){this.normalArena??={map:mapId(this.options.map)==='siren'?'foundry':mapId(this.options.map)};const changed=this.options.map!=='siren';this.options.map='siren';if(changed)this.resetRound();}
   else if(this.normalArena&&!this.bossSong){Object.assign(this.options,this.normalArena);this.normalArena=undefined;this.resetRound();}
  }
  updateBossSong(){
