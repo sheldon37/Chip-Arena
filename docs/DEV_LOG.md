@@ -16,6 +16,44 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-09-30 — Astra — DEV melee combo holds and Demon Step i-frames
+
+- Owner: apply the standard melee combo-ready system to DEV melee; follow-up adds
+  invulnerability frames to Ansatsuken's Demon Step. Branch `codex/dev-melee-combo`,
+  based on Claude's requested visual work at `32422fbf0c96b13cf1007f892e5668748e84a1e7`
+  (`claude/visual-revision`, PR #4). PRs #1–#5 remain unmerged at inspection.
+- Emperor and Ansatsuken now recover directly into their next chamber rather than
+  returning to guard before raising it. Share standard melee's 2.4 s visual hold
+  and 0.8 s fade. Remember dodge/parry/hit exits even when the fighter layer is
+  skipped or the exit field clears; discard stale state on death/rewind/rig reuse.
+  Next-string entry and planted footwork retained. L33T is magic and unaffected.
+- Demon Step: the existing 0.30 s dash protects from +0.05 s inclusive to +0.25 s
+  exclusive (0.20 s / 12 frames at 60 Hz). Requires authorized Ansatsuken, a live
+  player and an active dash. Canceled/expired dashes lose protection. Applies to
+  authoritative damage, direct hits, normal projectiles and thrown daggers/shields;
+  avoids hit procs, new status application, knockback and confirmed stuns/launches.
+  Existing burn/poison, overtime, falls and forced L33T scare damage follow the
+  same exceptions as dodge rolls. Updated the weapon's description.
+- Combat/network impact: attack contacts, hitboxes, damage values, combo counters,
+  attack cooldowns, dash cost/speed/distance/cooldown, saves and protocol unchanged.
+  The intentional gameplay change is Demon Step damage avoidance in that window.
+  Reuses `arcade.demonStepAt` and `dashTime`; no new snapshot or input fields.
+- Checks (Linux, Node 24.19.0 / npm 11.9.0): types passed; 15 new tests passed;
+  existing roll/combo/DEV footwork checks 13/13 passed. Full final unit suite
+  545/557 passed, with exactly the same 12 failure names as a clean checkout of
+  Claude's base (530/542). The live end-pose regression fails on the unchanged base.
+  Client/relay compilation passed; server compilation retains the four baseline
+  errors covered by PR #2. Full `npm run verify` hit the known WebSocket rematch
+  timeout; HTTP/SQLite integration passed five sets, four drafts, snapshot agreement,
+  lost-response retry, rematch and guest leave (179.5 s). Overall verify remains red.
+- Not verified: Windows EXE/GPU appearance or two-machine DEV combat. Visual-lab
+  browser launch was blocked by the missing Playwright Chromium executable.
+  No packaging, merge, test-channel publish or live-feed change in this task.
+- Next: review/merge this branch into `claude/visual-revision`, playtest both LMB
+  strings into another string/dodge/parry and Demon Step's startup/middle/recovery,
+  then build/publish a test-channel version when requested. Keep Claude's existing
+  log entries. Status: implemented/tested on task branch; not merged or released.
+
 ## 2026-10-01 — Claude — Rain Warrior and Emperor's Oath intros (channel update)
 
 - Owner: smoother DEV intros, fix their feet, Emperor's Oath camera in front of the player.

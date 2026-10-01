@@ -9,6 +9,7 @@ import {ceilingContact} from './ceiling-field.js';
 import {downProtected,pickupOpen} from './recovery.js';
 import {ballisticStep} from './projectiles.js';
 import {committed,rolling,rollInvulnerable,meleeHitStun,meleeRecovery,STAGGER_ESCAPE_SECONDS} from './souls-combat.js';
+import {demonStepInvulnerable} from './demon-step.js';
 export type MeleeActionKind='dagger-throw'|'wolf-spin'|'sword-launch'|'shield-throw';
 export interface MeleeAction {kind:MeleeActionKind;at:number;releaseAt:number;until:number;yaw:number;released?:boolean;landedAt?:number;shotId?:string;hitIds?:string[];attackId?:string;}
 export interface MeleeShot {kind:'dagger'|'shield';at?:number;returning?:boolean;}
@@ -100,7 +101,7 @@ export class StandardMelee {
   }
   if(shot.life<=0||shot.distanceLeft<=0){s.projectiles.delete(shot.id);return true;}
   const h=Math.min(dt,shot.life),flight=ballisticStep(shot.vel,shot.gravity,h);shot.life-=h;shot.vel=flight.velocity;const displacement=flight.displacement,distance=Math.min(len(displacement),shot.distanceLeft),dir=norm(displacement);
-  shot.distanceLeft-=distance;const hit=s.world.castShape(shot.pos,{x:0,y:0,z:0,w:1},dir,new RAPIER.Ball(shot.radius),0,distance,true,undefined,undefined,undefined,undefined,c=>{const id=s.colliderOwners.get(c.handle)||'',minion=s.chaos.minions.get(id);return id!==shot.owner&&!rollInvulnerable(s.players.get(id)||{},s.time)&&!shot.hit.has(id)&&s.canHit(shot.owner,minion?.owner||id)&&minion?.owner!==shot.owner;});
+  shot.distanceLeft-=distance;const hit=s.world.castShape(shot.pos,{x:0,y:0,z:0,w:1},dir,new RAPIER.Ball(shot.radius),0,distance,true,undefined,undefined,undefined,undefined,c=>{const id=s.colliderOwners.get(c.handle)||'',minion=s.chaos.minions.get(id);return id!==shot.owner&&!rollInvulnerable(s.players.get(id)||{},s.time)&&!demonStepInvulnerable(s.players.get(id),s.time)&&!shot.hit.has(id)&&s.canHit(shot.owner,minion?.owner||id)&&minion?.owner!==shot.owner;});
   const field=ceilingContact(shot.pos,mul(dir,distance),shot.radius);
   if(field&&(!hit||field.distance<=hit.time_of_impact)){s.emit('ceiling-hit',field.point,{source:shot.owner,spec:shot.spec,radius:shot.radius,color:0x75ddff,message:shot.bounces?'BOUNCE':'ABSORB'});
    if(shot.bounces>0){shot.bounces--;shot.vel.y=-Math.abs(shot.vel.y);shot.pos=field.center;shot.damage*=original?.stats.bounceRetention??.7;}

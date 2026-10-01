@@ -1,6 +1,5 @@
 import * as T from 'three';
 import {punchString,donkeyKick,fighterReady,beginFighterLegs,applyFighterLegs,editFoot,holdGaze} from './fighter-motion.js';
-import {ARCADE} from '../shared/arcade-content.js';
 import type {CharacterRig} from './character-rig.js';
 import type {PlayerView} from '../shared/simulation.js';
 const clamp=(n:number)=>T.MathUtils.clamp(n,0,1),ease=(n:number)=>{n=clamp(n);return n*n*n*(n*(n*6-15)+10);};
@@ -45,8 +44,8 @@ function ansatsukenLayers(r:CharacterRig,p:PlayerView,time:number){
  const body=r.body.position.clone(),travel=clamp(r.motion*1.4);fighterGuard(r,time,1-travel*.15,false);if(p.grounded){r.body.position.lerp(body,travel*.85);r.pelvis.rotation.y+=Math.sin(r.stride)*.07*travel;r.chest.rotation.y-=Math.sin(r.stride)*.1*travel;}r.weapon.rotation.set(0,0,0);r.offWeapon.rotation.set(0,0,0);r.weapon.scale.setScalar(1);r.offWeapon.scale.setScalar(1);r.weapon.visible=r.offWeapon.visible=true;
  const fist=r.offWeapon.getObjectByName('fighter-fist'),palm=r.offWeapon.getObjectByName('fighter-palm');if(fist)fist.visible=true;if(palm)palm.visible=false;
  const a=p.arcade;if((!a?.action||time>=a.until)&&p.grounded&&p.blockTime<=0&&!p.guarding){const carry=ease((r.motion-.10)/.65);upper.forEach((n,i)=>n.quaternion.slerp(upperBase[i],carry));r.body.position.lerp(body,carry);}
- // Combo-ready: after a punch string the next string's rear fist stays chambered at the hip (ARCADE.comboMemory).
- fighterReady(r,p,time,a,'combo',ARCADE.comboMemory,'karate',ease((r.motion-.10)/.65));if(p.dashTime&&a?.demonStepAt!==undefined&&time>=a.demonStepAt&&time-a.demonStepAt<.30){demonStepLayer(r,time,time-a.demonStepAt);holdGaze(r,.6);return;}if(p.blockTime>0||time-(a?.parryAt??-10)<.22){fighterParry(r,time,false);holdGaze(r,.8);return;}if(!a?.action||time>a.until){holdGaze(r,.8);return;}const age=Math.max(0,time-a.at),hitAge=Math.max(0,time-p.lastAttack);
+ // Recover straight into the rear fist's chamber; Demon Step and parry release the hold.
+ fighterReady(r,p,time,a,'combo','karate',ease((r.motion-.10)/.65));if(p.dashTime&&a?.demonStepAt!==undefined&&time>=a.demonStepAt&&time-a.demonStepAt<.30){demonStepLayer(r,time,time-a.demonStepAt);holdGaze(r,.6);return;}if(p.blockTime>0||time-(a?.parryAt??-10)<.22){fighterParry(r,time,false);holdGaze(r,.8);return;}if(!a?.action||time>a.until){holdGaze(r,.8);return;}const age=Math.max(0,time-a.at),hitAge=Math.max(0,time-p.lastAttack);
  if(a.action==='combo'){
   const rate=p.attackRate||1,gap=a.total===10?.115:.25,first=.12,lastAt=first+(a.total-1)*gap;
   punchString(r,age*rate,first,gap,a.total-1,false,'karate');
