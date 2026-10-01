@@ -16,6 +16,38 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-01 — Codex — individual DEV primary combo steps
+
+- Owner follow-up: allow one punch, two punches, or the full chain rather than
+  automatically firing the whole string. Branch `codex/dev-click-combos`, based
+  on shared `claude/visual-revision` at `6e32a60` after the previous publication.
+- Ansatsuken primary now commits one step per activation (right punch, left punch,
+  high kick); Emperor commits left then right. Release stops after the committed
+  hit; further taps or holding attack continue, matching standard melee's existing
+  input/cooldown behavior. Next-step memory lasts 2.4 s after recovery. Blocking,
+  stun, specials, Demon Step, roll, death and round reset clear a partial chain.
+- Costs split across steps: normal Ansatsuken 4 each / 12 total; Emperor 3 each /
+  6 total. Ten-Hit Rush remains ten requested steps (2.2 each / 22); Pressure String
+  three (2 each / 6). Existing per-step damage, hitboxes, finisher rewards and hit
+  effects retained. Nonfinal recoveries use the original .25/.17 s cadence divided
+  by attack rate; final recoveries retain their original durations. Rush uses a
+  .069 s windup at base rate so an individual hit fits its .115 s cadence.
+- Animation renders only the selected fist/kick and finishes its recoil before
+  that hit's recovery ends. Optional `singleHit` snapshot flag distinguishes this
+  from older full-string samples. Movement remains unlocked; successful Demon
+  Step/roll now cancels the partial chain. Demon Step i-frame timing is unchanged.
+  Saves, input fields, account access and special-move damage/cooldowns unchanged.
+- Checks: types passed; 64 focused combat/animation/i-frame checks passed; full
+  suite 555/567 with the same 12 baseline failure names. Three existing tests were
+  updated for the deliberately changed per-activation counts/costs. Ten new tests
+  cover taps, hold/release, timeout/block/dodge resets, resource refusal, added chip
+  steps and correct snapshot fist selection; tap tests fail on the prior source.
+  Eight real WebSocket clients agreed on 200 snapshots, including stopping after
+  one/two hits, special moves, Demon Step, parry and knockdown/recovery.
+- Status: implemented/tested; merging and publishing this follow-up through the
+  owner's requested shared test-channel workflow. Native Windows/GPU playtest
+  remains unrun; known baseline failures remain unresolved.
+
 ## 2026-10-01 — Codex — merge and publish DEV combos / Demon Step to the shared test channel
 
 - Owner explicitly requested merge + publish and the same in-game Update workflow

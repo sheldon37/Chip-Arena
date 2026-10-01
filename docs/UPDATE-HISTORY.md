@@ -168,6 +168,15 @@ damage, cooldowns, movement rules, networking, saves and access control are unch
   Full unit results: 545/557, the same 12 failures as Claude's base; no new failures.
   Native Windows visual/gameplay testing remains unperformed.
 
+## 2026-10-01 — individual DEV primary combo steps
+
+- Ansatsuken and Emperor no longer auto-complete their primary strings from one
+  activation. Each activation commits one hit; stop after any hit or continue
+  within 2.4 s. Holding follows standard melee input behavior. Stamina is per hit;
+  full-string costs and per-hit damage are retained, including exclusive chips.
+- Animation and authoritative snapshots select the individual fist/kick. Demon
+  Step i-frames retained. Tests and publication status are in the latest DEV_LOG.
+
 ## Continuing with Claude or Astra
 
 Read CLAUDE.md (which imports AGENTS.md), PROJECT_STATE, recent DEV_LOG entries and

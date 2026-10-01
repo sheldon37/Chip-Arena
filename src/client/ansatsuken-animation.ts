@@ -48,8 +48,14 @@ function ansatsukenLayers(r:CharacterRig,p:PlayerView,time:number){
  fighterReady(r,p,time,a,'combo','karate',ease((r.motion-.10)/.65));if(p.dashTime&&a?.demonStepAt!==undefined&&time>=a.demonStepAt&&time-a.demonStepAt<.30){demonStepLayer(r,time,time-a.demonStepAt);holdGaze(r,.6);return;}if(p.blockTime>0||time-(a?.parryAt??-10)<.22){fighterParry(r,time,false);holdGaze(r,.8);return;}if(!a?.action||time>a.until){holdGaze(r,.8);return;}const age=Math.max(0,time-a.at),hitAge=Math.max(0,time-p.lastAttack);
  if(a.action==='combo'){
   const rate=p.attackRate||1,gap=a.total===10?.115:.25,first=.12,lastAt=first+(a.total-1)*gap;
-  punchString(r,age*rate,first,gap,a.total-1,false,'karate');
-  donkeyKick(r,age*rate-lastAt,Math.min(.16,gap*.68),Math.max(.06,(a.until-a.at)*rate-lastAt));
+  if(a.singleHit){
+   const contact=Math.min(first,gap*.6);
+   if(a.index===a.total-1)donkeyKick(r,age*rate-contact,contact/1.5,Math.max(.06,(a.until-a.at)*rate-contact));
+   else punchString(r,age*rate,contact,gap,1,a.index%2!==0,'karate',Math.max(.02,(a.until-a.at)*rate-contact-.016));
+  }else{
+   punchString(r,age*rate,first,gap,a.total-1,false,'karate');
+   donkeyKick(r,age*rate-lastAt,Math.min(.16,gap*.68),Math.max(.06,(a.until-a.at)*rate-lastAt));
+  }
  }else if(a.action==='tatsu'){
   const end=ease((a.until-time)/.18);r.body.rotation.y+=age*Math.PI*9;r.body.rotation.x=-.1;r.body.position.y+=.16*end;r.rightLeg.rotation.set(-.12,0,-1.47*end);r.rightKnee.rotation.x=.13;r.rightFoot.rotation.x=.1;r.leftLeg.rotation.x=-.15;r.leftKnee.rotation.x=.5;r.leftArm.rotation.set(-.75,0,.65);r.rightArm.rotation.set(-.75,0,-.65);r.leftElbow.rotation.x=r.rightElbow.rotation.x=-1.3;
  }else if(a.action==='shoryuken'){

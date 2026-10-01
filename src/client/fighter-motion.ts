@@ -63,9 +63,9 @@ export function placeHand(r:CharacterRig,left:boolean,target:T.Vector3,pole:T.Ve
 
 /** Alternate from the authority's contact times. Overlapping recoil and preparation
  * prevent the previous fist snapping back when the next punch begins. */
-export function punchString(r:CharacterRig,age:number,first:number,gap:number,count:number,firstLeft:boolean,style:'emperor'|'karate'){
+export function punchString(r:CharacterRig,age:number,first:number,gap:number,count:number,firstLeft:boolean,style:'emperor'|'karate',recoveryLimit=Infinity){
  const strikes=Array.from({length:count},(_,i)=>{
-  const phase=age-first-i*gap,prep=i===0?first:Math.min(.12,gap*.62),recovery=Math.min(style==='emperor'?.14:.17,gap*.87);
+  const phase=age-first-i*gap,prep=i===0?first:Math.min(.12,gap*.62),recovery=Math.min(style==='emperor'?.14:.17,gap*.87,recoveryLimit);
   const pulse=(start:number,end:number,hold:number,tail:number)=>ease((phase-start)/(end-start))*(1-ease((phase-hold)/tail));
   return {left:i%2===0?firstLeft:!firstLeft,coil:pulse(-prep,-prep*.65,-prep*.60,prep*.60),
    hip:pulse(-prep*.78,-.012,.012,recovery),chest:pulse(-prep*.58,-.005,.016,recovery*.92),
