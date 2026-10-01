@@ -17,6 +17,23 @@ PR, test result, release, or earlier log history. Git history identifies the com
 containing an entry; no self-referential commit hash is required.
 
 
+## 2026-10-01 — Astra — owner-authorized Siren merge
+
+- Owner asked to merge after assessment. PR #8 (`codex/siren-boss`, verified head
+  `1a8a5d0`) merged into `claude/visual-revision` as `9f010f5aae7dda46c7c1942e85764fdc3c78fd8e`.
+  Readback confirms the merge tree exactly matches the previously tested tree;
+  no gameplay, assets or networking changed during merge.
+- Reused the completed checks from the prior integration entry: 42/42 Siren tests,
+  three-client Siren 80 matching snapshots, HTTPS 3,509 matching snapshots;
+  full units 598/610 with the same 12 baseline failures. Client/relay builds pass;
+  existing server TS errors and WebSocket rematch timeout remain. GitHub scope
+  passed; its full CI rerun was still running at merge. No green CI claim.
+- This follow-up on `codex/siren-merge-status` updates documentation only;
+  whitespace checked. No additional code tests required for the identical tree.
+- Status: merged, not published. Windows/GPU/visual/audio acceptance remains
+  unrun. No update-channel/live-feed publication was requested or performed.
+  Next: owner playtest/release decision; optional laugh/You clips still pending.
+
 ## 2026-10-01 — Astra — integrate Claude's Siren visuals into PR #8
 
 - Continuing `codex/siren-boss` / PR #8 from systems `514d784`; imported Claude's
