@@ -108,7 +108,12 @@ head when handing off unmerged work. No second AI review is automatically requir
 Testers' TEST-ONLY builds made with `--channel` update from the public channel repo
 `sheldon37/chip-arena-test-updates` (feed `https://raw.githubusercontent.com/sheldon37/chip-arena-test-updates/main/feed/`),
 never the live feed. Tooling is on `claude/test-update-channel` (PR #5; based on PR #3's
-release/candidate-workflow). Publishing a version:
+release/candidate-workflow).
+
+The owner confirmed `claude/visual-revision` as the shared test-development branch
+on 2026-10-01. Claude and Codex use this same source branch and update channel;
+fetch its current head before starting and preserve the other agent's changes.
+Publishing a version:
 
 ```sh
 python scripts/release/candidate.py --commit <40-char SHA> --output <new dir> --test-only \
@@ -120,6 +125,16 @@ python scripts/release/candidate.py --commit <40-char SHA> --output <new dir> --
 Needs Node 24.19.0 / npm 11.9.0. Only a new tester needs the ZIP; later versions ship as
 feed files. Never put credentials or player data in the channel; live-feed publication
 remains a separate owner-approved release.
+
+For an existing channel installation, a new Windows seed ZIP is unnecessary.
+Feed-only publication can use a clean worktree at the exact approved source commit:
+run the affected/full verification, `npm run release:prepare` twice and compare
+the feed bytes; run PR #5's `check-payload.mjs <feed-dir> <source-dir>` and the
+remote-channel/status tests. Preserve the actual verification results, including
+known failures for diagnostic test builds. Publish only the verified manifest and
+payload together, then verify the real network updater from the previous version,
+same-version skip, settings preservation and menu status. Record the source SHA,
+content version, channel commit and unrun native checks in DEV_LOG.
 
 ## Clean-checkout verification
 

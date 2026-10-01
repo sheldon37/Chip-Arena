@@ -16,6 +16,43 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-01 — Codex — merge and publish DEV combos / Demon Step to the shared test channel
+
+- Owner explicitly requested merge + publish and the same in-game Update workflow
+  Claude uses. PR #6 (`codex/dev-melee-combo`, implementation `66111c2`) merged into
+  `claude/visual-revision` at `5ecc20f7aaba065a6c8071b983bfe393f00e14af`.
+  Merge tree matches the already-tested implementation exactly. PRs #1–#5 remain
+  separate; no unrelated fixes merged. Shared source/channel choice is now recorded
+  in AGENTS and DEVELOPMENT for both agents.
+- Published test content `0.2.298dbb325341`, game build `9499e3a5ba09df675dcc401e`,
+  channel commit `2112c4a45ebae1b97afbcb631e03d00deb13eb62` in
+  `sheldon37/chip-arena-test-updates`. Existing channel installations press Update;
+  no new seed ZIP or launcher change is needed. Live Site/feed untouched.
+- Build/checks: clean worktree at the merge SHA, npm ci, `release:prepare` twice
+  with byte-identical feeds (18,266,547 bytes). PR #5's actual updater checker
+  verified all 101 files, current-version skip, settings preservation, offline and
+  corrupt-payload rejection. Remote-channel/status tests 6/6 and auth/manual
+  updater tests 7/7 passed. Full source verification remains as recorded below:
+  545/557 unit tests, identical 12 baseline failures, four baseline server build
+  errors and the existing WebSocket rematch timeout. No gate was marked green.
+- Publication transport: the connector's 16 MiB request limit could not carry the
+  18 MB payload. Uploaded two parts to a temporary channel branch; one-shot GitHub
+  workflow verified the final SHA256 and every file hash, then atomically pushed
+  only the feed + PUBLISHED row onto the unchanged channel head. Workflow succeeded
+  and deleted its staging branch; no scheduled or persistent publishing workflow.
+- Network verification passed after the raw GitHub cache refreshed: installed
+  previous content `0.2.19e114ae7c87`, updated through the real network updater to
+  `0.2.298dbb325341`, verified all 101 installed hashes and settings sentinel,
+  then confirmed current-version skip and the menu badge's build/version.
+  Linux network test used its environment proxy; the historical seed manifest
+  required one retry after the updater's existing 5 s timeout. Updater code and
+  timeouts were unchanged. Native Windows validation remains separate.
+- Combat effects are those detailed below: combo animation flow plus Demon Step
+  protection only; no further timing, damage, hitbox, cooldown, movement, save or
+  protocol changes. Windows EXE/GPU and two-PC DEV playtesting remain unrun.
+- Status: merged and released to the existing TEST channel. Next: owner playtests
+  both DEV combo chains/exits and Demon Step startup/middle/recovery in-game.
+
 ## 2026-09-30 — Astra — DEV melee combo holds and Demon Step i-frames
 
 - Owner: apply the standard melee combo-ready system to DEV melee; follow-up adds

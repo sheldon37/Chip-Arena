@@ -16,20 +16,23 @@ Migration imported to private GitHub; not merged or released (2026-09-29).
   Available Windows ZIP contains older content `0.2.44211e218269` with the same
   launcher. The owner's installed, possibly updated, copy is not accessible.
 - Existing Site still serves updater downloads, identity, room discovery and relay.
-  Its database and endpoints remain unchanged. No GitHub updater cutover.
+  Its database and endpoints remain unchanged. Production still uses its original
+  updater feed; TEST installations use the separate GitHub channel below.
 - Settings use `chip-arena-preferences`; desktop uses persistent
   `arena://game` storage and an encrypted account-session file under userData.
 - Baseline: typecheck passed; unit tests 406/419 passed (13 failed);
   identical after clean restore. WebSocket rematch/server build remain failing;
   HTTPS integration and Windows ZIP construction passed. Native Windows untested.
 
-- Visual revision (animation, melee, voxel model, intros, UI): implemented on
-  `claude/visual-revision`, PR pending review; presentation-only, not released.
+- Shared test-development branch: `claude/visual-revision` (owner confirmed
+  2026-10-01). Visual revision PR #4 remains separate from the migration to main;
+  this branch is already distributed through the test channel.
 - Test builds update online from the public test channel
   sheldon37/chip-arena-test-updates (tooling PR #5); live feed untouched. See DEVELOPMENT.md.
-- DEV combo-ready parity and Demon Step's 0.20 s i-frame window are implemented
-  on `codex/dev-melee-combo`, based on Claude's visual revision `32422fb`;
-  pending integration/playtest, not published. Details and checks: DEV_LOG.md.
+- DEV combo-ready parity and Demon Step's 0.20 s i-frame window: PR #6 merged
+  into the shared branch at `5ecc20f`; test version `0.2.298dbb325341` published
+  (channel `2112c4a`). Existing channel installs use the in-game Update button.
+  Native Windows playtest remains pending. Details and checks: DEV_LOG.md.
 
 Next: review the migration PR against `main`; shared policy and CI remain on
 `migration/shared-development` until the owner merges. Resolve recorded baseline

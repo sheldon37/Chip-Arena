@@ -162,7 +162,9 @@ damage, cooldowns, movement rules, networking, saves and access control are unch
 - Ansatsuken Demon Step gains 0.20 s of invulnerability in the middle of its 0.30 s
   dash. Startup and recovery remain vulnerable; existing DoTs and forced arena damage
   remain effective. Damage timing and protection use the shared match authority.
-- Source tested on the task branch; **not merged or published to either update feed**.
+- Owner-approved merge/publication on 2026-10-01: PR #6 merged into
+  `claude/visual-revision` at `5ecc20f`; test content `0.2.298dbb325341`
+  published in channel commit `2112c4a`. Existing testers press Update in-game.
   Full unit results: 545/557, the same 12 failures as Claude's base; no new failures.
   Native Windows visual/gameplay testing remains unperformed.
 
@@ -171,10 +173,11 @@ damage, cooldowns, movement rules, networking, saves and access control are unch
 Read CLAUDE.md (which imports AGENTS.md), PROJECT_STATE, recent DEV_LOG entries and
 this index. Inspect the actual affected source and relevant historical notes rather
 than assuming an old screenshot or test count describes the current build.
-Until migration PR #1 merges, use migration/shared-development for new tasks unless
-a task names another branch. Release/test documents and this history currently live
-on release/candidate-workflow (PR #3); a checkout of another branch will not contain
-unmerged files automatically. Fetch and read that ref explicitly when needed.
+The owner confirmed `claude/visual-revision` as the shared game/test-development
+branch on 2026-10-01. Migration work remains on migration/shared-development until
+PR #1 merges. Release tooling is on release/candidate-workflow (PR #3) and
+claude/test-update-channel (PR #5); unmerged tooling is not automatically present
+in another checkout. Fetch and read those refs explicitly when needed.
 
 For each future player update, append a short entry with the exact source commit,
 what changed, actual tests, known regressions and separately verified release status.

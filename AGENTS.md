@@ -57,8 +57,12 @@ and releases unless a specific request authorizes otherwise.
 Before each task, read recent entries in `docs/DEV_LOG.md` and inspect relevant
 open PRs as well as PROJECT_STATE. Confirm your checkout includes the intended
 base commit; logs and pushes do not automatically synchronize another checkout.
-Until migration PR #1 merges, use current `migration/shared-development` as the
-base for new task branches unless the owner names another ref; afterward use main.
+Owner-confirmed shared game/test-development target (2026-10-01): use current
+`claude/visual-revision` as the base for continuing game changes and test updates.
+Repository migration work still uses `migration/shared-development` until PR #1
+merges; afterward use main unless the owner names another ref. Claude and Codex
+publish owner-requested test updates to the same existing test channel; follow
+DEVELOPMENT.md. This does not authorize automatic merges or live-feed releases.
 At completion or handoff, add a concise entry to DEV_LOG on your own task branch:
 date/agent/task, branch and base, PR or implementation commit if known, changes and
 rationale, affected systems, actual checks/results, remaining risks and next step.
