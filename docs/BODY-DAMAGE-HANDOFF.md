@@ -23,6 +23,7 @@ Owner request, 2026-10-01: Astra implements functions/authority/physics; Claude 
 - Authoritative HP reaches zero and gameplay control stops immediately. The brief collapse is visual; it does not delay scores, create damageable corpses or keep the victim alive.
 - Default effect ID: **`impact-ragdoll`**, public, no DEV check. Missing/invalid cosmetics use it; explicitly saved cosmetic choices (including legacy voxel-burst) remain selected. Keep special finishers and Siren death/crush overrides intact. If requested to migrate old selected cosmetics, coordinate that separately.
 - Existing fallback currently renders ordinary ragdoll and selected-part severing using old assets. It does NOT yet draw punctures/cavities, crushed fragments, living wounds or kneel/fall animation. Do not mistake the fallback for finished visuals.
+- Claude's visuals (branch `claude/body-damage-visuals`, not yet integrated): living wounds in `src/client/body-wounds.ts`, caps and crush fragments in `body-trauma.ts`, kneel/fall in `body-collapse.ts`, consumed by the `impact` mode of `ragdoll.ts`; review lab `tools/body-lab`. Physics after the collapse release still needs a real-Rapier run (see DEV_LOG).
 
 ## Visual work
 

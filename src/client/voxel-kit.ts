@@ -18,7 +18,11 @@ export const VOXEL=.025;
 
 /** [x,y,z, width,height,depth, shade]: metres around the part centre; shade multiplies the material colour (1 = as is). */
 export type VoxelBox=[number,number,number,number,number,number,number?];
-export type VoxelLayout={key:string;count:number;matrix:T.InstancedBufferAttribute;color:T.InstancedBufferAttribute};
+export type VoxelLayout={key:string;count:number;matrix:T.InstancedBufferAttribute;color:T.InstancedBufferAttribute;
+ /** Owned by one rig (wound carving, body-wounds.ts): never shared, its GPU buffers are released with releaseVoxelLayout. */
+ custom?:boolean;
+ /** Variants: `plain` draws in low detail (default PLAIN_LAYOUT), `ghost` under see-through materials (default plain). */
+ plain?:VoxelLayout;ghost?:VoxelLayout;};
 
 const layouts=new Map<string,VoxelLayout>(),m=new T.Matrix4(),c=new T.Color();
 
@@ -74,7 +78,7 @@ Object.defineProperty(VoxelPart.prototype,'material',{configurable:true,enumerab
  get(this:VoxelPart){return partMaterial.get(this);},
  set(this:VoxelPart,material:T.Material|T.Material[]){partMaterial.set(this,material);if(this.instanceMatrix&&!copying.has(this))syncPart(this);}});
 const seeThrough=(material:T.Material|T.Material[]|undefined)=>!!material&&(Array.isArray(material)?material.some(m=>m.transparent):material.transparent);
-function syncPart(mesh:T.InstancedMesh){const layout=partLayout(mesh);if(layout)useLayout(mesh,mesh.userData.voxelLow||seeThrough(mesh.material)?PLAIN_LAYOUT:layout);}
+function syncPart(mesh:T.InstancedMesh){const layout=partLayout(mesh);if(!layout)return;useLayout(mesh,mesh.userData.voxelLow?layout.plain||PLAIN_LAYOUT:seeThrough(mesh.material)?layout.ghost||layout.plain||PLAIN_LAYOUT:layout);}
 function partLayout(mesh:T.Object3D):VoxelLayout|undefined{return (mesh.userData.voxel as VoxelLayout|undefined)||layouts.get(mesh.userData.voxelKey);}
 function tag(mesh:T.Object3D,layout:VoxelLayout){Object.defineProperty(mesh.userData,'voxel',{value:layout,enumerable:false,configurable:true,writable:true});mesh.userData.voxelKey=layout.key;}
 
@@ -92,6 +96,39 @@ function useLayout(mesh:T.InstancedMesh,layout:VoxelLayout){
  if(mesh.instanceMatrix===layout.matrix)return;
  mesh.instanceMatrix=layout.matrix;mesh.instanceColor=layout.color;mesh.count=layout.count;mesh.boundingBox=null;mesh.boundingSphere=null;
 }
+/**
+ * Rig-owned layouts (wound carving, body-wounds.ts). A carved part keeps its mesh, name, material and transform; only its
+ * instances change, so every consumer (recolouring, block tint, ragdoll copies, low detail) keeps working. Custom layouts
+ * are never registered or shared between rigs; releaseVoxelLayout frees their GPU buffers.
+ */
+export type UnitBox={box:readonly number[];color:readonly number[]};
+/** Boxes of a layout in the part's unit cube ([x,y,z,w,h,d]) with their RGB colour (a grey shade for sculpts). */
+export function layoutBoxes(layout:VoxelLayout):{box:number[];color:number[]}[]{
+ const out:{box:number[];color:number[]}[]=[],e=layout.matrix.array,col=layout.color.array;
+ for(let i=0;i<layout.count;i++){const o=i*16;out.push({box:[e[o+12],e[o+13],e[o+14],e[o],e[o+5],e[o+10]],color:[col[i*3],col[i*3+1],col[i*3+2]]});}
+ return out;
+}
+/** A rig-owned layout from unit-space boxes and RGB colours. */
+export function customLayout(key:string,boxes:readonly UnitBox[],variants:{plain?:VoxelLayout;ghost?:VoxelLayout}={}):VoxelLayout{
+ const count=boxes.length,matrix=new T.InstancedBufferAttribute(new Float32Array(Math.max(1,count)*16),16),color=new T.InstancedBufferAttribute(new Float32Array(Math.max(1,count)*3),3);
+ boxes.forEach(({box:[x,y,z,w,h,d],color:[r,g,b]},i)=>{m.makeScale(w,h,d).setPosition(x,y,z);m.toArray(matrix.array,i*16);c.setRGB(r,g,b).toArray(color.array,i*3);});
+ return {key,count,matrix,color,custom:true,...variants};
+}
+/** Draws nothing: a wound layer under see-through materials. Shared, never released. */
+export const EMPTY_LAYOUT:VoxelLayout={...pack('empty',[],[1,1,1]),count:0};
+const bases=new WeakMap<T.Object3D,VoxelLayout>();
+/** The layout a voxel part draws now (custom or shared), and the shared sculpt it was built with. */
+export const currentLayout=(mesh:T.Object3D)=>partLayout(mesh);
+export const baseLayout=(mesh:T.Object3D)=>bases.get(mesh)||partLayout(mesh);
+/** Installs a rig-owned layout on a voxel part, or restores the shared sculpt when `layout` is undefined. */
+export function retagVoxelPart(mesh:T.InstancedMesh,layout?:VoxelLayout){
+ const current=partLayout(mesh);if(!current)return;if(!bases.has(mesh)&&!current.custom)bases.set(mesh,current);
+ const next=layout||bases.get(mesh);if(next){tag(mesh,next);syncPart(mesh);}
+}
+/** Frees the GPU buffers of a custom layout the mesh currently draws (renderer listener on InstancedMesh 'dispose').
+ * Shared layouts are left alone; another mesh still drawing the same custom layout simply uploads it again. */
+export function releaseVoxelLayout(mesh:T.Object3D){if(mesh instanceof T.InstancedMesh&&partLayout(mesh)?.custom)mesh.dispatchEvent({type:'dispose'});}
+
 /** Low detail (SVG compatibility, 'performance' graphics): the part becomes its plain box again. */
 export function setVoxelDetail(mesh:T.Object3D,low:boolean){
  const layout=partLayout(mesh);if(!layout||!(mesh instanceof T.InstancedMesh))return;

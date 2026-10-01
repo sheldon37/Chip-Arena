@@ -17,6 +17,57 @@ PR, test result, release, or earlier log history. Git history identifies the com
 containing an entry; no self-referential commit hash is required.
 
 
+## 2026-10-01 — Claude — body damage visuals: wounds, severing/crushing, kneel/fall
+
+- Task: Astra's `docs/BODY-DAMAGE-HANDOFF.md` (draft PR #14). Branch `claude/body-damage-visuals` from the
+  `codex/body-damage-systems` head `2f148ad` (shared base `a2480ba`). Presentation only; the contract is consumed
+  unchanged (`resolveBodyWound`, `deathMotion`, `bodyDeathPhase` timing, `bodyPartVelocity`).
+- Living wounds (new `body-wounds.ts`; rig-owned layouts in `voxel-kit.ts`): each snapshot wound is anchored once on a
+  rest rig (a ray along the shot through the named part; thin plates such as the sternum carry the hole into the body
+  behind; contact points just off the surface use the nearest solid face) and carved into that part's voxels.
+  Puncture: narrow channel with a bloody rim. Cavity: ragged hollow with lifted petals. Cut: tilted groove. Thrust:
+  slot. Bruise: dented, discoloured layer. Scorch: char and embers. Flesh lines the walls (one extra instanced mesh per
+  wounded part; the flesh material emits a share of its colour so openings read red under match lighting). Wounds
+  stay on the part through animation and are copied into ragdolls, knockdowns and kill effects. Dedupe by `id@at`;
+  snapshot absence, heal, reset, rematch, rig rebuild and player removal restore the shared sculpt and release the
+  buffers. Pooled spray only for fresh wounds (none on late join or at the first-person camera). Reduced quality
+  carves coarser; low detail draws plain boxes; the SVG compatibility renderer skips wounds. Siren and sever/crush
+  wounds are skipped (the death effect owns them).
+- Impact ragdoll (`ragdoll.ts`, new `body-trauma.ts`, `death-effects.ts`, `gibber-vfx.ts`): `impact-ragdoll` reads
+  `death.wound`/`motion`. Severed `destroyedPart`: detaches at its joint with matching voxel cross-sections (flesh, bone,
+  marrow, set flush where each part's geometry ends). Crushed part: no body; bounded fragments (≤40, reduced 16), its
+  hat or weapon thrown loose, ragged stumps with splinters on the parent and on freed children. Shorter spray
+  profiles. `bodyPartVelocity` is unchanged; its bounded kick now reaches the whole detached subtree (inherited
+  velocity once). DEV Gibber keeps its path but gets the voxel caps instead of flat discs. Wound cells never shape
+  colliders; voxel burst ignores them.
+- Kneel/fall (new `body-collapse.ts`): forward kinematics over the ragdoll's own part frames from authority time. Head
+  jolt along the shot, legs buckle, knees on the floor at `kneesAt` (feet pivot on a visual ankle inside the shin part
+  and stay flat), forward fall about the knees with some hip flexion, limp arms. Cover and the floor limit the
+  scripted fall. Bodies get the pose and its velocities before every physics step and are released at the first step
+  at or after `releaseAt` (≤1/60 s later); tone holds the release bend .3 s. A severed head flies from the first frame.
+  `ragdoll` motion (airborne, launched) is unchanged.
+- Renderer: `BodyWounds.update` after posing, before `deathEffects.update` (dead rigs are carved before the corpse
+  copies them); the first-person view model gets the local player's wounds. Dev-only lab `tools/body-lab`
+  (`?scene=pistol|cavity|decap|cut|thrust|crush|limb|torso|kneel|airborne|finisher|low|gallery`).
+- No damage, attack timing, hitboxes, cooldowns, movement rules, knockback values or network fields changed.
+- Checks: new `tests/body-wounds.test.ts` 11/11 (no physics engine). New `tests/body-damage-visuals.test.ts` 4/4 only
+  against a local toy physics stand-in (not committed): unverified until run with real Rapier. Whole suite on base
+  vs branch here (no npm packages): no test that passes on base fails on the branch (53→64 passing; 143→158 with the
+  stand-in). Scratch typecheck of changed client files, new tests and the lab: no new errors. Lab renders reviewed for
+  every scene plus the wound gallery from several angles; scripted kneel frames are pixel-identical at 20/30/60/144 fps,
+  for a late first sighting and for repeated snapshots. Costs here: carve ~0.7 ms per wound, collapse setup ~1.1 ms per
+  death, 0.02 ms per physics step.
+- Not run: real Rapier (the new integration test; existing ragdoll tests in `weapon-entrances-gibber`,
+  `interiors-ragdolls-hud`, `reaction-fluidity`; post-release motion), Vite build, verify, Windows/GPU, multiplayer,
+  in-game first person and spectating. The npm registry is blocked in this sandbox.
+- For Astra: (1) impact deaths still get the legacy cosmetic spin (lever×dir×15 for melee plus random) on every part;
+  on the stand-in melee deaths flail. Please judge it with real Rapier (physics adapter, unchanged here). (2) Optional
+  contract: a blade swing direction would let cut grooves follow the swing (today: seeded tilt plus the shot's
+  vertical). (3) A `spine` crush removes the upper trunk root only; pelvis stays, head and arms fly free.
+  (4) Explicit cosmetic effects keep their behaviour (no sever/crush/kneel); living wounds still ride along.
+- Status: implemented on branch and pushed; not merged or published. Next: Astra runs the physics tests and reviews
+  post-release motion with real Rapier, then owner-authorized integration into the shared branch.
+
 ## 2026-10-01 — Astra — body damage systems and Claude visual handoff
 
 - Owner requested impact-driven bullet holes/cavities, blade cuts/stabs, lethal

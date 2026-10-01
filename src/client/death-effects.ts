@@ -18,7 +18,7 @@ function voxelBurst(scene:T.Scene,rig:T.Group,p:PlayerView,death:DeathPresentati
  let seed=death.seed;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
  const limit=Math.min(budget,quality<.5?ANIMATION.reducedDeathVoxels:ANIMATION.deathVoxels),candidates:{pos:T.Vector3;color:T.Color;size:number}[]=[];
  rig.updateMatrixWorld(true);
- rig.traverse(o=>{if(!(o instanceof T.Mesh)||o.geometry.type!=='BoxGeometry'||o.parent?.name==='enchantment')return;
+ rig.traverse(o=>{if(!(o instanceof T.Mesh)||o.geometry.type!=='BoxGeometry'||o.parent?.name==='enchantment'||o.userData.bodyWound)return;
   const scale=new T.Vector3();o.getWorldScale(scale);const counts=[scale.x,scale.y,scale.z].map(n=>Math.max(1,Math.ceil(n/.19)));
   for(let x=0;x<counts[0];x++)for(let y=0;y<counts[1];y++)for(let z=0;z<counts[2];z++){
    const pos=new T.Vector3((x+.5)/counts[0]-.5,(y+.5)/counts[1]-.5,(z+.5)/counts[2]-.5).applyMatrix4(o.matrixWorld);
@@ -40,8 +40,10 @@ function voxelBurst(scene:T.Scene,rig:T.Group,p:PlayerView,death:DeathPresentati
 }
 /** Add future kill animations here. Only the server chooses the effect identifier.
  * Unknown identifiers fall back to voxel breakup. These pieces never deal damage. */
-/** Functional fallback using the existing rig. Claude supplies wound meshes/crush/kneel choreography. */
-const bodyRagdoll:KillEffectFactory=(...args)=>ragdollVariant('ragdoll',{gib:args[3].wound?.kind==='sever'})(...args);
+/** Public default (docs/BODY-DAMAGE-HANDOFF.md): the ragdoll consumes the authority's fatal wound and death motion. Living
+ * wounds already ride on the rig (body-wounds.ts); a severed part detaches with voxel caps, a crushed part fragments and the
+ * gated fast-headshot death kneels and falls before the ragdoll takes over. */
+const bodyRagdoll:KillEffectFactory=ragdollVariant('ragdoll',{impact:true});
 export const KILL_EFFECTS:Record<string,KillEffectFactory>={...SIREN_KILL_EFFECTS,'impact-ragdoll':bodyRagdoll,ragdoll,'dev-gibber':ragdollVariant('ragdoll',{gib:true}),...Object.fromEntries(Object.keys(RAGDOLL_STYLES).map(id=>[id,ragdollVariant(id as RagdollStyle)])),'dev-raging-demon':ragingDemon,'voxel-burst':voxelBurst,'dev-clown-love':clownLove,'dev-bass-van':bassVan,...Object.fromEntries(['confetti','ascension','shrink','launch','ghost','dev-clown'].map(kind=>[kind,cinematic(kind)]))};
 export class DeathEffects {
  private active=new Map<string,{effect:Effect;at:number}>();private seen=new Set<string>();private epoch='';

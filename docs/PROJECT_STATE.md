@@ -60,6 +60,8 @@ Windows validation and desktop distribution cutover remain separate work.
 
 - Body damage systems: draft PR #14, `codex/body-damage-systems`, shared base
   `a2480ba`, initial handoff `fdaf42c`. Authority wound outcomes, public default
-  impact-ragdoll and collapse timing are implemented on the task branch. Claude
-  owns the remaining wound/crush geometry and kneel/fall animation. Read
-  `docs/BODY-DAMAGE-HANDOFF.md` and the latest DEV_LOG checks. Not merged/released.
+  impact-ragdoll and collapse timing are implemented on the task branch.
+  Claude's wounds, sever/crush and kneel/fall visuals are on
+  `claude/body-damage-visuals` (from `2f148ad`); next: real-Rapier tests and
+  post-release review, then integration. Read `docs/BODY-DAMAGE-HANDOFF.md` and
+  the latest DEV_LOG checks. Not merged/released.
