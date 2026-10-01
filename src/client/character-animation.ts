@@ -5,6 +5,7 @@ import {committed,meleeRecovery,rolling} from '../shared/souls-combat.js';
 import {locomotion,groundPass,finishPose,GAIT} from './motion-quality.js';
 import {meleeMotion,meleeReady} from './melee-motion.js';
 import {comboReadyMotion} from './primary-melee-motion.js';
+import {observeFighterReady} from './fighter-motion.js';
 import {sprintLean} from './melee-guard.js';
 import {animateEmperor,animateJuggle} from './emperor-animation.js';
 import {animateCosmetics} from './auditor-halo.js';
@@ -46,6 +47,7 @@ export function spellPose(p:PlayerView,time:number){
 }
 /** Distance-driven locomotion under action layers. Authoritative attack timestamps keep the hit phase aligned. */
 function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=p.pitch){
+ observeFighterReady(r,p,time);
  clearLegsAuthored(r);animateCosmetics(r,time);
  // Commitment, hitstun and dodge rolls hold the stride: the root is moved by the action, not by running steps.
  const w=WEAPONS[p.spec],planted=committed(p,time)||(p.hitStunUntil||0)>time||rolling(p,time);if(planted)r.motion*=Math.exp(-clamp(dt,0,.05)*22);locomotion(r,{...p,pitch,vel:planted?{x:0,y:p.vel.y,z:0}:p.vel},time,dt,planted);sprintLean(r,p);const pose=attackPose(p,time);

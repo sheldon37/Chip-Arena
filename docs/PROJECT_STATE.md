@@ -27,6 +27,9 @@ Migration imported to private GitHub; not merged or released (2026-09-29).
   `claude/visual-revision`, PR pending review; presentation-only, not released.
 - Test builds update online from the public test channel
   sheldon37/chip-arena-test-updates (tooling PR #5); live feed untouched. See DEVELOPMENT.md.
+- DEV combo-ready parity and Demon Step's 0.20 s i-frame window are implemented
+  on `codex/dev-melee-combo`, based on Claude's visual revision `32422fb`;
+  pending integration/playtest, not published. Details and checks: DEV_LOG.md.
 
 Next: review the migration PR against `main`; shared policy and CI remain on
 `migration/shared-development` until the owner merges. Resolve recorded baseline

@@ -153,6 +153,19 @@ damage, cooldowns, movement rules, networking, saves and access control are unch
 - Tests (Linux, Node 22.22.2): full suite 523 tests, only the 13 pre-existing failures;
   typecheck passes. Not tested: native Windows, real GPU performance, online multiplayer.
 
+## 2026-09-30 — DEV melee combo-ready parity and Demon Step invulnerability
+
+- Source work: `codex/dev-melee-combo`, based on `claude/visual-revision` at
+  `32422fbf0c96b13cf1007f892e5668748e84a1e7`; see DEV_LOG.md for the integration handoff.
+- Emperor Style and Ansatsuken settle directly into the next combo-ready stance,
+  share normal melee's 2.4 s hold, and release it on dodge/parry/hit/special or timeout.
+- Ansatsuken Demon Step gains 0.20 s of invulnerability in the middle of its 0.30 s
+  dash. Startup and recovery remain vulnerable; existing DoTs and forced arena damage
+  remain effective. Damage timing and protection use the shared match authority.
+- Source tested on the task branch; **not merged or published to either update feed**.
+  Full unit results: 545/557, the same 12 failures as Claude's base; no new failures.
+  Native Windows visual/gameplay testing remains unperformed.
+
 ## Continuing with Claude or Astra
 
 Read CLAUDE.md (which imports AGENTS.md), PROJECT_STATE, recent DEV_LOG entries and

@@ -1,6 +1,5 @@
 import * as T from 'three';
 import {punchString,fighterReady,beginFighterLegs,applyFighterLegs,editFoot,holdGaze} from './fighter-motion.js';
-import {EMPEROR} from '../shared/emperor-content.js';
 import type {CharacterRig} from './character-rig.js';
 import type {PlayerView} from '../shared/simulation.js';
 const sat=(x:number)=>T.MathUtils.clamp(x,0,1),ease=(x:number)=>{x=sat(x);return x*x*x*(x*(x*6-15)+10);};
@@ -46,8 +45,8 @@ function emperorLayers(r:CharacterRig,p:PlayerView,time:number){
  r.weapon.rotation.set(0,0,0);r.offWeapon.rotation.set(0,0,0);r.weapon.scale.setScalar(1);r.offWeapon.scale.setScalar(1);r.weapon.visible=r.offWeapon.visible=true;
  if(p.blockTime>0){r.leftArm.rotation.set(-1.3,0,.08);r.rightArm.rotation.set(-1.2,0,-.08);r.leftElbow.rotation.x=r.rightElbow.rotation.x=-1.55;return;}
  const a=p.emperor;if((!a?.action||time>=a.until)&&p.grounded&&!p.guarding){const carry=ease((r.motion-.10)/.65);upper.forEach((n,i)=>n.quaternion.slerp(upperBase[i],carry));r.body.position.lerp(body,carry);}
- // Combo-ready: after a jab string the next jab stays chambered in a bouncier stance (EMPEROR.comboMemory).
- fighterReady(r,p,time,a,'jab',EMPEROR.comboMemory,'emperor',ease((r.motion-.10)/.65));if(!a?.action||time>=a.until){holdGaze(r,.8);return;}const age=Math.max(0,time-a.at),duration=a.until-a.at;
+ // Recover straight into the next jab's chamber; share standard melee's visual hold/timeout.
+ fighterReady(r,p,time,a,'jab','emperor',ease((r.motion-.10)/.65));if(!a?.action||time>=a.until){holdGaze(r,.8);return;}const age=Math.max(0,time-a.at),duration=a.until-a.at;
  if(a.action==='wave'){
   // Wavedash: a low crouch-dash that skims the floor (the root glides; the lead foot reaches, the rear trails on its toes).
   const u=sat(age/.18),dip=Math.sin(u*Math.PI);r.body.position.y=-.08-.24*dip;r.body.position.z=.12*dip;r.body.rotation.x=.28*dip;r.rightArm.rotation.x=-.4;r.leftArm.rotation.x=-1;

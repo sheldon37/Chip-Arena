@@ -3,6 +3,7 @@ import type {CharacterRig} from './character-rig.js';
 import {RIG_LENGTHS} from './character-rig.js';
 import {smoothMotion as ease,gaitFoot,layerLeg} from './motion-quality.js';
 import type {PlayerView} from '../shared/simulation.js';
+import {GUARD_HOLD,GUARD_FADE} from './melee-guard.js';
 
 const down=new T.Vector3(0,-1,0);
 const point=(r:CharacterRig,node:T.Object3D)=>r.group.worldToLocal(node.getWorldPosition(new T.Vector3()));
@@ -141,28 +142,44 @@ export function holdGaze(r:CharacterRig,weight:number){
  r.head.quaternion.copy(_gp.invert().multiply(_gy).multiply(_gh));
 }
 
-/** Fighting-game combo-ready stance (emperor, ansatsuken): after a string ends the fighter drops into a bouncier stance with
- * the next string's first fist chambered, held for the style's combo memory (the authority's comboMemory window), then eases
- * back into the plain guard. Only a `chains` string (the jab / punch string) is held; any action hands over from the hold. A roll, hit reaction, knockdown, juggle or block after the string releases it over .2 s from its
- * timestamp; a new string starts from it (the chamber hands over to the first coil over the first .1 s, from the hold this
- * rig showed when the string began). Pure in the action timestamps apart from that per-rig record. Returns the weight shown.
- * The authority clears `action` when a string ends and keeps its at/until, so the rig also remembers which action the window
- * it saw was (the live game then shows the hold exactly as a view that keeps the action does). */
-type ReadyRec={time:number;k:number;at:number;entryAt:number;entry:number;seenAt:number;seenUntil:number;seen:string};const readyRecs=new WeakMap<object,ReadyRec>();
-export function fighterReady(r:CharacterRig,p:PlayerView,time:number,state:{at:number;until:number;action?:string}|undefined,chains:string,memory:number,style:'emperor'|'karate',carry:number){
- let s=readyRecs.get(r);if(!s){s={time,k:0,at:NaN,entryAt:NaN,entry:0,seenAt:NaN,seenUntil:NaN,seen:''};readyRecs.set(r,s);}
- if(state?.action){s.seenAt=state.at;s.seenUntil=state.until;s.seen=state.action;}
+/** Remember exits even on samples where a roll/reaction replaces the fighter layer. Some exit fields disappear when the
+ * action ends, so a timestamp alone must not let the previous combo-ready pose come back afterward. */
+type ReadyRec={id:string;spec:string;sampleTime:number;time:number;k:number;at:number;entryAt:number;entry:number;seenAt:number;seenUntil:number;seen:string;cut:number};const readyRecs=new WeakMap<object,ReadyRec>();
+export function observeFighterReady(r:CharacterRig,p:PlayerView,time:number){
+ const s=readyRecs.get(r);if(!s)return;
+ const state=p.spec==='emperor'?p.emperor:p.spec==='ansatsuken'?p.arcade:undefined;
+ if(s.id!==p.id||s.spec!==p.spec||time<s.sampleTime||p.hp<=0||!state||state.until<=state.at){readyRecs.delete(r);return;}
+ s.sampleTime=time;
+ for(const t of [p.roll?.at,p.hitReaction?.at,p.knockdown?.at,p.juggle?.at,p.lastBlock,p.lastSecondary,p.arcade?.parryAt,p.arcade?.demonStepAt]){
+  if(t!==undefined&&t>=s.seenAt&&t<=time)s.cut=Math.min(s.cut,t);
+ }
+ if(p.guarding||p.blockTime>0)s.cut=Math.min(s.cut,time);
+}
+/** A primary string recovers directly into its next chamber, using the same visual hold/timeout as standard melee.
+ * Damage-combo memory stays authoritative and unchanged. A new string hands the shown chamber to its first coil; a dodge,
+ * parry, special or reaction releases it. The authority clears `action` at `until`, so remember the observed string kind. */
+export function fighterReady(r:CharacterRig,p:PlayerView,time:number,state:{at:number;until:number;action?:string}|undefined,chains:string,style:'emperor'|'karate',carry:number){
+ observeFighterReady(r,p,time);
+ if(p.hp<=0)return 0;
+ let s=readyRecs.get(r);if(!s){s={id:p.id,spec:p.spec,sampleTime:time,time,k:0,at:NaN,entryAt:NaN,entry:0,seenAt:NaN,seenUntil:NaN,seen:'',cut:Infinity};readyRecs.set(r,s);}
+ if(state?.action){
+  if(s.seenAt!==state.at||s.seenUntil!==state.until||s.seen!==state.action)s.cut=Infinity;
+  s.seenAt=state.at;s.seenUntil=state.until;s.seen=state.action;
+ }
+ observeFighterReady(r,p,time);
  const kind=state?.action??(state&&state.at===s.seenAt&&state.until===s.seenUntil?s.seen:undefined),action=kind?{at:state!.at,until:state!.until,action:kind}:undefined;
  let k=0;
- if(action&&time>=action.at&&time<action.until){
+ if(action&&action.until>action.at&&time>=action.at&&time<action.until){
   // Entering a string: the hold this rig showed just before it began, handed over to the first strike's coil.
   if(s.entryAt!==action.at){s.entryAt=action.at;s.entry=s.at!==action.at&&time>=s.time&&time-s.time<.2?s.k:0;}
   k=s.entry*(1-ease((time-action.at)/.1));
- }else if(action&&action.action===chains&&time>=action.until&&!(p.blockTime>0||p.guarding)){
-  const since=time-action.until;let cut=Infinity;
-  for(const t of [p.roll?.at,p.hitReaction?.at,p.knockdown?.at,p.juggle?.at,p.lastBlock])if(t!==undefined&&t>=action.until&&t<=time)cut=Math.min(cut,t);
-  k=ease(since/.14)*(1-ease((since-memory)/.35))*(cut<Infinity?1-ease((time-cut)/.2):1);
+  // The last recovery settles straight into the hold, without a detour back through the idle guard.
+  const recovery=Math.min(.14/(p.attackRate||1),(action.until-action.at)*.25);
+  if(action.action===chains)k=Math.max(k,ease((time-action.until+recovery)/recovery));
+ }else if(action&&action.until>action.at&&action.action===chains&&time>=action.until){
+  k=1-ease((time-action.until-GUARD_HOLD)/GUARD_FADE);
  }
+ k*=s.cut<Infinity?1-ease((time-s.cut)/.22):1;
  k*=1-carry;s.time=time;s.k=k;s.at=action?.at??NaN;
  if(k<=1e-4)return 0;
  // A quicker, deeper bounce on the balls of the feet, weight settled back over the rear leg.
