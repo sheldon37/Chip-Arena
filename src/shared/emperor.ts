@@ -3,10 +3,10 @@ import type {Player,Simulation} from './simulation.js';
 import {EMPEROR} from './emperor-content.js';
 import {canUse} from './access.js';
 import {v,Vec,add,sub,mul,len,norm,dot,forward,clamp} from './config.js';
-export interface EmperorState {action?:'jab'|'electric'|'wave';at:number;until:number;index:number;total:number;hits:number;lastHit:number;comboTarget?:string;comboDamage:number;electricAt:number;}
+export interface EmperorState {singleHit?:boolean;action?:'jab'|'electric'|'wave';at:number;until:number;index:number;total:number;hits:number;lastHit:number;comboTarget?:string;comboDamage:number;electricAt:number;}
 export interface Juggle {pickupUsed?:boolean;electricHits?:number;at:number;until:number;hits:number;lastHit:number;source:string;spinUntil:number;bounced:boolean;wallUsed:boolean;}
 export interface EmperorTrail {id:string;owner:string;pos:Vec;at:number;until:number;}
-type Action={at:number;gap:number;next:number;total:number;kind:'jab'|'electric';id:string};
+type Action={at:number;gap:number;next:number;total:number;startIndex:number;kind:'jab'|'electric';id:string};
 export class EmperorSystem {
  actions=new Map<string,Action>();echoes:{source:string;pos:Vec;at:number;id:string}[]=[];trails:(EmperorTrail&{hit:Set<string>})[]=[];
  constructor(private sim:Simulation){}
@@ -16,12 +16,14 @@ export class EmperorSystem {
  clear(){this.actions.clear();this.echoes=[];this.trails=[];for(const p of this.sim.players.values()){p.emperor=undefined;p.juggle=undefined;p.waveTime=0;p.electricStepTime=0;}}
  ready(p:Player){return this.active(p)&&p.hp>0&&p.connected&&!this.sim.leet.frozen(p)&&!this.sim.arcade.stunned(p)&&p.blockTime<=0;}
  waveSpeed(p:Player){return this.ready(p)&&p.cooldown<=0&&!this.actions.has(p.id)?EMPEROR.waveSpeed:undefined;}
- wave(p:Player){const s=this.sim,a=this.state(p);Object.assign(a,{action:'wave',at:s.time,until:s.time+EMPEROR.waveSeconds});p.lastSecondary=s.time;p.secondaryCd=0;s.emit('emperor-wave',p.body.translation(),{source:p.id,spec:p.spec,color:0xff2846});if(p.chips['mishima-trail']&&this.trails.length<24)this.trails.push({id:s.uid('storm-step'),owner:p.id,pos:{...p.body.translation()},at:s.time,until:s.time+.7,hit:new Set()});}
+ wave(p:Player){const s=this.sim,a=this.state(p);Object.assign(a,{action:'wave',singleHit:false,at:s.time,until:s.time+EMPEROR.waveSeconds});p.lastSecondary=s.time;p.secondaryCd=0;s.emit('emperor-wave',p.body.translation(),{source:p.id,spec:p.spec,color:0xff2846});if(p.chips['mishima-trail']&&this.trails.length<24)this.trails.push({id:s.uid('storm-step'),owner:p.id,pos:{...p.body.translation()},at:s.time,until:s.time+.7,hit:new Set()});}
  start(p:Player,kind:'jab'|'electric'){
   if(!this.ready(p)||p.cooldown>0||this.actions.has(p.id))return false;const s=this.sim,a=this.state(p),rate=p.stats.attackRate*(kind==='electric'&&p.chips['mishima-godfist']?1.4:1),total=kind==='electric'?1:p.chips['mishima-pressure']?3:2,gap=.17/rate;
-  if(kind==='jab'&&!s.spendResource(p,6))return false;
-  const first=s.time+(kind==='electric'?EMPEROR.electricHit:.075)/rate,until=kind==='electric'?s.time+EMPEROR.electricRecovery/rate:first+(total-1)*gap+.14/rate;
-  this.actions.set(p.id,{at:first,gap,next:0,total,kind,id:s.uid('emperor')});Object.assign(a,{action:kind,at:s.time,until,index:0,total});p.cooldown=until-s.time;p.lastAttack=s.time;p.attackIndex=0;p.waveTime=0;
+  // One activation commits one strike; retain the next step for the ready stance's 2.4 s hold.
+  const index=kind==='jab'&&a.singleHit&&a.until>a.at&&s.time<=a.until+2.4?(a.index+1)%total:0;
+  if(kind==='jab'&&!s.spendResource(p,6/total))return false;
+  const first=s.time+(kind==='electric'?EMPEROR.electricHit:.075)/rate,until=kind==='electric'?s.time+EMPEROR.electricRecovery/rate:index===total-1?first+.14/rate:s.time+gap;
+  this.actions.set(p.id,{at:first,gap,next:0,startIndex:index,total:kind==='jab'?1:total,kind,id:s.uid('emperor')});Object.assign(a,{action:kind,at:s.time,until,index,total,singleHit:kind==='jab'});p.cooldown=until-s.time;p.lastAttack=s.time;p.attackIndex=index;p.waveTime=0;
   if(kind==='electric'){p.electricStepTime=p.grounded?EMPEROR.electricStepSeconds:0;a.electricAt=s.time;s.emit('emperor-electric',p.body.translation(),{source:p.id,spec:p.spec,color:0xff2846});}return true;
  }
  confirm(p:Player,t:Player,actual:number,electric:boolean,echo=false){const s=this.sim;if(!s.canHit(p.id,t.id)||downProtected(t.knockdown,s.time))return;const a=this.state(p),pickup=pickupOpen(t.knockdown,s.time),k=t.knockdown,air=!!t.juggle||!t.grounded||pickup;
@@ -48,7 +50,7 @@ export class EmperorSystem {
   if(p.hp>0)for(const m of [...s.chaos.minions.values()]){const d=sub(m.body.translation(),pos);if(m.owner!==p.id&&len(d)<range+.5&&dot(norm(d),dir)>.2&&s.lineOfSight(pos,m.body.translation(),p.id,m.id))s.chaos.hitMinion(m,(electric?EMPEROR.electricDamage:10)*p.stats.damage,p.id,electric?550:150,dir);}
   s.emit('emperor-strike',pos,{source:p.id,spec:p.spec,message:kind,amount:index,color:0xff2846});
  }
- stepPlayer(p:Player){const s=this.sim;if(!this.ready(p)){this.cancel(p);return;}const a=this.state(p),action=this.actions.get(p.id);if(action){while(action.next<action.total&&s.time>=action.at+action.next*action.gap){this.strike(p,action.kind,action.next,action.total,action.id);if(this.actions.get(p.id)!==action||!this.ready(p))return;action.next++;}if(s.time>=a.until)this.actions.delete(p.id);}if(a.action&&s.time>=a.until)a.action=undefined;}
+ stepPlayer(p:Player){const s=this.sim;if(!this.ready(p)){this.cancel(p);return;}const a=this.state(p),action=this.actions.get(p.id);if(action){while(action.next<action.total&&s.time>=action.at+action.next*action.gap){this.strike(p,action.kind,action.startIndex+action.next,a.total,action.id);if(this.actions.get(p.id)!==action||!this.ready(p))return;action.next++;}if(s.time>=a.until)this.actions.delete(p.id);}if(a.action&&s.time>=a.until)a.action=undefined;}
  stepJuggle(p:Player){const s=this.sim,j=p.juggle;if(!j)return;if(p.hp<=0||!p.connected){p.juggle=undefined;return;}if(s.time>=j.until)j.until=s.time+.2;const owner=s.players.get(j.source),pos=p.body.translation();
   if(p.grounded&&s.time-j.lastHit>.15&&p.body.linvel().y<.5){if(owner?.hp&&owner.connected&&owner.chips['mishima-bound']&&!j.bounced&&!j.pickupUsed){j.bounced=true;j.pickupUsed=true;j.lastHit=s.time;j.until=s.time+.85;p.ext.y=6.5-p.body.linvel().y;p.grounded=false;s.damage(p,8*owner.stats.damage,owner.id,'mishima-bound');s.emit('emperor-bound',pos,{source:owner.id,target:p.id,color:0xff304f,radius:1.8});}else{p.juggle=undefined;p.knockdown={at:j.at,until:s.time+1,pickupUsed:j.pickupUsed,electricHits:j.electricHits,hits:j.hits,source:j.source,bounced:j.bounced,wallUsed:j.wallUsed};landRecovery(p.knockdown,s.time);}}
   if(p.juggle&&owner?.hp&&owner.chips['mishima-wall']&&!j.wallUsed&&s.time-j.lastHit>.06){const dir=forward(owner.input.yaw),hit=s.ray(pos,dir,.75,p.id),prop=hit?s.props.get(s.colliderOwners.get(hit.collider.handle)||''):undefined;if(prop&&prop.size.y>1){j.wallUsed=true;j.lastHit=s.time;j.until=s.time+.85;p.ext=add(mul(dir,-2.5),v(0,6-p.body.linvel().y,0));s.damage(p,12*owner.stats.damage,owner.id,'mishima-wall');s.emit('emperor-bound',pos,{source:owner.id,target:p.id,color:0xff304f,radius:1.8});}}

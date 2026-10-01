@@ -62,7 +62,7 @@ function emperorLayers(r:CharacterRig,p:PlayerView,time:number){
   editFoot(false).heel+=.3*power*(1-travel);
 
  }else{
-  const rate=p.attackRate||1;punchString(r,age*rate,.075,.17,a.total,true,'emperor');
+  const rate=p.attackRate||1;punchString(r,age*rate,.075,.17,a.singleHit?1:a.total,a.singleHit?a.index%2===0:true,'emperor',a.singleHit?Math.max(.02,duration*rate-.075-.016):Infinity);
  }
  holdGaze(r,a.action==='wave'?.5:.8);
 }
