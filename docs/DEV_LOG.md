@@ -17,6 +17,38 @@ PR, test result, release, or earlier log history. Git history identifies the com
 containing an entry; no self-referential commit hash is required.
 
 
+## 2026-10-01 — Astra — preserve teams in Siren matches (isolated branch)
+
+- Owner reported that a red squad versus blue Siren lost its team behavior and
+  requested a separate branch while Claude may be working on Chips. Branch
+  `codex/siren-team-preservation` starts at shared `256395d`; implementation
+  `9844501`. No shared-branch merge or test-channel publication for this task.
+- Root cause: `Simulation.syncSirenArena()` explicitly changed the selected mode
+  to FFA at match start/intro. Team IDs survived, but allied protection, bot target
+  filtering, team colors and shared wins stopped applying. Ward Zero now overrides
+  only the map; the selected mode, teams and friendly-fire option remain intact.
+- Six new regressions failed on the original code and pass after the fix. They
+  cover saved/newly selected/player/bot Siren, red-squad wins, colors, ally damage,
+  bot/Marked targeting, bot rebuilds, rounds, sets, rematches and lobby return.
+  Updated the old intro assertion that required FFA. Expanded the three-client
+  loopback test to submit team choices and verify them after selection and reset.
+- Targeted tests: 39/39 pass. Three real WebSocket clients agreed on 87 snapshots;
+  team assignments and allied damage protection passed alongside the existing
+  Siren checks. Types pass; full units 619/631 with exactly the same 12 baseline
+  failure names as PR #11, no new failures. Client/relay compilation passes;
+  the same four server TypeScript errors and generic WebSocket rematch timeout
+  remain. HTTPS passed five sets, four drafts, 3,679 matching snapshots, retry,
+  rematch and leave (187.5 s). Full `npm run verify` exits 1 for those known
+  baseline failures; broad verification is not green.
+- No Chip implementation, visuals, attack timing, hitboxes, damage values,
+  cooldowns, movement rules or network schemas changed. Team gameplay now follows
+  the lobby choice instead of being silently disabled by Siren. Windows/GPU and
+  physical two-PC playtesting remain unrun.
+- Status: implemented on the isolated branch, not merged or released. Published
+  content remains `0.2.c452eefcbbac`. Next: coordinate with Claude's Chip work,
+  integrate the narrow simulation hunks, then publish under the standing test
+  channel instruction. Do not replace the shared branch with this branch wholesale.
+
 ## 2026-10-01 — Astra — cutscene/bot test publication and standing channel instruction
 
 - Owner asked to publish the merged changes and continue using the Update channel

@@ -14,6 +14,11 @@ Follow-up PR #11 (`codex/siren-cutscene-dev-bots`) incorporates Claude's cutscen
 bot ability decisions, and raises Siren to 15,000 base HP. These changes are included
 in the published test content above.
 
+Pending isolated fix: `codex/siren-team-preservation` removes Siren's forced FFA
+override so the selected match mode and team assignments remain active in Ward
+Zero. This follow-up is not merged or included in the published version above;
+the owner requested a separate branch while Claude may be working on Chips.
+
 ## Integration with Claude
 
 Claude's visual branch and updated `SIREN.md` handoff are integrated into PR #8.
@@ -70,8 +75,9 @@ Claude's layout (no generic vertical buildings).
   The authority checks the one-connected-Siren limit in bot loadouts, saved
   loadouts, class changes, specialization commands and sandbox spec changes;
   disconnect frees the slot. The selection button displays TAKEN.
-- Siren forces FFA and Ward Zero at match start/intro. Lobby return restores the
-  previous map/mode. Normal matches and random rotation exclude Ward Zero.
+- Siren forces Ward Zero at match start/intro, preserving the selected FFA/Teams
+  mode, team assignments and friendly-fire option. Lobby return restores the
+  previous map. Normal matches and random rotation exclude Ward Zero.
 - Intro is always last and overrides cosmetic selection. Shared contract values:
   7.2678 s duration, 6.4261 s name card (the brief's rounded 6.43 s).
 

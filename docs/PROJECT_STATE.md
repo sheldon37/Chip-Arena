@@ -51,3 +51,7 @@ Windows validation and desktop distribution cutover remain separate work.
   at channel `79e939f`; existing test installations press Update. Windows
   visual/audio acceptance remains. Publication verification is recorded in DEV_LOG.
   See `docs/SIREN.md`, `docs/SIREN-SYSTEMS.md` and DEV_LOG.
+- Pending isolated fix: `codex/siren-team-preservation`, based on `256395d`,
+  preserves team mode/assignments when Siren switches the arena to Ward Zero.
+  Owner requested separation from Claude's possible Chip work; not merged or
+  published. Coordinate that integration before the next test-channel update.
