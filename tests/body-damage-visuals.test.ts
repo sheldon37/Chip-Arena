@@ -1,9 +1,10 @@
 /** The public impact ragdoll consuming the body-damage contract (docs/BODY-DAMAGE-HANDOFF.md), with the real Rapier
  * world: severed parts with voxel caps, crushed parts as bounded fragments (loose hat/weapon), the kneel/fall handoff,
  * living wounds carried into the corpse, budgets, late snapshots and disposal. Cosmetic effects keep their behaviour. */
-import {test} from 'node:test';
+import {test,type TestContext} from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from 'three';
+import RAPIER from '@dimforge/rapier3d-compat';
 import {v,type Vec,type SpecId} from '../src/shared/config.js';
 import {initPhysics,type DeathPresentation,type PlayerView,type Snapshot} from '../src/shared/simulation.js';
 import {resolveBodyWound,deathMotion,projectileBodyImpact,meleeBodyImpact,type BodyImpact,type BodyWound} from '../src/shared/body-damage.js';
@@ -30,6 +31,14 @@ function scenario(c:Case){
  return {fatal,motion,death,p,state,make};
 }
 const run=(s:ReturnType<typeof scenario>,budget:number,quality=1)=>{const scene=new T.Scene(),{rig,layer}=s.make(),fx=KILL_EFFECTS[s.death.effect](scene,rig.group,s.p,s.death,quality,budget,s.state);return {scene,fx,rig,layer};};
+/** Observe real bodies without adding a debug API to the production effect. */
+function physics(t:TestContext,s:ReturnType<typeof scenario>){
+ const bodies:RAPIER.RigidBody[]=[];let world!:RAPIER.World;const create=RAPIER.World.prototype.createRigidBody;
+ const spy=t.mock.method(RAPIER.World.prototype,'createRigidBody',function(this:RAPIER.World,desc:RAPIER.RigidBodyDesc){world=this;const body=create.call(this,desc);bodies.push(body);return body;});
+ try{const result=run(s,220),parts=result.scene.getObjectByName('ragdoll')!.children;
+  return {...result,world,bodies:new Map(parts.map((part,i)=>[part.name,bodies[i]]))};
+ }finally{spy.mock.restore();}
+}
 const finite=(scene:T.Scene)=>{scene.updateMatrixWorld(true);let ok=true;scene.traverse(o=>{if(!o.matrixWorld.elements.every(Number.isFinite))ok=false;});return ok;};
 const names=(scene:T.Scene,name:string)=>{const out:T.Object3D[]=[];scene.traverse(o=>{if(o.name===name)out.push(o);});return out;};
 const earlier=[resolveBodyWound({id:'w0',at:.5,position:pos,yaw:0,point:v(-.04,1.01,.3),direction:v(0,0,-1),impact:rifle(150),damage:58,lethal:false})];
@@ -82,4 +91,55 @@ test('living wounds ride into the corpse; cosmetic finishers keep their own deat
  assert.ok(cells>=1,'flesh cells of the earlier cavity and the fatal puncture');assert.ok(currentLayout(spine.getObjectByName('ribcage')!)?.custom,'the corpse keeps the carved chest');fx.dispose();layer.dispose();
  const finisher=scenario({...CASES.decap,earlier,effect:'ragdoll-ember'}),f=run(finisher,220);assert.equal(f.scene.getObjectByName('ragdoll')!.children.length,11,'a cosmetic ragdoll severs nothing');assert.equal(names(f.scene,'gibber-wound').length,0);
  let carried=0;f.scene.getObjectByName('ragdoll')!.traverse(o=>{if(o.name==='wound-cells')carried++;});assert.ok(carried>=1,'earlier wounds still ride along');f.fx.dispose();f.layer.dispose();
+});
+
+test('impact physics does not add the legacy spin or apply force twice; detached subtrees inherit one kick',t=>{
+ for(const key of ['torso','arm','head','airborne'])for(const force of [0,350,10000]){
+  const s=scenario(CASES[key]);s.death.force=force;s.death.seed=force+1;
+  const x=physics(t,s);
+  try{
+   for(const [name,b] of x.bodies){assert.ok(new T.Vector3().copy(b.angvel()).length()<1e-8,`${key}/${name}: no cosmetic torque`);
+    // The greatsword severs the left shoulder and its elbow; every other body inherits only the authority velocity.
+    if(key!=='arm'||!['left-shoulder','left-elbow'].includes(name))assert.ok(new T.Vector3().copy(b.linvel()).distanceTo(s.motion.velocity)<1e-6,`${key}/${name}: resulting velocity once`);}
+   if(key==='arm'){const arm=x.bodies.get('left-shoulder')!,elbow=x.bodies.get('left-elbow')!;
+    assert.deepEqual(arm.linvel(),elbow.linvel(),'one detached subtree, equal velocity');assert.ok(arm.linvel().x<-1,'bounded directional kick');assert.ok(new T.Vector3().copy(arm.linvel()).length()<24);}
+  }finally{x.fx.dispose();x.layer.dispose();}
+ }
+ const s=scenario({...CASES.head,effect:'ragdoll-ember'}),x=physics(t,s);
+ try{assert.ok([...x.bodies.values()].some(b=>new T.Vector3().copy(b.angvel()).length()>5),'explicit cosmetic retains its spin');}
+ finally{x.fx.dispose();x.layer.dispose();}
+});
+
+test('real Rapier release matches every scripted part at 0.833333 s, including arms and late snapshots',()=>{
+ const release=50/60;
+ for(const key of ['cavity','decap'])for(const fps of [20,30,60,144]){
+  const s=scenario(CASES[key]),x=run(s,220),late=run(s,220),root=x.scene.getObjectByName('ragdoll')!;
+  try{
+   for(let n=0;n/fps<release-1e-5;n++)x.fx.update(n/fps);x.fx.update(release-1e-5);
+   const before=new Map(root.children.map(o=>[o.name,{p:o.position.clone(),q:o.quaternion.clone()}]));x.fx.update(release);
+   for(const part of root.children){if(part.name===s.fatal.destroyedPart)continue;const old=before.get(part.name)!;
+    assert.ok(part.position.distanceTo(old.p)<.001,`${key}/${fps}/${part.name}: release position`);
+    assert.ok(part.quaternion.angleTo(old.q)<.005,`${key}/${fps}/${part.name}: release rotation`);}
+   // Physics resumes on the next step and evolves identically when first observed late.
+   for(let n=51;n<=90;n++)x.fx.update(n/60);late.fx.update(1.5);
+   for(const part of root.children){const other=late.scene.getObjectByName('ragdoll')!.getObjectByName(part.name)!;
+    assert.ok(part.position.distanceTo(other.position)<1e-6,`${key}/${fps}/${part.name}: late physics`);}
+   assert.ok(root.getObjectByName('spine')!.position.y<.4,'body reaches the floor after release');
+  }finally{for(const f of [x,late]){f.fx.dispose();f.layer.dispose();}}
+ }
+});
+
+test('decapitation flies immediately; a spine crush frees head and both arm subtrees with real joints',t=>{
+ const head=scenario(CASES.decap),h=physics(t,head);
+ try{const body=h.bodies.get('head')!,start=body.translation();assert.ok(body.linvel().z<-1);h.fx.update(.1);
+  assert.ok(body.translation().z<start.z-.08,'head flies before the kneel finishes');assert.equal(h.scene.getObjectByName('ragdoll')!.children.filter(o=>o.name==='head').length,1);}
+ finally{h.fx.dispose();h.layer.dispose();}
+ const s=scenario({impact:shield(40),local:v(0,.1,.3),dir:v(0,0,-1),damage:120,melee:true});
+ assert.equal(s.fatal.kind,'crush');assert.equal(s.fatal.destroyedPart,'spine');const x=physics(t,s);
+ try{assert.equal(x.bodies.has('spine'),false);const attached=(name:string)=>{const joints:number[]=[];x.world.impulseJoints.forEachJointHandleAttachedToRigidBody(x.bodies.get(name)!.handle,h=>joints.push(h));return joints.length;};
+  assert.equal(attached('head'),0,'head free');assert.equal(attached('left-shoulder'),1,'only its elbow stays attached');assert.equal(attached('right-shoulder'),1);
+  assert.equal(attached('pelvis'),2,'only the legs stay attached');
+  for(const name of ['head','left-shoulder','left-elbow','right-shoulder','right-elbow'])assert.deepEqual(x.bodies.get(name)!.linvel(),x.bodies.get('head')!.linvel(),`${name}: inherited subtree velocity`);
+  const z=x.bodies.get('head')!.translation().z;for(let n=0;n<=90;n++)x.fx.update(n/60);assert.ok(x.bodies.get('head')!.translation().z<z-.2);assert.ok(finite(x.scene));
+ }finally{x.fx.dispose();x.layer.dispose();}
 });
