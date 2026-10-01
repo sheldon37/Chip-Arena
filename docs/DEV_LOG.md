@@ -17,6 +17,155 @@ PR, test result, release, or earlier log history. Git history identifies the com
 containing an entry; no self-referential commit hash is required.
 
 
+## 2026-10-01 — Astra — real-Rapier body damage verification and PR #14 integration
+
+- Integrated Claude `afb7561075ba71cef78ff091f2a5e7cea6b2b725` (parent systems
+  `2f148ad5dfaf1495ca9018633a454783bbf4d86c`) into `codex/body-damage-systems`,
+  draft PR #14. Physics fixes are commit `6148fe27b0684fbab3f50ac3ef1439225da9b2d9`.
+  Shared target remains `claude/visual-revision` at `a2480ba6985bb8a60efc10f79839eeb7d3dc9a27`.
+- Separate API-materialized verification checkout: all 549 tracked file bytes matched
+  Claude's Git blob hashes, including media recovered from the uploaded source/test ZIP.
+  Node 24.19.0, npm 11.9.0, fresh `npm ci --no-audit --no-fund`; runtime Rapier 0.19.3.
+  These results use real Rapier WASM, not Claude's stand-in. Local synthetic Git history
+  was not pushed; remote commits retain Claude's actual parent history and tree.
+- Fixed only the physics adapter and regression tests. Impact deaths with a motion
+  contract no longer receive the legacy per-part spin (measured up to 18 rad/s for a
+  melee victim inheriting only 0.3 m/s). Their initial linear velocity still consumes
+  the authority result once plus the existing bounded kick for a detached subtree.
+  Explicit cosmetics and old snapshots without motion retain their legacy fallback.
+- Real Rapier exposed a release discontinuity missed by the prior chest-only test:
+  the right forearm jumped 9.2 cm (cavity) / 9.9 cm (decap) when script visibility
+  switched to solver-corrected bodies. At the 50/60 s boundary, copy the exact scripted
+  pose and velocities once before physical steps continue. The same boundary probe
+  (10 microseconds apart) now measures <0.05 mm across connected parts in those fixtures.
+  Detached heads remain physical throughout. Claude's animation curves/meshes are unchanged.
+- New regression coverage observes real bodies/joints: no added spin or double force,
+  equal kick across a severed arm subtree, all-part release at 20/30/60/144 Hz, identical
+  late/stepped physics, immediate head flight, and head/arm subtrees freed by a spine crush.
+  `body-damage-visuals.test.ts` passes 7/7. Initial requested focused run passed 61/61;
+  the final full suite also passes all requested wound, visual, existing ragdoll and
+  body-damage tests, including the three added regressions. Wound tests pass 11/11.
+  `body-damage-network.ts`: three real WebSocket clients, four identical HostedRoom
+  snapshots (living wound, fatal cavity/kneel, later death, round reset).
+- Complete systems baseline `2f148ad`: 646/658 units. Claude before fixes: 661/673.
+  Final fixes: 664/676. Exactly the same 12 failure names on base and final; no new
+  failures. Restoring matching media made three of the previously reported 15 pass:
+  original intro music assets, fourteen-map budget/reset, and menu-music playback.
+  Remaining failures cover music catalog count, behavior/catalog counts, Demon Step,
+  reference poses, disconnect forfeit, block knockback, dagger leading-hand pose,
+  vertical-platform support, shield DoT and PCM sample rate. They were not suppressed.
+- `npm run check:types` and Vite pass. Broad `npm run verify` also passes client/relay
+  compilation, but server compilation retains the four known errors (chaos.ts,
+  leet.ts twice, standard-melee.ts); generic WebSocket integration times out at rematch.
+  HTTPS integration passes: five sets, four drafts, 3,430 identical shared snapshots,
+  destruction, retry, rematch and guest leave; 174.5 s. Broad verification is not green.
+- Visual gate BLOCKED: `npm run dev -- --host 127.0.0.1` started Vite and the authority,
+  but Cloud Browser rejected the kneel lab URL with `net::ERR_BLOCKED_BY_CLIENT`.
+  No real-Rapier rendered lab scenes/screenshots, Windows/GPU, first-person/spectating
+  or two-physical-PC visual acceptance is claimed. BODY-DAMAGE-HANDOFF lists the exact
+  scene queries for Claude/owner's remaining review; no presentation rewrite was made.
+- No gameplay damage, hit timing, hitboxes, cooldowns, knockback values, movement rules
+  or network contracts changed in this follow-up. Status: combined feature/fixes pushed
+  to draft PR #14; NOT merged or published. Owner explicitly required stopping after
+  integration if verification fails: baseline failures plus the blocked visual gate
+  prevent step 6. Next: complete real-Rapier visual review and resolve the failing gates
+  before merging/publishing; the existing test and live feeds are untouched.
+
+## 2026-10-01 — Claude — body damage visuals: wounds, severing/crushing, kneel/fall
+
+- Task: Astra's `docs/BODY-DAMAGE-HANDOFF.md` (draft PR #14). Branch `claude/body-damage-visuals` from the
+  `codex/body-damage-systems` head `2f148ad` (shared base `a2480ba`). Presentation only; the contract is consumed
+  unchanged (`resolveBodyWound`, `deathMotion`, `bodyDeathPhase` timing, `bodyPartVelocity`).
+- Living wounds (new `body-wounds.ts`; rig-owned layouts in `voxel-kit.ts`): each snapshot wound is anchored once on a
+  rest rig (a ray along the shot through the named part; thin plates such as the sternum carry the hole into the body
+  behind; contact points just off the surface use the nearest solid face) and carved into that part's voxels.
+  Puncture: narrow channel with a bloody rim. Cavity: ragged hollow with lifted petals. Cut: tilted groove. Thrust:
+  slot. Bruise: dented, discoloured layer. Scorch: char and embers. Flesh lines the walls (one extra instanced mesh per
+  wounded part; the flesh material emits a share of its colour so openings read red under match lighting). Wounds
+  stay on the part through animation and are copied into ragdolls, knockdowns and kill effects. Dedupe by `id@at`;
+  snapshot absence, heal, reset, rematch, rig rebuild and player removal restore the shared sculpt and release the
+  buffers. Pooled spray only for fresh wounds (none on late join or at the first-person camera). Reduced quality
+  carves coarser; low detail draws plain boxes; the SVG compatibility renderer skips wounds. Siren and sever/crush
+  wounds are skipped (the death effect owns them).
+- Impact ragdoll (`ragdoll.ts`, new `body-trauma.ts`, `death-effects.ts`, `gibber-vfx.ts`): `impact-ragdoll` reads
+  `death.wound`/`motion`. Severed `destroyedPart`: detaches at its joint with matching voxel cross-sections (flesh, bone,
+  marrow, set flush where each part's geometry ends). Crushed part: no body; bounded fragments (≤40, reduced 16), its
+  hat or weapon thrown loose, ragged stumps with splinters on the parent and on freed children. Shorter spray
+  profiles. `bodyPartVelocity` is unchanged; its bounded kick now reaches the whole detached subtree (inherited
+  velocity once). DEV Gibber keeps its path but gets the voxel caps instead of flat discs. Wound cells never shape
+  colliders; voxel burst ignores them.
+- Kneel/fall (new `body-collapse.ts`): forward kinematics over the ragdoll's own part frames from authority time. Head
+  jolt along the shot, legs buckle, knees on the floor at `kneesAt` (feet pivot on a visual ankle inside the shin part
+  and stay flat), forward fall about the knees with some hip flexion, limp arms. Cover and the floor limit the
+  scripted fall. Bodies get the pose and its velocities before every physics step and are released at the first step
+  at or after `releaseAt` (≤1/60 s later); tone holds the release bend .3 s. A severed head flies from the first frame.
+  `ragdoll` motion (airborne, launched) is unchanged.
+- Renderer: `BodyWounds.update` after posing, before `deathEffects.update` (dead rigs are carved before the corpse
+  copies them); the first-person view model gets the local player's wounds. Dev-only lab `tools/body-lab`
+  (`?scene=pistol|cavity|decap|cut|thrust|crush|limb|torso|kneel|airborne|finisher|low|gallery`).
+- No damage, attack timing, hitboxes, cooldowns, movement rules, knockback values or network fields changed.
+- Checks: new `tests/body-wounds.test.ts` 11/11 (no physics engine). New `tests/body-damage-visuals.test.ts` 4/4 only
+  against a local toy physics stand-in (not committed): unverified until run with real Rapier. Whole suite on base
+  vs branch here (no npm packages): no test that passes on base fails on the branch (53→64 passing; 143→158 with the
+  stand-in). Scratch typecheck of changed client files, new tests and the lab: no new errors. Lab renders reviewed for
+  every scene plus the wound gallery from several angles; scripted kneel frames are pixel-identical at 20/30/60/144 fps,
+  for a late first sighting and for repeated snapshots. Costs here: carve ~0.7 ms per wound, collapse setup ~1.1 ms per
+  death, 0.02 ms per physics step.
+- Not run: real Rapier (the new integration test; existing ragdoll tests in `weapon-entrances-gibber`,
+  `interiors-ragdolls-hud`, `reaction-fluidity`; post-release motion), Vite build, verify, Windows/GPU, multiplayer,
+  in-game first person and spectating. The npm registry is blocked in this sandbox.
+- For Astra: (1) impact deaths still get the legacy cosmetic spin (lever×dir×15 for melee plus random) on every part;
+  on the stand-in melee deaths flail. Please judge it with real Rapier (physics adapter, unchanged here). (2) Optional
+  contract: a blade swing direction would let cut grooves follow the swing (today: seeded tilt plus the shot's
+  vertical). (3) A `spine` crush removes the upper trunk root only; pelvis stays, head and arms fly free.
+  (4) Explicit cosmetic effects keep their behaviour (no sever/crush/kneel); living wounds still ride along.
+- Status: implemented on branch and pushed; not merged or published. Next: Astra runs the physics tests and reviews
+  post-release motion with real Rapier, then owner-authorized integration into the shared branch.
+
+## 2026-10-01 — Astra — body damage systems and Claude visual handoff
+
+- Owner requested impact-driven bullet holes/cavities, blade cuts/stabs, lethal
+  severing/crushing, public default ragdolls/gibs, and grounded fast-headshot
+  knees-to-forward-collapse. Astra owns functions; Claude owns visuals.
+- Task `codex/body-damage-systems`, shared base `a2480ba`. Added authority-owned
+  `body-damage.ts` and cosmetic physics/timeline helpers in `body-ragdoll.ts`.
+  Actual projectile identity/velocity/radius survive reflection; debris passes
+  finite mass, closing speed and contact point. Damage mitigation affects visual
+  severity before remaining-HP clipping. Melee cuts, thrusts, throws and shockwave
+  crushes use distinct descriptors. Wounds are bounded to eight per life.
+- Optional snapshot wound/death-motion fields carry stable IDs and chosen results;
+  reset/heal clears them. Default `impact-ragdoll` is public; explicit saved effects
+  and DEV/Siren overrides remain. No damage, attack timing, hitbox, cooldown or
+  movement-rule changes. Cosmetic corpse velocity consumes gameplay knockback
+  once. No living limb-health system or damaging corpse physics.
+- Client code is only the existing-ragdoll fallback/velocity adapter. Claude still
+  must implement holes, cavities, crushed fragments, live wounds and kneel/fall.
+  Exact ownership, field semantics, timing and acceptance checklist are in
+  `docs/BODY-DAMAGE-HANDOFF.md`.
+- Checks (Node 24.19.0/npm 11.9.0): 16/16 new real-Rapier tests pass, including
+  projectile collisions, reflection, mitigation, blocked/allied hits, reset,
+  snapshot cloning and phase selection. Typecheck passes. New three-client real
+  WebSocket test receives four identical HostedRoom snapshots: living wounds,
+  fatal cavity/kneel choice, later death snapshot and reset. Focused death/default
+  tests pass 22/22. Existing selected-voxel effect test now explicitly selects it.
+- Full units: 643/658; fresh baseline 627/642 with exactly the same 15 failure
+  names. Four media tests cannot run from this source-only API checkout; remaining
+  failures reproduce on the base. An earlier incomplete-schema baseline had 25
+  failures; the fresh comparison supersedes that result. No dependency changes.
+  Client Vite build passes. Relay build passes after fetching its existing license
+  file; server build reproduces the four documented TS errors. Broad verify's
+  WebSocket suite reproduces the rematch timeout. HTTPS passes five sets/four
+  drafts, 3,314 matching snapshots, retry, rematch and leave (182.6 s). Full
+  `npm run verify` exits 1; recorded failures were not suppressed. After correcting
+  the selected-voxel fixture, the final unit run has no new failure names.
+- Windows/GPU, visual acceptance and two physical PCs are unrun. This branch does
+  not implement Claude's visuals and is not a green production release candidate.
+- Status: draft PR #14, initial systems handoff `fdaf42c`, visuals pending;
+  not merged/published.
+  Claude should branch from this task head as `claude/body-damage-visuals` and
+  preserve the shared contracts. Await owner-authorized integration and actual
+  verification before the standing test-channel publication.
+
 ## 2026-10-01 — Codex — combined Chip cards, Siren teams and instant bot drafts
 
 - Owner authorized merging Claude's `claude/chip-cards` at `1d16c68` and the

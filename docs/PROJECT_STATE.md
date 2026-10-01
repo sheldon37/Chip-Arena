@@ -57,3 +57,15 @@ Windows validation and desktop distribution cutover remain separate work.
   Targeted local/network checks pass; full units retain exactly 12 known failures.
   Merge into `claude/visual-revision` and existing test-channel publication next.
   See newest DEV_LOG entry for actual checks and unrun Windows/visual acceptance.
+
+- Body damage systems: draft PR #14, `codex/body-damage-systems`, shared base
+  `a2480ba`, initial handoff `fdaf42c`. Authority wound outcomes, public default
+  impact-ragdoll and collapse timing are implemented on the task branch.
+  Claude's wounds, sever/crush and kneel/fall visuals (`afb7561`, from `2f148ad`)
+  are integrated into PR #14 with Astra's real-Rapier adapter fixes: no legacy
+  impact spin and an exact pose/velocity handoff at .833333 s. Real-Rapier tests
+  pass; final units 664/676 vs complete base 646/658, identical 12 failures.
+  Types/client/relay builds pass; server build retains four errors. Local lab
+  visual acceptance is blocked by Cloud Browser (`ERR_BLOCKED_BY_CLIENT`).
+  See newest DEV_LOG and BODY-DAMAGE-HANDOFF for checks and remaining visual review.
+  Owner's conditional merge/publication gate is not met; not merged/released.

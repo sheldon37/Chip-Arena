@@ -10,9 +10,9 @@ import {CLOWN_LOVE} from '../src/client/clown-love-timing.js';
 await initPhysics();
 function fixture(){const s=new Simulation({sandbox:true});s.addPlayer('dev','Dev','ranged',null,'#ff6633',{killEffect:'dev-clown-love'},true);s.addPlayer('other');s.phase='fight';s.damage(s.players.get('other')!,10000,'dev','preview');return s;}
 test('Clown Love requires trusted developer status and is assigned to the defeated opponent',()=>{
- assert.equal(cosmetics({killEffect:'dev-clown-love'},false).killEffect,'voxel-burst');
+ assert.equal(cosmetics({killEffect:'dev-clown-love'},false).killEffect,'impact-ragdoll');
  const room=new HostedRoom('ABCDEFGH',{name:'A',class:'ranged',color:'#ffffff',cosmetics:{bodyColor:'#ffffff',hat:'none',killEffect:'dev-clown-love'},authToken:'forged'},false,()=>{});
- assert.equal(room.sim.players.get('host')!.cosmetics.killEffect,'voxel-burst');room.dispose();
+ assert.equal(room.sim.players.get('host')!.cosmetics.killEffect,'impact-ragdoll');room.dispose();
  const s=fixture();assert.equal(s.players.get('other')!.death!.effect,'dev-clown-love');assert.equal(s.players.get('dev')!.death,undefined);s.dispose();
 });
 test('Clown Love keeps partners facing one another, has finite poses, exits within five seconds and cleans up',()=>{
