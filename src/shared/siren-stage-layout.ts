@@ -14,7 +14,7 @@ import type {Material,Vec} from './config.js';
 import {BLACK_SIREN_PROTOCOL,barAt,loopedSongTime,sectionAt} from './boss-music.js';
 
 /** Suggested MAPS entry values (maps.ts is edited by the systems branch). */
-export const SIREN_STAGE_THEME={name:'Ward Zero',tag:'BOSS · Black Siren Protocol',theme:'siren',sky:0x040306,floor:0x1b1820,accent:0xe9e4f2} as const;
+export const SIREN_STAGE_THEME={name:'Ward Zero',tag:'BOSS · Black Siren Protocol',theme:'siren',sky:0x040306,floor:0x2a2731,accent:0xe9e4f2} as const;
 
 export function sirenStageBlocks():ArenaBlock[]{
  const out:ArenaBlock[]=[];let serial=0;
@@ -50,7 +50,8 @@ export function sirenStageBlocks():ArenaBlock[]{
 
 /** A beat-synced floor hazard. warning: 0-1 telegraph progress (0 = none). Damage applies while active. */
 export interface SirenStageHazard {id:string;kind:'vent';pos:Vec;size:Vec;warning:number;active:boolean;damage:number;launch:number;}
-const VENTS:{id:string;x:number;z:number;group:0|1}[]=[[-10,-9],[10,9],[-10,9],[10,-9],[0,-17],[0,17],[-21,-12],[21,12]].map(([x,z],i)=>({id:'vent-'+i,x,z,group:(i%2) as 0|1}));
+/** The beat-synced floor vents (id, position, which alternating group fires on a bar). */
+export const SIREN_VENTS:{id:string;x:number;z:number;group:0|1}[]=[[-10,-9],[10,9],[-10,9],[10,-9],[0,-17],[0,17],[-21,-12],[21,12]].map(([x,z],i)=>({id:'vent-'+i,x,z,group:(i%2) as 0|1}));
 /**
  * Floor vents erupt with black flame on the downbeat during the 'lift' and 'climax' sections, alternating groups every
  * bar. Each warns from beat 3 of the bar before (two beats of telegraph) and burns for the first beat of its bar.
@@ -61,7 +62,7 @@ export function sirenStageHazards(songTime:number):SirenStageHazard[]{
  const live=(s:string)=>s==='lift'||s==='climax',now=sectionAt(track,t),out:SirenStageHazard[]=[];
  // Next bar's section decides whether this bar's telegraph shows (the last looped bar is followed by the loop start).
  const nextIndex=track.firstDownbeat+pos.bar*4,nextT=pos.bar===track.loop.toBar?track.loop.start:track.beats[nextIndex]??Infinity,next=nextT===Infinity?now:sectionAt(track,nextT);
- for(const v of VENTS){
+ for(const v of SIREN_VENTS){
   const active=live(now)&&pos.beat===1&&(pos.bar%2)===v.group;
   const warning=live(next)&&pos.beat>=3&&((pos.bar+1)%2)===v.group?((pos.beat-3)+pos.phase)/2:0;
   out.push({id:v.id,kind:'vent',pos:{x:v.x,y:0,z:v.z},size:{x:2.4,y:2.2,z:2.4},warning,active,damage:14,launch:6.5});

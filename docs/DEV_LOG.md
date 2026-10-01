@@ -16,6 +16,22 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-01 — Claude — Siren DEV boss visuals (first pass)
+
+- Branch `claude/visual-revision-siren` on top of the contract (`84b692f`). New files only under
+  `src/client/siren/**` and `tools/siren-lab/**`, plus the owned contract files; no existing file changed except this log.
+- Apparition (black-flame body, rim, flame tongues, leg wisps, hover, blank/angry eyes, jagged grin, claws and palm
+  orbs), the full floating stance and all ten moves keyed to `SirenMoveState` times, effects for every move and world
+  state, the Last Laugh hold/char/head crush, the Siren's own death, first-person claws, the dev-siren intro scene and
+  Ward Zero's dressing with beat/section-driven lights, beacons, painted grins, giant eyes and vent visuals.
+- `SIREN_STAGE_THEME.floor` lightened to `0x2a2731` for readability; `SIREN_VENTS` exported (additive).
+- Checks: `tests/siren-contract.test.ts` + `tests/siren-visuals.test.ts` 18/18 (tsx; every move animates to finite
+  poses, effects create/retire pieces, intro/stage/kill timelines, first-person restore). New files typecheck against
+  three r180 types. Lab renders inspected for idle, all moves, intro, stage, death and first person. Not run here: the
+  repo's full suite, `verify`, Vite build and an in-game check (npm registry unreachable; the systems are on Astra's
+  branch). No hit timing, hitbox, damage, cooldown, movement or network behavior is defined here.
+- Status: implemented on branch, not merged. Next: Astra wires the façade (docs/SIREN.md), then an in-game pass.
+
 ## 2026-10-01 — Claude — Siren DEV boss: shared contract for the Astra/Claude split
 
 - Owner: new playable DEV boss "Siren" (one per match, free-for-all for now, adds later) with a beat-synced intro and
