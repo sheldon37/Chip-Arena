@@ -16,6 +16,20 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-01 — Claude — Rain Warrior and Emperor's Oath intros (channel update)
+
+- Owner: smoother DEV intros, fix their feet, Emperor's Oath camera in front of the player.
+  626cfc5: new intro-footwork.ts (world-planted steps, pivots, lift arcs) used by both
+  intros. Emperor's Oath: slip 0.044 -> 0 m, lowest ankle -0.847 -> -0.795, chest square
+  to the camera (dot .78 -> 1.00); hips-led oath, rear-foot step, breathing hold; still 3
+  shots, framing within limits; right arm path unchanged. Rain Warrior: feet no longer
+  twisted off the knees, blended two-step pivot turn, ends in the bladed karate stance,
+  breathing opening, new hadoken beat at the 4.6 s hit (orb may need polish). Durations,
+  nameAt and access unchanged.
+- Tests: new tests/dev-intro-fluidity.test.ts (6; 4 fail on old code); full suite only the
+  13 known failures. Known: pre-existing synth backdrop bars also show on the rain stage.
+- Published: content 0.2.19e114ae7c87 (channel 924651e), network update verified.
+
 ## 2026-09-30 — Claude — DEV fighting styles: ground-anchored feet (channel update)
 
 - Owner: emperor (Tekken) / ansatsuken (Street Fighter) feet looked wrong while running
