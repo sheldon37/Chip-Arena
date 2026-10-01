@@ -7,7 +7,6 @@ import {createCharacterRig} from '../src/client/character-rig.js';
 import {PlayerIntros} from '../src/client/player-intros.js';
 import {SirenAudio} from '../src/client/siren-audio.js';
 import {markBeeps} from '../src/client/siren/index.js';
-import {SIREN_INTRO} from '../src/shared/siren-contract.js';
 import {Simulation,initPhysics} from '../src/shared/simulation.js';
 await initPhysics();
 
@@ -39,9 +38,9 @@ test('combined intro preserves viewport aspect, suppresses armor glow and restor
 });
 
 function audioClock(){
- const tones:{start:number;cancelled:boolean}[]=[],voices:number[]=[];
- const context={currentTime:100,state:'running',createGain:()=>({gain:{setValueAtTime(){},exponentialRampToValueAtTime(){}},connect(){},disconnect(){}}),createOscillator:()=>{const tone={start:0,cancelled:false};tones.push(tone);return {frequency:{value:0},connect(){return {connect(){}};},disconnect(){},start(at:number){tone.start=at;},stop(at?:number){if(at===undefined)tone.cancelled=true;}};},createBufferSource:()=>({buffer:null,connect(){},disconnect(){},start(){voices.push(context.currentTime);}})};
- return {context,tones,voices,master:{} as GainNode};
+ const tones:{start:number;cancelled:boolean}[]=[];
+ const context={currentTime:100,state:'running',createGain:()=>({gain:{setValueAtTime(){},exponentialRampToValueAtTime(){}},connect(){},disconnect(){}}),createOscillator:()=>{const tone={start:0,cancelled:false};tones.push(tone);return {frequency:{value:0},connect(){return {connect(){}};},disconnect(){},start(at:number){tone.start=at;},stop(at?:number){if(at===undefined)tone.cancelled=true;}};}};
+ return {context,tones,master:{} as GainNode};
 }
 
 test('lock audio follows the visual beep schedule exactly, deduplicates and cancels interrupted locks',()=>{
@@ -52,14 +51,5 @@ test('lock audio follows the visual beep schedule exactly, deduplicates and canc
   const expected=markBeeps(1.2,2.4);assert.equal(tones.length,expected.length);expected.forEach((t,i)=>assert.ok(Math.abs(tones[i].start-(100+t))<1e-8));
   audio.clear();tones.length=0;state.generation=(state.generation??0)+1;state.time=0;context.currentTime=100;state.siren.marks[0]={id:'new',owner:'a',target:'b',at:0,lockAt:.04,throwAt:1.24};
   audio.update(state,context as unknown as AudioContext,master);assert.equal(tones.length,1);assert.equal(tones[0].start,100.04);state.siren.marks=[];audio.update(state,context as unknown as AudioContext,master);assert.equal(tones[0].cancelled,true);
- }finally{audio.clear();sim.dispose();}
-});
-
-test('intro laugh starts on Claude’s smile cue, once, rather than the earlier reveal',()=>{
- const sim=new Simulation(),p=sim.addPlayer('me','Boss','dev',null,'#ffffff',{},true)!,audio=new SirenAudio(),{context,voices,master}=audioClock();p.spec='siren';sim.beginIntros();
- (audio as any).buffers.set('siren-laugh',{});(audio as any).buffers.set('siren-you',null);
- try{
-  sim.time=SIREN_INTRO.cues.find(c=>c.cue==='reveal')!.time;audio.update(sim.snapshot(),context as unknown as AudioContext,master);assert.equal(voices.length,0);
-  sim.time=SIREN_INTRO.cues.find(c=>c.cue==='smile')!.time;audio.update(sim.snapshot(),context as unknown as AudioContext,master);audio.update(sim.snapshot(),context as unknown as AudioContext,master);assert.equal(voices.length,1);
  }finally{audio.clear();sim.dispose();}
 });

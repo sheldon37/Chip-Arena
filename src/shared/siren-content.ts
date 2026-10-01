@@ -1,5 +1,6 @@
 /** Gameplay tuning; animation phase lengths live exclusively in siren-contract.ts. */
 export const SIREN_COMBAT={
+ hp:15000,
  swipe:{damage:9,range:2.3,arc:2.4},rend:{damage:22,range:3,arc:2.8,cooldown:5},
  slam:{damage:16,radius:3.6,launch:9,cooldown:7},
  rush:{damage:14,distance:6,radius:1.1,cooldown:6,trailSeconds:3},

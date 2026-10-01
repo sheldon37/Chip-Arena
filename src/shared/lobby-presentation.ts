@@ -20,8 +20,8 @@ export function preferredWeapon(value:unknown,cls:ClassId,access:AccessInput=fal
  return weapon&&weaponInClass(weapon.id,cls,access)?weapon.id:CLASS_INFO[cls].default;
 }
 export type BotWeapon=SpecId|'random';
-/** Bots never acquire restricted account access through a match option. */
-export function botWeapon(value:unknown):BotWeapon{return typeof value==='string'&&Object.hasOwn(WEAPONS,value)&&!WEAPONS[value as SpecId].devOnly?value as SpecId:'random';}
+/** Only a verified DEV may assign restricted bot weapons; item grants are insufficient. */
+export function botWeapon(value:unknown,access:AccessInput=false):BotWeapon{return typeof value==='string'&&Object.hasOwn(WEAPONS,value)&&(!WEAPONS[value as SpecId].devOnly||accessOf(access).developer)?value as SpecId:'random';}
 /** Only verified access enables a special weapon in the pose selector. */
 export function preferredWeapons(access:AccessInput=false){return Object.values(WEAPONS).filter(w=>!w.devOnly||canUse(access,'weapon:'+w.id));}
 export const BOT_WEAPONS=Object.values(WEAPONS).filter(w=>!w.devOnly);

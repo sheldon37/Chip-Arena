@@ -14,7 +14,7 @@ const BEATS=[.1858,.6037,1.0159,1.428,1.8402,2.2523,2.6645,3.0883,3.5004,3.9184,
 /**
  * dev-siren intro: an empty, dark cell. A bulb buzzes on; it starts to stutter on the off-beats; in one flicker the
  * Siren is suddenly in frame, then gone; on bar 3 the light steadies on it, chest-up, head cocked, blank white eyes.
- * Bar 4: the lights die, only the eyes remain, and the jagged grin opens in the dark as it starts to laugh.
+ * Bar 4: the lights die, only the eyes remain, and the jagged grin slowly draws itself open in the dark.
  * Everything is a pure function of the intro age, so every viewer sees the same frame.
  */
 export class SirenIntroScene {
@@ -70,17 +70,18 @@ export class SirenIntroScene {
   // Where the Siren is: absent, a single-flash glimpse, then right there.
   const present=age>=T_GLIMPSE&&age<T_GLIMPSE+.11||age>=T_REVEAL;rig.group.visible=present;
   rig.group.position.set(0,.86,0);rig.group.rotation.set(0,0,0);
-  const laugh=sm((age-T_SMILE)/.25),shake=Math.sin((age-T_SMILE)*Math.PI*2*6.5)*laugh;
+  // The smile: silent and slow. The head sinks a little and the eyes narrow as the grin spreads.
+  const smile=sm((age-T_SMILE)/.45);
   for(const o of [rig.body,rig.pelvis,rig.spine,rig.chest,rig.neck,rig.head,rig.leftShoulder,rig.rightShoulder,rig.leftArm,rig.rightArm,rig.leftElbow,rig.rightElbow,rig.leftHand,rig.rightHand,rig.leftLeg,rig.rightLeg,rig.leftKnee,rig.rightKnee])o.rotation.set(0,0,0);
   const breath=Math.sin(age*1.6),still=sm((age-T_REVEAL)/.4);
-  rig.body.position.set(0,.06+.012*breath,0);rig.spine.rotation.x=.16;rig.chest.rotation.set(.12+.02*breath-.08*laugh+.05*shake,0,.03*shake);rig.neck.rotation.x=-.18;
-  // The head: cocked hard to the side, a slow creeping extra tilt during the stare, juddering with the laugh.
-  rig.head.rotation.set(.06-.12*laugh+.06*shake,.05*shake,.62+.12*still*(1-laugh)+.05*shake);
-  rig.leftShoulder.rotation.z=.18+.06*shake;rig.rightShoulder.rotation.z=-.18-.06*shake;
+  rig.body.position.set(0,.06+.012*breath,0);rig.spine.rotation.x=.16;rig.chest.rotation.set(.12+.02*breath,0,0);rig.neck.rotation.x=-.18;
+  // The head: cocked hard to the side, creeping further over during the stare, then dipping as it smiles.
+  rig.head.rotation.set(.06+.1*smile,0,.62+.12*still+.06*smile);
+  rig.leftShoulder.rotation.z=.18;rig.rightShoulder.rotation.z=-.18;
   rig.leftArm.rotation.set(-.3,0,.12);rig.rightArm.rotation.set(-.32,0,-.1);rig.leftElbow.rotation.x=-.5;rig.rightElbow.rotation.x=-.55;rig.leftKnee.rotation.x=.8;rig.rightKnee.rotation.x=.9;
   // Face: blank ovals during the stare; in the dark the grin draws itself open from the middle and the eyes narrow.
-  const s=parts.state;s.time=age;s.ranged=0;s.open=.15*laugh+.25*Math.max(0,shake);s.squint=.45*laugh;s.anger=.0+.9*laugh;s.flare=0;s.glow=1;s.lean=0;applySirenLook(parts);
-  parts.grin.visible=age>=T_SMILE;parts.grin.scale.set(Math.max(.001,sm((age-T_SMILE)/.3)),1,1);
+  const s=parts.state;s.time=age;s.ranged=0;s.open=.06*smile;s.squint=.4*smile;s.anger=.9*smile;s.flare=0;s.glow=1;s.lean=0;applySirenLook(parts);
+  parts.grin.visible=age>=T_SMILE;parts.grin.scale.set(Math.max(.001,sm((age-T_SMILE)/.55)),1,1);
   for(const e of parts.eyes)e.visible=present||age>=T_BLACKOUT;
   // Eyes glow a touch harder once the room goes dark.
   for(const h of parts.eyeHalos){h.visible=present;(h.material as T.SpriteMaterial).opacity=age>=T_BLACKOUT?.6:.35;}

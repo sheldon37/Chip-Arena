@@ -17,6 +17,71 @@ PR, test result, release, or earlier log history. Git history identifies the com
 containing an entry; no self-referential commit hash is required.
 
 
+## 2026-10-01 — Astra — cutscene integration, DEV bots, abilities and Siren HP
+
+- Owner requested merging `claude/siren-cutscene` `452bbe6` into the shared branch,
+  removal of dropped voice hooks, DEV bot loadouts, 15,000 Siren HP, and bot weapon
+  abilities. Task branch `codex/siren-cutscene-dev-bots` starts at shared `dd8bb6e`
+  and includes Claude's exact `452bbe610403000d02bb9352e2ab62e3ed12637d` commit/tree.
+  Claude's visual, contract, lab and cutscene-test files remain unchanged.
+- Removed laugh/You file loading, playback and event hooks from SirenAudio and
+  its caller, plus the obsolete intro-laugh test. Music and lock-on beeps remain;
+  shared event names still drive visuals. Claude's camera/HUD wiring is retained.
+- Bot selectors in local practice and the host's room lobby show ??? only with
+  verified DEV access. Authority permission comes from the actual configuring
+  player, not request fields, item grants or a DEV guest. Bots receive only the
+  selected weapon grant, never a DEV role/account identity. Duplicate Sirens fall
+  back to ordinary random weapons; humans and bots share the existing slot limit.
+- Active bots now choose normal E abilities, Emperor electric/wavedash, Ansatsuken
+  Hadoken/uppercut/Tatsumaki, L33T Root Command and Siren's mode switch/all eight
+  abilities. Basic attacks release during recovery so specials can get the next
+  ready frame. Close-range casters approach into ability range. All decisions use
+  the normal input/combat path, respecting visibility, resources and cooldowns;
+  dummy bots remain inactive. Random loadouts continue to use ordinary weapons.
+- Siren base HP is 15,000 for players/bots, before normal HP Chip modifiers.
+  Saved loadouts, specialization, rounds/rematches and sandbox stat rebuilds agree.
+  Animation impact: Claude's change is presentation-only. This follow-up changes
+  HP, bot choices and bot approach movement; attack damage, hit timing, hitboxes,
+  cooldown values, movement physics and snapshot/input schemas remain unchanged.
+- Implementation `8979723`, PR #11. Final checks (Node 24.19.0/npm 11.9.0): types pass; units
+  613/625, with exactly the same 12 failure names as the previous verified source.
+  All 57 Siren/cutscene/DEV-bot tests pass. Client and HTTPS relay build; existing
+  four server TypeScript errors remain. Three real WebSocket clients agreed on 84
+  snapshots, including DEV bot grants, guest refusal, duplicate Siren refusal,
+  15,000 HP, melee, mode, Marked and music continuity. Full `npm run verify` also
+  reproduced the known generic WebSocket rematch timeout. HTTPS passed five sets,
+  four drafts, 3,505 matching snapshots, retry, rematch and leave (177.6 s).
+  Overall verification remains nonzero only for the documented baseline failures.
+- Status: implemented and verified on task branch / PR #11 for the owner-requested merge.
+  No new test-channel or live publication. Published content remains
+  `0.2.149269b37b5b`. Native Windows/GPU, visual/audio acceptance and physical two-PC
+  testing remain unrun. Next: owner-requested shared-branch merge and Windows playtest;
+  publication of these follow-up changes remains separate from the prior test release.
+
+## 2026-10-01 — Claude — Siren: silent smile and Last Laugh cutscene
+
+- Owner request after testing the merged Siren: no voice lines or laughter (the intro just smiles), and the Last
+  Laugh grab becomes a cutscene for the player being killed and for the Siren's player. Branch `claude/siren-cutscene`,
+  base `claude/visual-revision` `dd8bb6e` (Astra's PR #8 merge plus #9/#10 records; reviewed, no overlap problems).
+- Smile: intro bar 4 and the Last Laugh windup no longer shake or laugh; the grin draws open slowly, the head creeps
+  over, the eyes narrow, and the windup soot rings slow to one per 0.7 s. Same timings and cues.
+- Cutscene: new `src/client/siren/cutscene.ts`, wired in `renderer.ts`, `main.ts` and `style.css`. Letterboxed shots
+  from the catch: lift, close-up (victim: the grin from below; Siren: its grin from above, past the victim), grip
+  two-shot, crush from high on the front right with a jolt. The victim's continues 1.75 s past the crush as their death
+  camera; the Siren player's ends at `releaseAt`, when its movement unlocks; a hold broken before the crush cuts back.
+  HUD and combat numbers fade, overhead health and the first-person view model hide, and mouse look is ignored while it
+  runs (the Siren is locked in the move; this stops the held victim swinging under a directed camera). Other players
+  are unaffected. The camera eases after the Siren's facing.
+- Impact: camera, HUD and presentation only. No hit timing, hitboxes, damage, cooldowns, movement rules, network
+  schema or snapshot fields changed. Astra's optional `siren-laugh`/`siren-you` clip hooks in `siren-audio.ts` stay
+  silent without files; per the owner they should not be added (removing the hooks is a systems-file call).
+- Checks: tsx `tests/siren-cutscene.test.ts` (7 new), `siren-visuals`, `siren-contract` 25/25 pass. Scratch typecheck
+  of the changed files against three r180: same error set as base, none in changed files. Lab renders of both roles
+  inspected shot by shot (`times=` lab parameter added). Not run here: full units, `verify`, Vite build, Astra's
+  rapier-based Siren tests, in-game Windows and multiplayer checks (npm registry unreachable; rapier unavailable).
+- Status: implemented on branch and pushed; not merged or published. Next: owner/Astra review and merge into
+  `claude/visual-revision`, then an in-game check as both the victim and the Siren (optionally a test-channel update).
+
 ## 2026-10-01 — Astra — Siren test Update publication
 
 - Owner requested the in-game Update button delivery for testing. Built the exact
