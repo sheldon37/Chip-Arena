@@ -16,6 +16,19 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-01 — Claude — Siren DEV boss: shared contract for the Astra/Claude split
+
+- Owner: new playable DEV boss "Siren" (one per match, free-for-all for now, adds later) with a beat-synced intro and
+  stage. Astra builds systems on `codex/siren-boss`; Claude builds visuals on `claude/visual-revision-siren`. Both start
+  from `claude/siren-contract`, based on `claude/visual-revision` at `cf5fa1c`. See `docs/SIREN.md`.
+- Contract (new files only, no existing file changed): `src/shared/siren-contract.ts` (ids, slots, move timing table,
+  snapshot/event shapes, spawn points, intro cues, accessors), `src/shared/boss-music.ts` (464 detected beats, bars,
+  sections, intro window, loop; drifting tempo), `src/shared/siren-stage-layout.ts` (Ward Zero collision layout and
+  beat-synced vents), `src/client/siren/index.ts` (visual façade with placeholder implementations), tests.
+- Checks: `tests/siren-contract.test.ts` 11/11 passed (tsx). New files typecheck against local three r180 types. The
+  npm registry was unreachable from this session, so the full suite, `verify:fast` and the Vite build were not run.
+- Combat/network impact: none yet (no existing code calls the contract). Status: implemented on branch, not merged.
+
 ## 2026-10-01 — Codex — individual DEV primary combo steps
 
 - Owner follow-up: allow one punch, two punches, or the full chain rather than
