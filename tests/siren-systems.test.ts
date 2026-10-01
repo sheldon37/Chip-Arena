@@ -90,7 +90,7 @@ test('Last Laugh roots, catches and kills with a head gib; killing the owner rel
  for(const killOwner of [false,true]){const {s,a,b,tick}=arena();try{
   assert.equal(s.siren.start(a,'laugh'),true);a.input.x=1;const x=a.body.translation().x;tick(1.8);assert.ok(Math.abs(a.body.translation().x-x)<.02);assert.equal(s.siren.grabs.length,0);
   tick(.5);assert.equal(s.siren.grabs.length,1);assert.equal(b.hp,100);b.input.attack=true;assert.equal(s.beginBlock(b),false);assert.equal(s.beginRoll(b),false);
-  if(killOwner){s.damage(a,999,b.id,'test');assert.equal(s.siren.grabs.length,0);assert.equal(b.hp,100);assert.equal(b.body.gravityScale(),1);}
+  if(killOwner){s.damage(a,a.hp+1,b.id,'test');assert.equal(s.siren.grabs.length,0);assert.equal(b.hp,100);assert.equal(b.body.gravityScale(),1);}
   else{tick(3.3);assert.equal(b.hp,0);assert.equal(b.death!.effect,'siren-crush');assert.equal(b.death!.gibPart,'head');assert.equal(b.death!.source,'a');}
  }finally{s.dispose();}}
 });
@@ -122,7 +122,7 @@ test('Marked requires visible target, stays unique and destroys props but stops 
 });
 
 test('Siren death dissipates and snapshot copies do not mutate the authority',()=>{
- const {s,a,b}=arena();try{s.siren.start(a,'rend');const snap=s.snapshot();snap.players.find(p=>p.id==='a')!.siren!.move!.hitAt=1000;assert.notEqual(a.siren!.move!.hitAt,1000);s.damage(a,999,b.id,'test');assert.equal(a.death!.effect,'siren-dissipate');}finally{s.dispose();}
+ const {s,a,b}=arena();try{s.siren.start(a,'rend');const snap=s.snapshot();snap.players.find(p=>p.id==='a')!.siren!.move!.hitAt=1000;assert.notEqual(a.siren!.move!.hitAt,1000);s.damage(a,a.hp+1,b.id,'test');assert.equal(a.death!.effect,'siren-dissipate');}finally{s.dispose();}
 });
 
 test('Shadow Rush hits once on its path, lays fire, and cannot pass foundation cover',()=>{

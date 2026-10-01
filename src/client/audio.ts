@@ -69,7 +69,7 @@ export class ArenaAudio {
  }
  private updateDeathAnnouncements(state:Snapshot){for(const a of this.deathTrack.update(state))for(const [part,offset]of [['launch',0],['burst',DEATH_ANNOUNCEMENT.launch]] as const){const key=a.id+':'+part,age=state.time-a.at-offset;if(age<0||this.deathCues.has(key))continue;this.deathCues.set(key,state.time);if(age<.25)this.deathCue(part==='burst');}for(const[key,at]of this.deathCues)if(state.time-at>30)this.deathCues.delete(key);}
  update(state:Snapshot,me:string,yaw:number,presentation=state){this.intros.update(presentation,this.context,this.music.cueVolume);this.music.setMap(state.options.map);this.music.setBossActive(!!state.bossSong);this.music.setActive(!state.bossSong&&['fight','countdown','result'].includes(state.phase));this.updateLove(state);this.boss.update(presentation,this.context,this.music.playbackVolume);this.siren.update(presentation,this.context,this.master);const self=state.players.find(p=>p.id===me);if(self)this.listener=self.pos;this.yaw=yaw;this.updateDemon(presentation);this.updateDeathAnnouncements(presentation);
-  for(const e of this.cursor.consume(state.events,state.time)){this.siren.event(e,this.context,this.master);
+  for(const e of this.cursor.consume(state.events,state.time)){
    if(e.type==='melee-slam'){this.play('stone',e.pos,1);this.play('greatsword',e.pos,.65);}
    else if(e.type==='melee-special'){if(e.spec)this.play(e.spec as Sound,e.pos,.4);}
    else if(e.type==='catch'&&e.spec==='shield')this.play('shield',e.pos,.45);

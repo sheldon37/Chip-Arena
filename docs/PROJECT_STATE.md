@@ -46,6 +46,8 @@ Windows validation and desktop distribution cutover remain separate work.
   Test content `0.2.149269b37b5b` published from `abb0bbb` at channel `3e9d5d9`;
   existing test installations press Update. Real network upgrade, all 102 files,
   settings preservation and menu status verified. Windows visual/audio acceptance
-  remains. Owner dropped voice lines and laughter (2026-10-01): the silent smile and
-  the Last Laugh grab cutscene are on `claude/siren-cutscene`, not merged or published.
+  remains. The follow-up incorporates Claude's silent smile/Last Laugh cutscene
+  `452bbe6`, removes voice hooks, gives Siren 15,000 base HP, adds verified-DEV bot
+  weapon choices and bot ability use. These changes are on
+  `codex/siren-cutscene-dev-bots` and are not in the published version above.
   See `docs/SIREN.md`, `docs/SIREN-SYSTEMS.md` and DEV_LOG.

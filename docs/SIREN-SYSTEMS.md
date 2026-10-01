@@ -8,6 +8,11 @@ Claude's shared contract `84b692ffffb01618d2397175606d83597a878e9f`.
 PR #8 combines systems `514d784` with Claude's visual branch at `2e986f4`
 (including its first-pass and polish commits), plus the integration fixes below.
 
+Follow-up: `codex/siren-cutscene-dev-bots` incorporates Claude's cutscene commit
+`452bbe6`, removes the dropped voice clips, adds DEV-configured bot weapons and
+bot ability decisions, and raises Siren to 15,000 base HP. These follow-up changes
+are not in published test content `0.2.149269b37b5b`.
+
 ## Integration with Claude
 
 Claude's visual branch and updated `SIREN.md` handoff are integrated into PR #8.
@@ -31,8 +36,14 @@ Black Rain starts 8 m above its landing point (previously 9 m), below the storm
 on the standard floor. Its vertical speed is 10 m/s (previously 11.25); the
 0.8-second warning/fall time, damage, cadence and cooldown are retained. Marked
 uses Claude's `markBeeps` pulse times with an 80 ms audio scheduling window,
-deduplication and cancellation of interrupted locks. The optional intro laugh
-now follows the smile cue at 6.0082 s, rather than the reveal at 3.9184 s.
+deduplication and cancellation of interrupted locks. Per the owner's later
+decision, the intro and Last Laugh are silent smiles: no voice files are fetched
+or played. The obsolete intro-laugh test and event audio hooks are removed.
+
+Claude's `452bbe6` adds the Last Laugh camera sequence for its two participants,
+letterboxing, HUD/view-model hiding and mouse-look suppression. The cutscene ends
+at release for Siren and continues briefly after the crush for the victim;
+interruption restores the camera. Other players retain their normal view.
 
 Combined headless checks pass for the Siren feature, but these are not an in-game
 visual/GPU or audible-sync acceptance test. The owner authorized test publication
@@ -50,8 +61,12 @@ Claude's layout (no generic vertical buildings).
   their original melee/magic resource class; old saves and exact item grants
   still work in their original categories. Item grants do not confer DEV status.
 - `weapon:siren` and `intro:dev-siren` are registered grants. Existing account and
-  room sanitization reject a forged DEV category. Bots cannot acquire Siren from
-  lobby options. The authority checks the one-connected-Siren limit in saved
+  room sanitization reject a forged DEV category. Bot loadouts show the ??? group
+  only to verified DEV accounts, in local practice and the room owner's lobby.
+  The authority derives permission from the actual configuring player, never
+  request fields or another DEV guest. Each chosen bot receives only its specific
+  weapon grant, without a DEV role or account identity. Random picks remain ordinary.
+  The authority checks the one-connected-Siren limit in bot loadouts, saved
   loadouts, class changes, specialization commands and sandbox spec changes;
   disconnect frees the slot. The selection button displays TAKEN.
 - Siren forces FFA and Ward Zero at match start/intro. Lobby return restores the
@@ -60,6 +75,10 @@ Claude's layout (no generic vertical buildings).
   7.2678 s duration, 6.4261 s name card (the brief's rounded 6.43 s).
 
 ## Combat
+
+Siren has **15,000 base HP** for humans and bots. Existing HP Chips apply afterward
+with their normal additive/multiplicative effects. Selection, saved loadouts,
+rounds/rematches and sandbox Chip/spec changes rebuild the correct maximum.
 
 `src/shared/siren.ts` owns authority logic; `siren-content.ts` owns tuning;
 `siren-motion.ts` is shared with local prediction. Input fields are optional
@@ -97,6 +116,14 @@ segments cap at 24. Marked allows one active lock/seeker, removes destructible
 props in its swept path and expires on foundation cover or target contact.
 Death/spec/disconnect cleanup and per-round reset clear temporary combat effects.
 
+All active bot difficulties can use weapon abilities through normal player inputs.
+The AI chooses by range, visibility, resources and cooldowns; releases primary
+during recovery so it cannot starve a special; and moves close-range casters into
+their ability radius. Ordinary E abilities, Emperor electric/wavedash, Ansatsuken
+Hadoken/uppercut/Tatsumaki, L33T Root Command, and Siren's mode switch/eight abilities
+are supported. Dummy bots remain inactive. Costs, hit timing, hitboxes, damage and
+cooldown values are unchanged; bot decision-making and approach behavior change.
+
 ## Music and effects
 
 - The original owner MP3 is included unchanged at
@@ -113,8 +140,9 @@ Death/spec/disconnect cleanup and per-round reset clear temporary combat effects
   audio excludes `dev-siren` stings so the full boss song is the only music there.
 - DEV debug overlay shows song time, beat, bar.beat, section, measured drift and
   vent events. Beat-driven damage uses authority time and Claude's stage hooks.
-- Optional `public/audio/siren-laugh.mp3` and `siren-you.mp3` remain owner-supplied;
-  missing clips fail silently. Accelerating lock beeps are synthesized.
+- Voice lines were dropped by the owner; there are no laugh/You clip hooks or
+  fetches. Accelerating lock beeps are synthesized. Shared event names remain
+  visual timing cues, preserving the contract and snapshots.
 
 ## Verification and remaining checks
 

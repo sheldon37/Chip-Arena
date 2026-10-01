@@ -17,6 +17,43 @@ PR, test result, release, or earlier log history. Git history identifies the com
 containing an entry; no self-referential commit hash is required.
 
 
+## 2026-10-01 — Astra — cutscene integration, DEV bots, abilities and Siren HP
+
+- Owner requested merging `claude/siren-cutscene` `452bbe6` into the shared branch,
+  removal of dropped voice hooks, DEV bot loadouts, 15,000 Siren HP, and bot weapon
+  abilities. Task branch `codex/siren-cutscene-dev-bots` starts at shared `dd8bb6e`
+  and includes Claude's exact `452bbe610403000d02bb9352e2ab62e3ed12637d` commit/tree.
+  Claude's visual, contract, lab and cutscene-test files remain unchanged.
+- Removed laugh/You file loading, playback and event hooks from SirenAudio and
+  its caller, plus the obsolete intro-laugh test. Music and lock-on beeps remain;
+  shared event names still drive visuals. Claude's camera/HUD wiring is retained.
+- Bot selectors in local practice and the host's room lobby show ??? only with
+  verified DEV access. Authority permission comes from the actual configuring
+  player, not request fields, item grants or a DEV guest. Bots receive only the
+  selected weapon grant, never a DEV role/account identity. Duplicate Sirens fall
+  back to ordinary random weapons; humans and bots share the existing slot limit.
+- Active bots now choose normal E abilities, Emperor electric/wavedash, Ansatsuken
+  Hadoken/uppercut/Tatsumaki, L33T Root Command and Siren's mode switch/all eight
+  abilities. Basic attacks release during recovery so specials can get the next
+  ready frame. Close-range casters approach into ability range. All decisions use
+  the normal input/combat path, respecting visibility, resources and cooldowns;
+  dummy bots remain inactive. Random loadouts continue to use ordinary weapons.
+- Siren base HP is 15,000 for players/bots, before normal HP Chip modifiers.
+  Saved loadouts, specialization, rounds/rematches and sandbox stat rebuilds agree.
+  Animation impact: Claude's change is presentation-only. This follow-up changes
+  HP, bot choices and bot approach movement; attack damage, hit timing, hitboxes,
+  cooldown values, movement physics and snapshot/input schemas remain unchanged.
+- Checks completed at initial push (Node 24.19.0/npm 11.9.0): types pass; units
+  613/625, with exactly the same 12 failure names as the previous verified source.
+  All 57 Siren/cutscene/DEV-bot tests pass. Client and HTTPS relay build; existing
+  four server TypeScript errors remain. Three real WebSocket clients agreed on 84
+  snapshots, including DEV bot grants, guest refusal, duplicate Siren refusal,
+  15,000 HP, melee, mode, Marked and music continuity. Broad network checks pending.
+- Status at initial push: implemented on task branch for the owner-requested merge.
+  No new test-channel or live publication. Published content remains
+  `0.2.149269b37b5b`. Native Windows/GPU, visual/audio acceptance and physical two-PC
+  testing remain unrun. Next: finish broad verification, record results and merge.
+
 ## 2026-10-01 — Claude — Siren: silent smile and Last Laugh cutscene
 
 - Owner request after testing the merged Siren: no voice lines or laughter (the intro just smiles), and the Last
