@@ -17,6 +17,39 @@ PR, test result, release, or earlier log history. Git history identifies the com
 containing an entry; no self-referential commit hash is required.
 
 
+## 2026-10-01 — Astra — Siren test Update publication
+
+- Owner requested the in-game Update button delivery for testing. Built the exact
+  shared source `abb0bbb5294e0299520be2e265ad32dd4c595752` in a separate worktree;
+  source/assets/tests match the verified Siren integration `1a8a5d0`. Publication
+  documentation branch: `codex/siren-test-publication`, base `abb0bbb`.
+- Published content `0.2.149269b37b5b`, build `6b9d6a07736b51c965dd7c77`, to
+  `sheldon37/chip-arena-test-updates` at
+  `3e9d5d92efaa585ab63a62961abfcf822deea728`. Payload: 22,896,921 bytes / 102 files;
+  SHA256 `70ab73d6b2f07ae804d605f38b33f3c94e79d68c0eb976f5f512981fd8b02aa3`.
+  Workflow run `36814727228` verified hashes and atomically published feed/history;
+  its temporary branch was removed. Main contains only feed, README and history.
+- Node 24.19.0/npm 11.9.0: clean restore; two `release:prepare` builds produced
+  identical feed bytes. PR #5 actual payload checker passed installation, all file
+  hashes, same-version skip, offline/corrupt checksum refusal and settings sentinel.
+  Channel/status tests 6/6; auth/manual updater tests 7/7. Original MP3 hash verified.
+- Actual network updater installed previous `0.2.f3f24aed59e8` from immutable
+  channel `873e23f`, then upgraded from main to Siren. All 102 installed hashes,
+  preserved settings sentinel, same-version skip and menu version/build passed.
+  The old seed manifest needed two timeout retries; the Siren upgrade succeeded.
+- Reused exact-code integration verification: Siren 42/42, full units 598/610
+  (same 12 baseline failures), three-client Siren 80 matching snapshots and HTTPS
+  3,509 matching snapshots. Existing four server TS errors and generic WebSocket
+  rematch timeout remain; overall broad verification is not green. This is the
+  owner's diagnostic test build, not a claim of native acceptance.
+- No gameplay, hit timing, hitboxes, damage, cooldowns, movement or networking
+  changed during publication. Windows Electron/GPU, audible sync, visual quality
+  and two physical PCs remain untested; optional laugh/You clips remain absent.
+  No new seed ZIP was needed. Live feed and Site unchanged.
+- Status: published to the existing test channel. Next: existing test installations
+  press Update, select Siren under DEV-only ???, and perform SIREN-SYSTEMS Windows
+  acceptance. This documentation follow-up is whitespace/scope checked only.
+
 ## 2026-10-01 — Astra — owner-authorized Siren merge
 
 - Owner asked to merge after assessment. PR #8 (`codex/siren-boss`, verified head
