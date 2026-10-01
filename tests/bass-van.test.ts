@@ -10,9 +10,9 @@ import {BASS_VAN,vanBass} from '../src/client/bass-van-timing.js';
 await initPhysics();
 function fixture(){const s=new Simulation({sandbox:true});s.addPlayer('dev','Dev','ranged',null,'#ff6633',{killEffect:'dev-bass-van'},true);s.addPlayer('other');s.phase='fight';s.damage(s.players.get('other')!,10000,'dev','preview');return s;}
 test('Bass Van is developer-only, including forged host settings, and affects the defeated player',()=>{
- assert.equal(cosmetics({killEffect:'dev-bass-van'},false).killEffect,'voxel-burst');
+ assert.equal(cosmetics({killEffect:'dev-bass-van'},false).killEffect,'impact-ragdoll');
  const room=new HostedRoom('ABCDEFGH',{name:'A',class:'ranged',color:'#ffffff',cosmetics:{bodyColor:'#ffffff',hat:'none',killEffect:'dev-bass-van'},authToken:'forged'},false,()=>{});
- assert.equal(room.sim.players.get('host')!.cosmetics.killEffect,'voxel-burst');room.dispose();
+ assert.equal(room.sim.players.get('host')!.cosmetics.killEffect,'impact-ragdoll');room.dispose();
  const s=fixture();assert.equal(s.players.get('other')!.death!.effect,'dev-bass-van');assert.equal(s.players.get('dev')!.death,undefined);s.dispose();
 });
 test('Bass Van has finite rewindable poses, doors that close after boarding, waiting passengers, departure and cleanup at every quality',()=>{

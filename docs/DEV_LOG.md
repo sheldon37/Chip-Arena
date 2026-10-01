@@ -17,6 +17,37 @@ PR, test result, release, or earlier log history. Git history identifies the com
 containing an entry; no self-referential commit hash is required.
 
 
+## 2026-10-01 — Astra — body damage systems and Claude visual handoff (in progress)
+
+- Owner requested impact-driven bullet holes/cavities, blade cuts/stabs, lethal
+  severing/crushing, public default ragdolls/gibs, and grounded fast-headshot
+  knees-to-forward-collapse. Astra owns functions; Claude owns visuals.
+- Task `codex/body-damage-systems`, shared base `a2480ba`. Added authority-owned
+  `body-damage.ts` and cosmetic physics/timeline helpers in `body-ragdoll.ts`.
+  Actual projectile identity/velocity/radius survive reflection; debris passes
+  finite mass, closing speed and contact point. Damage mitigation affects visual
+  severity before remaining-HP clipping. Melee cuts, thrusts, throws and shockwave
+  crushes use distinct descriptors. Wounds are bounded to eight per life.
+- Optional snapshot wound/death-motion fields carry stable IDs and chosen results;
+  reset/heal clears them. Default `impact-ragdoll` is public; explicit saved effects
+  and DEV/Siren overrides remain. No damage, attack timing, hitbox, cooldown or
+  movement-rule changes. Cosmetic corpse velocity consumes gameplay knockback
+  once. No living limb-health system or damaging corpse physics.
+- Client code is only the existing-ragdoll fallback/velocity adapter. Claude still
+  must implement holes, cavities, crushed fragments, live wounds and kneel/fall.
+  Exact ownership, field semantics, timing and acceptance checklist are in
+  `docs/BODY-DAMAGE-HANDOFF.md`.
+- Initial checks: 16/16 new functional tests pass on real Rapier, including real
+  projectile collisions, reflection, mitigation, blocked/allied hits, reset,
+  snapshot cloning and phase selection. Typecheck passes. Full verification is
+  running; final results will be appended. Baseline source-subset unit run has
+  25 failures, including known game failures and unavailable media/schema files;
+  do not claim a green full suite or Windows/GPU validation.
+- Status: systems handoff on task branch, visuals pending; not merged/published.
+  Claude should branch from this task head as `claude/body-damage-visuals` and
+  preserve the shared contracts. Await owner-authorized integration and actual
+  verification before the standing test-channel publication.
+
 ## 2026-10-01 — Codex — combined Chip cards, Siren teams and instant bot drafts
 
 - Owner authorized merging Claude's `claude/chip-cards` at `1d16c68` and the

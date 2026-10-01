@@ -1,3 +1,4 @@
+import {projectileBodyImpact,meleeBodyImpact} from './body-damage.js';
 import {projectileHeadshot,HEADSHOT_MULTIPLIER} from './headshots.js';
 import RAPIER from '@dimforge/rapier3d-compat';
 import type {Player,Projectile,Simulation} from './simulation.js';
@@ -80,7 +81,7 @@ export class StandardMelee {
    if(len(d)>range+extra||Math.abs(d.y)>(kind==='launch'?2.5:1.8)+extra||kind!=='slam'&&dot(norm(v(d.x,0,d.z)),f)<(kind==='launch'?.45:.15)||!s.lineOfSight(origin,target.body.translation(),p.id,target.id))continue;
    const hp=target.hp,dir=norm(add(d,v(0,kind==='slam'?.2:.5,0)));
    a.hitIds=[...(a.hitIds||[]),target.id];
-   s.directHit(p,target,target.body.translation(),dir,WEAPONS[p.spec].damage*p.stats.damage*multiplier,impulse*p.stats.impulse,attack);
+   s.directHit(p,target,target.body.translation(),dir,WEAPONS[p.spec].damage*p.stats.damage*multiplier,impulse*p.stats.impulse,attack,true,false,false,kind==='slam'?{...meleeBodyImpact(p.spec,p.stats.attackRate),kind:'blunt'}:meleeBodyImpact(p.spec,p.stats.attackRate));
    if('stats'in target&&target.hp<hp&&target.hp>0){if(kind==='launch')this.launch(target,p,7.4);else if(this.launch(target,p,kind==='spin-direct'?6.1:4.4)){if(kind==='spin-direct')target.knockdown!.ragdoll=true;target.ext=add(target.ext,mul(norm(v(d.x,0,d.z)),3));}}
    if(p.hp<=0||p.meleeAction!==a)break;
   }
@@ -112,8 +113,9 @@ export class StandardMelee {
   if(owner&&target){
    if('stats'in target&&target.hp>0&&target.blockTime>0){if(shield){s.successfulBlock(target,'projectile',point,shot.owner);shot.melee.returning=true;}else s.reflectProjectile(shot,target,point);return true;}
    const before='stats'in target?target.hp:0,headshot=!shield&&'stats'in target&&projectileHeadshot({pos:target.body.translation(),yaw:target.input.yaw,knockdown:target.knockdown,juggle:target.juggle},point,shot.vel,shot.radius);
-   if(shot.direct)s.directHit(owner,target,point,dir,shot.damage,shot.impulse,shot.attackId,false,false,headshot);
-   else if('stats'in target){const actual=s.damage(target,shot.damage*(headshot?HEADSHOT_MULTIPLIER:1),owner.id,'reflected',dir,shot.impulse,point,false,false,headshot,attackElements(shot.burnDps||0,shot.poisonDps||0));if(actual>0){refreshDot(target.burns,owner.id,shot.burnDps||0,s.time,'fire');refreshDot(target.poisons,owner.id,shot.poisonDps||0,s.time,'poison');}}
+   const impact=projectileBodyImpact({...shot,vel:'stats'in target?sub(shot.vel,target.body.linvel()):shot.vel});impact.normal={...hit.normal1};
+   if(shot.direct)s.directHit(owner,target,point,dir,shot.damage,shot.impulse,shot.attackId,false,false,headshot,impact);
+   else if('stats'in target){const actual=s.damage(target,shot.damage*(headshot?HEADSHOT_MULTIPLIER:1),owner.id,'reflected',dir,shot.impulse,point,false,false,headshot,attackElements(shot.burnDps||0,shot.poisonDps||0),impact);if(actual>0){refreshDot(target.burns,owner.id,shot.burnDps||0,s.time,'fire');refreshDot(target.poisons,owner.id,shot.poisonDps||0,s.time,'poison');}}
    else s.damageProp(target,shot.damage*owner.stats.demolition,mul(dir,shot.impulse),owner.id,point);
    if('stats'in target&&target.hp<before&&target.hp>0){if(shield)this.launch(target,owner,3.8);else this.stagger(target,meleeHitStun(owner.spec));}
    s.emit('impact',point,{source:shot.owner,target:id,spec:shot.spec,color:WEAPONS[shot.spec].color,material:'material'in target?target.material:undefined});

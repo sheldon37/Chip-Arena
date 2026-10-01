@@ -40,7 +40,9 @@ function voxelBurst(scene:T.Scene,rig:T.Group,p:PlayerView,death:DeathPresentati
 }
 /** Add future kill animations here. Only the server chooses the effect identifier.
  * Unknown identifiers fall back to voxel breakup. These pieces never deal damage. */
-export const KILL_EFFECTS:Record<string,KillEffectFactory>={...SIREN_KILL_EFFECTS,ragdoll,'dev-gibber':ragdollVariant('ragdoll',{gib:true}),...Object.fromEntries(Object.keys(RAGDOLL_STYLES).map(id=>[id,ragdollVariant(id as RagdollStyle)])),'dev-raging-demon':ragingDemon,'voxel-burst':voxelBurst,'dev-clown-love':clownLove,'dev-bass-van':bassVan,...Object.fromEntries(['confetti','ascension','shrink','launch','ghost','dev-clown'].map(kind=>[kind,cinematic(kind)]))};
+/** Functional fallback using the existing rig. Claude supplies wound meshes/crush/kneel choreography. */
+const bodyRagdoll:KillEffectFactory=(...args)=>ragdollVariant('ragdoll',{gib:args[3].wound?.kind==='sever'})(...args);
+export const KILL_EFFECTS:Record<string,KillEffectFactory>={...SIREN_KILL_EFFECTS,'impact-ragdoll':bodyRagdoll,ragdoll,'dev-gibber':ragdollVariant('ragdoll',{gib:true}),...Object.fromEntries(Object.keys(RAGDOLL_STYLES).map(id=>[id,ragdollVariant(id as RagdollStyle)])),'dev-raging-demon':ragingDemon,'voxel-burst':voxelBurst,'dev-clown-love':clownLove,'dev-bass-van':bassVan,...Object.fromEntries(['confetti','ascension','shrink','launch','ghost','dev-clown'].map(kind=>[kind,cinematic(kind)]))};
 export class DeathEffects {
  private active=new Map<string,{effect:Effect;at:number}>();private seen=new Set<string>();private epoch='';
  constructor(private scene:T.Scene){}
