@@ -44,10 +44,11 @@ hands the animation shows. Emit the events listed on `SirenEventType`.
   `introCamera` and the intro `ArmorGlow` for `dev-siren`.
 - **Stage:** map `siren` uses `sirenStageBlocks()` (route it in `arenaBlocks`, no vertical buildings) and the
   `SIREN_STAGE_THEME` values for its `MAPS` entry. Create `SirenStageVisuals(scene)`; `setActive(map === 'siren')` and
-  `update(state, visualTime, effectsQuality, camera)` each frame (the camera lets it hide the ceiling for overview shots).
-  While active it dims the arena's night lights and restores them on `setActive(false)`.
-- **Black Rain:** Ward Zero has a ceiling grid at about 9 m; spawn the drops around 8 m (the storm is drawn just
-  under the ceiling) and give each drop its `land`/`landAt` so its red floor marker is right.
+  `update(state, visualTime, effectsQuality, camera)` each frame, then `shell(props)` (a camera outside the hall, such
+  as the menu overview, sees the near walls, roof and vault cut away). While active it dims the arena's night lights
+  and restores them on `setActive(false)`. MapScenery draws no outdoor world for theme `siren` (see Ward Zero below).
+- **Black Rain:** Ward Zero is sealed by a roof at 16 m; spawn the drops around 8 m and give each drop its
+  `land`/`landAt` so its red floor marker is right.
 - **Stage hazards:** `sirenStageHazards(songTime)` returns the beat-synced vents (positions also in `SIREN_VENTS`).
   Apply contact damage and launch the same way as `StageHazards` (per-hazard, per-player hit cooldown, only in the
   fight phase).
@@ -83,8 +84,8 @@ hands the animation shows. Emit the events listed on `SirenEventType`.
   continues 1.75 s past the crush as their death camera (the body drops, the camera cranes up and back); the Siren
   player's ends on `releaseAt`, when it can move again. A hold broken before the crush cuts straight back. Every shot
   stays on the Siren's right so screen direction never flips; the camera eases after the Siren's facing.
-- **Intro and stage:** see `SIREN_INTRO` and `siren-stage-layout.ts`; Ward Zero's lights, beacons, painted grins,
-  giant eyes and containment circle follow the song's beats and sections.
+- **Intro and stage:** see `SIREN_INTRO` and the Ward Zero section below; the whole hall follows the song's beats
+  and sections.
 
 ## Siren Chips
 Owner request (2026-10-01): Siren-exclusive Chips with their own animated card, plus a few boss Chips for testing.
@@ -104,9 +105,48 @@ Owner request (2026-10-01): Siren-exclusive Chips with their own animated card, 
 - **Preview:** `tools/chip-lab` (dev only), e.g. `/tools/chip-lab/index.html?chips=siren-crown,siren-hide,siren-break`
   or `?view=spotlight&chip=siren-hide&t=1.5`.
 
+## Ward Zero (stage)
+Owner request (2026-10-02): a closed-off building for a "crazy" demon, with no open world. It stays synced to the
+music (hazards included) and is laid out for the adds that will spawn with the Siren and for chips that players run
+around to grab.
+- **Layout** (`siren-stage-layout.ts`):
+  - `SIREN_HALL`: the 64 x 56 m floor and a roof whose underside is at 16 m. The walls reach the roof and the roof
+    is a collider, so no jump (about 9.8 m) or launch (about 12.5 m) can leave the hall.
+  - 20 wall columns (`SIREN_COLUMNS`) and four 16 m restraint pylons.
+  - Partitions, cells, furniture and vents keep their places.
+  - 72 props, 18 breakable, with fracture headroom under the relay's 300.
+- **Future hooks** (data only; nothing spawns yet). The dressing already draws doors, alarm lamps, threshold stripes
+  and chip pads at these points.
+  - `SIREN_ADD_SPAWNS`: four isolation cells and four ward doors, each with the yaw that faces into the hall.
+  - `SIREN_CHIP_SPOTS`: six pads on the outer running loop.
+  - Tests keep both on clear floor, away from vents, cover and player pads.
+- **Visuals** (`src/client/siren/stage.ts`): the condemned asylum's great hall, now the Siren's concert hall.
+  Dressing:
+  - Glazed tiles and bricked-up arches.
+  - Galleries of silhouetted patients.
+  - On the north wall, a pipe organ under her giant eyes, grin and a rose window.
+  - Chained great doors in the south wall.
+  - Clocks that tick backwards on the beat.
+  - A vault with an exhaust fan, chandeliers hung with teeth, failing work lights and speaker stacks.
+
+  Everything is keyed to song time, so all viewers see the same thing:
+  - The organ lights as an equaliser wave.
+  - The sconces chase around the hall in the drops.
+  - The crowd bobs, then freezes and stares in the breakdown.
+  - The great doors pound on the kicks in the lift and climax.
+  - The chandeliers sway once a bar.
+  - The fan turns with the song's energy.
+  - The vents read `sirenStageHazards`, the same schedule the damage uses.
+- **Indoors:** for theme `siren`, MapScenery draws no sky, skyline, trims or grid. It applies `WARD_ZERO_AIR`
+  (interior haze, and the arena key light hung almost straight down so the 16 m walls do not shade half the floor).
+  The roof prop casts no shadow.
+- **Systems note:** on map `siren`, `siren.ts ground()` starts its ray under the roof, so effects aimed at the vault
+  (Eruption, Hellfire placement) land on the floor.
+- Screenshot: `docs/ward-zero-hall.jpg` (climax: altar, great doors, gallery and vault; the menu overview cut-away).
+
 ## Siren lab
 `tools/siren-lab` renders the real Siren code as frame strips (dev only, not built). With `npm run dev`, open
-`/tools/siren-lab/index.html?move=rend&frames=6&span=1` (rig), `?kind=intro&aspect=1.778`, `?kind=stage&views=back,cells`,
+`/tools/siren-lab/index.html?move=rend&frames=6&span=1` (rig), `?kind=intro&aspect=1.778`, `?kind=stage&views=altar,doors,side&times=50,152`,
 `?kind=fp&mode=ranged`, `?move=idle&stage=1&song=141` (the Siren inside Ward Zero at song time 141 s), or
 `?move=laugh&stage=1&cutscene=victim&times=3.4,4.9,5.6,7.1&aspect=1.778` (the grab cutscene as that participant). The header of
 `lab.ts` lists every parameter.

@@ -1,4 +1,5 @@
 import {NightWorld} from './night-world.js';
+import {WARD_ZERO_AIR} from './siren/stage.js';
 import * as T from 'three';
 import {arenaMap,MapId,mapId} from '../shared/maps.js';
 /** Scenery is batched and has no physics bodies. Only shared arena blocks affect combat. */
@@ -6,8 +7,10 @@ export class MapScenery {
  readonly group=new T.Group();readonly world:NightWorld;current:MapId|null=null;private materials:T.Material[]=[];private geometries:T.BufferGeometry[]=[];private water:T.Mesh|undefined;private snow:T.InstancedMesh|undefined;private snowSeeds:{x:number;y:number;z:number;speed:number}[]=[];private textures:T.Texture[]=[];
  constructor(private scene:T.Scene){this.world=new NightWorld(scene);scene.add(this.group);this.group.name='map-scenery';}
  set(raw:unknown){const id=mapId(raw);if(id===this.current)return;this.current=id;this.group.clear();this.materials.forEach(m=>m.dispose());this.geometries.forEach(g=>g.dispose());this.materials=[];this.geometries=[];this.water=undefined;this.snow=undefined;this.snowSeeds=[];this.textures.forEach(t=>t.dispose());this.textures=[];
- this.world.set(id);const m=arenaMap(id);this.scene.background=new T.Color(m.sky);this.scene.fog=new T.Fog(new T.Color(m.sky).lerp(new T.Color(0x405677),.42),65,210);
- const moon=this.scene.getObjectByName('night-moon') as T.DirectionalLight;moon?.color.set(id==='outpost'?0xffc5a5:id==='forge'?0xffac9c:0xb2ceff);const rim=this.scene.getObjectByName('night-rim') as T.DirectionalLight;rim?.color.set(m.accent);
+ this.world.set(id);const m=arenaMap(id),indoor=m.theme==='siren';this.scene.background=new T.Color(indoor?WARD_ZERO_AIR.background:m.sky);this.scene.fog=indoor?new T.Fog(WARD_ZERO_AIR.fog,WARD_ZERO_AIR.near,WARD_ZERO_AIR.far):new T.Fog(new T.Color(m.sky).lerp(new T.Color(0x405677),.42),65,210);
+ const moon=this.scene.getObjectByName('night-moon') as T.DirectionalLight;moon?.color.set(id==='outpost'?0xffc5a5:id==='forge'?0xffac9c:0xb2ceff);moon?.position.set(...(indoor?WARD_ZERO_AIR.key:[-8,20,-12] as [number,number,number]));const rim=this.scene.getObjectByName('night-rim') as T.DirectionalLight;rim?.color.set(m.accent);
+ // The Siren's hall dresses itself (siren/stage.ts): no skyline, floor trims or grid.
+ if(indoor)return;
  const box=this.geometry(new T.BoxGeometry(1,1,1)),cone=this.geometry(new T.ConeGeometry(1,1,8)),sphere=this.geometry(new T.IcosahedronGeometry(1,1));
  type Part={x:number;y:number;z:number;sx:number;sy:number;sz:number;ry?:number};
  const batch=(geo:T.BufferGeometry,parts:Part[],color:number,glow=false)=>{if(!parts.length)return;const mat=glow?new T.MeshBasicMaterial({color}):new T.MeshStandardMaterial({color,roughness:.87});this.materials.push(mat);const mesh=new T.InstancedMesh(geo,mat,parts.length);mesh.frustumCulled=false;const o=new T.Object3D();parts.forEach((p,i)=>{o.position.set(p.x,p.y,p.z);o.scale.set(p.sx,p.sy,p.sz);o.rotation.set(0,p.ry||0,0);o.updateMatrix();mesh.setMatrixAt(i,o.matrix);});this.group.add(mesh);return mesh;};

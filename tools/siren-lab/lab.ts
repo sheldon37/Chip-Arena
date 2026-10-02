@@ -6,7 +6,7 @@
  *  kind=rig (default)  the Siren through a move. move=idle|walk|swap|hit|knockdown|<SirenMoveId>; mode=melee|ranged;
  *                      whiff=1 makes Last Laugh miss
  *  kind=intro          the dev-siren intro scene (use aspect=1.778)
- *  kind=stage          Ward Zero at song time t (views: overview,eye,play,back,corner,cells,beacon)
+ *  kind=stage          Ward Zero at song time t (views: overview,orbit,play,altar,doors,side,corner,vault,gallery,cells,door,pads,vent)
  *  kind=fp             the first-person view model (mode=melee|ranged)
  *  stage=1, song=<s>   (rig) put the Siren inside Ward Zero, at song time <s> for lab t=0
  *  move=death          the Siren's own death effect; whiff=1 makes Last Laugh miss
@@ -26,6 +26,7 @@ import {VIEW} from '../../src/shared/view.js';
 import {hitReaction} from '../../src/shared/hit-reaction.js';
 import type {PlayerView,Snapshot,GameEvent} from '../../src/shared/simulation.js';
 import {sirenify,animateSiren,sirenFirstPerson,SirenEffects,SirenIntroStage,SirenStageVisuals,SirenCutscene,SIREN_KILL_EFFECTS} from '../../src/client/siren/index.js';
+import {WARD_ZERO_AIR} from '../../src/client/siren/stage.js';
 import {poseFirstPersonView} from '../../src/client/first-person-view.js';
 import {markFirstPersonRig} from '../../src/client/pose-flags.js';
 import {SIREN,SIREN_TIMING,SIREN_SPAWN,sirenPoint,type SirenMoveId,type SirenMoveState,type SirenPlayerState,type SirenWorldView,type SirenShot,type SirenMode} from '../../src/shared/siren-contract.js';
@@ -167,20 +168,22 @@ async function main(){
 
  const scene=new T.Scene();lights(scene);
  if(kind==='stage'){
-  scene.background=new T.Color(SIREN_STAGE_THEME.sky);scene.fog=new T.Fog(new T.Color(SIREN_STAGE_THEME.sky).lerp(new T.Color(0x405677),.42),65,210);
-  for(const b of sirenStageBlocks()){const m=new T.Mesh(new T.BoxGeometry(b.size.x,b.size.y,b.size.z),new T.MeshLambertMaterial({color:b.material==='foundation'?SIREN_STAGE_THEME.floor:MATERIALS[b.material].color}));m.position.set(b.pos.x,b.pos.y,b.pos.z);m.castShadow=m.receiveShadow=true;scene.add(m);}
+  // The same air, key light and props as the game draws for map 'siren' (MapScenery + renderer.makeProp).
+  scene.background=new T.Color(WARD_ZERO_AIR.background);scene.fog=new T.Fog(WARD_ZERO_AIR.fog,WARD_ZERO_AIR.near,WARD_ZERO_AIR.far);const key=scene.getObjectByName('night-moon');key?.position.set(...WARD_ZERO_AIR.key);
+  const props=new Map<string,T.Object3D>();for(const b of sirenStageBlocks()){const m=new T.Mesh(new T.BoxGeometry(b.size.x,b.size.y,b.size.z),new T.MeshLambertMaterial({color:b.material==='foundation'?SIREN_STAGE_THEME.floor:MATERIALS[b.material].color}));m.position.set(b.pos.x,b.pos.y,b.pos.z);m.castShadow=!b.id.startsWith('siren-roof-');m.receiveShadow=true;scene.add(m);props.set(b.id,m);}
   const visuals=new SirenStageVisuals(scene);visuals.setActive(true);
-  const cams:Record<string,[number[],number[]]>={overview:[[0,46,30],[0,0,2]],eye:[[0,4.2,-24],[0,1.2,0]],play:[[-3,3.2,-18],[2,1.4,2]],back:[[0,2.6,8],[0,3.2,-28]],corner:[[27,9,24],[0,0,0]],cells:[[-14,2.6,-2],[-29,1.8,-11]],beacon:[[-24,3.5,-20],[-10,3,-6]]};
+  const cams:Record<string,[number[],number[]]>={overview:[[0,46,30],[0,0,2]],orbit:[[42*Math.cos(.45),32,46*Math.sin(.65)],[0,0,0]],play:[[-3,3.2,-18],[2,1.4,2]],altar:[[0,3,6],[0,7.5,-28]],doors:[[0,3,-6],[0,5,28]],side:[[-18,3.2,2],[32,6.5,0]],
+   corner:[[24,4.2,20],[-8,6,-10]],vault:[[0,1.6,10],[0,14.5,-4]],gallery:[[10,2,12],[-32,10,-8]],cells:[[-14,2.6,-2],[-29,1.8,-11]],door:[[-12,2.6,-12],[-18,2.4,-28]],pads:[[-12,6,4],[-18,0,-4]],vent:[[-10,3.4,-2.6],[-10,.4,-9]]};
   let prev=start-warm;
   for(let i=0;i<times.length;i++){for(let t=prev;t<times[i];t+=dt){visuals.update(snapshotAt(t,{players:[],projectiles:[],world:{patches:[],eruptions:[],rains:[],marks:[],grabs:[]},events:[],deaths:[],bossSong:{track:'black-siren-protocol',startedAt:0}}),t,quality,camera);}prev=times[i];
    const snap=snapshotAt(times[i],{players:[],projectiles:[],world:{patches:[],eruptions:[],rains:[],marks:[],grabs:[]},events:[],deaths:[],bossSong:{track:'black-siren-protocol',startedAt:0}});
-   for(let r=0;r<views.length;r++){const [p,l]=cams[views[r]]??cams.overview;camera.position.set(p[0],p[1],p[2]);camera.lookAt(l[0],l[1],l[2]);visuals.update(snap,times[i],quality,camera);gl.render(scene,camera);draw(r,i,`${views[r]} · song ${times[i].toFixed(2)}s`);}}
+   for(let r=0;r<views.length;r++){const [p,l]=cams[views[r]]??cams.overview;camera.position.set(p[0],p[1],p[2]);camera.lookAt(l[0],l[1],l[2]);visuals.update(snap,times[i],quality,camera);visuals.shell(props);gl.render(scene,camera);draw(r,i,`${views[r]} · song ${times[i].toFixed(2)}s`);}}
   done();return;
  }
 
  // stage=1 puts the rig in Ward Zero; song=<s> is the song time at lab t=0.
  const inWard=q.get('stage')==='1',songAt=num('song',140);let ward:SirenStageVisuals|undefined;
- if(inWard){scene.background=new T.Color(SIREN_STAGE_THEME.sky);for(const b of sirenStageBlocks()){const m=new T.Mesh(new T.BoxGeometry(b.size.x,b.size.y,b.size.z),new T.MeshLambertMaterial({color:b.material==='foundation'?SIREN_STAGE_THEME.floor:MATERIALS[b.material].color}));m.position.set(b.pos.x,b.pos.y,b.pos.z);m.castShadow=m.receiveShadow=true;scene.add(m);}ward=new SirenStageVisuals(scene);ward.setActive(true);}
+ if(inWard){scene.background=new T.Color(WARD_ZERO_AIR.background);scene.fog=new T.Fog(WARD_ZERO_AIR.fog,WARD_ZERO_AIR.near,WARD_ZERO_AIR.far);scene.getObjectByName('night-moon')?.position.set(...WARD_ZERO_AIR.key);for(const b of sirenStageBlocks()){const m=new T.Mesh(new T.BoxGeometry(b.size.x,b.size.y,b.size.z),new T.MeshLambertMaterial({color:b.material==='foundation'?SIREN_STAGE_THEME.floor:MATERIALS[b.material].color}));m.position.set(b.pos.x,b.pos.y,b.pos.z);m.castShadow=!b.id.startsWith('siren-roof-');m.receiveShadow=true;scene.add(m);}ward=new SirenStageVisuals(scene);ward.setActive(true);}
  else floor(scene);
  const rigs=new Map<string,CharacterRig>(),effects=new SirenEffects(scene),kills=new Map<string,{update(age:number):void}>();
  const rigFor=(p:PlayerView)=>{let r=rigs.get(p.id);if(!r){r=createCharacterRig(p.color,undefined,true);if(p.id===SIREN.spec)sirenify(r);r.group.traverse(o=>{if(o instanceof T.Mesh){o.castShadow=true;o.receiveShadow=true;}});scene.add(r.group);rigs.set(p.id,r);}return r;};

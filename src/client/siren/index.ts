@@ -57,6 +57,8 @@ export class SirenStageVisuals {
  get group(){return this.ward.group;}
  setActive(on:boolean){this.ward.setActive(on);}
  update(state:Snapshot,time:number,quality:number,camera?:T.Camera){this.ward.update(state,time,quality,camera);}
+ /** Cut the hall's walls and roof props away for a camera outside it (call after update). */
+ shell(props:Iterable<[string,T.Object3D]>){this.ward.shell(props);}
 }
 
 /** Death effects: register in death-effects.ts KILL_EFFECTS. */
