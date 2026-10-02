@@ -8,9 +8,10 @@ import {EMERGE_SECONDS,DEATH_SECONDS,DEATH_FX_SECONDS} from './fx.js';
 import type {SirenMinion} from './model.js';
 
 /**
- * Siren minion animation set. PURE: every pose is a function of the authoritative fields a future minion view provides
- * (docs/SIREN-MINIONS.md: yaw, vel, spawnAt, attackAt, hitAt, deathAt), the seed and the time. No per-minion state, no
- * random numbers: identical on every client, at 30/60/120 Hz, and when the kill-cam rewinds.
+ * Siren minion animation set. Every pose is a function of the authoritative fields a future minion view provides
+ * (docs/SIREN-MINIONS.md: yaw, vel, spawnAt, attackAt, hitAt, deathAt), the seed and the time, plus ONE small state per
+ * minion: its gait phases (the cadence follows speed, like the player's gait; see gaitAt). It never draws random numbers,
+ * clamps dt, restarts on rewinds and time jumps, and gives the same feet at 30/60/120 Hz.
  *
  * Poses are evaluated into a flat buffer (joint Euler angles, body offset, foot and hand IK targets), so layers blend as
  * numbers: emergence -> locomotion, locomotion + attack + flinch, and death from the exact pose at deathAt.
@@ -35,7 +36,9 @@ export interface SirenMinionView {
  /** Authority time of death (absent: alive). */
  deathAt?:number;
 }
-export const MINION_TIMING={emerge:EMERGE_SECONDS,death:DEATH_SECONDS,deathFx:DEATH_FX_SECONDS,attack:.9,flinch:.42,runFrom:2.0,runTo:3.0} as const;
+/** Presentation timing the systems phase should match (seconds). `hit` is when each attack's claws/club arrive after
+ * attackAt (where the authority should apply damage); `attack` is the full cycle (the chaos zombie's .9 s cooldown). */
+export const MINION_TIMING={emerge:EMERGE_SECONDS,death:DEATH_SECONDS,deathFx:DEATH_FX_SECONDS,attack:.9,hit:{lunge:.34,club:.4,smash:.43},flinch:.42,runFrom:2.0,runTo:3.0} as const;
 
 const TAU=Math.PI*2,ANKLE=-.795;
 const clamp=(x:number,a=0,b=1)=>Math.min(b,Math.max(a,x));
@@ -79,7 +82,7 @@ function twitch(look:MinionLook,t:number){
  * reach (about .44 m walking, .5 m running); the seed sets the base rhythm. */
 export const walkCadence=(look:MinionLook,speed:number)=>Math.max(look.cadence*.85,speed*.66/.44);
 export const runCadence=(look:MinionLook,speed:number)=>Math.max(look.runCadence,speed*.42/.5);
-function locomotion(P:Pose,look:MinionLook,t:number,vx:number,vz:number,phi:number,phr:number){
+function locomotion(P:Pose,look:MinionLook,t:number,vx:number,vz:number,phi:number,phr:number,injured=0){
  const speed=Math.hypot(vx,vz),mv=sm((speed-.08)/.4),run=sm((speed-MINION_TIMING.runFrom)/(MINION_TIMING.runTo-MINION_TIMING.runFrom)),lead=-look.drag;
  const fw=walkCadence(look,speed),fr=runCadence(look,speed);
  // Feet (walk and run evaluated separately, then mixed).
@@ -101,20 +104,20 @@ function locomotion(P:Pose,look:MinionLook,t:number,vx:number,vz:number,phi:numb
   P[o]=lerp(x,rx,run);P[o+1]=lerp(y,ry,run);P[o+2]=lerp(z,rz,run);P[o+3]=lerp(yaw,sd*.06,run);P[o+4]=lerp(heel,rheel,run);P[o+5]=1;
  }
  // Body: hunched and lowered; dips on the bad leg, sways over the planted foot, rolls toward the bad side.
- const hunch=look.hunch*(1+.35*run),dragStance=frac(phi+.5+.05*look.limp),dip=-.035*look.limp*Math.sin(Math.PI*Math.min(1,dragStance/.56))*mv;
- const sway=.034*mv*Math.cos(TAU*(phi-.3))*lead*(1+.5*look.limp),bob=-.018*(.5+.5*Math.cos(2*TAU*phi))*mv;
+ const hunch=(look.hunch+.18*injured)*(1+.35*run),dragStance=frac(phi+.5+.05*look.limp),dip=-.035*look.limp*Math.sin(Math.PI*Math.min(1,dragStance/.56))*mv;
+ const idle=1-mv,drift=Math.sin(t*.83+look.phase*6)+.4*Math.sin(t*1.37+look.phase*3),sway=.046*mv*Math.cos(TAU*(phi-.3))*lead*(1+.5*look.limp)+.026*idle*drift,bob=-.02*(.5+.5*Math.cos(2*TAU*phi))*mv;
  const rbob=-.04*(.5+.5*Math.cos(2*TAU*phr));
  P[BODY]=lerp(sway,.012*Math.sin(TAU*phr),run);P[BODY+1]=lerp(-.075-.05*look.hunch+bob+dip,-.085+rbob,run);P[BODY+2]=lerp(.0,.04,run);
- P[J.body]=lerp(.04*mv,.32,run);P[J.body+1]=lerp(.1*Math.sin(TAU*phi)*mv,.16*Math.sin(TAU*phr),run);P[J.body+2]=lerp(-look.drag*.05*look.limp-sway*1.5,.06*Math.sin(TAU*phr),run);
+ P[J.body]=lerp(.04*mv,.32,run);P[J.body+1]=lerp(.1*Math.sin(TAU*phi)*mv,.16*Math.sin(TAU*phr),run);P[J.body+2]=lerp(-look.drag*.05*look.limp-sway*2.2,.06*Math.sin(TAU*phr),run);
  // A lurch: the torso pitches forward each time the good leg plants.
- const lurch=.09*mv*Math.max(0,Math.sin(TAU*phi))**3;
+ const lurch=.14*mv*Math.max(0,Math.sin(TAU*phi))**3+.05*idle*(.5+.5*Math.sin(t*.61+look.phase*4));
  P[J.pelvis]=.04;P[J.pelvis+1]=-.06*Math.sin(TAU*phi)*mv;P[J.pelvis+2]=0;
  const breath=.025*Math.sin(t*1.7+look.phase*6)+.012*noise(look.seed,t*.9,1);
  P[J.spine]=hunch*.5+lurch;P[J.spine+1]=0;P[J.spine+2]=.4*sway;
  P[J.chest]=hunch*.5+breath;P[J.chest+1]=lerp(-.08*Math.sin(TAU*phi)*mv,-.14*Math.sin(TAU*phr),run)+.05*noise(look.seed,t*.4,2);P[J.chest+2]=look.shoulderDrop;
  const loll=noise(look.seed,t*.6,3);
  P[J.neck]=-hunch*.55+.06-.5*run;P[J.neck+1]=.08*noise(look.seed,t*.3,4);P[J.neck+2]=0;
- P[J.head]=.12+.06*loll+lurch*.6-.25*run;P[J.head+1]=.1*noise(look.seed,t*.5,5);P[J.head+2]=look.headTilt+.05*Math.sin(TAU*phi)*mv+.06*loll;
+ P[J.head]=.12+.06*loll+lurch*.6-.25*run+.06*Math.sin(2*TAU*phi)*mv;P[J.head+1]=.1*noise(look.seed,t*.5,5);P[J.head+2]=look.headTilt+.05*Math.sin(TAU*phi)*mv+.06*loll;
  // Arms: limp pendulums that lag the body, or a classic reach; frenzied flailing when running.
  const pitch=hunch+.04*mv+lerp(0,.32,run);
  for(const sd of [1,-1]){
@@ -272,7 +275,9 @@ function gaitAt(m:SirenMinion,s:SirenMinionView,time:number,alive:boolean):Gait{
 /** Locomotion + attack + flinch + twitches at time t (the upright, living pose). */
 function livingPose(P:Pose,m:SirenMinion,s:SirenMinionView,t:number,g:Gait){
  const L=m.look;
- P.fill(0);locomotion(P,L,t,g.vx,g.vz,g.walk,g.run);addTwitch(P,L,t);
+ // Badly hurt (below 40% health) it sags lower and its head hangs.
+ const injured=s.maxHp&&s.hp!==undefined?1-sm(s.hp/s.maxHp/.4):0;
+ P.fill(0);locomotion(P,L,t,g.vx,g.vz,g.walk,g.run,injured);addTwitch(P,L,t);P[J.head]+=.15*injured;
  if(s.attackAt!==undefined){const a=t-s.attackAt;if(a>=0&&a<MINION_TIMING.attack)attackLayer(P,L,s,a);}
  if(s.hitAt!==undefined)flinchLayer(P,L,s,t-s.hitAt);
 }
@@ -298,7 +303,7 @@ export function animateSirenMinion(m:SirenMinion,s:SirenMinionView,time:number,q
  applyPose(r,P);
  // Tongues flicker, flare while emerging and as the body burns.
  const flare=1+.8*win(e,.2,.6,1.6,EMERGE_SECONDS)+(d!==undefined?1.4*win(d,.3,.8,1.6,2.1):0);
- for(const g of m.tongues){const n=.5+.5*Math.sin(time*7.3+g.phase)*Math.sin(time*3.1+g.phase*1.9);g.mesh.scale.set(1,g.height*(.65+.55*n)*flare,1);
+ for(const g of m.tongues){const n=.5+.5*Math.sin(time*7.3+g.phase)*Math.sin(time*3.1+g.phase*1.9);g.mesh.scale.set(1.25,1.25*g.height*(.65+.55*n)*flare,1.25);
   _e.set(.18*Math.sin(time*2.6+g.phase),0,.26*Math.sin(time*3.4+g.phase*1.3));g.mesh.quaternion.copy(g.base).multiply(_q.setFromEuler(_e));}
  dyingLook(m,d);
  m.fx.update(e<EMERGE_SECONDS+.4?e:undefined,d,d!==undefined?bodyPoints(r):POINTS,quality);
@@ -319,5 +324,5 @@ function dyingLook(m:SirenMinion,d:number|undefined){
   const mat=d!==undefined&&d>.42+.7*hash01(m.seed,i,61)?p.charred:p.live;if(p.mesh.material!==mat)p.mesh.material=mat;
   const vanish=d===undefined?0:sm((d-(1.25+.8*(p.y-lo)/Math.max(1e-6,hi-lo)))/.3);
   if(vanish>0)p.mesh.scale.copy(p.scale).multiplyScalar(Math.max(.001,1-vanish));else if(!p.mesh.scale.equals(p.scale))p.mesh.scale.copy(p.scale);});
- for(const g of m.tongues)g.mesh.visible=!gone;if(m.scrap)m.scrap.visible=!(d!==undefined&&d>1.5);
+ m.tongues.forEach((g,i)=>{g.mesh.visible=!gone&&!(m.low&&i>=2);});if(m.scrap)m.scrap.visible=!(d!==undefined&&d>1.5);
 }

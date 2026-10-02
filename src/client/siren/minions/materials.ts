@@ -20,8 +20,8 @@ export function tickMinionClock(time:number){if(Number.isFinite(time))MINION_CLO
 
 /** sRGB palette. The shell is the pilot's armor gone ashen grey-green; the dying glow is the Siren's pale violet. */
 export const MINION_PALETTE={
- shell:0xaeb2a0,edge:0x585a50,flex:0x4f3030,accent:0x5e5a66,strip:0x8f7fe0,scrap:0x6e5a4b,
- rotDark:0x5c5a40,rotOlive:0x8f9470,rotBrown:0x5d4936,ooze:0x9aa255,grime:0x5c5d50,blood:0x5a1a1c,
+ shell:0xa9ad99,edge:0x585a50,flex:0x4f3030,accent:0x5e5a66,strip:0x8f7fe0,scrap:0x6e5a4b,
+ rotDark:0x574a37,rotOlive:0x8a8b6b,rotBrown:0x5d4936,ooze:0x9aa255,grime:0x5c5d50,blood:0x5a1a1c,
  char:0x0d0b0e,soot:0x2a2427,scorch:0x5a4436,ember:0xe8dcff,emberHot:0xff6a2c,
  crack:0x9d84ff,eye:0xf4f0ff,bone:0xddd3bc,
 } as const;
@@ -59,7 +59,7 @@ export class MinionMaterial extends T.MeshLambertMaterial{
 
 /** Per-category settings: base colour, self light (keeps wounds and rot readable under the arena key), glow and flicker. */
 const CATEGORY:Record<MinionCategory,{color:number;self:number;glow:number;flicker:number}>={
- shell:{color:MINION_PALETTE.shell,self:.18,glow:1.7,flicker:.35},
+ shell:{color:MINION_PALETTE.shell,self:.16,glow:1.7,flicker:.35},
  edge:{color:MINION_PALETTE.edge,self:.1,glow:1.7,flicker:.35},
  flex:{color:MINION_PALETTE.flex,self:.14,glow:1.5,flicker:.35},
  accent:{color:MINION_PALETTE.accent,self:.1,glow:1.5,flicker:.85},

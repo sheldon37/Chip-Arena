@@ -14,7 +14,7 @@ const names=(o:T.Object3D)=>{const out:string[]=[];o.traverse(n=>{if(n.name)out.
 /** Every mesh's name, layout and material, in traversal order: the minion's full visual identity. */
 function fingerprint(m:SirenMinion){const out:string[]=[];m.rig.group.traverse(o=>{if(!(o instanceof T.Mesh))return;const l=currentLayout(o);out.push(`${o.name}|${o.visible}|${l?.key}|${l?.count}|${(o.material as T.Material).name}|${o.position.toArray().map(x=>x.toFixed(5))}`);});return out.join('\n');}
 const STATES:Record<string,(t:number)=>SirenMinionView>={
- idle:()=>({yaw:.4,vel:{x:0,z:0}}),walk:()=>({yaw:.4,vel:{x:.5,z:1.1}}),run:()=>({yaw:-1,vel:{x:-3.2,z:2.4}}),
+ idle:()=>({yaw:.4,vel:{x:0,z:0}}),walk:()=>({yaw:.4,vel:{x:.5,z:1.1}}),hurt:t=>({yaw:.4,vel:{x:0,z:1},hp:Math.max(0,100-t*30),maxHp:100}),run:()=>({yaw:-1,vel:{x:-3.2,z:2.4}}),
  lunge:()=>({yaw:0,vel:{x:0,z:0},attackAt:1,attack:'lunge'}),club:()=>({yaw:0,vel:{x:0,z:.6},attackAt:1,attack:'club'}),smash:()=>({yaw:0,vel:{x:0,z:0},attackAt:1,attack:'smash'}),
  flinch:()=>({yaw:0,vel:{x:0,z:1},hitAt:1,hitYaw:2}),emerge:()=>({yaw:0,vel:{x:0,z:0},spawnAt:1}),death:()=>({yaw:0,vel:{x:0,z:1.2},deathAt:1.3,attackAt:1.1}),
 };
@@ -52,8 +52,11 @@ test('siren minions keep the pilot rig contract and stay inside the mesh budget'
 test('compatibility detail falls back to plain tinted boxes and restores', ()=>{
  const m=createSirenMinion(SEEDS[2]),detail:T.Mesh[]=[];m.rig.group.traverse(o=>{if(o instanceof T.Mesh&&o.userData.detail&&o.visible)detail.push(o);});
  const full=sirenMinionStats(m).instances;setSirenMinionDetail(m,true);
- m.rig.group.traverse(o=>{if(o instanceof T.InstancedMesh&&o.visible&&o.name!=='siren-minion-fx')assert.equal(o.count,1,`${o.name} is one box in low detail`);});
+ m.rig.group.traverse(o=>{if(o instanceof T.InstancedMesh&&o.visible&&!o.name.startsWith('siren-minion-'))assert.equal(o.count,1,`${o.name} is one box in low detail`);});
  for(const d of detail)assert.equal(d.visible,false,d.name);
+ // No low-detail stand-in may outgrow its part (a plain unit box on a tongue or scrap would be a metre wide).
+ for(const seed of SEEDS.slice(0,12)){const n=createSirenMinion(seed);setSirenMinionDetail(n,true);n.rig.group.updateMatrixWorld(true);const size=new T.Vector3();
+  n.rig.group.traverse(o=>{if(o instanceof T.Mesh&&o.visible&&o.name!=='siren-minion-fx'){new T.Box3().setFromObject(o).getSize(size);assert.ok(Math.max(size.x,size.y,size.z)<.75,`seed ${seed} ${o.name} is ${size.toArray().map(x=>x.toFixed(2))} m in low detail`);}});}
  // Low detail keeps the corrupted colour (plain boxes are tinted) and the glow strips still flag their glow.
  const strip=m.rig.group.getObjectByName('armor-back-light') as T.InstancedMesh;assert.ok(strip.instanceColor);
  setSirenMinionDetail(m,false);assert.equal(sirenMinionStats(m).instances,full);for(const d of detail)assert.equal(d.visible,true,d.name);

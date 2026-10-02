@@ -34,9 +34,10 @@ export const sirenMinionOf=(rig:{group:T.Object3D})=>MINIONS.get(rig.group);
 // the tips like the Siren's black fire; one mesh each, mirrored for variety.
 type Lick=[number,number,number,[number,number][]];
 const LICKS:Lick[]=[[0,0,0,[[.056,.034],[.049,.034],[.041,.034],[.033,.032],[.026,.03],[.019,.028],[.012,.026],[.007,.022]]],[-.03,0,-.008,[[.032,.03],[.026,.03],[.019,.027],[.012,.024],[.007,.02]]],[.029,0,.01,[[.03,.028],[.023,.027],[.016,.025],[.009,.022]]]];
+// Tongues and scraps keep their own layout in low detail (the default plain variant is a unit box: a metre wide here).
 const tongueLayouts:VoxelLayout[]=[1,-1].map(k=>{const boxes:UnitBox[]=[];
  for(const [x0,y0,z0,steps] of LICKS){let y=y0;steps.forEach(([w,h],i)=>{const f=i/(steps.length-1),x=k*(x0+(x0?Math.sign(x0)*.006*i:.005*Math.sin(i*1.7))),pale=1+7*f*f;boxes.push({box:[x,y+h/2,z0,w,h,w],color:[pale,pale*.95,pale*1.15]});y+=h*.92;});}
- const l=customLayout('siren-minion-tongue-'+k,boxes);l.custom=false;return l;});
+ const l=customLayout('siren-minion-tongue-'+k,boxes);l.custom=false;l.plain=l.ghost=l;return l;});
 
 // Weapon scraps in weapon-socket space (+z along the blade): absolute sRGB colours, converted to scrap multipliers.
 type ScrapBox=[number,number,number,number,number,number,number];
@@ -48,7 +49,9 @@ const SCRAPS:Record<'sword'|'pistol'|'pipe',ScrapBox[]>={
 const scrapLayouts=new Map<string,VoxelLayout>();
 function scrapLayout(kind:'sword'|'pistol'|'pipe'){
  let l=scrapLayouts.get(kind);if(l)return l;const base=categoryColor('scrap');
- l=customLayout('siren-minion-scrap-'+kind,SCRAPS[kind].map(([x,y,z,w,h,d,hex])=>{const c=new T.Color(hex);return {box:[x,y,z,w,h,d],color:[c.r/base.r,c.g/base.g,c.b/base.b]};}));l.custom=false;scrapLayouts.set(kind,l);return l;
+ l=customLayout('siren-minion-scrap-'+kind,SCRAPS[kind].map(([x,y,z,w,h,d,hex])=>{const c=new T.Color(hex);return {box:[x,y,z,w,h,d],color:[c.r/base.r,c.g/base.g,c.b/base.b]};}));l.custom=false;
+ // Small enough to keep in low detail (the default plain variant is a unit box, a metre wide at scale 1).
+ l.plain=l.ghost=l;scrapLayouts.set(kind,l);return l;
 }
 
 const UP=new T.Vector3(0,1,0),tmp=new T.Vector3(),box=new T.Box3();
@@ -75,9 +78,9 @@ export function createSirenMinion(seed:number,options:MinionOptions={}):SirenMin
  // Black-flame tongues on the burns (the crown split first): leaning out of the surface, then up.
  anchors.sort((a,b)=>Number(b.crown)-Number(a.crown));
  const tongues:MinionTongue[]=anchors.slice(0,3).map((a,i)=>{
-  const mesh=voxelMesh(MINION_CUBE,TONGUE_MATERIAL,tongueLayouts[i%2]);mesh.name='siren-minion-tongue';mesh.castShadow=false;mesh.receiveShadow=false;if(i===2)mesh.userData.detail=true;
+  const mesh=voxelMesh(MINION_CUBE,TONGUE_MATERIAL,tongueLayouts[i%2]);mesh.name='siren-minion-tongue';mesh.castShadow=false;mesh.receiveShadow=false;
   mesh.position.copy(a.pos);const dir=a.normal.clone().multiplyScalar(.55).add(UP).normalize(),base=new T.Quaternion().setFromUnitVectors(UP,dir);mesh.quaternion.copy(base);a.joint.add(mesh);
-  return {mesh,base,height:a.crown?1.15:.75+.3*hash01(seed,i,21),phase:hash01(seed,i,22)*6.28};});
+  mesh.scale.setScalar(1.25);return {mesh,base,height:a.crown?1.2:.85+.3*hash01(seed,i,21),phase:hash01(seed,i,22)*6.28};});
  // A weapon scrap carried as a club (a broken sword, a pistol held by the barrel, a length of pipe).
  let scrap:T.Mesh|undefined;
  if(look.scrap!=='none'){scrap=voxelMesh(MINION_CUBE,minionMaterial('scrap',look.pool),scrapLayout(look.scrap));scrap.name='siren-minion-scrap';scrap.castShadow=true;rig.weapon.add(scrap);}
@@ -88,8 +91,11 @@ export function createSirenMinion(seed:number,options:MinionOptions={}):SirenMin
  const minion:SirenMinion={rig,look,seed,tongues,fx,scrap,parts,floor,low:false};MINIONS.set(rig.group,minion);return minion;
 }
 
-/** Low detail (SVG compatibility or 'performance' graphics): plain tinted boxes, fewer tongues. */
-export function setSirenMinionDetail(m:SirenMinion,low:boolean){setRigDetail(m.rig,low);m.low=low;}
+/** Low detail (SVG compatibility or 'performance' graphics): plain tinted boxes, two tongues at most. */
+export function setSirenMinionDetail(m:SirenMinion,low:boolean){setRigDetail(m.rig,low);m.low=low;m.tongues.forEach((g,i)=>{if(i>=2)g.mesh.visible=!low;});}
+/** Builds (and drops) `count` minions so the shared corrupted layouts are cached before adds spawn: the first minions
+ * cost ~15 ms each to carve and paint, later ones ~1.6 ms. Call it during the Siren intro. */
+export function prewarmSirenMinions(count=24){for(let i=0;i<count;i++)createSirenMinion((i*2654435761+0x51ed)>>>0);}
 /** Removes the minion from the scene. Shared layouts and materials stay alive for the next minions. */
 export function disposeSirenMinion(m:SirenMinion){m.rig.group.removeFromParent();m.fx.dispose();}
 /** Mesh and instance counts (tests, budgets, the design doc). */

@@ -89,7 +89,9 @@ const C={
  char:lin(P.char),soot:lin(P.soot),scorch:lin(P.scorch),ember:lin(P.ember,.75),emberHot:lin(P.emberHot),crack:lin(P.crack,.7),eye:lin(P.eye),bone:lin(P.bone),
  flesh:lin(WOUND_COLORS.shallow),fleshMid:lin(WOUND_COLORS.mid),fleshDeep:lin(WOUND_COLORS.deep),core:lin(WOUND_COLORS.core),
 };
-const ROT_THRESHOLD=[.68,.62,.56];
+const ROT_THRESHOLD=[.64,.58,.52];
+/** Decay gathers low on the body (legs, boots, hips) and thins out on the head, chest and arms: a corpse, not a pattern. */
+const REGION_BIAS=(name:string)=>/thigh|shin|calf|knee|foot|heel|hip/.test(name)?-.07:/head|crown|collar|upper-chest|upper-arm/.test(name)?.07:0;
 
 /** Faces that show rot paint for a part (the four sides; tops on parts seen from above). */
 function rotFaces(name:string,s:number):Face[]{
@@ -107,7 +109,7 @@ function featureFace(name:string,variant:number,s:number,wound:boolean):Face{
 type Spot={f:Face;u:number;v:number;r:number};
 function paintRot(out:Cell[],solids:Solid[],req:PartRequest,seed:number,clear:Spot[]){
  // Decay is uneven: some parts stay almost clean, others are eaten through, and rot spreads around burns and wounds.
- const big=req.size.x*req.size.y>.03||req.size.y*req.size.z>.03,g=big?.05:.04,s=req.name.startsWith('right-')?-1:1,low=-req.size.y/2,cat=req.category,thr0=ROT_THRESHOLD[req.rot]+.3*(.5-hash01(seed,50));
+ const big=req.size.x*req.size.y>.03||req.size.y*req.size.z>.03,g=big?.05:.04,s=req.name.startsWith('right-')?-1:1,low=-req.size.y/2,cat=req.category,thr0=ROT_THRESHOLD[req.rot]+.2*(.5-hash01(seed,50))+REGION_BIAS(req.name);
  const skip=(f:Face,u:number,v:number)=>clear.some(c=>c.f.axis===f.axis&&c.f.sign===f.sign&&Math.hypot(u-c.u,v-c.v)<c.r+.025);
  const near=(f:Face,u:number,v:number)=>{let k=0;for(const c of clear)if(c.f.axis===f.axis&&c.f.sign===f.sign)k=Math.max(k,1-Math.hypot(u-c.u,v-c.v)/(c.r*2.4+.05));return Math.max(0,k);};
  for(const f of rotFaces(req.name,s))grid(req.size,f,g,(u,v)=>{
@@ -126,7 +128,7 @@ function paintRot(out:Cell[],solids:Solid[],req:PartRequest,seed:number,clear:Sp
 /** Charred patch with an ember-cracked core, sooty ring and scorched rim. Returns where its tongue grows. */
 function paintBurn(out:Cell[],solids:Solid[],req:PartRequest,seed:number,f:Face,center?:[number,number]):{anchor?:MinionAnchor;u:number;v:number;r:number}{
  const g=.025,[ua,va]=axes(f),su=req.size.getComponent(ua),sv=req.size.getComponent(va);
- const u0=center?center[0]:(hash01(seed,1)-.5)*su*.3,v0=center?center[1]:(hash01(seed,2)-.5)*sv*.3,r=clamp(.42*Math.min(su,sv),.05,.1);
+ const u0=center?center[0]:(hash01(seed,1)-.5)*su*.3,v0=center?center[1]:(hash01(seed,2)-.5)*sv*.3,r=clamp(.5*Math.min(su,sv),.06,.125);
  grid(req.size,f,g,(u,v)=>{
   const top=topAt(solids,f,u,v);if(!top||top.flesh)return;const p=facePoint(f,u,v,top.at),wob=1+.38*(vnoise(seed,p.x/.04,p.y/.04,p.z/.04)-.5),d=Math.hypot(u-u0,v-v0)/(r*wob);if(d>1)return;
   const h=hash01(seed,Math.round(u*400),Math.round(v*400),f.axis*2+f.sign),crack=Math.abs(vnoise(seed^0x77,p.x/.028,p.y/.028,p.z/.028)-.5);
@@ -145,11 +147,11 @@ function carveWound(solids:Solid[],req:PartRequest,seed:number,f:Face):{solids:S
  const dir=v3().setComponent(f.axis,-f.sign),u=(hash01(seed,3)-.5)*su*.28,v=(hash01(seed,4)-.5)*sv*.28;
  const spec=(hit:V3,k:CarveSpec['kind'],radius:number,severity:number,salt:number):CarveSpec=>({hit,axis:f.axis,sign:f.sign,dir:dir.clone(),size:req.size.clone(),kind:k,trauma:k==='cut'?'cut':k==='cavity'?'blunt':'bullet',radius,severity,seed:(seed+salt)>>>0,low:true,body:[1,1,1],vertical:(hash01(seed,5)-.5)*.8});
  if(kind==='puncture'){const r=clamp(span*.13,.018,.026),off=span*.18;solids=carve(solids,spec(at(u-off*.6,v+off*.3),'puncture',r,.8,1));solids=carve(solids,spec(at(u+off*.5,v-off*.4),'puncture',r*.85,.7,2));return {solids,u,v,r:off+r};}
- const r=kind==='cut'?clamp(span*.32,.04,.075):clamp(span*.3,.035,.07);solids=carve(solids,spec(at(u,v),kind,r,.85,0));return {solids,u,v,r:kind==='cut'?r*1.5:r*1.1};
+ const r=kind==='cut'?clamp(span*.36,.045,.085):clamp(span*.36,.04,.08);solids=carve(solids,spec(at(u,v),kind,r,.85,0));return {solids,u,v,r:kind==='cut'?r*1.5:r*1.1};
 }
 /** A blood/rot run below a wound on a vertical face. */
 function paintDrip(out:Cell[],solids:Solid[],req:PartRequest,seed:number,f:Face,u:number,v:number,r:number){
- if(f.axis===1)return;const [ua]=axes(f),g=.022,len=2+Math.floor(hash01(seed,9)*4),down=ua===1;
+ if(f.axis===1)return;const [ua]=axes(f),g=.022,len=3+Math.floor(hash01(seed,9)*4),down=ua===1;
  for(let k=0;k<len;k++){const jitter=(hash01(seed,10,k)-.5)*g*.8,uu=down?u-r-(k+.5)*g:u+jitter,vv=down?v+jitter:v-r-(k+.5)*g;cellOn(out,solids,f,uu,vv,g*(k===len-1?.7:1),g,.0025,k<2?C.fleshDeep:C.blood);}
 }
 /** Torn stump on the part's lower face: flesh, a protruding bone and a burnt, ragged rim. */
