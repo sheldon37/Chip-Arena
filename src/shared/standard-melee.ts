@@ -86,6 +86,7 @@ export class StandardMelee {
    if('stats'in target&&target.hp<hp&&target.hp>0){if(kind==='launch')this.launch(target,p,7.4);else if(this.launch(target,p,kind==='spin-direct'?6.1:4.4)){if(kind==='spin-direct')target.knockdown!.ragdoll=true;target.ext=add(target.ext,mul(norm(v(d.x,0,d.z)),3));}}
    if(p.hp<=0||p.meleeAction!==a)break;
   }
+  if(s.pve&&p.hp>0&&p.meleeAction===a)for(const m of [...s.chaos.minions.values()]){if(m.kind!=='siren-add'||a.hitIds?.includes(m.id))continue;const d=sub(m.body.translation(),origin);if(len(d)>range+.45||Math.abs(d.y)>(kind==='launch'?2.5:1.8)+.45||kind!=='slam'&&dot(norm(v(d.x,0,d.z)),f)<(kind==='launch'?.45:.15)||!s.lineOfSight(origin,m.body.translation(),p.id,m.id))continue;a.hitIds=[...(a.hitIds||[]),m.id];s.chaos.hitMinion(m,WEAPONS[p.spec].damage*p.stats.damage*multiplier,p.id,impulse*p.stats.impulse,norm(add(d,v(0,kind==='slam'?.2:.5,0))),{point:m.body.translation(),kind:kind==='slam'?'blunt':meleeBodyImpact(p.spec,p.stats.attackRate).kind,melee:true});}
  }
  private throw(p:Player,a:MeleeAction){
   const s=this.s;if(s.projectiles.size>=C.maxProjectiles)return;const shield=a.kind==='shield-throw',w=WEAPONS[p.spec],id=s.uid('melee-shot');
@@ -120,7 +121,7 @@ export class StandardMelee {
    else s.damageProp(target,shot.damage*owner.stats.demolition,mul(dir,shot.impulse),owner.id,point);
    if('stats'in target&&target.hp<before&&target.hp>0){if(shield)this.launch(target,owner,3.8);else this.stagger(target,meleeHitStun(owner.spec));}
    s.emit('impact',point,{source:shot.owner,target:id,spec:shot.spec,color:WEAPONS[shot.spec].color,material:'material'in target?target.material:undefined});
-  }else {const minion=s.chaos.minions.get(id);if(minion&&owner){s.chaos.direct(owner,minion,point,dir,shot.attackId);s.chaos.hitMinion(minion,shot.damage,shot.owner,shot.impulse,dir);}}
+  }else {const minion=s.chaos.minions.get(id);if(minion&&owner){s.chaos.direct(owner,minion,point,dir,shot.attackId);s.chaos.hitMinion(minion,shot.damage,shot.owner,shot.impulse,dir,{point,kind:projectileBodyImpact(shot).kind});}}
   if(shield)shot.melee.returning=true;
   else if(target&&'material'in target&&shot.bounces>0){shot.bounces--;shot.vel=sub(shot.vel,mul(hit.normal1,2*dot(shot.vel,hit.normal1)));shot.pos=add(point,mul(norm(shot.vel),shot.radius+.04));shot.damage*=original?.stats.bounceRetention??.7;}
   else s.projectiles.delete(shot.id);return true;

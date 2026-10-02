@@ -81,7 +81,12 @@ export interface SirenPlayerState {
  move?:SirenMoveState;
  /** Sim time each move is ready again (HUD). */
  ready?:Partial<Record<SirenMoveId,number>>;
+ /** PvE boss chips 3 and 4 (design §6.6, §6.7); absent in PvP. */
+ boost?:SirenBoost;
 }
+/** PvE boost: scale (size and vertical gates), reach (radii and ranges), cooldown multiplier, start time, per-move minimum
+ *  recast and concurrency caps. Absent boost behaves as {scale:1,reach:1,cooldown:1}. */
+export interface SirenBoost{scale:number;reach:number;cooldown:number;at:number;minRecast?:Partial<Record<SirenMoveId,number>>;maxRains?:number;maxEruptions?:number}
 export interface SirenMoveState {
  id:SirenMoveId;
  /** Increments on every activation, so a repeated move (alternating swipes) restarts its animation. */
@@ -97,6 +102,8 @@ export interface SirenMoveState {
  target?:string;
  /** laugh only, set on the tick the lunge connects. */
  caught?:string;caughtAt?:number;crushAt?:number;
+ /** PvE only: reach multiplier for this move (laugh moves carry 1; D35). Absent in PvP. */
+ reach?:number;
 }
 
 /** Snapshot.siren: persistent world effects owned by any Siren (absent when none exist). */

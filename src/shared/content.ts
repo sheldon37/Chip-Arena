@@ -149,13 +149,13 @@ export function statsFor(chips:Record<string,number>,spec?:SpecId):Stats {const 
 export function eligibleChips(spec:SpecId,chips:Record<string,number>){const cls=WEAPONS[spec].class,tags=['all',cls,...(usesRoll(spec)?['roll']:[]),...(spec==='leet'?['leet']:spec==='ansatsuken'?['ansatsuken']:spec==='emperor'?['emperor']:spec==='siren'?['siren']:[]),...(cls==='melee'?[]:['projectile'])];return CHIPS.filter(c=>c.tags.some(tag=>tags.includes(tag))&&(chips[c.id]||0)<c.max&&(spec!=='leet'||!LEET_INCOMPATIBLE.has(c.id))&&(spec!=='ansatsuken'||!ARCADE_INCOMPATIBLE.has(c.id))&&(spec!=='emperor'||!MISHIMA_INCOMPATIBLE.has(c.id)));}
 export const magazineCapacity=(spec:SpecId,stats:Stats)=>Math.ceil(WEAPONS[spec].ammo*stats.ammoCapacity);
 /** Roll a rarity, then a compatible Chip in that tier, without replacement. Empty tiers renormalize. */
-export function offerChips(spec:SpecId,chips:Record<string,number>,random:()=>number,count=6){
+export function offerChips(spec:SpecId,chips:Record<string,number>,random:()=>number,count=6,opts?:{weights?:Partial<Record<Rarity,number>>;exclusives?:boolean}){
  const pool=eligibleChips(spec,chips),result:string[]=[];
  while(pool.length&&result.length<draftChoiceCount(count)){
   const exclusive=spec==='ansatsuken'?pool.filter(c=>c.tags.includes('ansatsuken')):spec==='emperor'?pool.filter(c=>c.tags.includes('emperor')):spec==='siren'?pool.filter(c=>c.tags.includes('siren')):[],odds=spec==='emperor'?EMPEROR:spec==='siren'?SIREN_CHIP_ODDS:ARCADE;
-  if(exclusive.length&&(result.length<odds.guaranteedExclusives||random()<odds.exclusiveChance)){const pick=exclusive[Math.min(exclusive.length-1,Math.floor(Math.max(0,random())*exclusive.length))];result.push(pick.id);pool.splice(pool.indexOf(pick),1);continue;}
+  if(opts?.exclusives!==false&&exclusive.length&&(result.length<odds.guaranteedExclusives||random()<odds.exclusiveChance)){const pick=exclusive[Math.min(exclusive.length-1,Math.floor(Math.max(0,random())*exclusive.length))];result.push(pick.id);pool.splice(pool.indexOf(pick),1);continue;}
   const tiers=(Object.keys(RARITIES) as Rarity[]).filter(r=>pool.some(c=>c.rarity===r));
-  const weight=(r:Rarity)=>spec==='leet'?(tiers.some(t=>LEET_WEIGHTS[t]>0)?LEET_WEIGHTS[r]:1):RARITIES[r].weight;
+  const weight=(r:Rarity)=>opts?.weights?opts.weights[r]??0:spec==='leet'?(tiers.some(t=>LEET_WEIGHTS[t]>0)?LEET_WEIGHTS[r]:1):RARITIES[r].weight;
   let roll=Math.max(0,Math.min(.999999999,random()))*tiers.reduce((n,r)=>n+weight(r),0),tier=tiers[tiers.length-1];
   for(const r of tiers){roll-=weight(r);if(roll<0){tier=r;break;}}
   const choices=pool.filter(c=>c.rarity===tier),pick=choices[Math.min(choices.length-1,Math.floor(Math.max(0,random())*choices.length))];
