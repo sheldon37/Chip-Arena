@@ -10,7 +10,7 @@ import type {SirenMinion} from './model.js';
 /**
  * Siren minion animation set. Every pose is a function of the authoritative fields a future minion view provides
  * (docs/SIREN-MINIONS.md: yaw, vel, spawnAt, attackAt, hitAt, deathAt), the seed and the time, plus ONE small state per
- * minion: its gait phases (the cadence follows speed, like the player's gait; see gaitAt). It never draws random numbers,
+ * minion: its gait phase (the cadence follows speed, like the player's gait; see gaitAt). It never draws random numbers,
  * clamps dt, restarts on rewinds and time jumps, and gives the same feet at 30/60/120 Hz.
  *
  * Poses are evaluated into a flat buffer (joint Euler angles, body offset, foot and hand IK targets), so layers blend as
@@ -82,39 +82,46 @@ function twitch(look:MinionLook,t:number){
  * reach (about .44 m walking, .5 m running); the seed sets the base rhythm. */
 export const walkCadence=(look:MinionLook,speed:number)=>Math.max(look.cadence*.85,speed*.66/.44);
 export const runCadence=(look:MinionLook,speed:number)=>Math.max(look.runCadence,speed*.42/.5);
-function locomotion(P:Pose,look:MinionLook,t:number,vx:number,vz:number,phi:number,phr:number,injured=0){
- const speed=Math.hypot(vx,vz),mv=sm((speed-.08)/.4),run=sm((speed-MINION_TIMING.runFrom)/(MINION_TIMING.runTo-MINION_TIMING.runFrom)),lead=-look.drag;
- const fw=walkCadence(look,speed),fr=runCadence(look,speed);
- // Feet (walk and run evaluated separately, then mixed).
+/** Walk-to-run weight of a speed (m/s), and the one gait cadence: the walk's below the band, the run's above it. */
+export const runWeight=(speed:number)=>sm((speed-MINION_TIMING.runFrom)/(MINION_TIMING.runTo-MINION_TIMING.runFrom));
+export const gaitCadence=(look:MinionLook,speed:number)=>lerp(walkCadence(look,speed),runCadence(look,speed),runWeight(speed));
+/** Turning: a planted foot stays put in the world while the body yaws at `wy` rad/s. `k` is the foot's travel factor
+ * (seconds from mid-stance, negative later); the hip-relative point turns by `a` and the travel by `a/2` (rotation.y). */
+let tx=0,tz=0;
+function turned(x:number,z:number,dx:number,dz:number,a:number){const c=Math.cos(a),s=Math.sin(a),c2=Math.cos(a/2),s2=Math.sin(a/2),px=x-dx,pz=z-dz;tx=px*c+pz*s+dx*c2+dz*s2;tz=-px*s+pz*c-dx*s2+dz*c2;}
+const turnAngle=(wy:number,k:number,travel:number)=>Math.max(-.6,Math.min(.6,wy*k/travel));
+function locomotion(P:Pose,look:MinionLook,t:number,vx:number,vz:number,phi:number,injured=0,wy=0){
+ const speed=Math.hypot(vx,vz),mv=sm((speed-.08)/.4),run=runWeight(speed),lead=-look.drag;
+ const f=gaitCadence(look,speed);
+ // Feet: one cycle whose stance, reach, lift and heel blend from the shamble to the run, so a planted foot stays planted
+ // through the walk-run band too (two cycles mixed out of step slide).
  for(const sd of [1,-1]){
   const drag=sd===look.drag,o=FOOT+(sd>0?0:6);
   // Walk: the good leg plants for longer; the dragged leg scuffs forward low with its toe down and swings out.
-  let c=drag?.56:.66,f=fw,ph=frac(phi+(drag?.5+.05*look.limp:0)),travel=Math.min(1,.46/Math.max(1e-6,speed*c/f));
-  let hx=sd*.15,hz=drag?-.05*look.limp:.02,x:number,z:number,y=ANKLE,heel=0,yaw=sd*(drag?.28:.1);
-  const span=(c/f)*travel;
-  if(ph<c){const u=ph/c;x=hx-vx*span*(u-.5);z=hz-vz*span*(u-.5);}
-  else{const w=(ph-c)/(1-c),e=w*w*(3-2*w),arc=Math.sin(Math.PI*w);x=hx+vx*span*(e-.5);z=hz+vz*span*(e-.5);
-   if(drag){y+=(.034+.012*(1-look.limp))*arc*mv;heel=.24*arc*mv;x+=sd*.035*arc*look.limp*mv;}
-   else{y+=(.05+.05*Math.min(1,speed/1.5))*Math.pow(arc,.8)*mv;heel=.28*arc*(1-2*w)*mv;}}
   // Run: frenzied, short contact, high knees, the bad leg still a little behind.
-  c=drag?.38:.42;f=fr;ph=frac(phr+(drag?.5+.03*look.limp:0));travel=Math.min(1,.52/Math.max(1e-6,speed*c/f));const rspan=(c/f)*travel;
-  let rx:number,rz:number,ry=ANKLE,rheel=0;hx=sd*.12;hz=.04;
-  if(ph<c){const u=ph/c;rx=hx-vx*rspan*(u-.5);rz=hz-vz*rspan*(u-.5);}
-  else{const w=(ph-c)/(1-c),e=w*w*(3-2*w),arc=Math.sin(Math.PI*w);rx=hx+vx*rspan*(e-.5);rz=hz+vz*rspan*(e-.5)+.06*arc;ry+=(drag?.11:.19)*Math.pow(arc,.7);const late=sm((w-.25)/.4);rheel=(.55*(1-late)-.25*late)*arc;}
-  P[o]=lerp(x,rx,run);P[o+1]=lerp(y,ry,run);P[o+2]=lerp(z,rz,run);P[o+3]=lerp(yaw,sd*.06,run);P[o+4]=lerp(heel,rheel,run);P[o+5]=1;
+  const c=lerp(drag?.56:.66,drag?.38:.42,run),ph=frac(phi+(drag?.5+lerp(.05,.03,run)*look.limp:0)),travel=Math.min(1,lerp(.46,.52,run)/Math.max(1e-6,speed*c/f));
+  const hx=sd*lerp(.15,.12,run),hz=lerp(drag?-.05*look.limp:.02,.04,run),span=(c/f)*travel;
+  let x:number,z:number,y=ANKLE,heel=0,yaw=sd*lerp(drag?.28:.1,.06,run),k:number;
+  if(ph<c){const u=ph/c;k=-span*(u-.5);x=hx+vx*k;z=hz+vz*k;}
+  else{const w=(ph-c)/(1-c),e=w*w*(3-2*w),arc=Math.sin(Math.PI*w),late=sm((w-.25)/.4);k=span*(e-.5);x=hx+vx*k;z=hz+vz*k;let lift:number,wheel:number;
+   if(drag){lift=(.034+.012*(1-look.limp))*arc*mv;wheel=.24*arc*mv;x+=sd*.035*arc*look.limp*mv*(1-run);}
+   else{lift=(.05+.05*Math.min(1,speed/1.5))*Math.pow(arc,.8)*mv;wheel=.28*arc*(1-2*w)*mv;}
+   z+=.06*arc*run;y+=lerp(lift,(drag?.11:.19)*Math.pow(arc,.7),run);heel=lerp(wheel,(.55*(1-late)-.25*late)*arc,run);}
+  if(wy){const a=turnAngle(wy,k,travel)*mv;turned(x,z,vx*k,vz*k,a);x=tx;z=tz;yaw+=a;}
+  P[o]=x;P[o+1]=y;P[o+2]=z;P[o+3]=yaw;P[o+4]=heel;P[o+5]=1;
  }
  // Body: hunched and lowered; dips on the bad leg, sways over the planted foot, rolls toward the bad side.
  const hunch=(look.hunch+.18*injured)*(1+.35*run),dragStance=frac(phi+.5+.05*look.limp),dip=-.035*look.limp*Math.sin(Math.PI*Math.min(1,dragStance/.56))*mv;
  const idle=1-mv,drift=Math.sin(t*.83+look.phase*6)+.4*Math.sin(t*1.37+look.phase*3),sway=.046*mv*Math.cos(TAU*(phi-.3))*lead*(1+.5*look.limp)+.026*idle*drift,bob=-.02*(.5+.5*Math.cos(2*TAU*phi))*mv;
- const rbob=-.04*(.5+.5*Math.cos(2*TAU*phr));
- P[BODY]=lerp(sway,.012*Math.sin(TAU*phr),run);P[BODY+1]=lerp(-.075-.05*look.hunch+bob+dip,-.085+rbob,run);P[BODY+2]=lerp(.0,.04,run);
- P[J.body]=lerp(.04*mv,.32,run);P[J.body+1]=lerp(.1*Math.sin(TAU*phi)*mv,.16*Math.sin(TAU*phr),run);P[J.body+2]=lerp(-look.drag*.05*look.limp-sway*2.2,.06*Math.sin(TAU*phr),run);
+ const rbob=-.04*(.5+.5*Math.cos(2*TAU*phi));
+ P[BODY]=lerp(sway,.012*Math.sin(TAU*phi),run);P[BODY+1]=lerp(-.075-.05*look.hunch+bob+dip,-.085+rbob,run);P[BODY+2]=lerp(.0,.04,run);
+ P[J.body]=lerp(.04*mv,.32,run);P[J.body+1]=lerp(.1*Math.sin(TAU*phi)*mv,.16*Math.sin(TAU*phi),run);P[J.body+2]=lerp(-look.drag*.05*look.limp-sway*2.2,.06*Math.sin(TAU*phi),run);
  // A lurch: the torso pitches forward each time the good leg plants.
  const lurch=.14*mv*Math.max(0,Math.sin(TAU*phi))**3+.05*idle*(.5+.5*Math.sin(t*.61+look.phase*4));
  P[J.pelvis]=.04;P[J.pelvis+1]=-.06*Math.sin(TAU*phi)*mv;P[J.pelvis+2]=0;
  const breath=.025*Math.sin(t*1.7+look.phase*6)+.012*noise(look.seed,t*.9,1);
  P[J.spine]=hunch*.5+lurch;P[J.spine+1]=0;P[J.spine+2]=.4*sway;
- P[J.chest]=hunch*.5+breath;P[J.chest+1]=lerp(-.08*Math.sin(TAU*phi)*mv,-.14*Math.sin(TAU*phr),run)+.05*noise(look.seed,t*.4,2);P[J.chest+2]=look.shoulderDrop;
+ P[J.chest]=hunch*.5+breath;P[J.chest+1]=lerp(-.08*Math.sin(TAU*phi)*mv,-.14*Math.sin(TAU*phi),run)+.05*noise(look.seed,t*.4,2);P[J.chest+2]=look.shoulderDrop;
  const loll=noise(look.seed,t*.6,3);
  P[J.neck]=-hunch*.55+.06-.5*run;P[J.neck+1]=.08*noise(look.seed,t*.3,4);P[J.neck+2]=0;
  P[J.head]=.12+.06*loll+lurch*.6-.25*run+.06*Math.sin(2*TAU*phi)*mv;P[J.head+1]=.1*noise(look.seed,t*.5,5);P[J.head+2]=look.headTilt+.05*Math.sin(TAU*phi)*mv+.06*loll;
@@ -127,7 +134,7 @@ function locomotion(P:Pose,look:MinionLook,t:number,vx:number,vz:number,phi:numb
   if(reach&&!scrapHand){ax=-Math.PI/2-pitch*.85+.3+.12*Math.sin(swing*.5+sd)+.08*drift;ay=sd*.05;az=-sd*.1;ex=-.25-.15*(.5+.5*Math.sin(t*1.7+sd*2));hx2=.45+.1*drift;}
   else{ax=-pitch*.85+.08+amp*Math.sin(swing)+.04*drift;ay=sd*-.12;az=sd*(.1+.03*Math.sin(swing*2));ex=-.18-.22*(.5+.5*Math.sin(swing-.9))*(.4+mv);hx2=scrapHand?.85:.15+.18*Math.sin(swing-1.6);}
   // Run: wild alternating swings, elbows cocked, hands clawing.
-  const rs=TAU*phr+(sd>0?0:Math.PI),fl=noise(look.seed,t*3.1,20+sd);
+  const rs=TAU*phi+(sd>0?0:Math.PI),fl=noise(look.seed,t*3.1,20+sd);
   const rax=reach&&!scrapHand?-1.55-pitch*.6+.35*Math.sin(rs)+.15*fl:-1.0-pitch*.5+.75*Math.sin(rs)+.18*fl,raz=sd*(.32+.15*Math.sin(2*rs+sd)),rex=-1.05+.35*Math.sin(rs+.8);
   P[side(J.lArm,sd)]=lerp(ax,rax,run);P[side(J.lArm,sd)+1]=lerp(ay,0,run);P[side(J.lArm,sd)+2]=lerp(az,raz,run);
   P[side(J.lElbow,sd)]=lerp(ex,rex,run);P[side(J.lHand,sd)]=lerp(hx2,scrapHand?.6:.3,run);P[side(J.lHand,sd)+1]=0;P[side(J.lHand,sd)+2]=0;
@@ -210,16 +217,16 @@ function emergePose(P:Pose,look:MinionLook,e:number,floor:number,tAbs:number){
 
 // ---------------------------------------------------------------------------------------------------------------
 // Death: d = seconds since deathAt, starting from the exact pose at deathAt (so it never pops).
-const DEATH={spine:[[0,-.45],[.28,-.35],[.6,.4],[.95,.25],[1.4,.15]],chest:[[0,-.22],[.3,-.1],[.6,.3],[1.4,.2]],head:[[0,-.75],[.3,-.55],[.62,.55],[1.0,.35],[1.4,.4]],
+const DEATH={spine:[[0,-.45],[.28,-.35],[.6,.4],[.95,.25],[1.4,.15]],chest:[[0,-.22],[.3,-.1],[.6,.3],[1.4,.05]],head:[[0,-.75],[.3,-.55],[.62,.55],[1.0,.1],[1.4,-.45]],
  bodyY:[[0,.02],[.3,-.04],[.62,-.3],[.92,-.42],[1.2,-.6],[1.45,-.64]],bodyZ:[[0,-.09],[.3,-.06],[.62,-.02],[.95,.18],[1.3,.36],[1.45,.38]],bodyX:[[0,-.12],[.3,-.08],[.62,.25],[.95,.72],[1.25,1.28],[1.45,1.36]],
- armX:[[0,-.7],[.3,-.4],[.62,.25],[.95,-.5],[1.3,-2.2],[1.45,-2.3]],armZ:[[0,.75],[.3,.6],[.62,.2],[1.3,.32]],elbow:[[0,-.15],[.3,-.4],[.62,-.6],[1.3,-.3]]} as const;
+ armX:[[0,-.7],[.3,-.4],[.62,.25],[.95,-.1],[1.3,.15],[1.45,.2]],armZ:[[0,.75],[.3,.6],[.62,.2],[1.3,.32]],elbow:[[0,-.15],[.3,-.4],[.62,-.6],[1.3,-.3]]} as const;
 function deathPose(P:Pose,look:MinionLook,d:number){
  P[J.spine]=keyed(d,DEATH.spine);P[J.spine+1]=0;P[J.spine+2]=.15*look.drag*sm((d-.3)/.4);P[J.chest]=keyed(d,DEATH.chest);P[J.chest+1]=0;P[J.neck]=0;P[J.head]=keyed(d,DEATH.head);P[J.head+1]=.3*sm((d-.6)/.5);P[J.head+2]=look.headTilt*1.5;
  P[BODY]=0;P[BODY+1]=keyed(d,DEATH.bodyY);P[BODY+2]=keyed(d,DEATH.bodyZ);P[J.body]=keyed(d,DEATH.bodyX);P[J.body+1]=0;P[J.body+2]=-look.drag*.12*sm((d-.3)/.5);P[J.pelvis]=0;
  for(const sd of [1,-1]){
   P[side(J.lArm,sd)]=keyed(d,DEATH.armX)+(sd===look.drag?.3:0);P[side(J.lArm,sd)+1]=0;P[side(J.lArm,sd)+2]=sd*keyed(d,DEATH.armZ);P[side(J.lElbow,sd)]=keyed(d,DEATH.elbow);P[side(J.lHand,sd)]=.3;P[side(J.lClav,sd)+2]=0;
   // Knees buckle onto the floor: the feet slide back, toes down, and stay there while it topples.
-  const o=FOOT+(sd>0?0:6),k=sm((d-.25)/.45);P[o]=sd*(.15+.03*k);P[o+1]=ANKLE+.03*k;P[o+2]=lerp(.02,-.36,k);P[o+3]=sd*.1;P[o+4]=lerp(0,1.25,k);P[o+5]=1;
+  const o=FOOT+(sd>0?0:6),k=sm((d-.25)/.45);P[o]=sd*(.15+.03*k);P[o+1]=ANKLE+.14*k;P[o+2]=lerp(.02,-.45,k);P[o+3]=sd*.1;P[o+4]=lerp(0,1.0,k);P[o+5]=1;
   const h=HAND+(sd>0?0:5);P[h+4]=0;
  }
 }
@@ -259,25 +266,30 @@ function applyPose(r:CharacterRig,P:Pose){
 }
 
 /**
- * The only presentation state: each minion's gait phases (walk and run cycles), integrated with the speed-dependent
+ * The only presentation state: each minion's gait phase (one cycle that blends walk into run), integrated with the speed-dependent
  * cadence like the player's distance-driven gait. Deterministic; dt clamped to .05 s; restarted from a pure phase when
  * time runs backward or jumps more than .35 s (kill-cam rewinds, late snapshots). Frozen at death, with the last living
  * velocity, so the death starts from the exact stride the minion was in.
  */
-interface Gait {t:number;walk:number;run:number;vx:number;vz:number}
+interface Gait {t:number;walk:number;vx:number;vz:number;f:number;yaw:number;wy:number}
 const gaits=new WeakMap<object,Gait>();
 function gaitAt(m:SirenMinion,s:SirenMinionView,time:number,alive:boolean):Gait{
  const L=m.look,cy=Math.cos(s.yaw),sy=Math.sin(s.yaw),vx=s.vel.x*cy-s.vel.z*sy,vz=s.vel.x*sy+s.vel.z*cy;let g=gaits.get(m);const step=g?time-g.t:NaN;
- if(!g||!(step>=0)||step>.35){g={t:time,walk:time*L.cadence+L.phase,run:time*L.runCadence+L.phase*1.7,vx:alive?vx:0,vz:alive?vz:0};gaits.set(m,g);return g;}
+ const f=gaitCadence(L,Math.hypot(vx,vz));
+ if(!g||!(step>=0)||step>.35){g={t:time,walk:time*L.cadence+L.phase,vx:alive?vx:0,vz:alive?vz:0,f,yaw:s.yaw,wy:0};gaits.set(m,g);return g;}
  g.t=time;if(!alive)return g;
- const dt=Math.min(.05,step),speed=Math.hypot(vx,vz);g.walk+=dt*walkCadence(L,speed);g.run+=dt*runCadence(L,speed);g.vx=vx;g.vz=vz;return g;
+ // Trapezoidal steps (this cadence and the last), so a timestamp gives the same stride at 30, 60 and 120 Hz after a
+ // speed change; the yaw rate (wrapped, smoothed over ~.06 s) keeps planted feet put while the minion turns.
+ const dt=Math.min(.05,step);g.walk+=dt*.5*(g.f+f);g.f=f;
+ if(step>0){const turn=Math.atan2(Math.sin(s.yaw-g.yaw),Math.cos(s.yaw-g.yaw))/step;g.wy+=(Math.max(-8,Math.min(8,turn))-g.wy)*(1-Math.exp(-step/.06));}
+ g.yaw=s.yaw;g.vx=vx;g.vz=vz;return g;
 }
 /** Locomotion + attack + flinch + twitches at time t (the upright, living pose). */
 function livingPose(P:Pose,m:SirenMinion,s:SirenMinionView,t:number,g:Gait){
  const L=m.look;
  // Badly hurt (below 40% health) it sags lower and its head hangs.
  const injured=s.maxHp&&s.hp!==undefined?1-sm(s.hp/s.maxHp/.4):0;
- P.fill(0);locomotion(P,L,t,g.vx,g.vz,g.walk,g.run,injured);addTwitch(P,L,t);P[J.head]+=.15*injured;
+ P.fill(0);locomotion(P,L,t,g.vx,g.vz,g.walk,injured,g.wy);addTwitch(P,L,t);P[J.head]+=.15*injured;
  if(s.attackAt!==undefined){const a=t-s.attackAt;if(a>=0&&a<MINION_TIMING.attack)attackLayer(P,L,s,a);}
  if(s.hitAt!==undefined)flinchLayer(P,L,s,t-s.hitAt);
 }
@@ -285,6 +297,30 @@ const POINTS=[new T.Vector3(),new T.Vector3(),new T.Vector3(),new T.Vector3(),ne
 /** Rig-group positions of a few joints (death flames rise from them). */
 function bodyPoints(r:CharacterRig){const list=[r.head,r.chest,r.pelvis,r.leftKnee,r.rightKnee,r.leftElbow];list.forEach((n,i)=>{const p=POINTS[i].set(0,0,0);for(let o:T.Object3D|null=n;o&&o!==r.group;o=o.parent){p.applyQuaternion(o.quaternion).add(o.position);}});return POINTS;}
 
+const GROUND=/^(left-|right-)(kneecap|knee-joint)$|^(ribcage|upper-chest|collar|abdomen-shell|blank-head|crown|jaw)$/,grounded=new WeakMap<object,T.Mesh[]>(),_c=new T.Vector3();
+/** Lowest rig-group height of the parts a fallen body rests on (knees, chest, head): unit-box corners up the joint chain. */
+function restingLow(m:SirenMinion){
+ let list=grounded.get(m);if(!list){const found:T.Mesh[]=[];m.rig.group.traverse(o=>{if(o instanceof T.Mesh&&GROUND.test(o.name))found.push(o);});grounded.set(m,list=found);}
+ let low=Infinity;for(const mesh of list){if(!mesh.visible)continue;for(let i=0;i<8;i++){_c.set(i&1?.5:-.5,i&2?.5:-.5,i&4?.5:-.5).multiply(mesh.scale).applyQuaternion(mesh.quaternion).add(mesh.position);
+  for(let o=mesh.parent;o&&o!==m.rig.group;o=o.parent)_c.multiply(o.scale).applyQuaternion(o.quaternion).add(o.position);low=Math.min(low,_c.y);}}
+ return low;
+}
+const SCRAP_TIP={sword:new T.Vector3(0,0,.47),pistol:new T.Vector3(0,-.1,.32),pipe:new T.Vector3(0,0,.565)},UP=new T.Vector3(0,1,0);
+const _h=new T.Vector3(),_t=new T.Vector3(),_ax=new T.Vector3(),_pq=new T.Quaternion(),_rq=new T.Quaternion();
+/** Rig-group position of a point given in `node`'s frame (in place), walking the joint chain up to the group. */
+function toGroup(m:SirenMinion,node:T.Object3D,p:T.Vector3){for(let o:T.Object3D|null=node;o&&o!==m.rig.group;o=o.parent)p.multiply(o.scale).applyQuaternion(o.quaternion).add(o.position);return p;}
+/** The scrap never spears the floor: its tip swings up in its own vertical plane until it rests on the floor (a pipe
+ * dragged along, a sword lying flat once the body is down). A pure function of the pose, like the rest. */
+function restScrap(m:SirenMinion){
+ const w=m.rig.weapon,tip=SCRAP_TIP[m.look.scrap as keyof typeof SCRAP_TIP];if(!tip)return;
+ toGroup(m,w,_h.set(0,0,0));toGroup(m,w,_t.copy(tip)).sub(_h);const len=_t.length();if(len<1e-4)return;
+ const want=Math.min(.95,(m.floor+.03-_h.y)/len),have=_t.y/len;if(have>=want||want<=-1)return;
+ _ax.crossVectors(_t,UP);if(_ax.lengthSq()<1e-8)return;_ax.normalize();
+ _pq.identity();for(let o=w.parent;o&&o!==m.rig.group;o=o.parent)_pq.premultiply(o.quaternion);
+ _rq.setFromAxisAngle(_ax,Math.asin(want)-Math.asin(Math.max(-1,have)));
+ // In the socket's parent frame: Q^-1 R Q, applied before the socket's own rotation.
+ w.quaternion.premultiply(_pq.clone().invert().multiply(_rq).multiply(_pq));
+}
 /**
  * Poses a minion at authority time `time` (call after setting rig.group's position to the minion's pos and rotation.y to
  * its yaw). Writes every joint, the tongues, the effects and the dying look. `quality` < .5 halves the effect cubes.
@@ -301,6 +337,9 @@ export function animateSirenMinion(m:SirenMinion,s:SirenMinionView,time:number,q
  }else if(emerging)P=emergeBlend(POSE_C,m,s,time,Math.max(0,e),g);
  else{livingPose(POSE_C,m,s,time,g);P=POSE_C;}
  applyPose(r,P);
+ // A falling body rests on the floor: lift it by whatever a knee, the chest or the head would push through, then re-solve the legs.
+ if(d!==undefined){const sink=m.floor-restingLow(m);if(sink>0){P[BODY+1]+=sink;applyPose(r,P);}}
+ if(m.scrap&&(d!==undefined||!emerging))restScrap(m);
  // Tongues flicker, flare while emerging and as the body burns.
  // Flaring flames grow wider as well as taller, so they stay flames instead of turning into spikes.
  const flare=1+.5*win(e,.2,.6,1.6,EMERGE_SECONDS)+(d!==undefined?.7*win(d,.3,.8,1.6,2.1):0),wide=1.25*(1+.45*(flare-1));
@@ -317,7 +356,7 @@ function emergeBlend(out:Pose,m:SirenMinion,s:SirenMinionView,time:number,e:numb
  return blendPose(out,POSE_B,POSE_A,w);
 }
 
-/** Char the body part by part, then burn it away feet first; the eyes go last. Restores everything while alive. */
+/** Char the body part by part, then burn it away feet first; the head goes last. Restores everything while alive. */
 function dyingLook(m:SirenMinion,d:number|undefined){
  const r=m.rig,parts=m.parts;let lo=Infinity,hi=-Infinity;for(const p of parts){lo=Math.min(lo,p.y);hi=Math.max(hi,p.y);}
  const gone=d!==undefined&&d>=DEATH_SECONDS;r.body.visible=!gone;

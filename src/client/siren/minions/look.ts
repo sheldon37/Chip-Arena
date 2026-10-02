@@ -15,12 +15,18 @@ export function minionSeed(id:string|number){if(typeof id==='number')return id>>
 export function stream(seed:number,salt=0){let s=(Math.floor(hash01(seed,salt,0x51ed)*4294967296)>>>0)||0x9e3779b9;
  return ()=>{s^=s<<13;s>>>=0;s^=s>>>17;s^=s<<5;s>>>=0;return s/4294967296;};}
 
-/** Face options for the owner to choose (docs/SIREN-MINIONS.md). The pilots are blank-faced; 'eyes' burns in faint white
- * Siren-style eyes in dark sockets, 'cracked' splits the head shell and leaks black flame from the crown. */
+/** Face options (docs/SIREN-MINIONS.md). The pilots are blank-faced; 'cracked' splits the head shell and leaks black flame
+ * from the crown; 'eyes' burns in faint white Siren-style eyes in dark sockets. */
 export const MINION_FACES=['blank','eyes','cracked'] as const;
 export type MinionFace=typeof MINION_FACES[number];
-/** Default face: the burned-in eyes read at range and tie the adds to the Siren without giving pilots a real face. */
-export const DEFAULT_MINION_FACE:MinionFace='eyes';
+/** Default face (the owner's choice, 2026-10-02): blank, like every Pilot. Some seeds crack instead (seededFace); 'eyes' is
+ * never in the seeded pool and only appears when MinionOptions.face asks for it. */
+export const DEFAULT_MINION_FACE:MinionFace='blank';
+/** Share of seeds whose head shell is cracked open (the rest stay blank). */
+export const CRACKED_FACE_SHARE=.25;
+/** The face a seed gets without an override: blank, or cracked for about a quarter of the seeds. Its own hash, so the
+ * look stream (and every other knob of existing seeds) is unchanged. */
+export function seededFace(seed:number):MinionFace{return hash01(seed>>>0,0xfa,1)<CRACKED_FACE_SHARE?'cracked':DEFAULT_MINION_FACE;}
 export type MinionArms='reach'|'limp'|'mixed';
 export type MinionScrap='none'|'sword'|'pistol'|'pipe';
 export type MinionMissing='none'|'left-hand'|'right-hand'|'left-forearm'|'right-forearm'|'jaw';
@@ -96,7 +102,7 @@ export function minionLook(seed:number,o:MinionOptions={}):MinionLook{
  const rightHand=!(missing==='right-hand'||missing==='right-forearm');
  const scrap:MinionScrap=o.scrap&&o.scrap!=='auto'?(rightHand?o.scrap:'none'):rightHand&&r()<.55?pick(r,['sword','pistol','pipe'] as const):'none';
  const arms:MinionArms=o.arms??(scrap!=='none'?pick(r,['limp','limp','mixed'] as const):pick(r,['reach','limp','mixed','reach'] as const));
- return {seed,face:o.face??DEFAULT_MINION_FACE,rot,pool,parts,missing,scrap,
+ return {seed,face:o.face??seededFace(seed),rot,pool,parts,missing,scrap,
   hunch:o.hunch??lerp(.18,.5,r()),headTilt:(r()-.5)*.7,shoulderDrop:(r()<.5?-1:1)*lerp(.04,.16,r()),arms,reachSide:r()<.5?1:-1,
   drag:r()<.5?1:-1,limp:lerp(.35,1,r()),cadence:lerp(.92,1.12,r()),runCadence:lerp(1.62,1.86,r()),phase:r(),
   twitch:lerp(.25,.6,r()),jerk:lerp(.5,1,r()),sway:lerp(.06,.13,r())};

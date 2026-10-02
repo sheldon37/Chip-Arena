@@ -13,8 +13,10 @@ caps, the AI and the snapshot fields are next-phase work and need the owner and 
 
 ![Face options and the animation states](siren-minions-sheet.jpg)
 
-Top row of the sheet: the face options (blank, eyes, cracked) on two seeds. Below it: emerge, walk 1.3 m/s,
-run 4.5 m/s, lunge, and death (headless SwiftShader, lab lighting).
+Top row of the sheet: the three face options (blank, eyes, cracked) on two seeds. Blank is the default; about a quarter
+of the seeds get the cracked head; eyes appear only when asked for. Below it: seed 11, one of the cracked-head seeds:
+emerge, walk 1.3 m/s, run 4.5 m/s, lunge, and death (headless SwiftShader, lab lighting). The horde above shows the
+default faces.
 
 ## The look
 
@@ -43,7 +45,7 @@ deterministically:
     some are fully dead.
   - The glow strips break into failing segments.
   - Everything flickers, and the whole minion's glow drops out now and then, like failing power.
-- **Face.** There are three options; see below.
+- **Face.** Blank like every Pilot; about a quarter of the seeds have a cracked head shell leaking black flame. See below.
 - **Weapon scraps**, in about half of the minions that have a right hand: a broken sword, a pistol held by the barrel,
   or a length of pipe, used as a club.
 - **Body language.**
@@ -56,16 +58,20 @@ Every seed looks different, but they all share one palette and one set of rules,
 stylized and voxel-sized, in the same tone as the existing wounds. The palette lives in one place:
 `materials.ts MINION_PALETTE` and the per-category self-light and glow.
 
-## Face options (owner choice)
+## Face (owner decision, 2026-10-02)
 
-Pilots are blank-faced, so the face is offered as options. Pass `createSirenMinion(seed, {face})`, or change
-`DEFAULT_MINION_FACE` in `look.ts`.
+The owner chose a **blank** face as the default, with **some seeds cracked**, and no burned-in eyes in the random pool.
+`seededFace(seed)` picks the face from its own hash, so the other knobs of a seed do not change: about 25% of the seeds
+(`CRACKED_FACE_SHARE`) are cracked, the rest blank. `createSirenMinion(seed, {face})` still forces any option.
 
-| Option | Look | Notes |
+| Face | Who gets it | Look |
 | --- | --- | --- |
-| `blank` | No face: the rotted Pilot head | Closest to the Pilot; reads as "dead pilot". The least readable at range. |
-| `eyes` (**default**) | Faint white Siren-style eyes burned into dark sockets, slanted toward the nose, a soot tear under one or both | Reads at range, even in the dark hall, and ties the adds to the Siren without giving Pilots a real face. |
-| `cracked` | The head shell is split, the crack leaks violet light, and black flame burns from the crown | The most dramatic option. It adds one tongue per minion, and the tongues are the first to be cut in low detail. |
+| `blank` (**default**) | About 75% of the seeds | No face: the rotted Pilot head. Closest to the Pilot; reads as "dead pilot". |
+| `cracked` | About 25% of the seeds | The head shell is split, the crack leaks violet light, and black flame burns from the crown. It adds one tongue, and the tongues are the first to be cut in low detail. |
+| `eyes` | Only when `{face:'eyes'}` is passed; never seeded | Faint white Siren-style eyes burned into dark sockets. Kept as an explicit option only. |
+
+Only the head and crown carry the face. Other parts' shared layouts never depend on it, so a layout is the same whichever
+minion built it first (a cracked minion used to paint its crack onto every part it built first; fixed and tested).
 
 ## Variety knobs
 
@@ -88,8 +94,11 @@ elite variant.
 ## Animation states
 
 The poses come from the fields listed below, the seed and the time. Each minion keeps one small state, its gait phase:
-the cadence follows speed, so the phase has to accumulate. That state is deterministic, clamps dt to .05 s, and restarts
-when time runs backward or jumps by more than .35 s (kill-cam rewinds, late snapshots). The animation draws no random
+the cadence follows speed, so the phase has to accumulate. It is one cycle whose stance, reach, lift and heel blend from
+the shamble into the run, integrated with trapezoidal steps so a timestamp gives the same stride at 30, 60 and 120 Hz even
+after a speed change. The state also keeps a smoothed yaw rate so planted feet stay put while the minion turns. It is
+deterministic, clamps dt to .05 s, and restarts when time runs backward or jumps by more than .35 s (kill-cam rewinds,
+late snapshots). The animation draws no random
 numbers anywhere. Layers blend inside a numeric pose buffer, so states hand over without pops.
 
 | State | Needs | What it does |
@@ -102,15 +111,22 @@ numbers anywhere. Layers blend inside a numeric pose buffer, so states hand over
 | Smash | `attackAt`, kind `smash` | Two-handed hammer fist from overhead. |
 | Flinch | `hitAt`, optional `hitYaw` | A snap away from the hit that rings out over .42 s, layered on any state. |
 | Emergence | `spawnAt` | A black-flame pool spreads, hands burst out of the floor, the head and shoulders rise, the hands slam the floor and haul the body up, a knee comes out, and it jerks awake into its walk (1.95 s). |
-| Death | `deathAt` | Starts from the exact pose at death. It recoils, the knees buckle, and it topples forward. It chars part by part and burns away feet first, eyes last, into black flame and ash (2.3 s). Effects end at 3.1 s, leaving a scorch. |
+| Death | `deathAt` | Starts from the exact pose at death. It recoils, the knees buckle, and it topples forward with its arms trailing. The body comes to rest on its knees, chest and head instead of sinking into the floor, and a weapon scrap swings flat. It chars part by part and burns away feet first, head last, into black flame and ash (2.3 s). Effects end at 3.1 s, leaving a scorch. |
 
 - **Feet are ground-anchored.** Both legs use the shared IK (`rig-ik foot`). A planted foot moves backward in the rig
-  exactly as fast as the body travels, and the cadence rises with speed so a stance never asks the short legs to reach
-  too far.
-- **Measured with the shared probe** (`tests/helpers/motion-probe.ts`) at .8, 1.3 and 4.5 m/s and 30/60/120 Hz:
-  - The good foot slips under 2 cm while planted.
-  - The median planted-foot speed is 0.
+  exactly as fast as the body travels and turns against the body's yaw rate, and the cadence rises with speed so a
+  stance never asks the short legs to reach too far.
+- **Measured with the shared probe** (`tests/helpers/motion-probe.ts`) at 30/60/120 Hz:
+  - Straight at .8, 1.3 and 4.5 m/s, and inside the walk-run band at 2.3 and 2.8 m/s: the good foot slips under 2 cm and
+    the median planted-foot speed is 0.
+  - Turning at 1.5 rad/s while walking 1.1 m/s: the good foot slips about 1 cm (was up to 11 cm), the median planted speed is
+    under .03 m/s (was .27; the remainder is the probe's own root integration on a curve and halves per rate doubling).
+  - Speeding up from 1.1 to 4.2 m/s in .5 s: the good foot slips at most 8 cm (was 21 cm).
+  - After that ramp, feet and hands at 30 and 120 Hz agree within 1 mm (was 2–7 cm).
   - The dragged foot scuffs by design.
+- **Floor contact.** The fallen body stays within about 4 cm of the floor (it used to sink up to .43 m: hands, knees,
+  head), and a scrap rests on the floor alive and dead instead of spearing through it (alive it dragged up to 13 cm
+  under, dead up to .5 m; now at most about 4 cm alive and 11 cm for a pipe's hook while the body burns).
 - **Attack hit times.** The claws or club arrive at `MINION_TIMING.hit`: lunge .34 s, club .40 s, smash .43 s after
   `attackAt`. The full cycle is .9 s, the chaos zombie's cooldown.
 
@@ -123,30 +139,41 @@ These are Node CPU measurements in this container, not the owner's GPU. They com
 
 | | Value |
 | --- | --- |
-| Meshes | ≤ 53 (target ≤ 55); about 50 drawn when idle |
+| Meshes | ≤ 53 (target ≤ 55), average 51.7; about 50 drawn when idle |
 | Base | The Pilot rig's 48 meshes, minus hidden missing parts |
 | Additions | Up to 3 tongues (the third is hidden in low detail), 1 weapon scrap, 1 effect mesh (drawn only while emerging or dying) |
-| Instances (voxel boxes) | Average 930 (max about 1,160), against the Pilot's 218 |
-| Triangles | About 11,200 per minion (max 13,900); a Pilot is 2,600 |
+| Instances (voxel boxes) | Average 920 (max about 1,330 over 200 seeds), against the Pilot's 218 |
+| Triangles | About 11,000 per minion (max 16,000); a Pilot is 2,600 |
 | Rot, burns, cracks, eyes, wound flesh | Instance colours in the parts' own layouts, so they cost no draw calls |
 
 **Sharing:** every minion shares the geometry, layouts and materials. That is at most 48 materials: 6 categories × 4
-flicker pools × alive/charred. There are about 520 cached layouts, around 1 MB.
+flicker pools × alive/charred. Every layout a seed can need is about 800 cached layouts, around 1.5 MB.
 
 **Creation cost:**
-- About 15 ms per minion while the layout cache is cold, and about 1.6 ms once it is warm.
-- `prewarmSirenMinions()` warms the cache in about 0.5 s. Call it during the Siren intro, or split it across frames.
+- Cold, before a prewarm: a median 13 ms per minion (p90 29 ms), because each new seed carves and paints the part
+  layouts it is the first to need. Building minions is not a prewarm: after 24 of them, most new seeds still built new
+  layouts (the earlier "1.6 ms once warm" only held for seeds already seen).
+- `prewarmSirenMinions(budgetMs = 3)` enumerates the whole layout space (every part × condition × variant × rot level ×
+  blank/cracked face) and builds it a slice at a time: about .5 s of CPU in about 125 slices of 3–5 ms (the first slice
+  also builds a reference rig). Call it once per frame during the Siren intro until it returns true.
+- After it: a median .75 ms per new minion (p90 1.3 ms), and no new seed builds a layout (tested over 120 seeds).
 
 **Animation cost for 20 minions:**
 
 | State | Per minion | Per frame |
 | --- | --- | --- |
-| Alive (walk, run, attack mix) | 15 µs | 0.30 ms |
-| Emerging | 28 µs | 0.57 ms |
-| Dying | 25 µs | 0.51 ms |
+| Alive (walk, run, attack mix) | 22 µs | 0.43 ms |
+| Emerging | 29 µs | 0.58 ms |
+| Dying | 34 µs | 0.67 ms |
 
-**Low detail** (SVG compatibility, performance graphics; `setSirenMinionDetail`): every part becomes its tinted plain
-box, the third tongue is hidden, and the effects drop to half the cubes when quality < .5.
+Dying costs a little more than before: the fallen body is posed twice when a knee, the chest or the head would push
+through the floor (lift, then re-solve the legs). These numbers come from a CPU shared with another job, so treat them as
+upper bounds.
+
+**Low detail** (`setSirenMinionDetail`; the **SVG compatibility path only**): every part becomes its tinted plain box,
+the third tongue is hidden, and the effects drop to half the cubes when quality < .5. Plain boxes lose the rot, burns and
+wounds, so low-detail minions read as grey Pilots and could be mistaken for enemy players. Keep full detail on
+'performance' graphics: the draw count is the same, and only the instance count differs.
 
 **Budget risk: draw calls.** 20 minions are about 1,000 draws, plus a shadow pass. Recommendations for the next phase:
 - Cap alive adds at about 12.
@@ -186,6 +213,9 @@ snapshot for 3.1 s keeps the death rewindable for the kill-cam.
 - In Ward Zero: `SIREN_ADD_SPAWNS` (4 isolation cells and 4 ward doors, each with an inward yaw). The emergence pool
   fits a cell or a doorway.
 - Multi-add waves need a clearance check: the cells are about 2.4 m from the back wall (DEV_LOG Ward Zero risk).
+- Emergence keeps the body up to about 2 m below the spawn point's floor for about 1.4 s and relies on an opaque floor to
+  hide it. A spawn picker must reject upper platforms, thin floors, glass and floor edges, or the buried body shows from
+  below or from the side.
 - Elsewhere ("throughout the map"): a shared `sirenAddSpawnPoints(map)` helper. It would raycast floor points on a grid,
   away from props, vents and players (for example ≥ 4 m), preferring points out of the target's view.
 
@@ -200,16 +230,22 @@ snapshot for 3.1 s keeps the death rewindable for the kill-cam.
 **Client wiring (systems/integrator):**
 - In `ChaosVisuals`, skip `kind==='siren-add'`. A small `SirenAdds` view then builds `createSirenMinion(seed)` per id.
 - Each frame, set `group.position = pos` and `rotation.y = yaw`, then call `animateSirenMinion(minion, view, state.time)`.
-- Call `setSirenMinionDetail` for compatibility or performance graphics.
+- Call `setSirenMinionDetail(minion, true)` only on the SVG compatibility path (see Low detail).
+- Run `prewarmSirenMinions(3)` once per frame during the Siren intro until it returns true.
 - Dispose each minion after `deathFx`.
-- Never `recolorCharacterRig` or `dressRig` a minion.
+- A minion rig's parts carry the minion layouts as their current layout, while `retagVoxelPart` still records the clean
+  Pilot sculpt as each mesh's base. So never run these on a minion rig: `recolorCharacterRig`, `dressRig`, a
+  `retagVoxelPart(mesh)` reset, a body-wounds carve (`body-wounds.ts` carves from `baseLayout`), body collapse, or the
+  death-effects voxel bursts. Each would repaint it or revert it to a clean Pilot. Route minion damage to the minion's
+  own flinch and death instead.
+- Minion instance colours of `GLOW_FLAG` (16) or more mark glowing cells for the minion materials. Any other consumer
+  that reads layout colours (a burst that copies part colours, for example) would blow out on them.
 - Re-export the minion façade from `src/client/siren/index.ts`. That file is the Siren visual owner's façade and was not
   edited in this design pass.
 
 **Network cost:** about 70 bytes of JSON per add per snapshot, so 12 adds come to about 1 KB per snapshot.
 
 **Open questions for the owner:**
-- The face option (default `eyes`).
 - Wave pacing and caps.
 - Whether adds appear outside Ward Zero.
 - Whether players can block or roll their attacks like a player's melee.
@@ -220,8 +256,8 @@ snapshot for 3.1 s keeps the death rewindable for the kill-cam.
 Run `npm run dev` and open `/tools/visual-lab/index.html` with one of these queries (the parameters are listed in the
 `tools/visual-lab/minions.ts` header):
 
-- `?kind=minions` shows a grid of 12 seeds idling. Add `&pilot=1` for a Pilot reference cell, `&faces=1` for every face
-  option, or `&low=1` for low detail.
+- `?kind=minions` shows a grid of 12 seeds idling with their seeded faces. Add `&pilot=1` for a Pilot reference cell,
+  `&faces=1` for every face option (eyes included), `&face=eyes` to force one, or `&low=1` for low detail.
 - `?kind=minions&view=strip&seed=7&states=idle,walk,run,lunge,club,smash,flinch,emerge,death&cam=side` shows one row per
   animation state.
 - `?kind=minions&view=ward&siren=1&aspect=1.778&song=50&camFwd=13.5` shows the horde in Ward Zero at a ward door.

@@ -1,8 +1,8 @@
 import * as T from 'three';
 import {createCharacterRig,setRigDetail,type CharacterRig} from '../../character-rig.js';
 import {voxelMesh,customLayout,baseLayout,retagVoxelPart,type VoxelLayout,type UnitBox} from '../../voxel-kit.js';
-import {minionLook,partLook,hash01,MISSING,type MinionLook,type MinionOptions,type PartCondition} from './look.js';
-import {corruptedPart} from './layouts.js';
+import {minionLook,partLook,hash01,MISSING,BURNABLE,WOUNDABLE,ACCENTS,VARIANTS,type MinionLook,type MinionOptions,type PartCondition,type MinionFace} from './look.js';
+import {corruptedPart,type PartRequest} from './layouts.js';
 import {minionMaterial,categoryColor,TONGUE_MATERIAL,MINION_CUBE,MINION_PALETTE,type MinionCategory} from './materials.js';
 import {MinionFx} from './fx.js';
 
@@ -91,11 +91,41 @@ export function createSirenMinion(seed:number,options:MinionOptions={}):SirenMin
  const minion:SirenMinion={rig,look,seed,tongues,fx,scrap,parts,floor,low:false};MINIONS.set(rig.group,minion);return minion;
 }
 
-/** Low detail (SVG compatibility or 'performance' graphics): plain tinted boxes, two tongues at most. */
+/** Low detail (the SVG compatibility path only: plain tinted boxes lose the zombie look): two tongues at most. */
 export function setSirenMinionDetail(m:SirenMinion,low:boolean){setRigDetail(m.rig,low);m.low=low;m.tongues.forEach((g,i)=>{if(i>=2)g.mesh.visible=!low;});}
-/** Builds (and drops) `count` minions so the shared corrupted layouts are cached before adds spawn: the first minions
- * cost ~15 ms each to carve and paint, later ones ~1.6 ms. Call it during the Siren intro. */
-export function prewarmSirenMinions(count=24){for(let i=0;i<count;i++)createSirenMinion((i*2654435761+0x51ed)>>>0);}
+/** Every part layout a seeded minion can ask for (faces blank and cracked; 'eyes' is only built when requested): the
+ * same rules as minionLook/partLook and the build loop above, enumerated once. tests/siren-minions.test.ts checks that
+ * new seeds find all of their layouts cached after a full prewarm. */
+function* layoutRequests():Generator<PartRequest>{
+ const rig=createCharacterRig('#2b2733',MINION_PALETTE.shell,true),stumps=new Set(Object.values(MISSING).map(m=>m.stump)),meshes:T.Mesh[]=[];
+ rig.group.traverse(o=>{if(o instanceof T.Mesh)meshes.push(o);});
+ for(const rot of [0,1,2] as const)for(const mesh of meshes){
+  const name=mesh.name,category=categoryOf(name),base=baseLayout(mesh);if(!category||!base)continue;
+  const faces:MinionFace[]=name==='blank-head'||name==='crown'?['blank','cracked']:['blank'];
+  const looks:[PartCondition,number,boolean?][]=[];
+  if(category==='strip')looks.push(['rot',0],['dead',0]);
+  else if((ACCENTS as readonly string[]).includes(name)){for(let v=0;v<VARIANTS.cracked;v++)looks.push(['cracked',v]);looks.push(['dead',0]);}
+  else for(let v=0;v<VARIANTS.rot;v++)looks.push(['rot',v]);
+  if((BURNABLE as readonly string[]).includes(name))for(let v=0;v<VARIANTS.burn;v++)looks.push(['burn',v]);
+  if((WOUNDABLE as readonly string[]).includes(name))for(let v=0;v<VARIANTS.wound;v++)looks.push(['wound',v]);
+  if(stumps.has(name))looks.push(name==='blank-head'?['rot',0,true]:['stump',0]);
+  if(name==='blank-head')looks.push(['burn',0,true]);
+  for(const face of faces)for(const [condition,variant,jawless] of looks)yield {name,category,size:mesh.scale.clone(),base,condition,variant,rot,face,jawless};
+ }
+}
+let warming:Generator<PartRequest>|undefined,warmed=false;
+const now=()=>typeof performance!=='undefined'?performance.now():Date.now();
+/**
+ * Builds the shared corrupted layouts before adds spawn, a slice at a time: call it once per frame during the Siren
+ * intro with a budget in milliseconds (default 3) until it returns true. The whole set is about 800 layouts and .5 s of
+ * CPU (~125 slices; a slice overruns by at most one layout, ~1 ms, and the first also builds a reference rig). Once it is
+ * done a new minion costs ~1-2 ms (rig + retag) and builds no layouts, so spawn waves do not hitch. `Infinity` warms
+ * everything at once.
+ */
+export function prewarmSirenMinions(budgetMs=3){
+ if(warmed)return true;const end=now()+budgetMs;warming??=layoutRequests();
+ for(;;){const next=warming.next();if(next.done){warmed=true;warming=undefined;return true;}corruptedPart(next.value);if(now()>=end)return false;}
+}
 /** Removes the minion from the scene. Shared layouts and materials stay alive for the next minions. */
 export function disposeSirenMinion(m:SirenMinion){m.rig.group.removeFromParent();m.fx.dispose();}
 /** Mesh and instance counts (tests, budgets, the design doc). */

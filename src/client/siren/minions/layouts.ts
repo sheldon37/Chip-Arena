@@ -156,11 +156,12 @@ function paintDrip(out:Cell[],solids:Solid[],req:PartRequest,seed:number,f:Face,
 }
 /** Torn stump on the part's lower face: flesh, a protruding bone and a burnt, ragged rim. */
 function paintStump(out:Cell[],solids:Solid[],req:PartRequest,seed:number){
- const g=.022,sx=req.size.x,sz=req.size.z;
+ // The bone sits off-centre on a cell corner (a jagged 2x2 end, never a centred '+' glyph).
+ const g=.022,sx=req.size.x,sz=req.size.z,odd=(n:number)=>Math.max(1,Math.floor(n/g))%2===1,bu=odd(sz)?(hash01(seed,31)<.5?.5:-.5)*g:0,bv=odd(sx)?(hash01(seed,32)<.5?.5:-.5)*g:0;
  grid(req.size,BOTTOM,g,(u,v)=>{const top=topAt(solids,BOTTOM,u,v);if(!top)return;
   // BOTTOM: u along z, v along x.
   const d=Math.hypot(u/(sz/2),v/(sx/2)),h=hash01(seed,Math.round(u*300),Math.round(v*300),3);
-  if(d<.34)cellOn(out,solids,BOTTOM,u,v,g,g,.045+(h<.5?.015:0),C.bone,false,true);
+  if(Math.hypot((u-bu)/(sz/2),(v-bv)/(sx/2))<.34)cellOn(out,solids,BOTTOM,u,v,g,g,.045+(h<.5?.015:0),C.bone,false,true);
   else if(d<.72)cellOn(out,solids,BOTTOM,u,v,g,g,.008+.006*h,h<.4?C.flesh:h<.75?C.fleshMid:C.fleshDeep,false,true);
   else cellOn(out,solids,BOTTOM,u,v,g,g,.004,h<.5?C.char:C.soot,false,true);});
  // A ragged burnt band around the cut, of uneven height.
@@ -249,7 +250,8 @@ function build(req:PartRequest,key:string):CorruptedPart{
   if(req.condition==='stump')paintStump(paint,solids,req,seed);
   if(req.jawless)paintJawless(paint,solids,req,seed);
   if(req.face==='eyes'&&req.name==='blank-head'){paintEyes(paint,solids,req,seed);clear.push({f:FRONT,u:.082,v:.041,r:.06},{f:FRONT,u:-.082,v:.041,r:.06});}
-  if(req.face==='cracked'){const a=paintCrack(paint,solids,req,seed);if(a)anchors.push(a);if(req.name==='blank-head')clear.push({f:FRONT,u:-.04,v:.08,r:.07});}
+  // Only the head and crown take the face (the cache key carries it for those two parts alone).
+  if(req.face==='cracked'&&(req.name==='blank-head'||req.name==='crown')){const a=paintCrack(paint,solids,req,seed);if(a)anchors.push(a);if(req.name==='blank-head')clear.push({f:FRONT,u:-.04,v:.08,r:.07});}
   if(req.category==='accent'){if(req.condition!=='dead')paintCracks(paint,solids,req,seed);}
   else paintRot(paint,solids,req,seed,clear);
   if(req.condition==='wound'){const w=clear[0];paintDrip(paint,solids,req,seed,w.f,w.u,w.v,w.r*.8);}

@@ -6,7 +6,9 @@ import {initPhysics} from '../src/shared/simulation.js';
 import {createCharacterRig,RIG_VERSION} from '../src/client/character-rig.js';
 import {currentLayout} from '../src/client/voxel-kit.js';
 import {probeMotion} from './helpers/motion-probe.js';
-import {createSirenMinion,animateSirenMinion,setSirenMinionDetail,sirenMinionStats,minionLook,MINION_TIMING,MINION_FACES,materialCount,type SirenMinionView,type SirenMinion} from '../src/client/siren/minions/index.js';
+import {createSirenMinion,animateSirenMinion,setSirenMinionDetail,sirenMinionStats,minionLook,prewarmSirenMinions,corruptedLayoutCount,MINION_TIMING,MINION_FACES,DEFAULT_MINION_FACE,materialCount,type SirenMinionView,type SirenMinion} from '../src/client/siren/minions/index.js';
+import {categoryOf} from '../src/client/siren/minions/model.js';
+import {baseLayout} from '../src/client/voxel-kit.js';
 import {GLOW_FLAG} from '../src/client/siren/minions/materials.js';
 
 const SEEDS=Array.from({length:24},(_,i)=>(i*2654435761+17)>>>0);
@@ -28,7 +30,15 @@ test('siren minions are deterministic per seed, differ between seeds and keep on
  for(const l of looks){const c=Object.values(l.parts).map(p=>p.condition);assert.ok(c.includes('burn'),'at least one burn');assert.ok(c.includes('cracked'),'cracked dying glow');}
  assert.ok(looks.filter(l=>Object.values(l.parts).some(p=>p.condition==='wound')).length>=looks.length*.7);
  for(const k of ['arms','scrap','missing','drag'] as const)assert.ok(new Set(looks.map(l=>l[k])).size>1,`${k} varies`);
- // Face options are seed-independent choices for the owner.
+ // Faces (the owner's choice): blank by default, a cracked head shell on some seeds, burned-in eyes only on request.
+ const many=Array.from({length:400},(_,i)=>minionLook((i*7919+3)>>>0).face);
+ for(const f of [...looks.map(l=>l.face),...many])assert.ok(f==='blank'||f==='cracked',`seeded face ${f}`);
+ assert.ok(many.includes('blank')&&many.includes('cracked'),'both seeded faces appear');
+ assert.ok(many.filter(f=>f==='blank').length>many.length*.6,`blank is the majority (${many.filter(f=>f==='blank').length}/${many.length})`);
+ assert.equal(DEFAULT_MINION_FACE,'blank');assert.equal(minionLook(SEEDS[0],{face:'eyes'}).face,'eyes');
+ // The face has its own hash: forcing one changes nothing else about the seed.
+ for(const seed of SEEDS.slice(0,6)){const {face:_a,...rest}=minionLook(seed),{face:_b,...forced}=minionLook(seed,{face:'eyes'});assert.deepEqual(forced,rest);}
+ // Face options stay available for the owner.
  for(const face of MINION_FACES)assert.notEqual(fingerprint(createSirenMinion(SEEDS[0],{face})),'');
  assert.notEqual(fingerprint(createSirenMinion(SEEDS[0],{face:'blank'})),fingerprint(createSirenMinion(SEEDS[0],{face:'eyes'})));
 });
@@ -119,4 +129,65 @@ test('poses are reproducible after a rewind and the presentation never uses Math
  assert.ok(!/Math\.random/.test(readFileSync('tools/visual-lab/minions.ts','utf8')));
  // Glow flag sanity: non-glowing cells never reach the flag value.
  const m=createSirenMinion(SEEDS[10]);m.rig.group.traverse(o=>{if(!(o instanceof T.InstancedMesh)||!o.instanceColor||o.name==='siren-minion-fx')return;const c=o.instanceColor.array;for(let i=0;i<o.count;i++){const r=c[i*3];assert.ok(r<GLOW_FLAG-1+1e-6||r>=GLOW_FLAG,`${o.name} cell ${i} colour ${r}`);}});
+});
+
+test('a face only changes the head and crown, whichever minion builds a shared layout first', async()=>{
+ // Two fresh copies of the layout cache: one builds a part after a cracked head and crown (as a cracked minion does), the
+ // other builds it alone. The cached result must not depend on the face (the key leaves it out for other parts).
+ const path='../src/client/siren/minions/layouts.js',A=await import(path+'?first=cracked'),B=await import(path+'?first=blank');
+ const rig=createCharacterRig('#2b2733',undefined,true),req=(name:string,face:'blank'|'cracked')=>{const mesh=rig.group.getObjectByName(name) as T.Mesh;return {name,category:categoryOf(name)!,size:mesh.scale.clone(),base:baseLayout(mesh),condition:'rot' as const,variant:1,rot:2 as const,face};};
+ A.corruptedPart(req('blank-head','cracked'));A.corruptedPart(req('crown','cracked'));
+ for(const name of ['jaw','ribcage','left-thigh','neck-joint','upper-chest']){const a=A.corruptedPart(req(name,'cracked')),b=B.corruptedPart(req(name,'blank'));
+  assert.equal(a.layout.key,b.layout.key,name);assert.equal(a.instances,b.instances,`${name}: ${a.instances} cells after a cracked face, ${b.instances} alone`);assert.equal(a.anchors.length,b.anchors.length,`${name} grows no crack tongue`);}
+ // Every minion of a seed is identical whatever was built before it.
+ for(const seed of SEEDS.slice(0,6)){const st=sirenMinionStats(createSirenMinion(seed,{face:'cracked'}));assert.ok(st.instances<=1400,`seed ${seed} cracked: ${st.instances} instances`);}
+});
+
+test('planted feet stay put while turning, through the walk-run band and while speeding up; strides match across rates', async()=>{
+ await initPhysics();
+ const probe=(seed:number,hz:number,at:(t:number)=>{yaw:number;speed:number})=>{const m=createSirenMinion(seed);
+  return {m,r:probeMotion({spec:'pistol',hz,rig:m.rig,travel:true,from:1,to:4,player:(t,b)=>{const s=at(t);return {...b,yaw:s.yaw,vel:{x:s.speed*Math.sin(s.yaw),y:0,z:s.speed*Math.cos(s.yaw)},hitStunUntil:-1e9};},animate:(_r,p,t)=>animateSirenMinion(m,{yaw:p.yaw,vel:p.vel},t)})};};
+ const cases:Record<string,{at:(t:number)=>{yaw:number;speed:number};slip:number;median:number;rates:number[]}>={
+  // The probe's own root integration on a curve leaves ~.03 m/s at 30 Hz (it halves per rate doubling): judge running turns at 60/120 Hz.
+  'walk turning left':{at:t=>({yaw:1.5*t,speed:1.1}),slip:.03,median:.05,rates:[30,60,120]},
+  'walk turning right':{at:t=>({yaw:-1.5*t,speed:1.1}),slip:.03,median:.05,rates:[30,60,120]},
+  'run turning':{at:t=>({yaw:1.2*t,speed:3.5}),slip:.03,median:.05,rates:[60,120]},
+  'walk-run band 2.3':{at:()=>({yaw:.3,speed:2.3}),slip:.03,median:.05,rates:[30,60,120]},
+  'walk-run band 2.8':{at:()=>({yaw:.3,speed:2.8}),slip:.03,median:.05,rates:[30,60,120]},
+  'speeding up to a run':{at:t=>({yaw:0,speed:t<2?1.1:t<2.5?1.1+(t-2)/.5*3.1:4.2}),slip:.1,median:.05,rates:[30,60,120]},
+ };
+ for(const [name,c] of Object.entries(cases))for(const seed of SEEDS.slice(0,4))for(const hz of c.rates){
+  const {m,r}=probe(seed,hz,c.at),good=m.look.drag>0?r.feet.right:r.feet.left,label=`${name}, seed ${seed}, ${hz} Hz`;
+  assert.ok(good.plantedFrames>0,label);assert.ok(good.maxSlip<c.slip,`${label}: the good foot slips ${good.maxSlip.toFixed(3)} m`);
+  for(const f of [r.feet.left,r.feet.right])assert.ok(f.medianPlantedSpeed<c.median,`${label}: planted foot moves ${f.medianPlantedSpeed.toFixed(3)} m/s`);
+ }
+ // After a speed change the same timestamp gives the same stride at 30 and 120 Hz (trapezoidal phase steps).
+ for(const seed of SEEDS.slice(0,4)){
+  const at=(hz:number)=>{const m=createSirenMinion(seed);for(let i=0;i<=3*hz;i++){const t=i/hz,sp=t<1?1.1:t<1.5?1.1+(t-1)/.5*3.1:4.2;animateSirenMinion(m,{yaw:0,vel:{x:0,z:sp}},t);}m.rig.group.updateMatrixWorld(true);return [m.rig.leftFoot,m.rig.rightFoot,m.rig.leftHand,m.rig.rightHand].map(b=>b.getWorldPosition(new T.Vector3()));};
+  const a=at(30),b=at(120);a.forEach((p,i)=>assert.ok(p.distanceTo(b[i])<.01,`seed ${seed} joint ${i}: ${p.distanceTo(b[i]).toFixed(3)} m apart at 30 vs 120 Hz`));
+ }
+});
+
+test('a fallen body and its weapon scrap rest on the floor instead of sinking through it', ()=>{
+ const box=new T.Box3(),lowest=(m:SirenMinion,scrap:boolean)=>{let y=Infinity;m.rig.group.updateMatrixWorld(true);
+  m.rig.group.traverse(o=>{if(!(o instanceof T.Mesh)||o.name==='siren-minion-fx'||o.name==='siren-minion-tongue'||(o.name==='siren-minion-scrap')!==scrap)return;
+   let shown=o.visible;for(let p=o.parent;p&&shown;p=p.parent)shown=p.visible;const part=m.parts.find(p=>p.mesh===o);
+   // Parts burning away shrink about their own centres; judge them while they keep most of their size.
+   if(!shown||(part&&o.scale.x<part.scale.x*.5))return;box.setFromObject(o);y=Math.min(y,box.min.y);});return y;};
+ for(const seed of SEEDS.slice(0,8)){
+  const m=createSirenMinion(seed);m.rig.group.position.set(0,-m.floor,0);const walk:SirenMinionView={yaw:0,vel:{x:0,z:1.1}};
+  for(let t=0;t<2;t+=1/60)animateSirenMinion(m,walk,t);
+  for(let d=0;d<2.2;d+=1/30){animateSirenMinion(m,{...walk,deathAt:2},2+d);
+   const body=lowest(m,false);assert.ok(body>-.05,`seed ${seed} ${d.toFixed(2)} s into the death: the body is ${(-body).toFixed(3)} m under the floor`);
+   if(m.scrap?.visible){const y=lowest(m,true);assert.ok(y>-.13,`seed ${seed} ${d.toFixed(2)} s into the death: the scrap is ${(-y).toFixed(3)} m under the floor`);}}
+  // Alive, a scrap drags along the floor rather than through it.
+  if(m.scrap)for(const view of [{yaw:0,vel:{x:0,z:0}},walk,{yaw:0,vel:{x:0,z:.6},attackAt:5,attack:'club' as const},{yaw:0,vel:{x:0,z:0},attackAt:5,attack:'smash' as const}])
+   for(let t=4;t<6;t+=1/30){animateSirenMinion(m,view,t);const y=lowest(m,true);assert.ok(y>-.06,`seed ${seed} alive ${JSON.stringify(view)} at ${t.toFixed(2)}: the scrap is ${(-y).toFixed(3)} m under the floor`);}
+ }
+});
+
+test('a full prewarm, a few milliseconds at a time, caches every layout a seed can need', ()=>{
+ let slices=0;while(!prewarmSirenMinions(5))slices++;assert.ok(slices>10,'the prewarm is split across frames');
+ const before=corruptedLayoutCount();for(let i=0;i<120;i++)createSirenMinion((i*0x9e3779b1+12345)>>>0);
+ assert.equal(corruptedLayoutCount(),before,'new seeds build no layouts after the prewarm');assert.equal(prewarmSirenMinions(),true);
 });
