@@ -51,7 +51,7 @@ function boxes(list:readonly Part[],geometry?:(p:Part)=>T.BufferGeometry){
   if(!g.index)g.setIndex([...Array(n).keys()]);return g;});
  return mergeGeometries(parts.map(g=>{for(const k of Object.keys(g.attributes))if(!['position','normal','uv','color'].includes(k))g.deleteAttribute(k);return g;}))!;
 }
-const IRON=0x1b191f,DARK=0x0b0a0e,PLUM=0x2c2733,STEEL=0x3a3542,PEWTER=0x6b6676,STRIPE=0x6b1520,RUST=0x3a221c,ENAMEL=0x8a857c,ENAMEL_DIRT=0x5c574f;
+const IRON=0x1b191f,DARK=0x0b0a0e,PLUM=0x463b55,STEEL=0x3a3542,PEWTER=0x6b6676,STRIPE=0x6b1520,RUST=0x3a221c,ENAMEL=0x8a857c,ENAMEL_DIRT=0x5c574f;
 /** Shared footing: a plinth with hazard stripes along the front edge and bolts. */
 function plinth():Part[]{const out:Part[]=[[1.3,.16,.9,0,.08,-.2,IRON]];for(let i=0;i<7;i++)out.push([.18,.1,.02,-.54+i*.18,.08,.255,i%2?IRON:STRIPE,0,0,.45]);for(const x of [-.56,.56])out.push([.06,.03,.06,x,.17,.17,PEWTER]);return out;}
 
@@ -59,12 +59,12 @@ function plinth():Part[]{const out:Part[]=[[1.3,.16,.9,0,.08,-.2,IRON]];for(let 
  *  chip slot with a hinged flap, a coin panel, and a crown with the sign. */
 function chipMachine(){
  const body:Part[]=[...plinth(),[1.12,1.86,.78,0,1.09,-.23,PLUM],[1.2,.14,.86,0,2.09,-.21,IRON],[1.04,.08,.8,0,2.2,-.24,STEEL],
-  [.08,1.86,.1,-.6,1.09,.12,IRON],[.08,1.86,.1,.6,1.09,.12,IRON],[.9,.72,.06,0,1.6,.17,DARK],[.96,.06,.08,0,1.97,.18,PEWTER],[.96,.06,.08,0,1.23,.18,PEWTER],
+  [.08,1.86,.1,-.6,1.09,.12,IRON],[.08,1.86,.1,.6,1.09,.12,IRON],[.06,.72,.08,-.45,1.6,.18,PEWTER],[.06,.72,.08,.45,1.6,.18,PEWTER],[.96,.06,.08,0,1.97,.18,PEWTER],[.96,.06,.08,0,1.23,.18,PEWTER],
   [.56,.2,.06,0,SLOT.y,.17,0x050407],[.62,.04,.08,0,SLOT.y+.12,.18,PEWTER],[.62,.04,.08,0,SLOT.y-.12,.18,PEWTER],[.5,.05,.18,0,SLOT.y-.13,.24,STEEL],
   [.18,.34,.05,.38,.7,.18,STEEL],[.08,.02,.06,.38,.8,.21,DARK],[.12,.12,.04,.38,.62,.21,IRON],[.6,.4,.04,-.1,.55,.17,IRON],[.06,1.4,.06,-.5,1,-.66,RUST],[.06,1.1,.06,.45,.9,-.66,RUST]];
  // Chip silhouettes on racks inside the display (dark, against the lit back glass).
- for(let r=0;r<3;r++){body.push([.84,.02,.12,0,1.36+r*.2,.11,PEWTER]);for(let c=0;c<4;c++)body.push([.12,.1,.02,-.3+c*.2+(r%2)*.05,1.42+r*.2,.12,0x14121a]);}
- const lit:Part[]=[[.84,.66,.02,0,1.6,.13,0x6f55c8],[.5,.03,.03,0,SLOT.y-.07,.2,0xb7a8ff],[.06,.06,.03,.38,.47,.21,0xff2f44]];
+ for(let r=0;r<3;r++){body.push([.84,.03,.14,0,1.36+r*.2,.13,PEWTER]);for(let c=0;c<4;c++)body.push([.13,.11,.02,-.3+c*.2+(r%2)*.05,1.43+r*.2,.14,0x14121a],[.06,.04,.01,-.3+c*.2+(r%2)*.05,1.43+r*.2,.152,0x3a3542]);}
+ const lit:Part[]=[[.84,.66,.02,0,1.6,.1,0x6f55c8],[.04,1.7,.03,-.6,1.09,.18,0x8a6cff],[.04,1.7,.03,.6,1.09,.18,0x8a6cff],[.5,.03,.03,0,SLOT.y-.07,.2,0xb7a8ff],[.06,.06,.03,.38,.47,.21,0xff2f44]];
  const tiers=['common','uncommon','rare','epic','legendary','mythic'] as const;tiers.forEach((tier,i)=>lit.push([.11,.07,.04,-.3+i*.12,1.15,.19,new T.Color(RARITIES[tier].color).getHex()]));
  const flap:Part[]=[[.5,.17,.03,0,-.085,0,STEEL],[.5,.03,.04,0,-.17,.01,PEWTER]];
  return {body:boxes(body),lit:boxes(lit),moving:boxes(flap)};

@@ -11,7 +11,7 @@ import {BEAM_TIERS,createChipModel,disposeChipModel,tierColor,tintChip,type Chip
 import {HOLO_FONT,makeCanvas} from './hologram.js';
 import {SLOT} from './machines.js';
 
-export const PICKUP={scale:.62,pop:.45,hop:.75,spin:2.2,bob:.08,restY:.9} as const;
+export const PICKUP={tilt:-1.25,scale:.62,pop:.45,hop:.75,spin:2.2,bob:.08,restY:.9} as const;
 const clamp=(x:number,a=0,b=1)=>Math.min(b,Math.max(a,x));
 /** Machine slot in world space (where a popping chip starts). */
 export function slotPoint(m:number):Vec{const k=PVE_MACHINES[m]??PVE_MACHINES[0];return {x:k.x+Math.sin(k.yaw)*SLOT.z,y:SLOT.y,z:k.z+Math.cos(k.yaw)*SLOT.z};}
@@ -30,7 +30,7 @@ export const pickupBoughtAt=(k:Pick<PvePickupView,'born'>)=>k.born-PRICES.dispen
 function glowTexture(label:boolean){
  const c=makeCanvas(256,256);if(!c)return new T.Texture();const {ctx}=c,g=ctx.createRadialGradient(128,96,0,128,96,96);
  g.addColorStop(0,'rgba(255,255,255,.95)');g.addColorStop(.25,'rgba(255,255,255,.45)');g.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=g;ctx.fillRect(0,0,256,192);
- if(label){ctx.font=`700 40px ${HOLO_FONT}`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.shadowColor='rgba(255,255,255,.9)';ctx.shadowBlur=8;ctx.fillStyle='#ffffff';ctx.fillText('YOURS',128,222);}
+ if(label){ctx.font=`700 34px ${HOLO_FONT}`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.shadowColor='rgba(255,255,255,.9)';ctx.shadowBlur=8;ctx.fillStyle='#ffffff';ctx.fillText('YOURS',128,226);}
  const t=new T.CanvasTexture(c.canvas as HTMLCanvasElement);t.colorSpace=T.SRGBColorSpace;return t;
 }
 let glows:{mine:T.Texture;other:T.Texture}|undefined;
@@ -40,16 +40,16 @@ class Pickup {
  readonly group=new T.Group();readonly chip:ChipModel=createChipModel();readonly glow:T.Sprite;readonly beam:T.Mesh<T.CylinderGeometry,T.MeshBasicMaterial>;mine=false;
  constructor(){
   glows??={mine:glowTexture(true),other:glowTexture(false)};this.group.name='pve-pickup';this.chip.group.scale.setScalar(PICKUP.scale);
-  this.glow=new T.Sprite(new T.SpriteMaterial({map:glows.other,transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));this.glow.scale.set(1.5,1.5,1);this.glow.position.y=-.18;
+  this.glow=new T.Sprite(new T.SpriteMaterial({map:glows.other,transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));this.glow.scale.set(1.15,1.15,1);this.glow.position.y=-.06;
   this.beam=new T.Mesh(beamGeometry,new T.MeshBasicMaterial({transparent:true,opacity:.22,depthWrite:false,blending:T.AdditiveBlending,side:T.DoubleSide,toneMapped:false}));this.beam.position.y=-PICKUP.restY;
   this.group.add(this.beam,this.chip.group,this.glow);
  }
  draws(){let n=0;this.group.traverse(o=>{if(o.visible&&((o as T.Mesh).isMesh||(o as T.Sprite).isSprite))n++;});return n;}
  set(k:PvePickupView,t:number,me:string){
   const pose=pickupPose(slotPoint(k.m),k.pos,k.born,t);this.group.visible=pose.visible;if(!pose.visible)return;
-  this.group.position.set(pose.pos.x,pose.pos.y,pose.pos.z);this.chip.group.rotation.set(.35,pose.spin,0);tintChip(this.chip,k.tier,t);
+  this.group.position.set(pose.pos.x,pose.pos.y,pose.pos.z);this.chip.group.rotation.set(0,pose.spin,0);this.chip.tilt.rotation.x=PICKUP.tilt;tintChip(this.chip,k.tier,t);
   const mine=k.owner===me;if(mine!==this.mine){this.mine=mine;(this.glow.material as T.SpriteMaterial).map=mine?glows!.mine:glows!.other;(this.glow.material as T.SpriteMaterial).needsUpdate=true;}
-  const c=tierColor(k.tier,t),pulse=.8+.2*Math.sin(t*4);(this.glow.material as T.SpriteMaterial).color.copy(c);(this.glow.material as T.SpriteMaterial).opacity=(mine?.95:.5)*pulse;
+  const c=tierColor(k.tier,t),pulse=.8+.2*Math.sin(t*4);(this.glow.material as T.SpriteMaterial).color.copy(c);(this.glow.material as T.SpriteMaterial).opacity=(mine?.95:.7)*pulse;
   this.beam.visible=BEAM_TIERS.has(k.tier as DropTier)&&pose.k>=1;this.beam.material.color.copy(c);this.beam.material.opacity=(.16+.08*Math.sin(t*3))*(mine?1:.6);this.beam.position.y=-(pose.pos.y);
  }
  dispose(){disposeChipModel(this.chip);(this.glow.material as T.Material).dispose();this.beam.material.dispose();}

@@ -27,22 +27,24 @@ let shared:{body:T.BufferGeometry;die:T.BufferGeometry}|undefined;
 /** Geometry of a unit chip (about 1 m across before scaling): package plus 4×5 pins, and the die with its rim and traces. */
 export function chipGeometry(){
  if(shared)return shared;
- const parts:T.BufferGeometry[]=[box(.8,.1,.8,0,0,0,0x1d1a24),box(.62,.02,.62,0,.06,0,0x2b2733)];
+ const parts:T.BufferGeometry[]=[box(.8,.1,.8,0,0,0,0x1d1a24),box(.62,.02,.62,0,.06,0,0x2b2733),box(.62,.02,.62,0,-.06,0,0x2b2733)];
  for(let side=0;side<4;side++)for(let i=0;i<5;i++){const u=-.32+i*.16,x=side<2?u:(side===2?-.47:.47),z=side<2?(side===0?-.47:.47):u;
   parts.push(box(side<2?.07:.16,.04,side<2?.16:.07,x,-.02,z,0x8d8699));}
- const lit:T.BufferGeometry[]=[box(.36,.03,.36,0,.085,0,0xffffff)];
- for(const s of [-1,1]){lit.push(box(.66,.012,.02,0,.072,s*.33,0xb0b0b0),box(.02,.012,.66,s*.33,.072,0,0xb0b0b0));
-  for(let i=0;i<3;i++){lit.push(box(.012,.01,.12,-.12+i*.12,.072,s*.24,0x9a9a9a),box(.12,.01,.012,s*.24,.072,-.12+i*.12,0x9a9a9a));}}
+ const lit:T.BufferGeometry[]=[];
+ // Both faces carry the lit die, so the chip reads in its tier colour from every side as it spins.
+ for(const f of [1,-1]){lit.push(box(.42,.03,.42,0,f*.085,0,0xffffff));const y=f*.072;
+  for(const s of [-1,1]){lit.push(box(.66,.012,.02,0,y,s*.33,0xb0b0b0),box(.02,.012,.66,s*.33,y,0,0xb0b0b0));
+   for(let i=0;i<3;i++){lit.push(box(.012,.01,.08,-.14+i*.14,y,s*.27,0x9a9a9a),box(.08,.01,.012,s*.27,y,-.14+i*.14,0x9a9a9a));}}}
  shared={body:mergeGeometries(parts)!,die:mergeGeometries(lit)!};
  return shared;
 }
 const BODY=new T.MeshLambertMaterial({vertexColors:true});
 /** A chip model: group (scale it), body (Lambert, shared material) and die (Basic, own material to tint). */
-export interface ChipModel{group:T.Group;body:T.Mesh;die:T.Mesh<T.BufferGeometry,T.MeshBasicMaterial>}
+export interface ChipModel{group:T.Group;tilt:T.Group;body:T.Mesh;die:T.Mesh<T.BufferGeometry,T.MeshBasicMaterial>}
 export function createChipModel():ChipModel{
  const g=chipGeometry(),group=new T.Group();group.name='pve-chip';
  const body=new T.Mesh(g.body,BODY);body.castShadow=true;const die=new T.Mesh(g.die,new T.MeshBasicMaterial({vertexColors:true,toneMapped:false}));
- group.add(body,die);return {group,body,die};
+ const tilt=new T.Group();tilt.add(body,die);group.add(tilt);return {group,tilt,body,die};
 }
 /** Tint the die for a tier at time t: exactly the tier colour (unlit and untoned, so it reads as lit). */
 export function tintChip(m:ChipModel,tier:DropTier,t:number){tierColor(tier,t,m.die.material.color);}
