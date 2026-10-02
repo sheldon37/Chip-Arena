@@ -18,6 +18,26 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-02 — Claude — chip-draft merge and test-channel publication
+
+- Owner asked to merge the chip draft and publish it for the in-game Update button. PR #22 merged
+  `claude/sleepy-ritchie-g8ruhv` into `claude/visual-revision` at `a9269ff44e0a14fd245d7e6de9a1da8ffc75883b`
+  (tree identical to the tested branch, after merging the shared head `2b436fe` incl. Astra's kill-effect fix).
+- Published content `0.2.0a02ae6804bc`, build `d6c50207790e5a10bc39dbc9`, payload
+  `arena-d03e12bc009aee7c.json.gz` (22,963,995 bytes, SHA-256
+  `d03e12bc009aee7cee056be98f5bce7b59accea1e85eef2843eacc47b106e07c`) at channel commit
+  `bc845295ba6d32cdd5edbc4f6b29a123eab36462`. Live feed and Site unchanged.
+- Clean detached worktree, Node 24.19.0/npm 11.9.0, `npm run setup`. `npm run verify` nonzero on the recorded
+  baseline only: units 697/709 with exactly the 12 names, the four server tsc errors, WebSocket rematch
+  timeout; HTTPS integration passed. Two `release:prepare` builds byte-identical; PR #5 check-payload passed
+  (102 files, skip, offline/corrupt refusal, settings sentinel, URL restriction); channel/status tests 6/6.
+  Payload audit vs `0.2.c9064e15755f`: only the client bundle/CSS, index, server and release files changed; one
+  key-pattern match is inside the embedded Rapier WASM and identical in the previous payload.
+- Real network: `0.2.c9064e15755f` installed from the channel into an isolated folder, then upgraded to
+  `0.2.0a02ae6804bc` on the first manifest check (102 files, settings sentinel, same-version skip, menu status).
+  Native Windows Update button and GPU visuals not run. Exclusive-tier draft cinematics were checked in the
+  browser with the real markup (shortened spotlight ends with each server reveal).
+
 ## 2026-10-02 — Claude — full-screen 3D chip draft and a longer kill-cam pre-roll
 
 - Owner feedback after the kill-cam test update: let the replay start a little later, and rework chip
