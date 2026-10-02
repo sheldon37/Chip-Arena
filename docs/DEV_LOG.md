@@ -17,6 +17,48 @@ PR, test result, release, or earlier log history. Git history identifies the com
 containing an entry; no self-referential commit hash is required.
 
 
+
+## 2026-10-02 — Astra — kill-cam systems and Siren ability super armor
+
+- Task branch `codex/killcam-siren-armor`, exact shared base
+  `claude/visual-revision` at `4dbb1513a2f8d6c782cfddb5b8ee91fad1dd9d47`.
+  All 549 remote source blobs verified before edits. Separate local verification
+  checkout; GitHub commits preserve the actual remote parent, not synthetic history.
+- Added bounded client snapshot history and automatic victim-only replay: up to
+  3 s before death + .6 s aftermath, recorded killer camera with victim fallback,
+  Space/Esc/button skip, then live spectating. Live authority/input identity and
+  network processing continue. Historical HP, deaths, destruction and attacks
+  never borrow live/future state. Round/draft/respawn/lobby/disconnect cancel safely.
+- Added replay renderer/audio reset boundaries and a basic isolated HUD seam.
+  Claude owns final UI/camera polish: `src/client/killcam-hud.ts` and
+  `docs/KILLCAM-HANDOFF.md`. No designed UI overhaul or regenerated assets.
+- Siren's eight numbered abilities resist physical interruption through recovery,
+  including Marked lock and Last Laugh hold. HP/DOT/lethal damage still apply.
+  Guards cover normal/DEV melee, rebound, juggling, Chip forces and stage launches.
+  Primary attacks and persistent rain/fire/seeker lifetimes do not extend armor.
+  Damage values, attack/hitbox timing, cooldowns and costs are unchanged; forced
+  movement/stun resistance changes intentionally. No snapshot/save schema change.
+- Node 24.19.0/npm 11.9.0, real Rapier 0.19.3, unchanged lockfile/dependencies.
+  New focused tests 14/14; typecheck and final client Vite build pass.
+  Full units 678/690 versus untouched gameplay baseline 664/676: identical 12
+  failure names, no new failures. Initial fixture-only TypeScript errors were
+  fixed; final typecheck passes. Full `npm run verify` was rerun and remains
+  nonzero: those baseline units, four known server Rapier/NodeNext type errors,
+  and the existing generic WebSocket rematch timeout. Client/relay compile pass.
+- Dedicated `tests/killcam-network.ts`: 3 real WebSocket clients / 75 identical
+  snapshots; victim-only replay, authority unchanged, continued live packets,
+  skip/reset and shared armor damage/no launch. Existing Siren network suite passes
+  with 89 identical snapshots. Final HTTPS integration passes: five sets, four drafts, 3,516 shared snapshots,
+  destruction agreement, retry, rematch and guest leave (179.4 s).
+- Visual test blocked: Cloud Browser rejected local Vite with
+  `net::ERR_BLOCKED_BY_CLIENT`; no installed local Chromium or native Windows/GPU.
+  Rendered replay/transition/audio quality and physical two-PC acceptance remain
+  unverified. Node-only 8-player/262-prop diagnostic: 101 retained snapshots,
+  ~18.8 MiB heap delta, ~1.24 ms/capture, ~.046 ms/sample; not a GPU benchmark.
+- Status: implemented on task branch for PR/Claude handoff; NOT merged or released.
+  No update-feed or Site publication. Next: Claude visual/UI review using the handoff,
+  owner-approved integration into the shared branch, then the existing test channel.
+
 ## 2026-10-01 — Astra — owner-authorized body damage merge and test publication
 
 - After the verification report below, the owner explicitly requested merge and
