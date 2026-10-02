@@ -18,6 +18,23 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-02 — Astra — boss-only bot intros
+
+- Branch `codex/boss-only-bot-intros`, remote base `codex/killcam-siren-armor`
+  `9d7c218683486b8a7c6fe31f0ec1e110595e703d` (includes Claude kill-cam UI).
+- Authority intro queue now excludes ordinary bots, including non-boss DEV weapons.
+  Human intros remain; authorized Siren bots retain their entrance, last in order.
+  Removed slots add no wait. Empty queues go directly to countdown. Global skip and
+  sandbox still bypass all intros; boss music uses the shortened authoritative queue.
+- Checks: Node 24.19.0, locked dependencies installed offline, real Rapier; 23/23
+  focused bot-intro, existing intro, kill-cam and Siren armor tests pass. New bot
+  cases rerun 3/3 after test type-narrowing correction; `npm run check:types` passes.
+  Existing two-client intro network suite passed (192 identical intro snapshots,
+  both human names, combat locked; host skip setting synchronized).
+- No hit timing, hitbox, damage, cooldown, movement, snapshot schema or save changes.
+  Native Windows visual/audio acceptance not run. Separate add-on PR targets the
+  kill-cam feature branch; implemented on branch, not merged or published.
+
 ## 2026-10-02 — Claude — kill-cam UI, transitions and replay camera framing
 
 - Task: `docs/KILLCAM-HANDOFF.md` UI/camera scope. Branch `claude/sleepy-ritchie-g8ruhv`
@@ -899,3 +916,4 @@ containing an entry; no self-referential commit hash is required.
 - Next: each agent synchronizes this branch before making its own task branch;
   after migration merges, start new tasks from updated main. Review relevant open
   PRs to avoid overlapping work. Resolve baseline failures before release work.
+
