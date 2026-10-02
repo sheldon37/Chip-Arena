@@ -71,6 +71,29 @@ Simulation helpers: `revivePlayer(p,hpFraction,pos,event='pve-revive',extra={})`
   encode as 0.
 - Commands never emit `error`; only the `ready`-without-hello refusal does (PvE rooms only).
 - `PveSystem.solo` is set at fight start (exactly one connected human and no party bots).
+- **D35 overrides the S2 brief:** `PVE_SIREN.play.minRecast.laugh=0`. There is no 20 s Last Laugh floor in phase 4; the
+  design text that mentions one (§6.7, §6.9) is superseded. Only the move's own duration and the concurrency caps gate it.
+- **Distinct `n` per command:** PartyRoom de-duplicates identical pending events, so every client command must carry a
+  fresh nonce `n` (two identical `open` commands without distinct `n` collapse into one on relay rooms).
+- **Rejoin:** the client sends `{type:'join',code,rejoin:key,…}` with the room's **exact** stored code (the
+  room code from `welcome.code`, not an online code); the server does no code normalization on rejoin. If the old
+  seat was the room owner (or the owner is gone), the rejoined id becomes owner and an `owner` message is broadcast.
+- **Missing hit info:** `HordeApi.hit` may get `hit===undefined` (fields, DoTs, chip procs, chaos-zombie assists): treat it
+  as a torso hit. With `hit.point`, classify from the point (design §3.6); `kind:'blast'` carries `radius`.
+- **Floor clamp:** `damage()` clamps to `room=p.hp−hpFloor(p)`; floating point can leave hp a hair above the floor, so the
+  director should treat `boss.hp<=floor+1e-6` as reaching it.
+- **Holds:** `stepHold` zeroes horizontal velocity of the party, recruits and the boss, and shifts every player's
+  burn/poison `next`/`until` and every `untouchableUntil` by `dt`, besides each part's `shift(dt)`.
+- **Inputs:** `economy.inputFor(p,base)` and `recruits.inputFor(p,base)` receive the input after the queue pop (and after
+  `botInput` for bots), so S3 can edge-detect `interact` presses and releases.
+- **Recruit removal:** `recruits.newest()` and `recruits.dismiss(id)→{owner}|null` let S2's boss-seat fallback remove the
+  newest recruit; the caller refunds the hirer (`economy.grant(owner,RECRUIT.price,'refund')`).
+- **Taunt and shields for add targeting:** `recruits.tauntTarget(pos)` returns the taunting tank id near `pos`;
+  `host.untouchable(p)` is true for hidden, revive-shielded and debug-god players (adds should skip them).
+- **`host.solo`** is part of `PveHost` (set at fight start).
+- **sim.random:** PvE files never call `.random(` (a recursive source scan enforces it). The only allowance is a line that
+  deliberately calls into a reused bot brain (botInput/botAbilities draw from `sim.random()`); such a line must carry the
+  marker comment `pve-allow-sim-random`.
 
 ## Shared-file edit map
 

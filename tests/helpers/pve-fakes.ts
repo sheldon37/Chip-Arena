@@ -141,7 +141,12 @@ export class FakeEconomy implements EconomyApi{
  money(id:string){return this.moneyBy.get(id)??0;}
  grantPick(id:string,tier:DropTier,source:PickSource){this.picks.push({id,tier,source});return 'pick-'+this.picks.length;}
  command(id:string,cmd:PveCommand){this.commands.push({id,cmd});return this.commandResult;}
- inputFor(p:Player){return this.choosingIds.has(p.id)||this.channellingIds.has(p.id)?idleKeepLook(p.input):undefined;}
+ baseInputs:{id:string;base?:Input}[]=[];
+ inputFor(p:Player,base?:Input){this.baseInputs.push({id:p.id,base});return this.choosingIds.has(p.id)||this.channellingIds.has(p.id)?idleKeepLook(base??p.input):undefined;}
+ /** Marks `id` as choosing an opened pick (open, openAt, offers in partyView) and returns the pick id. */
+ openPick(id:string,offers:string[]=['vital','ricochet','piercing']){this.choosingIds.add(id);this.openPicks.set(id,{id:'pick-'+(this.openPicks.size+1),offers,at:this.host.sim.time});return this.openPicks.get(id)!.id;}
+ closePick(id:string){this.choosingIds.delete(id);this.openPicks.delete(id);}
+ openPicks=new Map<string,{id:string;offers:string[];at:number}>();
  choosing(p:Player){return this.choosingIds.has(p.id);}
  weaponAway(p:Player){return this.choosingIds.has(p.id);}
  onDamage(p:Player,actual:number,source:string|null){this.damages.push({id:p.id,actual,source});}
@@ -154,7 +159,8 @@ export class FakeEconomy implements EconomyApi{
  onHold(active:boolean){this.holds.push(active);}
  shift(dt:number){this.shifts.push(dt);}
  rekey(from:string,to:string){this.rekeys.push([from,to]);}
- partyView(id:string):PvePartyView{const p=this.host.sim.players.get(id);return {...emptyPartyRow(p&&this.host.isPartyBot(p)?'bot':'human',!!p?.connected),money:this.money(id)};}
+ partyView(id:string):PvePartyView{const p=this.host.sim.players.get(id),o=this.openPicks.get(id),row={...emptyPartyRow(p&&this.host.isPartyBot(p)?'bot':'human',!!p?.connected),money:this.money(id)};
+  if(o){row.picks=[{id:o.id,tier:'common',source:'dispenser',at:o.at,offers:o.offers}];row.open=o.id;row.openAt=o.at;}return row;}
  machinesView():PveMachineUse[]{return [];}
  pickupsView():PvePickupView[]{return [];}
  reset(){this.resets++;}
@@ -169,7 +175,12 @@ export class FakeRecruits implements RecruitsApi{
  constructor(readonly host:PveHost){}
  canHire(_owner:string){return this.canHireResult;}
  hire(owner:string,at:Vec,yaw:number){this.hires.push({owner,at:{...at},yaw});return null;}
- inputFor(p:Player){return this.inputs.get(p.id)?.(p);}
+ inputFor(p:Player,_base?:Input){return this.inputs.get(p.id)?.(p);}
+ taunting=new Map<string,string>();dismissed:string[]=[];
+ tauntTarget(_pos:Vec){return [...this.taunting.values()][0]??null;}
+ newest(){const ids=[...this.host.sim.players.keys()].filter(id=>id.startsWith(RECRUIT_PREFIX));return ids.at(-1)??null;}
+ /** Removes the recruit player for real; the owner comes from recruitViews (default 'unknown'). */
+ dismiss(id:string){if(!this.host.sim.players.has(id))return null;this.dismissed.push(id);this.host.sim.removePlayer(id);return {owner:this.recruitViews.find(r=>r.id===id)?.owner??'unknown'};}
  weaponAway(_p:Player){return false;}
  isRecruit(id:string){return id.startsWith(RECRUIT_PREFIX);}
  tauntNear(_pos:Vec){return false;}

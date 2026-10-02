@@ -22,7 +22,7 @@ export class Economy implements EconomyApi{
  money(_id:string){return 0;}
  grantPick(_id:string,_tier:DropTier,_source:PickSource):string|null{return null;}
  command(_id:string,_cmd:PveCommand){return false;}
- inputFor(_p:Player):Input|undefined{return undefined;}
+ inputFor(_p:Player,_base?:Input):Input|undefined{return undefined;}
  choosing(_p:Player){return false;}
  weaponAway(_p:Player){return false;}
  onDamage(_p:Player,_actual:number,_source:string|null){}

@@ -174,16 +174,18 @@ export class PveSystem implements PveHost{
   *  the boss idles while hidden, else the director refines it; humans get the economy's forced input (choosing, channelling). */
  filterInput(p:Player,i:Input):Input{
   if(this.director.holding())return idleKeepLook(i);
-  if(this.isRecruit(p)||this.isPartyBot(p))return this.recruits.inputFor(p)??idleKeepLook(i);
+  if(this.isRecruit(p)||this.isPartyBot(p))return this.recruits.inputFor(p,i)??idleKeepLook(i);
   if(this.isBoss(p))return this.hidden(p)?idleKeepLook(i):this.director.bossInput(p,i);
-  return this.economy.inputFor(p)??i;
+  return this.economy.inputFor(p,i)??i;
  }
  /** #38 */
  holding(){return this.director.holding();}
  /** #38 Hold tick: the director's timeline; every part shifts its absolute timers; party horizontal motion stops. */
  stepHold(dt:number){
   this.director.stepHold(dt);this.horde.shift(dt);this.economy.shift(dt);this.recruits.shift(dt);
-  for(const p of this.party()){const vel=p.body.linvel();p.body.setLinvel(v(0,vel.y,0),true);p.move=v();p.ext=v();}
+  for(const p of this.sim.players.values()){if(!this.isMember(p)&&!this.isRecruit(p)&&!this.isBoss(p))continue;const vel=p.body.linvel();p.body.setLinvel(v(0,vel.y,0),true);p.move=v();p.ext=v();
+   for(const dots of [p.burns,p.poisons])for(const d of dots.values()){d.next+=dt;d.until+=dt;}}
+  for(const [id,until] of this.untouchableUntil)this.untouchableUntil.set(id,until+dt);
  }
  /** End of ChaosSystem.step: add AI before physics. */
  stepHorde(dt:number){this.horde.step(dt);}

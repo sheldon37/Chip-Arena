@@ -164,10 +164,14 @@ export interface PveHost{
  humans():Player[]; partyBots():Player[]; members():Player[] /* humans + party bots */; party():Player[] /* + recruits */;
  boss():Player|undefined; partySize():number /* h */; slots():readonly string[];
  spawningBoss:boolean;
+ /** Exactly one connected human and no party bots at fight start (solo self-revive, D7c). */
+ readonly solo:boolean;
  isHuman(p:Player):boolean; isPartyBot(p:Player):boolean; isRecruit(p:Player):boolean; isBoss(p:Player):boolean;
  stats(id:string):PveStats; emit(type:string,pos:Vec,extra?:object):void;
  setHidden(p:Player,hidden:boolean):void; hidden(p:Player):boolean;
  setUntouchable(id:string,until:number):void;
+ /** Hidden, revive-shielded (setUntouchable) or debug god: adds, recruits and the boss should not target or hit them. */
+ untouchable(p:Player):boolean;
  standAt(x:number,z:number,p?:Player):Vec;   // standing capsule centre over (x,z) for p's collider (default: player size)
  notifyHold(active:boolean):void;           // director only
  finish(outcome:PveOutcome):void;            // director only
@@ -196,7 +200,8 @@ export interface EconomyApi{
  onFightStart():void; onAddKilled(d:AddDeath):void; onBossDamage(source:string,amount:number,maxHp:number):void;
  grant(id:string,amount:number,reason:string):void; grantAll(amount:number,reason:string):void; money(id:string):number;
  grantPick(id:string,tier:DropTier,source:PickSource):string|null; command(id:string,cmd:PveCommand):boolean;
- inputFor(p:Player):Input|undefined; choosing(p:Player):boolean; weaponAway(p:Player):boolean;
+ /** Forced input for a human (choosing, channelling); `base` is the player's input after the queue pop (edge detection, e.g. interact release). */
+ inputFor(p:Player,base?:Input):Input|undefined; choosing(p:Player):boolean; weaponAway(p:Player):boolean;
  onDamage(p:Player,actual:number,source:string|null):void; onDeath(p:Player):void; onRevive(p:Player):void;
  respawnAll(reason:'wave'|'phase'):void; pendingRevive():boolean; pendingHires():number;
  step(dt:number):void; onHold(active:boolean):void; shift(dt:number):void; rekey(from:string,to:string):void;
@@ -206,7 +211,13 @@ export interface EconomyApi{
 export interface RecruitsApi{
  canHire(owner:string):'ok'|'seats'|'limit'; hire(owner:string,at:Vec,yaw:number):string|null;
  /** Recruits by role; party bots through partyBotInput. */
- inputFor(p:Player):Input|undefined; weaponAway(p:Player):boolean; isRecruit(id:string):boolean; tauntNear(pos:Vec):boolean;
+ inputFor(p:Player,base?:Input):Input|undefined; weaponAway(p:Player):boolean; isRecruit(id:string):boolean; tauntNear(pos:Vec):boolean;
+ /** The id of the taunting tank nearest pos within RECRUIT.tauntRadius, or null (adds use it for the −6 m score). */
+ tauntTarget(pos:Vec):string|null;
+ /** The newest living-or-dying recruit id (hire order), or null. */
+ newest():string|null;
+ /** Removes recruit `id` now (sim.removePlayer) and returns its hirer, or null if unknown. The caller refunds (S2's boss-seat fallback: economy.grant(owner,RECRUIT.price,'refund')). */
+ dismiss(id:string):{owner:string}|null;
  step(dt:number):void; onDeath(p:Player):void; onHold(active:boolean):void; shift(dt:number):void; rekey(from:string,to:string):void;
  views():PveRecruitView[]; reset():void;
 }

@@ -145,7 +145,12 @@ test('filterInput idles choosers and channellers keeping seq and look; holds fre
   // Hold branch.
   place(h,2,2);for(let i=0;i<10;i++)s.step();s.spawnProjectile(h,1);const shot=[...s.projectiles.values()][0],shotPos={...shot.pos};
   h.body.setLinvel(v(6,0,0),true);made.director!.hold=true;const x0=h.body.translation().x,z0=h.body.translation().z;
+  h.burns.set('x',{dps:5,until:s.time+3,next:s.time+.5});const burn={...h.burns.get('x')!};s.pve!.setUntouchable('h1',s.time+1);const shield=s.time+1;
+  const boss=spawnBoss(s,{x:-3,z:-3});boss.body.setLinvel(v(0,0,5),true);const bz=boss.body.translation().z;
   for(let i=0;i<30;i++){s.queueInputs('h1',[{...input,seq:100+i}],epoch(s));s.step();}
+  assert.ok(Math.abs(boss.body.translation().z-bz)<1e-6,'boss frozen too');
+  assert.ok(Math.abs(h.burns.get('x')!.next-(burn.next+30/60))<1e-9&&Math.abs(h.burns.get('x')!.until-(burn.until+30/60))<1e-9,'DoT timers shifted');
+  assert.equal(s.pve!.untouchable(h),true);s.pve!.setUntouchable('h1',shield+30/60);
   assert.ok(Math.abs(h.body.translation().x-x0)<1e-6&&Math.abs(h.body.translation().z-z0)<1e-6,'party frozen');
   assert.deepEqual(shot.pos,shotPos,'projectiles skipped');assert.equal(h.input.attack,false);
   for(const part of [made.horde!,made.economy!,made.recruits!])assert.equal(part.shifts.length,30);
@@ -286,7 +291,7 @@ test('commands: hello first wins, debug needs options.debug and a trusted sender
   assert.equal(s.pve!.command('h1',{action:'open',n:2},false),true);assert.deepEqual(made.economy!.commands,[{id:'h1',cmd:{action:'open',n:2}}]);
   assert.equal(s.pve!.command(PARTY_BOT_PREFIX+'1',{action:'open'},false),false,'humans only');
   assert.equal(s.pve!.command('h1',{action:'bogus'},true),false);assert.equal(s.pve!.command('nobody',{action:'hello',v:1},true),false);
-  s.phase='fight';s.pve!.setHidden(s.players.get('h1')!,false);s.pve!.onFightStart();s.pve!.setUntouchable('h1',0);
+  s.phase='fight';s.pve!.setHidden(s.players.get('h1')!,false);s.pve!.onFightStart();s.pve!.setUntouchable('h1',0);assert.equal(s.pve!.solo,false,'a party bot means not solo');
   // Party bots idle until S3 provides a brain; a scripted brain is used when present.
   const bot=s.players.get(PARTY_BOT_PREFIX+'1')!;s.preparePlayer(bot,1/60);assert.equal(bot.input.attack,false);assert.equal(bot.input.x,0);
   made.recruits!.inputs.set(bot.id,p=>({...idleInput(),seq:p.input.seq,x:1}));s.preparePlayer(bot,1/60);assert.equal(bot.input.x,1);
@@ -336,4 +341,16 @@ test('offline worker room: no guests, debug only from a developer host, pause st
 });
 test('party size counts connected humans and party bots; PVE caps',()=>{
  const s=new Simulation({pve:pve({partyBots:2})});try{s.addPlayer('h1');s.addPlayer('h2');assert.equal(s.pve!.partySize(),4);s.phase='fight';s.disconnect('h2');assert.equal(s.pve!.partySize(),3);assert.equal(PVE.maxPartyBots,3);}finally{s.dispose();}
+});
+test('contract extras: solo flag, base input to inputFor, FakeEconomy.openPick, recruit dismiss through the fake',()=>{
+ const {factory,made}=fakeParts();withPveParts(factory,()=>{const s=fightSim();try{
+  s.pve!.onFightStart();assert.equal(s.pve!.solo,true);const host=made.host!;assert.equal(host.solo,true);
+  const h=s.players.get('h1')!;assert.equal(host.untouchable(h),false);
+  const pick=made.economy!.openPick('h1');const row=s.snapshot().pve!.party.h1;assert.equal(row.open,pick);assert.ok(row.picks[0].offers!.length>0);
+  s.queueInputs('h1',[{...idleInput(),seq:9,x:1,interact:true}],epoch(s));s.preparePlayer(h,1/60);
+  assert.equal(made.economy!.baseInputs.at(-1)!.base!.interact,true,'raw base input reaches the economy');assert.equal(h.input.x,0);
+  const r=s.addPlayer('recruit-1','dps · Rook','ranged','normal','#fff',{preferredSpec:'pistol'},{developer:false,unlocks:[]})!;assert.ok(r);
+  made.recruits!.recruitViews=[{id:'recruit-1',owner:'h1',role:'dps',at:s.time,m:4}];assert.equal(made.recruits!.newest(),'recruit-1');
+  assert.deepEqual(made.recruits!.dismiss('recruit-1'),{owner:'h1'});assert.equal(s.players.has('recruit-1'),false);assert.equal(made.recruits!.dismiss('recruit-1'),null);
+ }finally{s.dispose();}});
 });

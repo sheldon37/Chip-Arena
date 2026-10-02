@@ -10,10 +10,13 @@ export class Recruits implements RecruitsApi{
  constructor(readonly host:PveHost){}
  canHire(_owner:string):'ok'|'seats'|'limit'{return 'limit';}
  hire(_owner:string,_at:Vec,_yaw:number):string|null{return null;}
- inputFor(_p:Player):Input|undefined{return undefined;}
+ inputFor(_p:Player,_base?:Input):Input|undefined{return undefined;}
  weaponAway(_p:Player){return false;}
  isRecruit(id:string){return id.startsWith(RECRUIT_PREFIX);}
  tauntNear(_pos:Vec){return false;}
+ tauntTarget(_pos:Vec):string|null{return null;}
+ newest():string|null{return null;}
+ dismiss(_id:string):{owner:string}|null{return null;}
  step(_dt:number){}
  onDeath(_p:Player){}
  onHold(_active:boolean){}

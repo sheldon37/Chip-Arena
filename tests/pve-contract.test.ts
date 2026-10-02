@@ -143,11 +143,18 @@ test('every named fixture builds a deterministic, codec-valid PveView',()=>{
  assert.ok(fixtureHordeRing(8,{gore:false}).every(a=>a.lost===0));
  const boss=fixtureBossPlayer({id:'me',pos:{x:0,y:0,z:0}} as PlayerView,4);assert.equal(boss.siren?.boost?.cooldown,0);assert.equal(boss.id,'pve-boss');
 });
-test('PvE shared code never reads clocks or Math.random (determinism, design §2.7)',()=>{
- const dir=join(import.meta.dirname,'../src/shared/pve');
- for(const file of readdirSync(dir).filter(f=>f.endsWith('.ts'))){
-  const src=readFileSync(join(dir,file),'utf8').replace(/\/\/.*$/gm,'').replace(/\/\*[\s\S]*?\*\//g,'');
-  for(const bad of ['Math.random','Date.now','performance.now','crypto.'])assert.ok(!src.includes(bad),`${file} uses ${bad}`);
+/** Allowed only on a line that also carries the marker comment `pve-allow-sim-random` (design §2.7: reused bot brains such
+ *  as botInput/botAbilities draw from sim.random(); a PvE line that deliberately calls into one must say so). */
+const SIM_RANDOM_MARKER='pve-allow-sim-random';
+test('PvE shared code never reads clocks, Math.random or sim.random (determinism, design §2.7)',()=>{
+ const root=join(import.meta.dirname,'../src/shared/pve'),files:string[]=[];
+ const walk=(dir:string)=>{for(const e of readdirSync(dir,{withFileTypes:true})){const p=join(dir,e.name);if(e.isDirectory())walk(p);else if(e.name.endsWith('.ts'))files.push(p);}};walk(root);
+ assert.ok(files.length>=11);
+ for(const file of files){
+  const lines=readFileSync(file,'utf8').replace(/\/\*[\s\S]*?\*\//g,'').split('\n');
+  lines.forEach((raw,i)=>{const allowed=raw.includes(SIM_RANDOM_MARKER),line=raw.replace(/\/\/.*$/,'');
+   for(const bad of ['Math.random','Date.now','performance.now','crypto.'])assert.ok(!line.includes(bad),`${file}:${i+1} uses ${bad}`);
+   assert.ok(allowed||!/\.random\(/.test(line),`${file}:${i+1} calls .random( (use host.rng(label))`);});
  }
 });
 test('PVE_EVENT names are unique pve-* strings',()=>{const names=Object.values(PVE_EVENT);assert.equal(new Set(names).size,names.length);assert.ok(names.every(n=>n.startsWith('pve-')));assert.equal(LIMB.rShin,256);});
