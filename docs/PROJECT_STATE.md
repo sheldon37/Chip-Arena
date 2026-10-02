@@ -78,5 +78,5 @@ Windows validation and desktop distribution cutover remain separate work.
   interruption resistance during Siren's numbered abilities are implemented.
   Focused/network checks pass; broad checks retain baseline failures. With Claude's
   final replay UI/shoulder camera, merged into `claude/visual-revision` at `7d31530`
-  (PRs #17, #16). Not yet published to the test channel; native Windows/GPU and audio
-  review remain.
+  (PRs #17, #16). Test content `0.2.1aeb4fad8c90` published at channel `012d37b`
+  (owner request); native Windows/GPU and audio review remain.

@@ -18,6 +18,38 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-02 — Claude — owner-requested kill-cam test-channel publication
+
+- Owner asked to publish the merged kill-cam work to the existing test Update channel.
+  Source `claude/visual-revision` at `7d31530cbe996dd45744e45da2442ace9eefecdb` (PR #16 merge,
+  includes Claude PR #17); clean detached worktree, Node 24.19.0 / npm 11.9.0 (official tarball,
+  SHA-256 checked), `npm run setup`, real Rapier 0.19.3. Live feed and Site unchanged.
+- Published content `0.2.1aeb4fad8c90`, build `786c2215912319ba449a53d3`, payload
+  `arena-0a306d01b2140b24.json.gz` (22,953,525 bytes, SHA-256
+  `0a306d01b2140b24f4c387104e9c9ac9cf14847e1238020ee35e8cab578d2fe4`) at channel commit
+  `012d37bdf6aa504f0d8b4058b9552c7936743f3a` in `sheldon37/chip-arena-test-updates`
+  (manifest + single payload swapped together; PUBLISHED.md row added).
+- Gate on the exact commit: `npm run verify` nonzero on the recorded baseline only. Units
+  682/694 with exactly the 12 recorded failure names (the updater test that failed under the
+  container's Node 22 passes on 24.19.0); four known server tsc errors (chaos.ts, leet.ts ×2,
+  standard-melee.ts); generic WebSocket rematch timeout. HTTPS integration passed.
+- `release:prepare` run twice: manifest and payload byte-identical. PR #5 `check-payload.mjs`
+  passed on the real payload (102 files, same-version skip, offline/corrupt refusal, settings
+  sentinel, URL restriction); remote-channel/status tests 6/6 in their original layout.
+- Independent read-only pre-publish audit (3 agents: provenance, secrets/safety, channel
+  format) found no blockers: recomputed GAME_BUILD matches; kill-cam UI and Siren armor are
+  present in the bundles; every byte changed vs `0.2.c99e20077a04` traces to `97daa88`/`4e9a65d`;
+  no secrets (embedded JWKs are public verify keys, unchanged); +8,244 bytes, under the caps.
+  The committed `build-info.generated.ts` is stale (the build stamps it); cosmetic.
+- Real network: before publishing, the then-public `0.2.c99e20077a04` was installed through
+  the real updater from the channel into an isolated folder (102 files). The public manifest
+  served the new version on the first check after push; the same folder then upgraded to
+  `0.2.1aeb4fad8c90` (102 files verified, settings sentinel preserved, same-version skip,
+  remote menu-status handler reports the new build/version).
+- Not verified: native Windows EXE/Update button, GPU visuals, replay audio, two-PC play.
+  Diagnostic test build with the documented baseline failures. Existing test installations
+  press Update.
+
 ## 2026-10-02 — Claude — kill-cam UI, transitions and replay camera framing
 
 - Task: `docs/KILLCAM-HANDOFF.md` UI/camera scope. Branch `claude/sleepy-ritchie-g8ruhv`
@@ -67,9 +99,7 @@ containing an entry; no self-referential commit hash is required.
 - Status: owner-authorized integration done. PR #17 (`4e9a65d`) merged into
   `codex/killcam-siren-armor` at `9d7c218`; PR #16 merged into `claude/visual-revision` at
   `7d31530cbe996dd45744e45da2442ace9eefecdb`, tree `37424fa` identical to the tested tree.
-  NOT published: the test-channel release was not started (this session's permission policy
-  stopped it before the pinned-Node release build). Next: run the DEVELOPMENT.md feed-only
-  publication from `7d31530` (Node 24.19.0, `release:prepare` twice, check-payload, channel push).
+  Published afterwards on the owner's explicit request; see the publication entry above.
 
 ## 2026-10-02 — Astra — kill-cam systems and Siren ability super armor
 
