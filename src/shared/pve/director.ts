@@ -9,6 +9,7 @@ import {ADD_PREFIX,PVE_EVENT,type AddDeath,type DirectorApi,type HordeModifiers,
 import {ECONOMY,PVE,PVE_SIREN,bossStageScale,combineMods,waveScale} from './balance.js';
 import {SIREN_INTRO} from '../siren-contract.js';
 import {BOSSES} from './bosses.js';
+import {PVE_LAYOUT} from './layout.js';
 import {WaveSchedule,bossFlow,waveBudget,waveFlow,type WaveEvent} from './waves.js';
 import {bossInput,grow,play,revealAt,spawnBoss} from './boss.js';
 
@@ -27,7 +28,7 @@ export class Director implements DirectorApi{
  private cinematic?:PveCinematic;private hold=false;
  private track:{revealed:0|1|2|3|4;at:number}={revealed:0,at:0};
  private bossId?:string;private maxHp=0;private phase:Phase=1;private floor=0;private shown=false;
- private hiddenBoss=false;private possessed?:number;private possessedAt?:number;private foundAt?:number;
+ private hiddenBoss=false;private possessed?:number;private possessedAt?:number;private foundAt?:number;private possessionAt=0;
  private outcome?:PveOutcome;private endedAt?:number;private pendingOutcome?:PveOutcome;
  private started=false;
  /** Set when the boss could not spawn (the run then ends as a defeat with this result). */
@@ -44,7 +45,7 @@ export class Director implements DirectorApi{
   this.schedule=new WaveSchedule(PVE.wavesBeforeBoss,false);this.stage='opening';this.stageAt=0;this.stageUntil=undefined;
   this.wave=0;this.waveTotal=0;this.waveCarry=0;this.waveKilled=0;this.resolvedAt=undefined;this.cinematic=undefined;this.hold=false;
   this.track={revealed:0,at:0};this.bossId=undefined;this.maxHp=0;this.phase=1;this.floor=0;this.shown=false;
-  this.hiddenBoss=false;this.possessed=undefined;this.possessedAt=undefined;this.foundAt=undefined;
+  this.hiddenBoss=false;this.possessed=undefined;this.possessedAt=undefined;this.foundAt=undefined;this.possessionAt=0;
   this.outcome=undefined;this.endedAt=undefined;this.pendingOutcome=undefined;this.spawnError=undefined;this.started=false;
  }
 
@@ -91,7 +92,12 @@ export class Director implements DirectorApi{
  private stepBoss(){
   const boss=this.boss();if(!boss)return;
   if(this.phase===2&&this.hiddenBoss){
-   if(this.possessed===undefined){const n=this.host.horde.possessed();if(n!==undefined)this.markPossessed(n);}
+   if(this.possessed===undefined){
+    const n=this.host.horde.possessed();if(n!==undefined)this.markPossessed(n);
+    // Safeguard: no add could ever be possessed (no horde): the Siren shows itself where it vanished.
+    else if(this.host.sim.time>=this.possessionAt+PVE_SIREN.possession.forceRevealAfter)
+     this.found({n:-1,kind:'shambler',pos:{...boss.body.translation()},killer:null,assists:[],headless:false,possessed:true,cause:'damage'});
+   }
    return;
   }
   if((this.phase===1||this.phase===3)&&boss.hp>0&&boss.hp<=this.floor+FLOOR_EPSILON)this.startReveal((this.phase+1) as Chip);
@@ -152,9 +158,10 @@ export class Director implements DirectorApi{
   const h=this.host;h.sim.siren.clearEffects(boss);
   // Hidden: body and collider off (facade). Not connected either, so Simulation.botInput and chaos zombies skip it.
   h.setHidden(boss,true);boss.connected=false;this.hiddenBoss=true;this.possessed=undefined;
+  this.possessionAt=h.sim.time;
+  // With no active add, the horde queues a possessed shambler itself (§6.5); stepBoss polls for it.
   const n=h.horde.possess()??h.horde.possessed();
   if(n!==undefined&&n!==null)this.markPossessed(n);
-  else h.horde.spawn('shambler',{possessed:true});
  }
  private markPossessed(n:number){
   const h=this.host;this.possessed=n;this.possessedAt=h.sim.time;
@@ -164,8 +171,10 @@ export class Director implements DirectorApi{
  /** The possessed add died: the boss is found at 50% HP over it and the chip-3 reveal starts on the same tick. */
  private found(d:AddDeath){
   const h=this.host,s=h.sim,boss=this.boss();if(!boss)return;
-  boss.connected=true;boss.hp=.5*this.maxHp;revealAt(h,boss,d.pos);this.hiddenBoss=false;this.foundAt=s.time;
-  if(this.possessed===undefined)this.possessed=d.n;
+  // An add that fell out of the world gives the boss back at its spawn.
+  const sp=PVE_LAYOUT.bossSpawn,at=d.cause==='fall'?{x:sp.x,y:1,z:sp.z}:d.pos;
+  boss.connected=true;boss.hp=.5*this.maxHp;revealAt(h,boss,at);this.hiddenBoss=false;this.foundAt=s.time;
+  if(this.possessed===undefined&&d.n>=0)this.possessed=d.n;
   h.emit(PVE_EVENT.found,boss.body.translation(),{...(d.killer?{target:d.killer}:{}),amount:d.n});
   this.startReveal(3);
  }

@@ -48,15 +48,17 @@ export class WaveSchedule{
  /** Advances the schedule; returns the stage events of this tick (at most one transition per call). */
  step(t:WaveTick):WaveEvent[]{
   const out:WaveEvent[]=[];
+  // Each transition is stamped with the deadline that triggered it (not the tick time), so the next stage's timers start
+  // from an exact time and step-size error never accumulates along the chain.
   if(this.stage==='opening'){
    this.stageUntil=this.openingEnd(t.resolvedAt);
-   if(t.time>=this.stageUntil)out.push(this.skipWaves||this.waves<=0?this.finish(t.time):this.startWave(1,t.time));
+   if(t.time>=this.stageUntil){const at=this.stageUntil;out.push(this.skipWaves||this.waves<=0?this.finish(at):this.startWave(1,at));}
   }else if(this.stage==='wave'){
    if(t.remaining<=PVE.waveClearRemainder){this.lowSince??=t.time;}else this.lowSince=undefined;
-   const quiet=this.lowSince!==undefined&&t.time>=this.lowSince+PVE.waveClearHold,forced=t.time>=this.stageAt+PVE.waveMaxSeconds;
-   if(quiet||forced)out.push(this.clear(t.time,!quiet));
+   const quietAt=this.lowSince===undefined?Infinity:this.lowSince+PVE.waveClearHold,forcedAt=this.stageAt+PVE.waveMaxSeconds;
+   if(t.time>=Math.min(quietAt,forcedAt))out.push(this.clear(Math.min(quietAt,forcedAt),forcedAt<quietAt));
   }else if(this.stage==='intermission'&&this.stageUntil!==undefined&&t.time>=this.stageUntil){
-   out.push(this.wave>=this.waves?this.finish(t.time):this.startWave(this.wave+1,t.time));
+   const at=this.stageUntil;out.push(this.wave>=this.waves?this.finish(at):this.startWave(this.wave+1,at));
   }
   return out;
  }

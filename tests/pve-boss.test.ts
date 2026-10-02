@@ -188,3 +188,19 @@ test('boss fall: below y −6 the boss returns to its spawn on the next tick wit
   check();r.d.debug('boss-phase:4');stepUntil(s,()=>!view(s).hold);check();
  }finally{s.dispose();}
 });
+
+test('possession with no add: the queued possessed add is picked up; a fall gives the boss back at its spawn; 60 s safeguard',()=>{
+ const r=rig();const {s}=r;try{
+  const boss=toBoss(r);hit(s,boss,10000);stepUntil(s,()=>view(s).bossView?.hidden===true&&!view(s).hold);
+  assert.equal(view(s).bossView!.possessed,undefined,'nothing to possess yet');
+  const m=r.horde.addAt({x:-8,z:3},'shambler',{possessed:true}),n=Number(m.id.slice(4));s.step();
+  assert.equal(view(s).bossView!.possessed,n);assert.ok(s.events.some(e=>e.type==='pve-possess'&&e.target==='add-'+n));
+  r.horde.kill(n,null,'fall');assert.equal(view(s).cinematic?.chip,3);
+  const p=boss.body.translation();assert.ok(Math.hypot(p.x-PVE_SIREN.spawn.x,p.z-PVE_SIREN.spawn.z)<1e-6,'back at the spawn');
+ }finally{s.dispose();}
+ const q=rig();try{
+  const boss=toBoss(q);hit(q.s,boss,10000);stepUntil(q.s,()=>view(q.s).bossView?.hidden===true&&!view(q.s).hold);
+  const start=q.s.time;stepUntil(q.s,()=>view(q.s).cinematic?.chip===3,5000);
+  assert.ok(Math.abs(q.s.time-start-PVE_SIREN.possession.forceRevealAfter)<=1/60+1e-9);assert.equal(q.s.pve!.hidden(boss),false);
+ }finally{q.s.dispose();}
+});
