@@ -4,8 +4,9 @@ Owner request (2026-10-02): the Siren gets minions. They are procedurally genera
 like zombies, spawn throughout the map, and are friendly to the Siren and its team. They are zombie-like: rot, black
 flame burns, wounds. "After design, we can work on spawn logic and etc."
 
-**Status: design phase, presentation only.** The look, the animation set and a review gallery are implemented on
-`claude/visual-revision-siren-minions` in `src/client/siren/minions/**`. **Nothing in the game uses them yet.** There are
+**Status: design phase, presentation only.** The look, the animation set and a review gallery are implemented in
+`src/client/siren/minions/**` (task branch `claude/visual-revision-siren-minions`, integrated via
+`claude/visual-revision-draft-minions`). **Nothing in the game uses them yet.** There are
 no spawns, AI, damage, network fields or renderer wiring. The systems contract at the end is a proposal. Spawn rules,
 caps, the AI and the snapshot fields are next-phase work and need the owner and Astra (the systems owner) to agree on them.
 
