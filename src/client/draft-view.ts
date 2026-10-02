@@ -28,8 +28,9 @@ export class DraftView {
   if(!screen||state.phase!=='draft'||!d){stage.cards=[];stage.hover=stage.taken=-1;return;}
   screen.dataset.stage=stage.active?'on':'off';
   const head=screen.querySelector('.draft-top')?.getBoundingClientRect(),tray=screen.querySelector('.draft-tray')?.getBoundingClientRect();
-  // Framing follows the layout until the pick, then holds still through the grab.
-  if(head&&tray&&innerHeight>0&&!d.chosen){stage.headLine=head.bottom/innerHeight;stage.trayLine=tray.top/innerHeight;}
+  // Framing follows the layout until the pick, then holds still through the grab. The chest-up pilot fills the space
+  // between the tray's bottom edge and the bottom of the screen.
+  if(head&&tray&&innerHeight>0&&!d.chosen){stage.headLine=head.bottom/innerHeight;stage.trayLine=tray.top/innerHeight;stage.trayBottom=tray.bottom/innerHeight;}
   // Reads first (rects), then writes (the flying card), so one layout per frame.
   const slots=Array.from(screen.querySelectorAll<HTMLElement>('.draft-slot')),rects=slots.map(s=>s.getBoundingClientRect());
   while(this.points.length<slots.length)this.points.push(new T.Vector3());
