@@ -189,9 +189,10 @@ damage, cooldowns, movement rules, networking, saves and access control are unch
 - Siren minions: design phase. Procedural zombie Pilots (rot, black-flame burns, wounds, blank or cracked-head faces)
   with a full animation set and a design doc (docs/SIREN-MINIONS.md). They are not in matches yet; spawn logic, AI
   and friendliness are next.
-- Source: `claude/visual-revision-draft-minions` (integration `27da229`). Tests: full suite only the 13 known
-  Node 22 failures; typecheck passes. See DEV_LOG for merge and test-channel publication status. Native Windows
-  review remains.
+- Source: `claude/visual-revision-draft-minions` (integration `27da229`), merged via PR #26 at `fd2f745`.
+  Tests: full suite only the recorded baseline failures; typecheck passes.
+- Released to TEST only: content `0.2.177d472cf940` (channel `7a9ff3d`); testers press Update. Not a live
+  release. Native Windows review remains.
 
 ## Continuing with Claude or Astra
 

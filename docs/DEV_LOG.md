@@ -18,6 +18,35 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-02 — Claude — chest-up chip draft merge and test-channel publication
+
+- Owner asked to merge and publish the chip-selection change for the in-game Update button.
+- Merge:
+  - PR #26 merged into `claude/visual-revision` at `fd2f745b8c84f7ebb72d365f63aeef9daa0cb707`.
+  - The merge tree `ef1a268` is identical to the tested PR head `f79072f`.
+- Build: `candidate.py --test-only --channel` at the merge commit (tooling `claude/test-update-channel` `fd13d5a`;
+  Node 24.19.0, npm 11.9.0).
+  - Passed: setup, fixture tests, updater tests, runtime pins, build, repeat build (byte-identical payload),
+    actual payload (102 files, same-version skip, offline/corrupt refusal, settings sentinel, URL restriction),
+    and Windows/desktop/isolated packaging.
+  - `verify` matched the recorded baseline only:
+    - units 728/740, exactly the 12 recorded names (portable-update passes on 24.19)
+    - the four server tsc errors
+    - the WebSocket rematch timeout
+    - HTTPS integration passed
+- Payload audit against `0.2.58d079f38769`:
+  - Only the client JS/CSS bundles, `index.html` and `release.json` changed.
+  - The minion module is not in the bundle.
+  - The only key-pattern matches are inside the embedded 2 MB Rapier WASM base64, identical in the previous payload.
+- Published content `0.2.177d472cf940`, build `d47c040895b0bfc483017fa2`, payload `arena-50e93185d7def3f6.json.gz`
+  (22,978,928 bytes, SHA-256 `50e93185d7def3f6f07e1928cc55ad8ff3ef1a9197d70c03d87cbdd5d3f647fc`), at channel commit
+  `7a9ff3d`. Live feed and Site unchanged.
+- Real network: the real launcher updater in an isolated install upgraded `0.2.19e114ae7c87` → `0.2.177d472cf940`
+  from the public channel on the first check, and the second check skipped (up to date).
+- Not run: the native Windows Update button, GPU visuals.
+- Status: merged and published to TEST. Next: owner playtest of the draft. Siren PvE TEST BOSS mode is in progress
+  on a separate task branch based on this merge.
+
 ## 2026-10-02 — Claude — chest-up chip draft (ROUNDS-style) and Siren minion design
 
 - Owner request: (a) in the chip draft, zoom up to the picker chest-up, like ROUNDS card picks. Everyone gets the
