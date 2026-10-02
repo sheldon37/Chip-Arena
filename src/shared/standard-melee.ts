@@ -41,10 +41,11 @@ export class StandardMelee {
   p.lastSecondary=p.lastAttack=s.time;p.secondaryCd=w.secondaryCooldown;p.cooldown=(info.windup+info.recover)/rate;p.swing=null;
   s.emit('melee-special',p.body.translation(),{source:p.id,spec:p.spec,message:info.kind,color:w.color});
  }
- stun(target:Player,seconds:number){const s=this.s;if(target.hp<=0)return;target.attackCommitment=undefined;target.roll=undefined;target.lastAttack=-10;target.hitStunUntil=Math.max(target.hitStunUntil||0,s.time+seconds);if(target.hitReaction)target.hitReaction.until=Math.max(target.hitReaction.until,target.hitStunUntil);target.move=v();target.dashTime=target.waveTime=target.electricStepTime=0;target.swing=null;target.cast=undefined;target.burst=0;target.parryTime=target.blockTime=0;target.guarding=false;this.cancel(target);s.arcade.cancel(target);s.emperor.cancel(target);}
- stagger(target:Player,seconds:number){const s=this.s;if(target.hp<=0||s.arcade.stunned(target)||(target.staggerImmuneUntil||0)>s.time)return false;this.stun(target,seconds);target.staggerImmuneUntil=target.hitStunUntil!+STAGGER_ESCAPE_SECONDS;return true;}
+ stun(target:Player,seconds:number){const s=this.s;if(target.hp<=0||s.siren.armored(target))return;target.attackCommitment=undefined;target.roll=undefined;target.lastAttack=-10;target.hitStunUntil=Math.max(target.hitStunUntil||0,s.time+seconds);if(target.hitReaction)target.hitReaction.until=Math.max(target.hitReaction.until,target.hitStunUntil);target.move=v();target.dashTime=target.waveTime=target.electricStepTime=0;target.swing=null;target.cast=undefined;target.burst=0;target.parryTime=target.blockTime=0;target.guarding=false;this.cancel(target);s.arcade.cancel(target);s.emperor.cancel(target);}
+ stagger(target:Player,seconds:number){const s=this.s;if(target.hp<=0||s.siren.armored(target)||s.arcade.stunned(target)||(target.staggerImmuneUntil||0)>s.time)return false;this.stun(target,seconds);target.staggerImmuneUntil=target.hitStunUntil!+STAGGER_ESCAPE_SECONDS;return true;}
  /** Reuses the single legs-up pickup and roll-away recovery, including existing protection. */
  launch(target:Player,owner:Player,lift:number,pickup=false){
+  if(this.s.siren.armored(target))return false;
   const s=this.s,used=!!target.knockdown?.pickupUsed||!!target.juggle?.pickupUsed||pickupOpen(target.knockdown,s.time);
   if(!pickup&&!this.stagger(target,Math.max(.24,meleeHitStun(owner.spec))))return false;
   this.stun(target,.24);s.arcade.knockDown(target);target.knockdown!.pickupUsed=used;target.knockdown!.source=owner.id;target.knockdown!.juggleUntil=s.time+.9;target.knockdown!.juggleHits=0;

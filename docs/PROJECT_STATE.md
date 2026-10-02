@@ -72,3 +72,10 @@ Windows validation and desktop distribution cutover remain separate work.
   PR #14 merged at `25599c4052af5f3f50457ea7491dcb01b6216076`; test content
   `0.2.c99e20077a04` published at channel `8bf843b2963b0575e6a13e41c10afcfa0e7fcca8`.
   See the publication DEV_LOG entry for updater verification. Native visual review remains.
+
+- Kill-cam / Siren armor: `codex/killcam-siren-armor` from shared `4dbb1513`.
+  Automatic short local death replay, skip/return-to-spectate, and physical
+  interruption resistance during Siren's numbered abilities are implemented.
+  Focused/network checks pass; broad checks retain baseline failures. Claude's final
+  replay UI, transitions and shoulder camera are on `claude/sleepy-ritchie-g8ruhv`
+  (headless-rendered checks; native Windows/GPU and audio review remain).

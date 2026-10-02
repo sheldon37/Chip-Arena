@@ -40,5 +40,10 @@ export class StandardMeleeEffects {
   const sparks=Array.from({length:Math.max(2,Math.round((3+4*weight)*Math.min(1,Math.max(.1,this.quality))))},()=>{const m=new T.Mesh(SPARK,material);root.add(m);return m;});
   this.scene.add(root);this.flashes.push({at:e.time,weight,root,ring,sparks,material,ringMaterial,ringAlpha:.5*(.5+.5*Math.min(1,this.quality))});
  }
+ clear(){
+  for(const f of [...this.flashes])this.removeFlash(f);
+  for(const impact of this.impacts){impact.root.removeFromParent();impact.root.traverse(o=>{if(o instanceof T.Mesh||o instanceof T.Points){o.geometry.dispose();(o.material as T.Material).dispose();}});}this.impacts=[];
+  for(const g of this.shots.values())g.removeFromParent();this.shots.clear();this.specs.clear();
+ }
  private removeFlash(f:Flash){f.root.removeFromParent();f.material.dispose();f.ringMaterial.dispose();this.flashes.splice(this.flashes.indexOf(f),1);}
 }

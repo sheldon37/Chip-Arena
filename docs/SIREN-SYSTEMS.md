@@ -115,6 +115,11 @@ standard gravity/locomotion; Claude supplies visual hover. Committed moves root
 the player except rush/lunge; shared snapshot replay respects those movements
 and freezes captured victims. Siren does not use ordinary weapon swings.
 
+Numbered abilities now have super armor for their committed start-through-recovery window on
+`codex/killcam-siren-armor`: damage still applies, but hitstun, knockdown/juggle and new
+physical push/pull/launch effects do not interrupt them. Primary attacks and lingering
+fields do not extend armor. See `KILLCAM-HANDOFF.md` for scope and verification.
+
 Cooldowns and shared move durations remain fixed across mode swaps. Siren's
 custom kit does not promise generic weapon-chip procs (extra strikes, attack-rate
 timing, multishot, etc.); those need explicit future balancing. Fire is 5 DPS while

@@ -17,6 +17,97 @@ PR, test result, release, or earlier log history. Git history identifies the com
 containing an entry; no self-referential commit hash is required.
 
 
+
+## 2026-10-02 — Claude — kill-cam UI, transitions and replay camera framing
+
+- Task: `docs/KILLCAM-HANDOFF.md` UI/camera scope. Branch `claude/sleepy-ritchie-g8ruhv`
+  (service-assigned name) from Astra's feature head `97daa8861211d76f730052dd092a9234b51f426d`
+  (PR #16, `codex/killcam-siren-armor`). Siren armor and replay lifecycle untouched.
+- Replaced the placeholder `killcam-hud.ts` with a broadcast-style frame in new `killcam.css`:
+  letterbox bars, corner `KILL CAM` tag with a clock relative to the fatal hit (−2.4s → +0.3s),
+  lower-third card (killer name in their colour, team tag, weapon icon/name, readable
+  cause; environmental/self deaths read "You were eliminated" + cause), a timeline with a
+  fatal-hit marker and red aftermath segment, and a pill Skip button (`data-action="killcam-skip"`
+  kept, works without pointer lock). Nothing covers the screen centre. Names, weapon and team
+  strings are HTML-escaped; colours must match `#rgb/#rrggbb` before reaching inline style.
+- Transitions: bars/card/tag animate in with a short flash covering the camera cut. In the last
+  0.3 s the bars, card and controls retract while the tag stays until the cut. Return to live
+  spectating mounts a one-shot flash and a green `LIVE` chip (1.6 s, fight phase only). HUD is
+  redrawn immediately at both boundaries (no 100 ms lag behind the camera cut). The root keeps a
+  stable class/`data-death` per clip, so the 10 Hz HUD morph never restarts entry animations.
+  Reduced motion: no flash/pulse, instant states. Responsive rules for ≤850 px, ≤580 px phones
+  and ≤480 px-tall landscape. No backdrop blur over the 3D view (cheap at every quality).
+- Developer sandbox panel and live death ticker are hidden during replay (`#ui[data-killcam]`).
+- Camera: visual review found the centred third-person pivot hid the victim behind the killer
+  in melee kills. Replay-only `killcam-camera.ts` moves the pivot to the recorded pilot's right
+  shoulder (.85 m, wall-checked) and .22 m up, converging on the same aim point. Live,
+  spectator and first-person cameras, aiming and muzzles are unchanged.
+- Small systems touch (coordinated here for Astra): `KillcamInfo.at` = recorded fatal-hit time
+  clamped into [start,end], for the timeline marker. Additive; sampling/lifecycle unchanged.
+  No gameplay, hit timing, hitboxes, damage, cooldowns, movement or network/snapshot changes.
+- Checks (Node 22.22.0 in this container; repo pins 24.19.0): `npm run check:types` pass;
+  focused `killcam`/`siren-super-armor` + new `killcam-presentation` tests 18/18; 
+  `tests/killcam-network.ts` passes (3 clients, 75 identical snapshots, victim-only replay,
+  authority unchanged, live packets, skip, round reset, armor damage/no launch). Vite build pass.
+  Full units 677/690: the 12 recorded baseline names plus `portable update ... survives offline`,
+  which fails identically with this diff stashed (environmental, Node version), so no new failures.
+- Rendered verification (headless Chromium + SwiftShader, local Vite + authority, ~2 fps):
+  local hard-bot 1v1 death (replay into round result), 6-pilot FFA death (completion → live
+  spectating with LIVE chip), Space skip mid-replay, sandbox self death (victim fallback card),
+  online WebSocket room with bots (killer view, completion, spectating), performance graphics +
+  first-person preference (replay forced third-person; next round after draft restored
+  first-person with no replay leftovers), high graphics. Static layouts at 1920×1080,
+  1280×720, 820×1180, 390×844 and 844×390; escaping probe raised no dialog.
+  Screenshots: `docs/chip-arena-killcam.jpg` (online melee replay, shoulder framing),
+  `docs/chip-arena-killcam-phone.jpg` (phone layouts, killer and environmental).
+- Not verified: native Windows/GPU frame pacing (SwiftShader runs ~2 fps, so animation feel was
+  judged from timings, not smooth playback), replay audio, physical two-PC rooms, simultaneous
+  kills, killer disconnect mid-clip, lava/fall/Siren Last Laugh-specific deaths and destruction
+  rewinds. Card shows the weapon held in the recorded frame, not necessarily the killing attack.
+- Status: implemented and pushed on the task branch; integration/publication recorded below
+  if completed.
+
+## 2026-10-02 — Astra — kill-cam systems and Siren ability super armor
+
+- Task branch `codex/killcam-siren-armor`, exact shared base
+  `claude/visual-revision` at `4dbb1513a2f8d6c782cfddb5b8ee91fad1dd9d47`.
+  All 549 remote source blobs verified before edits. Separate local verification
+  checkout; GitHub commits preserve the actual remote parent, not synthetic history.
+- Added bounded client snapshot history and automatic victim-only replay: up to
+  3 s before death + .6 s aftermath, recorded killer camera with victim fallback,
+  Space/Esc/button skip, then live spectating. Live authority/input identity and
+  network processing continue. Historical HP, deaths, destruction and attacks
+  never borrow live/future state. Round/draft/respawn/lobby/disconnect cancel safely.
+- Added replay renderer/audio reset boundaries and a basic isolated HUD seam.
+  Claude owns final UI/camera polish: `src/client/killcam-hud.ts` and
+  `docs/KILLCAM-HANDOFF.md`. No designed UI overhaul or regenerated assets.
+- Siren's eight numbered abilities resist physical interruption through recovery,
+  including Marked lock and Last Laugh hold. HP/DOT/lethal damage still apply.
+  Guards cover normal/DEV melee, rebound, juggling, Chip forces and stage launches.
+  Primary attacks and persistent rain/fire/seeker lifetimes do not extend armor.
+  Damage values, attack/hitbox timing, cooldowns and costs are unchanged; forced
+  movement/stun resistance changes intentionally. No snapshot/save schema change.
+- Node 24.19.0/npm 11.9.0, real Rapier 0.19.3, unchanged lockfile/dependencies.
+  New focused tests 14/14; typecheck and final client Vite build pass.
+  Full units 678/690 versus untouched gameplay baseline 664/676: identical 12
+  failure names, no new failures. Initial fixture-only TypeScript errors were
+  fixed; final typecheck passes. Full `npm run verify` was rerun and remains
+  nonzero: those baseline units, four known server Rapier/NodeNext type errors,
+  and the existing generic WebSocket rematch timeout. Client/relay compile pass.
+- Dedicated `tests/killcam-network.ts`: 3 real WebSocket clients / 75 identical
+  snapshots; victim-only replay, authority unchanged, continued live packets,
+  skip/reset and shared armor damage/no launch. Existing Siren network suite passes
+  with 89 identical snapshots. Final HTTPS integration passes: five sets, four drafts, 3,516 shared snapshots,
+  destruction agreement, retry, rematch and guest leave (179.4 s).
+- Visual test blocked: Cloud Browser rejected local Vite with
+  `net::ERR_BLOCKED_BY_CLIENT`; no installed local Chromium or native Windows/GPU.
+  Rendered replay/transition/audio quality and physical two-PC acceptance remain
+  unverified. Node-only 8-player/262-prop diagnostic: 101 retained snapshots,
+  ~18.8 MiB heap delta, ~1.24 ms/capture, ~.046 ms/sample; not a GPU benchmark.
+- Status: implemented on task branch for PR/Claude handoff; NOT merged or released.
+  No update-feed or Site publication. Next: Claude visual/UI review using the handoff,
+  owner-approved integration into the shared branch, then the existing test channel.
+
 ## 2026-10-01 — Astra — owner-authorized body damage merge and test publication
 
 - After the verification report below, the owner explicitly requested merge and
