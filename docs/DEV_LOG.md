@@ -64,8 +64,12 @@ containing an entry; no self-referential commit hash is required.
   judged from timings, not smooth playback), replay audio, physical two-PC rooms, simultaneous
   kills, killer disconnect mid-clip, lava/fall/Siren Last Laugh-specific deaths and destruction
   rewinds. Card shows the weapon held in the recorded frame, not necessarily the killing attack.
-- Status: implemented and pushed on the task branch; integration/publication recorded below
-  if completed.
+- Status: owner-authorized integration done. PR #17 (`4e9a65d`) merged into
+  `codex/killcam-siren-armor` at `9d7c218`; PR #16 merged into `claude/visual-revision` at
+  `7d31530cbe996dd45744e45da2442ace9eefecdb`, tree `37424fa` identical to the tested tree.
+  NOT published: the test-channel release was not started (this session's permission policy
+  stopped it before the pinned-Node release build). Next: run the DEVELOPMENT.md feed-only
+  publication from `7d31530` (Node 24.19.0, `release:prepare` twice, check-payload, channel push).
 
 ## 2026-10-02 — Astra — kill-cam systems and Siren ability super armor
 
