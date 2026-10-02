@@ -68,4 +68,7 @@ Windows validation and desktop distribution cutover remain separate work.
   Types/client/relay builds pass; server build retains four errors. Local lab
   visual acceptance is blocked by Cloud Browser (`ERR_BLOCKED_BY_CLIENT`).
   See newest DEV_LOG and BODY-DAMAGE-HANDOFF for checks and remaining visual review.
-  Owner's conditional merge/publication gate is not met; not merged/released.
+  Owner subsequently authorized merge/publication with these recorded limits.
+  PR #14 merged at `25599c4052af5f3f50457ea7491dcb01b6216076`; test content
+  `0.2.c99e20077a04` published at channel `8bf843b2963b0575e6a13e41c10afcfa0e7fcca8`.
+  See the publication DEV_LOG entry for updater verification. Native visual review remains.

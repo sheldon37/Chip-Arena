@@ -17,6 +17,38 @@ PR, test result, release, or earlier log history. Git history identifies the com
 containing an entry; no self-referential commit hash is required.
 
 
+## 2026-10-01 — Astra — owner-authorized body damage merge and test publication
+
+- After the verification report below, the owner explicitly requested merge and
+  publication to the existing test Update channel. PR #14 merged into
+  `claude/visual-revision` at `25599c4052af5f3f50457ea7491dcb01b6216076`.
+  Its tree exactly matches the verified combined head `d7af2d2`.
+- Published content `0.2.c99e20077a04`, build `4dea4f9ddc1b3bb217acf8f9`,
+  channel commit `8bf843b2963b0575e6a13e41c10afcfa0e7fcca8` in
+  `sheldon37/chip-arena-test-updates`. Manifest and payload changed atomically;
+  PUBLISHED.md records the source commit. Live feed and Site were not changed.
+- Clean release directory: all 549 source blobs verified against the merge tree.
+  `npm run release:prepare` passes twice with byte-identical manifest/payload.
+  Payload: 22,945,281 bytes; SHA-256
+  `aafb58f58c54cb5245694beb127d4d328e294cc1c87540d698948ebe0c9246ff`.
+  Existing check-payload verifies all 102 installed files, same-version skip,
+  settings sentinel, offline/checksum refusal and URL restrictions. PR #5's
+  remote-channel/status tests pass 6/6 using the original scripts in their required
+  directory layout (an initial relocated-script test failed on its own missing path).
+- Network verification: installed the previous public version `0.2.2fb402472edb`
+  through the real updater into an isolated folder; all 102 files, settings
+  preservation, same-version skip and the remote menu-status handler passed.
+  The main public endpoint initially served the cached old manifest, then returned
+  the new version on the seventh propagation check (~120 s). The follow-on real
+  network installation was blocked by this environment's network policy for
+  raw.githubusercontent.com; the previous install stayed unchanged. New-payload
+  installation is verified by the local actual-payload check above, not claimed
+  as a completed public-network upgrade or native Windows button test.
+- Release remains an owner-approved diagnostic test update: the 12 baseline unit
+  failures, four server tsc errors, generic WebSocket rematch timeout and unrun
+  real-Rapier rendered/Windows visual acceptance from the previous entry remain.
+  No additional gameplay or presentation changes were made during publication.
+
 ## 2026-10-01 — Astra — real-Rapier body damage verification and PR #14 integration
 
 - Integrated Claude `afb7561075ba71cef78ff091f2a5e7cea6b2b725` (parent systems
