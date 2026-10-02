@@ -57,6 +57,36 @@ containing an entry; no self-referential commit hash is required.
   grabs, audio levels, two-PC play. Hover is local only (other viewers see the scan, as before no protocol).
   `tools/chip-lab` still renders the old panel markup.
 
+## 2026-10-02 — Astra — preserve kill effects across legacy account sync
+
+- Branch codex/kill-effect-save from shared 16f4bcc9f4ea71ab165d462b13e48fd5a6f1372f.
+  Owner reports Impact ragdoll & gibs periodically changing to Voxel breakup,
+  including the customization dropdown.
+- Evidence: currently served /chip-arena-source.zip at AUTH_ORIGIN has an older
+  cosmetics catalog without impact-ragdoll; its sanitizer falls back to voxel-burst
+  and account savedProfile/view both use that sanitizer. This archive is evidence
+  of the published site's version, not a direct production DB/worker inspection.
+  Current desktop code accepts impact-ragdoll, but account loads overwrite local
+  cosmetics and saves previously reported success without checking the returned choice.
+- Added account-scoped pending kill-effect preference. Explicit local selections
+  and save attempts survive an older server's unchanged fallback and failed requests.
+  A successful acknowledgement or a different later cloud effect clears the pending
+  value. Current access checks still reject revoked/unauthorized DEV effects.
+  Save messages disclose when the cloud did not retain the effect; other profile
+  fields retain their existing cloud behavior. No combat/network/save-server schema
+  changes, credentials, production account mutations or backend deployment.
+- Verified: Node 24.19.0; types and 12/12 focused sync/account tests pass; client
+  Vite build passes. Full units 690/702: same 12 failure names as published baseline,
+  no new unit failures. Four existing server TypeScript errors remain.
+  Full verify exits nonzero on those baseline failures and the known WebSocket
+  rematch timeout. HTTPS passes: five sets, four drafts, 3,693 matching snapshots,
+  destruction agreement, retry, rematch and guest leave (188.4 s).
+- Limits: local protection is device/account scoped, not cross-device cloud support.
+  Until the account backend recognizes the new effect, select it and Save Pilot
+  once after this fix; a previously lost choice cannot be reconstructed safely.
+  Windows dropdown/restart acceptance not run. Implemented on task branch only;
+  not merged or published. Do not publish the whole browser Site to fix this issue.
+
 ## 2026-10-02 — Astra — bot intro integration and test publication
 
 - Owner authorized merge and in-game publication. PR #18 merged into the kill-cam
