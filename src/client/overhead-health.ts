@@ -1,6 +1,7 @@
 import {TEAMS,sameTeam} from '../shared/teams.js';
 import * as T from 'three';
 import type {Snapshot} from '../shared/simulation.js';
+import {pveOf} from '../shared/pve/contract.js';
 const plane=new T.PlaneGeometry(1,1),lagMaterial=new T.MeshBasicMaterial({color:0xffd9a0,depthWrite:false,toneMapped:false});
 /** World geometry uses depth testing so health never reveals players behind cover. */
 export class OverheadHealth{
@@ -14,9 +15,9 @@ export class OverheadHealth{
    if(b.labelKey!==key){b.label?.removeFromParent();b.label?.material.map?.dispose();b.label?.material.dispose();b.label=undefined;b.labelKey=key;
     if(team&&typeof document!=='undefined'&&document.createElement){const canvas=document.createElement('canvas');canvas.width=512;canvas.height=96;const ctx=canvas.getContext('2d');if(ctx){ctx.clearRect(0,0,512,96);ctx.fillStyle=TEAMS[team].color;ctx.shadowColor='#000';ctx.shadowBlur=4;ctx.font='bold 36px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(TEAMS[team].name.toUpperCase()+' · '+key.split(':')[1],256,48);const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;b.label=new T.Mesh(plane,new T.MeshBasicMaterial({map:texture,transparent:true,depthTest:true,depthWrite:false,toneMapped:false}));b.label.name='team-label';b.label.position.y=.12;b.label.scale.set(.76,.142,1);b.root.add(b.label);}}
    }
-   b.root.visible=visible&&p.hp>0&&p.connected&&!(first&&p.id===localId)&&camera.position.distanceToSquared(new T.Vector3(p.pos.x,p.pos.y,p.pos.z))<55*55;if(!b.root.visible)continue;
+   b.root.visible=visible&&p.hp>0&&p.connected&&!(pveOf(state)?.bossView?.hidden&&p.id===pveOf(state)?.bossView?.id)&&!(first&&p.id===localId)&&camera.position.distanceToSquared(new T.Vector3(p.pos.x,p.pos.y,p.pos.z))<55*55;if(!b.root.visible)continue;
    if(b.label){const distance=camera.position.distanceTo(new T.Vector3(p.pos.x,p.pos.y,p.pos.z));b.label.visible=p.id!==localId&&distance<32;b.label.material.opacity=distance<20?.85:.85*(32-distance)/12;}
-   b.root.position.set(p.pos.x,p.pos.y+1.3,p.pos.z);b.root.quaternion.copy(camera.quaternion);const health=Math.max(0,Math.min(1,p.hp/Math.max(1,p.maxHp)));b.fill.scale.set(.72*health,.035,1);b.fill.position.x=-.36*(1-health);b.fill.material.color.set(health<.25?0xff7381:state.options.gameMode==='teams'?p.color:0x59dd83);
+   b.root.position.set(p.pos.x,p.pos.y+1.3*(p.siren?.boost?.scale??1),p.pos.z);b.root.quaternion.copy(camera.quaternion);const health=Math.max(0,Math.min(1,p.hp/Math.max(1,p.maxHp)));b.fill.scale.set(.72*health,.035,1);b.fill.position.x=-.36*(1-health);b.fill.material.color.set(health<.25?0xff7381:state.options.gameMode==='teams'?p.color:0x59dd83);
    // Damage lag: a pale segment holds briefly where the bar was, then drains to the new health (authoritative time, dt-clamped, reset on jumps).
    const dt=b.time===undefined?-1:state.time-b.time;b.time=state.time;if(dt<0||dt>.35||b.lagValue===undefined||health>=b.lagValue){b.lagValue=health;b.hold=0;}else{b.hold=health<(b.lastHealth??health)?0:(b.hold||0)+Math.min(dt,.05);if(b.hold>.22)b.lagValue=Math.max(health,b.lagValue-Math.min(dt,.05)*.9);}
    b.lastHealth=health;b.lag.visible=b.lagValue>health+.002;if(b.lag.visible){b.lag.scale.set(.72*b.lagValue,.035,1);b.lag.position.x=-.36*(1-b.lagValue);}
