@@ -135,7 +135,7 @@ export class DraftStage {
  private arms:[Arm,Arm]=[{w:0,v:0,aim:new Spring3(),aimed:false},{w:0,v:0,aim:new Spring3(),aimed:false}];private last=NaN;
  private rings:T.Mesh[]=[];private halo:T.Mesh;private glowBack:T.Mesh;private bokeh:T.Mesh[]=[];private accent:T.PointLight;private rims:T.DirectionalLight[]=[];private lights:[T.Light,number][]=[];
  private ray=new T.Raycaster();private plane=new T.Plane(new T.Vector3(0,0,1),-DRAFT_LOOK_Z);
- private motion=typeof matchMedia==='function'?matchMedia('(prefers-reduced-motion: reduce)'):undefined;private low:boolean|undefined;private sidePick='';private glow=new T.PointLight(0xffffff,0,1.8,2);private tint=new T.Color();private rimTint=new T.Color();private chipColor=new T.Color();private hold=new T.Vector3();private reach=new T.Vector3();private chipAt=new T.Vector3();private point=new T.Vector3();private gaze=new T.Vector3();
+ private motion=typeof matchMedia==='function'?matchMedia('(prefers-reduced-motion: reduce)'):undefined;private low:boolean|undefined;private sidePick='';private glow=new T.PointLight(0xffffff,0,1.8,2);private tint=new T.Color();private rimTint=new T.Color();private chipColor=new T.Color();private hold=new T.Vector3();private reach=new T.Vector3();private chipAt=new T.Vector3();private point=new T.Vector3();private gaze=new T.Vector3();private rest=new T.Vector3();
  constructor(){
   this.scene.background=new T.Color(0x06070b);this.scene.fog=new T.Fog(0x06070b,6,16);
   // Portrait lighting: a key from high front-right and a low fill, so the faces of the blank head shade differently and
@@ -214,20 +214,27 @@ export class DraftStage {
    const arm=this.arms[i],left=i===0,mine=!!focus&&focusSide===(left?1:-1),target=!this.boss&&mine?1:0;
    if(mine)this.reachPoint(focus!,this.point);
    if(jump){arm.w=target;arm.v=0;if(mine){arm.aim.snap(this.point);arm.aimed=true;}}
-   else{[arm.w,arm.v]=spring(arm.w,arm.v,target,9,dt);if(mine){if(arm.aimed)arm.aim.step(this.point,11,dt);else{arm.aim.snap(this.point);arm.aimed=true;}}}
+   // A lowering arm drops a little quicker than the other one rises, so a switch of sides never holds both arms up.
+   else{[arm.w,arm.v]=spring(arm.w,arm.v,target,target>arm.w?7:9,dt);if(mine){if(arm.aimed)arm.aim.step(this.point,9,dt);else{arm.aim.snap(this.point);arm.aimed=true;}}}
    const grabbing=!!(g&&card)&&mine,w=Math.min(1,Math.max(0,grabbing?Math.max(arm.w,g!.reach):arm.w));if(w<=.001||!arm.aimed)continue;
    // A soft elbow while considering; fully outstretched to take the card; then drawn in to the chest. The shoulder
    // rises with the arm.
-   (left?r.leftShoulder:r.rightShoulder).rotation.z+=(left?1:-1)*.2*w*(1-(grabbing?g!.pull:0));
+   (left?r.leftHand:r.rightHand).getWorldPosition(this.rest);(left?r.leftShoulder:r.rightShoulder).rotation.z+=(left?1:-1)*.2*w*(1-(grabbing?g!.pull:0));
    r.chest.localToWorld(this.hold.set(left?.15:-.15,.07,.36));
    (left?r.leftArm:r.rightArm).getWorldPosition(_s);_d.copy(arm.aim.at).sub(_s);const len=_d.length()||1;_d.divideScalar(len);
    // The hand gives a little as it closes on the card (catching its momentum), then draws it in.
    const catchDip=grabbing?.05*Math.sin(Math.PI*Math.min(1,Math.max(0,(g!.e-.42)/.2))):0,ext=(grabbing?CONSIDER+(TAKE-CONSIDER)*g!.reach:CONSIDER)-catchDip,pull=grabbing?g!.pull:0;
    this.reach.copy(_s).addScaledVector(_d,Math.min(len,ext));this.reach.x=left?Math.max(BESIDE,this.reach.x):Math.min(-BESIDE,this.reach.x);_d.copy(this.reach).sub(_s).normalize();
+   // The wrist travels from where the pose left it, up in front of the shoulder, to the reach (a curve, not a joint slerp
+   // that would swing a straight arm out through a T-pose); the IK eases in over the first 60% of the blend.
+   _e.copy(_s).add(_f.set(left?.06:-.06,-.12,.34));const u=Math.min(1,w);this.reach.multiplyScalar(u*u).addScaledVector(_e,2*u*(1-u)).addScaledVector(this.rest,(1-u)*(1-u));
    // Drawn in on an outward arc (down first, then across), so the hand passes beside the face rather than over it.
    this.reach.set(this.reach.x+(this.hold.x-this.reach.x)*pull*pull,this.reach.y+(this.hold.y-this.reach.y)*pull,this.reach.z+(this.hold.z-this.reach.z)*pull);
-   this.aim(r,_d,_aim,left);if(pull>0)_aim.slerp(_hold.setFromEuler(_eu.set(-1.45+.45*pull,0,(left?-1:1)*.5*pull)),pull);
-   hand(r,left,r.chest.worldToLocal(_local.copy(this.reach)),_eu.setFromQuaternion(_aim),w);
+   // The wrist turns from its pose towards the reach over the whole blend (the joints only take the IK sooner).
+   const clavicle=left?r.leftShoulder:r.rightShoulder,base=_hold.copy(clavicle.quaternion).multiply((left?r.leftArm:r.rightArm).quaternion).multiply((left?r.leftElbow:r.rightElbow).quaternion).multiply((left?r.leftHand:r.rightHand).quaternion);
+   this.aim(r,_d,_aim,left);if(pull>0)_aim.slerp(_q.setFromEuler(_eu.set(-1.45+.45*pull,0,(left?-1:1)*.5*pull)),pull);
+   const ik=smooth(w/.6);_aim.copy(base.slerp(_aim,ik>1e-6?Math.min(1,smooth(w)/ik):0));
+   hand(r,left,r.chest.worldToLocal(_local.copy(this.reach)),_eu.setFromQuaternion(_aim),ik);
   }
   const socket=this.side>0?r.sockets.leftHand:r.sockets.rightHand;
   // Where to look: the chip in hand, the chosen card, the hovered card, the card booting in, or a slow scan.
