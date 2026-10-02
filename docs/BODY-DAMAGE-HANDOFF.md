@@ -8,7 +8,7 @@ Owner request, 2026-10-01: Astra implements functions/authority/physics; Claude 
 - Claude's visual commit `afb7561075ba71cef78ff091f2a5e7cea6b2b725` is integrated into the PR #14 task history. For follow-up presentation work, fetch the latest `codex/body-damage-systems` head, including Astra's real-Rapier fixes. Read `AGENTS.md`, recent `docs/DEV_LOG.md`, this file, then the contracts below. Do not replace the shared branch wholesale.
 - Astra owns `src/shared/body-damage.ts`, `body-ragdoll.ts`, simulation integration, damage profiles and authority tests. Request contract changes in your handoff instead of independently reimplementing the resolver.
 - Claude owns new client wound/crush/collapse presentation and may extend `src/client/ragdoll.ts`, `death-effects.ts`, `gibber-vfx.ts`, rig meshes and a visual lab. Preserve the small authority-contract/velocity adapters already present in those files.
-- Draft PR #14 contains systems, Claude's visuals and Astra's physics fixes. Consult the newest DEV_LOG entry/PR for actual verification results and fetch the latest task head. The owner made merge/publication conditional on passing verification; the remaining failures and blocked visual gate prevent release.
+- PR #14 contains systems, Claude's visuals and Astra's physics fixes. After reviewing the recorded failures/blocked visual gate, the owner explicitly authorized merge and test publication. It merged at `25599c4052af5f3f50457ea7491dcb01b6216076`; test content is `0.2.c99e20077a04`. Consult the newest DEV_LOG entry for publication verification. The known failures and native visual review remain open.
 
 ## Stable contract
 
@@ -22,7 +22,7 @@ Owner request, 2026-10-01: Astra implements functions/authority/physics; Claude 
 - Kneel timing is currently .32 s to knees and .82 s to release into physics. Gate: lethal bullet head cavity/sever, relative speed >=110, grounded, not rolling/knocked down/juggled, resulting speed <8. Airborne, tumbling and strongly launched victims ragdoll immediately. Do not force them upright.
 - Authoritative HP reaches zero and gameplay control stops immediately. The brief collapse is visual; it does not delay scores, create damageable corpses or keep the victim alive.
 - Default effect ID: **`impact-ragdoll`**, public, no DEV check. Missing/invalid cosmetics use it; explicitly saved cosmetic choices (including legacy voxel-burst) remain selected. Keep special finishers and Siren death/crush overrides intact. If requested to migrate old selected cosmetics, coordinate that separately.
-- Claude's visuals are now integrated on the task branch: living wounds in `src/client/body-wounds.ts`, caps and crush fragments in `body-trauma.ts`, kneel/fall in `body-collapse.ts`, consumed by the `impact` mode of `ragdoll.ts`; review lab `tools/body-lab`. Real Rapier 0.19.3 checks pass after Astra's adapter corrections below. This does not establish visual acceptance or mean the shared branch/test channel was updated.
+- Claude's visuals are now integrated on the shared branch and published to the test channel: living wounds in `src/client/body-wounds.ts`, caps and crush fragments in `body-trauma.ts`, kneel/fall in `body-collapse.ts`, consumed by the `impact` mode of `ragdoll.ts`; review lab `tools/body-lab`. Real Rapier 0.19.3 checks pass after Astra's adapter corrections below. Test publication does not establish native visual acceptance.
 
 ## Real-Rapier follow-up and remaining visual gate
 
