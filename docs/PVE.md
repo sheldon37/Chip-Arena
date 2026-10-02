@@ -248,6 +248,10 @@ Not edited (removed from revision 1): `relay-protocol.ts`. PvE commands use the 
 | `siren-network.ts`, `killcam-network.ts`, `body-damage-network.ts` | pass |
 | `npm run test:https` | pass |
 
+After the foundation (head of `claude/pve-foundation`): the same 13 unit failures by name; network suites match the
+base except `party`, which passed (its base failure is a snapshot-hash divergence assertion that is timing dependent).
+The four `server:build` errors are the same (line numbers shift by the inserted lines).
+
 **`npm run server:build`: 4 pre-existing errors** (exit 2): `chaos.ts(26,265)` TS7006, `leet.ts(27,486)` TS2322,
 `leet.ts(27,663)` TS2345, `standard-melee.ts(106,175)` TS7006.
 
