@@ -82,6 +82,35 @@ containing an entry; no self-referential commit hash is required.
   Native Windows Update button and GPU visuals not run. Exclusive-tier draft cinematics were checked in the
   browser with the real markup (shortened spotlight ends with each server reveal).
 
+## 2026-10-02 — Astra — kill-effect persistence test publication
+
+- Owner authorized merge, publication and any needed Update-button fix. PR #21
+  merged at 2b436fe7c73f832aeba49679583a59fbcddc4c77. Published that exact tested
+  source as 0.2.c9064e15755f (build 2febd9d796681c42028cfeba) to the existing TEST
+  channel at e427c71726ea6fac98d985915b2a1d527b07571e. The later concurrent PR #22
+  draft-screen merge is not included in this package; preserve it in future builds.
+- All tracked source blobs matched the approved remote tree except regenerated
+  build identity. Two release:prepare builds produced identical feed bytes.
+  Payload arena-217607dd6f5fb52a.json.gz: 22,954,568 bytes, SHA256
+  217607dd6f5fb52a7d29f813d9de7410723d71788673ce874fc3f5233eaa20d1.
+  Browser upload used the owner's existing fallback authorization; downloaded
+  payload hash matched before atomic manifest activation and old-payload removal.
+- Actual payload check passes: 102 installed file hashes, settings preservation,
+  same-version skip, offline/corruption refusal. Remote channel/status tooling 6/6.
+  Real public-feed install from 0.2.95b7f0a5f044 passes all 102 file hashes,
+  settings sentinel, same-version skip and menu status. Client updateStatus reports
+  available for the old build and current for the new build. No button code change
+  needed. Public-feed test uses curl transport to accommodate this environment's
+  previously observed Node/proxy timeout; native Electron click/restart unrun.
+- The previous entry records the exact code checks and unchanged baseline failures:
+  12/12 focused, types/client build pass; broad verification nonzero on known unit,
+  server TS and generic WS failures; HTTPS passed. No need to repeat unchanged
+  broad gameplay suites for publication alone.
+- Status: merged and published to TEST, live feed/backend unchanged. Select
+  Impact ragdoll & gibs and Save Pilot once after updating. Protection is local
+  per account/device until the account service supports that effect. Native
+  Windows selection/restart and cross-device acceptance remain unverified.
+
 ## 2026-10-02 — Claude — full-screen 3D chip draft and a longer kill-cam pre-roll
 
 - Owner feedback after the kill-cam test update: let the replay start a little later, and rework chip
