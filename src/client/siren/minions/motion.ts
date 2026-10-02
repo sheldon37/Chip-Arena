@@ -302,8 +302,9 @@ export function animateSirenMinion(m:SirenMinion,s:SirenMinionView,time:number,q
  else{livingPose(POSE_C,m,s,time,g);P=POSE_C;}
  applyPose(r,P);
  // Tongues flicker, flare while emerging and as the body burns.
- const flare=1+.8*win(e,.2,.6,1.6,EMERGE_SECONDS)+(d!==undefined?1.4*win(d,.3,.8,1.6,2.1):0);
- for(const g of m.tongues){const n=.5+.5*Math.sin(time*7.3+g.phase)*Math.sin(time*3.1+g.phase*1.9);g.mesh.scale.set(1.25,1.25*g.height*(.65+.55*n)*flare,1.25);
+ // Flaring flames grow wider as well as taller, so they stay flames instead of turning into spikes.
+ const flare=1+.5*win(e,.2,.6,1.6,EMERGE_SECONDS)+(d!==undefined?.7*win(d,.3,.8,1.6,2.1):0),wide=1.25*(1+.45*(flare-1));
+ for(const g of m.tongues){const n=.5+.5*Math.sin(time*7.3+g.phase)*Math.sin(time*3.1+g.phase*1.9);g.mesh.scale.set(wide,1.25*g.height*(.65+.55*n)*flare,wide);
   _e.set(.18*Math.sin(time*2.6+g.phase),0,.26*Math.sin(time*3.4+g.phase*1.3));g.mesh.quaternion.copy(g.base).multiply(_q.setFromEuler(_e));}
  dyingLook(m,d);
  m.fx.update(e<EMERGE_SECONDS+.4?e:undefined,d,d!==undefined?bodyPoints(r):POINTS,quality);
