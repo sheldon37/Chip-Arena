@@ -29,9 +29,14 @@ import {Simulation,initPhysics,type Snapshot} from '../../src/shared/simulation.
 import {sirenify,animateSiren,SirenStageVisuals} from '../../src/client/siren/index.js';
 import {WARD_ZERO_AIR} from '../../src/client/siren/stage.js';
 import {sirenStageBlocks,SIREN_STAGE_THEME,SIREN_ADD_SPAWNS} from '../../src/shared/siren-stage-layout.js';
-import {createSirenMinion,animateSirenMinion,setSirenMinionDetail,MINION_TIMING,MINION_FACES,type SirenMinionView,type MinionOptions,type SirenMinion} from '../../src/client/siren/minions/index.js';
+import {createSirenMinion,animateSirenMinion,setSirenMinionDetail,MINION_TIMING,MINION_FACES,VENT_RIM_Z,type SirenMinionView,type MinionOptions,type SirenMinion} from '../../src/client/siren/minions/index.js';
+import {LIMB} from '../../src/shared/pve/contract.js';
 
-type State={name:string;span:number;view:(t:number)=>SirenMinionView;speed:number};
+type State={name:string;span:number;view:(t:number)=>SirenMinionView;speed:number;
+ /** Distance travelled forward at t (default speed·t); `hole` cuts a vent shaft in the floor (rig-local z range). */
+ dist?:(t:number)=>number;hole?:[number,number]};
+const clamp01=(x:number)=>Math.max(0,Math.min(1,x));
+const DOOR_RUN=2.3,CELL_RUN=3.0;
 const STATES:Record<string,State>={
  idle:{name:'idle',span:2.4,speed:0,view:()=>({yaw:0,vel:{x:0,z:0}})},
  walk:{name:'walk 1.3 m/s',span:1.6,speed:1.3,view:()=>({yaw:0,vel:{x:0,z:1.3}})},
@@ -43,6 +48,21 @@ const STATES:Record<string,State>={
  flinch:{name:'flinch',span:.5,speed:0,view:()=>({yaw:0,vel:{x:0,z:0},hitAt:0})},
  emerge:{name:'emerge',span:MINION_TIMING.emerge+.15,speed:0,view:()=>({yaw:0,vel:{x:0,z:0},spawnAt:0})},
  death:{name:'death',span:MINION_TIMING.deathFx-.2,speed:0,view:()=>({yaw:0,vel:{x:0,z:0},deathAt:0})},
+ // PvE (design §8.3).
+ swipe:{name:'swipe R then L',span:2.0,speed:0,view:t=>({yaw:0,vel:{x:0,z:0},attack:'swipe',attackAt:t<1.05?0:1.05,side:t<1.05?1:-1})},
+ crawl:{name:'crawl .5 m/s',span:1.6,speed:.5,view:()=>({yaw:0,vel:{x:0,z:.5},crawl:true,lost:LIMB.lLeg|LIMB.lShin})},
+ 'crawl-claw':{name:'crawl claw',span:.95,speed:0,view:()=>({yaw:0,vel:{x:0,z:0},crawl:true,lost:LIMB.rLeg|LIMB.rShin,attack:'swipe',attackAt:0,side:1})},
+ limp:{name:'limp .8 m/s',span:1.6,speed:.8,view:()=>({yaw:0,vel:{x:0,z:.8},lost:LIMB.lShin})},
+ armless:{name:'armless bite',span:.95,speed:0,view:()=>({yaw:0,vel:{x:0,z:0},lost:LIMB.lArm|LIMB.lFore|LIMB.rArm|LIMB.rFore,attack:'lunge',attackAt:0})},
+ door:{name:'door walk-out',span:2.2,speed:0,dist:t=>DOOR_RUN*clamp01((t-MINION_TIMING.door.open)/MINION_TIMING.door.walk),
+  view:t=>({yaw:0,vel:{x:0,z:t>=MINION_TIMING.door.open&&t<MINION_TIMING.door.open+MINION_TIMING.door.walk?DOOR_RUN/MINION_TIMING.door.walk:0},entry:{kind:'door',at:0,first:true}})},
+ cell:{name:'cell walk-out',span:1.9,speed:0,dist:t=>CELL_RUN*clamp01((t-MINION_TIMING.cell.open)/MINION_TIMING.cell.walk),
+  view:t=>({yaw:0,vel:{x:0,z:t>=MINION_TIMING.cell.open&&t<MINION_TIMING.cell.open+MINION_TIMING.cell.walk?CELL_RUN/MINION_TIMING.cell.walk:0},entry:{kind:'cell',at:0,first:true}})},
+ 'vent-climb':{name:'vent climb',span:MINION_TIMING.vent.climb+.15,speed:0,hole:[VENT_RIM_Z-2.1,VENT_RIM_Z],view:()=>({yaw:0,vel:{x:0,z:0},entry:{kind:'vent',at:0,first:true}})},
+ 'vent-dive':{name:'vent dive',span:1.0,speed:0,hole:[.42-2.1,.42],view:()=>({yaw:0,vel:{x:0,z:0},diveAt:0})},
+ 'gib-arm':{name:'gib: right arm',span:1.2,speed:0,view:t=>({yaw:0,vel:{x:0,z:0},lost:t>=.2?LIMB.rArm|LIMB.rFore:0,hitAt:.2,hitYaw:Math.PI*.6})},
+ 'gib-leg':{name:'gib: left leg',span:1.2,speed:0,view:t=>({yaw:0,vel:{x:0,z:0},lost:t>=.2?LIMB.lLeg|LIMB.lShin:0,crawl:t>=.2,crawlAt:.2,hitAt:.2,hitYaw:Math.PI})},
+ 'gib-head':{name:'gib: head',span:2.4,speed:0,view:t=>({yaw:0,vel:{x:0,z:0},lost:t>=.2?LIMB.head:0,hitAt:.2,hitYaw:Math.PI,deathAt:.2})},
 };
 
 export async function minionLab(q:URLSearchParams,sheet:HTMLCanvasElement,status:HTMLElement){
@@ -69,7 +89,14 @@ export async function minionLab(q:URLSearchParams,sheet:HTMLCanvasElement,status
   sheet.width=frames*cellW+90;sheet.height=states.length*cell+22;ctx.fillStyle='#101318';ctx.fillRect(0,0,sheet.width,sheet.height);
   const m=build(seed);ctx.fillStyle='#ffb27a';ctx.font='11px ui-monospace,monospace';ctx.fillText(`siren minion seed ${seed} · ${m.look.face} · ${m.look.arms} · scrap ${m.look.scrap} · missing ${m.look.missing} · rot ${m.look.rot} · cam ${cam}${low?' · low':''}`,6,15);
   states.forEach((key,row)=>{const st=STATES[key],span=num('span',st.span),y=22+row*cell;
-   for(let i=0;i<frames;i++){const t=span*i/Math.max(1,frames-1),x=st.speed*t*sy,z=st.speed*t*cy,v=st.view(t);place(m,x,z);animateSirenMinion(m,{...v,yaw,vel:{x:v.vel.z*sy,z:v.vel.z*cy}},t,quality);m.rig.group.updateMatrixWorld(true);aim(cam,x,z);gl.render(scene,camera);ctx.drawImage(gl.domElement,90+i*cellW,y);label(`${t.toFixed(2)}s`,90+i*cellW+2,y+2);}
+   // A vent shaft: the floor around a 2.1 m hole (rig-local z range), a black pit far below.
+   floor.visible=!st.hole;let hole:T.Group|undefined;
+   if(st.hole){hole=new T.Group();const [z0,z1]=st.hole,W=20,mat=floor.material as T.Material,slab=(x0:number,x1:number,za:number,zb:number)=>{const p=new T.Mesh(new T.PlaneGeometry(x1-x0,zb-za),mat);p.rotation.x=-Math.PI/2;p.position.set((x0+x1)/2,0,(za+zb)/2);p.receiveShadow=true;hole!.add(p);};
+    slab(-W,W,z1,W);slab(-W,W,-W,z0);slab(-W,-1.05,z0,z1);slab(1.05,W,z0,z1);const pit=new T.Mesh(new T.PlaneGeometry(2.1,z1-z0),new T.MeshBasicMaterial({color:0x050407}));pit.rotation.x=-Math.PI/2;pit.position.set(0,-2.4,(z0+z1)/2);hole.add(pit);
+    for(const [w,x,z,ry] of [[z1-z0,-1.05,(z0+z1)/2,Math.PI/2],[z1-z0,1.05,(z0+z1)/2,-Math.PI/2],[2.1,0,z0,0],[2.1,0,z1,Math.PI]] as const){const wall=new T.Mesh(new T.PlaneGeometry(w,2.4),new T.MeshLambertMaterial({color:0x1a1a1f}));wall.position.set(x,-1.2,z);wall.rotation.y=ry;hole.add(wall);}
+    hole.rotation.y=yaw;scene.add(hole);}
+   for(let i=0;i<frames;i++){const t=span*i/Math.max(1,frames-1),d=st.dist?st.dist(t):st.speed*t,x=d*sy,z=d*cy,v=st.view(t);place(m,x,z);animateSirenMinion(m,{...v,yaw,vel:{x:v.vel.z*sy,z:v.vel.z*cy}},t,quality);m.rig.group.updateMatrixWorld(true);aim(cam,x,z);gl.render(scene,camera);ctx.drawImage(gl.domElement,90+i*cellW,y);label(`${t.toFixed(2)}s`,90+i*cellW+2,y+2);}
+   if(hole)scene.remove(hole);floor.visible=true;
    ctx.fillStyle='#ffb27a';ctx.fillText(st.name,4,y+cell/2);});
  }else{
   const seeds=(q.get('seeds')||'1,2,3,4,5,6,7,8,9,10,11,12').split(',').map(Number),cols=num('cols',6),views=(q.get('views')||'three').split(','),t=num('t',2.4),rows=Math.ceil((seeds.length*(q.get('faces')==='1'?MINION_FACES.length:1)+(q.get('pilot')==='1'?1:0))/cols)*views.length;

@@ -13,7 +13,8 @@
  * voxel bursts on a minion rig: they would repaint the corrupted parts or revert them to the clean Pilot sculpt.
  */
 export {createSirenMinion,prewarmSirenMinions,setSirenMinionDetail,disposeSirenMinion,sirenMinionStats,sirenMinionOf,categoryOf,type SirenMinion} from './model.js';
-export {animateSirenMinion,attackKind,MINION_TIMING,type SirenMinionView,type MinionAttack} from './motion.js';
+export {animateSirenMinion,attackKind,swipeArm,armless,stumpLeg,entryWalkStart,entryDuration,MINION_TIMING,VENT_RIM_Z,type SirenMinionView,type MinionAttack,type MinionEntry,type MinionEntryKind} from './motion.js';
+export {applyLostLimbs,stumpsOf,activeCuts,LIMB_CUTS,LOSS_STUMPS} from './limbs.js';
 export {minionLook,minionSeed,seededFace,MINION_FACES,DEFAULT_MINION_FACE,CRACKED_FACE_SHARE,type MinionLook,type MinionOptions,type MinionFace} from './look.js';
 export {corruptedLayoutCount} from './layouts.js';
 export {materialCount,MINION_PALETTE} from './materials.js';

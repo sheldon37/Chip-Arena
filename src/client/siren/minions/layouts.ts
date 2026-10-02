@@ -156,16 +156,18 @@ function paintDrip(out:Cell[],solids:Solid[],req:PartRequest,seed:number,f:Face,
 }
 /** Torn stump on the part's lower face: flesh, a protruding bone and a burnt, ragged rim. */
 function paintStump(out:Cell[],solids:Solid[],req:PartRequest,seed:number){
- // The bone sits off-centre on a cell corner (a jagged 2x2 end, never a centred '+' glyph).
+ // The bone sits off-centre on a cell corner (a jagged 2x2 end, never a centred '+' glyph). Variant 1 tears the top face
+ // instead (a neck whose head is gone).
  const g=.022,sx=req.size.x,sz=req.size.z,odd=(n:number)=>Math.max(1,Math.floor(n/g))%2===1,bu=odd(sz)?(hash01(seed,31)<.5?.5:-.5)*g:0,bv=odd(sx)?(hash01(seed,32)<.5?.5:-.5)*g:0;
- grid(req.size,BOTTOM,g,(u,v)=>{const top=topAt(solids,BOTTOM,u,v);if(!top)return;
+ const END=req.variant===1?TOP:BOTTOM,up=req.variant===1;
+ grid(req.size,END,g,(u,v)=>{const top=topAt(solids,END,u,v);if(!top)return;
   // BOTTOM: u along z, v along x.
   const d=Math.hypot(u/(sz/2),v/(sx/2)),h=hash01(seed,Math.round(u*300),Math.round(v*300),3);
-  if(Math.hypot((u-bu)/(sz/2),(v-bv)/(sx/2))<.34)cellOn(out,solids,BOTTOM,u,v,g,g,.045+(h<.5?.015:0),C.bone,false,true);
-  else if(d<.72)cellOn(out,solids,BOTTOM,u,v,g,g,.008+.006*h,h<.4?C.flesh:h<.75?C.fleshMid:C.fleshDeep,false,true);
-  else cellOn(out,solids,BOTTOM,u,v,g,g,.004,h<.5?C.char:C.soot,false,true);});
+  if(Math.hypot((u-bu)/(sz/2),(v-bv)/(sx/2))<.34)cellOn(out,solids,END,u,v,g,g,.045+(h<.5?.015:0),C.bone,false,true);
+  else if(d<.72)cellOn(out,solids,END,u,v,g,g,.008+.006*h,h<.4?C.flesh:h<.75?C.fleshMid:C.fleshDeep,false,true);
+  else cellOn(out,solids,END,u,v,g,g,.004,h<.5?C.char:C.soot,false,true);});
  // A ragged burnt band around the cut, of uneven height.
- for(const f of [FRONT,BACK,side(1),side(-1)])grid(req.size,f,g,(u,v)=>{const [ua]=axes(f),y=ua===1?u:v,h=hash01(seed,Math.round(u*300),Math.round(v*300),f.axis*2+f.sign);if(y<-req.size.y/2+g*(1+Math.floor(h*2.6)))cellOn(out,solids,f,u,v,g,g,.003,h<.3?C.blood:h<.7?C.soot:C.char);});
+ for(const f of [FRONT,BACK,side(1),side(-1)])grid(req.size,f,g,(u,v)=>{const [ua]=axes(f),y=ua===1?u:v,h=hash01(seed,Math.round(u*300),Math.round(v*300),f.axis*2+f.sign);if((up?-y:y)<-req.size.y/2+g*(1+Math.floor(h*2.6)))cellOn(out,solids,f,u,v,g,g,.003,h<.3?C.blood:h<.7?C.soot:C.char);});
 }
 /** The bare lower head where the jaw plate was torn off: a row of teeth, a dark hollow, blood. */
 function paintJawless(out:Cell[],solids:Solid[],req:PartRequest,seed:number){
