@@ -15,7 +15,7 @@ export const HINT_GLYPH_RANGE=25;
 export const HINT_LEVELS=[0,15,35] as const;
 /** Hint level from seconds since possessedAt (0 none). */
 export const hintLevel=(age:number)=>!(age>=0)?0:age<HINT_LEVELS[1]?1:age<HINT_LEVELS[2]?2:3;
-const VIOLET=0x9d84ff;
+const VIOLET=0x9d84ff,_h=new T.Vector3();
 interface Hint {seam:T.Mesh;halo:T.Sprite;glyph:T.Sprite}
 const hints=new WeakMap<SirenMinion,Hint>();
 let haloTex:T.Texture|null|undefined,glyphTex:T.Texture|null|undefined;
@@ -27,8 +27,10 @@ function halo(){if(haloTex!==undefined)return haloTex;const c=canvas(64,64);if(!
 /** The Siren grin (siren-card.ts GRIN path: lips and interlocking teeth, no eyes), drawn once into a canvas texture. */
 const GRIN_PATH='M22 70 C70 86 130 86 178 70 C140 116 60 116 22 70 Z',TEETH_PATH='M28 70.9 L37 82.7 L46 76.1 L55 93.2 L64 79.8 L73 100.2 L82 82.1 L91 103.8 L100 82.8 L109 103.8 L118 82.1 L127 100.2 L136 79.8 L145 93.2 L154 76.1 L163 82.7 L172 70.9';
 function glyph(){if(glyphTex!==undefined)return glyphTex;const c=canvas(256,96);if(!c||typeof Path2D==='undefined')return glyphTex=null;const g=c.getContext('2d')!;
- g.translate(28,-52);g.scale(1,1);g.shadowColor='rgba(157,132,255,.9)';g.shadowBlur=14;g.fillStyle='rgba(10,8,14,.92)';g.fill(new Path2D(GRIN_PATH));
- g.shadowBlur=6;g.strokeStyle='rgba(244,240,255,.95)';g.lineWidth=3.2;g.lineJoin='miter';g.stroke(new Path2D(TEETH_PATH));g.strokeStyle='rgba(200,185,255,.8)';g.lineWidth=2;g.stroke(new Path2D(GRIN_PATH));
+ // A ghostly grin: a dark mouth in a violet glow, pale lips and white interlocking teeth (readable on the dark hall).
+ g.translate(28,-48);const grin=new Path2D(GRIN_PATH),teeth=new Path2D(TEETH_PATH);
+ g.shadowColor='rgba(157,132,255,1)';g.shadowBlur=22;g.fillStyle='rgba(28,14,52,.9)';g.fill(grin);g.fill(grin);
+ g.shadowBlur=8;g.lineJoin='miter';g.strokeStyle='rgba(222,212,255,1)';g.lineWidth=4.5;g.stroke(grin);g.strokeStyle='rgba(255,255,255,1)';g.lineWidth=4;g.stroke(teeth);
  glyphTex=new T.CanvasTexture(c);glyphTex.colorSpace=T.SRGBColorSpace;return glyphTex;}
 const additive=(color:number)=>new T.MeshBasicMaterial({color,transparent:true,opacity:0,blending:T.AdditiveBlending,depthWrite:false,toneMapped:false});
 function build(m:SirenMinion):Hint{
@@ -38,7 +40,8 @@ function build(m:SirenMinion):Hint{
  halo_.name='siren-minion-hint-halo';halo_.position.set(0,.38,0);halo_.scale.setScalar(.7);
  const glyph_=new T.Sprite(new T.SpriteMaterial({map:glyph(),color:0xffffff,transparent:true,opacity:0,depthWrite:false,toneMapped:false}));
  glyph_.name='siren-minion-hint-grin';glyph_.position.set(0,.95,0);glyph_.scale.set(.78,.29,1);
- m.rig.head.add(seam,halo_,glyph_);const h={seam,halo:halo_,glyph:glyph_};hints.set(m,h);return h;
+ // The grin floats upright above the head whatever the head does (it lives in the rig group, placed every frame).
+ m.rig.head.add(seam,halo_);m.rig.group.add(glyph_);const h={seam,halo:halo_,glyph:glyph_};hints.set(m,h);return h;
 }
 /**
  * Shows the possession hints for `level` (0 hides them) at authority time `time`. `cameraDistance` limits the grin glyph
@@ -49,10 +52,11 @@ export function possessHint(m:SirenMinion,level:number,time:number,cameraDistanc
  h??=build(m);
  // A pulse every ~4 s (a quick swell, a slow fade), hashed per minion so two possessed adds never beat together.
  const k=((time+m.look.phase*4)%4+4)%4,pulse=k<1.4?Math.sin(Math.PI*k/1.4)**2:0,boost=level>=3?1.35:1;
- const seamOn=.25+.75*pulse;(h.seam.material as T.MeshBasicMaterial).opacity=Math.min(1,seamOn*boost);h.seam.visible=true;
- h.halo.visible=pulse>.02;h.halo.material.opacity=.8*pulse*boost;h.halo.scale.setScalar(.45+.5*pulse);
+ const seamOn=.55+.45*pulse;(h.seam.material as T.MeshBasicMaterial).opacity=Math.min(1,seamOn*boost);h.seam.visible=true;
+ h.halo.visible=pulse>.02;h.halo.material.opacity=Math.min(1,pulse*boost);h.halo.scale.setScalar(.55+.75*pulse);
  const g=level>=2&&cameraDistance<=HINT_GLYPH_RANGE;h.glyph.visible=g;
- if(g){h.glyph.material.opacity=Math.min(1,(.42+.12*Math.sin(time*2.3))*boost);h.glyph.position.y=.95+.05*Math.sin(time*1.7);}
+ if(g){h.glyph.material.opacity=Math.min(1,(.68+.12*Math.sin(time*2.3))*boost);
+  m.rig.head.getWorldPosition(_h);m.rig.group.worldToLocal(_h);h.glyph.position.set(_h.x,_h.y+.6+.05*Math.sin(time*1.7),_h.z);}
 }
 /** The hint meshes (tests and budgets): built only for a minion that was ever possessed. */
 export const hintObjects=(m:SirenMinion):T.Object3D[]=>{const h=hints.get(m);return h?[h.seam,h.halo,h.glyph]:[];};

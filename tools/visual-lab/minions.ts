@@ -15,6 +15,11 @@
  *  kind=minions&view=ward    a horde coming out of a Ward Zero spawn (SIREN_ADD_SPAWNS) with the stage dressing
  *    spawn=<id>              spawn point (default door-ne); t=<s> lab time; song=<s> song time at t=0 (default 140)
  *    siren=1                 the Siren itself idles among them; aspect=1.778 for a wide shot
+ *  kind=minions&view=crowd   the PvE horde through the real HordeView (crowd LOD) in Ward Zero, from a player's camera
+ *    adds=<n> (default 40), near=<m>,<m> band the first `nearCount` adds stand in (default 8,20), nearCount=<n> (default
+ *    all), far=<m>,<m> band for the rest (default 22,45), mode=quality|performance|compatibility, possess=<m> distance of a
+ *    possessed add (absent: none), level=1|2|3 hint level, entries=1 adds coming out of doors, cells and vents, gore=1
+ *    limb loss on some adds, seed=<n>; the label shows the HordeView metrics
  *  Shared: face=blank|eyes|cracked, rot=<0..1>, burn=<0..1>, wounds=<n>, missing=<option>, scrap=<option>, arms=<style>,
  *          cell=<px> (default 260), aspect=<w/h>, dist=<m>, height=<m>, focus=<m>, light=arena|lab (default arena),
  *          low=1 (low detail), quality=<0..1> (effects), bg=<css hex>
@@ -29,8 +34,13 @@ import {Simulation,initPhysics,type Snapshot} from '../../src/shared/simulation.
 import {sirenify,animateSiren,SirenStageVisuals} from '../../src/client/siren/index.js';
 import {WARD_ZERO_AIR} from '../../src/client/siren/stage.js';
 import {sirenStageBlocks,SIREN_STAGE_THEME,SIREN_ADD_SPAWNS} from '../../src/shared/siren-stage-layout.js';
-import {createSirenMinion,animateSirenMinion,setSirenMinionDetail,MINION_TIMING,MINION_FACES,VENT_RIM_Z,type SirenMinionView,type MinionOptions,type SirenMinion} from '../../src/client/siren/minions/index.js';
-import {LIMB} from '../../src/shared/pve/contract.js';
+import {createSirenMinion,animateSirenMinion,setSirenMinionDetail,prewarmSirenMinions,MINION_TIMING,MINION_FACES,VENT_RIM_Z,type SirenMinionView,type MinionOptions,type SirenMinion} from '../../src/client/siren/minions/index.js';
+import {LIMB,encodeAdd,type PveAddView,type PveEntryView,type PveView} from '../../src/shared/pve/contract.js';
+import {fixtureAdd,fixtureBase,fixtureEnteringAdds} from '../../src/shared/pve/fixtures.js';
+import {PveRng} from '../../src/shared/pve/rng.js';
+import {HordeView,type HordeMode} from '../../src/client/pve/horde-view.js';
+import {BurstPool} from '../../src/client/burst-pool.js';
+import {hintObjects} from '../../src/client/siren/minions/hints.js';
 
 type State={name:string;span:number;view:(t:number)=>SirenMinionView;speed:number;
  /** Distance travelled forward at t (default speed·t); `hole` cuts a vent shaft in the floor (rig-local z range). */
@@ -83,6 +93,7 @@ export async function minionLab(q:URLSearchParams,sheet:HTMLCanvasElement,status
  const aim=(cam:string,x:number,z:number)=>{const o:Record<string,[number,number,number]>={side:[dist,camH,0],front:[0,camH,dist],three:[dist*.72,camH+.2,dist*.72],'three-left':[-dist*.72,camH+.2,dist*.72],back:[0,camH,-dist]};const p=o[cam]||o.three;camera.position.set(x+p[0]*cy+p[2]*sy,p[1],z-p[0]*sy+p[2]*cy);camera.lookAt(x,focus,z);};
  const place=(m:SirenMinion,x:number,z:number)=>{m.rig.group.position.set(x,-m.floor,z);m.rig.group.rotation.y=yaw;floor.position.set(Math.round(x),0,Math.round(z));};
  const build=(seed:number,face=opts.face)=>{const m=createSirenMinion(seed,{...opts,face});if(low)setSirenMinionDetail(m,true);m.rig.group.traverse(o=>{if(o instanceof T.Mesh&&o.name!=='siren-minion-fx'&&o.name!=='siren-minion-tongue')o.castShadow=true;});scene.add(m.rig.group);return m;};
+ if(view==='crowd'){const info=await crowd(q,scene,floor,gl,camera,quality);ctx.canvas.width=cellW;ctx.canvas.height=cell;ctx.drawImage(gl.domElement,0,0);label(info,4,4);status.textContent='done';(window as unknown as {labDone:boolean}).labDone=true;return;}
  if(view==='ward'){await ward(q,scene,floor,gl,camera,build,quality);ctx.canvas.width=cellW;ctx.canvas.height=cell;ctx.drawImage(gl.domElement,0,0);status.textContent='done';(window as unknown as {labDone:boolean}).labDone=true;return;}
  if(view==='strip'){
   const seed=num('seed',7),states=(q.get('states')||'idle,walk,run,lunge,club,emerge,death').split(',').filter(s=>STATES[s]),frames=num('frames',8),cam=q.get('cam')||'three';
@@ -115,6 +126,46 @@ export async function minionLab(q:URLSearchParams,sheet:HTMLCanvasElement,status
  status.textContent='done';(window as unknown as {labDone:boolean}).labDone=true;
 }
 
+/** Ward Zero stage blocks and dressing (shared by the ward and crowd shots). */
+function wardStage(scene:T.Scene,floor:T.Mesh){
+ floor.visible=false;scene.background=new T.Color(WARD_ZERO_AIR.background);scene.fog=new T.Fog(WARD_ZERO_AIR.fog,WARD_ZERO_AIR.near,WARD_ZERO_AIR.far);scene.getObjectByName('night-moon')?.position.set(...WARD_ZERO_AIR.key);
+ const props=new Map<string,T.Object3D>();for(const b of sirenStageBlocks()){const m=new T.Mesh(new T.BoxGeometry(b.size.x,b.size.y,b.size.z),new T.MeshLambertMaterial({color:b.material==='foundation'?SIREN_STAGE_THEME.floor:MATERIALS[b.material].color}));m.position.set(b.pos.x,b.pos.y,b.pos.z);m.castShadow=!b.id.startsWith('siren-roof-');m.receiveShadow=true;scene.add(m);props.set(b.id,m);}
+ const visuals=new SirenStageVisuals(scene);visuals.setActive(true);return {props,visuals};
+}
+/** The PvE crowd through the real HordeView: seeded adds walking, swiping, crawling and limping toward a player camera. */
+async function crowd(q:URLSearchParams,scene:T.Scene,floor:T.Mesh,gl:T.WebGLRenderer,camera:T.PerspectiveCamera,quality:number){
+ const num=(k:string,d:number)=>q.has(k)?Number(q.get(k)):d,pair=(k:string,d:[number,number])=>q.has(k)?q.get(k)!.split(',').map(Number) as [number,number]:d;
+ const t=num('t',100),n=num('adds',40),near=pair('near',[8,20]),far=pair('far',[22,45]),nearCount=num('nearCount',n),seed=num('seed',3),mode=(q.get('mode')||'quality') as HordeMode;
+ const {props,visuals}=wardStage(scene,floor);if(mode==='performance')gl.shadowMap.enabled=false;
+ const rng=new PveRng(seed),eye={x:num('camX',0),z:num('camZ',-20)},yaw0=num('camYaw',0),adds:PveAddView[]=[],gore=q.get('gore')!=='0';
+ const LOSS=[0,0,0,LIMB.lFore,LIMB.rArm|LIMB.rFore,LIMB.lShin,LIMB.lLeg|LIMB.lShin,LIMB.rFore,0,LIMB.head*0];
+ for(let i=0;i<n;i++){
+  const [d0,d1]=i<nearCount?near:far,d=d0+(d1-d0)*rng.next(),a=yaw0+(rng.next()-.5)*1.25,x=eye.x+Math.sin(a)*d,z=eye.z+Math.cos(a)*d,face=Math.atan2(eye.x-x,eye.z-z);
+  const kind=(['shambler','shambler','shambler','runner','brute'] as const)[rng.int(5)],lost=gore?LOSS[rng.int(LOSS.length)]:0,crawl=!!(lost&(LIMB.lLeg|LIMB.rLeg));
+  const speed=crawl?.5:lost&(LIMB.lShin|LIMB.rShin)?.8:kind==='runner'?3.6:1.3+.4*rng.next(),swing=d<3.5||rng.next()<.18;
+  adds.push(fixtureAdd({n:i+1,kind,state:crawl?'crawl':'active',x,z,yaw:face,lost,side:rng.next()<.5?1:-1,hp:.3+.7*rng.next(),
+   vel:swing?{x:0,z:0}:{x:Math.sin(face)*speed,z:Math.cos(face)*speed},attack:kind==='brute'?'smash':kind==='runner'?'lunge':'swipe',attackAt:swing?t-rng.next()*.6:undefined,hitAt:rng.next()<.15?t-.1:undefined,hitYaw:face+Math.PI}));
+ }
+ let entries:PveEntryView[]=[];
+ if(q.get('entries')==='1'){const e=fixtureEnteringAdds({time:t});entries=e.entries;e.adds.forEach(a=>adds.push(a));}
+ const slots=['p1'],view0:PveView={...fixtureBase({time:t,ids:slots}),stage:'wave',adds:[],entries};
+ if(q.has('possess')){const d=num('possess',10),p=fixtureAdd({n:900,kind:'shambler',state:'active',x:eye.x+Math.sin(yaw0+.15)*d,z:eye.z+Math.cos(yaw0+.15)*d,yaw:yaw0+Math.PI*.7,vel:{x:.6,z:-.4}});adds.push(p);
+  const level=num('level',2),age=level===1?6:level===2?20:40;view0.bossView={id:'pve-boss',phase:2,floor:0,hidden:true,possessed:900,possessedAt:t-age};}
+ const horde=new HordeView(scene);horde.setGraphics(mode==='performance'?'performance':'auto');
+ const burst=new BurstPool(scene,220);camera.position.set(eye.x,num('height',2.6),eye.z);camera.lookAt(eye.x+Math.sin(yaw0)*12,num('focus',.9),eye.z+Math.cos(yaw0)*12);camera.updateMatrixWorld();
+ const snap=(time:number)=>({time,tick:0,phase:'fight',players:[],props:[],projectiles:[],events:[],options:{map:'siren'},siren:{patches:[],eruptions:[],rains:[],marks:[],grabs:[]},bossSong:{track:'black-siren-protocol',startedAt:-140}} as unknown as Snapshot);
+ // Run 1.5 s of frames up to t so every rig is created (2 per frame) and every pose has settled.
+ while(!prewarmSirenMinions(50)){/* warm everything first in the lab */}
+ for(let k=t-1.5;k<=t+1e-6;k+=1/30){
+  const moved=adds.map(a=>({...a,pos:{x:a.pos.x-a.vel.x*(t-k),y:a.pos.y,z:a.pos.z-a.vel.z*(t-k)}}));
+  const pv={...view0,adds:moved.map(a=>encodeAdd(a,slots))} as PveView,s=snap(k);(s as unknown as {pve:PveView}).pve=pv;
+  horde.update(s,pv,{camera,me:'p1',dt:1/30,quality,compatibility:mode==='compatibility',replay:false,rigs:new Map(),burst:(p,c,cnt,pow)=>burst.spawn(p,c,cnt,pow,quality)});
+  burst.update(1/30);visuals.update(s,k,quality,camera);
+ }
+ visuals.shell(props);gl.render(scene,camera);(window as unknown as {labScene:unknown}).labScene={scene,camera,horde};
+ const m=horde.metrics(),d=horde.details(),pm=horde.rigOf(900),hint=pm?hintObjects(pm).filter(o=>o.visible).map(o=>o.name.replace('siren-minion-hint-','')).join('+'):'';
+ return `${mode} · adds ${m.adds} · full rigs ${m.fullRigs} · near impostors ${m.nearImpostors} · impostors ${d.impostors} · hidden ${d.hidden} · draws≈${horde.drawEstimate()} (horde)${q.has('possess')?' · hint '+(hint||'none'):''}`;
+}
 /** A horde shot in Ward Zero: the hall, its air and dressing, minions emerging at a spawn, shambling, running and
  * lunging toward the camera, optionally with the Siren among them. */
 async function ward(q:URLSearchParams,scene:T.Scene,floor:T.Mesh,gl:T.WebGLRenderer,camera:T.PerspectiveCamera,build:(seed:number,face?:MinionOptions['face'])=>SirenMinion,quality:number){

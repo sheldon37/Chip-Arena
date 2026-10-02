@@ -90,7 +90,7 @@ export function impostorPose(v:ImpostorView,t:number,out:Float32Array,offset=0):
 function blank(out:Float32Array,o:number){out.fill(0,o*IMPOSTOR_STRIDE,(o+IMPOSTOR_BOXES)*IMPOSTOR_STRIDE);return false;}
 
 /** Colours per box (sRGB hex): the ashen shell, darker joints and a sootier head, so far adds read as the same family. */
-const BOX_COLORS=[0x6a6c5c,0x8a8d79,0x7d806e,0x7b7e6c,0x7b7e6c,0x5f6153,0x5f6153,0x6e705f,0x6e705f,0x5a5c4f,0x5a5c4f];
+const BOX_COLORS=[0x8d917f,0xa3a793,0xa9ad99,0x9a9e8a,0x9a9e8a,0x8a8d7b,0x8a8d7b,0x969a86,0x969a86,0x7f8272,0x7f8272];
 
 /** The impostor batch: one InstancedMesh (BoxGeometry(1,1,1), MeshLambertMaterial, instanceColor), capacity max·11. */
 export class ImpostorBatch {
@@ -98,10 +98,10 @@ export class ImpostorBatch {
  /** Adds drawn this frame. */
  adds=0;
  constructor(readonly max:number){
-  this.mesh=new T.InstancedMesh(new T.BoxGeometry(1,1,1),new T.MeshLambertMaterial({color:0xffffff}),max*IMPOSTOR_BOXES);this.mesh.name='pve-add-impostors';
+  this.mesh=new T.InstancedMesh(new T.BoxGeometry(1,1,1),new T.MeshLambertMaterial({color:0xffffff,emissive:0x23241f}),max*IMPOSTOR_BOXES);this.mesh.name='pve-add-impostors';
   this.mesh.castShadow=false;this.mesh.receiveShadow=false;this.mesh.frustumCulled=false;this.mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
   const c=new T.Color(),soot=new T.Color(MINION_PALETTE.soot);
-  for(let i=0;i<max*IMPOSTOR_BOXES;i++)this.mesh.setColorAt(i,c.setHex(BOX_COLORS[i%IMPOSTOR_BOXES]).lerp(soot,.12));
+  for(let i=0;i<max*IMPOSTOR_BOXES;i++)this.mesh.setColorAt(i,c.setHex(BOX_COLORS[i%IMPOSTOR_BOXES]).lerp(soot,.08));
   this.mesh.count=0;
  }
  begin(){this.used=0;this.adds=0;}

@@ -20,7 +20,9 @@ import {HordeGore} from './gore.js';
 /** Crowd LOD policy (design §10.6; mirrored in docs/PVE.md). */
 export const HORDE_RENDER={maxRigs:{quality:24, performance:16, compatibility:6},
  fullRadius:{quality:20, performance:14, compatibility:14}, hysteresis:4, shadowRadius:15, throttleRadius:12,
- impostorMax:64, impostorRadius:70, createPerFrame:2, prewarmMs:3, spareRigs:4} as const;
+ impostorMax:64, impostorRadius:70, createPerFrame:2, prewarmMs:3, spareRigs:4, shadowRigs:12} as const;
+/** Small parts that never cast a shadow (the silhouette is the same without them; about 30 fewer shadow draws per rig). */
+const NO_SHADOW=/fingers|thumb|cuff|palm|kneecap|-joint$|^collar$|^sternum$|^back-panel$|^armor-|^waist-band$|^jaw$|^crown$|calf|heel|siren-minion-(fx|tongue|hint)/;
 export type HordeMode='quality'|'performance'|'compatibility';
 export type HordeGraphics='auto'|'high'|'performance';
 /** The renderer's graphics setting and compatibility path to a horde LOD mode. */
@@ -32,7 +34,7 @@ export const VENT_EDGE=1.08;
 const KIND_OPTIONS:Record<PveAddView['kind'],MinionOptions>={shambler:{},runner:{scrap:'none'},brute:{scrap:'pipe',hunch:.55}};
 
 interface Memo {entry?:MinionEntry;stand?:{x:number;z:number};crawlAt?:number;wasCrawl:boolean;seen:boolean;lastHit?:number;inBand:boolean}
-interface Rig {n:number;m:SirenMinion;shown:boolean;lastFull:number;shadow:boolean|null;low:boolean|null;shadowMeshes:T.Mesh[];visibleMeshes:number;lost:number;drips:{v:number}[];hinted:boolean;trail:{v:number}}
+interface Rig {n:number;m:SirenMinion;shown:boolean;lastFull:number;shadow:boolean|null;low:boolean|null;shadowMeshes:T.Mesh[];visibleMeshes:number;shadowDraws:number;lost:number;drips:{v:number}[];hinted:boolean;trail:{v:number}}
 interface Item {v:PveAddView;n:number;pos:{x:number;z:number};ground:number;dist:number;possessed:boolean;possessedAt?:number;memo:Memo}
 
 /** Where an add stands at the end of a vent climb: just past the pit edge it faces (the rim is VENT_RIM_Z behind it). */
@@ -72,6 +74,8 @@ export class HordeView {
   const full=new Set<number>(),possessed=items.find(i=>i.possessed);if(possessed)full.add(possessed.n);
   band.slice(0,cap).forEach(i=>full.add(i.n));
   for(const i of items)i.memo.inBand=full.has(i.n)&&!i.possessed;
+  // Shadows: the possessed add, and the nearest shadowRigs full rigs within shadowRadius (quality mode only).
+  const shadowed=new Set<number>();if(mode==='quality'){if(possessed)shadowed.add(possessed.n);band.slice(0,cap).filter(i=>i.dist<=HORDE_RENDER.shadowRadius).slice(0,HORDE_RENDER.shadowRigs).forEach(i=>shadowed.add(i.n));}
   const nearImpostors=band.slice(cap).filter(i=>i.dist<=R).length;
   // 3. Rigs: create at most createPerFrame (possessed first, then nearest); the others wait as impostors.
   let created=0;const want=items.filter(i=>full.has(i.n)&&!this.rigs.has(i.n)).sort((a,b)=>Number(b.possessed)-Number(a.possessed)||a.dist-b.dist);
@@ -79,7 +83,7 @@ export class HordeView {
   let shownRigs=0,pending=0;const drawn=new Set<number>(),byN=new Map(items.map(i=>[i.n,i]));
   for(const i of items){
    const rig=this.rigs.get(i.n);if(!full.has(i.n)||!rig){if(full.has(i.n))pending++;continue;}
-   this.showRig(rig,i,t,dt,mode,ctx);drawn.add(i.n);shownRigs++;
+   this.showRig(rig,i,t,dt,mode,ctx,shadowed.has(i.n));drawn.add(i.n);shownRigs++;
   }
   // 4. Hide rigs that left the full set; dispose dead, absent and stale spares (keep at most spareRigs, newest first).
   const spares:Rig[]=[];
@@ -107,7 +111,7 @@ export class HordeView {
  details(){return {...this.stats,rigs:this.rigs.size,impostorInstances:this.impostors.mesh.count,chunks:this.gore.liveChunks(this.last)};}
  /** Visible draw estimate: rig meshes (twice when they cast shadows) plus the instanced batches. */
  drawEstimate(){
-  let n=0;for(const r of this.rigs.values())if(r.shown)n+=r.visibleMeshes*(r.shadow?2:1);
+  let n=0;for(const r of this.rigs.values())if(r.shown)n+=r.visibleMeshes+(r.shadow?r.shadowDraws:0);
   return n+(this.impostors.mesh.count>0?1:0)+(this.gore.chunks.count>0?1:0)+1+(this.marker.visible?1:0);
  }
  /** The full rig of add n, if it has one (tests, lab). */
@@ -160,21 +164,20 @@ export class HordeView {
  }
  private createRig(v:PveAddView):Rig{
   const m=createSirenMinion(minionSeed(v.id),KIND_OPTIONS[v.kind]),shadowMeshes:T.Mesh[]=[];
-  m.rig.group.traverse(o=>{if(o instanceof T.Mesh&&o.name!=='siren-minion-fx'&&o.name!=='siren-minion-tongue')shadowMeshes.push(o);});
-  m.rig.group.name='pve-add-'+v.n;m.rig.group.visible=false;this.scene.add(m.rig.group);
-  return {n:v.n,m,shown:false,lastFull:-Infinity,shadow:null,low:null,shadowMeshes,visibleMeshes:sirenMinionStats(m).visible,lost:-1,drips:[],hinted:false,trail:{v:0}};
+  m.rig.group.traverse(o=>{if(o instanceof T.Mesh){if(NO_SHADOW.test(o.name))o.castShadow=false;else shadowMeshes.push(o);}});
+  m.rig.group.name='pve-add-'+v.n;const visibleMeshes=sirenMinionStats(m).visible;m.rig.group.visible=false;this.scene.add(m.rig.group);
+  return {n:v.n,m,shown:false,lastFull:-Infinity,shadow:null,low:null,shadowMeshes,visibleMeshes,shadowDraws:shownCount(shadowMeshes,m.rig.group),lost:-1,drips:[],hinted:false,trail:{v:0}};
  }
- private showRig(rig:Rig,i:Item,t:number,dt:number,mode:HordeMode,ctx:PveVisualsContext){
+ private showRig(rig:Rig,i:Item,t:number,dt:number,mode:HordeMode,ctx:PveVisualsContext,shadow:boolean){
   const g=rig.m.rig.group,v=i.v,first=!rig.shown;rig.shown=true;rig.lastFull=t;g.visible=true;
   const low=mode==='compatibility';if(rig.low!==low){setSirenMinionDetail(rig.m,low);rig.low=low;}
   // Shadows only change when the add changes band (quality mode, within shadowRadius; the possessed add always).
-  const shadow=mode==='quality'&&(i.possessed||i.dist<=HORDE_RENDER.shadowRadius);
   if(rig.shadow!==shadow){for(const mesh of rig.shadowMeshes)mesh.castShadow=shadow;rig.shadow=shadow;}
   g.position.set(i.pos.x,i.ground-rig.m.floor,i.pos.z);g.rotation.y=v.yaw;
   // Beyond throttleRadius the pose updates every other frame (it is pure in time, so skipping a frame is safe).
   const throttle=!first&&!i.possessed&&i.dist>HORDE_RENDER.throttleRadius&&(this.frame+i.n)%2===1;
   if(!throttle){animateSirenMinion(rig.m,this.minionView(i,t),t,ctx.quality);
-   if(rig.lost!==v.lost){rig.lost=v.lost;rig.visibleMeshes=sirenMinionStats(rig.m).visible;}}
+   if(rig.lost!==v.lost){rig.lost=v.lost;g.visible=true;rig.visibleMeshes=sirenMinionStats(rig.m).visible;rig.shadowDraws=shownCount(rig.shadowMeshes,rig.m.rig.group);}}
   // Possession hints (no eyes): crown glow, grin glyph, and a black-flame trail from level 2.
   const level=i.possessed&&i.possessedAt!==undefined?hintLevel(t-i.possessedAt):0;
   if(level||rig.hinted){possessHint(rig.m,level,t,i.dist);rig.hinted=level>0;}
@@ -187,4 +190,6 @@ export class HordeView {
  private dispose(rig:Rig){disposeSirenMinion(rig.m);this.rigs.delete(rig.n);}
 }
 const _cam=new T.Vector3(),_p=new T.Vector3();
+/** Meshes shown (own and ancestors' visibility) among `list`. */
+function shownCount(list:readonly T.Object3D[],root:T.Object3D){let n=0;for(const o of list){let v=o.visible;for(let p=o.parent;v&&p&&p!==root;p=p.parent)v=p.visible;if(v)n++;}return n;}
 const hash=(n:number,k:number)=>((Math.imul(n+1,0x9e3779b1)^Math.imul(k+1,0x85ebca77))>>>0)/4294967296;
