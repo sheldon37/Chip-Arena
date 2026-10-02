@@ -18,6 +18,37 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-02 — Astra — bot intro integration and test publication
+
+- Owner authorized merge and in-game publication. PR #18 merged into the kill-cam
+  branch at 54fa61b; PR #19 integrated into claude/visual-revision at
+  cc8eb637083d881a96f53699d67452d4b602e0b5. This exact source includes Claude's
+  kill-cam presentation and Siren super armor plus boss-only bot intros.
+- Published content 0.2.95b7f0a5f044, build 4beea896863a860cc27c9216 to the existing
+  TEST channel, commit 630b9f55c83ef7235d7d78f8502af48d22978ec7. Payload
+  arena-4df9cf86d6afed03.json.gz, 22,953,915 bytes, SHA256
+  4df9cf86d6afed031452b5c8b59cc1867a179719290ef02408162c325d43f2c3.
+- Node 24.19.0/npm 11.9.0; real Rapier and unchanged locked dependencies.
+  Source files checked against remote blob hashes (build identity regenerated).
+  Two release:prepare builds produced identical feeds; actual payload installation
+  verified all 102 files, settings sentinel, same-version skip and corrupt/offline
+  refusal. Remote channel/status tooling 6/6 passes.
+- Full verify remains nonzero: units 685/697 with the same 12 documented failures,
+  four known server TypeScript errors, generic WebSocket rematch failure.
+  HTTPS integration passes: five sets, four drafts, 3,365 identical snapshots,
+  destruction agreement, retry, rematch and guest leave. Focused 23/23 and intro
+  network 192 identical snapshots previously passed.
+- Connector upload exceeded its 16 MiB request limit. Owner approved browser
+  fallback; payload uploaded in GitHub UI, downloaded checksum verified, then
+  manifest/log activated atomically and old payload removed. Real public feed
+  installation from 0.2.1aeb4fad8c90 passed all 102 file hashes, same-version skip,
+  settings preservation and menu status. Default Node network fetch hit the
+  proxy timeout; the public-feed check used curl as the fetch transport with a
+  60-second timeout. Shipped updater and its timeouts were not modified.
+- Status: merged and published to TEST; live feed unchanged. Native Windows/GPU,
+  replay audio and physical two-PC acceptance remain owner checks. Existing test
+  installations use the in-game Update button; CDN propagation can take minutes.
+
 ## 2026-10-02 — Astra — boss-only bot intros
 
 - Branch `codex/boss-only-bot-intros`, remote base `codex/killcam-siren-armor`
