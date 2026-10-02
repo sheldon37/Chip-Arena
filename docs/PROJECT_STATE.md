@@ -76,5 +76,6 @@ Windows validation and desktop distribution cutover remain separate work.
 - Kill-cam / Siren armor: `codex/killcam-siren-armor` from shared `4dbb1513`.
   Automatic short local death replay, skip/return-to-spectate, and physical
   interruption resistance during Siren's numbered abilities are implemented.
-  Focused/network checks pass; broad checks retain baseline failures. Claude owns
-  final replay UI/visual acceptance (`docs/KILLCAM-HANDOFF.md`). Not merged/published.
+  Focused/network checks pass; broad checks retain baseline failures. Claude's final
+  replay UI, transitions and shoulder camera are on `claude/sleepy-ritchie-g8ruhv`
+  (headless-rendered checks; native Windows/GPU and audio review remain).

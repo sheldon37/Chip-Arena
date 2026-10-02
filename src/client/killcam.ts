@@ -5,6 +5,8 @@ export const KILLCAM={before:3,after:.6,history:5,hz:20,maxFrames:112,maxEntitie
 export interface KillcamInfo {
  deathId:string;victimId:string;killerId:string|null;killerName:string|null;cause:string;
  start:number;end:number;time:number;progress:number;viewId:string;
+ /** Recorded fatal-hit time, inside [start,end]; lets the UI mark the moment of death on the timeline. */
+ at:number;
 }
 type Frame={state:Snapshot;entities:number};
 type Pending={death:DeathPresentation;victimId:string;deadline:number};
@@ -60,7 +62,7 @@ export class Killcam {
    const frames=this.frames.map(f=>f.state).filter((s,i,a)=>s.time<=end&&(s.time>=start||a[i+1]?.time>start));
    if(frames.length>1&&end-start>=.2&&frames.some(s=>s.players.some(p=>p.id===id&&p.death?.id===death.id))){
     const killerId=death.source&&death.source!==id?death.source:null;
-    this.clip={frames,started:now,info:{deathId:death.id,victimId,killerId,killerName:killerId?death.announcement?.killer??null:null,cause:death.kind,start,end,time:start,progress:0,viewId:killerId||victimId}};
+    this.clip={frames,started:now,info:{deathId:death.id,victimId,killerId,killerName:killerId?death.announcement?.killer??null:null,cause:death.kind,at:Math.min(end,Math.max(start,death.at)),start,end,time:start,progress:0,viewId:killerId||victimId}};
    }
   }
   const clip=this.clip;if(!clip)return;

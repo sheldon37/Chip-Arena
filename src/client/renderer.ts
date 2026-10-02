@@ -46,6 +46,7 @@ import {SVGRenderer} from 'three/addons/renderers/SVGRenderer.js';
 import {MATERIALS,Vec,forward} from '../shared/config.js';
 import {Snapshot,PlayerView,PropView} from '../shared/simulation.js';
 import {CameraMode,VIEW,cameraPosition} from '../shared/view.js';
+import {replayShoulder} from './killcam-camera.js';
 import {PlayerStatusEffects} from './status-effects.js';
 import {ProjectileTrails} from './projectile-trails.js';
 import {WEAPONS,statsFor} from '../shared/content.js';
@@ -116,8 +117,12 @@ export class ArenaRenderer {
  else if(cutscene){this.viewRoot.visible=false;this.sirenCutscene.update(state,this.camera,this.players,(origin,dir,distance)=>{this.raycaster.set(tv(origin),tv(dir));this.raycaster.far=distance;const hit=this.raycaster.intersectObjects([...this.props.values()],true).find(h=>h.object instanceof T.Mesh&&h.distance>.12);return hit?.distance??null;});}
  else if(playing&&spectatorId&&state.players.some(p=>p.id===spectatorId&&p.hp>0&&p.connected)){const target=state.players.find(p=>p.id===spectatorId)!;this.viewRoot.visible=false;const desired=cameraPosition(target.pos,target.yaw,-.12,'third',(origin,dir,distance)=>{this.raycaster.set(tv(origin),tv(dir));this.raycaster.far=distance;const hit=this.raycaster.intersectObjects([...this.props.values()],true).find(h=>h.object instanceof T.Mesh&&h.distance>.12);return hit?.distance??null;});this.camera.position.copy(tv(desired));this.camera.lookAt(tv(desired).addScaledVector(tv(forward(target.yaw,-.12)),30));}
  else if(playing&&self){const pos=self.hp<=0&&self.death?self.death.pos:localPos||self.pos,direction=tv(forward(yaw,self.hp<=0?-.12:pitch));
- const desired=cameraPosition(pos,yaw,self.hp<=0?-.12:pitch,self.hp<=0?'third':this.scoped?'first':this.cameraMode,(origin,dir,distance)=>{this.raycaster.set(tv(origin),tv(dir));this.raycaster.far=distance;const hit=this.raycaster.intersectObjects([...this.props.values()],true).find(h=>h.object instanceof T.Mesh&&h.distance>.12);return hit?.distance??null;});
- this.camera.position.copy(tv(desired));this.camera.lookAt(tv(desired).addScaledVector(direction,30));if(this.shakeAmount>0){this.camera.position.x+=(Math.random()-.5)*this.shakeAmount;this.shakeAmount=Math.max(0,this.shakeAmount-dt);}
+ const ray=(origin:Vec,dir:Vec,distance:number)=>{this.raycaster.set(tv(origin),tv(dir));this.raycaster.far=distance;const hit=this.raycaster.intersectObjects([...this.props.values()],true).find(h=>h.object instanceof T.Mesh&&h.distance>.12);return hit?.distance??null;};
+ // Kill cam: an over-the-shoulder pivot keeps the recorded pilot's body from hiding the fatal hit (melee especially).
+ // The shift is wall-checked and the view converges on the same aim point; live cameras keep their centred pivot.
+ const pivot=replay?replayShoulder(pos,yaw,ray):pos;
+ const desired=cameraPosition(pivot,yaw,self.hp<=0?-.12:pitch,self.hp<=0?'third':this.scoped?'first':this.cameraMode,ray);
+ this.camera.position.copy(tv(desired));this.camera.lookAt(replay?tv(pos).add(new T.Vector3(0,VIEW.eyeHeight,0)).addScaledVector(direction,30):tv(desired).addScaledVector(direction,30));if(this.shakeAmount>0){this.camera.position.x+=(Math.random()-.5)*this.shakeAmount;this.shakeAmount=Math.max(0,this.shakeAmount-dt);}
  if(this.viewRoot.visible)this.updateViewModel(self,state,dt);
  }
  else{const t=state.time*.022;const target=new T.Vector3(0,.7,0);this.camera.position.set(42*Math.cos(t+.45),32,46*Math.sin(t+.65));this.camera.lookAt(target);}

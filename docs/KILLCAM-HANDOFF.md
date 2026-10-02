@@ -6,7 +6,7 @@ Owner request: a quick replay of how the local player died, Siren super armor du
 
 - Systems branch: `codex/killcam-siren-armor`, from shared `claude/visual-revision` at `4dbb1513a2f8d6c782cfddb5b8ee91fad1dd9d47`.
 - Read AGENTS.md and the newest DEV_LOG entry. Fetch this task branch before building on it; do not replace shared history with a source ZIP or the local verification snapshot.
-- Astra owns replay capture/lifecycle and combat rules. Claude owns final kill-cam UI, camera presentation and transitions. `src/client/killcam-hud.ts` is deliberately a functional placeholder with existing spectator styles; replace/restyle it and add dedicated CSS as needed.
+- Astra owns replay capture/lifecycle and combat rules. Claude owns final kill-cam UI, camera presentation and transitions. Final UI: `src/client/killcam-hud.ts` + `src/client/killcam.css`; replay-only shoulder camera: `src/client/killcam-camera.ts` (see the Claude DEV_LOG entry). `KillcamInfo.at` (clamped fatal-hit time) feeds the timeline marker.
 - Implemented on the task branch. Not merged, not published. The standing test-channel instruction applies after an approved shared-branch merge; this request does not authorize an automatic merge. No changes to update feeds, accounts or settings.
 
 ## Replay behavior and contract
