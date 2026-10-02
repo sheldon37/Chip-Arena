@@ -179,6 +179,20 @@ damage, cooldowns, movement rules, networking, saves and access control are unch
 - PR #7 merged at `66451cd`; test content `0.2.f3f24aed59e8` published in channel
   commit `873e23f`. Existing installations use the in-game Update button.
 
+## 2026-10-02 — chest-up chip draft and Siren minion design
+
+- Chip draft: the picker is shown large and chest-up under the cards, ROUNDS-style.
+  - Every Pilot uses the same calm pose; bosses (the Siren) keep their own pose and are still framed close.
+  - The arm reaches toward the hovered card, then grabs and draws in the picked chip.
+  - The cards no longer jump at the pick.
+  - Presentation only.
+- Siren minions: design phase. Procedural zombie Pilots (rot, black-flame burns, wounds, blank or cracked-head faces)
+  with a full animation set and a design doc (docs/SIREN-MINIONS.md). They are not in matches yet; spawn logic, AI
+  and friendliness are next.
+- Source: `claude/visual-revision-draft-minions` (integration `27da229`). Tests: full suite only the 13 known
+  Node 22 failures; typecheck passes. See DEV_LOG for merge and test-channel publication status. Native Windows
+  review remains.
+
 ## Continuing with Claude or Astra
 
 Read CLAUDE.md (which imports AGENTS.md), PROJECT_STATE, recent DEV_LOG entries and

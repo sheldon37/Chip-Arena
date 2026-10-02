@@ -84,3 +84,5 @@ Windows validation and desktop distribution cutover remain separate work.
   `a9269ff` (PR #22); test content `0.2.0a02ae6804bc` at channel `bc84529`. Native review remains.
 - Ward Zero rebuilt as a sealed, music-synced asylum hall with hooks for future adds and chip pads, merged at
   `5af891c` (PR #24); test content `0.2.58d079f38769` at channel `d5f3714`. Native look/frame-rate review remains.
+- ROUNDS-style chest-up chip draft and Siren minion design (zombie Pilots, not spawned yet; docs/SIREN-MINIONS.md):
+  see newest DEV_LOG for merge/publication. Next: owner review, then minion spawn/AI systems with Astra.

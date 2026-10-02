@@ -18,6 +18,61 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-02 — Claude — chest-up chip draft (ROUNDS-style) and Siren minion design
+
+- Owner request: (a) in the chip draft, zoom up to the picker chest-up, like ROUNDS card picks. Everyone gets the
+  same pose except bosses, which keep their own pose but are still framed close. (b) Begin designing Siren minions:
+  procedural zombie Pilots (rot, black-flame burns, wounds), friendly to the Siren and its team; spawn logic comes
+  later. Owner face decision: blank by default, some with a cracked head leaking black flame, no burned-in eyes.
+- Branch `claude/visual-revision-draft-minions` from shared `claude/visual-revision` `433202a`. It merges two task
+  branches:
+  - `claude/visual-revision-draft-closeup` at `b4626e6`
+  - `claude/visual-revision-siren-minions` at `d80388a`
+  Each was implemented, adversarially reviewed and fixed in its own worktree.
+- Chip draft (`draft-stage.ts`, `draft-view.ts`, `draft-screen.css`):
+  - Layout: the cards sit in a tray at the top, with the picker filling the screen below. Framing adapts to window
+    size, phone portrait and two card rows.
+  - Pose: `draftPose` gives every non-boss Pilot the same calm pose with the weapon hidden. `isBossSpec` (currently
+    `siren`) keeps the boss's own animation, framed chest-up.
+  - Reach: the arm on the hovered card's side reaches along a curved wrist path. The head and chest turn to the card.
+  - Grab: still keyed to the authoritative `chosenAt`, continuing from the hover reach.
+  - Turn start: a push-in on each turn (none with reduced motion).
+  - Pick moment: the tray height is held across the pick, so cards no longer jump. The no-WebGL fallback centres
+    the tray.
+  - Draft lab: dev-only `tools/draft-lab`.
+  - No markup ids, network, preference or authority change.
+- Siren minions (`src/client/siren/minions/**`, `docs/SIREN-MINIONS.md`, lab `kind=minions`): design only. Nothing in
+  the game imports the module, so the bundle and gameplay are unaffected.
+  - The seed corrupts a standard Pilot rig with rot, black-flame burns, carved wounds, missing parts, dying violet
+    glow and weapon scraps.
+  - Faces: blank by default; about 25% of seeds are cracked; `eyes` appears only on request.
+  - Animation set: shamble, frenzied run, idle twitches, lunge/club/smash, flinch, black-flame-pool emergence, and
+    burn-away death. Planted feet hold through turns; the step phase is rate-independent; death rests on the floor.
+  - `prewarmSirenMinions(budgetMs)` spreads layout building over frames.
+  - The doc proposes (does not implement) a systems contract: a chaos-minion kind `siren-add`, which reuses the
+    existing owner/team friendliness, plus spawn rules on `SIREN_ADD_SPAWNS`. Systems files (Astra) are untouched.
+- Hit timing, hitboxes, damage, cooldowns, movement rules and network behaviour are unchanged.
+- Checks (Linux, Node 22.22.2) on the integration merge `27da229`:
+  - `npm run check:types` passed.
+  - Full `node --import tsx --test tests/*.test.ts`: 740 tests, 727 pass. The 13 failures are identical to the
+    recorded Node 22 baseline (12 names plus portable-update).
+  - New `tests/draft-closeup.test.ts` 11/11 (uniform pose, boss exception, framing per aspect, reach/look, 30/60/120 Hz
+    agreement, pick keeps the tray still).
+  - New `tests/siren-minions.test.ts` 11/11 (determinism, rig contract, budget, face pool, planted feet on turns, floor
+    contact, prewarm, no Math.random).
+  - Reviewers' Playwright measurements on the real app (Developer Sandbox Preview Draft) at 1920x1080, 1280x720,
+    1024x768, 844x390 and 390x844, plus SwiftShader renders of the minion gallery, strips and Ward Zero horde.
+- Not run: native Windows/GPU look and frame rate, a real online draft (hover is local, so others see the scan),
+  the Siren as the picker in the real app (lab only).
+- Risks:
+  - The pilot is small with two card rows on 720p.
+  - The reach reads as a raised hand beside the head.
+  - Minions cost about 50 draws each and about 11k triangles; the doc suggests a cap of about 12 live, with shadows
+    off at range.
+  - Emergence needs solid floor at the spawn point.
+- Next: owner review of the draft feel and the minion gallery. Then spawn/AI/friendliness systems with Astra on the
+  doc's proposed contract.
+
 ## 2026-10-02 — Claude — Ward Zero rebuilt as a sealed, music-synced hall
 
 - Owner request: revise Siren's stage. It should be a closed-off place (no open world), a big building for a "crazy"
