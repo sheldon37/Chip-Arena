@@ -57,6 +57,54 @@ containing an entry; no self-referential commit hash is required.
   grabs, audio levels, two-PC play. Hover is local only (other viewers see the scan, as before no protocol).
   `tools/chip-lab` still renders the old panel markup.
 
+## 2026-10-02 — Astra — bot intro integration and test publication
+
+- Owner authorized merge and in-game publication. PR #18 merged into the kill-cam
+  branch at 54fa61b; PR #19 integrated into claude/visual-revision at
+  cc8eb637083d881a96f53699d67452d4b602e0b5. This exact source includes Claude's
+  kill-cam presentation and Siren super armor plus boss-only bot intros.
+- Published content 0.2.95b7f0a5f044, build 4beea896863a860cc27c9216 to the existing
+  TEST channel, commit 630b9f55c83ef7235d7d78f8502af48d22978ec7. Payload
+  arena-4df9cf86d6afed03.json.gz, 22,953,915 bytes, SHA256
+  4df9cf86d6afed031452b5c8b59cc1867a179719290ef02408162c325d43f2c3.
+- Node 24.19.0/npm 11.9.0; real Rapier and unchanged locked dependencies.
+  Source files checked against remote blob hashes (build identity regenerated).
+  Two release:prepare builds produced identical feeds; actual payload installation
+  verified all 102 files, settings sentinel, same-version skip and corrupt/offline
+  refusal. Remote channel/status tooling 6/6 passes.
+- Full verify remains nonzero: units 685/697 with the same 12 documented failures,
+  four known server TypeScript errors, generic WebSocket rematch failure.
+  HTTPS integration passes: five sets, four drafts, 3,365 identical snapshots,
+  destruction agreement, retry, rematch and guest leave. Focused 23/23 and intro
+  network 192 identical snapshots previously passed.
+- Connector upload exceeded its 16 MiB request limit. Owner approved browser
+  fallback; payload uploaded in GitHub UI, downloaded checksum verified, then
+  manifest/log activated atomically and old payload removed. Real public feed
+  installation from 0.2.1aeb4fad8c90 passed all 102 file hashes, same-version skip,
+  settings preservation and menu status. Default Node network fetch hit the
+  proxy timeout; the public-feed check used curl as the fetch transport with a
+  60-second timeout. Shipped updater and its timeouts were not modified.
+- Status: merged and published to TEST; live feed unchanged. Native Windows/GPU,
+  replay audio and physical two-PC acceptance remain owner checks. Existing test
+  installations use the in-game Update button; CDN propagation can take minutes.
+
+## 2026-10-02 — Astra — boss-only bot intros
+
+- Branch `codex/boss-only-bot-intros`, remote base `codex/killcam-siren-armor`
+  `9d7c218683486b8a7c6fe31f0ec1e110595e703d` (includes Claude kill-cam UI).
+- Authority intro queue now excludes ordinary bots, including non-boss DEV weapons.
+  Human intros remain; authorized Siren bots retain their entrance, last in order.
+  Removed slots add no wait. Empty queues go directly to countdown. Global skip and
+  sandbox still bypass all intros; boss music uses the shortened authoritative queue.
+- Checks: Node 24.19.0, locked dependencies installed offline, real Rapier; 23/23
+  focused bot-intro, existing intro, kill-cam and Siren armor tests pass. New bot
+  cases rerun 3/3 after test type-narrowing correction; `npm run check:types` passes.
+  Existing two-client intro network suite passed (192 identical intro snapshots,
+  both human names, combat locked; host skip setting synchronized).
+- No hit timing, hitbox, damage, cooldown, movement, snapshot schema or save changes.
+  Native Windows visual/audio acceptance not run. Separate add-on PR targets the
+  kill-cam feature branch; implemented on branch, not merged or published.
+
 ## 2026-10-02 — Claude — owner-requested kill-cam test-channel publication
 
 - Owner asked to publish the merged kill-cam work to the existing test Update channel.
@@ -972,3 +1020,4 @@ containing an entry; no self-referential commit hash is required.
 - Next: each agent synchronizes this branch before making its own task branch;
   after migration merges, start new tasks from updated main. Review relevant open
   PRs to avoid overlapping work. Resolve baseline failures before release work.
+

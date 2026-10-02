@@ -161,7 +161,13 @@ export class Simulation {
   if(this.phase==='intro'&&this.intro){let at=this.intro.started;for(const id of this.intro.players){const p=this.players.get(id);if(p?.spec==='siren'&&this.time>=at){this.bossSong={track:'black-siren-protocol',startedAt:at};break;}at+=introDuration(effectiveIntro(p));}}
   else if((this.phase==='countdown'||this.options.sandbox&&this.phase==='fight')&&[...this.players.values()].some(p=>p.connected&&this.siren.active(p)))this.bossSong={track:'black-siren-protocol',startedAt:this.time};
  }
- beginIntros(){this.syncSirenArena();if(this.options.skipIntros||this.options.sandbox){this.countdown();return;}this.intro={started:this.time,players:[...this.players.values()].filter(p=>p.connected).sort((a,b)=>Number(a.spec==='siren')-Number(b.spec==='siren')).map(p=>p.id)};this.phase='intro';this.phaseEnd=this.time+this.intro.players.reduce((n,id)=>n+introDuration(effectiveIntro(this.players.get(id))),0);}
+ beginIntros(){
+  this.syncSirenArena();if(this.options.skipIntros||this.options.sandbox){this.countdown();return;}
+  // Ordinary bots have no intro slot or wait; authorized Siren bosses still enter last.
+  const players=[...this.players.values()].filter(p=>p.connected&&(!p.bot||this.siren.active(p))).sort((a,b)=>Number(a.spec==='siren')-Number(b.spec==='siren')).map(p=>p.id);
+  if(!players.length){this.countdown();return;}
+  this.intro={started:this.time,players};this.phase='intro';this.phaseEnd=this.time+players.reduce((n,id)=>n+introDuration(effectiveIntro(this.players.get(id))),0);
+ }
  countdown(){this.intro=undefined;this.winner=null;this.setWinner=null;this.phase='countdown';this.phaseEnd=this.time+this.options.countdown!;this.updateBossSong();for(const p of this.players.values())p.ammo=magazineCapacity(p.spec,p.stats);}
  rematch(){if(this.phase!=='match')return false;this.start();return true;}
  requestLobbyReturn(){if(this.phase==='lobby'||this.lobbyReturn)return false;this.lobbyReturn={at:this.time,until:this.time+5};return true;}
