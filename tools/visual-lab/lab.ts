@@ -202,4 +202,5 @@ async function main(){
  }
  status.textContent='done';(window as unknown as {labDone:boolean}).labDone=true;
 }
-main().catch(e=>{status.textContent='ERROR '+(e as Error).message;console.error(e);(window as unknown as {labError:string}).labError=String((e as Error).stack||e);});
+// kind=minions: the Siren minion gallery (tools/visual-lab/minions.ts; parameters in its header).
+(kind==='minions'?import('./minions.js').then(m=>m.minionLab(q,sheet,status)):main()).catch(e=>{status.textContent='ERROR '+(e as Error).message;console.error(e);(window as unknown as {labError:string}).labError=String((e as Error).stack||e);});
