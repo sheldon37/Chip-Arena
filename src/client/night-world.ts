@@ -5,6 +5,8 @@ export class NightWorld {
  readonly group=new T.Group();private current='';private sky?:T.ShaderMaterial;private smoke?:T.Points;private smokeSeeds:number[]=[];
  constructor(scene:T.Scene){scene.add(this.group);this.group.name='night-world';}
  set(raw:unknown){const m=arenaMap(raw);if(m.id===this.current)return;this.clear();this.current=m.id;
+ // Ward Zero is a sealed building: nothing outside it is ever visible.
+ if(m.theme==='siren')return;
  const cold=['moonlit','snow'].includes(m.theme),volcanic=m.theme==='forge',natural=cold||['castle','desert'].includes(m.theme),horizon=new T.Color(volcanic?0x633345:cold?0x405677:0x333f64),zenith=new T.Color(volcanic?0x100b1c:0x080e22);
  this.sky=new T.ShaderMaterial({side:T.BackSide,depthWrite:false,fog:false,uniforms:{time:{value:0},horizon:{value:horizon},zenith:{value:zenith},moonSize:{value:m.id==='moonlit'?.065:.028}},vertexShader:`varying vec3 direction;void main(){direction=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,fragmentShader:`
  varying vec3 direction;uniform float time,moonSize;uniform vec3 horizon,zenith;

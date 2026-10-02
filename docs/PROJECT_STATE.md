@@ -80,5 +80,5 @@ Windows validation and desktop distribution cutover remain separate work.
   final replay UI/shoulder camera, merged into `claude/visual-revision` at `7d31530`
   (PRs #17, #16). Test content `0.2.1aeb4fad8c90` published at channel `012d37b`
   (owner request); native Windows/GPU and audio review remain.
-- Full-screen 3D chip draft (pilot looks at and grabs the chip) and a 1.2 s kill-cam pre-roll are on
-  `claude/sleepy-ritchie-g8ruhv` (not merged/published); see the newest DEV_LOG entry.
+- Full-screen 3D chip draft (pilot looks at and grabs the chip) and a 1.2 s kill-cam pre-roll merged at
+  `a9269ff` (PR #22); test content `0.2.0a02ae6804bc` at channel `bc84529`. Native review remains.

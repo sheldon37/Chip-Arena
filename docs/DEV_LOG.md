@@ -18,6 +18,70 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-02 — Claude — Ward Zero rebuilt as a sealed, music-synced hall
+
+- Owner request: revise Siren's stage. It should be a closed-off place (no open world), a big building for a "crazy"
+  demon, with better design, still reactive to the music including hazards, and planned for adds spawning with the
+  Siren and players running around to grab chips. Branch `claude/sleepy-ritchie-g8ruhv`, based on the shared
+  `claude/visual-revision` `a9269ff` (plus the previous publication log).
+- Shared layout (`siren-stage-layout.ts`, Claude-owned contract):
+  - `SIREN_HALL`: walls reach a 16 m roof, and the roof is a collider.
+  - 20 wall columns (`SIREN_COLUMNS`); the four pylons now run to the vault.
+  - New data-only hooks: `SIREN_ADD_SPAWNS` (four cells and four ward doors, each with an inward yaw) and
+    `SIREN_CHIP_SPOTS` (six pads on the running loop). Nothing spawns from them yet.
+  - Cell cabinets moved out of the cells.
+  - Partitions, cells, furniture, vents and `sirenStageHazards` are unchanged. 72 props (was 51), 18 breakable.
+- Systems touch (Astra's file, coordinate here): `src/shared/siren.ts` `ground()` clamps its ray origin under the
+  roof on map `siren`, so effects aimed at the vault land on the floor. No hit timing, hitbox, damage, cooldown,
+  movement or network rule changed; vents keep their schedule, damage and launch.
+- Client:
+  - `WardZeroVisuals` was rewritten from the shared layout: an asylum great hall turned concert hall, with organ,
+    face and rose window, chained great doors, galleries of patients, backwards clocks, and a vault with fan,
+    chandeliers, work lights and speakers.
+  - All of it is song-locked, and the vents still read `sirenStageHazards`. The beacon spin is now integrated per
+    frame, so section changes no longer make the beams jump.
+  - MapScenery and NightWorld draw no sky, skyline, trims or grid for theme `siren`. They apply `WARD_ZERO_AIR`
+    (haze, overhead key light) and restore the old key position elsewhere.
+  - The roof prop casts no shadow. `sirenStage.shell(props)` cuts the near walls and roof away for an outside camera
+    (menu overview).
+  - Dressing costs about 177 draws (old ward about 257) and 5 point/spot lights (was 4).
+  - The lab has new stage views. `docs/SIREN.md` gained a Ward Zero section; screenshot `docs/ward-zero-hall.jpg`.
+- Checks:
+  - `npm run check:types` passed.
+  - New `tests/siren-hall.test.ts` (2) and `tests/siren-stage-visuals.test.ts` (4) passed; the extended
+    `siren-contract` passed.
+  - Every `tests/siren-*.test.ts` passed, and `tests/siren-network.ts` passed (89 identical snapshots).
+  - Full `npm test` on container Node 22: 705/718. The failures are the 12 recorded baseline names plus the
+    portable-update test, which fails only on Node 22 and is re-checked on 24.19 in the publication run.
+  - Visual: lab sheets at song 50/82/152, plus the real `ArenaRenderer` driven by a local Simulation with an
+    authorised Siren and four bots. Checked: build, groove, lift telegraph/eruption, breather, climax, doors,
+    galleries, vault and menu overview.
+  - Headless SwiftShader only. Native Windows/GPU look, frame rate and audio sync are not checked.
+- Risks:
+  - Bots still have no pathing and ignore vents.
+  - Adds and chip pickups need systems work (spawn and grant logic, minion vent damage) that uses the new hooks.
+  - Cell add spawns sit about 2.4 m from the back wall, so multi-unit `summon` offsets need a clearance check.
+
+## 2026-10-02 — Claude — chip-draft merge and test-channel publication
+
+- Owner asked to merge the chip draft and publish it for the in-game Update button. PR #22 merged
+  `claude/sleepy-ritchie-g8ruhv` into `claude/visual-revision` at `a9269ff44e0a14fd245d7e6de9a1da8ffc75883b`
+  (tree identical to the tested branch, after merging the shared head `2b436fe` incl. Astra's kill-effect fix).
+- Published content `0.2.0a02ae6804bc`, build `d6c50207790e5a10bc39dbc9`, payload
+  `arena-d03e12bc009aee7c.json.gz` (22,963,995 bytes, SHA-256
+  `d03e12bc009aee7cee056be98f5bce7b59accea1e85eef2843eacc47b106e07c`) at channel commit
+  `bc845295ba6d32cdd5edbc4f6b29a123eab36462`. Live feed and Site unchanged.
+- Clean detached worktree, Node 24.19.0/npm 11.9.0, `npm run setup`. `npm run verify` nonzero on the recorded
+  baseline only: units 697/709 with exactly the 12 names, the four server tsc errors, WebSocket rematch
+  timeout; HTTPS integration passed. Two `release:prepare` builds byte-identical; PR #5 check-payload passed
+  (102 files, skip, offline/corrupt refusal, settings sentinel, URL restriction); channel/status tests 6/6.
+  Payload audit vs `0.2.c9064e15755f`: only the client bundle/CSS, index, server and release files changed; one
+  key-pattern match is inside the embedded Rapier WASM and identical in the previous payload.
+- Real network: `0.2.c9064e15755f` installed from the channel into an isolated folder, then upgraded to
+  `0.2.0a02ae6804bc` on the first manifest check (102 files, settings sentinel, same-version skip, menu status).
+  Native Windows Update button and GPU visuals not run. Exclusive-tier draft cinematics were checked in the
+  browser with the real markup (shortened spotlight ends with each server reveal).
+
 ## 2026-10-02 — Astra — kill-effect persistence test publication
 
 - Owner authorized merge, publication and any needed Update-button fix. PR #21

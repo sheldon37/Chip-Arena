@@ -1,3 +1,4 @@
+import {SIREN_HALL} from './siren-stage-layout.js';
 import {sirenMotion} from './siren-motion.js';
 import {sirenSuperArmor} from './siren-motion.js';
 import RAPIER from '@dimforge/rapier3d-compat';
@@ -37,7 +38,10 @@ export class SirenSystem {
  toggle(p:Player){if(!this.ready(p)||this.busy(p)||p.cooldown>0)return false;const a=this.state(p);a.mode=a.mode==='melee'?'ranged':'melee';a.modeAt=this.sim.time;p.cooldown=T.swap;this.event(p,'siren-mode',p.body.translation(),{message:a.mode});return true;}
  primary(p:Player){return this.start(p,SIREN_SLOTS[this.state(p).mode].primary);}
  private visibleTarget(p:Player,range:number,aimed=false){const origin=add(p.body.translation(),v(0,.45,0)),dir=forward(p.input.yaw,p.input.pitch);return [...this.sim.players.values()].filter(t=>t.connected&&t.hp>0&&this.sim.enemy(p.id,t.id)&&len(sub(t.body.translation(),origin))<=range&&(!aimed||dot(norm(sub(t.body.translation(),origin)),dir)>.7)&&this.sim.lineOfSight(origin,t.body.translation(),p.id,t.id)).sort((a,b)=>len(sub(a.body.translation(),origin))-len(sub(b.body.translation(),origin))||a.id.localeCompare(b.id))[0];}
- ground(pos:Vec){const s=this.sim,origin=add(pos,v(0,1,0)),hit=s.world.castRay(new RAPIER.Ray(origin,v(0,-1,0)),40,true,undefined,undefined,undefined,undefined,(c:RAPIER.Collider)=>s.props.has(s.colliderOwners.get(c.handle)||''));return hit?add(origin,v(0,-hit.timeOfImpact,0)):v(pos.x,0,pos.z);}
+ ground(pos:Vec){const s=this.sim,origin=add(pos,v(0,1,0));
+  // Inside the sealed Ward Zero hall, never start above the roof: an Eruption aimed at the vault lands on the floor below it.
+  if(s.options.map==='siren')origin.y=Math.min(origin.y,SIREN_HALL.roof-.05);
+  const hit=s.world.castRay(new RAPIER.Ray(origin,v(0,-1,0)),40,true,undefined,undefined,undefined,undefined,(c:RAPIER.Collider)=>s.props.has(s.colliderOwners.get(c.handle)||''));return hit?add(origin,v(0,-hit.timeOfImpact,0)):v(pos.x,0,pos.z);}
  aim(p:Player){const s=this.sim,dir=forward(p.input.yaw,p.input.pitch),camera=cameraPosition(p.body.translation(),p.input.yaw,p.input.pitch,p.input.camera||'third',(a,d,n)=>s.ray(a,d,n,p.id)?.timeOfImpact??null),hit=s.ray(camera,dir,B.aimRange,p.id),point=add(camera,mul(dir,hit?.timeOfImpact??B.aimRange)),delta=sub(point,p.body.translation());return this.ground(add(p.body.translation(),mul(norm(delta),Math.min(B.aimRange,len(delta)))));}
  start(p:Player,id:SirenMoveId){const s=this.sim,a=this.state(p),slots=SIREN_SLOTS[a.mode];if(!this.ready(p)||this.busy(p)||p.cooldown>0||(a.ready?.[id]||0)>s.time||!(slots.primary===id||slots.abilities.includes(id)))return false;
   if(id==='mark'&&this.marks.some(m=>m.owner===p.id))return false;const target=id==='mark'?this.visibleTarget(p,B.mark.range,true):undefined;if(id==='mark'&&!target)return false;

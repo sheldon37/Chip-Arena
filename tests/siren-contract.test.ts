@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {BLACK_SIREN_PROTOCOL as track,loopedSongTime,beatIndexAt,barAt,barStart,sectionAt,crossedBeats} from '../src/shared/boss-music.js';
 import {SIREN,SIREN_INTRO,SIREN_SLOTS,SIREN_TIMING,sirenPoint,sirenOf,sirenWorldOf,sirenShotOf,bossSongOf} from '../src/shared/siren-contract.js';
-import {sirenStageBlocks,sirenStageHazards} from '../src/shared/siren-stage-layout.js';
+import {sirenStageBlocks,sirenStageHazards,SIREN_HALL,SIREN_COLUMNS,SIREN_ADD_SPAWNS,SIREN_CHIP_SPOTS,SIREN_VENTS} from '../src/shared/siren-stage-layout.js';
 import {playerSpawn} from '../src/shared/arena.js';
 
 test('beat map is ascending and covers the song',()=>{
@@ -77,12 +77,13 @@ test('accessors read optional snapshot fields without the types',()=>{
 test('Ward Zero keeps spawn pads clear, has indestructible cover everywhere and unique ids',()=>{
  const blocks=sirenStageBlocks();
  assert.equal(new Set(blocks.map(b=>b.id)).size,blocks.length);
- const solid=blocks.filter(b=>!b.id.includes('floor'));
+ // The roof spans every spawn in plan view, so plan-view checks skip it (it is 16 m up).
+ const solid=blocks.filter(b=>!b.id.includes('floor')&&!b.id.includes('-roof-'));
  for(let i=0;i<8;i++){const s=playerSpawn(i);for(const b of solid){
   const dx=Math.abs(s.x-b.pos.x)-b.size.x/2,dz=Math.abs(s.z-b.pos.z)-b.size.z/2;
   assert.ok(Math.max(dx,dz)>1.6,`spawn ${i} blocked by ${b.id}`);}}
  // From any open point on a 4 m grid, indestructible cover taller than a player is within 9 m.
- const cover=blocks.filter(b=>b.material==='foundation'&&b.size.y>=2.5&&!b.id.includes('floor'));
+ const cover=blocks.filter(b=>b.material==='foundation'&&b.size.y>=2.5&&!b.id.includes('floor')&&!b.id.includes('-roof-'));
  for(let x=-28;x<=28;x+=4)for(let z=-24;z<=24;z+=4){
   const d=Math.min(...cover.map(b=>Math.hypot(Math.max(0,Math.abs(x-b.pos.x)-b.size.x/2),Math.max(0,Math.abs(z-b.pos.z)-b.size.z/2))));
   assert.ok(d<=9,`no indestructible cover within 9 m of (${x},${z}): ${d.toFixed(1)}`);
@@ -101,4 +102,42 @@ test('stage vents only fire in lift and climax, with a telegraph first',()=>{
  }
  assert.ok(fired>=16,`only ${fired} eruptions in the lift`);
  assert.deepEqual(sirenStageHazards(0),[]);
+});
+
+const kind=(id:string)=>id.split('-')[1];
+/** Plan-view clearance from a point to the nearest block that reaches player height (floor and roof excluded). */
+function clearance(x:number,z:number){
+ return Math.min(...sirenStageBlocks().filter(b=>!['floor','roof'].includes(kind(b.id))&&b.pos.y-b.size.y/2<1.7).map(b=>Math.max(Math.abs(x-b.pos.x)-b.size.x/2,Math.abs(z-b.pos.z)-b.size.z/2)));
+}
+test('Ward Zero is a sealed hall: walls meet the roof and nothing can jump or be launched out',()=>{
+ const blocks=sirenStageBlocks(),walls=blocks.filter(b=>kind(b.id)==='wall'),roof=blocks.filter(b=>kind(b.id)==='roof');
+ assert.equal(walls.length,4);assert.equal(roof.length,1);
+ for(const w of walls)assert.ok(w.pos.y+w.size.y/2>=SIREN_HALL.roof,`${w.id} stops below the roof`);
+ const r=roof[0];assert.equal(r.pos.y-r.size.y/2,SIREN_HALL.roof);assert.ok(r.size.x>=2*SIREN_HALL.halfX&&r.size.z>=2*SIREN_HALL.halfZ,'roof covers the whole footprint');
+ // Highest reachable: jumpPower 2.5 (21.25 m/s) or the 24 m/s external lift cap at gravity 23, plus the capsule.
+ assert.ok(24**2/(2*23)+1.7<SIREN_HALL.roof,'the roof is above every jump and launch');
+ // Black Rain spawns 8 m above the ground; the partitions are the highest floor it can land on.
+ const top=Math.max(...blocks.filter(b=>['partition','cell'].includes(kind(b.id))).map(b=>b.pos.y+b.size.y/2));assert.ok(top+8.5<SIREN_HALL.roof);
+ for(const c of SIREN_COLUMNS)assert.ok(blocks.some(b=>kind(b.id)==='column'&&b.pos.x===c.x&&b.pos.z===c.z&&b.size.y===SIREN_HALL.roof),'column reaches the vault');
+ assert.ok(Math.max(...blocks.map(b=>Math.abs(b.pos.x)+b.size.x/2))<=SIREN_HALL.halfX+2&&Math.max(...blocks.map(b=>Math.abs(b.pos.z)+b.size.z/2))<=SIREN_HALL.halfZ+2);
+});
+test('add spawns, chip spots and vents sit on clear floor away from the player pads',()=>{
+ assert.equal(SIREN_ADD_SPAWNS.length,8);assert.equal(new Set(SIREN_ADD_SPAWNS.map(a=>a.id)).size,8);assert.equal(SIREN_CHIP_SPOTS.length,6);
+ for(const a of SIREN_ADD_SPAWNS){
+  assert.ok(clearance(a.x,a.z)>=.6,`${a.id} is inside geometry (${clearance(a.x,a.z).toFixed(2)})`);
+  assert.ok(Math.abs(a.x)<SIREN_HALL.halfX-1&&Math.abs(a.z)<SIREN_HALL.halfZ-1);
+  // The yaw faces into the hall.
+  assert.ok(Math.sin(a.yaw)*-a.x+Math.cos(a.yaw)*-a.z>0,`${a.id} faces the wall`);
+ }
+ for(const c of SIREN_CHIP_SPOTS){
+  assert.ok(clearance(c.x,c.z)>=1,`${c.id} too close to geometry`);
+  for(const v of SIREN_VENTS)assert.ok(Math.hypot(c.x-v.x,c.z-v.z)>3,`${c.id} on a vent`);
+  for(let i=0;i<8;i++){const p=playerSpawn(i);assert.ok(Math.hypot(c.x-p.x,c.z-p.z)>2.5,`${c.id} on spawn ${i}`);}
+ }
+ for(const v of SIREN_VENTS)assert.ok(clearance(v.x,v.z)>=1.5,`${v.id} under geometry`);
+});
+test('Ward Zero keeps fracture headroom under the relay prop limit',()=>{
+ const blocks=sirenStageBlocks(),breakable=blocks.filter(b=>b.material!=='foundation').length;
+ // Every fracture turns one prop into four chunks; the relay drops snapshots over 300 props.
+ assert.ok(blocks.length+3*breakable<=300,`${blocks.length} blocks, ${breakable} breakable`);
 });
