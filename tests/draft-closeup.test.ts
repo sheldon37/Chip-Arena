@@ -153,3 +153,57 @@ test('each turn pushes in from a wider shot without pops; reduced motion holds t
  const calm=new DraftStage();calm.trayBottom=l.trayBottom;calm.update({...base,time:d.started},16/9,1/60,1,false,true);assert.ok(Math.abs(calm.camera.position.z-dist[dist.length-1])<1e-6,'reduced motion: no push-in');
  sim.dispose();
 });
+test('the first layout measurement of a turn snaps the framing; later layout changes ease in',()=>{
+ const sim=draftState(),base=sim.snapshot(),l=LAYOUTS['16:9'],d=base.draft!,turn=`${d.player}:${d.turn}:${d.started}`;setView(l);
+ const framed=(trayBottom:number,key=turn,time=d.started+1)=>{const s=new DraftStage();s.trayBottom=trayBottom;s.layoutTurn=key;s.update({...base,time},16/9,1/60);return s.camera.position.clone();};
+ // The stage's first frame of a draft runs before the overlay has measured it (a previous draft's two-row tray, or the
+ // default): the first measurement for this turn snaps, so no slow reframe rides on top of the push-in.
+ const stage=new DraftStage();stage.trayBottom=.5;stage.update({...base,time:d.started+1},16/9,1/60);
+ stage.trayBottom=l.trayBottom;stage.layoutTurn=turn;stage.update({...base,time:d.started+1+1/60},16/9,1/60);
+ assert.ok(stage.camera.position.distanceTo(framed(l.trayBottom,turn,d.started+1+1/60))<1e-9,'snapped to the measured tray');
+ // A layout change later in the same turn (resize, a second row) eases instead of cutting.
+ stage.trayBottom=.4;stage.update({...base,time:d.started+1+2/60},16/9,1/60);
+ const from=framed(l.trayBottom).y,to=framed(.4).y,moved=(stage.camera.position.y-from)/(to-from);
+ assert.ok(Math.abs(to-from)>.01&&moved>0&&moved<.2,`eases towards the new layout (${moved.toFixed(3)})`);
+ // The next turn's first measurement snaps again.
+ const next={...base,time:d.started+5,draft:{...d,started:d.started+5,turn:2}};stage.layoutTurn=`${d.player}:2:${d.started+5}`;stage.update(next,16/9,1/60);
+ const snapped=new DraftStage();snapped.trayBottom=.4;snapped.layoutTurn=stage.layoutTurn;snapped.update(next,16/9,1/60);
+ assert.ok(stage.camera.position.distanceTo(snapped.camera.position)<1e-9,'a new turn snaps to its own layout');
+ sim.dispose();
+});
+test('holding the chip at the chest, the head glances down without drooping',()=>{
+ const sim=draftState(),l=LAYOUTS['16:9'];sim.time=sim.snapshot().draft!.readyAt;const offers=sim.snapshot().players.find(p=>p.id==='me')!.offers;
+ const stage=new DraftStage();setView(l);stage.trayBottom=l.trayBottom;let s=sim.snapshot();
+ for(let k=0;k<60;k++){stage.cards=l.cards.map(([x,y])=>stage.toWorld(x,y,new T.Vector3())!);stage.hover=1;stage.update({...s,time:s.time+k/60},16/9,1/60);}
+ sim.time+=1;assert.ok(sim.selectChip('me',offers[1]));const chosenAt=sim.snapshot().draft!.chosenAt!;let low=1;
+ for(let e=0;e<=DRAFT_GRAB.details+1;e+=1/60){sim.time=chosenAt+e;s=sim.snapshot();stage.cards=l.cards.map(([x,y])=>stage.toWorld(x,y,new T.Vector3())!);stage.hover=-1;stage.taken=1;stage.update(s,16/9,1/60);
+  const r=stage.pilot!,face=new T.Vector3(0,0,1).applyQuaternion(r.head.getWorldQuaternion(new T.Quaternion()));low=Math.min(low,face.y);}
+ const r=stage.pilot!,face=new T.Vector3(0,0,1).applyQuaternion(r.head.getWorldQuaternion(new T.Quaternion()));
+ assert.ok(face.y<-.05,`still looks down at the chip (${face.y.toFixed(3)})`);assert.ok(low>-.5,`never drops into a droop (lowest ${low.toFixed(3)})`);
+ sim.dispose();
+});
+test('the pick keeps the tray in place: the header holds its pre-pick height and the flying copy drops the tray margin',async()=>{
+ const {DraftView}=await import('../src/client/draft-view.js');const {readFileSync}=await import('node:fs');
+ const sim=draftState(),pre=sim.snapshot(),d=pre.draft!;setView({w:390,h:844,trayBottom:.5,cards:[]});
+ // A minimal stand-in for the overlay DOM: the header, the tray and two slots (the taken one has no card, so no fly copy).
+ const box=(top:number,height:number)=>({top,bottom:top+height,height,left:20,width:160});
+ let current:unknown;const root={addEventListener(){},querySelector:()=>current} as unknown as HTMLElement;
+ // Each call re-renders the overlay (drawMenu replaces the markup); returns the new screen's inline custom properties.
+ const overlay=(headerHeight:number,taken:boolean)=>{const props:Record<string,string>={};
+  const slots=[0,1].map(i=>({dataset:{slot:pre.players.find(p=>p.id==='me')!.offers[i]},classList:{contains:(c:string)=>taken&&i===1&&c==='taken'},getBoundingClientRect:()=>box(227,183),querySelector:()=>null}));
+  current={dataset:{} as Record<string,string>,style:{setProperty:(k:string,v:string)=>{props[k]=v;}},querySelector:(q:string)=>q==='.draft-top'?{getBoundingClientRect:()=>box(14,headerHeight)}:q==='.draft-tray'?{getBoundingClientRect:()=>box(217,200)}:null,querySelectorAll:()=>slots};return props;};
+ const view=new DraftView(root),stage=new DraftStage(),before=overlay(183.2,false);view.update({...pre,time:d.readyAt+.5},stage,'me');
+ assert.equal(stage.layoutTurn,`${d.player}:${d.turn}:${d.started}`,'the overlay tells the stage which turn it measured');
+ assert.equal(before['--draft-top'],undefined,'nothing is held before the pick');
+ // The pick re-renders the overlay without the hint and timer: the new header is shorter, but its pre-pick height is held.
+ const chosen={...pre,time:d.readyAt+1,draft:{...d,chosen:pre.players.find(p=>p.id==='me')!.offers[1],chosenAt:d.readyAt+1}};
+ const after=overlay(120.5,true);view.update(chosen,stage,'me');
+ assert.equal(after['--draft-top'],'183.2px','the chosen header keeps its pre-pick height');
+ // A different window size (resize during the grab) falls back to the natural layout.
+ const resized=overlay(120.5,true);setView({w:844,h:390,trayBottom:.5,cards:[]});view.update(chosen,stage,'me');
+ assert.equal(resized['--draft-top'],undefined,'no stale height after a resize');
+ const css=readFileSync(new URL('../src/client/draft-screen.css',import.meta.url),'utf8');
+ assert.match(css,/\.draft-screen\.is-chosen \.draft-top\{height:var\(--draft-top,auto\)\}/,'the chosen header uses the held height');
+ assert.match(css,/\.draft-fly\.draft-tray\{[^}]*margin:0[;}]/,'the fixed-position flying copy does not inherit the tray margin');
+ sim.dispose();
+});

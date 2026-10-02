@@ -9,7 +9,7 @@ import {DRAFT_GRAB,grabTimeline} from './draft-timeline.js';
  * is on, and flies the chosen card into the pilot's projected palm. Hover is local only; other viewers see the scan.
  */
 export class DraftView {
- private hover='';private points:T.Vector3[]=[];private palm={x:0,y:0};private contact='';
+ private hover='';private points:T.Vector3[]=[];private palm={x:0,y:0};private contact='';private top={turn:'',h:0,w:0,vh:0};
  private reduced=typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
  constructor(private root:HTMLElement,private onContact:(chip:string)=>void=()=>{}){
   const slot=(e:Event)=>(e.target as Element|null)?.closest?.<HTMLElement>('[data-slot]');
@@ -30,7 +30,11 @@ export class DraftView {
   const head=screen.querySelector('.draft-top')?.getBoundingClientRect(),tray=screen.querySelector('.draft-tray')?.getBoundingClientRect();
   // Framing follows the layout until the pick, then holds still through the grab. The chest-up pilot fills the space
   // between the tray's bottom edge and the bottom of the screen.
-  if(head&&tray&&innerHeight>0&&!d.chosen){stage.headLine=head.bottom/innerHeight;stage.trayLine=tray.top/innerHeight;stage.trayBottom=tray.bottom/innerHeight;}
+  const turn=`${d.player}:${d.turn}:${d.started}`;
+  if(head&&tray&&innerHeight>0&&!d.chosen){stage.headLine=head.bottom/innerHeight;stage.trayLine=tray.top/innerHeight;stage.trayBottom=tray.bottom/innerHeight;stage.layoutTurn=turn;const t=this.top;t.turn=turn;t.h=head.height;t.w=innerWidth;t.vh=innerHeight;}
+  // The pick re-render drops the hint and timer; hold the header at its pre-pick height (same turn and window) so the
+  // tray and the chosen card stay where they were.
+  if(d.chosen&&this.top.turn===turn&&this.top.w===innerWidth&&this.top.vh===innerHeight)screen.style.setProperty('--draft-top',`${this.top.h}px`);
   // Reads first (rects), then writes (the flying card), so one layout per frame.
   const slots=Array.from(screen.querySelectorAll<HTMLElement>('.draft-slot')),rects=slots.map(s=>s.getBoundingClientRect());
   while(this.points.length<slots.length)this.points.push(new T.Vector3());

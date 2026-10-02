@@ -35,6 +35,9 @@ const BESIDE=.36;
 /** The cards sit above the pilot: the head turns fully towards them but only tips up part of the way (a blank face tipped
  * far back reads as the underside of a box, not a look). */
 const LOOK_UP=.55;
+/** Looking down at the chip held at the chest: the head only tips part of the way (a full look drops the blank head into a
+ * droop). */
+const LOOK_DOWN=.5;
 const _local=new T.Vector3(),_ndc=new T.Vector2(),_w=new T.Quaternion(),_p=new T.Quaternion(),_q=new T.Quaternion(),_i=new T.Quaternion(),_f=new T.Vector3(),_d=new T.Vector3(),_e=new T.Vector3(),_s=new T.Vector3(),_t=new T.Vector3();
 const _m=new T.Matrix4(),_x=new T.Vector3(),_y=new T.Vector3(),_z=new T.Vector3(),_box=new T.Box3(),_hold=new T.Quaternion(),_aim=new T.Quaternion(),_eu=new T.Euler(),_white=new T.Color(0xffffff),PALM_FACING=new T.Vector3(0,.15,.45);
 /** Rotate one joint (in world space) part of the way towards a target; the next joint in the chain takes the rest. */
@@ -130,6 +133,9 @@ export class DraftStage {
  /** Viewport fractions (0 top, 1 bottom) of the heading's bottom edge and the tray's top and bottom edges, from the DOM
   * overlay. The pilot is framed between the tray's bottom edge and the bottom of the screen. */
  headLine=.14;trayLine=.2;trayBottom=.36;private frameTop=-1;
+ /** The draft turn those lines were measured for; the first measurement of a turn snaps the framing (no slow reframe
+  * from the previous draft's or the default tray height on top of the push-in). */
+ layoutTurn='';private framedTurn='';
  private armor=new ArmorGlow(this.scene);private rig?:CharacterRig;private key='';private time=0;private side=1;private boss=false;
  private look=new Spring3();private goal=new T.Vector3();private weight=0;private chip=chipModel();anchors:DraftAnchors={top:1.76,chest:.86,shoulder:1.07};
  private arms:[Arm,Arm]=[{w:0,v:0,aim:new Spring3(),aimed:false},{w:0,v:0,aim:new Spring3(),aimed:false}];private last=NaN;
@@ -166,8 +172,9 @@ export class DraftStage {
  }
  /** Chest-up camera between the tray's bottom edge and the bottom of the screen; `arrive` (0-1) pushes in from wider. */
  private frameDt=0;
- private frame(aspect:number,arrive:number){
-  if(this.frameTop<0)this.frameTop=this.trayBottom;else this.frameTop+=(this.trayBottom-this.frameTop)*(1-Math.exp(-this.frameDt*6));
+ private frame(aspect:number,arrive:number,turn:string){
+  const measured=turn===this.layoutTurn;
+  if(this.frameTop<0||measured&&turn!==this.framedTurn){this.frameTop=this.trayBottom;if(measured)this.framedTurn=turn;}else this.frameTop+=(this.trayBottom-this.frameTop)*(1-Math.exp(-this.frameDt*6));
   const F=DRAFT_FRAME,a=this.anchors,top=Math.min(.72,Math.max(.06,this.frameTop+F.gap)),room=1-top;
   // Plenty of height: frame down to the upper belly. Little height (two rows, short windows): just head and shoulders.
   const bottom=a.shoulder+(a.chest-a.shoulder)*smooth((room-F.cramped)/(F.roomy-F.cramped));
@@ -196,7 +203,7 @@ export class DraftStage {
   const jump=!(state.time>=this.last&&state.time-this.last<=.35);this.last=state.time;
   // A new turn pushes in from a wider shot while the stage lights come up (authoritative turn start, any frame rate).
   const since=Math.max(0,state.time-d.started),arrive=reduced?1:outCubic(since/DRAFT_FRAME.arrive),fade=.2+.8*smooth(since/DRAFT_FRAME.fade);
-  this.frame(aspect,arrive);
+  this.frame(aspect,arrive,`${d.player}:${d.turn}:${d.started}`);
   const low=quality<.45;if(this.low!==low){setRigDetail(r,low);this.low=low;}
   // Set losers draft while still at hp 0 from the last round: pose a cleaned-up view, never the fight state.
   if(this.boss)animateSiren(r,p,state,reduced?0:state.time,dt,0);
@@ -245,7 +252,7 @@ export class DraftStage {
   else if(this.cards.length){const booting=state.time<d.readyAt,index=reduced?0:booting?Math.min(this.cards.length-1,Math.floor(Math.max(0,state.time-d.started)/.22)):Math.floor(this.time/1.8)%this.cards.length;this.goal.copy(this.cards[index]);}
   else this.goal.set(0,1.6,3);
   if(jump)this.look.snap(this.goal);else this.look.step(this.goal,g?18:9,dt);this.weight+=(1-this.weight)*(1-Math.exp(-dt*4));
-  r.head.getWorldPosition(_s);const eye=_s.y+HEAD_UP,rise=this.look.at.y-eye;this.gaze.copy(this.look.at).setY(eye+(rise>0?rise*LOOK_UP:rise));
+  r.head.getWorldPosition(_s);const eye=_s.y+HEAD_UP,rise=this.look.at.y-eye;this.gaze.copy(this.look.at).setY(eye+rise*(rise>0?LOOK_UP:LOOK_DOWN));
   // The head is a blank box, so the chest turns further with the look: the sternum stripe shows where the pilot faces.
   lookAt(r,this.gaze,this.weight,this.boss?.22:.36,.42);settleJointCovers(r);
   // The chip in the palm, its light and a two-ring flash at contact. The light lives in the scene permanently, so the
@@ -283,7 +290,7 @@ export class DraftStage {
  clear(){
   this.chip.removeFromParent();this.chip.visible=false;this.glow.intensity=0;this.armor.clear();this.sidePick='';
   if(this.rig){disposeAuditorHalo(this.rig);this.rig.group.removeFromParent();this.rig.sockets.head.traverse(o=>{if(o instanceof T.Mesh&&o.geometry.type!=='BoxGeometry')o.geometry.dispose();});}
-  this.rig=undefined;this.low=undefined;this.key='';this.taken=-1;this.hover=-1;this.cards=[];this.frameTop=-1;this.last=NaN;this.boss=false;
+  this.rig=undefined;this.low=undefined;this.key='';this.taken=-1;this.hover=-1;this.cards=[];this.frameTop=-1;this.framedTurn='';this.last=NaN;this.boss=false;
   for(const arm of this.arms){arm.w=arm.v=0;arm.aimed=false;}
  }
 }
