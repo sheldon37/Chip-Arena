@@ -57,7 +57,7 @@ const r2=(n:number)=>Math.round(n*100)/100;
 
 /** True when vent `e` (0–7) shows a hazard warning or is active at any time in [time, time+span] (sampled every 0.25 s).
  *  songStart is the boss song's start (sim.bossSong.startedAt); without a song there are no vent hazards. */
-export function ventHazard(e:number,time:number,songStart:number|undefined,span=PVE_TIMING.vent.climb){
+export function ventHazard(e:number,time:number,songStart:number|undefined,span:number=PVE_TIMING.vent.climb){
  if(songStart===undefined||e<0||e>7)return false;
  for(let t=0;t<=span+1e-9;t+=.25){const h=sirenStageHazards(time+t-songStart)[e];if(h&&(h.warning>0||h.active))return true;}
  return false;
