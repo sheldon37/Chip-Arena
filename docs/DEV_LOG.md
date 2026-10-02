@@ -18,6 +18,45 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-02 — Claude — full-screen 3D chip draft and a longer kill-cam pre-roll
+
+- Owner feedback after the kill-cam test update: let the replay start a little later, and rework chip
+  selection into a full-screen scene with the pilot. Branch `claude/sleepy-ritchie-g8ruhv`, merged with
+  shared `claude/visual-revision` `7d31530` first. Not merged into the shared branch; not published.
+- Kill cam: new `KILLCAM.hold` (.6 s). Playback now starts ~1.2 s after death (aftermath + hold); the
+  stalled-packet deadline grows by the same amount, and the full clip still fits the 5 s result. Tests derive
+  their timing from the constants, and a new test covers the hold. Lifecycle/cancellation unchanged.
+- Draft: `draft-stage.ts` renders the current picker's dressed rig on a podium through the main renderer
+  (PlayerIntros pattern) while the phase is `draft`. `draftScreen` (draft-presentation.ts) replaces the panel with
+  a full-screen overlay: heading/turn order on top, the picker's nameplate, and the offers as a horizontal tray
+  (one row up to six; two rows for 7-12; mid-width screens split six as 3+3; phones and short landscape windows
+  use one sideways-scrolling row). Cards stay real `<button data-chip>` chips (compact size), so the click path,
+  readyAt gate, aria labels and existing markup tests are unchanged.
+- Look and grab: `draft-view.ts` maps card centres onto a plane in front of the pilot. The head/neck/chest turn
+  to the hovered or focused card on your own turn; otherwise they follow the boot-in, then a slow scan. On a pick
+  (driven by authoritative `draft.chosen/chosenAt`, so bot, timeout and other viewers' picks animate too), the
+  others shatter, the card flies (fixed-position copy) into the projected palm while the hand on that side
+  reaches (rig-ik `hand`), a glowing 3D chip lands in the palm at .48 s with a rarity flash and the install
+  sound for every viewer, and the existing details spotlight with all rarity cinematics opens at .85 s (inserted
+  on the sim clock, duration shortened to end with the 3.2/4.6/4.8 s server reveal). Emperor/Ansatsuken
+  cinematic keyframes now follow `--selection-duration`. Arrow keys move focus, Space/Enter pick.
+- Set losers draft at hp 0, so the stage poses a cleaned-up `stageView` (alive, idle), including Siren. The
+  arena keeps updating underneath but is not drawn; compatibility (SVG) rendering keeps the old arena backdrop
+  with a dark card backdrop. No sim, network, protocol, timing, hitbox, damage, cooldown or save change.
+- Checks (Node 24.19.0/npm 11.9.0): types pass; full units 689/701 with exactly the 12 recorded baseline names;
+  new `tests/draft-screen.test.ts` (7: rows, timeline inside the reveal, own/other markup + escaping, taken slot
+  and spotlight gating, look/reach accuracy and bone lengths, dead-picker staging) and the kill-cam hold test
+  pass; `tests/killcam-network.ts` passes (87 snapshots); Vite build passes. Independent review (3 lenses)
+  found the row clipping the flying card, arrow keys swallowed for dead pickers, dead-picker posing, gaze before
+  IK, per-pick hand latch, contact-sound dedupe, light-count shader hitch, reduced motion, online clock and
+  row scroll reset; all fixed here.
+- Rendered (headless Chromium/SwiftShader, sandbox draft preview): 1-12 offers at 1920x1080, 1366x768,
+  1280x720, 960x540, 844x390 and 390x844; hover look-at; grab with either hand; spotlight hand-off; a guest
+  watching a host's pick in a real WebSocket test room. `docs/chip-arena-draft-stage.jpg`.
+- Not verified: native Windows/GPU frame pacing (software GL), exclusive-tier (Mishima/Ansatsuken/L44T/Siren)
+  grabs, audio levels, two-PC play. Hover is local only (other viewers see the scan, as before no protocol).
+  `tools/chip-lab` still renders the old panel markup.
+
 ## 2026-10-02 — Astra — preserve kill effects across legacy account sync
 
 - Branch codex/kill-effect-save from shared 16f4bcc9f4ea71ab165d462b13e48fd5a6f1372f.
@@ -96,6 +135,38 @@ containing an entry; no self-referential commit hash is required.
   Native Windows visual/audio acceptance not run. Separate add-on PR targets the
   kill-cam feature branch; implemented on branch, not merged or published.
 
+## 2026-10-02 — Claude — owner-requested kill-cam test-channel publication
+
+- Owner asked to publish the merged kill-cam work to the existing test Update channel.
+  Source `claude/visual-revision` at `7d31530cbe996dd45744e45da2442ace9eefecdb` (PR #16 merge,
+  includes Claude PR #17); clean detached worktree, Node 24.19.0 / npm 11.9.0 (official tarball,
+  SHA-256 checked), `npm run setup`, real Rapier 0.19.3. Live feed and Site unchanged.
+- Published content `0.2.1aeb4fad8c90`, build `786c2215912319ba449a53d3`, payload
+  `arena-0a306d01b2140b24.json.gz` (22,953,525 bytes, SHA-256
+  `0a306d01b2140b24f4c387104e9c9ac9cf14847e1238020ee35e8cab578d2fe4`) at channel commit
+  `012d37bdf6aa504f0d8b4058b9552c7936743f3a` in `sheldon37/chip-arena-test-updates`
+  (manifest + single payload swapped together; PUBLISHED.md row added).
+- Gate on the exact commit: `npm run verify` nonzero on the recorded baseline only. Units
+  682/694 with exactly the 12 recorded failure names (the updater test that failed under the
+  container's Node 22 passes on 24.19.0); four known server tsc errors (chaos.ts, leet.ts ×2,
+  standard-melee.ts); generic WebSocket rematch timeout. HTTPS integration passed.
+- `release:prepare` run twice: manifest and payload byte-identical. PR #5 `check-payload.mjs`
+  passed on the real payload (102 files, same-version skip, offline/corrupt refusal, settings
+  sentinel, URL restriction); remote-channel/status tests 6/6 in their original layout.
+- Independent read-only pre-publish audit (3 agents: provenance, secrets/safety, channel
+  format) found no blockers: recomputed GAME_BUILD matches; kill-cam UI and Siren armor are
+  present in the bundles; every byte changed vs `0.2.c99e20077a04` traces to `97daa88`/`4e9a65d`;
+  no secrets (embedded JWKs are public verify keys, unchanged); +8,244 bytes, under the caps.
+  The committed `build-info.generated.ts` is stale (the build stamps it); cosmetic.
+- Real network: before publishing, the then-public `0.2.c99e20077a04` was installed through
+  the real updater from the channel into an isolated folder (102 files). The public manifest
+  served the new version on the first check after push; the same folder then upgraded to
+  `0.2.1aeb4fad8c90` (102 files verified, settings sentinel preserved, same-version skip,
+  remote menu-status handler reports the new build/version).
+- Not verified: native Windows EXE/Update button, GPU visuals, replay audio, two-PC play.
+  Diagnostic test build with the documented baseline failures. Existing test installations
+  press Update.
+
 ## 2026-10-02 — Claude — kill-cam UI, transitions and replay camera framing
 
 - Task: `docs/KILLCAM-HANDOFF.md` UI/camera scope. Branch `claude/sleepy-ritchie-g8ruhv`
@@ -142,8 +213,10 @@ containing an entry; no self-referential commit hash is required.
   judged from timings, not smooth playback), replay audio, physical two-PC rooms, simultaneous
   kills, killer disconnect mid-clip, lava/fall/Siren Last Laugh-specific deaths and destruction
   rewinds. Card shows the weapon held in the recorded frame, not necessarily the killing attack.
-- Status: implemented and pushed on the task branch; integration/publication recorded below
-  if completed.
+- Status: owner-authorized integration done. PR #17 (`4e9a65d`) merged into
+  `codex/killcam-siren-armor` at `9d7c218`; PR #16 merged into `claude/visual-revision` at
+  `7d31530cbe996dd45744e45da2442ace9eefecdb`, tree `37424fa` identical to the tested tree.
+  Published afterwards on the owner's explicit request; see the publication entry above.
 
 ## 2026-10-02 — Astra — kill-cam systems and Siren ability super armor
 

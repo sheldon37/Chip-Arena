@@ -1,7 +1,8 @@
 import type {Snapshot,DeathPresentation} from '../shared/simulation.js';
 import {clamp,type Vec} from '../shared/config.js';
 
-export const KILLCAM={before:3,after:.6,history:5,hz:20,maxFrames:112,maxEntities:100_000,waitMs:1000} as const;
+/** `hold` is a live pause after the aftermath is recorded, so the player sees their death before the footage starts. */
+export const KILLCAM={before:3,after:.6,hold:.6,history:5,hz:20,maxFrames:112,maxEntities:100_000,waitMs:1000} as const;
 export interface KillcamInfo {
  deathId:string;victimId:string;killerId:string|null;killerName:string|null;cause:string;
  start:number;end:number;time:number;progress:number;viewId:string;
@@ -39,7 +40,7 @@ export class Killcam {
    this.seen=death!.id;
    // Joining as an already dead spectator must not replay a death we never witnessed.
    if(this.alive&&this.frames.length&&s.time-this.frames[0].state.time>=.2)
-    this.pending={death:structuredClone(death!),victimId:id,deadline:now+KILLCAM.waitMs};
+    this.pending={death:structuredClone(death!),victimId:id,deadline:now+KILLCAM.waitMs+KILLCAM.hold*1000};
   }
   this.alive=self.hp>0;
   const last=this.frames.at(-1)?.state;
@@ -55,7 +56,7 @@ export class Killcam {
  sample(live:Snapshot,id:string,now=performance.now()):Snapshot|undefined{
   const self=live.players.find(p=>p.id===id);
   if(this.key!==epoch(live,id)||!allowed(live)||!self?.connected||self.hp>0){this.skip();return;}
-  if(this.pending&&(live.time>=this.pending.death.at+KILLCAM.after||now>=this.pending.deadline)){
+  if(this.pending&&(live.time>=this.pending.death.at+KILLCAM.after+KILLCAM.hold||now>=this.pending.deadline)){
    const {death,victimId}=this.pending;this.pending=undefined;
    const start=Math.max(this.frames[0]?.state.time??death.at,death.at-KILLCAM.before);
    const end=Math.min(this.frames.at(-1)?.state.time??death.at,death.at+KILLCAM.after);
