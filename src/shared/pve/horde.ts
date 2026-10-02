@@ -104,7 +104,7 @@ export class Horde implements HordeApi{
   if(a.minion){const m=a.minion;m.body.setTranslation(v(en.exit.x,y,en.exit.z),true);m.body.setLinvel(v(),true);m.body.setEnabled(true);m.collider.setEnabled(true);}
   else{
    const body=s.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(en.exit.x,y,en.exit.z).lockRotations());
-   const collider=s.world.createCollider(RAPIER.ColliderDesc.capsule(c.halfHeight,c.radius).setMass(c.mass).setFriction(0).setCollisionGroups(PVE_GROUPS.add),body);
+   const collider=s.world.createCollider(RAPIER.ColliderDesc.capsule(c.halfHeight,c.radius).setMass(c.mass).setFriction(0).setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min).setCollisionGroups(PVE_GROUPS.add),body);
    const m:Minion={id:a.id,owner:HORDE_ID,kind:'siren-add',pos:v(en.exit.x,y,en.exit.z),yaw:en.yaw,hp:a.hp,maxHp:a.maxHp,speed:a.stats.walk,until:1e9,lastAttack:-10,nextAttack:1e9,body,collider};
    a.minion=m;s.chaos.minions.set(a.id,m);s.colliderOwners.set(collider.handle,a.id);
   }
