@@ -61,6 +61,25 @@ containing an entry; no self-referential commit hash is required.
   - Bots still have no pathing and ignore vents.
   - Adds and chip pickups need systems work (spawn and grant logic, minion vent damage) that uses the new hooks.
   - Cell add spawns sit about 2.4 m from the back wall, so multi-unit `summon` offsets need a clearance check.
+- Merge and publication (owner asked to merge into the DEV-button branch; standing test-channel instruction):
+  - PR #24 merged into `claude/visual-revision` at `5af891cec6b06c2e04fad34d43d3027ec6826964`, tree identical to
+    the tested `75a25b9`. That merge also carries the previous chip-draft publication log and Astra's PR #23 log.
+  - CI and a clean Node 24.19.0/npm 11.9.0 `npm run verify` match the recorded baseline only: units 706/718 with
+    exactly the 12 names (the portable-update test passes on 24.19), the four server tsc errors, and the WebSocket
+    rematch timeout. HTTPS integration passed.
+  - Two `release:prepare` builds, plus a third at the merge commit, were byte-identical.
+  - PR #5 `check-payload` passed (102 files, skip, offline/corrupt refusal, settings sentinel, URL restriction);
+    channel/status tests 6/6.
+  - Payload audit against `0.2.0a02ae6804bc`: only the client bundles, index, server and release files changed. The
+    one key-pattern match is the embedded Rapier WASM base64, also present in the previous bundles.
+  - Published content `0.2.58d079f38769`, build `0e75b40bf0eb4d6e09780ae6`, payload `arena-66974bad66385f57.json.gz`
+    (22,975,402 bytes, SHA-256 `66974bad66385f5744f25439b8153c776b9ed27b3b278cb4268c897c9cc5b8ce`), at channel
+    commit `d5f371486bc8934499fb8af598b346e10b87bb66`. Live feed and Site unchanged.
+  - Real network: the isolated install upgraded `0.2.0a02ae6804bc` → `0.2.58d079f38769` from the public channel on
+    the first check (102 files verified, settings preserved, same-version skip, menu status).
+  - Not run: the native Windows Update button, GPU visuals and audio.
+- Status: merged and published to TEST. Next: native look and frame-rate review of Ward Zero, then systems work for
+  adds and chip pickups on the new hooks.
 
 ## 2026-10-02 — Claude — chip-draft merge and test-channel publication
 
