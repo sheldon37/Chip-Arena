@@ -74,7 +74,7 @@ function fanGeometry(){
  for(const g of parts){const p=g.attributes.position.array,u=g.attributes.uv.array,ix=g.index!.array;for(const n of p)pos.push(n);for(const n of u)uv.push(n);for(const n of ix)idx.push(n+base);base+=g.attributes.position.count;}
  const out=new T.BufferGeometry();out.setAttribute('position',new T.Float32BufferAttribute(pos,3));out.setAttribute('uv',new T.Float32BufferAttribute(uv,2));out.setIndex(idx);return out;
 }
-const additive=(color:number,opacity:number,map?:T.Texture)=>new T.MeshBasicMaterial({color,map,transparent:true,opacity,depthWrite:false,depthTest:true,blending:T.AdditiveBlending,side:T.DoubleSide,toneMapped:false});
+const additive=(color:number,opacity:number,map?:T.Texture)=>new T.MeshBasicMaterial({color,...(map?{map}:{}),transparent:true,opacity,depthWrite:false,depthTest:true,blending:T.AdditiveBlending,side:T.DoubleSide,toneMapped:false});
 
 /** One hologram (3 draws: card fan, spinning chip, projector cone). */
 class Holo {
@@ -105,7 +105,7 @@ export class HologramView {
    let h=this.pool.get(p.id);if(!h){h=new Holo(this.fan);this.pool.set(p.id,h);this.group.add(h.group);}
    const red=holoBlinkRed(underAttack(state,view,p.id,hitAt?.get(p.id)),t),age=t-(row.openAt??t),grow=clamp(age/.25);
    h.group.visible=true;h.group.position.set(head.x,head.y+HOLO.height,head.z);h.group.rotation.set(0,Math.atan2(camera.position.x-head.x,camera.position.z-head.z),0);
-   h.group.scale.setScalar(.2+.8*grow*(2-grow));h.chip.rotation.y=t*3.2;h.chip.position.y=.62+.03*Math.sin(t*2.6);h.fan.position.y=.02*Math.sin(t*1.7);
+   h.group.scale.setScalar(.2+.8*grow*(2-grow));h.chip.rotation.set(-1.2,0,0,'YXZ');h.chip.rotation.y=t*3.2;h.chip.position.y=.62+.03*Math.sin(t*2.6);h.fan.position.y=.02*Math.sin(t*1.7);
    const flicker=.85+.15*Math.sin(t*37+p.id.length);
    h.mats[0].color.setHex(red?HOLO.red:HOLO.cyan);h.mats[0].opacity=.75*flicker;h.mats[1].color.setHex(red?HOLO.red:HOLO.cyan);h.mats[2].color.setHex(red?HOLO.red:HOLO.cyan);h.mats[2].opacity=red?.3:.16;
    this.shown.set(p.id,{red});}

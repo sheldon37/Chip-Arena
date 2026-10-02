@@ -45,12 +45,12 @@ export function ringGeometry(segments:number=BEACON.segments){
 export const ringDrawCount=(progress:number,segments:number=BEACON.segments)=>segments*6+Math.round(clamp(progress)*segments)*6;
 
 class Beacon {
- readonly group=new T.Group();readonly column:T.Mesh<T.CylinderGeometry,T.MeshBasicMaterial>;readonly ring:T.Mesh<T.BufferGeometry,T.MeshBasicMaterial>;readonly label=new HoloLabel(256,96,{size:42,sub:34});
+ readonly group=new T.Group();readonly column:T.Mesh<T.CylinderGeometry,T.MeshBasicMaterial>;readonly ring:T.Mesh<T.BufferGeometry,T.MeshBasicMaterial>;readonly label=new HoloLabel(320,96,{size:38,sub:32});
  constructor(){
   this.group.name='pve-beacon';
   this.column=new T.Mesh(new T.CylinderGeometry(BEACON.radius*.7,BEACON.radius*.85,BEACON.height,24,1,true),new T.MeshBasicMaterial({color:BEACON.color,map:motes(),transparent:true,opacity:.55,depthWrite:false,blending:T.AdditiveBlending,side:T.DoubleSide,toneMapped:false}));
   this.column.position.y=BEACON.height/2;this.ring=new T.Mesh(ringGeometry(),new T.MeshBasicMaterial({vertexColors:true,transparent:true,depthWrite:false,blending:T.AdditiveBlending,side:T.DoubleSide,toneMapped:false}));this.ring.position.y=.03;
-  this.label.sprite.position.y=2.25;this.label.sprite.scale.set(1.6,.6,1);
+  this.label.sprite.position.y=2.25;this.label.sprite.scale.set(2,.6,1);
   for(const o of [this.column,this.ring])o.renderOrder=2;this.group.add(this.column,this.ring,this.label.sprite);
  }
  dispose(){this.column.geometry.dispose();this.column.material.dispose();this.ring.geometry.dispose();this.ring.material.dispose();this.label.dispose();}

@@ -1,4 +1,5 @@
 import * as T from 'three';
+import {bossScaleOf} from '../pve/boss-look.js';
 import type {KillEffectFactory} from '../death-effects.js';
 import type {CharacterRig} from '../character-rig.js';
 import {createCharacterRig} from '../character-rig.js';
@@ -67,6 +68,8 @@ export const sirenCrush:KillEffectFactory=(scene,original,p,d,quality,budget,sta
  */
 export const sirenDissipate:KillEffectFactory=(scene,original,p,d,quality)=>{
  seed=d.seed||11;const root=new T.Group();root.name='siren-dissipate';scene.add(root);root.position.set(d.pos.x,d.pos.y,d.pos.z);root.rotation.y=d.yaw;
+ // A grown PvE Siren ("Am I beautiful?") burns away at its own size: the rig scales about the capsule centre like the live one.
+ root.scale.setScalar(bossScaleOf(p));
  const rig=createCharacterRig(p.color,undefined,true),parts=buildSiren(rig);root.add(rig.group);parts.flames.mesh.visible=false;
  const fire=new FlameField(quality<.5?260:520);scene.add(fire.mesh);
  const carry=new DeathPoseCarry(rig,original,.12);root.updateMatrixWorld(true);

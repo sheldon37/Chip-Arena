@@ -5,6 +5,7 @@ import {SIREN,SIREN_TIMING,sirenOf,sirenShotOf,sirenWorldOf,type SirenFirePatch,
 import {FlameField,type FlameTone} from './flames.js';
 import {PALETTE,SIREN_CLOCK,glowMaterial,orbMaterial,haloMaterial,decalMaterial,radialTexture,tickSirenClock,flameShellMaterial} from './materials.js';
 import {setSirenQuality} from './motion.js';
+import {bossVisualScale} from '../pve/boss-look.js';
 
 const clamp=(x:number,a=0,b=1)=>Math.min(b,Math.max(a,x));
 const sm=(x:number)=>{x=clamp(x);return x*x*(3-2*x);};
@@ -50,6 +51,8 @@ export class SirenFx {
  private shots=new Map<string,ShotView>();private patches=new Map<string,PatchView>();private marks=new Map<string,MarkView>();private eruptions=new Map<string,EruptionView>();
  private rainAcc=new Map<string,number>();private auraAt=new Map<string,number>();private grabFx=new Map<string,number>();
  private charred=new Map<string,{rig:CharacterRig;saved:Map<T.Mesh,T.Material|T.Material[]>;copies:{m:T.MeshLambertMaterial;color:T.Color;emissive:T.Color}[]}>();
+ /** Visual scale of grown Sirens (PvE "Am I beautiful?"), by id: ground offsets below their body scale with it. */
+ private scales=new Map<string,number>();
  private quality=1;private time=0;private camera?:T.Camera;
  private ringDark=glowMaterial(0x000000,{transparent:true,opacity:.55,side:T.DoubleSide});
  private shotOrb=orbMaterial(PALETTE.ink,PALETTE.ash,1.8);private seekerOrb=orbMaterial(0x020103,0xffffff,3.2);
@@ -63,7 +66,7 @@ export class SirenFx {
 
  update(state:Snapshot,time:number,rigs:ReadonlyMap<string,CharacterRig>,quality:number,camera?:T.Camera){
   const dt=clamp(time-this.time,0,.05);this.time=time;this.quality=quality;this.camera=camera;setSirenQuality(quality);tickSirenClock(time);
-  const world=sirenWorldOf(state);
+  const world=sirenWorldOf(state);this.scales.clear();for(const p of state.players){const b=sirenOf(p)?.boost;if(b)this.scales.set(p.id,bossVisualScale(b,time));}
   this.updateShots(state,time,dt);
   this.updatePatches(world?.patches??[],time,dt);
   this.updateEruptions(world?.eruptions??[],time,dt);
@@ -76,14 +79,14 @@ export class SirenFx {
  }
 
  event(e:GameEvent,time:number,quality=this.quality){
-  this.quality=quality;const p=e.pos,q=quality<.5?.5:1;if(!p)return;
+  this.quality=quality;const p=e.pos,q=quality<.5?.5:1,k=e.source?this.scales.get(e.source)??1:1;if(!p)return;
   switch(e.type){
    case 'siren-swipe':case 'siren-rend':this.slash(e,time);break;
    case 'siren-slam':{const r=e.radius??3.6;this.shock(p,r,.45,true);this.shock(p,r*.65,.3,false);this.cracks(p,r*.8,time);this.fire.burst(p.x,p.y+.1,p.z,Math.round(70*q),5.5,.9,.16,'black',.6,1.2);this.fire.burst(p.x,p.y+.1,p.z,Math.round(14*q),4,.7,.06,'ember',1.5);this.flash(p,2.6,.25,.5);break;}
-   case 'siren-rush':this.fire.burst(p.x,p.y-.4,p.z,Math.round(30*q),3,.6,.12,'black',.4);this.shock({...p,y:p.y-.83},1.4,.25,false);break;
-   case 'siren-laugh':case 'siren-mark':this.shock({...p,y:p.y-.83},2.2,.6,true);this.fire.burst(p.x,p.y+.5,p.z,Math.round(16*q),1.5,.8,.09,'black',1.4);break;
+   case 'siren-rush':this.fire.burst(p.x,p.y-.4*k,p.z,Math.round(30*q),3,.6,.12,'black',.4);this.shock({...p,y:p.y-.83*k},1.4*k,.25,false);break;
+   case 'siren-laugh':case 'siren-mark':this.shock({...p,y:p.y-.83*k},2.2*k,.6,true);this.fire.burst(p.x,p.y+.5*k,p.z,Math.round(16*q),1.5,.8,.09,'black',1.4);break;
    case 'siren-lunge':this.fire.burst(p.x,p.y,p.z,Math.round(20*q),2.5,.5,.1,'black',.5);break;
-   case 'siren-catch':this.fire.burst(p.x,p.y+.4,p.z,Math.round(30*q),2.2,.7,.1,'black',1);this.flash(p,1.2,.15,.6);break;
+   case 'siren-catch':this.fire.burst(p.x,p.y+.4*k,p.z,Math.round(30*q),2.2,.7,.1,'black',1);this.flash(p,1.2,.15,.6);break;
    case 'siren-crush':this.fire.burst(p.x,p.y,p.z,Math.round(60*q),4,.9,.12,'black',1.2);this.fire.burst(p.x,p.y,p.z,Math.round(16*q),5,.6,.05,'ember',1);this.flash(p,1.6,.2,.9);this.shock({...p,y:p.y-1.3},2.4,.4,true);break;
    case 'siren-whiff':this.fire.burst(p.x,p.y,p.z,Math.round(14*q),2,.5,.09,'smoke',.6);break;
    case 'siren-cast':this.fire.burst(p.x,p.y,p.z,Math.round((e.message==='damnation'?36:10)*q),e.message==='damnation'?3:1.6,.45,.09,'black',.8);this.flash(p,e.message==='damnation'?1.6:.7,.12,.7);break;
@@ -270,7 +273,7 @@ export class SirenFx {
   for(const p of state.players as PlayerView[]){const s=sirenOf(p);if(!s)continue;const rig=rigs.get(p.id);this.lastYaw.set(p.id,rig?rig.group.rotation.y:p.yaw);
    // The Siren never wears the armor glow (the renderer should exclude it; this catches a halo that slipped through).
    rig?.group.traverse(o=>{if(o instanceof T.Sprite&&o.name==='armor-radiance')o.visible=false;});this.lastPos.set(p.id,{...p.pos});const m=s.move;if(!m||p.hp<=0)continue;
-   if(m.id==='laugh'&&time>=m.at&&time<m.hitAt){const last=this.auraAt.get(p.id)??-1;if(time-last>.7){this.auraAt.set(p.id,time);this.shock({x:p.pos.x,y:p.pos.y-.83,z:p.pos.z},2.1,.8,true);}}
+   if(m.id==='laugh'&&time>=m.at&&time<m.hitAt){const last=this.auraAt.get(p.id)??-1;if(time-last>.7){this.auraAt.set(p.id,time);const k=this.scales.get(p.id)??1;this.shock({x:p.pos.x,y:p.pos.y-.83*k,z:p.pos.z},2.1*k,.8,true);}}
   }
  }
 }

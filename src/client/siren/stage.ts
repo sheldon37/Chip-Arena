@@ -220,7 +220,7 @@ export class WardZeroVisuals {
   const leafMat=new T.MeshLambertMaterial({color:0xffffff});
   for(const a of SIREN_ADD_SPAWNS){if(a.kind!=='door')continue;const s:Side=a.z<0?'n':'s',u=local(s,a.x,a.z).u;
    // The vestibule: dark lining (back, sides, ceiling), iron jambs and the lintel.
-   kit.add(s,m.dark,onWall(s,u,2.1,.05,3,4.2,.02));for(const k of [-1,1])kit.add(s,m.dark,onWall(s,u+k*1.52,2.1,D/2,.04,4.2,D));kit.add(s,m.dark,onWall(s,u,4.22,D/2,3.04,.04,D));
+   kit.add(s,m.dark,onWall(s,u,2.1,.09,3.04,4.2,.02));for(const k of [-1,1])kit.add(s,m.dark,onWall(s,u+k*1.52,2.1,D/2,.04,4.2,D));kit.add(s,m.dark,onWall(s,u,4.22,D/2,3.04,.04,D));
    for(const k of [-1,1]){kit.add(s,m.iron,onWall(s,u+k*1.68,2.2,(D+.1)/2,.36,4.4,D+.1));for(const y of [.6,2.2,3.8])kit.add(s,m.pewter,onWall(s,u+k*1.68,y,D+.11,.4,.08,.03));}
    kit.add(s,m.iron,onWall(s,u,4.45,(D+.1)/2,3.8,.4,D+.1));for(let i=0;i<8;i++)kit.add(s,i%2?m.stripe:m.iron,onWall(s,u-1.6+i*.46,4.45,D+.11,.46,.32,.02,.4));
    this.alarms.set(a.id,this.lamps.add(PALETTE.warn,onWall(s,u,4.95,D+.06,.5,.26,.26),s));
