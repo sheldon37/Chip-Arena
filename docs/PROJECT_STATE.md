@@ -82,3 +82,5 @@ Windows validation and desktop distribution cutover remain separate work.
   (owner request); native Windows/GPU and audio review remain.
 - Full-screen 3D chip draft (pilot looks at and grabs the chip) and a 1.2 s kill-cam pre-roll merged at
   `a9269ff` (PR #22); test content `0.2.0a02ae6804bc` at channel `bc84529`. Native review remains.
+- Ward Zero rebuilt as a sealed, music-synced asylum hall with hooks for future adds and chip pads, merged at
+  `5af891c` (PR #24); test content `0.2.58d079f38769` at channel `d5f3714`. Native look/frame-rate review remains.
