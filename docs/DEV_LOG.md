@@ -18,6 +18,45 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-02 — Claude — full-screen 3D chip draft and a longer kill-cam pre-roll
+
+- Owner feedback after the kill-cam test update: let the replay start a little later, and rework chip
+  selection into a full-screen scene with the pilot. Branch `claude/sleepy-ritchie-g8ruhv`, merged with
+  shared `claude/visual-revision` `7d31530` first. Not merged into the shared branch; not published.
+- Kill cam: new `KILLCAM.hold` (.6 s). Playback now starts ~1.2 s after death (aftermath + hold); the
+  stalled-packet deadline grows by the same amount, and the full clip still fits the 5 s result. Tests derive
+  their timing from the constants, and a new test covers the hold. Lifecycle/cancellation unchanged.
+- Draft: `draft-stage.ts` renders the current picker's dressed rig on a podium through the main renderer
+  (PlayerIntros pattern) while the phase is `draft`. `draftScreen` (draft-presentation.ts) replaces the panel with
+  a full-screen overlay: heading/turn order on top, the picker's nameplate, and the offers as a horizontal tray
+  (one row up to six; two rows for 7-12; mid-width screens split six as 3+3; phones and short landscape windows
+  use one sideways-scrolling row). Cards stay real `<button data-chip>` chips (compact size), so the click path,
+  readyAt gate, aria labels and existing markup tests are unchanged.
+- Look and grab: `draft-view.ts` maps card centres onto a plane in front of the pilot. The head/neck/chest turn
+  to the hovered or focused card on your own turn; otherwise they follow the boot-in, then a slow scan. On a pick
+  (driven by authoritative `draft.chosen/chosenAt`, so bot, timeout and other viewers' picks animate too), the
+  others shatter, the card flies (fixed-position copy) into the projected palm while the hand on that side
+  reaches (rig-ik `hand`), a glowing 3D chip lands in the palm at .48 s with a rarity flash and the install
+  sound for every viewer, and the existing details spotlight with all rarity cinematics opens at .85 s (inserted
+  on the sim clock, duration shortened to end with the 3.2/4.6/4.8 s server reveal). Emperor/Ansatsuken
+  cinematic keyframes now follow `--selection-duration`. Arrow keys move focus, Space/Enter pick.
+- Set losers draft at hp 0, so the stage poses a cleaned-up `stageView` (alive, idle), including Siren. The
+  arena keeps updating underneath but is not drawn; compatibility (SVG) rendering keeps the old arena backdrop
+  with a dark card backdrop. No sim, network, protocol, timing, hitbox, damage, cooldown or save change.
+- Checks (Node 24.19.0/npm 11.9.0): types pass; full units 689/701 with exactly the 12 recorded baseline names;
+  new `tests/draft-screen.test.ts` (7: rows, timeline inside the reveal, own/other markup + escaping, taken slot
+  and spotlight gating, look/reach accuracy and bone lengths, dead-picker staging) and the kill-cam hold test
+  pass; `tests/killcam-network.ts` passes (87 snapshots); Vite build passes. Independent review (3 lenses)
+  found the row clipping the flying card, arrow keys swallowed for dead pickers, dead-picker posing, gaze before
+  IK, per-pick hand latch, contact-sound dedupe, light-count shader hitch, reduced motion, online clock and
+  row scroll reset; all fixed here.
+- Rendered (headless Chromium/SwiftShader, sandbox draft preview): 1-12 offers at 1920x1080, 1366x768,
+  1280x720, 960x540, 844x390 and 390x844; hover look-at; grab with either hand; spotlight hand-off; a guest
+  watching a host's pick in a real WebSocket test room. `docs/chip-arena-draft-stage.jpg`.
+- Not verified: native Windows/GPU frame pacing (software GL), exclusive-tier (Mishima/Ansatsuken/L44T/Siren)
+  grabs, audio levels, two-PC play. Hover is local only (other viewers see the scan, as before no protocol).
+  `tools/chip-lab` still renders the old panel markup.
+
 ## 2026-10-02 — Claude — owner-requested kill-cam test-channel publication
 
 - Owner asked to publish the merged kill-cam work to the existing test Update channel.
