@@ -177,6 +177,9 @@ test('respawnAll revives dead connected members on a pad with no add within 4 m;
   for(const p of [h1,bot]){const pos=p.body.translation();assert.ok(PVE_LAYOUT.pads.some(q=>Math.hypot(q.x-pos.x,q.z-pos.z)<1e-6),'on a pad');
    for(const a of horde.adds())assert.ok(Math.hypot(a.pos.x-pos.x,a.pos.z-pos.z)>4);assert.equal(p.hp,p.stats.hp*PVE.respawnHpFraction);assert.equal(s.pve!.untouchable(p),true);}
   assert.ok(!(s.chaos as unknown as {used:Set<string>}).used.has('h1:exit'),'second-chance can fire again');
+  // Living members' once-keys reset too (D37), without reviving them.
+  const used=(s.chaos as unknown as {used:Set<string>}).used;used.add('h1:panic');econ.respawnAll('phase');assert.ok(!used.has('h1:panic'));
+  assert.equal(events(s,PVE_EVENT.respawn).filter(e=>e.message==='phase').length,0,'nobody was down');
   assert.equal(events(s,PVE_EVENT.respawn).filter(e=>e.message==='wave').length,2);
   assert.equal(econ.partyView('party-bot-1').picks.filter(k=>k.source==='wave'&&k.tier==='common').length,1,'party bot wave pick');
  }finally{s.dispose();}

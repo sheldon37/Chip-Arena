@@ -178,6 +178,8 @@ export class Economy implements EconomyApi{
    const from=p.death?.pos??p.body.translation(),pad=respawnPad(from,adds,PVE.respawnClearRadius,taken);taken.push(pad);
    this.revive(p,pad,PVE_EVENT.respawn,{message:reason});
   }
+  // D37: once-per-round chip keys reset for the whole party at every wave clear and boss phase (revives reset them in onRevive).
+  for(const p of this.host.party()){this.sim.chaos.forget(p.id+':exit');this.sim.chaos.forget(p.id+':panic');}
   if(reason==='wave')for(const b of this.host.partyBots())this.grantPick(b.id,'common','wave');
  }
  pendingRevive(){for(const r of this.rows.values())if(r.selfReviveAt!==undefined&&(this.player(r.id)?.hp??1)<=0)return true;return false;}
