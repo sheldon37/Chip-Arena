@@ -1,0 +1,281 @@
+/* PvE TEST BOSS (design §7). Everything PvE lives here; style.css and match-hud.css are not edited. HUD rules are scoped to
+   body.pve (main.ts toggles it while a PvE snapshot is on the game screen). Siren palette: lavender #b7a8ff on black. */
+
+/* ---- Home and picker ---- */
+.menu-list .btn:nth-child(4){animation-delay:.12s}
+.pve-boss-options{grid-template-columns:repeat(2,minmax(0,1fr))}
+.pve-boss-card{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-height:132px;overflow:hidden;text-align:left;padding:14px 16px;border-radius:var(--r-md,10px);border:1px solid #ffffff1c;background:#13141a}
+.pve-boss-card.active{border-color:#b7a8ff99;background:radial-gradient(120% 90% at 85% 110%,#3a2166 0%,#160d27 48%,#0b0910 80%);box-shadow:0 0 0 1px #000,0 0 26px #7d5cff33}
+.pve-boss-card strong{font-size:18px;letter-spacing:.01em;color:#f3f0ff;position:relative;z-index:1}
+.pve-boss-card small{font-size:11px;line-height:1.45;color:#c9bfff;letter-spacing:.06em;text-transform:uppercase;position:relative;z-index:1;max-width:24ch}
+.pve-boss-face{display:block;width:118px;height:62px;margin:0 0 4px -4px;position:relative;z-index:1}
+.pve-boss-face svg{width:100%;height:100%;display:block}
+.pve-boss-card .siren-face .siren-eye,.pve-boss-card .siren-face .siren-grin,.pve-lobby-rules .siren-face .siren-eye,.pve-lobby-rules .siren-face .siren-grin{fill:#f6f3ff}
+.pve-boss-card .siren-face .siren-teeth,.pve-lobby-rules .siren-face .siren-teeth{fill:none;stroke:#050409;stroke-width:3.4}
+.pve-boss-card.active .pve-boss-face{filter:drop-shadow(0 0 12px #b7a8ff88);animation:pve-face-breathe 3.6s ease-in-out infinite}
+.pve-boss-card.soon{opacity:.45;justify-content:center;border-style:dashed;cursor:default}
+.pve-boss-card.soon .pve-boss-face{width:34px;height:34px;color:#8a8f98}
+.pve-picker-options{margin-top:18px;padding:12px 14px;border:1px solid #ffffff14;border-radius:var(--r-md,10px);background:#0f1015}
+.pve-picker-options .settings-row{margin:6px 0}
+.pve-picker kbd,.pve-lobby kbd{font:11px var(--font-mono,monospace);padding:1px 5px;border:1px solid #ffffff2a;border-radius:4px;color:#e7e7ea}
+@keyframes pve-face-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+.pve-boss-face.small{width:96px;height:52px;margin:6px 0}
+.pve-needs-update{margin:6px 0 0;font-size:11px;color:#ffb15c;text-align:center}
+
+/* ---- HUD (body.pve) ---- */
+body.pve .match-tools [data-action=scores]{display:none}
+body.pve .death-announcement{top:110px}
+body.pve .notice{top:150px}
+@media(max-width:580px){body.pve .death-announcement{top:130px}}
+.pve-money{position:absolute;top:18px;left:20px;display:flex;align-items:center;gap:8px;padding:6px 14px 6px 8px;border-radius:999px;background:#101219c4;border:1px solid #ffd36a40;box-shadow:0 0 18px #ffb84a14;font:700 20px/1 var(--font-mono,monospace);color:#ffe7a6;text-shadow:0 1px 2px #000}
+.pve-money-icon{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9a8,#e6a52e 65%,#9c6510);color:#3b2604;font:800 14px/1 var(--font-ui,system-ui);text-shadow:none;box-shadow:0 0 0 1px #00000080}
+.pve-money-gains{position:absolute;left:44px;top:100%;width:160px;height:0;pointer-events:none}
+.pve-gain{position:absolute;left:0;top:4px;font:800 17px/1 var(--font-mono,monospace);color:#8ff0a4;text-shadow:0 1px 2px #000,0 0 10px #2fd05a66;opacity:0;animation:pve-gain 1.6s cubic-bezier(.2,.8,.2,1) var(--gain-delay,0s) both}
+.pve-gain.spend{color:#ff8a7a;text-shadow:0 1px 2px #000,0 0 10px #ff3b2f55}
+@keyframes pve-gain{0%{opacity:0;transform:translateY(-6px) scale(.8)}12%{opacity:1;transform:translateY(6px) scale(1.12)}22%{transform:translateY(8px) scale(1)}80%{opacity:1}100%{opacity:0;transform:translateY(46px)}}
+.pve-heading{position:absolute;top:16px;left:50%;transform:translateX(-50%);min-width:220px;padding:8px 18px 9px;border-radius:12px;background:#101219c4;border:1px solid #ffffff1c;text-align:center;color:#e8e9ef}
+.pve-heading small{display:block;font:600 10px/1.4 var(--font-mono,monospace);letter-spacing:.22em;color:#a9adbd}
+.pve-heading strong{display:block;font:800 20px/1.15 var(--font-ui,system-ui);letter-spacing:.02em;text-transform:uppercase}
+.pve-heading strong span{font:600 14px var(--font-mono,monospace);color:#ffb15c;margin-left:6px;text-transform:none}
+.pve-heading em{display:block;font-style:normal;font-size:11px;color:#b9bcc8;margin-top:2px}
+.pve-heading[data-stage=wave] strong span{color:#aeb2c0}
+.pve-wave-progress{display:block;height:3px;margin-top:6px;border-radius:2px;background:#ffffff14;overflow:hidden}
+.pve-wave-progress b{display:block;height:100%;background:linear-gradient(90deg,#ff6b35,#ffb15c);transition:width .4s ease-out}
+
+.pve-boss-bar{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:min(620px,58vw);padding:8px 14px 9px;border-radius:12px;background:linear-gradient(180deg,#0d0a16e6,#08070ccc);border:1px solid #b7a8ff40;box-shadow:0 0 0 1px #000,0 10px 30px #0008,0 0 30px #7d5cff22;color:#efeaff}
+.pve-boss-name{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:6px}
+.pve-boss-title{position:relative;font:900 17px/1 var(--font-ui,system-ui);letter-spacing:.32em;color:#f6f3ff;text-shadow:0 0 12px #b7a8ff88}
+.pve-boss-title:before,.pve-boss-title:after{content:attr(data-glitch);position:absolute;inset:0;opacity:0;pointer-events:none}
+.pve-boss-title:before{color:#ff2d55;animation:siren-split-a 4.2s steps(1,end) infinite}
+.pve-boss-title:after{color:#2de2ff;animation:siren-split-b 4.2s steps(1,end) -1.3s infinite}
+.pve-boss-name small{font:600 10px var(--font-mono,monospace);letter-spacing:.2em;color:#b9b0e6}
+.pve-boss-track{position:relative;height:14px;border-radius:4px;background:#1b1626;border:1px solid #000;box-shadow:inset 0 0 0 1px #b7a8ff22;overflow:hidden}
+.pve-boss-fill,.pve-boss-lag{position:absolute;left:0;top:0;bottom:0}
+.pve-boss-fill{background:linear-gradient(180deg,#d9d0ff,#8f73ff 45%,#5a3fd1);box-shadow:inset 0 -2px 0 #2e1f7a,0 0 12px #9b87ff88;transition:width .12s linear}
+.pve-boss-lag{background:#ff6b8a;opacity:.85;transition:width .6s cubic-bezier(.4,0,.2,1) .35s}
+.pve-boss-floor{position:absolute;top:-2px;bottom:-2px;width:2px;margin-left:-1px;background:#f6f3ff;box-shadow:0 0 6px #fff;opacity:.55}
+.pve-boss-bar[data-locked="1"] .pve-boss-floor{opacity:1;animation:pve-floor-shimmer .7s ease-in-out infinite alternate}
+.pve-boss-bar[data-locked="1"] .pve-boss-track{box-shadow:inset 0 0 0 1px #f6f3ff66,0 0 14px #b7a8ff66}
+@keyframes pve-floor-shimmer{from{opacity:.45;box-shadow:0 0 4px #fff}to{opacity:1;box-shadow:0 0 14px #fff,0 0 22px #b7a8ff}}
+.pve-notch{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:#000c;box-shadow:1px 0 0 #ffffff24}
+.pve-notch.passed{background:#00000066}
+.pve-boss-meta{display:flex;justify-content:space-between;align-items:center;margin-top:6px;font:600 11px var(--font-mono,monospace);letter-spacing:.06em;color:#cfc8f2}
+.pve-boss-chips{display:flex;gap:4px}
+.pve-boss-chip{display:grid;place-items:center;width:20px;height:20px;border-radius:5px;border:1px solid #b7a8ff33;background:#0a0810;color:#6f6790;font:700 11px var(--font-mono,monospace)}
+.pve-boss-chip.on{color:#f3efff;border-color:#b7a8ffaa;background:radial-gradient(circle,#2d2244,#050409 75%);box-shadow:0 0 8px #9b87ff66}
+.pve-boss-chip .game-icon{width:13px;height:13px}
+.pve-boss-bar[data-hidden="1"]{border-color:#b7a8ff88;animation:pve-hidden-pulse 1.6s ease-in-out infinite}
+.pve-boss-bar[data-hidden="1"] .pve-boss-fill{filter:saturate(.2) brightness(.6)}
+.pve-boss-bar[data-hidden="1"] .pve-boss-meta>span:first-child{color:#f6f3ff;letter-spacing:.18em}
+@keyframes pve-hidden-pulse{0%,100%{box-shadow:0 0 0 1px #000,0 0 16px #7d5cff22}50%{box-shadow:0 0 0 1px #000,0 0 30px #9b87ff66}}
+
+.pve-party{position:absolute;left:24px;bottom:186px;width:224px;padding:8px 10px 6px;border-radius:10px;background:#101219b0;border:1px solid #ffffff18;color:#e6e7ee}
+.pve-party-title{display:flex;align-items:center;gap:6px;margin-bottom:6px;font:600 10px var(--font-mono,monospace);letter-spacing:.22em;color:#9fa3b3}
+.pve-party-title .game-icon{width:12px;height:12px}
+.pve-member{padding:5px 0 6px;border-top:1px solid #ffffff0f}
+.pve-member:first-of-type{border-top:0;padding-top:0}
+.pve-member-line{display:flex;align-items:center;gap:6px;font-size:12px;line-height:1.3}
+.pve-member-line strong{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.pve-member-dot{width:8px;height:8px;border-radius:2px;background:var(--member-color);box-shadow:0 0 6px var(--member-color);flex:none}
+.pve-tag{font:700 9px var(--font-mono,monospace);font-style:normal;letter-spacing:.12em;padding:1px 4px;border-radius:3px;background:#ffffff14;color:#b8bccb}
+.pve-tag.you{background:#ff6b3526;color:#ffb38f}
+.pve-member-chip{display:grid;place-items:center;color:#9fe0ff;animation:pve-thinking 1.2s ease-in-out infinite}
+.pve-member-chip .game-icon{width:13px;height:13px}
+@keyframes pve-thinking{0%,100%{opacity:.55}50%{opacity:1;filter:drop-shadow(0 0 4px #6fd3ff)}}
+.pve-member-hpnum{font:600 11px var(--font-mono,monospace);color:#cfd2dc;min-width:26px;text-align:right}
+.pve-hp{display:block;height:5px;margin-top:4px;border-radius:3px;background:#ffffff14;overflow:hidden}
+.pve-hp b{display:block;height:100%;background:#59dd83;transition:width .2s ease-out}
+.pve-member[data-me="1"] .pve-hp b{background:#7cf0a0}
+.pve-member-status,.pve-member-hint{display:flex;align-items:center;gap:5px;margin-top:4px;font:600 10px/1.3 var(--font-mono,monospace);letter-spacing:.04em;color:#c3c6d3}
+.pve-member-status .game-icon{width:12px;height:12px;flex:none}
+.pve-member-status.choosing{color:#9fe0ff}
+.pve-member-hint{margin-top:2px;font-weight:400;color:#8f93a3}
+.pve-member[data-down="1"] .pve-member-line strong{color:#9a9daa;text-decoration:line-through;text-decoration-color:#ff535f99}
+.pve-member[data-down="1"] .pve-member-dot{background:#3a3c46;box-shadow:none}
+.pve-member[data-down="1"] .pve-member-status{color:#ff7a84}
+.pve-member[data-down="1"] .pve-hp{background:repeating-linear-gradient(135deg,#ff535f24 0 4px,transparent 4px 8px)}
+.pve-recruit{display:flex;align-items:center;gap:5px;margin:4px 0 0 14px;font:600 9px var(--font-mono,monospace);letter-spacing:.1em;color:#aeb3c3}
+.pve-recruit .game-icon{width:11px;height:11px}
+.pve-recruit[data-role=medic]{color:#9ff0b8}.pve-recruit[data-role=tank]{color:#9fc8ff}.pve-recruit[data-role=dps]{color:#ffc39f}
+.pve-recruit .pve-hp.mini{flex:1;height:3px;margin:0}
+.pve-recruit[data-down="1"]{opacity:.45}
+
+.pve-chip-pending{position:absolute;right:24px;bottom:94px;display:flex;align-items:center;gap:7px;padding:7px 10px 7px 9px;border-radius:999px;pointer-events:auto;cursor:pointer;background:#101219d6;border:1px solid color-mix(in srgb,var(--tier) 70%,#000);color:#eef0f6;font:700 11px var(--font-mono,monospace);letter-spacing:.12em;box-shadow:0 0 14px color-mix(in srgb,var(--tier) 30%,transparent)}
+.pve-chip-pending .game-icon{width:16px;height:16px;color:var(--tier)}
+.pve-chip-pending b{display:grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--tier);color:#0b0c10;font-size:11px;letter-spacing:0}
+.pve-chip-pending kbd{font:600 10px var(--font-mono,monospace);padding:1px 5px;border:1px solid #ffffff30;border-radius:4px;color:#c9ccd8}
+.pve-chip-pending[data-tier=rainbow]{border-color:#fff;animation:pve-rainbow-border 2.4s linear infinite}
+.pve-chip-pending.fresh{animation:pve-pending-pulse 1s ease-in-out infinite}
+.pve-chip-pending:hover{background:#1c1e28}
+@keyframes pve-pending-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07);box-shadow:0 0 24px var(--tier)}}
+@keyframes pve-rainbow-border{0%{filter:hue-rotate(0)}100%{filter:hue-rotate(360deg)}}
+
+.pve-prompt{position:absolute;left:50%;top:calc(50% + 46px);transform:translateX(-50%);display:flex;align-items:center;gap:9px;padding:7px 14px 7px 8px;border-radius:999px;background:#0d0f16d9;border:1px solid #ffffff26;color:#f1f2f6;font:600 13px var(--font-ui,system-ui);white-space:nowrap;text-shadow:0 1px 2px #000}
+.pve-prompt kbd{display:grid;place-items:center;min-width:24px;height:22px;padding:0 6px;border-radius:5px;background:#f1f2f6;color:#101114;font:800 11px var(--font-mono,monospace);text-shadow:none}
+.pve-prompt em{font-style:normal;font-size:11px;color:#ff8a7a}
+.pve-prompt[data-afford="0"]{border-color:#ff535f55}
+.pve-prompt[data-afford="0"] kbd{background:#5b5e6b;color:#d9dbe3}
+.pve-prompt[data-prompt=revive],.pve-prompt[data-prompt=channel]{border-color:#59dd8366}
+.pve-prompt-ring{width:26px;height:26px;transform:rotate(-90deg)}
+.pve-prompt-ring circle{fill:none;stroke:#ffffff22;stroke-width:3.5}
+.pve-prompt-ring circle.fill{stroke:#59dd83;stroke-dasharray:94.25;transition:stroke-dashoffset .1s linear}
+
+.pve-banner{position:absolute;left:50%;top:24%;transform:translateX(-50%);text-align:center;pointer-events:none;white-space:nowrap;animation:pve-banner var(--banner-duration,2.6s) cubic-bezier(.2,.8,.2,1) var(--banner-delay,0s) both}
+.pve-banner strong{position:relative;display:block;font:900 clamp(30px,4.6vw,64px)/1 var(--font-ui,system-ui);letter-spacing:.06em;text-transform:uppercase;color:#fff;text-shadow:0 2px 0 #000,0 0 30px #ff6b3566}
+.pve-banner span{display:inline-block;margin-top:10px;padding:4px 12px;border-radius:999px;background:#0b0c12c7;font:600 13px var(--font-mono,monospace);letter-spacing:.14em;color:#ffcfae;text-transform:uppercase}
+.pve-banner[data-tone=clear] strong{color:#b6ffc8;text-shadow:0 2px 0 #000,0 0 30px #59dd8366}
+.pve-banner[data-tone=clear] span{color:#9ff0b8}
+.pve-banner[data-tone=boss] strong,.pve-banner[data-tone=phase] strong,.pve-banner[data-tone=found] strong{color:#f6f3ff;text-transform:none;letter-spacing:.04em;text-shadow:0 2px 0 #000,0 0 26px #9b87ffcc,0 0 60px #7d5cff88}
+.pve-banner[data-tone=boss] strong{font-size:clamp(34px,5.4vw,76px)}
+.pve-banner[data-tone=boss] strong:before,.pve-banner[data-tone=boss] strong:after,.pve-banner[data-tone=phase] strong:before,.pve-banner[data-tone=phase] strong:after{content:attr(data-glitch);position:absolute;inset:0;opacity:0}
+.pve-banner[data-tone=boss] strong:before,.pve-banner[data-tone=phase] strong:before{color:#ff2d55;animation:siren-split-a 1.6s steps(1,end) -1s infinite}
+.pve-banner[data-tone=boss] strong:after,.pve-banner[data-tone=phase] strong:after{color:#2de2ff;animation:siren-split-b 1.6s steps(1,end) -1.1s infinite}
+.pve-banner[data-tone=boss] span,.pve-banner[data-tone=phase] span{color:#d9d0ff}
+.pve-banner[data-tone=deny]{top:calc(50% + 86px)}
+.pve-banner[data-tone=deny] strong{font-size:18px;letter-spacing:.16em;color:#ff8a7a;text-shadow:0 1px 2px #000}
+.pve-banner[data-tone=respawn] strong{color:#b6ffc8}
+.pve-banner[data-tone=victory] strong{color:#ffe7a6;text-shadow:0 2px 0 #000,0 0 40px #ffb84a99}
+.pve-banner[data-tone=defeat] strong{color:#ff8a7a;text-shadow:0 2px 0 #000,0 0 40px #ff353599}
+@keyframes pve-banner{0%{opacity:0;transform:translateX(-50%) scale(1.25);filter:blur(8px)}10%{opacity:1;transform:translateX(-50%) scale(1);filter:none}82%{opacity:1;transform:translateX(-50%)}100%{opacity:0;transform:translateX(-50%) translateY(-12px)}}
+
+.pve-possess-arrow{position:absolute;left:50%;top:50%;width:0;height:0;transform:rotate(var(--arrow-angle));pointer-events:none;animation:pve-arrow-in 1.2s ease-out both}
+.pve-possess-arrow i{position:absolute;left:-14px;top:-190px;width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:24px solid #d9d0ff;filter:drop-shadow(0 0 10px #9b87ff)}
+.pve-possess-arrow span{position:absolute;left:-80px;top:-160px;width:160px;text-align:center;font:italic 700 13px var(--font-ui,system-ui);color:#e9e3ff;text-shadow:0 0 8px #7d5cff,0 1px 2px #000}
+@keyframes pve-arrow-in{0%{opacity:0}15%,75%{opacity:1}100%{opacity:0}}
+
+@media(max-width:850px){.pve-money{left:14px}.pve-party{left:14px;bottom:176px;width:195px}.pve-chip-pending{right:14px;bottom:86px}.pve-boss-bar{width:min(520px,64vw)}}
+@media(max-width:580px){.pve-money{top:12px;font-size:16px}.pve-heading{top:56px;min-width:0;padding:6px 12px}.pve-heading strong{font-size:16px}.pve-boss-bar{top:56px;width:calc(100vw - 28px)}.pve-party{width:168px;bottom:156px;padding:6px 8px}}
+@media(max-height:480px){.pve-party{left:auto;right:14px;bottom:auto;top:56px;width:180px;max-height:calc(100vh - 160px);overflow:hidden}.pve-member-hint{display:none}.pve-heading,.pve-boss-bar{top:10px}.pve-money{top:10px}.pve-banner{top:20%}.pve-banner strong{font-size:30px}body.pve .death-announcement{top:60px}body.pve .notice{top:96px}}
+@media(min-height:1000px){.pve-money,.pve-heading,.pve-boss-bar,.pve-party,.pve-chip-pending,.pve-prompt{zoom:1.2}}
+@media(min-height:1300px){.pve-money,.pve-heading,.pve-boss-bar,.pve-party,.pve-chip-pending,.pve-prompt{zoom:1.45}}
+
+/* ---- Personal chip screen (#pve-chips). The arena stays visible behind it: the player is vulnerable. ---- */
+.pve-chips{position:absolute;inset:0;z-index:38;pointer-events:auto;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(ellipse at 50% 55%,#07091099,#070910d9 70%)}
+.pve-chips.hidden{display:none}
+.pve-chip-screen{position:relative;width:min(1180px,100%);max-height:100%;overflow:auto;padding:20px 22px 16px;border-radius:16px;background:#111219e6;border:1px solid color-mix(in srgb,var(--tier) 45%,#ffffff1a);box-shadow:0 30px 80px #000b,0 0 40px color-mix(in srgb,var(--tier) 18%,transparent);backdrop-filter:blur(4px)}
+.pve-chip-screen.rainbow{border:2px solid #ff4d6d;animation:pve-rainbow-border 3s linear infinite}
+.pve-chip-head{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin-bottom:10px}
+.pve-chip-head h2{margin:2px 0 0;font:800 26px/1.1 var(--font-ui,system-ui);letter-spacing:.01em}
+.pve-chip-head .eyebrow{color:var(--tier)}
+.pve-chip-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;font:600 11px var(--font-mono,monospace);letter-spacing:.08em;color:#a8abb9;text-transform:uppercase}
+.pve-chip-queue{padding:2px 8px;border-radius:999px;background:#ff6b3522;color:#ffb38f}
+.pve-chip-cards{display:grid;grid-template-columns:repeat(var(--cols,3),minmax(0,1fr));gap:16px;padding:6px 2px 4px}
+.pve-chip-cards[data-count="1"],.pve-chip-cards[data-count="2"]{--cols:2;max-width:560px;margin:auto}
+.pve-chip-cards[data-count="4"],.pve-chip-cards[data-count="7"],.pve-chip-cards[data-count="8"]{--cols:4}
+.pve-chip-cards[data-count="5"],.pve-chip-cards[data-count="6"],.pve-chip-cards[data-count="9"]{--cols:3}
+.pve-card-slot{position:relative}
+.pve-card-slot>kbd{position:absolute;top:-7px;left:-7px;z-index:5;display:grid;place-items:center;width:22px;height:22px;border-radius:6px;background:#f1f2f6;color:#0f1015;font:800 12px var(--font-mono,monospace);box-shadow:0 2px 6px #000a}
+.pve-card-slot>.circuit-chip{width:100%;min-height:200px}
+.pve-chip-rolling{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:10px;min-height:180px;color:#a8abb9;font:600 13px var(--font-mono,monospace);letter-spacing:.1em}
+.pve-chip-rolling .game-icon{width:22px;height:22px;animation:pve-thinking 1s ease-in-out infinite}
+.pve-chip-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}
+.pve-chip-foot kbd{font:600 10px var(--font-mono,monospace);padding:1px 5px;border:1px solid #ffffff30;border-radius:4px;color:#d7d9e2;margin-left:4px}
+.pve-later{display:flex;align-items:center;gap:6px}
+.pve-chip-vignette{position:fixed;inset:0;pointer-events:none;opacity:0;box-shadow:inset 0 0 0 4px #ff2b3d,inset 0 0 120px 30px #ff1f3399}
+.pve-chip-screen[data-attacked="1"]{border-color:#ff3b4b}
+.pve-chip-screen[data-attacked="1"] .pve-chip-vignette{animation:pve-attacked .25s steps(2,jump-none) infinite}
+@keyframes pve-attacked{0%{opacity:1}100%{opacity:.15}}
+.pve-alarm-slot:empty{display:none}
+.pve-alarm{display:flex;align-items:center;gap:10px;margin:0 0 10px;padding:8px 12px;border-radius:8px;background:#3a0b12;border:1px solid #ff3b4b;color:#ffd5d9;animation:pve-alarm-blink .25s steps(2,jump-none) infinite}
+.pve-alarm strong{font:800 14px var(--font-mono,monospace);letter-spacing:.14em;color:#fff}
+.pve-alarm span{margin-left:auto;font-size:12px;color:#ffb3ba}
+.pve-alarm .game-icon{width:18px;height:18px;color:#ff6b78}
+@keyframes pve-alarm-blink{0%{background:#5a0d18}100%{background:#2a070c}}
+@media(max-width:850px){.pve-chip-cards[data-count="4"],.pve-chip-cards[data-count="5"],.pve-chip-cards[data-count="6"],.pve-chip-cards[data-count="7"],.pve-chip-cards[data-count="8"],.pve-chip-cards[data-count="9"]{--cols:3}.pve-card-slot>.circuit-chip{min-height:180px}}
+@media(max-height:480px){.pve-chips{padding:8px}.pve-chip-screen{padding:10px 12px}.pve-chip-head h2{font-size:18px}.pve-chip-meta span:last-child{display:none}.pve-chip-cards{--cols:6!important;gap:8px}.pve-card-slot>.circuit-chip{min-height:0;padding:7px}.pve-card-slot>.circuit-chip p,.pve-card-slot .chip-footer{display:none}.pve-card-slot .circuit-chip strong{font-size:14px}.pve-alarm{padding:5px 8px;margin-bottom:6px}.pve-alarm span{display:none}.pve-chip-foot{margin-top:6px}}
+@media(max-width:580px){.pve-chip-cards{--cols:2!important}}
+
+/* ---- The Siren's chip reveal (#pve-reveal), above the HUD for everyone ---- */
+.pve-reveal-root:empty{display:none}
+.pve-reveal{position:fixed;inset:0;z-index:45;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;overflow:hidden;background:radial-gradient(ellipse at 50% 100%,#2b1652f2,#07050cf7 58%,#020103fb);color:#f3efff}
+.pve-reveal[data-window=smile]{background:#020103}
+.pve-smile{position:absolute;inset:0}
+.pve-reveal-backdrop{position:absolute;inset:0;z-index:-1;opacity:.55;--selection-duration:6s;--selection-delay:-1.4s}
+.pve-reveal-backdrop .siren-stare{opacity:.35;animation:none;top:30%}
+.pve-reveal-head .eyebrow{font:700 12px var(--font-mono,monospace);letter-spacing:.32em;color:#c9bfff;text-shadow:0 0 12px #7d5cff}
+.pve-reveal-spotlight{max-width:min(880px,92vw);text-align:center;animation:pve-spot-in .7s cubic-bezier(.16,.8,.22,1) var(--reveal-age,0s) both}
+.pve-reveal-spotlight strong{position:relative;display:inline-block;font:900 clamp(34px,5.6vw,84px)/1 var(--font-chip,var(--font-ui));font-stretch:87.5%;letter-spacing:.01em;color:#f6f3ff;text-shadow:0 0 30px #9b87ffcc,0 4px 0 #000}
+.pve-reveal-spotlight strong:before,.pve-reveal-spotlight strong:after{content:attr(data-glitch);position:absolute;inset:0;opacity:0}
+.pve-reveal-spotlight strong:before{color:#ff2d55;animation:siren-split-a 1.8s steps(1,end) -1.1s infinite}
+.pve-reveal-spotlight strong:after{color:#2de2ff;animation:siren-split-b 1.8s steps(1,end) -1.2s infinite}
+.pve-reveal-spotlight p{margin:12px auto 0;max-width:62ch;font:500 clamp(15px,1.5vw,20px)/1.45 var(--font-ui,system-ui);color:#ddd6fb;text-shadow:0 1px 3px #000}
+@keyframes pve-spot-in{0%{opacity:0;transform:scaleY(.04) scaleX(1.2)}12%{opacity:1;transform:scaleY(.04)}30%{transform:scaleY(1.05)}40%{transform:translateX(-8px)}48%{transform:translateX(6px)}56%,100%{opacity:1;transform:none}}
+.pve-reveal-tray{display:grid;grid-template-columns:repeat(4,minmax(0,210px));gap:16px;justify-content:center;width:100%}
+.pve-reveal-slot>.circuit-chip{width:100%;min-height:236px}
+.pve-reveal-slot.done>.circuit-chip{opacity:.8;filter:saturate(.7)}
+.pve-reveal-slot.pve-boot>.circuit-chip{box-shadow:0 0 0 1px #b7a8ff99,0 0 60px #7d5cff99,0 20px 60px #000}
+.pve-locked-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:236px;height:100%;border-radius:9px;border:1px dashed #b7a8ff55;background:repeating-linear-gradient(135deg,#0d0a14 0 10px,#0a0810 10px 20px);box-shadow:inset 0 0 30px #000}
+.pve-locked-card span{font:900 54px/1 var(--font-chip,var(--font-ui));letter-spacing:.08em;color:#4e4470;text-shadow:0 0 18px #7d5cff55;animation:pve-locked 2.2s ease-in-out infinite}
+.pve-locked-card small{font:600 11px var(--font-mono,monospace);letter-spacing:.2em;color:#6f6790}
+@keyframes pve-locked{0%,100%{opacity:.7}50%{opacity:1;color:#6d5fb0}}
+.pve-reveal[data-window=fade]{animation:pve-reveal-fade .4s linear var(--fade-delay,0s) both}
+@keyframes pve-reveal-fade{to{opacity:0}}
+@media(max-width:850px){.pve-reveal-tray{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.pve-reveal-slot>.circuit-chip,.pve-locked-card{min-height:170px}.pve-reveal-slot .circuit-chip p,.pve-reveal-slot .chip-footer{display:none}}
+@media(max-height:480px){.pve-reveal{gap:8px;padding:10px}.pve-reveal-spotlight strong{font-size:30px}.pve-reveal-spotlight p{font-size:13px;margin-top:6px}.pve-reveal-tray{grid-template-columns:repeat(4,minmax(0,150px))}.pve-reveal-slot>.circuit-chip,.pve-locked-card{min-height:118px;padding:6px}.pve-reveal-slot .circuit-chip strong{font-size:13px}.pve-locked-card span{font-size:30px}}
+
+/* ---- THE SIREN: the animated boss name in the mid-fight intro (§6.3) ---- */
+.intro-overlay[data-style=pve-boss]{background:linear-gradient(#020103dd,transparent 20%,transparent 60%,#020103f5)}
+.intro-overlay[data-style=pve-boss] .intro-topline{border-bottom-color:#b7a8ff40;color:#d9d0ff}
+.intro-overlay[data-style=pve-boss] .intro-topline>span:last-of-type{color:#c9bfff;letter-spacing:.42em}
+.intro-overlay[data-style=pve-boss] .intro-progress{background:linear-gradient(90deg,#7d5cff,#f6f3ff)}
+.intro-overlay[data-style=pve-boss] .intro-name small{color:#c9bfff;letter-spacing:.5em}
+.siren-title-flames{position:absolute;left:50%;bottom:-6vh;width:min(1100px,110vw);height:34vh;transform:translateX(-50%);opacity:0;z-index:-1;animation:siren-title-flames 1.1s cubic-bezier(.2,.8,.2,1) var(--name-delay,1e4s) both}
+.siren-title-flames .siren-flames{width:100%;height:100%}
+.intro-name strong.siren-title{position:relative;display:block;margin:6px 0 4px;font:900 clamp(54px,10vw,150px)/.95 var(--font-chip,var(--font-ui));font-stretch:80%;letter-spacing:.06em;color:#f6f3ff;text-shadow:0 0 34px #9b87ffcc,0 6px 0 #000,0 0 90px #7d5cff99;animation:siren-title-jolt 2.4s steps(1,end) calc(var(--name-delay,1e4s) + 1.2s) infinite}
+.siren-title i{display:inline-block;font-style:normal;opacity:0;animation:siren-letter-in .7s cubic-bezier(.16,.84,.24,1) calc(var(--name-delay,1e4s) + var(--i) * 60ms) both}
+.siren-title i.gap{width:.3em}
+.siren-title:before,.siren-title:after{content:attr(data-glitch);position:absolute;inset:0;opacity:0;pointer-events:none;letter-spacing:.06em}
+.siren-title:before{color:#ff2d55;animation:siren-split-a 2.4s steps(1,end) calc(var(--name-delay,1e4s) + .9s) infinite}
+.siren-title:after{color:#2de2ff;animation:siren-split-b 2.4s steps(1,end) calc(var(--name-delay,1e4s) + 1s) infinite}
+.siren-title-line{display:block;font:italic 500 14px var(--font-ui,system-ui);letter-spacing:.24em;color:#b9b0e6;text-transform:uppercase}
+@keyframes siren-letter-in{0%{opacity:0;transform:translateY(40%) scaleY(1.8) skewX(-12deg);filter:blur(10px)}40%{opacity:1;filter:blur(0)}55%{transform:translateX(-4px) skewX(8deg)}62%{transform:translateX(3px)}70%,100%{opacity:1;transform:none;filter:none}}
+@keyframes siren-title-jolt{0%,86%,94%,100%{transform:none}87%{transform:translateX(-6px) skewX(-6deg)}89%{transform:translateX(5px)}91%{transform:translateX(-2px) skewX(4deg)}}
+@keyframes siren-title-flames{from{opacity:0;transform:translateX(-50%) translateY(40%)}to{opacity:.9;transform:translateX(-50%)}}
+
+/* ---- PvE lobby and results ---- */
+.pve-lobby .lobby-roster{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.pve-lobby-rules h2{margin:4px 0 0}
+.panel:has(.pve-results){width:min(1180px,calc(100vw - 32px))}
+.pve-results .pve-result-line{margin:0;font:600 13px var(--font-mono,monospace);letter-spacing:.24em;text-transform:uppercase;color:#c9bfff}
+.pve-results[data-outcome=defeat] .pve-result-line{color:#ff8a7a}
+.pve-result-boss{margin:6px 0 0;color:#cfd2dc}
+.pve-result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-top:16px}
+.pve-result{position:relative;display:flex;flex-direction:column;gap:10px;padding:10px;border-radius:12px;background:#121319;border:1px solid #ffffff14}
+.pve-result[data-mvp="1"]{border-color:#ffd36a77;box-shadow:0 0 24px #ffb84a22}
+.pve-result .pilot-card{margin:0}
+.pve-mvp{position:absolute;top:-9px;right:12px;z-index:3;display:flex;align-items:center;gap:4px;padding:2px 9px;border-radius:999px;background:#ffd36a;color:#2a1c02;font:800 11px var(--font-mono,monospace);letter-spacing:.14em}
+.pve-mvp .game-icon{width:12px;height:12px}
+.pve-result-chips{display:flex;flex-wrap:wrap;gap:4px;min-height:24px}
+.pve-result-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border-radius:6px;border:1px solid color-mix(in srgb,var(--rarity) 60%,#000);background:color-mix(in srgb,var(--rarity) 14%,#0d0e12);font-size:11px;color:#e9eaf0}
+.pve-result-chip .game-icon{width:12px;height:12px;color:var(--rarity)}
+.pve-result-chip strong{font-weight:600}
+.pve-result-chip b{font:700 10px var(--font-mono,monospace);color:var(--rarity)}
+.pve-result-nochips{font-size:11px;color:#8f93a3}
+.pve-result-stats{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin:0}
+.pve-result-stats div{display:flex;justify-content:space-between;gap:6px;padding:3px 0;border-bottom:1px solid #ffffff0d}
+.pve-result-stats dt{font-size:11px;color:#9fa3b3}
+.pve-result-stats dd{margin:0;font:700 12px var(--font-mono,monospace);color:#f1f2f6}
+.pve-result-stats dd small{font-weight:400;color:#9fa3b3}
+.pve-result-actions{justify-content:center}
+.pve-retry-votes{align-self:center}
+
+@media(prefers-reduced-motion:reduce){
+ .menu-list .btn:nth-child(4){animation:none}
+ .pve-boss-card.active .pve-boss-face,.pve-member-chip,.pve-chip-rolling .game-icon,.pve-locked-card span{animation:none}
+ .pve-gain{animation:pve-gain-static 1.6s linear var(--gain-delay,0s) both}
+ .pve-boss-title:before,.pve-boss-title:after,.pve-banner strong:before,.pve-banner strong:after,.pve-reveal-spotlight strong:before,.pve-reveal-spotlight strong:after,.siren-title:before,.siren-title:after{animation:none;opacity:0}
+ .pve-boss-bar[data-locked="1"] .pve-boss-floor,.pve-boss-bar[data-hidden="1"]{animation:none}
+ .pve-chip-pending.fresh,.pve-chip-pending[data-tier=rainbow],.pve-chip-screen.rainbow{animation:none}
+ .pve-banner{animation:pve-banner-static var(--banner-duration,2.6s) linear var(--banner-delay,0s) both}
+ .pve-possess-arrow{animation:none}
+ .pve-chip-screen[data-attacked="1"] .pve-chip-vignette{animation:none;opacity:1}
+ .pve-alarm{animation:none}
+ .pve-reveal-spotlight{animation:none}
+ .pve-reveal[data-window=fade]{animation:pve-reveal-fade .01s linear var(--fade-delay,0s) both}
+ .siren-title,.intro-name strong.siren-title{animation:none}
+ .siren-title i{animation:intro-in .2s linear var(--name-delay,1e4s) both}
+ .siren-title-flames{animation:intro-in .2s linear var(--name-delay,1e4s) both}
+ .pve-boss-fill,.pve-boss-lag,.pve-hp b,.pve-wave-progress b{transition:none}
+}
+@keyframes pve-gain-static{0%,90%{opacity:1}100%{opacity:0}}
+@keyframes pve-banner-static{0%,92%{opacity:1}100%{opacity:0}}

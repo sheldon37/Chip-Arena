@@ -1,7 +1,10 @@
 import type {Snapshot,GameEvent} from '../shared/simulation.js';
 import type {ElementId} from '../shared/elements.js';
 import {sameTeam} from '../shared/teams.js';
-export function enemyHit(event:GameEvent,state:Snapshot,me:string){const source=state.players.find(p=>p.id===me),target=state.players.find(p=>p.id===event.target);return event.type==='hit'&&event.source===me&&event.target!==me&&!!target&&(event.amount||0)>0&&!sameTeam(source,target,state.options.gameMode);}
+import {ADD_PREFIX} from '../shared/pve/contract.js';
+export function enemyHit(event:GameEvent,state:Snapshot,me:string){if(event.type==='minionHit')return addHit(event,state,me);const source=state.players.find(p=>p.id===me),target=state.players.find(p=>p.id===event.target);return event.type==='hit'&&event.source===me&&event.target!==me&&!!target&&(event.amount||0)>0&&!sameTeam(source,target,state.options.gameMode);}
+/** PvE: my damage on a Siren add (adds are minions, not players). Never true outside PvE. */
+export function addHit(event:GameEvent,state:Snapshot,me:string){return !!state.pve&&event.type==='minionHit'&&event.source===me&&!!event.target?.startsWith(ADD_PREFIX)&&(event.amount||0)>0;}
 export class HitmarkerTrack {
  last=0;time=-1;generation=-1;at=-10;headshot=false;dot=false;elements:ElementId[]=[];elementAt=-10;
  clear(){this.last=0;this.time=-1;this.generation=-1;this.at=this.elementAt=-10;this.headshot=this.dot=false;this.elements=[];}
