@@ -5,6 +5,8 @@ import {BLACK_SIREN_PROTOCOL as TRACK,barAt,loopedSongTime,sectionAt,type BossSe
 import {SIREN_HALL as H,SIREN_COLUMNS,SIREN_ADD_SPAWNS,SIREN_CHIP_SPOTS,SIREN_VENTS,sirenStageHazards} from '../../shared/siren-stage-layout.js';
 import {FlameField} from './flames.js';
 import {PALETTE,glowMaterial,haloMaterial,decalMaterial,tickSirenClock} from './materials.js';
+import {pveOf,PVE_TIMING,type EntryKind,type PveEntryView} from '../../shared/pve/contract.js';
+import {PVE_ENTRIES} from '../../shared/pve/layout.js';
 
 const clamp=(x:number,a=0,b=1)=>Math.min(b,Math.max(a,x));
 const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
@@ -27,6 +29,21 @@ const MOODS:Record<BossSectionId,Mood>={
  outro:   {tubes:.5, strobe:0, erratic:.5,beacons:.2, spin:.6, grins:.3,eyes:.4,circle:.3,red:.1, night:.5, organ:.35,crowd:.3, sway:.4, thump:.1, fan:.5},
 };
 const KEYS=Object.keys(MOODS.build) as (keyof Mood)[];
+
+/** PvE entries (design §8.4). Ward doors stand in a shallow iron vestibule: the closed leaves sit DOOR_LEAF_D in front of
+ *  the wall face, so an add waiting at its walk start (PVE_ENTRIES door `from`, 0.7 m from the wall) is hidden behind
+ *  them until they swing into the hall. Hinges are DOOR_HINGE either side of the door centre. */
+export const DOOR_LEAF_D=1.2,DOOR_HINGE=1.48,DOOR_LEAF_W=1.42,DOOR_SWING=1.75,VENT_HINGE=-1.12,VENT_SWING=1.95,CELL_STUB=.45/3.45;
+/** Seconds each entry takes to close again after `closeAt`. */
+export const ENTRY_CLOSE:Record<EntryKind,number>={vent:.4,door:.7,cell:.6};
+const smooth=(x:number)=>{x=clamp(x);return x*x*(3-2*x);};
+/** When an entry starts to open: a climbing add's hands reach the grate at `openAt+vent.push`; a diving add pulls it at `openAt`. */
+export function entryStart(kind:EntryKind,v:Pick<PveEntryView,'openAt'|'mode'>){return kind==='vent'&&v.mode==='spawn'?v.openAt+PVE_TIMING.vent.push:v.openAt;}
+/** Open amount 0..1 of an entry at time t: o(t)=smooth((t−start)/T_open)·(1−smooth((t−closeAt)/T_close)). Pure in time. */
+export function entryOpenAmount(kind:EntryKind,v:PveEntryView|undefined,t:number){
+ if(!v)return 0;const open=kind==='vent'?PVE_TIMING.vent.open:kind==='door'?PVE_TIMING.door.open:PVE_TIMING.cell.open;
+ return smooth((t-entryStart(kind,v))/open)*(1-smooth((t-v.closeAt)/ENTRY_CLOSE[kind]));
+}
 
 /** The four walls as frames: u runs along the wall, d is the distance into the hall, and the frame's yaw faces the hall.
  * Dressing on a wall is grouped by side so a camera outside the hall (the menu overview) sees a cut-away, not a box. */
@@ -103,7 +120,8 @@ export class WardZeroVisuals {
  private beacons:{head:T.Group;beam:T.Mesh;lamp:T.ShaderMaterial;spot?:T.SpotLight;phase:number;angle:number}[]=[];
  private grins:{mat:T.ShaderMaterial;big:boolean}[]=[];private eyes:{mesh:T.Mesh;mat:T.ShaderMaterial}[]=[];private eyeHalos:T.Sprite[]=[];private rose!:T.ShaderMaterial;
  private circle!:{ring:T.ShaderMaterial;tickMat:T.ShaderMaterial;runes:T.Group};
- private vents:{id:string;grate:T.Group;glow:T.ShaderMaterial;acc:number;burst:boolean}[]=[];
+ private vents:{id:string;grate:T.Group;lid:T.Group;glow:T.ShaderMaterial;acc:number;burst:boolean}[]=[];
+ private leaves=new Map<string,T.Group[]>();private gates=new Map<string,T.Group>();private entryAcc=new Map<string,number>();
  private lamps!:Lamps;private cracks:number[]=[];private sconces:number[]=[];private pipes:{i:number;d:number}[]=[];private seams:number[]=[];private alarms=new Map<string,number>();private pads:number[]=[];private keyhole=-1;
  private crowd!:{bodies:T.InstancedMesh;heads:T.InstancedMesh;eyes:Lamps;list:{tag:Side;x:number;y:number;z:number;ry:number;h:number;phase:number}[]};
  private chandeliers:{pivot:T.Group;bulbs:Lamps;phase:number}[]=[];private fan!:{blades:T.Group;glow:T.ShaderMaterial;angle:number};private clocks:{minute:T.Group;hour:T.Group}[]=[];
@@ -194,14 +212,28 @@ export class WardZeroVisuals {
   const grin=glowMaterial(PALETTE.teeth,{intensity:.15});this.doors.add(place(new T.Mesh(grinGeometry(3.2,.6,13),grin),'s',0,4.25,.3));this.grins.push({mat:grin,big:true});
  }
  private keyMat!:T.ShaderMaterial;
- /** Ward doors (add spawns) in the north and south walls: steel leaves, a barred window and an alarm lamp above. */
+ /** Ward doors (add spawns) in the north and south walls: a shallow iron vestibule (jambs and a striped lintel standing
+  *  DOOR_LEAF_D proud of the wall, dark inside) closed by two hinged steel leaves with barred windows, and an alarm lamp
+  *  above. In PvE the leaves swing into the hall when an add walks out (design §8.4). */
  private buildWardDoors(kit:Kit){
-  const m=this.mat;
+  const m=this.mat,D=DOOR_LEAF_D,leafKit=new T.BoxGeometry(1,1,1),win=new T.MeshBasicMaterial({color:PALETTE.warn,toneMapped:false});
+  const leafMat=new T.MeshLambertMaterial({color:0xffffff});
   for(const a of SIREN_ADD_SPAWNS){if(a.kind!=='door')continue;const s:Side=a.z<0?'n':'s',u=local(s,a.x,a.z).u;
-   kit.add(s,m.dark,onWall(s,u,2.1,.05,3,4.2,.02));for(const k of [-1,1]){kit.add(s,m.iron,onWall(s,u+k*1.68,2.2,.15,.36,4.4,.3));kit.add(s,m.iron,onWall(s,u+k*.74,2.03,.1,1.42,4.02,.1));this.lamps.add(PALETTE.warn,onWall(s,u+k*.74,3.15,.16,.42,.26,.02),s);
-    for(let i=0;i<3;i++)kit.add(s,m.iron,onWall(s,u+k*.74+(i-1)*.13,3.15,.18,.04,.3,.04));}
-   kit.add(s,m.iron,onWall(s,u,4.45,.15,3.8,.4,.3));for(let i=0;i<8;i++)kit.add(s,i%2?m.stripe:m.iron,onWall(s,u-1.6+i*.46,4.45,.31,.46,.32,.02,.4));
-   this.alarms.set(a.id,this.lamps.add(PALETTE.warn,onWall(s,u,4.95,.2,.5,.26,.26),s));}
+   // The vestibule: dark lining (back, sides, ceiling), iron jambs and the lintel.
+   kit.add(s,m.dark,onWall(s,u,2.1,.05,3,4.2,.02));for(const k of [-1,1])kit.add(s,m.dark,onWall(s,u+k*1.52,2.1,D/2,.04,4.2,D));kit.add(s,m.dark,onWall(s,u,4.22,D/2,3.04,.04,D));
+   for(const k of [-1,1]){kit.add(s,m.iron,onWall(s,u+k*1.68,2.2,(D+.1)/2,.36,4.4,D+.1));for(const y of [.6,2.2,3.8])kit.add(s,m.pewter,onWall(s,u+k*1.68,y,D+.11,.4,.08,.03));}
+   kit.add(s,m.iron,onWall(s,u,4.45,(D+.1)/2,3.8,.4,D+.1));for(let i=0;i<8;i++)kit.add(s,i%2?m.stripe:m.iron,onWall(s,u-1.6+i*.46,4.45,D+.11,.46,.32,.02,.4));
+   this.alarms.set(a.id,this.lamps.add(PALETTE.warn,onWall(s,u,4.95,D+.06,.5,.26,.26),s));
+   // Two leaves, each pivoting on its hinge line (local +z faces the hall).
+   const pivots:T.Group[]=[];
+   for(const k of [-1,1]){const frame=new T.Group(),pivot=new T.Group();pivot.name=`ward-${a.id}-leaf-${k<0?'l':'r'}`;place(frame,s,u+k*DOOR_HINGE,0,D);frame.add(pivot);this.groups[s].add(frame);
+    const parts:[number,number,number,number,number,number,number][]=[[-k*DOOR_LEAF_W/2,2.03,0,DOOR_LEAF_W,4.02,.1,0x1b191f],[-k*DOOR_LEAF_W/2,.32,.06,DOOR_LEAF_W-.1,.42,.02,0x6b1520],
+     [-k*DOOR_LEAF_W/2,1.7,.06,DOOR_LEAF_W-.16,.06,.02,0x6b6676],[-k*DOOR_LEAF_W/2,3.15,.055,.56,.4,.02,0x0b0a0e],[-k*.06,2.03,.06,.06,3.9,.03,0x6b6676]];
+    for(let i=0;i<3;i++)parts.push([-k*DOOR_LEAF_W/2+(i-1)*.13,3.15,.08,.04,.34,.04,0x1b191f]);
+    const mesh=new T.InstancedMesh(leafKit,leafMat,parts.length);mesh.name='ward-door-leaf';
+    parts.forEach(([x,y,z,sx,sy,sz,c],i)=>{mesh.setMatrixAt(i,at(x,y,z,sx,sy,sz));mesh.setColorAt(i,new T.Color(c));});mesh.castShadow=true;mesh.receiveShadow=true;pivot.add(mesh);
+    const glow=new T.Mesh(leafKit,win);glow.name='ward-door-window';glow.position.set(-k*DOOR_LEAF_W/2,3.15,.06);glow.scale.set(.42,.26,.012);pivot.add(glow);pivots.push(pivot);}
+   this.leaves.set(a.id,pivots);}
  }
  /** Bases, gallery bands and capitals on every column, with sconces on the ones facing the hall (they chase in the drops). */
  private buildColumns(kit:Kit){
@@ -226,7 +258,11 @@ export class WardZeroVisuals {
   const m=this.mat;
   for(const a of SIREN_ADD_SPAWNS){if(a.kind!=='cell')continue;const sx=Math.sign(a.x),z=a.z;
    for(let i=0;i<7;i++)for(let j=0;j<5;j++)kit.add('',m.pad,at(sx*29.36,.45+j*.66,z-2.4+i*.8,.06,.6,.74));
-   kit.add('',m.iron,at(sx*24.3,3.65,z,.55,.3,6.6));for(let i=0;i<15;i++)kit.add('',m.iron,at(sx*24.3,3.3,z-2.8+i*.4,.07,.45,.07));
+   kit.add('',m.iron,at(sx*24.3,3.65,z,.55,.3,6.6));
+   // The gate: 15 bars and two rails that retract into the lintel (raised, only the teeth show; PvE lowers it while closed).
+   const gate=new T.Group();gate.name='ward-'+a.id+'-gate';gate.position.set(sx*24.3,3.5,z);this.group.add(gate);const bars=new T.InstancedMesh(unit,m.iron,17);bars.name='ward-cell-gate';
+   for(let i=0;i<15;i++)bars.setMatrixAt(i,at(0,-1.725,-2.8+i*.4,.07,3.45,.07));bars.setMatrixAt(15,at(0,-3.2,0,.09,.09,5.8));bars.setMatrixAt(16,at(0,-1.6,0,.09,.09,5.8));bars.castShadow=true;gate.add(bars);
+   gate.scale.y=CELL_STUB;this.gates.set(a.id,gate);
    this.alarms.set(a.id,this.lamps.add(PALETTE.warn,at(sx*23.98,3.65,z,.06,.22,.5)));}
  }
  /** The vault: ribs, a slow exhaust fan, chandeliers hung with teeth, failing work lights and four speaker stacks. */
@@ -315,11 +351,12 @@ export class WardZeroVisuals {
  /** Floor grates over the vents: a red rim that fills as the vent arms, black fire when it erupts. */
  private buildVents(kit:Kit){
   for(const v of SIREN_VENTS){const g=new T.Group();g.name='ward-'+v.id;g.position.set(v.x,.015,v.z);this.group.add(g);
-   const bar=(w:number,d:number,x:number,z:number)=>kit.add('',this.mat.iron,at(v.x+x,.015,v.z+z,w,.03,d));
-   for(let i=0;i<6;i++)bar(2.2,.1,0,-1+i*.4);bar(.1,2.3,-1.12,0);bar(.1,2.3,1.12,0);bar(2.34,.1,0,1.12);
+   // The grate is a lid hinged at x=VENT_HINGE, so an add climbing out (or diving in) can push it open (PvE, design §8.4).
    const glow=glowMaterial(PALETTE.warn,{transparent:true,opacity:0,side:T.DoubleSide});const rim=new T.Mesh(new T.RingGeometry(1.15,1.4,4,1),glow);rim.rotation.set(-Math.PI/2,0,Math.PI/4);rim.position.y=.01;g.add(rim);
    const pit=new T.Mesh(new T.PlaneGeometry(2.1,2.1),new T.MeshBasicMaterial({color:0x000000}));pit.rotation.x=-Math.PI/2;pit.position.y=-.005;g.add(pit);
-   this.vents.push({id:v.id,grate:g,glow,acc:0,burst:false});}
+   const lid=new T.Group();lid.name='ward-'+v.id+'-lid';lid.position.set(VENT_HINGE,0,0);g.add(lid);const bars=new T.InstancedMesh(unit,this.mat.iron,9);bars.name='ward-vent-lid';bars.receiveShadow=true;
+   const list=[...Array.from({length:6},(_,i)=>[2.2,.1,0,-1+i*.4]),[.1,2.3,-1.12,0],[.1,2.3,1.12,0],[2.34,.1,0,1.12]];list.forEach(([w,d,x,z],i)=>bars.setMatrixAt(i,at(x-VENT_HINGE,0,z,w,.03,d)));lid.add(bars);
+   this.vents.push({id:v.id,grate:g,lid,glow,acc:0,burst:false});}
  }
 
  // ---- per frame --------------------------------------------------------------------------------------------------
@@ -384,6 +421,7 @@ export class WardZeroVisuals {
   let a=0;for(const i of this.alarms.values())this.lamps.set(i,.18+.12*Math.sin(time*1.6+a++)+.4*m.red*down);
   this.pads.forEach((i,j)=>{const level=.22+.4*off*(.4+m.circle);this.lamps.set(i,level*1.4);this.padRings.set(j,level);});this.padRings.commit(this.cut,'');
   this.keyMat.uniforms.uIntensity.value=.4+.8*m.red*down;
+  this.updateEntries(state,time,dt,q);
 
   // Galleries: the audience bobs on the beat (some on the off-beat), freezes in the breakdown, and their eyes stare.
   const cr=this.crowd,eyeTint=col.set(0xf3f0ff).lerp(new T.Color(PALETTE.warn),m.red).clone(),eyeLevel=.08+.7*m.eyes+.25*m.crowd*down;
@@ -410,11 +448,25 @@ export class WardZeroVisuals {
   // Vents: read the same schedule the simulation damages with.
   const hazards=song&&raw>=0?sirenStageHazards(raw):[];
   for(const v of this.vents){const h=hazards.find(x=>x.id===v.id);const warn=h?.warning??0,on=!!h?.active;
-   v.glow.uniforms.uOpacity.value=on?.95:warn*.9;v.glow.uniforms.uColor.value.setHex(on?0xffffff:PALETTE.warn);
+   v.glow.uniforms.uOpacity.value=on?.95:Math.max(warn*.9,this.ventGlow.get(v.id)??0);v.glow.uniforms.uColor.value.setHex(on?0xffffff:PALETTE.warn);
    if(warn>0&&Math.random()<dt*q*20*warn)this.fire.emit(v.grate.position.x+(Math.random()-.5)*2,.05,v.grate.position.z+(Math.random()-.5)*2,0,.5+warn,0,.4,.06,'black',1.5,2);
    if(on){if(!v.burst){v.burst=true;this.fire.burst(v.grate.position.x,.1,v.grate.position.z,Math.round(28*q),2,.6,.14,'black',4,1);}
     v.acc+=dt*q*110;while(v.acc>=1){v.acc-=1;const a=Math.random()*Math.PI*2,r=Math.random()*1;this.fire.emit(v.grate.position.x+Math.cos(a)*r,.05,v.grate.position.z+Math.sin(a)*r,(Math.random()-.5)*.5,6+Math.random()*4,(Math.random()-.5)*.5,.38+Math.random()*.2,.12+Math.random()*.1,Math.random()<.06?'ember':Math.random()<.2?'smoke':'black',-3,1.4);}}
    else v.burst=false;}
   this.fire.update(dt);
+ }
+ private ventGlow=new Map<string,number>();
+ /** PvE entries: vent lids, door leaves and cell gates follow the authoritative entry times (pure in time); their alarms
+  *  flash while open, and black smoke spills out as each one opens. Without PvE every entry rests in its PvP pose. */
+ private updateEntries(state:Snapshot,time:number,dt:number,q:number){
+  const view=pveOf(state),open=new Map<number,PveEntryView>();for(const e of view?.entries??[])open.set(e.e,e);this.ventGlow.clear();
+  for(const en of PVE_ENTRIES){const e=open.get(en.e),o=entryOpenAmount(en.kind,e,state.time),active=!!e&&state.time>=e.openAt&&state.time<e.closeAt+ENTRY_CLOSE[en.kind];
+   if(en.kind==='vent'){const v=this.vents[en.e];if(!v)continue;v.lid.rotation.z=VENT_SWING*o;if(active)this.ventGlow.set(v.id,.25+.35*o*(Math.sin(time*10)>0?1:.4));
+    if(o>.05&&o<.98&&!this.cut.v){let acc=(this.entryAcc.get(en.id)??0)+dt*q*40;while(acc>=1){acc-=1;this.fire.emit(v.grate.position.x+(Math.random()-.5)*1.8,.05,v.grate.position.z+(Math.random()-.5)*1.8,0,.8+Math.random(),0,.6,.08,Math.random()<.5?'black':'smoke',1,1.5);}this.entryAcc.set(en.id,acc);}
+    continue;}
+   if(en.kind==='door'){const pivots=this.leaves.get(en.id);if(pivots)pivots.forEach((pv,i)=>{pv.rotation.y=(i===0?-1:1)*DOOR_SWING*o;});}
+   else{const gate=this.gates.get(en.id);if(gate)gate.scale.y=view?mix(1,CELL_STUB,o):CELL_STUB;}
+   const lamp=this.alarms.get(en.id);if(lamp!==undefined&&active)this.lamps.set(lamp,Math.sin(time*14)>0?1.6:.12);
+  }
  }
 }
