@@ -50,10 +50,11 @@ export class HordeView {
  private marker:T.Sprite;private quality=1;private burst:PveVisualsContext['burst']=()=>{};
  private stats={fullRigs:0,nearImpostors:0,adds:0,impostors:0,hidden:0,pending:0};
  constructor(readonly scene:T.Scene){
-  this.impostors=new ImpostorBatch(HORDE_RENDER.impostorMax);scene.add(this.impostors.mesh);this.gore=new HordeGore(scene);
+  // Nothing joins the scene until the first PvE frame (a PvP scene stays untouched); clear() takes it all out again.
+  this.impostors=new ImpostorBatch(HORDE_RENDER.impostorMax);this.gore=new HordeGore(scene);this.gore.flames.mesh.removeFromParent();this.gore.chunks.removeFromParent();
   // The possessed add's impostor (until its rig exists): an additive violet flame.
   this.marker=new T.Sprite(new T.SpriteMaterial({color:0x9d84ff,transparent:true,opacity:.85,blending:T.AdditiveBlending,depthWrite:false,toneMapped:false}));
-  this.marker.name='pve-possessed-marker';this.marker.scale.set(.7,1.3,1);this.marker.visible=false;scene.add(this.marker);
+  this.marker.name='pve-possessed-marker';this.marker.scale.set(.7,1.3,1);this.marker.visible=false;
  }
  /** The renderer's graphics setting (quality vs performance bands). The compatibility path comes from the context. */
  setGraphics(mode:HordeGraphics){this.graphics=mode;}
@@ -62,6 +63,7 @@ export class HordeView {
   const t=state.time,dt=Math.max(0,Math.min(.1,ctx.dt||0)),mode=hordeMode(ctx.compatibility,this.graphics),R=HORDE_RENDER.fullRadius[mode],cap=HORDE_RENDER.maxRigs[mode];
   if(Number.isFinite(this.last)&&(t<this.last-.35||t>this.last+1))this.timeJump(t);this.last=t;this.frame++;this.quality=ctx.quality;this.burst=ctx.burst;
   if(!this.warm)this.warm=prewarmSirenMinions(HORDE_RENDER.prewarmMs);
+  if(!this.impostors.mesh.parent)this.scene.add(this.impostors.mesh,this.gore.flames.mesh,this.gore.chunks,this.marker);
   const cam=ctx.camera.getWorldPosition(_cam),b=view.bossView,possessedN=b&&b.possessed!==undefined&&b.foundAt===undefined?b.possessed:undefined;
   // 1. Decode, remember entries and falls, and place every add.
   const items:Item[]=[],present=new Set<number>();
@@ -118,6 +120,7 @@ export class HordeView {
  rigOf(n:number){const r=this.rigs.get(n);return r?.shown?r.m:undefined;}
  /** Remove everything from the scene (PvE ended or snapshot without pve). */
  clear(){for(const r of [...this.rigs.values()])this.dispose(r);this.memo.clear();this.impostors.begin();this.impostors.end();this.gore.clear();this.marker.visible=false;this.last=NaN;
+  for(const o of [this.impostors.mesh,this.gore.flames.mesh,this.gore.chunks,this.marker])o.removeFromParent();
   this.stats={fullRigs:0,nearImpostors:0,adds:0,impostors:0,hidden:0,pending:0};}
 
  // ------------------------------------------------------------------------------------------------------------
