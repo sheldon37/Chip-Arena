@@ -30,6 +30,8 @@ for(const spec of ['pistol','rifle','machinegun','fire'] as const)test(`all firs
   if(chip==='freezer-block')assert.equal([...s.chaos.fields.values()].filter(f=>f.kind==='time').length,1);
   if(chip==='graveyard-shift'||chip==='corpse-party')assert.equal(s.chaos.minions.size,1);
   if(chip==='poltergeist')assert.ok(prop.body.linvel().x>0);
+  // 2026-10-03 rework (intended): Time Out now freezes the nearby shooter (and their shots) for 1.2 s; thaw it so the reset check can fire again.
+  if(chip==='freezer-block'){assert.ok((a.leet?.frozenUntil||0)>s.time);a.leet!.frozenUntil=0;}
   const before={hp:b.hp,ammo:b.ammo,fields:s.chaos.fields.size,minions:s.chaos.minions.size};bullet(s,a,b);
   assert.equal(s.events.filter(e=>e.type==='blockProc').length,1);assert.deepEqual({hp:b.hp,ammo:b.ammo,fields:s.chaos.fields.size,minions:s.chaos.minions.size},before);
   b.blockTime=b.blockCd=0;assert.ok(s.beginBlock(b));bullet(s,a,b);assert.equal(s.events.filter(e=>e.type==='blockProc').length,2);

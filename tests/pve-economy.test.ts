@@ -177,6 +177,8 @@ test('respawnAll revives dead connected members on a pad with no add within 4 m;
   closeAll(w);const h1=P(s,'h1'),h2=P(s,'h2'),bot=P(s,'party-bot-1');
   // second-chance once-key used before the respawn.
   h1.chips['second-chance']=1;s.damage(h1,h1.hp*.8,null,'environment');assert.ok((s.chaos as unknown as {used:Set<string>}).used.has('h1:exit'));
+  // 2026-10-03 rework (intended): Emergency Exit also grants 1.2 s immunity, which would absorb the scripted kills below.
+  (s.chaos as unknown as {shields:Map<string,number>}).shields.clear();
   const pad0=PVE_LAYOUT.pads[0];place(h1,pad0.x,pad0.z);place(h2,pad0.x+.5,pad0.z);tick(s);
   kill(s,h1);kill(s,h2);kill(s,bot);h2.connected=false;
   horde.addAt({x:pad0.x+1,z:pad0.z});

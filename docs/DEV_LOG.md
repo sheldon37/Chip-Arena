@@ -18,6 +18,36 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-03 — Claude — legendary / mythic chip rework and volumetric chip blasts
+
+- Branch `claude/pve-legendary-vfx` from `claude/pve-batch2` `9b5445c`; no PR. Owner request: rework broken/weak
+  Legendary+ chips so they feel exciting, and replace flat on-impact/area visuals with real voxel explosions.
+- Audit of all 26 legendary + 13 mythic chips (code read, unit probes, seat-swapped bot duels); table in the session
+  scratchpad (`after/legendary-vfx/audit.md`). Broken: Trading Places never swapped grounded pilots (room check hit
+  the floor); blinks (Pocket Portal, Emergency Exit) cast from floor contact stopped at 0 m; Meteor Shower meteors
+  were deleted by the 3-per-owner field cap; bots aimed gravity-free shots (boomerang/Pong) with gravity.
+- Reworked (ids, rarities and the 7-mythic melee pool kept): Satellite Office (homing satellite shots), Red Light
+  Green Light (freeze, then relaunch at the current aim ×2 speed ×1.5 damage), Return to Sender (return leg re-hits
+  ×1.4), Comet Dash (landing blast follows the roll, low gravity removed), Tumble Engine (no penalty, i-frames),
+  Thunder Step (locks lightning on up to 2 enemies), Now You See Me (blink to target, ×1.5, 0.25 s untouchable),
+  Emergency Exit (cheats a lethal hit, +40 HP, 1.2 s immunity), Time Out (Block freezes nearby enemies 1.2 s),
+  Supernova (no Block penalty, nova Blocks recharge in 0.6 s), Trading Places (fixed, 0.5 s daze), Meteor Shower
+  (5 tracked meteors, 1.5 s cd), Pocket Portal (arrival blast), Do Not Press (+30% HP, 2 s immunity); Hurricane,
+  Vampire, Repulsor damage penalties softened. Tuning in `CHAOS_TUNING` (chaos.ts); card stat lines on the cards.
+- VFX: new pooled `src/client/chip-blasts.ts` (two InstancedMeshes, fixed capacity, 3 zero-intensity lights):
+  fireball + shock shell/ring that ends exactly on the event radius + debris + smoke + flash; shock bolts, implosion,
+  void, frost, toxic, quake, nova styles; live-field emitters (storm bolts from a cloud, flames, acid, frost shards,
+  accretion spirals, falling meteors, comet trail). Time/repulsion fields get a dome. Keyed to authoritative events:
+  explosion events now carry `message` (chip tag) except plain weapon `blast`; fields carry `fx`. Quality/compat
+  respected. Dev-only `tools/visual-lab/vfx.html` renders the real Renderer on a real Simulation.
+- Tests: new `tests/legendary-rework.test.ts` (15) and `tests/chip-blasts.test.ts` (6). Intended-behaviour test
+  updates: chaos.test (Satellite/Stop-Go/Exit/Panic numbers), first-block (Time Out freezes the shooter; thawed for
+  the reset check), pve-economy (clear the Exit immunity before scripted kills).
+- Checks (Node 22.22.2): check:types pass; full suite 954 tests, 13 fail = the known Node 22 set; pvp-golden 5/5
+  unchanged (no golden trace uses a reworked chip). Not run: Windows, real-app play, network suites, perf on GPU.
+- Risks: duel numbers are bot-based (bots rarely Block/roll); Thunder Step/Comet/Supernova may need owner tuning;
+  Static Discharge (rare) showed no arcs in bot duels (not investigated). Status: implemented on branch, not merged.
+
 ## 2026-10-03 — Claude — PvE stage music (Restricted Zone Pulse) + batch 2 verification
 
 - Branch `claude/pve-batch2` (from `948b5ba` = `claude/visual-revision` `6fd525c` + econ-revive, chips, camera,
