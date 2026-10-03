@@ -36,6 +36,13 @@
 .tier-pips:after{content:"";position:absolute;inset:0 auto 0 0;width:calc(var(--rank) * 8px);background:radial-gradient(circle,var(--rarity) 0 2.3px,transparent 2.7px) 0 50%/8px 6px repeat-x;filter:drop-shadow(0 0 3px var(--rarity))}
 .circuit-chip strong{display:block;margin:0;color:var(--name);font:650 22px/1.08 var(--font-chip);font-stretch:87.5%;letter-spacing:.01em;overflow-wrap:anywhere}
 .circuit-chip p{margin:13px 4px 14px;color:#c8cad3;font:400 14px/1.48 var(--font-ui)}
+/* Stat lines after the description (owner request): positives green, negatives red, neutral grey. */
+.circuit-chip .chip-stats{position:relative;z-index:2;display:flex;flex-direction:column;gap:3px;margin:-6px 4px 14px;padding:0;list-style:none;font:650 14px/1.22 var(--font-chip);letter-spacing:.01em;text-align:left}
+.chip-stats{list-style:none;padding:0;margin:6px 0 10px;display:flex;flex-direction:column;gap:2px;font:650 13px/1.22 var(--font-ui)}
+.chip-stat{margin:0;padding:0}
+.chip-stat.good{color:#5bea86;text-shadow:0 0 10px #2fd06433}
+.chip-stat.bad{color:#ff5c69;text-shadow:0 0 10px #ff2d4033}
+.chip-stat.neutral{color:#b9bcc8}
 .circuit-chip .chip-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:auto 4px 0;padding-top:10px;border-top:1px solid #ffffff14;color:#a5a7b2;font:500 10px/1.2 var(--font-mono);letter-spacing:.06em}
 /* Stack slots: copies owned, plus the slot this install fills (pulsing while it is your pick). */
 .chip-stack{display:inline-flex;align-items:center;gap:9px;white-space:nowrap}

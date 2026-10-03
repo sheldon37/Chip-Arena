@@ -38,6 +38,33 @@ containing an entry; no self-referential commit hash is required.
   downed party bot and charged $150; holding F 3 s revived once; too poor = no revive.
 - Not run: Windows build, hosted multi-browser play. Risk: owner judgement of the new numbers.
   Status: implemented on branch; not merged; not released.
+## 2026-10-03 — Claude — more damage/health chips, green/red chip stat lines, PvE money chips
+
+- Branch `claude/pve-chips` from `213f62b` (PR #30 head, `claude/pve-fix-desync-holdchip`); no PR opened.
+- Owner request: more damage and health chips; chip cards show the description first, then
+  positives in green and negatives in red (for example "+100% Health"); money-gain chips in PvE
+  (boss fight only).
+- 29 stat chips (`src/shared/power-chips.ts`, added to `CHIPS`): 15 damage (flat, per class,
+  close/far range, finisher, crit/backstab, glass-cannon trade-offs) and 14 health (flat/percent
+  max health, regeneration, life steal, damage reduction, tank trade-offs), common to legendary.
+  None are mythic, so the rainbow melee pool test keeps its size. All run through `statsFor`.
+- `src/shared/chip-stats.ts` builds per-copy stat lines from chip effects (old chips get them too),
+  or uses explicit `Chip.stats`. `chipCard` renders `<ul class="chip-stats">` after the description,
+  and the aria-label adds the lines with "(penalty)". Board tooltips show the same lines.
+- PvE money chips (`src/shared/pve/money-chips.ts`, 6 chips from common to legendary) are not
+  in `CHIPS`, so PvP never sees them. For human pilots, an ordinary (non-rainbow) PvE pick has a 30%
+  chance to swap its last offer for one (`withMoneyOffer`, seeded economy stream). `Economy.grant`
+  scales earnings through `moneyWithChips` (one line; refunds are unchanged). Party bots skip them.
+- `tests/pve-foundation.test.ts`: the offerChips base-hash check now runs on the base catalogue
+  (new chips removed temporarily), so it still proves the default path is unchanged.
+  New `tests/power-chips.test.ts` covers this work. New Lucide icons were generated via `icons:generate`.
+- Checks (Node 22.22.2): `npm run check:types` passes; full suite 905 pass / 13 fail, which is exactly the
+  known Node 22 failure set; pvp-golden unchanged (PvP traces draft no chips). Playwright shots: draft 1600x900 and 1280x720, PvE start screen,
+  money and mixed offer screens (session scratchpad, after/pve-chips).
+- Risks: PvP draft pools grew, so offer odds per existing chip are lower. Balance numbers have
+  not been playtested. Picks now draw extra economy RNG, which shifts seeded PvE runs.
+  The draw comes after the catalogue offers.
+- Status: implemented on branch; not merged; not released.
 
 ## 2026-10-03 — Claude — PvE playtest fixes: offline desync after Esc, taken chips wait as pending picks
 
