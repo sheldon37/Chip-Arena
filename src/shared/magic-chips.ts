@@ -21,6 +21,6 @@ chip('elemental-attunement','legendary',1,'Become one with your element: stronge
 chip('spell-echo','mythic',1,'Your E spell echoes: a second cast follows 0.8 seconds later at half power.',[['spellEcho','set',1]],{excludes:['twin-sigil'],stats:[good('E repeats after 0.8 s'),note('Echo deals 50% damage'),note('Cannot be combined with Twin Sigil')]}),
 school('cinder-field','rare','fire','Meteor Strike leaves burning ground that lasts longer and spreads wider.',[good('+50% Meteor burn duration and radius')]),
 school('undertow','rare','water','Tidal Wave drags enemies toward you instead of pushing them away.',[note('Tidal Wave pulls instead of pushes')]),
-school('storm-recall','epic','lightning','Each enemy struck by Blink Strike refunds part of its cooldown.',[good('-2 s Blink cooldown per enemy hit, up to 4 s')]),
-school('abyssal-core','epic','darkness','Your Black Hole grows larger and its collapse hits harder.',[good('+25% Black Hole radius, +20% collapse damage')]),
+school('storm-recall','epic','lightning','Each enemy struck by Blink Strike refunds part of its cooldown.',[good('-2 s Blink cooldown per hit, up to 4 s')]),
+school('abyssal-core','epic','darkness','Your Black Hole grows larger and its collapse hits harder.',[good('+25% Black Hole radius'),good('+20% collapse damage')]),
 ];

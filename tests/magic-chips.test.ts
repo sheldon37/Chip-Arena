@@ -80,7 +80,7 @@ test('cards: prose without ×N, green/red/neutral lines, existing icons',()=>{
   'elemental-attunement':[g('+25% Ability damage'),g('-20% Ability cooldown'),g('+10% Ability radius'),b('+15% Ability cost')],
   'spell-echo':[g('E repeats after 0.8 s'),n('Echo deals 50% damage'),n('Cannot be combined with Twin Sigil')],
   'cinder-field':[g('+50% Meteor burn duration and radius')],undertow:[n('Tidal Wave pulls instead of pushes')],
-  'storm-recall':[g('-2 s Blink cooldown per enemy hit, up to 4 s')],'abyssal-core':[g('+25% Black Hole radius, +20% collapse damage')],
+  'storm-recall':[g('-2 s Blink cooldown per hit, up to 4 s')],'abyssal-core':[g('+25% Black Hole radius'),g('+20% collapse damage')],
  };
  for(const c of MAGIC_CHIPS){
   assert.deepEqual(chipStatLines(c),lines[c.id],c.id);
