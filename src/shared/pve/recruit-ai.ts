@@ -68,10 +68,10 @@ export function fighterInput(host:PveHost,p:Player,anchor:Player|undefined,role:
   }
   i.attack=w.class==='melee'?d<w.range*1.25:true;
   i.reload=!!w.ammo&&p.ammo===0;
-  botAbilities(s,p,i,d,true,1);   // pve-allow-sim-random (reused bot ability brain draws from sim.random)
+  botAbilities(s,p,i,d,true,1,target.pos);   // pve-allow-sim-random (reused bot ability brain draws from sim.random)
  }else if(anchor&&anchor.id!==p.id&&!leashed&&flat(anchor.body.translation(),pos)>RECRUIT_AI.medicFar)move=toward(host,pos,anchor.id,anchor.body.translation());
  const crowd=adds.filter(a=>flat(a.pos,pos)<=RECRUIT_AI.tankCrowdRange).length;
- if(windupOn(host,p,adds,RECRUIT_AI.blockRange)||role==='tank'&&crowd>=RECRUIT_AI.tankCrowd){i.block=true;i.attack=false;i.secondary=false;}
+ if(windupOn(host,p,adds,RECRUIT_AI.blockRange)||role==='tank'&&crowd>=RECRUIT_AI.tankCrowd){i.block=true;i.attack=false;i.secondary=false;i.ability=false;}
  const l=len(move);if(l>1)move=mul(move,1/l);i.x=clamp(move.x,-1,1);i.z=clamp(move.z,-1,1);
  return i;
 }

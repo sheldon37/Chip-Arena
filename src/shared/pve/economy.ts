@@ -27,7 +27,7 @@ export function weightedPick<K extends string>(next:()=>number,table:Partial<Rec
  for(const k of keys){roll-=table[k]!;if(roll<0)return k;}return keys[keys.length-1];
 }
 /** Forced idle that keeps the sequence, look direction and camera (§5.3). */
-const idle=(b:Input):Input=>({seq:b.seq,x:0,z:0,yaw:b.yaw,pitch:b.pitch,attack:false,electric:false,hadoken:false,uppercut:false,block:false,
+const idle=(b:Input):Input=>({seq:b.seq,x:0,z:0,yaw:b.yaw,pitch:b.pitch,attack:false,ability:false,electric:false,hadoken:false,uppercut:false,block:false,
  secondary:false,jump:false,dash:false,reload:false,...(b.camera?{camera:b.camera}:{})});
 
 interface Row{

@@ -1,17 +1,26 @@
 import type {Player,Simulation} from './simulation.js';
-import type {Input} from './config.js';
-import {WEAPONS} from './content.js';
+import type {Input,Vec} from './config.js';
+import {WEAPONS,abilityUser} from './content.js';
 import {ARCADE} from './arcade-content.js';
 import {SIREN_SLOTS} from './siren-contract.js';
 import {committed,rolling} from './souls-combat.js';
 
 /** Choose normal player inputs. The combat systems still own costs, cooldowns and hits. */
-export function botAbilities(s:Simulation,p:Player,input:Input,distance:number,visible:boolean,difficulty:number){
- input.secondary=false;
+/** `target`/`targetVel`: the chosen enemy's position and velocity (live ability kits aim and lead with them). */
+export function botAbilities(s:Simulation,p:Player,input:Input,distance:number,visible:boolean,difficulty:number,target?:Vec,targetVel?:Vec){
+ input.secondary=false;input.ability=false;
  if(p.bot==='dummy'||s.phase!=='fight'||p.hp<=0||!p.connected||input.block||p.blockTime>0||s.arcade.stunned(p)||s.leet.frozen(p)||s.siren.heldVictim(p)||rolling(p,s.time)||committed(p,s.time))return;
  if(s.arcade.active(p)&&p.arcade?.action==='charge'){
   input.hadoken=visible&&s.time-p.arcade.at<ARCADE.chargeSeconds+.05&&p.stamina>=30*p.stats.resourceCost;
   input.attack=input.dash=false;return;
+ }
+ // Live ability kits (design §3.14): ADS hold and Q/E casts; never falls into the legacy rows below, and E works while
+ // reloading. The attack release of the legacy path is kept.
+ if(abilityUser(p.spec)&&s.abilities.botKit(p.spec)){
+  s.abilities.botAds(p,input,distance,visible);
+  const cast=s.abilities.botCast(p,input,distance,visible,difficulty,target,targetVel);
+  if(!cast&&(p.cooldown>0||p.reloadTime>0||p.cast||p.burst>0))input.attack=false;
+  return;
  }
  // Release primary during recovery so a held attack cannot consume the first ready
  // frame before the next ability decision (cooldowns tick after bot input).

@@ -4,11 +4,11 @@
 import {BASE_STATS,type Chip,type ChipStatLine,type Stats} from './content.js';
 
 /** Stats where a smaller value helps the pilot (cooldowns, costs, damage received, reload duration). */
-const LOWER_IS_BETTER=new Set<keyof Stats>(['damageTaken','knockbackTaken','dashCooldown','debrisTaken','reloadSpeed','resourceCost','blockCooldown','rollCost']);
+const LOWER_IS_BETTER=new Set<keyof Stats>(['damageTaken','knockbackTaken','dashCooldown','debrisTaken','reloadSpeed','resourceCost','blockCooldown','rollCost','abilityCooldown','abilityCost']);
 /** Stats whose direction is a matter of taste: printed without a green/red judgement. */
 const NEUTRAL=new Set<keyof Stats>(['projectileGravity','playerGravity','recoil','fanDegrees']);
 /** Additive stats whose value is a fraction (0.3 = +30%). */
-const FRACTION=new Set<keyof Stats>(['lifeSteal','execute','closeDamage','farDamage','backstab','critical','thorns','reach','demolition','ammoCapacity','bounceRetention','lastRound']);
+const FRACTION=new Set<keyof Stats>(['lifeSteal','execute','closeDamage','farDamage','backstab','critical','thorns','reach','demolition','ammoCapacity','bounceRetention','lastRound','qEmpower','manaSurge','abilityLeech','arcaneSurge']);
 const LABEL:Partial<Record<keyof Stats,string>>={hp:'Health',damage:'Damage',attackRate:'Attack speed',speed:'Move speed',damageTaken:'Damage taken',
  knockbackTaken:'Knockback taken',dashCooldown:'Dodge cooldown',impulse:'Knockback dealt',demolition:'Structure damage',debrisTaken:'Debris damage taken',
  ammoCapacity:'Magazine size',maxMana:'Max mana',maxStamina:'Max stamina',projectileSpeed:'Projectile speed',blockCooldown:'Block cooldown',
@@ -20,10 +20,12 @@ const LABEL:Partial<Record<keyof Stats,string>>={hp:'Health',damage:'Damage',att
  blockHeal:'Health per Block',blockAmmo:'Ammo per Block',dashBlast:'Dodge blast damage',recoil:'Recoil',vacuum:'Hit pull',bounces:'Bounce',
  split:'Split level',pierces:'Pierce',burn:'Burn DPS',poison:'Poison DPS',staticDamage:'Discharge damage',shrapnel:'Blast damage',
  extraProjectiles:'Projectile',extraStrikes:'Follow-up strike',homing:'Homing °/s',blockPulseDamage:'Pulse damage',blockPulseImpulse:'Pulse knockback',
- rollDistance:'Roll distance',rollSpeed:'Roll speed',rollCost:'Roll cost',rollWindow:'Roll invulnerability'};
+ rollDistance:'Roll distance',rollSpeed:'Roll speed',rollCost:'Roll cost',rollWindow:'Roll invulnerability',
+ abilityCooldown:'Ability cooldown',abilityPower:'Ability damage',abilityRadius:'Ability radius',abilityCost:'Spell mana cost',abilityCharges:'E charge',
+ qEmpower:'Next bolts after Q',manaSurge:'Ability damage as mana',abilityLeech:'Ability life steal',arcaneSurge:'Ability damage at high mana'};
 const SECONDS=new Set<keyof Stats>(['blockWindow','rollWindow']);
 /** Switch-like stats (Pong, Boomerang, ...): the description already explains them. */
-const SWITCH=new Set<keyof Stats>(['pong','boomerang','zigzag','chaos']);
+const SWITCH=new Set<keyof Stats>(['pong','boomerang','zigzag','chaos','spellEcho']);
 
 const num=(n:number)=>{const a=Math.abs(n);return Number(a>=10?Math.round(a):a>=1?a.toFixed(1):a>=.1?a.toFixed(2):a.toFixed(3)).toString();};
 const pct=(n:number)=>{const a=Math.abs(n*100);return `${Number(a>=10?Math.round(a):a.toFixed(1))}%`;};
@@ -44,7 +46,7 @@ export function effectLine(f:Chip['effects'][number]):ChipStatLine|null{
  if(FRACTION.has(stat))return {text:`${sign}${pct(value)} ${label(stat)}`,tone:tone(stat,up)};
  if(stat==='fanDegrees')return {text:`${sign}${num(value)}° ${label(stat)}`,tone:tone(stat,up)};
  if(SECONDS.has(stat))return {text:`${sign}${num(value)} s ${label(stat)}`,tone:tone(stat,up)};
- const plural=['bounces','pierces','extraProjectiles','extraStrikes'].includes(stat)&&Math.abs(value)!==1?'s':'';
+ const plural=['bounces','pierces','extraProjectiles','extraStrikes','abilityCharges'].includes(stat)&&Math.abs(value)!==1?'s':'';
  return {text:`${sign}${num(value)} ${label(stat)}${plural}`,tone:tone(stat,up)};
 }
 /** Card lines for a Chip, positives first (stable within each group). Per installed copy. */

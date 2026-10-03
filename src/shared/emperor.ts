@@ -47,7 +47,7 @@ export class EmperorSystem {
    if(player&&!blocked&&t.hp<before){this.confirm(p,t,before-t.hp,electric);if(electric&&p.chips['mishima-twin']&&this.echoes.length<32)this.echoes.push({source:p.id,pos:{...t.body.translation()},at:s.time+.13,id:id+':echo'});}
    if(p.hp<=0||s.arcade.stunned(p))return;
   }
-  if(p.hp>0)for(const m of [...s.chaos.minions.values()]){const d=sub(m.body.translation(),pos);if(m.owner!==p.id&&len(d)<range+.5&&dot(norm(d),dir)>.2&&s.lineOfSight(pos,m.body.translation(),p.id,m.id))s.chaos.hitMinion(m,(electric?EMPEROR.electricDamage:10)*p.stats.damage,p.id,electric?550:150,dir);}
+  if(p.hp>0)for(const m of [...s.chaos.minions.values()]){const d=sub(m.body.translation(),pos);if(m.owner!==p.id&&len(d)<range+.5&&dot(norm(d),dir)>.2&&s.lineOfSight(pos,m.body.translation(),p.id,m.id))s.lifeOnHit(p,s.chaos.hitMinion(m,(electric?EMPEROR.electricDamage:10)*p.stats.damage,p.id,electric?550:150,dir));}
   s.emit('emperor-strike',pos,{source:p.id,spec:p.spec,message:kind,amount:index,color:0xff2846});
  }
  stepPlayer(p:Player){const s=this.sim;if(!this.ready(p)){this.cancel(p);return;}const a=this.state(p),action=this.actions.get(p.id);if(action){while(action.next<action.total&&s.time>=action.at+action.next*action.gap){this.strike(p,action.kind,action.startIndex+action.next,a.total,action.id);if(this.actions.get(p.id)!==action||!this.ready(p))return;action.next++;}if(s.time>=a.until)this.actions.delete(p.id);}if(a.action&&s.time>=a.until)a.action=undefined;}

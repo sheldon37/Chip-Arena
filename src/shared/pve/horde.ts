@@ -290,9 +290,10 @@ export class Horde implements HordeApi{
   if(best>=0)this.enter(a,best);
  }
  // ---------------------------------------------------------------- hits, gibs, death
- hit(m:Minion,damage:number,attacker:string,impulse:number,dir:Vec,hit?:AddHitInfo){
-  const a=this.byId.get(m.id),t=this.time;if(!a||a.phase!=='active'||a.hp<=0||!a.minion)return;
-  if(!Number.isFinite(damage)||damage<=0)return;
+ /** Returns the actual damage dealt after limb and HP clamps (life steal on adds, §19.3). */
+ hit(m:Minion,damage:number,attacker:string,impulse:number,dir:Vec,hit?:AddHitInfo):number{
+  const a=this.byId.get(m.id),t=this.time;if(!a||a.phase!=='active'||a.hp<=0||!a.minion)return 0;
+  if(!Number.isFinite(damage)||damage<=0)return 0;
   const pos=a.minion.body.translation(),body={pos,yaw:a.yaw,crawl:a.crawl,lost:a.lost,maxHp:a.maxHp};
   const shares=classifyAddHit(body,damage,hit,this.rng()),severed:Exclude<HitPart,'torso'>[]=[];let total=0;
   for(const share of shares){
@@ -321,6 +322,7 @@ export class Horde implements HordeApi{
   if(Math.hypot(dir.x,dir.z)>1e-6){a.hitAt=t;a.hitYaw=Math.atan2(dir.x,dir.z);}
   this.hitEvent(a,attacker,total,hit,pos);
   if(a.hp<=1e-9||a.headless)this.kill(a,attacker,a.headless?'head':'damage');
+  return total;
  }
  /** Add damage for the ledger: party members directly, recruits for their hirer at the recruit share. */
  private ledger(attacker:string,amount:number){
