@@ -18,6 +18,45 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-03 — Claude — update headroom review round 1: launcher probation in stable desktop code
+
+- Branch `claude/update-headroom` (base `cfdce4b`), implementation `2db36fa`; tooling PR #5
+  `claude/test-update-channel` `ebd998f`. Not merged, not published, no GitHub Release.
+- Blocking finding confirmed and fixed: a new launcher that loaded and spoke the protocol but then
+  failed (for example a broken `remote-feed.mjs` mapping, or an `update.mjs` whose `applyUpdates`
+  throws) was never rolled back, and an Update could delete the backup of a `start.mjs` that had
+  never run. Now `desktop/update.cjs` (seed-only, never self-updated) owns probation. A new
+  launcher must work once in a later run of each kind it takes part in. For Update, that is an
+  Update that installs a version, for `update.mjs`, `manual-update.mjs`, `remote-feed.mjs` and
+  `local-feed.mjs`. For hosting, that is a Create Room that reaches `YOUR GAME:`
+  (`desktop/main.cjs`), for `start.mjs` and `update.mjs`. Until then, any failed run of that kind
+  restores the previous launcher and drops the staged copy. `update.mjs` no longer confirms
+  itself. A launcher activated while another is unproven keeps the original backup.
+- Non-blocking fixes: v2 refuses the hold notice (`hold:true`) instead of downgrading; a schema-1
+  install drops a launcher staged by schema 2; unpack, syntax-check and install phases log progress
+  (90 s desktop silence timeout); schema 2 and the packager refuse Windows device names and trailing
+  dots or spaces; live `CHIP_UPDATE_SCHEMA1/2_MAX_MIB` can only lower 25 MiB; the test-channel overlay
+  is checked before any file is written.
+- Not covered (documented in DEVELOPMENT.md): failures after `YOUR GAME:` (online tunnel), a bug
+  that appears only after the new launcher installed one update, non-desktop entry points. A
+  rolled-back launcher is staged again by the next Update until a fixed version is published
+  (each such Update re-downloads the payload, about 22 MB today).
+- Checks: candidate `2db36fa` + tooling `ebd998f` on Node 24.19.0. Passed: setup, fixture 9/9,
+  updater tests, runtime pins, build, repeat build (all four feed files byte-identical), both
+  payloads, Windows/desktop packages, seed ZIP, and the new in-candidate `channel-e2e` 30/30.
+  Schema 1 is 26,045,324 bytes, identical to the published `arena-164f10d7096c7469.json.gz`.
+  Schema 2 is 22,026,471 bytes. The seed ZIP is 333,669,480 bytes, SHA-256 `73376dff…a876c7`.
+  `verify` failed on baseline items: 12 unit names, 4 server tsc errors and the websocket rematch
+  timeout. It also failed HTTPS once with a tick-0 snapshot mismatch; the game source equals
+  `cfdce4b`, and `tests/https-network.ts` then passed twice on its own, so this is treated as flaky
+  under load. Full `channel-e2e` with the 0e82a31 seed (what testers hold) as the old install:
+  38/38. Live packager output is byte-identical to the `cfdce4b` packager on the same build.
+  Node 22 full suite: 976 tests, 13 failures, exactly the known Node 22 list. Node 24 updater,
+  desktop and manual-updater tests: 27/27. tsc passes.
+- Not run: native Windows (rename/locking, Electron, real Create Room), real GitHub hosting, the
+  seed release. Next: owner/orchestrator review; merge; publish the feed and the seed from one
+  candidate of the merged commit.
+
 ## 2026-10-03 — Claude — update-size headroom: 32 MiB test guard, updater v2, launcher self-update
 
 - Owner approved on 2026-10-03 ("do what you need") after asking why updates are limited to 25 MiB.
@@ -32,8 +71,9 @@ containing an entry; no self-referential commit hash is required.
   `latest-v2.json` only when the caller opts in. Only a 404 falls back to `latest.json`. The download
   is streamed with a 256 MiB cap, a byte count and SHA-256, then unpacked file by file under the same
   `allowedPath` rule plus a launcher whitelist. Launcher files are syntax-checked, staged and applied
-  at the next start, with journal, backup and rollback (`desktop/update.cjs` rolls back an entry
-  point that dies silently). The desktop timeout now counts 90 s of silence (45 min maximum).
+  at the next start, with journal and backup. (Rollback in this first version covered only a crash,
+  an `update.mjs` that cannot load and a silent entry-point death; review round 1 below corrects
+  this.) The desktop timeout now counts 90 s of silence (45 min maximum).
   Settings, saves, `runtime/` and `test-channel.json` are never targets. Schema 1 is unchanged.
 - Current build (`f192798`, content `0.2.5036b50f0c34`, unchanged game): schema 1 is 26,045,324 bytes,
   byte-identical to the published payload. Schema 2 is 22,025,342 bytes (-15.4%, Brotli q11). Seed
@@ -53,8 +93,8 @@ containing an entry; no self-referential commit hash is required.
 - Not run: native Windows (rename/locking, Electron), real GitHub raw/Release hosting, the
   GitHub Release seed itself (procedure in tooling `docs/TEST-CHANNEL-README.md`).
 - Risks / next: testers need one new seed ZIP for v2 (old installs keep schema 1 up to 32 MiB).
-  `resources/app` (Electron shell, badge handler) does not self-update. A broken launcher in a
-  publish is rolled back but re-downloaded until a fixed publish. Channel Git history grows about
+  `resources/app` (Electron shell, badge handler) does not self-update. Launcher rollback: see the
+  review round 1 entry. Channel Git history grows about
   48 MB per publication. Next: the owner or orchestrator reviews, merges into the shared branch,
   publishes the feed and the GitHub Release seed.
 
