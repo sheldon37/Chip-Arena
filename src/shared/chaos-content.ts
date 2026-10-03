@@ -1,6 +1,20 @@
-import type {Chip,Rarity} from './content.js';
+import type {Chip,ChipStatLine,Rarity} from './content.js';
 /** Behaviour Chips are interpreted by ChaosSystem; numerical effects stay in statsFor. */
-const chip=(id:string,name:string,rarity:Rarity,tags:string,description:string,icon='✦'):Chip=>({id,name,rarity,tags:[tags],description,max:1,icon,mechanic:id,effects:[]});
+const chip=(id:string,name:string,rarity:Rarity,tags:string,description:string,icon='✦'):Chip=>({id,name,rarity,tags:[tags],description,max:1,icon,mechanic:id,effects:[],...(STATS[id]?{stats:STATS[id]}:{})});
+const good=(text:string):ChipStatLine=>({text,tone:'good'}),bad=(text:string):ChipStatLine=>({text,tone:'bad'});
+/** Card stat lines for reworked legendary / mythic behaviour Chips (2026-10-03). */
+const STATS:Record<string,ChipStatLine[]>={
+ orbitals:[good('+2 homing satellite shots per volley'),good('40% damage each')],
+ 'stop-go':[good('Double speed and +50% damage on relaunch'),good('Relaunch follows your aim'),bad('0.3 s mid-air pause')],
+ 'swap-shop':[good('Swap places on hit'),good('0.5 s daze'),bad('4 s cooldown')],
+ artillery:[good('5 meteors × 26 damage'),good('3 m blasts, first one tracks')],
+ wormhole:[good('Blink to impacts (12 m)'),good('25 damage arrival blast')],
+ thunderstep:[good('Lightning on 2 enemies per dodge'),good('38 damage each')],
+ 'blink-cut':[good('Blink to enemies within 7 m'),good('+40% blink-strike damage')],
+ 'second-chance':[good('Cheats death once per round'),good('+40 health'),good('1.2 s immunity')],
+ 'freezer-block':[good('Block freezes enemies 1.2 s'),good('5 m time bubble')],
+ 'panic-button':[good('+30% health once per round'),good('2 s immunity'),good('Cooldowns restored')],
+};
 export const CHAOS_CHIPS:Chip[]=[
  chip('black-hole','Event Horizon','mythic','projectile','Impacts open a 5 m black hole for 3.5 s: pulls enemies, loose cover and enemy shots inward; 10 DPS. One field per volley, at most 3 of each field per owner.','◉'),
  chip('necronomicon','Necronomicon','mythic','magic','E becomes Raise the Dead: 3 zombies + 1 per extra projectile (max 14), each with 2× your maximum HP and 0.5× your movement speed. 12-damage bites scale with damage. 35 mana, 10 s cooldown, 14 s lifetime; a new summon replaces your old army.','☠'),
@@ -17,33 +31,33 @@ export const CHAOS_CHIPS:Chip[]=[
  chip('proximity-mail','Special Delivery','rare','projectile','Impacts leave an armed parcel. After 0.6 s, an enemy within 2.5 m detonates it for 32 damage; expires after 6 s. One per volley.','▣'),
  chip('delayed-gratification','Wait For It','epic','all','A direct impact marks a 4 m blast for 2.2 s later: 48 damage, huge knockback. Escape the warning circle. One per attack.','…'),
  chip('implosion-bomb','Reverse Grenade','legendary','projectile','Impacts mark a 4 m implosion for 0.9 s later: 30 damage, pulling enemies into the blast center. One per volley.','⊙'),
- chip('wormhole','Pocket Portal','mythic','projectile','First surface impact per volley blinks you toward the impact, stopping at cover and a maximum of 12 m. 2 s shared portal cooldown. Never places you inside a wall.','◎'),
- chip('swap-shop','Trading Places','mythic','all','Direct opponent hits swap your positions, once per 5 s. Both endpoints must have room for a pilot. Momentum is cleared.','⇄'),
+ chip('wormhole','Pocket Portal','mythic','projectile','First surface impact per volley blinks you toward the impact (stops at cover, max 12 m) and your arrival erupts in a 3 m shock blast for 25 damage. 1.2 s portal cooldown. Never places you inside a wall.','◎'),
+ chip('swap-shop','Trading Places','mythic','all','Direct opponent hits swap your positions, once per 4 s, and leave the opponent dazed (frozen) for 0.5 s. Both endpoints must have room for a pilot. Momentum is cleared.','⇄'),
  chip('grappling-shot','Yoink!','rare','projectile','Direct hits pull the opponent toward you with 1800 impulse instead of ordinary knockback.','↤'),
  chip('uppercut','Air Mail','rare','all','Direct hits add an upward 8 m/s kick, scaled by the target’s knockback resistance.','↑'),
  chip('bowling-ball','Bowling Club','epic','projectile','Shots grow into heavy balls at 45% launch speed and twice the radius. +4 bounces; direct hits launch enemies and loose cover with 3× impulse.','●'),
- chip('orbitals','Satellite Office','legendary','projectile','Shots orbit your muzzle for 0.65 s, then launch toward your original aim. Cannot combine with Pong flight.','◌'),
+ chip('orbitals','Satellite Office','legendary','projectile','Two satellites orbit you. Every volley also launches a homing shot from each satellite (40% damage, 150°/s tracking). Satellite shots cannot trigger Chips; Pong disables them.','◌'),
  chip('corkscrew','Drill Sergeant','epic','projectile','Shots corkscrew around their flight axis. Actual curved paths use collision sweeps; cover still blocks them.','⟳'),
  chip('elevator-shot','Going Up','rare','projectile','Shots accelerate upward instead of falling. +50% radius; aim low to curve over cover. Pong retains its fixed flight.','↗'),
- chip('stop-go','Red Light, Green Light','legendary','projectile','Shots pause every other 0.35 s, then resume. Their lifetime extends to 6 s. Pong keeps moving.','Ⅱ'),
+ chip('stop-go','Red Light, Green Light','legendary','projectile','Red light: 0.25 s after firing, your shots freeze mid-air for 0.3 s. Green light: they relaunch at double speed with 50% more damage toward wherever you are aiming now. Pong keeps moving.','Ⅱ'),
  chip('accelerating-shot','Late Bloomer','rare','projectile','Shots start at 25% speed, accelerating to 200% over 1 s. Their lifetime becomes 5 s. Pong keeps its fixed speed.','»'),
  chip('backfire','Rear Guard','uncommon','projectile','Every volley also fires a 40%-damage shot directly backward. The extra shot cannot trigger Chips. Disabled by Pong.','↔'),
  chip('crossfire','Four-Way Stop','epic','projectile','Every volley adds 3 shots at 90°, 180° and 270°, each at 35% damage. Extra shots cannot trigger Chips. Disabled by Pong.','✛'),
  chip('helix','Double Helix','epic','projectile','Each volley adds two shots offset to either side, twisting in opposite directions at 45% damage. No recursive effects. Disabled by Pong.','∞'),
  chip('coin-toss','Heads Or Tails','uncommon','all','Each direct hit rolls either 2× knockback or a 6 HP heal. The authority flips the coin.','◐'),
- chip('artillery','Meteor Shower','mythic','projectile','The first impact per volley calls down 3 warned explosions, 0.35 s apart, for 22 damage each in 2.8 m. No recursive effects.','☄'),
+ chip('artillery','Meteor Shower','mythic','projectile','The first impact per volley calls down 5 warned meteors, 0.3 s apart: 26 damage each in 3 m. The first meteor tracks the pilot you hit. No recursive effects.','☄'),
  chip('sword-beam','Blade Runner','legendary','melee','Each primary swing launches a visible energy blade: 18 base damage, 24 m/s, 30 m range. Scales with damage; can be Blocked.','╱'),
  chip('aftershock','Ground Pound','epic','melee','Direct hits schedule a 3.5 m shockwave after 0.45 s: 20 damage and heavy knockback. One per sweep.','≋'),
- chip('blink-cut','Now You See Me','legendary','melee','Your primary swing steps up to 2.5 m toward your aim before winding up. Cover stops the blink.','⌁'),
+ chip('blink-cut','Now You See Me','legendary','melee','Your swing blinks you into striking range of a visible enemy within 7 m of your aim, and that swing deals 40% more damage (1 s cooldown). Otherwise you step 2.5 m forward. Cover stops the blink.','⌁'),
  chip('vampire-dash','Blood Trail','rare','all','Rolling or using Demon Step drains 12 health from a visible enemy within 3 m and restores actual damage dealt. Once per dodge.','♥'),
  chip('bread-crumbs','Exit Gift','rare','all','Rolling or using Demon Step drops a proximity mine: 24 damage in 2.8 m, arms in 0.6 s, lasts 5 s.','◆'),
  chip('hot-foot','Hot Foot','epic','all','Each roll or Demon Step leaves a 3 m fire field for 3 s, dealing 15 DPS to enemies and cover.','♨'),
- chip('thunderstep','Thunder Step','legendary','all','Each roll or Demon Step schedules a 4 m lightning strike at your starting point after 0.5 s, dealing 35 damage.','ϟ'),
+ chip('thunderstep','Thunder Step','legendary','all','Each roll or Demon Step calls lightning on up to 2 visible enemies within 10 m: 38 damage each in 2.5 m after a 0.35 s flash. With nobody near, it strikes where you started (4 m, 35 damage).','ϟ'),
  chip('trampoline','Bounce House','rare','all','Jumping kicks off a 3 m shockwave: 10 damage and upward knockback to visible enemies. Triggers only on a grounded jump.','↟'),
- chip('second-chance','Emergency Exit','legendary','all','Once per round, surviving damage below 25% HP restores 20 HP and blinks you backward up to 6 m. Cover stops the blink.','↶'),
+ chip('second-chance','Emergency Exit','legendary','all','Once per round, dropping below 25% HP or taking a lethal hit restores 40 HP (a lethal hit leaves you at 1 HP first), blinks you back up to 6 m and makes you immune to damage for 1.2 s.','↶'),
  chip('revenge-mail','Return Address','epic','all','Taking damage marks the attacker’s position for a 25-damage, 3 m explosion after 1 s. 4 s cooldown. No recursive damage triggers.','✉'),
  chip('mirror-mine','Block Party','epic','all','First successful Block per activation drops 3 proximity mines around you. Each deals 16 damage in 2.3 m; 6 s lifetime.','◇'),
- chip('freezer-block','Time Out','legendary','all','First successful Block creates a 5 m time bubble for 3 s: enemy shots move at 20%, enemy pilots at 60%.','◷'),
+ chip('freezer-block','Time Out','legendary','all','First successful Block per activation freezes nearby enemies solid for 1.2 s (5 m, line of sight) and leaves a 5 m time bubble for 3 s: enemy shots move at 20%, enemy pilots at 60%.','◷'),
  chip('pickpocket','Five Finger Discount','uncommon','ranged','Direct opponent hits steal 1 of their available rounds into your magazine. Against spells or melee, steal up to 8 of their active resource instead.','▥'),
  chip('mana-leech','Mana Muncher','uncommon','magic','Direct opponent hits drain up to 10 mana or stamina and restore the amount as your mana. Guns lose up to 1 round instead, restoring 8 mana.','◈'),
  chip('demolition-charge','Load-Bearing Surprise','rare','all','Direct cover impacts plant a 1 s demolition charge: 3 m blast, 18 player damage and strong structural damage. One per attack.','⌗'),
@@ -51,5 +65,5 @@ export const CHAOS_CHIPS:Chip[]=[
  chip('graveyard-shift','Graveyard Shift','epic','magic','First successful Block raises one zombie for 10 s: 2× your max HP, 0.5× your speed, 12-damage bites. Shared limit 14 zombies.','☠'),
  chip('corpse-party','Corpse Party','legendary','magic','Your summoned zombies explode when destroyed or expired: 30 damage in 3.5 m. Also raise one zombie on each successful Block activation.','✳'),
  chip('poltergeist','Poltergeist','epic','all','First successful Block launches nearby loose cover away from you with 900 impulse, within 6 m and line of sight.','↝'),
- chip('panic-button','Do Not Press','mythic','all','Once per round, surviving damage below 30% HP creates a 6 m repulsion field for 4 s and restores your Block and dodge cooldowns.','!'),
+ chip('panic-button','Do Not Press','mythic','all','Once per round, dropping below 30% HP heals 30% of your max HP, makes you immune to damage for 2 s, creates a 6 m repulsion field for 4 s and restores your Block and dodge cooldowns.','!'),
 ];
