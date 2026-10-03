@@ -18,6 +18,24 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-03 — Claude — PvE Siren TEST BOSS merge and test-channel publication
+
+- Owner authorized merge and test publication ("When this is complete, please merge and publish to test").
+- PR #28 merged into `claude/visual-revision` at `2bec705ef5aaff6efb890ba8ae848d1175a646f3`; tree identical to the
+  tested head `6410e3d`. CI `verify` (Node 24.19) matched the recorded baseline only: units 898/910 with exactly the 12
+  names, the four server tsc errors, the WebSocket rematch timeout; HTTPS passed.
+- Candidate build at the merge commit (`candidate.py --test-only --channel`, Node 24.19.0/npm 11.9.0): same baseline-only
+  `verify`; repeat build byte-identical; actual payload passed (102 files, skip, offline/corrupt refusal, settings
+  sentinel, URL restriction); packaging passed. Payload audit vs `0.2.177d472cf940`: only the client/host-worker bundles,
+  CSS, `index.html`, `server.mjs` and `release.json` changed; no key-pattern matches outside the embedded Rapier WASM.
+- Published content `0.2.65597ffe7165`, build `5ec47234ba96cc77d4eb2b7a`, payload `arena-1a9e8da3344ad6c7.json.gz`
+  (23,244,770 bytes, SHA-256 `1a9e8da3344ad6c7a0d6203dcf29d142903ab7988e3c58f68a90b203cb99a546`), channel commit
+  `de5cc4d`. Live feed and Site unchanged.
+- Real network: the real launcher updater upgraded an isolated install `0.2.177d472cf940` → `0.2.65597ffe7165` on the
+  first check; the second check skipped.
+- Not run: native Windows Update button, GPU look/fps, real multi-machine play, desktop Host online.
+- Status: merged and published to TEST. Next: owner playtest; retune `src/shared/pve/balance.ts` from feedback.
+
 ## 2026-10-03 — Claude — PvE Siren TEST BOSS: streams integrated (S7)
 
 - Owner request 2026-10-02 (first PvE mode: Siren TEST BOSS on Ward Zero; spec and design in `docs/PVE.md`).
