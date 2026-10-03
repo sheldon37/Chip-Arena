@@ -68,9 +68,24 @@ export class ArenaAudio {
   for(let i=0;i<(burst?3:1);i++){const voice=c.createOscillator(),gain=c.createGain(),at=c.currentTime+i*.11;voice.type=burst?'sine':'triangle';voice.frequency.setValueAtTime(burst?[660,880,1100][i]:240,at);voice.frequency.exponentialRampToValueAtTime(burst?[650,870,1090][i]:1700,at+(burst?.4:.8));gain.gain.setValueAtTime(.001,at);gain.gain.linearRampToValueAtTime(burst?.14:.10,at+.025);gain.gain.exponentialRampToValueAtTime(.001,at+(burst?.65:.95));voice.connect(gain).connect(this.master);voice.start(at);voice.stop(at+(burst?.7:1));voice.onended=()=>{voice.disconnect();gain.disconnect();};}
  }
  private updateDeathAnnouncements(state:Snapshot){for(const a of this.deathTrack.update(state))for(const [part,offset]of [['launch',0],['burst',DEATH_ANNOUNCEMENT.launch]] as const){const key=a.id+':'+part,age=state.time-a.at-offset;if(age<0||this.deathCues.has(key))continue;this.deathCues.set(key,state.time);if(age<.25)this.deathCue(part==='burst');}for(const[key,at]of this.deathCues)if(state.time-at>30)this.deathCues.delete(key);}
- update(state:Snapshot,me:string,yaw:number,presentation=state){this.intros.update(presentation,this.context,this.music.cueVolume);this.music.setMap(state.options.map);this.music.setBossActive(!!state.bossSong);this.music.setActive(!state.bossSong&&['fight','countdown','result'].includes(state.phase));this.updateLove(state);this.boss.update(presentation,this.context,this.music.playbackVolume);this.siren.update(presentation,this.context,this.master);const self=state.players.find(p=>p.id===me);if(self)this.listener=self.pos;this.yaw=yaw;this.updateDemon(presentation);this.updateDeathAnnouncements(presentation);
+ /** PvE cues (design §7.7): existing clips only, no regeneration. */
+ private pveCue(e:GameEvent,state:Snapshot,me:string){
+  if(e.type==='minionHit'){if(e.source===me&&(e.amount||0)>0)this.play('hit',undefined,.55);}
+  else if(e.type==='pve-buy'){if(e.target===me)this.play('ui',undefined,.6);}
+  else if(e.type==='pve-grab'){if(e.target===me)this.play('install',undefined,.6);}
+  else if(e.type==='pve-deny'){if(e.target===me)this.play('ui',undefined,.3);}
+  else if(e.type==='pve-gib')this.play('hit',e.pos,.35);
+  else if(e.type==='pve-wave'){if(e.message==='start')this.play('countdown',undefined,.6);else this.play('go',undefined,.6);}
+  else if(e.type==='pve-respawn'||e.type==='pve-revive'){if(e.target===me)this.play('go',undefined,.6);}
+  else if(e.type==='pve-found'||e.type==='pve-possess')this.play('go',undefined,.5);
+  else if(e.type==='pve-phase'){this.play('darkness',undefined,.7);this.play('metal',undefined,.35);}
+ }
+ /** Entry doors and vents opening (S6 owns the world animation; the cue lives here). */
+ pveEntries(state:Snapshot){const pve=state.pve;if(!pve)return;for(const e of pve.entries){const key='entry:'+e.e+':'+e.openAt;if(this.deathCues.has(key)||state.time<e.openAt||state.time-e.openAt>.4)continue;this.deathCues.set(key,state.time);this.play('metal',undefined,.18);}}
+ update(state:Snapshot,me:string,yaw:number,presentation=state){this.intros.update(presentation,this.context,this.music.cueVolume);this.music.setMap(state.options.map);this.music.setBossActive(!!state.bossSong);this.music.setActive(!state.bossSong&&['fight','countdown','result'].includes(state.phase));this.updateLove(state);this.boss.update(presentation,this.context,this.music.playbackVolume);this.siren.update(presentation,this.context,this.master);const self=state.players.find(p=>p.id===me);if(self)this.listener=self.pos;this.yaw=yaw;this.updateDemon(presentation);this.updateDeathAnnouncements(presentation);this.pveEntries(state);
   for(const e of this.cursor.consume(state.events,state.time)){
-   if(e.type==='melee-slam'){this.play('stone',e.pos,1);this.play('greatsword',e.pos,.65);}
+   if(e.type.startsWith('pve-')||e.type==='minionHit'&&state.pve)this.pveCue(e,state,me);
+   else if(e.type==='melee-slam'){this.play('stone',e.pos,1);this.play('greatsword',e.pos,.65);}
    else if(e.type==='melee-special'){if(e.spec)this.play(e.spec as Sound,e.pos,.4);}
    else if(e.type==='catch'&&e.spec==='shield')this.play('shield',e.pos,.45);
    else if(e.type==='shot'||e.type==='windup'){if(e.spec&&e.spec!=='siren')this.play(e.spec==='leet'||e.spec==='emperor'?'lightning':e.spec==='ansatsuken'?'fire':e.spec,e.pos,.65);}
@@ -111,6 +126,6 @@ export class ArenaAudio {
    else if(e.type==='nova'||e.type==='arc')this.play('lightning',e.pos,.5);
   }
   if(state.phase==='countdown'){const n=Math.ceil(state.remaining);if(n!==this.countdown&&n>0)this.play('countdown',undefined,.7);this.countdown=n;}else this.countdown=-1;
-  if(this.phase!==state.phase){if(state.phase==='fight')this.play('go',undefined,.7);if((state.phase==='result'||state.phase==='match'&&this.phase!=='result')&&state.winner)this.play(state.winner===me?'win':'lose',undefined,.65);this.phase=state.phase;}
+  if(this.phase!==state.phase){if(state.phase==='fight')this.play('go',undefined,.7);if((state.phase==='result'||state.phase==='match'&&this.phase!=='result')&&(state.winner||state.pve?.outcome))this.play(state.pve?.outcome?(state.pve.outcome==='victory'?'win':'lose'):state.winner===me?'win':'lose',undefined,.65);this.phase=state.phase;}
  }
 }

@@ -10,7 +10,7 @@ export const sirenFace=(cls='siren-face')=>`<svg class="${cls}" viewBox="0 0 200
 const RIGHT='M-10 0 C-14 -12 -9 -22 -5 -32 C-2 -40 -3 -50 0 -60 C7 -50 10 -42 8 -32 C12 -36 13 -42 12 -47 C19 -36 19 -16 10 0 Z';
 const LEFT='M10 0 C14 -12 9 -22 5 -32 C2 -40 3 -50 0 -60 C-7 -50 -10 -42 -8 -32 C-12 -36 -13 -42 -12 -47 C-19 -36 -19 -16 -10 0 Z';
 /** A row of black flame tongues standing on the bottom edge of a viewBox `width` wide and `height` tall. */
-function flames(width:number,height:number,front:number[][],back:number[][],core='.84 .86'){
+export function flames(width:number,height:number,front:number[][],back:number[][],core='.84 .86'){
  const tongue=(layer:string)=>([x,s]:number[],n:number)=>{const d=n%2?LEFT:RIGHT;return `<g transform="translate(${x} ${height}) scale(${s})"><g class="siren-tongue ${layer} t${n%7}"><path class="rim" d="${d}"/>${layer==='front'?`<path class="core" transform="scale(${core})" d="${d}"/>`:''}</g></g>`;};
  return `<svg class="siren-flames" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMax slice" aria-hidden="true">${back.map(tongue('back')).join('')}${front.map(tongue('front')).join('')}</svg>`;
 }
