@@ -2,7 +2,8 @@
 // the rest of the run's stats; Retry and Return to Menu in the panel's bottom-centre sticky actions.
 import type {PlayerView,Snapshot} from '../../shared/simulation.js';
 import {BOSS_PLAYER_ID,pveOf,type PvePartyView} from '../../shared/pve/contract.js';
-import {CHIPS,RARITIES} from '../../shared/content.js';
+import {RARITIES} from '../../shared/content.js';
+import {cardChip} from '../../shared/pve/money-chips.js';
 import {pilotCard} from '../lobby-ui.js';
 import {chipIcon,icon,actionIcon} from '../icons.js';
 import {rarityStyle} from '../chip-card.js';
@@ -17,7 +18,7 @@ export function resultPlayers(state:Snapshot):PlayerView[]{
 }
 const total=(r:PvePartyView)=>r.addDamage+r.bossDamage;
 function chipBadges(p:PlayerView){
- const chips=Object.entries(p.chips||{}).filter(([,k])=>k>0).map(([id,k])=>({c:CHIPS.find(c=>c.id===id),k})).filter(x=>!!x.c);
+ const chips=Object.entries(p.chips||{}).filter(([,k])=>k>0).map(([id,k])=>({c:cardChip(id),k})).filter(x=>!!x.c);
  if(!chips.length)return '<span class="pve-result-nochips">No chips installed</span>';
  return chips.map(({c,k})=>`<span class="pve-result-chip rarity-${c!.rarity}" style="${rarityStyle(c!)}" title="${escapeHtml(c!.name)} · ${RARITIES[c!.rarity].name}">${chipIcon(c!.id)}<strong>${escapeHtml(c!.name)}</strong>${k>1?`<b>×${k}</b>`:''}</span>`).join('');
 }

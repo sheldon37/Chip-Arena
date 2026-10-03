@@ -10,7 +10,8 @@ import {ADD_PREFIX,BOSS_PLAYER_ID,HORDE_ID,PVE_EVENT,
 import {ADD_KINDS,DROP_ODDS,ECONOMY,PICKS,PRICES,PVE,chipPrice,revivePrice} from './balance.js';
 import {PVE_MACHINES,type PveMachine} from './layout.js';
 import {interactTarget,respawnPad} from './machines.js';
-import {applyChipsLive,bestOffer,chipAllowed,offerCount,rollOffers,stillEligible} from './picks.js';
+import {applyChipsLive,bestOffer,chipAllowed,offerCount,rollOffers,stillEligible,withMoneyOffer} from './picks.js';
+import {moneyWithChips} from './money-chips.js';
 
 /** An empty party row (the seed's view of every member). S3 may reuse it for initial rows. */
 export function emptyPartyRow(kind:PvePartyView['kind'],connected:boolean):PvePartyView{
@@ -91,7 +92,9 @@ export class Economy implements EconomyApi{
  }
  /** Humans only: party bots never gain money. */
  grant(id:string,amount:number,reason:string){
-  if(!this.isHumanId(id)||!Number.isFinite(amount))return;const a=Math.round(amount);if(!a)return;const r=this.row(id);
+  if(!this.isHumanId(id)||!Number.isFinite(amount))return;
+  amount=moneyWithChips(this.player(id)?.chips,reason,amount); // PvE money chips (money-chips.ts)
+  const a=Math.round(amount);if(!a)return;const r=this.row(id);
   r.money=Math.max(0,r.money+a);if(a>0)r.earned+=a;
   if(!SILENT_REASONS.has(reason))this.emit(PVE_EVENT.cash,id,{amount:a,message:reason});
  }
@@ -105,7 +108,7 @@ export class Economy implements EconomyApi{
   if(!this.isMemberId(id))return null;const pick:PvePick={id:'pick-'+(++this.pickSerial),tier,source,at:this.time};
   this.row(id).picks.push(pick);return pick.id;
  }
- private roll(p:Player,pick:PvePick){pick.offers=rollOffers(p,pick.tier,()=>this.draw(),offerCount(pick.tier,this.sim.options.draftChoices));}
+ private roll(p:Player,pick:PvePick){const n=offerCount(pick.tier,this.sim.options.draftChoices);const offers=rollOffers(p,pick.tier,()=>this.draw(),n);pick.offers=this.host.isHuman(p)?withMoneyOffer(p,pick.tier,()=>this.draw(),offers,n):offers;}
  /** Opens a pick; offers are rolled on the first open and then frozen (D17). Party bots start thinking. */
  private openPick(p:Player,pickId:string|null|undefined){
   const r=this.row(p.id),pick=r.picks.find(k=>k.id===pickId);if(!pick)return false;

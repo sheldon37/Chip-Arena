@@ -6,6 +6,7 @@ import {ARCADE,ARCADE_CHIPS,ARCADE_INCOMPATIBLE} from './arcade-content.js';
 import {LEET_CHIPS,LEET_WEIGHTS,LEET_INCOMPATIBLE} from './leet-content.js';
 import {CHAOS_CHIPS} from './chaos-content.js';
 import {SIREN_CHIPS,SIREN_CHIP_ODDS} from './siren-chips.js';
+import {POWER_CHIPS} from './power-chips.js';
 import {CONFIG as C} from './config.js';
 import type {ClassId,SpecId} from './config.js';
 import {ELEMENTS} from './elements.js';
@@ -33,7 +34,9 @@ type Effect={stat:keyof Stats;op:'add'|'mul'|'set';value:number};
 export type Rarity='mishima'|'ansatsuken'|'l44t'|'siren'|'common'|'uncommon'|'rare'|'epic'|'legendary'|'mythic';
 export const RARITIES:Record<Rarity,{name:string;color:string;weight:number}>={mishima:{name:'Mishima',color:'#b3b5c2',weight:0},ansatsuken:{name:'Ansatsuken',color:'#ff354e',weight:0},l44t:{name:'L44T',color:'#4dff83',weight:0},siren:{name:'Siren',color:'#b7a8ff',weight:0},common:{name:'Common',color:'#f1f5f9',weight:42},uncommon:{name:'Uncommon',color:'#79e59a',weight:28},rare:{name:'Rare',color:'#70b5ff',weight:17},epic:{name:'Epic',color:'#ce8aff',weight:8},legendary:{name:'Legendary',color:'#ffae55',weight:4},mythic:{name:'Mythic',color:'#ff6475',weight:1}};
 export const draftChoiceCount=(n:unknown)=>typeof n==='number'&&Number.isFinite(n)?Math.max(1,Math.min(12,Math.floor(n))):6;
-export interface Chip{mechanic?:string;rarity:Rarity;id:string;name:string;description:string;tags:string[];max:number;icon:string;effects:Effect[];}
+/** One structured stat line on a chip card: `good` prints green, `bad` red (chip-stats.ts derives lines from effects). */
+export interface ChipStatLine{text:string;tone:'good'|'bad'|'neutral'}
+export interface Chip{/** Explicit card stat lines; when absent they are derived from `effects`. */stats?:ChipStatLine[];mechanic?:string;rarity:Rarity;id:string;name:string;description:string;tags:string[];max:number;icon:string;effects:Effect[];}
 const e=(stat:keyof Stats,op:Effect['op'],value:number):Effect=>({stat,op,value});
 export const CHIPS:Chip[]=[
 {id:'vital',rarity:'common',name:'Vital Core',description:'+25 maximum health per installation. Additive.',tags:['all'],max:12,icon:'+',effects:[e('hp','add',25)]},
@@ -143,6 +146,7 @@ export const CHIPS:Chip[]=[
 {id:'ghost-timing',rarity:'epic',name:'Ghost Timing',description:'+0.035 s roll invincibility per stack. Invincibility is capped at 60% of the roll; startup and recovery remain exposed.',tags:['roll'],max:2,icon:'◇',effects:[e('rollWindow','add',.035)]},
 {id:'tumble-engine',rarity:'legendary',name:'Tumble Engine',description:'+35% roll distance and +20% roll speed, but +30% roll stamina cost. Invincibility does not cover the full roll.',tags:['roll'],max:1,icon:'↻',effects:[e('rollDistance','mul',1.35),e('rollSpeed','mul',1.2),e('rollCost','mul',1.3)]},
 {id:'reserve-cell',rarity:'uncommon',name:'Reserve Cell',description:'+25 maximum stamina and +18% stamina regeneration per stack. Supports attacks and dodge rolls.',tags:['all'],max:3,icon:'∿',effects:[e('maxStamina','add',25),e('staminaRegen','mul',1.18)]},
+...POWER_CHIPS,
 ...CHAOS_CHIPS,...MISHIMA_CHIPS,...ARCADE_CHIPS,...LEET_CHIPS,...SIREN_CHIPS,
 ];
 export function statsFor(chips:Record<string,number>,spec?:SpecId):Stats {const s={...BASE_STATS,hp:spec==='siren'?SIREN_COMBAT.hp:BASE_STATS.hp}; for(const c of CHIPS)for(let n=0;n<Math.min(c.max,chips[c.id]||0);n++)for(const f of c.effects){if(f.op==='add')s[f.stat]+=f.value;else if(f.op==='mul')s[f.stat]*=f.value;else s[f.stat]=f.value;}s.hp=Math.max(15,s.hp);s.speed=Math.max(.25,Math.min(2.5,s.speed));s.attackRate=Math.max(.15,Math.min(5,s.attackRate));s.extraProjectiles=Math.min(11,s.extraProjectiles);s.extraStrikes=Math.min(4,s.extraStrikes);s.split=Math.min(6,s.split);s.projectileSize=Math.max(.4,Math.min(6,s.projectileSize));s.projectileSpeed=Math.min(4,s.projectileSpeed);s.critical=Math.min(.75,s.critical);s.lifeSteal=Math.min(1,s.lifeSteal);s.jumpPower=Math.min(2.5,s.jumpPower);s.impulse=Math.min(12,s.impulse);s.blockForce=Math.min(6,s.blockForce);s.knockbackTaken=Math.max(.04,Math.min(3,s.knockbackTaken));return s;}
