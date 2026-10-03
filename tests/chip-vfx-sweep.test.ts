@@ -10,11 +10,13 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import * as T from 'three';
-import {CHIPS} from '../src/shared/content.js';
+import {CHIPS,statsFor} from '../src/shared/content.js';
+import {Simulation,initPhysics} from '../src/shared/simulation.js';
+import {v} from '../src/shared/config.js';
 import type {FieldView} from '../src/shared/chaos.js';
 import type {Snapshot} from '../src/shared/simulation.js';
 import {ChaosVisuals,RIM_SPACING,TELEGRAPH,telegraphColor} from '../src/client/chaos-visuals.js';
-import {ChipBlasts,BLAST_CAPACITY} from '../src/client/chip-blasts.js';
+import {ChipBlasts,BLAST_CAPACITY,BLAST_MIN_VOXELS} from '../src/client/chip-blasts.js';
 import {ChipEffects} from '../src/client/chip-effects.js';
 import {EventVfx} from '../src/client/event-vfx.js';
 import {PlayerStatusEffects} from '../src/client/status-effects.js';
@@ -285,4 +287,14 @@ test('ability statuses: slowed droplets, shackle cuffs and the Orbital Mark reti
  const mark=field({id:'m',kind:'bomb',fx:'orbital-mark',attach:'b',born:0,lockAt:1,until:1.2});const reticle=get('orbital-marked'),r=(t:number)=>{fx.update(state([player('b')],[mark],t),'a',false,camera,1);return Math.hypot(reticle.children[0].position.x,reticle.children[0].position.z);};
  assert.equal(r(.1)>r(.9),true,'the reticle closes in as the strike locks');assert.ok(reticle.visible);fx.update(state([player('b')],[],1.3),'a',false,camera,1);assert.equal(reticle.visible,false);
  const count=()=>{let n=0;scene.traverse(()=>n++);return n;},before=count();for(let i=0;i<60;i++)fx.update(state([player('b',{factor:.5,until:9,kind:'soak'})],[mark],i/60),'a',false,camera,1);assert.equal(count(),before,'bounded meshes');
+});
+// Replaces first-block.test.ts 'Supernova and Counter Pulse each render a visible blast and clean it up', which pins the
+// removed chip-effects pulse rings (design §19.2 converts them; INTEGRATION updates that test, it is not V-owned).
+test('Supernova and Counter Pulse render a visible volumetric blast through the engine path and clean it up',async()=>{
+ await initPhysics();
+ for(const chip of ['supernova','block-pulse']){const s=new Simulation({sandbox:true}),a=s.addPlayer('a')!,b=s.addPlayer('b')!;s.phase='fight';b.chips={[chip]:1};b.stats=statsFor(b.chips);b.body.setTranslation(v(0,1,4),true);s.world.step();
+  s.explode(b,b.body.translation(),3,b.stats.blockPulseDamage,b.stats.blockPulseImpulse,'blockPulse',true);const e=s.events.find(x=>x.type==='blockPulse')!;void a;
+  const scene=new T.Scene(),vfx=new EventVfx(scene,()=>({quality:1,compat:false,trails:false})),chips=new ChipEffects(scene),n=scene.children.length,styles:string[]=[];const blast=vfx.chipBlasts.blast.bind(vfx.chipBlasts);vfx.chipBlasts.blast=((st,p,r,o)=>{styles.push(st+':'+r);return blast(st,p,r,o);}) as typeof blast;
+  chips.event(e,0);vfx.blastEvent(e);vfx.event(e,s.snapshot(),'a');assert.deepEqual(styles,[(chip==='supernova'?'nova':'kinetic')+':3']);assert.equal(scene.children.length,n);assert.ok(vfx.chipBlasts.glow.count+vfx.chipBlasts.solid.count>=BLAST_MIN_VOXELS*2,chip);
+  for(let i=0;i<120;i++)vfx.update(1/60);assert.equal(vfx.chipBlasts.glow.count+vfx.chipBlasts.solid.count,0,'cleaned up');s.dispose();}
 });
