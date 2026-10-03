@@ -44,15 +44,15 @@ const F_BASE={added:27,spawns:[24,70,32,14,18,8,24,18,24,12,6,6,6,6,18,16,16,16,
  *   arc with `from` (chains, Ball Lightning) and a bare arc draw voxel lines instead of beam meshes (1 + 4 lines).
  * - water bolt impact: the per-event TorusGeometry ring becomes a 0.6 m voxel splash.
  * - push/pull (legacy E only, simulation.ts): bursts, torus and the six pull beams are deleted (removed by source, §13.3).
- * - nova with message panic-button: its 28-spark burst is removed (the ChipBlasts kinetic blast stays); the legacy
- *   lightning E nova keeps its burst until INTEGRATION removes that E.
+ * - nova with message panic-button: its 28-spark burst is removed (the ChipBlasts kinetic blast stays). INTEGRATION removed
+ *   the legacy lightning E (simulation.ts), the only other nova source, and with it that nova's 28-spark burst.
  * - blockPulse (Counter Pulse, Supernova) and vacuum (Vacuum Impact, Reverse Grenade, Singularity): the 28-spark bursts are
  *   removed; their ChipBlasts nova/kinetic/void blasts stay (chip-effects' flat pulse rings are gone too).
  * - meleeRebound (Rebound Engine, Counterweight, Bulwark, Repulsor): 28-spark burst and flat rings become a 1.5 m voxel impact.
  * - slowed (Soak, Tidal Wave, Geyser Wall, Shadow Shackles): new 0.8 m voxel impact (water blue, violet for shackles).
  * - added/particles 27 → 9: only the DEV/stage beams (leet 1, saw 7) and the weapon impact trail remain meshes.
  */
-const EXPECTED={added:9,spawns:[24,70,32,14,18,8,6,6,6,6,18,6,6,6,6,6,6,28],
+const EXPECTED={added:9,spawns:[24,70,32,14,18,8,6,6,6,6,18,6,6,6,6,6,6],
  blasts:['void:1.2:0.500','void:1.2:0.500','implosion:4:1.000','fire:3:0.550','kinetic:4.2:1.000:tint','shock:3:0.600','kinetic:6:1.000','nova:3:1.000','kinetic:3:1.000','void:5:1.000','frost:0.9:0.700'],
  fields:['f1','f2'],impacts:['0.9:b66cff','1.2:93db67:ground','0.6:8de9ee','1.5:91f7eb','0.8:8de9ee'],lines:6,particles:9,hits:1,shakes:2};
 

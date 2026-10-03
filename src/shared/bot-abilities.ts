@@ -53,10 +53,9 @@ export function botAbilities(s:Simulation,p:Player,input:Input,distance:number,v
  }
  if(p.secondaryCd>0)return;
  const range=p.chips.necronomicon&&w.class==='magic'?24:
-  ({'sword-launch':w.range*p.stats.reach+.25,'dagger-throw':22,'shield-throw':20,'wolf-spin':5,fireball:28,push:4.8,pull:4.8,nova:4.1,root:p.chips['l44t-time']?28:5.8} as Record<string,number>)[w.secondary]??Math.min(40,w.range);
- const cost=w.class==='magic'?(w.secondary==='root'?30:p.chips.necronomicon?35:w.secondary==='fireball'?25:w.secondary==='push'?22:w.secondary==='nova'?24:20):(w.secondaryCost||0);
- const ammo=w.secondary==='burst'?(w.burstCount||3):['power','snipe'].includes(w.secondary)?2:0;
- if(distance<=range&&afford(cost)&&p.ammo>=ammo&&(p.spec!=='greatsword'||p.grounded)){
+  ({'sword-launch':w.range*p.stats.reach+.25,'dagger-throw':22,'shield-throw':20,'wolf-spin':5,root:p.chips['l44t-time']?28:5.8} as Record<string,number>)[w.secondary]??Math.min(40,w.range);
+ const cost=w.class==='magic'?(w.secondary==='root'?30:p.chips.necronomicon?35:20):(w.secondaryCost||0);
+ if(distance<=range&&afford(cost)&&(p.spec!=='greatsword'||p.grounded)){
   input.secondary=true;input.attack=input.dash=false;
  }
 }

@@ -31,8 +31,7 @@ export class EventVfx{
   if(t==='critical')hit(0xffd66c,1.5);if(t==='catch')hit(0x7fffe0,.9);if(t==='split')hit(0x96ffb7,1.1);if(t==='meleeRebound')hit(0x91f7eb,event.radius||1.5);if(t==='slowed')hit(event.message==='shackles'?0xb45cff:0x8de9ee,.8);
   if(t==='ricochet'){if(event.message==='rally')this.rally(event,state);else hit(c.pong?0xff5269:0xffcc49,c.pong?1.2:.8);}
   if(t==='arc'){if(event.from)b.line(event.pos,event.from,0xffffff,event.color||0xc4b4ff,o.quality);else if(!event.radius)for(let i=0;i<4;i++){const a=i*1.57+.4;b.line(event.pos,{x:event.pos.x+Math.cos(a),y:event.pos.y+.5,z:event.pos.z+Math.sin(a)},0xffffff,0xc4b4ff,o.quality);}}
-  // The legacy lightning E's nova keeps its burst until INTEGRATION removes that E.
-  if(t==='nova'&&event.message!=='panic-button')this.burst(event.pos,event.color||0x8bf0ff,28,8);return out;}
+  return out;}
  /** Pong rally (contract from pong.ts): a voxel paddle flash at the bounce point and a 0.15 s streak toward the rally target. */
  private rally(e:GameEvent,state:Snapshot){const from=e.from||e.pos,to=state.players.find(p=>p.id===e.target)?.pos,d=to?{x:to.x-e.pos.x,y:to.y+.3-e.pos.y,z:to.z-e.pos.z}:{x:e.pos.x-from.x,y:e.pos.y-from.y,z:e.pos.z-from.z},l=Math.hypot(d.x,d.y,d.z)||1,k=Math.min(6,l)/l,q=this.options().quality;
   this.chipBlasts.paddle(from,d,0xff5269,q);this.chipBlasts.line(e.pos,{x:e.pos.x+d.x*k,y:e.pos.y+d.y*k,z:e.pos.z+d.z*k},0xffffff,0xff5269,q,.05,.15,.12);}
