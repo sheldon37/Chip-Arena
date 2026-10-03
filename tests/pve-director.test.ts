@@ -7,7 +7,7 @@ import {idleInput,v} from '../src/shared/config.js';
 import {BOSS_PLAYER_ID,type PveOptions} from '../src/shared/pve/contract.js';
 import {Director} from '../src/shared/pve/director.js';
 import {WaveSchedule,bossFlow,waveBudget,waveFlow} from '../src/shared/pve/waves.js';
-import {HORDE,PVE,WAVES,bossStageScale,partyFactor,waveScale} from '../src/shared/pve/balance.js';
+import {ECONOMY,HORDE,PVE,WAVES,bossStageScale,partyFactor,waveScale} from '../src/shared/pve/balance.js';
 import {SIREN_INTRO} from '../src/shared/siren-contract.js';
 import {fakeParts,withPveParts,type FakeEconomy,type FakeHorde,type FakeRecruits} from './helpers/pve-fakes.js';
 await initPhysics();
@@ -66,7 +66,7 @@ test('flow: opening → W1 → I → W2 → I → W3 → I(8 s) → reveal 1 →
   // Clear rule: ≤2 left for 3 s. One add is killed per tick, so each wave clears 3 s after its count reaches 2.
   for(const w of [1,2,3]){const len=at('intermission',w-1)-at('wave'+w);near(len,(waveBudget(w,1)-PVE.waveClearRemainder)*DT+PVE.waveClearHold);}
   assert.deepEqual(r.economy.respawns,['wave','wave','wave'],'respawnAll(wave) once per clear');
-  assert.deepEqual(r.economy.grants.filter(g=>g.reason==='wave-clear').map(g=>g.amount),[60,80,100]);
+  assert.deepEqual(r.economy.grants.filter(g=>g.reason==='wave-clear').map(g=>g.amount),[1,2,3].map(w=>ECONOMY.waveClearBase+ECONOMY.waveClearPerWave*w));
   assert.equal(r.horde.flows.filter(f=>f&&f.budget>0).length,3);assert.equal(r.horde.flows.at(-1)!.budget,-1,'boss trickle');
   assert.deepEqual(r.d.modifiers(),bossStageScale());
   assert.ok(s.events.some(e=>e.type==='pve-wave'&&e.message==='clear'&&e.amount===3));

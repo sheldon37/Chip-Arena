@@ -41,7 +41,7 @@
 .draft-tray .circuit-chip .chip-icon>.game-icon{width:20px;height:20px}
 .draft-tray .circuit-chip strong{font-size:15px;line-height:1.15}
 .draft-tray .circuit-chip .rarity-label{font-size:10px}
-.draft-tray .circuit-chip p{margin:7px 3px 8px;font-size:12px;line-height:1.38;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden}
+.draft-tray .circuit-chip p{margin:7px 3px 8px;font-size:12px;line-height:1.38;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden}.draft-tray .circuit-chip .chip-stats{margin:-3px 3px 8px;gap:1px;font-size:12.5px}
 .draft-tray .circuit-chip .chip-footer{margin-top:auto;padding-top:6px;font-size:9.5px;gap:6px}
 .draft-tray .circuit-chip:before,.draft-tray .circuit-chip:after{left:16px;right:16px;height:7px}
 .draft-tray .circuit-chip:before{top:-7px}.draft-tray .circuit-chip:after{bottom:-7px}

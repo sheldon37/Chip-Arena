@@ -1,7 +1,8 @@
 // Personal chip screen (design §7.6, §5). A self-managed overlay root (#pve-chips), like PlayerBoard: the cards are written
 // once per pick/offers key, and the attacked state toggles in place, so card animations never restart under fire.
 import type {Snapshot} from '../../shared/simulation.js';
-import {CHIPS,type Chip} from '../../shared/content.js';
+import type {Chip} from '../../shared/content.js';
+import {cardChip} from '../../shared/pve/money-chips.js';
 import {pveOf,type PvePick} from '../../shared/pve/contract.js';
 import {chipCard} from '../chip-card.js';
 import {icon} from '../icons.js';
@@ -13,7 +14,7 @@ export function chipScreenModel(state:Snapshot,me:string):ChipScreenModel|null{
  const pve=pveOf(state),row=pve?.party[me];if(!row?.open)return null;
  const pick=row.picks.find(p=>p.id===row.open);if(!pick)return null;
  const self=state.players.find(p=>p.id===me);
- return {pick,queued:Math.max(0,row.picks.length-1),offers:(pick.offers??[]).map(id=>CHIPS.find(c=>c.id===id)).filter((c):c is Chip=>!!c),copies:self?.chips??{},openAt:row.openAt??state.time};
+ return {pick,queued:Math.max(0,row.picks.length-1),offers:(pick.offers??[]).map(cardChip).filter((c):c is Chip=>!!c),copies:self?.chips??{},openAt:row.openAt??state.time};
 }
 /** Shown while my pick is open in a live fight and no cinematic covers the screen (§7.5: hidden during every cinematic). */
 export function chipScreenVisible(state:Snapshot,me:string,locallyClosed=false){

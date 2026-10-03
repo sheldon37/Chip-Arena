@@ -103,7 +103,7 @@ test('balance tables match the design and the owner decisions',()=>{
  assert.deepEqual(OFFER_WEIGHTS.rainbow,{mythic:1});
  for(const tier of ['common','uncommon','rare','epic','legendary','mythic'] as const)assert.ok((OFFER_WEIGHTS[tier].mythic??0)>0,`${tier} can show max rarity`);
  assert.equal(Object.values(DROP_ODDS).reduce((a,b)=>a+b,0),100);
- assert.deepEqual([0,1,10].map(chipPrice),[150,175,300]);assert.deepEqual([0,1,9].map(revivePrice),[100,150,300]);
+ assert.deepEqual([0,1,10].map(chipPrice),[175,200,350]);assert.deepEqual([0,1,9].map(revivePrice),[150,200,400]);   // owner money retune 2026-10-03
  assert.deepEqual(waveScale(1),IDENTITY_MODS);assert.equal(waveScale(3).hp,1.24);
  assert.deepEqual(combineMods(waveScale(2),{hp:2}),{...waveScale(2),hp:2*1.12});
  assert.equal(WAVES.length,PVE.wavesBeforeBoss);assert.equal(ADD_KINDS.shambler.hit,PVE_TIMING.swipeHit);assert.equal(ADD_KINDS.brute.hit,PVE_TIMING.smashHit);

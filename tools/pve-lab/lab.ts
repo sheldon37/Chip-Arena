@@ -10,7 +10,7 @@
  *  kind=pickups    one pickup of every drop tier, owned alternately by me and a friend
  *  kind=entries    entry e (vent 0-7, cell 8-11, door 12-15) opening from t=0 with a stand-in minion; mode=spawn|dive
  *  kind=holo       remote pilots choosing a chip: calm, and under attack (blink on and off)
- *  kind=beacon     downed pilots: waiting (REVIVE $), being revived (channel), self-revive countdown
+ *  kind=beacon     downed pilots: waiting (F · REVIVE $), self-revive countdown
  *  kind=boss       the Siren at scale 1 and grown to 1.5 next to a pilot (growth over times); cutscene=1: Last Laugh frame
  *  frames, start, span | times=a,b,c   sample times; cell=<px>, aspect=<w/h>, quality=<0-1>, dt=<s>, warm=<s>
  */
@@ -91,8 +91,8 @@ function scenario(t:number):Frame{
   const players=[player('calm','#3fc6ff',stand(-2.2,0),0),player('hit-a','#ffb03f',stand(0,0),0,{team:'blue'}),player('hit-b','#ff5fb0',stand(2.2,0),0),player(ME,'#cccccc',stand(0,30),0)];
   return {players,view:w};}
  if(kind==='beacon'){
-  const ids=[ME,'down','reviving','self','medic'];const w=base(t,ids);w.party=fixtureParty({time:t,ids,kinds:['alive','dead','dead','self-reviving','channelling']});
-  w.party.medic.channel={kind:'revive',target:'reviving',at:t-1,until:t+1.5};w.party.self.downAt=t-2;w.party.self.selfReviveAt=t+3;
+  const ids=[ME,'down','reviving','self','medic'];const w=base(t,ids);w.party=fixtureParty({time:t,ids,kinds:['alive','dead','dead','self-reviving','alive']});
+  w.party.self.downAt=t-2;w.party.self.selfReviveAt=t+3;
   const dead=(id:string,x:number)=>player(id,'#3fc6ff',stand(x,0),0,{hp:0,death:{id:'d-'+id,at:t-3,pos:stand(x,0)} as never});
   const players=[dead('down',-3),dead('reviving',0),dead('self',3),player('medic','#7dffb0',stand(-.9,1),Math.PI*.8),player(ME,'#cccccc',stand(0,30),0)];
   return {players,view:w};}

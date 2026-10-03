@@ -18,6 +18,118 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-03 — Claude — PvE stage music (Restricted Zone Pulse) + batch 2 verification
+
+- Branch `claude/pve-batch2` (from `948b5ba` = `claude/visual-revision` `6fd525c` + econ-revive, chips, camera,
+  tab-board merges); no PR.
+- Owner: "lets replace the music on the stage to the one attached- until Siren spawns of course :)". Added the owner's
+  `public/music/restricted-zone-pulse.mp3` (byte-exact, 4,113,904 B). In a PvE run on Ward Zero the client loops it from
+  the first in-game phase (specialization, intros, countdown, waves, intermissions, reveal) until `bossSong` is set at the
+  Siren's intro tick, where Black Siren Protocol takes over unchanged. Lobby keeps the menu music; 35% under intro
+  stings; rewinds for Retry/new runs; music volume/mute apply; load error falls back to the rotation. Not in
+  `MUSIC_TRACKS`, so PvP rotation is unchanged. PvE pre-decodes the boss song so it starts at offset 0 on the intro.
+  Files: `src/client/{music,audio,boss-theme,main}.ts`, new `tests/pve-stage-music.test.ts`, docs PVE/ASSET-CREDITS.
+- Animation/hit timing/hitboxes/damage/cooldowns/movement/networking: unchanged (client audio only; no wire change).
+- Checks (Node 22.22.2): check:types pass; full suite 933 tests, 920 pass, 13 fail = the known set exactly;
+  pvp-golden 5/5; `run-network.mjs pve` victory; `pve-loopback-network.ts` pass; `test:pve-balance` 60 runs, 22/60
+  victories (S7 table: 13/60), money at boss h=1 pistol 619 / rifle 317. Real app (Vite, offline TEST BOSS, SwiftShader):
+  stage track playing through specialization/intro/countdown/fight; paused and rewound the tick the Siren song started
+  (boss buffer started once, offset 0); Tab board, chip screen green/red stat lines, one F tap revived a party bot.
+- Size: the track is 2:53 (not 8.5 min; the header claimed 64 kbps but it is ~190 kbps VBR). Re-encoded to 128 kbps CBR without
+  cover art (2.77 MB); `npm run build` passes with a 26,022,078-byte (24.8 MiB) payload, under the 25 MiB hosting limit.
+- Status: implemented on branch; not merged; not released.
+
+## 2026-10-03 — Claude — PvE playtest fixes: more money, instant revive
+
+- Branch `claude/pve-econ-revive` from `213f62b` (PR #30 head); no PR (integrator merges).
+- Revive: the hold-F channel cancelled one round trip after it began because the client's
+  `pveIdle()` idled all input (interact too) while the party row showed a channel. Revive is
+  now instant: one F press near a downed teammate charges and revives (50% HP, shield); deny
+  'money' otherwise. Channel state/UI removed; sub-frame F taps are latched in `main.ts`.
+  E is the special ability (`secondary`), not interact.
+- Money (`balance.ts`): income about 2.5x (rewards 25/20/80, head 10, start 150, wave clear
+  100+50w, thresholds 250, boss $10 per 1%, possessed 300/100); prices about 1.2x (chip
+  175+25 max 350, recruit 300, heal 75, revive 150+50 max 400). Harness, solo pistol median:
+  earned at boss 1512 -> 3406, bought 2 recruits + 4 chips -> 2 + 8. Table in docs/PVE.md.
+- Animation/hit timing/hitboxes/damage/cooldowns/movement/networking: unchanged (wire fields
+  unchanged; `channel` is simply never set). PvP untouched; pvp-golden passes.
+- Checks (Node 22.22.2): check:types pass; full suite 913 tests, 900 pass, 13 fail = the known
+  set; `node tests/run-network.mjs pve` victory; balance harness h=1,2 pistol/rifle seeds 1-5
+  before/after; real app (Vite, offline TEST BOSS, SwiftShader ~20 fps): one F tap revived a
+  downed party bot and charged $150; holding F 3 s revived once; too poor = no revive.
+- Not run: Windows build, hosted multi-browser play. Risk: owner judgement of the new numbers.
+  Status: implemented on branch; not merged; not released.
+## 2026-10-03 — Claude — more damage/health chips, green/red chip stat lines, PvE money chips
+
+- Branch `claude/pve-chips` from `213f62b` (PR #30 head, `claude/pve-fix-desync-holdchip`); no PR opened.
+- Owner request: more damage and health chips; chip cards show the description first, then
+  positives in green and negatives in red (for example "+100% Health"); money-gain chips in PvE
+  (boss fight only).
+- 29 stat chips (`src/shared/power-chips.ts`, added to `CHIPS`): 15 damage (flat, per class,
+  close/far range, finisher, crit/backstab, glass-cannon trade-offs) and 14 health (flat/percent
+  max health, regeneration, life steal, damage reduction, tank trade-offs), common to legendary.
+  None are mythic, so the rainbow melee pool test keeps its size. All run through `statsFor`.
+- `src/shared/chip-stats.ts` builds per-copy stat lines from chip effects (old chips get them too),
+  or uses explicit `Chip.stats`. `chipCard` renders `<ul class="chip-stats">` after the description,
+  and the aria-label adds the lines with "(penalty)". Board tooltips show the same lines.
+- PvE money chips (`src/shared/pve/money-chips.ts`, 6 chips from common to legendary) are not
+  in `CHIPS`, so PvP never sees them. For human pilots, an ordinary (non-rainbow) PvE pick has a 30%
+  chance to swap its last offer for one (`withMoneyOffer`, seeded economy stream). `Economy.grant`
+  scales earnings through `moneyWithChips` (one line; refunds are unchanged). Party bots skip them.
+- `tests/pve-foundation.test.ts`: the offerChips base-hash check now runs on the base catalogue
+  (new chips removed temporarily), so it still proves the default path is unchanged.
+  New `tests/power-chips.test.ts` covers this work. New Lucide icons were generated via `icons:generate`.
+- Checks (Node 22.22.2): `npm run check:types` passes; full suite 905 pass / 13 fail, which is exactly the
+  known Node 22 failure set; pvp-golden unchanged (PvP traces draft no chips). Playwright shots: draft 1600x900 and 1280x720, PvE start screen,
+  money and mixed offer screens (session scratchpad, after/pve-chips).
+- Risks: PvP draft pools grew, so offer odds per existing chip are lower. Balance numbers have
+  not been playtested. Picks now draw extra economy RNG, which shifts seeded PvE runs.
+  The draw comes after the catalogue offers.
+- Status: implemented on branch; not merged; not released.
+## 2026-10-03 — Claude — camera snaps ("pulls another direction randomly and instantly")
+
+- Branch `claude/pve-camera` from `claude/pve-fix-desync-holdchip` `213f62b`; no PR (orchestrator). Not merged, not released.
+- Finding: the live camera's yaw/pitch are purely client-local (only pointer-lock `mousemove` changes them in play; the
+  server, prediction, holds, revives and teleports never write them; cutscene/spectator/killcam are separate cameras).
+  So a sudden turn in play can only come from a mouse delta. Chromium pointer lock (Windows/Electron) is known to
+  report bogus single huge `movementX/Y` on the first move after a lock is (re)acquired (Esc→Resume, chip screen,
+  board, alt-tab) and as rare lone spikes; main.ts applied every delta unfiltered. The Windows trigger itself was not
+  reproducible here (Linux headless). Position prediction was also checked in scripted offline boss runs (solo and
+  3 party bots): no snaps, corrections ≤0.44 m eased.
+- Fix (client input sanitising, all modes, no feel change in normal play): `src/client/mouse-look.ts` `MouseLookFilter`
+  drops >48 px deltas on the first event / first 120 ms after a lock, and a lone >260 px event that is also >5× what
+  the recent hand speed predicts (a same-direction follow-up confirms a real flick). Wired in `main.ts` mousemove and
+  `pointerlockchange`. No hit timing, hitboxes, damage, cooldowns, movement or networking changes.
+- Checks: `tests/mouse-look.test.ts` (new, 7 cases); real app (Playwright, synthetic locked mousemoves): fresh-lock
+  300 px jump and a 900 px spike ignored, 10 px tracking and a 1620 px ramped flick applied exactly; check:types,
+  pvp-golden and the full unit suite (failures = the known Node 22 set). Not run: Windows/Electron, real mouse.
+- Follow-up (owner: "exiting chip selection ... seems to make us look upward"): consistent, same mechanism. Closing
+  the chip screen re-locks; Chromium warps the cursor from the click (Choose later / cards sit below the centre) to the
+  lock centre, read as a move up. Chromium sets `pointerLockElement` before `pointerlockchange`, so the warp could reach
+  the filter before it knew of the new lock. The filter now starts a fresh lock at the first locked event after an
+  unlocked spell (`track()`), settle window 250 ms. Nothing resets or changes pitch while the screen is open. Real app with
+  emulated lock + warp (0,−180 px): base `213f62b` pitched up 0.32 rad per close (to the 1.1 clamp); `07f91fd` still
+  missed the Esc close; now 0 on Choose later click, Esc and card pick; aiming after re-lock exact.
+- Next: owner playtest on Windows; if snaps persist, consider `requestPointerLock({unadjustedMovement:true})` (raw input;
+  removes OS acceleration, so a feel change to decide).
+## 2026-10-03 — Claude — PvE Tab party board (no rounds/sets; kills, deaths, money)
+
+- Branch `claude/pve-tab-board` from `claude/visual-revision` `6fd525c`; no PR (orchestrator). Not merged, not released.
+- Owner feedback: the Tab board in PvE still counted rounds/sets. In a boss run (`snapshot.pve`) `PlayerBoard` now renders
+  `src/client/pve/board.ts`: stage heading (wave n/3 + adds left, boss phase n/4 + health, intermission, victory/defeat),
+  run clock, party totals, one scoreboard row per party member (humans and party bots; recruits nested with HP) with
+  status/HP, kills (+heads), deaths, assists, revives, add and boss damage, money now and earned, weapon and chips (same
+  hover inspection). Live cells swap in place so chip hover survives updates. HUD nav button reads Party in PvE.
+- Authority: all stats were already live in the party rows; only the run start was missing, so the director view gains
+  optional `startedAt` (PvE-only field; PvP snapshots carry no `pve`, pvp-golden unchanged). Fixture base sets it.
+- PvP board path unchanged (test pins its markup hash from `6fd525c`). No combat, timing, hitbox, movement or network
+  behaviour change.
+- Checks: check:types pass; new tests/pve-board.test.ts 5/5; pvp-golden, pve-ui, pve-contract, pve-director, model-ui,
+  pve-foundation pass; full suite 904 pass / 13 fail = the known Node 22 list exactly. Playwright (SwiftShader) real
+  offline Test Boss Tab board plus fixture wave/boss states at 1920x1080 and 1280x720 inspected. Not run: Windows build,
+  network suites, multiplayer playtest.
+- Risk/next: at 720p with four members and many chips the board scrolls. Owner playtest of the board.
+
 ## 2026-10-03 — Claude — PvE playtest fixes: offline desync after Esc, taken chips wait as pending picks
 
 - Branch `claude/pve-fix-desync-holdchip` from `claude/visual-revision` `58f5d7b`; no PR opened (orchestrator). Not merged, not released.

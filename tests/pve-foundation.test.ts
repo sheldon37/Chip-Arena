@@ -6,6 +6,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import {Simulation,initPhysics,type Player} from '../src/shared/simulation.js';
 import {CONFIG as C,idleInput,v,type Input} from '../src/shared/config.js';
 import {offerChips,CHIPS} from '../src/shared/content.js';
+import {POWER_CHIPS} from '../src/shared/power-chips.js';
 import {introFrame} from '../src/shared/intros.js';
 import {sirenMotion} from '../src/shared/siren-motion.js';
 import {SIREN_TIMING} from '../src/shared/siren-contract.js';
@@ -264,9 +265,14 @@ test('ground rays: standard capsules unchanged, groundRay grounds a 1.5x capsule
 });
 test('offerChips: default path identical to the base; weights replace tiers and exclusives can be skipped (acceptance 8)',()=>{
  const specs=['pistol','rifle','sword','daggers','fire','water','siren','emperor','leet','ansatsuken'] as const,out:string[][]=[];
+ // The 2026-10-03 damage/health chips (power-chips.ts) grew the catalogue on purpose; the base comparison runs on the
+ // base catalogue so it still proves the default code path is unchanged.
+ const saved=[...CHIPS],added=new Set(POWER_CHIPS.map(c=>c.id));CHIPS.splice(0,CHIPS.length,...saved.filter(c=>!added.has(c.id)));
+ try{
  for(let seed=1;seed<=50;seed++)for(const spec of specs)for(const chips of [{},{vital:1,ricochet:2}] as Record<string,number>[]){let x=seed*2654435761>>>0;const random=()=>{x=(Math.imul(x,1664525)+1013904223)>>>0;return x/4294967296;};out.push(offerChips(spec as never,chips,random,seed%2?6:8));}
  // Generated on the untouched base b6d2f58 with the same loop.
  assert.equal(createHash('sha256').update(JSON.stringify(out)).digest('hex').slice(0,24),'9816b7ffe84fda7dd350f305');
+ }finally{CHIPS.splice(0,CHIPS.length,...saved);}
  let n=1;const random=()=>{n=(Math.imul(n,1664525)+1013904223)>>>0;return n/4294967296;};
  const rarity=(id:string)=>CHIPS.find(c=>c.id===id)!.rarity;
  const pistol=offerChips('pistol',{},random,8,{weights:{mythic:1},exclusives:false});assert.equal(pistol.length,8);assert.ok(pistol.every(id=>rarity(id)==='mythic'));

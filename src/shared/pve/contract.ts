@@ -103,7 +103,7 @@ export interface PveView{v:1; boss:PveBossId; stage:PveStage; stageAt:number; st
  waveTotal:number; waveLeft:number; hold:boolean; cinematic?:PveCinematic; track:{revealed:0|1|2|3|4; at:number};
  bossView?:PveBossView; slots:string[]; helloed:string[] /* player ids that sent a hello (lobby badge) */; adds:PveAddTuple[];
  entries:PveEntryView[]; machines:PveMachineUse[]; pickups:PvePickupView[]; party:Record<string,PvePartyView>;
- recruits:PveRecruitView[]; outcome?:PveOutcome; endedAt?:number}
+ recruits:PveRecruitView[]; outcome?:PveOutcome; endedAt?:number; startedAt?:number /* fight start (run clock) */}
 export const pveOf=(state:object):PveView|undefined=>(state as {pve?:PveView}).pve;
 /** Lerp adds present in a and b by n (pos by f, plus vel·extra; yaw by shortest angle); everything else from current. */
 export function interpolatePve(a:PveView|undefined,b:PveView|undefined,current:PveView|undefined,f:number,extra:number):PveView|undefined{
@@ -193,7 +193,7 @@ export interface DirectorApi{
  onFightStart():void; step(dt:number):void; stepHold(dt:number):void; holding():boolean;
  hpFloor(p:Player):number|undefined; bossInput(p:Player,base:Input):Input; modifiers():HordeModifiers;
  onAddKilled(d:AddDeath):void; onDeath(p:Player):void; onDamage(p:Player,actual:number,source:string|null):void;
- view():Pick<PveView,'stage'|'stageAt'|'stageUntil'|'wave'|'waves'|'waveTotal'|'waveLeft'|'hold'|'cinematic'|'track'|'bossView'|'outcome'|'endedAt'>;
+ view():Pick<PveView,'stage'|'stageAt'|'stageUntil'|'wave'|'waves'|'waveTotal'|'waveLeft'|'hold'|'cinematic'|'track'|'bossView'|'outcome'|'endedAt'|'startedAt'>;
  reset():void; debug(op:string):boolean;
 }
 export interface EconomyApi{

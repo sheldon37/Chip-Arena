@@ -1,23 +1,22 @@
 // PvE revive beacons (design §4.6, §8.6, stream S6): over every downed party member, a light column with rising motes,
-// a floor ring whose arc fills with the revive channel or the solo self-revive timer, and a label ("REVIVE $150",
-// "REVIVING", "SELF-REVIVE 0:04"). Three draws each, no lights; progress is pure in authoritative time.
+// a floor ring whose arc fills with the solo self-revive timer, and a label ("F · REVIVE" over "$150", "SELF-REVIVE 0:04").
+// Revives are instant (one F press), so there is no channel progress. Three draws each, no lights; progress is pure in authoritative time.
 import * as T from 'three';
 import type {PlayerView,Snapshot} from '../../shared/simulation.js';
 import type {PveView} from '../../shared/pve/contract.js';
 import {HoloLabel,makeCanvas} from './hologram.js';
 
-export const BEACON={color:0xdff4ff,channel:0x7dffb0,self:0xffd27a,radius:.95,height:3.6,segments:48} as const;
+export const BEACON={color:0xdff4ff,self:0xffd27a,radius:.95,height:3.6,segments:48} as const;
 const clamp=(x:number,a=0,b=1)=>Math.min(b,Math.max(a,x));
-export type BeaconMode='down'|'channel'|'self';
+export type BeaconMode='down'|'self';
 export interface BeaconState{mode:BeaconMode;progress:number;label:string;sub:string}
 const clock=(s:number)=>{s=Math.max(0,Math.ceil(s));return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;};
-/** What the beacon over downed member `id` shows at time t (pure). A revive channel aimed at them wins over the
- *  self-revive timer; progress is (t−at)/(until−at), and for self-revive (t−downAt)/(selfReviveAt−downAt). */
+/** What the beacon over downed member `id` shows at time t (pure): the solo self-revive timer (progress
+ *  (t−downAt)/(selfReviveAt−downAt)), else the instant paid revive (F press, price below). */
 export function beaconState(view:PveView,id:string,t:number):BeaconState{
  const row=view.party[id];
- for(const [rid,r] of Object.entries(view.party)){const c=r.channel;if(c&&c.target===id&&rid!==id)return {mode:'channel',progress:clamp((t-c.at)/Math.max(1e-6,c.until-c.at)),label:'REVIVING',sub:''};}
  if(row?.selfReviveAt!==undefined){const from=row.downAt??t;return {mode:'self',progress:clamp((t-from)/Math.max(1e-6,row.selfReviveAt-from)),label:'SELF-REVIVE',sub:clock(row.selfReviveAt-t)};}
- return {mode:'down',progress:0,label:'REVIVE',sub:`$${row?.reviveCost??0}`};
+ return {mode:'down',progress:0,label:'F · REVIVE',sub:`$${row?.reviveCost??0}`};
 }
 /** Downed members that get a beacon: dead, in the party (humans and party bots), connected, and the run not over. */
 export function beaconTargets(state:Pick<Snapshot,'players'>,view:PveView):PlayerView[]{
@@ -64,7 +63,7 @@ export class BeaconView {
   const t=state.time;this.states.clear();
   for(const p of beaconTargets(state,view)){const pos=p.death?.pos??p.pos,s=beaconState(view,p.id,t);this.states.set(p.id,s);
    let b=this.pool.get(p.id);if(!b){b=new Beacon();this.pool.set(p.id,b);this.group.add(b.group);}
-   const color=s.mode==='channel'?BEACON.channel:s.mode==='self'?BEACON.self:BEACON.color,pulse=.5+.5*Math.sin(t*3.2);
+   const color=s.mode==='self'?BEACON.self:BEACON.color,pulse=.5+.5*Math.sin(t*3.2);
    b.group.visible=true;b.group.position.set(pos.x,0,pos.z);b.column.material.color.setHex(color);b.column.material.opacity=.32+.18*pulse+(s.mode==='down'?0:.2);
    b.column.material.map!.offset.y=-t*.35;b.ring.material.color.setHex(color);b.ring.geometry.setDrawRange(0,ringDrawCount(s.progress));b.ring.rotation.y=t*.4;
    b.label.set(s.label,s.sub);(b.label.sprite.material as T.SpriteMaterial).color.setHex(color);b.label.sprite.position.y=2.25+.06*Math.sin(t*2);}

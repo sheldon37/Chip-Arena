@@ -115,10 +115,7 @@ body.pve .notice{top:150px}
 .pve-prompt em{font-style:normal;font-size:11px;color:#ff8a7a}
 .pve-prompt[data-afford="0"]{border-color:#ff535f55}
 .pve-prompt[data-afford="0"] kbd{background:#5b5e6b;color:#d9dbe3}
-.pve-prompt[data-prompt=revive],.pve-prompt[data-prompt=channel]{border-color:#59dd8366}
-.pve-prompt-ring{width:26px;height:26px;transform:rotate(-90deg)}
-.pve-prompt-ring circle{fill:none;stroke:#ffffff22;stroke-width:3.5}
-.pve-prompt-ring circle.fill{stroke:#59dd83;stroke-dasharray:94.25;transition:stroke-dashoffset .1s linear}
+.pve-prompt[data-prompt=revive]{border-color:#59dd8366}
 
 .pve-banner{position:absolute;left:50%;top:24%;transform:translateX(-50%);text-align:center;pointer-events:none;white-space:nowrap;animation:pve-banner var(--banner-duration,2.6s) cubic-bezier(.2,.8,.2,1) var(--banner-delay,0s) both}
 .pve-banner strong{position:relative;display:block;font:900 clamp(30px,4.6vw,64px)/1 var(--font-ui,system-ui);letter-spacing:.06em;text-transform:uppercase;color:#fff;text-shadow:0 2px 0 #000,0 0 30px #ff6b3566}
@@ -300,3 +297,90 @@ body.pve .notice{top:150px}
 .pve-result .pilot-card-top{padding-bottom:0}
 /* The boss name stays up until the intro hands over to the fight (no early exit), so the animated title is readable. */
 .intro-overlay[data-style=pve-boss] .intro-name{animation:none;bottom:11vh}
+/* PvE Tab party board (src/client/pve/board.ts). One scoreboard row per party member; collapses to cards on narrow screens. */
+.player-board .pveb-panel{width:min(1360px,100%);padding:22px 26px 18px;--pveb-cols:minmax(200px,1.55fr) minmax(178px,1.45fr) repeat(8,minmax(58px,.68fr))}
+.pveb-heading{align-items:flex-start;margin-bottom:14px}
+.pveb-heading-text{flex:1;min-width:0}
+.pveb-heading .eyebrow{font-size:11px}
+.pveb-run{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.pveb-run h2{font-size:28px;letter-spacing:-.03em;margin:6px 0 4px}
+.pveb-run[data-outcome=victory] h2{color:#ffd36a}.pveb-run[data-outcome=defeat] h2{color:#ff8a7a}
+.pveb-run p{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;margin:0;color:#b8bac3;font-size:13px}
+.pveb-clock{display:inline-flex;align-items:center;gap:6px;font:12px var(--font-mono);letter-spacing:.06em;color:#9fa2ad}
+.pveb-clock b{font:600 14px var(--font-mono);color:var(--text);letter-spacing:0}
+.pveb-clock .game-icon{width:14px;height:14px}
+.pveb-totals{display:flex;gap:8px;margin:0}
+.pveb-totals div{min-width:92px;padding:7px 12px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface-1)}
+.pveb-totals dt{display:flex;align-items:center;gap:5px;font:10px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:#9a9ca6}
+.pveb-totals dt .game-icon{width:12px;height:12px;color:var(--accent-soft)}
+.pveb-totals dd{margin:3px 0 0;font:600 17px var(--font-mono);color:var(--text)}
+.pveb-columns,.pveb-member{display:grid;grid-template-columns:var(--pveb-cols);column-gap:10px;align-items:center}
+.pveb-columns{padding:0 14px 7px;border-bottom:1px solid var(--border);font:10px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:#8e909a}
+.pveb-columns span:nth-child(n+3){text-align:right}
+.pveb-members{display:grid;gap:10px;margin-top:10px}
+.pveb-member{position:relative;row-gap:12px;padding:12px 14px 14px;border:1px solid var(--border);border-left:3px solid var(--member-color);border-radius:var(--r-sm);background:linear-gradient(90deg,color-mix(in srgb,var(--member-color) 9%,var(--surface-1)),var(--surface-1) 38%)}
+.pveb-member.own{border-color:#ff6b35aa;border-left-color:var(--member-color);box-shadow:inset 0 0 0 1px #ff6b3522}
+.pveb-pilot{display:flex;align-items:center;gap:11px;min-width:0}
+.pveb-pilot .pilot-head{flex:0 0 30px;height:30px;border-width:4px;box-shadow:0 4px 0 #2a2b31}
+.pveb-name{min-width:0}
+.pveb-name h3{margin:0 0 4px;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pveb-name h3 small{font:600 10px var(--font-mono);letter-spacing:.1em;color:var(--accent-soft);margin-left:5px}
+.pveb-name h3 small.bot{color:#9fd4ff}
+.pveb-weapon{display:inline-flex;align-items:center;gap:7px;max-width:100%;padding:3px 8px 3px 5px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface-2);font-size:12px;text-align:left;color:#e4e4e8}
+.pveb-weapon>.game-icon,.pveb-weapon>svg{width:16px;height:16px;flex:0 0 16px;color:#efbf79}
+.pveb-weapon span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pveb-weapon small{margin-left:6px;font:10px var(--font-mono);letter-spacing:.06em;color:#9a9ca6}
+.pveb-weapon:hover,.pveb-weapon:focus{outline:2px solid var(--accent);outline-offset:1px;background:#36251f}
+.pveb-live{display:contents}
+.pveb-status{min-width:0}
+.pveb-state{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font:600 11px var(--font-mono);letter-spacing:.08em;text-transform:uppercase}
+.pveb-state>span:first-child{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pveb-state .game-icon{width:13px;height:13px;flex:0 0 13px}
+.pveb-state small{font-weight:400;letter-spacing:.02em;color:#a6a7ad;text-transform:none}
+.pveb-status[data-state=alive] .pveb-state>span:first-child{color:var(--good)}
+.pveb-status[data-state=down] .pveb-state>span:first-child{color:var(--bad)}
+.pveb-status[data-state=offline] .pveb-state>span:first-child{color:#8e909a}
+.pveb-status[data-state=reviving] .pveb-state>span:first-child{color:#9fe7c0}
+.pveb-status[data-state=choosing] .pveb-state>span:first-child{color:#c9bfff}
+.pveb-hpnum{font:600 13px var(--font-mono);color:var(--text);letter-spacing:0}
+.pveb-hpnum small{color:#8e909a;text-transform:none}
+.pveb-hp{display:block;height:5px;margin-top:5px;border-radius:3px;background:#0b0c0f;overflow:hidden}
+.pveb-hp b{display:block;height:100%;background:linear-gradient(90deg,#3fbf68,var(--good))}
+.pveb-status[data-state=down] .pveb-hp{background:#3a1418}
+.pveb-recruits{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.pveb-recruit{display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border:1px solid var(--border);border-radius:3px;background:var(--surface-2);font:600 9px var(--font-mono);letter-spacing:.08em;color:#cfd0d6}
+.pveb-recruit .game-icon{width:11px;height:11px;color:#9fd4ff}
+.pveb-recruit i{display:block;width:22px;height:3px;background:#0b0c0f;border-radius:2px;overflow:hidden}
+.pveb-recruit i b{display:block;height:100%;background:var(--good)}
+.pveb-recruit[data-down="1"]{opacity:.55}.pveb-recruit[data-down="1"] .game-icon{color:var(--bad)}
+.pveb-stat{text-align:right;min-width:0}
+.pveb-stat>span{display:none}
+.pveb-stat b{display:block;font:600 17px var(--font-mono);color:var(--text);white-space:nowrap}
+.pveb-stat small{display:block;margin-top:2px;font:10px var(--font-mono);color:#a6a7ad;white-space:nowrap}
+.pveb-stat[data-stat=Kills] b{color:#ffd8a8}
+.pveb-stat[data-stat=Deaths] b{color:#ffb1a8}
+.pveb-stat[data-stat=Money] b{color:var(--good)}
+.pveb-stat[data-stat=Earned] b{color:#bfe9cc;font-size:15px}
+.pveb-chips{grid-column:1/-1;display:flex;align-items:flex-start;gap:10px;min-width:0;padding-top:12px;border-top:1px dashed #ffffff14}
+.pveb-chips-title{flex:0 0 120px;padding-top:6px;font:10px/1.5 var(--font-mono);letter-spacing:.12em;color:#b8bac3}
+.pveb-chips-title span{display:block;color:#8e909a;letter-spacing:.04em}
+.pveb-chips .pveb-chip-grid{flex:1;min-width:0}
+.player-board .pveb-chip-grid{grid-template-columns:repeat(auto-fill,minmax(172px,1fr));gap:12px 9px;padding:5px 0}
+.pveb-chip-grid .board-chip{min-height:42px;padding:6px 8px;grid-template-columns:26px 1fr auto}
+.pveb-chip-grid .board-chip-symbol{width:24px;height:24px}
+.pveb-chip-grid .board-chip-symbol .game-icon{width:19px;height:19px}
+.pveb-nochips.board-empty{min-height:0;margin:0;text-align:left;font-size:12px;line-height:1.5}
+.pveb-panel .board-hint{margin:14px 0 0}
+@media(max-width:1100px){
+ .player-board .pveb-panel{padding:18px}
+ .pveb-columns{display:none}
+ .pveb-member{display:block}
+ .pveb-live{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0}
+ .pveb-status{grid-column:1/-1}
+ .pveb-stat{text-align:left;padding:6px 8px;border-radius:var(--r-sm);background:var(--surface-2)}
+ .pveb-stat>span{display:block;font:9px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:#8e909a;margin-bottom:2px}
+ .pveb-stat b{font-size:15px}
+ .pveb-totals{flex-wrap:wrap}
+}
+@media(max-height:820px){.player-board .pveb-panel{padding:16px 20px 12px}.pveb-heading{margin-bottom:8px}.pveb-run h2{font-size:24px;margin-top:4px}.pveb-members{gap:8px;margin-top:8px}.pveb-member{padding:9px 12px 10px;row-gap:8px}.pveb-chips{padding-top:8px}.pveb-panel .board-hint{margin-top:10px}}
+@media(max-width:580px){.pveb-chips{display:block}.pveb-chips-title{margin-bottom:8px}.pveb-chips-title span{display:inline;margin-left:8px}.pveb-live{grid-template-columns:repeat(2,minmax(0,1fr))}.pveb-totals div{min-width:0;flex:1}}
