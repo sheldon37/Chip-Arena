@@ -5,6 +5,7 @@ import {minionLook,partLook,hash01,MISSING,BURNABLE,WOUNDABLE,ACCENTS,VARIANTS,t
 import {corruptedPart,type PartRequest} from './layouts.js';
 import {minionMaterial,categoryColor,TONGUE_MATERIAL,MINION_CUBE,MINION_PALETTE,type MinionCategory} from './materials.js';
 import {MinionFx} from './fx.js';
+import {LOSS_STUMPS} from './limbs.js';
 
 /**
  * A Siren minion: our own Pilot rig (same joints, sockets and mesh names, so every pose helper, IK, LOD and ragdoll path
@@ -109,6 +110,8 @@ function* layoutRequests():Generator<PartRequest>{
   if((BURNABLE as readonly string[]).includes(name))for(let v=0;v<VARIANTS.burn;v++)looks.push(['burn',v]);
   if((WOUNDABLE as readonly string[]).includes(name))for(let v=0;v<VARIANTS.wound;v++)looks.push(['wound',v]);
   if(stumps.has(name))looks.push(name==='blank-head'?['rot',0,true]:['stump',0]);
+  // PvE runtime limb loss (limbs.ts): torn stumps where a gib cuts.
+  for(const [stump,variant] of LOSS_STUMPS)if(stump===name&&!(stumps.has(name)&&variant===0)&&!looks.some(([c,v])=>c==='stump'&&v===variant))looks.push(['stump',variant]);
   if(name==='blank-head')looks.push(['burn',0,true]);
   for(const face of faces)for(const [condition,variant,jawless] of looks)yield {name,category,size:mesh.scale.clone(),base,condition,variant,rot,face,jawless};
  }
