@@ -1,4 +1,4 @@
-import {sirenMotion} from '../shared/siren-motion.js';
+import {sirenMotion,sirenSuperArmor} from '../shared/siren-motion.js';
 import {attackCommitment,attackStep,committed,rolling,rollProfile,usesRoll,type RollState,type AttackCommitment} from '../shared/souls-combat.js';
 import {meleeMotionInput,MELEE_SPECIALS,normalMelee} from '../shared/standard-melee.js';
 import {recoveryMotion,type Knockdown} from '../shared/recovery.js';
@@ -72,7 +72,7 @@ export class Predictor {
   *  field against the mirrored props (other players' capsules are not mirrored), force, knockbackTaken, ×.5 on ability
   *  fields while the pilot is slowed below .6. */
  private pull(motion:Motion,knockbackTaken:number,dt:number,me:PlayerView){
-  if(!this.fields.length||me.hp<=0||me.spec==='siren')return;const pos=this.body.translation();
+  if(!this.fields.length||me.hp<=0||sirenSuperArmor(me,this.time))return;const pos=this.body.translation();
   for(const f of this.fields){if(!this.hostile.has(f.owner)||this.time>=f.until||f.start!==undefined&&this.time<f.start)continue;const d=sub(pos,f.pos),distance=len(d);if(distance>f.radius)continue;
    const from=add(f.pos,v(0,.2,0)),to=sub(pos,from),reach=len(to),hit=reach>1e-6?this.world.castRay(new RAPIER.Ray(from,norm(to)),reach,true,undefined,undefined,this.collider):null;if(hit&&hit.timeOfImpact<reach-.12)continue;
    const slowed=me.slowed&&me.slowed.until>this.time?Math.max(.4,me.slowed.factor):1,ability=!!f.fx&&ABILITY_FX.has(f.fx),sign=f.kind==='black-hole'?-1:1;

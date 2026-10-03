@@ -238,9 +238,8 @@ export class AbilitySystem{
   const pos=p.body.translation(),eye=add(pos,v(0,.5,0)),bot=pick.bot!;let aimAt=target?copy(target):undefined;
   if(aimAt&&targetVel&&bot.lead)aimAt=add(aimAt,mul(v(targetVel.x,0,targetVel.z),bot.lead*(castTime(pick.windup,p.stats)+(pick.fuse??0))));
   if(aimAt&&bot.aim==='point')aimAt.y-=C.playerHalfHeight+C.playerRadius-.05;
-  if(aimAt){const d=sub(aimAt,eye),h=Math.hypot(d.x,d.z);input.yaw=bot.aim==='away'?Math.atan2(-d.x,-d.z):Math.atan2(d.x,d.z);
-   input.pitch=bot.aim==='ballistic'?clamp(ballisticPitch(h,d.y,pick.speed||30,pick.gravity||0),-1.1,1.1):bot.aim==='away'?0:clamp(Math.atan2(d.y,h),-1.1,1.1);
-   if((bot.aim==='point'||bot.aim==='ballistic')&&target&&!this.clearTo(p,eye,target))return false;}
+  if(aimAt){if((bot.aim==='point'||bot.aim==='ballistic')&&target&&!this.clearTo(p,eye,target))return false;const d=sub(aimAt,eye),h=Math.hypot(d.x,d.z);input.yaw=bot.aim==='away'?Math.atan2(-d.x,-d.z):Math.atan2(d.x,d.z);
+   input.pitch=bot.aim==='ballistic'?clamp(ballisticPitch(h,d.y,pick.speed||30,pick.gravity||0),-1.1,1.1):bot.aim==='away'?0:clamp(Math.atan2(d.y,h),-1.1,1.1);}
   input.camera='first';input.attack=false;input.dash=false;if(pick.slot==='e')input.secondary=true;else input.ability=true;return true;
  }
  private clearTo(p:Player,eye:Vec,to:Vec){const d=sub(to,eye),l=len(d);if(l<.01)return true;const hit=this.sim.ray(eye,norm(d),l,p.id);return !hit||hit.timeOfImpact>=l-1;}

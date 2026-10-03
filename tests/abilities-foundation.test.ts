@@ -211,10 +211,11 @@ test('fields: lockAt freezes an attached field; start delays effects; damageKind
 
 test('field ends: handler.detonate sees every ability field end (eviction too); the default only explodes bombs, implosions and triggered mines',()=>{
  const {def}=fake('darkness','e');const ends:string[]=[];ABILITY_HANDLERS[def.id].detonate=(_sys,f,_owner,cause)=>{ends.push(f.kind+':'+cause);};
- try{const {s,a}=game('darkness');try{s.abilities.zone(a,'black-hole',v(0,.2,10),6,.5,0,'singularity',{cast:'h'});s.abilities.zone(a,'implosion',v(0,.2,10),4,.5,30,'singularity',{cast:'h'});run(s,a,40);assert.deepEqual(ends.sort(),['black-hole:until','implosion:until']);
+ try{const {s,a,b}=game('darkness');try{s.abilities.zone(a,'black-hole',v(0,.2,10),6,.5,0,'singularity',{cast:'h'});s.abilities.zone(a,'implosion',v(0,.2,10),4,.5,30,'singularity',{cast:'h'});run(s,a,40);assert.deepEqual(ends.sort(),['black-hole:until','implosion:until']);
   for(const c of ['p','q'])s.abilities.zone(a,'black-hole',v(0,.2,10),6,5,0,'singularity',{cast:c});ends.length=0;s.abilities.zone(a,'black-hole',v(0,.2,10),6,5,0,'singularity',{cast:'r'});assert.deepEqual(ends,['black-hole:evict'],'an evicted non-bomb field reaches handler.detonate');s.chaos.clear();
   delete ABILITY_HANDLERS[def.id].detonate;s.events=[];s.abilities.zone(a,'mine',v(0,.2,-12),2,.5,20,'frag',{cast:'m'});s.abilities.zone(a,'fire',v(0,.2,-12),2,.5,5,'frag',{cast:'m'});run(s,a,40);assert.equal(events(s,'explosion').length,0,'expired mine and fire end quietly');
   s.abilities.zone(a,'bomb',v(0,.2,-12),2,.5,20,'frag',{cast:'b'});run(s,a,40);assert.deepEqual(events(s,'explosion').map(e=>e.message),['frag']);
+  b.body.setTranslation(v(0,.9,7),true);b.body.setLinvel(v(),true);b.ext=v();s.events=[];s.abilities.zone(a,'mine',v(0,.2,7),2,5,20,'frag',{cast:'d',start:s.time+1.2});run(s,a,Math.round(C.simulationHz*.9));assert.equal(events(s,'explosion').length,0,'an armed mine waits for its start');run(s,a,Math.round(C.simulationHz*.5));assert.equal(events(s,'explosion').length,1);
  }finally{s.dispose();}}finally{delete ABILITY_HANDLERS[def.id];def.live=undefined;}
 });
 // ---- slows ----------------------------------------------------------------------------------------------------------
@@ -299,6 +300,7 @@ test('ability HUD: slot views and markup on capable hosts only',()=>{
   run(s,a,2,{ability:true});slots=abilitySlots(me(),s.time,HOST_CAPS);assert.equal(slots[0].state,'active');a.secondaryCd=1.2;slots=abilitySlots(me(),s.time,HOST_CAPS);assert.equal(slots[1].state,'cooldown');
   const html=abilitySlotsHtml(slots);assert.match(html,/class="cooldown ability" data-slot="Q" data-state="active"/);assert.match(html,/data-slot="E" data-state="cooldown" style="--p:/);
   const f=s.players.get('a')!;f.spec='fire';f.chips={necronomicon:1};f.stats=statsFor(f.chips,f.spec);assert.deepEqual(abilitySlots(me(),s.time,HOST_CAPS).map(x=>x.short),['RAISE THE DEAD']);
+  f.chips={necronomicon:1,efficient:1};f.stats=statsFor(f.chips,f.spec);f.mana=31;f.secondaryCd=0;{const [n]=abilitySlots(me(),s.time,HOST_CAPS);near(n.cost!,35*.86,1e-9,'the card shows the cost the gate uses');assert.equal(n.state,'ready');f.mana=29;assert.equal(abilitySlots(me(),s.time,HOST_CAPS)[0].state,'nomana');}
   for(const spec of ['sword','emperor','leet','siren'] as SpecId[]){f.spec=spec;assert.deepEqual(abilitySlots(me(),s.time,HOST_CAPS),[]);}
  }finally{s.dispose();}
 });
@@ -333,7 +335,7 @@ test('bots: the live-kit branch never falls into the legacy rows; point casts ne
  const {def,calls}=fake('pistol','e');def.bot={min:6,max:22,aim:'point'};try{const {s,a,b}=game('pistol');try{a.bot='hard';
   const decide=(target:Vec)=>{const i={...idleInput(),attack:true};let cast=false;for(let k=0;k<40&&!cast;k++){i.secondary=false;botAbilities(s,a,i,len(sub(target,a.body.translation())),true,2,target);cast=i.secondary;}return {cast,i};};
   const clear=decide(b.body.translation());assert.equal(clear.cast,true,'open target');assert.equal(clear.i.camera,'first');assert.equal(clear.i.attack,false);
-  s.addProp({id:'wall',pos:v(0,1.5,3.5),size:v(6,3,.4),material:'foundation'});s.world.step();const blocked=decide(b.body.translation());assert.equal(blocked.cast,false,'no point cast behind a wall');
+  s.addProp({id:'wall',pos:v(0,1.5,3.5),size:v(6,3,.4),material:'foundation'});s.world.step();const blocked=decide(b.body.translation());assert.equal(blocked.cast,false,'no point cast behind a wall');assert.deepEqual([blocked.i.yaw,blocked.i.pitch],[idleInput().yaw,idleInput().pitch],'a refused cast leaves the aim alone (no shot at the feet)');
   const close=decide(v(0,.9,3));assert.equal(close.cast,false,'below min keeps the primary');assert.equal(close.i.attack,true);
   a.reloadTime=1;s.removeProp('wall');s.world.step();const reloading=decide(b.body.translation());assert.equal(reloading.cast,true,'E works while reloading');assert.equal(calls.length,0);
  }finally{s.dispose();}}finally{delete ABILITY_HANDLERS[def.id];def.live=undefined;def.bot=undefined;}

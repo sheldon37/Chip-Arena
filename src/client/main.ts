@@ -305,7 +305,7 @@ window.addEventListener('keydown',e=>{
  if(screen==='game'&&!paused&&(getMe()?.hp??1)<=0&&['ArrowLeft','ArrowRight'].includes(e.code)){e.preventDefault();if(!e.repeat){skipKillcam();spectator.cycle(state,id,e.code==='ArrowLeft'?-1:1);}drawHud();return;}
  if(['Space','ArrowUp','ArrowDown'].includes(e.code))e.preventDefault();keys.add(e.code);
  if(e.code==='KeyF'&&!e.repeat&&screen==='game'&&!paused)pendingInteract=true;
- if(e.code==='KeyQ'&&!e.repeat&&screen==='game'&&!paused)pendingAbility=true;
+ if(e.code==='KeyQ'&&!e.repeat&&screen==='game'&&!paused&&state.phase==='fight')pendingAbility=true;
  if(e.code==='KeyG'&&!e.repeat&&screen==='game'&&!paused){hudScores=!hudScores;drawHud();return;}
  if(e.code==='KeyV'&&!e.repeat&&screen==='game'&&!(getMe()?.spec==='siren'&&pref.sirenToggleKey==='KeyV')){pref.camera=pref.camera==='first'?'third':'first';renderer.setCameraMode(pref.camera);save();notice(`${pref.camera==='first'?'First':'Third'} person · V to switch`);}
  if(e.code==='KeyM'&&!e.repeat){pref.muted=!pref.muted;sound.configure(pref.audio,pref.muted);sound.music.configure(pref.music,pref.muted,pref.menuMusic);save();notice(pref.muted?'Sound muted · M to unmute':'Sound on · M to mute');}

@@ -9,7 +9,7 @@ export function abilitySlots(me:PlayerView,time:number,caps:HostCaps|null|undefi
  if(!abilityClient(caps,me.spec))return [];const kit=kitFor(me.spec)!,stats=statsFor(me.chips,me.spec),w=WEAPONS[me.spec],magic=w.class==='magic',out:AbilitySlotView[]=[];
  const casting=(slot:'q'|'e')=>me.abilityCastAt!==undefined&&me.abilityCastAt>time&&(slot==='q'?(me.lastAbility??-10)>=me.lastSecondary:me.lastSecondary>(me.lastAbility??-10));
  const card=(key:'Q'|'E',name:string,short:string,remaining:number,max:number,cost:number,charges?:{n:number;max:number}):AbilitySlotView=>{
-  const affordable=!magic||me.mana>=cost*stats.resourceCost,slot=key==='Q'?'q':'e',empty=charges?charges.n<=0:remaining>0;
+  cost*=stats.resourceCost;const affordable=!magic||me.mana>=cost,slot=key==='Q'?'q':'e',empty=charges?charges.n<=0:remaining>0;
   return {key,name,short,mode:'press',state:casting(slot)?'casting':!affordable?'nomana':empty&&remaining>0?'cooldown':'ready',remaining,max,fraction:max>0?Math.max(0,Math.min(1,1-remaining/max)):1,...(cost?{cost}:{}),affordable,...(charges?{charges}:{})};};
  if(kit.q.kind==='ads'&&kit.ads)out.push({key:'Q',name:kit.q.name,short:kit.q.short,mode:'hold',state:me.adsSince!==undefined?'active':'ready',remaining:0,max:0,fraction:1,affordable:true});
  else if(abilityActive(me.spec,'q'))out.push(card('Q',kit.q.name,kit.q.short,me.abilityCd??0,abilityCooldown(kit.q,stats),abilityCost(kit.q,stats)));
