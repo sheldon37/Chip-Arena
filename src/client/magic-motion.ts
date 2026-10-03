@@ -101,6 +101,8 @@ export function magicLayer(r:CharacterRig,p:PlayerView,pose:ReturnType<typeof at
 }
 /** Staff guard: a critically damped weight (~100 ms in, ~150 ms out) brings the staff horizontal across the chest in both
  * hands (the right hand on the 'guard-grip' socket; without it the left hand keeps its hold). */
+/** Current staff-guard weight (first-person view fades its staff roll and scale with it). */
+export const magicGuardWeight=(r:CharacterRig)=>states.get(r)?.guard??0;
 function magicGuard(r:CharacterRig,p:PlayerView,time:number){
  let s=states.get(r);const clock=clockStep(s,time),target=p.guarding||p.blockTime>0?1:0;
  if(!s){s={t:time,guard:target,guardV:0};states.set(r,s);}

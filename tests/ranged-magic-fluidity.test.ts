@@ -2,9 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from 'three';
 import {initPhysics,type PlayerView} from '../src/shared/simulation.js';
-import {WEAPONS} from '../src/shared/content.js';
+import {WEAPONS,CHIPS} from '../src/shared/content.js';
 import {animateCharacter,animationPreviewPlayer} from '../src/client/character-animation.js';
-import {poseFirstPersonView} from '../src/client/first-person-view.js';
+import {poseFirstPersonView,FP_TUNE} from '../src/client/first-person-view.js';
+import {weaponModifiers,bodyModifiers} from '../src/client/weapon-visuals.js';
 import {markFirstPersonRig} from '../src/client/pose-flags.js';
 import {POCKET,reloadPhase} from '../src/client/ranged-motion.js';
 import {probeBase,probeMotion,probeRig} from './helpers/motion-probe.js';
@@ -112,4 +113,56 @@ test('first-person gun barrels point along the camera aim, idle and firing',()=>
   assert.ok(worstYaw<5,`${spec} ${mode}: first-person barrel yawed ${worstYaw.toFixed(1)} deg across the view`);
   assert.ok(sum/n<5,`${spec} ${mode}: first-person barrel ${(sum/n).toFixed(1)} deg off camera forward on average`);
  }
+});
+
+// First-person staff probe (design §10.2/§10.5, port of probes/fp-staff2.mts): 75° FOV, 16:9, frames 30-150 at 60 Hz. The staff
+// axis is sampled at 41 points; the projected convex hulls of every staff and chip-module mesh are rasterised on a 128×72 grid
+// (left-half area, and any coverage of the crosshair box |x|<.1, |y|<.15 NDC). Worst-case chips: every chip that mounts a
+// module on the weapon, at max copies.
+const MODULE_STATS=new Set(['extraProjectiles','homing','split','pierces','pong','boomerang','vacuum']);
+const WORST_CHIPS:Record<string,number>=Object.fromEntries(CHIPS.filter(c=>c.effects.some(f=>MODULE_STATS.has(f.stat))||['ricochet','velocity','cast-rate'].includes(c.id)).map(c=>[c.id,c.max]));
+const GW=128,GH=72;
+function hull(pts:[number,number][]){pts.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);const cr=(o:number[],a:number[],b:number[])=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);const lo:[number,number][]=[],up:[number,number][]=[];for(const p of pts){while(lo.length>=2&&cr(lo[lo.length-2],lo[lo.length-1],p)<=0)lo.pop();lo.push(p);}for(let i=pts.length-1;i>=0;i--){const p=pts[i];while(up.length>=2&&cr(up[up.length-2],up[up.length-1],p)<=0)up.pop();up.push(p);}up.pop();lo.pop();return lo.concat(up);}
+function inside(h:[number,number][],x:number,y:number){if(h.length<3)return false;for(let i=0;i<h.length;i++){const a=h[i],b=h[(i+1)%h.length];if((b[0]-a[0])*(y-a[1])-(b[1]-a[1])*(x-a[0])<0)return false;}return true;}
+/** Rasterise the visible meshes under `root` (convex hull per mesh); returns the grid. */
+function raster(root:T.Object3D,cam:T.Camera,grid:Uint8Array){
+ grid.fill(0);root.traverse(o=>{const m=o as T.Mesh;if(!m.isMesh)return;for(let a:T.Object3D|null=m;a;a=a.parent)if(!a.visible)return;const pos=(m.geometry as T.BufferGeometry).getAttribute('position');if(!pos)return;
+  const pts:[number,number][]=[],tmp=new T.Vector3(),step=Math.max(1,Math.floor(pos.count/96));for(let k=0;k<pos.count;k+=step){tmp.fromBufferAttribute(pos,k);m.localToWorld(tmp);if(cam.worldToLocal(tmp.clone()).z>-.08)return;tmp.project(cam);pts.push([tmp.x,tmp.y]);}
+  if(pts.length<3)return;const hl=hull(pts);let x0=1,x1=-1,y0=1,y1=-1;for(const p of hl){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}
+  for(let gy=Math.max(0,Math.floor((y0+1)/2*GH));gy<=Math.min(GH-1,Math.ceil((y1+1)/2*GH));gy++)for(let gx=Math.max(0,Math.floor((x0+1)/2*GW));gx<=Math.min(GW-1,Math.ceil((x1+1)/2*GW));gx++)if(!grid[gy*GW+gx]&&inside(hl,(gx+.5)/GW*2-1,(gy+.5)/GH*2-1))grid[gy*GW+gx]=1;});
+ let left=0,cross=0;for(let gy=0;gy<GH;gy++)for(let gx=0;gx<GW;gx++){if(!grid[gy*GW+gx])continue;const cx=(gx+.5)/GW*2-1,cy=(gy+.5)/GH*2-1;if(cx<0)left++;if(Math.abs(cx)<.1&&Math.abs(cy)<.15)cross++;}
+ return {left:left/(GW*GH/2),cross};
+}
+type FpFrame=(t:number,base:PlayerView)=>PlayerView;
+/** One first-person staff scenario through the renderer's order (poseFirstPersonView, then weaponModifiers/bodyModifiers). */
+export function fpStaffProbe(spec:string,frame:FpFrame,chips:boolean,opts:{from?:number;to?:number;hz?:number;release?:number}={}){
+ const cam=new T.PerspectiveCamera(75,16/9,.08,400),root=new T.Group();cam.add(root);const r=probeRig(spec);markFirstPersonRig(r);root.add(r.group);
+ const base={...probeBase(spec),chips:chips?{...WORST_CHIPS}:{}},hz=opts.hz??60,grid=new Uint8Array(GW*GH),from=opts.from??1.5,to=opts.to??3.5;
+ let n=0,cross=0,crossAny=0,crossRelease=0,area=0,m=0,gem=0,gemX=0,hand=0,minD=9;
+ for(let i=0;i<=Math.round((to-1)*hz);i++){const t=1+i/hz,p={...frame(t,base),chips:base.chips,hitStunUntil:-1e9};poseFirstPersonView(r,root,p,t,1/hz,false);weaponModifiers(r.weapon as T.Group,p,t);bodyModifiers(r,p,t);
+  if(t<from)continue;cam.updateMatrixWorld(true);
+  let hitC=false;for(let k=0;k<=40;k++){const w=r.weapon.localToWorld(new T.Vector3(0,0,-.36+1.24*k/40));minD=Math.min(minD,cam.worldToLocal(w.clone()).length());const s=w.project(cam);if(Math.abs(s.x)<.1&&Math.abs(s.y)<.15)hitC=true;}
+  n++;if(hitC)cross++;
+  const g=r.weapon.localToWorld(new T.Vector3(0,0,.72)).project(cam);if(Math.abs(g.x)<=1&&Math.abs(g.y)<=1)gem++;gemX+=g.x;
+  const h=r.rightHand.getWorldPosition(new T.Vector3()).project(cam);if(Math.abs(h.x)<=1&&Math.abs(h.y)<=1)hand++;
+  if(i%2===0||opts.release!==undefined){const a=raster(r.weapon,cam,grid);area+=a.left;m++;if(a.cross){crossAny++;if(opts.release!==undefined&&Math.abs(t-opts.release)<=.15)crossRelease++;}}
+ }
+ return {cross:cross/n,crossAny:crossAny/m,crossRelease,left:area/m,gem:gem/n,gemX:gemX/n,hand:hand/n,minD};
+}
+const preview=(mode:string):FpFrame=>(t,b)=>animationPreviewPlayer(b,mode,t);
+test('first-person staff never covers the crosshair and covers less of the left than the rejected x .24 placement',()=>{
+ const chosen={...FP_TUNE},measure=(chips:boolean)=>MAGIC.flatMap(spec=>(['idle','attack','block'] as const).map(mode=>({spec,mode,...fpStaffProbe(spec,preview(mode),chips)})));
+ const ours=measure(false),oursChips=measure(true);
+ Object.assign(FP_TUNE,{magicX:.24,magicY:-.48,magicStaffScale:1,magicRoll:0,moduleScale:1});
+ let ref:ReturnType<typeof measure>,refChips:ReturnType<typeof measure>;try{ref=measure(false);refChips=measure(true);}finally{Object.assign(FP_TUNE,chosen);}
+ const mean=(rows:{left:number}[])=>rows.reduce((s,r)=>s+r.left,0)/rows.length;
+ for(const r of [...ours,...oursChips]){const id=`${r.spec} ${r.mode}`;
+  assert.equal(r.cross,0,`${id}: staff axis crosses the crosshair on ${(100*r.cross).toFixed(0)}% of frames`);
+  assert.equal(r.crossAny,0,`${id}: a staff or chip-module mesh covers the crosshair box on ${(100*r.crossAny).toFixed(0)}% of frames`);
+  assert.ok(r.gem>=.95,`${id}: gem on screen ${(100*r.gem).toFixed(0)}%`);assert.ok(r.minD>=.12,`${id}: nearest staff point ${r.minD.toFixed(3)} m`);
+  if(r.mode==='attack')assert.ok(r.hand>=.45,`${id}: cast hand on screen ${(100*r.hand).toFixed(0)}%`);
+  // The roll tilts the top outward: the gem sits left of the crosshair (PROBE: NDC x ≈ -.42 idle), not back toward it.
+  if(r.mode==='idle')assert.ok(r.gemX<-.3,`${id}: gem at NDC x ${r.gemX.toFixed(2)}`);}
+ assert.ok(mean(ours)<=.85*mean(ref),`left-half area ${(100*mean(ours)).toFixed(1)}% vs x .24 reference ${(100*mean(ref)).toFixed(1)}%`);
+ assert.ok(mean(oursChips)<=.5*mean(refChips),`left-half area with worst-case chips ${(100*mean(oursChips)).toFixed(1)}% vs reference ${(100*mean(refChips)).toFixed(1)}%`);
 });
