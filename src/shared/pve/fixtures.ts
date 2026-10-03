@@ -60,8 +60,8 @@ export function fixtureEnteringAdds(o:FixtureOptions={}):{adds:PveAddView[];entr
 }
 
 // ---- party ----
-export type PartyRowKind='alive'|'dead'|'choosing'|'attacked'|'self-reviving'|'bot'|'channelling'|'healing'|'disconnected';
-export function fixturePartyRow(kind:PartyRowKind,o:FixtureOptions&{target?:string;money?:number}={}):PvePartyView{
+export type PartyRowKind='alive'|'dead'|'choosing'|'attacked'|'self-reviving'|'bot'|'healing'|'disconnected';
+export function fixturePartyRow(kind:PartyRowKind,o:FixtureOptions&{money?:number}={}):PvePartyView{
  const {time}=opt(o),bot=kind==='bot';
  const row:PvePartyView={kind:bot?'bot':'human',connected:kind!=='disconnected',money:bot?0:o.money??1250,earned:bot?0:1630,spent:bot?0:380,kills:23,assists:7,heads:5,
   addDamage:1840,bossDamage:0,revives:1,revived:0,deaths:kind==='dead'||kind==='self-reviving'?1:0,chipsBought:bot?0:2,recruitsHired:bot?0:1,
@@ -71,7 +71,6 @@ export function fixturePartyRow(kind:PartyRowKind,o:FixtureOptions&{target?:stri
  if(kind==='attacked')row.hurtAt=time-.3;
  if(kind==='dead'||kind==='self-reviving')row.downAt=time-3;
  if(kind==='self-reviving')row.selfReviveAt=time+2;
- if(kind==='channelling')row.channel={kind:'revive',target:o.target??'p2',at:time-1,until:time+1.5};
  if(kind==='healing'){row.healAt=time-.5;row.healUntil=time+1.5;row.healReadyAt=time+11.5;}
  if(bot){row.picks=[];}
  return row;
@@ -79,9 +78,7 @@ export function fixturePartyRow(kind:PartyRowKind,o:FixtureOptions&{target?:stri
 /** Party rows for ids (default p1 alive and choosing-capable, p2 dead, party bot, p3 attacked while choosing). */
 export function fixtureParty(o:FixtureOptions&{kinds?:PartyRowKind[]}={}):Record<string,PvePartyView>{
  const {ids}=opt(o),kinds=o.kinds??ids.map(id=>id.startsWith(PARTY_BOT_PREFIX)?'bot':'alive');const out:Record<string,PvePartyView>={};
- // A channelling row revives the first downed member of this party (S7 fix: was the hard-coded 'p2').
- const down=ids.find((_,i)=>kinds[i]==='dead'||kinds[i]==='self-reviving');
- ids.forEach((id,i)=>{out[id]=fixturePartyRow(kinds[i]??'alive',{...o,...(down&&!(o as {target?:string}).target?{target:down}:{})});});return out;
+ ids.forEach((id,i)=>{out[id]=fixturePartyRow(kinds[i]??'alive',o);});return out;
 }
 
 // ---- boss, cinematics, world ----
@@ -130,7 +127,7 @@ export const PVE_FIXTURES={
  'party':(o?:FixtureOptions)=>{const v=fixtureBase(o),{ids}=opt(o);const kinds:PartyRowKind[]=['alive','dead','bot','attacked'];return {...v,party:fixtureParty({...o,kinds:ids.map((id,i)=>id.startsWith(PARTY_BOT_PREFIX)?'bot':kinds[i]??'alive')})};},
  'choosing':(o?:FixtureOptions)=>{const v=fixtureBase(o),{ids}=opt(o);return {...v,party:fixtureParty({...o,kinds:ids.map((id,i)=>id.startsWith(PARTY_BOT_PREFIX)?'bot':i===0?'choosing':'alive')})};},
  'attacked':(o?:FixtureOptions)=>{const v=fixtureBase(o),{ids}=opt(o);return {...v,adds:enc(fixtureHordeRing(6,{...o,radius:2,slots:[ids[0]]}),v.slots),party:fixtureParty({...o,kinds:ids.map((id,i)=>id.startsWith(PARTY_BOT_PREFIX)?'bot':i===0?'attacked':'alive')})};},
- 'dead':(o?:FixtureOptions)=>{const v=fixtureBase(o),{ids}=opt(o);return {...v,party:fixtureParty({...o,kinds:ids.map((id,i)=>id.startsWith(PARTY_BOT_PREFIX)?'bot':i===0?'dead':i===1?'channelling':'alive')})};},
+ 'dead':(o?:FixtureOptions)=>{const v=fixtureBase(o),{ids}=opt(o);return {...v,party:fixtureParty({...o,kinds:ids.map((id,i)=>id.startsWith(PARTY_BOT_PREFIX)?'bot':i===0?'dead':'alive')})};},
  'self-revive':(o?:FixtureOptions)=>{const v=fixtureBase({...o,ids:[opt(o).ids[0]]});return {...v,party:fixtureParty({...o,ids:[opt(o).ids[0]],kinds:['self-reviving']})};},
  'economy':(o?:FixtureOptions)=>{const v=fixtureBase(o);return {...v,machines:fixtureMachines(o),pickups:fixturePickups(o),recruits:fixtureRecruits(o)};},
  'reveal-1':(o?:FixtureOptions)=>fixtureRevealView(1,o),

@@ -8,7 +8,7 @@ import {createHash} from 'node:crypto';
 import {Simulation,initPhysics,type Player} from '../src/shared/simulation.js';
 import {idleInput,v,type Input} from '../src/shared/config.js';
 import {BOSS_PLAYER_ID,PARTY_BOT_PREFIX,RECRUIT_PREFIX,type AddHitInfo,type PveOptions,type PveView} from '../src/shared/pve/contract.js';
-import {PVE,PVE_SIREN,PRICES,chipPrice,revivePrice} from '../src/shared/pve/balance.js';
+import {ECONOMY,PVE,PVE_SIREN,PRICES,chipPrice,revivePrice} from '../src/shared/pve/balance.js';
 import {PVE_MACHINES,STAND_Y} from '../src/shared/pve/layout.js';
 await initPhysics();
 
@@ -81,7 +81,7 @@ function victoryFlow():FlowResult{
   const bot=[...s.players.values()].find(p=>p.id.startsWith(PARTY_BOT_PREFIX));assert.ok(bot,'party bot seated');
   s.pve!.debug('god:on');
   // Personal start picks: both humans are frozen on their open start pick; each picks offer 0.
-  for(const id of d.humans){assert.ok(d.view.party[id].open,`${id} start pick open`);assert.equal(d.view.party[id].money,50);}
+  for(const id of d.humans){assert.ok(d.view.party[id].open,`${id} start pick open`);assert.equal(d.view.party[id].money,ECONOMY.startMoney);}
   for(const id of d.humans)d.pickFirst(id);
   d.until(()=>d.view.stage==='wave',60*PVE.openingSeconds+60,'wave 1');
   assert.equal(d.view.wave,1);
@@ -108,12 +108,11 @@ function victoryFlow():FlowResult{
   const m4=PVE_MACHINES[4];d.teleport('h1',m4.front.x,m4.front.z);d.press('h1');
   d.step(Math.ceil(PRICES.recruitDelay*60)+2);assert.ok([...s.players.keys()].some(id=>id.startsWith(RECRUIT_PREFIX)),'recruit hired');
   assert.equal(d.view.recruits.length,1);assert.equal(d.view.recruits[0].owner,'h1');
-  // Second death and a paid channel revive (hold F for 2.5 s next to the body).
+  // Second death and a paid instant revive (one F press next to the body).
   d.kill('h2');const at=d.player('h2').death!.pos;
   if(d.view.party.h1.money<revivePrice(0))s.pve!.debug(`money:${revivePrice(0)}`);
-  const paid=d.view.party.h1.spent;d.teleport('h1',at.x+.4,at.z);d.hold('h1',{interact:true});
-  d.until(()=>d.player('h2').hp>0,60*(PRICES.reviveSeconds+1),'channel revive',()=>d.teleport('h1',at.x+.4,at.z));
-  d.hold('h1',{});assert.equal(d.view.party.h1.spent-paid,revivePrice(0),'revive charged');assert.equal(d.view.party.h1.revives,1);
+  const paid=d.view.party.h1.spent;d.teleport('h1',at.x+.4,at.z);d.press('h1');
+  assert.ok(d.player('h2').hp>0,'one F press revives');assert.equal(d.view.party.h1.spent-paid,revivePrice(0),'revive charged');assert.equal(d.view.party.h1.revives,1);
   d.log.push(`revive t=${s.time.toFixed(2)}`);
   // Waves 2-3: played in the long variant, skipped in the default one.
   if(LONG){d.until(()=>d.view.cinematic?.kind==='reveal',60*600,'last wave',()=>d.fight('h1'));}
@@ -156,7 +155,7 @@ function victoryFlow():FlowResult{
   const run=s.pve!.runIndex;assert.equal(s.rematch(),true);
   d.until(()=>s.phase==='fight',6000,'retry fight',()=>{for(const id of d.humans)if(s.phase==='specialization')s.selectSpec(id,'pistol');});
   assert.equal(s.pve!.runIndex,run+1);assert.equal(d.view.stage,'opening');assert.equal(d.view.outcome,undefined);
-  assert.equal(d.view.party.h1.money,50);assert.ok(!s.players.has(BOSS_PLAYER_ID));assert.equal(d.view.recruits.length,0);
+  assert.equal(d.view.party.h1.money,ECONOMY.startMoney);assert.ok(!s.players.has(BOSS_PLAYER_ID));assert.equal(d.view.recruits.length,0);
   return {hashes:d.hashes,log:d.log};
  }finally{d.dispose();}
 }

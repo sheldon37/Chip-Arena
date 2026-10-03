@@ -1,11 +1,11 @@
 // PvE economy (design §4, §5; stream S3): the money ledger and rewards, the F-key interactions (pickups, revives, chip,
-// recruit and med machines), personal chip picks (lazy offers, commands, live install), forced idle while choosing or
-// channelling, paid revives, free respawns, the solo self-revive and party-bot picks. Deterministic: every draw comes from
+// recruit and med machines), personal chip picks (lazy offers, commands, live install), forced idle while choosing,
+// instant paid revives, free respawns, the solo self-revive and party-bot picks. Deterministic: every draw comes from
 // host.rng('economy'); every schedule is an absolute sim time, so results do not depend on the step size.
 import type {Input,Vec} from '../config.js';
 import type {Player} from '../simulation.js';
 import {ADD_PREFIX,BOSS_PLAYER_ID,HORDE_ID,PVE_EVENT,
- type AddDeath,type DropTier,type EconomyApi,type PickSource,type PveChannel,type PveCommand,type PveHost,type PveMachineUse,
+ type AddDeath,type DropTier,type EconomyApi,type PickSource,type PveCommand,type PveHost,type PveMachineUse,
  type PvePartyView,type PvePick,type PvePickupView} from './contract.js';
 import {ADD_KINDS,DROP_ODDS,ECONOMY,PICKS,PRICES,PVE,chipPrice,revivePrice} from './balance.js';
 import {PVE_MACHINES,type PveMachine} from './layout.js';
@@ -31,13 +31,13 @@ const idle=(b:Input):Input=>({seq:b.seq,x:0,z:0,yaw:b.yaw,pitch:b.pitch,attack:f
 
 interface Row{
  id:string;money:number;earned:number;spent:number;chipsBought:number;recruitsHired:number;picks:PvePick[];open?:string;openAt?:number;
- hurtAt?:number;channel?:PveChannel;downAt?:number;selfRevives:number;selfReviveAt?:number;healAt?:number;healUntil?:number;healReadyAt:number;
+ hurtAt?:number;downAt?:number;selfRevives:number;selfReviveAt?:number;healAt?:number;healUntil?:number;healReadyAt:number;
  healPulses:number;thinkUntil?:number;pendingStats:boolean;bossCum:number;bossPaid:number;
 }
 interface PendingHire{owner:string;at:number;m:number;price:number}
 
 export class Economy implements EconomyApi{
- /** D18 option (PICKS.moveWhileChoosing): keep x/z while choosing. Never while channelling. */
+ /** D18 option (PICKS.moveWhileChoosing): keep x/z while choosing. */
  moveWhileChoosing:boolean=PICKS.moveWhileChoosing;
  private rows=new Map<string,Row>();
  private pickups:PvePickupView[]=[];
@@ -140,11 +140,10 @@ export class Economy implements EconomyApi{
    default:return false;
   }
  }
- /** Records the F state for edge detection; forced idle while channelling or choosing (x/z kept with moveWhileChoosing). */
+ /** Records the F state for edge detection; forced idle while choosing (x/z kept with moveWhileChoosing). */
  inputFor(p:Player,base?:Input):Input|undefined{
   const b=base??p.input;this.interact.set(p.id,b.interact===true);
   const r=this.rows.get(p.id);if(!r)return undefined;
-  if(r.channel)return idle(b);
   if(r.open){const i=idle(b);if(this.moveWhileChoosing){i.x=b.x;i.z=b.z;}return i;}
   return undefined;
  }
@@ -158,7 +157,7 @@ export class Economy implements EconomyApi{
  }
  onDeath(p:Player){
   const r=this.rows.get(p.id);if(!r)return;
-  this.closePick(r);r.channel=undefined;r.downAt=this.time;r.hurtAt=undefined;
+  this.closePick(r);r.downAt=this.time;r.hurtAt=undefined;
   if(this.host.isHuman(p)&&this.host.solo&&r.selfRevives>0&&this.stage()!=='ended')r.selfReviveAt=this.time+PVE.selfReviveDelay;
  }
  /** From Simulation.revivePlayer (every revive path): picks made while dead apply now; once-keys reset (D37). */
@@ -191,7 +190,7 @@ export class Economy implements EconomyApi{
  // ---- per tick ----
  step(_dt:number){
   if(this.sim.phase!=='fight')return;
-  if(this.stage()==='ended'){for(const r of this.rows.values()){r.picks=[];this.closePick(r);r.channel=undefined;r.selfReviveAt=undefined;}return;}
+  if(this.stage()==='ended'){for(const r of this.rows.values()){r.picks=[];this.closePick(r);r.selfReviveAt=undefined;}return;}
   const t=this.time;
   for(const h of [...this.hires])if(t>=h.at-EPS){this.hires.splice(this.hires.indexOf(h),1);this.completeHire(h);}
   for(const r of [...this.rows.values()]){
@@ -224,25 +223,19 @@ export class Economy implements EconomyApi{
  }
  private stepInteract(p:Player,r:Row){
   const cur=this.interact.get(p.id)===true,pressed=cur&&!this.prevInteract.get(p.id);this.prevInteract.set(p.id,cur);
-  if(r.channel){this.stepChannel(p,r,cur);return;}
   if(!pressed||p.hp<=0||r.open||!p.connected)return;
   const target=interactTarget(p.body.translation(),p.id,this.time,this.pickups,this.downed(p.id));if(!target)return;
   if(target.kind==='pickup')this.grab(p,r,target.pickup);
-  else if(target.kind==='revive'){
-   if(r.money<revivePrice(this.host.stats(target.target).revived)){this.deny(p.id,'money');return;}
-   r.channel={kind:'revive',target:target.target,at:this.time,until:this.time+PRICES.reviveSeconds};
-  }else this.tap(p,r,target.machine);
+  else if(target.kind==='revive')this.reviveNow(p,r,target.target);
+  else this.tap(p,r,target.machine);
  }
- /** D8: cancels on release, leaving the radius, the reviver's death or the target getting up; charges on completion only. */
- private stepChannel(p:Player,r:Row,held:boolean){
-  const c=r.channel!,t=this.player(c.target),pos=p.body.translation();
-  const ok=held&&p.hp>0&&p.connected&&!!t&&t.hp<=0&&!!t.death&&Math.hypot(t.death.pos.x-pos.x,t.death.pos.z-pos.z)<=PRICES.reviveRadius;
-  if(!ok){r.channel=undefined;return;}
-  if(this.time<c.until-EPS)return;
-  r.channel=undefined;
+ /** Owner playtest (2026-10-03): one F press next to a downed teammate's beacon revives at once (no hold channel). The price
+  *  is charged on the press; too little money denies with 'money'. Same 50% HP and shield as every revive. */
+ private reviveNow(p:Player,r:Row,target:string){
+  const t=this.player(target);if(!t||t.hp>0||!t.death||!t.connected)return;
   const price=revivePrice(this.host.stats(t.id).revived);if(r.money<price){this.deny(p.id,'money');return;}
   this.charge(r,price);this.host.stats(p.id).revives++;this.host.stats(t.id).revived++;
-  this.revive(t,t.death!.pos,PVE_EVENT.revive,{source:p.id,amount:price});
+  this.revive(t,t.death.pos,PVE_EVENT.revive,{source:p.id,amount:price});
  }
  private grab(p:Player,r:Row,k:PvePickupView){
   // Owner playtest: a taken chip never opens the chip screen; it waits as a pending pick (C / the CHIPS icon) until chosen.
@@ -281,11 +274,11 @@ export class Economy implements EconomyApi{
  }
 
  // ---- holds and re-keying ----
- /** Hold start: channels cancel, heals complete at once and party DoTs clear. */
+ /** Hold start: heals complete at once and party DoTs clear. */
  onHold(active:boolean){
   if(!active)return;
   for(const r of this.rows.values()){
-   r.channel=undefined;const p=this.player(r.id);
+   const p=this.player(r.id);
    if(p&&r.healAt!==undefined&&r.healPulses<4){const left=4-r.healPulses;r.healPulses=4;if(p.hp>0)this.sim.heal(p,p.stats.hp*PRICES.healFraction/4*left,p.id);}
   }
   for(const p of this.host.party()){p.burns.clear();p.poisons.clear();}
@@ -298,16 +291,14 @@ export class Economy implements EconomyApi{
   for(const r of this.rows.values()){
    r.healReadyAt+=dt;if(r.healAt!==undefined)r.healAt+=dt;if(r.healUntil!==undefined)r.healUntil+=dt;
    if(r.selfReviveAt!==undefined)r.selfReviveAt+=dt;if(r.thinkUntil!==undefined)r.thinkUntil+=dt;
-   if(r.channel){r.channel.at+=dt;r.channel.until+=dt;}
   }
  }
- /** Rejoin (§9.3): money, picks, pickups, channels and pending hires move to the new id. */
+ /** Rejoin (§9.3): money, picks, pickups and pending hires move to the new id. */
  rekey(from:string,to:string){
   const r=this.rows.get(from);if(r){this.rows.delete(from);r.id=to;this.rows.set(to,r);}
   for(const k of this.pickups)if(k.owner===from)k.owner=to;
   for(const h of this.hires)if(h.owner===from)h.owner=to;
   for(const u of this.uses)if(u.by===from)u.by=to;
-  for(const x of this.rows.values())if(x.channel?.target===from)x.channel.target=to;
   for(const map of [this.interact,this.prevInteract]){const v=map.get(from);map.delete(from);if(v!==undefined)map.set(to,v);}
  }
 
@@ -321,7 +312,6 @@ export class Economy implements EconomyApi{
    chipPrice:chipPrice(r.chipsBought),healReadyAt:r.healReadyAt,picks:r.picks.map(k=>({...k,...(k.offers?{offers:[...k.offers]}:{})}))});
   const opt=row as unknown as Record<string,unknown>;
   for(const key of ['open','openAt','hurtAt','downAt','selfReviveAt','healAt','healUntil'] as const)if(r[key]!==undefined)opt[key]=r[key];
-  if(r.channel)row.channel={...r.channel};
   return row;
  }
  machinesView():PveMachineUse[]{return this.uses.map(u=>({...u}));}

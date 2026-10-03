@@ -6,6 +6,7 @@ import type {PlayerView,Snapshot,GameEvent} from '../src/shared/simulation.js';
 import {BOSS_PLAYER_ID,PARTY_BOT_PREFIX,encodeAdd,type PveView} from '../src/shared/pve/contract.js';
 import {pveFixture,fixtureAdd,fixtureBossPlayer,fixtureBossHp} from '../src/shared/pve/fixtures.js';
 import {PVE_MACHINES} from '../src/shared/pve/layout.js';
+import {PRICES,chipPrice,revivePrice} from '../src/shared/pve/balance.js';
 import {SIREN_BOSS_CHIPS} from '../src/shared/pve/bosses.js';
 import {moneyHud,waveHeading,bossBar,partyHud,chipLaterIcon,bannerFor,pveBanner,downLine,possessionArrow,formatCash,formatGain,clock,bossIntroName} from '../src/client/pve/hud.js';
 import {MoneyTrack,AttackedTrack,DelayMemo,ATTACKED_WINDOW,threatenedBy} from '../src/client/pve/tracks.js';
@@ -40,14 +41,14 @@ test('HUD builders escape names and keep stable data-* identities across redraws
 test('party rows: dead timer counts from downAt, self-revive countdown, BOT rows carry no money or revive price',()=>{
  const v=view('party'),s=snap(v);
  const dead=partyHud(s,v,ME).split('data-member="p2"')[1].split('data-member=')[0];
- assert.match(dead,/DOWN · Revive \$100 · 0:03/,'time since down (downAt = time - 3)');assert.match(dead,/Respawns at wave clear/);
- assert.match(partyHud({...s,time:112},v,ME),/DOWN · Revive \$100 · 0:15/);
+ assert.match(dead,new RegExp(`DOWN · Revive \\$${revivePrice(0)} · 0:03`),'time since down (downAt = time - 3)');assert.match(dead,/Respawns at wave clear/);
+ assert.match(partyHud({...s,time:112},v,ME),new RegExp(`DOWN · Revive \\$${revivePrice(0)} · 0:15`));
  const sv=view('self-revive'),ss=snap(sv);assert.match(partyHud(ss,sv,ME),/SELF-REVIVE 0:02/);
  const bot=partyHud(s,v,ME).split(`data-member="${PARTY_BOT_PREFIX}1"`)[1].split('data-member=')[0];
  assert.match(bot,/BOT/);assert.ok(!bot.includes('$'),'party bots show no money');
  assert.equal(moneyHud(v,PARTY_BOT_PREFIX+'1'),'','no money counter for a party bot');
  const choosing=partyHud(s,v,ME).split('data-member="p3"')[1];assert.match(choosing,/data-choosing="1"|CHOOSING/);
- const dv=view('dead'),ds=snap(dv);assert.match(partyHud(ds,dv,ME),/REVIVING HOST|REVIVING P/,'a channelling member shows the revive');
+ const dv=view('dead'),ds=snap(dv);assert.doesNotMatch(partyHud(ds,dv,ME),/REVIVING/,'revives are instant: no channel status');
  const boss=view('boss-2'),bs=snap(boss);assert.match(partyHud({...bs,players:bs.players.map(p=>p.id==='p2'?{...p,hp:0}:p)},{...boss,party:{...boss.party,p2:{...boss.party.p2,downAt:95}}},ME),/Respawns next phase/);
 });
 
@@ -106,10 +107,10 @@ test('chip-later icon, possession arrow and interact prompts',()=>{
  assert.equal(chipLaterIcon(view('choosing'),ME,100),'','hidden while the screen is open');
  const pv=view('possession'),ps=snap(pv,{time:pv.bossView!.possessedAt!+35.5});assert.match(possessionArrow(ps,pv,ME,0),/pve-possess-arrow/);assert.equal(possessionArrow({...ps,time:pv.bossView!.possessedAt!+30},pv,ME,0),'');
  const m=PVE_MACHINES[0],s=snap(v,{players:[player(ME,{pos:{x:m.front.x,y:.9,z:m.front.z}})]});
- const p=promptFor(s,v,ME)!;assert.equal(p.kind,'chip');assert.match(promptHud(p),/<kbd>F<\/kbd><span>Buy chip \$200<\/span>/);
+ const p=promptFor(s,v,ME)!;assert.equal(p.kind,'chip');assert.match(promptHud(p),new RegExp(`<kbd>F</kbd><span>Buy chip \\$${chipPrice(2)}</span>`));
  const poor={...v,party:{...v.party,[ME]:{...v.party[ME],money:20}}};assert.match(promptHud(promptFor(s,poor,ME)),/data-afford="0"[\s\S]*Not enough money/);
- const med=PVE_MACHINES[6],sm=snap(v,{players:[player(ME,{pos:{x:med.front.x,y:.9,z:med.front.z},hp:40})]});assert.match(promptHud(promptFor(sm,v,ME)),/Heal \$60/);
- const dv=view('party'),dp=snap(dv);dp.players[0].pos={x:5,y:.9,z:5};dp.players[1]={...dp.players[1],pos:{x:5.5,y:.9,z:5},hp:0};assert.match(promptHud(promptFor(dp,dv,ME)),/Hold F[\s\S]*Revive P2 \$100/);
+ const med=PVE_MACHINES[6],sm=snap(v,{players:[player(ME,{pos:{x:med.front.x,y:.9,z:med.front.z},hp:40})]});assert.match(promptHud(promptFor(sm,v,ME)),new RegExp(`Heal \\$${PRICES.heal}`));
+ const dv=view('party'),dp=snap(dv);dp.players[0].pos={x:5,y:.9,z:5};dp.players[1]={...dp.players[1],pos:{x:5.5,y:.9,z:5},hp:0};const rp=promptHud(promptFor(dp,dv,ME));assert.match(rp,new RegExp(`<kbd>F</kbd><span>Revive P2 \\$${revivePrice(0)}</span>`));assert.doesNotMatch(rp,/Hold F|pve-prompt-ring/,'one press, no hold ring');
  assert.equal(promptFor(snap({...v,hold:true},{players:s.players}),{...v,hold:true},ME),null,'no prompt during holds');
 });
 
@@ -146,7 +147,7 @@ test('main.ts pins: Test Boss on home, boss intro keeps pointer lock, PvE idle i
  assert.match(main,/btn\('test-boss','Test Boss <span class="key">04<\/span>'\)/);
  assert.match(main,/if\(document\.pointerLockElement&&!intro\.boss\)document\.exitPointerLock\(\);return;/,'the boss intro does not leave pointer lock');
  assert.match(main,/function input\(\):Input\{if\(pveIdle\(\)\)return \{\.\.\.idleInput\(\)/);
- assert.match(main,/function pveIdle\(\)\{[^}]*pve\.hold\|\|!!chipScreen\?\.visible\|\|!!pve\.party\[id\]\?\.channel/,'idle during holds, the open screen and a revive channel');
+ assert.match(main,/function pveIdle\(\)\{[^}]*pve\.hold\|\|!!chipScreen\?\.visible\);\}/,'idle during holds and the open screen only (the old revive-channel idle dropped F and cancelled the channel)');
  assert.equal((main.match(/hud\.innerHTML=/g)||[]).length,1);assert.match(main,/t\.closest\('#pve-chips'\)/);
  assert.match(main,/'test-boss'\]\.includes\(screen\)\)html=`<div class="pilot-lobby-layout">/);
  assert.match(main,/screen!=='create'&&screen!=='test-boss'\)return;/,'the desktop create guard accepts the picker');

@@ -115,10 +115,7 @@ body.pve .notice{top:150px}
 .pve-prompt em{font-style:normal;font-size:11px;color:#ff8a7a}
 .pve-prompt[data-afford="0"]{border-color:#ff535f55}
 .pve-prompt[data-afford="0"] kbd{background:#5b5e6b;color:#d9dbe3}
-.pve-prompt[data-prompt=revive],.pve-prompt[data-prompt=channel]{border-color:#59dd8366}
-.pve-prompt-ring{width:26px;height:26px;transform:rotate(-90deg)}
-.pve-prompt-ring circle{fill:none;stroke:#ffffff22;stroke-width:3.5}
-.pve-prompt-ring circle.fill{stroke:#59dd83;stroke-dasharray:94.25;transition:stroke-dashoffset .1s linear}
+.pve-prompt[data-prompt=revive]{border-color:#59dd8366}
 
 .pve-banner{position:absolute;left:50%;top:24%;transform:translateX(-50%);text-align:center;pointer-events:none;white-space:nowrap;animation:pve-banner var(--banner-duration,2.6s) cubic-bezier(.2,.8,.2,1) var(--banner-delay,0s) both}
 .pve-banner strong{position:relative;display:block;font:900 clamp(30px,4.6vw,64px)/1 var(--font-ui,system-ui);letter-spacing:.06em;text-transform:uppercase;color:#fff;text-shadow:0 2px 0 #000,0 0 30px #ff6b3566}

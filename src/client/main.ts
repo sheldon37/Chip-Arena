@@ -198,8 +198,9 @@ function pveKey(e:KeyboardEvent){if(!state.pve||(e.target as HTMLElement).matche
 let lockPauseAt=0;
 function pauseOnLockLoss(){if(document.pointerLockElement||screen!=='game'||paused||!state?.pve||!['fight','countdown'].includes(state.phase)||chipScreen?.visible||boardOpen()||killcam.active||killcam.waiting||state.pve.cinematic||renderer?.sirenCutscene.active)return;
  paused=true;lockPauseAt=performance.now();keys.clear();left=right=pendingBlock=false;if(peerRoom instanceof LocalRoom)peerRoom.pause(true);drawMenu(true);}
-/** Idle input during holds, while my chip screen is open and while I channel a revive (F stays held so it continues). */
-function pveIdle(){const pve=state?.pve;return !!pve&&state.phase==='fight'&&(pve.hold||!!chipScreen?.visible||!!pve.party[id]?.channel);}
+/** Idle input during holds and while my chip screen is open. (Revives are instant: the old hold-F channel idled the input here,
+ *  which dropped F and cancelled the channel one round trip after it started.) */
+function pveIdle(){const pve=state?.pve;return !!pve&&state.phase==='fight'&&(pve.hold||!!chipScreen?.visible);}
 /** The PvE HUD widgets (§7.3), replacing .match-heading. */
 function pveHud(pve:PveView,me:PlayerView){if(state.phase==='match')return '';pveDelays.frame(state.time,state.generation||0);const banner=bannerFor(state,pve,id);
  return moneyHud(pve,id,moneyTrack.update(state,id))+(bossBar(state,pve)||waveHeading(pve,state.time))+partyHud(state,pve,id)+chipLaterIcon(pve,id,state.time,!!chipScreen?.visible)+pveBanner(banner,banner?pveDelays.delay(banner.key,banner.at):0)+(me.hp>0&&!chipScreen?.visible?promptHud(promptFor(state,pve,id)):'')+possessionArrow(state,pve,id,yaw);}
