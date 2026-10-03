@@ -10,7 +10,10 @@ function createRemoteStatusHandler(gameRoot,forward){
     if(request.method!=='GET')return new Response('Method not allowed',{status:405,headers});
     try{
       const channel=JSON.parse(await readFile(join(gameRoot,'test-channel.json'),'utf8'));
-      const response=await forward(new Request(channel.base+'latest.json?t='+Date.now(),{cache:'no-store'}),{bypassCustomProtocolHandlers:true});
+      const read=name=>forward(new Request(channel.base+name+'?t='+Date.now(),{cache:'no-store'}),{bypassCustomProtocolHandlers:true});
+      // Updater v2 installs read latest-v2.json, exactly like their Update button; only a missing v2 feed falls back.
+      let response=channel.schema2===true?await read('latest-v2.json'):null;
+      if(!response||response.status===404)response=await read('latest.json');
       if(!response.ok)throw Error('Test channel unavailable');
       const manifest=await response.json();
       if(!/^[a-f0-9]{24}$/.test(manifest.build)||typeof manifest.version!=='string')throw Error('Invalid test manifest');
