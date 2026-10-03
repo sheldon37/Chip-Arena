@@ -252,7 +252,7 @@ export class Economy implements EconomyApi{
    if(this.pickups.filter(k=>k.owner===p.id).length>=PICKS.maxUngrabbed)return this.deny(p.id,'pickups',m.m);
    this.charge(r,price);r.chipsBought++;this.use(m.m,p.id,'chip');
    const tier=weightedPick(()=>this.draw(),DROP_ODDS);
-   this.pickups.push({id:'pk'+(++this.pickupSerial),owner:p.id,tier,pos:{x:m.dispense.x,y:.9,z:m.dispense.z},born:this.time+PRICES.dispenseDelay,m:m.m});
+   this.pickups.push({id:'pk'+(++this.pickupSerial),owner:p.id,tier,pos:{x:m.chipDrop.x,y:.9,z:m.chipDrop.z},born:this.time+PRICES.dispenseDelay,m:m.m});
    this.emit(PVE_EVENT.buy,p.id,{message:'chip',amount:price});
   }else if(m.kind==='recruit'){
    const price=PRICES.recruit;

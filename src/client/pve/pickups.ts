@@ -11,7 +11,7 @@ import {BEAM_TIERS,createChipModel,disposeChipModel,tierColor,tintChip,type Chip
 import {HOLO_FONT,makeCanvas} from './hologram.js';
 import {SLOT} from './machines.js';
 
-export const PICKUP={tilt:-1.25,scale:.62,pop:.45,hop:.75,spin:2.2,bob:.08,restY:.9} as const;
+export const PICKUP={tilt:-1.25,scale:.62,pop:.55,hop:1.1,spin:2.2,bob:.08,restY:.9} as const;
 const clamp=(x:number,a=0,b=1)=>Math.min(b,Math.max(a,x));
 /** Machine slot in world space (where a popping chip starts). */
 export function slotPoint(m:number):Vec{const k=PVE_MACHINES[m]??PVE_MACHINES[0];return {x:k.x+Math.sin(k.yaw)*SLOT.z,y:SLOT.y,z:k.z+Math.cos(k.yaw)*SLOT.z};}
