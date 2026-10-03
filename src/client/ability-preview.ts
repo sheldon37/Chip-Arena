@@ -20,11 +20,11 @@ export function previewCircles(me:PlayerView,pos:Vec,yaw:number,pitch:number,cam
  * point on a wall face resolves exactly as the server's aimPoint does. */
 export const worldRay=(world:RAPIER.World,exclude?:RAPIER.Collider):ViewRay=>(o,d,max)=>world.castRay(new RAPIER.Ray(o,d),max,true,undefined,undefined,exclude)?.timeOfImpact??null;
 export class AbilityPreview{
- readonly mesh=new T.InstancedMesh(new T.BoxGeometry(.09,.09,.09),new T.MeshBasicMaterial({color:0x8af4ff,transparent:true,opacity:.8,depthWrite:false,toneMapped:false}),96);private m=new T.Matrix4();
+ readonly mesh=new T.InstancedMesh(new T.BoxGeometry(.14,.14,.14),new T.MeshBasicMaterial({color:0x8af4ff,transparent:true,opacity:.85,depthWrite:false,toneMapped:false}),120);private m=new T.Matrix4();
  constructor(scene:T.Scene){this.mesh.frustumCulled=false;this.mesh.count=0;this.mesh.renderOrder=3;scene.add(this.mesh);}
  /** Rising motes around each circle; a clamped aim (out of range, or the sky) draws a gapped ring. */
  update(circles:PreviewCircle[],time:number){let n=0;
-  for(const c of circles){const k=Math.min(32,Math.max(12,Math.round(c.radius*5)));for(let i=0;i<k&&n<96;i++){if(c.clamped&&i%4>1)continue;
+  for(const c of circles){const k=Math.min(40,Math.max(14,Math.round(c.radius*6)));for(let i=0;i<k&&n<120;i++){if(c.clamped&&i%4>1)continue;
    const a=(i/k+time*.05)*Math.PI*2,u=(time*.7+i*.37)%1,sc=1-u*.75;this.m.makeScale(sc,sc,sc).setPosition(c.pos.x+Math.cos(a)*c.radius,c.pos.y+.05+u*.35,c.pos.z+Math.sin(a)*c.radius);this.mesh.setMatrixAt(n++,this.m);}}
   this.mesh.count=n;this.mesh.instanceMatrix.needsUpdate=true;}
 }

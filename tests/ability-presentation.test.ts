@@ -99,8 +99,8 @@ test('ground preview: the client point equals the server aimPoint within .1 m on
   }
   assert.equal(checked,48);
   // Radius is the gameplay radius with the pilot's stats; Geyser Wall shows three circles 3 m apart across the aim.
-  p.spec='water';const g=previewCircles(sim.snapshot().players[0],p.body.translation(),0,-.2,'first',ray);assert.ok(Math.abs(Math.hypot(g[2].pos.x-g[0].pos.x,g[2].pos.z-g[0].pos.z)-6)<1e-6);assert.equal(g[0].radius,2.5);
-  p.spec='darkness';assert.equal(previewCircles({...sim.snapshot().players[0],chips:{'abyssal-core':1}},p.body.translation(),0,-.2,'first',ray)[0].radius,7.5);
+  p.spec='water';const g=previewCircles(sim.snapshot().players[0],p.body.translation(),0,-.2,'first',ray);assert.ok(Math.abs(Math.hypot(g[2].pos.x-g[0].pos.x,g[2].pos.z-g[0].pos.z)-6)<1e-6);assert.equal(g[0].radius,kitFor('water')!.e.radius);
+  p.spec='darkness';assert.equal(previewCircles({...sim.snapshot().players[0],chips:{'abyssal-core':1}},p.body.translation(),0,-.2,'first',ray)[0].radius,kitFor('darkness')!.e.radius!*1.25);
   p.spec='rifle';assert.deepEqual(previewCircles(sim.snapshot().players[0],p.body.translation(),0,-.2,'first',ray),[],'Orbital Mark is a dart, not a ground target');
   // Shown while the live E is ready or casting; never for Necronomicon's Raise the Dead or without caps.
   const fire={...view('fire')};assert.equal(previewOn(fire,5,HOST_CAPS),true);assert.equal(previewOn({...fire,secondaryCd:3},5,HOST_CAPS),false);assert.equal(previewOn(fire,5,{}),false);assert.equal(previewOn({...fire,chips:{necronomicon:1}},5,HOST_CAPS),false);pr.dispose();
