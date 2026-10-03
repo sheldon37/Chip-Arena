@@ -85,9 +85,10 @@ test('rules: a connected party member keeps a body while down (also through the 
 
 test('regeneration timeline: pure in authoritative time, identical at 30/60/120 Hz; rig hidden until the rise; done after REGEN_SECONDS',()=>{
  const v0=view(10,['me','p2'],['alive','alive']);v0.party.p2.upAt=10;
- assert.equal(regenAge(v0,'p2',9.5),undefined,'before');assert.equal(regenAge(v0,'p2',10),0);assert.ok(near(regenAge(v0,'p2',10.5)!,.5));
+ assert.equal(regenAge(v0,'p2',8.9),undefined,'before (a rewind)');assert.equal(regenAge(v0,'p2',10),0);assert.ok(near(regenAge(v0,'p2',10.5)!,.5));
  assert.equal(regenAge(v0,'p2',10+REGEN_SECONDS),undefined,'after');assert.equal(regenAge(v0,'me',10.5),undefined,'never came back');
  assert.equal(regenAge(v0,'p2',9.9),0,'an interpolated frame just before upAt clamps to the start');
+ assert.equal(regenAge(v0,'p2',10-.36),0,'the presented clock trails the newest snapshot by up to 350 ms (plus catch-up): still the start');
  const sample=(hz:number)=>{const out=new Map<string,string>();for(let i=0;i*1/hz<=REGEN_SECONDS+.1;i++){const t=i/hz;if(Math.abs(t*60-Math.round(t*60))<1e-9&&Math.round(t*60)%2===0)out.set(t.toFixed(4),JSON.stringify(regenPhase(t)));}return out;};
  const a=sample(30),b=sample(60),c=sample(120);for(const [k,x] of a){assert.equal(b.get(k),x,k);assert.equal(c.get(k),x,k);}
  let last=-1;for(let t=0;t<=REGEN_SECONDS+.05;t+=1/120){const ph=regenPhase(t);assert.ok(ph.scan>=last-1e-12);last=ph.scan;assert.equal(ph.rise,t>=DOWNED.scan);assert.ok(ph.glow>=0&&ph.glow<=1);}
@@ -128,6 +129,7 @@ test('a downed member\'s gibbed ragdoll stays as it fell for the whole downed ti
  for(const t of frames){const v0=view(t,['me','p2'],['alive','dead']);f.run(snap(t,v0,[pilot('me',{pos:{x:4,y:.86,z:4}}),down]));
   const roots=f.named('ragdoll');assert.equal(roots.length,1,`one kept body at ${t}`);const root=roots[0];assert.equal(root.userData.gibPart,'head');
   for(const part of root.children)assert.ok(near(part.scale.x,1,1e-9),'never faded or shrunk');
+  if(t>=12)assert.ok(worldPos(root.children.find(c=>c.name==='pelvis')!).y<.45,'lying on the floor');
   const h=root.children.find(c=>c.name==='head')!;assert.ok(h.visible);if(t>=16){const p=worldPos(h);if(head)assert.ok(p.distanceTo(head)<1e-6,'settled and frozen');head=p;}
   assert.ok(f.named('gibber-wound').length>=1,'cut caps stay');}
  // The same death in PvP: the stock five-second lifetime.
@@ -153,7 +155,10 @@ test('revive in place: the body is handed over, wounds seal, the missing head is
  const root=f.named('ragdoll')[0],pelvis=worldPos(root.children.find(c=>c.name==='pelvis')!),caps=f.named('gibber-wound');assert.ok(caps.length>=1);
  // Back up at t=20 on the death spot (standAt), 50% HP, no death, no wounds.
  const up=20,alive=pilot('p2',{hp:50,pos:{x:d.pos.x,y:.86,z:d.pos.z}}),at=(age:number)=>{const v1=view(up+age,['me','p2'],['alive','alive']);v1.party.p2.upAt=up;return snap(up+age,v1,[me,alive]);};
- f.run(at(0));const r=f.keeper.regen('p2')!;assert.ok(r,'regenerating');assert.equal(r.mode,'place');assert.equal(r.corpse,true);assert.ok(r.voxels>20&&r.voxels<=DOWNED.voxels.high,'head voxels '+r.voxels);
+ // The newest snapshot (hp, upAt) arrives while the presented clock still trails upAt: the regeneration starts at age 0.
+ f.run(at(-.3));assert.deepEqual(f.keeper.stats().waiting,['p2'],'adopted before the presented clock reaches upAt');assert.equal(f.shown.get('p2'),false);
+ assert.equal(f.named('ragdoll').length,1,'the body still lies there');
+ f.run(at(0));f.run(at(DOWNED.settle));const r=f.keeper.regen('p2')!;assert.ok(r,'regenerating');assert.equal(r.mode,'place');assert.equal(r.corpse,true);assert.ok(r.voxels>20&&r.voxels<=DOWNED.voxels.high,'head voxels '+r.voxels);
  assert.equal(f.shown.get('p2'),false,'live rig hidden while the body regenerates');assert.equal(f.named('ragdoll').length,1,'the same body, now owned by the keeper');
  assert.equal(f.named('pve-regen-holo').length,1,'one instanced draw on the body');
  for(const age of [.1,.2,.3,.4,.5,.6,.7])f.run(at(age));
@@ -174,7 +179,7 @@ test('respawn on a pad: the old body dissolves where it lay, the player material
  const f=new Frame(),d=death('p2',10,'arm'),me=pilot('me',{pos:{x:4,y:.86,z:4}});
  for(const t of [10,12,16])f.run(snap(t,view(t,['me','p2'],['alive','dead']),[me,pilot('p2',{hp:0,death:d,pos:d.pos})]));
  const up=16,pad={x:8,y:.86,z:-6},alive=pilot('p2',{hp:50,pos:pad}),at=(age:number)=>{const v1=view(up+age,['me','p2'],['alive','alive']);v1.party.p2.upAt=up;return snap(up+age,v1,[me,alive]);};
- f.run(at(0));const r=f.keeper.regen('p2')!;assert.equal(r.mode,'pad');assert.ok(r.voxels>100,'whole-body voxels: '+r.voxels);assert.equal(f.shown.get('p2'),false);
+ f.run(at(0));f.run(at(DOWNED.settle));const r=f.keeper.regen('p2')!;assert.equal(r.mode,'pad');assert.ok(r.voxels>100,'whole-body voxels: '+r.voxels);assert.equal(f.shown.get('p2'),false);
  const pieces=f.named('ragdoll')[0].children.filter(c=>c.name in {pelvis:1,spine:1});
  f.run(at(.4));assert.ok(pieces.every(p=>p.scale.x<.8),'dissolving');f.run(at(DOWNED.dissolve+.01));assert.equal(f.named('ragdoll').length,0,'old body gone');
  f.run(at(.79));assert.equal(f.shown.get('p2'),false);f.run(at(DOWNED.scan));assert.equal(f.shown.get('p2'),true);
@@ -201,6 +206,6 @@ test('the Siren crush keeps its headless victim lying (not burned away) and rege
  for(const t of [10,11,12.5,14,30]){f.run(snap(t,view(t,['me','p2'],['alive','dead']),[me,pilot('p2',{hp:0,death:d,pos:d.pos})]));
   const root=f.named('siren-crush');assert.equal(root.length,1,'kept at '+t);if(t-10>=SIREN_CRUSH_KEEP){const victim=root[0].children[0];assert.ok(near(victim.scale.x,1,1e-9),'not burned away');}}
  const up=30,alive=pilot('p2',{hp:50,pos:{x:d.pos.x,y:.86,z:d.pos.z}}),at=(age:number)=>{const v1=view(up+age,['me','p2'],['alive','alive']);v1.party.p2.upAt=up;return snap(up+age,v1,[me,alive]);};
- f.run(at(0));const r=f.keeper.regen('p2')!;assert.equal(r.mode,'place');assert.ok(r.voxels>20,'head voxels');
+ f.run(at(0));f.run(at(DOWNED.settle));const r=f.keeper.regen('p2')!;assert.equal(r.mode,'place');assert.ok(r.voxels>20,'head voxels');
  for(let k=0;k<=14;k++)f.run(at(k/10));f.run(at(REGEN_SECONDS+.01));assert.equal(f.named('siren-crush').length,0);assert.deepEqual(f.keeper.stats(),{regens:[],waiting:[],draws:0});
 });

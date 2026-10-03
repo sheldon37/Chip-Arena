@@ -29,6 +29,8 @@ export const DOWNED={
  /** Back up within this of the body: regenerate in place. Farther (a respawn pad): the old body dissolves over `dissolve`
   *  and the player materialises where they are. */
  placeRadius:1.6,dissolve:.7,
+ /** The regeneration's visuals start this long after upAt on the presented clock (see DownedBodies.update). */
+ settle:.05,
  /** Hologram voxels of one regeneration (missing parts, or a whole materialising body). */
  voxels:{high:360,low:120},
  /** HELP bubble: bottom edge this far above the floor point, bob amplitude (m) and period (s); width w = k·distance. */
@@ -55,10 +57,15 @@ export function helpShown(p:Pick<PlayerView,'id'|'hp'>,view:PveView,me:string):b
 export const helpBob=(t:number,id='')=>DOWNED.help.bob*Math.sin((t/DOWNED.help.period+(hash(id)%997)/997)*Math.PI*2);
 /** Bubble width (m) at a camera distance: constant on screen between `min` and `max` metres. */
 export const helpWidth=(distance:number)=>DOWNED.help.k*clamp(distance,DOWNED.help.min,DOWNED.help.max);
-/** Seconds since this member came back while its regeneration runs, else undefined. */
+/** How far the presented clock may trail upAt and still start the regeneration (at age 0). Remote snapshots present hp,
+ *  deaths and the PvE view from the newest snapshot while `time` trails it by the interpolation delay (≤ 350 ms, more
+ *  while a slow client catches up), so a member is up before the presented time reaches upAt. */
+export const REGEN_LEAD=1;
+/** Seconds since this member came back while its regeneration runs (0 while the presented clock still trails upAt), else
+ *  undefined. */
 export function regenAge(view:PveView|undefined,id:string,t:number):number|undefined{
  const up=view?.party[id]?.upAt;if(up===undefined)return undefined;const a=t-up;
- return a>-.25&&a<REGEN_SECONDS?Math.max(0,a):undefined;
+ return a>-REGEN_LEAD&&a<REGEN_SECONDS?Math.max(0,a):undefined;
 }
 export interface RegenPhase{
  /** Scan front over the body, 0 → 1. */ scan:number;
@@ -160,7 +167,7 @@ export function regenMaterial(compatibility=false){
  m.customProgramCacheKey=()=>'pve-regen-holo';
  return holoMat=m;
 }
-const _sa=new T.Vector3(),_sb=new T.Vector3(),BOX=new T.BoxGeometry(1,1,1),CYAN=new T.Color(DOWNED.color),WHITE=new T.Color(0xd8fbff),_c=new T.Color();
+const _sa=new T.Vector3(),_sb=new T.Vector3(),BOX=new T.BoxGeometry(1,1,1),CYAN=new T.Color(DOWNED.color),WHITE=new T.Color(0xd8fbff),_c=new T.Color(),_c2=new T.Color();
 interface Voxel{target:T.Matrix4;s:number;from:T.Vector3}
 interface Overlay{src:T.Mesh;s:number}
 const boxOf=(g:T.BufferGeometry)=>{if(!g.boundingBox)g.computeBoundingBox();return g.boundingBox!;};
@@ -172,13 +179,16 @@ function meshBox(mesh:T.Mesh,out:T.Matrix4,inflate=1.06,spaceInverse?:T.Matrix4)
 /** Voxel grid filling a box matrix (unit cube), at most `limit`; cell size near `size`. */
 function fillVoxels(box:T.Matrix4,size:number,out:T.Matrix4[]){
  box.decompose(_p,_q,_s);const nx=Math.max(1,Math.round(_s.x/size)),ny=Math.max(1,Math.round(_s.y/size)),nz=Math.max(1,Math.round(_s.z/size));
- for(let x=0;x<nx;x++)for(let y=0;y<ny;y++)for(let z=0;z<nz;z++){const m=new T.Matrix4().compose(_v.set((x+.5)/nx-.5,(y+.5)/ny-.5,(z+.5)/nz-.5),_q2.identity(),new T.Vector3(.86/nx,.86/ny,.86/nz));out.push(m.premultiply(box));}
+ // The shell only: interior cells would stack additively into a white blob (and cost instances).
+ for(let x=0;x<nx;x++)for(let y=0;y<ny;y++)for(let z=0;z<nz;z++){if(x>0&&y>0&&z>0&&x<nx-1&&y<ny-1&&z<nz-1)continue;
+  const m=new T.Matrix4().compose(_v.set((x+.5)/nx-.5,(y+.5)/ny-.5,(z+.5)/nz-.5),_q2.identity(),new T.Vector3(.74/nx,.74/ny,.74/nz));out.push(m.premultiply(box));}
 }
+
 /** One instanced draw: a floor frame, the scan slab, overlay shells over present parts and converging voxels. Cells are in
  *  world space, or local to `space` (a live rig group) so they follow it. */
 class HoloBody{
  readonly mesh:T.InstancedMesh;voxels:Voxel[]=[];overlay:Overlay[]=[];
- /** Scan axis (space coordinates): from `a` (s=0) to `b` (s=1); slab width. */ axis={a:new T.Vector3(),b:new T.Vector3(0,1,0),width:.9};
+ /** Scan axis (space coordinates): from `a` (s=0) to `b` (s=1); the scan pane's width and height across it. */ axis={a:new T.Vector3(),b:new T.Vector3(0,1,0),width:.9,height:.9};
  /** Floor rectangle corners (space coordinates, y = floor). */ floor={min:new T.Vector3(-.5,0,-.5),max:new T.Vector3(.5,0,.5)};
  private inverse=new T.Matrix4();
  constructor(parent:T.Object3D,capacity:number,compatibility:boolean,readonly space?:T.Object3D){
@@ -199,11 +209,17 @@ class HoloBody{
   const {min,max}=this.floor,cx=(min.x+max.x)/2,cz=(min.z+max.z)/2,w=max.x-min.x,d=max.z-min.z,y=min.y+.015,pulse=.45+.2*Math.sin(age*14);
   for(const [x,z,sx,sz] of [[cx,min.z,w,.035],[cx,max.z,w,.035],[min.x,cz,.035,d],[max.x,cz,.035,d]] as const)this.put(_m.compose(_p.set(x,y,z),_q.identity(),_s.set(sx,.02,sz)),CYAN,g*pulse);
   // The scan slab, perpendicular to the axis at the front.
-  if(o.slab&&o.front>0&&o.front<1){_v.subVectors(this.axis.b,this.axis.a);const l=_v.length();if(l>1e-4){_p.copy(this.axis.a).addScaledVector(_v,o.front);_q.setFromUnitVectors(_s.set(0,1,0),_v.divideScalar(l));this.put(_m.compose(_p,_q,_s.set(this.axis.width,.022,this.axis.width)),WHITE,g);}}
+  if(o.slab&&o.front>0&&o.front<1){_v.subVectors(this.axis.b,this.axis.a);const l=_v.length();if(l>1e-4){_v.divideScalar(l);_p.copy(this.axis.a).addScaledVector(_v,o.front*l);
+   // A faint pane across the axis with bright edges: up is world up projected off the axis (a lying body), else x.
+   _sa.set(0,1,0).addScaledVector(_v,-_v.y);if(_sa.lengthSq()<1e-3)_sa.set(1,0,0).addScaledVector(_v,-_v.x);_sa.normalize();_sb.crossVectors(_sa,_v);
+   const w=this.axis.width,h=this.axis.height,bar=.022,edge=(du:number,dw:number,sx:number,sz:number)=>{_m.makeBasis(_sb,_v,_sa).scale(_s.set(sx,.012,sz));_m.setPosition(_p.x+_sb.x*dw+_sa.x*du,_p.y+_sb.y*dw+_sa.y*du,_p.z+_sb.z*dw+_sa.z*du);this.put(_m,CYAN,g*.95);};
+   _m.makeBasis(_sb,_v,_sa).scale(_s.set(w,.01,h)).setPosition(_p);this.put(_m,CYAN,g*.14);
+   edge(h/2,0,w,bar);edge(-h/2,0,w,bar);edge(0,w/2,bar,h);edge(0,-w/2,bar,h);}}
   for(const v of this.overlay){const k=o.overlay(v.s,o.front);if(k<=0)continue;meshBox(v.src,_m,1.07,this.space?this.inverse:undefined);this.put(_m,CYAN,k*g);}
   if(o.voxels)for(const v of this.voxels){const arrive=voxelArrival(v.s),k=clamp((age-(arrive-.3))/.3);if(k<=0)continue;const e=1-(1-k)**3;
-   v.target.decompose(_p,_q,_s);_p.addScaledVector(v.from,1-e);_s.multiplyScalar(.3+.7*e);const flash=k<1?.75:.55+.45*clamp(1-(age-arrive)/.25);
-   this.put(_m.compose(_p,_q,_s),k<1?CYAN:WHITE,flash*g);}
+   // In flight: cyan; a short white flash as each lands; then a dim cyan lattice (shells overlap, so keep it low).
+   v.target.decompose(_p,_q,_s);_p.addScaledVector(v.from,1-e);_s.multiplyScalar(.3+.7*e);const landed=clamp(1-(age-arrive)/.15);
+   if(k<1)this.put(_m.compose(_p,_q,_s),CYAN,.5*g);else this.put(_m.compose(_p,_q,_s),landed>0?_c2.copy(CYAN).lerp(WHITE,landed):CYAN,(.32+.4*landed)*g);}
   this.mesh.count=this.n;this.mesh.instanceMatrix.needsUpdate=true;if(this.mesh.instanceColor)this.mesh.instanceColor.needsUpdate=true;
  }
  dispose(){this.mesh.removeFromParent();this.mesh.dispose();}
@@ -239,6 +255,9 @@ export class DownedBodies{
   for(const p of state.players){const age=regenAge(view,p.id,t);if(age===undefined||p.hp<=0)continue;live.add(p.id);
    const upAt=view.party[p.id]!.upAt!;let r=this.regens.get(p.id);
    if(r&&r.upAt!==upAt){this.finish(r);r=undefined;}
+   // Start once the presented clock has passed upAt: interpolated positions then show where the member came back
+   // (in place, or on a pad). Until then the kept body stays as it lies and the live rig stays hidden.
+   if(!r&&t-upAt<DOWNED.settle)continue;
    if(!r){r=this.start(p,upAt,state,ctx);if(!r)continue;}
    this.step(r,p,age,state,ctx);}
   for(const [id,r] of this.regens)if(!live.has(id))this.finish(r);
@@ -260,7 +279,7 @@ export class DownedBodies{
    // The scan runs feet → head over the body's own extent along that direction (a missing head ends it at the stump).
    const from=feet.length?feet.reduce((a,v)=>a.add(v),new T.Vector3()).divideScalar(feet.length):bounds.min.clone(),dir=(top??bounds.max).clone().sub(from);if(dir.lengthSq()<1e-6)dir.set(0,1,0);dir.normalize();
    let lo=Infinity,hi=-Infinity;for(const m of corpse.meshes){meshBox(m,_m,1);const d=_p.setFromMatrixPosition(_m).sub(from).dot(dir);lo=Math.min(lo,d);hi=Math.max(hi,d);}
-   if(!(hi>lo)){lo=0;hi=1;}h.axis.a.copy(from).addScaledVector(dir,lo-.08);h.axis.b.copy(from).addScaledVector(dir,hi+.08);h.axis.width=.85;
+   if(!(hi>lo)){lo=0;hi=1;}h.axis.a.copy(from).addScaledVector(dir,lo-.08);h.axis.b.copy(from).addScaledVector(dir,hi+.08);h.axis.width=.7;h.axis.height=.55;
    const floor=corpse.death.pos.y-.85;h.floor.min.set(bounds.min.x-.3,floor,bounds.min.z-.3);h.floor.max.set(bounds.max.x+.3,floor,bounds.max.z+.3);
    h.setOverlay(corpse.meshes);
    // Missing parts: the live rig's own meshes of that subtree, placed on the body's nearest present joint.
@@ -301,7 +320,7 @@ export class DownedBodies{
     if(age>=.45)for(const e of c.extras)if(e.visible){e.visible=false;this.fire(r,'extras',ctx,{x:c.death.pos.x,y:c.death.pos.y-.7,z:c.death.pos.z},8,1.1);}
     if(dissolve){const k=smooth((age-.15)/(DOWNED.dissolve-.15));for(const piece of c.pieces)this.shrink(r,piece,k);}
     if(h)h.update(age,{front:dissolve?clamp(age/(DOWNED.dissolve*.6)):front,glow:dissolve?ph.glow*(1-smooth((age-.45)/(DOWNED.dissolve-.45))):ph.glow,slab:true,voxels:!dissolve,
-     overlay:(s,f)=>f<s?0:.3+.9*clamp(1-(f-s)/.18)});}
+     overlay:(s,f)=>f<s?0:.13+.5*clamp(1-(f-s)/.18)});}
    else{this.dropBody(r);if(!dissolve)this.fire(r,'up',ctx,{x:p.pos.x,y:p.pos.y,z:p.pos.z},12,1.8);}}
   // The live rig: materialising voxels before the rise; a shell that fades from the feet up during the stand-up.
   const rig=ctx.rigs.get(p.id);
@@ -310,7 +329,7 @@ export class DownedBodies{
   if(r.onRig){const h=r.onRig;h.mesh.visible=ph.rise?thirdPerson:true;
    if(!ph.rise)h.update(age,{front:ph.scan,glow:ph.glow,slab:true,voxels:true,overlay:()=>0});
    else{if(r.mode==='pad'||!c)this.fire(r,'up',ctx,{x:p.pos.x,y:p.pos.y,z:p.pos.z},12,1.8);
-    h.update(age,{front:ph.stand*1.25,glow:1-smooth(ph.stand),slab:false,voxels:false,overlay:(s,f)=>.55*(1-smooth((f-s)/.3))});}}
+    h.update(age,{front:ph.stand*1.25,glow:1-smooth(ph.stand),slab:false,voxels:false,overlay:(s,f)=>.32*(1-smooth((f-s)/.3))});}}
  }
  private shrink(r:Regen,o:T.Object3D,k:number){let base=r.scale.get(o);if(!base){base=o.scale.clone();r.scale.set(o,base);}o.scale.copy(base).multiplyScalar(Math.max(.001,1-k));o.visible=k<.999;}
  private dropBody(r:Regen){if(r.corpse){r.corpse.effect.dispose();r.corpse=undefined;}r.onBody?.dispose();r.onBody=undefined;}
