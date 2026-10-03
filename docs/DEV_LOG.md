@@ -18,6 +18,48 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-03 — Claude — update headroom review round 2: short writes, journalled restore, current-check
+
+- Branch `claude/update-headroom` (base `cfdce4b`), implementation `f951fbc`; tooling PR #5
+  `claude/test-update-channel` `2519377`. Not merged, not published, no GitHub Release.
+- `launcher/update.mjs`: the schema-2 download and unpack loop until every byte is written and
+  hash the bytes written (tested with a FileHandle that writes a few hundred bytes per call, and
+  one that writes nothing). `windowsSafe` also refuses `CONIN$`, `CONOUT$`, `CLOCK$`, `COM0`,
+  `LPT0` and device names followed by spaces.
+- A launcher restore (`desktop/update.cjs` and `update.mjs`) writes `runtime/launcher-restoring.json`
+  first and replaces files by copy-and-rename. The desktop finishes an interrupted restore before
+  the next Update or Create Room, and `update.mjs` before its next start. Nothing is proven while
+  the marker exists.
+- Blind spot "reports current but never checks": `current` still never proves. While Update is
+  unproven, a `current` result is compared with the badge's update check (`feedVersion` in
+  `desktop/main.cjs`; in a TEST-ONLY seed, the channel handler). A different feed version counts as
+  a failed run and restores the launcher. `installed` proves only when `release.json` has the
+  reported version. Residual gap (documented): the check is offline or unavailable, or the feed
+  equals the installed version.
+- Packager: the live profile refuses `CHIP_UPDATE_SCHEMA2`, `CHIP_UPDATE_SCHEMA2_MAX_MIB` and
+  `CHIP_UPDATE_LAUNCHER_OVERLAY` before it builds; live output is unchanged (same values).
+- Seed privacy (tooling): the seed no longer contains `chip-arena-source.zip`. It is
+  distributed only as an owner-only GitHub Release asset on this private repo, tag
+  `test-seed-<content version>`.
+- Checks: candidate `f951fbc` + tooling `2519377` on Node 24.19.0 passed setup, fixture 10/10,
+  updater tests 28/28, runtime pins, build, repeat build (byte-identical feed), actual payload,
+  Windows/desktop packages, seed ZIP, `source-privacy-zip`, `source-privacy-feed` and
+  `channel-e2e` 33/33. Content `0.2.5036b50f0c34` (game unchanged): schema 1 26,045,324 bytes,
+  identical to the published payload, and schema 2 22,028,495 bytes. Seed ZIP: 284,149,423 bytes
+  (was 333,669,480), SHA-256
+  `95d34fb255d5f61db3ad5e1bfbe661a470899a8195bf093afd630602c93c4742`. That ZIP was installed and
+  its `start.mjs` served `/`, the JS bundle, music and `/health`; `/chip-arena-source.zip` is a 404.
+  `verify` failed only on the baseline: the same 12 Node 24 unit names as round 1, server tsc
+  errors, the websocket rematch timeout, and the HTTPS tick-0 flake. Node 22 full suite: 980 tests,
+  13 failures, exactly the known list. A first run during the candidate build also failed
+  `network-bandwidth` ping queue under load; that file passed twice on its own and the idle rerun
+  was clean. Node 24 updater and desktop tests: 46/46. New tests fail on the round-1 code (7/21).
+  `tsc` passes.
+- Not run: native Windows (rename/locking, Electron `session.fetch` through the badge handler,
+  real Create Room), real GitHub hosting, the seed release itself. Next: owner/orchestrator
+  review; merge; publish the feed and the private seed release from one candidate of the merged
+  commit.
+
 ## 2026-10-03 — Claude — update headroom review round 1: launcher probation in stable desktop code
 
 - Branch `claude/update-headroom` (base `cfdce4b`), implementation `2db36fa`; tooling PR #5
