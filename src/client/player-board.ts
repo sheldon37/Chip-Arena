@@ -6,6 +6,8 @@ import {CARD_CHIPS,cardChip} from '../shared/pve/money-chips.js';
 import type {Snapshot,PlayerView} from '../shared/simulation.js';
 import {WEAPONS,CLASS_INFO,RARITIES,statsFor} from '../shared/content.js';
 import {chipStackEffects} from '../shared/chip-inspection.js';
+import {pveOf,type PveView} from '../shared/pve/contract.js';
+import {boardKey,boardLive,boardRun,pveBoardHtml} from './pve/board.js';
 const escape=(x:unknown)=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 export class PlayerBoard {
  private key='';private state:Snapshot|null=null;private me='';private hoverKey='';private tooltip:HTMLDivElement;
@@ -17,9 +19,19 @@ export class PlayerBoard {
   root.addEventListener('click',e=>{const target=(e.target as HTMLElement).closest<HTMLElement>('button');if(target?.dataset.boardClose!==undefined)this.close();else if(target?.dataset.boardChip)this.inspect(target);});
  }
  update(state:Snapshot,me:string,visible:boolean){this.state=state;this.me=me;this.root.classList.toggle('hidden',!visible);if(!visible){this.inspect(null);return;}
+  const pve=pveOf(state);if(pve){this.updatePve(state,pve,me);return;}
   const key=JSON.stringify([state.setNumber,state.round,state.phase,state.options.roundsPerSet,...state.players.map(p=>[p.id,p.name,p.spec,p.class,p.color,p.chips,p.score,p.roundWins,p.connected])]);
   if(key!==this.key){this.key=key;this.inspect(null);this.root.innerHTML=`<section class="board-panel" role="region" aria-label="Player board"><div class="board-heading"><div><div class="eyebrow">HOLD TAB · PLAYER BOARD</div><h2>Builds on the circuit</h2><p>Set ${state.setNumber} · Round ${state.round} · First to ${state.options.wins} sets</p></div><button class="close" data-board-close aria-label="Close player board">×</button></div><div class="board-players">${state.players.map(p=>this.player(p)).join('')}</div><p class="board-hint">Hover a Chip for its effects and stacked values. Release Tab to return. The match continues while inspecting.</p></section>`;this.root.append(this.tooltip);}
   for(const p of state.players){const hp=this.root.querySelector(`[data-board-health="${p.id}"]`);if(hp)hp.textContent=!p.connected?'Disconnected':p.hp>0?'Alive':'Eliminated';}
+ }
+ /** PvE variant (./pve/board.ts): static markup on key change, run line and member cells refreshed in place. */
+ private live=new Map<string,string>();
+ private updatePve(state:Snapshot,pve:PveView,me:string){
+  const key=boardKey(state,pve,me);
+  if(key!==this.key){this.key=key;this.inspect(null);this.live.clear();this.root.innerHTML=pveBoardHtml(state,pve,me);this.root.append(this.tooltip);}
+  const swap=(slot:string,el:Element|null,html:string)=>{if(el&&this.live.get(slot)!==html){this.live.set(slot,html);el.innerHTML=html;}};
+  swap('run',this.root.querySelector('[data-board-run]'),boardRun(state,pve));
+  this.root.querySelectorAll<HTMLElement>('[data-board-live]').forEach(el=>{const id=el.dataset.boardLive!;if(pve.party[id])swap('m:'+id,el,boardLive(state,pve,id));});
  }
  private player(p:PlayerView){const chips=CARD_CHIPS.filter(c=>(p.chips[c.id]||0)>0),copies=Object.values(p.chips).reduce((n,v)=>n+v,0),w=WEAPONS[p.spec];return `<article class="board-player ${p.id===this.me?'own':''}"><div class="board-pilot"><span class="pilot-head" style="--armor:${escape(p.color)}"></span><div><h3>${escape(p.name)} ${p.id===this.me?'<small>YOU</small>':''}</h3><p>${CLASS_INFO[p.class].name} · ${p.bot?escape(p.bot)+' bot':p.connected?'Connected':'Disconnected'}</p></div><strong>${p.score}<small>SETS</small></strong></div><div class="board-live"><span data-board-health="${p.id}">${!p.connected?'Disconnected':p.hp>0?'Alive':'Eliminated'}</span><span>${p.roundWins}/${this.state?.options.roundsPerSet} rounds this set</span></div><button class="board-specialization" data-board-chip="spec" data-player="${p.id}" aria-describedby="board-chip-tooltip"><span>${specIcon(p.spec)}</span><div><small>SPECIALIZATION CHIP</small><strong>${w.name}</strong></div><b>×1</b></button><div class="board-chip-heading">INSTALLED UPGRADES <span>${copies} copies · ${chips.length} types</span></div><div class="board-chip-grid">${chips.length?chips.map(c=>`<button class="board-chip rarity-${c.rarity}" style="${rarityStyle(c)}" data-board-chip="${c.id}" data-player="${p.id}" aria-label="${escape(c.name)}, ${p.chips[c.id]} stacks, ${escape(p.name)}" aria-describedby="board-chip-tooltip"><span class="board-chip-symbol">${chipIcon(c.id)}</span><strong>${c.name}</strong><b>×${p.chips[c.id]}</b></button>`).join(''):`<p class="board-empty">No upgrades installed yet.<br>Chips are drafted after a player wins ${this.state?.options.roundsPerSet??'enough'} rounds.</p>`}</div></article>`;}
  private inspect(target:HTMLElement|null){if(!target||!this.state){this.tooltip.classList.add('hidden');this.hoverKey='';return;}const player=this.state.players.find(p=>p.id===target.dataset.player);if(!player)return;const chipId=target.dataset.boardChip!,key=player.id+':'+chipId;if(this.hoverKey===key)return;this.hoverKey=key;

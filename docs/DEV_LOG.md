@@ -91,6 +91,23 @@ containing an entry; no self-referential commit hash is required.
   missed the Esc close; now 0 on Choose later click, Esc and card pick; aiming after re-lock exact.
 - Next: owner playtest on Windows; if snaps persist, consider `requestPointerLock({unadjustedMovement:true})` (raw input;
   removes OS acceleration, so a feel change to decide).
+## 2026-10-03 — Claude — PvE Tab party board (no rounds/sets; kills, deaths, money)
+
+- Branch `claude/pve-tab-board` from `claude/visual-revision` `6fd525c`; no PR (orchestrator). Not merged, not released.
+- Owner feedback: the Tab board in PvE still counted rounds/sets. In a boss run (`snapshot.pve`) `PlayerBoard` now renders
+  `src/client/pve/board.ts`: stage heading (wave n/3 + adds left, boss phase n/4 + health, intermission, victory/defeat),
+  run clock, party totals, one scoreboard row per party member (humans and party bots; recruits nested with HP) with
+  status/HP, kills (+heads), deaths, assists, revives, add and boss damage, money now and earned, weapon and chips (same
+  hover inspection). Live cells swap in place so chip hover survives updates. HUD nav button reads Party in PvE.
+- Authority: all stats were already live in the party rows; only the run start was missing, so the director view gains
+  optional `startedAt` (PvE-only field; PvP snapshots carry no `pve`, pvp-golden unchanged). Fixture base sets it.
+- PvP board path unchanged (test pins its markup hash from `6fd525c`). No combat, timing, hitbox, movement or network
+  behaviour change.
+- Checks: check:types pass; new tests/pve-board.test.ts 5/5; pvp-golden, pve-ui, pve-contract, pve-director, model-ui,
+  pve-foundation pass; full suite 904 pass / 13 fail = the known Node 22 list exactly. Playwright (SwiftShader) real
+  offline Test Boss Tab board plus fixture wave/boss states at 1920x1080 and 1280x720 inspected. Not run: Windows build,
+  network suites, multiplayer playtest.
+- Risk/next: at 720p with four members and many chips the board scrolls. Owner playtest of the board.
 
 ## 2026-10-03 — Claude — PvE playtest fixes: offline desync after Esc, taken chips wait as pending picks
 
