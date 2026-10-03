@@ -4,9 +4,13 @@ import type {Snapshot,GameEvent} from '../shared/simulation.js';
 const ring=new T.TorusGeometry(1,.035,4,18),cone=new T.ConeGeometry(1,1,5),orb=new T.SphereGeometry(1,8,5),cube=new T.BoxGeometry(1,1,1),materials=new Map<number,T.MeshBasicMaterial>();
 function mat(c:number){if(!materials.has(c))materials.set(c,new T.MeshBasicMaterial({color:c}));return materials.get(c)!;}
 function part(g:T.Object3D,shape:T.BufferGeometry,c:number,x:number,y:number,z:number,sx:number,sy:number,sz:number){const m=new T.Mesh(shape,mat(c));m.position.set(x,y,z);m.scale.set(sx,sy,sz);g.add(m);return m;}
-/** Geometry, colors, and path shapes communicate the effect; no cosmetic part becomes a hitbox. */
+/**
+ * Per-projectile chip decorations (shared geometry, built once per shot). Geometry, colors, and path shapes communicate
+ * the effect; no cosmetic part becomes a hitbox. Chip event visuals (pulses) are ChipBlasts voxel impacts in EventVfx
+ * since the V sweep (§19.2); `pulses` stays empty for callers that still read it.
+ */
 export class ChipEffects{
- shots=new Map<string,T.Group>();pulses:{mesh:T.Mesh;at:number;life:number;size:number}[]=[];
+ shots=new Map<string,T.Group>();readonly pulses:{mesh:T.Mesh}[]=[];
  constructor(private scene:T.Scene){}
  update(state:Snapshot,time:number){
   const ids=new Set(state.projectiles.map(p=>p.id));for(const[id,g]of this.shots)if(!ids.has(id)){g.removeFromParent();this.shots.delete(id);}
@@ -29,16 +33,8 @@ export class ChipEffects{
   g.position.set(p.pos.x,p.pos.y,p.pos.z);g.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),new T.Vector3(p.vel.x,p.vel.y,p.vel.z).normalize());
   for(const m of g.children){if(m.userData.spin)m.rotation.z=time*m.userData.spin*3;if(m.userData.orbit!==undefined){const a=time*12+m.userData.orbit*2.1;m.position.x=Math.cos(a)*.15;m.position.y=Math.sin(a)*.15;}if(m.userData.flame!==undefined)m.scale.y=.3+Math.sin(time*28+m.userData.flame)*.12;if(m.userData.bubble!==undefined){const n=m.userData.bubble;m.position.x=Math.sin(time*7+n*2)*.12;m.position.y=Math.cos(time*7+n*2)*.12;}}
   }
-  for(let n=this.pulses.length-1;n>=0;n--){const p=this.pulses[n],u=(time-p.at)/p.life;if(u>=1){p.mesh.removeFromParent();(p.mesh.material as T.Material).dispose();this.pulses.splice(n,1);}else{p.mesh.scale.setScalar(.1+p.size*u);(p.mesh.material as T.MeshBasicMaterial).opacity=1-u;}}
  }
- pulse(pos:{x:number;y:number;z:number},color:number,time:number,size:number,life=.35){if(this.pulses.length>=40)return;const m=new T.Mesh(ring,new T.MeshBasicMaterial({color,transparent:true,opacity:1,depthWrite:false}));m.position.set(pos.x,pos.y,pos.z);m.scale.setScalar(.1);this.scene.add(m);this.pulses.push({mesh:m,at:time,size,life});return m;}
- event(e:GameEvent,time:number){const c=e.mods||{};
-  if(e.type==='blockPulse'){
-   const nova=!!c.supernova,radius=e.radius||3;
-   // Three planes make a successful pulse visible from first/third person and either side.
-   for(let n=0;n<3;n++){const mesh=this.pulse(e.pos,nova?(n===1?0xfff3b1:0xffac4b):0x91f7eb,time,radius,nova?.7:.5);if(mesh){mesh.name=nova?'supernova-blast':'counter-pulse';mesh.rotation.set(n===0?Math.PI/2:0,n===2?Math.PI/2:0,0);}}
-   if(nova){const core=this.pulse(e.pos,0xffffff,time,radius*.72,.4);if(core){core.name='supernova-core';core.rotation.x=Math.PI/2;}}
-  }
-  if(e.type==='meleeRebound'){this.pulse(e.pos,0x91f7eb,time,e.radius||1.5,.4);this.pulse(e.pos,0xffffff,time,(e.radius||1.5)*.7,.25);}if(e.type==='critical')this.pulse(e.pos,0xffd66c,time,1.5);if(e.type==='catch')this.pulse(e.pos,0x7fffe0,time,.9);if(e.type==='vacuum')for(let n=0;n<3;n++)this.pulse(e.pos,0xbc72ff,time,2+n,.4+n*.08);if(e.type==='ricochet')this.pulse(e.pos,c.pong?0xff5269:0xffcc49,time,c.pong?1.2:.8);if(e.type==='split')this.pulse(e.pos,0x96ffb7,time,1.1);if(e.type==='impact'||e.type==='slash'){if(c.kinetic)this.pulse(e.pos,0xffaa64,time,.65+Math.min(3,c.kinetic)*.25);if(c.demolition)this.pulse(e.pos,0xffd45f,time,.5+.12*c.demolition,.23);if(c.shrapnel)this.pulse(e.pos,0xff855c,time,1.4);}}
- clear(){for(const g of this.shots.values())g.removeFromParent();this.shots.clear();for(const p of this.pulses){p.mesh.removeFromParent();(p.mesh.material as T.Material).dispose();}this.pulses=[];}
+ /** Kept for the renderer's delegation; chip events render in EventVfx (V sweep). */
+ event(_e:GameEvent,_time:number){}
+ clear(){for(const g of this.shots.values())g.removeFromParent();this.shots.clear();}
 }

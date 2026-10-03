@@ -1,19 +1,44 @@
 import * as T from 'three';
 import type {Snapshot} from '../shared/simulation.js';
+import type {FieldView} from '../shared/chaos.js';
+import {ABILITY_FX} from '../shared/abilities.js';
+import {sameTeam} from '../shared/teams.js';
 import {createCharacterRig,CharacterRig,rigBox} from './character-rig.js';
 const COLORS:Record<string,number>={'black-hole':0xab67ff,acid:0xb8f53c,fire:0xff672d,frost:0x8fdfff,time:0x83aeff,repulsion:0xff728f,heal:0x79ffa9,storm:0xddadff,bomb:0xffa141,implosion:0xb068ff,mine:0xff515d};
+/** Ability field telegraphs (§11.2): enemy warm red, own and allied cool cyan. */
+export const TELEGRAPH={enemy:0xff5a46,ally:0x55dcff} as const;
+/** Spacing of the voxel dashes that mark a field's gameplay radius (no flat ring or disc decal, V sweep §19.2). */
+export const RIM_SPACING=.42;
+const box=new T.BoxGeometry(1,1,1),dome=new T.SphereGeometry(1,14,6,0,Math.PI*2,0,Math.PI/2),edges=new T.EdgesGeometry(dome,25),mats=new Map<string,T.Material>(),dummy=new T.Object3D();
+function mat(color:number,opacity=1,line=false){const key=color+':'+opacity+line;let m=mats.get(key);if(!m)mats.set(key,m=line?new T.LineBasicMaterial({color,transparent:true,opacity}):new T.MeshBasicMaterial({color,transparent:opacity<1,opacity,depthWrite:opacity>=1}));return m;}
+function cube(g:T.Object3D,color:number,s:number,y=0,opacity=1){const m=new T.Mesh(box,mat(color,opacity));m.scale.setScalar(s);m.position.y=y;g.add(m);return m;}
+export function telegraphColor(f:FieldView,s:Snapshot,me?:string){
+ if(!f.fx||!ABILITY_FX.has(f.fx))return f.fx==='thunderstep'?0x9fd2ff:f.fx==='comet'?0xffc04a:COLORS[f.kind];
+ if(me===undefined)return COLORS[f.kind];const owner=s.players.find(p=>p.id===f.owner),self=s.players.find(p=>p.id===me);return f.owner===me||s.pve||sameTeam(owner,self,s.options?.gameMode)?TELEGRAPH.ally:TELEGRAPH.enemy;
+}
+/** Voxel rim: dashes on the exact gameplay radius, built once per field from shared geometry. */
+export function rim(radius:number,color:number){const n=Math.max(12,Math.min(96,Math.round(Math.PI*2*radius/RIM_SPACING))),m=new T.InstancedMesh(box,mat(color,.85),n);m.name='field-rim';for(let i=0;i<n;i++){const a=i/n*Math.PI*2;dummy.position.set(Math.sin(a)*radius,.04,Math.cos(a)*radius);dummy.rotation.set(0,a+Math.PI/2,0);dummy.scale.set(.07,.07,RIM_SPACING*.55);dummy.updateMatrix();m.setMatrixAt(i,dummy.matrix);}return m;}
 export class ChaosVisuals {
  fields=new Map<string,T.Group>();minions=new Map<string,CharacterRig>();
  constructor(readonly scene:T.Scene){}
- update(s:Snapshot){const live=new Set((s.fields||[]).map(f=>f.id));for(const [id,g]of this.fields)if(!live.has(id)){this.scene.remove(g);g.traverse(o=>{if(o instanceof T.Mesh||o instanceof T.Line){o.geometry.dispose();(o.material as T.Material).dispose();}});this.fields.delete(id);}
- for(const f of s.fields||[]){let g=this.fields.get(f.id);if(!g){g=new T.Group();const color=f.fx==='thunderstep'?0x9fd2ff:f.fx==='comet'?0xffc04a:COLORS[f.kind],mat=new T.MeshBasicMaterial({color,transparent:true,opacity:.55,side:T.DoubleSide,depthWrite:false});const ring=new T.Mesh(new T.RingGeometry(f.radius*.97,f.radius,40),mat);ring.rotation.x=-Math.PI/2;g.add(ring);const floor=new T.Mesh(new T.CircleGeometry(f.radius,32),mat.clone());(floor.material as T.MeshBasicMaterial).opacity=.10;floor.rotation.x=-Math.PI/2;floor.position.y=-.012;g.add(floor);
- if(f.kind==='black-hole'){const core=new T.Mesh(new T.SphereGeometry(.48,12,8),new T.MeshBasicMaterial({color:0x030108}));core.position.y=.7;g.add(core);for(let n=0;n<3;n++){const r=new T.Mesh(new T.TorusGeometry(.75+n*.22,.05,4,30),mat.clone());r.position.y=.7;r.rotation.set(Math.PI/2+n*.35,n*.3,0);g.add(r);}}
- else if(['bomb','mine','implosion'].includes(f.kind)){const bomb=new T.Mesh(new T.IcosahedronGeometry(.28,0),new T.MeshBasicMaterial({color}));bomb.position.y=.4;g.add(bomb);}
+ /** `me` (the local pilot) picks the enemy/ally tint of ability telegraphs; without it they keep the field colour. */
+ update(s:Snapshot,me?:string){const live=new Set((s.fields||[]).map(f=>f.id));for(const [id,g]of this.fields)if(!live.has(id)){this.scene.remove(g);g.traverse(o=>{if(o instanceof T.InstancedMesh)o.dispose();});this.fields.delete(id);}
+ for(const f of s.fields||[]){let g=this.fields.get(f.id);if(!g){g=new T.Group();const color=telegraphColor(f,s,me),ability=!!f.fx&&ABILITY_FX.has(f.fx);g.add(rim(f.radius,color));
+ // Voxel cores (shared geometry and materials): the black hole's dark cube and accretion ring, chip bombs and mines,
+ // and the Reverse Grenade's spinning gravity bomb whose orbit tightens as the fuse burns.
+ if(f.kind==='black-hole'){cube(g,0x05020c,.62,.7);cube(g,0xf3e2ff,.3,.7);for(let n=0;n<10;n++)cube(g,color,.13,.7).userData.disc=n;}
+ else if(!ability&&['bomb','mine','implosion'].includes(f.kind)&&!['artillery','thunderstep','comet'].includes(f.fx||'')){const mine=f.kind==='mine',body=cube(g,f.kind==='implosion'?0x2a0f46:0x3a3434,mine?.5:.38,mine?.1:.4);if(mine)body.scale.y=.16;body.userData.body=1;cube(g,0xffffff,.1,mine?.22:.66).userData.fuse=1;if(f.kind==='implosion')for(let n=0;n<6;n++)cube(g,color,.12,.4).userData.orbit=n;}
  else if(f.kind==='time'||f.kind==='repulsion'){// A faceted dome at exactly the gameplay radius: the bubble reads as a volume, not a decal.
- const dome=new T.Mesh(new T.SphereGeometry(f.radius,14,6,0,Math.PI*2,0,Math.PI/2),new T.MeshBasicMaterial({color,transparent:true,opacity:.13,side:T.DoubleSide,depthWrite:false}));dome.name='field-dome';g.add(dome);const edges=new T.LineSegments(new T.EdgesGeometry(dome.geometry,25),new T.LineBasicMaterial({color,transparent:true,opacity:.35}));g.add(edges);}
- else {const pillar=new T.Mesh(new T.CylinderGeometry(f.radius*.9,f.radius,.6,20,1,true),mat.clone());(pillar.material as T.MeshBasicMaterial).opacity=.10;pillar.position.y=.3;g.add(pillar);}
- for(let i=0;i<12;i++){const dot=new T.Mesh(new T.BoxGeometry(.07,.07,.12),new T.MeshBasicMaterial({color}));dot.userData.spark=i;g.add(dot);}this.fields.set(f.id,g);this.scene.add(g);}
- g.position.set(f.pos.x,Math.max(.07,f.pos.y-.7),f.pos.z);const age=s.time-f.born;g.children.forEach((o,i)=>{if(o.userData.spark!==undefined){const n=o.userData.spark,a=n*Math.PI/6+age*(f.kind==='black-hole'?-3:1),r=f.radius*((n/12+age*.2)%1);o.position.set(Math.sin(a)*r,.2+(n%3)*.25+Math.sin(age*3+n)*.15,Math.cos(a)*r);o.rotation.y=-a;}else if(i>1&&f.kind==='black-hole'){o.rotation.z=age*(i%2?1:-1);}else if(i===2&&['mine','bomb','implosion'].includes(f.kind)){o.rotation.y=age*2;o.scale.setScalar(1+Math.sin(age*12)*.2);}});
+ const d=new T.Mesh(dome,mat(color,.13));d.name='field-dome';d.scale.setScalar(f.radius);g.add(d);const e=new T.LineSegments(edges,mat(color,.35,true));e.scale.setScalar(f.radius);g.add(e);}
+ this.fields.set(f.id,g);this.scene.add(g);}
+ g.position.set(f.pos.x,Math.max(.07,f.pos.y-.7),f.pos.z);const age=s.time-f.born,left=f.until-s.time,u=Math.min(1,Math.max(0,age/Math.max(.01,f.until-f.born)));
+ // Warnings blink faster over the last half second before a bomb or implosion goes off.
+ g.children[0].rotation.y=age*.35;g.children[0].visible=!(f.kind!=='mine'&&f.kind!=='black-hole'&&left<.5&&Math.sin(left*60)>.3);
+ for(const o of g.children){const d=o.userData;if(d.disc!==undefined){const a=d.disc*Math.PI/5+age*2.4,r=.95+(d.disc%2)*.3;o.position.set(Math.cos(a)*r,.7+Math.sin(a*2)*.08,Math.sin(a)*r);o.rotation.set(age*3,a,0);}
+  else if(d.orbit!==undefined){const a=d.orbit*Math.PI/3+age*(6+u*10),r=.75-u*.5;o.position.set(Math.cos(a)*r,.4+Math.sin(a+d.orbit)*.18,Math.sin(a)*r);o.rotation.set(age*7,a,0);}
+  else if(d.body){o.rotation.set(f.kind==='implosion'?age*2.5:0,age*2,0);if(f.kind!=='mine')o.scale.setScalar(.38*(1+Math.sin(age*(8+u*16))*.12));}
+  else if(d.fuse)o.visible=Math.sin(age*(6+u*20))>-.2;}
+ if(f.kind==='black-hole')g.children[1].rotation.set(age*.8,age*1.3,0);
  }
  const living=new Set((s.minions||[]).map(m=>m.id));for(const[id,r]of this.minions)if(!living.has(id)){this.scene.remove(r.group);this.minions.delete(id);}for(const m of s.minions||[]){let r=this.minions.get(m.id);if(!r){r=createCharacterRig(m.kind==='toy'?'#ff9845':'#465436',m.kind==='toy'?0xcab18c:0x8da976);r.group.scale.setScalar(m.kind==='toy'?.6:.85);rigBox(r.head,'left-eye',-.08,.19,.165,.045,.045,.02,0xff5340);rigBox(r.head,'right-eye',.08,.19,.165,.045,.045,.02,0xff5340);this.scene.add(r.group);this.minions.set(m.id,r);}r.group.position.set(m.pos.x,m.pos.y,m.pos.z);r.group.rotation.y=m.yaw;const gait=s.time*m.speed*2.2;r.body.rotation.z=Math.sin(gait*.5)*.075;r.spine.rotation.x=.2;r.leftArm.rotation.x=-1.25+Math.sin(gait)*.12;r.rightArm.rotation.x=-1.25-Math.sin(gait)*.12;r.leftElbow.rotation.x=-.18;r.rightElbow.rotation.x=-.3;r.leftLeg.rotation.x=Math.sin(gait)*.38;r.rightLeg.rotation.x=-Math.sin(gait)*.38;r.leftKnee.rotation.x=Math.max(0,Math.sin(gait))*.5;r.rightKnee.rotation.x=Math.max(0,-Math.sin(gait))*.5;const bite=Math.max(0,1-(s.time-m.lastAttack)/.35);r.chest.position.z=bite*.25;r.head.rotation.x=-bite*.3;}
  }
