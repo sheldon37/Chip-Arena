@@ -10,6 +10,11 @@ import {Vec,Input,CONFIG as C,MATERIALS,v,add,sub,mul,len,forward,norm} from '..
 import {statsFor,WEAPONS} from '../shared/content.js';
 import {prepareMotion,finishMotion,Motion} from '../shared/movement.js';
 import {NETWORK} from '../shared/network-config.js';
+import {adsMove,ABILITY_FX} from '../shared/abilities.js';
+import {sameTeam,type TeamId} from '../shared/teams.js';
+import type {FieldView} from '../shared/chaos.js';
+/** Snapshot pull fields mirrored between prepareMotion and finishMotion (server order: updatePlayer → chaos.step → physics). */
+type PullField=Pick<FieldView,'owner'|'kind'|'pos'|'radius'|'until'|'start'|'force'|'fx'>;
 /** Replays the authority's dynamic capsule and locomotion. Damage remains authoritative. */
 export class Predictor {
  world=new RAPIER.World(v(0,C.gravity,0));body:RAPIER.RigidBody;collider:RAPIER.Collider;
@@ -17,11 +22,15 @@ export class Predictor {
  pos=v();velocity=v();move=v();external=v();dashTime=0;waveTime=0;electricStepTime=0;private electricCooldown=0;dash=0;error=0;phase='';initialized=false;
  roll?:RollState;attackCommitment?:AttackCommitment;private rollHeld=false;private stamina=100;private staminaAt=-10;private attackCooldown=0;private secondaryCooldown=0;private map:unknown;private recovery?:Knockdown;private time=0;
  private grabbed=false;private groundHint:boolean|undefined;private stunRemaining=0;private offset=v();private epoch='';private grounded=false;
- constructor(){this.world.timestep=1/C.simulationHz;this.world.maxCcdSubsteps=4;this.body=this.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().lockRotations().setCcdEnabled(true).setLinearDamping(0).setCanSleep(false));this.collider=this.world.createCollider(RAPIER.ColliderDesc.capsule(C.playerHalfHeight,C.playerRadius).setMass(C.playerMass).setFriction(0).setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min).setRestitution(0),this.body);}
+ /** Host advertised `caps.abilities` (§3.12): ADS walk prediction. Pull fields are mirrored on every host. */
+ readonly abilities:boolean;private fields:PullField[]=[];private hostile=new Set<string>();
+ constructor(options:{abilities?:boolean}={}){this.abilities=!!options.abilities;this.world.timestep=1/C.simulationHz;this.world.maxCcdSubsteps=4;this.body=this.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().lockRotations().setCcdEnabled(true).setLinearDamping(0).setCanSleep(false));this.collider=this.world.createCollider(RAPIER.ColliderDesc.capsule(C.playerHalfHeight,C.playerRadius).setMass(C.playerMass).setFriction(0).setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min).setRestitution(0),this.body);}
  reconcile(s:Snapshot,me:PlayerView){
   const ids=new Set(s.props.map(p=>p.id));for(const[id,b]of this.props)if(!ids.has(id)){this.world.removeRigidBody(b);this.props.delete(id);}
   for(const p of s.props){let b=this.props.get(p.id);if(!b){b=this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed());this.world.createCollider(RAPIER.ColliderDesc.cuboid(p.size.x/2,p.size.y/2,p.size.z/2).setFriction(MATERIALS[p.material].friction).setRestitution(.12),b);this.props.set(p.id,b);}b.setTranslation(p.pos,false);b.setRotation(p.rot,false);}
   this.grabbed=!!s.siren?.grabs.some(g=>g.victim===me.id);
+  const teams=new Map<string,{id:string;team?:TeamId}>(s.players.map(p=>[p.id,{id:p.id,team:p.team}]));this.hostile=new Set(s.players.filter(p=>p.id!==me.id&&(s.options.friendlyFire||!sameTeam(teams.get(p.id),teams.get(me.id),s.options.gameMode))).map(p=>p.id));
+  this.fields=s.phase==='fight'?(s.fields||[]).filter(f=>(f.kind==='black-hole'||f.kind==='repulsion')&&f.owner!==me.id).map(f=>({owner:f.owner,kind:f.kind,pos:{...f.pos},radius:f.radius,until:f.until,start:f.start,force:f.force,fx:f.fx})):[];
   const previous={...this.pos},old=add(this.pos,this.offset),epoch=`${s.generation||0}:${s.setNumber}:${s.round}:${s.phase}:${me.hp>0}:${me.leet?.controlling||''}:${me.leet?.controlledBy||''}:${!!me.leet?.scare}:${(me.leet?.frozenUntil||0)>s.time}:${(me.leet?.launchUntil||0)>s.time}:${this.grabbed}:${me.siren?.move?.seq||0}`,reset=this.epoch!==epoch||!this.initialized;
   this.map=s.options.map;this.time=s.time;this.roll=me.roll?{...me.roll,direction:{...me.roll.direction}}:undefined;this.rollHeld=!!me.rollHeld;this.stamina=me.stamina;this.staminaAt=me.staminaAt??s.time;this.attackCommitment=me.attackCommitment?{...me.attackCommitment}:undefined;this.attackCooldown=me.cooldown;this.secondaryCooldown=me.secondaryCd;this.recovery=me.knockdown?{...me.knockdown}:undefined;this.pos={...me.pos};this.velocity={...me.vel};this.move=me.move?{...me.move}:v(me.vel.x,0,me.vel.z);this.external=me.external?{...me.external}:v();this.dashTime=me.dashTime||0;this.waveTime=me.waveTime||0;this.electricStepTime=me.electricStepTime||0;this.electricCooldown=me.cooldown;this.dash=me.dashCd;this.grounded=me.grounded;this.groundHint=me.grounded;this.stunRemaining=Math.max(0,Math.max(me.hitStunUntil||0,me.knockdown?.until||0,me.juggle?.until||0)-s.time);
   this.body.setTranslation(this.pos,true);this.body.setLinvel(this.velocity,true);this.world.propagateModifiedBodyPositionsToColliders();
@@ -54,9 +63,20 @@ export class Predictor {
    }
   }
   this.electricCooldown=Math.max(0,this.electricCooldown-dt);if(emperor&&!rolling(this,this.time)&&input.electric&&this.electricCooldown<=0&&me.blockTime<=0&&this.stunRemaining<=0){this.electricStepTime=(this.groundHint??this.grounded)?EMPEROR.electricStepSeconds:0;this.electricCooldown=EMPEROR.electricRecovery/(stats.attackRate*(me.chips['mishima-godfist']?1.4:1));}else if(emperor&&!rolling(this,this.time)&&input.attack&&this.electricCooldown<=0&&me.blockTime<=0&&this.stunRemaining<=0){this.electricCooldown=(.075+(me.chips['mishima-pressure']?2:1)*.17+.14)/stats.attackRate;}const motion:Motion={electricStepTime:this.electricStepTime,move:this.move,ext:this.external,dashCd:this.dash,dashTime:this.dashTime,waveTime:this.waveTime,grounded:this.grounded};
-  prepareMotion(this.world,this.body,this.collider,motion,meleeMotionInput(usesRoll(me.spec)?{...input,dash:false}:input,me.meleeAction,this.time),{...stats,time:this.time,roll:this.roll,locomotionLock:committed(this,this.time)||bossMotion.locked,attackStep:bossMotion.locked?bossMotion.step:attackStep(this.attackCommitment,this.time,dt),map:this.map,recoveryRoll:recoveryMotion(this.recovery,this.time,input),dashSpeed:demonStepUser(me)?DEMON_STEP.speed:undefined,dashDuration:demonStepUser(me)?DEMON_STEP.seconds:undefined,groundedHint:this.groundHint,electricStepSpeed:emperor?EMPEROR.electricStepSpeed:undefined,waveSpeed:emperor&&free&&this.electricCooldown<=0?EMPEROR.waveSpeed:undefined,speed:stats.speed*(me.motionScale??1)},dt,me.guarding,me.swinging,this.stunRemaining>0);this.groundHint=undefined;this.stunRemaining=Math.max(0,this.stunRemaining-dt);
+  prepareMotion(this.world,this.body,this.collider,motion,meleeMotionInput(usesRoll(me.spec)?{...input,dash:false}:input,me.meleeAction,this.time),{...stats,time:this.time,roll:this.roll,locomotionLock:committed(this,this.time)||bossMotion.locked,attackStep:bossMotion.locked?bossMotion.step:attackStep(this.attackCommitment,this.time,dt),map:this.map,recoveryRoll:recoveryMotion(this.recovery,this.time,input),dashSpeed:demonStepUser(me)?DEMON_STEP.speed:undefined,dashDuration:demonStepUser(me)?DEMON_STEP.seconds:undefined,groundedHint:this.groundHint,electricStepSpeed:emperor?EMPEROR.electricStepSpeed:undefined,waveSpeed:emperor&&free&&this.electricCooldown<=0?EMPEROR.waveSpeed:undefined,speed:stats.speed*(this.abilities?adsMove(me.spec,input)*(me.motionScale??1):me.motionScale??1)},dt,me.guarding,me.swinging,this.stunRemaining>0);this.groundHint=undefined;this.stunRemaining=Math.max(0,this.stunRemaining-dt);
+  this.pull(motion,stats.knockbackTaken,dt,me);
   const before={...this.body.linvel()};this.world.timestep=dt;this.world.step();finishMotion(motion,before,this.body.linvel(),stats.knockbackTaken,dt);
   this.pos={...this.body.translation()};this.velocity={...this.body.linvel()};this.move=motion.move;this.external=motion.ext;this.dash=motion.dashCd;this.dashTime=motion.dashTime;this.waveTime=motion.waveTime||0;this.electricStepTime=motion.electricStepTime||0;this.grounded=motion.grounded;
+ }
+ /** Black-hole/repulsion pull exactly as chaos.step applies it: hostile owner, started, inside the radius, LOS from the
+  *  field against the mirrored props (other players' capsules are not mirrored), force, knockbackTaken, ×.5 on ability
+  *  fields while the pilot is slowed below .6. */
+ private pull(motion:Motion,knockbackTaken:number,dt:number,me:PlayerView){
+  if(!this.fields.length||me.hp<=0||me.spec==='siren')return;const pos=this.body.translation();
+  for(const f of this.fields){if(!this.hostile.has(f.owner)||this.time>=f.until||f.start!==undefined&&this.time<f.start)continue;const d=sub(pos,f.pos),distance=len(d);if(distance>f.radius)continue;
+   const from=add(f.pos,v(0,.2,0)),to=sub(pos,from),reach=len(to),hit=reach>1e-6?this.world.castRay(new RAPIER.Ray(from,norm(to)),reach,true,undefined,undefined,this.collider):null;if(hit&&hit.timeOfImpact<reach-.12)continue;
+   const slowed=me.slowed&&me.slowed.until>this.time?Math.max(.4,me.slowed.factor):1,ability=!!f.fx&&ABILITY_FX.has(f.fx),sign=f.kind==='black-hole'?-1:1;
+   motion.ext=add(motion.ext,mul(norm(d),sign*(f.force??(f.kind==='repulsion'?65:35))*dt*knockbackTaken*(ability&&slowed<.6?.5:1)));}
  }
  renderPosition(dt:number){this.offset=mul(this.offset,Math.exp(-NETWORK.correctionDecay*dt));if(len(this.offset)<.001)this.offset=v();return add(this.pos,this.offset);}
  get visualOffset(){return len(this.offset);}
