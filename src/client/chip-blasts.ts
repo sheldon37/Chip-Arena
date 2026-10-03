@@ -162,13 +162,21 @@ export class ChipBlasts{
   * swallow). Rate-limited per field and by quality; everything stays inside the field's gameplay radius.
   */
  field(f:FieldView,time:number,quality:number,compat=false){
-  const q=Math.max(0,Math.min(1,quality))*(compat?.4:1);if(q<=0||f.kind==='bomb'||f.kind==='mine')return;
-  const rate=({storm:7,acid:14,fire:22,frost:12,time:6,'black-hole':26,repulsion:8,heal:9,implosion:30} as Record<string,number>)[f.kind]??0;if(!rate)return;
+  const q=Math.max(0,Math.min(1,quality))*(compat?.4:1);const fused=f.kind==='bomb'&&(f.fx==='artillery'||f.fx==='thunderstep'||f.fx==='comet');if(q<=0||f.kind==='mine'||f.kind==='bomb'&&!fused)return;
+  const rate=fused?40:({storm:7,acid:14,fire:22,frost:12,time:6,'black-hole':26,repulsion:8,heal:9,implosion:30} as Record<string,number>)[f.kind]??0;if(!rate)return;
   const last=this.fieldClock.get(f.id);if(last===undefined||time<last){this.fieldClock.set(f.id,time);return;}
   const due=Math.min(6,Math.floor((time-last)*rate*q));if(due<=0)return;this.fieldClock.set(f.id,last+due/(rate*q));
   const rnd=this.random,R=f.radius,ground=Math.max(.03,f.pos.y-.95),pal=PALETTE[f.kind==='storm'?'shock':f.kind==='acid'?'toxic':f.kind==='frost'?'frost':f.kind==='black-hole'||f.kind==='implosion'?'void':f.kind==='fire'?'fire':f.kind==='repulsion'?'mine':f.kind==='heal'?'toxic':'shock'];
   const spot=()=>{const a=rnd()*Math.PI*2,r=Math.sqrt(rnd())*R*.95;return {x:f.pos.x+Math.cos(a)*r,z:f.pos.z+Math.sin(a)*r,a,r};};
   for(let k=0;k<due;k++){
+   if(fused){const left=f.until-time;
+    // Meteor Shower: the meteor is visible falling onto its warning circle for the last 0.45 s.
+    if(f.fx==='artillery'){if(left>.45)continue;const u=Math.max(0,left/.45),y=ground+.6+u*6,x=f.pos.x-u*2.4,z=f.pos.z-u*1.1;this.glow.spawn(x,y,z,(rnd()-.5)*.6,1.2,(rnd()-.5)*.6,.28,.42,.08,0xfff2c4,0xff7a2a);this.solid.spawn(x+(rnd()-.5)*.25,y+.2,z+(rnd()-.5)*.25,0,.4,0,.5,.2,.35,0x4a3a30,0x262020,-.2,1);}
+    // Thunder Step: the target spot crackles before the bolt.
+    else if(f.fx==='thunderstep'){const a=rnd()*Math.PI*2,r=f.radius*(.5+rnd()*.5);this.glow.spawn(f.pos.x+Math.cos(a)*r,ground+.08,f.pos.z+Math.sin(a)*r,-Math.cos(a)*r*2,2+rnd()*2,-Math.sin(a)*r*2,.22,.08,.03,0xffffff,0x8fb8ff);}
+    // Comet Dash: the rolling pilot trails fire until the landing blast.
+    else{this.solid.spawn(f.pos.x+(rnd()-.5)*.4,f.pos.y-.3+rnd()*.6,f.pos.z+(rnd()-.5)*.4,0,.8,0,.45,.3,.05,0xffc04a,0xd8401c,-.4,.6,0,-1e9,1,4);}
+    continue;}
    if(f.kind==='storm'){const s=spot();let x=s.x,z=s.z;const top=ground+5.5;for(let i=0;i<9;i++){const y=top-(top-ground)*(i/8);this.glow.spawn(x,y,z,0,0,0,.14,.13,.08,0xffffff,pal.hot);x+=(rnd()-.5)*.35;z+=(rnd()-.5)*.35;}for(let i=0;i<3;i++)this.glow.spawn(s.x,ground+.1,s.z,(rnd()-.5)*4,2+rnd()*2,(rnd()-.5)*4,.25,.06,.03,0xffffff,pal.cool,9);
     const c=spot();this.solid.spawn(c.x,ground+4.6+rnd()*.5,c.z,(rnd()-.5)*.3,0,(rnd()-.5)*.3,1.1,.5,.2,0x3b4466,0x232838,0,.5);}
    else if(f.kind==='acid'){const s=spot();this.glow.spawn(s.x,ground+.05,s.z,0,.9+rnd()*.8,0,.7+rnd()*.4,.1,.22,pal.hot,pal.cool,0,0);if(rnd()<.35)this.solid.spawn(s.x,ground+.15,s.z,0,.5,0,1.2,.15,.45,pal.smoke,0x23301c,-.1,1);}
