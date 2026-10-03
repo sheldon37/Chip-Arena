@@ -67,7 +67,7 @@ export function shotBallistics(spec:SpecId,stats:Stats):{speed:number;gravity:nu
  *  distance or null. With `ground`, a point in the air is projected down (≤ 40 m). Clamped to the arena (|x|≤31, |z|≤27). */
 export function groundAimPoint(start:Vec,dir:Vec,range:number,ground:boolean,ray:(o:Vec,d:Vec,max:number)=>number|null):{point:Vec;clamped:boolean}{
  const hit=ray(start,dir,range);let point=add(start,mul(dir,hit??range)),clamped=hit===null;
- if(ground){const from=add(point,mul(dir,-.05)),down=ray(from,v(0,-1,0),40);if(down!==null)point=v(from.x,from.y-down,from.z);}
+ if(ground&&!(hit!==null&&ray(add(point,v(0,.05,0)),v(0,-1,0),.1)!==null)){const from=hit===null?point:add(point,mul(dir,-.05)),down=ray(from,v(0,-1,0),40);if(down!==null)point=v(from.x,from.y-down,from.z);}
  const x=clamp(point.x,-31,31),z=clamp(point.z,-27,27);if(x!==point.x||z!==point.z)clamped=true;return {point:v(x,point.y,z),clamped};
 }
 /** The server `aimPoint` and the client ground preview: crosshair ray from the view camera; `range` counts from the pilot. */

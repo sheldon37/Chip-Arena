@@ -53,7 +53,8 @@ test('damage chips change real projectile and melee damage, crits, executes and 
  for(const [chips,mult] of [[{'power-cell':2},1.08**2],[{gunsmith:1},1.12],[{annihilator:1},1.75],[{apex:1},1.5]] as const){
   const {s,a}=arena('pistol',{...chips});s.spawnProjectile(a);near([...s.projectiles.values()][0].damage,23*mult,1e-6);s.dispose();
  }
- {const {s,a}=arena('fire',{overcharge:1});s.spawnProjectile(a);near([...s.projectiles.values()][0].damage,22*1.45);near(a.stats.resourceCost,1.4);s.dispose();}
+ // Data-driven (abilities F): MAGIC raises the fire bolt damage, so the Overcharge multiplier is checked against WEAPONS.
+ {const {s,a}=arena('fire',{overcharge:1});s.spawnProjectile(a);near([...s.projectiles.values()][0].damage,WEAPONS.fire.damage*1.45);near(a.stats.resourceCost,1.4);s.dispose();}
  {const {s,a,b}=arena('pistol',{finisher:1});b.hp=20;s.directHit(a,b,b.body.translation(),v(0,0,1),10,0,'x');near(b.hp,20-10*1.25);s.dispose();}
  {const {s,a,b}=arena('pistol',{'point-blank':1});b.body.setTranslation(v(0,1,3),true);s.world.step();s.directHit(a,b,b.body.translation(),v(0,0,1),10,0,'x');near(b.hp,100-13);s.dispose();}
  {const {s,a}=arena('pistol',{berserker:1});s.damage(a,10,'b','direct');near(a.hp,100-11.5);s.dispose();}

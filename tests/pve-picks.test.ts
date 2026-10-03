@@ -127,11 +127,11 @@ test('applyChipsLive keeps damage taken; a dead player can pick and the stats ap
 test('choosing forces neutral attack, block, dash, secondary, jump and x/z (x/z kept with moveWhileChoosing); hurtAt on hits',()=>{
  const {s,econ}=world();try{
   const h1=P(s,'h1');assert.ok(econ.choosing(h1));
-  const busy={...idleInput(),seq:9,yaw:1.2,pitch:.3,x:1,z:-1,attack:true,block:true,dash:true,secondary:true,jump:true,reload:true,interact:true,camera:'third' as const};
+  const busy={...idleInput(),seq:9,yaw:1.2,pitch:.3,x:1,z:-1,attack:true,block:true,dash:true,secondary:true,jump:true,reload:true,interact:true,ability:true,camera:'third' as const};
   const i=s.pve!.filterInput(h1,busy);
-  for(const k of ['attack','block','dash','secondary','jump','reload'] as const)assert.equal(i[k],false,k);
+  for(const k of ['attack','block','dash','secondary','jump','reload','ability'] as const)assert.equal(i[k],false,k);
   assert.equal(i.x,0);assert.equal(i.z,0);assert.equal(i.seq,9);assert.equal(i.yaw,1.2);assert.equal(i.pitch,.3);assert.equal(i.camera,'third');
-  econ.moveWhileChoosing=true;const j=s.pve!.filterInput(h1,busy);assert.equal(j.x,1);assert.equal(j.z,-1);assert.equal(j.attack,false);econ.moveWhileChoosing=false;
+  econ.moveWhileChoosing=true;const j=s.pve!.filterInput(h1,busy);assert.equal(j.x,1);assert.equal(j.z,-1);assert.equal(j.attack,false);assert.equal(j.ability,false);econ.moveWhileChoosing=false;
   assert.equal(econ.partyView('h1').hurtAt,undefined);s.step();s.damage(h1,5,null,'environment');assert.equal(econ.partyView('h1').hurtAt,s.time);
   cmd(s,'h1',{action:'close'});assert.equal(s.pve!.filterInput(h1,busy).attack,true,'control returns after Choose later');
  }finally{s.dispose();}

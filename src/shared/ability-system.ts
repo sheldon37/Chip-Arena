@@ -288,9 +288,11 @@ export class AbilitySystem{
   if(aimAt&&bot.aim==='point')aimAt.y-=C.playerHalfHeight+C.playerRadius-.05;
   if(aimAt){const d=sub(aimAt,eye),h=Math.hypot(d.x,d.z);input.yaw=bot.aim==='away'?Math.atan2(-d.x,-d.z):Math.atan2(d.x,d.z);
    input.pitch=bot.aim==='ballistic'?clamp(ballisticPitch(h,d.y,pick.speed||30,pick.gravity||0),-1.1,1.1):bot.aim==='away'?0:clamp(Math.atan2(d.y,h),-1.1,1.1);
-   if((bot.aim==='point'||bot.aim==='ballistic')&&!s.lineOfSight(eye,aimAt,p.id))return false;}
+   if((bot.aim==='point'||bot.aim==='ballistic')&&target&&!this.clearTo(p,eye,target))return false;}
   input.camera='first';input.attack=false;input.dash=false;if(pick.slot==='e')input.secondary=true;else input.ability=true;return true;
  }
+ /** LOS from the eye to the cast target, ignoring the target's own body (≤ 1 m short of the point counts as clear). */
+ private clearTo(p:Player,eye:Vec,to:Vec){const d=sub(to,eye),l=len(d);if(l<.01)return true;const hit=this.sim.ray(eye,norm(d),l,p.id);return !hit||hit.timeOfImpact>=l-1;}
  /** A def is castable now (charge/cooldown, mana, handler.can). */
  private ready(p:Player,d:AbilityDef){if(d.slot==='e'?p.eCharges<=0:p.abilityCd>0)return false;if(WEAPONS[p.spec].class==='magic'&&p.mana<abilityCost(d,p.stats)*p.stats.resourceCost)return false;const h=this.handler(d);return !h?.can||h.can(this,{p,def:d,stats:p.stats,scale:1,echo:false,cast:'',aim:{yaw:p.input.yaw,pitch:p.input.pitch,camera:'first'}});}
 }
