@@ -1,7 +1,8 @@
 // PvE world view (design §8.4, §8.6; stream S6). Draws the Ward Zero machines and their dispense animations, chip
 // pickups, the "choosing a chip" holograms and pose, revive beacons with the HELP bubble, kept bodies and their
-// regeneration (downed.ts), recruit step-out shells, medic heal beams, holo tags and the boss look (growth, possession streak). Everything is a pure function of (view, state.time) plus bounded,
-// dt-clamped particles; no lights are added. Vent lids, door leaves and cell gates live in siren/stage.ts (they belong
+// regeneration (downed.ts), recruit step-out shells, medic heal beams, holo tags and the boss look (growth, possession
+// streak). Everything is a pure function of (view, state.time) plus bounded, dt-clamped particles; no lights are added.
+// Vent lids, door leaves and cell gates live in siren/stage.ts (they belong
 // to the hall's dressing) and read the same `PveView.entries`.
 import * as T from 'three';
 import type {GameEvent,PlayerView,Snapshot} from '../../shared/simulation.js';
