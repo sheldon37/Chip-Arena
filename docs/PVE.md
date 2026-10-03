@@ -27,6 +27,12 @@ Siren's team; DEV classes stay special; recruits use non-DEV weapons.
 ## Running it
 
 - Unit tests: `node --import tsx --test tests/pve-contract.test.ts tests/pve-foundation.test.ts tests/pvp-golden.test.ts`
+- Flow: `node --import tsx --test tests/pve-flow.test.ts` (`PVE_LONG=1` plays every wave).
+- Balance: `npm run test:pve-balance` (env `PVE_BAL_H`, `PVE_BAL_W`, `PVE_BAL_SEEDS`, `PVE_BAL_MAX_MIN`, `PVE_BAL_JSON`). Perf:
+  `npm run test:pve-perf`.
+- Real server: `TEST_PORT=<port> node tests/run-network.mjs pve`.
+- Debug ops (offline worker room for DEV accounts, server test rooms for the owner): `skip-wave`, `skip-to-boss`,
+  `boss-phase:n`, `boss-damage:n`, `money:n`, `god:on|off`, `kill-adds`, `spawn:<kind>`.
 - Network smokes (not in `npm test`): `node --import tsx tests/pve-loopback-network.ts` (in-process room, then the real
   server on `TEST_PORT`, default 8794) and `node --import tsx tests/pve-relay-network.ts` (PartyRoom v2 through the local relay).
 - PvP guard: `tests/pvp-golden.test.ts` hashes four PvP traces generated on the untouched base. It must stay identical;
@@ -354,16 +360,51 @@ Reading it against the design targets:
 
 **Network results** (Node 22.22.2, this container):
 
-NETWORK_RESULTS
+| Suite | Result |
+|---|---|
+| `run-network.mjs` default | FAIL `Timed out: rematch` (known baseline) |
+| maps, party, intros, first-block, rarity, motion, debris, elements | pass (party also passes; its base failure is timing-dependent) |
+| chaos | FAIL cosmetics assertion (known baseline) |
+| block | FAIL `65.5 !== 77` (known baseline) |
+| **pve** (new, real server) | pass: 810 shared ticks identical, raw snapshot p95 32.4 KB (max 32.4 KB), deflated p95 5.6 KB, old client refused at ready (4001), third PvE room refused, guest debug ignored, mid-fight rejoin with key, victory |
+| `siren-network.ts`, `killcam-network.ts`, `body-damage-network.ts`, `npm run test:https` | pass |
+| `pve-loopback-network.ts` | pass: 327 + 297 (boss half: reveal 1, intro, chip 2) identical snapshots; real-server part unchanged |
+| `pve-relay-network.ts` | pass: part 2 guest reaches the boss through PartyRoom v2, 888 host packets all valid, max 4 adds in view at the boss |
+| `npm run test:pve-perf` | ok: avg step 0.51 ms, p99 1.18 ms, PvE share 0.17 ms, snapshot p95 49.9 KB at 40 adds |
+
+The `pve` suite's sizes are measured with few adds (skip-to-boss); the perf script's 49.9 KB p95 is the 40-add figure.
 
 **Real-app smoke** (Playwright + SwiftShader, offline worker room; screenshots in the session scratchpad
 `after/pve-integration/`, not committed):
 
-SMOKE_RESULTS
+Driven through `window.chipArena` with real input (camera by synthetic mouse deltas through a test-only pointer-lock shim;
+movement and F through `setInput`; DEV debug ops through a throwaway signing key served in place of the dev public key —
+test harness only, nothing committed). 36 screenshots, one run end to end (session scratchpad; the Playwright script is not committed): home, TEST BOSS picker, personal start chip
+screen, wave 1, vent climb (framed at the climb start; the add is not clearly visible), wave adds, chip dispense and pickup, dispensed-pick chip screen, Choose later and the CHIPS
+icon, the red "under attack" chip screen, recruit pod with the medic row, kill cam, downed with self-revive countdown, WAVE
+CLEARED respawn banner, reveal smile and chip-1 card ("The Siren is here..."), boss intro, THE SIREN boss bar with its
+glitch title, "Siren has Spawned", phase 1, chip 2 reveal, HIDDEN — FIND HIM, found and chip 3, grown phase 3, chip 4 and
+the no-cooldown phase, THE SIREN IS SILENCED, victory results (portrait, chips, damage, MVP, Retry / Return to Menu), Retry
+into a new run, self-revive, defeat outro (PARTY WIPED) and defeat results. Metrics in a wave (SwiftShader, not
+meaningful for fps): fps 20.7, draws 324, snapshotBytes 24.3 KB, tickMs 0.4, pveAdds 11, fullRigs 4, nearImpostors 0.
+
+Judgement: the UI flow, HUD, chip screens, reveal cards, boss bar and results look right. Found and fixed: combat numbers
+froze on screen at low frame rates (snapshot clock, see `snapshots.ts`; PvE only). Still seen under SwiftShader only:
+numbers linger after a multi-second screenshot stall (no frames rendered meanwhile). The boss intro frames captured were
+dark: the Siren intro is dark by design between flashes (siren-lab shows the same black frames). The harness framing missed
+the dispensed chip (hidden behind the pilot), the grown boss and an identifiable possession hint; S5/S6 lab images cover
+those close up. An open personal chip screen stays over the boss intro if a pilot never picked (seen with skip-to-boss).
 
 **Verification** (Node 22.22.2):
 
-VERIFY_RESULTS
+- `npm run check:types`: pass.
+- Full unit suite (`node --import tsx --test --test-concurrency=2 tests/*.test.ts`): 909 tests, 896 pass, 13 fail — exactly
+  the 13 baseline names. `tests/pvp-golden.test.ts` passes unchanged.
+- New: `tests/pve-flow.test.ts` (victory flow twice with identical hashes, defeat variant, debug-op boss flow; also
+  `PVE_LONG=1`), `tests/pve-integration.test.ts`.
+- `npm run server:build` / `build:check`: the 4 known errors (`chaos.ts(28)`, `leet.ts(27)` ×2, `standard-melee.ts(107)`;
+  lines shifted by the foundation's inserted lines).
+- Not run: `npm run verify` as one command (its parts ran individually above); Node 24.19 (this container has 22.22.2).
 
 **Not run** (environment): native Windows GPU frame rate and look; real multi-machine internet play; desktop Electron
 "Host online" (needs a Windows test build); browser hosting on the deployed Site (needs a Site release); audio on
