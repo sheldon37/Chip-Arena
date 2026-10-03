@@ -60,6 +60,16 @@ test('schema 2 installs the game, stages launcher files for the next start, keep
  }finally{await rm(root,{recursive:true,force:true});}
 });
 
+test('a staged launcher that the feed no longer lists is dropped instead of activated',async()=>{
+ const root=await install();try{
+  const start=marker(await readFile(repoFile('launcher/start.mjs'),'utf8'),'withdrawn');
+  assert.equal(await run(root,serve(feed('0.2.same',{launcher:[{path:'launcher/start.mjs',data:start}]}).files)),true);assert.ok(existsSync(join(root,'runtime/launcher-pending/pending.json')));
+  // The channel then republishes the same game version without that launcher change.
+  assert.equal(await run(root,serve(feed('0.2.same').files)),false);assert.equal(existsSync(join(root,'runtime/launcher-pending')),false);
+  assert.equal(await startLauncher(root,{log:quiet}),updater);assert.equal(await readFile(join(root,'launcher/start.mjs'),'utf8'),await readFile(repoFile('launcher/start.mjs'),'utf8'));
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
 test('a new launcher that cannot load is rolled back and the running launcher keeps working',async()=>{
  const root=await install();try{
   const {files}=feed('0.2.badapi',{launcher:[{path:'launcher/update.mjs',data:Buffer.from('export const LAUNCHER_API=1;\n')}]});

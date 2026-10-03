@@ -58,6 +58,8 @@ async function readJson(response,limit,error){if(Number(response.headers?.get?.(
 const readRecord=async path=>JSON.parse(await readFile(path,'utf8').catch(()=>'null'));
 const runtimeFile=(root,name)=>resolve(root,'runtime',name);
 /** True when every listed launcher file is installed, or already staged for the next start, with the expected hash. */
+/** A staged launcher the feed no longer lists (for example after the channel reverted a version) must not activate. */
+async function dropStalePending(root,list){const plan=await readRecord(runtimeFile(root,'launcher-pending/pending.json'));if(!plan)return;const want=new Map(list.map(f=>[f.path,f.sha256]));if(!Array.isArray(plan.files)||plan.files.some(f=>want.get(f?.path)!==f?.sha256))await rm(runtimeFile(root,'launcher-pending'),{recursive:true,force:true});}
 async function launcherCurrent(root,list){const plan=await readRecord(runtimeFile(root,'launcher-pending/pending.json'));const staged=new Map((Array.isArray(plan?.files)?plan.files:[]).map(f=>[f?.path,f?.sha256]));for(const f of list)if(await fileHash(resolve(root,f.path))!==f.sha256&&staged.get(f.path)!==f.sha256)return false;return true;}
 const mb=n=>(n/1e6).toFixed(1);
 /** Stream the payload to disk with a byte cap, stall timeout and incremental SHA-256; nothing is parsed before it verifies. */
@@ -67,6 +69,7 @@ async function download(fetchImpl,url,part,m,log){
  try{
   const r=await fetchImpl(url,{signal:controller.signal,redirect:'error',cache:'no-store'});if(!r.ok||!r.body)throw Error('Update download failed');
   if(Number(r.headers?.get?.('content-length'))>m.bytes)throw Error('Update is larger than its manifest');
+  log('Downloading update: '+mb(m.bytes)+' MB');
   for await(const chunk of r.body){size+=chunk.length;if(size>m.bytes)throw Error('Update is larger than its manifest');h.update(chunk);await file.write(chunk);alive();const pct=Math.floor(size*100/m.bytes),now=Date.now();if(now-last>=30000||pct>shown&&now-last>=2000){last=now;shown=pct;log('Downloading update: '+mb(size)+' of '+mb(m.bytes)+' MB ('+pct+'%)');}}
  }catch(e){if(controller.signal.aborted)throw Error('Update download timed out');throw /^Update /.test(e?.message)?e:Error('Update download failed');}
  finally{clearTimeout(timer);clearTimeout(hard);await file.close();}
@@ -108,7 +111,7 @@ async function unpack(part,m,stage,next){
 }
 const syntaxOk=path=>spawnSync(process.execPath,['--check',path],{stdio:'ignore',timeout:20000,windowsHide:true}).status===0;
 async function installSchema2(root,m,{fetchImpl,force,log}){
- const current=JSON.parse(await readFile(resolve(root,'release.json'),'utf8').catch(()=>'{}'));if(current.version===m.version&&await launcherCurrent(root,m.launcher)){if(force)log('Chip Arena is up to date.');return false;}
+ const current=JSON.parse(await readFile(resolve(root,'release.json'),'utf8').catch(()=>'{}'));if(current.version===m.version&&await launcherCurrent(root,m.launcher)){await dropStalePending(root,m.launcher);if(force)log('Chip Arena is up to date.');return false;}
  if(Number(process.versions.node.split('.')[0])<m.nodeMajor)throw Error('This release needs a newer portable runtime');log('Updating Chip Arena to '+m.version+'...');
  const runtime=resolve(root,'runtime'),part=resolve(runtime,'update-download.part'),stage=resolve(runtime,'update-stage'),next=resolve(runtime,'launcher-next'),pending=resolve(runtime,'launcher-pending');
  await mkdir(runtime,{recursive:true});
