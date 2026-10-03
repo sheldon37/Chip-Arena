@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Simulation,initPhysics,type PlayerView} from '../src/shared/simulation.js';
+import {Simulation,initPhysics,type PlayerView,type Snapshot} from '../src/shared/simulation.js';
+import {SnapshotBuffer} from '../src/client/snapshots.js';
+import {NETWORK} from '../src/shared/network-config.js';
 import {v,type SpecId} from '../src/shared/config.js';
 import {HOST_CAPS,kitFor,abilityCooldown,adsProfile} from '../src/shared/abilities.js';
 import {statsFor} from '../src/shared/content.js';
@@ -117,4 +119,17 @@ test('main.ts pins: PvE idle input prefix, latched F, no mouse look during holds
  assert.match(main,/return \{camera:aim\(\)\.profile\?'first':pref\.camera,/,'ADS sends the eye camera, so the server aims from what the player sees');
  assert.match(main,/electric:keys\.has\('KeyQ'\)/,'Emperor keeps Q');assert.match(main,/abilitySlotsHtml\(abilitySlots\(me,state\.time,hostCaps\)\)\|\|`<div class="cooldown"><small>E · SPECIAL<\/small>/,'legacy E card without caps');
  assert.match(main,/controlHints\(getMe\(\)\?\.spec,pref\.sirenToggleKey,hostCaps\)/);assert.equal((main.match(/hud\.innerHTML=/g)||[]).length,1);
+});
+
+test('remote teleport snap: a 9 m jump within one snapshot interval renders at the new spot, never in between; running still lerps',()=>{
+ const sim=new Simulation({sandbox:true});sim.addPlayer('me','Me','ranged',null,'#fff',{});sim.addPlayer('them','Them','ranged',null,'#f00',{});sim.resetRound();sim.phase='fight';const base=sim.snapshot();sim.dispose();
+ const at=(tick:number,time:number,x:number,events:Snapshot['events']=[])=>({...base,tick,time,events,players:base.players.map(p=>p.id==='them'?{...p,pos:v(x,1,0),vel:v(0,0,0)}:p)}) as Snapshot;
+ const render=(states:Snapshot[],cursor:number)=>{const buf=new SnapshotBuffer();for(const s of states)buf.push(s,s.time*1000);const last=states.at(-1)!;
+  return buf.sample(last,'me',last.time*1000+NETWORK.interpolationMinMs+(cursor-last.time)*1000).players.find(p=>p.id==='them')!.pos.x;};
+ // Blink: 9 m between two 20 Hz snapshots (180 m/s implied).
+ for(const c of [1.01,1.025,1.045])assert.equal(render([at(1,.95,0),at(2,1,0),at(3,1.05,9),at(4,1.1,9)],c),9,`cursor ${c}: snapped to the arrival`);
+ // A teleport event names the player: a short hop (2 m, 40 m/s implied) snaps too.
+ assert.equal(render([at(1,.95,0),at(2,1,0),at(3,1.05,2,[{id:9,type:'teleport',time:1.03,pos:v(2,1,0),source:'them'}]),at(4,1.1,2)],1.02),2);
+ // Running (6.8 m/s) keeps the interpolation.
+ const x=render([at(1,.95,0),at(2,1,.34),at(3,1.05,.68),at(4,1.1,1.02)],1.025);assert.ok(x>.34&&x<.68,'running lerps: '+x);
 });
