@@ -124,8 +124,10 @@ Publishing a version:
 ```sh
 python scripts/release/candidate.py --commit <40-char SHA> --output <new dir> --test-only \
   --channel https://raw.githubusercontent.com/sheldon37/chip-arena-test-updates/main/feed/
-# then in the channel repo: replace feed/latest.json + the single arena-*.json.gz with the
-# candidate's feed/ files, add a PUBLISHED.md row, commit, push; log it in DEV_LOG.
+# then in the channel repo: replace feed/ with the candidate's feed/ files (latest.json + one
+# arena-*.json.gz, latest-v2.json + one arena-*.pack), add a PUBLISHED.md row, commit, push;
+# log it in DEV_LOG. If the candidate has no latest.json (schema 1 held), follow the channel
+# README's "schema 1 hold" step instead of copying latest.json.
 ```
 
 Needs Node 24.19.0 / npm 11.9.0. Only a new tester needs the ZIP; later versions ship as
@@ -141,6 +143,41 @@ known failures for diagnostic test builds. Publish only the verified manifest an
 payload together, then verify the real network updater from the previous version,
 same-version skip, settings preservation and menu status. Record the source SHA,
 content version, channel commit and unrun native checks in DEV_LOG.
+
+### Update payload limits and updater v2 (owner-approved 2026-10-03)
+
+`scripts/package-update.mjs` reads `CHIP_UPDATE_PROFILE` (details in `scripts/update-format.mjs`):
+
+| Profile | Schema 1 (`latest.json`) | Schema 2 (`latest-v2.json`) | Schema 1 too large |
+| --- | --- | --- | --- |
+| `live` (default; Site/live builds) | 25 MiB guard (Cloudflare Pages per-file limit) | not produced | build fails, unchanged |
+| `test-channel` (set by `candidate.py --channel`) | up to 32 MiB, the cap every installed launcher enforces | always; default limit 95 MiB (GitHub rejects files over 100 MB) | held back: only v2 files are written |
+
+Overrides: `CHIP_UPDATE_SCHEMA1_MAX_MIB` (1-32), `CHIP_UPDATE_SCHEMA2_MAX_MIB` (1-256),
+`CHIP_UPDATE_SCHEMA2_QUALITY` (Brotli 1-11, default 11, about 85 s), `CHIP_UPDATE_SCHEMA2=1`
+(schema 2 for live; live launchers do not read it). `CHIP_UPDATE_LAUNCHER_OVERLAY` names a folder
+whose whitelisted files replace `launcher/*` inside schema 2; a test-channel payload must carry the
+channel's own `manual-update.mjs`, never the production one that reads the live feed.
+Default `npm run build` output is byte-identical to the previous packager.
+
+Schema 2 is Brotli of `CHIPPACK`, a uint32 BE index length, a JSON index
+`{schema:2,version,files:[{path,size,sha256}]}` and the raw file bytes (no base64). The manifest
+adds `encoding:"br"`, `bytes`, `unpackedBytes`, `files` and a `launcher` list. `launcher/update.mjs`
+reads it only when the caller passes `schema2:true` (the test-channel wrapper does; production
+`manual-update.mjs` does not), streams the download to `runtime/update-download.part` with a
+256 MiB cap, a byte-count and a SHA-256 check before decompressing, then unpacks file by file with
+size/hash checks, the same `allowedPath` rule and a strict launcher whitelist (`LAUNCHER_FILES`).
+Only a 404 for `latest-v2.json` falls back to schema 1.
+
+Launcher self-update: changed launcher files are syntax-checked and staged in
+`runtime/launcher-pending/`. The next launcher start (`startLauncher()` in every entry point)
+re-verifies them, copies the old files to `runtime/launcher-backup/`, swaps them under
+`runtime/launcher-journal.json` and loads the new `update.mjs`. A crash mid-swap, a failed load,
+or (desktop only) a new entry point that exits before printing a protocol line restores the
+backup (`desktop/update.cjs` holds that stable rollback). A later run that completes an update
+check confirms the new launcher. Settings, saves, `runtime/` binaries and `test-channel.json` are
+never update targets. The desktop update timeout is now 90 s of silence (45 min maximum).
+Launchers installed before v2 never read schema 2: a tester needs one new TEST-ONLY ZIP.
 
 ## Clean-checkout verification
 

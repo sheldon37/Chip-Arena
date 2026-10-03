@@ -43,6 +43,6 @@ with ZipFile(out) as z:
  pe64(z.read(prefix+'Chip Arena.exe'))
  for name in ('resources/app/main.cjs','resources/app/join.cjs','resources/app/preload.cjs','resources/app/index.html','resources/game/runtime/node.exe','resources/game/runtime/cloudflared.exe','resources/game/dist/client/index.html','resources/game/server.mjs','resources/game/drizzle/0002_wide_shinko_yamashiro.sql','resources/game/drizzle/0003_classy_tana_nile.sql'):assert name and prefix+name in z.namelist(),name
  release=json.loads(z.read(prefix+'resources/game/release.json'))
- assert release['version']==json.loads((repo/'dist/client/updates/latest.json').read_text())['version']
+ assert release['version']==json.loads(next(f for f in (repo/'dist/client/updates/latest.json',repo/'dist/client/updates/latest-v2.json') if f.exists()).read_text())['version']
  assert prefix+'resources/game/dist/client/audio/van-scream.wav' not in z.namelist()
 print(json.dumps({'path':str(out),'bytes':out.stat().st_size,'sha256':sha(out.read_bytes()),'gameVersion':release['version'],'electron':'44.4.5','architecture':'Windows x64','zipIntegrity':'passed'}))

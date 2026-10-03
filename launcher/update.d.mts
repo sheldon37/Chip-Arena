@@ -1,3 +1,16 @@
 export const UPDATE_BASE:string;
+export const LAUNCHER_API:number;
+export const LAUNCHER_FILES:readonly string[];
+export const PACK_MAGIC:string;
+export const LIMITS:Readonly<{schema1Bytes:number;schema1Json:number;schema1Unpacked:number;schema1Files:number;schema2Bytes:number;schema2Unpacked:number;schema2Files:number;schema2Index:number;manifestBytes:number;launcherFileBytes:number}>;
 export function allowedPath(path:unknown):boolean;
-export function applyUpdates(root:string,options?:{fetchImpl?:(url:string,options?:RequestInit)=>Promise<Response>;force?:boolean;strict?:boolean;log?:(message:string)=>void}):Promise<boolean>;
+export function launcherPath(path:unknown):boolean;
+export function checkManifest2(manifest:unknown,maxBytes?:number):Record<string,any>;
+export type UpdateOptions={fetchImpl?:(url:string,options?:RequestInit)=>Promise<Response>;force?:boolean;strict?:boolean;log?:(message:string)=>void;schema2?:boolean;maxBytes?:number};
+export function applyUpdates(root:string,options?:UpdateOptions):Promise<boolean>;
+export function activateLauncher(root:string,options?:{log?:(message:string)=>void}):Promise<boolean>;
+export function rollbackLauncher(root:string):Promise<boolean>;
+export function recoverLauncher(root:string):Promise<boolean>;
+export function confirmLauncher(root:string):Promise<boolean>;
+export type LauncherModule={applyUpdates:typeof applyUpdates;startLauncher:typeof startLauncher;UPDATE_BASE:string;LAUNCHER_API:number};
+export function startLauncher(root:string,options?:{log?:(message:string)=>void}):Promise<LauncherModule>;
