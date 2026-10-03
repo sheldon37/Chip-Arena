@@ -84,7 +84,6 @@ export class ArenaRenderer {
  dressRig(rig,p.cosmetics);const r={...rig,guard,block,spec:'',color:p.color};setRigDetail(r,this.compatibility||this.budget.mode==='performance');this.scene.add(group);this.players.set(p.id,r);this.equip(r,p.spec);if(p.spec==='siren')sirenify(r);return r;}
  equip(r:Pick<Rig,'weapon'|'spec'>&{offWeapon?:T.Group},spec:string){r.spec=spec;buildWeapon(r.weapon,spec);if(r.offWeapon){r.offWeapon.clear();r.offWeapon.visible=spec==='daggers'||spec==='ansatsuken'||spec==='emperor';if(spec==='daggers'||spec==='ansatsuken'||spec==='emperor')buildWeapon(r.offWeapon,spec,true);}}
  enchant(weapon:T.Group,elements:ElementId[],time:number,stacks:Record<string,number>={}){enchantWeapon(weapon,elements,time,stacks);}
- /** Volumetric chip blasts keyed to authoritative events; the event radius is the gameplay radius. */
  /** Event VFX (bursts, beams, particles, chip blasts and fields) live in event-vfx.ts (design §3.4b). */
  vfx=new EventVfx(this.scene,()=>({quality:this.effectsQuality,compat:this.compatibility,trails:this.projectileTrails}));
  get chipBlasts(){return this.vfx.chipBlasts;}

@@ -1,7 +1,4 @@
-// Magic Q/E kit data (ranged/magic Q+E overhaul, design §3.1, §6). Leaf module: types only plus nothing at runtime.
-// MAGIC_WEAPON holds the fire/water/lightning/darkness WEAPONS rows moved verbatim from content.ts (current values).
-// FOUNDATION ships the kit rows with the design numbers but no bot data and no `live` flag: the legacy E stays in charge
-// until the MAGIC stream lands the handlers (magic-abilities.ts) and sets `live`.
+// Magic WEAPONS rows and Q/E kits (design §6); leaf module. `live` and `bot` are set when the handlers land.
 import type {Weapon} from './content.js';
 import type {AbilityKit} from './abilities.js';
 export const MAGIC_WEAPON:Record<'fire'|'water'|'lightning'|'darkness',Weapon>={

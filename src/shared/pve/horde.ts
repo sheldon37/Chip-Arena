@@ -290,7 +290,7 @@ export class Horde implements HordeApi{
   if(best>=0)this.enter(a,best);
  }
  // ---------------------------------------------------------------- hits, gibs, death
- /** Returns the actual damage dealt after limb and HP clamps (life steal on adds, §19.3). */
+ /** Returns the actual damage dealt. */
  hit(m:Minion,damage:number,attacker:string,impulse:number,dir:Vec,hit?:AddHitInfo):number{
   const a=this.byId.get(m.id),t=this.time;if(!a||a.phase!=='active'||a.hp<=0||!a.minion)return 0;
   if(!Number.isFinite(damage)||damage<=0)return 0;

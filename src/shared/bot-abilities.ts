@@ -6,7 +6,7 @@ import {SIREN_SLOTS} from './siren-contract.js';
 import {committed,rolling} from './souls-combat.js';
 
 /** Choose normal player inputs. The combat systems still own costs, cooldowns and hits. */
-/** `target`/`targetVel`: the chosen enemy's position and velocity (live ability kits aim and lead with them). */
+/** Live kits aim and lead with `target`/`targetVel`. */
 export function botAbilities(s:Simulation,p:Player,input:Input,distance:number,visible:boolean,difficulty:number,target?:Vec,targetVel?:Vec){
  input.secondary=false;input.ability=false;
  if(p.bot==='dummy'||s.phase!=='fight'||p.hp<=0||!p.connected||input.block||p.blockTime>0||s.arcade.stunned(p)||s.leet.frozen(p)||s.siren.heldVictim(p)||rolling(p,s.time)||committed(p,s.time))return;
@@ -14,8 +14,7 @@ export function botAbilities(s:Simulation,p:Player,input:Input,distance:number,v
   input.hadoken=visible&&s.time-p.arcade.at<ARCADE.chargeSeconds+.05&&p.stamina>=30*p.stats.resourceCost;
   input.attack=input.dash=false;return;
  }
- // Live ability kits (design §3.14): ADS hold and Q/E casts; never falls into the legacy rows below, and E works while
- // reloading. The attack release of the legacy path is kept.
+ // Live ability kits (§3.14) never fall into the legacy rows below.
  if(abilityUser(p.spec)&&s.abilities.botKit(p.spec)){
   s.abilities.botAds(p,input,distance,visible);
   const cast=s.abilities.botCast(p,input,distance,visible,difficulty,target,targetVel);

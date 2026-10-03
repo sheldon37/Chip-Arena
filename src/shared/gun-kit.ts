@@ -1,7 +1,4 @@
-// Gun Q/E kit data (ranged/magic Q+E overhaul, design §3.1, §4.1, §5). Leaf module: types only plus nothing at runtime.
-// GUN_WEAPON holds the pistol/rifle/machine gun WEAPONS rows moved verbatim from content.ts (current values).
-// FOUNDATION ships the kit rows with the design numbers but no bot data and no `live` flag: the legacy E stays in charge
-// until the GUNS stream lands the handlers (gun-abilities.ts) and sets `live`.
+// Gun WEAPONS rows and Q/E kits (design §4.1, §5); leaf module. `live` and `bot` are set when the handlers land.
 import type {Weapon} from './content.js';
 import type {AbilityKit,AdsProfile} from './abilities.js';
 export const GUN_WEAPON:Record<'pistol'|'rifle'|'machinegun',Weapon>={
@@ -9,7 +6,6 @@ export const GUN_WEAPON:Record<'pistol'|'rifle'|'machinegun',Weapon>={
  rifle:{id:'rifle',name:'Rifle',class:'ranged',description:'Sniper: 58 damage, 3 rounds, 1.15 s between shots, 2.6 s reload. Fast 150 m/s shots retain gravity. Hold Q: 3× scope. E: 78-damage braced shot (2 ammo).',damage:58,interval:1.15,speed:150,gravity:12,range:140,impulse:350,ammo:3,reload:2.6,cost:0,spread:.0015,windup:0,arc:0,secondary:'snipe',secondaryCooldown:3.8,color:0xffe7aa},
  machinegun:{id:'machinegun',name:'Machine Gun',class:'ranged',description:'Rapid automatic fire, 48-round magazine, 2.4 s reload. E secondary: six-round suppression burst (6 ammo).',damage:8,interval:.085,speed:49,gravity:36,range:48,impulse:65,ammo:48,reload:2.4,cost:0,spread:.025,windup:0,arc:0,secondary:'burst',secondaryCooldown:3,color:0xffc269,burstCount:6}
 };
-/** Aim-down-sights profiles (§4.1, TUNE). ADS never changes projectile speed or gravity. */
 export const ADS_PROFILES:Record<'pistol'|'rifle'|'machinegun',AdsProfile>={
  pistol:{fov:55,spread:.25,settle:.15,move:.75,sens:.68,overlay:'sight',kick:.5,interval:1.12},
  machinegun:{fov:52,spread:.4,settle:.2,move:.55,sens:.63,overlay:'sight',kick:.45,bloom:.002},

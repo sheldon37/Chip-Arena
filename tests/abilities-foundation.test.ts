@@ -204,13 +204,15 @@ test('fields: lockAt freezes an attached field; start delays effects; damageKind
   run(s,a,20);b.body.setTranslation(v(4,.9,7),true);s.world.step();run(s,a,2);assert.ok(len(sub(f.pos,b.body.translation()))>3,'locked position');
   s.chaos.clear();const g=s.abilities.zone(a,'black-hole',v(0,.2,7),6,3,8,'singularity',{force:18,start:s.time+.5,damageKind:'ability',cast:'h'});b.ext=v();const hp=b.hp;run(s,a,10);assert.equal(b.hp,hp,'no damage before start');
   run(s,a,30);assert.ok(b.hp<hp);const hit=s.events.filter(e=>e.type==='hit'&&e.target==='b').at(-1)!;assert.equal(hit.message,'ability');assert.equal(g.force,18);
+  s.chaos.clear();s.abilities.zone(a,'frost',b.body.translation(),4,3,0,'singularity',{start:s.time+.5,speedFactor:.5,cast:'fr'});assert.equal(s.abilities.motionScale(b),1,'a delayed frost field does not slow before start');run(s,a,40);assert.equal(s.abilities.motionScale(b),.5);
   const chip=s.chaos.field(a,'black-hole',v(0,.2,0),5,3,10,undefined,'black-hole');assert.deepEqual(Object.keys(chip).sort(),['arm','attach','born','damage','fx','id','kind','owner','pos','radius','until']);
  }finally{s.dispose();}
 });
 
-test('field ends: handler.detonate sees every ability field end; the default only explodes bombs, implosions and triggered mines',()=>{
- const {def}=fake('darkness','e');const ends:string[]=[];ABILITY_HANDLERS[def.id].detonate=(_sys,f)=>{ends.push(f.kind);};
- try{const {s,a}=game('darkness');try{s.abilities.zone(a,'black-hole',v(0,.2,10),6,.5,0,'singularity',{cast:'h'});s.abilities.zone(a,'implosion',v(0,.2,10),4,.5,30,'singularity',{cast:'h'});run(s,a,40);assert.deepEqual(ends.sort(),['black-hole','implosion']);
+test('field ends: handler.detonate sees every ability field end (eviction too); the default only explodes bombs, implosions and triggered mines',()=>{
+ const {def}=fake('darkness','e');const ends:string[]=[];ABILITY_HANDLERS[def.id].detonate=(_sys,f,_owner,cause)=>{ends.push(f.kind+':'+cause);};
+ try{const {s,a}=game('darkness');try{s.abilities.zone(a,'black-hole',v(0,.2,10),6,.5,0,'singularity',{cast:'h'});s.abilities.zone(a,'implosion',v(0,.2,10),4,.5,30,'singularity',{cast:'h'});run(s,a,40);assert.deepEqual(ends.sort(),['black-hole:until','implosion:until']);
+  for(const c of ['p','q'])s.abilities.zone(a,'black-hole',v(0,.2,10),6,5,0,'singularity',{cast:c});ends.length=0;s.abilities.zone(a,'black-hole',v(0,.2,10),6,5,0,'singularity',{cast:'r'});assert.deepEqual(ends,['black-hole:evict'],'an evicted non-bomb field reaches handler.detonate');s.chaos.clear();
   delete ABILITY_HANDLERS[def.id].detonate;s.events=[];s.abilities.zone(a,'mine',v(0,.2,-12),2,.5,20,'frag',{cast:'m'});s.abilities.zone(a,'fire',v(0,.2,-12),2,.5,5,'frag',{cast:'m'});run(s,a,40);assert.equal(events(s,'explosion').length,0,'expired mine and fire end quietly');
   s.abilities.zone(a,'bomb',v(0,.2,-12),2,.5,20,'frag',{cast:'b'});run(s,a,40);assert.deepEqual(events(s,'explosion').map(e=>e.message),['frag']);
  }finally{s.dispose();}}finally{delete ABILITY_HANDLERS[def.id];def.live=undefined;}

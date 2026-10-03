@@ -6,10 +6,9 @@ import {meleeBodyImpact} from './body-damage.js';import type {AddHitInfo} from '
 import {ABILITY_FX} from './abilities.js';
 export type FieldKind='black-hole'|'acid'|'fire'|'frost'|'time'|'repulsion'|'heal'|'storm'|'bomb'|'implosion'|'mine';
 export interface FieldView {id:string;owner:string;kind:FieldKind;pos:Vec;radius:number;born:number;until:number;arm:number;damage:number;attach?:string;/** Presentation tag (the chip that made it): picks the blast style on the client. */fx?:string;
- /** Ability-field extras (design §3.8; omitted on chip fields). */impulse?:number;blastKind?:string;force?:number;speedFactor?:number;slowFor?:number;start?:number;damageKind?:string;lockAt?:number;cast?:string;}
+ /** Ability extras (§3.8). */impulse?:number;blastKind?:string;force?:number;speedFactor?:number;slowFor?:number;start?:number;damageKind?:string;lockAt?:number;cast?:string;}
 export interface FieldOptions{impulse?:number;blastKind?:string;force?:number;speedFactor?:number;slowFor?:number;start?:number;damageKind?:string;lockAt?:number;cast?:string;attach?:string}
 const EXTRAS=['impulse','blastKind','force','speedFactor','slowFor','start','damageKind','lockAt','cast'] as const;
-/** Ability fields (fx in ABILITY_FX) have their own pool; chip fields keep today's caps. */
 export const abilityField=(f:{fx?:string})=>!!f.fx&&ABILITY_FX.has(f.fx);
 export interface MinionView {id:string;owner:string;kind:'zombie'|'toy'|'siren-add';pos:Vec;yaw:number;hp:number;maxHp:number;speed:number;until:number;lastAttack:number;}
 export interface Minion extends MinionView {body:RAPIER.RigidBody;collider:RAPIER.Collider;nextAttack:number;}
@@ -19,7 +18,7 @@ const fieldRules:Record<string,[FieldKind,number,number,number]>={
 export const CHAOS_TUNING={swapStun:.5,meteors:5,portalCooldown:1.2,portalPulse:25,panicHeal:.3,panicShield:2,exitHeal:40,exitShield:1.2,timeOutFreeze:1.2,
  cometFuse:.32,cometDamage:45,thunderRange:12,thunderFuse:.35,thunderDamage:30,blinkRange:7,blinkCooldown:1,blinkStrike:1.5,blinkShield:.25,artilleryCooldown:1.5,
  novaRecharge:.6,satelliteDamage:.4,satelliteHoming:150,stopAt:.25,stopFor:.3,relaunchSpeed:2,relaunchDamage:1.5} as const;
-export function fieldSpeed(fields:FieldView[],owner:string,pos:Vec,canAffect:(source:string)=>boolean=()=>true){let speed=1;for(const f of fields)if(f.owner!==owner&&canAffect(f.owner)&&len(sub(pos,f.pos))<f.radius){if(f.kind==='frost')speed=Math.min(speed,f.speedFactor??.45);if(f.kind==='time')speed=Math.min(speed,f.speedFactor??.6);}return speed;}
+export function fieldSpeed(fields:FieldView[],owner:string,pos:Vec,canAffect:(source:string)=>boolean=()=>true,time=Infinity){let speed=1;for(const f of fields)if(f.owner!==owner&&canAffect(f.owner)&&len(sub(pos,f.pos))<f.radius&&!(time<(f.start??-Infinity))){if(f.kind==='frost')speed=Math.min(speed,f.speedFactor??.45);if(f.kind==='time')speed=Math.min(speed,f.speedFactor??.6);}return speed;}
 /** Bounded, authoritative persistent effects. Secondary effects never re-enter direct-hit hooks. */
 export class ChaosSystem {
  fields=new Map<string,FieldView>();minions=new Map<string,Minion>();private used=new Set<string>();private cooldown=new Map<string,number>();private shields=new Map<string,number>();
@@ -29,9 +28,8 @@ export class ChaosSystem {
  forget(key:string){this.used.delete(key);}
  ready(p:Player,key:string,seconds:number){const k=p.id+':'+key;if((this.cooldown.get(k)||0)>this.sim.time)return false;this.cooldown.set(k,this.sim.time+seconds);return true;}
  field(p:Player,kind:FieldKind,pos:Vec,radius:number,duration:number,damage=0,attach?:string,fx?:string,opts?:FieldOptions){const s=this.sim;if(fx&&ABILITY_FX.has(fx))this.abilityPool(p,fx,opts?.cast);else{const same=[...this.fields.values()].filter(f=>f.owner===p.id&&f.kind===kind&&!abilityField(f));if(same.length>=(fx==='artillery'?CHAOS_TUNING.meteors+1:3))this.fields.delete(same[0].id);const chip=[...this.fields.values()].filter(f=>!abilityField(f));if(chip.length>=40)this.fields.delete(chip[0].id);}const f:FieldView={id:s.uid('field'),owner:p.id,kind,pos:{...pos},radius,born:s.time,until:s.time+duration,arm:s.time+.6,damage,attach,...(fx?{fx}:{})};if(opts)for(const k of EXTRAS)if(opts[k]!==undefined)(f as unknown as Record<string,unknown>)[k]=opts[k];this.fields.set(f.id,f);s.emit('field',pos,{source:p.id,message:kind,radius});return f;}
- /** §3.8 ability-field pool; eviction detonates the oldest cast group. */
  private abilityPool(p:Player,fx:string,cast?:string){const groups=[...new Set([...this.fields.values()].filter(f=>f.owner===p.id&&f.fx===fx).map(f=>f.cast??f.id))],max=clamp((1+p.stats.abilityCharges)*(1+p.stats.spellEcho),2,6);if(!(cast&&groups.includes(cast))&&groups.length>=max)this.evict(groups[0]);for(let n=0;n<64;n++){const all=[...this.fields.values()].filter(abilityField);if(all.length<64)break;this.evict(all[0].cast??all[0].id);}}
- private evict(group:string){for(const f of [...this.fields.values()])if(abilityField(f)&&(f.cast??f.id)===group){this.fields.delete(f.id);if(f.kind==='bomb'||f.kind==='implosion')this.sim.abilities.detonate(f,'evict');}}
+ private evict(group:string){for(const f of [...this.fields.values()])if(abilityField(f)&&(f.cast??f.id)===group){this.fields.delete(f.id);this.sim.abilities.detonate(f,'evict');}}
  mineRing(p:Player,pos:Vec,fx='mine'){for(let n=0;n<3;n++)this.field(p,'mine',add(pos,mul(forward(n*Math.PI*2/3),1.6)),2.3,6,16,undefined,fx);}
  blink(p:Player,delta:Vec){const s=this.sim,origin=add(p.body.translation(),v(0,.12,0)),distance=Math.min(12,len(delta)),direction=norm(delta);if(distance<.01)return;
   // Cast from just above the feet and ignore initial contact (fixed 2026-10-03): a grounded pilot touches the floor,
