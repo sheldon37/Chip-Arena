@@ -16,6 +16,31 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-03 — Claude — test channel review round 2: no source in seeds, private seed release
+
+- Tooling `2519377` on this branch (PR #5); the game side is `claude/update-headroom` `f951fbc`
+  (its DEV_LOG entry has the full results). Not published: channel `main` is still `70fe238`, and
+  there is no GitHub Release.
+- Source privacy (blocking for publication): the round-1 seed carried `chip-arena-source.zip`
+  (24.8 MB) at its root and in `resources/game/dist/client/`. `make-test-package.py` now strips
+  both, rewrites the READ-ME line and refuses a seed that still has source. `source_privacy.py`
+  (ZIPs, nested ZIPs) and `source-privacy.mjs` (decodes schema 1 and schema 2) refuse the archive,
+  `src/` folders and source maps. `candidate.py` runs them as `source-privacy-zip` and
+  `source-privacy-feed`, and `check-payload.mjs` checks the feed. The feed never had the archive
+  (verified on round 1's feed too). A new fixture test fails with the old packager.
+- `channel-e2e`: checks the candidate seed and feed for source, requires the seed's server to serve
+  `/` and `/health`, passes the badge's feed version to the desktop Update, and adds B9: an entry
+  point that reports "current" without checking is restored once the feed moves on, then a fixed
+  publish installs.
+- Docs: the seed is an owner-only GitHub Release asset on the private `sheldon37/Chip-Arena`, tag
+  `test-seed-<content version>`, pre-release and not latest. `RELEASE-CANDIDATES.md` has the web,
+  `gh` and REST steps. The public channel README no longer links a seed, and it now says a new
+  seed's first Update downloads the full schema 2 (`test-seed` is never current).
+- Checks: candidate `f951fbc`/`2519377`: every packaging check, both privacy checks and
+  `channel-e2e` 33/33 passed; `verify` showed only baseline failures. Seed ZIP 284,149,423 bytes,
+  SHA-256 `95d34fb255d5f61db3ad5e1bfbe661a470899a8195bf093afd630602c93c4742`. Fixture tests 10/10
+  (Node 22 and 24). Not run: native Windows, real GitHub hosting, the seed release.
+
 ## 2026-10-03 — Claude — test channel review round 1: launcher probation e2e in every candidate
 
 - Tooling `ebd998f` on this branch (PR #5); the game side is `claude/update-headroom` `2db36fa`, whose
