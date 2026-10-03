@@ -23,8 +23,11 @@ const hash=b=>createHash('sha256').update(b).digest('hex');
 const TOKEN=globalThis.__chipLauncherToken??=randomBytes(8).toString('hex');
 export function allowedPath(path){return typeof path==='string'&&path.length<200&&!path.includes('\\')&&!path.includes(':')&&!path.split('/').some(s=>!s||s==='.'||s==='..')&&(path==='server.mjs'||path==='release.json'||path.startsWith('dist/client/')||path.startsWith('drizzle/'));}
 export function launcherPath(path){return LAUNCHER_FILES.includes(path);}
-/** Windows strips trailing dots and spaces and maps device names (CON, NUL, COM1...) to devices: schema 2 refuses both. */
-export function windowsSafe(path){return typeof path==='string'&&path.split('/').every(s=>!/[. ]$/.test(s)&&!/[<>"|?*\x00-\x1f]/.test(s)&&!/^(con|prn|aux|nul|com[1-9\u00b9\u00b2\u00b3]|lpt[1-9\u00b9\u00b2\u00b3])(\.|$)/i.test(s));}
+/**
+ * Windows strips trailing dots and spaces and maps device names to devices, also with an extension or trailing spaces
+ * (CON, PRN, AUX, NUL, CONIN$, CONOUT$, CLOCK$, COM0-9, LPT0-9 and COM/LPT with superscript 1-3): schema 2 refuses both.
+ */
+export function windowsSafe(path){return typeof path==='string'&&path.split('/').every(s=>!/[. ]$/.test(s)&&!/[<>"|?*\x00-\x1f]/.test(s)&&!/^(con|prn|aux|nul|conin\$|conout\$|clock\$|(com|lpt)[0-9\u00b9\u00b2\u00b3]) *(\.|$)/i.test(s));}
 const exists=async p=>!!(await lstat(p).catch(()=>null));
 const fileHash=async p=>{try{return hash(await readFile(p));}catch{return null;}};
 const inside=(base,path)=>{const p=resolve(base,path);if(!p.startsWith(base+sep))throw Error('Invalid update path');return p;};
@@ -70,6 +73,8 @@ const runtimeFile=(root,name)=>resolve(root,'runtime',name);
 async function dropStalePending(root,list){const plan=await readRecord(runtimeFile(root,'launcher-pending/pending.json'));if(!plan)return;const want=new Map(list.map(f=>[f.path,f.sha256]));if(!Array.isArray(plan.files)||plan.files.some(f=>want.get(f?.path)!==f?.sha256))await rm(runtimeFile(root,'launcher-pending'),{recursive:true,force:true});}
 async function launcherCurrent(root,list){const plan=await readRecord(runtimeFile(root,'launcher-pending/pending.json'));const staged=new Map((Array.isArray(plan?.files)?plan.files:[]).map(f=>[f?.path,f?.sha256]));for(const f of list)if(await fileHash(resolve(root,f.path))!==f.sha256&&staged.get(f.path)!==f.sha256)return false;return true;}
 const mb=n=>(n/1e6).toFixed(1);
+/** FileHandle.write may write fewer bytes than asked: write the rest, and hash exactly the bytes that reached the file. */
+async function writeAll(file,data,h){for(let at=0;at<data.length;){const {bytesWritten}=await file.write(data,at,data.length-at);if(!(bytesWritten>0))throw Error('Update could not be written to disk');h.update(data.subarray(at,at+bytesWritten));at+=bytesWritten;}}
 /** Stream the payload to disk with a byte cap, stall timeout and incremental SHA-256; nothing is parsed before it verifies. */
 async function download(fetchImpl,url,part,m,log){
  const controller=new AbortController(),hard=setTimeout(()=>controller.abort(),DOWNLOAD_MS);let timer;const alive=()=>{clearTimeout(timer);timer=setTimeout(()=>controller.abort(),STALL_MS);};alive();
@@ -78,7 +83,7 @@ async function download(fetchImpl,url,part,m,log){
   const r=await fetchImpl(url,{signal:controller.signal,redirect:'error',cache:'no-store'});if(!r.ok||!r.body)throw Error('Update download failed');
   if(Number(r.headers?.get?.('content-length'))>m.bytes)throw Error('Update is larger than its manifest');
   log('Downloading update: '+mb(m.bytes)+' MB');
-  for await(const chunk of r.body){size+=chunk.length;if(size>m.bytes)throw Error('Update is larger than its manifest');h.update(chunk);await file.write(chunk);alive();const pct=Math.floor(size*100/m.bytes),now=Date.now();if(now-last>=30000||pct>shown&&now-last>=2000){last=now;shown=pct;log('Downloading update: '+mb(size)+' of '+mb(m.bytes)+' MB ('+pct+'%)');}}
+  for await(const chunk of r.body){size+=chunk.length;if(size>m.bytes)throw Error('Update is larger than its manifest');await writeAll(file,chunk,h);alive();const pct=Math.floor(size*100/m.bytes),now=Date.now();if(now-last>=30000||pct>shown&&now-last>=2000){last=now;shown=pct;log('Downloading update: '+mb(size)+' of '+mb(m.bytes)+' MB ('+pct+'%)');}}
  }catch(e){if(controller.signal.aborted)throw Error('Update download timed out');throw /^Update /.test(e?.message)?e:Error('Update download failed');}
  finally{clearTimeout(timer);clearTimeout(hard);await file.close();}
  if(size!==m.bytes)throw Error('Update download was incomplete');if(h.digest('hex')!==m.sha256)throw Error('Update checksum mismatch');
@@ -107,7 +112,7 @@ async function unpack(part,m,stage,next,log){
    if(Date.now()-shown>=15000){shown=Date.now();log('Unpacking update: '+mb(total)+' of '+mb(m.unpackedBytes)+' MB');}
    while(chunk.length){
     if(phase==='done')throw Error('Invalid update package');
-    if(phase==='data'){const n=Math.min(left,chunk.length),piece=chunk.subarray(0,n);h.update(piece);await out.write(piece);left-=n;chunk=chunk.subarray(n);if(!left){await end();await begin();}continue;}
+    if(phase==='data'){const n=Math.min(left,chunk.length);await writeAll(out,chunk.subarray(0,n),h);left-=n;chunk=chunk.subarray(n);if(!left){await end();await begin();}continue;}
     const n=Math.min(need-have,chunk.length);parts.push(chunk.subarray(0,n));have+=n;chunk=chunk.subarray(n);if(have<need)continue;
     const bytes=Buffer.concat(parts);parts=[];have=0;
     if(phase==='header'){if(bytes.subarray(0,8).toString('latin1')!==PACK_MAGIC)throw Error('Invalid update package');need=bytes.readUInt32BE(8);if(need<2||need>LIMITS.schema2Index)throw Error('Invalid update package');phase='index';}
@@ -150,14 +155,28 @@ export async function applyUpdates(root,{fetchImpl=fetch,force=false,strict=fals
   return manifest?await installSchema2(root,manifest,{fetchImpl,force,log}):await installSchema1(root,{fetchImpl,force,log});
  }catch(error){if(strict)throw error;log('Update skipped: '+error.message+'. Starting your existing version.');return false;}
 }
-/** Restore the launcher files saved before the last activation (journal first, then probation). */
+const RESTORING='launcher-restoring.json';
+/**
+ * Restore the launcher files saved before the last activation (journal and probation records). The plan is written to
+ * runtime/launcher-restoring.json before any file changes and every file is replaced by a rename, so a crash midway is
+ * finished by the next start (here or in desktop/update.cjs) instead of leaving a mixed launcher that could be proven.
+ */
 export async function rollbackLauncher(root){
- let restored=false;
- for(const name of ['launcher-journal.json','launcher-probation.json']){const record=await readRecord(runtimeFile(root,name));if(!record)continue;for(const path of Array.isArray(record.files)?record.files:[]){if(!launcherPath(path))continue;const saved=resolve(root,'runtime/launcher-backup',path),live=resolve(root,path);if(await exists(saved))await copyFile(saved,live);else if(record.absent?.includes(path))await rm(live,{force:true});}await rm(runtimeFile(root,name),{force:true});restored=true;}
- await rm(runtimeFile(root,'launcher-pending'),{recursive:true,force:true});await rm(runtimeFile(root,'launcher-backup'),{recursive:true,force:true});return restored;
+ const marker=runtimeFile(root,RESTORING),temp=runtimeFile(root,'launcher-restore.tmp');let plan=await readRecord(marker);
+ if(!plan){
+  const records=[];for(const name of ['launcher-journal.json','launcher-probation.json']){const record=await readRecord(runtimeFile(root,name));if(record)records.push(record);}
+  const all=key=>[...new Set(records.flatMap(r=>Array.isArray(r[key])?r[key]:[]))];
+  if(records.length){plan={files:all('files'),absent:all('absent')};await writeFile(marker+'.tmp',JSON.stringify(plan));await rename(marker+'.tmp',marker);}
+ }
+ if(plan){
+  for(const path of Array.isArray(plan.files)?plan.files:[]){if(!launcherPath(path))continue;const saved=resolve(root,'runtime/launcher-backup',path),live=resolve(root,path);if(await exists(saved)){await copyFile(saved,temp);await rename(temp,live);}else if(Array.isArray(plan.absent)&&plan.absent.includes(path))await rm(live,{force:true});}
+  for(const name of ['launcher-journal.json','launcher-probation.json'])await rm(runtimeFile(root,name),{force:true});
+ }
+ for(const name of ['launcher-pending','launcher-backup'])await rm(runtimeFile(root,name),{recursive:true,force:true});
+ await rm(marker,{force:true});return !!plan;
 }
-/** A crash during activation leaves the journal: restore the previous launcher before anything else runs. */
-export async function recoverLauncher(root){return await exists(runtimeFile(root,'launcher-journal.json'))?rollbackLauncher(root):false;}
+/** A crash during activation leaves the journal, and one during a restore leaves its marker: finish before anything runs. */
+export async function recoverLauncher(root){return await exists(runtimeFile(root,'launcher-journal.json'))||await exists(runtimeFile(root,RESTORING))?rollbackLauncher(root):false;}
 /**
  * Verify a staged launcher update, then swap it in file by file under a journal, keeping a rollback copy. A launcher
  * still on probation keeps its original backup, so a rollback always returns to the last proven launcher.

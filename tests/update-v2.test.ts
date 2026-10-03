@@ -1,13 +1,13 @@
 // Updater v2: schema-2 container, launcher self-update (stage → next-start activation → rollback) and packager profiles.
 import {test} from 'node:test';import assert from 'node:assert/strict';
-import {mkdtemp,mkdir,writeFile,readFile,rm,copyFile,readdir} from 'node:fs/promises';import {existsSync,readFileSync,writeFileSync,rmSync} from 'node:fs';
+import {mkdtemp,mkdir,writeFile,readFile,rm,copyFile,readdir,open} from 'node:fs/promises';import {existsSync,readFileSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';import {join} from 'node:path';import {fileURLToPath} from 'node:url';
 import {createHash,randomBytes} from 'node:crypto';import {brotliCompressSync,gunzipSync} from 'node:zlib';
-import {createRequire} from 'node:module';import {EventEmitter} from 'node:events';import {PassThrough} from 'node:stream';import {spawn} from 'node:child_process';
+import {createRequire} from 'node:module';import {EventEmitter} from 'node:events';import {PassThrough} from 'node:stream';import {spawn,spawnSync} from 'node:child_process';
 import * as updater from '../launcher/update.mjs';
 import {encodeSchema1,encodeSchema2,manifest2,packagerConfig,launcherEntries,schema1Problem,MiB} from '../scripts/update-format.mjs';
-const {runUpdate,probationToken,proveLauncher,restoreLauncher,hostingProbation}=createRequire(import.meta.url)('../desktop/update.cjs');
-const {applyUpdates,startLauncher,activateLauncher,recoverLauncher,checkManifest2,LIMITS,UPDATE_BASE}=updater;
+const {runUpdate,probationToken,proveLauncher,restoreLauncher,hostingProbation,finishRestore}=createRequire(import.meta.url)('../desktop/update.cjs');
+const {applyUpdates,startLauncher,activateLauncher,recoverLauncher,checkManifest2,windowsSafe,LIMITS,UPDATE_BASE}=updater;
 const hash=(b:Buffer|string)=>createHash('sha256').update(b).digest('hex');
 const repoFile=(path:string)=>fileURLToPath(new URL('../'+path,import.meta.url));
 const SOURCE=await readFile(repoFile('launcher/update.mjs'),'utf8');
@@ -131,7 +131,9 @@ test('the desktop updater restores the previous launcher after any failed Update
   assert.deepEqual(await runUpdate(root,{spawnImpl:fakeChild(['{"type":"result","status":"current","version":"0.2.same"}'],0)}),{status:'current',version:'0.2.same'});assert.ok(existsSync(join(root,'runtime/launcher-probation.json')));
   const activatedDuringRun=()=>void writeFileSync(join(root,'runtime/launcher-probation.json'),JSON.stringify({token:'newer',files:['launcher/manual-update.mjs'],absent:[]}));
   await runUpdate(root,{spawnImpl:fakeChild(['{"type":"result","status":"installed","version":"0.2.next"}'],0,'',activatedDuringRun)});assert.equal(probationToken(root),'newer','a run that activated a newer launcher proves nothing');
-  await runUpdate(root,{spawnImpl:fakeChild(['{"type":"result","status":"installed","version":"0.2.next"}'],0)});
+  // A reported install proves Update only when release.json, read by the desktop code, has that version.
+  await runUpdate(root,{spawnImpl:fakeChild(['{"type":"result","status":"installed","version":"0.2.next"}'],0)});assert.ok(existsSync(join(root,'runtime/launcher-probation.json')),'release.json still says old');
+  await runUpdate(root,{spawnImpl:fakeChild(['{"type":"result","status":"installed","version":"0.2.next"}'],0,'',()=>writeFileSync(join(root,'release.json'),JSON.stringify({version:'0.2.next'})))});
   assert.equal(existsSync(join(root,'runtime/launcher-probation.json')),false);assert.equal(existsSync(join(root,'runtime/launcher-backup')),false);assert.equal(await readFile(join(root,'launcher/manual-update.mjs'),'utf8'),'new launcher/manual-update.mjs');
   // Once Update is proven, a later failure (for example offline) keeps the new launcher; hosting is still on probation.
   await onProbation(root,['launcher/update.mjs'],{proven:['update']});
@@ -167,6 +169,73 @@ test('a newer launcher activated while one is on probation keeps the last proven
   assert.equal(hostingProbation(root).failed(),true);
   assert.equal(await readFile(join(root,'launcher/start.mjs'),'utf8'),original.start,'back to the launcher before both unproven updates');assert.equal(await readFile(join(root,'launcher/manual-update.mjs'),'utf8'),original.manual);
  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('an interrupted launcher restore is finished before the next run, and a half-restored launcher is never proven',async()=>{
+ const root=await install();try{
+  const both=['launcher/manual-update.mjs','launcher/update.mjs'];await onProbation(root,both);const token=probationToken(root);
+  // A file that cannot be replaced (here a directory in its place) stops the restore after manual-update.mjs, like a crash.
+  await rm(join(root,'launcher/update.mjs'));await mkdir(join(root,'launcher/update.mjs/locked'),{recursive:true});
+  assert.equal(restoreLauncher(root,'update'),false);assert.ok(existsSync(join(root,'runtime/launcher-restoring.json')),'the restore plan stays');
+  assert.equal(await readFile(join(root,'launcher/manual-update.mjs'),'utf8'),'previous launcher/manual-update.mjs');
+  assert.equal(proveLauncher(root,'update',token),false,'a half-restored launcher is never proven');
+  assert.deepEqual(await runUpdate(root,{spawnImpl:fakeChild(['{"type":"result","status":"installed","version":"old"}'],0)}),{status:'installed',version:'old'});
+  assert.equal(JSON.parse(await readFile(join(root,'runtime/launcher-probation.json'),'utf8')).proven,undefined);assert.equal(hostingProbation(root).ready(),false);
+  // Next start, the file can be replaced again: the stable desktop code finishes the restore before the launcher runs.
+  await rm(join(root,'launcher/update.mjs'),{recursive:true});await writeFile(join(root,'launcher/update.mjs'),'new launcher/update.mjs');
+  hostingProbation(root);
+  for(const path of both)assert.equal(await readFile(join(root,path),'utf8'),'previous '+path);
+  for(const left of ['launcher-restoring.json','launcher-probation.json','launcher-backup','launcher-pending','launcher-restore.tmp'])assert.equal(existsSync(join(root,'runtime',left)),false,left);
+  assert.equal(finishRestore(root),false);assert.equal(await readFile(join(root,'settings.json'),'utf8'),'saved');
+  // launcher/update.mjs honours the same marker: a crash after the plan and the first file is finished at its next start.
+  await onProbation(root,both);await writeFile(join(root,'launcher/manual-update.mjs'),'previous launcher/manual-update.mjs');
+  await writeFile(join(root,'runtime/launcher-restoring.json'),JSON.stringify({files:[...both,'../settings.json'],absent:['launcher/remote-feed.mjs']}));await writeFile(join(root,'launcher/remote-feed.mjs'),'new remote-feed');
+  await applyUpdates(root,{fetchImpl:async()=>{throw Error('offline');},log:quiet});
+  for(const path of both)assert.equal(await readFile(join(root,path),'utf8'),'previous '+path);
+  assert.equal(existsSync(join(root,'launcher/remote-feed.mjs')),true,'only paths in the plan are touched');
+  for(const left of ['launcher-restoring.json','launcher-probation.json','launcher-backup','launcher-pending'])assert.equal(existsSync(join(root,'runtime',left)),false,left);
+  assert.equal(await recoverLauncher(root),false);assert.equal(await readFile(join(root,'settings.json'),'utf8'),'saved');
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('a launcher on probation that reports "current" while the feed has another version is restored',async()=>{
+ const root=await install();try{
+  let asked=0;const newer=async()=>{asked++;return '0.2.newer';},current=fakeChild(['{"type":"result","status":"current","version":"old"}'],0);
+  assert.deepEqual(await runUpdate(root,{spawnImpl:current,feedVersion:newer}),{status:'current',version:'old'});assert.equal(asked,0,'no probation: no extra check');
+  await onProbation(root,['launcher/remote-feed.mjs']);
+  const error=await runUpdate(root,{spawnImpl:current,feedVersion:newer}).then(()=>null,(e:Error)=>e.message);
+  assert.match(String(error),/^The new launcher reported no update, but the update feed has version 0\.2\.newer\. .*previous launcher was restored/);assert.equal(asked,1);
+  assert.ok(await restored(root,'launcher/remote-feed.mjs'));
+  // The feed equals the installed version (read by the desktop code), or the check is unavailable: nothing changes, nothing is proven.
+  for(const feedVersion of [async()=>'old',async()=>{throw Error('offline');},async()=>null,async()=>'not a version!',undefined]){
+   await onProbation(root,['launcher/remote-feed.mjs']);
+   assert.deepEqual(await runUpdate(root,{spawnImpl:current,feedVersion}),{status:'current',version:'old'});
+   assert.equal(JSON.parse(await readFile(join(root,'runtime/launcher-probation.json'),'utf8')).proven,undefined);assert.equal(await readFile(join(root,'launcher/remote-feed.mjs'),'utf8'),'new launcher/remote-feed.mjs');
+  }
+  // Once Update is proven (or for a start.mjs-only probation) the check is not asked.
+  asked=0;await onProbation(root,['launcher/update.mjs'],{proven:['update']});await runUpdate(root,{spawnImpl:current,feedVersion:newer});
+  await onProbation(root,['launcher/start.mjs']);await runUpdate(root,{spawnImpl:current,feedVersion:newer});assert.equal(asked,0);
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('short writes: download and unpack write every byte and hash what reached the file',async()=>{
+ const root=await install(),probe=await open(join(root,'runtime/probe'),'w'),proto=Object.getPrototypeOf(probe),write=proto.write;await probe.close();
+ let calls=0,short=0,limit=(n:number)=>Math.min(n,1+(calls++%5)*211);
+ // A FileHandle that writes at most a few hundred bytes per call, whatever the call form.
+ proto.write=function(this:any,buffer:any,...rest:any[]){
+  if(typeof buffer==='string')return write.call(this,buffer,...rest);
+  let [offset=0,length,position=null]=typeof rest[0]==='object'&&rest[0]!==null?[rest[0].offset,rest[0].length,rest[0].position]:rest;
+  length??=buffer.byteLength-offset;const n=limit(length);if(n<length)short++;return write.call(this,buffer,offset,n,position);
+ };
+ try{
+  const big=randomBytes(300*1024),start=marker(await readFile(repoFile('launcher/start.mjs'),'utf8'),'short');
+  const {files}=feed('0.2.short',{extra:[{path:'dist/client/music/short.bin',data:big}],launcher:[{path:'launcher/start.mjs',data:start}]});
+  assert.equal(await run(root,serve(files)),true);assert.ok(short>100,'the mock wrote short');
+  assert.equal(hash(await readFile(join(root,'dist/client/music/short.bin'))),hash(big));assert.equal(await readFile(join(root,'runtime/launcher-pending/launcher/start.mjs'),'utf8'),start.toString());
+  assert.equal(await readFile(join(root,'server.mjs'),'utf8'),'new-server 0.2.short');
+  // A disk that accepts nothing is an error, never a silent partial file.
+  const root2=await install();try{limit=()=>0;await assert.rejects(run(root2,serve(feed('0.2.full').files)),/could not be written to disk/);await untouched(root2);}finally{await rm(root2,{recursive:true,force:true});}
+ }finally{proto.write=write;await rm(root,{recursive:true,force:true});}
 });
 
 // A desktop-style entry point that reads a local feed directory, so real child processes exercise the whole Update path.
@@ -209,7 +278,7 @@ test('the desktop updater timeout counts silence, not total time, so large downl
 
 test('schema 2 refuses path traversal, runtime/settings paths, unlisted launcher files, case duplicates and Windows-unsafe names',async()=>{
  const root=await install();try{
-  const bad=['../evil.txt','dist/client/../../evil.txt','/abs/evil.txt','dist\\client\\evil.txt','C:/evil.txt','runtime/node.exe','settings.json','test-channel.json','launcher/evil.mjs','launcher/../evil.mjs','DIST/client/x.js','dist/client/CON','dist/client/nul.txt','dist/client/com1/x.js','dist/client/index.html.','dist/client/a ','dist/client/a?.js'];
+  const bad=['../evil.txt','dist/client/../../evil.txt','/abs/evil.txt','dist\\client\\evil.txt','C:/evil.txt','runtime/node.exe','settings.json','test-channel.json','launcher/evil.mjs','launcher/../evil.mjs','DIST/client/x.js','dist/client/CON','dist/client/nul.txt','dist/client/com1/x.js','dist/client/index.html.','dist/client/a ','dist/client/a?.js','dist/client/CONIN$','dist/client/conout$.txt','dist/client/Clock$','dist/client/com0.js','dist/client/LPT0','dist/client/lpt\u00b9.js','dist/client/nul .txt'];
   for(const path of [...bad,'dist/client/A.js|dist/client/a.js']){
    const extra=path.split('|').map(p=>({path:p,data:Buffer.from('x')})),entries=[...game('0.2.evil'),...extra];
    const pack=container({schema:2,version:'0.2.evil',files:entries.map(f=>({path:f.path,size:f.data.length,sha256:hash(f.data)}))},entries.map(f=>f.data));
@@ -218,6 +287,11 @@ test('schema 2 refuses path traversal, runtime/settings paths, unlisted launcher
   }
   await untouched(root);assert.equal(existsSync(join(root,'..','evil.txt')),false);assert.equal(await readFile(join(root,'runtime/node.exe'),'utf8'),'runtime');
  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('Windows-safe names: device names with any extension or trailing spaces, console and clock devices, COM0/LPT0',()=>{
+ for(const name of ['CON','con.txt','PRN','aux.js','NUL','nul .txt','CONIN$','conin$.js','CONOUT$','Clock$','clock$.txt','COM0','com1','COM9.log','lpt0','LPT5.x','com\u00b9','LPT\u00b2.js','lpt\u00b3','a.','a ','a?b','a<b','a|b','a*b','a"b','x\u0001'])assert.equal(windowsSafe('dist/client/'+name),false,name);
+ for(const name of ['console.js','conin.js','conout.css','clock.png','com10.js','lpt10','com.js','nul_.txt','auxiliary.js','music/clock$x.mp3','index.html'])assert.equal(windowsSafe('dist/client/'+name),true,name);
 });
 
 test('schema 2 refuses oversize, hash-mismatched, truncated and interrupted downloads and cleans up',async()=>{
@@ -287,7 +361,14 @@ test('packager profiles: live keeps 25 MiB and schema 1 only; test-channel allow
  const testChannel=packagerConfig({CHIP_UPDATE_PROFILE:'test-channel'});assert.deepEqual([testChannel.schema1Max,testChannel.schema1Overflow,testChannel.schema2,testChannel.schema2Max,testChannel.quality],[LIMITS.schema1Bytes,'hold',true,95*MiB,11]);
  assert.equal(packagerConfig({CHIP_UPDATE_PROFILE:'test-channel',CHIP_UPDATE_SCHEMA1_MAX_MIB:'30'}).schema1Max,30*MiB);assert.equal(packagerConfig({CHIP_UPDATE_SCHEMA1_MAX_MIB:'20'}).schema1Max,20*MiB);
  // Live can only lower its 25 MiB limits: the Site cannot serve a larger file.
- for(const env of [{CHIP_UPDATE_SCHEMA1_MAX_MIB:'30'},{CHIP_UPDATE_SCHEMA2:'1',CHIP_UPDATE_SCHEMA2_MAX_MIB:'26'},{CHIP_UPDATE_PROFILE:'test-channel',CHIP_UPDATE_SCHEMA1_MAX_MIB:'33'},{CHIP_UPDATE_SCHEMA2_MAX_MIB:'257'},{CHIP_UPDATE_PROFILE:'production'},{CHIP_UPDATE_SCHEMA2_QUALITY:'12'}])assert.throws(()=>packagerConfig(env));
+ for(const env of [{CHIP_UPDATE_SCHEMA1_MAX_MIB:'30'},{CHIP_UPDATE_SCHEMA2:'1',CHIP_UPDATE_SCHEMA2_MAX_MIB:'26'},{CHIP_UPDATE_PROFILE:'test-channel',CHIP_UPDATE_SCHEMA1_MAX_MIB:'33'},{CHIP_UPDATE_PROFILE:'test-channel',CHIP_UPDATE_SCHEMA2_MAX_MIB:'257'},{CHIP_UPDATE_PROFILE:'production'},{CHIP_UPDATE_SCHEMA2_QUALITY:'12'},{CHIP_UPDATE_PROFILE:'test-channel',CHIP_UPDATE_SCHEMA2:'0'}])assert.throws(()=>packagerConfig(env));
+ // Schema 2 (and its launcher overlay) exists only in the test-channel profile: live refuses it outright.
+ for(const env of [{CHIP_UPDATE_SCHEMA2:'1'},{CHIP_UPDATE_PROFILE:'live',CHIP_UPDATE_SCHEMA2:'1'},{CHIP_UPDATE_SCHEMA2_MAX_MIB:'20'},{CHIP_UPDATE_LAUNCHER_OVERLAY:'/tmp/overlay'}])assert.throws(()=>packagerConfig(env),/test-channel only/,JSON.stringify(env));
+ assert.equal(packagerConfig({CHIP_UPDATE_PROFILE:'test-channel',CHIP_UPDATE_SCHEMA2:'1'}).schema2,true);assert.equal(live.schema2Max,0);
+ const empty=await mkdtemp(join(tmpdir(),'packager-'));try{
+  const refused=spawnSync(process.execPath,[repoFile('scripts/package-update.mjs')],{cwd:empty,env:{...process.env,CHIP_UPDATE_PROFILE:'',CHIP_UPDATE_SCHEMA2:'1'},encoding:'utf8'});
+  assert.notEqual(refused.status,0);assert.match(refused.stderr,/test-channel only/);assert.deepEqual(await readdir(empty),[],'nothing is built or written');
+ }finally{await rm(empty,{recursive:true,force:true});}
  const overlay=await mkdtemp(join(tmpdir(),'overlay-'));try{
   assert.throws(()=>launcherEntries({profile:'test-channel',overlay:''},repoFile('.')),/test-channel launcher\/manual-update.mjs/);
   await writeFile(join(overlay,'manual-update.mjs'),'// channel entry');await writeFile(join(overlay,'remote-feed.mjs'),'// feed');

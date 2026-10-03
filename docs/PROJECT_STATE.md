@@ -31,7 +31,8 @@ Migration imported to private GitHub; not merged or released (2026-09-29).
   sheldon37/chip-arena-test-updates (tooling PR #5); live feed untouched. See DEVELOPMENT.md.
   Update headroom (owner-approved 2026-10-03, branch `claude/update-headroom`, not merged):
   test schema 1 up to 32 MiB; updater v2 (schema 2, launcher self-update) needs one new
-  seed ZIP, delivered as a channel GitHub Release (procedure in tooling PR #5).
+  seed ZIP (no source archive), delivered as an owner-only GitHub Release asset on the private
+  game repo, tag `test-seed-<content version>` (procedure in tooling PR #5).
   Standing owner instruction (2026-10-01): publish completed game updates to this
   existing test Update channel unless told otherwise; no repeat publication approval.
 - DEV combo-ready holds and Demon Step's 0.20 s i-frame window (PR #6), plus

@@ -154,14 +154,17 @@ content version, channel commit and unrun native checks in DEV_LOG.
 | `test-channel` (set by `candidate.py --channel`) | up to 32 MiB, the cap every installed launcher enforces | always; default limit 95 MiB (GitHub rejects files over 100 MB) | held back: only v2 files are written |
 
 Overrides: `CHIP_UPDATE_SCHEMA1_MAX_MIB` (test-channel 1-32, live 1-25), `CHIP_UPDATE_SCHEMA2_MAX_MIB`
-(test-channel 1-256, live 1-25), `CHIP_UPDATE_SCHEMA2_QUALITY` (Brotli 1-11, default 11, about 85 s),
-`CHIP_UPDATE_SCHEMA2=1` (schema 2 for live; live launchers do not read it). Never set
+(test-channel 1-256), `CHIP_UPDATE_SCHEMA2_QUALITY` (Brotli 1-11, default 11, about 85 s).
+Schema 2 is test-channel only: the live profile refuses `CHIP_UPDATE_SCHEMA2`,
+`CHIP_UPDATE_SCHEMA2_MAX_MIB` and `CHIP_UPDATE_LAUNCHER_OVERLAY` before it builds anything. Never set
 `CHIP_UPDATE_PROFILE` in a shell used for a Site build: before any Site publication, check that
 `dist/client/updates/` holds `latest.json` and no `latest-v2.json` or `.pack`. `CHIP_UPDATE_LAUNCHER_OVERLAY` names a folder
 whose whitelisted files replace `launcher/*` inside schema 2; a test-channel payload must carry the
 channel's own `manual-update.mjs`, never the production one that reads the live feed.
 Default `npm run build` output is byte-identical to the previous packager. Every packaged path must
-be Windows-safe (no device names such as `CON`/`NUL`/`COM1`, no trailing dot or space). The live
+be Windows-safe: no device names, also with an extension or trailing spaces (`CON`, `PRN`, `AUX`,
+`NUL`, `CONIN$`, `CONOUT$`, `CLOCK$`, `COM0`-`COM9`, `LPT0`-`LPT9`, and COM/LPT with superscript
+1-3), and no trailing dot or space. The live
 schema-1 payload was 24.84 MiB on 2026-10-03, about 0.17 MiB under the live guard.
 
 Schema 2 is Brotli of `CHIPPACK`, a uint32 BE index length, a JSON index
@@ -169,7 +172,8 @@ Schema 2 is Brotli of `CHIPPACK`, a uint32 BE index length, a JSON index
 adds `encoding:"br"`, `bytes`, `unpackedBytes`, `files` and a `launcher` list. `launcher/update.mjs`
 reads it only when the caller passes `schema2:true` (the test-channel wrapper does; production
 `manual-update.mjs` does not), streams the download to `runtime/update-download.part` with a
-256 MiB cap, a byte-count and a SHA-256 check before decompressing, then unpacks file by file with
+256 MiB cap, a byte-count and a SHA-256 check before decompressing (every write is completed even
+when the disk accepts only part of it, and the hash covers the bytes written), then unpacks file by file with
 size/hash checks, the same `allowedPath` rule, Windows-safe names and a strict launcher whitelist
 (`LAUNCHER_FILES`). Only a 404 for `latest-v2.json` falls back to schema 1, and a v2 launcher refuses
 the channel's schema-1 hold notice (`hold:true`) instead of downgrading. Downloading, unpacking,
@@ -193,10 +197,25 @@ desktop code, which ships only in the seed ZIP and is never self-updated (`deskt
 - A run that activated the launcher never proves it (the probation token changes). A newer launcher
   activated while one is still unproven keeps the original backup. When every needed kind is
   proven, the backup is deleted.
+- An Update that reports `installed` proves only when `release.json`, read by the desktop code, has
+  the reported version. `current` never proves. While Update is unproven, a `current` result is
+  checked against the menu badge's update check (`feedVersion` in `desktop/main.cjs`; in a TEST-ONLY
+  seed the channel handler answers it from `latest-v2.json`). If the feed has a different version,
+  the launcher said "up to date" without really checking, so the run counts as failed and the
+  previous launcher is restored.
+- A restore first writes its plan to `runtime/launcher-restoring.json`, then replaces each file by
+  copy-and-rename. If it stops midway (crash, locked file), the desktop code finishes it before the
+  next Update or Create Room, and `update.mjs` before its next start. Nothing is proven while the
+  marker exists, so a half-restored launcher can never become the proven one.
 
 Not covered: a failure after `YOUR GAME:` (for example in online tunnel code), an `update.mjs`
 whose bug only shows after it installed one update, and non-desktop entry points (the Windows
-`.bat` package, which never reads schema 2). The feed still lists a rolled-back launcher, so the
+`.bat` package, which never reads schema 2). A launcher that reports `current` without checking is
+caught only when the badge check is reachable and the feed has moved on: offline, with the check
+unavailable, or while the feed still equals the installed version, it stays on probation (neither
+proven nor restored) until a later Update installs or fails. A very short window after a channel
+publish (raw GitHub caching) could make the two reads disagree; the cost is one unneeded restore,
+and the next Update stages the launcher again. The feed still lists a rolled-back launcher, so the
 next Update downloads and stages it again; the fix is a corrected publish, which the restored
 launcher installs. Settings, saves, `runtime/` binaries and `test-channel.json` are never update
 targets. The desktop update timeout is now 90 s of silence (45 min maximum). Launchers installed

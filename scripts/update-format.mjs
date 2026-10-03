@@ -17,15 +17,18 @@ const mib=(env,name,fallback,max)=>{const value=env[name];if(value===undefined||
 const brotliQuality=value=>{if(value===undefined||value==='')return 11;const q=Number(value);if(!Number.isInteger(q)||q<1||q>11)throw Error('CHIP_UPDATE_SCHEMA2_QUALITY must be an integer from 1 to 11');return q;};
 /**
  * live (default): schema 1 only, 25 MiB guard, overflow fails the build. Unchanged from before updater v2.
- * In live, CHIP_UPDATE_SCHEMA1_MAX_MIB/CHIP_UPDATE_SCHEMA2_MAX_MIB can only lower 25 MiB: the Site serves no larger file.
+ * In live, CHIP_UPDATE_SCHEMA1_MAX_MIB can only lower 25 MiB (the Site serves no larger file), and schema 2 is refused:
+ * live launchers never read it, and launcher self-update is for the test channel only.
  * test-channel (set by candidate.py --channel): schema 1 up to the installed-updater cap (32 MiB) for old
  * installs, plus schema 2 (latest-v2.json) for v2 launchers; a schema 1 that no longer fits is held back.
  */
 export function packagerConfig(env=process.env){
  const profile=env.CHIP_UPDATE_PROFILE||'live';if(!['live','test-channel'].includes(profile))throw Error('CHIP_UPDATE_PROFILE must be live or test-channel');
- const test=profile==='test-channel',schema2=test||env.CHIP_UPDATE_SCHEMA2==='1';
+ const test=profile==='test-channel',set=name=>env[name]!==undefined&&env[name]!=='';
+ if(!test&&['CHIP_UPDATE_SCHEMA2','CHIP_UPDATE_SCHEMA2_MAX_MIB','CHIP_UPDATE_LAUNCHER_OVERLAY'].some(set))throw Error('Schema 2 and launcher overlays are test-channel only (CHIP_UPDATE_PROFILE=test-channel); live builds produce schema 1.');
+ if(test&&set('CHIP_UPDATE_SCHEMA2')&&env.CHIP_UPDATE_SCHEMA2!=='1')throw Error('The test-channel profile always produces schema 2.');
  return {profile,schema1Max:mib(env,'CHIP_UPDATE_SCHEMA1_MAX_MIB',test?LIMITS.schema1Bytes:LIVE_HOSTING_MAX,test?LIMITS.schema1Bytes:LIVE_HOSTING_MAX),schema1Overflow:test?'hold':'fail',
-  schema2,schema2Max:mib(env,'CHIP_UPDATE_SCHEMA2_MAX_MIB',test?TEST_SCHEMA2_MAX:LIVE_HOSTING_MAX,test?LIMITS.schema2Bytes:LIVE_HOSTING_MAX),
+  schema2:test,schema2Max:test?mib(env,'CHIP_UPDATE_SCHEMA2_MAX_MIB',TEST_SCHEMA2_MAX,LIMITS.schema2Bytes):0,
   quality:brotliQuality(env.CHIP_UPDATE_SCHEMA2_QUALITY),overlay:env.CHIP_UPDATE_LAUNCHER_OVERLAY||''};
 }
 /** Schema 1: gzip(JSON {schema:1, files:[{path, sha256, data:base64}]}), byte-identical to the original packager. */
