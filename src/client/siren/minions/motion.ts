@@ -123,7 +123,7 @@ function locomotion(P:Pose,look:MinionLook,t:number,vx:number,vz:number,phi:numb
   const drag=!stump&&sd===look.drag;
   // Walk: the good leg plants for longer; the dragged leg scuffs forward low with its toe down and swings out.
   // Run: frenzied, short contact, high knees, the bad leg still a little behind.
-  const c=stump?lerp(.74,.58,run):lerp(drag?.56:.66,drag?.38:.42,run),ph=frac(phi+(drag?.5+lerp(.05,.03,run)*look.limp:0)),travel=Math.min(1,lerp(.46,.52,run)/Math.max(1e-6,speed*c/f));
+  const c=stump?lerp(.68,.56,run):lerp(drag?.56:.66,drag?.38:.42,run),ph=frac(phi+(drag?.5+lerp(.05,.03,run)*look.limp:0)),travel=Math.min(1,lerp(.46,.52,run)/Math.max(1e-6,speed*c/f));
   const hx=sd*lerp(.15,.12,run),hz=lerp(drag?-.05*look.limp:.02,.04,run),span=(c/f)*travel;
   let x:number,z:number,y=ANKLE,heel=0,yaw=sd*lerp(drag?.28:.1,.06,run),k:number;
   if(ph<c){const u=ph/c;k=-span*(u-.5);x=hx+vx*k;z=hz+vz*k;}
@@ -144,7 +144,7 @@ function locomotion(P:Pose,look:MinionLook,t:number,vx:number,vz:number,phi:numb
  P[J.body]=lerp(.04*mv,.32,run);P[J.body+1]=lerp(.1*Math.sin(TAU*phi)*mv,.16*Math.sin(TAU*phi),run);P[J.body+2]=lerp(-look.drag*.05*look.limp-sway*2.2,.06*Math.sin(TAU*phi),run);
  if(stump){
   // A hop on the good leg: the body rises off it at push-off, lands heavily, and leans over it.
-  const ph=frac(phi),hop=Math.sin(Math.PI*Math.min(1,ph/.74));P[BODY+1]+=(-.06+.07*hop)*mv-.03;P[BODY]-=stump*.035;P[J.body+2]+=stump*(.07+.05*mv);P[J.body]+=.06*mv;}
+  const ph=frac(phi),hop=Math.sin(Math.PI*Math.min(1,ph/.68));P[BODY+1]+=(-.06+.07*hop)*mv-.03;P[BODY]-=stump*.035;P[J.body+2]+=stump*(.07+.05*mv);P[J.body]+=.06*mv;}
  // A lurch: the torso pitches forward each time the good leg plants.
  const lurch=.14*mv*Math.max(0,Math.sin(TAU*phi))**3+.05*idle*(.5+.5*Math.sin(t*.61+look.phase*4));
  P[J.pelvis]=.04;P[J.pelvis+1]=-.06*Math.sin(TAU*phi)*mv;P[J.pelvis+2]=0;
@@ -188,8 +188,8 @@ const SMASH={armX:[[0,-.4],[.29,-2.95],[.41,-1.05],[.51,-.35],[.7,-.45],[.9,-.3]
 // Swipe: a one-arm horizontal rake (values in the arm's own side units: +armZ swings it out to its side). The arm cocks
 // out to the side and back with the elbow bent, rakes across the chest, the elbow snapping straight at contact
 // (PVE_TIMING.swipeHit), the chest twisting through and the body leaning into it; then it recovers.
-const SWIPE={armX:[[0,-.35],[.2,-1.5],[.3,-1.62],[.36,-1.5],[.46,-1.18],[.64,-.6],[.9,-.3]],armY:[[0,0],[.2,-.35],[.3,-.2],[.36,0],[.46,.25],[.64,.1],[.9,0]],
- armZ:[[0,.12],[.2,1.12],[.27,.75],[.34,.02],[.42,-.72],[.5,-.9],[.66,-.45],[.9,.05]],elbow:[[0,-.45],[.2,-1.45],[.28,-.9],[.34,-.18],[.44,-.22],[.6,-.75],[.9,-.4]],
+const SWIPE={armX:[[0,-.35],[.2,-1.5],[.3,-1.62],[.36,-1.5],[.46,-1.18],[.64,-.6],[.9,-.3]],armY:[[0,0],[.2,.45],[.3,.25],[.36,0],[.46,-.3],[.64,-.1],[.9,0]],
+ armZ:[[0,.12],[.2,1.12],[.27,.75],[.34,.02],[.42,-.72],[.5,-.9],[.66,-.45],[.9,.05]],elbow:[[0,-.45],[.2,-.62],[.28,-.45],[.34,-.15],[.44,-.2],[.6,-.55],[.9,-.4]],
  wrist:[[0,.2],[.2,.55],[.34,-.25],[.5,.05],[.9,.2]],twist:[[0,0],[.2,.42],[.3,.18],[.36,-.15],[.46,-.45],[.64,-.22],[.9,0]],
  spine:[[0,0],[.2,-.1],[.34,.3],[.48,.34],[.7,.12],[.9,0]],bodyZ:[[0,0],[.2,-.05],[.34,.16],[.52,.13],[.9,0]],head:[[0,0],[.2,-.25],[.34,.25],[.6,.06],[.9,0]]} as const;
 // Armless bite: the head and chest snap forward and down at the target, the shoulders hunched.
@@ -202,7 +202,7 @@ export function swipeArm(s:SirenMinionView):1|-1{
 /** Both arms gone (whole arms or forearms: no hands to grab with). */
 export const armless=(lost=0)=>!!(lost&(LIMB.lArm|LIMB.lFore))&&!!(lost&(LIMB.rArm|LIMB.rFore));
 /** The leg whose shin is gone (rig side +1 left, -1 right; 0 none). A whole leg makes it crawl instead. */
-export const stumpLeg=(lost=0):0|1|-1=>lost&LIMB.lShin&&!(lost&LIMB.rShin)?1:lost&LIMB.rShin&&!(lost&LIMB.lShin)?-1:0;
+export const stumpLeg=(lost=0):0|1|-1=>lost&(LIMB.lLeg|LIMB.rLeg)?0:lost&LIMB.lShin&&!(lost&LIMB.rShin)?1:lost&LIMB.rShin&&!(lost&LIMB.lShin)?-1:0;
 export function attackKind(look:MinionLook,s:SirenMinionView):MinionAttack{return s.attack??(look.scrap!=='none'?'club':hash01(look.seed,Math.round((s.attackAt||0)*20),31)<.65?'lunge':'smash');}
 function attackLayer(P:Pose,look:MinionLook,s:SirenMinionView,a:number){
  const kind=attackKind(look,s),w=win(a,0,.16,.64,.9);if(w<=0)return;
@@ -212,10 +212,12 @@ function attackLayer(P:Pose,look:MinionLook,s:SirenMinionView,a:number){
   P[J.neck]+=w*keyed(a,BITE.neck);P[J.head]+=w*keyed(a,BITE.head);P[J.chest]+=w*keyed(a,BITE.chest);P[J.lClav+2]+=w*.18;P[J.rClav+2]-=w*.18;
  }else if(kind==='swipe'){
   const sd=swipeArm(s),arm=side(J.lArm,sd),el=side(J.lElbow,sd),hd=side(J.lHand,sd);
-  P[arm]=lerp(P[arm],keyed(a,SWIPE.armX),w);P[arm+1]=lerp(P[arm+1],sd*keyed(a,SWIPE.armY),w);P[arm+2]=lerp(P[arm+2],sd*keyed(a,SWIPE.armZ),w);
+  P[J.spine]+=w*keyed(a,SWIPE.spine);P[BODY+2]+=w*keyed(a,SWIPE.bodyZ);P[J.head]+=w*keyed(a,SWIPE.head);
+  // The rake stays at chest height however hunched the torso is: the arm's pitch takes the torso's lean out.
+  const lean=P[J.body]+P[J.spine]+P[J.chest];
+  P[arm]=lerp(P[arm],keyed(a,SWIPE.armX)-lean,w);P[arm+1]=lerp(P[arm+1],sd*keyed(a,SWIPE.armY),w);P[arm+2]=lerp(P[arm+2],sd*keyed(a,SWIPE.armZ),w);
   P[el]=lerp(P[el],keyed(a,SWIPE.elbow),w);P[hd]=lerp(P[hd],keyed(a,SWIPE.wrist),w);P[hd+2]=lerp(P[hd+2],0,w);
   const tw=keyed(a,SWIPE.twist);P[J.chest+1]+=w*sd*tw;P[J.spine+1]+=w*sd*tw*.4;P[J.head+1]-=w*sd*tw*.6;
-  P[J.spine]+=w*keyed(a,SWIPE.spine);P[BODY+2]+=w*keyed(a,SWIPE.bodyZ);P[J.head]+=w*keyed(a,SWIPE.head);
   // The other arm hangs back and a little out, for balance.
   const o=side(J.lArm,-sd);P[o]=lerp(P[o],.25,w*.6);P[o+2]=lerp(P[o+2],-sd*.3,w*.6);
  }else if(kind==='lunge'){
@@ -316,7 +318,7 @@ function emergePose(P:Pose,look:MinionLook,e:number,floor:number,tAbs:number){
 // beyond. 0-push: the hands rise under the grate and shove it (hidden under the floor); push-push+open: the grate
 // swings and the hands grip the rim; then the haul: head and shoulders rise, a knee comes over the rim, it stands and
 // jerks awake. The body origin starts 1.4 m under the floor.
-const CLIMB={bodyY:[[0,-1.4],[.35,-1.08],[.6,-1.0],[.8,-.98],[1.05,-.72],[1.3,-.46],[1.5,-.36],[1.7,-.16],[1.95,-.07]],
+const CLIMB={bodyY:[[0,-2.25],[.2,-1.75],[.35,-1.4],[.6,-1.12],[.8,-1.02],[1.05,-.72],[1.3,-.46],[1.5,-.36],[1.7,-.16],[1.95,-.07]],
  bodyZ:[[0,-.55],[.8,-.55],[1.05,-.48],[1.3,-.38],[1.5,-.22],[1.72,-.05],[1.95,0]],pitch:[[0,-.05],[.8,0],[1.05,.35],[1.3,.62],[1.5,.55],[1.72,.25],[1.95,.04]],
  spine:[[0,-.15],[.35,-.2],[.8,0],[1.1,.3],[1.5,.25],[1.95,.2]],head:[[0,-.6],[.35,-.75],[.6,-.2],[.8,.25],[1.05,.5],[1.3,.15],[1.55,-.2],[1.72,.25],[1.95,.1]],
  hip:[[0,-.1],[1.05,-.2],[1.3,-1.1],[1.5,-1.55],[1.72,-.8],[1.95,-.2]],knee:[[0,.35],[1.05,.6],[1.3,1.7],[1.5,1.9],[1.72,1.0],[1.95,.3]]} as const;
@@ -346,9 +348,9 @@ function ventDivePose(P:Pose,look:MinionLook,d:number,floor:number){
  for(const sd of [1,-1]){
   const h=HAND+(sd>0?0:5),pull=win(d,.08,.2,.3,.42);
   P[h]=sd*.28;P[h+1]=floor+.04+.35*pull;P[h+2]=.42-.08*sm((d-.45)/.2);P[h+3]=-1.0;P[h+4]=win(d,.02,.14,.68,.8);
-  P[side(J.lArm,sd)]=-1.4+1.8*sm((d-.6)/.2);P[side(J.lArm,sd)+2]=sd*.15;P[side(J.lElbow,sd)]=-.5;
+  P[side(J.lArm,sd)]=-1.4-1.2*sm((d-.5)/.4);P[side(J.lArm,sd)+2]=sd*.15;P[side(J.lElbow,sd)]=-.5;
   P[side(J.lHip,sd)]=keyed(d,DIVE.hip);P[side(J.lKnee,sd)]=keyed(d,DIVE.knee);P[side(J.lHip,sd)+2]=sd*.1;
-  const o=FOOT+(sd>0?0:6);P[o]=sd*.15;P[o+1]=ANKLE;P[o+2]=.02;P[o+3]=sd*.1;P[o+5]=1-sm((d-.45)/.12);
+  const o=FOOT+(sd>0?0:6);P[o]=sd*.15;P[o+1]=ANKLE;P[o+2]=.02;P[o+3]=sd*.1;P[o+5]=1-sm((d-.26)/.16);
  }
 }
 // Door and cell walk-out: hunched and dormant behind the threshold, it jerks awake (MINION_TIMING.wake) just before its
@@ -398,7 +400,7 @@ function applyPose(r:CharacterRig,P:Pose){
  set(r.body,J.body);set(r.pelvis,J.pelvis);set(r.spine,J.spine);set(r.chest,J.chest);set(r.neck,J.neck);set(r.head,J.head);
  set(r.leftShoulder,J.lClav);set(r.rightShoulder,J.rClav);set(r.leftArm,J.lArm);set(r.rightArm,J.rArm);
  r.leftElbow.rotation.set(Math.min(0,P[J.lElbow]),0,0);r.rightElbow.rotation.set(Math.min(0,P[J.rElbow]),0,0);set(r.leftHand,J.lHand);set(r.rightHand,J.rHand);
- r.chest.position.set(0,.19,0);r.head.position.set(0,.10,0);r.weapon.position.set(0,0,0);r.weapon.quaternion.identity();
+ r.chest.position.set(0,.19,0);r.head.position.set(0,.10,0);r.weapon.position.set(0,0,0);r.weapon.quaternion.identity();r.offWeapon.position.set(0,0,0);r.offWeapon.quaternion.identity();
  // Legs: forward kinematics first (emergence, death), then foot IK blended in by weight.
  for(const sd of [1,-1]){const hip=sd>0?r.leftLeg:r.rightLeg,knee=sd>0?r.leftKnee:r.rightKnee,ankle=sd>0?r.leftFoot:r.rightFoot,toe=sd>0?r.leftToe:r.rightToe,o=FOOT+(sd>0?0:6);
   set(hip,side(J.lHip,sd));knee.rotation.set(Math.max(0,P[side(J.lKnee,sd)]),0,0);ankle.rotation.set(0,0,0);toe.rotation.set(0,0,0);
@@ -456,7 +458,9 @@ function livingPose(P:Pose,m:SirenMinion,s:SirenMinionView,t:number,g:Gait){
  if(s.crawl){
   crawlPose(P,L,t,g.vx,g.vz,g.walk,m.floor);
   const k=s.crawlAt!==undefined?sm((t-s.crawlAt)/MINION_TIMING.fall):1;
-  if(k<1){POSE_K.set(P);uprightPose(POSE_U,m,s,t,g,injured);blendPose(P,POSE_U,POSE_K,k);}
+  if(k<1){POSE_K.set(P);uprightPose(POSE_U,m,s,t,g,injured);blendPose(P,POSE_U,POSE_K,k);
+   // The feet let go of the floor early in the fall (a planted foot under a body that pitches flat would flip the leg).
+   const fw=Math.max(0,1-k*3);for(const o of [FOOT,FOOT+6]){for(let j=0;j<5;j++)P[o+j]=POSE_U[o+j];P[o+5]=POSE_U[o+5]*fw;}}
   attacks(P,L,s,t,g,true,m.floor);P[J.head+2]+=.5*twitch(L,t).head;
  }else uprightPose(P,m,s,t,g,injured);
  if(s.hitAt!==undefined)flinchLayer(P,L,s,t-s.hitAt);
@@ -528,8 +532,14 @@ function basePose(out:Pose,m:SirenMinion,s:SirenMinionView,time:number,g:Gait):P
 }
 /** A crawler dies where it lies: the head drops, the arms go slack, it sags flat. */
 function crawlDeath(P:Pose,d:number){const k=sm(d/.6);P[J.head]+=.7*k;P[J.neck]+=.4*k;P[BODY+1]-=.07*k;P[J.body]+=.12*k;for(const sd of [1,-1]){const h=HAND+(sd>0?0:5);P[h+1]-=.02*k;P[h+4]*=1-.4*k;P[side(J.lArm,sd)+2]+=sd*.3*k;}}
-export function animateSirenMinion(m:SirenMinion,s:SirenMinionView,time:number,quality=1){
- const r=m.rig,L=m.look;tickMinionClock(time);tickSirenClock(time);
+/** A door or cell walk-out starts from a standstill: its walk velocity ramps in over the first .45 s (the authority's
+ * velocity steps from 0 to the walk speed), so the legs speed up instead of snapping into the stride. */
+function rampedEntry(s:SirenMinionView,time:number):SirenMinionView{
+ const en=s.entry;if(!en||en.kind==='vent')return s;const a=time-en.at-entryWalkStart(en);if(a>=.45)return s;const k=sm(a/.45);
+ return {...s,vel:{x:s.vel.x*k,z:s.vel.z*k}};
+}
+export function animateSirenMinion(m:SirenMinion,view:SirenMinionView,time:number,quality=1){
+ const r=m.rig,L=m.look,s=rampedEntry(view,time);tickMinionClock(time);tickSirenClock(time);
  applyLostLimbs(m,s.lost??0);
  const d=s.deathAt!==undefined&&time>=s.deathAt?time-s.deathAt:undefined;
  const g=gaitAt(m,s,time,d===undefined);let P:Pose;
