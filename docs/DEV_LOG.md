@@ -16,6 +16,24 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-03 — Claude — test channel: two feeds, 32 MiB schema 1, updater v2 tooling
+
+- Owner-approved update-size headroom. Tooling `7c7ded2` (code + tests), `2a17b17` (e2e harness),
+  `b5ff54c` (docs) on this branch (PR #5). The game side is `claude/update-headroom` (`f192798`); its
+  DEV_LOG entry has the full results.
+- `candidate.py --channel` sets the game packager's `test-channel` profile: schema 1 up to 32 MiB, plus
+  `latest-v2.json`/`arena-*.pack` carrying this channel's launcher files. The repeat build compares
+  every feed file. `check-payload.mjs` verifies both feeds. `make-test-package.py` writes
+  `{base,schema2}` and refuses a seed whose launcher differs from schema 2. The remote feed, badge
+  and wrapper understand v2 and still work with a pre-v2 `update.mjs`. `schema1-hold.mjs` builds
+  the notice for old installs. `channel-e2e.mjs` runs local HTTPS end-to-end tests.
+- Candidate from `f192798` with tooling `2a17b17`: all packaging and payload checks passed, and verify
+  showed only baseline failures. Schema 1 is 26,045,324 bytes (identical to the published payload),
+  schema 2 is 22,025,342 bytes. The e2e run passed 27/27 with the published `cfdce4b` ZIP as the old
+  install. Fixture tests 9/9.
+- Not done: no channel publication, no GitHub Release (procedure: `docs/TEST-CHANNEL-README.md`
+  draft). Native Windows not run.
+
 ## 2026-09-29 — owner Windows follow-up — fresh r2 label works
 
 - Owner reports that applying the small patch to the existing test copy still showed
