@@ -66,7 +66,7 @@ export const MAGIC_HANDLERS:Record<string,AbilityHandler>={
   detonate(y,f,o){if(f.kind!=='bomb')return;const d=K.water.e;for(const id of y.blast(o,lift(f.pos),f.radius,f.damage,f.impulse??1100,d.fx).hit)slow(y,y.sim.players.get(id)!,d,o);}},
  'ball-lightning':{...E,point:undefined,release:(y,c)=>aimed(y,c,{life:c.def.duration,fuse:y.sim.time+c.def.tick!}),shot:{
   tick(y,q){const s=y.sim,p=own(y,q),t=q.ability!,d=K.lightning.e;if(!p||s.time<t.fuse!)return;t.fuse=t.fuse!+d.tick!;
-   for(const n of y.enemiesNear(p,q.pos,5.5,{limit:2})){y.hit(p,n.target,8*q.damage/d.damage!,sub(n.pos,q.pos),0,n.pos);s.emit('arc',n.pos,{from:{...q.pos},source:p.id,color:LIT});}},
+   for(const n of y.enemiesNear(p,q.pos,7,{limit:2})){y.hit(p,n.target,11*q.damage/d.damage!,sub(n.pos,q.pos),0,n.pos);s.emit('arc',n.pos,{from:{...q.pos},source:p.id,color:LIT});}},
   onEnemy:()=>'pass',onSurface(y,q,at){burst(y,q,at);return 'stop';},onExpire:(y,q)=>burst(y,q,q.pos)}},
  singularity:{...E,release:(y,c)=>{y.zone(c.p,'black-hole',c.point!,y.R(c.def,c)*(c.p.chips['abyssal-core']?1.25:1),c.def.duration!,c.def.tick!*c.scale,c.def.fx,{cast:c.cast,force:c.def.force,damageKind:'poison'});},
   detonate(y,f,o){if(f.kind!=='black-hole')return;const d=K.darkness.e,at=lift(f.pos);y.blast(o,at,f.radius*4/d.radius!,f.damage/d.tick!*d.damage!*(o.chips['abyssal-core']?1.2:1),0,d.fx);y.sim.vacuum(o,at,1300);}},

@@ -113,25 +113,25 @@ test('Meteor Strike: bomb field 4.5 m / 70 after .9 s (+.3 within 4 m), then bur
   assert.equal(fire.kind,'fire');near(fire.radius,3.2*(cinder?1.5:1),1e-9);near(fire.until-fire.born,3*(cinder?1.5:1),1e-9);near(fire.damage,12);assert.equal(fire.damageKind,'burn');
   if(dist===10)assert.ok(hits(s,'b','ability')[0].amount!>=40,'centre impact');}finally{s.dispose();}}
 });
-test('Geyser Wall: three geysers 3 m apart across the aim erupt left to right at +.45/.80/1.15 s (+.3 close); knock-up and speedFactor .6 for 1 s',()=>{
+test('Geyser Wall: three 3 m geysers 3 m apart across the aim erupt left to right at +.45/.80/1.15 s (+.3 close); knock-up and speedFactor .6 for 1 s',()=>{
  for(const dist of [10,3]){const {s,a,b}=game('water',dist);try{aim(a,feet(b));release(s,a,'e');const t0=s.time;
   const g=[...s.chaos.fields.values()].filter(f=>f.fx==='geyser-wall').sort((x,y)=>x.until-y.until);assert.equal(g.length,3);
-  const late=dist<4?.3:0;for(const [i,f] of g.entries()){assert.equal(f.kind,'bomb');near(f.until-t0,[.45,.8,1.15][i]+late,1e-9);near(f.radius,2.5);assert.equal(f.cast,g[0].cast);}
+  const late=dist<4?.3:0;for(const [i,f] of g.entries()){assert.equal(f.kind,'bomb');near(f.until-t0,[.45,.8,1.15][i]+late,1e-9);near(f.radius,3);near(f.damage,60);assert.equal(f.cast,g[0].cast);}
   near(g[0].pos.x,3,.05,'left as the caster sees it (facing +z)');near(g[1].pos.x,0,.05);near(g[2].pos.x,-3,.05);near(len(sub(g[2].pos,g[1].pos)),3,.05);
   if(dist<4)continue;let top=0;for(let i=0;i<90;i++){step(s);top=Math.max(top,b.body.translation().y);}
-  const h=hits(s,'b','ability');assert.equal(h.length,1,'only the middle geyser reaches the centre');assert.ok(h[0].amount!>=40,`${h[0].amount}`);near(h[0].time-t0,.8,.02);
-  assert.ok(top>2,`knock-up ${top}`);assert.equal(b.slowed?.kind,'geyser-wall');near(b.slowed!.until,h[0].time+1,1e-9);}finally{s.dispose();}}
+  const h=hits(s,'b','ability'),mid=h.find(x=>Math.abs(x.time-t0-.8)<.02)!;assert.ok(h.every(x=>[.45,.8,1.15].some(t=>Math.abs(x.time-t0-t)<.02)),'hits only at eruptions');assert.ok(mid.amount!>=40,`${mid.amount}`);
+  assert.ok(top>2,`knock-up ${top}`);assert.equal(b.slowed?.kind,'geyser-wall');near(b.slowed!.until,h.at(-1)!.time+1,1e-9);near(motion(s,'b'),.6);}finally{s.dispose();}}
 });
-test('Ball Lightning: 11 m/s orb passes through enemies, zaps at most 2 targets per .3 s for 8 each, bursts 3.5 m on contact or expiry',()=>{
+test('Ball Lightning: 11 m/s orb passes through enemies, zaps at most 2 targets within 7 m per .3 s for 11 each, bursts 3.5 m on contact or expiry',()=>{
  const {s,a,b}=game('lightning',8);try{const c=extra(s,'c',v(2,.9,9)),d=extra(s,'d',v(-2.5,.9,10));aim(a,b.body.translation());release(s,a,'e');
   const shot=[...s.projectiles.values()].find(q=>q.ability?.id==='ball-lightning')!;near(len(shot.vel),11,1e-6);near(shot.radius,.45);near(shot.life,3,.02);
   run(s,200);const zaps=s.events.filter(e=>e.type==='arc'&&e.source==='a'),at=new Map<number,number>();for(const z of zaps)at.set(z.time,(at.get(z.time)||0)+1);
   assert.ok(zaps.length>=4,`${zaps.length} zaps`);for(const [t,n] of at){assert.ok(n<=2,`${n} zaps at ${t}`);}const times=[...at.keys()].sort((x,y)=>x-y);for(let i=1;i<times.length;i++)assert.ok(times[i]-times[i-1]>=.3-1e-9);
-  for(const t of [b,c,d])for(const h of hits(s,t.id,'ability').filter(h=>h.amount!<9))near(h.amount!,8,1e-9);
+  for(const t of [b,c,d])for(const h of hits(s,t.id,'ability').filter(h=>h.amount!<12))near(h.amount!,11,1e-9);
   assert.ok(s.events.some(e=>e.type==='explosion'&&e.message==='ball-lightning'&&e.radius===3.5),'burst');assert.equal([...s.projectiles.values()].filter(q=>q.ability).length,0);
  }finally{s.dispose();}
 });
-test('Black Hole: 6 m vortex, 2.2 s, force 18, 8 DPS, then a 4 m / 55 collapse; escapes (a)-(d); Abyssal Core ×1.25 radius, ×1.2 collapse',()=>{
+test('Black Hole: 6 m vortex, 2.2 s, force 16 (tuned from 18 so case (a) holds for the heaviest roll), 8 DPS, then a 4 m / 55 collapse; escapes (a)-(d); Abyssal Core ×1.25 radius, ×1.2 collapse',()=>{
  // (a) unslowed, 5 m out, rolls outward at .2 s; (b) at the centre, roll i-frames cover the collapse; (c) shackled (.4) at 5 m, rolls at .2 s; (d) idle at 5 m.
  for(const victim of ['pistol','greatsword'] as SpecId[])for(const kase of ['a','b','c','d']){const {s,a,b}=game('darkness',10,{},victim);try{
   const centre=v(0,.02,10);b.body.setTranslation(kase==='b'?v(0,.9,10):v(5,.9,10),true);s.world.step();if(kase==='c'){s.abilities.slow(b,.4,5,'shackles','a');}
