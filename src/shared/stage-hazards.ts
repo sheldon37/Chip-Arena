@@ -29,7 +29,7 @@ export class StageHazards {
   this.hitAt.set(key,s.time+(lava?.25:.65));if(actual>0)s.emit('stage-'+h.kind+'-hit',pos,{target:p.id,amount:actual,color:lava?0xff6933:0xffbb55,message:h.kind.toUpperCase()});
  }} }
  private siren(){const s=this.sim;if(s.phase!=='fight'||s.options.map!=='siren'||!s.bossSong)return;
-  for(const h of sirenStageHazards(s.time-s.bossSong.startedAt)){if(!h.active)continue;for(const p of s.players.values()){if(!p.connected||p.hp<=0)continue;const pos=p.body.translation(),key=h.id+':'+p.id;if(s.time<(this.hitAt.get(key)??-Infinity)||Math.abs(pos.x-h.pos.x)>h.size.x/2+.3||Math.abs(pos.z-h.pos.z)>h.size.z/2+.3||pos.y-.85>h.size.y||pos.y<-.5)continue;
+  for(const h of sirenStageHazards(s.time-s.bossSong.startedAt)){if(!h.active)continue;for(const p of s.players.values()){if(!p.connected||p.hp<=0||this.sim.pve?.hidden(p))continue;const pos=p.body.translation(),key=h.id+':'+p.id;if(s.time<(this.hitAt.get(key)??-Infinity)||Math.abs(pos.x-h.pos.x)>h.size.x/2+.3||Math.abs(pos.z-h.pos.z)>h.size.z/2+.3||pos.y-.85>h.size.y||pos.y<-.5)continue;
    this.hitAt.set(key,s.time+.65);const actual=s.damage(p,h.damage,null,'stage-siren',v(0,1,0),0,undefined,false,true);if(actual>0){if(!s.siren.armored(p)){p.ext.y=h.launch-p.body.linvel().y;p.grounded=false;}s.emit('siren-eruption',h.pos,{radius:h.size.x/2,amount:actual,target:p.id});}
   }}
  }

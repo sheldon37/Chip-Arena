@@ -2,6 +2,7 @@ import {normalMelee} from '../shared/standard-melee.js';
 import type {Snapshot} from '../shared/simulation.js';
 import {Vec,v,clamp} from '../shared/config.js';
 import {NETWORK as N} from '../shared/network-config.js';
+import {interpolatePve} from '../shared/pve/contract.js';
 /** Smooth a server-time timeline, not the irregular arrival timestamps. */
 export class SnapshotBuffer {
  private samples:{state:Snapshot;at:number}[]=[];private gaps:number[]=[];private epoch='';private cursor:number|null=null;private lastRender=0;
@@ -18,7 +19,9 @@ export class SnapshotBuffer {
  sample(current:Snapshot,localId:string,now=performance.now()):Snapshot {
   if(this.samples.length<2)return current;
   const newest=this.samples.at(-1)!,target=newest.state.time+(now-newest.at-this.delayMs)/1000;
-  const dt=this.lastRender?clamp((now-this.lastRender)/1000,0,.05):0;this.lastRender=now;
+  // PvE (S7): below 20 fps a 0.05 s step cap made the presented clock fall further behind every frame (combat numbers
+  // never aged, remote pilots lagged); PvE rooms allow 0.25 s so slow GPUs catch up. PvP keeps the original cap.
+  const dt=this.lastRender?clamp((now-this.lastRender)/1000,0,current.pve?.25:.05):0;this.lastRender=now;
   if(this.cursor===null)this.cursor=target;else this.cursor+=dt*clamp(1+(target-this.cursor)*3,.8,1.2);
   const maximum=newest.state.time+N.extrapolationMaxMs/1000;
   if(this.cursor>maximum){this.cursor=maximum;this.underruns++;}
@@ -28,7 +31,7 @@ export class SnapshotBuffer {
   const mix=(x:Vec,y:Vec,velocity?:Vec)=>v(x.x+(y.x-x.x)*f+(velocity?.x||0)*extra,x.y+(y.y-x.y)*f+(velocity?.y||0)*extra,x.z+(y.z-x.z)*f+(velocity?.z||0)*extra);
   const angle=(x:number,y:number)=>x+Math.atan2(Math.sin(y-x),Math.cos(y-x))*f;
   const quaternion=(x:{x:number;y:number;z:number;w:number},y:typeof x)=>{const sign=x.x*y.x+x.y*y.y+x.z*y.z+x.w*y.w<0?-1:1;const q={x:x.x+(sign*y.x-x.x)*f,y:x.y+(sign*y.y-x.y)*f,z:x.z+(sign*y.z-x.z)*f,w:x.w+(sign*y.w-x.w)*f};const length=Math.hypot(q.x,q.y,q.z,q.w)||1;return {x:q.x/length,y:q.y/length,z:q.z/length,w:q.w/length};};
-  return {...current,time:this.cursor,
+  return {...current,time:this.cursor,...(current.pve?{pve:interpolatePve(a.pve,b.pve,current.pve,f,extra)}:{}),
    players:current.players.map(p=>{const pa=a.players.find(x=>x.id===p.id),pb=b.players.find(x=>x.id===p.id);let frame=p.id!==localId&&pa&&pb?{...p,pos:mix(pa.pos,pb.pos,pb.vel),yaw:angle(pa.yaw,pb.yaw),pitch:pa.pitch+(pb.pitch-pa.pitch)*f}:p;
     const roll=p.id===localId?p.roll:pb?.roll&&pb.roll.at<=this.cursor!?pb.roll:pa?.roll;frame={...frame,roll,animationTime:p.id===localId?newest.state.time+clamp((now-newest.at)/1000,0,N.extrapolationMaxMs/1000):this.cursor!};
     if(p.id!==localId){const reaction=pb?.hitReaction&&pb.hitReaction.at<=this.cursor!?pb.hitReaction:pa?.hitReaction;const stun=(pb?.hitReaction&&pb.hitReaction.at<=this.cursor!||b.time<=this.cursor!)?pb?.hitStunUntil:pa?.hitStunUntil;frame={...frame,hitReaction:reaction,hitStunUntil:stun};}

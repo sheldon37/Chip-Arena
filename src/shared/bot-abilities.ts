@@ -25,7 +25,7 @@ export function botAbilities(s:Simulation,p:Player,input:Input,distance:number,v
   const candidates=([1,2,3,4] as const).filter(slot=>{
    const move=slots[slot-1];if((state.ready?.[move]||0)>s.time)return false;
    if(move==='mark'&&s.siren.marks.some(m=>m.owner===p.id))return false;
-   return ranged?distance<=28:distance<=(slot===1?3:slot===2?3.6:slot===3?6:7);
+   return ranged?distance<=28:distance<=(slot===1?3*(state.boost?.reach??1):slot===2?3.6*(state.boost?.reach??1):slot===3?6*(state.boost?.reach??1):7);
   });
   if(candidates.length){input.sirenAbility=candidates[Math.floor(s.random()*candidates.length)];input.attack=input.dash=false;}
   return;

@@ -18,6 +18,56 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-03 — Claude — PvE Siren TEST BOSS: streams integrated (S7)
+
+- Owner request 2026-10-02 (first PvE mode: Siren TEST BOSS on Ward Zero; spec and design in `docs/PVE.md`).
+- Branch `claude/pve-integration` from `claude/pve-foundation` `2484995` (base `claude/visual-revision` `b6d2f58`,
+  unchanged at integration time). Merged with `--no-ff`, no conflicts: horde `4210963`, director `0d97649`, support
+  `bbb1354`, horde visuals `da32e28`, world visuals `54eb934`, UI `6d62613`. No PR yet; not merged into the shared branch.
+- Streams (all on this branch): F foundation (contract, balance, seeded rng, Ward Zero layout, boss chip track, fixtures,
+  `PveSystem`/`PveVisuals` facades, gated hooks, golden PvP trace); S1 horde (nav flow fields, vent/door/cell entries,
+  swipe/lunge/smash, limbs and gibs, corpses, vent travel, possession, assists); S2 director (opening, 3 waves,
+  intermissions, holds, reveal → intro → boss, floors, possession, grow, no cooldown, victory/defeat); S3 support
+  (money, chip/recruit/med machines, personal picks, rainbow, revive/respawn/self-revive, recruits, party bots); S4 UI
+  (TEST BOSS picker and Host online, HUD money/party/boss bar, personal chip screen with under-attack blink, Siren
+  reveal, results, offline worker room, hello/rejoin, debug ops); S5 horde visuals (crowd LOD and impostors, swipe,
+  crawl, limp, vent climb/dive, door walk-out, black blood and flame); S6 world visuals (vent lids, door leaves, cell
+  gates, machines, pickups, holograms, revive beacons, grown-boss FX scaling).
+- S7 changes: cross-stream requests (test seed-era assertions, door `leaf.z` 26.8, vent exit = climb stand point and
+  `nearVent` 2.0, contract `pendingHiresOf`, renderer → horde graphics mode, `bossIntroExtra` 1.8 s, fixture revive
+  target, `tests/fixtures/pve-horde-60.json`); fixes: stale add body handle after a kill (Rapier panic), flow-field
+  seeds for players in the 2 m service corridors (stalled runs), PvE-only snapshot clock catch-up below 20 fps
+  (combat numbers froze); new debug op `boss-damage:n`; balance retune (waves 22/28/34 at .5/.6/.7/s, shambler 6,
+  runner 4, boss `damageScale` .2-.26, `hpPerExtraMember` .5); new tests `pve-flow`, `pve-integration`, balance
+  harness `npm run test:pve-balance`, real-server suite `run-network.mjs pve`, relay/loopback boss extensions.
+- Systems touch (Astra's files): the foundation's gated hooks in `simulation.ts`, `chaos.ts`, `siren.ts`,
+  `siren-contract.ts`, `siren-motion.ts`, `bot-abilities.ts`, `standard-melee.ts`, `stage-hazards.ts`, `movement.ts`,
+  `intros.ts`, `config.ts`, `content.ts`, `host-room.ts`, `server/index.ts`, client `host-worker.ts`, `browser-room.ts`,
+  `renderer.ts`, `snapshots.ts`, `overhead-health.ts` (edit map in `docs/PVE.md`). S7 added one line each in
+  `renderer.ts` (graphics mode) and `snapshots.ts` (PvE-gated step cap). S1-S6 did not edit `src/shared` outside `pve/`.
+- Animation impacts: PvP unchanged (golden trace identical). PvE adds: add attack hit times from `PVE_TIMING`
+  (swipe/lunge .34 s, smash .43 s) shared by authority and poses; add hitboxes are capsules (crawlers smaller), limb
+  hits by point; add damage per `balance.ts` (retuned); the grown Siren's capsule and reach ×1.5; phase 4 removes boss
+  cooldowns (no Last Laugh floor, D35; concurrency caps kept); humans are frozen while their chip screen is open (D18);
+  networking adds `snapshot.pve`, `{type:'chip',pve}` commands, hello-gated ready and keyed rejoin.
+- Checks (Linux, Node 22.22.2): `check:types` pass; full units 909/896, exactly the 13 baseline failure names;
+  `pvp-golden` identical; `pve-flow` (deterministic victory twice, defeat, debug flow; `PVE_LONG=1` pass); network
+  suites match baselines (default rematch timeout, chaos cosmetics, block 65.5≠77 known; others pass) plus new `pve`
+  pass; siren/killcam/body-damage/https/pve-loopback/pve-relay pass; `test:pve-perf` ok (0.51 ms/step, 49.9 KB p95);
+  server build only the 4 known errors; balance table in `docs/PVE.md`; offline real-app smoke (Playwright/SwiftShader)
+  36 screenshots through victory, Retry and defeat.
+- Not run: native Windows GPU look/fps, real internet multi-machine play, desktop Electron Host online, Site browser
+  hosting, hardware audio, hosted two-browser smoke (the client cannot open test rooms, so no debug ops), Node 24.19.
+- Risks: balance is harness-tuned (bot humans do not dodge; boss mostly wins against them); melee bots weak in crowds;
+  large hordes on low-end GPUs (R1); open chip screen can cover the boss intro if never picked.
+- Final independent review (fuzzed 15 seeds × up to 10 min, directed sims, real-app PvE→PvP, network suites): one
+  blocking bug fixed — Retry soft-locked in weapon select when a party member had disconnected (`start()` now drops
+  disconnected humans in PvE; regression test `tests/pve-retry-disconnect.test.ts`). After the fix: full units 910/897,
+  exactly the 13 baseline names; types pass. Known minor: a cinematic hold cancels an in-progress revive channel
+  (no charge; press F again). The Siren chip tray (smile, chip card, ??? cards) was confirmed rendering in the app.
+- Status: implemented on branch. Next: PR into `claude/visual-revision`, merge and test-channel publication
+  (owner-authorized 2026-10-02: "When this is complete, please merge and publish to test").
+
 ## 2026-10-02 — Claude — chest-up chip draft merge and test-channel publication
 
 - Owner asked to merge and publish the chip-selection change for the in-game Update button.

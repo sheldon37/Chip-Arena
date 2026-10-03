@@ -86,4 +86,6 @@ Windows validation and desktop distribution cutover remain separate work.
   `5af891c` (PR #24); test content `0.2.58d079f38769` at channel `d5f3714`. Native look/frame-rate review remains.
 - ROUNDS-style chest-up chip draft and Siren minion design (zombie Pilots, not spawned yet; docs/SIREN-MINIONS.md)
   merged at `fd2f745` (PR #26); test content `0.2.177d472cf940` at channel `7a9ff3d`. Native review remains.
-  Next: Siren PvE TEST BOSS mode (owner request 2026-10-02), in progress on a Claude task branch.
+- Siren PvE TEST BOSS mode (owner request 2026-10-02): all streams integrated and verified on
+  `claude/pve-integration` (2026-10-03; see `docs/PVE.md`, DEV_LOG). Not merged or released; next: PR into
+  `claude/visual-revision`, merge, test-channel publication. Native Windows review and owner balance playtest remain.

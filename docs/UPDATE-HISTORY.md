@@ -194,6 +194,22 @@ damage, cooldowns, movement rules, networking, saves and access control are unch
 - Released to TEST only: content `0.2.177d472cf940` (channel `7a9ff3d`); testers press Update. Not a live
   release. Native Windows review remains.
 
+## 2026-10-03 — Siren TEST BOSS (first PvE mode) — implemented on branch, not merged or released
+
+- A TEST BOSS button opens a boss picker (the Siren), offline or hosted online. On Ward Zero the party survives three
+  waves of zombie-Pilot minions (swipe, lunge and smash attacks; they climb out of vents and walk out of doors and cells;
+  limbs come off, black blood and flame; the head kills them), then the Siren's fixed chip track plays out: "The Siren
+  is here..." spawns it after the normal intro and the animated THE SIREN title, "Find me..." hides it inside a minion,
+  "Am I beautiful?" grows it, "Fine then... I'll play" removes every cooldown. Victory and defeat result screens with
+  portraits, chips and stats; Retry and Return to Menu.
+- Money from kills, chip dispensers (spinning chips in rarity colours, rainbow = 8 max-rarity offers), recruit pods
+  (medic, damage dealer, tank), med stations, paid revives, free respawns at wave clears and boss phases, one solo
+  self-revive. Personal chip screens (frozen while open, red under-attack warning, Choose later); party HUD bottom
+  left; boss bar top centre.
+- Source: `claude/pve-integration` (streams merged from `claude/pve-foundation` `2484995`). Tests: full suite only the
+  recorded 13 Node 22 baseline failures, PvP golden trace unchanged, new flow/network/balance checks. Native Windows
+  review and the owner's balance playtest remain. Not released.
+
 ## Continuing with Claude or Astra
 
 Read CLAUDE.md (which imports AGENTS.md), PROJECT_STATE, recent DEV_LOG entries and
