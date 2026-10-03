@@ -60,8 +60,13 @@ containing an entry; no self-referential commit hash is required.
   hosting, hardware audio, hosted two-browser smoke (the client cannot open test rooms, so no debug ops), Node 24.19.
 - Risks: balance is harness-tuned (bot humans do not dodge; boss mostly wins against them); melee bots weak in crowds;
   large hordes on low-end GPUs (R1); open chip screen can cover the boss intro if never picked.
-- Status: implemented on branch; not merged; not released. Next: review, PR into `claude/visual-revision`, merge and
-  test-channel publication (owner-authorized steps, orchestrator).
+- Final independent review (fuzzed 15 seeds × up to 10 min, directed sims, real-app PvE→PvP, network suites): one
+  blocking bug fixed — Retry soft-locked in weapon select when a party member had disconnected (`start()` now drops
+  disconnected humans in PvE; regression test `tests/pve-retry-disconnect.test.ts`). After the fix: full units 910/897,
+  exactly the 13 baseline names; types pass. Known minor: a cinematic hold cancels an in-progress revive channel
+  (no charge; press F again). The Siren chip tray (smile, chip card, ??? cards) was confirmed rendering in the app.
+- Status: implemented on branch. Next: PR into `claude/visual-revision`, merge and test-channel publication
+  (owner-authorized 2026-10-02: "When this is complete, please merge and publish to test").
 
 ## 2026-10-02 — Claude — chest-up chip draft merge and test-channel publication
 
