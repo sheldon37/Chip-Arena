@@ -14,6 +14,7 @@ import {ABILITY_HANDLERS,type AbilityHandler,type CastContext} from '../src/shar
 import {GUN_KITS} from '../src/shared/gun-kit.js';
 import {MAGIC_KITS} from '../src/shared/magic-kit.js';
 import {PONG} from '../src/shared/pong.js';
+import {MAGIC_CHIPS} from '../src/shared/magic-chips.js';
 import {Predictor} from '../src/client/prediction.js';
 import {controlHints} from '../src/client/control-hints.js';
 import {abilitySlots,abilitySlotsHtml} from '../src/client/ability-hud.js';
@@ -276,12 +277,14 @@ test('prediction: black-hole pull parity < .05 m over 120 ticks for an ability b
  assert.ok(chip.worst<.05,`chip pull parity ${chip.worst}`);assert.ok(chip.moved>.5);
 });
 
-// ---- pong extraction ------------------------------------------------------------------------------------------------
-test('pong extraction: fixed 40 % speed, endless life, no drop, the next shot replaces the ball, wall and bounds ricochets',()=>{
- const {s,a}=game('pistol',{pong:1});try{a.stats=statsFor(a.chips,a.spec);tick(s,a,{attack:true,pitch:.02});const ball=[...s.projectiles.values()][0];assert.ok(ball?.pong);
-  near(len(ball.vel),WEAPONS.pistol.speed*PONG.speedScale,1e-9);assert.ok(ball.life>1e8);assert.ok(ball.distanceLeft>1e8);assert.equal(ball.gravity,0);assert.equal(ball.homing,0);assert.equal(ball.returning,false);
-  run(s,a,30);assert.equal(s.projectiles.size,1);near(len(ball.vel),WEAPONS.pistol.speed*PONG.speedScale,1e-9,'speed renormalised');run(s,a,30,{attack:true});assert.equal([...s.projectiles.values()].filter(q=>q.originOwner==='a').length,1,'replaced');
-  s.events=[];const b=[...s.projectiles.values()][0];b.pos=v(31.9,3,0);b.vel=v(PONG.speedScale*52,0,0);run(s,a,2);assert.ok(events(s,'ricochet').length>=1);assert.ok(b.vel.x<0,'bounds bounce');
+// ---- pong hooks -----------------------------------------------------------------------------------------------------
+// Rally Pong v2 (chips stream, design §9.2/§9.3) replaced the extracted 40 % endless single ball on purpose; this case
+// keeps checking the simulation → pong.ts hook path with the v2 contract. Rallies are covered in rarity-combat.test.ts.
+test('pong hooks: clamped no-drop balls with a 3.5 s life, several balls in play, wall and bounds ricochets',()=>{
+ const {s,a,b}=game('pistol',{pong:1});try{a.stats=statsFor(a.chips,a.spec);b.body.setTranslation(v(20,.9,-20),true);tick(s,a,{attack:true,pitch:.02});const ball=[...s.projectiles.values()][0];assert.ok(ball?.pong);
+  near(len(ball.vel),Math.min(PONG.maxSpeed,Math.max(PONG.minSpeed,WEAPONS.pistol.speed)),1e-9);assert.ok(ball.life<=PONG.life);assert.ok(ball.distanceLeft<=PONG.travel);assert.equal(ball.gravity,0);assert.equal(ball.homing,0);assert.equal(ball.returning,false);
+  run(s,a,30);assert.equal(s.projectiles.size,1);near(len(ball.vel),Math.min(PONG.maxSpeed,Math.max(PONG.minSpeed,WEAPONS.pistol.speed)),1e-9,'speed renormalised');run(s,a,30,{attack:true});assert.ok([...s.projectiles.values()].filter(q=>q.originOwner==='a').length>=2,'several balls');
+  s.events=[];const q=[...s.projectiles.values()][0];q.pos=v(31.9,3,0);q.vel=v(52,0,0);run(s,a,2);assert.ok(events(s,'ricochet').length>=1);assert.ok(q.vel.x<0,'bounds bounce');
  }finally{s.dispose();}
 });
 
@@ -309,7 +312,8 @@ test('ability HUD: slot views and markup on capable hosts only',()=>{
 
 // ---- chips plumbing ------------------------------------------------------------------------------------------------
 test('chips: eligibility tags per kit and symmetric excludes; no shipped chip uses them yet (offers stay identical)',()=>{
- assert.ok(CHIPS.every(c=>!c.excludes&&!c.prose&&!c.tags.some(t=>['ability','spellcraft','gunplay'].includes(t)||t.startsWith('spell-'))));
+ // The chips stream's MAGIC_CHIPS and Rally Pong v2 (design §8, §9.2) are the intended users; no other chip uses them.
+ assert.ok(CHIPS.filter(c=>!MAGIC_CHIPS.includes(c)&&c.id!=='pong').every(c=>!c.excludes&&!c.prose&&!c.tags.some(t=>['ability','spellcraft','gunplay'].includes(t)||t.startsWith('spell-'))));
  const probe={id:'probe-a',rarity:'common' as const,name:'A',description:'',tags:['spellcraft'],max:1,icon:'+',effects:[],excludes:['probe-b']},other={id:'probe-b',rarity:'common' as const,name:'B',description:'',tags:['spell-fire'],max:1,icon:'+',effects:[]},gun={...other,id:'probe-c',tags:['gunplay']};
  CHIPS.push(probe,other,gun);try{
   const ids=(spec:SpecId,held:Record<string,number>={})=>eligibleChips(spec,held).map(c=>c.id).filter(id=>id.startsWith('probe-'));
