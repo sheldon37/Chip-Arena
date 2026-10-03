@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Simulation,initPhysics,type PlayerView,type Snapshot} from '../src/shared/simulation.js';
+import {Simulation,initPhysics,type PlayerView,type Snapshot,type GameEvent} from '../src/shared/simulation.js';
+import {fakeAudio} from './helpers/fake-audio.js';
 import {SnapshotBuffer} from '../src/client/snapshots.js';
 import {NETWORK} from '../src/shared/network-config.js';
 import {v,type SpecId} from '../src/shared/config.js';
@@ -132,4 +133,15 @@ test('remote teleport snap: a 9 m jump within one snapshot interval renders at t
  assert.equal(render([at(1,.95,0),at(2,1,0),at(3,1.05,2,[{id:9,type:'teleport',time:1.03,pos:v(2,1,0),source:'them'}]),at(4,1.1,2)],1.02),2);
  // Running (6.8 m/s) keeps the interpolation.
  const x=render([at(1,.95,0),at(2,1,.34),at(3,1.05,.68),at(4,1.1,1.02)],1.025);assert.ok(x>.34&&x<.68,'running lerps: '+x);
+});
+
+test('audio: nova (panic-button) and arc (with and without from/radius) keep the lightning cue; ability tags map; legacy push/pull are silent',()=>{
+ const f=fakeAudio(),s0=new Simulation({sandbox:true});s0.addPlayer('me','Me','ranged',null,'#fff',{});s0.resetRound();s0.phase='fight';const base=s0.snapshot();s0.dispose();let id=1,t=30;
+ const play=(e:Partial<GameEvent>)=>{t+=1;f.clock.now=t;f.reap();const n=f.voices.length;f.audio.update({...base,time:t,events:[{id:id++,time:t,pos:v(0,1,2),...e} as GameEvent]} as Snapshot,'me',0);return f.voices.slice(n).map(x=>x.name).filter(n=>n!=='go');};
+ assert.deepEqual(play({type:'nova',message:'panic-button',source:'x'}),['lightning']);
+ assert.deepEqual(play({type:'arc',source:'x'}),['lightning']);assert.deepEqual(play({type:'arc',source:'x',from:v(3,1,2)}),['lightning']);assert.deepEqual(play({type:'arc',radius:4}),['lightning']);
+ assert.deepEqual(play({type:'push'}),[]);assert.deepEqual(play({type:'pull'}),[]);
+ assert.deepEqual(play({type:'explosion',message:'meteor-strike'}),['explosion','stone']);assert.deepEqual(play({type:'explosion',message:'frag'}),['explosion']);assert.deepEqual(play({type:'explosion',message:'shackles'}),['darkness','spike-rise']);
+ assert.deepEqual(play({type:'ability',message:'rocket',spec:'machinegun'}),['arcade-heavy']);assert.deepEqual(play({type:'ability-cast',message:'singularity',spec:'darkness'}),['darkness']);
+ assert.deepEqual(play({type:'teleport',message:'blink-strike',source:'x'}),['electric-hook']);
 });
