@@ -14,7 +14,7 @@ const bubbleMaterial=new T.MeshBasicMaterial({color:0x6ec134,transparent:true,op
 const rimMaterial=new T.MeshBasicMaterial({color:0x94e94d,transparent:true,opacity:.75,side:T.DoubleSide,depthWrite:false});
 const glintMaterial=new T.MeshBasicMaterial({color:0xe0ffbd,transparent:true,opacity:.8,depthWrite:false});
 const fraction=(n:number)=>n-Math.floor(n);
-/** Ability statuses (§11.2, V): voxel water droplets for slows, violet shackles, and a red-white Orbital Mark reticle. */
+/** Ability statuses (§11.2): slow droplets, shackle cuffs, Orbital Mark reticle. */
 const cubeGeometry=new T.BoxGeometry(1,1,1),slowMaterial=new T.MeshBasicMaterial({color:0x9ff0ff}),shackleMaterial=new T.MeshBasicMaterial({color:0xb45cff}),markMaterial=new T.MeshBasicMaterial({color:0xff4b3a});
 type AbilityStatus={slowed?:PlayerView['slowed'];mark?:FieldView};
 class StatusRig {
@@ -27,10 +27,8 @@ class StatusRig {
  }
  update(statuses:PlayerView['statuses'],time:number,camera:T.Camera,quality:number,active:boolean,ability:AbilityStatus={}){
   const sl=ability.slowed,shackled=sl?.kind==='shackles';this.slow.visible=active&&!this.firstPerson&&!!sl&&sl.until>time;const f=ability.mark;this.mark.visible=active&&!this.firstPerson&&!!f&&f.until>time;
-  // Slows: droplets circle the shins and drip; Shadow Shackles: two cuffs of violet voxels clamp the ankles.
   if(this.slow.visible)this.slow.children.forEach((m,n)=>{const o=m as T.Mesh,a=n*Math.PI/5+time*(shackled?1.2:2.4),cuff=n%2?1:-1;o.material=shackled?shackleMaterial:slowMaterial;
    if(shackled){o.position.set(cuff*.14+Math.cos(a)*.13,-.8+Math.sin(time*3+n)*.015,Math.sin(a)*.13);o.scale.set(.1,.08,.1);}else{const u=fraction(time*.9+n*.1);o.position.set(Math.cos(a)*.42,-.25-u*.6,Math.sin(a)*.42);o.scale.setScalar(.11*(1-u*.5));}o.rotation.set(time+n,a,0);});
-  // Orbital Mark: four L-brackets close on the head as the strike locks, and flash red-white once it has.
   if(f&&this.mark.visible){const lock=f.lockAt??f.until,u=Math.max(0,Math.min(1,(lock-time)/Math.max(.01,lock-f.born))),r=.32+u*.35,locked=time>=lock;
    this.mark.children.forEach((m,n)=>{const k=n>>1,a=k*Math.PI/2+time*(locked?0:1.6),side=n%2?.12:0;m.position.set(Math.cos(a)*r-Math.sin(a)*side,.62+(n%2?0:.12),Math.sin(a)*r+Math.cos(a)*side);m.rotation.y=-a;m.scale.set(n%2?.2:.06,n%2?.06:.2,.06);m.visible=!locked||Math.sin(time*40)>-.4;});}
   this.fire.visible=active&&statuses.some(s=>s.element==='fire'&&s.remaining>0);this.poison.visible=active&&statuses.some(s=>s.element==='poison'&&s.remaining>0);

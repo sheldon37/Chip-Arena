@@ -7,7 +7,7 @@ import {createCharacterRig,CharacterRig,rigBox} from './character-rig.js';
 const COLORS:Record<string,number>={'black-hole':0xab67ff,acid:0xb8f53c,fire:0xff672d,frost:0x8fdfff,time:0x83aeff,repulsion:0xff728f,heal:0x79ffa9,storm:0xddadff,bomb:0xffa141,implosion:0xb068ff,mine:0xff515d};
 /** Ability field telegraphs (§11.2): enemy warm red, own and allied cool cyan. */
 export const TELEGRAPH={enemy:0xff5a46,ally:0x55dcff} as const;
-/** Spacing of the voxel dashes that mark a field's gameplay radius (no flat ring or disc decal, V sweep §19.2). */
+/** Spacing of the voxel dashes on a field's gameplay radius (§19.2). */
 export const RIM_SPACING=.42;
 const box=new T.BoxGeometry(1,1,1),dome=new T.SphereGeometry(1,14,6,0,Math.PI*2,0,Math.PI/2),edges=new T.EdgesGeometry(dome,25),mats=new Map<string,T.Material>(),dummy=new T.Object3D();
 function mat(color:number,opacity=1,line=false){const key=color+':'+opacity+line;let m=mats.get(key);if(!m)mats.set(key,m=line?new T.LineBasicMaterial({color,transparent:true,opacity}):new T.MeshBasicMaterial({color,transparent:opacity<1,opacity,depthWrite:opacity>=1}));return m;}
@@ -24,8 +24,7 @@ export class ChaosVisuals {
  /** `me` (the local pilot) picks the enemy/ally tint of ability telegraphs; without it they keep the field colour. */
  update(s:Snapshot,me?:string){const live=new Set((s.fields||[]).map(f=>f.id));for(const [id,g]of this.fields)if(!live.has(id)){this.scene.remove(g);g.traverse(o=>{if(o instanceof T.InstancedMesh)o.dispose();});this.fields.delete(id);}
  for(const f of s.fields||[]){let g=this.fields.get(f.id);if(!g){g=new T.Group();const color=telegraphColor(f,s,me),ability=!!f.fx&&ABILITY_FX.has(f.fx);g.add(rim(f.radius,color));
- // Voxel cores (shared geometry and materials): the black hole's dark cube and accretion ring, chip bombs and mines,
- // and the Reverse Grenade's spinning gravity bomb whose orbit tightens as the fuse burns.
+ // Voxel cores: black hole, chip bombs and mines, and the Reverse Grenade's spinning gravity bomb.
  if(f.kind==='black-hole'){cube(g,0x05020c,.62,.7);cube(g,0xf3e2ff,.3,.7);for(let n=0;n<10;n++)cube(g,color,.13,.7).userData.disc=n;}
  else if(!ability&&['bomb','mine','implosion'].includes(f.kind)&&!['artillery','thunderstep','comet'].includes(f.fx||'')){const mine=f.kind==='mine',body=cube(g,f.kind==='implosion'?0x2a0f46:0x3a3434,mine?.5:.38,mine?.1:.4);if(mine)body.scale.y=.16;body.userData.body=1;cube(g,0xffffff,.1,mine?.22:.66).userData.fuse=1;if(f.kind==='implosion')for(let n=0;n<6;n++)cube(g,color,.12,.4).userData.orbit=n;}
  else if(f.kind==='time'||f.kind==='repulsion'){// A faceted dome at exactly the gameplay radius: the bubble reads as a volume, not a decal.

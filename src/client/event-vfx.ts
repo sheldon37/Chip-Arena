@@ -2,8 +2,7 @@
 // short-lived particles, moved verbatim from renderer.ts by FOUNDATION; owned by the CHIP VFX SWEEP (V) afterwards. V edits
 // only the chip, ability and legacy-E branches; the stage, `leet-*`, Siren and DEV branches stay byte-identical.
 // The renderer keeps the event loop header, `lastEvent`, recordBlockHit, the delegations and the hit/shake flags.
-// V sweep (§19.2, §13): chip and ability events draw pooled ChipBlasts voxels only (no per-event meshes or flat rings);
-// the chip pulse rings formerly in chip-effects.ts live here as voxel impacts; the legacy E push/pull visuals are gone.
+// V sweep (§19.2): chip and ability events draw pooled ChipBlasts voxels only; legacy E push/pull visuals are gone.
 import * as T from 'three';
 import {BurstPool} from './burst-pool.js';
 import {ChipBlasts,blastStyle,blastTint} from './chip-blasts.js';
@@ -32,7 +31,7 @@ export class EventVfx{
   if(t==='critical')hit(0xffd66c,1.5);if(t==='catch')hit(0x7fffe0,.9);if(t==='split')hit(0x96ffb7,1.1);if(t==='meleeRebound')hit(0x91f7eb,event.radius||1.5);if(t==='slowed')hit(event.message==='shackles'?0xa04dff:0x8de9ee,.8);
   if(t==='ricochet'){if(event.message==='rally')this.rally(event,state);else hit(c.pong?0xff5269:0xffcc49,c.pong?1.2:.8);}
   if(t==='arc'){if(event.from)b.line(event.pos,event.from,0xffffff,event.color||0xc4b4ff,o.quality);else if(!event.radius)for(let i=0;i<4;i++){const a=i*1.57+.4;b.line(event.pos,{x:event.pos.x+Math.cos(a),y:event.pos.y+.5,z:event.pos.z+Math.sin(a)},0xffffff,0xc4b4ff,o.quality);}}
-  // The lightning legacy E's `nova` keeps its burst until INTEGRATION removes that E; panic-button's nova is a ChipBlasts blast.
+  // The legacy lightning E's nova keeps its burst until INTEGRATION removes that E.
   if(t==='nova'&&event.message!=='panic-button')this.burst(event.pos,event.color||0x8bf0ff,28,8);return out;}
  /** Pong rally (contract from pong.ts): a voxel paddle flash at the bounce point and a 0.15 s streak toward the rally target. */
  private rally(e:GameEvent,state:Snapshot){const from=e.from||e.pos,to=state.players.find(p=>p.id===e.target)?.pos,d=to?{x:to.x-e.pos.x,y:to.y+.3-e.pos.y,z:to.z-e.pos.z}:{x:e.pos.x-from.x,y:e.pos.y-from.y,z:e.pos.z-from.z},l=Math.hypot(d.x,d.y,d.z)||1,k=Math.min(6,l)/l,q=this.options().quality;

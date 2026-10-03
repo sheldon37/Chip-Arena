@@ -17,7 +17,7 @@ export type BlastStyle='fire'|'shock'|'implosion'|'frost'|'toxic'|'void'|'nova'|
 /** Seconds the shock front takes to reach the gameplay radius. The front ends exactly at that radius. */
 export const BLAST_FRONT_SECONDS=.3;
 export const BLAST_CAPACITY={solid:900,glow:700,lights:3} as const;
-/** Voxels every blast puts on its gameplay radius however full the pools are (§13.3): radius layers steal the oldest. */
+/** Voxels every blast puts on its gameplay radius however full the pools are (§13.3). */
 export const BLAST_MIN_VOXELS=16;
 export type Tint={core:number;hot:number;cool:number};
 
@@ -46,7 +46,7 @@ export function blastStyle(message:string|undefined):BlastStyle{
  }
 }
 const TINTS:Record<string,number[]>={frag:[0xfff3e2,0xcfc8bc,0x676b72],'tidal-wave':[0xeaffff,0x8de9ee,0x2b8bd6],'geyser-wall':[0xf2ffff,0x9cefff,0x2a9ae6],'orbital-mark':[0xffffff,0xff9a8a,0xe8323a],'blink-strike':[0xf2ffff,0x9ffcff,0x1fc4e6],'ball-lightning':[0xfbf0ff,0xd7a6ff,0x8a4cff],'flame-lance':[0xffffff,0xfff0b0,0xffc23a]};
-/** Ability tags that share a style read differently (§13.1): kinetic grey vs water blue, shock red-white / cyan / violet, white-gold fire. */
+/** Distinct looks for ability tags that share a style (§13.1). */
 export function blastTint(tag?:string):Tint|undefined{const t=TINTS[tag||''];return t&&{core:t[0],hot:t[1],cool:t[2]};}
 
 /** Small deterministic generator so the module never depends on Math.random (repeatable lab strips and tests). */
@@ -103,7 +103,7 @@ export class ChipBlasts{
   this.solid=new VoxelPool(BLAST_CAPACITY.solid,false,'chip-blast-voxels');this.glow=new VoxelPool(BLAST_CAPACITY.glow,true,'chip-blast-glow');scene.add(this.solid.mesh,this.glow.mesh);
   for(let i=0;i<BLAST_CAPACITY.lights;i++){const light=new T.PointLight(0xffffff,0,8,2);light.name='chip-blast-light';scene.add(light);this.flashes.push({light,at:-1e9,peak:0,life:.3});}
  }
- /** Pool pressure: blasts keep full detail below ~40% occupancy and thin out above it; ambient field emitters stop at 70%. */
+ /** Fullest pool's fill ratio: blasts thin out above ~40%, ambient field emitters stop at 70%. */
  private occupancy(){return Math.max(this.solid.count/this.solid.capacity,this.glow.count/this.glow.capacity);}
  private flash(pos:Vec,color:number,radius:number,peak:number,life:number,compat:boolean,quality:number,minor=false){if(compat||quality<.5)return;const f=minor?this.flashes.find(f=>this.time-f.at>=f.life):this.flashes[this.nextLight++%this.flashes.length];if(!f)return;f.light.position.set(pos.x,pos.y+.4,pos.z);f.light.color.setHex(color);f.light.distance=Math.max(4,radius*3);f.at=this.time;f.peak=peak;f.life=life;}
  /** Sphere of directions, roughly even (golden spiral) with jitter. */
@@ -125,11 +125,7 @@ export class ChipBlasts{
  /** Pong rally "paddle flash": a 4×4 voxel square at the bounce point, facing and drifting along the rally direction. */
  paddle(at:Vec,dir:Vec,color:number,quality:number){if(quality<=0)return;const l=Math.hypot(dir.x,dir.y,dir.z)||1,nx=dir.x/l,ny=dir.y/l,nz=dir.z/l;let ux=-nz,uz=nx;const h=Math.hypot(ux,uz);if(h<.01){ux=1;uz=0;}else{ux/=h;uz/=h;}const vx=-ny*uz,vy=nz*ux-nx*uz,vz=ny*ux;
   for(let i=0;i<4;i++)for(let j=0;j<4;j++){const a=(i-1.5)*.16,b=(j-1.5)*.16;this.glow.spawn(at.x+ux*a+vx*b,at.y+vy*b,at.z+uz*a+vz*b,nx*1.5,ny*1.5,nz*1.5,.15,.15,.06,0xffffff,color);}}
- /**
-  * Small volumetric impact for single-target chip procs, splashes and field arrivals: a voxel front that ends on
-  * `radius` (a sphere, or a ground ring plus hemisphere when `ground`), a hot core, debris and rising motes, and a
-  * light only when one is idle. Counts thin out under pool pressure; nothing is forced.
-  */
+ /** Small volumetric impact (chip procs, splashes, field arrivals): a voxel front ending on `radius`, core, debris, motes, an idle light. */
  impact(pos:Vec,radius:number,hot:number,opts:{quality:number;compat?:boolean;ground?:boolean;cool?:number}){
   const cool=opts.cool??tmpColor.setHex(hot).multiplyScalar(.45).getHex(),q=Math.max(0,Math.min(1,opts.quality))*(opts.compat?.5:1)*Math.max(.15,Math.min(1,(1-this.occupancy())*1.6));if(q<=.02)return;
   const R=Math.max(.3,radius),rnd=this.random,n=(b:number)=>Math.max(2,Math.round(b*q*Math.min(1.5,.6+R*.2))),T0=BLAST_FRONT_SECONDS,g=pos.y-.95,y0=opts.ground?g+.12:pos.y;
@@ -192,12 +188,8 @@ export class ChipBlasts{
   return this.solid.spawned+this.glow.spawned-spawned;
  }
  /**
-  * Ambient emitters for live authoritative fields (storms strike, acid bubbles, fire licks, frost shards, black holes
-  * swallow, bombs fizz). Every field also gets rising telegraph motes exactly on its gameplay radius and, when it
-  * appears, a volumetric arrival impact sized to that radius (V sweep, §19.2). Ability fields draw their §13.1
-  * emitters: Orbital Mark column, shrinking ring and lock flash; Meteor Strike's falling meteor; Geyser rings that fill
-  * as they arm; the Singularity spiral. Rate-limited per field, by quality and by pool occupancy (ambient work stops at
-  * 70% so blasts always have room); everything stays inside the field's gameplay radius.
+  * Ambient emitters for live authoritative fields, telegraph motes on the exact gameplay radius, an arrival impact sized
+  * to it (§19.2) and the §13.1 ability emitters. Rate-limited per field, by quality and by pool occupancy.
   */
  field(f:FieldView,time:number,quality:number,compat=false){
   const fx=f.fx||'',q=Math.max(0,Math.min(1,quality))*(compat?.4:1)*Math.max(0,Math.min(1,(.7-this.occupancy())*3)),meteor=fx==='artillery'||fx==='meteor-strike',fused=f.kind==='bomb'&&(meteor||fx==='thunderstep'||fx==='comet'||fx==='orbital-mark'||fx==='geyser-wall');if(q<=0)return;

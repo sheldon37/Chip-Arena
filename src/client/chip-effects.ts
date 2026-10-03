@@ -4,11 +4,7 @@ import type {Snapshot,GameEvent} from '../shared/simulation.js';
 const ring=new T.TorusGeometry(1,.035,4,18),cone=new T.ConeGeometry(1,1,5),orb=new T.SphereGeometry(1,8,5),cube=new T.BoxGeometry(1,1,1),materials=new Map<number,T.MeshBasicMaterial>();
 function mat(c:number){if(!materials.has(c))materials.set(c,new T.MeshBasicMaterial({color:c}));return materials.get(c)!;}
 function part(g:T.Object3D,shape:T.BufferGeometry,c:number,x:number,y:number,z:number,sx:number,sy:number,sz:number){const m=new T.Mesh(shape,mat(c));m.position.set(x,y,z);m.scale.set(sx,sy,sz);g.add(m);return m;}
-/**
- * Per-projectile chip decorations (shared geometry, built once per shot). Geometry, colors, and path shapes communicate
- * the effect; no cosmetic part becomes a hitbox. Chip event visuals (pulses) are ChipBlasts voxel impacts in EventVfx
- * since the V sweep (§19.2); `pulses` stays empty for callers that still read it.
- */
+/** Geometry, colors, and path shapes communicate the effect; no cosmetic part becomes a hitbox. Chip event visuals are voxels in EventVfx (§19.2); `pulses` stays empty. */
 export class ChipEffects{
  shots=new Map<string,T.Group>();readonly pulses:{mesh:T.Mesh}[]=[];
  constructor(private scene:T.Scene){}
