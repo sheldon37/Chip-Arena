@@ -473,9 +473,7 @@ start it from the top. Music volume and mute apply. PvE also pre-decodes the bos
 (`BossTheme.preload`) so it starts on its first frame (offset 0) at the intro instead of after a mid-intro decode. A
 failed load falls back to the normal rotation. Server, wire and simulation are unchanged.
 
-**Open (publication blocker):** with the 4.1 MB track the gzip update payload is about 26.1 MiB, so
-`scripts/package-update.mjs` (end of `npm run build`) refuses it (hosting limit 25 MiB per file; 22.2 MiB without the
-track). The owner decides between a smaller encode/trim of the track (about 2.7 MB fits) or another payload change.
+**Size:** the owner's track is 2:53; it was re-encoded from ~190 kbps VBR (4.1 MB) to 128 kbps CBR without cover art (2.77 MB). The gzip update payload is now 26,022,078 bytes (24.8 MiB), under the 25 MiB per-file hosting limit with little headroom: future large assets need a payload budget.
 
 ## Rendering constants (S5 and S6 mirrors)
 

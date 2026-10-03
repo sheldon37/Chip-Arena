@@ -35,10 +35,8 @@ containing an entry; no self-referential commit hash is required.
   victories (S7 table: 13/60), money at boss h=1 pistol 619 / rifle 317. Real app (Vite, offline TEST BOSS, SwiftShader):
   stage track playing through specialization/intro/countdown/fight; paused and rewound the tick the Siren song started
   (boss buffer started once, offset 0); Tab board, chip screen green/red stat lines, one F tap revived a party bot.
-- **Blocker for publication:** `npm run build` now fails in `scripts/package-update.mjs` ("exceeds the hosting 25 MiB
-  per-file limit"): estimated gzip payload 26.10 MiB with the track vs 22.19 MiB without (27.4 MB is under the 32 MB
-  updater cap, but the 25 MiB hosting check trips first). Needs an owner decision: re-encode (≈40 kbps) or trim the
-  track to about 2.7 MB, or another payload change. The owner's file was not altered.
+- Size: the track is 2:53 (not 8.5 min; the header claimed 64 kbps but it is ~190 kbps VBR). Re-encoded to 128 kbps CBR without
+  cover art (2.77 MB); `npm run build` passes with a 26,022,078-byte (24.8 MiB) payload, under the 25 MiB hosting limit.
 - Status: implemented on branch; not merged; not released.
 
 ## 2026-10-03 — Claude — PvE playtest fixes: more money, instant revive

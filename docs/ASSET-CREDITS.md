@@ -31,8 +31,9 @@ verified sample-aligned analysis copy); no fixed-BPM beat calculation.
 ## Restricted Zone Pulse
 
 `public/music/restricted-zone-pulse.mp3` ("Restricted Zone Pulse") is the owner's
-own supplied recording (2026-10-03), copied without transcoding: MP3 64 kbps,
-48 kHz, 4,113,904 bytes. SHA256:
-`7d3bc7120ad7508c6e6d8a50bfe1957f6ef038bc0459c726fb2e0d788a26f349`.
+own supplied recording (2026-10-03), 2:53. Re-encoded from the supplied ~190 kbps VBR file
+(4,113,904 bytes, SHA256 `7d3bc7120ad7508c6e6d8a50bfe1957f6ef038bc0459c726fb2e0d788a26f349`) to MP3 128 kbps CBR,
+48 kHz, cover art removed, so the update fits the 25 MiB hosting limit (owner-approved fit, full length kept):
+2,766,060 bytes, SHA256 `badd631e1806a462bedf5bee588f73c52e9a2c34e997fcdef789906801ce90dc`.
 It is the PvE (Siren TEST BOSS, Ward Zero) stage track until the Siren spawns and
 is not part of the PvP music rotation.
