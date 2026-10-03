@@ -65,6 +65,9 @@ try:
  for name,cmd in [('windows-package',[npm,'run','package:windows']),('desktop-package',[npm,'run','package:desktop'])]:
   if not run(name,cmd):raise RuntimeError(name+' failed')
  if not run('isolated-test-package',[sys.executable,str(tool/'make-test-package.py'),str(out/'packages/Chip-Arena-Desktop.zip'),str(feed),str(out/'Chip-Arena-TEST-ONLY.zip'),str(source)]+(['--channel',a.channel] if a.channel else [])):raise RuntimeError('Test package creation failed')
+ # The seed ZIP may be shared and the channel is public: neither may carry the editable source.
+ for name,cmd in [('source-privacy-zip',[sys.executable,str(tool/'source_privacy.py'),str(out/'Chip-Arena-TEST-ONLY.zip')]),('source-privacy-feed',[node,str(tool/'source-privacy.mjs'),str(feed)])]:
+  if not run(name,cmd,120):raise RuntimeError('A TEST-ONLY artifact contains game source ('+name+')')
  report['update']=manifest if v1.exists() else None;report['updateV2']=json.loads(v2.read_bytes()) if v2.exists() else None
  report['payloadBytes']={'schema1':manifest['bytes'] if v1.exists() else None,'schema2':report['updateV2']['bytes'] if v2.exists() else None}
  if a.channel and v2.exists():

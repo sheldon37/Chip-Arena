@@ -5,16 +5,17 @@
 // update.cjs hostingProbation(). Without --old-zip only the new-install sections run (candidate.py does that).
 // Usage (Node 24): node channel-e2e.mjs --candidate <candidate dir> --game <checkout> --work <empty dir>
 //   [--old-zip <pre-v2 TEST-ONLY.zip>] [--python <python 3 executable>]
-import {spawn,execFileSync} from 'node:child_process';
+import {spawn,execFileSync,spawnSync} from 'node:child_process';
 import {createServer,get} from 'node:https';
 import {createServer as createPlainServer} from 'node:net';
 import {createRequire} from 'node:module';
 import {readFileSync,writeFileSync,mkdirSync,existsSync,readdirSync,rmSync,copyFileSync,statSync} from 'node:fs';
 import {join,resolve} from 'node:path';
-import {pathToFileURL} from 'node:url';
+import {pathToFileURL,fileURLToPath} from 'node:url';
 import {createHash,randomBytes} from 'node:crypto';
 import {brotliDecompressSync,gunzipSync} from 'node:zlib';
 import {holdSchema1,NOTICE} from './schema1-hold.mjs';
+import {feedProblems} from './source-privacy.mjs';
 const arg=(name,optional=false)=>{const i=process.argv.indexOf('--'+name);if(i<0||!process.argv[i+1]){if(optional)return null;throw Error('Missing --'+name);}return process.argv[i+1];};
 const candidate=resolve(arg('candidate')),game=resolve(arg('game')),work=resolve(arg('work')),oldZip=arg('old-zip',true)&&resolve(arg('old-zip')),python=arg('python',true)||'python3';
 if(Number(process.versions.node.split('.')[0])<24)throw Error('Run with Node 24 (real manifests require nodeMajor 24).');
@@ -56,10 +57,12 @@ for n in z.namelist():
 const kept=i=>i.sentinels.every((f,n)=>existsSync(f)&&hash(readFileSync(f))===i.saved[n]);
 const version=i=>JSON.parse(readFileSync(join(i.root,'release.json'),'utf8')).version;
 const launcherHash=(i,path)=>existsSync(join(i.root,path))?hash(readFileSync(join(i.root,path))):null;
+// The seed's own badge handler answers the desktop's feed-version check (desktop/main.cjs feedVersion), as on Windows.
+const badgeVersion=i=>async()=>{const {createRemoteStatusHandler}=require(join(i.app,'test-remote-status.cjs')),{CHECK_URL}=require(join(i.app,'test-update-status.cjs'));const r=await createRemoteStatusHandler(i.root,forward)(new Request(CHECK_URL));return r.ok?(await r.json()).version:null;};
 async function update(i){
  const {runUpdate,installedVersion}=require(join(i.app,'update.cjs')),progress=[],start=requests.length;
  const spawnImpl=(exe,args,options)=>spawn(process.execPath,args,options);
- try{const r=await runUpdate(i.root,{spawnImpl,onProgress:t=>progress.push(t),timeoutMs:120000});return {ok:true,...r,progress,requests:requests.slice(start),installed:await installedVersion(i.root)};}
+ try{const r=await runUpdate(i.root,{spawnImpl,onProgress:t=>progress.push(t),timeoutMs:120000,feedVersion:badgeVersion(i)});return {ok:true,...r,progress,requests:requests.slice(start),installed:await installedVersion(i.root)};}
  catch(e){return {ok:false,error:e.message,progress,requests:requests.slice(start),installed:await installedVersion(i.root)};}
 }
 async function badge(i){
@@ -77,9 +80,11 @@ async function host(i){
  let output='',ready=false,proven=false;
  const exited=new Promise(ok=>child.once('exit',ok));
  await new Promise(ok=>{const timer=setTimeout(ok,60000);const consume=chunk=>{output=(output+chunk).slice(-12000);if(!ready&&output.includes('YOUR GAME:')){ready=true;proven=probation.ready();clearTimeout(timer);ok();}};child.stdout.on('data',consume);child.stderr.on('data',consume);exited.then(()=>{clearTimeout(timer);ok();});});
+ // The seed has no source archive: the server must still serve the game client and its health check.
+ let page=null;if(ready){try{const [index,health]=await Promise.all([fetch(`http://127.0.0.1:${port}/`),fetch(`http://127.0.0.1:${port}/health`)]);page={index:index.status,client:(await index.text()).includes('<script'),health:health.ok&&(await health.json()).application==='chip-arena'};}catch(e){page={error:e.message};}}
  try{process.kill(-child.pid,'SIGTERM');}catch{}await Promise.race([exited,new Promise(ok=>setTimeout(ok,5000))]);
  const restored=!ready&&probation.failed();
- return {ready,proven,restored,output:output.slice(-600)};
+ return {ready,proven,restored,page,output:output.slice(-600)};
 }
 const runtimeState=i=>({probation:existsSync(join(i.root,'runtime/launcher-probation.json'))?JSON.parse(readFileSync(join(i.root,'runtime/launcher-probation.json'),'utf8')):null,backup:existsSync(join(i.root,'runtime/launcher-backup')),pending:existsSync(join(i.root,'runtime/launcher-pending'))});
 const feedFiles=dir=>readdirSync(dir).filter(f=>/^(latest(-v2)?\.json|arena-[a-f0-9]{16}\.(json\.gz|pack))$/.test(f));
@@ -103,6 +108,8 @@ const mark=(path,line)=>({path,data:Buffer.concat([launcherEntries.find(e=>e.pat
 const swap=(...changed)=>launcherEntries.map(e=>changed.find(c=>c.path===e.path)||e);
 
 const oldInstall=oldZip&&install(oldZip,'old-install'),newInstall=install(join(candidate,'Chip-Arena-TEST-ONLY.zip'),'new-install');
+const zipScan=spawnSync(python,[fileURLToPath(new URL('./source_privacy.py',import.meta.url)),join(candidate,'Chip-Arena-TEST-ONLY.zip')],{encoding:'utf8'}),leaked=feedProblems(cfeed);
+check('the seed ZIP and the feed carry no source archive, src/ tree or source map',zipScan.status===0&&!leaked.length&&!existsSync(join(newInstall.root,'dist/client/chip-arena-source.zip')),{zip:zipScan.stdout.trim(),feed:leaked});
 check((oldInstall?'old install is a pre-v2 launcher; ':'')+'new install is updater v2',(!oldInstall||!readFileSync(join(oldInstall.root,'launcher/update.mjs'),'utf8').includes('startLauncher')&&!oldInstall.schema2)&&newInstall.schema2&&readFileSync(join(newInstall.root,'launcher/update.mjs'),'utf8').includes('startLauncher'),{old:oldInstall?.schema2,new:newInstall.schema2});
 
 // Feeds shared by both sections: a schema 1 between 25 and 32 MiB, one over 32 MiB, a big schema 2 and the hold notice.
@@ -148,7 +155,7 @@ u=await update(newInstall);
 check('B2 an up-to-date check proves nothing: the new launcher stays on probation with its backup',u.ok&&u.status==='current'&&!runtimeState(newInstall).probation?.proven&&runtimeState(newInstall).backup,{...u,state:runtimeState(newInstall)});
 // The new update.mjs also runs hosting, so Create Room must reach "YOUR GAME:" once with it.
 let h=await host(newInstall);
-check('B2 hosting with the new launcher reaches YOUR GAME and proves start',h.ready&&h.proven&&runtimeState(newInstall).probation?.proven?.includes('start')&&runtimeState(newInstall).backup&&kept(newInstall),{...h,state:runtimeState(newInstall)});
+check('B2 hosting with the new launcher reaches YOUR GAME, serves the game and proves start',h.ready&&h.proven&&h.page?.index===200&&h.page.client&&h.page.health&&runtimeState(newInstall).probation?.proven?.includes('start')&&runtimeState(newInstall).backup&&kept(newInstall),{...h,state:runtimeState(newInstall)});
 const l2=swap(mark('launcher/update.mjs','// e2e launcher v2'),mark('launcher/manual-update.mjs','// e2e entry v2'));
 served=feed('v2-prove',schema2('0.2.e2eprove0000','e2e0000000000000000000a2',{launcher:l2}));u=await update(newInstall);
 check('B2 an Update that installs with the new launcher proves it and drops the backup',u.ok&&u.status==='installed'&&!runtimeState(newInstall).probation&&!runtimeState(newInstall).backup&&!runtimeState(newInstall).pending&&kept(newInstall),{...u,state:runtimeState(newInstall)});
@@ -191,6 +198,14 @@ check('B7 a fixed publish installs with nothing staged',startFixed.ok&&startFixe
 // B8. latest-v2.json missing while latest.json is the hold notice: a v2 install refuses it instead of downgrading.
 const heldBefore=version(newInstall);served=holdOnly;u=await update(newInstall);
 check('B8 a v2 install never installs the schema-1 hold notice',!u.ok&&/publishing a new update/.test(u.error)&&version(newInstall)===heldBefore&&u.requests.join()==='latest-v2.json,latest.json'&&kept(newInstall),u);
+// B9. A new entry point that says "up to date" without checking: the desktop compares the badge's feed version and restores.
+const lazyEntry={path:'launcher/manual-update.mjs',data:Buffer.from("import {readFile} from 'node:fs/promises';\nconst version=JSON.parse(await readFile(new URL('../release.json',import.meta.url),'utf8')).version;\nprocess.stdout.write(JSON.stringify({type:'result',status:'current',version})+'\\n');\n")};
+const lazy=(v,build)=>schema2(v,build,{launcher:swap(mark('launcher/update.mjs','// e2e launcher v2'),lazyEntry)});
+served=feed('v2-lazy',lazy('0.2.e2elazy00000','e2e0000000000000000000c1'));const lazyStaged=await update(newInstall),lazyActivated=await update(newInstall);
+served=feed('v2-lazy2',lazy('0.2.e2elazy00001','e2e0000000000000000000c2'));const lazyMissed=await update(newInstall);
+check('B9 an entry point that reports "current" without checking is restored once the badge sees a newer feed',lazyStaged.ok&&lazyStaged.status==='installed'&&lazyActivated.ok&&lazyActivated.status==='current'&&lazyActivated.progress.includes('Launcher updated.')&&!lazyMissed.ok&&/reported no update, but the update feed has version 0\.2\.e2elazy00001\. .*previous launcher was restored/.test(lazyMissed.error)&&hash(readFileSync(join(newInstall.root,'launcher/manual-update.mjs')))===hash(goodEntry)&&!runtimeState(newInstall).probation&&version(newInstall)==='0.2.e2elazy00000'&&kept(newInstall),{lazyStaged,lazyActivated,lazyMissed});
+served=feed('v2-fixed4',fixed('0.2.e2efixed0004','e2e0000000000000000000f5'));const lazyFixed=await update(newInstall);
+check('B9 the restored launcher installs the next fixed publish',lazyFixed.ok&&lazyFixed.status==='installed'&&lazyFixed.version==='0.2.e2efixed0004'&&!existsSync(pending)&&!runtimeState(newInstall).probation&&kept(newInstall),lazyFixed);
 // B5. Security over the real network path; every refusal leaves the install as it was.
 const steady=version(newInstall),leftovers=()=>['runtime/update-download.part','runtime/update-stage','runtime/launcher-next'].filter(p=>existsSync(join(newInstall.root,p)));
 const attack=async(name,files,expect,setup)=>{served=feed(name,files);fault=setup?.(files)||null;const r=await update(newInstall);fault=null;check('B5 '+name,!r.ok&&expect.test(r.error)&&version(newInstall)===steady&&!leftovers().length&&kept(newInstall)&&!existsSync(join(newInstall.root,'..','evil.txt')),r);return r;};

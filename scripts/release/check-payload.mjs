@@ -9,11 +9,14 @@ import {createHash} from 'node:crypto';
 import {gunzipSync,brotliDecompressSync} from 'node:zlib';
 import {pathToFileURL} from 'node:url';
 import {localFeed} from './local-feed.mjs';
+import {feedProblems} from './source-privacy.mjs';
 const updater=await import(pathToFileURL(resolve(process.argv[3],'launcher/update.mjs')).href);
 const {applyUpdates,UPDATE_BASE,allowedPath}=updater;
 const feed=resolve(process.argv[2]),hash=b=>createHash('sha256').update(b).digest('hex'),quiet=()=>{};
 const has=name=>existsSync(join(feed,name)),checks=[],summary={result:'passed'};
 assert(has('latest.json')||has('latest-v2.json'),'The feed has no manifest');
+// The channel is public: no payload may carry the source archive, a src/ tree or source maps.
+const leaked=feedProblems(feed);assert.deepEqual(leaked,[],'feed carries source: '+leaked.join(', '));checks.push('no source archive, src/ tree or source map in any payload');
 async function install(){
  const root=await mkdtemp(join(tmpdir(),'chip-candidate-'));
  await mkdir(join(root,'dist/client'),{recursive:true});await mkdir(join(root,'drizzle'));await mkdir(join(root,'runtime'));

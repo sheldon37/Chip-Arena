@@ -10,22 +10,21 @@ It is not a player release and not the live update feed. The game source stays i
 
 ## Get the test build (seed install)
 
-Download `Chip-Arena-TEST-ONLY.zip` from this repo's **Releases** page. This link always points
-to the newest seed:
-
-```
-https://github.com/sheldon37/chip-arena-test-updates/releases/latest/download/Chip-Arena-TEST-ONLY.zip
-```
+The `Chip-Arena-TEST-ONLY.zip` seed is **not** published in this public repo. The owner keeps it
+as a GitHub Release asset on the private game repo and shares it with testers directly. The ZIP
+contains no game source code.
 
 Extract it into a new, writable folder. Close the normal game first, then run `Chip Arena.exe`.
-Settings stay in `TEST-PROFILE` inside that folder. Later versions arrive through the in-game
-**Update** button, so testers download the ZIP only once.
+Settings stay in `TEST-PROFILE` inside that folder. A fresh seed reports the version `test-seed`,
+so it is never "up to date" at first: its first **Update** downloads and installs the full current
+version from `latest-v2.json` (about 22 MB today), even when the game inside the ZIP is the same.
+Later versions also arrive through the in-game **Update** button, so testers need the ZIP only once.
 
 You need a new ZIP when:
 
 - you have a build from before updater v2 (2026-10-03). Its Update button can only install
   updates up to 32 MiB. When an update is larger, that old build shows the version
-  `…-download-the-new-TEST-ZIP-from-GitHub-Releases`. Old builds also stop a schema-1 download
+  `…-download-the-new-TEST-ZIP-from-GitHub-Releases`: ask the owner for the new ZIP. Old builds also stop a schema-1 download
   after 60 seconds and a whole update after 90 seconds, so near 32 MiB they need about
   4.5 Mbit/s or more. On a slower connection, use the new ZIP.
 - the Electron shell or the test bootstrap changed. Only the game and the `launcher/` files
@@ -55,8 +54,15 @@ https://raw.githubusercontent.com/sheldon37/chip-arena-test-updates/main/feed/
   an Update that installs a version for the update files, and a Create Room that reaches
   "YOUR GAME:" for `start.mjs` and `update.mjs`. Until then, a failed Update or a failed room start
   restores the previous launcher. The desktop shell does this, and it never updates itself.
-  Not covered: a failure after "YOUR GAME:" (for example the online invite), and a bug that only
-  appears after the new launcher has already installed one update. The feed still lists a
+  An Update proves a launcher only when the installed `release.json` has the version it reports.
+  If a launcher on probation says "up to date" while the menu badge's own check sees a different
+  feed version, it did not really check, and the previous launcher is restored too. A restore
+  writes its plan first (`runtime/launcher-restoring.json`), so if it is interrupted, the next
+  Update or Create Room finishes it, and a half-restored launcher is never proven.
+  Not covered: a failure after "YOUR GAME:" (for example the online invite), a bug that only
+  appears after the new launcher has already installed one update, and a launcher that says
+  "up to date" without checking while the badge check is unavailable or the feed has not changed
+  (it stays on probation until a later Update installs or fails). The feed still lists a
   rolled-back launcher, so each later Update stages it again and the one after restores it again;
   publish a fixed version, which the restored launcher installs. Settings, saves, `runtime/` and
   `test-channel.json` are never update targets.
@@ -79,10 +85,11 @@ Tooling: branch `claude/test-update-channel` of the private repo (`scripts/relea
      --channel https://raw.githubusercontent.com/sheldon37/chip-arena-test-updates/main/feed/
    ```
 
-   Check `candidate.json`: `repeat-payload`, `actual-payload`, `isolated-test-package` and
-   `channel-e2e` must pass. `channel-e2e` installs the candidate's own ZIP and drives its real
-   Update path (and Create Room) against a local HTTPS copy of this feed, including launcher
-   rollback; it needs `openssl`. `payloadBytes` shows the schema-1 and schema-2 sizes.
+   Check `candidate.json`: `repeat-payload`, `actual-payload`, `isolated-test-package`,
+   `source-privacy-zip`, `source-privacy-feed` and `channel-e2e` must pass. `channel-e2e`
+   installs the candidate's own ZIP and drives its real Update path (and Create Room) against a
+   local HTTPS copy of this feed, including launcher rollback; it needs `openssl`.
+   `payloadBytes` shows the schema-1 and schema-2 sizes.
 2. Replace `feed/` in this repo:
    - **Schema 1 fits** (the candidate has `feed/latest.json`): copy all four candidate files:
      `latest.json`, its `arena-*.json.gz`, `latest-v2.json` and its `arena-*.pack`.
@@ -103,41 +110,12 @@ Tooling: branch `claude/test-update-channel` of the private repo (`scripts/relea
 5. After about 5 minutes, check that the raw `latest-v2.json` and `latest.json` show the new
    values.
 
-### Publishing a seed ZIP as a GitHub Release (owner or orchestrator only)
+### Seed ZIPs
 
-Use this procedure for the first updater-v2 seed, and again whenever a new ZIP is needed (see
-above). Use the `Chip-Arena-TEST-ONLY.zip` from the **same candidate** whose feed you publish,
-built from the merged game commit. The ZIP embeds the source archive, so its SHA-256 changes with
-every game commit, even when the game itself is unchanged.
-`make-test-package.py` has already checked that its launcher files equal the ones in
-`latest-v2.json`.
-
-1. Publish that candidate's feed first (steps 1-4 above), so new seeds start current.
-2. Record the asset hash: `sha256sum Chip-Arena-TEST-ONLY.zip`. The current ZIP is about
-   300 MB; GitHub release assets may be up to 2 GB.
-3. Create the release on `sheldon37/chip-arena-test-updates`. Use the web UI (Releases → Draft a
-   new release) or the GitHub CLI:
-
-   ```
-   gh release create seed-<content version> Chip-Arena-TEST-ONLY.zip \
-     --repo sheldon37/chip-arena-test-updates --target main \
-     --title "TEST-ONLY seed <content version> (updater v2)" --notes-file notes.md --latest
-   ```
-
-   - Tag `seed-<content version>`, targeting the channel commit that publishes the same feed.
-   - Keep the asset name exactly `Chip-Arena-TEST-ONLY.zip`, so the `/releases/latest/download/`
-     link above stays stable.
-   - Mark it **Latest**, not a pre-release, because `/releases/latest` skips pre-releases.
-   - Notes should say: NOT A PLAYER RELEASE. Also give the SHA-256, the source commit, the tooling
-     commit, the content version, "extract to a new folder, close the normal game", and that later
-     versions arrive through the Update button.
-4. Verify the release. Download the asset through the `/releases/latest/download/` link, compare
-   its SHA-256, and on Windows extract it, start it, and check the badge and the Update button.
-5. Record the tag, the asset SHA-256 and the source commit in `PUBLISHED.md` and in the private
-   repo's DEV_LOG.
-
-Release assets do not add to this repository's Git history. Older seed releases can stay, or the
-owner can delete them.
+Seed ZIPs are never added to this public repo or its Releases. The owner releases them privately
+(procedure: `docs/RELEASE-CANDIDATES.md` in the private game repo). Payloads here and seed ZIPs
+never contain the game source: `candidate.py` refuses a ZIP or feed with `chip-arena-source.zip`,
+a `src/` folder or source maps.
 
 ## Rules
 

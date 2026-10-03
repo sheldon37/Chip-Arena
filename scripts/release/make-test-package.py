@@ -2,15 +2,21 @@
 import argparse,hashlib,json
 from pathlib import Path
 from zipfile import ZipFile,ZIP_DEFLATED
+from source_privacy import private_name,zip_problems
 p=argparse.ArgumentParser();p.add_argument('desktop');p.add_argument('feed');p.add_argument('output');p.add_argument('source');p.add_argument('--channel',help='https test channel base URL ending in /; Update and the badge then read it instead of the bundled feed');a=p.parse_args()
 if a.channel and not (a.channel.startswith('https://') and a.channel.endswith('/')):p.error('--channel must be an https URL ending in /')
 repo=Path(__file__).resolve().parents[2];prefix='Chip-Arena-Desktop/';new='Chip-Arena-TEST-ONLY/'
 # Updater v2 (launcher/update.mjs exports startLauncher) reads latest-v2.json first and self-updates its launcher files.
 v2=b'startLauncher' in (Path(a.source)/'launcher/update.mjs').read_bytes()
 with ZipFile(a.desktop) as src,ZipFile(a.output,'w',ZIP_DEFLATED,compresslevel=6) as dst:
+ stripped=[]
  for n in src.namelist():
-  data=src.read(n);relative=n.removeprefix(prefix)
-  if relative=='resources/app/package.json':
+  relative=n.removeprefix(prefix)
+  # The editable source archive (root and dist/client copies) is never shipped in a TEST-ONLY ZIP; nothing at runtime reads it.
+  if private_name(relative):stripped.append(relative);continue
+  data=src.read(n)
+  if relative=='READ-ME.txt':data=data.replace(b'Editable source: chip-arena-source.zip.',b'Editable source: not included in TEST-ONLY builds.')
+  elif relative=='resources/app/package.json':
    obj=json.loads(data);obj['main']='test-remote-bootstrap.cjs' if a.channel else 'test-bootstrap.cjs';data=json.dumps(obj).encode()
   elif relative=='resources/game/launcher/manual-update.mjs':data=(repo/'scripts/release'/('test-remote-update.mjs' if a.channel else 'test-manual-update.mjs')).read_bytes()
   elif relative=='resources/game/release.json':
@@ -29,6 +35,7 @@ with ZipFile(a.desktop) as src,ZipFile(a.output,'w',ZIP_DEFLATED,compresslevel=6
  dst.writestr(new+'TEST-ONLY.txt',('NOT A PLAYER RELEASE. Update and the update badge read ONLY the test channel '+a.channel+' (never the live feed).\n' if a.channel else '')+('Updater v2: this build reads latest-v2.json first (large updates) and updates its own launcher files on the next start.\n' if a.channel and v2 else '')+'NOT A PLAYER RELEASE. Extract into a new writable folder. Close the normal game. Settings use TEST-PROFILE in this folder. The update button reads only the bundled test-feed; it cannot publish or fetch the live update feed. Use a separate Windows account for strongest isolation. Do not sign in or host public rooms during offline testing. See WINDOWS-VALIDATION.md.\n')
 with ZipFile(a.output) as z:
  assert z.testzip() is None
+ problems=zip_problems(z);assert not problems,'TEST-ONLY ZIP must not contain source: '+', '.join(problems)
  assert json.loads(z.read(new+'resources/app/package.json'))['main']==('test-remote-bootstrap.cjs' if a.channel else 'test-bootstrap.cjs')
  assert json.loads(z.read(new+'resources/game/release.json'))['version']=='test-seed'
  assert z.read(new+'resources/game/launcher/update.mjs')==(Path(a.source)/'launcher/update.mjs').read_bytes()
@@ -40,4 +47,4 @@ with ZipFile(a.output) as z:
   for f in json.loads(manifest.read_text())['launcher']:
    assert hashlib.sha256(z.read(new+'resources/game/'+f['path'])).hexdigest()==f['sha256'],'seed launcher differs from schema 2: '+f['path']
   assert z.read(new+'resources/game/launcher/manual-update.mjs')==(repo/'scripts/release/test-remote-update.mjs').read_bytes()
-print('Isolated Windows test ZIP integrity and bootstrap checks passed')
+print('Isolated Windows test ZIP integrity and bootstrap checks passed; source removed: '+(', '.join(stripped) or 'none present'))

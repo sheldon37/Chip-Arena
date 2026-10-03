@@ -5,7 +5,8 @@ import {remoteFeed} from './remote-feed.mjs';
 import {holdSchema1,NOTICE} from './schema1-hold.mjs';
 import {createRequire} from 'node:module';
 import {mkdtemp,writeFile,readFile,mkdir,readdir} from 'node:fs/promises';import {join} from 'node:path';import {tmpdir} from 'node:os';
-import {createHash} from 'node:crypto';import {gzipSync,gunzipSync} from 'node:zlib';import {execFileSync} from 'node:child_process';
+import {createHash} from 'node:crypto';import {gzipSync,gunzipSync,brotliCompressSync} from 'node:zlib';import {execFileSync,spawnSync} from 'node:child_process';
+import {feedProblems,privatePath} from './source-privacy.mjs';
 const require=createRequire(import.meta.url);const {createRemoteStatusHandler}=require('./test-remote-status.cjs');const {CHECK_URL}=require('./test-update-status.cjs');
 const BASE='https://chip-arena-prototype.sheldon37.chatgpt.site/updates/',CH='https://raw.githubusercontent.com/o/r/main/feed/';
 const python=process.env.CHIP_PYTHON||'python3',hash=b=>createHash('sha256').update(b).digest('hex');
@@ -88,4 +89,47 @@ test('schema-1 hold turns the last fitting payload into a reinstall notice for p
  await writeFile(join(candidate,'latest-v2.json'),JSON.stringify({schema:2,build:'d'.repeat(24),version:'0.2.toolarge001'}));
  const second=await holdSchema1(out,candidate,again);assert.equal(second.reused,true);assert.equal(second.manifest.file,manifest.file);assert.equal(second.manifest.build,'d'.repeat(24));assert.equal(second.manifest.hold,true);assert.deepEqual((await readdir(again)).sort(),[manifest.file,'latest.json'].sort());
  await writeFile(join(candidate,'latest.json'),'{}');await assert.rejects(holdSchema1(channel,candidate,join(dir,'x')),/publish it normally/);
+});
+
+test('TEST-ONLY seed ZIPs and feeds never carry the editable source (chip-arena-source.zip, src/, source maps)',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'privacy-'));const update='export async function startLauncher(){}';await fakeDesktop(dir,update);
+ // The real desktop ZIP has the source archive at its root and in dist/client, and its READ-ME points to it.
+ execFileSync(python,['-c',`import zipfile,sys
+with zipfile.ZipFile(sys.argv[1],'a') as z:
+ p='Chip-Arena-Desktop/'
+ z.writestr(p+'chip-arena-source.zip',b'PK source')
+ z.writestr(p+'resources/game/dist/client/chip-arena-source.zip',b'PK source')
+ z.writestr(p+'resources/game/dist/client/index.html','<html>')
+ z.writestr(p+'READ-ME.txt','Editable source: chip-arena-source.zip. Desktop source: desktop/.')`,join(dir,'Chip-Arena-Desktop.zip')]);
+ const checker=new URL('./source_privacy.py',import.meta.url).pathname,scan=zip=>spawnSync(python,[checker,zip],{encoding:'utf8'});
+ const desktop=scan(join(dir,'Chip-Arena-Desktop.zip'));assert.equal(desktop.status,1);assert.match(desktop.stdout,/Chip-Arena-Desktop\/chip-arena-source\.zip/);assert.match(desktop.stdout,/dist\/client\/chip-arena-source\.zip/);
+ for(const args of [[],['--channel',CH]]){
+  const out=join(dir,'seed'+args.length+'.zip');execFileSync(python,[pkg,join(dir,'Chip-Arena-Desktop.zip'),join(dir,'feed'),out,join(dir,'src'),...args]);
+  assert.doesNotMatch(list(out),/chip-arena-source|(^|\/)src\//m);assert.equal(scan(out).status,0,scan(out).stdout);
+  assert.equal(read(out,'resources/game/dist/client/index.html').toString(),'<html>','the game files stay');
+  assert.match(read(out,'READ-ME.txt').toString(),/Editable source: not included in TEST-ONLY builds\./);
+ }
+ // The checker also finds a renamed archive by its src/ content, a src/ folder and source maps.
+ execFileSync(python,['-c',`import zipfile,io,sys
+inner=io.BytesIO()
+with zipfile.ZipFile(inner,'w') as z:z.writestr('chip-arena/src/server/index.ts','secret')
+with zipfile.ZipFile(sys.argv[1],'w') as z:
+ z.writestr('Chip-Arena-TEST-ONLY/extras.zip',inner.getvalue())
+ z.writestr('Chip-Arena-TEST-ONLY/resources/game/src/game.ts','x')
+ z.writestr('Chip-Arena-TEST-ONLY/resources/game/dist/client/assets/index.js.map','{}')
+ z.writestr('Chip-Arena-TEST-ONLY/resources/game/dist/client/assets/source.js','ok')`,join(dir,'leaky.zip')]);
+ const leaky=scan(join(dir,'leaky.zip'));assert.equal(leaky.status,1);for(const hit of ['extras.zip!chip-arena/src/server/index.ts','resources/game/src/game.ts','index.js.map'])assert.ok(leaky.stdout.includes(hit),hit);assert.ok(!leaky.stdout.includes('source.js'));
+ // Feeds: both schemas are decoded and every payload path is checked.
+ for(const path of ['dist/client/chip-arena-source.zip','dist/client/other.zip','dist/client/src/main.ts','drizzle/x.css.map'])assert.equal(privatePath(path),true,path);
+ for(const path of ['dist/client/index.html','dist/client/assets/source-B1.js','server.mjs','dist/client/srcset.png','release.json'])assert.equal(privatePath(path),false,path);
+ const feedDir=async(name,paths)=>{
+  const f=join(dir,name);await mkdir(f);const files=paths.map(p=>({path:p,data:Buffer.from('x '+p)}));
+  const gz=gzipSync(JSON.stringify({schema:1,files:files.map(x=>({path:x.path,sha256:hash(x.data),data:x.data.toString('base64')}))}));await writeFile(join(f,'arena-'+hash(gz).slice(0,16)+'.json.gz'),gz);await writeFile(join(f,'latest.json'),JSON.stringify({schema:1,file:'arena-'+hash(gz).slice(0,16)+'.json.gz'}));
+  const index=Buffer.from(JSON.stringify({schema:2,files:files.map(x=>({path:x.path,size:x.data.length,sha256:hash(x.data)}))})),head=Buffer.alloc(12);head.write('CHIPPACK',0,'latin1');head.writeUInt32BE(index.length,8);
+  const pack=brotliCompressSync(Buffer.concat([head,index,...files.map(x=>x.data)]));await writeFile(join(f,'arena-'+hash(pack).slice(0,16)+'.pack'),pack);await writeFile(join(f,'latest-v2.json'),JSON.stringify({schema:2,file:'arena-'+hash(pack).slice(0,16)+'.pack'}));
+  return f;
+ };
+ assert.deepEqual(feedProblems(await feedDir('clean',['server.mjs','dist/client/index.html','release.json'])),[]);
+ assert.deepEqual(feedProblems(await feedDir('leaky-feed',['dist/client/index.html','dist/client/chip-arena-source.zip','dist/client/src/main.ts'])),['latest.json: dist/client/chip-arena-source.zip','latest.json: dist/client/src/main.ts','latest-v2.json: dist/client/chip-arena-source.zip','latest-v2.json: dist/client/src/main.ts']);
+ const cli=spawnSync(process.execPath,[new URL('./source-privacy.mjs',import.meta.url).pathname,join(dir,'leaky-feed')],{encoding:'utf8'});assert.equal(cli.status,1);assert.match(cli.stdout,/source content/);
 });
