@@ -40,13 +40,13 @@ test('wave budgets and flows follow partyFactor (party bots counted) and the HOR
   assert.ok(Math.abs(f.rate-spec.rate*(1+.35*(h-1)))<1e-9);assert.equal(f.maxAlive,Math.min(HORDE.maxAlive,spec.maxAlive+5*(h-1)));
   assert.ok(waveFlow(w,h,{count:1},true).maxAlive<=HORDE.maxAliveRelay);
  }
- assert.equal(waveBudget(3,4),62,'D6: W3 for 4 members is 62 adds');
+ assert.equal(waveBudget(3,4),95,'D6 after the S7 retune: W3 for 4 members is 95 adds (design: 62)');
  assert.deepEqual([1,2,3,4].map(h=>bossFlow(1,h,false).maxAlive),[6,10,14,18]);
  assert.deepEqual([1,2,3,4].map(h=>+bossFlow(1,h,false).rate.toFixed(6)),[.6,1,1.4,1.8]);
- // In a sim, h counts party bots: 1 human + 3 party bots runs W1 with 39 adds.
+ // In a sim, h counts party bots: 1 human + 3 party bots runs W1 with 62 adds (S7 retune; design: 39).
  const r=rig({partyBots:3});try{
   assert.equal(r.s.pve!.partySize(),4);r.s.pve!.debug('god:on');r.d.debug('skip-wave');
-  assert.equal(view(r.s).stage,'wave');assert.equal(view(r.s).waveTotal,waveBudget(1,4));assert.equal(view(r.s).waveTotal,39);
+  assert.equal(view(r.s).stage,'wave');assert.equal(view(r.s).waveTotal,waveBudget(1,4));assert.equal(view(r.s).waveTotal,62);
   assert.deepEqual(r.horde.flows.at(-1),waveFlow(1,4));
   assert.deepEqual(r.d.modifiers(),{...waveScale(1)});
  }finally{r.s.dispose();}

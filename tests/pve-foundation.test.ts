@@ -15,7 +15,7 @@ import {prepareMotion} from '../src/shared/movement.js';
 import {HostedRoom} from '../src/shared/host-room.js';
 import {BOSS_PLAYER_ID,HORDE_ID,PARTY_BOT_PREFIX,PVE_GROUPS,pveOption,type PveOptions} from '../src/shared/pve/contract.js';
 import {PveSystem} from '../src/shared/pve/system.js';
-import {PVE,PVE_SIREN} from '../src/shared/pve/balance.js';
+import {PVE,PVE_SIREN,damageScale} from '../src/shared/pve/balance.js';
 import {fakeParts,withPveParts} from './helpers/pve-fakes.js';
 await initPhysics();
 
@@ -231,7 +231,7 @@ test('PvE crush is a damage() hit scaled by party size; clearEffects keeps the S
   h.stats={...h.stats,hp:100,damageTaken:1};h.hp=100;place(boss,0,0,0);place(h,0,1);s.world.step();a.mode='melee';boss.cooldown=0;
   assert.equal(s.siren.start(boss,'laugh'),true);for(let i=0;i<200&&!s.siren.grabs.length;i++){s.time+=1/60;s.siren.stepPlayer(boss,1/60);}assert.equal(s.siren.grabs.length,1);
   const g=s.siren.grabs[0];s.time=g.crushAt;s.events=[];s.siren.step(1/60);
-  assert.ok(Math.abs(h.hp-64)<1e-9,`crush leaves 64 HP (${h.hp})`);assert.equal(h.death,undefined);assert.ok(s.events.some(e=>e.type==='siren-crush'));assert.equal(s.siren.grabs.length,0);
+  const left=100-100*PVE_SIREN.laughCrush*damageScale(1);assert.ok(left>0&&left<100);assert.ok(Math.abs(h.hp-left)<1e-9,`crush leaves ${left} HP (${h.hp})`);assert.equal(h.death,undefined);assert.ok(s.events.some(e=>e.type==='siren-crush'));assert.equal(s.siren.grabs.length,0);
   // A second grab, then clearEffects releases it and keeps boss.siren.
   s.siren.cancel(boss);boss.cooldown=0;a.ready={};place(boss,0,0,0);place(h,0,1);assert.equal(s.siren.start(boss,'laugh'),true);
   for(let i=0;i<200&&!s.siren.grabs.length;i++){s.time+=1/60;s.siren.stepPlayer(boss,1/60);}assert.equal(s.siren.grabs.length,1);

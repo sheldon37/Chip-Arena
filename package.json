@@ -20,6 +20,7 @@
     "db:generate": "drizzle-kit generate",
     "test:https": "node --import tsx tests/https-network.ts",
     "test:pve-perf": "node --import tsx tests/pve-perf.ts",
+    "test:pve-balance": "node --import tsx tests/pve-balance.ts",
     "test:motion:network": "node tests/run-network.mjs motion",
     "package:windows": "node scripts/package-windows.mjs",
     "music:generate": "node scripts/generate-music.mjs",

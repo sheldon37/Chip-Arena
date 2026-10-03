@@ -17,8 +17,8 @@ export const partyFactor=(h:number)=>1+PVE.partyFactorPerMember*(Math.max(1,h)-1
 export interface AddKindStats{hp:number;damage:number;attack:'swipe'|'lunge'|'smash';walk:number;run:number;reach:number;startRange:number;
  hit:number;cycle:number;lunge:number;impulse:number;reward:number;limbFrac:number;headFrac:number;stagger:number;smashRadius?:number}
 export const ADD_KINDS:Record<AddKind,AddKindStats>={
- shambler:{hp:60,  damage:7,  attack:'swipe', walk:1.5, run:3.4, reach:1.75, startRange:1.45, hit:.34, cycle:1.05, lunge:.45, impulse:90,  reward:10, limbFrac:.35, headFrac:.4, stagger:.45},
- runner:  {hp:38,  damage:5,  attack:'lunge', walk:2.6, run:4.6, reach:2.0,  startRange:2.2,  hit:.34, cycle:.85,  lunge:.9,  impulse:60,  reward:8,  limbFrac:.35, headFrac:.4, stagger:.45},
+ shambler:{hp:60,  damage:6,  attack:'swipe', walk:1.5, run:3.4, reach:1.75, startRange:1.45, hit:.34, cycle:1.05, lunge:.45, impulse:90,  reward:10, limbFrac:.35, headFrac:.4, stagger:.45},
+ runner:  {hp:38,  damage:4,  attack:'lunge', walk:2.6, run:4.6, reach:2.0,  startRange:2.2,  hit:.34, cycle:.85,  lunge:.9,  impulse:60,  reward:8,  limbFrac:.35, headFrac:.4, stagger:.45},
  brute:   {hp:240, damage:15, attack:'smash', walk:1.3, run:2.4, reach:2.1,  startRange:1.7,  hit:.43, cycle:1.7,  lunge:.3,  impulse:260, reward:35, limbFrac:.45, headFrac:.5, stagger:.25, smashRadius:1.6},
 };
 export const GIB={headMultiplier:1.5, limbMultiplier:.9, blastTorsoShare:.6, crawlSpeed:.35, limpSpeed:.55,
@@ -36,10 +36,10 @@ export const HORDE={maxAlive:40, maxAliveRelay:28, maxEntering:16, maxCorpses:16
 // §10.3 Waves and scaling
 export interface WaveSpec{count:number;rate:number;maxAlive:number;mix:Partial<Record<AddKind,number>>}
 export const WAVES:readonly WaveSpec[]=[
- {count:14, rate:1.2, maxAlive:14, mix:{shambler:1}},
- {count:18, rate:1.5, maxAlive:18, mix:{shambler:.7, runner:.3}},
- {count:22, rate:1.8, maxAlive:22, mix:{shambler:.55, runner:.3, brute:.15}},
-];     // budget=round(count·partyFactor(h)·mods.count); rate·(1+.35(h−1)); maxAlive+5(h−1) ≤ HORDE cap
+ {count:22, rate:.5, maxAlive:10, mix:{shambler:1}},
+ {count:28, rate:.6, maxAlive:14, mix:{shambler:.7, runner:.3}},
+ {count:34, rate:.7, maxAlive:18, mix:{shambler:.55, runner:.3, brute:.15}},
+];   // S7 retune (balance harness): longer, thinner waves (design 14/18/22 at 1.2/1.5/1.8 per s cleared in ~30 s)     // budget=round(count·partyFactor(h)·mods.count); rate·(1+.35(h−1)); maxAlive+5(h−1) ≤ HORDE cap
 export const MIX_BOSS:Record<1|2|3|4,Partial<Record<AddKind,number>>>={1:{shambler:.6,runner:.3,brute:.1}, 2:{shambler:.5,runner:.4,brute:.1},
  3:{shambler:.5,runner:.3,brute:.2}, 4:{shambler:.45,runner:.35,brute:.2}};
 export const waveScale=(w:number):HordeModifiers=>({hp:1+.12*(w-1), damage:1+.06*(w-1), speed:1, attackRate:1, reward:1, count:1});
@@ -50,7 +50,7 @@ export const combineMods=(...mods:Partial<HordeModifiers>[]):HordeModifiers=>mod
  speed:a.speed*(m.speed??1),attackRate:a.attackRate*(m.attackRate??1),reward:a.reward*(m.reward??1),count:a.count*(m.count??1)}),{...IDENTITY_MODS});
 
 // §10.4 Siren. Owner decision D35 (2026-10-02): no Last Laugh floor in phase 4 (minRecast.laugh = 0); the concurrency caps stay.
-export const PVE_SIREN={hpBase:6000, hpPerExtraMember:.7, damageScale:[.6,.7,.8,.9], difficulty:['normal','hard','hard','hard'],
+export const PVE_SIREN={hpBase:6000, hpPerExtraMember:.7, damageScale:[.2,.23,.26,.3], difficulty:['normal','hard','hard','hard'],
  thresholds:[.75,.5,.25], spawn:{x:0,z:24.2,yaw:Math.PI}, spawnClear:4,
  trickle:{alive:6, alivePerMember:4, rate:.6, ratePerMember:.4},          // 6/10/14/18 alive; .6/1.0/1.4/1.8 per s
  laughCrush:.6,                                                           // × victim max HP × damageScale(h)  (D35)

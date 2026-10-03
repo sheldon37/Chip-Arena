@@ -86,7 +86,7 @@ function victoryFlow():FlowResult{
   d.until(()=>d.view.stage==='wave',60*PVE.openingSeconds+60,'wave 1');
   assert.equal(d.view.wave,1);
   // Death during wave 1, then the wave-clear respawn.
-  d.until(()=>s.pve!.horde.alive()>=3,60*20,'adds on the field',()=>d.fight('h1'));
+  d.until(()=>s.pve!.horde.alive()>=3,60*60,'adds on the field');
   d.kill('h2');
   const moneyBefore=d.view.party.h1.money;
   d.until(()=>d.view.stage==='intermission',60*PVE.waveMaxSeconds+60,'wave 1 clear',()=>d.fight('h1'));

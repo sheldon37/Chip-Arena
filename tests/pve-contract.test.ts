@@ -95,7 +95,7 @@ test('rng: hash32 and mulberry32 are stable, forks are independent and weighted 
 });
 test('balance tables match the design and the owner decisions',()=>{
  assert.deepEqual([1,2,3,4].map(bossHp),[6000,10200,14400,18600]);
- assert.deepEqual([1,2,3,4].map(damageScale),[.6,.7,.8,.9]);
+ assert.deepEqual([1,2,3,4].map(damageScale),[.2,.23,.26,.3],'S7 balance retune (design .6/.7/.8/.9)');
  assert.deepEqual([1,2,3,4].map(h=>Math.round(partyFactor(h)*100)/100),[1,1.6,2.2,2.8]);
  assert.equal(PVE_SIREN.play.minRecast.laugh,0,'D35: no Last Laugh floor in phase 4');
  assert.equal(PVE_SIREN.play.cooldown,0);assert.equal(PVE_SIREN.play.maxRains,2);assert.equal(PVE_SIREN.play.maxEruptions,4);

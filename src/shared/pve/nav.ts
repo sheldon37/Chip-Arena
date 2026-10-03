@@ -7,7 +7,8 @@ import type {Simulation} from '../simulation.js';
 import type {NavGrid,PveNav} from './contract.js';
 import {HORDE} from './balance.js';
 
-export interface NavGridData{blocked:Uint8Array;radius:number;cell:number;x0:number;z0:number;w:number;d:number}
+export interface NavGridData{blocked:Uint8Array;radius:number;cell:number;x0:number;z0:number;w:number;d:number;
+ /** Cells whose centre a capsule of `radius` cannot occupy (no half-cell margin): the physically walkable set (S7). */ loose?:Uint8Array}
 export const NAV_BOUNDS={x0:-32,z0:-28,width:64,depth:56,yMin:.35,yMax:1.8} as const;
 export const NAV_INF=0x3fffffff;
 /** Fixed neighbour order [dx,dz,cost]: orthogonal first, then diagonals. */
@@ -21,7 +22,7 @@ export const blocksWalking=(b:ArenaBlock)=>!b.dynamic&&b.pos.y+b.size.y/2>NAV_BO
 /** Occupancy grid: a cell is blocked when its centre lies inside a walking-blocking block's footprint inflated by
  *  radius + half a cell (so the whole cell is clear for a capsule of that radius). Rotated blocks use their yaw. */
 export function buildNavGrid(blocks:readonly ArenaBlock[],opts:{cell?:number;radius:number}):NavGridData{
- const cell=opts.cell??HORDE.nav.cell,w=Math.round(NAV_BOUNDS.width/cell),d=Math.round(NAV_BOUNDS.depth/cell),blocked=new Uint8Array(w*d),grow=opts.radius+cell*.5-1e-6;
+ const cell=opts.cell??HORDE.nav.cell,w=Math.round(NAV_BOUNDS.width/cell),d=Math.round(NAV_BOUNDS.depth/cell),blocked=new Uint8Array(w*d),loose=new Uint8Array(w*d),grow=opts.radius+cell*.5-1e-6;
  for(const b of blocks){if(!blocksWalking(b))continue;
   const yaw=blockYaw(b),c=Math.cos(yaw),s=Math.sin(yaw),hx=b.size.x/2+grow,hz=b.size.z/2+grow;
   const ex=Math.abs(c)*hx+Math.abs(s)*hz,ez=Math.abs(s)*hx+Math.abs(c)*hz;   // world AABB of the inflated footprint
@@ -32,14 +33,32 @@ export function buildNavGrid(blocks:readonly ArenaBlock[],opts:{cell?:number;rad
    // Local coordinates (rotate by −yaw about y; three.js yaw convention: local x = c·dx − s·dz, local z = s·dx + c·dz).
    const lx=c*dx-s*dz,lz=s*dx+c*dz;
    if(Math.abs(lx)<hx&&Math.abs(lz)<hz)blocked[zi*w+xi]=1;
+   if(Math.abs(lx)<b.size.x/2+opts.radius&&Math.abs(lz)<b.size.z/2+opts.radius)loose[zi*w+xi]=1;
   }
  }
- return {blocked,radius:opts.radius,cell,x0:NAV_BOUNDS.x0,z0:NAV_BOUNDS.z0,w,d};
+ return {blocked,radius:opts.radius,cell,x0:NAV_BOUNDS.x0,z0:NAV_BOUNDS.z0,w,d,loose};
 }
 export const cellOf=(g:NavGridData,x:number,z:number)=>{
  const xi=Math.max(0,Math.min(g.w-1,Math.floor((x-g.x0)/g.cell))),zi=Math.max(0,Math.min(g.d-1,Math.floor((z-g.z0)/g.cell)));return zi*g.w+xi;
 };
 export const cellCentre=(g:NavGridData,c:number)=>({x:g.x0+(c%g.w+.5)*g.cell,z:g.z0+(Math.floor(c/g.w)+.5)*g.cell});
+/** S7: the target's own cell or, when the conservative inflation blocks it (a capsule standing in a 2 m service corridor
+ *  behind the cells), the first free cell reached through physically walkable (`loose`) cells in BFS order, within 16
+ *  steps; else the nearest free cell within 4 cells. A target reachable in physics so never becomes unreachable, and the
+ *  seed is never across a wall. */
+export function seedCell(g:NavGridData,x:number,z:number):number{
+ const c=cellOf(g,x,z);if(!g.blocked[c])return c;
+ if(g.loose){const seen=new Set<number>([c]);let ring=[c];
+  for(let step=0;step<16&&ring.length;step++){const next:number[]=[];
+   for(const k of ring){const xi=k%g.w,zi=(k/g.w)|0;for(const [dx,dz] of NB.slice(0,4)){const nx=xi+dx,nz=zi+dz;if(nx<0||nz<0||nx>=g.w||nz>=g.d)continue;
+    const n=nz*g.w+nx;if(seen.has(n)||g.loose[n])continue;if(!g.blocked[n])return n;seen.add(n);next.push(n);}}
+   ring=next;}}
+ const xi=c%g.w,zi=(c/g.w)|0;let best=c,bd=Infinity;
+ for(let r=1;r<=4&&best===c;r++)for(let dz=-r;dz<=r;dz++)for(let dx=-r;dx<=r;dx++){if(Math.max(Math.abs(dx),Math.abs(dz))!==r)continue;
+  const nx=xi+dx,nz=zi+dz;if(nx<0||nz<0||nx>=g.w||nz>=g.d)continue;const n=nz*g.w+nx;if(g.blocked[n])continue;
+  const q=cellCentre(g,n),d=Math.hypot(q.x-x,q.z-z);if(d<bd-1e-9){bd=d;best=n;}}
+ return best;
+}
 /** May a step go from cell (xi,zi) by (dx,dz)? In bounds, target free, no corner cutting. */
 function stepOk(g:NavGridData,xi:number,zi:number,dx:number,dz:number){
  const nx=xi+dx,nz=zi+dz;if(nx<0||nz<0||nx>=g.w||nz>=g.d)return false;if(g.blocked[nz*g.w+nx])return false;
@@ -128,7 +147,7 @@ export class HordeNav implements PveNav{
  /** The flow field toward id on grid g, (re)built within the per-tick budget; a stale field is used when over budget. */
  field(id:string,g:NavGrid='party'):Int32Array|undefined{
   const grid=this.grids?.[g],t=this.targetPos(id);if(!grid||!t)return undefined;
-  const key=g+':'+id,cell=cellOf(grid,t.x,t.z);let f=this.fields.get(key);
+  const key=g+':'+id,cell=seedCell(grid,t.x,t.z);let f=this.fields.get(key);
   if(f&&f.cell===cell)return f.dist;
   if(this.budgetTick!==this.sim.tick){this.budgetTick=this.sim.tick;this.budget=HordeNav.buildsPerTick;}
   if(this.budget<=0)return f&&f.cell>=0?f.dist:undefined;

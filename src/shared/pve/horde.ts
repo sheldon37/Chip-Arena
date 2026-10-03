@@ -363,6 +363,8 @@ export class Horde implements HordeApi{
   a.hp=0;
   const view=this.viewOf(a,'dead');view.deathAt=t;view.entry=-1;view.vel={x:0,z:0};delete view.target;
   if(a.minion){if(s.chaos.minions.get(a.id)===a.minion)s.chaos.removeMinion(a.minion,false);else{s.colliderOwners.delete(a.minion.collider.handle);s.world.removeRigidBody(a.minion.body);}}
+  // S7: the body is gone; this tick's separation hash may still hold the add, so drop the stale body handle (Rapier panics on it).
+  a.pos=v(pos.x,pos.y,pos.z);a.minion=undefined;
   if(a.phase==='entering'||a.phase==='pending')this.sched.leave(a.entry,a.n);
   this.list.delete(a.n);this.byId.delete(a.id);this.stats.killed++;
   this.corpses.push({n:a.n,view,until:t+HORDE.corpseSeconds});
