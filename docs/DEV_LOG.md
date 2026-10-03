@@ -18,6 +18,74 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-03 — Claude — test publications of PR #30 and PR #31
+
+- Owner asked to merge and publish both boss-test follow-ups for the Update button.
+- PR #30 (desync after Esc/pause, Esc → pause menu, taken chips wait) merged at `6fd525c`; content `0.2.85b68726b813`,
+  payload `arena-71bb7881594044cd.json.gz`, channel commit `7a53f4e`.
+- PR #31 (29 damage/health chips, 6 boss-only money chips, green/red stat lines, ~2.5x money, instant F revive, camera
+  filter, PvE Tab board, owner stage track re-encoded to 128 kbps) merged at `e9edad4`; content `0.2.9a0466bf45fe`, payload
+  `arena-cd9fa8ddbe4b964c.json.gz` (26,021,943 bytes, under the 25 MiB hosting limit), channel commit `8f6f5a3`.
+- Both: merge trees identical to the tested heads; CI and candidate `verify` matched the baseline only (12 Node 24 unit
+  names, 4 server tsc errors, rematch timeout; HTTPS passed); repeat builds byte-identical; actual-payload checks passed;
+  no secrets; the real launcher updater upgraded an isolated install over the network and then skipped.
+- Not run: native Windows Update button, GPU visuals. Live feed and Site unchanged.
+
+## 2026-10-03 — Claude — legendary / mythic chip rework and volumetric chip blasts
+
+- Branch `claude/pve-legendary-vfx` from `claude/pve-batch2` `9b5445c`; no PR. Owner request: rework broken/weak
+  Legendary+ chips so they feel exciting, and replace flat on-impact/area visuals with real voxel explosions.
+- Audit of all 26 legendary + 13 mythic chips (code read, unit probes, seat-swapped bot duels); table in the session
+  scratchpad (`after/legendary-vfx/audit.md`). Broken: Trading Places never swapped grounded pilots (room check hit
+  the floor); blinks (Pocket Portal, Emergency Exit) cast from floor contact stopped at 0 m; Meteor Shower meteors
+  were deleted by the 3-per-owner field cap; bots aimed gravity-free shots (boomerang/Pong) with gravity.
+- Reworked (ids, rarities and the 7-mythic melee pool kept): Satellite Office (homing satellite shots), Red Light
+  Green Light (freeze, then relaunch at the current aim ×2 speed ×1.5 damage), Return to Sender (return leg re-hits
+  ×1.4), Comet Dash (landing blast follows the roll, low gravity removed), Tumble Engine (no penalty, i-frames),
+  Thunder Step (locks lightning on up to 2 enemies), Now You See Me (blink to target, ×1.5, 0.25 s untouchable),
+  Emergency Exit (cheats a lethal hit, +40 HP, 1.2 s immunity), Time Out (Block freezes nearby enemies 1.2 s),
+  Supernova (no Block penalty, nova Blocks recharge in 0.6 s), Trading Places (fixed, 0.5 s daze), Meteor Shower
+  (5 tracked meteors, 1.5 s cd), Pocket Portal (arrival blast), Do Not Press (+30% HP, 2 s immunity); Hurricane,
+  Vampire, Repulsor damage penalties softened. Tuning in `CHAOS_TUNING` (chaos.ts); card stat lines on the cards.
+- VFX: new pooled `src/client/chip-blasts.ts` (two InstancedMeshes, fixed capacity, 3 zero-intensity lights):
+  fireball + shock shell/ring that ends exactly on the event radius + debris + smoke + flash; shock bolts, implosion,
+  void, frost, toxic, quake, nova styles; live-field emitters (storm bolts from a cloud, flames, acid, frost shards,
+  accretion spirals, falling meteors, comet trail). Time/repulsion fields get a dome. Keyed to authoritative events:
+  explosion events now carry `message` (chip tag) except plain weapon `blast`; fields carry `fx`. Quality/compat
+  respected. Dev-only `tools/visual-lab/vfx.html` renders the real Renderer on a real Simulation.
+- Tests: new `tests/legendary-rework.test.ts` (15) and `tests/chip-blasts.test.ts` (6). Intended-behaviour test
+  updates: chaos.test (Satellite/Stop-Go/Exit/Panic numbers), first-block (Time Out freezes the shooter; thawed for
+  the reset check), pve-economy (clear the Exit immunity before scripted kills).
+- Checks (Node 22.22.2): check:types pass; full suite 954 tests, 13 fail = the known Node 22 set; pvp-golden 5/5
+  unchanged (no golden trace uses a reworked chip). Not run: Windows, real-app play, network suites, perf on GPU.
+- Risks: duel numbers are bot-based (bots rarely Block/roll); Thunder Step/Comet/Supernova may need owner tuning;
+  Static Discharge (rare) showed no arcs in bot duels (not investigated). Status: implemented on branch, not merged.
+## 2026-10-03 — Claude — menus: Boss Test skull pill, simpler online room
+
+- Branch `claude/pve-menus` from `claude/pve-batch2` 9b5445c. Owner asks: "glossy black pill
+  button with some skull design, place it on the right" and "Simplify Online Room Options
+  (… see 'Ready' easier) … details under an 'Advanced Options' option".
+- Home: Test Boss leaves the main list and becomes `bossPill()` (pve/menu.ts, pve.css): glossy
+  black pill, inline bone-skull SVG with lavender eyes, sheen on hover, visible focus ring; on
+  the right of the menu (moves under the menu at <=860px, full width on phones).
+- Room lobby (PvP main.ts, PvE pveLobbyBody): big "n/m READY" meter, green READY / amber NOT
+  READY badges and green ready cards, a larger Ready button with a "Waiting for n pilots" line,
+  room code + copy buttons at the top of the side column. Mode + arena stay visible; sets,
+  rounds, friendly fire, random map, bots/difficulty, bot drafts, host-only bot loadouts,
+  draft summary, invite link and connection report move into a collapsed "Advanced Options"
+  fold (summary line shows sets/rounds/bots) remembered in localStorage
+  `chip-arena-room-advanced` (try/catch; room-options.ts). `matchOptions(lobby,part)` splits
+  the same pieces; practice/create keep the full block. PvE party roster uses the room's
+  density columns. Short viewports shrink lobby portraits so names clear the Ready bar.
+- No setting semantics, element ids, host gating or network messages changed.
+- Checks: check:types clean; full suite 925/938, failures = the 13 known Node 22 names;
+  pvp-golden 5/5; new tests/room-options.test.ts; pve-ui pins updated for the pill (intended).
+  Playwright with the local backend, host + guest, PvP and PvE online rooms at 1920x1080,
+  1280x720 and 390x844, plus home at 820/390 widths. Not run: Windows desktop, packaging.
+- Risks: in the headless runs a PvE online guest sometimes dropped to DISCONNECTED under heavy
+  CPU load (seen on base 9b5445c too); the phone lobby still has pre-existing class-row clutter.
+- Status: implemented on branch; not merged; not published.
+
 ## 2026-10-03 — Claude — PvE stage music (Restricted Zone Pulse) + batch 2 verification
 
 - Branch `claude/pve-batch2` (from `948b5ba` = `claude/visual-revision` `6fd525c` + econ-revive, chips, camera,

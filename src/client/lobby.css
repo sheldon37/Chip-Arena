@@ -107,3 +107,39 @@
 /* Visual revision: in the room lobby the class cards lay out as icon + label rows, so at 1920x1080 their names and
    subtitles sit fully above the sticky Ready bar instead of being cut through by it. */
 .lobby-room .class-option{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto;align-items:center;column-gap:14px;min-height:0;padding:11px 16px}.lobby-room .class-option .class-symbol{grid-row:1/3;height:40px;margin:0}.lobby-room .class-option .class-symbol .game-icon{width:32px;height:32px}.lobby-room .class-option strong{margin:0 0 3px;align-self:end}.lobby-room .class-option small{min-height:0;align-self:start}
+
+/* Room lobby (PvP and PvE): readiness reads at a glance, the room code sits in the side column, and detailed rules live
+   under a remembered "Advanced Options" fold (room-options.ts). Layout only. */
+.lobby-roster-column>.section-title{justify-content:flex-start;align-items:center;margin-bottom:16px}.lobby-roster-column>.section-title>span:not(.ready-count){color:#b8aabb}
+.ready-count{display:inline-flex;align-items:baseline;gap:8px;margin-left:auto;padding:7px 16px;border-radius:999px;border:1px solid #f4b87866;background:#2a201c;color:#f4c8a0;font-size:13px;font-weight:800;letter-spacing:.16em;line-height:1}
+.ready-count strong{font-size:22px;letter-spacing:.02em;color:#fff}
+.ready-count[data-all-ready="1"]{border-color:#3ddc84;background:#11301f;color:#8ff0b6;box-shadow:0 0 20px #3ddc8440}
+.lobby-roster .pilot-ready{margin-left:auto;gap:6px;padding:6px 12px;border-radius:999px;border:1px solid #f4b87866;background:#1b1a20e6;color:#f4c8a0;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;line-height:1}
+.lobby-roster .pilot-ready .game-icon{width:14px;height:14px}
+.lobby-roster .is-ready .pilot-ready{background:#3ddc84;border-color:#3ddc84;color:#062413;box-shadow:0 0 16px #3ddc8466}
+.lobby-roster .pilot-card.is-ready{border-color:#3ddc84;box-shadow:0 0 0 1px #3ddc8466,0 0 28px #3ddc8426}
+.lobby-roster .pilot-card.is-ready:before{background:linear-gradient(transparent,#3ddc84,transparent)}
+.lobby-room .lobby-actions .btn[data-action=ready]{flex:1.4;min-height:56px;font-size:18px;letter-spacing:.05em}
+.lobby-room .lobby-actions .btn[data-action=ready]:not(.primary){border-color:#3ddc84aa;color:#c6f7da}
+.lobby-room .lobby-actions .fine strong{font-weight:700}.ready-wait{color:#f4c8a0}.ready-go{color:#8ff0b6}
+.lobby-room-settings .room-invite{flex-direction:column;align-items:stretch;gap:12px;margin:0 0 22px;padding:16px}
+.lobby-room-settings .room-invite strong{font-size:24px;overflow-wrap:anywhere}
+.lobby-room-settings .room-invite .actions{display:grid;grid-template-columns:1fr;gap:8px}
+.room-advanced{margin:18px 0 0;padding:0;border-color:#4c434e;background:#13141a66}
+.room-advanced>summary{display:grid;grid-template-columns:auto 1fr;column-gap:10px;row-gap:4px;align-items:center;padding:14px 15px;list-style:none;border-radius:9px}
+.room-advanced>summary::-webkit-details-marker{display:none}
+.room-advanced>summary:before{content:"";width:8px;height:8px;border-right:2px solid #efb587;border-bottom:2px solid #efb587;transform:rotate(-45deg);transition:transform .15s}
+.room-advanced[open]>summary:before{transform:rotate(45deg)}
+.room-advanced>summary small{grid-column:2;font-size:12px;font-weight:500;line-height:1.4;color:#b3a8b6}
+.room-advanced>summary:hover{background:#ffffff08}.room-advanced>summary:focus-visible{outline:2px solid #ffe2bd;outline-offset:2px}
+.room-advanced[open]>summary{margin-bottom:4px;border-bottom:1px solid #4c434e;border-radius:9px 9px 0 0}
+.room-advanced>:not(summary){margin-left:15px;margin-right:15px}.room-advanced>:last-child{margin-bottom:15px}
+.room-advanced .bot-loadouts{margin-top:16px}
+@media(max-width:580px){.lobby-roster .pilot-ready{justify-content:center}.ready-count{padding:6px 12px}.ready-count strong{font-size:19px}.lobby-room .lobby-actions{flex-wrap:wrap}.lobby-room .lobby-actions .btn[data-action=ready]{flex-basis:100%}}
+@media(prefers-reduced-motion:reduce){.room-advanced>summary:before{transition:none}}
+.lobby-room-settings>.match-options{margin:0;padding:12px 16px 6px}.lobby-room-settings>.match-options .fine{margin-bottom:8px}.room-advanced>.match-options{margin-top:14px;padding:12px 14px}
+.room-advanced>.invite-url{display:block;width:calc(100% - 30px);min-width:0;margin-bottom:12px}.room-advanced>.btn{width:calc(100% - 30px)}
+.lobby-room .lobby-actions .btn[data-action=ready]{flex:0 1 280px}.lobby-room .lobby-actions .btn[data-action=leave]{flex:0 0 auto;white-space:nowrap}.lobby-room .lobby-actions>.fine{flex:1 1 220px;min-width:0}
+@media(max-height:820px) and (min-width:581px){.lobby-roster{--portrait-height:205px}.lobby-roster[data-density=medium]{--portrait-height:170px}.lobby-roster[data-density=compact]{--portrait-height:135px}}
+@media(max-width:580px){.lobby-room .lobby-actions .btn[data-action=ready]{flex:1 1 100%}.lobby-room .lobby-actions .btn[data-action=leave]{flex:1 1 auto}}
+@media(max-width:580px){.lobby-room .lobby-actions{gap:8px;padding-top:12px}.lobby-room .lobby-actions .btn[data-action=ready]{flex:1 1 auto;min-height:50px;font-size:16px}.lobby-room .lobby-actions .btn[data-action=leave]{flex:0 0 auto}.lobby-room .lobby-actions>.fine{flex-basis:100%;font-size:13px;margin:0}}
