@@ -18,6 +18,46 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-03 — Claude — update-size headroom: 32 MiB test guard, updater v2, launcher self-update
+
+- Owner approved on 2026-10-03 ("do what you need") after asking why updates are limited to 25 MiB.
+  Branch `claude/update-headroom` from `cfdce4b` (shared `claude/visual-revision`). Implementation
+  `299a742` + `f192798`; this entry and a test-only whitelist check follow. Tooling: PR #5
+  `claude/test-update-channel` `7c7ded2`, `2a17b17`, `b5ff54c`. Not merged, not published.
+- A. `scripts/package-update.mjs` profiles (`scripts/update-format.mjs`). `live` (default) keeps the
+  25 MiB Site guard, and its output is byte-identical to the old packager (checked). `test-channel`
+  (set by `candidate.py --channel`) allows schema 1 up to the 32 MiB cap of every installed launcher,
+  holds schema 1 back when it no longer fits, and always adds schema 2.
+- B. Schema 2 is Brotli of `CHIPPACK` + index + raw files (no base64). `launcher/update.mjs` reads
+  `latest-v2.json` only when the caller opts in. Only a 404 falls back to `latest.json`. The download
+  is streamed with a 256 MiB cap, a byte count and SHA-256, then unpacked file by file under the same
+  `allowedPath` rule plus a launcher whitelist. Launcher files are syntax-checked, staged and applied
+  at the next start, with journal, backup and rollback (`desktop/update.cjs` rolls back an entry
+  point that dies silently). The desktop timeout now counts 90 s of silence (45 min maximum).
+  Settings, saves, `runtime/` and `test-channel.json` are never targets. Schema 1 is unchanged.
+- Current build (`f192798`, content `0.2.5036b50f0c34`, unchanged game): schema 1 is 26,045,324 bytes,
+  byte-identical to the published payload. Schema 2 is 22,025,342 bytes (-15.4%, Brotli q11). Seed
+  ZIP `Chip-Arena-TEST-ONLY.zip` is 333,652,190 bytes, SHA-256 `413ea6e9…a5125`.
+- Checks (Node 24.19.0 candidate, tooling `2a17b17`): verify matched the baseline only (12 unit names,
+  4 server tsc errors, rematch timeout; HTTPS passed). These passed: updater tests 20/20 (including
+  the new `tests/update-v2.test.ts`), fixture tests 9/9, repeat build of all four feed files
+  byte-identical, `check-payload` on both feeds, Windows/desktop packaging and the seed ZIP launcher
+  check. `channel-e2e.mjs` passed 27/27 against a local HTTPS feed using the real code of the
+  published `cfdce4b` ZIP and the new ZIP. Old installs: schema 1 at 30.9 MiB installs, 33.9 MiB
+  is refused with the install kept, and the hold notice shows "Update Available!" and installs
+  `…-download-the-new-TEST-ZIP-from-GitHub-Releases`. New installs: v2 is preferred, a 63.7 MiB
+  payload installs, launcher staging then activation then confirmation works, broken-entry and
+  incompatible-API rollbacks work, and these are refused: traversal, hash mismatch, oversize,
+  longer body, dropped connection. Same-version skip and settings/session preservation pass.
+  tsc passes. Node 22: full suite has 972 tests with 13 failures, the known Node 22 set; updater-v2 tests 13/13.
+- Not run: native Windows (rename/locking, Electron), real GitHub raw/Release hosting, the
+  GitHub Release seed itself (procedure in tooling `docs/TEST-CHANNEL-README.md`).
+- Risks / next: testers need one new seed ZIP for v2 (old installs keep schema 1 up to 32 MiB).
+  `resources/app` (Electron shell, badge handler) does not self-update. A broken launcher in a
+  publish is rolled back but re-downloaded until a fixed publish. Channel Git history grows about
+  48 MB per publication. Next: the owner or orchestrator reviews, merges into the shared branch,
+  publishes the feed and the GitHub Release seed.
+
 ## 2026-10-03 — Claude — test publications of PR #30 and PR #31
 
 - Owner asked to merge and publish both boss-test follow-ups for the Update button.

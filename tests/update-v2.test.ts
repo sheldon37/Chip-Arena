@@ -198,4 +198,7 @@ test('packager profiles: live keeps 25 MiB and schema 1 only; test-channel allow
  assert.equal(schema1Problem({...v1,gz:Buffer.alloc(26*MiB)},25*MiB)?.includes('25 MiB'),true);assert.equal(schema1Problem({...v1,gz:Buffer.alloc(26*MiB)},LIMITS.schema1Bytes),null);
  assert.match(String(schema1Problem({...v1,unpacked:LIMITS.schema1Unpacked+1},LIMITS.schema1Bytes)),/unpacked/);
  assert.deepEqual((await readdir(repoFile('launcher'))).filter(f=>f.endsWith('.mjs')).every(f=>updater.LAUNCHER_FILES.includes('launcher/'+f)),true,'every shipped launcher module is self-updatable');
+ // desktop/update.cjs keeps its own copy of the whitelist for the stable rollback; both must agree.
+ const desktopList=JSON.parse((await readFile(repoFile('desktop/update.cjs'),'utf8')).match(/const LAUNCHER_FILES=(\[[^\]]*\])/)![1].replaceAll("'",'"'));
+ assert.deepEqual(desktopList,[...updater.LAUNCHER_FILES]);
 });
