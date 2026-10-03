@@ -50,7 +50,7 @@ export const combineMods=(...mods:Partial<HordeModifiers>[]):HordeModifiers=>mod
  speed:a.speed*(m.speed??1),attackRate:a.attackRate*(m.attackRate??1),reward:a.reward*(m.reward??1),count:a.count*(m.count??1)}),{...IDENTITY_MODS});
 
 // §10.4 Siren. Owner decision D35 (2026-10-02): no Last Laugh floor in phase 4 (minRecast.laugh = 0); the concurrency caps stay.
-export const PVE_SIREN={hpBase:6000, hpPerExtraMember:.7, damageScale:[.2,.23,.26,.3], difficulty:['normal','hard','hard','hard'],
+export const PVE_SIREN={hpBase:6000, hpPerExtraMember:.5, damageScale:[.2,.22,.24,.26], difficulty:['normal','hard','hard','hard'],
  thresholds:[.75,.5,.25], spawn:{x:0,z:24.2,yaw:Math.PI}, spawnClear:4,
  trickle:{alive:6, alivePerMember:4, rate:.6, ratePerMember:.4},          // 6/10/14/18 alive; .6/1.0/1.4/1.8 per s
  laughCrush:.6,                                                           // × victim max HP × damageScale(h)  (D35)
