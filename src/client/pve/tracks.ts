@@ -13,13 +13,14 @@ export interface MoneyPopup{
  /** Stable identity: `e<event id>` for event popups, `d<n>` for total-delta fallbacks. */ id:string;
  amount:number; at:number;
  /** Negative CSS delay fixed when the popup was first seen (so a late popup starts mid-flight, and redraws keep it). */ delay:number;
- reason?:string}
+ reason?:string;
+ /** 0–2: vertical lane fixed at creation, so simultaneous gains never overlap and never jump. */ lane:number}
 
 /** Money gains for one player. Event popups come from `pve-kill` (the killer's reward; the economy's own `kill` grant is
  *  silent) and `pve-cash`; spending (`pve-buy`, a paid `pve-revive`) shows as a red `−$`. When the event ring dropped
  *  events between snapshots, the unexplained part of the authoritative total's increase becomes one fallback popup. */
 export class MoneyTrack{
- popups:MoneyPopup[]=[];private last=0;private generation=-1;private time=-1;private money:number|undefined;private synthetic=0;
+ popups:MoneyPopup[]=[];private last=0;private generation=-1;private time=-1;private money:number|undefined;private synthetic=0;private lanes=0;
  clear(){this.popups=[];this.last=0;this.generation=-1;this.time=-1;this.money=undefined;}
  update(state:Snapshot,me:string):MoneyPopup[]{
   const pve=pveOf(state);if(!pve){this.clear();return this.popups;}
@@ -27,7 +28,7 @@ export class MoneyTrack{
   this.generation=state.generation||0;this.time=state.time;
   let gained=0,spent=0;
   const push=(id:string,amount:number,at:number,reason?:string)=>{const age=state.time-at;if(age>=MONEY_POPUP_SECONDS||amount===0)return;
-   this.popups.push({id,amount,at,delay:-Math.max(0,age),reason});};
+   this.popups.push({id,amount,at,delay:age>0?-age:0,reason,lane:this.lanes++%3});};
   for(const e of state.events){
    if(e.id<=this.last)continue;this.last=e.id;const amount=Math.round(Number(e.amount)||0);
    if(e.type===PVE_EVENT.kill&&e.source===me&&amount>0){gained+=amount;push('e'+e.id,amount,e.time,'kill');}
@@ -78,5 +79,5 @@ export class DelayMemo{
  clear(){this.delays.clear();this.time=-1;this.generation=-1;}
  frame(time:number,generation=0){if(time<this.time-.25||generation!==this.generation)this.delays.clear();this.time=time;this.generation=generation;
   if(this.delays.size>64)for(const k of [...this.delays.keys()].slice(0,32))this.delays.delete(k);}
- delay(key:string,at:number,time=this.time){let d=this.delays.get(key);if(d===undefined){d=-Math.max(0,time-at);this.delays.set(key,d);}return d;}
+ delay(key:string,at:number,time=this.time){let d=this.delays.get(key);if(d===undefined){d=time>at?at-time:0;this.delays.set(key,d);}return d;}
 }

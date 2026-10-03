@@ -1,6 +1,6 @@
 // PvE client session (design §7.8, §7.9, D33): the hello handshake, the per-room rejoin key, the WebSocket rejoin state
 // machine, DEV fixture injection and debug op strings. No DOM; storage, randomness and time are injected for tests.
-import type {PlayerView,Snapshot} from '../../shared/simulation.js';
+import type {GameEvent,PlayerView,Snapshot} from '../../shared/simulation.js';
 import {BOSS_PLAYER_ID,PARTY_BOT_PREFIX,PVE_CONTRACT,type PveCommand,type PveView} from '../../shared/pve/contract.js';
 import {PVE_FIXTURES,fixtureBossPlayer,type PveFixtureName} from '../../shared/pve/fixtures.js';
 
@@ -53,32 +53,39 @@ export class RejoinMachine{
 export const DEBUG_OPS={skipWave:()=>'skip-wave',skipToBoss:()=>'skip-to-boss',phase:(n:number)=>`boss-phase:${Math.max(1,Math.min(4,Math.floor(n)))}`,
  money:(n:number)=>`money:${Math.round(n)}`,god:(on:boolean)=>`god:${on?'on':'off'}`,killAdds:()=>'kill-adds',spawn:(kind:string)=>`spawn:${kind}`} as const;
 
+/** dt shifts the fixture's build time (e.g. +1.5 shows a reveal 0.5 s in); events are appended to every state (money popups). */
+export interface FixtureInjectOptions{dt?:number;events?:Partial<GameEvent>[];
+ /** Rebuild the view relative to every state's time (a frozen moment, for screenshots on slow renderers). */ freeze?:boolean}
 const NAMES=['Ana','Kestrel','Party Bot','Juno'],COLORS=['#ff6b35','#6fd3ff','#9be36b','#ffcf5a'];
 /** DEV fixture injection (§7.8): replaces `pve` on every received or sampled state. Party ids are the real local player
  *  first, then synthetic members (added as PlayerViews beside the local player so names and HP exist); boss fixtures add a
  *  boss PlayerView. Results fixtures also present phase 'match'. Built once per set() so cinematics play forward. */
 export class PveFixtureInjector{
- name:string|null=null;private view:PveView|null=null;private extra:PlayerView[]=[];private phase:Snapshot['phase']|undefined;private intro:Snapshot['intro'];
+ name:string|null=null;private view:PveView|null=null;private extra:PlayerView[]=[];private phase:Snapshot['phase']|undefined;private intro:Snapshot['intro'];private events:GameEvent[]=[];private serial=0;private injected=new Set<string>();private frozen:{name:PveFixtureName;dt:number;ids:string[]}|null=null;
  get active(){return !!this.view;}
- set(name:PveFixtureName|PveView|null,state:Snapshot,me:string){
-  if(!name){this.name=null;this.view=null;this.extra=[];this.phase=undefined;this.intro=undefined;return null;}
-  const players=state.players.filter(p=>!this.extra.some(x=>x.id===p.id)),self=players.find(p=>p.id===me)??players[0];
-  const ids=[me,'pve-fixture-2',PARTY_BOT_PREFIX+'9','pve-fixture-3'],time=state.time;
+ set(name:PveFixtureName|PveView|null,state:Snapshot,me:string,o:FixtureInjectOptions={}){
+  if(!name){this.frozen=null;this.name=null;this.view=null;this.extra=[];this.phase=undefined;this.intro=undefined;this.events=[];return null;}
+  const players=state.players.filter(p=>!this.injected.has(p.id)),self=players.find(p=>p.id===me)??players[0];
+  const ids=[me,'pve-fixture-2',PARTY_BOT_PREFIX+'9','pve-fixture-3'],time=state.time+(o.dt??0);
+  this.events=(o.events??[]).map((e,i)=>({id:1e9+(++this.serial)*16+i,time:state.time,pos:self?.pos??{x:0,y:0,z:0},type:'pve-cash',target:me,...e}) as GameEvent);
   const view=typeof name==='string'?PVE_FIXTURES[name]({time,ids,seed:7}):name;
+  this.frozen=o.freeze&&typeof name==='string'?{name,dt:o.dt??0,ids}:null;
   this.name=typeof name==='string'?name:'custom';this.view=view;this.phase=typeof name==='string'&&name.startsWith('results')?'match':undefined;
   this.extra=[];if(!self)return view;
-  Object.keys(view.party).forEach((id,i)=>{if(state.players.some(p=>p.id===id))return;const row=view.party[id],dead=row.downAt!==undefined;
-   const a=i*1.9;this.extra.push({...self,id,name:NAMES[i%4],color:COLORS[i%4],bot:row.kind==='bot'?'normal':null,connected:row.connected,
-    pos:{x:self.pos.x+Math.sin(a)*2.6,y:self.pos.y,z:self.pos.z+Math.cos(a)*2.6},hp:dead?0:Math.round(self.maxHp*[1,.62,.84,.35][i%4]),
+  Object.keys(view.party).forEach((id,i)=>{if(players.some(p=>p.id===id))return;const row=view.party[id],dead=row.downAt!==undefined;
+   const a=[2.2,-2.2,2.7,-2.7][i%4];this.extra.push({...self,id,name:NAMES[i%4],color:COLORS[i%4],bot:row.kind==='bot'?'normal':null,connected:row.connected,
+    pos:{x:self.pos.x+Math.sin(self.yaw+a)*4.5,y:self.pos.y,z:self.pos.z+Math.cos(self.yaw+a)*4.5},hp:dead?0:Math.round(self.maxHp*[1,.62,.84,.35][i%4]),
     chips:{vital:1,ricochet:i%2+1,piercing:1},death:undefined,spec:(['pistol','sword','rifle','fire'] as const)[i%4],class:(['ranged','melee','ranged','magic'] as const)[i%4]});});
   const intro=view.cinematic?.kind==='boss-intro';
   if((view.bossView||intro)&&!players.some(p=>p.id===BOSS_PLAYER_ID))this.extra.push(fixtureBossPlayer(self,view.bossView?.phase??1,{time,ids}));
+  for(const p of this.extra)this.injected.add(p.id);
   this.intro=intro?{started:view.cinematic!.at,players:[BOSS_PLAYER_ID],boss:true}:undefined;
   return view;
  }
  apply<T extends Snapshot>(state:T):T{
-  if(!this.view)return state;const ids=new Set(state.players.map(p=>p.id));
-  const players=[...state.players.map(p=>{const row=this.view!.party[p.id];return row&&row.downAt!==undefined&&p.hp>0&&this.name!=='custom'?{...p,hp:0}:p;}),...this.extra.filter(p=>!ids.has(p.id))];
-  return {...state,players,options:{...state.options,pve:state.options.pve??{boss:'siren',seed:0}},pve:this.view,...(this.phase?{phase:this.phase}:{}),...(this.intro?{intro:this.intro}:{})};
+  if(!this.view)return state;
+  if(this.frozen){const f=this.frozen,time=state.time+f.dt;this.view=PVE_FIXTURES[f.name]({time,ids:f.ids,seed:7});if(this.intro&&this.view.cinematic)this.intro={...this.intro,started:this.view.cinematic.at};}
+  const players=[...state.players.filter(p=>!this.injected.has(p.id)).map(p=>{const row=this.view!.party[p.id];return row&&row.downAt!==undefined&&p.hp>0&&this.name!=='custom'?{...p,hp:0}:p;}),...this.extra];
+  return {...state,players,events:this.events.length?[...state.events,...this.events]:state.events,options:{...state.options,pve:state.options.pve??{boss:'siren',seed:0}},pve:this.view,...(this.phase?{phase:this.phase}:{}),...(this.intro?{intro:this.intro}:{})};
  }
 }

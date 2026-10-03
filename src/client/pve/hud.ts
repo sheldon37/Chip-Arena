@@ -25,7 +25,7 @@ const pct=(a:number,b:number)=>Math.max(0,Math.min(100,b>0?a/b*100:0)).toFixed(1
 /** Top-left money counter with floating gains (`data-gain` keeps each popup's node and animation). */
 export function moneyHud(pve:PveView,me:string,popups:readonly MoneyPopup[]=[]){
  const row=pve.party[me];if(!row||row.kind==='bot')return '';
- return `<div class="pve-money" role="status" aria-label="Money ${formatCash(row.money)}"><span class="pve-money-icon" aria-hidden="true">$</span><b>${Math.round(row.money).toLocaleString('en-US')}</b><div class="pve-money-gains" aria-hidden="true">${popups.map(p=>`<span class="pve-gain ${p.amount<0?'spend':''}" data-gain="${escapeHtml(p.id)}" style="--gain-delay:${p.delay.toFixed(3)}s">${formatGain(p.amount)}</span>`).join('')}</div></div>`;
+ return `<div class="pve-money" role="status" aria-label="Money ${formatCash(row.money)}"><span class="pve-money-icon" aria-hidden="true">$</span><b>${Math.round(row.money).toLocaleString('en-US')}</b><div class="pve-money-gains" aria-hidden="true">${popups.map(p=>`<span class="pve-gain ${p.amount<0?'spend':''}" data-gain="${escapeHtml(p.id)}" style="--gain-delay:${p.delay.toFixed(3)}s;--gain-lane:${p.lane}">${formatGain(p.amount)}</span>`).join('')}</div></div>`;
 }
 
 /** Top-centre stage line before the boss: OPENING, WAVE n / 3 · k LEFT, INTERMISSION 0:08. */

@@ -69,6 +69,8 @@ export const CHIP_ICON_GROUPS:Record<string,string[]>={
  'boxes':['l44t-uprising']
 };
 export const CHIP_ICONS:Record<string,string>=Object.fromEntries(Object.entries(CHIP_ICON_GROUPS).flatMap(([icon,ids])=>ids.map(id=>[id,icon])));
+/** PvE boss chips (src/shared/pve/bosses.ts): not in CHIPS, drawn on the Siren's reveal tray. */
+Object.assign(CHIP_ICONS,{'siren-boss-arrive':'skull','siren-boss-possess':'ghost','siren-boss-beautiful':'sparkles','siren-boss-play':'hourglass'});
 export const CLASS_ICONS:Record<string,string>={dev:'cpu',ranged:'crosshair',magic:'wand-sparkles',melee:'swords'};
 export const SPEC_ICONS:Record<string,string>={siren:'skull',pistol:'crosshair',rifle:'scan-line',machinegun:'scan',fire:'flame',water:'waves',lightning:'zap',darkness:'eclipse',sword:'sword',daggers:'swords',shield:'shield',greatsword:'axe',ansatsuken:'hand-fist',emperor:'cloud-lightning',leet:'terminal'};
 export const ACTION_ICONS:Record<string,string>={practice:'swords',create:'network',join:'users',sandbox:'flask-conical',customize:'palette',settings:'settings',home:'house',resume:'play',leave:'log-out',board:'layers','network-report':'activity','game-settings':'settings',download:'download',update:'download','test-sound':'volume-2',login:'users',account:'users',lobby:'undo-2','test-driver':'gauge',ready:'check',rematch:'rotate-cw','copy-code':'copy','copy-invite':'copy',connect:'play',start:'play',spectate:'scan','test-boss':'skull','start-boss':'play',retry:'rotate-cw','pve-chips':'cpu','pve-later':'clock-3','pve-rejoin':'rotate-cw'};

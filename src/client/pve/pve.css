@@ -3,17 +3,17 @@
 
 /* ---- Home and picker ---- */
 .menu-list .btn:nth-child(4){animation-delay:.12s}
-.pve-boss-options{grid-template-columns:repeat(2,minmax(0,1fr))}
-.pve-boss-card{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-height:132px;overflow:hidden;text-align:left;padding:14px 16px;border-radius:var(--r-md,10px);border:1px solid #ffffff1c;background:#13141a}
+.pve-boss-options{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+.pve-boss-card{position:relative;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:14px;row-gap:3px;align-items:center;min-height:0;overflow:hidden;text-align:left;padding:14px 16px;border-radius:var(--r-md,10px);border:1px solid #ffffff1c;background:#13141a}
 .pve-boss-card.active{border-color:#b7a8ff99;background:radial-gradient(120% 90% at 85% 110%,#3a2166 0%,#160d27 48%,#0b0910 80%);box-shadow:0 0 0 1px #000,0 0 26px #7d5cff33}
-.pve-boss-card strong{font-size:18px;letter-spacing:.01em;color:#f3f0ff;position:relative;z-index:1}
-.pve-boss-card small{font-size:11px;line-height:1.45;color:#c9bfff;letter-spacing:.06em;text-transform:uppercase;position:relative;z-index:1;max-width:24ch}
-.pve-boss-face{display:block;width:118px;height:62px;margin:0 0 4px -4px;position:relative;z-index:1}
+.pve-boss-card strong{align-self:end;font-size:18px;letter-spacing:.01em;color:#f3f0ff;position:relative;z-index:1}
+.pve-boss-card small{align-self:start;font-size:11px;line-height:1.45;color:#c9bfff;letter-spacing:.06em;text-transform:uppercase;position:relative;z-index:1;max-width:24ch}
+.pve-boss-face{display:block;grid-row:1/3;width:92px;height:50px;position:relative;z-index:1}
 .pve-boss-face svg{width:100%;height:100%;display:block}
 .pve-boss-card .siren-face .siren-eye,.pve-boss-card .siren-face .siren-grin,.pve-lobby-rules .siren-face .siren-eye,.pve-lobby-rules .siren-face .siren-grin{fill:#f6f3ff}
 .pve-boss-card .siren-face .siren-teeth,.pve-lobby-rules .siren-face .siren-teeth{fill:none;stroke:#050409;stroke-width:3.4}
 .pve-boss-card.active .pve-boss-face{filter:drop-shadow(0 0 12px #b7a8ff88);animation:pve-face-breathe 3.6s ease-in-out infinite}
-.pve-boss-card.soon{opacity:.45;justify-content:center;border-style:dashed;cursor:default}
+.pve-boss-card.soon{opacity:.45;border-style:dashed;cursor:default}
 .pve-boss-card.soon .pve-boss-face{width:34px;height:34px;color:#8a8f98}
 .pve-picker-options{margin-top:18px;padding:12px 14px;border:1px solid #ffffff14;border-radius:var(--r-md,10px);background:#0f1015}
 .pve-picker-options .settings-row{margin:6px 0}
@@ -30,7 +30,7 @@ body.pve .notice{top:150px}
 .pve-money{position:absolute;top:18px;left:20px;display:flex;align-items:center;gap:8px;padding:6px 14px 6px 8px;border-radius:999px;background:#101219c4;border:1px solid #ffd36a40;box-shadow:0 0 18px #ffb84a14;font:700 20px/1 var(--font-mono,monospace);color:#ffe7a6;text-shadow:0 1px 2px #000}
 .pve-money-icon{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9a8,#e6a52e 65%,#9c6510);color:#3b2604;font:800 14px/1 var(--font-ui,system-ui);text-shadow:none;box-shadow:0 0 0 1px #00000080}
 .pve-money-gains{position:absolute;left:44px;top:100%;width:160px;height:0;pointer-events:none}
-.pve-gain{position:absolute;left:0;top:4px;font:800 17px/1 var(--font-mono,monospace);color:#8ff0a4;text-shadow:0 1px 2px #000,0 0 10px #2fd05a66;opacity:0;animation:pve-gain 1.6s cubic-bezier(.2,.8,.2,1) var(--gain-delay,0s) both}
+.pve-gain{position:absolute;left:calc(var(--gain-lane,0) * 10px);top:calc(4px + var(--gain-lane,0) * 21px);font:800 17px/1 var(--font-mono,monospace);color:#8ff0a4;text-shadow:0 1px 2px #000,0 0 10px #2fd05a66;opacity:0;animation:pve-gain 1.6s cubic-bezier(.2,.8,.2,1) var(--gain-delay,0s) both}
 .pve-gain.spend{color:#ff8a7a;text-shadow:0 1px 2px #000,0 0 10px #ff3b2f55}
 @keyframes pve-gain{0%{opacity:0;transform:translateY(-6px) scale(.8)}12%{opacity:1;transform:translateY(6px) scale(1.12)}22%{transform:translateY(8px) scale(1)}80%{opacity:1}100%{opacity:0;transform:translateY(46px)}}
 .pve-heading{position:absolute;top:16px;left:50%;transform:translateX(-50%);min-width:220px;padding:8px 18px 9px;border-radius:12px;background:#101219c4;border:1px solid #ffffff1c;text-align:center;color:#e8e9ef}
@@ -100,7 +100,7 @@ body.pve .notice{top:150px}
 .pve-recruit .pve-hp.mini{flex:1;height:3px;margin:0}
 .pve-recruit[data-down="1"]{opacity:.45}
 
-.pve-chip-pending{position:absolute;right:24px;bottom:94px;display:flex;align-items:center;gap:7px;padding:7px 10px 7px 9px;border-radius:999px;pointer-events:auto;cursor:pointer;background:#101219d6;border:1px solid color-mix(in srgb,var(--tier) 70%,#000);color:#eef0f6;font:700 11px var(--font-mono,monospace);letter-spacing:.12em;box-shadow:0 0 14px color-mix(in srgb,var(--tier) 30%,transparent)}
+.pve-chip-pending{position:absolute;right:24px;bottom:104px;display:flex;align-items:center;gap:7px;padding:7px 10px 7px 9px;border-radius:999px;pointer-events:auto;cursor:pointer;background:#101219d6;border:1px solid color-mix(in srgb,var(--tier) 70%,#000);color:#eef0f6;font:700 11px var(--font-mono,monospace);letter-spacing:.12em;box-shadow:0 0 14px color-mix(in srgb,var(--tier) 30%,transparent)}
 .pve-chip-pending .game-icon{width:16px;height:16px;color:var(--tier)}
 .pve-chip-pending b{display:grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--tier);color:#0b0c10;font-size:11px;letter-spacing:0}
 .pve-chip-pending kbd{font:600 10px var(--font-mono,monospace);padding:1px 5px;border:1px solid #ffffff30;border-radius:4px;color:#c9ccd8}
@@ -150,9 +150,9 @@ body.pve .notice{top:150px}
 @media(min-height:1300px){.pve-money,.pve-heading,.pve-boss-bar,.pve-party,.pve-chip-pending,.pve-prompt{zoom:1.45}}
 
 /* ---- Personal chip screen (#pve-chips). The arena stays visible behind it: the player is vulnerable. ---- */
-.pve-chips{position:absolute;inset:0;z-index:38;pointer-events:auto;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(ellipse at 50% 55%,#07091099,#070910d9 70%)}
+.pve-chips{position:absolute;inset:0;z-index:38;pointer-events:auto;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(ellipse at 50% 55%,#07091040,#0709109c 78%)}
 .pve-chips.hidden{display:none}
-.pve-chip-screen{position:relative;width:min(1180px,100%);max-height:100%;overflow:auto;padding:20px 22px 16px;border-radius:16px;background:#111219e6;border:1px solid color-mix(in srgb,var(--tier) 45%,#ffffff1a);box-shadow:0 30px 80px #000b,0 0 40px color-mix(in srgb,var(--tier) 18%,transparent);backdrop-filter:blur(4px)}
+.pve-chip-screen{position:relative;width:min(1180px,100%);max-height:100%;overflow:auto;padding:20px 22px 16px;border-radius:16px;background:#111219b8;border:1px solid color-mix(in srgb,var(--tier) 45%,#ffffff1a);box-shadow:0 30px 80px #0009,0 0 40px color-mix(in srgb,var(--tier) 18%,transparent);backdrop-filter:blur(2px)}
 .pve-chip-screen.rainbow{border:2px solid #ff4d6d;animation:pve-rainbow-border 3s linear infinite}
 .pve-chip-head{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin-bottom:10px}
 .pve-chip-head h2{margin:2px 0 0;font:800 26px/1.1 var(--font-ui,system-ui);letter-spacing:.01em}
@@ -196,8 +196,8 @@ body.pve .notice{top:150px}
 .pve-reveal-spotlight{max-width:min(880px,92vw);text-align:center;animation:pve-spot-in .7s cubic-bezier(.16,.8,.22,1) var(--reveal-age,0s) both}
 .pve-reveal-spotlight strong{position:relative;display:inline-block;font:900 clamp(34px,5.6vw,84px)/1 var(--font-chip,var(--font-ui));font-stretch:87.5%;letter-spacing:.01em;color:#f6f3ff;text-shadow:0 0 30px #9b87ffcc,0 4px 0 #000}
 .pve-reveal-spotlight strong:before,.pve-reveal-spotlight strong:after{content:attr(data-glitch);position:absolute;inset:0;opacity:0}
-.pve-reveal-spotlight strong:before{color:#ff2d55;animation:siren-split-a 1.8s steps(1,end) -1.1s infinite}
-.pve-reveal-spotlight strong:after{color:#2de2ff;animation:siren-split-b 1.8s steps(1,end) -1.2s infinite}
+.pve-reveal-spotlight strong:before{color:#ff2d55;animation:siren-split-a 1.8s steps(1,end) -.2s infinite}
+.pve-reveal-spotlight strong:after{color:#2de2ff;animation:siren-split-b 1.8s steps(1,end) -.3s infinite}
 .pve-reveal-spotlight p{margin:12px auto 0;max-width:62ch;font:500 clamp(15px,1.5vw,20px)/1.45 var(--font-ui,system-ui);color:#ddd6fb;text-shadow:0 1px 3px #000}
 @keyframes pve-spot-in{0%{opacity:0;transform:scaleY(.04) scaleX(1.2)}12%{opacity:1;transform:scaleY(.04)}30%{transform:scaleY(1.05)}40%{transform:translateX(-8px)}48%{transform:translateX(6px)}56%,100%{opacity:1;transform:none}}
 .pve-reveal-tray{display:grid;grid-template-columns:repeat(4,minmax(0,210px));gap:16px;justify-content:center;width:100%}
@@ -263,7 +263,7 @@ body.pve .notice{top:150px}
  .menu-list .btn:nth-child(4){animation:none}
  .pve-boss-card.active .pve-boss-face,.pve-member-chip,.pve-chip-rolling .game-icon,.pve-locked-card span{animation:none}
  .pve-gain{animation:pve-gain-static 1.6s linear var(--gain-delay,0s) both}
- .pve-boss-title:before,.pve-boss-title:after,.pve-banner strong:before,.pve-banner strong:after,.pve-reveal-spotlight strong:before,.pve-reveal-spotlight strong:after,.siren-title:before,.siren-title:after{animation:none;opacity:0}
+ .pve-boss-title:before,.pve-boss-title:after,.pve-banner strong:before,.pve-banner strong:after,.pve-banner[data-tone=boss] strong:before,.pve-banner[data-tone=phase] strong:before,.pve-banner[data-tone=boss] strong:after,.pve-banner[data-tone=phase] strong:after,.pve-reveal-spotlight strong:before,.pve-reveal-spotlight strong:after,.siren-title:before,.siren-title:after{animation:none;opacity:0}
  .pve-boss-bar[data-locked="1"] .pve-boss-floor,.pve-boss-bar[data-hidden="1"]{animation:none}
  .pve-chip-pending.fresh,.pve-chip-pending[data-tier=rainbow],.pve-chip-screen.rainbow{animation:none}
  .pve-banner{animation:pve-banner-static var(--banner-duration,2.6s) linear var(--banner-delay,0s) both}
@@ -279,3 +279,4 @@ body.pve .notice{top:150px}
 }
 @keyframes pve-gain-static{0%,90%{opacity:1}100%{opacity:0}}
 @keyframes pve-banner-static{0%,92%{opacity:1}100%{opacity:0}}
+.pve-picker-options select{width:110px;flex:none}
