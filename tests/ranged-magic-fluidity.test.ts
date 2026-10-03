@@ -2,14 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from 'three';
 import {initPhysics,type PlayerView} from '../src/shared/simulation.js';
-import {WEAPONS,CHIPS} from '../src/shared/content.js';
+import {WEAPONS,CHIPS,statsFor} from '../src/shared/content.js';
 import {animateCharacter,animationPreviewPlayer} from '../src/client/character-animation.js';
 import {poseFirstPersonView,FP_TUNE} from '../src/client/first-person-view.js';
 import {weaponModifiers,bodyModifiers} from '../src/client/weapon-visuals.js';
 import {markFirstPersonRig} from '../src/client/pose-flags.js';
 import {POCKET,reloadPhase} from '../src/client/ranged-motion.js';
 import {probeBase,probeMotion,probeRig} from './helpers/motion-probe.js';
-import {adsProfile} from '../src/shared/abilities.js';
+import {adsProfile,kitFor,castTime} from '../src/shared/abilities.js';
 import type {SpecId} from '../src/shared/config.js';
 
 // Ranged/magic presentation fluidity (ranged-magic workstream). Presentation only: every scenario drives existing
@@ -188,3 +188,25 @@ test('ADS view model: muzzle on the crosshair column, sights under it, no chip m
   assert.equal(r.modules,0,`${spec} ${mode}: chip modules in the crosshair box`);}
  assert.equal(adsProbe('rifle',preview('attack'),{chips:true}).hidden,1,'the rifle view model hides behind the scope overlay');
 });
+
+/** Mark the kit's Q and E live for `fn` (G/M set `live` when their handlers land; F leaves it unset). */
+function liveKits<R>(fn:()=>R):R{const defs=[...GUNS,...MAGIC].flatMap(s=>[kitFor(s)!.q,kitFor(s)!.e]),old=defs.map(d=>d.live);defs.forEach(d=>d.live=true);try{return fn();}finally{defs.forEach((d,i)=>d.live=old[i]);}}
+const PHRASES=[...MAGIC.flatMap(spec=>(['ability-q','ability-e'] as const).map(mode=>({spec,mode}))),...(['pistol','machinegun','rifle'] as const).map(spec=>({spec,mode:'ability-e' as const}))];
+test('ability phrases (8 spells, frag throw, rocket, Orbital Mark) are deterministic and frame-rate consistent: no snaps',()=>liveKits(()=>{
+ for(const {spec,mode} of PHRASES){
+  const run=(hz:number)=>probeMotion({spec,mode,hz,from:2.45,to:3.7,keepFrames:true});const a=run(60),b=run(120),c=run(30);
+  assert.ok(a.maxJointStepDeg>.5,`${spec} ${mode}: the phrase moves the rig (${a.maxJointStepDeg.toFixed(2)} deg/frame)`);
+  assert.ok(b.maxJointStepDeg<.75*a.maxJointStepDeg,`${spec} ${mode}: ${a.maxJointStepDeg.toFixed(1)} deg/frame @60 vs ${b.maxJointStepDeg.toFixed(1)} @120 (${a.maxJointStepBone})`);
+  const end=(r:typeof a)=>r.samples!.at(-1)!.tip!;assert.ok(end(c).distanceTo(end(b))<.03,`${spec} ${mode}: 30 Hz and 120 Hz end on the same pose (${end(c).distanceTo(end(b)).toFixed(3)} m)`);
+  assert.deepEqual(run(60),a,`${spec} ${mode}: same inputs, same pose`);
+ }
+}));
+test('first-person ability phrases keep the staff off the crosshair: ≤5 % of frames, none within ±.15 s of release',()=>liveKits(()=>{
+ for(const spec of MAGIC)for(const slot of ['q','e'] as const){const def=kitFor(spec)![slot],release=2.5+castTime(def.windup,statsFor({},spec));
+  for(const chips of [false,true]){const r=fpStaffProbe(spec,preview('ability-'+slot),chips,{from:2.45,to:3.7,release}),id=`${spec} ${def.id}${chips?' (worst-case chips)':''}`;
+   assert.ok(r.crossAny<=.05,`${id}: staff in the crosshair box on ${(100*r.crossAny).toFixed(1)}% of frames`);
+   assert.equal(r.crossRelease,0,`${id}: staff crosses the crosshair within .15 s of release`);assert.ok(r.minD>=.12,`${id}: nearest staff point ${r.minD.toFixed(3)} m`);}}
+}));
+test('ADS rocket recoil: the machine gun never rises into the crosshair (pitch ≤ .12 rad, push-back and dip)',()=>liveKits(()=>{
+ const r=adsProbe('machinegun',preview('ability-e'),{chips:true,from:2.45,to:3.7});assert.ok(r.top<=-.03,`gun top at NDC y ${r.top.toFixed(3)}`);assert.ok(r.maxX<.06);
+}));

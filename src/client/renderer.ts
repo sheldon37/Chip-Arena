@@ -121,7 +121,7 @@ export class ArenaRenderer {
  lavaFlail(r,p.hp>0&&inLava(state.options.map,pos)&&!p.swinging&&!p.knockdown,state.time,dt);
  this.meleeTrails.sample(r,p,pose,this.visualTime);
 
- spellMotes(r,p,pose,dt,this.effectsQuality,this.spellBurst);
+ spellMotes(r,p,pose,dt,this.effectsQuality,this.spellBurst,state.time);
  r.guard.visible=p.guarding;r.block.visible=state.phase==='fight'&&p.hp>0&&p.blockTime>0;r.block.rotation.y=state.time*2;rangedBlockArms(r,w);this.enchant(r.weapon,w.class==='melee'?attackElements(visualStats.burn,visualStats.poison):[],this.visualTime,p.chips);weaponModifiers(r.weapon,p,preview?this.visualTime:state.time);bodyModifiers(r,p,preview?this.visualTime:state.time);if(p.spec==='daggers'){this.enchant(r.offWeapon,attackElements(visualStats.burn,visualStats.poison),this.visualTime,p.chips);weaponModifiers(r.offWeapon,p,preview?this.visualTime:state.time);}
  r.group.visible&&=this.pve.decoratePlayer(r,p,state);
  }

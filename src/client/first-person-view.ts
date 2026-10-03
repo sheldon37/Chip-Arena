@@ -3,7 +3,7 @@ import type {PlayerView} from '../shared/simulation.js';
 import {WEAPONS} from '../shared/content.js';
 import {VIEW} from '../shared/view.js';
 import {animateCharacter,type AnimatedRig} from './character-animation.js';
-import {springStep,clockStep,reloadPhase} from './ranged-motion.js';
+import {springStep,clockStep,reloadPhase,abilityPhrase,rocketKick} from './ranged-motion.js';
 import {magicGuardWeight} from './magic-motion.js';
 import {adsProfile,type AdsProfile} from '../shared/abilities.js';
 /** First-person view model: animates the camera-attached rig, then places the view root (the renderer hides the rig's head,
@@ -14,7 +14,7 @@ import {adsProfile,type AdsProfile} from '../shared/abilities.js';
 /** View-model placement per class (exported for the numeric probes; presentation only). */
 /** Staff: x .20 / y -.50, FP-only scale .85 and its top rolled 20° outward about the grip; FP chip modules ×.5 (design §10.3,
  * PROBE fp-staff2: 0 % crosshair cover, ~9 % of the left half against 12-35 % for the rejected x .24). */
-export const FP_TUNE={meleeX:.16,meleeY:-.22,meleeZ:-.3,magicX:.2,magicY:-.5,magicStaffScale:.85,magicRoll:20,moduleScale:.5};
+export const FP_TUNE={meleeX:.16,meleeY:-.22,meleeZ:-.3,magicX:.2,magicY:-.5,magicStaffScale:.85,magicRoll:20,moduleScale:.5,rocketDip:.07};
 /** ADS view-model offsets (Δx, Δy) per gun (§12.1; PROBE: muzzle on the crosshair column, sights just under it). */
 export const ADS_VIEW:Record<string,[number,number]>={pistol:[-.27,.19],machinegun:[-.31,.175],rifle:[-.33,.1]};
 interface ViewState{t:number;yaw:number;pitch:number;sx:number;sxv:number;sy:number;syv:number;roll:number;rollv:number;land:number;landv:number;grounded:boolean;vy:number;ads:number;adsv:number}
@@ -53,13 +53,15 @@ export function poseFirstPersonView(firstRig:AnimatedRig,viewRoot:T.Object3D,sel
  const run=Math.min(1,firstRig.motion),bx=Math.sin(firstRig.stride)*.012*run,by=-Math.abs(Math.cos(firstRig.stride))*.015*run;
  // Recoil push and reload dip for guns.
  const a=s.ads,P=prof??adsProfile(self.spec),shotAge=time-(self.lastShot??self.lastAttack),kick=cls==='ranged'&&shotAge>=0?Math.exp(-shotAge*(self.spec==='rifle'?14:20))*(self.spec==='rifle'?1.4:self.spec==='machinegun'?.6:1)*(1+((P?.kick??1)-1)*a):0;
+ const ab=cls==='ranged'?abilityPhrase(self,time):undefined,rel=ab?ab.age-ab.releaseAt:-9,rk=ab?.id==='rocket'?rocketKick(rel):0,flick=ab?.id==='orbital-mark'&&rel>=0&&rel<.2?Math.sin(Math.PI*rel/.2):0;
  const reload=cls==='ranged'?reloadPhase(self,w).envelope:0,runLow=cls==='ranged'?run*Math.min(1,Math.max(0,(shotAge-.3)/.3))*(1-reload):0;
  // Per class: guns sit right of centre (the renderer's original placement); the staff hand moves right so its crystal no
  // longer fills the left of the view; melee is raised a little so strikes read.
  const t=FP_TUNE,o=ADS_VIEW[self.spec]??[0,0],baseX=fighter?0:cls==='magic'?t.magicX:cls==='melee'?t.meleeX:.24+o[0]*a,baseY=fighter?-.48:cls==='melee'?t.meleeY:cls==='magic'?t.magicY:-.48+o[1]*a,baseZ=cls==='melee'&&!fighter?t.meleeZ:-.2;
- viewRoot.position.set(baseX+(bx+s.sx)*(1-a*.7),baseY+(by+s.sy)*(1-a*.7)+s.land*.05-.06*reload-.03*runLow,baseZ+.04*kick);
+ // Rocket: pitch ≤ .12 rad with a .08 m push-back and a dip, so the gun never rises into the crosshair; Mark: a .06 rad flick.
+ viewRoot.position.set(baseX+(bx+s.sx)*(1-a*.7),baseY+(by+s.sy)*(1-a*.7)+s.land*.05-.06*reload-.03*runLow-t.rocketDip*rk,baseZ+.04*kick+.08*rk);
  // Narrower ADS FOV: counter-scale so the gun does not balloon; the rifle hides behind its scope overlay.
- viewRoot.rotation.set(.06*kick-.1*runLow,Math.PI,s.roll+.25*reload);viewRoot.scale.setScalar(.78*(1+(P&&a?Math.tan(P.fov*Math.PI/360)/Math.tan(VIEW.firstFov*Math.PI/360)-1:0)*a));
+ viewRoot.rotation.set(.06*kick-.1*runLow+.12*rk+.06*flick,Math.PI,s.roll+.25*reload);viewRoot.scale.setScalar(.78*(1+(P&&a?Math.tan(P.fov*Math.PI/360)/Math.tan(VIEW.firstFov*Math.PI/360)-1:0)*a));
  viewRoot.visible=!(scoped&&!prof)&&!(P?.overlay==='scope'&&a>.6);
  // Staff: FP-only scale and roll about the grip around the camera's view axis (top toward the left edge), faded out in the guard.
  const wpn=firstRig.weapon;if(cls==='magic'){const g=magicGuardWeight(firstRig);wpn.scale.setScalar(t.magicStaffScale+(1-t.magicStaffScale)*g);
