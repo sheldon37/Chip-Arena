@@ -34,7 +34,7 @@ function glyph(){if(glyphTex!==undefined)return glyphTex;const c=canvas(256,96);
  glyphTex=new T.CanvasTexture(c);glyphTex.colorSpace=T.SRGBColorSpace;return glyphTex;}
 const additive=(color:number)=>new T.MeshBasicMaterial({color,transparent:true,opacity:0,blending:T.AdditiveBlending,depthWrite:false,toneMapped:false});
 function build(m:SirenMinion):Hint{
- const cracked=m.look.face==='cracked',seam=new T.Mesh(new T.BoxGeometry(cracked?.07:.24,.014,cracked?.2:.026),additive(VIOLET));
+ const cracked=m.look.face==='cracked',seam=new T.Mesh(new T.BoxGeometry(cracked?.09:.27,.026,cracked?.22:.045),additive(VIOLET));
  seam.name='siren-minion-hint-seam';seam.position.set(cracked?-.03:0,.365,cracked?.03:.0);seam.castShadow=false;seam.receiveShadow=false;
  const halo_=new T.Sprite(new T.SpriteMaterial({map:halo(),color:VIOLET,transparent:true,opacity:0,blending:T.AdditiveBlending,depthWrite:false,toneMapped:false}));
  halo_.name='siren-minion-hint-halo';halo_.position.set(0,.38,0);halo_.scale.setScalar(.7);
@@ -53,7 +53,7 @@ export function possessHint(m:SirenMinion,level:number,time:number,cameraDistanc
  // A pulse every ~4 s (a quick swell, a slow fade), hashed per minion so two possessed adds never beat together.
  const k=((time+m.look.phase*4)%4+4)%4,pulse=k<1.4?Math.sin(Math.PI*k/1.4)**2:0,boost=level>=3?1.35:1;
  const seamOn=.55+.45*pulse;(h.seam.material as T.MeshBasicMaterial).opacity=Math.min(1,seamOn*boost);h.seam.visible=true;
- h.halo.visible=pulse>.02;h.halo.material.opacity=Math.min(1,pulse*boost);h.halo.scale.setScalar(.55+.75*pulse);
+ h.halo.visible=true;h.halo.material.opacity=Math.min(1,(.18+.82*pulse)*boost);h.halo.scale.setScalar(.6+1.1*pulse);
  const g=level>=2&&cameraDistance<=HINT_GLYPH_RANGE;h.glyph.visible=g;
  if(g){h.glyph.material.opacity=Math.min(1,(.68+.12*Math.sin(time*2.3))*boost);
   m.rig.head.getWorldPosition(_h);m.rig.group.worldToLocal(_h);h.glyph.position.set(_h.x,_h.y+.6+.05*Math.sin(time*1.7),_h.z);}

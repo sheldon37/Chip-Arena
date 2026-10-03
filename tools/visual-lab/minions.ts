@@ -35,9 +35,10 @@ import {sirenify,animateSiren,SirenStageVisuals} from '../../src/client/siren/in
 import {WARD_ZERO_AIR} from '../../src/client/siren/stage.js';
 import {sirenStageBlocks,SIREN_STAGE_THEME,SIREN_ADD_SPAWNS} from '../../src/shared/siren-stage-layout.js';
 import {createSirenMinion,animateSirenMinion,setSirenMinionDetail,prewarmSirenMinions,MINION_TIMING,MINION_FACES,VENT_RIM_Z,type SirenMinionView,type MinionOptions,type SirenMinion} from '../../src/client/siren/minions/index.js';
-import {LIMB,encodeAdd,type PveAddView,type PveEntryView,type PveView} from '../../src/shared/pve/contract.js';
+import {LIMB,PVE_TIMING,encodeAdd,type PveAddView,type PveEntryView,type PveView} from '../../src/shared/pve/contract.js';
 import {fixtureAdd,fixtureBase,fixtureEnteringAdds} from '../../src/shared/pve/fixtures.js';
 import {PveRng} from '../../src/shared/pve/rng.js';
+import {PVE_ENTRIES} from '../../src/shared/pve/layout.js';
 import {HordeView,type HordeMode} from '../../src/client/pve/horde-view.js';
 import {BurstPool} from '../../src/client/burst-pool.js';
 import {hintObjects} from '../../src/client/siren/minions/hints.js';
@@ -147,7 +148,10 @@ async function crowd(q:URLSearchParams,scene:T.Scene,floor:T.Mesh,gl:T.WebGLRend
    vel:swing?{x:0,z:0}:{x:Math.sin(face)*speed,z:Math.cos(face)*speed},attack:kind==='brute'?'smash':kind==='runner'?'lunge':'swipe',attackAt:swing?t-rng.next()*.6:undefined,hitAt:rng.next()<.15?t-.1:undefined,hitYaw:face+Math.PI}));
  }
  let entries:PveEntryView[]=[];
- if(q.get('entries')==='1'){const e=fixtureEnteringAdds({time:t});entries=e.entries;e.adds.forEach(a=>adds.push(a));}
+ if(q.get('entries')==='1'){const e=fixtureEnteringAdds({time:t-num('entryShift',0)});entries=e.entries;e.adds.forEach(a=>adds.push(a));}
+ // ventAt=<e>: one first add climbing out of vent e (age = 1 + entryShift at t).
+ if(q.has('ventAt')){const e=num('ventAt',4),en=PVE_ENTRIES[e],openAt=t-1-num('entryShift',0);entries.push({e,openAt,closeAt:openAt+PVE_TIMING.vent.climb+1.2,mode:'spawn'});
+  adds.push(fixtureAdd({n:800,state:'entering',entry:e,x:en.from.x,z:en.from.z,yaw:en.yaw,spawnAt:openAt}));}
  const slots=['p1'],view0:PveView={...fixtureBase({time:t,ids:slots}),stage:'wave',adds:[],entries};
  if(q.has('possess')){const d=num('possess',10),p=fixtureAdd({n:900,kind:'shambler',state:'active',x:eye.x+Math.sin(yaw0+.15)*d,z:eye.z+Math.cos(yaw0+.15)*d,yaw:yaw0+Math.PI*.7,vel:{x:.6,z:-.4}});adds.push(p);
   const level=num('level',2),age=level===1?6:level===2?20:40;view0.bossView={id:'pve-boss',phase:2,floor:0,hidden:true,possessed:900,possessedAt:t-age};}
@@ -164,7 +168,7 @@ async function crowd(q:URLSearchParams,scene:T.Scene,floor:T.Mesh,gl:T.WebGLRend
  }
  visuals.shell(props);gl.render(scene,camera);(window as unknown as {labScene:unknown}).labScene={scene,camera,horde};
  const m=horde.metrics(),d=horde.details(),pm=horde.rigOf(900),hint=pm?hintObjects(pm).filter(o=>o.visible).map(o=>o.name.replace('siren-minion-hint-','')).join('+'):'';
- return `${mode} · adds ${m.adds} · full rigs ${m.fullRigs} · near impostors ${m.nearImpostors} · impostors ${d.impostors} · hidden ${d.hidden} · draws≈${horde.drawEstimate()} (horde)${q.has('possess')?' · hint '+(hint||'none'):''}`;
+ return `${q.has('possess')?'hint '+(hint||'none')+' · ':''}${mode} · adds ${m.adds} · full rigs ${m.fullRigs} · near impostors ${m.nearImpostors} · impostors ${d.impostors} · hidden ${d.hidden} · draws≈${horde.drawEstimate()} (horde)`;
 }
 /** A horde shot in Ward Zero: the hall, its air and dressing, minions emerging at a spawn, shambling, running and
  * lunging toward the camera, optionally with the Siren among them. */
