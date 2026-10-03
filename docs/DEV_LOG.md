@@ -82,6 +82,13 @@ containing an entry; no self-referential commit hash is required.
 - Checks: `tests/mouse-look.test.ts` (new, 7 cases); real app (Playwright, synthetic locked mousemoves): fresh-lock
   300 px jump and a 900 px spike ignored, 10 px tracking and a 1620 px ramped flick applied exactly; check:types,
   pvp-golden and the full unit suite (failures = the known Node 22 set). Not run: Windows/Electron, real mouse.
+- Follow-up (owner: "exiting chip selection ... seems to make us look upward"): consistent, same mechanism. Closing
+  the chip screen re-locks; Chromium warps the cursor from the click (Choose later / cards sit below the centre) to the
+  lock centre, read as a move up. Chromium sets `pointerLockElement` before `pointerlockchange`, so the warp could reach
+  the filter before it knew of the new lock. The filter now starts a fresh lock at the first locked event after an
+  unlocked spell (`track()`), settle window 250 ms. Nothing resets or changes pitch while the screen is open. Real app with
+  emulated lock + warp (0,−180 px): base `213f62b` pitched up 0.32 rad per close (to the 1.1 clamp); `07f91fd` still
+  missed the Esc close; now 0 on Choose later click, Esc and card pick; aiming after re-lock exact.
 - Next: owner playtest on Windows; if snaps persist, consider `requestPointerLock({unadjustedMovement:true})` (raw input;
   removes OS acceleration, so a feel change to decide).
 
