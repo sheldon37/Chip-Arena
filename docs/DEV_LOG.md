@@ -16,6 +16,28 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-03 — Claude — test channel review round 1: launcher probation e2e in every candidate
+
+- Tooling `ebd998f` on this branch (PR #5); the game side is `claude/update-headroom` `2db36fa`, whose
+  DEV_LOG entry has the full results. Not published: channel `main` is still `70fe238`, and there is
+  no GitHub Release.
+- `channel-e2e.mjs`: a new launcher is proven only by an installing Update and a real Create Room
+  (`start.mjs` and the game server, wrapped in the seed's `hostingProbation`). New cases:
+  - a launcher that loads, speaks and then fails (broken `remote-feed.mjs` mapping), plus its
+    re-stage/restore loop and the fixed publish;
+  - a broken `start.mjs`, kept through an installing Update and restored by Create Room;
+  - a v2 install refusing the hold notice.
+  `--old-zip` is optional.
+- `candidate.py --channel` now runs it as the `channel-e2e` check for every updater-v2 candidate.
+  A broken channel launcher can no longer pass the candidate checks.
+- `schema1-hold.mjs` writes `hold:true`; the pre-v2 launchers in the e2e ignore it.
+- README: states exactly what is rolled back. It also documents the old-install speed limits (60 s
+  schema-1 download, 90 s total, about 4.5 Mbit/s near 32 MiB) and says to take the seed ZIP from the
+  merged commit's candidate.
+- Checks: candidate `2db36fa`/`ebd998f` passed every packaging check and `channel-e2e` 30/30. A full
+  e2e with the 0e82a31 seed as the old install passed 38/38. Fixture tests passed 9/9. `verify`
+  showed baseline failures, plus one HTTPS run that is flaky under load and passed twice on its own.
+
 ## 2026-10-03 — Claude — test channel: two feeds, 32 MiB schema 1, updater v2 tooling
 
 - Owner-approved update-size headroom. Tooling `7c7ded2` (code + tests), `2a17b17` (e2e harness),
