@@ -163,7 +163,7 @@ export class ChipBlasts{
   */
  field(f:FieldView,time:number,quality:number,compat=false){
   const q=Math.max(0,Math.min(1,quality))*(compat?.4:1);const fused=f.kind==='bomb'&&(f.fx==='artillery'||f.fx==='thunderstep'||f.fx==='comet');if(q<=0||f.kind==='mine'||f.kind==='bomb'&&!fused)return;
-  const rate=fused?40:({storm:7,acid:14,fire:22,frost:12,time:6,'black-hole':26,repulsion:8,heal:9,implosion:30} as Record<string,number>)[f.kind]??0;if(!rate)return;
+  const rate=fused?40:({storm:9,acid:36,fire:64,frost:26,time:14,'black-hole':50,repulsion:18,heal:20,implosion:40} as Record<string,number>)[f.kind]??0;if(!rate)return;
   const last=this.fieldClock.get(f.id);if(last===undefined||time<last){this.fieldClock.set(f.id,time);return;}
   const due=Math.min(6,Math.floor((time-last)*rate*q));if(due<=0)return;this.fieldClock.set(f.id,last+due/(rate*q));
   const rnd=this.random,R=f.radius,ground=Math.max(.03,f.pos.y-.95),pal=PALETTE[f.kind==='storm'?'shock':f.kind==='acid'?'toxic':f.kind==='frost'?'frost':f.kind==='black-hole'||f.kind==='implosion'?'void':f.kind==='fire'?'fire':f.kind==='repulsion'?'mine':f.kind==='heal'?'toxic':'shock'];
@@ -177,11 +177,11 @@ export class ChipBlasts{
     // Comet Dash: the rolling pilot trails fire until the landing blast.
     else{this.solid.spawn(f.pos.x+(rnd()-.5)*.4,f.pos.y-.3+rnd()*.6,f.pos.z+(rnd()-.5)*.4,0,.8,0,.45,.3,.05,0xffc04a,0xd8401c,-.4,.6,0,-1e9,1,4);}
     continue;}
-   if(f.kind==='storm'){const s=spot();let x=s.x,z=s.z;const top=ground+5.5;for(let i=0;i<9;i++){const y=top-(top-ground)*(i/8);this.glow.spawn(x,y,z,0,0,0,.14,.13,.08,0xffffff,pal.hot);x+=(rnd()-.5)*.35;z+=(rnd()-.5)*.35;}for(let i=0;i<3;i++)this.glow.spawn(s.x,ground+.1,s.z,(rnd()-.5)*4,2+rnd()*2,(rnd()-.5)*4,.25,.06,.03,0xffffff,pal.cool,9);
-    const c=spot();this.solid.spawn(c.x,ground+4.6+rnd()*.5,c.z,(rnd()-.5)*.3,0,(rnd()-.5)*.3,1.1,.5,.2,0x3b4466,0x232838,0,.5);}
-   else if(f.kind==='acid'){const s=spot();this.glow.spawn(s.x,ground+.05,s.z,0,.9+rnd()*.8,0,.7+rnd()*.4,.1,.22,pal.hot,pal.cool,0,0);if(rnd()<.35)this.solid.spawn(s.x,ground+.15,s.z,0,.5,0,1.2,.15,.45,pal.smoke,0x23301c,-.1,1);}
-   else if(f.kind==='fire'){const s=spot();this.solid.spawn(s.x,ground+.05,s.z,(rnd()-.5)*.4,1.6+rnd()*1.4,(rnd()-.5)*.4,.55+rnd()*.35,.24,.04,pal.hot,pal.cool,-.4,.5,0,-1e9,1,3);if(rnd()<.4)this.glow.spawn(s.x,ground+.2,s.z,(rnd()-.5),2.5+rnd()*2,(rnd()-.5),.6,.05,.02,pal.core,pal.hot);}
-   else if(f.kind==='frost'){const s=spot();this.solid.spawn(s.x,ground+.02,s.z,0,.15,0,1.2,.05,.12,0xe8fbff,0x8fd8ff,0,0,0,-1e9,4,0);this.glow.spawn(f.pos.x+(rnd()-.5)*R*1.6,ground+1.6+rnd(),f.pos.z+(rnd()-.5)*R*1.6,(rnd()-.5)*.3,-.9,(rnd()-.5)*.3,1.4,.05,.03,0xffffff,0xbfeaff);}
+   if(f.kind==='storm'){const s=spot();let x=s.x,z=s.z;const top=ground+3.6;for(let i=0;i<12;i++){const y=top-(top-ground)*(i/11);this.glow.spawn(x,y,z,0,0,0,.2,.24,.12,0xffffff,pal.hot);x+=(rnd()-.5)*.4;z+=(rnd()-.5)*.4;}this.glow.spawn(s.x,ground+.15,s.z,0,0,0,.18,.6,.2,0xffffff,pal.hot);for(let i=0;i<5;i++)this.glow.spawn(s.x,ground+.1,s.z,(rnd()-.5)*5,2+rnd()*2,(rnd()-.5)*5,.3,.08,.03,0xffffff,pal.cool,9);
+    for(let i=0;i<2;i++){const c=spot();this.solid.spawn(c.x,ground+3.5+rnd()*.5,c.z,(rnd()-.5)*.3,0,(rnd()-.5)*.3,1.4,.45,.75,0x4a5378,0x2a3048,0,.5);}}
+   else if(f.kind==='acid'){const s=spot();this.glow.spawn(s.x,ground+.05,s.z,0,.9+rnd()*.8,0,.7+rnd()*.4,.14,.26,pal.hot,pal.cool,0,0);if(rnd()<.45)this.solid.spawn(s.x,ground+.15,s.z,(rnd()-.5)*.3,.45,(rnd()-.5)*.3,1.5,.18,.55,0x6f9a3a,0x2c3a22,-.1,1);}
+   else if(f.kind==='fire'){const s=spot(),hot=1-s.r/R;this.solid.spawn(s.x,ground+.05,s.z,(rnd()-.5)*.4,1.4+hot*2+rnd()*1.2,(rnd()-.5)*.4,.55+hot*.4+rnd()*.3,.3+hot*.15,.04,rnd()<.3?0xffe28a:pal.hot,pal.cool,-.4,.5,0,-1e9,1,3);if(rnd()<.4)this.glow.spawn(s.x,ground+.2,s.z,(rnd()-.5),2.5+rnd()*2,(rnd()-.5),.6,.05,.02,pal.core,pal.hot);}
+   else if(f.kind==='frost'){const s=spot();this.solid.spawn(s.x,ground+.02,s.z,0,.35,0,1.6,.08,.22,0xe8fbff,0x8fd8ff,0,.8,0,-1e9,3.5,0);this.glow.spawn(f.pos.x+(rnd()-.5)*R*1.6,ground+1.6+rnd(),f.pos.z+(rnd()-.5)*R*1.6,(rnd()-.5)*.3,-.9,(rnd()-.5)*.3,1.4,.05,.03,0xffffff,0xbfeaff);}
    else if(f.kind==='time'){const a=rnd()*Math.PI*2,y=rnd();this.glow.spawn(f.pos.x+Math.cos(a)*R*Math.sqrt(1-y*y),ground+y*R*.8,f.pos.z+Math.sin(a)*R*Math.sqrt(1-y*y),0,0,0,.9,.1,.04,0xdbe8ff,0x83aeff);}
    else if(f.kind==='black-hole'||f.kind==='implosion'){const a=rnd()*Math.PI*2,r=R*(.7+rnd()*.3),T0=.6,x=Math.cos(a)*r,z=Math.sin(a)*r;this.glow.spawn(f.pos.x+x,ground+.7+(rnd()-.5),f.pos.z+z,-x/T0-z*.8,(rnd()-.5)*.4,-z/T0+x*.8,T0,.12,.04,pal.hot,pal.core,0,0,0,-1e9,2.5);}
    else if(f.kind==='repulsion'){const a=rnd()*Math.PI*2;this.glow.spawn(f.pos.x+Math.cos(a)*.4,ground+.3+rnd()*.8,f.pos.z+Math.sin(a)*.4,Math.cos(a)*R/.5,0,Math.sin(a)*R/.5,.45,.12,.04,0xffd0da,0xff728f,0,.9,0,-1e9,1.2);}
