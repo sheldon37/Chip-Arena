@@ -112,7 +112,7 @@ export function fixtureRecruits(o:FixtureOptions={}):PveRecruitView[]{const {tim
 // ---- whole views ----
 export function fixtureBase(o:FixtureOptions={}):PveView{
  const {time,ids}=opt(o);
- return {v:1,boss:'siren',stage:'wave',stageAt:time-20,wave:1,waves:PVE.wavesBeforeBoss,waveTotal:14,waveLeft:9,hold:false,track:{revealed:0,at:0},
+ return {v:1,boss:'siren',stage:'wave',stageAt:time-20,startedAt:time-95,wave:1,waves:PVE.wavesBeforeBoss,waveTotal:14,waveLeft:9,hold:false,track:{revealed:0,at:0},
   slots:[...ids],helloed:ids.filter(id=>!id.startsWith(PARTY_BOT_PREFIX)),adds:[],entries:[],machines:[],pickups:[],party:fixtureParty(o),recruits:[]};
 }
 const enc=(adds:PveAddView[],slots:readonly string[]):PveAddTuple[]=>adds.map(a=>encodeAdd(a,slots));

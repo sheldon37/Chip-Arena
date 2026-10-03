@@ -22,7 +22,7 @@ const ORIGIN={x:0,y:0,z:0};
 
 export class Director implements DirectorApi{
  private schedule=new WaveSchedule(PVE.wavesBeforeBoss,false);
- private stage:PveStage='opening';private stageAt=0;private stageUntil?:number;
+ private stage:PveStage='opening';private stageAt=0;private stageUntil?:number;private startedAt?:number;
  private wave=0;private waveTotal=0;private waveCarry=0;private waveKilled=0;
  private resolvedAt?:number;
  private cinematic?:PveCinematic;private hold=false;
@@ -38,6 +38,7 @@ export class Director implements DirectorApi{
  // ---- lifecycle ----
  onFightStart(){
   const t=this.host.sim.time;this.reset();this.started=true;
+  this.startedAt=t;
   this.schedule=new WaveSchedule(PVE.wavesBeforeBoss,this.host.options.skipWaves===true);this.schedule.start(t);
   this.stage='opening';this.stageAt=t;this.stageUntil=this.schedule.stageUntil;
  }
@@ -47,6 +48,7 @@ export class Director implements DirectorApi{
   this.track={revealed:0,at:0};this.bossId=undefined;this.maxHp=0;this.phase=1;this.floor=0;this.shown=false;
   this.hiddenBoss=false;this.possessed=undefined;this.possessedAt=undefined;this.foundAt=undefined;this.possessionAt=0;
   this.outcome=undefined;this.endedAt=undefined;this.pendingOutcome=undefined;this.spawnError=undefined;this.started=false;
+  this.startedAt=undefined;
  }
 
  // ---- per tick ----
@@ -219,6 +221,7 @@ export class Director implements DirectorApi{
   if(this.cinematic)out.cinematic={...this.cinematic};
   const bv=this.bossView();if(bv)out.bossView=bv;
   if(this.outcome){out.outcome=this.outcome;out.endedAt=this.endedAt;}
+  if(this.startedAt!==undefined)out.startedAt=this.startedAt;
   return out;
  }
  private bossView():PveBossView|undefined{
