@@ -75,13 +75,15 @@ test('cards: prose without ×N, green/red/neutral lines, existing icons',()=>{
   'rune-clock':[g('-10% Ability cooldown')],spellweave:[g('+10% Ability damage')],'wide-sigils':[g('+15% Ability radius'),b('-5% Ability damage')],
   'thrifty-runes':[g('-15% Spell mana cost')],'swift-orbs':[g('+18% Projectile speed'),n('-20% Projectile drop')],spellblade:[g('+35% Next bolts after Q')],
   'mana-surge':[g('+30% Ability damage as mana')],'blood-rune':[g('+20% Ability life steal')],
-  'twin-sigil':[g('+1 E charge'),b('+15% Ability cooldown'),n('Cannot be combined with Spell Echo')],
+  // The two mutually exclusive chips name each other in their prose (fits the size budget; was a neutral card line).
+  'twin-sigil':[g('+1 E charge'),b('+15% Ability cooldown')],
   'arcane-overflow':[g('+40% Ability damage at high mana'),g('+20 Max mana')],
   'elemental-attunement':[g('+25% Ability damage'),g('-20% Ability cooldown'),g('+10% Ability radius'),b('+15% Ability cost')],
-  'spell-echo':[g('E repeats after 0.8 s'),n('Echo deals 50% damage'),n('Cannot be combined with Twin Sigil')],
+  'spell-echo':[g('E repeats after 0.8 s'),n('Echo deals 50% damage')],
   'cinder-field':[g('+50% Meteor burn duration and radius')],undertow:[n('Tidal Wave pulls instead of pushes')],
   'storm-recall':[g('-2 s Blink cooldown per hit, up to 4 s')],'abyssal-core':[g('+25% Black Hole radius'),g('+20% collapse damage')],
  };
+ assert.ok(chip('twin-sigil').description.endsWith('Cannot be combined with Spell Echo.'));assert.ok(chip('spell-echo').description.endsWith('Cannot be combined with Twin Sigil.'));
  for(const c of MAGIC_CHIPS){
   assert.deepEqual(chipStatLines(c),lines[c.id],c.id);
   const text=chipDescription(c);assert.equal(text,c.description);assert.ok(text.length>20&&/^[A-Z].*\.$/.test(text),c.id);
