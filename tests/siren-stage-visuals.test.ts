@@ -64,3 +64,10 @@ test('Ward Zero is indoors: no sky, skyline or grid, an interior haze and an ove
  scenery.set('foundry');
  assert.ok(scene.getObjectByName('clouded-night-sky'),'the sky returns');assert.ok(scenery.group.children.length>0);assert.deepEqual(moon.position.toArray(),[-8,20,-12]);
 });
+
+test('PvE vent lids are hinged groups after the rim: the rim stays the first RingGeometry child and the grate keeps all 9 bars',()=>{
+ const w=ward();
+ for(const v of ['vent-0','vent-3','vent-7']){const g=w.named('ward-'+v);const first=g.children.findIndex(o=>o instanceof T.Mesh&&o.geometry instanceof T.RingGeometry);
+  assert.equal(first,0,`${v}: rim first`);const lid=g.getObjectByName(`ward-${v}-lid`)!;assert.ok(lid,'lid group');
+  assert.equal((lid.children[0] as T.InstancedMesh).count,9,'9 grate bars');assert.equal(lid.rotation.z,0,'shut without PvE');}
+});
