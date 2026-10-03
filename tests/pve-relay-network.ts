@@ -2,7 +2,9 @@
  *  A PartyRoom v2 guest talks to a browser-hosted PvE HostedRoom through the local relay (createLocalRelay, like
  *  party-network.ts). The guest's hello and tunnelled {type:'chip',pve} commands arrive at the authority, identical
  *  commands with different nonces are not de-duplicated, and the relay never answers 400 (D32). An outdated guest
- *  (no hello) gets a fatal update error on ready that ends its session. Not part of npm test. */
+ *  (no hello) gets a fatal update error on ready that ends its session.
+ *  Part 2 (S7): a real skipWaves room (no stubs); the guest picks, reaches the Siren's boss stage through the relay, the
+ *  horde stays under the relay cap (28) and validPacket accepts every host packet. Not part of npm test. */
 import assert from 'node:assert/strict';
 import {PartyRoom} from '../src/client/party-room.js';
 import {HostedRoom} from '../src/shared/host-room.js';
@@ -10,6 +12,8 @@ import {createLocalRelay} from '../src/relay/local.js';
 import {initPhysics} from '../src/shared/simulation.js';
 import {idleInput} from '../src/shared/config.js';
 import {PVE_CONTRACT,type PveCommand} from '../src/shared/pve/contract.js';
+import {HORDE} from '../src/shared/pve/balance.js';
+import {validPacket} from '../src/shared/relay-protocol.js';
 await initPhysics();
 const pause=(ms:number)=>new Promise(r=>setTimeout(r,ms));
 async function until(fn:()=>boolean,label:string,timeout=15000){const at=Date.now();while(!fn()){if(Date.now()-at>timeout)throw Error('Timeout '+label);await pause(20);}}
@@ -48,4 +52,38 @@ try{
  assert.ok(!statuses.includes(400),'no relay 400');assert.deepEqual(failures,[]);assert.deepEqual(guestFailures,[]);
  assert.ok(guestState.pve&&guestState.players.some((p:any)=>p.id===guestId));
  console.log(JSON.stringify({transport:'HTTPS party relay v2',pve:true,helloArrived:true,tunnelledCommands:commands.length,relay400:false,outdatedGuestEnded:true,exchanges:statuses.length}));
-}finally{if(clock)clearInterval(clock);host.close();guests.forEach(g=>g.close());await pause(100);await new Promise<void>(r=>server.close(()=>r()));db.close();authority?.dispose();}
+}finally{if(clock)clearInterval(clock);host.close();guests.forEach(g=>g.close());await pause(100);}
+
+// ---------- Part 2 (S7): a real skipWaves run to the boss through the relay ----------
+{
+ let room:HostedRoom|undefined,tick:ReturnType<typeof setInterval>|undefined,gid='',gstate:any,packets=0,invalid=0,maxAdds=0;const bad:string[]=[],gbad:string[]=[];
+ const checked:typeof fetch=async(url,init)=>{
+  try{const body=typeof init?.body==='string'?JSON.parse(init.body):undefined;if(body?.snapshot){packets++;if(!validPacket({seq:1,ack:0,events:[],latest:body.snapshot},true))invalid++;}for(const peer of Array.isArray(body?.peers)?body.peers:[]){packets++;if(!validPacket(peer.packet,true))invalid++;}}catch{/* not JSON */}
+  const r=await fetch(url,init);statuses.push(r.status);return r;};
+ const h2=new PartyRoom({host:true,code:'',profile:pilot,base,fetch:checked,status:()=>{},ended:x=>bad.push(x),receive:(m,id)=>room!.receive(id,m),guest:(p,id)=>room!.join(p,false,id),guestGone:id=>room!.disconnect(id)});
+ let g2:PartyRoom|undefined;
+ try{
+  await h2.start();
+  room=new HostedRoom(h2.code,pilot,false,(target,m)=>{if(target!=='host')h2.send(m,target);},6,false,true,undefined,{pve:{boss:'siren',skipWaves:true,debug:true}});
+  assert.equal(room.sim.pve!.options.relay,true);room.sim.options.countdown=.05;tick=setInterval(()=>room!.step(),1000/60);
+  g2=new PartyRoom({host:false,code:h2.code,profile:{...pilot,name:'Guest'},base,fetch:watch,status:()=>{},ended:x=>gbad.push(x),guest:()=>{},guestGone:()=>{},
+  receive:m=>{if(m.type==='welcome')gid=m.id;if(m.type==='snapshot'){gstate=m.state;maxAdds=Math.max(maxAdds,m.state.pve?.adds?.length??0);}}});
+  await g2.start();await until(()=>!!gid&&gstate?.pve?.v===1,'guest 2 welcomed');
+  g2!.send({type:'chip',pve:{action:'hello',v:PVE_CONTRACT,key:'0123456789abcdef0123456789abcdef',n:1}});room.receive('host',{type:'chip',pve:{action:'hello',v:PVE_CONTRACT}});
+  await until(()=>room!.sim.pve!.helloed(gid),'guest 2 hello');
+  g2!.send({type:'ready',ready:true});room.receive('host',{type:'ready',ready:true});await until(()=>room!.sim.phase==='specialization','spec 2');
+  g2!.send({type:'spec',id:'pistol'});room.receive('host',{type:'spec',id:'pistol'});await until(()=>gstate?.phase==='fight','fight 2',20000);
+  room.receive('host',{type:'chip',pve:{action:'debug',op:'god:on',n:2}});
+  await until(()=>!!gstate.pve.party[gid]?.picks?.[0]?.offers,'guest offers',10000);const pick=gstate.pve.party[gid].picks[0];
+  g2!.send({type:'chip',pve:{action:'pick',pick:pick.id,chip:pick.offers[0],n:3}});await until(()=>!gstate.pve.party[gid].open,'guest picked',10000);
+  const host=room.sim.pve!.view().party.host;if(host?.open){const k=host.picks.find(x=>x.id===host.open)!;room.receive('host',{type:'chip',pve:{action:'pick',pick:k.id,chip:k.offers![0],n:4}});}
+  for(let seq=1;!(gstate.pve.stage==='boss'&&!gstate.pve.hold);seq++){if(seq>60*60)throw Error('Timeout boss stage through the relay');
+   const s=gstate;g2!.send({type:'inputs',epoch:`${s.setNumber}:${s.round}:${s.generation}`,inputs:[{...idleInput(),seq}]});await pause(1000/30);}
+  assert.ok(gstate.players.some((p:any)=>p.id==='pve-boss'),'guest sees the boss');
+  await pause(4000);
+  assert.ok(maxAdds<=HORDE.maxAliveRelay+HORDE.maxCorpses,`adds in view ${maxAdds}`);assert.ok(room.sim.pve!.horde.alive()<=HORDE.maxAliveRelay);
+  assert.equal(invalid,0,`invalid host packets ${invalid}/${packets}`);assert.ok(packets>50);assert.deepEqual(bad,[]);assert.deepEqual(gbad,[]);assert.ok(!statuses.includes(400));
+  console.log(JSON.stringify({part2:{guestReachedBoss:true,maxAddsInView:maxAdds,hostPackets:packets,invalidHostPackets:invalid}}));
+ }finally{if(tick)clearInterval(tick);h2.close();g2?.close();await pause(100);room?.dispose();}
+}
+await new Promise<void>(r=>server.close(()=>r()));db.close();authority?.dispose();

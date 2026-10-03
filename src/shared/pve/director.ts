@@ -242,6 +242,11 @@ export class Director implements DirectorApi{
    if(this.hold||this.schedule.stage==='done')return false;
    this.onWaveEvent(this.schedule.finish(s.time));return true;
   }
+  // S7: `boss-damage:n` hits the visible boss for n through damage() (floors and reveals apply), credited to the first
+  // connected human; the offline smoke and the real-server suite reach the victory with it.
+  const dm=/^boss-damage:(\d{1,6})$/.exec(op);
+  if(dm){const boss=this.boss(),by=this.host.humans().find(p=>p.connected)?.id??null;
+   if(this.stage!=='boss'||this.hold||!boss||boss.hp<=0||this.hiddenBoss)return false;s.damage(boss,Number(dm[1]),by,'debug');return true;}
   const m=/^boss-phase:([2-4])$/.exec(op);
   if(m){
    const n=Number(m[1]) as Chip,boss=this.boss();

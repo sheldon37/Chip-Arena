@@ -48,6 +48,19 @@ const result:Record<string,unknown>={};
   assert.ok(shared.length>=300,`shared snapshots ${shared.length}`);for(const t of shared)assert.equal(hashes[0].get(t),hashes[1].get(t),'tick '+t);
   assert.ok(states.slice(0,2).every(s=>s.pve&&s.phase==='fight'));assert.deepEqual(errors.slice(0,2),[[],[]]);
   result.loopback={identicalSnapshots:shared.length,hellos:2,updateErrorOnReady:true,tunnelled:commands.length,snapshotBytes:JSON.stringify(states[0]).length};
+  // Boss half (S7): authority-side debug ops (this room has no debug option; the server suite covers tunnelled ops).
+  const pv=room.sim.pve!;pv.debug('god:on');assert.equal(pv.debug('skip-to-boss'),true);const bossStart=room.sim.tick;
+  const seenKinds=new Set<string>();
+  for(let seq=2000;!(states[0].pve?.stage==='boss'&&!states[0].pve.hold)&&room.sim.tick<bossStart+60*25;seq++){
+   for(let i=0;i<2;i++){const s=states[i];send(i,{type:'inputs',epoch:`${s.setNumber}:${s.round}:${s.generation}`,inputs:[{...idleInput(),seq}]});}
+   const c=states[0].pve?.cinematic;if(c)seenKinds.add(c.kind+(c.chip??''));await pause(16);}
+  assert.equal(states[0].pve?.stage,'boss');assert.ok(seenKinds.has('reveal1')&&seenKinds.has('boss-intro'),[...seenKinds].join());
+  assert.ok(states.slice(0,2).every(s=>s.players.some(p=>p.id==='pve-boss')),'both see the boss');
+  const boss=room.sim.players.get('pve-boss')!;pv.debug(`boss-damage:${Math.ceil(boss.stats.hp)}`);
+  await until(()=>states.slice(0,2).every(s=>s.pve?.cinematic?.kind==='reveal'&&s.pve.cinematic.chip===2),'chip 2 on both clients');
+  await pause(200);const bossShared=[...hashes[0].keys()].filter(t=>t>bossStart&&hashes[1].has(t));
+  assert.ok(bossShared.length>=200,`boss-half shared snapshots ${bossShared.length}`);for(const t of bossShared)assert.equal(hashes[0].get(t),hashes[1].get(t),'boss tick '+t);
+  result.loopbackBoss={identicalSnapshots:bossShared.length,reveal:true,intro:true,chip2:true};
  }finally{if(clock)clearInterval(clock);clients.forEach(c=>c.close());await pause(50);server.close();room.dispose();}
 }
 

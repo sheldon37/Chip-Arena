@@ -51,7 +51,8 @@ export class RejoinMachine{
 
 /** Debug op strings for `{action:'debug',op}` (D29). */
 export const DEBUG_OPS={skipWave:()=>'skip-wave',skipToBoss:()=>'skip-to-boss',phase:(n:number)=>`boss-phase:${Math.max(1,Math.min(4,Math.floor(n)))}`,
- money:(n:number)=>`money:${Math.round(n)}`,god:(on:boolean)=>`god:${on?'on':'off'}`,killAdds:()=>'kill-adds',spawn:(kind:string)=>`spawn:${kind}`} as const;
+ money:(n:number)=>`money:${Math.round(n)}`,god:(on:boolean)=>`god:${on?'on':'off'}`,killAdds:()=>'kill-adds',spawn:(kind:string)=>`spawn:${kind}`,
+ bossDamage:(n:number)=>`boss-damage:${Math.max(0,Math.min(999999,Math.round(n)))}`} as const;
 
 /** dt shifts the fixture's build time (e.g. +1.5 shows a reveal 0.5 s in); events are appended to every state (money popups). */
 export interface FixtureInjectOptions{dt?:number;events?:Partial<GameEvent>[];

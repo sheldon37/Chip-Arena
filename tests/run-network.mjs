@@ -1,6 +1,6 @@
 import {spawn} from 'node:child_process';
 import {setTimeout as pause} from 'node:timers/promises';
-const kinds=new Set(['maps','party','intros','first-block','chaos','rarity','motion','block','debris','elements']);
+const kinds=new Set(['maps','party','intros','first-block','chaos','rarity','motion','block','debris','elements','pve']);
 const kind=process.argv[2];
 if(kind&&!kinds.has(kind))throw Error('Unknown network suite: '+kind);
 const port=process.env.TEST_PORT||'8792';
