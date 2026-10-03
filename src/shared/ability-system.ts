@@ -30,7 +30,8 @@
 //  zone: Ability field (chaos.ts ability pool): `opts.cast` groups one cast's fields.
 //  enemiesNear: Enemy players (hp>0) and enemy minions/adds by distance; LOS best-first with at most 4 rays per query.
 //  stepShot: stepProjectiles hook: false unless `shot.ability` is set; otherwise steps, collides and dispatches the shot.
-//  detonate: Ability-field detonation (until reached, a mine trigger, or pool eviction).
+//  detonate: Ability-field end: `until` reached (every kind), a mine trigger, or pool eviction (bomb/implosion). The handler's
+//   detonate decides; the default explodes bomb/implosion fields (+ vacuum) and triggered mines, other kinds just end.
 //  botKit: The live-kit bot branch applies: E live, or a Q bot row (ADS).
 //  botAds: Hold Q (ADS) while the target is visible within [q.bot.min, q.bot.max] and not rolling. Deterministic.
 //  botDesired: Preferred distance from the live E's bot row.
@@ -256,10 +257,10 @@ export class AbilitySystem{
   else this.sim.projectiles.delete(shot.id);
  }
 
- detonate(f:FieldView){
+ detonate(f:FieldView,cause:'until'|'trigger'|'evict'='until'){
   const s=this.sim,owner=s.players.get(f.owner);if(!owner)return;const def=ABILITY_DEFS[FX_ABILITY[f.fx||'']||''],h=this.handler(def);
   if(h?.detonate){h.detonate(this,f,owner);return;}
-  if(f.kind!=='bomb'&&f.kind!=='implosion'&&f.kind!=='mine')return;
+  if(f.kind!=='bomb'&&f.kind!=='implosion'&&!(f.kind==='mine'&&cause==='trigger'))return;
   const pos=add(f.pos,v(0,.15,0));this.blast(owner,pos,f.radius,f.damage,f.impulse??(f.kind==='implosion'?0:1100),f.fx||f.kind,{kind:f.blastKind??'ability'});
   if(f.kind==='implosion')s.vacuum(owner,pos,1300);
  }

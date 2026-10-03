@@ -208,6 +208,13 @@ test('fields: lockAt freezes an attached field; start delays effects; damageKind
  }finally{s.dispose();}
 });
 
+test('field ends: handler.detonate sees every ability field end; the default only explodes bombs, implosions and triggered mines',()=>{
+ const {def}=fake('darkness','e');const ends:string[]=[];ABILITY_HANDLERS[def.id].detonate=(_sys,f)=>{ends.push(f.kind);};
+ try{const {s,a}=game('darkness');try{s.abilities.zone(a,'black-hole',v(0,.2,10),6,.5,0,'singularity',{cast:'h'});s.abilities.zone(a,'implosion',v(0,.2,10),4,.5,30,'singularity',{cast:'h'});run(s,a,40);assert.deepEqual(ends.sort(),['black-hole','implosion']);
+  delete ABILITY_HANDLERS[def.id].detonate;s.events=[];s.abilities.zone(a,'mine',v(0,.2,-12),2,.5,20,'frag',{cast:'m'});s.abilities.zone(a,'fire',v(0,.2,-12),2,.5,5,'frag',{cast:'m'});run(s,a,40);assert.equal(events(s,'explosion').length,0,'expired mine and fire end quietly');
+  s.abilities.zone(a,'bomb',v(0,.2,-12),2,.5,20,'frag',{cast:'b'});run(s,a,40);assert.deepEqual(events(s,'explosion').map(e=>e.message),['frag']);
+ }finally{s.dispose();}}finally{delete ABILITY_HANDLERS[def.id];def.live=undefined;}
+});
 // ---- slows ----------------------------------------------------------------------------------------------------------
 test('slows: lowest factor wins with a .4 floor, never multiply with fields, 1 s immunity after a strong slow; pull ×.5 on slowed targets',()=>{
  const {s,a,b}=game('darkness');try{
