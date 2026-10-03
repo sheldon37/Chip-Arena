@@ -18,6 +18,29 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-03 — Claude — PvE stage music (Restricted Zone Pulse) + batch 2 verification
+
+- Branch `claude/pve-batch2` (from `948b5ba` = `claude/visual-revision` `6fd525c` + econ-revive, chips, camera,
+  tab-board merges); no PR.
+- Owner: "lets replace the music on the stage to the one attached- until Siren spawns of course :)". Added the owner's
+  `public/music/restricted-zone-pulse.mp3` (byte-exact, 4,113,904 B). In a PvE run on Ward Zero the client loops it from
+  the first in-game phase (specialization, intros, countdown, waves, intermissions, reveal) until `bossSong` is set at the
+  Siren's intro tick, where Black Siren Protocol takes over unchanged. Lobby keeps the menu music; 35% under intro
+  stings; rewinds for Retry/new runs; music volume/mute apply; load error falls back to the rotation. Not in
+  `MUSIC_TRACKS`, so PvP rotation is unchanged. PvE pre-decodes the boss song so it starts at offset 0 on the intro.
+  Files: `src/client/{music,audio,boss-theme,main}.ts`, new `tests/pve-stage-music.test.ts`, docs PVE/ASSET-CREDITS.
+- Animation/hit timing/hitboxes/damage/cooldowns/movement/networking: unchanged (client audio only; no wire change).
+- Checks (Node 22.22.2): check:types pass; full suite 933 tests, 920 pass, 13 fail = the known set exactly;
+  pvp-golden 5/5; `run-network.mjs pve` victory; `pve-loopback-network.ts` pass; `test:pve-balance` 60 runs, 22/60
+  victories (S7 table: 13/60), money at boss h=1 pistol 619 / rifle 317. Real app (Vite, offline TEST BOSS, SwiftShader):
+  stage track playing through specialization/intro/countdown/fight; paused and rewound the tick the Siren song started
+  (boss buffer started once, offset 0); Tab board, chip screen green/red stat lines, one F tap revived a party bot.
+- **Blocker for publication:** `npm run build` now fails in `scripts/package-update.mjs` ("exceeds the hosting 25 MiB
+  per-file limit"): estimated gzip payload 26.10 MiB with the track vs 22.19 MiB without (27.4 MB is under the 32 MB
+  updater cap, but the 25 MiB hosting check trips first). Needs an owner decision: re-encode (≈40 kbps) or trim the
+  track to about 2.7 MB, or another payload change. The owner's file was not altered.
+- Status: implemented on branch; not merged; not released.
+
 ## 2026-10-03 — Claude — PvE playtest fixes: more money, instant revive
 
 - Branch `claude/pve-econ-revive` from `213f62b` (PR #30 head); no PR (integrator merges).

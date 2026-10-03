@@ -5,7 +5,7 @@ import {DeathAnnouncementTrack,DEATH_ANNOUNCEMENT} from './death-announcements.j
 import {enemyHit} from './hitmarker.js';
 import {RAGING_DEMON} from '../shared/raging-demon.js';
 import {IntroAudio} from './intro-audio.js';
-import {ArenaMusic} from './music.js';
+import {ArenaMusic,PVE_STAGE_TRACK} from './music.js';
 import {CLOWN_LOVE} from './clown-love-timing.js';
 import {BASS_VAN} from './bass-van-timing.js';
 import type {GameEvent,Snapshot} from '../shared/simulation.js';
@@ -82,7 +82,13 @@ export class ArenaAudio {
  }
  /** Entry doors and vents opening (S6 owns the world animation; the cue lives here). */
  pveEntries(state:Snapshot){const pve=state.pve;if(!pve)return;for(const e of pve.entries){const key='entry:'+e.e+':'+e.openAt;if(this.deathCues.has(key)||state.time<e.openAt||state.time-e.openAt>.4)continue;this.deathCues.set(key,state.time);this.play('metal',undefined,.18);}}
- update(state:Snapshot,me:string,yaw:number,presentation=state){this.intros.update(presentation,this.context,this.music.cueVolume);this.music.setMap(state.options.map);this.music.setBossActive(!!state.bossSong);this.music.setActive(!state.bossSong&&['fight','countdown','result'].includes(state.phase));this.updateLove(state);this.boss.update(presentation,this.context,this.music.playbackVolume);this.siren.update(presentation,this.context,this.master);const self=state.players.find(p=>p.id===me);if(self)this.listener=self.pos;this.yaw=yaw;this.updateDemon(presentation);this.updateDeathAnnouncements(presentation);this.pveEntries(state);
+ /** PvE (Siren TEST BOSS): the owner's stage track loops from the first in-game phase until the Siren spawns (bossSong);
+  *  it rewinds in lobby/match and at the boss, and main.ts rewinds it on entering a game, so each run starts it from the top. PvP keeps the map music in fight/countdown/result. */
+ private updateStageMusic(state:Snapshot,presentation:Snapshot){const pve=!!(state.pve||(state.options as {pve?:unknown}).pve)&&state.options.map==='siren',idle=['lobby','match'].includes(state.phase);
+  this.music.setStage(pve?PVE_STAGE_TRACK:null);this.music.setDip(pve&&introFrame(presentation)?.style!==undefined&&state.phase==='intro'?.35:1);
+  this.music.setActive(!state.bossSong&&(pve?!idle:['fight','countdown','result'].includes(state.phase)));
+  if(pve){if(state.bossSong||idle)this.music.rewindStage();this.boss.preload(this.context);}}
+ update(state:Snapshot,me:string,yaw:number,presentation=state){this.intros.update(presentation,this.context,this.music.cueVolume);this.music.setMap(state.options.map);this.music.setBossActive(!!state.bossSong);this.updateStageMusic(state,presentation);this.updateLove(state);this.boss.update(presentation,this.context,this.music.playbackVolume);this.siren.update(presentation,this.context,this.master);const self=state.players.find(p=>p.id===me);if(self)this.listener=self.pos;this.yaw=yaw;this.updateDemon(presentation);this.updateDeathAnnouncements(presentation);this.pveEntries(state);
   for(const e of this.cursor.consume(state.events,state.time)){
    if(e.type.startsWith('pve-')||e.type==='minionHit'&&state.pve)this.pveCue(e,state,me);
    else if(e.type==='melee-slam'){this.play('stone',e.pos,1);this.play('greatsword',e.pos,.65);}

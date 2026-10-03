@@ -27,3 +27,12 @@ credited to **Xtrr - musiccreator**. Copied without transcoding: 193.632 seconds
 `5b2cdc75fef5c5087f6ecff2f13ccf1e0632937195e6427536b1f3cde18f213e`.
 The shared beat map must be measured against this exact playback file (or a
 verified sample-aligned analysis copy); no fixed-BPM beat calculation.
+
+## Restricted Zone Pulse
+
+`public/music/restricted-zone-pulse.mp3` ("Restricted Zone Pulse") is the owner's
+own supplied recording (2026-10-03), copied without transcoding: MP3 64 kbps,
+48 kHz, 4,113,904 bytes. SHA256:
+`7d3bc7120ad7508c6e6d8a50bfe1957f6ef038bc0459c726fb2e0d788a26f349`.
+It is the PvE (Siren TEST BOSS, Ward Zero) stage track until the Siren spawns and
+is not part of the PvP music rotation.

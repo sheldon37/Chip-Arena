@@ -461,6 +461,22 @@ During the boss a solo player earns about $2,500-3,000 more (thresholds $750 plu
 buying chips, heals and revives. Wave lengths, deaths and victories are unchanged within seed noise (money does not
 change the simulation except through what the harness buys).
 
+## Stage music (2026-10-03, branch `claude/pve-batch2`)
+
+Owner: "lets replace the music on the stage to the one attached- until Siren spawns of course :)". In a PvE run on Ward
+Zero the client (`ArenaAudio.updateStageMusic`, `ArenaMusic.setStage`) loops `public/music/restricted-zone-pulse.mp3`
+(`PVE_STAGE_TRACK`, kept out of `MUSIC_TRACKS`) from the first in-game phase (specialization, intros, countdown, opening,
+waves, intermissions, the chip-1 reveal) until `bossSong` is set at the Siren's intro tick; the Black Siren Protocol
+boss song then takes over exactly as before. The lobby keeps the menu music. Under a player intro sting the stage track
+plays at 35% of the music level. It rewinds in lobby/match, at the boss and on entering a game, so Retry and new runs
+start it from the top. Music volume and mute apply. PvE also pre-decodes the boss song during the run
+(`BossTheme.preload`) so it starts on its first frame (offset 0) at the intro instead of after a mid-intro decode. A
+failed load falls back to the normal rotation. Server, wire and simulation are unchanged.
+
+**Open (publication blocker):** with the 4.1 MB track the gzip update payload is about 26.1 MiB, so
+`scripts/package-update.mjs` (end of `npm run build`) refuses it (hosting limit 25 MiB per file; 22.2 MiB without the
+track). The owner decides between a smaller encode/trim of the track (about 2.7 MB fits) or another payload change.
+
 ## Rendering constants (S5 and S6 mirrors)
 
 `src/client/pve/horde-view.ts`:
