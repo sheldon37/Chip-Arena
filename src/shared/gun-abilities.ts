@@ -29,7 +29,7 @@ const ROCKET:Shot={
 function mark(sys:AbilitySystem,shot:Projectile,at:Vec,attach?:string){const p=owner(sys,shot),d=def(shot);sys.sim.projectiles.delete(shot.id);
  if(p)sys.zone(p,'bomb',at,abilityRadius(d,p.stats),d.fuse!,shot.damage,d.fx,{impulse:d.impulse,blastKind:'ability',lockAt:sys.sim.time+d.duration!,cast:tag(shot).cast,...(attach?{attach}:{})});}
 const MARK:Shot={
- onEnemy(sys,shot,target,point){strike(sys,shot,target,point,10/85);mark(sys,shot,{...target.body.translation()},target.id);return 'stop';},
+ onEnemy(sys,shot,target,point){const at={...target.body.translation()};strike(sys,shot,target,point,10/85);mark(sys,shot,at,target.id);return 'stop';},
  onSurface(sys,shot,point){mark(sys,shot,point);return 'stop';}};
 export const GUN_HANDLERS:Record<string,AbilityHandler>={
  'frag-grenade':{point:(sys,c)=>sys.aimPoint(c.p,c.aim,c.def.range).point,shot:FRAG,

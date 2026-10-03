@@ -11,6 +11,7 @@ import {GUN_KITS,ADS_PROFILES} from '../src/shared/gun-kit.js';
 import {botAbilities} from '../src/shared/bot-abilities.js';
 import {ballisticPitch} from '../src/shared/projectiles.js';
 import {VIEW} from '../src/shared/view.js';
+import {rollInvulnerable} from '../src/shared/souls-combat.js';
 await initPhysics();
 
 const GUNS=['pistol','machinegun','rifle'] as const;
@@ -137,6 +138,12 @@ test('Orbital Mark: the dart tags for 10, the strike follows until tag+.8 s, loc
  {const {s,a,b}=game('rifle',v(0,.9,20));try{aimAt(a,b.body.translation());tick(s,a,{secondary:true});guarded(s,a,'orbital-mark',40,()=>[...s.chaos.fields.values()].some(f=>f.fx==='orbital-mark'),60);
   const f=[...s.chaos.fields.values()].find(f=>f.fx==='orbital-mark')!;assert.equal(f.owner,'b','the blocker owns the reflected mark');assert.equal(f.attach,'a');}finally{s.dispose();}}
 });
+test('Orbital Mark: a dart that kills an add still calls the strike on the spot where it fell',()=>{
+ const {s,a,b}=game('rifle',v(20,.9,0));try{s.chaos.summon(b,1,'zombie',v(0,.9,12),30);s.world.step();const z=[...s.chaos.minions.values()][0];z.speed=0;z.hp=5;z.body.setTranslation(v(0,.9,12),true);s.world.step();
+  const at={...z.body.translation()};aimAt(a,at);tick(s,a,{secondary:true});until(s,a,()=>!s.chaos.minions.has(z.id),60);assert.equal(s.chaos.minions.has(z.id),false,'the dart kills it');
+  const f=[...s.chaos.fields.values()].find(f=>f.fx==='orbital-mark')!;assert.ok(f&&len(sub(f.pos,at))<.3,'strike field where the add fell');until(s,a,()=>blasts(s,'orbital-mark').length>0,90);assert.equal(blasts(s,'orbital-mark').length,1);
+ }finally{s.dispose();}
+});
 test('Orbital Mark: ≥ 40 per cast against a scripted 6.8 m/s strafer at 30 m with a perfect-aim lead (no dodge AI)',()=>{
  for(const dir of [1,-1]){const {s,a,b}=game('rifle',v(-dir*4,.9,16),v(0,.9,-14));try{run(s,a,30,{},{x:dir});const vel=b.body.linvel();near(Math.hypot(vel.x,vel.z),C.speed,.05,'strafer speed');
   const dist=len(sub(b.body.translation(),eye(a))),lead=.15+dist/150,to=add(b.body.translation(),mul(v(vel.x,0,vel.z),lead)),d=sub(to,eye(a)),h=Math.hypot(d.x,d.z);
@@ -145,6 +152,14 @@ test('Orbital Mark: ≥ 40 per cast against a scripted 6.8 m/s strafer at 30 m w
  }finally{s.dispose();}}
 });
 
+test('every gun E is avoidable: roll i-frames take none of the frag, rocket or strike blast at their centres',()=>{
+ for(const id of ['frag-grenade','rocket','orbital-mark']){const {s,a,b}=game('pistol',v(0,.9,10));try{b.grounded=true;tick(s,a,{},{dash:true,z:1});assert.ok(b.roll,'rolled');until(s,a,()=>rollInvulnerable(b,s.time),20,{z:1});assert.ok(rollInvulnerable(b,s.time));
+  const at=add(b.body.translation(),v(0,0,-.01)),def=ABILITY_DEFS[id];
+  if(id==='orbital-mark'){s.abilities.zone(a,'bomb',at,3,0,85,'orbital-mark',{impulse:1400,blastKind:'ability',cast:'c'});s.chaos.step(1/60);}
+  else{s.abilities.spawnShot(a,def,{cast:'c',pos:at,vel:v(),gravity:0,damage:def.damage,fuse:s.time});s.stepProjectiles(1/60);}
+  assert.equal(blasts(s,def.fx).length,1,id);assert.equal(b.hp,100,id);
+ }finally{s.dispose();}}
+});
 // ---- bots -------------------------------------------------------------------------------------------------------------
 test('bots: ADS inside the Q range only; below the E minimum the primary keeps firing and secondary stays off; E while reloading',()=>{
  for(const spec of GUNS){const k=kitFor(spec)!,q=k.q.bot!,e=k.e.bot!;const {s,a,b}=game(spec,v(0,.9,(e.min+Math.min(e.max,30))/2));try{a.bot='hard';s.random=()=>0;
