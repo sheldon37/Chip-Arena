@@ -151,6 +151,19 @@ test('Black Hole: 6 m vortex, 2.2 s, force 16 (tuned from 18 so case (a) holds f
 test('every E deals ≥ 40 to a stationary target at the centre (Ball Lightning aimed at the lower body)',()=>{
  for(const spec of SCHOOLS){const {s,a,b}=game(spec,12);try{aim(a,spec==='lightning'?v(0,.5,12):feet(b));release(s,a,'e');run(s,300);assert.ok(100-b.hp>=40,`${spec} E ${100-b.hp}`);}finally{s.dispose();}}
 });
+/** §7.1 gate (the reason Geyser Wall is 60 / 3 m and Ball Lightning zaps 11 within 7 m instead of the design's 32 / 2.5 m and
+ * 8 within 5.5 m): perfect aim at the strafer's current position, no lead, E pressed at its bot mid-range; the strafer runs
+ * ±x at full speed and re-rolls its direction every .7 s (seeded LCG), kept within |x| < 9. */
+test('every E averages ≥ 35 damage per cast against a 6.8 m/s strafer at its bot mid-range (48 seeds)',()=>{
+ const out:Record<string,number>={};
+ for(const spec of SCHOOLS){const def=MAGIC_KITS[spec].e,dist=(def.bot!.min+def.bot!.max)/2;let sum=0;
+  for(let n=1;n<=48;n++){const seed=n*104729,{s,a,b}=game(spec,dist,{},'sword');try{let r=seed>>>0,dir=1,next=0;
+   const strafe=()=>{if(s.time>=next){r=(Math.imul(r,1664525)+1013904223)>>>0;dir=r/4294967296<.5?-1:1;next=s.time+.7;}const x=b.body.translation().x;if(x>9)dir=-1;if(x<-9)dir=1;return {b:{x:dir,z:0,yaw:Math.PI}};};
+   for(let i=0;i<30+seed%40;i++)step(s,strafe());const t=b.body.translation();aim(a,v(t.x,spec==='lightning'?.5:.02,t.z));
+   assert.equal(s.abilities.press(a,'e'),'cast');for(let i=0;i<240;i++)step(s,strafe());sum+=100-b.hp;}finally{s.dispose();}}
+  out[spec]=+(sum/48).toFixed(1);}
+ console.log('E vs 6.8 m/s strafer (mean per cast):',JSON.stringify(out));for(const spec of SCHOOLS)assert.ok(out[spec]>=35,`${spec} ${out[spec]}`);
+});
 test('Undertow: Tidal Wave drags enemies toward the caster instead of pushing them',()=>{
  for(const undertow of [0,1]){const {s,a,b}=game('water',6,undertow?{undertow:1}:{});try{release(s,a,'q');let ext=0;for(let i=0;i<20&&!hits(s,'b').length;i++)step(s);ext=b.ext.z;
   assert.ok(undertow?ext<-5:ext>5,`ext.z ${ext}`);}finally{s.dispose();}}
