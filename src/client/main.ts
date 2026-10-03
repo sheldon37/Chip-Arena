@@ -49,6 +49,7 @@ import './killcam.css';
 import './draft-screen.css';
 import './pve/pve.css';
 import {LocalRoom} from './pve/local-room.js';
+import {MouseLookFilter} from './mouse-look.js';
 import {PveHello,PveNonce,RejoinMachine,PveFixtureInjector,DEBUG_OPS,rejoinKey,type KeyStore,type FixtureInjectOptions} from './pve/session.js';
 import {MoneyTrack,AttackedTrack,DelayMemo} from './pve/tracks.js';
 import {moneyHud,waveHeading,bossBar,partyHud,chipLaterIcon,bannerFor,pveBanner,downLine,possessionArrow,bossIntroName,escapeHtml as pveEscape} from './pve/hud.js';
@@ -196,6 +197,8 @@ function pveKey(e:KeyboardEvent){if(!state.pve||(e.target as HTMLElement).matche
  * "Click to aim & play" pill instead of the game menu. A lock lost while playing (not released by the chip screen, the board,
  * the killcam or a cinematic) opens the menu; Resume re-locks. `lockPauseAt` stops a following Esc keydown toggling it shut. */
 let lockPauseAt=0;
+/** Drops bogus pointer-lock deltas (fresh-lock jumps, lone Windows spikes) before they turn the camera. */
+const mouseLook=new MouseLookFilter();
 function pauseOnLockLoss(){if(document.pointerLockElement||screen!=='game'||paused||!state?.pve||!['fight','countdown'].includes(state.phase)||chipScreen?.visible||boardOpen()||killcam.active||killcam.waiting||state.pve.cinematic||renderer?.sirenCutscene.active)return;
  paused=true;lockPauseAt=performance.now();keys.clear();left=right=pendingBlock=false;if(peerRoom instanceof LocalRoom)peerRoom.pause(true);drawMenu(true);}
 /** Idle input during holds and while my chip screen is open. (Revives are instant: the old hold-F channel idled the input here,
@@ -299,8 +302,8 @@ window.addEventListener('keydown',e=>{
  if(e.code==='F3'&&(state.options.sandbox||(import.meta as any).env.DEV)){e.preventDefault();debugVisible=!debugVisible;}
 });
 window.addEventListener('keyup',e=>{keys.delete(e.code);if(e.code==='Tab'&&boardHeld){boardHeld=false;if(!boardPinned){const restore=boardRestoreLock;boardRestoreLock=false;playerBoard.update(state,id,false);if(restore&&!paused)lock();}}});
-window.addEventListener('blur',()=>{keys.clear();left=right=pendingBlock=false;closeBoard(false);});document.addEventListener('visibilitychange',()=>{if(document.hidden){closeBoard(false);skipKillcam();}});document.addEventListener('pointerlockchange',()=>{if(!document.pointerLockElement){left=right=pendingBlock=false;keys.clear();pauseOnLockLoss();}});
-canvas.addEventListener('click',lock);window.addEventListener('contextmenu',e=>{if(document.pointerLockElement)e.preventDefault();});window.addEventListener('mousedown',e=>{if(document.pointerLockElement===canvas){if(e.button===0)left=true;if(e.button===2){right=true;pendingBlock=true;}}});window.addEventListener('mouseup',e=>{if(e.button===0)left=false;if(e.button===2)right=false;});window.addEventListener('mousemove',e=>{if(document.pointerLockElement===canvas&&!killcam.active&&!renderer?.sirenCutscene.active&&!state?.pve?.hold){yaw-=e.movementX*.0021*pref.sensitivity*(scoped()?.36:1);pitch=Math.max(-1.1,Math.min(1.1,pitch-e.movementY*.0018*pref.sensitivity*(scoped()?.36:1)));}});
+window.addEventListener('blur',()=>{keys.clear();left=right=pendingBlock=false;closeBoard(false);});document.addEventListener('visibilitychange',()=>{if(document.hidden){closeBoard(false);skipKillcam();}});document.addEventListener('pointerlockchange',e=>{if(document.pointerLockElement===canvas)mouseLook.lock(e.timeStamp);if(!document.pointerLockElement){left=right=pendingBlock=false;keys.clear();pauseOnLockLoss();}});
+canvas.addEventListener('click',lock);window.addEventListener('contextmenu',e=>{if(document.pointerLockElement)e.preventDefault();});window.addEventListener('mousedown',e=>{if(document.pointerLockElement===canvas){if(e.button===0)left=true;if(e.button===2){right=true;pendingBlock=true;}}});window.addEventListener('mouseup',e=>{if(e.button===0)left=false;if(e.button===2)right=false;});window.addEventListener('mousemove',e=>{if(document.pointerLockElement===canvas&&mouseLook.accept(e.movementX,e.movementY,e.timeStamp)&&!killcam.active&&!renderer?.sirenCutscene.active&&!state?.pve?.hold){yaw-=e.movementX*.0021*pref.sensitivity*(scoped()?.36:1);pitch=Math.max(-1.1,Math.min(1.1,pitch-e.movementY*.0018*pref.sensitivity*(scoped()?.36:1)));}});
 /** Killer identity for the replay card comes from the historical frame being shown, never the live snapshot. */
 function killcamContext(info:{killerId:string|null}):KillcamContext{const k=info.killerId?presentedState?.players.find(p=>p.id===info.killerId):undefined;if(!k)return {};return {killerColor:k.color,spec:k.spec,weapon:WEAPONS[k.spec]?.name,team:state.options.gameMode==='teams'&&k.team?{name:TEAMS[k.team].name,color:TEAMS[k.team].color}:undefined};}
 function skipKillcam(){killcam.skip();spectator.enabled=true;spectator.update(state,id);}

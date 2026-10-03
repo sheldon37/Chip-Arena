@@ -65,6 +65,25 @@ containing an entry; no self-referential commit hash is required.
   not been playtested. Picks now draw extra economy RNG, which shifts seeded PvE runs.
   The draw comes after the catalogue offers.
 - Status: implemented on branch; not merged; not released.
+## 2026-10-03 — Claude — camera snaps ("pulls another direction randomly and instantly")
+
+- Branch `claude/pve-camera` from `claude/pve-fix-desync-holdchip` `213f62b`; no PR (orchestrator). Not merged, not released.
+- Finding: the live camera's yaw/pitch are purely client-local (only pointer-lock `mousemove` changes them in play; the
+  server, prediction, holds, revives and teleports never write them; cutscene/spectator/killcam are separate cameras).
+  So a sudden turn in play can only come from a mouse delta. Chromium pointer lock (Windows/Electron) is known to
+  report bogus single huge `movementX/Y` on the first move after a lock is (re)acquired (Esc→Resume, chip screen,
+  board, alt-tab) and as rare lone spikes; main.ts applied every delta unfiltered. The Windows trigger itself was not
+  reproducible here (Linux headless). Position prediction was also checked in scripted offline boss runs (solo and
+  3 party bots): no snaps, corrections ≤0.44 m eased.
+- Fix (client input sanitising, all modes, no feel change in normal play): `src/client/mouse-look.ts` `MouseLookFilter`
+  drops >48 px deltas on the first event / first 120 ms after a lock, and a lone >260 px event that is also >5× what
+  the recent hand speed predicts (a same-direction follow-up confirms a real flick). Wired in `main.ts` mousemove and
+  `pointerlockchange`. No hit timing, hitboxes, damage, cooldowns, movement or networking changes.
+- Checks: `tests/mouse-look.test.ts` (new, 7 cases); real app (Playwright, synthetic locked mousemoves): fresh-lock
+  300 px jump and a 900 px spike ignored, 10 px tracking and a 1620 px ramped flick applied exactly; check:types,
+  pvp-golden and the full unit suite (failures = the known Node 22 set). Not run: Windows/Electron, real mouse.
+- Next: owner playtest on Windows; if snaps persist, consider `requestPointerLock({unadjustedMovement:true})` (raw input;
+  removes OS acceleration, so a feel change to decide).
 
 ## 2026-10-03 — Claude — PvE playtest fixes: offline desync after Esc, taken chips wait as pending picks
 
