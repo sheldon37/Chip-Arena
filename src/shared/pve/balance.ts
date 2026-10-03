@@ -8,7 +8,7 @@ export const PVE={maxParty:4, maxPartyBots:3, botsCountForScaling:true, wavesBef
  openingSeconds:10, openingEarlySeconds:3, openingMinSeconds:4,
  intermissionSeconds:12, lastIntermissionSeconds:8, waveClearRemainder:2, waveClearHold:3, waveMaxSeconds:150,
  outroVictorySeconds:4, outroDefeatSeconds:3, partyFactorPerMember:.6, bossIntroAlways:true, revealHoldsCombat:true,
- reveal:{smile:1.4, card:3.2, settle:.4}, bossIntroExtra:.3,
+ reveal:{smile:1.4, card:3.2, settle:.4}, bossIntroExtra:1.8,
  respawnOnWaveClear:true, respawnOnPhase:true, respawnHpFraction:.5, respawnClearRadius:4, reviveShield:1.5,
  soloSelfRevives:1, selfReviveDelay:5, maxRoomsPerServer:2} as const;
 export const partyFactor=(h:number)=>1+PVE.partyFactorPerMember*(Math.max(1,h)-1);
@@ -29,7 +29,7 @@ export const HORDE={maxAlive:40, maxAliveRelay:28, maxEntering:16, maxCorpses:16
  collider:{halfHeight:.43, radius:.42, mass:40, crawlHalfHeight:.12, crawlRadius:.32},
  entry:{gap:{vent:.8, door:.7, cell:.7}, closeAfter:1.2, queue:3, minPlayerDistance:5, doorWeightWaves:1.2, ventWeightPossession:1.5},
  // open/walk/climb durations live in the contract's PVE_TIMING (shared with S5 and S6)
- ventTravel:{enabled:true, minPathDistance:28, nearVent:1.2, chance:.25, cooldown:20, hidden:1.5, maxConcurrent:2},  // dive: PVE_TIMING.vent.dive
+ ventTravel:{enabled:true, minPathDistance:28, nearVent:2.0, chance:.25, cooldown:20, hidden:1.5, maxConcurrent:2},  // dive: PVE_TIMING.vent.dive
  assist:{range:20, retarget:.5, stop:1.25, reach:1.8, interval:.9, damage:{zombie:12, toy:8}, impulse:120},   // D38
  nav:{cell:1, partyRadius:.42, bossRadius:.63, breakablePoll:.5}} as const;
 

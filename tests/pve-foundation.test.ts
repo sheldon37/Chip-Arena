@@ -45,8 +45,11 @@ test('PvE options are forced, a solo human with a hello reaches the fight and ru
   s.selectSpec('h1','pistol');
   for(let i=0;i<4000&&(s.phase as string)!=='fight';i++)s.step();
   assert.equal(s.phase as string,'fight');
+  // Integration (S7): the real horde attacks an idle human, so keep the run alive with debug god; the real director
+  // reaches 'wave' after the opening.
+  s.pve!.debug('god:on');
   for(let i=0;i<3600;i++)s.step();
-  assert.equal(s.phase,'fight');const snap=s.snapshot();assert.equal(snap.pve?.v,1);assert.equal(snap.pve?.stage,'opening');assert.deepEqual(snap.pve?.helloed,['h1']);
+  assert.equal(s.phase,'fight');const snap=s.snapshot();assert.equal(snap.pve?.v,1);assert.ok(['opening','wave'].includes(snap.pve!.stage),snap.pve?.stage);assert.deepEqual(snap.pve?.helloed,['h1']);
   assert.ok(JSON.stringify(snap).length<200000);
   assert.deepEqual(pveOption({boss:'siren',seed:1,debug:true},{seed:9}),{boss:'siren',seed:9});
   const before=s.pve!.runSeed;s.pve!.reset();const one=s.pve!.runSeed;s.pve!.reset();assert.notEqual(one,before);assert.notEqual(s.pve!.runSeed,one);

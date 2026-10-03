@@ -204,6 +204,7 @@ export interface EconomyApi{
  inputFor(p:Player,base?:Input):Input|undefined; choosing(p:Player):boolean; weaponAway(p:Player):boolean;
  onDamage(p:Player,actual:number,source:string|null):void; onDeath(p:Player):void; onRevive(p:Player):void;
  respawnAll(reason:'wave'|'phase'):void; pendingRevive():boolean; pendingHires():number;
+ /** Hires paid by `owner` that have not popped out yet (S7 from S3; optional so fakes stay valid). */ pendingHiresOf?(owner:string):number;
  step(dt:number):void; onHold(active:boolean):void; shift(dt:number):void; rekey(from:string,to:string):void;
  partyView(id:string):PvePartyView; machinesView():PveMachineUse[]; pickupsView():PvePickupView[];
  reset():void; debug(op:string):boolean;

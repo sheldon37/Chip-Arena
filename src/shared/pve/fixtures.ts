@@ -79,7 +79,9 @@ export function fixturePartyRow(kind:PartyRowKind,o:FixtureOptions&{target?:stri
 /** Party rows for ids (default p1 alive and choosing-capable, p2 dead, party bot, p3 attacked while choosing). */
 export function fixtureParty(o:FixtureOptions&{kinds?:PartyRowKind[]}={}):Record<string,PvePartyView>{
  const {ids}=opt(o),kinds=o.kinds??ids.map(id=>id.startsWith(PARTY_BOT_PREFIX)?'bot':'alive');const out:Record<string,PvePartyView>={};
- ids.forEach((id,i)=>{out[id]=fixturePartyRow(kinds[i]??'alive',o);});return out;
+ // A channelling row revives the first downed member of this party (S7 fix: was the hard-coded 'p2').
+ const down=ids.find((_,i)=>kinds[i]==='dead'||kinds[i]==='self-reviving');
+ ids.forEach((id,i)=>{out[id]=fixturePartyRow(kinds[i]??'alive',{...o,...(down&&!(o as {target?:string}).target?{target:down}:{})});});return out;
 }
 
 // ---- boss, cinematics, world ----

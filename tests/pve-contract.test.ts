@@ -113,7 +113,8 @@ test('layout: 16 entries, 8 machines with colliders clear of Ward Zero static bl
  assert.deepEqual(PVE_ENTRIES.slice(0,8).map(e=>e.id),SIREN_VENTS.map(v=>v.id));
  assert.deepEqual(PVE_ENTRIES.slice(8).map(e=>e.id),['cell-wn','cell-ws','cell-en','cell-es','door-nw','door-ne','door-sw','door-se']);
  for(const e of PVE_ENTRIES.slice(8)){const s=SIREN_ADD_SPAWNS.find(a=>a.id===e.id)!;assert.equal(e.yaw,s.yaw);assert.ok(Math.hypot(e.exit.x-e.from.x,e.exit.z-e.from.z)>1.5,'walk-out distance');}
- for(const e of PVE_ENTRIES.filter(e=>e.kind==='door'))assert.ok(e.leaf&&Math.abs(e.leaf.z)>Math.abs(e.from.z));
+ for(const e of PVE_ENTRIES.filter(e=>e.kind==='door'))assert.ok(e.leaf&&Math.abs(e.leaf.z)<Math.abs(e.from.z)&&Math.abs(e.leaf.z)>Math.abs(e.exit.z),'leaf between the walk start and the exit (S7: rendered leaf plane)');
+ for(const e of PVE_ENTRIES.filter(e=>e.kind==='vent'))assert.ok(Math.hypot(e.exit.x-e.from.x,e.exit.z-e.from.z)>1.4,'vent exit is past the pit edge');
  assert.equal(PVE_MACHINES.length,8);assert.deepEqual(PVE_MACHINES.map(m=>m.kind),['chip','chip','chip','chip','recruit','recruit','med','med']);
  const blocks=machineBlocks();assert.equal(blocks.length,8);assert.deepEqual(blocks.map(b=>b.id),PVE_MACHINES.map(m=>`pve-machine-${m.m}`));
  assert.ok(blocks.every(b=>b.material==='foundation'&&!b.dynamic&&b.size.y===2.2));
@@ -166,7 +167,7 @@ test('client facade: renderer-shaped context type-checks, no-op without pve, bos
  const pvp={time:1,players:[],events:[]} as unknown as Snapshot;
  visuals.update(pvp,ctx);assert.equal(visuals.decoratePlayer(rig,{id:'pve-boss'} as PlayerView,pvp),true);assert.equal(scene.children.length,0);
  const view=pveFixture('found',{time:20});const s={...pvp,time:20,pve:view} as Snapshot;
- visuals.update(s,ctx);assert.deepEqual(visuals.metrics(),{fullRigs:0,nearImpostors:0,adds:0});
+ visuals.update(s,ctx);assert.equal(visuals.metrics().adds,view.adds.length);assert.ok(visuals.metrics().fullRigs+visuals.metrics().nearImpostors<=view.adds.length);
  assert.equal(playerShown({id:'pve-boss'},view,view.bossView!.foundAt!+.39),false);assert.equal(playerShown({id:'pve-boss'},view,view.bossView!.foundAt!+.41),true);
  assert.equal(playerShown({id:'pve-boss'},pveFixture('possession'),100),false);
  const rec=pveFixture('economy',{time:30});assert.equal(playerShown({id:'recruit-1'},{...rec,recruits:[{...rec.recruits[0],at:31}]},30),false);

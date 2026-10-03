@@ -23,7 +23,6 @@ const idleKeep=(i:Input):Input=>({...idleInput(),seq:i.seq,yaw:i.yaw,pitch:i.pit
 
 interface Recruit{id:string;owner:string;role:RecruitRole;spec:SpecId;at:number;m:number;tauntUntil?:number;diedAt?:number}
 /** Economy extension used for the per-player cap (pending hires of one owner); absent on fake economies. */
-type PendingOf={pendingHiresOf?(owner:string):number};
 
 export class Recruits implements RecruitsApi{
  private list:Recruit[]=[];
@@ -36,7 +35,7 @@ export class Recruits implements RecruitsApi{
  private freeSeats(){return C.maxPlayers-this.sim.players.size-(this.host.boss()?0:1)-this.host.economy.pendingHires();}
  /** D10: per player 2 and total 3 (pending hires count) → 'limit'; a free seat 8 − players − (boss ? 0 : 1) − pending ≤ 0 → 'seats'. */
  canHire(owner:string):'ok'|'seats'|'limit'{
-  const e=this.host.economy,pending=e.pendingHires(),mine=(e as unknown as PendingOf).pendingHiresOf?.(owner)??0;
+  const e=this.host.economy,pending=e.pendingHires(),mine=e.pendingHiresOf?.(owner)??0;
   if(this.list.filter(r=>r.owner===owner).length+mine>=RECRUIT.perPlayer)return 'limit';
   if(this.list.length+pending>=RECRUIT.maxTotal)return 'limit';
   if(this.freeSeats()<=0)return 'seats';

@@ -38,16 +38,20 @@ export interface PveEntry{e:number;id:string;kind:EntryKind;
  /** Walk start (doors and cells: behind the opening; vents: the vent itself). */ from:{x:number;z:number};
  /** Where the add's body is created (active). */ exit:{x:number;z:number};
  yaw:number;
- /** Doors only: the closed leaf plane (|z| of the leaves, d=0.1 from the wall face at |z|=28), the two hinge x positions
-  *  and the leaf width. Leaves swing INTO the hall (S6 animates them from PVE_TIMING.door). */
+ /** Doors only: the closed leaf plane (|z| of the leaves), the two hinge x positions
+  *  and the leaf width. Leaves swing INTO the hall (S6 animates them from PVE_TIMING.door). S7: the leaf plane is the
+  *  rendered door (wall face 28 − DOOR_LEAF_D 1.2 = 26.8), on the hall side of `from` so the waiting add is hidden. */
  leaf?:{z:number;hinges:[number,number];width:number;swing:1|-1};
  /** Cells only: the gate (teeth) plane x. The teeth rise over PVE_TIMING.cell.open. */
  gate?:{x:number}}
-const vents=SIREN_VENTS.map((v,i):PveEntry=>({e:i,id:v.id,kind:'vent',from:xz(v.x,v.z),exit:xz(v.x,v.z),yaw:faceCentre(v.x,v.z)}));
+/** Vent climb end (S7 from S5): just past the square pit edge the add faces, centre + fwd·(1.08/max(|sin|,|cos|)+0.38);
+ *  matches the client's ventStand() so the body appears where the climb animation ends. */
+const ventExit=(x:number,z:number,yaw:number)=>{const f=fwd(yaw),d=1.08/Math.max(Math.abs(f.x),Math.abs(f.z),1e-6)+.38;return xz(x+f.x*d,z+f.z*d);};
+const vents=SIREN_VENTS.map((v,i):PveEntry=>{const yaw=faceCentre(v.x,v.z);return {e:i,id:v.id,kind:'vent',from:xz(v.x,v.z),exit:ventExit(v.x,v.z,yaw),yaw};});
 const cells=SIREN_ADD_SPAWNS.filter(a=>a.kind==='cell').map((a,i):PveEntry=>{const s=Math.sign(a.x);
  return {e:8+i,id:a.id,kind:'cell',from:xz(s*28.6,a.z),exit:xz(s*25.6,a.z),yaw:a.yaw,gate:{x:s*24.3}};});
 const doors=SIREN_ADD_SPAWNS.filter(a=>a.kind==='door').map((a,i):PveEntry=>{const s=Math.sign(a.z);
- return {e:12+i,id:a.id,kind:'door',from:xz(a.x,s*27.3),exit:xz(a.x,s*25.0),yaw:a.yaw,leaf:{z:s*27.9,hinges:[a.x-1.48,a.x+1.48],width:1.42,swing:-s as 1|-1}};});
+ return {e:12+i,id:a.id,kind:'door',from:xz(a.x,s*27.3),exit:xz(a.x,s*25.0),yaw:a.yaw,leaf:{z:s*26.8,hinges:[a.x-1.48,a.x+1.48],width:1.42,swing:-s as 1|-1}};});
 /** 16 entries, index = e: 0–7 vents (SIREN_VENTS order), 8–11 cells (cell-wn/ws/en/es), 12–15 doors (door-nw/ne/sw/se). */
 export const PVE_ENTRIES:readonly PveEntry[]=[...vents,...cells,...doors];
 
