@@ -119,3 +119,32 @@ The real `launcher/update.mjs` still verifies manifest schema, SHA256 and size; 
 channel reports unavailable and never falls back to the live feed. To ship a new test version,
 copy a candidate's `feed/` files into the channel repo's `feed/` folder (remove the old payload).
 The channel is public: anyone with the URL can download the test game files. Not a player release.
+
+### Two feeds and updater v2 (owner-approved 2026-10-03)
+
+With a game commit that has updater v2 (`claude/update-headroom`), `--channel` builds with the
+game packager's `test-channel` profile and produces two feeds in `feed/`:
+
+- `latest.json` + `arena-*.json.gz` (schema 1) for every TEST install, up to the 32 MiB cap of
+  launchers installed before v2 (the live Site keeps its 25 MiB guard). If schema 1 no longer
+  fits, it is held back: the candidate has no `latest.json`, and `schema1-hold.mjs` turns the
+  channel's current schema-1 payload into a notice. Old installs then see "Update Available!",
+  and Update installs the same last-fitting game with the version
+  `<version>-download-the-new-TEST-ZIP-from-GitHub-Releases` in its status and Updates window.
+- `latest-v2.json` + `arena-*.pack` (schema 2: Brotli, no base64, about 15% smaller) for v2
+  installs. These launchers accept up to 256 MiB, and the channel limit is 95 MiB because GitHub
+  rejects files over 100 MB. The payload also carries this channel's launcher files:
+  `test-remote-update.mjs` as `manual-update.mjs`, and `remote-feed.mjs`. They self-update on the
+  next start, with rollback.
+
+The seed ZIP's `test-channel.json` says `{"base":...,"schema2":true}`; the badge and the Update
+button then read `latest-v2.json` first, and only a 404 falls back to `latest.json`.
+`make-test-package.py` refuses a seed whose launcher files differ from what schema 2 delivers.
+`check-payload.mjs` applies both feeds and checks that they carry identical game files.
+`candidate.json` records `payloadBytes.schema1`/`schema2` and the packager report. Older game
+commits ignore the profile and build schema 1 exactly as before.
+
+End-to-end check (local HTTPS only, never GitHub): `node scripts/release/channel-e2e.mjs
+--candidate <candidate dir> --old-zip <a pre-v2 Chip-Arena-TEST-ONLY.zip> --game <game checkout>
+--work <new dir>` (Node 24, Python 3, openssl). The channel README draft with the publishing and
+GitHub Release seed procedure is `docs/TEST-CHANNEL-README.md`.
