@@ -17,9 +17,9 @@ export const partyFactor=(h:number)=>1+PVE.partyFactorPerMember*(Math.max(1,h)-1
 export interface AddKindStats{hp:number;damage:number;attack:'swipe'|'lunge'|'smash';walk:number;run:number;reach:number;startRange:number;
  hit:number;cycle:number;lunge:number;impulse:number;reward:number;limbFrac:number;headFrac:number;stagger:number;smashRadius?:number}
 export const ADD_KINDS:Record<AddKind,AddKindStats>={
- shambler:{hp:60,  damage:6,  attack:'swipe', walk:1.5, run:3.4, reach:1.75, startRange:1.45, hit:.34, cycle:1.05, lunge:.45, impulse:90,  reward:10, limbFrac:.35, headFrac:.4, stagger:.45},
- runner:  {hp:38,  damage:4,  attack:'lunge', walk:2.6, run:4.6, reach:2.0,  startRange:2.2,  hit:.34, cycle:.85,  lunge:.9,  impulse:60,  reward:8,  limbFrac:.35, headFrac:.4, stagger:.45},
- brute:   {hp:240, damage:15, attack:'smash', walk:1.3, run:2.4, reach:2.1,  startRange:1.7,  hit:.43, cycle:1.7,  lunge:.3,  impulse:260, reward:35, limbFrac:.45, headFrac:.5, stagger:.25, smashRadius:1.6},
+ shambler:{hp:60,  damage:6,  attack:'swipe', walk:1.5, run:3.4, reach:1.75, startRange:1.45, hit:.34, cycle:1.05, lunge:.45, impulse:90,  reward:25, limbFrac:.35, headFrac:.4, stagger:.45},
+ runner:  {hp:38,  damage:4,  attack:'lunge', walk:2.6, run:4.6, reach:2.0,  startRange:2.2,  hit:.34, cycle:.85,  lunge:.9,  impulse:60,  reward:20, limbFrac:.35, headFrac:.4, stagger:.45},
+ brute:   {hp:240, damage:15, attack:'smash', walk:1.3, run:2.4, reach:2.1,  startRange:1.7,  hit:.43, cycle:1.7,  lunge:.3,  impulse:260, reward:80, limbFrac:.45, headFrac:.5, stagger:.25, smashRadius:1.6},
 };
 export const GIB={headMultiplier:1.5, limbMultiplier:.9, blastTorsoShare:.6, crawlSpeed:.35, limpSpeed:.55,
  oneArmDamage:.65, biteDamage:.35, biteReach:1.2, crawlDamage:.6, crawlReach:1.3, staggerHitFraction:.25, staggerImpulse:400} as const;
@@ -64,10 +64,13 @@ export const damageScale=(h:number)=>PVE_SIREN.damageScale[memberIndex(h)];
 export const bossDifficulty=(h:number)=>PVE_SIREN.difficulty[memberIndex(h)] as 'normal'|'hard';
 
 // §10.5 Economy, prices, drops, recruits
-export const ECONOMY={startMoney:50, headBonus:5, assistShare:.4, assistMinFraction:.2, recruitKillShare:.5,
- waveClearBase:40, waveClearPerWave:20, bossThresholdBonus:100, possessedKill:150, possessedOthers:50, bossPerPercent:4} as const;
-export const PRICES={chipBase:150, chipStep:25, chipMax:300, recruit:250, heal:60, healFraction:.5, healSeconds:2,
- healCooldown:12, reviveBase:100, reviveStep:50, reviveMax:300, reviveSeconds:2.5, reviveRadius:2.2,
+// Owner playtest (2026-10-03): "make more money". Income about 2.5× (add rewards 10/8/35 → 25/20/80, head 5 → 10, start 50 → 150,
+// wave clear 40+20w → 100+50w, boss thresholds 100 → 250, boss $4 → $10 per 1%, possessed 150/50 → 300/100); prices about 1.2×
+// so purchases stay a choice. Revives are instant (one F press; reviveSeconds removed). Balance harness numbers: docs/PVE.md.
+export const ECONOMY={startMoney:150, headBonus:10, assistShare:.4, assistMinFraction:.2, recruitKillShare:.5,
+ waveClearBase:100, waveClearPerWave:50, bossThresholdBonus:250, possessedKill:300, possessedOthers:100, bossPerPercent:10} as const;
+export const PRICES={chipBase:175, chipStep:25, chipMax:350, recruit:300, heal:75, healFraction:.5, healSeconds:2,
+ healCooldown:12, reviveBase:150, reviveStep:50, reviveMax:400, reviveRadius:2.2,
  reviveHpFraction:.5, interactRadius:2.2, grabRadius:1.6, dispenseDelay:.6, recruitDelay:.8} as const;
 export const DROP_ODDS:Record<DropTier,number>={common:38, uncommon:27, rare:18, epic:10, legendary:5, mythic:1.5, rainbow:.5};
 /** §4.4: offer-tier weights per drop tier, passed as offerChips(…,{weights}) (replaces RARITIES weights; missing tiers weigh 0).
@@ -84,7 +87,7 @@ export const OFFER_WEIGHTS:Record<DropTier,Partial<Record<Rarity,number>>>={
 export const ORDINARY_TIERS:readonly OrdinaryRarity[]=['common','uncommon','rare','epic','legendary','mythic'];
 export const PICKS={rainbowCount:8, maxUngrabbed:3, moveWhileChoosing:false,
  botThink:[2,6]} as const;
-export const RECRUIT={price:250, perPlayer:2, maxTotal:3, roles:{dps:.4,tank:.3,medic:.3}, hp:{dps:100,tank:250,medic:80},
+export const RECRUIT={price:300, perPlayer:2, maxTotal:3, roles:{dps:.4,tank:.3,medic:.3}, hp:{dps:100,tank:250,medic:80},
  dpsClasses:['ranged','melee'], tankDamageTaken:.7, tauntRadius:8, tauntScore:6, leash:12, removeAfter:2.5,
  medic:{range:9, rate:6, pulse:.5, falloff:.5, capFraction:.04, underFireScale:.6, underFireSeconds:1,
         focus:'hirer', switchBelow:.35, hirerAbove:.7}} as const;

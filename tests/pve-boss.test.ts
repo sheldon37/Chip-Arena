@@ -6,7 +6,7 @@ import {Simulation,initPhysics,type Player} from '../src/shared/simulation.js';
 import {CONFIG as C,v} from '../src/shared/config.js';
 import {BOSS_PLAYER_ID,RECRUIT_PREFIX,type PveOptions} from '../src/shared/pve/contract.js';
 import {Director} from '../src/shared/pve/director.js';
-import {PVE,PVE_SIREN,bossHp,damageScale} from '../src/shared/pve/balance.js';
+import {PVE,PVE_SIREN,RECRUIT,bossHp,damageScale} from '../src/shared/pve/balance.js';
 import {SIREN_INTRO} from '../src/shared/siren-contract.js';
 import {fakeParts,withPveParts,type FakeEconomy,type FakeHorde,type FakeRecruits} from './helpers/pve-fakes.js';
 await initPhysics();
@@ -66,7 +66,7 @@ test('boss spawn: 4 humans (one disconnected) and 3 recruits; forced null seat d
   (s as {addPlayer:typeof s.addPlayer}).addPlayer=(...a:Parameters<typeof s.addPlayer>)=>{if(a[0]===BOSS_PLAYER_ID&&calls++===0)return null;return real(...a);};
   s.pve!.debug('god:on');q.d.debug('skip-to-boss');stepUntil(s,()=>s.players.has(BOSS_PLAYER_ID)||view(s).stage==='ended');
   assert.ok(s.players.has(BOSS_PLAYER_ID));assert.equal(s.players.has(RECRUIT_PREFIX+3),false);assert.deepEqual(q.recruits.dismissed,[RECRUIT_PREFIX+3]);
-  assert.deepEqual(q.economy.grants.filter(g=>g.reason==='refund'),[{id:'h2',amount:250,reason:'refund'}]);
+  assert.deepEqual(q.economy.grants.filter(g=>g.reason==='refund'),[{id:'h2',amount:RECRUIT.price,reason:'refund'}]);
  }finally{q.s.dispose();}
  // Both attempts fail: the run ends as a defeat and never soft-locks.
  const z=rig();try{

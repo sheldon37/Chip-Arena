@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {Simulation,initPhysics,type Player} from '../src/shared/simulation.js';
 import {idleInput,v} from '../src/shared/config.js';
 import {type PveOptions} from '../src/shared/pve/contract.js';
-import {PICKS} from '../src/shared/pve/balance.js';
+import {ECONOMY,PICKS} from '../src/shared/pve/balance.js';
 import {PVE_MACHINES} from '../src/shared/pve/layout.js';
 import {Economy} from '../src/shared/pve/economy.js';
 import {Recruits} from '../src/shared/pve/recruits.js';
@@ -61,7 +61,7 @@ test('a bot hit while choosing picks at once; wave clears give a free common pic
 test('party bots never gain money, buy or revive',()=>{
  const {s,econ,bots}=world();try{
   const b=bots[0],h1=s.players.get('h1')!;
-  econ.grant(b.id,1000,'test');econ.grantAll(100,'wave-clear');assert.equal(econ.money(b.id),0);assert.equal(econ.money('h1'),150);
+  econ.grant(b.id,1000,'test');econ.grantAll(100,'wave-clear');assert.equal(econ.money(b.id),0);assert.equal(econ.money('h1'),ECONOMY.startMoney+100);
   const f=PVE_MACHINES[0].front;place(b,f.x,f.z);
   place(h1,0,-8);tick(s);s.damage(h1,1e6,null,'environment');
   for(let i=0;i<120;i++){b.input={...b.input,interact:true};tick(s);}

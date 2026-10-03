@@ -304,7 +304,7 @@ The four `server:build` errors are the same (line numbers shift by the inserted 
 - `EconomyApi.pendingHiresOf?(owner)` is in the contract (optional; recruits no longer cast).
 - `Renderer.setGraphics` forwards the mode to `pve.horde.setGraphics`.
 - `PVE.bossIntroExtra` 1.8 s (was 0.3) so THE SIREN title is readable before the fight resumes.
-- Fixtures: a `channelling` row revives the first downed member of the party (was hard-coded `p2`).
+- Fixtures: a `channelling` row revives the first downed member of the party (was hard-coded `p2`). (Removed 2026-10-03 with the instant revive.)
 - `tests/fixtures/pve-horde-60.json`: 60 frames at 10 Hz of a seeded wave (players and the `pve` view) for the labs.
 
 **Integration defects fixed.**
@@ -412,6 +412,54 @@ those close up. An open personal chip screen stays over the boss intro if a pilo
 "Host online" (needs a Windows test build); browser hosting on the deployed Site (needs a Site release); audio on
 hardware; the hosted two-browser smoke (no test-room path from the real client: the client never sends `testRoom`, so
 debug ops are unavailable there; the real-server suite covers the hosted flow with two WebSocket clients instead).
+
+## Owner playtest fixes: money and instant revive (2026-10-03, branch `claude/pve-econ-revive`)
+
+Owner feedback: "make more money ... its very minimal" and "holding E on reviving ... only works for a split second ...
+[Im fine with instant revive]".
+
+**Why the hold revive broke.** The interact key is **F** (E is the special ability, `secondary`; the HUD shows `E · SPECIAL`).
+The server started the 2.5 s channel on the F press edge and cancelled it when F was released. The client's `pveIdle()`
+returned true as soon as the authoritative party row carried `channel`, and an idle input has no `interact`, so one
+snapshot round trip after the channel started the server saw F "released" and cancelled it. Holding E did nothing at all.
+
+**Revive is instant now.** One F press within `PRICES.reviveRadius` (2.2 m) of a downed teammate's beacon (human or party
+bot) charges `revivePrice(revived)` and revives at once: 50% HP at the death spot plus the 1.5 s shield, `pve-revive`
+`{source, amount}`. Too little money: `pve-deny 'money'`, nothing charged. The channel state, its forced idle,
+`PRICES.reviveSeconds`, the prompt progress ring, the beacon `channel` mode, the HUD "REVIVING" status and the
+`channelling` fixture kind are removed (`PveChannel`/`PvePartyView.channel` stay in the contract, never set). Prompt:
+`F · Revive <name> $X`; beacon label `F · REVIVE` over `$X`. The client also latches an F tap shorter than a frame into the
+next input (`pendingInteract` in `main.ts`), so a quick tap is never lost at low frame rates.
+
+**Money** (`balance.ts`), income about 2.5×, prices about 1.2×:
+
+| Value | Before | Now |
+|---|---|---|
+| Add reward shambler / runner / brute | 10 / 8 / 35 | 25 / 20 / 80 |
+| Head bonus | 5 | 10 |
+| Start money | 50 | 150 |
+| Wave clear (wave w) | 40 + 20w (60/80/100) | 100 + 50w (150/200/250) |
+| Boss threshold bonus (×3, everyone) | 100 | 250 |
+| Boss damage | $4 per 1% | $10 per 1% |
+| Possessed kill (killer / others) | 150 / 50 | 300 / 100 |
+| Chip price | 150 + 25 per buy, max 300 | 175 + 25 per buy, max 350 |
+| Recruit / heal | 250 / 60 | 300 / 75 |
+| Revive | 100 + 50 per revive of that member, max 300 | 150 + 50, max 400 |
+
+Balance harness (`PVE_BAL_H=1,2 PVE_BAL_W=pistol,rifle PVE_BAL_MAX_MIN=12 npm run test:pve-balance`, seeds 1-5, medians;
+the harness now also logs earned and spent at boss start and earned in total; it shops at each intermission: recruits to
+its cap of 2, then up to 3 chips):
+
+| h | weapon | earned at boss (before → now) | bought before boss (before → now) | money left at boss (before → now) | earned whole run (before → now) |
+|---|---|---|---|---|---|
+| 1 | pistol | 1512 → 3406 | 2 recruits + 4 chips → 2 + 8 | 94 → 634 | 2924 → 6509 |
+| 1 | rifle | 1436 → 3234 | 2 + 2-4 → 2 + 7-8 | 111 → 305 | 2944 → 6512 |
+| 2 | pistol | 1450 → 3346 | 2 + 2-4 → 2 + 6-9 | 210 → 996 | 3139 → 8323 |
+| 2 | rifle | 1243 → 3161 | 2 + 2-4 → 2 + 7 | 163 → 626 | 2304 → 5837 |
+
+During the boss a solo player earns about $2,500-3,000 more (thresholds $750 plus $10 per 1% plus adds), enough to keep
+buying chips, heals and revives. Wave lengths, deaths and victories are unchanged within seed noise (money does not
+change the simulation except through what the harness buys).
 
 ## Rendering constants (S5 and S6 mirrors)
 

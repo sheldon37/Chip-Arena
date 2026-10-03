@@ -121,14 +121,13 @@ test('holograms: only over remote choosing players, depth-tested, red during the
  assert.equal(underAttack(snap(t+.5,v,players),v,'windup'),false,'after the hit time');
  assert.equal(underAttack(snap(t,v,players),v,'calm'),false);assert.equal(holoBlinkRed(false,1),false);
 });
-test('beacon progress is (t−at)/(until−at) for channels and the self-revive countdown',()=>{
- const t=20,v=view(t,['me','down','self','medic'],['alive','dead','self-reviving','channelling']);
- v.party.medic.channel={kind:'revive',target:'down',at:t-1,until:t+1.5};v.party.self.downAt=t-2;v.party.self.selfReviveAt=t+3;
- const c=beaconState(v,'down',t);assert.equal(c.mode,'channel');assert.ok(near(c.progress,1/2.5));
+test('beacon: self-revive countdown progress, else the instant revive label and price (no channel)',()=>{
+ const t=20,v=view(t,['me','down','self','medic'],['alive','dead','self-reviving','alive']);
+ v.party.self.downAt=t-2;v.party.self.selfReviveAt=t+3;
  const s=beaconState(v,'self',t);assert.equal(s.mode,'self');assert.ok(near(s.progress,2/5));assert.equal(s.sub,'0:03');
- delete v.party.medic.channel;const d=beaconState(v,'down',t);assert.equal(d.mode,'down');assert.equal(d.sub,'$'+v.party.down.reviveCost);
+ const d=beaconState(v,'down',t);assert.equal(d.mode,'down');assert.equal(d.label,'F · REVIVE');assert.equal(d.sub,'$'+v.party.down.reviveCost);assert.equal(d.progress,0);
  assert.equal(ringDrawCount(0),BEACON.segments*6);assert.equal(ringDrawCount(1),BEACON.segments*12);
- const scene=new T.Scene(),pve=new PveVisuals(scene),players=[pilot('down',{hp:0}),pilot('self',{hp:0}),pilot('medic')];v.party.medic.channel={kind:'revive',target:'down',at:t-1,until:t+1.5};
+ const scene=new T.Scene(),pve=new PveVisuals(scene),players=[pilot('down',{hp:0}),pilot('self',{hp:0}),pilot('medic')];
  pve.update(snap(t,v,players),ctx());assert.deepEqual([...pve.world.beacons!.states.keys()].sort(),['down','self']);
 });
 test('recruit step-out: hidden before at, scale and shell pure in time, 1 and 0 at at+0.6',()=>{
