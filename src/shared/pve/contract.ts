@@ -64,7 +64,7 @@ export interface PveChannel{kind:'revive'; target:string; at:number; until:numbe
 export interface PvePartyView{kind:PveMemberKind; connected:boolean; money:number; earned:number; spent:number; kills:number;
  assists:number; heads:number; addDamage:number; bossDamage:number; revives:number; revived:number; deaths:number;
  chipsBought:number; recruitsHired:number; picks:PvePick[]; open?:string; openAt?:number; hurtAt?:number;
- channel?:PveChannel; downAt?:number; selfRevives:number; selfReviveAt?:number; reviveCost:number; chipPrice:number;
+ channel?:PveChannel; downAt?:number; upAt?:number /* last return (revive, self-revive or respawn): the client's regeneration */; selfRevives:number; selfReviveAt?:number; reviveCost:number; chipPrice:number;
  healAt?:number; healUntil?:number; healReadyAt:number}
 export interface PveMachineUse{m:number; at:number; by:string; result:MachineKind|'deny'}
 export interface PvePickupView{id:string; owner:string; tier:DropTier; pos:Vec; born:number; m:number}

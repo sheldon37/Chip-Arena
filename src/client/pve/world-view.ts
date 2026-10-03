@@ -1,6 +1,6 @@
 // PvE world view (design §8.4, §8.6; stream S6). Draws the Ward Zero machines and their dispense animations, chip
-// pickups, the "choosing a chip" holograms and pose, revive beacons, recruit step-out shells, medic heal beams, holo tags
-// and the boss look (growth, possession streak). Everything is a pure function of (view, state.time) plus bounded,
+// pickups, the "choosing a chip" holograms and pose, revive beacons with the HELP bubble, kept bodies and their
+// regeneration (downed.ts), recruit step-out shells, medic heal beams, holo tags and the boss look (growth, possession streak). Everything is a pure function of (view, state.time) plus bounded,
 // dt-clamped particles; no lights are added. Vent lids, door leaves and cell gates live in siren/stage.ts (they belong
 // to the hall's dressing) and read the same `PveView.entries`.
 import * as T from 'three';
@@ -13,6 +13,7 @@ import {PickupsView} from './pickups.js';
 import {HologramView,TagView,choosingPose} from './hologram.js';
 import {BeaconView} from './beacons.js';
 import {BossLook,applyBossLook} from './boss-look.js';
+import {downedBodies,type DownedBodies} from './downed.js';
 
 const clamp=(x:number,a=0,b=1)=>Math.min(b,Math.max(a,x));
 const smooth=(x:number)=>{x=clamp(x);return x*x*(3-2*x);};
@@ -38,7 +39,9 @@ export class WorldView {
  machines?:MachinesView;pickups?:PickupsView;holograms?:HologramView;tags?:TagView;beacons?:BeaconView;boss?:BossLook;
  private shells=new Map<string,Shell>();private beams:Beam[]=[];private beamMeshes:T.Mesh<T.CylinderGeometry,T.MeshBasicMaterial>[]=[];
  private auras=new Map<string,T.Mesh<T.CylinderGeometry,T.MeshBasicMaterial>>();private hitAt=new Map<string,number>();
- constructor(readonly scene:T.Scene){this.group.name='pve-world';}
+ /** Kept bodies of downed members and their regeneration (shared with death-effects.ts through the scene). */
+ readonly downed:DownedBodies;
+ constructor(readonly scene:T.Scene){this.group.name='pve-world';this.downed=downedBodies(scene);}
  private build(){
   if(this.machines)return;this.scene.add(this.group);
   this.machines=new MachinesView(this.group);this.pickups=new PickupsView(this.group);this.holograms=new HologramView(this.group);this.tags=new TagView(this.group);
@@ -48,12 +51,13 @@ export class WorldView {
   this.build();this.group.visible=true;const t=state.time;
   this.machines!.update(view,t,ctx.me);this.pickups!.update(view,t,ctx.me);
   this.holograms!.update(state,view,ctx.me,ctx.camera,ctx.rigs,this.hitAt);this.tags!.update(state,view,ctx.me,ctx.camera,ctx.rigs);
-  this.beacons!.update(state,view);this.boss!.update(state.players,view,t,ctx.quality);
+  this.beacons!.update(state,view,ctx.me,ctx.camera);this.downed.update(state,view,ctx);this.boss!.update(state.players,view,t,ctx.quality);
   this.updateShells(state,view);this.updateBeams(state,ctx);this.updateAuras(state,view);
  }
  /** Per player rig after its animation: grown boss scale, recruit step-out, choosing pose. false hides the rig. */
  decoratePlayer(rig:PveRigRef,p:PlayerView,state:Snapshot,view:PveView){
   const t=state.time;rig.group.scale.setScalar(1);
+  if(!this.downed.decorate(rig,p,state,view))return false;
   if(p.spec==='siren')applyBossLook(rig,p,t);
   const r=view.recruits.find(x=>x.id===p.id);
   if(r&&t<r.at+PVE_TIMING.recruitStep){const s=recruitStep(r.at,t),m=PVE_MACHINES[r.m];rig.group.scale.multiplyScalar(s.scale);
@@ -92,7 +96,7 @@ export class WorldView {
   for(const [id,a] of this.auras)if(!live.has(id))a.visible=false;
  }
  clear(){
-  this.machines?.clear();this.pickups?.clear();this.holograms?.clear();this.tags?.clear();this.beacons?.clear();this.boss?.clear();
+  this.machines?.clear();this.pickups?.clear();this.holograms?.clear();this.tags?.clear();this.beacons?.clear();this.boss?.clear();this.downed.clear();
   for(const s of this.shells.values())s.dispose();this.shells.clear();this.beams=[];
   for(const m of [...this.beamMeshes,...this.auras.values()]){m.geometry.dispose();m.material.dispose();}this.beamMeshes=[];this.auras.clear();
   this.machines=this.pickups=this.holograms=this.tags=this.beacons=this.boss=undefined;

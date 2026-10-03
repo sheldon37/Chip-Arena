@@ -9,9 +9,20 @@ import * as T from 'three';
 import type {DeathPresentation,PlayerView,Snapshot} from '../shared/simulation.js';
 import {ARENA} from '../shared/arena.js';
 import {ANIMATION} from './character-animation.js';
+import type {CharacterRig} from './character-rig.js';
+import {DOWNED,downedBodies,type DownedBodies} from './pve/downed.js';
 
 interface Voxel {mesh:T.Mesh;start:T.Vector3;velocity:T.Vector3;spin:T.Vector3;floor:number;size:number;}
-interface Effect {update(age:number):void;dispose():void;count:number;}
+interface Effect {update(age:number):void;dispose():void;count:number;
+ /** PvE kept body (src/client/pve/downed.ts): the frame shown while its member stays down, from the death's real age. Without
+  * it a kept body holds update(min(age, keepAge ?? DOWNED.keepAge)). */
+ keep?(age:number):void;keepAge?:number;
+ /** Loose scene objects (blood pools, fragments, flames) a regeneration cleans up; the effect still owns them. */
+ extras?:T.Object3D[];
+ /** A scripted body (e.g. the Siren crush victim) a regeneration can rebuild and stand up from. */
+ rig?:CharacterRig;
+ /** The effect's scene root (ragdolls: part groups named after the rig joints they copy). */
+ root?:T.Object3D;}
 export type KillEffectFactory=(scene:T.Scene,rig:T.Group,p:PlayerView,death:DeathPresentation,quality:number,budget:number,state?:Snapshot)=>Effect;
 const geometry=new T.BoxGeometry(1,1,1);
 function voxelBurst(scene:T.Scene,rig:T.Group,p:PlayerView,death:DeathPresentation,quality:number,budget:number):Effect {
@@ -46,17 +57,34 @@ function voxelBurst(scene:T.Scene,rig:T.Group,p:PlayerView,death:DeathPresentati
 const bodyRagdoll:KillEffectFactory=ragdollVariant('ragdoll',{impact:true});
 export const KILL_EFFECTS:Record<string,KillEffectFactory>={...SIREN_KILL_EFFECTS,'impact-ragdoll':bodyRagdoll,ragdoll,'dev-gibber':ragdollVariant('ragdoll',{gib:true}),...Object.fromEntries(Object.keys(RAGDOLL_STYLES).map(id=>[id,ragdollVariant(id as RagdollStyle)])),'dev-raging-demon':ragingDemon,'voxel-burst':voxelBurst,'dev-clown-love':clownLove,'dev-bass-van':bassVan,...Object.fromEntries(['confetti','ascension','shrink','launch','ghost','dev-clown'].map(kind=>[kind,cinematic(kind)]))};
 export class DeathEffects {
- private active=new Map<string,{effect:Effect;at:number}>();private seen=new Set<string>();private epoch='';
- constructor(private scene:T.Scene){}
+ private active=new Map<string,{effect:Effect;at:number;kept?:string;death?:DeathPresentation}>();private seen=new Set<string>();private epoch='';
+ /** PvE: downed party members' bodies stay until they are back up, then regenerate (src/client/pve/downed.ts). */
+ readonly keeper:DownedBodies;
+ constructor(private scene:T.Scene){this.keeper=downedBodies(scene);}
  update(state:Snapshot,rigs:Map<string,{group:T.Group}>,quality:number){
   const epoch=String(state.generation)+':'+state.setNumber+':'+state.round;
   if(epoch!==this.epoch){this.clear();this.epoch=epoch;}
-  for(const p of state.players){const d=p.death,rig=rigs.get(p.id);if(!d||p.hp>0||!rig||this.seen.has(d.id))continue;this.seen.add(d.id);
-   if(state.time-d.at>=ANIMATION.deathSeconds||this.count>=ANIMATION.maxDeathVoxels)continue;
-   const effect=(KILL_EFFECTS[d.effect]||KILL_EFFECTS['voxel-burst'])(this.scene,rig.group,p,d,quality,ANIMATION.maxDeathVoxels-this.count,state);this.active.set(d.id,{effect,at:d.at});
+  let late=0;
+  for(const p of state.players){const d=p.death,rig=rigs.get(p.id);if(!d||p.hp>0||!rig)continue;
+   // A kept body is rebuilt whenever it is missing (late join, after a kill cam rewind), at most one fast-forward per frame.
+   const kept=this.keeper.kept(p,state);if(kept?this.active.has(d.id):this.seen.has(d.id))continue;
+   if(kept){if(state.time-d.at>=DOWNED.keepAge&&late++>=DOWNED.lateBuildsPerFrame)continue;}
+   else if(state.time-d.at>=ANIMATION.deathSeconds||this.count>=ANIMATION.maxDeathVoxels){this.seen.add(d.id);continue;}
+   this.seen.add(d.id);
+   const factory=kept&&!DOWNED.keepable.includes(d.effect)?KILL_EFFECTS['impact-ragdoll']:KILL_EFFECTS[d.effect]||KILL_EFFECTS['voxel-burst'];
+   const effect=factory(this.scene,rig.group,p,d,quality,kept?DOWNED.budget:ANIMATION.maxDeathVoxels-this.count,state);this.active.set(d.id,{effect,at:d.at,kept:kept?p.id:undefined,death:d});
   }
-  for(const[id,e]of this.active){const age=state.time-e.at;if(age>=ANIMATION.deathSeconds||!state.players.some(p=>p.hp<=0&&p.death?.id===id)){e.effect.dispose();this.active.delete(id);}else e.effect.update(age);}
+  for(const[id,e]of this.active){const down=state.players.find(p=>p.hp<=0&&p.death?.id===id);let age=state.time-e.at;
+   if(e.kept){const hold=e.effect.keepAge??DOWNED.keepAge;
+    if(down&&this.keeper.kept(down,state)){if(e.effect.keep)e.effect.keep(age);else e.effect.update(Math.min(age,hold));continue;}
+    // Back up (revive, self-revive, respawn): the keeper regenerates the body and disposes it.
+    if(!down&&e.death&&this.keeper.adopt(e.kept,e.effect,e.death,state)){this.active.delete(id);continue;}
+    // Still down but no longer kept (disconnected, PvE over): the stock ending from the hold.
+    e.kept=undefined;if(age>hold){e.at=state.time-hold;age=hold;}
+   }
+   if(age>=ANIMATION.deathSeconds||!down){e.effect.dispose();this.active.delete(id);}else e.effect.update(age);}
  }
- get count(){return [...this.active.values()].reduce((n,e)=>n+e.effect.count,0);}
- clear(){for(const e of this.active.values())e.effect.dispose();this.active.clear();this.seen.clear();}
+ /** Effects counted against the shared budget (kept bodies have their own). */
+ get count(){let n=0;for(const e of this.active.values())if(!e.kept)n+=e.effect.count;return n;}
+ clear(){for(const e of this.active.values())e.effect.dispose();this.active.clear();this.seen.clear();this.keeper.clear();}
 }
