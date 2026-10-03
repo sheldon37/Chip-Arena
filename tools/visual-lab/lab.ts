@@ -6,7 +6,9 @@
  * Query parameters (all times are seconds on the lab clock; frame labels show t-start):
  *  kind=motion|intro|lobby   (default motion)
  *  spec=<weapon spec>        (default pistol)
- *  mode=<animation preview>  idle|walk|run|attack|windup|release|left-strike|right-strike|reload|block|jump
+ *  mode=<animation preview>  idle|walk|run|attack|windup|release|left-strike|right-strike|reload|block|jump|
+ *                            ability-q|ability-e (Q/E phrase from each cycle start; the lab marks the kit live, so
+ *                            phrases preview before G/M flip `live`)|ads (aiming; first-person view uses the ADS FOV)
  *  patch=<JSON>              fields shallow-merged into the preview player every step (from patchFrom on)
  *  patchFrom=<s>             the static patch applies only while t>=patchFrom (default: always)
  *  patchAt=<JSON array>      keyed timeline [{"t":0.3,"patch":{...}},...]: each key's fields are
@@ -60,11 +62,13 @@ import {poseFirstPersonView} from '../../src/client/first-person-view.js';
 import {markFirstPersonRig} from '../../src/client/pose-flags.js';
 import {recordBlockHit,clearBlockImpacts} from '../../src/client/block-impacts.js';
 import {arenaLighting} from '../../src/client/arena-lighting.js';
+import {kitFor,adsProfile} from '../../src/shared/abilities.js';
 
 const q=new URLSearchParams(location.search);
 const num=(k:string,d:number)=>q.has(k)?Number(q.get(k)):d;
 const legacy=q.get('legacy')==='1';
 const kind=q.get('kind')||'motion',spec=q.get('spec')||'pistol',mode=q.get('mode')||'idle';
+if(mode.startsWith('ability')){const k=kitFor(spec as never);if(k)k.q.live=k.e.live=true;}
 const frames=Math.max(1,num('frames',8)),cell=num('cell',220),dist=num('dist',4.3),camHeight=num('height',1.0);
 const aspect=Math.max(.2,num('aspect',1)),cellW=Math.round(cell*aspect);
 const views=(q.get('views')||'side,front,three').split(',').filter(Boolean);
@@ -186,6 +190,7 @@ async function main(){
    poseFirstPersonView(fp,viewRoot,p,t,h,false);
    if(mods){weaponModifiers(fp.weapon,p,t);bodyModifiers(fp,p,t);if(p.spec==='daggers')weaponModifiers(fp.offWeapon,p,t);}
    const eye=cameraPosition({x:rig.group.position.x,y:rig.group.position.y,z:rig.group.position.z},p.yaw,p.pitch,'first'),look=forward(p.yaw,p.pitch);
+   fpCamera.fov=p.adsSince!==undefined?adsProfile(p.spec)?.fov??VIEW.firstFov:VIEW.firstFov;fpCamera.updateProjectionMatrix();
    fpCamera.position.set(eye.x,eye.y,eye.z);fpCamera.lookAt(eye.x+look.x*30,eye.y+look.y*30,eye.z+look.z*30);
   }
   prev=t;

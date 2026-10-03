@@ -30,9 +30,11 @@ export class SnapshotBuffer {
   const f=clamp((this.cursor-a.time)/Math.max(.00001,b.time-a.time),0,1),extra=clamp(this.cursor-b.time,0,N.extrapolationMaxMs/1000);
   const mix=(x:Vec,y:Vec,velocity?:Vec)=>v(x.x+(y.x-x.x)*f+(velocity?.x||0)*extra,x.y+(y.y-x.y)*f+(velocity?.y||0)*extra,x.z+(y.z-x.z)*f+(velocity?.z||0)*extra);
   const angle=(x:number,y:number)=>x+Math.atan2(Math.sin(y-x),Math.cos(y-x))*f;
+  // Teleports (Blink Strike, chip blink, swap-shop) snap to the newer position instead of sliding through walls (§11.3).
+  const jumped=(id:string,x:Vec,y:Vec)=>Math.hypot(y.x-x.x,y.y-x.y,y.z-x.z)>60*Math.max(1e-5,b.time-a.time)||b.events.some(e=>e.type==='teleport'&&e.source===id&&e.time>a.time&&e.time<=b.time);
   const quaternion=(x:{x:number;y:number;z:number;w:number},y:typeof x)=>{const sign=x.x*y.x+x.y*y.y+x.z*y.z+x.w*y.w<0?-1:1;const q={x:x.x+(sign*y.x-x.x)*f,y:x.y+(sign*y.y-x.y)*f,z:x.z+(sign*y.z-x.z)*f,w:x.w+(sign*y.w-x.w)*f};const length=Math.hypot(q.x,q.y,q.z,q.w)||1;return {x:q.x/length,y:q.y/length,z:q.z/length,w:q.w/length};};
   return {...current,time:this.cursor,...(current.pve?{pve:interpolatePve(a.pve,b.pve,current.pve,f,extra)}:{}),
-   players:current.players.map(p=>{const pa=a.players.find(x=>x.id===p.id),pb=b.players.find(x=>x.id===p.id);let frame=p.id!==localId&&pa&&pb?{...p,pos:mix(pa.pos,pb.pos,pb.vel),yaw:angle(pa.yaw,pb.yaw),pitch:pa.pitch+(pb.pitch-pa.pitch)*f}:p;
+   players:current.players.map(p=>{const pa=a.players.find(x=>x.id===p.id),pb=b.players.find(x=>x.id===p.id);let frame=p.id!==localId&&pa&&pb?{...p,pos:jumped(p.id,pa.pos,pb.pos)?mix(pb.pos,pb.pos,pb.vel):mix(pa.pos,pb.pos,pb.vel),yaw:angle(pa.yaw,pb.yaw),pitch:pa.pitch+(pb.pitch-pa.pitch)*f}:p;
     const roll=p.id===localId?p.roll:pb?.roll&&pb.roll.at<=this.cursor!?pb.roll:pa?.roll;frame={...frame,roll,animationTime:p.id===localId?newest.state.time+clamp((now-newest.at)/1000,0,N.extrapolationMaxMs/1000):this.cursor!};
     if(p.id!==localId){const reaction=pb?.hitReaction&&pb.hitReaction.at<=this.cursor!?pb.hitReaction:pa?.hitReaction;const stun=(pb?.hitReaction&&pb.hitReaction.at<=this.cursor!||b.time<=this.cursor!)?pb?.hitStunUntil:pa?.hitStunUntil;frame={...frame,hitReaction:reaction,hitStunUntil:stun};}
     if(!normalMelee(p.spec))return frame;

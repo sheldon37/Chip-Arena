@@ -37,6 +37,7 @@ test('the lab-critical exports are callable',async()=>{
   '../../src/client/pose-flags.js':['markFirstPersonRig'],
   '../../src/client/block-impacts.js':['recordBlockHit','clearBlockImpacts'],
   '../../src/client/arena-lighting.js':['arenaLighting'],
+  '../../src/shared/abilities.js':['kitFor','adsProfile'],
  };
  for(const [spec,names] of Object.entries(required)){
   const mod=await load(spec);
