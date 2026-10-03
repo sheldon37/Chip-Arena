@@ -146,7 +146,8 @@ test('main.ts pins: Test Boss on home, boss intro keeps pointer lock, PvE idle i
  const main=src('main.ts');
  assert.match(main,/btn\('test-boss','Test Boss <span class="key">04<\/span>'\)/);
  assert.match(main,/if\(document\.pointerLockElement&&!intro\.boss\)document\.exitPointerLock\(\);return;/,'the boss intro does not leave pointer lock');
- assert.match(main,/function input\(\):Input\{if\(pveIdle\(\)\)return \{\.\.\.idleInput\(\)/);
+ assert.match(main,/function input\(\):Input\{const tapF=pendingInteract;pendingInteract=false;if\(pveIdle\(\)\)return \{\.\.\.idleInput\(\)/);
+ assert.match(main,/interact:\(keys\.has\('KeyF'\)\|\|tapF\)/,'a sub-frame F tap is latched into the next input');
  assert.match(main,/function pveIdle\(\)\{[^}]*pve\.hold\|\|!!chipScreen\?\.visible\);\}/,'idle during holds and the open screen only (the old revive-channel idle dropped F and cancelled the channel)');
  assert.equal((main.match(/hud\.innerHTML=/g)||[]).length,1);assert.match(main,/t\.closest\('#pve-chips'\)/);
  assert.match(main,/'test-boss'\]\.includes\(screen\)\)html=`<div class="pilot-lobby-layout">/);

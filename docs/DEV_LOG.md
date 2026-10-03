@@ -18,6 +18,27 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-03 — Claude — PvE playtest fixes: more money, instant revive
+
+- Branch `claude/pve-econ-revive` from `213f62b` (PR #30 head); no PR (integrator merges).
+- Revive: the hold-F channel cancelled one round trip after it began because the client's
+  `pveIdle()` idled all input (interact too) while the party row showed a channel. Revive is
+  now instant: one F press near a downed teammate charges and revives (50% HP, shield); deny
+  'money' otherwise. Channel state/UI removed; sub-frame F taps are latched in `main.ts`.
+  E is the special ability (`secondary`), not interact.
+- Money (`balance.ts`): income about 2.5x (rewards 25/20/80, head 10, start 150, wave clear
+  100+50w, thresholds 250, boss $10 per 1%, possessed 300/100); prices about 1.2x (chip
+  175+25 max 350, recruit 300, heal 75, revive 150+50 max 400). Harness, solo pistol median:
+  earned at boss 1512 -> 3406, bought 2 recruits + 4 chips -> 2 + 8. Table in docs/PVE.md.
+- Animation/hit timing/hitboxes/damage/cooldowns/movement/networking: unchanged (wire fields
+  unchanged; `channel` is simply never set). PvP untouched; pvp-golden passes.
+- Checks (Node 22.22.2): check:types pass; full suite 913 tests, 900 pass, 13 fail = the known
+  set; `node tests/run-network.mjs pve` victory; balance harness h=1,2 pistol/rifle seeds 1-5
+  before/after; real app (Vite, offline TEST BOSS, SwiftShader ~20 fps): one F tap revived a
+  downed party bot and charged $150; holding F 3 s revived once; too poor = no revive.
+- Not run: Windows build, hosted multi-browser play. Risk: owner judgement of the new numbers.
+  Status: implemented on branch; not merged; not released.
+
 ## 2026-10-03 — Claude — PvE playtest fixes: offline desync after Esc, taken chips wait as pending picks
 
 - Branch `claude/pve-fix-desync-holdchip` from `claude/visual-revision` `58f5d7b`; no PR opened (orchestrator). Not merged, not released.
