@@ -9,6 +9,8 @@ import {weaponModifiers,bodyModifiers} from '../src/client/weapon-visuals.js';
 import {markFirstPersonRig} from '../src/client/pose-flags.js';
 import {POCKET,reloadPhase} from '../src/client/ranged-motion.js';
 import {probeBase,probeMotion,probeRig} from './helpers/motion-probe.js';
+import {adsProfile} from '../src/shared/abilities.js';
+import type {SpecId} from '../src/shared/config.js';
 
 // Ranged/magic presentation fluidity (ranged-magic workstream). Presentation only: every scenario drives existing
 // PlayerView fields (reloadTime, guarding, lastAttack/lastShot, vel, pitch) through the real rig.
@@ -165,4 +167,24 @@ test('first-person staff never covers the crosshair and covers less of the left 
   if(r.mode==='idle')assert.ok(r.gemX<-.3,`${id}: gem at NDC x ${r.gemX.toFixed(2)}`);}
  assert.ok(mean(ours)<=.85*mean(ref),`left-half area ${(100*mean(ours)).toFixed(1)}% vs x .24 reference ${(100*mean(ref)).toFixed(1)}%`);
  assert.ok(mean(oursChips)<=.5*mean(refChips),`left-half area with worst-case chips ${(100*mean(oursChips)).toFixed(1)}% vs reference ${(100*mean(refChips)).toFixed(1)}%`);
+});
+
+/** First-person gun at full ADS: muzzle NDC x, the highest projected gun vertex, and chip-module meshes in the crosshair box. */
+export function adsProbe(spec:string,frame:FpFrame,opts:{chips?:boolean;from?:number;to?:number}={}){
+ const P=adsProfile(spec as SpecId)!,cam=new T.PerspectiveCamera(P.fov,16/9,.08,400),root=new T.Group();cam.add(root);const r=probeRig(spec);markFirstPersonRig(r);root.add(r.group);
+ const base={...probeBase(spec),chips:opts.chips?{...WORST_CHIPS}:{}},muzzle=r.weapon.getObjectByName('muzzle')!,grid=new Uint8Array(GW*GH),v=new T.Vector3();let maxX=0,top=-9,modules=0,hidden=0,n=0;
+ for(let i=0;i<=Math.round(((opts.to??3.5)-1)*60);i++){const t=1+i/60,p={...frame(t,base),chips:base.chips,hitStunUntil:-1e9,adsSince:0};poseFirstPersonView(r,root,p,t,1/60,false,P);weaponModifiers(r.weapon as T.Group,p,t);
+  if(t<(opts.from??1.5))continue;n++;if(!root.visible){hidden++;continue;}cam.updateMatrixWorld(true);maxX=Math.max(maxX,Math.abs(muzzle.getWorldPosition(v).project(cam).x));
+  // The gun's own meshes (the transient muzzle flash is a firing effect, not the gun).
+  r.weapon.traverse(o=>{const m=o as T.Mesh;if(!m.isMesh)return;for(let a:T.Object3D|null=m;a;a=a.parent)if(!a.visible||a.name==='muzzle-flash')return;const pos=(m.geometry as T.BufferGeometry).getAttribute('position');for(let k=0;k<pos.count;k++){v.fromBufferAttribute(pos,k);m.localToWorld(v).project(cam);if(Math.abs(v.x)<1)top=Math.max(top,v.y);}});
+  const g=r.weapon.getObjectByName('chip-modules');if(g&&raster(g,cam,grid).cross)modules++;}
+ return {maxX,top,modules,hidden:hidden/n};
+}
+test('ADS view model: muzzle on the crosshair column, sights under it, no chip module in the crosshair box, rifle behind its scope',()=>{
+ for(const spec of ['pistol','machinegun'])for(const mode of ['idle','attack'] as const){const r=adsProbe(spec,preview(mode),{chips:true});
+  assert.equal(r.hidden,0,`${spec} ${mode}: the sighted gun stays visible`);
+  assert.ok(r.maxX<.06,`${spec} ${mode}: muzzle at NDC |x| ${r.maxX.toFixed(3)}`);
+  assert.ok(r.top<=-.03,`${spec} ${mode}: gun top at NDC y ${r.top.toFixed(3)} (crosshair occluded)`);
+  assert.equal(r.modules,0,`${spec} ${mode}: chip modules in the crosshair box`);}
+ assert.equal(adsProbe('rifle',preview('attack'),{chips:true}).hidden,1,'the rifle view model hides behind the scope overlay');
 });

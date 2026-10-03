@@ -90,7 +90,7 @@ export function updateAimWeight(r:CharacterRig,p:PlayerView,pose:Pose,w:Weapon,d
   // Combat strafe and backpedal keep the gun up; only running forward lowers it into the travel carry. The first-person
   // view model always keeps the gun in hand (first-person-view.ts lowers the whole view model while running).
   const speed=Math.hypot(p.vel.x,p.vel.z),ahead=speed>1?(p.vel.x*Math.sin(p.yaw)+p.vel.z*Math.cos(p.yaw))/speed:1;
-  aimTarget=pose.shotAge<Math.max(.38,w.interval+.15)||p.reloadTime>0||r.motion<.18||ahead<.6||p.guarding||p.blockTime>0||isFirstPersonRig(r)?1:0;
+  aimTarget=pose.shotAge<Math.max(.38,w.interval+.15)||p.reloadTime>0||r.motion<.18||ahead<.6||p.guarding||p.blockTime>0||isFirstPersonRig(r)||p.adsSince!==undefined?1:0;
  }
  // Critically damped (starts at rest, so raising the gun out of a run eases in); stiffer when a shot fires from a low carry.
  const s=aimSprings.get(r),h=clamp(dt,0,.05),omega=w.class==='ranged'&&aimTarget>r.aimWeight&&pose.shotAge<.1&&r.aimWeight<.6?32:24;
@@ -138,8 +138,8 @@ export function rangedLayer(r:CharacterRig,p:PlayerView,pose:Pose,time:number,dt
  r.chest.rotation.y=T.MathUtils.lerp(r.chest.rotation.y,-blade*.55,hold)+tuck*.2;
  r.neck.rotation.x-=pitch*.10*a;
  // Head: counter the blade, keep the previous world pitch, and (rifle; lighter on the MG) settle the cheek toward the stock.
- const weld=(spec==='rifle'?1:mg?.55:0)*a*(1-g)*(1-e)*fpRig;
- r.head.rotation.x+=pitch*.5*a+weld*.12+headKick*.05*a+g*.2+tuck*.25;
+ const ads=p.adsSince!==undefined?1:0,weld=Math.max(spec==='rifle'?1:mg?.55:0,ads)*a*(1-g)*(1-e)*fpRig;
+ r.head.rotation.x+=pitch*.5*a+weld*(.12+ads*.06)+headKick*.05*a+g*.2+tuck*.25;
  r.head.rotation.y+=blade+weld*.06;
  r.head.rotation.z=T.MathUtils.lerp(r.head.rotation.z,long?0:-.08,hold)+weld*.06;r.neck.rotation.z+=weld*.12;r.neck.rotation.x+=weld*.15;
  r.leftShoulder.rotation.y-=(long?RANGED_TUNE.leftProtract:.15)*hold;r.rightShoulder.rotation.y+=(long?RANGED_TUNE.rightProtract:0)*hold;

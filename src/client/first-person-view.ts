@@ -15,8 +15,8 @@ import {adsProfile,type AdsProfile} from '../shared/abilities.js';
 /** Staff: x .20 / y -.50, FP-only scale .85 and its top rolled 20° outward about the grip; FP chip modules ×.5 (design §10.3,
  * PROBE fp-staff2: 0 % crosshair cover, ~9 % of the left half against 12-35 % for the rejected x .24). */
 export const FP_TUNE={meleeX:.16,meleeY:-.22,meleeZ:-.3,magicX:.2,magicY:-.5,magicStaffScale:.85,magicRoll:20,moduleScale:.5};
-/** ADS view-model offsets (Δx, Δy) per gun (§12.1). */
-export const ADS_VIEW:Record<string,[number,number]>={pistol:[-.27,.13],machinegun:[-.31,.12],rifle:[-.33,.1]};
+/** ADS view-model offsets (Δx, Δy) per gun (§12.1; PROBE: muzzle on the crosshair column, sights just under it). */
+export const ADS_VIEW:Record<string,[number,number]>={pistol:[-.27,.19],machinegun:[-.31,.175],rifle:[-.33,.1]};
 interface ViewState{t:number;yaw:number;pitch:number;sx:number;sxv:number;sy:number;syv:number;roll:number;rollv:number;land:number;landv:number;grounded:boolean;vy:number;ads:number;adsv:number}
 const states=new WeakMap<object,ViewState>();
 const _o:[number,number]=[0,0],_qa=new T.Quaternion(),_qb=new T.Quaternion(),_qc=new T.Quaternion(),_f=new T.Vector3();
