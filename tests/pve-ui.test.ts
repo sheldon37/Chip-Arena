@@ -98,7 +98,7 @@ test('wave heading, boss bar (notches, floor lock, hidden, mini chips) and banne
  const deny=bannerFor(snap(view('boss-3'),{events:[ev(3,'pve-deny',{target:ME,message:'money'})]}),view('boss-3'),ME);assert.equal(deny?.title,'NOT ENOUGH MONEY');
  const html=pveBanner(deny,-.2);assert.match(html,/data-banner="deny-3"/);assert.match(html,/--banner-delay:-0.200s/);
  const memo=new DelayMemo();memo.frame(100);assert.equal(memo.delay('k',99.5),-.5);memo.frame(101);assert.equal(memo.delay('k',99.5),-.5,'memoised');memo.frame(50);assert.equal(memo.delay('k',49.9,50).toFixed(2),'-0.10','rewind clears');
- assert.match(downLine(view('dead'),ME,100),/DOWN — a teammate can revive you/);
+ assert.match(downLine(view('dead'),ME,100),/A teammate can revive you · you respawn when the wave is cleared/);
 });
 
 test('chip-later icon, possession arrow and interact prompts',()=>{

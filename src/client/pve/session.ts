@@ -77,7 +77,7 @@ export class PveFixtureInjector{
     pos:{x:self.pos.x+Math.sin(self.yaw+a)*4.5,y:self.pos.y,z:self.pos.z+Math.cos(self.yaw+a)*4.5},hp:dead?0:Math.round(self.maxHp*[1,.62,.84,.35][i%4]),
     chips:{vital:1,ricochet:i%2+1,piercing:1},death:undefined,spec:(['pistol','sword','rifle','fire'] as const)[i%4],class:(['ranged','melee','ranged','magic'] as const)[i%4]});});
   const intro=view.cinematic?.kind==='boss-intro';
-  if((view.bossView||intro)&&!players.some(p=>p.id===BOSS_PLAYER_ID))this.extra.push(fixtureBossPlayer(self,view.bossView?.phase??1,{time,ids}));
+  if((view.bossView||intro)&&!players.some(p=>p.id===BOSS_PLAYER_ID))this.extra.push({...fixtureBossPlayer(self,view.bossView?.phase??1,{time,ids}),developer:false,unlocks:['weapon:siren'],cosmetics:undefined});
   for(const p of this.extra)this.injected.add(p.id);
   this.intro=intro?{started:view.cinematic!.at,players:[BOSS_PLAYER_ID],boss:true}:undefined;
   return view;

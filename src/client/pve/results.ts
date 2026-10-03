@@ -19,7 +19,7 @@ const total=(r:PvePartyView)=>r.addDamage+r.bossDamage;
 function chipBadges(p:PlayerView){
  const chips=Object.entries(p.chips||{}).filter(([,k])=>k>0).map(([id,k])=>({c:CHIPS.find(c=>c.id===id),k})).filter(x=>!!x.c);
  if(!chips.length)return '<span class="pve-result-nochips">No chips installed</span>';
- return chips.map(({c,k})=>`<span class="board-chip pve-result-chip rarity-${c!.rarity}" style="${rarityStyle(c!)}" title="${escapeHtml(c!.name)} · ${RARITIES[c!.rarity].name}">${chipIcon(c!.id)}<strong>${escapeHtml(c!.name)}</strong>${k>1?`<b>×${k}</b>`:''}</span>`).join('');
+ return chips.map(({c,k})=>`<span class="pve-result-chip rarity-${c!.rarity}" style="${rarityStyle(c!)}" title="${escapeHtml(c!.name)} · ${RARITIES[c!.rarity].name}">${chipIcon(c!.id)}<strong>${escapeHtml(c!.name)}</strong>${k>1?`<b>×${k}</b>`:''}</span>`).join('');
 }
 /** The results panel body plus its title (pure). `votes` is the latest rematch vote count (Retry). */
 export function pveResults(state:Snapshot,me:string,opts:{votes?:number;peerLost?:boolean}={}){

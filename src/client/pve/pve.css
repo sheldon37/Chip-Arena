@@ -200,8 +200,9 @@ body.pve .notice{top:150px}
 .pve-reveal-spotlight strong:after{color:#2de2ff;animation:siren-split-b 1.8s steps(1,end) -.3s infinite}
 .pve-reveal-spotlight p{margin:12px auto 0;max-width:62ch;font:500 clamp(15px,1.5vw,20px)/1.45 var(--font-ui,system-ui);color:#ddd6fb;text-shadow:0 1px 3px #000}
 @keyframes pve-spot-in{0%{opacity:0;transform:scaleY(.04) scaleX(1.2)}12%{opacity:1;transform:scaleY(.04)}30%{transform:scaleY(1.05)}40%{transform:translateX(-8px)}48%{transform:translateX(6px)}56%,100%{opacity:1;transform:none}}
-.pve-reveal-tray{display:grid;grid-template-columns:repeat(4,minmax(0,210px));gap:16px;justify-content:center;width:100%}
+.pve-reveal-tray{display:grid;grid-template-columns:repeat(4,minmax(0,228px));gap:16px;justify-content:center;width:100%}
 .pve-reveal-slot>.circuit-chip{width:100%;min-height:236px}
+.pve-reveal-slot .circuit-chip strong{font-size:19px;overflow-wrap:normal;hyphens:auto}
 .pve-reveal-slot.done>.circuit-chip{opacity:.8;filter:saturate(.7)}
 .pve-reveal-slot.pve-boot>.circuit-chip{box-shadow:0 0 0 1px #b7a8ff99,0 0 60px #7d5cff99,0 20px 60px #000}
 .pve-locked-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:236px;height:100%;border-radius:9px;border:1px dashed #b7a8ff55;background:repeating-linear-gradient(135deg,#0d0a14 0 10px,#0a0810 10px 20px);box-shadow:inset 0 0 30px #000}
@@ -222,7 +223,7 @@ body.pve .notice{top:150px}
 .siren-title-flames{position:absolute;left:50%;bottom:-6vh;width:min(1100px,110vw);height:34vh;transform:translateX(-50%);opacity:0;z-index:-1;animation:siren-title-flames 1.1s cubic-bezier(.2,.8,.2,1) var(--name-delay,1e4s) both}
 .siren-title-flames .siren-flames{width:100%;height:100%}
 .intro-name strong.siren-title{position:relative;display:block;margin:6px 0 4px;font:900 clamp(54px,10vw,150px)/.95 var(--font-chip,var(--font-ui));font-stretch:80%;letter-spacing:.06em;color:#f6f3ff;text-shadow:0 0 34px #9b87ffcc,0 6px 0 #000,0 0 90px #7d5cff99;animation:siren-title-jolt 2.4s steps(1,end) calc(var(--name-delay,1e4s) + 1.2s) infinite}
-.siren-title i{display:inline-block;font-style:normal;opacity:0;animation:siren-letter-in .7s cubic-bezier(.16,.84,.24,1) calc(var(--name-delay,1e4s) + var(--i) * 60ms) both}
+.siren-title i{display:inline-block;font-style:normal;opacity:0;animation:siren-letter-in .5s cubic-bezier(.16,.84,.24,1) calc(var(--name-delay,1e4s) + var(--i) * 38ms) both}
 .siren-title i.gap{width:.3em}
 .siren-title:before,.siren-title:after{content:attr(data-glitch);position:absolute;inset:0;opacity:0;pointer-events:none;letter-spacing:.06em}
 .siren-title:before{color:#ff2d55;animation:siren-split-a 2.4s steps(1,end) calc(var(--name-delay,1e4s) + .9s) infinite}
@@ -280,3 +281,18 @@ body.pve .notice{top:150px}
 @keyframes pve-gain-static{0%,90%{opacity:1}100%{opacity:0}}
 @keyframes pve-banner-static{0%,92%{opacity:1}100%{opacity:0}}
 .pve-picker-options select{width:110px;flex:none}
+/* Results polish: compact portraits so stats and the bottom-centre actions fit at 720p; outcome-coloured title. */
+.pve-result-grid{--portrait-height:clamp(120px,19vh,190px)}
+.pve-result .portrait-stage{height:var(--portrait-height)}
+.pve-result .pilot-card-name{padding-top:4px}
+.pve-result .pilot-card-name strong{font-size:18px}
+.panel:has(.pve-results) .actions.pve-result-actions{justify-content:center;gap:12px}
+.panel:has(.pve-results) .actions.pve-result-actions .btn{flex:0 0 auto;min-width:min(240px,40vw)}
+.panel:has(.pve-results[data-outcome=victory]) h1{color:#ffe7a6;letter-spacing:.08em;text-shadow:0 0 24px #ffb84a66}
+.panel:has(.pve-results[data-outcome=defeat]) h1{color:#ff8a7a;letter-spacing:.08em;text-shadow:0 0 24px #ff353566}
+@media(max-height:480px){.pve-result-grid{--portrait-height:84px;gap:8px;margin-top:8px}.pve-result{padding:6px;gap:6px}.pve-result-stats{grid-template-columns:1fr 1fr 1fr}.pve-result-stats dt{font-size:10px}}
+.pve-result .pilot-card-name .pilot-class{font-size:12px;letter-spacing:.06em}
+.pve-result .pilot-card-name .pilot-class .game-icon{width:14px;height:14px}
+.pve-result .pilot-card-top{padding-bottom:0}
+/* The boss name stays up until the intro hands over to the fight (no early exit), so the animated title is readable. */
+.intro-overlay[data-style=pve-boss] .intro-name{animation:none}

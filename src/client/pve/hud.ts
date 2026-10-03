@@ -117,7 +117,7 @@ export function downLine(pve:PveView,me:string,time:number){
  const row=pve.party[me];if(!row)return '';
  if(row.selfReviveAt!==undefined&&row.selfReviveAt>time)return `Self-revive in ${clock(row.selfReviveAt-time)}`;
  const alive=Object.keys(pve.party).length>1;
- return `DOWN — ${alive?'a teammate can revive you · ':''}${pve.stage==='boss'?'you respawn at the next phase':'you respawn when the wave is cleared'}`;
+ return `${alive?'A teammate can revive you · ':''}${pve.stage==='boss'?'you respawn at the next phase':'you respawn when the wave is cleared'}`;
 }
 
 /** Strong possession hint (§D13): a screen-edge arrow toward the possessed add for pingFor seconds every pingEvery,

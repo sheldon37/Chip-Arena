@@ -78,6 +78,7 @@ export class ArenaAudio {
   else if(e.type==='pve-wave'){if(e.message==='start')this.play('countdown',undefined,.6);else this.play('go',undefined,.6);}
   else if(e.type==='pve-respawn'||e.type==='pve-revive'){if(e.target===me)this.play('go',undefined,.6);}
   else if(e.type==='pve-found'||e.type==='pve-possess')this.play('go',undefined,.5);
+  else if(e.type==='pve-phase'){this.play('darkness',undefined,.7);this.play('metal',undefined,.35);}
  }
  /** Entry doors and vents opening (S6 owns the world animation; the cue lives here). */
  pveEntries(state:Snapshot){const pve=state.pve;if(!pve)return;for(const e of pve.entries){const key='entry:'+e.e+':'+e.openAt;if(this.deathCues.has(key)||state.time<e.openAt||state.time-e.openAt>.4)continue;this.deathCues.set(key,state.time);this.play('metal',undefined,.18);}}
