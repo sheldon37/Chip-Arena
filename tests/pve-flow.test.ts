@@ -184,3 +184,21 @@ test('PvE flow (defeat): a solo human uses the self-revive, then the party falls
   assert.equal(d.view.outcome,undefined);assert.equal(d.view.party.h1.selfRevives,PVE.soloSelfRevives);
  }finally{d.dispose();}
 });
+
+test('PvE debug ops drive the boss: skip-to-boss, boss-damage to each floor, kill-adds finds the Siren, victory',{timeout:300000},()=>{
+ const d=new Driver({},['h1']);const {s}=d;try{
+  d.start();d.pickFirst('h1');s.pve!.debug('god:on');
+  assert.equal(s.pve!.debug('boss-damage:100'),false,'no boss yet');
+  assert.equal(s.pve!.debug('skip-to-boss'),true);d.until(()=>d.view.stage==='boss'&&!d.view.hold,60*30,'boss');
+  const boss=d.player(BOSS_PLAYER_ID),max=boss.stats.hp;
+  assert.equal(s.pve!.debug(`boss-damage:${max}`),true);assert.ok(Math.abs(boss.hp-.75*max)<1e-3,'floor 75%');d.step(2);assert.equal(d.view.cinematic?.chip,2);
+  assert.equal(s.pve!.debug('boss-damage:10'),false,'not during a hold');
+  d.until(()=>d.view.bossView?.phase===2&&!d.view.hold&&d.view.bossView.possessed!==undefined,60*20,'possessed');
+  assert.equal(s.pve!.debug('boss-damage:10'),false,'not while hidden');
+  d.until(()=>d.view.bossView?.foundAt!==undefined,60*10,'found',()=>{if(s.tick%30===0)s.pve!.debug('kill-adds');});
+  d.until(()=>d.view.bossView?.phase===3&&!d.view.hold,60*10,'phase 3');
+  s.pve!.debug(`boss-damage:${max}`);d.until(()=>d.view.bossView?.phase===4&&!d.view.hold,60*10,'phase 4');
+  s.pve!.debug(`boss-damage:${max}`);d.until(()=>s.phase==='match',60*10,'victory');
+  assert.equal(s.snapshot().pve!.outcome,'victory');assert.ok(d.view.party.h1.bossDamage>=.75*max-1,'credited to the human (the found step sets 50% without damage)');
+ }finally{d.dispose();}
+});
