@@ -76,7 +76,7 @@ test('kits: every ranged/magic spec has a Q/E row with the reserved ids; live de
  for(const spec of ['pistol','rifle','machinegun'] as const){assert.ok(kitFor(spec)!.ads);assert.equal(abilityActive(spec,'q'),true);}
  // State-agnostic since GUNS (design §17 G): an E is active exactly when its row is live (F: none; G: the gun E's; M: magic).
  for(const spec of Object.keys(ids) as SpecId[])assert.equal(abilityActive(spec,'e'),!!kitFor(spec)!.e.live,`${spec} E is legacy until live`);
- const live=Object.values(ABILITY_DEFS).filter(d=>d.live).map(d=>d.id).sort(),handled=Object.keys(ABILITY_HANDLERS).sort();assert.deepEqual(live,handled);for(const id of live)assert.ok(ABILITY_DEFS[id].bot,`${id}: a live kit carries bot data`);
+ const live=Object.values(ABILITY_DEFS).filter(d=>d.live).map(d=>d.id).sort(),handled=Object.keys(ABILITY_HANDLERS).sort();assert.deepEqual(live,handled);for(const id of live)assert.ok(ABILITY_DEFS[id].bot||ABILITY_HANDLERS[id].bot,`${id}: a live kit carries bot data (row or custom handler.bot: Blink Strike)`);
  assert.deepEqual(new Set(Object.values(FX_ABILITY)),new Set([...Object.values(GUN_KITS),...Object.values(MAGIC_KITS)].flatMap(k=>[k.q,k.e]).filter(d=>d.kind!=='ads').map(d=>d.id)));
  for(const spec of ['sword','emperor','leet','siren','ansatsuken'] as SpecId[])assert.equal(kitFor(spec),undefined);
  assert.deepEqual(BOT_LEAD,[0,0,0]);
@@ -295,7 +295,8 @@ test('control hints: today\'s hints without caps; with caps rifle/pistol/MG ≤ 
  // Rifle keeps `Q Scope` and 10 keys; its E label is the kit name once the E is live (GUNS), else today's `Special`.
  {const h=controlHints('rifle','KeyQ',HOST_CAPS),e=kitFor('rifle')!.e;assert.equal(kbd(h),10);assert.match(h,/<kbd>Q<\/kbd>Scope/);assert.ok(h.includes(`<kbd>E</kbd>${e.live?e.name:'Special'}`),'rifle E label');if(!e.live)assert.equal(h,controlHints('rifle'),'rifle unchanged: Q Scope');}
  for(const spec of ['pistol','machinegun'] as const){const h=controlHints(spec,'KeyQ',HOST_CAPS);assert.equal(kbd(h),10);assert.match(h,/<kbd>Q<\/kbd>Aim/);}
- for(const spec of ['fire','water','lightning','darkness'] as const){assert.equal(kbd(controlHints(spec,'KeyQ',HOST_CAPS)),8);const q=fake(spec,'q'),e=fake(spec,'e');try{const h=controlHints(spec,'KeyQ',HOST_CAPS);assert.equal(kbd(h),9);assert.ok(h.includes(`<kbd>Q</kbd>${q.def.name}`));assert.ok(h.includes(`<kbd>E</kbd>${e.def.name}`));}finally{for(const f of [q,e]){delete ABILITY_HANDLERS[f.def.id];f.def.live=undefined;}}}
+ // MAGIC sets every magic Q/E live (design §17 M): 9 keys then; the fake-handler branch runs only while a school is not live.
+ for(const spec of ['fire','water','lightning','darkness'] as const){const k=kitFor(spec)!;if(k.q.live&&k.e.live){const h=controlHints(spec,'KeyQ',HOST_CAPS);assert.equal(kbd(h),9);assert.ok(h.includes(`<kbd>Q</kbd>${k.q.name}`)&&h.includes(`<kbd>E</kbd>${k.e.name}`),spec);continue;}assert.equal(kbd(controlHints(spec,'KeyQ',HOST_CAPS)),8);const q=fake(spec,'q'),e=fake(spec,'e');try{const h=controlHints(spec,'KeyQ',HOST_CAPS);assert.equal(kbd(h),9);assert.ok(h.includes(`<kbd>Q</kbd>${q.def.name}`));assert.ok(h.includes(`<kbd>E</kbd>${e.def.name}`));}finally{for(const f of [q,e]){delete ABILITY_HANDLERS[f.def.id];f.def.live=undefined;}}}
  for(const spec of Object.keys(WEAPONS) as SpecId[]){const h=controlHints(spec,'KeyQ',HOST_CAPS);assert.ok(kbd(h)<=10,spec);if(!abilityUser(spec))assert.equal(h,controlHints(spec),spec);}
 });
 test('ability HUD: slot views and markup on capable hosts only',()=>{

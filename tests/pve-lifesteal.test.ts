@@ -47,8 +47,9 @@ test('sword life steal heals on normal swings and on the rising-slash special ag
 test('a thrown dagger heals by its actual damage on an add',()=>{
  const r=room('daggers',{leech:1},5);try{r.park();const pitch=aimAtAdd(r),out=drive(r,60,k=>({secondary:k<2,pitch}));assert.ok(out.dealt>0,'dagger hit the add');near(out.healed,out.dealt*.12,1e-6);}finally{r.s.dispose();}
 });
-test('darkness drain heals 15 % of the actual damage on adds (weapon drain)',()=>{
- const r=room('darkness',{},5);try{r.park();const pitch=aimAtAdd(r)+.06,out=drive(r,70,k=>({attack:k<2,pitch,camera:'first'}));assert.ok(out.dealt>0,'orb hit the add');near(out.healed,out.dealt*.15,1e-6);}finally{r.s.dispose();}
+// INTEGRATION: MAGIC raised the darkness drain .15 -> .20 (design §6.2), so the expected fraction reads the weapon row.
+test('darkness drain heals the weapon drain fraction (20 %) of the actual damage on adds (weapon drain)',()=>{
+ const r=room('darkness',{},5);try{r.park();const pitch=aimAtAdd(r)+.06,out=drive(r,70,k=>({attack:k<2,pitch,camera:'first'}));assert.ok(out.dealt>0,'orb hit the add');assert.equal(WEAPONS.darkness.drain,.2);near(out.healed,out.dealt*WEAPONS.darkness.drain!,1e-6);}finally{r.s.dispose();}
 });
 test('Vampire Dash drains 12 from an add within 3 m and heals by the actual damage',()=>{
  const r=room('pistol',{'vampire-dash':1},2);try{r.park();const out=drive(r,3,k=>({dash:k===0,x:1}));near(out.dealt,12,1e-6,'drained');near(out.healed,12,1e-6);}finally{r.s.dispose();}
