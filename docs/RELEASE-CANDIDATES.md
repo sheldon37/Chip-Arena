@@ -108,3 +108,126 @@ offline test. Test profiles can be discarded only after the owner is done with t
 This workflow deliberately has no publishing step. Existing Site publishing capability
 is preserved, not yet automated from GitHub. A private GitHub asset URL is not a
 replacement for the anonymous feed, and no access token belongs in the game.
+
+## Remote test channel (owner-requested, 2026-09-30)
+
+For testers only. `candidate.py ... --test-only --channel https://raw.githubusercontent.com/sheldon37/chip-arena-test-updates/main/feed/`
+builds the same isolated TEST-ONLY ZIP, but its Update button and menu update badge read
+`latest.json` and `arena-*.json.gz` from that public test channel instead of the bundled feed
+(`remote-feed.mjs`, `test-remote-update.mjs`, `test-remote-status.cjs`, `test-remote-bootstrap.cjs`).
+The real `launcher/update.mjs` still verifies manifest schema, SHA256 and size; a missing or bad
+channel reports unavailable and never falls back to the live feed. To ship a new test version,
+copy a candidate's `feed/` files into the channel repo's `feed/` folder (remove the old payload).
+The channel is public: anyone with the URL can download the test game files. Not a player release.
+
+### Two feeds and updater v2 (owner-approved 2026-10-03)
+
+With a game commit that has updater v2 (`claude/update-headroom`), `--channel` builds with the
+game packager's `test-channel` profile and produces two feeds in `feed/`:
+
+- `latest.json` + `arena-*.json.gz` (schema 1) for every TEST install, up to the 32 MiB cap of
+  launchers installed before v2 (the live Site keeps its 25 MiB guard). If schema 1 no longer
+  fits, it is held back: the candidate has no `latest.json`, and `schema1-hold.mjs` turns the
+  channel's current schema-1 payload into a notice. Old installs then see "Update Available!",
+  and Update installs the same last-fitting game with the version
+  `<version>-download-the-new-TEST-ZIP-from-GitHub-Releases` in its status and Updates window.
+- `latest-v2.json` + `arena-*.pack` (schema 2: Brotli, no base64, about 15% smaller) for v2
+  installs. These launchers accept up to 256 MiB, and the channel limit is 95 MiB because GitHub
+  rejects files over 100 MB. The payload also carries this channel's launcher files:
+  `test-remote-update.mjs` as `manual-update.mjs`, and `remote-feed.mjs`. They self-update on the
+  next start and stay on probation until they have worked once in a later Update (or, for
+  `start.mjs`/`update.mjs`, a Create Room); the seed's stable `desktop/update.cjs`/`main.cjs`
+  restore the previous launcher when such a run fails (game `docs/DEVELOPMENT.md` lists the
+  limits).
+
+The seed ZIP's `test-channel.json` says `{"base":...,"schema2":true}`; the badge and the Update
+button then read `latest-v2.json` first, and only a 404 falls back to `latest.json`.
+`make-test-package.py` refuses a seed whose launcher files differ from what schema 2 delivers.
+`check-payload.mjs` applies both feeds and checks that they carry identical game files.
+`candidate.json` records `payloadBytes.schema1`/`schema2` and the packager report. Older game
+commits ignore the profile and build schema 1 exactly as before.
+
+End-to-end check (local HTTPS only, never GitHub): `node scripts/release/channel-e2e.mjs
+--candidate <candidate dir> --game <game checkout> --work <new dir> [--old-zip <a pre-v2
+Chip-Arena-TEST-ONLY.zip>] [--python <python>]` (Node 24, Python 3, openssl). `candidate.py
+--channel` runs it without `--old-zip` as the `channel-e2e` check for every updater-v2 candidate:
+the candidate's own ZIP and channel entry go through the real desktop Update path, launcher
+probation and rollback (broken entry, broken feed mapping, incompatible `update.mjs`, broken
+`start.mjs` through a real Create Room), the hold-notice refusal and the download refusals. Add
+`--old-zip` (for example the 0e82a31 seed testers hold) to also check old installs. It also checks
+that the seed and feed hold no source, that the seed's server serves the game client and health
+check, and that a launcher on probation which says "up to date" without checking is restored once
+the badge's own check sees a newer feed. The channel README draft with the feed publishing
+procedure is `docs/TEST-CHANNEL-README.md`.
+
+### No source in TEST-ONLY artifacts
+
+The desktop package carries the editable source archive (`chip-arena-source.zip`, about 25 MB, at
+the root and in `resources/game/dist/client/`). `make-test-package.py` strips both from the seed
+ZIP (nothing at runtime reads them; its READ-ME says the source is not included) and refuses a
+seed that still contains source. `candidate.py` then runs `source-privacy-zip`
+(`source_privacy.py`: no `chip-arena-source.zip`, no `src/` folder, no source map, also inside
+nested ZIPs) and `source-privacy-feed` (`source-privacy.mjs`: decodes schema 1 and schema 2 and
+refuses any ZIP, `src/` path or source map in a payload). `package-update.mjs` already left the
+archive out of both payloads; `check-payload.mjs` checks this too.
+
+### Releasing a seed ZIP (owner only, private repo)
+
+A seed ZIP is a GitHub Release asset on the **private** repo `sheldon37/Chip-Arena`, never on the
+public channel repo. Only the owner (and collaborators the owner adds) can download it; the owner
+shares the ZIP with testers directly. Nobody else creates these releases unless the owner asks.
+
+1. Build one candidate from the merged game commit with `--test-only --channel <channel URL>`.
+   `isolated-test-package`, `source-privacy-zip`, `source-privacy-feed`, `actual-payload` and
+   `channel-e2e` must pass.
+2. Publish that candidate's feed to the channel first (channel README steps 1-4), so the launcher
+   files in the seed equal the ones `latest-v2.json` delivers. A new seed still reports the
+   version `test-seed`, so it does not start "current": its first Update downloads and installs
+   the full schema-2 payload (about 22 MB today), even when the game is the same. It stages no
+   launcher, because the seed's launcher files already match (`make-test-package.py` checks this).
+3. Record `sha256sum Chip-Arena-TEST-ONLY.zip` and its size. Every build has a different hash,
+   because ZIP entries store the build time.
+4. Create the release with the tag `test-seed-<content version>` on the exact source commit. Mark
+   it a pre-release and not the latest release, so it never looks like a player release. Use any
+   of these:
+   - Web: `https://github.com/sheldon37/Chip-Arena/releases/new`. In "Choose a tag", type
+     `test-seed-<content version>` and pick "Create new tag on publish". Set Target to the source
+     commit. If the commit is not listed, first run
+     `git tag test-seed-<content version> <source SHA> && git push origin test-seed-<content version>`
+     and then pick that tag. Title: `TEST-ONLY seed <content version> (not a player release)`.
+     Attach `Chip-Arena-TEST-ONLY.zip`, tick "Set as a pre-release", untick "Set as the latest
+     release", then Publish.
+   - GitHub CLI:
+
+     ```
+     gh release create test-seed-<content version> Chip-Arena-TEST-ONLY.zip \
+       --repo sheldon37/Chip-Arena --target <40-char source SHA> \
+       --title "TEST-ONLY seed <content version> (not a player release)" \
+       --notes-file notes.md --prerelease --latest=false
+     ```
+
+   - REST API, with a token limited to this repository (`contents: write`). Never commit or paste
+     the token:
+
+     ```
+     curl -sS -X POST https://api.github.com/repos/sheldon37/Chip-Arena/releases \
+       -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+       -d '{"tag_name":"test-seed-<content version>","target_commitish":"<source SHA>","name":"TEST-ONLY seed <content version> (not a player release)","body":"<notes>","prerelease":true,"make_latest":"false"}'
+     # Use the "id" from that response:
+     curl -sS -X POST "https://uploads.github.com/repos/sheldon37/Chip-Arena/releases/<id>/assets?name=Chip-Arena-TEST-ONLY.zip" \
+       -H "Authorization: Bearer $GH_TOKEN" -H "Content-Type: application/zip" \
+       --data-binary @Chip-Arena-TEST-ONLY.zip
+     ```
+
+   Notes: NOT A PLAYER RELEASE; the SHA-256 and size; source commit, tooling commit and content
+   version; the channel URL; "extract into a new folder and close the normal game first; the first
+   Update downloads the current version, later versions arrive through Update".
+5. Verify: download the asset while signed in (release page, or
+   `gh release download test-seed-<content version> --repo sheldon37/Chip-Arena`), compare the
+   SHA-256, run `python scripts/release/source_privacy.py Chip-Arena-TEST-ONLY.zip`, and on Windows
+   extract it, start it, and check the badge and the Update button.
+6. Record the tag, SHA-256, size and source commit in DEV_LOG. Do not link the ZIP from the public
+   channel repo.
+
+Release assets may be up to 2 GB and do not add to Git history. The owner may delete older seed
+releases.

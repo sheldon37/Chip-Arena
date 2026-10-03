@@ -16,6 +16,71 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-03 — Claude — test channel review round 2: no source in seeds, private seed release
+
+- Tooling `2519377` on this branch (PR #5); the game side is `claude/update-headroom` `f951fbc`
+  (its DEV_LOG entry has the full results). Not published: channel `main` is still `70fe238`, and
+  there is no GitHub Release.
+- Source privacy (blocking for publication): the round-1 seed carried `chip-arena-source.zip`
+  (24.8 MB) at its root and in `resources/game/dist/client/`. `make-test-package.py` now strips
+  both, rewrites the READ-ME line and refuses a seed that still has source. `source_privacy.py`
+  (ZIPs, nested ZIPs) and `source-privacy.mjs` (decodes schema 1 and schema 2) refuse the archive,
+  `src/` folders and source maps. `candidate.py` runs them as `source-privacy-zip` and
+  `source-privacy-feed`, and `check-payload.mjs` checks the feed. The feed never had the archive
+  (verified on round 1's feed too). A new fixture test fails with the old packager.
+- `channel-e2e`: checks the candidate seed and feed for source, requires the seed's server to serve
+  `/` and `/health`, passes the badge's feed version to the desktop Update, and adds B9: an entry
+  point that reports "current" without checking is restored once the feed moves on, then a fixed
+  publish installs.
+- Docs: the seed is an owner-only GitHub Release asset on the private `sheldon37/Chip-Arena`, tag
+  `test-seed-<content version>`, pre-release and not latest. `RELEASE-CANDIDATES.md` has the web,
+  `gh` and REST steps. The public channel README no longer links a seed, and it now says a new
+  seed's first Update downloads the full schema 2 (`test-seed` is never current).
+- Checks: candidate `f951fbc`/`2519377`: every packaging check, both privacy checks and
+  `channel-e2e` 33/33 passed; `verify` showed only baseline failures. Seed ZIP 284,149,423 bytes,
+  SHA-256 `95d34fb255d5f61db3ad5e1bfbe661a470899a8195bf093afd630602c93c4742`. Fixture tests 10/10
+  (Node 22 and 24). Not run: native Windows, real GitHub hosting, the seed release.
+
+## 2026-10-03 — Claude — test channel review round 1: launcher probation e2e in every candidate
+
+- Tooling `ebd998f` on this branch (PR #5); the game side is `claude/update-headroom` `2db36fa`, whose
+  DEV_LOG entry has the full results. Not published: channel `main` is still `70fe238`, and there is
+  no GitHub Release.
+- `channel-e2e.mjs`: a new launcher is proven only by an installing Update and a real Create Room
+  (`start.mjs` and the game server, wrapped in the seed's `hostingProbation`). New cases:
+  - a launcher that loads, speaks and then fails (broken `remote-feed.mjs` mapping), plus its
+    re-stage/restore loop and the fixed publish;
+  - a broken `start.mjs`, kept through an installing Update and restored by Create Room;
+  - a v2 install refusing the hold notice.
+  `--old-zip` is optional.
+- `candidate.py --channel` now runs it as the `channel-e2e` check for every updater-v2 candidate.
+  A broken channel launcher can no longer pass the candidate checks.
+- `schema1-hold.mjs` writes `hold:true`; the pre-v2 launchers in the e2e ignore it.
+- README: states exactly what is rolled back. It also documents the old-install speed limits (60 s
+  schema-1 download, 90 s total, about 4.5 Mbit/s near 32 MiB) and says to take the seed ZIP from the
+  merged commit's candidate.
+- Checks: candidate `2db36fa`/`ebd998f` passed every packaging check and `channel-e2e` 30/30. A full
+  e2e with the 0e82a31 seed as the old install passed 38/38. Fixture tests passed 9/9. `verify`
+  showed baseline failures, plus one HTTPS run that is flaky under load and passed twice on its own.
+
+## 2026-10-03 — Claude — test channel: two feeds, 32 MiB schema 1, updater v2 tooling
+
+- Owner-approved update-size headroom. Tooling `7c7ded2` (code + tests), `2a17b17` (e2e harness),
+  `b5ff54c` (docs) on this branch (PR #5). The game side is `claude/update-headroom` (`f192798`); its
+  DEV_LOG entry has the full results.
+- `candidate.py --channel` sets the game packager's `test-channel` profile: schema 1 up to 32 MiB, plus
+  `latest-v2.json`/`arena-*.pack` carrying this channel's launcher files. The repeat build compares
+  every feed file. `check-payload.mjs` verifies both feeds. `make-test-package.py` writes
+  `{base,schema2}` and refuses a seed whose launcher differs from schema 2. The remote feed, badge
+  and wrapper understand v2 and still work with a pre-v2 `update.mjs`. `schema1-hold.mjs` builds
+  the notice for old installs. `channel-e2e.mjs` runs local HTTPS end-to-end tests.
+- Candidate from `f192798` with tooling `2a17b17`: all packaging and payload checks passed, and verify
+  showed only baseline failures. Schema 1 is 26,045,324 bytes (identical to the published payload),
+  schema 2 is 22,025,342 bytes. The e2e run passed 27/27 with the published `cfdce4b` ZIP as the old
+  install. Fixture tests 9/9.
+- Not done: no channel publication, no GitHub Release (procedure: `docs/TEST-CHANNEL-README.md`
+  draft). Native Windows not run.
+
 ## 2026-09-29 — owner Windows follow-up — fresh r2 label works
 
 - Owner reports that applying the small patch to the existing test copy still showed
