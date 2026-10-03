@@ -89,3 +89,5 @@ Windows validation and desktop distribution cutover remain separate work.
 - Siren PvE TEST BOSS mode (owner request 2026-10-02): all streams integrated and verified on
   `claude/pve-integration` (2026-10-03; see `docs/PVE.md`, DEV_LOG). Not merged or released; next: PR into
   `claude/visual-revision`, merge, test-channel publication. Native Windows review and owner balance playtest remain.
+- Siren TEST BOSS PvE mode (docs/PVE.md) merged at `2bec705` (PR #28); test content `0.2.65597ffe7165` at channel
+  `de5cc4d`. Next: owner playtest and balance retune; native Windows review remains.
