@@ -31,6 +31,7 @@ const TABLE:[string,string,number,string][]=[
 test('16 magic chips: ids, names, rarities, copies and tags; spread right after the damage/health chips',()=>{
  assert.equal(MAGIC_CHIPS.length,16);
  assert.deepEqual(MAGIC_CHIPS.map(c=>[c.id,c.rarity,c.max,c.tags.join()]),TABLE);
+ assert.deepEqual(MAGIC_CHIPS.map(c=>c.name),['Rune Clock','Spellweave','Wide Sigils','Thrifty Runes','Swift Orbs','Spellblade','Mana Surge','Blood Rune','Twin Sigil','Arcane Overflow','Elemental Attunement','Spell Echo','Cinder Field','Undertow','Storm Recall','Abyssal Core']);
  const start=CHIPS.indexOf(POWER_CHIPS[POWER_CHIPS.length-1])+1;assert.deepEqual(CHIPS.slice(start,start+16),MAGIC_CHIPS);
  assert.equal(new Set(CHIPS.map(c=>c.id)).size,CHIPS.length,'unique ids');
  const others=CHIPS.filter(c=>!MAGIC_CHIPS.includes(c));
@@ -76,10 +77,10 @@ test('cards: prose without ×N, green/red/neutral lines, existing icons',()=>{
   'mana-surge':[g('+30% Ability damage as mana')],'blood-rune':[g('+20% Ability life steal')],
   'twin-sigil':[g('+1 E charge'),b('+15% Ability cooldown'),n('Cannot be combined with Spell Echo')],
   'arcane-overflow':[g('+40% Ability damage at high mana'),g('+20 Max mana')],
-  'elemental-attunement':[g('+25% Ability damage'),g('-20% Ability cooldown'),g('+10% Ability radius'),b('+15% Mana cost')],
+  'elemental-attunement':[g('+25% Ability damage'),g('-20% Ability cooldown'),g('+10% Ability radius'),b('+15% Ability cost')],
   'spell-echo':[g('E repeats after 0.8 s'),n('Echo deals 50% damage'),n('Cannot be combined with Twin Sigil')],
-  'cinder-field':[g('+50% Meteor burn duration'),g('+50% Meteor burn radius')],undertow:[n('Tidal Wave pulls instead of pushes')],
-  'storm-recall':[g('-2 s Blink cooldown per enemy hit, up to 4 s')],'abyssal-core':[g('+25% Black Hole radius'),g('+20% collapse damage')],
+  'cinder-field':[g('+50% Meteor burn duration and radius')],undertow:[n('Tidal Wave pulls instead of pushes')],
+  'storm-recall':[g('-2 s Blink cooldown per enemy hit, up to 4 s')],'abyssal-core':[g('+25% Black Hole radius, +20% collapse damage')],
  };
  for(const c of MAGIC_CHIPS){
   assert.deepEqual(chipStatLines(c),lines[c.id],c.id);
