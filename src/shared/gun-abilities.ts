@@ -22,7 +22,7 @@ const FRAG:Shot={restitution:1,
 /** Contact before `arm` metres: impact damage and a puff, no blast. */
 function dud(sys:AbilitySystem,shot:Projectile,point:Vec,target?:Player|Minion){sys.sim.projectiles.delete(shot.id);const p=target?strike(sys,shot,target,point,15/55):owner(sys,shot);sys.sim.emit('impact',point,{source:p?.id??null,spec:shot.spec,color:0x9a9a9a,message:'rocket-dud'});}
 const ROCKET:Shot={
- onEnemy(sys,shot,target,point,_n,armed){if(armed)boom(sys,shot,add(point,mul(norm(shot.vel),.3)),2);else dud(sys,shot,point,target);return 'stop';},
+ onEnemy(sys,shot,target,point,n,armed){if(armed)boom(sys,shot,add(point,mul(norm(n),.02-shot.radius)),2);else dud(sys,shot,point,target);return 'stop';},
  onSurface(sys,shot,point,_n,_prop,armed){if(armed)boom(sys,shot,point,2);else dud(sys,shot,point);return 'stop';},
  onExpire(sys,shot){boom(sys,shot,shot.pos,2);}};
 /** Bomb field on the tag: follows it until `lockAt`, strikes where it locked. */
@@ -36,6 +36,8 @@ export const GUN_HANDLERS:Record<string,AbilityHandler>={
   release(sys,c){const start=sys.aimRay(c.p,c.aim,0).start,d=sub(c.point!,start),t=clamp(len(d)/16,.45,1.1);
    sys.spawnShot(c.p,c.def,{cast:c.cast,pos:start,vel:add(mul(d,1/t),v(0,c.def.gravity!*t/2,0)),damage:sys.D(c.def,c),fuse:sys.sim.time+t+c.def.fuse!,life:4,travel:200});}},
  rocket:{shot:ROCKET,release:(sys,c)=>fire(sys,c,2.5)},
- 'orbital-mark':{shot:MARK,release:(sys,c)=>fire(sys,c,1)},
+ // A strike point inside a body (a target that never moved) would block every LOS ray; it then lands on top of that body.
+ 'orbital-mark':{shot:MARK,release:(sys,c)=>fire(sys,c,1),detonate(sys,f,p){const s=sys.sim;let at=add(f.pos,v(0,.15,0));const top=s.ray(at,v(0,1,0),.01)?.timeOfImpact===0&&s.ray(add(at,v(0,2,0)),v(0,-1,0),2);
+  if(top)at.y+=2.1-top.timeOfImpact;sys.blast(p,at,f.radius,f.damage,f.impulse!,f.fx!);}},
 };
 export function gunPrimaryHit(_sim:Simulation,_p:Player,_target:Player|Minion,_point:Vec,_actual:number):void{}

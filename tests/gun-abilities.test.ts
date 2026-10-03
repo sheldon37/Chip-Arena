@@ -16,11 +16,11 @@ await initPhysics();
 
 const GUNS=['pistol','machinegun','rifle'] as const;
 const near=(a:number,b:number,eps=1e-9,msg='')=>assert.ok(Math.abs(a-b)<=eps,`${msg} ${a} vs ${b}`);
-/** Flat 64×56 m floor; `a` (spec) at `from` facing +z, `b` at `at`. */
-function game(spec:SpecId,at=v(0,.9,8),from=v(0,.9,0)){
- const s=new Simulation({sandbox:true}),a=s.addPlayer('a','A','ranged')!,b=s.addPlayer('b','B')!;a.spec=spec;s.resetRound();s.phase='fight';
+/** Flat 64×56 m floor; `a` (spec) at `from` facing +z, `b` at `at`, optional bystander `c` at `by`. */
+function game(spec:SpecId,at=v(0,.9,8),from=v(0,.9,0),by?:Vec){
+ const s=new Simulation({sandbox:true}),a=s.addPlayer('a','A','ranged')!,b=s.addPlayer('b','B')!,c=by&&s.addPlayer('c','C')!;a.spec=spec;s.resetRound();s.phase='fight';
  for(const p of [...s.props.values()])s.removeProp(p.id);s.addProp({id:'floor',pos:v(0,-.5,0),size:v(64,1,56),material:'foundation'});
- a.body.setTranslation(from,true);b.body.setTranslation(at,true);s.world.step();for(const p of [a,b]){p.grounded=true;p.inputAt=s.time;}a.input.yaw=0;a.input.pitch=0;return {s,a,b};
+ a.body.setTranslation(from,true);b.body.setTranslation(at,true);if(c)c.body.setTranslation(by!,true);s.world.step();for(const p of s.players.values()){p.grounded=true;p.inputAt=s.time;}a.input.yaw=0;a.input.pitch=0;return {s,a,b,c};
 }
 let seq=0;
 /** One tick: `a` gets `input` (its yaw/pitch kept, first person), `b` gets `other`. */
@@ -111,8 +111,8 @@ test('frag: a standing enemy takes ≤ 10 on contact and the blast follows ≥ .
 test('rocket: a contact inside 3 m is a 15-damage dud with no blast; an armed hit blasts ≈ 55 and props take ×2; Block reflects it',()=>{
  {const {s,a,b}=game('machinegun',v(0,.9,2.2));try{aimAt(a,b.body.translation());tick(s,a,{secondary:true});until(s,a,()=>!a.abilityCast&&!shotOf(s,'rocket'),60);
   near(100-b.hp,15,1e-6,'dud');assert.equal(blasts(s,'rocket').length,0);assert.ok(s.events.some(e=>e.type==='impact'&&e.message==='rocket-dud'));}finally{s.dispose();}}
- {const {s,a,b}=game('machinegun',v(0,.9,12));try{aimAt(a,b.body.translation());tick(s,a,{secondary:true});assert.equal(a.ammo,WEAPONS.machinegun.ammo);until(s,a,()=>blasts(s,'rocket').length>0,90);
-  assert.equal(blasts(s,'rocket').length,1);assert.ok(100-b.hp>=50&&100-b.hp<=55+1e-9,`direct ${100-b.hp}`);}finally{s.dispose();}}
+ {const {s,a,b,c}=game('machinegun',v(0,.9,12),v(0,.9,0),v(1.6,.9,12));try{aimAt(a,b.body.translation());tick(s,a,{secondary:true});assert.equal(a.ammo,WEAPONS.machinegun.ammo);until(s,a,()=>blasts(s,'rocket').length>0,90);
+  assert.equal(blasts(s,'rocket').length,1);assert.ok(100-b.hp>=45&&100-b.hp<=55+1e-9,`direct ${100-b.hp}`);assert.ok(c!.hp<100,'the blast point stays outside the target, so it splashes a bystander');}finally{s.dispose();}}
  {const {s,a,b}=game('machinegun',v(20,.9,0));try{const wall=s.addProp({id:'wall',pos:v(0,1.5,10),size:v(4,3,.6),material:'stone'})!;s.world.step();const damages:number[]=[],orig=s.damageProp.bind(s);
   s.damageProp=(p,d,...rest)=>{if(p===wall)damages.push(d);return orig(p,d,...rest);};aimAt(a,v(0,1.5,9.7));tick(s,a,{secondary:true});until(s,a,()=>blasts(s,'rocket').length>0,90);
   const boom=blasts(s,'rocket')[0],dist=len(sub(v(0,1.5,10),boom.pos)),reach=3.6+len(wall.size)*.35,fall=1-Math.min(.85,Math.max(0,dist/reach));
@@ -125,13 +125,15 @@ test('rocket: a contact inside 3 m is a 15-damage dud with no blast; an armed hi
 
 // ---- Orbital Mark -----------------------------------------------------------------------------------------------------
 test('Orbital Mark: the dart tags for 10, the strike follows until tag+.8 s, locks, and lands 85 at tag+1.0 s; surfaces tag points',()=>{
- {const {s,a,b}=game('rifle',v(0,.9,16),v(0,.9,-14));try{aimAt(a,b.body.translation());tick(s,a,{secondary:true});assert.equal(a.ammo,WEAPONS.rifle.ammo);
+ {const {s,a,b,c}=game('rifle',v(0,.9,16),v(0,.9,-14),v(-8,.9,16));try{aimAt(a,b.body.translation());tick(s,a,{secondary:true});assert.equal(a.ammo,WEAPONS.rifle.ammo);
   until(s,a,()=>b.hp<100,60);const tagAt=s.time;near(100-b.hp,10,1e-6,'dart');const f=[...s.chaos.fields.values()].find(f=>f.fx==='orbital-mark')!;assert.ok(f,'strike field');
   assert.deepEqual([f.kind,f.attach,f.radius,f.damage,f.impulse,f.blastKind],['bomb','b',3,85,1400,'ability']);near(f.lockAt!,tagAt+.8,1e-9,'lock');near(f.until,tagAt+1,1e-9,'strike');
   b.body.setTranslation(v(1,.9,16),true);s.world.step();run(s,a,Math.round(.6*60));near(f.pos.x,1,.05,'follows');
   until(s,a,()=>s.time>=f.lockAt!,60);const locked={...f.pos};near(locked.x,1,.05,'locks on the target');b.body.setTranslation(v(2.5,.9,16),true);s.world.step();run(s,a,3);assert.deepEqual(f.pos,locked,'stays where it locked');
-  b.body.setTranslation(v(locked.x,.9,locked.z),true);s.world.step();until(s,a,()=>blasts(s,'orbital-mark').length>0,30);const boom=blasts(s,'orbital-mark')[0];
-  near(boom.time,tagAt+1,1/60+1e-9,'strike time');near(boom.pos.x,locked.x,1e-6);assert.ok(100-b.hp>=10+80,`centre strike ${100-b.hp-10}`);
+  b.body.setTranslation(v(locked.x,.9,locked.z),true);c!.body.setTranslation(v(locked.x+1.5,.9,locked.z),true);s.world.step();until(s,a,()=>blasts(s,'orbital-mark').length>0,30);const boom=blasts(s,'orbital-mark')[0];
+  near(boom.time,tagAt+1,1/60+1e-9,'strike time');near(boom.pos.x,locked.x,1e-6);
+  // b never left the lock point, so the strike lands on top of b (a point inside b would shield every bystander).
+  assert.ok(100-b.hp-10>=55,`strike on a still target ${100-b.hp-10}`);assert.ok(c!.hp<100,'bystander splash');
  }finally{s.dispose();}}
  {const {s,a}=game('rifle',v(20,.9,0));try{const spot=v(0,0,8);aimAt(a,spot);tick(s,a,{secondary:true});until(s,a,()=>[...s.chaos.fields.values()].some(f=>f.fx==='orbital-mark'),60);
   const f=[...s.chaos.fields.values()].find(f=>f.fx==='orbital-mark')!;assert.equal(f.attach,undefined);assert.ok(f.pos.y<.2&&Math.hypot(f.pos.x-spot.x,f.pos.z-spot.z)<1,JSON.stringify(f.pos));/* the muzzle start and dart radius meet a grazing floor a little short */}finally{s.dispose();}}
