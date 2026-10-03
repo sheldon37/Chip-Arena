@@ -18,10 +18,13 @@ export const PACK_MAGIC='CHIPPACK';
 const units=['server.mjs','dist/client','drizzle','release.json'],required=['server.mjs','dist/client/index.html','release.json'];
 const STALL_MS=60000,DOWNLOAD_MS=30*60000;
 const hash=b=>createHash('sha256').update(b).digest('hex');
-// One token per process, shared by the old and the freshly imported module: the run that activates a launcher never confirms it.
+// One token per process, shared by the old and the freshly imported module. desktop/update.cjs compares it before and
+// after a run: the run that activates a launcher never proves it.
 const TOKEN=globalThis.__chipLauncherToken??=randomBytes(8).toString('hex');
 export function allowedPath(path){return typeof path==='string'&&path.length<200&&!path.includes('\\')&&!path.includes(':')&&!path.split('/').some(s=>!s||s==='.'||s==='..')&&(path==='server.mjs'||path==='release.json'||path.startsWith('dist/client/')||path.startsWith('drizzle/'));}
 export function launcherPath(path){return LAUNCHER_FILES.includes(path);}
+/** Windows strips trailing dots and spaces and maps device names (CON, NUL, COM1...) to devices: schema 2 refuses both. */
+export function windowsSafe(path){return typeof path==='string'&&path.split('/').every(s=>!/[. ]$/.test(s)&&!/[<>"|?*\x00-\x1f]/.test(s)&&!/^(con|prn|aux|nul|com[1-9\u00b9\u00b2\u00b3]|lpt[1-9\u00b9\u00b2\u00b3])(\.|$)/i.test(s));}
 const exists=async p=>!!(await lstat(p).catch(()=>null));
 const fileHash=async p=>{try{return hash(await readFile(p));}catch{return null;}};
 const inside=(base,path)=>{const p=resolve(base,path);if(!p.startsWith(base+sep))throw Error('Invalid update path');return p;};
@@ -35,6 +38,8 @@ async function installStage(root,stage){
 async function installSchema1(root,{fetchImpl,force,log}){
  const response=await fetchImpl(UPDATE_BASE+'latest.json',{signal:AbortSignal.timeout(5000),cache:'no-store',redirect:'error'});if(!response.ok)throw Error('Update service unavailable');const manifest=await response.json();
  if(manifest.schema!==1||manifest.nodeMajor!==24||typeof manifest.version!=='string'||!/^[a-f0-9]{64}$/.test(manifest.sha256)||!/^arena-[a-f0-9]{16}\.json\.gz$/.test(manifest.file))throw Error('Unsupported update manifest');
+ // A hold notice (the test channel's latest.json once schema 1 no longer fits) is only for launchers older than v2.
+ if(manifest.hold===true)throw Error('The test channel is publishing a new update. Try again in a few minutes');
  const current=JSON.parse(await readFile(resolve(root,'release.json'),'utf8').catch(()=>'{}'));if(current.version===manifest.version){if(force)log('Chip Arena is up to date.');return false;}
  if(Number(process.versions.node.split('.')[0])<manifest.nodeMajor)throw Error('This release needs a newer portable runtime');log('Updating Chip Arena to '+manifest.version+'...');
  const r=await fetchImpl(UPDATE_BASE+manifest.file,{signal:AbortSignal.timeout(60000),redirect:'error'});if(!r.ok)throw Error('Update download failed');const bytes=Buffer.from(await r.arrayBuffer());if(bytes.length>LIMITS.schema1Bytes||hash(bytes)!==manifest.sha256)throw Error('Update checksum mismatch');
@@ -43,7 +48,10 @@ async function installSchema1(root,{fetchImpl,force,log}){
  let total=0;for(const f of payload.files){if(!allowedPath(f.path)||seen.has(f.path)||typeof f.data!=='string')throw Error('Invalid update path');seen.add(f.path);const data=Buffer.from(f.data,'base64');total+=data.length;if(total>LIMITS.schema1Unpacked||hash(data)!==f.sha256)throw Error('Invalid update file');const path=resolve(stage,f.path);await mkdir(dirname(path),{recursive:true});await writeFile(path,data);}
  for(const path of required)if(!seen.has(path))throw Error('Incomplete update');
  if(JSON.parse(await readFile(resolve(stage,'release.json'),'utf8')).version!==manifest.version)throw Error('Update version mismatch');
- await installStage(root,stage);await rm(stage,{recursive:true,force:true});log('Update installed. Your settings and saved data are preserved.');return true;
+ await installStage(root,stage);await rm(stage,{recursive:true,force:true});
+ // Schema 1 carries no launcher, so a launcher staged with an earlier schema-2 game must not activate over this one.
+ await rm(runtimeFile(root,'launcher-pending'),{recursive:true,force:true});
+ log('Update installed. Your settings and saved data are preserved.');return true;
 }
 const hex64=v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v),count=(v,max,min=0)=>Number.isSafeInteger(v)&&v>=min&&v<=max;
 function launcherList(list){if(!Array.isArray(list)||list.length>LAUNCHER_FILES.length)return null;const seen=new Set();for(const f of list){if(!f||!launcherPath(f.path)||seen.has(f.path)||!hex64(f.sha256))return null;seen.add(f.path);}return list.map(f=>({path:f.path,sha256:f.sha256}));}
@@ -79,22 +87,24 @@ function checkIndex(bytes,m){
  let index;try{index=JSON.parse(bytes.toString());}catch{throw Error('Invalid update package');}
  if(index?.schema!==2||index.version!==m.version||!Array.isArray(index.files)||index.files.length!==m.files)throw Error('Invalid update package');
  const seen=new Set(),launcher=[];let total=0;
- for(const f of index.files){const isLauncher=launcherPath(f?.path);if(!f||!(allowedPath(f.path)||isLauncher)||seen.has(f.path.toLowerCase())||!count(f.size,LIMITS.schema2Unpacked)||!hex64(f.sha256)||isLauncher&&f.size>LIMITS.launcherFileBytes)throw Error('Invalid update path');seen.add(f.path.toLowerCase());total+=f.size;if(isLauncher)launcher.push(f);}
+ for(const f of index.files){const isLauncher=launcherPath(f?.path);if(!f||!(allowedPath(f.path)||isLauncher)||!windowsSafe(f.path)||seen.has(f.path.toLowerCase())||!count(f.size,LIMITS.schema2Unpacked)||!hex64(f.sha256)||isLauncher&&f.size>LIMITS.launcherFileBytes)throw Error('Invalid update path');seen.add(f.path.toLowerCase());total+=f.size;if(isLauncher)launcher.push(f);}
  if(total!==m.unpackedBytes)throw Error('Invalid update package');
  // The feed manifest's launcher list drives the up-to-date check, so it must describe this payload exactly.
  if(launcher.length!==m.launcher.length||launcher.some(f=>!m.launcher.some(e=>e.path===f.path&&e.sha256===f.sha256)))throw Error('Invalid update package');
  return index.files;
 }
 /** Decompress and unpack a verified schema-2 file without holding it in memory; every file is size- and hash-checked. */
-async function unpack(part,m,stage,next){
+async function unpack(part,m,stage,next,log){
  const source=createReadStream(part),input=source.pipe(createBrotliDecompress()),limit=12+LIMITS.schema2Index+m.unpackedBytes,made=new Set(),game=new Set(),launcher=[];
  source.on('error',e=>input.destroy(e));
- let phase='header',need=12,parts=[],have=0,files,i=0,entry,out,h,left=0,total=0;
+ let phase='header',need=12,parts=[],have=0,files,i=0,entry,out,h,left=0,total=0,shown=Date.now();
  const end=async()=>{await out.close();out=null;if(h.digest('hex')!==entry.sha256)throw Error('Invalid update file');if(launcherPath(entry.path))launcher.push(entry);else game.add(entry.path);};
  const begin=async()=>{for(;;){if(i===files.length){phase='done';return;}entry=files[i++];const path=inside(launcherPath(entry.path)?next:stage,entry.path),dir=dirname(path);if(!made.has(dir)){await mkdir(dir,{recursive:true});made.add(dir);}out=await open(path,'wx');h=createHash('sha256');left=entry.size;phase='data';if(left>0)return;await end();}};
  try{
   for await(let chunk of input){
    total+=chunk.length;if(total>limit)throw Error('Invalid update package');
+   // The desktop updater stops after 90 s without output; slow disks and antivirus scans can make unpacking long.
+   if(Date.now()-shown>=15000){shown=Date.now();log('Unpacking update: '+mb(total)+' of '+mb(m.unpackedBytes)+' MB');}
    while(chunk.length){
     if(phase==='done')throw Error('Invalid update package');
     if(phase==='data'){const n=Math.min(left,chunk.length),piece=chunk.subarray(0,n);h.update(piece);await out.write(piece);left-=n;chunk=chunk.subarray(n);if(!left){await end();await begin();}continue;}
@@ -109,7 +119,7 @@ async function unpack(part,m,stage,next){
  if(phase!=='done')throw Error('Invalid update package');
  return {game,launcher};
 }
-const syntaxOk=path=>spawnSync(process.execPath,['--check',path],{stdio:'ignore',timeout:20000,windowsHide:true}).status===0;
+const syntaxOk=(path,log)=>{log('Checking '+path.split(sep).slice(-2).join('/')+'...');return spawnSync(process.execPath,['--check',path],{stdio:'ignore',timeout:20000,windowsHide:true}).status===0;};
 async function installSchema2(root,m,{fetchImpl,force,log}){
  const current=JSON.parse(await readFile(resolve(root,'release.json'),'utf8').catch(()=>'{}'));if(current.version===m.version&&await launcherCurrent(root,m.launcher)){await dropStalePending(root,m.launcher);if(force)log('Chip Arena is up to date.');return false;}
  if(Number(process.versions.node.split('.')[0])<m.nodeMajor)throw Error('This release needs a newer portable runtime');log('Updating Chip Arena to '+m.version+'...');
@@ -118,12 +128,12 @@ async function installSchema2(root,m,{fetchImpl,force,log}){
  try{
   await download(fetchImpl,UPDATE_BASE+m.file,part,m,log);
   for(const dir of [stage,next]){await rm(dir,{recursive:true,force:true});await mkdir(dir,{recursive:true});}
-  const {game,launcher}=await unpack(part,m,stage,next);await rm(part,{force:true});
+  log('Unpacking and checking '+m.files+' files...');const {game,launcher}=await unpack(part,m,stage,next,log);await rm(part,{force:true});
   for(const path of required)if(!game.has(path))throw Error('Incomplete update');
   if(JSON.parse(await readFile(resolve(stage,'release.json'),'utf8')).version!==m.version)throw Error('Update version mismatch');
   const changed=[];for(const f of launcher)if(await fileHash(resolve(root,f.path))!==f.sha256)changed.push(f);
-  for(const f of changed)if(f.path.endsWith('.mjs')&&!syntaxOk(resolve(next,f.path)))throw Error('Update contains an invalid launcher file');
-  await installStage(root,stage);
+  for(const f of changed)if(f.path.endsWith('.mjs')&&!syntaxOk(resolve(next,f.path),log))throw Error('Update contains an invalid launcher file');
+  log('Installing update files...');await installStage(root,stage);
   // A launcher staged by an older update must never activate over this one.
   await rm(pending,{recursive:true,force:true});
   if(changed.length){await writeFile(resolve(next,'pending.json'),JSON.stringify({version:m.version,files:changed.map(({path,sha256,size})=>({path,sha256,size}))}));await rename(next,pending);log('Launcher update staged; it is applied the next time Chip Arena starts or updates.');}
@@ -136,8 +146,8 @@ export async function applyUpdates(root,{fetchImpl=fetch,force=false,strict=fals
   let manifest=null;
   // Schema 2 is opt-in per feed. Only a missing latest-v2.json (404) falls back to schema 1; any other failure stops.
   if(schema2){const r=await fetchImpl(UPDATE_BASE+'latest-v2.json',{signal:AbortSignal.timeout(5000),cache:'no-store',redirect:'error'});if(r.ok)manifest=checkManifest2(await readJson(r,LIMITS.manifestBytes,'Unsupported update manifest'),maxBytes);else if(r.status!==404)throw Error('Update service unavailable');}
-  const installed=manifest?await installSchema2(root,manifest,{fetchImpl,force,log}):await installSchema1(root,{fetchImpl,force,log});
-  await confirmLauncher(root);return installed;
+  // A new launcher is proven (and its backup dropped) by desktop/update.cjs, which is never self-updated.
+  return manifest?await installSchema2(root,manifest,{fetchImpl,force,log}):await installSchema1(root,{fetchImpl,force,log});
  }catch(error){if(strict)throw error;log('Update skipped: '+error.message+'. Starting your existing version.');return false;}
 }
 /** Restore the launcher files saved before the last activation (journal first, then probation). */
@@ -148,18 +158,22 @@ export async function rollbackLauncher(root){
 }
 /** A crash during activation leaves the journal: restore the previous launcher before anything else runs. */
 export async function recoverLauncher(root){return await exists(runtimeFile(root,'launcher-journal.json'))?rollbackLauncher(root):false;}
-/** A later run that completes an update check with the new launcher drops the rollback copy. */
-export async function confirmLauncher(root){const record=await readRecord(runtimeFile(root,'launcher-probation.json'));if(!record||record.token===TOKEN)return false;await rm(runtimeFile(root,'launcher-probation.json'),{force:true});await rm(runtimeFile(root,'launcher-backup'),{recursive:true,force:true});return true;}
-/** Verify a staged launcher update, then swap it in file by file under a journal, keeping a rollback copy. */
+/**
+ * Verify a staged launcher update, then swap it in file by file under a journal, keeping a rollback copy. A launcher
+ * still on probation keeps its original backup, so a rollback always returns to the last proven launcher.
+ */
 export async function activateLauncher(root,{log=console.log}={}){
  const pending=runtimeFile(root,'launcher-pending'),plan=await readRecord(resolve(pending,'pending.json'));if(!plan)return false;
+ log('Applying the launcher update...');
  try{
   if(!Array.isArray(plan.files)||!plan.files.length||plan.files.length>LAUNCHER_FILES.length||new Set(plan.files.map(f=>f?.path)).size!==plan.files.length)throw Error('invalid');
-  for(const f of plan.files){if(!launcherPath(f?.path)||!hex64(f.sha256))throw Error('invalid');const staged=resolve(pending,f.path),data=await readFile(staged);if(data.length>LIMITS.launcherFileBytes||hash(data)!==f.sha256||f.path.endsWith('.mjs')&&!syntaxOk(staged))throw Error('invalid');if((await lstat(resolve(root,f.path)).catch(()=>null))?.isSymbolicLink())throw Error('invalid');}
+  for(const f of plan.files){if(!launcherPath(f?.path)||!hex64(f.sha256))throw Error('invalid');const staged=resolve(pending,f.path),data=await readFile(staged);if(data.length>LIMITS.launcherFileBytes||hash(data)!==f.sha256||f.path.endsWith('.mjs')&&!syntaxOk(staged,log))throw Error('invalid');if((await lstat(resolve(root,f.path)).catch(()=>null))?.isSymbolicLink())throw Error('invalid');}
  }catch{await rm(pending,{recursive:true,force:true});log('Discarded an invalid staged launcher update.');return false;}
- const backup=runtimeFile(root,'launcher-backup'),journal=runtimeFile(root,'launcher-journal.json'),absent=[];await rm(backup,{recursive:true,force:true});
- for(const f of plan.files){const live=resolve(root,f.path);if(await exists(live)){await mkdir(dirname(resolve(backup,f.path)),{recursive:true});await copyFile(live,resolve(backup,f.path));}else absent.push(f.path);}
- const record={token:TOKEN,version:String(plan.version).slice(0,80),files:plan.files.map(f=>f.path),absent};await writeFile(journal,JSON.stringify(record));
+ const backup=runtimeFile(root,'launcher-backup'),journal=runtimeFile(root,'launcher-journal.json'),prior=await readRecord(runtimeFile(root,'launcher-probation.json'));
+ const kept=Array.isArray(prior?.files)?prior.files.filter(launcherPath):null,absent=kept&&Array.isArray(prior.absent)?prior.absent.filter(p=>kept.includes(p)):[];
+ if(!kept)await rm(backup,{recursive:true,force:true});
+ for(const f of plan.files){if(kept?.includes(f.path))continue;const live=resolve(root,f.path);if(await exists(live)){await mkdir(dirname(resolve(backup,f.path)),{recursive:true});await copyFile(live,resolve(backup,f.path));}else absent.push(f.path);}
+ const record={token:TOKEN,version:String(plan.version).slice(0,80),files:[...new Set([...(kept||[]),...plan.files.map(f=>f.path)])],absent};await writeFile(journal,JSON.stringify(record));
  try{for(const f of plan.files){await mkdir(dirname(resolve(root,f.path)),{recursive:true});await rename(resolve(pending,f.path),resolve(root,f.path));}await writeFile(runtimeFile(root,'launcher-probation.json'),JSON.stringify(record));await rm(journal,{force:true});}
  catch(e){await rollbackLauncher(root);throw e;}
  await rm(pending,{recursive:true,force:true});return true;

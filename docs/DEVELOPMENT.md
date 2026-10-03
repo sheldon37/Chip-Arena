@@ -153,12 +153,16 @@ content version, channel commit and unrun native checks in DEV_LOG.
 | `live` (default; Site/live builds) | 25 MiB guard (Cloudflare Pages per-file limit) | not produced | build fails, unchanged |
 | `test-channel` (set by `candidate.py --channel`) | up to 32 MiB, the cap every installed launcher enforces | always; default limit 95 MiB (GitHub rejects files over 100 MB) | held back: only v2 files are written |
 
-Overrides: `CHIP_UPDATE_SCHEMA1_MAX_MIB` (1-32), `CHIP_UPDATE_SCHEMA2_MAX_MIB` (1-256),
-`CHIP_UPDATE_SCHEMA2_QUALITY` (Brotli 1-11, default 11, about 85 s), `CHIP_UPDATE_SCHEMA2=1`
-(schema 2 for live; live launchers do not read it). `CHIP_UPDATE_LAUNCHER_OVERLAY` names a folder
+Overrides: `CHIP_UPDATE_SCHEMA1_MAX_MIB` (test-channel 1-32, live 1-25), `CHIP_UPDATE_SCHEMA2_MAX_MIB`
+(test-channel 1-256, live 1-25), `CHIP_UPDATE_SCHEMA2_QUALITY` (Brotli 1-11, default 11, about 85 s),
+`CHIP_UPDATE_SCHEMA2=1` (schema 2 for live; live launchers do not read it). Never set
+`CHIP_UPDATE_PROFILE` in a shell used for a Site build: before any Site publication, check that
+`dist/client/updates/` holds `latest.json` and no `latest-v2.json` or `.pack`. `CHIP_UPDATE_LAUNCHER_OVERLAY` names a folder
 whose whitelisted files replace `launcher/*` inside schema 2; a test-channel payload must carry the
 channel's own `manual-update.mjs`, never the production one that reads the live feed.
-Default `npm run build` output is byte-identical to the previous packager.
+Default `npm run build` output is byte-identical to the previous packager. Every packaged path must
+be Windows-safe (no device names such as `CON`/`NUL`/`COM1`, no trailing dot or space). The live
+schema-1 payload was 24.84 MiB on 2026-10-03, about 0.17 MiB under the live guard.
 
 Schema 2 is Brotli of `CHIPPACK`, a uint32 BE index length, a JSON index
 `{schema:2,version,files:[{path,size,sha256}]}` and the raw file bytes (no base64). The manifest
@@ -166,18 +170,37 @@ adds `encoding:"br"`, `bytes`, `unpackedBytes`, `files` and a `launcher` list. `
 reads it only when the caller passes `schema2:true` (the test-channel wrapper does; production
 `manual-update.mjs` does not), streams the download to `runtime/update-download.part` with a
 256 MiB cap, a byte-count and a SHA-256 check before decompressing, then unpacks file by file with
-size/hash checks, the same `allowedPath` rule and a strict launcher whitelist (`LAUNCHER_FILES`).
-Only a 404 for `latest-v2.json` falls back to schema 1.
+size/hash checks, the same `allowedPath` rule, Windows-safe names and a strict launcher whitelist
+(`LAUNCHER_FILES`). Only a 404 for `latest-v2.json` falls back to schema 1, and a v2 launcher refuses
+the channel's schema-1 hold notice (`hold:true`) instead of downgrading. Downloading, unpacking,
+launcher syntax checks and installation all print progress, because the desktop updater stops
+after 90 s without output.
 
 Launcher self-update: changed launcher files are syntax-checked and staged in
-`runtime/launcher-pending/`. The next launcher start (`startLauncher()` in every entry point)
-re-verifies them, copies the old files to `runtime/launcher-backup/`, swaps them under
-`runtime/launcher-journal.json` and loads the new `update.mjs`. A crash mid-swap, a failed load,
-or (desktop only) a new entry point that exits before printing a protocol line restores the
-backup (`desktop/update.cjs` holds that stable rollback). A later run that completes an update
-check confirms the new launcher. Settings, saves, `runtime/` binaries and `test-channel.json` are
-never update targets. The desktop update timeout is now 90 s of silence (45 min maximum).
-Launchers installed before v2 never read schema 2: a tester needs one new TEST-ONLY ZIP.
+`runtime/launcher-pending/`. The next launcher start (`startLauncher()` in every entry point,
+including hosting) re-verifies them, copies the old files to `runtime/launcher-backup/`, swaps them
+under `runtime/launcher-journal.json`, records `runtime/launcher-probation.json` and loads the new
+`update.mjs`. `launcher/update.mjs` restores the backup itself after a crash mid-swap or when the
+new `update.mjs` cannot load or lacks `LAUNCHER_API>=2`. Everything else is decided by the stable
+desktop code, which ships only in the seed ZIP and is never self-updated (`desktop/update.cjs`):
+
+- Update proves `update.mjs`, `manual-update.mjs`, `remote-feed.mjs` and `local-feed.mjs` when a
+  later Update installs a version with them. Until then, any failed Update (an error, a non-zero
+  exit, no result line, a timeout) restores the previous launcher and drops anything staged.
+- Hosting proves `start.mjs` and `update.mjs` when a later Create Room reaches `YOUR GAME:`
+  (`desktop/main.cjs`). Until then, a server start that fails or times out before that line restores
+  the previous launcher.
+- A run that activated the launcher never proves it (the probation token changes). A newer launcher
+  activated while one is still unproven keeps the original backup. When every needed kind is
+  proven, the backup is deleted.
+
+Not covered: a failure after `YOUR GAME:` (for example in online tunnel code), an `update.mjs`
+whose bug only shows after it installed one update, and non-desktop entry points (the Windows
+`.bat` package, which never reads schema 2). The feed still lists a rolled-back launcher, so the
+next Update downloads and stages it again; the fix is a corrected publish, which the restored
+launcher installs. Settings, saves, `runtime/` binaries and `test-channel.json` are never update
+targets. The desktop update timeout is now 90 s of silence (45 min maximum). Launchers installed
+before v2 never read schema 2: a tester needs one new TEST-ONLY ZIP.
 
 ## Clean-checkout verification
 

@@ -1,8 +1,11 @@
 import {build} from 'esbuild';
 import {readFileSync,writeFileSync,readdirSync,statSync,mkdirSync} from 'node:fs';
 import {packagerConfig,encodeSchema1,schema1Problem,encodeSchema2,launcherEntries,manifest2,hash,MiB,GITHUB_FILE_MAX,GITHUB_FILE_WARN} from './update-format.mjs';
+import {windowsSafe} from '../launcher/update.mjs';
 // Profiles and limits: scripts/update-format.mjs and docs/DEVELOPMENT.md ("Update payload limits").
 const config=packagerConfig(process.env);
+// Resolved before anything is written, so a refused test-channel configuration leaves no partial feed behind.
+const launcher=config.schema2?launcherEntries(config):[];
 mkdirSync('.cache/release',{recursive:true});
 const buildId=readFileSync('src/client/build-info.generated.ts','utf8').match(/GAME_BUILD='([a-f0-9]{24})'/)?.[1];if(!buildId)throw Error('Missing build identity');
 await build({entryPoints:['src/server/index.ts'],outfile:'.cache/release/server.mjs',bundle:true,platform:'node',format:'esm',target:'node24',banner:{js:"import {createRequire} from 'node:module';const require=createRequire(import.meta.url);"}});
@@ -12,6 +15,8 @@ const walk=path=>{for(const name of readdirSync(path)){if(name==='updates'||name
 add('server.mjs','.cache/release/server.mjs');walk('dist/client');walk('drizzle');
 // The content version covers game files only, exactly as before, so schema 1 and schema 2 of one build share it.
 const version='0.2.'+hash(JSON.stringify(entries.map(f=>[f.path,hash(f.data)]))).slice(0,12);const release=Buffer.from(JSON.stringify({version,channel:'stable',schema:1,nodeMajor:24}));entries.push({path:'release.json',data:release});
+// Windows strips trailing dots/spaces and reserves device names; schema-2 launchers refuse such paths.
+for(const {path} of [...entries,...launcher])if(!windowsSafe(path))throw Error('Update file name is not safe on Windows: '+path);
 const v1=encodeSchema1(entries),problem=schema1Problem(v1,config.schema1Max);
 if(problem&&config.schema1Overflow==='fail')throw Error('Automatic update exceeds the '+(config.schema1Max/MiB).toFixed(0)+' MiB '+config.profile+' schema-1 limit ('+problem+').');
 const report={updateVersion:version,bytes:problem?null:v1.gz.length,files:entries.length,profile:config.profile,build:buildId};
@@ -24,7 +29,7 @@ if(problem){
  report.schema1={file,bytes:v1.gz.length,limit:config.schema1Max};
 }
 if(config.schema2){
- const launcher=launcherEntries(config),all=[...entries,...launcher],{pack,unpacked}=encodeSchema2(all,version,config.quality);
+ const all=[...entries,...launcher],{pack,unpacked}=encodeSchema2(all,version,config.quality);
  if(pack.length>config.schema2Max)throw Error('Schema-2 update is '+pack.length+' bytes, over the '+(config.schema2Max/MiB).toFixed(0)+' MiB '+config.profile+' limit.');
  if(pack.length>GITHUB_FILE_MAX)throw Error('Schema-2 update exceeds the GitHub 100 MB file limit.');if(pack.length>GITHUB_FILE_WARN)console.warn('Schema-2 update is over 50 MB; GitHub warns about files this large.');
  const manifest=manifest2({build:buildId,version,pack,unpacked,count:all.length,launcher});writeFileSync('dist/client/updates/'+manifest.file,pack);writeFileSync('dist/client/updates/latest-v2.json',JSON.stringify(manifest));
