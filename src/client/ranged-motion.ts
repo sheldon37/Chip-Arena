@@ -174,12 +174,13 @@ export function rangedLayer(r:CharacterRig,p:PlayerView,pose:Pose,time:number,dt
  // Travel carry: the arms keep pumping, but the weapon holds a stable chest-space orientation instead of windmilling.
  if(hold<.999)orientHeld(r,r.rightHand,r.weapon,carryOrientation(spec,r.stride,_q3),(1-hold)*smoothMotion(r.motion/.35),.55);
  if(e>0)reloadHands(r,spec,u,e,reload.elapsed,reload.duration,aimQ);
- // Frag throw (support hand): from the vest up to cocked beside the head, overhand release at the authoritative release,
+ // Frag throw (support hand): from the vest up to cocked beside the head (low and forward in first person, clear of the
+ // camera), overhand release at the authoritative release,
  // follow through, back on the grip by release+.55 s; a grenade rides in the palm until release. Orbital Mark: the support hand
  // taps the visor around the release (third person).
  let nade=r.leftHand.getObjectByName('held-grenade');if(nade)nade.visible=false;
  if(ab&&(ab.id==='frag-grenade'&&rel<.55||ab.id==='orbital-mark'&&rel>-.1&&rel<.25&&fpRig)){const R=ab.releaseAt,frag=ab.id==='frag-grenade',grip=r.weapon.getObjectByName('support-grip'),g=weaponPoint(r,grip?grip.position:_v.set(0,-.05,.1),_k[0]);
-  const K=frag?[0,.35*R,.75*R,R,R+.15,R+.55]:[R-.1,R,R+.25],P=frag?[g,_k[4].set(.2,.02,.22),_k[1].set(.26,.46,.06),_k[2].set(.12,.38,.42),_k[3].set(0,.06,.36),g]:[g,_k[1].set(-.02,.5,.13),g],t=ab.age;
+  const K=frag?[0,.35*R,.75*R,R,R+.15,R+.55]:[R-.1,R,R+.25],P=frag?[g,_k[4].set(.2,.02,.22),fpRig?_k[1].set(.26,.46,.06):_k[1].set(.3,.12,.3),_k[2].set(.12,fpRig?.38:.2,.44),_k[3].set(0,.06,.36),g]:[g,_k[1].set(-.02,.5,.13),g],t=ab.age;
   _lh.set(poseCurve(K,P.map(q=>q.x),t),poseCurve(K,P.map(q=>q.y),t),poseCurve(K,P.map(q=>q.z),t));
   supportReach(r,_lh,_eu2.setFromQuaternion(aimQ),smoothMotion(frag?Math.min(t/.05,(R+.55-t)/.15):Math.min((rel+.1)/.06,(.25-rel)/.08)),frag?THROW_POLE:undefined);
   if(frag&&t>.3*R&&t<R){if(!nade){nade=new T.Mesh(new T.BoxGeometry(.075,.085,.075),new T.MeshLambertMaterial({color:0x40633a}));nade.name='held-grenade';nade.position.set(0,-.09,.03);r.leftHand.add(nade);}nade.visible=true;}}
