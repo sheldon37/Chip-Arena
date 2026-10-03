@@ -96,6 +96,13 @@ function scenario(t:number):Frame{
   const dead=(id:string,x:number)=>player(id,'#3fc6ff',stand(x,0),0,{hp:0,death:{id:'d-'+id,at:t-3,pos:stand(x,0)} as never});
   const players=[dead('down',-3),dead('reviving',0),dead('self',3),player('medic','#7dffb0',stand(-.9,1),Math.PI*.8),player(ME,'#cccccc',stand(0,30),0)];
   return {players,view:w};}
+ if(kind==='possess'){
+  // "Find me...": the boss dissolves at t=0 and its black flame streaks to add 5.
+  const w=base(t),addPos={x:6,y:.86,z:-3};w.bossView={id:BOSS_PLAYER_ID,phase:2,floor:1000,hidden:t>=0,possessed:5,possessedAt:0};
+  w.adds=[encodeAdd(fixtureAdd({n:5,x:addPos.x,z:addPos.z,yaw:-1}),w.slots)];
+  const sp=player(BOSS_PLAYER_ID,'#b7a8ff',{x:0,y:STAND_Y,z:0},.6,{spec:SIREN.spec as never,team:'purple',siren:{mode:'melee',modeAt:-10} as never});
+  const events=t>=0?[{id:1,time:0,type:'pve-possess',pos:{x:0,y:STAND_Y,z:0},target:'add-5'} as GameEvent]:[];
+  return {players:[sp],view:w,events,adds:[{n:5,pos:addPos,yaw:-1,vel:{x:0,z:0}}]};}
  // boss
  const grown=Math.max(0,t),boost={scale:PVE_SIREN.beautiful.scale,reach:PVE_SIREN.beautiful.reach,cooldown:1,at:0};
  const siren=(id:string,x:number,b?:typeof boost):PlayerView=>{const s:SirenPlayerState={mode:'melee',modeAt:-10,...(b?{boost:b}:{})};const scale=b?b.scale:1;
@@ -131,13 +138,14 @@ function cameraFor(view:string):[number[],number[]]{
  if(view==='holo')return [[0,2.1,5.2],[0,1.6,0]];
  if(view==='beacon')return [[0,3.2,7.5],[0,.9,0]];
  if(view==='boss')return [[0,1.9,7.8],[0,1.4,0]];
+ if(view==='possess')return [[3,4.5,9],[3,1,-1.5]];
  if(view==='boss-side')return [[6.5,2.2,4.5],[0,1.4,0]];
  return [[0,46,30],[0,0,2]];
 }
 async function main(){
  const gl=new T.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});gl.setPixelRatio(1);gl.setSize(cellW,cell);gl.shadowMap.enabled=true;gl.shadowMap.type=T.PCFSoftShadowMap;
  gl.outputColorSpace=T.SRGBColorSpace;gl.toneMapping=T.ACESFilmicToneMapping;gl.toneMappingExposure=.92;
- const defaults:Record<string,string>={overview:'overview',dispense:'machine',recruit:'machine',pickups:'pickups',entries:'entry',holo:'holo',beacon:'beacon',boss:'boss'};
+ const defaults:Record<string,string>={overview:'overview',dispense:'machine',recruit:'machine',pickups:'pickups',entries:'entry',holo:'holo',beacon:'beacon',boss:'boss',possess:'possess'};
  const views=(q.get('views')||defaults[kind]).split(',').filter(Boolean),cut=!!q.get('cutscene'),rows=cut?1:views.length;
  const start=num('start',kind==='overview'?100:-.2),span=num('span',kind==='entries'?3:kind==='recruit'?1.8:1.2),times=sampleList?.length?sampleList:Array.from({length:frames},(_,i)=>start+(frames===1?0:span*i/(frames-1)));
  sheet.width=times.length*cellW;sheet.height=rows*cell+22;const ctx=sheet.getContext('2d')!;ctx.font='11px ui-monospace,monospace';ctx.fillStyle='#0c0b10';ctx.fillRect(0,0,sheet.width,sheet.height);

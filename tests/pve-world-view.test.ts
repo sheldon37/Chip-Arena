@@ -7,7 +7,7 @@ import {RARITIES} from '../src/shared/content.js';
 import {PVE_TIMING,BOSS_PLAYER_ID,encodeAdd,type PveView,type DropTier} from '../src/shared/pve/contract.js';
 import {PVE_ENTRIES,PVE_MACHINES} from '../src/shared/pve/layout.js';
 import {PRICES} from '../src/shared/pve/balance.js';
-import {fixtureBase,fixtureParty,fixtureAdd,fixtureBossPlayer} from '../src/shared/pve/fixtures.js';
+import {fixtureBase,fixtureParty,fixtureAdd,fixtureBossPlayer,type PartyRowKind} from '../src/shared/pve/fixtures.js';
 import type {PlayerView,Snapshot,GameEvent} from '../src/shared/simulation.js';
 import {SirenStageVisuals} from '../src/client/siren/index.js';
 import {entryOpenAmount,entryStart,ENTRY_CLOSE,CELL_STUB} from '../src/client/siren/stage.js';
@@ -32,7 +32,7 @@ function pilot(id:string,extra:Partial<PlayerView>={}):PlayerView{
 }
 const snap=(time:number,pve:PveView|undefined,players:PlayerView[]=[]):Snapshot=>({time,tick:0,phase:'fight',remaining:60,round:1,setNumber:1,setWinner:null,winner:null,result:'',players,props:[],projectiles:[],events:[],
  impact:null,metrics:{bodies:0,projectiles:0,tickMs:0},options:{map:'siren'},bossSong:{track:'black-siren-protocol',startedAt:0},siren:{patches:[],eruptions:[],rains:[],marks:[],grabs:[]},...(pve?{pve}:{})}) as unknown as Snapshot;
-const view=(time:number,ids=['me','p2'],kinds?:Parameters<typeof fixtureParty>[0]['kinds']):PveView=>({...fixtureBase({time,ids}),party:fixtureParty({time,ids,kinds:kinds??ids.map(()=>'alive')})});
+const view=(time:number,ids=['me','p2'],kinds?:PartyRowKind[]):PveView=>({...fixtureBase({time,ids}),party:fixtureParty({time,ids,kinds:kinds??ids.map(()=>'alive')})});
 function ctx(camera=new T.PerspectiveCamera(),rigs=new Map<string,PveRigRef>()):PveVisualsContext{return {camera,me:'me',dt:1/60,quality:1,compatibility:false,replay:false,rigs,burst:()=>{}};}
 const lights=(s:T.Scene)=>{let n=0;s.traverse(o=>{if((o as T.Light).isLight)n++;});return n;};
 

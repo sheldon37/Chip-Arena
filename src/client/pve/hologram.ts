@@ -135,7 +135,7 @@ export class TagView {
    const tag=recruit?ROLE_TAG[recruit.role]:{text:'BOT',color:'#dffaff'};l.set(tag.text,recruit&&recruit.owner===me?'YOURS':'');
    (l.sprite.material as T.SpriteMaterial).color.set(tag.color);
    // Above the overhead health bar (which sits at pos.y + 1.3).
-   l.sprite.visible=true;l.sprite.position.set(p.pos.x,p.pos.y+1.62,p.pos.z);const s=.11*Math.max(4,Math.min(d,18));l.sprite.scale.set(s*.4*4,s*.4,1);
+   l.sprite.visible=true;l.sprite.position.set(p.pos.x,p.pos.y+1.62,p.pos.z);const s=.075*Math.max(4,Math.min(d,18));l.sprite.scale.set(s*1.6,s*.4,1);
    if(!(this.shown.has(p.id)))this.shown.add(p.id);}
   for(const [id,l] of this.pool)if(!this.shown.has(id))l.sprite.visible=false;
  }

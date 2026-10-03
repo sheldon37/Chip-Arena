@@ -25,7 +25,7 @@ export function applyBossLook(rig:PveRigRef,p:PlayerView,t:number){const {scale,
 
 /** Streak position at time t from the boss (where it vanished) to the possessed add, over STREAK_SECONDS. */
 export function streakPoint(from:{x:number;y:number;z:number},to:{x:number;y:number;z:number},at:number,t:number){
- const k=smooth((t-at)/STREAK_SECONDS);return {k,x:from.x+(to.x-from.x)*k,y:from.y+(to.y-from.y)*k+1.8*Math.sin(Math.PI*k),z:from.z+(to.z-from.z)*k};
+ const k=smooth((t-at)/STREAK_SECONDS);return {k,x:from.x+(to.x-from.x)*k,y:from.y+(to.y-from.y)*k+.9*Math.sin(Math.PI*k),z:from.z+(to.z-from.z)*k};
 }
 interface Streak{from:{x:number;y:number;z:number};n:number;at:number;acc:number;burst:boolean}
 /** Black-flame presentation of possession, reveal and growth (one FlameField draw). */
@@ -43,7 +43,7 @@ export class BossLook {
   for(let i=this.streaks.length-1;i>=0;i--){const s=this.streaks[i],tuple=view.adds.find(a=>a[0]===s.n),add=tuple?decodeAdd(tuple,view.slots):undefined;
    if(t<s.at-.5||t>s.at+STREAK_SECONDS+.2||!add){if(t>s.at+STREAK_SECONDS+.2||t<s.at-.5)this.streaks.splice(i,1);continue;}
    const to={x:add.pos.x,y:add.pos.y+.6,z:add.pos.z},pt=streakPoint(s.from,to,s.at,t);
-   s.acc+=dt*q*160;while(s.acc>=1){s.acc-=1;this.fire.emit(pt.x+(Math.random()-.5)*.25,pt.y+(Math.random()-.5)*.25,pt.z+(Math.random()-.5)*.25,(Math.random()-.5)*.6,.4+Math.random()*.6,(Math.random()-.5)*.6,.5+Math.random()*.3,.1+Math.random()*.08,Math.random()<.08?'ember':'black',1,2);}
+   s.acc+=dt*q*160;while(s.acc>=1){s.acc-=1;this.fire.emit(pt.x+(Math.random()-.5)*.25,pt.y+(Math.random()-.5)*.25,pt.z+(Math.random()-.5)*.25,(Math.random()-.5)*.6,.4+Math.random()*.6,(Math.random()-.5)*.6,.5+Math.random()*.3,.1+Math.random()*.08,Math.random()<.08?'ember':Math.random()<.12?'white':'black',1,2);}
    if(pt.k>=1&&!s.burst){s.burst=true;this.fire.burst(to.x,to.y,to.z,40,2.5,.8,.12,'black',1.2);}}
   // Growth: black flame curls up the boss while it swells.
   for(const p of players){const b=sirenOf(p)?.boost;if(!b||p.hp<=0)continue;const k=(t-b.at)/GROW_SECONDS;if(k<0||k>1.2)continue;
