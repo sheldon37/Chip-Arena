@@ -124,7 +124,7 @@ test('recruit machine: seats full (pending hire counted) and per-player limit de
  }finally{s.dispose();}
 });
 
-test('pickups: owner-only, only after born; auto-open needs prefs and no add within 6 m',()=>{
+test('pickups: owner-only, only after born; a taken chip waits as a pending pick and never opens the chip screen',()=>{
  const w=world({},['h1','h2']);const {s,econ,horde}=w;try{
   closeAll(w);econ.grant('h1',150-50,'t');const h1=P(s,'h1'),h2=P(s,'h2'),f=front(0);place(h1,f.x,f.z);
   tapF(s,h1);const k=econ.pickupsView()[0];assert.ok(k&&k.owner==='h1');assert.ok(k.born>s.time-.1);
@@ -132,15 +132,13 @@ test('pickups: owner-only, only after born; auto-open needs prefs and no add wit
   assert.equal(events(s,PVE_EVENT.deny).at(-1)?.message,'money');
   place(h2,k.pos.x,k.pos.z);econ.grant('h2',-50,'t');tick(s,40);tapF(s,h2);assert.equal(econ.pickupsView().length,1,'only the owner takes it');
   place(h1,k.pos.x,k.pos.z);tapF(s,h1);assert.equal(econ.pickupsView().length,0);
-  const row=econ.partyView('h1');assert.equal(row.picks.length,2,'the start pick (Choose later) and the grabbed one');assert.equal(row.picks[1].source,'dispenser');assert.equal(row.open,row.picks[1].id,'auto-open');
+  const row=econ.partyView('h1');assert.equal(row.picks.length,2,'the start pick (Choose later) and the grabbed one');assert.equal(row.picks[1].source,'dispenser');assert.equal(row.open,undefined,'a taken chip never opens the chip screen');
   assert.ok(events(s,PVE_EVENT.grab).some(e=>e.target==='h1'));
-  // An add within 6 m blocks auto-open; prefs off blocks it too.
-  closeAll(w);econ.grant('h1',175,'t');place(h1,f.x,f.z);tapF(s,h1);tick(s,40);
-  const add=horde.addAt({x:f.x+4,z:f.z});place(h1,econ.pickupsView()[0].pos.x,econ.pickupsView()[0].pos.z);tapF(s,h1);
-  assert.equal(econ.partyView('h1').open,undefined);assert.equal(econ.partyView('h1').picks.length,3);
-  horde.kill(Number(add.id.slice(4)),null);
-  assert.equal(s.pve!.command('h1',{action:'prefs',autoOpen:false},false),true);econ.grant('h1',200,'t');place(h1,f.x,f.z);tapF(s,h1);tick(s,40);
-  place(h1,econ.pickupsView()[0].pos.x,econ.pickupsView()[0].pos.z);tapF(s,h1);assert.equal(econ.partyView('h1').open,undefined);assert.equal(econ.partyView('h1').picks.length,4);
+  // Retired auto-open: neither the old prefs (published clients still send it) nor a clear area opens it.
+  assert.equal(s.pve!.command('h1',{action:'prefs',autoOpen:true},false),true);econ.grant('h1',200,'t');place(h1,f.x,f.z);tapF(s,h1);tick(s,40);
+  place(h1,econ.pickupsView()[0].pos.x,econ.pickupsView()[0].pos.z);tapF(s,h1);assert.equal(econ.partyView('h1').open,undefined);assert.equal(econ.partyView('h1').picks.length,3);
+  assert.ok(!econ.choosing(h1),'free to move: nothing forced idle');
+  assert.equal(s.pve!.command('h1',{action:'open'},false),true);assert.equal(econ.partyView('h1').open,row.picks[0].id,'C opens the oldest pending pick');
  }finally{s.dispose();}
 });
 

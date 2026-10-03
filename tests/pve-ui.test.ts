@@ -131,7 +131,7 @@ test('menu: picker with Host online, party bots and Start at the Siren; PvE lobb
  const body=testBossBody({classOptions:'',prefs:bossPrefs({bossHostOnline:true,bossPartyBots:2}),hosting:'desktop'});
  assert.match(body,/data-boss="siren"/);assert.match(body,/The Siren/);assert.match(body,/id="boss-host-online" checked/);assert.match(body,/<option value="2" selected>/);
  assert.match(body,/id="boss-skip-waves"/);assert.match(body,/data-action="start-boss"/);assert.match(body,/desktop app hosts/);
- assert.deepEqual(bossPrefs({bossPartyBots:9}),{bossHostOnline:false,bossPartyBots:0,bossSkipWaves:false,bossAutoOpenChips:true});
+ assert.deepEqual(bossPrefs({bossPartyBots:9}),{bossHostOnline:false,bossPartyBots:0,bossSkipWaves:false});
  const v=view('lobby'),s=snap({...v,helloed:[ME]},{phase:'lobby',players:[player(ME),player('p2',{name:'<b>x'}),player(PARTY_BOT_PREFIX+'1')]});
  const lobby=pveLobbyBody(s,{me:ME,owner:ME,code:'ABCD',codeLabel:'ROOM CODE',codeReady:true,invite:'https://x',local:false,classOptions:'',players:s.players});
  assert.match(lobby,/Needs the latest update/);assert.equal((lobby.match(/data-pilot-preview=/g)||[]).length,3);assert.match(lobby,/&lt;b&gt;x/);

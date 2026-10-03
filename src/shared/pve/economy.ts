@@ -9,7 +9,7 @@ import {ADD_PREFIX,BOSS_PLAYER_ID,HORDE_ID,PVE_EVENT,
  type PvePartyView,type PvePick,type PvePickupView} from './contract.js';
 import {ADD_KINDS,DROP_ODDS,ECONOMY,PICKS,PRICES,PVE,chipPrice,revivePrice} from './balance.js';
 import {PVE_MACHINES,type PveMachine} from './layout.js';
-import {activeAdd,addNear,interactTarget,respawnPad} from './machines.js';
+import {interactTarget,respawnPad} from './machines.js';
 import {applyChipsLive,bestOffer,chipAllowed,offerCount,rollOffers,stillEligible} from './picks.js';
 
 /** An empty party row (the seed's view of every member). S3 may reuse it for initial rows. */
@@ -32,7 +32,7 @@ const idle=(b:Input):Input=>({seq:b.seq,x:0,z:0,yaw:b.yaw,pitch:b.pitch,attack:f
 interface Row{
  id:string;money:number;earned:number;spent:number;chipsBought:number;recruitsHired:number;picks:PvePick[];open?:string;openAt?:number;
  hurtAt?:number;channel?:PveChannel;downAt?:number;selfRevives:number;selfReviveAt?:number;healAt?:number;healUntil?:number;healReadyAt:number;
- healPulses:number;autoOpen:boolean;thinkUntil?:number;pendingStats:boolean;bossCum:number;bossPaid:number;
+ healPulses:number;thinkUntil?:number;pendingStats:boolean;bossCum:number;bossPaid:number;
 }
 interface PendingHire{owner:string;at:number;m:number;price:number}
 
@@ -52,7 +52,7 @@ export class Economy implements EconomyApi{
  private player(id:string){return this.sim.players.get(id);}
  private isMemberId(id:string){const p=this.player(id);return !!p&&(this.host.isHuman(p)||this.host.isPartyBot(p));}
  private isHumanId(id:string){const p=this.player(id);return !!p&&this.host.isHuman(p);}
- private row(id:string):Row{let r=this.rows.get(id);if(!r){r={id,money:0,earned:0,spent:0,chipsBought:0,recruitsHired:0,picks:[],selfRevives:0,healReadyAt:0,healPulses:4,autoOpen:true,pendingStats:false,bossCum:0,bossPaid:0};this.rows.set(id,r);}return r;}
+ private row(id:string):Row{let r=this.rows.get(id);if(!r){r={id,money:0,earned:0,spent:0,chipsBought:0,recruitsHired:0,picks:[],selfRevives:0,healReadyAt:0,healPulses:4,pendingStats:false,bossCum:0,bossPaid:0};this.rows.set(id,r);}return r;}
  private emit(type:string,id:string,extra:object){const p=this.player(id);this.host.emit(type,p?p.body.translation():{x:0,y:0,z:0},{target:id,...extra});}
  private deny(id:string,message:string,m?:number){this.emit(PVE_EVENT.deny,id,{message});if(m!==undefined)this.use(m,id,'deny');}
  private use(m:number,by:string,result:PveMachineUse['result']){this.uses.push({m,at:this.time,by,result});if(this.uses.length>16)this.uses.shift();}
@@ -135,7 +135,8 @@ export class Economy implements EconomyApi{
     if(!pick?.offers?.includes(cmd.chip)||!chipAllowed(this.sim,p,cmd.chip))return false;
     this.choose(p,r,pick,cmd.chip);return true;
    }
-   case 'prefs':{r.autoOpen=cmd.autoOpen;return true;}
+   // Retired: taken chips always wait as pending picks (C / the icon). Still accepted from published clients.
+   case 'prefs':return true;
    default:return false;
   }
  }
@@ -244,9 +245,9 @@ export class Economy implements EconomyApi{
   this.revive(t,t.death!.pos,PVE_EVENT.revive,{source:p.id,amount:price});
  }
  private grab(p:Player,r:Row,k:PvePickupView){
-  this.pickups=this.pickups.filter(x=>x!==k);const pickId=this.grantPick(p.id,k.tier,'dispenser');
+  // Owner playtest: a taken chip never opens the chip screen; it waits as a pending pick (C / the CHIPS icon) until chosen.
+  this.pickups=this.pickups.filter(x=>x!==k);this.grantPick(p.id,k.tier,'dispenser');
   this.emit(PVE_EVENT.grab,p.id,{message:k.tier,source:k.id});
-  if(PICKS.autoOpenOnGrab&&r.autoOpen&&!r.open&&!addNear(this.host.horde.adds().filter(activeAdd),p.body.translation(),PICKS.autoOpenSafeRadius))this.openPick(p,pickId);
  }
  private tap(p:Player,r:Row,m:PveMachine){
   if(m.kind==='chip'){

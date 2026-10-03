@@ -18,7 +18,10 @@ export class LocalRoom{
   this.worker.postMessage({type:'create',code:LOCAL_ROOM_CODE,profile,bothDraft:false,draftChoices:options.draftChoices??6,skipIntros:options.skipIntros===true,selectionSeconds:options.selectionSeconds,settings});
   status('LOCAL BOSS TEST');
  }
- send(message:any){if(this.closed)return;this.worker?.postMessage({type:'message',id:'host',message});}
+ /** While paused the worker steps nothing, so fight inputs are not sent: queued there they would be consumed one per tick
+  * after resuming, behind the client's live inputs, leaving a permanent backlog (unacknowledged predictions, shots fired
+  * from a stale position, rubberbanding). */
+ send(message:any){if(this.closed||this.paused&&message?.type==='inputs')return;this.worker?.postMessage({type:'message',id:'host',message});}
  /** Pauses the worker's clock (the game menu in an offline run). */
  pause(paused:boolean){if(this.closed||this.paused===paused)return;this.paused=paused;this.worker?.postMessage({type:'pause',paused});}
  close(){if(this.closed)return;this.closed=true;this.worker?.terminate();this.worker=null;}
