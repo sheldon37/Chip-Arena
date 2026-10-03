@@ -138,3 +138,8 @@
 @media(max-width:580px){.lobby-roster .pilot-ready{justify-content:center}.ready-count{padding:6px 12px}.ready-count strong{font-size:19px}.lobby-room .lobby-actions{flex-wrap:wrap}.lobby-room .lobby-actions .btn[data-action=ready]{flex-basis:100%}}
 @media(prefers-reduced-motion:reduce){.room-advanced>summary:before{transition:none}}
 .lobby-room-settings>.match-options{margin:0;padding:12px 16px 6px}.lobby-room-settings>.match-options .fine{margin-bottom:8px}.room-advanced>.match-options{margin-top:14px;padding:12px 14px}
+.room-advanced>.invite-url{display:block;width:calc(100% - 30px);min-width:0;margin-bottom:12px}.room-advanced>.btn{width:calc(100% - 30px)}
+.lobby-room .lobby-actions .btn[data-action=ready]{flex:0 1 280px}.lobby-room .lobby-actions .btn[data-action=leave]{flex:0 0 auto;white-space:nowrap}.lobby-room .lobby-actions>.fine{flex:1 1 220px;min-width:0}
+@media(max-height:820px) and (min-width:581px){.lobby-roster{--portrait-height:205px}.lobby-roster[data-density=medium]{--portrait-height:170px}.lobby-roster[data-density=compact]{--portrait-height:135px}}
+@media(max-width:580px){.lobby-room .lobby-actions .btn[data-action=ready]{flex:1 1 100%}.lobby-room .lobby-actions .btn[data-action=leave]{flex:1 1 auto}}
+@media(max-width:580px){.lobby-room .lobby-actions{gap:8px;padding-top:12px}.lobby-room .lobby-actions .btn[data-action=ready]{flex:1 1 auto;min-height:50px;font-size:16px}.lobby-room .lobby-actions .btn[data-action=leave]{flex:0 0 auto}.lobby-room .lobby-actions>.fine{flex-basis:100%;font-size:13px;margin:0}}

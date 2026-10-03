@@ -18,6 +18,32 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-03 — Claude — menus: Boss Test skull pill, simpler online room
+
+- Branch `claude/pve-menus` from `claude/pve-batch2` 9b5445c. Owner asks: "glossy black pill
+  button with some skull design, place it on the right" and "Simplify Online Room Options
+  (… see 'Ready' easier) … details under an 'Advanced Options' option".
+- Home: Test Boss leaves the main list and becomes `bossPill()` (pve/menu.ts, pve.css): glossy
+  black pill, inline bone-skull SVG with lavender eyes, sheen on hover, visible focus ring; on
+  the right of the menu (moves under the menu at <=860px, full width on phones).
+- Room lobby (PvP main.ts, PvE pveLobbyBody): big "n/m READY" meter, green READY / amber NOT
+  READY badges and green ready cards, a larger Ready button with a "Waiting for n pilots" line,
+  room code + copy buttons at the top of the side column. Mode + arena stay visible; sets,
+  rounds, friendly fire, random map, bots/difficulty, bot drafts, host-only bot loadouts,
+  draft summary, invite link and connection report move into a collapsed "Advanced Options"
+  fold (summary line shows sets/rounds/bots) remembered in localStorage
+  `chip-arena-room-advanced` (try/catch; room-options.ts). `matchOptions(lobby,part)` splits
+  the same pieces; practice/create keep the full block. PvE party roster uses the room's
+  density columns. Short viewports shrink lobby portraits so names clear the Ready bar.
+- No setting semantics, element ids, host gating or network messages changed.
+- Checks: check:types clean; full suite 925/938, failures = the 13 known Node 22 names;
+  pvp-golden 5/5; new tests/room-options.test.ts; pve-ui pins updated for the pill (intended).
+  Playwright with the local backend, host + guest, PvP and PvE online rooms at 1920x1080,
+  1280x720 and 390x844, plus home at 820/390 widths. Not run: Windows desktop, packaging.
+- Risks: in the headless runs a PvE online guest sometimes dropped to DISCONNECTED under heavy
+  CPU load (seen on base 9b5445c too); the phone lobby still has pre-existing class-row clutter.
+- Status: implemented on branch; not merged; not published.
+
 ## 2026-10-03 — Claude — PvE stage music (Restricted Zone Pulse) + batch 2 verification
 
 - Branch `claude/pve-batch2` (from `948b5ba` = `claude/visual-revision` `6fd525c` + econ-revive, chips, camera,

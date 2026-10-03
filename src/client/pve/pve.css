@@ -253,7 +253,7 @@ body.pve .notice{top:150px}
 @keyframes siren-title-flames{from{opacity:0;transform:translateX(-50%) translateY(40%)}to{opacity:.9;transform:translateX(-50%)}}
 
 /* ---- PvE lobby and results ---- */
-.pve-lobby .lobby-roster{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+/* The party roster uses the room's density columns (1-2 wide cards, 3-4 in a row) so READY badges stay readable. */
 .pve-lobby-rules h2{margin:4px 0 0}
 .panel:has(.pve-results){width:min(1180px,calc(100vw - 32px))}
 .pve-results .pve-result-line{margin:0;font:600 13px var(--font-mono,monospace);letter-spacing:.24em;text-transform:uppercase;color:#c9bfff}
