@@ -18,6 +18,19 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-03 — Claude — test publications of PR #30 and PR #31
+
+- Owner asked to merge and publish both boss-test follow-ups for the Update button.
+- PR #30 (desync after Esc/pause, Esc → pause menu, taken chips wait) merged at `6fd525c`; content `0.2.85b68726b813`,
+  payload `arena-71bb7881594044cd.json.gz`, channel commit `7a53f4e`.
+- PR #31 (29 damage/health chips, 6 boss-only money chips, green/red stat lines, ~2.5x money, instant F revive, camera
+  filter, PvE Tab board, owner stage track re-encoded to 128 kbps) merged at `e9edad4`; content `0.2.9a0466bf45fe`, payload
+  `arena-cd9fa8ddbe4b964c.json.gz` (26,021,943 bytes, under the 25 MiB hosting limit), channel commit `8f6f5a3`.
+- Both: merge trees identical to the tested heads; CI and candidate `verify` matched the baseline only (12 Node 24 unit
+  names, 4 server tsc errors, rematch timeout; HTTPS passed); repeat builds byte-identical; actual-payload checks passed;
+  no secrets; the real launcher updater upgraded an isolated install over the network and then skipped.
+- Not run: native Windows Update button, GPU visuals. Live feed and Site unchanged.
+
 ## 2026-10-03 — Claude — legendary / mythic chip rework and volumetric chip blasts
 
 - Branch `claude/pve-legendary-vfx` from `claude/pve-batch2` `9b5445c`; no PR. Owner request: rework broken/weak
