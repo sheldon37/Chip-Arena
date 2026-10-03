@@ -42,9 +42,9 @@
 .cooldown.ability{position:relative}.cooldown.ability:before{content:"";position:absolute;top:6px;right:6px;width:11px;height:11px;border-radius:50%;background:conic-gradient(var(--fill,#59dd83) calc(var(--p)*1turn),#ffffff1f 0)}
 .cooldown.ability[data-state=nomana]{--fill:#ff7a6b}.cooldown.ability[data-state=nomana]>small:nth-of-type(2){color:#ff8a7a}.cooldown.ability[data-state=active],.cooldown.ability[data-state=casting]{border-color:#59dd8399}
 .cooldown .pips{color:#ffd27a;font-size:10px;letter-spacing:1px}
-@media(max-width:580px){.cooldowns{flex-wrap:wrap;justify-content:flex-end;max-width:240px}.cooldown:has(small:nth-of-type(2)){min-width:84px}.cooldown.ability:before{width:8px;height:8px;top:4px;right:4px}}
+@media(max-width:580px){.cooldowns:has(.ability){flex-wrap:wrap;justify-content:flex-end;max-width:240px}.cooldowns:has(.ability)>.cooldown:has(small:nth-of-type(2)){min-width:84px}.cooldown.ability:before{width:8px;height:8px;top:4px;right:4px}}
 /* ADS sight: the crosshair gap tightens with the settle and widens with MG bloom; a light vignette (§11.2). */
-.crosshair.ads:before{right:calc(10px - var(--settle)*5px + var(--bloom)*9px)}.crosshair.ads:after{left:calc(10px - var(--settle)*5px + var(--bloom)*9px)}.crosshair.ads:before,.crosshair.ads:after{width:9px}
+.crosshair.ads:before{right:calc(10px - var(--settle)*5px + var(--bloom)*9px)}.crosshair.ads:after{left:calc(10px - var(--settle)*5px + var(--bloom)*9px)}.crosshair.ads:before,.crosshair.ads:after{width:9px;box-shadow:0 1px #081b25bb,0 -1px #081b25bb}
 .ads-vignette{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle,transparent 30vmin,#050c12 85vmin)}
 .status-slow{color:#7cc8ff}.status-shackles{color:#c09cff}.status-marked{color:#ff6b5e}
 .dot-screen.slow{box-shadow:inset 0 0 90px -30px #4fb7ff}.dot-screen.shackles{box-shadow:inset 0 0 100px -25px #8a4fd6}.dot-screen.marked{box-shadow:inset 0 0 80px -35px #ff3b3b}.dot-screen.marked.lock{opacity:.85;animation:mark-pulse .2s ease-in-out infinite alternate}

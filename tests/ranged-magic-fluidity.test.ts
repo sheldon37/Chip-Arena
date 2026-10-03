@@ -136,12 +136,12 @@ function raster(root:T.Object3D,cam:T.Camera,grid:Uint8Array){
  return {left:left/(GW*GH/2),cross};
 }
 type FpFrame=(t:number,base:PlayerView)=>PlayerView;
-/** One first-person staff scenario through the renderer's order (poseFirstPersonView, then weaponModifiers/bodyModifiers). */
+/** One first-person staff scenario through the renderer's order (weaponModifiers, poseFirstPersonView, then bodyModifiers). */
 export function fpStaffProbe(spec:string,frame:FpFrame,chips:boolean,opts:{from?:number;to?:number;hz?:number;release?:number}={}){
  const cam=new T.PerspectiveCamera(75,16/9,.08,400),root=new T.Group();cam.add(root);const r=probeRig(spec);markFirstPersonRig(r);root.add(r.group);
  const base={...probeBase(spec),chips:chips?{...WORST_CHIPS}:{}},hz=opts.hz??60,grid=new Uint8Array(GW*GH),from=opts.from??1.5,to=opts.to??3.5;
  let n=0,cross=0,crossAny=0,crossRelease=0,area=0,m=0,gem=0,gemX=0,hand=0,minD=9;
- for(let i=0;i<=Math.round((to-1)*hz);i++){const t=1+i/hz,p={...frame(t,base),chips:base.chips,hitStunUntil:-1e9};poseFirstPersonView(r,root,p,t,1/hz,false);weaponModifiers(r.weapon as T.Group,p,t);bodyModifiers(r,p,t);
+ for(let i=0;i<=Math.round((to-1)*hz);i++){const t=1+i/hz,p={...frame(t,base),chips:base.chips,hitStunUntil:-1e9};weaponModifiers(r.weapon as T.Group,p,t);poseFirstPersonView(r,root,p,t,1/hz,false);bodyModifiers(r,p,t);
   if(t<from)continue;cam.updateMatrixWorld(true);
   let hitC=false;for(let k=0;k<=40;k++){const w=r.weapon.localToWorld(new T.Vector3(0,0,-.36+1.24*k/40));minD=Math.min(minD,cam.worldToLocal(w.clone()).length());const s=w.project(cam);if(Math.abs(s.x)<.1&&Math.abs(s.y)<.15)hitC=true;}
   n++;if(hitC)cross++;
@@ -173,7 +173,7 @@ test('first-person staff never covers the crosshair and covers less of the left 
 export function adsProbe(spec:string,frame:FpFrame,opts:{chips?:boolean;from?:number;to?:number}={}){
  const P=adsProfile(spec as SpecId)!,cam=new T.PerspectiveCamera(P.fov,16/9,.08,400),root=new T.Group();cam.add(root);const r=probeRig(spec);markFirstPersonRig(r);root.add(r.group);
  const base={...probeBase(spec),chips:opts.chips?{...WORST_CHIPS}:{}},muzzle=r.weapon.getObjectByName('muzzle')!,grid=new Uint8Array(GW*GH),v=new T.Vector3();let maxX=0,top=-9,modules=0,hidden=0,n=0;
- for(let i=0;i<=Math.round(((opts.to??3.5)-1)*60);i++){const t=1+i/60,p={...frame(t,base),chips:base.chips,hitStunUntil:-1e9,adsSince:0};poseFirstPersonView(r,root,p,t,1/60,false,P);weaponModifiers(r.weapon as T.Group,p,t);
+ for(let i=0;i<=Math.round(((opts.to??3.5)-1)*60);i++){const t=1+i/60,p={...frame(t,base),chips:base.chips,hitStunUntil:-1e9,adsSince:0};weaponModifiers(r.weapon as T.Group,p,t);poseFirstPersonView(r,root,p,t,1/60,false,P);
   if(t<(opts.from??1.5))continue;n++;if(!root.visible){hidden++;continue;}cam.updateMatrixWorld(true);maxX=Math.max(maxX,Math.abs(muzzle.getWorldPosition(v).project(cam).x));
   // The gun's own meshes (the transient muzzle flash is a firing effect, not the gun).
   r.weapon.traverse(o=>{const m=o as T.Mesh;if(!m.isMesh)return;for(let a:T.Object3D|null=m;a;a=a.parent)if(!a.visible||a.name==='muzzle-flash')return;const pos=(m.geometry as T.BufferGeometry).getAttribute('position');for(let k=0;k<pos.count;k++){v.fromBufferAttribute(pos,k);m.localToWorld(v).project(cam);if(Math.abs(v.x)<1)top=Math.max(top,v.y);}});
@@ -210,3 +210,12 @@ test('first-person ability phrases keep the staff off the crosshair: ≤5 % of f
 test('ADS rocket recoil: the machine gun never rises into the crosshair (pitch ≤ .12 rad, push-back and dip)',()=>liveKits(()=>{
  const r=adsProbe('machinegun',preview('ability-e'),{chips:true,from:2.45,to:3.7});assert.ok(r.top<=-.03,`gun top at NDC y ${r.top.toFixed(3)}`);assert.ok(r.maxX<.06);
 }));
+// Review round 1: when chips change, the renderer rebuilds chip-modules before posing the first-person view, so the new
+// modules are ×.5 (and hidden in ADS) on the very frame they appear instead of flashing full size for one frame.
+test('chip changes: first-person chip modules are scaled on the frame they are rebuilt',async()=>{
+ const src=(await import('node:fs')).readFileSync(new URL('../src/client/renderer.ts',import.meta.url),'utf8');
+ assert.ok(src.indexOf('weaponModifiers(this.viewWeapon')<src.indexOf('poseFirstPersonView(this.firstRig'),'renderer: weaponModifiers before poseFirstPersonView');
+ const root=new T.Group(),r=probeRig('fire');markFirstPersonRig(r);root.add(r.group);const p={...probeBase('fire'),chips:{...WORST_CHIPS},hitStunUntil:-1e9};
+ weaponModifiers(r.weapon as T.Group,p,1);poseFirstPersonView(r,root,p,1,1/60,false);
+ const m=r.weapon.getObjectByName('chip-modules')!;assert.ok(m.children.length>0);assert.equal(m.scale.x,FP_TUNE.moduleScale);
+});

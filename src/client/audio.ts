@@ -13,13 +13,13 @@ import type {Vec} from '../shared/config.js';
 export const AUDIO_CLIPS=['saw-cut','spike-rise','electric-hook-hit','electric-hook','demon-step','arcade-punch','arcade-kick','arcade-heavy','arcade-parry','pistol','rifle','machinegun','fire','water','lightning','darkness','sword','daggers','shield','greatsword','reload-start','reload-end','dash','jump','hit','hurt','parry','wood','stone','metal','explosion','burn-tick','poison-tick','ui','install','countdown','go','win','lose'] as const;
 export type Sound=typeof AUDIO_CLIPS[number];
 /** Hit/impact limiting (owner follow-up): per key, plays closer than its gap are skipped and folded into the next play
- * (louder, capped at 1.5×), and repeated plays duck (activity decays over .4 s, floor .35×). */
+ * (louder, capped at 1.5× or at `cap`), and repeated plays duck (activity decays over .4 s, floor .35×). */
 export class SoundLimiter{
  private keys=new Map<string,{at:number;pend:number;act:number}>();
- constructor(readonly gaps:Record<string,number>={hit:.06,proc:.085,tick:.1,hurt:.08,impact:.05,explosion:.07,arc:.09}){}
- gate(key:string,now:number,gain:number){let k=this.keys.get(key);if(!k)this.keys.set(key,k={at:-9,pend:0,act:0});const dt=now-k.at;
+ constructor(readonly gaps:Record<string,number>={hit:.06,add:.085,proc:.085,tick:.1,hurt:.08,impact:.05,explosion:.07,arc:.09}){}
+ gate(key:string,now:number,gain:number,cap=gain*1.5){let k=this.keys.get(key);if(!k)this.keys.set(key,k={at:-9,pend:0,act:0});const dt=now-k.at;
   if(dt<(this.gaps[key]??.06)){k.pend=Math.min(2,k.pend+gain);return 0;}
-  k.act=k.act*Math.exp(-dt/.4)+1;const out=Math.min(gain*1.5,gain+k.pend*.3)/(1+.15*(k.act-1));k.at=now;k.pend=0;return Math.max(gain*.35,out);}
+  k.act=k.act*Math.exp(-dt/.4)+1;const out=Math.min(cap,gain*1.5,gain+k.pend*.3)/(1+.15*(k.act-1));k.at=now;k.pend=0;return Math.max(gain*.35,out);}
  clear(){this.keys.clear();}
 }
 /** About -2 dB on hit, impact and blast sounds after limiting. */
@@ -76,8 +76,9 @@ export class ArenaAudio {
   let volume=gain,pan=0;if(position){const dx=position.x-this.listener.x,dy=position.y-this.listener.y,dz=position.z-this.listener.z,d=Math.hypot(dx,dy,dz);volume*=1/(1+Math.max(0,d-2)*.13);pan=Math.max(-.85,Math.min(.85,(-Math.cos(this.yaw)*dx+Math.sin(this.yaw)*dz)/Math.max(2,d)));}
   const source=context.createBufferSource(),level=context.createGain(),panner=context.createStereoPanner();source.buffer=buffer;source.playbackRate.value=rate||(name==='hit'||name==='ui'||name==='countdown'||name==='demon-step'||name==='electric-hook'||name==='electric-hook-hit'?1:.97+Math.random()*.06);level.gain.value=volume;panner.pan.value=pan;source.connect(level).connect(panner).connect(this.master!);this.voices.add(source);if(keyed)this.keyed++;source.onended=()=>{this.voices.delete(source);if(keyed)this.keyed--;source.disconnect();level.disconnect();panner.disconnect();};source.start();this.played++;
  }
- /** A limited hit/impact cue: gated per key, trimmed ~-2 dB, at most 8 such voices at once. */
- cue(key:string,name:Sound,position:Vec|undefined,gain:number,rate=0){if(!this.context)return;const g=this.limiter.gate(key,this.context.currentTime,gain*HIT_TRIM);if(g>0)this.play(name,position,g,rate,true);}
+ /** A limited hit/impact cue: gated per key, trimmed ~-2 dB (a folded burst never exceeds the untrimmed level), at most 8
+ * such voices at once. */
+ cue(key:string,name:Sound,position:Vec|undefined,gain:number,rate=0){if(!this.context)return;const g=this.limiter.gate(key,this.context.currentTime,gain*HIT_TRIM,gain);if(g>0)this.play(name,position,g,rate,true);}
  private arcadeVoices=0;
  arcadeTone(hit:number,move:boolean,superMove=false){const c=this.context;if(!c||!this.master||this.muted||c.state!=='running'||this.arcadeVoices>=8)return;this.arcadeVoices++;const osc=c.createOscillator(),gain=c.createGain(),at=c.currentTime;osc.type=move?'sawtooth':'square';osc.frequency.setValueAtTime(move?120:360+Math.min(hit,10)*55,at);osc.frequency.exponentialRampToValueAtTime(move?(superMove?920:420):160,at+(move?.25:.08));gain.gain.setValueAtTime(move?.09:.06,at);gain.gain.exponentialRampToValueAtTime(.001,at+(move?.35:.10));osc.connect(gain).connect(this.master);osc.start();osc.stop(at+(move?.38:.12));osc.onended=()=>{this.arcadeVoices--;osc.disconnect();gain.disconnect();};}
  deathCue(burst:boolean){const c=this.context;if(!c||!this.master||this.muted||c.state!=='running')return;
@@ -87,7 +88,7 @@ export class ArenaAudio {
  private updateDeathAnnouncements(state:Snapshot){for(const a of this.deathTrack.update(state))for(const [part,offset]of [['launch',0],['burst',DEATH_ANNOUNCEMENT.launch]] as const){const key=a.id+':'+part,age=state.time-a.at-offset;if(age<0||this.deathCues.has(key))continue;this.deathCues.set(key,state.time);if(age<.25)this.deathCue(part==='burst');}for(const[key,at]of this.deathCues)if(state.time-at>30)this.deathCues.delete(key);}
  /** PvE cues (design §7.7): existing clips only, no regeneration. */
  private pveCue(e:GameEvent,state:Snapshot,me:string){
-  if(e.type==='minionHit'){if(e.source===me&&(e.amount||0)>0)this.cue('hit','hit',undefined,.55);}
+  if(e.type==='minionHit'){if(e.source===me&&(e.amount||0)>0){if(procHit(e))this.cue('proc','hit',undefined,.32,1.55);else this.cue('add','hit',undefined,.55);}}
   else if(e.type==='pve-buy'){if(e.target===me)this.play('ui',undefined,.6);}
   else if(e.type==='pve-grab'){if(e.target===me)this.play('install',undefined,.6);}
   else if(e.type==='pve-deny'){if(e.target===me)this.play('ui',undefined,.3);}

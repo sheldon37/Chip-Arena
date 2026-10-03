@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {Simulation,initPhysics,type GameEvent,type Snapshot} from '../src/shared/simulation.js';
 import {v} from '../src/shared/config.js';
 import {SoundLimiter,HIT_TRIM,ArenaAudio} from '../src/client/audio.js';
-import {HitmarkerTrack} from '../src/client/hitmarker.js';
+import {HitmarkerTrack,procHit} from '../src/client/hitmarker.js';
+import {ADD_PREFIX} from '../src/shared/pve/contract.js';
 import {fakeAudio} from './helpers/fake-audio.js';
 
 // Owner follow-up (2026-10-03): stop the hitmarker "ear-rape" from chip procs and lower hit/impact sounds ~2 dB.
@@ -13,10 +14,10 @@ const base=sim.snapshot();sim.dispose();
 let nextId=1;
 const hit=(time:number,message='field',extra:Partial<GameEvent>={}):GameEvent=>({id:nextId++,type:'hit',time,pos:v(0,1,4),source:'me',target:'foe',amount:3,message,...extra});
 /** Feed `rate` events per second for `seconds` through ArenaAudio.update at 60 fps; returns the plays per second. */
-function feed(audio:ArenaAudio,f:ReturnType<typeof fakeAudio>,make:(t:number)=>GameEvent,rate:number,seconds:number,clip='hit'){
+function feed(audio:ArenaAudio,f:ReturnType<typeof fakeAudio>,make:(t:number)=>GameEvent,rate:number,seconds:number,clip='hit',state:Snapshot=base){
  const start=f.clock.now,perSec:number[]=Array(seconds).fill(0),first=f.voices.length;let due=0;
  for(let i=0;i<Math.round(seconds*60);i++){const t=start+i/60;f.clock.now=t;f.reap();const events:GameEvent[]=[];for(due+=rate/60;due>=1;due--)events.push(make(t));
-  audio.update({...base,time:t,events} as Snapshot,'me',0);}
+  audio.update({...state,time:t,events} as Snapshot,'me',0);}
  const voices=f.voices.slice(first).filter(x=>x.name===clip);for(const voice of voices)perSec[Math.floor(voice.at-start)]++;
  f.clock.now=start+seconds;return {perSec,voices};
 }
@@ -62,4 +63,35 @@ test('visual hitmarker: proc hits coalesce into the small marker at most every .
  for(let i=0;i<120;i++){const t=20+i/60,events=[hit(t,'field'),hit(t,'field'),hit(t,'chain'),hit(t,'ability')];const m=track.update({...base,time:t,events} as Snapshot,'me');if(track.at!==last){retriggers++;last=track.at;}small&&=m.dot;}
  assert.ok(retriggers<=10,`proc retriggers in 2 s: ${retriggers}`);assert.ok(small,'procs show the small tick marker');
  const m=track.update({...base,time:22.05,events:[hit(22.05,'direct',{headshot:true})]} as Snapshot,'me');assert.equal(m.dot,false);assert.equal(m.headshot,true);assert.equal(track.at,22.05,'a direct hit retriggers immediately');
+});
+
+// Review round 1: procs are an explicit list of damage kinds; DEV class moves (Siren, Emperor, Ansatsuken, L33T) keep the
+// crisp hitmarker; PvE horde hits tagged as procs tick quietly; a folded burst never exceeds the untrimmed level.
+test('proc classification: chip/field/ability kinds are procs; direct shots and DEV class moves stay crisp',()=>{
+ for(const kind of ['field','chain','ability','blast','static','thorns','drainDash','debris','minion','blockPulse','chaosBomb','shrapnel','wormhole'])assert.equal(procHit(hit(0,kind)),true,kind);
+ for(const kind of ['direct','secondary','reflected','siren-swipe','siren-hellfire','mishima-echo','mishima-trail','arcade-echo','leet-scare','fall',undefined])assert.equal(procHit({...hit(0),message:kind}),false,String(kind));
+ const f=fakeAudio();f.clock.now=30;const siren=feed(f.audio,f,t=>hit(t,'siren-swipe'),1,1).voices;
+ assert.equal(siren.length,1);assert.equal(siren[0].rate,1);assert.ok(Math.abs(siren[0].gain-.9*HIT_TRIM)<1e-9,'a Siren claw hit is the crisp hitmarker: '+siren[0].gain);
+ const track=new HitmarkerTrack(),m=track.update({...base,time:40,events:[hit(40,'siren-swipe')]} as Snapshot,'me');assert.equal(m.dot,false,'full cross');assert.equal(track.at,40);
+ const again=track.update({...base,time:40.05,events:[hit(40.05,'siren-hellfire')]} as Snapshot,'me');assert.equal(again.dot,false);assert.equal(track.at,40.05,'every Siren move retriggers the full marker');
+});
+
+test('PvE: 200 own horde field hits/s tick quietly (≤ ~12/s, pitched) with the small coalesced marker; untagged add hits stay ≤ ~12/s',()=>{
+ const pve={...base,pve:{entries:[]}} as unknown as Snapshot;let n=0;
+ const addHit=(t:number,message?:string):GameEvent=>({id:nextId++,type:'minionHit',time:t,pos:v(0,1,4),source:'me',target:`${ADD_PREFIX}${n++%20}`,amount:2,...(message?{message}:{})});
+ const f=fakeAudio();f.clock.now=70;
+ {const tagged=feed(f.audio,f,t=>addHit(t,'field'),200,3,'hit',pve);
+  assert.ok(tagged.perSec.every(x=>x<=12&&x>=8),'field ticks per second '+tagged.perSec);assert.ok(tagged.voices.every(x=>x.rate===1.55),'the distinct pitched tick');
+  assert.ok(Math.max(...tagged.voices.map(x=>x.gain))<=.32+1e-9,'tick peak at or below the untrimmed proc level');
+  f.clock.now+=2;const untagged=feed(f.audio,f,t=>addHit(t),200,3,'hit',pve);
+  assert.ok(untagged.perSec.every(x=>x<=12),'untagged add hits per second '+untagged.perSec);assert.ok(Math.max(...untagged.voices.map(x=>x.gain))<=.55+1e-9,'folded add hits never exceed the old PvE level');
+  const track=new HitmarkerTrack();let retriggers=0,last=-1,small=true;
+  for(let i=0;i<120;i++){const t=80+i/60,events=[addHit(t,'field'),addHit(t,'field'),addHit(t,'blast'),addHit(t,'field')];const m=track.update({...pve,time:t,events} as Snapshot,'me');if(track.at!==last){retriggers++;last=track.at;}small&&=m.dot;}
+  assert.ok(retriggers<=10,`horde proc retriggers in 2 s: ${retriggers}`);assert.ok(small,'horde procs show the small marker');
+ }
+});
+
+test('SoundLimiter: a folded burst of direct hits never plays louder than the untrimmed hit level',()=>{
+ const f=fakeAudio();f.clock.now=120;const {voices}=feed(f.audio,f,t=>hit(t,'direct'),200,2);
+ assert.ok(voices.length>0&&Math.max(...voices.map(x=>x.gain))<=.9+1e-9,'peak '+Math.max(...voices.map(x=>x.gain)));
 });

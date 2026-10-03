@@ -3,9 +3,11 @@ import type {ElementId} from '../shared/elements.js';
 import {sameTeam} from '../shared/teams.js';
 import {ADD_PREFIX} from '../shared/pve/contract.js';
 export function enemyHit(event:GameEvent,state:Snapshot,me:string){if(event.type==='minionHit')return addHit(event,state,me);const source=state.players.find(p=>p.id===me),target=state.players.find(p=>p.id===event.target);return event.type==='hit'&&event.source===me&&event.target!==me&&!!target&&(event.amount||0)>0&&!sameTeam(source,target,state.options.gameMode);}
-/** Proc hits (fields, chains, chips, abilities, minions, thorns...) get the quieter tick and the small marker; direct
- * projectile and melee hits keep the crisp hitmarker. DoT ticks are handled separately. */
-export const procHit=(e:GameEvent)=>e.type==='hit'&&!['direct','secondary','reflected',undefined].includes(e.message);
+/** Proc damage kinds (fields, chains, chip blasts, abilities, minions, thorns, DoTs) get the quieter tick and the small
+ * marker. Every other kind keeps the crisp hitmarker: direct/secondary/reflected shots and melee, and DEV class moves
+ * (siren-*, mishima-*, arcade-echo, leet-*). PvE add hits (minionHit) count once the horde tags them with the kind. */
+const PROC_KINDS=new Set(['field','chain','ability','blast','static','thorns','drainDash','debris','minion','blockPulse','chaosBomb','corpseParty','dashBlast','root','shrapnel','trampoline','wormhole','burn','poison']);
+export const procHit=(e:GameEvent)=>(e.type==='hit'||e.type==='minionHit')&&PROC_KINDS.has(e.message??'');
 /** PvE: my damage on a Siren add (adds are minions, not players). Never true outside PvE. */
 export function addHit(event:GameEvent,state:Snapshot,me:string){return !!state.pve&&event.type==='minionHit'&&event.source===me&&!!event.target?.startsWith(ADD_PREFIX)&&(event.amount||0)>0;}
 export class HitmarkerTrack {

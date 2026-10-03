@@ -48,7 +48,8 @@ test('HUD markup: ability cards carry the dial fraction, state, pips and mana; g
  assert.match(gun({}),/Q · AIM<\/small><strong class="ready">HOLD/);assert.match(gun({adsSince:4.99}),/AIMING/);assert.match(gun({adsSince:4}),/STEADY/);
  const css=readFileSync(new URL('../src/client/match-hud.css',import.meta.url),'utf8');
  assert.match(css,/\.cooldown\.ability:before\{[^}]*conic-gradient\(var\(--fill,#59dd83\) calc\(var\(--p\)\*1turn\)/,'radial recharge dial');
- assert.match(css,/@media\(max-width:580px\)\{\.cooldowns\{flex-wrap:wrap/,'four cards wrap 2×2 at 580 px');
+ // Review round 1: the wrap is scoped to rows with ability cards, so the caps-absent legacy row keeps its old layout.
+ assert.match(css,/@media\(max-width:580px\)\{\.cooldowns:has\(\.ability\)\{flex-wrap:wrap/,'four cards wrap 2×2 at 580 px');
 }));
 
 test('aim profiles: caps-gated ADS per gun, today\'s rifle scope without caps, sensitivity factors, overlay and crosshair',()=>{
