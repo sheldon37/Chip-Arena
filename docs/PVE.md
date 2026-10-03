@@ -20,6 +20,8 @@ agents need from GitHub alone.
 | D40 | Recruit damage-dealer weapons | Ranged and melee only (no magic) |
 | D9 | Heal purchase | Not asked; the default ships: 2 med stations ($60, 50% over 2 s, 12 s cooldown) |
 | D41 | Medic focus | Not asked; the default ships: the medic follows its hirer |
+| P1 (2026-10-03 playtest) | Taking a dispensed chip | **Never opens the chip screen.** It waits as a pending pick (CHIPS icon / `C`) until the pilot chooses. The start pick still opens at fight start. The "Open chip screen when I take a chip" option is gone; the `prefs` command is accepted as a no-op for published clients |
+| P2 (2026-10-03 playtest) | Esc during a boss run | Opens the game menu (also when the browser only releases pointer lock); the offline run pauses and Resume re-locks the pointer. Esc on an open chip screen is still Choose later |
 
 Earlier decisions still in force: minions are procedural zombie Pilots (PR #26, `docs/SIREN-MINIONS.md`), friendly to the
 Siren's team; DEV classes stay special; recruits use non-DEV weapons.

@@ -18,6 +18,26 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-03 — Claude — PvE playtest fixes: offline desync after Esc, taken chips wait as pending picks
+
+- Branch `claude/pve-fix-desync-holdchip` from `claude/visual-revision` `58f5d7b`; no PR opened (orchestrator). Not merged, not released.
+- Root cause (owner: shots "meters behind", rubberbanding, `pendingInputs` 63 at 7 ms RTT, starting at Esc): while the
+  offline boss run was paused the client kept sending one idle input per tick to the paused worker; after Resume the
+  host consumed them one per tick behind the live inputs, a permanent ~1 s backlog. Real app (pre-fix): 62 queued inputs
+  consumed after a 4 s pause. Scripted 60 Hz run (new test, control case): pending 81–92, median lag 3–3.5 m, p95 ~8 m.
+- Fix: `LocalRoom.send` drops fight inputs while paused; `main.ts` syncs the worker pause before stepping. After: pending
+  ≤2, p95 predicted-vs-authority 0.000002 m (max ≤0.45 m from contact with bots/boss). PvE only: pointer lock lost while
+  playing (browser Esc) opens the game menu and pauses the offline run; Resume / Esc re-lock; menu text says the boss test
+  is paused. Taking a dispensed chip never opens the chip screen (pending pick, `C`/CHIPS icon); the client option is
+  removed, `prefs` is a server no-op for published clients. No change to hit timing, hitboxes, damage, cooldowns,
+  movement rules, snapshot format or PvP.
+- Checks (Linux, Node 22.22.2): `check:types` pass; PvE tests + `pvp-golden` 163/163 (+2 new in
+  `tests/pve-local-input-sync.test.ts`); full suite 912, failures equal the 13 known Node 22 names; `run-network.mjs pve`
+  and `pve-loopback-network.ts` pass; Playwright/SwiftShader app check of Esc → menu → Resume (no inputs posted while paused).
+- Not run: Windows desktop, real pointer-lock Esc (headless has none; whether a re-lock without a click is granted is up
+  to Chromium), online PvE, packaging. Risk: a worker stall >100 ms still drops sim time (shared PvP clock, unchanged).
+- Next: owner playtest on Windows (Esc → menu → Resume, long run with party bots); then merge/publish decision.
+
 ## 2026-10-03 — Claude — PvE Siren TEST BOSS merge and test-channel publication
 
 - Owner authorized merge and test publication ("When this is complete, please merge and publish to test").

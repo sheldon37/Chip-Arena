@@ -82,7 +82,7 @@ export const OFFER_WEIGHTS:Record<DropTier,Partial<Record<Rarity,number>>>={
  rainbow:  {mythic:1},
 };
 export const ORDINARY_TIERS:readonly OrdinaryRarity[]=['common','uncommon','rare','epic','legendary','mythic'];
-export const PICKS={rainbowCount:8, maxUngrabbed:3, autoOpenOnGrab:true, autoOpenSafeRadius:6, moveWhileChoosing:false,
+export const PICKS={rainbowCount:8, maxUngrabbed:3, moveWhileChoosing:false,
  botThink:[2,6]} as const;
 export const RECRUIT={price:250, perPlayer:2, maxTotal:3, roles:{dps:.4,tank:.3,medic:.3}, hp:{dps:100,tank:250,medic:80},
  dpsClasses:['ranged','melee'], tankDamageTaken:.7, tauntRadius:8, tauntScore:6, leash:12, removeAfter:2.5,
