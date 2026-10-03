@@ -19,7 +19,9 @@ export class SnapshotBuffer {
  sample(current:Snapshot,localId:string,now=performance.now()):Snapshot {
   if(this.samples.length<2)return current;
   const newest=this.samples.at(-1)!,target=newest.state.time+(now-newest.at-this.delayMs)/1000;
-  const dt=this.lastRender?clamp((now-this.lastRender)/1000,0,.05):0;this.lastRender=now;
+  // PvE (S7): below 20 fps a 0.05 s step cap made the presented clock fall further behind every frame (combat numbers
+  // never aged, remote pilots lagged); PvE rooms allow 0.25 s so slow GPUs catch up. PvP keeps the original cap.
+  const dt=this.lastRender?clamp((now-this.lastRender)/1000,0,current.pve?.25:.05):0;this.lastRender=now;
   if(this.cursor===null)this.cursor=target;else this.cursor+=dt*clamp(1+(target-this.cursor)*3,.8,1.2);
   const maximum=newest.state.time+N.extrapolationMaxMs/1000;
   if(this.cursor>maximum){this.cursor=maximum;this.underruns++;}

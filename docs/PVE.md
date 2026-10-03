@@ -1,10 +1,11 @@
 # PvE: Siren TEST BOSS (Ward Zero)
 
-Status (2026-10-02): **foundation only** (branch `claude/pve-foundation`, base `b6d2f58`). The mode's contract, balance
-tables, seeded randomness, Ward Zero layout data, boss chip track, fixtures, the `PveSystem` and `PveVisuals` facades,
-the seed parts and every shared-file hook exist and are tested. The seed parts do nothing yet: the director stays in
-`opening`, the horde spawns nothing, the economy and recruits keep empty rows, party bots idle. Streams S1-S6 fill the
-seeds; S7 integrates, balances and publishes. Nothing here is released.
+Status (2026-10-03): **integrated on `claude/pve-integration`; not merged, not released.** The foundation and the six
+streams (S1 horde, S2 director, S3 support, S4 UI, S5 horde visuals, S6 world visuals) are merged on top of
+`claude/pve-foundation` (base `b6d2f58`, the shared branch tip, unchanged since). S7 applied the cross-stream requests,
+fixed two integration defects, retuned `balance.ts` with the balance harness, added the end-to-end flow test and the
+network suites, and ran the real-app smoke. See "Integration (S7)" below. The owner-authorized merge into
+`claude/visual-revision` and the test-channel publication are separate, later steps.
 
 Design of record: the PvE design (revision 2, 2026-10-02) by the lead architect; this file carries the parts the next
 agents need from GitHub alone.
@@ -278,7 +279,115 @@ The four `server:build` errors are the same (line numbers shift by the inserted 
 **`npm run server:build`: 4 pre-existing errors** (exit 2): `chaos.ts(26,265)` TS7006, `leet.ts(27,486)` TS2322,
 `leet.ts(27,663)` TS2345, `standard-melee.ts(106,175)` TS7006.
 
-## Open items for later streams
+## Integration (S7, 2026-10-03)
 
-- S1 horde, S2 director, S3 economy/recruits/picks, S4 UI, S5 horde visuals, S6 world visuals, S7 integration (design §11).
-- Balance numbers are design defaults until the S7 balance harness measures them.
+**Merge.** `claude/pve-integration` = `claude/pve-foundation` (`2484995`) + `--no-ff` merges of `claude/pve-horde`
+(`4210963`), `claude/pve-director` (`0d97649`), `claude/pve-support` (`bbb1354`), `claude/pve-horde-visuals`
+(`da32e28`), `claude/pve-world-visuals` (`54eb934`), `claude/pve-ui` (`6d62613`), in that order. No textual conflicts.
+`origin/claude/visual-revision` was still `b6d2f58`, so the rebase protocol (regenerate golden hashes) was not needed;
+`tests/pvp-golden.test.ts` passes unchanged.
+
+**Cross-stream requests applied.**
+- Seed-era assertions follow the real parts: the foundation's 3,600-tick run keeps debug `god` on (the real horde kills an
+  idle human) and accepts stage `opening|wave`; the facade metrics check counts the real horde view.
+- `layout.ts`: door `leaf.z = s·26.8` (the rendered leaf plane; on the hall side of `from`); vent `exit` = the climb stand
+  point past the pit edge (`centre + fwd·(1.08/max(|sin|,|cos|)+0.38)`, the client's `ventStand`). Because the exit moved
+  1.5-1.9 m off the vent centre, `HORDE.ventTravel.nearVent` is 2.0 (was 1.2) so vent travel stays reachable.
+- `EconomyApi.pendingHiresOf?(owner)` is in the contract (optional; recruits no longer cast).
+- `Renderer.setGraphics` forwards the mode to `pve.horde.setGraphics`.
+- `PVE.bossIntroExtra` 1.8 s (was 0.3) so THE SIREN title is readable before the fight resumes.
+- Fixtures: a `channelling` row revives the first downed member of the party (was hard-coded `p2`).
+- `tests/fixtures/pve-horde-60.json`: 60 frames at 10 Hz of a seeded wave (players and the `pve` view) for the labs.
+
+**Integration defects fixed.**
+- `horde.ts kill()`: the killed add's Rapier body handle is dropped (`a.minion=undefined`, `a.pos` kept). The tick's
+  separation hash could still read the removed body and Rapier panicked (`RuntimeError: unreachable`; found by the balance
+  harness at h=4, seed 5).
+- `nav.ts seedCell()`: a flow field toward a player standing in a cell the conservative inflation closes (the 2 m service
+  corridors between the cells and the outer walls) now seeds from the first free cell reached through physically walkable
+  cells (BFS over a `loose` grid inflated by the radius only). Before, adds and the boss treated such a player as
+  unreachable and the run stalled (the harness human hid there for 10+ minutes).
+- New debug op `boss-damage:n` (D29 set; director): damages the visible boss through `damage()` (floors and reveals apply),
+  credited to the first connected human. Client: `DEBUG_OPS.bossDamage`, `window.chipArena.pve.bossDamage(n)`. The
+  real-server suite and the offline smoke use it to reach the victory.
+
+**Balance retune** (S7 owns `balance.ts`; harness below). Changed: `WAVES` 22/28/34 adds at 0.5/0.6/0.7 per s with
+`maxAlive` 10/14/18 (design 14/18/22 at 1.2/1.5/1.8, 14/18/22 alive: waves lasted ~30 s); shambler damage 6 (7), runner 4
+(5); `PVE_SIREN.damageScale` .2/.22/.24/.26 (.6/.7/.8/.9) and `hpPerExtraMember` .5 (.7), so boss HP is
+6000/9000/12000/15000 for h=1..4. Tests that pinned the design numbers now pin these values.
+
+**Balance harness** (`npm run test:pve-balance`, `tests/pve-balance.ts`; not in `npm test`). For h=1..4: one human driven by
+the party-bot brain (`partyBotInput`, plus "walk toward the visible boss" when it has no target) and h−1 party bots;
+weapons pistol, rifle, greatsword; seeds 1-5; 12-minute cap. The human takes offer 0 of every pick and shops at each
+intermission (recruits up to its cap, then chips; teleported to the machines, standing in for the walk). Medians over 5
+seeds with the final values (`P1`-`P4`: seconds per boss phase; `boss s`: boss stage length of the runs that ended):
+
+| h | weapon | wave 1 s | wave 2 s | wave 3 s | deaths before boss | money at boss | P1 s | P2 s | P3 s | P4 s | boss s | victories |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | pistol | 54 | 57 | 59 | 0.0 | 95 | 73 | 45 | 39 | 31 | 118 | 2/5 |
+| 1 | rifle | 60 | 60 | 70 | 0.0 | 111 | 62 | 10 | 73 | 68 | 158 | 4/5 |
+| 1 | greatsword | 53 | — | — | 2.0 | — | — | — | — | — | — | 0/5 |
+| 2 | pistol | 59 | 65 | 70 | 0.0 | 192 | 39 | 16 | 50 | 44 | 93 | 2/5 |
+| 2 | rifle | 65 | 64 | 69 | 0.0 | 168 | 50 | 18 | 34 | 71 | 116 | 0/5 |
+| 2 | greatsword | 69 | 65 | 68 | 1.0 | 39 | 71 | 26 | 38 | 75 | 94 | 1/5 |
+| 3 | pistol | 67 | 69 | 74 | 0.0 | 121 | 45 | 15 | 60 | 55 | 129 | 2/5 |
+| 3 | rifle | 68 | 71 | 80 | 0.0 | 149 | 116 | 15 | 97 | — | 133 | 0/5 |
+| 3 | greatsword | 72 | 76 | 78 | 1.0 | 44 | 59 | 11 | 39 | — | 71 | 0/5 |
+| 4 | pistol | 71 | 73 | 82 | 0.0 | 265 | 83 | 15 | 57 | 83 | 124 | 1/5 |
+| 4 | rifle | 73 | 78 | 81 | 0.0 | 140 | 116 | 20 | 72 | 151 | 134 | 1/5 |
+| 4 | greatsword | 75 | 78 | 84 | 1.0 | 46 | 90 | 45 | 219 | — | 90 | 0/5 |
+
+Reading it against the design targets:
+- **Waves 60-150 s:** met for h=2..4 (59-84 s); solo waves are 53-70 s (at the lower edge). Before the retune they lasted
+  25-40 s.
+- **At most 1 expected solo death before the boss:** met for ranged weapons (0 deaths in all 10 solo pistol/rifle runs).
+  Not met for the solo greatsword: the party-bot melee brain stands in the crowd and dies twice in wave 1 (a harness brain
+  limitation; melee party bots in larger parties do survive the waves).
+- **Boss 3-6 min:** not met by the harness. 13 of 60 runs win (median boss stage of the wins 148 s, range 81-412 s); 43 end
+  in a party wipe, 4 hit the 12-minute cap mid-fight. The deaths come from the Siren's ranged moves (Mark, Hellfire,
+  Damnation, Eruption) that the brain never dodges, blocks or rolls out of, and from the Siren reflecting the brain's
+  shots. With the design's damage scale (.6-.9) every run wiped within ~40 s of the boss stage; at .15-.2 the boss phases
+  last 2-4 minutes. The retune keeps boss damage at about a third of the design so real players who dodge are not
+  trivialised; the owner's playtest decides (each value is one constant in `balance.ts`).
+- Money at boss start (after shopping): 40-270. Unspent, the human reached the boss with ~1,100-1,800.
+
+
+**Network results** (Node 22.22.2, this container):
+
+NETWORK_RESULTS
+
+**Real-app smoke** (Playwright + SwiftShader, offline worker room; screenshots in the session scratchpad
+`after/pve-integration/`, not committed):
+
+SMOKE_RESULTS
+
+**Verification** (Node 22.22.2):
+
+VERIFY_RESULTS
+
+**Not run** (environment): native Windows GPU frame rate and look; real multi-machine internet play; desktop Electron
+"Host online" (needs a Windows test build); browser hosting on the deployed Site (needs a Site release); audio on
+hardware; the hosted two-browser smoke (no test-room path from the real client: the client never sends `testRoom`, so
+debug ops are unavailable there; the real-server suite covers the hosted flow with two WebSocket clients instead).
+
+## Rendering constants (S5 and S6 mirrors)
+
+`src/client/pve/horde-view.ts`:
+
+```ts
+HORDE_RENDER={maxRigs:{quality:24, performance:16, compatibility:6}, fullRadius:{quality:20, performance:14, compatibility:14},
+ hysteresis:4, shadowRadius:15, throttleRadius:12, impostorMax:64, impostorRadius:70, createPerFrame:2, prewarmMs:3,
+ spareRigs:4, shadowRigs:12}
+```
+
+`hordeMode(compatibility, graphics)` maps the renderer's graphics setting to `quality|performance|compatibility`
+(`Renderer.setGraphics` forwards it). Add states on the wire: `entering|active|crawl|stagger|vent|dead`. The client minion
+view (`SirenMinionView`, `src/client/siren/minions/motion.ts`) adds PvE fields `side` (swiping arm), `lost` (LIMB mask),
+`crawl`/`crawlAt`, `entry` (`vent|door|cell` climb or walk-out, `rimZ` for vents) and `diveAt` (vent dive); poses follow
+`PVE_TIMING` (swipe hit 0.34 s, vent climb 1.95 s, dive 0.9 s, door 0.6+1.2 s, cell 0.5+1.0 s).
+
+## Follow-ups
+
+- Owner playtest of the retuned balance (the harness drives humans with the party-bot brain; see the table notes).
+- Party bots and recruits with melee weapons are weak against crowds (harness: the solo greatsword human dies in wave 1).
+- A hosted two-browser smoke needs a test-room path in the client (or a DEV-account flag) to use debug ops.
