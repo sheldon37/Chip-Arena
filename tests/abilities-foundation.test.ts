@@ -71,10 +71,11 @@ test('caps: every host path advertises abilities in welcome; abilityClient truth
 // ---- kits, contract ids, live/handler agreement ---------------------------------------------------------------------
 test('kits: every ranged/magic spec has a Q/E row with the reserved ids; live defs and handlers agree (none in F)',()=>{
  const ids={pistol:['ads','frag-grenade'],machinegun:['ads','rocket'],rifle:['ads','orbital-mark'],fire:['flame-lance','meteor-strike'],water:['tidal-wave','geyser-wall'],lightning:['blink-strike','ball-lightning'],darkness:['shadow-shackles','singularity']} as const;
- for(const [spec,[q,e]] of Object.entries(ids)){const k=kitFor(spec as SpecId)!;assert.equal(k.q.id,q);assert.equal(k.e.id,e);assert.equal(k.q.slot,'q');assert.equal(k.e.slot,'e');assert.equal(k.e.bot,undefined);assert.equal(k.q.bot,undefined);assert.ok(k.e.fx&&ABILITY_FX.has(k.e.fx),spec);}
+ for(const [spec,[q,e]] of Object.entries(ids)){const k=kitFor(spec as SpecId)!;assert.equal(k.q.id,q);assert.equal(k.e.id,e);assert.equal(k.q.slot,'q');assert.equal(k.e.slot,'e');assert.ok(!k.e.bot||k.e.live,spec);assert.ok(!k.q.bot||k.q.live||k.q.kind==='ads',spec);assert.ok(k.e.fx&&ABILITY_FX.has(k.e.fx),spec);}
  for(const spec of ['pistol','rifle','machinegun'] as const){assert.ok(kitFor(spec)!.ads);assert.equal(abilityActive(spec,'q'),true);}
- for(const spec of Object.keys(ids) as SpecId[])assert.equal(abilityActive(spec,'e'),false,`${spec} E stays legacy in F`);
- const live=Object.values(ABILITY_DEFS).filter(d=>d.live).map(d=>d.id).sort(),handled=Object.keys(ABILITY_HANDLERS).sort();assert.deepEqual(live,handled);assert.deepEqual(live,[]);
+ // State-agnostic since GUNS (design §17 G): an E is active exactly when its row is live (F: none; G: the gun E's; M: magic).
+ for(const spec of Object.keys(ids) as SpecId[])assert.equal(abilityActive(spec,'e'),!!kitFor(spec)!.e.live,`${spec} E is legacy until live`);
+ const live=Object.values(ABILITY_DEFS).filter(d=>d.live).map(d=>d.id).sort(),handled=Object.keys(ABILITY_HANDLERS).sort();assert.deepEqual(live,handled);for(const id of live)assert.ok(ABILITY_DEFS[id].bot,`${id}: a live kit carries bot data`);
  assert.deepEqual(new Set(Object.values(FX_ABILITY)),new Set([...Object.values(GUN_KITS),...Object.values(MAGIC_KITS)].flatMap(k=>[k.q,k.e]).filter(d=>d.kind!=='ads').map(d=>d.id)));
  for(const spec of ['sword','emperor','leet','siren','ansatsuken'] as SpecId[])assert.equal(kitFor(spec),undefined);
  assert.deepEqual(BOT_LEAD,[0,0,0]);
@@ -288,7 +289,8 @@ test('pong extraction: fixed 40 % speed, endless life, no drop, the next shot re
 test('control hints: today\'s hints without caps; with caps rifle/pistol/MG ≤ 10 keys, magic 8 (9 once its Q is live), no DEV names',()=>{
  const kbd=(h:string)=>(h.match(/<kbd>/g)||[]).length;
  for(const spec of Object.keys(WEAPONS) as SpecId[]){assert.equal(controlHints(spec,'KeyQ',undefined),controlHints(spec),spec);assert.equal(controlHints(spec,'KeyQ',{}),controlHints(spec),spec);}
- assert.equal(controlHints('rifle','KeyQ',HOST_CAPS),controlHints('rifle'),'rifle unchanged: Q Scope');
+ // Rifle keeps `Q Scope` and 10 keys; its E label is the kit name once the E is live (GUNS), else today's `Special`.
+ {const h=controlHints('rifle','KeyQ',HOST_CAPS),e=kitFor('rifle')!.e;assert.equal(kbd(h),10);assert.match(h,/<kbd>Q<\/kbd>Scope/);assert.ok(h.includes(`<kbd>E</kbd>${e.live?e.name:'Special'}`),'rifle E label');if(!e.live)assert.equal(h,controlHints('rifle'),'rifle unchanged: Q Scope');}
  for(const spec of ['pistol','machinegun'] as const){const h=controlHints(spec,'KeyQ',HOST_CAPS);assert.equal(kbd(h),10);assert.match(h,/<kbd>Q<\/kbd>Aim/);}
  for(const spec of ['fire','water','lightning','darkness'] as const){assert.equal(kbd(controlHints(spec,'KeyQ',HOST_CAPS)),8);const q=fake(spec,'q'),e=fake(spec,'e');try{const h=controlHints(spec,'KeyQ',HOST_CAPS);assert.equal(kbd(h),9);assert.ok(h.includes(`<kbd>Q</kbd>${q.def.name}`));assert.ok(h.includes(`<kbd>E</kbd>${e.def.name}`));}finally{for(const f of [q,e]){delete ABILITY_HANDLERS[f.def.id];f.def.live=undefined;}}}
  for(const spec of Object.keys(WEAPONS) as SpecId[]){const h=controlHints(spec,'KeyQ',HOST_CAPS);assert.ok(kbd(h)<=10,spec);if(!abilityUser(spec))assert.equal(h,controlHints(spec),spec);}
@@ -339,8 +341,9 @@ test('bots: the live-kit branch never falls into the legacy rows; point casts ne
   const close=decide(v(0,.9,3));assert.equal(close.cast,false,'below min keeps the primary');assert.equal(close.i.attack,true);
   a.reloadTime=1;s.removeProp('wall');s.world.step();const reloading=decide(b.body.translation());assert.equal(reloading.cast,true,'E works while reloading');assert.equal(calls.length,0);
  }finally{s.dispose();}}finally{delete ABILITY_HANDLERS[def.id];def.live=undefined;def.bot=undefined;}
- // F neutrality: no live kit, so ordinary bots keep the legacy path and no ability bit.
- const {s,a,b}=game('pistol');try{a.bot='hard';assert.equal(s.abilities.botKit('pistol'),false);assert.equal(s.abilities.botDesired(a),undefined);const i=idleInput();botAbilities(s,a,i,len(sub(b.body.translation(),a.body.translation())),true,2,b.body.translation());assert.equal(i.ability,false);}finally{s.dispose();}
+ // F neutrality: a kit without live E or Q bot data keeps the legacy path and no ability bit (every kit in F; the magic kits
+ // until MAGIC lands; GUNS asserts its live bots in gun-abilities.test.ts).
+ for(const spec of (['pistol','rifle','machinegun','fire','water','lightning','darkness'] as SpecId[]).filter(spec=>!kitFor(spec)!.e.live&&!kitFor(spec)!.q.bot)){const {s,a,b}=game(spec);try{a.bot='hard';assert.equal(s.abilities.botKit(spec),false);assert.equal(s.abilities.botDesired(a),undefined);const i=idleInput();botAbilities(s,a,i,len(sub(b.body.translation(),a.body.translation())),true,2,b.body.translation());assert.equal(i.ability,false);}finally{s.dispose();}}
 });
 
 // ---- ground aim ----------------------------------------------------------------------------------------------------
