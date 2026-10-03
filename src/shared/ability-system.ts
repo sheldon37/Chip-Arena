@@ -2,6 +2,41 @@
 // Gating, costs, cooldowns, E charges, windups, the .3 s press buffer, ADS, the handler toolkit, ability projectiles,
 // zones (their own field pool in chaos.ts), slows, chip hooks, batched leech and bot plans. Per-weapon numbers live in
 // gun-kit.ts / magic-kit.ts; behaviour lives in gun-abilities.ts / magic-abilities.ts. Deterministic: sim.random() only.
+// Method reference (kept out of the class body so the unminified server bundle stays lean):
+//  remove: A seat left: drop its scheduled work.
+//  reset: Round/debug reset of every per-player ability field.
+//  revive: Revive: clear casts and statuses (cooldowns stay).
+//  cancel: Cancel a windup: nothing was spent, the E charge is kept, no `ability` event. `buffer` also drops a buffered press (Block); 'death' also drops ADS, empower and unflushed leech.
+//  busy: primary() gate: no primary while an ability windup is pending.
+//  input: updatePlayer, after emperor.start and before secondary()/primary(): charges, ADS, windup release, press buffer, magic Q.
+//  step: Simulation.step after chaos.step: timeline, slow expiry and immunity, empower expiry, leech flush.
+//  shift: PvE hold: every absolute ability time moves with the frozen clock (§3.13).
+//  press: Q (magic) or E press. Nothing is spent unless a cast releases. `retry`: a buffered press retried by input().
+//  release: Windup over: re-check, spend, cooldown/charge, lockout, handler, `ability` event, echo and empower.
+//  aimCamera: The server aim origin: the eye while aiming down sights (fixes scoped-from-third-person parallax).
+//  shotTuning: spawnProjectile: spread × ADS (settle, bloom), damage × empower (consumes one shot), camera. Exact identity when idle.
+//  intervalScale: Primary interval ×: the profile's `interval` while aiming (pistol 1.12), else 1.
+//  statusFactor: Status slow factor (1 when none).
+//  motionScale: Field and status slows never multiply; floor .4. Equals fieldSpeed without a status slow (golden-neutral).
+//  motionFactor: prepareMotion speed factor: voluntary ADS walk × motionScale.
+//  onDamage: Kind 'ability' player damage, ability blasts' minion damage, ability-field minion ticks, direct ability hits on minions.
+//  slow: Status slow (speedFactor notation): lowest factor wins, the longest `until` is refreshed. Siren and armored targets and immune targets are ignored. Returns whether it applied.
+//  aimRay: Same aim as spawnProjectile: view camera, crosshair hit, muzzle. `dir` is the crosshair direction.
+//  aimPoint: Ground/air point under the crosshair (shared math with the client preview).
+//  D: Scaled damage, radius and cooldown helpers.
+//  spawnShot: An ability projectile (no primary chip decorations). Counts toward C.maxProjectiles; undefined when the cap is full.
+//  blast: explode(..., kind ?? 'ability'); feeds the minions' actual damage to onDamage (player damage already did via damage()).
+//  hit: One target: players through damage(kind 'ability'), minions through hitMinion (+onDamage), props through damageProp. `direct` (a direct ability-projectile hit) also heals by chip life steal (not weapon drain). Never runs directHit.
+//  zone: Ability field (chaos.ts ability pool): `opts.cast` groups one cast's fields.
+//  enemiesNear: Enemy players (hp>0) and enemy minions/adds by distance; LOS best-first with at most 4 rays per query.
+//  stepShot: stepProjectiles hook: false unless `shot.ability` is set; otherwise steps, collides and dispatches the shot.
+//  detonate: Ability-field detonation (until reached, a mine trigger, or pool eviction).
+//  botKit: The live-kit bot branch applies: E live, or a Q bot row (ADS).
+//  botAds: Hold Q (ADS) while the target is visible within [q.bot.min, q.bot.max] and not rolling. Deterministic.
+//  botDesired: Preferred distance from the live E's bot row.
+//  botCast: Choose a live E (or magic Q) cast: one RNG gate when visible and a candidate exists; LOS for point/ballistic casts.
+//  clearTo: LOS from the eye to the cast target, ignoring the target's own body (≤ 1 m short of the point counts as clear).
+//  ready: A def is castable now (charge/cooldown, mana, handler.can).
 import RAPIER from '@dimforge/rapier3d-compat';
 import type {Simulation,Player,Projectile,Prop} from './simulation.js';
 import type {FieldView,FieldKind,FieldOptions,Minion} from './chaos.js';
@@ -60,21 +95,13 @@ export class AbilitySystem{
  constructor(readonly sim:Simulation){}
  handler(def:AbilityDef|undefined):AbilityHandler|undefined{return def?ABILITY_HANDLERS[def.id]:undefined;}
  clear(){this.timeline=[];}
- /** A seat left: drop its scheduled work. */
  remove(p:Player){this.timeline=this.timeline.filter(e=>e.owner!==p.id);this.reset(p);}
- /** Round/debug reset of every per-player ability field. */
  reset(p:Player){p.abilityCd=0;p.lastAbility=-10;p.eCharges=maxCharges(p.stats);p.abilityCast=p.pendingPress=p.adsSince=p.adsBloom=p.slowed=p.slowImmuneUntil=p.empower=p.leech=undefined;}
- /** Revive: clear casts and statuses (cooldowns stay). */
  revive(p:Player){p.abilityCast=p.pendingPress=p.slowed=p.slowImmuneUntil=p.empower=p.leech=undefined;}
- /** Cancel a windup: nothing was spent, the E charge is kept, no `ability` event. `buffer` also drops a buffered press
-  *  (Block); 'death' also drops ADS, empower and unflushed leech. */
  cancel(p:Player,mode:'windup'|'buffer'|'death'='windup'){p.abilityCast=undefined;if(mode!=='windup')p.pendingPress=undefined;if(mode==='death'){p.adsSince=p.adsBloom=p.empower=p.leech=undefined;}}
- /** primary() gate: no primary while an ability windup is pending. */
  busy(p:Player){return !!p.abilityCast;}
  schedule(at:number,fn:()=>void,owner?:string){const e={at,fn,owner};let i=this.timeline.length;while(i>0&&this.timeline[i-1].at>at)i--;this.timeline.splice(i,0,e);}
 
- // ---- per tick ---------------------------------------------------------------------------------------------------
- /** updatePlayer, after emperor.start and before secondary()/primary(): charges, ADS, windup release, press buffer, magic Q. */
  input(p:Player){
   const s=this.sim,time=s.time,kit=kitFor(p.spec);if(!kit)return;
   const max=maxCharges(p.stats);if(p.eCharges>max)p.eCharges=max;if(p.secondaryCd<=0&&p.eCharges<max){p.eCharges++;if(p.eCharges<max)p.secondaryCd=abilityCooldown(kit.e,p.stats);}
@@ -84,7 +111,6 @@ export class AbilitySystem{
   if(p.pendingPress){if(time-p.pendingPress.at>BUFFER)p.pendingPress=undefined;else this.press(p,p.pendingPress.slot,true);}
   if(p.input.ability===true&&kit.q.kind!=='ads'&&abilityActive(p.spec,'q'))this.press(p,'q');
  }
- /** Simulation.step after chaos.step: timeline, slow expiry and immunity, empower expiry, leech flush. */
  step(_dt:number){
   const s=this.sim,time=s.time;
   for(let n=0;n<256&&this.timeline.length&&this.timeline[0].at<=time;n++)this.timeline.shift()!.fn();
@@ -95,7 +121,6 @@ export class AbilitySystem{
    if(p.leech&&p.leech.hp>=1&&time-p.leech.at>=LEECH_FLUSH){const hp=p.leech.hp;p.leech={hp:0,at:time};s.heal(p,hp);}
   }
  }
- /** PvE hold: every absolute ability time moves with the frozen clock (§3.13). */
  shift(dt:number){
   const s=this.sim;for(const e of this.timeline)e.at+=dt;
   for(const f of s.chaos.fields.values())if(f.fx&&ABILITY_FX.has(f.fx)){f.born+=dt;f.until+=dt;f.arm+=dt;if(f.start!==undefined)f.start+=dt;if(f.lockAt!==undefined)f.lockAt+=dt;}
@@ -103,8 +128,6 @@ export class AbilitySystem{
   for(const p of s.players.values()){if(p.abilityCast)p.abilityCast.at+=dt;if(p.pendingPress)p.pendingPress.at+=dt;if(p.slowed)p.slowed.until+=dt;if(p.slowImmuneUntil!==undefined)p.slowImmuneUntil+=dt;if(p.empower)p.empower.until+=dt;if(p.adsSince!==undefined)p.adsSince+=dt;if(p.adsBloom)p.adsBloom.at+=dt;if(p.leech)p.leech.at+=dt;}
  }
 
- // ---- presses, windups, release --------------------------------------------------------------------------------
- /** Q (magic) or E press. Nothing is spent unless a cast releases. `retry`: a buffered press retried by input(). */
  press(p:Player,slot:AbilitySlot,retry=false):'cast'|'buffered'|'refused'{
   const s=this.sim,time=s.time,def=abilityDef(p.spec,slot);
   const refuse=()=>{if(p.pendingPress?.slot===slot)p.pendingPress=undefined;return 'refused' as const;};
@@ -124,7 +147,6 @@ export class AbilitySystem{
   if(at<=time)this.release(p);
   return 'cast';
  }
- /** Windup over: re-check, spend, cooldown/charge, lockout, handler, `ability` event, echo and empower. */
  release(p:Player){
   const c=p.abilityCast;if(!c)return;p.abilityCast=undefined;const s=this.sim,def=abilityDef(p.spec,c.slot);
   if(!def||def.id!==c.id||s.phase!=='fight'||p.hp<=0||p.blockTime>0||s.arcade.stunned(p)||s.leet.frozen(p))return;
@@ -139,34 +161,23 @@ export class AbilitySystem{
   if(c.slot==='q'&&p.stats.qEmpower>0)p.empower={until:s.time+3,mult:1+p.stats.qEmpower,shots:Math.ceil(.6/WEAPONS[p.spec].interval)};
  }
 
- // ---- ADS and primary-shot tuning ------------------------------------------------------------------------------
- /** The server aim origin: the eye while aiming down sights (fixes scoped-from-third-person parallax). */
  aimCamera(p:Player):'first'|'third'{return p.adsSince!==undefined?'first':p.input.camera||'third';}
- /** spawnProjectile: spread × ADS (settle, bloom), damage × empower (consumes one shot), camera. Exact identity when idle. */
  shotTuning(owner:Player){
   const w=WEAPONS[owner.spec],time=this.sim.time;let spread=w.spread,damage=1;
   if(owner.adsSince!==undefined){spread=adsSpread(owner,owner.spec,time,w.spread);if(adsProfile(owner.spec)?.bloom){const n=owner.adsBloom&&time-owner.adsBloom.at<=.25?owner.adsBloom.n+1:1;owner.adsBloom={n,at:time};}}
   if(owner.empower){if(owner.empower.shots>0&&time<=owner.empower.until){damage=owner.empower.mult;owner.empower.shots--;}if(owner.empower.shots<=0||time>owner.empower.until)owner.empower=undefined;}
   return {spread,damage,camera:this.aimCamera(owner)};
  }
- /** Primary interval ×: the profile's `interval` while aiming (pistol 1.12), else 1. */
  intervalScale(p:Player){return p.adsSince!==undefined?adsProfile(p.spec)?.interval??1:1;}
- /** Status slow factor (1 when none). */
  statusFactor(p:Player){return p.slowed&&p.slowed.until>this.sim.time?Math.max(.4,p.slowed.factor):1;}
- /** Field and status slows never multiply; floor .4. Equals fieldSpeed without a status slow (golden-neutral). */
  motionScale(p:Player){return Math.max(.4,Math.min(fieldSpeed([...this.sim.chaos.fields.values()],p.id,p.body.translation(),owner=>this.sim.canHit(owner,p.id)),this.statusFactor(p)));}
- /** prepareMotion speed factor: voluntary ADS walk × motionScale. */
  motionFactor(p:Player){return adsMove(p.spec,p.input)*this.motionScale(p);}
 
- // ---- chip hooks -----------------------------------------------------------------------------------------------
- /** Kind 'ability' player damage, ability blasts' minion damage, ability-field minion ticks, direct ability hits on minions. */
  onDamage(source:Player|string|null|undefined,actual:number){
   const p=typeof source==='string'?this.sim.players.get(source):source;if(!p||!(actual>0))return;const s=p.stats;
   if(s.manaSurge>0)p.mana=Math.min(s.maxMana,p.mana+actual*s.manaSurge);
   if(s.abilityLeech>0){p.leech??={hp:0,at:-1e9};p.leech.hp+=actual*s.abilityLeech;}
  }
- /** Status slow (speedFactor notation): lowest factor wins, the longest `until` is refreshed. Siren and armored targets and
-  *  immune targets are ignored. Returns whether it applied. */
  slow(target:Player,speedFactor:number,seconds:number,kind:string,source?:string){
   const s=this.sim,time=s.time;if(target.spec==='siren'||s.siren.armored(target)||(target.slowImmuneUntil??-1)>time||target.hp<=0||!(seconds>0))return false;
   const until=time+seconds,cur=target.slowed&&target.slowed.until>time?target.slowed:undefined,factor=clamp(speedFactor,.4,1);
@@ -174,24 +185,19 @@ export class AbilitySystem{
   s.emit('slowed',target.body.translation(),{target:target.id,source:source??null,message:kind,amount:factor,radius:seconds});return true;
  }
 
- // ---- toolkit --------------------------------------------------------------------------------------------------
  handlerShot(id:string){return this.handler(ABILITY_DEFS[id])?.shot;}
- /** Same aim as spawnProjectile: view camera, crosshair hit, muzzle. `dir` is the crosshair direction. */
  aimRay(p:Player,aim:AbilityAim,range:number){
   const s=this.sim,pos=p.body.translation(),trace=(o:Vec,d:Vec,dist:number)=>s.ray(o,d,dist,p.id)?.timeOfImpact??null,dir=forward(aim.yaw,aim.pitch);
   const camera=cameraPosition(pos,aim.yaw,aim.pitch,aim.camera,trace),hit=s.ray(camera,dir,range+5,p.id);
   return {camera,dir,hitPoint:hit?add(camera,mul(dir,hit.timeOfImpact)):undefined,target:add(camera,mul(dir,hit?hit.timeOfImpact:range+5)),start:weaponMuzzle(pos,aim.yaw,trace)};
  }
- /** Ground/air point under the crosshair (shared math with the client preview). */
  aimPoint(p:Player,aim:AbilityAim,range:number,opts:{ground?:boolean}={}){
   const s=this.sim,pos=p.body.translation(),trace=(o:Vec,d:Vec,dist:number)=>s.ray(o,d,dist,p.id)?.timeOfImpact??null;
   return abilityAimPoint(cameraPosition(pos,aim.yaw,aim.pitch,aim.camera,trace),pos,forward(aim.yaw,aim.pitch),range,!!opts.ground,trace);
  }
- /** Scaled damage, radius and cooldown helpers. */
  D(def:AbilityDef,ctx:CastContext){return (def.damage||0)*ctx.scale;}
  R(def:AbilityDef,ctx:CastContext){return abilityRadius(def,ctx.stats);}
  cd(def:AbilityDef,stats:Stats){return abilityCooldown(def,stats);}
- /** An ability projectile (no primary chip decorations). Counts toward C.maxProjectiles; undefined when the cap is full. */
  spawnShot(p:Player,def:AbilityDef,opts:ShotOptions):Projectile|undefined{
   const s=this.sim;if(s.projectiles.size>=C.maxProjectiles)return undefined;
   const start=opts.pos??weaponMuzzle(p.body.translation(),p.input.yaw,(o,d,dist)=>s.ray(o,d,dist,p.id)?.timeOfImpact??null),speed=opts.speed??def.speed??30;
@@ -202,12 +208,9 @@ export class AbilitySystem{
    ability:{id:def.id,slot:def.slot,cast:opts.cast,travel:0,...(opts.fuse!==undefined?{fuse:opts.fuse}:{}),...(opts.data?{data:opts.data}:{})}};
   s.projectiles.set(id,shot);return shot;
  }
- /** explode(..., kind ?? 'ability'); feeds the minions' actual damage to onDamage (player damage already did via damage()). */
  blast(p:Player,point:Vec,radius:number,damage:number,impulse:number,fx:string,opts:BlastOptions={}):BlastResult{
   const r=this.sim.explode(p,point,radius,damage,impulse,opts.kind??'ability',opts.props??true,fx,opts.propScale??1);if(r.minions>0)this.onDamage(p,r.minions);return r;
  }
- /** One target: players through damage(kind 'ability'), minions through hitMinion (+onDamage), props through damageProp.
-  *  `direct` (a direct ability-projectile hit) also heals by chip life steal (not weapon drain). Never runs directHit. */
  hit(p:Player,target:Player|Minion|Prop,damage:number,dir:Vec,impulse:number,point:Vec,opts:HitOptions={}){
   const s=this.sim;let actual=0;
   if('stats'in target)actual=s.damage(target,damage,p.id,opts.kind??'ability',dir,impulse,point,false,false,!!opts.headshot,opts.elements??[],opts.bodyImpact);
@@ -216,10 +219,8 @@ export class AbilitySystem{
   if(opts.direct&&actual>0)s.lifeOnHit(p,actual,false);
   return actual;
  }
- /** Ability field (chaos.ts ability pool): `opts.cast` groups one cast's fields. */
  zone(p:Player,kind:FieldKind,point:Vec,radius:number,duration:number,damage:number,fx:string,opts:FieldOptions={}){return this.sim.chaos.field(p,kind,point,radius,duration,damage,opts.attach,fx,opts);}
  blink(p:Player,delta:Vec){this.sim.chaos.blink(p,delta);}
- /** Enemy players (hp>0) and enemy minions/adds by distance; LOS best-first with at most 4 rays per query. */
  enemiesNear(p:Player,point:Vec,radius:number,opts:NearOptions={}):Near[]{
   const s=this.sim,limit=opts.limit??Infinity,all:Near[]=[];
   for(const q of s.players.values()){if(q===p||q.hp<=0||opts.exclude?.has(q.id)||!s.canHit(p.id,q.id)||s.pve?.hidden(q))continue;const pos=q.body.translation(),d=len(sub(pos,point));if(d<=radius)all.push({target:q,pos:copy(pos),distance:d});}
@@ -228,8 +229,6 @@ export class AbilitySystem{
   const out:Near[]=[];let rays=0;for(const n of all){if(out.length>=limit||rays>=4)break;rays++;if(s.lineOfSight(point,n.pos,p.id,n.target.id))out.push(n);}return out;
  }
 
- // ---- ability projectiles (§3.7) -------------------------------------------------------------------------------
- /** stepProjectiles hook: false unless `shot.ability` is set; otherwise steps, collides and dispatches the shot. */
  stepShot(shot:Projectile,dt:number):boolean{
   const tag=shot.ability;if(!tag)return false;const s=this.sim,def=ABILITY_DEFS[tag.id],h=this.handler(def)?.shot;
   if(!def){s.projectiles.delete(shot.id);return true;}
@@ -257,8 +256,6 @@ export class AbilitySystem{
   else this.sim.projectiles.delete(shot.id);
  }
 
- // ---- ability fields (§3.8) ------------------------------------------------------------------------------------
- /** Ability-field detonation (until reached, a mine trigger, or pool eviction). */
  detonate(f:FieldView){
   const s=this.sim,owner=s.players.get(f.owner);if(!owner)return;const def=ABILITY_DEFS[FX_ABILITY[f.fx||'']||''],h=this.handler(def);
   if(h?.detonate){h.detonate(this,f,owner);return;}
@@ -267,14 +264,9 @@ export class AbilitySystem{
   if(f.kind==='implosion')s.vacuum(owner,pos,1300);
  }
 
- // ---- bots (§3.14) ---------------------------------------------------------------------------------------------
- /** The live-kit bot branch applies: E live, or a Q bot row (ADS). */
  botKit(spec:Player['spec']){const k=kitFor(spec);return !!k&&(!!k.e.live||!!k.q.bot);}
- /** Hold Q (ADS) while the target is visible within [q.bot.min, q.bot.max] and not rolling. Deterministic. */
  botAds(p:Player,input:Input,distance:number,visible:boolean){const k=kitFor(p.spec),b=k?.q.bot;if(!k?.ads||!b)return;input.ability=visible&&distance>=b.min&&distance<=b.max&&!rolling(p,this.sim.time);}
- /** Preferred distance from the live E's bot row. */
  botDesired(p:Player):number|undefined{const k=kitFor(p.spec);return k?.e.live?k.e.bot?.desired:undefined;}
- /** Choose a live E (or magic Q) cast: one RNG gate when visible and a candidate exists; LOS for point/ballistic casts. */
  botCast(p:Player,input:Input,distance:number,visible:boolean,difficulty:number,target?:Vec,targetVel?:Vec):boolean{
   const s=this.sim,time=s.time,k=kitFor(p.spec);if(!k||this.busy(p)||p.cast||committed(p,time)||rolling(p,time))return false;
   const b:BotCtx={distance,visible,difficulty,...(target?{target}:{}),...(targetVel?{targetVel}:{})};
@@ -291,8 +283,6 @@ export class AbilitySystem{
    if((bot.aim==='point'||bot.aim==='ballistic')&&target&&!this.clearTo(p,eye,target))return false;}
   input.camera='first';input.attack=false;input.dash=false;if(pick.slot==='e')input.secondary=true;else input.ability=true;return true;
  }
- /** LOS from the eye to the cast target, ignoring the target's own body (≤ 1 m short of the point counts as clear). */
  private clearTo(p:Player,eye:Vec,to:Vec){const d=sub(to,eye),l=len(d);if(l<.01)return true;const hit=this.sim.ray(eye,norm(d),l,p.id);return !hit||hit.timeOfImpact>=l-1;}
- /** A def is castable now (charge/cooldown, mana, handler.can). */
  private ready(p:Player,d:AbilityDef){if(d.slot==='e'?p.eCharges<=0:p.abilityCd>0)return false;if(WEAPONS[p.spec].class==='magic'&&p.mana<abilityCost(d,p.stats)*p.stats.resourceCost)return false;const h=this.handler(d);return !h?.can||h.can(this,{p,def:d,stats:p.stats,scale:1,echo:false,cast:'',aim:{yaw:p.input.yaw,pitch:p.input.pitch,camera:'first'}});}
 }
