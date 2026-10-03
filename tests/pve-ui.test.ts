@@ -144,7 +144,7 @@ test('menu: picker with Host online, party bots and Start at the Siren; PvE lobb
 const src=(f:string)=>readFileSync(new URL('../src/client/'+f,import.meta.url),'utf8');
 test('main.ts pins: Test Boss on home, boss intro keeps pointer lock, PvE idle input, one hud.innerHTML, pve-chips skipped by the global click',()=>{
  const main=src('main.ts');
- assert.match(main,/btn\('test-boss','Test Boss <span class="key">04<\/span>'\)/);
+ assert.match(main,/Developer Sandbox<\/button><\/section>\$\{bossPill\(\)\}<\/div>`;\}/,'Boss Test is the pill on the right of the home menu');
  assert.match(main,/if\(document\.pointerLockElement&&!intro\.boss\)document\.exitPointerLock\(\);return;/,'the boss intro does not leave pointer lock');
  assert.match(main,/function input\(\):Input\{const tapF=pendingInteract;pendingInteract=false;if\(pveIdle\(\)\)return \{\.\.\.idleInput\(\)/);
  assert.match(main,/interact:\(keys\.has\('KeyF'\)\|\|tapF\)/,'a sub-frame F tap is latched into the next input');
@@ -165,5 +165,5 @@ test('pve.css: every animated selector has a reduced-motion rule; the HUD layout
   for(const sel of m[1].split(',').map(s=>s.trim().replace(/^@media[^{]*/,'')))if(sel&&!reduced.includes(sel))missing.push(sel);}
  assert.deepEqual(missing,[],'animated selectors without a reduced-motion rule');
  assert.match(css,/body\.pve \.death-announcement\{top:110px\}/);assert.match(css,/body\.pve \.notice\{top:150px\}/);
- assert.match(css,/\.menu-list \.btn:nth-child\(4\)/);
+ assert.match(css,/\.home-lobby\.panel-enter \.boss-pill\{animation:panel-in/);
 });

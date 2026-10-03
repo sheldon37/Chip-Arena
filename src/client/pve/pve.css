@@ -2,7 +2,26 @@
    body.pve (main.ts toggles it while a PvE snapshot is on the game screen). Siren palette: lavender #b7a8ff on black. */
 
 /* ---- Home and picker ---- */
-.menu-list .btn:nth-child(4){animation-delay:.12s}
+/* Boss Test entry: a glossy black pill with a bone skull, on the right of the home menu (lavender = Siren). */
+.home-lobby{display:flex;align-items:center;justify-content:space-between;gap:40px}
+.boss-pill{position:relative;isolation:isolate;overflow:hidden;flex:0 0 auto;display:inline-flex;align-items:center;gap:14px;min-height:70px;padding:9px 22px 9px 10px;border-radius:999px;border:1px solid #ffffff30;background:linear-gradient(180deg,#3a3942 0%,#17171d 45%,#030305 55%,#0e0e13 100%);box-shadow:inset 0 1px 0 #ffffff4d,inset 0 -3px 8px #000c,0 0 0 1px #000,0 16px 36px #000b,0 0 34px #7d5cff24;color:#f6f3ff;pointer-events:auto;cursor:pointer;text-align:left;transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .2s,border-color .2s}
+.boss-pill:before{content:"";position:absolute;z-index:-1;left:16px;right:16px;top:3px;height:45%;border-radius:999px 999px 50% 50%/999px 999px 100% 100%;background:linear-gradient(180deg,#ffffff42,#ffffff05);pointer-events:none}
+.boss-pill:after{content:"";position:absolute;top:-10%;bottom:-10%;left:-45%;width:32%;background:linear-gradient(100deg,transparent,#ffffff30,transparent);transform:skewX(-18deg);opacity:0;pointer-events:none}
+.boss-pill:hover{border-color:#b7a8ffa6;transform:translateY(-2px);box-shadow:inset 0 1px 0 #ffffff59,inset 0 -3px 8px #000c,0 0 0 1px #000,0 20px 40px #000c,0 0 42px #7d5cff52}
+.boss-pill:hover:after{animation:boss-pill-sheen 1s ease-out}
+.boss-pill:active{transform:translateY(0)}
+.boss-pill:focus-visible{outline:3px solid #b7a8ff;outline-offset:4px}
+.boss-pill-skull{display:grid;place-items:center;flex:0 0 52px;width:52px;height:52px;border-radius:50%;background:radial-gradient(circle at 50% 30%,#302c39,#060508 72%);box-shadow:inset 0 1px #ffffff2e,inset 0 0 0 1px #ffffff17,0 0 14px #b7a8ff26}
+.boss-pill-skull svg{width:36px;height:36px;display:block;filter:drop-shadow(0 1px 1px #000)}
+.boss-pill-eye{fill:#c9bcff}.boss-pill:hover .boss-pill-eye,.boss-pill:focus-visible .boss-pill-eye{fill:#fff}
+.boss-pill-text{display:flex;flex-direction:column;gap:4px;white-space:nowrap}
+.boss-pill-text strong{font-size:19px;font-weight:900;line-height:1;letter-spacing:.17em;text-shadow:0 1px 0 #000}
+.boss-pill-text small{font-size:11px;font-weight:600;line-height:1;letter-spacing:.16em;text-transform:uppercase;color:#c9bfff}
+.boss-pill .key{margin-left:8px;color:#d9d2f0}
+.home-lobby.panel-enter .boss-pill{animation:panel-in .34s .12s cubic-bezier(.2,.8,.2,1) both}
+@keyframes boss-pill-sheen{0%{left:-45%;opacity:0}25%{opacity:1}100%{left:125%;opacity:0}}
+@media(max-width:860px){.home-lobby{flex-direction:column;align-items:stretch;gap:18px}.boss-pill{align-self:flex-end}}
+@media(max-width:580px){.boss-pill{align-self:stretch;min-height:62px}.boss-pill .key{margin-left:auto}}
 .pve-boss-options{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
 .pve-boss-card{position:relative;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:14px;row-gap:3px;align-items:center;min-height:0;overflow:hidden;text-align:left;padding:14px 16px;border-radius:var(--r-md,10px);border:1px solid #ffffff1c;background:#13141a}
 .pve-boss-card.active{border-color:#b7a8ff99;background:radial-gradient(120% 90% at 85% 110%,#3a2166 0%,#160d27 48%,#0b0910 80%);box-shadow:0 0 0 1px #000,0 0 26px #7d5cff33}
@@ -261,7 +280,7 @@ body.pve .notice{top:150px}
 .pve-retry-votes{align-self:center}
 
 @media(prefers-reduced-motion:reduce){
- .menu-list .btn:nth-child(4){animation:none}
+ .boss-pill:hover:after,.home-lobby.panel-enter .boss-pill{animation:none}.boss-pill,.boss-pill:hover{transition:none;transform:none}
  .pve-boss-card.active .pve-boss-face,.pve-member-chip,.pve-chip-rolling .game-icon,.pve-locked-card span{animation:none}
  .pve-gain{animation:pve-gain-static 1.6s linear var(--gain-delay,0s) both}
  .pve-boss-title:before,.pve-boss-title:after,.pve-banner strong:before,.pve-banner strong:after,.pve-banner[data-tone=boss] strong:before,.pve-banner[data-tone=phase] strong:before,.pve-banner[data-tone=boss] strong:after,.pve-banner[data-tone=phase] strong:after,.pve-reveal-spotlight strong:before,.pve-reveal-spotlight strong:after,.siren-title:before,.siren-title:after{animation:none;opacity:0}
