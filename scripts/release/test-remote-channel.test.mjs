@@ -80,12 +80,12 @@ test('schema-1 hold turns the last fitting payload into a reinstall notice for p
  await writeFile(join(channel,file),gz);await writeFile(join(channel,'latest.json'),JSON.stringify({schema:1,nodeMajor:24,build:'a'.repeat(24),version:'0.2.lastfit00000',file,sha256:hash(gz),bytes:gz.length}));
  await writeFile(join(candidate,'latest-v2.json'),JSON.stringify({schema:2,build:'c'.repeat(24),version:'0.2.toolarge000'}));
  const {manifest,reused}=await holdSchema1(channel,candidate,out);
- assert.equal(reused,false);assert.equal(manifest.version,'0.2.lastfit00000'+NOTICE);assert.match(manifest.version,/^[\w.-]{1,80}$/);assert.equal(manifest.build,'c'.repeat(24),'old badges see a newer build');
+ assert.equal(reused,false);assert.equal(manifest.version,'0.2.lastfit00000'+NOTICE);assert.match(manifest.version,/^[\w.-]{1,80}$/);assert.equal(manifest.build,'c'.repeat(24),'old badges see a newer build');assert.equal(manifest.hold,true,'v2 launchers refuse the notice');
  const payload=JSON.parse(gunzipSync(await readFile(join(out,manifest.file))));assert.equal(hash(await readFile(join(out,manifest.file))),manifest.sha256);
  assert.equal(payload.files[0].sha256,files[0].sha256,'game files are the last fitting version');
  const notice=JSON.parse(Buffer.from(payload.files[1].data,'base64'));assert.equal(notice.version,manifest.version);assert.equal(payload.files[1].sha256,hash(Buffer.from(payload.files[1].data,'base64')));
  // Re-running on a channel that already shows the notice only moves the badge to the newest build.
  await writeFile(join(candidate,'latest-v2.json'),JSON.stringify({schema:2,build:'d'.repeat(24),version:'0.2.toolarge001'}));
- const second=await holdSchema1(out,candidate,again);assert.equal(second.reused,true);assert.equal(second.manifest.file,manifest.file);assert.equal(second.manifest.build,'d'.repeat(24));assert.deepEqual((await readdir(again)).sort(),[manifest.file,'latest.json'].sort());
+ const second=await holdSchema1(out,candidate,again);assert.equal(second.reused,true);assert.equal(second.manifest.file,manifest.file);assert.equal(second.manifest.build,'d'.repeat(24));assert.equal(second.manifest.hold,true);assert.deepEqual((await readdir(again)).sort(),[manifest.file,'latest.json'].sort());
  await writeFile(join(candidate,'latest.json'),'{}');await assert.rejects(holdSchema1(channel,candidate,join(dir,'x')),/publish it normally/);
 });

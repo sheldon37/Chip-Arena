@@ -25,7 +25,9 @@ You need a new ZIP when:
 
 - you have a build from before updater v2 (2026-10-03). Its Update button can only install
   updates up to 32 MiB. When an update is larger, that old build shows the version
-  `…-download-the-new-TEST-ZIP-from-GitHub-Releases`.
+  `…-download-the-new-TEST-ZIP-from-GitHub-Releases`. Old builds also stop a schema-1 download
+  after 60 seconds and a whole update after 90 seconds, so near 32 MiB they need about
+  4.5 Mbit/s or more. On a slower connection, use the new ZIP.
 - the Electron shell or the test bootstrap changed. Only the game and the `launcher/` files
   update themselves.
 
@@ -48,9 +50,18 @@ https://raw.githubusercontent.com/sheldon37/chip-arena-test-updates/main/feed/
   payload SHA-256 before it unpacks anything. It then checks every file's path, size and
   SHA-256. Game files go to `server.mjs`, `dist/client/`, `drizzle/` and `release.json`.
   Launcher files must be on a fixed list.
-- Updater v2 stages launcher files and applies them at the next start, keeping a backup. A failed
-  start restores the previous launcher. Settings, saves, `runtime/` and `test-channel.json` are
-  never update targets.
+- Updater v2 stages launcher files and applies them at the next start (an Update or Create Room),
+  keeping a backup. The new files stay on probation until they have worked once in a later run:
+  an Update that installs a version for the update files, and a Create Room that reaches
+  "YOUR GAME:" for `start.mjs` and `update.mjs`. Until then, a failed Update or a failed room start
+  restores the previous launcher. The desktop shell does this, and it never updates itself.
+  Not covered: a failure after "YOUR GAME:" (for example the online invite), and a bug that only
+  appears after the new launcher has already installed one update. The feed still lists a
+  rolled-back launcher, so each later Update stages it again and the one after restores it again;
+  publish a fixed version, which the restored launcher installs. Settings, saves, `runtime/` and
+  `test-channel.json` are never update targets.
+- A v2 build never installs the schema-1 hold notice (`"hold": true` in `latest.json`). If
+  `latest-v2.json` is briefly missing while the notice is up, Update says to try again later.
 - Raw GitHub files can be cached for about 5 minutes, so a new version can take a few minutes to
   appear.
 
@@ -68,8 +79,10 @@ Tooling: branch `claude/test-update-channel` of the private repo (`scripts/relea
      --channel https://raw.githubusercontent.com/sheldon37/chip-arena-test-updates/main/feed/
    ```
 
-   Check `candidate.json`: `repeat-payload`, `actual-payload` and `isolated-test-package` must
-   pass. `payloadBytes` shows the schema-1 and schema-2 sizes.
+   Check `candidate.json`: `repeat-payload`, `actual-payload`, `isolated-test-package` and
+   `channel-e2e` must pass. `channel-e2e` installs the candidate's own ZIP and drives its real
+   Update path (and Create Room) against a local HTTPS copy of this feed, including launcher
+   rollback; it needs `openssl`. `payloadBytes` shows the schema-1 and schema-2 sizes.
 2. Replace `feed/` in this repo:
    - **Schema 1 fits** (the candidate has `feed/latest.json`): copy all four candidate files:
      `latest.json`, its `arena-*.json.gz`, `latest-v2.json` and its `arena-*.pack`.
@@ -93,7 +106,9 @@ Tooling: branch `claude/test-update-channel` of the private repo (`scripts/relea
 ### Publishing a seed ZIP as a GitHub Release (owner or orchestrator only)
 
 Use this procedure for the first updater-v2 seed, and again whenever a new ZIP is needed (see
-above). Use the `Chip-Arena-TEST-ONLY.zip` from the **same candidate** whose feed you publish.
+above). Use the `Chip-Arena-TEST-ONLY.zip` from the **same candidate** whose feed you publish,
+built from the merged game commit. The ZIP embeds the source archive, so its SHA-256 changes with
+every game commit, even when the game itself is unchanged.
 `make-test-package.py` has already checked that its launcher files equal the ones in
 `latest-v2.json`.
 

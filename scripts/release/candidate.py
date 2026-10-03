@@ -67,6 +67,15 @@ try:
  if not run('isolated-test-package',[sys.executable,str(tool/'make-test-package.py'),str(out/'packages/Chip-Arena-Desktop.zip'),str(feed),str(out/'Chip-Arena-TEST-ONLY.zip'),str(source)]+(['--channel',a.channel] if a.channel else [])):raise RuntimeError('Test package creation failed')
  report['update']=manifest if v1.exists() else None;report['updateV2']=json.loads(v2.read_bytes()) if v2.exists() else None
  report['payloadBytes']={'schema1':manifest['bytes'] if v1.exists() else None,'schema2':report['updateV2']['bytes'] if v2.exists() else None}
+ if a.channel and v2.exists():
+  # The candidate's own seed ZIP and feed through the real Update path (desktop update.cjs spawning the channel entry,
+  # remote-feed.mjs, launcher self-update, probation, rollback and hosting) against a local HTTPS copy of the channel.
+  e2e=Path(tempfile.mkdtemp(prefix='chip-e2e-'))
+  try:
+   if not run('channel-e2e',[node,str(tool/'channel-e2e.mjs'),'--candidate',str(out),'--game',str(source),'--work',str(e2e/'work'),'--python',sys.executable],1800):raise RuntimeError('Channel end-to-end check failed')
+  finally:
+   if (e2e/'work/e2e-report.json').exists():shutil.copyfile(e2e/'work/e2e-report.json',out/'logs/channel-e2e-report.json')
+   shutil.rmtree(e2e,ignore_errors=True)
  report['status']='BLOCKED' if not(gate and targeted) else 'AWAITING WINDOWS VALIDATION AND APPROVAL'
  # Full standard desktop ZIP is an intermediate, not the user-facing test artifact.
  shutil.rmtree(out/'packages')

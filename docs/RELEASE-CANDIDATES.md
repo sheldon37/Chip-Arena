@@ -135,7 +135,10 @@ game packager's `test-channel` profile and produces two feeds in `feed/`:
   installs. These launchers accept up to 256 MiB, and the channel limit is 95 MiB because GitHub
   rejects files over 100 MB. The payload also carries this channel's launcher files:
   `test-remote-update.mjs` as `manual-update.mjs`, and `remote-feed.mjs`. They self-update on the
-  next start, with rollback.
+  next start and stay on probation until they have worked once in a later Update (or, for
+  `start.mjs`/`update.mjs`, a Create Room); the seed's stable `desktop/update.cjs`/`main.cjs`
+  restore the previous launcher when such a run fails (game `docs/DEVELOPMENT.md` lists the
+  limits).
 
 The seed ZIP's `test-channel.json` says `{"base":...,"schema2":true}`; the badge and the Update
 button then read `latest-v2.json` first, and only a 404 falls back to `latest.json`.
@@ -145,6 +148,11 @@ button then read `latest-v2.json` first, and only a 404 falls back to `latest.js
 commits ignore the profile and build schema 1 exactly as before.
 
 End-to-end check (local HTTPS only, never GitHub): `node scripts/release/channel-e2e.mjs
---candidate <candidate dir> --old-zip <a pre-v2 Chip-Arena-TEST-ONLY.zip> --game <game checkout>
---work <new dir>` (Node 24, Python 3, openssl). The channel README draft with the publishing and
+--candidate <candidate dir> --game <game checkout> --work <new dir> [--old-zip <a pre-v2
+Chip-Arena-TEST-ONLY.zip>] [--python <python>]` (Node 24, Python 3, openssl). `candidate.py
+--channel` runs it without `--old-zip` as the `channel-e2e` check for every updater-v2 candidate:
+the candidate's own ZIP and channel entry go through the real desktop Update path, launcher
+probation and rollback (broken entry, broken feed mapping, incompatible `update.mjs`, broken
+`start.mjs` through a real Create Room), the hold-notice refusal and the download refusals. Add
+`--old-zip` (for example the 0e82a31 seed testers hold) to also check old installs. The channel README draft with the publishing and
 GitHub Release seed procedure is `docs/TEST-CHANNEL-README.md`.

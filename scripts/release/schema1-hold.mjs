@@ -1,7 +1,8 @@
 // Test tooling only. When a build's schema-1 payload no longer fits the 32 MiB cap of launchers installed before
 // updater v2, latest.json must stay on the last version that fit. This turns that last payload into a notice for
 // those old installs: identical game files, but release.json's version tells them to download the new TEST-ONLY ZIP,
-// and the manifest's build identity changes so their in-game badge shows that an update exists.
+// and the manifest's build identity changes so their in-game badge shows that an update exists. The manifest also says
+// hold:true: launchers older than v2 ignore unknown fields, and v2 launchers refuse it instead of downgrading.
 // Usage: node schema1-hold.mjs <current channel feed dir> <candidate feed dir> <output dir>
 import {readFile,writeFile,mkdir,readdir} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
@@ -21,7 +22,7 @@ export async function holdSchema1(channelFeed,candidateFeed,output){
  await mkdir(output,{recursive:true});
  if(current.version.endsWith(NOTICE)){
   // Already a notice: keep its payload and only point the badge at the newest build.
-  const manifest={...current,build:next.build};await writeFile(join(output,'latest.json'),JSON.stringify(manifest));await writeFile(join(output,current.file),bytes);
+  const manifest={...current,build:next.build,hold:true};await writeFile(join(output,'latest.json'),JSON.stringify(manifest));await writeFile(join(output,current.file),bytes);
   return {manifest,reused:true};
  }
  const version=current.version+NOTICE;if(!/^[\w.-]{1,80}$/.test(version))throw Error('Notice version is too long: '+version);
@@ -32,7 +33,7 @@ export async function holdSchema1(channelFeed,candidateFeed,output){
  // The same limits every pre-v2 launcher enforces.
  const unpacked=payload.files.reduce((n,f)=>n+Buffer.from(f.data,'base64').length,0);
  if(gz.length>32*MiB||Buffer.byteLength(json)>96*MiB||unpacked>64*MiB||payload.files.length>1500)throw Error('Notice payload exceeds the installed-launcher limits');
- const manifest={schema:1,nodeMajor:24,build:next.build,version,file,sha256,bytes:gz.length};
+ const manifest={schema:1,nodeMajor:24,build:next.build,version,file,sha256,bytes:gz.length,hold:true};
  await writeFile(join(output,file),gz);await writeFile(join(output,'latest.json'),JSON.stringify(manifest));
  return {manifest,reused:false};
 }
