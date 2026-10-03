@@ -43,7 +43,7 @@ test('Return to Sender: the return leg can hit the same target again for ×1.4 d
 });
 test('Thunder Step calls lightning on nearby visible enemies (and still strikes the start point when alone)',()=>{
  const {s,a,b}=game({thunderstep:1},'sword');s.chaos.dash(a,a.body.translation());const f=[...s.chaos.fields.values()];
- assert.equal(f.length,1);assert.equal(f[0].fx,'thunderstep');near(f[0].pos.z,b.body.translation().z,.05);
+ assert.equal(f.length,1);assert.equal(f[0].fx,'thunderstep');assert.equal(f[0].attach,b.id,'the strike follows its target');near(f[0].pos.z,b.body.translation().z,.05);
  for(let i=0;i<40;i++)s.step();assert.ok(b.hp<=100-CHAOS_TUNING.thunderDamage*.5,`b hp ${b.hp}`);
  const ev=s.events.find(e=>e.type==='explosion'&&e.message==='thunderstep');assert.ok(ev);assert.equal(ev.radius,2.5);
  b.body.setTranslation(v(0,1,25),true);s.world.step();s.chaos.fields.clear();s.chaos.dash(a,a.body.translation());assert.equal([...s.chaos.fields.values()][0].radius,4);s.dispose();

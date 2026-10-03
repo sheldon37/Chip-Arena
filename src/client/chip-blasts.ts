@@ -37,7 +37,7 @@ export function blastStyle(message:string|undefined):BlastStyle{
   case 'implosion':case 'implosion-bomb':return 'implosion';case 'frost':case 'blizzard':return 'frost';case 'corpseParty':case 'toxic':case 'acid-rain':return 'toxic';
   case 'meteor':case 'artillery':return 'meteor';case 'mine':case 'cluster-mine':case 'mirror-mine':case 'bread-crumbs':case 'proximity-mail':return 'mine';
   case 'dashBlast':case 'kinetic':case 'bubble-mine':return 'kinetic';
-  case 'quake':case 'aftershock':case 'trampoline':return 'quake';case 'vacuum':case 'void':case 'black-hole':return 'void';case 'blockPulse':case 'nova':return 'nova';
+  case 'quake':case 'aftershock':case 'trampoline':return 'quake';case 'vacuum':case 'void':case 'black-hole':case 'wormhole':return 'void';case 'blockPulse':case 'nova':return 'nova';
   default:return 'fire';
  }
 }
