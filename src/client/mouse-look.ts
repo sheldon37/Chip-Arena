@@ -16,7 +16,7 @@
  */
 export const MOUSE_LOOK={
  /** ms after a lock is acquired in which any delta above `settleLimit` px is dropped. */
- settle:120,settleLimit:48,
+ settle:250,settleLimit:48,
  /** A single event is a spike only above this many px and above `ratio` × the delta the recent hand speed predicts. */
  spike:260,ratio:5,
  /** ms: hand-speed memory. The recent peak speed is held for `hold` (a frame hitch delivers one coalesced delta after a
@@ -31,8 +31,15 @@ export class MouseLookFilter {
  private dropped?:{x:number;y:number;at:number};
  /** Rejected events since creation (diagnostics). */
  rejected=0;
+ private active=false;
  /** A pointer lock was (re)acquired at `now` (ms, same clock as the events' timeStamp). */
- lock(now:number){this.lockedAt=now;this.lastAt=now;this.rate=0;this.fresh=true;this.dropped=undefined;}
+ lock(now:number){this.active=true;this.lockedAt=now;this.lastAt=now;this.rate=0;this.fresh=true;this.dropped=undefined;}
+ /**
+  * Report the current lock state (pointerlockchange and every mousemove). Chromium sets pointerLockElement before it
+  * dispatches pointerlockchange, so the re-lock warp (cursor → lock centre: a chip card or Choose later below the centre
+  * reads as a mouse move up) can arrive first; the first locked event after an unlocked spell starts a fresh lock.
+  */
+ track(locked:boolean,now:number){if(locked&&!this.active)this.lock(now);else if(!locked)this.active=false;}
  /** True when this pointer-locked mousemove delta should turn the camera. */
  accept(dx:number,dy:number,now:number):boolean{
   if(!Number.isFinite(dx)||!Number.isFinite(dy)||!Number.isFinite(now)){this.rejected++;return false;}

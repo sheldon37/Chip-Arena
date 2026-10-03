@@ -66,3 +66,17 @@ test('garbage values never reach the camera',()=>{
  for(const[x,y]of [[NaN,0],[0,Infinity],[-Infinity,3]])assert.equal(f.accept(x,y,500),false);
  assert.equal(f.accept(3,0,520),true);
 });
+
+test('closing the chip screen: the re-lock warp is dropped even before pointerlockchange arrives (look-up on close)',()=>{
+ // Locked play, then the chip screen releases the lock; the cursor moves freely over the cards (not applied).
+ const f=new MouseLookFilter();f.track(true,0);feed(f,Array.from({length:60},()=>[6,-2,16] as [number,number,number]),0);
+ f.track(false,2000);for(let t=2000;t<6000;t+=16)f.track(false,t);
+ // Click "Choose later" (below the centre) → requestPointerLock. Chromium reports pointerLockElement first; the warp to
+ // the lock centre is a move up of ~180 px, and pointerlockchange only follows afterwards.
+ f.track(true,6010);assert.equal(f.accept(0,-180,6010),false,'warp up dropped');
+ assert.equal(f.accept(-30,-70,6030),false,'split warp remainder dropped while settling');
+ f.track(true,6040);assert.equal(f.accept(2,1,6050),true,'pointerlockchange does not restart a lock already seen');
+ assert.equal(f.accept(25,4,6300),true,'normal aiming resumes');
+ // A medium warp that arrives as the first locked event long after the click is still dropped.
+ f.track(false,7000);f.track(true,7010);assert.equal(f.accept(0,-120,7600),false);
+});
