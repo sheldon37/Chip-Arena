@@ -80,7 +80,7 @@ export class BeaconView {
  /** Members whose HELP bubble showed last update (tests). */
  help=new Set<string>();
  constructor(parent:T.Object3D){this.group.name='pve-beacons';parent.add(this.group);}
- update(state:Snapshot,view:PveView,me='',camera?:T.Camera){
+ update(state:Snapshot,view:PveView,me='',camera?:T.Camera,compatibility=false){
   const t=state.time;this.states.clear();this.help.clear();
   for(const p of beaconTargets(state,view)){const pos=p.death?.pos??p.pos,s=beaconState(view,p.id,t);this.states.set(p.id,s);
    let b=this.pool.get(p.id);if(!b){b=new Beacon();this.pool.set(p.id,b);this.group.add(b.group);}
@@ -89,7 +89,8 @@ export class BeaconView {
    b.column.material.map!.offset.y=-t*.35;b.ring.material.color.setHex(color);b.ring.geometry.setDrawRange(0,ringDrawCount(s.progress));b.ring.rotation.y=t*.4;
    b.label.set(s.label,s.sub);(b.label.sprite.material as T.SpriteMaterial).color.setHex(color);b.label.sprite.position.y=2.25+.06*Math.sin(t*2);
    // HELP: constant on-screen size between 5 and 26 m, its bottom above the label, bobbing (pure in t), a slight comic tilt.
-   const help=helpShown(p,view,me);b.help.visible=help;if(help){this.help.add(p.id);const d=camera?camera.position.distanceTo(_at.set(pos.x,2.6,pos.z)):12,w=helpWidth(d);
+   // The SVG compatibility path draws sprites as plain rectangles: no bubble there (the label and HUD remain).
+   const help=helpShown(p,view,me)&&!compatibility;b.help.visible=help;if(help){this.help.add(p.id);const d=camera?camera.position.distanceTo(_at.set(pos.x,2.6,pos.z)):12,w=helpWidth(d);
     b.help.scale.set(w,w*DOWNED.help.aspect,1);b.help.position.y=DOWNED.help.bottom+.06*w+helpBob(t,p.id);b.help.material.rotation=.07*Math.sin(t*2.3+p.id.length);}}
   for(const [id,b] of this.pool)if(!this.states.has(id))b.group.visible=false;
  }

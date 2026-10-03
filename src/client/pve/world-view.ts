@@ -51,7 +51,7 @@ export class WorldView {
   this.build();this.group.visible=true;const t=state.time;
   this.machines!.update(view,t,ctx.me);this.pickups!.update(view,t,ctx.me);
   this.holograms!.update(state,view,ctx.me,ctx.camera,ctx.rigs,this.hitAt);this.tags!.update(state,view,ctx.me,ctx.camera,ctx.rigs);
-  this.beacons!.update(state,view,ctx.me,ctx.camera);this.downed.update(state,view,ctx);this.boss!.update(state.players,view,t,ctx.quality);
+  this.beacons!.update(state,view,ctx.me,ctx.camera,ctx.compatibility);this.downed.update(state,view,ctx);this.boss!.update(state.players,view,t,ctx.quality);
   this.updateShells(state,view);this.updateBeams(state,ctx);this.updateAuras(state,view);
  }
  /** Per player rig after its animation: grown boss scale, recruit step-out, choosing pose. false hides the rig. */

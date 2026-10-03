@@ -112,7 +112,8 @@ function scenario(t:number):Frame{
  if(kind==='beacon'){
   const ids=[ME,'down','reviving','self','medic'];const w=base(t,ids);w.party=fixtureParty({time:t,ids,kinds:['alive','dead','dead','self-reviving','alive']});
   w.party.self.downAt=t-2;w.party.self.selfReviveAt=t+3;
-  const dead=(id:string,x:number)=>player(id,'#3fc6ff',stand(x,0),0,{hp:0,death:{id:'d-'+id,at:t-3,pos:stand(x,0)} as never});
+  // Complete death records (kept bodies are real ragdolls, pve/downed.ts); a fixed death time so the bodies are settled.
+  const dead=(id:string,x:number)=>player(id,'#3fc6ff',stand(x,0),0,{hp:0,death:{id:'d-'+id,at:-6,effect:'impact-ragdoll',seed:7+x,pos:stand(x,0),velocity:{x:0,y:0,z:-.6},direction:{x:0,y:0,z:-1},source:null,kind:'environment',yaw:0}});
   const players=[dead('down',-3),dead('reviving',0),dead('self',3),player('medic','#7dffb0',stand(-.9,1),Math.PI*.8),player(ME,'#cccccc',stand(0,30),0)];
   return {players,view:w};}
  if(kind==='downed'){
@@ -169,7 +170,7 @@ function cameraFor(view:string):[number[],number[]]{
  return [[0,46,30],[0,0,2]];
 }
 async function main(){
- if(kind==='downed')await initPhysics();
+ await initPhysics();
  const gl=new T.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});gl.setPixelRatio(1);gl.setSize(cellW,cell);gl.shadowMap.enabled=true;gl.shadowMap.type=T.PCFSoftShadowMap;
  gl.outputColorSpace=T.SRGBColorSpace;gl.toneMapping=T.ACESFilmicToneMapping;gl.toneMappingExposure=.92;
  const defaults:Record<string,string>={overview:'overview',dispense:'machine',recruit:'machine',pickups:'pickups',entries:'entry',holo:'holo',beacon:'beacon',boss:'boss',possess:'possess',downed:'downed,downed-wide'};

@@ -257,7 +257,7 @@ export class DownedBodies{
    if(r&&r.upAt!==upAt){this.finish(r);r=undefined;}
    // Start once the presented clock has passed upAt: interpolated positions then show where the member came back
    // (in place, or on a pad). Until then the kept body stays as it lies and the live rig stays hidden.
-   if(!r&&t-upAt<DOWNED.settle)continue;
+   if(!r&&t-upAt<DOWNED.settle-1e-6)continue;
    if(!r){r=this.start(p,upAt,state,ctx);if(!r)continue;}
    this.step(r,p,age,state,ctx);}
   for(const [id,r] of this.regens)if(!live.has(id))this.finish(r);

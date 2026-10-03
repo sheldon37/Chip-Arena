@@ -50,13 +50,13 @@ function death(id:string,at:number,kind:keyof typeof CASES,pos=at0,effect='impac
 class Frame{
  scene=new T.Scene();deaths=new DeathEffects(this.scene);pve=new PveVisuals(this.scene);layer=new BodyWounds(this.scene);rigs=new Map<string,CharacterRig>();
  camera=new T.PerspectiveCamera();bursts=0;shown=new Map<string,boolean>();
- constructor(){this.camera.position.set(0,4,12);}
+ constructor(readonly quality=1,readonly compatibility=false){this.camera.position.set(0,4,12);}
  run(state:Snapshot,me='me'){
   for(const p of state.players){let r=this.rigs.get(p.id);if(!r){r=createCharacterRig(p.color);this.scene.add(r.group);this.rigs.set(p.id,r);}
    r.group.visible=p.hp>0;const pos=p.death&&p.hp<=0?p.death.pos:p.pos;r.group.position.set(pos.x,pos.y,pos.z);r.group.rotation.y=p.yaw;
    animateCharacter(r,p,p.death&&p.hp<=0?p.death.at:state.time,1/60);if(r.group.visible)r.group.visible=this.pve.decoratePlayer(r,p,state);this.shown.set(p.id,r.group.visible);}
-  this.layer.update(state,this.rigs,{quality:1,dt:1/60});this.deaths.update(state,this.rigs,1);
-  this.pve.update(state,{camera:this.camera,me,dt:1/60,quality:1,compatibility:false,replay:false,rigs:this.rigs,burst:()=>{this.bursts++;}});
+  this.layer.update(state,this.rigs,{quality:this.quality,dt:1/60});this.deaths.update(state,this.rigs,this.quality);
+  this.pve.update(state,{camera:this.camera,me,dt:1/60,quality:this.quality,compatibility:this.compatibility,replay:false,rigs:this.rigs,burst:()=>{this.bursts++;}});
  }
  named(name:string){const out:T.Object3D[]=[];this.scene.traverse(o=>{if(o.name===name)out.push(o);});return out;}
  get keeper(){return downedBodies(this.scene);}
@@ -208,4 +208,27 @@ test('the Siren crush keeps its headless victim lying (not burned away) and rege
  const up=30,alive=pilot('p2',{hp:50,pos:{x:d.pos.x,y:.86,z:d.pos.z}}),at=(age:number)=>{const v1=view(up+age,['me','p2'],['alive','alive']);v1.party.p2.upAt=up;return snap(up+age,v1,[me,alive]);};
  f.run(at(0));f.run(at(DOWNED.settle));const r=f.keeper.regen('p2')!;assert.equal(r.mode,'place');assert.ok(r.voxels>20,'head voxels');
  for(let k=0;k<=14;k++)f.run(at(k/10));f.run(at(REGEN_SECONDS+.01));assert.equal(f.named('siren-crush').length,0);assert.deepEqual(f.keeper.stats(),{regens:[],waiting:[],draws:0});
+});
+
+test('budgets: four members regenerate at once within two draws each and the voxel caps; kept bodies never starve other deaths; low quality and the SVG path',()=>{
+ const ids=['me','p2','p3','p4','party-bot-1'],xs=[-4,-1.3,1.3,4],downs=ids.slice(1).map((id,i)=>pilot(id,{hp:0,death:death(id,5,i%2?'arm':'decap',v(xs[i],.85,0))}));
+ const recruit=pilot('recruit-1',{hp:0,death:death('recruit-1',29.9,'torso',v(0,.85,4))}),me=pilot('me',{pos:{x:0,y:.86,z:8}});
+ for(const [quality,compatibility] of [[1,false],[.3,false],[1,true]] as const){
+  const f=new Frame(quality,compatibility),kinds:PartyRowKind[]=['alive','dead','dead','dead','bot'];
+  for(let k=0;k<5;k++)f.run(snap(30+k/60,view(30+k/60,ids,kinds),[me,...downs,recruit]));
+  assert.equal(f.named('ragdoll').length,5,'four kept bodies plus the recruit\'s ordinary death');
+  assert.equal(f.named('pve-help').filter(s=>s.visible).length,compatibility?0:4,'HELP bubbles (none as sprite rectangles on the SVG path)');
+  // Everybody back up in place at t=40.
+  const at=(age:number)=>{const v1=view(40+age,ids,['alive','alive','alive','alive','bot']);for(const id of ids.slice(1))v1.party[id].upAt=40;
+   return snap(40+age,v1,[me,...downs.map(p=>pilot(p.id,{hp:50,pos:{x:p.death!.pos.x,y:.86,z:p.death!.pos.z}}))]);};
+  f.run(at(0));f.run(at(DOWNED.settle));const stats=f.keeper.stats();assert.equal(stats.regens.length,4);
+  const holo=f.named('pve-regen-holo') as T.InstancedMesh[];
+  if(compatibility){assert.equal(holo.length,0,'no instanced hologram on the SVG path');assert.equal(stats.draws,0);}
+  else{assert.ok(holo.length<=8&&stats.draws<=8,'at most two draws per regeneration');const cap=quality<.5?DOWNED.voxels.low:DOWNED.voxels.high;
+   for(const id of ids.slice(1)){const r=f.keeper.regen(id)!;assert.ok(r.voxels>0&&r.voxels<=cap,`${id} voxels ${r.voxels} ≤ ${cap}`);}
+   for(const h of holo)assert.equal((h.material as T.Material).depthWrite,false);}
+  for(let k=1;k<=14;k++)f.run(at(k/10));f.run(at(REGEN_SECONDS+.02));
+  assert.deepEqual(f.keeper.stats(),{regens:[],waiting:[],draws:0});assert.equal(f.named('pve-regen-holo').length,0);
+  for(const id of ids.slice(1))assert.equal(f.shown.get(id),true,'everybody stood up');
+ }
 });
