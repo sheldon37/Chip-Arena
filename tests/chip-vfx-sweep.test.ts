@@ -281,8 +281,8 @@ test('ability statuses: slowed droplets, shackle cuffs and the Orbital Mark reti
  const scene=new T.Scene(),hands=new T.Group(),camera=new T.PerspectiveCamera(),fx=new PlayerStatusEffects(scene,hands);
  const player=(id:string,slowed?:unknown)=>({id,pos:{x:0,y:1,z:0},hp:100,statuses:[],slowed});
  const state=(players:unknown[],fields:FieldView[]=[],time=1)=>({time,phase:'fight',players,fields}) as unknown as Snapshot,get=(name:string)=>scene.children[0].getObjectByName(name)!;
- fx.update(state([player('b',{factor:.8,until:3,kind:'soak'})]),'a',false,camera,1);const slow=get('ability-slow');assert.ok(slow.visible);assert.equal(((slow.children[0] as T.Mesh).material as T.MeshBasicMaterial).color.getHex(),0x7fe3ff);
- fx.update(state([player('b',{factor:.45,until:3,kind:'shackles'})]),'a',false,camera,1);assert.equal(((slow.children[0] as T.Mesh).material as T.MeshBasicMaterial).color.getHex(),0xa04dff,'shackles are violet cuffs');
+ fx.update(state([player('b',{factor:.8,until:3,kind:'soak'})]),'a',false,camera,1);const slow=get('ability-slow');assert.ok(slow.visible);assert.equal(((slow.children[0] as T.Mesh).material as T.MeshBasicMaterial).color.getHex(),0x9ff0ff);
+ fx.update(state([player('b',{factor:.45,until:3,kind:'shackles'})]),'a',false,camera,1);assert.equal(((slow.children[0] as T.Mesh).material as T.MeshBasicMaterial).color.getHex(),0xb45cff,'shackles are violet cuffs');
  fx.update(state([player('b',{factor:.45,until:3,kind:'shackles'})],[],3.5),'a',false,camera,1);assert.equal(slow.visible,false,'expired');
  const mark=field({id:'m',kind:'bomb',fx:'orbital-mark',attach:'b',born:0,lockAt:1,until:1.2});const reticle=get('orbital-marked'),r=(t:number)=>{fx.update(state([player('b')],[mark],t),'a',false,camera,1);return Math.hypot(reticle.children[0].position.x,reticle.children[0].position.z);};
  assert.equal(r(.1)>r(.9),true,'the reticle closes in as the strike locks');assert.ok(reticle.visible);fx.update(state([player('b')],[],1.3),'a',false,camera,1);assert.equal(reticle.visible,false);

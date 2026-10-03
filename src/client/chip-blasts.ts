@@ -204,7 +204,7 @@ export class ChipBlasts{
   const rate=fused?40:fx==='singularity'?70:({storm:9,acid:36,fire:64,frost:26,time:14,'black-hole':50,repulsion:18,heal:20,implosion:40,bomb:10,mine:6} as Record<string,number>)[f.kind]??0;if(!rate)return;
   const rnd=this.random,R=f.radius,ground=Math.max(.03,f.pos.y-.95),at={x:f.pos.x,y:ground+.95,z:f.pos.z},kind=f.kind,style=kind==='bomb'||kind==='mine'?blastStyle(fx||kind):kind==='storm'?'shock':kind==='acid'||kind==='heal'?'toxic':kind==='frost'||kind==='time'?'frost':kind==='implosion'||fx==='singularity'?'implosion':kind==='black-hole'?'void':kind==='repulsion'?'mine':'fire',pal={...PALETTE[style],...blastTint(fx)};
   if(fx==='orbital-mark'&&time>=(f.lockAt??1e9)&&!this.locked.has(f.id)){this.locked.add(f.id);this.impact(at,R,pal.core,{quality:q,ground:true,cool:pal.cool});this.flash(at,pal.hot,R,8,.3,compat,q);}
-  const last=this.fieldClock.get(f.id);if(last===undefined||time<last){this.fieldClock.set(f.id,time);if(last===undefined&&!fused&&time-f.born<.3)this.impact(at,R,pal.hot,{quality:q*.7,compat,ground:true,cool:pal.cool});return;}
+  const last=this.fieldClock.get(f.id);if(last===undefined||time<last){this.fieldClock.set(f.id,time);if(last===undefined&&!fused&&time-f.born<.3){if(kind==='implosion')this.inward(at,R,4+Math.round(24*q),pal.hot,pal.core,.5,0,.3);else this.impact(at,R,pal.hot,{quality:q*.7,compat,ground:true,cool:pal.cool});}return;}
   const due=Math.min(6,Math.floor((time-last)*rate*q));if(due<=0)return;this.fieldClock.set(f.id,last+due/(rate*q));
   const spot=()=>{const a=rnd()*Math.PI*2,r=Math.sqrt(rnd())*R*.95;return {x:f.pos.x+Math.cos(a)*r,z:f.pos.z+Math.sin(a)*r,a,r};},left=f.until-time,u=Math.max(0,Math.min(1,(time-f.born)/Math.max(.01,f.until-f.born)));
   for(let k=0;k<due;k++){

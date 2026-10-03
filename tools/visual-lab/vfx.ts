@@ -23,6 +23,7 @@ const P=v(0,1,4);
 const SCENARIOS:Record<string,{chips?:Record<string,number>;spec?:string;run:(s:Sim,a:P,b:P)=>void;note:string;later?:[number,(s:Sim,a:P,b:P)=>void][]}>={
  bomb:{note:'Wait For It (4 m chaos bomb)',chips:{'delayed-gratification':1},run:(s,a)=>{s.chaos.field(a,'bomb',P,4,.02,48);}},
  mine:{note:'Mine Sweeper ring (2.3 m mines)',chips:{'cluster-mine':1},run:(s,a,b)=>{s.chaos.mineRing(a,P);for(const f of s.chaos.fields.values())f.arm=-1;b.body.setTranslation(add(P,v(1.6,0,0)),true);}},
+ reverse:{note:'Reverse Grenade at its real 0.9 s mark',chips:{'implosion-bomb':1},run:(s,a)=>{s.chaos.field(a,'implosion',P,4,.9,30,undefined,'implosion-bomb');}},
  implosion:{note:'Reverse Grenade (4 m implosion)',chips:{'implosion-bomb':1},run:(s,a)=>{s.chaos.field(a,'implosion',P,4,.25,30);}},
  artillery:{note:'Meteor Shower (3 × 2.8 m)',chips:{artillery:1},run:(s,a,b)=>{s.chaos.direct(a,b,P,v(0,0,1),'lab-art');}},
  thunder:{note:'Thunder Step (4 m strike)',chips:{thunderstep:1},run:(s,a)=>{s.chaos.dash(a,P);}},
