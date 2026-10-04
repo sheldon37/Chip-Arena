@@ -56,6 +56,7 @@ export const ADD_KINDS_ORDER:readonly AddKind[]=['shambler','runner','brute'];
 export const ADD_STATES_ORDER:readonly AddState[]=['entering','active','crawl','stagger','vent','dead'];
 export const ADD_ATTACKS_ORDER:readonly AddAttack[]=['swipe','lunge','smash'];
 
+export interface AddStatusInput{burn?:number; poison?:number; slow?:{factor:number; seconds:number}}
 export interface AddHitInfo{point?:Vec; kind?:'bullet'|'cut'|'pierce'|'blunt'|'blast'|'energy'|'field'; radius?:number; headshot?:boolean; melee?:boolean}
 export interface PveCinematic{kind:CinematicKind; at:number; until:number; chip?:1|2|3|4; smileUntil?:number; outcome?:PveOutcome}
 export interface PveBossView{id:string; phase:1|2|3|4; floor:number; hidden?:boolean; possessed?:number; possessedAt?:number; foundAt?:number}
@@ -74,7 +75,10 @@ export type PveAddTuple=[n:number,x:number,y:number,z:number,yaw:number,vx:numbe
  spawnAt:number,attackAt:number,hitAt:number,hitYaw:number,deathAt:number,diveAt:number];
 export interface PveAddView{n:number; id:string; pos:Vec; yaw:number; vel:{x:number;z:number}; hp:number /*0..1*/;
  kind:AddKind; state:AddState; attack:AddAttack; side:1|-1; lost:number; entry:number /*-1 none*/; headless:boolean;
- target?:string; spawnAt?:number; attackAt?:number; hitAt?:number; hitYaw?:number; deathAt?:number; diveAt?:number}
+ target?:string; spawnAt?:number; attackAt?:number; hitAt?:number; hitYaw?:number; deathAt?:number; diveAt?:number;
+ /** Weapon statuses, ADD_STATUS bits (flags bits 26-28; omitted when none). */ st?:number}
+/** PveAddView.st bits: burning, poisoned, slowed. */
+export const ADD_STATUS={burn:1,poison:2,slow:4} as const;
 
 const r2=(n:number)=>Math.round((Number.isFinite(n)?n:0)*100)/100, r1=(n:number)=>Math.round((Number.isFinite(n)?n:0)*10)/10;
 const idx=<T>(list:readonly T[],value:T)=>Math.max(0,list.indexOf(value));
@@ -83,7 +87,7 @@ const idx=<T>(list:readonly T[],value:T)=>Math.max(0,list.indexOf(value));
 export function encodeAdd(a:PveAddView,slots:readonly string[]):PveAddTuple{
  const slot=a.target===undefined?-1:slots.indexOf(a.target),entry=Math.max(-1,Math.min(30,Math.floor(a.entry)));
  const flags=(a.lost&0x1FF)|idx(ADD_KINDS_ORDER,a.kind)<<9|idx(ADD_STATES_ORDER,a.state)<<11|idx(ADD_ATTACKS_ORDER,a.attack)<<14|
-  (a.side===-1?1:0)<<16|(entry+1)<<17|(a.headless?1:0)<<22|(slot>=0&&slot<7?slot+1:0)<<23;
+  (a.side===-1?1:0)<<16|(entry+1)<<17|(a.headless?1:0)<<22|(slot>=0&&slot<7?slot+1:0)<<23|((a.st??0)&7)<<26;
  return [a.n,r2(a.pos.x),r2(a.pos.y),r2(a.pos.z),r2(a.yaw),r1(a.vel.x),r1(a.vel.z),Math.max(0,Math.min(100,Math.round(a.hp*100))),flags,
   r2(a.spawnAt??0),r2(a.attackAt??0),r2(a.hitAt??0),r1(a.hitYaw??0),r2(a.deathAt??0),r2(a.diveAt??0)];
 }
@@ -92,6 +96,7 @@ export function decodeAdd(t:PveAddTuple,slots:readonly string[]):PveAddView{
  const view:PveAddView={n:t[0],id:ADD_PREFIX+t[0],pos:{x:t[1],y:t[2],z:t[3]},yaw:t[4],vel:{x:t[5],z:t[6]},hp:t[7]/100,
   kind:ADD_KINDS_ORDER[f>>>9&3]??'shambler',state:ADD_STATES_ORDER[f>>>11&7]??'active',attack:ADD_ATTACKS_ORDER[f>>>14&3]??'swipe',
   side:(f>>>16&1)?-1:1,lost:f&0x1FF,entry:(f>>>17&31)-1,headless:!!(f>>>22&1)};
+ if(f>>>26&7)view.st=f>>>26&7;
  if(slot>=0&&slots[slot]!==undefined)view.target=slots[slot];
  const spawnAt=opt(t[9]),attackAt=opt(t[10]),hitAt=opt(t[11]),deathAt=opt(t[13]),diveAt=opt(t[14]);
  if(spawnAt!==undefined)view.spawnAt=spawnAt;if(attackAt!==undefined)view.attackAt=attackAt;if(hitAt!==undefined){view.hitAt=hitAt;view.hitYaw=t[12];}
@@ -183,6 +188,8 @@ export interface HordeApi{
  setFlow(flow:HordeFlow|null):void; spawn(kind:AddKind,opts?:{entry?:number;possessed?:boolean}):number|null;
  possess():number|null; possessed():number|undefined;
  hit(m:Minion,damage:number,attacker:string,impulse:number,dir:Vec,hit?:AddHitInfo):void;
+ /** Weapon statuses on an active add (burn/poison DoT dps, slow); false when the add cannot take them. */
+ status?(m:Minion,source:string,s:AddStatusInput):boolean;
  assistMinion(m:Minion,owner:Player,dt:number):void;
  step(dt:number):void; freeze():void; onHold(active:boolean):void; shift(dt:number):void;
  killAll(cause:'boss-dead'|'defeat'):void; rekey(from:string,to:string):void;

@@ -16,6 +16,8 @@ import {createSirenMinion,animateSirenMinion,prewarmSirenMinions,setSirenMinionD
 import {possessHint,hintLevel} from '../siren/minions/hints.js';
 import {ImpostorBatch,addGround,type ImpostorView} from './impostors.js';
 import {HordeGore} from './gore.js';
+import {StatusRig} from '../status-effects.js';
+import {ADD_STATUS} from '../../shared/pve/contract.js';
 
 /** Crowd LOD policy (design §10.6; mirrored in docs/PVE.md). */
 export const HORDE_RENDER={maxRigs:{quality:24, performance:16, compatibility:6},
@@ -29,6 +31,8 @@ export type HordeGraphics='auto'|'high'|'performance';
 export const hordeMode=(compatibility:boolean,graphics:HordeGraphics):HordeMode=>compatibility?'compatibility':graphics==='performance'?'performance':'quality';
 /** Seconds a hidden (out of band) rig is kept for reuse before it is disposed. */
 const SPARE_SECONDS=3;
+/** Most adds drawn with status effects at once. */
+const STATUS_RIGS=16;
 /** Vent pit half size (m): the edge an add climbs over, measured from the vent centre (siren/stage.ts grate). */
 export const VENT_EDGE=1.08;
 const KIND_OPTIONS:Record<PveAddView['kind'],MinionOptions>={shambler:{},runner:{scrap:'none'},brute:{scrap:'pipe',hunch:.55}};
@@ -48,6 +52,7 @@ export class HordeView {
  readonly gore:HordeGore;readonly impostors:ImpostorBatch;
  private rigs=new Map<number,Rig>();private memo=new Map<number,Memo>();private warm=false;private frame=0;private last=NaN;
  private marker:T.Sprite;private quality=1;private burst:PveVisualsContext['burst']=()=>{};
+ private statusRigs=new Map<number,StatusRig>();
  private stats={fullRigs:0,nearImpostors:0,adds:0,impostors:0,hidden:0,pending:0};
  constructor(readonly scene:T.Scene){
   // Nothing joins the scene until the first PvE frame (a PvP scene stays untouched); clear() takes it all out again.
@@ -100,9 +105,21 @@ export class HordeView {
    if(mode==='compatibility'||i.dist>HORDE_RENDER.impostorRadius){hidden++;continue;}
    if(this.impostors.add(this.impostorView(i,t),t)&&i.possessed){this.marker.visible=true;this.marker.position.set(i.pos.x,i.ground+1.9+.06*Math.sin(t*5),i.pos.z);this.marker.material.opacity=.6+.25*Math.sin(t*7.3);}}
   this.impostors.end();
+  this.statuses(items,drawn,t,ctx,mode);
   this.gore.update(t,dt);
   this.stats={fullRigs:shownRigs,nearImpostors,adds:items.length,impostors:this.impostors.adds,hidden,pending};
  }
+ /** Weapon statuses on adds (flames, poison bubbles, slow droplets; the player StatusRig), nearest first, at most STATUS_RIGS. */
+ private statuses(items:Item[],drawn:Set<number>,t:number,ctx:PveVisualsContext,mode:HordeMode){
+  const want=items.filter(i=>i.v.st&&i.v.deathAt===undefined&&(drawn.has(i.n)||mode!=='compatibility'&&i.dist<=HORDE_RENDER.impostorRadius)).sort((a,b)=>a.dist-b.dist).slice(0,STATUS_RIGS),keep=new Set<number>();
+  for(const i of want){let r=this.statusRigs.get(i.n);if(!r){r=new StatusRig();r.root.name='pve-add-status';this.statusRigs.set(i.n,r);this.scene.add(r.root);}keep.add(i.n);
+   const st=i.v.st!,statuses=[...(st&ADD_STATUS.burn?[{element:'fire' as const,dps:1,remaining:1}]:[]),...(st&ADD_STATUS.poison?[{element:'poison' as const,dps:1,remaining:1}]:[])];
+   r.root.position.set(i.pos.x,i.ground+(i.v.state==='crawl'?.35:.85),i.pos.z);r.root.visible=true;
+   r.update(statuses,t,ctx.camera,ctx.quality,true,st&ADD_STATUS.slow?{slowed:{factor:.6,until:t+1,kind:'add-slow'}}:{});}
+  for(const [n,r] of [...this.statusRigs])if(!keep.has(n)){r.root.removeFromParent();this.statusRigs.delete(n);}
+ }
+ /** Burning/poisoned/slowed adds with a status rig (tests). */
+ statusCount(){return this.statusRigs.size;}
  /** Every new snapshot event (pve-gib: ink spray, a black-flame puff and a tumbling limb chunk). */
  event(e:GameEvent,_state:Snapshot,_view:PveView){
   if(e.type===PVE_EVENT.gib)this.gore.gib({pos:e.pos,from:e.from,message:e.message,time:e.time,target:e.target},this.quality,this.burst);
@@ -119,7 +136,7 @@ export class HordeView {
  /** The full rig of add n, if it has one (tests, lab). */
  rigOf(n:number){const r=this.rigs.get(n);return r?.shown?r.m:undefined;}
  /** Remove everything from the scene (PvE ended or snapshot without pve). */
- clear(){for(const r of [...this.rigs.values()])this.dispose(r);this.memo.clear();this.impostors.begin();this.impostors.end();this.gore.clear();this.marker.visible=false;this.last=NaN;
+ clear(){for(const r of [...this.rigs.values()])this.dispose(r);for(const r of this.statusRigs.values())r.root.removeFromParent();this.statusRigs.clear();this.memo.clear();this.impostors.begin();this.impostors.end();this.gore.clear();this.marker.visible=false;this.last=NaN;
   for(const o of [this.impostors.mesh,this.gore.flames.mesh,this.gore.chunks,this.marker])o.removeFromParent();
   this.stats={fullRigs:0,nearImpostors:0,adds:0,impostors:0,hidden:0,pending:0};}
 

@@ -1,9 +1,10 @@
 // Ability HUD contract (design §3.15; FOUNDATION minimal markup, PRESENTATION styles it). Pure functions of the snapshot.
-import {abilityClient,kitFor,abilityActive,abilityCooldown,abilityCost,maxCharges,adsProfile,adsSettle,type HostCaps,type AdsProfile} from '../shared/abilities.js';
+import {HOLD_AIM_SECONDS,abilityClient,kitFor,abilityActive,abilityCooldown,abilityCost,maxCharges,adsProfile,adsSettle,type HostCaps,type AdsProfile} from '../shared/abilities.js';
 import {clamp,type SpecId} from '../shared/config.js';
 import {statsFor,WEAPONS} from '../shared/content.js';
 import type {PlayerView,Snapshot} from '../shared/simulation.js';
-export interface AbilitySlotView{key:'Q'|'E';name:string;short:string;mode:'hold'|'press';state:'ready'|'cooldown'|'active'|'casting'|'nomana';
+import {holdAimE} from './aim-hold.js';
+export interface AbilitySlotView{/** Hold-to-aim E (shows HOLD TO AIM while ready). */aim?:boolean;key:'Q'|'E';name:string;short:string;mode:'hold'|'press';state:'ready'|'cooldown'|'active'|'casting'|'nomana';
  remaining:number;max:number;fraction:number;cost?:number;affordable:boolean;charges?:{n:number;max:number};steady?:boolean}
 /** Q and E cards for a non-DEV ranged/magic pilot on a capable host; [] otherwise (main.ts keeps the legacy E card). */
 export function abilitySlots(me:PlayerView,time:number,caps:HostCaps|null|undefined):AbilitySlotView[]{
@@ -15,15 +16,17 @@ export function abilitySlots(me:PlayerView,time:number,caps:HostCaps|null|undefi
  if(kit.q.kind==='ads'&&kit.ads)out.push({key:'Q',name:kit.q.name,short:kit.q.short,mode:'hold',state:me.adsSince!==undefined?'active':'ready',remaining:0,max:0,fraction:1,affordable:true,steady:adsSettle(me,me.spec,time)>=1});
  else if(abilityActive(me.spec,'q'))out.push(card('Q',kit.q.name,kit.q.short,me.abilityCd??0,abilityCooldown(kit.q,stats),abilityCost(kit.q,stats)));
  if(me.chips.necronomicon&&magic)out.push(card('E','Raise the Dead','RAISE THE DEAD',me.secondaryCd,10,35));
- else if(abilityActive(me.spec,'e')){const max=maxCharges(stats);out.push(card('E',kit.e.name,kit.e.short,me.secondaryCd,abilityCooldown(kit.e,stats),abilityCost(kit.e,stats),max>1?{n:me.eCharges??max,max}:undefined));}
+ else if(abilityActive(me.spec,'e')){const max=maxCharges(stats);out.push({...card('E',kit.e.name,kit.e.short,me.secondaryCd,abilityCooldown(kit.e,stats),abilityCost(kit.e,stats),max>1?{n:me.eCharges??max,max}:undefined),...(holdAimE(caps,me.spec)?{aim:true}:{})});}
  else out.push(card('E','Special','SPECIAL',me.secondaryCd,w.secondaryCooldown,0));
  return out;
 }
 /** `.cooldown.ability` cards: `--p` is the recharge fraction and `data-state` the slot state. '' when there are no slots. */
-export function abilitySlotsHtml(slots:AbilitySlotView[]){return slots.map(s=>{const label=s.mode==='hold'?s.state==='active'?s.steady?'STEADY':'AIMING':'HOLD':s.state==='casting'?'CASTING':s.state==='nomana'?'NO MANA':s.state==='cooldown'?s.remaining.toFixed(1)+'s':'READY';
+export function abilitySlotsHtml(slots:AbilitySlotView[]){return slots.map(s=>{const label=s.mode==='hold'?s.state==='active'?s.steady?'STEADY':'AIMING':'HOLD':s.state==='casting'?'CASTING':s.state==='nomana'?'NO MANA':s.state==='cooldown'?s.remaining.toFixed(1)+'s':s.aim?'READY · HOLD TO AIM':'READY';
  return `<div class="cooldown ability" data-slot="${s.key}" data-state="${s.state}" style="--p:${s.fraction.toFixed(3)}"><small>${s.key} · ${s.short}</small><strong class="${s.state==='ready'||s.state==='active'?'ready':''}">${label}${s.charges?` <b class="pips">${'◆'.repeat(s.charges.n)}${'◇'.repeat(Math.max(0,s.charges.max-s.charges.n))}</b>`:''}</strong>${s.cost?`<small>${Math.round(s.cost)} mana</small>`:''}</div>`;}).join('');}
-/** Ground preview while the live point E is ready or casting (not Necronomicon's Raise the Dead). */
-export function previewOn(me:PlayerView,time:number,caps:HostCaps|null|undefined){const e=abilitySlots(me,time,caps).find(s=>s.key==='E');return !!e&&!me.chips.necronomicon&&abilityActive(me.spec,'e')&&(e.state==='ready'||e.state==='casting');}
+/** Ground preview while the live point E is ready or casting (not Necronomicon's Raise the Dead). On a hold-to-aim host only
+ *  once E has been held HOLD_AIM_SECONDS (`heldFor`, seconds); old hosts cast on press and keep the always-on preview. */
+export function previewOn(me:PlayerView,time:number,caps:HostCaps|null|undefined,heldFor=Infinity){const e=abilitySlots(me,time,caps).find(s=>s.key==='E');
+ return !!e&&!me.chips.necronomicon&&abilityActive(me.spec,'e')&&(e.state==='ready'||e.state==='casting')&&(!holdAimE(caps,me.spec)||heldFor>=HOLD_AIM_SECONDS);}
 /** Q-held aim (§4.3): the spec's ADS profile on a capable host; without caps only today's rifle scope (FOV 28, ×.36). */
 export interface AimState{scoped:boolean;profile:AdsProfile|null;sens:number}
 export function aimState(caps:HostCaps|null|undefined,spec:SpecId|undefined,held:boolean):AimState{

@@ -31,7 +31,9 @@ function game(spec:SpecId='pistol',chips:Record<string,number>={}){
  a.body.setTranslation(v(0,.9,0),true);b.body.setTranslation(v(0,.9,7),true);s.world.step();for(const p of [a,b]){p.grounded=true;p.inputAt=s.time;}return {s,a,b};
 }
 /** One tick with `a`'s input (others idle). */
-function tick(s:Simulation,a:Player,input:Partial<Input>={},seq={n:0}){s.setInput(a.id,{...idleInput(),seq:++seq.n+a.input.seq,yaw:a.input.yaw,pitch:a.input.pitch,...input});for(const p of s.players.values())p.inputAt=s.time;s.step();}
+function tick(s:Simulation,a:Player,input:Partial<Input>={},seq={n:0}){s.setInput(a.id,{...idleInput(),seq:++seq.n+a.input.seq,yaw:a.input.yaw,pitch:a.input.pitch,...input});for(const p of s.players.values())p.inputAt=s.time;s.step();
+ // Hold-to-aim (2026-10-04): an aimed E casts on release, so a scripted tap is press + release.
+ if(input.secondary&&s.abilities.holds(a,'e'))tick(s,a,{...input,secondary:false},seq);}
 const run=(s:Simulation,a:Player,n:number,input:Partial<Input>={})=>{for(let i=0;i<n;i++)tick(s,a,input);};
 /** A fake live handler for one kit def; returns the recorded release contexts. */
 function fake(spec:SpecId,slot:'q'|'e',extra:Partial<AbilityHandler>={}){const def=kitFor(spec)![slot];def.live=true;const calls:CastContext[]=[];ABILITY_HANDLERS[def.id]={release:(_sys,ctx)=>{calls.push(ctx);},...extra};return {def,calls};}
@@ -61,9 +63,9 @@ test('PvE forced idle literal and Block clear the ability bit',async()=>{
 // ---- capability flag ------------------------------------------------------------------------------------------------
 test('caps: every host path advertises abilities in welcome; abilityClient truth table',async()=>{
  const sent:{target:string;message:any}[]=[];const room=new HostedRoom('ABCDEFGH',{name:'Host',class:'ranged',color:'#ffffff'},false,(target,message)=>sent.push({target,message}));
- try{room.welcome('host');assert.ok(room.join({name:'Guest',class:'magic',color:'#00ff00'}));const welcomes=sent.filter(m=>m.message.type==='welcome');assert.equal(welcomes.length,2);for(const w of welcomes)assert.deepEqual(w.message.caps,{abilities:1});}finally{room.dispose();}
+ try{room.welcome('host');assert.ok(room.join({name:'Guest',class:'magic',color:'#00ff00'}));const welcomes=sent.filter(m=>m.message.type==='welcome');assert.equal(welcomes.length,2);for(const w of welcomes)assert.deepEqual(w.message.caps,{abilities:1,aimHold:1});}finally{room.dispose();}
  const server=await readFile('src/server/index.ts','utf8'),welcomes=server.match(/type:'welcome'[^}]*\}/g)!;assert.equal(welcomes.length,2,'rejoin and create/join');for(const w of welcomes)assert.match(w,/caps:HOST_CAPS/);
- assert.deepEqual(HOST_CAPS,{abilities:1});assert.equal(JSON.stringify({caps:HOST_CAPS}).length-2,22,'caps adds 22 chars to welcome');
+ assert.deepEqual(HOST_CAPS,{abilities:1,aimHold:1});assert.equal(JSON.stringify({caps:HOST_CAPS}).length-2,34,'caps adds 34 chars to welcome (hold-to-aim, 2026-10-04)');
  const users:SpecId[]=['pistol','rifle','machinegun','fire','water','lightning','darkness'],others:SpecId[]=['sword','daggers','shield','greatsword','emperor','ansatsuken','leet','siren'];
  for(const spec of users){assert.equal(abilityUser(spec),true,spec);assert.equal(abilityClient(HOST_CAPS,spec),true,spec);assert.equal(abilityClient({},spec),false,spec);assert.equal(abilityClient(undefined,spec),false,spec);assert.equal(abilityClient(null,spec),false,spec);}
  for(const spec of others){assert.equal(abilityUser(spec),false,spec);assert.equal(abilityClient(HOST_CAPS,spec),false,spec);}

@@ -61,6 +61,43 @@ containing an entry; no self-referential commit hash is required.
 - Next: owner review of intro look/feel and ADS feel at range; merge, then the standing test-channel publication.
 
 
+## 2026-10-04 — Claude — combat FX on extra projectiles, weapon effects on Siren adds, hold-to-aim
+
+- Branch `claude/combat-fx-fixes` from `origin/claude/visual-revision` `dcc7430`; no PR (owner merges).
+- Owner reports: impact effects missing on additional projectiles and capping out; weapon effects and
+  life steal missing on Siren minions; plus "remove the aim-circle … show it if we hold the button".
+- Root causes: projectile hits on adds emitted no `impact` event and applied no DoTs (adds had no status
+  state at all); chip extras (Backfire/Crossfire/Helix), and Orbitals were stripped of
+  burn/poison and never life-stole; Splitter never split on adds; add hit events above the 20/s per-attacker
+  bucket were silently dropped; the 180-spark impact pool dropped new impacts when full; melee/thrown add
+  hits and flame lance / water slows skipped adds.
+- Changes: shared on-hit for adds (`Simulation.minionWeaponHit/meleeHitMinion/addProcs`): DoTs, life steal,
+  Static/Vacuum/Shrapnel per direct attack, impact event per projectile, Splitter on adds. `weaponFx`
+  secondary shots keep the weapon DoTs + life steal (players and adds) but no chip procs. Horde: burn/poison
+  DoTs (elements.ts rules, credited to the source), slows (Tidal Wave, Shackles, Soak, Geyser Wall) and
+  enemy frost/time fields slow adds; over-bucket hits coalesce (flushed on a token, after 0.25 s or on death);
+  `PveAddView.st` status bits in flags bits 26-28 (tuple length unchanged); flame/bubble/droplet status rigs
+  on the nearest 16 adds. Spark pool recycles oldest. Hold-to-aim: Frag, Meteor, Geyser Wall, Black Hole cast
+  on key release for human pilots (tap = release cast; hold > 0.2 s shows the preview; roll/block/other
+  non-ADS ability cancels); bots, rocket and Orbital Mark (a dart, no preview) keep cast-on-press; host
+  advertises `caps.aimHold`, old hosts keep cast-on-press and the always-on circle; HUD "READY · HOLD TO AIM".
+- PvP impact: with Helix/Crossfire/Backfire/Orbitals, secondary shots now burn/poison and life-steal (Splitter
+  fragments still never reapply enchantments, per the existing pinned rule);
+  aimed E abilities cast on release. pvp-golden unchanged. Hit timing, hitboxes, damage values, cooldowns and
+  snapshot sizes unchanged; add movement is slower while slowed.
+- Checks (Linux, Node 22.22.2): `npm run check:types` passes; full unit suite 1152 tests, failures equal the
+  13 known Node 22 baseline names after fixing one regression found by it (Splitter fragments re-enchanting,
+  reverted); new `tests/combat-fx.test.ts` (projectile counts x impacts/heals/coalesced add hits for pistol/MG
+  multishot, rifle buckshot, water torrent; DoTs/slows on adds per path) and `tests/aim-hold.test.ts` (tap,
+  hold-release, block/roll cancel at 30/60/120 Hz, latest-input and relay-batch delivery; preview gating);
+  pvp-golden identical; `node tests/run-network.mjs pve` passes (victory, rejoin, old client refused). Visual
+  lab `tools/visual-lab/vfx.html?fx=multishot|buckshot` (Playwright/SwiftShader): sparks on every multishot hit.
+- Not run: native Windows/GPU, online multiplayer by hand, packaging; no test-channel publication from this
+  task branch (shared branch publication after approval/merge).
+- Risks/next: owner playtest of hold-to-aim feel (release latency ≈ one input frame) and add status visuals;
+  Orbital Mark kept press-cast (existing test pins it as a dart without ground preview).
+  Status: implemented on branch; not merged; not released.
+
 ## 2026-10-04 — Claude — ranged/magic Q+E ability overhaul integration (+ PvE downed, chip throw, update headroom)
 
 - Branch `claude/abil-integration` from foundation `claude/abil-foundation`; merges abil-guns, abil-magic, abil-chips,
