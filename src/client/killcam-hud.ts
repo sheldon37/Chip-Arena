@@ -21,7 +21,7 @@ export function killcamCause(kind:string){
  const words=kind.replace(/[-_]+/g,' ').replace(/([a-z])([A-Z])/g,'$1 $2').trim().toLowerCase();
  return words?words[0].toUpperCase()+words.slice(1):'Eliminated';
 }
-/** Seconds relative to the fatal hit: −2.0 counts down to the kill, then up to +4.0 through the aftermath. */
+/** Seconds relative to the fatal hit: −1.5 counts down to the kill, then up to +4.0 through the aftermath. */
 export function killcamClock(info:Readonly<KillcamInfo>){
  const d=info.time-info.at;return d<-.05?`−${Math.abs(d).toFixed(1)}s`:d>.05?`+${d.toFixed(1)}s`:'0.0s';
 }
