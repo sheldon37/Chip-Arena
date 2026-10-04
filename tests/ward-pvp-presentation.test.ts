@@ -12,6 +12,11 @@ import type {PveEntryView,PveView} from '../src/shared/pve/contract.js';
 import {SirenStageVisuals} from '../src/client/siren/index.js';
 import {VENT_SWING} from '../src/client/siren/stage.js';
 import {PveVisuals,type PveRigRef,type PveVisualsContext} from '../src/client/pve/visuals.js';
+import {prewarmSirenMinions} from '../src/client/siren/minions/index.js';
+import {PVE_ENTRIES} from '../src/shared/pve/layout.js';
+import {SIREN_VENTS} from '../src/shared/siren-stage-layout.js';
+const SIREN_VENTS_IDS=SIREN_VENTS.map((_,i)=>i);
+import {PVE_FIXTURES} from '../src/shared/pve/fixtures.js';
 import {promptFor} from '../src/client/pve/prompts.js';
 await initPhysics();
 
@@ -32,7 +37,7 @@ test('PvP snapshots announce every vent opening warn + lead early, one entry per
  }finally{s.dispose();}
 });
 
-test('the stage warns, then swings the lid ahead of the pit, from the PvP schedule; a sandbox PvE preview never freezes the vents; no adds',()=>{
+test('the stage warns, then swings the lid ahead of the pit, from the PvP schedule; a sandbox PvE preview never freezes the vents',()=>{
  const scene=new T.Scene(),camera=new T.PerspectiveCamera(60,16/9,.1,300),stage=new SirenStageVisuals(scene);stage.setActive(true);camera.position.set(0,3,0);
  const e:PveEntryView={e:0,openAt:20,closeAt:24.5,mode:'dive'},lid=scene.getObjectByName('ward-vent-0-lid')!,pit=scene.getObjectByName('ward-vent-0-pit')!;
  const rim=(scene.getObjectByName('ward-vent-0')!.children.find(o=>o instanceof T.Mesh&&o.geometry instanceof T.RingGeometry) as T.Mesh<T.BufferGeometry,T.ShaderMaterial>).material;
@@ -44,7 +49,6 @@ test('the stage warns, then swings the lid ahead of the pit, from the PvP schedu
  // The sandbox's downed/revive preview injects a PvE view (no entries) into a PvP snapshot: the vents keep animating.
  const preview=at(e.openAt+1,{pve:downView(e.openAt+1)},{map:'siren',sandbox:true,pve:{boss:'siren',seed:0}});assert.ok(preview.lid>VENT_SWING*.99&&preview.pit);
  const shut=at(e.closeAt+VENT_PIT.lead+.5);assert.ok(shut.lid<1e-6&&!shut.pit,'shut again after the opening');
- let rigs=0;scene.traverse(o=>{if(/^pve-add|horde/.test(o.name))rigs++;});assert.equal(rigs,0,'no add ever climbs out in PvP');
 });
 
 test('machines and their pads exist only in a real PvE run: hidden in PvP and in the sandbox previews, kept in PvE',()=>{
@@ -60,4 +64,32 @@ test('machines and their pads exist only in a real PvE run: hidden in PvP and in
   const state=(options:Record<string,unknown>)=>snap(5,{players:[me as never],pve:downView(5)},options);
   assert.equal(promptFor(state({map:'siren',sandbox:true,pve:{boss:'siren',seed:0}}),downView(5),'me'),null,m.kind);
   assert.notEqual(promptFor(state({map:'siren'}),downView(5),'me'),null,m.kind);}
+});
+
+test('no add climbs out of an opening Ward Zero vent in PvP: the same visuals that draw PvE climbers draw none without a PvE view',()=>{
+ while(!prewarmSirenMinions(50)){/* warm the shared layouts once */}
+ const scene=new T.Scene(),pve=new PveVisuals(scene),stage=new SirenStageVisuals(scene),c=ctx(),v0=PVE_ENTRIES[0];stage.setActive(true);
+ c.camera.position.set(v0.from.x+3,1.6,v0.from.z+3);c.camera.updateMatrixWorld();
+ const shown=(o:T.Object3D)=>{for(let x:T.Object3D|null=o;x;x=x.parent)if(!x.visible)return false;return !(o instanceof T.InstancedMesh)||o.count>0;};
+ const adds=()=>{let n=0;scene.traverse(o=>{if(/^pve-add/.test(o.name)&&shown(o))n++;});return n;};
+ const t=100;for(let k=0;k<10;k++){const s=snap(t+k/60,{pve:PVE_FIXTURES.entries({time:t+k/60,ids:['me']})},{map:'siren'});pve.update(s,c);stage.update(s,s.time,1,c.camera);}
+ assert.ok(adds()>0,'live check: PvE vent climbers are drawn');
+ const e:PveEntryView={e:0,openAt:t+1,closeAt:t+5.5,mode:'dive'};
+ for(let k=0;k<180;k++){const s=snap(t+1+k/60,{vents:[e]},{map:'siren'});pve.update(s,c);stage.update(s,s.time,1,c.camera);}
+ assert.ok(scene.getObjectByName('ward-vent-0-pit')!.visible,'the vent is open');assert.equal(adds(),0,'nothing climbs out in PvP');
+});
+
+test('online, the stage draws a vent from a snapshot it presents up to 0.35 s late: the lid never pops while the cycle rolls over',()=>{
+ const s=new Simulation({map:'siren',gameMode:'ffa'});s.addPlayer('a','A','ranged',null,'#fff');s.addPlayer('b','B','melee',null,'#eee');s.phase='fight';s.fightStart=s.time;
+ const scene=new T.Scene(),camera=new T.PerspectiveCamera(60,16/9,.1,300),stage=new SirenStageVisuals(scene);stage.setActive(true);camera.position.set(0,3,0);
+ const lids=SIREN_VENTS_IDS.map(i=>scene.getObjectByName('ward-vent-'+i+'-lid')!),last=lids.map(()=>NaN);
+ try{for(let i=0;i<60*26;i++){s.step();const snap=s.snapshot(),t=snap.time-.35;stage.update({...snap,time:t},t,1,camera);
+  lids.forEach((l,k)=>{const r=l.rotation.z;assert.ok(!(Math.abs(r-last[k])>=VENT_SWING*.2),`vent ${k} lid ${last[k].toFixed(2)} -> ${r.toFixed(2)} at ${t.toFixed(2)}`);last[k]=r;});}
+ }finally{s.dispose();}
+});
+
+test('a DEV fixture with entries keeps its own doors, cells and vents on Ward Zero; the PvP schedule only wins over an entry-less preview',()=>{
+ const scene=new T.Scene(),camera=new T.PerspectiveCamera(),stage=new SirenStageVisuals(scene);stage.setActive(true);camera.position.set(0,3,0);
+ const t=100,view=PVE_FIXTURES.entries({time:t,ids:['me']});stage.update(snap(t+.8,{pve:view,vents:[]},{map:'siren',sandbox:true}),t+.8,1,camera);
+ const vent=view.entries.find(e=>e.e<8)!;assert.ok(scene.getObjectByName('ward-vent-'+vent.e+'-lid')!.rotation.z>.5,'the fixture vent is open');
 });

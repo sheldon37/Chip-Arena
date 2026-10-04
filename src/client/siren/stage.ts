@@ -485,18 +485,23 @@ export class WardZeroVisuals {
  private ventGlow=new Map<string,number>();private ventWarn=new Map<string,number>();
  /** PvE entries: vent lids, door leaves and cell gates follow the authoritative entry times (pure in time); their alarms
   *  flash while open, and black smoke spills out as each one opens. Without PvE every entry rests in its PvP pose.
-  *  Ward Zero outside PvE (PvP, DEV sandbox): the authority's own `vents` schedule wins over any PvE view (only the sandbox's
-  *  downed/revive previews inject one there, with no entries). Each vent warns for VENT_PIT.warn s (rim fill, black wisps,
-  *  rattling lid), then its lid swings VENT_PIT.lead s ahead of the pit turning lethal (wardVentDrawn); no add ever climbs out. */
+  *  Ward Zero outside PvE (PvP, DEV sandbox): the authority's own `vents` schedule wins over a PvE view without entries (the
+  *  sandbox's downed/revive previews); a DEV fixture with entries keeps its own. Each vent warns for VENT_PIT.warn s (rim fill,
+  *  black wisps, rattling lid), then its lid swings VENT_PIT.lead s ahead of the pit turning lethal (wardVentDrawn); no add
+  *  ever climbs out. The last opening seen per vent keeps drawing its close after the snapshot drops it (an interpolated
+  *  view runs behind the newest snapshot). */
+ private wardSeen=new Map<number,PveEntryView>();
  private updateEntries(state:Snapshot,time:number,dt:number,q:number){
-  const view=pveOf(state),ward=state.vents,open=new Map<number,PveEntryView>();for(const e of ward??view?.entries??[])open.set(e.e,e);this.ventGlow.clear();this.ventWarn.clear();
-  for(const en of PVE_ENTRIES){const e=open.get(en.e),pit=!!ward&&en.kind==='vent',o=pit?wardVentDrawn(e,state.time):entryOpenAmount(en.kind,e,state.time),active=pit?o>.02:!!e&&state.time>=e.openAt&&state.time<e.closeAt+ENTRY_CLOSE[en.kind];
+  const view=pveOf(state),ward=view?.entries.length?undefined:state.vents,open=new Map<number,PveEntryView>();for(const e of ward??view?.entries??[])open.set(e.e,e);this.ventGlow.clear();this.ventWarn.clear();
+  if(!ward)this.wardSeen.clear();
+  for(const en of PVE_ENTRIES){const e=open.get(en.e),pit=!!ward&&en.kind==='vent',seen=pit?this.wardSeen.get(en.e):undefined;if(pit&&e)this.wardSeen.set(en.e,e);
+   const o=pit?Math.max(wardVentDrawn(e,state.time),seen&&seen!==e?wardVentDrawn(seen,state.time):0):entryOpenAmount(en.kind,e,state.time),active=pit?o>.02:!!e&&state.time>=e.openAt&&state.time<e.closeAt+ENTRY_CLOSE[en.kind];
    if(en.kind==='vent'){const v=this.vents[en.e];if(!v)continue;const w=pit?wardVentWarning(e,state.time):0;if(w>0)this.ventWarn.set(v.id,w);
     v.lid.rotation.z=VENT_SWING*o+.06*w*Math.abs(Math.sin(state.time*34));v.pit.visible=o>1e-3;v.shaft.uniforms.uOpen.value=o;if(active)this.ventGlow.set(v.id,.25+.35*o*(Math.sin(time*10)>0?1:.4));
     if(o>.05&&o<.98&&!this.cut.v){let acc=(this.entryAcc.get(en.id)??0)+dt*q*40;while(acc>=1){acc-=1;this.fire.emit(v.grate.position.x+(Math.random()-.5)*1.8,.05,v.grate.position.z+(Math.random()-.5)*1.8,0,.8+Math.random(),0,.6,.08,Math.random()<.5?'black':'smoke',1,1.5);}this.entryAcc.set(en.id,acc);}
     continue;}
    if(en.kind==='door'){const pivots=this.leaves.get(en.id);if(pivots)pivots.forEach((pv,i)=>{pv.rotation.y=(i===0?-1:1)*DOOR_SWING*o;});}
-   else{const gate=this.gates.get(en.id);if(gate)gate.scale.y=view?mix(1,CELL_STUB,o):CELL_STUB;}
+   else{const gate=this.gates.get(en.id);if(gate)gate.scale.y=view&&!ward?mix(1,CELL_STUB,o):CELL_STUB;}
    const lamp=this.alarms.get(en.id);if(lamp!==undefined&&active)this.lamps.set(lamp,Math.sin(time*14)>0?1.6:.12);
   }
  }

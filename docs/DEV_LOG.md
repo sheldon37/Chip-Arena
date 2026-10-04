@@ -18,6 +18,43 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-04 — Claude — Sandbox rarity sort, keypress dummy cast, dummy respawn, DEV-only sandbox; Ward Zero PvP vents/machines
+- Branch `claude/sleepy-ritchie-g8ruhv` from `claude/visual-revision` accc362 (PR #44 merge). Owner requests 2026-10-04.
+- Chip list: strict tier order common → … → mythic → mishima → ansatsuken → l44t → siren (`RARITY_ORDER`; the old sort
+  used catalog weight, so tiers interleaved), grouped per tier in the list; Rarity ↑ is the default sort.
+- Dummy cast "Press key" (AI, E, Q, Block, Dash, Jump, 1-4, Mode): the dummy stands still, turns to the asking pilot and
+  presses that key with the chip's weapon (holds where the kit charges or aims); keys the dummy's weapon has no use for are
+  greyed out and refused. DEV kits are granted to the dummy as a scoped `weapon:` unlock, never the DEV role. Slenderman
+  (Scare Tactics, E) stalks the pilot who asked. Repeats refresh the dummy's cooldowns (sandbox only). A Siren chip cast
+  takes the sandbox to Ward Zero; any other chip restores the previous arena and stops her song.
+- Dummy respawn: a killed dummy stands up on its own pad after a delay (panel "Respawn (s)", default 5, 1-30, 0 = the old
+  round end), refilled and with once-per-round chips (Emergency Exit, Do Not Press, Round Two, CTRL+Z) re-armed; waits for
+  animation holds and a vent-fall body landing. A downed human still resolves the round (bots beat the human, or a human
+  duel) without the waiting bots.
+- DEV-only sandbox: `sandboxAllowed()` = DEV account or the Vite dev server; the home link is hidden and the menu, WebMCP,
+  `window.chipArena`, local debug commands, the panel and F3 are gated. Production build check: link hidden, no panel.
+- Ward Zero outside PvE (PvP + sandbox): no Chip/Recruit/Heal machines, their pads or prompts (`machinesPresent` = a real
+  PvE run). Vents: snapshots announce each opening `VENT_PIT.warn + lead` (1.5 s) early; the stage rattles the lid and fills
+  the rim for 1 s, swings it 0.5 s ahead of the pit turning lethal, trails it on close, and keeps drawing the last opening
+  while an interpolated view lags (online); positional metal cues. No add ever climbs out. Sandbox "Vent fall" forces a real
+  opening (warn → swing → fall) and never hides or snaps the regular cycle.
+- Impacts: no change to hit timing, hitboxes, damage, cooldowns or movement outside the sandbox. Ward Zero PvP keeps the same
+  lethal vent schedule (presentation only leads it). Network: Ward Zero snapshots carry upcoming vent openings 1.5 s early;
+  `snapshot.sandbox` (respawn/safe/repeat) in sandbox rooms only; revive reason `sandbox-respawn`. pvp-golden unchanged.
+- Review: adversarial review workflow (4 areas): 13 distinct findings, all fixed, most with a regression test (the vent,
+  round-end and fixture tests fail without their fix); verifiers confirmed the respawn fixes on the pushed code.
+- Checks (Node 22.22.0): check:types pass (server tsc keeps its 2 baseline errors, identical on accc362); sandbox-tools
+  16/16, ward-pvp-presentation 6/6, sandbox-access 1/1; full unit suite 1228, 13 failures = the 12 known names + the Node 22
+  portable-update test (all fail on the base too); network pve and maps pass; default network only "Timed out: rematch".
+- Not run: native Windows, online sandbox room, packaging. Real-app captures (Vite dev server, headless Chromium/SwiftShader):
+  tier groups, greyed keys, respawn after 3 s with the round going on, keypress Slenderman jumpscare, Ward Zero downed preview
+  without machines, PvP vent warn → swing → open → fall with no add.
+- Earlier publications (from the channel's PUBLISHED.md): PR #43 `492b251` -> test `0.2.6bb5c3639b53` (channel `7a393b8`;
+  schema 1 `arena-38d7b91c0c5dbe17.json.gz` 26,206,825 B, schema 2 `arena-2870598814579f84.pack` 22,099,609 B); PR #44
+  `accc362` -> test `0.2.cb814cb80ece` (channel `1bc3517`; schema 1 `arena-2bf02d3b1f9a2899.json.gz` 24,625,849 B, schema 2
+  `arena-614b8df19c9400d9.pack` 20,530,767 B).
+- Status: implemented on branch; next: PR into `claude/visual-revision`, merge, test-channel publication.
+
 ## 2026-10-04 — Claude — Developer Sandbox tools; Ward Zero as a PvP and sandbox map
 - Branch `claude/sandbox-devtools` from `claude/visual-revision` 492b251. No PR opened; not merged; not released.
 - Sandbox panel (`src/client/sandbox-panel.ts`): live chip search (name/id/description) + sort (default, rarity ↑/↓ by

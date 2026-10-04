@@ -33,7 +33,12 @@ export function findChips(list:readonly Chip[],query='',sort:ChipSort='default')
 /** Vent e opens at e·step + k·period for `open` s; pure in time. `forced`: vent → an extra opening start. */
 export const WARD_VENTS={period:12,open:4.5,step:1.5,tail:1} as const;
 export function wardEntries(t:number,forced?:Map<number,number>):PveEntryView[]{
- const W=WARD_VENTS;return SIREN_VENTS.map((_,e)=>{const f=forced?.get(e),o=e*W.step,a=f!==undefined&&t<f+W.open+W.tail?f:o+(Math.floor((t-o-W.open-W.tail)/W.period)+1)*W.period;return {e,openAt:a,closeAt:a+W.open,mode:'dive' as const};});
+ const W=WARD_VENTS,ahead=VENT_PIT.lead+VENT_PIT.warn;return SIREN_VENTS.map((_,e)=>{const f=forced?.get(e),o=e*W.step;let a=o+(Math.floor((t-o-W.open-W.tail)/W.period)+1)*W.period;
+  // A forced opening shows from its warning on; one forced while the vent was closing waits out that close (prev); afterwards
+  // the cycle resumes with the first opening that warns after it, so a vent never appears already open.
+  if(f!==undefined){const end=f+W.open+W.tail,prev=f-ahead-W.tail-W.open;
+   if(t>=f-ahead&&t<end)a=f;else if(t>=prev&&t<f-ahead)a=prev;else if(t>=end&&a-ahead<end)a=o+Math.ceil((end+ahead-o)/W.period)*W.period;}
+  return {e,openAt:a,closeAt:a+W.open,mode:'dive' as const};});
 }
 /** Every pilot can fall; only the sandbox brings the body back down (PvP has no revive). */
 export class WardVents extends VentPits{
@@ -153,8 +158,9 @@ export class SandboxTools{
     w.splatAt=clamp(Number(c.delay)||VENT_PIT.splatAt,1,VENT_PIT.splatAt);const at=target.body.translation(),dist=(e:number)=>Math.hypot(SIREN_VENTS[e].x-at.x,SIREN_VENTS[e].z-at.z);
     let e=0;for(let i=1;i<SIREN_VENTS.length;i++)if(dist(i)<dist(e))e=i;
     // Open that vent for real and stand the target on it (owner 2026-10-04: the opening must show before the fall): unless it
-    // is already warning or open, it warns now, its lid swings VENT_PIT.warn s later and the pit check takes the fall once lethal.
-    const cur=wardEntries(s.time,w.forced)[e];if(!(s.time>=cur.openAt-VENT_PIT.lead-VENT_PIT.warn&&s.time<cur.closeAt))w.forced.set(e,s.time+VENT_PIT.warn+VENT_PIT.lead);target.body.setTranslation(PveSystem.prototype.standAt(SIREN_VENTS[e].x,SIREN_VENTS[e].z,target),true);target.body.setLinvel(v(),true);return true;}
+    // is already warning or open, it warns now (or once a closing lid is down), its lid swings VENT_PIT.warn s later and the
+    // pit check takes the fall once lethal.
+    const cur=wardEntries(s.time,w.forced)[e];if(!(s.time>=cur.openAt-VENT_PIT.lead-VENT_PIT.warn&&s.time<cur.closeAt))w.forced.set(e,(s.time>=cur.closeAt?cur.closeAt+WARD_VENTS.tail:s.time)+VENT_PIT.warn+VENT_PIT.lead);target.body.setTranslation(PveSystem.prototype.standAt(SIREN_VENTS[e].x,SIREN_VENTS[e].z,target),true);target.body.setLinvel(v(),true);return true;}
    case 'down':{const by=c.by==='dummy'?d:p;if(!target||!by||target===by||target.hp<=0||s.phase!=='fight')return false;
     this.hold=s.time+clamp(Number(c.hold)||0,0,15);const safe=this.safe;this.safe=false;s.damage(target,1e5,by.id,'preview',norm(sub(target.body.translation(),by.body.translation())),160);this.safe=safe;s.resolveRound();return true;}
    case 'hit':{const by=target===p?d:p;if(!target||!by||s.phase!=='fight')return false;const dir=norm(sub(target.body.translation(),by.body.translation()));

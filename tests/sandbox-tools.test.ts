@@ -8,7 +8,7 @@ import {SIREN_VENTS} from '../src/shared/siren-stage-layout.js';
 import {MAPS} from '../src/shared/maps.js';
 import {findChips,wardEntries,RARITY_ORDER,rarityRank,SANDBOX_RESPAWN} from '../src/shared/sandbox-tools.js';
 import {playerSpawn} from '../src/shared/arena.js';
-import {VENT_PIT,ventOpenAmounts,wardVentDrawn,wardVentWarning} from '../src/shared/pve/vent-pits.js';
+import {VENT_PIT,ventOpenAmounts,wardVentDrawn,wardVentWarning,entryOpenAmount} from '../src/shared/pve/vent-pits.js';
 await initPhysics();
 
 const DEV={developer:true,unlocks:[]};
@@ -177,5 +177,24 @@ test('a Siren dummy cast takes the sandbox to Ward Zero; casting anything else b
   assert.ok(s.debug({action:'dummy-cast',id:'siren-crown',safe:true},'local'));assert.equal(s.options.map,'siren');tick(s,30);assert.ok(s.bossSong,'her song plays');
   assert.ok(s.debug({action:'dummy-cast',id:'vital',safe:true},'local'));assert.equal(s.options.map,'foundry','arena restored');assert.equal(s.bossSong,undefined);assert.equal(s.normalArena,undefined);
   assert.ok(s.debug({action:'vent-fall',target:'opponent',delay:2},'local'),'the Ward Zero vent test works again');
+ }finally{s.dispose();}
+});
+
+test('a forced vent opening never hides the cycle: no vent ever appears open without its warning and swing, whenever Vent fall runs',()=>{
+ // Vent 4 (0,-17) opens at 6 + 12k for 4.5 s; commands before its warning, mid-warning, mid-open and in its closing tail.
+ for(const at of [12.5,14,16,17,19,23,23.4]){const s=sandbox();try{assert.ok(s.debug({action:'map',id:'siren'},'local'));const me=s.players.get('local')!;
+  while(s.time<at)tick(s);place(me,0,-14.5);tick(s);assert.ok(s.debug({action:'vent-fall',target:'self',delay:2},'local'));place(me,0,-8);
+  const last=new Map<number,number>();
+  for(let i=0;i<60*30;i++){tick(s);const t=s.time,sent=s.snapshot().vents!,all=wardEntries(t,s.vents!.forced);
+   for(const e of all){const en=sent.find(x=>x.e===e.e),d=wardVentDrawn(en,t),prev=last.get(e.e)??d;last.set(e.e,d);
+    assert.ok(Math.abs(d-prev)<.2,`vent ${e.e} drawn ${prev.toFixed(2)} -> ${d.toFixed(2)} at ${t.toFixed(2)} (Vent fall at ${at})`);
+    if(entryOpenAmount('vent',e,t)>0)assert.ok(en&&t>=en.openAt-VENT_PIT.lead-VENT_PIT.warn,`vent ${e.e} open unannounced at ${t.toFixed(2)}`);}}
+ }finally{s.dispose();}}
+});
+
+test('with several sandbox bots, a downed human still ends the round (the waiting bots do not hold it open)',()=>{
+ const s=sandbox();try{s.addPlayer('bot-2','Second Dummy','melee','dummy','#ddd');s.players.get('bot-2')!.selected=true;tick(s);
+  assert.ok(s.debug({action:'death-preview'},'local'));tick(s);assert.equal(s.phase,'fight','a killed dummy waits; the round goes on');
+  const me=s.players.get('local')!;s.damage(me,1e5,'bot-2','preview',v(0,0,1),0);s.resolveRound();assert.equal(s.phase,'result');assert.equal(s.winner,'bot-2');
  }finally{s.dispose();}
 });

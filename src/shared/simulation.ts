@@ -448,10 +448,11 @@ export class Simulation {
  resolveRound(){
  if(this.phase!=='fight')return;
  if(this.pve||this.tools?.holding())return;
- // Sandbox: a bot waiting to respawn still counts, so killing the dummy never ends the round; only while humans duel (one down,
- // one standing) does a downed human decide it without the bots, as before.
- const humans=[...this.players.values()].filter(p=>!p.bot&&p.connected),duel=!!this.tools&&humans.some(p=>p.hp<=0)&&humans.some(p=>p.hp>0);
- const alive=[...this.players.values()].filter(p=>p.hp>0||!duel&&!!this.tools?.respawns(p));if(new Set(alive.map(p=>this.options.gameMode==='teams'?p.team:p.id)).size>1)return;
+ // Sandbox: a bot waiting to respawn still counts, so killing the dummy never ends the round; once a human is down, the round
+ // resolves without the waiting bots, as before (a duel between humans, or the bots beating every human), and a waiting bot
+ // only takes it when nobody is left standing.
+ const all=[...this.players.values()],down=!!this.tools&&all.some(p=>!p.bot&&p.connected&&p.hp<=0);
+ let alive=all.filter(p=>p.hp>0||!down&&!!this.tools?.respawns(p));if(down&&!alive.length)alive=all.filter(p=>!!this.tools?.respawns(p));if(new Set(alive.map(p=>this.options.gameMode==='teams'?p.team:p.id)).size>1)return;
  for(const p of this.players.values())if(p.hp<=0)this.recordDeath(p);
  this.winner=alive[0]?.id||null;this.setWinner=null;
  if(this.winner){const winner=alive[0],members=[...this.players.values()].filter(p=>wonWith(p,winner,this.options.gameMode)),name=this.options.gameMode==='teams'?TEAMS[winner.team!].name+' team':winner.name;

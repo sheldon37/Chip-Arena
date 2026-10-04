@@ -109,7 +109,7 @@ export class ArenaAudio {
   else if(e.type==='pve-phase'){this.play('darkness',undefined,.7);this.play('metal',undefined,.35);}
  }
  /** Entry doors and vents opening (S6 owns the world animation; the cue lives here). */
- pveEntries(state:Snapshot){const pve=state.pve;if(!pve){this.wardVents(state);return;}for(const e of pve.entries){const key='entry:'+e.e+':'+e.openAt;if(this.deathCues.has(key)||state.time<e.openAt||state.time-e.openAt>.4)continue;this.deathCues.set(key,state.time);this.play('metal',undefined,.18);}}
+ pveEntries(state:Snapshot){const pve=state.pve;if(!pve||state.vents&&!pve.entries.length){this.wardVents(state);return;}for(const e of pve.entries){const key='entry:'+e.e+':'+e.openAt;if(this.deathCues.has(key)||state.time<e.openAt||state.time-e.openAt>.4)continue;this.deathCues.set(key,state.time);this.play('metal',undefined,.18);}}
  /** Ward Zero outside PvE: a quiet rattle where a vent starts its warning, then a clank as its lid swings open. */
  private wardVents(state:Snapshot){for(const e of state.vents??[]){const w=SIREN_VENTS[e.e];if(!w)continue;const pos={x:w.x,y:0,z:w.z},lid=e.openAt-VENT_PIT.lead;
   for(const [tag,at,gain] of [['warn',lid-VENT_PIT.warn,.07],['lid',lid,.16]] as const){const key='ward:'+tag+':'+e.e+':'+e.openAt;if(this.deathCues.has(key)||state.time<at||state.time-at>.4)continue;this.deathCues.set(key,state.time);this.play('metal',pos,gain,tag==='warn'?1.6:0);}}}
