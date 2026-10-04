@@ -43,9 +43,11 @@ containing an entry; no self-referential commit hash is required.
   `snapshot.sandbox` (respawn/safe/repeat) in sandbox rooms only; revive reason `sandbox-respawn`. pvp-golden unchanged.
 - Review: adversarial review workflow (4 areas): 13 distinct findings, all fixed, most with a regression test (the vent,
   round-end and fixture tests fail without their fix); verifiers confirmed the respawn fixes on the pushed code.
-- Checks (Node 22.22.0): check:types pass (server tsc keeps its 2 baseline errors, identical on accc362); sandbox-tools
+- Checks (Node 22.22.0): check:types pass (server tsc keeps its 4 baseline errors, identical on accc362); sandbox-tools
   16/16, ward-pvp-presentation 6/6, sandbox-access 1/1; full unit suite 1228, 13 failures = the 12 known names + the Node 22
   portable-update test (all fail on the base too); network pve and maps pass; default network only "Timed out: rematch".
+  PR CI (Node 24.19.0) `ea042c6`: unit 1228, only the 12 known failures; server build only the 4 baseline errors; websocket
+  only "Timed out: rematch"; HTTPS passes.
 - Not run: native Windows, online sandbox room, packaging. Real-app captures (Vite dev server, headless Chromium/SwiftShader):
   tier groups, greyed keys, respawn after 3 s with the round going on, keypress Slenderman jumpscare, Ward Zero downed preview
   without machines, PvP vent warn → swing → open → fall with no add.
