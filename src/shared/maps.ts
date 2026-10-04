@@ -18,7 +18,7 @@ export const MAPS=[
  {id:'spikevault',name:'Thornfall Vault',tag:'HAZARD · timed spikes · ruined galleries',theme:'castle',sky:0x111322,floor:0x403c4c,accent:0xf37885,music:'stone-oath'},
  {id:'lavaworks',name:'Cinder Crossing',tag:'HAZARD · lava pits · move to swim, jump to escape',theme:'forge',sky:0x240b13,floor:0x302831,accent:0xff713c,music:'cinder-engine'},
 ] as const;
-/** Ward Zero is forced by an authorized Siren, never drawn in normal rotation. */
+/** Ward Zero (BOSS_MAPS) is never drawn in random rotation; it can be picked, or is forced by an authorized Siren. */
 export const ROTATION_MAPS=MAPS;
 export const BOSS_MAPS=[{id:'siren',...SIREN_STAGE_THEME,music:null}] as const;
 export const ALL_MAPS=[...MAPS,...BOSS_MAPS] as const;

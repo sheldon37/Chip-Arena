@@ -484,7 +484,7 @@ export class WardZeroVisuals {
  /** PvE entries: vent lids, door leaves and cell gates follow the authoritative entry times (pure in time); their alarms
   *  flash while open, and black smoke spills out as each one opens. Without PvE every entry rests in its PvP pose. */
  private updateEntries(state:Snapshot,time:number,dt:number,q:number){
-  const view=pveOf(state),open=new Map<number,PveEntryView>();for(const e of view?.entries??[])open.set(e.e,e);this.ventGlow.clear();
+  const view=pveOf(state),open=new Map<number,PveEntryView>();for(const e of view?.entries??state.vents??[])open.set(e.e,e);this.ventGlow.clear();
   for(const en of PVE_ENTRIES){const e=open.get(en.e),o=entryOpenAmount(en.kind,e,state.time),active=!!e&&state.time>=e.openAt&&state.time<e.closeAt+ENTRY_CLOSE[en.kind];
    if(en.kind==='vent'){const v=this.vents[en.e];if(!v)continue;v.lid.rotation.z=VENT_SWING*o;v.pit.visible=o>1e-3;v.shaft.uniforms.uOpen.value=o;if(active)this.ventGlow.set(v.id,.25+.35*o*(Math.sin(time*10)>0?1:.4));
     if(o>.05&&o<.98&&!this.cut.v){let acc=(this.entryAcc.get(en.id)??0)+dt*q*40;while(acc>=1){acc-=1;this.fire.emit(v.grate.position.x+(Math.random()-.5)*1.8,.05,v.grate.position.z+(Math.random()-.5)*1.8,0,.8+Math.random(),0,.6,.08,Math.random()<.5?'black':'smoke',1,1.5);}this.entryAcc.set(en.id,acc);}
