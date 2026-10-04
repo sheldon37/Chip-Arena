@@ -41,6 +41,9 @@ interface Memo {entry?:MinionEntry;stand?:{x:number;z:number};crawlAt?:number;wa
 interface Rig {n:number;m:SirenMinion;shown:boolean;lastFull:number;shadow:boolean|null;low:boolean|null;shadowMeshes:T.Mesh[];visibleMeshes:number;shadowDraws:number;lost:number;drips:{v:number}[];hinted:boolean;trail:{v:number}}
 interface Item {v:PveAddView;n:number;pos:{x:number;z:number};ground:number;dist:number;possessed:boolean;possessedAt?:number;memo:Memo}
 
+/** Still coming in through its entry: 'entering', or 'crawl' when it lost a leg on the way in (2026-10-04: entering adds
+ *  in sight take hits; the authority keeps them on the entry path until they are active, when `entry` becomes -1). */
+export const enteringView=(v:Pick<PveAddView,'state'|'entry'>)=>v.entry>=0&&(v.state==='entering'||v.state==='crawl');
 /** Where an add stands at the end of a vent climb: just past the pit edge it faces (the rim is VENT_RIM_Z behind it). */
 export function ventStand(e:number,yaw:number){
  const en=PVE_ENTRIES[e],sx=Math.sin(yaw),sz=Math.cos(yaw),edge=VENT_EDGE/Math.max(Math.abs(sx),Math.abs(sz),1e-6),d=edge-VENT_RIM_Z;
@@ -145,7 +148,7 @@ export class HordeView {
  private memoOf(v:PveAddView,view:PveView,t:number):Memo{
   let m=this.memo.get(v.n);const first=!m;if(!m){m={wasCrawl:false,seen:false,inBand:false};this.memo.set(v.n,m);}
   // Entering: the entry kind, the add's own start, and whether it opens the entry (its start is the entry's openAt).
-  if(v.state==='entering'&&v.entry>=0&&v.spawnAt!==undefined&&(!m.entry||m.entry.at!==v.spawnAt)){
+  if(enteringView(v)&&v.spawnAt!==undefined&&(!m.entry||m.entry.at!==v.spawnAt)){
    const en=PVE_ENTRIES[v.entry];if(en){const open=view.entries.find(x=>x.e===v.entry&&x.mode==='spawn');
     m.entry={kind:en.kind,at:v.spawnAt,first:!open||Math.abs(open.openAt-v.spawnAt)<.05,rimZ:VENT_RIM_Z};
     m.stand=en.kind==='vent'?ventStand(v.entry,v.yaw):undefined;}}
@@ -157,7 +160,7 @@ export class HordeView {
  private displayPos(v:PveAddView,m:Memo,t:number){
   const en=m.entry;
   if(en?.kind==='vent'&&m.stand){const end=en.at+entryDuration(en);
-   if(v.state==='entering')return m.stand;
+   if(enteringView(v))return m.stand;
    // The authority creates the body at the vent centre (PVE_ENTRIES exit); ease from the stand point onto it.
    const k=(t-end)/.6;if(k<1&&Math.hypot(v.pos.x-m.stand.x,v.pos.z-m.stand.z)>.2){const w=k<=0?0:k*k*(3-2*k);return {x:m.stand.x+(v.pos.x-m.stand.x)*w,z:m.stand.z+(v.pos.z-m.stand.z)*w};}}
   if(v.state==='vent'&&v.diveAt!==undefined&&v.entry>=0&&PVE_ENTRIES[v.entry]?.kind==='vent'){
@@ -172,8 +175,9 @@ export class HordeView {
   if(v.attackAt!==undefined)s.attackAt=v.attackAt;if(v.hitAt!==undefined){s.hitAt=v.hitAt;s.hitYaw=v.hitYaw;}if(v.deathAt!==undefined)s.deathAt=v.deathAt;
   if(v.diveAt!==undefined&&v.state==='vent')s.diveAt=v.diveAt;if(m.crawlAt!==undefined)s.crawlAt=m.crawlAt;
   const en=m.entry;
-  if(en&&t-en.at<entryDuration(en)+.05){s.entry=en;
-   if(en.kind!=='vent'&&v.state==='entering'){const e=PVE_ENTRIES[v.entry],walk=en.kind==='door'?PVE_TIMING.door.walk:PVE_TIMING.cell.walk,w0=en.at+entryWalkStart(en);
+  // An add killed on the way in keeps its entry until the corpse is gone, so the pose at deathAt never pops.
+  if(en&&(t-en.at<entryDuration(en)+.05||v.deathAt!==undefined&&v.deathAt-en.at<entryDuration(en))){s.entry=en;
+   if(en.kind!=='vent'&&enteringView(v)){const e=PVE_ENTRIES[v.entry],walk=en.kind==='door'?PVE_TIMING.door.walk:PVE_TIMING.cell.walk,w0=en.at+entryWalkStart(en);
     s.vel=e&&t>=w0&&t<w0+walk?{x:(e.exit.x-e.from.x)/walk,z:(e.exit.z-e.from.z)/walk}:{x:0,z:0};}}
   return s;
  }

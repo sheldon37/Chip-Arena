@@ -18,6 +18,26 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-04 — Claude — PvE: Siren adds take hits while entering
+- Branch `claude/pve-adds-hittable-entering` from `origin/claude/visual-revision` `8840198`. Implemented on branch; not merged/published.
+- Root cause: an entering add had no physics body (created only at `activeAt`), and `Horde.hit()/status()` returned early unless
+  `phase==='active'`, so every damage path (all go through registered colliders / `chaos.minions` -> `hitAdd`) ignored it.
+- Now an entering add registers its body when it comes into sight (`shared/pve/entering.ts` `entryExposedAt`): doors/cells at
+  `walkAt` (leaves/teeth open, walk starts); vents at climb age push+open .8 s (grate open, head and hands over the rim) =
+  `activeAt-1.15`, also for re-emerging travellers. The body has no gravity and a no-contact collision group (queries still
+  hit it) and follows the drawn body every tick: the door/cell walk, or the vent climb (`VENT_CLIMB_BODY` keys now shared
+  with the client pose). Pending, behind closed leaves/teeth/grate and underground adds stay unhittable.
+- Hits on entering adds: damage, gibs, crawl, stagger, DoTs/slows apply; no knockback until active (stays on its path); no
+  attacks (AI unchanged). Kill: corpse at the path point (vent: the climb exit, not over the pit), entry slot released,
+  credit/money once. An entering add that loses a leg reports state `crawl` (entry stays >= 0); client `enteringView()` keeps
+  it on its entry path and keeps the entry pose for a corpse killed on the way in. Snapshot encoding unchanged.
+- Hit timing/damage/cooldowns unchanged; hitboxes: new for entering adds only; PvP untouched (pvp-golden passes).
+- Checks: check:types pass; new tests/pve-adds-entering.test.ts 6/6; tests/pve-*.test.ts + combat-fx + pvp-golden 214/214
+  (one pve-horde assertion updated: entering adds are in chaos.minions once in sight); `run-network.mjs pve` (TEST_PORT 8817)
+  victory, deflated p95 5715 B; full suite 1162 pass / 13 fail = the 13 known Node 22 failures; build live payload
+  26,170,710 B (limit 26,214,400). Not run: Windows hand-play, visual check of hitbox vs. climb in the client.
+- Balance note: adds are now easier to kill at doors, cells and vents (about 1.2 s / 1.0 s / 1.15 s exposed before active).
+
 ## 2026-10-04 — Claude — killcam uses Call of Duty timing
 - Branch `claude/killcam-cod` from `origin/claude/visual-revision` `076afe5`.
 - Owner: the ~4 s aftermath "feels too long"; use Call of Duty logic. `KILLCAM` before 1.5 → 3 s (lead-in from the killer's
