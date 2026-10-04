@@ -4,8 +4,12 @@ import {clamp,forward,mul,v,type Vec,type SpecId} from './config.js';
 export const WEAPON_WEIGHT:Record<SpecId,number>={siren:4,daggers:2,sword:5,shield:8,greatsword:12,pistol:2,rifle:7,machinegun:10,fire:4,water:4,lightning:3,darkness:5,leet:3,emperor:1,ansatsuken:1};
 export const standardWeapon=(spec:SpecId)=>['daggers','sword','shield','greatsword'].includes(spec);
 export const usesRoll=(spec:SpecId)=>spec!=='ansatsuken';
-export const meleeCost=(spec:SpecId)=>spec==='daggers'?16:20+2*WEAPON_WEIGHT[spec];
-export const meleeSpecialCost=(spec:SpecId)=>spec==='daggers'?30:Math.ceil(meleeCost(spec)*1.25);
+const meleeBaseCost=(spec:SpecId)=>spec==='daggers'?16:20+2*WEAPON_WEIGHT[spec];
+/** Primary swing stamina (owner 2026-10-04: 40% lower on all melee): daggers 10, sword 18, shield 22, greatsword 26. */
+export const MELEE_COST_SCALE=.6;
+export const meleeCost=(spec:SpecId)=>Math.round(meleeBaseCost(spec)*MELEE_COST_SCALE);
+/** E specials keep their earlier cost (daggers 30, sword 38, shield 45, greatsword 55). */
+export const meleeSpecialCost=(spec:SpecId)=>spec==='daggers'?30:Math.ceil(meleeBaseCost(spec)*1.25);
 export const meleeRecovery=(spec:SpecId)=>(spec==='greatsword'?.5:spec==='daggers'?.15:.3);
 export const meleeHitStun=(spec:SpecId)=>.16+WEAPON_WEIGHT[spec]*.018;
 export const STAGGER_ESCAPE_SECONDS=.75;

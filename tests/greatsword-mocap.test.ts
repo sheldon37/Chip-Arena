@@ -4,7 +4,8 @@ import * as T from 'three';
 import {WEAPONS} from '../src/shared/content.js';
 import {meleeRecovery,attackCommitment,attackTravel} from '../src/shared/souls-combat.js';
 import {initPhysics,type PlayerView} from '../src/shared/simulation.js';
-import {animateCharacter} from '../src/client/character-animation.js';
+import {animateCharacter,animationPreviewPlayer} from '../src/client/character-animation.js';
+import * as bladeClearance from '../src/client/mocap/blade-clearance.js';
 import {probeBase,probeRig} from './helpers/motion-probe.js';
 import {CH,CHANNEL_COUNT,decodeClip,sampleClip,clipDuration,type MocapClip} from '../src/client/mocap/mocap-clip.js';
 import {MOCAP_SETS,cutClip,cutTime} from '../src/client/mocap/mocap-layer.js';
@@ -93,4 +94,25 @@ test('the captured guard and cuts keep the support hand on the hilt while the ca
   // The guard before the cut and the hoist (both captured two-handed) hold the hilt; the free hand may leave it later.
   if(t<2.3)assert.ok(grip.distanceTo(palm)<.09,`cut ${index} at ${t.toFixed(3)}: support hand ${grip.distanceTo(palm).toFixed(3)} m off the hilt`);
  });
+});
+
+test('the carried, guarded and blocking greatsword never cuts into the shoulders, chest or head', () => {
+ const {BLADE_OBSTACLES,BLADE_CLEARANCE:C}=bladeClearance;
+ const pos=new T.Vector3(),quat=new T.Quaternion(),scale=new T.Vector3(),inv=new T.Quaternion(),l=new T.Vector3(),p=new T.Vector3(),wq=new T.Quaternion(),wo=new T.Vector3();
+ const ax=(v:T.Vector3,x:number,y:number,z:number)=>v.set(x,y,z).applyQuaternion(wq);
+ const X=new T.Vector3(),Y=new T.Vector3(),Z=new T.Vector3();
+ for(const mode of ['idle','walk','run','block']){
+  const r=probeRig('greatsword'),base={...probeBase('greatsword'),id:'clear'} as PlayerView,boxes=BLADE_OBSTACLES.map(n=>r.group.getObjectByName(n)!).filter(Boolean);
+  const tipZ=(r.weapon.getObjectByName('blade-tip')!.position.z-.08);let worst=Infinity,at='';
+  for(let i=0;i<=360;i++){const t=i/120,pv={...animationPreviewPlayer(base,mode,t),hitStunUntil:-1e9} as PlayerView;animateCharacter(r,pv,t,1/120);
+   if(t<1)continue;r.group.updateMatrixWorld(true);r.weapon.getWorldPosition(wo);r.weapon.getWorldQuaternion(wq);const sz=r.weapon.scale.z;ax(X,1,0,0);ax(Y,0,1,0);ax(Z,0,0,1);
+   for(let s=-.27*sz;s<=tipZ*sz;s+=.05){if(s>-.05&&s<bladeClearance.GUARD)continue;for(let k=0;k<5;k++){
+    p.copy(wo).addScaledVector(Z,s).addScaledVector(X,k===1?C.halfWidth:k===2?-C.halfWidth:0).addScaledVector(Y,k===3?C.halfThickness:k===4?-C.halfThickness:0);
+    for(const b of boxes){b.matrixWorld.decompose(pos,quat,scale);l.copy(p).sub(pos).applyQuaternion(inv.copy(quat).invert());
+     const q=[Math.abs(l.x)-scale.x/2,Math.abs(l.y)-scale.y/2,Math.abs(l.z)-scale.z/2],d=Math.max(...q)>0?Math.hypot(...q.map(x=>Math.max(x,0))):Math.max(...q);
+     if(d<worst){worst=d;at=`${b.name} at ${t.toFixed(3)} s, ${s.toFixed(2)} m along the blade`;}}
+   }}
+  }
+  assert.ok(worst>=.004,`${mode}: blade ${(-worst*1000).toFixed(0)} mm into ${at}`);
+ }
 });

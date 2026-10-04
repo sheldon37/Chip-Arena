@@ -49,7 +49,7 @@ test('two actual dagger swings land during one fixed stun at slow, normal and fa
  for(const rate of [.75,1,1.6,2.5]){const {s,a,b}=arena();try{
   a.stats.attackRate=rate;const hits:number[]=[];let deadline=0,prior=b.hp;
   for(let i=0;i<150&&hits.length<2;i++){s.setInput(a.id,{...idleInput(),seq:i+1,attack:true});s.step();if(b.hp<prior){hits.push(s.time);if(hits.length===1)deadline=b.hitStunUntil!;else assert.equal(b.hitStunUntil,deadline,'second hit cannot extend stun');prior=b.hp;}}
-  assert.equal(hits.length,2,`rate ${rate}`);assert.ok(hits[1]<deadline,`second hit precedes recovery at rate ${rate}`);assert.equal(100-a.stamina,32);assert.equal(WEAPONS.daggers.secondaryCost,30);
+  assert.equal(hits.length,2,`rate ${rate}`);assert.ok(hits[1]<deadline,`second hit precedes recovery at rate ${rate}`);assert.equal(100-a.stamina,2*WEAPONS.daggers.cost);assert.equal(WEAPONS.daggers.secondaryCost,30);
   const immune=b.staggerImmuneUntil!;assert.ok(immune-deadline>=STAGGER_ESCAPE_SECONDS-1e-8);
   for(let i=0;i<4;i++){s.time+=.01;const hp=b.hp;s.directHit(a,b,b.body.translation(),v(0,0,1),1,0,'repeat-'+i);s.standardMelee.primaryImpact(a,b,hp);assert.equal(b.hitStunUntil,deadline);assert.equal(b.staggerImmuneUntil,immune);}
   s.time=deadline+.01;s.setInput(a.id,{...idleInput(),seq:200});s.setInput(b.id,{...idleInput(),seq:200,x:1});s.step();assert.ok(b.move.x>0,'victim can move in escape window');

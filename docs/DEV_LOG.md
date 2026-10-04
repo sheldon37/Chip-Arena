@@ -18,6 +18,54 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-04 — Claude — PvE: Siren adds take hits while entering
+- Branch `claude/pve-adds-hittable-entering` from `origin/claude/visual-revision` `8840198`. Implemented on branch; not merged/published.
+- Root cause: an entering add had no physics body (created only at `activeAt`), and `Horde.hit()/status()` returned early unless
+  `phase==='active'`, so every damage path (all go through registered colliders / `chaos.minions` -> `hitAdd`) ignored it.
+- Now an entering add registers its body when it comes into sight (`shared/pve/entering.ts` `entryExposedAt`): doors/cells at
+  `walkAt` (leaves/teeth open, walk starts); vents at climb age push+open .8 s (grate open, head and hands over the rim) =
+  `activeAt-1.15`, also for re-emerging travellers. The body has no gravity and a no-contact collision group (queries still
+  hit it) and follows the drawn body every tick: the door/cell walk, or the vent climb (`VENT_CLIMB_BODY` keys now shared
+  with the client pose). Pending, behind closed leaves/teeth/grate and underground adds stay unhittable.
+- Hits on entering adds: damage, gibs, crawl, stagger, DoTs/slows apply; no knockback until active (stays on its path); no
+  attacks (AI unchanged). Kill: corpse at the path point (vent: the climb exit, not over the pit), entry slot released,
+  credit/money once. An entering add that loses a leg reports state `crawl` (entry stays >= 0); client `enteringView()` keeps
+  it on its entry path and keeps the entry pose for a corpse killed on the way in. Snapshot encoding unchanged.
+- Hit timing/damage/cooldowns unchanged; hitboxes: new for entering adds only; PvP untouched (pvp-golden passes).
+- Checks: check:types pass; new tests/pve-adds-entering.test.ts 6/6; tests/pve-*.test.ts + combat-fx + pvp-golden 214/214
+  (one pve-horde assertion updated: entering adds are in chaos.minions once in sight); `run-network.mjs pve` (TEST_PORT 8817)
+  victory, deflated p95 5715 B; full suite 1162 pass / 13 fail = the 13 known Node 22 failures; build live payload
+  26,170,710 B (limit 26,214,400). Not run: Windows hand-play, visual check of hitbox vs. climb in the client.
+- Balance note: adds are now easier to kill at doors, cells and vents (about 1.2 s / 1.0 s / 1.15 s exposed before active).
+
+## 2026-10-04 — Claude — melee attack stamina 40% lower (all melee)
+- Branch `claude/melee-stamina` from `origin/claude/visual-revision` `b7f3dad`.
+- Owner: "Lower stamina drain from melee attacks by a good portion, on ALL melee." Primary swing cost (`meleeCost`,
+  souls-combat.ts) ×0.6: daggers 16→10, sword 30→18, shield 36→22, greatsword 44→26. Echo Strike follow-ups 5→3
+  (`followupCost`). E specials keep their costs (30/38/45/55). DEV melee (Emperor, Ansatsuken) unchanged (already 3–4/hit).
+- Gameplay change: stamina only. Hit timing, hitboxes, damage, cooldowns, movement and networking are unchanged.
+- Tests: three pins updated with comments (souls-combat costs, melee-reference-update dagger spend, modifiers stamina gate).
+  pvp-golden melee-dev, siren-melee, siren-ward-zero regenerated; with the old costs all seven traces matched the old hashes.
+  Full Node 22 suite before pin updates: only those 6 plus the 13 known failures; pvp-golden 7/7 and the 3 updated files pass.
+
+## 2026-10-04 — Claude — greatsword blade clears the shoulders (mocap follow-up)
+
+- Publication (previous task): PR #36 merged 076afe5 -> test 0.2.7f4cf400e693; channel c351c41; schema1 arena-79bbf8ca845d2b9e.json.gz 26,167,432 B, schema2 arena-4bbd4d77d7a7b6cf.pack 22,081,531 B; old launcher and seed manual-update both installed then reported current; candidate verify baseline-only.
+- Task: owner report that the greatsword runs through the shoulder. Branch `claude/greatsword-shoulder` from
+  `origin/claude/visual-revision` 076afe5. Implemented on branch; no PR, not merged, not published.
+- Cause: the run carry (shoulder rest) had its grip dragged toward the support shoulder (wide voxel shoulders), laying the
+  blade through the chest and right pauldron. Converter: the support hand now lets go where reaching the grip would need
+  a shift over ~.25 m (the clip table is regenerated). Runtime: `src/client/mocap/blade-clearance.ts` turns the blade
+  about the grip (and lifts the grip off the shoulders/chest) until the blade slab clears the pauldrons, chest shell and
+  head by 2 cm, and rolls the flat onto a nearby surface; continuous and stateless; cuts only turn the blade (no grip
+  shift). Visual-lab fix: the raw `mocap=` preview import no longer breaks the lab on a clean checkout.
+- Impacts: presentation only. Hit timing, hitboxes, damage, cooldowns, movement and networking unchanged.
+- Checks (Node 22.22.2): `npm run check:types` pass; greatsword-mocap (new clearance test over idle/walk/run/block),
+  pvp-golden and the 8 MOCAP-off melee/locomotion files: 86/86 pass. Lab strips (run/walk/idle) reviewed.
+  Not run: full suite, build, Windows/GPU, multiplayer.
+- Next: owner check of the run carry; the blade now rides up against the outside of the right pauldron rather than
+  lying flat across its top.
+
 ## 2026-10-04 — Claude — killcam uses Call of Duty timing
 - Branch `claude/killcam-cod` from `origin/claude/visual-revision` `076afe5`.
 - Owner: the ~4 s aftermath "feels too long"; use Call of Duty logic. `KILLCAM` before 1.5 → 3 s (lead-in from the killer's
