@@ -22,7 +22,7 @@ try{
  assert.ok(s.siren.start(boss,'rend'));const hp=boss.hp;s.damage(boss,25,victim.id,'direct',v(1,0,0),500,boss.body.translation(),true);s.standardMelee.launch(boss,victim,8);
  let live=await broadcast();assert.equal(boss.hp,hp-25);assert.deepEqual(boss.ext,v());assert.ok(sirenSuperArmor(live.players.find(p=>p.id==='host')!,live.time));assert.equal(boss.knockdown,undefined);
  s.siren.cancel(boss);
- // Death at 4 s; playback starts after the .6 s live hold (4.6 s) from 2.5 s; the 4 s aftermath streams in during playback.
+ // Death at 4 s; playback starts after the .6 s live hold (4.6 s) from ~1 s; the 1.25 s aftermath streams in during playback.
  for(let i=1;i<=84;i++){s.time=1+i/20;s.tick++;
   if(i===60)s.damage(victim,victim.hp+1,boss.id,'direct',v(0,0,1),300,victim.body.translation());
   live=await broadcast();
@@ -32,7 +32,7 @@ try{
  assert.equal(cams[0].info!.killerId,'host');assert.equal(cams[1].sample(live,'host',5200),undefined);assert.equal(cams[2].sample(live,'observer',5200),undefined);
  assert.equal(JSON.stringify(s.snapshot()),before,'replay never rewinds the authority');
  s.time+=.1;s.tick++;live=await broadcast();assert.equal(cams[0].active,true,'live packets continue during replay');
- const after=cams[0].sample(live,'victim',7200)!;assert.ok(after.time>4.4&&after.time<=4.6,'replay continues past the kill');assert.equal(after.players.find(p=>p.id==='victim')!.hp,0);assert.equal(cams[0].info!.end,8);cams[0].skip();assert.equal(cams[0].sample(live,'victim',5300),undefined);
+ const after=cams[0].sample(live,'victim',8700)!;assert.ok(after.time>4.4&&after.time<=4.6,'replay continues past the kill');assert.equal(after.players.find(p=>p.id==='victim')!.hp,0);assert.equal(cams[0].info!.end,5.25);cams[0].skip();assert.equal(cams[0].sample(live,'victim',5300),undefined);
  s.resetRound();s.phase='fight';s.tick++;live=await broadcast();assert.equal(cams[0].active,false);assert.equal(cams[0].bufferedFrames,1);
  console.log(JSON.stringify({clients:3,identicalSnapshots:compared,armorDamage:true,armorNoLaunch:true,victimOnlyReplay:true,authorityUnchanged:true,livePacketsDuringReplay:true,aftermath:true,skip:true,roundReset:true}));
 }finally{for(const c of clients)c.terminate();for(const p of peers)p.terminate();await new Promise<void>(r=>server.close(()=>r()));room.dispose();}
