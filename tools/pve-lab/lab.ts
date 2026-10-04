@@ -10,7 +10,9 @@
  *  kind=pickups    one pickup of every drop tier, owned alternately by me and a friend
  *  kind=entries    entry e (vent 0-7, cell 8-11, door 12-15) opening from t=0 with a stand-in minion; mode=spawn|dive
  *  kind=holo       remote pilots choosing a chip: calm, and under attack (blink on and off)
- *  kind=beacon     downed pilots: waiting (F · REVIVE $), self-revive countdown
+ *  kind=beacon     downed pilots: waiting (F · REVIVE $), self-revive countdown, HELP bubbles
+ *  kind=downed     a downed pilot's kept body (died at -6 s) and its regeneration on revive at t=0 (src/client/pve/downed.ts):
+ *                  wound=decap|arm|torso|crush (Siren Last Laugh), back=place|pad (pad: back up 3.6 m away), views=downed,downed-wide
  *  kind=boss       the Siren at scale 1 and grown to 1.5 next to a pilot (growth over times); cutscene=1: Last Laugh frame
  *  frames, start, span | times=a,b,c   sample times; cell=<px>, aspect=<w/h>, quality=<0-1>, dt=<s>, warm=<s>
  */
@@ -31,6 +33,10 @@ import {PVE_ENTRIES,PVE_MACHINES,STAND_Y} from '../../src/shared/pve/layout.js';
 import {PVE_TIMING,BOSS_PLAYER_ID,type DropTier,type PveView,type RecruitRole,encodeAdd} from '../../src/shared/pve/contract.js';
 import {PRICES,PVE_SIREN} from '../../src/shared/pve/balance.js';
 import {fixtureAdd} from '../../src/shared/pve/fixtures.js';
+import {DeathEffects} from '../../src/client/death-effects.js';
+import {BodyWounds} from '../../src/client/body-wounds.js';
+import {resolveBodyWound,deathMotion,projectileBodyImpact,meleeBodyImpact} from '../../src/shared/body-damage.js';
+import {initPhysics,type DeathPresentation} from '../../src/shared/simulation.js';
 
 const q=new URLSearchParams(location.search);
 const num=(k:string,d:number)=>q.has(k)?Number(q.get(k)):d;
@@ -50,6 +56,19 @@ const stand=(x:number,z:number,s=1):Vec=>({x,y:STAND_Y*s+(s-1)*0,z});
 const fwd=(yaw:number)=>({x:Math.sin(yaw),z:Math.cos(yaw)});
 
 // ---- scenarios (pure in t) ---------------------------------------------------------------------------------------
+/** kind=downed: the authority's death record for the chosen wound (docs/BODY-DAMAGE-HANDOFF.md), facing +x, at -6 s. */
+let downed:DeathPresentation|undefined;
+function downedDeath():DeathPresentation{
+ if(downed)return downed;const yaw=Math.PI/2,pos=stand(0,0),wound=q.get('wound')||'decap',at=-6;
+ const world=(x:number,y:number,z:number)=>({x:pos.x+x*Math.cos(yaw)+z*Math.sin(yaw),y:pos.y+y,z:pos.z-x*Math.sin(yaw)+z*Math.cos(yaw)}),dirOf=(x:number,y:number,z:number)=>({x:x*Math.cos(yaw)+z*Math.sin(yaw),y,z:-x*Math.sin(yaw)+z*Math.cos(yaw)});
+ const c=wound==='arm'?{impact:meleeBodyImpact('greatsword'),local:[.36,.12,.05],dir:[-1,0,-.15],damage:52,headshot:false,melee:true}
+  :wound==='torso'?{impact:projectileBodyImpact({spec:'pistol',vel:{x:0,y:0,z:-52},radius:.045}),local:[-.05,.1,.3],dir:[0,0,-1],damage:23,headshot:false,melee:false}
+  :{impact:projectileBodyImpact({spec:'rifle',vel:{x:0,y:0,z:-270},radius:.045}),local:[0,.64,.3],dir:[0,0,-1],damage:87,headshot:true,melee:false};
+ const point=world(c.local[0],c.local[1],c.local[2]),direction=dirOf(c.dir[0],c.dir[1],c.dir[2]),velocity=dirOf(0,0,-.3);
+ const fatal=resolveBodyWound({id:'lab-fatal',at,position:pos,yaw,point,direction,impact:c.impact,damage:c.damage,lethal:true,headshot:c.headshot});
+ const crush=wound==='crush',motion=deathMotion({wound:fatal,grounded:true,incapacitated:false,yaw,velocity});
+ return downed={wound:fatal,motion,id:'lab-death',at,effect:crush?'siren-crush':'impact-ragdoll',seed:4242,pos,velocity,direction,source:null,kind:crush?'siren-crush':'direct',yaw,hitPoint:point,melee:c.melee,force:350,gibPart:crush?'head':fatal.destroyedPart};
+}
 const M=num('m',kind==='recruit'?4:0),machine=PVE_MACHINES[M],tier=(q.get('tier')||'legendary') as DropTier,role=(q.get('role')||'dps') as RecruitRole;
 const E=num('e',12),entry=PVE_ENTRIES[E],entryMode=(q.get('mode')||'spawn') as 'spawn'|'dive';
 function base(t:number,ids=[ME,FRIEND]):PveView{return {...fixtureBase({time:t,ids}),party:fixtureParty({time:t,ids,kinds:ids.map(()=> 'alive')})};}
@@ -93,8 +112,14 @@ function scenario(t:number):Frame{
  if(kind==='beacon'){
   const ids=[ME,'down','reviving','self','medic'];const w=base(t,ids);w.party=fixtureParty({time:t,ids,kinds:['alive','dead','dead','self-reviving','alive']});
   w.party.self.downAt=t-2;w.party.self.selfReviveAt=t+3;
-  const dead=(id:string,x:number)=>player(id,'#3fc6ff',stand(x,0),0,{hp:0,death:{id:'d-'+id,at:t-3,pos:stand(x,0)} as never});
+  // Complete death records (kept bodies are real ragdolls, pve/downed.ts); a fixed death time so the bodies are settled.
+  const dead=(id:string,x:number)=>player(id,'#3fc6ff',stand(x,0),0,{hp:0,death:{id:'d-'+id,at:-6,effect:'impact-ragdoll',seed:7+x,pos:stand(x,0),velocity:{x:0,y:0,z:-.6},direction:{x:0,y:0,z:-1},source:null,kind:'environment',yaw:0}});
   const players=[dead('down',-3),dead('reviving',0),dead('self',3),player('medic','#7dffb0',stand(-.9,1),Math.PI*.8),player(ME,'#cccccc',stand(0,30),0)];
+  return {players,view:w};}
+ if(kind==='downed'){
+  const ids=[ME,'down'],w=base(t,ids),up=t>=0,dead=downedDeath(),back=q.get('back')==='pad'?stand(3.6,-1.2):stand(dead.pos.x,dead.pos.z);
+  w.party=fixtureParty({time:t,ids,kinds:['alive',up?'alive':'dead']});if(up)w.party.down.upAt=0;else w.party.down.downAt=dead.at;
+  const players=[player(ME,'#cccccc',stand(0,30),0),player('down','#ff8a3f',up?back:dead.pos,up?2.2:dead.yaw,up?{hp:50}:{hp:0,death:dead})];
   return {players,view:w};}
  if(kind==='possess'){
   // "Find me...": the boss dissolves at t=0 and its black flame streaks to add 5.
@@ -137,15 +162,18 @@ function cameraFor(view:string):[number[],number[]]{
   return [[en.exit.x+f.x*d+r.x*d*side,en.kind==='vent'?3.2:2.4,en.exit.z+f.z*d+r.z*d*side],[en.from.x+(en.exit.x-en.from.x)*.4,en.kind==='vent'?.3:1.5,en.from.z+(en.exit.z-en.from.z)*.4]];}
  if(view==='holo')return [[0,2.1,5.2],[0,1.6,0]];
  if(view==='beacon')return [[0,3.2,7.5],[0,.9,0]];
+ if(view==='downed')return [[2.2,1.7,3.4],[1,.35,-.2]];
+ if(view==='downed-wide')return [[1.8,3.1,7.2],[1.6,.8,-.4]];
  if(view==='boss')return [[0,1.9,7.8],[0,1.4,0]];
  if(view==='possess')return [[3,4.5,9],[3,1,-1.5]];
  if(view==='boss-side')return [[6.5,2.2,4.5],[0,1.4,0]];
  return [[0,46,30],[0,0,2]];
 }
 async function main(){
+ await initPhysics();
  const gl=new T.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});gl.setPixelRatio(1);gl.setSize(cellW,cell);gl.shadowMap.enabled=true;gl.shadowMap.type=T.PCFSoftShadowMap;
  gl.outputColorSpace=T.SRGBColorSpace;gl.toneMapping=T.ACESFilmicToneMapping;gl.toneMappingExposure=.92;
- const defaults:Record<string,string>={overview:'overview',dispense:'machine',recruit:'machine',pickups:'pickups',entries:'entry',holo:'holo',beacon:'beacon',boss:'boss',possess:'possess'};
+ const defaults:Record<string,string>={overview:'overview',dispense:'machine',recruit:'machine',pickups:'pickups',entries:'entry',holo:'holo',beacon:'beacon',boss:'boss',possess:'possess',downed:'downed,downed-wide'};
  const views=(q.get('views')||defaults[kind]).split(',').filter(Boolean),cut=!!q.get('cutscene'),rows=cut?1:views.length;
  const start=num('start',kind==='overview'?100:-.2),span=num('span',kind==='entries'?3:kind==='recruit'?1.8:1.2),times=sampleList?.length?sampleList:Array.from({length:frames},(_,i)=>start+(frames===1?0:span*i/(frames-1)));
  sheet.width=times.length*cellW;sheet.height=rows*cell+22;const ctx=sheet.getContext('2d')!;ctx.font='11px ui-monospace,monospace';ctx.fillStyle='#0c0b10';ctx.fillRect(0,0,sheet.width,sheet.height);
@@ -158,19 +186,19 @@ async function main(){
  for(const b of sirenStageBlocks()){const m=new T.Mesh(new T.BoxGeometry(b.size.x,b.size.y,b.size.z),new T.MeshLambertMaterial({color:b.material==='foundation'?SIREN_STAGE_THEME.floor:MATERIALS[b.material].color}));m.position.set(b.pos.x,b.pos.y,b.pos.z);m.castShadow=!b.id.startsWith('siren-roof-');m.receiveShadow=true;scene.add(m);props.set(b.id,m);}
  const stage=new SirenStageVisuals(scene);stage.setActive(true);
  const camera=new T.PerspectiveCamera(num('fov',42),cellW/cell,.05,300);scene.add(camera);
- const pve=new PveVisuals(scene),effects=new SirenEffects(scene),director=cut?new SirenCutscene():undefined;
+ const pve=new PveVisuals(scene),effects=new SirenEffects(scene),director=cut?new SirenCutscene():undefined,deaths=new DeathEffects(scene),wounds=new BodyWounds(scene);
  const rigs=new Map<string,CharacterRig>(),minions=new Map<number,SirenMinion>();
  const rigFor=(p:PlayerView)=>{let r=rigs.get(p.id);if(!r){r=createCharacterRig(p.color,undefined,true);if(p.spec===SIREN.spec)sirenify(r);r.group.traverse(o=>{if(o instanceof T.Mesh){o.castShadow=true;o.receiveShadow=true;}});scene.add(r.group);rigs.set(p.id,r);}return r;};
  let lastEvent=0;
  const step=(t:number,h:number)=>{
   const f=scenario(t),snap=snapshotAt(t,f),live=new Set(f.players.map(p=>p.id));
   for(const [id,r] of rigs)if(!live.has(id))r.group.visible=false;
-  for(const p of f.players){const r=rigFor(p);r.group.visible=p.hp>0;r.group.position.set(p.pos.x,p.pos.y,p.pos.z);r.group.rotation.y=p.yaw;r.weapon.visible=!p.weaponAway;
-   animateCharacter(r,p,t,h,0);if(p.spec===SIREN.spec)animateSiren(r,p,snap,t,h,0);r.group.visible&&=pve.decoratePlayer(r,p,snap);}
+  for(const p of f.players){const r=rigFor(p),dead=p.hp<=0&&p.death,at=dead?p.death!.pos:p.pos;r.group.visible=p.hp>0;r.group.position.set(at.x,at.y,at.z);r.group.rotation.y=p.yaw;r.weapon.visible=!p.weaponAway;
+   animateCharacter(r,p,dead?p.death!.at:t,h,0);if(p.spec===SIREN.spec)animateSiren(r,p,snap,t,h,0);r.group.visible&&=pve.decoratePlayer(r,p,snap);}
   for(const a of f.adds??[]){let m=minions.get(a.n);if(!m){m=createSirenMinion(minionSeed('add-'+a.n));scene.add(m.rig.group);minions.set(a.n,m);}
    m.rig.group.position.set(a.pos.x,a.pos.y,a.pos.z);m.rig.group.rotation.y=a.yaw;animateSirenMinion(m,{yaw:a.yaw,vel:a.vel,spawnAt:a.spawnAt},t,quality);}
   for(const e of f.events??[])if(e.id>lastEvent){lastEvent=e.id;effects.event(e,t,quality);pve.event(e,snap);}
-  effects.update(snap,t,rigs,quality,camera);stage.update(snap,t,quality,camera);
+  effects.update(snap,t,rigs,quality,camera);stage.update(snap,t,quality,camera);wounds.update(snap,rigs,{quality,dt:h});deaths.update(snap,rigs,quality);
   pve.update(snap,{camera,me:ME,dt:h,quality,compatibility:false,replay:false,rigs,burst:()=>{}});
   return {f,snap};
  };

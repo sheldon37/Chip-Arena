@@ -32,7 +32,7 @@ const idle=(b:Input):Input=>({seq:b.seq,x:0,z:0,yaw:b.yaw,pitch:b.pitch,attack:f
 
 interface Row{
  id:string;money:number;earned:number;spent:number;chipsBought:number;recruitsHired:number;picks:PvePick[];open?:string;openAt?:number;
- hurtAt?:number;downAt?:number;selfRevives:number;selfReviveAt?:number;healAt?:number;healUntil?:number;healReadyAt:number;
+ hurtAt?:number;downAt?:number;upAt?:number;selfRevives:number;selfReviveAt?:number;healAt?:number;healUntil?:number;healReadyAt:number;
  healPulses:number;thinkUntil?:number;pendingStats:boolean;bossCum:number;bossPaid:number;
 }
 interface PendingHire{owner:string;at:number;m:number;price:number}
@@ -166,7 +166,7 @@ export class Economy implements EconomyApi{
  /** From Simulation.revivePlayer (every revive path): picks made while dead apply now; once-keys reset (D37). */
  onRevive(p:Player){
   const r=this.rows.get(p.id);
-  if(r){r.downAt=undefined;r.selfReviveAt=undefined;if(r.pendingStats){r.pendingStats=false;applyChipsLive(p);}}
+  if(r){r.downAt=undefined;r.upAt=this.time;r.selfReviveAt=undefined;if(r.pendingStats){r.pendingStats=false;applyChipsLive(p);}}
   this.sim.chaos.forget(p.id+':exit');this.sim.chaos.forget(p.id+':panic');
  }
  private revive(p:Player,pos:{x:number;z:number},event:string,extra:object){
@@ -314,7 +314,7 @@ export class Economy implements EconomyApi{
   Object.assign(row,{money:r.money,earned:r.earned,spent:r.spent,chipsBought:r.chipsBought,recruitsHired:r.recruitsHired,selfRevives:r.selfRevives,
    chipPrice:chipPrice(r.chipsBought),healReadyAt:r.healReadyAt,picks:r.picks.map(k=>({...k,...(k.offers?{offers:[...k.offers]}:{})}))});
   const opt=row as unknown as Record<string,unknown>;
-  for(const key of ['open','openAt','hurtAt','downAt','selfReviveAt','healAt','healUntil'] as const)if(r[key]!==undefined)opt[key]=r[key];
+  for(const key of ['open','openAt','hurtAt','downAt','upAt','selfReviveAt','healAt','healUntil'] as const)if(r[key]!==undefined)opt[key]=r[key];
   return row;
  }
  machinesView():PveMachineUse[]{return this.uses.map(u=>({...u}));}

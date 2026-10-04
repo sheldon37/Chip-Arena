@@ -475,6 +475,34 @@ failed load falls back to the normal rotation. Server, wire and simulation are u
 
 **Size:** the owner's track is 2:53; it was re-encoded from ~190 kbps VBR (4.1 MB) to 128 kbps CBR without cover art (2.77 MB). The gzip update payload is now 26,022,078 bytes (24.8 MiB), under the 25 MiB per-file hosting limit with little headroom: future large assets need a payload budget.
 
+## Downed bodies, HELP and regeneration (2026-10-03, branch `claude/pve-downed`)
+
+Owner: "when player is dead, show little 'Help' message that goes up and down near their death. Keep their body as well
+(even if they're gibbed, show a 'holographic regeneration that rebuilds missing body parts and heals wounds)" and
+"Regenerate when revived I mean". Presentation only; PvP death presentation is unchanged.
+
+- **Kept body.** While a party member (human or party bot, connected) is down, `death-effects.ts` keeps its death effect
+  instead of fading it at 5 s (`DownedBodies.kept`, `src/client/pve/downed.ts`): the impact ragdoll holds at 4.2 s (settled,
+  before the stock fade) with its wounds, cut caps, severed or crushed parts and blood pools; the Siren crush victim holds
+  lying and smouldering (`keep`, `SIREN_CRUSH_KEEP` 2.6 s); any other effect id plays the impact ragdoll. Kept bodies have
+  their own budget (96 each, outside `maxDeathVoxels`), are rebuilt when missing (late join, kill cam rewind; one
+  fast-forward per frame) and stay through the end outro; a disconnect or leaving PvE ends them with the stock fade.
+- **HELP.** A white speech bubble with red "HELP!" rides on each revive beacon (bottom 2.62 m + bob 0.11 m, period 1.15 s,
+  pure in time; constant on-screen size between 5 and 26 m; drawn over the scene). Hidden for the downed player (their
+  HUD shows it), after the run ends and on the SVG compatibility path.
+- **Regeneration.** Contract: `PvePartyView.upAt` (additive, optional) = sim time of the last return, stamped by
+  `Economy.onRevive` for every path (paid revive, self-revive, respawn). The presented clock trails the newest snapshot,
+  so the regeneration counts from `upAt` with a 1 s lead (age 0) and its visuals start 0.05 s after `upAt`. In place
+  (back within 1.6 m of the death spot): for 0.8 s a cyan scan runs feet → head over the body, wounds and caps seal,
+  carved parts regain their sculpt, severed pieces, blood and fragments dissolve, and missing parts are rebuilt in
+  converging voxels from the live rig's own meshes; then the live rig takes the body's pose (`standFrom` +
+  `seedTransition`) and stands up over 0.6 s under a fading shell. Farther (a respawn pad): the old body dissolves over
+  0.7 s and the player materialises from voxels where they are. The live rig is hidden until the stand-up (the revive
+  shield lasts 1.5 s). Budgets: one instanced draw on the body and one on the rig, ≤ 360 voxels (120 at low quality);
+  none on the SVG path. Lab: `/tools/pve-lab/index.html?kind=downed&wound=decap|arm|torso|crush&back=place|pad`.
+- No damage, hitbox, timing, cooldown, movement, knockback or networking rule changed; `upAt` adds a few bytes to the
+  PvE snapshot after a return.
+
 ## Rendering constants (S5 and S6 mirrors)
 
 `src/client/pve/horde-view.ts`:
