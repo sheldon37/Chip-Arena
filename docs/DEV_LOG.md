@@ -18,6 +18,47 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-04 — Claude — random lag spikes (full-screen freezes, every mode, offline)
+
+- Branch `claude/lag-spikes` from `origin/claude/visual-revision` 7b91b6c. Implemented on branch; no PR, not merged, not published.
+- Method: Playwright + SwiftShader real-app runs (dev server) of a PvP bot match, the Developer Sandbox firing every gun
+  and magic school, and an offline TEST BOSS run (waves, spawns, Siren phases 2-3). Recorded a rAF frame log, long
+  tasks, a CDP CPU profile and a trace of every WebGL `linkProgram`. Also timed a headless local PvP match in Node with
+  `--trace-gc`.
+- Cause 1 (the freezes, worst when shooting): GPU programs were linked mid-game. three.js links a program the first
+  time a new material variant is drawn, and deletes it when the last material using it is disposed. Per-event materials
+  (projectile trails per shot, melee trails, impact glows, death fireworks, wolf-landing dust, Siren claw slashes) were
+  re-linked every time the previous effect of that kind had expired. Pooled effects (chip blasts, sparks) linked on
+  first use. On the boss stage the seeker's point light changed the light count, which re-keys every material.
+  Fix in `src/client/shader-warmup.ts` (renderer only):
+  - every linked program is pinned (cap 512);
+  - the first compiled ShaderMaterial of each shader source is kept, so its stage ids stay stable;
+  - on a new scene composition (map, PvE stage, round) the scene and hidden probes for per-event variants are compiled.
+    When a Siren is present, this runs once more with one extra point light.
+  SwiftShader evidence:
+  - firing test: main-thread shader-compile time 31.2 s -> 2.5 s, links after start 64 -> 9, hitches over 950 ms 26 -> 0
+    with a link (all 26 had been link frames);
+  - PvP: links after start 22 -> 3;
+  - PvE boss fight: links 17 -> 2 (Siren slash 13 -> 1), in-fight compile time 28.6 s -> 5.7 s.
+- Cause 2 (GC pauses): the killcam history ran structuredClone on the whole snapshot at 20 Hz and kept 6 s of it, so
+  the static map's props were stored again in every frame. Fix: `Killcam.record` reuses the previous frame's copy of a
+  prop or event when it is equal (`sameData`); players and the rest are still copied. Headless PvP (5 hard bots, 2 min):
+  major GC max 30-55 ms -> 6-9 ms, total GC about 1.7 s -> 1.0 s, sim step p999 12-14 ms -> 5.5 ms. Playback is
+  unchanged (the killcam tests pass).
+- No gameplay, snapshot, network or save changes. Hit timing, hitboxes, damage, cooldowns and movement are unchanged.
+- Checks (Node 22.22.2): `check:types` passes. The new `tests/lag-spikes.test.ts` passes 5/5. pvp-golden passes 7/7.
+  `tests/pve-*.test.ts` + killcam + lag-spikes pass 217/217. The full suite had 1189 tests and only the 13 known
+  failures. `run-network.mjs pve` (TEST_PORT 8823) reached victory, deflated p95 5620 B. `npm run build` gave a live
+  payload of 26,187,878 B against a limit of 26,214,400.
+- Not fixed or not reproduced:
+  - offline PvP still builds a full snapshot every tick on the main thread (about 1.8 MB/tick of short-lived allocation,
+    mostly Rapier vector wrappers and prop views);
+  - intro and cutscene light-count changes (Siren intro, bass-van cabin light) still compile once each per session;
+  - auto-graphics RenderBudget resizes were not seen;
+  - no audio-decode, HUD or worker catch-up hitch was found;
+  - SwiftShader cannot show real GPU timings.
+- Next: owner test on Windows. The first match after launch may still compile once during the intro or countdown.
+
 ## 2026-10-04 — Claude — PvE vent pits: black open vents, vent-fall deaths, timed splat
 
 - Branch `claude/pve-vent-pits` from `origin/claude/visual-revision` 8840198, merged with 3457323 (PRs #37–#40). Not merged, not released, no PR.
