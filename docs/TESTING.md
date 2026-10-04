@@ -34,6 +34,9 @@ This explicitly creates a private test room, rejects the non-owner's debug comma
 
 ## Manual browser coverage
 
+The Developer Sandbox (and F3) needs a DEV account in built games (owner 2026-10-04); `npm run dev` keeps it open for
+local testing. Everyone else practises against the Play vs Bots dummy.
+
 1. Complete each of Pistol / Fire / Sword against a bot. One round win must not award a set or Chip. Two wins award a set and the loser drafts; a 1–1 split requires a deciding round. Finish five sets, verify no final draft, rematch, and return to lobby.
 2. Try every specialization and its secondary. Verify every gun reloads (Machine Gun: 48 rounds / 2.4 s), mana regeneration, stamina costs/regeneration, sword parry timing, and Shield's stamina-limited frontal guard and rear vulnerability.
 3. In Sandbox, install a Chip twice. Observe numerical changes and installed count. Test Reach by comparing visible sword reach, Kinetic by launching crates, Demolition against walls, and Salvage using identical launcher hits.

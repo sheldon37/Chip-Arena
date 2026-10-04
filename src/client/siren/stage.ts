@@ -6,8 +6,8 @@ import {SIREN_HALL as H,SIREN_COLUMNS,SIREN_ADD_SPAWNS,SIREN_CHIP_SPOTS,SIREN_VE
 import {FlameField} from './flames.js';
 import {PALETTE,glowMaterial,haloMaterial,decalMaterial,tickSirenClock} from './materials.js';
 import {pveOf,PVE_TIMING,type EntryKind,type PveEntryView} from '../../shared/pve/contract.js';
-import {PVE_ENTRIES} from '../../shared/pve/layout.js';
-import {ENTRY_CLOSE,entryStart,entryOpenAmount,VENT_PIT} from '../../shared/pve/vent-pits.js';
+import {PVE_ENTRIES,machinesPresent} from '../../shared/pve/layout.js';
+import {ENTRY_CLOSE,entryStart,entryOpenAmount,VENT_PIT,wardVentDrawn,wardVentWarning} from '../../shared/pve/vent-pits.js';
 
 const clamp=(x:number,a=0,b=1)=>Math.min(b,Math.max(a,x));
 const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
@@ -71,7 +71,7 @@ void main(){
 
 /** The four walls as frames: u runs along the wall, d is the distance into the hall, and the frame's yaw faces the hall.
  * Dressing on a wall is grouped by side so a camera outside the hall (the menu overview) sees a cut-away, not a box. */
-type Side='n'|'s'|'e'|'w';type Tag=Side|'v'|''|'door';
+type Side='n'|'s'|'e'|'w';type Tag=Side|'v'|''|'door'|'pads';
 const SIDES:Record<Side,{x:number;z:number;ry:number;half:number}>={
  n:{x:0,z:-H.halfZ,ry:0,half:H.halfX},s:{x:0,z:H.halfZ,ry:Math.PI,half:H.halfX},
  w:{x:-H.halfX,z:0,ry:Math.PI/2,half:H.halfZ},e:{x:H.halfX,z:0,ry:-Math.PI/2,half:H.halfZ},
@@ -133,7 +133,7 @@ function rng(seed:number){return ()=>{seed=(Math.imul(seed,1664525)+1013904223)>
  */
 export class WardZeroVisuals {
  readonly group=new T.Group();private active=false;private saved=new Map<T.Light,number>();private mood:Mood={...MOODS.build};private last=0;private lastBeat=-1;
- private groups:Record<Tag,T.Group>;private cut:Record<Tag,boolean>={n:false,s:false,e:false,w:false,v:false,'':false,door:false};private cutKey='';
+ private groups:Record<Tag,T.Group>;private cut:Record<Tag,boolean>={n:false,s:false,e:false,w:false,v:false,'':false,door:false,pads:false};private cutKey='';
  private mat={
   tile:new T.MeshLambertMaterial({color:0x48524d}),grout:new T.MeshLambertMaterial({color:0x22272a}),plaster:new T.MeshLambertMaterial({color:0x37323d}),dark:new T.MeshLambertMaterial({color:0x0b0a0e}),
   wood:new T.MeshLambertMaterial({color:0x33241f}),iron:new T.MeshLambertMaterial({color:0x1b191f}),brick:new T.MeshLambertMaterial({color:0x2c1e21}),pewter:new T.MeshLambertMaterial({color:0x6b6676}),
@@ -157,7 +157,7 @@ export class WardZeroVisuals {
   this.washes[0].position.set(12,8,16);this.washes[1].position.set(-12,8,-16);this.group.add(...this.washes);
   const g=(name:string,parent:T.Object3D=this.group)=>{const x=new T.Group();x.name='ward-'+name;parent.add(x);return x;};
   const sides={n:g('north'),s:g('south'),e:g('east'),w:g('west')};this.doors=g('doors',sides.s);
-  this.groups={...sides,v:g('vault'),'':this.group,door:this.doors};
+  this.groups={...sides,v:g('vault'),'':this.group,door:this.doors,pads:g('pads')};
   this.lamps=new Lamps(this.group,900);const kit=new Kit();
   this.buildFloor(kit);this.buildWalls(kit);this.buildAltar(kit);this.buildGreatDoors(kit);this.buildWardDoors(kit);this.buildColumns(kit);this.buildCells(kit);this.buildVault(kit);
   this.buildCrowd();this.buildBeacons();this.buildGraffiti(kit);this.circle=this.buildCircle();this.buildVents(kit);
@@ -177,8 +177,9 @@ export class WardZeroVisuals {
   stains.instanceMatrix.needsUpdate=true;stains.name='ward-grime';this.group.add(stains);
   // Chip pads: hexagonal iron docks with a glow ring and a centre light (chips will spawn here; they idle on the off-beat).
   const hex=new T.CylinderGeometry(.95,.95,.05,6),ring=new T.RingGeometry(.74,.86,6);ring.rotateX(-Math.PI/2);
-  this.pads=SIREN_CHIP_SPOTS.map(c=>{kit.add('',this.mat.iron,at(c.x,.025,c.z,1,1,1),hex);return this.lamps.add(0xe8e2ff,at(c.x,.056,c.z,.22,.02,.22,0,Math.PI/4,0));});
-  this.padRings=new Lamps(this.group,SIREN_CHIP_SPOTS.length,ring,'ward-pad-rings');for(const c of SIREN_CHIP_SPOTS)this.padRings.add(0xb9a8ff,at(c.x,.055,c.z,1,1,1));
+  // They are where the PvE chip machines and recruit pods stand, so they are drawn only when the machines are (machinesPresent).
+  this.pads=SIREN_CHIP_SPOTS.map(c=>{kit.add('pads',this.mat.iron,at(c.x,.025,c.z,1,1,1),hex);return this.lamps.add(0xe8e2ff,at(c.x,.056,c.z,.22,.02,.22,0,Math.PI/4,0),'pads');});
+  this.padRings=new Lamps(this.groups.pads,SIREN_CHIP_SPOTS.length,ring,'ward-pad-rings');for(const c of SIREN_CHIP_SPOTS)this.padRings.add(0xb9a8ff,at(c.x,.055,c.z,1,1,1));
   // Threshold stripes in front of every add spawn.
   for(const a of SIREN_ADD_SPAWNS){const f=new T.Vector3(Math.sin(a.yaw),0,Math.cos(a.yaw)),side=new T.Vector3(f.z,0,-f.x),cell=a.kind==='cell',back=cell?3:-2.1,w=cell?5:3;
    for(let i=-w;i<=w;i++){const p=new T.Vector3(a.x,0,a.z).addScaledVector(f,back).addScaledVector(side,i*.5);kit.add('',i%2?this.mat.stripe:this.mat.iron,at(p.x,.008,p.z,.42,.012,.9,0,a.yaw+.5,0));}}
@@ -392,7 +393,7 @@ export class WardZeroVisuals {
  private own(o:T.Object3D){for(let x:T.Object3D|null=o;x;x=x.parent)if(x===this.group)return true;return false;}
  /** A camera outside the hall (the menu overview orbits above it) sees the near walls and the vault cut away. */
  private cutaway(c:T.Vector3){
-  const k=this.cut;k.w=c.x<-H.halfX;k.e=c.x>H.halfX;k.n=c.z<-H.halfZ;k.s=c.z>H.halfZ;k.v=c.y>H.roof-.1;this.cutKey=SIDE_KEYS.filter(s=>k[s]).join('')+(k.v?'v':'');
+  const k=this.cut;k.w=c.x<-H.halfX;k.e=c.x>H.halfX;k.n=c.z<-H.halfZ;k.s=c.z>H.halfZ;k.v=c.y>H.roof-.1;
   for(const s of [...SIDE_KEYS,'v'] as Tag[])this.groups[s].visible=!k[s];
  }
  /** Applies the same cut-away to the hall's own collision props (walls and roof) as the renderer draws them. */
@@ -411,6 +412,7 @@ export class WardZeroVisuals {
   // A song-locked count of beats for everything that has to agree between viewers (sway, clocks, chases).
   const beats=pos.index>=0?pos.index+pos.phase:time*2,bar=((pos.beat-1)+pos.phase)/4,newBeat=pos.index!==this.lastBeat;this.lastBeat=pos.index;
   if(camera)this.cutaway(camera.position);
+  this.cut.pads=!machinesPresent(state);this.groups.pads.visible=!this.cut.pads;const cut=this.cut;this.cutKey=SIDE_KEYS.filter(s=>cut[s]).join('')+(cut.v?'v':'')+(cut.pads?'p':'');
 
   // The arena's own night lights are mostly shut off in here: the ward is lit by its own tubes, sconces and beacons.
   // (Lights are re-collected about once a second rather than walking the scene every frame.)
@@ -472,7 +474,7 @@ export class WardZeroVisuals {
 
   // Vents: read the same schedule the simulation damages with.
   const hazards=song&&raw>=0?sirenStageHazards(raw):[];
-  for(const v of this.vents){const h=hazards.find(x=>x.id===v.id);const warn=h?.warning??0,on=!!h?.active;
+  for(const v of this.vents){const h=hazards.find(x=>x.id===v.id);const warn=Math.max(h?.warning??0,this.ventWarn.get(v.id)??0),on=!!h?.active;
    v.glow.uniforms.uOpacity.value=on?.95:Math.max(warn*.9,this.ventGlow.get(v.id)??0);v.glow.uniforms.uColor.value.setHex(on?0xffffff:PALETTE.warn);
    if(warn>0&&Math.random()<dt*q*20*warn)this.fire.emit(v.grate.position.x+(Math.random()-.5)*2,.05,v.grate.position.z+(Math.random()-.5)*2,0,.5+warn,0,.4,.06,'black',1.5,2);
    if(on){if(!v.burst){v.burst=true;this.fire.burst(v.grate.position.x,.1,v.grate.position.z,Math.round(28*q),2,.6,.14,'black',4,1);}
@@ -480,17 +482,26 @@ export class WardZeroVisuals {
    else v.burst=false;}
   this.fire.update(dt);
  }
- private ventGlow=new Map<string,number>();
+ private ventGlow=new Map<string,number>();private ventWarn=new Map<string,number>();
  /** PvE entries: vent lids, door leaves and cell gates follow the authoritative entry times (pure in time); their alarms
-  *  flash while open, and black smoke spills out as each one opens. Without PvE every entry rests in its PvP pose. */
+  *  flash while open, and black smoke spills out as each one opens. Without PvE every entry rests in its PvP pose.
+  *  Ward Zero outside PvE (PvP, DEV sandbox): the authority's own `vents` schedule wins over a PvE view without entries (the
+  *  sandbox's downed/revive previews); a DEV fixture with entries keeps its own. Each vent warns for VENT_PIT.warn s (rim fill,
+  *  black wisps, rattling lid), then its lid swings VENT_PIT.lead s ahead of the pit turning lethal (wardVentDrawn); no add
+  *  ever climbs out. The last opening seen per vent keeps drawing its close after the snapshot drops it (an interpolated
+  *  view runs behind the newest snapshot). */
+ private wardSeen=new Map<number,PveEntryView>();
  private updateEntries(state:Snapshot,time:number,dt:number,q:number){
-  const view=pveOf(state),open=new Map<number,PveEntryView>();for(const e of view?.entries??state.vents??[])open.set(e.e,e);this.ventGlow.clear();
-  for(const en of PVE_ENTRIES){const e=open.get(en.e),o=entryOpenAmount(en.kind,e,state.time),active=!!e&&state.time>=e.openAt&&state.time<e.closeAt+ENTRY_CLOSE[en.kind];
-   if(en.kind==='vent'){const v=this.vents[en.e];if(!v)continue;v.lid.rotation.z=VENT_SWING*o;v.pit.visible=o>1e-3;v.shaft.uniforms.uOpen.value=o;if(active)this.ventGlow.set(v.id,.25+.35*o*(Math.sin(time*10)>0?1:.4));
+  const view=pveOf(state),ward=view?.entries.length?undefined:state.vents,open=new Map<number,PveEntryView>();for(const e of ward??view?.entries??[])open.set(e.e,e);this.ventGlow.clear();this.ventWarn.clear();
+  if(!ward)this.wardSeen.clear();
+  for(const en of PVE_ENTRIES){const e=open.get(en.e),pit=!!ward&&en.kind==='vent',seen=pit?this.wardSeen.get(en.e):undefined;if(pit&&e)this.wardSeen.set(en.e,e);
+   const o=pit?Math.max(wardVentDrawn(e,state.time),seen&&seen!==e?wardVentDrawn(seen,state.time):0):entryOpenAmount(en.kind,e,state.time),active=pit?o>.02:!!e&&state.time>=e.openAt&&state.time<e.closeAt+ENTRY_CLOSE[en.kind];
+   if(en.kind==='vent'){const v=this.vents[en.e];if(!v)continue;const w=pit?wardVentWarning(e,state.time):0;if(w>0)this.ventWarn.set(v.id,w);
+    v.lid.rotation.z=VENT_SWING*o+.06*w*Math.abs(Math.sin(state.time*34));v.pit.visible=o>1e-3;v.shaft.uniforms.uOpen.value=o;if(active)this.ventGlow.set(v.id,.25+.35*o*(Math.sin(time*10)>0?1:.4));
     if(o>.05&&o<.98&&!this.cut.v){let acc=(this.entryAcc.get(en.id)??0)+dt*q*40;while(acc>=1){acc-=1;this.fire.emit(v.grate.position.x+(Math.random()-.5)*1.8,.05,v.grate.position.z+(Math.random()-.5)*1.8,0,.8+Math.random(),0,.6,.08,Math.random()<.5?'black':'smoke',1,1.5);}this.entryAcc.set(en.id,acc);}
     continue;}
    if(en.kind==='door'){const pivots=this.leaves.get(en.id);if(pivots)pivots.forEach((pv,i)=>{pv.rotation.y=(i===0?-1:1)*DOOR_SWING*o;});}
-   else{const gate=this.gates.get(en.id);if(gate)gate.scale.y=view?mix(1,CELL_STUB,o):CELL_STUB;}
+   else{const gate=this.gates.get(en.id);if(gate)gate.scale.y=view&&!ward?mix(1,CELL_STUB,o):CELL_STUB;}
    const lamp=this.alarms.get(en.id);if(lamp!==undefined&&active)this.lamps.set(lamp,Math.sin(time*14)>0?1.6:.12);
   }
  }

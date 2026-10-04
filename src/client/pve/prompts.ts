@@ -3,7 +3,7 @@
 import type {Snapshot} from '../../shared/simulation.js';
 import type {PveView} from '../../shared/pve/contract.js';
 import {PRICES,RECRUIT} from '../../shared/pve/balance.js';
-import {PVE_MACHINES} from '../../shared/pve/layout.js';
+import {PVE_MACHINES,machinesPresent} from '../../shared/pve/layout.js';
 import {inVentShaft} from '../../shared/pve/vent-pits.js';
 import {escapeHtml,formatCash,tierName} from './hud.js';
 
@@ -19,6 +19,7 @@ export function promptFor(state:Snapshot,pve:PveView,me:string):PvePrompt|null{
  for(const id of Object.keys(pve.party)){if(id===me)continue;const p=state.players.find(x=>x.id===id),r=pve.party[id];
   if(!p||p.hp>0||!r.connected||inVentShaft(p.death,state.time))continue;const at=p.death?.pos??p.pos;
   if(flat(at,self.pos)<=PRICES.reviveRadius)return {kind:'revive',key:'revive-'+id,text:`Revive ${p.name} ${formatCash(r.reviveCost)}`,afford:row.money>=r.reviveCost};}
+ if(!machinesPresent(state))return null;
  const m=PVE_MACHINES.filter(m=>flat(m.front,self.pos)<=PRICES.interactRadius).sort((a,b)=>flat(a.front,self.pos)-flat(b.front,self.pos))[0];
  if(!m)return null;
  if(m.kind==='chip')return {kind:'chip',key:'chip-'+m.m,text:`Buy chip ${formatCash(row.chipPrice)}`,afford:row.money>=row.chipPrice};

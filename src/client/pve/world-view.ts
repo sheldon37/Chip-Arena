@@ -7,7 +7,7 @@
 import * as T from 'three';
 import type {GameEvent,PlayerView,Snapshot} from '../../shared/simulation.js';
 import {PVE_TIMING,type PveView} from '../../shared/pve/contract.js';
-import {PVE_MACHINES} from '../../shared/pve/layout.js';
+import {PVE_MACHINES,machinesPresent} from '../../shared/pve/layout.js';
 import type {PveRigRef,PveVisualsContext} from './visuals.js';
 import {MachinesView} from './machines.js';
 import {PickupsView} from './pickups.js';
@@ -50,7 +50,7 @@ export class WorldView {
  }
  update(state:Snapshot,view:PveView,ctx:PveVisualsContext){
   this.build();this.group.visible=true;const t=state.time;
-  this.machines!.update(view,t,ctx.me);this.pickups!.update(view,t,ctx.me);
+  if(machinesPresent(state))this.machines!.update(view,t,ctx.me);else this.machines!.group.visible=false;this.pickups!.update(view,t,ctx.me);
   this.holograms!.update(state,view,ctx.me,ctx.camera,ctx.rigs,this.hitAt);this.tags!.update(state,view,ctx.me,ctx.camera,ctx.rigs);
   this.beacons!.update(state,view,ctx.me,ctx.camera,ctx.compatibility);this.downed.update(state,view,ctx);this.boss!.update(state.players,view,t,ctx.quality);
   this.updateShells(state,view);this.updateBeams(state,ctx);this.updateAuras(state,view);

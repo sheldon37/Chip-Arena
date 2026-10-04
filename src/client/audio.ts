@@ -1,5 +1,5 @@
 import {introFrame} from '../shared/intros.js';
-import {VENT_PIT} from '../shared/pve/vent-pits.js';
+import {VENT_PIT} from '../shared/pve/vent-pits.js';import {SIREN_VENTS} from '../shared/siren-stage-layout.js';
 import {BossTheme} from './boss-theme.js';
 import {SirenAudio} from './siren-audio.js';
 import {SlenderAudio} from './slender-static.js';
@@ -109,10 +109,13 @@ export class ArenaAudio {
   else if(e.type==='pve-phase'){this.play('darkness',undefined,.7);this.play('metal',undefined,.35);}
  }
  /** Entry doors and vents opening (S6 owns the world animation; the cue lives here). */
- pveEntries(state:Snapshot){const pve=state.pve;if(!pve)return;for(const e of pve.entries){const key='entry:'+e.e+':'+e.openAt;if(this.deathCues.has(key)||state.time<e.openAt||state.time-e.openAt>.4)continue;this.deathCues.set(key,state.time);this.play('metal',undefined,.18);}}
+ pveEntries(state:Snapshot){const pve=state.pve;if(!pve||state.vents&&!pve.entries.length){this.wardVents(state);return;}for(const e of pve.entries){const key='entry:'+e.e+':'+e.openAt;if(this.deathCues.has(key)||state.time<e.openAt||state.time-e.openAt>.4)continue;this.deathCues.set(key,state.time);this.play('metal',undefined,.18);}}
+ /** Ward Zero outside PvE: a quiet rattle where a vent starts its warning, then a clank as its lid swings open. */
+ private wardVents(state:Snapshot){for(const e of state.vents??[]){const w=SIREN_VENTS[e.e];if(!w)continue;const pos={x:w.x,y:0,z:w.z},lid=e.openAt-VENT_PIT.lead;
+  for(const [tag,at,gain] of [['warn',lid-VENT_PIT.warn,.07],['lid',lid,.16]] as const){const key='ward:'+tag+':'+e.e+':'+e.openAt;if(this.deathCues.has(key)||state.time<at||state.time-at>.4)continue;this.deathCues.set(key,state.time);this.play('metal',pos,gain,tag==='warn'?1.6:0);}}}
  /** PvE (Siren TEST BOSS): the owner's stage track loops from the first in-game phase until the Siren spawns (bossSong);
   *  it rewinds in lobby/match and at the boss, and main.ts rewinds it on entering a game, so each run starts it from the top. PvP keeps the map music in fight/countdown/result. */
- private updateStageMusic(state:Snapshot,presentation:Snapshot){const pve=!!(state.pve||(state.options as {pve?:unknown}).pve)&&state.options.map==='siren',idle=['lobby','match'].includes(state.phase);
+ private updateStageMusic(state:Snapshot,presentation:Snapshot){const pve=!!(state.pve||(state.options as {pve?:unknown}).pve)&&state.options.map==='siren'&&!state.options.sandbox,idle=['lobby','match'].includes(state.phase);
   this.music.setStage(pve?PVE_STAGE_TRACK:null);this.music.setDip(pve&&introFrame(presentation)?.style!==undefined&&state.phase==='intro'?.35:1);
   this.music.setActive(!state.bossSong&&(pve?!idle:['fight','countdown','result'].includes(state.phase)));
   if(pve){if(state.bossSong||idle)this.music.rewindStage();this.boss.preload(this.context);}}

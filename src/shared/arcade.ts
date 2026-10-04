@@ -75,6 +75,8 @@ export class ArcadeSystem {
  impact(shot:Projectile,target:Player|Prop,point:Vec,damage=shot.damage){if(!shot.arcade||!('stats'in target))return;const p=this.sim.players.get(shot.owner);if(!p)return;refreshDot(target.burns,shot.owner,shot.burnDps||4,this.sim.time,'fire');refreshDot(target.poisons,shot.owner,shot.poisonDps||0,this.sim.time,'poison');this.confirmHit(p,target,damage,'fireball',shot.arcade.super?.15:.26,shot.arcade.super?'SUPER':'HIT',shot.arcade.super);
   if(shot.arcade.super&&this.echoes.length<64)this.echoes.push({at:this.sim.time+.10,until:this.sim.time+.5,source:shot.owner,pos:{...point},dir:norm(shot.vel),radius:1.5,damage:Math.min(40,shot.damage*.45),impulse:550,remaining:4,gap:.10,id:shot.id+':'+target.id,impact:'fireball'});
  }
+ /** A mid-round sandbox respawn re-arms Round Two (a round reset does this for everyone). */
+ forget(id:string){this.used.delete(id);}
  save(p:Player,amount:number){if(!this.active(p)||!p.chips['arcade-secondwind']||this.used.has(p.id)||amount<p.hp)return false;this.used.add(p.id);p.hp=1;p.stamina=p.stats.maxStamina;this.state(p).secondWind=true;p.burns.clear();p.poisons.clear();this.sim.emit('arcade-move',p.body.translation(),{source:p.id,spec:p.spec,message:'ROUND TWO',color:0xffd565,radius:2});return true;}
  stepPlayer(p:Player,dt:number){if(!this.active(p)){this.cancel(p);return;}const s=this.sim,a=this.state(p);a.uppercutCd=Math.max(0,a.uppercutCd-dt);a.hadokenCd=Math.max(0,a.hadokenCd-dt);
   if(!this.idle(p)){this.cancel(p);return;}if(a.action==='charge'){a.charge=clamp((s.time-a.at)/ARCADE.chargeSeconds,0,1);if(!p.input.hadoken||s.time>=a.until)this.hadoken(p,a.charge>=1);}
