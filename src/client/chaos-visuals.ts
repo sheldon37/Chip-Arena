@@ -3,7 +3,12 @@ import type {Snapshot} from '../shared/simulation.js';
 import type {FieldView} from '../shared/chaos.js';
 import {ABILITY_FX} from '../shared/abilities.js';
 import {sameTeam} from '../shared/teams.js';
-import {createCharacterRig,CharacterRig,rigBox} from './character-rig.js';
+import type {CharacterRig} from './character-rig.js';
+import type {MinionView} from '../shared/chaos.js';
+import {buildSummon,poseSummon,poseSummonDeath,SUMMON_LOOK} from './summon-visuals.js';
+import {SUMMON} from '../shared/chaos.js';
+/** Renderer hooks for summon VFX (pooled sparks and tracer lines); optional so tools and tests can omit them. */
+export interface SummonFx {burst(pos:{x:number;y:number;z:number},color:number,count:number,power:number):void;line(a:{x:number;y:number;z:number},b:{x:number;y:number;z:number},color0:number,color1:number):void;}
 const COLORS:Record<string,number>={'black-hole':0xab67ff,acid:0xb8f53c,fire:0xff672d,frost:0x8fdfff,time:0x83aeff,repulsion:0xff728f,heal:0x79ffa9,storm:0xddadff,bomb:0xffa141,implosion:0xb068ff,mine:0xff515d};
 /** Ability field telegraphs (§11.2): enemy warm red, own and allied cool cyan. */
 export const TELEGRAPH={enemy:0xff5a46,ally:0x55dcff} as const;
@@ -25,9 +30,12 @@ export function telegraphColor(f:FieldView,s:Snapshot,me?:string){
 export function rim(radius:number,color:number){const n=Math.max(12,Math.min(96,Math.round(Math.PI*2*radius/RIM_SPACING))),m=new T.InstancedMesh(box,mat(color,.85),n);m.name='field-rim';for(let i=0;i<n;i++){const a=i/n*Math.PI*2;dummy.position.set(Math.sin(a)*radius,.04,Math.cos(a)*radius);dummy.rotation.set(0,a+Math.PI/2,0);dummy.scale.set(.07,.07,RIM_SPACING*.55);dummy.updateMatrix();m.setMatrixAt(i,dummy.matrix);}return m;}
 export class ChaosVisuals {
  fields=new Map<string,T.Group>();minions=new Map<string,CharacterRig>();
+ /** Killed summons keep their rig for the corpse pose and break-up (SUMMON_LOOK.death), keyed by minion id. */
+ private dead=new Map<string,{rig:CharacterRig;kind:'zombie'|'toy';at:number;x:number;y:number;z:number;broke:boolean}>();
+ private hits=new Map<string,number>();private views=new Map<string,MinionView>();private lastEvent=0;private generation=-1;private spot={x:0,y:0,z:0};private tip=new T.Vector3();private living=new Set<string>();
  constructor(readonly scene:T.Scene){}
  /** `me` (the local pilot) picks the enemy/ally tint of ability telegraphs; without it they keep the field colour. */
- update(s:Snapshot,me?:string){const live=new Set((s.fields||[]).map(f=>f.id));for(const [id,g]of this.fields)if(!live.has(id)){this.scene.remove(g);g.traverse(o=>{if(o instanceof T.InstancedMesh)o.dispose();});this.fields.delete(id);}
+ update(s:Snapshot,me?:string,fx?:SummonFx){const live=new Set((s.fields||[]).map(f=>f.id));for(const [id,g]of this.fields)if(!live.has(id)){this.scene.remove(g);g.traverse(o=>{if(o instanceof T.InstancedMesh)o.dispose();});this.fields.delete(id);}
  for(const f of s.fields||[]){let g=this.fields.get(f.id);if(!g){g=new T.Group();const color=telegraphColor(f,s,me),ability=!!f.fx&&ABILITY_FX.has(f.fx);
  // Owner request 2026-10-04: areas are no longer outlined (no voxel rim on the radius, no dome wireframe); the field's own
  // volume (ChipBlasts motes, flames, smoke, the translucent dome, the cores) and a soft ground glow that fades to nothing at the radius show where it is. rim() stays for tools.
@@ -46,6 +54,23 @@ export class ChaosVisuals {
   else if(d.fuse)o.visible=Math.sin(age*(6+u*20))>-.2&&!(left<.5&&Math.sin(left*60)>.3);
   else if(d.core)o.rotation.set(age*.8,age*1.3,0);}
  }
- const living=new Set((s.minions||[]).map(m=>m.id));for(const[id,r]of this.minions)if(!living.has(id)){this.scene.remove(r.group);this.minions.delete(id);}for(const m of s.minions||[]){let r=this.minions.get(m.id);if(!r){r=createCharacterRig(m.kind==='toy'?'#ff9845':'#465436',m.kind==='toy'?0xcab18c:0x8da976);r.group.scale.setScalar(m.kind==='toy'?.6:.85);rigBox(r.head,'left-eye',-.08,.19,.165,.045,.045,.02,0xff5340);rigBox(r.head,'right-eye',.08,.19,.165,.045,.045,.02,0xff5340);this.scene.add(r.group);this.minions.set(m.id,r);}r.group.position.set(m.pos.x,m.pos.y,m.pos.z);r.group.rotation.y=m.yaw;const gait=s.time*m.speed*2.2;r.body.rotation.z=Math.sin(gait*.5)*.075;r.spine.rotation.x=.2;r.leftArm.rotation.x=-1.25+Math.sin(gait)*.12;r.rightArm.rotation.x=-1.25-Math.sin(gait)*.12;r.leftElbow.rotation.x=-.18;r.rightElbow.rotation.x=-.3;r.leftLeg.rotation.x=Math.sin(gait)*.38;r.rightLeg.rotation.x=-Math.sin(gait)*.38;r.leftKnee.rotation.x=Math.max(0,Math.sin(gait))*.5;r.rightKnee.rotation.x=Math.max(0,-Math.sin(gait))*.5;const bite=Math.max(0,1-(s.time-m.lastAttack)/.35);r.chest.position.z=bite*.25;r.head.rotation.x=-bite*.3;}
+ this.summons(s,fx);
  }
+ /** Summon rigs: events (hit flinch, shot tracer, death), live poses and corpses. */
+ private summons(s:Snapshot,fx?:SummonFx){
+  if(this.generation!==(s.generation||0)){this.generation=s.generation||0;for(const d of this.dead.values())this.scene.remove(d.rig.group);this.dead.clear();this.hits.clear();}
+  for(const e of s.events){if(e.id<=this.lastEvent)continue;this.lastEvent=e.id;if(!e.target||s.time-e.time>.5)continue;
+   if(e.type==='minionHit'&&this.minions.has(e.target)){this.hits.set(e.target,e.time);const kind=this.views.get(e.target)?.kind;fx?.burst(e.pos,kind==='toy'?0xe8c25a:0x4d6b3c,3,1.6);}
+   else if(e.type==='minionShot'&&e.from){const rig=this.minions.get(e.target),muzzle=rig?.weapon.getObjectByName('muzzle');if(muzzle){muzzle.getWorldPosition(this.tip);this.spot.x=this.tip.x;this.spot.y=this.tip.y;this.spot.z=this.tip.z;}fx?.line(muzzle?this.spot:e.from,e.pos,0xfff2b8,0xffa040);fx?.burst(muzzle?this.spot:e.from,0xffd27a,4,1.2);fx?.burst(e.pos,0xd8c8a0,3,1.4);}
+   else if(e.type==='minionDeath'&&(e.message==='zombie'||e.message==='toy')){const rig=this.minions.get(e.target);if(rig){this.minions.delete(e.target);this.dead.set(e.target,{rig,kind:e.message,at:e.time,x:rig.group.position.x,y:rig.group.position.y,z:rig.group.position.z,broke:false});}}}
+  const living=this.living;living.clear();for(const m of s.minions||[])living.add(m.id);
+  for(const[id,r]of this.minions)if(!living.has(id)){this.scene.remove(r.group);this.minions.delete(id);this.views.delete(id);this.hits.delete(id);}
+  for(const m of s.minions||[]){if(m.kind!=='zombie'&&m.kind!=='toy')continue;let r=this.minions.get(m.id);if(!r){r=buildSummon(m.kind);this.scene.add(r.group);this.minions.set(m.id,r);}this.views.set(m.id,m);
+   r.group.position.set(m.pos.x,m.pos.y,m.pos.z);r.group.rotation.y=m.yaw;poseSummon(r,m,s.time,s.time-(this.hits.get(m.id)??-Infinity));}
+  for(const[id,d]of this.dead){const age=s.time-d.at;if(age>=SUMMON_LOOK.death.gone||age<-.5){this.scene.remove(d.rig.group);this.dead.delete(id);continue;}
+   d.rig.group.position.set(d.x,d.y,d.z);poseSummonDeath(d.rig,d.kind,Math.max(0,age));
+   if(!d.broke&&age>=SUMMON_LOOK.death.breakAt){d.broke=true;d.rig.group.visible=false;const look=SUMMON_LOOK[d.kind];for(let i=0;i<3;i++){this.spot.x=d.x;this.spot.y=d.y-.3+i*.25*look.scale;this.spot.z=d.z;fx?.burst(this.spot,look.gib[i],d.kind==='toy'?6:8,2.6);}}}
+ }
+ /** Strike frame of a summon's current attack (presentation hooks and tests). */
+ static strikeAt(m:MinionView){return m.lastAttack+(m.kind==='toy'?SUMMON.toy.windup:SUMMON.zombie.windup);}
 }

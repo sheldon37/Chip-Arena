@@ -2,7 +2,7 @@ import {TEAMS,sameTeam} from '../shared/teams.js';
 import * as T from 'three';
 import type {Snapshot} from '../shared/simulation.js';
 import {pveOf} from '../shared/pve/contract.js';
-const plane=new T.PlaneGeometry(1,1),lagMaterial=new T.MeshBasicMaterial({color:0xffd9a0,depthWrite:false,toneMapped:false});
+const plane=new T.PlaneGeometry(1,1),summonAlly=new T.MeshBasicMaterial({color:0x59dd83,depthWrite:false,toneMapped:false}),summonEnemy=new T.MeshBasicMaterial({color:0xff5a46,depthWrite:false,toneMapped:false}),lagMaterial=new T.MeshBasicMaterial({color:0xffd9a0,depthWrite:false,toneMapped:false});
 /** World geometry uses depth testing so health never reveals players behind cover. */
 export class OverheadHealth{
  private bars=new Map<string,{root:T.Group;fill:T.Mesh<T.PlaneGeometry,T.MeshBasicMaterial>;lag:T.Mesh;lagValue?:number;lastHealth?:number;hold?:number;time?:number;label?:T.Mesh<T.PlaneGeometry,T.MeshBasicMaterial>;labelKey?:string}>();
@@ -22,6 +22,20 @@ export class OverheadHealth{
    const dt=b.time===undefined?-1:state.time-b.time;b.time=state.time;if(dt<0||dt>.35||b.lagValue===undefined||health>=b.lagValue){b.lagValue=health;b.hold=0;}else{b.hold=health<(b.lastHealth??health)?0:(b.hold||0)+Math.min(dt,.05);if(b.hold>.22)b.lagValue=Math.max(health,b.lagValue-Math.min(dt,.05)*.9);}
    b.lastHealth=health;b.lag.visible=b.lagValue>health+.002;if(b.lag.visible){b.lag.scale.set(.72*b.lagValue,.035,1);b.lag.position.x=-.36*(1-b.lagValue);}
   }
+  this.summonBars(state,camera,visible,localId);
  }
- clear(){for(const b of this.bars.values()){b.root.removeFromParent();b.fill.material.dispose();b.label?.material.map?.dispose();b.label?.material.dispose();}this.bars.clear();}
+ /** Summon health (2026-10-04): the pilot bar's style at a smaller size over zombies, toy soldiers and the Slenderman, shown
+  *  once damaged. Ally (own/team) green, enemy red; shared materials, bars pooled by summon id. */
+ private minionBars=new Map<string,{root:T.Group;fill:T.Mesh;seen:number}>();private stamp=0;
+ private summonBars(state:Snapshot,camera:T.Camera,visible:boolean,localId:string){const stamp=++this.stamp;if(!visible&&!this.minionBars.size)return;
+  for(const m of state.minions||[])if(m.kind==='zombie'||m.kind==='toy')this.showBar(state,camera,visible,localId,m.id,m.owner,m.pos.x,m.pos.y+(m.kind==='toy'?.85:1.2),m.pos.z,m.hp,m.maxHp,m.kind==='toy'?.42:.6);
+  for(const f of state.leetFields||[])if(f.slender&&f.walker&&f.hp!==undefined&&f.maxHp)this.showBar(state,camera,visible,localId,f.slender,f.owner,f.walker.x,f.walker.y+2.75,f.walker.z,f.hp,f.maxHp,.7);
+  for(const[id,b]of this.minionBars)if(b.seen!==stamp){if(b.root.visible)b.root.visible=false;if(stamp-b.seen>300){b.root.removeFromParent();this.minionBars.delete(id);}}
+ }
+ private showBar(state:Snapshot,camera:T.Camera,visible:boolean,localId:string,id:string,owner:string,x:number,y:number,z:number,hp:number,maxHp:number,width:number){const stamp=this.stamp;if(!visible||!(hp<maxHp)||hp<=0)return;const dx=camera.position.x-x,dy=camera.position.y-y,dz=camera.position.z-z;if(dx*dx+dy*dy+dz*dz>40*40)return;
+   let b=this.minionBars.get(id);if(!b){const root=new T.Group();root.name='summon-health';const bg=new T.Mesh(plane,this.back);bg.scale.set(1.08,.09,1);root.add(bg);const fill=new T.Mesh(plane,summonAlly);fill.position.z=.006;root.add(fill);b={root,fill,seen:0};this.minionBars.set(id,b);this.scene.add(root);}
+   b.seen=stamp;b.root.visible=true;b.root.position.set(x,y,z);b.root.quaternion.copy(camera.quaternion);b.root.scale.setScalar(width);const h=Math.max(0,Math.min(1,hp/Math.max(1,maxHp)));b.fill.scale.set(h,.05,1);b.fill.position.x=-.5*(1-h);
+   const ally=owner===localId||state.options.gameMode==='teams'&&sameTeam(state.players.find(p=>p.id===owner),state.players.find(p=>p.id===localId),'teams');b.fill.material=ally?summonAlly:summonEnemy;
+ }
+ clear(){for(const b of this.minionBars.values())b.root.removeFromParent();this.minionBars.clear();for(const b of this.bars.values()){b.root.removeFromParent();b.fill.material.dispose();b.label?.material.map?.dispose();b.label?.material.dispose();}this.bars.clear();}
 }

@@ -190,7 +190,7 @@ export interface HordeApi{
  hit(m:Minion,damage:number,attacker:string,impulse:number,dir:Vec,hit?:AddHitInfo):void;
  /** Weapon statuses on an active add (burn/poison DoT dps, slow); false when the add cannot take them. */
  status?(m:Minion,source:string,s:AddStatusInput):boolean;
- assistMinion(m:Minion,owner:Player,dt:number):void;
+ assistMinion(m:Minion,owner:Player,dt:number):Minion|undefined|void;
  step(dt:number):void; freeze():void; onHold(active:boolean):void; shift(dt:number):void;
  killAll(cause:'boss-dead'|'defeat'):void; rekey(from:string,to:string):void;
  views(slots:readonly string[]):{adds:PveAddTuple[];entries:PveEntryView[]};

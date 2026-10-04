@@ -1,17 +1,24 @@
+import RAPIER from '@dimforge/rapier3d-compat';
 import type {Player,Projectile,Simulation} from './simulation.js';
-import {CONFIG,Input,Vec,v,add,sub,mul,len,norm,forward,idleInput} from './config.js';
+import type {Minion} from './chaos.js';
+import {cameraPosition} from './view.js';
+import {CONFIG,Input,Vec,v,add,sub,mul,len,norm,dot,forward,clamp,idleInput} from './config.js';
 import {ARENA} from './arena.js';
 import {canUse} from './access.js';
-import {LEET} from './leet-content.js';
+import {LEET,SLENDER} from './leet-content.js';
 export interface LeetStatus {controlling?:string;controlledBy?:string;controlUntil?:number;frozenUntil?:number;scare?:{at:number;until:number;source:string};launchUntil?:number;viewYaw?:number;viewPitch?:number;}
-export interface LeetField {id:string;kind:'nuke'|'tree';owner:string;pos:Vec;at:number;until:number;target?:string;walker?:Vec;}
+/** Tree fields carry the Slenderman (2026-10-04 rework): walker = his feet, slender = his chaos-minion body (hp, every damage
+ *  path), seen = his target is looking at him, sanity 0..1 (the victim's static; 1 = caught), hops = pages of tension,
+ *  hopAt = when he may next relocate, from = where the last hop left. Views are quantised (see views()). */
+export interface LeetField {id:string;kind:'nuke'|'tree';owner:string;pos:Vec;at:number;until:number;target?:string;walker?:Vec;
+ slender?:string;seen?:boolean;sanity?:number;hops?:number;hopAt?:number;lostAt?:number;from?:Vec;yaw?:number;hp?:number;maxHp?:number;}
 export interface LeetShot {kind:'bolt'|'brain'|'copy';target?:Vec;release?:number;launched?:boolean;}
 const inactive=(p:Player)=>({...idleInput(),seq:p.input.seq,yaw:p.input.yaw,pitch:p.input.pitch});
 export class LeetSystem {
  fields=new Map<string,LeetField>();private originals=new Map<string,Input>();private anchors=new Map<string,Vec>();private used=new Set<string>();private procs=new Map<string,number>();private history=new Map<string,{at:number;pos:Vec}[]>();
  constructor(readonly sim:Simulation){}
  active(p:Player|undefined,chip?:string):boolean{return !!p&&canUse(p,'weapon:leet')&&p.spec==='leet'&&(!chip||!!p.chips['l44t-'+chip]);}
- clear(){this.fields.clear();this.used.clear();this.procs.clear();this.history.clear();this.originals.clear();this.anchors.clear();for(const p of this.sim.players.values())p.leet={};}
+ clear(){for(const f of this.fields.values())this.dropSlender(f);this.fields.clear();this.used.clear();this.procs.clear();this.history.clear();this.originals.clear();this.anchors.clear();for(const p of this.sim.players.values())p.leet={};}
  frozen(p:Player|undefined){return !!p?.leet?.scare||(p?.leet?.frozenUntil||0)>this.sim.time;}
  release(p:Player){const s=this.sim,ids=[p.id,p.leet?.controlling,p.leet?.controlledBy];for(const id of ids){const q=id?s.players.get(id):undefined;if(q?.leet){delete q.leet.controlling;delete q.leet.controlledBy;delete q.leet.controlUntil;delete q.leet.viewYaw;delete q.leet.viewPitch;}}}
  possess(owner:Player,target:Player){if(!this.active(owner,'brain')||owner===target||!this.sim.canHit(owner.id,target.id)||target.hp<=0||!target.connected||owner.leet?.controlledBy||target.leet?.controlling||target.leet?.controlledBy)return false;this.release(owner);owner.leet??={};target.leet??={};owner.leet.controlling=target.id;target.leet.controlledBy=owner.id;owner.leet.controlUntil=target.leet.controlUntil=this.sim.time+LEET.brainSeconds;target.cast=undefined;target.swing=null;owner.cast=undefined;owner.swing=null;this.sim.emit('leet-control',target.body.translation(),{source:owner.id,target:target.id,color:0x55ff88});return true;}
@@ -32,7 +39,7 @@ export class LeetSystem {
  }
  secondary(p:Player){const s=this.sim;if(!this.active(p)||!s.spendResource(p,30))return;p.secondaryCd=LEET.secondaryCooldown;p.cooldown=.4;p.lastSecondary=p.lastAttack=s.time;
  if(this.active(p,'time')){for(const q of s.players.values())if(q!==p&&s.canHit(p.id,q.id)&&q.hp>0){q.leet??={};q.leet.frozenUntil=s.time+LEET.freezeSeconds;}s.emit('leet-freeze',p.body.translation(),{source:p.id,color:0x55ff88,radius:28});}
- if(this.active(p,'scare')){for(const [id,f]of this.fields)if(f.owner===p.id&&f.kind==='tree')this.fields.delete(id);const pos=add(p.body.translation(),mul(forward(p.input.yaw),2));pos.y=.05;const id=s.uid('tree');this.fields.set(id,{id,kind:'tree',owner:p.id,pos,at:s.time,until:s.time+15});}
+ if(this.active(p,'scare')){for(const [id,f]of this.fields)if(f.owner===p.id&&f.kind==='tree'){this.dropSlender(f);this.fields.delete(id);}const pos=add(p.body.translation(),mul(forward(p.input.yaw),2));pos.y=.05;const id=s.uid('tree');this.fields.set(id,{id,kind:'tree',owner:p.id,pos,at:s.time,until:s.time+SLENDER.life});}
  if(!this.active(p,'time')&&!this.active(p,'scare'))s.explode(p,p.body.translation(),6,35,1200,'root',true);
  }
  save(p:Player,amount:number,kind:string){if(kind==='leet-scare'||!this.active(p,'undo')||this.used.has(p.id)||amount<p.hp)return false;this.used.add(p.id);const past=this.history.get(p.id)?.[0];if(past)p.body.setTranslation(past.pos,true);this.sim.heal(p,p.stats.hp);p.ext=v();p.move=v();p.body.setLinvel(v(),true);p.burns.clear();p.poisons.clear();this.sim.emit('leet-undo',p.body.translation(),{source:p.id,color:0x55ff88,radius:3});return true;}
@@ -41,7 +48,38 @@ export class LeetSystem {
   if(p.leet?.scare&&s.time>=p.leet.scare.until){const source=p.leet.scare.source;delete p.leet.scare;s.damage(p,1e9,source,'leet-scare');}
   if(this.active(p,'undo')&&p.hp>0&&s.tick%6===0&&p.body.translation().y>0&&p.body.translation().y<8&&Math.abs(p.body.translation().x)<ARENA.width/2-2&&Math.abs(p.body.translation().z)<ARENA.depth/2-2){const a=this.history.get(p.id)||[];a.push({at:s.time,pos:{...p.body.translation()}});while(a.length&&a[0].at<s.time-3)a.shift();this.history.set(p.id,a);}
  }
- for(const [id,f]of this.fields){const owner=s.players.get(f.owner);if(!owner||!owner.connected){this.fields.delete(id);continue;}if(f.until<=s.time){this.fields.delete(id);if(f.kind==='nuke'){s.explode(owner,f.pos,LEET.nukeRadius,LEET.nukeDamage,LEET.nukeImpulse,'leet-nuke');s.emit('leet-nuke',f.pos,{source:owner.id,color:0x55ff88,radius:LEET.nukeRadius});}continue;}if(f.kind!=='tree'||s.time-f.at<.9)continue;f.walker??=add(f.pos,v(0,.9,0));let target=f.target?s.players.get(f.target):undefined;if(!target||target.hp<=0||!target.connected||target.leet?.scare){target=this.visible(f.owner,f.walker);f.target=target?.id;}if(!target)continue;const delta=sub(target.body.translation(),f.walker),distance=len(delta);if(distance<1.05&&s.lineOfSight(f.walker,target.body.translation(),f.owner,target.id)){this.scare(owner,target);this.fields.delete(id);continue;}const flat=norm(v(delta.x,0,delta.z)),step=5.8*dt;let dir=flat;const hit=s.ray(f.walker,dir,.7,f.owner);if(hit&&s.colliderOwners.get(hit.collider.handle)!==target.id){const left=v(-dir.z,0,dir.x),right=mul(left,-1);dir=!s.ray(f.walker,left,.7,f.owner)?left:!s.ray(f.walker,right,.7,f.owner)?right:v();}f.walker=add(f.walker,mul(dir,step));}
+ for(const [id,f]of this.fields){const owner=s.players.get(f.owner);if(!owner||!owner.connected||f.kind==='tree'&&owner.hp<=0){this.dropSlender(f);this.fields.delete(id);continue;}if(f.until<=s.time){this.dropSlender(f);this.fields.delete(id);if(f.kind==='nuke'){s.explode(owner,f.pos,LEET.nukeRadius,LEET.nukeDamage,LEET.nukeImpulse,'leet-nuke');s.emit('leet-nuke',f.pos,{source:owner.id,color:0x55ff88,radius:LEET.nukeRadius});}continue;}if(f.kind==='tree'&&s.time-f.at>=SLENDER.emerge&&!this.stalk(f,owner,dt))this.fields.delete(id);}
  }
- views(){return [...this.fields.values()].map(f=>({...f,pos:{...f.pos},walker:f.walker?{...f.walker}:undefined}));}
+ private dropSlender(f:LeetField){const m=f.slender?this.sim.chaos.minions.get(f.slender):undefined;if(m)this.sim.chaos.removeMinion(m,false);}
+ /** Does `p` see the Slenderman? The authoritative camera (input yaw/pitch/camera mode) must face him within the view cone and
+  *  have a clear line to his head or chest. */
+ observed(p:Player,feet:Vec,slender:string){const s=this.sim,pos=p.body.translation(),eye=cameraPosition(pos,p.input.yaw,p.input.pitch,p.input.camera==='first'?'first':'third',(o,d,l)=>s.ray(o,d,l,p.id)?.timeOfImpact??null),look=forward(p.input.yaw,p.input.pitch);
+  for(const y of [2.2,1.35]){const point=add(feet,v(0,y,0)),d=sub(point,eye),l=len(d);if(l>SLENDER.sight||dot(norm(d),look)<Math.cos(SLENDER.fov*Math.PI/180))continue;if(s.lineOfSight(eye,point,p.id,slender))return true;}return false;}
+ /** One Slenderman tick (lore of Slender: The Eight Pages / The Arrival, adapted to the arena). False: the field ends. */
+ private stalk(f:LeetField,owner:Player,dt:number):boolean{const s=this.sim;
+  if(!f.slender){const feet=add(f.pos,v(.9,0,.2)),id=s.uid('slender'),body=s.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(feet.x,feet.y+SLENDER.center,feet.z)),collider=s.world.createCollider(RAPIER.ColliderDesc.capsule(SLENDER.half,SLENDER.radius),body);
+   const m:Minion={id,owner:owner.id,kind:'slender',pos:feet,yaw:0,hp:SLENDER.hp,maxHp:SLENDER.hp,speed:0,until:f.until,lastAttack:-10,nextAttack:Infinity,body,collider};
+   s.chaos.minions.set(id,m);s.colliderOwners.set(collider.handle,id);f.slender=id;f.walker=feet;f.sanity=0;f.hops=0;f.hopAt=s.time+SLENDER.hopFirst;f.lostAt=s.time;f.seen=false;s.emit('summon',feet,{source:owner.id,message:'slender'});}
+  const m=s.chaos.minions.get(f.slender);if(!m)return false;// destroyed: minionDeath was emitted by the hit
+  f.hp=m.hp;f.maxHp=m.maxHp;const c=m.body.translation(),feet=v(c.x,c.y-SLENDER.center,c.z);f.walker=feet;
+  let target=f.target?s.players.get(f.target):undefined;
+  if(!target||target.hp<=0||!target.connected||target.leet?.scare||!s.enemy(owner.id,target.id)){target=[...s.players.values()].filter(q=>s.enemy(owner.id,q.id)&&q.connected&&q.hp>0&&!q.leet?.scare&&!s.pve?.hidden(q)).sort((a,b)=>len(sub(a.body.translation(),c))-len(sub(b.body.translation(),c)))[0];if(target?.id!==f.target){f.target=target?.id;f.sanity=0;}}
+  if(!target){f.seen=false;return true;}
+  const tp=target.body.translation(),gap=Math.hypot(tp.x-c.x,tp.z-c.z),seen=this.observed(target,feet,m.id);
+  m.yaw=f.yaw=Math.atan2(tp.x-c.x,tp.z-c.z);
+  if(seen){if(!f.seen)f.lostAt=undefined;f.sanity=Math.min(1,(f.sanity||0)+dt*(SLENDER.stare+SLENDER.close*clamp(1-gap/SLENDER.closeRange,0,1)));}
+  else{if(f.seen||f.lostAt===undefined)f.lostAt=s.time;f.sanity=Math.max(0,(f.sanity||0)-dt*SLENDER.decay);}
+  f.seen=seen;
+  if(gap<=SLENDER.reach||(f.sanity||0)>=1){this.scare(owner,target);this.dropSlender(f);return false;}
+  // Unobserved for a beat and off cooldown: relocate behind the target (the edge of vision), closer each time.
+  if(!seen&&s.time>=(f.hopAt||0)&&s.time-(f.lostAt??s.time)>=SLENDER.unseen){const life=Math.max(1,f.until-f.at),aggr=clamp((s.time-f.at)/life,0,1),hops=f.hops||0,
+    noise=Math.sin((hops+1)*12.9898+f.at*78.233)*43758.5453,r=noise-Math.floor(noise),angle=target.input.yaw+Math.PI+(r-.5)*2*SLENDER.behind,
+    want=Math.max(SLENDER.reach-.25,gap*(SLENDER.shrink[0]+(SLENDER.shrink[1]-SLENDER.shrink[0])*aggr)),dir=forward(angle),eye=add(tp,v(0,.2,0)),wall=s.ray(eye,dir,want,target.id);
+   let at=wall?Math.max(Math.min(want,SLENDER.reach-.25),wall.timeOfImpact-.45):want;
+   const spot=add(tp,mul(dir,at));spot.x=clamp(spot.x,-31,31);spot.z=clamp(spot.z,-27,27);spot.y=tp.y-CONFIG.playerHalfHeight-CONFIG.playerRadius;at=Math.hypot(spot.x-tp.x,spot.z-tp.z);
+   f.from=feet;f.hops=hops+1;f.hopAt=s.time+SLENDER.hop[0]+(SLENDER.hop[1]-SLENDER.hop[0])*aggr;m.body.setTranslation(v(spot.x,spot.y+SLENDER.center,spot.z),true);f.walker=spot;m.yaw=f.yaw=Math.atan2(tp.x-spot.x,tp.z-spot.z);
+   s.emit('leet-slender-hop',spot,{from:feet,source:owner.id,target:target.id,amount:f.hops,color:0x55ff88});}
+  return true;
+ }
+ views(){const r=(x:number|undefined)=>x===undefined?undefined:Math.round(x*100)/100;return [...this.fields.values()].map(f=>({...f,pos:{...f.pos},walker:f.walker?{...f.walker}:undefined,from:f.from?{...f.from}:undefined,sanity:r(f.sanity),hp:f.hp===undefined?undefined:Math.ceil(f.hp),hopAt:r(f.hopAt),lostAt:undefined,yaw:r(f.yaw)}));}
 }
