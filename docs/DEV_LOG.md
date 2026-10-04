@@ -18,6 +18,26 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-04 — Claude — Developer Sandbox tools; Ward Zero as a PvP and sandbox map
+- Branch `claude/sandbox-devtools` from `claude/visual-revision` 492b251. No PR opened; not merged; not released.
+- Sandbox panel (`src/client/sandbox-panel.ts`): live chip search (name/id/description) + sort (default, rarity ↑/↓ by
+  catalog weight, name; pure `findChips`), "Every chip" scope; Dummy cast (dummy takes the chip + a fitting weapon and
+  fights as a hard bot for 4 s, repeat every N s, safe mode = humans keep 1 HP); sandbox map select; animation tests (vent
+  fall + SPLAT 2/10 s, downed/HELP and holographic revive via the DEV fixture injector, death effect, killcam, weapon intro,
+  melee/greatsword, hit/stagger, summons, summon deaths, Slenderman), slow motion (local only). Warm-up re-runs when drawn.
+- Authority (`src/shared/sandbox-tools.ts`, sandbox debug commands only): dummy-cast, safe, map, vent-fall, down, hit,
+  summons-die; DEV-only weapons need `canUse`. `respec` extracted from the spec command unchanged.
+- Ward Zero (owner request): pickable PvP map (not in random rotation); outside PvE its vents run a fixed 12 s cycle as
+  pits (the PvE VentPits code), vent-fall kill with normal attacker credit; PvP keeps normal respawn (no splat body); no
+  adds, boss, machines or boss song (vents pause while a Siren pilot forces the map); bots use the existing vent steering.
+  `VentPits.splatAt` (PvE default 10 s) and `lands`. Snapshot gains `vents` only on Ward Zero outside PvE.
+- Impacts: no change to hit timing, hitboxes, damage, cooldowns or movement outside the sandbox and Ward Zero PvP.
+- Checks: check:types pass; sandbox-tools 6/6; pve-* + pvp-golden 213/213 (all 7 traces identical); full unit suite
+  1211, only the 13 known Node 22 failures; network pve passes; default network only "Timed out: rematch" (baseline).
+  Playwright/SwiftShader screenshots of the panel, Ward Zero sandbox fall/splat, downed/revive, PvP Ward Zero match.
+- Payload: `npm run build` stopped at the live guard: schema 1 26,218,140 B (+11,315 B; 3,740 B over 25 MiB, before
+  this entry). Guard unchanged; the 32 MiB test channel accepts it. Not run: Windows, online sandbox room, packaging.
+
 ## 2026-10-04 — Claude — publication records: PRs #37-#41 and PR #42 on the test channel
 - PRs #37-#41 merged `7b91b6c` -> test `0.2.7c06fa8f3a9f` (channel `d14910c`); schema 1 `arena-054ddd2d7339d417.json.gz`
   26,187,119 B, schema 2 `arena-96b2e5e50fd6120c.pack` 22,093,779 B.

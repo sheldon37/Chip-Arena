@@ -15,7 +15,7 @@ import type {Material,Vec} from './config.js';
 import {BLACK_SIREN_PROTOCOL,barAt,loopedSongTime,sectionAt} from './boss-music.js';
 
 /** Suggested MAPS entry values (maps.ts is edited by the systems branch). */
-export const SIREN_STAGE_THEME={name:'Ward Zero',tag:'BOSS · Black Siren Protocol',theme:'siren',sky:0x040306,floor:0x2a2731,accent:0xe9e4f2} as const;
+export const SIREN_STAGE_THEME={name:'Ward Zero',tag:'HAZARD · floor vents open into black pits',theme:'siren',sky:0x040306,floor:0x2a2731,accent:0xe9e4f2} as const;
 
 /**
  * The hall: a sealed asylum atrium the Siren has taken over. Interior faces at x = ±halfX and z = ±halfZ (the global

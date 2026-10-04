@@ -6,7 +6,7 @@
 // A wave/phase respawn during the shaft time follows the normal rules (the member respawns on a pad) and the splat is then
 // skipped. Authoritative and deterministic: everything below is a function of sim time, the PvE entry schedule (the same
 // PveEntryView open/close times the client animates the lids from) and positions. Closed vents are ordinary floor.
-// Only Ward Zero PvE opens vents (PvP Ward Zero vents never open), so PvP is untouched.
+// Outside PvE the same pits run on a fixed cycle when Ward Zero is the chosen map (src/shared/sandbox-tools.ts).
 import {v,type Input,type Vec} from '../config.js';
 import type {Player} from '../simulation.js';
 import type {ArenaBlock} from '../arena.js';
@@ -83,6 +83,9 @@ export class VentPits{
  /** Bodies in the shaft: player id → the vent-fall death id and its landing time. */
  private pending=new Map<string,{death:string;landAt:number}>();
  private cache={tick:-1,open:[] as number[],soon:[] as boolean[]};
+ /** Shaft seconds before the splat (the DEV sandbox may shorten it), and whether a fall `lands` at all (PvP: no). */
+ splatAt:number=VENT_PIT.splatAt;lands=true;
+ get busy(){return this.pending.size>0;}
  constructor(readonly host:PveSystem){}
  private get sim(){return this.host.sim;}
  private active(){const s=this.sim;return s.options.map==='siren'&&s.phase==='fight';}
@@ -120,12 +123,12 @@ export class VentPits{
   if(p.hp>0){p.hp=0;p.lastDamage=s.time;s.recordDeath(p,VENT_FALL_KIND,down);}
   if(!p.death)return;
   const w=SIREN_VENTS[e];
-  p.death.effect=VENT_FALL_EFFECT;p.death.kind=VENT_FALL_KIND;p.death.landAt=s.time+VENT_PIT.splatAt;
+  p.death.effect=VENT_FALL_EFFECT;p.death.kind=VENT_FALL_KIND;p.death.landAt=s.time+this.splatAt;
   p.death.pos={x:pos.x,y:pos.y,z:pos.z};p.death.velocity={x:0,y:-1,z:0};p.death.direction=down;p.death.wound=undefined;p.death.gibPart=undefined;p.wounds=undefined;
   p.body.setLinvel(v(),true);p.ext=v();p.move=v();
   s.emit('pve-vent-fall',{x:w.x,y:0,z:w.z},{target:p.id,message:'vent-'+e});
   // Recruits are released by their own rules; only party members keep a body that comes back down.
-  if(this.host.isMember(p))this.pending.set(p.id,{death:p.death.id,landAt:p.death.landAt});
+  if(this.lands&&this.host.isMember(p))this.pending.set(p.id,{death:p.death.id,landAt:p.death.landAt});
  }
  private splat(p:Player,landAt:number){
   const s=this.sim,old=p.death!,boss=this.host.boss(),b=boss&&boss.hp>0&&!this.host.hidden(boss)?boss.body.translation():undefined;
