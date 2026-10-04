@@ -144,5 +144,8 @@ test('audio: nova (panic-button) and arc (with and without from/radius) keep the
  assert.deepEqual(play({type:'push'}),[]);assert.deepEqual(play({type:'pull'}),[]);
  assert.deepEqual(play({type:'explosion',message:'meteor-strike'}),['explosion','stone']);assert.deepEqual(play({type:'explosion',message:'frag'}),['explosion']);assert.deepEqual(play({type:'explosion',message:'shackles'}),['darkness','spike-rise']);
  assert.deepEqual(play({type:'ability',message:'rocket',spec:'machinegun'}),['arcade-heavy']);assert.deepEqual(play({type:'ability-cast',message:'singularity',spec:'darkness'}),['darkness']);
- assert.deepEqual(play({type:'teleport',message:'blink-strike',source:'x'}),['electric-hook']);
+ assert.deepEqual(play({type:'teleport',message:'blink-strike',source:'x'}),['lightning']);
+ // Owner bug 2026-10-04 ("Emperor style sound is playing on lightning staff"): Emperor's electric-hook clips are Emperor-only.
+ for(const e of [{type:'ability',message:'blink-strike',spec:'lightning'},{type:'ability-cast',message:'blink-strike',spec:'lightning'},{type:'teleport',message:'blink-strike',source:'x'},{type:'ability',message:'ball-lightning',spec:'lightning'},{type:'ability',message:'orbital-mark',spec:'rifle'},{type:'explosion',message:'ball-lightning'},{type:'shot',spec:'lightning'}] as Partial<GameEvent>[]){const names=play(e);assert.ok(names.length>0,JSON.stringify(e));assert.ok(!names.some(n=>n.startsWith('electric-hook')),JSON.stringify(e)+' -> '+names);}
+ assert.deepEqual(play({type:'emperor-electric',spec:'emperor'}),['electric-hook']);
 });

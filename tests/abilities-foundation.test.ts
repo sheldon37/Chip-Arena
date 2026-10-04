@@ -19,6 +19,7 @@ import {Predictor} from '../src/client/prediction.js';
 import {controlHints} from '../src/client/control-hints.js';
 import {abilitySlots,abilitySlotsHtml} from '../src/client/ability-hud.js';
 import {cameraPosition} from '../src/shared/view.js';
+import {ballisticPitch} from '../src/shared/projectiles.js';
 import {botAbilities} from '../src/shared/bot-abilities.js';
 await initPhysics();
 
@@ -105,7 +106,10 @@ test('ADS: a human pistol holding Q is slower and tighter server-side, fires slo
  const g=game('rifle');try{const {s:rs,a:r}=g;r.input.camera='third';run(rs,r,20,{ability:true,camera:'third',pitch:.05});rs.events=[];rs.projectiles.clear();
   const yaw=r.input.yaw,pitch=r.input.pitch,eye=cameraPosition(r.body.translation(),yaw,pitch,'first');tick(rs,r,{ability:true,camera:'third',attack:true,pitch:.05});
   const shot=[...rs.projectiles.values()][0];assert.ok(shot,'rifle fired');const aimPoint=add(eye,mul(forward(yaw,pitch),C.projectileMaxTravel));
-  const dir=mul(shot.vel,1/len(shot.vel)),expected=mul(sub(aimPoint,shot.pos),1/len(sub(aimPoint,shot.pos)));assert.ok(len(sub(dir,expected))<.01,`eye-origin aim ${JSON.stringify(dir)} vs ${JSON.stringify(expected)}`);
+  // Owner bug 2026-10-04 (ADS zeroing): the ray's end point (nothing hit: range + 5 m along the eye ray) is met on the low
+  // ballistic arc, so the launch pitch is ballisticPitch toward it; the yaw still comes from the eye-origin aim.
+  const target=add(eye,mul(forward(yaw,pitch),WEAPONS.rifle.range+5)),d=sub(target,shot.pos),lp=ballisticPitch(Math.hypot(d.x,d.z),d.y,WEAPONS.rifle.speed,WEAPONS.rifle.gravity),ly=Math.atan2(d.x,d.z);void aimPoint;
+  const dir=mul(shot.vel,1/len(shot.vel)),expected=forward(ly,lp);assert.ok(len(sub(dir,expected))<.01,`eye-origin aim ${JSON.stringify(dir)} vs ${JSON.stringify(expected)}`);
  }finally{g.s.dispose();}
  // ADS never changes ballistics.
  for(const spec of ['pistol','rifle','machinegun'] as const)assert.deepEqual(shotBallistics(spec,BASE_STATS),{speed:WEAPONS[spec].speed,gravity:WEAPONS[spec].gravity});

@@ -15,6 +15,10 @@ ability flag keep the legacy controls (design §3.12).
 
 E works while reloading and costs no ammo.
 
+ADS zeroing (2026-10-04): an aimed shot launches on the low ballistic arc that meets the crosshair ray's hit point, so
+the sights (aligned to screen centre in first person) match the impact at any range; speed, gravity, damage and spread
+are unchanged and hip fire keeps its straight launch with drop.
+
 ## Magic: primary, Q spell, E spell
 
 | School | Primary (dmg / interval / speed / gravity / mana) | Q (cd, mana) | E (cd, mana) |

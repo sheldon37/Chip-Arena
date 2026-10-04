@@ -18,6 +18,49 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-04 — Claude — weapon intros refresh, 3 s lobby return, ADS sight alignment, Emperor audio leak, AoE outlines
+
+- Branch `claude/intros-refresh` from `origin/claude/visual-revision` `dcc7430`. No PR (orchestrator merges). Not merged,
+  not published.
+- Publication record (pending from the integration notes): PR #33 merged `dcc7430` -> test `0.2.1412350a765a`; channel
+  `ae36a7e`; schema1 `arena-255764ffce5226cd.json.gz` 26,135,339 B (old launcher network update verified
+  0.2.5036b50f0c34 -> new) and schema2 `arena-258068ee0d6f182c.pack` 22,063,628 B (seed network update verified via v2);
+  candidate checks passed except the baseline verify; private GitHub Release creation blocked for that session (HTTP 403),
+  seed ZIP at `releases/channel-dcc7430` for the owner to upload.
+- Lobby return: the host's Return to lobby countdown is 3 s (was 5 s), `LOBBY_RETURN_SECONDS` on the authoritative sim
+  (server and host rooms). It is the only automatic lobby timer; PvP match results and PvE results still wait for a click.
+- Weapon intros (11 non-DEV): `weapon-intro-effects.ts` now draws only pooled ChipBlasts voxels (muzzle cones, tracers,
+  casings, smoke, blade trails, a voxel crescent, honeycomb barrier, quake/fire/shock/void/kinetic blasts in miniature,
+  serpent and portal voxels) instead of rings, cones, planes, tubes and line bolts. Fixed 60 Hz stepping from age 0 with a
+  reseeded generator keeps it a pure function of age (scrub/late join/frame rate identical); one ChipBlasts per stage.
+  Motion: magic intros hold the staff in the left hand and cast with the right (as in-game Q/E); guns get an ADS cheek
+  weld and recoil into the shoulders. Hits, name card (3.2 s), 4.8 s duration, cameras and intro audio unchanged.
+- ADS (owner: sights must line up with the shots): aimed gun shots launch on the ballistic arc that meets the crosshair ray
+  hit point (authority, `spawnProjectile`); speed/gravity/damage/spread unchanged, hip fire unchanged; ADS bots aim straight.
+  First-person view model rotates/shifts so each gun's sight line (pistol sights, MG carry handle, rifle scope axis) runs
+  down the camera axis. This is a gameplay change (ADS no longer drops below the crosshair at range).
+- Emperor audio leak (lightning staff and rifle): client cues mapped Blink Strike, its teleport and Orbital Mark to
+  Emperor's `electric-hook` clips. Now dash/lightning cues; electric-hook plays only for Emperor events. The authority was
+  already Emperor-gated (Q's legacy `electric` input is ignored for other specs).
+- AoE outlines removed: field voxel rims and dome wireframes, blast/impact ground rings (now fill the disc to 92 % of the
+  radius), outline telegraph motes (now inside the area), Orbital Mark shrinking ring, melee/wolf/impact rings. Areas read
+  through their volume plus an edge-less ground glow that keeps the enemy/ally tint. Gameplay radii unchanged; the
+  ability aim preview path is untouched.
+- Animation impact: intro-only presentation; no hit timing, hitbox, damage, cooldown, movement or network change from the
+  intros. ADS zeroing changes ADS projectile launch pitch only.
+- Tests: new `weapon-intro-effects`, `ads-alignment`, `emperor-audio-isolation`; updated lobby-return (3 s), chip-blasts and
+  chip-vfx-sweep (no outlines), ranged-magic-fluidity (sights on the crosshair), ability-presentation (blink cue),
+  abilities-foundation (rifle scoped launch now zeroed). pvp-golden: ffa-foundry and teams-moonlit regenerated (gun bots ADS;
+  verified identical with zeroing disabled); the other five traces unchanged.
+- Checks (Linux, Node 22): `npm run check:types` pass; full `npm test` 1132 tests, failures = the 13 known Node 22 baseline
+  names plus 3 caused here and then fixed (ADS rifle launch test, two golden traces) - all three pass after the update;
+  pvp-golden 7/7; `npm run build` pass, live payload 26,140,097 B (< 26,214,400). Visual lab before/after strips for all 11
+  intros, ADS first-person sights with a crosshair, and four area effects (SwiftShader).
+- Not run: duel-balance (exceeded 10 min; ADS zeroing makes aimed pistol/MG/rifle shots, incl. 25 m+ ADS bots, more
+  accurate at range - needs an owner balance look), native Windows/GPU, online multiplayer, packaging/update publication.
+- Next: owner review of intro look/feel and ADS feel at range; merge, then the standing test-channel publication.
+
+
 ## 2026-10-04 — Claude — ranged/magic Q+E ability overhaul integration (+ PvE downed, chip throw, update headroom)
 
 - Branch `claude/abil-integration` from foundation `claude/abil-foundation`; merges abil-guns, abil-magic, abil-chips,

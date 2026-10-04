@@ -156,11 +156,17 @@ export function poseWeaponIntro(r:CharacterRig,style:WeaponIntro,age:number){
     [-.34,-.36,-.3,-.34,-.2,-.24,-.3,-.3,-.3],[-.1,0,.1,.2,.28,.2,.08,-.05,-.05],[.1,.14,.2,.1,.3,.3,.2,.14,.14]],
    lightning:[[.18,.18,.16,.16,.2,.24,.28,.26,.26],[.46,.48,.5,.52,-.16,-.05,.22,.3,.3],[.08,.08,.1,.12,.36,.3,.18,.12,.12],[-1.57,-1.57,-1.57,-1.6,-.4,-.6,-1.4,-1.57,-1.57],[0,0,0,0,0,0,0,0,0],
     [-.3,-.3,-.3,-.32,-.38,-.36,-.32,-.3,-.3],[.3,.32,.3,.2,-.1,-.08,-.1,-.14,-.14],[.1,.1,.1,.12,.2,.2,.14,.08,.08]]};
-  const k=K[spec],bob=idle.weight*Math.sin((t-3.2)*2.2)*.012;
-  h(true,-c(k[5],off),c(k[6],off)+sway,c(k[7],off),-Math.PI/2,-.12,0);
-  h(false,-c(k[0],0,strike),c(k[1],0,strike)+bob,c(k[2],0,strike),c(k[3],0,strike),-c(k[4],0,strike),-.3);r.rightHand.rotation.y+=Math.sin(t*1.8)*.1;r.rightHand.rotation.z+=Math.sin(t*1.3+.6)*.06;
+  // Matches the in-game casting (magic-motion): the staff rides in the LEFT hand, held upright and tipping toward the
+  // target on the release, while the free right hand performs the element's phrase (coil -> drive -> palm release).
+  if(r.weapon.parent!==r.sockets.leftHand)r.sockets.leftHand.add(r.weapon);
+  const k=K[spec],bob=idle.weight*Math.sin((t-3.2)*2.2)*.012,tip=c(k[3],0,strike)+Math.PI/2;
+  h(true,-c(k[5],off),c(k[6],off)+sway+bob,c(k[7],off),-Math.PI/2+tip*.45,c(k[4],0,strike)*.5,.3);r.leftHand.rotation.y+=Math.sin(t*1.8)*.08;r.leftHand.rotation.z+=Math.sin(t*1.3+.6)*.05;
+  h(false,-c(k[0],0,strike),c(k[1],0,strike),c(k[2],0,strike),-Math.PI/2+tip*.75,-c(k[4],0,strike),-.3);
   if(spec==='darkness')r.head.rotation.x+=.14*smooth((t-2.5)/.7);
  }
+ if(gun){// ADS read (ranged-motion aim): cheek to the stock through the shot, and the recoil carried into the shoulders.
+  const aim=smooth((t-(hit-.6))/.3)*(1-smooth((t-(hit+.55))/.35)),kick=spec==='machinegun'?(t>1.93&&t<2.4?.5+.5*Math.sin(2*Math.PI*25*(t-1.93)):0)*.4:recoil(t-hit);
+  r.head.rotation.z+=(spec==='pistol'?.05:.13)*aim;r.head.rotation.x+=.07*aim;r.neck.rotation.x+=.04*aim;r.chest.rotation.y+=.1*kick;r.body.rotation.x-=.035*kick;}
  const flash=r.weapon.getObjectByName('muzzle-flash');if(flash)flash.visible=spec==='machinegun'&&t>1.93&&t<2.33&&Math.floor((t-1.93)*24)%2===0;
 }
 /** Four authored shots framed from the character's heading at a reference moment (not world axes), so the lens sees the

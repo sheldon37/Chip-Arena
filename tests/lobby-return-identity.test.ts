@@ -3,7 +3,7 @@ import {HostedRoom} from '../src/shared/host-room.js';import {initPhysics} from 
 await initPhysics();
 test('host starts one shared five-second return, may cancel, and guests cannot reset the room',()=>{
  const room=new HostedRoom('ABCDEFGH',{name:'Host',class:'melee',color:'#ffffff'},false,()=>{});try{room.join({name:'Guest'});room.sim.phase='fight';room.sim.options.sandbox=true;
- assert.equal(room.receive('guest',{type:'lobby'}),false);assert.equal(room.receive('host',{type:'lobby'}),true);const until=room.sim.snapshot().lobbyReturn!.until;assert.equal(until-room.sim.time,5);assert.equal(room.receive('host',{type:'lobby'}),false);assert.equal(room.sim.lobbyReturn!.until,until);
+ assert.equal(room.receive('guest',{type:'lobby'}),false);assert.equal(room.receive('host',{type:'lobby'}),true);const until=room.sim.snapshot().lobbyReturn!.until;assert.equal(until-room.sim.time,3);// owner request 2026-10-04: 3 s countdown (was 5 s)assert.equal(room.receive('host',{type:'lobby'}),false);assert.equal(room.sim.lobbyReturn!.until,until);
  assert.equal(room.receive('guest',{type:'cancel-lobby'}),false);assert.equal(room.receive('host',{type:'cancel-lobby'}),true);assert.equal(room.sim.lobbyReturn,undefined);assert.equal(room.sim.phase,'fight');
  room.receive('host',{type:'lobby'});room.sim.time=room.sim.lobbyReturn!.until-.03;room.step();assert.equal(room.sim.phase,'fight');room.step();assert.equal(room.sim.phase,'lobby');assert.equal(room.sim.lobbyReturn,undefined);assert.equal(room.sim.players.size,2);assert.equal(room.sim.players.get('host')!.ready,false);
  }finally{room.dispose();}

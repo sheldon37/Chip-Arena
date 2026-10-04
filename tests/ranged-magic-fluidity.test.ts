@@ -4,7 +4,7 @@ import * as T from 'three';
 import {initPhysics,type PlayerView} from '../src/shared/simulation.js';
 import {WEAPONS,CHIPS,statsFor} from '../src/shared/content.js';
 import {animateCharacter,animationPreviewPlayer} from '../src/client/character-animation.js';
-import {poseFirstPersonView,FP_TUNE} from '../src/client/first-person-view.js';
+import {poseFirstPersonView,FP_TUNE,sightInCamera} from '../src/client/first-person-view.js';
 import {weaponModifiers,bodyModifiers} from '../src/client/weapon-visuals.js';
 import {markFirstPersonRig} from '../src/client/pose-flags.js';
 import {POCKET,reloadPhase} from '../src/client/ranged-motion.js';
@@ -180,11 +180,12 @@ export function adsProbe(spec:string,frame:FpFrame,opts:{chips?:boolean;from?:nu
   const g=r.weapon.getObjectByName('chip-modules');if(g&&raster(g,cam,grid).cross)modules++;}
  return {maxX,top,modules,hidden:hidden/n};
 }
-test('ADS view model: muzzle on the crosshair column, sights under it, no chip module in the crosshair box, rifle behind its scope',()=>{
+test('ADS view model: muzzle on the crosshair column, sights on it, no chip module in the crosshair box, rifle behind its scope',()=>{
  for(const spec of ['pistol','machinegun'])for(const mode of ['idle','attack'] as const){const r=adsProbe(spec,preview(mode),{chips:true});
   assert.equal(r.hidden,0,`${spec} ${mode}: the sighted gun stays visible`);
   assert.ok(r.maxX<.06,`${spec} ${mode}: muzzle at NDC |x| ${r.maxX.toFixed(3)}`);
-  assert.ok(r.top<=-.03,`${spec} ${mode}: gun top at NDC y ${r.top.toFixed(3)} (crosshair occluded)`);
+  // Owner bug 2026-10-04: the sights now sit ON the crosshair (sight line down the camera axis); nothing rises above them.
+  assert.ok(r.top<=(mode==='idle'?.01:.06),`${spec} ${mode}: gun top at NDC y ${r.top.toFixed(3)} (only the sight line reaches the crosshair; recoil rise while firing)`);
   assert.equal(r.modules,0,`${spec} ${mode}: chip modules in the crosshair box`);}
  assert.equal(adsProbe('rifle',preview('attack'),{chips:true}).hidden,1,'the rifle view model hides behind the scope overlay');
 });
@@ -208,7 +209,8 @@ test('first-person ability phrases keep the staff off the crosshair: ≤5 % of f
    assert.equal(r.crossRelease,0,`${id}: staff crosses the crosshair within .15 s of release`);assert.ok(r.minD>=.12,`${id}: nearest staff point ${r.minD.toFixed(3)} m`);}}
 }));
 test('ADS rocket recoil: the machine gun never rises into the crosshair (pitch ≤ .12 rad, push-back and dip)',()=>liveKits(()=>{
- const r=adsProbe('machinegun',preview('ability-e'),{chips:true,from:2.45,to:3.7});assert.ok(r.top<=-.03,`gun top at NDC y ${r.top.toFixed(3)}`);assert.ok(r.maxX<.06);
+ const r=adsProbe('machinegun',preview('ability-e'),{chips:true,from:2.45,to:3.7});// Owner bug 2026-10-04: the sight line now rests on the crosshair, so the rocket kick may lift the gun a little above it.
+ assert.ok(r.top<=.08,`gun top at NDC y ${r.top.toFixed(3)}`);assert.ok(r.maxX<.06);
 }));
 // Review round 1: when chips change, the renderer rebuilds chip-modules before posing the first-person view, so the new
 // modules are ×.5 (and hidden in ADS) on the very frame they appear instead of flashing full size for one frame.
@@ -218,4 +220,14 @@ test('chip changes: first-person chip modules are scaled on the frame they are r
  const root=new T.Group(),r=probeRig('fire');markFirstPersonRig(r);root.add(r.group);const p={...probeBase('fire'),chips:{...WORST_CHIPS},hitStunUntil:-1e9};
  weaponModifiers(r.weapon as T.Group,p,1);poseFirstPersonView(r,root,p,1,1/60,false);
  const m=r.weapon.getObjectByName('chip-modules')!;assert.ok(m.children.length>0);assert.equal(m.scale.x,FP_TUNE.moduleScale);
+});
+
+test('ADS sight alignment: rear and front sights sit on the screen centre for every gun, idle and firing, at each ADS FOV',()=>{
+ for(const spec of GUNS)for(const mode of ['idle','attack'] as const){const P=adsProfile(spec)!,cam=new T.PerspectiveCamera(P.fov,16/9,.08,400),root=new T.Group();cam.add(root);const r=probeRig(spec);markFirstPersonRig(r);root.add(r.group);
+  const base=probeBase(spec),rear=new T.Vector3(),front=new T.Vector3(),frame=preview(mode);let worst=0;
+  for(let i=0;i<=120;i++){const t=1+i/60,p={...frame(t,base),hitStunUntil:-1e9,adsSince:0};poseFirstPersonView(r,root,p,t,1/60,false,P);if(t<1.5)continue;
+   // Measured without recoil/sway extras: the steady sight picture is what the reticle must match.
+   const shotAge=t-(p.lastShot??p.lastAttack??-9);if(shotAge>=0&&shotAge<.35)continue;
+   sightInCamera(root,r.weapon,spec,rear,front);for(const s of [rear,front])worst=Math.max(worst,Math.hypot(s.x,s.y)/-s.z);}
+  assert.ok(worst<.004,`${spec} ${mode}: sight line ${(worst*1000).toFixed(2)} mrad off the camera axis`);}
 });
