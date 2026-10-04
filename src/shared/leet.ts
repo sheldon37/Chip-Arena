@@ -78,7 +78,7 @@ export class LeetSystem {
    let at=wall?Math.max(Math.min(want,SLENDER.reach-.25),wall.timeOfImpact-.45):want;
    const spot=add(tp,mul(dir,at));spot.x=clamp(spot.x,-31,31);spot.z=clamp(spot.z,-27,27);spot.y=tp.y-CONFIG.playerHalfHeight-CONFIG.playerRadius;at=Math.hypot(spot.x-tp.x,spot.z-tp.z);
    f.from=feet;f.hops=hops+1;f.hopAt=s.time+SLENDER.hop[0]+(SLENDER.hop[1]-SLENDER.hop[0])*aggr;m.body.setTranslation(v(spot.x,spot.y+SLENDER.center,spot.z),true);f.walker=spot;m.yaw=f.yaw=Math.atan2(tp.x-spot.x,tp.z-spot.z);
-   s.emit('leet-slender-hop',spot,{from:feet,source:owner.id,target:target.id,amount:f.hops,color:0x55ff88});}
+   s.emit('leet-slender-hop',spot,{from:feet,source:owner.id,target:target.id,amount:f.hops,message:f.id,color:0x55ff88});}
   return true;
  }
  views(){const r=(x:number|undefined)=>x===undefined?undefined:Math.round(x*100)/100;return [...this.fields.values()].map(f=>({...f,pos:{...f.pos},walker:f.walker?{...f.walker}:undefined,from:f.from?{...f.from}:undefined,sanity:r(f.sanity),hp:f.hp===undefined?undefined:Math.ceil(f.hp),hopAt:r(f.hopAt),lostAt:undefined,yaw:r(f.yaw)}));}

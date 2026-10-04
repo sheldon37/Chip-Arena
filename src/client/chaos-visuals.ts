@@ -59,7 +59,7 @@ export class ChaosVisuals {
  /** Summon rigs: events (hit flinch, shot tracer, death), live poses and corpses. */
  private summons(s:Snapshot,fx?:SummonFx){
   if(this.generation!==(s.generation||0)){this.generation=s.generation||0;for(const d of this.dead.values())this.scene.remove(d.rig.group);this.dead.clear();this.hits.clear();}
-  for(const e of s.events){if(e.id<=this.lastEvent)continue;this.lastEvent=e.id;if(!e.target||s.time-e.time>.5)continue;
+  for(const e of s.events||[]){if(e.id<=this.lastEvent)continue;this.lastEvent=e.id;if(!e.target||s.time-e.time>.5)continue;
    if(e.type==='minionHit'&&this.minions.has(e.target)){this.hits.set(e.target,e.time);const kind=this.views.get(e.target)?.kind;fx?.burst(e.pos,kind==='toy'?0xe8c25a:0x4d6b3c,3,1.6);}
    else if(e.type==='minionShot'&&e.from){const rig=this.minions.get(e.target),muzzle=rig?.weapon.getObjectByName('muzzle');if(muzzle){muzzle.getWorldPosition(this.tip);this.spot.x=this.tip.x;this.spot.y=this.tip.y;this.spot.z=this.tip.z;}fx?.line(muzzle?this.spot:e.from,e.pos,0xfff2b8,0xffa040);fx?.burst(muzzle?this.spot:e.from,0xffd27a,4,1.2);fx?.burst(e.pos,0xd8c8a0,3,1.4);}
    else if(e.type==='minionDeath'&&(e.message==='zombie'||e.message==='toy')){const rig=this.minions.get(e.target);if(rig){this.minions.delete(e.target);this.dead.set(e.target,{rig,kind:e.message,at:e.time,x:rig.group.position.x,y:rig.group.position.y,z:rig.group.position.z,broke:false});}}}
