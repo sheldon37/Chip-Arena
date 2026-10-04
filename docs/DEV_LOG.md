@@ -18,6 +18,15 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-04 — Claude — publication records: PRs #37-#41 and PR #42 on the test channel
+- PRs #37-#41 merged `7b91b6c` -> test `0.2.7c06fa8f3a9f` (channel `d14910c`); schema 1 `arena-054ddd2d7339d417.json.gz`
+  26,187,119 B, schema 2 `arena-96b2e5e50fd6120c.pack` 22,093,779 B.
+- PR #42 merged `5bb0366` -> test `0.2.24a26b19d4ee` (channel `db0bad1`); schema 1 `arena-516d55633004c310.json.gz`
+  26,187,925 B, schema 2 `arena-81b2d09164d54a85.pack` 22,093,555 B.
+- Both: candidate (`--test-only --channel`, Node 24.19.0) passed every stage except baseline-only verify (12 known Node 24
+  unit names, 4 server tsc errors, websocket "Timed out: rematch"); old launcher `run.mjs` and the dcc7430 seed
+  `manual-update.mjs` each installed the new version from the live feed, then reported current. Live feed and Site untouched.
+
 ## 2026-10-04 — Claude — summon chips get real combat; Slenderman (Scare Tactics) rework
 
 - Branch `claude/summons-slender` from `claude/visual-revision` 7b91b6c, merged with 5bb0366 (PR #42 freeze fix). No PR opened; not merged; not released.
