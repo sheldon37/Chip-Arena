@@ -1,7 +1,8 @@
 // PvE horde performance (design §3.9, stream S1). Not part of npm test: `npm run test:pve-perf`.
-// 40 adds chasing 4 invulnerable party members for 600 ticks: average sim.step ≤ 4 ms and PvE share ≤ 2.5 ms;
-// snapshot p95 raw JSON ≤ 64 KB with a full event ring, 40 adds, 16 corpses and 4 open picks (fake economy).
-// Scenario `abilities` (ability overhaul, design §16.2 I): the same 40 adds against a darkness, a water and a lightning
+// HORDE.maxAlivePossession (48) adds, one possessed ("Find me...", the largest field), chasing 4 invulnerable party members
+// for 600 ticks: average sim.step ≤ 4 ms and PvE share ≤ 2.5 ms; snapshot p95 raw JSON ≤ 64 KB with a full event ring,
+// 48 adds, 16 corpses and 4 open picks (fake economy).
+// Scenario `abilities` (ability overhaul, design §16.2 I): 40 adds (no possession) against a darkness, a water and a lightning
 // member re-casting Black Hole, Geyser Wall and Ball Lightning every second (charges and mana restored: far above the real
 // 11-14 s cooldowns) and a machine gun with Rally Pong holding fire. Same step and snapshot budgets, with 20 Hz snapshots
 // (every 3 ticks, as the server ships them) and no `ability`/`ability-cast`/`explosion` event evicted from the event ring
@@ -13,6 +14,7 @@ import {v,idleInput,CONFIG} from '../src/shared/config.js';
 import {statsFor} from '../src/shared/content.js';
 import {cameraPosition} from '../src/shared/view.js';
 import {PVE_LAYOUT} from '../src/shared/pve/layout.js';
+import {HORDE} from '../src/shared/pve/balance.js';
 import {Horde} from '../src/shared/pve/horde.js';
 import {fakeParts,withPveParts} from './helpers/pve-fakes.js';
 await initPhysics();
@@ -26,9 +28,12 @@ try{
  const h=s.pve!.horde as Horde,pads=[0,1,4,5].map(i=>PVE_LAYOUT.pads[i]);
  const hold=()=>ids.forEach((id,i)=>{const p=s.players.get(id)!;p.hp=p.stats.hp=1e9;p.body.setTranslation(v(pads[i].x,.9,pads[i].z),true);p.body.setLinvel(v(),true);});
  hold();
- h.setFlow({rate:40,maxAlive:40,mix:{shambler:.55,runner:.3,brute:.15},budget:-1});
- for(let i=0;i<60*20&&h.alive()<40;i++){s.step();hold();}
- assert.equal(h.alive(),40,'40 adds alive');
+ const N=HORDE.maxAlivePossession;
+ h.setFlow({rate:40,maxAlive:N,mix:{shambler:.55,runner:.3,brute:.15},budget:-1});
+ for(let i=0;i<60*20&&!h.adds().some(a=>a.state==='active');i++){s.step();hold();}
+ assert.notEqual(h.possess(),null,'an add is possessed');
+ for(let i=0;i<60*20&&h.alive()<N;i++){s.step();hold();}
+ assert.equal(h.alive(),N,`${N} adds alive`);
  // Timed run.
  let hordeMs=0,afterMs=0;const step=h.step.bind(h),after=s.pve!.stepAfterPhysics.bind(s.pve!);
  h.step=(dt:number)=>{const t=performance.now();step(dt);hordeMs+=performance.now()-t;};
@@ -40,7 +45,7 @@ try{
  const avg=ticks.reduce((a,b)=>a+b,0)/ticks.length,p99=ticks[Math.floor(ticks.length*.99)],pveAvg=(hordeMs+afterMs)/600;
  // Snapshot size: 16 corpses (+16 replacements entering), 4 open picks, a full event ring.
  for(const id of ids)made.economy!.openPick(id);
- for(const a of h.adds().filter(a=>a.state==='active').slice(0,16))s.chaos.hitMinion(s.chaos.minions.get(a.id)!,1e6,'h1');
+ for(const a of h.adds().filter(a=>a.state==='active'&&a.n!==h.possessed()).slice(0,16))s.chaos.hitMinion(s.chaos.minions.get(a.id)!,1e6,'h1');
  for(let k=0;k<16;k++)h.spawn('shambler');
  const sizes:number[]=[];let adds=0;
  for(let i=0;i<60;i++){hold();s.step();while(s.events.length<CONFIG.maxEvents)s.emit('minionHit',v(1.2345,.9876,5.4321),{source:'h1',target:'add-1',amount:12.345,color:0x0b0a0d});
@@ -52,7 +57,7 @@ try{
  console.log(JSON.stringify(report));
  assert.ok(avg<=4,`average sim.step ${avg.toFixed(2)} ms > 4 ms`);
  assert.ok(pveAvg<=2.5,`PvE share ${pveAvg.toFixed(2)} ms > 2.5 ms`);
- assert.ok(adds>=56,`snapshot carried ${adds} add tuples`);
+ assert.ok(adds>=N+16,`snapshot carried ${adds} add tuples`);
  assert.ok(p95<=64*1024,`snapshot p95 ${p95} B > 64 KB`);
  console.log('pve-perf: ok');
 }finally{s.dispose();}

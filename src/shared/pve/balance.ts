@@ -4,9 +4,10 @@ import type {AddKind,DropTier,HordeModifiers,OrdinaryRarity} from './contract.js
 import type {Rarity} from '../content.js';
 
 // §10.1 Mode and stages
+// Owner 2026-10-04: every intermission lasts 30 s (was 12 s between waves, 8 s before the boss).
 export const PVE={maxParty:4, maxPartyBots:3, botsCountForScaling:true, wavesBeforeBoss:3,
  openingSeconds:10, openingEarlySeconds:3, openingMinSeconds:4,
- intermissionSeconds:12, lastIntermissionSeconds:8, waveClearRemainder:2, waveClearHold:3, waveMaxSeconds:150,
+ intermissionSeconds:30, lastIntermissionSeconds:30, waveClearRemainder:2, waveClearHold:3, waveMaxSeconds:150,
  outroVictorySeconds:4, outroDefeatSeconds:3, partyFactorPerMember:.6, bossIntroAlways:true, revealHoldsCombat:true,
  reveal:{smile:1.4, card:3.2, settle:.4}, bossIntroExtra:1.8,
  respawnOnWaveClear:true, respawnOnPhase:true, respawnHpFraction:.5, respawnClearRadius:4, reviveShield:1.5,
@@ -23,7 +24,9 @@ export const ADD_KINDS:Record<AddKind,AddKindStats>={
 };
 export const GIB={headMultiplier:1.5, limbMultiplier:.9, blastTorsoShare:.6, crawlSpeed:.35, limpSpeed:.55,
  oneArmDamage:.65, biteDamage:.35, biteReach:1.2, crawlDamage:.6, crawlReach:1.3, staggerHitFraction:.25, staggerImpulse:400} as const;
-export const HORDE={maxAlive:40, maxAliveRelay:28, maxEntering:16, maxCorpses:16, corpseSeconds:3.1, thinkInterval:.75,
+// maxAlivePossession: the hall's cap while the Siren hides in an add ("Find me...", owner 2026-10-04: many more spawns). 48 alive
+// + 16 corpses = 64 crowd impostors, the most the client draws (HORDE_RENDER.impostorMax); relay rooms keep maxAliveRelay.
+export const HORDE={maxAlive:40, maxAliveRelay:28, maxAlivePossession:48, maxEntering:16, maxCorpses:16, corpseSeconds:3.1, thinkInterval:.75,
  separation:.9, separationPush:2, stopDistance:1.1, frenzyRange:7, extDecay:6, extMax:6,
  hitEventsPerSecond:20, aoeEventInterval:.25,
  collider:{halfHeight:.43, radius:.42, mass:40, crawlHalfHeight:.12, crawlRadius:.32},
@@ -54,7 +57,9 @@ export const PVE_SIREN={hpBase:6000, hpPerExtraMember:.5, damageScale:[.2,.22,.2
  thresholds:[.75,.5,.25], spawn:{x:0,z:24.2,yaw:Math.PI}, spawnClear:4,
  trickle:{alive:6, alivePerMember:4, rate:.6, ratePerMember:.4},          // 6/10/14/18 alive; .6/1.0/1.4/1.8 per s
  laughCrush:.6,                                                           // × victim max HP × damageScale(h)  (D35)
- possession:{rate:1.8, alive:1.6, hpScale:3, keepAway:[8,14], stareEvery:6, stareFor:.8, forceRevealAfter:60,
+ // Owner 2026-10-04 "make it harder, increase spawns significantly": ×5 rate and ×3 alive (were ×1.8/×1.6) while possessed:
+ // 18/30/42/48 alive at 3/5/7/9 per s for h=1..4 (HORDE.maxAlivePossession; relay 18/28/28/28).
+ possession:{rate:5, alive:3, hpScale:3, keepAway:[8,14], stareEvery:6, stareFor:.8, forceRevealAfter:60,
              noVentFor:10, hints:{medium:15, strong:35, pingEvery:8, pingFor:1.2, glyphRange:25}},
  beautiful:{scale:1.5, reach:1.5, growSeconds:1},                         // laugh lunge range not scaled (D35)
  play:{cooldown:0, maxRains:2, maxEruptions:4, minRecast:{laugh:0}}} as const;

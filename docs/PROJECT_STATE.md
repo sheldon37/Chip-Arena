@@ -100,3 +100,5 @@ Windows validation and desktop distribution cutover remain separate work.
 - Developer Sandbox (DEV accounts only) and Ward Zero as a PvP map: PR #44 (`accc362`), test `0.2.cb814cb80ece`; follow-up
   (rarity sort, keypress dummy cast, dummy respawn, PvP vent warnings, no machines in PvP) merged at `29d184b` (PR #45);
   test content `0.2.fd485a10e3d0` at channel `b2241e2`. Native review remains.
+- Siren PvE: "Find me..." spawns ×5 rate / ×3 alive (cap 48) and 30 s intermissions on `claude/sleepy-ritchie-g8ruhv`
+  (2026-10-04); next: merge, test-channel publication, owner playtest.

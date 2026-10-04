@@ -15,6 +15,7 @@ import {ADD_KINDS_ORDER,ADD_PREFIX,ADD_STATUS,HORDE_ID,PVE_EVENT,PVE_GROUPS,PVE_
 import {ADD_KINDS,ECONOMY,HORDE,IDENTITY_MODS,PVE_SIREN} from './balance.js';
 import {machineBlocks,PVE_ENTRIES} from './layout.js';
 import {HordeNav} from './nav.js';
+import {hordeCap} from './waves.js';
 import {EntryScheduler,SpawnBudget,chooseEntry,entryWeight,ventHazard,type EntryChoiceContext} from './entries.js';
 import {PART_LIMB,SEVER_BITS,classifyAddHit,jointWorld,limbState,partLost,partMultiplier,severAt,type HitPart} from './gibs.js';
 import {SeparationHash,addSpeed,attackProfile,nextSide,possessedMode,targetScore,type PveAdd} from './add-ai.js';
@@ -51,8 +52,10 @@ export class Horde implements HordeApi{
  /** Adds waiting for an entry or entering for the first time. */
  queued(){return this.count(a=>a.phase==='pending'||a.phase==='entering'&&!a.travel);}
  private entering(){return this.count(a=>a.phase==='entering'||a.phase==='pending');}
- /** The current alive cap: HORDE.maxAlive (maxAliveRelay on relay rooms), lowered by the flow's maxAlive. */
- cap(){const hard=this.host.options.relay?HORDE.maxAliveRelay:HORDE.maxAlive;return this.flow?Math.min(hard,this.flow.maxAlive):hard;}
+ /** The hard cap: HORDE.maxAlive (maxAliveRelay on relay rooms; maxAlivePossession while an add is possessed). */
+ private hard(){return hordeCap(this.host.options.relay===true,this.possessed()!==undefined);}
+ /** The current alive cap: the hard cap, lowered by the flow's maxAlive. */
+ cap(){const hard=this.hard();return this.flow?Math.min(hard,this.flow.maxAlive):hard;}
  private posOf(a:PveAdd):Vec{return a.phase==='active'&&a.minion?a.minion.body.translation():a.pos;}
  private stateOf(a:PveAdd):AddState{
   if(a.phase==='pending'||a.phase==='entering')return a.crawl?'crawl':'entering';if(a.phase==='vent')return 'vent';
@@ -75,7 +78,7 @@ export class Horde implements HordeApi{
  }
  spawn(kind:AddKind,opts:{entry?:number;possessed?:boolean}={}):number|null{
   if(!ADD_KINDS_ORDER.includes(kind))return null;
-  if(this.alive()+this.queued()>=(this.host.options.relay?HORDE.maxAliveRelay:HORDE.maxAlive))return null;
+  if(this.alive()+this.queued()>=this.hard())return null;
   if(opts.entry!==undefined&&!(Number.isInteger(opts.entry)&&opts.entry>=0&&opts.entry<PVE_ENTRIES.length))return null;
   const a=this.create(kind,opts.possessed===true);if(opts.entry!==undefined)a.requestEntry=opts.entry;
   this.place(a);return a.n;
@@ -458,6 +461,11 @@ export class Horde implements HordeApi{
   const doors=PVE_ENTRIES.filter(e=>e.kind==='door').map(e=>({e:e.e,d:far(e.exit)})).sort((x,y)=>y.d-x.d||x.e-y.e);
   const door=doors.find(d=>this.sched.queueLength(d.e)<HORDE.entry.queue)??doors[0];
   const a=this.create('shambler',true);this.enter(a,door.e);return a.n;
+ }
+ /** Debug phase skips: the possessed add (if any) becomes an ordinary add again (×3 HP undone, keep-away off). */
+ release(){
+  for(const a of this.list.values())if(a.possessed){a.possessed=false;a.maxHp/=PVE_SIREN.possession.hpScale;a.hp=Math.min(a.hp,a.maxHp);
+   if(a.minion){a.minion.hp=a.hp;a.minion.maxHp=a.maxHp;}a.thinkAt=this.time;}
  }
  // ---------------------------------------------------------------- assists (D38)
  /** A party player's chaos zombie or toy with no enemy player: chase the nearest active add within 20 m and hit it

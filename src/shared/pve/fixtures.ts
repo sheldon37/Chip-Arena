@@ -119,7 +119,7 @@ export const PVE_FIXTURES={
  'opening':(o?:FixtureOptions)=>{const v=fixtureBase(o),{time,ids}=opt(o);return {...v,stage:'opening' as const,stageAt:time-2,stageUntil:time+8,wave:0,waveTotal:0,waveLeft:0,
   party:fixtureParty({...o,kinds:ids.map((id,i)=>id.startsWith(PARTY_BOT_PREFIX)?'bot':i===0?'choosing':'alive')})};},
  'wave':(o?:FixtureOptions)=>{const v=fixtureBase(o);return {...v,adds:enc(fixtureHordeRing(12,{...o,radius:7}),v.slots)};},
- 'intermission':(o?:FixtureOptions)=>{const v=fixtureBase(o),{time}=opt(o);return {...v,stage:'intermission' as const,stageAt:time-3,stageUntil:time+9,wave:1,waveLeft:0};},
+ 'intermission':(o?:FixtureOptions)=>{const v=fixtureBase(o),{time}=opt(o);return {...v,stage:'intermission' as const,stageAt:time-3,stageUntil:time+27,wave:1,waveLeft:0};},
  'horde-ring':(o?:FixtureOptions)=>{const v=fixtureBase(o);return {...v,adds:enc(fixtureHordeRing(24,{...o,radius:6,states:['active','active','stagger','crawl']}),v.slots)};},
  'horde-crowd':(o?:FixtureOptions)=>{const v=fixtureBase(o);return {...v,waveTotal:62,waveLeft:60,adds:enc([...fixtureHordeRing(20,{...o,radius:5}),...fixtureHordeRing(20,{...o,radius:12,seed:(o?.seed??1)+1}).map(a=>({...a,n:a.n+20,id:ADD_PREFIX+(a.n+20)})),...fixtureHordeRing(20,{...o,radius:22,seed:(o?.seed??1)+2}).map(a=>({...a,n:a.n+40,id:ADD_PREFIX+(a.n+40)}))],v.slots)};},
  'corpses':(o?:FixtureOptions)=>{const v=fixtureBase(o);return {...v,adds:enc(fixtureHordeRing(16,{...o,radius:5,states:['dead']}),v.slots)};},
