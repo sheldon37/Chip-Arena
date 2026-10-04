@@ -73,8 +73,8 @@ test('thrown dagger with Venom poisons the add',()=>{
  const r=room('daggers',{poison:1,leech:1},5);try{r.park();const pitch=aim(r);const out=drive(r,60,k=>({secondary:k<2,pitch}));assert.ok(out.dealt>0);assert.ok(r.add.poisons?.has('h1'),'poisoned');}finally{r.s.dispose();}
 });
 
-test('Helix / Orbitals / Splitter secondary shots carry the weapon burn and life steal onto adds',()=>{
- for(const chip of ['helix','orbitals','splitter']){
+test('Helix / Orbitals secondary shots carry the weapon burn and life steal onto adds',()=>{
+ for(const chip of ['helix','orbitals']){
   const r=room('pistol',{[chip]:1,ember:1,'vampiric-rounds':1},4);try{r.park();const pitch=aim(r);
    r.s.step();const extra=()=>shots(r.s).filter(q=>!q.direct);let carried=false;
    drive(r,40,k=>{for(const q of extra())if(q.weaponFx&&(q.burnDps??0)>0)carried=true;return {attack:k<1,pitch,camera:'first'};});
@@ -91,6 +91,12 @@ test('water soak and an ability slow reach adds and slow their chase',()=>{
 
 test('flame lance burns an add',()=>{
  const r=room('fire',{},4);try{r.park();const m=r.add.minion!;r.s.minionStatus('h1',m,{burn:4});assert.equal(r.add.burns?.get('h1')?.dps,4);}finally{r.s.dispose();}
+});
+
+test('Splitter splits on an add (fragments without enchantments, by the existing rule)',()=>{
+ const r=room('pistol',{splitter:1,ember:1},4);try{r.park();const pitch=aim(r);let frags=0;const seen=new Set<string>();
+  drive(r,30,k=>{for(const q of shots(r.s))if(!q.direct&&!seen.has(q.id)){seen.add(q.id);frags++;assert.equal(q.burnDps,0);assert.equal(q.weaponFx,undefined);}return {attack:k<1,pitch,camera:'first'};});assert.ok(frags>=3,`fragments ${frags}`);
+ }finally{r.s.dispose();}
 });
 
 test('add status bits round-trip through the compact tuple without changing its length',()=>{

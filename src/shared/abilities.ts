@@ -31,8 +31,12 @@ export interface AbilityCastState{slot:AbilitySlot;id:string;at:number;aim:Abili
 /** Projectile.ability (§3.7): `fuse` is absolute time, `travel` metres flown. */
 export interface AbilityShotTag{id:string;slot:AbilitySlot;cast:string;fuse?:number;travel:number;data?:Record<string,unknown>}
 /** `welcome` caps (§3.12); absent on old hosts. */
-export interface HostCaps{abilities?:number}
-export const HOST_CAPS:HostCaps={abilities:1};
+export interface HostCaps{abilities?:number;/** Hold-to-aim host (2026-10-04): aimed abilities cast on key release. */aimHold?:number}
+export const HOST_CAPS:HostCaps={abilities:1,aimHold:1};
+/** Aimed (ground/point-targeted) abilities: a tap casts on release, holding past HOLD_AIM_SECONDS shows the aim preview and the
+ *  cast fires on release at the aimed point (owner 2026-10-04: "remove that aim-circle ... show if we hold the button"). */
+export const HOLD_AIM:ReadonlySet<string>=new Set(['frag-grenade','meteor-strike','geyser-wall','singularity']);
+export const HOLD_AIM_SECONDS=.2;
 /** Gates every client ability feature (Q bit, ADS, HUD, hints). */
 export const abilityClient=(caps:HostCaps|null|undefined,spec:SpecId|undefined)=>!!caps?.abilities&&!!spec&&abilityUser(spec);
 const KITS:Partial<Record<SpecId,AbilityKit>>={...GUN_KITS,...MAGIC_KITS};

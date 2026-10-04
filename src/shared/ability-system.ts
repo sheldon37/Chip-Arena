@@ -13,7 +13,7 @@ import type {BodyImpact} from './body-damage.js';
 import {ceilingContact} from './ceiling-field.js';
 import {rolling,committed,rollInvulnerable} from './souls-combat.js';
 import {demonStepInvulnerable} from './demon-step.js';
-import {abilityUser,kitFor,abilityDef,abilityActive,ABILITY_DEFS,FX_ABILITY,ABILITY_FX,castTime,abilityCooldown,abilityCost,abilityRadius,abilityScale,maxCharges,adsProfile,adsMove,adsSpread,abilityAimPoint,
+import {HOLD_AIM,abilityUser,kitFor,abilityDef,abilityActive,ABILITY_DEFS,FX_ABILITY,ABILITY_FX,castTime,abilityCooldown,abilityCost,abilityRadius,abilityScale,maxCharges,adsProfile,adsMove,adsSpread,abilityAimPoint,
  type AbilityDef,type AbilitySlot,type AbilityAim} from './abilities.js';
 import {GUN_HANDLERS,gunPrimaryHit} from './gun-abilities.js';
 import {MAGIC_HANDLERS,magicPrimaryHit} from './magic-abilities.js';
@@ -57,8 +57,8 @@ export class AbilitySystem{
  handler(def:AbilityDef|undefined):AbilityHandler|undefined{return def?ABILITY_HANDLERS[def.id]:undefined;}
  clear(){this.timeline=[];}
  remove(p:Player){this.timeline=this.timeline.filter(e=>e.owner!==p.id);this.reset(p);}
- reset(p:Player){p.abilityCd=0;p.lastAbility=-10;p.eCharges=maxCharges(p.stats);p.abilityCast=p.pendingPress=p.adsSince=p.adsBloom=p.slowed=p.slowImmuneUntil=p.empower=p.leech=undefined;}
- revive(p:Player){p.abilityCast=p.pendingPress=p.slowed=p.slowImmuneUntil=p.empower=p.leech=undefined;}
+ reset(p:Player){p.abilityCd=0;p.lastAbility=-10;p.eCharges=maxCharges(p.stats);p.aimHold=p.aimKeys=undefined;p.abilityCast=p.pendingPress=p.adsSince=p.adsBloom=p.slowed=p.slowImmuneUntil=p.empower=p.leech=undefined;}
+ revive(p:Player){p.aimHold=undefined;p.abilityCast=p.pendingPress=p.slowed=p.slowImmuneUntil=p.empower=p.leech=undefined;}
  cancel(p:Player,mode:'windup'|'buffer'|'death'='windup'){p.abilityCast=undefined;if(mode!=='windup')p.pendingPress=undefined;if(mode==='death'){p.adsSince=p.adsBloom=p.empower=p.leech=undefined;}}
  busy(p:Player){return !!p.abilityCast;}
  schedule(at:number,fn:()=>void,owner?:string){const e={at,fn,owner};let i=this.timeline.length;while(i>0&&this.timeline[i-1].at>at)i--;this.timeline.splice(i,0,e);}
@@ -70,7 +70,27 @@ export class AbilitySystem{
   if(aiming){if(p.adsSince===undefined)p.adsSince=time;}else if(p.adsSince!==undefined||p.adsBloom){p.adsSince=undefined;p.adsBloom=undefined;}
   if(p.abilityCast&&time>=p.abilityCast.at)this.release(p);
   if(p.pendingPress){if(time-p.pendingPress.at>BUFFER)p.pendingPress=undefined;else this.press(p,p.pendingPress.slot,true);}
-  if(p.input.ability===true&&kit.q.kind!=='ads'&&abilityActive(p.spec,'q'))this.press(p,'q');
+  this.aimHold(p);
+  if(p.input.ability===true&&kit.q.kind!=='ads'&&abilityActive(p.spec,'q')&&!this.holds(p,'q'))this.press(p,'q');
+ }
+ /** Hold-to-aim applies to human pilots on HOLD_AIM abilities (bots keep cast-on-press taps; Necronomicon's E is not aimed). */
+ holds(p:Player,slot:AbilitySlot):boolean{const d=abilityDef(p.spec,slot);return !p.bot&&!!d&&HOLD_AIM.has(d.id)&&abilityActive(p.spec,slot)&&!(slot==='e'&&p.chips.necronomicon&&WEAPONS[p.spec].class==='magic');}
+ /** Key edges from real inputs only (a starved relay tick repeats no release): press starts the hold, release casts through
+  *  press() (buffer and refusal rules unchanged) with the aim at release. Rolling, blocking, death, a freeze, a stale input or
+  *  pressing the other (non-ADS) ability cancels the hold without casting. */
+ private aimHold(p:Player){
+  const s=this.sim,time=s.time,i=p.input,stale=time-p.inputAt>(s.options.inputHoldSeconds??C.staleInputSeconds);
+  if(p.inputFresh!==false&&!stale){
+   const down={q:i.ability===true,e:i.secondary===true},was=p.aimKeys??{q:false,e:false};p.aimKeys=down;
+   for(const slot of ['q','e'] as const){
+    const rise=down[slot]&&!was[slot],other=slot==='q'?'e':'q';
+    if(rise&&p.aimHold&&p.aimHold.slot===other&&abilityDef(p.spec,slot)?.kind!=='ads')p.aimHold=undefined;
+    if(!this.holds(p,slot))continue;
+    if(rise)p.aimHold={slot,since:time};
+    else if(!down[slot]&&was[slot]&&p.aimHold?.slot===slot){p.aimHold=undefined;this.press(p,slot);}
+   }
+  }
+  if(p.aimHold&&(stale||s.phase!=='fight'||p.hp<=0||p.blockTime>0||rolling(p,time)||s.leet.frozen(p)||!this.holds(p,p.aimHold.slot)))p.aimHold=undefined;
  }
  step(_dt:number){
   const s=this.sim,time=s.time;

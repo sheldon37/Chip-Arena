@@ -27,6 +27,8 @@ let seq=0;
 function tick(s:Simulation,a:Player,input:Partial<Input>={},other:Partial<Input>={}){
  const b=s.players.get('b')!;s.setInput(a.id,{...idleInput(),seq:++seq,yaw:a.input.yaw,pitch:a.input.pitch,camera:'first',...input});
  s.setInput(b.id,{...idleInput(),seq:++seq,yaw:b.input.yaw,pitch:b.input.pitch,...other});for(const p of s.players.values())p.inputAt=s.time;s.step();
+ // Hold-to-aim (2026-10-04): an aimed E casts on release, so a scripted tap is press + release.
+ if(input.secondary&&s.abilities.holds(a,'e'))tick(s,a,{...input,secondary:false},other);
 }
 const run=(s:Simulation,a:Player,n:number,input:Partial<Input>={},other:Partial<Input>={})=>{for(let i=0;i<n;i++)tick(s,a,input,other);};
 const eye=(p:Player)=>add(p.body.translation(),v(0,VIEW.eyeHeight,0));
