@@ -32,7 +32,7 @@ export function cutTime(clip:MocapClip,age:number,windup:number,window:number,re
 export function mocapCut(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,lag=0,weight=1){
  const set=mocapSet(p.spec,r);if(!set?.cuts)return false;const clip=cutClip(set,p.attackIndex),rate=p.attackRate||1;
  sampleClip(clip,cutTime(clip,a.age-lag,a.windup,a.window,meleeRecovery(p.spec)/rate),row);
- applyMocapPose(r,row,{weight});return true;
+ applyMocapPose(r,row,{weight,clear:'turn'});return true;
 }
 /** Walk-to-run blend input: the planar speed eased per rig (~.25 s), so a stop or an action that zeroes the velocity in one
  * snapshot fades the run's carry out with the carry weight instead of swapping clips in a frame. Restarts after a rewind or

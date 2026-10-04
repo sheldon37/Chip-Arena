@@ -73,7 +73,9 @@ const q=new URLSearchParams(location.search);
 if(q.get('mocapOff')==='1')MOCAP.enabled=false;
 // mocap=<clip>: pose the raw retargeted clip (clip time = lab time, no ground pass) from the uncommitted preview table that
 // `node scripts/mocap/convert-greatsword.mjs <pack> --preview tools/visual-lab/mocap-preview.generated.ts` writes.
-const rawClip:MocapClip|undefined=q.has('mocap')?(await import(/* @vite-ignore */ './mocap-preview.generated.ts')).PREVIEW_CLIPS[q.get('mocap')!]:undefined,rawRow=new Float32Array(CHANNEL_COUNT);
+// A variable specifier: Vite must not resolve the (git-ignored, usually absent) table when the lab loads without mocap=.
+const PREVIEW_TABLE='./mocap-preview.generated.ts';
+const rawClip:MocapClip|undefined=q.has('mocap')?(await import(/* @vite-ignore */ PREVIEW_TABLE)).PREVIEW_CLIPS[q.get('mocap')!]:undefined,rawRow=new Float32Array(CHANNEL_COUNT);
 const num=(k:string,d:number)=>q.has(k)?Number(q.get(k)):d;
 const legacy=q.get('legacy')==='1';
 const kind=q.get('kind')||'motion',spec=q.get('spec')||'pistol',mode=q.get('mode')||'idle';

@@ -2,6 +2,7 @@ import * as T from 'three';
 import type {CharacterRig} from '../character-rig.js';
 import {braceWeapon,hand} from '../rig-ik.js';
 import {CH} from './mocap-clip.js';
+import {clearBlade} from './blade-clearance.js';
 /** Poses the voxel rig from one sampled mocap row (mocap-clip.ts) at `weight` over whatever the layers below posed.
  * Torso, clavicles and legs take the retargeted joint rotations (the ground pass then re-plants the legs on the floor);
  * the arms go through the rig's own IK: the main hand to the retargeted grip with the blade along the captured blade
@@ -10,16 +11,22 @@ import {CH} from './mocap-clip.js';
  * the clip's horizontal hips offset, and no current state uses it.
  * `legs` (0..1, of weight) poses the hips, knees and ankles; `root` (0..1) the heading, hips height and pelvis (locomotion
  * passes 0: the gait owns them); `arms:false` leaves both arms and the weapon to the layers below. */
-export interface MocapPoseOptions {weight:number;travel?:number;legs?:number;root?:number;arms?:boolean}
+/** `clear`: blade clearance (blade-clearance.ts): 'full' turns the blade and moves the grip; 'turn' (fast cuts, where a grip
+ * shift would whip the elbows) only turns the blade. */
+export interface MocapPoseOptions {weight:number;travel?:number;legs?:number;root?:number;arms?:boolean;clear?:'full'|'turn'}
 const _q=new T.Quaternion(),_v=new T.Vector3(),_lp=new T.Vector3(),_cq=new T.Quaternion(),_a=new T.Vector3(),_b=new T.Vector3(),_c=new T.Vector3(),_m=new T.Matrix4(),_e=new T.Euler(),_p=new T.Vector3();
 const X=new T.Vector3(1,0,0),Y=new T.Vector3(0,1,0),_yq=new T.Quaternion();
 function rot(f:Float32Array,i:number,out:T.Quaternion){_v.set(f[i],f[i+1],f[i+2]);const a=_v.length();return a<1e-9?out.identity():out.setFromAxisAngle(_v.divideScalar(a),a);}
 function set(node:T.Object3D,q:T.Quaternion,w:number){if(w>=1)node.quaternion.copy(q);else node.quaternion.slerp(q,w);}
-/** Chest-space basis (blade along +z, edge along +x) as the wrist's chest-space Euler. */
-function basisEuler(f:Float32Array,z:number,x:number,out:T.Euler){
+/** Chest-space blade (into `_a`) and edge (into `_b`, perpendicular) from a row. */
+function bladeAxes(f:Float32Array,z:number,x:number){
  _a.set(f[z],f[z+1],f[z+2]).normalize();_b.set(f[x],f[x+1],f[x+2]);_b.addScaledVector(_a,-_b.dot(_a));if(_b.lengthSq()<1e-8)_b.set(1,0,0).addScaledVector(_a,-_a.x);_b.normalize();
- _c.crossVectors(_a,_b);return out.setFromRotationMatrix(_m.makeBasis(_b,_c,_a));
 }
+/** Chest-space basis (blade `_a` along +z, edge `_b` along +x) as the wrist's chest-space Euler. */
+function basisEuler(out:T.Euler){_c.crossVectors(_a,_b);return out.setFromRotationMatrix(_m.makeBasis(_b,_c,_a));}
+/** The weapon's extent along its blade from the grip (pommel, blade end), in the weapon's current length scale. */
+const extents=new WeakMap<T.Object3D,number>();
+function bladeEnd(weapon:T.Object3D){let z=extents.get(weapon);if(z===undefined){z=(weapon.getObjectByName('blade-tip')?.position.z??1.4)-.08;extents.set(weapon,z);}return z*weapon.scale.z;}
 function basisEulerYZ(f:Float32Array,z:number,y:number,out:T.Euler){
  _a.set(f[z],f[z+1],f[z+2]).normalize();_c.set(f[y],f[y+1],f[y+2]);_c.addScaledVector(_a,-_c.dot(_a));if(_c.lengthSq()<1e-8)_c.set(0,1,0);_c.normalize();
  _b.crossVectors(_c,_a);return out.setFromRotationMatrix(_m.makeBasis(_b,_c,_a));
@@ -49,7 +56,9 @@ export function applyMocapPose(r:CharacterRig,f:Float32Array,o:MocapPoseOptions)
   set(r.leftFoot,rot(f,CH['lankle.x'],_q),legs);set(r.rightFoot,rot(f,CH['rankle.x'],_q),legs);
  }
  if(o.arms===false)return;
- _p.set(f[CH['grip.x']],f[CH['grip.y']],f[CH['grip.z']]);basisEuler(f,CH['blade.x'],CH['edge.x'],_e);
+ _p.set(f[CH['grip.x']],f[CH['grip.y']],f[CH['grip.z']]);bladeAxes(f,CH['blade.x'],CH['edge.x']);
+ // The voxel shoulders, chest and head are bigger than the captured human's: keep the blade (and hilt) clear of them.
+ clearBlade(r,_p,_a,_b,-.27*r.weapon.scale.z,bladeEnd(r.weapon),o.clear!=='turn');basisEuler(_e);
  braceWeapon(r,_p,_e,w,pole(r,false,_p,f,CH['rpole.x'],_v));
  // The support hand leaves the grip only where the capture lets go of it.
  const free=(1-Math.min(1,Math.max(0,f[CH.twohand])))*w;
