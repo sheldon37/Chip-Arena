@@ -38,7 +38,7 @@ export interface AbilityHandler{
  /** Every ability-field end; replaces the default (bomb/implosion explode, + vacuum; triggered mines). */detonate?(sys:AbilitySystem,f:FieldView,owner:Player,cause:'until'|'trigger'|'evict'):void;
  /** true = it set the input (Blink). */bot?(sys:AbilitySystem,p:Player,input:Input,b:BotCtx):boolean;
 }
-export interface BlastResult{players:number;minions:number;hit:string[]}
+export interface BlastResult{players:number;minions:number;hit:string[];/** Minion ids that took damage. */adds?:string[]}
 export interface BlastOptions{props?:boolean;propScale?:number;kind?:string}
 export interface HitOptions{direct?:boolean;headshot?:boolean;bodyImpact?:BodyImpact;elements?:ElementId[];kind?:string}
 export interface ShotOptions{cast:string;pos?:Vec;dir?:Vec;vel?:Vec;speed?:number;gravity?:number;radius?:number;damage?:number;impulse?:number;life?:number;travel?:number;fuse?:number;elements?:ElementId[];data?:Record<string,unknown>;pierces?:number}
@@ -139,8 +139,8 @@ export class AbilitySystem{
   if(s.manaSurge>0)p.mana=Math.min(s.maxMana,p.mana+actual*s.manaSurge);
   if(s.abilityLeech>0){p.leech??={hp:0,at:-1e9};p.leech.hp+=actual*s.abilityLeech;}
  }
- slow(target:Player,speedFactor:number,seconds:number,kind:string,source?:string){
-  const s=this.sim,time=s.time;if(target.spec==='siren'||s.siren.armored(target)||(target.slowImmuneUntil??-1)>time||target.hp<=0||!(seconds>0))return false;
+ slow(target:Player|Minion,speedFactor:number,seconds:number,kind:string,source?:string){
+  const s=this.sim,time=s.time;if(!('stats'in target))return !!source&&s.minionStatus(source,target,{slow:{factor:speedFactor,seconds}});if(target.spec==='siren'||s.siren.armored(target)||(target.slowImmuneUntil??-1)>time||target.hp<=0||!(seconds>0))return false;
   const until=time+seconds,cur=target.slowed&&target.slowed.until>time?target.slowed:undefined,factor=clamp(speedFactor,.4,1);
   target.slowed=cur?{factor:Math.min(cur.factor,factor),until:Math.max(cur.until,until),kind:factor<cur.factor?kind:cur.kind}:{factor,until,kind};
   s.emit('slowed',target.body.translation(),{target:target.id,source:source??null,message:kind,amount:factor,radius:seconds});return true;

@@ -17,7 +17,8 @@ const fraction=(n:number)=>n-Math.floor(n);
 /** Ability statuses (§11.2): slow droplets, shackle cuffs, Orbital Mark reticle. */
 const cubeGeometry=new T.BoxGeometry(1,1,1),slowMaterial=new T.MeshBasicMaterial({color:0x9ff0ff}),shackleMaterial=new T.MeshBasicMaterial({color:0xb45cff}),markMaterial=new T.MeshBasicMaterial({color:0xff4b3a});
 type AbilityStatus={slowed?:PlayerView['slowed'];mark?:FieldView};
-class StatusRig {
+/** Exported for the PvE horde (burning/poisoned/slowed Siren adds, 2026-10-04). */
+export class StatusRig {
  root=new T.Group();fire=new T.Group();poison=new T.Group();slow=new T.Group();mark=new T.Group();flames:T.Mesh[]=[];embers:T.Mesh[]=[];bubbles:T.Group[]=[];
  constructor(public firstPerson=false){this.root.name='player-status-effects';this.fire.name='burning-flames';this.poison.name='poison-bubbles';this.slow.name='ability-slow';this.mark.name='orbital-marked';this.root.add(this.fire,this.poison,this.slow,this.mark);
   for(let n=0;n<10;n++)this.slow.add(new T.Mesh(cubeGeometry,slowMaterial));for(let n=0;n<8;n++)this.mark.add(new T.Mesh(cubeGeometry,markMaterial));

@@ -8,7 +8,7 @@ import {CLASS_INFO,WEAPONS,statsFor,magazineCapacity} from '../content.js';
 import {BOT_WEAPONS} from '../lobby-presentation.js';
 import type {ArenaBlock} from '../arena.js';
 import {BOSS_PLAYER_ID,HORDE_ID,HORDE_NAME,PARTY_BOT_PREFIX,PVE_CONTRACT,PVE_EVENT,PVE_GROUPS,PVE_TEAMS,RECRUIT_PREFIX,sanitizePveCommand,
- type AddDeath,type AddHitInfo,type DirectorApi,type EconomyApi,type HordeApi,type PveHost,type PveOptions,type PveOutcome,
+ type AddDeath,type AddHitInfo,type AddStatusInput,type DirectorApi,type EconomyApi,type HordeApi,type PveHost,type PveOptions,type PveOutcome,
  type PvePartsFactory,type PveStats,type PveView,type RecruitsApi} from './contract.js';
 import {PVE,PVE_SIREN,damageScale,RECRUIT} from './balance.js';
 import {hash32,PveRng} from './rng.js';
@@ -210,6 +210,8 @@ export class PveSystem implements PveHost{
  onRevive(p:Player){this.economy.onRevive(p);}
  /** chaos.hitMinion for kind 'siren-add'. */
  hitAdd(m:Minion,damage:number,attacker:string,impulse:number,dir:Vec,hit?:AddHitInfo):number{const actual:unknown=this.horde.hit(m,damage,attacker,impulse,dir,hit);return typeof actual==='number'?actual:0;}
+ /** Weapon statuses on an add (burn/poison DoTs, slow); see Simulation.minionStatus. */
+ statusAdd(m:Minion,source:string,st:AddStatusInput):boolean{return !!this.horde.status?.(m,source,st);}
  /** chaos.ts step loop: a party player's zombie or toy with no enemy player to chase (D38). */
  assistMinion(m:Minion,owner:Player,dt:number){if(this.isMember(owner)||this.isRecruit(owner))this.horde.assistMinion(m,owner,dt);}
  /** #33 Ground ray rules: humans never ground on adds; the grown boss grounds with its longer ray. */
