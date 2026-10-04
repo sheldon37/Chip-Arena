@@ -18,6 +18,19 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-04 — Claude — PvE vent pits: black open vents, vent-fall deaths, timed splat
+
+- Branch `claude/pve-vent-pits` from `origin/claude/visual-revision` 8840198, merged with 3457323 (PRs #37–#40). Not merged, not released, no PR.
+- Visual: an open Ward Zero vent draws a shaft into the floor quad (per-pixel ray into a 2.1 m box: seamed walls and rungs fading to black, black bottom, faint red lip). It replaces the old black plane that the floor tiles showed through. Its opacity follows the existing lid curve (`entryOpenAmount`, moved verbatim to `src/shared/pve/vent-pits.ts` and re-exported from `client/siren/stage.ts`), so timing is unchanged. It is fully dark at the lethal open amount (0.5).
+- Fall (server, `VentPits` in `pve/vent-pits.ts`, stepped from `PveSystem.stepAfterPhysics`): a connected, alive member or recruit whose capsule centre is within 0.78 m of an open vent (open amount ≥ 0.5) and not jumping dies at once with kind `vent-fall`. Credit goes through `Simulation.damage` like the `fall` kill, so a recent attacker within attributionSeconds is the source and killer. Roll i-frames, the revive shield and chip saves do not hold the floor up. God mode and hidden players are exempt. The boss and adds never fall. Closed vents are solid. PvP Ward Zero vents never open, so PvP is unchanged; pvp-golden is identical.
+- Splat: at death+9.4 s the record becomes `vent-splat` (new death id, same source and kind, `landAt`). The body falls 13 m and lands at exactly death+10 s on `splatSpot()`: the hall centre, otherwise the nearest clear ring point off blocks, machines, vents, the boss (radius × scale + 2.4 m) and other bodies. It is then a normal kept body. `inVentShaft()` blocks paid revives, beacons, the HELP bubble and the F prompt until it lands. The Tab board and HUD show "In a vent · lands in Ns".
+- Respawn rules: a wave/phase `respawnAll` during the shaft time revives normally on a pad and skips the splat. The solo self-revive waits for the landing and then revives at the landing spot. Holds shift `landAt`.
+- Bots: `VentPits.steer` deflects party-bot and recruit moves around open or scheduled vents. Recruits can fall but have no splat (no kept body).
+- Snapshot: only the optional `DeathPresentation.landAt` was added. Client effects are in `client/pve/vent-fall.ts`. Audio reuses dash, jump, arcade-heavy, water and arcade-punch. Small economy.ts gates. horde.ts and entries.ts were not touched.
+- Checks (Linux, Node 22): `check:types` passes. The new `tests/pve-vent-fall.test.ts` passes 7/7. `tests/pve-*.test.ts` passes 200/200. pvp-golden passes 7/7. `run-network.mjs pve` reached victory. The full suite had 1184 tests and only the 13 known failures. `npm run build` gave a live payload of 26,187,038 B against a limit of 26,214,400 (27 KB headroom). Pve-lab images were captured under SwiftShader (kinds ventfall and splat were added).
+- Not run: Windows/GPU, online multiplayer by hand, packaging, publication.
+- Next: owner review of the pit look and the splat. The tight update headroom matters for the next asset change.
+
 ## 2026-10-04 — Claude — PvE: Siren adds take hits while entering
 - Branch `claude/pve-adds-hittable-entering` from `origin/claude/visual-revision` `8840198`. Implemented on branch; not merged/published.
 - Root cause: an entering add had no physics body (created only at `activeAt`), and `Horde.hit()/status()` returned early unless
