@@ -39,8 +39,9 @@ const feet=(p:Player)=>{const t=p.body.translation();return v(t.x,.02,t.z);};
 
 // ---- primaries ------------------------------------------------------------------------------------------------------
 test('primaries: §6.2 numbers (fire cost stays 8), orb radii, the E id as secondary, and a 20 m drop ≤ 1.6 m',()=>{
+ // INTEGRATION retune (docs/ABILITIES.md balance table): lightning 15 dmg / .28 s / 55 m/s / gravity 20 (was M's 15/.27/85/30): bot duels had it winning 95-100 % against every spec.
  const want={fire:{damage:24,interval:.5,speed:34,gravity:9,cost:8,burn:4,blast:1.5},water:{damage:20,interval:.38,speed:42,gravity:10,cost:6,shotRadius:.16},
-  lightning:{damage:15,interval:.27,speed:85,gravity:30,cost:5,chain:6},darkness:{damage:34,interval:.66,speed:26,gravity:3,cost:10,shotRadius:.2,drain:.2}};
+  lightning:{damage:15,interval:.28,speed:55,gravity:20,cost:5,chain:6},darkness:{damage:34,interval:.66,speed:26,gravity:3,cost:10,shotRadius:.2,drain:.2}};
  for(const spec of SCHOOLS){const w=WEAPONS[spec];for(const [k,x] of Object.entries(want[spec]))assert.equal((w as unknown as Record<string,number>)[k],x,`${spec}.${k}`);
   assert.equal(w.secondary,MAGIC_KITS[spec].e.id);assert.equal(w.secondaryCooldown,MAGIC_KITS[spec].e.cooldown);assert.ok(w.gravity>0,'every school still lands');
   const drop=-ballisticStep(v(w.speed,0,0),w.gravity,20/w.speed).displacement.y;assert.ok(drop<=1.6,`${spec} 20 m drop ${drop}`);

@@ -15,7 +15,8 @@ export function pongShot(_sim:Simulation,owner:Player,w:Weapon):boolean{if(!owne
 /** The oldest live ball pops at the cap. */
 export function pongBeforeSpawn(sim:Simulation,owner:Player):void{const mine=[...sim.projectiles.values()].filter(q=>q.pong&&q.originOwner===owner.id);if(mine.length>=PONG.ballCap)pop(sim,mine[0],mine[0].pos);}
 export function pongInit(_sim:Simulation,owner:Player,w:Weapon,shot:Projectile):void{const speed=speedOf(w,owner.stats);Object.assign(shot,{fixedSpeed:speed,life:PONG.life,distanceLeft:PONG.travel,gravity:0,homing:0,pierces:0,returning:false,zigzag:false,bounces:Math.min(6,Math.ceil(PONG.rallies/every(w))+owner.stats.bounces),rally:{cap:speed*PONG.speedCap,bonus:Math.min(PONG.bonus*shot.damage,PONG.bonusMax),blast:w.blast,mark:{...shot.pos}}});}
-export function pongBotBallistics(w:Weapon,stats:Stats):{speed:number;gravity:number}{return {speed:speedOf(w,stats),gravity:0};}
+/** With `owner`, a weapon that fires a ball every N>1 shots (MG) aims its next shot: a ball flies flat, a bullet drops. */
+export function pongBotBallistics(w:Weapon,stats:Stats,owner?:Player):{speed:number;gravity:number}{return !owner||(fired.get(owner)||0)%every(w)<1?{speed:speedOf(w,stats),gravity:0}:{speed:w.speed*stats.projectileSpeed,gravity:stats.boomerang?0:w.gravity};}
 /** true = removed (the ball dies with its owner). */
 export function pongStep(sim:Simulation,shot:Projectile,_dt:number):boolean{if((sim.players.get(shot.originOwner||shot.owner)?.hp||0)<=0)return sim.projectiles.delete(shot.id);shot.vel=mul(norm(shot.vel),shot.fixedSpeed!);return false;}
 export function pongCanContact(shot:Projectile,id:string,time:number):boolean{return time-(shot.contacts?.[id]??-10)>PONG.contactCooldown;}

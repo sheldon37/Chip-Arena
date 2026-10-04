@@ -4,6 +4,7 @@ import {WEAPONS,abilityUser,type Stats} from './content.js';
 import {GUN_KITS} from './gun-kit.js';
 import {MAGIC_KITS} from './magic-kit.js';
 import {pongBotBallistics} from './pong.js';
+import type {Player} from './simulation.js';
 import {clamp,add,mul,v,type Input,type SpecId,type Vec} from './config.js';
 export {abilityUser} from './content.js';
 export type AbilitySlot='q'|'e';
@@ -58,7 +59,7 @@ export function adsSpread(p:{adsSince?:number;adsBloom?:{n:number;at:number}},sp
  const a=adsProfile(spec);if(!a||p.adsSince===undefined)return hip;const t=adsSettle(p,spec,time);let s=hip+(hip*a.spread-hip)*t;
  if(a.bloom&&p.adsBloom&&time-p.adsBloom.at<=.25)s=Math.min(hip,s+a.bloom*p.adsBloom.n);return s;
 }
-export function shotBallistics(spec:SpecId,stats:Stats):{speed:number;gravity:number}{const w=WEAPONS[spec];return stats.pong?pongBotBallistics(w,stats):{speed:w.speed*stats.projectileSpeed,gravity:stats.boomerang?0:w.gravity};}
+export function shotBallistics(spec:SpecId,stats:Stats,owner?:Player):{speed:number;gravity:number}{const w=WEAPONS[spec];return stats.pong?pongBotBallistics(w,stats,owner):{speed:w.speed*stats.projectileSpeed,gravity:stats.boomerang?0:w.gravity};}
 /** Crosshair point (server and client preview); `ground` projects an air point down ≤ 40 m; clamped to the arena. */
 export function groundAimPoint(start:Vec,dir:Vec,range:number,ground:boolean,ray:(o:Vec,d:Vec,max:number)=>number|null):{point:Vec;clamped:boolean}{
  const hit=ray(start,dir,range);let point=add(start,mul(dir,hit??range)),clamped=hit===null;

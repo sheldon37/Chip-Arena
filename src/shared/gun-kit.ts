@@ -13,9 +13,9 @@ export const ADS_PROFILES:Record<'pistol'|'rifle'|'machinegun',AdsProfile>={
 };
 const ads=(name:string,short:string,min:number,max:number)=>({id:'ads',slot:'q',name,short,text:'Hold Q: aim down sights. Tighter shots after a short settle; slower walking.',kind:'ads',fx:'',cooldown:0,cost:0,windup:0,lockout:0,range:0,bot:{min,max,aim:'direct'}} as const);
 export const GUN_KITS:Record<'pistol'|'rifle'|'machinegun',AbilityKit>={
- pistol:{ads:ADS_PROFILES.pistol,q:ads('Aim','AIM',12,45),
-  e:{id:'frag-grenade',slot:'e',name:'Frag Grenade',short:'FRAG',text:'Throw a bouncing grenade that lands where you aim. 4.2 m blast after its fuse.',kind:'throw',fx:'frag',cooldown:8,cost:0,windup:.2,lockout:.3,range:24,damage:60,radius:4.2,impulse:1000,gravity:20,fuse:.6,shotRadius:.14,live:true,bot:{min:6,max:22,aim:'point',lead:.6}}},
- machinegun:{ads:ADS_PROFILES.machinegun,q:ads('Aim','AIM',14,40),
+ pistol:{ads:ADS_PROFILES.pistol,q:ads('Aim','AIM',25,45),
+  e:{id:'frag-grenade',slot:'e',name:'Frag Grenade',short:'FRAG',text:'Throw a bouncing grenade that lands where you aim. 4.2 m blast after its fuse.',kind:'throw',fx:'frag',cooldown:8,cost:0,windup:.2,lockout:.3,range:24,damage:66,radius:4.2,impulse:1000,gravity:20,fuse:.6,shotRadius:.14,live:true,bot:{min:6,max:22,aim:'point',lead:.6}}},
+ machinegun:{ads:ADS_PROFILES.machinegun,q:ads('Aim','AIM',25,40),
   e:{id:'rocket',slot:'e',name:'Underbarrel Rocket',short:'ROCKET',text:'Fire a rocket that explodes on contact and breaks cover. Arms after 3 m.',kind:'shot',fx:'rocket',cooldown:9,cost:0,windup:.12,lockout:.35,range:95,damage:55,radius:3.6,impulse:1300,speed:38,gravity:2,shotRadius:.2,arm:3,live:true,bot:{min:4,max:35,aim:'ballistic'}}},
  rifle:{ads:ADS_PROFILES.rifle,q:ads('Scope','SCOPE',8,140),
   e:{id:'orbital-mark',slot:'e',name:'Orbital Mark',short:'MARK',text:'Tag a target or point with a dart; an orbital strike tracks it and lands 1 s later.',kind:'mark',fx:'orbital-mark',cooldown:13,cost:0,windup:.15,lockout:.35,range:120,damage:85,radius:3,impulse:1400,speed:150,gravity:6,shotRadius:.08,fuse:1,duration:.8,live:true,bot:{min:10,max:90,aim:'ballistic',lead:.3}}},

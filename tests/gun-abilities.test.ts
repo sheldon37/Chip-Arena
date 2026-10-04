@@ -41,7 +41,8 @@ function until(s:Simulation,a:Player,done:()=>boolean,max=240,other:Partial<Inpu
 
 // ---- kit rows -------------------------------------------------------------------------------------------------------
 test('kit: gun E rows are live with handlers and §5 numbers; weapon rows name the new E; ADS profiles keep ballistics',()=>{
- const rows={pistol:['frag-grenade',8,.2,.3,60,4.2,1000],machinegun:['rocket',9,.12,.35,55,3.6,1300],rifle:['orbital-mark',13,.15,.35,85,3,1400]} as const;
+ // INTEGRATION retune: frag 60→66 (perfect-aim E vs a 6.8 m/s strafer measured 32.6 < the 35 gate; docs/ABILITIES.md).
+ const rows={pistol:['frag-grenade',8,.2,.3,66,4.2,1000],machinegun:['rocket',9,.12,.35,55,3.6,1300],rifle:['orbital-mark',13,.15,.35,85,3,1400]} as const;
  for(const spec of GUNS){const k=kitFor(spec)!,[id,cd,windup,lockout,damage,radius,impulse]=rows[spec];
   assert.deepEqual([k.e.id,k.e.cooldown,k.e.windup,k.e.lockout,k.e.damage,k.e.radius,k.e.impulse,k.e.cost],[id,cd,windup,lockout,damage,radius,impulse,0]);
   assert.equal(k.e.live,true);assert.ok(ABILITY_HANDLERS[id]?.release,id);assert.equal(abilityActive(spec,'e'),true);
@@ -49,7 +50,8 @@ test('kit: gun E rows are live with handlers and §5 numbers; weapon rows name t
   assert.ok(!/braced|burst/.test(WEAPONS[spec].description),spec);assert.equal(k.q.kind,'ads');assert.equal(k.ads,ADS_PROFILES[spec]);}
  assert.deepEqual(GUN_KITS.pistol.e.bot,{min:6,max:22,aim:'point',lead:.6});assert.deepEqual(GUN_KITS.machinegun.e.bot,{min:4,max:35,aim:'ballistic'});
  assert.deepEqual({...GUN_KITS.rifle.e.bot,lead:undefined},{min:10,max:90,aim:'ballistic',lead:undefined});
- assert.deepEqual(GUN_KITS.pistol.q.bot,{min:12,max:45,aim:'direct'});assert.deepEqual(GUN_KITS.machinegun.q.bot,{min:14,max:40,aim:'direct'});assert.deepEqual(GUN_KITS.rifle.q.bot,{min:8,max:140,aim:'direct'});
+ // INTEGRATION retune: pistol/MG bots ADS from 25 m (hip fire measured stronger for bots below that; docs/ABILITIES.md).
+ assert.deepEqual(GUN_KITS.pistol.q.bot,{min:25,max:45,aim:'direct'});assert.deepEqual(GUN_KITS.machinegun.q.bot,{min:25,max:40,aim:'direct'});assert.deepEqual(GUN_KITS.rifle.q.bot,{min:8,max:140,aim:'direct'});
  assert.deepEqual(ADS_PROFILES.pistol,{fov:55,spread:.25,settle:.15,move:.75,sens:.68,overlay:'sight',kick:.5,interval:1.12});
  assert.deepEqual(ADS_PROFILES.machinegun,{fov:52,spread:.4,settle:.2,move:.55,sens:.63,overlay:'sight',kick:.45,bloom:.002});
  assert.deepEqual(ADS_PROFILES.rifle,{fov:28,spread:0,settle:.3,move:.5,sens:.36,overlay:'scope',kick:.6});
@@ -84,13 +86,13 @@ test('ADS: projectile speed and gravity are identical in and out of ADS; walking
 });
 
 // ---- Frag Grenade -----------------------------------------------------------------------------------------------------
-test('frag: lands within 1.5 m of the aim point at 6/12/20 m, bounces short, and detonates for 60 at the centre after its fuse',()=>{
+test('frag: lands within 1.5 m of the aim point at 6/12/20 m, bounces short, and detonates for its full damage at the centre after its fuse',()=>{
  for(const d of [6,12,20]){const {s,a}=game('pistol',v(25,.9,-20));try{const aim=v(0,0,d);aimAt(a,aim);a.reloadTime=1;a.ammo=0;tick(s,a,{secondary:true});assert.ok(a.abilityCast,'cast during reload');until(s,a,()=>!!shotOf(s,'frag-grenade'),30);assert.equal(a.ammo,0,'thrown with no ammo');near(a.secondaryCd,8,1/30,'cooldown');
   let contact:Vec|undefined,shot:Projectile|undefined,fuse=0;until(s,a,()=>{shot=shotOf(s,'frag-grenade')??shot;if(shot&&!contact&&shot.ability!.data!.c){contact={...shot.pos};fuse=shot.ability!.fuse!;}return blasts(s,'frag').length>0;});
   assert.ok(contact,`${d} m: no contact`);const miss=Math.hypot(contact.x-aim.x,contact.z-aim.z);assert.ok(miss<=1.5,`${d} m: landed ${miss.toFixed(2)} m off`);
   const boom=blasts(s,'frag')[0];assert.ok(boom,'detonated');assert.ok(Math.hypot(boom.pos.x-aim.x,boom.pos.z-aim.z)<=3.5,`${d} m: rolled to ${JSON.stringify(boom.pos)}`);near(boom.time,fuse,1/60+1e-9,'fuse');
  }finally{s.dispose();}}
- const {s,a,b}=game('pistol',v(0,.9,10));try{s.abilities.spawnShot(a,GUN_KITS.pistol.e,{cast:'c',pos:add(b.body.translation(),v(0,0,-.01)),vel:v(0,0,0),damage:60,fuse:s.time});s.stepProjectiles(1/60);near(100-b.hp,60,.5,'centre');}finally{s.dispose();}
+ const {s,a,b}=game('pistol',v(0,.9,10));try{s.abilities.spawnShot(a,GUN_KITS.pistol.e,{cast:'c',pos:add(b.body.translation(),v(0,0,-.01)),vel:v(0,0,0),damage:GUN_KITS.pistol.e.damage!,fuse:s.time});s.stepProjectiles(1/60);near(100-b.hp,GUN_KITS.pistol.e.damage!,.5,'centre');}finally{s.dispose();}
 });
 test('frag: a standing enemy takes ≤ 10 on contact and the blast follows ≥ .45 s later; an add detonates it at once; Block reflects it',()=>{
  {const {s,a,b}=game('pistol',v(0,.9,7));try{aimAt(a,b.body.translation());tick(s,a,{secondary:true});let touched=-1,hp=100;
@@ -178,7 +180,8 @@ function botArena(spec:SpecId,distance:number){
  const bot=s.players.get('bot')!,target=s.players.get('host')!;bot.body.setTranslation(v(0,.9,-distance/2),true);target.body.setTranslation(v(0,.9,distance/2),true);target.hp=target.stats.hp=100000;s.world.propagateModifiedBodyPositionsToColliders();return {s,bot,target};
 }
 test('hard pistol, MG and rifle bots aim down sights at range and use E within 10 s of visible contact',()=>{
- for(const [spec,distance] of [['pistol',20],['machinegun',22],['rifle',34]] as const){const {s,bot,target}=botArena(spec,distance);try{const q=kitFor(spec)!.q.bot!;let aimed=0,first=-1,released=false;
+// INTEGRATION retune: pistol/MG bots ADS from 25 m (was 12/14 m; hip-firing measured stronger for bots in duels), so they start at 28 m.
+ for(const [spec,distance] of [['pistol',28],['machinegun',28],['rifle',34]] as const){const {s,bot,target}=botArena(spec,distance);try{const q=kitFor(spec)!.q.bot!;let aimed=0,first=-1,released=false;
   for(let n=0;n<600&&!(first>=0&&aimed&&released);n++){s.step();const d=len(sub(target.body.translation(),bot.body.translation()));if(bot.input.ability&&d>=q.min)aimed++;if(first<0&&bot.lastSecondary>=0)first=s.time;released||=s.events.some(e=>e.type==='ability'&&e.source===bot.id&&e.message===kitFor(spec)!.e.id);}
   assert.ok(aimed>0,spec+' never aimed at range');assert.ok(first>=0,spec+' never used E');assert.ok(released,spec+' E released');
  }finally{s.dispose();}}
