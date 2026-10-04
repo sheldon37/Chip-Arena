@@ -8,9 +8,10 @@ const sim=new Simulation({sandbox:true});sim.addPlayer('me');sim.addPlayer('kill
 const base=sim.snapshot();base.props=[];sim.dispose();
 const death:DeathPresentation={id:'death-1',at:4,source:'killer',kind:'direct',announcement:{victim:'Me',killer:'Killer'},effect:'impact-ragdoll',seed:1,pos:v(),velocity:v(),direction:v(0,0,1),yaw:0};
 function state(time:number,dead=time>=4):Snapshot{const s=structuredClone(base);s.time=time;s.tick=Math.round(time*60);s.players[0].hp=dead?0:100;s.players[0].death=dead?structuredClone(death):undefined;s.players[1].pos.x=time;s.players[1].yaw=time;return s;}
-// Timing pins (owner 2026-10-04, "keep watching ~4 s after"): 2 s lead-in, 4 s aftermath, 1.2 s live hold on the death.
-// Was 3 s before / .6 s after / .6 s hold (3.6 s clip). Death at 4 s, so footage runs 2 s → 8 s and starts at live 5.2 s.
-assert.deepEqual([KILLCAM.before,KILLCAM.after,KILLCAM.hold],[2,4,1.2]);
+// Timing pins (owner 2026-10-04, "keep watching ~4 s after", then "move it forward a bit" with the 5 s result screen kept):
+// 1.5 s lead-in, 4 s aftermath, .6 s live hold, so a round-ending kill shows ~2.9 s of aftermath before the result ends.
+// Was 3 s before / .6 s after / .6 s hold, then 2 / 4 / 1.2. Death at 4 s, so footage runs 2.5 s → 8 s and starts at live 4.6 s.
+assert.deepEqual([KILLCAM.before,KILLCAM.after,KILLCAM.hold],[1.5,4,.6]);
 assert.ok(KILLCAM.history>=KILLCAM.before+KILLCAM.hold+.5&&KILLCAM.maxFrames>=KILLCAM.history*KILLCAM.hz);
 const START=4+KILLCAM.hold,START_MS=Math.round(START*1000),LAST=Math.round(START*20);
 function ready(cam=new Killcam()) {for(let i=0;i<=LAST;i++)cam.observe(state(i/20),'me',i*50);const live=state(START);return {cam,live,frame:cam.sample(live,'me',START_MS)!};}
@@ -18,10 +19,10 @@ function ready(cam=new Killcam()) {for(let i=0;i<=LAST;i++)cam.observe(state(i/2
 function play(cam:Killcam,fromMs:number,toMs:number,mutate=(_s:Snapshot)=>{}){const out:(Snapshot|undefined)[]=[];
  for(let ms=fromMs;ms<=toMs;ms+=50){const live=state(ms/1000);mutate(live);cam.observe(live,'me',ms);out.push(cam.sample(live,'me',ms));}return out;}
 
-test('replays two seconds before a witnessed death, then ends without changing live snapshots',()=>{
+test('replays 1.5 seconds before a witnessed death, then ends without changing live snapshots',()=>{
  const {cam,live,frame}=ready();const before=JSON.stringify(live);
- assert.equal(cam.active,true);assert.equal(frame.time,2);assert.equal(frame.players[0].hp,100);assert.equal(cam.info?.killerId,'killer');assert.equal(cam.info?.viewId,'killer');
- assert.equal(cam.info?.start,2);assert.equal(cam.info?.end,8);assert.equal(cam.info?.at,4);
+ assert.equal(cam.active,true);assert.equal(frame.time,2.5);assert.equal(frame.players[0].hp,100);assert.equal(cam.info?.killerId,'killer');assert.equal(cam.info?.viewId,'killer');
+ assert.equal(cam.info?.start,2.5);assert.equal(cam.info?.end,8);assert.equal(cam.info?.at,4);
  assert.equal(cam.sample(live,'me',START_MS+2500)?.players[0].death?.id,'death-1');assert.equal(JSON.stringify(live),before);
  const end=play(cam,START_MS+50,START_MS+6100);assert.equal(end.at(-1),undefined);assert.equal(cam.active,false);
  assert.equal(cam.sample(state(11.4),'me',11400),undefined,'the same death never automatically repeats');
@@ -71,7 +72,7 @@ test('round-result transition preserves the death clip; a stalled connection use
  assert.equal(cam.sample(live,'me',4500),undefined);assert.equal(cam.sample(live,'me',deadline-1),undefined);assert.equal(cam.waiting,true);
  assert.ok(cam.sample(live,'me',deadline+1));assert.equal(cam.info?.end,8);
  // No packets after 4 s: footage runs out, so the clip ends .5 s after its last frame instead of freezing to 8 s.
- assert.ok(cam.sample(live,'me',deadline+1+2400));assert.equal(cam.sample(live,'me',deadline+1+2600),undefined);
+ assert.ok(cam.sample(live,'me',deadline+1+1900));assert.equal(cam.sample(live,'me',deadline+1+2100),undefined);
 });
 test('environmental, self-inflicted and unavailable killer deaths fall back to recorded victim camera',()=>{
  for(const source of [null,'me','absent']){const cam=new Killcam();for(let i=0;i<=LAST;i++){const s=state(i/20);if(s.players[0].death){s.players[0].death.source=source;s.players[0].death.announcement!.killer=null;}cam.observe(s,'me',i*50);}
@@ -91,8 +92,8 @@ test('out of order and duplicate snapshots do not rewind retained history or rep
  assert.equal(cam.bufferedFrames,n);assert.equal(cam.active,true);assert.ok(cam.sample(live,'me',START_MS+100)!.time>2);
 });
 test('the replay holds on the live death for the configured pause before footage starts',()=>{
- const cam=new Killcam();for(let i=0;i<=92;i++)cam.observe(state(i/20),'me',i*50);
- assert.equal(cam.sample(state(4.6),'me',4600),undefined,'still holding live on the death');assert.equal(cam.waiting,true);assert.equal(cam.active,false);
- for(let i=93;i<=LAST;i++)cam.observe(state(i/20),'me',i*50);
- assert.ok(cam.sample(state(START),'me',START_MS));assert.equal(cam.info?.start,2);assert.equal(cam.info?.end,4+KILLCAM.after);
+ const cam=new Killcam();for(let i=0;i<=90;i++)cam.observe(state(i/20),'me',i*50);
+ assert.equal(cam.sample(state(4.5),'me',4500),undefined,'still holding live on the death');assert.equal(cam.waiting,true);assert.equal(cam.active,false);
+ for(let i=91;i<=LAST;i++)cam.observe(state(i/20),'me',i*50);
+ assert.ok(cam.sample(state(START),'me',START_MS));assert.equal(cam.info?.start,2.5);assert.equal(cam.info?.end,4+KILLCAM.after);
 });
