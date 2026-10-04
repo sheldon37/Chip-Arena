@@ -18,6 +18,23 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-04 — Claude — kill-cam aftermath: keep watching ~4 s past the kill
+
+- Branch `claude/killcam-aftermath` from `claude/visual-revision` `dcc7430`. No PR; not merged; not published.
+- Owner: "move forward a bit, show about 4 seconds after kill" (clarified: keep watching ~4 s after). Window was 3 s
+  before / .6 s after the fatal hit (3.6 s clip, starting ~1.2 s after death); now 2 s before / 4 s after (6 s clip),
+  still starting after a 1.2 s live hold on the death (`KILLCAM.hold`). The aftermath is no longer waited for: later
+  history frames stream into the clip while it plays (playback lags live by 3.2 s); a stalled feed ends the clip .5 s
+  after its last frame. History 6 s / 132 frames. Camera: killer's shoulder view, cutting once to the victim's body
+  if the killer is gone, dead or >24 m away during the aftermath. Skip/respawn/epoch/lobby rules unchanged.
+- Files: `src/client/killcam.ts`, HUD comment, `tests/killcam.test.ts` (timing pins, aftermath + body-cut tests),
+  `tests/killcam-network.ts` (replay frame past the kill). No simulation, hit timing, damage, networking or renderer change.
+- Checks: `check:types` ok; killcam + presentation 16/16; `tests/killcam-network.ts` ok (3 clients, 87 snapshots,
+  aftermath); full unit suite 1110 pass / 13 fail = known Node 22 failures list exactly.
+- Risk / next: a round-ending kill enters `result` for 5 s (`resultSeconds`), then countdown/draft cancels the replay,
+  so 1v1 and last-kill replays show only ~1.8 s of aftermath. Showing the full 4 s there needs `resultSeconds` ≈ 8
+  (gameplay pacing; owner decision, not changed). No Windows/visual playtest of the new framing.
+
 ## 2026-10-04 — Claude — ranged/magic Q+E ability overhaul integration (+ PvE downed, chip throw, update headroom)
 
 - Branch `claude/abil-integration` from foundation `claude/abil-foundation`; merges abil-guns, abil-magic, abil-chips,
