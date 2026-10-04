@@ -229,7 +229,9 @@ test('no flat ring/disc/torus geometry is built per event or per field; DEV and 
  const src=(f:string)=>readFileSync(new URL('../src/client/'+f,import.meta.url),'utf8'),flat=/new T\.(Ring|Circle|Torus)Geometry/;
  const vfx=src('event-vfx.ts');assert.doesNotMatch(vfx,flat);assert.doesNotMatch(vfx,/Math\.random/);
  const chip=src('chip-effects.ts');assert.doesNotMatch(chip.slice(chip.indexOf('export class ChipEffects')),flat,'chip-effects builds no flat geometry after module load');
- const chaos=src('chaos-visuals.ts');assert.doesNotMatch(chaos,/(Ring|Circle)Geometry/);assert.doesNotMatch(chaos.slice(chaos.indexOf('export class ChaosVisuals')),/new T\.\w+Geometry/,'field visuals share module geometry');
+ // Owner request 2026-10-04: field outlines are gone; the one flat shape left is the shared, edge-less ground glow (vertex
+ // alpha 0 at the radius) built once at module load, which keeps areas and their enemy/ally tint readable.
+ const chaos=src('chaos-visuals.ts');assert.doesNotMatch(chaos,/RingGeometry/);assert.equal(chaos.match(/CircleGeometry/g)?.length,1);assert.doesNotMatch(chaos.slice(chaos.indexOf('export class ChaosVisuals')),/new T\.\w+Geometry/,'field visuals share module geometry');
  // F commit b62d0d3 (verbatim): the leet and stage branches of EventVfx.event.
  for(const branch of ["if(event.type.startsWith('leet-')){this.burst(event.pos,0x55ff88,event.type==='leet-nuke'?70:24,event.type==='leet-nuke'?22:5);if(event.from)this.beam(event.pos,event.from,0x55ff88);}",
   "if(event.type==='stage-saw-hit'){this.burst(event.pos,0xffcb62,32,6);this.burst(event.pos,0xe9f6ff,14,4);for(let n=0;n<7;n++){const a=n*Math.PI*2/7;this.beam(event.pos,{x:event.pos.x+Math.cos(a)*1.1,y:event.pos.y+Math.sin(a)*1.1,z:event.pos.z+.12},0xffe5ad);}}",
@@ -238,14 +240,14 @@ test('no flat ring/disc/torus geometry is built per event or per field; DEV and 
 });
 const field=(over:Partial<FieldView>):FieldView=>({id:'f',owner:'a',kind:'acid',pos:{x:1,y:1,z:2},radius:3,born:0,until:5,arm:.6,damage:10,...over});
 const snap=(fields:FieldView[],over:Partial<Snapshot>={})=>({time:.5,fields,minions:[],players:[{id:'a',pos:{x:0,y:1,z:0}},{id:'b',pos:{x:4,y:1,z:0}}],options:{},...over}) as unknown as Snapshot;
-test('field telegraphs: a voxel rim exactly on the gameplay radius for every field kind, voxel cores, shared resources',()=>{
+test('field telegraphs: no outline (owner request 2026-10-04), a soft edge-less ground glow on the radius, voxel cores, shared resources',()=>{
  const kinds:FieldView['kind'][]=['black-hole','acid','fire','frost','time','repulsion','heal','storm','bomb','implosion','mine'],scene=new T.Scene(),cv=new ChaosVisuals(scene),m=new T.Matrix4(),p=new T.Vector3();
  const fields=kinds.map((kind,i)=>field({id:'k'+i,kind,radius:2+i*.37,pos:{x:i*12,y:1,z:0}}));cv.update(snap(fields));
- for(const f of fields){const g=cv.fields.get(f.id)!,rim=g.getObjectByName('field-rim') as T.InstancedMesh;assert.ok(rim instanceof T.InstancedMesh,f.kind);assert.ok(rim.count>=12);
-  for(let i=0;i<rim.count;i++){rim.getMatrixAt(i,m);p.setFromMatrixPosition(m);assert.ok(Math.abs(Math.hypot(p.x,p.z)-f.radius)<1e-6,`${f.kind} dash ${i} at ${Math.hypot(p.x,p.z)}`);}
-  assert.ok(Math.PI*2*f.radius/rim.count<=RIM_SPACING*1.25);g.traverse(o=>{if(o instanceof T.Mesh&&!(o instanceof T.InstancedMesh))assert.equal(o.geometry.type,o.name==='field-dome'?'SphereGeometry':'BoxGeometry',f.kind);});
+ void m;void p;void RIM_SPACING;for(const f of fields){const g=cv.fields.get(f.id)!;assert.equal(g.getObjectByName('field-rim'),undefined,f.kind+' rim');g.traverse(o=>assert.ok(!(o instanceof T.LineSegments),f.kind+' wireframe outline'));
+  const glow=g.getObjectByName('field-glow') as T.Mesh;assert.equal(glow.scale.x,f.radius,f.kind);const alpha=glow.geometry.getAttribute('color'),pos=glow.geometry.getAttribute('position');for(let i=0;i<pos.count;i++)if(Math.hypot(pos.getX(i),pos.getY(i))>.99)assert.equal(alpha.getW(i),0,f.kind+' glow fades to nothing at the edge');
+  g.traverse(o=>{if(o instanceof T.Mesh&&!(o instanceof T.InstancedMesh))assert.equal(o.geometry.type,o.name==='field-dome'?'SphereGeometry':o.name==='field-glow'?'CircleGeometry':'BoxGeometry',f.kind);});
   const dome=g.getObjectByName('field-dome');if(f.kind==='time'||f.kind==='repulsion')assert.equal(dome!.scale.x,f.radius);else assert.equal(dome,undefined);}
- const geometries=new Set<T.BufferGeometry>();for(const g of cv.fields.values())g.traverse(o=>{if(o instanceof T.Mesh||o instanceof T.LineSegments)geometries.add(o.geometry);});assert.ok(geometries.size<=3,'one box, one dome and its edges for all fields');
+ const geometries=new Set<T.BufferGeometry>();for(const g of cv.fields.values())g.traverse(o=>{if(o instanceof T.Mesh||o instanceof T.LineSegments)geometries.add(o.geometry);});assert.ok(geometries.size<=3,'one box, one dome and one glow disc for all fields');
  const reverse=cv.fields.get('k9')!;assert.equal(reverse.children.filter(o=>o.userData.orbit!==undefined).length,6,'Reverse Grenade: spinning voxel gravity bomb');
  const orbit=(t:number)=>{cv.update(snap(fields,{time:t}));const o=reverse.children.find(c=>c.userData.orbit===0)!;return Math.hypot(o.position.x,o.position.z);};assert.ok(orbit(.2)>orbit(4.5)+.3,'its orbit tightens as the fuse burns');
  cv.update(snap([]));assert.equal(scene.children.length,0);assert.equal(cv.fields.size,0);
@@ -255,7 +257,7 @@ test('ability telegraphs tint enemy warm red and own/allied cool cyan; chip fiel
  assert.equal(telegraphColor(ability,snap([]),'a'),TELEGRAPH.enemy);assert.equal(telegraphColor(own,snap([]),'a'),TELEGRAPH.ally);assert.notEqual(telegraphColor(chip,snap([]),'a'),TELEGRAPH.enemy);
  const teams=snap([],{players:[{id:'a',team:'red'},{id:'b',team:'red'}],options:{gameMode:'teams'}} as never);assert.equal(telegraphColor(ability,teams,'a'),TELEGRAPH.ally,'teammates are allies');
  assert.equal(telegraphColor(ability,snap([],{pve:{}} as never),'a'),TELEGRAPH.ally,'PvE party');
- const scene=new T.Scene(),cv=new ChaosVisuals(scene);cv.update(snap([ability]),'a');const rim=cv.fields.get('f')!.getObjectByName('field-rim') as T.InstancedMesh;assert.equal((rim.material as T.MeshBasicMaterial).color.getHex(),TELEGRAPH.enemy);
+ const scene=new T.Scene(),cv=new ChaosVisuals(scene);cv.update(snap([ability]),'a');const glow=cv.fields.get('f')!.getObjectByName('field-glow') as T.Mesh;assert.equal((glow.material as T.MeshBasicMaterial).color.getHex(),TELEGRAPH.enemy);
 });
 test('chip events draw pooled voxels only: no scene objects, no flat pulse rings, no extra spark bursts on blasts',()=>{
  const ev=(type:string,extra:Record<string,unknown>={})=>({id:1,time:0,type,pos:{x:0,y:1,z:0},...extra});

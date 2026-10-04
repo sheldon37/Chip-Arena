@@ -25,7 +25,8 @@ export class SoundLimiter{
 /** About -2 dB on hit, impact and blast sounds after limiting. */
 export const HIT_TRIM=.8;
 /** Ability cues (design §13.1): release sounds by ability id, and explosion layers by fx tag. */
-const ABILITY_CUE:Record<string,[Sound,number]>={'frag-grenade':['dash',.4],rocket:['arcade-heavy',.7],'orbital-mark':['electric-hook',.5],'flame-lance':['fire',.7],'meteor-strike':['fire',.6],'tidal-wave':['water',.7],'geyser-wall':['water',.6],'blink-strike':['electric-hook',.7],'ball-lightning':['lightning',.6],'shadow-shackles':['darkness',.6],singularity:['darkness',.7]};
+/** Ability cues. The electric-hook clips belong to Emperor's Electric (owner bug 2026-10-04: lightning staff played them). */
+const ABILITY_CUE:Record<string,[Sound,number]>={'frag-grenade':['dash',.4],rocket:['arcade-heavy',.7],'orbital-mark':['lightning',.45],'flame-lance':['fire',.7],'meteor-strike':['fire',.6],'tidal-wave':['water',.7],'geyser-wall':['water',.6],'blink-strike':['dash',.55],'ball-lightning':['lightning',.6],'shadow-shackles':['darkness',.6],singularity:['darkness',.7]};
 const BLAST_CUE:Record<string,[Sound,number][]>={'meteor-strike':[['explosion',.65],['stone',.5]],'geyser-wall':[['water',.6],['explosion',.3]],'orbital-mark':[['lightning',.6],['explosion',.6]],'ball-lightning':[['lightning',.5],['explosion',.5]],shackles:[['darkness',.4],['spike-rise',.5]],'flame-lance':[['fire',.4]],'tidal-wave':[['water',.4]]};
 /** Event IDs are server-issued; never replay old snapshots or reconnect history. */
 export class AudioCursor {
@@ -139,7 +140,7 @@ export class ArenaAudio {
    else if(e.type==='explosion'||e.type==='collapse')for(const [n,g] of BLAST_CUE[e.message||'']??[['explosion',.65]])this.cue(n==='explosion'?'explosion':'blast-'+n,n,e.pos,g);
    else if(e.type==='ability'){const c=ABILITY_CUE[e.message||''];if(c)this.play(c[0],e.pos,c[1]);}
    else if(e.type==='ability-cast'&&['fire','water','lightning','darkness'].includes(e.spec!))this.play(e.spec as Sound,e.pos,.25);
-   else if(e.type==='teleport'&&e.message==='blink-strike')this.play('electric-hook',e.pos,.6);
+   else if(e.type==='teleport'&&e.message==='blink-strike')this.play('lightning',e.pos,.6);// owner bug 2026-10-04: electric-hook is Emperor's clip only
    else if(e.type==='roll'&&e.spec!=='emperor')this.play('dash',e.pos,.36);
    else if(e.type==='dash'||e.type==='jump'||e.type==='parry')this.play(e.type,e.pos,.5);
    else if(e.type==='meleeRebound')this.play('metal',e.pos,Math.min(.7,.2+(e.amount||0)/2000));

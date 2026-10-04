@@ -17,7 +17,7 @@ export class ImpactGlows {
   const color=new T.Color(e.color??0x72eaff).lerp(new T.Color(0x95eaff),.25);
   const material=(opacity:number)=>new T.MeshBasicMaterial({color,map:compatibility?null:this.texture,transparent:true,opacity,blending:T.AdditiveBlending,depthWrite:false,depthTest:true,toneMapped:false,side:T.DoubleSide});
   const group=new T.Group();group.name='impact-glow';group.position.set(e.surface.x,e.surface.y,e.surface.z).addScaledVector(normal,.018);group.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),normal);
-  const halo=new T.Mesh(this.plane,material(.9));halo.visible=!compatibility;const ring=new T.Mesh(this.ring,material(.95));ring.material.map=null;group.add(halo,ring);this.scene.add(group);
+  const halo=new T.Mesh(this.plane,material(.9));void compatibility;const ring=new T.Mesh(this.ring,material(.95));ring.material.map=null;ring.visible=false;/* owner request 2026-10-04: no impact outline ring; the soft halo is the mark on every path */group.add(halo,ring);this.scene.add(group);
   prop.updateWorldMatrix(true,false);const local=prop.worldToLocal(group.position.clone()),rotation=prop.getWorldQuaternion(new T.Quaternion()).invert().multiply(group.quaternion);
   this.marks.push({group,halo,ring,born:time,target:e.target,local,rotation,color});
  }

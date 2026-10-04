@@ -55,7 +55,7 @@ const tmpColor=new T.Color(),tmpColor2=new T.Color();
 
 /** Fixed-capacity voxel particle pool rendered as one InstancedMesh. Structure-of-arrays, swap-remove. */
 class VoxelPool{
- readonly mesh:T.InstancedMesh;count=0;spawned=0;private cursor=0;/** While set, a full pool overwrites voxels round-robin instead of dropping the spawn. */force=false;
+ readonly mesh:T.InstancedMesh;count=0;spawned=0;private cursor=0;/** While set, a full pool overwrites voxels round-robin instead of dropping the spawn. */force=false;/** Multiplies voxel sizes at spawn (close-up stages such as the weapon intros draw blasts in miniature; default 1). */sizeScale=1;
  private p:Float32Array;private v:Float32Array;private c0:Float32Array;private c1:Float32Array;private a:Float32Array;
  private matrix=new T.Matrix4();private quat=new T.Quaternion();private scale=new T.Vector3();private pos=new T.Vector3();private euler=new T.Euler();
  static readonly A=10;// age,life,size0,size1,gravity,drag,delay,floor,stretch,spin
@@ -69,7 +69,7 @@ class VoxelPool{
   let i=this.count;if(i>=this.capacity){if(!this.force)return false;i=this.cursor=(this.cursor+1)%this.capacity;}else this.count++;this.spawned++;const j=i*3,k=i*VoxelPool.A;
   this.p[j]=x;this.p[j+1]=y;this.p[j+2]=z;this.v[j]=vx;this.v[j+1]=vy;this.v[j+2]=vz;
   tmpColor.setHex(color0);this.c0[j]=tmpColor.r;this.c0[j+1]=tmpColor.g;this.c0[j+2]=tmpColor.b;tmpColor.setHex(color1);this.c1[j]=tmpColor.r;this.c1[j+1]=tmpColor.g;this.c1[j+2]=tmpColor.b;
-  const a=this.a;a[k]=-delay;a[k+1]=Math.max(.01,life);a[k+2]=size0;a[k+3]=size1;a[k+4]=gravity;a[k+5]=drag;a[k+6]=delay;a[k+7]=floor;a[k+8]=stretch;a[k+9]=spin;return true;
+  const a=this.a;a[k]=-delay;a[k+1]=Math.max(.01,life);a[k+2]=size0*this.sizeScale;a[k+3]=size1*this.sizeScale;a[k+4]=gravity;a[k+5]=drag;a[k+6]=delay;a[k+7]=floor;a[k+8]=stretch;a[k+9]=spin;return true;
  }
  /** Age and position of particle i (tests). */
  at(i:number){const j=i*3;return {x:this.p[j],y:this.p[j+1],z:this.p[j+2],age:this.a[i*VoxelPool.A],life:this.a[i*VoxelPool.A+1]};}
@@ -99,7 +99,7 @@ const WATER=0x8de9ee;
 export class ChipBlasts{
  readonly solid:VoxelPool;readonly glow:VoxelPool;readonly flashes:Flash[]=[];
  private time=0;private random=rng(0x51a57);private nextLight=0;private fieldClock=new Map<string,number>();private locked=new Set<string>();
- constructor(readonly scene:T.Scene){
+ constructor(readonly scene:T.Object3D){
   this.solid=new VoxelPool(BLAST_CAPACITY.solid,false,'chip-blast-voxels');this.glow=new VoxelPool(BLAST_CAPACITY.glow,true,'chip-blast-glow');scene.add(this.solid.mesh,this.glow.mesh);
   for(let i=0;i<BLAST_CAPACITY.lights;i++){const light=new T.PointLight(0xffffff,0,8,2);light.name='chip-blast-light';scene.add(light);this.flashes.push({light,at:-1e9,peak:0,life:.3});}
  }
@@ -108,10 +108,12 @@ export class ChipBlasts{
  private flash(pos:Vec,color:number,radius:number,peak:number,life:number,compat:boolean,quality:number,minor=false){if(compat||quality<.5)return;const f=minor?this.flashes.find(f=>this.time-f.at>=f.life):this.flashes[this.nextLight++%this.flashes.length];if(!f)return;f.light.position.set(pos.x,pos.y+.4,pos.z);f.light.color.setHex(color);f.light.distance=Math.max(4,radius*3);f.at=this.time;f.peak=peak;f.life=life;}
  /** Sphere of directions, roughly even (golden spiral) with jitter. */
  private dir(i:number,n:number,hemi=false){const y=hemi?1-(i+.5)/n:1-2*(i+.5)/n,r=Math.sqrt(Math.max(0,1-y*y)),phi=i*2.39996+this.random()*.4;return [Math.cos(phi)*r,y,Math.sin(phi)*r] as const;}
- /** Ground ring of voxels whose front reaches exactly `radius` after BLAST_FRONT_SECONDS. */
+ /** Ground sweep that FILLS the blast disc (owner request 2026-10-04: no outlined area circle): each voxel slides from the
+  * centre to its own random spot inside 92% of `radius` within BLAST_FRONT_SECONDS and fades there, so the floor glows over
+  * the whole area without a hard edge. */
  private ring(pos:Vec,ground:number,radius:number,color0:number,color1:number,count:number,glow:boolean,height=.08,size=.16){
-  const pool=glow?this.glow:this.solid,r0=Math.min(.25,radius*.2),speed=(radius-r0)/BLAST_FRONT_SECONDS;pool.force=true;
-  for(let i=0;i<count;i++){const a=i/count*Math.PI*2+this.random()*.08,c=Math.cos(a),s=Math.sin(a);pool.spawn(pos.x+c*r0,ground+height,pos.z+s*r0,c*speed,0,s*speed,BLAST_FRONT_SECONDS+.001,size,size*.5,color0,color1);}pool.force=false;
+  const pool=glow?this.glow:this.solid,rnd=this.random,r0=Math.min(.25,radius*.2);pool.force=true;
+  for(let i=0;i<count;i++){const a=i/count*Math.PI*2+rnd()*.6,c=Math.cos(a),s=Math.sin(a),r=r0+(radius*.92-r0)*Math.sqrt(rnd()),speed=(r-r0)/BLAST_FRONT_SECONDS;pool.spawn(pos.x+c*r0,ground+height,pos.z+s*r0,c*speed,0,s*speed,BLAST_FRONT_SECONDS*(1.1+rnd()),size,size*.3,color0,color1,0,0,0,-1e9,1,0);}pool.force=false;
  }
  /** Hemispherical shock shell: the volumetric read of the blast radius (ends exactly at it). */
  private shell(pos:Vec,ground:number,radius:number,color0:number,color1:number,count:number){
@@ -129,7 +131,7 @@ export class ChipBlasts{
  impact(pos:Vec,radius:number,hot:number,opts:{quality:number;compat?:boolean;ground?:boolean;cool?:number}){
   const cool=opts.cool??tmpColor.setHex(hot).multiplyScalar(.45).getHex(),q=Math.max(0,Math.min(1,opts.quality))*(opts.compat?.5:1)*Math.max(.15,Math.min(1,(1-this.occupancy())*1.6));if(q<=.02)return;
   const R=Math.max(.3,radius),rnd=this.random,n=(b:number)=>Math.max(2,Math.round(b*q*Math.min(1.5,.6+R*.2))),T0=BLAST_FRONT_SECONDS,g=pos.y-.95,y0=opts.ground?g+.12:pos.y;
-  if(opts.ground){const r0=Math.min(.25,R*.2),s=(R-r0)/T0;for(let i=0,c=n(26);i<c;i++){const a=i/c*Math.PI*2,x=Math.cos(a),z=Math.sin(a);this.glow.spawn(pos.x+x*r0,y0,pos.z+z*r0,x*s,0,z*s,T0+.001,.17,.08,hot,cool);}}
+  if(opts.ground){const r0=Math.min(.25,R*.2);for(let i=0,c=n(26);i<c;i++){const a=i/c*Math.PI*2+rnd()*.6,x=Math.cos(a),z=Math.sin(a),s=(r0+(R*.92-r0)*Math.sqrt(rnd())-r0)/T0;this.glow.spawn(pos.x+x*r0,y0,pos.z+z*r0,x*s,0,z*s,T0*(1.1+rnd()),.17,.05,hot,cool);}}
   for(let i=0,c=n(opts.ground?14:20);i<c;i++){const [x,y,z]=this.dir(i,c,opts.ground),s=(R-.1)/T0;this.glow.spawn(pos.x+x*.1,y0+y*.1,pos.z+z*.1,x*s,y*s,z*s,T0+.001,.13,.06,0xffffff,hot);}
   for(let i=0,c=n(5);i<c;i++)this.glow.spawn(pos.x,y0+.05,pos.z,(rnd()-.5)*1.2,(rnd()-.2)*1.2,(rnd()-.5)*1.2,.16,.26,.08,0xffffff,hot);
   for(let i=0,c=n(7);i<c;i++){const [x,y,z]=this.dir(i,c,true),s=R*(1.5+rnd()*2);this.solid.spawn(pos.x,y0,pos.z,x*s,Math.abs(y)*s+1.5,z*s,.5+rnd()*.3,.07+rnd()*.06,.04,hot,cool,12,.6,0,g+.04,1,6);}
@@ -200,15 +202,15 @@ export class ChipBlasts{
   const due=Math.min(6,Math.floor((time-last)*rate*q));if(due<=0)return;this.fieldClock.set(f.id,last+due/(rate*q));
   const spot=()=>{const a=rnd()*Math.PI*2,r=Math.sqrt(rnd())*R*.95;return {x:f.pos.x+Math.cos(a)*r,z:f.pos.z+Math.sin(a)*r,a,r};},left=f.until-time,u=Math.max(0,Math.min(1,(time-f.born)/Math.max(.01,f.until-f.born)));
   for(let k=0;k<due;k++){
-   // Telegraph: motes rise straight up from the exact gameplay radius.
-   if(rnd()<8/rate){const a=rnd()*Math.PI*2;this.glow.spawn(f.pos.x+Math.cos(a)*R,ground+.06,f.pos.z+Math.sin(a)*R,0,.9+rnd()*.6,0,.6,.1,.03,pal.hot,pal.cool);}
+   // Telegraph: motes rise from anywhere inside the area (owner request 2026-10-04: no motes tracing the outline).
+   if(rnd()<8/rate){const m=spot();this.glow.spawn(m.x,ground+.06,m.z,0,.9+rnd()*.6,0,.6,.1,.03,pal.hot,pal.cool);}
    if(fused){
     // Meteor Shower / Meteor Strike: the meteor is visible falling onto its warning circle for the last 0.45 s.
     if(meteor){if(left>.45)continue;const v=Math.max(0,left/.45),m=Math.max(1,R/2.8),y=ground+.6+v*6*m,x=f.pos.x-v*2.4*m,z=f.pos.z-v*1.1*m;this.glow.spawn(x,y,z,(rnd()-.5)*.6,1.2,(rnd()-.5)*.6,.28,.42*m,.08,0xfff2c4,0xff7a2a);this.solid.spawn(x+(rnd()-.5)*.25*m,y+.2,z+(rnd()-.5)*.25*m,0,.4,0,.5,.2*m,.35*m,0x4a3a30,0x262020,-.2,1);}
     // Thunder Step: the target spot crackles before the bolt.
     else if(fx==='thunderstep'){const a=rnd()*Math.PI*2,r=R*(.5+rnd()*.5);this.glow.spawn(f.pos.x+Math.cos(a)*r,ground+.08,f.pos.z+Math.sin(a)*r,-Math.cos(a)*r*2,2+rnd()*2,-Math.sin(a)*r*2,.22,.08,.03,0xffffff,0x8fb8ff);}
-    // Orbital Mark: a targeting column from the sky and a ring that shrinks onto the blast radius at impact.
-    else if(fx==='orbital-mark'){for(let i=0;i<3;i++)this.glow.spawn(f.pos.x+(rnd()-.5)*.2,ground+rnd()*9,f.pos.z+(rnd()-.5)*.2,0,-7,0,.3,time>=(f.lockAt??1e9)?.15:.1,.05,pal.core,pal.cool,0,0,0,-1e9,6);const a=rnd()*Math.PI*2,r=R*(1+(1-u)*1.2);this.glow.spawn(f.pos.x+Math.cos(a)*r,ground+.1,f.pos.z+Math.sin(a)*r,0,0,0,.14,.16,.08,pal.hot,pal.cool);}
+    // Orbital Mark: a targeting column from the sky (the shrinking outline ring was removed, owner request 2026-10-04).
+    else if(fx==='orbital-mark'){for(let i=0;i<3;i++)this.glow.spawn(f.pos.x+(rnd()-.5)*.2,ground+rnd()*9,f.pos.z+(rnd()-.5)*.2,0,-7,0,.3,time>=(f.lockAt??1e9)?.15:.1,.05,pal.core,pal.cool,0,0,0,-1e9,6);}
     // Geyser Wall: water fills the ring from the centre as the geyser arms, so the three erupt in order.
     else if(fx==='geyser-wall'){const a=rnd()*Math.PI*2,r=R*u*Math.sqrt(rnd());this.glow.spawn(f.pos.x+Math.cos(a)*r,ground+.05,f.pos.z+Math.sin(a)*r,(rnd()-.5)*.4,1+u*3+rnd(),(rnd()-.5)*.4,.35+u*.25,.12,.05,pal.core,pal.hot,3);}
     // Comet Dash: the rolling pilot trails fire until the landing blast.
@@ -234,5 +236,7 @@ export class ChipBlasts{
  prune(live:Set<string>){for(const id of this.fieldClock.keys())if(!live.has(id))this.fieldClock.delete(id);for(const id of this.locked)if(!live.has(id))this.locked.delete(id);}
  get fieldClocks(){return this.fieldClock.size;}
  clear(){this.solid.clear();this.glow.clear();this.fieldClock.clear();this.locked.clear();for(const f of this.flashes){f.at=-1e9;f.light.intensity=0;}}
+ /** clear() plus a rewound clock and generator: replaying the same spawns afterwards gives identical voxels (rewindable intros). */
+ reset(){this.clear();this.time=0;this.nextLight=0;this.random=rng(0x51a57);}
  dispose(){this.clear();this.solid.dispose();this.glow.dispose();for(const f of this.flashes)f.light.removeFromParent();}
 }
