@@ -3,7 +3,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {Simulation,initPhysics,sanitizeInput,type Player,type Snapshot} from '../src/shared/simulation.js';
-import {WEAPONS} from '../src/shared/content.js';
+import {WEAPONS,statsFor} from '../src/shared/content.js';
 import {CONFIG as C,idleInput,v,forward,type SpecId,type Input} from '../src/shared/config.js';
 import {committed,rolling,rollProfile,rollCancelled,beforeStrike} from '../src/shared/souls-combat.js';
 import {SPRINT,sprintIntent} from '../src/shared/movement.js';
@@ -84,4 +84,11 @@ test('presentation: a roll after the attack ends its phrase, so a cancelled swin
  const {s,a}=arena('greatsword');try{input(s,a,{attack:true,yaw:0});s.step();input(s,a,{dash:true,yaw:0});s.step();
   const view=s.snapshot().players.find(p=>p.id==='a')!;assert.ok(rollCancelled(view,s.time));assert.equal(attackPose(view,s.time).active,false);assert.equal(transitionAction(view,s.time),'roll');
   const after=view.roll!.until+.05;assert.equal(attackPose(view,after).active,false,'no swing after the roll');assert.notEqual(transitionAction(view,after).slice(0,7),'attack-');}finally{s.dispose();}
+});
+test('Echo Strike: a roll during a follow-up (the first strike landed) keeps the cooldown; Emperor Electric stays committed',()=>{
+ {const {s,a,b}=arena('greatsword');try{a.chips['echo-strike']=2;a.stats=statsFor(a.chips,a.spec);b.body.setTranslation(v(0,.9,1.4),true);s.step();const hp=b.hp;input(s,a,{attack:true,yaw:0});s.step();
+  let n=0;while(!a.attackCommitment?.followup&&n++<120){input(s,a,{yaw:0});s.step();}assert.ok(a.attackCommitment?.followup,'follow-up started');assert.ok(b.hp<hp,'first strike landed');
+  const left=a.cooldown;assert.equal(beforeStrike(a.attackCommitment!,s.time),false);input(s,a,{dash:true,yaw:0});s.step();assert.ok(rolling(a,s.time));assert.ok(a.cooldown>=left-1/60-1e-9,`no refund: ${a.cooldown} vs ${left}`);}finally{s.dispose();}}
+ {const {s,a}=arena('emperor');try{a.spec='emperor';input(s,a,{electric:true,yaw:0});s.step();assert.equal(a.emperor?.action,'electric');const roll=()=>{a.input={...a.input,dash:true,electric:false};a.rollHeld=false;return s.beginRoll(a);};
+  assert.equal(roll(),false,'Electric is not cancellable');while(a.emperor?.action==='electric'&&s.time<a.emperor.until){input(s,a,{yaw:0});s.step();}a.dashCd=0;assert.equal(roll(),true,'free again after its recovery');}finally{s.dispose();}}
 });
