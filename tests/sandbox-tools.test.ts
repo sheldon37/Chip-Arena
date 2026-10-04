@@ -161,3 +161,21 @@ test('keypress repeats recast on the timer (cooldowns refreshed in the sandbox) 
   assert.ok([...s.leet.fields.values()].some(f=>f.kind==='tree'&&f.owner==='bot')||eventsAfter(s,t2).includes('summon:slender'),'the AI fight uses the granted L33T kit');
  }finally{s.dispose();}
 });
+
+test('a respawn re-arms once-per-round chips; with two humans a downed human still decides the round',()=>{
+ const s=sandbox();try{const chaos=s.chaos as unknown as {once(k:string):boolean};assert.equal(chaos.once('bot:exit'),true);assert.equal(chaos.once('bot:exit'),false,'used this round');
+  assert.ok(s.debug({action:'death-preview'},'local'));while(s.players.get('bot')!.hp<=0&&s.time<20)tick(s);assert.equal(chaos.once('bot:exit'),true,'Emergency Exit is ready again after the respawn');
+ }finally{s.dispose();}
+ const t=sandbox();try{t.addPlayer('b2','Second','melee',null,'#ddd');const b2=t.players.get('b2')!;b2.selected=true;tick(t);
+  assert.ok(t.debug({action:'death-preview'},'local'));tick(t);assert.equal(t.phase,'fight','only the dummy is down');
+  t.damage(b2,1e5,'local','preview',v(0,0,1),0);t.resolveRound();assert.equal(t.phase,'result','the human duel is decided while the dummy waits');assert.equal(t.winner,'local');
+ }finally{t.dispose();}
+});
+
+test('a Siren dummy cast takes the sandbox to Ward Zero; casting anything else brings the arena back (and stops her song)',()=>{
+ const s=sandbox(DEV);try{tick(s,5);assert.equal(s.options.map,'foundry');
+  assert.ok(s.debug({action:'dummy-cast',id:'siren-crown',safe:true},'local'));assert.equal(s.options.map,'siren');tick(s,30);assert.ok(s.bossSong,'her song plays');
+  assert.ok(s.debug({action:'dummy-cast',id:'vital',safe:true},'local'));assert.equal(s.options.map,'foundry','arena restored');assert.equal(s.bossSong,undefined);assert.equal(s.normalArena,undefined);
+  assert.ok(s.debug({action:'vent-fall',target:'opponent',delay:2},'local'),'the Ward Zero vent test works again');
+ }finally{s.dispose();}
+});

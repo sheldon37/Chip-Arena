@@ -48,8 +48,9 @@ export class WardVents extends VentPits{
 export const ward=(s:Simulation)=>!s.pve&&s.options.map==='siren'&&!s.normalArena?s.vents??=new WardVents(s):undefined;
 
 const fits=(c:Chip,s:SpecId)=>eligibleChips(s,{}).some(x=>x.id===c.id);
-/** The dummy's weapon for a chip: its own when the chip fits, else the first fitting weapon (non-DEV first). */
-export const castSpec=(c:Chip,cur:SpecId)=>fits(c,cur)?cur:(Object.keys(WEAPONS) as SpecId[]).sort((a,b)=>+!!WEAPONS[a].devOnly-+!!WEAPONS[b].devOnly).find(s=>fits(c,s));
+/** The dummy's weapon for a chip: its own when the chip fits (a Siren dummy keeps the boss kit only for Siren chips, so
+ *  the sandbox leaves Ward Zero again), else the first fitting weapon (non-DEV first). */
+export const castSpec=(c:Chip,cur:SpecId)=>fits(c,cur)&&(cur!=='siren'||c.rarity==='siren')?cur:(Object.keys(WEAPONS) as SpecId[]).sort((a,b)=>+!!WEAPONS[a].devOnly-+!!WEAPONS[b].devOnly).find(s=>fits(c,s));
 
 /** Dummy cast (keypress), owner 2026-10-04: instead of fighting with its AI for 4 s ('ai'), the dummy turns to the pilot who
  *  cast it and presses one key, as soon as it is able to act (L44T Scare Tactics' Slenderman is on E, Siren's moves on 1-4). */
@@ -95,10 +96,12 @@ export class SandboxTools{
  /** Queue one press of the current key on the dummy, aimed at the pilot who asked. */
  private queue(d:Player){this.press={id:d.id,target:this.by,key:this.key,hold:keyHold(d,this.key,this.hold0),deadline:this.s.time+.75,at:this.s.time};}
  /** Cooldowns and resources back to full, so a repeat really recasts (sandbox only; Scare Tactics alone has a 12 s cooldown). */
- private refresh(d:Player){this.s.abilities.reset(d);d.cooldown=d.secondaryCd=d.dashCd=d.blockCd=0;if(d.arcade)d.arcade.hadokenCd=d.arcade.uppercutCd=0;if(d.siren)d.siren.ready={};
+ /** Once-per-round chips (Emergency Exit, Do Not Press, Round Two, CTRL+Z) are ready again, as after a round reset. */
+ private rearm(p:Player){const s=this.s;s.chaos.forget(p.id+':exit');s.chaos.forget(p.id+':panic');s.leet.forget(p.id);s.arcade.forget(p.id);}
+ private refresh(d:Player){this.rearm(d);this.s.abilities.reset(d);d.cooldown=d.secondaryCd=d.dashCd=d.blockCd=0;if(d.arcade)d.arcade.hadokenCd=d.arcade.uppercutCd=0;if(d.siren)d.siren.ready={};
   d.mana=d.stats.maxMana;d.stamina=d.stats.maxStamina;}
  private ready(p:Player,key:CastKey){const s=this.s,ground=key==='jump'||key==='dash'||key==='e'&&p.spec==='emperor';
-  return p.cooldown<=0&&!p.swing&&!p.cast&&(p.burst??0)<=0&&!s.abilities.busy(p)&&(p.blockTime??0)<=0&&(!ground||p.grounded);}
+  return p.cooldown<=0&&!p.swing&&!p.cast&&(p.burst??0)<=0&&!s.abilities.busy(p)&&!(p.spec==='siren'&&s.siren.busy(p))&&(p.blockTime??0)<=0&&(!ground||p.grounded);}
  /** Face the target the way a cast aims: point casts at the feet, ballistic ones lobbed, the rest straight at the chest. */
  private aim(p:Player,t:Player,key:CastKey){const eye=add(p.body.translation(),v(0,.5,0)),to=t.body.translation(),kit=kitFor(p.spec),def=key==='e'?kit?.e:key==='q'?kit?.q:undefined,bot=def?.bot;
   const at=bot?.aim==='point'?v(to.x,to.y-(C.playerHalfHeight+C.playerRadius-.05),to.z):v(to.x,to.y,to.z),d=sub(at,eye),h=Math.hypot(d.x,d.z);
@@ -113,7 +116,7 @@ export class SandboxTools{
  private padOf(p:Player){return [...this.s.players.values()].indexOf(p);}
  /** Back on its own pad (the pad resetRound gives it), restored like a round start; chips and weapon are kept. */
  private revive(p:Player,pad:number){const s=this.s,pos=playerSpawn(pad,true);
-  s.revivePlayer(p,1,pos,'sandbox-respawn');p.siren=undefined;p.stats=statsFor(p.chips,p.spec);s.abilities.reset(p);p.hp=p.stats.hp;p.mana=p.stats.maxMana;p.stamina=p.stats.maxStamina;p.staminaAt=-10;
+  s.revivePlayer(p,1,pos,'sandbox-respawn');this.rearm(p);p.siren=undefined;p.stats=statsFor(p.chips,p.spec);s.abilities.reset(p);p.hp=p.stats.hp;p.mana=p.stats.maxMana;p.stamina=p.stats.maxStamina;p.staminaAt=-10;
   p.ammo=magazineCapacity(p.spec,p.stats);p.cooldown=p.secondaryCd=p.dashCd=p.dashTime=p.reloadTime=p.parryTime=0;p.guarding=false;p.blockTime=p.blockCd=0;p.blockHeld=p.blockProcUsed=false;p.lastBlock=-10;
   p.waveTime=p.electricStepTime=0;p.attackIndex=0;p.hits=0;p.lastShot=p.lastSecondary=p.lastAttack=-10;p.input={...idleInput(),seq:p.input.seq,yaw:Math.atan2(-pos.x,-pos.z)};p.body.setAngvel(v(),true);}
  holding(){return this.s.time<this.hold||!!this.s.vents?.busy;}
@@ -126,7 +129,8 @@ export class SandboxTools{
   const asker=s.players.get(this.by);if(this.key!=='ai'&&asker&&asker.hp>0&&asker.connected&&!asker.leet?.scare)for(const f of s.leet.fields.values())if(f.kind==='tree'&&f.owner===this.dummyId)f.target=asker.id;
   if(s.vents?.busy)this.hold=Math.max(this.hold,s.time+3);
   // Respawns wait for animation holds and for a vent-fall body to land (the splat resets death.at).
-  for(const p of s.players.values())if(p.hp<=0&&p.death&&this.respawns(p)&&!inVentShaft(p.death,s.time)&&s.time>=this.hold&&s.time>=p.death.at+this.respawn)this.revive(p,this.padOf(p));
+  // (A shaft body lands only while the ward vents run; if a Siren pilot paused them, it stands up anyway.)
+  for(const p of s.players.values())if(p.hp<=0&&p.death&&this.respawns(p)&&!(inVentShaft(p.death,s.time)&&s.vents&&ward(s))&&s.time>=this.hold&&s.time>=p.death.at+this.respawn)this.revive(p,this.padOf(p));
  }
  /** Sandbox debug actions; undefined for actions this class does not own. */
  command(c:any,p:Player):boolean|undefined{
@@ -140,7 +144,7 @@ export class SandboxTools{
     const key:CastKey=CAST_KEYS.includes(c.key)?c.key:'ai';if(key!=='ai'&&!keyInput(spec,key))return false;
     if(d.hp<=0)this.revive(d,this.padOf(d));
     // A DEV kit checks its own pilot's access: the dummy gets the cast weapon only (like DEV bots), never the DEV role.
-    d.unlocks=WEAPONS[spec].devOnly?['weapon:'+spec]:[];d.chips={};s.respec(d,spec);if(chip)d.chips[chip.id]=1;d.stats=statsFor(d.chips,d.spec);d.hp=d.stats.hp;d.mana=d.stats.maxMana;d.stamina=d.stats.maxStamina;d.ammo=magazineCapacity(d.spec,d.stats);
+    d.unlocks=WEAPONS[spec].devOnly?['weapon:'+spec]:[];d.chips={};this.rearm(d);s.respec(d,spec);if(chip)d.chips[chip.id]=1;d.stats=statsFor(d.chips,d.spec);d.hp=d.stats.hp;d.mana=d.stats.maxMana;d.stamina=d.stats.maxStamina;d.ammo=magazineCapacity(d.spec,d.stats);
     this.safe=c.safe===true;const n=Number(c.every)||0;this.every=n>0?clamp(n,2,60):0;this.next=s.time+this.every;this.key=key;this.by=p.id;this.hold0=c.hold;this.dummyId=d.id;
     if(key==='ai'){this.press=undefined;this.arm(d);}else{if(this.cast)this.cast.until=0;this.refresh(d);this.queue(d);}return true;}
    case 'safe':this.safe=c.on===true;return true;

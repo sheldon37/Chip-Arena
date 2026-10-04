@@ -42,6 +42,8 @@ export class LeetSystem {
  if(this.active(p,'scare')){for(const [id,f]of this.fields)if(f.owner===p.id&&f.kind==='tree'){this.dropSlender(f);this.fields.delete(id);}const pos=add(p.body.translation(),mul(forward(p.input.yaw),2));pos.y=.05;const id=s.uid('tree');this.fields.set(id,{id,kind:'tree',owner:p.id,pos,at:s.time,until:s.time+SLENDER.life});}
  if(!this.active(p,'time')&&!this.active(p,'scare'))s.explode(p,p.body.translation(),6,35,1200,'root',true);
  }
+ /** A mid-round sandbox respawn re-arms CTRL+Z and forgets the rewind trail (a round reset does this for everyone). */
+ forget(id:string){this.used.delete(id);this.history.delete(id);}
  save(p:Player,amount:number,kind:string){if(kind==='leet-scare'||!this.active(p,'undo')||this.used.has(p.id)||amount<p.hp)return false;this.used.add(p.id);const past=this.history.get(p.id)?.[0];if(past)p.body.setTranslation(past.pos,true);this.sim.heal(p,p.stats.hp);p.ext=v();p.move=v();p.body.setLinvel(v(),true);p.burns.clear();p.poisons.clear();this.sim.emit('leet-undo',p.body.translation(),{source:p.id,color:0x55ff88,radius:3});return true;}
  scare(owner:Player,target:Player){if(!this.sim.canHit(owner.id,target.id)||target.leet?.scare||target.hp<=0)return;target.leet??={};target.leet.scare={at:this.sim.time,until:this.sim.time+LEET.scareSeconds,source:owner.id};target.cast=undefined;target.swing=null;target.blockTime=0;this.sim.emit('leet-scare',target.body.translation(),{source:owner.id,target:target.id,color:0x55ff88});}
  step(dt:number){const s=this.sim;for(const [key,until]of this.procs)if(until<s.time)this.procs.delete(key);for(const p of s.players.values()){

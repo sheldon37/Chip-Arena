@@ -170,7 +170,8 @@ export class Simulation {
   const present=[...this.players.values()].some(p=>p.connected&&this.siren.active(p));
   // Ward Zero replaces the arena, while the lobby's mode and team assignments stay intact.
   if(present){this.normalArena??={map:mapId(this.options.map)};const changed=this.options.map!=='siren';this.options.map='siren';if(changed)this.resetRound();}
-  else if(this.normalArena&&!this.bossSong){Object.assign(this.options,this.normalArena);this.normalArena=undefined;this.resetRound();}
+  // In the DEV sandbox the arena comes back as soon as no Siren is left, even after her song started (it stops).
+  else if(this.normalArena&&(!this.bossSong||this.options.sandbox)){if(this.options.sandbox)this.bossSong=undefined;Object.assign(this.options,this.normalArena);this.normalArena=undefined;this.resetRound();}
  }
  updateBossSong(){
   if(this.phase==='match'||this.phase==='lobby'){this.bossSong=undefined;return;}
@@ -447,7 +448,10 @@ export class Simulation {
  resolveRound(){
  if(this.phase!=='fight')return;
  if(this.pve||this.tools?.holding())return;
- const alive=[...this.players.values()].filter(p=>p.hp>0||!!this.tools?.respawns(p));if(new Set(alive.map(p=>this.options.gameMode==='teams'?p.team:p.id)).size>1)return;
+ // Sandbox: a bot waiting to respawn still counts, so killing the dummy never ends the round; only while humans duel (one down,
+ // one standing) does a downed human decide it without the bots, as before.
+ const humans=[...this.players.values()].filter(p=>!p.bot&&p.connected),duel=!!this.tools&&humans.some(p=>p.hp<=0)&&humans.some(p=>p.hp>0);
+ const alive=[...this.players.values()].filter(p=>p.hp>0||!duel&&!!this.tools?.respawns(p));if(new Set(alive.map(p=>this.options.gameMode==='teams'?p.team:p.id)).size>1)return;
  for(const p of this.players.values())if(p.hp<=0)this.recordDeath(p);
  this.winner=alive[0]?.id||null;this.setWinner=null;
  if(this.winner){const winner=alive[0],members=[...this.players.values()].filter(p=>wonWith(p,winner,this.options.gameMode)),name=this.options.gameMode==='teams'?TEAMS[winner.team!].name+' team':winner.name;

@@ -27,18 +27,18 @@ export function chipOptions(list:Chip[]){
 }
 /** Dummy cast keys: 'AI fight' is the old 4 s of bot AI; the rest make the dummy press that key at you. */
 const KEY_LABELS:Record<CastKey,string>={ai:'AI fight · 4 s',e:'E',q:'Q',block:'Block (RMB)',dash:'Dash (Shift)',jump:'Jump (Space)','1':'1','2':'2','3':'3','4':'4',mode:'Siren mode'};
-/** The weapon the dummy will cast the chosen chip with (the panel's estimate; the server decides). */
-const castWeapon=(mySpec:SpecId)=>{const c=CHIPS.find(x=>x.id===sandboxUi.chip);return c?castSpec(c,mySpec):undefined;};
+/** The weapon the dummy will cast the chosen chip with: its current one when the chip fits, as the server picks it. */
+const castWeapon=(dummySpec:SpecId)=>{const c=CHIPS.find(x=>x.id===sandboxUi.chip);return c?castSpec(c,dummySpec):undefined;};
 const keyOptions=(spec:SpecId|undefined)=>CAST_KEYS.map(k=>`<option value="${k}" ${k===sandboxUi.key?'selected':''} ${k!=='ai'&&(!spec||!keyInput(spec,k))?'disabled':''}>${KEY_LABELS[k]}</option>`).join('');
 const sel=(id:string,o:[string,string][],label:string,cur='')=>`<select id="${id}" aria-label="${label}">${o.map(([v,t])=>`<option value="${v}" ${v===cur?'selected':''}>${t}</option>`).join('')}</select>`;
 const ANIMS:[string,string][]=[['vent','Vent fall + SPLAT!'],['down','Downed + HELP (dummy)'],['revive','Holographic revive (dummy)'],['death','Death · kill effect above'],
  ['killcam','Killcam (dummy kills you)'],['intro','Weapon intro'],['sword','Melee swings'],['greatsword','Greatsword mocap'],['hit','Hit reaction'],['stagger','Heavy hit · stagger'],
  ['necronomicon','Summons attack (zombies)'],['puppet-master','Summons attack (toys)'],['summons-die','Summon deaths'],['l44t-scare','Slenderman · teleport + static']];
 export const sandboxSearch=()=>`<label class="field" for="sandbox-search">CHIP SEARCH</label><div class="row"><input id="sandbox-search" class="input" type="search" placeholder="Name, id or text" value="${sandboxUi.query.replace(/"/g,'&quot;')}"/>${sel('sandbox-sort',[['rarity','Rarity ↑'],['rarity-desc','Rarity ↓'],['name','Name'],['default','Catalog order']],'Sort',sandboxUi.sort)}</div>`;
-export function sandboxPanel(map:string,mySpec:SpecId='pistol',view?:SandboxView){
+export function sandboxPanel(map:string,dummySpec:SpecId='fire',view?:SandboxView){
  return `<label class="settings-row" style="font-size:12px">Every chip (dummy cast)<input id="sandbox-all" type="checkbox" ${sandboxUi.all?'checked':''}/></label>
 <label class="field">DUMMY CAST · CHIP ABOVE ON YOU</label><div class="row"><div><label class="fine" for="cast-every">Repeat every (s, 0 = once)</label><input id="cast-every" class="input" type="number" value="0" min="0" max="60"/></div><label class="settings-row" style="font-size:12px">Safe mode<input id="cast-safe" type="checkbox" checked/></label></div>
-<div class="row"><div><label class="fine" for="cast-key" title="The dummy turns to you and presses this key">Press key</label><select id="cast-key">${keyOptions(castWeapon(mySpec))}</select></div><div><label class="fine" for="sandbox-respawn" title="Seconds until a killed dummy stands up again; 0 = the round ends as before">Respawn (s)</label><input id="sandbox-respawn" class="input" type="number" value="${view?.respawn??SANDBOX_RESPAWN.default}" min="0" max="${SANDBOX_RESPAWN.max}" step="0.5"/></div></div>
+<div class="row"><div><label class="fine" for="cast-key" title="The dummy turns to you and presses this key">Press key</label><select id="cast-key">${keyOptions(castWeapon(dummySpec))}</select></div><div><label class="fine" for="sandbox-respawn" title="Seconds until a killed dummy stands up again; 0 = the round ends as before">Respawn (s)</label><input id="sandbox-respawn" class="input" type="number" value="${view?.respawn??SANDBOX_RESPAWN.default}" min="0" max="${SANDBOX_RESPAWN.max}" step="0.5"/></div></div>
 <div class="actions"><button class="btn primary" data-sb="cast">Dummy cast</button><button class="btn" data-sb="stop">Stop</button></div>
 <label class="field" for="sandbox-map">SANDBOX MAP</label><select id="sandbox-map">${ALL_MAPS.map(m=>`<option value="${m.id}" ${m.id===map?'selected':''}>${m.name}</option>`).join('')}</select>
 <label class="field">ANIMATION TESTS</label><div class="row">${sel('anim-target',[['opponent','Dummy'],['self','Me']],'Target')}${sel('anim-delay',[['2','Splat 2s'],['10','Splat 10s']],'Splat delay')}${sel('anim-scale',[['1','1×'],['.5','0.5×'],['.25','0.25×']],'Time scale',String(sandboxUi.scale).replace(/^0/,''))}</div>
@@ -68,9 +68,9 @@ export function playAnim(k:string,h:SandboxHost){
 }
 /** Delegated listeners on the panel root (once). Typing in the search box never reaches the game hotkeys. */
 export function bindSandbox(root:HTMLElement,h:SandboxHost,redraw:()=>void){
- const mySpec=()=>(h.state().players.find(p=>p.id===h.me())?.spec??'pistol') as SpecId;
+ const mySpec=()=>(h.state().players.find(p=>p.id===h.me())?.spec??'pistol') as SpecId,dummySpec=()=>(h.state().players.find(p=>p.bot&&p.id!==h.me())?.spec??'fire') as SpecId;
  /** Keys the chosen chip's weapon has no use for are greyed out (and the choice falls back to AI fight). */
- const keys=()=>{const box=document.getElementById('cast-key') as HTMLSelectElement|null;if(!box)return;const spec=castWeapon(mySpec());if(sandboxUi.key!=='ai'&&(!spec||!keyInput(spec,sandboxUi.key)))sandboxUi.key='ai';box.innerHTML=keyOptions(spec);};
+ const keys=()=>{const box=document.getElementById('cast-key') as HTMLSelectElement|null;if(!box)return;const spec=castWeapon(dummySpec());if(sandboxUi.key!=='ai'&&(!spec||!keyInput(spec,sandboxUi.key)))sandboxUi.key='ai';box.innerHTML=keyOptions(spec);};
  const refill=()=>{const list=sandboxChips(mySpec(),h.access),box=document.getElementById('sandbox-chip') as HTMLSelectElement|null;
   if(list.length&&!list.some(c=>c.id===sandboxUi.chip))sandboxUi.chip=list[0].id;if(box&&list.length){box.innerHTML=chipOptions(list);box.dispatchEvent(new Event('change',{bubbles:true}));}keys();};
  root.addEventListener('input',e=>{const t=e.target as HTMLInputElement;if(t.id==='sandbox-search'){sandboxUi.query=t.value;refill();}});
