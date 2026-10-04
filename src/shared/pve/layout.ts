@@ -32,6 +32,10 @@ export const PVE_MACHINES:readonly PveMachine[]=[
  machine(6,'med-0','med',6.5,-20), machine(7,'med-1','med',-6.5,20),
 ];
 export const MACHINE_SIZE={x:1.3,y:2.2,z:.9} as const;
+/** The chip, recruit and med machines (and the pads they stand on) exist only in a real PvE run (owner 2026-10-04: none on
+ *  Ward Zero in PvP). PvP has no PveSystem; the DEV sandbox (a PvP sim) borrows PvE views for its downed/revive previews and
+ *  its fixture injector sets options.pve, so the sandbox flag decides (a PvE run always forces sandbox off). */
+export const machinesPresent=(state:{options?:{sandbox?:boolean};pve?:unknown})=>!!state.pve&&!state.options?.sandbox;
 /** Machine colliders: a foundation block 1.3×2.2×0.9 at spot − fwd·0.2, id `pve-machine-<m>` (the renderer hides the box). */
 export function machineBlocks():ArenaBlock[]{
  return PVE_MACHINES.map(m=>{const f=fwd(m.yaw);return {id:`pve-machine-${m.m}`,pos:{x:m.x-f.x*.2,y:MACHINE_SIZE.y/2,z:m.z-f.z*.2},

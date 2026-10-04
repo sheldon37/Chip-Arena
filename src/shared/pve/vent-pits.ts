@@ -45,6 +45,11 @@ export const VENT_PIT={
  land:{step:1.25,points:8,rings:8,boss:2.4,body:1.1,block:.75,vent:1.9},
  /** Bot avoidance: look-ahead (m) and the extra margin around the hole. */
  avoid:{look:1.3,margin:.85},
+ /** Ward Zero outside PvE (PvP and the DEV sandbox, owner 2026-10-04): snapshots carry each vent opening `warn` + `lead` s
+  *  before it opens, so every client shows a warning (rim fill, black wisps, rattling lid) for `warn` s and then draws the
+  *  lid swinging `lead` s ahead of the authority (and shutting `lead` s after it). An online view drawn up to ~lead s behind
+  *  the server therefore never shows a shut grate over a lethal pit. Presentation only: falls use the authority's times. */
+ warn:1,lead:.5,
 } as const;
 export const VENT_FALL_EFFECT='vent-fall',VENT_SPLAT_EFFECT='vent-splat',VENT_FALL_KIND='vent-fall';
 type DeathLike={effect:string;at:number}|undefined|null;
@@ -52,6 +57,16 @@ type DeathLike={effect:string;at:number}|undefined|null;
 export function inVentShaft(death:DeathLike,time:number):boolean{
  return !!death&&(death.effect===VENT_FALL_EFFECT||death.effect===VENT_SPLAT_EFFECT&&time<death.at+VENT_PIT.drop-1e-9);
 }
+/** Ward Zero outside PvE: how open a vent is DRAWN at time t (leads the authority on opening, trails it on closing). */
+export function wardVentDrawn(v:PveEntryView|undefined,t:number){
+ return v?entryOpenAmount('vent',{...v,openAt:v.openAt-VENT_PIT.lead,closeAt:v.closeAt+VENT_PIT.lead},t):0;
+}
+/** Ward Zero outside PvE: the warning before the drawn lid starts to move, 0..1 over VENT_PIT.warn s (0 otherwise). */
+export function wardVentWarning(v:PveEntryView|undefined,t:number){
+ if(!v)return 0;const start=v.openAt-VENT_PIT.lead;return t>=start||t<start-VENT_PIT.warn?0:smooth(1-(start-t)/VENT_PIT.warn);
+}
+/** The Ward Zero vent openings a snapshot carries: started ones and those within warn + lead of starting. */
+export const wardVentsSent=(entries:readonly PveEntryView[],t:number)=>entries.filter(e=>t>=e.openAt-VENT_PIT.lead-VENT_PIT.warn);
 /** Open amounts of the 8 vents (entries 0–7) at time t. */
 export function ventOpenAmounts(entries:readonly PveEntryView[],t:number):number[]{
  const out=SIREN_VENTS.map(()=>0);for(const e of entries)if(e.e>=0&&e.e<out.length)out[e.e]=Math.max(out[e.e],entryOpenAmount('vent',e,t));return out;

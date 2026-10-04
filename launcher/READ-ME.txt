@@ -54,7 +54,8 @@ THIS UPDATE
 choose 1-12 in match setup. Try Pong Shot, Hurricane Edge, Meteor Foundry,
 Return to Sender and Repulsor Crown. Blocking melee knocks the attacker back;
 heavier blows rebound farther. Mages gather then release from one hand, and
-daggers alternate left/right. Sandbox includes rarity and animation previews.
+daggers alternate left/right. The Developer Sandbox (DEV accounts only) includes
+rarity and animation previews.
 
 CHAOS UPDATE
 150 Chips including Event Horizon black holes, Necronomicon zombies, sticky
