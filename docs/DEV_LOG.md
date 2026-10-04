@@ -18,6 +18,58 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-04 — Claude — ranged/magic Q+E ability overhaul integration (+ PvE downed, chip throw, update headroom)
+
+- Branch `claude/abil-integration` from foundation `claude/abil-foundation`; merges abil-guns, abil-magic, abil-chips,
+  abil-presentation, abil-vfx, then `claude/pve-downed` `bf23737`, `claude/pve-chip-throw` `a130059` and
+  `claude/update-headroom` `f491e72` (all clean merges). Base of the streams: `claude/visual-revision` `cfdce4b`.
+  No PR opened yet; not merged; not published.
+- Ability overhaul (design in the orchestrator plan; player tables and balance in `docs/ABILITIES.md`): guns get Q = ADS
+  (rifle 3x scope) and E = Frag / Underbarrel Rocket / Orbital Mark; magic gets faster, flatter primaries (Soak, enemy
+  chain, 20 % drain), a Q spell and a strong placed/travelling E per school; legacy push/pull/nova/fireball E removed per
+  action id (L33T root, melee specials, Necronomicon kept); 16 magic chips; Rally Pong v2 for 3D; first-person staff
+  fix; HUD cooldown row; chip VFX sweep; PvE life steal on every direct-hit path. Mixed builds: the host advertises an
+  ability flag; older clients keep the legacy controls.
+- Integration retune (`tests/duel-balance.ts`, `npm run test:duel-balance`, n=20 per pairing): magic vs guns (open)
+  fire 21→55 %, water 3→61 %, darkness 5→55 %, lightning 58→87 %; BOT_LEAD stays [0,0,0] (any lead gave 80-100 % for
+  the leading side) and now applies to magic bots only; lightning 15/.28 s/55 m/s/gravity 20 (was 15/.27/85/30);
+  frag 60→66; pistol/MG bots ADS from 25 m.
+- PvE downed (`bf23737`): downed members keep their body, HELP bubble, holographic regeneration on revive (presentation
+  only; `PvePartyView.upAt`). Chip throw (`a130059`): chips land 2.0-2.7 m in front of the machines (pop .55 s, hop
+  1.1 m, still inside the .6 s dispense delay). Update headroom (`f491e72`): test-channel schema 1 up to 32 MiB,
+  updater v2 (schema 2), launcher self-update/restore; live profile output unchanged.
+- Astra/Codex-history files touched: src/shared/simulation.ts, content.ts, config.ts, chaos.ts, arcade.ts, emperor.ts,
+  standard-melee.ts, host-room.ts, relay-protocol.ts, src/server/index.ts, src/client/main.ts, renderer.ts,
+  prediction.ts, snapshots.ts, audio.ts, character-animation.ts, control-hints.ts, match-hud.css and other client
+  presentation files, desktop/main.cjs, desktop/update.cjs, launcher/*, scripts/package-update.mjs,
+  package-desktop.py, repackage-desktop.py, docs/DEVELOPMENT.md, tests chaos/modifiers/rarity-combat/relay/
+  rig-arena-sniper/first-block.
+- Animation/combat impacts: hit timing, damage, cooldowns and hitboxes changed deliberately for ranged/magic (new Q/E
+  windups, lockouts, fuses, blast radii, orb radii, primary numbers; magic E no longer shares the primary cooldown or
+  reload). Movement: ADS walk multipliers, slows (Soak/Shackles/Geyser, floor .4, immunity), pulls, knock-ups, Blink
+  teleport; a roll cancels an ability windup. Networking: Q input bit, optional snapshot fields (omitted when default),
+  host capability flag in welcome; predictor mirrors ADS and field pulls. Melee, DEV classes, PvP death presentation:
+  unchanged. Downed/chip-throw: presentation and chip landing position only.
+- Checks (Linux, Node 22.22.2): `npm run check:types` pass; full unit suite 1122 tests, 14 failures = the 13 known
+  Node 22 names + `dev-bots` "ability bots use Q" (start distance below the new 25 m ADS range; test fixed, the file
+  then passed 10/10; full suite not re-run). Intentionally changed tests: pvp-golden (4 traces regenerated once with a
+  header; melee-dev and siren-melee identical), gun-abilities (frag 66, ADS 25 m), magic-abilities (lightning row),
+  dev-bots (Q range), abilities-foundation (kits). `node tests/run-network.mjs pve` victory; `chaos` fails only on the
+  known cosmetics assertion; `tests/pve-loopback-network.ts` pass; `npm run test:pve-perf` incl. new abilities scenario
+  (avg step .93 ms, p99 2.16 ms, snapshot p95 54,945 B, no ability/explosion events dropped). `npm run build` (live):
+  payload 26,135,216 B (limit 26,214,400; 79,184 B headroom); test-channel profile: schema 1 26,135,216 B, schema 2
+  22,064,822 B. Playwright real-app sandbox smoke (SwiftShader): fire Q Lance + E Meteor, pistol ADS + frag, no console
+  errors.
+- Not run: Windows/Electron, GPU, online multiplayer with people, real updater on Windows, release:prepare x2,
+  verify:standard, test:network:local, test:https, test:stress, pve-balance, duel gate at n=200, full visual capture set.
+- Risks: lightning still wins 62-95 % of open bot duels; water beats rifle/darkness in the open; melee bots lose
+  ~100 % to ranged/magic as before; payload headroom is 79 KB under the live 25 MiB guard.
+- Pending publication record from the previous integration: PR #32 merged `cfdce4b` -> test `0.2.5036b50f0c34`
+  (payload `arena-164f10d7096c7469`, 26,045,324 B, channel `70fe238`). CI first run hit the flaky party-relay 403 (not
+  touched by the PR; passed 5/5 locally), rerun passed; otherwise baseline-only. Updater verified.
+- Next: orchestrator review, PR into `claude/visual-revision`, merge, test-channel publication; owner playtest of feel
+  and balance.
+
 ## 2026-10-03 — Claude — update headroom review round 2: short writes, journalled restore, current-check
 
 - Branch `claude/update-headroom` (base `cfdce4b`), implementation `f951fbc`; tooling PR #5

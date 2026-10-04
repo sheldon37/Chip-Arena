@@ -95,3 +95,6 @@ Windows validation and desktop distribution cutover remain separate work.
   `claude/visual-revision`, merge, test-channel publication. Native Windows review and owner balance playtest remain.
 - Siren TEST BOSS PvE mode (docs/PVE.md) merged at `2bec705` (PR #28); test content `0.2.65597ffe7165` at channel
   `de5cc4d`. Next: owner playtest and balance retune; native Windows review remains.
+- Ranged/magic Q+E ability overhaul + magic rebalance (docs/ABILITIES.md), PvE downed bodies, chip throw and update
+  headroom integrated and verified on `claude/abil-integration` (2026-10-04). Not merged or released; next: PR into
+  `claude/visual-revision`, merge, test-channel publication; owner playtest of balance.
