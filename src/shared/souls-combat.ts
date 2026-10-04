@@ -20,6 +20,12 @@ export function attackCommitment(spec:SpecId,at:number,windup:number,window:numb
   stepAt:at+windup*.55,stepUntil:at+windup+window*.8,distance:spec==='daggers'?.85:spec==='sword'?.65:spec==='shield'?.55:.45};
 }
 export const committed=(p:{attackCommitment?:AttackCommitment},time:number)=>!!p.attackCommitment&&time<p.attackCommitment.until;
+/** First strike of a primary from its serialized commitment (stepAt = at + windup·.55), shared by authority and prediction. */
+export const strikeAt=(a:AttackCommitment)=>a.at+(a.stepAt-a.at)/.55;
+/** Roll-cancel (owner 2026-10-04): a cancel at least half a tick before the first strike refunds the attack cooldown. */
+export const beforeStrike=(a:AttackCommitment,time:number)=>a.stepAt>a.at&&time<strikeAt(a)-.5/60;
+/** The pilot rolled after its last attack started: that attack's phrase is over (presentation; a roll cancels it). */
+export const rollCancelled=(p:{roll?:RollState;lastAttack:number},time:number)=>!!p.roll&&p.roll.at>p.lastAttack&&p.roll.at<=time;
 const smooth=(u:number)=>{u=clamp(u,0,1);return u*u*(3-2*u);};
 export const attackTravel=(a:AttackCommitment,time:number)=>a.distance*smooth((time-a.stepAt)/Math.max(.01,a.stepUntil-a.stepAt));
 export function attackStep(a:AttackCommitment|undefined,time:number,dt:number):Vec {

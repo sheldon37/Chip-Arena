@@ -63,9 +63,9 @@ test('PvE forced idle literal and Block clear the ability bit',async()=>{
 // ---- capability flag ------------------------------------------------------------------------------------------------
 test('caps: every host path advertises abilities in welcome; abilityClient truth table',async()=>{
  const sent:{target:string;message:any}[]=[];const room=new HostedRoom('ABCDEFGH',{name:'Host',class:'ranged',color:'#ffffff'},false,(target,message)=>sent.push({target,message}));
- try{room.welcome('host');assert.ok(room.join({name:'Guest',class:'magic',color:'#00ff00'}));const welcomes=sent.filter(m=>m.message.type==='welcome');assert.equal(welcomes.length,2);for(const w of welcomes)assert.deepEqual(w.message.caps,{abilities:1,aimHold:1});}finally{room.dispose();}
+ try{room.welcome('host');assert.ok(room.join({name:'Guest',class:'magic',color:'#00ff00'}));const welcomes=sent.filter(m=>m.message.type==='welcome');assert.equal(welcomes.length,2);for(const w of welcomes)assert.deepEqual(w.message.caps,{abilities:1,aimHold:1,move:1});}finally{room.dispose();}
  const server=await readFile('src/server/index.ts','utf8'),welcomes=server.match(/type:'welcome'[^}]*\}/g)!;assert.equal(welcomes.length,2,'rejoin and create/join');for(const w of welcomes)assert.match(w,/caps:HOST_CAPS/);
- assert.deepEqual(HOST_CAPS,{abilities:1,aimHold:1});assert.equal(JSON.stringify({caps:HOST_CAPS}).length-2,34,'caps adds 34 chars to welcome (hold-to-aim, 2026-10-04)');
+ assert.deepEqual(HOST_CAPS,{abilities:1,aimHold:1,move:1});assert.equal(JSON.stringify({caps:HOST_CAPS}).length-2,43,'caps adds 43 chars to welcome (hold-to-aim and sprint/roll-cancel, 2026-10-04)');
  const users:SpecId[]=['pistol','rifle','machinegun','fire','water','lightning','darkness'],others:SpecId[]=['sword','daggers','shield','greatsword','emperor','ansatsuken','leet','siren'];
  for(const spec of users){assert.equal(abilityUser(spec),true,spec);assert.equal(abilityClient(HOST_CAPS,spec),true,spec);assert.equal(abilityClient({},spec),false,spec);assert.equal(abilityClient(undefined,spec),false,spec);assert.equal(abilityClient(null,spec),false,spec);}
  for(const spec of others){assert.equal(abilityUser(spec),false,spec);assert.equal(abilityClient(HOST_CAPS,spec),false,spec);}

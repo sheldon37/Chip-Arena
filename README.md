@@ -68,12 +68,14 @@ Click the arena to capture the mouse. `Escape` releases it and opens the match m
 | Right mouse | Timed Block: reflect projectiles / negate melee |
 | E | Specialization secondary; hold for Shield guard |
 | Space | Jump |
-| Shift | Dash |
+| Double-tap W | Sprint while W is held (forward only; not while attacking, blocking or aiming) |
+| Shift | Dash / roll; a roll cancels a melee attack (no hit if cancelled before the strike) |
 | R | Reload when applicable |
 | V | Toggle first / third person (saved locally) |
 | M | Mute / unmute sound |
-| Hold Tab | Player board; hover Chips for effects and stacked values |
-| Escape | Menu / release pointer lock |
+| Hold Tab | Player board; hover Chips for effects and stacked values (melee pilots in a fight: Tab is lock-on) |
+| Tab (melee) | Lock on to the nearest enemy in view; tap again for the next target; hold to release. The lock ends when the target dies |
+| Escape | Menu and player board / release pointer lock |
 
 The player board shows both players’ specialization, installed Chips, duplicate counts, health, round progress and set scores. Hold Tab to release the pointer and inspect; release it to return. The **Builds TAB** button also opens a persistent board, with an × close button. Matches continue while inspecting; movement and attack input stop while the board is open. Click the arena if the browser requires a gesture to recapture the mouse.
 

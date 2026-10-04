@@ -26,7 +26,7 @@ test('standard weapon costs scale with weight and failed attacks spend nothing',
  assert.deepEqual(costs,[10,18,22,26]);
 });
 test('WASD stops through attack recovery while the authored step advances the body',()=>{
- const {s,a}=arena();try{input(s,a,{z:1});advance(s,.3);const start={...a.body.translation()};s.primary(a);input(s,a,{x:1,z:1,jump:true,dash:true});assert.equal(s.beginBlock(a),false);while(committed(a,s.time)){s.step();if(committed(a,s.time)){assert.equal(a.move.x,0);assert.equal(a.move.z,0);assert.equal(a.roll,undefined);assert.ok(a.body.translation().y<1.05);}}
+ const {s,a}=arena();try{input(s,a,{z:1});advance(s,.3);const start={...a.body.translation()};s.primary(a);input(s,a,{x:1,z:1,jump:true});assert.equal(s.beginBlock(a),false);while(committed(a,s.time)){s.step();if(committed(a,s.time)){assert.equal(a.move.x,0);assert.equal(a.move.z,0);assert.equal(a.roll,undefined);assert.ok(a.body.translation().y<1.05);}}
  assert.ok(Math.abs(a.body.translation().x-start.x)<.02);assert.ok(Math.abs(a.body.translation().z-start.z-.65)<.03);s.step();assert.ok(a.move.x>0);assert.ok(a.move.z>0);}finally{s.dispose();}
 });
 test('melee hitstun cannot be refreshed by repeated hits or another standard weapon',()=>{
