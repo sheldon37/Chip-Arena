@@ -55,7 +55,13 @@ containing an entry; no self-referential commit hash is required.
   schema 1 `arena-38d7b91c0c5dbe17.json.gz` 26,206,825 B, schema 2 `arena-2870598814579f84.pack` 22,099,609 B); PR #44
   `accc362` -> test `0.2.cb814cb80ece` (channel `1bc3517`; schema 1 `arena-2bf02d3b1f9a2899.json.gz` 24,625,849 B, schema 2
   `arena-614b8df19c9400d9.pack` 20,530,767 B).
-- Status: implemented on branch; next: PR into `claude/visual-revision`, merge, test-channel publication.
+- Status: merged into `claude/visual-revision` at `29d184b` (PR #45); published to the test channel (not the live feed or
+  Site): test `0.2.fd485a10e3d0` at channel `b2241e2`; schema 1 `arena-d23a8fd7f204c872.json.gz` 24,637,893 B, schema 2
+  `arena-3d53ae883a980000.pack` 20,534,868 B. Candidate (`--test-only --channel`, Node 24.19.0, tooling 35ea65d) passed
+  every stage except verify, which had only the baseline failures (12 known unit names, 4 server tsc errors, websocket
+  "Timed out: rematch"); repeat build identical. Raw feed served the new manifests; an old-launcher install and a v2 install
+  at `0.2.cb814cb80ece` each installed the new version from the live feed with `manual-update.mjs`, then reported current;
+  settings sentinel untouched; menu status reports `0.2.fd485a10e3d0`. Native Windows look/feel review remains.
 
 ## 2026-10-04 — Claude — Developer Sandbox tools; Ward Zero as a PvP and sandbox map
 - Branch `claude/sandbox-devtools` from `claude/visual-revision` 492b251. No PR opened; not merged; not released.
