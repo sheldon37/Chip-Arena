@@ -1,0 +1,14 @@
+export const MiB:number;
+export const LIVE_HOSTING_MAX:number;
+export const GITHUB_FILE_MAX:number;
+export const GITHUB_FILE_WARN:number;
+export const TEST_SCHEMA2_MAX:number;
+export type Entry={path:string;data:Buffer};
+export type PackagerConfig={profile:'live'|'test-channel';schema1Max:number;schema1Overflow:'fail'|'hold';schema2:boolean;schema2Max:number;quality:number;overlay:string};
+export function hash(data:Buffer|string):string;
+export function packagerConfig(env?:Record<string,string|undefined>):PackagerConfig;
+export function encodeSchema1(entries:Entry[]):{gz:Buffer;jsonBytes:number;unpacked:number;count:number};
+export function schema1Problem(encoded:{gz:Buffer;jsonBytes:number;unpacked:number;count:number},max:number):string|null;
+export function encodeSchema2(entries:Entry[],version:string,quality?:number):{pack:Buffer;unpacked:number};
+export function launcherEntries(config:Pick<PackagerConfig,'profile'|'overlay'>,repo?:string):Entry[];
+export function manifest2(input:{build:string;version:string;pack:Buffer;unpacked:number;count:number;launcher:Entry[]}):Record<string,any>;
