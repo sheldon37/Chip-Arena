@@ -18,6 +18,16 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-04 — Claude — melee attack stamina 40% lower (all melee)
+- Branch `claude/melee-stamina` from `origin/claude/visual-revision` `b7f3dad`.
+- Owner: "Lower stamina drain from melee attacks by a good portion, on ALL melee." Primary swing cost (`meleeCost`,
+  souls-combat.ts) ×0.6: daggers 16→10, sword 30→18, shield 36→22, greatsword 44→26. Echo Strike follow-ups 5→3
+  (`followupCost`). E specials keep their costs (30/38/45/55). DEV melee (Emperor, Ansatsuken) unchanged (already 3–4/hit).
+- Gameplay change: stamina only. Hit timing, hitboxes, damage, cooldowns, movement and networking are unchanged.
+- Tests: three pins updated with comments (souls-combat costs, melee-reference-update dagger spend, modifiers stamina gate).
+  pvp-golden melee-dev, siren-melee, siren-ward-zero regenerated; with the old costs all seven traces matched the old hashes.
+  Full Node 22 suite before pin updates: only those 6 plus the 13 known failures; pvp-golden 7/7 and the 3 updated files pass.
+
 ## 2026-10-04 — Claude — greatsword blade clears the shoulders (mocap follow-up)
 
 - Publication (previous task): PR #36 merged 076afe5 -> test 0.2.7f4cf400e693; channel c351c41; schema1 arena-79bbf8ca845d2b9e.json.gz 26,167,432 B, schema2 arena-4bbd4d77d7a7b6cf.pack 22,081,531 B; old launcher and seed manual-update both installed then reported current; candidate verify baseline-only.
