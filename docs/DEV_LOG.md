@@ -18,6 +18,15 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-04 — Claude — publication record: PR #34 + PR #35 on the test channel
+- Owner confirmed publication and granted standing permission for pushes, merges and test-channel updates (2026-10-04).
+- PR #34 merged `c307925`, PR #35 merged `ab2e4c5` -> test `0.2.31513375c335` (channel commit `e49b238`).
+  Schema 1 `arena-627b9d85d7fb7712.json.gz` 26,148,392 B; schema 2 `arena-e002c9381d84a9a6.pack` 22,068,484 B.
+- Candidate (`candidate.py --test-only --channel`, Node 24.19.0): every stage passed except baseline-only verify (12 known
+  Node 24 unit names, 4 server tsc errors, websocket "Timed out: rematch"); source-privacy and channel-e2e passed.
+- Verified from the live feed: old launcher `run.mjs` 0.2.19e114ae7c87 -> new then "up to date"; dcc7430 seed
+  `manual-update.mjs` test-seed -> new via schema 2 then "current". Live feed and Site untouched.
+
 ## 2026-10-04 — Claude — greatsword Mixamo mocap (client visual only)
 
 - Task: owner-supplied Mixamo "Great Sword Pack" converted into the voxel rig's pose system for the greatsword.
@@ -44,6 +53,21 @@ containing an entry; no self-referential commit hash is required.
   (SwiftShader) before/after reviewed. Not run: Windows/GPU, multiplayer, packaging, update-channel publication.
 - Risks / next: owner playtest of feel (hoist is the capture's speed, ~as fast as the strike; turning in place slides
   the captured idle stance; deep low sweep on cut 2). Mapped clips can be swapped in convert-greatsword.mjs.
+
+## 2026-10-04 — Claude — killcam starts closer to the kill (result screen stays 5 s)
+- Branch `claude/killcam-forward` from `origin/claude/visual-revision` `c307925` (PR #34 merge).
+- Owner: keep the 5 s result screen, just move the killcam forward. `KILLCAM` before 2 → 1.5 s and live hold 1.2 → .6 s;
+  aftermath stays 4 s. The kill now plays ~2.1 s after death (was 3.2 s), so a round-ending kill shows ~2.9 s of
+  aftermath before the 5 s result ends (was ~1.8 s); other deaths show the full 4 s. Client presentation only: no change
+  to hit timing, hitboxes, damage, cooldowns, movement, respawn/result timing or networking.
+- Tests: killcam pins/timing updated (`tests/killcam.test.ts`, `tests/killcam-network.ts`); killcam unit + presentation
+  16/16 pass, killcam network scenario passes, `npm run check:types` passes. Not run: full suite (change is confined to
+  killcam constants), Windows hand-play.
+- Publication record: PR #34 merged `c307925` (intros refresh, combat FX on adds, hold-to-aim, ADS zeroing, killcam
+  aftermath). CI was baseline-only (4 server tsc errors, known Node 24 unit names, websocket "Timed out: rematch"; a
+  first-run `sawDestruction` websocket failure did not recur on the one rerun). Not yet published to the test channel:
+  publication paused for owner confirmation after an auto-mode permission block.
+- Next: owner confirms publication; build the test candidate from the merge of this branch and publish both feeds.
 
 ## 2026-10-04 — Claude — weapon intros refresh, 3 s lobby return, ADS sight alignment, Emperor audio leak, AoE outlines
 
