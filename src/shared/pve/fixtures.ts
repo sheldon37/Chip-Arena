@@ -102,7 +102,7 @@ export function fixtureMachines(o:FixtureOptions={}):PveMachineUse[]{const {time
 const TIERS:DropTier[]=['common','uncommon','rare','epic','legendary','mythic','rainbow'];
 /** One pickup of every drop tier in front of the chip machines (the first still popping out). */
 export function fixturePickups(o:FixtureOptions={}):PvePickupView[]{const {time,ids}=opt(o);
- return TIERS.map((tier,i)=>{const m=PVE_MACHINES[i%4],dx=(i>>2)*.6;return {id:'pk'+(i+1),owner:ids[i%ids.length],tier,pos:{x:m.dispense.x+dx,y:.9,z:m.dispense.z},born:i===0?time+.3:time-2,m:m.m};});}
+ return TIERS.map((tier,i)=>{const m=PVE_MACHINES[i%4],dx=(i>>2)*.6;return {id:'pk'+(i+1),owner:ids[i%ids.length],tier,pos:{x:m.chipDrop.x+dx,y:.9,z:m.chipDrop.z},born:i===0?time+.3:time-2,m:m.m};});}
 export function fixtureRecruits(o:FixtureOptions={}):PveRecruitView[]{const {time,ids}=opt(o);
  return [{id:RECRUIT_PREFIX+'1',owner:ids[0],role:'dps',at:time-.3,m:4},{id:RECRUIT_PREFIX+'2',owner:ids[0],role:'tank',at:time-20,m:4,tauntUntil:time+.6},{id:RECRUIT_PREFIX+'3',owner:ids[1]??ids[0],role:'medic',at:time-40,m:5}];}
 

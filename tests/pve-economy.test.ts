@@ -90,8 +90,9 @@ test('prices escalate (chip 175..350, revive 150..400); heal cooldown 12 s; ever
   assert.equal(econ.money('h1'),ECONOMY.startMoney);econ.grant('h1',5000,'test');
   const f=front(0);place(h1,f.x,f.z);
   for(let i=0;i<8;i++){const m=econ.money('h1');tapF(s,h1);spent.push(m-econ.money('h1'));
-   // grab the pickup once it is born so the 3-ungrabbed cap never applies
-   tick(s,40);tapF(s,h1);closeAll(w);}
+   // grab the pickup once it is born so the 3-ungrabbed cap never applies. Chips now land CHIP_DROP_DISTANCE out from
+   // the machine (owner 2026-10-03), so walk to the chip to take it, then return to the machine.
+   tick(s,40);const k=econ.pickupsView().find(x=>x.owner==='h1')!;place(h1,k.pos.x,k.pos.z);tapF(s,h1);closeAll(w);place(h1,f.x,f.z);}
   assert.deepEqual(spent,[175,200,225,250,275,300,325,350]);assert.equal(econ.partyView('h1').chipsBought,8);
   // 3 ungrabbed pickups.
   for(let i=0;i<3;i++){tapF(s,h1);}
