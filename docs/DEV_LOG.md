@@ -32,13 +32,21 @@ containing an entry; no self-referential commit hash is required.
 - Lock-on (client only, `src/client/melee-lock.ts`): for a melee pilot alive in a fight, Tab locks the nearest enemy in view
   (16 m, 50° cone; players, PvE adds, enemy summons, Slenderman; never allies or the hidden boss); a tap cycles clockwise,
   holding 0.4 s releases; the lock ends when the target dies, disappears or passes 24 m, or the pilot stops being eligible.
-  Yaw/pitch ease toward the target and mouse look pauses while locked; a reticle marks the target. Otherwise Tab keeps the
-  Builds board. Escape now shows the match menu with the player/party board beside it (owner suggestion).
+  Yaw/pitch ease toward the target and mouse look pauses while locked; a reticle marks the target. Line of sight is required
+  to lock or cycle; behind cover the lock stops steering and releases after 1 s. Otherwise Tab keeps the Builds board.
+  Escape now shows the match menu with the player/party board beside it (stacked below it on windows ≤1180 px; not in the
+  Dev Sandbox, whose panel sits there) (owner suggestion).
 - Impacts: hit timing, hitboxes, damage and cooldowns unchanged for attacks that are not cancelled; a cancel before the strike
   deals no hit, mid-sweep loses the rest of the arc and Echo follow-ups; movement gains sprint for humans only. Network:
-  optional `sprint` input flag, optional `sprinting` and `followup` snapshot fields, `HOST_CAPS.move`. pvp-golden unchanged.
-  Old clients on a new host are not gated: a mid-swing roll there snaps (the host cancels, the old predictor does not).
-- Checks: CHECKS_PLACEHOLDER
+  optional `sprint` and `rollCancel` input flags, optional `sprinting` and `followup` snapshot fields, `HOST_CAPS.move`.
+  The host cancels only for inputs carrying `rollCancel` (sent with Shift by new clients), so older clients keep today's
+  behaviour on a new host. pvp-golden unchanged.
+- Checks (Node 22.22.0): check:types pass; server tsc 4 baseline errors; sprint-rollcancel 15/15, melee-lock 5/5, all 6
+  pvp-golden traces identical; full unit suite 1250, 13 failures = the 12 known names + the Node 22 portable-update test;
+  network motion, party and HTTPS pass (block and emperor-network fail identically on d31fa25; default only "rematch").
+  Two adversarial review rounds (4 areas): 15 findings fixed. Real-app (Vite dev server, headless Chromium): Tab lock turns
+  the camera onto the dummy with the reticle, hold releases, death releases; sprint 6.8 → 9.18 m/s; greatsword roll-cancel
+  clears the commitment (stamina 100 − 26 − 29); Escape menu + board at 1440 and stacked at 1100 px.
 - Not run: native Windows feel (sprint lean, lock-on turn rate, roll-cancel blends), online/relay latency feel, bots sprinting.
 
 ## 2026-10-04 — Claude — Siren PvE: much harder "Find me..." (more spawns), 30 s intermissions

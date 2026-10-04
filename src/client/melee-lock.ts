@@ -9,7 +9,9 @@ import {VIEW} from '../shared/view.js';
 import {SLENDER} from '../shared/leet-content.js';
 import {type Vec,v,clamp,forward} from '../shared/config.js';
 
-export const LOCK_ON={acquireRange:16,breakRange:24,cone:50*Math.PI/180,holdRelease:.4,turnRate:14,pitchLimit:1.1,lift:.2,pitchBias:.06} as const;
+export const LOCK_ON={acquireRange:16,breakRange:24,cone:50*Math.PI/180,holdRelease:.4,turnRate:14,pitchLimit:1.1,lift:.2,pitchBias:.06,losGrace:1} as const;
+/** Line of sight from the pilot's eye to a target point (walls, props); without one, everything counts as visible. */
+export type LockVisible=(from:Vec,to:Vec)=>boolean;
 export type LockKind='player'|'add'|'minion'|'slender';
 export interface LockTarget{key:string;kind:LockKind;id:string;point:Vec;name?:string}
 const TAU=Math.PI*2,wrap=(a:number)=>a-TAU*Math.round(a/TAU);
@@ -40,17 +42,17 @@ export function aimAt(eye:Vec,point:Vec){const dx=point.x-eye.x,dy=point.y-eye.y
  return {yaw:Math.atan2(dx,dz),pitch:clamp(Math.atan2(dy,flat)-LOCK_ON.pitchBias,-LOCK_ON.pitchLimit,LOCK_ON.pitchLimit),distance:Math.hypot(flat,dy)};}
 const eyeOf=(pos:Vec)=>v(pos.x,pos.y+VIEW.eyeHeight,pos.z);
 /** Nearest valid target in view: inside the cone around the look direction and the acquire range; centre first, then near. */
-export function acquire(list:LockTarget[],pos:Vec,yaw:number,pitch:number):LockTarget|undefined{
+export function acquire(list:LockTarget[],pos:Vec,yaw:number,pitch:number,visible?:LockVisible):LockTarget|undefined{
  const eye=eyeOf(pos),look=forward(yaw,pitch);let best:LockTarget|undefined,score=Infinity;
- for(const t of list){const d=v(t.point.x-eye.x,t.point.y-eye.y,t.point.z-eye.z),l=Math.hypot(d.x,d.y,d.z);if(l>LOCK_ON.acquireRange||l<1e-3)continue;
+ for(const t of list){if(visible&&!visible(eye,t.point))continue;const d=v(t.point.x-eye.x,t.point.y-eye.y,t.point.z-eye.z),l=Math.hypot(d.x,d.y,d.z);if(l>LOCK_ON.acquireRange||l<1e-3)continue;
   const angle=Math.acos(clamp((d.x*look.x+d.y*look.y+d.z*look.z)/l,-1,1));if(angle>LOCK_ON.cone)continue;
   const s=angle/LOCK_ON.cone+l/LOCK_ON.acquireRange;if(s<score||s===score&&t.key<(best?.key??'')){score=s;best=t;}}
  return best;
 }
 /** Tab tap while locked: the next target clockwise (to the right on screen) around the pilot, within acquire range; wraps. */
-export function cycle(list:LockTarget[],pos:Vec,current:string):LockTarget|undefined{
+export function cycle(list:LockTarget[],pos:Vec,current:string,visible?:LockVisible):LockTarget|undefined{
  const eye=eyeOf(pos),cur=list.find(t=>t.key===current);if(!cur)return undefined;const from=aimAt(eye,cur.point).yaw;let best:LockTarget|undefined,gap=Infinity;
- for(const t of list){if(t.key===current)continue;const a=aimAt(eye,t.point);if(a.distance>LOCK_ON.acquireRange)continue;
+ for(const t of list){if(t.key===current||visible&&!visible(eye,t.point))continue;const a=aimAt(eye,t.point);if(a.distance>LOCK_ON.acquireRange)continue;
   // Turning right decreases yaw (mouse: yaw -= movementX), so "next to the right" is the smallest positive (from - yaw).
   let g=((from-a.yaw)%TAU+TAU)%TAU;if(g<1e-6)g=TAU;if(g<gap||g===gap&&t.key<(best?.key??'')){gap=g;best=t;}}
  return best??cur;
@@ -61,23 +63,27 @@ export function steer(yaw:number,pitch:number,pos:Vec,point:Vec,dt:number){const
 
 /** Tab state machine. press/release from key events (non-repeat), tick each frame. */
 export class LockOn{
- key:string|undefined;private downAt:number|undefined;private acquiredThisPress=false;private released=false;
+ key:string|undefined;private downAt:number|undefined;private acquiredThisPress=false;private released=false;private hiddenSince:number|undefined;
+ /** Optional line-of-sight test (main.ts: the renderer's world ray). */
+ visible?:LockVisible;
  get active(){return this.key!==undefined;}
- clear(){this.key=undefined;this.downAt=undefined;}
+ clear(){this.key=undefined;this.downAt=undefined;this.hiddenSince=undefined;}
  /** Window blur / alt-tab: forget a Tab press in progress (it neither cycles nor releases later). */
  cancelPress(){this.downAt=undefined;}
  press(now:number,state:Snapshot,id:string,pos:Vec,yaw:number,pitch:number){this.downAt=now;this.released=false;this.acquiredThisPress=false;
-  if(!this.key){this.key=acquire(lockTargets(state,id),pos,yaw,pitch)?.key;this.acquiredThisPress=true;}}
+  if(!this.key){this.key=acquire(lockTargets(state,id),pos,yaw,pitch,this.visible)?.key;this.acquiredThisPress=true;this.hiddenSince=undefined;}}
  release(now:number,state:Snapshot,id:string,pos:Vec){if(this.downAt===undefined)return;const held=(now-this.downAt)/1000;this.downAt=undefined;
   if(this.released||this.acquiredThisPress||!this.key)return;
   // A hold the frame loop has not seen yet (low frame rate) still releases on key-up; a tap cycles.
-  if(held>=LOCK_ON.holdRelease){this.released=true;this.key=undefined;return;}this.key=cycle(lockTargets(state,id),pos,this.key)?.key;}
+  if(held>=LOCK_ON.holdRelease){this.released=true;this.key=undefined;return;}this.key=cycle(lockTargets(state,id),pos,this.key,this.visible)?.key;this.hiddenSince=undefined;}
  /** Returns the live target (or undefined after any release condition). */
  tick(now:number,state:Snapshot,id:string,pos:Vec):LockTarget|undefined{
   if(this.downAt!==undefined&&!this.acquiredThisPress&&!this.released&&this.key&&(now-this.downAt)/1000>=LOCK_ON.holdRelease){this.released=true;this.key=undefined;}
   if(!this.key)return undefined;if(!lockEligible(state,id)){this.key=undefined;return undefined;}
   const t=lockTargets(state,id).find(t=>t.key===this.key);if(!t){this.key=undefined;return undefined;}// dead, removed, hidden, ally, disconnected
   const e=eyeOf(pos);if(Math.hypot(t.point.x-e.x,t.point.y-e.y,t.point.z-e.z)>LOCK_ON.breakRange){this.key=undefined;return undefined;}
-  return t;
+  // Behind cover: no steering or reticle; LOCK_ON.losGrace s without sight releases (a pillar passing by keeps the lock).
+  if(this.visible&&!this.visible(e,t.point)){this.hiddenSince??=now;if((now-this.hiddenSince)/1000>=LOCK_ON.losGrace){this.key=undefined;this.hiddenSince=undefined;}return undefined;}
+  this.hiddenSince=undefined;return t;
  }
 }

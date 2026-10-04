@@ -45,3 +45,15 @@ test('end to end: steered yaw (client only) turns a dagger whiff into a hit; the
   s.dispose();
  }
 });
+
+test('line of sight: no lock through a wall; a lock behind cover stops steering and releases after LOCK_ON.losGrace',()=>{
+ const {s,a,b}=game('sword');place(b,.5,7);s.addProp({id:'wall',pos:v(0,2,3),size:v(8,4,.6),material:'stone'});s.world.step();
+ const snap=s.snapshot(),pos=snap.players.find(p=>p.id==='a')!.pos,ray=(o:any,d:any,max:number)=>s.ray(o,d,max,'a')?.timeOfImpact??null;
+ const visible=(from:any,to:any)=>{const dx=to.x-from.x,dy=to.y-from.y,dz=to.z-from.z,l=Math.hypot(dx,dy,dz),hit=ray(from,{x:dx/l,y:dy/l,z:dz/l},l);return hit===null||hit>=l-.7;};
+ assert.equal(acquire(lockTargets(snap,'a'),pos,0,-.06,visible),undefined,'hidden behind the wall');assert.equal(acquire(lockTargets(snap,'a'),pos,0,-.06)?.id,'b','without a sight test it would lock');
+ const lock=new LockOn();lock.press(0,snap,'a',pos,0,-.06);assert.equal(lock.key,'p:b');lock.visible=visible;
+ assert.equal(lock.tick(100,snap,'a',pos),undefined,'behind cover: no target to steer at');assert.equal(lock.key,'p:b','still locked within the grace');
+ assert.equal(lock.tick(100+LOCK_ON.losGrace*1000,snap,'a',pos),undefined);assert.equal(lock.key,undefined,'released after the grace');
+ s.removeProp('wall');s.world.step();const open=s.snapshot();lock.press(2000,open,'a',pos,0,-.06);assert.equal(lock.key,'p:b','in sight again');assert.equal(lock.tick(2100,open,'a',pos)?.id,'b');
+ s.dispose();
+});
