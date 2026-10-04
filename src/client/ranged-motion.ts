@@ -1,6 +1,7 @@
 import * as T from 'three';
 import type {PlayerView} from '../shared/simulation.js';
-import {WEAPONS,statsFor,type Weapon} from '../shared/content.js';
+import {WEAPONS,statsFor,type Weapon,type Stats} from '../shared/content.js';
+import {kitFor,abilityActive,castTime} from '../shared/abilities.js';
 import {clamp} from '../shared/config.js';
 import type {CharacterRig} from './character-rig.js';
 import type {attackPose} from './character-animation.js';
@@ -25,6 +26,12 @@ type Pose=ReturnType<typeof attackPose>;
 const _q=new T.Quaternion(),_q2=new T.Quaternion(),_q3=new T.Quaternion(),_qc=new T.Quaternion(),_qd=new T.Quaternion(),_qg=new T.Quaternion(),_qf=new T.Quaternion(),_qi=new T.Quaternion(),_qw=new T.Quaternion();
 const _v=new T.Vector3(),_v2=new T.Vector3(),_t=new T.Vector3(),_eu=new T.Euler(),_eu2=new T.Euler(),_lh=new T.Vector3();
 const X=new T.Vector3(1,0,0);
+/** The newest live Q/E ability phrase (design §12): id, age since the authoritative cast start (lastAbility/lastSecondary)
+ * and the release time castTime(windup). Undefined outside 3 s, for ADS, and for Necronomicon's Raise the Dead. */
+export function abilityPhrase(p:PlayerView,time:number){const k=kitFor(p.spec),q=p.lastAbility??-1e9,e=p.chips.necronomicon?-1e9:p.lastSecondary,slot=q>e?'q':'e',start=Math.max(q,e),age=time-start;
+ if(!k||age<0||age>3||k[slot].kind==='ads'||!abilityActive(p.spec,slot))return;return {id:k[slot].id,age,start,releaseAt:castTime(k[slot].windup,{attackRate:p.attackRate||1} as Stats)};}
+/** Rocket recoil envelope over the time since release: a 30 ms rise, then a .32 s ease back. */
+export const rocketKick=(rel:number)=>rel<0?0:rel<.03?rel/.03:Math.max(0,1-(rel-.03)/.32)**2;
 /** Deterministic [0,1) hash of a timestamp (no randomness in pose code). */
 export const hashTime=(x:number)=>{const s=Math.sin(x*127.1+311.7)*43758.5453;return s-Math.floor(s);};
 /** Semi-implicit damped spring, sub-stepped (<=1/240 s) so a stiff spring stays stable at 30 Hz. Writes [x,v] into `out`. */
@@ -73,6 +80,8 @@ export function orientHeld(r:CharacterRig,wrist:T.Object3D,weapon:T.Object3D,che
 function chestInGroup(r:CharacterRig,out:T.Quaternion){r.chest.getWorldQuaternion(out);return out.premultiply(r.group.getWorldQuaternion(_q).invert());}
 /** Default butt position (weapon space) when a long gun has no 'stock-butt' marker. */
 const BUTT_FALLBACK=new T.Vector3(0,-.04,-.30);
+/** Support-arm elbow pole for the overhand throw (elbow out and up, so it never flips past the shoulder). */
+const THROW_POLE=new T.Vector3(1,.6,0);
 /** Right-shoulder pocket (chest space): the front face of the ribcage inside the right shoulder. */
 export const POCKET=new T.Vector3(-.11,.245,.155);
 /** Live tuning of the shouldered hold (exported for the numeric probes; presentation only). */
@@ -90,7 +99,7 @@ export function updateAimWeight(r:CharacterRig,p:PlayerView,pose:Pose,w:Weapon,d
   // Combat strafe and backpedal keep the gun up; only running forward lowers it into the travel carry. The first-person
   // view model always keeps the gun in hand (first-person-view.ts lowers the whole view model while running).
   const speed=Math.hypot(p.vel.x,p.vel.z),ahead=speed>1?(p.vel.x*Math.sin(p.yaw)+p.vel.z*Math.cos(p.yaw))/speed:1;
-  aimTarget=pose.shotAge<Math.max(.38,w.interval+.15)||p.reloadTime>0||r.motion<.18||ahead<.6||p.guarding||p.blockTime>0||isFirstPersonRig(r)?1:0;
+  aimTarget=pose.shotAge<Math.max(.38,w.interval+.15)||p.reloadTime>0||r.motion<.18||ahead<.6||p.guarding||p.blockTime>0||isFirstPersonRig(r)||p.adsSince!==undefined?1:0;
  }
  // Critically damped (starts at rest, so raising the gun out of a run eases in); stiffer when a shot fires from a low carry.
  const s=aimSprings.get(r),h=clamp(dt,0,.05),omega=w.class==='ranged'&&aimTarget>r.aimWeight&&pose.shotAge<.1&&r.aimWeight<.6?32:24;
@@ -113,7 +122,7 @@ export function rangedLayer(r:CharacterRig,p:PlayerView,pose:Pose,time:number,dt
  const fresh=clock.fresh||s.spec!==spec,step=clock.dt;s.t=time;s.spec=spec;
  // Recoil: a ~30 ms rise, then a damped return (the pistol overshoots ~10%, the rifle settles critically); machine-gun
  // shots feed a spring so bursts (and shots merged into one 20 Hz snapshot) build a steady shake instead of a buzz.
- const shotAt=p.lastShot??p.lastAttack,shotAge=time-shotAt;
+ const shotAt=p.lastShot??p.lastAttack,shotAge=time-shotAt,ab=abilityPhrase(p,time),rel=ab?ab.age-ab.releaseAt:-9,rocket=ab?.id==='rocket'?rocketKick(rel):0;
  const single=(age:number)=>{if(age<0||age>.8)return 0;if(age<.03)return Math.sin(Math.PI/2*age/.03);const u=age-.03;if(spec==='pistol'){const o=24,z=.6,wd=o*Math.sqrt(1-z*z);return Math.exp(-z*o*u)*(Math.cos(wd*u)+z*o/wd*Math.sin(wd*u));}const o=18;return (1+o*u)*Math.exp(-o*u);};
  let kick:number;
  if(mg){
@@ -138,20 +147,20 @@ export function rangedLayer(r:CharacterRig,p:PlayerView,pose:Pose,time:number,dt
  r.chest.rotation.y=T.MathUtils.lerp(r.chest.rotation.y,-blade*.55,hold)+tuck*.2;
  r.neck.rotation.x-=pitch*.10*a;
  // Head: counter the blade, keep the previous world pitch, and (rifle; lighter on the MG) settle the cheek toward the stock.
- const weld=(spec==='rifle'?1:mg?.55:0)*a*(1-g)*(1-e)*fpRig;
- r.head.rotation.x+=pitch*.5*a+weld*.12+headKick*.05*a+g*.2+tuck*.25;
+ const ads=p.adsSince!==undefined?1:0,weld=Math.max(spec==='rifle'?1:mg?.55:0,ads)*a*(1-g)*(1-e)*fpRig;
+ r.head.rotation.x+=pitch*.5*a+weld*(.12+ads*.06)+headKick*.05*a+g*.2+tuck*.25;
  r.head.rotation.y+=blade+weld*.06;
  r.head.rotation.z=T.MathUtils.lerp(r.head.rotation.z,long?0:-.08,hold)+weld*.06;r.neck.rotation.z+=weld*.12;r.neck.rotation.x+=weld*.15;
  r.leftShoulder.rotation.y-=(long?RANGED_TUNE.leftProtract:.15)*hold;r.rightShoulder.rotation.y+=(long?RANGED_TUNE.rightProtract:0)*hold;
  r.rightShoulder.rotation.y-=kick*.08*a;
  // The aimed weapon in the group frame (barrel along the aim, recoil rise, hashed MG yaw/roll), then in chest space.
  const jitter=mg?clamp(s.kick,0,1.2):0,jy=(hashTime(shotAt)-.5)*.06*jitter,jr=(hashTime(shotAt+1.7)-.5)*.08*jitter;
- _qg.setFromEuler(_eu.set(-pitch-kick*.13,jy,jr,'YXZ'));
+ _qg.setFromEuler(_eu.set(-pitch-kick*.13-.25*rocket*fpRig,jy,jr,'YXZ'));
  const aimQ=chestInGroup(r,_qc).invert().multiply(_qg);
  // Brace target (weapon origin = wrist): shouldered long guns hang from the pocket by the butt; the pistol from the pivot.
  if(long)_t.copy(r.weapon.getObjectByName('stock-butt')?.position??BUTT_FALLBACK).applyQuaternion(aimQ).negate().add(POCKET);
  else _t.copy(PISTOL_REACH).applyQuaternion(aimQ).add(PISTOL_PIVOT);
- _t.addScaledVector(_v.set(0,0,1).applyQuaternion(aimQ),-kick*(long?.045:.035));
+ _t.addScaledVector(_v.set(0,0,1).applyQuaternion(aimQ),-kick*(long?.045:.035)-.08*rocket*fpRig);
  // Guard: long guns become a diagonal port-arms barrier (muzzle up-left); the pistol comes to a two-hand high ready at the sternum, muzzle up.
  if(g>.001){aimQ.slerp(_q3.setFromEuler(_eu2.set(long?-1.05:-1.25,long?.55:.1,long?.75:0,'YXZ')),g);_t.lerp(_v2.set(long?-.1:-.06,long?.14:.2,long?.3:.24),g);}
  // Reload: tuck and cant the gun toward the chest (the pistol comes inboard and up), hold, then ease back to the aim.
@@ -165,10 +174,20 @@ export function rangedLayer(r:CharacterRig,p:PlayerView,pose:Pose,time:number,dt
  // Travel carry: the arms keep pumping, but the weapon holds a stable chest-space orientation instead of windmilling.
  if(hold<.999)orientHeld(r,r.rightHand,r.weapon,carryOrientation(spec,r.stride,_q3),(1-hold)*smoothMotion(r.motion/.35),.55);
  if(e>0)reloadHands(r,spec,u,e,reload.elapsed,reload.duration,aimQ);
+ // Frag throw (support hand): from the vest up to cocked beside the head (low and forward in first person, clear of the
+ // camera), overhand release at the authoritative release,
+ // follow through, back on the grip by release+.55 s; a grenade rides in the palm until release. Orbital Mark: the support hand
+ // taps the visor around the release (third person).
+ let nade=r.leftHand.getObjectByName('held-grenade');if(nade)nade.visible=false;
+ if(ab&&(ab.id==='frag-grenade'&&rel<.55||ab.id==='orbital-mark'&&rel>-.1&&rel<.25&&fpRig)){const R=ab.releaseAt,frag=ab.id==='frag-grenade',grip=r.weapon.getObjectByName('support-grip'),g=weaponPoint(r,grip?grip.position:_v.set(0,-.05,.1),_k[0]);
+  const K=frag?[0,.35*R,.75*R,R,R+.15,R+.55]:[R-.1,R,R+.25],P=frag?[g,_k[4].set(.2,.02,.22),fpRig?_k[1].set(.26,.46,.06):_k[1].set(.3,.12,.3),_k[2].set(.12,fpRig?.38:.2,.44),_k[3].set(0,.06,.36),g]:[g,_k[1].set(-.02,.5,.13),g],t=ab.age;
+  _lh.set(poseCurve(K,P.map(q=>q.x),t),poseCurve(K,P.map(q=>q.y),t),poseCurve(K,P.map(q=>q.z),t));
+  supportReach(r,_lh,_eu2.setFromQuaternion(aimQ),smoothMotion(frag?Math.min(t/.05,(R+.55-t)/.15):Math.min((rel+.1)/.06,(.25-rel)/.08)),frag?THROW_POLE:undefined);
+  if(frag&&t>.3*R&&t<R){if(!nade){nade=new T.Mesh(new T.BoxGeometry(.075,.085,.075),new T.MeshLambertMaterial({color:0x40633a}));nade.name='held-grenade';nade.position.set(0,-.09,.03);r.leftHand.add(nade);}nade.visible=true;}}
 }
 /** Left-hand IK that leaves the (hidden) off-hand weapon socket alone. */
 const _op=new T.Vector3(),_oq=new T.Quaternion();
-function supportReach(r:CharacterRig,target:T.Vector3,orientation:T.Euler,weight:number){_op.copy(r.offWeapon.position);_oq.copy(r.offWeapon.quaternion);hand(r,true,target,orientation,weight);r.offWeapon.position.copy(_op);r.offWeapon.quaternion.copy(_oq);}
+function supportReach(r:CharacterRig,target:T.Vector3,orientation:T.Euler,weight:number,pole?:T.Vector3){_op.copy(r.offWeapon.position);_oq.copy(r.offWeapon.quaternion);hand(r,true,target,orientation,weight,pole);r.offWeapon.position.copy(_op);r.offWeapon.quaternion.copy(_oq);}
 /** Weapon-space key points for the support hand: magwell (wrist below the magazine) and the charge (bolt knob, top cover, slide). */
 const MAGWELL:Record<string,T.Vector3>={pistol:new T.Vector3(0,-.30,-.07),rifle:new T.Vector3(0,-.27,.16),machinegun:new T.Vector3(.02,-.27,.2)};
 const CHARGE:Record<string,[T.Vector3,T.Vector3]>={pistol:[new T.Vector3(.06,.02,-.04),new T.Vector3(.06,.02,-.1)],rifle:[new T.Vector3(-.12,.06,-.02),new T.Vector3(-.12,.06,-.09)],machinegun:[new T.Vector3(0,.24,.02),new T.Vector3(0,.16,.02)]};

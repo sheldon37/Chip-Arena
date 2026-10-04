@@ -27,12 +27,12 @@ export function weightedPick<K extends string>(next:()=>number,table:Partial<Rec
  for(const k of keys){roll-=table[k]!;if(roll<0)return k;}return keys[keys.length-1];
 }
 /** Forced idle that keeps the sequence, look direction and camera (§5.3). */
-const idle=(b:Input):Input=>({seq:b.seq,x:0,z:0,yaw:b.yaw,pitch:b.pitch,attack:false,electric:false,hadoken:false,uppercut:false,block:false,
+const idle=(b:Input):Input=>({seq:b.seq,x:0,z:0,yaw:b.yaw,pitch:b.pitch,attack:false,ability:false,electric:false,hadoken:false,uppercut:false,block:false,
  secondary:false,jump:false,dash:false,reload:false,...(b.camera?{camera:b.camera}:{})});
 
 interface Row{
  id:string;money:number;earned:number;spent:number;chipsBought:number;recruitsHired:number;picks:PvePick[];open?:string;openAt?:number;
- hurtAt?:number;downAt?:number;selfRevives:number;selfReviveAt?:number;healAt?:number;healUntil?:number;healReadyAt:number;
+ hurtAt?:number;downAt?:number;upAt?:number;selfRevives:number;selfReviveAt?:number;healAt?:number;healUntil?:number;healReadyAt:number;
  healPulses:number;thinkUntil?:number;pendingStats:boolean;bossCum:number;bossPaid:number;
 }
 interface PendingHire{owner:string;at:number;m:number;price:number}
@@ -166,7 +166,7 @@ export class Economy implements EconomyApi{
  /** From Simulation.revivePlayer (every revive path): picks made while dead apply now; once-keys reset (D37). */
  onRevive(p:Player){
   const r=this.rows.get(p.id);
-  if(r){r.downAt=undefined;r.selfReviveAt=undefined;if(r.pendingStats){r.pendingStats=false;applyChipsLive(p);}}
+  if(r){r.downAt=undefined;r.upAt=this.time;r.selfReviveAt=undefined;if(r.pendingStats){r.pendingStats=false;applyChipsLive(p);}}
   this.sim.chaos.forget(p.id+':exit');this.sim.chaos.forget(p.id+':panic');
  }
  private revive(p:Player,pos:{x:number;z:number},event:string,extra:object){
@@ -252,7 +252,7 @@ export class Economy implements EconomyApi{
    if(this.pickups.filter(k=>k.owner===p.id).length>=PICKS.maxUngrabbed)return this.deny(p.id,'pickups',m.m);
    this.charge(r,price);r.chipsBought++;this.use(m.m,p.id,'chip');
    const tier=weightedPick(()=>this.draw(),DROP_ODDS);
-   this.pickups.push({id:'pk'+(++this.pickupSerial),owner:p.id,tier,pos:{x:m.dispense.x,y:.9,z:m.dispense.z},born:this.time+PRICES.dispenseDelay,m:m.m});
+   this.pickups.push({id:'pk'+(++this.pickupSerial),owner:p.id,tier,pos:{x:m.chipDrop.x,y:.9,z:m.chipDrop.z},born:this.time+PRICES.dispenseDelay,m:m.m});
    this.emit(PVE_EVENT.buy,p.id,{message:'chip',amount:price});
   }else if(m.kind==='recruit'){
    const price=PRICES.recruit;
@@ -314,7 +314,7 @@ export class Economy implements EconomyApi{
   Object.assign(row,{money:r.money,earned:r.earned,spent:r.spent,chipsBought:r.chipsBought,recruitsHired:r.recruitsHired,selfRevives:r.selfRevives,
    chipPrice:chipPrice(r.chipsBought),healReadyAt:r.healReadyAt,picks:r.picks.map(k=>({...k,...(k.offers?{offers:[...k.offers]}:{})}))});
   const opt=row as unknown as Record<string,unknown>;
-  for(const key of ['open','openAt','hurtAt','downAt','selfReviveAt','healAt','healUntil'] as const)if(r[key]!==undefined)opt[key]=r[key];
+  for(const key of ['open','openAt','hurtAt','downAt','upAt','selfReviveAt','healAt','healUntil'] as const)if(r[key]!==undefined)opt[key]=r[key];
   return row;
  }
  machinesView():PveMachineUse[]{return this.uses.map(u=>({...u}));}

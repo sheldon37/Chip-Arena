@@ -5,8 +5,9 @@ import {createHash} from 'node:crypto';
 import RAPIER from '@dimforge/rapier3d-compat';
 import {Simulation,initPhysics,type Player} from '../src/shared/simulation.js';
 import {CONFIG as C,idleInput,v,type Input} from '../src/shared/config.js';
-import {offerChips,CHIPS} from '../src/shared/content.js';
+import {offerChips,CHIPS,type Chip} from '../src/shared/content.js';
 import {POWER_CHIPS} from '../src/shared/power-chips.js';
+import {MAGIC_CHIPS} from '../src/shared/magic-chips.js';
 import {introFrame} from '../src/shared/intros.js';
 import {sirenMotion} from '../src/shared/siren-motion.js';
 import {SIREN_TIMING} from '../src/shared/siren-contract.js';
@@ -265,9 +266,12 @@ test('ground rays: standard capsules unchanged, groundRay grounds a 1.5x capsule
 });
 test('offerChips: default path identical to the base; weights replace tiers and exclusives can be skipped (acceptance 8)',()=>{
  const specs=['pistol','rifle','sword','daggers','fire','water','siren','emperor','leet','ansatsuken'] as const,out:string[][]=[];
- // The 2026-10-03 damage/health chips (power-chips.ts) grew the catalogue on purpose; the base comparison runs on the
- // base catalogue so it still proves the default code path is unchanged.
- const saved=[...CHIPS],added=new Set(POWER_CHIPS.map(c=>c.id));CHIPS.splice(0,CHIPS.length,...saved.filter(c=>!added.has(c.id)));
+ // The 2026-10-03 damage/health chips (power-chips.ts) and magic chips (magic-chips.ts) grew the catalogue on purpose, and
+ // Rally Pong v2 (pong.ts, design §9.2) is now eligible for magic too. The base comparison runs on the base catalogue with
+ // the pre-rework Pong row (copied from content.ts:106 at cfdce4b) in its slot, so it still proves the default code path
+ // is unchanged.
+ const LEGACY_PONG:Chip={id:"pong",rarity:"mythic",name:"Pong Shot",description:"One persistent shot at fixed 40% base speed, no gravity, unlimited full-damage bounces including arena edges. Next shot replaces it, even if reflected. Overrides volleys, splits, homing and returning flight; Block can still absorb it after 3 returns.",tags:["ranged"],max:1,icon:"\u2194",effects:[{stat:"pong",op:"set",value:1}]};
+ const saved=[...CHIPS],added=new Set([...POWER_CHIPS,...MAGIC_CHIPS].map(c=>c.id));CHIPS.splice(0,CHIPS.length,...saved.filter(c=>!added.has(c.id)).map(c=>c.id==='pong'?LEGACY_PONG:c));
  try{
  for(let seed=1;seed<=50;seed++)for(const spec of specs)for(const chips of [{},{vital:1,ricochet:2}] as Record<string,number>[]){let x=seed*2654435761>>>0;const random=()=>{x=(Math.imul(x,1664525)+1013904223)>>>0;return x/4294967296;};out.push(offerChips(spec as never,chips,random,seed%2?6:8));}
  // Generated on the untouched base b6d2f58 with the same loop.

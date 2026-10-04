@@ -21,7 +21,7 @@ await initPhysics();
 const list=(name:string,def:string)=>(process.env[name]??def).split(',').map(x=>x.trim()).filter(Boolean);
 const HS=list('PVE_BAL_H','1,2,3,4').map(Number),WEAPONS=list('PVE_BAL_W','pistol,rifle,greatsword'),SEEDS=list('PVE_BAL_SEEDS','1,2,3,4,5').map(Number);
 const MAX_TICKS=Math.round(60*60*Number(process.env.PVE_BAL_MAX_MIN??20));
-const CLS:Record<string,'ranged'|'melee'>={pistol:'ranged',rifle:'ranged',greatsword:'melee'};
+const CLS:Record<string,'ranged'|'melee'|'magic'>={pistol:'ranged',rifle:'ranged',machinegun:'ranged',greatsword:'melee',sword:'melee',daggers:'melee',shield:'melee',fire:'magic',water:'magic',lightning:'magic',darkness:'magic'};
 
 interface Run{kills:number;bought:{recruits:number;chips:number};h:number;weapon:string;seed:number;waves:number[];deaths:number;bossMoney:number;bossEarned:number;earned:number;bossSpent:number;phases:number[];boss:number;outcome:string;total:number;ms:number;
  /** Damage taken by the human, by source kind (adds, the boss), waves vs boss stage. */ taken:Record<string,number>;error?:string}

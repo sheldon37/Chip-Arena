@@ -16,14 +16,18 @@ export const STAND_Y=C.playerHalfHeight+C.playerRadius+.05;
 
 export interface PveMachine{m:number;id:string;kind:MachineKind;x:number;z:number;yaw:number;
  /** Interaction centre (spot + fwd·0.7): interact radius PRICES.interactRadius from here. */ front:{x:number;z:number};
- /** Where chips and recruits pop out (spot + fwd·1.3). */ dispense:{x:number;z:number}}
-const machine=(m:number,id:string,kind:MachineKind,x:number,z:number):PveMachine=>{const yaw=faceCentre(x,z),f=fwd(yaw);
- return {m,id,kind,x,z,yaw,front:xz(x+f.x*.7,z+f.z*.7),dispense:xz(x+f.x*1.3,z+f.z*1.3)};};
+ /** Where recruits step out (spot + fwd·1.3). */ dispense:{x:number;z:number};
+ /** Where a dispensed chip lands (spot + fwd·CHIP_DROP_DISTANCE), clear of the machine. */ chipDrop:{x:number;z:number}}
+/** Owner 2026-10-03: chips were landing too close to the machine. Default throw distance; machines whose front has an
+ *  obstacle closer than that pass a shorter one (probed so the drop point stays on open, walkable floor). */
+export const CHIP_DROP_DISTANCE=2.7;
+const machine=(m:number,id:string,kind:MachineKind,x:number,z:number,drop=CHIP_DROP_DISTANCE):PveMachine=>{const yaw=faceCentre(x,z),f=fwd(yaw);
+ return {m,id,kind,x,z,yaw,front:xz(x+f.x*.7,z+f.z*.7),dispense:xz(x+f.x*1.3,z+f.z*1.3),chipDrop:xz(x+f.x*drop,z+f.z*drop)};};
 const spot=(i:number)=>SIREN_CHIP_SPOTS[i];
 /** §4.2: 4 chip machines, 2 recruit pods on the existing chip pads, 2 med stations found by the clearance probe. */
 export const PVE_MACHINES:readonly PveMachine[]=[
  machine(0,'chip-0','chip',spot(0).x,spot(0).z), machine(1,'chip-1','chip',spot(1).x,spot(1).z),
- machine(2,'chip-2','chip',spot(2).x,spot(2).z), machine(3,'chip-3','chip',spot(3).x,spot(3).z),
+ machine(2,'chip-2','chip',spot(2).x,spot(2).z,2), machine(3,'chip-3','chip',spot(3).x,spot(3).z,2),
  machine(4,'chip-4','recruit',spot(4).x,spot(4).z), machine(5,'chip-5','recruit',spot(5).x,spot(5).z),
  machine(6,'med-0','med',6.5,-20), machine(7,'med-1','med',-6.5,20),
 ];

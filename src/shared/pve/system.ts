@@ -182,7 +182,7 @@ export class PveSystem implements PveHost{
  holding(){return this.director.holding();}
  /** #38 Hold tick: the director's timeline; every part shifts its absolute timers; party horizontal motion stops. */
  stepHold(dt:number){
-  this.director.stepHold(dt);this.horde.shift(dt);this.economy.shift(dt);this.recruits.shift(dt);
+  this.director.stepHold(dt);this.horde.shift(dt);this.economy.shift(dt);this.recruits.shift(dt);this.sim.abilities.shift(dt);
   for(const p of this.sim.players.values()){if(!this.isMember(p)&&!this.isRecruit(p)&&!this.isBoss(p))continue;const vel=p.body.linvel();p.body.setLinvel(v(0,vel.y,0),true);p.move=v();p.ext=v();
    for(const dots of [p.burns,p.poisons])for(const d of dots.values()){d.next+=dt;d.until+=dt;}}
   for(const [id,until] of this.untouchableUntil)this.untouchableUntil.set(id,until+dt);
@@ -209,7 +209,7 @@ export class PveSystem implements PveHost{
  /** Called by Simulation.revivePlayer. */
  onRevive(p:Player){this.economy.onRevive(p);}
  /** chaos.hitMinion for kind 'siren-add'. */
- hitAdd(m:Minion,damage:number,attacker:string,impulse:number,dir:Vec,hit?:AddHitInfo){this.horde.hit(m,damage,attacker,impulse,dir,hit);}
+ hitAdd(m:Minion,damage:number,attacker:string,impulse:number,dir:Vec,hit?:AddHitInfo):number{const actual:unknown=this.horde.hit(m,damage,attacker,impulse,dir,hit);return typeof actual==='number'?actual:0;}
  /** chaos.ts step loop: a party player's zombie or toy with no enemy player to chase (D38). */
  assistMinion(m:Minion,owner:Player,dt:number){if(this.isMember(owner)||this.isRecruit(owner))this.horde.assistMinion(m,owner,dt);}
  /** #33 Ground ray rules: humans never ground on adds; the grown boss grounds with its longer ray. */

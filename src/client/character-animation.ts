@@ -77,11 +77,13 @@ export function animateCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:numbe
 /** Sandbox-only presentation sampler: never writes simulation, attacks, inputs, or health. */
 export function animationPreviewPlayer(p:PlayerView,mode:string,time:number):PlayerView{
  const w=WEAPONS[p.spec],cycle=w.class==='melee'?Math.max(.75,w.interval+.45):w.class==='magic'?1.25:1.6,sampleAge=time%cycle;
- const out:PlayerView={...p,hitReaction:undefined,hitStunUntil:0,roll:undefined,attackCommitment:undefined,animationTime:undefined,vel:{x:0,y:0,z:0},grounded:true,lastAttack:-10,lastShot:-10,blockTime:0,guarding:false,reloadTime:0,swingAt:undefined,swingUntil:undefined,attackRate:1,dashTime:0};
+ const out:PlayerView={...p,lastAbility:undefined,adsSince:undefined,hitReaction:undefined,hitStunUntil:0,roll:undefined,attackCommitment:undefined,animationTime:undefined,vel:{x:0,y:0,z:0},grounded:true,lastAttack:-10,lastShot:-10,blockTime:0,guarding:false,reloadTime:0,swingAt:undefined,swingUntil:undefined,attackRate:1,dashTime:0};
  if(mode==='walk'||mode==='run'){out.vel={x:Math.sin(p.yaw)*(mode==='walk'?2.8:6.8),y:0,z:Math.cos(p.yaw)*(mode==='walk'?2.8:6.8)};}
  if(['attack','windup','release','left-strike','right-strike'].includes(mode)){const age=mode==='windup'?(w.class==='magic'?castWindup(p.spec)*.58:Math.max(.01,w.windup*.92)):mode==='release'?(w.class==='magic'?castWindup(p.spec)+.025:w.windup+.10):mode.endsWith('strike')?w.windup+.10:sampleAge;out.attackIndex=mode==='left-strike'?2:mode==='right-strike'?1:Math.floor(time/cycle)+1;out.lastAttack=time-age;out.lastShot=out.lastAttack+castWindup(p.spec);out.swingAt=out.lastAttack+w.windup;out.swingUntil=out.swingAt+.16;}
  if(mode==='reload')out.reloadTime=w.reload?Math.max(.01,w.reload-time%w.reload):0;
  if(mode==='block')out.blockTime=.3;
  if(mode==='jump'){out.grounded=false;out.vel.y=4;}
+ // Ability phrases and ADS (design §12.3): Q/E cast start, or aiming since, at each cycle start.
+ if(mode==='ability-q')out.lastAbility=time-sampleAge;if(mode==='ability-e')out.lastSecondary=time-sampleAge;if(mode==='ads')out.adsSince=time-sampleAge;
  return out;
 }

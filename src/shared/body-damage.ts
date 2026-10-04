@@ -83,7 +83,7 @@ export function meleeBodyImpact(spec: SpecId, rate=1, piercing=false): BodyImpac
 
 /** No source-weapon inference for burns, poison, thorns, falls or unknown scripted deaths. */
 export function scriptedBodyImpact(kind: string, damage: number, impulse: number): BodyImpact | undefined {
-  if (['blast','shrapnel','dashBlast','blockPulse','leet-nuke'].includes(kind))
+  if (['blast','shrapnel','dashBlast','blockPulse','leet-nuke','ability'].includes(kind))
     return {kind:'blast',mass:4,speed:Math.sqrt(bounded(damage,0,1000)*5),radius:.25,transfer:.5,referenceDamage:Math.max(1,damage)};
   if (kind === 'siren-crush') return {kind:'blunt',mass:10,speed:20,radius:.2,transfer:1,referenceDamage:Math.max(1,damage)};
   // Other boss/DEV attacks can provide a more specific descriptor at their damage call.

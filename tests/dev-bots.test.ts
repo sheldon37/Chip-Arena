@@ -6,6 +6,7 @@ import {WEAPONS,statsFor} from '../src/shared/content.js';
 import {botWeapon} from '../src/shared/lobby-presentation.js';
 import {botLoadouts} from '../src/client/lobby-ui.js';
 import {SIREN_SLOTS} from '../src/shared/siren-contract.js';
+import {kitFor,abilityActive} from '../src/shared/abilities.js';
 import {v,type SpecId,type Difficulty} from '../src/shared/config.js';
 await initPhysics();
 
@@ -78,11 +79,20 @@ function arena(spec:SpecId,distance:number,difficulty:Difficulty='normal'){
  return {s,bot,target,tick:(frames:number)=>{for(let n=0;n<frames;n++)s.step();}};
 }
 
+// Data-driven (ranged/magic Q+E overhaul, design §14): a live ability kit is tested at the midpoint of its E bot row
+// (≤ 20 m) within 120 ticks; legacy E rows keep today's distances and 90 ticks.
+const LEGACY_E:Partial<Record<SpecId,number>>={pistol:10,rifle:12,machinegun:10,fire:12,water:4,lightning:3.5,darkness:4,sword:2,daggers:10,shield:10,greatsword:3};
+const liveE=(spec:SpecId)=>{const e=kitFor(spec)?.e;return e?.live&&e.bot?e:undefined;};
 test('every ordinary bot weapon executes its secondary through combat, including easy bots',()=>{
- const ranges:Partial<Record<SpecId,number>>={pistol:10,rifle:12,machinegun:10,fire:12,water:4,lightning:3.5,darkness:4,sword:2,daggers:10,shield:10,greatsword:3};
- for(const [spec,distance] of Object.entries(ranges)){
-  const {s,bot,tick}=arena(spec as SpecId,distance,'easy');try{tick(90);assert.ok(bot.lastSecondary>=0,spec+' never used E');assert.ok(bot.secondaryCd>0,spec+' did not start the normal cooldown');}finally{s.dispose();}
+ for(const spec of Object.keys(LEGACY_E) as SpecId[]){
+  const e=liveE(spec),distance=e?Math.min(20,(e.bot!.min+e.bot!.max)/2):LEGACY_E[spec]!;
+  const {s,bot,tick}=arena(spec,distance,'easy');try{tick(e?120:90);assert.ok(bot.lastSecondary>=0,spec+' never used E');assert.ok(bot.secondaryCd>0||!!bot.abilityCast,spec+' did not start the normal cooldown');}finally{s.dispose();}
  }
+});
+test('ability bots use Q: guns hold ADS inside their Q bot range, magic casts its Q spell',()=>{
+ for(const spec of Object.keys(LEGACY_E) as SpecId[]){const q=kitFor(spec)?.q;if(!q?.bot||!abilityActive(spec,'q'))continue;
+  // INTEGRATION retune: pistol/MG ADS starts at 25 m (docs/ABILITIES.md), so the start distance stays inside the Q range.
+  const {s,bot,tick}=arena(spec,Math.max(q.bot.min+3,Math.min(20,(q.bot.min+q.bot.max)/2)),'hard');try{let aimed=false;for(let n=0;n<120;n++){tick(1);aimed||=!!bot.input.ability;}if(q.kind==='ads')assert.equal(aimed,true,spec+' never aimed');else assert.ok(bot.lastAbility>=0,spec+' never cast Q');}finally{s.dispose();}}
 });
 
 test('DEV bots execute electric, wavedash, Hadoken, uppercut, Tatsumaki and Root Command',()=>{
@@ -93,7 +103,10 @@ test('DEV bots execute electric, wavedash, Hadoken, uppercut, Tatsumaki and Root
 });
 
 test('close-range casters approach for their abilities instead of hovering outside the effect radius',()=>{
- for(const spec of ['water','lightning','darkness','leet'] as const){
+ // Derived (design §14): specs whose E is not a live ability kit and that still use a close-range legacy special.
+ const close=(Object.keys(WEAPONS) as SpecId[]).filter(spec=>['push','pull','nova','root'].includes(WEAPONS[spec].secondary)&&!abilityActive(spec,'e'));
+ assert.ok(close.includes('leet'));
+ for(const spec of close){
   const {s,bot,tick}=arena(spec,12);try{tick(300);assert.ok(bot.lastSecondary>=0,spec+' stayed outside ability range');}finally{s.dispose();}
  }
 });

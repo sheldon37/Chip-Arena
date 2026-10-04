@@ -29,6 +29,10 @@ Migration imported to private GitHub; not merged or released (2026-09-29).
   this branch is already distributed through the test channel.
 - Test builds update online from the public test channel
   sheldon37/chip-arena-test-updates (tooling PR #5); live feed untouched. See DEVELOPMENT.md.
+  Update headroom (owner-approved 2026-10-03, branch `claude/update-headroom`, not merged):
+  test schema 1 up to 32 MiB; updater v2 (schema 2, launcher self-update) needs one new
+  seed ZIP (no source archive), delivered as an owner-only GitHub Release asset on the private
+  game repo, tag `test-seed-<content version>` (procedure in tooling PR #5).
   Standing owner instruction (2026-10-01): publish completed game updates to this
   existing test Update channel unless told otherwise; no repeat publication approval.
 - DEV combo-ready holds and Demon Step's 0.20 s i-frame window (PR #6), plus
@@ -91,3 +95,6 @@ Windows validation and desktop distribution cutover remain separate work.
   `claude/visual-revision`, merge, test-channel publication. Native Windows review and owner balance playtest remain.
 - Siren TEST BOSS PvE mode (docs/PVE.md) merged at `2bec705` (PR #28); test content `0.2.65597ffe7165` at channel
   `de5cc4d`. Next: owner playtest and balance retune; native Windows review remains.
+- Ranged/magic Q+E ability overhaul + magic rebalance (docs/ABILITIES.md), PvE downed bodies, chip throw and update
+  headroom integrated and verified on `claude/abil-integration` (2026-10-04). Not merged or released; next: PR into
+  `claude/visual-revision`, merge, test-channel publication; owner playtest of balance.

@@ -23,6 +23,8 @@ function burnRig(fire:FlameField,r:CharacterRig,rate:number,dt:number,acc:{v:num
   fire.emit(wp.x,wp.y,wp.z,(rand()-.5)*.3,1+rand()*.9,(rand()-.5)*.3,.5+rand()*.4,(.07+rand()*.07)*size,rand()<.05?'ember':rand()<.15?'smoke':'black',2.6,2);}
 }
 
+/** A kept (PvE downed) crush victim holds this age: lying on its back, charred, before it comes apart. */
+export const SIREN_CRUSH_KEEP=2.6;
 /**
  * Last Laugh kill: the head is crushed in the Siren's grip (voxel gibs and a black-flame burst), the body hangs limp
  * for a beat, drops, keeps burning on the floor and finally falls apart into black flame. Pure function of age.
@@ -42,8 +44,9 @@ export const sirenCrush:KillEffectFactory=(scene,original,p,d,quality,budget,sta
  const fall={start:d.pos.y,ground:.86},acc={v:0};let last=0,burst=false;
  // The body arrives already charred by the hold.
  victim.group.traverse(o=>{if(o instanceof T.Mesh&&o.material instanceof T.MeshLambertMaterial){const m=o.material.clone();m.color.lerp(new T.Color(0x0c0a10),.85);m.emissive.multiplyScalar(.2);o.material=m;owned.push(m);}});
- return {count:n+2,update(age){
-  const dt=clamp(age-last,0,.05);last=age;tickSirenClock(age);
+ // `clock` drives the flames; `age` the body. A PvE downed member's body is kept lying, still smouldering (pve/downed.ts).
+ const frame=(clock:number,age:number)=>{
+  const dt=clamp(clock-last,0,.05);last=clock;tickSirenClock(clock);
   if(!burst){burst=true;fire.burst(headAt.x,headAt.y,headAt.z,quality<.5?40:80,4.2,.9,.12,'black',1.4);fire.burst(headAt.x,headAt.y,headAt.z,18,5,.6,.05,'ember',1);}
   carry.reset();victim.head.visible=false;
   // Limp hang (.45 s), the drop to the floor, then a crumple onto the back.
@@ -55,11 +58,13 @@ export const sirenCrush:KillEffectFactory=(scene,original,p,d,quality,budget,sta
   carry.apply(age);
   // Burn, then come apart into black flame.
   const gone=sm((age-3.2)/1.2);victim.group.scale.setScalar(Math.max(.001,1-gone));
-  burnRig(fire,victim,(quality<.5?30:70)*(age<3.6?1:1-gone)+(age>3.2&&age<4.4?120*(1-gone):0),dt,acc);
+  burnRig(fire,victim,((quality<.5?30:70)*(age<3.6?1:1-gone)+(age>3.2&&age<4.4?120*(1-gone):0))*(clock>age+1e-6?.3:1),dt,acc);
   for(const g of gibs){const t=age;let y=g.s.y+g.v.y*t-6*t*t;const floor=.04;if(y<floor)y=floor;g.m.position.set(g.s.x+g.v.x*t*(y>floor?1:.6),y,g.s.z+g.v.z*t*(y>floor?1:.6));g.m.rotation.set(g.spin.x*Math.min(t,.9),g.spin.y*Math.min(t,.9),g.spin.z*Math.min(t,.9));g.m.visible=age<4.6;g.m.scale.setScalar(Math.max(.001,g.size*(1-sm((age-3.8)/.8))));}
   flash.scale.setScalar(1.8*Math.sqrt(clamp(age/.15)));(flash.material as T.SpriteMaterial).opacity=.9*(1-clamp(age/.3))**2;
   fire.update(dt);
- },dispose(){scene.remove(root,fire.mesh,flash);for(const g of gibs)scene.remove(g.m);fire.dispose();(flash.material as T.Material).dispose();headMat.dispose();accent.dispose();char.dispose();for(const m of owned)m.dispose();}};
+ };
+ return {count:n+2,rig:victim,root,extras:[fire.mesh,...gibs.map(g=>g.m)],keepAge:SIREN_CRUSH_KEEP,update(age){frame(age,age);},keep(age){frame(age,Math.min(age,SIREN_CRUSH_KEEP));},
+ dispose(){scene.remove(root,fire.mesh,flash);for(const g of gibs)scene.remove(g.m);fire.dispose();(flash.material as T.Material).dispose();headMat.dispose();accent.dispose();char.dispose();for(const m of owned)m.dispose();}};
 };
 
 /**

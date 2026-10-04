@@ -6,6 +6,7 @@ import {v,idleInput,type SpecId} from '../src/shared/config.js';
 import {statsFor,WEAPONS} from '../src/shared/content.js';
 import {FIRST_BLOCK_CHIPS} from '../src/shared/blocking.js';
 import {ChipEffects} from '../src/client/chip-effects.js';
+import {EventVfx} from '../src/client/event-vfx.js';
 await initPhysics();
 function arena(chip:string,spec:SpecId='pistol',distance=2){
  const s=new Simulation({sandbox:true}),a=s.addPlayer('a','Shooter')!,b=s.addPlayer('b','Blocker')!;s.phase='fight';
@@ -48,9 +49,13 @@ test('block pulses hit nearby enemy summons without self-occlusion and still res
   assert.equal(minion.hp,cover?minion.maxHp:minion.maxHp-45);
  }finally{s.dispose();}}
 });
+// INTEGRATION (design §19.2, chip VFX sweep): the flat chip-effects pulse rings this test pinned were replaced by pooled
+// volumetric ChipBlasts blasts drawn by EventVfx. Same real block path; it now asserts no per-event ring meshes and a
+// visible voxel blast that cleans up (the engine-path twin lives in chip-vfx-sweep.test.ts).
 test('Supernova and Counter Pulse each render a visible blast and clean it up',()=>{
- for(const chip of ['supernova','block-pulse']){const {s,a,b}=arena(chip);s.beginBlock(b);bullet(s,a,b);const scene=new T.Scene(),effects=new ChipEffects(scene);effects.event(s.events.find(e=>e.type==='blockPulse')!,0);
-  assert.equal(effects.pulses.length,chip==='supernova'?4:3);assert.ok(scene.children.every(o=>o.name.startsWith(chip==='supernova'?'supernova':'counter-pulse')));
-  const state={...s.snapshot(),projectiles:[]};effects.update(state,.3);assert.ok(effects.pulses.every(p=>p.mesh.scale.x>1));effects.update(state,1);assert.equal(effects.pulses.length,0);assert.equal(scene.children.length,0);s.dispose();
+ for(const chip of ['supernova','block-pulse']){const {s,a,b}=arena(chip);s.beginBlock(b);bullet(s,a,b);const scene=new T.Scene(),effects=new ChipEffects(scene),e=s.events.find(e=>e.type==='blockPulse')!;effects.event(e,0);
+  assert.equal(effects.pulses.length,0);assert.equal(scene.children.length,0,'no flat pulse rings');
+  const vfx=new EventVfx(scene,()=>({quality:1,compat:false,trails:false})),n=scene.children.length;vfx.blastEvent(e);vfx.event(e,s.snapshot(),'a');assert.equal(scene.children.length,n,'pooled, no per-event meshes');
+  assert.ok(vfx.chipBlasts.glow.count+vfx.chipBlasts.solid.count>0,chip);for(let i=0;i<120;i++)vfx.update(1/60);assert.equal(vfx.chipBlasts.glow.count+vfx.chipBlasts.solid.count,0,'cleaned up');s.dispose();
  }
 });

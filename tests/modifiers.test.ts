@@ -33,10 +33,11 @@ test('all guns consume ammo, stop at empty, and reload the expanded magazine',()
   assert.equal(a.ammo,cap);assert.ok(!('heat' in a));assert.ok(!('overheated' in a));s.dispose();
  }
 });
-test('machine-gun secondary spends six ammo and schedules exactly six authoritative shots',()=>{
- const {s,a}=arena('machinegun');s.secondary(a);assert.equal(a.ammo,42);assert.equal(a.burst,6);
+// The six-round burst became the Underbarrel Rocket (ranged/magic Q+E overhaul, design §5.2): no ammo, one rocket.
+test('machine-gun E fires one underbarrel rocket after its windup and spends no ammo',()=>{
+ const {s,a}=arena('machinegun');s.secondary(a);assert.ok(a.abilityCast);assert.equal(a.burst,0);assert.equal(s.projectiles.size,0);
  for(let n=0;n<40;n++){s.time+=1/60;s.updatePlayer(a,1/60);}
- assert.equal(a.ammo,42);assert.equal(a.burst,0);assert.equal(s.projectiles.size,6);s.dispose();
+ assert.equal(a.ammo,48);assert.equal(a.burst,0);assert.equal(s.projectiles.size,1);const rocket=[...s.projectiles.values()][0];assert.equal(rocket.ability?.id,'rocket');near(len(rocket.vel),38);assert.ok(a.secondaryCd>8);s.dispose();
 });
 test('parallel shots share one volley cost and proc identity, deal real hits, and obey the budget',()=>{
  for(const spec of ['pistol','fire'] as SpecId[]){const {s,a,b}=arena(spec,{multishot:2});b.body.setTranslation(v(-1.5,1,-7),true);s.world.step();
