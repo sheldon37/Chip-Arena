@@ -1,4 +1,4 @@
-import type {Snapshot,DeathPresentation} from '../shared/simulation.js';
+import type {Snapshot,DeathPresentation,PropView,GameEvent} from '../shared/simulation.js';
 import {clamp,type Vec} from '../shared/config.js';
 
 /**
@@ -24,13 +24,15 @@ const allowed=(s:Snapshot)=>['fight','result','match'].includes(s.phase)&&!s.lob
 /** Read-only client history. Never steps physics, sends inputs, or replaces the live authority snapshot. */
 export class Killcam {
  private frames:Frame[]=[];private entities=0;private key='';private tick=-1;
+ /** Last recorded copy of each prop and event: unchanged ones are shared between frames (see record). */
+ private props=new Map<string,PropView>();private events=new Map<number,GameEvent>();
  private alive=false;private seen='';private pending?:Pending;private clip?:Clip;
  get active(){return !!this.clip;}
  get waiting(){return !!this.pending;}
  get info():Readonly<KillcamInfo>|undefined{return this.clip?.info;}
  get bufferedFrames(){return this.frames.length;}
  get bufferedEntities(){return this.entities;}
- clear(){this.frames=[];this.entities=0;this.key='';this.tick=-1;this.alive=false;this.seen='';this.skip();}
+ clear(){this.frames=[];this.entities=0;this.props=new Map();this.events=new Map();this.key='';this.tick=-1;this.alive=false;this.seen='';this.skip();}
  skip(){this.pending=undefined;this.clip=undefined;}
 
  /** Call for accepted authoritative snapshots, including every local simulation tick. */
@@ -52,10 +54,23 @@ export class Killcam {
   const last=this.frames.at(-1)?.state;
   if(!last||fresh||s.time-last.time>=1/KILLCAM.hz-1e-6||last.phase!==s.phase){
    const entities=s.players.length+s.props.length+s.projectiles.length+s.events.length;
-   this.frames.push({state:structuredClone(s),entities});this.entities+=entities;
+   this.frames.push({state:this.record(s),entities});this.entities+=entities;
    while(this.frames.length>1&&(this.frames.length>KILLCAM.maxFrames||this.entities>KILLCAM.maxEntities||s.time-this.frames[0].state.time>KILLCAM.history))
     this.entities-=this.frames.shift()!.entities;
   }
+ }
+
+ /**
+  * A read-only copy of `s` for the history. A prop or event equal to its copy in the previous frame reuses that copy,
+  * so the 6 s history holds one copy of a static map and of each event instead of one per frame. Copying every
+  * snapshot whole kept tens of MB alive and caused long major-GC pauses (lag-spike fix 2026-10-04). Frame contents
+  * are never mutated, so sharing is invisible to playback.
+  */
+ private record(s:Snapshot):Snapshot{
+  const copy=structuredClone({...s,props:[],events:[]}) as Snapshot,props=new Map<string,PropView>(),events=new Map<number,GameEvent>();
+  copy.props=s.props.map(p=>{const old=this.props.get(p.id),q=old&&sameData(old,p)?old:structuredClone(p);props.set(p.id,q);return q;});
+  copy.events=s.events.map(e=>{const old=this.events.get(e.id),q=old&&sameData(old,e)?old:structuredClone(e);events.set(e.id,q);return q;});
+  this.props=props;this.events=events;return copy;
  }
 
  /** A wall-clock deadline finishes even when packets stop; a new round always wins over playback. */
@@ -87,6 +102,15 @@ export class Killcam {
   clip.info.time=t;clip.info.progress=clamp((t-clip.info.start)/(clip.info.end-clip.info.start),0,1);
   return frame;
  }
+}
+
+/** Structural equality of plain snapshot data (no allocation). */
+export function sameData(a:unknown,b:unknown):boolean{
+ if(a===b)return true;
+ if(typeof a!=='object'||typeof b!=='object'||a===null||b===null)return typeof a==='number'&&typeof b==='number'&&Number.isNaN(a)&&Number.isNaN(b);
+ if(Array.isArray(a)!==Array.isArray(b))return false;
+ let n=0;for(const k in a){if(!(k in b)||!sameData((a as Record<string,unknown>)[k],(b as Record<string,unknown>)[k]))return false;n++;}
+ for(const _ in b)n--;return n===0;
 }
 
 /** Only transforms interpolate. HP, attacks, deaths, props and projectile membership come from the past frame. */
