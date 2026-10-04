@@ -1,4 +1,5 @@
-import {primaryMeleeMotion,phraseEntry,comboReadyMotion} from './primary-melee-motion.js';
+import {primaryMeleeMotion,phraseEntry,comboReadyMotion,hitStop} from './primary-melee-motion.js';
+import {mocapCut,mocapReady,mocapSet} from './mocap/mocap-layer.js';
 import * as T from 'three';
 import type {CharacterRig} from './character-rig.js';
 import {braceWeapon} from './character-rig.js';
@@ -14,7 +15,11 @@ export function meleeMotion(r:CharacterRig,p:PlayerView,a:ReturnType<typeof atta
  // Every melee layer sits on the combat-ready guard (idle) faded into the running carry, so entries and exits blend from it.
  if(special&&time<special.until){meleeReady(r,p,time);specialMotion(r,p,time);return;}
  // After a cut the fighter holds the combo-ready chamber for the next cut (faded into the running carry), not the guard.
- if(!a.active){const carry=meleeReady(r,p,time);comboReadyMotion(r,p,a,time,carry);return;}
+ // Weapons with a mocap set (mocap/mocap-layer.ts) take the captured guard idle, carry and cuts instead; their cuts end in
+ // the guard, so there is no separate combo-ready hold.
+ if(!a.active){const carry=meleeReady(r,p,time);if(!mocapReady(r,p,time,carry))comboReadyMotion(r,p,a,time,carry);return;}
+ // A captured cut blends in over the pose the rig showed (guard idle or running carry) across the same entry as the phrases.
+ if(mocapSet(p.spec,r)?.cuts){settleCarry(r,p,time);const entry=phraseEntry(r,p,a.windup),k=a.age<entry?ease(a.age/entry):1,carry=meleeReady(r,p,time);if(k<1)mocapReady(r,p,time,carry);mocapCut(r,p,a,hitStop(r,p,a),k);return;}
  // The pose the phrase blends in over (it records how this attack was entered on its first frame). Out of the running
  // carry the sword keeps the orientation the carry (at the weight it had as the attack began) gives the hand the phrase is
  // raising, and turns at a near-steady rate over the whole windup by the shortest arc onto the phrase's blade (the forward-down

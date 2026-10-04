@@ -8,6 +8,10 @@ import {markFirstPersonRig} from '../src/client/pose-flags.js';
 import {GAIT,cycleLength} from '../src/client/motion-quality.js';
 import {stanceFor} from '../src/client/stances.js';
 import {PROBE_RATES,probeMotion,probeRates,probeRig,describeProbe,type ProbeBone} from './helpers/motion-probe.js';
+import {MOCAP} from '../src/client/mocap/mocap-layer.js';
+// The greatsword's third-person rig now plays the captured set (tests/greatsword-mocap.test.ts guards it); this suite keeps
+// guarding the procedural melee layers, which still pose the first-person view model and the other weapons.
+MOCAP.enabled=false;
 
 await initPhysics();
 type Rig=ReturnType<typeof probeRig>;

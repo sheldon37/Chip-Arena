@@ -18,6 +18,42 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-04 — Claude — publication record: PR #34 + PR #35 on the test channel
+- Owner confirmed publication and granted standing permission for pushes, merges and test-channel updates (2026-10-04).
+- PR #34 merged `c307925`, PR #35 merged `ab2e4c5` -> test `0.2.31513375c335` (channel commit `e49b238`).
+  Schema 1 `arena-627b9d85d7fb7712.json.gz` 26,148,392 B; schema 2 `arena-e002c9381d84a9a6.pack` 22,068,484 B.
+- Candidate (`candidate.py --test-only --channel`, Node 24.19.0): every stage passed except baseline-only verify (12 known
+  Node 24 unit names, 4 server tsc errors, websocket "Timed out: rematch"); source-privacy and channel-e2e passed.
+- Verified from the live feed: old launcher `run.mjs` 0.2.19e114ae7c87 -> new then "up to date"; dcc7430 seed
+  `manual-update.mjs` test-seed -> new via schema 2 then "current". Live feed and Site untouched.
+
+## 2026-10-04 — Claude — greatsword Mixamo mocap (client visual only)
+
+- Task: owner-supplied Mixamo "Great Sword Pack" converted into the voxel rig's pose system for the greatsword.
+  Branch `claude/greatsword-mocap`, base `origin/claude/batch-intros-fx-killcam` ec169ed (PR #34 → visual-revision).
+  Implemented on branch; no PR opened, not merged, not published.
+- Changes: offline converter `scripts/mocap/` (three FBXLoader in Node; Mixamo → rig joint rotations, hinge knees,
+  heading, hips height, chest-space IK targets for grip/blade/edge/poles/free hand; root travel stripped; quantized,
+  delta-coded) writing `src/client/mocap/greatsword-clips.ts` (8 clips, ~22 KB source, ~8 KB gzip). Runtime
+  `src/client/mocap/` (decoder, Catmull-Rom sampling, C1 retime, rig pose through rig-ik, per-weapon sets). Greatsword
+  third-person rig: captured guard idle, walk/run upper body over the gait (stride-synced), alternating cuts
+  (slash / slash (3)), block raise + blocked-hit impact, hitstun reel under the procedural impulse. FBX/zip never
+  committed; rerun steps in DEVELOPMENT.md. Other weapons, first-person view model, wolf-spin special, rolls,
+  knockdowns, deaths (ragdoll) and intros keep their procedural code.
+- Timing: each cut is retimed so its captured contact (blade crossing the front arc) spans swingAt..swingUntil and
+  settles at the end of recovery, at any attack rate. Hit timing, hitboxes, damage, cooldowns, movement, networking,
+  snapshots and src/shared are unchanged (pvp-golden passes in the full suite).
+- Tests: new `tests/greatsword-mocap.test.ts` (table, contact alignment within a frame, joint limits, limb continuity,
+  two-hand grip). Eight procedural melee/locomotion suites now set `MOCAP.enabled=false` so they keep guarding the
+  procedural layers (still live for first person and other weapons); their greatsword choreography assertions
+  (kinetic-chain lag, low-then-rise sweep, two-beat recovery, sprint carry, transition turn bounds) describe the
+  replaced third-person phrases — owner review of that scoping requested.
+- Checks (Linux, Node 22.22.2): `npm run check:types` pass; full unit suite 1170 tests, only the 13 known failures;
+  `npm run build` pass, live payload 26,167,005 B (limit 26,214,400; +18,673 B vs 26,148,332). Visual lab strips
+  (SwiftShader) before/after reviewed. Not run: Windows/GPU, multiplayer, packaging, update-channel publication.
+- Risks / next: owner playtest of feel (hoist is the capture's speed, ~as fast as the strike; turning in place slides
+  the captured idle stance; deep low sweep on cut 2). Mapped clips can be swapped in convert-greatsword.mjs.
+
 ## 2026-10-04 — Claude — killcam starts closer to the kill (result screen stays 5 s)
 - Branch `claude/killcam-forward` from `origin/claude/visual-revision` `c307925` (PR #34 merge).
 - Owner: keep the 5 s result screen, just move the killcam forward. `KILLCAM` before 2 → 1.5 s and live hold 1.2 → .6 s;

@@ -9,6 +9,10 @@ import {type CharacterRig} from '../src/client/character-rig.js';
 import {hitStop,meleePhase} from '../src/client/primary-melee-motion.js';
 import {recordMeleeHit,recordBlockHit,clearBlockImpacts} from '../src/client/block-impacts.js';
 import {probeBase,probeRig,weaponTip} from './helpers/motion-probe.js';
+import {MOCAP} from '../src/client/mocap/mocap-layer.js';
+// The greatsword's third-person rig now plays the captured set (tests/greatsword-mocap.test.ts guards it); this suite keeps
+// guarding the procedural melee layers, which still pose the first-person view model and the other weapons.
+MOCAP.enabled=false;
 
 await initPhysics();
 /** Souls-melee pass: reference phrases inside the authoritative timing, feet within reach, a heavy follow-through that never

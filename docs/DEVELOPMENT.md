@@ -65,12 +65,22 @@ runtime. It also requires release:prepare. It is not an updater-feed cutover.
 | Portable launcher/update | launcher/start.mjs, update.mjs, manual-update.mjs |
 | Package scripts | scripts/package-{windows,desktop,update,source}.*, repackage-desktop.py |
 | Required media and notices | public/, assets/, scripts/source-audio/, docs/ASSET-CREDITS.md, docs/NOBLE-HASHES-LICENSE.txt |
+| Mocap animation (presentation only) | src/client/mocap/ (clip decoder, rig pose, per-weapon sets; greatsword-clips.ts is generated), scripts/mocap/ |
 
 Prefer targeted checks for small edits. Changes under shared simulation, networking,
 identity, persistence, dependency manifests, launcher, packaging, or CI require
 `npm run verify`. Headless tests do not verify animation appearance or GPU speed.
 Full verification attempts every stage and reports failures, never substitutes a
 passing narrower test for a failed stage. Logs go to ignored `test-results/`.
+
+Mocap clips: the greatsword's animations come from the owner's Mixamo "Great Sword Pack", retargeted offline
+to the voxel rig. The licensed FBX files are never committed. To regenerate after changing the converter or clip
+choices, extract the pack outside the repository and run
+`node scripts/mocap/convert-greatsword.mjs <pack dir>` (rewrites src/client/mocap/greatsword-clips.ts deterministically),
+then `node --import tsx --test tests/greatsword-mocap.test.ts`. `--preview tools/visual-lab/mocap-preview.generated.ts`
+writes every pack clip (git-ignored) for the visual lab's `mocap=<clip name>` raw view; `mocapOff=1` renders the
+procedural layers for before/after strips. Attack clips are retimed onto the shared windup/active/recovery timing at
+runtime; shared timing never depends on them.
 
 ## CI and agent access
 

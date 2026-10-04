@@ -1,0 +1,85 @@
+import type {CharacterRig} from '../character-rig.js';
+import type {PlayerView} from '../../shared/simulation.js';
+import type {SpecId} from '../../shared/config.js';
+import type {attackPose} from '../character-animation.js';
+import {meleeRecovery} from '../../shared/souls-combat.js';
+import {smoothMotion as ease} from '../motion-quality.js';
+import {CHANNEL_COUNT,sampleClip,retime,clipDuration,type MocapClip} from './mocap-clip.js';
+import {applyMocapPose,blendRows} from './mocap-pose.js';
+import {isFirstPersonRig} from '../pose-flags.js';
+import {GREATSWORD_CLIPS as GS} from './greatsword-clips.js';
+
+/** Per-weapon mocap sets (presentation only). A weapon without a set, or a state its set leaves out, keeps the procedural
+ * layers. `cuts` cycle with the authoritative attackIndex (1-based). Every attack clip's marks are retimed onto that
+ * weapon's authoritative windup / active window / recovery, so the captured contact always lands in the hit window. */
+export interface MocapSet {idle?:MocapClip;walk?:MocapClip;run?:MocapClip;cuts?:readonly MocapClip[];block?:MocapClip;blockHit?:MocapClip;stagger?:MocapClip}
+export const MOCAP_SETS:Partial<Record<SpecId,MocapSet>>={
+ greatsword:{idle:GS.idle,walk:GS.walk,run:GS.run,cuts:[GS.cutA,GS.cutB],block:GS.block,blockHit:GS.blockHit,stagger:GS.stagger},
+};
+/** Development switch (the lab's before/after strips); the game always runs with it on. */
+export const MOCAP={enabled:true};
+/** The rig's mocap set. The first-person view model keeps its procedural poses, which are framed for the camera (the
+ * captured guard holds the blade upright in front of the face, across the crosshair). */
+export const mocapSet=(spec:string,r:CharacterRig):MocapSet|undefined=>MOCAP.enabled&&!isFirstPersonRig(r)?MOCAP_SETS[spec as SpecId]:undefined;
+
+const row=new Float32Array(CHANNEL_COUNT),rowB=new Float32Array(CHANNEL_COUNT);
+/** The cut clip for a 1-based attack index. */
+export function cutClip(set:MocapSet,attackIndex:number|undefined){const c=set.cuts!;return c[((Math.max(1,attackIndex||1)-1)%c.length+c.length)%c.length];}
+/** Clip time for an attack `age` (seconds since lastAttack): [start, contact start, contact end, settled] ↔ [0, windup,
+ * windup + window, windup + window + recovery]. */
+export function cutTime(clip:MocapClip,age:number,windup:number,window:number,recovery:number){const e=windup+window;return retime([0,windup,e,e+recovery],clip.marks!,age);}
+/** A primary cut (replaces the procedural phrase). `lag` is the hit-stop's phrase lag (primary-melee-motion hitStop). */
+export function mocapCut(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,lag=0,weight=1){
+ const set=mocapSet(p.spec,r);if(!set?.cuts)return false;const clip=cutClip(set,p.attackIndex),rate=p.attackRate||1;
+ sampleClip(clip,cutTime(clip,a.age-lag,a.windup,a.window,meleeRecovery(p.spec)/rate),row);
+ applyMocapPose(r,row,{weight});return true;
+}
+/** Walk-to-run blend input: the planar speed eased per rig (~.25 s), so a stop or an action that zeroes the velocity in one
+ * snapshot fades the run's carry out with the carry weight instead of swapping clips in a frame. Restarts after a rewind or
+ * a gap (as the gait does). */
+const speeds=new WeakMap<object,{v:number;t:number}>();
+function gaitSpeed(r:object,p:PlayerView,time:number){
+ const target=Math.hypot(p.vel.x,p.vel.z);let s=speeds.get(r);
+ if(!s||time<s.t-.1||time-s.t>.35){s={v:target,t:time};speeds.set(r,s);}
+ else{const dt=Math.max(0,time-s.t);s.v+=(target-s.v)*(1-Math.exp(-dt/.25));s.t=Math.max(s.t,time);}
+ return s.v;
+}
+/** Standing guard idle under the running carry (`carry` 0..1 from meleeReady): the idle owns the body while standing (its
+ * stance is the stance every captured cut starts from, so cuts enter without the legs jumping); the
+ * walk/run captures pose the torso, arms and weapon over the game's gait (stride-synced: clip mark 0 is the left-foot strike,
+ * the gait's stride phase 0) as the carry builds. */
+export function mocapReady(r:CharacterRig,p:PlayerView,time:number,carry:number){
+ const set=mocapSet(p.spec,r);if(!set?.idle)return false;
+ const stand=1-carry,still=1-ease(r.motion/.2);
+ if(stand>.001){sampleClip(set.idle,time,row);applyMocapPose(r,row,{weight:stand,legs:still,root:still});}
+ if(carry>.001&&set.walk&&set.run){
+  const phase=((r.stride/(2*Math.PI))%1+1)%1,k=ease((gaitSpeed(r,p,time)-3.2)/2.8);
+  // Walk, then run over it: the two carries hold the blade far apart (raised guard / trailed over the shoulder), so they
+  // blend through the joints' rotations (slerp) instead of averaging their blade vectors.
+  sampleClip(set.walk,set.walk.marks![0]+phase*clipDuration(set.walk),row);applyMocapPose(r,row,{weight:carry,legs:0,root:0});
+  if(k>.001){sampleClip(set.run,set.run.marks![0]+phase*clipDuration(set.run),row);applyMocapPose(r,row,{weight:carry*k,legs:0,root:0});}
+ }
+ return true;
+}
+/** Raised block: the capture's raise retimed onto the game's ~.13 s raise, then its guard held; a blocked hit plays the
+ * captured block impact from its authoritative time. `legs` keeps walking feet on the gait. */
+export function mocapBlock(r:CharacterRig,p:PlayerView,time:number,since:number,impactAt:number|undefined,legs:number){
+ const set=mocapSet(p.spec,r);if(!set?.block)return false;const m=set.block.marks!;
+ sampleClip(set.block,retime([0,.13,.36],m,time-since),row);
+ if(set.blockHit&&impactAt!==undefined&&time>=impactAt){
+  const h=set.blockHit,u=time-impactAt,hm=h.marks!;
+  // Driven back at the impact (peak ~.1 s), recovered into the guard by ~.45 s; blended in over 40 ms, out over the tail.
+  const k=ease(u/.04)*(1-ease((u-.35)/.12));if(k>.001){sampleClip(h,retime([0,.1,.45],hm,u),rowB);blendRows(row,rowB,k,row);}
+ }
+ applyMocapPose(r,row,{weight:1,legs,root:legs});return true;
+}
+/** Hitstun base pose: the captured reel retimed into the authoritative stun (impact → extreme at ~35% → recovered at the
+ * stun's end), scaled by how frontal the push is (the capture is a hit from the front). The procedural impulse reaction
+ * still rides on top (hit-reaction-motion). */
+export function mocapStagger(r:CharacterRig,p:PlayerView,time:number,carry:number){
+ const set=mocapSet(p.spec,r),h=p.hitReaction;if(!set?.stagger||!mocapReady(r,p,time,carry))return false;
+ // Over the guard idle (the pose the stun releases into), at most .7: the impulse reaction adds its own recoil on top.
+ const at=h&&h.at<=time?h.at:time,until=Math.max(p.hitStunUntil||0,at+.05),span=until-at,front=h?Math.min(1,Math.max(.35,-h.direction.z*1.4+.35)):.6;
+ sampleClip(set.stagger,retime([0,span*.4,span],set.stagger.marks!,time-at),row);
+ applyMocapPose(r,row,{weight:.7*front*ease((time-at)/.06)*(1-ease((time-until+.1)/.1))});return true;
+}
