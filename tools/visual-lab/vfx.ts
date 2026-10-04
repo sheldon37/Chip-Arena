@@ -50,6 +50,17 @@ const SCENARIOS:Record<string,{chips?:Record<string,number>;spec?:string;run:(s:
  heal:{note:'Friendly Fungus (2.5 m)',chips:{'med-garden':1},run:(s,a)=>{s.chaos.field(a,'heal',P,2.5,4,6);}},
  sticky:{note:'Sticky Situation (3 m)',chips:{'sticky-bomb':1},run:(s,a,b)=>{b.body.setTranslation(P,true);s.chaos.field(a,'bomb',P,3,.3,28,b.id);}},
  aftershock:{note:'Ground Pound (3.5 m)',chips:{aftershock:1},spec:'sword',run:(s,a)=>{s.chaos.field(a,'bomb',P,3.5,.2,20);}},
+ // Summons (2026-10-04): attacks, hit reactions, deaths and the Slenderman. B stands at P; A (the summoner) is far away.
+ zombie:{note:'Necronomicon zombie: lunge and claw on B',spec:'fire',run:(s,a,b)=>{b.body.setTranslation(P,true);s.chaos.summon(a,1,'zombie',add(P,v(-1.35,0,-.5)));const m=[...s.chaos.minions.values()].at(-1)!;m.body.setTranslation(add(P,v(-1.35,0,-.5)),true);m.nextAttack=0;}},
+ toy:{note:'Toy soldier: aim and fire at B',run:(s,a,b)=>{b.body.setTranslation(P,true);s.chaos.summon(a,1,'toy',add(P,v(-3.2,0,-1.2)));const m=[...s.chaos.minions.values()].at(-1)!;m.body.setTranslation(add(P,v(-3.2,0,-1.2)),true);m.nextAttack=.2;}},
+ summonhit:{note:'Zombie and toy take hits (flinch, health bars)',spec:'fire',run:(s,a,b)=>{b.body.setTranslation(add(P,v(6,0,6)),true);for(const [k,x] of [['zombie',-.9],['toy',.9]] as const){s.chaos.summon(a,1,k,add(P,v(x,0,0)));const m=[...s.chaos.minions.values()].at(-1)!;m.body.setTranslation(add(P,v(x,0,0)),true);m.nextAttack=99;}},
+  later:[[.05,(s,a,b)=>{for(const m of s.chaos.minions.values())s.chaos.hitMinion(m,m.maxHp*.3,b.id,0,v(1,0,0));}],[.45,(s,a,b)=>{for(const m of s.chaos.minions.values())s.chaos.hitMinion(m,m.maxHp*.25,b.id,0,v(1,0,0));}]]},
+ summondeath:{note:'Zombie and toy die (collapse, voxel break-up)',spec:'fire',run:(s,a,b)=>{b.body.setTranslation(add(P,v(6,0,6)),true);for(const [k,x] of [['zombie',-.9],['toy',.9]] as const){s.chaos.summon(a,1,k,add(P,v(x,0,0)));const m=[...s.chaos.minions.values()].at(-1)!;m.body.setTranslation(add(P,v(x,0,0)),true);m.nextAttack=99;}},
+  later:[[.05,(s,a,b)=>{for(const m of [...s.chaos.minions.values()])s.chaos.hitMinion(m,9999,b.id,0,v(1,0,0));}]]},
+ slender:{note:'Slenderman emerging by the tree, then stalking B (B looks at him)',run:(s,a,b)=>{b.body.setTranslation(add(P,v(2,0,5)),true);s.leet.fields.set('lab-tree',{id:'lab-tree',kind:'tree',owner:a.id,pos:add(P,v(-.9,-.95,-.2)),at:s.time,until:s.time+22});const d=v(-2,.6,-5);b.input={...b.input,yaw:Math.atan2(d.x,d.z),pitch:.1,camera:'first'};}},
+ slendermodel:{note:'Slenderman model close-up (tree moved aside; B behind the camera, looking at him)',run:(s,a,b)=>{b.body.setTranslation(add(P,v(4,0,7)),true);s.leet.fields.set('lab-tree',{id:'lab-tree',kind:'tree',owner:a.id,pos:add(P,v(-6,-.95,-4)),at:s.time-1,until:s.time+60});b.input={...b.input,yaw:Math.atan2(-4,-7),pitch:.15,camera:'first'};},
+  later:[[.05,(s)=>{const f=s.leet.fields.get('lab-tree');const m=f?.slender?s.chaos.minions.get(f.slender):undefined;if(m)m.body.setTranslation(add(P,v(0,.28,0)),true);}]]},
+ slenderhop:{note:'Slenderman teleport glitch (B looks away)',run:(s,a,b)=>{b.body.setTranslation(add(P,v(3,0,9)),true);s.leet.fields.set('lab-tree',{id:'lab-tree',kind:'tree',owner:a.id,pos:add(P,v(-.9,-.95,-.2)),at:s.time-3,until:s.time+19,hopAt:s.time+.2} as never);b.input={...b.input,yaw:Math.PI*.8,pitch:0,camera:'first'};}},
  // V sweep (design §19.2): chip events the engine emits for single-target procs, mirrored with the engine's payloads.
  kinetic:{note:'Kinetic Driver impact',chips:{kinetic:1},run:(s)=>{s.emit('impact',P,{source:'a',mods:{kinetic:1},color:0xffd88d});}},
  demolition:{note:'Demolition Module impact',chips:{demolition:1},run:(s)=>{s.emit('impact',P,{source:'a',mods:{demolition:1},color:0xffd88d});}},
@@ -106,7 +117,7 @@ async function main(){
  const canvas=document.createElement('canvas');canvas.width=cellW;canvas.height=cell;document.body.appendChild(canvas);canvas.style.display='none';
  const r=new Renderer(canvas) as unknown as Record<string,any>;
  // The renderer passes the local pilot to ChaosVisuals once INTEGRATION wires it (V change request); the lab does it here.
- {const cv=r.chaosVisuals;if(cv){const up=cv.update.bind(cv);cv.update=(st:unknown)=>up(st,'a');}}
+ {const cv=r.chaosVisuals;if(cv){const up=cv.update.bind(cv);cv.update=(st:unknown,_me:unknown,fx:unknown)=>up(st,'a',fx);}}
  r.effectsQuality=num('quality',1);if(q.get('compat')==='1')r.compatibility=true;r.shake=false;r.projectileTrails=true;
  const gl=r.renderer as T.WebGLRenderer;gl.setPixelRatio(1);gl.setSize(cellW,cell,false);
  const camera=r.camera as T.PerspectiveCamera;

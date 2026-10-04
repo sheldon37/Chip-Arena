@@ -18,6 +18,54 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-04 — Claude — publication records: PRs #37-#41 and PR #42 on the test channel
+- PRs #37-#41 merged `7b91b6c` -> test `0.2.7c06fa8f3a9f` (channel `d14910c`); schema 1 `arena-054ddd2d7339d417.json.gz`
+  26,187,119 B, schema 2 `arena-96b2e5e50fd6120c.pack` 22,093,779 B.
+- PR #42 merged `5bb0366` -> test `0.2.24a26b19d4ee` (channel `db0bad1`); schema 1 `arena-516d55633004c310.json.gz`
+  26,187,925 B, schema 2 `arena-81b2d09164d54a85.pack` 22,093,555 B.
+- Both: candidate (`--test-only --channel`, Node 24.19.0) passed every stage except baseline-only verify (12 known Node 24
+  unit names, 4 server tsc errors, websocket "Timed out: rematch"); old launcher `run.mjs` and the dcc7430 seed
+  `manual-update.mjs` each installed the new version from the live feed, then reported current. Live feed and Site untouched.
+
+## 2026-10-04 — Claude — summon chips get real combat; Slenderman (Scare Tactics) rework
+
+- Branch `claude/summons-slender` from `claude/visual-revision` 7b91b6c, merged with 5bb0366 (PR #42 freeze fix). No PR opened; not merged; not released.
+- Summons in scope: zombies (Necronomicon, Graveyard Shift, Corpse Party), toy soldiers (Puppet Master "Toy Soldier"), and
+  the L44T Scare Tactics Slenderman (DEV-only, unchanged access). No other chip spawns a creature.
+- Summon combat (`src/shared/chaos.ts` SUMMON): windup → strike → recovery with damage on the strike frame. Zombie lunge+claw
+  (windup .42 s, reach 1.75 m to start, 2.4 m checked at the strike, recover .48 s, 12 dmg); toy soldier aims and fires one
+  round (windup .45 s, starts within 7 m, 9.5 m at the strike, cover blocks the ray, recover .55 s, 8 dmg; it now holds ~5 m
+  instead of walking into melee). Damage through `sim.damage(kind 'minion')` credited to the summoner, blocks parry as before,
+  no life steal on summon bites (as before). Targets: nearest enemy pilot (PvE boss unless hidden) or enemy summon; PvE adds via
+  the horde assist, which now only chases and returns the add (the horde no longer applies its instant D38 hit).
+- Health: pools unchanged from the chip texts (zombie 2× owner max HP, toy 25). New: burn/poison DoTs on chaos summons, all
+  direct-hit procs (Static/Vacuum/Shrapnel) on summon hits, standard-melee specials hit summons in PvP. `minionDeath` event.
+  Caps unchanged (14 zombies, 3 toys per owner, 34 total). Bots focus a hostile summon within 6 m that is clearly closer than
+  their pilot target (`botFocus`).
+- Slenderman (`src/shared/leet.ts`, SLENDER in leet-content): a 160 HP kinematic chaos minion (`kind 'slender'`, every damage
+  path). Never moves while his target's authoritative camera (input yaw/pitch/camera mode, wall-clipped) sees his head or chest
+  within 36°; staring builds sanity (.09/s + up to .5/s within 14 m); looking away decays it (.3/s). Unseen for .35 s and off
+  cooldown (3.2 → 1.3 s over his 22 s life) he teleports behind the target to .72 → .5 × the gap. Reach (1.6 m) or sanity 1 →
+  the existing 2.2 s jumpscare then knockout (`leet-scare`). Ends on owner death, expiry, recast, round reset or his death.
+- Client: `summon-visuals.ts` (attack/flinch/corpse poses, tin-soldier look + rifle, tracer and pooled voxel break-up),
+  summon health bars in `overhead-health.ts`, new Slenderman model `slender-model.ts` (suit/shirt/tie, faceless head, long
+  limbs, six tentacles, sway, head tilt, teleport flicker/smear + glyph-pool static), victim-only static overlay and
+  drone/heartbeat `slender-static.ts`. All meshes use the rig's Lambert palette and existing MeshBasic variants (no new programs,
+  no lights); static is DOM/CSS, audio is Web Audio oscillators (no assets).
+- Impacts: hit timing (summon damage now on a strike frame, was instant), hitboxes (Slenderman capsule .28 r × 2.46 m, new),
+  damage (unchanged numbers; DoTs/procs now apply to summons), cooldowns (zombie ~.9 s cycle unchanged, toy 1.0 s, Slenderman
+  hop cooldown new), movement (attack windups/recovery root summons; toy keeps range; Slenderman teleports only), networking
+  (snapshot: summon hp whole numbers, timers to ms; leetFields gain slender/seen/sanity/hops/hopAt/from/yaw/hp; new events
+  minionShot, minionDeath, leet-slender-hop). pvp-golden: only `necronomicon` regenerated (header note); the other six identical.
+- Checks: `npm run check:types` pass; `tests/summons.test.ts` 16/16; chaos, leet, chaos-visuals, first-block, pve-foundation,
+  chip-vfx-sweep, pvp-golden pass (known baseline failures excepted). Full suite once: 1205 tests, 15 failed = the 13 known +
+  2 chip-vfx-sweep tests (synthetic snapshots without `events`), fixed and rerun green. `run-network pve` pass (victory);
+  default network fails only the known "Timed out: rematch"; `run-network chaos` fails at its cosmetics assertion on the base
+  too (pre-existing, before the summon section). `npm run build` ok: live payload 26,206,719 / 26,214,400 bytes.
+- Not run: Windows/GPU, real multiplayer, audio listening, packaging. Lab captures via tools/visual-lab vfx.html
+  (zombie, toy, summonhit, summondeath, slender, slendermodel, slenderhop); health bars do not draw in the lab (not "playing").
+- Risks/next: balance of the Slenderman (sanity rates, 160 HP, hop shrink) and the toy's ranged shot need owner playtest.
+
 ## 2026-10-04 — Claude — random lag spikes (full-screen freezes, every mode, offline)
 
 - Branch `claude/lag-spikes` from `origin/claude/visual-revision` 7b91b6c. Implemented on branch; no PR, not merged, not published.

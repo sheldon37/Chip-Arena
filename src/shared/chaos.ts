@@ -4,14 +4,27 @@ import {CONFIG as C,Vec,v,add,sub,mul,len,norm,dot,forward,clamp} from './config
 import {WEAPONS,magazineCapacity} from './content.js';
 import {meleeBodyImpact} from './body-damage.js';import type {AddHitInfo} from './pve/contract.js';
 import {ABILITY_FX} from './abilities.js';
+import {advanceDots,type DotState} from './elements.js';
 export type FieldKind='black-hole'|'acid'|'fire'|'frost'|'time'|'repulsion'|'heal'|'storm'|'bomb'|'implosion'|'mine';
 export interface FieldView {id:string;owner:string;kind:FieldKind;pos:Vec;radius:number;born:number;until:number;arm:number;damage:number;attach?:string;/** Presentation tag (the chip that made it): picks the blast style on the client. */fx?:string;
  /** Ability extras (§3.8). */impulse?:number;blastKind?:string;force?:number;speedFactor?:number;slowFor?:number;start?:number;damageKind?:string;lockAt?:number;cast?:string;}
 export interface FieldOptions{impulse?:number;blastKind?:string;force?:number;speedFactor?:number;slowFor?:number;start?:number;damageKind?:string;lockAt?:number;cast?:string;attach?:string}
 const EXTRAS=['impulse','blastKind','force','speedFactor','slowFor','start','damageKind','lockAt','cast'] as const;
 export const abilityField=(f:{fx?:string})=>!!f.fx&&ABILITY_FX.has(f.fx);
-export interface MinionView {id:string;owner:string;kind:'zombie'|'toy'|'siren-add';pos:Vec;yaw:number;hp:number;maxHp:number;speed:number;until:number;lastAttack:number;}
-export interface Minion extends MinionView {body:RAPIER.RigidBody;collider:RAPIER.Collider;nextAttack:number;}
+/** lastAttack: start of the current/last attack windup (the client derives the strike frame from SUMMON). hp is whole numbers in views. */
+export interface MinionView {id:string;owner:string;kind:'zombie'|'toy'|'siren-add'|'slender';pos:Vec;yaw:number;hp:number;maxHp:number;speed:number;until:number;lastAttack:number;}
+export interface Minion extends MinionView {body:RAPIER.RigidBody;collider:RAPIER.Collider;nextAttack:number;
+ /** Authority only: a pending summon strike (lands at strikeAt on `foe`), and weapon DoTs on chaos summons. */strikeAt?:number;foe?:string;burns?:Map<string,DotState>;poisons?:Map<string,DotState>;}
+type SummonKind='zombie'|'toy';
+/** Summon combat (owner request 2026-10-04, modelled on the Siren adds): windup → strike → recovery, damage on the strike
+ *  frame. reach starts an attack, strikeReach is checked again at the strike (stepping away during the windup dodges it).
+ *  Zombie: lunge and claw. Toy soldier: shoulders its rifle and fires one round (ray from the muzzle; cover blocks it). */
+export const SUMMON={
+ zombie:{windup:.42,recover:.48,reach:1.75,strikeReach:2.4,stop:1.25,damage:12,impulse:120,lunge:4.5},
+ toy:{windup:.45,recover:.55,reach:7,strikeReach:9.5,stop:5,damage:8,impulse:50,lunge:0},
+ /** Per owner and in total (performance). */cap:{zombie:14,toy:3,total:34},
+} as const;
+type Foe={id:string;body:RAPIER.RigidBody;player?:Player;minion?:Minion};
 const fieldRules:Record<string,[FieldKind,number,number,number]>={
  'black-hole':['black-hole',5,3.5,10],'acid-rain':['acid',3,4,12],wildfire:['fire',2.5,3,15],blizzard:['frost',3.5,3,4],'time-warp':['time',4,4,0],'repulsion-pad':['repulsion',3.5,3,0],'med-garden':['heal',2.5,4,6],'lightning-rod':['storm',4,3,18],'bubble-mine':['bomb',3,1,25],'sticky-bomb':['bomb',3,1.2,28],'proximity-mail':['mine',2.5,6,32],'delayed-gratification':['bomb',4,2.2,48],'implosion-bomb':['implosion',4,.9,30],'demolition-charge':['bomb',3,1,18],aftershock:['bomb',3.5,.45,20]};
 /** Legendary / mythic rework tuning (2026-10-03). */
@@ -20,6 +33,7 @@ export const CHAOS_TUNING={swapStun:.5,meteors:5,portalCooldown:1.2,portalPulse:
  novaRecharge:.6,satelliteDamage:.4,satelliteHoming:150,stopAt:.25,stopFor:.3,relaunchSpeed:2,relaunchDamage:1.5} as const;
 export function fieldSpeed(fields:FieldView[],owner:string,pos:Vec,canAffect:(source:string)=>boolean=()=>true,time=Infinity){let speed=1;for(const f of fields)if(f.owner!==owner&&canAffect(f.owner)&&len(sub(pos,f.pos))<f.radius&&!(time<(f.start??-Infinity))){if(f.kind==='frost')speed=Math.min(speed,f.speedFactor??.45);if(f.kind==='time')speed=Math.min(speed,f.speedFactor??.6);}return speed;}
 /** Bounded, authoritative persistent effects. Secondary effects never re-enter direct-hit hooks. */
+const add_=(p:Vec,y:number)=>v(p.x,p.y+y,p.z);
 export class ChaosSystem {
  fields=new Map<string,FieldView>();minions=new Map<string,Minion>();private used=new Set<string>();private cooldown=new Map<string,number>();private shields=new Map<string,number>();
  constructor(readonly sim:Simulation){}
@@ -93,10 +107,10 @@ export class ChaosSystem {
  shielded(p:Player){return (this.shields.get(p.id)??-1)>this.sim.time;}
  /** Now You See Me target: nearest visible enemy within 7 m and 40° of the aim. */
  blinkTarget(p:Player){const s=this.sim,pos=p.body.translation(),aim=forward(p.input.yaw);let best:Player|undefined,bestD:number=CHAOS_TUNING.blinkRange;for(const q of s.players.values()){if(q===p||q.hp<=0||!s.canHit(p.id,q.id))continue;const d=sub(q.body.translation(),pos);d.y=0;const l=len(d);if(l<bestD&&l>1.6&&dot(norm(d),aim)>Math.cos(40*Math.PI/180)&&s.lineOfSight(pos,q.body.translation(),p.id,q.id)){best=q;bestD=l;}}return best;}
- summon(p:Player,count:number,kind:'zombie'|'toy'='zombie',center=p.body.translation(),life=14,replace=false){const s=this.sim;if(replace)for(const m of [...this.minions.values()])if(m.owner===p.id&&m.kind===kind)this.removeMinion(m,false);const max=kind==='toy'?3:14;for(let i=0;i<count;i++){const own=[...this.minions.values()].filter(m=>m.owner===p.id&&m.kind===kind);if(own.length>=max)this.removeMinion(own[0],false);if([...this.minions.values()].filter(m=>m.kind!=='siren-add').length>=34)break;const id=s.uid(kind),offset=mul(forward(i*2.4+p.input.yaw),1.3+(i%3)*.45),pos=add(center,offset);pos.y=Math.max(1,pos.y+.3);const body=s.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(pos.x,pos.y,pos.z).lockRotations().setCcdEnabled(true)),collider=s.world.createCollider(RAPIER.ColliderDesc.capsule(.32,.28).setMass(35).setFriction(0),body);const hp=kind==='toy'?25:p.stats.hp*2,speed=C.speed*p.stats.speed*(kind==='toy'?.7:.5);const m:Minion={id,owner:p.id,kind,pos,yaw:p.input.yaw,hp,maxHp:hp,speed,until:s.time+life,lastAttack:-10,nextAttack:s.time+.7,body,collider};this.minions.set(id,m);s.colliderOwners.set(collider.handle,id);s.emit('summon',pos,{source:p.id,message:kind});}}
+ summon(p:Player,count:number,kind:'zombie'|'toy'='zombie',center=p.body.translation(),life=14,replace=false){const s=this.sim;if(replace)for(const m of [...this.minions.values()])if(m.owner===p.id&&m.kind===kind)this.removeMinion(m,false);const max=SUMMON.cap[kind];for(let i=0;i<count;i++){const own=[...this.minions.values()].filter(m=>m.owner===p.id&&m.kind===kind);if(own.length>=max)this.removeMinion(own[0],false);if([...this.minions.values()].filter(m=>m.kind!=='siren-add').length>=SUMMON.cap.total)break;const id=s.uid(kind),offset=mul(forward(i*2.4+p.input.yaw),1.3+(i%3)*.45),pos=add(center,offset);pos.y=Math.max(1,pos.y+.3);const body=s.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(pos.x,pos.y,pos.z).lockRotations().setCcdEnabled(true)),collider=s.world.createCollider(RAPIER.ColliderDesc.capsule(.32,.28).setMass(35).setFriction(0),body);const hp=kind==='toy'?25:p.stats.hp*2,speed=C.speed*p.stats.speed*(kind==='toy'?.7:.5);const m:Minion={id,owner:p.id,kind,pos,yaw:p.input.yaw,hp,maxHp:hp,speed,until:s.time+life,lastAttack:-10,nextAttack:s.time+.7,body,collider};this.minions.set(id,m);s.colliderOwners.set(collider.handle,id);s.emit('summon',pos,{source:p.id,message:kind});}}
  removeMinion(m:Minion,explode=true){const s=this.sim,pos={...m.body.translation()},p=s.players.get(m.owner);s.colliderOwners.delete(m.collider.handle);s.world.removeRigidBody(m.body);this.minions.delete(m.id);if(explode&&p?.chips['corpse-party']&&m.kind==='zombie'&&s.phase==='fight'){s.explode(p,pos,3.5,30,300,'corpseParty',true);}}
  /** Returns the actual damage dealt. */
- hitMinion(m:Minion,damage:number,owner:string,impulse=0,dir=v(),hit?:AddHitInfo):number{if(m.owner===owner||!this.sim.canHit(owner,m.owner))return 0;if(m.kind==='siren-add')return this.sim.pve?.hitAdd(m,damage,owner,impulse,dir,hit)??0;const actual=Math.max(0,Math.min(m.hp,damage));m.hp-=damage;m.body.applyImpulse(mul(dir,impulse),true);this.sim.emit('minionHit',m.body.translation(),{source:owner,target:m.id,amount:damage,color:0x9ec77e});if(m.hp<=0)this.removeMinion(m);return actual;}
+ hitMinion(m:Minion,damage:number,owner:string,impulse=0,dir=v(),hit?:AddHitInfo):number{if(m.owner===owner||!this.sim.canHit(owner,m.owner))return 0;if(m.kind==='siren-add')return this.sim.pve?.hitAdd(m,damage,owner,impulse,dir,hit)??0;if(!(m.hp>0))return 0;const actual=Math.max(0,Math.min(m.hp,damage));m.hp-=damage;m.body.applyImpulse(mul(dir,impulse),true);this.sim.emit('minionHit',m.body.translation(),{source:owner,target:m.id,amount:damage,color:0x9ec77e});if(m.hp<=0){this.sim.emit('minionDeath',m.body.translation(),{source:owner,target:m.id,message:m.kind,from:mul(dir,1)});this.removeMinion(m);}return actual;}
  melee(p:Player){const swing=p.swing;if(!swing||this.sim.time<swing.at||this.sim.time>swing.until)return;for(const m of [...this.minions.values()]){const d=sub(m.body.translation(),p.body.translation());if(m.owner===p.id||swing.hit.has(m.id)||len(d)>WEAPONS[p.spec].range*p.stats.reach+.3||dot(norm(d),forward(p.input.yaw))<Math.cos(Math.min(Math.PI,WEAPONS[p.spec].arc*p.stats.meleeArc/2))||!this.sim.lineOfSight(p.body.translation(),m.body.translation(),p.id,m.id))continue;swing.hit.add(m.id);const point=add(m.body.translation(),v(0,clamp(.1+Math.sin(p.input.pitch)*WEAPONS[p.spec].range*p.stats.reach,-.65,.65),0));this.sim.meleeHitMinion(p,m,point,this.hitMinion(m,WEAPONS[p.spec].damage*p.stats.damage*swing.damageScale,p.id,WEAPONS[p.spec].impulse*p.stats.impulse,norm(d),m.kind==='siren-add'?{point,kind:meleeBodyImpact(p.spec,p.stats.attackRate).kind,melee:true}:undefined),swing.id);}}
  step(dt:number){const s=this.sim;
  for(const f of [...this.fields.values()]){const p=s.players.get(f.owner);if(!p){this.fields.delete(f.id);continue;}const ability=abilityField(f),attached=f.attach&&(f.lockAt===undefined||s.time<f.lockAt)?(s.players.get(f.attach)||s.props.get(f.attach)||this.minions.get(f.attach)):null;if(attached)f.pos={...attached.body.translation()};const mine=f.kind==='mine',trigger=mine&&s.time>=Math.max(f.arm,f.start??f.arm)&&[...s.players.values()].some(q=>s.enemy(p.id,q.id)&&q.hp>0&&len(sub(q.body.translation(),f.pos))<f.radius&&s.lineOfSight(f.pos,q.body.translation(),f.attach,q.id));if(s.time>=f.until||trigger){this.fields.delete(f.id);if(ability){s.abilities.detonate(f,mine&&trigger?'trigger':'until');continue;}if((mine&&trigger)||f.kind==='bomb'||f.kind==='implosion')s.explode(p,add(f.pos,v(0,.15,0)),f.radius,f.damage,f.kind==='implosion'?0:1100,'chaosBomb',true,f.fx||f.kind);if(f.kind==='implosion')s.vacuum(p,add(f.pos,v(0,.15,0)),1300);continue;}
@@ -107,8 +121,43 @@ export class ChaosSystem {
  if(['black-hole','repulsion','fire','acid'].includes(f.kind))for(const prop of [...s.props.values()]){if(prop.material==='foundation')continue;const d=sub(prop.body.translation(),f.pos);if(len(d)>f.radius||!s.lineOfSight(add(f.pos,v(0,.2,0)),prop.body.translation(),f.attach,prop.id))continue;if(f.kind==='black-hole'||f.kind==='repulsion')s.launchProp(prop,mul(norm(d),(f.kind==='black-hole'?-1:1)*prop.mass*20*dt),p.id);else s.damageProp(prop,f.damage*dt,v(),p.id,prop.body.translation());}
  for(const m of [...this.minions.values()])if(m.owner!==p.id&&f.damage&&f.kind!=='heal'&&len(sub(m.body.translation(),f.pos))<f.radius){const actual=this.hitMinion(m,f.damage*dt,p.id);if(ability)s.abilities.onDamage(p,actual);}
  }
- for(const m of [...this.minions.values()]){if(m.kind==='siren-add')continue;const p=s.players.get(m.owner),q=[...s.players.values()].find(q=>s.enemy(m.owner,q.id)&&q.connected&&q.hp>0&&!s.pve?.hidden(q));if(!p||p.hp<=0||s.time>=m.until||m.body.translation().y<-6){this.removeMinion(m);continue;}if(!q){s.pve?.assistMinion(m,p,dt);continue;}const pos=m.body.translation(),d=sub(q.body.translation(),pos),distance=len(d);let dir=norm(v(d.x,0,d.z));const obstruction=s.ray(add(pos,v(0,.15,0)),dir,1,m.id);if(obstruction&&s.colliderOwners.get(obstruction.collider.handle)!==q.id){const side=forward(Math.atan2(dir.x,dir.z)+Math.PI/2*(Math.sin(s.time*.9+m.id.length)>0?1:-1));dir=side;}m.yaw=Math.atan2(dir.x,dir.z);const vel=m.body.linvel();m.body.setLinvel(v(distance>1.25?dir.x*m.speed:0,vel.y,distance>1.25?dir.z*m.speed:0),true);if(distance<1.8&&s.time>=m.nextAttack&&s.lineOfSight(pos,q.body.translation(),m.id,q.id)){m.lastAttack=s.time;m.nextAttack=s.time+.9;if(q.blockTime>0){s.successfulBlock(q,'minion',pos,p.id);m.body.applyImpulse(mul(norm(sub(pos,q.body.translation())),400),true);}else s.damage(q,(m.kind==='toy'?8:12)*p.stats.damage,p.id,'minion',norm(d),120*p.stats.impulse);}}
+ for(const m of [...this.minions.values()])if(m.kind!=='siren-add'&&m.kind!=='slender')this.stepSummon(m,dt);
   s.pve?.stepHorde(dt);
  }
- views(){return [...this.minions.values()].filter(m=>m.kind!=='siren-add').map(({body,collider,nextAttack,...m})=>({...m,pos:{...body.translation()}}));}
+ /** Compact views (snapshot cost): whole hp, millisecond timers; the slender and Siren adds have their own views. */
+ views():MinionView[]{const r=(x:number)=>Math.round(x*1e3)/1e3;return [...this.minions.values()].filter(m=>m.kind!=='siren-add'&&m.kind!=='slender').map(m=>({id:m.id,owner:m.owner,kind:m.kind,pos:{...m.body.translation()},yaw:r(m.yaw),hp:Math.max(0,Math.ceil(m.hp)),maxHp:Math.round(m.maxHp),speed:r(m.speed),until:r(m.until),lastAttack:r(m.lastAttack)}));}
+ /** The nearest living foe of a summon: enemy players (the PvE boss included, unless hidden) and enemy summons. */
+ private foeOf(m:Minion):Foe|undefined{const s=this.sim,pos=m.body.translation();let best:Foe|undefined,bestD=Infinity;
+  for(const q of s.players.values())if(s.enemy(m.owner,q.id)&&q.connected&&q.hp>0&&!s.pve?.hidden(q)){const d=len(sub(q.body.translation(),pos));if(d<bestD){bestD=d;best={id:q.id,body:q.body,player:q};}}
+  for(const o of this.minions.values())if(o!==m&&o.kind!=='siren-add'&&o.hp>0&&s.enemy(m.owner,o.owner)){const d=len(sub(o.body.translation(),pos));if(d<bestD){bestD=d;best={id:o.id,body:o.body,minion:o};}}
+  return best;}
+ private foeById(id:string|undefined):Foe|undefined{if(!id)return;const q=this.sim.players.get(id);if(q)return q.hp>0&&q.connected?{id,body:q.body,player:q}:undefined;const o=this.minions.get(id);return o&&o.hp>0?{id,body:o.body,minion:o}:undefined;}
+ /** One chaos summon tick: lifetime, DoTs, the attack phases (windup → strike → recovery) and the chase. */
+ private stepSummon(m:Minion,dt:number){const s=this.sim,p=s.players.get(m.owner);
+  if(!p||p.hp<=0||s.time>=m.until||m.body.translation().y<-6){this.removeMinion(m);return;}
+  if(m.burns?.size)advanceDots(m.burns,s.time,'fire',(src,amount)=>this.hitMinion(m,amount,src));if(m.poisons?.size&&this.minions.has(m.id))advanceDots(m.poisons,s.time,'poison',(src,amount)=>this.hitMinion(m,amount,src));if(!this.minions.has(m.id))return;
+  const k=SUMMON[m.kind as SummonKind],pos=m.body.translation(),vel=m.body.linvel();
+  if(m.strikeAt!==undefined){const foe=this.foeById(m.foe);if(foe){const d=sub(foe.body.translation(),pos);m.yaw=Math.atan2(d.x,d.z);}
+   if(s.time<m.strikeAt){m.body.setLinvel(v(0,vel.y,0),true);return;}
+   m.strikeAt=undefined;m.nextAttack=s.time+k.recover;this.strike(m,p,foe);return;}
+  // Recovery holds the summon in place (the zombie's lunge slides for the first .12 s).
+  if(s.time<m.nextAttack&&m.lastAttack>=0&&s.time-m.lastAttack<k.windup+k.recover){if(s.time-m.lastAttack>k.windup+.12)m.body.setLinvel(v(0,vel.y,0),true);return;}
+  let foe=this.foeOf(m),add:Minion|undefined;
+  if(!foe){add=s.pve?.assistMinion(m,p,dt)||undefined;if(!add)return;foe={id:add.id,body:add.body,minion:add};}
+  const d=sub(foe.body.translation(),pos),distance=Math.hypot(d.x,d.z);
+  if(distance<k.reach&&s.time>=m.nextAttack&&s.lineOfSight(add_(pos,.3),add_(foe.body.translation(),.3),m.id,foe.id)){m.lastAttack=s.time;m.strikeAt=s.time+k.windup;m.foe=foe.id;m.yaw=Math.atan2(d.x,d.z);m.body.setLinvel(v(0,vel.y,0),true);return;}
+  if(add)return;// the horde moves an assisting summon
+  let dir=norm(v(d.x,0,d.z));const obstruction=s.ray(add_(pos,.15),dir,1,m.id);if(obstruction&&s.colliderOwners.get(obstruction.collider.handle)!==foe.id){dir=forward(Math.atan2(dir.x,dir.z)+Math.PI/2*(Math.sin(s.time*.9+m.id.length)>0?1:-1));}
+  m.yaw=Math.atan2(dir.x,dir.z);const go=distance>k.stop;m.body.setLinvel(v(go?dir.x*m.speed:0,vel.y,go?dir.z*m.speed:0),true);}
+ /** The strike frame: the foe must still be in strikeReach and in sight. Damage is the summoner's (kill credit, block rules). */
+ private strike(m:Minion,p:Player,foe:Foe|undefined){const s=this.sim,k=SUMMON[m.kind as SummonKind],pos=m.body.translation(),toy=m.kind==='toy';
+  const aim=foe?sub(add_(foe.body.translation(),toy?.35:0),add_(pos,toy?.25:0)):forward(m.yaw),distance=len(aim),dir=norm(aim);
+  if(!toy){const vel=m.body.linvel();m.body.setLinvel(v(Math.sin(m.yaw)*k.lunge,vel.y,Math.cos(m.yaw)*k.lunge),true);}
+  if(!foe||distance>k.strikeReach){if(toy)s.emit('minionShot',add(add_(pos,.25),mul(dir,Math.min(k.strikeReach,distance||k.strikeReach))),{from:add_(pos,.25),source:p.id,target:m.id});return;}
+  if(toy){const origin=add(add_(pos,.25),mul(dir,.35)),hit=s.ray(origin,dir,distance,m.id),who=hit?s.colliderOwners.get(hit.collider.handle):foe.id;
+   s.emit('minionShot',hit&&who!==foe.id?add(origin,mul(dir,hit.timeOfImpact)):add_(foe.body.translation(),.35),{from:origin,source:p.id,target:m.id});if(who!==foe.id)return;}
+  else if(!s.lineOfSight(add_(pos,.3),add_(foe.body.translation(),.3),m.id,foe.id))return;
+  const amount=k.damage*p.stats.damage,flat=norm(v(dir.x,0,dir.z));
+  if(foe.player){const q=foe.player;if(q.blockTime>0){s.successfulBlock(q,'minion',pos,p.id);if(!toy)m.body.applyImpulse(mul(norm(sub(pos,q.body.translation())),400),true);}else s.damage(q,amount,p.id,'minion',flat,k.impulse*p.stats.impulse);}
+  else if(foe.minion)this.hitMinion(foe.minion,amount,p.id,k.impulse,flat);}
 }

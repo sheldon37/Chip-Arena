@@ -461,8 +461,8 @@ export class Horde implements HordeApi{
  }
  // ---------------------------------------------------------------- assists (D38)
  /** A party player's chaos zombie or toy with no enemy player: chase the nearest active add within 20 m and hit it
-  *  through chaos.hitMinion (credited to the owner). */
- assistMinion(m:Minion,owner:Player,_dt:number){
+  *  through chaos.hitMinion (credited to the owner). Returns the add's body for the summon's attack (ChaosSystem). */
+ assistMinion(m:Minion,owner:Player,_dt:number):Minion|undefined{
   const s=this.sim,t=this.time,as=HORDE.assist;let st=this.assists.get(m.id);
   if(!st){st={at:-Infinity};this.assists.set(m.id,st);if(this.assists.size>64)for(const id of [...this.assists.keys()])if(!s.chaos.minions.has(id))this.assists.delete(id);}
   const p=m.body.translation();let add=st.target?this.byId.get(st.target):undefined;
@@ -472,11 +472,12 @@ export class Horde implements HordeApi{
    st.target=add?.id;
   }
   const vel=m.body.linvel();
-  if(!add?.minion){m.body.setLinvel(v(0,vel.y,0),true);return;}
+  if(!add?.minion){m.body.setLinvel(v(0,vel.y,0),true);return undefined;}
   const ap=add.minion.body.translation(),dx=ap.x-p.x,dz=ap.z-p.z,d=Math.hypot(dx,dz)||1,dir=v(dx/d,0,dz/d);
   m.yaw=Math.atan2(dir.x,dir.z);
   m.body.setLinvel(v(d>as.stop?dir.x*m.speed:0,vel.y,d>as.stop?dir.z*m.speed:0),true);
-  if(d<as.reach&&t>=m.nextAttack){m.lastAttack=t;m.nextAttack=t+as.interval;s.chaos.hitMinion(add.minion,(m.kind==='toy'?as.damage.toy:as.damage.zombie)*owner.stats.damage,owner.id,as.impulse,dir);}
+  // The summon's own windup/strike/recovery (ChaosSystem SUMMON, 2026-10-04) attacks the returned add.
+  return add.minion;
  }
  // ---------------------------------------------------------------- holds, end, rekey
  /** Hold start: cancel windups, stop horizontal motion and knockback. */

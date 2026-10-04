@@ -2,6 +2,7 @@ import {introFrame} from '../shared/intros.js';
 import {VENT_PIT} from '../shared/pve/vent-pits.js';
 import {BossTheme} from './boss-theme.js';
 import {SirenAudio} from './siren-audio.js';
+import {SlenderAudio} from './slender-static.js';
 import {DeathAnnouncementTrack,DEATH_ANNOUNCEMENT} from './death-announcements.js';
 import {enemyHit,procHit} from './hitmarker.js';
 import {RAGING_DEMON} from '../shared/raging-demon.js';
@@ -37,7 +38,7 @@ export class AudioCursor {
 }
 export class ArenaAudio {
  private deathTrack=new DeathAnnouncementTrack();private deathCues=new Map<string,number>();
- boss=new BossTheme();siren=new SirenAudio();
+ boss=new BossTheme();siren=new SirenAudio();slender=new SlenderAudio();
  music=new ArenaMusic();intros=new IntroAudio();
  private demonSeen=new Set<string>();private demonEpoch='';
  private loveBuffer:AudioBuffer|null=null;private vanBuffer:AudioBuffer|null=null;private loveSources=new Map<string,Set<AudioBufferSourceNode>>();private loveSeen=new Set<string>();private loveEpoch='';
@@ -115,7 +116,7 @@ export class ArenaAudio {
   this.music.setStage(pve?PVE_STAGE_TRACK:null);this.music.setDip(pve&&introFrame(presentation)?.style!==undefined&&state.phase==='intro'?.35:1);
   this.music.setActive(!state.bossSong&&(pve?!idle:['fight','countdown','result'].includes(state.phase)));
   if(pve){if(state.bossSong||idle)this.music.rewindStage();this.boss.preload(this.context);}}
- update(state:Snapshot,me:string,yaw:number,presentation=state){this.intros.update(presentation,this.context,this.music.cueVolume);this.music.setMap(state.options.map);this.music.setBossActive(!!state.bossSong);this.updateStageMusic(state,presentation);this.updateLove(state);this.boss.update(presentation,this.context,this.music.playbackVolume);this.siren.update(presentation,this.context,this.master);const self=state.players.find(p=>p.id===me);if(self)this.listener=self.pos;this.yaw=yaw;this.updateDemon(presentation);this.updateVentFalls(presentation);this.updateDeathAnnouncements(presentation);this.pveEntries(state);
+ update(state:Snapshot,me:string,yaw:number,presentation=state){this.intros.update(presentation,this.context,this.music.cueVolume);this.music.setMap(state.options.map);this.music.setBossActive(!!state.bossSong);this.updateStageMusic(state,presentation);this.updateLove(state);this.boss.update(presentation,this.context,this.music.playbackVolume);this.siren.update(presentation,this.context,this.master);this.slender.update(presentation,me,this.context,this.master);const self=state.players.find(p=>p.id===me);if(self)this.listener=self.pos;this.yaw=yaw;this.updateDemon(presentation);this.updateVentFalls(presentation);this.updateDeathAnnouncements(presentation);this.pveEntries(state);
   for(const e of this.cursor.consume(state.events,state.time)){
    if(e.type.startsWith('pve-')||e.type==='minionHit'&&state.pve)this.pveCue(e,state,me);
    else if(e.type==='melee-slam'){this.play('stone',e.pos,1);this.play('greatsword',e.pos,.65);}

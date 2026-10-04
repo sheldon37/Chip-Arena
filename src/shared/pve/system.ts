@@ -216,7 +216,7 @@ export class PveSystem implements PveHost{
  /** Weapon statuses on an add (burn/poison DoTs, slow); see Simulation.minionStatus. */
  statusAdd(m:Minion,source:string,st:AddStatusInput):boolean{return !!this.horde.status?.(m,source,st);}
  /** chaos.ts step loop: a party player's zombie or toy with no enemy player to chase (D38). */
- assistMinion(m:Minion,owner:Player,dt:number){if(this.isMember(owner)||this.isRecruit(owner))this.horde.assistMinion(m,owner,dt);}
+ assistMinion(m:Minion,owner:Player,dt:number){return this.isMember(owner)||this.isRecruit(owner)?this.horde.assistMinion(m,owner,dt):undefined;}
  /** #33 Ground ray rules: humans never ground on adds; the grown boss grounds with its longer ray. */
  motion(p:Player):{groundGroups?:number;groundRay?:number}|undefined{
   const scale=this.isBoss(p)?p.siren?.boost?.scale??1:1;
