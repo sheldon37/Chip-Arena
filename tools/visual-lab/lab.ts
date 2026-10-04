@@ -63,9 +63,17 @@ import {poseFirstPersonView} from '../../src/client/first-person-view.js';
 import {markFirstPersonRig} from '../../src/client/pose-flags.js';
 import {recordBlockHit,clearBlockImpacts} from '../../src/client/block-impacts.js';
 import {arenaLighting} from '../../src/client/arena-lighting.js';
+import {sampleClip,CHANNEL_COUNT,type MocapClip} from '../../src/client/mocap/mocap-clip.js';
+import {applyMocapPose} from '../../src/client/mocap/mocap-pose.js';
+import {MOCAP} from '../../src/client/mocap/mocap-layer.js';
 import {kitFor,adsProfile} from '../../src/shared/abilities.js';
 
 const q=new URLSearchParams(location.search);
+// mocapOff=1: the procedural layers only (before/after strips of the mocap sets, src/client/mocap).
+if(q.get('mocapOff')==='1')MOCAP.enabled=false;
+// mocap=<clip>: pose the raw retargeted clip (clip time = lab time, no ground pass) from the uncommitted preview table that
+// `node scripts/mocap/convert-greatsword.mjs <pack> --preview tools/visual-lab/mocap-preview.generated.ts` writes.
+const rawClip:MocapClip|undefined=q.has('mocap')?(await import(/* @vite-ignore */ './mocap-preview.generated.ts')).PREVIEW_CLIPS[q.get('mocap')!]:undefined,rawRow=new Float32Array(CHANNEL_COUNT);
 const num=(k:string,d:number)=>q.has(k)?Number(q.get(k)):d;
 const legacy=q.get('legacy')==='1';
 const kind=q.get('kind')||'motion',spec=q.get('spec')||'pistol',mode=q.get('mode')||'idle';
@@ -186,6 +194,7 @@ async function main(){
   rig.group.position.set(travel?root.x:p.pos.x,p.pos.y,travel?root.z:p.pos.z);rig.group.rotation.y=p.yaw;
   if(travel){grid.position.x=floor.position.x=Math.round(root.x);grid.position.z=floor.position.z=Math.round(root.z);}
   if(kind==='lobby')animateLobbyPose(rig,p,legacy?t:Math.max(0,t),h);else animateCharacter(rig,p,t,h,p.pitch);
+  if(rawClip){const c=rawClip;sampleClip(c,Math.max(0,t),rawRow);rig.body.position.set(0,-.025,0);rig.body.rotation.set(0,0,0);applyMocapPose(rig,rawRow,{weight:1});}
   if(mods&&kind!=='lobby'){weaponModifiers(rig.weapon,p,t);bodyModifiers(rig,p,t);if(p.spec==='daggers')weaponModifiers(rig.offWeapon,p,t);}
   if(fp&&viewRoot&&fpCamera){
    poseFirstPersonView(fp,viewRoot,p,t,h,false);

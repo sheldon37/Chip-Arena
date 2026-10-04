@@ -9,6 +9,10 @@ import {Simulation,initPhysics} from '../src/shared/simulation.js';
 import {WEAPONS,statsFor,magazineCapacity} from '../src/shared/content.js';
 import {ARENA,arenaBlocks} from '../src/shared/arena.js';
 import {CONFIG,SpecId,v,len} from '../src/shared/config.js';
+import {MOCAP} from '../src/client/mocap/mocap-layer.js';
+// The greatsword's third-person rig now plays the captured set (tests/greatsword-mocap.test.ts guards it); this suite keeps
+// guarding the procedural melee layers, which still pose the first-person view model and the other weapons.
+MOCAP.enabled=false;
 await initPhysics();
 function fixture(spec:SpecId='rifle'){const s=new Simulation({sandbox:true}),a=s.addPlayer('a','A',WEAPONS[spec].class)!,b=s.addPlayer('b')!;s.phase='fight';a.spec=spec;a.ammo=magazineCapacity(spec,a.stats);return {s,a,b};}
 test('expanded arena contains both spawns and outer lanes, with destruction headroom',()=>{const blocks=arenaBlocks(),floor=blocks.find(p=>p.id==='foundation')!;assert.ok(floor.size.x*floor.size.z>=5*27*25);assert.ok(ARENA.spawnZ<floor.size.z/2-3);assert.ok(blocks.length<=CONFIG.maxBodies-40);assert.ok(blocks.some(p=>p.material!=='foundation'&&Math.abs(p.pos.x)>20));const s=new Simulation();s.addPlayer('a');s.addPlayer('b');s.resetRound();const [a,b]=[...s.players.values()];assert.ok(len(v(a.body.translation().x-b.body.translation().x,0,a.body.translation().z-b.body.translation().z))>=40);s.dispose();});

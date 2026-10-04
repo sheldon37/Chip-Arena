@@ -10,6 +10,10 @@ import {comboReadyMotion,primaryMeleeMotion} from '../src/client/primary-melee-m
 import {animateEmperor} from '../src/client/emperor-animation.js';
 import {animateAnsatsuken} from '../src/client/ansatsuken-animation.js';
 import {PROBE_RATES,probeBase,probeMotion,probeRig,weaponTip} from './helpers/motion-probe.js';
+import {MOCAP} from '../src/client/mocap/mocap-layer.js';
+// The greatsword's third-person rig now plays the captured set (tests/greatsword-mocap.test.ts guards it); this suite keeps
+// guarding the procedural melee layers, which still pose the first-person view model and the other weapons.
+MOCAP.enabled=false;
 
 await initPhysics();
 type Rig=Parameters<typeof lowestShell>[0];

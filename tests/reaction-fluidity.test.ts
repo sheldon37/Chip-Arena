@@ -11,6 +11,10 @@ import {probeBase,probeRig,probeRates,describeProbe,weaponTip} from './helpers/m
 import {KnockdownRagdolls} from '../src/client/knockdown-ragdolls.js';
 import {KILL_EFFECTS} from '../src/client/death-effects.js';
 import {stanceFor} from '../src/client/stances.js';
+import {MOCAP} from '../src/client/mocap/mocap-layer.js';
+// The greatsword's third-person rig now plays the captured set (tests/greatsword-mocap.test.ts guards it); this suite keeps
+// guarding the procedural melee layers, which still pose the first-person view model and the other weapons.
+MOCAP.enabled=false;
 
 await initPhysics();
 const quats=(r:CharacterRig)=>TRANSITION_BONES.map(b=>r[b].quaternion.clone());

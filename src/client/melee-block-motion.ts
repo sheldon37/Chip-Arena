@@ -5,6 +5,7 @@ import type {PlayerView} from '../shared/simulation.js';
 import {meleeGuard,meleeReady,type GuardHand} from './melee-guard.js';
 import {blockImpact} from './block-impacts.js';
 import {timeJumped} from './motion-quality.js';
+import {mocapBlock} from './mocap/mocap-layer.js';
 
 /** Raised guard per weapon (chest-space hand targets and wrist Eulers, as in melee-guard; main is the right hand). */
 const BLOCK:Record<string,{main:GuardHand;off?:GuardHand}>={
@@ -42,9 +43,11 @@ const _v=new T.Vector3(),_e=new T.Euler(),lerp=T.MathUtils.lerp;
 export function meleeBlockMotion(r:CharacterRig,p:PlayerView,time:number){
  const heavy=p.spec==='greatsword',shield=p.spec==='shield',daggers=p.spec==='daggers',G=meleeGuard(p.spec),B=BLOCK[p.spec]??BLOCK.sword;
  meleeReady(r,p,time);
- const raise=blockRaise(time-raiseStart(r,p,time)),rw=Math.min(1,raise),arm=Math.min(1,raise*1.6);
+ const since=raiseStart(r,p,time),raise=blockRaise(time-since),rw=Math.min(1,raise),arm=Math.min(1,raise*1.6);
  const impact=blockImpact(p.id,time,.3),k=impact?blockRecoil(time-impact.at,heavy||shield)*(daggers?1.3:heavy?.75:shield?.8:1):0;
  const breath=Math.sin(time*2.15)*.015,sway=Math.sin(time*1.7+(p.id?p.id.length:0))*.018,still=1-T.MathUtils.clamp(r.motion/.32,0,1);
+ // A weapon with a captured block (mocap/mocap-layer.ts) raises, holds and takes blocked hits from the capture.
+ if(mocapBlock(r,p,time,since,impact?.at,p.grounded?still:0))return;
  // The hit drives the whole body: the knees absorb it (drop), the hips are pushed back and the torso rocks back over them.
  r.body.position.y-=(heavy?.13:shield?.11:.09)*raise+.045*k;
  r.body.position.z-=.035*raise+.05*k;r.body.position.x-=.012*still*rw;

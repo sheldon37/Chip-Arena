@@ -13,6 +13,10 @@ import {MeleeTrails} from '../src/client/melee-trails.js';
 import {recordBlockHit,clearBlockImpacts} from '../src/client/block-impacts.js';
 import type {ProjectileTrails} from '../src/client/projectile-trails.js';
 import {probeBase,probeRig,weaponTip} from './helpers/motion-probe.js';
+import {MOCAP} from '../src/client/mocap/mocap-layer.js';
+// The greatsword's third-person rig now plays the captured set (tests/greatsword-mocap.test.ts guards it); this suite keeps
+// guarding the procedural melee layers, which still pose the first-person view model and the other weapons.
+MOCAP.enabled=false;
 
 await initPhysics();
 const CUTS:[string,number][]=[['sword',1],['sword',2],['sword',3],['daggers',1],['daggers',2],['daggers',3],['daggers',4],['shield',1],['shield',2],['greatsword',1],['greatsword',2]];

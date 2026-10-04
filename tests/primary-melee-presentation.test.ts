@@ -9,6 +9,10 @@ import {animateCharacter,animationPreviewPlayer} from '../src/client/character-a
 import {buildWeapon} from '../src/client/weapon-visuals.js';
 import {SnapshotBuffer} from '../src/client/snapshots.js';
 import {DeathAnnouncements,skyBroadcastFrame} from '../src/client/death-announcements.js';
+import {MOCAP} from '../src/client/mocap/mocap-layer.js';
+// The greatsword's third-person rig now plays the captured set (tests/greatsword-mocap.test.ts guards it); this suite keeps
+// guarding the procedural melee layers, which still pose the first-person view model and the other weapons.
+MOCAP.enabled=false;
 await initPhysics();
 function fixture(){const sim=new Simulation({sandbox:true});sim.addPlayer('a','NOVA','melee');sim.addPlayer('b','Other','melee');sim.phase='fight';const snapshot=sim.snapshot();sim.dispose();return snapshot;}
 function player(spec:SpecId,index=1):PlayerView{const w=WEAPONS[spec];return {...fixture().players[0],spec,class:'melee',grounded:true,vel:v(),yaw:0,pitch:0,lastAttack:0,attackIndex:index,windup:w.windup,swingAt:w.windup,swingUntil:w.windup+.16,reach:w.range};}

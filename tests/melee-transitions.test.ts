@@ -7,6 +7,10 @@ import {WEAPONS} from '../src/shared/content.js';
 import {attackCommitment} from '../src/shared/souls-combat.js';
 import {animateCharacter,animationPreviewPlayer} from '../src/client/character-animation.js';
 import {probeBase,probeRig,rootTravel} from './helpers/motion-probe.js';
+import {MOCAP} from '../src/client/mocap/mocap-layer.js';
+// The greatsword's third-person rig now plays the captured set (tests/greatsword-mocap.test.ts guards it); this suite keeps
+// guarding the procedural melee layers, which still pose the first-person view model and the other weapons.
+MOCAP.enabled=false;
 
 await initPhysics();
 /** Transitions into and out of the running carry and the combat-ready guard: an attack, a stop or a hit out of a run must
