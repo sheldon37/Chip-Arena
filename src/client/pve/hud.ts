@@ -1,5 +1,6 @@
 // PvE HUD widgets (design §7.3). Pure string builders: main.ts concatenates them into drawHud's markup when the snapshot
 // carries `pve`. Identity lives in class/data-* (so hud-morph keeps nodes); changing values live in style and text.
+import {inVentShaft} from '../../shared/pve/vent-pits.js';
 import type {PlayerView,Snapshot} from '../../shared/simulation.js';
 import {BOSS_PLAYER_ID,decodeAdd,type DropTier,type PveView} from '../../shared/pve/contract.js';
 import {ECONOMY,PVE,PVE_SIREN,revivePrice} from '../../shared/pve/balance.js';
@@ -62,6 +63,8 @@ export function partyHud(state:Snapshot,pve:PveView,me:string){
   else if(dead){
    const since=row.downAt!==undefined?clock(state.time-row.downAt):'';
    const self=row.selfReviveAt!==undefined&&row.selfReviveAt>state.time;
+   const shaft=!!p&&inVentShaft(p.death,state.time),land=shaft?Math.max(0,(p!.death!.landAt??state.time)-state.time):0;
+   if(shaft)status=`<span class="pve-member-status">${icon('skull')}IN A VENT${since?` · ${since}`:''}</span><span class="pve-member-hint">LANDS IN ${Math.ceil(land)}s</span>`;else
    status=`<span class="pve-member-status">${icon('skull')}DOWN${!bot&&!self?` · Revive ${formatCash(row.reviveCost||revivePrice(row.revived))}`:''}${since?` · ${since}`:''}</span><span class="pve-member-hint">${self?`SELF-REVIVE ${clock(row.selfReviveAt!-state.time)}`:respawnHint}</span>`;
   }else if(choosing)status=`<span class="pve-member-status choosing">${icon('cpu')}CHOOSING A CHIP</span>`;
   const recruits=pve.recruits.filter(r=>r.owner===id).map(r=>{const rp=state.players.find(x=>x.id===r.id);

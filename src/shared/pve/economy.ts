@@ -12,6 +12,7 @@ import {PVE_MACHINES,type PveMachine} from './layout.js';
 import {interactTarget,respawnPad} from './machines.js';
 import {applyChipsLive,bestOffer,chipAllowed,offerCount,rollOffers,stillEligible,withMoneyOffer} from './picks.js';
 import {moneyWithChips} from './money-chips.js';
+import {inVentShaft} from './vent-pits.js';
 
 /** An empty party row (the seed's view of every member). S3 may reuse it for initial rows. */
 export function emptyPartyRow(kind:PvePartyView['kind'],connected:boolean):PvePartyView{
@@ -199,7 +200,8 @@ export class Economy implements EconomyApi{
   for(const r of [...this.rows.values()]){
    const p=this.player(r.id);if(!p)continue;
    while(r.healAt!==undefined&&r.healPulses<4&&t>=r.healAt+PRICES.healSeconds/4*(r.healPulses+1)-EPS){r.healPulses++;if(p.hp>0)this.sim.heal(p,p.stats.hp*PRICES.healFraction/4,p.id);}
-   if(r.selfReviveAt!==undefined&&t>=r.selfReviveAt-EPS){
+   // A body still in a vent shaft (vent-pits.ts) cannot self-revive yet: the timer waits for the landing.
+   if(r.selfReviveAt!==undefined&&t>=r.selfReviveAt-EPS&&!inVentShaft(p.death,t)){
     r.selfReviveAt=undefined;
     if(p.hp<=0&&p.connected&&r.selfRevives>0){r.selfRevives--;this.revive(p,p.death?.pos??p.body.translation(),PVE_EVENT.revive,{message:'self'});}
    }
@@ -221,7 +223,7 @@ export class Economy implements EconomyApi{
  }
  private downed(except:string){
   const out:{id:string;pos:Vec}[]=[];
-  for(const q of this.host.members())if(q.id!==except&&q.hp<=0&&q.connected&&q.death)out.push({id:q.id,pos:q.death.pos});
+  for(const q of this.host.members())if(q.id!==except&&q.hp<=0&&q.connected&&q.death&&!inVentShaft(q.death,this.time))out.push({id:q.id,pos:q.death.pos});
   return out;
  }
  private stepInteract(p:Player,r:Row){
@@ -235,7 +237,7 @@ export class Economy implements EconomyApi{
  /** Owner playtest (2026-10-03): one F press next to a downed teammate's beacon revives at once (no hold channel). The price
   *  is charged on the press; too little money denies with 'money'. Same 50% HP and shield as every revive. */
  private reviveNow(p:Player,r:Row,target:string){
-  const t=this.player(target);if(!t||t.hp>0||!t.death||!t.connected)return;
+  const t=this.player(target);if(!t||t.hp>0||!t.death||!t.connected||inVentShaft(t.death,this.time))return;
   const price=revivePrice(this.host.stats(t.id).revived);if(r.money<price){this.deny(p.id,'money');return;}
   this.charge(r,price);this.host.stats(p.id).revives++;this.host.stats(t.id).revived++;
   this.revive(t,t.death.pos,PVE_EVENT.revive,{source:p.id,amount:price});

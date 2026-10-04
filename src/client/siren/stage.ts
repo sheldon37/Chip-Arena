@@ -7,6 +7,7 @@ import {FlameField} from './flames.js';
 import {PALETTE,glowMaterial,haloMaterial,decalMaterial,tickSirenClock} from './materials.js';
 import {pveOf,PVE_TIMING,type EntryKind,type PveEntryView} from '../../shared/pve/contract.js';
 import {PVE_ENTRIES} from '../../shared/pve/layout.js';
+import {ENTRY_CLOSE,entryStart,entryOpenAmount,VENT_PIT} from '../../shared/pve/vent-pits.js';
 
 const clamp=(x:number,a=0,b=1)=>Math.min(b,Math.max(a,x));
 const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
@@ -34,15 +35,38 @@ const KEYS=Object.keys(MOODS.build) as (keyof Mood)[];
  *  the wall face, so an add waiting at its walk start (PVE_ENTRIES door `from`, 0.7 m from the wall) is hidden behind
  *  them until they swing into the hall. Hinges are DOOR_HINGE either side of the door centre. */
 export const DOOR_LEAF_D=1.2,DOOR_HINGE=1.48,DOOR_LEAF_W=1.42,DOOR_SWING=1.75,VENT_HINGE=-1.12,VENT_SWING=1.95,CELL_STUB=.45/3.45;
-/** Seconds each entry takes to close again after `closeAt`. */
-export const ENTRY_CLOSE:Record<EntryKind,number>={vent:.4,door:.7,cell:.6};
-const smooth=(x:number)=>{x=clamp(x);return x*x*(3-2*x);};
-/** When an entry starts to open: a climbing add's hands reach the grate at `openAt+vent.push`; a diving add pulls it at `openAt`. */
-export function entryStart(kind:EntryKind,v:Pick<PveEntryView,'openAt'|'mode'>){return kind==='vent'&&v.mode==='spawn'?v.openAt+PVE_TIMING.vent.push:v.openAt;}
-/** Open amount 0..1 of an entry at time t: o(t)=smooth((t−start)/T_open)·(1−smooth((t−closeAt)/T_close)). Pure in time. */
-export function entryOpenAmount(kind:EntryKind,v:PveEntryView|undefined,t:number){
- if(!v)return 0;const open=kind==='vent'?PVE_TIMING.vent.open:kind==='door'?PVE_TIMING.door.open:PVE_TIMING.cell.open;
- return smooth((t-entryStart(kind,v))/open)*(1-smooth((t-v.closeAt)/ENTRY_CLOSE[kind]));
+// Entry open amounts are shared with the authority (pve/vent-pits.ts decides vent falls from the same curve).
+export {ENTRY_CLOSE,entryStart,entryOpenAmount};
+
+/** The open vent's pit: the floor quad over the hole renders a shaft below it (per-pixel ray into a box VENT_PIT.hole wide
+ *  and PIT_DEPTH deep): dark walls with seams and rungs fading to black with depth, a black bottom, a faint lip glow.
+ *  Drawn over the floor (polygon offset) so the tiles never show through; it fades in with the lid (fully dark from the
+ *  authority's lethal open amount) and out as the lid shuts. Players falling in sink below the floor into it. */
+const PIT_DEPTH=7,PIT_GEO=new T.PlaneGeometry(VENT_PIT.hole,VENT_PIT.hole).rotateX(-Math.PI/2);
+export function ventShaftMaterial(){
+ return new T.ShaderMaterial({transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-6,toneMapped:true,
+  uniforms:{uOpen:{value:0},uHalf:{value:VENT_PIT.hole/2},uDepth:{value:PIT_DEPTH},uLethal:{value:VENT_PIT.lethal}},
+  vertexShader:`varying vec3 vLocal;varying vec3 vWorld;
+void main(){vLocal=position;vec4 w=modelMatrix*vec4(position,1.);vWorld=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}`,
+  fragmentShader:`uniform float uOpen,uHalf,uDepth,uLethal;varying vec3 vLocal;varying vec3 vWorld;
+void main(){
+ vec3 d=normalize(vWorld-cameraPosition),p=vec3(vLocal.x,0.,vLocal.z);
+ float tx=abs(d.x)>1e-5?(sign(d.x)*uHalf-p.x)/d.x:1e9,tz=abs(d.z)>1e-5?(sign(d.z)*uHalf-p.z)/d.z:1e9,ty=d.y<-1e-5?-uDepth/d.y:1e9;
+ float t=min(min(tx,tz),ty);vec3 h=p+d*max(t,0.);float down=-h.y;vec3 col=vec3(0.);
+ if(t<ty){
+  float side=tx<tz?0.:1.,u=tx<tz?h.z:h.x;
+  vec3 base=mix(vec3(.13,.115,.16),vec3(.085,.075,.11),side);
+  float seam=1.-smoothstep(.0,.03,abs(fract(down*1.6)-.5)-.44),panel=1.-smoothstep(.0,.025,abs(fract(u*1.15+.5)-.5)-.46);
+  float rung=(1.-smoothstep(.0,.02,abs(u)-.32))*(1.-smoothstep(.0,.025,abs(fract(down*2.4)-.5)-.45))*step(.15,down)*side;
+  col=base*(1.-.45*max(seam,panel))+vec3(.07,.065,.075)*rung;
+  col*=exp(-down*.95);
+  col+=vec3(.32,.05,.08)*exp(-down*7.)*.35;
+ }
+ float a=smoothstep(0.,uLethal,uOpen);
+ gl_FragColor=vec4(col,a);
+ #include <tonemapping_fragment>
+ #include <colorspace_fragment>
+}`});
 }
 
 /** The four walls as frames: u runs along the wall, d is the distance into the hall, and the frame's yaw faces the hall.
@@ -120,7 +144,7 @@ export class WardZeroVisuals {
  private beacons:{head:T.Group;beam:T.Mesh;lamp:T.ShaderMaterial;spot?:T.SpotLight;phase:number;angle:number}[]=[];
  private grins:{mat:T.ShaderMaterial;big:boolean}[]=[];private eyes:{mesh:T.Mesh;mat:T.ShaderMaterial}[]=[];private eyeHalos:T.Sprite[]=[];private rose!:T.ShaderMaterial;
  private circle!:{ring:T.ShaderMaterial;tickMat:T.ShaderMaterial;runes:T.Group};
- private vents:{id:string;grate:T.Group;lid:T.Group;glow:T.ShaderMaterial;acc:number;burst:boolean}[]=[];
+ private vents:{id:string;grate:T.Group;lid:T.Group;glow:T.ShaderMaterial;acc:number;burst:boolean;pit:T.Mesh;shaft:T.ShaderMaterial}[]=[];
  private leaves=new Map<string,T.Group[]>();private gates=new Map<string,T.Group>();private entryAcc=new Map<string,number>();
  private lamps!:Lamps;private cracks:number[]=[];private sconces:number[]=[];private pipes:{i:number;d:number}[]=[];private seams:number[]=[];private alarms=new Map<string,number>();private pads:number[]=[];private keyhole=-1;
  private crowd!:{bodies:T.InstancedMesh;heads:T.InstancedMesh;eyes:Lamps;list:{tag:Side;x:number;y:number;z:number;ry:number;h:number;phase:number}[]};
@@ -353,10 +377,11 @@ export class WardZeroVisuals {
   for(const v of SIREN_VENTS){const g=new T.Group();g.name='ward-'+v.id;g.position.set(v.x,.015,v.z);this.group.add(g);
    // The grate is a lid hinged at x=VENT_HINGE, so an add climbing out (or diving in) can push it open (PvE, design §8.4).
    const glow=glowMaterial(PALETTE.warn,{transparent:true,opacity:0,side:T.DoubleSide});const rim=new T.Mesh(new T.RingGeometry(1.15,1.4,4,1),glow);rim.rotation.set(-Math.PI/2,0,Math.PI/4);rim.position.y=.01;g.add(rim);
-   const pit=new T.Mesh(new T.PlaneGeometry(2.1,2.1),new T.MeshBasicMaterial({color:0x000000}));pit.rotation.x=-Math.PI/2;pit.position.y=-.005;g.add(pit);
+   // The open vent is a black pit (owner 2026-10-04): a shaft drawn into the floor quad (see ventShaftMaterial), shown only while the lid is up.
+   const shaft=ventShaftMaterial(),pit=new T.Mesh(PIT_GEO,shaft);pit.name='ward-'+v.id+'-pit';pit.position.y=-.003;pit.renderOrder=1;pit.visible=false;g.add(pit);
    const lid=new T.Group();lid.name='ward-'+v.id+'-lid';lid.position.set(VENT_HINGE,0,0);g.add(lid);const bars=new T.InstancedMesh(unit,this.mat.iron,9);bars.name='ward-vent-lid';bars.receiveShadow=true;
    const list=[...Array.from({length:6},(_,i)=>[2.2,.1,0,-1+i*.4]),[.1,2.3,-1.12,0],[.1,2.3,1.12,0],[2.34,.1,0,1.12]];list.forEach(([w,d,x,z],i)=>bars.setMatrixAt(i,at(x-VENT_HINGE,0,z,w,.03,d)));lid.add(bars);
-   this.vents.push({id:v.id,grate:g,lid,glow,acc:0,burst:false});}
+   this.vents.push({id:v.id,grate:g,lid,glow,acc:0,burst:false,pit,shaft});}
  }
 
  // ---- per frame --------------------------------------------------------------------------------------------------
@@ -461,7 +486,7 @@ export class WardZeroVisuals {
  private updateEntries(state:Snapshot,time:number,dt:number,q:number){
   const view=pveOf(state),open=new Map<number,PveEntryView>();for(const e of view?.entries??[])open.set(e.e,e);this.ventGlow.clear();
   for(const en of PVE_ENTRIES){const e=open.get(en.e),o=entryOpenAmount(en.kind,e,state.time),active=!!e&&state.time>=e.openAt&&state.time<e.closeAt+ENTRY_CLOSE[en.kind];
-   if(en.kind==='vent'){const v=this.vents[en.e];if(!v)continue;v.lid.rotation.z=VENT_SWING*o;if(active)this.ventGlow.set(v.id,.25+.35*o*(Math.sin(time*10)>0?1:.4));
+   if(en.kind==='vent'){const v=this.vents[en.e];if(!v)continue;v.lid.rotation.z=VENT_SWING*o;v.pit.visible=o>1e-3;v.shaft.uniforms.uOpen.value=o;if(active)this.ventGlow.set(v.id,.25+.35*o*(Math.sin(time*10)>0?1:.4));
     if(o>.05&&o<.98&&!this.cut.v){let acc=(this.entryAcc.get(en.id)??0)+dt*q*40;while(acc>=1){acc-=1;this.fire.emit(v.grate.position.x+(Math.random()-.5)*1.8,.05,v.grate.position.z+(Math.random()-.5)*1.8,0,.8+Math.random(),0,.6,.08,Math.random()<.5?'black':'smoke',1,1.5);}this.entryAcc.set(en.id,acc);}
     continue;}
    if(en.kind==='door'){const pivots=this.leaves.get(en.id);if(pivots)pivots.forEach((pv,i)=>{pv.rotation.y=(i===0?-1:1)*DOOR_SWING*o;});}

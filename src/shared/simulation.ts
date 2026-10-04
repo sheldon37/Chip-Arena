@@ -47,7 +47,8 @@ let initializing:Promise<void>|undefined;
 export const initPhysics=()=>initializing??=(RAPIER.init());
 export type Phase='intro'|'lobby'|'specialization'|'countdown'|'fight'|'result'|'draft'|'match';
 
-export interface DeathPresentation {wound?:BodyWound;motion?:DeathMotion;gibPart?:GibPart;announcement?:{victim:string;killer:string|null};hitPoint?:Vec;melee?:boolean;force?:number;attacker?:{pos:Vec;yaw:number;color:string;cosmetics:Cosmetics;spec:SpecId};id:string;at:number;effect:string;seed:number;pos:Vec;velocity:Vec;direction:Vec;source:string|null;kind:string;yaw:number;}
+export interface DeathPresentation {wound?:BodyWound;motion?:DeathMotion;gibPart?:GibPart;announcement?:{victim:string;killer:string|null};hitPoint?:Vec;melee?:boolean;force?:number;attacker?:{pos:Vec;yaw:number;color:string;cosmetics:Cosmetics;spec:SpecId};id:string;at:number;effect:string;seed:number;pos:Vec;velocity:Vec;direction:Vec;source:string|null;kind:string;yaw:number;
+ /** PvE vent fall (pve/vent-pits.ts): when the body lands from the shaft (sim time). */ landAt?:number;}
 export interface Player {
  /** Hold-to-aim (2026-10-04): the aimed ability slot whose key is down (cast on release), last real key states, input freshness. */
  aimHold?:{slot:AbilitySlot;since:number};aimKeys?:{q:boolean;e:boolean};inputFresh?:boolean;

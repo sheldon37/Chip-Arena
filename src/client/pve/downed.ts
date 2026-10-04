@@ -10,6 +10,7 @@
 import * as T from 'three';
 import type {DeathPresentation,PlayerView,Snapshot} from '../../shared/simulation.js';
 import {pveOf,type PveView} from '../../shared/pve/contract.js';
+import {inVentShaft} from '../../shared/pve/vent-pits.js';
 import type {CharacterRig} from '../character-rig.js';
 import {seedTransition,TRANSITION_BONES} from '../pose-transitions.js';
 import {currentLayout,retagVoxelPart} from '../voxel-kit.js';
@@ -19,7 +20,7 @@ export const DOWNED={
  /** A kept ragdoll holds this age (settled; the stock fade starts at 4.35 s). Effects may name their own (keepAge). */
  keepAge:4.2,
  /** Effects a kept death plays as chosen; any other effect id plays the impact ragdoll, so there is always a body. */
- keepable:['impact-ragdoll','ragdoll','dev-gibber','siren-crush'] as readonly string[],
+ keepable:['impact-ragdoll','ragdoll','dev-gibber','siren-crush','vent-fall','vent-splat'] as readonly string[],
  /** Effect budget of one kept body (outside ANIMATION.maxDeathVoxels, bounded by the party size). */
  budget:96,
  /** At most this many late bodies (fast-forwarded to their hold) are built per frame. */
@@ -50,8 +51,8 @@ export function bodyKept(p:Pick<PlayerView,'id'|'hp'|'death'>,view:PveView|undef
 }
 /** The HELP bubble rides on the revive beacon of every downed member, for everyone except the downed player themself
  *  (their HUD shows their state). Hidden once the run has ended. */
-export function helpShown(p:Pick<PlayerView,'id'|'hp'>,view:PveView,me:string):boolean{
- return p.id!==me&&p.hp<=0&&view.stage!=='ended'&&!!view.party[p.id]?.connected;
+export function helpShown(p:Pick<PlayerView,'id'|'hp'>&{death?:PlayerView['death']},view:PveView,me:string,t=Infinity):boolean{
+ return p.id!==me&&p.hp<=0&&view.stage!=='ended'&&!!view.party[p.id]?.connected&&!inVentShaft(p.death,t);
 }
 /** Bubble bob (m), pure in time; members are phase-shifted so several bubbles do not move in lockstep. */
 export const helpBob=(t:number,id='')=>DOWNED.help.bob*Math.sin((t/DOWNED.help.period+(hash(id)%997)/997)*Math.PI*2);

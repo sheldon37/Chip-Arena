@@ -121,6 +121,16 @@ function scenario(t:number):Frame{
   w.party=fixtureParty({time:t,ids,kinds:['alive',up?'alive':'dead']});if(up)w.party.down.upAt=0;else w.party.down.downAt=dead.at;
   const players=[player(ME,'#cccccc',stand(0,30),0),player('down','#ff8a3f',up?back:dead.pos,up?2.2:dead.yaw,up?{hp:50}:{hp:0,death:dead})];
   return {players,view:w};}
+ if(kind==='ventfall'||kind==='splat'){
+  // Vent pits (src/shared/pve/vent-pits.ts): ventfall = 'down' walks over open vent 0 and falls in at t=0; splat = the
+  // body lands at the hall centre (record at 0, impact at VENT_PIT.drop) and is revived in place at up=<s> (default none).
+  const ids=[ME,'down'],w=base(t,ids),fall=kind==='ventfall',V=PVE_ENTRIES[0].from,at=fall?stand(V.x,V.z):stand(0,0),up=num('up',99),dead=fall?t>=0:t<up;
+  w.party=fixtureParty({time:t,ids,kinds:['alive',dead?'dead':'alive']});if(dead)w.party.down.downAt=fall?0:-9.4;else if(!fall)w.party.down.upAt=up;
+  if(fall)w.entries=[{e:0,openAt:-3,closeAt:30,mode:'dive'}];
+  const death={id:fall?'d-fall':'d-splat',at:0,effect:fall?'vent-fall':'vent-splat',seed:7,pos:at,velocity:{x:0,y:-1,z:0},direction:{x:0,y:-1,z:0},source:null,kind:'vent-fall',yaw:.4,landAt:fall?10:.6} as DeathPresentation;
+  const pos=fall&&t<0?stand(V.x+2.2*(-t),V.z):at;
+  const players=[player(ME,'#cccccc',stand(0,30),0),player('down','#ff8a3f',pos,fall?-Math.PI/2:.4,dead?{hp:0,death}:{hp:50,...(fall?{vel:{x:-2.2,y:0,z:0}}:{})})];
+  return {players,view:w};}
  if(kind==='possess'){
   // "Find me...": the boss dissolves at t=0 and its black flame streaks to add 5.
   const w=base(t),addPos={x:6,y:.86,z:-3};w.bossView={id:BOSS_PLAYER_ID,phase:2,floor:1000,hidden:t>=0,possessed:5,possessedAt:0};
@@ -160,6 +170,9 @@ function cameraFor(view:string):[number[],number[]]{
  if(view==='pickups')return [[0,2.4,10.5],[0,1,2]];
  if(view==='entry'||view==='entry-side'){const en=entry,f=fwd(en.yaw),r=fwd(en.yaw+Math.PI/2),side=view==='entry-side'?1:.35,d=en.kind==='vent'?5:7.5;
   return [[en.exit.x+f.x*d+r.x*d*side,en.kind==='vent'?3.2:2.4,en.exit.z+f.z*d+r.z*d*side],[en.from.x+(en.exit.x-en.from.x)*.4,en.kind==='vent'?.3:1.5,en.from.z+(en.exit.z-en.from.z)*.4]];}
+ if(view==='vent'){const en=entry,f=fwd(en.yaw);return [[en.from.x+f.x*3.2+1.2,3.4,en.from.z+f.z*3.2+.8],[en.from.x,-.4,en.from.z]];}
+ if(view==='splat')return [[3.2,2.4,4.6],[0,.4,0]];
+ if(view==='splat-wide')return [[0,5,17],[0,6,0]];
  if(view==='holo')return [[0,2.1,5.2],[0,1.6,0]];
  if(view==='beacon')return [[0,3.2,7.5],[0,.9,0]];
  if(view==='downed')return [[2.2,1.7,3.4],[1,.35,-.2]];
@@ -173,7 +186,7 @@ async function main(){
  await initPhysics();
  const gl=new T.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});gl.setPixelRatio(1);gl.setSize(cellW,cell);gl.shadowMap.enabled=true;gl.shadowMap.type=T.PCFSoftShadowMap;
  gl.outputColorSpace=T.SRGBColorSpace;gl.toneMapping=T.ACESFilmicToneMapping;gl.toneMappingExposure=.92;
- const defaults:Record<string,string>={overview:'overview',dispense:'machine',recruit:'machine',pickups:'pickups',entries:'entry',holo:'holo',beacon:'beacon',boss:'boss',possess:'possess',downed:'downed,downed-wide'};
+ const defaults:Record<string,string>={overview:'overview',dispense:'machine',recruit:'machine',pickups:'pickups',entries:'entry',holo:'holo',beacon:'beacon',boss:'boss',possess:'possess',downed:'downed,downed-wide',ventfall:'vent',splat:'splat-wide,splat'};
  const views=(q.get('views')||defaults[kind]).split(',').filter(Boolean),cut=!!q.get('cutscene'),rows=cut?1:views.length;
  const start=num('start',kind==='overview'?100:-.2),span=num('span',kind==='entries'?3:kind==='recruit'?1.8:1.2),times=sampleList?.length?sampleList:Array.from({length:frames},(_,i)=>start+(frames===1?0:span*i/(frames-1)));
  sheet.width=times.length*cellW;sheet.height=rows*cell+22;const ctx=sheet.getContext('2d')!;ctx.font='11px ui-monospace,monospace';ctx.fillStyle='#0c0b10';ctx.fillRect(0,0,sheet.width,sheet.height);

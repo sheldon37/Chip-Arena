@@ -1,4 +1,5 @@
 import {introFrame} from '../shared/intros.js';
+import {VENT_PIT} from '../shared/pve/vent-pits.js';
 import {BossTheme} from './boss-theme.js';
 import {SirenAudio} from './siren-audio.js';
 import {DeathAnnouncementTrack,DEATH_ANNOUNCEMENT} from './death-announcements.js';
@@ -67,6 +68,13 @@ export class ArenaAudio {
    else{schedule('music',this.loveBuffer,0,1.15);for(const at of CLOWN_LOVE.beats)if(at>=age)schedule('hit-'+at,hit,at,.9);}
   }
  }
+ /** PvE vent pits (pve/vent-fall.ts): a whoosh down the shaft, then the splat on landing (existing clips, pitched for comedy). */
+ private ventSeen=new Set<string>();
+ private updateVentFalls(state:Snapshot){for(const p of state.players){const d=p.death;if(p.hp>0||!d||d.effect!=='vent-fall'&&d.effect!=='vent-splat')continue;const age=state.time-d.at;
+  if(d.effect==='vent-fall'){if(age>=0&&age<.3&&!this.ventSeen.has(d.id)){this.ventSeen.add(d.id);this.play('dash',d.pos,.8,.55);}continue;}
+  const fall=d.id+':fall',hit=d.id+':hit';if(age>=0&&age<.3&&!this.ventSeen.has(fall)){this.ventSeen.add(fall);this.play('jump',d.pos,.55,.6);}
+  if(age>=VENT_PIT.drop&&age<VENT_PIT.drop+.25&&!this.ventSeen.has(hit)){this.ventSeen.add(hit);this.play('arcade-heavy',d.pos,1,.75);this.play('water',d.pos,.6,1.5);this.play('arcade-punch',d.pos,.5,.55);}}
+  if(this.ventSeen.size>64)this.ventSeen.clear();}
  private updateDemon(state:Snapshot){const epoch=`${state.generation}:${state.setNumber}:${state.round}`;if(epoch!==this.demonEpoch){this.demonSeen.clear();this.demonEpoch=epoch;}for(const p of state.players){const d=p.death;if(p.hp>0||d?.effect!=='dev-raging-demon')continue;const age=state.time-d.at;RAGING_DEMON.hits.forEach((at,i)=>{const key=d.id+':'+i;if(age<at||this.demonSeen.has(key))return;this.demonSeen.add(key);if(age-at<.12)this.play(i===7?'arcade-heavy':i===3||i===5?'arcade-kick':'arcade-punch',d.pos,i===7?1.1:.85);});}}
  clownLaugh(){const c=this.context;if(!c||!this.master||this.muted)return;for(let n=0;n<9;n++){const at=c.currentTime+1.65+n*.22,voice=c.createOscillator(),formant=c.createBiquadFilter(),gain=c.createGain();voice.type='sawtooth';voice.frequency.setValueAtTime(185+(n%3)*30,at);voice.frequency.exponentialRampToValueAtTime(115+(n%2)*30,at+.17);formant.type='bandpass';formant.frequency.value=800;formant.Q.value=.9;gain.gain.setValueAtTime(0,at);gain.gain.linearRampToValueAtTime(.22,at+.025);gain.gain.exponentialRampToValueAtTime(.001,at+.18);voice.connect(formant).connect(gain).connect(this.master);voice.start(at);voice.stop(at+.2);voice.onended=()=>{voice.disconnect();formant.disconnect();gain.disconnect();};}}
  get status(){return this.error||(this.context&&this.buffers.size<AUDIO_CLIPS.length?`Loading sound · ${this.buffers.size}/${AUDIO_CLIPS.length} effects`:!this.context?'Click Test Sound to enable audio':`${this.muted?'Muted':this.context.state==='running'?'Sound ready':'Audio paused'} · ${this.buffers.size}/${AUDIO_CLIPS.length} effects loaded`);}
@@ -107,7 +115,7 @@ export class ArenaAudio {
   this.music.setStage(pve?PVE_STAGE_TRACK:null);this.music.setDip(pve&&introFrame(presentation)?.style!==undefined&&state.phase==='intro'?.35:1);
   this.music.setActive(!state.bossSong&&(pve?!idle:['fight','countdown','result'].includes(state.phase)));
   if(pve){if(state.bossSong||idle)this.music.rewindStage();this.boss.preload(this.context);}}
- update(state:Snapshot,me:string,yaw:number,presentation=state){this.intros.update(presentation,this.context,this.music.cueVolume);this.music.setMap(state.options.map);this.music.setBossActive(!!state.bossSong);this.updateStageMusic(state,presentation);this.updateLove(state);this.boss.update(presentation,this.context,this.music.playbackVolume);this.siren.update(presentation,this.context,this.master);const self=state.players.find(p=>p.id===me);if(self)this.listener=self.pos;this.yaw=yaw;this.updateDemon(presentation);this.updateDeathAnnouncements(presentation);this.pveEntries(state);
+ update(state:Snapshot,me:string,yaw:number,presentation=state){this.intros.update(presentation,this.context,this.music.cueVolume);this.music.setMap(state.options.map);this.music.setBossActive(!!state.bossSong);this.updateStageMusic(state,presentation);this.updateLove(state);this.boss.update(presentation,this.context,this.music.playbackVolume);this.siren.update(presentation,this.context,this.master);const self=state.players.find(p=>p.id===me);if(self)this.listener=self.pos;this.yaw=yaw;this.updateDemon(presentation);this.updateVentFalls(presentation);this.updateDeathAnnouncements(presentation);this.pveEntries(state);
   for(const e of this.cursor.consume(state.events,state.time)){
    if(e.type.startsWith('pve-')||e.type==='minionHit'&&state.pve)this.pveCue(e,state,me);
    else if(e.type==='melee-slam'){this.play('stone',e.pos,1);this.play('greatsword',e.pos,.65);}
