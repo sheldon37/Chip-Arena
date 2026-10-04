@@ -130,7 +130,7 @@ test('Last Laugh: a grab is released at hold start; in phase 4 a solo human surv
  }finally{s.dispose();}
 });
 
-test('possession: hidden untouchable boss, possessed add, ×1.8/×1.6 flow; the kill sets 50% and starts chip 3 on the same tick',()=>{
+test('possession: hidden untouchable boss, possessed add, ×5/×3 flow; the kill sets 50% and starts chip 3 on the same tick',()=>{
  const r=rig();const {s}=r;try{
   const boss=toBoss(r),max=boss.stats.hp,h=s.players.get('h1')!;
   const add=r.horde.addAt({x:6,z:-4});const n=Number(add.id.slice(4));
@@ -138,7 +138,8 @@ test('possession: hidden untouchable boss, possessed add, ×1.8/×1.6 flow; the 
   assert.equal(s.pve!.hidden(boss),true);assert.equal(boss.body.isEnabled(),false);assert.equal(s.pve!.untouchable(boss),true);
   assert.equal(r.horde.possessed(),n);assert.equal(view(s).bossView!.possessed,n);assert.equal(typeof view(s).bossView!.possessedAt,'number');
   assert.ok(s.events.some(e=>e.type==='pve-possess'&&e.target==='add-'+n));
-  const flow=r.horde.flows.at(-1)!;assert.ok(Math.abs(flow.rate-PVE_SIREN.trickle.rate*1.8)<1e-9);assert.equal(flow.maxAlive,Math.round(6*1.6));
+  const flow=r.horde.flows.at(-1)!;assert.equal(PVE_SIREN.possession.rate,5);assert.equal(PVE_SIREN.possession.alive,3,'owner 2026-10-04: many more spawns');
+  assert.ok(Math.abs(flow.rate-PVE_SIREN.trickle.rate*5)<1e-9);assert.equal(flow.maxAlive,6*3);
   // Not a botInput target, no hazard damage, no siren readiness.
   const target=s.botInput(h);void target;assert.equal(s.siren.ready(boss),false);assert.equal(boss.connected,false);
   const enemies=[...s.players.values()].filter(x=>s.enemy(h.id,x.id)&&x.connected&&x.hp>0);assert.equal(enemies.length,0,'botInput has no target');

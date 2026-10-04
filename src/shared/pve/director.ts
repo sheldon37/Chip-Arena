@@ -169,7 +169,9 @@ export class Director implements DirectorApi{
   const h=this.host;this.possessed=n;this.possessedAt=h.sim.time;
   h.emit(PVE_EVENT.possess,this.boss()?.body.translation()??ORIGIN,{target:ADD_PREFIX+n});
  }
- private unhide(boss:Player){if(!this.hiddenBoss)return;boss.connected=true;this.host.setHidden(boss,false);this.hiddenBoss=false;}
+ /** Debug phase skips past the hunt: the boss shows itself again and the add it hid in is released (no "found"). */
+ private unhide(boss:Player){if(!this.hiddenBoss)return;boss.connected=true;this.host.setHidden(boss,false);this.hiddenBoss=false;
+  this.host.horde.release?.();this.possessed=undefined;this.possessedAt=undefined;}
  /** The possessed add died: the boss is found at 50% HP over it and the chip-3 reveal starts on the same tick. */
  private found(d:AddDeath){
   const h=this.host,s=h.sim,boss=this.boss();if(!boss)return;
@@ -206,7 +208,8 @@ export class Director implements DirectorApi{
  }
  onAddKilled(d:AddDeath){
   if(this.stage==='wave')this.waveKilled++;
-  if(d.possessed&&this.stage==='boss'&&this.phase===2&&this.hiddenBoss&&!this.outcome)this.found(d);
+  // A 'burn' death is killAll (a wipe's defeat or the boss's death): the Siren was not found.
+  if(d.possessed&&d.cause!=='burn'&&this.stage==='boss'&&this.phase===2&&this.hiddenBoss&&!this.outcome)this.found(d);
  }
  onDeath(p:Player){
   if(this.host.isBoss(p)&&p.id===this.bossId&&!this.outcome&&!this.pendingOutcome){this.host.horde.killAll('boss-dead');this.startOutro('victory');}

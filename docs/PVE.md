@@ -503,6 +503,29 @@ Owner: "when player is dead, show little 'Help' message that goes up and down ne
 - No damage, hitbox, timing, cooldown, movement, knockback or networking rule changed; `upAt` adds a few bytes to the
   PvE snapshot after a return.
 
+## Harder "Find me..." and 30 s intermissions (2026-10-04, branch `claude/sleepy-ritchie-g8ruhv`)
+
+Owner: "For the 'Find me' phase on Siren bossfight, we need to make it harder. Increase spawns significantly" and "For
+siren boss, give ... 30 seconds intermission time".
+
+- `PVE_SIREN.possession` rate ×1.8 → ×5 and alive ×1.6 → ×3, up to the new `HORDE.maxAlivePossession` 48 while an add is
+  possessed (`hordeCap(relay, possessing)`, `Horde.hard()`). Waves and the other boss phases keep 40; relay rooms keep 28
+  (the host PC's worker is unmeasured). Per party size h=1..4: 18/30/42/48 adds alive at 3/5/7/9 per s (was 10/16/22/29
+  at 1.08/1.8/2.52/3.24); relay 18/28/28/28. Rate and alive must rise together: at the cap new adds only replace kills.
+  48 alive + 16 corpses = 64 = `HORDE_RENDER.impostorMax`, the most the client draws; the possessed add always gets a rig.
+- `PVE.intermissionSeconds` 12 → 30 and `lastIntermissionSeconds` 8 → 30 (HUD/board countdowns read `stageUntil`).
+- Fixes the larger crowd exposed: a wipe during the hunt no longer counts as "found" (the defeat's `killAll` burn used to
+  reveal the Siren at 50%, play the chip-3 reveal and pay the possessed reward); a debug `boss-phase:3|4` skip during
+  the hunt releases the possessed add (`Horde.release`).
+- Measured (scratch hunt harness, real parts, bot-driven human with 2 recruits, pistol/rifle, h=1..4, 9 seeds each, 72
+  hunts per side, base 2ae916d vs new): adds alive about 2× (median of run means 13 → 24.5), adds within 10 m 2.1 → 3.9
+  (max 27 → 38), party downs 25 → 54, wipes during the hunt 4 → 13, not found by 90 s 1 → 5; median time to find the add
+  11.1 → 12.0 s (pressure, not camouflage, makes it harder). Adds alive when found carry into phase 3 (median 14 → 26.5,
+  about 42 at h=4); the phase-3 trickle only resumes below its cap. Kill income during the hunt rises with the spawns.
+- `npm run test:pve-perf` now runs its main scenario at 48 adds with one possessed: avg step 0.80 ms, PvE share 0.30 ms,
+  snapshot p95 50.4 KB (budget 64 KB), 64 add tuples. Not measured: Windows client FPS at 48 adds, relay hosts, the full
+  balance harness.
+
 ## Rendering constants (S5 and S6 mirrors)
 
 `src/client/pve/horde-view.ts`:

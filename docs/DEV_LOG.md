@@ -18,6 +18,25 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-04 — Claude — Siren PvE: much harder "Find me..." (more spawns), 30 s intermissions
+- Branch `claude/sleepy-ritchie-g8ruhv` from `claude/visual-revision` 2ae916d (PR #46 merge). Owner requests 2026-10-04.
+- "Find me..." (Siren phase 2): possession spawn rate ×1.8 → ×5 and alive ×1.6 → ×3, with a possession-only hard cap
+  `HORDE.maxAlivePossession` 48 (waves and other phases keep 40, relay rooms 28): 18/30/42/48 adds alive at 3/5/7/9 per s
+  for h=1..4 (was 10/16/22/29 at 1.08-3.24). 48 + 16 corpses fits the client's 64 impostors. Details: docs/PVE.md.
+- Intermissions: 30 s each (were 12 s between waves and 8 s before the boss).
+- Fixed (pre-existing, made common by the harder hunt): a party wipe during the hunt counted as "found" (Siren back at
+  50%, chip-3 reveal events, possessed reward at defeat); a debug phase skip during the hunt left the add possessed.
+- Impacts: PvE only. No change to hit timing, hitboxes, damage values, cooldowns, movement or PvP; pvp-golden unchanged.
+  Network: up to 48 add tuples (+16 corpses) in phase 2 instead of 40; snapshot p95 50.4 KB at that worst case.
+- Checks (Node 22.22.0): check:types pass; server tsc 4 baseline errors; pve-*.test.ts 203/203 (new pve-possession
+  tests fail without their fixes); test:pve-perf ok at 48 adds; pve-flow 3/3; network pve passes (rawP95 33.3 KB);
+  full unit suite 1231, 13 failures = the 12 known names + the Node 22 portable-update test.
+  Before/after hunt matrix (72 hunts each): adds alive about 2×, downs 25 → 54, wipes 4 → 13, time to find unchanged.
+- Not run: native Windows FPS at 48 adds, relay-hosted hunt, full `npm run test:pve-balance`. Owner playtest needed.
+- Risks: phase 3 inherits the bigger field (median 26.5 adds when found, about 42 at h=4); kill income rises during the
+  hunt, which still has no time limit (the add starts chasing at 60 s).
+- Status: implemented on branch; next: PR into `claude/visual-revision`, merge, test-channel publication.
+
 ## 2026-10-04 — Claude — Sandbox rarity sort, keypress dummy cast, dummy respawn, DEV-only sandbox; Ward Zero PvP vents/machines
 - Branch `claude/sleepy-ritchie-g8ruhv` from `claude/visual-revision` accc362 (PR #44 merge). Owner requests 2026-10-04.
 - Chip list: strict tier order common → … → mythic → mishima → ansatsuken → l44t → siren (`RARITY_ORDER`; the old sort

@@ -86,7 +86,7 @@ test('AttackedTrack: 1.2 s window from hurtAt or a hit, and an early warning dur
 });
 
 test('wave heading, boss bar (notches, floor lock, hidden, mini chips) and banners',()=>{
- assert.match(waveHeading(view('wave'),100),/WAVE 1 \/ 3[\s\S]*9 <span>left/);assert.match(waveHeading(view('intermission'),100),/Intermission <span>0:09/);assert.match(waveHeading(view('opening'),100),/Opening/);
+ assert.match(waveHeading(view('wave'),100),/WAVE 1 \/ 3[\s\S]*9 <span>left/);assert.match(waveHeading(view('intermission'),100),/Intermission <span>0:27/);assert.match(waveHeading(view('opening'),100),/Opening/);
  const v=view('boss-2'),s=snap(v);assert.equal(bossBar(s,v),'','no bar without a boss player');
  const b=fixtureBossPlayer(s.players[0],2,{time:100,h:4});const bar=bossBar({...s,players:[...s.players,b]},v);
  assert.match(bar,/THE SIREN/);assert.match(bar,/HIDDEN — FIND HIM/);assert.equal((bar.match(/class="pve-notch/g)||[]).length,3);

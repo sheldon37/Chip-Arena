@@ -187,6 +187,8 @@ export interface HordeApi{
  alive():number; queued():number; adds():AddRef[]; get(n:number):AddRef|undefined;
  setFlow(flow:HordeFlow|null):void; spawn(kind:AddKind,opts?:{entry?:number;possessed?:boolean}):number|null;
  possess():number|null; possessed():number|undefined;
+ /** Ends a possession without a kill (debug phase skips): the add becomes an ordinary add again. */
+ release?():void;
  hit(m:Minion,damage:number,attacker:string,impulse:number,dir:Vec,hit?:AddHitInfo):void;
  /** Weapon statuses on an active add (burn/poison DoT dps, slow); false when the add cannot take them. */
  status?(m:Minion,source:string,s:AddStatusInput):boolean;

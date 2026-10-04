@@ -15,8 +15,8 @@ export interface WaveTick{
  /** The time every human resolved the start pick (opening early end), or undefined while someone has not. */ resolvedAt?:number;
 }
 
-/** The horde cap for the room (relay rooms keep fewer adds alive). */
-export const hordeCap=(relay:boolean)=>relay?HORDE.maxAliveRelay:HORDE.maxAlive;
+/** The horde cap for the room (relay rooms keep fewer adds alive); higher while the Siren possesses an add. */
+export const hordeCap=(relay:boolean,possessing=false)=>relay?HORDE.maxAliveRelay:possessing?HORDE.maxAlivePossession:HORDE.maxAlive;
 /** §10.3 wave budget: round(count·partyFactor(h)·mods.count), at least 1. */
 export const waveBudget=(w:number,h:number,mods:Pick<HordeModifiers,'count'>={count:1})=>{
  const spec=WAVES[Math.max(0,Math.min(WAVES.length-1,w-1))];return Math.max(1,Math.round(spec.count*partyFactor(h)*mods.count));
@@ -26,10 +26,11 @@ export function waveFlow(w:number,h:number,mods:Pick<HordeModifiers,'count'>={co
  const spec=WAVES[Math.max(0,Math.min(WAVES.length-1,w-1))],m=Math.max(1,h)-1;
  return {rate:spec.rate*(1+.35*m),maxAlive:Math.min(hordeCap(relay),spec.maxAlive+5*m),mix:{...spec.mix},budget:waveBudget(w,h,mods)};
 }
-/** §6.4 boss-stage trickle: rate .6+.4(h−1) and alive 6+4(h−1), ×1.8 and ×1.6 while the Siren possesses an add. */
+/** §6.4 boss-stage trickle: rate .6+.4(h−1) and alive 6+4(h−1); × PVE_SIREN.possession rate and alive (×5, ×3) up to
+ *  HORDE.maxAlivePossession while the Siren possesses an add. */
 export function bossFlow(phase:1|2|3|4,h:number,possessing:boolean,relay=false):HordeFlow{
  const t=PVE_SIREN.trickle,m=Math.max(1,h)-1,kr=possessing?PVE_SIREN.possession.rate:1,ka=possessing?PVE_SIREN.possession.alive:1;
- return {rate:(t.rate+t.ratePerMember*m)*kr,maxAlive:Math.min(hordeCap(relay),Math.round((t.alive+t.alivePerMember*m)*ka)),
+ return {rate:(t.rate+t.ratePerMember*m)*kr,maxAlive:Math.min(hordeCap(relay,possessing),Math.round((t.alive+t.alivePerMember*m)*ka)),
   mix:{...MIX_BOSS[phase]} as Partial<Record<AddKind,number>>,budget:-1};
 }
 

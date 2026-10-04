@@ -84,7 +84,7 @@ export class Economy implements EconomyApi{
   }else if(kp&&this.host.isHuman(kp)){this.grant(kp.id,base,'kill');if(head)this.grant(kp.id,head,'head');paid=kp.id;}
   const assist=Math.round(base*ECONOMY.assistShare);
   for(const id of new Set(d.assists))if(id!==killer&&id!==paid&&this.isHumanId(id))this.grant(id,assist,'assist');
-  if(d.possessed)for(const p of this.host.humans())this.grant(p.id,p.id===paid?ECONOMY.possessedKill:ECONOMY.possessedOthers,'possessed');
+  if(d.possessed&&d.cause!=='burn')for(const p of this.host.humans())this.grant(p.id,p.id===paid?ECONOMY.possessedKill:ECONOMY.possessedOthers,'possessed');
  }
  /** $4 per cumulative 1% of the boss's max HP dealt (the facade already credits recruits to their hirer). */
  onBossDamage(source:string,amount:number,maxHp:number){
