@@ -10,6 +10,7 @@ import {HORDE,PVE_SIREN} from '../src/shared/pve/balance.js';
 import {PVE_ENTRIES} from '../src/shared/pve/layout.js';
 import {Horde} from '../src/shared/pve/horde.js';
 import {ventHazard} from '../src/shared/pve/entries.js';
+import {entryExposedAt} from '../src/shared/pve/entering.js';
 import {fakeParts,withPveParts} from './helpers/pve-fakes.js';
 await initPhysics();
 
@@ -45,7 +46,8 @@ test('entries: inert until activeAt (vent, door, cell), walk from behind the ope
   for(let i=0;i<240;i++){
    s.step();
    for(const n of [vent,vent2,door,cell]){const r=h.record(n)!;const inChaos=s.chaos.minions.has(r.id);
-    if(r.phase==='entering'){assert.equal(inChaos,false,'entering add is not in chaos.minions');assert.ok(s.time<r.activeAt);}
+    // 2026-10-04: an entering add registers its (contact-free) body once it is in sight, so weapons can hit it.
+    if(r.phase==='entering'){assert.equal(inChaos,s.time>=entryExposedAt(PVE_ENTRIES[r.entry].kind,r.walkAt,r.activeAt),'entering add is in chaos.minions only once in sight');assert.ok(s.time<r.activeAt);}
     else if(!activeTimes.has(n)){activeTimes.set(n,s.time);assert.equal(inChaos,true);}}
    if(h.record(door)!.phase==='entering'){const z=h.record(door)!.pos.z;assert.ok(Math.abs(z)<=Math.abs(lastDoorZ)+1e-9);lastDoorZ=z;}
   }

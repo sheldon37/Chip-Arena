@@ -18,6 +18,7 @@ import {HordeNav} from './nav.js';
 import {EntryScheduler,SpawnBudget,chooseEntry,entryWeight,ventHazard,type EntryChoiceContext} from './entries.js';
 import {PART_LIMB,SEVER_BITS,classifyAddHit,jointWorld,limbState,partLost,partMultiplier,severAt,type HitPart} from './gibs.js';
 import {SeparationHash,addSpeed,attackProfile,nextSide,possessedMode,targetScore,type PveAdd} from './add-ai.js';
+import {entryExposedAt,ventClimbOffset} from './entering.js';
 
 /** Standing capsule centre height of an upright add (capsule .43/.42 on the y=0 floor). */
 export const ADD_STAND_Y=HORDE.collider.halfHeight+HORDE.collider.radius+.05;
@@ -25,6 +26,8 @@ const CRAWL_DROP=(HORDE.collider.halfHeight+HORDE.collider.radius)-(HORDE.collid
 /** Horde events per tick (with 3 ticks per 20 Hz snapshot: at most 24 new horde events per snapshot). */
 export const HORDE_EVENTS_PER_TICK=8;
 const HIT_EVENT_COLOR=0x0b0a0d;
+/** An entering add's collider: in the add group but colliding with nothing (queries still hit it); its body follows the entry path. */
+const ENTERING_GROUPS=PVE_GROUPS.add&0xFFFF0000;
 interface Corpse{n:number;view:PveAddView;until:number}
 interface Outgoing{type:string;pos:Vec;extra:object;keep:boolean;at:number}
 const flat=(a:{x:number;z:number},b:{x:number;z:number})=>Math.hypot(a.x-b.x,a.z-b.z);
@@ -52,7 +55,7 @@ export class Horde implements HordeApi{
  cap(){const hard=this.host.options.relay?HORDE.maxAliveRelay:HORDE.maxAlive;return this.flow?Math.min(hard,this.flow.maxAlive):hard;}
  private posOf(a:PveAdd):Vec{return a.phase==='active'&&a.minion?a.minion.body.translation():a.pos;}
  private stateOf(a:PveAdd):AddState{
-  if(a.phase==='pending'||a.phase==='entering')return 'entering';if(a.phase==='vent')return 'vent';
+  if(a.phase==='pending'||a.phase==='entering')return a.crawl?'crawl':'entering';if(a.phase==='vent')return 'vent';
   return a.crawl?'crawl':this.time<a.staggerUntil?'stagger':'active';
  }
  private ref(a:PveAdd):AddRef{return {n:a.n,id:a.id,pos:{...this.posOf(a)},kind:a.kind,state:this.stateOf(a),hp:a.hp,maxHp:a.maxHp,target:a.target,attackAt:a.attackAt||undefined};}
@@ -100,15 +103,34 @@ export class Horde implements HordeApi{
   a.phase='entering';a.entry=e;a.spawnAt=s.spawnAt;a.walkAt=s.walkAt;a.activeAt=s.activeAt;a.walkFor=en.kind==='vent'?0:s.activeAt-s.walkAt;
   a.pos=v(en.from.x,ADD_STAND_Y,en.from.z);a.yaw=en.yaw;
  }
- private activate(a:PveAdd){
-  const s=this.sim,en=PVE_ENTRIES[a.entry],y=ADD_STAND_Y,c=HORDE.collider;
-  if(a.minion){const m=a.minion;m.body.setTranslation(v(en.exit.x,y,en.exit.z),true);m.body.setLinvel(v(),true);m.body.setEnabled(true);m.collider.setEnabled(true);}
+ /** Places (creating or re-enabling) the add's registered body. Entering: no gravity and no contacts, moved along the
+  *  entry path by expose(); active: the normal add collider. */
+ private body(a:PveAdd,x:number,y:number,z:number,entering:boolean){
+  const s=this.sim,c=HORDE.collider;
+  if(a.minion){const m=a.minion;m.body.setTranslation(v(x,y,z),true);m.body.setLinvel(v(),true);m.body.setEnabled(true);m.collider.setEnabled(true);}
   else{
-   const body=s.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(en.exit.x,y,en.exit.z).lockRotations());
+   const body=s.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(x,y,z).lockRotations());
    const collider=s.world.createCollider(RAPIER.ColliderDesc.capsule(c.halfHeight,c.radius).setMass(c.mass).setFriction(0).setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min).setCollisionGroups(PVE_GROUPS.add),body);
-   const m:Minion={id:a.id,owner:HORDE_ID,kind:'siren-add',pos:v(en.exit.x,y,en.exit.z),yaw:en.yaw,hp:a.hp,maxHp:a.maxHp,speed:a.stats.walk,until:1e9,lastAttack:-10,nextAttack:1e9,body,collider};
+   const m:Minion={id:a.id,owner:HORDE_ID,kind:'siren-add',pos:v(x,y,z),yaw:a.yaw,hp:a.hp,maxHp:a.maxHp,speed:a.stats.walk,until:1e9,lastAttack:-10,nextAttack:1e9,body,collider};
    a.minion=m;s.chaos.minions.set(a.id,m);s.colliderOwners.set(collider.handle,a.id);
   }
+  const m=a.minion!;m.body.setGravityScale(entering?0:1,true);m.collider.setCollisionGroups(entering?ENTERING_GROUPS:PVE_GROUPS.add);m.pos=v(x,y,z);m.yaw=a.yaw;
+ }
+ /** The authority time this entering add comes into sight (shared/pve/entering.ts). */
+ private exposedAt(a:PveAdd){return entryExposedAt(PVE_ENTRIES[a.entry].kind,a.walkAt,a.activeAt);}
+ /** A target for every damage path: active, or entering and in sight (expose() enabled its body). Pending adds, adds
+  *  behind a closed door or grate and vent travellers underground have no enabled body and are never hit. */
+ private hittable(a:PveAdd){return a.hp>0&&!!a.minion&&(a.phase==='active'||a.phase==='entering'&&a.minion.body.isEnabled());}
+ /** An entering add in sight: its hitbox follows the drawn body (the door/cell walk, or the vent climb out of the pit). */
+ private expose(a:PveAdd){
+  const en=PVE_ENTRIES[a.entry];let x=a.pos.x,y=ADD_STAND_Y-(a.crawl?CRAWL_DROP:0),z=a.pos.z;
+  if(en.kind==='vent'){const o=ventClimbOffset(this.time,a.activeAt);x=en.exit.x+Math.sin(en.yaw)*o.z;z=en.exit.z+Math.cos(en.yaw)*o.z;y+=o.y;}
+  if(a.minion?.body.isEnabled()){const m=a.minion;m.body.setTranslation(v(x,y,z),true);m.body.setLinvel(v(),true);m.pos=v(x,y,z);m.yaw=a.yaw;}
+  else this.body(a,x,y,z,true);
+ }
+ private activate(a:PveAdd){
+  const en=PVE_ENTRIES[a.entry];
+  this.body(a,en.exit.x,ADD_STAND_Y-(a.crawl?CRAWL_DROP:0),en.exit.z,false);
   this.sched.leave(a.entry,a.n);
   a.phase='active';a.travel=false;a.yaw=en.yaw;a.entry=-1;a.thinkAt=this.time+(a.n%12)*.0625;a.recoverUntil=this.time;a.progressAt=this.time;a.progressDist=Infinity;
   this.stats.activated++;
@@ -128,7 +150,10 @@ export class Horde implements HordeApi{
    if(a.phase==='pending')this.place(a);
    if(a.phase==='entering'){
     if(t>=a.activeAt)this.activate(a);
-    else if(a.walkFor>0){const en=PVE_ENTRIES[a.entry],f=Math.max(0,Math.min(1,(t-a.walkAt)/a.walkFor));a.pos=v(en.from.x+(en.exit.x-en.from.x)*f,ADD_STAND_Y,en.from.z+(en.exit.z-en.from.z)*f);}
+    else{
+     if(a.walkFor>0){const en=PVE_ENTRIES[a.entry],f=Math.max(0,Math.min(1,(t-a.walkAt)/a.walkFor));a.pos=v(en.from.x+(en.exit.x-en.from.x)*f,ADD_STAND_Y,en.from.z+(en.exit.z-en.from.z)*f);}
+     if(t>=this.exposedAt(a))this.expose(a);
+    }
    }
    else if(a.phase==='vent'&&t>=a.ventUntil)this.reemerge(a);
   }
@@ -138,7 +163,7 @@ export class Horde implements HordeApi{
   for(const a of this.list.values())if(a.phase==='active'&&a.minion){this.hash.add(a,a.minion.body.translation());if(a.target)chasers.set(a.target,(chasers.get(a.target)??0)+1);}
   for(const a of [...this.list.values()])if(a.phase==='active'&&a.minion&&this.list.has(a.n))this.think(a,dt,players,chasers);
   // 5b. weapon DoTs (after movement, like player DoTs after the move) and coalesced direct-hit events
-  for(const a of [...this.list.values()]){if(a.phase==='active'&&a.minion&&this.list.has(a.n))this.dots(a);if(this.list.has(a.n))this.flushPending(a,false);}
+  for(const a of [...this.list.values()]){if(this.hittable(a)&&this.list.has(a.n))this.dots(a);if(this.list.has(a.n))this.flushPending(a,false);}
   // 6. corpses
   if(this.corpses.length)this.corpses=this.corpses.filter(c=>c.until>t);
   // 7. budgeted events
@@ -274,7 +299,7 @@ export class Horde implements HordeApi{
   if(this.count(b=>b.travel)>=vt.maxConcurrent)return false;
   if(ventHazard(vent,t,this.sim.bossSong?.startedAt,PVE_TIMING.vent.dive))return false;
   if(this.rng().next()>=vt.chance)return false;
-  // Dive: the body is disabled but stays registered (chaos.clear removes it); hits are ignored outside 'active'.
+  // Dive: the body is disabled but stays registered (chaos.clear removes it); hits are ignored until it is in sight again.
   const m=a.minion!;this.cancelAttack(a);
   a.phase='vent';a.travel=true;a.diveAt=t;a.ventUntil=t+PVE_TIMING.vent.dive+vt.hidden;a.ventCooldown=t+vt.cooldown;a.entry=vent;
   a.pos=v(SIREN_VENTS[vent].x,ADD_STAND_Y,SIREN_VENTS[vent].z);a.yaw=Math.atan2(-a.pos.x,-a.pos.z);a.ext={x:0,z:0};
@@ -295,7 +320,7 @@ export class Horde implements HordeApi{
  // ---------------------------------------------------------------- hits, gibs, death
  /** Returns the actual damage dealt. */
  hit(m:Minion,damage:number,attacker:string,impulse:number,dir:Vec,hit?:AddHitInfo):number{
-  const a=this.byId.get(m.id),t=this.time;if(!a||a.phase!=='active'||a.hp<=0||!a.minion)return 0;
+  const a=this.byId.get(m.id),t=this.time;if(!a||!this.hittable(a)||!a.minion)return 0;
   if(!Number.isFinite(damage)||damage<=0)return 0;
   const pos=a.minion.body.translation(),body={pos,yaw:a.yaw,crawl:a.crawl,lost:a.lost,maxHp:a.maxHp};
   const shares=classifyAddHit(body,damage,hit,this.rng()),severed:Exclude<HitPart,'torso'>[]=[];let total=0;
@@ -320,8 +345,9 @@ export class Horde implements HordeApi{
   for(const part of severed)this.queue(PVE_EVENT.gib,jointWorld({pos,yaw:a.yaw,crawl:a.crawl},part),{target:a.id,message:PART_LIMB[part],from:{x:dir.x,y:dir.y,z:dir.z},source:attacker},true);
   // Stagger, knockback and the hit view.
   if(total>=a.maxHp*.25||impulse>=400){a.staggerUntil=Math.max(a.staggerUntil,t+a.stats.stagger);this.cancelAttack(a);}
-  const k=Math.min(HORDE.extMax,impulse/HORDE.collider.mass*.5);a.ext.x+=dir.x*k;a.ext.z+=dir.z*k;
-  const el=Math.hypot(a.ext.x,a.ext.z);if(el>HORDE.extMax){a.ext.x*=HORDE.extMax/el;a.ext.z*=HORDE.extMax/el;}
+  // Entering adds stay on their entry path (never pushed back through the door, gate or pit): no knockback until active.
+  if(a.phase==='active'){const k=Math.min(HORDE.extMax,impulse/HORDE.collider.mass*.5);a.ext.x+=dir.x*k;a.ext.z+=dir.z*k;
+   const el=Math.hypot(a.ext.x,a.ext.z);if(el>HORDE.extMax){a.ext.x*=HORDE.extMax/el;a.ext.z*=HORDE.extMax/el;}}
   if(Math.hypot(dir.x,dir.z)>1e-6){a.hitAt=t;a.hitYaw=Math.atan2(dir.x,dir.z);}
   this.hitEvent(a,attacker,total,hit,pos);
   if(a.hp<=1e-9||a.headless)this.kill(a,attacker,a.headless?'head':'damage');
@@ -358,7 +384,7 @@ export class Horde implements HordeApi{
  // ---------------------------------------------------------------- weapon statuses (2026-10-04)
  /** Burn/poison DoTs (elements.ts rules, per source) and slows from weapons, chips and abilities. */
  status(m:Minion,source:string,st:AddStatusInput):boolean{
-  const a=this.byId.get(m.id),t=this.time;if(!a||a.phase!=='active'||a.hp<=0||!a.minion)return false;let any=false;
+  const a=this.byId.get(m.id),t=this.time;if(!a||!this.hittable(a))return false;let any=false;
   if((st.burn??0)>0){a.burns??=new Map();refreshDot(a.burns,source,st.burn!,t,'fire');any=true;}
   if((st.poison??0)>0){a.poisons??=new Map();refreshDot(a.poisons,source,st.poison!,t,'poison');any=true;}
   if(st.slow&&st.slow.seconds>0){const f=Math.max(.4,Math.min(1,st.slow.factor)),live=(a.slowUntil??-1)>t;a.slowFactor=live?Math.min(a.slowFactor??1,f):f;a.slowUntil=Math.max(live?a.slowUntil!:t,t+st.slow.seconds);any=true;}
@@ -394,10 +420,15 @@ export class Horde implements HordeApi{
   if(state!=='dead'){const st=this.statusBits(a);if(st)view.st=st;}
   return view;
  }
+ /** Where an add dies: its body, or its path; an add killed climbing out of a vent lies where the client stands it (the exit). */
+ private deathPos(a:PveAdd):Vec{
+  if(a.phase==='entering'&&a.minion?.body.isEnabled()&&PVE_ENTRIES[a.entry].kind==='vent'){const en=PVE_ENTRIES[a.entry];return {x:en.exit.x,y:ADD_STAND_Y-(a.crawl?CRAWL_DROP:0),z:en.exit.z};}
+  return {...this.posOf(a)};
+ }
  private kill(a:PveAdd,attacker:string|null,cause:AddDeath['cause'],uncapped=false){
-  if(!this.list.has(a.n))return;const s=this.sim,t=this.time,pos={...this.posOf(a)};
+  if(!this.list.has(a.n))return;const s=this.sim,t=this.time,pos=this.deathPos(a);
   this.flushPending(a,true);a.hp=0;
-  const view=this.viewOf(a,'dead');view.deathAt=t;view.entry=-1;view.vel={x:0,z:0};delete view.target;
+  const view=this.viewOf(a,'dead');view.pos={...pos};view.deathAt=t;view.entry=-1;view.vel={x:0,z:0};delete view.target;
   if(a.minion){if(s.chaos.minions.get(a.id)===a.minion)s.chaos.removeMinion(a.minion,false);else{s.colliderOwners.delete(a.minion.collider.handle);s.world.removeRigidBody(a.minion.body);}}
   // S7: the body is gone; this tick's separation hash may still hold the add, so drop the stale body handle (Rapier panics on it).
   a.pos=v(pos.x,pos.y,pos.z);a.minion=undefined;

@@ -7,6 +7,7 @@ import {hash01,type MinionLook} from './look.js';
 import {EMERGE_SECONDS,DEATH_SECONDS,DEATH_FX_SECONDS} from './fx.js';
 import type {SirenMinion} from './model.js';
 import {PVE_TIMING,LIMB} from '../../../shared/pve/contract.js';
+import {VENT_CLIMB_BODY} from '../../../shared/pve/entering.js';
 import {applyLostLimbs} from './limbs.js';
 
 /**
@@ -318,8 +319,8 @@ function emergePose(P:Pose,look:MinionLook,e:number,floor:number,tAbs:number){
 // beyond. 0-push: the hands rise under the grate and shove it (hidden under the floor); push-push+open: the grate
 // swings and the hands grip the rim; then the haul: head and shoulders rise, a knee comes over the rim, it stands and
 // jerks awake. The body origin starts 1.4 m under the floor.
-const CLIMB={bodyY:[[0,-2.25],[.2,-1.75],[.35,-1.4],[.6,-1.12],[.8,-1.02],[1.05,-.72],[1.3,-.46],[1.5,-.36],[1.7,-.16],[1.95,-.07]],
- bodyZ:[[0,-.55],[.8,-.55],[1.05,-.48],[1.3,-.38],[1.5,-.22],[1.72,-.05],[1.95,0]],pitch:[[0,-.05],[.8,0],[1.05,.35],[1.3,.62],[1.5,.55],[1.72,.25],[1.95,.04]],
+// bodyY/bodyZ are shared with the authority's entering hitbox (shared/pve/entering.ts).
+const CLIMB={bodyY:VENT_CLIMB_BODY.y,bodyZ:VENT_CLIMB_BODY.z,pitch:[[0,-.05],[.8,0],[1.05,.35],[1.3,.62],[1.5,.55],[1.72,.25],[1.95,.04]],
  spine:[[0,-.15],[.35,-.2],[.8,0],[1.1,.3],[1.5,.25],[1.95,.2]],head:[[0,-.6],[.35,-.75],[.6,-.2],[.8,.25],[1.05,.5],[1.3,.15],[1.55,-.2],[1.72,.25],[1.95,.1]],
  hip:[[0,-.1],[1.05,-.2],[1.3,-1.1],[1.5,-1.55],[1.72,-.8],[1.95,-.2]],knee:[[0,.35],[1.05,.6],[1.3,1.7],[1.5,1.9],[1.72,1.0],[1.95,.3]]} as const;
 function ventClimbPose(P:Pose,look:MinionLook,a:number,floor:number,rimZ:number,tAbs:number){
