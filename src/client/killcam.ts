@@ -8,7 +8,7 @@ import {clamp,type Vec} from '../shared/config.js';
  * `stall`: a clip whose footage ran out (packets stopped) ends this long after its last recorded frame.
  * `bodyRange`: during the aftermath the camera cuts once to the victim's body if the killer is gone, dead or this far away.
  */
-export const KILLCAM={before:1.5,after:4,hold:.6,history:6,hz:20,maxFrames:132,maxEntities:150_000,waitMs:1000,stall:.5,bodyRange:24} as const;
+export const KILLCAM={before:3,after:1.25,hold:.6,history:6,hz:20,maxFrames:132,maxEntities:150_000,waitMs:1000,stall:.5,bodyRange:24} as const;
 export interface KillcamInfo {
  deathId:string;victimId:string;killerId:string|null;killerName:string|null;cause:string;
  start:number;end:number;time:number;progress:number;viewId:string;

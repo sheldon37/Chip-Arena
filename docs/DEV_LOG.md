@@ -18,6 +18,15 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-04 — Claude — killcam uses Call of Duty timing
+- Branch `claude/killcam-cod` from `origin/claude/visual-revision` `076afe5`.
+- Owner: the ~4 s aftermath "feels too long"; use Call of Duty logic. `KILLCAM` before 1.5 → 3 s (lead-in from the killer's
+  view), after 4 → 1.25 s, hold .6 s unchanged: ~4.85 s in all (was ~6.1 s), so a round-ending kill fits the 5 s result
+  screen. Skip, killer camera and the one-way cut to the body are unchanged. Client presentation only: no change to hit
+  timing, hitboxes, damage, cooldowns, movement, respawn/result timing or networking.
+- Checks: killcam unit + presentation 16/16, killcam network scenario passes, `npm run check:types` passes. Not run: full
+  suite (killcam constants and their tests only), Windows hand-play.
+
 ## 2026-10-04 — Claude — publication record: PR #34 + PR #35 on the test channel
 - Owner confirmed publication and granted standing permission for pushes, merges and test-channel updates (2026-10-04).
 - PR #34 merged `c307925`, PR #35 merged `ab2e4c5` -> test `0.2.31513375c335` (channel commit `e49b238`).
