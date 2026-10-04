@@ -18,6 +18,103 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-04 — Claude — weapon intros refresh, 3 s lobby return, ADS sight alignment, Emperor audio leak, AoE outlines
+
+- Branch `claude/intros-refresh` from `origin/claude/visual-revision` `dcc7430`. No PR (orchestrator merges). Not merged,
+  not published.
+- Publication record (pending from the integration notes): PR #33 merged `dcc7430` -> test `0.2.1412350a765a`; channel
+  `ae36a7e`; schema1 `arena-255764ffce5226cd.json.gz` 26,135,339 B (old launcher network update verified
+  0.2.5036b50f0c34 -> new) and schema2 `arena-258068ee0d6f182c.pack` 22,063,628 B (seed network update verified via v2);
+  candidate checks passed except the baseline verify; private GitHub Release creation blocked for that session (HTTP 403),
+  seed ZIP at `releases/channel-dcc7430` for the owner to upload.
+- Lobby return: the host's Return to lobby countdown is 3 s (was 5 s), `LOBBY_RETURN_SECONDS` on the authoritative sim
+  (server and host rooms). It is the only automatic lobby timer; PvP match results and PvE results still wait for a click.
+- Weapon intros (11 non-DEV): `weapon-intro-effects.ts` now draws only pooled ChipBlasts voxels (muzzle cones, tracers,
+  casings, smoke, blade trails, a voxel crescent, honeycomb barrier, quake/fire/shock/void/kinetic blasts in miniature,
+  serpent and portal voxels) instead of rings, cones, planes, tubes and line bolts. Fixed 60 Hz stepping from age 0 with a
+  reseeded generator keeps it a pure function of age (scrub/late join/frame rate identical); one ChipBlasts per stage.
+  Motion: magic intros hold the staff in the left hand and cast with the right (as in-game Q/E); guns get an ADS cheek
+  weld and recoil into the shoulders. Hits, name card (3.2 s), 4.8 s duration, cameras and intro audio unchanged.
+- ADS (owner: sights must line up with the shots): aimed gun shots launch on the ballistic arc that meets the crosshair ray
+  hit point (authority, `spawnProjectile`); speed/gravity/damage/spread unchanged, hip fire unchanged; ADS bots aim straight.
+  First-person view model rotates/shifts so each gun's sight line (pistol sights, MG carry handle, rifle scope axis) runs
+  down the camera axis. This is a gameplay change (ADS no longer drops below the crosshair at range).
+- Emperor audio leak (lightning staff and rifle): client cues mapped Blink Strike, its teleport and Orbital Mark to
+  Emperor's `electric-hook` clips. Now dash/lightning cues; electric-hook plays only for Emperor events. The authority was
+  already Emperor-gated (Q's legacy `electric` input is ignored for other specs).
+- AoE outlines removed: field voxel rims and dome wireframes, blast/impact ground rings (now fill the disc to 92 % of the
+  radius), outline telegraph motes (now inside the area), Orbital Mark shrinking ring, melee/wolf/impact rings. Areas read
+  through their volume plus an edge-less ground glow that keeps the enemy/ally tint. Gameplay radii unchanged; the
+  ability aim preview path is untouched.
+- Animation impact: intro-only presentation; no hit timing, hitbox, damage, cooldown, movement or network change from the
+  intros. ADS zeroing changes ADS projectile launch pitch only.
+- Tests: new `weapon-intro-effects`, `ads-alignment`, `emperor-audio-isolation`; updated lobby-return (3 s), chip-blasts and
+  chip-vfx-sweep (no outlines), ranged-magic-fluidity (sights on the crosshair), ability-presentation (blink cue),
+  abilities-foundation (rifle scoped launch now zeroed). pvp-golden: ffa-foundry and teams-moonlit regenerated (gun bots ADS;
+  verified identical with zeroing disabled); the other five traces unchanged.
+- Checks (Linux, Node 22): `npm run check:types` pass; full `npm test` 1132 tests, failures = the 13 known Node 22 baseline
+  names plus 3 caused here and then fixed (ADS rifle launch test, two golden traces) - all three pass after the update;
+  pvp-golden 7/7; `npm run build` pass, live payload 26,140,097 B (< 26,214,400). Visual lab before/after strips for all 11
+  intros, ADS first-person sights with a crosshair, and four area effects (SwiftShader).
+- Not run: duel-balance (exceeded 10 min; ADS zeroing makes aimed pistol/MG/rifle shots, incl. 25 m+ ADS bots, more
+  accurate at range - needs an owner balance look), native Windows/GPU, online multiplayer, packaging/update publication.
+- Next: owner review of intro look/feel and ADS feel at range; merge, then the standing test-channel publication.
+
+
+## 2026-10-04 — Claude — combat FX on extra projectiles, weapon effects on Siren adds, hold-to-aim
+
+- Branch `claude/combat-fx-fixes` from `origin/claude/visual-revision` `dcc7430`; no PR (owner merges).
+- Owner reports: impact effects missing on additional projectiles and capping out; weapon effects and
+  life steal missing on Siren minions; plus "remove the aim-circle … show it if we hold the button".
+- Root causes: projectile hits on adds emitted no `impact` event and applied no DoTs (adds had no status
+  state at all); chip extras (Backfire/Crossfire/Helix), and Orbitals were stripped of
+  burn/poison and never life-stole; Splitter never split on adds; add hit events above the 20/s per-attacker
+  bucket were silently dropped; the 180-spark impact pool dropped new impacts when full; melee/thrown add
+  hits and flame lance / water slows skipped adds.
+- Changes: shared on-hit for adds (`Simulation.minionWeaponHit/meleeHitMinion/addProcs`): DoTs, life steal,
+  Static/Vacuum/Shrapnel per direct attack, impact event per projectile, Splitter on adds. `weaponFx`
+  secondary shots keep the weapon DoTs + life steal (players and adds) but no chip procs. Horde: burn/poison
+  DoTs (elements.ts rules, credited to the source), slows (Tidal Wave, Shackles, Soak, Geyser Wall) and
+  enemy frost/time fields slow adds; over-bucket hits coalesce (flushed on a token, after 0.25 s or on death);
+  `PveAddView.st` status bits in flags bits 26-28 (tuple length unchanged); flame/bubble/droplet status rigs
+  on the nearest 16 adds. Spark pool recycles oldest. Hold-to-aim: Frag, Meteor, Geyser Wall, Black Hole cast
+  on key release for human pilots (tap = release cast; hold > 0.2 s shows the preview; roll/block/other
+  non-ADS ability cancels); bots, rocket and Orbital Mark (a dart, no preview) keep cast-on-press; host
+  advertises `caps.aimHold`, old hosts keep cast-on-press and the always-on circle; HUD "READY · HOLD TO AIM".
+- PvP impact: with Helix/Crossfire/Backfire/Orbitals, secondary shots now burn/poison and life-steal (Splitter
+  fragments still never reapply enchantments, per the existing pinned rule);
+  aimed E abilities cast on release. pvp-golden unchanged. Hit timing, hitboxes, damage values, cooldowns and
+  snapshot sizes unchanged; add movement is slower while slowed.
+- Checks (Linux, Node 22.22.2): `npm run check:types` passes; full unit suite 1152 tests, failures equal the
+  13 known Node 22 baseline names after fixing one regression found by it (Splitter fragments re-enchanting,
+  reverted); new `tests/combat-fx.test.ts` (projectile counts x impacts/heals/coalesced add hits for pistol/MG
+  multishot, rifle buckshot, water torrent; DoTs/slows on adds per path) and `tests/aim-hold.test.ts` (tap,
+  hold-release, block/roll cancel at 30/60/120 Hz, latest-input and relay-batch delivery; preview gating);
+  pvp-golden identical; `node tests/run-network.mjs pve` passes (victory, rejoin, old client refused). Visual
+  lab `tools/visual-lab/vfx.html?fx=multishot|buckshot` (Playwright/SwiftShader): sparks on every multishot hit.
+- Not run: native Windows/GPU, online multiplayer by hand, packaging; no test-channel publication from this
+  task branch (shared branch publication after approval/merge).
+- Risks/next: owner playtest of hold-to-aim feel (release latency ≈ one input frame) and add status visuals;
+  Orbital Mark kept press-cast (existing test pins it as a dart without ground preview).
+  Status: implemented on branch; not merged; not released.
+
+## 2026-10-04 — Claude — kill-cam aftermath: keep watching ~4 s past the kill
+
+- Branch `claude/killcam-aftermath` from `claude/visual-revision` `dcc7430`. No PR; not merged; not published.
+- Owner: "move forward a bit, show about 4 seconds after kill" (clarified: keep watching ~4 s after). Window was 3 s
+  before / .6 s after the fatal hit (3.6 s clip, starting ~1.2 s after death); now 2 s before / 4 s after (6 s clip),
+  still starting after a 1.2 s live hold on the death (`KILLCAM.hold`). The aftermath is no longer waited for: later
+  history frames stream into the clip while it plays (playback lags live by 3.2 s); a stalled feed ends the clip .5 s
+  after its last frame. History 6 s / 132 frames. Camera: killer's shoulder view, cutting once to the victim's body
+  if the killer is gone, dead or >24 m away during the aftermath. Skip/respawn/epoch/lobby rules unchanged.
+- Files: `src/client/killcam.ts`, HUD comment, `tests/killcam.test.ts` (timing pins, aftermath + body-cut tests),
+  `tests/killcam-network.ts` (replay frame past the kill). No simulation, hit timing, damage, networking or renderer change.
+- Checks: `check:types` ok; killcam + presentation 16/16; `tests/killcam-network.ts` ok (3 clients, 87 snapshots,
+  aftermath); full unit suite 1110 pass / 13 fail = known Node 22 failures list exactly.
+- Risk / next: a round-ending kill enters `result` for 5 s (`resultSeconds`), then countdown/draft cancels the replay,
+  so 1v1 and last-kill replays show only ~1.8 s of aftermath. Showing the full 4 s there needs `resultSeconds` ≈ 8
+  (gameplay pacing; owner decision, not changed). No Windows/visual playtest of the new framing.
+
 ## 2026-10-04 — Claude — ranged/magic Q+E ability overhaul integration (+ PvE downed, chip throw, update headroom)
 
 - Branch `claude/abil-integration` from foundation `claude/abil-foundation`; merges abil-guns, abil-magic, abil-chips,

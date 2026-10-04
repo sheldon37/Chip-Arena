@@ -28,7 +28,7 @@ export class StandardMeleeEffects {
    impact.ring.scale.setScalar(.2+age*3);impact.ring.material.opacity=Math.max(0,.55-age)*(.5+.5*Math.min(1,this.quality));impact.dust.material.opacity=Math.max(0,.46-age*.4);impact.dust.scale.setScalar(.4+age*1.6);impact.dust.position.y=age*.35;impact.stones.forEach((stone,i)=>{const a=i*2.39996,speed=1.7+(i%3)*.6;stone.position.set(Math.cos(a)*speed*age,Math.max(0,(1.8+i%3*.45)*age-4*age*age),Math.sin(a)*speed*age);stone.rotation.set(age*(i+2),0,age*3);stone.scale.setScalar(.075*(1-age/1.1));});
   }
  }
- event(e:GameEvent,quality=this.quality){this.quality=quality;recordMeleeHit(e);if(e.type==='hit')this.flash(e);if(e.type!=='melee-slam')return;const root=new T.Group();root.position.set(e.pos.x,e.pos.y+.03,e.pos.z);root.name='wolf-landing-impact';const ring=new T.Mesh(new T.RingGeometry(.9,1,40),new T.MeshBasicMaterial({color:0xe9d4b2,transparent:true,opacity:.6,side:T.DoubleSide,depthWrite:false}));ring.rotation.x=-Math.PI/2;root.add(ring);
+ event(e:GameEvent,quality=this.quality){this.quality=quality;recordMeleeHit(e);if(e.type==='hit')this.flash(e);if(e.type!=='melee-slam')return;const root=new T.Group();root.position.set(e.pos.x,e.pos.y+.03,e.pos.z);root.name='wolf-landing-impact';const ring=new T.Mesh(new T.RingGeometry(.9,1,40),new T.MeshBasicMaterial({color:0xe9d4b2,transparent:true,opacity:.6,side:T.DoubleSide,depthWrite:false}));ring.rotation.x=-Math.PI/2;ring.visible=false;root.add(ring);// Owner request 2026-10-04: no outlined area/impact circles; the area reads through its volume (dust, sparks, voxels).
   const q=Math.min(1,Math.max(.1,quality)),points=[];for(let i=0;i<Math.round(40*q);i++){const a=i*2.39996,r=.7+i%5*.25;points.push(Math.cos(a)*r,(i%4)*.05,Math.sin(a)*r);}const dust=new T.Points(new T.BufferGeometry().setAttribute('position',new T.Float32BufferAttribute(points,3)),new T.PointsMaterial({color:0xb6a895,size:.3,transparent:true,opacity:.45,depthWrite:false}));root.add(dust);const stones=Array.from({length:Math.max(3,Math.round(10*q))},()=>new T.Mesh(new T.IcosahedronGeometry(1,0),new T.MeshLambertMaterial({color:0x8b8880})));stones.forEach(o=>root.add(o));this.scene.add(root);this.impacts.push({at:e.time,root,ring,dust,stones});
  }
  private flash(e:GameEvent){
@@ -36,7 +36,7 @@ export class StandardMeleeEffects {
   if(this.flashes.length>=8)this.removeFlash(this.flashes[0]);
   const root=new T.Group();root.name='melee-hit-flash';root.position.set(e.pos.x,e.pos.y,e.pos.z);
   const ringMaterial=new T.MeshBasicMaterial({color:0xffe2b0,transparent:true,opacity:.5,side:T.DoubleSide,depthWrite:false}),material=new T.MeshBasicMaterial({color:0xffd9a0,transparent:true,depthWrite:false});
-  const ring=new T.Mesh(FLASH_RING,ringMaterial);ring.rotation.set(Math.PI/2*.85,0,e.time*3%Math.PI);root.add(ring);
+  const ring=new T.Mesh(FLASH_RING,ringMaterial);ring.rotation.set(Math.PI/2*.85,0,e.time*3%Math.PI);ring.visible=false;root.add(ring);// Owner request 2026-10-04: no outlined area/impact circles; the area reads through its volume (dust, sparks, voxels).
   const sparks=Array.from({length:Math.max(2,Math.round((3+4*weight)*Math.min(1,Math.max(.1,this.quality))))},()=>{const m=new T.Mesh(SPARK,material);root.add(m);return m;});
   this.scene.add(root);this.flashes.push({at:e.time,weight,root,ring,sparks,material,ringMaterial,ringAlpha:.5*(.5+.5*Math.min(1,this.quality))});
  }

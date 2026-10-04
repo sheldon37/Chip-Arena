@@ -4,12 +4,13 @@
 // Deterministic: draws only from host.rng('horde'); every timer is an absolute sim time; iteration in Map order.
 import RAPIER from '@dimforge/rapier3d-compat';
 import {v,type Vec} from '../config.js';
-import type {Minion} from '../chaos.js';
+import {fieldSpeed,type Minion} from '../chaos.js';
+import {advanceDots,refreshDot} from '../elements.js';
 import type {Player} from '../simulation.js';
 import {arenaBlocks} from '../arena.js';
 import {SIREN_VENTS} from '../siren-stage-layout.js';
-import {ADD_KINDS_ORDER,ADD_PREFIX,HORDE_ID,PVE_EVENT,PVE_GROUPS,PVE_TIMING,encodeAdd,
- type AddDeath,type AddHitInfo,type AddKind,type AddRef,type AddState,type HordeApi,type HordeFlow,type PveAddTuple,
+import {ADD_KINDS_ORDER,ADD_PREFIX,ADD_STATUS,HORDE_ID,PVE_EVENT,PVE_GROUPS,PVE_TIMING,encodeAdd,
+ type AddDeath,type AddHitInfo,type AddKind,type AddStatusInput,type AddRef,type AddState,type HordeApi,type HordeFlow,type PveAddTuple,
  type PveAddView,type PveEntryView,type PveHost} from './contract.js';
 import {ADD_KINDS,ECONOMY,HORDE,IDENTITY_MODS,PVE_SIREN} from './balance.js';
 import {machineBlocks,PVE_ENTRIES} from './layout.js';
@@ -136,6 +137,8 @@ export class Horde implements HordeApi{
   this.hash.clear();
   for(const a of this.list.values())if(a.phase==='active'&&a.minion){this.hash.add(a,a.minion.body.translation());if(a.target)chasers.set(a.target,(chasers.get(a.target)??0)+1);}
   for(const a of [...this.list.values()])if(a.phase==='active'&&a.minion&&this.list.has(a.n))this.think(a,dt,players,chasers);
+  // 5b. weapon DoTs (after movement, like player DoTs after the move) and coalesced direct-hit events
+  for(const a of [...this.list.values()]){if(a.phase==='active'&&a.minion&&this.list.has(a.n))this.dots(a);if(this.list.has(a.n))this.flushPending(a,false);}
   // 6. corpses
   if(this.corpses.length)this.corpses=this.corpses.filter(c=>c.until>t);
   // 7. budgeted events
@@ -184,7 +187,7 @@ export class Horde implements HordeApi{
    const mv=a.possessed?this.possessedMove(a,p,target,tp,dist):this.chaseMove(a,p,target,tp,dist);
    vx=mv.x;vz=mv.z;
   }
-  if(vx||vz){const sep=this.hash.push(a,p,b=>this.posOf(b));vx+=sep.x;vz+=sep.z;}
+  if(vx||vz){const k=this.speedFactor(a,p);vx*=k;vz*=k;const sep=this.hash.push(a,p,b=>this.posOf(b));vx+=sep.x;vz+=sep.z;}
   vx+=a.ext.x;vz+=a.ext.z;
   const vel=m.body.linvel();m.body.setLinvel(v(vx,vel.y,vz),true);
   m.pos={x:p.x,y:p.y,z:p.z};m.yaw=a.yaw;
@@ -341,8 +344,38 @@ export class Horde implements HordeApi{
   const rate:number=HORDE.hitEventsPerSecond;let b=this.buckets.get(attacker);if(!b){b={tokens:rate,at:t};this.buckets.set(attacker,b);}
   b.tokens=Math.min(rate,b.tokens+(t-b.at)*rate);b.at=t;
   if(b.tokens>=1){b.tokens--;this.queue('minionHit',hit.point??pos,{source:attacker,target:a.id,amount,color:HIT_EVENT_COLOR,...(hit.headshot?{headshot:true}:{})},false);}
-  else this.stats.eventsDropped++;
+  else{// Over the bucket: coalesce per attacker instead of dropping (2026-10-04: extra projectiles lost their hit numbers).
+   a.pend??=new Map();const q=a.pend.get(attacker),at=hit.point??pos;
+   if(q){q.amount+=amount;q.point={x:at.x,y:at.y,z:at.z};q.headshot||=hit.headshot;}else a.pend.set(attacker,{amount,point:{x:at.x,y:at.y,z:at.z},at:t,...(hit.headshot?{headshot:true}:{})});}
  }
+ /** Coalesced direct hits: one event when the attacker has a token again, after aoeEventInterval at the latest, or on death. */
+ private flushPending(a:PveAdd,force:boolean){
+  if(!a.pend?.size)return;const t=this.time;
+  for(const [by,q] of [...a.pend]){const b=this.buckets.get(by);if(b)b.tokens=Math.min(HORDE.hitEventsPerSecond,b.tokens+(t-b.at)*HORDE.hitEventsPerSecond),b.at=t;
+   const token=!!b&&b.tokens>=1;if(!force&&!token&&t-q.at<HORDE.aoeEventInterval)continue;if(token)b!.tokens--;
+   a.pend.delete(by);this.queue('minionHit',q.point,{source:by,target:a.id,amount:q.amount,color:HIT_EVENT_COLOR,...(q.headshot?{headshot:true}:{})},false);}
+ }
+ // ---------------------------------------------------------------- weapon statuses (2026-10-04)
+ /** Burn/poison DoTs (elements.ts rules, per source) and slows from weapons, chips and abilities. */
+ status(m:Minion,source:string,st:AddStatusInput):boolean{
+  const a=this.byId.get(m.id),t=this.time;if(!a||a.phase!=='active'||a.hp<=0||!a.minion)return false;let any=false;
+  if((st.burn??0)>0){a.burns??=new Map();refreshDot(a.burns,source,st.burn!,t,'fire');any=true;}
+  if((st.poison??0)>0){a.poisons??=new Map();refreshDot(a.poisons,source,st.poison!,t,'poison');any=true;}
+  if(st.slow&&st.slow.seconds>0){const f=Math.max(.4,Math.min(1,st.slow.factor)),live=(a.slowUntil??-1)>t;a.slowFactor=live?Math.min(a.slowFactor??1,f):f;a.slowUntil=Math.max(live?a.slowUntil!:t,t+st.slow.seconds);any=true;}
+  return any;
+ }
+ /** DoT ticks go through hit() as 'field' damage: credited to the source, aggregated hit events, no on-hit effects. */
+ private dots(a:PveAdd){
+  const t=this.time,tick=(src:string,amount:number)=>{if(this.list.has(a.n)&&a.minion)this.hit(a.minion,amount,src,0,v(),{kind:'field'});};
+  if(a.burns?.size)advanceDots(a.burns,t,'fire',tick);if(a.poisons?.size&&this.list.has(a.n))advanceDots(a.poisons,t,'poison',tick);
+ }
+ /** Movement scale from a weapon slow and enemy frost/time fields (fieldSpeed, as for players). */
+ private speedFactor(a:PveAdd,p:Vec){
+  const s=this.sim,owner=a.minion?.owner??HORDE_ID;let k=(a.slowUntil??-1)>this.time?a.slowFactor??1:1;
+  if(s.chaos.fields.size)k=Math.min(k,fieldSpeed([...s.chaos.fields.values()],owner,p,src=>s.canHit(src,owner),this.time));return k;
+ }
+ private statusBits(a:PveAdd){const t=this.time,on=(m?:Map<string,{until:number}>)=>!!m&&[...m.values()].some(d=>d.until>=t);
+  return (on(a.burns)?ADD_STATUS.burn:0)|(on(a.poisons)?ADD_STATUS.poison:0)|((a.slowUntil??-1)>t?ADD_STATUS.slow:0);}
  private queue(type:string,pos:Vec,extra:object,keep:boolean){this.outbox.push({type,pos:{x:pos.x,y:pos.y,z:pos.z},extra,keep,at:this.time});}
  /** Emits at most HORDE_EVENTS_PER_TICK horde events per tick: deaths and gibs first (never dropped, carried over), then
   *  hits younger than 0.3 s. Protects the 80-event ring (config maxEvents) at 20 Hz snapshots. */
@@ -358,11 +391,12 @@ export class Horde implements HordeApi{
    attack:a.attack,side:a.side,lost:a.lost,entry:a.phase==='active'?-1:a.entry,headless:a.headless,spawnAt:a.spawnAt};
   if(a.target)view.target=a.target;
   if(a.attackAt>0)view.attackAt=a.attackAt;if(a.hitAt>0){view.hitAt=a.hitAt;view.hitYaw=a.hitYaw;}if(a.diveAt>0&&(a.travel||a.phase==='vent'))view.diveAt=a.diveAt;
+  if(state!=='dead'){const st=this.statusBits(a);if(st)view.st=st;}
   return view;
  }
  private kill(a:PveAdd,attacker:string|null,cause:AddDeath['cause'],uncapped=false){
   if(!this.list.has(a.n))return;const s=this.sim,t=this.time,pos={...this.posOf(a)};
-  a.hp=0;
+  this.flushPending(a,true);a.hp=0;
   const view=this.viewOf(a,'dead');view.deathAt=t;view.entry=-1;view.vel={x:0,z:0};delete view.target;
   if(a.minion){if(s.chaos.minions.get(a.id)===a.minion)s.chaos.removeMinion(a.minion,false);else{s.colliderOwners.delete(a.minion.collider.handle);s.world.removeRigidBody(a.minion.body);}}
   // S7: the body is gone; this tick's separation hash may still hold the add, so drop the stale body handle (Rapier panics on it).
@@ -425,7 +459,8 @@ export class Horde implements HordeApi{
   for(const a of this.list.values()){
    a.spawnAt+=dt;a.walkAt+=dt;a.activeAt+=dt;if(a.attackAt>0)a.attackAt+=dt;a.strikeAt+=dt;a.recoverUntil+=dt;a.staggerUntil+=dt;a.thinkAt+=dt;
    if(a.diveAt>0)a.diveAt+=dt;a.ventUntil+=dt;a.ventCooldown+=dt;if(a.hitAt>0)a.hitAt+=dt;a.lastDamageAt+=dt;if(a.possessed)a.possessedAt+=dt;
-   a.progressAt+=dt;a.nudgeUntil+=dt;a.fieldAt+=dt;
+   a.progressAt+=dt;a.nudgeUntil+=dt;a.fieldAt+=dt;if(a.slowUntil!==undefined)a.slowUntil+=dt;
+   for(const m of [a.burns,a.poisons])if(m)for(const d of m.values()){d.until+=dt;d.next+=dt;}if(a.pend)for(const q of a.pend.values())q.at+=dt;
   }
   for(const c of this.corpses){c.until+=dt;const w=c.view;if(w.deathAt)w.deathAt+=dt;if(w.hitAt)w.hitAt+=dt;if(w.spawnAt)w.spawnAt+=dt;if(w.attackAt)w.attackAt+=dt;if(w.diveAt)w.diveAt+=dt;}
   for(const b of this.buckets.values())b.at+=dt;for(const st of this.assists.values())st.at+=dt;for(const e of this.outbox)e.at+=dt;
@@ -442,6 +477,7 @@ export class Horde implements HordeApi{
  rekey(from:string,to:string){
   for(const a of this.list.values()){
    if(a.target===from)a.target=to;if(a.lastHitBy===from)a.lastHitBy=to;if(a.fieldBy===from)a.fieldBy=to;
+   for(const m of [a.burns,a.poisons,a.pend])if(m?.has(from)){const d=m.get(from)!;m.delete(from);(m as Map<string,typeof d>).set(to,d);}
    const d=a.dealt.get(from);if(d!==undefined){a.dealt.delete(from);a.dealt.set(to,(a.dealt.get(to)??0)+d);}
   }
   const b=this.buckets.get(from);if(b){this.buckets.delete(from);this.buckets.set(to,b);}

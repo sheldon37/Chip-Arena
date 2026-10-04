@@ -1,8 +1,14 @@
 import type {Snapshot,DeathPresentation} from '../shared/simulation.js';
 import {clamp,type Vec} from '../shared/config.js';
 
-/** `hold` is a live pause after the aftermath is recorded, so the player sees their death before the footage starts. */
-export const KILLCAM={before:3,after:.6,hold:.6,history:5,hz:20,maxFrames:112,maxEntities:100_000,waitMs:1000} as const;
+/**
+ * Replay window: `before` s of lead-in, then `after` s of aftermath (killer, body, death effect) past the fatal hit.
+ * `hold` is a live pause on the death before footage starts. The aftermath is not waited for: playback lags live by
+ * before+hold, so later frames stream into the clip while it plays. `history` covers before+hold plus slack.
+ * `stall`: a clip whose footage ran out (packets stopped) ends this long after its last recorded frame.
+ * `bodyRange`: during the aftermath the camera cuts once to the victim's body if the killer is gone, dead or this far away.
+ */
+export const KILLCAM={before:2,after:4,hold:1.2,history:6,hz:20,maxFrames:132,maxEntities:150_000,waitMs:1000,stall:.5,bodyRange:24} as const;
 export interface KillcamInfo {
  deathId:string;victimId:string;killerId:string|null;killerName:string|null;cause:string;
  start:number;end:number;time:number;progress:number;viewId:string;
@@ -11,7 +17,7 @@ export interface KillcamInfo {
 }
 type Frame={state:Snapshot;entities:number};
 type Pending={death:DeathPresentation;victimId:string;deadline:number};
-type Clip={frames:Snapshot[];info:KillcamInfo;started:number};
+type Clip={frames:Snapshot[];info:KillcamInfo;started:number;body:Readonly<Vec>;onBody:boolean};
 const epoch=(s:Snapshot,id:string)=>`${id}:${s.generation}:${s.setNumber}:${s.round}:${s.options.map}`;
 const allowed=(s:Snapshot)=>['fight','result','match'].includes(s.phase)&&!s.lobbyReturn;
 
@@ -56,22 +62,28 @@ export class Killcam {
  sample(live:Snapshot,id:string,now=performance.now()):Snapshot|undefined{
   const self=live.players.find(p=>p.id===id);
   if(this.key!==epoch(live,id)||!allowed(live)||!self?.connected||self.hp>0){this.skip();return;}
-  if(this.pending&&(live.time>=this.pending.death.at+KILLCAM.after+KILLCAM.hold||now>=this.pending.deadline)){
+  if(this.pending&&(live.time>=this.pending.death.at+KILLCAM.hold||now>=this.pending.deadline)){
    const {death,victimId}=this.pending;this.pending=undefined;
    const start=Math.max(this.frames[0]?.state.time??death.at,death.at-KILLCAM.before);
-   const end=Math.min(this.frames.at(-1)?.state.time??death.at,death.at+KILLCAM.after);
+   // The planned end, not the last recorded frame: the aftermath is appended while the clip plays.
+   const end=death.at+KILLCAM.after;
    const frames=this.frames.map(f=>f.state).filter((s,i,a)=>s.time<=end&&(s.time>=start||a[i+1]?.time>start));
    if(frames.length>1&&end-start>=.2&&frames.some(s=>s.players.some(p=>p.id===id&&p.death?.id===death.id))){
     const killerId=death.source&&death.source!==id?death.source:null;
-    this.clip={frames,started:now,info:{deathId:death.id,victimId,killerId,killerName:killerId?death.announcement?.killer??null:null,cause:death.kind,at:Math.min(end,Math.max(start,death.at)),start,end,time:start,progress:0,viewId:killerId||victimId}};
+    this.clip={frames,started:now,body:death.pos,onBody:false,info:{deathId:death.id,victimId,killerId,killerName:killerId?death.announcement?.killer??null:null,cause:death.kind,at:Math.min(end,Math.max(start,death.at)),start,end,time:start,progress:0,viewId:killerId||victimId}};
    }
   }
   const clip=this.clip;if(!clip)return;
+  // Stream the recorded aftermath in; history only ever holds frames from this epoch (observe clears it otherwise).
+  for(const f of this.frames){const s=f.state,last=clip.frames.at(-1)!.time;if(s.time>last&&s.time<=clip.info.end)clip.frames.push(s);}
   const t=clip.info.start+Math.max(0,(now-clip.started)/1000);
-  if(t>clip.info.end){this.clip=undefined;return;}
+  if(t>clip.info.end||t>clip.frames.at(-1)!.time+KILLCAM.stall){this.clip=undefined;return;}
   const frame=sampleReplay(clip.frames,t);
-  // The recorded victim is a stable fallback for environmental deaths and missing killers.
-  clip.info.viewId=frame.players.some(p=>p.id===clip.info.killerId)?clip.info.killerId!:clip.info.victimId;
+  // Killer's shoulder camera; the recorded victim is a stable fallback for environmental deaths and missing killers.
+  // In the aftermath the camera cuts once (never back) to the body when the killer leaves, dies or wanders off.
+  const killer=frame.players.find(p=>p.id===clip.info.killerId);
+  if(t>clip.info.at&&(!killer||killer.hp<=0||Math.hypot(killer.pos.x-clip.body.x,killer.pos.z-clip.body.z)>KILLCAM.bodyRange))clip.onBody=true;
+  clip.info.viewId=killer&&!clip.onBody?killer.id:clip.info.victimId;
   clip.info.time=t;clip.info.progress=clamp((t-clip.info.start)/(clip.info.end-clip.info.start),0,1);
   return frame;
  }

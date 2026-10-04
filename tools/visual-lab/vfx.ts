@@ -27,6 +27,9 @@ const SCENARIOS:Record<string,{chips?:Record<string,number>;spec?:string;run:(s:
  implosion:{note:'Reverse Grenade (4 m implosion)',chips:{'implosion-bomb':1},run:(s,a)=>{s.chaos.field(a,'implosion',P,4,.25,30);}},
  artillery:{note:'Meteor Shower (3 × 2.8 m)',chips:{artillery:1},run:(s,a,b)=>{s.chaos.direct(a,b,P,v(0,0,1),'lab-art');}},
  thunder:{note:'Thunder Step (4 m strike)',chips:{thunderstep:1},run:(s,a)=>{s.chaos.dash(a,P);}},
+ // 2026-10-04 combat FX: every projectile of a multishot / buckshot volley shows its impact on the target.
+ multishot:{note:'Parallel Shot ×3 pistol volleys (4 impacts each)',spec:'pistol',chips:{multishot:3},run:(s,a,b)=>{const d=add(b.body.translation(),v(-a.body.translation().x,-a.body.translation().y,-a.body.translation().z));a.input={...a.input,yaw:Math.atan2(d.x,d.z),pitch:Math.atan2(d.y,Math.hypot(d.x,d.z)),camera:'first'};s.spawnProjectile(a);},later:[[.12,(s,a)=>s.spawnProjectile(a)],[.24,(s,a)=>s.spawnProjectile(a)]]},
+ buckshot:{note:'Pocket Shotgun rifle volley (6 pellets)',spec:'rifle',chips:{buckshot:1},run:(s,a,b)=>{const d=add(b.body.translation(),v(-a.body.translation().x,-a.body.translation().y,-a.body.translation().z));a.input={...a.input,yaw:Math.atan2(d.x,d.z),pitch:Math.atan2(d.y,Math.hypot(d.x,d.z)),camera:'first'};s.spawnProjectile(a);}},
  shrapnel:{note:'Shrapnel Protocol (1.8 m)',chips:{shrapnel:3},run:(s,a,b)=>{s.directHit(a,b,P,v(0,0,1),1,0,'lab-shr');}},
  comet:{note:'Comet Dash (roll blast)',chips:{comet:1},run:(s,a)=>{a.body.setTranslation(P,true);s.chaos.dash(a,P);if(!s.chaos.fields.size)s.explode(a,P,3,a.stats.dashBlast,a.stats.dashBlast/14*380,'dashBlast',true);}},
  freeze:{note:'Time Out (Block freeze)',chips:{'freezer-block':1},run:(s,a,b)=>{a.body.setTranslation(add(P,v(-1.5,0,-1)),true);b.body.setTranslation(P,true);s.world.step();s.chaos.block(a);}},

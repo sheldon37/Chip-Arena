@@ -5,6 +5,7 @@ import type {Minion} from '../chaos.js';
 import {PVE_TIMING,type AddAttack,type AddKind,type HordeModifiers,type LimbName} from './contract.js';
 import {GIB,HORDE,PVE_SIREN,type AddKindStats} from './balance.js';
 import {limbState} from './gibs.js';
+import type {DotState} from '../elements.js';
 
 /** Internal phase: pending (waiting for an entry), entering (no body), active (body, AI), vent (diving / hidden). */
 export type AddPhase='pending'|'entering'|'active'|'vent';
@@ -22,6 +23,10 @@ export interface PveAdd{
  minion?:Minion;
  progressAt:number;progressDist:number;nudgeUntil:number;
  fieldSum:number;fieldAt:number;fieldBy?:string;
+ /** Weapon statuses (2026-10-04): burn/poison DoTs per source (elements.ts rules) and a movement slow. */
+ burns?:Map<string,DotState>;poisons?:Map<string,DotState>;slowUntil?:number;slowFactor?:number;
+ /** Direct hits waiting for an event token (coalesced instead of dropped). */
+ pend?:Map<string,{amount:number;point:Vec;at:number;headshot?:boolean}>;
 }
 export interface AttackProfile{attack:AddAttack;damage:number;reach:number;start:number;cone:number;hit:number;lunge:number;cycle:number;impulse:number}
 /** §3.5 table plus the limb rules: one arm ×0.65, armless bite (lunge ×0.35, 1.2 m), crawling ×0.6 low swipe (1.3 m). */

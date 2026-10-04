@@ -17,6 +17,15 @@ import {adsProfile,type AdsProfile} from '../shared/abilities.js';
 export const FP_TUNE={meleeX:.16,meleeY:-.22,meleeZ:-.3,magicX:.2,magicY:-.5,magicStaffScale:.85,magicRoll:20,moduleScale:.5,rocketDip:.07};
 /** ADS view-model offsets (Δx, Δy) per gun (§12.1; PROBE: muzzle on the crosshair column, sights just under it). */
 export const ADS_VIEW:Record<string,[number,number]>={pistol:[-.27,.19],machinegun:[-.31,.175],rifle:[-.33,.1]};
+/** Weapon-space sight lines (rear, front) on the gun models in weapon-visuals.ts: pistol notch and post, machine-gun
+ * carry-handle posts, rifle scope axis. While aiming, the view model is rotated and shifted so this line runs exactly down
+ * the camera axis (screen centre), where the authority sends ADS shots (owner bug 2026-10-04). */
+export const SIGHT_LINE:Record<string,[number,number,number,number]>={pistol:[.105,-.03,.105,.32],machinegun:[.25,-.02,.25,.2],rifle:[.175,-.075,.175,.357]};
+const _m=new T.Matrix4(),_rear=new T.Vector3(),_front=new T.Vector3(),_d=new T.Vector3(),_minusZ=new T.Vector3(0,0,-1),_qs=new T.Quaternion(),_qi=new T.Quaternion(),_qk=new T.Quaternion(),_ps=new T.Vector3();
+/** Sight line in the camera's space for the view model's current transform (rear, front). */
+export function sightInCamera(viewRoot:T.Object3D,weapon:T.Object3D,spec:string,rear:T.Vector3,front:T.Vector3){const line=SIGHT_LINE[spec];if(!line)return false;
+ viewRoot.updateMatrix();viewRoot.updateMatrixWorld(true);_m.copy(viewRoot.matrixWorld).invert().multiply(weapon.matrixWorld).premultiply(viewRoot.matrix);
+ rear.set(0,line[0],line[1]).applyMatrix4(_m);front.set(0,line[2],line[3]).applyMatrix4(_m);return true;}
 interface ViewState{t:number;yaw:number;pitch:number;sx:number;sxv:number;sy:number;syv:number;roll:number;rollv:number;land:number;landv:number;grounded:boolean;vy:number;ads:number;adsv:number}
 const states=new WeakMap<object,ViewState>();
 const _o:[number,number]=[0,0],_qa=new T.Quaternion(),_qb=new T.Quaternion(),_qc=new T.Quaternion(),_f=new T.Vector3();
@@ -62,6 +71,15 @@ export function poseFirstPersonView(firstRig:AnimatedRig,viewRoot:T.Object3D,sel
  viewRoot.position.set(baseX+(bx+s.sx)*(1-a*.7),baseY+(by+s.sy)*(1-a*.7)+s.land*.05-.06*reload-.03*runLow-t.rocketDip*rk,baseZ+.04*kick+.08*rk);
  // Narrower ADS FOV: counter-scale so the gun does not balloon; the rifle hides behind its scope overlay.
  viewRoot.rotation.set(.06*kick-.1*runLow+.12*rk+.06*flick,Math.PI,s.roll+.25*reload);viewRoot.scale.setScalar(.78*(1+(P&&a?Math.tan(P.fov*Math.PI/360)/Math.tan(VIEW.firstFov*Math.PI/360)-1:0)*a));
+ // Sight alignment: measure the sight line on the steady ADS pose (no sway, kick or dips), then rotate and shift the view model
+ // by the ADS blend so the line runs down the camera axis; recoil and sway still ride on top of the aligned pose.
+ if(cls==='ranged'&&a>0&&SIGHT_LINE[self.spec]){_ps.copy(viewRoot.position);_qs.copy(viewRoot.quaternion);
+  viewRoot.position.set(baseX,baseY,baseZ);viewRoot.rotation.set(0,Math.PI,0);
+  if(sightInCamera(viewRoot,firstRig.weapon,self.spec,_rear,_front)){_d.subVectors(_front,_rear).normalize();_qi.setFromUnitVectors(_d,_minusZ);
+   _rear.sub(viewRoot.position).applyQuaternion(_qi).add(viewRoot.position);_qk.identity().slerp(_qi,a);
+   viewRoot.quaternion.copy(_qs).premultiply(_qk);viewRoot.position.copy(_ps);viewRoot.position.x-=_rear.x*a;viewRoot.position.y-=_rear.y*a;}
+  else{viewRoot.position.copy(_ps);viewRoot.quaternion.copy(_qs);}
+ }
  viewRoot.visible=!(scoped&&!prof)&&!(P?.overlay==='scope'&&a>.6);
  // Staff: FP-only scale and roll about the grip around the camera's view axis (top toward the left edge), faded out in the guard.
  const wpn=firstRig.weapon;if(cls==='magic'){const g=magicGuardWeight(firstRig);wpn.scale.setScalar(t.magicStaffScale+(1-t.magicStaffScale)*g);

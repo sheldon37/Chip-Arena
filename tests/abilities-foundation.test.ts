@@ -19,6 +19,7 @@ import {Predictor} from '../src/client/prediction.js';
 import {controlHints} from '../src/client/control-hints.js';
 import {abilitySlots,abilitySlotsHtml} from '../src/client/ability-hud.js';
 import {cameraPosition} from '../src/shared/view.js';
+import {ballisticPitch} from '../src/shared/projectiles.js';
 import {botAbilities} from '../src/shared/bot-abilities.js';
 await initPhysics();
 
@@ -30,7 +31,9 @@ function game(spec:SpecId='pistol',chips:Record<string,number>={}){
  a.body.setTranslation(v(0,.9,0),true);b.body.setTranslation(v(0,.9,7),true);s.world.step();for(const p of [a,b]){p.grounded=true;p.inputAt=s.time;}return {s,a,b};
 }
 /** One tick with `a`'s input (others idle). */
-function tick(s:Simulation,a:Player,input:Partial<Input>={},seq={n:0}){s.setInput(a.id,{...idleInput(),seq:++seq.n+a.input.seq,yaw:a.input.yaw,pitch:a.input.pitch,...input});for(const p of s.players.values())p.inputAt=s.time;s.step();}
+function tick(s:Simulation,a:Player,input:Partial<Input>={},seq={n:0}){s.setInput(a.id,{...idleInput(),seq:++seq.n+a.input.seq,yaw:a.input.yaw,pitch:a.input.pitch,...input});for(const p of s.players.values())p.inputAt=s.time;s.step();
+ // Hold-to-aim (2026-10-04): an aimed E casts on release, so a scripted tap is press + release.
+ if(input.secondary&&s.abilities.holds(a,'e'))tick(s,a,{...input,secondary:false},seq);}
 const run=(s:Simulation,a:Player,n:number,input:Partial<Input>={})=>{for(let i=0;i<n;i++)tick(s,a,input);};
 /** A fake live handler for one kit def; returns the recorded release contexts. */
 function fake(spec:SpecId,slot:'q'|'e',extra:Partial<AbilityHandler>={}){const def=kitFor(spec)![slot];def.live=true;const calls:CastContext[]=[];ABILITY_HANDLERS[def.id]={release:(_sys,ctx)=>{calls.push(ctx);},...extra};return {def,calls};}
@@ -60,9 +63,9 @@ test('PvE forced idle literal and Block clear the ability bit',async()=>{
 // ---- capability flag ------------------------------------------------------------------------------------------------
 test('caps: every host path advertises abilities in welcome; abilityClient truth table',async()=>{
  const sent:{target:string;message:any}[]=[];const room=new HostedRoom('ABCDEFGH',{name:'Host',class:'ranged',color:'#ffffff'},false,(target,message)=>sent.push({target,message}));
- try{room.welcome('host');assert.ok(room.join({name:'Guest',class:'magic',color:'#00ff00'}));const welcomes=sent.filter(m=>m.message.type==='welcome');assert.equal(welcomes.length,2);for(const w of welcomes)assert.deepEqual(w.message.caps,{abilities:1});}finally{room.dispose();}
+ try{room.welcome('host');assert.ok(room.join({name:'Guest',class:'magic',color:'#00ff00'}));const welcomes=sent.filter(m=>m.message.type==='welcome');assert.equal(welcomes.length,2);for(const w of welcomes)assert.deepEqual(w.message.caps,{abilities:1,aimHold:1});}finally{room.dispose();}
  const server=await readFile('src/server/index.ts','utf8'),welcomes=server.match(/type:'welcome'[^}]*\}/g)!;assert.equal(welcomes.length,2,'rejoin and create/join');for(const w of welcomes)assert.match(w,/caps:HOST_CAPS/);
- assert.deepEqual(HOST_CAPS,{abilities:1});assert.equal(JSON.stringify({caps:HOST_CAPS}).length-2,22,'caps adds 22 chars to welcome');
+ assert.deepEqual(HOST_CAPS,{abilities:1,aimHold:1});assert.equal(JSON.stringify({caps:HOST_CAPS}).length-2,34,'caps adds 34 chars to welcome (hold-to-aim, 2026-10-04)');
  const users:SpecId[]=['pistol','rifle','machinegun','fire','water','lightning','darkness'],others:SpecId[]=['sword','daggers','shield','greatsword','emperor','ansatsuken','leet','siren'];
  for(const spec of users){assert.equal(abilityUser(spec),true,spec);assert.equal(abilityClient(HOST_CAPS,spec),true,spec);assert.equal(abilityClient({},spec),false,spec);assert.equal(abilityClient(undefined,spec),false,spec);assert.equal(abilityClient(null,spec),false,spec);}
  for(const spec of others){assert.equal(abilityUser(spec),false,spec);assert.equal(abilityClient(HOST_CAPS,spec),false,spec);}
@@ -105,7 +108,10 @@ test('ADS: a human pistol holding Q is slower and tighter server-side, fires slo
  const g=game('rifle');try{const {s:rs,a:r}=g;r.input.camera='third';run(rs,r,20,{ability:true,camera:'third',pitch:.05});rs.events=[];rs.projectiles.clear();
   const yaw=r.input.yaw,pitch=r.input.pitch,eye=cameraPosition(r.body.translation(),yaw,pitch,'first');tick(rs,r,{ability:true,camera:'third',attack:true,pitch:.05});
   const shot=[...rs.projectiles.values()][0];assert.ok(shot,'rifle fired');const aimPoint=add(eye,mul(forward(yaw,pitch),C.projectileMaxTravel));
-  const dir=mul(shot.vel,1/len(shot.vel)),expected=mul(sub(aimPoint,shot.pos),1/len(sub(aimPoint,shot.pos)));assert.ok(len(sub(dir,expected))<.01,`eye-origin aim ${JSON.stringify(dir)} vs ${JSON.stringify(expected)}`);
+  // Owner bug 2026-10-04 (ADS zeroing): the ray's end point (nothing hit: range + 5 m along the eye ray) is met on the low
+  // ballistic arc, so the launch pitch is ballisticPitch toward it; the yaw still comes from the eye-origin aim.
+  const target=add(eye,mul(forward(yaw,pitch),WEAPONS.rifle.range+5)),d=sub(target,shot.pos),lp=ballisticPitch(Math.hypot(d.x,d.z),d.y,WEAPONS.rifle.speed,WEAPONS.rifle.gravity),ly=Math.atan2(d.x,d.z);void aimPoint;
+  const dir=mul(shot.vel,1/len(shot.vel)),expected=forward(ly,lp);assert.ok(len(sub(dir,expected))<.01,`eye-origin aim ${JSON.stringify(dir)} vs ${JSON.stringify(expected)}`);
  }finally{g.s.dispose();}
  // ADS never changes ballistics.
  for(const spec of ['pistol','rifle','machinegun'] as const)assert.deepEqual(shotBallistics(spec,BASE_STATS),{speed:WEAPONS[spec].speed,gravity:WEAPONS[spec].gravity});

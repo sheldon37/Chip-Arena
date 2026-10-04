@@ -36,6 +36,7 @@
  *                            same synthesized commitment as primary-melee-motion) into the rig root, so foot
  *                            sliding shows against the grid. Vertical motion is not integrated.
  *  follow=0|1                cameras follow the rig root (default 1); 0 keeps them on the start position
+ *  crosshair=1               draw the screen-centre crosshair on 'first' cells (ADS sight alignment checks)
  *  blockHit=<s,s,...>        record a 'blockHit' on the lab player at these times (block-impacts.ts)
  *  mods=0                    skip weaponModifiers/bodyModifiers (muzzle flash, spell-charge orb, chip parts),
  *                            which otherwise run every step like the renderer
@@ -163,7 +164,7 @@ async function main(){
    let cam=camera;
    if(fp&&viewRoot&&fpCamera){const first=view==='first';rig.group.visible=!first;viewRoot.visible=first;if(first)cam=fpCamera;}
    if(cam===camera)aim(camera,view,target);
-   gl.render(scene,cam);ctx.drawImage(gl.domElement,i*cellW,22+row*cell);if(row===0)label(ctx,`${(t-start).toFixed(2)}s`,i*cellW+2,24);if(i===0)label(ctx,view,2,22+row*cell+cell-18);});
+   gl.render(scene,cam);ctx.drawImage(gl.domElement,i*cellW,22+row*cell);if(view==='first'&&q.get('crosshair')==='1'){const cx=i*cellW+cellW/2,cy=22+row*cell+cell/2;ctx.strokeStyle='#ff2a5a';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(cx-9,cy);ctx.lineTo(cx-3,cy);ctx.moveTo(cx+3,cy);ctx.lineTo(cx+9,cy);ctx.moveTo(cx,cy-9);ctx.lineTo(cx,cy-3);ctx.moveTo(cx,cy+3);ctx.lineTo(cx,cy+9);ctx.stroke();}if(row===0)label(ctx,`${(t-start).toFixed(2)}s`,i*cellW+2,24);if(i===0)label(ctx,view,2,22+row*cell+cell-18);});
   rig.group.visible=true;};
  const staticPatch=withRel(patch,start),keys=patchAt.map(k=>({t:Number(k.t),patch:withRel(k.patch||{},start)})).sort((a,b)=>a.t-b.t);
  if(blockHits.length)clearBlockImpacts();
