@@ -92,11 +92,14 @@ export function retarget(obj,clip,cal,fps){
   // Hand targets stay inside the rig arm's reach with a soft knee (rig-ik clamps hard at .515: a kink in the blade's path).
   const reach=(p,sx)=>{const d=new T.Vector3(p.x-sx,p.y-RIG.shoulderY,p.z),l=d.length(),knee=.4,room=.1;if(l>knee)d.multiplyScalar((knee+room*Math.tanh((l-knee)/room))/l);return p.set(sx+d.x,RIG.shoulderY+d.y,d.z);};
   const RHq=B('RightHand').getWorldQuaternion(q()),blade=cal.blade.clone().applyQuaternion(RHq),edge=cal.edge.clone().applyQuaternion(RHq);
-  const gap=Wp.LeftHand.distanceTo(Wp.RightHand),two=T.MathUtils.clamp((40-gap)/12,0,1);
+  const gap=Wp.LeftHand.distanceTo(Wp.RightHand);let two=T.MathUtils.clamp((40-gap)/12,0,1);
   const g=reach(toChest(Wp.RightHand),-RIG.shoulderX),bl=dirChest(blade),ed=dirChest(edge);ed.addScaledVector(bl,-ed.dot(bl)).normalize();
   // Two-handed, the support hand takes the weapon's support grip (.11 down the grip from the main hand): the voxel
   // shoulders are far wider than a human's, so the grip shifts toward the support shoulder until that hand can reach it.
-  if(two>0){const L=new T.Vector3(RIG.shoulderX,RIG.shoulderY,0),s=g.clone().addScaledVector(bl,-.11),d=s.distanceTo(L);if(d>.44)g.add(L.sub(s).normalize().multiplyScalar((d-.44)*two));}
+  // A grip held far over on the main-hand side (the sprint's shoulder carry) would have to cross the chest for the support
+  // hand to reach it, dragging the blade through the torso: there the support hand lets go instead.
+  if(two>0){const L=new T.Vector3(RIG.shoulderX,RIG.shoulderY,0),s=g.clone().addScaledVector(bl,-.11),need=s.distanceTo(L)-.44;
+   if(need>0){two*=1-T.MathUtils.smoothstep(need,.22,.32);g.add(L.sub(s).normalize().multiplyScalar(Math.min(need,.25)*two));}}
   const rp=pole(Wp.RightArm,Wp.RightForeArm,Wp.RightHand,g,-RIG.shoulderX,poleR);row.push(g.x,g.y,g.z,bl.x,bl.y,bl.z,ed.x,ed.y,ed.z,rp.x,rp.y,rp.z);
   const lh=reach(toChest(Wp.LeftHand),RIG.shoulderX),LH=W.LeftHand.clone().premultiply(chestInv),lf=new T.Vector3(0,0,1).applyQuaternion(LH),lu=new T.Vector3(0,1,0).applyQuaternion(LH);
   const lp=pole(Wp.LeftArm,Wp.LeftForeArm,Wp.LeftHand,lh,RIG.shoulderX,poleL);row.push(lh.x,lh.y,lh.z,lf.x,lf.y,lf.z,lu.x,lu.y,lu.z,lp.x,lp.y,lp.z,two);

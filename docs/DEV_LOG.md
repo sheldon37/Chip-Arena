@@ -18,6 +18,24 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-04 — Claude — greatsword blade clears the shoulders (mocap follow-up)
+
+- Publication (previous task): PR #36 merged 076afe5 -> test 0.2.7f4cf400e693; channel c351c41; schema1 arena-79bbf8ca845d2b9e.json.gz 26,167,432 B, schema2 arena-4bbd4d77d7a7b6cf.pack 22,081,531 B; old launcher and seed manual-update both installed then reported current; candidate verify baseline-only.
+- Task: owner report that the greatsword runs through the shoulder. Branch `claude/greatsword-shoulder` from
+  `origin/claude/visual-revision` 076afe5. Implemented on branch; no PR, not merged, not published.
+- Cause: the run carry (shoulder rest) had its grip dragged toward the support shoulder (wide voxel shoulders), laying the
+  blade through the chest and right pauldron. Converter: the support hand now lets go where reaching the grip would need
+  a shift over ~.25 m (the clip table is regenerated). Runtime: `src/client/mocap/blade-clearance.ts` turns the blade
+  about the grip (and lifts the grip off the shoulders/chest) until the blade slab clears the pauldrons, chest shell and
+  head by 2 cm, and rolls the flat onto a nearby surface; continuous and stateless; cuts only turn the blade (no grip
+  shift). Visual-lab fix: the raw `mocap=` preview import no longer breaks the lab on a clean checkout.
+- Impacts: presentation only. Hit timing, hitboxes, damage, cooldowns, movement and networking unchanged.
+- Checks (Node 22.22.2): `npm run check:types` pass; greatsword-mocap (new clearance test over idle/walk/run/block),
+  pvp-golden and the 8 MOCAP-off melee/locomotion files: 86/86 pass. Lab strips (run/walk/idle) reviewed.
+  Not run: full suite, build, Windows/GPU, multiplayer.
+- Next: owner check of the run carry; the blade now rides up against the outside of the right pauldron rather than
+  lying flat across its top.
+
 ## 2026-10-04 — Claude — publication record: PR #34 + PR #35 on the test channel
 - Owner confirmed publication and granted standing permission for pushes, merges and test-channel updates (2026-10-04).
 - PR #34 merged `c307925`, PR #35 merged `ab2e4c5` -> test `0.2.31513375c335` (channel commit `e49b238`).
