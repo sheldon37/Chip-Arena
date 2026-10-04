@@ -160,6 +160,7 @@ function cameraFor(view:string):[number[],number[]]{
  if(view==='pickups')return [[0,2.4,10.5],[0,1,2]];
  if(view==='entry'||view==='entry-side'){const en=entry,f=fwd(en.yaw),r=fwd(en.yaw+Math.PI/2),side=view==='entry-side'?1:.35,d=en.kind==='vent'?5:7.5;
   return [[en.exit.x+f.x*d+r.x*d*side,en.kind==='vent'?3.2:2.4,en.exit.z+f.z*d+r.z*d*side],[en.from.x+(en.exit.x-en.from.x)*.4,en.kind==='vent'?.3:1.5,en.from.z+(en.exit.z-en.from.z)*.4]];}
+ if(view==='vent'){const en=entry,f=fwd(en.yaw);return [[en.from.x+f.x*3.2+1.2,3.4,en.from.z+f.z*3.2+.8],[en.from.x,-.4,en.from.z]];}
  if(view==='holo')return [[0,2.1,5.2],[0,1.6,0]];
  if(view==='beacon')return [[0,3.2,7.5],[0,.9,0]];
  if(view==='downed')return [[2.2,1.7,3.4],[1,.35,-.2]];

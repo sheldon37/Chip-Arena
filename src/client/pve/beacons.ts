@@ -7,6 +7,7 @@ import type {PlayerView,Snapshot} from '../../shared/simulation.js';
 import type {PveView} from '../../shared/pve/contract.js';
 import {HoloLabel,HOLO_FONT,makeCanvas} from './hologram.js';
 import {DOWNED,helpBob,helpShown,helpWidth} from './downed.js';
+import {inVentShaft} from '../../shared/pve/vent-pits.js';
 
 export const BEACON={color:0xdff4ff,self:0xffd27a,radius:.95,height:3.6,segments:48} as const;
 const clamp=(x:number,a=0,b=1)=>Math.min(b,Math.max(a,x));
@@ -21,9 +22,10 @@ export function beaconState(view:PveView,id:string,t:number):BeaconState{
  return {mode:'down',progress:0,label:'F · REVIVE',sub:`$${row?.reviveCost??0}`};
 }
 /** Downed members that get a beacon: dead, in the party (humans and party bots), connected, and the run not over. */
-export function beaconTargets(state:Pick<Snapshot,'players'>,view:PveView):PlayerView[]{
+export function beaconTargets(state:Pick<Snapshot,'players'>,view:PveView,t=Infinity):PlayerView[]{
  if(view.stage==='ended')return [];
- return (state.players as PlayerView[]).filter(p=>p.hp<=0&&view.party[p.id]&&view.party[p.id].connected);
+ // A vent-fall body still in the shaft (pve/vent-pits.ts) cannot be reached: no beacon until it lands.
+ return (state.players as PlayerView[]).filter(p=>p.hp<=0&&view.party[p.id]&&view.party[p.id].connected&&!inVentShaft(p.death,t));
 }
 
 let moteTexture:T.Texture|undefined;
@@ -82,7 +84,7 @@ export class BeaconView {
  constructor(parent:T.Object3D){this.group.name='pve-beacons';parent.add(this.group);}
  update(state:Snapshot,view:PveView,me='',camera?:T.Camera,compatibility=false){
   const t=state.time;this.states.clear();this.help.clear();
-  for(const p of beaconTargets(state,view)){const pos=p.death?.pos??p.pos,s=beaconState(view,p.id,t);this.states.set(p.id,s);
+  for(const p of beaconTargets(state,view,t)){const pos=p.death?.pos??p.pos,s=beaconState(view,p.id,t);this.states.set(p.id,s);
    let b=this.pool.get(p.id);if(!b){b=new Beacon();this.pool.set(p.id,b);this.group.add(b.group);}
    const color=s.mode==='self'?BEACON.self:BEACON.color,pulse=.5+.5*Math.sin(t*3.2);
    b.group.visible=true;b.group.position.set(pos.x,0,pos.z);b.column.material.color.setHex(color);b.column.material.opacity=.32+.18*pulse+(s.mode==='down'?0:.2);
@@ -90,7 +92,7 @@ export class BeaconView {
    b.label.set(s.label,s.sub);(b.label.sprite.material as T.SpriteMaterial).color.setHex(color);b.label.sprite.position.y=2.25+.06*Math.sin(t*2);
    // HELP: constant on-screen size between 5 and 26 m, its bottom above the label, bobbing (pure in t), a slight comic tilt.
    // The SVG compatibility path draws sprites as plain rectangles: no bubble there (the label and HUD remain).
-   const help=helpShown(p,view,me)&&!compatibility;b.help.visible=help;if(help){this.help.add(p.id);const d=camera?camera.position.distanceTo(_at.set(pos.x,2.6,pos.z)):12,w=helpWidth(d);
+   const help=helpShown(p,view,me,t)&&!compatibility;b.help.visible=help;if(help){this.help.add(p.id);const d=camera?camera.position.distanceTo(_at.set(pos.x,2.6,pos.z)):12,w=helpWidth(d);
     b.help.scale.set(w,w*DOWNED.help.aspect,1);b.help.position.y=DOWNED.help.bottom+.06*w+helpBob(t,p.id);b.help.material.rotation=.07*Math.sin(t*2.3+p.id.length);}}
   for(const [id,b] of this.pool)if(!this.states.has(id))b.group.visible=false;
  }

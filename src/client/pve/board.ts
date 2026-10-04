@@ -2,6 +2,7 @@
 // builders; PlayerBoard (../player-board.ts) owns the DOM, the chip tooltip and the PvP board. The static part (pilots,
 // weapons, installed chips) re-renders only when its key changes, so hovering a chip keeps working; the run line and each
 // member's live cells (state, HP, kills, deaths, assists, revives, damage, money) are swapped in place every HUD tick.
+import {inVentShaft} from '../../shared/pve/vent-pits.js';
 import type {PlayerView,Snapshot} from '../../shared/simulation.js';
 import {BOSS_PLAYER_ID,type PvePartyView,type PveView} from '../../shared/pve/contract.js';
 import {BOSSES} from '../../shared/pve/bosses.js';
@@ -46,6 +47,7 @@ export function boardRun(state:Snapshot,pve:PveView){
 function status(state:Snapshot,pve:PveView,id:string,row:PvePartyView,p:PlayerView|undefined){
  const down=!p||p.hp<=0;let label:string,kind:string;
  if(!row.connected){label=`${icon('x')}Offline`;kind='offline';}
+ else if(down&&p&&inVentShaft(p.death,state.time)){kind='down';const land=Math.max(0,(p.death!.landAt??state.time)-state.time);label=`${icon('skull')}In a vent <small>lands in ${Math.ceil(land)}s</small>`;}
  else if(down){kind='down';const self=row.selfReviveAt!==undefined&&row.selfReviveAt>state.time;label=`${icon('skull')}Down${row.downAt!==undefined?` <small>${runClock(state.time-row.downAt)}</small>`:''}${self?` <small>· self-revive</small>`:''}`;}
  else if(row.channel){kind='reviving';label=`${icon('heart-plus')}Reviving <small>${escapeHtml(state.players.find(x=>x.id===row.channel!.target)?.name??'')}</small>`;}
  else if(row.open){kind='choosing';label=`${icon('cpu')}Choosing chip`;}

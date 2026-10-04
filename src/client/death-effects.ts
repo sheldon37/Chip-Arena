@@ -11,6 +11,7 @@ import {ARENA} from '../shared/arena.js';
 import {ANIMATION} from './character-animation.js';
 import type {CharacterRig} from './character-rig.js';
 import {DOWNED,downedBodies,type DownedBodies} from './pve/downed.js';
+import {VENT_KILL_EFFECTS} from './pve/vent-fall.js';
 
 interface Voxel {mesh:T.Mesh;start:T.Vector3;velocity:T.Vector3;spin:T.Vector3;floor:number;size:number;}
 interface Effect {update(age:number):void;dispose():void;count:number;
@@ -55,7 +56,7 @@ function voxelBurst(scene:T.Scene,rig:T.Group,p:PlayerView,death:DeathPresentati
  * wounds already ride on the rig (body-wounds.ts); a severed part detaches with voxel caps, a crushed part fragments and the
  * gated fast-headshot death kneels and falls before the ragdoll takes over. */
 const bodyRagdoll:KillEffectFactory=ragdollVariant('ragdoll',{impact:true});
-export const KILL_EFFECTS:Record<string,KillEffectFactory>={...SIREN_KILL_EFFECTS,'impact-ragdoll':bodyRagdoll,ragdoll,'dev-gibber':ragdollVariant('ragdoll',{gib:true}),...Object.fromEntries(Object.keys(RAGDOLL_STYLES).map(id=>[id,ragdollVariant(id as RagdollStyle)])),'dev-raging-demon':ragingDemon,'voxel-burst':voxelBurst,'dev-clown-love':clownLove,'dev-bass-van':bassVan,...Object.fromEntries(['confetti','ascension','shrink','launch','ghost','dev-clown'].map(kind=>[kind,cinematic(kind)]))};
+export const KILL_EFFECTS:Record<string,KillEffectFactory>={...SIREN_KILL_EFFECTS,...VENT_KILL_EFFECTS,'impact-ragdoll':bodyRagdoll,ragdoll,'dev-gibber':ragdollVariant('ragdoll',{gib:true}),...Object.fromEntries(Object.keys(RAGDOLL_STYLES).map(id=>[id,ragdollVariant(id as RagdollStyle)])),'dev-raging-demon':ragingDemon,'voxel-burst':voxelBurst,'dev-clown-love':clownLove,'dev-bass-van':bassVan,...Object.fromEntries(['confetti','ascension','shrink','launch','ghost','dev-clown'].map(kind=>[kind,cinematic(kind)]))};
 export class DeathEffects {
  private active=new Map<string,{effect:Effect;at:number;kept?:string;death?:DeathPresentation}>();private seen=new Set<string>();private epoch='';
  /** PvE: downed party members' bodies stay until they are back up, then regenerate (src/client/pve/downed.ts). */

@@ -17,6 +17,7 @@ import {Horde} from './horde.js';
 import {Director} from './director.js';
 import {Economy} from './economy.js';
 import {Recruits} from './recruits.js';
+import {VentPits} from './vent-pits.js';
 
 type RngLabel='horde'|'director'|'economy'|'recruits';
 const emptyStats=():PveStats=>({addDamage:0,bossDamage:0,kills:0,assists:0,heads:0,revives:0,revived:0,deaths:0});
@@ -33,6 +34,8 @@ export class PveSystem implements PveHost{
  readonly options:PveOptions;
  runIndex=0;runSeed=0;spawningBoss=false;
  readonly horde:HordeApi;readonly director:DirectorApi;readonly economy:EconomyApi;readonly recruits:RecruitsApi;
+ /** Open Ward Zero vents are pits (falls, the timed splat, bot avoidance). */
+ readonly vents:VentPits=new VentPits(this);
  /** The run outcome once finish() ran (the director's view may also carry it). */
  outcome?:PveOutcome;endedAt?:number;
  private streams=new Map<RngLabel,PveRng>();
@@ -98,7 +101,7 @@ export class PveSystem implements PveHost{
   this.runIndex++;this.runSeed=hash32(this.options.seed>>>0,this.runIndex);this.streams.clear();
   for(const p of [...this.sim.players.values()])if(this.isBoss(p)||this.isRecruit(p))this.sim.removePlayer(p.id);
   this.ledger.clear();this.hiddenIds.clear();this.untouchableUntil.clear();this.spawningBoss=false;this.outcome=undefined;this.endedAt=undefined;this.solo=false;
-  this.horde.reset();this.director.reset();this.economy.reset();this.recruits.reset();
+  this.horde.reset();this.director.reset();this.economy.reset();this.recruits.reset();this.vents.reset();
  }
  /** #7 Seats: the boss while spawningBoss, facade party bots, recruits, an adopting rejoin; a human only while humans<maxParty,
   *  evicting the newest party bot first when the party is full. */
@@ -174,7 +177,7 @@ export class PveSystem implements PveHost{
   *  the boss idles while hidden, else the director refines it; humans get the economy's forced input (choosing, channelling). */
  filterInput(p:Player,i:Input):Input{
   if(this.director.holding())return idleKeepLook(i);
-  if(this.isRecruit(p)||this.isPartyBot(p))return this.recruits.inputFor(p,i)??idleKeepLook(i);
+  if(this.isRecruit(p)||this.isPartyBot(p)){const b=this.recruits.inputFor(p,i);return b?this.vents.steer(p,b):idleKeepLook(i);}
   if(this.isBoss(p))return this.hidden(p)?idleKeepLook(i):this.director.bossInput(p,i);
   return this.economy.inputFor(p,i)??i;
  }
@@ -182,7 +185,7 @@ export class PveSystem implements PveHost{
  holding(){return this.director.holding();}
  /** #38 Hold tick: the director's timeline; every part shifts its absolute timers; party horizontal motion stops. */
  stepHold(dt:number){
-  this.director.stepHold(dt);this.horde.shift(dt);this.economy.shift(dt);this.recruits.shift(dt);this.sim.abilities.shift(dt);
+  this.director.stepHold(dt);this.horde.shift(dt);this.vents.shift(dt);this.economy.shift(dt);this.recruits.shift(dt);this.sim.abilities.shift(dt);
   for(const p of this.sim.players.values()){if(!this.isMember(p)&&!this.isRecruit(p)&&!this.isBoss(p))continue;const vel=p.body.linvel();p.body.setLinvel(v(0,vel.y,0),true);p.move=v();p.ext=v();
    for(const dots of [p.burns,p.poisons])for(const d of dots.values()){d.next+=dt;d.until+=dt;}}
   for(const [id,until] of this.untouchableUntil)this.untouchableUntil.set(id,until+dt);
@@ -190,7 +193,7 @@ export class PveSystem implements PveHost{
  /** End of ChaosSystem.step: add AI before physics. */
  stepHorde(dt:number){this.horde.step(dt);}
  /** #39 After physics: economy, recruits, director (last). */
- stepAfterPhysics(dt:number){this.economy.step(dt);this.recruits.step(dt);this.director.step(dt);}
+ stepAfterPhysics(dt:number){this.vents.step();this.economy.step(dt);this.recruits.step(dt);this.director.step(dt);}
  /** #10 Faction refs for non-player ids: the horde, adds and the boss id are on the boss team. */
  teamRef(id:string|null|undefined){return id&&(id===HORDE_ID||id===BOSS_PLAYER_ID||ADD_ID.test(id))?{id,team:PVE_TEAMS.boss}:undefined;}
  /** #24 Remaining damage room above the director's HP floor (boss only). */
