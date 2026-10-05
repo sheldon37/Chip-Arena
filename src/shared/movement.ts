@@ -1,13 +1,14 @@
 import {inLava,LAVA_SURFACE} from './stage-hazards.js';
 import {rollVelocity,type RollState} from './souls-combat.js';
+import {SPRINT} from './sprint.js';
+export {SPRINT} from './sprint.js';
 import RAPIER from '@dimforge/rapier3d-compat';
 import {CONFIG as C,Input,Vec,v,add,mul,len,norm,forward,clamp,sub} from './config.js';
 /** Identical locomotion integration for authority and client replay. Gravity and
  * contact response belong to Rapier, not a separate client character controller. */
 export interface Motion {electricStepTime?:number;waveTime?:number;move:Vec;ext:Vec;dashCd:number;dashTime:number;grounded:boolean;}
 /** Forward sprint (owner 2026-10-04: double-tap W). speed multiplies run speed; forwardDot is the cos of the widest
- * travel angle from the aim that still sprints (W+A/D diagonals sprint, strafes and backpedals do not). No stamina cost. */
-export const SPRINT={speed:1.35,forwardDot:.6,doubleTapMs:300} as const;
+ * travel angle from the aim that still sprints (W+A/D diagonals sprint, strafes and backpedals do not). */
 /** The held sprint flag while travelling forward of the aim (shared by authority and prediction). */
 export function sprintIntent(input:Input){if(input.sprint!==true||input.attack||input.block||input.ability)return false;const l=Math.hypot(input.x,input.z);if(l<.5)return false;const f=forward(input.yaw);return (input.x*f.x+input.z*f.z)/l>=SPRINT.forwardDot;}
 export interface MotionRules {/** Sprint speed multiplier when allowed this tick (undefined: no sprint). */sprint?:number;time?:number;roll?:RollState;locomotionLock?:boolean;attackStep?:Vec;map?:unknown;recoveryRoll?:Vec;electricStepSpeed?:number;dashSpeed?:number;dashDuration?:number;groundedHint?:boolean;waveSpeed?:number;maxExternalSpeed?:number;maxExternalLift?:number;groundGroups?:number;groundRay?:number;speed:number;dashCooldown:number;knockbackTaken:number;jumpPower?:number;playerGravity?:number;}

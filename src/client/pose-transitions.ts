@@ -99,3 +99,7 @@ export function finishPose(r:CharacterRig,p:PlayerView,time:number){
  }
  const spare=s.prev;s.prev=s.last;s.last=capture(r,spare);s.hasPrev=true;s.prevTime=s.time;s.time=time;
 }
+
+/** A final constraint (mocap blade-floor clearance) changed the sampled wrist: transition from the displayed pose on
+ * the next frame, never from the pre-constraint wrist that the player did not see. */
+export function rememberFinalPose(r:CharacterRig){const s=transitions.get(r);if(s)capture(r,s.last);}

@@ -61,9 +61,9 @@ test('echo strikes hit once per sweep, charge stamina once, and retain recovery'
 test('mana and stamina upgrades set real caps; insufficient resources block combat and regenerate',()=>{
  const magic=arena('fire',{mana:2});assert.equal(magic.a.mana,150);magic.a.mana=7;magic.s.primary(magic.a);assert.equal(magic.s.projectiles.size,0);
  magic.s.time+=1;magic.s.updatePlayer(magic.a,1);near(magic.a.mana,19);magic.s.primary(magic.a);near(magic.a.mana,11);magic.s.dispose();
- const {s,a}=arena('sword',{stamina:2});assert.equal(a.stamina,150);a.stamina=5;s.primary(a);assert.equal(a.swing,null);assert.equal(a.mana,100);
- // Sword swing costs 18 since the 2026-10-04 melee stamina cut (was 30 with 13/25/37 checkpoints).
- a.staminaAt=s.time;s.time+=.2;s.updatePlayer(a,.2);near(a.stamina,5);s.time+=.5;s.updatePlayer(a,.5);near(a.stamina,17);s.primary(a);assert.equal(a.swing,null);s.time+=.5;s.updatePlayer(a,.5);s.primary(a);near(a.stamina,29-WEAPONS.sword.cost);s.dispose();
+ const {s,a}=arena('sword',{stamina:2});assert.equal(a.stamina,150);a.stamina=WEAPONS.sword.cost-13;s.primary(a);assert.equal(a.swing,null);assert.equal(a.mana,100);
+ // Stay below the current cost through the first recovery checkpoint, then afford one swing.
+ a.staminaAt=s.time;s.time+=.2;s.updatePlayer(a,.2);near(a.stamina,WEAPONS.sword.cost-13);s.time+=.5;s.updatePlayer(a,.5);near(a.stamina,WEAPONS.sword.cost-1);s.primary(a);assert.equal(a.swing,null);s.time+=.5;s.updatePlayer(a,.5);s.primary(a);near(a.stamina,11);s.dispose();
 });
 test('shield throw spends stamina upfront and does not enable the retired held guard',()=>{
  const {s,a}=arena('shield');a.input={...idleInput(),seq:1,yaw:Math.PI/2,secondary:true};a.inputAt=s.time;s.updatePlayer(a,.1);assert.equal(a.guarding,false);near(a.stamina,100-WEAPONS.shield.secondaryCost!);assert.equal(a.meleeAction?.kind,'shield-throw');

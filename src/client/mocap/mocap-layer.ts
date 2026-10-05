@@ -7,7 +7,7 @@ import * as T from 'three';
 import {smoothMotion as ease,gaitFoot,layerLeg} from '../motion-quality.js';
 import {phraseFootwork,phraseSpins} from '../primary-melee-motion.js';
 import {CHANNEL_COUNT,sampleClip,retime,clipDuration,type MocapClip} from './mocap-clip.js';
-import {applyMocapPose,blendRows,blendRowsTurning,keepBladesOffFloor} from './mocap-pose.js';
+import {applyMocapPose,blendRows,blendRowsTurning,applyMocapRecovery,finishMocapRecovery,keepBladesOffFloor} from './mocap-pose.js';
 import {isFirstPersonRig,mocapPosed} from '../pose-flags.js';
 import {GREATSWORD_CLIPS as GS} from './greatsword-clips.js';
 import {SWORD_CLIPS as SW} from './sword-clips.js';
@@ -42,7 +42,13 @@ export const mocapSet=(spec:string,r:CharacterRig):MocapSet|undefined=>MOCAP.ena
 
 /** After the whole pose (animateCharacter): a `floor` set's blades stay above the floor (keepBladesOffFloor), on grounded
  * frames a captured layer posed (procedural specials, knockdowns, juggles and deaths keep their own blades). */
-export function mocapFloorGuard(r:CharacterRig,p:PlayerView){if(p.grounded&&mocapPosed(r)&&mocapSet(p.spec,r)?.fit?.floor)keepBladesOffFloor(r);}
+export function mocapFloorGuard(r:CharacterRig,p:PlayerView,time?:number){
+ if(!p.grounded||!mocapPosed(r)||!mocapSet(p.spec,r)?.fit?.floor)return;
+ if(time===undefined){keepBladesOffFloor(r);return;}
+ const rate=p.attackRate||1,end=p.swingUntil??p.lastAttack+p.windup+.16/rate,age=time-end;
+ const recovering=p.spec==='daggers'&&(p.attackIndex||1)%4!==0&&age>=0&&age<meleeRecovery(p.spec)/rate+1&&!p.guarding&&p.blockTime<=0&&!(p.hitStunUntil&&p.hitStunUntil>time)&&!(p.roll&&p.roll.at>p.lastAttack)&&!(p.meleeAction&&time<p.meleeAction.until);
+ finishMocapRecovery(r,time,recovering,rate,`${p.id}:${p.spec}`);
+}
 const row=new Float32Array(CHANNEL_COUNT),rowB=new Float32Array(CHANNEL_COUNT),rowC=new Float32Array(CHANNEL_COUNT),_ft=new T.Vector3();
 /** A `gait` set's captured hips height and pelvis over the gait's legs: each grounded leg re-solved onto this sample's gait
  * foot (as the ground pass would), so the layers after it (a hit reaction's plants) read the ankles where they show. */
@@ -78,7 +84,11 @@ export function mocapCut(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackP
  // turn), so captured legs, which hang from the travelling root, never skate.
  // The spinning cut (the daggers' 4th) turns the body a full circle over the strike and its recovery, the captured thrust
  // held forward of it; the footwork hops round with it. A complete turn never unwinds.
- applyMocapPose(r,row,{weight,legs:0,clear:'turn',...set.fit});
+ // Retain the contact pose, then take the short rotation back to the live guard instead of compressing the capture's
+ // wrist regrip into the short game recovery. Quaternion frame blends never pass a blade axis through zero.
+ const settle=ease((age-a.windup-a.window)/recovery);
+ if(settle>0&&set.idle&&p.spec!=='daggers'){sampleClip(clip,m[2],row);sampleClip(set.idle,p.lastAttack+a.windup+a.window+recovery,rowB);applyMocapRecovery(r,row,rowB,settle,{weight,...set.fit},`${p.id}:${p.spec}:${p.lastAttack}:${p.attackIndex}:${p.reach}:${rate}`);}
+ else applyMocapPose(r,row,{weight,legs:0,clear:'turn',...set.fit});
  const spin=phraseSpins(p.spec,p.attackIndex),turn=spin?ease((age-a.windup)/(a.window+recovery))*Math.PI*2:0;
  r.body.rotation.y+=turn*weight;phraseFootwork(r,p,a,weight,turn);
  // The Hurricane chip's full turn over the strike window, as the procedural phrases add it.

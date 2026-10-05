@@ -1,6 +1,6 @@
 import * as T from 'three';
 import type {CharacterRig} from '../character-rig.js';
-import {braceWeapon,hand} from '../rig-ik.js';
+import {braceWeapon,hand,supportHand} from '../rig-ik.js';
 import {CH} from './mocap-clip.js';
 import {clearBlade,FLOOR_CLEAR} from './blade-clearance.js';
 import {markMocapPosed} from '../pose-flags.js';
@@ -101,6 +101,29 @@ export function keepBladesOffFloor(r:CharacterRig){
 }
 /** Linear blend of two sampled rows (neighbouring poses: rotation vectors and targets blend componentwise). */
 export function blendRows(a:Float32Array,b:Float32Array,k:number,out:Float32Array){for(let i=0;i<out.length;i++)out[i]=a[i]+(b[i]-a[i])*k;return out;}
+/** Recover between the already fitted contact and guard poses. Clearing each intermediate raw blade direction can
+ * choose a different way around the voxel body from one frame to the next. Fitting the endpoints first keeps the
+ * regrip on one quaternion arc; the final floor pass still protects the blade tips. Feet are posed separately. */
+const RECOVERY_BONES=['pelvis','spine','chest','neck','head','leftShoulder','rightShoulder','leftArm','rightArm','leftElbow','rightElbow','leftHand','rightHand','weapon','offWeapon'] as const;
+type RecoveryPose={q:T.Quaternion[];body:T.Vector3;wrists:T.Quaternion[];weapon:T.Vector3;offWeapon:T.Vector3};
+const recoveryPoses=new WeakMap<CharacterRig,{key:string;from:RecoveryPose;to:RecoveryPose}>();
+const recoveryQuat=new T.Quaternion(),recoveryParent=new T.Quaternion();
+function chestQuat(n:T.Object3D,chest:T.Object3D,q:T.Quaternion){q.identity();for(let o:T.Object3D|null=n;o&&o!==chest;o=o.parent)q.premultiply(o.quaternion);return q;}
+function recoveryPose(r:CharacterRig):RecoveryPose{return {q:RECOVERY_BONES.map(b=>r[b].quaternion.clone()),body:r.body.position.clone(),weapon:r.weapon.position.clone(),offWeapon:r.offWeapon.position.clone(),wrists:[r.rightHand,r.leftHand].map(h=>chestQuat(h,r.chest,new T.Quaternion()))};}
+export function applyMocapRecovery(r:CharacterRig,contact:Float32Array,guard:Float32Array,k:number,o:MocapPoseOptions,key:string){
+ let cache=recoveryPoses.get(r);
+ if(cache?.key!==key){
+  applyMocapPose(r,contact,{...o,weight:1,legs:0,clear:'turn'});keepBladesOffFloor(r);const from=recoveryPose(r);
+  applyMocapPose(r,guard,{...o,weight:1,legs:0,clear:'full'});keepBladesOffFloor(r);cache={key,from,to:recoveryPose(r)};recoveryPoses.set(r,cache);
+ }
+ markMocapPosed(r);r.weapon.position.copy(cache.from.weapon).lerp(cache.to.weapon,k);r.offWeapon.position.copy(cache.from.offWeapon).lerp(cache.to.offWeapon,k);
+ RECOVERY_BONES.forEach((b,i)=>r[b].quaternion.copy(cache!.from.q[i]).slerp(cache!.to.q[i],k));r.body.position.y=cache.from.body.y+(cache.to.body.y-cache.from.body.y)*k;
+ // Wrist orientation is interpolated in chest space, then converted through the blended arm chain. Interpolating the
+ // wrist locally as well as its parents adds the arm's turn twice and can swing reverse-grip blades through the floor.
+ [r.rightHand,r.leftHand].forEach((h,i)=>{recoveryQuat.copy(cache!.from.wrists[i]).slerp(cache!.to.wrists[i],k);h.quaternion.copy(chestQuat(h.parent!,r.chest,recoveryParent).invert().multiply(recoveryQuat));
+ });
+ if(!o.oneHand){const grip=r.weapon.getObjectByName('support-grip');if(grip)supportHand(r,grip,1);}
+}
 /** The row's roll channels (the main blade's edge, the free wrist's up), which set the wrists' roll about the blades. */
 const DIRS=[CH['edge.x'],CH['lup.x']],_da=new T.Vector3(),_db=new T.Vector3(),_dq=new T.Quaternion();
 /** blendRows for two poses far apart (a cut's start and contact): the roll channels turn along the great circle between
@@ -111,4 +134,21 @@ export function blendRowsTurning(a:Float32Array,b:Float32Array,k:number,out:Floa
   _dq.setFromUnitVectors(_da,_db);_da.applyQuaternion(_q.identity().slerp(_dq,k));out[i]=_da.x;out[i+1]=_da.y;out[i+2]=_da.z;}
  for(let i=0;i<out.length;i++)if(!DIRS.some(d=>i>=d&&i<d+3))out[i]=a[i]+(b[i]-a[i])*k;
  return out;
+}
+
+/** Recovery-only wrist settling, measured relative to the chest so whole-body spins stay intact. Every active contact
+ * frame is sampled exactly. Floor correction follows the limiter; the remembered pose is what was actually displayed. */
+const wristHistory=new WeakMap<CharacterRig,{key:string;time:number;q:T.Quaternion[]}>();
+const settleQ=new T.Quaternion(),settleTarget=new T.Quaternion(),settleParent=new T.Quaternion();
+export function finishMocapRecovery(r:CharacterRig,time:number,recovering:boolean,rate:number,key:string){
+ keepBladesOffFloor(r);
+ let previous=wristHistory.get(r);const dt=previous?time-previous.time:0;let limited=false;
+ if(recovering&&previous?.key===key&&dt>0&&dt<=.1){
+  [r.rightHand,r.leftHand].forEach((h,i)=>{chestQuat(h,r.chest,settleQ);const angle=previous!.q[i].angleTo(settleQ),limit=18*rate*dt;
+   if(angle>limit){limited=true;settleTarget.copy(settleQ);settleQ.copy(previous!.q[i]).slerp(settleTarget,limit/angle);h.quaternion.copy(chestQuat(h.parent!,r.chest,settleParent).invert().multiply(settleQ));}
+  });
+ }
+ if(limited)keepBladesOffFloor(r);
+ if(!previous||previous.key!==key){previous={key,time,q:[new T.Quaternion(),new T.Quaternion()]};wristHistory.set(r,previous);}
+ previous.time=time;[r.rightHand,r.leftHand].forEach((h,i)=>chestQuat(h,r.chest,previous!.q[i]));
 }

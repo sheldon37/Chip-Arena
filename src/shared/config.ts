@@ -15,7 +15,7 @@ export const CONFIG = {
   blockPulseRadius: 3, blockPulseDamageChip: 6, blockPulseImpulseChip: 360,
   maxReflections: 3, maxReflectedDamage: 100, maxReflectedSpeed: 120,
   volleyDamage: .75, volleyFanDegrees: 7,
-  followupDamage: .45, followupCost: 3, followupGap: .08,
+  followupDamage: .45, followupCost: 2, followupGap: .08,
   projectileLifetime: 3, projectileMaxTravel: 160, splitLifetime: 1.2, splitMaxTravel: 18,
   homingRange: 16, homingConeDegrees: 50,
   maxBodies: 360, maxProjectiles: 100, maxEvents: 80,

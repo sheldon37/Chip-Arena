@@ -33,7 +33,7 @@ test('sprint multiplies forward run speed only; strafes, backpedals, guards and 
 });
 test('sprint replay stays within 2 cm of the authority through toggles and turns',()=>{
  const sim=new Simulation({sandbox:true,inputHoldSeconds:.75});sim.addPlayer('guest');sim.addPlayer('host');sim.phase='fight';for(const p of [...sim.props.values()])sim.removeProp(p.id);sim.addProp({id:'floor',pos:v(0,-.5,0),size:v(300,1,300),material:'foundation'});sim.players.get('guest')!.body.setTranslation(v(0,1,-8),true);sim.players.get('host')!.body.setTranslation(v(-60,1,60),true);for(let n=0;n<90;n++)sim.step();
- const pred=new Predictor({rollCancel:true});let s=sim.snapshot(),me=s.players[0];pred.reconcile(s,me);const queue:{at:number;inputs?:Input[];s?:Snapshot}[]=[],errors:number[]=[];let batch:Input[]=[];let sprinted=0;
+ const pred=new Predictor({rollCancel:true,sprintStamina:true});let s=sim.snapshot(),me=s.players[0];pred.reconcile(s,me);const queue:{at:number;inputs?:Input[];s?:Snapshot}[]=[],errors:number[]=[];let batch:Input[]=[];let sprinted=0;
  for(let tick=1;tick<=720;tick++){const yaw=Math.sin(tick/90)*1.2,f=forward(yaw),phase=tick%200,back=phase>=150,i={...idleInput(),seq:tick,yaw,x:f.x*(back?-1:1),z:f.z*(back?-1:1),sprint:phase>=40&&phase<170,jump:tick%170===1};
   pred.step(i,1/60,me);if(pred.sprinting)sprinted++;batch.push(i);if(tick%3===0){queue.push({at:tick+3,inputs:batch});batch=[];}
   for(const q of queue.filter(q=>q.at===tick)){if(q.inputs)assert.equal(sim.queueInputs('guest',q.inputs,'1:1:0'),true);else{s=q.s!;me=s.players[0];pred.reconcile(s,me);if(tick>60){errors.push(pred.error);if(pred.error>.02)console.log('ERR',tick,pred.error.toFixed(3),JSON.stringify(me.pos),me.grounded,i.sprint,pred.sprinting);}}}
@@ -50,7 +50,7 @@ test('a roll after contact keeps the hit; specials stay committed',()=>{
  {const {s,a}=arena('sword');try{input(s,a,{secondary:true,yaw:0});s.step();assert.ok(s.standardMelee.busy(a));input(s,a,{dash:true,rollCancel:true});s.step();assert.equal(a.roll,undefined,'special not cancellable');}finally{s.dispose();}}
 });
 test('predicted roll-cancel reconciles with the authority',()=>{
- for(const spec of ['sword','greatsword','daggers'] as SpecId[]){const {s,a}=arena(spec),pred=new Predictor({rollCancel:true});try{let snap=s.snapshot(),me=snap.players[0];pred.reconcile(snap,me);let rolled=false;
+ for(const spec of ['sword','greatsword','daggers'] as SpecId[]){const {s,a}=arena(spec),pred=new Predictor({rollCancel:true,sprintStamina:true});try{let snap=s.snapshot(),me=snap.players[0];pred.reconcile(snap,me);let rolled=false;
   for(let n=1;n<=90;n++){const i={...idleInput(),seq:a.input.seq+1,z:1,yaw:0,attack:n===10,dash:n===16,rollCancel:n===16};pred.step(i,1/60,me);s.setInput(a.id,i);s.step();if(n===16){assert.ok(pred.roll&&a.roll,spec+' both rolled');rolled=true;}const d=Math.hypot(pred.pos.x-a.body.translation().x,pred.pos.z-a.body.translation().z);assert.ok(d<.035,`${spec} tick ${n}: ${d}`);if(n%6===0){snap=JSON.parse(JSON.stringify(s.snapshot()));me=snap.players[0];pred.reconcile(snap,me);}}
   assert.ok(rolled);}finally{pred.dispose();s.dispose();}}
 });
