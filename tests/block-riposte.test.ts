@@ -82,6 +82,9 @@ test('riposte stun values: ready + window + damage term, capped; bots, ranged bl
  // Block-force chips: the extra rebound's walk-back time goes on top of the cap.
  const pushed=at('sword','sword',(_,b)=>{b.stats.blockForce=1.8;}).stun,extra=(Math.min(800,280*1.8)-280)/C.playerMass/C.externalDrag/C.speed;
  near(pushed,Math.min(BLOCK_PUNISH.cap,.14+BLOCK_PUNISH.window+30*BLOCK_PUNISH.perDamage)+extra,'Bulwark walk-back');
+ // The attacker's own damage chips push it farther too (blocked damage 60 at ×2 damage: push 400 against the base 280).
+ const {s:s2,a:a2,b:b2}=duel('sword','sword');try{a2.stats.damage=2;b2.blockTime=.3;b2.lastBlock=s2.time;s2.successfulBlock(b2,'melee',b2.body.translation(),a2.id,60,v(0,0,1),300);
+  near(a2.hitStunUntil!-s2.time,Math.min(BLOCK_PUNISH.cap,.14+BLOCK_PUNISH.window+60*BLOCK_PUNISH.perDamage)+(400-280)/C.playerMass/C.externalDrag/C.speed,'damage-chip walk-back');}finally{s2.dispose();}
  assert.ok(at('sword','sword').riposte&&at('sword','sword').window>0,'window kept, riposte open');
  for(const [attacker,blocker,patch,m] of [['sword','sword',(_:Player,b:Player)=>{b.bot='hard';},'bot blocker'],['sword','pistol',()=>{},'ranged blocker'],['sword','fire',()=>{},'magic blocker'],['sword','sword',(a:Player)=>{a.spec='siren';},'Siren attacker']] as const){
   const r=at(attacker,blocker,patch);near(r.stun,meleeBlockStun(WEAPONS[attacker].damage,WEAPONS[attacker].impulse),m);assert.equal(r.riposte,false,m);}

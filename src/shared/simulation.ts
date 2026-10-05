@@ -314,7 +314,9 @@ export class Simulation {
   // (settleRiposte). The stun allows for the blocker's windup and for walking back the extra rebound of block-force chips.
   // Bot, ranged and magic blockers and a Siren attacker keep the old stun: bot difficulty, boss fights and golden traces as before.
   const riposte=!p.bot&&standardWeapon(p.spec)&&attacker.spec!=='siren',stun=meleeBlockStun(blockedDamage,blockedImpulse);
-  const chipPush=Math.max(0,force-Math.min(800,160+Math.max(0,blockedDamage)*4))/C.playerMass*attacker.stats.knockbackTaken/C.externalDrag/(C.speed*p.stats.speed);
+  // Walk-back time for push beyond the base push of the attacker's unmodified strike: block-force chips, its damage chips and
+  // knockback taken all throw it farther (distance = push / mass × knockback taken / drag; run speed C.speed × stats.speed).
+  const basePush=Math.min(800,160+4*Math.max(0,blockedDamage)/Math.max(1,attacker.stats.damage)),chipPush=Math.max(0,force*attacker.stats.knockbackTaken-basePush)/C.playerMass/C.externalDrag/(C.speed*p.stats.speed);
   this.standardMelee.stun(attacker,riposte?Math.max(stun,meleeBlockPunish(blockedDamage,Math.max(0,p.cooldown)+(WEAPONS[p.spec].windup||0)/p.stats.attackRate,chipPush)):stun);
   if(riposte){p.riposteAt=this.time;attacker.riposte={by:p.id,until:attacker.hitStunUntil!};
    // The counter's stagger must be able to replace this stun; a second riposte needs a new Block (4 s cooldown), so no chain.
