@@ -18,8 +18,9 @@ const A=f=>`Armed/RPG-Character@Armed-${f}.FBX`,S=f=>`Armed-Shield/RPG-Character
  * 'shield' orients the strapped shield on the fist (calibrate). Attack marks are [start, active start, active end, settled]
  * in source seconds; mocap-layer retimes them onto the weapon's [0, windup, windup + window, + recovery], so the active span
  * lands on the server's hit window. Active spans: the blade tip inside the weapon's front arc around the clip's authored
- * Hit marker (a thrust: Hit ± ~.04 s), at least .04 s. Starts sit about 1.6 windups before contact (the captured
- * anticipation, at most ~1.6× faster in the game; the cut blends in from the guard); settled is back at the guard.
+ * Hit marker (a thrust: Hit ± ~.04 s), at least .04 s. Every pack attack begins in the guard idle, so cuts start on
+ * the clip's first frame and the windup plays the whole captured anticipation, paced (paceKnots) to fit the game's much
+ * shorter windups; settled is back at the guard.
  * Sweep sides follow the server's (simulation.ts melee): sword 1 forehand (right to left), 2 backhand, 3 a narrow overhead;
  * daggers alternate right / left hand; the shield sweeps one way. */
 const R={grip:'reverse',leftBlade:true};
@@ -29,11 +30,13 @@ export const SETS={
   walk:{file:A('Walk'),loop:true,strike:true},
   run:{file:A('Run-Forward'),loop:true,strike:true},
   // Forehand at the waist, right to left through the front.
-  cutA:{file:SW('R1'),marks:[.08,.30,.335,.80]},
-  // Backhand diagonal down, left to right.
-  cutB:{file:SW('R2'),marks:[.08,.30,.342,.80]},
-  // Overhead chop forward and down (the pack's left-hand L4, read onto the right arm).
-  cutC:{file:SW('L4'),mirror:true,marks:[.03,.25,.31,.80]},
+  cutA:{file:SW('R1'),marks:[0,.30,.335,.80]},
+  // Backhand at the waist, left to right.
+  cutB:{file:SW('R3'),marks:[0,.33,.37,.80]},
+  // The narrow overhead (server arc .8, high): a high diagonal forehand chopping down across the front. Every cut is a
+  // right-hand clip: the pack's left-hand clips start from the mirrored guard, so entering one from the guard swaps the
+  // arms through each other in a frame or two.
+  cutC:{file:SW('R6'),marks:[0,.295,.335,.80]},
   block:{file:A('Block-R'),loop:true,marks:[0,.1,.2]},
   blockHit:{file:A('Block-R-GetHit1'),marks:[0,.15,.5]},
   stagger:{file:A('GetHit-F1'),marks:[0,.2,.5]},
@@ -44,11 +47,12 @@ export const SETS={
   run:{file:A('Run-Forward'),loop:true,strike:true,...R},
   // Reverse (ice-pick) grip in both fists: the pack's dagger set stabs downward, which only reads with the blade under the
   // fist (a forward grip points the blades up through every stab and lunge).
-  // 1: right-hand thrust; 2: left-hand thrust; 3: right-hand downward stab; 4: the stab with the left hand (mirrored).
-  cutA:{file:D('R1'),...R,marks:[.37,.51,.58,.88]},
-  cutB:{file:D('L1'),...R,marks:[.29,.43,.50,.80]},
-  cutC:{file:D('R2'),...R,marks:[.28,.425,.49,.79]},
-  cutD:{file:D('R2'),mirror:true,...R,marks:[.28,.425,.49,.79]},
+  // 1: right-hand thrust; 2: left-hand thrust; 3: right-hand downward stab; 4: the left-hand thrust again under the full
+  // body turn (MOCAP_SETS spin). Only unmirrored clips: each starts from the guard the idle holds.
+  cutA:{file:D('R1'),...R,marks:[0,.51,.58,.88]},
+  cutB:{file:D('L1'),...R,marks:[0,.43,.50,.80]},
+  cutC:{file:D('R2'),...R,marks:[0,.425,.49,.79]},
+  cutD:{file:D('L1'),...R,marks:[0,.43,.50,.80]},
   block:{file:A('Block-Dual'),loop:true,...R,marks:[0,.1,.2]},
   blockHit:{file:A('Block-Dual-GetHit1'),...R,marks:[0,.15,.5]},
   stagger:{file:A('GetHit-F1'),...R,marks:[0,.2,.5]},
@@ -57,9 +61,9 @@ export const SETS={
   idle:{file:S('Idle.fbx'),mirror:true,grip:'shield',loop:true},
   walk:{file:S('Walk.fbx'),mirror:true,grip:'shield',loop:true,strike:true},
   run:{file:S('Run-Forward.fbx'),mirror:true,grip:'shield',loop:true,strike:true},
-  // 1: rising bash; 2: forward punch with the shield face.
-  cutA:{file:S('Attack1.fbx'),mirror:true,grip:'shield',marks:[0,.325,.425,1.02]},
-  cutB:{file:S('Attack3.fbx'),mirror:true,grip:'shield',marks:[.15,.467,.542,1.06]},
+  // 1: a lunging punch with the shield face (the lead foot planted through the contact); 2: a leaping rising bash.
+  cutA:{file:S('Attack3.fbx'),mirror:true,grip:'shield',marks:[0,.467,.542,1.06]},
+  cutB:{file:S('Attack1.fbx'),mirror:true,grip:'shield',marks:[0,.325,.425,1.02]},
   block:{file:S('Block.fbx'),mirror:true,grip:'shield',loop:true,marks:[0,.1,.2]},
   blockHit:{file:S('Block-GetHit1.FBX'),mirror:true,grip:'shield',marks:[0,.15,.5]},
  }},
@@ -72,6 +76,8 @@ const PREVIEW=[
  ...['L1','L2','L3','R1','R2','R3'].flatMap(f=>[[`Dagger-${f}`,{file:D(f)}],[`Dagger-${f}.m`,{file:D(f),mirror:true}],[`Dagger-${f}.r`,{file:D(f),grip:'reverse',leftBlade:true}],[`Dagger-${f}.m.r`,{file:D(f),mirror:true,grip:'reverse',leftBlade:true}]]),
  ...['Idle','Block-Dual'].map(f=>[`Armed-${f}.r`,{file:A(f),grip:'reverse',leftBlade:true}]),
  ...['Idle','Walk','Run-Forward','Attack1','Attack2','Attack3','Block','Block-GetHit1','Block-GetHit2'].map(f=>[`Shield-${f}.m`,{file:S(f+'.fbx'),mirror:true,grip:'shield'}]),
+ // Two-handed sword (support hand on the grip): candidates for the greatsword.
+ ...['Idle','Walk','Run-Forward','Attack1','Attack2','Attack3','Attack4','Attack5','Attack6','Block','Block-GetHit1','GetHit-F1'].map(f=>[`2H-${f}`,{file:`2Hand-Sword/RPG-Character@2Hand-Sword-${f}.FBX`,twoHand:true}]),
 ];
 
 // The pack mixes .fbx and .FBX (even within a folder): names resolve case-insensitively.
@@ -86,15 +92,32 @@ const calFor=(mirror,grip)=>{const k=mirror+grip;if(!cals.has(k))cals.set(k,cali
 // the keys (the mixer's quaternion tracks) carries the true in-between directions that the runtime's interpolation of
 // blade vectors would cut across.
 const fpsFor=(key,c)=>c.fps||(/Attack|Sword-|Dagger-/.test(key)||/Attack|Sword-|Dagger-/.test(c.file)?60:30);
-const row=(c,oneHand,key='')=>{const {obj,clip}=load(c.file),mirror=!!c.mirror,fps=fpsFor(key,c),rows=retarget(obj,clip,calFor(mirror,c.grip||'blade'),fps,{mirror,oneHand,leftBlade:!!c.leftBlade});
+/** Windup pace keys (MocapClip.pace): clip times splitting [t0, t1] into `knots`+1 equal shares of a paced path whose
+ * density is the captured pose speed to the power `alpha` (hands and blades as the rig places them, the heading): with
+ * alpha 1 the windup plays at an even pose speed, with 0 at the capture's own timing. Speeds under .5 rad/s count as .5
+ * (a hold still takes a little time). */
+const PACE_ALPHA=.8,ix=n=>CHANNELS.indexOf(n),VEC={grip:ix('grip.x'),blade:ix('blade.x'),lhand:ix('lhand.x'),lfwd:ix('lfwd.x')},YAW=ix('yaw');
+const ang=(a,b,i)=>{const d=a[i]*b[i]+a[i+1]*b[i+1]+a[i+2]*b[i+2],l=Math.hypot(a[i],a[i+1],a[i+2])*Math.hypot(b[i],b[i+1],b[i+2]);return Math.acos(Math.max(-1,Math.min(1,d/(l||1))));};
+const dist=(a,b,i)=>Math.hypot(a[i]-b[i],a[i+1]-b[i+1],a[i+2]-b[i+2]);
+function paceKnots(rows,fps,t0,t1,{alpha=PACE_ALPHA,knots=7}={}){
+ const S=[0];for(let i=0;i+1<rows.length;i++){const a=rows[i],b=rows[i+1];
+  const v=Math.max(dist(a,b,VEC.grip)/.25,ang(a,b,VEC.blade),dist(a,b,VEC.lhand)/.25,ang(a,b,VEC.lfwd),Math.abs(b[YAW]-a[YAW]))*fps;
+  S.push(S[i]+Math.max(.5,v)**alpha/fps);}
+ const at=t=>{const x=Math.min(rows.length-1,Math.max(0,t*fps)),i=Math.min(rows.length-2,Math.floor(x));return S[i]+(S[i+1]-S[i])*(x-i);};
+ const s0=at(t0),s1=at(t1),out=[];
+ for(let k=1;k<=knots;k++){const s=s0+(s1-s0)*k/(knots+1);let i=0;while(i+1<S.length-1&&S[i+1]<s)i++;const t=(i+(s-S[i])/(S[i+1]-S[i]))/fps;out.push(+Math.min(t1,Math.max(t0,t)).toFixed(4));}
+ return out;
+}
+const row=(c,oneHand,key='')=>{const {obj,clip}=load(c.file),mirror=!!c.mirror,fps=fpsFor(key,c),rows=retarget(obj,clip,calFor(mirror,c.grip||'blade'),fps,{mirror,oneHand,leftBlade:!!c.leftBlade,soften:true,poleTurn:10,splitTwist:true});
  const m=c.strike?[leftFootStrike(obj,clip,60,{mirror})]:c.marks,marks=m?`,marks:[${m.join(',')}]`:'';
- return `{fps:${fps},frames:${rows.length}${c.loop?',loop:true':''}${marks},source:${JSON.stringify(path.basename(c.file).replace(/^RPG-Character@|\.fbx$/gi,'')+(mirror?' (mirrored)':''))},data:'${encode(rows)}'}`;};
+ const pace=/^cut/.test(key)?`,pace:[${paceKnots(rows,fps,c.marks[0],c.marks[1]).join(',')}]`:'';
+ return `{fps:${fps},frames:${rows.length}${c.loop?',loop:true':''}${marks}${pace},source:${JSON.stringify(path.basename(c.file).replace(/^RPG-Character@|\.fbx$/gi,'')+(mirror?' (mirrored)':''))},data:'${encode(rows)}'}`;};
 
 if(preview){
  let out=`// GENERATED by scripts/mocap/convert-explosive.mjs --preview from the Explosive RPG Character pack. Do not edit.\n`+
   `// Channels: ${CHANNELS.length} (src/client/mocap/mocap-clip.ts MOCAP_CHANNELS).\nimport type {MocapClip} from '../../src/client/mocap/mocap-clip.js';\n`+
   `export const PREVIEW_CLIPS:Record<string,MocapClip>={\n`;
- for(const [key,c] of PREVIEW)out+=` ${JSON.stringify(key)}:${row(c,true,key)},\n`;
+ for(const [key,c] of PREVIEW)out+=` ${JSON.stringify(key)}:${row(c,!c.twoHand,key)},\n`;
  fs.writeFileSync(preview,out+'};\n');console.warn=quiet;console.log('wrote',preview,PREVIEW.length,'clips');
  // --events <out.json>: each preview clip's authored Hit markers (source seconds) and length, for clip selection.
  if(eventsOut)fs.writeFileSync(eventsOut,JSON.stringify(Object.fromEntries(PREVIEW.map(([key,c])=>[key,{file:c.file,mirror:!!c.mirror,hit:packEvents(resolve(c.file)),duration:load(c.file).clip.duration}])),null,1));

@@ -72,7 +72,7 @@ export function calibrate(obj,{mirror=false,grip='blade'}={}){
 
 /** Sample `clip` on `obj` at `fps`; returns one Float32Array row per frame in CHANNELS order. `mirror` reads the capture
  * left↔right (calibrate with the same flag); `oneHand` keeps the support hand off the weapon (one-handed weapons). */
-export function retarget(obj,clip,cal,fps,{mirror=false,oneHand=false,leftBlade=false}={}){
+export function retarget(obj,clip,cal,fps,{mirror=false,oneHand=false,leftBlade=false,soften=false,poleTurn=0,splitTwist=false}={}){
  const mixer=new T.AnimationMixer(obj);mixer.clipAction(clip).play();const {wq,wp}=bones(obj,mirror);
  const n=Math.max(2,Math.round(clip.duration*fps)+1),rows=[];let yawPrev=0,hips0=null;
  const W={},Wp={};const names=['Hips','Spine1','Spine2','Neck','Head','LeftShoulder','RightShoulder','LeftUpLeg','RightUpLeg','LeftLeg','RightLeg','LeftFoot','RightFoot','LeftHand','RightHand'];
@@ -92,7 +92,17 @@ export function retarget(obj,clip,cal,fps,{mirror=false,oneHand=false,leftBlade=
   // Rig joints: pelvis←Hips, spine←Spine1 (Spine+Spine1), chest←Spine2, neck, head, clavicles, hips, ankles.
   // The voxel torso is long and blocky: a human's deep forward fold (low sweeps) reads as a collapse on it, so spine flexion
   // past .45 rad (and hip pitch past .12) is mostly taken out (the chest and arms keep their capture; only the lean is eased).
-  for(const k of ['Hips','Spine1','Spine2','Neck','Head','LeftShoulder','RightShoulder','LeftUpLeg','RightUpLeg','LeftFoot','RightFoot']){rotvec(local(k).normalize(),rv);if(k==='Spine1'&&rv.x>.45)rv.x=.45+(rv.x-.45)*.35;if(k==='Hips'&&rv.x>.12)rv.x=.12+(rv.x-.12)*.5;row.push(rv.x,rv.y,rv.z);}
+  // `splitTwist`: the torso's twist (about the spine's own axis) is shared evenly between the waist and chest joints, the
+  // chest's capture orientation (and the chest-space arms) unchanged: the voxel torso is two rigid blocks, which a
+  // capture's whole torso turn at the waist (the Explosive pack's wind-ups twist it past 90°) shears apart.
+  let spineQ,chestQ;
+  if(splitTwist){const s=local('Spine1').clone(),c=local('Spine2').clone(),tw=x=>2*Math.atan2(x.y,x.w),h=new T.Quaternion().setFromAxisAngle(UP,(tw(s)-tw(c))/2);
+   spineQ=s.multiply(h.clone().invert());chestQ=h.multiply(c);}
+  for(const k of ['Hips','Spine1','Spine2','Neck','Head','LeftShoulder','RightShoulder','LeftUpLeg','RightUpLeg','LeftFoot','RightFoot']){rotvec((k==='Spine1'&&spineQ?tmp.copy(spineQ):k==='Spine2'&&chestQ?tmp.copy(chestQ):local(k)).normalize(),rv);if(k==='Spine1'&&rv.x>.45)rv.x=.45+(rv.x-.45)*.35;if(k==='Hips'&&rv.x>.12)rv.x=.12+(rv.x-.12)*.5;
+   // `soften`: the voxel head is a big block, so a capture's deep neck/head bends (the Explosive pack's hunched combat
+   // look) are eased past .9 rad, and its block feet past 1.2 rad (a stagger's rolled, pointed foot).
+   const soft=!soften?0:k==='Neck'||k==='Head'?.9:k==='LeftFoot'||k==='RightFoot'?1.2:0;
+   if(soft){const a=rv.length();if(a>soft)rv.multiplyScalar((soft+(a-soft)*.35)/a);}row.push(rv.x,rv.y,rv.z);}
   // Knees are hinges about the rig's x axis (positive folds the shin back).
   for(const k of ['LeftLeg','RightLeg']){const l=local(k),sg=l.w<0?-1:1;row.push(2*Math.atan2(sg*l.x,sg*l.w));}
   // Arms in chest space (yaw-removed world → chest frame), hands relative to the shoulder midpoint scaled to the rig's arm.
@@ -105,10 +115,15 @@ export function retarget(obj,clip,cal,fps,{mirror=false,oneHand=false,leftBlade=
   // little of it is left (a straight captured arm, or its elbow along the rig's arm) the previous frame's pole carries on,
   // transported along with the reach so it can never end up along the arm, and the pole eases toward the capture (about
   // a frame of lag): rig-ik's bend plane then turns with the arm instead of flipping the upper arm's twist in a frame.
+  // `poleTurn` (rad/s): the pole instead turns about the reach toward the capture's at most this fast, so a capture whose
+  // elbow crosses to the other side of the reach line (through a straight arm) swings the bend plane round instead of
+  // flipping it (a lerp toward the opposite side passes through zero and flips in a frame).
   const pole=(s,e,h,target,sx,prev)=>{const S=yawPos(s),E=yawPos(e),H=yawPos(h),ax=H.clone().sub(S).normalize(),p=E.sub(S);p.addScaledVector(ax,-p.dot(ax));if(p.lengthSq()>1e-9)p.normalize().applyQuaternion(chestInv);
    const d=new T.Vector3(target.x-sx,target.y-RIG.shoulderY,target.z).normalize();p.addScaledVector(d,-p.dot(d));
    const along=prev.dot(d);if(Math.abs(along)<.97)prev.addScaledVector(d,-along).normalize();
-   const k=T.MathUtils.smoothstep(p.length(),.25,.6);if(k>0)prev.lerp(p.normalize(),.6*k).normalize();return prev.clone();};
+   const k=T.MathUtils.smoothstep(p.length(),.25,.6);
+   if(k>0&&poleTurn){p.normalize();const ang=Math.atan2(new T.Vector3().crossVectors(prev,p).dot(d),prev.dot(p)),max=poleTurn/fps;prev.applyAxisAngle(d,T.MathUtils.clamp(ang*.6*k,-max,max)).normalize();}
+   else if(k>0)prev.lerp(p.normalize(),.6*k).normalize();return prev.clone();};
   // Hand targets stay inside the rig arm's reach with a soft knee (rig-ik clamps hard at .515: a kink in the blade's path).
   const reach=(p,sx)=>{const d=new T.Vector3(p.x-sx,p.y-RIG.shoulderY,p.z),l=d.length(),knee=.4,room=.1;if(l>knee)d.multiplyScalar((knee+room*Math.tanh((l-knee)/room))/l);return p.set(sx+d.x,RIG.shoulderY+d.y,d.z);};
   const RHq=wq('RightHand'),blade=cal.blade.clone().applyQuaternion(RHq),edge=cal.edge.clone().applyQuaternion(RHq);

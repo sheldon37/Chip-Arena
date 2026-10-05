@@ -2,7 +2,7 @@ import * as T from 'three';
 import type {CharacterRig} from '../character-rig.js';
 import {braceWeapon,hand} from '../rig-ik.js';
 import {CH} from './mocap-clip.js';
-import {clearBlade} from './blade-clearance.js';
+import {clearBlade,liftOffFloor,FLOOR_CLEAR} from './blade-clearance.js';
 /** Poses the voxel rig from one sampled mocap row (mocap-clip.ts) at `weight` over whatever the layers below posed.
  * Torso, clavicles and legs take the retargeted joint rotations (the ground pass then re-plants the legs on the floor);
  * the arms go through the rig's own IK: the main hand to the retargeted grip with the blade along the captured blade
@@ -18,7 +18,7 @@ import {clearBlade} from './blade-clearance.js';
  * behind the grip (× the weapon's length scale) and slab half-width for the clearance (greatsword .27 / .09); clear 'none'
  * skips it (the shield is a plate, not a blade). */
 export interface MocapPoseOptions {weight:number;travel?:number;legs?:number;root?:number;arms?:boolean;clear?:'full'|'turn'|'none';oneHand?:boolean;pommel?:number;halfWidth?:number}
-const _q=new T.Quaternion(),_v=new T.Vector3(),_lp=new T.Vector3(),_cq=new T.Quaternion(),_a=new T.Vector3(),_b=new T.Vector3(),_c=new T.Vector3(),_m=new T.Matrix4(),_e=new T.Euler(),_p=new T.Vector3();
+const _lf=new T.Vector3(),_q=new T.Quaternion(),_v=new T.Vector3(),_lp=new T.Vector3(),_cq=new T.Quaternion(),_a=new T.Vector3(),_b=new T.Vector3(),_c=new T.Vector3(),_m=new T.Matrix4(),_e=new T.Euler(),_p=new T.Vector3();
 const X=new T.Vector3(1,0,0),Y=new T.Vector3(0,1,0),_yq=new T.Quaternion();
 function rot(f:Float32Array,i:number,out:T.Quaternion){_v.set(f[i],f[i+1],f[i+2]);const a=_v.length();return a<1e-9?out.identity():out.setFromAxisAngle(_v.divideScalar(a),a);}
 function set(node:T.Object3D,q:T.Quaternion,w:number){if(w>=1)node.quaternion.copy(q);else node.quaternion.slerp(q,w);}
@@ -62,11 +62,31 @@ export function applyMocapPose(r:CharacterRig,f:Float32Array,o:MocapPoseOptions)
  if(o.arms===false)return;
  _p.set(f[CH['grip.x']],f[CH['grip.y']],f[CH['grip.z']]);bladeAxes(f,CH['blade.x'],CH['edge.x']);
  // The voxel shoulders, chest and head are bigger than the captured human's: keep the blade (and hilt) clear of them.
- if(o.clear!=='none')clearBlade(r,_p,_a,_b,-(o.pommel??.27)*r.weapon.scale.z,bladeEnd(r.weapon),o.clear!=='turn',o.halfWidth);basisEuler(_e);
+ if(o.clear!=='none')clearBlade(r,_p,_a,_b,-(o.pommel??.27)*r.weapon.scale.z,bladeEnd(r.weapon),o.clear!=='turn',o.halfWidth,!!o.oneHand);basisEuler(_e);
  braceWeapon(r,_p,_e,w,pole(r,false,_p,f,CH['rpole.x'],_v),!o.oneHand);
  // The support hand leaves the grip only where the capture lets go of it.
  const free=(1-Math.min(1,Math.max(0,f[CH.twohand])))*w;
- if(free>.001){_p.set(f[CH['lhand.x']],f[CH['lhand.y']],f[CH['lhand.z']]);basisEulerYZ(f,CH['lfwd.x'],CH['lup.x'],_e);hand(r,true,_p,_e,free,pole(r,true,_p,f,CH['lpole.x'],_lp));}
+ if(free>.001){_p.set(f[CH['lhand.x']],f[CH['lhand.y']],f[CH['lhand.z']]);
+  // An off-hand blade (the daggers) keeps its tip off the floor like the main one.
+  // (The row is the caller's freshly sampled scratch row: the lifted direction is written back into it.)
+  if(o.oneHand&&r.offWeapon.getObjectByName('blade-tip')){_lf.set(f[CH['lfwd.x']],f[CH['lfwd.y']],f[CH['lfwd.z']]).normalize();liftOffFloor(r,_p,_lf,bladeEnd(r.offWeapon)+.08);f[CH['lfwd.x']]=_lf.x;f[CH['lfwd.y']]=_lf.y;f[CH['lfwd.z']]=_lf.z;}
+  basisEulerYZ(f,CH['lfwd.x'],CH['lup.x'],_e);hand(r,true,_p,_e,free,pole(r,true,_p,f,CH['lpole.x'],_lp));}
+}
+/** Final floor guard (after every layer and transition blend): a blade tip below the floor plane turns its wrist up, about
+ * the horizontal axis across the blade, just enough to bring the tip onto the plane. Each pose clears the floor on its own,
+ * but a blend between two of them (a reverse-grip guard into a cut, say) can swing the blade through straight down. */
+const _gt=new T.Vector3(),_gg=new T.Vector3(),_gd=new T.Vector3(),_ga=new T.Vector3(),_gq=new T.Quaternion(),_gp=new T.Quaternion(),_gr=new T.Quaternion(),UP=new T.Vector3(0,1,0);
+export function keepBladesOffFloor(r:CharacterRig){
+ r.group.updateMatrixWorld(true);const floor=r.group.getWorldPosition(_gt).y+FLOOR_CLEAR;
+ for(const [weapon,wrist] of [[r.weapon,r.rightHand],[r.offWeapon,r.leftHand]] as const){
+  const tip=weapon.visible?weapon.getObjectByName('blade-tip'):undefined;if(!tip)continue;
+  tip.getWorldPosition(_gt);if(_gt.y>=floor)continue;wrist.getWorldPosition(_gg);_gd.subVectors(_gt,_gg);const len=_gd.length();
+  if(len<1e-4||_gg.y<=floor)continue;
+  const lift=Math.asin(Math.min(1,(floor-_gg.y)/len))-Math.asin(Math.max(-1,Math.min(1,_gd.y/len)));if(lift<=0)continue;
+  _ga.crossVectors(_gd,UP);if(_ga.lengthSq()<1e-8)_ga.set(1,0,0);_ga.normalize();
+  wrist.getWorldQuaternion(_gq);wrist.parent!.getWorldQuaternion(_gp);_gr.setFromAxisAngle(_ga,lift);
+  wrist.quaternion.copy(_gp.invert().multiply(_gr.multiply(_gq)));wrist.updateMatrixWorld(true);
+ }
 }
 /** Linear blend of two sampled rows (neighbouring poses: rotation vectors and targets blend componentwise). */
 export function blendRows(a:Float32Array,b:Float32Array,k:number,out:Float32Array){for(let i=0;i<out.length;i++)out[i]=a[i]+(b[i]-a[i])*k;return out;}

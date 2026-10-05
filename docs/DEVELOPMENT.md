@@ -65,7 +65,7 @@ runtime. It also requires release:prepare. It is not an updater-feed cutover.
 | Portable launcher/update | launcher/start.mjs, update.mjs, manual-update.mjs |
 | Package scripts | scripts/package-{windows,desktop,update,source}.*, repackage-desktop.py |
 | Required media and notices | public/, assets/, scripts/source-audio/, docs/ASSET-CREDITS.md, docs/NOBLE-HASHES-LICENSE.txt |
-| Mocap animation (presentation only) | src/client/mocap/ (clip decoder, rig pose, per-weapon sets; greatsword-clips.ts is generated), scripts/mocap/ |
+| Mocap animation (presentation only) | src/client/mocap/ (clip decoder, rig pose, per-weapon sets; the *-clips.ts tables are generated), scripts/mocap/ |
 
 Prefer targeted checks for small edits. Changes under shared simulation, networking,
 identity, persistence, dependency manifests, launcher, packaging, or CI require
@@ -81,6 +81,15 @@ then `node --import tsx --test tests/greatsword-mocap.test.ts`. `--preview tools
 writes every pack clip (git-ignored) for the visual lab's `mocap=<clip name>` raw view; `mocapOff=1` renders the
 procedural layers for before/after strips. Attack clips are retimed onto the shared windup/active/recovery timing at
 runtime; shared timing never depends on them.
+
+The sword, daggers and shield come from the owner's Explosive "RPG Character Mecanim Animation Pack" (Unity asset;
+FBX and .meta files never committed). Extract it outside the repository and run
+`node scripts/mocap/convert-explosive.mjs <pack>/Animations` (rewrites src/client/mocap/{sword,daggers,shield}-clips.ts
+deterministically; the clip choices and their [start, contact start, contact end, settled] marks are its SETS table),
+then `node --import tsx --test tests/melee-mocap.test.ts`. `--preview tools/visual-lab/mocap-preview.generated.ts
+[--events <out.json>]` writes the candidate clips (the same git-ignored lab table; the JSON lists each clip's authored
+Hit markers) for `mocap=<key>&support=0` raw views. The shield set is the pack's left-arm shield read onto the game's
+right hand; the daggers use a reverse grip.
 
 ## CI and agent access
 

@@ -5,7 +5,7 @@ import {committed,meleeRecovery,rollCancelled,rolling} from '../shared/souls-com
 import {locomotion,groundPass,finishPose,GAIT} from './motion-quality.js';
 import {meleeMotion,meleeReady} from './melee-motion.js';
 import {comboReadyMotion} from './primary-melee-motion.js';
-import {mocapStagger} from './mocap/mocap-layer.js';
+import {mocapStagger,mocapFloorGuard} from './mocap/mocap-layer.js';
 import {observeFighterReady} from './fighter-motion.js';
 import {sprintLean} from './melee-guard.js';
 import {animateEmperor,animateJuggle} from './emperor-animation.js';
@@ -74,7 +74,7 @@ function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=
  return pose;
 }
 
-export function animateCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=p.pitch){time=p.hp>0?(p.animationTime??time):time;if(p.spec==='siren')return attackPose(p,time);const pose=sampleCharacter(r,p,time,dt,pitch);groundPass(r,p,time,dt);finishPose(r,p,time);settleJointCovers(r);return pose;}
+export function animateCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=p.pitch){time=p.hp>0?(p.animationTime??time):time;if(p.spec==='siren')return attackPose(p,time);const pose=sampleCharacter(r,p,time,dt,pitch);groundPass(r,p,time,dt);finishPose(r,p,time);mocapFloorGuard(r,p);settleJointCovers(r);return pose;}
 
 /** Sandbox-only presentation sampler: never writes simulation, attacks, inputs, or health. */
 export function animationPreviewPlayer(p:PlayerView,mode:string,time:number):PlayerView{
