@@ -112,8 +112,8 @@ Windows validation and desktop distribution cutover remain separate work.
 - Melee block riposte (a human's timed melee block holds the guard until the counter and stuns the attacker long enough
   for it) merged at `0aa70dc` (PR #49); test content `0.2.e07d5479254f` at channel `d67f3b6`. Owner playtest remains.
 - Captured melee animations (sword, daggers, shield, greatsword) from the owner's Explosive pack, presentation only:
-  branch `claude/sleepy-ritchie-g8ruhv`, PR into `claude/visual-revision`; merge and test publication in DEV_LOG. Owner
-  review of the new style and native Windows feel remain.
+  merged at `ab93263` (PR #50); test content `0.2.00f72f2f7eb8` at channel `72dfa69`. Owner review of the new style and
+  native Windows feel remain.
 
 - Isolated native Unity conversion (2026-10-07), `codex/unity-conversion`: broad conversion work is
   continuing under the owner's request to finish before playtest. The current checkpoint adds full

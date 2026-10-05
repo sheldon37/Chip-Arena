@@ -530,6 +530,13 @@ containing an entry; no self-referential commit hash is required.
   cuts continuous 960 vs 3840 Hz with the fists out of the head, guard support hand < 8 cm (mean < 3.5 cm). check:types
   pass; server tsc only its 4 baseline errors. Lab strips (scratch) of both greatsword cuts, guard, run and block reviewed.
 - Not run: native Windows look and feel, online play with remote players, owner review of the new style.
+- Status: merged into `claude/visual-revision` at `ab93263` (PR #50; PR CI: unit 1276 with only the 12 known failures,
+  server build 4 baseline errors, websocket only "Timed out: rematch", HTTPS passes). Published to the test channel (not
+  the live feed or Site): test `0.2.00f72f2f7eb8` at channel `72dfa69`; schema 1 `arena-525848d69e26c0da.json.gz`
+  24,703,508 B, schema 2 `arena-7f88f2a6261b3172.pack` 20,575,873 B. Candidate (`--test-only --channel`, Node 24.19.0,
+  tooling 35ea65d): every stage passed except the baseline-only verify (the same 12 names, 4 server tsc errors, websocket
+  rematch timeout); repeat build identical. Raw feed served the new manifests; old-launcher and v2 installs at
+  `0.2.e07d5479254f` updated, then reported current; settings sentinel untouched; menu status `0.2.00f72f2f7eb8`.
 
 ## 2026-10-05 — Claude — Melee block riposte (blocking melee is worth it)
 - Branch `claude/sleepy-ritchie-g8ruhv` from `claude/visual-revision` 6ad1516 (PR #48 merge). Owner request 2026-10-04:
