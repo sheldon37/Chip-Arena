@@ -2,7 +2,7 @@ import {test} from 'node:test';import assert from 'node:assert/strict';
 import {Simulation,initPhysics,sanitizeInput} from '../src/shared/simulation.js';
 import {CONFIG as C,v,idleInput,SpecId,len} from '../src/shared/config.js';
 import {statsFor,WEAPONS,CHIPS,eligibleChips} from '../src/shared/content.js';
-import {blockDuration,blockCooldown,meleeBlockStun} from '../src/shared/blocking.js';import {Predictor} from '../src/client/prediction.js';import {chipStackEffects} from '../src/shared/chip-inspection.js';
+import {blockDuration,blockCooldown,meleeBlockStun,meleeBlockPunish} from '../src/shared/blocking.js';import {Predictor} from '../src/client/prediction.js';import {chipStackEffects} from '../src/shared/chip-inspection.js';
 await initPhysics();
 function arena(spec:SpecId='pistol') {const s=new Simulation({sandbox:true}),a=s.addPlayer('a','Attacker',WEAPONS[spec].class)!,b=s.addPlayer('b','Blocker')!;s.phase='fight';a.spec=spec;a.ammo=WEAPONS[spec].ammo;for(const p of [...s.props.values()])s.removeProp(p.id);s.addProp({id:'floor',pos:v(0,-.5,0),size:v(30,1,30),material:'foundation'});a.body.setTranslation(v(0,1,0),true);b.body.setTranslation(v(0,1,4),true);a.input={...idleInput(),camera:'first'};b.input={...idleInput(),yaw:Math.PI};s.world.step();return {s,a,b};}
 function shoot(s:Simulation,a:any,b:any){s.spawnProjectile(a);const shot=[...s.projectiles.values()][0];for(let n=0;n<20&&shot.owner!==b.id&&s.projectiles.has(shot.id);n++)s.stepProjectiles(1/60);return shot;}
@@ -23,10 +23,15 @@ test('blocked melee strength sets bounded stun, interrupts followups and preserv
  const durations:number[]=[];
  for(const spec of ['daggers','sword','shield','greatsword'] as SpecId[]){const {s,a,b}=arena(spec);try{
   b.body.setTranslation(v(0,1,1.3),true);s.world.step();a.stats.extraStrikes=3;s.primary(a);const swing=a.swing!;assert.ok(swing);s.time=(swing.at+swing.until)/2;b.blockTime=2;s.melee(a);
-  assert.equal(b.hp,100);assert.equal(a.swing,null);assert.ok(len(a.ext)>0&&len(a.ext)<6);const duration=a.hitStunUntil!-s.time;durations.push(duration);assert.ok(Math.abs(duration-meleeBlockStun(WEAPONS[spec].damage,WEAPONS[spec].impulse))<1e-9);assert.equal(s.events.filter(e=>e.type==='blockHit').length,1);
+  assert.equal(b.hp,100);assert.equal(a.swing,null);assert.ok(len(a.ext)>0&&len(a.ext)<6);const duration=a.hitStunUntil!-s.time,old=meleeBlockStun(WEAPONS[spec].damage,WEAPONS[spec].impulse),ready=Math.max(0,b.cooldown)+(WEAPONS[b.spec].windup||0)/b.stats.attackRate;
+  // A human blocker ripostes (owner 2026-10-04): its window ends and the stun covers its counter; bots keep the old stun (below).
+  assert.ok(Math.abs(duration-Math.max(old,meleeBlockPunish(WEAPONS[spec].damage,ready)))<1e-9,spec);assert.ok(duration>=old);assert.equal(b.blockTime,0,'riposte');durations.push(old);assert.equal(s.events.filter(e=>e.type==='blockHit').length,1);
   s.time+=.1;s.melee(a);assert.equal(s.events.filter(e=>e.type==='blockHit').length,1);
  }finally{s.dispose();}}
- assert.ok(durations.every((d,i)=>i===0||d>durations[i-1]));assert.equal(meleeBlockStun(-5,-10),.25);assert.equal(meleeBlockStun(1e9,1e9),.95);assert.ok(meleeBlockStun(60,300)>meleeBlockStun(30,300));assert.ok(meleeBlockStun(30,600)>meleeBlockStun(30,300));
+ assert.ok(durations.every((d,i)=>i===0||d>durations[i-1]));
+ // Bot blockers keep the old stun and their window (bot difficulty and golden traces unchanged).
+ {const {s,a,b}=arena('sword');try{b.bot='hard';b.body.setTranslation(v(0,1,1.3),true);s.world.step();s.primary(a);const swing=a.swing!;s.time=(swing.at+swing.until)/2;b.blockTime=2;s.melee(a);
+  assert.ok(Math.abs(a.hitStunUntil!-s.time-meleeBlockStun(WEAPONS.sword.damage,WEAPONS.sword.impulse))<1e-9);assert.ok(b.blockTime>0,'no riposte for bots');}finally{s.dispose();}}assert.equal(meleeBlockStun(-5,-10),.25);assert.equal(meleeBlockStun(1e9,1e9),.95);assert.ok(meleeBlockStun(60,300)>meleeBlockStun(30,300));assert.ok(meleeBlockStun(30,600)>meleeBlockStun(30,300));
 });
 test('block stun locks attacks, defense and movement on authority and prediction, then releases',()=>{const {s,a,b}=arena('sword'),pred=new Predictor();try{
  a.move=v(5,0,0);a.dashTime=a.waveTime=a.electricStepTime=.2;a.cast={at:0,multiplier:1,secondary:false};a.burst=3;

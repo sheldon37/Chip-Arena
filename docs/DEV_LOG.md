@@ -48,6 +48,12 @@ containing an entry; no self-referential commit hash is required.
   the camera onto the dummy with the reticle, hold releases, death releases; sprint 6.8 → 9.18 m/s; greatsword roll-cancel
   clears the commitment (stamina 100 − 26 − 29); Escape menu + board at 1440 and stacked at 1100 px.
 - Not run: native Windows feel (sprint lean, lock-on turn rate, roll-cancel blends), online/relay latency feel, bots sprinting.
+- Status: merged into `claude/visual-revision` at `6ad1516` (PR #48; PR CI: unit 1250 with only the 12 known failures, server
+  build 4 baseline errors, websocket only "Timed out: rematch", HTTPS passes). Published to the test channel (not the live
+  feed or Site): test `0.2.6a229a16de6f` at channel `aac8363`; schema 1 `arena-25f71767d56ffd80.json.gz` 24,644,929 B,
+  schema 2 `arena-7d91f8f13fbea198.pack` 20,536,649 B. Candidate (`--test-only --channel`, Node 24.19.0, tooling 35ea65d):
+  every stage passed except the baseline-only verify; repeat build identical. Old-launcher and v2 installs at
+  `0.2.57123b899145` updated, then reported current; settings sentinel untouched.
 
 ## 2026-10-04 — Claude — Siren PvE: much harder "Find me..." (more spawns), 30 s intermissions
 - Branch `claude/sleepy-ritchie-g8ruhv` from `claude/visual-revision` 2ae916d (PR #46 merge). Owner requests 2026-10-04.

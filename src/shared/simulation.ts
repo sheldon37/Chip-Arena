@@ -32,7 +32,7 @@ import {SandboxTools,WardVents,ward,wardEntries,type SandboxView} from './sandbo
 import {prepareMotion,finishMotion,SPRINT} from './movement.js';
 import RAPIER from '@dimforge/rapier3d-compat';
 import {CONFIG as C,MATERIALS,Material,Vec,v,add,sub,mul,dot,len,norm,clamp,forward,idleInput,Input,ClassId,SpecId,Difficulty} from './config.js';
-import {blockCooldown,blockDuration,firstBlockChips,meleeBlockStun} from './blocking.js';
+import {blockCooldown,blockDuration,firstBlockChips,meleeBlockPunish,meleeBlockStun} from './blocking.js';
 import {WEAPONS,CLASS_INFO,CHIPS,statsFor,offerChips,Stats,magazineCapacity,draftChoiceCount,castWindup,RARITIES,eligibleChips} from './content.js';
 import {steerVelocity,ballisticStep,ballisticPitch,returnVelocity} from './projectiles.js';
 import {cameraPosition,weaponMuzzle} from './view.js';
@@ -308,7 +308,12 @@ export class Simulation {
  }
  successfulBlock(p:Player,kind:string,point:Vec,source:string,blockedDamage=0,direction=v(),blockedImpulse=0){
  this.arcade.parry(p,point,source);this.emit('blockHit',point,{source:p.id,spec:p.spec,target:source,message:kind,color:0x91f7eb});
- if(kind==='melee'){const attacker=this.players.get(source);if(attacker&&attacker.hp>0&&!this.siren.armored(attacker)){const away=norm(sub(attacker.body.translation(),p.body.translation())),force=Math.min(800,(160+Math.max(0,blockedDamage)*4)*p.stats.blockForce);const facing=impactFacing(attacker,this.time);this.standardMelee.stun(attacker,meleeBlockStun(blockedDamage,blockedImpulse));attacker.hitReaction=parryReaction(attacker.body.translation(),facing,len(away)>.01?away:mul(direction,-1),this.time,attacker.hitStunUntil!);attacker.ext=add(attacker.ext,mul(len(away)>.01?away:mul(direction,-1),force/C.playerMass*attacker.stats.knockbackTaken));attacker.lastSource=p.id;attacker.sourceAt=this.time;attacker.cooldown=Math.max(attacker.cooldown,.18);this.emit('meleeRebound',point,{source:p.id,target:source,amount:force,radius:Math.min(4,1+force/900),color:0x91f7eb});}}
+ if(kind==='melee'){const attacker=this.players.get(source);if(attacker&&attacker.hp>0&&!this.siren.armored(attacker)){const away=norm(sub(attacker.body.translation(),p.body.translation())),force=Math.min(800,(160+Math.max(0,blockedDamage)*4)*p.stats.blockForce);const facing=impactFacing(attacker,this.time);
+  // Riposte (owner 2026-10-04): a human blocker's window ends at once and the attacker stays open for a counter or two. Bot
+  // blockers and the Siren on either side keep the old stun, so bot difficulty, boss fights and the golden traces stay as they were.
+  const riposte=!p.bot&&p.spec!=='siren'&&attacker.spec!=='siren';if(riposte)p.blockTime=0;
+  const stun=meleeBlockStun(blockedDamage,blockedImpulse),ready=Math.max(0,p.cooldown)+(WEAPONS[p.spec].windup||0)/p.stats.attackRate;
+  this.standardMelee.stun(attacker,riposte?Math.max(stun,meleeBlockPunish(blockedDamage,ready)):stun);attacker.hitReaction=parryReaction(attacker.body.translation(),facing,len(away)>.01?away:mul(direction,-1),this.time,attacker.hitStunUntil!);attacker.ext=add(attacker.ext,mul(len(away)>.01?away:mul(direction,-1),force/C.playerMass*attacker.stats.knockbackTaken));attacker.lastSource=p.id;attacker.sourceAt=this.time;attacker.cooldown=Math.max(attacker.cooldown,.18);this.emit('meleeRebound',point,{source:p.id,target:source,amount:force,radius:Math.min(4,1+force/900),color:0x91f7eb});}}
  if(!p.blockProcUsed){p.blockProcUsed=true;const mods=firstBlockChips(p.chips);if(Object.keys(mods).length)this.emit('blockProc',p.body.translation(),{source:p.id,mods});this.chaos.block(p);if(p.stats.blockHeal)this.heal(p,p.stats.blockHeal);if(p.stats.blockAmmo&&WEAPONS[p.spec].ammo)p.ammo=Math.min(magazineCapacity(p.spec,p.stats),p.ammo+p.stats.blockAmmo);if(p.stats.blockPulseDamage>0)this.explode(p,p.body.translation(),C.blockPulseRadius,p.stats.blockPulseDamage,p.stats.blockPulseImpulse,'blockPulse',true);}
  }
  reflectProjectile(shot:Projectile,target:Player,point:Vec){this.successfulBlock(target,'projectile',point,shot.owner);

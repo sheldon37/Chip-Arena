@@ -157,6 +157,17 @@ test('a greatsword parry keeps both hands on the grip; a stun without a hitReact
  assert.ok(seen>.08,'the fallback flinch visibly recoils');
 });
 
+test('a long riposte parry keeps the parry pace and holds the opened guard instead of playing in slow motion',()=>{
+ // The parry pose is shaped on the pace of meleeBlockStun's cap (.95 s); a human block's riposte stun can reach 1.4 s.
+ const at=(until:number,t:number)=>{const r=probeRig('sword'),h={...torsoHit(T0,until),kind:'parry' as const,turn:-.35,strength:1};
+  animateCharacter(r,{...animationPreviewPlayer(probeBase('sword'),'idle',t),hitReaction:h,hitStunUntil:until} as PlayerView,t,1/60);return quats(r);};
+ for(const age of [.05,.2,.4,.6])assert.ok(maxAngle(at(T0+.95,T0+age),at(T0+1.4,T0+age))<1e-6,'same pose at '+age+' s before either recovery');
+ // Its one sharp step is the existing parry throw (tp .095 s, the same at every length); holding adds nothing rougher.
+ const probe=(d:number)=>probeRates({spec:'sword',mode:'idle',from:T0-.1,to:T0+d+.2,patch:t=>t>=T0?{hitReaction:{...torsoHit(T0,T0+d),kind:'parry' as const,turn:-.35,strength:1},hitStunUntil:T0+d}:{}},[60])[60];
+ const short=probe(.5),held=probe(1.4);
+ assert.ok(held.maxJointStepDeg<=short.maxJointStepDeg+1e-6&&held.maxFootSlip<=short.maxFootSlip+.01,describeProbe(held)+' vs '+describeProbe(short));
+});
+
 test('juggle launches out of the caught pose, kicks without resetting, spins a whole turn from 0 and never snaps',()=>{
  const J=(t:number)=>{const r=t-T0,second=r>=.45;return {at:T0,until:T0+1.2,hits:second?2:1,lastHit:T0+(second?.45:0),source:'x',spinUntil:second?T0+.45+.65:0,bounced:false,wallUsed:false};};
  const rates=probeRates({spec:'sword',mode:'idle',from:T0-.1,to:T0+1.5,patch:t=>t>=T0?{juggle:J(t),grounded:false,vel:{x:0,y:6*(1.2-2*(t-T0)),z:0}}:{}});

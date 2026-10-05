@@ -102,5 +102,7 @@ Windows validation and desktop distribution cutover remain separate work.
   test content `0.2.fd485a10e3d0` at channel `b2241e2`. Native review remains.
 - Siren PvE: "Find me..." spawns ×5 rate / ×3 alive (cap 48) and 30 s intermissions merged at `d31fa25` (PR #47); test
   content `0.2.57123b899145` at channel `fee293c`. Owner playtest remains.
-- Double-tap-W sprint, Tab melee lock-on, roll-cancel of melee attacks and the Escape menu board on
-  `claude/sleepy-ritchie-g8ruhv` (2026-10-04); next: review fixes, merge, test-channel publication, owner playtest.
+- Double-tap-W sprint, Tab melee lock-on, roll-cancel of melee attacks and the Escape menu board merged at `6ad1516`
+  (PR #48); test content `0.2.6a229a16de6f` at channel `aac8363`. Owner playtest and native Windows feel review remain.
+- Melee block riposte (a human's timed melee block frees the blocker and stuns the attacker long enough for a counter) on
+  `claude/sleepy-ritchie-g8ruhv` (2026-10-05); next: merge, test-channel publication, owner playtest.

@@ -24,7 +24,7 @@ type Reaction=NonNullable<PlayerView['hitReaction']>;
 function react(r:CharacterRig,p:PlayerView,h:Reaction,time:number,stunned:boolean){
  const until=stunned?Math.max(h.until,p.hitStunUntil||0):h.until;if(time<h.at||time>=until)return false;
  const duration=Math.max(.04,until-h.at),age=time-h.at,u=age/duration,tp=Math.min(.095,duration*.26),end=1-ease((u-.72)/.28),scale=stunned?1:.35,d=h.direction;
- if(h.kind==='parry'){parryMotion(r,p,age,u,tp,end,h.turn);return true;}
+ if(h.kind==='parry'){parryMotion(r,p,age,age/Math.min(duration,PARRY_PACE),tp,end,h.turn);return true;}
  const pelvis=hitImpulse(age,tp,.55,.6)*end*scale,chest=hitImpulse(age-.016,tp,.45,.6)*1.1*end*scale,head=hitImpulse(age-.033,tp,.25,.45)*1.25*end*(stunned?1:.6),arms=hitImpulse(age-.045,tp,.2,.5)*end*(stunned?1:WEAPONS[p.spec].class==='melee'?0:.55);
  const strength=pelvis*h.strength,torso=chest*h.strength,low=h.zone==='legs',headHit=h.zone==='head',side=h.point.x>=0?1:-1;
  // A two-handed hold (greatsword, shield, long guns) keeps its support hand on the grip through the recoil.
@@ -53,7 +53,10 @@ function react(r:CharacterRig,p:PlayerView,h:Reaction,time:number,stunned:boolea
  return true;
 }
 /** A blocked melee swing: the weapon is thrown high and wide on the impulse, then hangs outside the opened guard.
- * The greatsword keeps both hands on its grip and is knocked back over the shoulder. */
+ * The greatsword keeps both hands on its grip and is knocked back over the shoulder. The slump and stagger step keep the
+ * pace of the longest bot block stun (meleeBlockStun's cap); a human's longer riposte stun holds the opened guard until
+ * the recovery (`end`), which still spans the last 28% of the whole stun, so it never plays in slow motion. */
+const PARRY_PACE=.95;
 function parryMotion(r:CharacterRig,p:PlayerView,age:number,u:number,tp:number,end:number,turn:number){
  const rise=(t:number)=>t/tp<.786?hitImpulse(t,tp,.55)/1.062:1,w=rise(age)*end,limb=Math.min(1,rise(age-.025)*end),slump=ease((u-.18)/.25),rebound=1-.55*slump,heavy=p.spec==='greatsword';
  r.body.position.y-=.12*w;r.body.position.z-=.065*(heavy?1.25:1)*w;
