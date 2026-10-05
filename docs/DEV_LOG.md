@@ -43,7 +43,8 @@ containing an entry; no self-referential commit hash is required.
   recoil visible online, no echo or Emperor-jab holes, counters keep knockdown/stagger, only standard-melee blockers riposte,
   concrete-value tests). Round 2 (v2): stagger immunity or an absorbed counter freed the attacker early; block-force chips
   pushed the attacker out of reach; a failed attack/roll dropped the guard; echoes were deleted for everyone; the window was
-  too tight for online delay. All five fixed, each covered by a test that fails without its fix.
+  too tight for online delay. All five fixed, each covered by a test that fails without its fix. Round 3: one display-only
+  finding (the counter's hit reaction kept the riposte end time), fixed with a test; no regressions found elsewhere.
 - Impacts: hit timing, hitboxes, damage, knockback and cooldowns unchanged; the blocked attacker's stun length and the
   human melee blocker's ability to end its own window early change. Network: optional `riposteAt` snapshot field (old
   clients ignore it; old hosts never send it, so the predictor behaves as before); no new caps or inputs.
