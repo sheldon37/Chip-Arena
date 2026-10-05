@@ -47,6 +47,8 @@ test('every greatsword cut lands its captured contact on the authoritative hit w
    // and is inside the arc (WEAPONS.greatsword.arc) for the whole window: the hit reads where and when the server hits.
    let cross=NaN;for(let t=m[0];t<m[3];t+=1/240){const a=blade(clip,t).heading,b=blade(clip,t+1/240).heading;if(Math.abs(a)<1.2&&Math.abs(b)<1.2&&Math.sign(a)!==Math.sign(b)){cross=t;break;}}
    assert.ok(cross>=m[1]-frame&&cross<=m[2]+frame,`index ${index}: blade crosses the front at ${cross} s, contact ${m[1]}..${m[2]}`);
+   // The server's sweep (simulation.ts melee): odd greatsword attacks sweep positive, even ones reversed.
+   assert.equal(Math.sign(blade(clip,cross+1/240).heading-blade(clip,cross).heading),index%2?1:-1,`index ${index} sweeps the server's way`);
    for(let t=m[1]+frame;t<=m[2]-frame;t+=1/120)assert.ok(Math.abs(blade(clip,t).heading)<w.arc/2+.15,`index ${index}: blade outside the arc at ${t.toFixed(3)}`);
   }
  }
@@ -56,8 +58,9 @@ test('greatsword mocap poses stay inside joint limits', () => {
  const row=new Float32Array(CHANNEL_COUNT);
  for(const [name,clip] of Object.entries(GREATSWORD_CLIPS))for(let t=0;t<=clipDuration(clip);t+=1/60){
   sampleClip(clip,t,row);
-  for(const k of ['lknee','rknee'] as const)assert.ok(row[CH[k]]>-.15&&row[CH[k]]<2.7,`${name} ${k} ${row[CH[k]]}`);
-  for(const j of ['pelvis','spine','chest','neck','head','lclav','rclav','lhip','rhip','lankle','rankle']){
+  // A `gait` set poses no captured legs (its feet are the gait's or the phrase's footwork): only finite leg channels.
+  for(const k of ['lknee','rknee'] as const)assert.ok(set.gait?Number.isFinite(row[CH[k]]):row[CH[k]]>-.15&&row[CH[k]]<2.7,`${name} ${k} ${row[CH[k]]}`);
+  for(const j of ['pelvis','spine','chest','neck','head','lclav','rclav',...(set.gait?[]:['lhip','rhip','lankle','rankle'])]){
    const i=CH[(j+'.x') as keyof typeof CH],a=Math.hypot(row[i],row[i+1],row[i+2]);
    const limit=j==='neck'||j==='head'||j.endsWith('clav')?1.3:j.endsWith('ankle')?1.4:j==='pelvis'?1.6:j.endsWith('hip')?2.4:1.2;
    assert.ok(a<limit,`${name} ${j} ${a.toFixed(2)} rad at ${t.toFixed(2)}`);
@@ -73,10 +76,11 @@ test('greatsword mocap poses stay inside joint limits', () => {
 // Rig-level invariants of the captured greatsword on the real rig (the procedural layer's own suites run with MOCAP off).
 const LIMBS=['leftElbow','rightElbow','leftKnee','rightKnee','leftArm','rightArm','leftLeg','rightLeg'] as const;
 /** A combat-ready greatsword standing in its captured guard, cutting at t=2 (attack index, rate). */
-function cut(index:number,rate:number,hz:number,each:(r:ReturnType<typeof probeRig>,t:number)=>void){
+function cut(index:number,rate:number,hz:number,each:(r:ReturnType<typeof probeRig>,t:number)=>void,ready=true){
  const base={...probeBase('greatsword'),id:'mocap',grounded:true,vel:{x:0,y:0,z:0},hitStunUntil:-1e9,animationTime:undefined} as PlayerView,windup=w.windup/rate,win=window/rate;
  const c=attackCommitment('greatsword',2,windup,win,rate,w.interval/rate);
- const attack={...base,attackIndex:index,attackRate:rate,lastAttack:2,windup,swingAt:2+windup,swingUntil:2+windup+win,attackCommitment:c} as PlayerView,idle={...base,lastAttack:-10,lastBlock:1.2} as PlayerView;
+ // `ready`: the guard was raised before (a short entry); otherwise the cut blends in over its long entry.
+ const attack={...base,attackIndex:index,attackRate:rate,lastAttack:2,windup,swingAt:2+windup,swingUntil:2+windup+win,attackCommitment:c} as PlayerView,idle={...base,lastAttack:-10,...(ready?{lastBlock:1.2}:{})} as PlayerView;
  const r=probeRig('greatsword');
  for(let i=0;;i++){const t=1.7+i/hz;if(t>c.until+.3)break;r.group.position.set(0,0,t<2?0:attackTravel(c,t));animateCharacter(r,t<2?idle:attack,t,1/hz);r.group.updateMatrixWorld(true);each(r,t);}
 }
@@ -115,4 +119,25 @@ test('the carried, guarded and blocking greatsword never cuts into the shoulders
   }
   assert.ok(worst>=.004,`${mode}: blade ${(-worst*1000).toFixed(0)} mm into ${at}`);
  }
+});
+
+test('captured greatsword cuts never jump the blade (960 vs 3840 Hz) and keep the fists out of the head', () => {
+ // A snap keeps its size as the sampling rate rises (the backhand's blade once dropped 35 cm in an instant as the turn-only
+ // clearance gave up on its hilt in the shoulder); the strike's own motion shrinks with it.
+ const heads=['blank-head','jaw','crown'],pos=new T.Vector3(),quat=new T.Quaternion(),scale=new T.Vector3(),l=new T.Vector3(),p=new T.Vector3();
+ for(const index of [1,2]){
+  const step=[960,3840].map(hz=>{let prev:T.Quaternion|undefined,s=0;cut(index,1,hz,(r,t)=>{const q=r.weapon.getWorldQuaternion(new T.Quaternion());if(prev&&t>=2)s=Math.max(s,q.angleTo(prev));prev=q;});return s;});
+  assert.ok(step[1]<=step[0]*.5+.005,`cut ${index}: weapon steps ${step[0].toFixed(3)} rad at 960 Hz, ${step[1].toFixed(3)} at 3840 Hz (a jump)`);
+  for(const rate of [.8,1,1.35])for(const ready of [true,false])cut(index,rate,240,(r,t)=>{if(t<2)return;
+   for(const hand of [r.rightHand,r.leftHand]){hand.getWorldPosition(p);for(const name of heads){const b=r.group.getObjectByName(name)!;b.matrixWorld.decompose(pos,quat,scale);l.copy(p).sub(pos).applyQuaternion(quat.invert());
+    const d=Math.max(Math.abs(l.x)-scale.x/2,Math.abs(l.y)-scale.y/2,Math.abs(l.z)-scale.z/2);assert.ok(d>-.005,`cut ${index} @${rate}x${ready?'':' (long entry)'}: a fist ${(-d*1000).toFixed(0)} mm inside the ${name} at ${(t-2).toFixed(3)} s`);}}
+  },ready);
+ }
+});
+
+test('the captured guard keeps the support hand on the hilt', () => {
+ const r=probeRig('greatsword'),base={...probeBase('greatsword'),id:'guard'} as PlayerView,grip=new T.Vector3(),palm=new T.Vector3();let max=0,sum=0,n=0;
+ for(let i=0;i<=600;i++){const t=i/120;animateCharacter(r,{...animationPreviewPlayer(base,'idle',t),hitStunUntil:-1e9} as PlayerView,t,1/120);if(t<1)continue;r.group.updateMatrixWorld(true);
+  r.weapon.getObjectByName('support-grip')!.getWorldPosition(grip);r.leftHand.getWorldPosition(palm);const d=grip.distanceTo(palm);max=Math.max(max,d);sum+=d;n++;}
+ assert.ok(max<.08&&sum/n<.035,`support hand up to ${(max*100).toFixed(1)} cm off the hilt (mean ${(sum/n*100).toFixed(1)} cm)`);
 });

@@ -18,6 +18,55 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-05 — Claude — Melee animations (sword, daggers, shield, greatsword) from the Explosive RPG Character pack
+- Branch `claude/sleepy-ritchie-g8ruhv` from `claude/visual-revision` `0aa70dc` (PR #49 merge, plus its log commit
+  `b19733a`). Owner requests 2026-10-05: "re-do the animations (Melee) with the ones from the pack" (the owner's licensed
+  Explosive "RPG Character Mecanim Animation Pack", shared by Drive link; FBX/.meta files stay outside the repository), then
+  "convert the greatsword as well".
+- Change (presentation only): offline converter `scripts/mocap/convert-explosive.mjs` (+ `explosive-pack.mjs`: FBX 7.3 load,
+  Z-up fix, 3ds Max biped → Mixamo bone names, T-pose from the Unity avatar in the .meta) writes the generated tables
+  `src/client/mocap/{sword,daggers,shield,greatsword}-clips.ts`. Guard idle, walk and run carries, block, block impact and
+  stagger come from the pack. Cuts: sword R1 forehand, R2 backhand, R6 high diagonal; daggers reverse grip in both fists, R1
+  / L1 / R2 thrusts and stabs, the 4th L1 under the full-body spin; shield Attack3 lunge and Attack1 rising bash (the pack's
+  left-arm shield read onto the game's right hand); greatsword (2Hand-Sword) high guard, Attack5 overhead forehand, Attack8
+  flat backhand, both hands on the hilt (one-handed only in the run carry). The Mixamo greatsword converter stays as a
+  documented way back.
+- How the captures fit the game: each cut's [start, contact start, contact end, settled] marks retime onto the
+  authoritative windup / hit window / recovery (contact always inside the hit window; sweep directions match the server's);
+  windup pace keys (`MocapClip.pace`) spend the short game windups where the pose moves (daggers keep 35% of the captured
+  pull-back, sword cut 2 60%). Cuts stand on the procedural phrase's footwork, the captured hips lowered just enough for the
+  planted feet to reach the floor; guard, block and stagger keep the gait's feet under the captured hips (legs re-solved
+  onto the gait's targets). The converter keeps the greatsword's two-handed hilt (fists, pommel, blade root) off the voxel
+  head, pauldrons and torso and brings the support grip within reach. At runtime the blade clearance turns and lifts blades
+  off the body and floor; a final floor guard runs only on grounded frames a captured layer posed.
+- Review: two adversarial rounds. Round 1 (13 findings, all fixed): skating cut feet, loop-seam elbow pops, dagger wrist
+  flips, block foot slides, follow-ups entering from the guard, floor-lift flips, among others. Round 2 (14 findings, 11
+  fixed): greatsword hit/parry feet popping 13-15 cm and sinking 6-7 cm (now no worse than procedural), cut feet hovering up
+  to 9 cm (now ≤ 2 cm), the greatsword run blade snapping ~1 rad each stride (carries now ≤ 0.02 rad per 1/960 s on every
+  weapon), the backhand's 35 cm pre-contact blade drop and a recovery snap (cuts now continuous at 3840 Hz), fists 5-14 cm
+  inside the head (Attack2 replaced by Attack5; fists ≥ 3 cm clear), the support hand 9 cm off the hilt in the guard (max
+  5.9, mean 0.8 cm), the roll blend ignoring its slerp, the floor guard acting on specials and juggles, and the clearance
+  cost (greatsword run 1.34 ms → 0.28 ms per rig-frame; broad phase per body part, covered carry layers skipped), and no
+  test of the greatsword's sweep directions. Regression tests added for each. Not fixed (low): an Echo Strike follow-up
+  after the dagger spin still unwinds ~150° in ~40 ms (the procedural phrases do the same); the converter's guard-heading
+  shift tilts the chest up to ~6.5° where its hip/spine lean eases engage; no test drives an Echo Strike follow-up through
+  a captured set.
+- Impacts: hit timing, hitboxes, damage, cooldowns, movement rules, attack travel and network behaviour unchanged (client
+  presentation only; nothing in src/shared or the server reads the clips). First-person view models and the procedural
+  phrases (MOCAP off) unchanged. `rarity-combat` "dagger primaries and echoes alternate ..." (a baseline failure that asserts
+  the two dagger cuts are exact arm mirrors) still fails with different numbers: the captured cuts are not mirror images.
+- Known limits: the reverse-grip dagger turned up out of the floor in a 60-90 ms windup rotates up to ~1 rad within a
+  millisecond, and sword cut 2's windup turns ~0.07 rad within 1/15360 s (both continuous, a flick at 60 fps; the sword's was
+  0.25 before); the shield's procedural hit reaction over the captured guard dips an ankle 1.4 cm (as before this work).
+- Checks: full unit suite under Node 24.19.0 (the portable runtime's major; the updater test needs it): 1276 tests, 1263
+  pass, 12 fail, 1 skipped, the 12 failing names identical to the `b19733a` baseline; pvp-golden traces, melee-fluidity,
+  locomotion-root-sync, reaction-fluidity, block-riposte and blocking pass in it. `melee-mocap` 16/16 and `greatsword-mocap`
+  8/8, new this round: planted cut feet within 20 mm of the phrase's, hit/parry reactions no worse than procedural (no
+  ankle under -0.82), carries < 0.04 rad per 1/960 s, the roll blend, floor-guard gating, greatsword sweep signs, greatsword
+  cuts continuous 960 vs 3840 Hz with the fists out of the head, guard support hand < 8 cm (mean < 3.5 cm). check:types
+  pass; server tsc only its 4 baseline errors. Lab strips (scratch) of both greatsword cuts, guard, run and block reviewed.
+- Not run: native Windows look and feel, online play with remote players, owner review of the new style.
+
 ## 2026-10-05 — Claude — Melee block riposte (blocking melee is worth it)
 - Branch `claude/sleepy-ritchie-g8ruhv` from `claude/visual-revision` 6ad1516 (PR #48 merge). Owner request 2026-10-04:
   "Make blocking melee actually worth it, maybe longer stunned time? enough to get a hit or 2".
@@ -54,6 +103,13 @@ containing an entry; no self-referential commit hash is required.
   baseline "65.5 !== 77" (a projectile reflection check) and default only "Timed out: rematch", as on 6ad1516.
 - Not run: native Windows feel and look of the riposte (guard hold, parry hold, counter), real online/relay latency (the
   1.0 s window is sized from the measured sim timings plus estimated delay), owner balance playtest.
+- Status: merged into `claude/visual-revision` at `0aa70dc` (PR #49; PR CI: unit 1258 with only the 12 known failures,
+  server build 4 baseline errors, websocket only "Timed out: rematch", HTTPS passes). Published to the test channel (not
+  the live feed or Site): test `0.2.e07d5479254f` at channel `d67f3b6`; schema 1 `arena-5c6212e3dcbf4f0d.json.gz`
+  24,647,325 B, schema 2 `arena-6f333439386ba6a2.pack` 20,539,120 B. Candidate (`--test-only --channel`, Node 24.19.0,
+  tooling 35ea65d): every stage passed except the baseline-only verify (the same 12 names, 4 server tsc errors); repeat
+  build identical. Raw feed served the new manifests; old-launcher and v2 installs at `0.2.6a229a16de6f` updated, then
+  reported current; settings sentinel untouched; menu status `0.2.e07d5479254f`.
 
 ## 2026-10-04 — Claude — Double-tap-W sprint, Tab melee lock-on, roll-cancel of melee attacks, Escape menu board
 - Branch `claude/sleepy-ritchie-g8ruhv` from `claude/visual-revision` d31fa25 (PR #47 merge). Owner requests 2026-10-04.

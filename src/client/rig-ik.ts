@@ -65,10 +65,10 @@ export function supportHand(r:CharacterRig,target:T.Object3D,weight:number){
 
 /** Drive the main grip in chest space, solve both arms, then preserve the desired weapon orientation. Below weight .001
  * the incoming pose (and weapon transform) is untouched; above it the weapon grip blends by the same weight. */
-export function braceWeapon(r:CharacterRig,target:T.Vector3,rotation:T.Euler,weight:number,pole?:T.Vector3){
+export function braceWeapon(r:CharacterRig,target:T.Vector3,rotation:T.Euler,weight:number,pole?:T.Vector3,support=true){
  if(weight<.001)return;
  solveArm(r,false,chestToClavicle(r,false,target,_e),pole?pole.x:-1,pole?pole.y:-.7,pole?pole.z:-.2,weight,ARM_MIN);orientWrist(r,false,_cq.setFromEuler(rotation),weight);
- gripWeapon(r.weapon,weight);const grip=r.weapon.getObjectByName('support-grip');if(grip)supportHand(r,grip,weight);
+ gripWeapon(r.weapon,weight);const grip=support?r.weapon.getObjectByName('support-grip'):undefined;if(grip)supportHand(r,grip,weight);
 }
 /** Analytic limb placement keeps the planted foot on the floor while the pelvis turns and drops. Below full weight the
  * ankle blends from `from` (rig-group space; default: where the incoming leg puts it under the current body, which moves

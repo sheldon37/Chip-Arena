@@ -1,4 +1,4 @@
-/** Retargeted motion-capture clips (presentation only). Clips are produced offline by scripts/mocap (Mixamo FBX → voxel
+/** Retargeted motion-capture clips (presentation only). Clips are produced offline by scripts/mocap (capture FBX → voxel
  * rig channels) and committed as compact strings; nothing here reads or writes simulation state. A clip is sampled at a
  * clip time; callers map the authoritative timestamps onto clip time (retime) so contact frames land on the server's
  * active window. The layout is weapon independent: each weapon spec registers its own set (mocap-sets.ts). */
@@ -14,8 +14,11 @@ export const CH=Object.fromEntries(MOCAP_CHANNELS.map((n,i)=>[n,i])) as Record<t
 export const CHANNEL_COUNT=MOCAP_CHANNELS.length;
 
 /** `marks` are clip-time keys (seconds) a caller retimes onto game time: for attacks [start, contact start, contact end,
- * settled]; loops have none. `loop` clips wrap. */
-export interface MocapClip {fps:number;frames:number;data:string;marks?:readonly number[];loop?:boolean;source?:string}
+ * settled]; loops have none. `loop` clips wrap. An attack's `pace` (clip times strictly between start and contact start)
+ * splits its anticipation into equal shares of the game's windup: the converter places them by the captured motion, so a
+ * windup much shorter than the capture's spends its time where the pose moves (holds fold away, the fastest stretches are
+ * spread out) instead of compressing every moment equally. */
+export interface MocapClip {fps:number;frames:number;data:string;marks?:readonly number[];pace?:readonly number[];loop?:boolean;source?:string}
 
 const ALPHABET='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_',QUANT=256;
 const LOOKUP=new Int8Array(128).fill(-1);for(let i=0;i<ALPHABET.length;i++)LOOKUP[ALPHABET.charCodeAt(i)]=i;

@@ -244,11 +244,22 @@ function headTrack(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,r
  r.head.quaternion.slerp(_h.invert().multiply(_q),.8*weight);
 }
 const _v=new T.Vector3(),_lead=new T.Vector3(),_rear=new T.Vector3(),_in=[new T.Vector3(),new T.Vector3()];
+/** The phrase's footwork under a captured cut (mocap-layer mocapCut): its planted, travel-anchored steps (feet) on the
+ * phrase's own clock, whatever upper body the caller posed. A spinning cut (`phraseSpins`) hops round with `turn`, the
+ * body's turn the caller applied. Below full `weight` (the cut's entry) the steps blend from the ankles `footworkFrom` read
+ * before any captured layer moved the body (melee-motion). */
+export const phraseSpins=(spec:string,attackIndex:number|undefined)=>describe(spec,Math.max(0,(attackIndex||1)-1)).spin;
+export function footworkFrom(r:CharacterRig){ankleInGroup(r,true,_in[0]);ankleInGroup(r,false,_in[1]);}
+export function phraseFootwork(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,weight:number,turn=0){
+ const recoverySeconds=meleeRecovery(p.spec)/(p.attackRate||1),heavy=p.spec==='greatsword',drag=heavy?DRAG:p.spec==='shield'?SHIELD_DRAG:0;
+ const d=describe(p.spec,Math.max(0,(p.attackIndex||1)-1)),phase=meleePhase(a,recoverySeconds,a.age-hitStop(r,p,a),drag,heavy);
+ feet(r,p,a,phase,d.sign,heavy,p.spec==='daggers',d.overhead,d.spin,turn,weight,true);
+}
 /** Feet anchored to the floor, not to the travelling root: a planted foot holds its world position (the authored root travel
  * is subtracted), and a foot only moves while it is lifted. The lead foot steps from its guard spot and lands with zero
  * floor speed on the contact frame; the rear foot holds, then drags up behind the lunge on its toes; after the cut the
  * rear foot has already settled and the lead foot steps back, ending in the staggered guard from stances.ts. */
-function feet(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,phase:number,sign:number,heavy:boolean,dagger:boolean,overhead:boolean,spin:boolean,turn:number,weight:number){
+function feet(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,phase:number,sign:number,heavy:boolean,dagger:boolean,overhead:boolean,spin:boolean,turn:number,weight:number,seat=false){
  const commitment=p.attackCommitment||attackCommitment(p.spec,p.lastAttack,a.windup,a.window,p.attackRate||1,a.windup+a.window),now=p.lastAttack+a.age,travel=attackTravel(commitment,now),plantTravel=attackTravel(commitment,p.lastAttack+a.windup+a.window*.65),full=attackTravel(commitment,commitment.stepUntil);
  const st=stanceFor(p.spec),leadingLeft=sign>0,lf=leadingLeft===st.leadLeft?st.lead:st.rear,rf=leadingLeft===st.leadLeft?st.rear:st.lead,lx=(leadingLeft?1:-1)*Math.abs(lf.x),rx=(leadingLeft?-1:1)*Math.abs(rf.x);
  const lyaw0=(leadingLeft?1:-1)*lf.toeOut,ryaw0=(leadingLeft?-1:1)*rf.toeOut;
@@ -279,11 +290,27 @@ function feet(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,phase:
   // In the air the feet turn with the body (they leave the floor at its heading and land a full turn later).
   const spinYaw=turn*b;foot(r,leadingLeft,_lead,lyaw0+spinYaw,.3*hop,weight,lin);foot(r,!leadingLeft,_rear,ryaw0+spinYaw,.3*hop,weight,rin);return;
  }
- reachable(r,leadingLeft,_lead);reachable(r,!leadingLeft,_rear);
+ if(seat)seatHips(r,leadingLeft,phase<2.45?s:1-back,weight);reachable(r,leadingLeft,_lead);reachable(r,!leadingLeft,_rear);
  foot(r,leadingLeft,_lead,lyaw,lheel,weight,lin);foot(r,!leadingLeft,_rear,ryaw,rheel,weight,rin);
 }
 /** Leg reach a lifted step keeps inside (just under rig-ik's combat LEG_MAX .485, so the leg never locks straight). */
 const STEP_REACH=.475,_hip=new T.Vector3(),_to=new T.Vector3();
+/** Under a captured cut (`seat`: its hips height is the capture's, not the phrase's crouch) the body lowers until each foot
+ * would reach the floor under its target within STEP_REACH of its hip, so a planted foot never hangs short of the floor.
+ * The lead foot counts by `lead` (its step's eased progress to the plant, then back out as it steps home), so the body
+ * sinks through the lunge as the phrase's own crouch does instead of dropping as the foot lands. Only the height is the
+ * drop's to fix: a target further out than 92% of the reach counts as that far (the exact drop runs away as a step nears
+ * the leg's full horizontal reach), and the drop stops at 15 cm (a deep lunge's foot reaches as the phrase's would). */
+function seatHips(r:CharacterRig,leadingLeft:boolean,lead:number,weight:number){
+ let drop=0;
+ for(const [left,t,k] of [[leadingLeft,_lead,lead],[!leadingLeft,_rear,1]] as const){
+  if(k<=0)continue;
+  _hip.set(0,0,0);for(let n:T.Object3D|null=left?r.leftLeg:r.rightLeg;n&&n!==r.group;n=n.parent)_hip.applyQuaternion(n.quaternion).add(n.position);
+  const h=Math.min(Math.sqrt((_hip.x-t.x)**2+(_hip.z-t.z)**2),.92*STEP_REACH),need=_hip.y+.795-Math.sqrt(STEP_REACH*STEP_REACH-h*h);
+  if(need>0)drop=Math.max(drop,Math.min(.15,need)*k);
+ }
+ r.body.position.y-=drop*weight;
+}
 /** A lifted foot target the hip cannot reach (a step still in flight while the hips load back or turn away) is drawn toward
  * the hip, which lifts and shortens the step instead of leaving the foot hanging short of its path. The pull fades out as
  * the foot comes down (it is zero on the floor), so a planted foot is never moved and the landing stays continuous. */

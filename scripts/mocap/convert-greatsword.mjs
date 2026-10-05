@@ -1,4 +1,6 @@
 // Converts the owner's Mixamo "Great Sword Pack" into src/client/mocap/greatsword-clips.ts (development tool).
+// Superseded (2026-10-05): the game's greatsword set now comes from the Explosive pack's 2Hand-Sword clips
+// (convert-explosive.mjs, which writes the same file); running this restores the earlier Mixamo set.
 // The FBX files are licensed Mixamo downloads and are never committed; point the script at an extracted copy:
 //   node scripts/mocap/convert-greatsword.mjs <dir with the pack's .fbx files> [--preview <out.ts>]
 // The output is deterministic for the same input files. --preview writes every clip of the pack (raw clip time) for the
