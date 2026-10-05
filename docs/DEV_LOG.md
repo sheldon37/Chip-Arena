@@ -43,7 +43,20 @@ containing an entry; no self-referential commit hash is required.
 - Windows EXE/native GPU/manual gameplay not run (Linux container; Chromium download failed). No Site/live-feed publish or new seed ZIP.
   Final full unit run (`node --import tsx --test --test-concurrency=4 tests/*.test.ts`): 1271/1284 pass, 12 failures
   matching the untouched baseline names exactly, one skipped (baseline 1263/1276). The first unrestricted repeat exited early
-  without a summary; the bounded run completed. Status: implemented on task branch; exact-tree merge and publication follow.
+  without a summary; the bounded run completed.
+- Release: PR #51 merged at `db58d1befb5c1c38871117f7117f31f48758d996`; its complete tree matches the tested checkout
+  (`a6beb516700bf7cc86faa6585aecf73b975c04f5`). Two `release:prepare` builds produced byte-identical schema-1/schema-2
+  manifests and payloads for `0.2.8829a9b74310`, game build `10e08a8dd84292d1164dc939`. PR #5 payload checks pass:
+  all 103 game files (107 with launcher files), actual install/launcher activation, same-version skip, corruption/offline refusal,
+  settings preservation, and no editable source/maps in public payloads. Sizes: schema 1 24,706,861 B; schema 2 20,576,024 B.
+- Published both manifests and payloads atomically to the existing test feed at `b7307d60b91020d609a0f26e5b9c8082318b5777`.
+  The connector's 16 MiB request cap required eight verified chunks and one temporary GitHub publishing job (run 37334499364):
+  assembled bytes checked against exact SHA-256/length, refused a moved feed, then pushed feed-only main and deleted its staging
+  branch. No publishing workflow/chunks were left on main; no source, secrets, saves, Windows seed or live Site/feed changed.
+  Public Git blob hashes match all four local feed files exactly. After raw-GitHub cache propagation, the actual network
+  updater passed for both schemas from previous `0.2.00f72f2f7eb8` to this release: all 103 installed game file hashes match,
+  schema-2 launcher activation succeeds, settings sentinel survives, second run skips, and the actual remote menu-status handler
+  advertises this build/version. Status: merged and released to the existing TEST Update button; Windows feel review remains.
 
 ## 2026-10-05 — Claude — Melee animations (sword, daggers, shield, greatsword) from the Explosive RPG Character pack
 - Branch `claude/sleepy-ritchie-g8ruhv` from `claude/visual-revision` `0aa70dc` (PR #49 merge, plus its log commit

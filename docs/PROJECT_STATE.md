@@ -29,6 +29,9 @@ Migration imported to private GitHub; not merged or released (2026-09-29).
   this branch is already distributed through the test channel.
 - Test builds update online from the public test channel
   sheldon37/chip-arena-test-updates (tooling PR #5); live feed untouched. See DEVELOPMENT.md.
+  Latest test update (2026-10-05): `0.2.8829a9b74310`, source `db58d1b` (PR #51),
+  channel `b7307d6`: smoother attack recovery/combos, cheaper standard melee and
+  12 stamina/s sprint with HUD feedback. Baseline failures/native review remain; see DEV_LOG.
   Update headroom (owner-approved 2026-10-03, merged with PR #33):
   test schema 1 up to 32 MiB; updater v2 (schema 2, launcher self-update) needs one new
   seed ZIP (no source archive), delivered as an owner-only GitHub Release asset on the private
