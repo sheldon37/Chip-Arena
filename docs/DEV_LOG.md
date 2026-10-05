@@ -18,6 +18,43 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-05 — Claude — Melee block riposte (blocking melee is worth it)
+- Branch `claude/sleepy-ritchie-g8ruhv` from `claude/visual-revision` 6ad1516 (PR #48 merge). Owner request 2026-10-04:
+  "Make blocking melee actually worth it, maybe longer stunned time? enough to get a hit or 2".
+- Before: the blocker stayed locked in its own 0.30 s Block window and the attacker's 0.25-0.95 s stun often ended first;
+  at a late block, a counter landed in 11 of 20 weapon pairings and a second hit in none.
+- Change (`successfulBlock`, melee kind): when a human standard-melee blocker (Daggers, Sword, Shield, Greatsword) blocks
+  and the attacker is not the Siren, the attacker's stun is `max(old stun, min(1.4, ready + 1.0 + 0.004 × blocked damage)
+  + chip walk-back)` (`ready` = the blocker's attack cooldown + windup / attack rate; walk-back = the extra rebound of
+  block-force chips over the base push, as distance / run speed; `BLOCK_PUNISH`, `meleeBlockPunish`). The Block window keeps
+  running (guard, recoil and greatsword blockHit clip, protection from other hits) until the blocker's attack, special or
+  roll actually starts (`riposteTry`; an action that cannot start keeps the window), mirrored in the predictor via the
+  optional `riposteAt` view field. The blocker's first landed direct hit on that attacker ends the riposte stun
+  (`settleRiposte`; an absorbed hit or another player's leaves it), and the riposte clears the attacker's stagger-escape
+  immunity, so the counter's normal follow-up applies (Dagger pair stun, Shield knockdown, Sword/Greatsword stagger). The
+  parried attacker's queued afterimage echoes spare the blocker (they still hit others). Bot, ranged and magic blockers and
+  a Siren attacker keep the old stun (bot difficulty, boss fights and pvp-golden unchanged). Client: the parry stagger keeps
+  its old pace (shaped on 0.95 s) and holds the opened guard, so a long stun never plays in slow motion.
+- Measured (sim duel, block on the tick before the strike, counter walks into reach, then swings): every pairing keeps one
+  free counter, two for Daggers and a Shield knockdown, up to a 0.65-0.75 s host-time reaction (0.65 s worst: Greatsword
+  vs Greatsword), also with Bulwark (×1.8 block force). Repulsor (×3) loses it in 2 of 16 pairings (Sword or Shield
+  attacker vs a Greatsword blocker): its ring-out trade. Stuns 1.15-1.4 s (1.8 s with Repulsor), but the counter ends them.
+- Review: two adversarial rounds. Round 1 (window ended at impact): 9 confirmed findings, fixed by the v2 design (guard and
+  recoil visible online, no echo or Emperor-jab holes, counters keep knockdown/stagger, only standard-melee blockers riposte,
+  concrete-value tests). Round 2 (v2): stagger immunity or an absorbed counter freed the attacker early; block-force chips
+  pushed the attacker out of reach; a failed attack/roll dropped the guard; echoes were deleted for everyone; the window was
+  too tight for online delay. All five fixed, each covered by a test that fails without its fix. Round 3: one display-only
+  finding (the counter's hit reaction kept the riposte end time), fixed with a test; no regressions found elsewhere.
+- Impacts: hit timing, hitboxes, damage, knockback and cooldowns unchanged; the blocked attacker's stun length and the
+  human melee blocker's ability to end its own window early change. Network: optional `riposteAt` snapshot field (old
+  clients ignore it; old hosts never send it, so the predictor behaves as before); no new caps or inputs.
+- Checks (Node 24.19.0, at cc0e9b6): check:types pass; server tsc only its 4 baseline errors (same lines as 6ad1516);
+  block-riposte 7/7 (each review fix fails its test when disabled), blocking, reaction-fluidity 16/16, all pvp-golden traces
+  identical; full unit suite 1258: 1245 pass, the 12 known failures, 1 skipped (as before); network block fails only its
+  baseline "65.5 !== 77" (a projectile reflection check) and default only "Timed out: rematch", as on 6ad1516.
+- Not run: native Windows feel and look of the riposte (guard hold, parry hold, counter), real online/relay latency (the
+  1.0 s window is sized from the measured sim timings plus estimated delay), owner balance playtest.
+
 ## 2026-10-04 — Claude — Double-tap-W sprint, Tab melee lock-on, roll-cancel of melee attacks, Escape menu board
 - Branch `claude/sleepy-ritchie-g8ruhv` from `claude/visual-revision` d31fa25 (PR #47 merge). Owner requests 2026-10-04.
 - Sprint: two W presses within 300 ms latch a held `Input.sprint` while W stays down (client `SprintTap`); shared rule
@@ -48,6 +85,12 @@ containing an entry; no self-referential commit hash is required.
   the camera onto the dummy with the reticle, hold releases, death releases; sprint 6.8 → 9.18 m/s; greatsword roll-cancel
   clears the commitment (stamina 100 − 26 − 29); Escape menu + board at 1440 and stacked at 1100 px.
 - Not run: native Windows feel (sprint lean, lock-on turn rate, roll-cancel blends), online/relay latency feel, bots sprinting.
+- Status: merged into `claude/visual-revision` at `6ad1516` (PR #48; PR CI: unit 1250 with only the 12 known failures, server
+  build 4 baseline errors, websocket only "Timed out: rematch", HTTPS passes). Published to the test channel (not the live
+  feed or Site): test `0.2.6a229a16de6f` at channel `aac8363`; schema 1 `arena-25f71767d56ffd80.json.gz` 24,644,929 B,
+  schema 2 `arena-7d91f8f13fbea198.pack` 20,536,649 B. Candidate (`--test-only --channel`, Node 24.19.0, tooling 35ea65d):
+  every stage passed except the baseline-only verify; repeat build identical. Old-launcher and v2 installs at
+  `0.2.57123b899145` updated, then reported current; settings sentinel untouched.
 
 ## 2026-10-04 — Claude — Siren PvE: much harder "Find me..." (more spawns), 30 s intermissions
 - Branch `claude/sleepy-ritchie-g8ruhv` from `claude/visual-revision` 2ae916d (PR #46 merge). Owner requests 2026-10-04.
