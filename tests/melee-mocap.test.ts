@@ -27,7 +27,9 @@ test('sword, dagger and shield clip tables decode to finite rows with ascending 
    if(clip.marks)for(let i=1;i<clip.marks.length;i++)assert.ok(clip.marks[i]>clip.marks[i-1]&&clip.marks[i]<=clipDuration(clip)+1e-9,`${spec} ${name} marks ascend inside the clip`);
   }
   const set=MOCAP_SETS[spec]!;for(const k of ['idle','walk','run','block','blockHit'] as const)assert.ok(set[k],`${spec} ${k}`);
-  assert.equal(set.cuts!.length,CUTS[spec]);assert.equal(set.fit?.oneHand,true);for(const c of set.cuts!)assert.equal(c.marks!.length,4);
+  assert.equal(set.cuts!.length,CUTS[spec]);assert.equal(set.fit?.oneHand,true);
+  // Every cut starts on the guard frame; its windup pace keys ascend strictly inside (start, contact start).
+  for(const c of set.cuts!){assert.equal(c.marks!.length,4);assert.equal(c.marks![0],0,`${spec} ${c.source} starts on the guard frame`);const keys=[c.marks![0],...c.pace!,c.marks![1]];for(let i=1;i<keys.length;i++)assert.ok(keys[i]>keys[i-1],`${spec} ${c.source} pace ascends`);}
  }
  assert.ok(MOCAP_SETS.sword!.stagger&&MOCAP_SETS.daggers!.stagger);assert.equal(MOCAP_SETS.shield!.fit!.clear,'none');assert.deepEqual(MOCAP_SETS.daggers!.spin,[4]);
 });

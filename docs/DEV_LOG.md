@@ -18,6 +18,41 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-05 — Claude — Melee animations (sword, daggers, shield) from the Explosive RPG Character pack
+- Branch `claude/sleepy-ritchie-g8ruhv` from `claude/visual-revision` `0aa70dc` (PR #49 merge, plus its log commit
+  `b19733a`). Owner request 2026-10-05: "re-do the animations (Melee) with the ones from the pack" (the owner's licensed
+  Explosive "RPG Character Mecanim Animation Pack", shared by Drive link; FBX/.meta files stay outside the repository).
+- Change (presentation only): new offline converter `scripts/mocap/convert-explosive.mjs` (+ `explosive-pack.mjs`: FBX 7.3
+  load, Z-up fix, 3ds Max biped → Mixamo bone names, T-pose from the Unity avatar in the .meta) writes generated tables
+  `src/client/mocap/{sword,daggers,shield}-clips.ts` (~83 KB together), registered as mocap sets beside the greatsword's.
+  Guard idle, walk and run carries, block, block impact and stagger come from the pack. Cuts: sword R1 forehand, R3 backhand, R6
+  high diagonal (the narrow third cut); daggers in a reverse grip in both fists, R1 / L1 / R2 thrusts and stabs, the 4th L1
+  under the existing full-body spin; shield Attack3 lunge and Attack1 rising bash, the pack's left-arm shield read onto the
+  game's right hand. The greatsword keeps its Mixamo set (numerically unchanged; the new converter options default off).
+- How the captures fit the game: each cut's [start, contact start, contact end, settled] marks retime onto the
+  authoritative windup / hit window / recovery (contact always inside the hit window); every cut starts on the pack's guard
+  frame and the converter writes windup pace keys (`MocapClip.pace`) from the captured motion, so the much shorter game
+  windups spend their time where the pose moves; the daggers keep 35% of the pull-back (`anticipation`) to fit their 0.09 s
+  windup. The legs step from the gait stance into the captured one over the windup (blended by ankles), the captured feet
+  hold their spots through the contact, blades and the off-hand dagger stay above the floor (`keepBladesOffFloor`), and the
+  free hand never takes the sword's support grip. Converter fixes found on the way: elbow poles turn at most 10 rad/s
+  around the reach (a capture whose elbow crosses the reach line flipped the upper arm in a frame), torso twist shared
+  between the waist and chest joints, deep neck/head bends and ankle rolls eased for the block-shaped head and feet.
+- Impacts: hit timing, hitboxes, damage, cooldowns, movement rules, attack travel and network behaviour unchanged (client
+  presentation only; nothing in src/shared or the server reads the clips). First-person view models keep their procedural
+  poses. `rarity-combat` "dagger primaries and echoes alternate ..." (a baseline failure: it asserts the two dagger cuts are
+  exact arm mirrors) still fails, now -2.10 vs -1.00 (was -0.60 vs -0.56): the captured cuts are not mirror images.
+- Not switched: the pack's 2Hand-Sword set (timing close to the greatsword's 0.42 s windup) is listed as preview
+  candidates (`2H-*`) only; converting it would be a separate visual decision.
+- Checks (Node 24.19.0): new `tests/melee-mocap.test.ts` 6/6 (decode/marks/pace, joint limits, strike inside the server
+  arc and sword sweep signs at 0.8/1/1.35x, limb continuity at 60 vs 120 Hz at 0.7/1/1.5x with melee-fluidity's speed cap
+  scaled by the attack rate, support hand and dagger spin, guard/walk/run/block blade and floor clearance and shield face);
+  greatsword-mocap, melee-fluidity, locomotion-root-sync, foundation-contracts 32/32; check:types pass; server tsc only its
+  4 baseline errors; full unit suite 1264: 1251 pass, 12 fail, 1 skipped, and the 12 failing names are identical on
+  `b19733a` (re-run of those 10 files at both commits). pvp-golden traces pass. Lab frame strips (scratch, not committed)
+  of every cut, guard, run and block reviewed for sword, daggers and shield.
+- Not run: native Windows look and feel, online play with remote players, owner review of the new style.
+
 ## 2026-10-05 — Claude — Melee block riposte (blocking melee is worth it)
 - Branch `claude/sleepy-ritchie-g8ruhv` from `claude/visual-revision` 6ad1516 (PR #48 merge). Owner request 2026-10-04:
   "Make blocking melee actually worth it, maybe longer stunned time? enough to get a hit or 2".
