@@ -18,6 +18,26 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-05 — Claude — Melee block riposte (blocking melee is worth it)
+- Branch `claude/sleepy-ritchie-g8ruhv` from `claude/visual-revision` 6ad1516 (PR #48 merge). Owner request 2026-10-04:
+  "Make blocking melee actually worth it, maybe longer stunned time? enough to get a hit or 2".
+- Before: the blocker stayed locked in its own 0.30 s Block window and the attacker's 0.25-0.95 s stun often ended first;
+  at a late block, a counter landed in 11 of 20 weapon pairings and a second hit in none.
+- Change (`successfulBlock`, melee kind): when a human (not a bot) blocks and neither side is the Siren, the Block window
+  ends at once (riposte) and the attacker's stun is `max(old stun, min(1.4, ready + followUp + 0.5 + 0.004 × blocked
+  damage))`, where `ready` = the blocker's attack cooldown + its weapon windup / attack rate and `followUp` = the swing
+  interval / attack rate for quick weapons (base interval ≤ 0.4 s: Daggers) (`BLOCK_PUNISH`, `meleeBlockPunish` in
+  `blocking.ts`). Measured at 0.20-0.25 s reaction: one counter in all 12 non-Dagger pairings, two in all 4 Dagger ones
+  (2 × 15 ≈ one 30-damage Sword counter); stuns 0.70-1.14 s. Bot blockers and the Siren keep the old stun (bot difficulty, boss fights and pvp-golden unchanged);
+  projectile, minion (PvE adds) and echo blocks keep the window. The stunned attacker still cannot block, move or attack.
+  Client: the parry stagger keeps its old pace (shaped on 0.95 s) and holds the opened guard until the recovery, so a long
+  stun never plays in slow motion.
+- Impacts: hit timing, hitboxes, damage, knockback and cooldowns unchanged; only the blocked attacker's stun length and the
+  human blocker's window change. No new network fields or caps (`hitStunUntil`/`blockTime` already in snapshots). In
+  multi-attacker PvP a riposte leaves the blocker open to a second simultaneous attacker (accepted trade-off).
+- Checks (Node 24.19.0): CHECKS_PLACEHOLDER
+- Not run: native Windows feel of the riposte, online/relay latency, owner balance playtest (1.4 s cap may need tuning).
+
 ## 2026-10-04 — Claude — Double-tap-W sprint, Tab melee lock-on, roll-cancel of melee attacks, Escape menu board
 - Branch `claude/sleepy-ritchie-g8ruhv` from `claude/visual-revision` d31fa25 (PR #47 merge). Owner requests 2026-10-04.
 - Sprint: two W presses within 300 ms latch a held `Input.sprint` while W stays down (client `SprintTap`); shared rule

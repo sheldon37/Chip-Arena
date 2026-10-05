@@ -1,6 +1,7 @@
 // Melee block riposte (owner 2026-10-04: "make blocking melee actually worth it ... enough to get a hit or 2"): a human's
 // timed block of a melee swing ends its block window and stuns the attacker until BLOCK_PUNISH.window s after the blocker's
-// first strike could land, so a counter at human reaction speed connects. Bots and the Siren keep the old stun.
+// first strike could land (daggers: their second), so a counter at human reaction speed connects. Bots and the Siren keep
+// the old stun.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {Simulation,initPhysics,type Player} from '../src/shared/simulation.js';
@@ -19,7 +20,7 @@ const send=(s:Simulation,p:Player,patch:Partial<Input>)=>s.setInput(p.id,{...idl
 const face=(from:Player,to:Player)=>{const f=from.body.translation(),t=to.body.translation();return Math.atan2(t.x-f.x,t.z-f.z);};
 const STANDARD:SpecId[]=['daggers','sword','shield','greatsword'];
 
-test('every standard melee pairing: a human counter at 0.25 s reaction lands while the attacker is still stunned',()=>{
+test('every standard melee pairing: a human counter at 0.25 s reaction lands while the attacker is still stunned; daggers land two',()=>{
  for(const attacker of STANDARD)for(const blocker of STANDARD){const {s,a,b}=duel(attacker,blocker);try{
   send(s,a,{attack:true,yaw:face(a,b)});s.step();const swing=a.swing!;assert.ok(swing,`${attacker} swings`);
   while(s.time<swing.at-1/60){send(s,a,{yaw:face(a,b)});send(s,b,{yaw:face(b,a)});s.step();}
@@ -27,9 +28,11 @@ test('every standard melee pairing: a human counter at 0.25 s reaction lands whi
   for(let n=0;n<3&&!a.hitStunUntil;n++){send(s,b,{yaw:face(b,a)});s.step();}
   const until=a.hitStunUntil!,blockedAt=s.time,hp=a.hp;assert.ok(until>s.time,`${attacker} vs ${blocker}: blocked and stunned`);assert.equal(b.blockTime,0,'riposte frees the blocker');
   assert.ok(until-blockedAt>=meleeBlockStun(WEAPONS[attacker].damage,WEAPONS[attacker].impulse)-1e-9);
-  let hitAt=Infinity;for(let n=0;n<120&&hitAt===Infinity;n++){const react=s.time-blockedAt>=.25,d=Math.hypot(a.body.translation().x-b.body.translation().x,a.body.translation().z-b.body.translation().z);
-   send(s,b,{yaw:face(b,a),attack:react&&d<WEAPONS[blocker].range+.45,z:react&&d>=WEAPONS[blocker].range*.9?1:0,...(react?{x:Math.sin(face(b,a))*(d>=WEAPONS[blocker].range*.9?1:0),z:Math.cos(face(b,a))*(d>=WEAPONS[blocker].range*.9?1:0)}:{})});s.step();if(a.hp<hp)hitAt=s.time;}
-  assert.ok(hitAt<until,`${attacker} attacker vs ${blocker} blocker: counter at ${(hitAt-blockedAt).toFixed(2)} s, stun ${(until-blockedAt).toFixed(2)} s`);
+  const hits:number[]=[];let last=hp;for(let n=0;n<150&&s.time<until;n++){const react=s.time-blockedAt>=.25,d=Math.hypot(a.body.translation().x-b.body.translation().x,a.body.translation().z-b.body.translation().z),walk=react&&d>=WEAPONS[blocker].range*.9?1:0;
+   send(s,b,{yaw:face(b,a),attack:react&&d<WEAPONS[blocker].range+.45,x:Math.sin(face(b,a))*walk,z:Math.cos(face(b,a))*walk});s.step();if(a.hp<last){hits.push(s.time-blockedAt);last=a.hp;}}
+  // One sure counter for every weapon; the quick daggers (15 damage) get a second, about one sword counter's damage.
+  const want=blocker==='daggers'?2:1,info=`${attacker} attacker vs ${blocker} blocker: counters at ${hits.map(t=>t.toFixed(2)).join(', ')||'none'} s, stun ${(until-blockedAt).toFixed(2)} s`;
+  assert.equal(hits.length,want,info);
  }finally{s.dispose();}}
 });
 
