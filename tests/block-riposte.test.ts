@@ -59,6 +59,7 @@ test('the riposte window holds the guard until the blocker attacks; the counter 
   const hp=a.hp;for(let n=0;n<40&&a.hp>=hp;n++){send(s,b,{attack:true,yaw:face(b,a)});send(s,a,{});s.step();}
   assert.ok(a.hp<hp&&s.time<until,'the counter lands inside the riposte stun');assert.notEqual(a.hitStunUntil,until,'and replaces it with its own stagger');
   assert.ok((a.hitStunUntil||0)<until,'the attacker recovers sooner than the full riposte stun');assert.equal(a.riposte,undefined);
+  assert.ok(a.hitReaction!.until<=Math.max(a.hitStunUntil||0,a.hitReaction!.at+.24)+1e-9,'the counter\'s hit reaction ends with its own stagger, not the riposte');
  }finally{s.dispose();}}
  {const {s,a,b}=duel('sword','sword');try{blockSwing(s,a,b);send(s,b,{dash:true,yaw:face(b,a)});send(s,a,{});s.step();assert.equal(b.blockTime,0,'a roll ends the window');}finally{s.dispose();}}
 });

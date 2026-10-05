@@ -343,7 +343,9 @@ export class Simulation {
  /** The riposting blocker's landed counter ends the riposte stun (and the parry stagger), so the hit's own stagger, launch or
   * Dagger pair stun applies as on any other hit instead of being swallowed. An absorbed hit or another player's leaves it. */
  private settleRiposte(target:Player,hitter:Player,actual:number){const r=target.riposte;if(!r)return;const live=target.hitStunUntil===r.until&&this.time<r.until;
-  if(live&&(r.by!==hitter.id||actual<=0))return;target.riposte=undefined;if(!live)return;target.hitStunUntil=this.time;if(target.hitReaction?.kind==='parry')target.hitReaction.until=this.time;}
+  if(live&&(r.by!==hitter.id||actual<=0))return;target.riposte=undefined;if(!live)return;target.hitStunUntil=this.time;
+  // damage() stretched the counter's own reaction to the riposte end; back to its natural length (the stagger extends it).
+  const h=target.hitReaction;if(h&&h.until>this.time)h.until=h.kind==='parry'?this.time:Math.min(h.until,h.at+.24);}
  beginRoll(p:Player){if(this.siren.busy(p))return false;
  const requested=p.input.dash,pressed=requested&&!p.rollHeld;p.rollHeld=requested;
  // Roll-cancel (owner 2026-10-04): a human pilot's fresh roll cancels a standard melee primary (windup, sweep, recovery or
