@@ -23,18 +23,26 @@ containing an entry; no self-referential commit hash is required.
   "Make blocking melee actually worth it, maybe longer stunned time? enough to get a hit or 2".
 - Before: the blocker stayed locked in its own 0.30 s Block window and the attacker's 0.25-0.95 s stun often ended first;
   at a late block, a counter landed in 11 of 20 weapon pairings and a second hit in none.
-- Change (`successfulBlock`, melee kind): when a human (not a bot) blocks and neither side is the Siren, the Block window
-  ends at once (riposte) and the attacker's stun is `max(old stun, min(1.4, ready + followUp + 0.5 + 0.004 × blocked
-  damage))`, where `ready` = the blocker's attack cooldown + its weapon windup / attack rate and `followUp` = the swing
-  interval / attack rate for quick weapons (base interval ≤ 0.4 s: Daggers) (`BLOCK_PUNISH`, `meleeBlockPunish` in
-  `blocking.ts`). Measured at 0.20-0.25 s reaction: one counter in all 12 non-Dagger pairings, two in all 4 Dagger ones
-  (2 × 15 ≈ one 30-damage Sword counter); stuns 0.70-1.14 s. Bot blockers and the Siren keep the old stun (bot difficulty, boss fights and pvp-golden unchanged);
-  projectile, minion (PvE adds) and echo blocks keep the window. The stunned attacker still cannot block, move or attack.
-  Client: the parry stagger keeps its old pace (shaped on 0.95 s) and holds the opened guard until the recovery, so a long
-  stun never plays in slow motion.
-- Impacts: hit timing, hitboxes, damage, knockback and cooldowns unchanged; only the blocked attacker's stun length and the
-  human blocker's window change. No new network fields or caps (`hitStunUntil`/`blockTime` already in snapshots). In
-  multi-attacker PvP a riposte leaves the blocker open to a second simultaneous attacker (accepted trade-off).
+- Change (`successfulBlock`, melee kind): when a human standard-melee blocker (Daggers, Sword, Shield, Greatsword) blocks
+  and the attacker is not the Siren, the attacker's stun is `max(old stun, min(1.4, ready + 0.7 + 0.004 × blocked damage))`
+  (`ready` = the blocker's attack cooldown + windup / attack rate; `BLOCK_PUNISH`, `meleeBlockPunish`). The Block window
+  keeps running (guard, recoil and greatsword blockHit clip, protection from other hits) until the blocker attacks, uses
+  its special or rolls (`breakRiposte`, mirrored in the predictor via the optional `riposteAt` view field). The blocker's
+  first direct hit on that attacker ends the riposte stun (`directHit`), so its normal follow-up applies (Dagger pair stun,
+  Shield knockdown, Sword/Greatsword stagger) and the attacker recovers soon after. The parried attacker's queued
+  afterimage echoes are dropped. Bot, ranged and magic blockers and a Siren attacker keep the old stun (bot difficulty,
+  boss fights and pvp-golden unchanged). Client: the parry stagger keeps its old pace (shaped on 0.95 s) and holds the
+  opened guard, so a long stun never plays in slow motion.
+- Measured (sim duel, block on the tick before the strike, counter at 0.15-0.45 s reaction): every one of the 64 cases
+  lands at least one free counter, Daggers two, and every Shield counter knocks down; stuns 0.85-1.33 s, but the attacker
+  is free again 0.72-1.32 s after the block (later after a Shield knockdown). A counter pressed at the instant of impact
+  can whiff when the unchanged rebound carries a Greatsword attacker out of Shield reach.
+- Review: an adversarial review of the first version (window ended at impact) confirmed 9 findings; all are addressed by
+  this design: guard and recoil now visible online, no echo or Emperor-jab holes, counters keep their knockdown/stagger,
+  only standard-melee blockers riposte (no ranged/magic cooldown or followUp surprises), concrete-value tests.
+- Impacts: hit timing, hitboxes, damage, knockback and cooldowns unchanged; the blocked attacker's stun length and the
+  human melee blocker's ability to end its own window early change. Network: optional `riposteAt` snapshot field (old
+  clients ignore it; old hosts never send it, so the predictor behaves as before); no new caps or inputs.
 - Checks (Node 24.19.0): CHECKS_PLACEHOLDER
 - Not run: native Windows feel of the riposte, online/relay latency, owner balance playtest (1.4 s cap may need tuning).
 

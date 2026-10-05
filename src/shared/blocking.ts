@@ -6,10 +6,12 @@ export const blockCooldown=(stats:Stats)=>Math.max(CONFIG.blockMinimumCooldown,C
 export const blockDuration=(stats:Stats)=>Math.max(.1,Math.min(CONFIG.blockMaximumDuration,CONFIG.blockDuration+stats.blockWindow));
 /** Incoming damage and physical impact determine recovery; attack speed cannot erase a block punish. */
 export const meleeBlockStun=(damage:number,impulse=0)=>Math.max(.25,Math.min(.95,.18+Math.max(0,damage)*.008+Math.max(0,impulse)*.00025));
-/** A human's timed melee block is a riposte (owner 2026-10-04: "make blocking melee worth it ... enough to get a hit or 2"):
- * the attacker stays stunned until `window` s (plus `perDamage` per blocked point) after the blocker's own first strike could
- * land (`ready`: its attack cooldown left plus its windup), capped; never shorter than meleeBlockStun. A quick weapon (base
- * swing interval at most `quickInterval`, today the 15-damage daggers) also gets its next swing (`followUp`), so every
- * weapon has one sure counter and daggers two, about the same damage as one sword counter. */
-export const BLOCK_PUNISH={window:.5,perDamage:.004,cap:1.4,quickInterval:.4} as const;
-export const meleeBlockPunish=(damage:number,ready:number,followUp=0)=>Math.min(BLOCK_PUNISH.cap,Math.max(0,ready)+Math.max(0,followUp)+BLOCK_PUNISH.window+Math.max(0,damage)*BLOCK_PUNISH.perDamage);
+/** Riposte (owner 2026-10-04: "make blocking melee worth it ... enough to get a hit or 2"): when a human standard-melee
+ * blocker stops a melee hit, the attacker stays stunned until `window` s (plus `perDamage` per blocked point) after the
+ * blocker's own first strike could land (`ready`: its attack cooldown left plus its windup), capped, and never shorter than
+ * meleeBlockStun. The blocker's counter ends that stun, so the counter's usual follow-up (Dagger pair, Shield knockdown,
+ * Sword/Greatsword stagger) gives the second hit where the weapon has one. */
+export const BLOCK_PUNISH={window:.7,perDamage:.004,cap:1.4} as const;
+export const meleeBlockPunish=(damage:number,ready:number)=>Math.min(BLOCK_PUNISH.cap,Math.max(0,ready)+BLOCK_PUNISH.window+Math.max(0,damage)*BLOCK_PUNISH.perDamage);
+/** The Block window a riposte opened is still running: the blocker's attack, special or roll ends it early (breakRiposte). */
+export const riposteOpen=(p:{riposteAt?:number;lastBlock?:number;blockTime:number})=>p.riposteAt!==undefined&&p.blockTime>0&&p.riposteAt>=(p.lastBlock??Infinity);

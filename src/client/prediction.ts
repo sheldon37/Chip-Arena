@@ -9,6 +9,7 @@ import {RAPIER,Snapshot,PlayerView} from '../shared/simulation.js';
 import {Vec,Input,CONFIG as C,MATERIALS,v,add,sub,mul,len,forward,norm} from '../shared/config.js';
 import {statsFor,WEAPONS} from '../shared/content.js';
 import {prepareMotion,finishMotion,Motion,SPRINT} from '../shared/movement.js';
+import {riposteOpen} from '../shared/blocking.js';
 import {NETWORK} from '../shared/network-config.js';
 import {adsMove,ABILITY_FX} from '../shared/abilities.js';
 import {sameTeam,type TeamId} from '../shared/teams.js';
@@ -47,10 +48,12 @@ export class Predictor {
   this.time+=dt;if(this.grabbed){this.pending=[];this.move=v();this.external=v();this.body.setLinvel(v(),true);return;}const bossMotion=sirenMotion(me.siren?.move,this.time,dt);const stats=statsFor(me.chips),emperor=me.spec==='emperor'&&canUse(me,'weapon:emperor');
   if(this.stunRemaining>0){this.roll=undefined;this.attackCommitment=undefined;}
   const requested=input.dash,pressed=requested&&!this.rollHeld;this.rollHeld=requested;
-  const roll=rollProfile(me.spec,stats),grounded=this.groundHint??this.grounded,free=!bossMotion.locked&&this.stunRemaining<=0&&me.hp>0&&me.blockTime<=0&&!me.guarding&&!committed(this,this.time)&&!rolling(this,this.time);
+  // A riposte window (Simulation.breakRiposte) ends as the blocker attacks, uses its special or rolls.
+  const blocked=me.blockTime>0&&!(riposteOpen(me)&&(input.attack||input.secondary||pressed));
+  const roll=rollProfile(me.spec,stats),grounded=this.groundHint??this.grounded,free=!bossMotion.locked&&this.stunRemaining<=0&&me.hp>0&&!blocked&&!me.guarding&&!committed(this,this.time)&&!rolling(this,this.time);
   // Roll-cancel, mirroring Simulation.beginRoll (hosts with caps.move): standard melee primaries and Emperor jabs.
   const special=this.time<this.specialUntil||!!(me.meleeAction&&this.time<me.meleeAction.until),live=committed(this,this.time)||!!me.swinging,cancel=this.rollCancel&&input.rollCancel===true&&(normalMelee(me.spec)&&!special&&live||emperor&&this.time>=this.electricUntil);
-  const rollFree=!bossMotion.locked&&this.stunRemaining<=0&&me.hp>0&&me.blockTime<=0&&!me.guarding&&!rolling(this,this.time)&&(cancel||!committed(this,this.time)&&!me.swinging);
+  const rollFree=!bossMotion.locked&&this.stunRemaining<=0&&me.hp>0&&!blocked&&!me.guarding&&!rolling(this,this.time)&&(cancel||!committed(this,this.time)&&!me.swinging);
   if(usesRoll(me.spec)&&pressed&&rollFree&&grounded&&this.dash<=0&&!me.castAt&&me.reloadTime<=0&&!special&&(!emperor||cancel||this.attackCooldown<=0)&&this.stamina>=roll.cost){
    if(cancel&&live){const a=this.attackCommitment;if(a&&normalMelee(me.spec)&&beforeStrike(a,this.time))this.attackCooldown=Math.min(this.attackCooldown,roll.duration);this.attackCommitment=undefined;}
    const direction=Math.hypot(input.x,input.z)>.1?norm(v(input.x,0,input.z)):forward(input.yaw);
