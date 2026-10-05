@@ -24,22 +24,26 @@ containing an entry; no self-referential commit hash is required.
 - Before: the blocker stayed locked in its own 0.30 s Block window and the attacker's 0.25-0.95 s stun often ended first;
   at a late block, a counter landed in 11 of 20 weapon pairings and a second hit in none.
 - Change (`successfulBlock`, melee kind): when a human standard-melee blocker (Daggers, Sword, Shield, Greatsword) blocks
-  and the attacker is not the Siren, the attacker's stun is `max(old stun, min(1.4, ready + 0.7 + 0.004 × blocked damage))`
-  (`ready` = the blocker's attack cooldown + windup / attack rate; `BLOCK_PUNISH`, `meleeBlockPunish`). The Block window
-  keeps running (guard, recoil and greatsword blockHit clip, protection from other hits) until the blocker attacks, uses
-  its special or rolls (`breakRiposte`, mirrored in the predictor via the optional `riposteAt` view field). The blocker's
-  first direct hit on that attacker ends the riposte stun (`directHit`), so its normal follow-up applies (Dagger pair stun,
-  Shield knockdown, Sword/Greatsword stagger) and the attacker recovers soon after. The parried attacker's queued
-  afterimage echoes are dropped. Bot, ranged and magic blockers and a Siren attacker keep the old stun (bot difficulty,
-  boss fights and pvp-golden unchanged). Client: the parry stagger keeps its old pace (shaped on 0.95 s) and holds the
-  opened guard, so a long stun never plays in slow motion.
-- Measured (sim duel, block on the tick before the strike, counter at 0.15-0.45 s reaction): every one of the 64 cases
-  lands at least one free counter, Daggers two, and every Shield counter knocks down; stuns 0.85-1.33 s, but the attacker
-  is free again 0.72-1.32 s after the block (later after a Shield knockdown). A counter pressed at the instant of impact
-  can whiff when the unchanged rebound carries a Greatsword attacker out of Shield reach.
-- Review: an adversarial review of the first version (window ended at impact) confirmed 9 findings; all are addressed by
-  this design: guard and recoil now visible online, no echo or Emperor-jab holes, counters keep their knockdown/stagger,
-  only standard-melee blockers riposte (no ranged/magic cooldown or followUp surprises), concrete-value tests.
+  and the attacker is not the Siren, the attacker's stun is `max(old stun, min(1.4, ready + 1.0 + 0.004 × blocked damage)
+  + chip walk-back)` (`ready` = the blocker's attack cooldown + windup / attack rate; walk-back = the extra rebound of
+  block-force chips over the base push, as distance / run speed; `BLOCK_PUNISH`, `meleeBlockPunish`). The Block window keeps
+  running (guard, recoil and greatsword blockHit clip, protection from other hits) until the blocker's attack, special or
+  roll actually starts (`riposteTry`; an action that cannot start keeps the window), mirrored in the predictor via the
+  optional `riposteAt` view field. The blocker's first landed direct hit on that attacker ends the riposte stun
+  (`settleRiposte`; an absorbed hit or another player's leaves it), and the riposte clears the attacker's stagger-escape
+  immunity, so the counter's normal follow-up applies (Dagger pair stun, Shield knockdown, Sword/Greatsword stagger). The
+  parried attacker's queued afterimage echoes spare the blocker (they still hit others). Bot, ranged and magic blockers and
+  a Siren attacker keep the old stun (bot difficulty, boss fights and pvp-golden unchanged). Client: the parry stagger keeps
+  its old pace (shaped on 0.95 s) and holds the opened guard, so a long stun never plays in slow motion.
+- Measured (sim duel, block on the tick before the strike, counter walks into reach, then swings): every pairing keeps one
+  free counter, two for Daggers and a Shield knockdown, up to a 0.65-0.75 s host-time reaction (0.65 s worst: Greatsword
+  vs Greatsword), also with Bulwark (×1.8 block force). Repulsor (×3) loses it in 2 of 16 pairings (Sword or Shield
+  attacker vs a Greatsword blocker): its ring-out trade. Stuns 1.15-1.4 s (1.8 s with Repulsor), but the counter ends them.
+- Review: two adversarial rounds. Round 1 (window ended at impact): 9 confirmed findings, fixed by the v2 design (guard and
+  recoil visible online, no echo or Emperor-jab holes, counters keep knockdown/stagger, only standard-melee blockers riposte,
+  concrete-value tests). Round 2 (v2): stagger immunity or an absorbed counter freed the attacker early; block-force chips
+  pushed the attacker out of reach; a failed attack/roll dropped the guard; echoes were deleted for everyone; the window was
+  too tight for online delay. All five fixed, each covered by a test that fails without its fix.
 - Impacts: hit timing, hitboxes, damage, knockback and cooldowns unchanged; the blocked attacker's stun length and the
   human melee blocker's ability to end its own window early change. Network: optional `riposteAt` snapshot field (old
   clients ignore it; old hosts never send it, so the predictor behaves as before); no new caps or inputs.

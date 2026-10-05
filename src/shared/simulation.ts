@@ -271,10 +271,7 @@ export class Simulation {
  damage*=1+(target.hp<target.stats.hp*.3?p.stats.execute:0)+(distance<5?p.stats.closeDamage:0)+(distance>=20?p.stats.farDamage:0)+(w.class==='melee'&&dot(forward(target.input.yaw),norm(sub(p.body.translation(),target.body.translation())))<-.35?p.stats.backstab:0);
  if(p.stats.chaos)damage*=.5+this.random()*2;
  if(p.stats.critical&&this.random()<p.stats.critical){damage*=2;this.emit('critical',point,{source:p.id,color:0xffd66c});}
- // The riposting blocker's counter ends the riposte stun (and the parry stagger), so this hit's own reaction, stagger,
- // launch or Dagger pair stun applies as on any other hit instead of being swallowed by the stun.
- if(isPlayer&&target.riposte){const r=target.riposte,live=target.hitStunUntil===r.until&&this.time<r.until;if(!live||r.by===p.id){target.riposte=undefined;if(live){target.hitStunUntil=this.time;if(target.hitReaction?.kind==='parry')target.hitReaction.until=this.time;}}}
- const actual=this.damage(target,Math.min(1000,damage*(headshot?HEADSHOT_MULTIPLIER:1)),p.id,'direct',dir,p.chips['grappling-shot']?0:impulse,point,melee,hitsGrounded,headshot,attackElements((w.burn||0)+p.stats.burn,p.stats.poison),bodyImpact||(melee?meleeBodyImpact(p.spec,p.stats.attackRate,p.spec==='daggers'&&p.attackIndex%4===3):undefined));if(actual>0){refreshDot(target.burns,p.id,(w.burn||0)+p.stats.burn,this.time,'fire');refreshDot(target.poisons,p.id,p.stats.poison,this.time,'poison');this.lifeOnHit(p,actual);if(target.stats.thorns)this.damage(p,actual*target.stats.thorns,target.id,'thorns');p.hits++;if(p.stats.staticEvery&&p.hits%p.stats.staticEvery===0)this.explode(p,point,3,p.stats.staticDamage,60,'static',false);primaryHitEffects(this,p,target,point,actual);}}
+ const actual=this.damage(target,Math.min(1000,damage*(headshot?HEADSHOT_MULTIPLIER:1)),p.id,'direct',dir,p.chips['grappling-shot']?0:impulse,point,melee,hitsGrounded,headshot,attackElements((w.burn||0)+p.stats.burn,p.stats.poison),bodyImpact||(melee?meleeBodyImpact(p.spec,p.stats.attackRate,p.spec==='daggers'&&p.attackIndex%4===3):undefined));if(isPlayer)this.settleRiposte(target,p,actual);if(actual>0){refreshDot(target.burns,p.id,(w.burn||0)+p.stats.burn,this.time,'fire');refreshDot(target.poisons,p.id,p.stats.poison,this.time,'poison');this.lifeOnHit(p,actual);if(target.stats.thorns)this.damage(p,actual*target.stats.thorns,target.id,'thorns');p.hits++;if(p.stats.staticEvery&&p.hits%p.stats.staticEvery===0)this.explode(p,point,3,p.stats.staticDamage,60,'static',false);primaryHitEffects(this,p,target,point,actual);}}
  else this.damageProp(target,damage*p.stats.demolition,dir?mul(dir,impulse):v(),p.id,point);
  this.chaos.direct(p,target,point,dir,attackId);
  if(p.stats.vacuum&&!this.procAttacks.has('vacuum:'+attackId)){this.procAttacks.add('vacuum:'+attackId);this.vacuum(p,point,p.stats.vacuum);}
@@ -312,14 +309,18 @@ export class Simulation {
  successfulBlock(p:Player,kind:string,point:Vec,source:string,blockedDamage=0,direction=v(),blockedImpulse=0){
  this.arcade.parry(p,point,source);this.emit('blockHit',point,{source:p.id,spec:p.spec,target:source,message:kind,color:0x91f7eb});
  if(kind==='melee'){const attacker=this.players.get(source);if(attacker&&attacker.hp>0&&!this.siren.armored(attacker)){const away=norm(sub(attacker.body.translation(),p.body.translation())),force=Math.min(800,(160+Math.max(0,blockedDamage)*4)*p.stats.blockForce);const facing=impactFacing(attacker,this.time);
-  // Riposte (owner 2026-10-04): a human standard-melee blocker keeps its Block window (guard, protection) until it attacks or
-  // rolls (breakRiposte), and the attacker stays stunned long enough for that counter, which then ends the stun (directHit).
+  // Riposte (owner 2026-10-04): a human standard-melee blocker keeps its Block window (guard, protection) until its attack,
+  // special or roll starts (riposteTry), and the attacker stays stunned long enough for that counter, which then ends the stun
+  // (settleRiposte). The stun allows for the blocker's windup and for walking back the extra rebound of block-force chips.
   // Bot, ranged and magic blockers and a Siren attacker keep the old stun: bot difficulty, boss fights and golden traces as before.
   const riposte=!p.bot&&standardWeapon(p.spec)&&attacker.spec!=='siren',stun=meleeBlockStun(blockedDamage,blockedImpulse);
-  this.standardMelee.stun(attacker,riposte?Math.max(stun,meleeBlockPunish(blockedDamage,Math.max(0,p.cooldown)+(WEAPONS[p.spec].windup||0)/p.stats.attackRate)):stun);
+  const chipPush=Math.max(0,force-Math.min(800,160+Math.max(0,blockedDamage)*4))/C.playerMass*attacker.stats.knockbackTaken/C.externalDrag/(C.speed*p.stats.speed);
+  this.standardMelee.stun(attacker,riposte?Math.max(stun,meleeBlockPunish(blockedDamage,Math.max(0,p.cooldown)+(WEAPONS[p.spec].windup||0)/p.stats.attackRate,chipPush)):stun);
   if(riposte){p.riposteAt=this.time;attacker.riposte={by:p.id,until:attacker.hitStunUntil!};
-   // The parried attacker's queued afterimages would otherwise land on the blocker once it counters.
-   this.arcade.echoes=this.arcade.echoes.filter(e=>e.source!==attacker.id);this.emperor.echoes=this.emperor.echoes.filter(e=>e.source!==attacker.id);}attacker.hitReaction=parryReaction(attacker.body.translation(),facing,len(away)>.01?away:mul(direction,-1),this.time,attacker.hitStunUntil!);attacker.ext=add(attacker.ext,mul(len(away)>.01?away:mul(direction,-1),force/C.playerMass*attacker.stats.knockbackTaken));attacker.lastSource=p.id;attacker.sourceAt=this.time;attacker.cooldown=Math.max(attacker.cooldown,.18);this.emit('meleeRebound',point,{source:p.id,target:source,amount:force,radius:Math.min(4,1+force/900),color:0x91f7eb});}}
+   // The counter's stagger must be able to replace this stun; a second riposte needs a new Block (4 s cooldown), so no chain.
+   attacker.staggerImmuneUntil=0;
+   // The parried attacker's queued afterimages spare the blocker (they still hit anyone else).
+   for(const e of this.arcade.echoes)if(e.source===attacker.id)e.spare=p.id;for(const e of this.emperor.echoes)if(e.source===attacker.id)e.spare=p.id;}attacker.hitReaction=parryReaction(attacker.body.translation(),facing,len(away)>.01?away:mul(direction,-1),this.time,attacker.hitStunUntil!);attacker.ext=add(attacker.ext,mul(len(away)>.01?away:mul(direction,-1),force/C.playerMass*attacker.stats.knockbackTaken));attacker.lastSource=p.id;attacker.sourceAt=this.time;attacker.cooldown=Math.max(attacker.cooldown,.18);this.emit('meleeRebound',point,{source:p.id,target:source,amount:force,radius:Math.min(4,1+force/900),color:0x91f7eb});}}
  if(!p.blockProcUsed){p.blockProcUsed=true;const mods=firstBlockChips(p.chips);if(Object.keys(mods).length)this.emit('blockProc',p.body.translation(),{source:p.id,mods});this.chaos.block(p);if(p.stats.blockHeal)this.heal(p,p.stats.blockHeal);if(p.stats.blockAmmo&&WEAPONS[p.spec].ammo)p.ammo=Math.min(magazineCapacity(p.spec,p.stats),p.ammo+p.stats.blockAmmo);if(p.stats.blockPulseDamage>0)this.explode(p,p.body.translation(),C.blockPulseRadius,p.stats.blockPulseDamage,p.stats.blockPulseImpulse,'blockPulse',true);}
  }
  reflectProjectile(shot:Projectile,target:Player,point:Vec){this.successfulBlock(target,'projectile',point,shot.owner);
@@ -333,8 +334,14 @@ export class Simulation {
  p.blockTime=Math.max(0,p.blockTime-dt);p.blockCd=Math.max(0,p.blockCd-dt);
  
  }
- /** A live riposte window ends as the blocker attacks, uses its special or starts a roll, so the counter comes out at once. */
- breakRiposte(p:Player){if(riposteOpen(p)&&(p.input.attack||p.input.secondary||p.input.dash&&!p.rollHeld))p.blockTime=0;}
+ /** A live riposte window ends as the blocker's attack, special or roll starts, so the counter comes out at once; an action
+ * that cannot start (no stamina, cooldown) leaves the window and its protection in place. */
+ private riposteTry(p:Player,want:boolean,act:()=>void){if(!want||!riposteOpen(p)){act();return;}const kept=p.blockTime;p.blockTime=0;act();
+  const t=this.time;if(!(rolling(p,t)||committed(p,t)||p.swing||p.meleeAction&&t<p.meleeAction.until||p.cast||p.burst>0))p.blockTime=kept;}
+ /** The riposting blocker's landed counter ends the riposte stun (and the parry stagger), so the hit's own stagger, launch or
+  * Dagger pair stun applies as on any other hit instead of being swallowed. An absorbed hit or another player's leaves it. */
+ private settleRiposte(target:Player,hitter:Player,actual:number){const r=target.riposte;if(!r)return;const live=target.hitStunUntil===r.until&&this.time<r.until;
+  if(live&&(r.by!==hitter.id||actual<=0))return;target.riposte=undefined;if(!live)return;target.hitStunUntil=this.time;if(target.hitReaction?.kind==='parry')target.hitReaction.until=this.time;}
  beginRoll(p:Player){if(this.siren.busy(p))return false;
  const requested=p.input.dash,pressed=requested&&!p.rollHeld;p.rollHeld=requested;
  // Roll-cancel (owner 2026-10-04): a human pilot's fresh roll cancels a standard melee primary (windup, sweep, recovery or
@@ -436,7 +443,7 @@ export class Simulation {
  if(p.cast&&this.time>=p.cast.at){const cast=p.cast;p.cast=undefined;if(p.hp>0&&p.blockTime<=0)this.spawnProjectile(p,cast.multiplier,cast.secondary);}
  this.siren.stepPlayer(p,dt);this.siren.input(p);this.emperor.stepPlayer(p);if(p.input.electric&&!rolling(p,this.time))this.emperor.start(p,'electric');if(abilityUser(p.spec))this.abilities.input(p);this.arcade.stepPlayer(p,dt);if(p.input.hadoken)this.arcade.beginHadoken(p);if(p.input.uppercut)this.arcade.start(p,'shoryuken');
  if(p.input.reload)this.beginReload(p);
- if(p.input.secondary&&w.secondary!=='guard')this.secondary(p);if(p.input.attack&&!p.guarding)this.primary(p);
+ const special=p.input.secondary&&w.secondary!=='guard',strike=p.input.attack&&!p.guarding;this.riposteTry(p,special||strike,()=>{if(special)this.secondary(p);if(strike)this.primary(p);});
  if(p.burst>0&&this.time>=p.burstAt){p.burst--;p.burstAt=this.time+.08/p.stats.attackRate;this.spawnProjectile(p,.9);}
  this.melee(p);this.chaos.melee(p);
  const motion=prepareMotion(this.world,p.body,p.collider,p,meleeMotionInput(usesRoll(p.spec)?{...p.input,dash:false}:p.input,p.meleeAction,this.time),{...p.stats,...this.pve?.motion(p),time:this.time,roll:p.roll,locomotionLock:committed(p,this.time)||this.siren.motion(p,dt).locked,attackStep:this.siren.motion(p,dt).locked?this.siren.motion(p,dt).step:attackStep(p.attackCommitment,this.time,dt),map:this.options.map,recoveryRoll:recoveryMotion(p.knockdown,this.time,p.input),dashSpeed:demonStepUser(p)?DEMON_STEP.speed:undefined,dashDuration:demonStepUser(p)?DEMON_STEP.seconds:undefined,waveSpeed:this.emperor.waveSpeed(p),electricStepSpeed:this.emperor.active(p)?EMPEROR.electricStepSpeed:undefined,maxExternalSpeed:(p.leet?.launchUntil||0)>this.time?100000:undefined,maxExternalLift:(p.leet?.launchUntil||0)>this.time?100000:undefined,speed:p.stats.speed*this.abilities.motionFactor(p),sprint:SPRINT.speed},dt,p.guarding,!!p.swing,this.arcade.stunned(p));p.sprinting=motion.sprinting;
@@ -498,7 +505,7 @@ export class Simulation {
  const remaining=[...this.players.values()].filter(x=>x.connected);if(remaining.length<2&&!this.pve){this.winner=remaining[0]?.id||null;this.result=remaining[0]?`${remaining[0].name} wins · other players disconnected`:'Room closed · players disconnected';this.phase='match';}
  }
  if(this.phase==='fight'&&this.pve?.holding()){this.updateBossSong();for(const p of this.players.values())this.preparePlayer(p,dt);this.pve.stepHold(dt);this.world.step();this.tickMs=performance.now()-started;return;}
- this.advance();this.updateBossSong();if(this.phase==='fight'){for(const p of this.players.values())this.preparePlayer(p,dt);this.leet.routeInputs();for(const p of this.players.values()){this.breakRiposte(p);this.beginRoll(p);}for(const p of this.players.values()){if(p.input.block&&!p.blockHeld)this.beginBlock(p);p.blockHeld=p.input.block===true;}for(const p of this.players.values())this.updatePlayer(p,dt);this.stepProjectiles(dt);this.chaos.step(dt);this.abilities.step(dt);this.leet.step(dt);this.arcade.step();this.emperor.step();this.siren.step(dt);this.physics(dt);for(const p of this.players.values())this.siren.pinVictim(p);this.stageHazards.step();this.leet.restoreInputs();
+ this.advance();this.updateBossSong();if(this.phase==='fight'){for(const p of this.players.values())this.preparePlayer(p,dt);this.leet.routeInputs();for(const p of this.players.values())this.riposteTry(p,!!p.input.dash&&!p.rollHeld,()=>this.beginRoll(p));for(const p of this.players.values()){if(p.input.block&&!p.blockHeld)this.beginBlock(p);p.blockHeld=p.input.block===true;}for(const p of this.players.values())this.updatePlayer(p,dt);this.stepProjectiles(dt);this.chaos.step(dt);this.abilities.step(dt);this.leet.step(dt);this.arcade.step();this.emperor.step();this.siren.step(dt);this.physics(dt);for(const p of this.players.values())this.siren.pinVictim(p);this.stageHazards.step();this.leet.restoreInputs();
  this.pve?.stepAfterPhysics(dt);ward(this)?.step();this.tools?.step();
  if(this.time-this.fightStart>C.maxRoundSeconds&&!this.options.sandbox&&!this.pve){for(const p of this.players.values())this.damage(p,dt*18,null,'overtime');}
  this.resolveRound();}else if(this.phase==='lobby'||this.phase==='intro'||this.phase==='countdown'||this.phase==='result'){if(this.phase==='result')for(const p of this.players.values())p.body.setLinvel(v(0,p.hp>0?p.body.linvel().y:0,0),true);this.world.step();}this.tickMs=performance.now()-started;}
