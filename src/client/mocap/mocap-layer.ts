@@ -3,11 +3,12 @@ import type {PlayerView} from '../../shared/simulation.js';
 import type {SpecId} from '../../shared/config.js';
 import type {attackPose} from '../character-animation.js';
 import {meleeRecovery} from '../../shared/souls-combat.js';
-import {smoothMotion as ease} from '../motion-quality.js';
+import * as T from 'three';
+import {smoothMotion as ease,gaitFoot,layerLeg} from '../motion-quality.js';
 import {phraseFootwork,phraseSpins} from '../primary-melee-motion.js';
 import {CHANNEL_COUNT,sampleClip,retime,clipDuration,type MocapClip} from './mocap-clip.js';
 import {applyMocapPose,blendRows,blendRowsTurning,keepBladesOffFloor} from './mocap-pose.js';
-import {isFirstPersonRig} from '../pose-flags.js';
+import {isFirstPersonRig,mocapPosed} from '../pose-flags.js';
 import {GREATSWORD_CLIPS as GS} from './greatsword-clips.js';
 import {SWORD_CLIPS as SW} from './sword-clips.js';
 import {DAGGERS_CLIPS as DG} from './daggers-clips.js';
@@ -20,7 +21,8 @@ import type {MocapPoseOptions} from './mocap-pose.js';
  * `fit` adapts every pose of the set to the weapon (one-handed grip, clearance dimensions). Every cut stands on the
  * procedural phrase's footwork (primary-melee-motion phraseFootwork: planted steps against the authoritative travel and the
  * dagger 4th cut's hopped spin). `gait`: the guard stands on the procedural legs too (the pack's idle stance is wider than
- * the gait's, and settling into it at every stop slides the planted feet: locomotion-root-sync). `anticipation` (0..1,
+ * the gait's, and settling into it at every stop slides the planted feet: locomotion-root-sync); the guard's, block's and
+ * stagger's captured hips height and pelvis ride over them, each grounded leg re-solved onto the gait's foot (replant). `anticipation` (0..1,
  * default 1) is the share of a cut's captured anticipation the windup keeps: below 1 its poses ease toward the straight
  * path from the start pose to the contact pose (the daggers' .09 s windup cannot carry their full captured pull-back).
  * Source: the owner's Explosive RPG Character pack (scripts/mocap/convert-explosive.mjs; the shield set read left↔right
@@ -38,9 +40,16 @@ export const MOCAP={enabled:true};
  * captured guard holds the blade upright in front of the face, across the crosshair). */
 export const mocapSet=(spec:string,r:CharacterRig):MocapSet|undefined=>MOCAP.enabled&&!isFirstPersonRig(r)?MOCAP_SETS[spec as SpecId]:undefined;
 
-/** After the whole pose (animateCharacter): a `floor` set's blades stay above the floor (keepBladesOffFloor). */
-export function mocapFloorGuard(r:CharacterRig,p:PlayerView){if(mocapSet(p.spec,r)?.fit?.floor)keepBladesOffFloor(r);}
-const row=new Float32Array(CHANNEL_COUNT),rowB=new Float32Array(CHANNEL_COUNT),rowC=new Float32Array(CHANNEL_COUNT);
+/** After the whole pose (animateCharacter): a `floor` set's blades stay above the floor (keepBladesOffFloor), on grounded
+ * frames a captured layer posed (procedural specials, knockdowns, juggles and deaths keep their own blades). */
+export function mocapFloorGuard(r:CharacterRig,p:PlayerView){if(p.grounded&&mocapPosed(r)&&mocapSet(p.spec,r)?.fit?.floor)keepBladesOffFloor(r);}
+const row=new Float32Array(CHANNEL_COUNT),rowB=new Float32Array(CHANNEL_COUNT),rowC=new Float32Array(CHANNEL_COUNT),_ft=new T.Vector3();
+/** A `gait` set's captured hips height and pelvis over the gait's legs: each grounded leg re-solved onto this sample's gait
+ * foot (as the ground pass would), so the layers after it (a hit reaction's plants) read the ankles where they show. */
+function replant(r:CharacterRig,p:PlayerView){
+ if(!p.grounded)return;
+ for(const left of [true,false]){const f=gaitFoot(r,left);if(!f)return;_ft.set(f.x,f.y,f.z);layerLeg(r,left,_ft,f.yaw,f.pitch,f.toe);}
+}
 /** The cut clip for a 1-based attack index. */
 export function cutClip(set:MocapSet,attackIndex:number|undefined){const c=set.cuts!;return c[((Math.max(1,attackIndex||1)-1)%c.length+c.length)%c.length];}
 /** Clip time for an attack `age` (seconds since lastAttack): [start, contact start, contact end, settled] ↔ [0, windup,
@@ -95,13 +104,16 @@ export function mocapReady(r:CharacterRig,p:PlayerView,time:number,carry:number)
  const still=1-ease(r.motion/.2);
  // The captured guard is the whole base (not blended over the procedural guard): the carries then turn the wrists between
  // two captured grips, never from the procedural grip (the daggers' is the opposite way round from their reverse grip).
- sampleClip(set.idle,time,row);applyMocapPose(r,row,{weight:1,legs:set.gait?0:still,root:still,...set.fit});
- if(carry>.001&&set.walk&&set.run){
-  const phase=((r.stride/(2*Math.PI))%1+1)%1,k=ease((gaitSpeed(r,p,time)-3.2)/2.8);
+ // (A layer the next one fully covers skips its arms and blade clearance, or is skipped: the clearance is the costly part.)
+ const walking=carry>.001&&!!set.walk&&!!set.run,k=walking?ease((gaitSpeed(r,p,time)-3.2)/2.8):0;
+ sampleClip(set.idle,time,row);applyMocapPose(r,row,{weight:1,legs:set.gait?0:still,root:still,...set.fit,...(walking&&carry>=.999?{arms:false}:{})});
+ if(set.gait&&still>.001)replant(r,p);
+ if(walking){
+  const phase=((r.stride/(2*Math.PI))%1+1)%1;
   // Walk, then run over it: the two carries hold the blade far apart (raised guard / trailed over the shoulder), so they
   // blend through the joints' rotations (slerp) instead of averaging their blade vectors.
-  sampleClip(set.walk,set.walk.marks![0]+phase*clipDuration(set.walk),row);applyMocapPose(r,row,{weight:carry,legs:0,root:0,...set.fit});
-  if(k>.001){sampleClip(set.run,set.run.marks![0]+phase*clipDuration(set.run),row);applyMocapPose(r,row,{weight:carry*k,legs:0,root:0,...set.fit});}
+  if(carry*k<.999){sampleClip(set.walk!,set.walk!.marks![0]+phase*clipDuration(set.walk!),row);applyMocapPose(r,row,{weight:carry,legs:0,root:0,...set.fit});}
+  if(k>.001){sampleClip(set.run!,set.run!.marks![0]+phase*clipDuration(set.run!),row);applyMocapPose(r,row,{weight:carry*k,legs:0,root:0,...set.fit});}
  }
  return true;
 }
@@ -115,7 +127,7 @@ export function mocapBlock(r:CharacterRig,p:PlayerView,time:number,since:number,
   // Driven back at the impact (peak ~.1 s), recovered into the guard by ~.45 s; blended in over 40 ms, out over the tail.
   const k=ease(u/.04)*(1-ease((u-.35)/.12));if(k>.001){sampleClip(h,retime([0,.1,.45],hm,u),rowB);blendRows(row,rowB,k,row);}
  }
- applyMocapPose(r,row,{weight:1,legs:set.gait?0:legs,root:legs,...set.fit});return true;
+ applyMocapPose(r,row,{weight:1,legs:set.gait?0:legs,root:legs,...set.fit});if(set.gait&&legs>.001)replant(r,p);return true;
 }
 /** Hitstun base pose: the captured reel retimed into the authoritative stun (impact → extreme at ~35% → recovered at the
  * stun's end), scaled by how frontal the push is (the capture is a hit from the front). The procedural impulse reaction
@@ -125,5 +137,5 @@ export function mocapStagger(r:CharacterRig,p:PlayerView,time:number,carry:numbe
  // Over the guard idle (the pose the stun releases into), at most .7: the impulse reaction adds its own recoil on top.
  const at=h&&h.at<=time?h.at:time,until=Math.max(p.hitStunUntil||0,at+.05),span=until-at,front=h?Math.min(1,Math.max(.35,-h.direction.z*1.4+.35)):.6;
  sampleClip(set.stagger,retime([0,span*.4,span],set.stagger.marks!,time-at),row);
- applyMocapPose(r,row,{weight:.7*front*ease((time-at)/.06)*(1-ease((time-until+.1)/.1)),...set.fit});return true;
+ applyMocapPose(r,row,{weight:.7*front*ease((time-at)/.06)*(1-ease((time-until+.1)/.1)),...(set.gait?{legs:0}:{}),...set.fit});if(set.gait)replant(r,p);return true;
 }

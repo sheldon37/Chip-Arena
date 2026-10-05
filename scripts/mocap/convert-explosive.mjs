@@ -64,8 +64,9 @@ export const SETS={
   idle:{file:H('Idle'),loop:true},
   walk:{file:H('Walk'),loop:true,strike:true},
   run:{file:H('Run-Forward'),loop:true,strike:true,oneHand:true},
-  // 1: a diagonal forehand chopping down across the front to the low left.
-  cutA:{file:H('Attack2'),marks:[0,.458,.558,1.2]},
+  // 1: a forehand from overhead, chopping down across the front to the left (Attack2's windup held the fists where the
+  // voxel head is).
+  cutA:{file:H('Attack5'),marks:[0,.44,.54,1.2]},
   // 2: a flat backhand at chest height, left to right.
   cutB:{file:H('Attack8'),marks:[0,.475,.525,1.2]},
   block:{file:H('Block'),loop:true,marks:[0,.1,.2]},

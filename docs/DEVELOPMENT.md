@@ -83,7 +83,8 @@ tools/visual-lab/mocap-preview.generated.ts [--events <out.json>]` writes the ca
 each clip's authored Hit markers) for the visual lab's `mocap=<key>` raw view (`support=0` for one-handed clips);
 `mocapOff=1` renders the procedural layers for before/after strips. Attack clips are retimed onto the shared
 windup/active/recovery timing at runtime; shared timing never depends on them. The shield set is the pack's left-arm shield
-read onto the game's right hand; the daggers use a reverse grip; captured cuts stand on the procedural phrase's footwork.
+read onto the game's right hand; the daggers use a reverse grip; the converter keeps the greatsword's two-handed hilt
+(fists, pommel, blade root) off the voxel head, pauldrons and torso; captured cuts stand on the procedural phrase's footwork.
 The earlier Mixamo greatsword set (`node scripts/mocap/convert-greatsword.mjs <pack dir>`, the owner's "Great Sword Pack")
 is superseded: running it writes that set back into greatsword-clips.ts.
 

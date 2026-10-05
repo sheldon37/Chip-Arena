@@ -39,6 +39,39 @@ export const CHANNELS=['yaw','bx','by','bz',
 
 const UP=new T.Vector3(0,1,0);
 const q=()=>new T.Quaternion(),v=()=>new T.Vector3();
+/** The voxel rig's head, shoulder caps and torso (character-rig.ts; the runtime blade clearance's obstacles), each on the
+ * joint that carries it: [joint, centre in the joint's frame, half extents]. Joint origins in chest space: head (0, .42, 0)
+ * (.10 up the neck at .32), clavicles (±.275, .18, 0). The head block is the blank head with its jaw and crown; the torso
+ * block the ribcage and upper chest with the sternum's plate (the 11 cm under the jaw stay free for the fists). */
+const BLOCKS=[['head',[0,.1625,.005],[.17,.1975,.165]],['lclav',[.065,-.01,0],[.095,.06,.105]],['rclav',[-.065,-.01,0],[.095,.06,.105]],['chest',[0,.111,.005],[.265,.161,.165]]];
+/** Points of the held hilt that must stay out of them: [along the blade from the main fist, along the edge, margin, body
+ * only]: both fists (the support fist .11 down the grip; ~.05 of voxel fist round the wrist), the greatsword's pommel (.27
+ * behind the main fist; the runtime's cut clearance only turns the blade, which cannot lift a pommel off the chest) and,
+ * clear of the pauldrons and torso, the blade's slab where it leaves the guard (centre and edges of its .09 half-width;
+ * the runtime's .02 clearance): there a turn about the grip has no lever. A blade held up across the face is left to the
+ * runtime clearance, which turns it clear of the head. */
+const HILT=[[-.27,0,.03],[-.11,0,.05],[0,0,.05],...[.22,.3].flatMap(s=>[[s,0,.02,1],[s,.09,.02,1],[s,-.09,.02,1]])];
+/** Signed distance (negative inside) and continuous outward normal of a box, as blade-clearance.ts sdf: the nearest face's
+ * normal blended with any face within 2 cm of as near, inside and (over the exact gradient) outside. */
+const blend=(x,m)=>T.MathUtils.smoothstep(x-m,-.02,0);
+function boxDistance(b,p,n){
+ const l=p.clone().sub(b.c).applyQuaternion(b.qi),qx=Math.abs(l.x)-b.h.x,qy=Math.abs(l.y)-b.h.y,qz=Math.abs(l.z)-b.h.z,m=Math.max(qx,qy,qz),sx=Math.sign(l.x)||1,sy=Math.sign(l.y)||1,sz=Math.sign(l.z)||1;
+ if(m>0){const ox=Math.max(qx,0),oy=Math.max(qy,0),oz=Math.max(qz,0);n.set((ox+.02*blend(qx,m))*sx,(oy+.02*blend(qy,m))*sy,(oz+.02*blend(qz,m))*sz).normalize().applyQuaternion(b.q);return Math.hypot(ox,oy,oz);}
+ n.set(blend(qx,m)*sx,blend(qy,m)*sy,blend(qz,m)*sz).normalize().applyQuaternion(b.q);return m;
+}
+/** Moves a two-handed grip `g` (chest space) until the hilt points clear the rig's blocks as this row poses them (its neck,
+ * head and clavicle channels): the capture's hands pass close in front of a human face and shoulder, which the voxel head
+ * and pauldrons are far bigger than. Every penetrating point asks to move out along its normal; the requests are averaged
+ * with the deepest weighing most, a few times over, so the grip's path stays continuous. */
+function clearHilt(row,g,bl,ed){
+ const R=k=>{const i=CHANNELS.indexOf(k+'.x'),r=v().set(row[i],row[i+1],row[i+2]),a=r.length();return a<1e-9?q():q().setFromAxisAngle(r.divideScalar(a),a);};
+ const Rn=R('neck'),frames={chest:[v(),q()],head:[v().set(0,.1,0).applyQuaternion(Rn).add(v().set(0,.32,0)),Rn.clone().multiply(R('head'))],lclav:[v().set(.275,.18,0),R('lclav')],rclav:[v().set(-.275,.18,0),R('rclav')]};
+ const boxes=BLOCKS.map(([j,c,h])=>{const [o,r]=frames[j];return {c:v().fromArray(c).applyQuaternion(r).add(o),q:r,qi:r.clone().invert(),h:v().fromArray(h)};});
+ const p=v(),n=v(),acc=v();
+ for(let it=0;it<8;it++){acc.set(0,0,0);let w=0;
+  for(const [s,e,M,body] of HILT){p.copy(g).addScaledVector(bl,s).addScaledVector(ed,e);for(const b of body?boxes.slice(1):boxes){const pen=M-boxDistance(b,p,n);if(pen>0){const k=pen**3;acc.addScaledVector(n,k*pen);w+=k;}}}
+  if(w<=0)break;g.addScaledVector(acc,1/w);}
+}
 const rotvec=(qq,out)=>{const w=T.MathUtils.clamp(qq.w,-1,1),s=Math.sqrt(Math.max(0,1-w*w)),a=2*Math.acos(Math.abs(w)),k=s<1e-8?2:(w<0?-a:a)/s;return out.set(qq.x*k,qq.y*k,qq.z*k);};
 
 /** Skeleton calibration from the bind pose (Mixamo T-pose): each mapped bone's world rotation in the rig's rest pose
@@ -72,7 +105,7 @@ export function calibrate(obj,{mirror=false,grip='blade'}={}){
 
 /** Sample `clip` on `obj` at `fps`; returns one Float32Array row per frame in CHANNELS order. `mirror` reads the capture
  * left↔right (calibrate with the same flag); `oneHand` keeps the support hand off the weapon (one-handed weapons). */
-export function retarget(obj,clip,cal,fps,{mirror=false,oneHand=false,leftBlade=false,soften=false,poleTurn=0,splitTwist=false,bothHands=false,heading=0,loop=false}={}){
+export function retarget(obj,clip,cal,fps,{mirror=false,oneHand=false,leftBlade=false,soften=false,poleTurn=0,splitTwist=false,bothHands=false,hilt=bothHands,heading=0,loop=false}={}){
  const mixer=new T.AnimationMixer(obj);mixer.clipAction(clip).play();const {wq,wp}=bones(obj,mirror);
  const n=Math.max(2,Math.round(clip.duration*fps)+1),rows=[];let yawPrev=0,hips0=null;
  const W={},Wp={};const names=['Hips','Spine1','Spine2','Neck','Head','LeftShoulder','RightShoulder','LeftUpLeg','RightUpLeg','LeftLeg','RightLeg','LeftFoot','RightFoot','LeftHand','RightHand'];
@@ -143,9 +176,11 @@ export function retarget(obj,clip,cal,fps,{mirror=false,oneHand=false,leftBlade=
   // shoulders are far wider than a human's, so the grip shifts toward the support shoulder until that hand can reach it.
   // A grip held far over on the main-hand side (the sprint's shoulder carry) would have to cross the chest for the support
   // hand to reach it, dragging the blade through the torso: there the support hand lets go instead. With `bothHands` it
-  // never lets go (the arm's last reach, up to rig-ik's .515, covers the rest of a high guard by the main shoulder).
-  if(two>0){const L=new T.Vector3(RIG.shoulderX,RIG.shoulderY,0),s=g.clone().addScaledVector(bl,-.11),need=s.distanceTo(L)-.44;
-   if(need>0){if(!bothHands)two*=1-T.MathUtils.smoothstep(need,.22,.32);g.add(L.sub(s).normalize().multiplyScalar(Math.min(need,bothHands?.17:.25)*two));}}
+  // never lets go: the grip comes all the way within its reach, then out of the head and torso blocks (clearHilt).
+  // (Alternated a few times: the way out of the head can carry the support grip back out of reach.)
+  for(let k=0;k<(bothHands?4:1)&&two>0;k++){const L=new T.Vector3(RIG.shoulderX,RIG.shoulderY,0),s=g.clone().addScaledVector(bl,-.11),need=s.distanceTo(L)-.44;
+   if(need>0){if(!bothHands)two*=1-T.MathUtils.smoothstep(need,.22,.32);g.add(L.sub(s).normalize().multiplyScalar((bothHands?need:Math.min(need,.25))*two));}
+   if(hilt)clearHilt(row,g,bl,ed);}
   const rp=pole(Wp.RightArm,Wp.RightForeArm,Wp.RightHand,g,-RIG.shoulderX,poleR);row.push(g.x,g.y,g.z,bl.x,bl.y,bl.z,ed.x,ed.y,ed.z,rp.x,rp.y,rp.z);
   // The free hand's wrist frame (the rig's wrist +z, +y); with `leftBlade` its +z is the left weapon's blade, calibrated from
   // the left fist like the right one, and +y blade × edge (the left wrist's weapon socket holds it along +z).

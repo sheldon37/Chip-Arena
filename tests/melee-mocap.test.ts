@@ -10,9 +10,11 @@ import {initPhysics,type PlayerView} from '../src/shared/simulation.js';
 import type {SpecId} from '../src/shared/config.js';
 import {animateCharacter,animationPreviewPlayer} from '../src/client/character-animation.js';
 import * as bladeClearance from '../src/client/mocap/blade-clearance.js';
-import {probeBase,probeRig} from './helpers/motion-probe.js';
+import {probeBase,probeRig,probeMotion} from './helpers/motion-probe.js';
 import {CH,CHANNEL_COUNT,decodeClip,sampleClip,clipDuration,type MocapClip} from '../src/client/mocap/mocap-clip.js';
-import {MOCAP_SETS,cutClip,cutTime} from '../src/client/mocap/mocap-layer.js';
+import {MOCAP,MOCAP_SETS,cutClip,cutTime,mocapFloorGuard} from '../src/client/mocap/mocap-layer.js';
+import {blendRowsTurning} from '../src/client/mocap/mocap-pose.js';
+import {clearLegsAuthored} from '../src/client/pose-flags.js';
 import {SWORD_CLIPS} from '../src/client/mocap/sword-clips.js';
 import {DAGGERS_CLIPS} from '../src/client/mocap/daggers-clips.js';
 import {SHIELD_CLIPS} from '../src/client/mocap/shield-clips.js';
@@ -163,4 +165,62 @@ test('guard, walk, run and block: blades clear the body and the floor; the raise
   }
   if(spec!=='shield')assert.ok(worst>=.004,`${spec} ${mode}: blade ${(-worst*1000).toFixed(0)} mm into ${at}`);
  }
+});
+
+test('captured cuts set a planted foot down where the phrase does: the captured hips lower until the legs reach', () => {
+ // The phrase's footwork assumes its own crouch; the captured hips ride higher, and a foot at full leg reach would hang.
+ const o=new T.Vector3(),a=new T.Vector3();
+ const feet=(spec:SpecId,index:number,rate:number,end:number,on:boolean)=>{MOCAP.enabled=on;const ys:number[][]=[];
+  try{cut(spec,index,rate,120,(r,t)=>{if(t>=2&&t<=end){r.group.getWorldPosition(o);ys.push([r.leftFoot,r.rightFoot].map(f=>f.getWorldPosition(a).y-o.y));}});}finally{MOCAP.enabled=true;}return ys;};
+ for(const spec of ALL)for(const rate of [.8,1,1.35])for(let index=1;index<=CUTS[spec];index++){
+  const end=2+(WEAPONS[spec].windup+window+meleeRecovery(spec))/rate,on=feet(spec,index,rate,end,true),off=feet(spec,index,rate,end,false);let worst=0,at=0;
+  on.forEach((y,i)=>y.forEach((h,k)=>{if(off[i][k]<-.785&&h-off[i][k]>worst){worst=h-off[i][k];at=i/120;}}));
+  assert.ok(worst<.02,`${spec} ${index} @${rate}x: a foot the phrase plants hangs ${(worst*1000).toFixed(0)} mm above it at ${at.toFixed(3)} s`);
+ }
+});
+
+test('hit and parry reactions over the captured guard keep the feet on the gait: no pop, no sinking, no slide back', () => {
+ // The captured guard's hips height and pelvis ride over the gait's legs, which are re-solved onto the gait's feet before
+ // the reaction plants from them (a greatsword hit used to start its plants from legs hanging 18 cm off and under the floor).
+ const T0=2,hit=(kind:'hit'|'parry',until:number)=>({kind,at:T0,until,yaw:0,direction:{x:0,y:0,z:-1},point:{x:.12,y:.1,z:.3},zone:'torso' as const,turn:kind==='parry'?-.35:.35,strength:kind==='parry'?1:.85});
+ const run=(spec:SpecId,kind:'hit'|'parry',d:number,on:boolean)=>{MOCAP.enabled=on;try{
+  const s=probeMotion({spec,mode:'idle',from:T0-.1,to:T0+d+.6,hz:120,keepFrames:true,patch:t=>t>=T0?{hitReaction:hit(kind,T0+d),hitStunUntil:T0+d}:{}}).samples!;let step=0,minY=Infinity,travel=0;
+  for(let i=1;i<s.length;i++)for(let f=0;f<2;f++){const k=s[i].ankles[f].distanceTo(s[i-1].ankles[f]);step=Math.max(step,k);minY=Math.min(minY,s[i].ankles[f].y);if(s[i].t>T0+d/2&&s[i].t<=T0+d+.5)travel+=k;}
+  return {step,minY,travel};}finally{MOCAP.enabled=true;}};
+ for(const spec of ALL)for(const kind of ['hit','parry'] as const)for(const d of [.3,.8]){
+  const on=run(spec,kind,d,true),off=run(spec,kind,d,false),at=`${spec} ${kind} (${d} s stun)`;
+  assert.ok(on.step<=off.step+.005,`${at}: an ankle jumps ${(on.step*1000).toFixed(0)} mm in a frame (procedural ${(off.step*1000).toFixed(0)})`);
+  assert.ok(on.minY>-.82,`${at}: an ankle sinks to ${on.minY.toFixed(3)}`);
+  assert.ok(on.travel<=off.travel*1.25+.02,`${at}: the feet travel ${(on.travel*1000).toFixed(0)} mm from mid-stun (procedural ${(off.travel*1000).toFixed(0)})`);
+ }
+});
+
+test('walking and running carries never snap the weapon (sampled at 960 Hz)', () => {
+ // A snap (a clearance contact normal flipping) keeps its size at any rate; the carries' own motion is a few hundredths.
+ for(const spec of ALL)for(const mode of ['walk','run'])for(const off of spec==='daggers'?[false,true]:[false]){
+  const r=probeRig(spec),base={...probeBase(spec),id:'carry960'} as PlayerView;let prev:T.Quaternion|undefined,step=0,at=0;
+  for(let i=0;i<=1150;i++){const t=1+i/960;animateCharacter(r,{...animationPreviewPlayer(base,mode,t),hitStunUntil:-1e9} as PlayerView,t,1/960);r.group.updateMatrixWorld(true);
+   const q=(off?r.offWeapon:r.weapon).getWorldQuaternion(new T.Quaternion());if(prev&&t>1.2){const a=q.angleTo(prev);if(a>step){step=a;at=t;}}prev=q;}
+  assert.ok(step<.04,`${spec} ${mode}: ${off?'off-hand ':''}weapon turns ${step.toFixed(3)} rad in 1/960 s at ${at.toFixed(4)} s`);
+ }
+});
+
+test('blendRowsTurning turns the roll channels along the great circle and blends the rest componentwise', () => {
+ const a=new Float32Array(CHANNEL_COUNT),b=new Float32Array(CHANNEL_COUNT),o=new Float32Array(CHANNEL_COUNT);
+ a[CH['edge.x']]=1;b[CH['edge.y']]=1;a[CH['lup.z']]=1;b[CH['lup.x']]=1;a[CH['grip.x']]=.2;b[CH['grip.x']]=.6;
+ for(const k of [0,.25,.5,.75,1]){blendRowsTurning(a,b,k,o);const c=Math.cos(k*Math.PI/2),s=Math.sin(k*Math.PI/2);
+  assert.ok(Math.abs(o[CH['edge.x']]-c)<1e-5&&Math.abs(o[CH['edge.y']]-s)<1e-5&&Math.abs(o[CH['edge.z']])<1e-5,`edge at ${k}`);
+  assert.ok(Math.abs(o[CH['lup.z']]-c)<1e-5&&Math.abs(o[CH['lup.x']]-s)<1e-5,`free wrist up at ${k}`);
+  assert.ok(Math.abs(o[CH['grip.x']]-(.2+.4*k))<1e-6,`grip at ${k}`);
+ }
+});
+
+test('the floor guard turns blades only on grounded frames a captured layer posed', () => {
+ // Turned upside down, the guard's blade points through the floor plane with the wrist above it.
+ const r=probeRig('greatsword'),base={...probeBase('greatsword'),id:'floor'} as PlayerView,q=new T.Quaternion();
+ const turned=(p:PlayerView,posed=true)=>{animateCharacter(r,p,1,1/60);r.body.rotation.x+=Math.PI;if(!posed)clearLegsAuthored(r);r.group.updateMatrixWorld(true);q.copy(r.rightHand.quaternion);mocapFloorGuard(r,p);return r.rightHand.quaternion.angleTo(q);};
+ const idle={...animationPreviewPlayer(base,'idle',1),hitStunUntil:-1e9} as PlayerView;
+ assert.ok(turned({...idle,grounded:true})>.05,'a captured, grounded pose is guarded');
+ assert.equal(turned({...idle,grounded:false}),0,'airborne (a juggle): the floor is not under the blade');
+ assert.equal(turned({...idle,grounded:true},false),0,'a pose no captured layer posed (specials, knockdowns) keeps its blade');
 });

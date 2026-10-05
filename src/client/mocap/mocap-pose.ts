@@ -3,6 +3,7 @@ import type {CharacterRig} from '../character-rig.js';
 import {braceWeapon,hand} from '../rig-ik.js';
 import {CH} from './mocap-clip.js';
 import {clearBlade,FLOOR_CLEAR} from './blade-clearance.js';
+import {markMocapPosed} from '../pose-flags.js';
 /** Poses the voxel rig from one sampled mocap row (mocap-clip.ts) at `weight` over whatever the layers below posed.
  * Torso, clavicles and legs take the retargeted joint rotations (the ground pass then re-plants the legs on the floor);
  * the arms go through the rig's own IK: the main hand to the retargeted grip with the blade along the captured blade
@@ -46,7 +47,7 @@ function pole(r:CharacterRig,left:boolean,target:T.Vector3,f:Float32Array,i:numb
  return out.normalize().applyQuaternion(_cq.copy((left?r.leftShoulder:r.rightShoulder).quaternion).invert());
 }
 export function applyMocapPose(r:CharacterRig,f:Float32Array,o:MocapPoseOptions){
- const w=o.weight;if(w<=.001)return;const root=(o.root??1)*w,legs=(o.legs??1)*w;
+ const w=o.weight;if(w<=.001)return;markMocapPosed(r);const root=(o.root??1)*w,legs=(o.legs??1)*w;
  // Hips height rides the motion root (relative to the standing gait height); travel only as admitted.
  // The heading turns the pelvis (with the legs under it), so layered clips blend it like any joint rotation.
  if(root>.001){r.body.position.y+=(f[CH.by]-.025-r.body.position.y)*root;set(r.pelvis,_yq.setFromAxisAngle(Y,f[CH.yaw]).multiply(rot(f,CH['pelvis.x'],_q)),root);}
@@ -107,7 +108,7 @@ const DIRS=[CH['edge.x'],CH['lup.x']],_da=new T.Vector3(),_db=new T.Vector3(),_d
  * blades, poles and targets blend as blendRows does (the path the anticipation blend was tuned on). */
 export function blendRowsTurning(a:Float32Array,b:Float32Array,k:number,out:Float32Array){
  for(const i of DIRS){_da.set(a[i],a[i+1],a[i+2]).normalize();_db.set(b[i],b[i+1],b[i+2]).normalize();
-  _dq.setFromUnitVectors(_da,_db);_dq.slerpQuaternions(_q.identity(),_dq,k);_da.applyQuaternion(_dq);out[i]=_da.x;out[i+1]=_da.y;out[i+2]=_da.z;}
+  _dq.setFromUnitVectors(_da,_db);_da.applyQuaternion(_q.identity().slerp(_dq,k));out[i]=_da.x;out[i+1]=_da.y;out[i+2]=_da.z;}
  for(let i=0;i<out.length;i++)if(!DIRS.some(d=>i>=d&&i<d+3))out[i]=a[i]+(b[i]-a[i])*k;
  return out;
 }

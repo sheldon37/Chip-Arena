@@ -18,39 +18,53 @@ containing an entry; no self-referential commit hash is required.
 
 
 
-## 2026-10-05 — Claude — Melee animations (sword, daggers, shield) from the Explosive RPG Character pack
+## 2026-10-05 — Claude — Melee animations (sword, daggers, shield, greatsword) from the Explosive RPG Character pack
 - Branch `claude/sleepy-ritchie-g8ruhv` from `claude/visual-revision` `0aa70dc` (PR #49 merge, plus its log commit
-  `b19733a`). Owner request 2026-10-05: "re-do the animations (Melee) with the ones from the pack" (the owner's licensed
-  Explosive "RPG Character Mecanim Animation Pack", shared by Drive link; FBX/.meta files stay outside the repository).
-- Change (presentation only): new offline converter `scripts/mocap/convert-explosive.mjs` (+ `explosive-pack.mjs`: FBX 7.3
-  load, Z-up fix, 3ds Max biped → Mixamo bone names, T-pose from the Unity avatar in the .meta) writes generated tables
-  `src/client/mocap/{sword,daggers,shield}-clips.ts` (~83 KB together), registered as mocap sets beside the greatsword's.
-  Guard idle, walk and run carries, block, block impact and stagger come from the pack. Cuts: sword R1 forehand, R3 backhand, R6
-  high diagonal (the narrow third cut); daggers in a reverse grip in both fists, R1 / L1 / R2 thrusts and stabs, the 4th L1
-  under the existing full-body spin; shield Attack3 lunge and Attack1 rising bash, the pack's left-arm shield read onto the
-  game's right hand. The greatsword keeps its Mixamo set (numerically unchanged; the new converter options default off).
+  `b19733a`). Owner requests 2026-10-05: "re-do the animations (Melee) with the ones from the pack" (the owner's licensed
+  Explosive "RPG Character Mecanim Animation Pack", shared by Drive link; FBX/.meta files stay outside the repository), then
+  "convert the greatsword as well".
+- Change (presentation only): offline converter `scripts/mocap/convert-explosive.mjs` (+ `explosive-pack.mjs`: FBX 7.3 load,
+  Z-up fix, 3ds Max biped → Mixamo bone names, T-pose from the Unity avatar in the .meta) writes the generated tables
+  `src/client/mocap/{sword,daggers,shield,greatsword}-clips.ts`. Guard idle, walk and run carries, block, block impact and
+  stagger come from the pack. Cuts: sword R1 forehand, R2 backhand, R6 high diagonal; daggers reverse grip in both fists, R1
+  / L1 / R2 thrusts and stabs, the 4th L1 under the full-body spin; shield Attack3 lunge and Attack1 rising bash (the pack's
+  left-arm shield read onto the game's right hand); greatsword (2Hand-Sword) high guard, Attack5 overhead forehand, Attack8
+  flat backhand, both hands on the hilt (one-handed only in the run carry). The Mixamo greatsword converter stays as a
+  documented way back.
 - How the captures fit the game: each cut's [start, contact start, contact end, settled] marks retime onto the
-  authoritative windup / hit window / recovery (contact always inside the hit window); every cut starts on the pack's guard
-  frame and the converter writes windup pace keys (`MocapClip.pace`) from the captured motion, so the much shorter game
-  windups spend their time where the pose moves; the daggers keep 35% of the pull-back (`anticipation`) to fit their 0.09 s
-  windup. The legs step from the gait stance into the captured one over the windup (blended by ankles), the captured feet
-  hold their spots through the contact, blades and the off-hand dagger stay above the floor (`keepBladesOffFloor`), and the
-  free hand never takes the sword's support grip. Converter fixes found on the way: elbow poles turn at most 10 rad/s
-  around the reach (a capture whose elbow crosses the reach line flipped the upper arm in a frame), torso twist shared
-  between the waist and chest joints, deep neck/head bends and ankle rolls eased for the block-shaped head and feet.
+  authoritative windup / hit window / recovery (contact always inside the hit window; sweep directions match the server's);
+  windup pace keys (`MocapClip.pace`) spend the short game windups where the pose moves (daggers keep 35% of the captured
+  pull-back, sword cut 2 60%). Cuts stand on the procedural phrase's footwork, the captured hips lowered just enough for the
+  planted feet to reach the floor; guard, block and stagger keep the gait's feet under the captured hips (legs re-solved
+  onto the gait's targets). The converter keeps the greatsword's two-handed hilt (fists, pommel, blade root) off the voxel
+  head, pauldrons and torso and brings the support grip within reach. At runtime the blade clearance turns and lifts blades
+  off the body and floor; a final floor guard runs only on grounded frames a captured layer posed.
+- Review: two adversarial rounds. Round 1 (13 findings, all fixed): skating cut feet, loop-seam elbow pops, dagger wrist
+  flips, block foot slides, follow-ups entering from the guard, floor-lift flips, among others. Round 2 (14 findings, 11
+  fixed): greatsword hit/parry feet popping 13-15 cm and sinking 6-7 cm (now no worse than procedural), cut feet hovering up
+  to 9 cm (now ≤ 2 cm), the greatsword run blade snapping ~1 rad each stride (carries now ≤ 0.02 rad per 1/960 s on every
+  weapon), the backhand's 35 cm pre-contact blade drop and a recovery snap (cuts now continuous at 3840 Hz), fists 5-14 cm
+  inside the head (Attack2 replaced by Attack5; fists ≥ 3 cm clear), the support hand 9 cm off the hilt in the guard (max
+  5.9, mean 0.8 cm), the roll blend ignoring its slerp, the floor guard acting on specials and juggles, and the clearance
+  cost (greatsword run 1.34 ms → 0.28 ms per rig-frame; broad phase per body part, covered carry layers skipped), and no
+  test of the greatsword's sweep directions. Regression tests added for each. Not fixed (low): an Echo Strike follow-up
+  after the dagger spin still unwinds ~150° in ~40 ms (the procedural phrases do the same); the converter's guard-heading
+  shift tilts the chest up to ~6.5° where its hip/spine lean eases engage; no test drives an Echo Strike follow-up through
+  a captured set.
 - Impacts: hit timing, hitboxes, damage, cooldowns, movement rules, attack travel and network behaviour unchanged (client
-  presentation only; nothing in src/shared or the server reads the clips). First-person view models keep their procedural
-  poses. `rarity-combat` "dagger primaries and echoes alternate ..." (a baseline failure: it asserts the two dagger cuts are
-  exact arm mirrors) still fails, now -2.10 vs -1.00 (was -0.60 vs -0.56): the captured cuts are not mirror images.
-- Not switched: the pack's 2Hand-Sword set (timing close to the greatsword's 0.42 s windup) is listed as preview
-  candidates (`2H-*`) only; converting it would be a separate visual decision.
-- Checks (Node 24.19.0): new `tests/melee-mocap.test.ts` 6/6 (decode/marks/pace, joint limits, strike inside the server
-  arc and sword sweep signs at 0.8/1/1.35x, limb continuity at 60 vs 120 Hz at 0.7/1/1.5x with melee-fluidity's speed cap
-  scaled by the attack rate, support hand and dagger spin, guard/walk/run/block blade and floor clearance and shield face);
-  greatsword-mocap, melee-fluidity, locomotion-root-sync, foundation-contracts 32/32; check:types pass; server tsc only its
-  4 baseline errors; full unit suite 1264: 1251 pass, 12 fail, 1 skipped, and the 12 failing names are identical on
-  `b19733a` (re-run of those 10 files at both commits). pvp-golden traces pass. Lab frame strips (scratch, not committed)
-  of every cut, guard, run and block reviewed for sword, daggers and shield.
+  presentation only; nothing in src/shared or the server reads the clips). First-person view models and the procedural
+  phrases (MOCAP off) unchanged. `rarity-combat` "dagger primaries and echoes alternate ..." (a baseline failure that asserts
+  the two dagger cuts are exact arm mirrors) still fails with different numbers: the captured cuts are not mirror images.
+- Known limits: the reverse-grip dagger turned up out of the floor in a 60-90 ms windup rotates up to ~1 rad within a
+  millisecond, and sword cut 2's windup turns ~0.07 rad within 1/15360 s (both continuous, a flick at 60 fps; the sword's was
+  0.25 before); the shield's procedural hit reaction over the captured guard dips an ankle 1.4 cm (as before this work).
+- Checks: full unit suite under Node 24.19.0 (the portable runtime's major; the updater test needs it): 1276 tests, 1263
+  pass, 12 fail, 1 skipped, the 12 failing names identical to the `b19733a` baseline; pvp-golden traces, melee-fluidity,
+  locomotion-root-sync, reaction-fluidity, block-riposte and blocking pass in it. `melee-mocap` 16/16 and `greatsword-mocap`
+  8/8, new this round: planted cut feet within 20 mm of the phrase's, hit/parry reactions no worse than procedural (no
+  ankle under -0.82), carries < 0.04 rad per 1/960 s, the roll blend, floor-guard gating, greatsword sweep signs, greatsword
+  cuts continuous 960 vs 3840 Hz with the fists out of the head, guard support hand < 8 cm (mean < 3.5 cm). check:types
+  pass; server tsc only its 4 baseline errors. Lab strips (scratch) of both greatsword cuts, guard, run and block reviewed.
 - Not run: native Windows look and feel, online play with remote players, owner review of the new style.
 
 ## 2026-10-05 — Claude — Melee block riposte (blocking melee is worth it)
