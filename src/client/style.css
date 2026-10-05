@@ -169,3 +169,11 @@ body{background:#111216;color:#f4f4f5;font-family:var(--font-ui)}.home-shade{bac
 /* Narrow windows: the menu on top, the board under it (both scroll). */
 @media(max-width:1180px){.menus.with-board{justify-content:center;align-items:flex-start;padding-top:70px}.menus.with-board>.panel{max-height:calc(50dvh - 80px)}
  .player-board.paused{inset:auto 12px 12px 12px;width:auto;height:calc(50dvh - 18px)}}
+
+/* Sprint feedback stays next to stamina; no camera shake, FOV jump or obstruction of the crosshair. */
+.sprint-status{display:inline-flex;align-items:center;gap:6px;color:#f8db94;font:700 10px/1.4 ui-monospace,monospace;letter-spacing:.1em;padding:3px 0;text-shadow:0 0 10px #e7af4b55}
+.sprint-status i{font-size:17px;line-height:12px;font-style:normal;animation:sprint-chevron .65s ease-in-out infinite alternate}
+.sprint-status.exhausted{color:#ed9b80;font-size:9px;letter-spacing:.04em}
+.healthbox.is-sprinting .bar.stamina>div{background:linear-gradient(90deg,#b48a45,#f8db94);box-shadow:0 0 9px #e9b45155}
+@keyframes sprint-chevron{from{transform:translateX(-2px);opacity:.55}to{transform:translateX(2px);opacity:1}}
+@media(prefers-reduced-motion:reduce){.sprint-status i{animation:none}}

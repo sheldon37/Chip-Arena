@@ -32,8 +32,8 @@ export interface AbilityCastState{slot:AbilitySlot;id:string;at:number;aim:Abili
 export interface AbilityShotTag{id:string;slot:AbilitySlot;cast:string;fuse?:number;travel:number;data?:Record<string,unknown>}
 /** `welcome` caps (§3.12); absent on old hosts. */
 export interface HostCaps{abilities?:number;/** Hold-to-aim host (2026-10-04): aimed abilities cast on key release. */aimHold?:number;
- /** Movement host (2026-10-04): double-tap-W sprint and roll-cancel of melee attacks. */move?:number}
-export const HOST_CAPS:HostCaps={abilities:1,aimHold:1,move:1};
+ /** Movement host: v1 sprint/roll-cancel; v2 stamina drain and exhaustion (2026-10-05). */move?:number}
+export const HOST_CAPS:HostCaps={abilities:1,aimHold:1,move:2};
 /** Aimed (ground/point-targeted) abilities: a tap casts on release, holding past HOLD_AIM_SECONDS shows the aim preview and the
  *  cast fires on release at the aimed point (owner 2026-10-04: "remove that aim-circle ... show if we hold the button"). */
 export const HOLD_AIM:ReadonlySet<string>=new Set(['frag-grenade','meteor-strike','geyser-wall','singularity']);

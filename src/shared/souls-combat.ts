@@ -5,8 +5,8 @@ export const WEAPON_WEIGHT:Record<SpecId,number>={siren:4,daggers:2,sword:5,shie
 export const standardWeapon=(spec:SpecId)=>['daggers','sword','shield','greatsword'].includes(spec);
 export const usesRoll=(spec:SpecId)=>spec!=='ansatsuken';
 const meleeBaseCost=(spec:SpecId)=>spec==='daggers'?16:20+2*WEAPON_WEIGHT[spec];
-/** Primary swing stamina (owner 2026-10-04: 40% lower on all melee): daggers 10, sword 18, shield 22, greatsword 26. */
-export const MELEE_COST_SCALE=.6;
+/** Primary swing stamina (owner 2026-10-05: another ~25% lower): daggers 7, sword 14, shield 16, greatsword 20. */
+export const MELEE_COST_SCALE=.45;
 export const meleeCost=(spec:SpecId)=>Math.round(meleeBaseCost(spec)*MELEE_COST_SCALE);
 /** E specials keep their earlier cost (daggers 30, sword 38, shield 45, greatsword 55). */
 export const meleeSpecialCost=(spec:SpecId)=>spec==='daggers'?30:Math.ceil(meleeBaseCost(spec)*1.25);

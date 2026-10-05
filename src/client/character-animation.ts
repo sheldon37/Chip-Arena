@@ -1,3 +1,4 @@
+import {rememberFinalPose} from './pose-transitions.js';
 import {meleeBlockMotion} from './melee-block-motion.js';
 import {hitReactionMotion,fallbackFlinch} from './hit-reaction-motion.js';
 import {dodgeRollMotion} from './dodge-roll-motion.js';
@@ -74,7 +75,7 @@ function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=
  return pose;
 }
 
-export function animateCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=p.pitch){time=p.hp>0?(p.animationTime??time):time;if(p.spec==='siren')return attackPose(p,time);const pose=sampleCharacter(r,p,time,dt,pitch);groundPass(r,p,time,dt);finishPose(r,p,time);mocapFloorGuard(r,p);settleJointCovers(r);return pose;}
+export function animateCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=p.pitch){time=p.hp>0?(p.animationTime??time):time;if(p.spec==='siren')return attackPose(p,time);const pose=sampleCharacter(r,p,time,dt,pitch);groundPass(r,p,time,dt);finishPose(r,p,time);mocapFloorGuard(r,p,time);rememberFinalPose(r);settleJointCovers(r);return pose;}
 
 /** Sandbox-only presentation sampler: never writes simulation, attacks, inputs, or health. */
 export function animationPreviewPlayer(p:PlayerView,mode:string,time:number):PlayerView{

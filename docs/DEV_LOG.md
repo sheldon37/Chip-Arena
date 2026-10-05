@@ -18,6 +18,33 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-05 — Codex — Attack recovery, cheaper swings and sprint stamina
+- Branch `codex/combat-flow-stamina`, exact shared base `ab93263c704266949432f9ee32034b157921d720` (PR #50).
+  Owner requests smoother attack endings/combos, lower attack stamina, sprint drain/visual, and all steps to the test Update button.
+- Sword, shield and greatsword recover along a single quaternion arc between fitted contact/guard poses, avoiding late captured
+  wrist regrips. Dagger recoveries limit abrupt wrist turns in chest space; the full spin stays intact. Combo transitions remember
+  the final floor-corrected displayed pose. Ground clearance and the greatsword support grip are retained. Contact timing,
+  hitboxes, damage, cooldowns, attack travel, first-person poses and DEV choreography are unchanged.
+- Standard primary stamina: daggers 10→7, sword 18→14, shield 22→16, greatsword 26→20; Echo Strike 3→2 per extra hit.
+  Specials/roll costs and tiny DEV jab costs remain unchanged. Only the three golden traces with standard melee costs change.
+- Double-tap-W sprint retains 1.35x forward speed, costs 12 stamina/s, suppresses simultaneous regeneration, and falls back to
+  jogging at zero. Exhaustion stays latched until W is released, preventing regen/sprint oscillation. Round/reset/respec clears it.
+  Shared host/prediction helpers and `caps.move=2` synchronize stamina/exhaustion; old move-v1 hosts retain their free-sprint
+  prediction. HUD adds an amber SPRINTING chevron/bar and a release-W exhaustion prompt (reduced motion respected).
+- Checks: Node 24.19.0/npm 11.9.0, fresh `npm ci`, client types pass. Eight new tests cover recovery at 60/120 Hz and three
+  attack rates, actual-pose combo continuity, drain/exhaustion/reset, old-host compatibility and delayed JSON snapshot replay.
+  Existing captured-melee/greatsword animation tests pass; revised costs and all PvP golden traces pass (31 affected tests).
+  Full `npm run verify` retains four known server TypeScript errors and WebSocket rematch timeout; HTTPS multiplayer passes.
+  A movement-network run had a transient shared-snapshot mismatch; rerun passes (635 identical snapshots, 0.128 m P95 correction,
+  <0.001 m instantaneous visual correction), and untouched-base comparison passes. Test-channel/status fixtures: 10/10 pass.
+- Visual measurements (60 Hz, 1x attack rate): largest recovery/exit angular step sword cuts 29/32/34°→13/9/15°,
+  dagger cuts 1–3 36/70/47°→25/18/22°. The dagger spin is preserved. These are rig measurements, not native visual acceptance.
+  The previously recorded dagger spin→Echo Strike unwind remains; contact/anticipation is deliberately not time-filtered.
+- Windows EXE/native GPU/manual gameplay not run (Linux container; Chromium download failed). No Site/live-feed publish or new seed ZIP.
+  Final full unit run (`node --import tsx --test --test-concurrency=4 tests/*.test.ts`): 1271/1284 pass, 12 failures
+  matching the untouched baseline names exactly, one skipped (baseline 1263/1276). The first unrestricted repeat exited early
+  without a summary; the bounded run completed. Status: implemented on task branch; exact-tree merge and publication follow.
+
 ## 2026-10-05 — Claude — Melee animations (sword, daggers, shield, greatsword) from the Explosive RPG Character pack
 - Branch `claude/sleepy-ritchie-g8ruhv` from `claude/visual-revision` `0aa70dc` (PR #49 merge, plus its log commit
   `b19733a`). Owner requests 2026-10-05: "re-do the animations (Melee) with the ones from the pack" (the owner's licensed
