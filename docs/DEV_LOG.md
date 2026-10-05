@@ -18,6 +18,37 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-04 — Claude — Double-tap-W sprint, Tab melee lock-on, roll-cancel of melee attacks, Escape menu board
+- Branch `claude/sleepy-ritchie-g8ruhv` from `claude/visual-revision` d31fa25 (PR #47 merge). Owner requests 2026-10-04.
+- Sprint: two W presses within 300 ms latch a held `Input.sprint` while W stays down (client `SprintTap`); shared rule
+  (`movement.ts` `SPRINT`, `sprintIntent`) gives ×1.35 run speed when moving within ~53° of the aim, not while attacking,
+  blocking, aiming, guarding, swinging, stunned, locked or swimming; works in the air. No stamina cost. Sent only to hosts
+  with `caps.move` (and offline). Snapshot `sprinting` only when true; extra forward lean on the rig. Bots never sprint.
+- Roll-cancel: a human pilot's fresh roll press cancels a live standard melee primary (sword, daggers, shield, greatsword;
+  windup, sweep, recovery or Echo follow-ups) or an Emperor jab. No stamina refund; the attack cooldown is refunded to the roll
+  duration only when the cancel comes before the first strike (`beforeStrike`; Echo follow-ups are marked and never refund).
+  E specials, Emperor Electric, Siren moves, casts and reloads stay committed. Bots never cancel. The predictor mirrors it on
+  `caps.move` hosts; the cancelled attack's pose ends (`rollCancelled`) so it never resumes after the roll.
+- Lock-on (client only, `src/client/melee-lock.ts`): for a melee pilot alive in a fight, Tab locks the nearest enemy in view
+  (16 m, 50° cone; players, PvE adds, enemy summons, Slenderman; never allies or the hidden boss); a tap cycles clockwise,
+  holding 0.4 s releases; the lock ends when the target dies, disappears or passes 24 m, or the pilot stops being eligible.
+  Yaw/pitch ease toward the target and mouse look pauses while locked; a reticle marks the target. Line of sight is required
+  to lock or cycle; behind cover the lock stops steering and releases after 1 s. Otherwise Tab keeps the Builds board.
+  Escape now shows the match menu with the player/party board beside it (stacked below it on windows ≤1180 px; not in the
+  Dev Sandbox, whose panel sits there) (owner suggestion).
+- Impacts: hit timing, hitboxes, damage and cooldowns unchanged for attacks that are not cancelled; a cancel before the strike
+  deals no hit, mid-sweep loses the rest of the arc and Echo follow-ups; movement gains sprint for humans only. Network:
+  optional `sprint` and `rollCancel` input flags, optional `sprinting` and `followup` snapshot fields, `HOST_CAPS.move`.
+  The host cancels only for inputs carrying `rollCancel` (sent with Shift by new clients), so older clients keep today's
+  behaviour on a new host. pvp-golden unchanged.
+- Checks (Node 22.22.0): check:types pass; server tsc 4 baseline errors; sprint-rollcancel 15/15, melee-lock 5/5, all 6
+  pvp-golden traces identical; full unit suite 1250, 13 failures = the 12 known names + the Node 22 portable-update test;
+  network motion, party and HTTPS pass (block and emperor-network fail identically on d31fa25; default only "rematch").
+  Two adversarial review rounds (4 areas): 15 findings fixed. Real-app (Vite dev server, headless Chromium): Tab lock turns
+  the camera onto the dummy with the reticle, hold releases, death releases; sprint 6.8 → 9.18 m/s; greatsword roll-cancel
+  clears the commitment (stamina 100 − 26 − 29); Escape menu + board at 1440 and stacked at 1100 px.
+- Not run: native Windows feel (sprint lean, lock-on turn rate, roll-cancel blends), online/relay latency feel, bots sprinting.
+
 ## 2026-10-04 — Claude — Siren PvE: much harder "Find me..." (more spawns), 30 s intermissions
 - Branch `claude/sleepy-ritchie-g8ruhv` from `claude/visual-revision` 2ae916d (PR #46 merge). Owner requests 2026-10-04.
 - "Find me..." (Siren phase 2): possession spawn rate ×1.8 → ×5 and alive ×1.6 → ×3, with a possession-only hard cap
@@ -35,7 +66,13 @@ containing an entry; no self-referential commit hash is required.
 - Not run: native Windows FPS at 48 adds, relay-hosted hunt, full `npm run test:pve-balance`. Owner playtest needed.
 - Risks: phase 3 inherits the bigger field (median 26.5 adds when found, about 42 at h=4); kill income rises during the
   hunt, which still has no time limit (the add starts chasing at 60 s).
-- Status: implemented on branch; next: PR into `claude/visual-revision`, merge, test-channel publication.
+- Status: merged into `claude/visual-revision` at `d31fa25` (PR #47; PR CI: unit 1231 with only the 12 known failures, server
+  build 4 baseline errors, websocket only "Timed out: rematch", HTTPS passes). Published to the test channel (not the live
+  feed or Site): test `0.2.57123b899145` at channel `fee293c`; schema 1 `arena-8133bc1171033b69.json.gz` 24,638,975 B,
+  schema 2 `arena-885f3d47d405ddc3.pack` 20,533,942 B. Candidate (`--test-only --channel`, Node 24.19.0, tooling 35ea65d):
+  every stage passed except the baseline-only verify; repeat build identical. Raw feed served the new manifests; old-launcher
+  and v2 installs at `0.2.fd485a10e3d0` updated from the live feed, then reported current; settings sentinel untouched;
+  menu status `0.2.57123b899145`.
 
 ## 2026-10-04 — Claude — Sandbox rarity sort, keypress dummy cast, dummy respawn, DEV-only sandbox; Ward Zero PvP vents/machines
 - Branch `claude/sleepy-ritchie-g8ruhv` from `claude/visual-revision` accc362 (PR #44 merge). Owner requests 2026-10-04.

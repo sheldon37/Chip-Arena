@@ -74,7 +74,12 @@ export function carryMeleeWeapon(r:CharacterRig,p:PlayerView,carry:number){
 /** Forward sprint lean under the melee carries (spine pitch, rad), building from a walk to a run on the stride blend, so it
  * collapses with the stride when an action plants the feet. Not on the first-person view model. */
 const LEAN:Record<string,number>={sword:.1,daggers:.12,shield:.08,greatsword:.14};
-export function sprintLean(r:CharacterRig,p:PlayerView){const k=LEAN[p.spec];if(k&&!isFirstPersonRig(r))r.spine.rotation.x+=k*ease((r.motion-.1)/.65);}
+/** Extra lean while the pilot sprints (double-tap W, every weapon), eased in and out per rig so the flag never snaps. */
+const SPRINT_LEAN=.12,sprintBlend=new WeakMap<CharacterRig,number>();
+export function sprintLean(r:CharacterRig,p:PlayerView,dt=0){
+ const k=LEAN[p.spec],run=ease((r.motion-.1)/.65),b=sprintBlend.get(r)??0,n=b+((p.sprinting?1:0)-b)*(1-Math.exp(-Math.min(.05,Math.max(0,dt))*10));sprintBlend.set(r,n);
+ if(isFirstPersonRig(r))return;if(k)r.spine.rotation.x+=k*run;if(n>1e-4)r.spine.rotation.x+=SPRINT_LEAN*n*run;
+}
 /** Seconds the guard stays up after the last melee action, then the time it takes to lower. */
 export const GUARD_HOLD=2.4,GUARD_FADE=.8;
 /** Combat readiness 0..1: 1 during a melee attack, special or timed block and for GUARD_HOLD s after it, then easing to 0

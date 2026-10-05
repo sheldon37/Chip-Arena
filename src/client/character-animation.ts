@@ -1,7 +1,7 @@
 import {meleeBlockMotion} from './melee-block-motion.js';
 import {hitReactionMotion,fallbackFlinch} from './hit-reaction-motion.js';
 import {dodgeRollMotion} from './dodge-roll-motion.js';
-import {committed,meleeRecovery,rolling} from '../shared/souls-combat.js';
+import {committed,meleeRecovery,rollCancelled,rolling} from '../shared/souls-combat.js';
 import {locomotion,groundPass,finishPose,GAIT} from './motion-quality.js';
 import {meleeMotion,meleeReady} from './melee-motion.js';
 import {comboReadyMotion} from './primary-melee-motion.js';
@@ -27,7 +27,8 @@ export type AnimatedRig=CharacterRig;
 export function attackPose(p:PlayerView,time:number){
  const w=WEAPONS[p.spec],rate=p.attackRate||1,age=Math.max(0,time-p.lastAttack),windup=p.swingAt!==undefined?Math.max(.025,p.swingAt-p.lastAttack):Math.max(.025,p.windup),window=p.swingUntil!==undefined&&p.swingAt!==undefined?p.swingUntil-p.swingAt:.16/rate;
  const recoverySeconds=meleeRecovery(p.spec)/rate;
- const active=w.class==='melee'&&age<windup+window+recoverySeconds;
+ // A roll that started after the attack cancelled it (roll-cancel): the phrase ends, it never resumes after the roll.
+ const active=w.class==='melee'&&age<windup+window+recoverySeconds&&!rollCancelled(p,time);
  const load=active&&age<windup?smooth(age/windup):0;
  const strike=active&&age>=windup?clamp((age-windup)/Math.max(.025,window),0,1):0;
  const recovery=active&&age>=windup+window?1-smooth((age-windup-window)/recoverySeconds):1;
@@ -51,7 +52,7 @@ function sampleCharacter(r:AnimatedRig,p:PlayerView,time:number,dt:number,pitch=
  observeFighterReady(r,p,time);
  clearLegsAuthored(r);animateCosmetics(r,time);
  // Commitment, hitstun and dodge rolls hold the stride: the root is moved by the action, not by running steps.
- const w=WEAPONS[p.spec],planted=committed(p,time)||(p.hitStunUntil||0)>time||rolling(p,time);if(planted)r.motion*=Math.exp(-clamp(dt,0,.05)*22);locomotion(r,{...p,pitch,vel:planted?{x:0,y:p.vel.y,z:0}:p.vel},time,dt,planted);sprintLean(r,p);const pose=attackPose(p,time);
+ const w=WEAPONS[p.spec],planted=committed(p,time)||(p.hitStunUntil||0)>time||rolling(p,time);if(planted)r.motion*=Math.exp(-clamp(dt,0,.05)*22);locomotion(r,{...p,pitch,vel:planted?{x:0,y:p.vel.y,z:0}:p.vel},time,dt,planted);sprintLean(r,p,dt);const pose=attackPose(p,time);
  r.weapon.visible=!p.weaponAway;r.weapon.position.set(0,0,0);r.weapon.rotation.set(.5,0,0);r.weapon.scale.set(1,1,w.class==='melee'?p.reach/w.range:1);r.offWeapon.position.set(0,0,0);r.offWeapon.rotation.set(.55,0,0);r.offWeapon.scale.copy(r.weapon.scale);restoreHeldParts(r);
  if(p.juggle&&time<p.juggle.until){animateJuggle(r,p,time);return pose;}
  if(p.knockdown&&time<p.knockdown.until){knockdownMotion(r,p,time);return pose;}

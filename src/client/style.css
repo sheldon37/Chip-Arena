@@ -149,3 +149,23 @@ body{background:#111216;color:#f4f4f5;font-family:var(--font-ui)}.home-shade{bac
 #hud,#combat-numbers{transition:opacity .25s}
 #ui[data-cutscene="1"] #hud,#ui[data-cutscene="1"] #combat-numbers{opacity:0}
 .slender-static{position:fixed;inset:0;pointer-events:none;z-index:9000;background:radial-gradient(ellipse at center,#6662 20%,#000c 100%)}.slender-static .scare-static{background:repeating-linear-gradient(0deg,#ececec99 0 1px,#000a 1px 2px,#8888 2px 3px,transparent 3px 5px),repeating-linear-gradient(90deg,#fff3 0 1px,transparent 1px 4px)}
+
+/* Melee lock-on reticle (owner 2026-10-04): a ring over the locked enemy, drawn above the scene. */
+.lock-reticle{position:absolute;left:0;top:0;width:34px;height:34px;margin:-17px 0 0 -17px;pointer-events:none;z-index:12;border:2px solid #ff5d6c;border-radius:50%;box-shadow:0 0 0 2px #0008,0 0 14px #ff3c5299;will-change:transform}
+.lock-reticle:before,.lock-reticle:after{content:"";position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;background:#ff5d6c;border-radius:50%}
+.lock-reticle:after{width:44px;height:44px;margin:-22px 0 0 -22px;background:none;border:1px solid #ff5d6c66;border-radius:50%}
+.lock-reticle[hidden]{display:none}
+/* Escape shows the match menu and the scoreboard (owner 2026-10-04): the board sits beside the menu, not over it. */
+.player-board.paused{inset:90px 28px 64px auto;width:min(1030px,calc(100% - 724px));padding:0;background:none;backdrop-filter:none;align-items:flex-start}
+.player-board.paused .board-panel{max-height:100%}
+.player-board.paused [data-board-close],.player-board.paused .board-hint{display:none}
+.menus.with-board{justify-content:flex-start}
+/* The PvE party board beside the menu uses its compact member cards (its wide grid needs ~1000 px). */
+.player-board.paused .pveb-columns{display:none}.player-board.paused .pveb-member{display:block}
+.player-board.paused .pveb-live{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0}.player-board.paused .pveb-status{grid-column:1/-1}
+.player-board.paused .pveb-stat{text-align:left;padding:6px 8px;border-radius:var(--r-sm);background:var(--surface-2)}
+.player-board.paused .pveb-stat>span{display:block;font:9px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:#8e909a;margin-bottom:2px}
+.player-board.paused .pveb-stat b{font-size:15px}.player-board.paused .pveb-totals{flex-wrap:wrap}
+/* Narrow windows: the menu on top, the board under it (both scroll). */
+@media(max-width:1180px){.menus.with-board{justify-content:center;align-items:flex-start;padding-top:70px}.menus.with-board>.panel{max-height:calc(50dvh - 80px)}
+ .player-board.paused{inset:auto 12px 12px 12px;width:auto;height:calc(50dvh - 18px)}}

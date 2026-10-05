@@ -1,4 +1,4 @@
-import {rolling,meleeRecovery} from '../shared/souls-combat.js';
+import {rolling,meleeRecovery,rollCancelled} from '../shared/souls-combat.js';
 import * as T from 'three';
 import type {CharacterRig} from './character-rig.js';
 import type {PlayerView} from '../shared/simulation.js';
@@ -30,7 +30,7 @@ const reactionFamily=(action:string)=>action==='juggle'||action.startsWith('down
 export function transitionAction(p:PlayerView,time:number){
  const rate=p.attackRate||1,windup=p.swingAt!==undefined?Math.max(.025,p.swingAt-p.lastAttack):Math.max(.025,p.windup),window=p.swingUntil!==undefined&&p.swingAt!==undefined?p.swingUntil-p.swingAt:.16/rate;
  const attackDuration=standardSpec(p.spec)?windup+window+meleeRecovery(p.spec)/rate:.8/rate,w=WEAPONS[p.spec];
- return p.juggle&&time<p.juggle.until?'juggle':p.knockdown&&time<p.knockdown.until?'down:'+knockdownPhase(p.knockdown,time):(p.hitStunUntil||0)>time?'flinch':rolling(p,time)?'roll':(p.guarding||p.blockTime>0)?(w.class==='melee'?'block':'guard'):p.emperor?.action&&time<p.emperor.until?p.emperor.action:p.arcade?.action&&time<p.arcade.until?p.arcade.action:p.meleeAction&&time<p.meleeAction.until?p.meleeAction.kind:w.class==='melee'&&time-p.lastAttack<attackDuration?'attack-'+p.attackIndex:w.class==='ranged'&&p.reloadTime>0?'reload':'base';
+ return p.juggle&&time<p.juggle.until?'juggle':p.knockdown&&time<p.knockdown.until?'down:'+knockdownPhase(p.knockdown,time):(p.hitStunUntil||0)>time?'flinch':rolling(p,time)?'roll':(p.guarding||p.blockTime>0)?(w.class==='melee'?'block':'guard'):p.emperor?.action&&time<p.emperor.until?p.emperor.action:p.arcade?.action&&time<p.arcade.until?p.arcade.action:p.meleeAction&&time<p.meleeAction.until?p.meleeAction.kind:w.class==='melee'&&time-p.lastAttack<attackDuration&&!rollCancelled(p,time)?'attack-'+p.attackIndex:w.class==='ranged'&&p.reloadTime>0?'reload':'base';
 }
 /** Transition length for a key change. Attack entries always end before the contact frame (swingAt); an entry inside the
  * active swing window is a cut (0), so the shown blade never lags the live hit window. */

@@ -107,7 +107,8 @@ test('PlayerBoard in PvE: static markup once, live cells swapped in place, chip 
 
 // The PvP board markup (style attributes stripped, so chip-card colour work elsewhere does not move it) recorded from the
 // unmodified board at 6fd525c.
-const PVP_BOARD_SHA='bf5dba8f82f8a9535735f3d1b171e0f72ae2179b02d2742db87f4d80d2991b93';
+// Re-pinned 2026-10-04: the eyebrow now reads 'HOLD TAB OR ESC' (Escape shows the board; melee Tab is lock-on).
+const PVP_BOARD_SHA='f683d83e2f9ada1aaa26e1a20670d8e3dc8579e445492c7886b55b1694983224';
 export function pvpMarkup(make:()=>{root:El;b:{update(s:Snapshot,me:string,v:boolean):void}}){
  const {root,b}=make(),players=[player(ME,{chips:{vital:2,ricochet:1}}),player('rival',{name:'Rival',spec:'sword',class:'melee',color:'#6ec3ff',bot:'hard',hp:0}),player('away',{connected:false})];
  b.update(snap(undefined,players),ME,true);return root.innerHTML.replace(/ style="[^"]*"/g,'');
