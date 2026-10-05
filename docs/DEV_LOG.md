@@ -48,8 +48,12 @@ containing an entry; no self-referential commit hash is required.
 - Impacts: hit timing, hitboxes, damage, knockback and cooldowns unchanged; the blocked attacker's stun length and the
   human melee blocker's ability to end its own window early change. Network: optional `riposteAt` snapshot field (old
   clients ignore it; old hosts never send it, so the predictor behaves as before); no new caps or inputs.
-- Checks (Node 24.19.0): CHECKS_PLACEHOLDER
-- Not run: native Windows feel of the riposte, online/relay latency, owner balance playtest (1.4 s cap may need tuning).
+- Checks (Node 24.19.0, at cc0e9b6): check:types pass; server tsc only its 4 baseline errors (same lines as 6ad1516);
+  block-riposte 7/7 (each review fix fails its test when disabled), blocking, reaction-fluidity 16/16, all pvp-golden traces
+  identical; full unit suite 1258: 1245 pass, the 12 known failures, 1 skipped (as before); network block fails only its
+  baseline "65.5 !== 77" (a projectile reflection check) and default only "Timed out: rematch", as on 6ad1516.
+- Not run: native Windows feel and look of the riposte (guard hold, parry hold, counter), real online/relay latency (the
+  1.0 s window is sized from the measured sim timings plus estimated delay), owner balance playtest.
 
 ## 2026-10-04 — Claude — Double-tap-W sprint, Tab melee lock-on, roll-cancel of melee attacks, Escape menu board
 - Branch `claude/sleepy-ritchie-g8ruhv` from `claude/visual-revision` d31fa25 (PR #47 merge). Owner requests 2026-10-04.
