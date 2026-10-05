@@ -54,6 +54,13 @@ containing an entry; no self-referential commit hash is required.
   baseline "65.5 !== 77" (a projectile reflection check) and default only "Timed out: rematch", as on 6ad1516.
 - Not run: native Windows feel and look of the riposte (guard hold, parry hold, counter), real online/relay latency (the
   1.0 s window is sized from the measured sim timings plus estimated delay), owner balance playtest.
+- Status: merged into `claude/visual-revision` at `0aa70dc` (PR #49; PR CI: unit 1258 with only the 12 known failures,
+  server build 4 baseline errors, websocket only "Timed out: rematch", HTTPS passes). Published to the test channel (not
+  the live feed or Site): test `0.2.e07d5479254f` at channel `d67f3b6`; schema 1 `arena-5c6212e3dcbf4f0d.json.gz`
+  24,647,325 B, schema 2 `arena-6f333439386ba6a2.pack` 20,539,120 B. Candidate (`--test-only --channel`, Node 24.19.0,
+  tooling 35ea65d): every stage passed except the baseline-only verify (the same 12 names, 4 server tsc errors); repeat
+  build identical. Raw feed served the new manifests; old-launcher and v2 installs at `0.2.6a229a16de6f` updated, then
+  reported current; settings sentinel untouched; menu status `0.2.e07d5479254f`.
 
 ## 2026-10-04 — Claude — Double-tap-W sprint, Tab melee lock-on, roll-cancel of melee attacks, Escape menu board
 - Branch `claude/sleepy-ritchie-g8ruhv` from `claude/visual-revision` d31fa25 (PR #47 merge). Owner requests 2026-10-04.
