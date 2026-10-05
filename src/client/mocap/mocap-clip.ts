@@ -1,4 +1,4 @@
-/** Retargeted motion-capture clips (presentation only). Clips are produced offline by scripts/mocap (Mixamo FBX → voxel
+/** Retargeted motion-capture clips (presentation only). Clips are produced offline by scripts/mocap (capture FBX → voxel
  * rig channels) and committed as compact strings; nothing here reads or writes simulation state. A clip is sampled at a
  * clip time; callers map the authoritative timestamps onto clip time (retime) so contact frames land on the server's
  * active window. The layout is weapon independent: each weapon spec registers its own set (mocap-sets.ts). */

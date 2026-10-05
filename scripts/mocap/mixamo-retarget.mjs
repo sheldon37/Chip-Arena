@@ -72,14 +72,17 @@ export function calibrate(obj,{mirror=false,grip='blade'}={}){
 
 /** Sample `clip` on `obj` at `fps`; returns one Float32Array row per frame in CHANNELS order. `mirror` reads the capture
  * left↔right (calibrate with the same flag); `oneHand` keeps the support hand off the weapon (one-handed weapons). */
-export function retarget(obj,clip,cal,fps,{mirror=false,oneHand=false,leftBlade=false,soften=false,poleTurn=0,splitTwist=false}={}){
+export function retarget(obj,clip,cal,fps,{mirror=false,oneHand=false,leftBlade=false,soften=false,poleTurn=0,splitTwist=false,bothHands=false,heading=0,loop=false}={}){
  const mixer=new T.AnimationMixer(obj);mixer.clipAction(clip).play();const {wq,wp}=bones(obj,mirror);
  const n=Math.max(2,Math.round(clip.duration*fps)+1),rows=[];let yawPrev=0,hips0=null;
  const W={},Wp={};const names=['Hips','Spine1','Spine2','Neck','Head','LeftShoulder','RightShoulder','LeftUpLeg','RightUpLeg','LeftLeg','RightLeg','LeftFoot','RightFoot','LeftHand','RightHand'];
  const pos=['Hips','LeftArm','RightArm','LeftForeArm','RightForeArm','LeftHand','RightHand'];
  const parent={Spine1:'Hips',Spine2:'Spine1',Neck:'Spine2',Head:'Neck',LeftShoulder:'Spine2',RightShoulder:'Spine2',LeftUpLeg:'Hips',RightUpLeg:'Hips',LeftLeg:'LeftUpLeg',RightLeg:'RightUpLeg',LeftFoot:'LeftLeg',RightFoot:'RightLeg'};
  const rv=v(),tmp=q(),chestInv=q(),yawQ=q(),yawInv=q(),poleR=new T.Vector3(-1,-.7,-.2).normalize(),poleL=new T.Vector3(1,-.8,-.25).normalize();// rig-ik's default poles
- for(let i=0;i<n;i++){
+ // With `poleTurn` the poles start converged: frame 0 is solved repeatedly first (and a `loop` runs through once, carrying
+ // its last frame's poles round into frame 0), so no clip opens, or wraps, with the poles still turning in from the defaults.
+ const order=[];if(poleTurn){for(let k=0;k<40;k++)order.push(0);if(loop)for(let i=0;i<n;i++)order.push(i);}const skip=order.length;for(let i=0;i<n;i++)order.push(i);
+ for(let j=0;j<order.length;j++){const i=order[j];
   mixer.setTime(Math.min(clip.duration-1e-4,i/fps));// setTime(duration) would wrap a looping action to 0obj.updateMatrixWorld(true);
   for(const k of names)W[k]=wq(k).multiply(cal.C[k]);
   for(const k of pos)Wp[k]=wp(k);
@@ -87,7 +90,7 @@ export function retarget(obj,clip,cal,fps,{mirror=false,oneHand=false,leftBlade=
   const f=v().set(0,0,1).applyQuaternion(W.Hips);let yaw=Math.atan2(f.x,f.z);while(yaw-yawPrev>Math.PI)yaw-=2*Math.PI;while(yaw-yawPrev<-Math.PI)yaw+=2*Math.PI;yawPrev=yaw;
   yawQ.setFromAxisAngle(UP,yaw);yawInv.copy(yawQ).invert();for(const k of names)W[k].premultiply(yawInv);
   if(!hips0)hips0=Wp.Hips.clone();
-  const row=[yaw,(Wp.Hips.x-hips0.x)*cal.legScale,(Wp.Hips.y-cal.hipsY)*cal.legScale,(Wp.Hips.z-hips0.z)*cal.legScale];
+  const row=[yaw-heading,(Wp.Hips.x-hips0.x)*cal.legScale,(Wp.Hips.y-cal.hipsY)*cal.legScale,(Wp.Hips.z-hips0.z)*cal.legScale];
   const local=(k)=>{const p=parent[k];return p?tmp.copy(W[p]).invert().multiply(W[k]):tmp.copy(W[k]);};
   // Rig joints: pelvis←Hips, spine←Spine1 (Spine+Spine1), chest←Spine2, neck, head, clavicles, hips, ankles.
   // The voxel torso is long and blocky: a human's deep forward fold (low sweeps) reads as a collapse on it, so spine flexion
@@ -96,7 +99,12 @@ export function retarget(obj,clip,cal,fps,{mirror=false,oneHand=false,leftBlade=
   // chest's capture orientation (and the chest-space arms) unchanged: the voxel torso is two rigid blocks, which a
   // capture's whole torso turn at the waist (the Explosive pack's wind-ups twist it past 90°) shears apart.
   let spineQ,chestQ;
-  if(splitTwist){const s=local('Spine1').clone(),c=local('Spine2').clone(),tw=x=>2*Math.atan2(x.y,x.w),h=new T.Quaternion().setFromAxisAngle(UP,(tw(s)-tw(c))/2);
+  // `heading` (rad): a constant heading moved out of the pelvis into the spine and chest (.45 / .55, as the runtime ground
+  // pass shares a hip turn), the chest's capture orientation unchanged: a guard turned sideways keeps the hips square over
+  // the procedural feet the runtime gives it, the torso carrying the turn.
+  if(heading){const P=local('Hips').clone(),S=local('Spine1').clone(),C=local('Spine2').clone(),PS=P.clone().multiply(S),y=a=>new T.Quaternion().setFromAxisAngle(UP,a);
+   spineQ=P.clone().invert().multiply(y(.45*heading)).multiply(P).multiply(S);chestQ=PS.clone().invert().multiply(y(.55*heading)).multiply(PS).multiply(C);}
+  if(splitTwist){const s=(spineQ??local('Spine1')).clone(),c=(chestQ??local('Spine2')).clone(),tw=x=>2*Math.atan2(x.y,x.w),h=new T.Quaternion().setFromAxisAngle(UP,(tw(s)-tw(c))/2);
    spineQ=s.multiply(h.clone().invert());chestQ=h.multiply(c);}
   for(const k of ['Hips','Spine1','Spine2','Neck','Head','LeftShoulder','RightShoulder','LeftUpLeg','RightUpLeg','LeftFoot','RightFoot']){rotvec((k==='Spine1'&&spineQ?tmp.copy(spineQ):k==='Spine2'&&chestQ?tmp.copy(chestQ):local(k)).normalize(),rv);if(k==='Spine1'&&rv.x>.45)rv.x=.45+(rv.x-.45)*.35;if(k==='Hips'&&rv.x>.12)rv.x=.12+(rv.x-.12)*.5;
    // `soften`: the voxel head is a big block, so a capture's deep neck/head bends (the Explosive pack's hunched combat
@@ -122,26 +130,29 @@ export function retarget(obj,clip,cal,fps,{mirror=false,oneHand=false,leftBlade=
    const d=new T.Vector3(target.x-sx,target.y-RIG.shoulderY,target.z).normalize();p.addScaledVector(d,-p.dot(d));
    const along=prev.dot(d);if(Math.abs(along)<.97)prev.addScaledVector(d,-along).normalize();
    const k=T.MathUtils.smoothstep(p.length(),.25,.6);
-   if(k>0&&poleTurn){p.normalize();const ang=Math.atan2(new T.Vector3().crossVectors(prev,p).dot(d),prev.dot(p)),max=poleTurn/fps;prev.applyAxisAngle(d,T.MathUtils.clamp(ang*.6*k,-max,max)).normalize();}
+   // (A pole left along the reach, which the transport could not take perpendicular, eases back by the lerp.)
+   if(k>0&&poleTurn&&Math.abs(prev.dot(d))<.97){p.normalize();const ang=Math.atan2(new T.Vector3().crossVectors(prev,p).dot(d),prev.dot(p)),max=poleTurn/fps;prev.applyAxisAngle(d,T.MathUtils.clamp(ang*.6*k,-max,max)).normalize();}
    else if(k>0)prev.lerp(p.normalize(),.6*k).normalize();return prev.clone();};
   // Hand targets stay inside the rig arm's reach with a soft knee (rig-ik clamps hard at .515: a kink in the blade's path).
   const reach=(p,sx)=>{const d=new T.Vector3(p.x-sx,p.y-RIG.shoulderY,p.z),l=d.length(),knee=.4,room=.1;if(l>knee)d.multiplyScalar((knee+room*Math.tanh((l-knee)/room))/l);return p.set(sx+d.x,RIG.shoulderY+d.y,d.z);};
   const RHq=wq('RightHand'),blade=cal.blade.clone().applyQuaternion(RHq),edge=cal.edge.clone().applyQuaternion(RHq);
-  const gap=Wp.LeftHand.distanceTo(Wp.RightHand);let two=oneHand?0:T.MathUtils.clamp((40-gap)/12,0,1);
+  // `bothHands`: the support hand holds the grip throughout (a capture whose free hand only follows the hilt loosely).
+  const gap=Wp.LeftHand.distanceTo(Wp.RightHand);let two=oneHand?0:bothHands?1:T.MathUtils.clamp((40-gap)/12,0,1);
   const g=reach(toChest(Wp.RightHand),-RIG.shoulderX),bl=dirChest(blade),ed=dirChest(edge);ed.addScaledVector(bl,-ed.dot(bl)).normalize();
   // Two-handed, the support hand takes the weapon's support grip (.11 down the grip from the main hand): the voxel
   // shoulders are far wider than a human's, so the grip shifts toward the support shoulder until that hand can reach it.
   // A grip held far over on the main-hand side (the sprint's shoulder carry) would have to cross the chest for the support
-  // hand to reach it, dragging the blade through the torso: there the support hand lets go instead.
+  // hand to reach it, dragging the blade through the torso: there the support hand lets go instead. With `bothHands` it
+  // never lets go (the arm's last reach, up to rig-ik's .515, covers the rest of a high guard by the main shoulder).
   if(two>0){const L=new T.Vector3(RIG.shoulderX,RIG.shoulderY,0),s=g.clone().addScaledVector(bl,-.11),need=s.distanceTo(L)-.44;
-   if(need>0){two*=1-T.MathUtils.smoothstep(need,.22,.32);g.add(L.sub(s).normalize().multiplyScalar(Math.min(need,.25)*two));}}
+   if(need>0){if(!bothHands)two*=1-T.MathUtils.smoothstep(need,.22,.32);g.add(L.sub(s).normalize().multiplyScalar(Math.min(need,bothHands?.17:.25)*two));}}
   const rp=pole(Wp.RightArm,Wp.RightForeArm,Wp.RightHand,g,-RIG.shoulderX,poleR);row.push(g.x,g.y,g.z,bl.x,bl.y,bl.z,ed.x,ed.y,ed.z,rp.x,rp.y,rp.z);
   // The free hand's wrist frame (the rig's wrist +z, +y); with `leftBlade` its +z is the left weapon's blade, calibrated from
   // the left fist like the right one, and +y blade × edge (the left wrist's weapon socket holds it along +z).
   const lh=reach(toChest(Wp.LeftHand),RIG.shoulderX),LH=W.LeftHand.clone().premultiply(chestInv);let lf=new T.Vector3(0,0,1).applyQuaternion(LH),lu=new T.Vector3(0,1,0).applyQuaternion(LH);
   if(leftBlade){const LHq=wq('LeftHand');lf=dirChest(cal.bladeL.clone().applyQuaternion(LHq));lu=dirChest(cal.bladeL.clone().cross(cal.edgeL).applyQuaternion(LHq));lu.addScaledVector(lf,-lu.dot(lf)).normalize();}
   const lp=pole(Wp.LeftArm,Wp.LeftForeArm,Wp.LeftHand,lh,RIG.shoulderX,poleL);row.push(lh.x,lh.y,lh.z,lf.x,lf.y,lf.z,lu.x,lu.y,lu.z,lp.x,lp.y,lp.z,two);
-  rows.push(Float32Array.from(row));
+  if(j>=skip)rows.push(Float32Array.from(row));
  }
  return rows;
 }

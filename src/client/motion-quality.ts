@@ -2,7 +2,7 @@ import * as T from 'three';
 import type {CharacterRig} from './character-rig.js';
 import type {PlayerView} from '../shared/simulation.js';
 import {poseCurve} from './pose-curves.js';
-import {legsAuthored,legsLayered,markLegsLayered,markLegsAuthored,isFirstPersonRig} from './pose-flags.js';
+import {legsAuthored,legsLayered,markLegsLayered,isFirstPersonRig} from './pose-flags.js';
 import {stanceFor} from './stances.js';
 import {committed,rolling} from '../shared/souls-combat.js';
 const clamp=T.MathUtils.clamp,lerp=T.MathUtils.lerp,TAU=Math.PI*2,FLOOR=-.795,REACH=.485,LAND_REACH=.47;
@@ -115,28 +115,6 @@ export function ankleInGroup(r:CharacterRig,left:boolean,out:T.Vector3){readAnkl
 function readAnkle(r:CharacterRig,left:boolean,out:T.Vector3,q:T.Quaternion,kneeOut?:T.Vector3){
  const [hip,knee,ankle]=legBones(r,left);pelvisFrame(r);q.copy(_pq).multiply(hip.quaternion);out.copy(hip.position).applyQuaternion(_pq).add(_pp);
  _t.copy(knee.position).applyQuaternion(q);out.add(_t);if(kneeOut)kneeOut.copy(out);q.multiply(knee.quaternion);_t.copy(ankle.position).applyQuaternion(q);out.add(_t);q.multiply(ankle.quaternion);
-}
-/** Move both ankles an action layer posed by (dx, dz) in the rig's frame, re-solving each leg with the same foot
- * orientation and knee direction (floor-clamped), and mark the legs authored so the ground pass keeps them. Mocap cuts use
- * it to hold the captured feet world-fixed against the authoritative attack travel through the contact. */
-const _sa=new T.Vector3(),_sq=new T.Quaternion(),_sk=new T.Vector3(),_bq=new T.Quaternion(),_bh=new T.Vector3();
-export function shiftAnkles(r:CharacterRig,dx:number,dz:number){
- for(const left of [true,false]){readAnkle(r,left,_sa,_sq,_sk);_sa.x+=dx;_sa.z+=dz;_sa.y=Math.max(_sa.y,FLOOR);solveLeg(r,left,_sa,0,0,0,_sq,_sk);}
- markLegsAuthored(r);
-}
-/** Both legs' ankles, foot orientations and knees as posed now (captureAnkles), to blend a later pose's legs from. */
-export type AnkleSet={pos:[T.Vector3,T.Vector3];q:[T.Quaternion,T.Quaternion];knee:[T.Vector3,T.Vector3]};
-export const ankleSet=():AnkleSet=>({pos:[new T.Vector3(),new T.Vector3()],q:[new T.Quaternion(),new T.Quaternion()],knee:[new T.Vector3(),new T.Vector3()]});
-const hipAt=(r:CharacterRig,left:boolean,out:T.Vector3)=>{pelvisFrame(r);return out.copy(legBones(r,left)[0].position).applyQuaternion(_pq).add(_pp);};
-/** `knee` holds each knee's direction from its hip. */
-export function captureAnkles(r:CharacterRig,out:AnkleSet){for(let i=0;i<2;i++){readAnkle(r,i===0,out.pos[i],out.q[i],out.knee[i]);out.knee[i].sub(hipAt(r,i===0,_bh)).normalize();}return out;}
-/** Re-solves the legs posed now from `from` (captured earlier this sample) toward their own ankles by `k`: ankle, foot
- * orientation and knee direction blend (floor-clamped), so two stances blend without slerping the joints through each
- * other (a joint slerp between two stances can pass nearly straight knees, whose bend plane then flips). */
-export function blendAnkles(r:CharacterRig,from:AnkleSet,k:number){
- for(let i=0;i<2;i++){const left=i===0;readAnkle(r,left,_sa,_sq,_sk);hipAt(r,left,_bh);_sk.sub(_bh).normalize();
-  _sa.lerpVectors(from.pos[i],_sa,k);_sa.y=Math.max(_sa.y,FLOOR);_bq.copy(from.q[i]).slerp(_sq,k);_sk.lerpVectors(from.knee[i],_sk,k).add(_bh);solveLeg(r,left,_sa,0,0,0,_bq,_sk);}
- markLegsAuthored(r);
 }
 /** The yaw the rig group faces without the local camera: death, active hit reaction, attack commitment, else the player's yaw. */
 export function rigYaw(p:PlayerView,time:number){return p.death&&p.hp<=0?p.death.yaw:p.hitReaction&&(p.hitStunUntil||0)>time&&p.hitReaction.at<=time?p.hitReaction.yaw:committed(p,time)?p.attackCommitment!.yaw:p.yaw;}

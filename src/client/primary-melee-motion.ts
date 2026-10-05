@@ -244,6 +244,17 @@ function headTrack(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,r
  r.head.quaternion.slerp(_h.invert().multiply(_q),.8*weight);
 }
 const _v=new T.Vector3(),_lead=new T.Vector3(),_rear=new T.Vector3(),_in=[new T.Vector3(),new T.Vector3()];
+/** The phrase's footwork under a captured cut (mocap-layer mocapCut): its planted, travel-anchored steps (feet) on the
+ * phrase's own clock, whatever upper body the caller posed. A spinning cut (`phraseSpins`) hops round with `turn`, the
+ * body's turn the caller applied. Below full `weight` (the cut's entry) the steps blend from the ankles `footworkFrom` read
+ * before any captured layer moved the body (melee-motion). */
+export const phraseSpins=(spec:string,attackIndex:number|undefined)=>describe(spec,Math.max(0,(attackIndex||1)-1)).spin;
+export function footworkFrom(r:CharacterRig){ankleInGroup(r,true,_in[0]);ankleInGroup(r,false,_in[1]);}
+export function phraseFootwork(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,weight:number,turn=0){
+ const recoverySeconds=meleeRecovery(p.spec)/(p.attackRate||1),heavy=p.spec==='greatsword',drag=heavy?DRAG:p.spec==='shield'?SHIELD_DRAG:0;
+ const d=describe(p.spec,Math.max(0,(p.attackIndex||1)-1)),phase=meleePhase(a,recoverySeconds,a.age-hitStop(r,p,a),drag,heavy);
+ feet(r,p,a,phase,d.sign,heavy,p.spec==='daggers',d.overhead,d.spin,turn,weight);
+}
 /** Feet anchored to the floor, not to the travelling root: a planted foot holds its world position (the authored root travel
  * is subtracted), and a foot only moves while it is lifted. The lead foot steps from its guard spot and lands with zero
  * floor speed on the contact frame; the rear foot holds, then drags up behind the lunge on its toes; after the cut the

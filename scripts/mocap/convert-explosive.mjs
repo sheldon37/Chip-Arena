@@ -1,8 +1,8 @@
 // Converts the owner's Explosive "RPG Character Mecanim Animation Pack" (a licensed Unity asset) into per-weapon mocap
-// tables for the one-handed melee weapons (development tool). The FBX files are never committed; point the script at the
+// tables for the melee weapons (development tool). The FBX files are never committed; point the script at the
 // pack's extracted Animations folder:
 //   node scripts/mocap/convert-explosive.mjs <pack>/Animations [--preview <out.ts> [--events <out.json>]]
-// writes src/client/mocap/{sword,shield,daggers}-clips.ts (deterministic for the same input files). --preview writes every
+// writes src/client/mocap/{sword,shield,daggers,greatsword}-clips.ts (deterministic for the same input files). --preview writes every
 // candidate clip (raw clip time) for the visual lab instead (tools/visual-lab: mocap=<key>&support=0).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,7 +13,7 @@ const args=process.argv.slice(2),dir=args[0],previewAt=args.indexOf('--preview')
 if(!dir||!fs.existsSync(path.join(dir,'Armed'))){console.error('usage: node scripts/mocap/convert-explosive.mjs <pack>/Animations [--preview out.ts]');process.exit(1);}
 const quiet=console.warn;console.warn=()=>{};// FBXLoader warns about every unused FBX property
 
-const A=f=>`Armed/RPG-Character@Armed-${f}.FBX`,S=f=>`Armed-Shield/RPG-Character@Armed-Shield-${f}`,SW=f=>`1Hand-Sword/RPG-Character@Sword-Attack-${f}.FBX`,D=f=>`1Hand-Dagger/RPG-Character@Dagger-Attack-${f}.FBX`;
+const H=f=>`2Hand-Sword/RPG-Character@2Hand-Sword-${f}.FBX`,A=f=>`Armed/RPG-Character@Armed-${f}.FBX`,S=f=>`Armed-Shield/RPG-Character@Armed-Shield-${f}`,SW=f=>`1Hand-Sword/RPG-Character@Sword-Attack-${f}.FBX`,D=f=>`1Hand-Dagger/RPG-Character@Dagger-Attack-${f}.FBX`;
 /** Per-weapon sets. `mirror` reads a left-arm capture onto the right arm (the game's shield is a right-hand weapon); grip
  * 'shield' orients the strapped shield on the fist (calibrate). Attack marks are [start, active start, active end, settled]
  * in source seconds; mocap-layer retimes them onto the weapon's [0, windup, windup + window, + recovery], so the active span
@@ -22,7 +22,8 @@ const A=f=>`Armed/RPG-Character@Armed-${f}.FBX`,S=f=>`Armed-Shield/RPG-Character
  * the clip's first frame and the windup plays the whole captured anticipation, paced (paceKnots) to fit the game's much
  * shorter windups; settled is back at the guard.
  * Sweep sides follow the server's (simulation.ts melee): sword 1 forehand (right to left), 2 backhand, 3 a narrow overhead;
- * daggers alternate right / left hand; the shield sweeps one way. */
+ * daggers alternate right / left hand; the shield sweeps one way; greatsword 1 forehand, 2 backhand. A `twoHand` set keeps
+ * the support hand on the grip throughout (retarget bothHands). */
 const R={grip:'reverse',leftBlade:true};
 export const SETS={
  sword:{name:'SWORD_CLIPS',clips:{
@@ -32,7 +33,7 @@ export const SETS={
   // Forehand at the waist, right to left through the front.
   cutA:{file:SW('R1'),marks:[0,.30,.335,.80]},
   // Backhand at the waist, left to right.
-  cutB:{file:SW('R3'),marks:[0,.33,.37,.80]},
+  cutB:{file:SW('R2'),marks:[0,.30,.342,.80]},
   // The narrow overhead (server arc .8, high): a high diagonal forehand chopping down across the front. Every cut is a
   // right-hand clip: the pack's left-hand clips start from the mirrored guard, so entering one from the guard swaps the
   // arms through each other in a frame or two.
@@ -57,6 +58,20 @@ export const SETS={
   blockHit:{file:A('Block-Dual-GetHit1'),...R,marks:[0,.15,.5]},
   stagger:{file:A('GetHit-F1'),...R,marks:[0,.2,.5]},
  }},
+ greatsword:{name:'GREATSWORD_CLIPS',twoHand:true,clips:{
+  // Two-handed high guard (blade upright by the right shoulder), carried there at a walk. The run trails the blade low in
+  // the main hand, the free hand swinging as captured (the support grip would draw the hilt into the chest).
+  idle:{file:H('Idle'),loop:true},
+  walk:{file:H('Walk'),loop:true,strike:true},
+  run:{file:H('Run-Forward'),loop:true,strike:true,oneHand:true},
+  // 1: a diagonal forehand chopping down across the front to the low left.
+  cutA:{file:H('Attack2'),marks:[0,.458,.558,1.2]},
+  // 2: a flat backhand at chest height, left to right.
+  cutB:{file:H('Attack8'),marks:[0,.475,.525,1.2]},
+  block:{file:H('Block'),loop:true,marks:[0,.1,.2]},
+  blockHit:{file:H('Block-GetHit1'),marks:[0,.15,.5]},
+  stagger:{file:H('GetHit-F1'),marks:[0,.2,.5]},
+ }},
  shield:{name:'SHIELD_CLIPS',clips:{
   idle:{file:S('Idle.fbx'),mirror:true,grip:'shield',loop:true},
   walk:{file:S('Walk.fbx'),mirror:true,grip:'shield',loop:true,strike:true},
@@ -77,7 +92,7 @@ const PREVIEW=[
  ...['Idle','Block-Dual'].map(f=>[`Armed-${f}.r`,{file:A(f),grip:'reverse',leftBlade:true}]),
  ...['Idle','Walk','Run-Forward','Attack1','Attack2','Attack3','Block','Block-GetHit1','Block-GetHit2'].map(f=>[`Shield-${f}.m`,{file:S(f+'.fbx'),mirror:true,grip:'shield'}]),
  // Two-handed sword (support hand on the grip): candidates for the greatsword.
- ...['Idle','Walk','Run-Forward','Attack1','Attack2','Attack3','Attack4','Attack5','Attack6','Block','Block-GetHit1','GetHit-F1'].map(f=>[`2H-${f}`,{file:`2Hand-Sword/RPG-Character@2Hand-Sword-${f}.FBX`,twoHand:true}]),
+ ...['Idle','Idle-Alert1','Walk','Run-Forward','Attack1','Attack2','Attack3','Attack4','Attack5','Attack6','Attack7','Attack8','Attack9','Attack10','Attack11','Block','Block-GetHit1','Block-GetHit2','GetHit-F1','GetHit-F2','Stunned'].map(f=>[`2H-${f}`,{file:`2Hand-Sword/RPG-Character@2Hand-Sword-${f}.FBX`,twoHand:true}]),
 ];
 
 // The pack mixes .fbx and .FBX (even within a folder): names resolve case-insensitively.
@@ -108,9 +123,9 @@ function paceKnots(rows,fps,t0,t1,{alpha=PACE_ALPHA,knots=7}={}){
  for(let k=1;k<=knots;k++){const s=s0+(s1-s0)*k/(knots+1);let i=0;while(i+1<S.length-1&&S[i+1]<s)i++;const t=(i+(s-S[i])/(S[i+1]-S[i]))/fps;out.push(+Math.min(t1,Math.max(t0,t)).toFixed(4));}
  return out;
 }
-const row=(c,oneHand,key='')=>{const {obj,clip}=load(c.file),mirror=!!c.mirror,fps=fpsFor(key,c),rows=retarget(obj,clip,calFor(mirror,c.grip||'blade'),fps,{mirror,oneHand,leftBlade:!!c.leftBlade,soften:true,poleTurn:10,splitTwist:true});
+const row=(c,oneHand,key='',heading=0)=>{const {obj,clip}=load(c.file),mirror=!!c.mirror,fps=fpsFor(key,c),rows=retarget(obj,clip,calFor(mirror,c.grip||'blade'),fps,{mirror,oneHand,bothHands:!oneHand,leftBlade:!!c.leftBlade,soften:true,poleTurn:10,splitTwist:true,heading,loop:!!c.loop});
  const m=c.strike?[leftFootStrike(obj,clip,60,{mirror})]:c.marks,marks=m?`,marks:[${m.join(',')}]`:'';
- const pace=/^cut/.test(key)?`,pace:[${paceKnots(rows,fps,c.marks[0],c.marks[1]).join(',')}]`:'';
+ const pace=/^cut/.test(key)?`,pace:[${paceKnots(rows,fps,c.marks[0],c.marks[1],c.alpha===undefined?{}:{alpha:c.alpha}).join(',')}]`:'';
  return `{fps:${fps},frames:${rows.length}${c.loop?',loop:true':''}${marks}${pace},source:${JSON.stringify(path.basename(c.file).replace(/^RPG-Character@|\.fbx$/gi,'')+(mirror?' (mirrored)':''))},data:'${encode(rows)}'}`;};
 
 if(preview){
@@ -126,7 +141,11 @@ if(preview){
   let out=`// GENERATED by scripts/mocap/convert-explosive.mjs from the Explosive RPG Character pack. Do not edit.\n`+
    `// Channels: ${CHANNELS.length} (src/client/mocap/mocap-clip.ts MOCAP_CHANNELS).\nimport type {MocapClip} from './mocap-clip.js';\n`+
    `export const ${set.name}:Record<string,MocapClip>={\n`;
-  for(const [key,c] of Object.entries(set.clips))out+=` ${JSON.stringify(key)}:${row(c,true,key)},\n`;
+  // The guard's heading (the idle's mean pelvis turn) is carried by the torso in every clip that poses the pelvis (the
+  // walk and run carries leave it to the gait).
+  const idle=set.clips.idle,ir=retarget(load(idle.file).obj,load(idle.file).clip,calFor(!!idle.mirror,idle.grip||'blade'),fpsFor('idle',idle),{mirror:!!idle.mirror,oneHand:!set.twoHand}),heading=ir.reduce((s,r)=>s+r[0],0)/ir.length;
+  for(const [key,c] of Object.entries(set.clips))out+=` ${JSON.stringify(key)}:${row(c,!set.twoHand||!!c.oneHand,key,c.strike?0:heading)},\n`;
+  console.log(spec,'guard heading',heading.toFixed(3));
   const target=path.resolve(path.dirname(new URL(import.meta.url).pathname),`../../src/client/mocap/${spec}-clips.ts`);
   fs.writeFileSync(target,out+'};\n');console.log('wrote',target,out.length,'bytes',Object.keys(set.clips).length,'clips');
  }

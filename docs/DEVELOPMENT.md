@@ -73,23 +73,19 @@ identity, persistence, dependency manifests, launcher, packaging, or CI require
 Full verification attempts every stage and reports failures, never substitutes a
 passing narrower test for a failed stage. Logs go to ignored `test-results/`.
 
-Mocap clips: the greatsword's animations come from the owner's Mixamo "Great Sword Pack", retargeted offline
-to the voxel rig. The licensed FBX files are never committed. To regenerate after changing the converter or clip
-choices, extract the pack outside the repository and run
-`node scripts/mocap/convert-greatsword.mjs <pack dir>` (rewrites src/client/mocap/greatsword-clips.ts deterministically),
-then `node --import tsx --test tests/greatsword-mocap.test.ts`. `--preview tools/visual-lab/mocap-preview.generated.ts`
-writes every pack clip (git-ignored) for the visual lab's `mocap=<clip name>` raw view; `mocapOff=1` renders the
-procedural layers for before/after strips. Attack clips are retimed onto the shared windup/active/recovery timing at
-runtime; shared timing never depends on them.
-
-The sword, daggers and shield come from the owner's Explosive "RPG Character Mecanim Animation Pack" (Unity asset;
-FBX and .meta files never committed). Extract it outside the repository and run
-`node scripts/mocap/convert-explosive.mjs <pack>/Animations` (rewrites src/client/mocap/{sword,daggers,shield}-clips.ts
+Mocap clips: the sword, daggers, shield and greatsword animations come from the owner's Explosive "RPG Character
+Mecanim Animation Pack" (Unity asset; its FBX and .meta files are never committed), retargeted offline to the voxel rig.
+To regenerate after changing the converter or clip choices, extract the pack outside the repository and run
+`node scripts/mocap/convert-explosive.mjs <pack>/Animations` (rewrites src/client/mocap/{sword,daggers,shield,greatsword}-clips.ts
 deterministically; the clip choices and their [start, contact start, contact end, settled] marks are its SETS table),
-then `node --import tsx --test tests/melee-mocap.test.ts`. `--preview tools/visual-lab/mocap-preview.generated.ts
-[--events <out.json>]` writes the candidate clips (the same git-ignored lab table; the JSON lists each clip's authored
-Hit markers) for `mocap=<key>&support=0` raw views. The shield set is the pack's left-arm shield read onto the game's
-right hand; the daggers use a reverse grip.
+then `node --import tsx --test tests/melee-mocap.test.ts tests/greatsword-mocap.test.ts`. `--preview
+tools/visual-lab/mocap-preview.generated.ts [--events <out.json>]` writes the candidate clips (git-ignored; the JSON lists
+each clip's authored Hit markers) for the visual lab's `mocap=<key>` raw view (`support=0` for one-handed clips);
+`mocapOff=1` renders the procedural layers for before/after strips. Attack clips are retimed onto the shared
+windup/active/recovery timing at runtime; shared timing never depends on them. The shield set is the pack's left-arm shield
+read onto the game's right hand; the daggers use a reverse grip; captured cuts stand on the procedural phrase's footwork.
+The earlier Mixamo greatsword set (`node scripts/mocap/convert-greatsword.mjs <pack dir>`, the owner's "Great Sword Pack")
+is superseded: running it writes that set back into greatsword-clips.ts.
 
 ## CI and agent access
 

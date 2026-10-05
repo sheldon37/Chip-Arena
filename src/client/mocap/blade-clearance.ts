@@ -28,11 +28,14 @@ function boxPoses(r:CharacterRig){
  return list.length;
 }
 const _t=new T.Vector3(),_l=new T.Vector3(),_n=new T.Vector3(),_p=new T.Vector3(),_y=new T.Vector3(),_ax=new T.Vector3(),_rq=new T.Quaternion();
-/** Signed distance from chest-space point `p` to box `o` (negative inside); `n` gets the outward normal (chest space). */
+/** Signed distance from chest-space point `p` to box `o` (negative inside); `n` gets the outward normal (chest space).
+ * Inside, the normal is the nearest face's, blended with any face within INSIDE_BLEND of as near, so it turns smoothly
+ * where the nearest face changes (a point deep in the head no longer flips its way out between frames). */
+const INSIDE_BLEND=.02,inside=(q:number,m:number)=>T.MathUtils.smoothstep(q-m,-INSIDE_BLEND,0);
 function sdf(o:typeof pose[number],p:T.Vector3,n:T.Vector3){
  _l.copy(p).sub(o.c).applyQuaternion(o.qi);const qx=Math.abs(_l.x)-o.h.x,qy=Math.abs(_l.y)-o.h.y,qz=Math.abs(_l.z)-o.h.z;
  if(qx>0||qy>0||qz>0){n.set(Math.max(qx,0)*Math.sign(_l.x),Math.max(qy,0)*Math.sign(_l.y),Math.max(qz,0)*Math.sign(_l.z));const d=n.length();n.divideScalar(d||1).applyQuaternion(o.q);return d;}
- if(qx>=qy&&qx>=qz)n.set(Math.sign(_l.x)||1,0,0);else if(qy>=qz)n.set(0,Math.sign(_l.y)||1,0);else n.set(0,0,Math.sign(_l.z)||1);n.applyQuaternion(o.q);return Math.max(qx,qy,qz);
+ const m=Math.max(qx,qy,qz);n.set(inside(qx,m)*(Math.sign(_l.x)||1),inside(qy,m)*(Math.sign(_l.y)||1),inside(qz,m)*(Math.sign(_l.z)||1)).normalize().applyQuaternion(o.q);return m;
 }
 /** The slab half-width of the call in progress (the blade's own: greatsword .09, sword .05, daggers .045). */
 let halfWidth=BLADE_CLEARANCE.halfWidth;
@@ -59,14 +62,6 @@ function floorPlane(r:CharacterRig){
  _fq.identity();_fp.set(0,0,0);for(const n of [r.body,r.pelvis,r.spine,r.chest]){_fp.add(_t.copy(n.position).applyQuaternion(_fq));_fq.multiply(n.quaternion);}
  floorN.set(0,1,0).applyQuaternion(_fq.invert());floorD=_fp.y-FLOOR_CLEAR;
 }
-/** Lift a chest-space weapon direction (from `grip`, tip at `length` along it) so its tip stays above the floor plane:
- * the direction turns up about the grip just enough (the off-hand dagger, which the slab clearance does not cover). */
-export function liftOffFloor(r:CharacterRig,grip:T.Vector3,dir:T.Vector3,length:number){
- floorPlane(r);const h=grip.dot(floorN)+floorD,d=dir.dot(floorN);if(h+length*d>=0||h<=0)return;
- // The lowest direction that keeps the tip at the plane: its component along the floor normal is -h/length.
- const along=-h/length,flat=_t.copy(dir).addScaledVector(floorN,-d),fl=flat.length();if(fl<1e-6)flat.set(1,0,0).addScaledVector(floorN,-floorN.x).normalize();else flat.divideScalar(fl);
- dir.copy(flat).multiplyScalar(Math.sqrt(Math.max(0,1-along*along))).addScaledVector(floorN,along).normalize();
-}
 /** Push the blade clear (in place). `from`/`to`: the weapon's extent along the blade from the grip (pommel, blade end).
  * Every penetrating sample asks for the turn about the grip that lifts it out along its surface normal (or, near the hilt,
  * where there is no lever, for the grip to move); the requests are averaged with the deepest weighing most (pen^3) and applied, a few times over. Each
@@ -74,14 +69,16 @@ export function liftOffFloor(r:CharacterRig,grip:T.Vector3,dir:T.Vector3,length:
 export function clearBlade(r:CharacterRig,grip:T.Vector3,blade:T.Vector3,edge:T.Vector3,from:number,to:number,move=true,width=BLADE_CLEARANCE.halfWidth,floor=false){
  const C=BLADE_CLEARANCE,count=boxPoses(r),list=boxes(r);halfWidth=width;if(floor)floorPlane(r);
  for(let it=0;it<10;it++){
-  _y.crossVectors(blade,edge);_w.set(0,0,0);_tr.set(0,0,0);_na.set(0,0,0);let total=0,min=Infinity;
+  _y.crossVectors(blade,edge);_w.set(0,0,0);_tr.set(0,0,0);_na.set(0,0,0);let total=0,min=Infinity,nw=0;
   for(const s of stations(from,to))for(let k=0;k<5;k++){point(grip,blade,edge,s,k,_p);
    // The floor (`floor`): a cut's follow-through turns up about the grip (a pure turn: the fist stays where it is).
    if(floor&&s>0){const d=_p.dot(floorN)+floorD,pen=C.clearance+.004-d;if(pen>0){const k=pen*pen*pen;_t.crossVectors(blade,floorN).multiplyScalar(pen*k/s);_w.add(_t);total+=k;}}
    for(let i=0;i<count;i++){const d=sdf(pose[i],_p,_hn);min=Math.min(min,d);
-    // Inside the shoulders and chest the way out is up: the blade comes to rest on top of them, not under or through.
-    if(d<0&&list[i].lift){_hn.y+=1.2;_hn.normalize();}
-    if(it===0&&d<C.clearance+C.rollRange)_na.addScaledVector(_hn,1-T.MathUtils.smoothstep(d,C.clearance,C.clearance+C.rollRange));
+    // Inside the shoulders and chest a carried blade's way out is up: it comes to rest on top of them, not under or
+    // through (eased in over the first 3 cm of depth, so the push turns smoothly as the blade enters). A cut (`move`
+    // off) takes the nearest way out.
+    if(d<0&&move&&list[i].lift){const u=T.MathUtils.smoothstep(-d,0,.03);if(u>0){_hn.y+=1.2*u;_hn.normalize();}}
+    if(it===0&&move&&d<C.clearance+C.rollRange){const u=1-T.MathUtils.smoothstep(d,C.clearance,C.clearance+C.rollRange);_na.addScaledVector(_hn,u);nw+=u;}
     const pen=C.clearance+.004-d;if(pen<=0)continue;
     // A blade resting on the shoulders keeps its lie: the grip rises (the hands lift it onto them) rather than the tip.
     const lever=T.MathUtils.smoothstep(Math.abs(s),.15,.6)*(move&&list[i].lift?.35:1);
@@ -89,9 +86,12 @@ export function clearBlade(r:CharacterRig,grip:T.Vector3,blade:T.Vector3,edge:T.
   // The tip itself (8 cm past the slab's last station) on the floor too.
   if(floor){const tip=to+.08;point(grip,blade,edge,tip,0,_p);const d=_p.dot(floorN)+floorD,pen=C.clearance+.004-d;if(pen>0){const k=pen*pen*pen;_t.crossVectors(blade,floorN).multiplyScalar(pen*k/tip);_w.add(_t);total+=k;}}
   if(it===0&&min<C.clearance+C.rollRange&&_na.lengthSq()>1e-8){
-   // Lay the flat on the surface: the edge turns perpendicular to the contact normal (the closer, the more).
-   const k=1-T.MathUtils.smoothstep(min,C.clearance,C.clearance+C.rollRange);_ax.crossVectors(blade,_na.normalize());
-   if(_ax.lengthSq()>1e-4){_ax.normalize();if(_ax.dot(edge)<0)_ax.negate();edge.lerp(_ax,k).addScaledVector(blade,-edge.dot(blade)).normalize();}
+   // Lay the flat on the surface (carries, `move`; a cut keeps its captured edge): the edge turns perpendicular to the
+   // contact normal (the closer, the more), toward the nearer of the two such edges; an edge pointing nearly into the
+   // surface (both equally far), or contacts pushing opposite ways (their normals cancel), leave it, so the roll never
+   // swaps sides (a 180° wrist flip) between frames.
+   const k=(1-T.MathUtils.smoothstep(min,C.clearance,C.clearance+C.rollRange))*T.MathUtils.smoothstep(_na.length()/Math.max(nw,1e-9),.3,.7);_ax.crossVectors(blade,_na.normalize());
+   if(_ax.lengthSq()>1e-4){_ax.normalize();const c=_ax.dot(edge);if(c<0)_ax.negate();edge.lerp(_ax,k*T.MathUtils.smoothstep(Math.abs(c),0,.35)).addScaledVector(blade,-edge.dot(blade)).normalize();}
   }
   if(total<=0)break;
   _w.divideScalar(total);_tr.divideScalar(total);if(move)grip.add(_tr);
