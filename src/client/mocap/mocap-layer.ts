@@ -8,13 +8,24 @@ import {CHANNEL_COUNT,sampleClip,retime,clipDuration,type MocapClip} from './moc
 import {applyMocapPose,blendRows} from './mocap-pose.js';
 import {isFirstPersonRig} from '../pose-flags.js';
 import {GREATSWORD_CLIPS as GS} from './greatsword-clips.js';
+import {SWORD_CLIPS as SW} from './sword-clips.js';
+import {DAGGERS_CLIPS as DG} from './daggers-clips.js';
+import {SHIELD_CLIPS as SH} from './shield-clips.js';
+import type {MocapPoseOptions} from './mocap-pose.js';
 
 /** Per-weapon mocap sets (presentation only). A weapon without a set, or a state its set leaves out, keeps the procedural
  * layers. `cuts` cycle with the authoritative attackIndex (1-based). Every attack clip's marks are retimed onto that
- * weapon's authoritative windup / active window / recovery, so the captured contact always lands in the hit window. */
-export interface MocapSet {idle?:MocapClip;walk?:MocapClip;run?:MocapClip;cuts?:readonly MocapClip[];block?:MocapClip;blockHit?:MocapClip;stagger?:MocapClip}
+ * weapon's authoritative windup / active window / recovery, so the captured contact always lands in the hit window.
+ * `fit` adapts every pose of the set to the weapon (one-handed grip, clearance dimensions); `spin` lists the 1-based cut
+ * slots that add a full body turn through the strike (the procedural dagger 4th cut's spin). Sources: greatsword, the
+ * owner's Mixamo Great Sword Pack; sword, daggers and shield, the owner's Explosive RPG Character pack (the shield set read
+ * left↔right onto the game's right-hand shield). */
+export interface MocapSet {idle?:MocapClip;walk?:MocapClip;run?:MocapClip;cuts?:readonly MocapClip[];block?:MocapClip;blockHit?:MocapClip;stagger?:MocapClip;fit?:Pick<MocapPoseOptions,'oneHand'|'pommel'|'halfWidth'|'clear'>;spin?:readonly number[]}
 export const MOCAP_SETS:Partial<Record<SpecId,MocapSet>>={
  greatsword:{idle:GS.idle,walk:GS.walk,run:GS.run,cuts:[GS.cutA,GS.cutB],block:GS.block,blockHit:GS.blockHit,stagger:GS.stagger},
+ sword:{idle:SW.idle,walk:SW.walk,run:SW.run,cuts:[SW.cutA,SW.cutB,SW.cutC],block:SW.block,blockHit:SW.blockHit,stagger:SW.stagger,fit:{oneHand:true,pommel:.19,halfWidth:.05}},
+ daggers:{idle:DG.idle,walk:DG.walk,run:DG.run,cuts:[DG.cutA,DG.cutB,DG.cutC,DG.cutD],block:DG.block,blockHit:DG.blockHit,stagger:DG.stagger,fit:{oneHand:true,pommel:.19,halfWidth:.045},spin:[4]},
+ shield:{idle:SH.idle,walk:SH.walk,run:SH.run,cuts:[SH.cutA,SH.cutB],block:SH.block,blockHit:SH.blockHit,fit:{oneHand:true,clear:'none'}},
 };
 /** Development switch (the lab's before/after strips); the game always runs with it on. */
 export const MOCAP={enabled:true};
@@ -30,9 +41,15 @@ export function cutClip(set:MocapSet,attackIndex:number|undefined){const c=set.c
 export function cutTime(clip:MocapClip,age:number,windup:number,window:number,recovery:number){const e=windup+window;return retime([0,windup,e,e+recovery],clip.marks!,age);}
 /** A primary cut (replaces the procedural phrase). `lag` is the hit-stop's phrase lag (primary-melee-motion hitStop). */
 export function mocapCut(r:CharacterRig,p:PlayerView,a:ReturnType<typeof attackPose>,lag=0,weight=1){
- const set=mocapSet(p.spec,r);if(!set?.cuts)return false;const clip=cutClip(set,p.attackIndex),rate=p.attackRate||1;
- sampleClip(clip,cutTime(clip,a.age-lag,a.windup,a.window,meleeRecovery(p.spec)/rate),row);
- applyMocapPose(r,row,{weight,clear:'turn'});return true;
+ const set=mocapSet(p.spec,r);if(!set?.cuts)return false;const clip=cutClip(set,p.attackIndex),rate=p.attackRate||1,recovery=meleeRecovery(p.spec)/rate,age=a.age-lag;
+ sampleClip(clip,cutTime(clip,age,a.windup,a.window,recovery),row);
+ applyMocapPose(r,row,{weight,clear:'turn',...set.fit});
+ // A full body turn through the strike, as the procedural phrases add it: the set's spinning cut (over the strike and its
+ // recovery) and the Hurricane chip (over the strike window); a complete turn never unwinds.
+ const slot=((Math.max(1,p.attackIndex||1)-1)%set.cuts.length)+1;
+ if(set.spin?.includes(slot))r.body.rotation.y+=ease((age-a.windup)/(a.window+recovery))*Math.PI*2*weight;
+ else if(p.chips?.hurricane)r.body.rotation.y+=ease((age-a.windup)/a.window)*Math.PI*2*weight;
+ return true;
 }
 /** Walk-to-run blend input: the planar speed eased per rig (~.25 s), so a stop or an action that zeroes the velocity in one
  * snapshot fades the run's carry out with the carry weight instead of swapping clips in a frame. Restarts after a rewind or
@@ -51,13 +68,13 @@ function gaitSpeed(r:object,p:PlayerView,time:number){
 export function mocapReady(r:CharacterRig,p:PlayerView,time:number,carry:number){
  const set=mocapSet(p.spec,r);if(!set?.idle)return false;
  const stand=1-carry,still=1-ease(r.motion/.2);
- if(stand>.001){sampleClip(set.idle,time,row);applyMocapPose(r,row,{weight:stand,legs:still,root:still});}
+ if(stand>.001){sampleClip(set.idle,time,row);applyMocapPose(r,row,{weight:stand,legs:still,root:still,...set.fit});}
  if(carry>.001&&set.walk&&set.run){
   const phase=((r.stride/(2*Math.PI))%1+1)%1,k=ease((gaitSpeed(r,p,time)-3.2)/2.8);
   // Walk, then run over it: the two carries hold the blade far apart (raised guard / trailed over the shoulder), so they
   // blend through the joints' rotations (slerp) instead of averaging their blade vectors.
-  sampleClip(set.walk,set.walk.marks![0]+phase*clipDuration(set.walk),row);applyMocapPose(r,row,{weight:carry,legs:0,root:0});
-  if(k>.001){sampleClip(set.run,set.run.marks![0]+phase*clipDuration(set.run),row);applyMocapPose(r,row,{weight:carry*k,legs:0,root:0});}
+  sampleClip(set.walk,set.walk.marks![0]+phase*clipDuration(set.walk),row);applyMocapPose(r,row,{weight:carry,legs:0,root:0,...set.fit});
+  if(k>.001){sampleClip(set.run,set.run.marks![0]+phase*clipDuration(set.run),row);applyMocapPose(r,row,{weight:carry*k,legs:0,root:0,...set.fit});}
  }
  return true;
 }
@@ -71,7 +88,7 @@ export function mocapBlock(r:CharacterRig,p:PlayerView,time:number,since:number,
   // Driven back at the impact (peak ~.1 s), recovered into the guard by ~.45 s; blended in over 40 ms, out over the tail.
   const k=ease(u/.04)*(1-ease((u-.35)/.12));if(k>.001){sampleClip(h,retime([0,.1,.45],hm,u),rowB);blendRows(row,rowB,k,row);}
  }
- applyMocapPose(r,row,{weight:1,legs,root:legs});return true;
+ applyMocapPose(r,row,{weight:1,legs,root:legs,...set.fit});return true;
 }
 /** Hitstun base pose: the captured reel retimed into the authoritative stun (impact → extreme at ~35% → recovered at the
  * stun's end), scaled by how frontal the push is (the capture is a hit from the front). The procedural impulse reaction
@@ -81,5 +98,5 @@ export function mocapStagger(r:CharacterRig,p:PlayerView,time:number,carry:numbe
  // Over the guard idle (the pose the stun releases into), at most .7: the impulse reaction adds its own recoil on top.
  const at=h&&h.at<=time?h.at:time,until=Math.max(p.hitStunUntil||0,at+.05),span=until-at,front=h?Math.min(1,Math.max(.35,-h.direction.z*1.4+.35)):.6;
  sampleClip(set.stagger,retime([0,span*.4,span],set.stagger.marks!,time-at),row);
- applyMocapPose(r,row,{weight:.7*front*ease((time-at)/.06)*(1-ease((time-until+.1)/.1))});return true;
+ applyMocapPose(r,row,{weight:.7*front*ease((time-at)/.06)*(1-ease((time-until+.1)/.1)),...set.fit});return true;
 }

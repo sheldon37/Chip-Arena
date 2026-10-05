@@ -14,9 +14,19 @@ globalThis.document ??= {createElementNS:()=>({style:{},addEventListener(){},rem
 const {FBXLoader}=await import('three/examples/jsm/loaders/FBXLoader.js');
 
 /** Some Mixamo exports carry a footer FBXLoader's end-of-content test misreads; cut the buffer at the top-level null record
- * and pad it so the loader stops exactly there. */
-function trimFbx(d){let o=27;for(;;){const end=Number(d.readBigUInt64LE(o));if(end===0||end>=d.length)break;o=end;}const b=Buffer.alloc(o+176);d.copy(b,0,0,o);return b;}
+ * and pad it so the loader stops exactly there. The walk reads FBX 7.5's 64-bit record headers: older files (the
+ * Explosive pack's 7.3, 32-bit headers) load as they are. */
+function trimFbx(d){if(d.readUInt32LE(23)<7500)return d;let o=27;for(;;){const end=Number(d.readBigUInt64LE(o));if(end===0||end>=d.length)break;o=end;}const b=Buffer.alloc(o+176);d.copy(b,0,0,o);return b;}
 export function loadFbx(file){const buf=trimFbx(fs.readFileSync(file));return new FBXLoader().parse(buf.buffer.slice(buf.byteOffset,buf.byteOffset+buf.byteLength),'');}
+
+/** World transforms of the Mixamo-named bones, optionally mirrored left↔right through the character's sagittal plane
+ * (x → -x; the Left* bone reads the reflected Right* bone): a left-arm capture (the Explosive shield set) drives the rig's
+ * right arm. Calibration and retarget read through the same view, so the rest pose cancels exactly in both modes. */
+function bones(obj,mirror=false){
+ const B=n=>obj.getObjectByName('mixamorig'+n),swap=n=>n.startsWith('Left')?'Right'+n.slice(4):n.startsWith('Right')?'Left'+n.slice(5):n;
+ if(!mirror)return {wq:n=>B(n).getWorldQuaternion(q()),wp:n=>B(n).getWorldPosition(v())};
+ return {wq:n=>{const r=B(swap(n)).getWorldQuaternion(q());return r.set(r.x,-r.y,-r.z,r.w);},wp:n=>{const p=B(swap(n)).getWorldPosition(v());p.x=-p.x;return p;}};
+}
 
 // Voxel rig proportions (src/client/character-rig.ts): hip-to-ankle .50, shoulder-to-wrist .52, shoulders at chest (±.345, .18).
 const RIG={leg:.5,arm:.52,shoulderY:.18,shoulderX:.345};
@@ -33,8 +43,8 @@ const rotvec=(qq,out)=>{const w=T.MathUtils.clamp(qq.w,-1,1),s=Math.sqrt(Math.ma
 
 /** Skeleton calibration from the bind pose (Mixamo T-pose): each mapped bone's world rotation in the rig's rest pose
  * (arms hanging), whose inverse turns an animated Mixamo world rotation into the voxel joint's world rotation. */
-export function calibrate(obj){
- obj.updateMatrixWorld(true);const B=n=>obj.getObjectByName('mixamorig'+n),wq=n=>B(n).getWorldQuaternion(q()),wp=n=>B(n).getWorldPosition(v());
+export function calibrate(obj,{mirror=false,grip='blade'}={}){
+ obj.updateMatrixWorld(true);const {wq,wp}=bones(obj,mirror);
  const C={};for(const n of ['Hips','Spine1','Spine2','Neck','Head','LeftShoulder','RightShoulder','LeftUpLeg','RightUpLeg','LeftLeg','RightLeg','LeftFoot','RightFoot'])C[n]=wq(n).invert();
  // Hands: T-pose arms rotated down to hang at the sides (left about -Z, right about +Z).
  C.LeftHand=q().setFromAxisAngle(new T.Vector3(0,0,1),-Math.PI/2).multiply(wq('LeftHand')).invert();
@@ -45,15 +55,25 @@ export function calibrate(obj){
  // Blade axis and edge in the right hand's frame (the clips carry no sword): a hammer grip runs across the palm along the
  // knuckle line, so the blade leaves the fist from the pinky toward the index knuckle; the true edge leads along the
  // metacarpals (wrist to middle knuckle), perpendicular to it.
- const inv=wq('RightHand').invert(),R=wp('RightHand');
- const blade=wp('RightHandIndex1').sub(wp('RightHandPinky1')).applyQuaternion(inv),edge=wp('RightHandMiddle1').sub(R).applyQuaternion(inv);
- blade.normalize();edge.addScaledVector(blade,-edge.dot(blade)).normalize();
- return {C,legScale:RIG.leg/legM,armScale:RIG.arm/armM,hipsY,blade,edge};
+ // Per hand, so a weapon in each fist (`leftBlade`: the daggers) gets the same convention from its own fingers.
+ const axes=side=>{const inv=wq(side+'Hand').invert(),H=wp(side+'Hand');
+  const blade=wp(side+'HandIndex1').sub(wp(side+'HandPinky1')).applyQuaternion(inv),edge=wp(side+'HandMiddle1').sub(H).applyQuaternion(inv);
+  blade.normalize();edge.addScaledVector(blade,-edge.dot(blade)).normalize();
+  // A reverse (ice-pick) grip: the blade leaves the fist on the little-finger side.
+  if(grip==='reverse'){blade.negate();edge.addScaledVector(blade,-edge.dot(blade)).normalize();}
+  // A strapped shield (grip 'shield'; the weapon model's +z is its face, +y its top): the face looks out of the back of
+  // the hand (the palm's opposite: fingers × knuckle line), the top runs along the fist's knuckle line, so a fist held
+  // knuckles-up in front of the chest presents the face forward, top up. "blade" is then the face, "edge" top × face.
+  if(grip==='shield'){const face=edge.clone().cross(blade).normalize(),top=blade.clone().addScaledVector(face,-blade.dot(face)).normalize();blade.copy(face);edge.copy(top).cross(face).normalize();}
+  return {blade,edge};};
+ const {blade,edge}=axes('Right'),left=axes('Left');
+ return {C,legScale:RIG.leg/legM,armScale:RIG.arm/armM,hipsY,blade,edge,bladeL:left.blade,edgeL:left.edge};
 }
 
-/** Sample `clip` on `obj` at `fps`; returns one Float32Array row per frame in CHANNELS order. */
-export function retarget(obj,clip,cal,fps){
- const mixer=new T.AnimationMixer(obj);mixer.clipAction(clip).play();const B=n=>obj.getObjectByName('mixamorig'+n);
+/** Sample `clip` on `obj` at `fps`; returns one Float32Array row per frame in CHANNELS order. `mirror` reads the capture
+ * left↔right (calibrate with the same flag); `oneHand` keeps the support hand off the weapon (one-handed weapons). */
+export function retarget(obj,clip,cal,fps,{mirror=false,oneHand=false,leftBlade=false}={}){
+ const mixer=new T.AnimationMixer(obj);mixer.clipAction(clip).play();const {wq,wp}=bones(obj,mirror);
  const n=Math.max(2,Math.round(clip.duration*fps)+1),rows=[];let yawPrev=0,hips0=null;
  const W={},Wp={};const names=['Hips','Spine1','Spine2','Neck','Head','LeftShoulder','RightShoulder','LeftUpLeg','RightUpLeg','LeftLeg','RightLeg','LeftFoot','RightFoot','LeftHand','RightHand'];
  const pos=['Hips','LeftArm','RightArm','LeftForeArm','RightForeArm','LeftHand','RightHand'];
@@ -61,8 +81,8 @@ export function retarget(obj,clip,cal,fps){
  const rv=v(),tmp=q(),chestInv=q(),yawQ=q(),yawInv=q(),poleR=new T.Vector3(-1,-.7,-.2).normalize(),poleL=new T.Vector3(1,-.8,-.25).normalize();// rig-ik's default poles
  for(let i=0;i<n;i++){
   mixer.setTime(Math.min(clip.duration-1e-4,i/fps));// setTime(duration) would wrap a looping action to 0obj.updateMatrixWorld(true);
-  for(const k of names)W[k]=B(k).getWorldQuaternion(q()).multiply(cal.C[k]);
-  for(const k of pos)Wp[k]=B(k).getWorldPosition(v());
+  for(const k of names)W[k]=wq(k).multiply(cal.C[k]);
+  for(const k of pos)Wp[k]=wp(k);
   // Heading from the pelvis forward, unwrapped so full turns stay continuous; every joint is expressed under it.
   const f=v().set(0,0,1).applyQuaternion(W.Hips);let yaw=Math.atan2(f.x,f.z);while(yaw-yawPrev>Math.PI)yaw-=2*Math.PI;while(yaw-yawPrev<-Math.PI)yaw+=2*Math.PI;yawPrev=yaw;
   yawQ.setFromAxisAngle(UP,yaw);yawInv.copy(yawQ).invert();for(const k of names)W[k].premultiply(yawInv);
@@ -91,8 +111,8 @@ export function retarget(obj,clip,cal,fps){
    const k=T.MathUtils.smoothstep(p.length(),.25,.6);if(k>0)prev.lerp(p.normalize(),.6*k).normalize();return prev.clone();};
   // Hand targets stay inside the rig arm's reach with a soft knee (rig-ik clamps hard at .515: a kink in the blade's path).
   const reach=(p,sx)=>{const d=new T.Vector3(p.x-sx,p.y-RIG.shoulderY,p.z),l=d.length(),knee=.4,room=.1;if(l>knee)d.multiplyScalar((knee+room*Math.tanh((l-knee)/room))/l);return p.set(sx+d.x,RIG.shoulderY+d.y,d.z);};
-  const RHq=B('RightHand').getWorldQuaternion(q()),blade=cal.blade.clone().applyQuaternion(RHq),edge=cal.edge.clone().applyQuaternion(RHq);
-  const gap=Wp.LeftHand.distanceTo(Wp.RightHand);let two=T.MathUtils.clamp((40-gap)/12,0,1);
+  const RHq=wq('RightHand'),blade=cal.blade.clone().applyQuaternion(RHq),edge=cal.edge.clone().applyQuaternion(RHq);
+  const gap=Wp.LeftHand.distanceTo(Wp.RightHand);let two=oneHand?0:T.MathUtils.clamp((40-gap)/12,0,1);
   const g=reach(toChest(Wp.RightHand),-RIG.shoulderX),bl=dirChest(blade),ed=dirChest(edge);ed.addScaledVector(bl,-ed.dot(bl)).normalize();
   // Two-handed, the support hand takes the weapon's support grip (.11 down the grip from the main hand): the voxel
   // shoulders are far wider than a human's, so the grip shifts toward the support shoulder until that hand can reach it.
@@ -101,7 +121,10 @@ export function retarget(obj,clip,cal,fps){
   if(two>0){const L=new T.Vector3(RIG.shoulderX,RIG.shoulderY,0),s=g.clone().addScaledVector(bl,-.11),need=s.distanceTo(L)-.44;
    if(need>0){two*=1-T.MathUtils.smoothstep(need,.22,.32);g.add(L.sub(s).normalize().multiplyScalar(Math.min(need,.25)*two));}}
   const rp=pole(Wp.RightArm,Wp.RightForeArm,Wp.RightHand,g,-RIG.shoulderX,poleR);row.push(g.x,g.y,g.z,bl.x,bl.y,bl.z,ed.x,ed.y,ed.z,rp.x,rp.y,rp.z);
-  const lh=reach(toChest(Wp.LeftHand),RIG.shoulderX),LH=W.LeftHand.clone().premultiply(chestInv),lf=new T.Vector3(0,0,1).applyQuaternion(LH),lu=new T.Vector3(0,1,0).applyQuaternion(LH);
+  // The free hand's wrist frame (the rig's wrist +z, +y); with `leftBlade` its +z is the left weapon's blade, calibrated from
+  // the left fist like the right one, and +y blade × edge (the left wrist's weapon socket holds it along +z).
+  const lh=reach(toChest(Wp.LeftHand),RIG.shoulderX),LH=W.LeftHand.clone().premultiply(chestInv);let lf=new T.Vector3(0,0,1).applyQuaternion(LH),lu=new T.Vector3(0,1,0).applyQuaternion(LH);
+  if(leftBlade){const LHq=wq('LeftHand');lf=dirChest(cal.bladeL.clone().applyQuaternion(LHq));lu=dirChest(cal.bladeL.clone().cross(cal.edgeL).applyQuaternion(LHq));lu.addScaledVector(lf,-lu.dot(lf)).normalize();}
   const lp=pole(Wp.LeftArm,Wp.LeftForeArm,Wp.LeftHand,lh,RIG.shoulderX,poleL);row.push(lh.x,lh.y,lh.z,lf.x,lf.y,lf.z,lu.x,lu.y,lu.z,lp.x,lp.y,lp.z,two);
   rows.push(Float32Array.from(row));
  }
@@ -121,10 +144,10 @@ export function encode(rows){
 
 /** Loop phase key: the clip time (s) at which the left foot strikes the ground (its world speed drops under a quarter of its
  * swing peak after the peak), the rig gait's stride phase 0 (motion-quality.ts: the left foot lands at frac(stride/2π)=0). */
-export function leftFootStrike(obj,clip,fps=60){
- const mixer=new T.AnimationMixer(obj);mixer.clipAction(clip).play();const foot=obj.getObjectByName('mixamorigLeftFoot');
+export function leftFootStrike(obj,clip,fps=60,{mirror=false}={}){
+ const mixer=new T.AnimationMixer(obj);mixer.clipAction(clip).play();const {wp}=bones(obj,mirror);
  const n=Math.round(clip.duration*fps),sp=[];let prev=null;
- for(let i=0;i<=n;i++){mixer.setTime(Math.min(clip.duration-1e-4,i/fps));obj.updateMatrixWorld(true);const p=foot.getWorldPosition(v());sp.push(prev?p.distanceTo(prev)*fps:0);prev=p;}
+ for(let i=0;i<=n;i++){mixer.setTime(Math.min(clip.duration-1e-4,i/fps));obj.updateMatrixWorld(true);const p=wp('LeftFoot');sp.push(prev?p.distanceTo(prev)*fps:0);prev=p;}
  const peak=sp.indexOf(Math.max(...sp));for(let k=1;k<=n;k++){const i=(peak+k)%(n+1);if(i>0&&sp[i]<sp[peak]*.25)return +(i/fps).toFixed(3);}
  return 0;
 }

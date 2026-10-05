@@ -34,17 +34,19 @@ function sdf(o:typeof pose[number],p:T.Vector3,n:T.Vector3){
  if(qx>0||qy>0||qz>0){n.set(Math.max(qx,0)*Math.sign(_l.x),Math.max(qy,0)*Math.sign(_l.y),Math.max(qz,0)*Math.sign(_l.z));const d=n.length();n.divideScalar(d||1).applyQuaternion(o.q);return d;}
  if(qx>=qy&&qx>=qz)n.set(Math.sign(_l.x)||1,0,0);else if(qy>=qz)n.set(0,Math.sign(_l.y)||1,0);else n.set(0,0,Math.sign(_l.z)||1);n.applyQuaternion(o.q);return Math.max(qx,qy,qz);
 }
+/** The slab half-width of the call in progress (the blade's own: greatsword .09, sword .05, daggers .045). */
+let halfWidth=BLADE_CLEARANCE.halfWidth;
 /** One sampled point of the blade's slab: centre line and both edges, both flats (k 0..4) at `s` along the blade. */
 function point(grip:T.Vector3,blade:T.Vector3,edge:T.Vector3,s:number,k:number,out:T.Vector3){
- const C=BLADE_CLEARANCE;return out.copy(grip).addScaledVector(blade,s).addScaledVector(edge,k===1?C.halfWidth:k===2?-C.halfWidth:0).addScaledVector(_y,k===3?C.halfThickness:k===4?-C.halfThickness:0);
+ const C=BLADE_CLEARANCE;return out.copy(grip).addScaledVector(blade,s).addScaledVector(edge,k===1?halfWidth:k===2?-halfWidth:0).addScaledVector(_y,k===3?C.halfThickness:k===4?-C.halfThickness:0);
 }
 /** Sample positions along the blade: the pommel and the blade, not the grip inside the fists. */
 function* stations(from:number,to:number){const C=BLADE_CLEARANCE;for(let s=from;s<=-.05+1e-6;s+=C.step)yield s;for(let s=GUARD;s<=to+1e-6;s+=C.step)yield s;}
 /** Where the blade (guard) starts along the weapon. */
 export const GUARD=.22;
 /** Smallest signed distance from the blade's sampled slab to the obstacles (negative: inside). */
-export function bladeDistance(r:CharacterRig,grip:T.Vector3,blade:T.Vector3,edge:T.Vector3,from:number,to:number,count=boxPoses(r)){
- _y.crossVectors(blade,edge);let min=Infinity;
+export function bladeDistance(r:CharacterRig,grip:T.Vector3,blade:T.Vector3,edge:T.Vector3,from:number,to:number,count=boxPoses(r),width=BLADE_CLEARANCE.halfWidth){
+ halfWidth=width;_y.crossVectors(blade,edge);let min=Infinity;
  for(const s of stations(from,to))for(let k=0;k<5;k++){point(grip,blade,edge,s,k,_p);for(let i=0;i<count;i++)min=Math.min(min,sdf(pose[i],_p,_hn));}
  return min;
 }
@@ -53,8 +55,8 @@ const _hn=new T.Vector3(),_w=new T.Vector3(),_tr=new T.Vector3(),_na=new T.Vecto
  * Every penetrating sample asks for the turn about the grip that lifts it out along its surface normal (or, near the hilt,
  * where there is no lever, for the grip to move); the requests are averaged with the deepest weighing most (pen^3) and applied, a few times over. Each
  * request grows from zero at the clearance, so the correction is continuous in the pose (no frame-to-frame snaps). */
-export function clearBlade(r:CharacterRig,grip:T.Vector3,blade:T.Vector3,edge:T.Vector3,from:number,to:number,move=true){
- const C=BLADE_CLEARANCE,count=boxPoses(r),list=boxes(r);
+export function clearBlade(r:CharacterRig,grip:T.Vector3,blade:T.Vector3,edge:T.Vector3,from:number,to:number,move=true,width=BLADE_CLEARANCE.halfWidth){
+ const C=BLADE_CLEARANCE,count=boxPoses(r),list=boxes(r);halfWidth=width;
  for(let it=0;it<10;it++){
   _y.crossVectors(blade,edge);_w.set(0,0,0);_tr.set(0,0,0);_na.set(0,0,0);let total=0,min=Infinity;
   for(const s of stations(from,to))for(let k=0;k<5;k++){point(grip,blade,edge,s,k,_p);

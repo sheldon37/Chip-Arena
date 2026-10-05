@@ -13,7 +13,11 @@ import {clearBlade} from './blade-clearance.js';
  * passes 0: the gait owns them); `arms:false` leaves both arms and the weapon to the layers below. */
 /** `clear`: blade clearance (blade-clearance.ts): 'full' turns the blade and moves the grip; 'turn' (fast cuts, where a grip
  * shift would whip the elbows) only turns the blade. */
-export interface MocapPoseOptions {weight:number;travel?:number;legs?:number;root?:number;arms?:boolean;clear?:'full'|'turn'}
+/** `oneHand`: a one-handed weapon's capture (sword, daggers, shield): the support hand never reaches for the weapon's
+ * support grip, whatever the blend weight; the captured free hand poses it. `pommel` / `halfWidth`: the blade's extent
+ * behind the grip (× the weapon's length scale) and slab half-width for the clearance (greatsword .27 / .09); clear 'none'
+ * skips it (the shield is a plate, not a blade). */
+export interface MocapPoseOptions {weight:number;travel?:number;legs?:number;root?:number;arms?:boolean;clear?:'full'|'turn'|'none';oneHand?:boolean;pommel?:number;halfWidth?:number}
 const _q=new T.Quaternion(),_v=new T.Vector3(),_lp=new T.Vector3(),_cq=new T.Quaternion(),_a=new T.Vector3(),_b=new T.Vector3(),_c=new T.Vector3(),_m=new T.Matrix4(),_e=new T.Euler(),_p=new T.Vector3();
 const X=new T.Vector3(1,0,0),Y=new T.Vector3(0,1,0),_yq=new T.Quaternion();
 function rot(f:Float32Array,i:number,out:T.Quaternion){_v.set(f[i],f[i+1],f[i+2]);const a=_v.length();return a<1e-9?out.identity():out.setFromAxisAngle(_v.divideScalar(a),a);}
@@ -58,8 +62,8 @@ export function applyMocapPose(r:CharacterRig,f:Float32Array,o:MocapPoseOptions)
  if(o.arms===false)return;
  _p.set(f[CH['grip.x']],f[CH['grip.y']],f[CH['grip.z']]);bladeAxes(f,CH['blade.x'],CH['edge.x']);
  // The voxel shoulders, chest and head are bigger than the captured human's: keep the blade (and hilt) clear of them.
- clearBlade(r,_p,_a,_b,-.27*r.weapon.scale.z,bladeEnd(r.weapon),o.clear!=='turn');basisEuler(_e);
- braceWeapon(r,_p,_e,w,pole(r,false,_p,f,CH['rpole.x'],_v));
+ if(o.clear!=='none')clearBlade(r,_p,_a,_b,-(o.pommel??.27)*r.weapon.scale.z,bladeEnd(r.weapon),o.clear!=='turn',o.halfWidth);basisEuler(_e);
+ braceWeapon(r,_p,_e,w,pole(r,false,_p,f,CH['rpole.x'],_v),!o.oneHand);
  // The support hand leaves the grip only where the capture lets go of it.
  const free=(1-Math.min(1,Math.max(0,f[CH.twohand])))*w;
  if(free>.001){_p.set(f[CH['lhand.x']],f[CH['lhand.y']],f[CH['lhand.z']]);basisEulerYZ(f,CH['lfwd.x'],CH['lup.x'],_e);hand(r,true,_p,_e,free,pole(r,true,_p,f,CH['lpole.x'],_lp));}
