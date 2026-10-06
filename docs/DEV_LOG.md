@@ -18,6 +18,24 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-06 — Codex — PvP chip presentation for Siren personal picks
+- Branch `codex/siren-pvp-chip-ui`, shared base `9de0365171d3b22404e2bd125f2634d971418dc5`
+  (local checkout verified against its complete Git tree). Owner requests UI only and publication to the existing Update button.
+- Siren's personal screen now reuses the PvP 3D pilot stage, hover look/reach, compact card tray and nameplate. A separate
+  presentation snapshot feeds only DraftStage/DraftView; the arena, simulation, input, audio and networking keep the real
+  fight snapshot. Personal offers/order, immediate pick command, queue, Choose later/C/Esc, number keys, visibility gates,
+  damage warning and vulnerability are retained. No PvP turn order, ready gate, selection timer or post-pick hold is adopted.
+- Both trays now fill the available width and distribute cards left to right instead of centering a capped-width group.
+  Card widths stay readable; one offer stays centered; narrow/short screens retain horizontal scrolling. The personal tray
+  reflows on resize, and an attack warning updates without moving or rebuilding the card buttons.
+- Checks: Node 24.19.0/npm 11.9.0; client typecheck passes; 227 affected PvE/draft/card tests pass. Two new regressions
+  exercise independent personal views through the real DraftStage without mutating fight state, and shared tray markup
+  for 1/2/3/6/8/12 offers at five viewport sizes. Full unit suite: 1286 tests, 1273 pass, 12 failures matching the previous
+  untouched-baseline names exactly, one skipped. No shared/server/relay/launcher code or gameplay rules changed.
+- Native Windows/GPU, real-browser visual acceptance and remote-player manual play not run. Chromium's download failed
+  (invalid/truncated archive); headless rig tests are not visual acceptance. Owner visual review remains.
+- Status: implemented and verified on the task branch; merge and test-channel publication follow. No live-feed/Site release.
+
 ## 2026-10-05 — Codex — Attack recovery, cheaper swings and sprint stamina
 - Branch `codex/combat-flow-stamina`, exact shared base `ab93263c704266949432f9ee32034b157921d720` (PR #50).
   Owner requests smoother attack endings/combos, lower attack stamina, sprint drain/visual, and all steps to the test Update button.

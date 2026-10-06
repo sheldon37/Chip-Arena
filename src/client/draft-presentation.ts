@@ -6,7 +6,7 @@ import {matrixRain} from './matrix-effects.js';
 import {sirenCinematic} from './siren-card.js';
 import {LEET} from '../shared/leet-content.js';
 import {CHIPS,type Chip} from '../shared/content.js';
-import type {Snapshot} from '../shared/simulation.js';
+import type {PlayerView,Snapshot} from '../shared/simulation.js';
 import {DRAFT_REVEAL_SECONDS} from '../shared/draft-settings.js';
 import {chipCard,rarityStyle} from './chip-card.js';
 import {DRAFT_GRAB,draftRows,draftPerRow} from './draft-timeline.js';
@@ -29,6 +29,15 @@ export function selectedChip(c:Chip,copies:number,picker:string,elapsed:number,o
 /** True once the pilot holds the chosen chip and the details spotlight should be shown (sim clock, any frame rate). */
 export const draftDetailsOpen=(state:Snapshot,time=state.time)=>!!state.draft?.chosen&&time-(state.draft.chosenAt??time)>=DRAFT_GRAB.details-.02;
 const safeColor=(value:string|undefined)=>value&&/^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(value)?value:'#ff6b35';
+/** Shared offer layout for PvP and personal PvE picks; callers keep their own buttons and selection rules. */
+export function draftTray<T>(offers:T[],slot:(offer:T,index:number)=>string,width=1280,height=720){
+ const rows=draftRows(offers.length,draftPerRow(width,height));let start=0;
+ const html=rows.map(n=>{const row=offers.slice(start,start+n).map((offer,k)=>slot(offer,start+k)).join('');start+=n;return `<div class="draft-row" style="--cols:${n}">${row}</div>`;}).join('');
+ return {rows:rows.length,html};
+}
+export function draftPilot(p:Pick<PlayerView,'name'|'color'>,label:string){
+ return `<div class="draft-pilot" style="--pilot:${safeColor(p.color)}"><i aria-hidden="true"></i><strong>${escape(p.name)}</strong><span>${escape(label)}</span></div>`;
+}
 /**
  * Full-screen draft over the 3D pilot stage: heading and turn order on top, the picker's nameplate, and the offers as a
  * horizontal tray (one row up to six, two rows above that). Cards stay real `<button data-chip>` elements, so the click
@@ -39,16 +48,16 @@ const safeColor=(value:string|undefined)=>value&&/^#[0-9a-f]{3}([0-9a-f]{3})?$/i
  * snapshot so the cards enable exactly when the server will accept a pick. */
 export function draftScreen(state:Snapshot,local:string,width=1280,height=720,clock=state.time){
  const d=state.draft,picker=state.players.find(p=>p.id===d?.player),own=!!picker&&picker.id===local,chosen=d?.chosen?CHIPS.find(c=>c.id===d.chosen):undefined;
- const elapsed=Math.max(0,clock-(d?.chosenAt??clock)),offers=picker?.offers||[],rows=draftRows(offers.length,draftPerRow(width,height));
+ const elapsed=Math.max(0,clock-(d?.chosenAt??clock)),offers=picker?.offers||[];
  const title=chosen?'Upgrade secured':own?'Make your next move':`${escape(picker?.name||'Opponent')} is choosing`;
  const hint=chosen?'':own?'Choose one Chip. Everyone can see this draft.':'Watch the draft. All players see the same choices and the selected upgrade.';
  const turns=d?`<div class="draft-turns">${state.players.map(p=>`<span class="${p.id===d.player?'current':''}"><i style="background:${safeColor(p.color)}"></i>${escape(p.name)}${p.id===d.player?(chosen?' · INSTALLED':' · PICKING'):p.selected?' · READY':' · UP NEXT'}</span>`).join('')}<strong>TURN ${d.turn} / ${d.total}</strong></div>`:'';
  const slot=(chipId:string,index:number)=>{const c=CHIPS.find(c=>c.id===chipId);if(!c||!picker)return '';const copies=picker.chips[chipId]||0;
   if(chosen)return chipId===chosen.id?`<div class="draft-slot taken" data-slot="${escape(chipId)}">${chipCard(c,Math.max(0,copies-1),{disabled:true})}</div>`:`<div class="draft-slot" data-slot="${escape(chipId)}">${brokenChip(c,copies,index,elapsed)}</div>`;
   return `<div class="draft-slot" data-slot="${escape(chipId)}">${chipCard(c,copies,{index,elapsed:state.time-(d?.started||0),disabled:!own||state.time<(d?.readyAt||0)})}</div>`;};
- let start=0;const tray=rows.map(n=>{const row=offers.slice(start,start+n).map((id,k)=>slot(id,start+k)).join('');start+=n;return `<div class="draft-row" style="--cols:${n}">${row}</div>`;}).join('');
- return `<section class="draft-screen ${chosen?'is-chosen':''} ${own?'is-own':''}" data-rows="${rows.length}" aria-label="Chip draft"><header class="draft-top"><div class="draft-heading"><div class="eyebrow">CHIP DRAFT / SET ${state.setNumber}</div><h1>${title}</h1>${hint?`<p>${hint}</p>`:''}</div><div class="draft-status">${turns}${chosen?'':`<div class="timer" id="timer">${Math.ceil(state.remaining)} seconds</div>`}</div></header>`
-  +(picker?`<div class="draft-pilot" style="--pilot:${safeColor(picker.color)}"><i aria-hidden="true"></i><strong>${escape(picker.name)}</strong><span>${chosen?'Installing':own?'Your pick':'Picking'}</span></div>`:'')
-  +`<div class="draft-tray" role="group" aria-label="Chip offers">${tray}</div></section>`
+ const tray=draftTray(offers,slot,width,height);
+ return `<section class="draft-screen ${chosen?'is-chosen':''} ${own?'is-own':''}" data-rows="${tray.rows}" aria-label="Chip draft"><header class="draft-top"><div class="draft-heading"><div class="eyebrow">CHIP DRAFT / SET ${state.setNumber}</div><h1>${title}</h1>${hint?`<p>${hint}</p>`:''}</div><div class="draft-status">${turns}${chosen?'':`<div class="timer" id="timer">${Math.ceil(state.remaining)} seconds</div>`}</div></header>`
+  +(picker?draftPilot(picker,chosen?'Installing':own?'Your pick':'Picking'):'')
+  +`<div class="draft-tray" role="group" aria-label="Chip offers">${tray.html}</div></section>`
   +(chosen&&picker&&draftDetailsOpen(state,clock)?selectedChip(chosen,picker.chips[chosen.id],picker.name,elapsed,DRAFT_GRAB.details):'');
 }

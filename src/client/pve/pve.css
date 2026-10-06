@@ -168,41 +168,35 @@ body.pve .notice{top:150px}
 @media(min-height:1000px){.pve-money,.pve-heading,.pve-boss-bar,.pve-party,.pve-chip-pending,.pve-prompt{zoom:1.2}}
 @media(min-height:1300px){.pve-money,.pve-heading,.pve-boss-bar,.pve-party,.pve-chip-pending,.pve-prompt{zoom:1.45}}
 
-/* ---- Personal chip screen (#pve-chips). The arena stays visible behind it: the player is vulnerable. ---- */
-.pve-chips{position:absolute;inset:0;z-index:38;pointer-events:auto;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(ellipse at 50% 55%,#07091040,#0709109c 78%)}
+/* ---- Personal chip screen: the PvP stage/tray, with PvE-only controls and live attack feedback. ---- */
+.pve-chips{position:absolute;inset:0;z-index:38;pointer-events:auto}
 .pve-chips.hidden{display:none}
-.pve-chip-screen{position:relative;width:min(1180px,100%);max-height:100%;overflow:auto;padding:20px 22px 16px;border-radius:16px;background:#111219b8;border:1px solid color-mix(in srgb,var(--tier) 45%,#ffffff1a);box-shadow:0 30px 80px #0009,0 0 40px color-mix(in srgb,var(--tier) 18%,transparent);backdrop-filter:blur(2px)}
-.pve-chip-screen.rainbow{border:2px solid #ff4d6d;animation:pve-rainbow-border 3s linear infinite}
-.pve-chip-head{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin-bottom:10px}
-.pve-chip-head h2{margin:2px 0 0;font:800 26px/1.1 var(--font-ui,system-ui);letter-spacing:.01em}
-.pve-chip-head .eyebrow{color:var(--tier)}
-.pve-chip-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;font:600 11px var(--font-mono,monospace);letter-spacing:.08em;color:#a8abb9;text-transform:uppercase}
-.pve-chip-queue{padding:2px 8px;border-radius:999px;background:#ff6b3522;color:#ffb38f}
-.pve-chip-cards{display:grid;grid-template-columns:repeat(var(--cols,3),minmax(0,1fr));gap:16px;padding:6px 2px 4px}
-.pve-chip-cards[data-count="1"],.pve-chip-cards[data-count="2"]{--cols:2;max-width:560px;margin:auto}
-.pve-chip-cards[data-count="4"],.pve-chip-cards[data-count="7"],.pve-chip-cards[data-count="8"]{--cols:4}
-.pve-chip-cards[data-count="5"],.pve-chip-cards[data-count="6"],.pve-chip-cards[data-count="9"]{--cols:3}
-.pve-card-slot{position:relative}
-.pve-card-slot>kbd{position:absolute;top:-7px;left:-7px;z-index:5;display:grid;place-items:center;width:22px;height:22px;border-radius:6px;background:#f1f2f6;color:#0f1015;font:800 12px var(--font-mono,monospace);box-shadow:0 2px 6px #000a}
-.pve-card-slot>.circuit-chip{width:100%;min-height:200px}
-.pve-chip-rolling{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:10px;min-height:180px;color:#a8abb9;font:600 13px var(--font-mono,monospace);letter-spacing:.1em}
+.pve-chip-screen.rainbow{box-shadow:inset 0 0 0 2px #ff4d6d;animation:pve-rainbow-border 3s linear infinite}
+.pve-chip-screen .draft-heading .eyebrow{color:var(--tier)}
+.pve-chip-meta{font:600 11px var(--font-mono,monospace);letter-spacing:.08em;color:#d8dae4;text-transform:uppercase}
+.pve-chip-queue{padding:4px 10px;border-radius:999px;background:#ff6b3522;color:#ffb38f}
+.pve-card-slot>kbd{position:absolute;top:-7px;left:-7px;z-index:5;display:grid;place-items:center;width:22px;height:22px;border-radius:6px;background:#f1f2f6;color:#0f1015;font:800 12px var(--font-mono,monospace);box-shadow:0 2px 6px #000a;pointer-events:none}
+.pve-chip-rolling{display:flex;align-items:center;justify-content:center;gap:10px;min-height:180px;color:#a8abb9;font:600 13px var(--font-mono,monospace);letter-spacing:.1em}
 .pve-chip-rolling .game-icon{width:22px;height:22px;animation:pve-thinking 1s ease-in-out infinite}
-.pve-chip-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}
+.pve-chip-foot{position:absolute;right:28px;bottom:22px;display:flex;align-items:center;gap:12px;pointer-events:auto;padding:8px 12px;border-radius:12px;background:#0d0f16e6}
 .pve-chip-foot kbd{font:600 10px var(--font-mono,monospace);padding:1px 5px;border:1px solid #ffffff30;border-radius:4px;color:#d7d9e2;margin-left:4px}
 .pve-later{display:flex;align-items:center;gap:6px}
 .pve-chip-vignette{position:fixed;inset:0;pointer-events:none;opacity:0;box-shadow:inset 0 0 0 4px #ff2b3d,inset 0 0 120px 30px #ff1f3399}
-.pve-chip-screen[data-attacked="1"]{border-color:#ff3b4b}
 .pve-chip-screen[data-attacked="1"] .pve-chip-vignette{animation:pve-attacked .25s steps(2,jump-none) infinite}
 @keyframes pve-attacked{0%{opacity:1}100%{opacity:.15}}
+/* Fixed feedback never moves the card buttons while the player is trying to pick under fire. */
+.pve-alarm-slot{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100% - 28px);pointer-events:none}
 .pve-alarm-slot:empty{display:none}
-.pve-alarm{display:flex;align-items:center;gap:10px;margin:0 0 10px;padding:8px 12px;border-radius:8px;background:#3a0b12;border:1px solid #ff3b4b;color:#ffd5d9;animation:pve-alarm-blink .25s steps(2,jump-none) infinite}
+.pve-alarm{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;background:#3a0b12;border:1px solid #ff3b4b;color:#ffd5d9;animation:pve-alarm-blink .25s steps(2,jump-none) infinite}
 .pve-alarm strong{font:800 14px var(--font-mono,monospace);letter-spacing:.14em;color:#fff}
 .pve-alarm span{margin-left:auto;font-size:12px;color:#ffb3ba}
 .pve-alarm .game-icon{width:18px;height:18px;color:#ff6b78}
 @keyframes pve-alarm-blink{0%{background:#5a0d18}100%{background:#2a070c}}
-@media(max-width:850px){.pve-chip-cards[data-count="4"],.pve-chip-cards[data-count="5"],.pve-chip-cards[data-count="6"],.pve-chip-cards[data-count="7"],.pve-chip-cards[data-count="8"],.pve-chip-cards[data-count="9"]{--cols:3}.pve-card-slot>.circuit-chip{min-height:180px}}
-@media(max-height:480px){.pve-chips{padding:8px}.pve-chip-screen{padding:10px 12px}.pve-chip-head{margin-bottom:6px}.pve-chip-head h2{font-size:18px}.pve-chip-meta span:last-child{display:none}.pve-chip-cards{--cols:3!important;gap:10px 12px;max-width:none}.pve-card-slot>.circuit-chip{min-height:0;padding:7px}.pve-card-slot .chip-icon{width:38px;height:38px}.pve-card-slot .circuit-header{padding:6px;gap:8px}.pve-card-slot>.circuit-chip p,.pve-card-slot .chip-footer{display:none}.pve-card-slot .circuit-chip strong{font-size:14px}.pve-alarm{padding:5px 8px;margin-bottom:6px}.pve-alarm span{display:none}.pve-chip-foot{margin-top:6px}}
-@media(max-width:580px) and (min-height:481px){.pve-chip-cards{--cols:2!important}}
+/* Keep the live HUD out of the portrait; attack feedback and Choose later remain on the personal screen. */
+body:has(.pve-chips:not(.hidden)) #hud{visibility:hidden}
+@media(max-width:850px){.pve-chip-foot>.fine{display:none}}
+@media(max-width:760px){.pve-chip-screen .draft-pilot{justify-self:start;margin-bottom:66px}.pve-chip-foot{right:12px;bottom:12px}.pve-chip-meta{justify-items:start}.pve-alarm span{display:none}.pve-alarm strong{font-size:11px}}
+@media(max-height:480px){.pve-chip-foot{right:14px;bottom:10px;padding:4px 8px}.pve-chip-foot>.fine{display:none}.pve-alarm-slot{bottom:72px}.pve-alarm span{display:none}.pve-alarm strong{font-size:11px}}
 
 /* ---- The Siren's chip reveal (#pve-reveal), above the HUD for everyone ---- */
 .pve-reveal-root:empty{display:none}
