@@ -13,6 +13,14 @@ FILES = {'README.md', 'PROTOTYPE-SCOPE.md', 'VALIDATION.md', 'ICON.md', 'Build-W
 SKIP = {'bin', 'obj', '__pycache__', 'LocalAssets', 'Library', 'Temp', 'Logs', 'Builds', 'UserSettings'}
 
 
+def validate_dependencies(dependencies, catalog):
+    if not isinstance(dependencies, dict) or not dependencies:
+        raise ValueError('The prototype must declare its built-in module dependencies')
+    for name, version in dependencies.items():
+        if name not in catalog['packages'] or version != catalog['packages'][name]:
+            raise ValueError(f'Unsupported dependency for Unity {catalog["editor_version"]}: {name}@{version}')
+
+
 def selected():
     for path in sorted(ROOT.rglob('*')):
         if path.is_symlink():
@@ -28,7 +36,12 @@ def selected():
 
 def check():
     manifest = json.loads((ROOT / 'Packages/manifest.json').read_text())
-    assert all(k.startswith('com.unity.modules.') and v == '1.0.0' for k, v in manifest['dependencies'].items())
+    catalog = json.loads((ROOT / 'tools/builtin-packages-6000.3.24f1.json').read_text())
+    project_version = (ROOT / 'ProjectSettings/ProjectVersion.txt').read_text()
+    match = re.search(r'^m_EditorVersion: (\S+)$', project_version, re.M)
+    if not match or match[1] != catalog['editor_version']:
+        raise ValueError('The built-in package catalog must match the pinned Editor version')
+    validate_dependencies(manifest.get('dependencies'), catalog)
     guids = set()
     for path, rel in selected():
         assert path.stat().st_size < 1024 * 1024, f'Unexpected large source asset: {rel}'

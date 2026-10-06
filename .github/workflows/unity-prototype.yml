@@ -24,7 +24,9 @@ jobs:
       - name: Compile and run actual managed-core tests
         run: dotnet run --project unity/ChipArenaPrototype/Tests/CoreTests.csproj -c Release
       - name: Validate and package Unity source only
-        run: python3 unity/ChipArenaPrototype/tools/package_source.py
+        run: |
+          python3 -m unittest discover -s unity/ChipArenaPrototype/Tests -p 'test_source_packages.py'
+          python3 unity/ChipArenaPrototype/tools/package_source.py
       - name: Retain private test source
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:

@@ -18,6 +18,25 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-06 — Codex — Repair Unity package-resolution blocker
+- Owner supplied the first Windows batch-build log. Continued `codex/unity-prototype` from
+  `1b091e5795444b6a72ff2796138e3af1a783c3ed`. The log runs 6000.3.24f1, resolves a Personal
+  entitlement, then exits 1 on invalid package dependencies before the project build method runs.
+- Removed the author's invalid `com.unity.modules.inputlegacy` manifest entry. Other failing names
+  in the owner's local log (physicscore2d, tetgen, timelinefoundation) were not in the committed
+  manifest; their local origin is unverified. No license or Editor-path fix is inferred from this log.
+- Extracted the pinned official Editor's built-in package metadata. All six remaining dependencies
+  exist at 1.0.0 and declare no transitive package dependencies. Added a versioned module catalog
+  and package checks that validate actual names/versions rather than only a naming prefix.
+  Four regression tests pass, including rejection of all four names in the observed failure.
+  Source structure and ZIP integrity checks pass; branch CI includes the package regressions.
+- Recovery: fresh source extraction, open/import with 6000.3.24f1, close Editor, then build; do not
+  carry an old Library or package lock across versions. README records an alternative in-place repair.
+  Gameplay, animation, timing, damage, hitboxes, movement, networking and the CA icon are unchanged.
+- Status: fixed on isolated Unity branch, not merged or game-feed released. Successful Unity import,
+  shaders, Windows player build/icon embedding and gameplay remain unverified. Owner must rerun the
+  corrected source in the activated Editor and share the next build log if it fails.
+
 ## 2026-10-06 — Codex — Unity Windows EXE icon and build handoff
 - Owner requests a Windows EXE and stylized voxel CA launcher icon. Continued isolated branch
   `codex/unity-prototype` from `3739884e1d2ecbb235f7497696638ec2bfb0a9ca`; no shared-game or feed changes.

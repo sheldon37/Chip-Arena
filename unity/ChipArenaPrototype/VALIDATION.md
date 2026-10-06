@@ -16,6 +16,12 @@ Unity API references were extracted from the official editor archive `https://do
 
 ## Not yet run
 
+### Owner's first Windows attempt and package correction
+
+The supplied 2026-10-06 log shows the real Windows Editor **6000.3.24f1** accepted a Unity Personal entitlement but exited with code 1 during package resolution, before the project's build method ran. The original manifest wrongly declared `com.unity.modules.inputlegacy`; this is now removed. The other unavailable modules named in that log (`physicscore2d`, `tetgen`, `timelinefoundation`) were not in the committed manifest. This is a confirmed failed import attempt, not a successful player build.
+
+Package validation now uses a versioned catalog extracted from the pinned Editor's official built-in package metadata, instead of trusting the `com.unity.modules.` prefix. Regression checks reject all four names from that log and unsupported package versions. The corrected project must still be imported and built on the owner's activated Windows Editor. The icon is unchanged.
+
 2026-10-06 icon/EXE follow-up: the generated 1254 × 1254 RGBA icon is included unchanged. The updated Editor helper compiles against the real Unity 6000.3.24f1 assemblies with warnings treated as errors. Source validation checks the PNG header, dimensions, alpha-capable format and asset metadata. The helper assigns and reads back Unity's default/standalone icon slots, and rejects incomplete Windows player output. The Windows command clears its previous log before starting, then opens the output folder only after the success marker. These runtime build checks have not executed in an activated Unity Editor; this workspace still cannot produce a licensed Windows player build.
 
 - Unity Editor import, shader compilation, scene startup and interactive gameplay.

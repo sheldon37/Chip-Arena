@@ -9,6 +9,8 @@
 *.sln
 /Tests/bin/
 /Tests/obj/
+__pycache__/
+*.pyc
 /LocalAssets/
 /Assets/LocalAssets/
 /Assets/LocalAssets.meta

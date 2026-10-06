@@ -39,6 +39,16 @@ For a desktop launcher, create a Windows shortcut to `ChipArena-Unity-TEST.exe`;
 
 This is a **development build**, suitable for attaching the Unity Profiler. It is not a release or an installer. No Windows executable was compiled in the original authoring workspace; see `VALIDATION.md` for actual checks.
 
+### Recover from the first package-resolution failure
+
+The first source archive incorrectly requested `com.unity.modules.inputlegacy`, which is not a package in the pinned Unity Editor. This has been removed; the prototype continues to use Unity's legacy `UnityEngine.Input` API. A managed assembly name does not establish a valid Package Manager package name.
+
+The owner's 2026-10-06 Windows log confirms **6000.3.24f1** ran and resolved a Unity Personal entitlement, then exited while resolving packages. It also reports `physicscore2d`, `tetgen` and `timelinefoundation` as unavailable. These three are absent from the committed manifest; their origin in the local project has not been verified.
+
+Close Unity, extract the corrected source archive into a **new folder**, and open that new `ChipArenaPrototype` folder with **6000.3.24f1** in Hub. Do not copy the old `Library`, `Temp` or `Packages/packages-lock.json` into it. After import finishes, close the Editor and run the new `Build-Windows.cmd`. If using an existing Command Prompt where `UNITY_EDITOR` was set to 6000.6.4f1, set it to the 6000.3.24f1 executable for this build. Keep the original folder if it contains your own edits or assets.
+
+Alternatively, replace only `Packages/manifest.json` with the corrected file and, with Unity closed, move the old `Library` folder and `Packages/packages-lock.json` outside the project so Unity can regenerate them. Stay on 6000.3.24f1 while diagnosing this build. If another failure occurs, share the new `Builds/build.log`; fixing package names is not proof the remaining import/player build succeeds.
+
 ## Two-player LAN / two windows on one PC
 
 1. Run two standalone instances, or one standalone plus Editor Play mode.
