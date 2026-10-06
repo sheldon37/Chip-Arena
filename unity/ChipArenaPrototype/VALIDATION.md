@@ -16,7 +16,10 @@ Unity API references were extracted from the official editor archive `https://do
 
 ## Not yet run
 
+2026-10-06 icon/EXE follow-up: the generated 1254 × 1254 RGBA icon is included unchanged. The updated Editor helper compiles against the real Unity 6000.3.24f1 assemblies with warnings treated as errors. Source validation checks the PNG header, dimensions, alpha-capable format and asset metadata. The helper assigns and reads back Unity's default/standalone icon slots, and rejects incomplete Windows player output. The Windows command clears its previous log before starting, then opens the output folder only after the success marker. These runtime build checks have not executed in an activated Unity Editor; this workspace still cannot produce a licensed Windows player build.
+
 - Unity Editor import, shader compilation, scene startup and interactive gameplay.
+- Windows EXE icon embedding, Explorer/desktop shortcut appearance and Windows command execution.
 - Actual Unity renderer, graphics driver, PhysX debris, UI layout and input focus validation.
 - Windows player compilation, ZIP launch and two-Unity-window LAN acceptance.
 - Production animation pack/rig retargeting, production gameplay parity, and comparative Electron-versus-Unity performance measurements.

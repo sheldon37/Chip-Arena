@@ -18,6 +18,22 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-06 — Codex — Unity Windows EXE icon and build handoff
+- Owner requests a Windows EXE and stylized voxel CA launcher icon. Continued isolated branch
+  `codex/unity-prototype` from `3739884e1d2ecbb235f7497696638ec2bfb0a9ca`; no shared-game or feed changes.
+- Added original generated transparent RGBA CA icon, importer metadata and generation provenance.
+  Editor preparation fills/read-checks default and standalone icon slots using Unity's supported API.
+  Windows packaging now rejects missing UnityPlayer.dll/game data; the command clears stale logs,
+  explains activation/support requirements and opens the player folder only after build success.
+- Validation: updated Editor helper compiles with C# 9 against actual Unity 6000.3.24f1 managed APIs,
+  warnings as errors. PNG decoding/alpha and source structure/package integrity checks pass.
+  No gameplay, animation, hit timing, hitboxes, movement, damage or network code changed.
+- Blocker: no activated Unity Editor in this authoring environment. No EXE was produced; Windows
+  player compilation, icon embedding/Explorer appearance, CMD execution and gameplay remain unrun.
+  Next: activate the pinned Editor via Hub on Windows, install Windows Build Support, open/import
+  the project, close it, and run Build-Windows.cmd (or use the Editor's Build Windows TEST ZIP menu).
+- Status: source and icon implemented on the Unity test branch; not merged, no game-feed release.
+
 ## 2026-10-06 — Codex — Isolated Unity engine-evaluation prototype
 - Owner requests a separate Unity test branch and delivery. Branch `codex/unity-prototype`, shared base
   `05950eaef80ff2483a9c44d898cad98be1a76bbc` (tree `1984514e15f96473fda5d56fde20c0ccc1401a0f`).

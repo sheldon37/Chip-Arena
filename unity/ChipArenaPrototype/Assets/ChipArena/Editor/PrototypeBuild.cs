@@ -12,6 +12,7 @@ namespace ChipArena.UnityPrototype.Editor
     public static class PrototypeBuild
     {
         public const string ScenePath = "Assets/ChipArena/Scenes/Prototype.unity";
+        public const string IconPath = "Assets/ChipArena/Branding/CAVoxelIcon.png";
         [MenuItem("Chip Arena/Open test arena")]
         public static void OpenArena() { Prepare(); EditorSceneManager.OpenScene(ScenePath); }
 
@@ -37,11 +38,36 @@ namespace ChipArena.UnityPrototype.Editor
             PlayerSettings.defaultScreenWidth=1600; PlayerSettings.defaultScreenHeight=900;
             PlayerSettings.fullScreenMode=FullScreenMode.Windowed;
             PlayerSettings.runInBackground=true;
+            ConfigureIcon();
             var settings=new SerializedObject(AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/ProjectSettings.asset")[0]);
             var input=settings.FindProperty("activeInputHandler");
             if(input!=null&&input.intValue!=0) { input.intValue=0; settings.ApplyModifiedPropertiesWithoutUndo(); }
             EditorBuildSettings.scenes=new[] { new EditorBuildSettingsScene(ScenePath,true) };
             AssetDatabase.SaveAssets();
+        }
+
+        private static void ConfigureIcon()
+        {
+            Texture2D icon=AssetDatabase.LoadAssetAtPath<Texture2D>(IconPath);
+            if(icon==null||icon.width!=icon.height||icon.width<256)
+                throw new Exception("The square voxel CA launcher icon is missing or failed to import: "+IconPath);
+            foreach(var target in new[] { NamedBuildTarget.Unknown, NamedBuildTarget.Standalone })
+            {
+                int[] sizes=PlayerSettings.GetIconSizes(target,IconKind.Application);
+                if(sizes.Length==0)
+                {
+                    if(target.Equals(NamedBuildTarget.Standalone))
+                        throw new Exception("Unity reported no standalone application icon slots. Check the Editor installation.");
+                    continue;
+                }
+                var icons=new Texture2D[sizes.Length];
+                for(int i=0;i<icons.Length;i++) icons[i]=icon;
+                PlayerSettings.SetIcons(target,icons,IconKind.Application);
+                var assigned=PlayerSettings.GetIcons(target,IconKind.Application);
+                if(assigned.Length!=icons.Length) throw new Exception("Unity did not save all launcher icon slots.");
+                foreach(var assignedIcon in assigned)
+                    if(assignedIcon!=icon) throw new Exception("Unity did not save the voxel CA launcher icon.");
+            }
         }
 
         [MenuItem("Chip Arena/Build Windows TEST ZIP")]
@@ -57,8 +83,11 @@ namespace ChipArena.UnityPrototype.Editor
             var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions { scenes=new[] { ScenePath }, locationPathName=exe,
                 target=BuildTarget.StandaloneWindows64,options=BuildOptions.Development });
             if(report.summary.result!=BuildResult.Succeeded||!File.Exists(exe)) throw new Exception("Unity Windows build failed: "+report.summary.result);
+            if(!File.Exists(Path.Combine(folder,"UnityPlayer.dll"))||!Directory.Exists(Path.Combine(folder,"ChipArena-Unity-TEST_Data")))
+                throw new Exception("The Windows player is incomplete: UnityPlayer.dll or its game data folder is missing.");
             File.WriteAllText(Path.Combine(folder,"READ-ME.txt"),
                 "Chip Arena Unity Lab - isolated TEST prototype\r\n\r\nRun ChipArena-Unity-TEST.exe. Keep the entire folder together.\r\n"+
+                "The EXE uses the voxel CA icon. Create a Windows shortcut to the EXE for a desktop launcher; do not move the EXE alone.\r\n"+
                 "WASD move, double-tap W sprint, mouse look, LMB sword, RMB block, Shift dodge, Space jump, E bolts. Esc opens menu; F8 records frame times.\r\n"+
                 "Host LAN / Join accept a trusted local IPv4 address (default port 27880). For two windows on one PC, join 127.0.0.1.\r\n"+
                 "No accounts, updater or connection to the current Chip Arena game. Placeholder art/animation. No full gameplay parity.\r\n"+

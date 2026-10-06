@@ -33,7 +33,9 @@ Install the Windows build support available for this editor version in Unity Hub
 - In Unity: **Chip Arena → Build Windows TEST ZIP**.
 - Or close the project in Unity and double-click **Build-Windows.cmd** on Windows. If Unity is installed elsewhere, set `UNITY_EDITOR` to its `Unity.exe` path before running the command.
 
-The command first runs the core/project checks, then creates `Builds/Chip-Arena-Unity-TEST-Windows.zip`. It must report `UNITY_TEST_BUILD_READY` before the archive is considered built. Keep the entire extracted Windows folder together; launch `ChipArena-Unity-TEST.exe`.
+The command first runs the core/project checks, applies the stylized voxel **CA** icon, then creates `Builds/Chip-Arena-Unity-TEST-Windows.zip`. It must report `UNITY_TEST_BUILD_READY` before the archive is considered built. On success, the script opens `Builds/Windows`; launch `ChipArena-Unity-TEST.exe` there. Keep the entire extracted Windows folder together: the EXE needs its adjacent `UnityPlayer.dll` and game data. Players do not need the Unity Editor to run a completed player build.
+
+For a desktop launcher, create a Windows shortcut to `ChipArena-Unity-TEST.exe`; it uses the embedded CA icon. Do not move the EXE out of its folder. See `ICON.md` for the original icon and its generation prompt.
 
 This is a **development build**, suitable for attaching the Unity Profiler. It is not a release or an installer. No Windows executable was compiled in the original authoring workspace; see `VALIDATION.md` for actual checks.
 

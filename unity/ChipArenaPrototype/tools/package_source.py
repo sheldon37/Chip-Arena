@@ -3,12 +3,13 @@ from pathlib import Path
 import hashlib
 import json
 import re
+import struct
 import sys
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 TOP = {'Assets', 'Packages', 'ProjectSettings', 'Tests', 'tools'}
-FILES = {'README.md', 'PROTOTYPE-SCOPE.md', 'VALIDATION.md', 'Build-Windows.cmd', '.gitignore'}
+FILES = {'README.md', 'PROTOTYPE-SCOPE.md', 'VALIDATION.md', 'ICON.md', 'Build-Windows.cmd', '.gitignore'}
 SKIP = {'bin', 'obj', '__pycache__', 'LocalAssets', 'Library', 'Temp', 'Logs', 'Builds', 'UserSettings'}
 
 
@@ -40,6 +41,10 @@ def check():
     for name in FILES:
         assert (ROOT / name).is_file(), f'Missing {name}'
     assert (ROOT / 'Assets/ChipArena/Scenes/Prototype.unity').is_file()
+    icon = (ROOT / 'Assets/ChipArena/Branding/CAVoxelIcon.png').read_bytes()
+    assert icon[:8] == b'\x89PNG\r\n\x1a\n' and icon[12:16] == b'IHDR', 'Launcher icon must be PNG'
+    width, height, depth, color = struct.unpack('>IIBB', icon[16:26])
+    assert width == height and width >= 256 and depth == 8 and color == 6, 'Launcher icon must be square RGBA'
     print(f'Project structure passed; {len(list(selected()))} source files; no package downloads or Editor execution.')
 
 
