@@ -2,7 +2,7 @@
    the offers form a horizontal tray under the heading (one row up to six, two rows above that), and the picking pilot
    fills the rest of the screen chest-up below the cards on a 3D stage behind this overlay (draft-stage.ts frames the
    pilot from the tray's bottom edge down). Cards are the normal processor-package chips in a compact size. */
-.draft-screen{--gap:14px;--tray:min(100vw - 56px,1640px);position:fixed;inset:0;z-index:5;display:grid;grid-template-rows:auto auto 1fr;padding:22px 28px 22px;pointer-events:none;color:var(--text,#f4f4f5)}
+.draft-screen{--gap:14px;--tray:calc(100vw - 56px);position:fixed;inset:0;z-index:5;display:grid;grid-template-rows:auto auto 1fr;padding:22px 28px 22px;pointer-events:none;color:var(--text,#f4f4f5)}
 /* Without the 3D stage (compatibility renderer) the arena would show through; give the cards a backdrop instead. */
 .draft-screen[data-stage=off]{grid-template-rows:auto 1fr auto;background:radial-gradient(ellipse at 50% 34%,#1d1f29 0%,#0b0c11 66%)}
 .draft-screen[data-stage=off] .draft-tray{align-self:center}
@@ -26,10 +26,11 @@
 .draft-pilot{grid-row:3;align-self:end;justify-self:start;display:flex;align-items:center;gap:8px;margin-bottom:0;padding:6px 13px 6px 10px;border-radius:999px;background:#0d0f16cc;border:1px solid #ffffff1f;font-size:13px;box-shadow:0 6px 24px #0008}
 .draft-pilot i{width:9px;height:9px;border-radius:50%;background:var(--pilot);box-shadow:0 0 10px var(--pilot)}
 .draft-pilot span{color:#a6a7ad;font:600 10px/1 var(--font-mono,ui-monospace,monospace);letter-spacing:.14em;text-transform:uppercase}
-/* The tray. Column width follows the row's own count, capped so one or two offers do not become billboards. */
-.draft-tray{grid-row:2;align-self:start;margin-top:clamp(4px,2.4vh,30px);display:grid;gap:calc(var(--gap) + 6px);justify-items:center;perspective:1300px}
+/* The tray. Cards retain their readable width; rows span the viewport and distribute offers from left to right. */
+.draft-tray{grid-row:2;align-self:start;margin-top:clamp(4px,2.4vh,30px);display:grid;gap:calc(var(--gap) + 6px);justify-items:stretch;min-width:0;perspective:1300px}
 /* Rows only scroll on phones and short windows (below); elsewhere cards shrink to fit, so shards and glow are never clipped. */
-.draft-row{--w:min(236px,max(118px,calc((var(--tray) - (var(--cols) - 1) * var(--gap)) / var(--cols))));display:grid;grid-template-columns:repeat(var(--cols),var(--w));gap:var(--gap);justify-content:center;max-width:100%;padding:10px 2px 8px}
+.draft-row{--w:min(236px,max(118px,calc((var(--tray) - (var(--cols) - 1) * var(--gap)) / var(--cols))));display:grid;grid-template-columns:repeat(var(--cols),var(--w));gap:var(--gap);justify-content:space-between;width:100%;max-width:100%;min-width:0;padding:10px 2px 8px}
+.draft-row:has(>.draft-slot:only-child){justify-content:center}
 .draft-slot{position:relative;display:grid;min-width:0;pointer-events:auto}
 /* Disabled cards (before readyAt, or another player's turn) pass the pointer to the slot so the look-at still works. */
 .draft-slot>.chip:disabled{pointer-events:none}

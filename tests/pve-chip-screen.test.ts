@@ -5,7 +5,9 @@ import type {PlayerView,Snapshot} from '../src/shared/simulation.js';
 import {PARTY_BOT_PREFIX,type PveView} from '../src/shared/pve/contract.js';
 import {pveFixture,fixtureCinematic} from '../src/shared/pve/fixtures.js';
 import {CHIPS} from '../src/shared/content.js';
-import {chipScreenModel,chipScreenVisible,chipScreenHtml,alarmHtml} from '../src/client/pve/chip-screen.js';
+import {chipScreenModel,chipScreenVisible,chipScreenHtml,chipDraftSnapshot,alarmHtml} from '../src/client/pve/chip-screen.js';
+import {DraftStage} from '../src/client/draft-stage.js';
+import {draftScreen} from '../src/client/draft-presentation.js';
 import {chipCard} from '../src/client/chip-card.js';
 
 const ME='host',IDS=[ME,'p2',PARTY_BOT_PREFIX+'1','p3'];
@@ -50,4 +52,33 @@ test('hidden during every cinematic, outside the fight, after Choose later and w
  assert.equal(chipScreenVisible(snap(v,{phase:'match'}),ME),false);assert.equal(chipScreenVisible(snap(v),ME,true),false,'locally closed');
  assert.equal(chipScreenVisible(snap(v),'p2'),false,'only the chooser sees it');
  const {pve:_,...pvp}=snap(v) as Snapshot&{pve?:PveView};assert.equal(chipScreenVisible(pvp as Snapshot,ME),false,'never in PvP');
+});
+
+test('the personal draft stages only my offers without changing the live fight or another player\'s pick',()=>{
+ const s=snap(choosing(),{players:[player(ME),player('p2')]}),other=s.pve!.party.p2;
+ other.picks=[{...s.pve!.party[ME].picks[0],id:'other-pick',offers:['vital']}];other.open='other-pick';other.openAt=99;
+ const before=structuredClone(s),view=chipDraftSnapshot(s,ME)!,theirs=chipDraftSnapshot(s,'p2')!;
+ assert.equal(view.phase,'draft');assert.equal(view.draft!.player,ME);assert.equal(view.draft!.chosen,undefined);
+ assert.deepEqual(view.players[0].offers,chipScreenModel(s,ME)!.offers.map(c=>c.id));
+ assert.deepEqual(theirs.players[1].offers,['vital']);assert.equal(theirs.draft!.player,'p2');
+ assert.deepEqual(s,before);assert.equal(s.phase,'fight');assert.equal(s.draft,undefined);
+ // Exercise the actual PvP portrait renderer, including the pilot's cosmetics/rig, against the adapted view.
+ const stage=new DraftStage();assert.equal(stage.update(view,16/9,1/60),true);assert.ok(stage.pilot);stage.clear();
+ assert.deepEqual(s,before,'posing the portrait cannot alter combat state');
+ for(const kind of ['reveal','boss-intro','outro'] as const)assert.equal(chipDraftSnapshot(snap({...s.pve!,cinematic:fixtureCinematic(kind,{time:100})}),ME),undefined);
+ assert.equal(chipDraftSnapshot(snap(choosing(),{phase:'match'}),ME),undefined);
+ assert.equal(chipDraftSnapshot(snap(choosing()),'p2'),undefined);
+});
+
+test('personal picks reuse the PvP tray across counts and viewport sizes without turn/timer/reveal gates',()=>{
+ const s=snap(choosing()),m=chipScreenModel(s,ME)!;
+ for(const count of [1,2,3,6,8,12])for(const [w,h] of [[1920,1080],[3440,1440],[960,720],[390,844],[844,390]]){
+  const offers=CHIPS.slice(0,count),personal=chipScreenHtml({...m,offers},false,0,w,h);
+  const view=chipDraftSnapshot(s,ME)!;view.players[0].offers=offers.map(c=>c.id);
+  const pvp=draftScreen(view,ME,w,h),rows=(html:string)=>[...html.matchAll(/class="draft-row" style="--cols:(\d+)"/g)].map(r=>Number(r[1]));
+  assert.deepEqual(rows(personal),rows(pvp),`${count} at ${w}x${h}`);
+  assert.equal((personal.match(/data-pve-chip="/g)||[]).length,count);
+  assert.ok(!/ data-chip=|id="timer"|draft-turns|selection-spotlight|<button[^>]*disabled/.test(personal));
+  assert.match(personal,/draft-screen is-own/);assert.match(personal,/draft-pilot/);
+ }
 });
