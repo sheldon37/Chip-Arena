@@ -18,6 +18,31 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-06 — Codex — Isolated Unity engine-evaluation prototype
+- Owner requests a separate Unity test branch and delivery. Branch `codex/unity-prototype`, shared base
+  `05950eaef80ff2483a9c44d898cad98be1a76bbc` (tree `1984514e15f96473fda5d56fde20c0ccc1401a0f`).
+  The source overlay was prepared in an isolated directory and is added to that exact remote base tree.
+- Added self-contained `unity/ChipArenaPrototype`, pinned to Unity 6.3 LTS 6000.3.24f1. Includes one arena,
+  source-grounded movement/sword/block/roll constants, simplified combat, procedural instanced voxel poses,
+  energy bolts, breakable cover, decorative PhysX debris, 0–192-bot workloads, frame-time/CSV measurements,
+  and a distinct 2-player trusted-LAN host-authoritative test protocol (no prediction or production integration).
+- Existing gameplay, hitboxes, timing, animation, saves, launcher and network protocols are untouched.
+  Prototype behavior differs deliberately; README and PROTOTYPE-SCOPE list omissions. Purchased animation
+  assets and full Siren/Chip/round systems are not included. Built-in render pipeline; native pack/rig evaluation is next-stage.
+- Validation: 22 real managed-core checks pass, including 192 bots/600 ticks and a real TCP loopback
+  input/authority/snapshot/disconnect exchange. Core compiles with Roslyn from .NET SDK 8.0.425.
+  Runtime, separate Editor assembly, and standalone-Windows conditional runtime all compile against the
+  official Unity 6000.3.24f1/.NET Standard 2.1 assemblies using C# 9, warnings as errors. No Unity stubs.
+  Fixed the build helper's CompressionLevel ambiguity found by the real API check.
+- Unity Editor import/play, shader compilation, visual/PhysX acceptance, two actual Unity windows and a
+  compiled Windows player remain NOT RUN: this environment has no activated Editor. Managed API compilation
+  is not a Unity build. No FPS uplift or production-parity claim. See project VALIDATION.md.
+- Added local Editor menu/Windows command to validate and build a separate TEST ZIP. Isolated branch-only CI
+  checks the core and packages a private **source** artifact; it uses read-only contents and no Unity credentials.
+  No existing workflow is altered. Status: implemented on test branch; not merged or published to any game feed.
+  Next: owner opens the source project in Unity Hub, runs the supplied Editor checks, Play and Windows build,
+  then evaluates equal-load performance and one licensed native animation pack before broader migration.
+
 ## 2026-10-06 — Codex — Clear surviving enemies at wave completion
 - Branch `codex/wave-end-cleanup`, shared base `9028309412355e3cb978609d4776970c050900bf`, exact tree
   `e885503d2a52068ab0d4c4896784566da13c1ab7`. Owner requests cleanup excluding bosses and publication to Update.
