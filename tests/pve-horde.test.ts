@@ -115,17 +115,17 @@ test('targets: humans, party bots and recruits are targets; the tank taunt shift
  }finally{s.dispose();}
 });
 
-test('while an add is possessed the hall holds up to maxAlivePossession (48), relay rooms still 28; back to 40 once it dies',()=>{
- assert.equal(HORDE.maxAlivePossession,48);
+test('while an add is possessed the hall holds up to maxAlivePossession (192), relay rooms 112; back to 40 once it dies',()=>{
+ assert.equal(HORDE.maxAlivePossession,192);
  for(const relay of [false,true]){
   const {s,h}=hordeSim(relay?{relay:true}:{});try{
    const p=s.players.get('h1')!;tough(p);s.pve!.debug('god:on');place(p,0,0);
-   h.setFlow({rate:40,maxAlive:100,mix:{shambler:1},budget:-1});
-   let peak=0;for(let i=0;i<60*8;i++){s.step();peak=Math.max(peak,h.alive()+h.queued());}
+   h.setFlow({rate:40,maxAlive:300,mix:{shambler:1},budget:-1});
+   let peak=0;for(let i=0;i<60*20;i++){s.step();peak=Math.max(peak,h.alive()+h.queued());}
    assert.equal(peak,relay?HORDE.maxAliveRelay:HORDE.maxAlive,'no possession: the usual cap');
    const n=h.possess()!;assert.equal(h.possessed(),n);
-   for(let i=0;i<60*8;i++){s.step();peak=Math.max(peak,h.alive()+h.queued());}
-   assert.equal(peak,relay?HORDE.maxAliveRelay:HORDE.maxAlivePossession,'possessed: the possession cap');
+   for(let i=0;i<60*20;i++){s.step();peak=Math.max(peak,h.alive()+h.queued());}
+   assert.equal(peak,relay?HORDE.maxAlivePossessionRelay:HORDE.maxAlivePossession,'possessed: the possession cap');
    s.chaos.hitMinion(s.chaos.minions.get(h.get(n)!.id)!,1e7,'h1');steps(s,2);assert.equal(h.possessed(),undefined);assert.equal(h.cap(),relay?HORDE.maxAliveRelay:HORDE.maxAlive,'found: the usual cap again');
   }finally{s.dispose();}
  }

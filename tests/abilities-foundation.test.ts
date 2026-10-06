@@ -191,7 +191,7 @@ test('leech and surge count each damage once: 1 player + 1 add heals .2 × (play
 });
 
 // ---- ability fields -------------------------------------------------------------------------------------------------
-test('ability-field pool: 4 rapid casts with forced charges and echo all detonate; eviction detonates; chip caps unchanged',()=>{
+test('ability-field pool: 4 rapid casts with forced charges and echo all detonate; eviction detonates; chip fields never evicted',()=>{
  const {s,a}=game('fire');try{a.stats={...a.stats,abilityCharges:1,spellEcho:1};
   for(let i=0;i<4;i++)s.abilities.zone(a,'bomb',v(i*3-4,.2,10),2,1,20,'meteor-strike',{cast:'c'+i});assert.equal([...s.chaos.fields.values()].length,4);
   s.events=[];run(s,a,70);assert.equal(events(s,'explosion').filter(e=>e.message==='meteor-strike').length,4,'every cast produced its finale');assert.equal(s.chaos.fields.size,0);
@@ -200,9 +200,9 @@ test('ability-field pool: 4 rapid casts with forced charges and echo all detonat
   // Fields of one cast group share a slot; implosion eviction also vacuums.
   s.chaos.clear();a.stats={...a.stats,abilityCharges:0,spellEcho:0};for(const c of ['x','x','y'])s.abilities.zone(a,'implosion',v(0,.2,12),3,5,20,'singularity',{cast:c});assert.equal(s.chaos.fields.size,3);s.events=[];s.abilities.zone(a,'black-hole',v(0,.2,12),6,5,0,'singularity',{cast:'z'});
   assert.equal(events(s,'vacuum').length,2,'both implosions of the evicted group detonated');assert.equal(s.chaos.fields.size,2);
-  // Chip pool: per kind 3, 40 global, untouched by ability fields.
-  s.chaos.clear();for(let i=0;i<5;i++)s.chaos.field(a,'bomb',v(i,.2,0),2,9,1,undefined,'bubble-mine');assert.equal(s.chaos.fields.size,3);
-  s.chaos.clear();const owners=[a,s.players.get('b')!];for(let i=0;i<50;i++)s.chaos.field(owners[i%2],(['acid','fire','frost','time','heal','storm','repulsion','black-hole'] as const)[Math.floor(i/2)%8],v(i%10,.2,i/10),1,9,0,undefined,'wildfire');assert.equal(s.chaos.fields.size,40);
+  // Chip fields retain all live effects, independent of ability cast limits.
+  s.chaos.clear();for(let i=0;i<5;i++)s.chaos.field(a,'bomb',v(i,.2,0),2,9,1,undefined,'bubble-mine');assert.equal(s.chaos.fields.size,5);
+  s.chaos.clear();const owners=[a,s.players.get('b')!];for(let i=0;i<50;i++)s.chaos.field(owners[i%2],(['acid','fire','frost','time','heal','storm','repulsion','black-hole'] as const)[Math.floor(i/2)%8],v(i%10,.2,i/10),1,9,0,undefined,'wildfire');assert.equal(s.chaos.fields.size,50);
   const before=[...s.chaos.fields.keys()];for(let i=0;i<6;i++)s.abilities.zone(a,'bomb',v(0,.2,-10),2,9,1,'frag',{cast:'f'+i});assert.deepEqual([...s.chaos.fields.values()].filter(f=>!ABILITY_FX.has(f.fx||'')).map(f=>f.id),before,'ability fields never evict chip fields');
  }finally{s.dispose();}
 });

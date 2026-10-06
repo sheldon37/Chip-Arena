@@ -7,7 +7,7 @@ export const LEET_CHIPS:Chip[]=[
  chip('yeet','Y33t','Hits launch enemies and cover with a thousand times the knockback. Goodbye, arena.','⇈'),
  chip('time','Admin Pause','E freezes every enemy and their projectiles for 4 seconds. You keep moving.','Ⅱ'),
  chip('undo','CTRL + Z','Once per round, a lethal hit rewinds you to an earlier safe position and completely restores your health.','↶'),
- chip('copy','Copy / Paste','Hits print three delayed attack orbs above the impact. They fire at the original target position like a matrix firing squad.','▥'),
+ chip('copy','Copy / Paste','Hits print three delayed attack orbs above the impact. They fire at the original target position like a matrix firing squad. Copies trigger impact effects but never print more copies.','▥'),
  chip('uprising','Object Uprising','Projectile impacts commandeer nearby loose cover and launch it at a visible enemy. The map works for you now.','⌗'),
 ];
 /** Relative tier weights before exhausted/incompatible tiers are removed. */

@@ -27,7 +27,7 @@ function hunt(){
 
 test('a wipe during the hunt is a plain defeat: the Siren stays hidden at its HP, no "found", no possessed reward',()=>{
  const {s,pve,horde,until}=hunt();try{
-  until(()=>false,60*4);assert.equal(horde.cap(),Math.min(HORDE.maxAlivePossession,18),'solo hunt cap');
+  until(()=>false,60*4);assert.equal(horde.cap(),Math.min(HORDE.maxAlivePossession,72),'solo hunt cap');
   const boss=s.players.get(pve.view().bossView!.id)!,hp=boss.hp;assert.equal(pve.hidden(boss),true);
   const seen:string[]=[],emit=s.emit.bind(s);(s as unknown as {emit:typeof emit}).emit=((type:string,...rest:unknown[])=>{seen.push(type);return (emit as (...a:unknown[])=>unknown)(type,...rest);}) as typeof emit;
   const econ=pve.economy as unknown as {grant(id:string,amount:number,reason:string):void},grant=econ.grant.bind(econ),possessedGrants:number[]=[];

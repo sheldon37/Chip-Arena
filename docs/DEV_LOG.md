@@ -18,6 +18,42 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-06 — Codex — Persistent impact effects, projectile procs and a much larger Siren hunt
+- Branch `codex/impact-lifetimes-siren-horde`, shared base `c52a532ad2763251570fc96d43cf88833b74758c`;
+  local base checked against the entire remote Git tree. Owner requests no impact cancellation, a huge Find-me horde,
+  and impact effects on added projectiles; owner chose each eligible projectile over the old once-per-volley fields.
+- Impact Chip fields no longer evict older fields at the per-owner/kind or global limit. Delayed bombs and L44T Nuke marks
+  finish normally. Client blast/spark buffers grow while retaining existing particles; beam/impact-mark/Nuke visual limits
+  no longer discard active effects. Natural expiry and round/reset cleanup remain, and particle buffers shrink on reset.
+  Supplementary point-light pools and separately balanced Q/E ability-cast limits remain unchanged.
+- Each primary projectile, Blade Runner, Firework fragment and L44T Copy/Paste shot can proc impact effects on players,
+  cover and minions. Described exclusions (Satellite Office, Rear Guard, Four-Way Stop, Double Helix and Splitter),
+  reflections, nonrecursive fragments/copies, cooldowns and explicit once-per-attack Shrapnel/Vacuum rules are retained.
+  Full and simplified card descriptions explain the rule/exclusions. Weapon damage/DoTs, attack timing/hitboxes,
+  cooldowns and movement are unchanged; more independent impact effects intentionally increase aggregate damage/control.
+- Siren possession spawn rate and living targets increase fourfold: 72/120/168/192 adds at 12/20/28/36 per second for
+  1/2/3/4 party members; relay caps are 72/112/112/112. Entry reservations increase only during possession. Rendering
+  covers 192 adds + 16 corpses while keeping full-rig/shadow budgets. Other phases, hints, possessed HP and rewards retain
+  their rules. Network/save formats are unchanged; larger authoritative snapshots/effect counts are intentional.
+- Checks: Linux, Node 24.19.0/npm 11.9.0; client types and client/relay release build pass. 121 affected tests pass;
+  final projectile/L44T/card checks pass 39/39. Full final unit run: 1306 total, 1293 pass, 12 fail, one skipped;
+  failure names exactly match the untouched base. `npm run verify` retains four server TypeScript errors and WebSocket
+  rematch timeout; its transient party-relay failure passes in the final full unit run. HTTPS integration passes
+  (3439 matching snapshots/rematch), and PvE multiplayer passes (812 shared ticks, reconnect, victory, no disagreement).
+  Chaos network check hits the old voxel-burst/impact-ragdoll cosmetics assertion identically on untouched base.
+- Real-Rapier stress with 192 adds/16 corpses: 2.084 ms average sim step, 1.126 ms PvE share, 4.536 ms p99;
+  snapshot p95 60,065 bytes, 208 add tuples, no dropped horde events. Original CPU and 64 KiB snapshot gates pass.
+  All 10 remote-channel/menu-status updater fixtures pass. `git diff --check` passes.
+- Windows/native GPU, real-browser visual/difficulty acceptance and remote human play not run. Heavy combinations can
+  increase GPU/memory/simulation load; headless crowd results do not measure unlimited overlapping effects on Windows.
+- Prepared TEST candidate `0.2.b18d54478b46`, game build `9df11a70d649891bf1a915a4`. Both real updater payloads pass:
+  103 game files/107 with launcher, all installed hashes, launcher activation, same-version skip, offline/corrupt refusal,
+  settings preservation and source-privacy checks. Schema 1 is 24,708,136 B; schema 2 is 20,575,267 B.
+  Two complete release builds produced byte-identical manifests and payloads for both schemas.
+- Status: implemented on this task branch, not merged or published. Owner merge approval is the next gate under AGENTS.md;
+  after approval, verify the exact shared-branch tree and publish to the standing-authorized TEST Update channel.
+  No live-feed, Site or Windows seed release.
+
 ## 2026-10-06 — Codex — PvP chip presentation for Siren personal picks
 - Branch `codex/siren-pvp-chip-ui`, shared base `9de0365171d3b22404e2bd125f2634d971418dc5`
   (local checkout verified against its complete Git tree). Owner requests UI only and publication to the existing Update button.
@@ -2285,4 +2321,3 @@ containing an entry; no self-referential commit hash is required.
 - Next: each agent synchronizes this branch before making its own task branch;
   after migration merges, start new tasks from updated main. Review relevant open
   PRs to avoid overlapping work. Resolve baseline failures before release work.
-

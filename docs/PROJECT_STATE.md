@@ -27,6 +27,9 @@ Migration imported to private GitHub; not merged or released (2026-09-29).
 - Shared test-development branch: `claude/visual-revision` (owner confirmed
   2026-10-01). Visual revision PR #4 remains separate from the migration to main;
   this branch is already distributed through the test channel.
+- Pending on `codex/impact-lifetimes-siren-horde` (base `c52a532`, 2026-10-06): persistent impact effects,
+  per-eligible-projectile impact Chips and fourfold Find-me spawns. Targeted/full/network checks recorded in DEV_LOG;
+  owner merge approval precedes TEST publication. Current published update below remains unchanged.
 - Test builds update online from the public test channel
   sheldon37/chip-arena-test-updates (tooling PR #5); live feed untouched. See DEVELOPMENT.md.
   Latest test update (2026-10-06): `0.2.a06765ab0a43`, source `6e3da8e` (PR #53),

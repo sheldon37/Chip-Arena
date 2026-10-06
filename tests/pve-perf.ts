@@ -1,7 +1,7 @@
 // PvE horde performance (design §3.9, stream S1). Not part of npm test: `npm run test:pve-perf`.
-// HORDE.maxAlivePossession (48) adds, one possessed ("Find me...", the largest field), chasing 4 invulnerable party members
+// HORDE.maxAlivePossession (192) adds, one possessed ("Find me...", the largest field), chasing 4 invulnerable party members
 // for 600 ticks: average sim.step ≤ 4 ms and PvE share ≤ 2.5 ms; snapshot p95 raw JSON ≤ 64 KB with a full event ring,
-// 48 adds, 16 corpses and 4 open picks (fake economy).
+// 192 adds, 16 corpses and 4 open picks (fake economy).
 // Scenario `abilities` (ability overhaul, design §16.2 I): 40 adds (no possession) against a darkness, a water and a lightning
 // member re-casting Black Hole, Geyser Wall and Ball Lightning every second (charges and mana restored: far above the real
 // 11-14 s cooldowns) and a machine gun with Rally Pong holding fire. Same step and snapshot budgets, with 20 Hz snapshots
