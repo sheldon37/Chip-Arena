@@ -44,8 +44,16 @@ containing an entry; no self-referential commit hash is required.
   offline/corrupt refusal and source-privacy checks. Schema 1: 24,708,289 B; schema 2: 20,578,756 B.
   Existing TEST-only launcher wrappers are preserved, extracted from the previous verified pack with matching hashes.
   `git diff --check` passes.
-- Native Windows/GPU and manual gameplay not run. Source changes are implemented on this branch; the owner-requested
-  merge and TEST-channel publication follow verification. No live-feed, Site or Windows seed release.
+- Release: owner authorized merge/publication. PR #57 merged at `a0167bece51e21f465b1cdf1fbbc0e0bd948820d`;
+  its complete tree `c6882b17ec7f04ee80f5b07ce14f6da747c70227` matches the tested checkout exactly.
+  TEST channel `5ddab5b780e87eb9f8d9ab3e6d309e2f784f1125` publishes `0.2.e337f51c003d`
+  (successful run `37526867343`). Public Git blob hashes of both manifests and payloads match the verified local files.
+  The temporary assembly branch deleted itself; no publishing workflow/chunks remain on channel main.
+- Actual network updater checks pass for both schemas from `0.2.b18d54478b46` to `0.2.e337f51c003d`: all 103 installed
+  game-file hashes match, settings survive, schema-2 launcher activation succeeds, and a second update skips. The actual
+  menu status reports version `0.2.e337f51c003d` and build `49ca456f76647ac42ef59970` after installation.
+  Release receipt branch: `codex/wave-clear-release-receipt`. Native Windows/GPU and manual gameplay not run;
+  baseline verification failures remain as detailed above. No live-feed, Site or Windows seed release.
 
 ## 2026-10-06 — Codex — Persistent impact effects, projectile procs and a much larger Siren hunt
 - Branch `codex/impact-lifetimes-siren-horde`, shared base `c52a532ad2763251570fc96d43cf88833b74758c`;

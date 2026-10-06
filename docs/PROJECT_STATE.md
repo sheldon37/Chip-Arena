@@ -29,9 +29,9 @@ Migration imported to private GitHub; not merged or released (2026-09-29).
   this branch is already distributed through the test channel.
 - Test builds update online from the public test channel
   sheldon37/chip-arena-test-updates (tooling PR #5); live feed untouched. See DEVELOPMENT.md.
-  Latest test update (2026-10-06): `0.2.b18d54478b46`, source `c146cd6` (PR #55),
-  channel `ecbbdd0`: impact effects retain full lifetimes, eligible added projectiles trigger impact Chips,
-  and Siren Find-me spawns/targets increase fourfold (72–192 adds). Existing card UI changes are included.
+  Latest test update (2026-10-06): `0.2.e337f51c003d`, source `a0167be` (PR #57),
+  channel `5ddab5b`: wave completion clears surviving enemies and queued arrivals, excluding bosses and friendlies.
+  Prior impact-lifetime, added-projectile, fourfold Siren Find-me horde and card UI changes are included.
   Actual network upgrade, installed hashes, settings, same-version skip and menu status pass for both updater schemas.
   Baseline test failures and native Windows/GPU/difficulty acceptance remain; see DEV_LOG.
   Update headroom (owner-approved 2026-10-03, merged with PR #33):
