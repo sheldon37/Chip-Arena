@@ -89,7 +89,7 @@ export class FakeHorde implements HordeApi{
  freeze(){this.freezes++;}
  onHold(active:boolean){this.holds.push(active);}
  shift(dt:number){this.shifts.push(dt);}
- killAll(cause:'boss-dead'|'defeat'){this.killAllCauses.push(cause);for(const n of [...this.list.keys()])this.kill(n,null,'burn');}
+ killAll(cause:'boss-dead'|'defeat'|'wave-clear'){this.killAllCauses.push(cause);for(const n of [...this.list.keys()])this.kill(n,null,'burn');}
  rekey(from:string,to:string){this.rekeys.push([from,to]);for(const a of this.list.values())if(a.target===from)a.target=to;}
  views(slots:readonly string[]):{adds:PveAddTuple[];entries:PveEntryView[]}{
   return {adds:[...this.list.values()].map(a=>{const p=a.minion.body.translation();return encodeAdd({n:a.n,id:a.minion.id,pos:{...p},yaw:0,vel:{x:0,z:0},hp:Math.max(0,a.minion.hp/a.maxHp),

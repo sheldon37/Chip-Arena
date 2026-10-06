@@ -71,6 +71,7 @@ test('flow: opening → W1 → I → W2 → I → W3 → I(30 s) → reveal 1 �
   // Clear rule: ≤2 left for 3 s. One add is killed per tick, so each wave clears 3 s after its count reaches 2.
   for(const w of [1,2,3]){const len=at('intermission',w-1)-at('wave'+w);near(len,(waveBudget(w,1)-PVE.waveClearRemainder)*DT+PVE.waveClearHold);}
   assert.deepEqual(r.economy.respawns,['wave','wave','wave'],'respawnAll(wave) once per clear');
+  assert.deepEqual(r.horde.killAllCauses,['wave-clear','wave-clear','wave-clear'],'cleanup once per completed wave');
   assert.deepEqual(r.economy.grants.filter(g=>g.reason==='wave-clear').map(g=>g.amount),[1,2,3].map(w=>ECONOMY.waveClearBase+ECONOMY.waveClearPerWave*w));
   assert.equal(r.horde.flows.filter(f=>f&&f.budget>0).length,3);assert.equal(r.horde.flows.at(-1)!.budget,-1,'boss trickle');
   assert.deepEqual(r.d.modifiers(),bossStageScale());
@@ -91,14 +92,15 @@ test('opening ends 3 s after every human resolved the start pick (at least 4 s);
  }finally{k.s.dispose();}
 });
 
-test('waveMaxSeconds forces the clear; waves keep counting carried-over adds',()=>{
+test('waveMaxSeconds forces the clear and removes stragglers before the next wave',()=>{
  const r=rig();const {s}=r;try{
   s.pve!.debug('god:on');r.d.debug('skip-wave');const start=s.time;
+  r.horde.addAt({x:5,z:5});r.horde.addAt({x:6,z:5});
   const log=run(r,()=>view(s).stage==='intermission',20000,0);
   assert.ok(Math.abs(log.at(-1)!.at-start-PVE.waveMaxSeconds)<=DT+1e-9);assert.deepEqual(r.economy.respawns,['wave']);
-  // Two stragglers carried into W2 count toward its total left.
-  r.horde.addAt({x:5,z:5});r.horde.addAt({x:6,z:5});r.d.debug('skip-wave');
-  assert.equal(view(s).wave,2);assert.equal(view(s).waveLeft,waveBudget(2,1)+2);
+  assert.equal(r.horde.alive(),0);assert.deepEqual(r.horde.killAllCauses,['wave-clear']);
+  assert.ok(r.economy.kills.every(k=>k.cause==='burn'&&k.killer===null));
+  r.d.debug('skip-wave');assert.equal(view(s).wave,2);assert.equal(view(s).waveLeft,waveBudget(2,1));
  }finally{s.dispose();}
 });
 
@@ -150,6 +152,7 @@ test('debug ops: skip-wave, skip-to-boss and boss-phase:n; refused when not appl
   s.pve!.debug('god:on');
   assert.equal(r.d.debug('boss-phase:2'),false);assert.equal(r.d.debug('nope'),false);
   assert.equal(r.d.debug('skip-wave'),true);assert.equal(view(s).stage,'wave');assert.equal(r.d.debug('skip-wave'),true);assert.equal(view(s).stage,'intermission');
+  assert.deepEqual(r.horde.killAllCauses,['wave-clear'],'a skipped wave also cleans its horde');
   assert.equal(r.d.debug('skip-to-boss'),true);assert.equal(view(s).cinematic?.chip,1);assert.equal(r.d.debug('skip-to-boss'),false);
   run(r,()=>view(s).stage==='boss'&&!view(s).hold,4000,0);
   assert.equal(r.d.debug('boss-phase:1'),false);assert.equal(r.d.debug('boss-phase:4'),true);assert.equal(view(s).cinematic?.chip,4);assert.equal(view(s).track.revealed,3);

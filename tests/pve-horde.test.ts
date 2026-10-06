@@ -151,6 +151,35 @@ test('lifecycle: corpse kept 3.1 s, maxAlive 40 (28 relay), killAll burns every 
  }
 });
 
+test('wave clear kills active/exposed adds, cancels pending arrivals, and preserves bosses and friendly summons',()=>{
+ const {s,h,made}=hordeSim();try{
+  const p=s.players.get('h1')!;tough(p);place(p,0,0);s.pve!.debug('god:on');s.step();
+  const active=h.spawn('shambler',{entry:12})!;untilActive(s,h,active);
+  const entering=h.spawn('runner',{entry:13})!;
+  for(let i=0;i<180&&!h.record(entering)?.minion;i++)s.step();
+  assert.equal(h.record(active)?.phase,'active');assert.equal(h.record(entering)?.phase,'entering');
+  assert.ok(h.record(entering)?.minion,'the entering add already has an exposed hitbox');
+  const queued=Array.from({length:8},()=>h.spawn('shambler',{entry:13})!);
+  assert.ok(queued.some(n=>h.record(n)?.phase==='pending'),'there are unscheduled arrivals as well');
+  const ids=h.adds().map(a=>a.id),boss=spawnBoss(s,0,24),bossHp=boss.hp,playerHp=p.hp;
+  const bossBody=boss.body,bossCollider=boss.collider;
+  s.chaos.summon(p,1,'zombie',v(-8,1,-8),20);
+  const ally=[...s.chaos.minions.values()].find(m=>m.owner===p.id)!;assert.ok(ally);
+  h.setFlow({rate:40,maxAlive:40,mix:{shambler:1},budget:100});
+  const killed=made.director!.kills.length;h.killAll('wave-clear');
+  assert.equal(h.alive(),0);assert.equal(h.queued(),0);assert.equal(h.adds().length,0);
+  assert.ok(ids.every(id=>!s.chaos.minions.has(id)));
+  assert.ok(![...s.colliderOwners.values()].some(id=>id.startsWith('add-')),'horde hitboxes removed');
+  assert.equal(s.players.get(BOSS_PLAYER_ID),boss);assert.equal(boss.hp,bossHp);
+  assert.equal(boss.body,bossBody);assert.equal(boss.collider,bossCollider);assert.ok(boss.body.isValid());
+  assert.equal(p.hp,playerHp);assert.equal(s.chaos.minions.get(ally.id),ally,'friendly summon survives');
+  assert.ok(made.director!.kills.length>killed);assert.ok(made.director!.kills.slice(killed).every(k=>k.cause==='burn'&&k.killer===null));
+  steps(s,300);assert.equal(h.alive()+h.queued(),0,'cancelled flow/arrivals cannot leak into intermission');
+  assert.equal(h.adds().length,0);assert.ok(boss.hp>0);assert.equal(s.chaos.minions.get(ally.id),ally);
+  const fresh=h.spawn('shambler',{entry:13})!;untilActive(s,h,fresh);assert.ok(h.get(fresh),'the next wave can use the same entry');
+ }finally{s.dispose();}
+});
+
 test('holds: queued adds keep their spacing, at most one activation per entry per tick, no pre-hold windup strikes',()=>{
  const {s,h,made}=hordeSim();try{
   const p=s.players.get('h1')!;tough(p);const ex=PVE_ENTRIES[12].exit;place(p,ex.x,ex.z+5);s.step();

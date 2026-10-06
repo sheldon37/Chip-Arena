@@ -90,6 +90,8 @@ function victoryFlow():FlowResult{
   d.kill('h2');
   const moneyBefore=d.view.party.h1.money;
   d.until(()=>d.view.stage==='intermission',60*PVE.waveMaxSeconds+60,'wave 1 clear',()=>d.fight('h1'));
+  assert.equal(s.pve!.horde.alive(),0,'no living stragglers at a natural wave clear');
+  assert.equal(s.pve!.horde.queued(),0,'no old arrivals during intermission');
   const h2=d.player('h2');assert.ok(h2.hp>0,'h2 respawned at the wave clear');assert.ok(Math.abs(h2.hp-h2.stats.hp*PVE.respawnHpFraction)<1,'respawn at 50%');
   const row1=d.view.party.h1;assert.ok(row1.kills>=10,`kills ${row1.kills}`);assert.ok(row1.money>moneyBefore,'money flows from kills and the clear');
   assert.ok(row1.heads>0,'headshot kills counted');

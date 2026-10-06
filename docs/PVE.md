@@ -526,6 +526,14 @@ siren boss, give ... 30 seconds intermission time".
   snapshot p95 50.4 KB (budget 64 KB), 64 add tuples. Not measured: Windows client FPS at 48 adds, relay hosts, the full
   balance harness.
 
+## Wave-end enemy cleanup (2026-10-06)
+
+A normal wave clear, the 150-second timeout, or debug skip-wave now kills every remaining horde add at the transition
+into intermission. Active and exposed entering adds use the existing cleanup death; unexposed/queued arrivals are
+cancelled and the spawn budget stops. Bosses, party members, recruits and friendly summons are outside the horde registry
+and are never targets of this clear. Existing wave-clear bonuses, respawns and 30-second intermissions remain unchanged.
+The cleanup does not run on boss-phase transitions, so finding the Siren still carries surviving adds into phase 3.
+
 ## Much larger "Find me..." horde (2026-10-06)
 
 This supersedes the October 4 hunt counts above. While the Siren possesses an add, configured spawn rate is
