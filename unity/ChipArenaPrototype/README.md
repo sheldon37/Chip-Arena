@@ -23,6 +23,7 @@ The existing Electron game, saved accounts and update channels are separate. Thi
 | Hold E | Fire test energy bolts |
 | Escape | Session menu; pauses local combat, but not hosted combat |
 | F8 | Record an uninterrupted 30-second frame-time sample |
+| F9 | Toggle compatibility rendering for characters and projectiles |
 
 Characters automatically respawn. All three sword combo stages currently use the source sword's 30 damage, 14 stamina, .14 s windup and .62 s interval. Their poses are procedural placeholders. The ability/cosmetic catalog and purchased animation packs are not included.
 
@@ -48,6 +49,16 @@ The owner's 2026-10-06 Windows log confirms **6000.3.24f1** ran and resolved a U
 Close Unity, extract the corrected source archive into a **new folder**, and open that new `ChipArenaPrototype` folder with **6000.3.24f1** in Hub. Do not copy the old `Library`, `Temp` or `Packages/packages-lock.json` into it. After import finishes, close the Editor and run the new `Build-Windows.cmd`. If using an existing Command Prompt where `UNITY_EDITOR` was set to 6000.6.4f1, set it to the 6000.3.24f1 executable for this build. Keep the original folder if it contains your own edits or assets.
 
 Alternatively, replace only `Packages/manifest.json` with the corrected file and, with Unity closed, move the old `Library` folder and `Packages/packages-lock.json` outside the project so Unity can regenerate them. Stay on 6000.3.24f1 while diagnosing this build. If another failure occurs, share the new `Builds/build.log`; fixing package names is not proof the remaining import/player build succeeds.
+
+## If characters and projectiles are invisible
+
+Actors and bolts share a runtime GPU-instanced draw path. Unlike the arena's ordinary MeshRenderers, they have no instancing-enabled material on a saved scene object. Unity documents that this can cause their instancing shader variants to be stripped from a player build. The build preparation and pre-build callback now force **Graphics → Shader Stripping → Instancing Variants → Keep All**; the voxel shader explicitly targets shader model 3.5.
+
+Rebuild the Windows player after applying this fix. If the result remains invisible, press **F9**, or enable **Compatibility rendering** in the Escape menu. That draws the same character parts and bolts individually with separate non-instancing materials. Drawing exceptions also switch to this path automatically; silent GPU failures require the manual toggle. The HUD reports the active mode. Compatibility mode increases draw-call cost and is for diagnosis/recovery, so compare benchmarks using the same renderer mode. CSV rows now include `renderer_mode`, and changing the mode manually cancels an active capture.
+
+The suspected stripping cause has not been reproduced on the owner's GPU. If F9 does not restore visibility, share a screenshot and the player log at `%USERPROFILE%\AppData\LocalLow\ChipArenaPrototype\Chip Arena Unity Lab TEST\Player.log`, or the Unity Console errors if testing inside the Editor. Include whether the floor/cover are visible and whether the HUD's Parts/Shots counts change.
+
+Reference: [Unity 6.3: Prevent stripping GPU instancing shaders](https://docs.unity3d.com/6000.3/Documentation/Manual/gpu-instancing-strip-variants.html).
 
 ## Two-player LAN / two windows on one PC
 

@@ -6,6 +6,7 @@ using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace ChipArena.UnityPrototype.Editor
 {
@@ -39,11 +40,25 @@ namespace ChipArena.UnityPrototype.Editor
             PlayerSettings.fullScreenMode=FullScreenMode.Windowed;
             PlayerSettings.runInBackground=true;
             ConfigureIcon();
+            ConfigureRendering();
             var settings=new SerializedObject(AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/ProjectSettings.asset")[0]);
             var input=settings.FindProperty("activeInputHandler");
             if(input!=null&&input.intValue!=0) { input.intValue=0; settings.ApplyModifiedPropertiesWithoutUndo(); }
             EditorBuildSettings.scenes=new[] { new EditorBuildSettingsScene(ScenePath,true) };
             AssetDatabase.SaveAssets();
+        }
+
+        // Runtime-created actor/bolt materials are invisible to scene-based variant stripping.
+        internal static void ConfigureRendering()
+        {
+            var graphics=new SerializedObject(GraphicsSettings.GetGraphicsSettings());
+            var stripping=graphics.FindProperty("m_InstancingStripping");
+            if(stripping==null) throw new BuildFailedException("Cannot configure instancing shader retention in this Unity Editor.");
+            stripping.intValue=2; // Unity's InstancingStrippingMode.KeepAll (0=StripUnused, 1=StripAll).
+            graphics.ApplyModifiedPropertiesWithoutUndo();
+            graphics.Update();
+            if(graphics.FindProperty("m_InstancingStripping").intValue!=2)
+                throw new BuildFailedException("Instancing Variants must be Keep All for runtime-created characters and projectiles.");
         }
 
         private static void ConfigureIcon()
@@ -96,6 +111,18 @@ namespace ChipArena.UnityPrototype.Editor
             if(File.Exists(zip)) File.Delete(zip);
             ZipFile.CreateFromDirectory(folder,zip,System.IO.Compression.CompressionLevel.Optimal,false);
             Debug.Log("UNITY_TEST_BUILD_READY: "+zip);
+        }
+    }
+
+    // Protect builds started from the standard Build Profiles window as well as our build menu.
+    public sealed class PrototypeRenderingBuildGuard : IPreprocessBuildWithReport
+    {
+        public int callbackOrder => -1000;
+        public void OnPreprocessBuild(BuildReport report)
+        {
+            PrototypeBuild.ConfigureRendering();
+            AssetDatabase.SaveAssets();
+            Debug.Log("UNITY_INSTANCING_VARIANTS: Keep All (runtime actor/projectile rendering)");
         }
     }
 }

@@ -2,6 +2,14 @@
 
 This is source for an isolated Unity prototype. **No Unity Editor playtest or Windows executable build is claimed.**
 
+## Character/projectile visibility follow-up
+
+The owner reports invisible characters and projectiles after the package repair. This is a real visual failure report; it does not establish whether testing was in the Editor or a standalone player. Both affected object types use `Graphics.DrawMeshInstanced`; the floor and cover use ordinary MeshRenderers. No runtime log, screenshot or GPU capture was supplied for this failure.
+
+The source had no protection against Unity stripping the instancing variants for runtime-created materials. The documented fix is now applied in project preparation and a pre-build callback: **Instancing Variants = Keep All**. The shader explicitly targets model 3.5. F9/menu compatibility mode uses individual draws and separate non-instancing materials; instanced-draw exceptions also switch automatically. HUD and CSV identify the renderer mode. Manual switches cancel a frame capture to avoid comparing mixed modes.
+
+Runtime, Editor and Windows-conditional runtime scripts compile against the actual Unity 6000.3.24f1 managed APIs with warnings as errors. Package regressions and source/archive checks pass. No new gameplay rules or networking behavior changed. Shader compilation, execution of the build callback, Windows shader retention, both rendering paths and actual restored visibility still require testing on the owner's activated Unity installation. Shader stripping is a strong code-supported hypothesis, not a reproduced GPU diagnosis.
+
 ## Passed in the authoring workspace
 
 - The six engine-independent Core C# files compile with Microsoft's real Roslyn compiler from .NET SDK 8.0.425 against .NET 8 reference assemblies, with warnings treated as errors.

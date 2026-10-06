@@ -88,6 +88,7 @@ namespace ChipArena.UnityPrototype
             PollNetwork();
             if(Input.GetKeyDown(KeyCode.Escape)) ToggleMenu();
             if(Input.GetKeyDown(KeyCode.F8)&&session!=Session.Menu) StartCapture();
+            if(Input.GetKeyDown(KeyCode.F9)) SetCompatibilityRendering(!presentation.ForceCompatibilityRendering);
             if(!menu&&session!=Session.Menu)
             {
                 yaw+=Input.GetAxisRaw("Mouse X")*2; pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f,5,65);
@@ -177,6 +178,14 @@ namespace ChipArena.UnityPrototype
             if(menu&&captureUntil>0) { captureUntil=0; captureRows.Clear(); message="Capture cancelled because the menu opened. Start a new uninterrupted capture."; }
             pending=new InputFrame { Yaw=yaw };
         }
+        private void SetCompatibilityRendering(bool enabled)
+        {
+            if(presentation.ForceCompatibilityRendering==enabled) return;
+            presentation.ForceCompatibilityRendering=enabled;
+            message="Rendering: "+presentation.RenderingMode+". F9 switches rendering mode.";
+            if(captureUntil>0) { captureUntil=0; captureRows.Clear(); message+=" Frame capture cancelled because the renderer changed."; }
+            Debug.Log(message);
+        }
         private void UpdateMetrics()
         {
             if(session==Session.Menu||menu&&session==Session.Solo) return;
@@ -191,7 +200,7 @@ namespace ChipArena.UnityPrototype
             {
                 if(Time.unscaledTime>=captureUntil) { FinishCapture(); return; }
                 if(captureRows.Count<20000) captureRows.Add(string.Join(",",Time.unscaledTime.ToString("F3",CultureInfo.InvariantCulture),frame.ToString("F3",CultureInfo.InvariantCulture),
-                    session==Session.Guest?"":stepMs.ToString("F3",CultureInfo.InvariantCulture),snapshot?.Actors.Length??0,snapshot?.Shots.Length??0,presentation.DebrisCount,presentation.ParticleCount));
+                    session==Session.Guest?"":stepMs.ToString("F3",CultureInfo.InvariantCulture),snapshot?.Actors.Length??0,snapshot?.Shots.Length??0,presentation.DebrisCount,presentation.ParticleCount,presentation.RenderingMode));
             }
         }
         private void StartCapture()
@@ -210,7 +219,7 @@ namespace ChipArena.UnityPrototype
                 var data=new StringBuilder(); data.AppendLine("# Prototype workload; NOT a full-game benchmark. Frame time is wall time, not GPU duration.");
                 data.AppendLine("# Unity "+Application.unityVersion+" | "+SystemInfo.operatingSystem+" | "+SystemInfo.processorType+" | "+SystemInfo.graphicsDeviceName);
                 data.AppendLine("# Mode: "+session+" | Resolution: "+Screen.width+"x"+Screen.height+" | Target FPS: "+Application.targetFrameRate+" | VSync: "+QualitySettings.vSyncCount);
-                data.AppendLine("elapsed_seconds,frame_ms,authority_step_ms,actors,projectiles,physx_debris,particles");
+                data.AppendLine("elapsed_seconds,frame_ms,authority_step_ms,actors,projectiles,physx_debris,particles,renderer_mode");
                 foreach(string row in captureRows) data.AppendLine(row); File.WriteAllText(capturePath,data.ToString()); message="Benchmark saved. Open menu to copy its path.";
             }
             catch(Exception e) { message="Could not save benchmark: "+e.Message; }
@@ -245,10 +254,10 @@ namespace ChipArena.UnityPrototype
                     Bar(170,"BLOCK  "+(a.BlockReady<=t?"READY":Mathf.Max(0,a.BlockReady-t).ToString("F1")+"s"),1-Mathf.Max(0,a.BlockReady-t)/Rules.BlockCooldown,new Color(.5f,.7f,1));
                     if(!a.Alive) GUI.Label(new Rect(width/2-140,height/2,280,35),"RESPAWNING...",title);
                 }
-                Panel(new Rect(width-300,70,285,172),new Color(.025f,.035f,.06f,.85f));
-                GUI.Label(new Rect(width-287,82,260,155),$"{session}  ·  {snapshot?.Actors.Length??0} actors\nFrame: {meanMs:F1} ms mean / {p95Ms:F1} ms p95\n"+
+                Panel(new Rect(width-300,70,285,195),new Color(.025f,.035f,.06f,.85f));
+                GUI.Label(new Rect(width-287,82,260,178),$"{session}  ·  {snapshot?.Actors.Length??0} actors\nFrame: {meanMs:F1} ms mean / {p95Ms:F1} ms p95\n"+
                     (session==Session.Guest?$"Input acknowledgment: {ackMs:F0} ms\n":"Authority step: "+stepMs.ToString("F2")+" ms\n")+
-                    $"Shots: {snapshot?.Shots.Length??0}  ·  Debris: {presentation.DebrisCount}\nParticles: {presentation.ParticleCount}  ·  Parts: {presentation.DrawnParts}\n"+(link?.Status??"Local simulation"),small);
+                    $"Shots: {snapshot?.Shots.Length??0}  ·  Debris: {presentation.DebrisCount}\nParticles: {presentation.ParticleCount}  ·  Parts: {presentation.DrawnParts}\nRendering: {presentation.RenderingMode} (F9)\n"+(link?.Status??"Local simulation"),small);
                 GUI.Label(new Rect(22,height-48,width-44,30),"WASD move   ·   Double-tap W sprint   ·   Mouse look   ·   LMB sword   ·   RMB block   ·   Shift dodge   ·   Space jump   ·   E bolts   ·   F8 record   ·   Esc menu",small);
                 Panel(new Rect(width/2-1,height/2-6,2,12),Color.white); Panel(new Rect(width/2-6,height/2-1,12,2),Color.white);
                 if(captureUntil>0) GUI.Label(new Rect(width/2-120,73,300,28),"RECORDING  "+Mathf.CeilToInt(captureUntil-Time.unscaledTime)+"s",text);
@@ -280,6 +289,8 @@ namespace ChipArena.UnityPrototype
             if(harmless!=invulnerablePractice) { invulnerablePractice=harmless; if(world!=null) world.BotAttacks=!harmless; }
             GUI.enabled=true;
             presentation.DebrisEnabled=GUILayout.Toggle(presentation.DebrisEnabled,"PhysX debris on kills and broken cover");
+            bool compatibility=GUILayout.Toggle(presentation.ForceCompatibilityRendering,"Compatibility rendering (F9) - use if characters or bolts are invisible");
+            if(compatibility!=presentation.ForceCompatibilityRendering) SetCompatibilityRendering(compatibility);
             GUILayout.BeginHorizontal();
             if(GUILayout.Button("60 FPS",button)) Application.targetFrameRate=60;
             if(GUILayout.Button("144 FPS",button)) Application.targetFrameRate=144;

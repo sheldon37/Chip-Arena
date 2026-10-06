@@ -18,6 +18,27 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-06 — Codex — Unity invisible characters/projectiles follow-up
+- Owner reports both characters and projectiles invisible. Continued `codex/unity-prototype` from
+  `e21fe19b1b05ef8469b553c5b2444ece2d92e3b9`. No screenshot/runtime log was supplied; Editor versus
+  player context is unconfirmed. Both types share the runtime GPU-instanced voxel draw path.
+- Found missing build-time retention for runtime-only instanced materials. Unity documents that
+  scene-based stripping can remove these shader variants. Prepare and an IPreprocessBuildWithReport
+  guard now set/read-check GraphicsSettings Instancing Variants=Keep All; shader target is explicit 3.5.
+  This is the leading hypothesis, not a reproduced native/GPU diagnosis.
+- Added F9/Escape-menu compatibility rendering using individual draws and non-instancing materials,
+  with automatic fallback after instanced drawing exceptions and renderer/device logging. HUD/CSV
+  identify the drawing path; manual switches cancel active captures. High-count compatibility mode
+  costs more draw calls, so benchmark comparisons must use the same renderer mode.
+- Checks: runtime, Editor and Windows-conditional C# compile against the official 6000.3.24f1 managed
+  APIs, warnings as errors. Package regressions and source/patch ZIP checks pass. Shader compilation,
+  native callback execution, variant retention and both visual paths remain unrun in this workspace.
+- Visual/build changes only; combat timing, animation poses, hitboxes, damage, movement and network
+  behavior are unchanged. CA icon and the prior package fix remain. No shared game or feed changes.
+- Handoff: apply the four-file visibility patch to the existing prototype, rebuild with 6000.3.24f1,
+  check actors/bolts, then F9 if needed. If still failing, obtain Player.log (or Editor Console) and
+  a screenshot. Status: isolated test branch only; no claim of visually verified repair or release.
+
 ## 2026-10-06 — Codex — Repair Unity package-resolution blocker
 - Owner supplied the first Windows batch-build log. Continued `codex/unity-prototype` from
   `1b091e5795444b6a72ff2796138e3af1a783c3ed`. The log runs 6000.3.24f1, resolves a Personal

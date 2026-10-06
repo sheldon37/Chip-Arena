@@ -9,6 +9,7 @@ Shader "ChipArena/PrototypeLit"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
+            #pragma target 3.5
             #pragma multi_compile_instancing
             #include "UnityCG.cginc"
             struct appdata { float4 vertex : POSITION; float3 normal : NORMAL; UNITY_VERTEX_INPUT_INSTANCE_ID };
