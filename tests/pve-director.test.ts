@@ -43,10 +43,10 @@ test('wave budgets and flows follow partyFactor (party bots counted) and the HOR
  assert.equal(waveBudget(3,4),95,'D6 after the S7 retune: W3 for 4 members is 95 adds (design: 62)');
  assert.deepEqual([1,2,3,4].map(h=>bossFlow(1,h,false).maxAlive),[6,10,14,18]);
  assert.deepEqual([1,2,3,4].map(h=>+bossFlow(1,h,false).rate.toFixed(6)),[.6,1,1.4,1.8]);
- // "Find me..." (owner 2026-10-04: many more spawns): ×5 rate and ×3 alive up to the possession cap 48; relay rooms keep 28.
- assert.deepEqual([1,2,3,4].map(h=>bossFlow(2,h,true).maxAlive),[18,30,42,48]);
- assert.deepEqual([1,2,3,4].map(h=>+bossFlow(2,h,true).rate.toFixed(6)),[3,5,7,9]);
- assert.deepEqual([1,2,3,4].map(h=>bossFlow(2,h,true,true).maxAlive),[18,28,28,28]);
+ // Find me: four times the previous spawn rate and crowd; ordinary phases keep their trickle.
+ assert.deepEqual([1,2,3,4].map(h=>bossFlow(2,h,true).maxAlive),[72,120,168,192]);
+ assert.deepEqual([1,2,3,4].map(h=>+bossFlow(2,h,true).rate.toFixed(6)),[12,20,28,36]);
+ assert.deepEqual([1,2,3,4].map(h=>bossFlow(2,h,true,true).maxAlive),[72,112,112,112]);
  assert.deepEqual([1,2,3,4].map(h=>bossFlow(2,h,false).maxAlive),[6,10,14,18],'not possessing: the plain trickle');
  // In a sim, h counts party bots: 1 human + 3 party bots runs W1 with 62 adds (S7 retune; design: 39).
  const r=rig({partyBots:3});try{

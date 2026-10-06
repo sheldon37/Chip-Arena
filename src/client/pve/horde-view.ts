@@ -10,6 +10,7 @@ import * as T from 'three';
 import type {GameEvent,Snapshot} from '../../shared/simulation.js';
 import {decodeAdd,PVE_EVENT,PVE_TIMING,type PveAddView,type PveView} from '../../shared/pve/contract.js';
 import {PVE_ENTRIES} from '../../shared/pve/layout.js';
+import {HORDE} from '../../shared/pve/balance.js';
 import type {PveVisualsContext} from './visuals.js';
 import {createSirenMinion,animateSirenMinion,prewarmSirenMinions,setSirenMinionDetail,disposeSirenMinion,minionSeed,sirenMinionStats,
  entryDuration,entryWalkStart,stumpsOf,VENT_RIM_Z,type SirenMinion,type SirenMinionView,type MinionEntry,type MinionOptions} from '../siren/minions/index.js';
@@ -22,7 +23,7 @@ import {ADD_STATUS} from '../../shared/pve/contract.js';
 /** Crowd LOD policy (design §10.6; mirrored in docs/PVE.md). */
 export const HORDE_RENDER={maxRigs:{quality:24, performance:16, compatibility:6},
  fullRadius:{quality:20, performance:14, compatibility:14}, hysteresis:4, shadowRadius:15, throttleRadius:12,
- impostorMax:64, impostorRadius:70, createPerFrame:2, prewarmMs:3, spareRigs:4, shadowRigs:12} as const;
+ impostorMax:HORDE.maxAlivePossession+HORDE.maxCorpses, impostorRadius:70, createPerFrame:2, prewarmMs:3, spareRigs:4, shadowRigs:12} as const;
 /** Small parts that never cast a shadow (the silhouette is the same without them; about 30 fewer shadow draws per rig). */
 const NO_SHADOW=/fingers|thumb|cuff|palm|kneecap|-joint$|^collar$|^sternum$|^back-panel$|^armor-|^waist-band$|^jaw$|^crown$|calf|heel|siren-minion-(fx|tongue|hint)/;
 export type HordeMode='quality'|'performance'|'compatibility';

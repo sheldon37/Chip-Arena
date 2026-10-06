@@ -162,3 +162,12 @@ test('a pve-gib event reaches the gore system; clear() removes everything', ()=>
  frame(r,adds,20.1);assert.equal(r.h.details().chunks,1);
  r.h.clear();assert.equal(r.h.details().rigs,0);assert.equal(r.h.impostors.mesh.count,0);assert.equal(r.h.gore.chunks.count,0);
 });
+
+
+test('the full 192-add hunt and 16 corpses all render without growing the full-rig budget',()=>{
+ for(const mode of ['quality','performance'] as const){const r=rig(mode),adds=ring(192,25),corpses=ring(16,30,1000,{state:'dead',deathAt:50});
+  const all=[...adds,...corpses];settle(r,all,50,8);
+  const d=r.h.details();assert.equal(d.hidden,0);assert.equal(d.impostors+r.h.metrics().fullRigs,208);
+  assert.ok(r.h.metrics().fullRigs<=HORDE_RENDER.maxRigs[mode]);r.h.clear();
+ }
+});

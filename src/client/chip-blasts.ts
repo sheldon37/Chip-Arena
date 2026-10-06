@@ -7,11 +7,9 @@ import type {FieldView} from '../shared/chaos.js';
  * explosions, not flat ground decals). Cosmetic only: every blast is keyed to an authoritative event (position and
  * gameplay radius) or a live authoritative field; nothing here feeds back into the simulation.
  *
- * Budget: two InstancedMeshes (opaque voxels, additive glow voxels) with fixed capacity and preallocated typed
- * arrays, plus a fixed pool of point lights kept in the scene at zero intensity (no shader recompiles, no per-hit
- * allocation). Counts scale with effects quality and pool occupancy; decorative spawns past capacity are dropped, but
- * each blast's radius layer overwrites old voxels so no blast is ever lost (§13.3). Compatibility mode drops lights and
- * most glow voxels.
+ * Two growable InstancedMeshes (opaque and additive glow voxels) retain every live particle until its natural
+ * expiry. Capacity doubles only when needed and is reclaimed on clear/reset. Effects quality scales each effect,
+ * not concurrent effects. Point lights stay pooled; their lighting is supplementary to the persistent voxel visuals.
  */
 export type BlastStyle='fire'|'shock'|'implosion'|'frost'|'toxic'|'void'|'nova'|'kinetic'|'quake'|'meteor'|'mine';
 /** Seconds the shock front takes to reach the gameplay radius. The front ends exactly at that radius. */
@@ -53,23 +51,37 @@ export function blastTint(tag?:string):Tint|undefined{const t=TINTS[tag||''];ret
 function rng(seed:number){let s=seed>>>0||1;return()=>{s=(Math.imul(s,1664525)+1013904223)>>>0;return s/4294967296;};}
 const tmpColor=new T.Color(),tmpColor2=new T.Color();
 
-/** Fixed-capacity voxel particle pool rendered as one InstancedMesh. Structure-of-arrays, swap-remove. */
+/** Growable voxel particle pool rendered as one InstancedMesh. Structure-of-arrays, swap-remove on expiry. */
 class VoxelPool{
- readonly mesh:T.InstancedMesh;count=0;spawned=0;private cursor=0;/** While set, a full pool overwrites voxels round-robin instead of dropping the spawn. */force=false;/** Multiplies voxel sizes at spawn (close-up stages such as the weapon intros draw blasts in miniature; default 1). */sizeScale=1;
+ mesh:T.InstancedMesh;count=0;spawned=0;/** Multiplies voxel sizes at spawn (close-up stages). */sizeScale=1;
  private p:Float32Array;private v:Float32Array;private c0:Float32Array;private c1:Float32Array;private a:Float32Array;
  private matrix=new T.Matrix4();private quat=new T.Quaternion();private scale=new T.Vector3();private pos=new T.Vector3();private euler=new T.Euler();
  static readonly A=10;// age,life,size0,size1,gravity,drag,delay,floor,stretch,spin
- constructor(readonly capacity:number,glow:boolean,name:string){
+ private readonly initialCapacity:number;
+ constructor(public capacity:number,glow:boolean,name:string){
+  this.initialCapacity=capacity;
   const material=new T.MeshBasicMaterial({color:0xffffff,toneMapped:false,...(glow?{transparent:true,blending:T.AdditiveBlending,depthWrite:false}:{})});
   this.mesh=new T.InstancedMesh(new T.BoxGeometry(1,1,1),material,capacity);this.mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
   this.mesh.setColorAt(0,new T.Color());this.mesh.count=0;this.mesh.frustumCulled=false;this.mesh.name=name;this.mesh.renderOrder=glow?3:0;
   this.p=new Float32Array(capacity*3);this.v=new Float32Array(capacity*3);this.c0=new Float32Array(capacity*3);this.c1=new Float32Array(capacity*3);this.a=new Float32Array(capacity*VoxelPool.A);
  }
  spawn(x:number,y:number,z:number,vx:number,vy:number,vz:number,life:number,size0:number,size1:number,color0:number,color1:number,gravity=0,drag=0,delay=0,floor=-1e9,stretch=1,spin=0){
-  let i=this.count;if(i>=this.capacity){if(!this.force)return false;i=this.cursor=(this.cursor+1)%this.capacity;}else this.count++;this.spawned++;const j=i*3,k=i*VoxelPool.A;
+  if(this.count===this.capacity)this.resize(this.capacity*2);
+  const i=this.count++;this.spawned++;const j=i*3,k=i*VoxelPool.A;
   this.p[j]=x;this.p[j+1]=y;this.p[j+2]=z;this.v[j]=vx;this.v[j+1]=vy;this.v[j+2]=vz;
   tmpColor.setHex(color0);this.c0[j]=tmpColor.r;this.c0[j+1]=tmpColor.g;this.c0[j+2]=tmpColor.b;tmpColor.setHex(color1);this.c1[j]=tmpColor.r;this.c1[j+1]=tmpColor.g;this.c1[j+2]=tmpColor.b;
   const a=this.a;a[k]=-delay;a[k+1]=Math.max(.01,life);a[k+2]=size0*this.sizeScale;a[k+3]=size1*this.sizeScale;a[k+4]=gravity;a[k+5]=drag;a[k+6]=delay;a[k+7]=floor;a[k+8]=stretch;a[k+9]=spin;return true;
+ }
+ /** Replace GPU buffers only at a capacity boundary; keep all CPU and already-uploaded particle data. */
+ private resize(capacity:number){
+  const grow=(old:Float32Array,stride:number)=>{const next=new Float32Array(capacity*stride);next.set(old.subarray(0,this.count*stride));return next;};
+  this.p=grow(this.p,3);this.v=grow(this.v,3);this.c0=grow(this.c0,3);this.c1=grow(this.c1,3);this.a=grow(this.a,VoxelPool.A);
+  const old=this.mesh,next=new T.InstancedMesh(old.geometry,old.material,capacity);
+  next.instanceMatrix.setUsage(T.DynamicDrawUsage);next.instanceMatrix.array.set(old.instanceMatrix.array.subarray(0,old.count*16));
+  next.setColorAt(0,tmpColor);next.instanceColor!.array.set(old.instanceColor!.array.subarray(0,old.count*3));
+  next.count=old.count;next.name=old.name;next.frustumCulled=false;next.renderOrder=old.renderOrder;
+  next.position.copy(old.position);next.quaternion.copy(old.quaternion);next.scale.copy(old.scale);next.visible=old.visible;
+  old.parent?.add(next);old.removeFromParent();old.dispose();this.mesh=next;this.capacity=capacity;
  }
  /** Age and position of particle i (tests). */
  at(i:number){const j=i*3;return {x:this.p[j],y:this.p[j+1],z:this.p[j+2],age:this.a[i*VoxelPool.A],life:this.a[i*VoxelPool.A+1]};}
@@ -89,7 +101,7 @@ class VoxelPool{
    if(glow)tmpColor.multiplyScalar((1-u)*(1-u)*1.15);this.mesh.setColorAt(n,tmpColor);n++;}
   this.mesh.count=n;this.mesh.instanceMatrix.needsUpdate=true;if(this.mesh.instanceColor)this.mesh.instanceColor.needsUpdate=true;
  }
- clear(){this.count=0;this.mesh.count=0;}
+ clear(){this.count=0;this.mesh.count=0;if(this.capacity!==this.initialCapacity)this.resize(this.initialCapacity);}
  dispose(){this.mesh.removeFromParent();this.mesh.geometry.dispose();(this.mesh.material as T.Material).dispose();this.mesh.dispose();}
 }
 
@@ -103,8 +115,6 @@ export class ChipBlasts{
   this.solid=new VoxelPool(BLAST_CAPACITY.solid,false,'chip-blast-voxels');this.glow=new VoxelPool(BLAST_CAPACITY.glow,true,'chip-blast-glow');scene.add(this.solid.mesh,this.glow.mesh);
   for(let i=0;i<BLAST_CAPACITY.lights;i++){const light=new T.PointLight(0xffffff,0,8,2);light.name='chip-blast-light';scene.add(light);this.flashes.push({light,at:-1e9,peak:0,life:.3});}
  }
- /** Fullest pool's fill ratio: blasts thin out above ~40%, ambient field emitters stop at 70%. */
- private occupancy(){return Math.max(this.solid.count/this.solid.capacity,this.glow.count/this.glow.capacity);}
  private flash(pos:Vec,color:number,radius:number,peak:number,life:number,compat:boolean,quality:number,minor=false){if(compat||quality<.5)return;const f=minor?this.flashes.find(f=>this.time-f.at>=f.life):this.flashes[this.nextLight++%this.flashes.length];if(!f)return;f.light.position.set(pos.x,pos.y+.4,pos.z);f.light.color.setHex(color);f.light.distance=Math.max(4,radius*3);f.at=this.time;f.peak=peak;f.life=life;}
  /** Sphere of directions, roughly even (golden spiral) with jitter. */
  private dir(i:number,n:number,hemi=false){const y=hemi?1-(i+.5)/n:1-2*(i+.5)/n,r=Math.sqrt(Math.max(0,1-y*y)),phi=i*2.39996+this.random()*.4;return [Math.cos(phi)*r,y,Math.sin(phi)*r] as const;}
@@ -112,16 +122,16 @@ export class ChipBlasts{
   * centre to its own random spot inside 92% of `radius` within BLAST_FRONT_SECONDS and fades there, so the floor glows over
   * the whole area without a hard edge. */
  private ring(pos:Vec,ground:number,radius:number,color0:number,color1:number,count:number,glow:boolean,height=.08,size=.16){
-  const pool=glow?this.glow:this.solid,rnd=this.random,r0=Math.min(.25,radius*.2);pool.force=true;
-  for(let i=0;i<count;i++){const a=i/count*Math.PI*2+rnd()*.6,c=Math.cos(a),s=Math.sin(a),r=r0+(radius*.92-r0)*Math.sqrt(rnd()),speed=(r-r0)/BLAST_FRONT_SECONDS;pool.spawn(pos.x+c*r0,ground+height,pos.z+s*r0,c*speed,0,s*speed,BLAST_FRONT_SECONDS*(1.1+rnd()),size,size*.3,color0,color1,0,0,0,-1e9,1,0);}pool.force=false;
+  const pool=glow?this.glow:this.solid,rnd=this.random,r0=Math.min(.25,radius*.2);
+  for(let i=0;i<count;i++){const a=i/count*Math.PI*2+rnd()*.6,c=Math.cos(a),s=Math.sin(a),r=r0+(radius*.92-r0)*Math.sqrt(rnd()),speed=(r-r0)/BLAST_FRONT_SECONDS;pool.spawn(pos.x+c*r0,ground+height,pos.z+s*r0,c*speed,0,s*speed,BLAST_FRONT_SECONDS*(1.1+rnd()),size,size*.3,color0,color1,0,0,0,-1e9,1,0);}
  }
  /** Hemispherical shock shell: the volumetric read of the blast radius (ends exactly at it). */
  private shell(pos:Vec,ground:number,radius:number,color0:number,color1:number,count:number){
-  const r0=Math.min(.25,radius*.2),speed=(radius-r0)/BLAST_FRONT_SECONDS;this.glow.force=true;
-  for(let i=0;i<count;i++){const [x,y,z]=this.dir(i,count,true);this.glow.spawn(pos.x+x*r0,ground+y*r0,pos.z+z*r0,x*speed,y*speed,z*speed,BLAST_FRONT_SECONDS+.001,.2,.1,color0,color1);}this.glow.force=false;
+  const r0=Math.min(.25,radius*.2),speed=(radius-r0)/BLAST_FRONT_SECONDS;
+  for(let i=0;i<count;i++){const [x,y,z]=this.dir(i,count,true);this.glow.spawn(pos.x+x*r0,ground+y*r0,pos.z+z*r0,x*speed,y*speed,z*speed,BLAST_FRONT_SECONDS+.001,.2,.1,color0,color1);}
  }
  /** Voxels that start on the radius and rush to the centre in `T0` (implosions, vacuum); they never drop. */
- private inward(c:Vec,R:number,count:number,c0:number,c1:number,T0:number,swirl=0,lift=.7){this.glow.force=true;for(let i=0;i<count;i++){const [x,y,z]=this.dir(i,count,true),h=Math.hypot(x,z)||1,X=x/h*R,Z=z/h*R,Y=(y-.3)*R*lift;this.glow.spawn(c.x+X,c.y+Y,c.z+Z,-X/T0-Z*swirl,-Y/T0,-Z/T0+X*swirl,T0,.16,.24,c0,c1,0,0,0,-1e9,1,swirl?3:0);}this.glow.force=false;}
+ private inward(c:Vec,R:number,count:number,c0:number,c1:number,T0:number,swirl=0,lift=.7){for(let i=0;i<count;i++){const [x,y,z]=this.dir(i,count,true),h=Math.hypot(x,z)||1,X=x/h*R,Z=z/h*R,Y=(y-.3)*R*lift;this.glow.spawn(c.x+X,c.y+Y,c.z+Z,-X/T0-Z*swirl,-Y/T0,-Z/T0+X*swirl,T0,.16,.24,c0,c1,0,0,0,-1e9,1,swirl?3:0);}}
  /** A line of glow voxels from a to b (arcs, teleport and rally streaks); `sweep` delays the far end so it travels. */
  line(a:Vec,b:Vec,color0:number,color1:number,quality:number,jitter=.25,life=.14,sweep=0){const d=Math.hypot(b.x-a.x,b.y-a.y,b.z-a.z),c=Math.min(40,Math.max(3,Math.round(d*5*quality))),rnd=this.random;for(let i=0;i<=c;i++){const u=i/c,j=i&&i<c?jitter:0;this.glow.spawn(a.x+(b.x-a.x)*u+(rnd()-.5)*j,a.y+(b.y-a.y)*u+(rnd()-.5)*j,a.z+(b.z-a.z)*u+(rnd()-.5)*j,0,0,0,life,.11,.05,color0,color1,0,0,u*sweep);}}
  /** Pong rally "paddle flash": a 4×4 voxel square at the bounce point, facing and drifting along the rally direction. */
@@ -129,7 +139,7 @@ export class ChipBlasts{
   for(let i=0;i<4;i++)for(let j=0;j<4;j++){const a=(i-1.5)*.16,b=(j-1.5)*.16;this.glow.spawn(at.x+ux*a+vx*b,at.y+vy*b,at.z+uz*a+vz*b,nx*1.5,ny*1.5,nz*1.5,.15,.15,.06,0xffffff,color);}}
  /** Small volumetric impact (chip procs, splashes, field arrivals): a voxel front ending on `radius`, core, debris, motes, an idle light. */
  impact(pos:Vec,radius:number,hot:number,opts:{quality:number;compat?:boolean;ground?:boolean;cool?:number}){
-  const cool=opts.cool??tmpColor.setHex(hot).multiplyScalar(.45).getHex(),q=Math.max(0,Math.min(1,opts.quality))*(opts.compat?.5:1)*Math.max(.15,Math.min(1,(1-this.occupancy())*1.6));if(q<=.02)return;
+  const cool=opts.cool??tmpColor.setHex(hot).multiplyScalar(.45).getHex(),q=Math.max(0,Math.min(1,opts.quality))*(opts.compat?.5:1);if(q<=.02)return;
   const R=Math.max(.3,radius),rnd=this.random,n=(b:number)=>Math.max(2,Math.round(b*q*Math.min(1.5,.6+R*.2))),T0=BLAST_FRONT_SECONDS,g=pos.y-.95,y0=opts.ground?g+.12:pos.y;
   if(opts.ground){const r0=Math.min(.25,R*.2);for(let i=0,c=n(26);i<c;i++){const a=i/c*Math.PI*2+rnd()*.6,x=Math.cos(a),z=Math.sin(a),s=(r0+(R*.92-r0)*Math.sqrt(rnd())-r0)/T0;this.glow.spawn(pos.x+x*r0,y0,pos.z+z*r0,x*s,0,z*s,T0*(1.1+rnd()),.17,.05,hot,cool);}}
   for(let i=0,c=n(opts.ground?14:20);i<c;i++){const [x,y,z]=this.dir(i,c,opts.ground),s=(R-.1)/T0;this.glow.spawn(pos.x+x*.1,y0+y*.1,pos.z+z*.1,x*s,y*s,z*s,T0+.001,.13,.06,0xffffff,hot);}
@@ -143,7 +153,7 @@ export class ChipBlasts{
   * on it, the fireball fills ~60% of it, debris and smoke may travel past it (cosmetic).
   */
  blast(style:BlastStyle,pos:Vec,radius:number,opts:BlastOptions={quality:1}):number{
-  const q=Math.max(0,Math.min(1,opts.quality));if(q<=0)return 0;const spawned=this.solid.spawned+this.glow.spawned,share=Math.max(.2,Math.min(1,(1-this.occupancy())*1.6)),compat=!!opts.compat,pal={...PALETTE[style],...opts.tint},R=Math.max(.4,radius),k=q*(compat?.4:1)*Math.min(1.6,.55+R*.18),n=(base:number)=>Math.max(1,Math.round(base*k*share)),m=(base:number)=>Math.max(BLAST_MIN_VOXELS,Math.round(base*k));
+  const q=Math.max(0,Math.min(1,opts.quality));if(q<=0)return 0;const spawned=this.solid.spawned+this.glow.spawned,compat=!!opts.compat,pal={...PALETTE[style],...opts.tint},R=Math.max(.4,radius),k=q*(compat?.4:1)*Math.min(1.6,.55+R*.18),n=(base:number)=>Math.max(1,Math.round(base*k)),m=(base:number)=>Math.max(BLAST_MIN_VOXELS,Math.round(base*k));
   const ground=pos.y-.95,rnd=this.random,center={x:pos.x,y:Math.max(ground+.35,pos.y),z:pos.z};
   const core=(count:number,spread:number,life:number,size:number,rise=0)=>{for(let i=0,c=n(count);i<c;i++){const [x,y,z]=this.dir(i,c),s=spread*(.6+rnd()*.6);this.glow.spawn(center.x,center.y,center.z,x*s,y*s*.8+rise,z*s,life*(.7+rnd()*.5),size*(.8+rnd()*.5),size*.3,pal.core,pal.hot,-rise*.5,3.5);}};
   const fireball=(count:number,reach:number,life:number,size:number,rise:number)=>{for(let i=0,c=n(count);i<c;i++){const [x,y,z]=this.dir(i,c),s=reach*(2.2+rnd()*1.6);this.solid.spawn(center.x+x*.1,center.y+Math.abs(y)*.1,center.z+z*.1,x*s,Math.abs(y)*s*.7+rise,z*s,life*(.75+rnd()*.5),size*(.8+rnd()*.6),size*.12,pal.hot,pal.cool,-rise*.6,3.2,0,ground,1,2);}};
@@ -177,7 +187,7 @@ export class ChipBlasts{
     this.flash(center,pal.hot,R,5,.3,compat,q);break;}
    case 'nova':{
     core(18,R*2.6,.25,.42);
-    this.glow.force=true;for(let i=0,c=m(56);i<c;i++){const [x,y,z]=this.dir(i,c),r0=.25,s=(R-r0)/BLAST_FRONT_SECONDS;this.glow.spawn(center.x+x*r0,center.y+y*r0,center.z+z*r0,x*s,y*s,z*s,BLAST_FRONT_SECONDS+.001,.24,.12,pal.core,pal.cool);}this.glow.force=false;
+    for(let i=0,c=m(56);i<c;i++){const [x,y,z]=this.dir(i,c),r0=.25,s=(R-r0)/BLAST_FRONT_SECONDS;this.glow.spawn(center.x+x*r0,center.y+y*r0,center.z+z*r0,x*s,y*s,z*s,BLAST_FRONT_SECONDS+.001,.24,.12,pal.core,pal.cool);}
     this.ring(pos,ground,R,pal.hot,pal.cool,m(34),true);sparks(20,R*3.4);this.flash(center,pal.hot,R,12,.4,compat,q);break;}
    case 'frost':{
     for(let i=0,c=n(26);i<c;i++){const [x,y,z]=this.dir(i,c,true),s=R*(1.4+rnd()*1.4);this.solid.spawn(center.x,center.y,center.z,x*s,Math.abs(y)*s+1.5,z*s,.9+rnd()*.4,.12,.05,pal.debris,pal.cool,9,1.5,0,ground+.04,3.5);}
@@ -191,10 +201,10 @@ export class ChipBlasts{
  }
  /**
   * Ambient emitters for live authoritative fields, telegraph motes on the exact gameplay radius, an arrival impact sized
-  * to it (§19.2) and the §13.1 ability emitters. Rate-limited per field, by quality and by pool occupancy.
+  * to it (§19.2) and the §13.1 ability emitters. Rate-limited per field, and by quality.
   */
  field(f:FieldView,time:number,quality:number,compat=false){
-  const fx=f.fx||'',q=Math.max(0,Math.min(1,quality))*(compat?.4:1)*Math.max(0,Math.min(1,(.7-this.occupancy())*3)),meteor=fx==='artillery'||fx==='meteor-strike',fused=f.kind==='bomb'&&(meteor||fx==='thunderstep'||fx==='comet'||fx==='orbital-mark'||fx==='geyser-wall');if(q<=0)return;
+  const fx=f.fx||'',q=Math.max(0,Math.min(1,quality))*(compat?.4:1),meteor=fx==='artillery'||fx==='meteor-strike',fused=f.kind==='bomb'&&(meteor||fx==='thunderstep'||fx==='comet'||fx==='orbital-mark'||fx==='geyser-wall');if(q<=0)return;
   const rate=fused?40:fx==='singularity'?70:({storm:9,acid:36,fire:64,frost:26,time:14,'black-hole':50,repulsion:18,heal:20,implosion:40,bomb:10,mine:6} as Record<string,number>)[f.kind]??0;if(!rate)return;
   const rnd=this.random,R=f.radius,ground=Math.max(.03,f.pos.y-.95),at={x:f.pos.x,y:ground+.95,z:f.pos.z},kind=f.kind,style=kind==='bomb'||kind==='mine'?blastStyle(fx||kind):kind==='storm'?'shock':kind==='acid'||kind==='heal'?'toxic':kind==='frost'||kind==='time'?'frost':kind==='implosion'||fx==='singularity'?'implosion':kind==='black-hole'?'void':kind==='repulsion'?'mine':'fire',pal={...PALETTE[style],...blastTint(fx)};
   if(fx==='orbital-mark'&&time>=(f.lockAt??1e9)&&!this.locked.has(f.id)){this.locked.add(f.id);this.impact(at,R,pal.core,{quality:q,ground:true,cool:pal.cool});this.flash(at,pal.hot,R,8,.3,compat,q);}

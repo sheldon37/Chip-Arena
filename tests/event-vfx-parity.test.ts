@@ -23,9 +23,10 @@ function eventList(){let id=0;const e=(type:string,extra:Record<string,unknown>=
 function stateFor(events:any[]){return {time:10,tick:600,events,fields:[{id:'f1',owner:'a',kind:'implosion',pos:{x:0,y:.2,z:0},radius:4,born:9.5,until:10.4,arm:10.1,damage:30,fx:'implosion-bomb'},{id:'f2',owner:'a',kind:'black-hole',pos:{x:5,y:.2,z:0},radius:5,born:9,until:12.5,arm:9.6,damage:10,fx:'black-hole'}],
  players:[{id:ME,pos:{x:0,y:1,z:0},spec:'pistol'},{id:'w',pos:{x:0,y:1,z:5},spec:'water'},{id:'a',pos:{x:0,y:1,z:5},spec:'fire'},{id:'b',pos:{x:0,y:1,z:5},spec:'sword'}]} as any;}
 
+// Buffer replacements preserve the same draw calls; count new effect objects, not resized pool meshes.
 function instrument(scene:T.Scene,chip:ChipBlasts,bursts:BurstPool){const log={added:0,spawns:[] as number[],blasts:[] as string[],fields:[] as string[],impacts:[] as string[],lines:0};
  const impact=chip.impact.bind(chip);chip.impact=((pos,radius,hot,o)=>{log.impacts.push(`${radius}:${hot.toString(16)}${o.ground?':ground':''}`);return impact(pos,radius,hot,o);}) as typeof chip.impact;
- const line=chip.line.bind(chip);chip.line=((...a:Parameters<typeof chip.line>)=>{log.lines++;return line(...a);}) as typeof chip.line;const add=scene.add.bind(scene);scene.add=((...o:T.Object3D[])=>{log.added+=o.length;return add(...o);}) as typeof scene.add;
+ const line=chip.line.bind(chip);chip.line=((...a:Parameters<typeof chip.line>)=>{log.lines++;return line(...a);}) as typeof chip.line;const add=scene.add.bind(scene);scene.add=((...o:T.Object3D[])=>{log.added+=o.filter(x=>!['chip-blast-voxels','chip-blast-glow','pooled-impact-sparks'].includes(x.name)).length;return add(...o);}) as typeof scene.add;
  const spawn=bursts.spawn.bind(bursts);bursts.spawn=((pos,color,count,power,q)=>{log.spawns.push(count);return spawn(pos,color,count,power,q);}) as typeof bursts.spawn;
  const blast=chip.blast.bind(chip);chip.blast=((style,pos,radius,o)=>{log.blasts.push(`${style}:${radius}:${(o?.quality??1).toFixed(3)}${o?.tint?':tint':''}`);return blast(style,pos,radius,o);}) as typeof chip.blast;
  const field=chip.field.bind(chip);chip.field=((f,...rest)=>{log.fields.push(f.id);return field(f,...rest);}) as typeof chip.field;return log;}

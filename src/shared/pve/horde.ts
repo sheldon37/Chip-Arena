@@ -144,7 +144,7 @@ export class Horde implements HordeApi{
   // 1. flow releases (rate-independent budget)
   if(this.flow){
    const left=this.flow.budget<0?-1:Math.max(0,this.flow.budget-this.flowReleased);
-   const room=Math.max(0,Math.min(this.cap()-this.alive()-this.queued(),HORDE.maxEntering-this.entering()));
+   const room=Math.max(0,Math.min(this.cap()-this.alive()-this.queued(),(this.possessed()!==undefined?HORDE.maxEnteringPossession:HORDE.maxEntering)-this.entering()));
    const n=this.budget.step(dt,this.flow.rate,room,left);
    for(let i=0;i<n;i++){this.flowReleased++;this.create(this.pickKind(this.flow.mix),false);}
   }

@@ -526,13 +526,28 @@ siren boss, give ... 30 seconds intermission time".
   snapshot p95 50.4 KB (budget 64 KB), 64 add tuples. Not measured: Windows client FPS at 48 adds, relay hosts, the full
   balance harness.
 
+## Much larger "Find me..." horde (2026-10-06)
+
+This supersedes the October 4 hunt counts above. While the Siren possesses an add, configured spawn rate is
+12/20/28/36 per second for parties of 1/2/3/4, with 72/120/168/192 alive (four times the former limits).
+Relay rooms use 72/112/112/112 alive. Entry reservations rise from 16 to 64 only during possession;
+entry animation, door gaps, hazard avoidance and proximity rules still govern actual arrivals.
+The crowd batch covers 192 living adds plus 16 corpses (208) without raising the full-rig/shadow budgets.
+Waves and other phases keep their existing limits. When the Siren is found, survivors remain and new spawning waits
+until the crowd is below the ordinary cap. Possessed HP, reveal timeout, hints, rewards and chip-selection rules are unchanged.
+
+Real-Rapier headless stress: 192 living adds, 16 corpses, 4 party members/open picks and a full event ring:
+mean sim step 2.084 ms, PvE share 1.126 ms, p99 step 4.536 ms; snapshot p95 60,065 bytes, 208 add tuples,
+zero dropped horde events. Both original 4 ms/2.5 ms CPU gates and the 64 KiB snapshot gate pass.
+These are Linux CPU/data measurements, not Windows GPU frame-rate or difficulty acceptance.
+
 ## Rendering constants (S5 and S6 mirrors)
 
 `src/client/pve/horde-view.ts`:
 
 ```ts
 HORDE_RENDER={maxRigs:{quality:24, performance:16, compatibility:6}, fullRadius:{quality:20, performance:14, compatibility:14},
- hysteresis:4, shadowRadius:15, throttleRadius:12, impostorMax:64, impostorRadius:70, createPerFrame:2, prewarmMs:3,
+ hysteresis:4, shadowRadius:15, throttleRadius:12, impostorMax:208, impostorRadius:70, createPerFrame:2, prewarmMs:3,
  spareRigs:4, shadowRigs:12}
 ```
 

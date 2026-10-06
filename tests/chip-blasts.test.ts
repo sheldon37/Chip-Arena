@@ -1,4 +1,4 @@
-// Volumetric chip blasts (2026-10-03): pooled, bounded, quality-aware and keyed to the authoritative radius.
+// Volumetric chip blasts (2026-10-03): pooled, lifetime-preserving, quality-aware and keyed to the authoritative radius.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from 'three';
@@ -20,10 +20,18 @@ test('the shock front ends exactly on the gameplay radius',()=>{
   for(let i=0;i<fx.glow.count;i++){const p=fx.glow.at(i);if(p.life>BLAST_FRONT_SECONDS-.01&&p.life<BLAST_FRONT_SECONDS+.01)max=Math.max(max,Math.hypot(p.x-2,p.z+1));}
   assert.ok(Math.abs(max-radius)<radius*.06,`front ${max.toFixed(3)} vs radius ${radius}`);fx.dispose();}
 });
-test('pools never grow: capacity is fixed, overflow is dropped, scene children stay constant',()=>{
- const {scene,fx}=fresh();const children=scene.children.length;for(let n=0;n<200;n++){fx.blast(STYLES[n%STYLES.length],{x:n%7,y:1,z:0},5,{quality:1});fx.update(1/60);}
- assert.ok(fx.solid.count<=BLAST_CAPACITY.solid&&fx.glow.count<=BLAST_CAPACITY.glow);assert.equal(scene.children.length,children);
- assert.equal(fx.solid.mesh.instanceMatrix.count,BLAST_CAPACITY.solid);for(let n=0;n<240;n++)fx.update(1/60);assert.equal(fx.solid.count+fx.glow.count,0);assert.ok(fx.flashes.every(f=>f.light.intensity===0));fx.dispose();
+test('overflow grows instance buffers without replacing live voxels, then expires and reclaims on clear',()=>{
+ const {scene,fx}=fresh(),children=scene.children.length;
+ for(const pool of [fx.solid,fx.glow]){
+  const initial=pool.capacity;for(let i=0;i<initial*3;i++)assert.ok(pool.spawn(i,1,0,0,0,0,1,.1,.1,0xffffff,0xffffff));
+  assert.equal(pool.count,initial*3);assert.ok(pool.capacity>=pool.count);assert.equal(pool.mesh.instanceMatrix.count,pool.capacity);
+  for(let i=0;i<pool.count;i++)assert.equal(pool.at(i).x,i,'no live voxel was overwritten');
+ }
+ fx.update(.05);assert.equal(fx.solid.mesh.count,fx.solid.count);assert.equal(fx.glow.mesh.count,fx.glow.count);
+ assert.equal(scene.children.length,children,'replaced buffers do not add draw calls');
+ for(let n=0;n<120;n++)fx.update(1/60);assert.equal(fx.solid.count+fx.glow.count,0);
+ fx.clear();assert.equal(fx.solid.capacity,BLAST_CAPACITY.solid);assert.equal(fx.glow.capacity,BLAST_CAPACITY.glow);
+ fx.dispose();assert.equal(scene.children.length,0);
 });
 test('effects quality scales the voxel count; zero spawns nothing; compatibility drops lights',()=>{
  const counts=[0,.5,1].map(q=>{const {fx}=fresh();fx.blast('fire',{x:0,y:1,z:0},3,{quality:q});const n=fx.solid.count+fx.glow.count;fx.dispose();return n;});
@@ -70,13 +78,13 @@ test('pool pressure: 4 E finales + 3 ability fields + chip fields, on saturated 
  // Owner request 2026-10-04: blast floors are filled up to 92% of the radius (no outline ring on it), so a ring-only
  // finale (Geyser) reaches ~.9R; the shells still end on the radius.
  for(const [n,[,radius,tag]] of finales.entries())assert.ok(reach[n]>=radius*.85,`${tag} reaches ${reach[n].toFixed(2)} of ${radius}`);
- assert.deepEqual(BLAST_CAPACITY,{solid:900,glow:700,lights:3});assert.equal(fx.solid.mesh.instanceMatrix.count,900);assert.equal(fx.glow.mesh.instanceMatrix.count,700);fx.dispose();
+ assert.deepEqual(BLAST_CAPACITY,{solid:900,glow:700,lights:3});assert.ok(fx.solid.mesh.instanceMatrix.count>=fx.solid.count);assert.ok(fx.glow.mesh.instanceMatrix.count>=fx.glow.count);fx.dispose();
 });
-test('occupancy thins blasts and stops ambient field work so blasts keep room',()=>{
+test('concurrent blasts do not thin new impacts or stop live field emitters',()=>{
  const count=(fill:number)=>{const {fx}=fresh();for(let n=0;n<fill;n++)fx.blast('fire',{x:-30,y:1,z:n},6,{quality:1});const before=fx.solid.spawned+fx.glow.spawned;fx.blast('fire',{x:0,y:1,z:0},3,{quality:1});const n=fx.solid.spawned+fx.glow.spawned-before;fx.dispose();return n;};
- assert.ok(count(0)>count(20),'fewer decorative voxels under pressure');assert.ok(count(20)>=BLAST_MIN_VOXELS);
+ assert.equal(count(0),count(20),'each blast keeps its authored particle count');assert.ok(count(20)>=BLAST_MIN_VOXELS);
  const {fx}=fresh();for(let n=0;n<30;n++)fx.blast('fire',{x:-30,y:1,z:n},6,{quality:1});const f:FieldView={id:'s',owner:'a',kind:'storm',pos:{x:0,y:1,z:0},radius:4,born:0,until:9,arm:0,damage:1},glow=fx.glow.spawned;
- for(let t=0;t<.5;t+=1/60)fx.field(f,t,1);assert.equal(fx.glow.spawned,glow,'no ambient spawns while the pools are saturated');fx.dispose();
+ for(let t=0;t<.5;t+=1/60)fx.field(f,t,1);assert.ok(fx.glow.spawned>glow,'live fields keep emitting while many blasts are active');fx.dispose();
 });
 test('field telegraph motes rise inside the area (never tracing its outline), and a fresh field lands with a volumetric arrival impact',()=>{
  for(const [kind,radius] of [['acid',3],['bomb',4],['mine',2.3],['implosion',4],['time',4]] as const){const {fx}=fresh(),f:FieldView={id:'r',owner:'a',kind,pos:{x:2,y:1,z:-1},radius,born:0,until:9,arm:0,damage:1,fx:kind==='bomb'?'delayed-gratification':undefined};
