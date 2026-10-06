@@ -34,7 +34,19 @@ containing an entry; no self-referential commit hash is required.
   untouched-baseline names exactly, one skipped. No shared/server/relay/launcher code or gameplay rules changed.
 - Native Windows/GPU, real-browser visual acceptance and remote-player manual play not run. Chromium's download failed
   (invalid/truncated archive); headless rig tests are not visual acceptance. Owner visual review remains.
-- Status: implemented and verified on the task branch; merge and test-channel publication follow. No live-feed/Site release.
+- Release: PR #53 merged at `6e3da8e3f6f6f8e56891bab7077c505acee69b9a`; its complete tree
+  `20463da03a359f3437e8d211aa00a10dac412db8` matches the tested checkout. Server compilation retains the four documented
+  baseline errors; all 10 remote-channel/menu-status fixtures pass. Two release builds produced byte-identical manifests
+  and payloads for `0.2.a06765ab0a43`, build `798dc25d1e90f4bc954933ac`. Real-payload checks pass for both schemas:
+  103 game files (107 including launcher), all installed hashes, launcher activation, same-version skip, corruption/offline
+  refusal, settings preservation and no source archive/maps. Schema 1: 24,707,221 B; schema 2: 20,576,951 B.
+- Published atomically to TEST channel `b61a81fcb07f0e56ae51ef166367a61071313d09` (publishing run `37513170104`).
+  Public Git blob hashes of all four feed files exactly match the verified local files. The temporary chunk-assembly
+  branch deleted itself; no workflow or chunks were added to channel main. No live-feed, Site or new Windows seed release.
+- After raw-GitHub cache propagation, the actual network updater passed for both schemas from `0.2.8829a9b74310`
+  to this release: all 103 installed game hashes match, schema-2 launcher activation succeeds, settings survive, and a
+  second run skips. The actual menu-status handler advertises this build/version for both schemas. Status: merged and
+  released to the existing TEST Update button. Native visual review remains.
 
 ## 2026-10-05 — Codex — Attack recovery, cheaper swings and sprint stamina
 - Branch `codex/combat-flow-stamina`, exact shared base `ab93263c704266949432f9ee32034b157921d720` (PR #50).
