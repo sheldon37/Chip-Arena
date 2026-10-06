@@ -50,9 +50,15 @@ containing an entry; no self-referential commit hash is required.
   103 game files/107 with launcher, all installed hashes, launcher activation, same-version skip, offline/corrupt refusal,
   settings preservation and source-privacy checks. Schema 1 is 24,708,136 B; schema 2 is 20,575,267 B.
   Two complete release builds produced byte-identical manifests and payloads for both schemas.
-- Status: implemented on this task branch, not merged or published. Owner merge approval is the next gate under AGENTS.md;
-  after approval, verify the exact shared-branch tree and publish to the standing-authorized TEST Update channel.
-  No live-feed, Site or Windows seed release.
+- Release: owner approved merge/publication. PR #55 merged at `c146cd6a5fc724d0038915a1c91a313146d8addc`;
+  its complete tree `29c193dc42d9aa1de955de06341f1de31c96e754` matches the tested checkout exactly.
+  TEST channel `ecbbdd077a9db20db999a34668cba8c891ed4872` publishes the candidate above (run `37519393074`).
+  Public Git blob hashes of both manifests and payloads match the verified local files. The temporary chunk-assembly
+  branch deleted itself; no publishing workflow/chunks remain on channel main.
+- Actual network updater checks pass for both schemas from `0.2.a06765ab0a43` to `0.2.b18d54478b46`: all 103 installed
+  game files match, settings survive, schema-2 launcher activation succeeds, and a second update skips. The actual menu
+  status handler advertises this build/version for both schemas. Status: merged and released to the existing TEST Update
+  button. Native Windows/GPU/difficulty acceptance remains. No live-feed, Site or new Windows seed release.
 
 ## 2026-10-06 — Codex — PvP chip presentation for Siren personal picks
 - Branch `codex/siren-pvp-chip-ui`, shared base `9de0365171d3b22404e2bd125f2634d971418dc5`

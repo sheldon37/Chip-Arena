@@ -27,14 +27,13 @@ Migration imported to private GitHub; not merged or released (2026-09-29).
 - Shared test-development branch: `claude/visual-revision` (owner confirmed
   2026-10-01). Visual revision PR #4 remains separate from the migration to main;
   this branch is already distributed through the test channel.
-- Pending on `codex/impact-lifetimes-siren-horde` (base `c52a532`, 2026-10-06): persistent impact effects,
-  per-eligible-projectile impact Chips and fourfold Find-me spawns. Targeted/full/network checks recorded in DEV_LOG;
-  owner merge approval precedes TEST publication. Current published update below remains unchanged.
 - Test builds update online from the public test channel
   sheldon37/chip-arena-test-updates (tooling PR #5); live feed untouched. See DEVELOPMENT.md.
-  Latest test update (2026-10-06): `0.2.a06765ab0a43`, source `6e3da8e` (PR #53),
-  channel `b61a81f`: Siren personal chip picks reuse the PvP portrait/tray UI; card
-  rows fill the screen. Selection logic and vulnerability unchanged. Baseline failures/native review remain; see DEV_LOG.
+  Latest test update (2026-10-06): `0.2.b18d54478b46`, source `c146cd6` (PR #55),
+  channel `ecbbdd0`: impact effects retain full lifetimes, eligible added projectiles trigger impact Chips,
+  and Siren Find-me spawns/targets increase fourfold (72–192 adds). Existing card UI changes are included.
+  Actual network upgrade, installed hashes, settings, same-version skip and menu status pass for both updater schemas.
+  Baseline test failures and native Windows/GPU/difficulty acceptance remain; see DEV_LOG.
   Update headroom (owner-approved 2026-10-03, merged with PR #33):
   test schema 1 up to 32 MiB; updater v2 (schema 2, launcher self-update) needs one new
   seed ZIP (no source archive), delivered as an owner-only GitHub Release asset on the private
