@@ -6,6 +6,7 @@ import {v,idleInput,type SpecId} from '../src/shared/config.js';
 import {statsFor,WEAPONS} from '../src/shared/content.js';
 import {FIRST_BLOCK_CHIPS} from '../src/shared/blocking.js';
 import {ChipEffects} from '../src/client/chip-effects.js';
+import {EventVfx} from '../src/client/event-vfx.js';
 await initPhysics();
 function arena(chip:string,spec:SpecId='pistol',distance=2){
  const s=new Simulation({sandbox:true}),a=s.addPlayer('a','Shooter')!,b=s.addPlayer('b','Blocker')!;s.phase='fight';
@@ -30,6 +31,8 @@ for(const spec of ['pistol','rifle','machinegun','fire'] as const)test(`all firs
   if(chip==='freezer-block')assert.equal([...s.chaos.fields.values()].filter(f=>f.kind==='time').length,1);
   if(chip==='graveyard-shift'||chip==='corpse-party')assert.equal(s.chaos.minions.size,1);
   if(chip==='poltergeist')assert.ok(prop.body.linvel().x>0);
+  // 2026-10-03 rework (intended): Time Out now freezes the nearby shooter (and their shots) for 1.2 s; thaw it so the reset check can fire again.
+  if(chip==='freezer-block'){assert.ok((a.leet?.frozenUntil||0)>s.time);a.leet!.frozenUntil=0;}
   const before={hp:b.hp,ammo:b.ammo,fields:s.chaos.fields.size,minions:s.chaos.minions.size};bullet(s,a,b);
   assert.equal(s.events.filter(e=>e.type==='blockProc').length,1);assert.deepEqual({hp:b.hp,ammo:b.ammo,fields:s.chaos.fields.size,minions:s.chaos.minions.size},before);
   b.blockTime=b.blockCd=0;assert.ok(s.beginBlock(b));bullet(s,a,b);assert.equal(s.events.filter(e=>e.type==='blockProc').length,2);
@@ -46,9 +49,13 @@ test('block pulses hit nearby enemy summons without self-occlusion and still res
   assert.equal(minion.hp,cover?minion.maxHp:minion.maxHp-45);
  }finally{s.dispose();}}
 });
+// INTEGRATION (design §19.2, chip VFX sweep): the flat chip-effects pulse rings this test pinned were replaced by pooled
+// volumetric ChipBlasts blasts drawn by EventVfx. Same real block path; it now asserts no per-event ring meshes and a
+// visible voxel blast that cleans up (the engine-path twin lives in chip-vfx-sweep.test.ts).
 test('Supernova and Counter Pulse each render a visible blast and clean it up',()=>{
- for(const chip of ['supernova','block-pulse']){const {s,a,b}=arena(chip);s.beginBlock(b);bullet(s,a,b);const scene=new T.Scene(),effects=new ChipEffects(scene);effects.event(s.events.find(e=>e.type==='blockPulse')!,0);
-  assert.equal(effects.pulses.length,chip==='supernova'?4:3);assert.ok(scene.children.every(o=>o.name.startsWith(chip==='supernova'?'supernova':'counter-pulse')));
-  const state={...s.snapshot(),projectiles:[]};effects.update(state,.3);assert.ok(effects.pulses.every(p=>p.mesh.scale.x>1));effects.update(state,1);assert.equal(effects.pulses.length,0);assert.equal(scene.children.length,0);s.dispose();
+ for(const chip of ['supernova','block-pulse']){const {s,a,b}=arena(chip);s.beginBlock(b);bullet(s,a,b);const scene=new T.Scene(),effects=new ChipEffects(scene),e=s.events.find(e=>e.type==='blockPulse')!;effects.event(e,0);
+  assert.equal(effects.pulses.length,0);assert.equal(scene.children.length,0,'no flat pulse rings');
+  const vfx=new EventVfx(scene,()=>({quality:1,compat:false,trails:false})),n=scene.children.length;vfx.blastEvent(e);vfx.event(e,s.snapshot(),'a');assert.equal(scene.children.length,n,'pooled, no per-event meshes');
+  assert.ok(vfx.chipBlasts.glow.count+vfx.chipBlasts.solid.count>0,chip);for(let i=0;i<120;i++)vfx.update(1/60);assert.equal(vfx.chipBlasts.glow.count+vfx.chipBlasts.solid.count,0,'cleaned up');s.dispose();
  }
 });

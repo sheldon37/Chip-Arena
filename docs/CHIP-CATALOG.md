@@ -79,7 +79,7 @@ Weights renormalize when no eligible Chips remain in a tier. Chips cannot exceed
 | Kickback Thruster | Rare | projectile | 2 | Firing pushes you opposite your aim by 5 m/s per copy. Aim down to launch yourself; once per volley. |
 | Lucky Circuit | Rare | all | 3 | +15 percentage points critical chance per copy (maximum 75%). Direct hits can deal double damage. |
 | Vacuum Impact | Legendary | all | 1 | Each direct attack impact pulls nearby opponents and loose props toward it within 5 m. 650 impulse, distance falloff and line of sight; once per attack. |
-| Pong Shot | Mythic | ranged | 1 | One persistent shot at fixed 40% base speed, no gravity, unlimited full-damage bounces including arena edges. Next shot replaces it, even if reflected. Overrides volleys, splits, homing and returning flight; Block can still absorb it after 3 returns. |
+| Pong Shot | Mythic | guns and magic | 1 | Shots become no-drop pong balls (machine gun: every third shot) at the weapon speed clamped to 30–80 m/s. A wall, prop, ceiling or arena-edge bounce after 6 m of flight redirects at the nearest visible enemy within 12 m and 30° of the mirror path (0.4 lead); otherwise the ball mirror-bounces. Each bounce +12% speed (up to ×1.6), each redirect +15% base damage (up to +8). 3 rallies (machine gun 1; Ricochet adds more, up to 6); the floor only bounces. Balls last 3.5 s or 200 m, at most 24 per owner, and die with their owner; a player or add hit consumes the ball, and fire blasts only on a hit or at the pop. No splits, homing, returning or zigzag flight; a Block return keeps the rallies and the 4th Block absorbs. |
 | Return to Sender | Legendary | projectile | 1 | Shots fly without gravity and turn back after 24 m or 0.65 s, whichever comes first, at 240°/s. Catch an original shot to recover 1 ammo or half its base mana cost. Once per volley; return speed caps at 60 m/s, flight at 4 s / 320 m. Cover can destroy it. |
 | Sidewinder | Epic | projectile | 1 | Shots weave left and right in a 6 Hz pattern, with swept collisions along their curved path. |
 | Dice Reactor | Mythic | all | 1 | Each direct hit rolls ×0.5 to ×2.5 damage on the authority. +20% critical chance. Every hit is a gamble. |
@@ -165,6 +165,29 @@ Weights renormalize when no eligible Chips remain in a tier. Chips cannot exceed
 | Corpse Party | Legendary | magic | 1 | Your summoned zombies explode when destroyed or expired: 30 damage in 3.5 m. Also raise one zombie on each successful Block activation. |
 | Poltergeist | Epic | all | 1 | First successful Block launches nearby loose cover away from you with 900 impulse, within 6 m and line of sight. |
 | Do Not Press | Mythic | all | 1 | Once per round, surviving damage below 30% HP creates a 6 m repulsion field for 4 s and restores your Block and dash cooldowns. |
+
+## Magic chips
+
+Offered only to the four non-DEV magic schools (never L33T, guns or melee). Spellcraft chips go to every school; each school chip goes to its own school. Values are per copy.
+
+| Chip | Rarity | Max | Effect |
+|---|---|---:|---|
+| Rune Clock | Common | 4 | −10% ability cooldown. |
+| Spellweave | Common | 4 | +10% ability damage. |
+| Wide Sigils | Uncommon | 3 | +15% ability radius; −5% ability damage. |
+| Thrifty Runes | Uncommon | 3 | −15% Q/E mana cost. |
+| Swift Orbs | Uncommon | 3 | +18% projectile speed; −20% projectile drop. |
+| Spellblade | Rare | 2 | +35% damage on your next bolts within 3 s of casting Q. |
+| Mana Surge | Rare | 2 | 30% of Q/E damage returns as mana. |
+| Blood Rune | Rare | 2 | 20% Q/E life steal. |
+| Twin Sigil | Epic | 1 | +1 E charge; +15% ability cooldown. Excludes Spell Echo. |
+| Arcane Overflow | Epic | 1 | +40% ability damage when cast at 75% mana or more; +20 max mana. |
+| Elemental Attunement | Legendary | 1 | +25% ability damage, −20% ability cooldown, +10% ability radius; +15% mana cost. |
+| Spell Echo | Mythic | 1 | E repeats 0.8 s later at 50% damage. Excludes Twin Sigil. |
+| Cinder Field | Rare (fire) | 1 | +50% Meteor Strike burn duration and radius. |
+| Undertow | Rare (water) | 1 | Tidal Wave pulls instead of pushing. |
+| Storm Recall | Epic (lightning) | 1 | −2 s Blink Strike cooldown per enemy hit, up to 4 s. |
+| Abyssal Core | Epic (darkness) | 1 | +25% Black Hole radius; +20% collapse damage. |
 
 ## Persistent effect limits
 

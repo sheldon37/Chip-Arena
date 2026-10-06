@@ -1,14 +1,22 @@
 import type {Snapshot,GameEvent} from '../shared/simulation.js';
 import type {ElementId} from '../shared/elements.js';
 import {sameTeam} from '../shared/teams.js';
-export function enemyHit(event:GameEvent,state:Snapshot,me:string){const source=state.players.find(p=>p.id===me),target=state.players.find(p=>p.id===event.target);return event.type==='hit'&&event.source===me&&event.target!==me&&!!target&&(event.amount||0)>0&&!sameTeam(source,target,state.options.gameMode);}
+import {ADD_PREFIX} from '../shared/pve/contract.js';
+export function enemyHit(event:GameEvent,state:Snapshot,me:string){if(event.type==='minionHit')return addHit(event,state,me);const source=state.players.find(p=>p.id===me),target=state.players.find(p=>p.id===event.target);return event.type==='hit'&&event.source===me&&event.target!==me&&!!target&&(event.amount||0)>0&&!sameTeam(source,target,state.options.gameMode);}
+/** Proc damage kinds (fields, chains, chip blasts, abilities, minions, thorns, DoTs) get the quieter tick and the small
+ * marker. Every other kind keeps the crisp hitmarker: direct/secondary/reflected shots and melee, and DEV class moves
+ * (siren-*, mishima-*, arcade-echo, leet-*). PvE add hits (minionHit) count once the horde tags them with the kind. */
+const PROC_KINDS=new Set(['field','chain','ability','blast','static','thorns','drainDash','debris','minion','blockPulse','chaosBomb','corpseParty','dashBlast','root','shrapnel','trampoline','wormhole','burn','poison']);
+export const procHit=(e:GameEvent)=>(e.type==='hit'||e.type==='minionHit')&&PROC_KINDS.has(e.message??'');
+/** PvE: my damage on a Siren add (adds are minions, not players). Never true outside PvE. */
+export function addHit(event:GameEvent,state:Snapshot,me:string){return !!state.pve&&event.type==='minionHit'&&event.source===me&&!!event.target?.startsWith(ADD_PREFIX)&&(event.amount||0)>0;}
 export class HitmarkerTrack {
  last=0;time=-1;generation=-1;at=-10;headshot=false;dot=false;elements:ElementId[]=[];elementAt=-10;
  clear(){this.last=0;this.time=-1;this.generation=-1;this.at=this.elementAt=-10;this.headshot=this.dot=false;this.elements=[];}
  update(state:Snapshot,me:string){if(state.time<this.time||this.generation!==(state.generation||0))this.clear();this.time=state.time;this.generation=state.generation||0;
   for(const e of state.events){if(e.id<=this.last)continue;this.last=e.id;if(state.time-e.time>.4||!enemyHit(e,state,me))continue;
-   const dot=e.message==='burn'||e.message==='poison';if(!dot||state.time-this.at>.22){this.at=e.time;this.headshot=!dot&&!!e.headshot;this.dot=dot;}
-   const elements=e.elements||(dot?[e.message==='burn'?'fire':'poison'] as ElementId[]:[]);
+   const tick=e.message==='burn'||e.message==='poison',dot=tick||procHit(e);if(!dot||state.time-this.at>.22){this.at=e.time;this.headshot=!dot&&!!e.headshot;this.dot=dot;}
+   const elements=e.elements||(tick?[e.message==='burn'?'fire':'poison'] as ElementId[]:[]);
    if(elements.length){this.elements=[...new Set([...this.elements.filter(()=>state.time-this.elementAt<.5),...elements])];this.elementAt=e.time;}
   }
   return {visible:state.time-this.at<(this.dot?.20:.34),age:state.time-this.at,headshot:this.headshot,dot:this.dot,elements:state.time-this.elementAt<.7?this.elements:[]};

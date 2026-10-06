@@ -1,21 +1,31 @@
 import {clamp,forward,mul,v,type Vec,type SpecId} from './config.js';
 
 /** Gameplay load units, shared by authority, prediction, loadout and HUD. */
-export const WEAPON_WEIGHT:Record<SpecId,number>={daggers:2,sword:5,shield:8,greatsword:12,pistol:2,rifle:7,machinegun:10,fire:4,water:4,lightning:3,darkness:5,leet:3,emperor:1,ansatsuken:1};
+export const WEAPON_WEIGHT:Record<SpecId,number>={siren:4,daggers:2,sword:5,shield:8,greatsword:12,pistol:2,rifle:7,machinegun:10,fire:4,water:4,lightning:3,darkness:5,leet:3,emperor:1,ansatsuken:1};
 export const standardWeapon=(spec:SpecId)=>['daggers','sword','shield','greatsword'].includes(spec);
 export const usesRoll=(spec:SpecId)=>spec!=='ansatsuken';
-export const meleeCost=(spec:SpecId)=>spec==='daggers'?16:20+2*WEAPON_WEIGHT[spec];
-export const meleeSpecialCost=(spec:SpecId)=>spec==='daggers'?30:Math.ceil(meleeCost(spec)*1.25);
+const meleeBaseCost=(spec:SpecId)=>spec==='daggers'?16:20+2*WEAPON_WEIGHT[spec];
+/** Primary swing stamina (owner 2026-10-05: another ~25% lower): daggers 7, sword 14, shield 16, greatsword 20. */
+export const MELEE_COST_SCALE=.45;
+export const meleeCost=(spec:SpecId)=>Math.round(meleeBaseCost(spec)*MELEE_COST_SCALE);
+/** E specials keep their earlier cost (daggers 30, sword 38, shield 45, greatsword 55). */
+export const meleeSpecialCost=(spec:SpecId)=>spec==='daggers'?30:Math.ceil(meleeBaseCost(spec)*1.25);
 export const meleeRecovery=(spec:SpecId)=>(spec==='greatsword'?.5:spec==='daggers'?.15:.3);
 export const meleeHitStun=(spec:SpecId)=>.16+WEAPON_WEIGHT[spec]*.018;
 export const STAGGER_ESCAPE_SECONDS=.75;
 
-export interface AttackCommitment {at:number;until:number;yaw:number;stepAt:number;stepUntil:number;distance:number;}
+export interface AttackCommitment {at:number;until:number;yaw:number;stepAt:number;stepUntil:number;distance:number;/** An Echo Strike follow-up (its first strike already landed). */followup?:true;}
 export function attackCommitment(spec:SpecId,at:number,windup:number,window:number,rate:number,interval:number,followups=0):AttackCommitment {
  return {at,until:at+Math.max(interval,windup+window+meleeRecovery(spec)/rate+followups*(.08+.16)/rate),yaw:0,
   stepAt:at+windup*.55,stepUntil:at+windup+window*.8,distance:spec==='daggers'?.85:spec==='sword'?.65:spec==='shield'?.55:.45};
 }
 export const committed=(p:{attackCommitment?:AttackCommitment},time:number)=>!!p.attackCommitment&&time<p.attackCommitment.until;
+/** First strike of a primary from its serialized commitment (stepAt = at + windup·.55), shared by authority and prediction. */
+export const strikeAt=(a:AttackCommitment)=>a.at+(a.stepAt-a.at)/.55;
+/** Roll-cancel (owner 2026-10-04): a cancel at least half a tick before the first strike refunds the attack cooldown. */
+export const beforeStrike=(a:AttackCommitment,time:number)=>!a.followup&&a.stepAt>a.at&&time<strikeAt(a)-.5/60;
+/** The pilot rolled after its last attack started: that attack's phrase is over (presentation; a roll cancels it). */
+export const rollCancelled=(p:{roll?:RollState;lastAttack:number},time:number)=>!!p.roll&&p.roll.at>p.lastAttack&&p.roll.at<=time;
 const smooth=(u:number)=>{u=clamp(u,0,1);return u*u*(3-2*u);};
 export const attackTravel=(a:AttackCommitment,time:number)=>a.distance*smooth((time-a.stepAt)/Math.max(.01,a.stepUntil-a.stepAt));
 export function attackStep(a:AttackCommitment|undefined,time:number,dt:number):Vec {

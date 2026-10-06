@@ -1,36 +1,36 @@
 /** One icon language across cards, loadouts, classes and controls. Lucide ISC. */
 export const CHIP_ICON_GROUPS:Record<string,string[]>={
- 'sprout':['med-garden'],
- 'heart-pulse':['vital','leech','vampire-dash','second-wind','arcade-secondwind'],
+ 'sprout':['troll-blood','med-garden'],
+ 'heart-pulse':['giant-blood','vital','leech','vampire-dash','second-wind','arcade-secondwind'],
  'gauge':['quick-tuck','overclock','fire-rate','cast-rate','swing-rate','accelerating-shot'],
- 'battery-charging':['reserve-cell','efficient-roll','dash','stamina','reservoir','endurance'],
- 'shield':['ghost-timing','frame','salvage','quickguard','arcade-focus'],
+ 'battery-charging':['power-cell','reserve-cell','efficient-roll','dash','stamina','reservoir','endurance'],
+ 'shield':['stout','warden','ghost-timing','frame','salvage','quickguard','arcade-focus'],
  'anchor':['stabilizer','anchor','dense-core'],
  'corner-up-right':['tumble-engine','ricochet','banker','rebound','block-return'],
  'split':['splitter','multishot','broadside','buckshot','fireworks'],
  'move-right':['long-roll','piercing','velocity','rail','needle'],
- 'flame':['ember','wildfire','hot-foot','inferno','arcade-red'],
+ 'flame':['phoenix-core','ember','wildfire','hot-foot','inferno','arcade-red','siren-hide'],
  'biohazard':['poison','acid-rain','plague'],
- 'zap':['static','tesla','thunderstep','mishima-godfist','mishima-counter'],
+ 'zap':['overcharge','static','tesla','thunderstep','mishima-godfist','mishima-counter'],
  'expand':['reach'],
- 'hammer':['kinetic','hard-hitter','demolition','demolition-charge','wrecking'],
+ 'hammer':['titan-edge','kinetic','hard-hitter','demolition','demolition-charge','wrecking'],
  'bomb':['shrapnel','sticky-bomb','cluster-mine','bubble-mine','bread-crumbs','mirror-mine'],
  'swords':['echo-strike','brawler','duelist','mishima-pressure','arcade-rush'],
- 'rows-3':['magazine','drum','chamber','pickpocket'],
- 'droplets':['mana','siphon','mana-leech','torrent'],
+ 'rows-3':['heavy-rounds','magazine','drum','chamber','pickpocket'],
+ 'droplets':['vampiric-rounds','mana','siphon','mana-leech','torrent'],
  'scan':['homing','marksman','sniper-focus'],
- 'shield-check':['block-recharge','block-window','bulwark','mishima-armor'],
+ 'shield-check':['iron-will','arcane-ward','block-recharge','block-window','bulwark','mishima-armor'],
  'radio':['block-pulse','repulsor','repulsion-pad','aftershock'],
  'footprints':['fleet','footwork','spring','skirmisher','mishima-trail'],
  'rotate-cw':['quick-loader','recycler','boomerang','l44t-undo'],
  'sparkles':['efficient','focus','lucky','mishima-rage'],
  'feather':['feather','moonboots'],
  'spline':['lobber','zigzag','corkscrew','mishima-screw'],
- 'axe':['executioner','backstab'],
+ 'axe':['keen-edge','finisher','executioner','backstab'],
  'shield-alert':['thorns','last-word','counterweight','arcade-counter'],
- 'heart-plus':['repair','med-loader','block-medic','second-chance'],
+ 'heart-plus':['mender','repair','med-loader','block-medic','second-chance'],
  'package-check':['block-loader','proximity-mail'],
- 'brick-wall':['bulldozer','fortress','juggernaut','mishima-wall'],
+ 'brick-wall':['hardened','bulldozer','fortress','juggernaut','mishima-wall'],
  'rocket':['blast-dash','kickback','comet','elevator-shot'],
  'wind':['sweeper','hurricane','arcade-cyclone'],
  'magnet':['vacuum','grappling-shot','mishima-magnet'],
@@ -40,7 +40,7 @@ export const CHIP_ICON_GROUPS:Record<string,string[]>={
  'orbit':['meteor','black-hole','orbitals','artillery'],
  'sun':['supernova','lightning-rod'],
  'skull':['vampire','graveyard-shift','corpse-party','l44t-scare'],
- 'sword':['bloodblade','sword-beam','blink-cut'],
+ 'sword':['whetstone','bloodblade','sword-beam','blink-cut'],
  'book-open':['necronomicon'],
  'snowflake':['blizzard'],
  'hourglass':['time-warp','freezer-block','delayed-gratification','l44t-time'],
@@ -51,7 +51,7 @@ export const CHIP_ICON_GROUPS:Record<string,string[]>={
  'traffic-cone':['stop-go'],
  'undo-2':['backfire'],
  'move':['crossfire'],
- 'dna':['helix','mishima-bloodline'],
+ 'dna':['nanite-mesh','helix','mishima-bloodline'],
  'mail-warning':['revenge-mail'],
  'bot':['puppet-master'],
  'ghost':['poltergeist','arcade-afterimage'],
@@ -62,12 +62,23 @@ export const CHIP_ICON_GROUPS:Record<string,string[]>={
  'audio-lines':['arcade-perfect'],
  'person-standing':['arcade-juggle'],
  'brain':['l44t-brain'],
- 'radiation':['l44t-nuke'],
+ 'radiation':['annihilator','l44t-nuke'],
  'copy':['l44t-copy'],
- 'boxes':['l44t-uprising']
+ 'eclipse':['siren-crown'],
+ 'activity':['adrenaline','siren-break'],
+ 'boxes':['l44t-uprising'],
+ // Damage / health Chips (power-chips.ts)
+ 'crosshair':['gunsmith'],'wand-sparkles':['arcane-lens'],'target':['point-blank','far-sight'],'hand-fist':['berserker'],'gem':['apex'],
+ 'heart':['heart-cell','colossus-heart'],'heart-crack':['blood-pact'],
+ // PvE money chips (pve/money-chips.ts)
+ 'scan-line':['bounty-scanner'],'banknote':['payday-loop'],'badge-dollar-sign':['headhunter'],'hand-coins':['boss-contract'],'coins':['gold-rush'],'piggy-bank':['midas-core']
 };
 export const CHIP_ICONS:Record<string,string>=Object.fromEntries(Object.entries(CHIP_ICON_GROUPS).flatMap(([icon,ids])=>ids.map(id=>[id,icon])));
-export const CLASS_ICONS:Record<string,string>={ranged:'crosshair',magic:'wand-sparkles',melee:'swords'};
-export const SPEC_ICONS:Record<string,string>={pistol:'crosshair',rifle:'scan-line',machinegun:'scan',fire:'flame',water:'waves',lightning:'zap',darkness:'eclipse',sword:'sword',daggers:'swords',shield:'shield',greatsword:'axe',ansatsuken:'hand-fist',emperor:'cloud-lightning',leet:'terminal'};
-export const ACTION_ICONS:Record<string,string>={practice:'swords',create:'network',join:'users',sandbox:'flask-conical',customize:'palette',settings:'settings',home:'house',resume:'play',leave:'log-out',board:'layers','network-report':'activity','game-settings':'settings',download:'download',update:'download','test-sound':'volume-2'};
+/** PvE boss chips (src/shared/pve/bosses.ts): not in CHIPS, drawn on the Siren's reveal tray. */
+Object.assign(CHIP_ICONS,{'siren-boss-arrive':'skull','siren-boss-possess':'ghost','siren-boss-beautiful':'sparkles','siren-boss-play':'hourglass'});
+/** Magic chips (src/shared/magic-chips.ts); existing icons only. */
+Object.assign(CHIP_ICONS,{'rune-clock':'clock-3',spellweave:'wand-sparkles','wide-sigils':'expand','thrifty-runes':'droplets','swift-orbs':'move-right',spellblade:'sword','mana-surge':'battery-charging','blood-rune':'heart-pulse','twin-sigil':'copy','arcane-overflow':'sparkles','elemental-attunement':'gem','spell-echo':'audio-lines','cinder-field':'flame',undertow:'waves','storm-recall':'zap','abyssal-core':'eclipse'});
+export const CLASS_ICONS:Record<string,string>={dev:'cpu',ranged:'crosshair',magic:'wand-sparkles',melee:'swords'};
+export const SPEC_ICONS:Record<string,string>={siren:'skull',pistol:'crosshair',rifle:'scan-line',machinegun:'scan',fire:'flame',water:'waves',lightning:'zap',darkness:'eclipse',sword:'sword',daggers:'swords',shield:'shield',greatsword:'axe',ansatsuken:'hand-fist',emperor:'cloud-lightning',leet:'terminal'};
+export const ACTION_ICONS:Record<string,string>={practice:'swords',create:'network',join:'users',sandbox:'flask-conical',customize:'palette',settings:'settings',home:'house',resume:'play',leave:'log-out',board:'layers','network-report':'activity','game-settings':'settings',download:'download',update:'download','test-sound':'volume-2',login:'users',account:'users',lobby:'undo-2','test-driver':'gauge',ready:'check',rematch:'rotate-cw','copy-code':'copy','copy-invite':'copy',connect:'play',start:'play',spectate:'scan','test-boss':'skull','start-boss':'play',retry:'rotate-cw','pve-chips':'cpu','pve-later':'clock-3','pve-rejoin':'rotate-cw'};
 export const EXTRA_ICONS=['cpu','x','shield','wind','sparkles','flame','biohazard','skull','book-open','circle-help','check','clock-3','armchair','moon','person-standing','hand'];

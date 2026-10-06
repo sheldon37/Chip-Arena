@@ -3,7 +3,7 @@ import type {GameEvent,Snapshot} from '../shared/simulation.js';
 import {glowTexture} from './projectile-glow.js';
 
 type Mark={group:T.Group;halo:T.Mesh;ring:T.Mesh;born:number;target:string;local:T.Vector3;rotation:T.Quaternion;color:T.Color;};
-/** Surface-aligned light decals: depth-tested, attached to moving cover, bounded and short lived. */
+/** Surface-aligned light decals: depth-tested, attached to moving cover, short lived. */
 export class ImpactGlows {
  readonly marks:Mark[]=[];readonly lights:T.PointLight[]=[];
  private texture=glowTexture();private plane=new T.PlaneGeometry(1,1);private ring=new T.RingGeometry(.34,.37,6);
@@ -13,11 +13,10 @@ export class ImpactGlows {
   if(e.type!=='impact'||!e.material||!e.surface||!e.normal||!e.target||quality<=0)return;
   const prop=props.get(e.target);if(!prop)return;
   const normal=new T.Vector3(e.normal.x,e.normal.y,e.normal.z);if(normal.lengthSq()<.5)return;normal.normalize();
-  while(this.marks.length>=(quality<.5?12:32))this.remove(0);
   const color=new T.Color(e.color??0x72eaff).lerp(new T.Color(0x95eaff),.25);
   const material=(opacity:number)=>new T.MeshBasicMaterial({color,map:compatibility?null:this.texture,transparent:true,opacity,blending:T.AdditiveBlending,depthWrite:false,depthTest:true,toneMapped:false,side:T.DoubleSide});
   const group=new T.Group();group.name='impact-glow';group.position.set(e.surface.x,e.surface.y,e.surface.z).addScaledVector(normal,.018);group.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),normal);
-  const halo=new T.Mesh(this.plane,material(.9));halo.visible=!compatibility;const ring=new T.Mesh(this.ring,material(.95));ring.material.map=null;group.add(halo,ring);this.scene.add(group);
+  const halo=new T.Mesh(this.plane,material(.9));void compatibility;const ring=new T.Mesh(this.ring,material(.95));ring.material.map=null;ring.visible=false;/* owner request 2026-10-04: no impact outline ring; the soft halo is the mark on every path */group.add(halo,ring);this.scene.add(group);
   prop.updateWorldMatrix(true,false);const local=prop.worldToLocal(group.position.clone()),rotation=prop.getWorldQuaternion(new T.Quaternion()).invert().multiply(group.quaternion);
   this.marks.push({group,halo,ring,born:time,target:e.target,local,rotation,color});
  }

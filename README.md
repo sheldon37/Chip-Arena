@@ -68,12 +68,14 @@ Click the arena to capture the mouse. `Escape` releases it and opens the match m
 | Right mouse | Timed Block: reflect projectiles / negate melee |
 | E | Specialization secondary; hold for Shield guard |
 | Space | Jump |
-| Shift | Dash |
+| Double-tap W | Sprint while W is held (forward only; not while attacking, blocking or aiming) |
+| Shift | Dash / roll; a roll cancels a melee attack (no hit if cancelled before the strike) |
 | R | Reload when applicable |
 | V | Toggle first / third person (saved locally) |
 | M | Mute / unmute sound |
-| Hold Tab | Player board; hover Chips for effects and stacked values |
-| Escape | Menu / release pointer lock |
+| Hold Tab | Player board; hover Chips for effects and stacked values (melee pilots in a fight: Tab is lock-on) |
+| Tab (melee) | Lock on to the nearest enemy in view; tap again for the next target; hold to release. The lock ends when the target dies |
+| Escape | Menu and player board / release pointer lock |
 
 The player board shows both players’ specialization, installed Chips, duplicate counts, health, round progress and set scores. Hold Tab to release the pointer and inspect; release it to return. The **Builds TAB** button also opens a persistent board, with an × close button. Matches continue while inspecting; movement and attack input stop while the board is open. Click the arena if the browser requires a gesture to recapture the mouse.
 
@@ -114,7 +116,7 @@ Every specialization has the same right-click Block: **0.30 s active, 4.00 s coo
 
 The short window protects from all directions. An incoming projectile reverses its pre-impact flight velocity, changes responsibility to the blocker, and can hit its original shooter. It retains original damage, gravity, remaining lifetime/travel, elemental payload and an unused native blast. Reflections do not borrow the blocker’s weapon effects, trigger direct-hit counters, split, home or generate Shrapnel. A projectile may reflect three times; the next successful Block absorbs it. Reflections cap at 100 direct damage and 120 m/s. Swept collision and cover remain authoritative.
 
-A correctly timed melee hit is fully negated, including knockback, burn/poison application and direct-hit triggers. The attacker is stunned for `clamp(0.18 + incoming damage × 0.008 + incoming impulse × 0.00025, 0.25, 0.95)` seconds. This immediately interrupts the swing, queued follow-ups and dev combos, and prevents movement, jumps, dashes, attacks and defense until recovery. Damage and impulse upgrades increase stun, while attack-rate upgrades do not shorten it. A short recoil remains: `(160 + blocked damage × 4) × blockForce`, capped at 800 impulse before knockback resistance. Projectile blocks, including thrown melee weapons, do not stun the distant owner. Existing burns, poison, falling, debris impacts and area damage are not negated. Both players’ Block activation is processed before any attack resolution in that tick. There is no lag-compensated Block rewind; online timing follows host/server time.
+A correctly timed melee hit is fully negated, including knockback, burn/poison application and direct-hit triggers. The attacker is stunned for `clamp(0.18 + incoming damage × 0.008 + incoming impulse × 0.00025, 0.25, 0.95)` seconds. This immediately interrupts the swing, queued follow-ups and dev combos, and prevents movement, jumps, dashes, attacks and defense until recovery. Damage and impulse upgrades increase stun, while attack-rate upgrades do not shorten it. **Riposte:** when a player (not a bot) using Daggers, Sword, Shield or Greatsword blocks a melee hit, their Block window stays up (it still stops other hits) until their attack, special or roll actually starts, which ends it at once. The attacker stays stunned until 1.0 s after the blocker's first swing could land (plus 0.004 s per blocked damage, at most 1.4 s; never shorter than the stun above), plus the time to walk back any extra rebound from block-force Chips. The blocker's landed counter ends that stun so its usual follow-up applies: one sure counter hit, the Daggers' second strike, the Shield's knockdown. The window allows for online delay (a counter reaching the host up to about 0.65 s after the block). Repulsor Crown's ×3 rebound can still throw an attacker out of a slow Greatsword counter: that is its ring-out trade. Bot, ranged and magic blockers and the Siren boss, on either side, use the plain stun. A short recoil remains: `(160 + blocked damage × 4) × blockForce`, capped at 800 impulse before knockback resistance. Projectile blocks, including thrown melee weapons, do not stun the distant owner. Existing burns, poison, falling, debris impacts and area damage are not negated. Both players’ Block activation is processed before any attack resolution in that tick. There is no lag-compensated Block rewind; online timing follows host/server time.
 
 | Block Chip | Per-copy effect | Cap |
 |---|---|---:|

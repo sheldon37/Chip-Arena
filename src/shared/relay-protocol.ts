@@ -22,4 +22,4 @@ export function validPacket(p:any,host:boolean):p is RelayPacket {
  return true;
 }
 /** Keep brief action taps when 60 Hz intentions are coalesced into an HTTP exchange. */
-export function coalesceInput(previous:any,next:any){if(!previous)return next;const input={...next.input};for(const key of ['attack','block','secondary','jump','dash','reload'])input[key]=input[key]===true||previous.input[key]===true;return {type:'input',input};}
+export function coalesceInput(previous:any,next:any){if(!previous)return next;const input={...next.input};for(const key of ['attack','block','secondary','jump','dash','reload','ability'])input[key]=input[key]===true||previous.input[key]===true;return {type:'input',input};}

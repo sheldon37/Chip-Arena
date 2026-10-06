@@ -1,4 +1,4 @@
-import {applyUpdates} from './update.mjs';
+import {startLauncher} from './update.mjs';
 import {spawn} from 'node:child_process';
 import {networkInterfaces} from 'node:os';
 import {readFile,writeFile,mkdir,rename} from 'node:fs/promises';
@@ -39,7 +39,7 @@ async function tunnel(){
 }
 try{
  const existing=await health();if(existing)throw new Error('Port '+port+' is already in use. Close the previous launcher before starting another.');
- await applyUpdates(root);
+ await (await startLauncher(root)).applyUpdates(root);
  console.log('Starting Chip Arena. Keep this window open; Ctrl+C stops the server.');
  gameServer=start(process.execPath,['--disable-warning=ExperimentalWarning','server.mjs'],['inherit','inherit','inherit','ipc']);
  gameServer.on('message',message=>{if(message?.type==='public-invite-ready'&&/^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/.test(message.url)){console.log('PUBLIC INVITE READY: '+message.url);if(online)open(local);}});

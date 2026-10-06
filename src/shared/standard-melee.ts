@@ -1,3 +1,4 @@
+import {projectileBodyImpact,meleeBodyImpact} from './body-damage.js';
 import {projectileHeadshot,HEADSHOT_MULTIPLIER} from './headshots.js';
 import RAPIER from '@dimforge/rapier3d-compat';
 import type {Player,Projectile,Simulation} from './simulation.js';
@@ -9,6 +10,7 @@ import {ceilingContact} from './ceiling-field.js';
 import {downProtected,pickupOpen} from './recovery.js';
 import {ballisticStep} from './projectiles.js';
 import {committed,rolling,rollInvulnerable,meleeHitStun,meleeRecovery,STAGGER_ESCAPE_SECONDS} from './souls-combat.js';
+import {demonStepInvulnerable} from './demon-step.js';
 export type MeleeActionKind='dagger-throw'|'wolf-spin'|'sword-launch'|'shield-throw';
 export interface MeleeAction {kind:MeleeActionKind;at:number;releaseAt:number;until:number;yaw:number;released?:boolean;landedAt?:number;shotId?:string;hitIds?:string[];attackId?:string;}
 export interface MeleeShot {kind:'dagger'|'shield';at?:number;returning?:boolean;}
@@ -39,10 +41,11 @@ export class StandardMelee {
   p.lastSecondary=p.lastAttack=s.time;p.secondaryCd=w.secondaryCooldown;p.cooldown=(info.windup+info.recover)/rate;p.swing=null;
   s.emit('melee-special',p.body.translation(),{source:p.id,spec:p.spec,message:info.kind,color:w.color});
  }
- stun(target:Player,seconds:number){const s=this.s;if(target.hp<=0)return;target.attackCommitment=undefined;target.roll=undefined;target.lastAttack=-10;target.hitStunUntil=Math.max(target.hitStunUntil||0,s.time+seconds);if(target.hitReaction)target.hitReaction.until=Math.max(target.hitReaction.until,target.hitStunUntil);target.move=v();target.dashTime=target.waveTime=target.electricStepTime=0;target.swing=null;target.cast=undefined;target.burst=0;target.parryTime=target.blockTime=0;target.guarding=false;this.cancel(target);s.arcade.cancel(target);s.emperor.cancel(target);}
- stagger(target:Player,seconds:number){const s=this.s;if(target.hp<=0||s.arcade.stunned(target)||(target.staggerImmuneUntil||0)>s.time)return false;this.stun(target,seconds);target.staggerImmuneUntil=target.hitStunUntil!+STAGGER_ESCAPE_SECONDS;return true;}
+ stun(target:Player,seconds:number){const s=this.s;if(target.hp<=0||s.siren.armored(target))return;target.attackCommitment=undefined;target.roll=undefined;target.lastAttack=-10;target.hitStunUntil=Math.max(target.hitStunUntil||0,s.time+seconds);if(target.hitReaction)target.hitReaction.until=Math.max(target.hitReaction.until,target.hitStunUntil);target.move=v();target.dashTime=target.waveTime=target.electricStepTime=0;target.swing=null;target.cast=undefined;target.burst=0;target.parryTime=target.blockTime=0;target.guarding=false;this.cancel(target);s.arcade.cancel(target);s.emperor.cancel(target);}
+ stagger(target:Player,seconds:number){const s=this.s;if(target.hp<=0||s.siren.armored(target)||s.arcade.stunned(target)||(target.staggerImmuneUntil||0)>s.time)return false;this.stun(target,seconds);target.staggerImmuneUntil=target.hitStunUntil!+STAGGER_ESCAPE_SECONDS;return true;}
  /** Reuses the single legs-up pickup and roll-away recovery, including existing protection. */
  launch(target:Player,owner:Player,lift:number,pickup=false){
+  if(this.s.siren.armored(target))return false;
   const s=this.s,used=!!target.knockdown?.pickupUsed||!!target.juggle?.pickupUsed||pickupOpen(target.knockdown,s.time);
   if(!pickup&&!this.stagger(target,Math.max(.24,meleeHitStun(owner.spec))))return false;
   this.stun(target,.24);s.arcade.knockDown(target);target.knockdown!.pickupUsed=used;target.knockdown!.source=owner.id;target.knockdown!.juggleUntil=s.time+.9;target.knockdown!.juggleHits=0;
@@ -79,10 +82,11 @@ export class StandardMelee {
    if(len(d)>range+extra||Math.abs(d.y)>(kind==='launch'?2.5:1.8)+extra||kind!=='slam'&&dot(norm(v(d.x,0,d.z)),f)<(kind==='launch'?.45:.15)||!s.lineOfSight(origin,target.body.translation(),p.id,target.id))continue;
    const hp=target.hp,dir=norm(add(d,v(0,kind==='slam'?.2:.5,0)));
    a.hitIds=[...(a.hitIds||[]),target.id];
-   s.directHit(p,target,target.body.translation(),dir,WEAPONS[p.spec].damage*p.stats.damage*multiplier,impulse*p.stats.impulse,attack);
+   s.directHit(p,target,target.body.translation(),dir,WEAPONS[p.spec].damage*p.stats.damage*multiplier,impulse*p.stats.impulse,attack,true,false,false,kind==='slam'?{...meleeBodyImpact(p.spec,p.stats.attackRate),kind:'blunt'}:meleeBodyImpact(p.spec,p.stats.attackRate));
    if('stats'in target&&target.hp<hp&&target.hp>0){if(kind==='launch')this.launch(target,p,7.4);else if(this.launch(target,p,kind==='spin-direct'?6.1:4.4)){if(kind==='spin-direct')target.knockdown!.ragdoll=true;target.ext=add(target.ext,mul(norm(v(d.x,0,d.z)),3));}}
    if(p.hp<=0||p.meleeAction!==a)break;
   }
+  if(p.hp>0&&p.meleeAction===a)for(const m of [...s.chaos.minions.values()]){if((m.kind==='siren-add'?!s.pve:m.owner===p.id||!s.canHit(p.id,m.owner))||a.hitIds?.includes(m.id))continue;const d=sub(m.body.translation(),origin);if(len(d)>range+.45||Math.abs(d.y)>(kind==='launch'?2.5:1.8)+.45||kind!=='slam'&&dot(norm(v(d.x,0,d.z)),f)<(kind==='launch'?.45:.15)||!s.lineOfSight(origin,m.body.translation(),p.id,m.id))continue;a.hitIds=[...(a.hitIds||[]),m.id];s.meleeHitMinion(p,m,m.body.translation(),s.chaos.hitMinion(m,WEAPONS[p.spec].damage*p.stats.damage*multiplier,p.id,impulse*p.stats.impulse,norm(add(d,v(0,kind==='slam'?.2:.5,0))),{point:m.body.translation(),kind:kind==='slam'?'blunt':meleeBodyImpact(p.spec,p.stats.attackRate).kind,melee:true}),attack);}
  }
  private throw(p:Player,a:MeleeAction){
   const s=this.s;if(s.projectiles.size>=C.maxProjectiles)return;const shield=a.kind==='shield-throw',w=WEAPONS[p.spec],id=s.uid('melee-shot');
@@ -100,7 +104,7 @@ export class StandardMelee {
   }
   if(shot.life<=0||shot.distanceLeft<=0){s.projectiles.delete(shot.id);return true;}
   const h=Math.min(dt,shot.life),flight=ballisticStep(shot.vel,shot.gravity,h);shot.life-=h;shot.vel=flight.velocity;const displacement=flight.displacement,distance=Math.min(len(displacement),shot.distanceLeft),dir=norm(displacement);
-  shot.distanceLeft-=distance;const hit=s.world.castShape(shot.pos,{x:0,y:0,z:0,w:1},dir,new RAPIER.Ball(shot.radius),0,distance,true,undefined,undefined,undefined,undefined,c=>{const id=s.colliderOwners.get(c.handle)||'',minion=s.chaos.minions.get(id);return id!==shot.owner&&!rollInvulnerable(s.players.get(id)||{},s.time)&&!shot.hit.has(id)&&s.canHit(shot.owner,minion?.owner||id)&&minion?.owner!==shot.owner;});
+  shot.distanceLeft-=distance;const hit=s.world.castShape(shot.pos,{x:0,y:0,z:0,w:1},dir,new RAPIER.Ball(shot.radius),0,distance,true,undefined,undefined,undefined,undefined,c=>{const id=s.colliderOwners.get(c.handle)||'',minion=s.chaos.minions.get(id);return id!==shot.owner&&!rollInvulnerable(s.players.get(id)||{},s.time)&&!demonStepInvulnerable(s.players.get(id),s.time)&&!shot.hit.has(id)&&s.canHit(shot.owner,minion?.owner||id)&&minion?.owner!==shot.owner;});
   const field=ceilingContact(shot.pos,mul(dir,distance),shot.radius);
   if(field&&(!hit||field.distance<=hit.time_of_impact)){s.emit('ceiling-hit',field.point,{source:shot.owner,spec:shot.spec,radius:shot.radius,color:0x75ddff,message:shot.bounces?'BOUNCE':'ABSORB'});
    if(shot.bounces>0){shot.bounces--;shot.vel.y=-Math.abs(shot.vel.y);shot.pos=field.center;shot.damage*=original?.stats.bounceRetention??.7;}
@@ -111,12 +115,13 @@ export class StandardMelee {
   if(owner&&target){
    if('stats'in target&&target.hp>0&&target.blockTime>0){if(shield){s.successfulBlock(target,'projectile',point,shot.owner);shot.melee.returning=true;}else s.reflectProjectile(shot,target,point);return true;}
    const before='stats'in target?target.hp:0,headshot=!shield&&'stats'in target&&projectileHeadshot({pos:target.body.translation(),yaw:target.input.yaw,knockdown:target.knockdown,juggle:target.juggle},point,shot.vel,shot.radius);
-   if(shot.direct)s.directHit(owner,target,point,dir,shot.damage,shot.impulse,shot.attackId,false,false,headshot);
-   else if('stats'in target){const actual=s.damage(target,shot.damage*(headshot?HEADSHOT_MULTIPLIER:1),owner.id,'reflected',dir,shot.impulse,point,false,false,headshot,attackElements(shot.burnDps||0,shot.poisonDps||0));if(actual>0){refreshDot(target.burns,owner.id,shot.burnDps||0,s.time,'fire');refreshDot(target.poisons,owner.id,shot.poisonDps||0,s.time,'poison');}}
+   const impact=projectileBodyImpact({...shot,vel:'stats'in target?sub(shot.vel,target.body.linvel()):shot.vel});impact.normal={...hit.normal1};
+   if(shot.direct)s.directHit(owner,target,point,dir,shot.damage,shot.impulse,shot.attackId,false,false,headshot,impact);
+   else if('stats'in target){const actual=s.damage(target,shot.damage*(headshot?HEADSHOT_MULTIPLIER:1),owner.id,'reflected',dir,shot.impulse,point,false,false,headshot,attackElements(shot.burnDps||0,shot.poisonDps||0),impact);if(actual>0){refreshDot(target.burns,owner.id,shot.burnDps||0,s.time,'fire');refreshDot(target.poisons,owner.id,shot.poisonDps||0,s.time,'poison');}}
    else s.damageProp(target,shot.damage*owner.stats.demolition,mul(dir,shot.impulse),owner.id,point);
    if('stats'in target&&target.hp<before&&target.hp>0){if(shield)this.launch(target,owner,3.8);else this.stagger(target,meleeHitStun(owner.spec));}
    s.emit('impact',point,{source:shot.owner,target:id,spec:shot.spec,color:WEAPONS[shot.spec].color,material:'material'in target?target.material:undefined});
-  }else {const minion=s.chaos.minions.get(id);if(minion&&owner){s.chaos.direct(owner,minion,point,dir,shot.attackId);s.chaos.hitMinion(minion,shot.damage,shot.owner,shot.impulse,dir);}}
+  }else {const minion=s.chaos.minions.get(id);if(minion&&owner){s.chaos.direct(owner,minion,point,dir,shot.attackId);const actual=s.chaos.hitMinion(minion,shot.damage,shot.owner,shot.impulse,dir,{point,kind:projectileBodyImpact(shot).kind});if(shot.direct)s.meleeHitMinion(owner,minion,point,actual,shot.attackId);if(minion.kind==='siren-add')s.emit('impact',point,{source:shot.owner,spec:shot.spec,color:WEAPONS[shot.spec].color});}}
   if(shield)shot.melee.returning=true;
   else if(target&&'material'in target&&shot.bounces>0){shot.bounces--;shot.vel=sub(shot.vel,mul(hit.normal1,2*dot(shot.vel,hit.normal1)));shot.pos=add(point,mul(norm(shot.vel),shot.radius+.04));shot.damage*=original?.stats.bounceRetention??.7;}
   else s.projectiles.delete(shot.id);return true;

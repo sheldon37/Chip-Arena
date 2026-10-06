@@ -1,14 +1,35 @@
+import {introFrame} from '../shared/intros.js';
+import {VENT_PIT} from '../shared/pve/vent-pits.js';import {SIREN_VENTS} from '../shared/siren-stage-layout.js';
+import {BossTheme} from './boss-theme.js';
+import {SirenAudio} from './siren-audio.js';
+import {SlenderAudio} from './slender-static.js';
 import {DeathAnnouncementTrack,DEATH_ANNOUNCEMENT} from './death-announcements.js';
-import {enemyHit} from './hitmarker.js';
+import {enemyHit,procHit} from './hitmarker.js';
 import {RAGING_DEMON} from '../shared/raging-demon.js';
 import {IntroAudio} from './intro-audio.js';
-import {ArenaMusic} from './music.js';
+import {ArenaMusic,PVE_STAGE_TRACK} from './music.js';
 import {CLOWN_LOVE} from './clown-love-timing.js';
 import {BASS_VAN} from './bass-van-timing.js';
 import type {GameEvent,Snapshot} from '../shared/simulation.js';
 import type {Vec} from '../shared/config.js';
 export const AUDIO_CLIPS=['saw-cut','spike-rise','electric-hook-hit','electric-hook','demon-step','arcade-punch','arcade-kick','arcade-heavy','arcade-parry','pistol','rifle','machinegun','fire','water','lightning','darkness','sword','daggers','shield','greatsword','reload-start','reload-end','dash','jump','hit','hurt','parry','wood','stone','metal','explosion','burn-tick','poison-tick','ui','install','countdown','go','win','lose'] as const;
 export type Sound=typeof AUDIO_CLIPS[number];
+/** Hit/impact limiting (owner follow-up): per key, plays closer than its gap are skipped and folded into the next play
+ * (louder, capped at 1.5× or at `cap`), and repeated plays duck (activity decays over .4 s, floor .35×). */
+export class SoundLimiter{
+ private keys=new Map<string,{at:number;pend:number;act:number}>();
+ constructor(readonly gaps:Record<string,number>={hit:.06,add:.085,proc:.085,tick:.1,hurt:.08,impact:.05,explosion:.07,arc:.09}){}
+ gate(key:string,now:number,gain:number,cap=gain*1.5){let k=this.keys.get(key);if(!k)this.keys.set(key,k={at:-9,pend:0,act:0});const dt=now-k.at;
+  if(dt<(this.gaps[key]??.06)){k.pend=Math.min(2,k.pend+gain);return 0;}
+  k.act=k.act*Math.exp(-dt/.4)+1;const out=Math.min(cap,gain*1.5,gain+k.pend*.3)/(1+.15*(k.act-1));k.at=now;k.pend=0;return Math.max(gain*.35,out);}
+ clear(){this.keys.clear();}
+}
+/** About -2 dB on hit, impact and blast sounds after limiting. */
+export const HIT_TRIM=.8;
+/** Ability cues (design §13.1): release sounds by ability id, and explosion layers by fx tag. */
+/** Ability cues. The electric-hook clips belong to Emperor's Electric (owner bug 2026-10-04: lightning staff played them). */
+const ABILITY_CUE:Record<string,[Sound,number]>={'frag-grenade':['dash',.4],rocket:['arcade-heavy',.7],'orbital-mark':['lightning',.45],'flame-lance':['fire',.7],'meteor-strike':['fire',.6],'tidal-wave':['water',.7],'geyser-wall':['water',.6],'blink-strike':['dash',.55],'ball-lightning':['lightning',.6],'shadow-shackles':['darkness',.6],singularity:['darkness',.7]};
+const BLAST_CUE:Record<string,[Sound,number][]>={'meteor-strike':[['explosion',.65],['stone',.5]],'geyser-wall':[['water',.6],['explosion',.3]],'orbital-mark':[['lightning',.6],['explosion',.6]],'ball-lightning':[['lightning',.5],['explosion',.5]],shackles:[['darkness',.4],['spike-rise',.5]],'flame-lance':[['fire',.4]],'tidal-wave':[['water',.4]]};
 /** Event IDs are server-issued; never replay old snapshots or reconnect history. */
 export class AudioCursor {
  last=0;
@@ -17,14 +38,15 @@ export class AudioCursor {
 }
 export class ArenaAudio {
  private deathTrack=new DeathAnnouncementTrack();private deathCues=new Map<string,number>();
+ boss=new BossTheme();siren=new SirenAudio();slender=new SlenderAudio();
  music=new ArenaMusic();intros=new IntroAudio();
  private demonSeen=new Set<string>();private demonEpoch='';
  private loveBuffer:AudioBuffer|null=null;private vanBuffer:AudioBuffer|null=null;private loveSources=new Map<string,Set<AudioBufferSourceNode>>();private loveSeen=new Set<string>();private loveEpoch='';
- context:AudioContext|null=null;master:GainNode|null=null;buffers=new Map<Sound,AudioBuffer>();voices=new Set<AudioBufferSourceNode>();cursor=new AudioCursor();loading:Promise<void>|null=null;volume=.3;muted=false;played=0;error='';phase='';countdown=-1;listener:Vec={x:0,y:0,z:0};yaw=0;
+ limiter=new SoundLimiter();private keyed=0;context:AudioContext|null=null;master:GainNode|null=null;buffers=new Map<Sound,AudioBuffer>();voices=new Set<AudioBufferSourceNode>();cursor=new AudioCursor();loading:Promise<void>|null=null;volume=.3;muted=false;played=0;error='';phase='';countdown=-1;listener:Vec={x:0,y:0,z:0};yaw=0;
  configure(volume:number,muted:boolean){this.volume=Math.max(0,Math.min(1,volume));this.muted=muted;if(this.master&&this.context)this.master.gain.setTargetAtTime(muted?0:this.volume,this.context.currentTime,.015);}
  async unlock(){
   this.music.unlock();
-  if(!this.context)try{this.context=new AudioContext();this.master=this.context.createGain();const limiter=this.context.createDynamicsCompressor();limiter.threshold.value=-13;limiter.knee.value=14;limiter.ratio.value=5;limiter.attack.value=.004;limiter.release.value=.15;this.master.connect(limiter).connect(this.context.destination);this.configure(this.volume,this.muted);}catch{this.error='Audio unavailable';return;}
+  if(!this.context)try{this.context=new AudioContext();this.master=this.context.createGain();const limiter=this.context.createDynamicsCompressor();limiter.threshold.value=-12;limiter.knee.value=8;limiter.ratio.value=12;limiter.attack.value=.002;limiter.release.value=.12;this.master.connect(limiter).connect(this.context.destination);this.configure(this.volume,this.muted);}catch{this.error='Audio unavailable';return;}
   try{await this.context.resume();}catch{this.error='Click Test Sound to enable audio';}
   if(!this.loading)this.loading=Promise.all(AUDIO_CLIPS.map(async name=>{const response=await fetch(`${(import.meta as any).env.BASE_URL}audio/${name}.wav`);if(!response.ok)throw Error(name);const buffer=await this.context!.decodeAudioData(await response.arrayBuffer());this.buffers.set(name,buffer);})).then(()=>{this.error='';}).catch(()=>{this.error='Some sound files could not load';});
   await this.loading;
@@ -47,16 +69,26 @@ export class ArenaAudio {
    else{schedule('music',this.loveBuffer,0,1.15);for(const at of CLOWN_LOVE.beats)if(at>=age)schedule('hit-'+at,hit,at,.9);}
   }
  }
+ /** PvE vent pits (pve/vent-fall.ts): a whoosh down the shaft, then the splat on landing (existing clips, pitched for comedy). */
+ private ventSeen=new Set<string>();
+ private updateVentFalls(state:Snapshot){for(const p of state.players){const d=p.death;if(p.hp>0||!d||d.effect!=='vent-fall'&&d.effect!=='vent-splat')continue;const age=state.time-d.at;
+  if(d.effect==='vent-fall'){if(age>=0&&age<.3&&!this.ventSeen.has(d.id)){this.ventSeen.add(d.id);this.play('dash',d.pos,.8,.55);}continue;}
+  const fall=d.id+':fall',hit=d.id+':hit';if(age>=0&&age<.3&&!this.ventSeen.has(fall)){this.ventSeen.add(fall);this.play('jump',d.pos,.55,.6);}
+  if(age>=VENT_PIT.drop&&age<VENT_PIT.drop+.25&&!this.ventSeen.has(hit)){this.ventSeen.add(hit);this.play('arcade-heavy',d.pos,1,.75);this.play('water',d.pos,.6,1.5);this.play('arcade-punch',d.pos,.5,.55);}}
+  if(this.ventSeen.size>64)this.ventSeen.clear();}
  private updateDemon(state:Snapshot){const epoch=`${state.generation}:${state.setNumber}:${state.round}`;if(epoch!==this.demonEpoch){this.demonSeen.clear();this.demonEpoch=epoch;}for(const p of state.players){const d=p.death;if(p.hp>0||d?.effect!=='dev-raging-demon')continue;const age=state.time-d.at;RAGING_DEMON.hits.forEach((at,i)=>{const key=d.id+':'+i;if(age<at||this.demonSeen.has(key))return;this.demonSeen.add(key);if(age-at<.12)this.play(i===7?'arcade-heavy':i===3||i===5?'arcade-kick':'arcade-punch',d.pos,i===7?1.1:.85);});}}
  clownLaugh(){const c=this.context;if(!c||!this.master||this.muted)return;for(let n=0;n<9;n++){const at=c.currentTime+1.65+n*.22,voice=c.createOscillator(),formant=c.createBiquadFilter(),gain=c.createGain();voice.type='sawtooth';voice.frequency.setValueAtTime(185+(n%3)*30,at);voice.frequency.exponentialRampToValueAtTime(115+(n%2)*30,at+.17);formant.type='bandpass';formant.frequency.value=800;formant.Q.value=.9;gain.gain.setValueAtTime(0,at);gain.gain.linearRampToValueAtTime(.22,at+.025);gain.gain.exponentialRampToValueAtTime(.001,at+.18);voice.connect(formant).connect(gain).connect(this.master);voice.start(at);voice.stop(at+.2);voice.onended=()=>{voice.disconnect();formant.disconnect();gain.disconnect();};}}
  get status(){return this.error||(this.context&&this.buffers.size<AUDIO_CLIPS.length?`Loading sound · ${this.buffers.size}/${AUDIO_CLIPS.length} effects`:!this.context?'Click Test Sound to enable audio':`${this.muted?'Muted':this.context.state==='running'?'Sound ready':'Audio paused'} · ${this.buffers.size}/${AUDIO_CLIPS.length} effects loaded`);}
- pausePresentation(){this.intros.stop();this.music.setActive(false);}
- previewIntro(state:Snapshot){this.music.setActive(false);this.intros.update(state,this.context,this.music.cueVolume);}
- reset(){this.deathTrack.clear();this.deathCues.clear();this.demonSeen.clear();this.demonEpoch='';this.intros.stop();this.stopLove();this.music.setActive(false);this.cursor.reset();this.phase='';this.countdown=-1;for(const voice of this.voices)voice.stop();this.voices.clear();}
- play(name:Sound,position?:Vec,gain=1){const context=this.context,buffer=this.buffers.get(name);if(!context||context.state!=='running'||!buffer||this.muted||!this.volume||this.voices.size>=24)return;
+ pausePresentation(){this.boss.pause();this.intros.stop();this.music.setActive(false);}
+ previewIntro(state:Snapshot){this.music.setActive(false);const frame=introFrame(state);if(frame?.style==='dev-siren'){const preview={...state,bossSong:{track:'black-siren-protocol' as const,startedAt:state.time-frame.age}};this.boss.update(preview,this.context,this.music.playbackVolume);this.siren.update(preview,this.context,this.master);this.intros.stop();}else{this.boss.stop();this.intros.update(state,this.context,this.music.cueVolume);}}
+ reset(){this.boss.stop();this.siren.clear();this.deathTrack.clear();this.deathCues.clear();this.demonSeen.clear();this.demonEpoch='';this.intros.stop();this.stopLove();this.music.setActive(false);this.cursor.reset();this.phase='';this.countdown=-1;for(const voice of this.voices)voice.stop();this.voices.clear();this.limiter.clear();}
+ play(name:Sound,position?:Vec,gain=1,rate=0,keyed=false){const context=this.context,buffer=this.buffers.get(name);if(!context||context.state!=='running'||!buffer||this.muted||!this.volume||this.voices.size>=24||keyed&&this.keyed>=8)return;
   let volume=gain,pan=0;if(position){const dx=position.x-this.listener.x,dy=position.y-this.listener.y,dz=position.z-this.listener.z,d=Math.hypot(dx,dy,dz);volume*=1/(1+Math.max(0,d-2)*.13);pan=Math.max(-.85,Math.min(.85,(-Math.cos(this.yaw)*dx+Math.sin(this.yaw)*dz)/Math.max(2,d)));}
-  const source=context.createBufferSource(),level=context.createGain(),panner=context.createStereoPanner();source.buffer=buffer;source.playbackRate.value=name==='hit'||name==='ui'||name==='countdown'||name==='demon-step'||name==='electric-hook'||name==='electric-hook-hit'?1:.97+Math.random()*.06;level.gain.value=volume;panner.pan.value=pan;source.connect(level).connect(panner).connect(this.master!);this.voices.add(source);source.onended=()=>{this.voices.delete(source);source.disconnect();level.disconnect();panner.disconnect();};source.start();this.played++;
+  const source=context.createBufferSource(),level=context.createGain(),panner=context.createStereoPanner();source.buffer=buffer;source.playbackRate.value=rate||(name==='hit'||name==='ui'||name==='countdown'||name==='demon-step'||name==='electric-hook'||name==='electric-hook-hit'?1:.97+Math.random()*.06);level.gain.value=volume;panner.pan.value=pan;source.connect(level).connect(panner).connect(this.master!);this.voices.add(source);if(keyed)this.keyed++;source.onended=()=>{this.voices.delete(source);if(keyed)this.keyed--;source.disconnect();level.disconnect();panner.disconnect();};source.start();this.played++;
  }
+ /** A limited hit/impact cue: gated per key, trimmed ~-2 dB (a folded burst never exceeds the untrimmed level), at most 8
+ * such voices at once. */
+ cue(key:string,name:Sound,position:Vec|undefined,gain:number,rate=0){if(!this.context)return;const g=this.limiter.gate(key,this.context.currentTime,gain*HIT_TRIM,gain);if(g>0)this.play(name,position,g,rate,true);}
  private arcadeVoices=0;
  arcadeTone(hit:number,move:boolean,superMove=false){const c=this.context;if(!c||!this.master||this.muted||c.state!=='running'||this.arcadeVoices>=8)return;this.arcadeVoices++;const osc=c.createOscillator(),gain=c.createGain(),at=c.currentTime;osc.type=move?'sawtooth':'square';osc.frequency.setValueAtTime(move?120:360+Math.min(hit,10)*55,at);osc.frequency.exponentialRampToValueAtTime(move?(superMove?920:420):160,at+(move?.25:.08));gain.gain.setValueAtTime(move?.09:.06,at);gain.gain.exponentialRampToValueAtTime(.001,at+(move?.35:.10));osc.connect(gain).connect(this.master);osc.start();osc.stop(at+(move?.38:.12));osc.onended=()=>{this.arcadeVoices--;osc.disconnect();gain.disconnect();};}
  deathCue(burst:boolean){const c=this.context;if(!c||!this.master||this.muted||c.state!=='running')return;
@@ -64,12 +96,36 @@ export class ArenaAudio {
   for(let i=0;i<(burst?3:1);i++){const voice=c.createOscillator(),gain=c.createGain(),at=c.currentTime+i*.11;voice.type=burst?'sine':'triangle';voice.frequency.setValueAtTime(burst?[660,880,1100][i]:240,at);voice.frequency.exponentialRampToValueAtTime(burst?[650,870,1090][i]:1700,at+(burst?.4:.8));gain.gain.setValueAtTime(.001,at);gain.gain.linearRampToValueAtTime(burst?.14:.10,at+.025);gain.gain.exponentialRampToValueAtTime(.001,at+(burst?.65:.95));voice.connect(gain).connect(this.master);voice.start(at);voice.stop(at+(burst?.7:1));voice.onended=()=>{voice.disconnect();gain.disconnect();};}
  }
  private updateDeathAnnouncements(state:Snapshot){for(const a of this.deathTrack.update(state))for(const [part,offset]of [['launch',0],['burst',DEATH_ANNOUNCEMENT.launch]] as const){const key=a.id+':'+part,age=state.time-a.at-offset;if(age<0||this.deathCues.has(key))continue;this.deathCues.set(key,state.time);if(age<.25)this.deathCue(part==='burst');}for(const[key,at]of this.deathCues)if(state.time-at>30)this.deathCues.delete(key);}
- update(state:Snapshot,me:string,yaw:number,presentation=state){this.intros.update(presentation,this.context,this.music.cueVolume);this.music.setMap(state.options.map);this.music.setActive(['fight','countdown','result'].includes(state.phase));this.updateLove(state);const self=state.players.find(p=>p.id===me);if(self)this.listener=self.pos;this.yaw=yaw;this.updateDemon(presentation);this.updateDeathAnnouncements(presentation);
+ /** PvE cues (design §7.7): existing clips only, no regeneration. */
+ private pveCue(e:GameEvent,state:Snapshot,me:string){
+  if(e.type==='minionHit'){if(e.source===me&&(e.amount||0)>0){if(procHit(e))this.cue('proc','hit',undefined,.32,1.55);else this.cue('add','hit',undefined,.55);}}
+  else if(e.type==='pve-buy'){if(e.target===me)this.play('ui',undefined,.6);}
+  else if(e.type==='pve-grab'){if(e.target===me)this.play('install',undefined,.6);}
+  else if(e.type==='pve-deny'){if(e.target===me)this.play('ui',undefined,.3);}
+  else if(e.type==='pve-gib')this.cue('impact','hit',e.pos,.35);
+  else if(e.type==='pve-wave'){if(e.message==='start')this.play('countdown',undefined,.6);else this.play('go',undefined,.6);}
+  else if(e.type==='pve-respawn'||e.type==='pve-revive'){if(e.target===me)this.play('go',undefined,.6);}
+  else if(e.type==='pve-found'||e.type==='pve-possess')this.play('go',undefined,.5);
+  else if(e.type==='pve-phase'){this.play('darkness',undefined,.7);this.play('metal',undefined,.35);}
+ }
+ /** Entry doors and vents opening (S6 owns the world animation; the cue lives here). */
+ pveEntries(state:Snapshot){const pve=state.pve;if(!pve||state.vents&&!pve.entries.length){this.wardVents(state);return;}for(const e of pve.entries){const key='entry:'+e.e+':'+e.openAt;if(this.deathCues.has(key)||state.time<e.openAt||state.time-e.openAt>.4)continue;this.deathCues.set(key,state.time);this.play('metal',undefined,.18);}}
+ /** Ward Zero outside PvE: a quiet rattle where a vent starts its warning, then a clank as its lid swings open. */
+ private wardVents(state:Snapshot){for(const e of state.vents??[]){const w=SIREN_VENTS[e.e];if(!w)continue;const pos={x:w.x,y:0,z:w.z},lid=e.openAt-VENT_PIT.lead;
+  for(const [tag,at,gain] of [['warn',lid-VENT_PIT.warn,.07],['lid',lid,.16]] as const){const key='ward:'+tag+':'+e.e+':'+e.openAt;if(this.deathCues.has(key)||state.time<at||state.time-at>.4)continue;this.deathCues.set(key,state.time);this.play('metal',pos,gain,tag==='warn'?1.6:0);}}}
+ /** PvE (Siren TEST BOSS): the owner's stage track loops from the first in-game phase until the Siren spawns (bossSong);
+  *  it rewinds in lobby/match and at the boss, and main.ts rewinds it on entering a game, so each run starts it from the top. PvP keeps the map music in fight/countdown/result. */
+ private updateStageMusic(state:Snapshot,presentation:Snapshot){const pve=!!(state.pve||(state.options as {pve?:unknown}).pve)&&state.options.map==='siren'&&!state.options.sandbox,idle=['lobby','match'].includes(state.phase);
+  this.music.setStage(pve?PVE_STAGE_TRACK:null);this.music.setDip(pve&&introFrame(presentation)?.style!==undefined&&state.phase==='intro'?.35:1);
+  this.music.setActive(!state.bossSong&&(pve?!idle:['fight','countdown','result'].includes(state.phase)));
+  if(pve){if(state.bossSong||idle)this.music.rewindStage();this.boss.preload(this.context);}}
+ update(state:Snapshot,me:string,yaw:number,presentation=state){this.intros.update(presentation,this.context,this.music.cueVolume);this.music.setMap(state.options.map);this.music.setBossActive(!!state.bossSong);this.updateStageMusic(state,presentation);this.updateLove(state);this.boss.update(presentation,this.context,this.music.playbackVolume);this.siren.update(presentation,this.context,this.master);this.slender.update(presentation,me,this.context,this.master);const self=state.players.find(p=>p.id===me);if(self)this.listener=self.pos;this.yaw=yaw;this.updateDemon(presentation);this.updateVentFalls(presentation);this.updateDeathAnnouncements(presentation);this.pveEntries(state);
   for(const e of this.cursor.consume(state.events,state.time)){
-   if(e.type==='melee-slam'){this.play('stone',e.pos,1);this.play('greatsword',e.pos,.65);}
+   if(e.type.startsWith('pve-')||e.type==='minionHit'&&state.pve)this.pveCue(e,state,me);
+   else if(e.type==='melee-slam'){this.play('stone',e.pos,1);this.play('greatsword',e.pos,.65);}
    else if(e.type==='melee-special'){if(e.spec)this.play(e.spec as Sound,e.pos,.4);}
    else if(e.type==='catch'&&e.spec==='shield')this.play('shield',e.pos,.45);
-   else if(e.type==='shot'||e.type==='windup'){if(e.spec)this.play(e.spec==='leet'||e.spec==='emperor'?'lightning':e.spec==='ansatsuken'?'fire':e.spec,e.pos,.65);}
+   else if(e.type==='shot'||e.type==='windup'){if(e.spec&&e.spec!=='siren')this.play(e.spec==='leet'||e.spec==='emperor'?'lightning':e.spec==='ansatsuken'?'fire':e.spec,e.pos,.65);}
    else if(e.type==='ceiling-hit')this.play('parry',e.pos,.45);
    else if(e.type==='stage-saw-hit')this.play('saw-cut',e.pos,1.1);
    else if(e.type==='stage-spikes-rise')this.play('spike-rise',e.pos,1);
@@ -90,10 +146,13 @@ export class ArenaAudio {
    else if(e.type==='leet-nuke')this.play('explosion',e.pos,1);
    else if(e.type==='leet-freeze'||e.type==='leet-undo')this.play('darkness',e.pos,.6);
    else if(e.type==='reloadStart'||e.type==='reloadEnd'){if(e.source===me)this.play(e.type==='reloadStart'?'reload-start':'reload-end',undefined,.6);}
-   else if(e.type==='hit'){if(e.message==='burn'||e.message==='poison')this.play(e.message==='burn'?'burn-tick':'poison-tick',e.pos,.24);else if(e.target===me)this.play('hurt',undefined,.6);else if(enemyHit(e,state,me))this.play('hit',undefined,.9);}
-   else if(e.type==='impact')this.play(e.material==='metal'?'metal':e.material==='wood'?'wood':'stone',e.pos,.22);
+   else if(e.type==='hit'){if(e.message==='burn'||e.message==='poison')this.cue('tick',e.message==='burn'?'burn-tick':'poison-tick',e.pos,.24);else if(e.target===me)this.cue('hurt','hurt',undefined,.6);else if(enemyHit(e,state,me)){if(procHit(e))this.cue('proc','hit',undefined,.32,1.55);else this.cue('hit','hit',undefined,.9);}}
+   else if(e.type==='impact')this.cue('impact',e.material==='metal'||e.message==='rocket-dud'?'metal':e.material==='wood'?'wood':'stone',e.pos,.22);
    else if(e.type==='break')this.play(e.material==='metal'?'metal':e.material==='wood'?'wood':'stone',e.pos,.65);
-   else if(e.type==='explosion'||e.type==='collapse')this.play('explosion',e.pos,.65);
+   else if(e.type==='explosion'||e.type==='collapse')for(const [n,g] of BLAST_CUE[e.message||'']??[['explosion',.65]])this.cue(n==='explosion'?'explosion':'blast-'+n,n,e.pos,g);
+   else if(e.type==='ability'){const c=ABILITY_CUE[e.message||''];if(c)this.play(c[0],e.pos,c[1]);}
+   else if(e.type==='ability-cast'&&['fire','water','lightning','darkness'].includes(e.spec!))this.play(e.spec as Sound,e.pos,.25);
+   else if(e.type==='teleport'&&e.message==='blink-strike')this.play('lightning',e.pos,.6);// owner bug 2026-10-04: electric-hook is Emperor's clip only
    else if(e.type==='roll'&&e.spec!=='emperor')this.play('dash',e.pos,.36);
    else if(e.type==='dash'||e.type==='jump'||e.type==='parry')this.play(e.type,e.pos,.5);
    else if(e.type==='meleeRebound')this.play('metal',e.pos,Math.min(.7,.2+(e.amount||0)/2000));
@@ -101,12 +160,10 @@ export class ArenaAudio {
    else if(e.type==='blockStart'&&e.spec!=='ansatsuken')this.play('parry',e.pos,.3);
    else if(['blockHit','reflect','blockAbsorb'].includes(e.type)&&state.players.find(p=>p.id===e.source)?.spec!=='ansatsuken')this.play('parry',e.pos,.65);
    else if(e.type==='death'){this.play('stone',e.pos,.65);this.play('explosion',e.pos,.3);if(state.players.find(p=>p.id===e.target)?.death?.effect==='dev-clown')this.clownLaugh();}
-   else if(e.type==='debrisHit')this.play('stone',e.pos,.5);
-   else if(e.type==='push')this.play('water',e.pos,.65);
-   else if(e.type==='pull')this.play('darkness',e.pos,.65);
-   else if(e.type==='nova'||e.type==='arc')this.play('lightning',e.pos,.5);
+   else if(e.type==='debrisHit')this.cue('impact','stone',e.pos,.5);
+   else if(e.type==='nova'||e.type==='arc')this.cue('arc','lightning',e.pos,.5);
   }
   if(state.phase==='countdown'){const n=Math.ceil(state.remaining);if(n!==this.countdown&&n>0)this.play('countdown',undefined,.7);this.countdown=n;}else this.countdown=-1;
-  if(this.phase!==state.phase){if(state.phase==='fight')this.play('go',undefined,.7);if((state.phase==='result'||state.phase==='match'&&this.phase!=='result')&&state.winner)this.play(state.winner===me?'win':'lose',undefined,.65);this.phase=state.phase;}
+  if(this.phase!==state.phase){if(state.phase==='fight')this.play('go',undefined,.7);if((state.phase==='result'||state.phase==='match'&&this.phase!=='result')&&(state.winner||state.pve?.outcome))this.play(state.pve?.outcome?(state.pve.outcome==='victory'?'win':'lose'):state.winner===me?'win':'lose',undefined,.65);this.phase=state.phase;}
  }
 }

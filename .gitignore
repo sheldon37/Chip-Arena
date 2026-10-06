@@ -26,3 +26,4 @@ CLAUDE.local.md
 .DS_Store
 Thumbs.db
 account-session.dat
+/tools/visual-lab/mocap-preview.generated.ts

@@ -1,0 +1,77 @@
+/* Full-screen Chip draft, laid out like a ROUNDS card pick: the heading sits top left, turn order and timer top right,
+   the offers form a horizontal tray under the heading (one row up to six, two rows above that), and the picking pilot
+   fills the rest of the screen chest-up below the cards on a 3D stage behind this overlay (draft-stage.ts frames the
+   pilot from the tray's bottom edge down). Cards are the normal processor-package chips in a compact size. */
+.draft-screen{--gap:14px;--tray:calc(100vw - 56px);position:fixed;inset:0;z-index:5;display:grid;grid-template-rows:auto auto 1fr;padding:22px 28px 22px;pointer-events:none;color:var(--text,#f4f4f5)}
+/* Without the 3D stage (compatibility renderer) the arena would show through; give the cards a backdrop instead. */
+.draft-screen[data-stage=off]{grid-template-rows:auto 1fr auto;background:radial-gradient(ellipse at 50% 34%,#1d1f29 0%,#0b0c11 66%)}
+.draft-screen[data-stage=off] .draft-tray{align-self:center}
+/* A soft shade behind the heading and cards, and a low vignette where the frame cuts across the pilot's chest. */
+.draft-screen:before,.draft-screen:after{content:"";position:absolute;left:0;right:0;z-index:-1;pointer-events:none}
+.draft-screen:before{top:0;height:min(44vh,460px);background:linear-gradient(180deg,#06070bd1,#06070b80 52%,transparent)}
+.draft-screen[data-rows="2"]:before{height:min(60vh,640px)}
+.draft-screen:after{bottom:0;height:16vh;background:linear-gradient(180deg,transparent,#06070b99)}
+.draft-top{grid-row:1;display:flex;justify-content:space-between;align-items:flex-start;gap:24px;text-shadow:0 2px 12px #000}
+.draft-heading .eyebrow{color:#c0c1ca;letter-spacing:.2em}
+.draft-heading h1{margin:6px 0 4px;font-size:clamp(24px,2.5vw,34px);line-height:1.08;font-weight:800;letter-spacing:-.03em}
+.draft-heading p{margin:0;max-width:46ch;color:#c3c5ce;font-size:14px;line-height:1.45}
+.draft-status{display:grid;justify-items:end;gap:10px;min-width:0}
+.draft-screen .draft-turns{justify-content:flex-end;gap:7px;margin:0}
+.draft-screen .draft-turns span{padding:6px 10px;font-size:12px;background:#15161ccc;border-color:#ffffff1f}
+.draft-screen .draft-turns span.current{background:#36251fe6;border-color:#ff6b35}
+.draft-screen .draft-turns>strong{margin-left:6px;font-size:12px;text-shadow:none}
+.draft-screen .timer{margin:0;padding:6px 11px;font:600 13px var(--font-mono,ui-monospace,monospace);border:1px solid #ffffff24;border-radius:999px;background:#15161cd9;color:var(--accent-soft,#ff996f)}
+/* Nameplate in the bottom-left corner, clear of the chest-up pilot: whose turn it is (design intent: the draft always says
+   who is choosing). Phones centre it under the pilot. */
+.draft-pilot{grid-row:3;align-self:end;justify-self:start;display:flex;align-items:center;gap:8px;margin-bottom:0;padding:6px 13px 6px 10px;border-radius:999px;background:#0d0f16cc;border:1px solid #ffffff1f;font-size:13px;box-shadow:0 6px 24px #0008}
+.draft-pilot i{width:9px;height:9px;border-radius:50%;background:var(--pilot);box-shadow:0 0 10px var(--pilot)}
+.draft-pilot span{color:#a6a7ad;font:600 10px/1 var(--font-mono,ui-monospace,monospace);letter-spacing:.14em;text-transform:uppercase}
+/* The tray. Cards retain their readable width; rows span the viewport and distribute offers from left to right. */
+.draft-tray{grid-row:2;align-self:start;margin-top:clamp(4px,2.4vh,30px);display:grid;gap:calc(var(--gap) + 6px);justify-items:stretch;min-width:0;perspective:1300px}
+/* Rows only scroll on phones and short windows (below); elsewhere cards shrink to fit, so shards and glow are never clipped. */
+.draft-row{--w:min(236px,max(118px,calc((var(--tray) - (var(--cols) - 1) * var(--gap)) / var(--cols))));display:grid;grid-template-columns:repeat(var(--cols),var(--w));gap:var(--gap);justify-content:space-between;width:100%;max-width:100%;min-width:0;padding:10px 2px 8px}
+.draft-row:has(>.draft-slot:only-child){justify-content:center}
+.draft-slot{position:relative;display:grid;min-width:0;pointer-events:auto}
+/* Disabled cards (before readyAt, or another player's turn) pass the pointer to the slot so the look-at still works. */
+.draft-slot>.chip:disabled{pointer-events:none}
+.draft-tray .circuit-chip{min-height:0;min-width:0;height:100%;width:100%;padding:8px;display:flex;flex-direction:column}
+.draft-slot>*,.draft-tray .chip-shatter,.draft-tray .circuit-chip *{min-width:0}
+.draft-tray .circuit-chip strong{overflow-wrap:anywhere}
+.draft-tray .circuit-chip .circuit-header{gap:9px;padding:7px 8px 7px 7px}
+.draft-tray .circuit-chip .chip-icon{width:36px;height:36px;flex-basis:36px}
+.draft-tray .circuit-chip .chip-icon>.game-icon{width:20px;height:20px}
+.draft-tray .circuit-chip strong{font-size:15px;line-height:1.15}
+.draft-tray .circuit-chip .rarity-label{font-size:10px}
+.draft-tray .circuit-chip p{margin:7px 3px 8px;font-size:12px;line-height:1.38;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden}.draft-tray .circuit-chip .chip-stats{margin:-3px 3px 8px;gap:1px;font-size:12.5px}
+.draft-tray .circuit-chip .chip-footer{margin-top:auto;padding-top:6px;font-size:9.5px;gap:6px}
+.draft-tray .circuit-chip:before,.draft-tray .circuit-chip:after{left:16px;right:16px;height:7px}
+.draft-tray .circuit-chip:before{top:-7px}.draft-tray .circuit-chip:after{bottom:-7px}
+.draft-screen.is-own .draft-slot>.chip:not(:disabled):hover,.draft-screen.is-own .draft-slot>.chip:not(:disabled):focus-visible{transform:translateY(-10px)}
+/* The chosen card leaves its slot for the pilot's hand; draft-view.ts drives transform/opacity every frame. */
+.draft-slot.taken{z-index:3}
+.draft-fly.draft-tray{position:fixed;z-index:6;display:grid;gap:0;margin:0;pointer-events:none;will-change:transform,opacity;transform-origin:50% 50%}
+.draft-fly.draft-tray>.chip{transition:none;box-shadow:0 0 0 2px var(--rarity),0 0 42px color-mix(in srgb,var(--rarity) 55%,transparent)}
+.draft-screen.is-chosen .draft-heading p{display:none}
+/* The pick drops the hint and timer; draft-view.ts holds the header at its pre-pick height so the tray (and the chosen
+   card leaving it) does not jump up. */
+.draft-screen.is-chosen .draft-top{height:var(--draft-top,auto)}
+/* Shorter windows (laptops with display scaling): fewer description lines, tighter margins. */
+@media(min-width:1600px) and (min-height:900px){.draft-row{--w:min(272px,max(118px,calc((var(--tray) - (var(--cols) - 1) * var(--gap)) / var(--cols))))}.draft-tray .circuit-chip strong{font-size:17px}.draft-tray .circuit-chip p{font-size:13px}}
+@media(max-height:760px){.draft-screen{padding:16px 22px 14px}.draft-heading h1{font-size:24px}.draft-heading p{display:none}.draft-tray .circuit-chip p{-webkit-line-clamp:3;font-size:11.5px}.draft-tray{gap:var(--gap)}}
+/* Two rows share the height with the pilot: narrower cards, and no descriptions once the window gets short. */
+.draft-screen[data-rows="2"] .draft-row{--w:min(214px,max(118px,calc((var(--tray) - (var(--cols) - 1) * var(--gap)) / var(--cols))))}
+@media(max-height:820px){.draft-screen[data-rows="2"] .draft-tray .circuit-chip p{-webkit-line-clamp:2;margin:5px 3px 6px}.draft-screen[data-rows="2"] .draft-tray{gap:var(--gap)}.draft-screen[data-rows="2"] .draft-row{padding:8px 2px 6px}}
+@media(max-height:640px){.draft-screen[data-rows="2"] .draft-tray .circuit-chip p{display:none}}
+@media(max-height:600px){.draft-tray .circuit-chip p{-webkit-line-clamp:2}}
+@media(max-height:540px){.draft-tray .circuit-chip p{display:none}}
+@media(max-height:480px){.draft-tray .circuit-chip p{display:none}.draft-pilot{display:none}.draft-screen{padding:10px 14px 10px}.draft-heading h1{font-size:20px}
+ .draft-row{width:100%;grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(168px,30vw);justify-content:start;overflow-x:auto;scrollbar-width:thin;overscroll-behavior-x:contain;scroll-snap-type:x mandatory}.draft-slot{scroll-snap-align:center}}
+/* Narrow screens: rows scroll sideways instead of wrapping into a column. */
+@media(max-width:760px){
+ .draft-screen{padding:14px 12px 16px;--gap:10px}
+ .draft-top{flex-direction:column;gap:10px}.draft-status{justify-items:start}.draft-screen .draft-turns{justify-content:flex-start}
+ .draft-row{width:100%;grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(168px,46vw);justify-content:start;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;padding:10px 4px 8px;scrollbar-width:thin}
+ .draft-slot{scroll-snap-align:center}
+ .draft-pilot{justify-self:center}
+ .draft-top{justify-content:flex-start}
+}

@@ -22,10 +22,11 @@ function input(s:Simulation,p:Player,patch:Partial<Input>={}){s.setInput(p.id,{.
 function advance(s:Simulation,seconds:number){for(let i=0;i<Math.ceil(seconds*60);i++)s.step();}
 test('standard weapon costs scale with weight and failed attacks spend nothing',()=>{
  const costs=[];for(const spec of standard){const {s,a}=arena(spec);try{const before=a.stamina;s.primary(a);costs.push(before-a.stamina);assert.equal(before-a.stamina,WEAPONS[spec].cost);assert.ok(committed(a,s.time));assert.equal(a.move.z,0);s.primary(a);assert.equal(a.stamina,before-WEAPONS[spec].cost);s.resetRound();s.phase='fight';a.stamina=WEAPONS[spec].cost-.1;s.primary(a);assert.equal(a.swing,null);assert.equal(a.attackCommitment,undefined);}finally{s.dispose();}}
- assert.deepEqual(costs,[16,30,36,44]);
+ // Primary swings 40% lower on all melee (owner 2026-10-04); was [16,30,36,44].
+ assert.deepEqual(costs,[7,14,16,20]);
 });
 test('WASD stops through attack recovery while the authored step advances the body',()=>{
- const {s,a}=arena();try{input(s,a,{z:1});advance(s,.3);const start={...a.body.translation()};s.primary(a);input(s,a,{x:1,z:1,jump:true,dash:true});assert.equal(s.beginBlock(a),false);while(committed(a,s.time)){s.step();if(committed(a,s.time)){assert.equal(a.move.x,0);assert.equal(a.move.z,0);assert.equal(a.roll,undefined);assert.ok(a.body.translation().y<1.05);}}
+ const {s,a}=arena();try{input(s,a,{z:1});advance(s,.3);const start={...a.body.translation()};s.primary(a);input(s,a,{x:1,z:1,jump:true});assert.equal(s.beginBlock(a),false);while(committed(a,s.time)){s.step();if(committed(a,s.time)){assert.equal(a.move.x,0);assert.equal(a.move.z,0);assert.equal(a.roll,undefined);assert.ok(a.body.translation().y<1.05);}}
  assert.ok(Math.abs(a.body.translation().x-start.x)<.02);assert.ok(Math.abs(a.body.translation().z-start.z-.65)<.03);s.step();assert.ok(a.move.x>0);assert.ok(a.move.z>0);}finally{s.dispose();}
 });
 test('melee hitstun cannot be refreshed by repeated hits or another standard weapon',()=>{
@@ -50,8 +51,8 @@ test('roll chips stack within partial-invincibility caps and only roll users dra
  assert.ok(up.distance>base.distance);assert.ok(up.duration<base.duration);assert.ok(up.cost<base.cost);assert.ok(up.iframeStart>0);assert.ok(up.iframeSeconds/up.duration<=.6+1e-8);assert.ok(up.duration-up.iframeStart-up.iframeSeconds>=.09-1e-8);assert.equal(stats.maxStamina,175);
  for(const spec of Object.keys(WEAPONS) as SpecId[]){const pool=eligibleChips(spec,{});assert.equal(pool.some(c=>c.id==='long-roll'),usesRoll(spec));assert.ok(pool.some(c=>c.id==='endurance'));}
 });
-test('Arcade keeps Demon Step and developer primary attacks retain their existing costs and mobility',()=>{
- for(const spec of ['ansatsuken','emperor'] as SpecId[]){const {s,a}=arena(spec);try{input(s,a,{z:1});s.primary(a);assert.equal(a.attackCommitment,undefined);assert.equal(a.stamina,spec==='ansatsuken'?88:94);s.step();assert.ok(a.move.z>0);if(spec==='ansatsuken'){input(s,a,{dash:true});s.step();assert.equal(a.roll,undefined);assert.ok(a.dashTime>0);assert.ok(s.events.some(e=>e.type==='demon-step'));}}finally{s.dispose();}}
+test('Arcade keeps Demon Step and developer primary hits charge per step without locking mobility',()=>{
+ for(const spec of ['ansatsuken','emperor'] as SpecId[]){const {s,a}=arena(spec);try{input(s,a,{z:1});s.primary(a);assert.equal(a.attackCommitment,undefined);assert.equal(a.stamina,spec==='ansatsuken'?96:97);s.step();assert.ok(a.move.z>0);if(spec==='ansatsuken'){input(s,a,{dash:true});s.step();assert.equal(a.roll,undefined);assert.ok(a.dashTime>0);assert.ok(s.events.some(e=>e.type==='demon-step'));}}finally{s.dispose();}}
 });
 test('roll direction, stamina authorization and committed attacks reconcile with the shared physics',()=>{
  for(const spec of ['sword','pistol'] as SpecId[]){const {s,a}=arena(spec),predictor=new Predictor();try{let snap=s.snapshot(),me=snap.players[0];predictor.reconcile(snap,me);for(let n=1;n<=75;n++){const i={...idleInput(),seq:n,x:n<40?0:1,z:1,dash:n===1,attack:spec==='sword'&&n===55};predictor.step(i,1/60,me);s.setInput(a.id,i);s.step();const delta=new T.Vector3().copy(predictor.pos).distanceTo(a.body.translation());assert.ok(delta<.035,`${spec} tick ${n}: ${delta}`);if(n%6===0){snap=JSON.parse(JSON.stringify(s.snapshot()));me=snap.players[0];predictor.reconcile(snap,me);}}}finally{predictor.dispose();s.dispose();}}

@@ -33,10 +33,11 @@ test('all guns consume ammo, stop at empty, and reload the expanded magazine',()
   assert.equal(a.ammo,cap);assert.ok(!('heat' in a));assert.ok(!('overheated' in a));s.dispose();
  }
 });
-test('machine-gun secondary spends six ammo and schedules exactly six authoritative shots',()=>{
- const {s,a}=arena('machinegun');s.secondary(a);assert.equal(a.ammo,42);assert.equal(a.burst,6);
+// The six-round burst became the Underbarrel Rocket (ranged/magic Q+E overhaul, design §5.2): no ammo, one rocket.
+test('machine-gun E fires one underbarrel rocket after its windup and spends no ammo',()=>{
+ const {s,a}=arena('machinegun');s.secondary(a);assert.ok(a.abilityCast);assert.equal(a.burst,0);assert.equal(s.projectiles.size,0);
  for(let n=0;n<40;n++){s.time+=1/60;s.updatePlayer(a,1/60);}
- assert.equal(a.ammo,42);assert.equal(a.burst,0);assert.equal(s.projectiles.size,6);s.dispose();
+ assert.equal(a.ammo,48);assert.equal(a.burst,0);assert.equal(s.projectiles.size,1);const rocket=[...s.projectiles.values()][0];assert.equal(rocket.ability?.id,'rocket');near(len(rocket.vel),38);assert.ok(a.secondaryCd>8);s.dispose();
 });
 test('parallel shots share one volley cost and proc identity, deal real hits, and obey the budget',()=>{
  for(const spec of ['pistol','fire'] as SpecId[]){const {s,a,b}=arena(spec,{multishot:2});b.body.setTranslation(v(-1.5,1,-7),true);s.world.step();
@@ -60,8 +61,9 @@ test('echo strikes hit once per sweep, charge stamina once, and retain recovery'
 test('mana and stamina upgrades set real caps; insufficient resources block combat and regenerate',()=>{
  const magic=arena('fire',{mana:2});assert.equal(magic.a.mana,150);magic.a.mana=7;magic.s.primary(magic.a);assert.equal(magic.s.projectiles.size,0);
  magic.s.time+=1;magic.s.updatePlayer(magic.a,1);near(magic.a.mana,19);magic.s.primary(magic.a);near(magic.a.mana,11);magic.s.dispose();
- const {s,a}=arena('sword',{stamina:2});assert.equal(a.stamina,150);a.stamina=13;s.primary(a);assert.equal(a.swing,null);assert.equal(a.mana,100);
- a.staminaAt=s.time;s.time+=.2;s.updatePlayer(a,.2);near(a.stamina,13);s.time+=.5;s.updatePlayer(a,.5);near(a.stamina,25);s.primary(a);assert.equal(a.swing,null);s.time+=.5;s.updatePlayer(a,.5);s.primary(a);near(a.stamina,37-WEAPONS.sword.cost);s.dispose();
+ const {s,a}=arena('sword',{stamina:2});assert.equal(a.stamina,150);a.stamina=WEAPONS.sword.cost-13;s.primary(a);assert.equal(a.swing,null);assert.equal(a.mana,100);
+ // Stay below the current cost through the first recovery checkpoint, then afford one swing.
+ a.staminaAt=s.time;s.time+=.2;s.updatePlayer(a,.2);near(a.stamina,WEAPONS.sword.cost-13);s.time+=.5;s.updatePlayer(a,.5);near(a.stamina,WEAPONS.sword.cost-1);s.primary(a);assert.equal(a.swing,null);s.time+=.5;s.updatePlayer(a,.5);s.primary(a);near(a.stamina,11);s.dispose();
 });
 test('shield throw spends stamina upfront and does not enable the retired held guard',()=>{
  const {s,a}=arena('shield');a.input={...idleInput(),seq:1,yaw:Math.PI/2,secondary:true};a.inputAt=s.time;s.updatePlayer(a,.1);assert.equal(a.guarding,false);near(a.stamina,100-WEAPONS.shield.secondaryCost!);assert.equal(a.meleeAction?.kind,'shield-throw');

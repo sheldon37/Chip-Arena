@@ -34,6 +34,9 @@ This explicitly creates a private test room, rejects the non-owner's debug comma
 
 ## Manual browser coverage
 
+The Developer Sandbox (and F3) needs a DEV account in built games (owner 2026-10-04); `npm run dev` keeps it open for
+local testing. Everyone else practises against the Play vs Bots dummy.
+
 1. Complete each of Pistol / Fire / Sword against a bot. One round win must not award a set or Chip. Two wins award a set and the loser drafts; a 1–1 split requires a deciding round. Finish five sets, verify no final draft, rematch, and return to lobby.
 2. Try every specialization and its secondary. Verify every gun reloads (Machine Gun: 48 rounds / 2.4 s), mana regeneration, stamina costs/regeneration, sword parry timing, and Shield's stamina-limited frontal guard and rear vulnerability.
 3. In Sandbox, install a Chip twice. Observe numerical changes and installed count. Test Reach by comparing visible sword reach, Kinetic by launching crates, Demolition against walls, and Salvage using identical launcher hits.
@@ -90,7 +93,7 @@ The full-match runner uses first person for the attacking pilot and third person
 ## Sets, status visuals and player board
 
 - Default rules: two round wins take a set; five set wins take the match. Check 2–0, 2–1 and a simultaneous death with a 1–0 lead. A draw preserves that lead and replays the same round. Toggle both-player drafting and confirm it waits for the completed set. Let selections time out.
-- Install Ember Circuit twice and Venom Circuit twice in Sandbox. Hold Tab, hover each Chip and verify ×2, four copies/two types, +6 burn DPS and +5 poison DPS. Inspect the opponent’s Chips as well. Release Tab, then check that neither attacks nor movement remains stuck. The Builds TAB button supports the same inspection without holding a key; Escape or × closes it.
+- Install Ember Circuit twice and Venom Circuit twice in Sandbox. Hold Tab (on a melee spec, where Tab is lock-on, use the Builds button), hover each Chip and verify ×2, four copies/two types, +6 burn DPS and +5 poison DPS. Inspect the opponent’s Chips as well. Release Tab, then check that neither attacks nor movement remains stuck. The Builds TAB button supports the same inspection without holding a key; Escape or × closes it.
 - Shoot a dummy: body flames/embers and rising/popping green bubbles must coexist while the corresponding statuses are active. Let them expire without another hit, restore, kill the dummy and reset the arena; each should stop the relevant effect. Merely owning enchantment Chips must not set the wearer on fire or poison them.
 - Repeat in first person while receiving a status: see hand effects and subtle side cues. Compare reduced quality; both elements should remain identifiable.
 

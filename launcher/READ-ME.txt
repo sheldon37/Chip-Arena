@@ -28,8 +28,10 @@ rooms are not automatically redirected to your laptop.
 
 CONTROLS
 WASD move | Mouse aim | Left click attack | Right click timed block
-Space jump | Shift dash | R reload | E specialization secondary
-V first/third person | Q rifle scope | Tab player/chip board | M mute | Escape menu
+Space jump | Shift dash/roll (a roll cancels a melee attack) | Double-tap W sprint
+R reload | E specialization secondary | V first/third person | Q rifle scope | M mute
+Tab player/chip board (melee in a fight: lock-on; tap next target, hold release)
+Escape menu and player board
 
 TROUBLESHOOTING
 Port in use: close your previous launcher. Changing launcher/start.mjs is
@@ -54,7 +56,8 @@ THIS UPDATE
 choose 1-12 in match setup. Try Pong Shot, Hurricane Edge, Meteor Foundry,
 Return to Sender and Repulsor Crown. Blocking melee knocks the attacker back;
 heavier blows rebound farther. Mages gather then release from one hand, and
-daggers alternate left/right. Sandbox includes rarity and animation previews.
+daggers alternate left/right. The Developer Sandbox (DEV accounts only) includes
+rarity and animation previews.
 
 CHAOS UPDATE
 150 Chips including Event Horizon black holes, Necronomicon zombies, sticky

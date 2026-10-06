@@ -1,6 +1,7 @@
 import * as T from 'three';
 import type {KillEffectFactory} from './death-effects.js';
-import {createCharacterRig,RIG_LENGTHS,type CharacterRig} from './character-rig.js';
+import {RIG_LENGTHS,type CharacterRig} from './character-rig.js';
+import {cinematicVictim,DeathPoseCarry} from './cinematic-victim.js';
 import {createClownRig} from './clown-rig.js';
 import {dressRig} from './cosmetics.js';
 import {buildWeapon} from './weapon-visuals.js';
@@ -42,17 +43,17 @@ function oneUpGeometry(){
 }
 
 /** Five-second cosmetic timeline: run-in, hand-held dance, scoop, getaway. */
-export const clownLove:KillEffectFactory=(scene,_original,p,d,quality)=>{
+export const clownLove:KillEffectFactory=(scene,original,p,d,quality,_budget,state)=>{
  const root=new T.Group();root.name='clown-love';root.position.set(d.pos.x,d.pos.y,d.pos.z);root.rotation.y=d.yaw;scene.add(root);
- const victim=createCharacterRig(p.color,p.cosmetics?.bodyColor),clown=createClownRig();victim.group.name='love-partner';clown.group.name='love-clown';clown.group.scale.setScalar(1.1);
- dressRig(victim,p.cosmetics);root.add(victim.group,clown.group);buildWeapon(victim.weapon,p.spec);if(p.spec==='daggers')buildWeapon(victim.offWeapon,p.spec,true);
+ const victim=cinematicVictim(p,state),clown=createClownRig();victim.group.name='love-partner';clown.group.name='love-clown';clown.group.scale.setScalar(1.1);
+ dressRig(victim,p.cosmetics);root.add(victim.group,clown.group);const deathPose=new DeathPoseCarry(victim,original);buildWeapon(victim.weapon,p.spec);if(p.spec==='daggers')buildWeapon(victim.offWeapon,p.spec,true);
  const dropped=new T.Group();dropped.name='love-dropped-weapon';buildWeapon(dropped,p.spec);if(p.spec==='daggers'){const second=new T.Group();buildWeapon(second,p.spec,true);second.position.x=.2;dropped.add(second);}root.add(dropped);
  const hearts=heartGeometry(),text=oneUpGeometry(),pink=new T.MeshBasicMaterial({color:0xff559b,side:T.DoubleSide,transparent:true,depthWrite:false}),mint=new T.MeshBasicMaterial({color:0xa3ff93,side:T.DoubleSide,transparent:true,depthWrite:false});
  const pops=CLOWN_LOVE.beats.map((at,i)=>{const group=new T.Group();group.name='love-pop-'+i;const label=new T.Mesh(text,mint);label.position.y=.27;group.add(label);const count=quality<.5?1:3;for(let n=0;n<count;n++){const heart=new T.Mesh(hearts,pink);heart.scale.setScalar(.21+n*.025);heart.position.set((n-(count-1)/2)*.4,-.1-Math.abs(n-1)*.15,.01);group.add(heart);}root.add(group);
   for(const mesh of group.children as T.Mesh[])mesh.onBeforeRender=(_renderer,_scene,camera)=>{mesh.quaternion.copy(group.getWorldQuaternion(new T.Quaternion()).invert().multiply(camera.getWorldQuaternion(new T.Quaternion())));mesh.updateMatrixWorld(true);};
   return {group,at};});
  return {count:quality<.5?12:24,update(age){
-  const t=Math.max(0,age);resetPose(victim);resetPose(clown);victim.group.position.set(0,0,0);clown.group.position.set(-8,.09,-.6);
+  const t=Math.max(0,age);deathPose.reset();resetPose(victim);resetPose(clown);victim.group.position.set(0,0,0);clown.group.position.set(-8,.09,-.6);
   victim.weapon.visible=t<.25;victim.offWeapon.visible=t<.25&&p.spec==='daggers';dropped.visible=t>=.25;
   dropped.position.set(.3,Math.max(-.77,.05-(t-.25)**2*5),.35);dropped.rotation.set(Math.min(Math.PI/2,Math.max(0,t-.25)*7),.3,.3);
   const entrance=smooth((t-.15)/.85),takeHands=smooth((t-.8)/.25);
@@ -78,6 +79,7 @@ export const clownLove:KillEffectFactory=(scene,_original,p,d,quality)=>{
     victim.leftArm.rotation.set(-1.2*carry,0,-.2);victim.rightArm.rotation.set(-1.1*carry,0,.2);victim.leftElbow.rotation.x=victim.rightElbow.rotation.x=-.65*carry;
    }
   }
+  deathPose.apply(t);
   for(const {group,at}of pops){const a=t-at;group.visible=a>=0&&a<.72;if(group.visible){group.position.set(Math.sin(at*5)*.22,1.15+a*1.7,.05);group.scale.setScalar(Math.min(1,.5+a*7)*Math.min(1,(.72-a)*5));group.rotation.y=-d.yaw;}}
  },dispose(){scene.remove(root);hearts.dispose();text.dispose();pink.dispose();mint.dispose();}};
 };
