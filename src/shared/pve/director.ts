@@ -84,6 +84,8 @@ export class Director implements DirectorApi{
   }else if(e.kind==='wave-clear'){
    this.stage='intermission';this.stageAt=e.at;this.stageUntil=this.schedule.stageUntil;
    h.horde.setFlow(null);
+   // Clear only the horde: bosses, party members and their summons are outside this registry.
+   h.horde.killAll('wave-clear');
    h.economy.grantAll(ECONOMY.waveClearBase+ECONOMY.waveClearPerWave*e.wave,'wave-clear');
    if(PVE.respawnOnWaveClear)h.economy.respawnAll('wave');
    h.emit(PVE_EVENT.wave,ORIGIN,{amount:e.wave,message:'clear'});
@@ -208,7 +210,7 @@ export class Director implements DirectorApi{
  }
  onAddKilled(d:AddDeath){
   if(this.stage==='wave')this.waveKilled++;
-  // A 'burn' death is killAll (a wipe's defeat or the boss's death): the Siren was not found.
+  // A 'burn' death is cleanup (wave clear, defeat or boss death): the Siren was not found.
   if(d.possessed&&d.cause!=='burn'&&this.stage==='boss'&&this.phase===2&&this.hiddenBoss&&!this.outcome)this.found(d);
  }
  onDeath(p:Player){

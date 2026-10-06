@@ -506,8 +506,9 @@ export class Horde implements HordeApi{
   for(const b of this.buckets.values())b.at+=dt;for(const st of this.assists.values())st.at+=dt;for(const e of this.outbox)e.at+=dt;
   this.sched.shift(dt);this.nav.shift(dt);
  }
- /** Every add dies (cause 'burn', no killer, no corpse cap); queued and first-time entering adds are dropped silently. */
- killAll(_cause:'boss-dead'|'defeat'){
+ /** Only registered horde adds die (never bosses/party/summons): cause 'burn', no killer, no corpse cap.
+  * Queued and first-time entering adds without an exposed body are dropped silently. */
+ killAll(_cause:'boss-dead'|'defeat'|'wave-clear'){
   this.flow=null;this.budget.reset();
   for(const a of [...this.list.values()]){
    if(a.phase==='pending'||a.phase==='entering'&&!a.minion){this.sched.leave(a.entry,a.n);this.list.delete(a.n);this.byId.delete(a.id);continue;}

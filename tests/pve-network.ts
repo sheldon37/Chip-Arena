@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {deflateRawSync} from 'node:zlib';
 import type {Snapshot} from '../src/shared/simulation.js';
-import {PVE_CONTRACT,BOSS_PLAYER_ID} from '../src/shared/pve/contract.js';
+import {PVE_CONTRACT,BOSS_PLAYER_ID,decodeAdd} from '../src/shared/pve/contract.js';
 import {bossHp} from '../src/shared/pve/balance.js';
 
 const endpoint=process.env.TEST_ENDPOINT||'ws://localhost:8792/socket',sleep=(n:number)=>new Promise(r=>setTimeout(r,n));
@@ -60,6 +60,14 @@ try{
  op(a,'god:on');await wait(()=>pve(a)!.stage==='wave',"wave 1",20000);
  // A non-owner cannot run debug ops.
  op(b,'skip-to-boss');await sleep(300);assert.equal(pve(a)!.stage,'wave','guest debug ignored');
+ // Both clients must observe the same empty living horde after a wave-clear transition.
+ await wait(()=>pve(a)!.adds.some(t=>decodeAdd(t,pve(a)!.slots).state==='active'),'active wave enemies');
+ const beforeClear=pve(a)!.adds.filter(t=>t[7]>0).length;assert.ok(beforeClear>0);
+ op(a,'skip-wave');await wait(()=>[a,b].every(c=>pve(c)!.stage==='intermission'),'wave clear on both clients');
+ for(const c of [a,b])assert.ok(pve(c)!.adds.every(t=>decodeAdd(t,pve(c)!.slots).state==='dead'&&t[7]===0),'no surviving or entering adds');
+ await sleep(500);
+ for(const c of [a,b])assert.ok(pve(c)!.adds.every(t=>t[7]===0),'cancelled arrivals stay cancelled');
+ result.waveClear={clients:2,liveAddsBefore:beforeClear,liveAddsAfter:0};
  op(a,'skip-to-boss');await wait(()=>pve(a)!.cinematic?.kind==='reveal'&&pve(a)!.cinematic?.chip===1,'reveal 1');
  await wait(()=>pve(a)!.cinematic?.kind==='boss-intro','boss intro',10000);
  await wait(()=>pve(a)!.stage==='boss'&&!pve(a)!.hold,'boss stage',20000);

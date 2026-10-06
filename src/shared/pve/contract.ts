@@ -194,7 +194,7 @@ export interface HordeApi{
  status?(m:Minion,source:string,s:AddStatusInput):boolean;
  assistMinion(m:Minion,owner:Player,dt:number):Minion|undefined|void;
  step(dt:number):void; freeze():void; onHold(active:boolean):void; shift(dt:number):void;
- killAll(cause:'boss-dead'|'defeat'):void; rekey(from:string,to:string):void;
+ killAll(cause:'boss-dead'|'defeat'|'wave-clear'):void; rekey(from:string,to:string):void;
  views(slots:readonly string[]):{adds:PveAddTuple[];entries:PveEntryView[]};
  reset():void; debug(op:string):boolean;
 }

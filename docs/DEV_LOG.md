@@ -18,6 +18,35 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-06 — Codex — Clear surviving enemies at wave completion
+- Branch `codex/wave-end-cleanup`, shared base `9028309412355e3cb978609d4776970c050900bf`, exact tree
+  `e885503d2a52068ab0d4c4896784566da13c1ab7`. Owner requests cleanup excluding bosses and publication to Update.
+  Recovered an isolated checkout from the local source after its old parent Git metadata expired; every tracked blob,
+  file mode and the resulting tree match the current remote before edits. No other open task overlaps this fix.
+- Every normal, timed-out or debug-skipped wave now invokes horde-only cleanup before intermission rewards/respawns.
+  Active/exposed entering adds die through existing cleanup handling; pending/unexposed arrivals and the spawn budget
+  are cancelled. Bosses, humans, party bots, recruits and friendly summons are outside that registry and are untouched.
+  Boss-phase transitions retain their existing horde behavior. Wave bonuses, respawns, timings, hitboxes, ordinary damage,
+  cooldowns, movement, animations, saves and network formats are unchanged; deaths/snapshots now reflect the cleanup.
+- Checks (Linux, Node 24.19.0/npm 11.9.0): client types pass; 49 affected director/horde/flow/boss/possession/render tests
+  pass. Real-Rapier coverage verifies active/exposed/queued cleanup, surviving boss body/HP and friendly summon, no delayed
+  spawns during intermission, and reuse of the same entry next wave. Natural/timeout/debug clears are covered.
+  Extended PvE multiplayer passes: both clients observe live adds going from 2 to 0 at wave clear, 853 matching shared
+  ticks, reconnect and victory; raw snapshot p95 34,708 B. All 10 updater channel/menu-status fixtures pass.
+- Full verify units: 1307 total, 1293 pass, 13 fail, one skipped: the 12 known baseline names plus the eight-client ping
+  timing check under full-suite load. That check passes alone (80 identical snapshots, ping p95 6.61 ms). An incidental
+  standalone party-relay rerun hit its previously observed 403-versus-200 flake; it passes in this full verify run.
+  Full `npm run verify` completes with those unit failures, four known server TypeScript errors and the existing
+  WebSocket rematch timeout; HTTPS integration passes (3418 matching snapshots, rematch and guest leave).
+- Two complete client/relay release builds produce byte-identical manifests and payloads for candidate
+  `0.2.e337f51c003d`, game build `49ca456f76647ac42ef59970`. Both actual updater payloads pass installation,
+  all 103 game-file hashes (107 including launcher), launcher activation, same-version skip, settings preservation,
+  offline/corrupt refusal and source-privacy checks. Schema 1: 24,708,289 B; schema 2: 20,578,756 B.
+  Existing TEST-only launcher wrappers are preserved, extracted from the previous verified pack with matching hashes.
+  `git diff --check` passes.
+- Native Windows/GPU and manual gameplay not run. Source changes are implemented on this branch; the owner-requested
+  merge and TEST-channel publication follow verification. No live-feed, Site or Windows seed release.
+
 ## 2026-10-06 — Codex — Persistent impact effects, projectile procs and a much larger Siren hunt
 - Branch `codex/impact-lifetimes-siren-horde`, shared base `c52a532ad2763251570fc96d43cf88833b74758c`;
   local base checked against the entire remote Git tree. Owner requests no impact cancellation, a huge Find-me horde,
