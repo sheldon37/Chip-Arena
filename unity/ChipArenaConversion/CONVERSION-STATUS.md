@@ -1,8 +1,8 @@
-# Native conversion status — first-person stability and aiming
+# Native conversion status — melee primaries and riposte
 
 Target approved by the owner: **native Unity/C#**, with gameplay simulation and physics converted too. Branch: `codex/unity-conversion`. Source remains `05950ea`; the accepted lab and original game are preserved separately.
 
-**The full-game conversion is incomplete.** Imported definitions do not establish implemented mechanics. This checkpoint removes first-person pose feedback, uses interpolated camera/pilot transforms with a continuous animation clock, and adds smooth ADS transitions and the rifle scope overlay. The staff/glow and standard-ability foundations are retained. Native Windows visual/combat acceptance is still required.
+**The full-game conversion is incomplete.** Imported definitions do not establish implemented mechanics. This checkpoint ports standard-primary moving sweeps/footwork, timed blocks/ripostes, roll-cancel rules and external impulse integration. The first-person, staff/glow and gun/magic ability work remains included. Native Windows visual/combat acceptance is still required.
 
 | System | This checkpoint | Remaining work |
 | --- | --- | --- |
@@ -10,8 +10,8 @@ Target approved by the owner: **native Unity/C#**, with gameplay simulation and 
 | Stats and draft eligibility | Native C# matches 60 source cases / 4,620 values, eligibility, seeded offers and roll profiles | Broader gameplay interaction parity |
 | Match flow | Native countdown, round/set wins, draw replay, losing-side draft, bot skip, rematch | Specialization screen, intros, exact draft staging, disconnect/rejoin and complete options |
 | Source maps | 15 collision layouts / 3,451 blocks; rotations, masses and support IDs retained; moon/rim lighting, fog, shadows and wood/metal trim | Full scene dressing/material detail, weather/music and Ward Zero machinery/vents |
-| Gameplay physics | Unity capsules/rigid bodies, CCD, swept shots, support release, breakable props | Native Windows acceptance; Rapier response comparison, stepping, debris damage and complete destruction |
-| Standard melee | Four primary weapons with captured sets and source base values | Full contact sweeps/footwork/riposte parity, shield guard, E moves, knockdown/juggle rules |
+| Gameplay physics | Unity capsules/rigid bodies, CCD, swept shots, support release, breakable props | Source external-velocity decay/counter-steering and one-shot lift now ported; native Windows acceptance, collision feedback/stepping, debris damage and complete destruction remain |
+| Standard melee | Four primaries with source sweep filters, once-per-swing contacts, footwork, block rebound/riposte and human roll-cancels; Sword/Daggers/Greatsword stagger timing | Native collision/feel acceptance, E moves, Shield knockdown and launch/juggle/recovery; inactive legacy held-guard path intentionally not activated |
 | Guns | Three primaries, magazines, reload, ADS, gravity, reflection and head/body hits; Frag/Rocket/Orbital Mark E handlers | Native ability contacts, source collision/aim and animation polish |
 | Magic | Four primaries, source cast phrases, left-hand staff/guard, eight Q/E handlers, mana/cooldowns, basic fields/status effects | Native verification, exact collision/impulse integration and production VFX |
 | Chips in combat | 89 stat-only entries enabled; unimplemented effects are not offered | Remaining 147 entries, special effects, summons, proc ownership/recursion and combinations |
@@ -33,7 +33,7 @@ One intentional contact change: lava is checked against its individual channel, 
 ## Conversion sequence
 
 1. **Implemented; Windows gate pending:** content parity, native layouts/physics and first match loop. Confirm walking/climbing, collision, dynamic supports and round reset on the owner's activated Unity installation.
-2. Complete standard combat parity: melee sweep/contact/recovery, directional blocks/ripostes, native acceptance and source parity of gun/magic Q/E handlers, health/status/impulse rules, projectile modifiers and native network ownership.
+2. Complete standard combat parity: verify the new primary sweep/footwork/riposte layer; add melee specials and knockdown/juggle/recovery, native acceptance and source parity of gun/magic Q/E handlers, health/status/impulse rules, projectile modifiers and native network ownership.
 3. Implement every Chip handler against source-derived scenarios; retain exclusions and proc-recursion rules. Do not enable a catalogue entry merely because its data imported.
 4. Port DEV styles, Siren and all PvE contracts/director/economy/AI. Carry the current wave cleanup and impact-effect lifetime behavior.
 5. Port the remaining models, animation layers, maps/scenery, VFX, audio, cosmetics, intros, body damage, kill effects and killcam.
@@ -55,3 +55,11 @@ Glow uses the original radial falloff and effect lifetimes with native batched g
 The confirmed feedback bug was reproduced in pure rig math: five extra renders at the same simulation time moved the magic wrist 0.0343 m in rig space. Base-layer history now excludes procedural/first-person adjustments. The camera reads the interpolated Transform, while physics, hitboxes and muzzles still use authoritative Rigidbody state. Render snapshots copy pilot scalar state before changing visual positions. The final camera also supplies the next aim ray.
 
 Animation time may advance by at most one fixed step (16.7 ms) between simulation ticks; this is presentation only. Camera positional interpolation normally introduces one physics-step delay, as documented by Unity. No input rotation smoothing was added. The default scene handles Rigidbody interpolation automatically; the conversion does not call InterpolateBodies on it. These code changes and numeric tests do not establish that every source of the owner's observed Windows jitter is resolved.
+
+## Melee boundary of this pass
+
+The primary sweep's source expressions and pure commitment/block/movement functions are pinned and independently evaluated by tools/export_melee.mjs. Fixtures cover 64 swings at four attack rates, 448 timing samples, 5,376 candidate contacts, 90 block cases and nine external-motion cases. They verify C# math, not native collision or controller feel. NativeMeleeValidation adds actual Unity ray/contact/defense integration gates to the Windows builder; they have not run in this workspace.
+
+Base damage/costs, cooldown values and collider dimensions are unchanged. Actual damage timing now follows each tick of the active sweep, with one contact per target; movement uses attack steps and corrected external impulses. This intentionally changes the previous native placeholder behavior. Block cannot cancel a committed attack. A human roll-cancel does not refund stamina; only a cancel at least half a tick before contact shortens the remaining attack cooldown. Counter protection lasts only the remainder of the existing block window, not the entire attacker stun. Standard combo indices continue through the round, matching the source instead of resetting after a DEV-style 2.4 s timeout.
+
+The current source sets Shield E to shield-throw, leaving its earlier held-guard branch inactive. That obsolete guard path was not made playable. E throws/launches/slam, Shield knockdown, grounded protection, juggle/pickup, body reactions and full production animation fidelity are still pending. Shield uses a grounded stagger until recovery is ported; this is not full standard-melee parity. The inherited wire protocol is unchanged and does not network the native authority.

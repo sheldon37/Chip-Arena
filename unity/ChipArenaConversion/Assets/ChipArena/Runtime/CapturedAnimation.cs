@@ -176,7 +176,7 @@ namespace ChipArena.UnityConversion
                 }
                 if(a.Weapon==WeaponId.Sword&&a.MagicVisual==0&&time<a.BlockUntil)
                 {
-                    Save(blendP,blendQ); float age=time-(a.BlockUntil-Rules.BlockDuration); var block=Find(set,"block");
+                    Save(blendP,blendQ); float age=time-(a.BlockAt>-90?a.BlockAt:a.BlockUntil-Rules.BlockDuration); var block=Find(set,"block");
                     Sample(set,"block",CapturedClip.Retime(new[]{0f,.13f,.36f},block.Marks,age)); Blend(blendP,blendQ,CapturedClip.Ease(age/.05f));
                 }
                 if(a.Weapon==WeaponId.Sword&&a.MagicVisual==0&&stun)

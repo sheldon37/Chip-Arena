@@ -18,6 +18,25 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-07 — Codex — native melee primaries, riposte and impulses
+- Separate `codex/unity-conversion`, base `fc87b9510de9fd49eb5b67863be99fd0b06655a7`; original source remains `05950ea`.
+  Checked current branch/source, shared policy/state/log and open PRs; no overlapping conversion writer found.
+- Replaced the one-frame melee cone with source active sweeps, per-target contact ledgers and native scene-aware line of sight.
+  Ported attack footwork, human timed-block riposte/rebound, source stagger/escape rules and early/late human primary roll-cancel.
+  Blocked or unfunded counter attempts retain protection. Captured block timing now uses the actual block start.
+- Corrected shared native external impulses: velocity decay, capped horizontal speed, source counter-steering and one-shot lift,
+  replacing the previous extra dt*3.1 scaling. Added same-weapon bots and riposte feedback for focused owner tests.
+- Authority impacts: actual contact timing, footwork, interruption/stagger, roll refund and knockback behavior change toward source.
+  Base weapon damage/cost/cooldown values, collider dimensions and inherited wire protocol are unchanged. Native online play remains absent.
+- Passed: independently exported six-blob source fixtures (64 swings / 448 timing samples / 5,376 contacts / 90 block cases / nine
+  external-motion cases), contact ledger/boundary checks and inherited motion/ability/content/animation/managed checks. Runtime,
+  Editor and Windows-conditional Unity 6000.3.24f1 compilation, package structure and four package regressions pass.
+- Added native preview-scene contact/defense/impulse gates to the Windows builder; compiled but NOT executed here. No activated
+  Editor, GPU/PhysX gameplay or Windows EXE test ran. Full source controller/collision response and visual fidelity are not established.
+- Source Shield E is now a throw; the inactive old held-guard branch was not introduced. Melee E moves, Shield knockdown,
+  launch/juggle/recovery, special Chips and the broader conversion remain pending. Shield retains a grounded stagger in this checkpoint.
+- Status: isolated unmerged source checkpoint; no updater publication. Next: owner melee/knockback acceptance, then E specials/recovery.
+
 ## 2026-10-07 — Codex — first-person stability and aiming conversion
 - Separate `codex/unity-conversion`, base `6d23fdfb1fe1aaa76da2e07e05a851c59d747a64`; original reference `05950ea` remains unchanged.
   Owner reported vibrating first person and requested continued conversion. Read current branch/source heads, shared policy/state/log and open PRs.

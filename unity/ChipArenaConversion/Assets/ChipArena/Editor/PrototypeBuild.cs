@@ -40,7 +40,7 @@ namespace ChipArena.UnityConversion.Editor
         {
             PlayerSettings.companyName="ChipArenaConversion";
             PlayerSettings.productName="Chip Arena Native Conversion TEST";
-            PlayerSettings.bundleVersion="0.4.0-native-smooth-view";
+            PlayerSettings.bundleVersion="0.4.0-native-melee-riposte";
             PlayerSettings.defaultScreenWidth=1600; PlayerSettings.defaultScreenHeight=900;
             PlayerSettings.fullScreenMode=FullScreenMode.Windowed;
             PlayerSettings.runInBackground=true;
@@ -106,7 +106,7 @@ namespace ChipArena.UnityConversion.Editor
             if(!File.Exists(Path.Combine(folder,"UnityPlayer.dll"))||!Directory.Exists(Path.Combine(folder,"ChipArena-Native-Conversion-TEST_Data")))
                 throw new Exception("The Windows player is incomplete: UnityPlayer.dll or its game data folder is missing.");
             File.WriteAllText(Path.Combine(folder,"READ-ME.txt"),
-                "Chip Arena Native Conversion - SMOOTH VIEW AND SCOPE TEST\r\n\r\nRun ChipArena-Native-Conversion-TEST.exe. Keep the entire folder together.\r\n"+
+                "Chip Arena Native Conversion - MELEE AND RIPOSTE TEST\r\n\r\nRun ChipArena-Native-Conversion-TEST.exe. Keep the entire folder together.\r\n"+
                 "The EXE uses the voxel CA icon. Create a Windows shortcut to the EXE for a desktop launcher; do not move the EXE alone.\r\n"+
                 "WASD move, double-tap W sprint, mouse look, LMB fire/attack, Q aim/magic ability, E ability, V first/third-person, R reload, RMB block, Shift dodge, Space jump.\r\n"+
                 "Choose weapon and map before starting. Tab scoreboard. Esc menu. This native foundation is local solo vs bots.\r\n"+

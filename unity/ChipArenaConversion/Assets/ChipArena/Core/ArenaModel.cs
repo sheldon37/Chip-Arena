@@ -50,7 +50,7 @@ namespace ChipArena.UnityConversion
         public bool Bot, Sprinting, SprintExhausted;
         public float Hp = 100, Stamina = 100, Yaw;
         public V3 Position, Velocity, Knockback, RollDirection;
-        public float AttackAt = -100, AttackUntil = -100, BlockUntil, BlockReady, RollAt = -100, RollReady;
+        public float AttackAt = -100, AttackUntil = -100, BlockAt=-100, BlockUntil, BlockReady, RollAt = -100, RollReady;
         public float StunUntil, StaggerImmuneUntil, RegenAt, ShootReady, RespawnAt, FlashUntil;
         internal bool QueuedAttack;
         internal readonly HashSet<int> Hit = new HashSet<int>();

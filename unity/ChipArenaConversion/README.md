@@ -1,6 +1,6 @@
 # Chip Arena — native Unity conversion
 
-**First-person stability and aiming checkpoint; the full conversion is not complete.** This project is separate from both the Electron game and the accepted Unity lab. The target is native Unity/C# gameplay and physics, with no Node/Rapier sidecar.
+**Melee and riposte checkpoint; the full conversion is not complete.** This project is separate from both the Electron game and the accepted Unity lab. The target is native Unity/C# gameplay and physics, with no Node/Rapier sidecar.
 
 ## Run this milestone
 
@@ -29,11 +29,20 @@ The build creates `Builds/Chip-Arena-Native-Conversion-TEST-Windows.zip`. Keep t
 
 ## New in this checkpoint
 
-- Removed pose feedback: the base animation is saved before casting, recoil, IK and first-person torso settling. Repeated render frames no longer reapply those adjustments to themselves.
-- The camera and visible pilots use Unity’s interpolated body transforms. Camera/aim-ray/presentation work runs in LateUpdate; analytic animation fills the gap between 60 Hz simulation ticks and freezes with the menu.
-- Gun aiming now eases into source ADS offsets/sight alignment and FOV counter-scale. The rifle has the source-style circular scope mask and reticle; hidden scoped hands no longer leave floating glow.
+- Standard melee now checks the source moving sweep throughout its active window. Targets and props can be hit once per swing; intervening cover and other pilots obstruct contact. The third Sword attack uses its narrower overhead sweep.
+- Source attack footwork is present: 0.65 m Sword, 0.85 m Daggers, 0.55 m Shield and 0.45 m Greatsword, subject to native collisions. Attack commitment stops voluntary movement immediately.
+- Timed melee blocks rebound/stun the attacker. Human melee blockers can counter with LMB or roll out during the remaining block window; an action that cannot start preserves the block. The counter replaces its own riposte stun with the weapon's ordinary stagger; Daggers retain the two-hit opportunity and stagger escape window.
+- Shift can cancel a human standard primary. Cancelling before contact refunds only the remaining attack cooldown down to the roll duration, never spent stamina. Casts, reloads and ordinary block windows stay committed.
+- Contact impulses now use source external-velocity decay, counter-steering and a single vertical kick. This changes knockback across weapon classes; actual PhysX response needs playtesting.
+- **Bots use my weapon** makes weapon-specific duels easier to test. The HUD displays a riposte prompt after a successful melee block.
 
-The menu title is **Smooth view & scope**. Test standing still with a staff, repeated casts, walking/turning, block, pause/resume and **V**. With Rifle, hold/release **Q** and try reload/roll interruptions. This is a source test checkpoint; actual Windows rendering still needs verification.
+The menu title is **Melee & riposte**. Start with Sword, one bot, **Bots use my weapon** enabled and Stationary targets off. Try RMB just before its swing lands, then LMB; try Shift during your windup and recovery. Repeat with Daggers/Greatsword and check strikes near cover. First-person fixes, V toggle, scope, staff and glow remain included.
+
+Melee E specials, Shield knockdown, launch/juggle/recovery and special Chip handlers are **still pending**. Shield currently uses a grounded stagger. The pinned source's old held-shield-guard path is inactive: its E definition is a throw, so no new held-guard control was invented here.
+
+## First-person stability and aiming (retained)
+
+The base animation is saved before casting/recoil/IK/torso adjustments. Camera and visual pilots use interpolated body transforms and a continuous animation clock. ADS eases into sight alignment; the rifle has a circular scope. Native Windows frame pacing and visual acceptance remain separate from numerical checks.
 
 ## Staff and glow update (retained)
 

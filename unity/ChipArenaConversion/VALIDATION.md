@@ -71,3 +71,13 @@ The existing native clip-binding, shader, audio import, icon and Windows package
 - Full mechanic, presentation, online, account and save compatibility; all pending rows in CONVERSION-STATUS.md.
 
 No production update, live endpoint, save migration or automatic release was performed.
+
+## Melee / riposte checkpoint (2026-10-07)
+
+Passed here: 64 original-source swing fixtures / 448 timing and footwork samples / 5,376 contact candidates, 90 block/riposte cases and nine external-motion cases. The exporter verifies six pinned Git blobs before evaluating original TypeScript functions and sweep expressions. Counter-steering retains the source's pre-clamp external-speed calculation. Additional checks cover contact deduplication, occlusion not consuming contacts, integrated step distances, block clamps, rebound cap and non-repeating lift. Existing first-person, ability, content, animation and managed lab regressions remain passing.
+
+Runtime, Editor and Windows-conditional compilation against actual Unity 6000.3.24f1 assemblies pass with warnings as errors. Package metadata checks and four package regressions pass. The source fixture export is deterministic. These are code/source checks; no native Unity execution or EXE was produced here.
+
+The added Windows gate calls actual NativeArena handlers inside the isolated preview physics scene: all four primary hits, a target entering an active sweep, repeat-hit prevention, cover occlusion, teams, roll i-frames, human vs bot riposte, failed counters preserving protection, counter stagger, early/late roll-cancels, committed actions and native impulse assignment. It is compiled but **unrun here**. Melee visibility queries use the root's PhysicsScene and expand their nonalloc buffer on saturation. See [PhysicsScene.Raycast](https://docs.unity3d.com/6000.3/Documentation/ScriptReference/PhysicsScene.Raycast.html).
+
+Owner acceptance: one same-weapon bot with Stationary targets off; Sword block/counter, Daggers two-hit/escape behavior, Greatsword windup/recovery roll-cancels, all four sweeps at walls/height differences, team protection, and first/third-person animation alignment. Compare knockback for guns and magic as well, since external velocity handling is shared. E specials and Shield knockdown remain unavailable, so do not use this milestone as their acceptance test.

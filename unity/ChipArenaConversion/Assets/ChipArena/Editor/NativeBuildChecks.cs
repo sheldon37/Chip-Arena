@@ -39,6 +39,8 @@ namespace ChipArena.UnityConversion.Editor
             var fixtures=JsonUtility.FromJson<ParityFixtures>(File.ReadAllText(Path.Combine(Application.dataPath,"../Tests/source-parity.json")));
             foreach(var test in NativeParityChecks.Run(data,fixtures))Debug.Log("PASS "+test);
             var presentation=JsonUtility.FromJson<PresentationFixtures>(File.ReadAllText(Path.Combine(Application.dataPath,"../Tests/presentation-parity.json")));
+            var melee=JsonUtility.FromJson<MeleeFixtures>(File.ReadAllText(Path.Combine(Application.dataPath,"../Tests/melee-parity.json")));
+            foreach(var test in NativeMeleeChecks.Run(data,melee))Debug.Log("PASS "+test);
             foreach(var test in NativeMotionChecks.Run())Debug.Log("PASS "+test);
             foreach(var test in NativeVisualChecks.Run(data))Debug.Log("PASS "+test);
             foreach(var test in NativePresentationChecks.Run(data,presentation))Debug.Log("PASS "+test);
@@ -78,7 +80,7 @@ namespace ChipArena.UnityConversion.Editor
                             if(ReferenceEquals(shown.Actors[0],pilot.Pose)||Vector3.Distance(NativeArena.Vec(shown.Actors[0].Position),pilot.Body.transform.position-Vector3.up*.865f)>.00001f)
                                 throw new Exception("Render snapshot must copy the interpolated transform");
                             float hp=pilot.Pose.Hp;shown.Actors[0].Hp=0;if(pilot.Pose.Hp!=hp)throw new Exception("Render snapshot changed authority");
-                            CheckGlow(arena,match);
+                            CheckGlow(arena,match);arena.ValidateMelee();
                         }
                         Debug.Log("PASS native map "+map.id+": isolated Edit-mode physics, 8 spawn floors, capsule settling");
                     }

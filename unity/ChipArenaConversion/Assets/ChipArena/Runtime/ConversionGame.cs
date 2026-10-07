@@ -6,7 +6,7 @@ using UnityEngine;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class ConversionPreferences
-    { public string name="Pilot",map="foundry",weapon="pistol";public int bots=3,sets=3,rounds=2;public string combatGlow="Full";public bool teams,friendlyFire,stationary,skipBotDrafts=true,sound=true,firstPerson; }
+    { public string name="Pilot",map="foundry",weapon="pistol";public int bots=3,sets=3,rounds=2;public string combatGlow="Full";public bool mirrorWeapons,teams,friendlyFire,stationary,skipBotDrafts=true,sound=true,firstPerson; }
     public sealed partial class ConversionGame : MonoBehaviour
     {
         private ConversionContent content;private ConversionPreferences prefs;private NativeMatch match;private NativeArena arena;private ArenaPresentation presentation;
@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
             match=new NativeMatch(content){Teams=prefs.teams,RoundsPerSet=prefs.rounds,SetsToWin=prefs.sets,SkipBotDrafts=prefs.skipBotDrafts};
             match.Seats.Add(new NativeSeat{id=1,name=string.IsNullOrWhiteSpace(prefs.name)?"Pilot":prefs.name,spec=prefs.weapon,team=0});
             var weapons=content.weapons.Where(w=>!w.devOnly).Select(w=>w.id).ToArray();
-            for(int i=0;i<prefs.bots;i++)match.Seats.Add(new NativeSeat{id=100+i,name="Pilot "+(i+2),spec=weapons[i%weapons.Length],bot=true,team=prefs.teams?(i+1)%2:i+1});
+            for(int i=0;i<prefs.bots;i++)match.Seats.Add(new NativeSeat{id=100+i,name="Pilot "+(i+2),spec=prefs.mirrorWeapons?prefs.weapon:weapons[i%weapons.Length],bot=true,team=prefs.teams?(i+1)%2:i+1});
             arena=new NativeArena(content,match,prefs.map){FriendlyFire=prefs.friendlyFire,StationaryBots=prefs.stationary};
             if(!match.Start()){error="A match needs at least two opposing sides.";return;}
             generation=arena.Generation;visualClock.Reset(match.Time);pending=new InputFrame();yaw=arena.Local.Yaw;pitch=12;sprint=false;menu=false;showCatalogue=false;cameraView.backgroundColor=NativeArena.ColorOf(content.Map(prefs.map).sky);
@@ -135,7 +135,7 @@ namespace ChipArena.UnityConversion
         }
         private string AbilityStatus(NativePilot p,string slot)
         {
-            var d=content.Ability(p.Seat.spec,slot);if(d==null)return "";
+            var d=content.Ability(p.Seat.spec,slot);if(d==null)return p.Weapon.@class=="melee"&&slot=="q"?"LMB  "+(p.Weapon.cost*p.Stats["resourceCost"]).ToString("0.#")+" stamina  ·  Shift cancels swing":p.Weapon.@class=="melee"?"E special moves: pending conversion":"";
             if(d.kind=="ads")return "Q  Aim (hold)";
             float left=slot=="q"?p.QReady-arena.Time:p.ECharges>0?0:p.EReady-arena.Time;
             string state=p.AbilityCast?.Definition==d?"casting":left>0?left.ToString("0.0")+"s":p.Mana<NativeAbilityRules.Cost(d,p.Stats)?"low mana":"ready";
@@ -162,6 +162,7 @@ namespace ChipArena.UnityConversion
                 if(!menu&&match.Phase==NativePhase.Fight)
                 {
                     if(!presentation.ScopeActive)GUI.Label(new Rect(width/2-10,height/2-14,30,30),"+",heading);
+                    if(arena.RiposteOpen(p))GUI.Label(new Rect(width/2-155,height/2+40,310,42),"RIPOSTE  ·  LMB counter",label);
                     if(p.Hp<=0)GUI.Label(new Rect(width/2-160,height/2-80,320,60),"ELIMINATED — round in progress",heading);
                     if(Time.unscaledTime<presentation.LastHitUntil)GUI.Label(new Rect(width/2+20,height/2-35,160,50),(presentation.LastHeadshot?"HEADSHOT ":"HIT ")+presentation.LastHitDamage.ToString("0.#"),label);
                 }
@@ -174,7 +175,7 @@ namespace ChipArena.UnityConversion
             if(!menu&&arena!=null)return;
             float panel=Mathf.Min(850,width-60);GUI.Box(new Rect((width-panel)/2,68,panel,height-120),"");
             GUILayout.BeginArea(new Rect((width-panel)/2+22,86,panel-44,height-155));scroll=GUILayout.BeginScrollView(scroll);
-            GUILayout.Label("Native conversion · Smooth view & scope",heading);
+            GUILayout.Label("Native conversion · Melee & riposte",heading);
             GUILayout.Label("Native physics, first/third-person cameras, standard weapons and Q/E abilities, rounds and a stat-Chip draft. Full conversion is in progress.",label);
             if(arena!=null&&GUILayout.Button("Resume",button))menu=false;
             if(GUILayout.Button(showCatalogue?"Back to match setup":"Browse source catalogue (15 weapons / 236 Chips)",button))showCatalogue=!showCatalogue;
@@ -191,6 +192,7 @@ namespace ChipArena.UnityConversion
             GUILayout.Label("Arena",label);at=0;foreach(var map in content.maps)
             {if(at%3==0)GUILayout.BeginHorizontal();if(GUILayout.Button((prefs.map==map.id?"✓ ":"")+map.name,button))prefs.map=map.id;at++;if(at%3==0)GUILayout.EndHorizontal();}if(at%3!=0)GUILayout.EndHorizontal();
             GUILayout.Label("Bots: "+prefs.bots+"  (up to 8 total pilots)",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.bots,1,7));
+            prefs.mirrorWeapons=GUILayout.Toggle(prefs.mirrorWeapons,"Bots use my weapon (otherwise mixed loadouts)");
             prefs.teams=GUILayout.Toggle(prefs.teams,"Teams — alternating red / blue sides");prefs.friendlyFire=GUILayout.Toggle(prefs.friendlyFire,"Friendly fire");prefs.stationary=GUILayout.Toggle(prefs.stationary,"Stationary targets");prefs.skipBotDrafts=GUILayout.Toggle(prefs.skipBotDrafts,"Skip bot draft screens");prefs.sound=GUILayout.Toggle(prefs.sound,"Gun/reload/hit sounds");
             bool first=GUILayout.Toggle(prefs.firstPerson,"First-person camera (V switches during play)");if(first!=prefs.firstPerson){prefs.firstPerson=first;Save();}
             GUILayout.BeginHorizontal();GUILayout.Label("Combat glow",label);

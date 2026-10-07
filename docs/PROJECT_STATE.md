@@ -115,9 +115,9 @@ Windows validation and desktop distribution cutover remain separate work.
   branch `claude/sleepy-ritchie-g8ruhv`, PR into `claude/visual-revision`; merge and test publication in DEV_LOG. Owner
   review of the new style and native Windows feel remain.
 
-- Isolated native Unity conversion (2026-10-07), `codex/unity-conversion`: source checkpoint now includes
-  first-person stability (base-pose feedback fix, interpolated camera and continuous animation clock), smooth ADS
-  and rifle scope, plus the staff/glow and native standard-ability foundations. Original game and accepted Unity lab remain separate; no updater cutover.
-  Managed/source checks and Unity API compilation pass; shader import, native gameplay and Windows EXE/visual acceptance
-  remain unrun here. Next: build with activated Unity 6000.3.24f1 and check first-person idle/casts/movement, pause/V and rifle ADS/scope at different display rates.
-  Exact coverage, native adaptations and remaining full-conversion work: unity/ChipArenaConversion/CONVERSION-STATUS.md.
+- Isolated native Unity conversion (2026-10-07), `codex/unity-conversion`: latest checkpoint ports primary melee
+  sweeps/footwork, timed-block riposte, human roll-cancel and corrected shared external impulses. First-person stability,
+  smooth ADS/scope, staff/glow and standard gun/magic abilities remain included. Original game and accepted lab stay separate.
+  Source/managed checks and Unity API compilation pass; native contact/physics gates and Windows visual/EXE acceptance
+  remain unrun here. Next: same-weapon bot melee/knockback playtest, then melee E specials and knockdown/juggle/recovery.
+  No updater cutover. Exact coverage and pending work: unity/ChipArenaConversion/CONVERSION-STATUS.md.
