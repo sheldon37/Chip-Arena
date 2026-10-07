@@ -115,9 +115,10 @@ Windows validation and desktop distribution cutover remain separate work.
   branch `claude/sleepy-ritchie-g8ruhv`, PR into `claude/visual-revision`; merge and test publication in DEV_LOG. Owner
   review of the new style and native Windows feel remain.
 
-- Isolated native Unity conversion (2026-10-07), `codex/unity-conversion`: latest checkpoint adds all four standard
-  melee E actions, swept dagger/shield throws, harmless shield retrieval and bounded knockdown/pickup/roll recovery.
-  Special/recovery presentation, first-person stability, smooth ADS/scope, staff/glow and gun/magic abilities are included.
-  Source/managed checks and real Unity API compilation pass; native collision/render/build gates and Windows acceptance
-  remain unrun here. Next: four-weapon E/recovery playtest, then remaining combat modifiers/Chip handlers and production visuals.
-  Original game/lab remain separate; no updater cutover. Exact coverage: unity/ChipArenaConversion/CONVERSION-STATUS.md.
+- Isolated native Unity conversion (2026-10-07), `codex/unity-conversion`: broad conversion work is
+  continuing under the owner's request to finish before playtest. The current checkpoint adds full
+  Chip drafting, DEV/PvE authority, source models/motion/audio, cosmetic bodies, account/profile
+  integration and separate native LAN rooms. Source remains pinned to `05950ea`; no original-game cutover.
+  Managed/source fixtures, loopback transport and real Unity API compilation pass. Actual native
+  Editor/render/PhysX and Windows build remain unrun. Remaining parity/coverage is documented in
+  `unity/ChipArenaConversion/CONVERSION-STATUS.md`. No merge or updater/Site publication.

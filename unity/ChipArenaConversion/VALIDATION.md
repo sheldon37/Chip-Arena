@@ -91,3 +91,17 @@ Runtime, Editor and Windows-conditional player C# compile against real Unity 600
 Added **unrun** Windows build gates exercise actual NativeArena handlers and isolated PhysicsScene queries: E resource/commitment gates, launch and single pickup, two-hit air cap, protected ground recovery and latched roll direction, Greatsword real landing/shared target ledger, swept dagger/shield contacts, starting overlap and cover, reflection caps, harmless return/catch and dead-owner shield cleanup. Native clip repeat-frame checks now include launcher and Greatsword. Projectile glow lifecycle also includes a thrown shield.
 
 Sphere casts are paired with explicit starting-overlap queries because a cast alone cannot detect every initial overlap; cover takes precedence if both cover and a target contain the spawn. See [Unity PhysicsScene.SphereCast](https://docs.unity3d.com/6000.3/Documentation/ScriptReference/PhysicsScene.SphereCast.html). No native PhysX/rendered gameplay, activated Editor build, or Windows EXE ran in this workspace. Build and playtest the four E moves and recovery before accepting feel or visual parity. Full source body/head volumes, planted recovery IK and physical ragdolls remain pending.
+
+## Broad conversion checkpoint, 2026-10-07
+
+Passed: complete inherited managed suites; 24 PvE scaling cases and six source wave schedules;
+72 original-engine wound cases, 36 horde hit distributions, 80 exact PRNG outputs and 1,001 music positions;
+debris energy/contact/group caps; bounded transport compression/UTF-8, two real loopback clients,
+ordered messages, large snapshot delivery, disconnect/reconnect and bad-magic rejection. Four package dependency regressions pass.
+Runtime, Windows-conditional player and Editor C# compile against Unity 6000.3.24f1 assemblies with warnings as errors.
+
+Asset gates now require the original 83 audio files, source models, 159 motion clips, full draft catalog,
+and error-free Unity source shaders. These **native gates have not run here**. Source audio and export files are
+locked by size/Git blob hash in tools/asset-lock.json; unexpectedly large unlisted files still fail packaging.
+No activated Editor, native PhysX/rendered test, live account service, internet/LAN session between computers,
+or Windows EXE ran in this workspace. These checks do not certify complete conversion or visual parity.

@@ -103,10 +103,10 @@ namespace ChipArena.UnityConversion
             var excluded=Array.Find(data.incompatibilities,x=>x.spec==spec);
             return data.chips.Where(c=>c.tags.Any(tags.Contains)&&(!held.TryGetValue(c.id,out int n)||n<c.max)&&!blocked.Contains(c.id)&&!(c.excludes?.Any(Has)??false)&&!(excluded?.ids.Contains(c.id)??false)).ToList();
         }
-        public static List<string> Offers(ConversionContent data,string spec,IReadOnlyDictionary<string,int> held,Func<double> random,int count=6,Func<ContentChip,bool> filter=null)
+        public static List<string> Offers(ConversionContent data,string spec,IReadOnlyDictionary<string,int> held,Func<double> random,int count=6,Func<ContentChip,bool> filter=null,Dictionary<string,double> weights=null,bool exclusives=true)
         {
             var pool=Eligible(data,spec,held);if(filter!=null)pool.RemoveAll(c=>!filter(c));var result=new List<string>();count=Math.Max(1,Math.Min(12,count));
-            var odds=Array.Find(data.exclusiveOdds,x=>x.spec==spec);
+            var odds=exclusives?Array.Find(data.exclusiveOdds,x=>x.spec==spec):null;
             while(pool.Count>0&&result.Count<count)
             {
                 var exclusive=odds==null?new List<ContentChip>():pool.Where(c=>c.tags.Contains(spec)).ToList();ContentChip pick;
@@ -114,7 +114,7 @@ namespace ChipArena.UnityConversion
                 else
                 {
                     var tiers=data.rarities.Where(r=>pool.Any(c=>c.rarity==r.id)).ToArray();bool leetWeights=tiers.Any(r=>r.leetWeight>0);
-                    double Weight(RarityData r)=>spec=="leet"?(leetWeights?r.leetWeight:1):r.weight;
+                    double Weight(RarityData r)=>weights!=null?(weights.TryGetValue(r.id,out double value)?value:0):spec=="leet"?(leetWeights?r.leetWeight:1):r.weight;
                     double roll=Clamp(random(),0,.999999999)*tiers.Sum(Weight);var tier=tiers[tiers.Length-1];
                     foreach(var r in tiers){roll-=Weight(r);if(roll<0){tier=r;break;}}
                     var choices=pool.Where(c=>c.rarity==tier.id).ToArray();pick=choices[Math.Min(choices.Length-1,(int)Math.Floor(Math.Max(0,random())*choices.Length))];

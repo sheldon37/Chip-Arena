@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
     // Angles here are radians; native input/camera yaw remains degrees.
     public sealed class NativeMeleeSwing
     {
-        public string Spec;public int Index;public float At,HitAt,HitUntil,Until,Yaw,StepAt,StepUntil,Distance,Range,Arc;
+        public string Spec;public int Index,Id,Remaining;public float DamageScale=1;public float At,HitAt,HitUntil,Until,Yaw,StepAt,StepUntil,Distance,Range,Arc;
         private readonly HashSet<string> hit=new HashSet<string>();
         public bool Contact(string id,float time,V3 delta,float extra,bool visible)
         {

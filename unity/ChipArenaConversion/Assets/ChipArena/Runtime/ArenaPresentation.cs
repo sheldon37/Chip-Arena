@@ -70,7 +70,7 @@ namespace ChipArena.UnityConversion
             }
             for(int i=7;i<materials.Count;i++){materials[i].SetColor("_Emission",colors[i]*.55f);compatibilityMaterials[i].SetColor("_Emission",colors[i]*.55f);}
             Debug.Log($"Unity prototype renderer: {RenderingMode}; {SystemInfo.graphicsDeviceType}; {SystemInfo.graphicsDeviceName}; shaderSupported={shader.isSupported}");
-            captured=new CapturedAnimation();if(!buildArena)combatGlow=new NativeCombatGlow(transform);
+            captured=new CapturedAnimation();if(!buildArena){combatGlow=new NativeCombatGlow(transform);sourceModels=new NativeSourceModels();}
             string[] soundNames={"","pistol","rifle","machinegun"};
             for(int i=1;i<4;i++) gunSounds[i]=Resources.Load<AudioClip>("GunAudio/"+soundNames[i]);
             reloadStart=Resources.Load<AudioClip>("GunAudio/reload-start"); reloadEnd=Resources.Load<AudioClip>("GunAudio/reload-end");hitSound=Resources.Load<AudioClip>("GunAudio/hit");
@@ -108,7 +108,7 @@ namespace ChipArena.UnityConversion
         }
         public void ResetPresentation()
         {
-            combatGlow?.Clear();aimMotion.Reset();viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
+            ClearSourceActors();combatGlow?.Clear();aimMotion.Reset();viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
             foreach(var source in shotAudio) if(source!=null) source.Stop(); if(localAudio!=null) localAudio.Stop();
             foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear();
             foreach(var o in debris) if(o!=null) Destroy(o); debris.Clear();
@@ -117,7 +117,7 @@ namespace ChipArena.UnityConversion
         public Vector3 Position(Actor actor) { Vector3 p; return visualPositions.TryGetValue(actor.Id,out p)?p:Vec(actor.Position); }
         public void Render(Snapshot s, float renderTime, bool smooth)
         {
-            if(s==null) return;
+            if(s==null) return;sourceModels?.Begin();
             foreach(var list in batches) list.Clear(); DrawnParts=0;
             removedRigs.Clear();
             foreach(int id in rigs.Keys) { bool exists=false; foreach(var a in s.Actors) if(a.Id==id) { exists=true; break; } if(!exists) removedRigs.Add(id); }
@@ -183,6 +183,7 @@ namespace ChipArena.UnityConversion
             else if(Viewer) rig.Preview(ViewerSet,PreviewName.Substring(PreviewName.IndexOf('/')+1),ViewerTime,Vector3.zero);
             else rig.ActorPose(a,position,time);
             if(a.Id==LocalId) PlayerState=rig.State;
+            if(SourceCharacter(rig,a,time))return;
             foreach(var box in CapturedRig.Boxes)
             {
                 int tint=time<a.FlashUntil?4:box.Color<0?color:box.Color;
@@ -293,7 +294,7 @@ namespace ChipArena.UnityConversion
         }
         private void OnDestroy()
         {
-            combatGlow?.Dispose();viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
+            ClearSourceActors();sourceModels?.Dispose();combatGlow?.Dispose();viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
             foreach(var m in materials) Destroy(m);
             foreach(var m in compatibilityMaterials) Destroy(m);
             if(particleMaterial!=null) Destroy(particleMaterial);

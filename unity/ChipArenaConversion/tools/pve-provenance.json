@@ -1,0 +1,160 @@
+{
+  "sourceCommit": "05950eaef80ff2483a9c44d898cad98be1a76bbc",
+  "files": [
+    {
+      "path": "src/shared/arcade-content.ts",
+      "gitBlob": "24a4e3d632e7a5b91773c3fdb4c323e8be58ae80",
+      "bytes": 2077
+    },
+    {
+      "path": "src/shared/architecture.ts",
+      "gitBlob": "165ad013dd0ef286babd24d3b147bcf84c4779b9",
+      "bytes": 2523
+    },
+    {
+      "path": "src/shared/arena.ts",
+      "gitBlob": "d476b1c8049169273d79f45b9300dff61ba5c039",
+      "bytes": 3328
+    },
+    {
+      "path": "src/shared/body-damage.ts",
+      "gitBlob": "8944ccba2dd59a400f5a040e21d47a22ec6b0afa",
+      "bytes": 8494
+    },
+    {
+      "path": "src/shared/body-hit.ts",
+      "gitBlob": "48e546c0772a0f2c1ffcf4da73c06530be815084",
+      "bytes": 646
+    },
+    {
+      "path": "src/shared/boss-music.ts",
+      "gitBlob": "12a9c174c4401509a02eb253fa4ef6c7a07634b6",
+      "bytes": 7657
+    },
+    {
+      "path": "src/shared/chaos-content.ts",
+      "gitBlob": "0c2863e8ddd884651de2452a96536fe159c320bd",
+      "bytes": 11931
+    },
+    {
+      "path": "src/shared/config.ts",
+      "gitBlob": "54454ee3110e936ada16d429813bb55b4a07eb1f",
+      "bytes": 3677
+    },
+    {
+      "path": "src/shared/content.ts",
+      "gitBlob": "b0613af732ff5a8fb28374212f4631ae41a0ca43",
+      "bytes": 42892
+    },
+    {
+      "path": "src/shared/elements.ts",
+      "gitBlob": "daece9fe825424298366e3689ac25ad8dad039a9",
+      "bytes": 1325
+    },
+    {
+      "path": "src/shared/emperor-content.ts",
+      "gitBlob": "c102ccf30022d1848e37cf34eb259b39ed666a48",
+      "bytes": 2102
+    },
+    {
+      "path": "src/shared/gun-kit.ts",
+      "gitBlob": "276f060dd216343b0c4e88b3c96a28b643dd8610",
+      "bytes": 3404
+    },
+    {
+      "path": "src/shared/leet-content.ts",
+      "gitBlob": "0e801d175ffbe113926cae1bd9543f580eb76322",
+      "bytes": 3194
+    },
+    {
+      "path": "src/shared/magic-chips.ts",
+      "gitBlob": "c2c711eb3e9d27cbc7599440d418b210a5efdb07",
+      "bytes": 3511
+    },
+    {
+      "path": "src/shared/magic-kit.ts",
+      "gitBlob": "23b5e90ba48348abe32944b2fa7151c6c0555724",
+      "bytes": 4427
+    },
+    {
+      "path": "src/shared/maps.ts",
+      "gitBlob": "994b9cc3c350ab5e3b332e60b13242074ebff1d5",
+      "bytes": 7582
+    },
+    {
+      "path": "src/shared/pong.ts",
+      "gitBlob": "3916edf48f0196621fcf26657405b4d9c2bb51fe",
+      "bytes": 6611
+    },
+    {
+      "path": "src/shared/power-chips.ts",
+      "gitBlob": "59c4f19ee1f5d3b740b076c42fe668ea1464800e",
+      "bytes": 7114
+    },
+    {
+      "path": "src/shared/pve/balance.ts",
+      "gitBlob": "448a50ef096ac858864aa41ab74b90914573a53d",
+      "bytes": 9278
+    },
+    {
+      "path": "src/shared/pve/contract.ts",
+      "gitBlob": "b8fea2f9d4c0c79ba544881db57f21b5eb67129f",
+      "bytes": 18965
+    },
+    {
+      "path": "src/shared/pve/gibs.ts",
+      "gitBlob": "d8fc009d574671b3a863555adb31466affd6561e",
+      "bytes": 5207
+    },
+    {
+      "path": "src/shared/pve/layout.ts",
+      "gitBlob": "78fee2ba0a6dbce844d91de8ddff6f1e4605fb34",
+      "bytes": 6005
+    },
+    {
+      "path": "src/shared/pve/money-chips.ts",
+      "gitBlob": "12c945238712391f2d0d6d02924fadafaba9a8f1",
+      "bytes": 4564
+    },
+    {
+      "path": "src/shared/pve/rng.ts",
+      "gitBlob": "86daa4bdecd5b107c1b0b8e356d5c015d922ba34",
+      "bytes": 2124
+    },
+    {
+      "path": "src/shared/pve/waves.ts",
+      "gitBlob": "969cc93bd2d46979a8f45c3e464d659554686e04",
+      "bytes": 5827
+    },
+    {
+      "path": "src/shared/siren-chips.ts",
+      "gitBlob": "704a06338af7e54c61ba84839d1e826af1ea7a18",
+      "bytes": 1460
+    },
+    {
+      "path": "src/shared/siren-content.ts",
+      "gitBlob": "54838d6a83f753d806b736586cce3b32ad6f5d3a",
+      "bytes": 786
+    },
+    {
+      "path": "src/shared/siren-contract.ts",
+      "gitBlob": "ad494dfd203d8f12cdfc69b2c73004807af28ccc",
+      "bytes": 10907
+    },
+    {
+      "path": "src/shared/siren-stage-layout.ts",
+      "gitBlob": "51c17ff55199771c09767ca056585fffc5977919",
+      "bytes": 7120
+    },
+    {
+      "path": "src/shared/souls-combat.ts",
+      "gitBlob": "f0a65799251f93731d9b77bf04e631b8f85f5217",
+      "bytes": 4518
+    },
+    {
+      "path": "src/shared/vertical-arena.ts",
+      "gitBlob": "4f24316afaf3505a23fca4204370587ca4bef8c0",
+      "bytes": 1135
+    }
+  ]
+}

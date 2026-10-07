@@ -1,0 +1,521 @@
+{
+  "sourceCommit": "05950eaef80ff2483a9c44d898cad98be1a76bbc",
+  "assets": [
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/arcade-heavy.wav",
+      "bytes": 10186,
+      "gitBlob": "9ba1a094f76505641fba31e583db59b3f27d156a",
+      "source": "public/audio/arcade-heavy.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/arcade-kick.wav",
+      "bytes": 7982,
+      "gitBlob": "b7ba0a4e7e49a5cb9743c5bfd023b5d06e22a43f",
+      "source": "public/audio/arcade-kick.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/arcade-parry.wav",
+      "bytes": 13274,
+      "gitBlob": "4e5e811f5763d6a5ee18dc778a016e8a7b1220d3",
+      "source": "public/audio/arcade-parry.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/arcade-punch.wav",
+      "bytes": 5336,
+      "gitBlob": "7a12e9599ecabd68d36322e26d13aa0e2f89fdb0",
+      "source": "public/audio/arcade-punch.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/bass-van.mp3",
+      "bytes": 54482,
+      "gitBlob": "475775c45158b47ed64c79418c61957e8d262d30",
+      "source": "public/audio/bass-van.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/burn-tick.wav",
+      "bytes": 6220,
+      "gitBlob": "bbd2b4169524d0989f2d9b6f6762fa9246c9f59b",
+      "source": "public/audio/burn-tick.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/clown-love.mp3",
+      "bytes": 81231,
+      "gitBlob": "bb1a072d3d0d53d2da94d68471673adb1ffa6c27",
+      "source": "public/audio/clown-love.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/countdown.wav",
+      "bytes": 6220,
+      "gitBlob": "ee9357fde8acedde0a9d1edd0011f3b635dcd37c",
+      "source": "public/audio/countdown.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/daggers.wav",
+      "bytes": 8424,
+      "gitBlob": "4ff2cf38b9f274bfaad9db7744327454ddbc6335",
+      "source": "public/audio/daggers.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/darkness.wav",
+      "bytes": 26504,
+      "gitBlob": "0375ccbb552535058cb09971df0413430b946ef1",
+      "source": "public/audio/darkness.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/dash.wav",
+      "bytes": 11952,
+      "gitBlob": "375198dde380791e225b2d3f8940349ff5c8f8bf",
+      "source": "public/audio/dash.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/demon-step.wav",
+      "bytes": 28156,
+      "gitBlob": "b295a0db2955ab646727e4fe476e117672361522",
+      "source": "public/audio/demon-step.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/electric-hook-hit.wav",
+      "bytes": 69450,
+      "gitBlob": "23b520c292ed5acff21e9e5921899612a3fbdbcc",
+      "source": "public/audio/electric-hook-hit.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/electric-hook.wav",
+      "bytes": 31444,
+      "gitBlob": "9218a1416b8bbaf8818604da95050e5e8b4b43c0",
+      "source": "public/audio/electric-hook.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/explosion.wav",
+      "bytes": 30914,
+      "gitBlob": "5f1f0dee2b0b59064088901d4cba31149f9d60b3",
+      "source": "public/audio/explosion.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/fire.wav",
+      "bytes": 20330,
+      "gitBlob": "ff2d93eca648a99221aaebf9a146db7ceb28a26f",
+      "source": "public/audio/fire.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/go.wav",
+      "bytes": 15920,
+      "gitBlob": "8b5371ab15ec48490e0efd98707bd42fd94467bf",
+      "source": "public/audio/go.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/greatsword.wav",
+      "bytes": 21212,
+      "gitBlob": "f4276ebece07b8961965c8f86165eb7421ba63ea",
+      "source": "public/audio/greatsword.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/hit.wav",
+      "bytes": 2972,
+      "gitBlob": "9c7770b553d0953c69ec71ea49de0aa2fd3236e7",
+      "source": "public/audio/hit.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/hurt.wav",
+      "bytes": 9746,
+      "gitBlob": "16d3da981dfe0f514ed1673ece829e32539a0863",
+      "source": "public/audio/hurt.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/install.wav",
+      "bytes": 18566,
+      "gitBlob": "009106913c5d807bbfbe7f7d647256591ef3b861",
+      "source": "public/audio/install.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/intros/arc-salute.mp3",
+      "bytes": 77828,
+      "gitBlob": "d55ad238aefd3dbaa6bcebacdb115637a82647d7",
+      "source": "public/audio/intros/arc-salute.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/intros/dev-ansatsuken.mp3",
+      "bytes": 116282,
+      "gitBlob": "e9f1bb7b5758fe5f906d95e0a75c0d583b1c2945",
+      "source": "public/audio/intros/dev-ansatsuken.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/intros/dev-emperor.mp3",
+      "bytes": 125895,
+      "gitBlob": "86f9bbdabdca058b37143b80d0dd2038cf7a6aa1",
+      "source": "public/audio/intros/dev-emperor.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/intros/dev-matrix.mp3",
+      "bytes": 129237,
+      "gitBlob": "acaf3b93376c96f59fd7ea8408edc82b6a5cdb71",
+      "source": "public/audio/intros/dev-matrix.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/intros/neon-drop.mp3",
+      "bytes": 77827,
+      "gitBlob": "4c74ee77e1fb4bddfabd2b152f4b8cd84541ecfa",
+      "source": "public/audio/intros/neon-drop.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/intros/pulse-wave.mp3",
+      "bytes": 77828,
+      "gitBlob": "9164647ca4e417197bd71bf2941c30799e99b904",
+      "source": "public/audio/intros/pulse-wave.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/intros/signal-spin.mp3",
+      "bytes": 77829,
+      "gitBlob": "c5b162c77355a0249a56c2d47a720e772ed00ff6",
+      "source": "public/audio/intros/signal-spin.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/intros/vector-slide.mp3",
+      "bytes": 77830,
+      "gitBlob": "b10a49861f1be814c36932ba5c8dad6c2eab3ca4",
+      "source": "public/audio/intros/vector-slide.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/intros/weapon-daggers.mp3",
+      "bytes": 68089,
+      "gitBlob": "17cdec385fcd24d06417f3ec029e8b9b474d83bb",
+      "source": "public/audio/intros/weapon-daggers.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/intros/weapon-darkness.mp3",
+      "bytes": 68089,
+      "gitBlob": "793235dc304d9668514fb6b8ad9165ad9cfdb450",
+      "source": "public/audio/intros/weapon-darkness.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/intros/weapon-fire.mp3",
+      "bytes": 68089,
+      "gitBlob": "dac86c9c9e700545f30cd04758034878ff81a92c",
+      "source": "public/audio/intros/weapon-fire.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/intros/weapon-greatsword.mp3",
+      "bytes": 68089,
+      "gitBlob": "2b39b2030db84cc1835c686f3523af4d038656fa",
+      "source": "public/audio/intros/weapon-greatsword.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/intros/weapon-lightning.mp3",
+      "bytes": 68089,
+      "gitBlob": "fd97f05e970d9d71eb9cce30e3a3a86e640cfd85",
+      "source": "public/audio/intros/weapon-lightning.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/intros/weapon-machinegun.mp3",
+      "bytes": 68089,
+      "gitBlob": "eca0050c0d032a384a3189eab4140228832ea613",
+      "source": "public/audio/intros/weapon-machinegun.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/intros/weapon-pistol.mp3",
+      "bytes": 68089,
+      "gitBlob": "e687d941c8dd6a78b1653dbfcb280790f5d668e8",
+      "source": "public/audio/intros/weapon-pistol.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/intros/weapon-rifle.mp3",
+      "bytes": 68089,
+      "gitBlob": "9d5fccb4599546c77608d107741b2a93db0646f6",
+      "source": "public/audio/intros/weapon-rifle.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/intros/weapon-shield.mp3",
+      "bytes": 68089,
+      "gitBlob": "9e4565514fb763514867fac38400e9e3765665f0",
+      "source": "public/audio/intros/weapon-shield.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/intros/weapon-sword.mp3",
+      "bytes": 68089,
+      "gitBlob": "071f2f30750e8aaf93b310b1b484156d5d6a6223",
+      "source": "public/audio/intros/weapon-sword.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/intros/weapon-water.mp3",
+      "bytes": 68089,
+      "gitBlob": "e439c0c80d7749679f963ba22947bfe5a4d98bb3",
+      "source": "public/audio/intros/weapon-water.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/jump.wav",
+      "bytes": 8424,
+      "gitBlob": "b6c7e3c98b70aa992440b2ff4f80548589d60338",
+      "source": "public/audio/jump.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/lightning.wav",
+      "bytes": 9306,
+      "gitBlob": "16d8fda286dd6d10271356c5291ad77c1c055872",
+      "source": "public/audio/lightning.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/lose.wav",
+      "bytes": 30914,
+      "gitBlob": "f9ea3440c25f45c4ced3c41db03f6ee7bc536d33",
+      "source": "public/audio/lose.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/machinegun.wav",
+      "bytes": 5778,
+      "gitBlob": "58eb7eae59384c7d1a8c7d414ab493208b2c12d9",
+      "source": "public/audio/machinegun.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/metal.wav",
+      "bytes": 25622,
+      "gitBlob": "eafab571c8251a617109f703ed687c32858b1262",
+      "source": "public/audio/metal.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/parry.wav",
+      "bytes": 22094,
+      "gitBlob": "b8e2200f99afe71214e5ecaf842556854f4d20f1",
+      "source": "public/audio/parry.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/pistol.wav",
+      "bytes": 10188,
+      "gitBlob": "e56b002779a02b6fb89b3eecf3ef02f54bacb45f",
+      "source": "public/audio/pistol.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/poison-tick.wav",
+      "bytes": 8864,
+      "gitBlob": "df977f40b963139f513c938efe7eda321dd9ba50",
+      "source": "public/audio/poison-tick.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/reload-end.wav",
+      "bytes": 6660,
+      "gitBlob": "5bf66c09d2656ff53995da3a7e0abb21cc7dcfec",
+      "source": "public/audio/reload-end.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/reload-start.wav",
+      "bytes": 10188,
+      "gitBlob": "471c9303eb3f1000f58aad72f645504fc6e4be86",
+      "source": "public/audio/reload-start.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/rifle.wav",
+      "bytes": 7100,
+      "gitBlob": "65783e3ba2421601238f4114d80acaba0bfee3c9",
+      "source": "public/audio/rifle.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/saw-cut.wav",
+      "bytes": 22976,
+      "gitBlob": "b7815aabd5cfc0432c3d6231e6ab7fda647adbd9",
+      "source": "public/audio/saw-cut.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/shield.wav",
+      "bytes": 13716,
+      "gitBlob": "c687775f1ff67254c4435fbaf7abc9f91d9202b0",
+      "source": "public/audio/shield.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/spike-rise.wav",
+      "bytes": 18566,
+      "gitBlob": "f0cb6088e3250e857c7c4af6c96200fa9d8fde44",
+      "source": "public/audio/spike-rise.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/stone.wav",
+      "bytes": 16802,
+      "gitBlob": "fe31abcee5ade87d07aa1120399c124dd5982f8b",
+      "source": "public/audio/stone.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/sword.wav",
+      "bytes": 13274,
+      "gitBlob": "d5ab2b569959f544955c67cb4dd2678634aa64d4",
+      "source": "public/audio/sword.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/ui.wav",
+      "bytes": 4014,
+      "gitBlob": "ec62bb892f95159a412a3aa17d3b5c53511b3477",
+      "source": "public/audio/ui.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/water.wav",
+      "bytes": 17684,
+      "gitBlob": "6a18181c3338989727668c8884ef61e5fa0817b6",
+      "source": "public/audio/water.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/win.wav",
+      "bytes": 33120,
+      "gitBlob": "866369ca3996f1c5f43b8499a2757a5f92329b81",
+      "source": "public/audio/win.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/audio/wood.wav",
+      "bytes": 14156,
+      "gitBlob": "dc98c4376719f5f5cfd33afcc524bae1d9278bae",
+      "source": "public/audio/wood.wav"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/music/afterburner.mp3",
+      "bytes": 304218,
+      "gitBlob": "4df759864be1bcedc133f52b5254ce3c90764205",
+      "source": "public/music/afterburner.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/music/black-siren-protocol.mp3",
+      "bytes": 4547059,
+      "gitBlob": "5648e5e80a004159a52b79c3cbf3d05ca6524af3",
+      "source": "public/music/black-siren-protocol.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/music/cargo-pulse.mp3",
+      "bytes": 283410,
+      "gitBlob": "b5391788e6e8bd30656f5c28353e3e115844a5a9",
+      "source": "public/music/cargo-pulse.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/music/cinder-engine.mp3",
+      "bytes": 271532,
+      "gitBlob": "de14695596ec44b84238f11600f86386e7a7b7b9",
+      "source": "public/music/cinder-engine.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/music/cold-current.mp3",
+      "bytes": 221851,
+      "gitBlob": "7cdb072d7d758dcd161dd7743755a63e9769fbae",
+      "source": "public/music/cold-current.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/music/critical-mass.mp3",
+      "bytes": 316748,
+      "gitBlob": "aca1c8055a50f7c085e45432c493c68e65838462",
+      "source": "public/music/critical-mass.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/music/dust-signal.mp3",
+      "bytes": 377370,
+      "gitBlob": "26af9d656749583b89f3e653362353630bfc02b8",
+      "source": "public/music/dust-signal.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/music/foundry-rush.mp3",
+      "bytes": 334891,
+      "gitBlob": "401fec28e9278b14f8ffef36879afe2c6fe18188",
+      "source": "public/music/foundry-rush.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/music/isotope.mp3",
+      "bytes": 301046,
+      "gitBlob": "0c0ca8a8c7232e3a9d7dbc226b202a98c4cf2f46",
+      "source": "public/music/isotope.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/music/jump-drive.mp3",
+      "bytes": 330137,
+      "gitBlob": "642ff348c679fd6b070da7e977925d8fb17a5fee",
+      "source": "public/music/jump-drive.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/music/kinetic-city.mp3",
+      "bytes": 350443,
+      "gitBlob": "8a2fe05eeb3b39aaf669c4f4df9af9a5983e149e",
+      "source": "public/music/kinetic-city.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/music/lantern-drift.mp3",
+      "bytes": 356492,
+      "gitBlob": "596507872882f3aa88f09e7e9ca81dc2f8934710",
+      "source": "public/music/lantern-drift.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/music/last-set.mp3",
+      "bytes": 325815,
+      "gitBlob": "80d8a5cd43d0ea0d34c396bcd049dda5d6589888",
+      "source": "public/music/last-set.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/music/menu-afterglow.mp3",
+      "bytes": 1237509,
+      "gitBlob": "4e13cfd7a7f468cb9cbab10f9dae6a674a0ba4ac",
+      "source": "public/music/menu-afterglow.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/music/moonlit-wilderness.mp3",
+      "bytes": 2714063,
+      "gitBlob": "f7c54e885c08bc12a72346e88acda7aef4209d45",
+      "source": "public/music/moonlit-wilderness.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/music/neon-recoil.mp3",
+      "bytes": 340074,
+      "gitBlob": "92624af980d9500391a3040209e4a9850d23c207",
+      "source": "public/music/neon-recoil.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/music/night-circuit.mp3",
+      "bytes": 361244,
+      "gitBlob": "b92c6cf157667501b3f13039ba9e7ab302f5478f",
+      "source": "public/music/night-circuit.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/music/orange-line.mp3",
+      "bytes": 321066,
+      "gitBlob": "f92d0545b5c3baee4a0acbb7588075810d4c7e08",
+      "source": "public/music/orange-line.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/music/overpass.mp3",
+      "bytes": 308535,
+      "gitBlob": "4d8458418827cb579acd7e0113d6285a4b7aafe8",
+      "source": "public/music/overpass.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/music/restricted-zone-pulse.mp3",
+      "bytes": 2766060,
+      "gitBlob": "990ed1fea5e47c0388e09761f576806886c04cd2",
+      "source": "public/music/restricted-zone-pulse.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/music/skyline-run.mp3",
+      "bytes": 257130,
+      "gitBlob": "570ac8e0fa18a4320850d3ec187d84b2bad934b3",
+      "source": "public/music/skyline-run.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/music/stone-oath.mp3",
+      "bytes": 343889,
+      "gitBlob": "5bc4948790da62e6a0d0fdde367685f705348532",
+      "source": "public/music/stone-oath.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/Audio/music/violet-avenue.mp3",
+      "bytes": 326252,
+      "gitBlob": "760001c47cae1273569a4b7794e09b27d892d3e9",
+      "source": "public/music/violet-avenue.mp3"
+    },
+    {
+      "path": "Assets/Conversion/Resources/SourceModels.json",
+      "bytes": 6065055,
+      "gitBlob": "64c2e73ce3290e5296c3ed7a4d5973f1a7c51b28",
+      "source": "pinned source export"
+    },
+    {
+      "path": "Assets/Conversion/Resources/SourceMotion.json",
+      "bytes": 3836667,
+      "gitBlob": "7ecced1f40ad6d534a22c32d82a879414adf1734",
+      "source": "pinned source export"
+    },
+    {
+      "path": "Assets/Conversion/Resources/PveContent.json",
+      "bytes": 15429,
+      "gitBlob": "f9338722f27577b48e978187a2fdfb039659abdb",
+      "source": "pinned source export"
+    }
+  ]
+}

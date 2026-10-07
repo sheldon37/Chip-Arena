@@ -42,9 +42,15 @@ def check():
     if not match or match[1] != catalog['editor_version']:
         raise ValueError('The built-in package catalog must match the pinned Editor version')
     validate_dependencies(manifest.get('dependencies'), catalog)
+    locked = json.loads((ROOT / 'tools/asset-lock.json').read_text())['assets']
+    asset_limits = {a['path']: a for a in locked}
+    for rel, receipt in asset_limits.items():
+        data = (ROOT / rel).read_bytes()
+        digest = hashlib.sha1(b'blob ' + str(len(data)).encode() + b'\0' + data).hexdigest()
+        assert len(data) == receipt['bytes'] and digest == receipt['gitBlob'], f'Asset differs from export/source receipt: {rel}'
     guids = set()
     for path, rel in selected():
-        assert path.stat().st_size < 1024 * 1024, f'Unexpected large source asset: {rel}'
+        assert path.stat().st_size < 1024 * 1024 or rel.as_posix() in asset_limits, f'Unexpected large source asset: {rel}'
         if rel.parts[0] == 'Assets' and path.suffix != '.meta':
             assert Path(str(path) + '.meta').is_file(), f'Missing meta: {rel}'
         if path.suffix == '.meta':

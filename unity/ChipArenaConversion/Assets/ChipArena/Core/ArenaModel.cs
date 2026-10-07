@@ -22,8 +22,8 @@ namespace ChipArena.UnityConversion
         public float X, Z, Yaw, Pitch;
         public byte SelectWeapon; // 0=no change, 1=Sword, 2=Pistol, 3=Rifle, 4=MachineGun
         public V3 AimTarget,AbilityTarget;
-        public bool Attack, Block, Roll, Shoot, Jump, Sprint, Aim, Reload, AbilityQ, AbilityE, AbilityEHeld, AbilityEReleased, CancelAbilities;
-        public bool Valid { get { return Sequence >= 0 && MathUtil.Finite(X) && MathUtil.Finite(Z) && MathUtil.Finite(Yaw) && MathUtil.Finite(Pitch) && MathUtil.Finite(AbilityTarget.x) && MathUtil.Finite(AbilityTarget.y) && MathUtil.Finite(AbilityTarget.z) && AbilityTarget.Length<=10000 && MathUtil.Finite(AimTarget.x) && MathUtil.Finite(AimTarget.y) && MathUtil.Finite(AimTarget.z) && AimTarget.Length<=10000 && SelectWeapon<=4; } }
+        public bool Interact;public bool Hadoken,HadokenHeld,Uppercut;public byte SirenAbility;public bool Attack, Block, Roll, Shoot, Jump, Sprint, Aim, Reload, AbilityQ, AbilityE, AbilityEHeld, AbilityEReleased, CancelAbilities;
+        public bool Valid { get { return Sequence >= 0 && MathUtil.Finite(X) && MathUtil.Finite(Z) && MathUtil.Finite(Yaw) && MathUtil.Finite(Pitch) && MathUtil.Finite(AbilityTarget.x) && MathUtil.Finite(AbilityTarget.y) && MathUtil.Finite(AbilityTarget.z) && AbilityTarget.Length<=10000 && MathUtil.Finite(AimTarget.x) && MathUtil.Finite(AimTarget.y) && MathUtil.Finite(AimTarget.z) && AimTarget.Length<=10000 && SelectWeapon<=4 && SirenAbility<=4; } }
         public InputFrame Sanitized()
         {
             if (!Valid) return new InputFrame();
@@ -31,13 +31,14 @@ namespace ChipArena.UnityConversion
             V3 move = new V3(X, 0, Z); if (move.Length > 1) move = move.Normalized;
             input.X = move.x; input.Z = move.z; input.Yaw = Yaw % 360; input.Pitch=MathUtil.Clamp(Pitch,-75,75); return input;
         }
-        public InputFrame HeldOnly() { InputFrame i = this; i.Attack = i.Block = i.Roll = i.Jump = i.Reload = false; i.AbilityQ=i.AbilityE=i.AbilityEReleased=i.CancelAbilities=false; i.SelectWeapon=0; return i; }
+        public InputFrame HeldOnly() { InputFrame i = this; i.Attack = i.Block = i.Roll = i.Jump = i.Reload = false; i.AbilityQ=i.AbilityE=i.AbilityEReleased=i.CancelAbilities=false; i.SelectWeapon=0;i.Hadoken=i.Uppercut=i.Interact=false;i.SirenAbility=0; return i; }
     }
 
     [Serializable]
     public class Actor
     {
         public int VisualSet,MagicVisual;
+        public string SourceSpec,SourceAction,BodyColor="#e5e7eb",AccentColor="#70e1d0",Hat="none";public float SourceAt,SourceUntil,RigScale=1;public int SourceIndex,SourceTotal,SourceSide=1;public bool SourceRanged;
         // Native authority presentation only; the inherited lab wire codec does not transport these.
         public string SpecialKind;public float SpecialAt=-100,SpecialRelease,SpecialUntil,SpecialLanded=-1;
         public bool SpecialReleased,WeaponAway,DownUsed;public float DownAt=-100,DownUntil,DownLanded=-1,DownPickup,DownRoll=-1,DownRollEnd=-1;public V3 DownDirection;

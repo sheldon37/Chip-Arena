@@ -18,6 +18,33 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-07 — Codex — broad native conversion checkpoint (work continuing)
+- Isolated `codex/unity-conversion`, parent `e268aa85c160795d1860b082188cb5e12176bdd4`;
+  gameplay/assets pinned to `05950eaef80ff2483a9c44d898cad98be1a76bbc`. Owner requested the
+  complete conversion before the next playtest; this is a durable intermediate checkpoint, not acceptance.
+- Added native projectile modifiers and the full Chip draft, summons, DEV fighters/Leet/Siren,
+  cooperative waves/economy/recruits/boss phases, debris damage, wound classification and isolated
+  PhysX cosmetic bodies, source model/texture export, 159 source motion clips including entrances,
+  the 83 original audio files, account/profile requests with signed grants and Windows DPAPI,
+  and conversion-only native LAN rooms with host authority, input/state replication and reconnects.
+- Fixed source-parity issues found during integration: double blast falloff on adds, horde limb
+  shares, sustained-fire release, starting-overlap ability contacts and spawn bot-count truncation.
+  New combat systems change hit timing, damage/procs, movement, knockdowns and native network state.
+  Existing first-person base-pose isolation and native staff sockets are retained.
+- Passed locally: managed regression/animation/parity suite; 24 PvE scale cases, six complete source
+  schedules, 72 body-wound cases, 36 horde hit splits, 80 deterministic PRNG values, 1,001 music
+  positions; debris contact caps; strict frame/UTF-8/decompression checks; two real loopback clients,
+  ordered delivery, disconnect/reconnect and malformed-protocol rejection. Four dependency tests pass.
+  Runtime, Windows player and Editor C# compile against actual Unity 6000.3.24f1 assemblies.
+- Native Editor/import/shader/PhysX/rendered tests and Windows EXE build remain unrun. New asset
+  import gates run in the Windows builder. Four large original MP3s are reused by Git blob SHA
+  during this GitData push; the source-package gate in CI must check all 83 files and receipts.
+- Remaining work includes vent-pit/entry presentation, cinematic/environment detail and remaining
+  source presentation adaptations, internet relay/discovery/host migration, admin/account UI parity,
+  and expanded native integration gates. LAN/account functionality has not been tested live.
+  Some cinematic/rig/physics effects are native approximations, not proven visual parity.
+- Branch only; not merged, released, sent to the Electron updater, or published to the Site.
+
 ## 2026-10-07 — Codex — native melee E specials and recovery
 - Separate `codex/unity-conversion`, base `34b0375c1b4817a5c72cd789a0ce8415cfeef377`; source remains `05950ea`.
   Checked branch/source heads, shared policy/state/log and open PRs; no overlapping conversion writer found.

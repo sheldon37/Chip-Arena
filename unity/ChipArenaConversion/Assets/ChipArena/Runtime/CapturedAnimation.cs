@@ -149,7 +149,7 @@ namespace ChipArena.UnityConversion
                 Weapon=a.Weapon; int set=Mathf.Clamp(a.VisualSet,0,3);
                 float dt=Mathf.Clamp(time-lastTime,0,.1f); bool reset=fresh||time<lastTime||time-lastTime>.35f;
                 if(reset) phase=0; lastTime=time;
-                Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,Quaternion.Euler(0,a.Yaw,0));
+                Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,Quaternion.Euler(0,a.Yaw,0));Root.transform.localScale=Vector3.one*a.RigScale;
                 float speed=new Vector2(a.Velocity.x,a.Velocity.z).magnitude;
                 bool attack=a.MagicVisual==0&&a.Attacking(time),roll=a.Rolling(time),stun=a.StunUntil>time,ground=a.Grounded;
                 bool special=NativeSpecialPose.Active(a,time),down=NativeSpecialPose.Down(a,time);
@@ -226,6 +226,7 @@ namespace ChipArena.UnityConversion
                     Root.transform.rotation=Quaternion.LookRotation(ArenaPresentation.Vec(a.RollDirection));
                     CapturedRig.Roll(pose,(time-a.RollAt)/a.VisualRollDuration); State="roll (adapted)";
                 }
+                NativeSourceMotion.Pilot(pose,a,time);
                 if(special){NativeSpecialPose.Special(pose,a,time,firstPerson);State=a.SpecialKind;}
                 if(down){NativeSpecialPose.Recover(pose,a,time);State="recovery "+NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time);}
                 if(a.Weapon==WeaponId.Sword&&a.MagicVisual==0&&ground&&!roll&&!special&&!down) CapturedRig.BladeFloor(pose,false,1.28f);

@@ -75,7 +75,7 @@ namespace ChipArena.UnityConversion
             }
             PlayerState=viewRig.State;
             // A scoped rifle uses the centred reticle; its magnified housing would obscure the whole screen.
-            if(!ScopeActive)
+            if(!ScopeActive&&!SourceCharacter(viewRig,shown,time,true))
             {
                 foreach(var box in CapturedRig.Boxes)if(NativeViewRules.ViewModelBone(box.Bone))
                     Part(viewRig.Bones[box.Bone].localToWorldMatrix,CapturedAnimation.Vec(CapturedRig.Mirror(box.Position)),CapturedAnimation.Vec(box.Size),Quaternion.identity,box.Color<0?0:box.Color);

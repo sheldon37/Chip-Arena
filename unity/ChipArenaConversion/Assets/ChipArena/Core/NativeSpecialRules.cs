@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
         public string Kind;public float At,Release,Until,Yaw,Landed=-1;public bool Released;public int Shot;
         public readonly HashSet<string> Hit=new HashSet<string>();
     }
-    public sealed class NativeRecovery
+    [Serializable] public sealed class NativeRecovery
     {
         public float At,Until,Landed=-1,PickupUntil,RollAt=-1,RollUntil,JuggleUntil;public bool PickupUsed,HasDirection,Ragdoll;
         public int JuggleHits,Source;public V3 Direction;
