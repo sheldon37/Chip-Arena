@@ -1,4 +1,4 @@
-# Validation — native conversion first-person stability checkpoint
+# Validation — native Unity conversion
 
 No native Unity playtest or Windows executable build was run in the authoring workspace.
 
@@ -115,3 +115,7 @@ or Windows EXE ran in this workspace. These checks do not certify complete conve
 - Four package tests and the asset receipt/metadata check pass. Sources now include 79 model exports, 165 source motion tracks, Ward moving-part metadata and all 83 original audio assets.
 - Added native entry queues/travel/falls, original sky shader port, settings, lock-on, spectator/replay, developer practice/admin UI, relay/discovery and headless authority source. Native visual, UI, PhysX, headless Unity, live-account and Windows EXE execution remain unrun. Local relay tests are not evidence of a deployed internet service or TLS proxy test.
 - Shader import gates now include the Ward pit and night sky. No native runtime acceptance or complete presentation equivalence is claimed.
+
+## Source cinematic checkpoint (2026-10-07)
+
+Four asset tests cover all 31 original sampled scenes / 124 native models: finite and correctly sized tracks, noncollapsed geometry, the clown weapon drop, the Siren blackout and animated demon/flame instances. Ragdoll forces, preview/inspection/draft UI and scene lighting compile against the real Unity Runtime, Windows-player and Editor assemblies. These checks do not execute shaders, render images, play audio or verify native body physics. Original source receipts and prior checks are retained.

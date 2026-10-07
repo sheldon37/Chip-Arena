@@ -6,7 +6,7 @@ using UnityEngine;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class ConversionPreferences
-    { public string relayOrigin="";public string graphics="auto",sirenMode="Q";public float sensitivity=1,audio=.3f,music=.35f,menuMusic=.6f;public bool trails=true,reducedEffects,cameraShake;public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll",intro="neon-drop",introText="Ready to make an impact",accountOrigin="";public bool overrideIntro;public string name="Pilot",map="foundry",weapon="pistol";public int bots=3,sets=3,rounds=2;public string combatGlow="Full";public bool pve,skipWaves;public bool mirrorWeapons,teams,friendlyFire,stationary,skipBotDrafts=true,sound=true,firstPerson; }
+    { public int choices=6,selectionSeconds=18;public bool bothDraft;public string relayOrigin="";public string graphics="auto",sirenMode="Q";public float sensitivity=1,audio=.3f,music=.35f,menuMusic=.6f;public bool trails=true,reducedEffects,cameraShake;public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll",intro="neon-drop",introText="Ready to make an impact",accountOrigin="";public bool overrideIntro;public string name="Pilot",map="foundry",weapon="pistol";public int bots=3,sets=3,rounds=2;public string combatGlow="Full";public bool pve,skipWaves;public bool mirrorWeapons,teams,friendlyFire,stationary,skipBotDrafts=true,sound=true,firstPerson; }
     public sealed partial class ConversionGame : MonoBehaviour
     {
         private ConversionContent content;private ConversionPreferences prefs;private NativeMatch match;private NativeArena arena;private ArenaPresentation presentation;
@@ -45,10 +45,11 @@ namespace ChipArena.UnityConversion
         }
         private void StartMatch()
         {
+            Time.timeScale=1;sandboxSpeed=1;
             if(prefs.pve){prefs.map="siren";prefs.bots=Mathf.Clamp(prefs.bots,0,3);}else prefs.bots=Mathf.Clamp(prefs.bots,Online||dedicated?0:1,7);
             if(server!=null)return;if(prefs.pve&&peers.Count(p=>p.Seat!=null&&p.Connection?.Closed==false)>(dedicated?4:3)){networkStatus="Siren co-op supports up to four party members.";return;}if(Hosting&&peers.Any(p=>p.Seat!=null&&p.Connection?.Closed==false&&!p.Ready)){networkStatus="Wait for the other pilots to be ready.";return;}
-            if(!dedicated)Save();ClearReplay();arena?.Dispose();presentation?.ResetPresentation();networkEpoch++;
-            match=new NativeMatch(content){ShowIntros=true,Cooperative=prefs.pve,Teams=prefs.pve||prefs.teams,RoundsPerSet=prefs.rounds,SetsToWin=prefs.sets,SkipBotDrafts=prefs.skipBotDrafts};
+            if(!dedicated)Save();EndPreview();inspectSeat=0;ClearReplay();arena?.Dispose();presentation?.ResetPresentation();networkEpoch++;
+            match=new NativeMatch(content){ShowIntros=true,Cooperative=prefs.pve,Teams=prefs.pve||prefs.teams,RoundsPerSet=prefs.rounds,SetsToWin=prefs.sets,SkipBotDrafts=prefs.skipBotDrafts,BothDraft=prefs.bothDraft,Choices=prefs.choices,SelectionSeconds=prefs.selectionSeconds};
             if(!dedicated){var local=SanitizedSeat(1,Profile(),account.Token);local.team=0;match.Seats.Add(local);}
             foreach(var peer in peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false)){peer.Seat.team=prefs.pve?0:peer.Seat.team;match.Seats.Add(peer.Seat);peer.Ready=false;}
             var weapons=content.weapons.Where(w=>!w.devOnly).Select(w=>w.id).ToArray();
@@ -62,12 +63,12 @@ namespace ChipArena.UnityConversion
         private void Update()
         {
             if(content==null)return;if(dedicated){DedicatedTick();return;}if(cameraView==null)return;NetworkTick();
-            if(Input.GetKeyDown(KeyCode.Escape)&&ReplayActive){EndReplay();return;}if(Input.GetKeyDown(KeyCode.Escape)){if(PvePickOpen)PveOpen(false);else menu=!menu;pending=new InputFrame();pending.CancelAbilities=true;if(server==null)arena?.CancelLocalAbilities();}
+            if(Input.GetKeyDown(KeyCode.Escape)&&previewArena!=null){EndPreview();return;}if(Input.GetKeyDown(KeyCode.Escape)&&inspectSeat!=0){inspectSeat=0;return;}if(Input.GetKeyDown(KeyCode.Escape)&&ReplayActive){EndReplay();return;}if(Input.GetKeyDown(KeyCode.Escape)){if(PvePickOpen)PveOpen(false);else menu=!menu;pending=new InputFrame();pending.CancelAbilities=true;if(server==null)arena?.CancelLocalAbilities();}
             if(Input.GetKeyDown(KeyCode.V)&&!(arena?.ViewPilot?.Seat.spec=="siren"&&prefs.sirenMode=="V"&&!menu)){prefs.firstPerson=!prefs.firstPerson;Save();}
             if(Input.GetKeyDown(KeyCode.C)&&arena?.Pve!=null){if(PvePickOpen)PveOpen(false);else PveOpen(true);}
             if(Input.GetKeyDown(KeyCode.F9))presentation.ForceCompatibilityRendering=!presentation.ForceCompatibilityRendering;
-            bool play=arena!=null&&!menu&&match.Phase==NativePhase.Fight&&arena.Local.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true;
-            bool look=play||arena?.Local?.Hp<=0&&!menu&&!ReplayActive&&match.Phase==NativePhase.Fight;Cursor.lockState=look?CursorLockMode.Locked:CursorLockMode.None;Cursor.visible=!look;
+            bool play=arena!=null&&!menu&&!BoardOpen&&match.Phase==NativePhase.Fight&&arena.Local.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true;
+            bool look=!BoardOpen&&(play||arena?.Local?.Hp<=0&&!menu&&!ReplayActive&&match.Phase==NativePhase.Fight);Cursor.lockState=look?CursorLockMode.Locked:CursorLockMode.None;Cursor.visible=!look;
             if(arena==null)return;
             if(generation!=arena.Generation){presentation.ResetPresentation();generation=arena.Generation;visualClock.Reset(match.Time);}
             SpectatorControls();var p=arena.ViewPilot;
@@ -89,8 +90,8 @@ namespace ChipArena.UnityConversion
         }
         private void LateUpdate()
         {
-            if(cameraView==null)return;ObserveReplay();if(arena!=null&&RenderReplay())return;nativeAudio.Muted=!prefs.sound;nativeAudio.Entrance(arena!=null&&!menu&&IntroActive?arena.Generation+":"+IntroPilot?.Seat.id+":"+IntroStyle:null,arena!=null&&IntroActive?IntroStyle:null,arena!=null&&IntroActive?IntroAge:0);nativeAudio.Render(arena,menu,cameraView);if(arena==null)return;
-            if(!menu&&IntroActive){arena.Root.SetActive(false);viewModelCamera.enabled=false;presentation.RenderIntro(arena,IntroPilot,IntroStyle,IntroAge,cameraView);return;}arena.Root.SetActive(true);
+            if(cameraView==null)return;if(PreviewFrame())return;ObserveReplay();if(arena!=null&&RenderReplay())return;nativeAudio.Muted=!prefs.sound;nativeAudio.Entrance(arena!=null&&!menu&&IntroActive?arena.Generation+":"+IntroPilot?.Seat.id+":"+IntroStyle:null,arena!=null&&IntroActive?IntroStyle:null,arena!=null&&IntroActive?IntroAge:0);nativeAudio.Render(arena,menu,cameraView);if(arena==null)return;
+            if(!menu&&IntroActive){arena.Root.SetActive(false);viewModelCamera.enabled=false;presentation.RenderIntro(arena,IntroPilot,IntroStyle,IntroAge,cameraView);return;}NativeLighting.EndIntro(content.Map(arena.MapId),cameraView);arena.Root.SetActive(true);
             var p=arena.ViewPilot;bool play=!menu&&match.Phase==NativePhase.Fight&&p.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true;
             UpdateCamera();
             if(play)
@@ -171,6 +172,7 @@ namespace ChipArena.UnityConversion
             if(error.Length>0){GUI.Box(new Rect(30,30,width-60,height-60),"");GUI.Label(new Rect(45,45,width-90,height-90),error,label);return;}
             if(arena!=null&&!menu&&match.Phase==NativePhase.Fight&&presentation.ScopeActive)DrawScope(width,height);
             GUI.Label(new Rect(22,15,width-44,35),"CHIP ARENA  /  NATIVE CONVERSION",heading);
+            if(previewArena!=null){PreviewHud(width,height);return;}
             if(arena!=null)
             {
                 var p=arena.Local;
@@ -190,7 +192,7 @@ namespace ChipArena.UnityConversion
                 if(!menu&&match.Phase==NativePhase.Match)
                 {GUI.Label(new Rect(width/2-280,height/2-90,560,65),match.Result,heading);if(GUI.Button(new Rect(width/2-130,height/2,260,45),"Rematch",button)){if(server!=null)SendServer(new NativeNetMessage{type="rematch"});else StartMatch();}}
                 if(!menu&&match.Phase==NativePhase.Draft)Draft(width,height);
-                if(Input.GetKey(KeyCode.G)||Input.GetKey(KeyCode.Tab)&&!LockEligible)Board(width);LockHud(scale);
+                if(BoardOpen)Board(width);if(inspectSeat!=0)Inspect(width,height);LockHud(scale);
             }
             if(!menu&&arena!=null){ReplayHud(width,height);if(IntroActive)IntroHud(width,height);else PveHud(width,height);return;}
             float panel=Mathf.Min(850,width-60);GUI.Box(new Rect((width-panel)/2,68,panel,height-120),"");
@@ -220,6 +222,7 @@ namespace ChipArena.UnityConversion
             GUILayout.BeginHorizontal();GUILayout.Label("Combat glow",label);
             foreach(string quality in new[]{"Off","Low","Full"})if(GUILayout.Button((prefs.combatGlow==quality||string.IsNullOrEmpty(prefs.combatGlow)&&quality=="Full"?"✓ ":"")+quality,button)){prefs.combatGlow=quality;Save();}GUILayout.EndHorizontal();
             GUILayout.Label("Melee E: special attack. Gun Q: hold to aim. Magic Q / E: cast abilities. Hold E to preview grenade, meteor, geysers or black hole; release to cast.",small);
+            prefs.bothDraft=GUILayout.Toggle(prefs.bothDraft,"Both sides draft after a set");GUILayout.Label("Draft choices: "+prefs.choices,label);prefs.choices=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.choices,1,12));GUILayout.Label("Selection time: "+prefs.selectionSeconds+"s",label);prefs.selectionSeconds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.selectionSeconds,5,120));
             GUILayout.Label("Rounds to win a set: "+prefs.rounds,label);prefs.rounds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.rounds,1,5));GUILayout.Label("Sets to win the match: "+prefs.sets,label);prefs.sets=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.sets,1,10));
             GUI.enabled=server==null;if(GUILayout.Button(Hosting?"Start room match":"Start native match",button))StartMatch();GUI.enabled=true;SettingsPanel();ProfilePanel();SandboxPanel();NetworkPanel();
         }
@@ -236,15 +239,16 @@ namespace ChipArena.UnityConversion
             var seat=match.Seat(match.DraftSeat);if(seat==null)return;float cardWidth=Mathf.Min(260,(width-70)/3);
             GUI.Box(new Rect(20,230,width-40,height-300),"");GUI.Label(new Rect(38,245,width-76,55),seat.name+" chooses a Chip  ·  "+Math.Ceiling(match.PhaseEnd-match.Time)+"s",heading);
             GUI.Label(new Rect(38,294,width-76,35),"Choose a Chip to add to this match’s build.",small);
+            if(match.Chosen!=null){DraftReveal(width,height);return;}var viewport=new Rect(30,330,width-60,Math.Max(100,height-405));draftScroll=GUI.BeginScrollView(viewport,draftScroll,new Rect(0,0,width-85,Mathf.Ceil(seat.offers.Count/3f)*180));
             for(int i=0;i<seat.offers.Count;i++)
             {
-                var chip=content.Chip(seat.offers[i]);float x=40+(i%3)*(cardWidth+12),y=335+(i/3)*180;
-                GUI.Box(new Rect(x,y,cardWidth,170),"");GUI.Label(new Rect(x+10,y+8,cardWidth-20,40),chip.name,label);GUI.Label(new Rect(x+10,y+48,cardWidth-20,78),chip.description,small);
+                var chip=content.Chip(seat.offers[i]);float x=10+(i%3)*(cardWidth+12),y=(i/3)*180;
+                GUI.color=RarityColor(chip.rarity);GUI.Box(new Rect(x,y,cardWidth,170),"");GUI.color=Color.white;GUI.Label(new Rect(x+10,y+8,cardWidth-20,40),chip.name,label);GUI.Label(new Rect(x+10,y+48,cardWidth-20,78),chip.description,small);
                 GUI.enabled=!seat.bot&&seat.id==arena.Local.Seat.id&&match.Time>=match.ReadyAt&&match.Chosen==null;if(GUI.Button(new Rect(x+10,y+132,cardWidth-20,30),match.Chosen==chip.id?"Installed":"Install",button))ChooseChip(seat.id,chip.id);GUI.enabled=true;
-            }
+            }GUI.EndScrollView();
         }
         private void Board(float width)
-        {GUI.Box(new Rect(width/2-240,80,480,40+match.Seats.Count*30),"");int row=0;foreach(var p in match.Seats)GUI.Label(new Rect(width/2-220,94+row++*30,440,28),p.name+"  ·  "+p.spec+"  ·  sets "+p.score+" / rounds "+p.roundWins+"  ·  "+(p.alive?"alive":"out"),label);}
-        private void OnDestroy(){ClearReplay();CloseNetwork();if(scopeMask!=null)CapturedAnimation.Release(scopeMask);arena?.Dispose();if(ownsPhysics){Physics.simulationMode=previousSimulation;Physics.gravity=previousGravity;}Cursor.lockState=CursorLockMode.None;Cursor.visible=true;}
+        {if(inspectSeat!=0)return;GUI.Box(new Rect(width/2-280,80,560,70+match.Seats.Count*36),"");GUI.Label(new Rect(width/2-260,92,520,28),"Click a pilot to inspect their build",small);int row=0;foreach(var p in match.Seats)if(GUI.Button(new Rect(width/2-260,122+row++*36,520,32),p.name+" · "+p.spec+" · sets "+p.score+" / rounds "+p.roundWins+" · "+(p.alive?"alive":"out"),button))inspectSeat=p.id;}
+        private void OnDestroy(){Time.timeScale=1;EndPreview();ClearReplay();CloseNetwork();if(scopeMask!=null)CapturedAnimation.Release(scopeMask);arena?.Dispose();if(ownsPhysics){Physics.simulationMode=previousSimulation;Physics.gravity=previousGravity;}Cursor.lockState=CursorLockMode.None;Cursor.visible=true;}
     }
 }

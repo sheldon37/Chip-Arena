@@ -23,11 +23,13 @@ namespace ChipArena.UnityConversion
         private NativeProfile Profile()=>new NativeProfile{name=prefs.name,@class=content.Weapon(prefs.weapon).@class,color=prefs.accentColor,cosmetics=new NativeCosmetics{bodyColor=prefs.bodyColor,hat=prefs.hat,killEffect=prefs.killEffect,preferredSpec=prefs.weapon,intro=prefs.intro,introText=prefs.introText,overrideWeaponIntro=prefs.overrideIntro}};
         private void HostRoom()
         {
+            Time.timeScale=1;EndPreview();
             try{if(!int.TryParse(portText,out int port)||port<1||port>65535)throw new ArgumentException("Choose a port between 1 and 65535.");CloseNetwork();arena?.Dispose();arena=null;match=null;presentation?.ResetPresentation();listener=new NativeListener(port);roomCode=RandomToken(4).ToUpperInvariant();networkStatus="Hosting on port "+port+" · Room "+roomCode;menu=true;}
             catch(Exception e)when(e is System.Net.Sockets.SocketException||e is ArgumentException){networkStatus=e.Message;}
         }
         private void JoinRoom()
         {
+            Time.timeScale=1;EndPreview();
             if(connecting!=null)return;if(!int.TryParse(portText,out int port)||port<1||port>65535){networkStatus="Invalid port.";return;}
             server?.Dispose();server=null;networkId=0;connectStop?.Cancel();connectStop=new CancellationTokenSource();try{connecting=internetRooms?NativeRelayHost.Join(prefs.relayOrigin,joinCode.Trim().ToUpperInvariant(),content.sourceCommit,connectStop.Token):NativeConnection.Connect(hostAddress.Trim(),port,connectStop.Token);}catch(ArgumentException e){networkStatus=e.Message;return;}networkStatus="Connecting…";
         }

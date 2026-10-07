@@ -123,3 +123,5 @@ Windows validation and desktop distribution cutover remain separate work.
   Managed/source fixtures, loopback transport and real Unity API compilation pass. Actual native
   Editor/render/PhysX and Windows build remain unrun. Remaining parity/coverage is documented in
   `unity/ChipArenaConversion/CONVERSION-STATUS.md`. No merge or updater/Site publication.
+
+- 2026-10-07 conversion continuation: source cinematic bank (31 scenes / 124 models), entrance lights, native ragdoll style forces, appearance preview/build inspection/draft controls implemented separately. Full task remains active; see latest DEV_LOG and Unity CONVERSION-STATUS.

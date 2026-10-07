@@ -501,8 +501,8 @@
     },
     {
       "path": "Assets/Conversion/Resources/SourceModels.json",
-      "bytes": 5719851,
-      "gitBlob": "125dcbe904dd323f44259ab4df754e393e433d06",
+      "bytes": 6543303,
+      "gitBlob": "786bf710e127c49ab9af4dc7326c6fb8a353fbda",
       "source": "pinned source export"
     },
     {
@@ -522,6 +522,12 @@
       "source": "generated from pinned source",
       "bytes": 3516,
       "gitBlob": "9066f31e0571dc26dd328e1d1c8337a285c31316"
+    },
+    {
+      "path": "Assets/Conversion/Resources/SceneMotion.json",
+      "source": "generated from pinned source",
+      "bytes": 13450027,
+      "gitBlob": "2121fe29ce21997a5237074053a282df5a55bb32"
     }
   ]
 }

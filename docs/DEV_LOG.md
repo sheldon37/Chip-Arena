@@ -18,6 +18,13 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-07 — Codex — source cinematic and menu checkpoint (work continuing)
+- Separate `codex/unity-conversion`, parent `adaba58532d52b7ea63f339b0f85e220b012d1b2`, source `05950ea`. The complete-conversion task remains active.
+- Replaced temporary entrance/death props with offline samples of the original 20 entrance stages and 11 scripted deaths: original clown/love/van, confetti/ascension/shrink/launch/ghost, Raging Demon and Siren crush/dissipate. Added original light/fog cues, per-instance motion/colour/opacity, actual dropped weapon models and death-pose blending. Fixed zero-scale anchor inversion and vertex alpha. Source model bank now has 124 models.
+- Ported ragdoll style forces/freeze/impulses and kept-body fallback, added native dropped weapon bodies. Added appearance/entrance previews in an unsimulated isolated scene, player build inspection, 1–12 draft choices, selection timer/both-side options, scrolled cards/reveal, and sandbox sort/speed. Replicated fighter audio timing, added source Raging Demon hit cues and fixed relay disposal after cancellation.
+- Verification: four scene asset tests (31 clips/124 models, finite tracks, noncollapsed meshes, original clown weapon drop, Siren blackout, dynamic demon/flames) pass; actual Unity Runtime/Windows/Editor C# compilation passes. Asset/package receipts and existing managed/transport gates remain required before push. Earlier checkpoint CI `37588486683` passed .NET build and relay integration.
+- These changes affect presentation, menu choices and cosmetic physics; combat hitboxes/damage/cooldowns are unchanged. No activated Unity import, shader/rendered play, native body physics acceptance or Windows EXE was run. Full living-wound carving, remaining environment/Siren presentation, migration and broader native gameplay gates remain work. No merge, production release, live account mutation or service deployment.
+
 ## 2026-10-07 — Codex — Ward, controls and internet-room checkpoint (work continuing)
 - Separate `codex/unity-conversion`, parent `000af4d8349646a42f2f97aec7da03678448053c`, pinned source `05950ea`. Owner's complete-conversion request remains active; this is an intermediate durable checkpoint.
 - Ported weighted/FIFO horde entrances, source climb curves and vent travel, Ward moving meshes and pit/fall/revive timing. Added six dive tracks, procedural night-sky shader port, settings, melee lock-on, spectator controls and replay in a separate unsimulated physics scene. Added local DEV practice tools, grant-management UI and account token refresh without live account mutations.

@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 namespace ChipArena.UnityConversion
 {
-    public sealed class NativeFighter
+    [Serializable] public sealed class NativeFighter
     {
         public string Kind;public int Id,Index,Total,Next,Count;public float At,HitAt,Until,Gap,HadokenReady,UppercutReady,LastHit=-100,LastUntil,Charge,StepUntil;
         public int ComboTarget,Hits;public float ComboDamage;public bool Single;

@@ -79,7 +79,8 @@ namespace ChipArena.UnityConversion
                 string id=p.Seat.id+":";Vector3 pos=p.Body.position;
                 if(p.RollAt>0&&t-p.RollAt<.15f&&Once(id+"roll",p.RollAt))Play(p.Seat.spec=="ansatsuken"?"demon-step":"dash",pos,.45f);
                 if(p.AttackAt>0&&t-p.AttackAt<.15f&&p.Weapon.@class=="melee"&&Once(id+"attack",p.AttackAt))Play(p.Seat.spec=="emperor"?(p.Fighter?.Kind=="electric"?"electric-hook":"arcade-punch"):p.Seat.spec=="ansatsuken"?"sword":p.Seat.spec=="siren"?"darkness":p.Seat.spec,pos,.4f);
-                var cast=p.AbilityCast;if(cast!=null&&t>=cast.Release&&Once(id+"cast",cast.Release)){string ability=cast.Definition.id;Play(ability=="frag-grenade"||ability=="blink-strike"?"dash":ability=="rocket"?"arcade-heavy":ability=="orbital-mark"?"lightning":p.Seat.spec,pos,.6f);}
+                var cast=p.AbilityCast;string ability=cast?.Definition.id??p.Pose.AbilityId;float release=cast?.Release??p.Pose.AbilityRelease;if(ability!=null&&t>=release&&t-release<.2f&&Once(id+"cast",release)){Play(ability=="frag-grenade"||ability=="blink-strike"?"dash":ability=="rocket"?"arcade-heavy":ability=="orbital-mark"?"lightning":p.Seat.spec,pos,.6f);}
+                if(p.Death?.style=="dev-raging-demon"){float[] hits={.80f,1.02f,1.24f,1.46f,1.69f,1.94f,2.21f,2.56f};for(int i=0;i<hits.Length;i++){float at=p.Death.at+hits[i];if(t>=at&&t-at<.12f&&Once(id+"demon:"+i,at))Play(i==7?"arcade-heavy":i==3||i==5?"arcade-kick":"arcade-punch",p.Death.position,i==7?1.1f:.85f);}}
                 var f=p.Fighter;if(f?.LastHit>0&&t-f.LastHit<.15f&&Once(id+"fighter",f.LastHit))Play(f.Kind=="electric"?"electric-hook-hit":f.Kind=="tatsu"?"arcade-kick":f.Index==f.Total-1?"arcade-heavy":"arcade-punch",pos,.9f);
             }
             int n=match.Phase==NativePhase.Countdown?(int)Math.Ceiling(match.PhaseEnd-match.Time):0;if(n>0&&n!=countdown)Play("countdown",null,.7f);countdown=n;

@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -5,10 +7,18 @@ namespace ChipArena.UnityConversion
 {
     public static class NativeLighting
     {
-        private static Material sky;private static Light moon,rim;
+        private static Material sky;private static Light moon,rim;private static bool introActive;private static readonly List<Light> stageLights=new List<Light>();
+        public static void EndIntro(ContentMap map,Camera camera){if(!introActive)return;introActive=false;foreach(var light in stageLights)if(light!=null)light.enabled=false;if(moon!=null){moon.enabled=true;moon.intensity=.9f;}if(rim!=null){rim.enabled=true;rim.intensity=.24f;}Ambient();Apply(map,camera);}
+        private static void Ambient(){RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=NativeArena.ColorOf(0x92b4f0)*.48f;RenderSettings.ambientEquatorColor=NativeArena.ColorOf(0x9aaccd)*.27f;RenderSettings.ambientGroundColor=NativeArena.ColorOf(0x171320)*.48f;}
+        public static void Intro(NativeSceneClip clip,float age,Camera camera)
+        {
+            introActive=true;if(moon!=null)moon.enabled=false;if(rim!=null)rim.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;int f=Math.Min(clip.frames-1,(int)(Mathf.Clamp01(age/clip.duration)*(clip.frames-1))),e=f*8;var env=clip.environment;camera.backgroundColor=new Color(env[e],env[e+1],env[e+2]);RenderSettings.fogColor=new Color(env[e+3],env[e+4],env[e+5]);RenderSettings.fogStartDistance=env[e+6];RenderSettings.fogEndDistance=env[e+7];RenderSettings.skybox=null;Color ambient=Color.black,ground=Color.black;int count=0;
+            foreach(var track in clip.lights){int j=f*11;var v=track.values;Color color=new Color(v[j+3],v[j+4],v[j+5]);float intensity=v[j+6];if(track.kind=="ambient"||track.kind=="hemisphere"){ambient+=color*intensity;ground+=new Color(v[j+8],v[j+9],v[j+10])*intensity;continue;}if(intensity<=0)continue;if(count>=16)break;while(stageLights.Count<=count)stageLights.Add(null);var light=stageLights[count];if(light==null){var go=new GameObject("Entrance light "+count);if(moon!=null)go.transform.SetParent(moon.transform.parent);light=go.AddComponent<Light>();stageLights[count]=light;}count++;light.enabled=true;light.type=track.kind=="directional"?LightType.Directional:LightType.Point;light.color=color;light.intensity=intensity;light.range=v[j+7]>0?v[j+7]:20;light.transform.position=new Vector3(-v[j],v[j+1],v[j+2]);if(light.type==LightType.Directional)light.transform.LookAt(Vector3.zero);light.shadows=light.type==LightType.Directional?LightShadows.Soft:LightShadows.None;}
+            for(int i=count;i<stageLights.Count;i++)if(stageLights[i]!=null)stageLights[i].enabled=false;RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=ambient;RenderSettings.ambientEquatorColor=(ambient+ground)*.5f;RenderSettings.ambientGroundColor=ground;
+        }
         public static void Apply(ContentMap map,Camera camera)
         {
-            bool indoor=map.id=="siren",cold=map.id=="moonlit"||map.id=="snow",fire=map.id=="forge";camera.farClipPlane=350;camera.backgroundColor=NativeArena.ColorOf(indoor?0x050407:map.sky);camera.clearFlags=indoor?CameraClearFlags.SolidColor:CameraClearFlags.Skybox;
+            bool indoor=map.id=="siren",cold=map.theme=="moonlit"||map.theme=="snow",fire=map.id=="forge";camera.farClipPlane=350;camera.backgroundColor=NativeArena.ColorOf(indoor?0x050407:map.sky);camera.clearFlags=indoor?CameraClearFlags.SolidColor:CameraClearFlags.Skybox;
             RenderSettings.fogColor=indoor?NativeArena.ColorOf(0x0d0a12):Color.Lerp(NativeArena.ColorOf(map.sky),NativeArena.ColorOf(0x405677),.42f);RenderSettings.fogStartDistance=indoor?30:65;RenderSettings.fogEndDistance=indoor?118:210;
             if(sky==null)sky=new Material(Resources.Load<Shader>("NativeNightSky"));sky.SetColor("_Horizon",NativeArena.ColorOf(fire?0x633345:cold?0x405677:0x333f64));sky.SetColor("_Zenith",NativeArena.ColorOf(fire?0x100b1c:0x080e22));sky.SetFloat("_MoonSize",map.id=="moonlit"?.065f:.028f);RenderSettings.skybox=indoor?null:sky;
             if(moon!=null){moon.color=NativeArena.ColorOf(map.id=="outpost"?0xffc5a5:fire?0xffac9c:0xb2ceff);moon.transform.position=indoor?new Vector3(-3,30,-5):new Vector3(-8,20,-12);moon.transform.LookAt(Vector3.zero);}if(rim!=null)rim.color=NativeArena.ColorOf(map.accent);

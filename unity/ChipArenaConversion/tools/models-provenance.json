@@ -1545,6 +1545,76 @@
       "vertices": 1794
     },
     {
+      "id": "loose-pistol",
+      "batches": 1,
+      "vertices": 383
+    },
+    {
+      "id": "loose-rifle",
+      "batches": 1,
+      "vertices": 551
+    },
+    {
+      "id": "loose-machinegun",
+      "batches": 1,
+      "vertices": 479
+    },
+    {
+      "id": "loose-fire",
+      "batches": 1,
+      "vertices": 360
+    },
+    {
+      "id": "loose-water",
+      "batches": 1,
+      "vertices": 360
+    },
+    {
+      "id": "loose-lightning",
+      "batches": 1,
+      "vertices": 384
+    },
+    {
+      "id": "loose-darkness",
+      "batches": 1,
+      "vertices": 360
+    },
+    {
+      "id": "loose-sword",
+      "batches": 1,
+      "vertices": 528
+    },
+    {
+      "id": "loose-daggers",
+      "batches": 1,
+      "vertices": 456
+    },
+    {
+      "id": "loose-shield",
+      "batches": 1,
+      "vertices": 336
+    },
+    {
+      "id": "loose-greatsword",
+      "batches": 1,
+      "vertices": 600
+    },
+    {
+      "id": "loose-emperor",
+      "batches": 1,
+      "vertices": 144
+    },
+    {
+      "id": "loose-ansatsuken",
+      "batches": 1,
+      "vertices": 216
+    },
+    {
+      "id": "loose-leet",
+      "batches": 1,
+      "vertices": 1794
+    },
+    {
       "id": "hat-cap",
       "batches": 1,
       "vertices": 48
@@ -1865,5 +1935,5 @@
       "vertices": 24
     }
   ],
-  "uncompressedBytes": 66962107
+  "uncompressedBytes": 67549542
 }

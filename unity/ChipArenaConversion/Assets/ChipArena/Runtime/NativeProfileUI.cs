@@ -28,6 +28,7 @@ namespace ChipArena.UnityConversion
         }
         private void ProfilePanel()
         {
+            if(GUILayout.Button("Preview appearance and entrance",button))StartPreview();
             if(GUILayout.Button(showProfile?"Close appearance":"Appearance and entrances",button))showProfile=!showProfile;
             if(showProfile)
             {

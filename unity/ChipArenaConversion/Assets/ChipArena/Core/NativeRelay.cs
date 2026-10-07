@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
     }
     public sealed class NativeRelayHost:IDisposable
     {
-        private readonly ClientWebSocket control;private readonly CancellationTokenSource stop;private readonly string origin,secret;private readonly Task loop;private int accepting;
+        private readonly ClientWebSocket control;private readonly CancellationTokenSource stop;private readonly string origin,secret;private readonly Task loop;private int accepting,disposed;
         public readonly ConcurrentQueue<NativeConnection> Accepted=new ConcurrentQueue<NativeConnection>();public string Room{get;}public string Error{get;private set;}public bool Closed=>stop.IsCancellationRequested;
         private NativeRelayHost(ClientWebSocket socket,CancellationTokenSource cancellation,string origin,string room,string secret){control=socket;stop=cancellation;this.origin=origin;Room=room;this.secret=secret;loop=Listen();}
         public static async Task<NativeRelayHost> Host(string origin,string source,string name,bool listed,CancellationToken cancellation)
@@ -37,6 +37,6 @@ namespace ChipArena.UnityConversion
         {try{while(!Closed){var fields=(await Control(control,stop.Token)).Split('\t');if(fields.Length!=2||fields[0]!="JOIN"||fields[1].Length!=64)throw new InvalidDataException("Invalid relay invitation");if(Interlocked.Increment(ref accepting)>15){Interlocked.Decrement(ref accepting);continue;}_=Accept(fields[1]);}}catch(Exception e)when(e is IOException||e is WebSocketException||e is OperationCanceledException||e is ObjectDisposedException||e is ArgumentException){if(!Closed)Error=e.Message;Dispose();}}
         private async Task Accept(string ticket)
         {try{var uri=NativeWebSocketStream.Endpoint(origin,"native/v2/accept?room="+Room+"&secret="+secret+"&ticket="+ticket);var stream=await NativeWebSocketStream.Connect(uri,stop.Token);if(Closed){stream.Dispose();return;}Accepted.Enqueue(new NativeConnection(stream,32768));}catch(Exception e)when(e is IOException||e is WebSocketException||e is OperationCanceledException||e is ObjectDisposedException){if(!Closed)Error="A relay connection failed.";}finally{Interlocked.Decrement(ref accepting);}}
-        public void Dispose(){if(Closed)return;stop.Cancel();control.Dispose();while(Accepted.TryDequeue(out var c))c.Dispose();}
+        public void Dispose(){if(Interlocked.Exchange(ref disposed,1)!=0)return;stop.Cancel();control.Dispose();while(Accepted.TryDequeue(out var c))c.Dispose();}
     }
 }

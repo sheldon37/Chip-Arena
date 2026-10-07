@@ -106,12 +106,12 @@ namespace ChipArena.UnityConversion.Editor
             if(!File.Exists(Path.Combine(folder,"UnityPlayer.dll"))||!Directory.Exists(Path.Combine(folder,"ChipArena-Native-Conversion-TEST_Data")))
                 throw new Exception("The Windows player is incomplete: UnityPlayer.dll or its game data folder is missing.");
             File.WriteAllText(Path.Combine(folder,"READ-ME.txt"),
-                "Chip Arena Native Conversion - MELEE AND RIPOSTE TEST\r\n\r\nRun ChipArena-Native-Conversion-TEST.exe. Keep the entire folder together.\r\n"+
+                "Chip Arena Native Conversion - CONVERSION CANDIDATE\r\n\r\nRun ChipArena-Native-Conversion-TEST.exe. Keep the entire folder together.\r\n"+
                 "The EXE uses the voxel CA icon. Create a Windows shortcut to the EXE for a desktop launcher; do not move the EXE alone.\r\n"+
                 "WASD move, double-tap W sprint, mouse look, LMB fire/attack, Q aim/magic ability, E ability, V first/third-person, R reload, RMB block, Shift dodge, Space jump.\r\n"+
-                "Choose weapon and map before starting. Tab scoreboard. Esc menu. This native foundation is local solo vs bots.\r\n"+
-                "15 source map collision layouts and native round/stat-Chip flow. Full conversion is IN PROGRESS.\r\n"+
-                "Read CONVERSION-STATUS.md: special Chip mechanics, DEV styles, PvE/Siren, online play and remaining presentation parity are pending.\r\n"+
+                "Choose weapon and map before starting. G scoreboard / build inspection. Tab melee lock-on. Esc menu. Local, LAN and configured relay rooms.\r\n"+
+                "15 maps, 236 Chips, native PvP and Ward Zero co-op. Full conversion remains in active completion.\r\n"+
+                "Read CONVERSION-STATUS.md and VALIDATION.md for implementation boundaries and unrun native acceptance.\r\n"+
                 "Built with Unity "+Application.unityVersion+". Core checks and player build passed on the build machine; human gameplay acceptance is separate.\r\n");
             string zip=Path.Combine(root,"Builds","Chip-Arena-Native-Conversion-TEST-Windows.zip");
             if(File.Exists(zip)) File.Delete(zip);
