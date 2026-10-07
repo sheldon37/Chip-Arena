@@ -18,6 +18,28 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-07 — Codex — enhanced isolated Unity player-animation test
+- Continued `codex/unity-prototype` from `14e9ba9dff63a7cd70a2ed8a4ddd28db5f180f4f` at owner request.
+  Reused exact committed animation data from shared source `05950eaef80ff2483a9c44d898cad98be1a76bbc`;
+  no overlapping Unity PR/writer found. Original Electron game and update feeds remain separate.
+- Imported 34 encoded Explosive-derived clips with strict source-blob checks/provenance. Added source rig-v2
+  proportions/plain-box body, chest-space arm IK conversion, native Unity legacy AnimationClip baking/sampling,
+  sword idle/movement/cuts/block/stagger, travel-aware feet, adapted roll and blade/shell floor guards.
+- Added a close-up four-weapon viewer (orbit, clip selection, pause, quarter/half speed). Daggers/greatsword/shield
+  and block-impact captures are viewer-only. Original test poses remain selectable; HUD/CSV identify animation
+  mode and pose CPU time. New geometry is also heavier, so this is not an isolated animation-only cost comparison.
+- Combat hit timing, hitboxes, damage, cooldowns, stamina, movement authority and network protocol are unchanged.
+  Cut contact marks map to the existing sword window. No root-motion authority or character colliders were added.
+- Actual checks: 34 clips / 3,384 sampled poses (normalization, bone lengths, floor constraints, loop/timing,
+  wrist/reflection/roll, corrupt data), all 22 combat/LAN regressions, four package regressions and source validation pass.
+  Runtime/Editor/Windows-conditional scripts compile against actual Unity 6000.3.24f1 APIs with warnings as errors.
+  Offline pose geometry reviewed for four states in all four sets; this is not a Unity render/playtest.
+- Added a native 102-pose curve-binding validation gate to the Editor checks and Windows builder; not executed here.
+  The owner confirmed the prior visibility repair, but this enhanced version still needs activated Windows import,
+  build, visual acceptance and host/guest checks. Full production foot plants, blade/body clearance, recovery wrist
+  limiter, armor sculpture/materials, cosmetics, maps and the ability catalog remain outside the slice (ANIMATIONS.md).
+- Deliverable: source patch/full source archive on this isolated branch; no Windows EXE built here, no merge or feed publication.
+
 ## 2026-10-06 — Codex — Unity invisible characters/projectiles follow-up
 - Owner reports both characters and projectiles invisible. Continued `codex/unity-prototype` from
   `e21fe19b1b05ef8469b553c5b2444ece2d92e3b9`. No screenshot/runtime log was supplied; Editor versus

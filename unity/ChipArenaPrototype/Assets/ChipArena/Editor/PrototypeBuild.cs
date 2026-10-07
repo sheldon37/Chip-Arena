@@ -22,6 +22,7 @@ namespace ChipArena.UnityPrototype.Editor
         {
             Prepare();
             foreach(string name in RegressionTests.Run()) Debug.Log("PASS " + name);
+            using(var animations=new CapturedAnimation()) animations.ValidatePlayback();
             foreach(string name in new[] { "PrototypeLit", "PrototypeParticles" })
             {
                 Shader shader=Resources.Load<Shader>(name);
@@ -35,7 +36,7 @@ namespace ChipArena.UnityPrototype.Editor
         {
             PlayerSettings.companyName="ChipArenaPrototype";
             PlayerSettings.productName="Chip Arena Unity Lab TEST";
-            PlayerSettings.bundleVersion="0.1.0-unity-test";
+            PlayerSettings.bundleVersion="0.2.0-unity-animation-test";
             PlayerSettings.defaultScreenWidth=1600; PlayerSettings.defaultScreenHeight=900;
             PlayerSettings.fullScreenMode=FullScreenMode.Windowed;
             PlayerSettings.runInBackground=true;

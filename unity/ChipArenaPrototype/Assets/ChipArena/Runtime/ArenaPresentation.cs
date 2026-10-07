@@ -7,9 +7,21 @@ namespace ChipArena.UnityPrototype
     public sealed class ArenaPresentation : MonoBehaviour
     {
         private Mesh cube;
+        private CapturedAnimation captured;
+        private readonly Dictionary<int,CapturedAnimation.Player> rigs=new Dictionary<int,CapturedAnimation.Player>();
+        private readonly List<int> removedRigs=new List<int>();
+        private readonly System.Diagnostics.Stopwatch animationTimer=new System.Diagnostics.Stopwatch();
+        public bool CapturedPlayers=true, Viewer;
+        public int ViewerSet, ViewerClip;
+        public float ViewerTime;
+        public double AnimationMs { get; private set; }
+        public string AnimationMode => CapturedPlayers?"Captured clips":"Original test poses";
+        public string PlayerState { get; private set; }="idle";
+        public string PreviewName => CapturedClips.Sets[ViewerSet][ViewerClip].Name;
+        public string PreviewSource => CapturedClips.Sets[ViewerSet][ViewerClip].Source;
         private readonly List<Material> materials = new List<Material>();
         private readonly List<Material> compatibilityMaterials = new List<Material>();
-        private readonly List<Matrix4x4>[] batches = { new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>() };
+        private readonly List<Matrix4x4>[] batches = { new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>() };
         private readonly Matrix4x4[] drawBuffer = new Matrix4x4[1023];
         private readonly Dictionary<int, Vector3> visualPositions = new Dictionary<int, Vector3>();
         private readonly List<GameObject> debris = new List<GameObject>();
@@ -31,7 +43,7 @@ namespace ChipArena.UnityPrototype
         {
             GameObject sample = GameObject.CreatePrimitive(PrimitiveType.Cube);
             cube = sample.GetComponent<MeshFilter>().sharedMesh; Destroy(sample);
-            Color[] colors = { new Color(.17f,.85f,.83f), new Color(.45f,.58f,1), new Color(.92f,.30f,.38f), new Color(.08f,.11f,.17f), new Color(.87f,.95f,1) };
+            Color[] colors = { new Color(.17f,.85f,.83f), new Color(.45f,.58f,1), new Color(.92f,.30f,.38f), new Color(.08f,.11f,.17f), new Color(.87f,.95f,1), new Color(.43f,.51f,.56f) };
             Shader shader = Resources.Load<Shader>("PrototypeLit");
             if (shader == null) throw new System.InvalidOperationException("PrototypeLit shader is missing");
             foreach (Color color in colors)
@@ -40,6 +52,7 @@ namespace ChipArena.UnityPrototype
                 compatibilityMaterials.Add(new Material(shader) { color = color, enableInstancing = false });
             }
             Debug.Log($"Unity prototype renderer: {RenderingMode}; {SystemInfo.graphicsDeviceType}; {SystemInfo.graphicsDeviceName}; shaderSupported={shader.isSupported}");
+            captured=new CapturedAnimation();
             stage = new GameObject("Arena geometry").transform; stage.SetParent(transform);
             Block("Floor", new Vector3(0, -.35f, 0), new Vector3(50, .7f, 50), materials[3], true);
             for (int i = -24; i <= 24; i += 4)
@@ -70,6 +83,7 @@ namespace ChipArena.UnityPrototype
         public void ResetPresentation()
         {
             lastEvent=0; visualPositions.Clear(); particles.Clear();
+            foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear();
             foreach(var o in debris) if(o!=null) Destroy(o); debris.Clear();
             foreach(var o in coverObjects) if(o!=null) Destroy(o); coverObjects.Clear();
         }
@@ -78,6 +92,10 @@ namespace ChipArena.UnityPrototype
         {
             if(s==null) return;
             foreach(var list in batches) list.Clear(); DrawnParts=0;
+            removedRigs.Clear();
+            foreach(int id in rigs.Keys) { bool exists=false; foreach(var a in s.Actors) if(a.Id==id) { exists=true; break; } if(!exists) removedRigs.Add(id); }
+            foreach(int id in removedRigs) { rigs[id].Dispose(); rigs.Remove(id); visualPositions.Remove(id); }
+            animationTimer.Restart();
             foreach(Actor a in s.Actors)
             {
                 Vector3 old; Vector3 target=Vec(a.Position);
@@ -87,8 +105,10 @@ namespace ChipArena.UnityPrototype
                 if(!a.Alive) continue;
                 int color=a.Bot?2:a.Id-1;
                 if(renderTime<a.FlashUntil) color=4;
-                Pose(a,p,renderTime,color);
+                if(CapturedPlayers||Viewer) CapturedPose(a,p,renderTime,color);
+                else Pose(a,p,renderTime,color);
             }
+            animationTimer.Stop(); AnimationMs=animationTimer.Elapsed.TotalMilliseconds;
             foreach(Shot p in s.Shots) Add(4, Matrix4x4.TRS(Vec(p.Position),Quaternion.identity,Vector3.one*.18f));
             for(int k=0;k<batches.Length;k++)
             {
@@ -125,6 +145,42 @@ namespace ChipArena.UnityPrototype
                 Burst(Vec(e.Position), e.Kind==EventKind.Block?new Color(.3f,.9f,1):e.Kind==EventKind.Death?new Color(1,.2f,.35f):new Color(1,.7f,.3f),e.Kind==EventKind.Death?24:12);
                 if(DebrisEnabled&&(e.Kind==EventKind.Break||e.Kind==EventKind.Death)) Debris(Vec(e.Position)+Vector3.up*.3f,e.Kind==EventKind.Death?materials[2]:materials[3]);
             }
+        }
+        private void CapturedPose(Actor a,Vector3 position,float time,int color)
+        {
+            CapturedAnimation.Player rig;
+            if(!rigs.TryGetValue(a.Id,out rig)) { rig=captured.Create(transform,a.Id); rigs.Add(a.Id,rig); }
+            if(Viewer) rig.Preview(ViewerSet,PreviewName.Substring(PreviewName.IndexOf('/')+1),ViewerTime,Vector3.zero);
+            else rig.ActorPose(a,position,time);
+            if(a.Id==1||a.Id==2) PlayerState=rig.State;
+            foreach(var box in CapturedRig.Boxes)
+            {
+                int tint=time<a.FlashUntil?4:box.Color<0?color:box.Color;
+                Part(rig.Bones[box.Bone].localToWorldMatrix,CapturedAnimation.Vec(CapturedRig.Mirror(box.Position)),CapturedAnimation.Vec(box.Size),Quaternion.identity,tint);
+            }
+            Weapon(rig.Bones[CapturedRig.RHand].localToWorldMatrix,rig.Set,color);
+            if(rig.Set==1) Weapon(rig.Bones[CapturedRig.LHand].localToWorldMatrix,1,color);
+        }
+        private void Weapon(Matrix4x4 hand,int set,int color)
+        {
+            // Source weapon-visuals.ts proportions. Grip is at the wrist; +z is the captured blade direction.
+            if(set==3)
+            {
+                Part(hand,new Vector3(0,.13f,.18f),new Vector3(.60f,.58f,.12f),Quaternion.identity,4);
+                Part(hand,new Vector3(0,-.20f,.18f),new Vector3(.46f,.10f,.12f),Quaternion.identity,4);
+                Part(hand,new Vector3(0,-.29f,.18f),new Vector3(.28f,.09f,.12f),Quaternion.identity,4);
+                Part(hand,new Vector3(0,.13f,.25f),new Vector3(.5f,.48f,.04f),Quaternion.identity,3);
+                Part(hand,new Vector3(0,.05f,.28f),new Vector3(.09f,.62f,.025f),Quaternion.identity,color);
+                Part(hand,new Vector3(0,.17f,.28f),new Vector3(.36f,.08f,.025f),Quaternion.identity,color);
+                return;
+            }
+            float length=set==1?.5f:set==2?1.35f:.94f,width=set==2?.18f:set==1?.09f:.10f;
+            Part(hand,new Vector3(0,0,.02f),new Vector3(.09f,.09f,set==2?.4f:.27f),Quaternion.identity,3);
+            Part(hand,new Vector3(0,0,set==2?-.225f:-.15f),Vector3.one*.08f,Quaternion.identity,color);
+            Part(hand,new Vector3(0,0,.22f),new Vector3(set==2?.4f:set==1?.2f:.34f,.065f,.08f),Quaternion.identity,color);
+            Part(hand,new Vector3(0,0,.26f+(length-.08f)*.5f),new Vector3(width,.04f,length-.08f),Quaternion.identity,4);
+            Part(hand,new Vector3(0,0,.26f+length-.04f),new Vector3(width*.66f,.035f,.08f),Quaternion.identity,4);
+            Part(hand,new Vector3(0,0,.26f+length+.035f),new Vector3(width*.33f,.035f,.07f),Quaternion.identity,4);
         }
         private void UseCompatibility(string reason)
         {
@@ -190,6 +246,7 @@ namespace ChipArena.UnityPrototype
         }
         private void OnDestroy()
         {
+            foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
             foreach(var m in materials) Destroy(m);
             foreach(var m in compatibilityMaterials) Destroy(m);
             if(particleMaterial!=null) Destroy(particleMaterial);

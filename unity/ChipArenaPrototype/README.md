@@ -25,7 +25,19 @@ The existing Electron game, saved accounts and update channels are separate. Thi
 | F8 | Record an uninterrupted 30-second frame-time sample |
 | F9 | Toggle compatibility rendering for characters and projectiles |
 
-Characters automatically respawn. All three sword combo stages currently use the source sword's 30 damage, 14 stamina, .14 s windup and .62 s interval. Their poses are procedural placeholders. The ability/cosmetic catalog and purchased animation packs are not included.
+Characters automatically respawn. All three sword combo stages currently use the source sword's 30 damage, 14 stamina, .14 s windup and .62 s interval. Their poses now use the game’s captured sword clips and articulated rig. The ability/cosmetic catalog and original FBX packs are not included. See `ANIMATIONS.md` for scope and source provenance.
+
+## Enhanced animation test
+
+**Play solo** now uses captured sword idle, movement, cuts, block and hit reactions.
+Choose **Animation viewer** to inspect 34 clips across sword, daggers, greatsword and shield.
+Mouse orbits; **1–4** selects a set; **[ / ]** changes clips; **Space** pauses.
+Escape offers 0.25× / 0.5× / 1× playback and a return to solo play.
+
+For a before/after workload comparison, toggle **Captured player animations** in the menu.
+The rig and geometry also change with this toggle; CSV rows record the mode and pose CPU time.
+The viewer does not run gameplay or benchmark captures. Other weapon sets are viewer-only.
+Read `ANIMATIONS.md` for fidelity limits and native build validation.
 
 ## Build a Windows test ZIP
 
@@ -56,7 +68,7 @@ Actors and bolts share a runtime GPU-instanced draw path. Unlike the arena's ord
 
 Rebuild the Windows player after applying this fix. If the result remains invisible, press **F9**, or enable **Compatibility rendering** in the Escape menu. That draws the same character parts and bolts individually with separate non-instancing materials. Drawing exceptions also switch to this path automatically; silent GPU failures require the manual toggle. The HUD reports the active mode. Compatibility mode increases draw-call cost and is for diagnosis/recovery, so compare benchmarks using the same renderer mode. CSV rows now include `renderer_mode`, and changing the mode manually cancels an active capture.
 
-The suspected stripping cause has not been reproduced on the owner's GPU. If F9 does not restore visibility, share a screenshot and the player log at `%USERPROFILE%\AppData\LocalLow\ChipArenaPrototype\Chip Arena Unity Lab TEST\Player.log`, or the Unity Console errors if testing inside the Editor. Include whether the floor/cover are visible and whether the HUD's Parts/Shots counts change.
+The owner subsequently confirmed characters were visible. The exact Editor/player and normal/F9 renderer mode were not reported; the stripping cause has not been reproduced here. If F9 does not restore visibility, share a screenshot and the player log at `%USERPROFILE%\AppData\LocalLow\ChipArenaPrototype\Chip Arena Unity Lab TEST\Player.log`, or the Unity Console errors if testing inside the Editor. Include whether the floor/cover are visible and whether the HUD's Parts/Shots counts change.
 
 Reference: [Unity 6.3: Prevent stripping GPU instancing shaders](https://docs.unity3d.com/6000.3/Documentation/Manual/gpu-instancing-strip-variants.html).
 
@@ -78,12 +90,12 @@ Frame mean/p95 are a rolling sample of up to 600 frames. **Frame time includes f
 
 F8 writes a CSV after 30 seconds, under this prototype's own `Application.persistentDataPath/Benchmarks`. The menu can copy the last file path. CSV metadata records Unity, OS, CPU, GPU, resolution, frame limit and session mode. Compare equal resolution, graphics settings, crowd counts and combat activity; use the Unity Profiler to locate actual CPU/GPU costs.
 
-**This prototype is simpler than Chip Arena. A better FPS result is not proof that the entire game will be faster in Unity.** There are no production Siren mechanics, full rigs/clip blending, crowd collision, gameplay destruction physics, all Chip combinations, or save systems in this slice.
+**This prototype is simpler than Chip Arena. A better FPS result is not proof that the entire game will be faster in Unity.** There are no production Siren mechanics, complete production animation layers, crowd collision, gameplay destruction physics, all Chip combinations, or save systems in this slice.
 
 ## Tests and source layout
 
 - `Assets/ChipArena/Core`: standalone C# authority, geometric collision, snapshot codec, and threaded LAN transport.
-- `Assets/ChipArena/Runtime`: Unity presentation, procedural instanced voxel rigs, particles, decorative PhysX debris, camera, menu and measurements.
+- `Assets/ChipArena/Runtime`: Unity presentation, captured clip playback, articulated instanced voxel rigs, particles, decorative PhysX debris, camera, menu and measurements.
 - `Assets/ChipArena/Editor`: project validation and isolated Windows packaging.
 - `Tests`: no-dependency .NET 8 runner for the same core code. Run `dotnet run --project Tests/CoreTests.csproj -c Release`.
 - `Assets/ChipArena/Scenes/Prototype.unity`: minimal entry scene. The runtime bootstrap builds the arena when Play starts.

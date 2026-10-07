@@ -1,6 +1,26 @@
-# Validation status — 2026-10-06
+# Validation status — 2026-10-07
 
 This is source for an isolated Unity prototype. **No Unity Editor playtest or Windows executable build is claimed.**
+
+## Enhanced animation update
+
+- Imported **34 actual committed capture clips** from source 05950ea, with strict original Git-blob checks and SHA256 provenance.
+- Passed **3,384 sampled pose checks**: finite channels and normalized joint quaternions, preserved bone lengths,
+  shell/blade floor constraints, loop wrapping, contact marks and monotone retiming, handedness conversion, wrist orientation,
+  adapted roll floor contact and corrupt-data rejection. These run against the actual production C# conversion code.
+- All **22 existing combat/network regressions**, including TCP loopback and 192 bots, still pass.
+- Runtime, Editor and Windows-conditional scripts compile against actual pinned Unity assemblies with warnings as errors.
+- Four package regression tests and source-package structure checks pass. Original shader-retention, F9 fallback and CA icon are retained.
+- An offline geometry inspection covered idle, cut, run and block poses for all four sets. It checked the conversion math,
+  not a Unity screenshot or native visual acceptance.
+- Added native Unity validation of **102 poses / 34 clips**, checking actual sampled transform bindings against the
+  reference conversion before a Windows build. **Implemented, not executed here:** no activated Unity Editor is available.
+- The owner confirmed the earlier visibility repair worked and reported good initial test results. No numeric performance
+  results or proof of complete-game parity were supplied. The enhanced animation version still needs Windows playtesting.
+
+Damage, hit timing, hitboxes, stamina, cooldowns, movement authority and wire protocol were not changed.
+Remaining fidelity limits are explicit in ANIMATIONS.md, especially planted feet, original blade/body clearance,
+production materials/cosmetics and the other weapon classes being viewer-only.
 
 ## Character/projectile visibility follow-up
 
@@ -8,11 +28,11 @@ The owner reports invisible characters and projectiles after the package repair.
 
 The source had no protection against Unity stripping the instancing variants for runtime-created materials. The documented fix is now applied in project preparation and a pre-build callback: **Instancing Variants = Keep All**. The shader explicitly targets model 3.5. F9/menu compatibility mode uses individual draws and separate non-instancing materials; instanced-draw exceptions also switch automatically. HUD and CSV identify the renderer mode. Manual switches cancel a frame capture to avoid comparing mixed modes.
 
-Runtime, Editor and Windows-conditional runtime scripts compile against the actual Unity 6000.3.24f1 managed APIs with warnings as errors. Package regressions and source/archive checks pass. No new gameplay rules or networking behavior changed. Shader compilation, execution of the build callback, Windows shader retention, both rendering paths and actual restored visibility still require testing on the owner's activated Unity installation. Shader stripping is a strong code-supported hypothesis, not a reproduced GPU diagnosis.
+Runtime, Editor and Windows-conditional runtime scripts compile against the actual Unity 6000.3.24f1 managed APIs with warnings as errors. Package regressions and source/archive checks pass. No new gameplay rules or networking behavior changed. Shader compilation, execution of the build callback, Windows shader retention, both rendering paths and specific renderer modes still require testing on the owner's activated Unity installation. The owner subsequently confirmed visibility was restored, without specifying the renderer mode. Shader stripping is a strong code-supported hypothesis, not a reproduced GPU diagnosis.
 
 ## Passed in the authoring workspace
 
-- The six engine-independent Core C# files compile with Microsoft's real Roslyn compiler from .NET SDK 8.0.425 against .NET 8 reference assemblies, with warnings treated as errors.
+- The engine-independent Core C# files compile with Microsoft's real Roslyn compiler from .NET SDK 8.0.425 against .NET 8 reference assemblies, with warnings treated as errors.
 - All runtime scripts compile with C# 9 against the **actual Unity 6000.3.24f1 managed assemblies and its .NET Standard 2.1 references**, with warnings treated as errors. The Editor assembly compiles separately against that runtime assembly; a second runtime compilation with `UNITY_STANDALONE_WIN` and without `UNITY_EDITOR` also passes. These are managed API compilation checks, not Unity player builds.
 - 22 managed-core regression checks pass, including movement bounds, cover collision, one-hit sword timing, parry ordering/cooldown, dodge cancellation/window, stamina, combo buffering, sprint exhaustion, jumping, swept bolts, reflection ownership, breakage, respawn, invalid input, snapshot round trip, malformed packet rejection and bot resets.
 - The 192-bot/600-tick stress regression remains finite and serializable. This is a correctness check, not a published performance benchmark.
@@ -36,8 +56,8 @@ Package validation now uses a versioned catalog extracted from the pinned Editor
 - Windows EXE icon embedding, Explorer/desktop shortcut appearance and Windows command execution.
 - Actual Unity renderer, graphics driver, PhysX debris, UI layout and input focus validation.
 - Windows player compilation, ZIP launch and two-Unity-window LAN acceptance.
-- Production animation pack/rig retargeting, production gameplay parity, and comparative Electron-versus-Unity performance measurements.
+- Original FBX/Humanoid retargeting, production gameplay parity, and comparative Electron-versus-Unity performance measurements.
 
-The Editor's **Chip Arena → Run core and project checks** repeats the core checks inside Unity and checks the scene/shader imports. **Build Windows TEST ZIP** runs that validation before building. Editor/build failures must be fixed before calling a Windows package verified.
+The Editor's **Chip Arena → Run core and project checks** repeats the core checks inside Unity and checks the scene/shader imports and native captured-clip transform bindings. **Build Windows TEST ZIP** runs that validation before building. Editor/build failures must be fixed before calling a Windows package verified.
 
 The branch's source-artifact workflow runs the managed tests and source structure checks only. Its artifact is explicitly named **Source**, not a compiled game.

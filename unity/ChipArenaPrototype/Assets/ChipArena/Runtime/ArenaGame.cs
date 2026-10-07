@@ -12,7 +12,7 @@ namespace ChipArena.UnityPrototype
 {
     public sealed class ArenaGame : MonoBehaviour
     {
-        private enum Session { Menu, Solo, Host, Guest }
+        private enum Session { Menu, Solo, Host, Guest, Viewer }
         private Session session;
         private ArenaWorld world;
         private Snapshot snapshot;
@@ -36,6 +36,8 @@ namespace ChipArena.UnityPrototype
         private readonly Color accent = new Color(.2f,.9f,.8f);
         private Texture2D white;
         private Vector2 menuScroll;
+        private float previewSpeed=1, previewYaw=155, previewPitch=12;
+        private bool previewPaused;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Boot()
@@ -69,7 +71,7 @@ namespace ChipArena.UnityPrototype
         {
             int port;
             if(!int.TryParse(portText,out port)||port<1024||port>65535) { message="Use a port from 1024 to 65535."; return; }
-            StopLink(); presentation.ResetPresentation();
+            StopLink(); presentation.Viewer=false; presentation.ResetPresentation();
             sequence=0; lastRemoteSequence=-1; pending=remote=new InputFrame(); sprint=false; ackMs=0;
             captureUntil=0; captureRows.Clear(); frameCount=frameAt=0;
             world=new ArenaWorld(); world.SetBots(botCount); world.BotAttacks=!invulnerablePractice;
@@ -83,13 +85,44 @@ namespace ChipArena.UnityPrototype
             }
             catch(Exception e) { session=Session.Menu; menu=true; message=e.Message; StopLink(); }
         }
+        private void BeginViewer()
+        {
+            StopLink(); presentation.ResetPresentation(); presentation.Viewer=true;
+            session=Session.Viewer; menu=false; previewPaused=false; presentation.ViewerTime=0;
+            captureUntil=0; captureRows.Clear(); pending=new InputFrame();
+            snapshot=new Snapshot { Tick=0,Actors=new[]{new Actor { Id=1 }},Covers=Array.Empty<Cover>(),Shots=Array.Empty<Shot>(),Events=Array.Empty<ArenaEvent>() };
+            Cursor.lockState=CursorLockMode.Locked; Cursor.visible=false;
+        }
+        private void ChangePreviewSet(int set) { presentation.ViewerSet=set; presentation.ViewerClip=0; presentation.ViewerTime=0; }
+        private void ChangePreviewClip(int delta)
+        {
+            int count=CapturedClips.Sets[presentation.ViewerSet].Length;
+            presentation.ViewerClip=(presentation.ViewerClip+delta+count)%count; presentation.ViewerTime=0;
+        }
         private void Update()
         {
             PollNetwork();
             if(Input.GetKeyDown(KeyCode.Escape)) ToggleMenu();
-            if(Input.GetKeyDown(KeyCode.F8)&&session!=Session.Menu) StartCapture();
+            if(Input.GetKeyDown(KeyCode.F8)&&session!=Session.Menu&&session!=Session.Viewer) StartCapture();
             if(Input.GetKeyDown(KeyCode.F9)) SetCompatibilityRendering(!presentation.ForceCompatibilityRendering);
-            if(!menu&&session!=Session.Menu)
+            if(session==Session.Viewer)
+            {
+                if(!menu)
+                {
+                    previewYaw+=Input.GetAxisRaw("Mouse X")*2; previewPitch=Mathf.Clamp(previewPitch-Input.GetAxisRaw("Mouse Y"),-10,65);
+                    if(Input.GetKeyDown(KeyCode.Space)) previewPaused=!previewPaused;
+                    if(Input.GetKeyDown(KeyCode.LeftBracket)) ChangePreviewClip(-1);
+                    if(Input.GetKeyDown(KeyCode.RightBracket)) ChangePreviewClip(1);
+                    if(Input.GetKeyDown(KeyCode.Alpha1)) ChangePreviewSet(0);
+                    if(Input.GetKeyDown(KeyCode.Alpha2)) ChangePreviewSet(1);
+                    if(Input.GetKeyDown(KeyCode.Alpha3)) ChangePreviewSet(2);
+                    if(Input.GetKeyDown(KeyCode.Alpha4)) ChangePreviewSet(3);
+                    if(!previewPaused) presentation.ViewerTime+=Time.unscaledDeltaTime*previewSpeed;
+                    var clip=CapturedClips.Sets[presentation.ViewerSet][presentation.ViewerClip];
+                    if(!clip.Loop&&presentation.ViewerTime>clip.Duration+.6f) presentation.ViewerTime=0;
+                }
+            }
+            else if(!menu&&session!=Session.Menu)
             {
                 yaw+=Input.GetAxisRaw("Mouse X")*2; pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f,5,65);
                 if(Input.GetKeyDown(KeyCode.W)) { if(Time.unscaledTime-lastW<.3f) sprint=true; lastW=Time.unscaledTime; }
@@ -112,7 +145,7 @@ namespace ChipArena.UnityPrototype
         }
         private void FixedUpdate()
         {
-            if(session==Session.Menu||menu&&session==Session.Solo) return;
+            if(session==Session.Menu||session==Session.Viewer||menu&&session==Session.Solo) return;
             pending.Sequence=++sequence;
             if(session==Session.Guest)
             {
@@ -159,6 +192,10 @@ namespace ChipArena.UnityPrototype
         }
         private void UpdateCamera()
         {
+            if(session==Session.Viewer)
+            {
+                Vector3 focus=new Vector3(0,.95f,0); view.transform.position=focus+Quaternion.Euler(previewPitch,previewYaw,0)*new Vector3(0,0,-3.6f); view.transform.LookAt(focus); return;
+            }
             Actor a=Local(); Vector3 target=a==null?new Vector3(0,1,0):presentation.Position(a)+Vector3.up*1.15f;
             if(session==Session.Menu)
             {
@@ -188,7 +225,7 @@ namespace ChipArena.UnityPrototype
         }
         private void UpdateMetrics()
         {
-            if(session==Session.Menu||menu&&session==Session.Solo) return;
+            if(session==Session.Menu||session==Session.Viewer||menu&&session==Session.Solo) return;
             float frame=Time.unscaledDeltaTime*1000;
             frames[frameAt++%frames.Length]=frame; frameCount=Mathf.Min(frameCount+1,frames.Length);
             if(Time.unscaledTime-lastStatsAt>1&&frameCount>0)
@@ -200,7 +237,7 @@ namespace ChipArena.UnityPrototype
             {
                 if(Time.unscaledTime>=captureUntil) { FinishCapture(); return; }
                 if(captureRows.Count<20000) captureRows.Add(string.Join(",",Time.unscaledTime.ToString("F3",CultureInfo.InvariantCulture),frame.ToString("F3",CultureInfo.InvariantCulture),
-                    session==Session.Guest?"":stepMs.ToString("F3",CultureInfo.InvariantCulture),snapshot?.Actors.Length??0,snapshot?.Shots.Length??0,presentation.DebrisCount,presentation.ParticleCount,presentation.RenderingMode));
+                    session==Session.Guest?"":stepMs.ToString("F3",CultureInfo.InvariantCulture),snapshot?.Actors.Length??0,snapshot?.Shots.Length??0,presentation.DebrisCount,presentation.ParticleCount,presentation.RenderingMode,presentation.AnimationMode,presentation.AnimationMs.ToString("F3",CultureInfo.InvariantCulture)));
             }
         }
         private void StartCapture()
@@ -219,7 +256,7 @@ namespace ChipArena.UnityPrototype
                 var data=new StringBuilder(); data.AppendLine("# Prototype workload; NOT a full-game benchmark. Frame time is wall time, not GPU duration.");
                 data.AppendLine("# Unity "+Application.unityVersion+" | "+SystemInfo.operatingSystem+" | "+SystemInfo.processorType+" | "+SystemInfo.graphicsDeviceName);
                 data.AppendLine("# Mode: "+session+" | Resolution: "+Screen.width+"x"+Screen.height+" | Target FPS: "+Application.targetFrameRate+" | VSync: "+QualitySettings.vSyncCount);
-                data.AppendLine("elapsed_seconds,frame_ms,authority_step_ms,actors,projectiles,physx_debris,particles,renderer_mode");
+                data.AppendLine("elapsed_seconds,frame_ms,authority_step_ms,actors,projectiles,physx_debris,particles,renderer_mode,animation_mode,animation_pose_ms");
                 foreach(string row in captureRows) data.AppendLine(row); File.WriteAllText(capturePath,data.ToString()); message="Benchmark saved. Open menu to copy its path.";
             }
             catch(Exception e) { message="Could not save benchmark: "+e.Message; }
@@ -243,7 +280,7 @@ namespace ChipArena.UnityPrototype
             Panel(new Rect(0,0,width,56),new Color(.025f,.035f,.060f,.94f));
             GUI.Label(new Rect(22,10,500,35),"CHIP ARENA  /  UNITY LAB",title);
             GUI.Label(new Rect(width-310,21,295,25),"ISOLATED PROTOTYPE  •  NO GAME UPDATES",small);
-            if(session!=Session.Menu)
+            if(session!=Session.Menu&&session!=Session.Viewer)
             {
                 var a=Local(); Panel(new Rect(10,70,248,167),new Color(.025f,.035f,.06f,.85f));
                 if(a!=null)
@@ -254,13 +291,18 @@ namespace ChipArena.UnityPrototype
                     Bar(170,"BLOCK  "+(a.BlockReady<=t?"READY":Mathf.Max(0,a.BlockReady-t).ToString("F1")+"s"),1-Mathf.Max(0,a.BlockReady-t)/Rules.BlockCooldown,new Color(.5f,.7f,1));
                     if(!a.Alive) GUI.Label(new Rect(width/2-140,height/2,280,35),"RESPAWNING...",title);
                 }
-                Panel(new Rect(width-300,70,285,195),new Color(.025f,.035f,.06f,.85f));
-                GUI.Label(new Rect(width-287,82,260,178),$"{session}  ·  {snapshot?.Actors.Length??0} actors\nFrame: {meanMs:F1} ms mean / {p95Ms:F1} ms p95\n"+
+                Panel(new Rect(width-300,70,285,240),new Color(.025f,.035f,.06f,.85f));
+                GUI.Label(new Rect(width-287,82,260,225),$"{session}  ·  {snapshot?.Actors.Length??0} actors\nFrame: {meanMs:F1} ms mean / {p95Ms:F1} ms p95\n"+
                     (session==Session.Guest?$"Input acknowledgment: {ackMs:F0} ms\n":"Authority step: "+stepMs.ToString("F2")+" ms\n")+
-                    $"Shots: {snapshot?.Shots.Length??0}  ·  Debris: {presentation.DebrisCount}\nParticles: {presentation.ParticleCount}  ·  Parts: {presentation.DrawnParts}\nRendering: {presentation.RenderingMode} (F9)\n"+(link?.Status??"Local simulation"),small);
+                    $"Shots: {snapshot?.Shots.Length??0}  ·  Debris: {presentation.DebrisCount}\nParticles: {presentation.ParticleCount}  ·  Parts: {presentation.DrawnParts}\nRendering: {presentation.RenderingMode} (F9)\nAnimation: {presentation.AnimationMode}\nPose: {presentation.AnimationMs:F2} ms  /  {presentation.PlayerState}\n"+(link?.Status??"Local simulation"),small);
                 GUI.Label(new Rect(22,height-48,width-44,30),"WASD move   ·   Double-tap W sprint   ·   Mouse look   ·   LMB sword   ·   RMB block   ·   Shift dodge   ·   Space jump   ·   E bolts   ·   F8 record   ·   Esc menu",small);
                 Panel(new Rect(width/2-1,height/2-6,2,12),Color.white); Panel(new Rect(width/2-6,height/2-1,12,2),Color.white);
                 if(captureUntil>0) GUI.Label(new Rect(width/2-120,73,300,28),"RECORDING  "+Mathf.CeilToInt(captureUntil-Time.unscaledTime)+"s",text);
+            }
+            if(session==Session.Viewer)
+            {
+                Panel(new Rect(15,70,470,130),new Color(.025f,.035f,.06f,.9f));
+                GUI.Label(new Rect(30,82,440,108),"ANIMATION VIEWER  /  "+presentation.PreviewName+"\n"+presentation.PreviewSource+"\n"+(previewPaused?"PAUSED":previewSpeed.ToString("0.00")+"x speed")+"  ·  "+presentation.ViewerTime.ToString("F2")+"s\n1-4 weapon  ·  [ / ] clip  ·  Space pause\nMouse orbit  ·  Esc options / return to gameplay",text);
             }
             if(!menu) return;
             float panelWidth=570,panelX=(width-panelWidth)/2;
@@ -268,9 +310,25 @@ namespace ChipArena.UnityPrototype
             GUILayout.BeginArea(new Rect(panelX+26,108,panelWidth-52,height-200));
             menuScroll=GUILayout.BeginScrollView(menuScroll);
             GUILayout.Label(session==Session.Menu?"Test the next foundation":"Test session",title);
-            GUILayout.Label("One arena. Sword, block, dodge, bolts and breakable cover. Procedural placeholder animation; no purchased packs included.",text);
+            GUILayout.Label("Captured player animations from Chip Arena: sword gameplay and a close-up viewer for sword, daggers, greatsword and shield.",text);
             GUILayout.Space(12);
             if(session!=Session.Menu&&GUILayout.Button("Resume",button)) ToggleMenu();
+            if(GUILayout.Button("Animation viewer - inspect all four weapon sets",button)) BeginViewer();
+            if(session==Session.Viewer)
+            {
+                GUILayout.BeginHorizontal();
+                for(int i=0;i<4;i++) if(GUILayout.Button(CapturedClips.Names[i],button)) ChangePreviewSet(i);
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if(GUILayout.Button("Previous clip",button)) ChangePreviewClip(-1);
+                if(GUILayout.Button("Next clip",button)) ChangePreviewClip(1);
+                GUILayout.EndHorizontal();
+                GUILayout.Label(presentation.PreviewName+"  /  "+presentation.PreviewSource,text);
+                GUILayout.BeginHorizontal();
+                foreach(float rate in new[]{.25f,.5f,1f}) if(GUILayout.Button(rate+"x",button)) previewSpeed=rate;
+                GUILayout.EndHorizontal();
+                GUILayout.Label("The viewer poses a stationary mannequin; it does not run combat or benchmarks. Play solo to test movement and fighting with the sword captures.",small);
+            }
             GUILayout.BeginHorizontal();
             if(GUILayout.Button("Play solo",button)) Begin(Session.Solo);
             if(GUILayout.Button("Host LAN",button)) Begin(Session.Host);
@@ -281,13 +339,19 @@ namespace ChipArena.UnityPrototype
             GUILayout.Label("Host addresses: "+lanAddresses,small);
             GUILayout.Label("LAN is a synchronization test: 2 players, trusted network, no prediction or internet matchmaking. Host must create a new session after disconnect.",small);
             GUILayout.Space(12); GUILayout.Label("Crowd workload",text);
-            GUI.enabled=session!=Session.Guest;
+            GUI.enabled=session!=Session.Guest&&session!=Session.Viewer;
             GUILayout.BeginHorizontal();
             foreach(int n in new[] { 0,8,32,96,192 }) if(GUILayout.Button(n+(n==botCount?" ✓":""),button)) { botCount=n; world.SetBots(n); snapshot=world.Capture(); }
             GUILayout.EndHorizontal();
             bool harmless=GUILayout.Toggle(invulnerablePractice,"Movement-only crowd (bots do not attack)");
             if(harmless!=invulnerablePractice) { invulnerablePractice=harmless; if(world!=null) world.BotAttacks=!harmless; }
             GUI.enabled=true;
+            bool capturedPlayers=GUILayout.Toggle(presentation.CapturedPlayers,"Captured player animations (off = original test poses)");
+            if(capturedPlayers!=presentation.CapturedPlayers)
+            {
+                presentation.CapturedPlayers=capturedPlayers; frameCount=frameAt=0;
+                if(captureUntil>0) { captureUntil=0; captureRows.Clear(); message="Capture cancelled because animation mode changed."; }
+            }
             presentation.DebrisEnabled=GUILayout.Toggle(presentation.DebrisEnabled,"PhysX debris on kills and broken cover");
             bool compatibility=GUILayout.Toggle(presentation.ForceCompatibilityRendering,"Compatibility rendering (F9) - use if characters or bolts are invisible");
             if(compatibility!=presentation.ForceCompatibilityRendering) SetCompatibilityRendering(compatibility);
@@ -296,13 +360,13 @@ namespace ChipArena.UnityPrototype
             if(GUILayout.Button("144 FPS",button)) Application.targetFrameRate=144;
             if(GUILayout.Button("Uncapped",button)) Application.targetFrameRate=-1;
             GUILayout.EndHorizontal();
-            GUI.enabled=session!=Session.Menu&&captureUntil<=0;
+            GUI.enabled=session!=Session.Menu&&session!=Session.Viewer&&captureUntil<=0;
             if(GUILayout.Button("Record 30-second benchmark (F8)",button)) StartCapture(); GUI.enabled=true;
             if(capturePath.Length>0&&GUILayout.Button("Copy last benchmark path",button)) GUIUtility.systemCopyBuffer=capturePath;
             GUILayout.Label("Frame time includes frame limiting. Authority timing excludes rendering, serialization and PhysX. This is a simplified prototype workload, not production parity.",small);
             if(message.Length>0) GUILayout.Label(message,text);
             GUILayout.Space(6);
-            if(session!=Session.Menu&&GUILayout.Button("End session",button)) { StopLink(); session=Session.Menu; menu=true; presentation.ResetPresentation(); world=new ArenaWorld(); world.SetBots(botCount); snapshot=world.Capture(); }
+            if(session!=Session.Menu&&GUILayout.Button("End session",button)) { StopLink(); session=Session.Menu; menu=true; presentation.Viewer=false; presentation.ResetPresentation(); world=new ArenaWorld(); world.SetBots(botCount); snapshot=world.Capture(); }
             if(GUILayout.Button("Quit",button)) Application.Quit();
             GUILayout.EndScrollView(); GUILayout.EndArea();
         }

@@ -19,8 +19,9 @@ These constants do not make the prototype a faithful port. Its rule implementati
 ## Implemented in this slice
 
 - Local combat and 2-player host-authoritative LAN synchronization.
-- Sword attacks, one buffered follow-up, three procedural poses, a resource bar, timed defense, roll cancellation, partial dodge invulnerability and respawn.
+- Sword attacks, one buffered follow-up, three captured sword cuts, a resource bar, timed defense, roll cancellation, partial dodge invulnerability and respawn.
 - Swept energy bolts, block reflection, breakable static cover and small visual effects.
+- Source rig-v2 body proportions, 34 captured animation clips, native Unity clip playback and a four-set inspection viewer (see ANIMATIONS.md).
 - Instanced voxel characters and source-only custom shaders in the built-in render pipeline.
 - Up to 192 bots. Most use sword attacks; one in five uses intermittent energy bolts at range. The workload is reproducible by count, not a production Siren horde port.
 - Native Unity PhysX for decorative, temporary breakage/death fragments. They do not cause gameplay damage. A 512-fragment creation budget and 6-second natural lifetime prevent unbounded diagnostic memory growth. Existing fragments are not replaced early.
@@ -30,9 +31,9 @@ These constants do not make the prototype a faithful port. Its rule implementati
 ## Deliberate omissions and differences
 
 - Movement/contact are a small flat-arena C# kinematic model, **not** a Rapier-to-PhysX gameplay port. Cover collision is expanded AABB; projectiles use sphere sweeps. Actors do not physically collide with each other; platforms, steps and complex levels are not supported.
-- Sword hit geometry, stagger, knockback, parry follow-through, combo buffers and regeneration details are simplified. No authored mocap is bundled. This does not preserve the exact feel, balance, animation contacts or collision shapes of the live game.
+- Sword hit geometry, stagger, knockback, parry follow-through, combo buffers and regeneration details are simplified. The game’s committed retargeted mocap is included, but procedural footwork, recovery and blade clearance are only partially adapted. This does not preserve the exact feel, balance, animation contacts or collision shapes of the live game.
 - Energy bolts are diagnostic, unlimited-ammo shots with prototype damage/cadence. No ranged/magic class resource parity, Q/E ability catalog, Chips, dev styles, Siren boss behavior, rounds/drafts or economy.
-- No purchased FBX, pack manifests, models, commercial textures/music, or extracted third-party assets were added. Native humanoid retargeting and 9CG/Explosive pack compatibility are **not validated** by these placeholders. To evaluate a purchased pack, import it locally into ignored `Assets/LocalAssets`, then build a separate Animator/rig experiment. Do not commit source assets without checking the applicable license.
+- The 34 existing encoded Explosive-derived captures are reused privately; no source FBX, pack manifests, commercial textures/music or original pack models are added. Native Humanoid/FBX retargeting and 9CG compatibility remain untested. This update samples legacy clips on a custom articulated rig, not a production Animator Controller.
 - No production prediction/reconciliation, lag compensation, room service, accounts, saves, matchmaking, eight-player validation, updater, installer or release-channel integration.
 - Built-in render pipeline was selected to minimize dependencies for the first import. URP/HDRP-specific effects are not automatically compatible. A render-pipeline decision and native asset evaluation are next-stage work.
 
@@ -42,5 +43,5 @@ These constants do not make the prototype a faithful port. Its rule implementati
 2. Compare movement/camera/combat feel against the current game, not just a blank Unity scene.
 3. Test host/guest input, defense, damage, reset and disconnect using two actual Unity windows.
 4. Record 8/32/96/192-bot workloads at the same resolution and settings. Profile CPU, GPU, allocations and PhysX separately.
-5. Import one owner-provided animation pack and validate the actual character rig, blending and strike synchronization.
+5. Visually validate the imported captures, rig, blending, floor clearance and strike synchronization in the viewer and live sword arena. Raw FBX/Humanoid evaluation remains a separate test.
 6. Choose the production physics/network/asset architecture before porting the full catalog.

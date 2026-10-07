@@ -1,4 +1,4 @@
-"""Package only the isolated Unity project; never include commercial assets or editor caches."""
+"""Package only the isolated Unity project; exclude source packs and editor caches."""
 from pathlib import Path
 import hashlib
 import json
@@ -9,7 +9,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 TOP = {'Assets', 'Packages', 'ProjectSettings', 'Tests', 'tools'}
-FILES = {'README.md', 'PROTOTYPE-SCOPE.md', 'VALIDATION.md', 'ICON.md', 'Build-Windows.cmd', '.gitignore'}
+FILES = {'README.md', 'PROTOTYPE-SCOPE.md', 'VALIDATION.md', 'ICON.md', 'ANIMATIONS.md', 'Build-Windows.cmd', '.gitignore'}
 SKIP = {'bin', 'obj', '__pycache__', 'LocalAssets', 'Library', 'Temp', 'Logs', 'Builds', 'UserSettings'}
 
 
