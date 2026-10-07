@@ -8,6 +8,10 @@ namespace ChipArena.UnityConversion
     {
         private Mesh cube;
         private CapturedAnimation captured;
+        private NativeCombatGlow combatGlow;
+        public float GlowQuality=1;
+        public void RenderGlow(NativeArena arena,Camera camera)
+        {if(combatGlow==null)return;combatGlow.Quality=GlowQuality;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,viewRig,FirstPerson&&viewRig!=null&&arena.Local.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);}
         private readonly AudioClip[] gunSounds=new AudioClip[4];
         private AudioClip reloadStart,reloadEnd,hitSound;
         private AudioSource localAudio;
@@ -56,7 +60,7 @@ namespace ChipArena.UnityConversion
         {
             GameObject sample = GameObject.CreatePrimitive(PrimitiveType.Cube);
             cube = sample.GetComponent<MeshFilter>().sharedMesh; Destroy(sample);
-            Color[] colors = { new Color(.17f,.85f,.83f), new Color(.45f,.58f,1), new Color(.92f,.30f,.38f), new Color(.08f,.11f,.17f), new Color(.87f,.95f,1), new Color(.43f,.51f,.56f), new Color(1,.75f,.3f), new Color(1,.32f,.08f), new Color(.15f,.8f,1), new Color(.72f,.76f,1), new Color(.65f,.25f,.9f) };
+            Color[] colors = { new Color(.17f,.85f,.83f), new Color(.45f,.58f,1), new Color(.92f,.30f,.38f), new Color(.08f,.11f,.17f), new Color(.87f,.95f,1), new Color(.43f,.51f,.56f), new Color(1,.75f,.3f), new Color(1,.32f,.08f), new Color(.15f,.8f,1), new Color(.72f,.76f,1), new Color(.65f,.25f,.9f), new Color(1,.95f,.72f) };
             Shader shader = Resources.Load<Shader>(buildArena?"PrototypeLit":"NativeLit");
             if (shader == null) throw new System.InvalidOperationException("PrototypeLit shader is missing");
             foreach (Color color in colors)
@@ -66,7 +70,7 @@ namespace ChipArena.UnityConversion
             }
             for(int i=7;i<materials.Count;i++){materials[i].SetColor("_Emission",colors[i]*.55f);compatibilityMaterials[i].SetColor("_Emission",colors[i]*.55f);}
             Debug.Log($"Unity prototype renderer: {RenderingMode}; {SystemInfo.graphicsDeviceType}; {SystemInfo.graphicsDeviceName}; shaderSupported={shader.isSupported}");
-            captured=new CapturedAnimation();
+            captured=new CapturedAnimation();if(!buildArena)combatGlow=new NativeCombatGlow(transform);
             string[] soundNames={"","pistol","rifle","machinegun"};
             for(int i=1;i<4;i++) gunSounds[i]=Resources.Load<AudioClip>("GunAudio/"+soundNames[i]);
             reloadStart=Resources.Load<AudioClip>("GunAudio/reload-start"); reloadEnd=Resources.Load<AudioClip>("GunAudio/reload-end");hitSound=Resources.Load<AudioClip>("GunAudio/hit");
@@ -104,7 +108,7 @@ namespace ChipArena.UnityConversion
         }
         public void ResetPresentation()
         {
-            viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
+            combatGlow?.Clear();viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
             foreach(var source in shotAudio) if(source!=null) source.Stop(); if(localAudio!=null) localAudio.Stop();
             foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear();
             foreach(var o in debris) if(o!=null) Destroy(o); debris.Clear();
@@ -134,7 +138,7 @@ namespace ChipArena.UnityConversion
             animationTimer.Stop(); AnimationMs=animationTimer.Elapsed.TotalMilliseconds;
             foreach(Shot p in s.Shots)
             {
-                if(GunRules.Ranged(p.Weapon)) Add(6,Matrix4x4.TRS(Vec(p.Position),Quaternion.LookRotation(Vec(p.Velocity)),new Vector3(.04f,.04f,Mathf.Clamp(p.Velocity.Length*.01f,.25f,1.5f))));
+                if(GunRules.Ranged(p.Weapon)) Add(11,Matrix4x4.TRS(Vec(p.Position),Quaternion.LookRotation(Vec(p.Velocity)),new Vector3(.04f,.04f,Mathf.Clamp(p.Velocity.Length*.01f,.25f,1.5f))));
                 else Add(p.MagicVisual>0?6+p.MagicVisual:4, Matrix4x4.TRS(Vec(p.Position),Quaternion.Euler(renderTime*140,renderTime*90,0),Vector3.one*Mathf.Max(.18f,p.Radius*2)));
             }
             DrawBatches(null,0,true);
@@ -287,7 +291,7 @@ namespace ChipArena.UnityConversion
         }
         private void OnDestroy()
         {
-            viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
+            combatGlow?.Dispose();viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
             foreach(var m in materials) Destroy(m);
             foreach(var m in compatibilityMaterials) Destroy(m);
             if(particleMaterial!=null) Destroy(particleMaterial);

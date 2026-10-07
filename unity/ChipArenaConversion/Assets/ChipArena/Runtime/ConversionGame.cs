@@ -6,7 +6,7 @@ using UnityEngine;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class ConversionPreferences
-    { public string name="Pilot",map="foundry",weapon="pistol";public int bots=3,sets=3,rounds=2;public bool teams,friendlyFire,stationary,skipBotDrafts=true,sound=true,firstPerson; }
+    { public string name="Pilot",map="foundry",weapon="pistol";public int bots=3,sets=3,rounds=2;public string combatGlow="Full";public bool teams,friendlyFire,stationary,skipBotDrafts=true,sound=true,firstPerson; }
     public sealed class ConversionGame : MonoBehaviour
     {
         private ConversionContent content;private ConversionPreferences prefs;private NativeMatch match;private NativeArena arena;private ArenaPresentation presentation;
@@ -94,6 +94,7 @@ namespace ChipArena.UnityConversion
                 preview=point;
             }
             presentation.RenderAbilities(arena,preview);
+            presentation.GlowQuality=prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?.4f:1;presentation.RenderGlow(arena,cameraView);
         }
         private void FixedUpdate()
         {
@@ -164,7 +165,7 @@ namespace ChipArena.UnityConversion
             if(!menu&&arena!=null)return;
             float panel=Mathf.Min(850,width-60);GUI.Box(new Rect((width-panel)/2,68,panel,height-120),"");
             GUILayout.BeginArea(new Rect((width-panel)/2+22,86,panel-44,height-155));scroll=GUILayout.BeginScrollView(scroll);
-            GUILayout.Label("Native conversion test",heading);
+            GUILayout.Label("Native conversion · Staff & glow",heading);
             GUILayout.Label("Native physics, first/third-person cameras, standard weapons and Q/E abilities, rounds and a stat-Chip draft. Full conversion is in progress.",label);
             if(arena!=null&&GUILayout.Button("Resume",button))menu=false;
             if(GUILayout.Button(showCatalogue?"Back to match setup":"Browse source catalogue (15 weapons / 236 Chips)",button))showCatalogue=!showCatalogue;
@@ -183,6 +184,8 @@ namespace ChipArena.UnityConversion
             GUILayout.Label("Bots: "+prefs.bots+"  (up to 8 total pilots)",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.bots,1,7));
             prefs.teams=GUILayout.Toggle(prefs.teams,"Teams — alternating red / blue sides");prefs.friendlyFire=GUILayout.Toggle(prefs.friendlyFire,"Friendly fire");prefs.stationary=GUILayout.Toggle(prefs.stationary,"Stationary targets");prefs.skipBotDrafts=GUILayout.Toggle(prefs.skipBotDrafts,"Skip bot draft screens");prefs.sound=GUILayout.Toggle(prefs.sound,"Gun/reload/hit sounds");
             bool first=GUILayout.Toggle(prefs.firstPerson,"First-person camera (V switches during play)");if(first!=prefs.firstPerson){prefs.firstPerson=first;Save();}
+            GUILayout.BeginHorizontal();GUILayout.Label("Combat glow",label);
+            foreach(string quality in new[]{"Off","Low","Full"})if(GUILayout.Button((prefs.combatGlow==quality||string.IsNullOrEmpty(prefs.combatGlow)&&quality=="Full"?"✓ ":"")+quality,button)){prefs.combatGlow=quality;Save();}GUILayout.EndHorizontal();
             GUILayout.Label("Gun Q: hold to aim. Magic Q / E: cast abilities. Hold E to preview grenade, meteor, geysers or black hole; release to cast.",small);
             GUILayout.Label("Rounds to win a set: "+prefs.rounds,label);prefs.rounds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.rounds,1,5));GUILayout.Label("Sets to win the match: "+prefs.sets,label);prefs.sets=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.sets,1,10));
             if(GUILayout.Button("Start native match",button))StartMatch();

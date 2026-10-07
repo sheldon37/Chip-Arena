@@ -80,7 +80,7 @@ namespace ChipArena.UnityConversion
             if(a.LastShot>=a.AttackAt-1e-6f&&a.LastShot<=time+1e-6f&&age>release)weightPrimary*=Hold(time-a.LastShot);
             return weightPrimary;
         }
-        public static void Apply(CapturedRig.Pose p,Actor a,float time,bool firstPerson,float[] channels)
+        public static void Apply(CapturedRig.Pose p,Actor a,float time,bool firstPerson,float[] channels,float guardWeight=-1)
         {
             // Remove the captured sword carry from the torso and arms, retain travel-aware lower body.
             for(int b=CapturedRig.Spine;b<=CapturedRig.RHand;b++){p.Position[b]=CapturedRig.Bones[b].Position;p.Rotation[b]=Quaternion.Identity;}
@@ -114,12 +114,23 @@ namespace ChipArena.UnityConversion
             p.World();var chest=p.WorldRotation[CapturedRig.Chest];
             int parent=CapturedRig.Bones[CapturedRig.LHand].Parent;
             p.Rotation[CapturedRig.LHand]=Quaternion.Inverse(p.WorldRotation[parent])*chest*CapturedRig.Euler(-(float)Math.PI/2+tilt);
-            if(time<a.BlockUntil)
+            float g=guardWeight<0?(time<a.BlockUntil?1:0):MathUtil.Clamp(guardWeight,0,1);
+            if(g>.001f)
             {
+                p.World();var carryWrist=p.WorldRotation[CapturedRig.LHand];
+                var spine=NativeFirstPersonPose.EulerXYZ(p.Rotation[CapturedRig.Spine]);p.Rotation[CapturedRig.Spine]=CapturedRig.Euler(spine.X,spine.Y*(1-g),spine.Z);
+                p.Rotation[CapturedRig.Chest]*=CapturedRig.Euler(.1f*g);p.Rotation[CapturedRig.Head]*=CapturedRig.Euler(.15f*g);p.World();
+                var guardChest=p.WorldRotation[CapturedRig.Chest];
+                var saved=new Quaternion[6];int[] armBones={CapturedRig.LArm,CapturedRig.LElbow,CapturedRig.LHand,CapturedRig.RArm,CapturedRig.RElbow,CapturedRig.RHand};
+                for(int i=0;i<6;i++)saved[i]=p.Rotation[armBones[i]];
                 var wrist=CapturedRig.Rot(CapturedRig.Y,-(float)Math.PI/2)*CapturedRig.Rot(CapturedRig.X,-.25f);
                 Vector3 left=CapturedRig.V(.2f,.22f,.34f),axis=Vector3.Transform(CapturedRig.Z,wrist);
                 CapturedRig.Arm(p,true,left,wrist,CapturedRig.V(1,-.8f,-.25f));
                 CapturedRig.Arm(p,false,left+axis*.4f,CapturedRig.Euler(-1.5f,0,.2f),CapturedRig.V(-1,-.7f,-.2f));
+                for(int i=0;i<6;i++)p.Rotation[armBones[i]]=Quaternion.Slerp(saved[i],p.Rotation[armBones[i]],g);
+                // Hold staff orientation in chest/world space, as orientHeld does in the source;
+                // interpolating each joint alone makes the crystal arc through the reticle.
+                p.World();p.Rotation[CapturedRig.LHand]=Quaternion.Inverse(p.WorldRotation[parent])*Quaternion.Slerp(carryWrist,guardChest*wrist,g);
             }
             p.World();
         }

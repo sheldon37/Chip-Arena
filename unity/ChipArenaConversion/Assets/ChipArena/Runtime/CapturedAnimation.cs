@@ -92,6 +92,8 @@ namespace ChipArena.UnityConversion
             private readonly Quaternion[] previousQ=new Quaternion[CapturedRig.Bones.Length],blendQ=new Quaternion[CapturedRig.Bones.Length];
             private readonly CapturedRig.Pose pose=new CapturedRig.Pose();
             private float lastTime=-100,phase,lastStun=-100,stunAt,gunAimWeight=1;
+            private readonly NativeGuardMotion magicGuard=new NativeGuardMotion();
+            public float MagicGuardWeight=>magicGuard.Weight;
             private bool fresh=true;private readonly float[] magicChannels=new float[13];
             public string State { get; private set; }="idle";
             public int Set { get; private set; }
@@ -194,7 +196,7 @@ namespace ChipArena.UnityConversion
                     }
                 }
                 if(a.MagicVisual>0)
-                {MagicPose.Apply(pose,a,time,firstPerson,magicChannels);State=time<a.BlockUntil?"staff guard":time-a.AbilityAt<1?"ability cast":time-a.AttackAt<.8f?"magic cast":"staff carry";}
+                {MagicPose.Apply(pose,a,time,firstPerson,magicChannels,magicGuard.Sample(time,time<a.BlockUntil));State=time<a.BlockUntil?"staff guard":time-a.AbilityAt<1?"ability cast":time-a.AttackAt<.8f?"magic cast":"staff carry";}
                 if(!ground&&!roll)
                 {
                     pose.Rotation[CapturedRig.LHip]=CapturedRig.Euler(-.65f); pose.Rotation[CapturedRig.RHip]=CapturedRig.Euler(-.35f);
@@ -206,6 +208,7 @@ namespace ChipArena.UnityConversion
                     CapturedRig.Roll(pose,(time-a.RollAt)/a.VisualRollDuration); State="roll (adapted)";
                 }
                 if(a.Weapon==WeaponId.Sword&&a.MagicVisual==0&&ground&&!roll) CapturedRig.BladeFloor(pose,false,1.28f);
+                if(firstPerson)NativeFirstPersonPose.SettleTorso(pose);
                 WritePose(); Save(previousP,previousQ); fresh=false;
             }
             public void Preview(int set,string state,float time,Vector3 position)

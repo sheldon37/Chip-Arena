@@ -1,8 +1,17 @@
-# Validation — native conversion camera/ability checkpoint
+# Validation — native conversion staff/glow checkpoint
 
 No native Unity playtest or Windows executable build was run in the authoring workspace.
 
-## New checkpoint checks (2026-10-07)
+## Staff/glow checks (2026-10-07)
+
+- 5,808 full native staff-mesh projections at the default 75° / 16:9 view: all four schools, idle, repeated primaries, Q/E, three casting rates and guard transitions. Zero intersections with Claude’s crosshair box; idle/primary/held-guard crystal visibility satisfies the 95% gate; the nearest sampled shaft point is 0.462 m from the camera. The check shares runtime geometry, pose and view-placement math. It is a numerical projection check, not a rendered screenshot or a test of every aspect ratio/camera motion.
+- Torso Euler round trips and guard spring blend/reset checks pass. Glow falloff, impact/trail envelopes, armor pulse, slow-projectile trail accumulation, expiry and clock reset checks pass.
+- Five additional exact source blobs are pinned: projectile-glow, impact-glows, projectile-trails, armor-glow and Claude’s ranged/magic framing tests. Claude’s 2026-10-04 DEV_LOG staff fix was reviewed at source `05950ea`.
+- Runtime, Editor and Windows-conditional C# compile against Unity 6000.3.24f1 assemblies with warnings as errors. Existing source parity, managed regression, captured-pose and four package-resolution checks pass.
+- Added a **Windows Editor build gate, not run here**, for 200 simultaneous surface glows, primary/ability traces, seven pooled lights, natural expiry and reset. It skips draw submission and does not measure rendered brightness or GPU performance. Shader import/error checking now includes NativeGlow.
+- **Not run here:** activated Unity import/native execution, shader compilation/rendering, visual brightness/clipping, native PhysX gameplay or a Windows EXE build.
+
+## Previous camera/ability checks (retained)
 
 - 1,728 original `magic-motion.ts` samples match 13 channels plus weights across four elements, primary streaks, all eight magic Q/E phrases, first-person variants, pitches and attack rates. Input timestamps are quantized to the native float clock before the original JavaScript functions run; expected outputs come from the original functions, not C#.
 - 44 original `abilities.ts` rule cases cover every active ability and extreme stat clamps. Refusal/buffer/resource boundaries, input edge handling, invalid aim rejection, camera lifecycle, view-model authority isolation and left-hand staff/guard orientation also pass.
@@ -42,7 +51,8 @@ The existing native clip-binding, shader, audio import, icon and Windows package
 
 - Unity import, shader compilation, native scene/physics gate, actual UI layout, sound and visuals.
 - Capsule movement on ramps, stairs, moving props and upper floors; camera obstruction, dynamic support release, projectile collision and ground/ceiling behavior.
-- First-person framing for all weapons/ADS/reload/block, toggle persistence, camera obstruction, source magic poses and shadow visibility.
+- First-person framing for all weapons/ADS/reload/block, toggle persistence, camera obstruction, source magic poses and shadow visibility. Test staff guard transitions, moving casts, different aspect ratios and extreme camera angles.
+- Combat glow Full/Low/Off and saved setting, nearby-wall light spill, surface marks following moving cover, sustained gunfire/spell bursts, destroyed-cover cleanup and round resets. Judge actual brightness, transparency and frame time on the target GPU.
 - All eleven ability handlers: cancellation/cost/cooldown, target previews, close-cover collision, bounce/reflection, pierce, blink clearance, tracking, timed fields and status/proc interactions.
 - Primary weapon/roll/block contacts and frame timing, status effects, hazards, complete rounds/sets/draft/rematch.
 - Windows EXE launch/icon and isolated preferences. New multiplayer is not implemented yet; old TCP tests are not a substitute.

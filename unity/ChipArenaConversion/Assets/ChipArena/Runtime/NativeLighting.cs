@@ -15,7 +15,7 @@ namespace ChipArena.UnityConversion
             RenderSettings.fog=true;RenderSettings.fogMode=FogMode.Linear;
             RenderSettings.fogColor=NativeArena.ColorOf(0x060810);RenderSettings.fogStartDistance=30;RenderSettings.fogEndDistance=105;
             QualitySettings.shadows=ShadowQuality.All;QualitySettings.shadowDistance=65;
-            QualitySettings.shadowResolution=ShadowResolution.High;QualitySettings.shadowCascades=2;QualitySettings.pixelLightCount=4;
+            QualitySettings.shadowResolution=ShadowResolution.High;QualitySettings.shadowCascades=2;QualitySettings.pixelLightCount=9;
             Light Directional(string name,Vector3 position,int color,float intensity,bool shadows)
             {
                 var go=new GameObject(name);go.transform.SetParent(parent);go.transform.position=position;go.transform.LookAt(Vector3.zero);

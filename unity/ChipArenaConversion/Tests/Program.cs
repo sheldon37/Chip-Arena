@@ -13,6 +13,7 @@ internal static class Program
             var data=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),options);
             var fixtures=System.Text.Json.JsonSerializer.Deserialize<ParityFixtures>(System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Tests/source-parity.json")),options);
             var presentation=System.Text.Json.JsonSerializer.Deserialize<PresentationFixtures>(System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Tests/presentation-parity.json")),options);
+            foreach(var result in NativeVisualChecks.Run(data))Console.WriteLine("PASS "+result);
             foreach(var result in NativePresentationChecks.Run(data,presentation))Console.WriteLine("PASS "+result);
             foreach(var result in NativeParityChecks.Run(data,fixtures))Console.WriteLine("PASS "+result);
             var tests = RegressionTests.Run(); tests.AddRange(RangedRegressionTests.Run());

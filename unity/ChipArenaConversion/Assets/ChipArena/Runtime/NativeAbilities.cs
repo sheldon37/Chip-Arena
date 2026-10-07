@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
     { public ContentAbility Definition;public float Release;public Vector3 Point,Direction; }
     public sealed class NativeAbilityShot
     {
-        public NativePilot Owner;public ContentAbility Definition;public Vector3 Position,Velocity;
+        public int Id;public NativePilot Owner;public ContentAbility Definition;public Vector3 Position,Velocity;
         public float Damage,Radius,Gravity,Life,Travel,MaxTravel,Fuse,NextTick;public int Reflections,RemainingPierces;
         public bool Touched,DirectHit,Resting;public readonly HashSet<int> Hit=new HashSet<int>();
     }
@@ -101,7 +101,7 @@ namespace ChipArena.UnityConversion
             if(AbilityShots.Count>=100)return;
             Vector3 start=Muzzle(p),dir=(cast.Point-start).normalized;
             if(dir.sqrMagnitude<.01f)dir=cast.Direction;
-            var shot=new NativeAbilityShot{Owner=p,Definition=d,Position=start,Velocity=dir*(float)d.speed,Damage=damage,Radius=(float)d.shotRadius,Gravity=(float)d.gravity,Life=d.id=="rocket"?2.5f:d.id=="orbital-mark"?1:d.id=="frag-grenade"?4:d.duration>0?(float)d.duration:3,MaxTravel=d.id=="frag-grenade"?200:(float)d.range,NextTick=Time+(float)d.tick,RemainingPierces=(int)d.pierce};
+            var shot=new NativeAbilityShot{Id=nextBullet++,Owner=p,Definition=d,Position=start,Velocity=dir*(float)d.speed,Damage=damage,Radius=(float)d.shotRadius,Gravity=(float)d.gravity,Life=d.id=="rocket"?2.5f:d.id=="orbital-mark"?1:d.id=="frag-grenade"?4:d.duration>0?(float)d.duration:3,MaxTravel=d.id=="frag-grenade"?200:(float)d.range,NextTick=Time+(float)d.tick,RemainingPierces=(int)d.pierce};
             if(d.id=="frag-grenade")
             {Vector3 delta=cast.Point-start;float t=Mathf.Clamp(delta.magnitude/16,.45f,1.1f);shot.Velocity=delta/t+Vector3.up*(float)d.gravity*t*.5f;shot.Fuse=Time+t+(float)d.fuse;}
             if(d.id=="tidal-wave")
@@ -148,7 +148,7 @@ namespace ChipArena.UnityConversion
             Fx(at,radius,element);return hits;
         }
         private void Fx(Vector3 at,float radius,int element,Vector3? from=null)
-        {if(AbilityEffects.Count<128)AbilityEffects.Add(new NativeAbilityFx{Position=at,Radius=radius,Element=element,Until=Time+.22f,Beam=from.HasValue,From=from??at});}
+        {AbilityEffects.Add(new NativeAbilityFx{Position=at,Radius=radius,Element=element,Until=Time+.22f,Beam=from.HasValue,From=from??at});}
         private void Blink(NativePilot p,Vector3 point,float damage,float radius)
         {
             Vector3 a=p.Body.position,delta=Vector3.ClampMagnitude(point-a,9),dir=delta.normalized;float distance=delta.magnitude;
@@ -243,6 +243,7 @@ namespace ChipArena.UnityConversion
         {
             var d=s.Definition;var body=hit.collider.GetComponent<NativePilotBody>();var target=body?.Pilot;int element=s.Owner.Pose.MagicVisual;
             Vector3 at=hit.point+hit.normal*.03f;
+            if(target==null)SurfaceImpact(hit,s.Owner,s.Id,(int)s.Owner.Weapon.color);
             if(d.id=="frag-grenade")
             {
                 if(!s.Touched){s.Touched=true;s.Fuse=Math.Max(s.Fuse,Time+.45f);}

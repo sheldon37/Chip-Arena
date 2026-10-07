@@ -10,7 +10,7 @@ namespace ChipArena.UnityConversion
         public Camera ViewCamera;
         private CapturedAnimation.Player viewRig;
         private static List<Matrix4x4>[] MakeBatches()
-        {var result=new List<Matrix4x4>[11];for(int i=0;i<result.Length;i++)result[i]=new List<Matrix4x4>();return result;}
+        {var result=new List<Matrix4x4>[12];for(int i=0;i<result.Length;i++)result[i]=new List<Matrix4x4>();return result;}
         private void DrawBatches(Camera camera,int layer,bool shadows)
         {
             for(int k=0;k<batches.Length;k++)
@@ -29,13 +29,22 @@ namespace ChipArena.UnityConversion
                 }
             }
         }
-        private void DrawStaff(CapturedAnimation.Player rig,int element)
+        private Matrix4x4 StaffMatrix(CapturedAnimation.Player rig,bool firstPerson)
         {
-            var hand=rig.Bones[CapturedRig.LHand].localToWorldMatrix;int color=6+element;
-            Part(hand,new Vector3(0,0,.28f),new Vector3(.075f,.075f,1.40f),Quaternion.identity,3);
-            foreach(float z in new[]{-.38f,-.14f,.13f,.70f})Part(hand,new Vector3(0,0,z),new Vector3(.10f,.10f,.05f),Quaternion.identity,6);
-            Part(hand,new Vector3(0,0,.95f),new Vector3(.24f,.24f,.28f),Quaternion.Euler(0,0,45),color);
-            Part(hand,new Vector3(0,0,.97f),new Vector3(.10f,.10f,.33f),Quaternion.identity,4);
+            var wrist=rig.Bones[CapturedRig.LHand];var hand=wrist.localToWorldMatrix;
+            if(firstPerson)
+            {
+                float guard=rig.MagicGuardWeight;
+                var rotation=NativeFirstPersonPose.StaffRotation(CapturedAnimation.Num(wrist.rotation),CapturedAnimation.Num(ViewCamera.transform.forward),guard);
+                hand=Matrix4x4.TRS(wrist.position,CapturedAnimation.Quat(rotation),wrist.lossyScale*NativeFirstPersonPose.StaffSize(guard));
+            }
+            return hand;
+        }
+        private void DrawStaff(CapturedAnimation.Player rig,int element,bool firstPerson=false)
+        {
+            var hand=StaffMatrix(rig,firstPerson);
+            foreach(var part in NativeStaffGeometry.Parts[element-1])
+                Part(hand,CapturedAnimation.Vec(CapturedRig.Mirror(part.Position)),CapturedAnimation.Vec(part.Size),CapturedAnimation.Quat(CapturedRig.Mirror(part.Rotation)),part.Color);
         }
         private void RenderFirstPerson(Snapshot snapshot,float time)
         {
@@ -46,8 +55,8 @@ namespace ChipArena.UnityConversion
             // A camera-attached presentation rig never changes the authoritative pilot or muzzle.
             viewRig.ActorPose(shown,Vector3.zero,time,true);
             bool gun=GunRules.Ranged(shown.Weapon),magic=shown.MagicVisual>0;
-            Vector3 offset=gun?new Vector3(.24f,-.48f,.20f):magic?new Vector3(.20f,-.50f,.30f):new Vector3(.16f,-.22f,.30f);
-            float scale=.78f;
+            Vector3 offset=gun?new Vector3(.24f,-.48f,.20f):magic?CapturedAnimation.Vec(NativeFirstPersonPose.MagicViewOffset(viewRig.MagicGuardWeight)):new Vector3(.16f,-.22f,.30f);
+            float scale=NativeFirstPersonPose.Scale;
             if(gun&&shown.Aiming)scale*=Mathf.Tan(ViewCamera.fieldOfView*Mathf.Deg2Rad*.5f)/Mathf.Tan(NativeViewRules.FirstFov*Mathf.Deg2Rad*.5f);
             viewRig.Root.transform.SetPositionAndRotation(ViewCamera.transform.TransformPoint(offset),ViewCamera.transform.rotation);
             viewRig.Root.transform.localScale=Vector3.one*scale;
@@ -68,7 +77,7 @@ namespace ChipArena.UnityConversion
                 foreach(var box in CapturedRig.Boxes)if(NativeViewRules.ViewModelBone(box.Bone))
                     Part(viewRig.Bones[box.Bone].localToWorldMatrix,CapturedAnimation.Vec(CapturedRig.Mirror(box.Position)),CapturedAnimation.Vec(box.Size),Quaternion.identity,box.Color<0?0:box.Color);
                 if(gun)GunPresentation.Draw(viewRig,shown,time,Add);
-                else if(magic)DrawStaff(viewRig,shown.MagicVisual);
+                else if(magic)DrawStaff(viewRig,shown.MagicVisual,true);
                 else {Weapon(viewRig.Bones[CapturedRig.RHand].localToWorldMatrix,viewRig.Set,0);if(viewRig.Set==1)Weapon(viewRig.Bones[CapturedRig.LHand].localToWorldMatrix,1,0);}
             }
             DrawBatches(ViewCamera,10,false);

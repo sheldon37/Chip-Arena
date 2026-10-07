@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion.Editor
             using(var animations=new CapturedAnimation()) animations.ValidatePlayback();
             foreach(string name in new[] { "pistol", "rifle", "machinegun", "reload-start", "reload-end", "hit" })
                 if(Resources.Load<AudioClip>("GunAudio/"+name)==null) throw new Exception("Gun audio failed to import: "+name);
-            foreach(string name in new[] { "PrototypeLit", "PrototypeParticles", "NativeLit" })
+            foreach(string name in new[] { "PrototypeLit", "PrototypeParticles", "NativeLit", "NativeGlow" })
             {
                 Shader shader=Resources.Load<Shader>(name);
                 if(shader==null||ShaderUtil.ShaderHasError(shader)) throw new Exception("Missing or invalid shader: "+name);
@@ -40,7 +40,7 @@ namespace ChipArena.UnityConversion.Editor
         {
             PlayerSettings.companyName="ChipArenaConversion";
             PlayerSettings.productName="Chip Arena Native Conversion TEST";
-            PlayerSettings.bundleVersion="0.1.0-native-foundation";
+            PlayerSettings.bundleVersion="0.3.0-native-staff-glow";
             PlayerSettings.defaultScreenWidth=1600; PlayerSettings.defaultScreenHeight=900;
             PlayerSettings.fullScreenMode=FullScreenMode.Windowed;
             PlayerSettings.runInBackground=true;
@@ -106,12 +106,12 @@ namespace ChipArena.UnityConversion.Editor
             if(!File.Exists(Path.Combine(folder,"UnityPlayer.dll"))||!Directory.Exists(Path.Combine(folder,"ChipArena-Native-Conversion-TEST_Data")))
                 throw new Exception("The Windows player is incomplete: UnityPlayer.dll or its game data folder is missing.");
             File.WriteAllText(Path.Combine(folder,"READ-ME.txt"),
-                "Chip Arena Native Conversion - FOUNDATION TEST\r\n\r\nRun ChipArena-Native-Conversion-TEST.exe. Keep the entire folder together.\r\n"+
+                "Chip Arena Native Conversion - STAFF AND GLOW TEST\r\n\r\nRun ChipArena-Native-Conversion-TEST.exe. Keep the entire folder together.\r\n"+
                 "The EXE uses the voxel CA icon. Create a Windows shortcut to the EXE for a desktop launcher; do not move the EXE alone.\r\n"+
-                "WASD move, double-tap W sprint, mouse look, LMB fire/attack, hold Q aim, R reload, RMB block, Shift dodge, Space jump.\r\n"+
+                "WASD move, double-tap W sprint, mouse look, LMB fire/attack, Q aim/magic ability, E ability, V first/third-person, R reload, RMB block, Shift dodge, Space jump.\r\n"+
                 "Choose weapon and map before starting. Tab scoreboard. Esc menu. This native foundation is local solo vs bots.\r\n"+
                 "15 source map collision layouts and native round/stat-Chip flow. Full conversion is IN PROGRESS.\r\n"+
-                "Read CONVERSION-STATUS.md: abilities, special Chip mechanics, DEV styles, PvE/Siren, online play and presentation parity remain pending.\r\n"+
+                "Read CONVERSION-STATUS.md: special Chip mechanics, DEV styles, PvE/Siren, online play and remaining presentation parity are pending.\r\n"+
                 "Built with Unity "+Application.unityVersion+". Core checks and player build passed on the build machine; human gameplay acceptance is separate.\r\n");
             string zip=Path.Combine(root,"Builds","Chip-Arena-Native-Conversion-TEST-Windows.zip");
             if(File.Exists(zip)) File.Delete(zip);

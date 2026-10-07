@@ -55,6 +55,31 @@
       "path": "src/shared/view.ts",
       "git_blob_sha": "a192c7d6204b31500895c37a62596a88e4dbf92c",
       "size": 1252
+    },
+    {
+      "path": "src/client/projectile-glow.ts",
+      "git_blob_sha": "3555d72423610d6b53518d6fb847b4410728c939",
+      "size": 3001
+    },
+    {
+      "path": "src/client/impact-glows.ts",
+      "git_blob_sha": "228946b687577db3a9e392fbf87e3d4a50d3176a",
+      "size": 3755
+    },
+    {
+      "path": "src/client/projectile-trails.ts",
+      "git_blob_sha": "a6634eefab98f05db131e6c91fa21266b85dcfc7",
+      "size": 3138
+    },
+    {
+      "path": "src/client/armor-glow.ts",
+      "git_blob_sha": "b89a20bdfb3d54472739f757f6c73505518959a1",
+      "size": 2921
+    },
+    {
+      "path": "tests/ranged-magic-fluidity.test.ts",
+      "git_blob_sha": "cf9ed4f7c61c9d3781bb6ed9f34d98f8cee446a2",
+      "size": 23321
     }
   ]
 }

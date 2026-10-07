@@ -13,12 +13,10 @@ namespace ChipArena.UnityConversion
                 Vector3 scale=Vector3.one*Mathf.Max(.16f,shot.Radius*2);
                 if(shot.Definition.id=="tidal-wave")scale=new Vector3(2,.8f,.35f);
                 Add(color,Matrix4x4.TRS(shot.Position,shot.Velocity.sqrMagnitude>.01f?Quaternion.LookRotation(shot.Velocity):Quaternion.identity,scale));
-                if(shot.Definition.id=="ball-lightning")Ring(shot.Position,shot.Radius*1.5f,color,arena.Time*80);
             }
             foreach(var zone in arena.AbilityZones)
             {
                 int color=zone.Owner.Pose.MagicVisual>0?6+zone.Owner.Pose.MagicVisual:6;
-                Ring(zone.Position+Vector3.up*.06f,zone.Radius,color,arena.Time*15);
                 if(zone.Kind=="bomb")
                 {
                     float pulse=.3f+.1f*Mathf.Sin(arena.Time*16);
@@ -27,7 +25,6 @@ namespace ChipArena.UnityConversion
                 else if(zone.Kind=="black-hole")
                 {
                     Add(10,Matrix4x4.TRS(zone.Position+Vector3.up*.7f,Quaternion.Euler(arena.Time*50,arena.Time*80,0),Vector3.one*.75f));
-                    Ring(zone.Position+Vector3.up*.8f,zone.Radius*.4f,10,-arena.Time*70);
                 }
                 else for(int i=0;i<12;i++)
                 {float a=i*Mathf.PI/6;Vector3 p=zone.Position+new Vector3(Mathf.Cos(a)*zone.Radius*.65f,.15f,Mathf.Sin(a)*zone.Radius*.65f);Add(7,Matrix4x4.TRS(p,Quaternion.identity,new Vector3(.13f,.25f+.15f*Mathf.Sin(arena.Time*12+i),.13f)));}
@@ -36,7 +33,6 @@ namespace ChipArena.UnityConversion
             {
                 int color=fx.Element>0?6+fx.Element:6;
                 if(fx.Beam){Vector3 d=fx.Position-fx.From;if(d.sqrMagnitude>.001f)Add(color,Matrix4x4.TRS((fx.Position+fx.From)*.5f,Quaternion.LookRotation(d),new Vector3(.055f,.055f,d.magnitude)));}
-                else Ring(fx.Position,fx.Radius*(1-(fx.Until-arena.Time)/.22f),color,0);
             }
             if(preview.HasValue)
             {

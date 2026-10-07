@@ -86,6 +86,8 @@ namespace ChipArena.UnityConversion
         public EventKind Kind;
         public V3 Position;
         public float Amount;
+        // Native surface FX payload; the retained lab wire format is unchanged.
+        public float Time;public V3 Normal;public string SurfaceId;public int Color,Projectile;
     }
 
     [Serializable]

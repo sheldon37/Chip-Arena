@@ -1,8 +1,8 @@
-# Native conversion status — camera, casting and abilities checkpoint
+# Native conversion status — staff framing and combat glow
 
 Target approved by the owner: **native Unity/C#**, with gameplay simulation and physics converted too. Branch: `codex/unity-conversion`. Source remains `05950ea`; the accepted lab and original game are preserved separately.
 
-**The full-game conversion is incomplete.** Imported definitions do not establish implemented mechanics. This checkpoint continues the native foundation with first-person presentation, corrected magic poses, standard gun/magic abilities and scene lighting. Native Windows visual/combat acceptance is still required.
+**The full-game conversion is incomplete.** Imported definitions do not establish implemented mechanics. This checkpoint adds source-based first-person staff framing, projectile/armor halos, trails, surface-impact glows and pooled combat light spill to the camera/ability foundation. Native Windows visual/combat acceptance is still required.
 
 | System | This checkpoint | Remaining work |
 | --- | --- | --- |
@@ -20,6 +20,7 @@ Target approved by the owner: **native Unity/C#**, with gameplay simulation and 
 | PvE / Siren | Source inventory only | Director, waves/horde, boss phases, economy, machines, picks, downed/revive, recruits, completion cleanup |
 | Animation | Captured melee / procedural guns, source magic phrase math, adapted staff IK and gun ability gestures | Full source spring/IK/gait fidelity, intros, cinematics, body wounds, ragdolls and kill effects |
 | Camera | Saved V/menu toggle, dedicated first-person forearms/weapons, source eye height/FOV/distance, ADS sight alignment | Native framing/obstruction acceptance, source sway and scope-mask polish |
+| Combat effects | Source-style additive projectile/armor halos, 0.18 s trails, 0.85 s attached surface marks, seven pooled spill lights, soft zone/explosion fills and saved quality setting | Native visual/performance acceptance, elemental modifiers, full spell geometry/particles and production effects |
 | Multiplayer | Not connected to this native authority | Native host/guest transport, eight-player tests, prediction, reconnect and isolated service configuration |
 | Accounts / customization | Separate local test name/settings only | Native identity adapter, entitlement verification, cosmetics, persistence and safe migration design |
 | UI / audio | Foundation setup/HUD/scoreboard/draft; six original gun/reload/hit WAVs | Production menu/card UI, audio library/music, intros, killcam and accessibility/options |
@@ -43,6 +44,8 @@ One intentional contact change: lava is checked against its individual channel, 
 
 The eleven standard Q/E handlers are implemented, including resources, short buffering, grenade bounce/fuse, rocket arming, mark tracking, lance piercing, wave slow, blink, shackles healing, meteor ground fire, three geysers, ball-lightning zaps and black-hole pull/collapse. Source pure-function fixtures do **not** establish native projectile/contact parity. Ability status/proc combinations and impulses need Windows gameplay comparison. Modifier Chips remain excluded, keeping the existing 89-entry draft filter.
 
-Magic phrase channels match original functions; Unity bone blending/staff IK, guard transitions, gun ability gestures and first-person framing are adaptations. First-person excludes local head/body from the world pass and draws forearms/weapons through a depth-only camera; its geometry never determines hitboxes or muzzle obstruction. Scope masks, camera sway and full production effects remain pending. Arena detail is procedural colored voxel trim, not a texture-map conversion.
+Magic phrase channels match original functions; Unity bone blending/staff IK, guard transitions, gun ability gestures and first-person framing are adaptations. The staff uses Claude’s 0.85 scale, outward 20° roll and torso settling. Native geometry needs a 5 cm view-model lift and a brief transition dip to retain a clear reticle while entering/leaving the guard. These offsets affect presentation only. First-person excludes local head/body from the world pass and draws forearms/weapons through a depth-only camera; its geometry never determines hitboxes or muzzle obstruction. Scope masks, camera sway and full production effects remain pending. Arena detail is procedural colored voxel trim, not a texture-map conversion.
 
 No deadline or full-game performance improvement is claimed. The first required external result is the native map/physics gate and playtest; this workspace can compile against Unity APIs but cannot run an activated Windows Editor or observe the user's game.
+
+Glow uses the original radial falloff and effect lifetimes with native batched geometry. Unity built-in light intensity uses a 0.35 gain because its units differ from the source renderer. Surface marks are not capped or evicted while alive; shader import, brightness, transparent ordering and GPU cost require the Windows playtest. No fullscreen bloom has been added.

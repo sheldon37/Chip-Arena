@@ -1,3 +1,7 @@
+# Native staff update — 2026-10-07
+
+The current conversion uses source-proportioned elemental staffs, Claude’s first-person scale/roll and torso settling, plus damped guard transitions. Native wrist orientation stays in chest/world space during the guard. A 5 cm view-model lift and temporary guard-transition dip compensate for the captured native rig. The rendered staff parts and camera transforms are shared with the 5,808-case projection check. These changes do not move the authoritative pilot, muzzle or hitboxes. Native visual acceptance is still required.
+
 # Inherited animation foundation
 
 This file documents the accepted lab animation import. For the new native conversion boundary, read CONVERSION-STATUS.md. The old lab viewer/control descriptions below are historical; the new project currently opens the native match setup.

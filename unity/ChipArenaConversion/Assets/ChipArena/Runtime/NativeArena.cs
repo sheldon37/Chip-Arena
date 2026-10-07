@@ -91,7 +91,7 @@ namespace ChipArena.UnityConversion
         public void Step(InputFrame input)
         {
             Match.Tick(1d/60);StepHazards();if(Match.Phase!=NativePhase.Fight){foreach(var p in Pilots)if(p.Body!=null&&!p.Body.isKinematic)p.Body.linearVelocity=Vector3.zero;return;}
-            if(Events.Count>128)Events.RemoveRange(0,Events.Count-128);
+            Events.RemoveAll(e=>Time-e.Time>1); // Preserve the full burst for its natural glow lifetime.
             // Establish every defense before resolving attacks.
             foreach(var p in Pilots)
             {
@@ -169,7 +169,7 @@ namespace ChipArena.UnityConversion
             Vector3 dir=(Vec(GunRules.Direction(yaw,pitch))+new Vector3((float)(random.NextDouble()-.5),(float)(random.NextDouble()-.5),(float)(random.NextDouble()-.5))*(float)spread).normalized;
             p.AimShots=Time-p.LastShot>.25f?1:p.AimShots+1;p.LastShot=Time;if(w.@class!="magic")p.Ready=Time+(float)(w.interval/p.Stats["attackRate"])*(p.Aiming&&ads.interval>0?(float)ads.interval:1);p.Pose.ShotsFired++;
             Emit(EventKind.Shot,p,0,start,(int)p.Pose.Weapon);
-            if(Physics.Linecast(p.Body.position+Vector3.up*.3f,start,out var obstruction,WorldMask)){DamageProp(obstruction.collider.GetComponent<NativePropBody>(),(float)(w.damage*p.Stats["damage"]),dir*(float)w.impulse,obstruction.point);return;}
+            if(Physics.Linecast(p.Body.position+Vector3.up*.3f,start,out var obstruction,WorldMask)){SurfaceImpact(obstruction,p,0,(int)w.color);DamageProp(obstruction.collider.GetComponent<NativePropBody>(),(float)(w.damage*p.Stats["damage"]),dir*(float)w.impulse,obstruction.point);return;}
             Bullets.Add(new NativeBullet{Id=nextBullet++,Owner=p.Seat.id,Spec=p.Seat.spec,Position=start,Velocity=dir*(float)(w.speed*p.Stats["projectileSpeed"]),Damage=(float)(w.damage*p.Stats["damage"]),Gravity=(float)(w.gravity*p.Stats["projectileGravity"]),Radius=(float)((w.shotRadius>0?w.shotRadius:w.@class=="magic"?.14:.045)*p.Stats["projectileSize"]),Impulse=(float)(w.impulse*p.Stats["impulse"])});
         }
         private bool Enemy(NativePilot a,NativePilot b)=>a!=b&&(FriendlyFire||!Match.SameSide(a.Seat,b.Seat));
@@ -201,7 +201,7 @@ namespace ChipArena.UnityConversion
                     else
                     {
                         if(body!=null){bool head=hit.point.y>body.Pilot.Body.position.y+.40f;Damage(body.Pilot,owner,b.Damage*(head?1.5f:1),b.Velocity.normalized,b.Impulse,head);}
-                        else DamageProp(hit.collider.GetComponent<NativePropBody>(),b.Damage,b.Velocity.normalized*b.Impulse,hit.point);
+                        else {SurfaceImpact(hit,owner,b.Id,(int)Content.Weapon(b.Spec).color);DamageProp(hit.collider.GetComponent<NativePropBody>(),b.Damage,b.Velocity.normalized*b.Impulse,hit.point);}
                         var weapon=Content.Weapon(b.Spec);if(weapon.blast>0)Blast(owner,hit.point,b.Radius>.2f?3:(float)weapon.blast,b.Damage*.38f,b.Impulse);
                         remove=true;
                     }
@@ -275,8 +275,13 @@ namespace ChipArena.UnityConversion
             foreach(var other in Props)if(other!=null&&other.Body!=null&&other.Body.isKinematic&&other.Definition.support.Contains(prop.Definition.id)){other.Body.isKinematic=false;other.Body.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;}
             prop.GetComponent<Collider>().enabled=false;CapturedAnimation.Release(prop.gameObject);
         }
+        private void SurfaceImpact(RaycastHit hit,NativePilot source,int projectile,int color)
+        {
+            var prop=hit.collider.GetComponent<NativePropBody>();if(prop==null)return;
+            Events.Add(new ArenaEvent{Id=nextEvent++,Kind=EventKind.Impact,Source=source?.Seat.id??0,Time=Time,Position=Vec(hit.point),Normal=Vec(hit.normal),SurfaceId=prop.Definition.id,Color=color,Projectile=projectile});
+        }
         private void Emit(EventKind kind,NativePilot source,int target,Vector3 position,float amount)
-        {Events.Add(new ArenaEvent{Id=nextEvent++,Kind=kind,Source=source?.Seat.id??0,Target=target,Position=Vec(position),Amount=amount});}
+        {Events.Add(new ArenaEvent{Id=nextEvent++,Kind=kind,Time=Time,Source=source?.Seat.id??0,Target=target,Position=Vec(position),Amount=amount});}
         private InputFrame Bot(NativePilot p)
         {
             var target=Pilots.Where(x=>x.Hp>0&&Enemy(p,x)).OrderBy(x=>(x.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();if(target==null||StationaryBots)return new InputFrame{Yaw=p.Yaw};

@@ -18,6 +18,25 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-07 — Codex — native staff framing and combat glow
+- Continued the separate `codex/unity-conversion` from remote `8f2cd601088c71f26686b2b5f0a9573ad4d86500`; original reference remains `05950ea`.
+  Reviewed Claude’s 2026-10-04 log and first-person staff tests/source after the owner reported the old staff issue and missing bullet glow.
+- Ported staff 0.85 scale, 20-degree outward roll, torso settling, source shaft/head proportions and elemental silhouettes.
+  Added damped guard blending/chest-space orientation, with native-only view lift and guard-transition dip to keep the reticle clear.
+- Added batched additive projectile/armor halos and trails, surface-attached impact marks with full 0.85 s lifetime, seven reused
+  spill lights, soft field/explosion fills, and saved Full/Low/Off controls. Native events retain a full second instead of dropping
+  live bursts by count. The retained lab protocol and original game/project are unchanged.
+- This pass changes presentation/event metadata only: no hit timing, hitboxes, damage, cooldowns, movement or authoritative muzzle
+  change; no network/service/account/save migration. Staff geometry is visual. Native ability shot IDs now share the primary ID source.
+- Passed locally: 5,808 native staff mesh projections (zero crosshair intersections), guard/clock/glow/trail regressions, 1,728 original
+  magic phrase cases, 44 ability-rule cases, eight prior native rule groups, 35 inherited managed checks and 34 clips / 3,384 poses.
+  Five additional source blobs verified. Runtime/Editor/Windows-conditional C# against Unity 6000.3.24f1, four package tests and GUID/package checks pass.
+- Added Windows build gates for NativeGlow shader errors and native effect lifecycle (200 impacts, primary/ability traces, seven
+  lights, expiry/reset). These native gates, actual shader rendering, PhysX gameplay and EXE build were NOT run in this Linux workspace.
+- Status: separate conversion branch/source checkpoint; no merge or updater publication. The accepted lab and original game are untouched.
+  Next: owner builds in activated 6000.3.24f1, checks staff primary/Q/E/guard and glow settings near cover; then continue combat/Chip mechanics
+  and remaining scene/presentation parity. Exact pending scope and visual adaptations remain in CONVERSION-STATUS.md / VALIDATION.md.
+
 ## 2026-10-07 — Codex — native first-person, magic poses, lighting and standard abilities
 - Continued `codex/unity-conversion` from remote `0ce87bc7e4a58bc0150aef3daf3ef11d2a8e149b`; shared source remains `05950ea`.
   Owner requested continued conversion and restoration of the first-person toggle; prior magic/lighting feedback is included.

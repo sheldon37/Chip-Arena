@@ -1,6 +1,6 @@
 # Chip Arena — native Unity conversion
 
-**Camera, casting and standard-ability checkpoint; the full conversion is not complete.** This project is separate from both the Electron game and the accepted Unity lab. The target is native Unity/C# gameplay and physics, with no Node/Rapier sidecar.
+**Staff framing and combat-glow checkpoint; the full conversion is not complete.** This project is separate from both the Electron game and the accepted Unity lab. The target is native Unity/C# gameplay and physics, with no Node/Rapier sidecar.
 
 ## Run this milestone
 
@@ -26,6 +26,14 @@ The build creates `Builds/Chip-Arena-Native-Conversion-TEST-Windows.zip`. Keep t
 | Tab | Scoreboard |
 | Escape | Pause and menu |
 | F9 | Individual-draw rendering fallback |
+
+## New in this checkpoint
+
+- Claude's first-person staff fix is carried over: smaller staff, outward 20° roll, settled torso and a smooth two-hand guard. The oversized placeholder shaft/head now uses source proportions and four elemental silhouettes. Native rig placement is adjusted to keep the crystal visible and the crosshair clear.
+- Primary and Q/E projectiles have soft additive halos, short trails and moving light spill. Surface hits leave soft glows attached to cover for their full 0.85-second lifetime. Armor glow and soft ability-field/explosion fills are included; circles remain for target previews only.
+- **Combat glow: Full / Low / Off** is saved in the setup menu. Full uses seven reused point lights; Low keeps halos and trails with one projectile light. No extra rendering package is required.
+
+Try Fire or Darkness, press **V**, fire repeatedly, cast Q/E, and enter/leave RMB guard. Then try a gun near a wall: the projectile and impact should illuminate nearby geometry. Compare the glow settings and restart a round to check cleanup. The menu title identifies this build as **Staff & glow**.
 
 ## What is available
 
