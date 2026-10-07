@@ -2,6 +2,33 @@
 
 No native Unity playtest or Windows executable build was run in the authoring workspace.
 
+## Windows import/build repair (2026-10-07, evening)
+
+The owner's Unity 6000.3.24f1 log reached the content, special, melee, first-person,
+glow and ability parity checks, then stopped in `NativeSourceModels` with
+`LoadRawTextureData: not enough data provided`. It also reported the invalid
+`NativeAccount.Start(...)` callback. These are code defects, not a failed license
+activation: the log resolved the Unity Personal entitlement and executed the checks.
+
+The three procedural textures contain only mip 0: 16,384 bytes for 64 x 64 and
+262,144 bytes for each 256 x 256 RGBA image. The old loader allocated mip chains,
+which require 21,844 / 349,524 bytes, then supplied only the base image. The loader
+now validates that base image and calls `SetPixelData<byte>(pixels, 0)` followed by
+`Apply(true, ...)` to generate mipmaps. Source pixels, repeats and mipmapping are
+preserved. The account request helper is renamed `BeginRequest`, including every
+caller; account behavior is otherwise unchanged.
+
+An Editor-only gate uses the actual texture factory, checks all imported base
+pixels and mip-chain presence, rejects a truncated payload and inspects the
+account component's Start signature. That native gate and the Windows player
+build are **unrun here**. Python checks additionally validate the three texture
+payloads and their model references. See the repair branch/CI for executed checks;
+these data checks do not establish native import, shader or gameplay acceptance.
+
+Unity API references: [LoadRawTextureData](https://docs.unity3d.com/6000.3/Documentation/ScriptReference/Texture2D.LoadRawTextureData.html),
+[SetPixelData](https://docs.unity3d.com/6000.3/Documentation/ScriptReference/Texture2D.SetPixelData.html),
+[Apply](https://docs.unity3d.com/6000.3/Documentation/ScriptReference/Texture2D.Apply.html).
+
 ## Full conversion candidate checks (2026-10-07)
 
 This current section supersedes unfinished-feature notes in the historical checkpoint entries below.

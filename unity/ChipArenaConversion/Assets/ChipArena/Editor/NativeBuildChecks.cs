@@ -37,6 +37,10 @@ namespace ChipArena.UnityConversion.Editor
         public static void Run()
         {
             if(Application.isPlaying)throw new InvalidOperationException("Run build checks after leaving Play mode.");
+            foreach(var method in typeof(NativeAccount).GetMethods(System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.DeclaredOnly))
+                if(method.Name=="Start"&&(method.GetParameters().Length!=0||(method.ReturnType!=typeof(void)&&method.ReturnType!=typeof(System.Collections.IEnumerator))))
+                    throw new InvalidOperationException("NativeAccount declares an invalid Unity Start callback");
+            NativeSourceModels.ValidateTextureImports();
             var asset=Resources.Load<TextAsset>("GameContent");if(asset==null)throw new Exception("Missing native GameContent asset");
             var data=JsonUtility.FromJson<ConversionContent>(asset.text);
             var fixtures=JsonUtility.FromJson<ParityFixtures>(File.ReadAllText(Path.Combine(Application.dataPath,"../Tests/source-parity.json")));

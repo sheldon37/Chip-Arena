@@ -22,10 +22,55 @@ namespace ChipArena.UnityConversion
         private readonly List<Texture2D> textures=new List<Texture2D>();private readonly List<Material> materials=new List<Material>();private readonly Matrix4x4[] buffer=new Matrix4x4[512];private readonly Vector4[] bodies=new Vector4[512],accents=new Vector4[512],tints=new Vector4[512];private readonly MaterialPropertyBlock properties=new MaterialPropertyBlock();
         public static string Decode(string resource)
         {var asset=Resources.Load<TextAsset>(resource);if(asset==null)throw new InvalidOperationException(resource+" is missing");var envelope=JsonUtility.FromJson<SourceEnvelope>(asset.text);if(envelope.schema!=1||envelope.commit!="05950eaef80ff2483a9c44d898cad98be1a76bbc")throw new InvalidDataException("Unverified "+resource);using(var bytes=new MemoryStream(Convert.FromBase64String(envelope.data)))using(var zip=new GZipStream(bytes,CompressionMode.Decompress))using(var reader=new StreamReader(zip))return reader.ReadToEnd();}
+        private static Texture2D CreateTexture(SourceTexture source,bool readable=false)
+        {
+            if(source==null||source.channels!=4||source.width<=0||source.height<=0)
+                throw new InvalidDataException("Source texture must have positive dimensions and RGBA32 pixels");
+            byte[] pixels=Convert.FromBase64String(source.pixels??"");
+            if(pixels.LongLength!=(long)source.width*source.height*4)
+                throw new InvalidDataException("Source texture byte count does not match its base mip dimensions");
+            var texture=new Texture2D(source.width,source.height,TextureFormat.RGBA32,true,false);
+            try
+            {
+                texture.name="Source procedural texture";
+                // The export stores mip 0 only. LoadRawTextureData requires every allocated mip.
+                texture.SetPixelData<byte>(pixels,0);
+                texture.wrapMode=TextureWrapMode.Repeat;
+                texture.Apply(true,!readable); // Generate the smaller mips from the supplied base image.
+                return texture;
+            }
+            catch {CapturedAnimation.Release(texture);throw;}
+        }
+#if UNITY_EDITOR
+        public static void ValidateTextureImports()
+        {
+            var data=JsonUtility.FromJson<SourceModelSet>(Decode("SourceModels"));
+            if(data.textures==null||data.textures.Length!=3)throw new InvalidDataException("Source texture bank is incomplete");
+            foreach(var source in data.textures)
+            {
+                var texture=CreateTexture(source,true);
+                try
+                {
+                    var expected=Convert.FromBase64String(source.pixels);var actual=texture.GetPixels32(0);
+                    if(actual.Length*4!=expected.Length||texture.mipmapCount<=1)throw new InvalidDataException("Source texture lost its base image or mip chain");
+                    for(int i=0;i<actual.Length;i++)
+                        if(actual[i].r!=expected[i*4]||actual[i].g!=expected[i*4+1]||actual[i].b!=expected[i*4+2]||actual[i].a!=expected[i*4+3])
+                            throw new InvalidDataException("Source texture pixels changed during upload");
+                }
+                finally {CapturedAnimation.Release(texture);}
+            }
+            var invalid=new SourceTexture{width=2,height=2,channels=4,pixels=Convert.ToBase64String(new byte[15])};
+            bool rejected=false;
+            try {var texture=CreateTexture(invalid);CapturedAnimation.Release(texture);}
+            catch(InvalidDataException){rejected=true;}
+            if(!rejected)throw new InvalidDataException("Truncated source texture was accepted");
+            Debug.Log("PASS native texture imports: three base images preserved, mip chains retained and truncated pixels rejected");
+        }
+#endif
         public NativeSourceModels()
         {
             var data=JsonUtility.FromJson<SourceModelSet>(Decode("SourceModels"));
-            foreach(var d in data.textures){if(d.channels!=4)throw new InvalidDataException("Unexpected texture format");var tex=new Texture2D(d.width,d.height,TextureFormat.RGBA32,true,false);tex.name="Source procedural texture";tex.LoadRawTextureData(Convert.FromBase64String(d.pixels));tex.wrapMode=TextureWrapMode.Repeat;tex.Apply(true,true);textures.Add(tex);}
+            foreach(var source in data.textures)textures.Add(CreateTexture(source));
             foreach(var model in data.models)
             {
                 var parts=new List<Part>();foreach(var s in model.sections)

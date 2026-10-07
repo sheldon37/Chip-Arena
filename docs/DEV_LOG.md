@@ -18,6 +18,13 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-07 — Codex — Windows texture upload and account callback repair
+- Isolated `codex/unity-build-fix`, based on conversion candidate `a8fa79611d84f171e5c79899b379231570b8337d`. Owner supplied the failing Windows build log. No open PR targeted the conversion branch when checked.
+- The activated Windows Editor compiled scripts and passed the source combat/presentation checks, then failed because the source model loader supplied mip-0 bytes to `LoadRawTextureData` on a mipmapped texture. It also rejected `NativeAccount.Start(string, string, bool)` as an invalid Unity callback.
+- Upload the validated base image with `SetPixelData<byte>(..., 0)` and regenerate mipmaps with `Apply`; preserve RGBA pixels and texture repetition. Rename the account helper and all four callers to `BeginRequest`. No gameplay, hit timing, hitboxes, cooldown, movement, account protocol or network changes.
+- Add native build gates for real texture pixel round trips, mip-chain retention, truncated input and callback signature; these are unrun here. Local 12 Python asset/package tests, package receipts/GUID validation, call-site review and diff checks pass. Native C# compilation and the Windows Editor/player are unavailable in this workspace; source/relay CI runs on this repair branch.
+- Deliver the complete corrected source ZIP for a fresh Windows build. Next: run `Build-Windows.cmd`, confirm the native texture gate and `UNITY_TEST_BUILD_READY`, then playtest. Implementation on branch only; no merge, updater publication, service deployment or live account mutation.
+
 ## 2026-10-07 — Codex — full native conversion candidate for owner acceptance
 - Separate `codex/unity-conversion`; parent `a787a77cdb61e4ea1528e19faf2a3bb0e87efbb8`, pinned original `05950ea`. Completed the remaining implementation pass and prepared the isolated Windows builder/source handoff; no merge or release.
 - Added original voxel wound carving and bone anchors, exact source headshot-collapse curves/release velocities, native sprays/gibs, snow/water/smoke, source Slender and summon models/poses, victim static/scare/audio, station/pickup motion, combat HUD, death-announcement holograms/audio and synchronized 3D drafts. Model bank: 133; cosmetic scenes: 31; motion clips: 165; audio files: 83.
@@ -2672,3 +2679,4 @@ containing an entry; no self-referential commit hash is required.
 - Next: each agent synchronizes this branch before making its own task branch;
   after migration merges, start new tasks from updated main. Review relevant open
   PRs to avoid overlapping work. Resolve baseline failures before release work.
+
