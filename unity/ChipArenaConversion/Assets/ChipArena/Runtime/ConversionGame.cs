@@ -7,12 +7,13 @@ namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class ConversionPreferences
     { public string name="Pilot",map="foundry",weapon="pistol";public int bots=3,sets=3,rounds=2;public string combatGlow="Full";public bool teams,friendlyFire,stationary,skipBotDrafts=true,sound=true,firstPerson; }
-    public sealed class ConversionGame : MonoBehaviour
+    public sealed partial class ConversionGame : MonoBehaviour
     {
         private ConversionContent content;private ConversionPreferences prefs;private NativeMatch match;private NativeArena arena;private ArenaPresentation presentation;
         private Camera cameraView,viewModelCamera;private InputFrame pending;private SimulationMode previousSimulation;private Vector3 previousGravity;private bool ownsPhysics;private int generation;
         private bool menu=true,showCatalogue;private float yaw,pitch=12,lastW=-1;private bool sprint;
         private Vector2 scroll,catalogueScroll;private string search="",error="";private GUIStyle heading,label,small,button;
+        private readonly NativeVisualClock visualClock=new NativeVisualClock();
         private double stepMs;private readonly System.Diagnostics.Stopwatch timer=new System.Diagnostics.Stopwatch();
         private string PreferencePath=>Path.Combine(Application.persistentDataPath,"native-preferences-v1.json");
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -51,7 +52,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<prefs.bots;i++)match.Seats.Add(new NativeSeat{id=100+i,name="Pilot "+(i+2),spec=weapons[i%weapons.Length],bot=true,team=prefs.teams?(i+1)%2:i+1});
             arena=new NativeArena(content,match,prefs.map){FriendlyFire=prefs.friendlyFire,StationaryBots=prefs.stationary};
             if(!match.Start()){error="A match needs at least two opposing sides.";return;}
-            generation=arena.Generation;pending=new InputFrame();yaw=arena.Local.Yaw;pitch=12;sprint=false;menu=false;showCatalogue=false;cameraView.backgroundColor=NativeArena.ColorOf(content.Map(prefs.map).sky);
+            generation=arena.Generation;visualClock.Reset(match.Time);pending=new InputFrame();yaw=arena.Local.Yaw;pitch=12;sprint=false;menu=false;showCatalogue=false;cameraView.backgroundColor=NativeArena.ColorOf(content.Map(prefs.map).sky);
         }
         private void Update()
         {
@@ -62,7 +63,7 @@ namespace ChipArena.UnityConversion
             bool play=arena!=null&&!menu&&match.Phase==NativePhase.Fight&&arena.Local.Hp>0;
             Cursor.lockState=play?CursorLockMode.Locked:CursorLockMode.None;Cursor.visible=!play;
             if(arena==null)return;
-            if(generation!=arena.Generation){presentation.ResetPresentation();generation=arena.Generation;}
+            if(generation!=arena.Generation){presentation.ResetPresentation();generation=arena.Generation;visualClock.Reset(match.Time);}
             var p=arena.Local;
             if(play)
             {
@@ -76,6 +77,11 @@ namespace ChipArena.UnityConversion
                 pending.Block|=Input.GetMouseButtonDown(1);pending.Reload|=Input.GetKeyDown(KeyCode.R);pending.Roll|=Input.GetKeyDown(KeyCode.LeftShift);pending.Jump|=Input.GetKeyDown(KeyCode.Space);
             }
             else pending=new InputFrame{Yaw=yaw,Pitch=-pitch};
+        }
+        private void LateUpdate()
+        {
+            if(arena==null||cameraView==null)return;
+            var p=arena.Local;bool play=!menu&&match.Phase==NativePhase.Fight&&p.Hp>0;
             UpdateCamera();
             if(play)
             {
@@ -83,7 +89,9 @@ namespace ChipArena.UnityConversion
                 var ability=content.Ability(p.Seat.spec,pending.AbilityEHeld||pending.AbilityE||pending.AbilityEReleased?"e":"q");
                 pending.AbilityTarget=NativeArena.Vec(AimPoint(ability!=null?(float)ability.range:60));
             }
-            presentation.SoundEnabled=prefs.sound;presentation.LocalId=1;presentation.Render(arena.Snapshot(),arena.Time,false);
+            presentation.SoundEnabled=prefs.sound;presentation.LocalId=1;
+            float renderTime=visualClock.Sample(match.Time,Time.timeAsDouble-Time.fixedTimeAsDouble,menu);
+            presentation.Render(arena.Snapshot(true),renderTime,false);
             Vector3? preview=null;
             if(play&&p.HoldAt>=0&&arena.Time-p.HoldAt>=.2f)
             {
@@ -111,7 +119,7 @@ namespace ChipArena.UnityConversion
         }
         private void UpdateCamera()
         {
-            var p=arena.Local;Vector3 focus=p.Body.position+Vector3.up*NativeViewRules.EyeHeight;var ads=content.Ads(p.Seat.spec);
+            var p=arena.Local;Vector3 focus=p.Body.transform.position+Vector3.up*NativeViewRules.EyeHeight;var ads=content.Ads(p.Seat.spec);
             bool aim=ads!=null&&pending.Aim&&arena.Time>=p.ReloadEnd&&arena.Time>=p.RollEnd&&arena.Time>=p.BlockEnd&&arena.Time>=p.StunEnd;
             bool first=NativeViewRules.FirstPerson(prefs.firstPerson||aim,p.Hp>0,menu);
             cameraView.fieldOfView=Mathf.Lerp(cameraView.fieldOfView,aim?(float)ads.fov:first?NativeViewRules.FirstFov:NativeViewRules.ThirdFov,1-Mathf.Exp(-16*Time.unscaledDeltaTime));
@@ -123,7 +131,7 @@ namespace ChipArena.UnityConversion
                 if(Physics.SphereCast(focus,.12f,offset.normalized,out var hit,offset.magnitude,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))location=focus+offset.normalized*Mathf.Max(.15f,hit.distance-NativeViewRules.CollisionPadding);
             }
             cameraView.transform.SetPositionAndRotation(location,rotation);
-            presentation.FirstPerson=first;viewModelCamera.enabled=first;viewModelCamera.fieldOfView=cameraView.fieldOfView;
+            presentation.FirstPerson=first;presentation.AimHeld=aim;viewModelCamera.enabled=first;viewModelCamera.fieldOfView=cameraView.fieldOfView;
         }
         private string AbilityStatus(NativePilot p,string slot)
         {
@@ -142,6 +150,7 @@ namespace ChipArena.UnityConversion
         {
             Styles();float scale=Mathf.Max(.65f,Screen.height/900f);GUI.matrix=Matrix4x4.Scale(Vector3.one*scale);float width=Screen.width/scale,height=Screen.height/scale;
             if(error.Length>0){GUI.Box(new Rect(30,30,width-60,height-60),"");GUI.Label(new Rect(45,45,width-90,height-90),error,label);return;}
+            if(arena!=null&&!menu&&match.Phase==NativePhase.Fight&&presentation.ScopeActive)DrawScope(width,height);
             GUI.Label(new Rect(22,15,width-44,35),"CHIP ARENA  /  NATIVE CONVERSION",heading);
             if(arena!=null)
             {
@@ -152,7 +161,7 @@ namespace ChipArena.UnityConversion
                 GUI.Label(new Rect(20,height-42,width-40,30),"WASD move  ·  Double-tap W sprint  ·  LMB fire/attack  ·  Q/E abilities  ·  R reload  ·  V camera  ·  RMB block  ·  Shift roll  ·  Space jump  ·  Esc menu",small);
                 if(!menu&&match.Phase==NativePhase.Fight)
                 {
-                    GUI.Label(new Rect(width/2-10,height/2-14,30,30),"+",heading);
+                    if(!presentation.ScopeActive)GUI.Label(new Rect(width/2-10,height/2-14,30,30),"+",heading);
                     if(p.Hp<=0)GUI.Label(new Rect(width/2-160,height/2-80,320,60),"ELIMINATED — round in progress",heading);
                     if(Time.unscaledTime<presentation.LastHitUntil)GUI.Label(new Rect(width/2+20,height/2-35,160,50),(presentation.LastHeadshot?"HEADSHOT ":"HIT ")+presentation.LastHitDamage.ToString("0.#"),label);
                 }
@@ -165,7 +174,7 @@ namespace ChipArena.UnityConversion
             if(!menu&&arena!=null)return;
             float panel=Mathf.Min(850,width-60);GUI.Box(new Rect((width-panel)/2,68,panel,height-120),"");
             GUILayout.BeginArea(new Rect((width-panel)/2+22,86,panel-44,height-155));scroll=GUILayout.BeginScrollView(scroll);
-            GUILayout.Label("Native conversion · Staff & glow",heading);
+            GUILayout.Label("Native conversion · Smooth view & scope",heading);
             GUILayout.Label("Native physics, first/third-person cameras, standard weapons and Q/E abilities, rounds and a stat-Chip draft. Full conversion is in progress.",label);
             if(arena!=null&&GUILayout.Button("Resume",button))menu=false;
             if(GUILayout.Button(showCatalogue?"Back to match setup":"Browse source catalogue (15 weapons / 236 Chips)",button))showCatalogue=!showCatalogue;
@@ -212,6 +221,6 @@ namespace ChipArena.UnityConversion
         }
         private void Board(float width)
         {GUI.Box(new Rect(width/2-240,80,480,40+match.Seats.Count*30),"");int row=0;foreach(var p in match.Seats)GUI.Label(new Rect(width/2-220,94+row++*30,440,28),p.name+"  ·  "+p.spec+"  ·  sets "+p.score+" / rounds "+p.roundWins+"  ·  "+(p.alive?"alive":"out"),label);}
-        private void OnDestroy(){arena?.Dispose();if(ownsPhysics){Physics.simulationMode=previousSimulation;Physics.gravity=previousGravity;}Cursor.lockState=CursorLockMode.None;Cursor.visible=true;}
+        private void OnDestroy(){if(scopeMask!=null)CapturedAnimation.Release(scopeMask);arena?.Dispose();if(ownsPhysics){Physics.simulationMode=previousSimulation;Physics.gravity=previousGravity;}Cursor.lockState=CursorLockMode.None;Cursor.visible=true;}
     }
 }

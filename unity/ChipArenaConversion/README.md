@@ -1,6 +1,6 @@
 # Chip Arena — native Unity conversion
 
-**Staff framing and combat-glow checkpoint; the full conversion is not complete.** This project is separate from both the Electron game and the accepted Unity lab. The target is native Unity/C# gameplay and physics, with no Node/Rapier sidecar.
+**First-person stability and aiming checkpoint; the full conversion is not complete.** This project is separate from both the Electron game and the accepted Unity lab. The target is native Unity/C# gameplay and physics, with no Node/Rapier sidecar.
 
 ## Run this milestone
 
@@ -29,11 +29,19 @@ The build creates `Builds/Chip-Arena-Native-Conversion-TEST-Windows.zip`. Keep t
 
 ## New in this checkpoint
 
+- Removed pose feedback: the base animation is saved before casting, recoil, IK and first-person torso settling. Repeated render frames no longer reapply those adjustments to themselves.
+- The camera and visible pilots use Unity’s interpolated body transforms. Camera/aim-ray/presentation work runs in LateUpdate; analytic animation fills the gap between 60 Hz simulation ticks and freezes with the menu.
+- Gun aiming now eases into source ADS offsets/sight alignment and FOV counter-scale. The rifle has the source-style circular scope mask and reticle; hidden scoped hands no longer leave floating glow.
+
+The menu title is **Smooth view & scope**. Test standing still with a staff, repeated casts, walking/turning, block, pause/resume and **V**. With Rifle, hold/release **Q** and try reload/roll interruptions. This is a source test checkpoint; actual Windows rendering still needs verification.
+
+## Staff and glow update (retained)
+
 - Claude's first-person staff fix is carried over: smaller staff, outward 20° roll, settled torso and a smooth two-hand guard. The oversized placeholder shaft/head now uses source proportions and four elemental silhouettes. Native rig placement is adjusted to keep the crystal visible and the crosshair clear.
 - Primary and Q/E projectiles have soft additive halos, short trails and moving light spill. Surface hits leave soft glows attached to cover for their full 0.85-second lifetime. Armor glow and soft ability-field/explosion fills are included; circles remain for target previews only.
 - **Combat glow: Full / Low / Off** is saved in the setup menu. Full uses seven reused point lights; Low keeps halos and trails with one projectile light. No extra rendering package is required.
 
-Try Fire or Darkness, press **V**, fire repeatedly, cast Q/E, and enter/leave RMB guard. Then try a gun near a wall: the projectile and impact should illuminate nearby geometry. Compare the glow settings and restart a round to check cleanup. The menu title identifies this build as **Staff & glow**.
+Try Fire or Darkness, press **V**, fire repeatedly, cast Q/E, and enter/leave RMB guard. Then try a gun near a wall: the projectile and impact should illuminate nearby geometry. Compare the glow settings and restart a round to check cleanup.
 
 ## What is available
 

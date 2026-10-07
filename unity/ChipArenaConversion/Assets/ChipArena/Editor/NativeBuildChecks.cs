@@ -39,6 +39,7 @@ namespace ChipArena.UnityConversion.Editor
             var fixtures=JsonUtility.FromJson<ParityFixtures>(File.ReadAllText(Path.Combine(Application.dataPath,"../Tests/source-parity.json")));
             foreach(var test in NativeParityChecks.Run(data,fixtures))Debug.Log("PASS "+test);
             var presentation=JsonUtility.FromJson<PresentationFixtures>(File.ReadAllText(Path.Combine(Application.dataPath,"../Tests/presentation-parity.json")));
+            foreach(var test in NativeMotionChecks.Run())Debug.Log("PASS "+test);
             foreach(var test in NativeVisualChecks.Run(data))Debug.Log("PASS "+test);
             foreach(var test in NativePresentationChecks.Run(data,presentation))Debug.Log("PASS "+test);
             var active=SceneManager.GetActiveScene();Vector3 gravity=Physics.gravity;int pads=0;
@@ -71,7 +72,14 @@ namespace ChipArena.UnityConversion.Editor
                         }
                         foreach(var pilot in arena.Pilots)if(!MathUtil.Finite(pilot.Body.position.y)||pilot.Body.position.y<-.5f)throw new Exception("Native capsule fell through the map: "+map.id);
                         if(arena.Props.Count!=map.blocks.Length)throw new Exception("Native map lost blocks: "+map.id);
-                        if(map==data.maps[0])CheckGlow(arena,match);
+                        if(map==data.maps[0])
+                        {
+                            var shown=arena.Snapshot(true);var pilot=arena.Local;
+                            if(ReferenceEquals(shown.Actors[0],pilot.Pose)||Vector3.Distance(NativeArena.Vec(shown.Actors[0].Position),pilot.Body.transform.position-Vector3.up*.865f)>.00001f)
+                                throw new Exception("Render snapshot must copy the interpolated transform");
+                            float hp=pilot.Pose.Hp;shown.Actors[0].Hp=0;if(pilot.Pose.Hp!=hp)throw new Exception("Render snapshot changed authority");
+                            CheckGlow(arena,match);
+                        }
                         Debug.Log("PASS native map "+map.id+": isolated Edit-mode physics, 8 spawn floors, capsule settling");
                     }
                     finally

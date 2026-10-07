@@ -18,6 +18,24 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-07 — Codex — first-person stability and aiming conversion
+- Separate `codex/unity-conversion`, base `6d23fdfb1fe1aaa76da2e07e05a851c59d747a64`; original reference `05950ea` remains unchanged.
+  Owner reported vibrating first person and requested continued conversion. Read current branch/source heads, shared policy/state/log and open PRs.
+- Reproduced pose feedback: five renders at one timestamp moved the casting wrist 3.43 cm in rig space. Store only the captured
+  base layer in history before procedural casting/recoil/IK/torso settling. Add a continuous, bounded visual clock with pause/reset handling.
+- Move camera/aim-ray/render work to LateUpdate; camera and copied render snapshots read interpolated Rigidbody transforms.
+  Simulation, hitboxes, muzzles, damage, hit timings, cooldowns, movement solver and network protocol are unchanged. Aim targets now
+  come from the final rendered camera. No manual interpolation call is made on Unity's automatically interpolated default scene.
+- Continued presentation port: source ADS spring/offsets/FOV counter-scale, smoothly aligned sights, circular rifle scope/reticle,
+  and no floating hand-glow while the scoped model is hidden. The source HUD/CSS blobs are pinned; source sway/bob remains pending.
+- Passed: 960 repeated-frame joint checks, 1,787 render-clock samples at 30–240 Hz, ADS/scope/reset checks, existing 5,808 staff projections,
+  1,728 source phrase / 44 ability cases, eight native rule groups, 35 inherited managed checks and 34 clips / 3,384 poses.
+  Runtime/Editor/Windows-conditional compilation against 6000.3.24f1, four package regressions and GUID/package validation pass.
+- Added unrun Windows gates for actual AnimationClip repeat-frame stability and render-snapshot authority isolation. Native Unity
+  execution, camera interpolation/frame pacing, scope/lighting visuals, PhysX gameplay and the EXE build were NOT run here.
+- Status: unmerged separate source checkpoint, no updater publication. Next: owner builds/tests idle/casting/movement/guard,
+  pause/resume/V, rifle Q/reload/roll and alternate display rates. Continue remaining combat/Chip and visual conversion after feedback.
+
 ## 2026-10-07 — Codex — native staff framing and combat glow
 - Continued the separate `codex/unity-conversion` from remote `8f2cd601088c71f26686b2b5f0a9573ad4d86500`; original reference remains `05950ea`.
   Reviewed Claude’s 2026-10-04 log and first-person staff tests/source after the owner reported the old staff issue and missing bullet glow.

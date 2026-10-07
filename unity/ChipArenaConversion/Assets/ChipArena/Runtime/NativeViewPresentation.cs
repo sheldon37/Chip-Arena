@@ -6,7 +6,9 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class ArenaPresentation
     {
-        public bool FirstPerson;
+        public bool FirstPerson,AimHeld;
+        private readonly NativeAimMotion aimMotion=new NativeAimMotion();
+        public bool ScopeActive=>viewRig!=null&&NativeAimPresentation.Scope(FirstPerson,AimHeld,viewRig.Weapon,aimMotion.Weight);
         public Camera ViewCamera;
         private CapturedAnimation.Player viewRig;
         private static List<Matrix4x4>[] MakeBatches()
@@ -51,28 +53,29 @@ namespace ChipArena.UnityConversion
             if(ViewCamera==null)return;Actor source=System.Array.Find(snapshot.Actors,a=>a.Id==LocalId&&a.Alive);if(source==null)return;
             foreach(var batch in batches)batch.Clear();
             if(viewRig==null)viewRig=captured.Create(transform,-999);
-            var shown=source.ViewCopy();shown.Pitch=0;shown.Yaw=0;shown.AimYaw=0;
+            var shown=source.ViewCopy();shown.Aiming=AimHeld;shown.Pitch=0;shown.Yaw=0;shown.AimYaw=0;
             // A camera-attached presentation rig never changes the authoritative pilot or muzzle.
             viewRig.ActorPose(shown,Vector3.zero,time,true);
             bool gun=GunRules.Ranged(shown.Weapon),magic=shown.MagicVisual>0;
             Vector3 offset=gun?new Vector3(.24f,-.48f,.20f):magic?CapturedAnimation.Vec(NativeFirstPersonPose.MagicViewOffset(viewRig.MagicGuardWeight)):new Vector3(.16f,-.22f,.30f);
-            float scale=NativeFirstPersonPose.Scale;
-            if(gun&&shown.Aiming)scale*=Mathf.Tan(ViewCamera.fieldOfView*Mathf.Deg2Rad*.5f)/Mathf.Tan(NativeViewRules.FirstFov*Mathf.Deg2Rad*.5f);
+            float ads=aimMotion.Sample(time,gun&&AimHeld);
+            if(gun)offset+=CapturedAnimation.Vec(NativeAimPresentation.Offset(shown.Weapon))*ads;
+            float scale=gun?NativeAimPresentation.Scale(ViewCamera.fieldOfView,ads):NativeFirstPersonPose.Scale;
             viewRig.Root.transform.SetPositionAndRotation(ViewCamera.transform.TransformPoint(offset),ViewCamera.transform.rotation);
             viewRig.Root.transform.localScale=Vector3.one*scale;
-            if(gun&&shown.Aiming&&shown.ReloadUntil<=time&&time>=shown.BlockUntil)
+            if(gun&&ads>0&&shown.ReloadUntil<=time&&time>=shown.BlockUntil&&!shown.Rolling(time)&&time>=shown.StunUntil)
             {
                 var hand=viewRig.Bones[CapturedRig.RHand];float y=shown.Weapon==WeaponId.Pistol?.105f:shown.Weapon==WeaponId.Rifle?.175f:.25f;
                 float z=shown.Weapon==WeaponId.Pistol?-.03f:shown.Weapon==WeaponId.Rifle?-.075f:-.02f;
                 Vector3 rear=hand.TransformPoint(new Vector3(0,y,z));
                 Quaternion align=Quaternion.FromToRotation(hand.forward,ViewCamera.transform.forward);
-                viewRig.Root.transform.rotation=align*viewRig.Root.transform.rotation;
+                viewRig.Root.transform.rotation=Quaternion.Slerp(viewRig.Root.transform.rotation,align*viewRig.Root.transform.rotation,ads);
                 rear=hand.TransformPoint(new Vector3(0,y,z));Vector3 local=ViewCamera.transform.InverseTransformPoint(rear);
-                viewRig.Root.transform.position-=ViewCamera.transform.right*local.x+ViewCamera.transform.up*local.y;
+                viewRig.Root.transform.position-=(ViewCamera.transform.right*local.x+ViewCamera.transform.up*local.y)*ads;
             }
             PlayerState=viewRig.State;
             // A scoped rifle uses the centred reticle; its magnified housing would obscure the whole screen.
-            if(!(gun&&shown.Weapon==WeaponId.Rifle&&shown.Aiming))
+            if(!ScopeActive)
             {
                 foreach(var box in CapturedRig.Boxes)if(NativeViewRules.ViewModelBone(box.Bone))
                     Part(viewRig.Bones[box.Bone].localToWorldMatrix,CapturedAnimation.Vec(CapturedRig.Mirror(box.Position)),CapturedAnimation.Vec(box.Size),Quaternion.identity,box.Color<0?0:box.Color);

@@ -1,3 +1,7 @@
+# Native first-person stability update — 2026-10-07
+
+Captured base-pose history is now stored before procedural layers. First-person settling, casting, recoil and IK are applied once to a clean base each render. The prior feedback reproduced 3.43 cm of rig-space wrist drift at a frozen timestamp; 960 repeated-frame regressions are now stable. The analytic pose clock fills each 60 Hz tick up to one step, independently of physics authority, and pauses with the menu. Camera/visible-pilot translation follows Unity's interpolated Transform. ADS uses the original 26 rad/s critically damped blend, offsets and FOV counter-scale; rifle scope masking is included. Actual Unity playback and visual checks remain Windows gates.
+
 # Native staff update — 2026-10-07
 
 The current conversion uses source-proportioned elemental staffs, Claude’s first-person scale/roll and torso settling, plus damped guard transitions. Native wrist orientation stays in chest/world space during the guard. A 5 cm view-model lift and temporary guard-transition dip compensate for the captured native rig. The rendered staff parts and camera transforms are shared with the 5,808-case projection check. These changes do not move the authoritative pilot, muzzle or hitboxes. Native visual acceptance is still required.

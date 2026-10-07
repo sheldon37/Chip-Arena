@@ -78,6 +78,23 @@ namespace ChipArena.UnityConversion
                         count++;
                     }
                 }
+                // Actual Unity clip sampling must not feed the previous rendered pose back into the base layer.
+                foreach(var actor in new[]{new Actor{MagicVisual=1,AttackAt=1.9f},new Actor{Weapon=WeaponId.MachineGun,AbilityId="rocket",AbilityAt=1.7f,AbilityRelease=1.97f}})
+                using(var repeat=Create(parent.transform,-2))
+                {
+                    var positions=new Vector3[repeat.Bones.Length];var rotations=new Quaternion[repeat.Bones.Length];
+                    for(int frame=0;frame<12;frame++)
+                    {
+                        repeat.ActorPose(actor,Vector3.zero,2,true);
+                        for(int b=0;b<repeat.Bones.Length;b++)
+                        {
+                            if(frame>0&&(Vector3.Distance(repeat.Bones[b].position,positions[b])>.00001f||Quaternion.Angle(repeat.Bones[b].rotation,rotations[b])>.05f))
+                                throw new InvalidOperationException("Repeated first-person frame drifted: "+CapturedRig.Bones[b].Name);
+                            positions[b]=repeat.Bones[b].position;rotations[b]=repeat.Bones[b].rotation;
+                        }
+                    }
+                }
+                Debug.Log("PASS native first-person repeat-frame playback: magic and rocket poses remain stable between fixed ticks.");
                 Debug.Log("PASS native animation playback: "+count+" poses / "+ClipCount+" clips; position and quaternion bindings match the source conversion.");
             }
             finally { rig.Dispose(); Release(parent); }
@@ -88,8 +105,9 @@ namespace ChipArena.UnityConversion
             public readonly GameObject Root;
             public readonly Transform[] Bones=new Transform[CapturedRig.Bones.Length];
             private readonly CapturedAnimation library;
-            private readonly Vector3[] previousP=new Vector3[CapturedRig.Bones.Length],blendP=new Vector3[CapturedRig.Bones.Length];
-            private readonly Quaternion[] previousQ=new Quaternion[CapturedRig.Bones.Length],blendQ=new Quaternion[CapturedRig.Bones.Length];
+            private readonly Vector3[] blendP=new Vector3[CapturedRig.Bones.Length];
+            private readonly NativePoseHistory baseHistory=new NativePoseHistory();
+            private readonly Quaternion[] blendQ=new Quaternion[CapturedRig.Bones.Length];
             private readonly CapturedRig.Pose pose=new CapturedRig.Pose();
             private float lastTime=-100,phase,lastStun=-100,stunAt,gunAimWeight=1;
             private readonly NativeGuardMotion magicGuard=new NativeGuardMotion();
@@ -168,8 +186,8 @@ namespace ChipArena.UnityConversion
                     Sample(set,"stagger",CapturedClip.Retime(new[]{0f,span*.4f,span},hit.Marks,time-stunAt)); Blend(blendP,blendQ,.7f); State="hit reaction";
                 }
                 // Smooth snapshot transitions, but leave contact frames and the roll turn at their authoritative times.
-                if(!reset&&!attack&&!roll) Blend(previousP,previousQ,1-Mathf.Exp(-22*dt));
                 ReadPose();
+                baseHistory.BlendBase(pose,time,attack||roll);
                 if(GunRules.Ranged(a.Weapon))
                 {
                     Vector3 velocity=Quaternion.Inverse(Root.transform.rotation)*new Vector3(a.Velocity.x,0,a.Velocity.z);
@@ -209,7 +227,7 @@ namespace ChipArena.UnityConversion
                 }
                 if(a.Weapon==WeaponId.Sword&&a.MagicVisual==0&&ground&&!roll) CapturedRig.BladeFloor(pose,false,1.28f);
                 if(firstPerson)NativeFirstPersonPose.SettleTorso(pose);
-                WritePose(); Save(previousP,previousQ); fresh=false;
+                WritePose(); fresh=false;
             }
             public void Preview(int set,string state,float time,Vector3 position)
             {

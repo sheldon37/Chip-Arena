@@ -116,8 +116,8 @@ Windows validation and desktop distribution cutover remain separate work.
   review of the new style and native Windows feel remain.
 
 - Isolated native Unity conversion (2026-10-07), `codex/unity-conversion`: source checkpoint now includes
-  Claude-based first-person staff framing, combat glow/trails/attached impacts and pooled lights, alongside the
-  native camera/standard-ability foundation. Original game and accepted Unity lab remain separate; no updater cutover.
+  first-person stability (base-pose feedback fix, interpolated camera and continuous animation clock), smooth ADS
+  and rifle scope, plus the staff/glow and native standard-ability foundations. Original game and accepted Unity lab remain separate; no updater cutover.
   Managed/source checks and Unity API compilation pass; shader import, native gameplay and Windows EXE/visual acceptance
-  remain unrun here. Next: build with activated Unity 6000.3.24f1 and check staff primary/Q/E/guard and glow near cover.
+  remain unrun here. Next: build with activated Unity 6000.3.24f1 and check first-person idle/casts/movement, pause/V and rifle ADS/scope at different display rates.
   Exact coverage, native adaptations and remaining full-conversion work: unity/ChipArenaConversion/CONVERSION-STATUS.md.

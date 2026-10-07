@@ -1,8 +1,19 @@
-# Validation — native conversion staff/glow checkpoint
+# Validation — native conversion first-person stability checkpoint
 
 No native Unity playtest or Windows executable build was run in the authoring workspace.
 
-## Staff/glow checks (2026-10-07)
+## Stability/aiming checks (2026-10-07)
+
+- Reproduced the previous first-person feedback: five repeated evaluations at an unchanged simulation time moved the magic wrist 3.43 cm in rig space (before the 0.78 view scale). The new shared runtime base-history path passes 960 repeated frames across melee, guns/rocket and four magic schools with stable joint positions and rotations, plus rewind/gap resets.
+- 1,787 render-clock samples at 30/60/120/144/240 Hz verify continuous presentation between 60 Hz fixed ticks, monotonic time, pause/resume, reset and a one-tick limit. These are numeric clock tests, not measured game frame rates.
+- ADS spring transition/settling/return, duplicate-time/reset behavior, scope eligibility, source 33vh mask dimensions and FOV counter-scale pass. Source ability-hud.ts and style.css hashes are added to the existing reference lock.
+- All prior staff projection, glow/trail, original-source parity, managed regression and captured-pose checks pass. Runtime/Editor/Windows-conditional C# compiles against actual Unity 6000.3.24f1 assemblies with warnings as errors; four package regressions and source/GUID checks pass.
+- New **unrun Windows Editor gates** repeat actual baked AnimationClip playback for magic/rocket poses and verify that interpolated render snapshots do not alter authority. Existing shader/physics/glow gates are retained.
+- **Not run here:** activated native Unity execution, actual camera interpolation/frame pacing, first-person or scope rendering, Windows EXE build. Numeric projection/stability checks do not replace the owner's on-device test.
+
+Unity 6000.3 references checked for this implementation: [Rigidbody interpolation](https://docs.unity3d.com/6000.3/Documentation/Manual/rigidbody-interpolation.html), [default-scene interpolation ownership](https://docs.unity3d.com/6000.3/Documentation/ScriptReference/PhysicsScene.InterpolateBodies.html), [fixed clock](https://docs.unity3d.com/6000.3/Documentation/ScriptReference/Time-fixedTimeAsDouble.html). The default scene performs interpolation automatically; manual calls there fail, so the camera reads its interpolated Transform in LateUpdate.
+
+## Staff/glow checks (retained, 2026-10-07)
 
 - 5,808 full native staff-mesh projections at the default 75° / 16:9 view: all four schools, idle, repeated primaries, Q/E, three casting rates and guard transitions. Zero intersections with Claude’s crosshair box; idle/primary/held-guard crystal visibility satisfies the 95% gate; the nearest sampled shaft point is 0.462 m from the camera. The check shares runtime geometry, pose and view-placement math. It is a numerical projection check, not a rendered screenshot or a test of every aspect ratio/camera motion.
 - Torso Euler round trips and guard spring blend/reset checks pass. Glow falloff, impact/trail envelopes, armor pulse, slow-projectile trail accumulation, expiry and clock reset checks pass.
@@ -51,6 +62,7 @@ The existing native clip-binding, shader, audio import, icon and Windows package
 
 - Unity import, shader compilation, native scene/physics gate, actual UI layout, sound and visuals.
 - Capsule movement on ramps, stairs, moving props and upper floors; camera obstruction, dynamic support release, projectile collision and ground/ceiling behavior.
+- First-person stability while idle, casting, moving, jumping/landing and turning at different display rates; pause/resume, V toggle, round reset and rifle scope/ADS transitions.
 - First-person framing for all weapons/ADS/reload/block, toggle persistence, camera obstruction, source magic poses and shadow visibility. Test staff guard transitions, moving casts, different aspect ratios and extreme camera angles.
 - Combat glow Full/Low/Off and saved setting, nearby-wall light spill, surface marks following moving cover, sustained gunfire/spell bursts, destroyed-cover cleanup and round resets. Judge actual brightness, transparency and frame time on the target GPU.
 - All eleven ability handlers: cancellation/cost/cooldown, target previews, close-cover collision, bounce/reflection, pierce, blink clearance, tracking, timed fields and status/proc interactions.

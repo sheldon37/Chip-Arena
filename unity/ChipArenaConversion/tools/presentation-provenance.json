@@ -80,6 +80,16 @@
       "path": "tests/ranged-magic-fluidity.test.ts",
       "git_blob_sha": "cf9ed4f7c61c9d3781bb6ed9f34d98f8cee446a2",
       "size": 23321
+    },
+    {
+      "path": "src/client/ability-hud.ts",
+      "git_blob_sha": "36339630f3af58f5ccdea6f13eb7784ff4bf4bb4",
+      "size": 6913
+    },
+    {
+      "path": "src/client/style.css",
+      "git_blob_sha": "338e2731dcd86f86b6b0c560e4f0d02d0a6564a0",
+      "size": 65283
     }
   ]
 }
