@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
                 {var p=c.pilot;Vector3 b=Velocity(p.Body,c.point);double speed=Math.Max(0,Vector3.Dot(a-b,c.normal));double damage=a.magnitude<3.6?0:NativeDebrisRules.Damage(prop.Body.mass,speed);double capped=debrisLedger.Claim(prop.Definition.id+":"+p.Seat.id,(prop.Group??prop.Definition.id)+":"+p.Seat.id,Time,damage);if(capped>0)Damage(p,recent?prop.Source:null,(float)(capped*p.Stats["debrisTaken"]),(a-b).normalized,0,false,direct:false,primary:false);}
                 else if(c.other?.Body!=null&&!c.other.Body.isKinematic&&c.other.Source==null&&prop.Source!=null&&recent&&a.magnitude>3.6){c.other.Source=prop.Source;c.other.SourceAt=Time;}
             }
-            debrisLedger.End(Time);foreach(var p in Props.Where(p=>p.Body!=null&&!p.Body.isKinematic&&p.Body.position.y<-15).ToArray()){Props.Remove(p);CapturedAnimation.Release(p.gameObject);}
+            StepVents();debrisLedger.End(Time);foreach(var p in Props.Where(p=>p.Body!=null&&!p.Body.isKinematic&&p.Body.position.y<-15).ToArray()){Props.Remove(p);CapturedAnimation.Release(p.gameObject);}
         }
         private NativePropBody AddProp(ContentBlock block,bool fragment=false,string group=null,NativePilot source=null)
         {

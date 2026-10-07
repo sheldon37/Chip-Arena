@@ -1,6 +1,8 @@
 # Chip Arena — native Unity conversion
 
-**Melee specials and recovery checkpoint; the full conversion is not complete.** This project is separate from both the Electron game and the accepted Unity lab. The target is native Unity/C# gameplay and physics, with no Node/Rapier sidecar.
+**Broad conversion candidate under active completion.** This project is separate from both the Electron game and the accepted Unity lab. The target is native Unity/C# gameplay and physics, with no Node/Rapier sidecar.
+
+Current scope and remaining work are tracked in [CONVERSION-STATUS.md](CONVERSION-STATUS.md). Native relay and headless-server usage is in [Relay/README.md](Relay/README.md).
 
 ## Run this milestone
 

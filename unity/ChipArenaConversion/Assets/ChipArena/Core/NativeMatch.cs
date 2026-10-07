@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
         public int RoundsPerSet=2,SetsToWin=5,Choices=6;
         public double SelectionSeconds=18;
         public Func<ContentChip,bool> DraftFilter;
-        public Action ResetRound;
+        public Action ResetRound;public Func<bool> HoldResolution;
         private readonly ConversionContent data;private readonly SourceRandom random;
         private readonly List<int> queue=new List<int>();private int turn;private double chosenAt;
         public NativeMatch(ConversionContent data,uint seed=12345){this.data=data;random=new SourceRandom(seed);}
@@ -77,7 +77,7 @@ namespace ChipArena.UnityConversion
         }
         public void Resolve()
         {
-            if(Cooperative||Phase!=NativePhase.Fight)return;var alive=Seats.Where(p=>p.alive&&p.connected).ToArray();
+            if(Cooperative||Phase!=NativePhase.Fight||HoldResolution?.Invoke()==true)return;var alive=Seats.Where(p=>p.alive&&p.connected).ToArray();
             if(alive.Select(p=>Teams?p.team:p.id).Distinct().Count()>1)return;
             Winner=alive.Length>0?alive[0].id:0;SetWinner=0;
             if(Winner!=0)

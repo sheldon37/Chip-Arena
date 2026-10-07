@@ -6,7 +6,7 @@ namespace ChipArena.UnityConversion
     {
         public void RenderAbilities(NativeArena arena,Vector3? preview=null)
         {
-            SourceWorld(arena);foreach(var b in batches)b.Clear();DeathPresentation(arena);WorldEffects(arena);
+            foreach(var b in batches)b.Clear();SourceWorld(arena);DeathPresentation(arena);WorldEffects(arena);
             foreach(var shot in arena.AbilityShots)
             {
                 int color=shot.Owner.Pose.MagicVisual>0?6+shot.Owner.Pose.MagicVisual:6;
@@ -56,8 +56,8 @@ namespace ChipArena.UnityConversion
             }
             if(preview.HasValue)
             {
-                var d=arena.Content.Ability(arena.Local.Seat.spec,"e");
-                Ring(preview.Value+Vector3.up*.08f,Mathf.Max(.3f,NativeAbilityRules.Radius(d,arena.Local.Stats)),4,0);
+                var d=arena.Content.Ability(arena.ViewPilot.Seat.spec,"e");
+                Ring(preview.Value+Vector3.up*.08f,Mathf.Max(.3f,NativeAbilityRules.Radius(d,arena.ViewPilot.Stats)),4,0);
             }
             DrawBatches(null,0,false);
         }

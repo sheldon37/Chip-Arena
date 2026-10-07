@@ -35,6 +35,7 @@ namespace ChipArena.UnityConversion
                 {Beam(at,at+Vector3.up*3.5f,.3f,3);for(int j=0;j<7;j++){float a=j*2.399f;Vector3 start=at+Vector3.up*(1+j*.28f),end=start+new Vector3(Mathf.Sin(a)*1.3f,.6f,Mathf.Cos(a)*1.3f);Beam(start,end,.11f,3);Beam(end,end+Vector3.up*.6f,.045f,3);}Ring(at+Vector3.up*.03f,1.1f,10,age*13);}
                 else{Ring(at,.7f,10,age*120);VoxelCloud(at,Mathf.Repeat(age,1.5f),10,f.Id,12,true);}
             }
+            foreach(var mark in arena.Marks()){var target=arena.Pilots.Find(p=>p.Seat.id==mark.target);if(target==null||time<mark.lockAt)continue;float u=Mathf.Clamp01((time-mark.lockAt)/Math.Max(.1f,mark.throwAt-mark.lockAt));Ring(target.Body.position+Vector3.up*.9f,1.6f-.75f*MathUtil.Smooth(u),7,time*60);}
             foreach(var s in arena.StormTrails){float u=Mathf.Clamp01((s.Until-time)/(s.Until-s.At));Ring(s.Position+Vector3.up*.04f,.65f*u,9,time*140);Beam(s.Position,s.Position+Vector3.up*(.25f+u),.035f,9);}
             foreach(var p in arena.Pilots)
             {

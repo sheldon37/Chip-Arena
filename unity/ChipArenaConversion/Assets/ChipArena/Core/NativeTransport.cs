@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Net;
 using System.Net.Sockets;
+using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,12 +15,13 @@ namespace ChipArena.UnityConversion
     {
         public const int MaxFrame=2*1024*1024;
         private static readonly UTF8Encoding Utf8=new UTF8Encoding(false,true);
-        private readonly TcpClient client;private readonly NetworkStream stream;private readonly CancellationTokenSource stop=new CancellationTokenSource();
+        private readonly TcpClient client;private readonly Stream stream;private readonly CancellationTokenSource stop=new CancellationTokenSource();
         private readonly ConcurrentQueue<byte[]> reliable=new ConcurrentQueue<byte[]>();private readonly SemaphoreSlim ready=new SemaphoreSlim(0,1);private byte[] latest;
         public readonly ConcurrentQueue<string> Received=new ConcurrentQueue<string>();public string Error{get;private set;}public bool Closed=>stop.IsCancellationRequested;public DateTime LastReceived{get;private set;}=DateTime.UtcNow;
         private readonly int receiveLimit;private int reliableCount,receivedCount;private readonly Task reader,writer;
         public NativeConnection(TcpClient socket,int inboundLimit=MaxFrame)
         {client=socket;client.NoDelay=true;receiveLimit=inboundLimit;stream=client.GetStream();reader=ReadLoop();writer=WriteLoop();}
+        public NativeConnection(Stream transport,int inboundLimit=MaxFrame){stream=transport;receiveLimit=inboundLimit;reader=ReadLoop();writer=WriteLoop();}
         public static async Task<NativeConnection> Connect(string host,int port,CancellationToken cancellation)
         {
             var socket=new TcpClient();try{var connect=socket.ConnectAsync(host,port);var timeout=Task.Delay(8000,cancellation);if(await Task.WhenAny(connect,timeout)!=connect)throw new TimeoutException("Connection timed out");await connect;cancellation.ThrowIfCancellationRequested();return new NativeConnection(socket);}catch{socket.Dispose();throw;}
@@ -45,15 +47,15 @@ namespace ChipArena.UnityConversion
         private async Task ReadLoop()
         {
             try{var header=new byte[8];DateTime interval=DateTime.UtcNow;int rate=0;while(!Closed){await Exact(header,8);if(header[0]!=67||header[1]!=65||header[2]!=85||header[3]!=2)throw new InvalidDataException("Incompatible conversion protocol");int size=header[4]<<24|header[5]<<16|header[6]<<8|header[7];if(size<2||size>Math.Min(MaxFrame+1,receiveLimit+1024))throw new InvalidDataException("Invalid packet length");var data=new byte[size];await Exact(data,size);var now=DateTime.UtcNow;if((now-interval).TotalSeconds>=1){interval=now;rate=0;}if(++rate>180||Interlocked.Increment(ref receivedCount)>128)throw new InvalidDataException("Peer exceeded message budget");string message=Decode(data,receiveLimit);Received.Enqueue(message);LastReceived=now;}}
-            catch(Exception e)when(e is InvalidDataException||e is IOException||e is SocketException||e is OperationCanceledException||e is ObjectDisposedException||e is ArgumentException){if(!Closed)Fail(e is EndOfStreamException?"Peer disconnected":e.Message);}
+            catch(Exception e)when(e is WebSocketException||e is InvalidDataException||e is IOException||e is SocketException||e is OperationCanceledException||e is ObjectDisposedException||e is ArgumentException){if(!Closed)Fail(e is EndOfStreamException?"Peer disconnected":e.Message);}
         }
         private async Task WriteLoop()
         {
             try{while(!Closed){await ready.WaitAsync(stop.Token);do{byte[] data;if(reliable.TryDequeue(out data))Interlocked.Decrement(ref reliableCount);else data=Interlocked.Exchange(ref latest,null);if(data==null)break;int n=data.Length;byte[] header={67,65,85,2,(byte)(n>>24),(byte)(n>>16),(byte)(n>>8),(byte)n};await stream.WriteAsync(header,0,header.Length,stop.Token);await stream.WriteAsync(data,0,n,stop.Token);}while(!Closed);}}
-            catch(Exception e)when(e is InvalidDataException||e is IOException||e is SocketException||e is OperationCanceledException||e is ObjectDisposedException){if(!Closed)Fail(e.Message);}
+            catch(Exception e)when(e is WebSocketException||e is InvalidDataException||e is IOException||e is SocketException||e is OperationCanceledException||e is ObjectDisposedException){if(!Closed)Fail(e.Message);}
         }
         private void Fail(string error){Error=error;Dispose();}
-        public void Dispose(){if(Closed)return;stop.Cancel();client.Close();}
+        public void Dispose(){if(Closed)return;stop.Cancel();stream.Dispose();client?.Close();}
     }
     public sealed class NativeListener:IDisposable
     {

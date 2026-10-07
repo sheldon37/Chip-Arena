@@ -9,18 +9,20 @@ The following is implementation status, not a claim of Windows or visual accepta
 | Combat | Standard gun/magic/melee primaries and Q/E, modifiers, block/reflect, recovery, status fields, summons |
 | Chips | Full 236-entry source catalog is eligible through explicit stat/mechanic support catalogs; six PvE money Chips |
 | DEV | Signed-access Emperor, Ansatsuken, Leet and Siren, their actions and style Chips |
-| PvE | Three wave schedules, horde bodies/limb damage, economy and stations, personal drafts, recruits, revives and boss phases |
-| Presentation | 50 original model exports with three procedural textures, 159 original motion samples including 20 entrances, existing captured melee clips, combat lights/fields, native death bodies and effect adapters |
+| PvE | Three wave schedules, horde bodies/limb damage, economy and stations, personal drafts, recruits, revives, boss phases, entry queues, moving doors/grates and vent travel/falls |
+| Presentation | 79 original model exports with three procedural textures, 165 original motion samples including 20 entrances, existing captured melee clips, combat lights/fields, original night-sky shader port, native death bodies and effect adapters |
 | Audio | 83 original source files with menu/map/boss music and combat event routing |
-| Accounts | Configured HTTPS service, login/register/recover/profile/logout, signed unlock verification, Windows encrypted session persistence |
-| Multiplayer | Separate native TCP rooms, host authority, bounded compressed frames, source/version lock, room codes, readiness, snapshots, reconnect seat tokens |
+| Accounts | Configured HTTPS service, login/register/recover/profile/logout, signed unlock verification, Windows encrypted session persistence, developer grant management and in-room token refresh |
+| Multiplayer | Native TCP LAN and WebSocket relay rooms/discovery, host authority, bounded compressed frames, source/version lock, readiness and reconnect leases; headless Unity authority mode |
+| Controls | Saved graphics/audio/sensitivity settings, first person, melee lock-on, spectator switching, isolated read-only kill replay and local developer sandbox |
 | Packaging | Separate Windows builder, CA icon, source asset receipts and fail-closed import/build gates |
 
-Still being completed: vent pits and entry detail; remaining cinematic/environment presentation and native body refinements;
-internet relay/discovery/host migration; account administration/settings parity; additional native gameplay gates.
+Still being completed: remaining cinematic/environment presentation and native body refinements;
+full native gameplay gates; final packaging and handoff. Player-host migration is not implemented; a separate
+headless authority mode is available in source. See Relay/README.md for the networking boundaries.
 Some cinematic, rig and PhysX adapters are approximations of the source renderer/physics rather than identical output.
 Unity clients cannot join Electron rooms. No service endpoint or credentials are bundled and no live service mutation was performed.
 
-Verified locally: managed/source parity checks, real loopback transport, Unity Runtime/Editor/Windows C# compilation.
+Verified locally: managed/source parity checks, real loopback TCP and WebSocket relay transport, Unity Runtime/Editor/Windows C# compilation.
 Unrun: activated Unity import and shader compilation, rendered play, native PhysX acceptance, live accounts/remote rooms and Windows EXE.
 See VALIDATION.md and docs/DEV_LOG.md for the detailed checkpoint record.

@@ -16,5 +16,9 @@ const wounds=[];for(const kind of ['bullet','cut','pierce','blunt','blast','ener
 const shares=[];for(const seed of [1,10,23445])for(const crawl of [false,true])for(const point of [{x:0,y:0,z:0},{x:0,y:2,z:0},{x:.5,y:0,z:.4}])for(const kind of ['blast','bullet']){const state={pos:{x:0,y:.9,z:0},yaw:.7,crawl,lost:0,maxHp:100},hit={kind,point,radius:3};shares.push({seed,state,hit,expected:gibs.classifyAddHit(state,50,hit,new rng.PveRng(seed))});}
 const random=[0,1,12345,4294967295].map(seed=>{const next=rng.mulberry32(seed);return {seed,hash:rng.hash32(seed,'horde'),values:Array.from({length:20},next)};});
 const music=Array.from({length:1001},(_,i)=>{const raw=i*.731,t=boss.loopedSongTime(boss.BLACK_SIREN_PROTOCOL,raw);return {raw,looped:t,beat:boss.beatIndexAt(boss.BLACK_SIREN_PROTOCOL,t),section:boss.sectionAt(boss.BLACK_SIREN_PROTOCOL,t)};});
-fs.writeFileSync(path.join(project,'Tests/native-systems-parity.json'),JSON.stringify({sourceCommit:inventory.sourceCommit,wounds,shares,random,music})+'\n');
+const entering=await get('pve/entering'),entry=await get('pve/entries');
+const climbs=Array.from({length:241},(_,i)=>{const time=i/100;return {time,activeAt:1.95,...entering.ventClimbOffset(time,1.95)};});
+const timelines=['vent','door','cell'].flatMap(kind=>[true,false].map(first=>({kind,first,...entry.entryTimeline(kind,first)})));
+const weights=[];for(const distance of [0,4.99,5,9.99,10,30,30.01,100])for(const kind of ['vent','door','cell'])for(const wave of [true,false])for(const possession of [true,false]){const en={e:0,kind,exit:{x:0,z:0}},sched={queueLength:()=>0};weights.push({distance,kind,wave,possession,value:entry.entryWeight(en,sched,{time:0,party:[{x:distance,z:0}],wave,possession})});}
+fs.writeFileSync(path.join(project,'Tests/native-systems-parity.json'),JSON.stringify({sourceCommit:inventory.sourceCommit,wounds,shares,random,music,climbs,timelines,weights})+'\n');
 fs.writeFileSync(path.join(project,'tools/pve-provenance.json'),JSON.stringify({sourceCommit:inventory.sourceCommit,files:[...read].sort().map(p=>inventory.files.find(f=>f.path===p))},null,2)+'\n');

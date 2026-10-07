@@ -5,7 +5,7 @@ using UnityEngine;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class NativeDeath
-    {public int id,owner,seed;public float at,yaw,force;public string style,model;public Vector3 position,velocity,direction;public bool melee,kept;public Actor actor;public NativeWound wound;}
+    {public int id,owner,seed;public float at,yaw,force,landAt;public string style,model;public Vector3 position,velocity,direction;public bool melee,kept;public Actor actor;public NativeWound wound;}
     public sealed partial class NativePilot
     {public readonly List<NativeWound> Wounds=new List<NativeWound>();public NativeDeath Death;public NativePilot LastAttacker;public float LastAttackerAt;public float RevivedAt=-100;}
     public sealed partial class NativeArena
@@ -15,7 +15,7 @@ namespace ChipArena.UnityConversion
         {
             if(source!=null){p.LastAttacker=source;p.LastAttackerAt=Time;}
             if(impact==null&&source!=null)impact=melee?NativeBodyDamage.Melee(source.Seat.spec,(float)source.Stats["attackRate"]):direct?NativeBodyDamage.Projectile(source.Seat.spec,(float)source.Weapon.speed,.045f):null;
-            if(impact==null)return;Vector3 hit=point??(p.Body.position+Vector3.up*(head?.6f:0));var wound=NativeBodyDamage.Resolve(impact,NativeBodyDamage.Part(Vec(hit-p.Body.position),p.Yaw,head),amount,lethal,head);if(wound==null)return;
+            if(impact==null)return;Vector3 hit=point??(p.Body.position+Vector3.up*(head?.6f:0));Vector3 local=Quaternion.Euler(0,-p.Yaw,0)*(hit-p.Body.position);var wound=NativeBodyDamage.Resolve(impact,NativeBodyDamage.Part(new V3(-local.x,local.y,local.z),0,head),amount,lethal,head);if(wound==null)return;
             wound.id=nextEvent++;wound.at=Time;wound.point=Vec(hit-p.Body.position);wound.direction=Vec(dir);p.Wounds.Add(wound);while(p.Wounds.Count>8)p.Wounds.RemoveAt(0);
         }
         private void RecordDeath(NativePilot p,NativePilot source,Vector3 direction,float force,bool melee)

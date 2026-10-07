@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
             {
                 GUI.Label(new Rect(26,295,330,70),"$"+row.Money+"  ·  "+row.Kills+" kills  ·  "+row.Picks.Count+" waiting Chips\nF · interact / collect / revive    C · Chips",small);
                 if(!string.IsNullOrEmpty(v.Notice))GUI.Label(new Rect(width/2-220,height-120,440,50),v.Notice,label);
-                if(p.Hp<=0)GUI.Label(new Rect(width/2-240,height/2+5,480,60),row.SelfAt>=0?"Reviving in "+Math.Ceiling(row.SelfAt-arena.Time)+"s":"DOWNED · A teammate can revive you",label);
+                if(p.Hp<=0)GUI.Label(new Rect(width/2-240,height/2+5,480,60),arena.InShaft(p)?"FALLING THROUGH THE VENT":row.SelfAt>=0?"Reviving in "+Math.Ceiling(row.SelfAt-arena.Time)+"s":"DOWNED · A teammate can revive you",label);
                 if(row.Open!=null&&!v.Holding)
                 {
                     float w=Mathf.Min(880,width-60),h=Mathf.Min(540,height-140);GUI.Box(new Rect((width-w)/2,(height-h)/2,w,h),"");

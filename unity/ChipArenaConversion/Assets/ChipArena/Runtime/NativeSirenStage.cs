@@ -1,9 +1,13 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 namespace ChipArena.UnityConversion
 {
     public sealed partial class NativeArena
     {
+        public IEnumerable<NativeMarkView> Marks()
+        {if(Replica)return replicaFrame?.marks??Array.Empty<NativeMarkView>();return Pilots.Where(p=>p.Siren?.Move?.Rule.Id=="mark"&&p.Siren.Move.Target!=null).Select(p=>new NativeMarkView{id=p.Siren.Move.Id,owner=p.Seat.id,target=p.Siren.Move.Target.Seat.id,lockAt=p.Siren.Move.At+1.2f,throwAt=p.Siren.Move.HitAt});}
         public float BossSongAt=-1,BossSongLead;private NativeBossTrack bossTrack;
         public NativeBossTrack BossTrack=>bossTrack??(bossTrack=JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text).bossMusic);
         public double BossSongTime=>BossSongAt<0?-1:Time-BossSongAt+BossSongLead+(Pve?.Holding==true&&Pve.Cinematic=="intro"?Pve.HoldDuration-Pve.HoldLeft:0);

@@ -9,9 +9,9 @@ namespace ChipArena.UnityConversion
         private Mesh cube;
         private CapturedAnimation captured;
         private NativeCombatGlow combatGlow;
-        public float GlowQuality=1;
+        public float GlowQuality=1;public bool TrailsEnabled=true;
         public void RenderGlow(NativeArena arena,Camera camera)
-        {if(combatGlow==null)return;combatGlow.Quality=GlowQuality;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.Local.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);}
+        {if(combatGlow==null)return;combatGlow.Quality=GlowQuality;combatGlow.Trails=TrailsEnabled;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.ViewPilot.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);}
         private readonly AudioClip[] gunSounds=new AudioClip[4];
         private AudioClip reloadStart,reloadEnd,hitSound;
         private AudioSource localAudio;

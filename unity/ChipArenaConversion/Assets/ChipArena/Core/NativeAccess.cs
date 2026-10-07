@@ -12,6 +12,8 @@ namespace ChipArena.UnityConversion
         public bool Developer{get;private set;}public string AccountId{get;private set;}public double Expires{get;private set;}
         private readonly HashSet<string> grants=new HashSet<string>();
         public bool Allows(string key,double now)=>Expires>now&&(Developer||grants.Contains(key));
+        public static NativeAccess ScopedWeapon(NativeAccess owner,string weapon,double now)
+        {if(owner==null||!owner.Allows("weapon:"+weapon,now))return Guest;var access=new NativeAccess{Expires=owner.Expires};access.grants.Add("weapon:"+weapon);return access;}
         public static NativeAccess Verify(string token,Func<string,NativePlayerClaim> decode,double now)
         {
             try

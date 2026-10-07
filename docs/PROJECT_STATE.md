@@ -118,7 +118,8 @@ Windows validation and desktop distribution cutover remain separate work.
 - Isolated native Unity conversion (2026-10-07), `codex/unity-conversion`: broad conversion work is
   continuing under the owner's request to finish before playtest. The current checkpoint adds full
   Chip drafting, DEV/PvE authority, source models/motion/audio, cosmetic bodies, account/profile
-  integration and separate native LAN rooms. Source remains pinned to `05950ea`; no original-game cutover.
+  integration, Ward entry/vent behavior, replay/spectator/settings, developer practice and separate
+  native LAN/relay rooms with a headless authority mode. Source remains pinned to `05950ea`; no original-game cutover.
   Managed/source fixtures, loopback transport and real Unity API compilation pass. Actual native
   Editor/render/PhysX and Windows build remain unrun. Remaining parity/coverage is documented in
   `unity/ChipArenaConversion/CONVERSION-STATUS.md`. No merge or updater/Site publication.

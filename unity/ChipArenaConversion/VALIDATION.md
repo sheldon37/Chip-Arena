@@ -105,3 +105,13 @@ and error-free Unity source shaders. These **native gates have not run here**. S
 locked by size/Git blob hash in tools/asset-lock.json; unexpectedly large unlisted files still fail packaging.
 No activated Editor, native PhysX/rendered test, live account service, internet/LAN session between computers,
 or Windows EXE ran in this workspace. These checks do not certify complete conversion or visual parity.
+
+
+## 2026-10-07 — entry, replay, account and relay checkpoint
+
+- Managed source checks pass, including 241 original vent-climb samples, six entry timelines, 96 weighted-entry cases and vent boundary conditions.
+- Real local WebSocket relay integration passes: public discovery/private exclusion, two isolated clients, 20 ordered messages, a 130 KB snapshot, source mismatch rejection and disconnect cleanup. TCP checks also pass.
+- Runtime and Windows-player C# compile against real Unity 6000.3.24f1 reference assemblies; Editor C# also compiles. The .NET 8 relay compiles and runs. This container's dotnet CLI/MSBuild process inspection fails; equivalent Roslyn compilation and direct runtime execution were used locally. CI uses ordinary SDK builds.
+- Four package tests and the asset receipt/metadata check pass. Sources now include 79 model exports, 165 source motion tracks, Ward moving-part metadata and all 83 original audio assets.
+- Added native entry queues/travel/falls, original sky shader port, settings, lock-on, spectator/replay, developer practice/admin UI, relay/discovery and headless authority source. Native visual, UI, PhysX, headless Unity, live-account and Windows EXE execution remain unrun. Local relay tests are not evidence of a deployed internet service or TLS proxy test.
+- Shader import gates now include the Ward pit and night sky. No native runtime acceptance or complete presentation equivalence is claimed.

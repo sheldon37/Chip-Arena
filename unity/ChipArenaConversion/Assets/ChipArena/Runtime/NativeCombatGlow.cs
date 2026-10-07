@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion
         private readonly Light[] projectileLights=new Light[3],impactLights=new Light[2],armorLights=new Light[2];
         private readonly Dictionary<int,NativeTrace> traces=new Dictionary<int,NativeTrace>();
         private readonly List<SurfaceMark> marks=new List<SurfaceMark>();private int generation=-1,lastEvent;
-        private float lastTime=-1;public float Quality=1;
+        private float lastTime=-1;public float Quality=1;public bool Trails=true;
         public int LiveMarks=>marks.Count;public int LiveTraces=>traces.Count;
         public NativeCombatGlow(Transform parent)
         {
@@ -89,7 +89,7 @@ namespace ChipArena.UnityConversion
                 // A bounce event can predate the current render sample after several fixed ticks.
                 if(traces.TryGetValue(e.Projectile,out var trail)&&e.Time>=trail.Seen)trail.Sample(e.Position,e.Time,e.Color);
             }
-            foreach(var pair in traces.ToArray())
+            if(!Trails)traces.Clear();foreach(var pair in traces.ToArray())
             {
                 var trace=pair.Value;if(trace.Expired(now)){traces.Remove(pair.Key);continue;}
                 for(int i=1;i<trace.Points.Count;i++)
@@ -127,7 +127,7 @@ namespace ChipArena.UnityConversion
             int lightIndex=0;
             foreach(var pilot in arena.Pilots)
             {
-                if(pilot.Hp<=0||first&&pilot.Seat.id==arena.Local.Seat.id||!rigs.TryGetValue(pilot.Seat.id,out var rig))continue;
+                if(pilot.Hp<=0||first&&pilot.Seat.id==arena.ViewPilot.Seat.id||!rigs.TryGetValue(pilot.Seat.id,out var rig))continue;
                 Color color=Color.Lerp(pilot.Seat.bot?Tint(0xeb4d61):Tint(0x2bd9d4),Tint(0xd1edff),.26f);
                 float pulse=NativeGlowRules.ArmorPulse(now,pilot.BlockReady-now,now<pilot.BlockEnd),alpha=(Quality<.5f?.43f:.70f)*pulse;
                 void Joint(int bone,Vector3 local,float size)=>world.Halo(rig.Bones[bone].TransformPoint(local),right,up,size,color,alpha);
@@ -139,9 +139,9 @@ namespace ChipArena.UnityConversion
             }
             if(first&&viewRig!=null&&viewCamera!=null)
             {
-                Color color=Tint(0x70e1d0);float pulse=NativeGlowRules.ArmorPulse(now,arena.Local.BlockReady-now,now<arena.Local.BlockEnd);
+                Color color=Tint(0x70e1d0);float pulse=NativeGlowRules.ArmorPulse(now,arena.ViewPilot.BlockReady-now,now<arena.ViewPilot.BlockEnd);
                 foreach(int bone in new[]{CapturedRig.LHand,CapturedRig.RHand})view.Halo(viewRig.Bones[bone].TransformPoint(new Vector3(0,0,.1f)),right,up,.13f,color,.45f*pulse);
-                if(viewStaff.HasValue)view.Halo(viewStaff.Value.MultiplyPoint3x4(new Vector3(0,0,.72f)),right,up,.28f,School(arena.Local.Pose.MagicVisual),.55f);
+                if(viewStaff.HasValue)view.Halo(viewStaff.Value.MultiplyPoint3x4(new Vector3(0,0,.72f)),right,up,.28f,School(arena.ViewPilot.Pose.MagicVisual),.55f);
                 if(submitDraws)view.Draw(material,viewCamera,10);
             }
             if(submitDraws)world.Draw(material,camera,0);

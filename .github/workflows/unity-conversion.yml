@@ -21,8 +21,8 @@ jobs:
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
         with:
           dotnet-version: '8.0.x'
-      - name: Native source parity and managed regressions
-        run: dotnet run --project unity/ChipArenaConversion/Tests/CoreTests.csproj -c Release
+      - name: Native source parity, managed regressions and real relay
+        run: python3 unity/ChipArenaConversion/tools/check_relay.py
       - name: Source package validation
         run: |
           python3 -m unittest discover -s unity/ChipArenaConversion/Tests -p 'test_source_packages.py'

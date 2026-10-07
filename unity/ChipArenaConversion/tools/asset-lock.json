@@ -501,14 +501,14 @@
     },
     {
       "path": "Assets/Conversion/Resources/SourceModels.json",
-      "bytes": 6065055,
-      "gitBlob": "64c2e73ce3290e5296c3ed7a4d5973f1a7c51b28",
+      "bytes": 5719851,
+      "gitBlob": "125dcbe904dd323f44259ab4df754e393e433d06",
       "source": "pinned source export"
     },
     {
       "path": "Assets/Conversion/Resources/SourceMotion.json",
-      "bytes": 3836667,
-      "gitBlob": "7ecced1f40ad6d534a22c32d82a879414adf1734",
+      "bytes": 3822883,
+      "gitBlob": "2625663acac0e94fe310a753b837e440bd050ba4",
       "source": "pinned source export"
     },
     {
@@ -516,6 +516,12 @@
       "bytes": 15429,
       "gitBlob": "f9338722f27577b48e978187a2fdfb039659abdb",
       "source": "pinned source export"
+    },
+    {
+      "path": "Assets/Conversion/Resources/WardMotion.json",
+      "source": "generated from pinned source",
+      "bytes": 3516,
+      "gitBlob": "9066f31e0571dc26dd328e1d1c8337a285c31316"
     }
   ]
 }

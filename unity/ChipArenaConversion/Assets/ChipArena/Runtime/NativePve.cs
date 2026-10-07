@@ -66,7 +66,7 @@ namespace ChipArena.UnityConversion
         {
             float Flat(Vector3 q)=>new Vector2(q.x-p.Body.position.x,q.z-p.Body.position.z).magnitude;
             var pickup=Pve.Pickups.Where(k=>k.Owner==p&&Time>=k.Born&&Flat(k.Position)<=1.6f).OrderBy(k=>Flat(k.Position)).FirstOrDefault();if(pickup!=null){Pve.Pickups.Remove(pickup);GrantPvePick(p,pickup.Tier,false);return;}
-            var dead=Members().Where(q=>q.Hp<=0&&q.Seat.connected&&Flat(q.Body.position)<=2.2f).OrderBy(q=>Flat(q.Body.position)).FirstOrDefault();if(dead!=null){var target=Pve.Rows[dead.Seat.id];int price=NativePveRules.RevivePrice(target.Revived);if(row.Money<price){Pve.Notice="Not enough money to revive";return;}row.Money-=price;row.Spent+=price;row.Revives++;target.Revived++;RevivePve(dead);return;}
+            var dead=Members().Where(q=>q.Hp<=0&&q.Seat.connected&&!InShaft(q)&&Flat(q.Body.position)<=2.2f).OrderBy(q=>Flat(q.Body.position)).FirstOrDefault();if(dead!=null){var target=Pve.Rows[dead.Seat.id];int price=NativePveRules.RevivePrice(target.Revived);if(row.Money<price){Pve.Notice="Not enough money to revive";return;}row.Money-=price;row.Spent+=price;row.Revives++;target.Revived++;RevivePve(dead);return;}
             var m=Pve.Content.machines.Where(x=>Flat(Vec(x.front.Position()))<=2.2f).OrderBy(x=>Flat(Vec(x.front.Position()))).FirstOrDefault();if(m==null)return;int cost=m.kind=="chip"?NativePveRules.ChipPrice(row.Bought):m.kind=="recruit"?300:75;
             if(row.Money<cost){Pve.Notice="Not enough money";return;}
             if(m.kind=="chip")

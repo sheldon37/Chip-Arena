@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
         private bool AllowedWeapon(ContentWeapon w)=>!w.devOnly||(account?.Access??NativeAccess.Guest).Allows("weapon:"+w.id,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         private void InitializeAccount()
         {
-            account=gameObject.AddComponent<NativeAccount>();account.Accepted=data=>{var p=data.profile;if(p==null)return;prefs.name=NativeCosmeticRules.Name(p.name);prefs.accentColor=NativeCosmeticRules.Color(p.color,"#70e1d0");var c=p.cosmetics??new NativeCosmetics();prefs.bodyColor=NativeCosmeticRules.Color(c.bodyColor,"#e5e7eb");prefs.hat=NativeCosmeticRules.Hat(c.hat,account.Access);prefs.killEffect=NativeCosmeticRules.Kill(c.killEffect,account.Access);prefs.intro=NativeCosmeticRules.Intro(c.intro,account.Access);prefs.introText=c.introText;prefs.overrideIntro=c.overrideWeaponIntro;if(content.weapons.Any(w=>w.id==c.preferredSpec&&AllowedWeapon(w)))prefs.weapon=c.preferredSpec;accountPassword=accountRecovery="";Save();};
+            account=gameObject.AddComponent<NativeAccount>();account.Accepted=(data,load)=>{if(arena?.Local!=null)arena.Local.Seat.access=account.Access;if(server!=null)SendServer(new NativeNetMessage{type="auth-refresh",token=account.Token});if(!load)return;var p=data.profile;if(p==null)return;prefs.name=NativeCosmeticRules.Name(p.name);prefs.accentColor=NativeCosmeticRules.Color(p.color,"#70e1d0");var c=p.cosmetics??new NativeCosmetics();prefs.bodyColor=NativeCosmeticRules.Color(c.bodyColor,"#e5e7eb");prefs.hat=NativeCosmeticRules.Hat(c.hat,account.Access);prefs.killEffect=NativeCosmeticRules.Kill(c.killEffect,account.Access);prefs.intro=NativeCosmeticRules.Intro(c.intro,account.Access);prefs.introText=c.introText;prefs.overrideIntro=c.overrideWeaponIntro;if(content.weapons.Any(w=>w.id==c.preferredSpec&&AllowedWeapon(w)))prefs.weapon=c.preferredSpec;accountPassword=accountRecovery="";Save();};
             try{account.Configure(prefs.accountOrigin,true);}catch(ArgumentException){prefs.accountOrigin="";}
         }
         private void ProfilePanel()
@@ -51,7 +51,7 @@ namespace ChipArena.UnityConversion
                 }
                 else
                 {
-                    if(account.RecoveryCode.Length>0){GUILayout.Label("Save this recovery code somewhere private:",label);GUILayout.TextField(account.RecoveryCode);}
+                    AdminPanel();if(account.RecoveryCode.Length>0){GUILayout.Label("Save this recovery code somewhere private:",label);GUILayout.TextField(account.RecoveryCode);}
                     GUI.enabled=!account.Busy;if(GUILayout.Button("Save current profile to account",button))account.Save(Profile());if(GUILayout.Button("Sign out",button))account.Logout();GUI.enabled=true;
                 }
             }

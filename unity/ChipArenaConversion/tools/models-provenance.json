@@ -1647,78 +1647,223 @@
     {
       "id": "map-foundry",
       "batches": 2,
-      "vertices": 29745
+      "vertices": 28720
     },
     {
       "id": "map-moonlit",
       "batches": 3,
-      "vertices": 63732
+      "vertices": 62707
     },
     {
       "id": "map-neon",
       "batches": 2,
-      "vertices": 30297
+      "vertices": 29272
     },
     {
       "id": "map-freight",
       "batches": 2,
-      "vertices": 29937
+      "vertices": 28912
     },
     {
       "id": "map-rooftops",
       "batches": 2,
-      "vertices": 31113
+      "vertices": 30088
     },
     {
       "id": "map-reactor",
       "batches": 2,
-      "vertices": 30439
+      "vertices": 29414
     },
     {
       "id": "map-outpost",
       "batches": 2,
-      "vertices": 6479
+      "vertices": 5454
     },
     {
       "id": "map-citadel",
       "batches": 2,
-      "vertices": 7799
+      "vertices": 6774
     },
     {
       "id": "map-frozen",
       "batches": 2,
-      "vertices": 66479
+      "vertices": 65454
     },
     {
       "id": "map-canal",
       "batches": 3,
-      "vertices": 43545
+      "vertices": 42520
     },
     {
       "id": "map-forge",
       "batches": 2,
-      "vertices": 22716
+      "vertices": 21691
     },
     {
       "id": "map-sawmill",
       "batches": 2,
-      "vertices": 31665
+      "vertices": 30640
     },
     {
       "id": "map-spikevault",
       "batches": 2,
-      "vertices": 7655
+      "vertices": 6630
     },
     {
       "id": "map-lavaworks",
       "batches": 2,
-      "vertices": 21540
+      "vertices": 20515
     },
     {
       "id": "map-siren",
       "batches": 5,
-      "vertices": 144610
+      "vertices": 133597
+    },
+    {
+      "id": "ward-motion-0",
+      "batches": 1,
+      "vertices": 216
+    },
+    {
+      "id": "ward-motion-1",
+      "batches": 1,
+      "vertices": 216
+    },
+    {
+      "id": "ward-motion-2",
+      "batches": 1,
+      "vertices": 216
+    },
+    {
+      "id": "ward-motion-3",
+      "batches": 1,
+      "vertices": 216
+    },
+    {
+      "id": "ward-motion-4",
+      "batches": 1,
+      "vertices": 216
+    },
+    {
+      "id": "ward-motion-5",
+      "batches": 1,
+      "vertices": 216
+    },
+    {
+      "id": "ward-motion-6",
+      "batches": 1,
+      "vertices": 216
+    },
+    {
+      "id": "ward-motion-7",
+      "batches": 1,
+      "vertices": 216
+    },
+    {
+      "id": "ward-motion-8",
+      "batches": 1,
+      "vertices": 216
+    },
+    {
+      "id": "ward-motion-9",
+      "batches": 1,
+      "vertices": 216
+    },
+    {
+      "id": "ward-motion-10",
+      "batches": 1,
+      "vertices": 216
+    },
+    {
+      "id": "ward-motion-11",
+      "batches": 1,
+      "vertices": 216
+    },
+    {
+      "id": "ward-motion-12",
+      "batches": 1,
+      "vertices": 216
+    },
+    {
+      "id": "ward-motion-13",
+      "batches": 1,
+      "vertices": 216
+    },
+    {
+      "id": "ward-motion-14",
+      "batches": 1,
+      "vertices": 216
+    },
+    {
+      "id": "ward-motion-15",
+      "batches": 1,
+      "vertices": 216
+    },
+    {
+      "id": "ward-motion-16",
+      "batches": 1,
+      "vertices": 408
+    },
+    {
+      "id": "ward-motion-17",
+      "batches": 1,
+      "vertices": 408
+    },
+    {
+      "id": "ward-motion-18",
+      "batches": 1,
+      "vertices": 408
+    },
+    {
+      "id": "ward-motion-19",
+      "batches": 1,
+      "vertices": 408
+    },
+    {
+      "id": "ward-motion-20",
+      "batches": 1,
+      "vertices": 120
+    },
+    {
+      "id": "ward-motion-21",
+      "batches": 1,
+      "vertices": 1998
+    },
+    {
+      "id": "ward-motion-22",
+      "batches": 1,
+      "vertices": 1485
+    },
+    {
+      "id": "ward-motion-23",
+      "batches": 1,
+      "vertices": 1113
+    },
+    {
+      "id": "ward-motion-24",
+      "batches": 1,
+      "vertices": 1113
+    },
+    {
+      "id": "ward-motion-25",
+      "batches": 1,
+      "vertices": 24
+    },
+    {
+      "id": "ward-motion-26",
+      "batches": 1,
+      "vertices": 24
+    },
+    {
+      "id": "ward-motion-27",
+      "batches": 1,
+      "vertices": 24
+    },
+    {
+      "id": "ward-motion-28",
+      "batches": 1,
+      "vertices": 24
     }
   ],
-  "uncompressedBytes": 69157264
+  "uncompressedBytes": 66962107
 }

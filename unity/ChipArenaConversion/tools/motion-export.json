@@ -362,10 +362,16 @@
       "frames": 118
     },
     {
-      "key": "horde-0-vent",
-      "duration": 2.75,
+      "key": "horde-0-dive",
+      "duration": 0.9,
       "loop": false,
-      "frames": 166
+      "frames": 55
+    },
+    {
+      "key": "horde-0-vent",
+      "duration": 1.95,
+      "loop": false,
+      "frames": 118
     },
     {
       "key": "horde-0-door",
@@ -446,10 +452,16 @@
       "frames": 118
     },
     {
-      "key": "horde-1-vent",
-      "duration": 2.75,
+      "key": "horde-1-dive",
+      "duration": 0.9,
       "loop": false,
-      "frames": 166
+      "frames": 55
+    },
+    {
+      "key": "horde-1-vent",
+      "duration": 1.95,
+      "loop": false,
+      "frames": 118
     },
     {
       "key": "horde-1-door",
@@ -530,10 +542,16 @@
       "frames": 118
     },
     {
-      "key": "horde-2-vent",
-      "duration": 2.75,
+      "key": "horde-2-dive",
+      "duration": 0.9,
       "loop": false,
-      "frames": 166
+      "frames": 55
+    },
+    {
+      "key": "horde-2-vent",
+      "duration": 1.95,
+      "loop": false,
+      "frames": 118
     },
     {
       "key": "horde-2-door",
@@ -614,10 +632,16 @@
       "frames": 118
     },
     {
-      "key": "horde-3-vent",
-      "duration": 2.75,
+      "key": "horde-3-dive",
+      "duration": 0.9,
       "loop": false,
-      "frames": 166
+      "frames": 55
+    },
+    {
+      "key": "horde-3-vent",
+      "duration": 1.95,
+      "loop": false,
+      "frames": 118
     },
     {
       "key": "horde-3-door",
@@ -698,10 +722,16 @@
       "frames": 118
     },
     {
-      "key": "horde-4-vent",
-      "duration": 2.75,
+      "key": "horde-4-dive",
+      "duration": 0.9,
       "loop": false,
-      "frames": 166
+      "frames": 55
+    },
+    {
+      "key": "horde-4-vent",
+      "duration": 1.95,
+      "loop": false,
+      "frames": 118
     },
     {
       "key": "horde-4-door",
@@ -782,10 +812,16 @@
       "frames": 118
     },
     {
-      "key": "horde-5-vent",
-      "duration": 2.75,
+      "key": "horde-5-dive",
+      "duration": 0.9,
       "loop": false,
-      "frames": 166
+      "frames": 55
+    },
+    {
+      "key": "horde-5-vent",
+      "duration": 1.95,
+      "loop": false,
+      "frames": 118
     },
     {
       "key": "horde-5-door",

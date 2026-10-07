@@ -10,14 +10,14 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class NativeCosmetics
     {public bool overrideWeaponIntro;public string lobbyPose="weapon",preferredSpec="pistol",intro="neon-drop",introText="Ready to make an impact",bodyColor="#e5e7eb",hat="none",killEffect="impact-ragdoll";}
     [Serializable] public sealed class NativeProfile {public string name="Pilot",@class="ranged",color="#70e1d0";public NativeCosmetics cosmetics=new NativeCosmetics();}
-    [Serializable] public sealed class NativeAccountData {public string id,username;public NativeProfile profile;public bool hasProfile;public int revision,grantVersion;}
-    [Serializable] public sealed class NativeAccountResponse {public string error,token,session,recoveryCode;public NativeAccountData account;}
+    [Serializable] public sealed class NativeAccountData {public string id,username;public NativeProfile profile;public bool hasProfile,developer;public string[] unlocks,flags;public int revision,grantVersion;}
+    [Serializable] public sealed class NativeAccountResponse {public string error,token,session,recoveryCode;public NativeAccountData account;public NativeAccountData[] players;}
     [Serializable] public sealed class NativeLoginRequest {public string username,password,recoveryCode;public bool remember;}
     [Serializable] public sealed class NativeProfileRequest {public int revision;public NativeProfile profile;}
-    public sealed class NativeAccount:MonoBehaviour
+    public sealed partial class NativeAccount:MonoBehaviour
     {
         public string Origin{get;private set;}="";public string Token{get;private set;}="";public NativeAccess Access{get;private set;}=NativeAccess.Guest;
-        public NativeAccountData Account{get;private set;}public string RecoveryCode{get;private set;}="";public string Status{get;private set;}="Offline profile";public bool Busy{get;private set;}public Action<NativeAccountData> Accepted;
+        public NativeAccountData Account{get;private set;}public string RecoveryCode{get;private set;}="";public string Status{get;private set;}="Offline profile";public bool Busy{get;private set;}public Action<NativeAccountData,bool> Accepted;
         private string session="";private bool remember;private float refreshAt;
         private string SessionPath=>Path.Combine(Application.persistentDataPath,"conversion-account.bin");
         public static string ValidateOrigin(string value)
@@ -48,15 +48,15 @@ namespace ChipArena.UnityConversion
                 if(request.result!=UnityWebRequest.Result.Success){if(request.responseCode==401)Clear();Status=response?.error??"Account service could not be reached.";refreshAt=Time.unscaledTime+60;yield break;}
                 var access=NativeAccess.Verify(response?.token,s=>JsonUtility.FromJson<NativePlayerClaim>(s),DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
                 if(response?.account==null||string.IsNullOrEmpty(access.AccountId)||access.AccountId!=response.account.id||response.session!=null&&response.session.Length>0&&!ValidSession(response.session)){Status="Account response could not be verified.";yield break;}
-                Access=access;Token=response.token;Account=response.account;RecoveryCode=response.recoveryCode??"";if(!string.IsNullOrEmpty(response.session))session=response.session;
+                bool loadProfile=authenticating||Account==null;Access=access;Token=response.token;Account=response.account;RecoveryCode=response.recoveryCode??"";if(!string.IsNullOrEmpty(response.session))session=response.session;
                 Status="Signed in as "+Account.username;refreshAt=Time.unscaledTime+300;
                 try{if(remember&&session.Length>0){var protectedBytes=NativeSessionVault.Protect(Encoding.UTF8.GetBytes(session),Origin);Directory.CreateDirectory(Application.persistentDataPath);File.WriteAllBytes(SessionPath+".new",protectedBytes);if(File.Exists(SessionPath))File.Delete(SessionPath);File.Move(SessionPath+".new",SessionPath);}else if(File.Exists(SessionPath))File.Delete(SessionPath);}
                 catch(Exception e)when(e is IOException||e is UnauthorizedAccessException||e is System.Security.Cryptography.CryptographicException||e is NotSupportedException){remember=false;Status+=" · sign-in kept for this session only";}
-                Accepted?.Invoke(Account);
+                Accepted?.Invoke(Account,loadProfile);
             }
         }
         private void Update(){if(Account!=null&&!Busy&&Time.unscaledTime>=refreshAt)Refresh();}
-        public void Clear(bool erase=true){Account=null;Token=session=RecoveryCode="";Access=NativeAccess.Guest;Status="Offline profile";if(erase)try{if(File.Exists(SessionPath))File.Delete(SessionPath);}catch(IOException){Status="Signed out; saved session could not be removed.";}}
+        public void Clear(bool erase=true){Account=null;Token=session=RecoveryCode="";Access=NativeAccess.Guest;Status="Offline profile";if(erase)try{if(File.Exists(SessionPath))File.Delete(SessionPath);}catch(Exception e)when(e is IOException||e is UnauthorizedAccessException){Status="Signed out; saved session could not be removed.";}}
     }
     public static class NativeSessionVault
     {

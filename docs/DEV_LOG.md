@@ -18,6 +18,13 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-07 — Codex — Ward, controls and internet-room checkpoint (work continuing)
+- Separate `codex/unity-conversion`, parent `000af4d8349646a42f2f97aec7da03678448053c`, pinned source `05950ea`. Owner's complete-conversion request remains active; this is an intermediate durable checkpoint.
+- Ported weighted/FIFO horde entrances, source climb curves and vent travel, Ward moving meshes and pit/fall/revive timing. Added six dive tracks, procedural night-sky shader port, settings, melee lock-on, spectator controls and replay in a separate unsimulated physics scene. Added local DEV practice tools, grant-management UI and account token refresh without live account mutations.
+- Added a standalone .NET WebSocket relay with optional discovery/private rooms, bounded pipes and one-use pairing tickets, plus headless Unity authority source. Original Electron networking/services remain separate. Player-host migration is still absent.
+- Actual checks: original entry fixtures (241 climbs / 6 timelines / 96 weights), managed/source regressions, real two-client relay and TCP tests, real Unity API Runtime/Windows-player/Editor C# compilation, four package tests and source receipts pass. New collision/animation entry timings affect authority and replication; cinematic camera/replay changes are presentation-only.
+- Not run: activated Unity import, shader compilation, rendered/PhysX acceptance, headless Unity runtime, live accounts, deployed relay and Windows EXE. Remaining cinematic/body/environment fidelity and native gates are recorded in the conversion status. No merge, updater publication, Site release or live service deployment.
+
 ## 2026-10-07 — Codex — broad native conversion checkpoint (work continuing)
 - Isolated `codex/unity-conversion`, parent `e268aa85c160795d1860b082188cb5e12176bdd4`;
   gameplay/assets pinned to `05950eaef80ff2483a9c44d898cad98be1a76bbc`. Owner requested the

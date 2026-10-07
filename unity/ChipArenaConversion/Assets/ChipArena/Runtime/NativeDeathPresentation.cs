@@ -16,10 +16,10 @@ namespace ChipArena.UnityConversion
         {
             Death=death;scene=SceneManager.CreateScene("Cosmetic body "+death.id+" "+death.seed,new CreateSceneParameters(LocalPhysicsMode.Physics3D));physics=scene.GetPhysicsScene();root=new GameObject("Cosmetic body");SceneManager.MoveGameObjectToScene(root,scene);
             surface=new PhysicsMaterial("Body surface"){dynamicFriction=.7f,staticFriction=.7f,bounciness=death.style=="ragdoll-pinball"?.82f:.15f};
-            for(int i=0;i<22;i++)Bind[i]=rig.Bones[i].localToWorldMatrix;
+            Vector3 offset=death.position-rig.Root.transform.position;for(int i=0;i<22;i++)Bind[i]=Matrix4x4.Translate(offset)*rig.Bones[i].localToWorldMatrix;
             foreach(int b in Bones)
             {
-                var go=new GameObject(CapturedRig.Bones[b].Name);go.transform.SetParent(root.transform);go.transform.SetPositionAndRotation(rig.Bones[b].position,rig.Bones[b].rotation);
+                var go=new GameObject(CapturedRig.Bones[b].Name);go.transform.SetParent(root.transform);go.transform.SetPositionAndRotation(rig.Bones[b].position+offset,rig.Bones[b].rotation);
                 var body=go.AddComponent<Rigidbody>();body.useGravity=false;body.linearDamping=.27f;body.angularDamping=b<=2?.6f:1.1f;body.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;
                 var box=go.AddComponent<BoxCollider>();box.sharedMaterial=surface;
                 var points=new List<Vector3>();foreach(var shape in CapturedRig.Boxes){int ancestor=shape.Bone;while(ancestor>=0&&Array.IndexOf(Bones,ancestor)<0)ancestor=CapturedRig.Bones[ancestor].Parent;if(ancestor!=b)continue;Matrix4x4 local=go.transform.worldToLocalMatrix*Bind[shape.Bone];Vector3 pos=CapturedAnimation.Vec(CapturedRig.Mirror(shape.Position)),size=CapturedAnimation.Vec(shape.Size)*.5f;for(int k=0;k<8;k++)points.Add(local.MultiplyPoint3x4(pos+new Vector3((k&1)==0?-size.x:size.x,(k&2)==0?-size.y:size.y,(k&4)==0?-size.z:size.z)));}
@@ -55,7 +55,7 @@ namespace ChipArena.UnityConversion
                 {Vector3 force=Vector3.down*18;if(Death.style=="ragdoll-gravity")force=Vector3.up*2;if(Death.style=="ragdoll-fireworks"&&clock>.7f&&clock<1.3f)force+=Vector3.up*40;body.AddForce(force,ForceMode.Acceleration);}
                 physics.Simulate(1f/60);clock+=1f/60;
             }
-            if(age>2.8f&&Death.kept){foreach(var b in Parts.Values)b.isKinematic=true;frozen=true;}
+            if(age>4.2f&&Death.kept){foreach(var b in Parts.Values)b.isKinematic=true;frozen=true;}
         }
         public void Dispose(){CapturedAnimation.Release(root);CapturedAnimation.Release(surface);if(scene.IsValid())SceneManager.UnloadSceneAsync(scene);}
     }
@@ -79,6 +79,8 @@ namespace ChipArena.UnityConversion
                 corpse.Step(age);string style=death.style??"impact-ragdoll";float alpha=death.kept?1:Mathf.Clamp01((5-age)/.65f);Vector3 center=corpse.Center;Matrix4x4 overlay=Matrix4x4.identity;float scale=1;
                 if(style=="shrink"||style=="dev-singularity")scale=Mathf.Max(.002f,1-Mathf.Clamp01(age/1.8f));
                 if(style=="ascension"||style=="ghost"||style=="ragdoll-soul")overlay=Matrix4x4.Translate(Vector3.up*age*(style=="ascension"?2:1));
+                if(style=="vent-fall"){overlay=Matrix4x4.Translate(Vector3.down*Mathf.Min(15,age*age*9));if(age>.6f)alpha=0;}
+                if(style=="vent-splat"){overlay=Matrix4x4.Translate(Vector3.up*Math.Max(0,1-age/.6f)*10);if(age>.6f&&age<1.5f)VoxelCloud(death.position,age-.6f,4,death.seed,30);}
                 if(style=="launch")overlay=Matrix4x4.Translate(Vector3.up*Mathf.Min(20,age*age*9));
                 if(style=="voxel-burst"||style=="confetti"||style=="siren-dissipate"||style=="siren-crush")alpha=0;
                 if(revived){alpha*=1-Mathf.Clamp01(up/.8f);Ring(center,.6f+up,2,up*45);VoxelCloud(center,up,2,death.seed,30);}

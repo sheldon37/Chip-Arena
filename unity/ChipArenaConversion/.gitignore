@@ -14,3 +14,6 @@ __pycache__/
 /LocalAssets/
 /Assets/LocalAssets/
 /Assets/LocalAssets.meta
+
+/Relay/bin/
+/Relay/obj/

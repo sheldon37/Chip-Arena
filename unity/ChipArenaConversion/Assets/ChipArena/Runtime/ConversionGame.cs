@@ -6,7 +6,7 @@ using UnityEngine;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class ConversionPreferences
-    { public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll",intro="neon-drop",introText="Ready to make an impact",accountOrigin="";public bool overrideIntro;public string name="Pilot",map="foundry",weapon="pistol";public int bots=3,sets=3,rounds=2;public string combatGlow="Full";public bool pve,skipWaves;public bool mirrorWeapons,teams,friendlyFire,stationary,skipBotDrafts=true,sound=true,firstPerson; }
+    { public string relayOrigin="";public string graphics="auto",sirenMode="Q";public float sensitivity=1,audio=.3f,music=.35f,menuMusic=.6f;public bool trails=true,reducedEffects,cameraShake;public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll",intro="neon-drop",introText="Ready to make an impact",accountOrigin="";public bool overrideIntro;public string name="Pilot",map="foundry",weapon="pistol";public int bots=3,sets=3,rounds=2;public string combatGlow="Full";public bool pve,skipWaves;public bool mirrorWeapons,teams,friendlyFire,stationary,skipBotDrafts=true,sound=true,firstPerson; }
     public sealed partial class ConversionGame : MonoBehaviour
     {
         private ConversionContent content;private ConversionPreferences prefs;private NativeMatch match;private NativeArena arena;private ArenaPresentation presentation;
@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
             try
             {
                 var asset=Resources.Load<TextAsset>("GameContent");if(asset==null)throw new InvalidOperationException("GameContent.json is missing");
-                content=JsonUtility.FromJson<ConversionContent>(asset.text);content.Validate();
+                content=JsonUtility.FromJson<ConversionContent>(asset.text);content.Validate();if(InitializeDedicated())return;
                 prefs=File.Exists(PreferencePath)?JsonUtility.FromJson<ConversionPreferences>(File.ReadAllText(PreferencePath)):new ConversionPreferences();
                 if(prefs==null)prefs=new ConversionPreferences();if(!content.maps.Any(m=>m.id==prefs.map))prefs.map="foundry";
                 if(!content.weapons.Any(w=>w.id==prefs.weapon&&!w.devOnly))prefs.weapon="pistol";prefs.bots=Mathf.Clamp(prefs.bots,prefs.pve?0:1,prefs.pve?3:7);
@@ -34,8 +34,8 @@ namespace ChipArena.UnityConversion
                 cameraView.cullingMask=~(1<<10);NativeLighting.Create(transform);
                 var model=new GameObject("First-person view");model.transform.SetParent(cam.transform,false);viewModelCamera=model.AddComponent<Camera>();
                 viewModelCamera.clearFlags=CameraClearFlags.Depth;viewModelCamera.cullingMask=1<<10;viewModelCamera.depth=cameraView.depth+1;viewModelCamera.nearClipPlane=.01f;viewModelCamera.farClipPlane=10;viewModelCamera.enabled=false;presentation.ViewCamera=viewModelCamera;
-                cameraView.nearClipPlane=.06f;cameraView.farClipPlane=200;cameraView.backgroundColor=NativeArena.ColorOf(content.Map(prefs.map).sky);cameraView.clearFlags=CameraClearFlags.SolidColor;
-                cameraView.transform.SetPositionAndRotation(new Vector3(0,22,-35),Quaternion.Euler(30,0,0));
+                cameraView.nearClipPlane=.06f;cameraView.farClipPlane=200;NativeLighting.Apply(content.Map(prefs.map),cameraView);
+                cameraView.transform.SetPositionAndRotation(new Vector3(0,22,-35),Quaternion.Euler(30,0,0));ApplySettings();
             }
             catch(Exception e){error=e.ToString();Debug.LogException(e);}
         }
@@ -45,36 +45,36 @@ namespace ChipArena.UnityConversion
         }
         private void StartMatch()
         {
-            if(prefs.pve){prefs.map="siren";prefs.bots=Mathf.Clamp(prefs.bots,0,3);}else prefs.bots=Mathf.Clamp(prefs.bots,1,7);
-            if(server!=null)return;if(prefs.pve&&peers.Count(p=>p.Seat!=null&&p.Connection?.Closed==false)>3){networkStatus="Siren co-op supports up to four party members.";return;}if(Hosting&&peers.Any(p=>p.Seat!=null&&p.Connection?.Closed==false&&!p.Ready)){networkStatus="Wait for the other pilots to be ready.";return;}
-            Save();arena?.Dispose();presentation.ResetPresentation();networkEpoch++;
+            if(prefs.pve){prefs.map="siren";prefs.bots=Mathf.Clamp(prefs.bots,0,3);}else prefs.bots=Mathf.Clamp(prefs.bots,Online||dedicated?0:1,7);
+            if(server!=null)return;if(prefs.pve&&peers.Count(p=>p.Seat!=null&&p.Connection?.Closed==false)>(dedicated?4:3)){networkStatus="Siren co-op supports up to four party members.";return;}if(Hosting&&peers.Any(p=>p.Seat!=null&&p.Connection?.Closed==false&&!p.Ready)){networkStatus="Wait for the other pilots to be ready.";return;}
+            if(!dedicated)Save();ClearReplay();arena?.Dispose();presentation?.ResetPresentation();networkEpoch++;
             match=new NativeMatch(content){ShowIntros=true,Cooperative=prefs.pve,Teams=prefs.pve||prefs.teams,RoundsPerSet=prefs.rounds,SetsToWin=prefs.sets,SkipBotDrafts=prefs.skipBotDrafts};
-            var local=SanitizedSeat(1,Profile(),account.Token);local.team=0;match.Seats.Add(local);
+            if(!dedicated){var local=SanitizedSeat(1,Profile(),account.Token);local.team=0;match.Seats.Add(local);}
             foreach(var peer in peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false)){peer.Seat.team=prefs.pve?0:peer.Seat.team;match.Seats.Add(peer.Seat);peer.Ready=false;}
             var weapons=content.weapons.Where(w=>!w.devOnly).Select(w=>w.id).ToArray();
             int botCount=Math.Min(prefs.bots,(prefs.pve?4:8)-match.Seats.Count);for(int i=0;i<botCount;i++)match.Seats.Add(new NativeSeat{id=100+i,name="Pilot "+(i+2),spec=prefs.mirrorWeapons?prefs.weapon:weapons[i%weapons.Length],bot=true,team=prefs.pve?0:prefs.teams?(i+1)%2:i+1});
             if(prefs.pve)match.Seats.Add(new NativeSeat{id=900,name="The Siren",spec="siren",bot=true,team=1,AuthorityBoss=true});
-            arena=new NativeArena(content,match,prefs.map){FriendlyFire=prefs.friendlyFire,StationaryBots=prefs.stationary};
+            arena=new NativeArena(content,match,prefs.map){FriendlyFire=prefs.friendlyFire,LocalId=dedicated?0:1,StationaryBots=prefs.stationary,Sandbox=sandboxWanted&&account.Developer&&!Online&&!prefs.pve};
             if(!match.Start()){error="A match needs at least two opposing sides.";return;}
             if(prefs.pve)arena.ConfigurePve(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text),prefs.skipWaves);
-            generation=arena.Generation;visualClock.Reset(match.Time);pending=new InputFrame();yaw=arena.Local.Yaw;pitch=12;sprint=false;menu=false;showCatalogue=false;cameraView.backgroundColor=NativeArena.ColorOf(content.Map(prefs.map).sky);
+            if(dedicated){menu=false;return;}generation=arena.Generation;visualClock.Reset(match.Time);pending=new InputFrame();yaw=arena.Local.Yaw;pitch=12;sprint=false;menu=false;showCatalogue=false;NativeLighting.Apply(content.Map(prefs.map),cameraView);
         }
         private void Update()
         {
-            if(content==null||cameraView==null)return;NetworkTick();
-            if(Input.GetKeyDown(KeyCode.Escape)){if(PvePickOpen)PveOpen(false);else menu=!menu;pending=new InputFrame();pending.CancelAbilities=true;if(server==null)arena?.CancelLocalAbilities();}
-            if(Input.GetKeyDown(KeyCode.V)){prefs.firstPerson=!prefs.firstPerson;Save();}
+            if(content==null)return;if(dedicated){DedicatedTick();return;}if(cameraView==null)return;NetworkTick();
+            if(Input.GetKeyDown(KeyCode.Escape)&&ReplayActive){EndReplay();return;}if(Input.GetKeyDown(KeyCode.Escape)){if(PvePickOpen)PveOpen(false);else menu=!menu;pending=new InputFrame();pending.CancelAbilities=true;if(server==null)arena?.CancelLocalAbilities();}
+            if(Input.GetKeyDown(KeyCode.V)&&!(arena?.ViewPilot?.Seat.spec=="siren"&&prefs.sirenMode=="V"&&!menu)){prefs.firstPerson=!prefs.firstPerson;Save();}
             if(Input.GetKeyDown(KeyCode.C)&&arena?.Pve!=null){if(PvePickOpen)PveOpen(false);else PveOpen(true);}
             if(Input.GetKeyDown(KeyCode.F9))presentation.ForceCompatibilityRendering=!presentation.ForceCompatibilityRendering;
             bool play=arena!=null&&!menu&&match.Phase==NativePhase.Fight&&arena.Local.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true;
-            Cursor.lockState=play?CursorLockMode.Locked:CursorLockMode.None;Cursor.visible=!play;
+            bool look=play||arena?.Local?.Hp<=0&&!menu&&!ReplayActive&&match.Phase==NativePhase.Fight;Cursor.lockState=look?CursorLockMode.Locked:CursorLockMode.None;Cursor.visible=!look;
             if(arena==null)return;
             if(generation!=arena.Generation){presentation.ResetPresentation();generation=arena.Generation;visualClock.Reset(match.Time);}
-            var p=arena.Local;
-            if(play)
+            SpectatorControls();var p=arena.ViewPilot;
+            UpdateLock();if(play)
             {
                 var ads=content.Ads(p.Seat.spec);bool aiming=ads!=null&&Input.GetKey(KeyCode.Q);
-                yaw+=Input.GetAxisRaw("Mouse X")*2*(aiming?(float)ads.sens:1);pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f*(aiming?(float)ads.sens:1),-70,70);
+                if(!lockPoint.HasValue){yaw+=Input.GetAxisRaw("Mouse X")*2*prefs.sensitivity*(aiming?(float)ads.sens:1);pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f*prefs.sensitivity*(aiming?(float)ads.sens:1),-70,70);}
                 if(Input.GetKeyDown(KeyCode.W)){if(Time.unscaledTime-lastW<.3f)sprint=true;lastW=Time.unscaledTime;}if(!Input.GetKey(KeyCode.W))sprint=false;
                 var move=Quaternion.Euler(0,yaw,0)*new Vector3((Input.GetKey(KeyCode.D)?1:0)-(Input.GetKey(KeyCode.A)?1:0),0,(Input.GetKey(KeyCode.W)?1:0)-(Input.GetKey(KeyCode.S)?1:0)).normalized;
                 pending.X=move.x;pending.Z=move.z;pending.Yaw=yaw;pending.Pitch=-pitch;pending.Sprint=sprint;pending.Aim=aiming;
@@ -82,14 +82,14 @@ namespace ChipArena.UnityConversion
                 pending.AbilityQ|=p.Weapon.@class=="magic"&&Input.GetKeyDown(KeyCode.Q);pending.AbilityE|=Input.GetKeyDown(KeyCode.E);pending.AbilityEReleased|=Input.GetKeyUp(KeyCode.E);pending.AbilityEHeld=Input.GetKey(KeyCode.E);
                 pending.Hadoken|=Input.GetKeyDown(KeyCode.Alpha1);pending.HadokenHeld=Input.GetKey(KeyCode.Alpha1);pending.Uppercut|=Input.GetKeyDown(KeyCode.Alpha2);
                 for(int key=0;key<4;key++)if(Input.GetKeyDown(KeyCode.Alpha1+key))pending.SirenAbility=(byte)(key+1);
-                pending.AbilityQ|=(p.Seat.spec=="emperor"||p.Seat.spec=="siren")&&Input.GetKeyDown(KeyCode.Q);
-                pending.Interact|=Input.GetKeyDown(KeyCode.F);pending.Block|=Input.GetMouseButtonDown(1);pending.Reload|=Input.GetKeyDown(KeyCode.R);pending.Roll|=Input.GetKeyDown(KeyCode.LeftShift);pending.Jump|=Input.GetKeyDown(KeyCode.Space);
+                pending.AbilityQ|=p.Seat.spec=="emperor"&&Input.GetKeyDown(KeyCode.Q)||p.Seat.spec=="siren"&&Input.GetKeyDown(prefs.sirenMode=="F"?KeyCode.F:prefs.sirenMode=="V"?KeyCode.V:KeyCode.Q);
+                pending.Interact|=Input.GetKeyDown(KeyCode.F)&&!(p.Seat.spec=="siren"&&prefs.sirenMode=="F");pending.Block|=Input.GetMouseButtonDown(1);pending.Reload|=Input.GetKeyDown(KeyCode.R);pending.Roll|=Input.GetKeyDown(KeyCode.LeftShift);pending.Jump|=Input.GetKeyDown(KeyCode.Space);
             }
             else pending=new InputFrame{Yaw=yaw,Pitch=-pitch};
         }
         private void LateUpdate()
         {
-            if(cameraView==null)return;nativeAudio.Muted=!prefs.sound;nativeAudio.Render(arena,menu,cameraView);if(arena==null)return;
+            if(cameraView==null)return;ObserveReplay();if(arena!=null&&RenderReplay())return;nativeAudio.Muted=!prefs.sound;nativeAudio.Entrance(arena!=null&&!menu&&IntroActive?arena.Generation+":"+IntroPilot?.Seat.id+":"+IntroStyle:null,arena!=null&&IntroActive?IntroStyle:null,arena!=null&&IntroActive?IntroAge:0);nativeAudio.Render(arena,menu,cameraView);if(arena==null)return;
             if(!menu&&IntroActive){arena.Root.SetActive(false);viewModelCamera.enabled=false;presentation.RenderIntro(arena,IntroPilot,IntroStyle,IntroAge,cameraView);return;}arena.Root.SetActive(true);
             var p=arena.ViewPilot;bool play=!menu&&match.Phase==NativePhase.Fight&&p.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true;
             UpdateCamera();
@@ -99,6 +99,7 @@ namespace ChipArena.UnityConversion
                 var ability=content.Ability(p.Seat.spec,pending.AbilityEHeld||pending.AbilityE||pending.AbilityEReleased?"e":"q");
                 pending.AbilityTarget=NativeArena.Vec(AimPoint(ability!=null?(float)ability.range:p.Seat.spec=="shield"?25:p.Seat.spec=="daggers"?48:60,p.Seat.spec=="shield"||p.Seat.spec=="daggers"));
             }
+            if(prefs.cameraShake&&play){float force=0;foreach(var e in arena.Events)if(e.Target==p.Seat.id&&(e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot))force=Math.Max(force,Mathf.Clamp01(1-(arena.Time-e.Time)/.18f)*Math.Min(.08f,e.Amount*.002f));cameraView.transform.position+=cameraView.transform.right*(Mathf.Sin(Time.unscaledTime*91)*force)+cameraView.transform.up*(Mathf.Sin(Time.unscaledTime*113)*force*.7f);}
             presentation.SoundEnabled=false;presentation.LocalId=arena.ViewPilot.Seat.id;
             float renderTime=visualClock.Sample(match.Time,Time.timeAsDouble-Time.fixedTimeAsDouble,menu);
             presentation.Render(arena.Snapshot(true),renderTime,false);
@@ -112,26 +113,26 @@ namespace ChipArena.UnityConversion
                 preview=point;
             }
             presentation.RenderAbilities(arena,preview);
-            presentation.GlowQuality=prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?.4f:1;presentation.RenderGlow(arena,cameraView);presentation.FinishSourceFrame();
+            presentation.GlowQuality=prefs.reducedEffects?.3f:prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?.4f:1;presentation.RenderGlow(arena,cameraView);presentation.FinishSourceFrame();
         }
         private void FixedUpdate()
         {
-            if(arena==null||menu&&!Online)return;if(arena.Replica){if(server!=null){pending.Sequence=++inputSequence;SendServer(new NativeNetMessage{type="input",input=pending});pending=pending.HeldOnly();if(arena.Local.Weapon.@class=="melee")pending.Shoot=false;}return;}timer.Restart();bool held=arena.Pve?.Holding==true;arena.Step(pending);if(!held&&arena.Pve?.Holding!=true){arena.BeforePhysics();Physics.Simulate(1f/60);arena.AfterPhysics();}timer.Stop();stepMs=timer.Elapsed.TotalMilliseconds;
-            bool melee=arena.Local.Weapon.@class=="melee";pending=pending.HeldOnly();if(melee)pending.Shoot=false;
+            if(arena==null||menu&&!Online)return;if(arena.Replica){if(server!=null){pending.Sequence=++inputSequence;SendServer(new NativeNetMessage{type="input",input=pending});pending=pending.HeldOnly();if(arena.ViewPilot.Weapon.@class=="melee")pending.Shoot=false;}return;}timer.Restart();bool held=arena.Pve?.Holding==true;arena.Step(pending);if(!held&&arena.Pve?.Holding!=true){arena.BeforePhysics();Physics.Simulate(1f/60);arena.AfterPhysics();}timer.Stop();stepMs=timer.Elapsed.TotalMilliseconds;
+            bool melee=arena.ViewPilot?.Weapon.@class=="melee";pending=pending.HeldOnly();if(melee)pending.Shoot=false;
         }
         private Vector3 AimPoint(float range,bool thrownMelee=false)
         {
-            Ray ray=cameraView.ViewportPointToRay(new Vector3(.5f,.5f));float nearest=range+(thrownMelee?0:Vector3.Distance(ray.origin,arena.Local.Body.position));
+            Ray ray=cameraView.ViewportPointToRay(new Vector3(.5f,.5f));float nearest=range+(thrownMelee?0:Vector3.Distance(ray.origin,arena.ViewPilot.Body.position));
             Vector3 target=ray.origin+ray.direction*(thrownMelee?48:nearest);
             foreach(var hit in Physics.RaycastAll(ray,nearest,NativeArena.ShotMask,QueryTriggerInteraction.Ignore))
-            {var pilot=hit.collider.GetComponent<NativePilotBody>();if(pilot!=null&&pilot.Pilot==arena.Local)continue;if(hit.distance<nearest){target=hit.point;nearest=hit.distance;}}
+            {var pilot=hit.collider.GetComponent<NativePilotBody>();if(pilot!=null&&pilot.Pilot==arena.ViewPilot)continue;if(hit.distance<nearest){target=hit.point;nearest=hit.distance;}}
             return target;
         }
         private void UpdateCamera()
         {
-            var p=arena.ViewPilot;Vector3 focus=p.Body.transform.position+Vector3.up*NativeViewRules.EyeHeight;var ads=content.Ads(p.Seat.spec);
+            var p=Spectator??arena.ViewPilot;Vector3 focus=p.Body.transform.position+Vector3.up*NativeViewRules.EyeHeight;var ads=content.Ads(p.Seat.spec);
             bool aim=ads!=null&&pending.Aim&&arena.Time>=p.ReloadEnd&&arena.Time>=p.RollEnd&&arena.Time>=p.BlockEnd&&!arena.Incapacitated(p);
-            bool first=NativeViewRules.FirstPerson(prefs.firstPerson||aim,p.Hp>0&&!arena.Downed(p),menu);
+            bool first=NativeViewRules.FirstPerson(prefs.firstPerson||aim,arena.Local.Hp>0&&p.Hp>0&&!arena.Downed(p),menu);
             cameraView.fieldOfView=Mathf.Lerp(cameraView.fieldOfView,aim?(float)ads.fov:first?NativeViewRules.FirstFov:NativeViewRules.ThirdFov,1-Mathf.Exp(-16*Time.unscaledDeltaTime));
             Quaternion rotation=Quaternion.Euler(pitch,yaw,0);Vector3 location=focus;
             if(!first)
@@ -166,7 +167,7 @@ namespace ChipArena.UnityConversion
         }
         private void OnGUI()
         {
-            Styles();float scale=Mathf.Max(.65f,Screen.height/900f);GUI.matrix=Matrix4x4.Scale(Vector3.one*scale);float width=Screen.width/scale,height=Screen.height/scale;
+            if(dedicated)return;Styles();float scale=Mathf.Max(.65f,Screen.height/900f);GUI.matrix=Matrix4x4.Scale(Vector3.one*scale);float width=Screen.width/scale,height=Screen.height/scale;
             if(error.Length>0){GUI.Box(new Rect(30,30,width-60,height-60),"");GUI.Label(new Rect(45,45,width-90,height-90),error,label);return;}
             if(arena!=null&&!menu&&match.Phase==NativePhase.Fight&&presentation.ScopeActive)DrawScope(width,height);
             GUI.Label(new Rect(22,15,width-44,35),"CHIP ARENA  /  NATIVE CONVERSION",heading);
@@ -189,9 +190,9 @@ namespace ChipArena.UnityConversion
                 if(!menu&&match.Phase==NativePhase.Match)
                 {GUI.Label(new Rect(width/2-280,height/2-90,560,65),match.Result,heading);if(GUI.Button(new Rect(width/2-130,height/2,260,45),"Rematch",button)){if(server!=null)SendServer(new NativeNetMessage{type="rematch"});else StartMatch();}}
                 if(!menu&&match.Phase==NativePhase.Draft)Draft(width,height);
-                if(Input.GetKey(KeyCode.Tab))Board(width);
+                if(Input.GetKey(KeyCode.G)||Input.GetKey(KeyCode.Tab)&&!LockEligible)Board(width);LockHud(scale);
             }
-            if(!menu&&arena!=null){if(IntroActive)IntroHud(width,height);else PveHud(width,height);return;}
+            if(!menu&&arena!=null){ReplayHud(width,height);if(IntroActive)IntroHud(width,height);else PveHud(width,height);return;}
             float panel=Mathf.Min(850,width-60);GUI.Box(new Rect((width-panel)/2,68,panel,height-120),"");
             GUILayout.BeginArea(new Rect((width-panel)/2+22,86,panel-44,height-155));scroll=GUILayout.BeginScrollView(scroll);
             GUILayout.Label("Native Unity conversion",heading);
@@ -210,7 +211,7 @@ namespace ChipArena.UnityConversion
             GUILayout.Label("Pilot name",label);prefs.name=GUILayout.TextField(prefs.name,20);
             GUILayout.Label("Weapon",label);int at=0;foreach(var w in content.weapons.Where(AllowedWeapon))
             {if(at%3==0)GUILayout.BeginHorizontal();if(GUILayout.Button((prefs.weapon==w.id?"✓ ":"")+w.name,button))prefs.weapon=w.id;at++;if(at%3==0)GUILayout.EndHorizontal();}if(at%3!=0)GUILayout.EndHorizontal();
-            GUILayout.Label("Arena",label);at=0;foreach(var map in content.maps)
+            GUILayout.Label("Arena",label);at=0;foreach(var map in content.maps.Where(m=>!prefs.pve||m.id=="siren"))
             {if(at%3==0)GUILayout.BeginHorizontal();if(GUILayout.Button((prefs.map==map.id?"✓ ":"")+map.name,button))prefs.map=map.id;at++;if(at%3==0)GUILayout.EndHorizontal();}if(at%3!=0)GUILayout.EndHorizontal();
             GUILayout.Label("Bots: "+prefs.bots+"  (up to 8 total pilots)",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.bots,prefs.pve?0:1,prefs.pve?3:7));
             prefs.mirrorWeapons=GUILayout.Toggle(prefs.mirrorWeapons,"Bots use my weapon (otherwise mixed loadouts)");
@@ -220,7 +221,7 @@ namespace ChipArena.UnityConversion
             foreach(string quality in new[]{"Off","Low","Full"})if(GUILayout.Button((prefs.combatGlow==quality||string.IsNullOrEmpty(prefs.combatGlow)&&quality=="Full"?"✓ ":"")+quality,button)){prefs.combatGlow=quality;Save();}GUILayout.EndHorizontal();
             GUILayout.Label("Melee E: special attack. Gun Q: hold to aim. Magic Q / E: cast abilities. Hold E to preview grenade, meteor, geysers or black hole; release to cast.",small);
             GUILayout.Label("Rounds to win a set: "+prefs.rounds,label);prefs.rounds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.rounds,1,5));GUILayout.Label("Sets to win the match: "+prefs.sets,label);prefs.sets=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.sets,1,10));
-            GUI.enabled=server==null;if(GUILayout.Button(Hosting?"Start room match":"Start native match",button))StartMatch();GUI.enabled=true;ProfilePanel();NetworkPanel();
+            GUI.enabled=server==null;if(GUILayout.Button(Hosting?"Start room match":"Start native match",button))StartMatch();GUI.enabled=true;SettingsPanel();ProfilePanel();SandboxPanel();NetworkPanel();
         }
         private void Catalogue()
         {
@@ -244,6 +245,6 @@ namespace ChipArena.UnityConversion
         }
         private void Board(float width)
         {GUI.Box(new Rect(width/2-240,80,480,40+match.Seats.Count*30),"");int row=0;foreach(var p in match.Seats)GUI.Label(new Rect(width/2-220,94+row++*30,440,28),p.name+"  ·  "+p.spec+"  ·  sets "+p.score+" / rounds "+p.roundWins+"  ·  "+(p.alive?"alive":"out"),label);}
-        private void OnDestroy(){CloseNetwork();if(scopeMask!=null)CapturedAnimation.Release(scopeMask);arena?.Dispose();if(ownsPhysics){Physics.simulationMode=previousSimulation;Physics.gravity=previousGravity;}Cursor.lockState=CursorLockMode.None;Cursor.visible=true;}
+        private void OnDestroy(){ClearReplay();CloseNetwork();if(scopeMask!=null)CapturedAnimation.Release(scopeMask);arena?.Dispose();if(ownsPhysics){Physics.simulationMode=previousSimulation;Physics.gravity=previousGravity;}Cursor.lockState=CursorLockMode.None;Cursor.visible=true;}
     }
 }

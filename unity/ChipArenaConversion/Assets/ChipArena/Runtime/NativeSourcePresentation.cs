@@ -22,24 +22,25 @@ namespace ChipArena.UnityConversion
         }
         private void SourceWorld(NativeArena arena)
         {
-            if(sourceModels==null)return;sourceModels.Queue("map-"+arena.MapId,Matrix4x4.identity);
+            if(sourceModels==null)return;sourceModels.Queue("map-"+arena.MapId,Matrix4x4.identity);if(arena.MapId=="siren")WardPresentation(arena);
             if(arena.Pve!=null)foreach(var m in arena.Pve.Content.machines)sourceModels.Queue("machine-"+m.kind,Matrix4x4.TRS(new Vector3(m.x,0,m.z),Quaternion.Euler(0,m.yaw*Mathf.Rad2Deg,0),Vector3.one));
             foreach(int id in minionRigs.Keys.Where(id=>!arena.Minions.Any(m=>m.Id==id)).ToArray()){minionRigs[id].Dispose();minionRigs.Remove(id);}
             foreach(var m in arena.Minions)
             {
                 if(m.Hp<=0)continue;if(!minionRigs.TryGetValue(m.Id,out var rig)){rig=captured.Create(transform,m.Id);minionRigs.Add(m.Id,rig);}Vector3 pos=m.Body.transform.position;int variant=m.Id%6;string kind="idle";float age=arena.Time,duration=0;
                 var add=m.Pve;
-                if(add!=null&&arena.Time<add.ActiveAt){kind=add.Entry.kind;age=arena.Time-add.SpawnAt;duration=add.ActiveAt-add.SpawnAt;}
+                if(add?.Travelling==true){if(arena.Time-add.DiveAt>=.9f)continue;kind="dive";age=arena.Time-add.DiveAt;duration=.9f;}
+                else if(add!=null&&arena.Time<add.ActiveAt){if(arena.Time<add.SpawnAt)continue;kind=add.Entry.kind;var timeline=NativeEntryRules.Timeline(kind,true);duration=timeline.duration;age=duration-(add.ActiveAt-arena.Time);if(kind=="vent")pos=NativeArena.Vec(add.Entry.@exit.Position(.9f));}
                 else if(arena.Time-m.LastAttack>=0&&arena.Time-m.LastAttack<.9f){kind=add?.Crawl==true?"lunge":add?.Stats.attack??(m.Kind=="toy"?"club":"swipe");age=arena.Time-m.LastAttack;duration=.9f;}
                 else if(add?.Crawl==true)kind="crawl";else if(new Vector2((arena.Replica?m.NetworkVelocity:m.Body.linearVelocity).x,(arena.Replica?m.NetworkVelocity:m.Body.linearVelocity).z).magnitude>.2f)kind=(arena.Replica?m.NetworkVelocity:m.Body.linearVelocity).magnitude>2.5f?"run":"walk";
                 NativeSourceMotion.Sample("horde-"+variant+"-"+kind,age,duration,minionPose);
                 for(int i=0;i<22;i++){rig.Bones[i].localPosition=CapturedAnimation.Vec(CapturedRig.Mirror(minionPose.Position[i]));rig.Bones[i].localRotation=CapturedAnimation.Quat(CapturedRig.Mirror(minionPose.Rotation[i]));}
                 rig.Root.transform.SetPositionAndRotation(pos,Quaternion.Euler(0,m.Yaw,0));rig.Root.transform.localScale=Vector3.one*(m.Kind=="slender"?1.45f:m.Kind=="toy"?.65f:1);
-                int lost=add?.Lost??0;bool Visible(int b)=>!((lost&1)!=0&&b==CapturedRig.Head||(lost&2)!=0&&(b==8||b==9)||(lost&4)!=0&&(b==12||b==13)||(lost&8)!=0&&b==9||(lost&16)!=0&&b==13||(lost&32)!=0&&(b>=15&&b<=17)||(lost&64)!=0&&(b>=19&&b<=21)||(lost&128)!=0&&(b==16||b==17)||(lost&256)!=0&&(b==20||b==21));
+                int lost=add?.Lost??0;bool Visible(int b){int[] bits={1,2,4,8,16,32,64,128,256},bones={5,7,11,8,12,14,18,15,19};for(int i=0;i<bits.Length;i++)if((lost&bits[i])!=0&&BoneWithin(b,bones[i]))return false;return true;}
                 sourceModels.Queue(m.Kind=="toy"?"pilot":"horde-"+variant,rig.Root.transform.localToWorldMatrix,b=>rig.Bones[b].localToWorldMatrix,Visible,body:m.Kind=="slender"?new Color(.07f,.07f,.1f):(Color?)null);
             }
         }
-        private void ClearSourceActors(){ClearCorpses();introRig?.Dispose();introRig=null;foreach(var rig in minionRigs.Values)rig.Dispose();minionRigs.Clear();sourceModels?.Begin();}
+        private void ClearSourceActors(){ClearCorpses();if(pitMaterial!=null){CapturedAnimation.Release(pitMaterial);pitMaterial=null;}introRig?.Dispose();introRig=null;foreach(var rig in minionRigs.Values)rig.Dispose();minionRigs.Clear();sourceModels?.Begin();}
         public void FinishSourceFrame()=>sourceModels?.Flush(UsesInstancing);
     }
 }
