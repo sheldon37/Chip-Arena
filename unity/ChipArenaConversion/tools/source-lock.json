@@ -1,0 +1,546 @@
+{
+  "commit": "05950eaef80ff2483a9c44d898cad98be1a76bbc",
+  "prototypeCommit": "f1207e65b9ba3db39239b7996c8b516fa58bd775",
+  "files": [
+    {
+      "path": "docs/ABILITIES.md",
+      "git_blob_sha": "1a91fa576bbb2d2d51a6511339a9036b25a7fc50",
+      "size": 4558
+    },
+    {
+      "path": "docs/ASSET-CREDITS.md",
+      "git_blob_sha": "2342ecfa1ed85f218ca72650f9609db253422600",
+      "size": 2297
+    },
+    {
+      "path": "docs/DESIGN_INTENT.md",
+      "git_blob_sha": "fb5cd6928848957e078f476a5bcbaed14bd6b6a2",
+      "size": 2412
+    },
+    {
+      "path": "docs/PVE.md",
+      "git_blob_sha": "4610404b3f56176d77960981283320a746af5d72",
+      "size": 58007
+    },
+    {
+      "path": "package-lock.json",
+      "git_blob_sha": "c6f274e5bbdac6faddeff9c6ce3ab64ec14ce271",
+      "size": 91694
+    },
+    {
+      "path": "src/client/cosmetics.ts",
+      "git_blob_sha": "1c2586c79b5020fbc385aa0e4a32951f8ccf9cc5",
+      "size": 2845
+    },
+    {
+      "path": "src/client/lobby-ui.ts",
+      "git_blob_sha": "8e6c04fced2697a45dd2a57f4d5828b32d9774a1",
+      "size": 3402
+    },
+    {
+      "path": "src/client/main.ts",
+      "git_blob_sha": "bde1a432d79fa9cb8f3024062f87fad80ccd5253",
+      "size": 131175
+    },
+    {
+      "path": "src/client/map-scenery.ts",
+      "git_blob_sha": "8bd735bbaa1b7691f4ca4545dd4ba36878cecd73",
+      "size": 8286
+    },
+    {
+      "path": "src/client/night-world.ts",
+      "git_blob_sha": "bf856e7775a679122f6e3825da06a13d626027c6",
+      "size": 7069
+    },
+    {
+      "path": "src/client/renderer.ts",
+      "git_blob_sha": "74ea0229d4df85a5f7ca45c291be10378d28d592",
+      "size": 33752
+    },
+    {
+      "path": "src/client/room-options.ts",
+      "git_blob_sha": "ceff60683946dca9f5f69168429490ce5c2813a7",
+      "size": 2111
+    },
+    {
+      "path": "src/shared/abilities.ts",
+      "git_blob_sha": "3defa81e49a9df1e7e0e966cb0e86e5b5f936e5c",
+      "size": 7441
+    },
+    {
+      "path": "src/shared/ability-system.ts",
+      "git_blob_sha": "3d3b0e09987ee0c850a84516a0ac2d3b6088beaa",
+      "size": 24561
+    },
+    {
+      "path": "src/shared/access.ts",
+      "git_blob_sha": "fb30bc467b96eb0806986e6ab67775b84ae263c6",
+      "size": 1523
+    },
+    {
+      "path": "src/shared/account-auth.ts",
+      "git_blob_sha": "691d036b9dd12333306158ecff70e2ef7c1f0c27",
+      "size": 1529
+    },
+    {
+      "path": "src/shared/arcade-content.ts",
+      "git_blob_sha": "24a4e3d632e7a5b91773c3fdb4c323e8be58ae80",
+      "size": 2077
+    },
+    {
+      "path": "src/shared/arcade.ts",
+      "git_blob_sha": "337577b9fa23f518d8e80820faa3d60845e3bf9b",
+      "size": 14119
+    },
+    {
+      "path": "src/shared/architecture.ts",
+      "git_blob_sha": "165ad013dd0ef286babd24d3b147bcf84c4779b9",
+      "size": 2523
+    },
+    {
+      "path": "src/shared/arena.ts",
+      "git_blob_sha": "d476b1c8049169273d79f45b9300dff61ba5c039",
+      "size": 3328
+    },
+    {
+      "path": "src/shared/blocking.ts",
+      "git_blob_sha": "084b7ed7603c187634b6b9102cf7cbcd4e4dc7e1",
+      "size": 2100
+    },
+    {
+      "path": "src/shared/body-damage.ts",
+      "git_blob_sha": "8944ccba2dd59a400f5a040e21d47a22ec6b0afa",
+      "size": 8494
+    },
+    {
+      "path": "src/shared/body-hit.ts",
+      "git_blob_sha": "48e546c0772a0f2c1ffcf4da73c06530be815084",
+      "size": 646
+    },
+    {
+      "path": "src/shared/body-ragdoll.ts",
+      "git_blob_sha": "0b4411c9e7cf8b553861df24868cf63e20da5f03",
+      "size": 1701
+    },
+    {
+      "path": "src/shared/boss-music.ts",
+      "git_blob_sha": "12a9c174c4401509a02eb253fa4ef6c7a07634b6",
+      "size": 7657
+    },
+    {
+      "path": "src/shared/bot-abilities.ts",
+      "git_blob_sha": "4cb2069997fc2a88822e2e9dd0b349e009720713",
+      "size": 3928
+    },
+    {
+      "path": "src/shared/ceiling-field.ts",
+      "git_blob_sha": "311896315b562b7131eb0902ce018090a273f49d",
+      "size": 850
+    },
+    {
+      "path": "src/shared/chaos-content.ts",
+      "git_blob_sha": "0c2863e8ddd884651de2452a96536fe159c320bd",
+      "size": 11931
+    },
+    {
+      "path": "src/shared/chaos.ts",
+      "git_blob_sha": "db4cb3f0d83dc1370685817f6b2c91a54964a2ec",
+      "size": 31936
+    },
+    {
+      "path": "src/shared/chip-description.ts",
+      "git_blob_sha": "40a6b8edd9ab09e0de2c8297173a4b8bc63135a1",
+      "size": 9068
+    },
+    {
+      "path": "src/shared/chip-inspection.ts",
+      "git_blob_sha": "5efed9bd1d767217f36481ced58a9431a41ddfda",
+      "size": 2033
+    },
+    {
+      "path": "src/shared/chip-stats.ts",
+      "git_blob_sha": "a7109d0d0d3e0e2025e827b9f0d94cc06fb1eb3b",
+      "size": 5725
+    },
+    {
+      "path": "src/shared/config.ts",
+      "git_blob_sha": "54454ee3110e936ada16d429813bb55b4a07eb1f",
+      "size": 3677
+    },
+    {
+      "path": "src/shared/connection.ts",
+      "git_blob_sha": "a5222bf8d13a1ff9dcda7628f7c372cb8a71695f",
+      "size": 534
+    },
+    {
+      "path": "src/shared/content.ts",
+      "git_blob_sha": "b0613af732ff5a8fb28374212f4631ae41a0ca43",
+      "size": 42892
+    },
+    {
+      "path": "src/shared/cosmetics.ts",
+      "git_blob_sha": "be53eedaec87de00b27f9f0cbada7ef9266b5ff8",
+      "size": 2883
+    },
+    {
+      "path": "src/shared/demon-step.ts",
+      "git_blob_sha": "d14ad005b1a564691b15dc1a20921f7620eec4ef",
+      "size": 1050
+    },
+    {
+      "path": "src/shared/dev-auth.ts",
+      "git_blob_sha": "453d8009b37494d2995bfebbd166d7e87d90d427",
+      "size": 1101
+    },
+    {
+      "path": "src/shared/dev-public-key.ts",
+      "git_blob_sha": "34f91976c0d9173385dc75a86f89a9dfd0804592",
+      "size": 280
+    },
+    {
+      "path": "src/shared/draft-settings.ts",
+      "git_blob_sha": "cdf9c4e443e13960d72949ecc707ac8536f991e1",
+      "size": 344
+    },
+    {
+      "path": "src/shared/elements.ts",
+      "git_blob_sha": "daece9fe825424298366e3689ac25ad8dad039a9",
+      "size": 1325
+    },
+    {
+      "path": "src/shared/emperor-content.ts",
+      "git_blob_sha": "c102ccf30022d1848e37cf34eb259b39ed666a48",
+      "size": 2102
+    },
+    {
+      "path": "src/shared/emperor.ts",
+      "git_blob_sha": "4fccfac5d7efe0034a844471831fceada244ce75",
+      "size": 11128
+    },
+    {
+      "path": "src/shared/gun-abilities.ts",
+      "git_blob_sha": "15240922bfd554b3aa5512b63787f2b48306c339",
+      "size": 4898
+    },
+    {
+      "path": "src/shared/gun-kit.ts",
+      "git_blob_sha": "276f060dd216343b0c4e88b3c96a28b643dd8610",
+      "size": 3404
+    },
+    {
+      "path": "src/shared/headshots.ts",
+      "git_blob_sha": "f452cf350ef245ed4ad06cfc1032a18d9bbc075b",
+      "size": 1018
+    },
+    {
+      "path": "src/shared/hit-reaction.ts",
+      "git_blob_sha": "22da3faacbea00b5a5862d0663a28cad79138a7d",
+      "size": 1530
+    },
+    {
+      "path": "src/shared/host-room.ts",
+      "git_blob_sha": "dc66cada1baa64b7b41cf1dc676952d9c4802200",
+      "size": 5585
+    },
+    {
+      "path": "src/shared/impact.ts",
+      "git_blob_sha": "178f26e077d7010376e0c3af6623a6e1799122d5",
+      "size": 1702
+    },
+    {
+      "path": "src/shared/intros.ts",
+      "git_blob_sha": "b1b296a7a35237f7afad75b7f2fa10f709bc1800",
+      "size": 3118
+    },
+    {
+      "path": "src/shared/invite-url.ts",
+      "git_blob_sha": "ef89492bf8de9bdc03b97a6ae531ca4f171296f4",
+      "size": 651
+    },
+    {
+      "path": "src/shared/leet-content.ts",
+      "git_blob_sha": "0e801d175ffbe113926cae1bd9543f580eb76322",
+      "size": 3194
+    },
+    {
+      "path": "src/shared/leet.ts",
+      "git_blob_sha": "f3e7070beb469bebb6a3794e8658f061b5022d3e",
+      "size": 15307
+    },
+    {
+      "path": "src/shared/lobby-presentation.ts",
+      "git_blob_sha": "8a9c9c9577ffeb3617bf387a695d52e99ff37053",
+      "size": 2322
+    },
+    {
+      "path": "src/shared/magic-abilities.ts",
+      "git_blob_sha": "e768d8cb6aad65fd4624485638a2356db6ae8206",
+      "size": 8824
+    },
+    {
+      "path": "src/shared/magic-chips.ts",
+      "git_blob_sha": "c2c711eb3e9d27cbc7599440d418b210a5efdb07",
+      "size": 3511
+    },
+    {
+      "path": "src/shared/magic-kit.ts",
+      "git_blob_sha": "23b5e90ba48348abe32944b2fa7151c6c0555724",
+      "size": 4427
+    },
+    {
+      "path": "src/shared/maps.ts",
+      "git_blob_sha": "994b9cc3c350ab5e3b332e60b13242074ebff1d5",
+      "size": 7582
+    },
+    {
+      "path": "src/shared/movement.ts",
+      "git_blob_sha": "bf0d5411bea3e064d1670d26472f1264c651da49",
+      "size": 5877
+    },
+    {
+      "path": "src/shared/network-config.ts",
+      "git_blob_sha": "edaf2bccc8560ff9975e66486c21998c53065882",
+      "size": 273
+    },
+    {
+      "path": "src/shared/pong.ts",
+      "git_blob_sha": "3916edf48f0196621fcf26657405b4d9c2bb51fe",
+      "size": 6611
+    },
+    {
+      "path": "src/shared/power-chips.ts",
+      "git_blob_sha": "59c4f19ee1f5d3b740b076c42fe668ea1464800e",
+      "size": 7114
+    },
+    {
+      "path": "src/shared/projectiles.ts",
+      "git_blob_sha": "d7b9d81cf564f4a0449125ecd1c6b6290608b891",
+      "size": 2119
+    },
+    {
+      "path": "src/shared/pve/add-ai.ts",
+      "git_blob_sha": "5fee876f1fa672182be57233a7ccde81ccc513ce",
+      "size": 5738
+    },
+    {
+      "path": "src/shared/pve/balance.ts",
+      "git_blob_sha": "448a50ef096ac858864aa41ab74b90914573a53d",
+      "size": 9278
+    },
+    {
+      "path": "src/shared/pve/boss.ts",
+      "git_blob_sha": "36439e84569c781fc81cd75377341a6d7222e90e",
+      "size": 5929
+    },
+    {
+      "path": "src/shared/pve/bosses.ts",
+      "git_blob_sha": "fd453c0366198fdf63e92acf0ab4052172f7fedc",
+      "size": 2230
+    },
+    {
+      "path": "src/shared/pve/contract.ts",
+      "git_blob_sha": "b8fea2f9d4c0c79ba544881db57f21b5eb67129f",
+      "size": 18965
+    },
+    {
+      "path": "src/shared/pve/director.ts",
+      "git_blob_sha": "24f40630e98bf4a3eb890ab6f3dde8c5f042414d",
+      "size": 16044
+    },
+    {
+      "path": "src/shared/pve/economy.ts",
+      "git_blob_sha": "47e11b2ef1c9c6cce3c4b5b1735559d5c3eb73cd",
+      "size": 21303
+    },
+    {
+      "path": "src/shared/pve/entering.ts",
+      "git_blob_sha": "4147f5d155d78ffcaac038ebcf357fa8192e97cf",
+      "size": 2421
+    },
+    {
+      "path": "src/shared/pve/entries.ts",
+      "git_blob_sha": "15907333ea2dad9565dd53bccabe30d2c1b0bd15",
+      "size": 6405
+    },
+    {
+      "path": "src/shared/pve/fixtures.ts",
+      "git_blob_sha": "27d25712c3a59781c288017445d931ccb52e4e69",
+      "size": 16527
+    },
+    {
+      "path": "src/shared/pve/gibs.ts",
+      "git_blob_sha": "d8fc009d574671b3a863555adb31466affd6561e",
+      "size": 5207
+    },
+    {
+      "path": "src/shared/pve/horde.ts",
+      "git_blob_sha": "a619e0c3bdc77a60ed0a53dd735258caa0f12cd1",
+      "size": 38807
+    },
+    {
+      "path": "src/shared/pve/layout.ts",
+      "git_blob_sha": "78fee2ba0a6dbce844d91de8ddff6f1e4605fb34",
+      "size": 6005
+    },
+    {
+      "path": "src/shared/pve/machines.ts",
+      "git_blob_sha": "d53cd8395c874a200c550ddc4bfe061e4a2e577a",
+      "size": 2774
+    },
+    {
+      "path": "src/shared/pve/money-chips.ts",
+      "git_blob_sha": "12c945238712391f2d0d6d02924fadafaba9a8f1",
+      "size": 4564
+    },
+    {
+      "path": "src/shared/pve/nav.ts",
+      "git_blob_sha": "8e2cbe34c1d6858b154db2e7cfbad0aaea89925a",
+      "size": 11736
+    },
+    {
+      "path": "src/shared/pve/picks.ts",
+      "git_blob_sha": "93863a738fe2071ac439c1bf8a318981822f7467",
+      "size": 4538
+    },
+    {
+      "path": "src/shared/pve/recruit-ai.ts",
+      "git_blob_sha": "a54ac14917b6a367663fb64247f443b92494b7bc",
+      "size": 9369
+    },
+    {
+      "path": "src/shared/pve/recruits.ts",
+      "git_blob_sha": "f3dc1d9191d0e4d2e01dfec92351acff23acb724",
+      "size": 7262
+    },
+    {
+      "path": "src/shared/pve/rng.ts",
+      "git_blob_sha": "86daa4bdecd5b107c1b0b8e356d5c015d922ba34",
+      "size": 2124
+    },
+    {
+      "path": "src/shared/pve/system.ts",
+      "git_blob_sha": "44941f6f12148e46a49ae63382049c8d121e75a8",
+      "size": 19445
+    },
+    {
+      "path": "src/shared/pve/vent-pits.ts",
+      "git_blob_sha": "e42405839f3797da723f60cee594b5c8105d18d5",
+      "size": 12962
+    },
+    {
+      "path": "src/shared/pve/waves.ts",
+      "git_blob_sha": "969cc93bd2d46979a8f45c3e464d659554686e04",
+      "size": 5827
+    },
+    {
+      "path": "src/shared/ragdoll-styles.ts",
+      "git_blob_sha": "3e32b814d6da0735af5b365e680624cd97891ce5",
+      "size": 435
+    },
+    {
+      "path": "src/shared/raging-demon.ts",
+      "git_blob_sha": "1d2debfa5b30cc2a4bbd86f23f70e9ef2d9cf7d8",
+      "size": 916
+    },
+    {
+      "path": "src/shared/recovery.ts",
+      "git_blob_sha": "0061a18238986c23a203b4787fd900af80ecf9a6",
+      "size": 1343
+    },
+    {
+      "path": "src/shared/relay-protocol.ts",
+      "git_blob_sha": "a9a2de2328a4737728f1a12fb3b1c1abf1856e0b",
+      "size": 3197
+    },
+    {
+      "path": "src/shared/room-directory.ts",
+      "git_blob_sha": "e24fafe966ab12c4abb9cc4dba214c1bba963d48",
+      "size": 517
+    },
+    {
+      "path": "src/shared/sandbox-tools.ts",
+      "git_blob_sha": "9b44d479d36314a7124797164410ebc8715e5480",
+      "size": 16844
+    },
+    {
+      "path": "src/shared/simulation.ts",
+      "git_blob_sha": "2b25ae376a881594e942c7ae77fb7b9e6abe933c",
+      "size": 112779
+    },
+    {
+      "path": "src/shared/siren-chips.ts",
+      "git_blob_sha": "704a06338af7e54c61ba84839d1e826af1ea7a18",
+      "size": 1460
+    },
+    {
+      "path": "src/shared/siren-content.ts",
+      "git_blob_sha": "54838d6a83f753d806b736586cce3b32ad6f5d3a",
+      "size": 786
+    },
+    {
+      "path": "src/shared/siren-contract.ts",
+      "git_blob_sha": "ad494dfd203d8f12cdfc69b2c73004807af28ccc",
+      "size": 10907
+    },
+    {
+      "path": "src/shared/siren-motion.ts",
+      "git_blob_sha": "1e3fe20b107b830fbba0094a6d38e553ddf3c9d6",
+      "size": 1188
+    },
+    {
+      "path": "src/shared/siren-stage-layout.ts",
+      "git_blob_sha": "51c17ff55199771c09767ca056585fffc5977919",
+      "size": 7120
+    },
+    {
+      "path": "src/shared/siren.ts",
+      "git_blob_sha": "02706a67dff452aed412174fa2e3f1320b7cc890",
+      "size": 22046
+    },
+    {
+      "path": "src/shared/souls-combat.ts",
+      "git_blob_sha": "f0a65799251f93731d9b77bf04e631b8f85f5217",
+      "size": 4518
+    },
+    {
+      "path": "src/shared/sprint.ts",
+      "git_blob_sha": "bbf2db98daa6a9a93ac80c675a0b32e43493e8e4",
+      "size": 967
+    },
+    {
+      "path": "src/shared/stage-hazards.ts",
+      "git_blob_sha": "b283f34c028dff87769020226ef4332693249e7c",
+      "size": 3741
+    },
+    {
+      "path": "src/shared/standard-melee.ts",
+      "git_blob_sha": "dd585fa1d99138044aaab07d26800b7b269622c4",
+      "size": 15587
+    },
+    {
+      "path": "src/shared/teams.ts",
+      "git_blob_sha": "5ba513aa50878b9e58b9d90b70a121d03128374e",
+      "size": 969
+    },
+    {
+      "path": "src/shared/test-driver.ts",
+      "git_blob_sha": "6d8f6ccbf9fc11dd984aeeb687c2bf0a4220d575",
+      "size": 1360
+    },
+    {
+      "path": "src/shared/vertical-arena.ts",
+      "git_blob_sha": "4f24316afaf3505a23fca4204370587ca4bef8c0",
+      "size": 1135
+    },
+    {
+      "path": "src/shared/view.ts",
+      "git_blob_sha": "a192c7d6204b31500895c37a62596a88e4dbf92c",
+      "size": 1252
+    },
+    {
+      "path": "src/shared/weapon-intros.ts",
+      "git_blob_sha": "4a6aee73c85b665ddc7f1f75f93b2dc0f0d55bd9",
+      "size": 1259
+    }
+  ]
+}

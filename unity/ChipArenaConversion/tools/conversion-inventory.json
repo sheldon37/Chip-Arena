@@ -1,0 +1,2098 @@
+{
+  "sourceCommit": "05950eaef80ff2483a9c44d898cad98be1a76bbc",
+  "labCommit": "f1207e65b9ba3db39239b7996c8b516fa58bd775",
+  "target": "Native Unity/C#; separate project, executable, settings and branch; no production endpoint or updater connection.",
+  "status": "foundation milestone; full conversion incomplete",
+  "files": [
+    {
+      "path": "assets/audio/hitmarker_2.mp3",
+      "gitBlob": "64188a1435aea1f14774280017a439f4832dae8e",
+      "bytes": 2022
+    },
+    {
+      "path": "desktop/accounts.cjs",
+      "gitBlob": "5bedeb4f322754048fc9e6996460f442ee8dae45",
+      "bytes": 3602
+    },
+    {
+      "path": "desktop/bundled.cjs",
+      "gitBlob": "55737e5c2e29638c709ace4ba80bb91ad24e6e1f",
+      "bytes": 864
+    },
+    {
+      "path": "desktop/connection.cjs",
+      "gitBlob": "970c1881a1083d34af9d1f0a3746c9756cddee13",
+      "bytes": 3158
+    },
+    {
+      "path": "desktop/game-preload.cjs",
+      "gitBlob": "4d85be8466fb9525b5be893c9797d1273652af7f",
+      "bytes": 1001
+    },
+    {
+      "path": "desktop/index.html",
+      "gitBlob": "3dd4fc2ce9b1b0952aabd3a8e218ecb1e30fd3ad",
+      "bytes": 1589
+    },
+    {
+      "path": "desktop/join.cjs",
+      "gitBlob": "895beaee370db1be51d2e3613849ce222e93d97f",
+      "bytes": 1406
+    },
+    {
+      "path": "desktop/lan-socket.cjs",
+      "gitBlob": "2b8290536a045d7c9361fd3289b060c48bf7ee01",
+      "bytes": 1550
+    },
+    {
+      "path": "desktop/launcher.css",
+      "gitBlob": "b95687826b3112e4d40d77fd0a1a073c2901760b",
+      "bytes": 3168
+    },
+    {
+      "path": "desktop/launcher.js",
+      "gitBlob": "f73e6bf51c9d5bdf64793a11c3d476740f5d5b88",
+      "bytes": 1822
+    },
+    {
+      "path": "desktop/main.cjs",
+      "gitBlob": "7a50a332f37038efd5bbe3eb7c77ded624b3c0f2",
+      "bytes": 14074
+    },
+    {
+      "path": "desktop/package.json",
+      "gitBlob": "aae2d4766bd3cf0297a7f99f6d0ed8ef4c5b4c59",
+      "bytes": 175
+    },
+    {
+      "path": "desktop/policy.cjs",
+      "gitBlob": "d75c26ac439704b6f9baea25404a2c8c41e22a95",
+      "bytes": 1143
+    },
+    {
+      "path": "desktop/preload.cjs",
+      "gitBlob": "ba0ebfd1f822727d98774f59468f58b0649a3f43",
+      "bytes": 666
+    },
+    {
+      "path": "desktop/runtime-manifest.json",
+      "gitBlob": "0a2547d417a56c63b4e3fbf94f39ad08c61743bf",
+      "bytes": 264
+    },
+    {
+      "path": "desktop/update.cjs",
+      "gitBlob": "2d518e36bfa9c6fb85fffb7ce80fdb9fded78977",
+      "bytes": 10787
+    },
+    {
+      "path": "launcher/READ-ME.txt",
+      "gitBlob": "a77a79db4329a34ea26ce5e8ce4263c6b6052251",
+      "bytes": 5407
+    },
+    {
+      "path": "launcher/Start-Chip-Arena.bat",
+      "gitBlob": "9a11aff234b6706208068a6febbbfb3bd7bf1208",
+      "bytes": 129
+    },
+    {
+      "path": "launcher/Start-Online.bat",
+      "gitBlob": "b5ace451137638804d9cd73352d6284f28c6f4b5",
+      "bytes": 145
+    },
+    {
+      "path": "launcher/Update-Chip-Arena.bat",
+      "gitBlob": "cc02da709d08ed62c692303f49da57896877d8e5",
+      "bytes": 79
+    },
+    {
+      "path": "launcher/manual-update.mjs",
+      "gitBlob": "8dc99a7d4c608ce1567d94efb0216cb5bb2bc89c",
+      "bytes": 1162
+    },
+    {
+      "path": "launcher/start.mjs",
+      "gitBlob": "6364e36fd04b7e40a6871dc175a743f1cbba4169",
+      "bytes": 5528
+    },
+    {
+      "path": "launcher/update.d.mts",
+      "gitBlob": "b6923e898d0cc2ada63bd8721d39288814183d36",
+      "bytes": 1373
+    },
+    {
+      "path": "launcher/update.mjs",
+      "gitBlob": "1318dd3696d9142dd200eade9cf363e675e7307c",
+      "bytes": 24653
+    },
+    {
+      "path": "public/audio/arcade-heavy.wav",
+      "gitBlob": "9ba1a094f76505641fba31e583db59b3f27d156a",
+      "bytes": 10186
+    },
+    {
+      "path": "public/audio/arcade-kick.wav",
+      "gitBlob": "b7ba0a4e7e49a5cb9743c5bfd023b5d06e22a43f",
+      "bytes": 7982
+    },
+    {
+      "path": "public/audio/arcade-parry.wav",
+      "gitBlob": "4e5e811f5763d6a5ee18dc778a016e8a7b1220d3",
+      "bytes": 13274
+    },
+    {
+      "path": "public/audio/arcade-punch.wav",
+      "gitBlob": "7a12e9599ecabd68d36322e26d13aa0e2f89fdb0",
+      "bytes": 5336
+    },
+    {
+      "path": "public/audio/bass-van.mp3",
+      "gitBlob": "475775c45158b47ed64c79418c61957e8d262d30",
+      "bytes": 54482
+    },
+    {
+      "path": "public/audio/burn-tick.wav",
+      "gitBlob": "bbd2b4169524d0989f2d9b6f6762fa9246c9f59b",
+      "bytes": 6220
+    },
+    {
+      "path": "public/audio/clown-love.mp3",
+      "gitBlob": "bb1a072d3d0d53d2da94d68471673adb1ffa6c27",
+      "bytes": 81231
+    },
+    {
+      "path": "public/audio/countdown.wav",
+      "gitBlob": "ee9357fde8acedde0a9d1edd0011f3b635dcd37c",
+      "bytes": 6220
+    },
+    {
+      "path": "public/audio/daggers.wav",
+      "gitBlob": "4ff2cf38b9f274bfaad9db7744327454ddbc6335",
+      "bytes": 8424
+    },
+    {
+      "path": "public/audio/darkness.wav",
+      "gitBlob": "0375ccbb552535058cb09971df0413430b946ef1",
+      "bytes": 26504
+    },
+    {
+      "path": "public/audio/dash.wav",
+      "gitBlob": "375198dde380791e225b2d3f8940349ff5c8f8bf",
+      "bytes": 11952
+    },
+    {
+      "path": "public/audio/demon-step.wav",
+      "gitBlob": "b295a0db2955ab646727e4fe476e117672361522",
+      "bytes": 28156
+    },
+    {
+      "path": "public/audio/electric-hook-hit.wav",
+      "gitBlob": "23b520c292ed5acff21e9e5921899612a3fbdbcc",
+      "bytes": 69450
+    },
+    {
+      "path": "public/audio/electric-hook.wav",
+      "gitBlob": "9218a1416b8bbaf8818604da95050e5e8b4b43c0",
+      "bytes": 31444
+    },
+    {
+      "path": "public/audio/explosion.wav",
+      "gitBlob": "5f1f0dee2b0b59064088901d4cba31149f9d60b3",
+      "bytes": 30914
+    },
+    {
+      "path": "public/audio/fire.wav",
+      "gitBlob": "ff2d93eca648a99221aaebf9a146db7ceb28a26f",
+      "bytes": 20330
+    },
+    {
+      "path": "public/audio/go.wav",
+      "gitBlob": "8b5371ab15ec48490e0efd98707bd42fd94467bf",
+      "bytes": 15920
+    },
+    {
+      "path": "public/audio/greatsword.wav",
+      "gitBlob": "f4276ebece07b8961965c8f86165eb7421ba63ea",
+      "bytes": 21212
+    },
+    {
+      "path": "public/audio/hit.wav",
+      "gitBlob": "9c7770b553d0953c69ec71ea49de0aa2fd3236e7",
+      "bytes": 2972
+    },
+    {
+      "path": "public/audio/hurt.wav",
+      "gitBlob": "16d3da981dfe0f514ed1673ece829e32539a0863",
+      "bytes": 9746
+    },
+    {
+      "path": "public/audio/install.wav",
+      "gitBlob": "009106913c5d807bbfbe7f7d647256591ef3b861",
+      "bytes": 18566
+    },
+    {
+      "path": "public/audio/intros/arc-salute.mp3",
+      "gitBlob": "d55ad238aefd3dbaa6bcebacdb115637a82647d7",
+      "bytes": 77828
+    },
+    {
+      "path": "public/audio/intros/dev-ansatsuken.mp3",
+      "gitBlob": "e9f1bb7b5758fe5f906d95e0a75c0d583b1c2945",
+      "bytes": 116282
+    },
+    {
+      "path": "public/audio/intros/dev-emperor.mp3",
+      "gitBlob": "86f9bbdabdca058b37143b80d0dd2038cf7a6aa1",
+      "bytes": 125895
+    },
+    {
+      "path": "public/audio/intros/dev-matrix.mp3",
+      "gitBlob": "acaf3b93376c96f59fd7ea8408edc82b6a5cdb71",
+      "bytes": 129237
+    },
+    {
+      "path": "public/audio/intros/neon-drop.mp3",
+      "gitBlob": "4c74ee77e1fb4bddfabd2b152f4b8cd84541ecfa",
+      "bytes": 77827
+    },
+    {
+      "path": "public/audio/intros/pulse-wave.mp3",
+      "gitBlob": "9164647ca4e417197bd71bf2941c30799e99b904",
+      "bytes": 77828
+    },
+    {
+      "path": "public/audio/intros/signal-spin.mp3",
+      "gitBlob": "c5b162c77355a0249a56c2d47a720e772ed00ff6",
+      "bytes": 77829
+    },
+    {
+      "path": "public/audio/intros/vector-slide.mp3",
+      "gitBlob": "b10a49861f1be814c36932ba5c8dad6c2eab3ca4",
+      "bytes": 77830
+    },
+    {
+      "path": "public/audio/intros/weapon-daggers.mp3",
+      "gitBlob": "17cdec385fcd24d06417f3ec029e8b9b474d83bb",
+      "bytes": 68089
+    },
+    {
+      "path": "public/audio/intros/weapon-darkness.mp3",
+      "gitBlob": "793235dc304d9668514fb6b8ad9165ad9cfdb450",
+      "bytes": 68089
+    },
+    {
+      "path": "public/audio/intros/weapon-fire.mp3",
+      "gitBlob": "dac86c9c9e700545f30cd04758034878ff81a92c",
+      "bytes": 68089
+    },
+    {
+      "path": "public/audio/intros/weapon-greatsword.mp3",
+      "gitBlob": "2b39b2030db84cc1835c686f3523af4d038656fa",
+      "bytes": 68089
+    },
+    {
+      "path": "public/audio/intros/weapon-lightning.mp3",
+      "gitBlob": "fd97f05e970d9d71eb9cce30e3a3a86e640cfd85",
+      "bytes": 68089
+    },
+    {
+      "path": "public/audio/intros/weapon-machinegun.mp3",
+      "gitBlob": "eca0050c0d032a384a3189eab4140228832ea613",
+      "bytes": 68089
+    },
+    {
+      "path": "public/audio/intros/weapon-pistol.mp3",
+      "gitBlob": "e687d941c8dd6a78b1653dbfcb280790f5d668e8",
+      "bytes": 68089
+    },
+    {
+      "path": "public/audio/intros/weapon-rifle.mp3",
+      "gitBlob": "9d5fccb4599546c77608d107741b2a93db0646f6",
+      "bytes": 68089
+    },
+    {
+      "path": "public/audio/intros/weapon-shield.mp3",
+      "gitBlob": "9e4565514fb763514867fac38400e9e3765665f0",
+      "bytes": 68089
+    },
+    {
+      "path": "public/audio/intros/weapon-sword.mp3",
+      "gitBlob": "071f2f30750e8aaf93b310b1b484156d5d6a6223",
+      "bytes": 68089
+    },
+    {
+      "path": "public/audio/intros/weapon-water.mp3",
+      "gitBlob": "e439c0c80d7749679f963ba22947bfe5a4d98bb3",
+      "bytes": 68089
+    },
+    {
+      "path": "public/audio/jump.wav",
+      "gitBlob": "b6c7e3c98b70aa992440b2ff4f80548589d60338",
+      "bytes": 8424
+    },
+    {
+      "path": "public/audio/lightning.wav",
+      "gitBlob": "16d8fda286dd6d10271356c5291ad77c1c055872",
+      "bytes": 9306
+    },
+    {
+      "path": "public/audio/lose.wav",
+      "gitBlob": "f9ea3440c25f45c4ced3c41db03f6ee7bc536d33",
+      "bytes": 30914
+    },
+    {
+      "path": "public/audio/machinegun.wav",
+      "gitBlob": "58eb7eae59384c7d1a8c7d414ab493208b2c12d9",
+      "bytes": 5778
+    },
+    {
+      "path": "public/audio/metal.wav",
+      "gitBlob": "eafab571c8251a617109f703ed687c32858b1262",
+      "bytes": 25622
+    },
+    {
+      "path": "public/audio/parry.wav",
+      "gitBlob": "b8e2200f99afe71214e5ecaf842556854f4d20f1",
+      "bytes": 22094
+    },
+    {
+      "path": "public/audio/pistol.wav",
+      "gitBlob": "e56b002779a02b6fb89b3eecf3ef02f54bacb45f",
+      "bytes": 10188
+    },
+    {
+      "path": "public/audio/poison-tick.wav",
+      "gitBlob": "df977f40b963139f513c938efe7eda321dd9ba50",
+      "bytes": 8864
+    },
+    {
+      "path": "public/audio/reload-end.wav",
+      "gitBlob": "5bf66c09d2656ff53995da3a7e0abb21cc7dcfec",
+      "bytes": 6660
+    },
+    {
+      "path": "public/audio/reload-start.wav",
+      "gitBlob": "471c9303eb3f1000f58aad72f645504fc6e4be86",
+      "bytes": 10188
+    },
+    {
+      "path": "public/audio/rifle.wav",
+      "gitBlob": "65783e3ba2421601238f4114d80acaba0bfee3c9",
+      "bytes": 7100
+    },
+    {
+      "path": "public/audio/saw-cut.wav",
+      "gitBlob": "b7815aabd5cfc0432c3d6231e6ab7fda647adbd9",
+      "bytes": 22976
+    },
+    {
+      "path": "public/audio/shield.wav",
+      "gitBlob": "c687775f1ff67254c4435fbaf7abc9f91d9202b0",
+      "bytes": 13716
+    },
+    {
+      "path": "public/audio/spike-rise.wav",
+      "gitBlob": "f0cb6088e3250e857c7c4af6c96200fa9d8fde44",
+      "bytes": 18566
+    },
+    {
+      "path": "public/audio/stone.wav",
+      "gitBlob": "fe31abcee5ade87d07aa1120399c124dd5982f8b",
+      "bytes": 16802
+    },
+    {
+      "path": "public/audio/sword.wav",
+      "gitBlob": "d5ab2b569959f544955c67cb4dd2678634aa64d4",
+      "bytes": 13274
+    },
+    {
+      "path": "public/audio/ui.wav",
+      "gitBlob": "ec62bb892f95159a412a3aa17d3b5c53511b3477",
+      "bytes": 4014
+    },
+    {
+      "path": "public/audio/water.wav",
+      "gitBlob": "6a18181c3338989727668c8884ef61e5fa0817b6",
+      "bytes": 17684
+    },
+    {
+      "path": "public/audio/win.wav",
+      "gitBlob": "866369ca3996f1c5f43b8499a2757a5f92329b81",
+      "bytes": 33120
+    },
+    {
+      "path": "public/audio/wood.wav",
+      "gitBlob": "dc98c4376719f5f5cfd33afcc524bae1d9278bae",
+      "bytes": 14156
+    },
+    {
+      "path": "public/images/l44t-slenderman.jpg",
+      "gitBlob": "39813e99bae17cec879ecff572a0a06980361c44",
+      "bytes": 177648
+    },
+    {
+      "path": "public/licenses/lucide.txt",
+      "gitBlob": "718bb3f0e44153809972abed31839375804bf652",
+      "bytes": 3208
+    },
+    {
+      "path": "public/music/afterburner.mp3",
+      "gitBlob": "4df759864be1bcedc133f52b5254ce3c90764205",
+      "bytes": 304218
+    },
+    {
+      "path": "public/music/black-siren-protocol.mp3",
+      "gitBlob": "5648e5e80a004159a52b79c3cbf3d05ca6524af3",
+      "bytes": 4547059
+    },
+    {
+      "path": "public/music/cargo-pulse.mp3",
+      "gitBlob": "b5391788e6e8bd30656f5c28353e3e115844a5a9",
+      "bytes": 283410
+    },
+    {
+      "path": "public/music/cinder-engine.mp3",
+      "gitBlob": "de14695596ec44b84238f11600f86386e7a7b7b9",
+      "bytes": 271532
+    },
+    {
+      "path": "public/music/cold-current.mp3",
+      "gitBlob": "7cdb072d7d758dcd161dd7743755a63e9769fbae",
+      "bytes": 221851
+    },
+    {
+      "path": "public/music/critical-mass.mp3",
+      "gitBlob": "aca1c8055a50f7c085e45432c493c68e65838462",
+      "bytes": 316748
+    },
+    {
+      "path": "public/music/dust-signal.mp3",
+      "gitBlob": "26af9d656749583b89f3e653362353630bfc02b8",
+      "bytes": 377370
+    },
+    {
+      "path": "public/music/foundry-rush.mp3",
+      "gitBlob": "401fec28e9278b14f8ffef36879afe2c6fe18188",
+      "bytes": 334891
+    },
+    {
+      "path": "public/music/isotope.mp3",
+      "gitBlob": "0c0ca8a8c7232e3a9d7dbc226b202a98c4cf2f46",
+      "bytes": 301046
+    },
+    {
+      "path": "public/music/jump-drive.mp3",
+      "gitBlob": "642ff348c679fd6b070da7e977925d8fb17a5fee",
+      "bytes": 330137
+    },
+    {
+      "path": "public/music/kinetic-city.mp3",
+      "gitBlob": "8a2fe05eeb3b39aaf669c4f4df9af9a5983e149e",
+      "bytes": 350443
+    },
+    {
+      "path": "public/music/lantern-drift.mp3",
+      "gitBlob": "596507872882f3aa88f09e7e9ca81dc2f8934710",
+      "bytes": 356492
+    },
+    {
+      "path": "public/music/last-set.mp3",
+      "gitBlob": "80d8a5cd43d0ea0d34c396bcd049dda5d6589888",
+      "bytes": 325815
+    },
+    {
+      "path": "public/music/menu-afterglow.mp3",
+      "gitBlob": "4e13cfd7a7f468cb9cbab10f9dae6a674a0ba4ac",
+      "bytes": 1237509
+    },
+    {
+      "path": "public/music/moonlit-wilderness.mp3",
+      "gitBlob": "f7c54e885c08bc12a72346e88acda7aef4209d45",
+      "bytes": 2714063
+    },
+    {
+      "path": "public/music/neon-recoil.mp3",
+      "gitBlob": "92624af980d9500391a3040209e4a9850d23c207",
+      "bytes": 340074
+    },
+    {
+      "path": "public/music/night-circuit.mp3",
+      "gitBlob": "b92c6cf157667501b3f13039ba9e7ab302f5478f",
+      "bytes": 361244
+    },
+    {
+      "path": "public/music/orange-line.mp3",
+      "gitBlob": "f92d0545b5c3baee4a0acbb7588075810d4c7e08",
+      "bytes": 321066
+    },
+    {
+      "path": "public/music/overpass.mp3",
+      "gitBlob": "4d8458418827cb579acd7e0113d6285a4b7aafe8",
+      "bytes": 308535
+    },
+    {
+      "path": "public/music/restricted-zone-pulse.mp3",
+      "gitBlob": "990ed1fea5e47c0388e09761f576806886c04cd2",
+      "bytes": 2766060
+    },
+    {
+      "path": "public/music/skyline-run.mp3",
+      "gitBlob": "570ac8e0fa18a4320850d3ec187d84b2bad934b3",
+      "bytes": 257130
+    },
+    {
+      "path": "public/music/stone-oath.mp3",
+      "gitBlob": "5bc4948790da62e6a0d0fdde367685f705348532",
+      "bytes": 343889
+    },
+    {
+      "path": "public/music/violet-avenue.mp3",
+      "gitBlob": "760001c47cae1273569a4b7794e09b27d892d3e9",
+      "bytes": 326252
+    },
+    {
+      "path": "src/client/ability-hud.ts",
+      "gitBlob": "36339630f3af58f5ccdea6f13eb7784ff4bf4bb4",
+      "bytes": 6913
+    },
+    {
+      "path": "src/client/ability-preview.ts",
+      "gitBlob": "6067ac3564a83b7e872a67c33402686067c1fec7",
+      "bytes": 2859
+    },
+    {
+      "path": "src/client/accounts.ts",
+      "gitBlob": "cf95ee371cf0986c688248376aa9fc77405b797e",
+      "bytes": 3182
+    },
+    {
+      "path": "src/client/aim-hold.ts",
+      "gitBlob": "847aea629ebbfe4c6a5081d0949a5c8feb7b28de",
+      "bytes": 1327
+    },
+    {
+      "path": "src/client/ansatsuken-animation.ts",
+      "gitBlob": "d0e5424045dac80ab149fdaf846843bfb0d6ff92",
+      "bytes": 8365
+    },
+    {
+      "path": "src/client/ansatsuken-card.ts",
+      "gitBlob": "113837186853a0047795e43d0f971caae025d45f",
+      "bytes": 958
+    },
+    {
+      "path": "src/client/ansatsuken-intro.ts",
+      "gitBlob": "d38899572cc48e4f90e8b88ba346d01825ceacc9",
+      "bytes": 10851
+    },
+    {
+      "path": "src/client/arcade-effects.ts",
+      "gitBlob": "5617b2f71f83796eedfca585c5b858abbe93aab5",
+      "bytes": 3607
+    },
+    {
+      "path": "src/client/arena-lighting.ts",
+      "gitBlob": "75d397cc23a4a807235eaa7ce9397596fd59aab4",
+      "bytes": 926
+    },
+    {
+      "path": "src/client/armor-glow.ts",
+      "gitBlob": "b89a20bdfb3d54472739f757f6c73505518959a1",
+      "bytes": 2921
+    },
+    {
+      "path": "src/client/audio.ts",
+      "gitBlob": "dd56c11afd6e4a85474744f832d0c4d40500ac4f",
+      "bytes": 23695
+    },
+    {
+      "path": "src/client/auditor-halo.ts",
+      "gitBlob": "13fa46aac967bf126884e6402008f8d9876954cd",
+      "bytes": 2139
+    },
+    {
+      "path": "src/client/bass-van-rig.ts",
+      "gitBlob": "6a8d2ae943bae60f250843cb3d5703590cae70bd",
+      "bytes": 6523
+    },
+    {
+      "path": "src/client/bass-van-timing.ts",
+      "gitBlob": "8aa79db540fb5306069bb96cfa11cf93753b9bb7",
+      "bytes": 985
+    },
+    {
+      "path": "src/client/bass-van.ts",
+      "gitBlob": "c77f7041ef62fbf0f70498c797511e9acc18b3f6",
+      "bytes": 5885
+    },
+    {
+      "path": "src/client/block-cooldown-tint.ts",
+      "gitBlob": "996a18f2e9af6e4b497c003757d82cf075f72ea4",
+      "bytes": 2100
+    },
+    {
+      "path": "src/client/block-impacts.ts",
+      "gitBlob": "3311f1a8ebc8441392e0ddf38292c7c9f6164503",
+      "bytes": 2794
+    },
+    {
+      "path": "src/client/body-collapse.ts",
+      "gitBlob": "78309081eacdae6f6ed66c3f3b821de624305212",
+      "bytes": 19026
+    },
+    {
+      "path": "src/client/body-trauma.ts",
+      "gitBlob": "ca72905edbb822426f8b3aef1c7bc18e397faff6",
+      "bytes": 10529
+    },
+    {
+      "path": "src/client/body-wounds.ts",
+      "gitBlob": "216f47aba9f0e965d8ed8aad862c876765bd44b6",
+      "bytes": 32832
+    },
+    {
+      "path": "src/client/boss-theme.ts",
+      "gitBlob": "7f77081eae345ecac02070c252fa605a0a4f1e95",
+      "bytes": 3039
+    },
+    {
+      "path": "src/client/bot-draft-option.ts",
+      "gitBlob": "5e915042a0dd587511692156236182d7601aebb3",
+      "bytes": 335
+    },
+    {
+      "path": "src/client/browser-room.ts",
+      "gitBlob": "ba0e98683f4384e77d170b25a205a25e0c7b60bb",
+      "bytes": 2197
+    },
+    {
+      "path": "src/client/build-info.generated.ts",
+      "gitBlob": "5a0e15261616c55f41557fe9ba40e0db2e611bf1",
+      "bytes": 106
+    },
+    {
+      "path": "src/client/burst-pool.ts",
+      "gitBlob": "ecfeb774ec0a3d3e4a2867f757391596d287fd67",
+      "bytes": 2580
+    },
+    {
+      "path": "src/client/ceiling-field.ts",
+      "gitBlob": "e761d49294759a20c5484743a4218e424743ab21",
+      "bytes": 2076
+    },
+    {
+      "path": "src/client/chaos-visuals.ts",
+      "gitBlob": "bb3764b08d006d0f8e9d7b249ccadc64a7826173",
+      "bytes": 9626
+    },
+    {
+      "path": "src/client/character-animation.ts",
+      "gitBlob": "7adee1f45fb45b1cc20245ebf0ae559e6db99870",
+      "bytes": 7832
+    },
+    {
+      "path": "src/client/character-rig.ts",
+      "gitBlob": "5a020f684a9a2a29238769f3e18a61cddf545e20",
+      "bytes": 11031
+    },
+    {
+      "path": "src/client/chip-blasts.ts",
+      "gitBlob": "cfaf2150bc0493876bb0e93f614719e4be1e3aab",
+      "bytes": 29769
+    },
+    {
+      "path": "src/client/chip-card.ts",
+      "gitBlob": "3230631826a4ede2a90a961087a4aacef468ad37",
+      "bytes": 3793
+    },
+    {
+      "path": "src/client/chip-cards.css",
+      "gitBlob": "983883874b47bf9c8aee4bd86bd4d1a4c1b975fd",
+      "bytes": 28646
+    },
+    {
+      "path": "src/client/chip-effects.ts",
+      "gitBlob": "e73a6749e2ac39a9815b0b24a3ba13a2fcb730a0",
+      "bytes": 4173
+    },
+    {
+      "path": "src/client/cinematic-victim.ts",
+      "gitBlob": "5a55b24b1cd253707cd2675ec68f8c2dfd5c1a66",
+      "bytes": 2518
+    },
+    {
+      "path": "src/client/clown-love-timing.ts",
+      "gitBlob": "68ba2a4004234e2a0523914d3562dbb3dc4be874",
+      "bytes": 382
+    },
+    {
+      "path": "src/client/clown-love.ts",
+      "gitBlob": "509127bf41cbbfeebc90694f7dab669daf607533",
+      "bytes": 7998
+    },
+    {
+      "path": "src/client/clown-rig.ts",
+      "gitBlob": "eb7b45e3e5407839a26cfb1d1509ea7ff810f129",
+      "bytes": 721
+    },
+    {
+      "path": "src/client/combat-numbers.ts",
+      "gitBlob": "75df608e7d9f0036294ca16cc30ffb37ab800dea",
+      "bytes": 3121
+    },
+    {
+      "path": "src/client/connection-metrics.ts",
+      "gitBlob": "4d66900de4f5953301b20b9f59c169968af40247",
+      "bytes": 1520
+    },
+    {
+      "path": "src/client/control-hints.ts",
+      "gitBlob": "b663968418dd5dae4471dc19a7eaef07e089378b",
+      "bytes": 1843
+    },
+    {
+      "path": "src/client/cosmetics.ts",
+      "gitBlob": "1c2586c79b5020fbc385aa0e4a32951f8ccf9cc5",
+      "bytes": 2845
+    },
+    {
+      "path": "src/client/death-announcements.ts",
+      "gitBlob": "f2d3d2a021620b9c967819b635a9dd8a99045fe7",
+      "bytes": 11095
+    },
+    {
+      "path": "src/client/death-effects.ts",
+      "gitBlob": "ea5832858a19444d9b1b94f28e1ed8f9c55466e2",
+      "bytes": 8314
+    },
+    {
+      "path": "src/client/demon-afterimages.ts",
+      "gitBlob": "44ed2e57de2feca16ea648b809647168580fab9a",
+      "bytes": 2909
+    },
+    {
+      "path": "src/client/demon-cinematic.ts",
+      "gitBlob": "cd7ead4a7fc029a9496dd3be09b791082330ed00",
+      "bytes": 2157
+    },
+    {
+      "path": "src/client/demon-combo.ts",
+      "gitBlob": "81291145ee77fa366212ea8c9c824fd9bced140c",
+      "bytes": 3063
+    },
+    {
+      "path": "src/client/desktop-updates.ts",
+      "gitBlob": "49f0100392695384e343b7955d27488a5057ec7b",
+      "bytes": 775
+    },
+    {
+      "path": "src/client/dodge-roll-motion.ts",
+      "gitBlob": "d50eb33c8a771c6643af455b68a393b9e2afb5b9",
+      "bytes": 9105
+    },
+    {
+      "path": "src/client/draft-presentation.ts",
+      "gitBlob": "d015939f31e8d25246f8dd889c02673b67603874",
+      "bytes": 7302
+    },
+    {
+      "path": "src/client/draft-screen.css",
+      "gitBlob": "784b68cfefe759e9ce36d21addbf2d4e13ddde58",
+      "bytes": 8550
+    },
+    {
+      "path": "src/client/draft-stage.ts",
+      "gitBlob": "80604484dca2e3a7b775ac983a77a53174a07eda",
+      "bytes": 27621
+    },
+    {
+      "path": "src/client/draft-timeline.ts",
+      "gitBlob": "1793335c79202704f11c0f582c539efdc0461726",
+      "bytes": 2116
+    },
+    {
+      "path": "src/client/draft-view.ts",
+      "gitBlob": "7c06716566ae27eed224b89f47e5f96cfb6bb0fb",
+      "bytes": 5102
+    },
+    {
+      "path": "src/client/emperor-animation.ts",
+      "gitBlob": "8f7086ae1ff81026cb78ecfbd939f1bd4d54be9b",
+      "bytes": 7898
+    },
+    {
+      "path": "src/client/emperor-card.ts",
+      "gitBlob": "758d8bede2637d585a7187162fb8d10473a32e46",
+      "bytes": 779
+    },
+    {
+      "path": "src/client/emperor-effects.ts",
+      "gitBlob": "c4934c6a1f9ca8557a42a7aa9bce2006e904a0c5",
+      "bytes": 3461
+    },
+    {
+      "path": "src/client/emperor-intro.ts",
+      "gitBlob": "9157fea54dcd243dae46464024ff3f53810774f4",
+      "bytes": 7642
+    },
+    {
+      "path": "src/client/event-vfx.ts",
+      "gitBlob": "853efff749a052b17a82242745fdc0b7ed757a31",
+      "bytes": 7266
+    },
+    {
+      "path": "src/client/fighter-motion.ts",
+      "gitBlob": "1ac093703b4b671cd5da182a51fe80c0cd7c66c8",
+      "bytes": 15484
+    },
+    {
+      "path": "src/client/first-person-view.ts",
+      "gitBlob": "f115514e757d22b66477e69dd2d213507f02192d",
+      "bytes": 9793
+    },
+    {
+      "path": "src/client/gibber-vfx.ts",
+      "gitBlob": "261f00b6848da45ededad4238a671e804c632bf9",
+      "bytes": 4648
+    },
+    {
+      "path": "src/client/hadouken-visual.ts",
+      "gitBlob": "1b0904929a9112ac1b57bf242396a956363f376d",
+      "bytes": 2828
+    },
+    {
+      "path": "src/client/hit-reaction-motion.ts",
+      "gitBlob": "4ba27e76b42f4cae9eb46dfd4a18a6bb080d1f99",
+      "bytes": 8997
+    },
+    {
+      "path": "src/client/hitmarker.ts",
+      "gitBlob": "76169d83040993fbfe75e6a0f1a867244a253551",
+      "bytes": 4368
+    },
+    {
+      "path": "src/client/host-worker.ts",
+      "gitBlob": "551a8251d08f503bf6633c059ab61bc78a862fbc",
+      "bytes": 1337
+    },
+    {
+      "path": "src/client/https-room.ts",
+      "gitBlob": "6785f151cd7400669fe09c3fedb89002e64d57a8",
+      "bytes": 6777
+    },
+    {
+      "path": "src/client/hud-morph.ts",
+      "gitBlob": "a13577948bac1b753442a52cf5a4d8a7f0a83552",
+      "bytes": 2193
+    },
+    {
+      "path": "src/client/icon-map.ts",
+      "gitBlob": "5690d3f0aeb196245870202638f10c01f057213f",
+      "bytes": 6402
+    },
+    {
+      "path": "src/client/icons.generated.ts",
+      "gitBlob": "8a45fcbdf61dbdfe9168e0dc4f11e455550b4f20",
+      "bytes": 23337
+    },
+    {
+      "path": "src/client/icons.ts",
+      "gitBlob": "38e5baa27d3794d015962d779e39d3cb05e3a191",
+      "bytes": 861
+    },
+    {
+      "path": "src/client/impact-glows.ts",
+      "gitBlob": "228946b687577db3a9e392fbf87e3d4a50d3176a",
+      "bytes": 3755
+    },
+    {
+      "path": "src/client/intro-audio.ts",
+      "gitBlob": "3946a22e59321999ef6ed1886c233afa7ce21fc7",
+      "bytes": 2072
+    },
+    {
+      "path": "src/client/intro-choreography.ts",
+      "gitBlob": "548e5d3bc6e110d3cf50d352ede1d746574ed84e",
+      "bytes": 15209
+    },
+    {
+      "path": "src/client/intro-curves.ts",
+      "gitBlob": "e75949bdccb46e389f13ad6331fdbe5d25c1276c",
+      "bytes": 4112
+    },
+    {
+      "path": "src/client/intro-footwork.ts",
+      "gitBlob": "3a2a232dd9033350653d876d38fd1c82fadbd584",
+      "bytes": 3917
+    },
+    {
+      "path": "src/client/kill-cinematics.ts",
+      "gitBlob": "0733743b9a567aba746159f2614508a3b9ca9f81",
+      "bytes": 7752
+    },
+    {
+      "path": "src/client/kill-effect-sync.ts",
+      "gitBlob": "e0882caf6cefb127c5696d562b8ea625796a9390",
+      "bytes": 1491
+    },
+    {
+      "path": "src/client/killcam-camera.ts",
+      "gitBlob": "68c568593a1e01278b951d0d1a240de730d771ad",
+      "bytes": 1008
+    },
+    {
+      "path": "src/client/killcam-hud.ts",
+      "gitBlob": "47c6437dee71f9458698a7b8b371eadbb904570d",
+      "bytes": 5048
+    },
+    {
+      "path": "src/client/killcam.css",
+      "gitBlob": "a459ae686b30070947e7f628d0149d5f8e189760",
+      "bytes": 8607
+    },
+    {
+      "path": "src/client/killcam.ts",
+      "gitBlob": "783022a2126d3d50f63142b7acc119333f727ebc",
+      "bytes": 9217
+    },
+    {
+      "path": "src/client/knockdown-motion.ts",
+      "gitBlob": "7f628d9537a28f434cc0da97f987c6fb883dc998",
+      "bytes": 15926
+    },
+    {
+      "path": "src/client/knockdown-ragdolls.ts",
+      "gitBlob": "ea6692ea98ebfee1e5081ec455e8afe8573ab3b7",
+      "bytes": 3954
+    },
+    {
+      "path": "src/client/leet-intro.ts",
+      "gitBlob": "c2b6a0088b7528f56150fe3879abcc7b66cc564e",
+      "bytes": 4388
+    },
+    {
+      "path": "src/client/lobby-poses.ts",
+      "gitBlob": "55ecaef6e00b3f829a588148de9cdf04e43ab028",
+      "bytes": 8164
+    },
+    {
+      "path": "src/client/lobby-ui.ts",
+      "gitBlob": "8e6c04fced2697a45dd2a57f4d5828b32d9774a1",
+      "bytes": 3402
+    },
+    {
+      "path": "src/client/lobby.css",
+      "gitBlob": "29c3b026c1ccdae6a0493eff5f7ff6d38c01a3f2",
+      "bytes": 23536
+    },
+    {
+      "path": "src/client/magic-motion.ts",
+      "gitBlob": "fae93982ec372dd3997fde739d0a4348f98c876e",
+      "bytes": 12280
+    },
+    {
+      "path": "src/client/main.ts",
+      "gitBlob": "bde1a432d79fa9cb8f3024062f87fad80ccd5253",
+      "bytes": 131175
+    },
+    {
+      "path": "src/client/map-scenery.ts",
+      "gitBlob": "8bd735bbaa1b7691f4ca4545dd4ba36878cecd73",
+      "bytes": 8286
+    },
+    {
+      "path": "src/client/match-hud.css",
+      "gitBlob": "5b4d0b3b6e72538bad6a3f653ca4d77698c842cd",
+      "bytes": 9580
+    },
+    {
+      "path": "src/client/match-score.ts",
+      "gitBlob": "55fe195dda15cf2d5ba881f49c02631468e7fdac",
+      "bytes": 2661
+    },
+    {
+      "path": "src/client/matrix-effects.ts",
+      "gitBlob": "87ce6848e45781f96adbaa8a66589da322631670",
+      "bytes": 7676
+    },
+    {
+      "path": "src/client/melee-block-motion.ts",
+      "gitBlob": "5c342cd011a90c447fb14bbf1ffe3d61d2a79514",
+      "bytes": 6081
+    },
+    {
+      "path": "src/client/melee-guard.ts",
+      "gitBlob": "6eda625c0b67e1fdab4980d483e5042c2fb05a6e",
+      "bytes": 13791
+    },
+    {
+      "path": "src/client/melee-lock.ts",
+      "gitBlob": "034f08537e05a3a35bb1c9bc7f6443c89ca18af5",
+      "bytes": 7767
+    },
+    {
+      "path": "src/client/melee-motion.ts",
+      "gitBlob": "6c7ea0a5da4118897b52139686885a5383c63c26",
+      "bytes": 7257
+    },
+    {
+      "path": "src/client/melee-trails.ts",
+      "gitBlob": "f9c6cf004207f43301c6996241c11bdf8ff032fa",
+      "bytes": 9138
+    },
+    {
+      "path": "src/client/menu-portraits.ts",
+      "gitBlob": "d251dab1256000e18caa9efb49cee3df4db28372",
+      "bytes": 7255
+    },
+    {
+      "path": "src/client/mocap/blade-clearance.ts",
+      "gitBlob": "c7fa6ff50970bced6c009c4b0e6cd091c2281406",
+      "bytes": 13456
+    },
+    {
+      "path": "src/client/mocap/daggers-clips.ts",
+      "gitBlob": "3d3e4899d67e0d431d78d5ae9da5c8721e7f0c5d",
+      "bytes": 33288
+    },
+    {
+      "path": "src/client/mocap/greatsword-clips.ts",
+      "gitBlob": "8ab6228bee68014416e7110764db3e872166f661",
+      "bytes": 39322
+    },
+    {
+      "path": "src/client/mocap/mocap-clip.ts",
+      "gitBlob": "32e182adf314b8e51b56e00ab85ed862e32ca67c",
+      "bytes": 4830
+    },
+    {
+      "path": "src/client/mocap/mocap-layer.ts",
+      "gitBlob": "3f8fb692237159ac1149764e68fecb977ce7faf3",
+      "bytes": 13844
+    },
+    {
+      "path": "src/client/mocap/mocap-pose.ts",
+      "gitBlob": "7c96833001e47d75c1307d449e5d98f29578cab2",
+      "bytes": 15080
+    },
+    {
+      "path": "src/client/mocap/shield-clips.ts",
+      "gitBlob": "a3f7f51027b2b8e7c1d88dcd7536e23dadac272c",
+      "bytes": 23184
+    },
+    {
+      "path": "src/client/mocap/sword-clips.ts",
+      "gitBlob": "fa29ee1848d0483eeed2fb4a7c6bd42b9aeffe18",
+      "bytes": 26887
+    },
+    {
+      "path": "src/client/motion-quality.ts",
+      "gitBlob": "8cf5e454cf05dd19734c144c14fa69805e53864d",
+      "bytes": 36710
+    },
+    {
+      "path": "src/client/mouse-look.ts",
+      "gitBlob": "29a171cad0dec200429169603f3d4ec60873a1db",
+      "bytes": 3888
+    },
+    {
+      "path": "src/client/music.ts",
+      "gitBlob": "99400bb97738fe3557066ef83e14e760221dfae1",
+      "bytes": 5453
+    },
+    {
+      "path": "src/client/night-world.ts",
+      "gitBlob": "bf856e7775a679122f6e3825da06a13d626027c6",
+      "bytes": 7069
+    },
+    {
+      "path": "src/client/overhead-health.ts",
+      "gitBlob": "19773178360f58e13d491d6ab5d7a6e4cfeccf9f",
+      "bytes": 6767
+    },
+    {
+      "path": "src/client/party-room.ts",
+      "gitBlob": "61164ec46ebf07420a60fea5d2a9003235c64d55",
+      "bytes": 5783
+    },
+    {
+      "path": "src/client/player-board.ts",
+      "gitBlob": "6d1e5cb3722642d8e781d85e737b43add33a0889",
+      "bytes": 8065
+    },
+    {
+      "path": "src/client/player-intros.ts",
+      "gitBlob": "184c0c422e8c7f6953c5289d8f38eb66412098bb",
+      "bytes": 13437
+    },
+    {
+      "path": "src/client/pose-curves.ts",
+      "gitBlob": "a8cc56b2cc8da3839724e4370d2fa7204025486e",
+      "bytes": 725
+    },
+    {
+      "path": "src/client/pose-flags.ts",
+      "gitBlob": "b138cfc221a7efcc8464b986ef27d9e4bc60d187",
+      "bytes": 1671
+    },
+    {
+      "path": "src/client/pose-math.ts",
+      "gitBlob": "211ad5ad83e00eb6ddf0fdea7eee822e459e5bed",
+      "bytes": 532
+    },
+    {
+      "path": "src/client/pose-transitions.ts",
+      "gitBlob": "785da6f5599a10f8c553935c128f7d34769055db",
+      "bytes": 10229
+    },
+    {
+      "path": "src/client/prediction.ts",
+      "gitBlob": "84870314b208611c48bbbd0c7381ea1e889dc1bd",
+      "bytes": 14600
+    },
+    {
+      "path": "src/client/primary-melee-motion.ts",
+      "gitBlob": "7dfae44154a542fd6cdc16a41c61f6b899d7822c",
+      "bytes": 33857
+    },
+    {
+      "path": "src/client/projectile-glow.ts",
+      "gitBlob": "3555d72423610d6b53518d6fb847b4410728c939",
+      "bytes": 3001
+    },
+    {
+      "path": "src/client/projectile-trails.ts",
+      "gitBlob": "a6634eefab98f05db131e6c91fa21266b85dcfc7",
+      "bytes": 3138
+    },
+    {
+      "path": "src/client/pve/beacons.ts",
+      "gitBlob": "833ac1ee6f1c0d1ced4f6e00a4538670cb6b75fb",
+      "bytes": 8787
+    },
+    {
+      "path": "src/client/pve/board.ts",
+      "gitBlob": "a2fda88a34712e6aadfd3c4ab5e9a966cc193011",
+      "bytes": 10180
+    },
+    {
+      "path": "src/client/pve/boss-look.ts",
+      "gitBlob": "6e46d406440b73bf6df059f374d3275cece18e62",
+      "bytes": 4989
+    },
+    {
+      "path": "src/client/pve/chip-model.ts",
+      "gitBlob": "046b48a01191a6106558671989d1c9efb7d62fba",
+      "bytes": 3640
+    },
+    {
+      "path": "src/client/pve/chip-screen.ts",
+      "gitBlob": "14156d84fdcec300ae461461c4957e4f56d11979",
+      "bytes": 6301
+    },
+    {
+      "path": "src/client/pve/downed.ts",
+      "gitBlob": "d55118853db5c7b34a3ae7cbaf0943a7fc196249",
+      "bytes": 32656
+    },
+    {
+      "path": "src/client/pve/gore.ts",
+      "gitBlob": "06e985e9900f740b37b17cbc30993368723f481e",
+      "bytes": 6914
+    },
+    {
+      "path": "src/client/pve/hologram.ts",
+      "gitBlob": "64933574494776f132bbed556fe8a97338da4014",
+      "bytes": 11603
+    },
+    {
+      "path": "src/client/pve/horde-view.ts",
+      "gitBlob": "a67465897a2daae38c145ec4a8f3bf0c45ca6b93",
+      "bytes": 19662
+    },
+    {
+      "path": "src/client/pve/hud.ts",
+      "gitBlob": "abfd7dc772db7423297c822ac156bc43e2caf236",
+      "bytes": 15576
+    },
+    {
+      "path": "src/client/pve/impostors.ts",
+      "gitBlob": "ddd97e9c8bd68b92f076a5b9e3a3f5102716ed9b",
+      "bytes": 9191
+    },
+    {
+      "path": "src/client/pve/local-room.ts",
+      "gitBlob": "eacc2c32c66a4bfd85d9551e0e5d158c542c44cd",
+      "bytes": 2572
+    },
+    {
+      "path": "src/client/pve/machines.ts",
+      "gitBlob": "c3a3635b8e4a073bbf47d713fba56148ad0ab5fd",
+      "bytes": 13251
+    },
+    {
+      "path": "src/client/pve/menu.ts",
+      "gitBlob": "caee5304f41d138eaa8f673ea9143a25ce95685a",
+      "bytes": 8066
+    },
+    {
+      "path": "src/client/pve/pickups.ts",
+      "gitBlob": "56771b79f58dc9148770eccf4c595ec57781a575",
+      "bytes": 5684
+    },
+    {
+      "path": "src/client/pve/prompts.ts",
+      "gitBlob": "31823eb2300c0b33b228d3175ef17806169a2663",
+      "bytes": 2990
+    },
+    {
+      "path": "src/client/pve/pve.css",
+      "gitBlob": "8837ef32c07490f212a054b8efb75b641a62044b",
+      "bytes": 42877
+    },
+    {
+      "path": "src/client/pve/results.ts",
+      "gitBlob": "a18b0fe7363e790ac296e706cb07fc383c5392d4",
+      "bytes": 4217
+    },
+    {
+      "path": "src/client/pve/session.ts",
+      "gitBlob": "abb0b01b40a881b56ff33905cb84f71a98b1638f",
+      "bytes": 7944
+    },
+    {
+      "path": "src/client/pve/siren-reveal.ts",
+      "gitBlob": "9409582b4b746ff4a541f1e8755041f2073f5a7d",
+      "bytes": 3611
+    },
+    {
+      "path": "src/client/pve/tracks.ts",
+      "gitBlob": "c6b2abc341520d7a8891eded51e484ee40358792",
+      "bytes": 6097
+    },
+    {
+      "path": "src/client/pve/vent-fall.ts",
+      "gitBlob": "88eedeee9c23c74d203b43a34412822c87ba45a4",
+      "bytes": 7671
+    },
+    {
+      "path": "src/client/pve/visuals.ts",
+      "gitBlob": "9f369fae955da473381bc4269c894e68f8887d42",
+      "bytes": 2988
+    },
+    {
+      "path": "src/client/pve/world-view.ts",
+      "gitBlob": "9e8cf808bd3ce296abbaae92c2e6063873acc49a",
+      "bytes": 8744
+    },
+    {
+      "path": "src/client/ragdoll-vfx.ts",
+      "gitBlob": "5d0c30a37b5b398da153621f5024b402b834aff9",
+      "bytes": 7124
+    },
+    {
+      "path": "src/client/ragdoll.ts",
+      "gitBlob": "02d00c0893efeca829c1ffe6f32a7be4050903b0",
+      "bytes": 25057
+    },
+    {
+      "path": "src/client/raging-demon.ts",
+      "gitBlob": "808134f9f397adb14d9aaab9ca8c9fe1226cfa0f",
+      "bytes": 5067
+    },
+    {
+      "path": "src/client/ranged-motion.ts",
+      "gitBlob": "9022ffa2426b60e7f7a4eff0b100457fc2914a27",
+      "bytes": 21339
+    },
+    {
+      "path": "src/client/ranged-vfx.ts",
+      "gitBlob": "ba08ee15a7ce79a7bac2da29e20a17663c57dbcf",
+      "bytes": 4461
+    },
+    {
+      "path": "src/client/render-budget.ts",
+      "gitBlob": "c0ba24366991d3544fec1ac54cd4d3a074e6ff16",
+      "bytes": 1089
+    },
+    {
+      "path": "src/client/renderer.ts",
+      "gitBlob": "74ea0229d4df85a5f7ca45c291be10378d28d592",
+      "bytes": 33752
+    },
+    {
+      "path": "src/client/rig-ik.ts",
+      "gitBlob": "6de6beb1a6cf8f22eb76397d1f8a1de793bde6a7",
+      "bytes": 10256
+    },
+    {
+      "path": "src/client/room-options.ts",
+      "gitBlob": "ceff60683946dca9f5f69168429490ce5c2813a7",
+      "bytes": 2111
+    },
+    {
+      "path": "src/client/room-socket.ts",
+      "gitBlob": "1b6c660c7bf2f7cb0012f0507c8538cff6b16570",
+      "bytes": 1582
+    },
+    {
+      "path": "src/client/sandbox-panel.ts",
+      "gitBlob": "a48827c1af850e85fecd2d89f45157651036b065",
+      "bytes": 10569
+    },
+    {
+      "path": "src/client/shader-warmup.ts",
+      "gitBlob": "3cd2ac82e20a5bbfc1f7082689174a78d7b5b3bb",
+      "bytes": 7455
+    },
+    {
+      "path": "src/client/siren-audio.ts",
+      "gitBlob": "7d7604caa74bb0e632e0e99378d1ce2517fb8641",
+      "bytes": 1686
+    },
+    {
+      "path": "src/client/siren-card.ts",
+      "gitBlob": "f6a23eed8cfeb8dd8c7548b20aaf0a4fb667ee30",
+      "bytes": 3091
+    },
+    {
+      "path": "src/client/siren-hud.ts",
+      "gitBlob": "a0cc2b3c6a5a06227595522862f652930494dd02",
+      "bytes": 1606
+    },
+    {
+      "path": "src/client/siren/cutscene.ts",
+      "gitBlob": "09b461a0e7a8f55e81ba343a36427a680a5a442b",
+      "bytes": 9446
+    },
+    {
+      "path": "src/client/siren/first-person.ts",
+      "gitBlob": "5685cb0229a197f8f98a5bbd9cc36544636fdcc9",
+      "bytes": 4216
+    },
+    {
+      "path": "src/client/siren/flames.ts",
+      "gitBlob": "66dc22da4a01a996e1cadcf501d3f8b399e0ba77",
+      "bytes": 5661
+    },
+    {
+      "path": "src/client/siren/fx.ts",
+      "gitBlob": "e4ffbcb23188e7a9fb733c75314f0a2229429e6d",
+      "bytes": 29577
+    },
+    {
+      "path": "src/client/siren/index.ts",
+      "gitBlob": "9d783a0f7c0936aec3aee6d9435e462acf452763",
+      "bytes": 3712
+    },
+    {
+      "path": "src/client/siren/intro.ts",
+      "gitBlob": "759a0d9b2dea4f31775ea2d572dd4dede7fd08cc",
+      "bytes": 9208
+    },
+    {
+      "path": "src/client/siren/kills.ts",
+      "gitBlob": "656563f68a2440c22836465c38414c4a011cd897",
+      "bytes": 9138
+    },
+    {
+      "path": "src/client/siren/materials.ts",
+      "gitBlob": "37a6f92a012f3e4b6542f0008be352fd41a80de8",
+      "bytes": 9449
+    },
+    {
+      "path": "src/client/siren/minions/fx.ts",
+      "gitBlob": "c4b5ecd1340ce4e81f7f36708208f92582f7119f",
+      "bytes": 5766
+    },
+    {
+      "path": "src/client/siren/minions/hints.ts",
+      "gitBlob": "0c0b40e469f3486a00c61563be4c1d3467cd6bad",
+      "bytes": 5664
+    },
+    {
+      "path": "src/client/siren/minions/index.ts",
+      "gitBlob": "3b8a62bfa8d5e438b97911ea48cda9f016e7a1f7",
+      "bytes": 2063
+    },
+    {
+      "path": "src/client/siren/minions/layouts.ts",
+      "gitBlob": "a86071ae3e48848d8079cd24d11280c8f22fe67a",
+      "bytes": 24189
+    },
+    {
+      "path": "src/client/siren/minions/limbs.ts",
+      "gitBlob": "c168bb453bad7868f1510639933e7d00fbb0ab13",
+      "bytes": 5016
+    },
+    {
+      "path": "src/client/siren/minions/look.ts",
+      "gitBlob": "4cd063ed0c97719beab82ec4f7e82e501cc78cb4",
+      "bytes": 8523
+    },
+    {
+      "path": "src/client/siren/minions/materials.ts",
+      "gitBlob": "2fac21c98844772252a352e2a0004729e6956d6a",
+      "bytes": 6445
+    },
+    {
+      "path": "src/client/siren/minions/model.ts",
+      "gitBlob": "9cf152e7038676aa29163959c77f5efba74ec54b",
+      "bytes": 12227
+    },
+    {
+      "path": "src/client/siren/minions/motion.ts",
+      "gitBlob": "5fb6ec6c8d07ba895c586bff39dcd93b82c3efd7",
+      "bytes": 50347
+    },
+    {
+      "path": "src/client/siren/model.ts",
+      "gitBlob": "dbf18820106101c44f686827d4a9101a62636449",
+      "bytes": 13120
+    },
+    {
+      "path": "src/client/siren/motion.ts",
+      "gitBlob": "730ed1311413099f9132056cba64e86645aed7e8",
+      "bytes": 23200
+    },
+    {
+      "path": "src/client/siren/stage.ts",
+      "gitBlob": "e970f383c445cd4e18d8be95344a820136ff128f",
+      "bytes": 56203
+    },
+    {
+      "path": "src/client/slender-model.ts",
+      "gitBlob": "c55aef99a81c2f07b856c29781426416635505b5",
+      "bytes": 4882
+    },
+    {
+      "path": "src/client/slender-static.ts",
+      "gitBlob": "0315fbb5eba0715dabfc4ea113ac8fc3ed795f4d",
+      "bytes": 3783
+    },
+    {
+      "path": "src/client/snapshots.ts",
+      "gitBlob": "e04b61c865acb03871c7eb38e2e29f5c4554b2b2",
+      "bytes": 5423
+    },
+    {
+      "path": "src/client/spectator.ts",
+      "gitBlob": "2924eb242279680937324792d74a873f47889801",
+      "bytes": 1049
+    },
+    {
+      "path": "src/client/sprint-hud.ts",
+      "gitBlob": "4d0b086f43b1241409fead2bef381df5cf6a704f",
+      "bytes": 493
+    },
+    {
+      "path": "src/client/sprint-tap.ts",
+      "gitBlob": "7dc489074123580d83a4b3c1733c91b8a6be6a16",
+      "bytes": 843
+    },
+    {
+      "path": "src/client/stage-hazards.ts",
+      "gitBlob": "70273bb6f47dd232ac3e4f183df2ad0b9da1c93a",
+      "bytes": 4666
+    },
+    {
+      "path": "src/client/stances.ts",
+      "gitBlob": "c4e6149ad26a04b77e76a2cc6c47057b7c8e7fbc",
+      "bytes": 3534
+    },
+    {
+      "path": "src/client/standard-melee-effects.ts",
+      "gitBlob": "89a5c588d1541f130a305468321e8d4b63ab0550",
+      "bytes": 6911
+    },
+    {
+      "path": "src/client/status-effects.ts",
+      "gitBlob": "e0fa650cb269ee488bcafa09dab53779b9a9ac56",
+      "bytes": 7950
+    },
+    {
+      "path": "src/client/style.css",
+      "gitBlob": "338e2731dcd86f86b6b0c560e4f0d02d0a6564a0",
+      "bytes": 65283
+    },
+    {
+      "path": "src/client/summon-visuals.ts",
+      "gitBlob": "a63333d92f64affe309c821b4033349c493a1e9c",
+      "bytes": 5979
+    },
+    {
+      "path": "src/client/team-identity.ts",
+      "gitBlob": "2d7c6d277325be6908922fbe1cbee4726fdaafc6",
+      "bytes": 1166
+    },
+    {
+      "path": "src/client/team-ui.ts",
+      "gitBlob": "0ed7ccee1d4b7eaa5088514ff89e2eac9ec63b8c",
+      "bytes": 1337
+    },
+    {
+      "path": "src/client/update-status.ts",
+      "gitBlob": "012443ce39b3b164b7360d33bc0dbf707af4cd4b",
+      "bytes": 774
+    },
+    {
+      "path": "src/client/voxel-armor.ts",
+      "gitBlob": "5dff3c1cef671d9b6db06044c680c18d5c61a5aa",
+      "bytes": 6197
+    },
+    {
+      "path": "src/client/voxel-kit.ts",
+      "gitBlob": "556adb93035dcff312679a2b8ae718c01bfb3afc",
+      "bytes": 10935
+    },
+    {
+      "path": "src/client/weapon-intro-effects.ts",
+      "gitBlob": "73bd99e94c050cfc73155a8826454e50ea9e0609",
+      "bytes": 18645
+    },
+    {
+      "path": "src/client/weapon-intro-motion.ts",
+      "gitBlob": "ea6a6b668a4899d09cd074379fa6640d2d718dd6",
+      "bytes": 23103
+    },
+    {
+      "path": "src/client/weapon-visuals.ts",
+      "gitBlob": "913f954df486a8ebb73f46d48363b2d447a04521",
+      "bytes": 18095
+    },
+    {
+      "path": "src/relay/accounts.ts",
+      "gitBlob": "610e6d4417a9adf1f16910b8041447fce3d88ca6",
+      "bytes": 13190
+    },
+    {
+      "path": "src/relay/auth.ts",
+      "gitBlob": "f0d4d45492c46d653ed9aec0c25410aabd26579e",
+      "bytes": 3374
+    },
+    {
+      "path": "src/relay/directory.ts",
+      "gitBlob": "81d5ea3c66660f57b98e03043f670a862318a6e9",
+      "bytes": 3816
+    },
+    {
+      "path": "src/relay/local.ts",
+      "gitBlob": "854d57298fa1b76c264af72ca455a32f2ac58db2",
+      "bytes": 2312
+    },
+    {
+      "path": "src/relay/party.ts",
+      "gitBlob": "d007aaa4f923a9eea7006bf09a7bd426a4685306",
+      "bytes": 6355
+    },
+    {
+      "path": "src/relay/worker.ts",
+      "gitBlob": "d57772ab6a5b23e37c4895732b0e8f556729f014",
+      "bytes": 8626
+    },
+    {
+      "path": "src/server/auth-proxy.ts",
+      "gitBlob": "c69df1562184517d3a83fe11a5746335e044905b",
+      "bytes": 1142
+    },
+    {
+      "path": "src/server/directory-lease.ts",
+      "gitBlob": "2ed1a667a4c46e31907f804d3795f6408b421ecd",
+      "bytes": 1428
+    },
+    {
+      "path": "src/server/index.ts",
+      "gitBlob": "77a49343fae06cb13b6454e78d306ddb66dc57da",
+      "bytes": 11597
+    },
+    {
+      "path": "src/server/socket-output.ts",
+      "gitBlob": "fa9160adff5ba0aeb0d94699d54452894d024158",
+      "bytes": 1264
+    },
+    {
+      "path": "src/server/static-path.ts",
+      "gitBlob": "72772ae63eb9da7afa073cd09b1782bf02998283",
+      "bytes": 491
+    },
+    {
+      "path": "src/shared/abilities.ts",
+      "gitBlob": "3defa81e49a9df1e7e0e966cb0e86e5b5f936e5c",
+      "bytes": 7441
+    },
+    {
+      "path": "src/shared/ability-system.ts",
+      "gitBlob": "3d3b0e09987ee0c850a84516a0ac2d3b6088beaa",
+      "bytes": 24561
+    },
+    {
+      "path": "src/shared/access.ts",
+      "gitBlob": "fb30bc467b96eb0806986e6ab67775b84ae263c6",
+      "bytes": 1523
+    },
+    {
+      "path": "src/shared/account-auth.ts",
+      "gitBlob": "691d036b9dd12333306158ecff70e2ef7c1f0c27",
+      "bytes": 1529
+    },
+    {
+      "path": "src/shared/arcade-content.ts",
+      "gitBlob": "24a4e3d632e7a5b91773c3fdb4c323e8be58ae80",
+      "bytes": 2077
+    },
+    {
+      "path": "src/shared/arcade.ts",
+      "gitBlob": "337577b9fa23f518d8e80820faa3d60845e3bf9b",
+      "bytes": 14119
+    },
+    {
+      "path": "src/shared/architecture.ts",
+      "gitBlob": "165ad013dd0ef286babd24d3b147bcf84c4779b9",
+      "bytes": 2523
+    },
+    {
+      "path": "src/shared/arena.ts",
+      "gitBlob": "d476b1c8049169273d79f45b9300dff61ba5c039",
+      "bytes": 3328
+    },
+    {
+      "path": "src/shared/blocking.ts",
+      "gitBlob": "084b7ed7603c187634b6b9102cf7cbcd4e4dc7e1",
+      "bytes": 2100
+    },
+    {
+      "path": "src/shared/body-damage.ts",
+      "gitBlob": "8944ccba2dd59a400f5a040e21d47a22ec6b0afa",
+      "bytes": 8494
+    },
+    {
+      "path": "src/shared/body-hit.ts",
+      "gitBlob": "48e546c0772a0f2c1ffcf4da73c06530be815084",
+      "bytes": 646
+    },
+    {
+      "path": "src/shared/body-ragdoll.ts",
+      "gitBlob": "0b4411c9e7cf8b553861df24868cf63e20da5f03",
+      "bytes": 1701
+    },
+    {
+      "path": "src/shared/boss-music.ts",
+      "gitBlob": "12a9c174c4401509a02eb253fa4ef6c7a07634b6",
+      "bytes": 7657
+    },
+    {
+      "path": "src/shared/bot-abilities.ts",
+      "gitBlob": "4cb2069997fc2a88822e2e9dd0b349e009720713",
+      "bytes": 3928
+    },
+    {
+      "path": "src/shared/ceiling-field.ts",
+      "gitBlob": "311896315b562b7131eb0902ce018090a273f49d",
+      "bytes": 850
+    },
+    {
+      "path": "src/shared/chaos-content.ts",
+      "gitBlob": "0c2863e8ddd884651de2452a96536fe159c320bd",
+      "bytes": 11931
+    },
+    {
+      "path": "src/shared/chaos.ts",
+      "gitBlob": "db4cb3f0d83dc1370685817f6b2c91a54964a2ec",
+      "bytes": 31936
+    },
+    {
+      "path": "src/shared/chip-description.ts",
+      "gitBlob": "40a6b8edd9ab09e0de2c8297173a4b8bc63135a1",
+      "bytes": 9068
+    },
+    {
+      "path": "src/shared/chip-inspection.ts",
+      "gitBlob": "5efed9bd1d767217f36481ced58a9431a41ddfda",
+      "bytes": 2033
+    },
+    {
+      "path": "src/shared/chip-stats.ts",
+      "gitBlob": "a7109d0d0d3e0e2025e827b9f0d94cc06fb1eb3b",
+      "bytes": 5725
+    },
+    {
+      "path": "src/shared/config.ts",
+      "gitBlob": "54454ee3110e936ada16d429813bb55b4a07eb1f",
+      "bytes": 3677
+    },
+    {
+      "path": "src/shared/connection.ts",
+      "gitBlob": "a5222bf8d13a1ff9dcda7628f7c372cb8a71695f",
+      "bytes": 534
+    },
+    {
+      "path": "src/shared/content.ts",
+      "gitBlob": "b0613af732ff5a8fb28374212f4631ae41a0ca43",
+      "bytes": 42892
+    },
+    {
+      "path": "src/shared/cosmetics.ts",
+      "gitBlob": "be53eedaec87de00b27f9f0cbada7ef9266b5ff8",
+      "bytes": 2883
+    },
+    {
+      "path": "src/shared/demon-step.ts",
+      "gitBlob": "d14ad005b1a564691b15dc1a20921f7620eec4ef",
+      "bytes": 1050
+    },
+    {
+      "path": "src/shared/dev-auth.ts",
+      "gitBlob": "453d8009b37494d2995bfebbd166d7e87d90d427",
+      "bytes": 1101
+    },
+    {
+      "path": "src/shared/dev-public-key.ts",
+      "gitBlob": "34f91976c0d9173385dc75a86f89a9dfd0804592",
+      "bytes": 280
+    },
+    {
+      "path": "src/shared/draft-settings.ts",
+      "gitBlob": "cdf9c4e443e13960d72949ecc707ac8536f991e1",
+      "bytes": 344
+    },
+    {
+      "path": "src/shared/elements.ts",
+      "gitBlob": "daece9fe825424298366e3689ac25ad8dad039a9",
+      "bytes": 1325
+    },
+    {
+      "path": "src/shared/emperor-content.ts",
+      "gitBlob": "c102ccf30022d1848e37cf34eb259b39ed666a48",
+      "bytes": 2102
+    },
+    {
+      "path": "src/shared/emperor.ts",
+      "gitBlob": "4fccfac5d7efe0034a844471831fceada244ce75",
+      "bytes": 11128
+    },
+    {
+      "path": "src/shared/gun-abilities.ts",
+      "gitBlob": "15240922bfd554b3aa5512b63787f2b48306c339",
+      "bytes": 4898
+    },
+    {
+      "path": "src/shared/gun-kit.ts",
+      "gitBlob": "276f060dd216343b0c4e88b3c96a28b643dd8610",
+      "bytes": 3404
+    },
+    {
+      "path": "src/shared/headshots.ts",
+      "gitBlob": "f452cf350ef245ed4ad06cfc1032a18d9bbc075b",
+      "bytes": 1018
+    },
+    {
+      "path": "src/shared/hit-reaction.ts",
+      "gitBlob": "22da3faacbea00b5a5862d0663a28cad79138a7d",
+      "bytes": 1530
+    },
+    {
+      "path": "src/shared/host-room.ts",
+      "gitBlob": "dc66cada1baa64b7b41cf1dc676952d9c4802200",
+      "bytes": 5585
+    },
+    {
+      "path": "src/shared/impact.ts",
+      "gitBlob": "178f26e077d7010376e0c3af6623a6e1799122d5",
+      "bytes": 1702
+    },
+    {
+      "path": "src/shared/intros.ts",
+      "gitBlob": "b1b296a7a35237f7afad75b7f2fa10f709bc1800",
+      "bytes": 3118
+    },
+    {
+      "path": "src/shared/invite-url.ts",
+      "gitBlob": "ef89492bf8de9bdc03b97a6ae531ca4f171296f4",
+      "bytes": 651
+    },
+    {
+      "path": "src/shared/leet-content.ts",
+      "gitBlob": "0e801d175ffbe113926cae1bd9543f580eb76322",
+      "bytes": 3194
+    },
+    {
+      "path": "src/shared/leet.ts",
+      "gitBlob": "f3e7070beb469bebb6a3794e8658f061b5022d3e",
+      "bytes": 15307
+    },
+    {
+      "path": "src/shared/lobby-presentation.ts",
+      "gitBlob": "8a9c9c9577ffeb3617bf387a695d52e99ff37053",
+      "bytes": 2322
+    },
+    {
+      "path": "src/shared/magic-abilities.ts",
+      "gitBlob": "e768d8cb6aad65fd4624485638a2356db6ae8206",
+      "bytes": 8824
+    },
+    {
+      "path": "src/shared/magic-chips.ts",
+      "gitBlob": "c2c711eb3e9d27cbc7599440d418b210a5efdb07",
+      "bytes": 3511
+    },
+    {
+      "path": "src/shared/magic-kit.ts",
+      "gitBlob": "23b5e90ba48348abe32944b2fa7151c6c0555724",
+      "bytes": 4427
+    },
+    {
+      "path": "src/shared/maps.ts",
+      "gitBlob": "994b9cc3c350ab5e3b332e60b13242074ebff1d5",
+      "bytes": 7582
+    },
+    {
+      "path": "src/shared/movement.ts",
+      "gitBlob": "bf0d5411bea3e064d1670d26472f1264c651da49",
+      "bytes": 5877
+    },
+    {
+      "path": "src/shared/network-config.ts",
+      "gitBlob": "edaf2bccc8560ff9975e66486c21998c53065882",
+      "bytes": 273
+    },
+    {
+      "path": "src/shared/pong.ts",
+      "gitBlob": "3916edf48f0196621fcf26657405b4d9c2bb51fe",
+      "bytes": 6611
+    },
+    {
+      "path": "src/shared/power-chips.ts",
+      "gitBlob": "59c4f19ee1f5d3b740b076c42fe668ea1464800e",
+      "bytes": 7114
+    },
+    {
+      "path": "src/shared/projectiles.ts",
+      "gitBlob": "d7b9d81cf564f4a0449125ecd1c6b6290608b891",
+      "bytes": 2119
+    },
+    {
+      "path": "src/shared/pve/add-ai.ts",
+      "gitBlob": "5fee876f1fa672182be57233a7ccde81ccc513ce",
+      "bytes": 5738
+    },
+    {
+      "path": "src/shared/pve/balance.ts",
+      "gitBlob": "448a50ef096ac858864aa41ab74b90914573a53d",
+      "bytes": 9278
+    },
+    {
+      "path": "src/shared/pve/boss.ts",
+      "gitBlob": "36439e84569c781fc81cd75377341a6d7222e90e",
+      "bytes": 5929
+    },
+    {
+      "path": "src/shared/pve/bosses.ts",
+      "gitBlob": "fd453c0366198fdf63e92acf0ab4052172f7fedc",
+      "bytes": 2230
+    },
+    {
+      "path": "src/shared/pve/contract.ts",
+      "gitBlob": "b8fea2f9d4c0c79ba544881db57f21b5eb67129f",
+      "bytes": 18965
+    },
+    {
+      "path": "src/shared/pve/director.ts",
+      "gitBlob": "24f40630e98bf4a3eb890ab6f3dde8c5f042414d",
+      "bytes": 16044
+    },
+    {
+      "path": "src/shared/pve/economy.ts",
+      "gitBlob": "47e11b2ef1c9c6cce3c4b5b1735559d5c3eb73cd",
+      "bytes": 21303
+    },
+    {
+      "path": "src/shared/pve/entering.ts",
+      "gitBlob": "4147f5d155d78ffcaac038ebcf357fa8192e97cf",
+      "bytes": 2421
+    },
+    {
+      "path": "src/shared/pve/entries.ts",
+      "gitBlob": "15907333ea2dad9565dd53bccabe30d2c1b0bd15",
+      "bytes": 6405
+    },
+    {
+      "path": "src/shared/pve/fixtures.ts",
+      "gitBlob": "27d25712c3a59781c288017445d931ccb52e4e69",
+      "bytes": 16527
+    },
+    {
+      "path": "src/shared/pve/gibs.ts",
+      "gitBlob": "d8fc009d574671b3a863555adb31466affd6561e",
+      "bytes": 5207
+    },
+    {
+      "path": "src/shared/pve/horde.ts",
+      "gitBlob": "a619e0c3bdc77a60ed0a53dd735258caa0f12cd1",
+      "bytes": 38807
+    },
+    {
+      "path": "src/shared/pve/layout.ts",
+      "gitBlob": "78fee2ba0a6dbce844d91de8ddff6f1e4605fb34",
+      "bytes": 6005
+    },
+    {
+      "path": "src/shared/pve/machines.ts",
+      "gitBlob": "d53cd8395c874a200c550ddc4bfe061e4a2e577a",
+      "bytes": 2774
+    },
+    {
+      "path": "src/shared/pve/money-chips.ts",
+      "gitBlob": "12c945238712391f2d0d6d02924fadafaba9a8f1",
+      "bytes": 4564
+    },
+    {
+      "path": "src/shared/pve/nav.ts",
+      "gitBlob": "8e2cbe34c1d6858b154db2e7cfbad0aaea89925a",
+      "bytes": 11736
+    },
+    {
+      "path": "src/shared/pve/picks.ts",
+      "gitBlob": "93863a738fe2071ac439c1bf8a318981822f7467",
+      "bytes": 4538
+    },
+    {
+      "path": "src/shared/pve/recruit-ai.ts",
+      "gitBlob": "a54ac14917b6a367663fb64247f443b92494b7bc",
+      "bytes": 9369
+    },
+    {
+      "path": "src/shared/pve/recruits.ts",
+      "gitBlob": "f3dc1d9191d0e4d2e01dfec92351acff23acb724",
+      "bytes": 7262
+    },
+    {
+      "path": "src/shared/pve/rng.ts",
+      "gitBlob": "86daa4bdecd5b107c1b0b8e356d5c015d922ba34",
+      "bytes": 2124
+    },
+    {
+      "path": "src/shared/pve/system.ts",
+      "gitBlob": "44941f6f12148e46a49ae63382049c8d121e75a8",
+      "bytes": 19445
+    },
+    {
+      "path": "src/shared/pve/vent-pits.ts",
+      "gitBlob": "e42405839f3797da723f60cee594b5c8105d18d5",
+      "bytes": 12962
+    },
+    {
+      "path": "src/shared/pve/waves.ts",
+      "gitBlob": "969cc93bd2d46979a8f45c3e464d659554686e04",
+      "bytes": 5827
+    },
+    {
+      "path": "src/shared/ragdoll-styles.ts",
+      "gitBlob": "3e32b814d6da0735af5b365e680624cd97891ce5",
+      "bytes": 435
+    },
+    {
+      "path": "src/shared/raging-demon.ts",
+      "gitBlob": "1d2debfa5b30cc2a4bbd86f23f70e9ef2d9cf7d8",
+      "bytes": 916
+    },
+    {
+      "path": "src/shared/recovery.ts",
+      "gitBlob": "0061a18238986c23a203b4787fd900af80ecf9a6",
+      "bytes": 1343
+    },
+    {
+      "path": "src/shared/relay-protocol.ts",
+      "gitBlob": "a9a2de2328a4737728f1a12fb3b1c1abf1856e0b",
+      "bytes": 3197
+    },
+    {
+      "path": "src/shared/room-directory.ts",
+      "gitBlob": "e24fafe966ab12c4abb9cc4dba214c1bba963d48",
+      "bytes": 517
+    },
+    {
+      "path": "src/shared/sandbox-tools.ts",
+      "gitBlob": "9b44d479d36314a7124797164410ebc8715e5480",
+      "bytes": 16844
+    },
+    {
+      "path": "src/shared/simulation.ts",
+      "gitBlob": "2b25ae376a881594e942c7ae77fb7b9e6abe933c",
+      "bytes": 112779
+    },
+    {
+      "path": "src/shared/siren-chips.ts",
+      "gitBlob": "704a06338af7e54c61ba84839d1e826af1ea7a18",
+      "bytes": 1460
+    },
+    {
+      "path": "src/shared/siren-content.ts",
+      "gitBlob": "54838d6a83f753d806b736586cce3b32ad6f5d3a",
+      "bytes": 786
+    },
+    {
+      "path": "src/shared/siren-contract.ts",
+      "gitBlob": "ad494dfd203d8f12cdfc69b2c73004807af28ccc",
+      "bytes": 10907
+    },
+    {
+      "path": "src/shared/siren-motion.ts",
+      "gitBlob": "1e3fe20b107b830fbba0094a6d38e553ddf3c9d6",
+      "bytes": 1188
+    },
+    {
+      "path": "src/shared/siren-stage-layout.ts",
+      "gitBlob": "51c17ff55199771c09767ca056585fffc5977919",
+      "bytes": 7120
+    },
+    {
+      "path": "src/shared/siren.ts",
+      "gitBlob": "02706a67dff452aed412174fa2e3f1320b7cc890",
+      "bytes": 22046
+    },
+    {
+      "path": "src/shared/souls-combat.ts",
+      "gitBlob": "f0a65799251f93731d9b77bf04e631b8f85f5217",
+      "bytes": 4518
+    },
+    {
+      "path": "src/shared/sprint.ts",
+      "gitBlob": "bbf2db98daa6a9a93ac80c675a0b32e43493e8e4",
+      "bytes": 967
+    },
+    {
+      "path": "src/shared/stage-hazards.ts",
+      "gitBlob": "b283f34c028dff87769020226ef4332693249e7c",
+      "bytes": 3741
+    },
+    {
+      "path": "src/shared/standard-melee.ts",
+      "gitBlob": "dd585fa1d99138044aaab07d26800b7b269622c4",
+      "bytes": 15587
+    },
+    {
+      "path": "src/shared/teams.ts",
+      "gitBlob": "5ba513aa50878b9e58b9d90b70a121d03128374e",
+      "bytes": 969
+    },
+    {
+      "path": "src/shared/test-driver.ts",
+      "gitBlob": "6d8f6ccbf9fc11dd984aeeb687c2bf0a4220d575",
+      "bytes": 1360
+    },
+    {
+      "path": "src/shared/vertical-arena.ts",
+      "gitBlob": "4f24316afaf3505a23fca4204370587ca4bef8c0",
+      "bytes": 1135
+    },
+    {
+      "path": "src/shared/view.ts",
+      "gitBlob": "a192c7d6204b31500895c37a62596a88e4dbf92c",
+      "bytes": 1252
+    },
+    {
+      "path": "src/shared/weapon-intros.ts",
+      "gitBlob": "4a6aee73c85b665ddc7f1f75f93b2dc0f0d55bd9",
+      "bytes": 1259
+    }
+  ]
+}

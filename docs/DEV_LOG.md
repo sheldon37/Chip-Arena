@@ -18,6 +18,30 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-07 — Codex — native Unity conversion foundation (incomplete full port)
+- Owner accepted the ranged lab and requested full conversion, kept separate; explicitly selected native Unity/C#
+  including gameplay/physics. New branch `codex/unity-conversion` starts at `f1207e65b9ba3db39239b7996c8b516fa58bd775`.
+  Current shared game source verified unchanged at `05950ea`. No overlapping conversion PR was found.
+- Created independent `unity/ChipArenaConversion`, product/save/executable identity and source CI. Accepted
+  `unity/ChipArenaPrototype`, shared game, service endpoints and updater feeds remain separate.
+- Added checked source export: 108 exact blob receipts; 15 weapons, 236 Chips, 14 Q/E definitions, 15 maps / 3,451
+  collision blocks, source-derived fixtures. Native C# stats, eligibility/drafts, roll profiles, hazard clocks and
+  round/set/draft flow. A wider hashed source/media inventory and explicit CONVERSION-STATUS track the remaining port.
+- Native runtime milestone: Unity rigid bodies/capsules, rotated map colliders, dynamic props/support release,
+  basic 11-standard-weapon primaries, elemental effects, hazards, local FFA/teams/bots and 89 implemented stat Chips.
+  This is a new gameplay authority; timing/contact/physics/network parity with the production game is NOT established.
+  No Node/Rapier authority is embedded. DEV weapons, Q/E handlers, 147 other Chip entries, Siren/PvE, production
+  presentation, new multiplayer, accounts and cosmetics remain unfinished and are not represented as completed.
+- Checks: 60 source parity cases / 4,620 stats plus offer/eligibility/roll equality; 20 hazard schedules; native
+  match regressions including final win/rematch/skipped-bot awards; inherited 35 managed lab tests / captured and ranged poses;
+  Unity API compilations and package checks. Source export reproduces identical content/fixture hashes.
+  Native lava volume checks prevent duplicate channel damage (an intentional source difference); the original game is unchanged.
+  The inherited tests do not exercise the new PhysX authority. No native Editor/GPU/Windows playtest ran here.
+- Added a build-time native gate for all 15 maps, 120 spawn-floor checks and capsule settling, alongside the prior
+  shader/clip/audio/icon checks. Implemented but unexecuted in this workspace. Next: activated Windows build/playtest
+  of movement/ramps/collision/dynamic supports/round reset before relying on this physics base; then follow the
+  remaining conversion sequence. Full conversion is in progress, not complete or released. No merge/publication.
+
 ## 2026-10-07 — Codex — isolated Unity ranged weapons test
 - Owner accepted the animation test and requested ranged weapons. Continued `codex/unity-prototype`
   from `7d3126d4797f0848a281e73a2d744f64aeafce54`; shared source is still `05950ea`.
