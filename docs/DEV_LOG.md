@@ -18,6 +18,19 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-07 — Codex — repair native conversion Edit-mode build gate
+- Continued isolated `codex/unity-conversion` from `f811738`; remote head and open PRs verified, no overlapping conversion writer found.
+- Owner's 6000.3.24f1 Windows log confirms all eight native rule groups pass, then stops at the build check's
+  Play-mode-only `SceneManager.CreateScene` call. No map simulation or EXE success was observed.
+- Replaced scene setup/cleanup with public Editor preview-scene APIs; require a valid non-default PhysicsScene,
+  confirm a falling probe advances, retain all map/capsule/spawn checks, and close the preview even if disposal throws.
+  Per-map results identify the next failing layout. Gameplay, animation timing, hitboxes, damage, cooldowns and networking are unchanged.
+- Validation: Editor C# compilation against actual 6000.3.24f1 APIs and source/package checks; native execution of the repair
+  remains unrun here. Updated VALIDATION with the owner's evidence, exact cause, API references and remaining acceptance.
+- Next: extract the corrected full project into its own `ChipArenaConversion` folder and rerun Build-Windows.cmd.
+  The observed path was named `ChipArenaPrototype`; that name does not cause this exception, but keep the conversion
+  project separate from the accepted lab. Full conversion remains incomplete; no merge or updater publication.
+
 ## 2026-10-07 — Codex — native Unity conversion foundation (incomplete full port)
 - Owner accepted the ranged lab and requested full conversion, kept separate; explicitly selected native Unity/C#
   including gameplay/physics. New branch `codex/unity-conversion` starts at `f1207e65b9ba3db39239b7996c8b516fa58bd775`.
