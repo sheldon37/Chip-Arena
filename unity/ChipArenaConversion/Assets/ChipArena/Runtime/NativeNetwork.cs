@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class NativeNetMessage
     {
-        public int version=2,id,epoch,generation,pick,team;public string type,source,room,resume,token,chip,error;public bool ready;
+        public int version=NativeConnection.Protocol,id,epoch,generation,pick,team;public string type,source,room,resume,token,chip,error;public bool ready;
         public NativeProfile profile;public InputFrame input;public NativeGameFrame frame;public NativeSeatFrame[] seats;
     }
     internal sealed class NativePeer
@@ -52,7 +52,7 @@ namespace ChipArena.UnityConversion
                     var connection=peer.Connection;if(connection==null)continue;
                     if(connection.Closed||(DateTime.UtcNow-connection.LastReceived).TotalSeconds>12||peer.Seat==null&&(DateTime.UtcNow-peer.Arrived).TotalSeconds>5)
                     {connection.Dispose();peer.Connection=null;peer.Disconnected=DateTime.UtcNow;if(peer.Seat!=null){peer.Seat.connected=false;arena?.AcceptInput(peer.Seat.id,new InputFrame{Sequence=int.MaxValue});LobbyBroadcast();}else peers.Remove(peer);continue;}
-                    int count=0;while(count++<120&&connection.TryReceive(out string json))try{var m=JsonUtility.FromJson<NativeNetMessage>(json);if(m==null||m.version!=2)throw new ArgumentException();HostMessage(peer,m);}catch(Exception e)when(e is ArgumentException||e is InvalidOperationException){connection.Dispose();networkStatus="A peer sent an invalid message.";break;}
+                    int count=0;while(count++<120&&connection.TryReceive(out string json))try{var m=JsonUtility.FromJson<NativeNetMessage>(json);if(m==null||m.version!=NativeConnection.Protocol)throw new ArgumentException();HostMessage(peer,m);}catch(Exception e)when(e is ArgumentException||e is InvalidOperationException){connection.Dispose();networkStatus="A peer sent an invalid message.";break;}
                 }
                 foreach(var peer in peers.Where(p=>p.Connection==null&&(DateTime.UtcNow-p.Disconnected).TotalSeconds>90&&arena==null).ToArray())peers.Remove(peer);
                 if(arena!=null&&Time.unscaledTime>=nextSnapshot){nextSnapshot=Time.unscaledTime+.05f;string json=JsonUtility.ToJson(new NativeNetMessage{type="frame",epoch=networkEpoch,frame=arena.NetworkFrame()});foreach(var peer in peers)if(peer.Seat!=null&&peer.Connection?.Closed==false)peer.Connection.Send(json,true);}
@@ -106,7 +106,7 @@ namespace ChipArena.UnityConversion
         }
         private void ClientMessage(NativeNetMessage message)
         {
-            if(message==null||message.version!=2)throw new ArgumentException();if(message.type=="ping")return;
+            if(message==null||message.version!=NativeConnection.Protocol)throw new ArgumentException();if(message.type=="ping")return;
             if(message.type=="error"){networkStatus=message.error?.Substring(0,Math.Min(message.error.Length,160))??"Room rejected the request.";return;}
             if(message.type=="welcome"){if(message.id<1||message.id>8||message.resume?.Length!=64)throw new ArgumentException();networkId=message.id;resumeToken=message.resume;networkEpoch=message.epoch;networkStatus="Connected · waiting for the host";return;}
             if(message.type=="lobby"){if(message.seats==null||message.seats.Length>8||message.seats.Any(s=>s==null||s.name==null||s.name.Length>40||!content.weapons.Any(w=>w.id==s.spec)))throw new ArgumentException();lobbySeats=message.seats;if(message.epoch!=networkEpoch){arena?.Dispose();arena=null;match=null;presentation?.ResetPresentation();menu=true;networkEpoch=message.epoch;}return;}

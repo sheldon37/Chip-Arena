@@ -1,6 +1,6 @@
 # Chip Arena — native Unity conversion
 
-This separate Unity/C# project contains the native conversion candidate. The original Electron game and accepted Unity lab are retained. Work continues toward the full conversion; see [CONVERSION-STATUS.md](CONVERSION-STATUS.md) for remaining gaps and [VALIDATION.md](VALIDATION.md) for checks actually run.
+This separate Unity/C# project contains the native conversion candidate. The original Electron game and accepted Unity lab are retained. This is the full conversion candidate for the next owner test, with the feature audit in [CONVERSION-STATUS.md](CONVERSION-STATUS.md) and checks actually run in [VALIDATION.md](VALIDATION.md).
 
 ## Open or build
 
@@ -15,11 +15,11 @@ The builder runs the import, content, animation, shader and native physics gates
 
 - All 15 source weapons, 236 Chips and 15 map layouts, native gun/magic/melee abilities, modifiers, summons, signed DEV unlocks, rounds, teams and drafts.
 - Ward Zero co-op: waves, money, stations, recruits, revives, boss phases, horde limb damage, entry queues, vents and moving Ward scenery.
-- Source-authored voxel models, textures, 165 motion clips, 20 entrance stages and 11 scripted elimination scenes; native physics bodies, combat glow, source music and sound effects.
-- First/third person, ADS and rifle scope, timed block, lock-on, spectator switching, elimination replay, settings, appearance previews, build inspection and local DEV sandbox.
+- Source-authored voxel models, textures, 165 motion clips, 20 entrance stages and 11 scripted elimination scenes; voxel wounds, headshot collapse, native physics bodies, combat glow, animated scenery, source music and sound effects.
+- First/third person, ADS and rifle scope, timed block, lock-on, spectator switching, elimination replay, settings, appearance previews, the animated 3D Chip draft, build inspection and local DEV sandbox.
 - Native LAN rooms, standalone WebSocket relay/discovery, reconnect seats, configured account service and headless authority. See [Relay/README.md](Relay/README.md).
 
-Rendering and physics use native adapters. Player-host migration and remaining body/environment details are still being completed. These are implemented systems, not a claim that rendered Windows gameplay has passed acceptance.
+Rendering, menu layout, procedural audio and physics use native adapters, so the result is not pixel-identical to Three.js/Rapier. A player-hosted room ends when its authority closes; automatic host migration is not present in the pinned original source either. The implementation has passed source/managed checks, but rendered Windows gameplay and the EXE build still await native acceptance.
 
 | Control | Action |
 |---|---|

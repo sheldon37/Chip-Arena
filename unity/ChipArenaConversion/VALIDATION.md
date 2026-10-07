@@ -2,6 +2,20 @@
 
 No native Unity playtest or Windows executable build was run in the authoring workspace.
 
+## Full conversion candidate checks (2026-10-07)
+
+This current section supersedes unfinished-feature notes in the historical checkpoint entries below.
+
+- Runtime, Windows-player and Editor C# API compilation uses genuine Unity 6000.3.24f1 reference assemblies with warnings as errors. The Editor gate initially exposed an internal authority-flag access across assemblies; setup now stays inside the runtime validation component, preserving the private authority boundary.
+- Original-source parity includes 84 wound-carving geometry/material cases and 64 hashes; eight collapse scenarios with eight samples each (planted feet, detached head, cover limits and release velocities); 79 summon, station/pickup, draft-pose/look and grab-timing samples. Existing content, melee, special, first-person, aiming and animation regressions remain passing.
+- Eleven Python checks validate dependencies, 31 cinematic tracks / 133 models, wound-part bindings, dynamic scenery, Slender hierarchy and the original scare-image hash. Source package validation checks 92 large/binary asset receipts and unique Unity metadata.
+- Real loopback TCP and protocol-3 WebSocket relay pass, including discovery, private rooms, source/version refusal, two-client ordered transport, 130 KB snapshots and cleanup. No deployed service is exercised.
+- Expanded Windows-only gates cover actual gun/magic primary release/resources and swept contacts, cover, reload, reflection caps, all live Q/E releases, multishot/split ledgers, fatal headshot collapse selection, PvE purchases/pick ownership/healing/recruit limits/revival, plus the existing maps, melee, source clips, shaders and glow gates. These gates are compiled here but **not executed** without Unity.
+- The newest files include source wound/collapse geometry, animated snow/water/smoke, source Slender/toy/zombie presentation, victim scare image/static/audio, station animations, health/damage HUD, death announcements and animated 3D drafts. Native presentation adapters are documented in CONVERSION-STATUS.md.
+- **Not run:** activated import, shader compilation, native PhysX gates, rendered gameplay, live account flows, deployed rooms/headless authority or Windows EXE. Passing C# and data checks does not substitute for those tests. No performance/framerate or visual-fidelity acceptance is claimed.
+
+## Historical checkpoints
+
 ## Stability/aiming checks (2026-10-07)
 
 - Reproduced the previous first-person feedback: five repeated evaluations at an unchanged simulation time moved the magic wrist 3.43 cm in rig space (before the 0.78 view scale). The new shared runtime base-history path passes 960 repeated frames across melee, guns/rocket and four magic schools with stable joint positions and rotations, plus rewind/gap resets.

@@ -434,7 +434,7 @@
       "key": "stage-weapon-machinegun",
       "duration": 4.8,
       "frames": 145,
-      "tracks": 205,
+      "tracks": 203,
       "victim": [],
       "dropped": -1,
       "lights": 16
@@ -512,5 +512,5 @@
       "lights": 16
     }
   ],
-  "modelCount": 124
+  "modelCount": 133
 }

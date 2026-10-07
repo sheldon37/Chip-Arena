@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
     public sealed class NativeMinionBody:MonoBehaviour { public NativeMinion Minion; }
     public sealed class NativeMinion
     {
-        public Vector3 NetworkVelocity;public NativePveAdd Pve;public int Id;public NativePilot Owner,Foe;public NativeMinion Other;public string Kind;
+        public float LastHitAt=-100;public Vector3 NetworkVelocity;public NativePveAdd Pve;public int Id;public NativePilot Owner,Foe;public NativeMinion Other;public string Kind;
         public float SlowUntil,SlowFactor=1,SoakAt=-10;public Rigidbody Body;public CapsuleCollider Collider;public float Hp,MaxHp,Speed,Until,Yaw,LastAttack=-10,NextAttack,StrikeAt=-1;
         public readonly Dictionary<string,NativeDot> Dots=new Dictionary<string,NativeDot>();
     }
@@ -37,7 +37,7 @@ namespace ChipArena.UnityConversion
         }
         private float HitMinion(NativeMinion m,NativePilot owner,float damage,Vector3 direction,float impulse,Vector3? point=null,string kind=null,float radius=0,bool head=false)
         {
-            if(m.Hp<=0||!Enemy(owner,m.Owner))return 0;if(m.Pve!=null)return HitPveAdd(m,owner,damage,direction,impulse,point,kind,radius,head);float actual=Math.Max(0,Math.Min(m.Hp,damage));m.Hp-=actual;if(!m.Body.isKinematic)m.Body.AddForce(direction*impulse,ForceMode.Impulse);Emit(EventKind.Hit,owner,m.Id,m.Body.position,actual);if(m.Hp<=0)RemoveMinion(m);return actual;
+            if(m.Hp<=0||!Enemy(owner,m.Owner))return 0;if(m.Pve!=null)return HitPveAdd(m,owner,damage,direction,impulse,point,kind,radius,head);float actual=Math.Max(0,Math.Min(m.Hp,damage));m.Hp-=actual;m.LastHitAt=Time;if(!m.Body.isKinematic)m.Body.AddForce(direction*impulse,ForceMode.Impulse);Emit(EventKind.Hit,owner,m.Id,m.Body.position,actual);if(m.Hp<=0)RemoveMinion(m);return actual;
         }
         private void MinionWeaponHit(NativeMinion m,NativePilot owner,float actual,float burn,float poison)
         {

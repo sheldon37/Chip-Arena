@@ -125,3 +125,9 @@ Windows validation and desktop distribution cutover remain separate work.
   `unity/ChipArenaConversion/CONVERSION-STATUS.md`. No merge or updater/Site publication.
 
 - 2026-10-07 conversion continuation: source cinematic bank (31 scenes / 124 models), entrance lights, native ragdoll style forces, appearance preview/build inspection/draft controls implemented separately. Full task remains active; see latest DEV_LOG and Unity CONVERSION-STATUS.
+
+## Unity conversion candidate — 2026-10-07 (current; supersedes earlier checkpoint gaps)
+
+`codex/unity-conversion` now contains the full native conversion candidate from original `05950ea`, with separate Unity 6000.3.24f1 project and Windows TEST builder. Wounds/collapse, dynamic scenery, Slender/summons, station motion, combat HUD, sky announcements and animated drafts complete the latest implementation pass. Protocol 3 replaces earlier native frame layouts. Original source has no automatic player-host migration; the native relay/headless design retains host authority.
+
+Source/managed, real loopback relay/TCP, eleven asset/package checks and genuine Unity API compilation pass. Actual Unity import/shaders/native physics/rendering, live service flows and Windows EXE remain unrun in the authoring environment. This is an owner-test candidate, not a tested binary or release. Native adapters and acceptance boundaries are in unity/ChipArenaConversion/CONVERSION-STATUS.md and VALIDATION.md. No merge, test updater publication or production deployment.

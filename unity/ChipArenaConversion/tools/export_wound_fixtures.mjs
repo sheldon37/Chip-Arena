@@ -1,0 +1,10 @@
+// Run after export_models.mjs has verified/transpiled the original source modules.
+import fs from 'node:fs';import path from 'node:path';import {createRequire} from 'node:module';import {pathToFileURL} from 'node:url';
+const stage=path.resolve(process.argv[2]),req=createRequire(path.join(stage,'package.json')),T=await import(pathToFileURL(req.resolve('three'))),{carve,woundHash}=await import(pathToFileURL(path.join(stage,'src/client/body-wounds.js')));
+const vector=v=>({x:v.x,y:v.y,z:v.z});const box={min:new T.Vector3(-.2,-.25,-.12),max:new T.Vector3(.2,.25,.12),color:[1,1,1],flesh:false};
+function stats(solids){let sums=Array(10).fill(0);for(const [i,s] of solids.entries()){let v=[...s.min.toArray(),...s.max.toArray(),...s.color];v.forEach((n,j)=>sums[j]+=n*(i+1));sums[9]+=(s.max.x-s.min.x)*(s.max.y-s.min.y)*(s.max.z-s.min.z);}return {count:solids.length,flesh:solids.filter(s=>s.flesh).length,sums};}
+const cases=[];for(const kind of ['puncture','cavity','cut','bruise','scorch'])for(let axis=0;axis<3;axis++)for(const sign of [-1,1])for(const low of [false,true]){
+ const hit=new T.Vector3(.015,-.018,.011);hit.setComponent(axis,(axis===0?.2:axis===1?.25:.12)*sign);const dir=new T.Vector3(.1,-.15,.2);dir.setComponent(axis,-sign);dir.normalize();const spec={hit,axis,sign,dir,size:new T.Vector3(.4,.5,.24),kind,trauma:kind==='cut'?'cut':'bullet',radius:.057,severity:.63,seed:9137,low,body:[.7,.6,.5],vertical:.16};const results=carve([box],spec);cases.push({spec:{...spec,hit:vector(hit),dir:vector(dir),size:vector(spec.size),body:{x:.7,y:.6,z:.5}},expected:stats(results)});
+ if(kind==='puncture'||kind==='cavity'){const pierce={...spec,trauma:'pierce'};cases.push({spec:{...cases.at(-1).spec,trauma:'pierce'},expected:stats(carve([box],pierce))});}
+}
+fs.writeFileSync('Tests/wound-carve-parity.json',JSON.stringify({source:'05950eaef80ff2483a9c44d898cad98be1a76bbc',cases,hash:Array.from({length:64},(_,i)=>woundHash(9137,i,-i,i*7))})+'\n');console.log(cases.length+' original wound-carve cases');

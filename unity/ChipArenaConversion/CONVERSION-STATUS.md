@@ -1,28 +1,38 @@
-# Native Unity conversion status
+# Native Unity conversion candidate
 
-Source baseline: `05950eaef80ff2483a9c44d898cad98be1a76bbc`. Unity: **6000.3.24f1**.
-This project and executable remain separate from Electron. Work is continuing toward the owner's full-conversion request.
-The following is implementation status, not a claim of Windows or visual acceptance.
+Source baseline: `05950eaef80ff2483a9c44d898cad98be1a76bbc`. Editor: **6000.3.24f1**.
+Branch: **codex/unity-conversion**. The Electron game and accepted Unity lab remain separate.
+This is the code-complete conversion candidate for owner testing, not a claim that native gameplay has passed acceptance.
 
-| Area | Native implementation at this checkpoint |
+| Source feature group | Native implementation |
 |---|---|
-| Combat | Standard gun/magic/melee primaries and Q/E, modifiers, block/reflect, recovery, status fields, summons |
-| Chips | Full 236-entry source catalog is eligible through explicit stat/mechanic support catalogs; six PvE money Chips |
-| DEV | Signed-access Emperor, Ansatsuken, Leet and Siren, their actions and style Chips |
-| PvE | Three wave schedules, horde bodies/limb damage, economy and stations, personal drafts, recruits, revives, boss phases, entry queues, moving doors/grates and vent travel/falls |
-| Presentation | 124 original model exports with three procedural textures, 165 original motion samples including 20 entrances, 31 source cosmetic scene tracks and original entrance lighting, existing captured melee clips, combat lights/fields, original night-sky shader port, native death bodies and effect adapters |
-| Audio | 83 original source files with menu/map/boss music and combat event routing |
-| Accounts | Configured HTTPS service, login/register/recover/profile/logout, signed unlock verification, Windows encrypted session persistence, developer grant management and in-room token refresh |
-| Multiplayer | Native TCP LAN and WebSocket relay rooms/discovery, host authority, bounded compressed frames, source/version lock, readiness and reconnect leases; headless Unity authority mode |
-| Controls | Saved graphics/audio/sensitivity settings, first person, melee lock-on, spectator switching, isolated read-only kill replay and local developer sandbox |
-| Packaging | Separate Windows builder, CA icon, source asset receipts and fail-closed import/build gates |
+| Weapons and combat | All 15 weapons; gun/magic/melee primaries and Q/E, timed block/reflect, recovery, status effects, modifiers and summons |
+| Chips | All 236 catalog entries mapped to explicit stat/mechanic handlers; per-class eligibility, upgrades and six PvE money Chips |
+| Signed DEV content | Emperor, Ansatsuken, Leet and Siren, their abilities, styles and grant verification |
+| Match flow | Rounds, sets, teams, readiness, simultaneous knockouts, rematch and timed one/both-side drafts |
+| Ward Zero | Wave schedules, economy, personal picks, vending/med/recruit stations, recruits, revives, boss phases, horde limb loss, weighted entry queues, vents, moving doors and pit transitions |
+| Characters and animation | Original voxel geometry, source-authored weapon/hat models, 165 motion clips and retained captured melee animation; first/third person, ADS and rifle scope |
+| Damage and deaths | Source voxel wound carving/anchors, impact sprays, headshot kneel/fall/velocity handoff, detached parts, 11 scripted elimination scenes, dropped weapons and sky death announcements |
+| World and effects | 15 layouts; 133 source model exports and three procedural textures; night sky, snow, water, chimney smoke, Ward machinery, combat light/glow/trails and ability fields |
+| Entrances and draft | 20 source entrance stages with camera/light cues; appearance previews; chest-up picker, source idle/look, reaching hand, Chip grab/contact/pull and synchronized reveal |
+| Audio | 83 original audio files; combat, map/menu/boss music, machine/round/entrance cues; procedural Slender drone/static/heartbeat and death-announcement sounds |
+| Menus and HUD | Saved settings, appearance, build/Chip inspection, native cards, health bars, damage numbers, machine prompts, spectator switching and isolated kill replay |
+| Developer tools | Signed local sandbox with sorted Chip grants, targets and speed controls; configured grant-management UI |
+| Accounts | Configured HTTPS login/register/recover/profile/logout, signed unlock verification, Windows encrypted sessions and in-room token refresh |
+| Multiplayer | Native TCP LAN; standalone WebSocket relay/discovery and private rooms; compressed bounded frames, protocol/source lock, readiness, 90-second reconnect seats and headless Unity authority |
+| Windows delivery | Separate builder, voxel CA icon, source asset receipts and import/shader/animation/native-physics gates; EXE and complete-folder ZIP produced only after gates pass |
 
-Still being completed: remaining environment/Siren presentation, living-wound carving and native body refinements;
-full native gameplay gates; final packaging and handoff. Player-host migration is not implemented; a separate
-headless authority mode is available in source. See Relay/README.md for the networking boundaries.
-Some cinematic, rig and PhysX adapters are approximations of the source renderer/physics rather than identical output.
-Unity clients cannot join Electron rooms. No service endpoint or credentials are bundled and no live service mutation was performed.
+## Native adapters and boundaries
 
-Verified locally: managed/source parity checks, real loopback TCP and WebSocket relay transport, Unity Runtime/Editor/Windows C# compilation.
-Unrun: activated Unity import and shader compilation, rendered play, native PhysX acceptance, live accounts/remote rooms and Windows EXE.
-See VALIDATION.md and docs/DEV_LOG.md for the detailed checkpoint record.
+- PhysX replaces Rapier. Collision/recovery and cosmetic bodies use native adapters; contact settling and rendered animation still need on-device acceptance.
+- Unity materials, lights, shaders, pooled effects, procedural audio and IMGUI menus replace browser rendering/WebAudio/DOM. Source geometry, textures, timing and captured animation are retained, but menus, reach blending, particles, holograms and cosmetic physics are not pixel-identical reproductions.
+- Native protocol **3** includes wound/death, summon/Slender, machine and draft timing state. It deliberately does not interoperate with Electron or earlier native checkpoints.
+- Account and relay origins are configurable; no credentials or production endpoints are bundled. No live service was changed. A public native relay requires a separate deployment.
+- Authority remains on the host or unattended server. A player-hosted room closes when that authority exits. Review of the pinned original source found no automatic host migration, so its absence is not an unfinished parity item.
+- Electron's Chromium shell, browser storage and web updater are replaced by the separate Unity player, preferences and manual test-build ZIP. The existing updater/feed is untouched.
+
+## Acceptance status
+
+Managed/source parity, real local TCP/WebSocket transport, asset receipts, eleven Python asset/package checks and Runtime/Editor/Windows C# API compilation pass. See VALIDATION.md for exact scope.
+
+**Not run:** activated Unity import, shader compilation, rendered play, actual native physics gates, remote internet rooms, live account flows, headless Unity execution and the Windows EXE build. These require the activated Windows Editor. Run Build-Windows.cmd; it must print UNITY_TEST_BUILD_READY before the resulting package is treated as built. Review Builds/build.log if a gate fails.

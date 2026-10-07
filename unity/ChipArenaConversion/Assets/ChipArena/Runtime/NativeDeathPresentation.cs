@@ -6,7 +6,7 @@ using UnityEngine.SceneManagement;
 namespace ChipArena.UnityConversion
 {
     // Cosmetic bodies have their own physics scene. They never become authority colliders.
-    internal sealed class NativeCorpse : IDisposable
+    internal sealed partial class NativeCorpse : IDisposable
     {
         public readonly NativeDeath Death;public readonly string Style;private Rigidbody weapon;public Matrix4x4? Weapon=>weapon==null?(Matrix4x4?)null:weapon.transform.localToWorldMatrix;public readonly Dictionary<int,Rigidbody> Parts=new Dictionary<int,Rigidbody>();
         public readonly Matrix4x4[] Bind=new Matrix4x4[22];public readonly int[] Anchor=new int[22];
@@ -29,6 +29,7 @@ namespace ChipArena.UnityConversion
                 if(Style=="impact-ragdoll"||death.kept)body.linearVelocity=Vector3.ClampMagnitude(death.velocity,100);
                 else{float force=death.melee?8+Math.Min(7,death.force/100):2.2f+Math.Min(2,death.force/160);body.linearVelocity=dir*force+Vector3.ClampMagnitude(death.velocity,5)*.3f+Vector3.up*(death.melee?3.8f:1);body.angularVelocity=Vector3.Cross(death.position-go.transform.position,dir)*(death.melee?15:5);}
             }
+            if(death.wound?.kind=="crush"&&Parts.TryGetValue(death.wound.part,out var crushed)){crushed.GetComponent<Collider>().enabled=false;crushed.isKinematic=true;}
             for(int i=0;i<22;i++){int a=i;while(a>=0&&!Parts.ContainsKey(a))a=CapturedRig.Bones[a].Parent;Anchor[i]=a<0?1:a;}
             foreach(var pair in Parts)
             {
@@ -44,18 +45,18 @@ namespace ChipArena.UnityConversion
             var colliders=Parts.Values.Select(b=>b.GetComponent<Collider>()).ToArray();for(int a=0;a<colliders.Length;a++)for(int b=a+1;b<colliders.Length;b++)Physics.IgnoreCollision(colliders[a],colliders[b]);
             foreach(var prop in arena.Props.Where(p=>p!=null&&(p.Indestructible||Vector3.Distance(p.transform.position,death.position)<8)).Take(48))
             {var floor=new GameObject("Body obstacle");floor.transform.SetParent(root.transform);floor.transform.SetPositionAndRotation(prop.transform.position,prop.transform.rotation);floor.transform.localScale=prop.transform.lossyScale;var box=floor.AddComponent<BoxCollider>();var original=prop.GetComponent<BoxCollider>();if(original!=null){box.center=original.center;box.size=original.size;}box.sharedMaterial=surface;}
-            Physics.SyncTransforms();
+            SetupCollapse(arena,rig);Physics.SyncTransforms();
         }
-        public Matrix4x4 Bone(int b)=>Parts[Anchor[b]].transform.localToWorldMatrix*inverse[Anchor[b]]*Bind[b];
+        public Matrix4x4 Bone(int b)=>Parts[Anchor[b]].transform.localToWorldMatrix*CollapseFoot(b)*inverse[Anchor[b]]*Bind[b];
         public Vector3 Center=>Parts[1].position;
         public void Step(float age)
         {
             if(frozen||age<clock)return;int steps=Math.Min(8,(int)((age-clock)*60));
             for(int step=0;step<steps;step++)
             {
-                int index=0;foreach(var body in Parts.Values)
+                DriveCollapse(clock);int index=0;foreach(var body in Parts.Values)
                 {
-                    int i=index++;Vector3 velocity=body.linearVelocity,pos=body.position;float gravity=18;bool Cue(float at)=>clock+1e-6f>=at&&clock<at+1f/60-1e-6f;
+                    int i=index++;if(body.isKinematic)continue;Vector3 velocity=body.linearVelocity,pos=body.position;float gravity=18;bool Cue(float at)=>clock+1e-6f>=at&&clock<at+1f/60-1e-6f;
                     if(Style=="ragdoll-frost"&&clock>=1.1f){gravity=0;velocity=Vector3.zero;body.angularVelocity=Vector3.zero;}
                     if(Style=="ragdoll-static"&&(Cue(.35f)||Cue(.7f)||Cue(1.05f))){velocity=new Vector3(velocity.x+(i%2==1?2:-2),3.5f,velocity.z);body.angularVelocity=new Vector3(i%2==1?4:-4,6,2);}
                     if(Style=="ragdoll-pinball"&&(Cue(.8f)||Cue(1.65f)))velocity=new Vector3((i%2==1?1:-1)*1.4f,7,velocity.z*.5f);
@@ -83,7 +84,7 @@ namespace ChipArena.UnityConversion
             foreach(var death in deaths)
             {
                 float age=arena.Time-death.at;var live=arena.Pilots.Find(p=>p.Seat.id==death.id);bool revived=live?.Hp>0;float up=revived?arena.Time-live.RevivedAt:-1;if(age<0||!death.kept&&age>5||revived&&up>1.1f)continue;
-                if(SourceDeathScene(death,age,up))continue;
+                if(SourceMinionDeath(death,age)||SourceDeathScene(death,age,up))continue;
                 if(!corpses.TryGetValue(death.id,out var corpse))
                 {
                     if(corpses.Count>=32)continue;CapturedAnimation.Player rig=null;bool temporary=false;
@@ -99,8 +100,9 @@ namespace ChipArena.UnityConversion
                 if(style=="voxel-burst"||style=="confetti"||style=="siren-dissipate"||style=="siren-crush")alpha=0;
                 if(revived){alpha*=1-Mathf.Clamp01(up/.8f);Ring(center,.6f+up,2,up*45);VoxelCloud(center,up,2,death.seed,30);}
                 Matrix4x4 Bone(int b)=>overlay*Matrix4x4.Translate(center)*Matrix4x4.Scale(Vector3.one*scale)*Matrix4x4.Translate(-center)*corpse.Bone(b);
-                bool Visible(int b)=>death.wound?.kind!="crush"||!BoneWithin(b,death.wound.part);
-                if(alpha>.001f){sourceModels.Queue(death.model??"pilot",Matrix4x4.identity,Bone,Visible,body:BodyTint(death.actor?.BodyColor),accent:AccentTint(death.actor?.AccentColor),opacity:alpha);if(death.model=="pilot"&&!string.IsNullOrEmpty(death.actor?.Hat))sourceModels.Queue("hat-"+death.actor.Hat,Matrix4x4.identity,Bone,null,opacity:alpha);}
+                bool Visible(int b)=>death.wound?.kind!="crush"||corpse.Anchor[b]!=death.wound.part;
+                if(alpha>.001f){sourceModels.Queue((death.model??"pilot")=="pilot"?sourceModels.WoundedPilot(death.id,death.actor?.Wounds,death.actor?.BodyColor,ForceCompatibilityRendering):death.model,Matrix4x4.identity,Bone,Visible,body:BodyTint(death.actor?.BodyColor),accent:AccentTint(death.actor?.AccentColor),opacity:alpha);if(death.model=="pilot"&&!string.IsNullOrEmpty(death.actor?.Hat))sourceModels.Queue("hat-"+death.actor.Hat,Matrix4x4.identity,Bone,null,opacity:alpha);}
+                FatalWound(death,corpse,age,alpha);
                 if(corpse.Weapon.HasValue)sourceModels.Queue("loose-"+death.actor.SourceSpec,corpse.Weapon.Value,opacity:alpha);
                 if(style=="ragdoll-ember")VoxelCloud(center,age,7,death.seed,28,true);
                 if(style=="ragdoll-frost")VoxelCloud(center,age,8,death.seed,20);

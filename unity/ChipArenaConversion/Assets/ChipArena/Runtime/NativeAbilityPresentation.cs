@@ -6,7 +6,7 @@ namespace ChipArena.UnityConversion
     {
         public void RenderAbilities(NativeArena arena,Vector3? preview=null)
         {
-            foreach(var b in batches)b.Clear();SourceWorld(arena);DeathPresentation(arena);WorldEffects(arena);
+            foreach(var b in batches)b.Clear();SourceWorld(arena);DeathPresentation(arena);RenderWoundSpray(arena.Time);DeathBroadcasts(arena);WorldEffects(arena);
             foreach(var shot in arena.AbilityShots)
             {
                 int color=shot.Owner.Pose.MagicVisual>0?6+shot.Owner.Pose.MagicVisual:6;

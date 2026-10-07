@@ -43,20 +43,11 @@ namespace ChipArena.UnityConversion
                 if(p.Controlling!=null)Beam(at+Vector3.up*.6f,p.Controlling.Body.position+Vector3.up*.6f,.025f,10);
                 if(p.Siren?.Move?.Rule.Id=="mark"&&p.Siren.Move.Target!=null){Vector3 target=p.Siren.Move.Target.Body.position;Ring(target-Vector3.up*.75f,.7f,7,time*60);Beam(target+Vector3.up*1.1f,target+Vector3.up*1.6f,.07f,7);}
                 if(p.ShieldUntil>time)Ring(at-Vector3.up*.7f,.75f,0,time*90);
-                if(!FirstPerson||p.Seat.id!=LocalId)LivingWounds(p);
+
             }
             if(arena.MapId=="siren"&&arena.BossSongTime>=0)for(int j=0;j<NativeArena.StageVents.Length;j++)
             {var state=arena.BossTrack.Vent(arena.BossSongTime,j%2);Vector3 at=NativeArena.StageVents[j];if(state.warning>0)Ring(at+Vector3.up*.08f,1.3f,7,time*45);if(state.active){Ring(at+Vector3.up*.04f,1.4f,7,time*25);for(int k=0;k<12;k++){float a=k*2.399f,u=Mathf.Repeat(time*2+k*.13f,1);Vector3 p=at+new Vector3(Mathf.Sin(a)*.7f,u*2.2f,Mathf.Cos(a)*.7f);Add(7,Matrix4x4.TRS(p,Quaternion.Euler(0,45,0),new Vector3(.16f,.4f,.16f)*(1-u)));}}}
             foreach(var d in arena.MinionDeaths){float age=time-d.at;if(age>=0&&age<.7f)VoxelCloud(d.position,age,4,d.seed,12);}
-        }
-        private void LivingWounds(NativePilot pilot)
-        {
-            if(!rigs.TryGetValue(pilot.Seat.id,out var rig))return;
-            foreach(var w in pilot.Wounds)
-            {
-                if(w.part<0||w.part>=22)continue;Transform bone=rig.Bones[w.part];Vector3 p=bone.position;Vector3 dir=NativeArena.Vec(w.direction);if(dir.sqrMagnitude<.001f)dir=-bone.forward;else dir.Normalize();p-=dir*.12f;
-                int color=w.kind=="scorch"?3:w.kind=="bruise"?5:2;Add(color,Matrix4x4.TRS(p,Quaternion.LookRotation(dir),new Vector3(w.radius*1.5f,w.radius*.8f,.02f)));
-            }
         }
     }
 }

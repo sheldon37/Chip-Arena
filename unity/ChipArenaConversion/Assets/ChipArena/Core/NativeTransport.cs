@@ -13,6 +13,7 @@ namespace ChipArena.UnityConversion
     // Conversion-only wire version. Never joins an Electron room or evaluates remote code.
     public sealed class NativeConnection:IDisposable
     {
+        public const byte Protocol=3;
         public const int MaxFrame=2*1024*1024;
         private static readonly UTF8Encoding Utf8=new UTF8Encoding(false,true);
         private readonly TcpClient client;private readonly Stream stream;private readonly CancellationTokenSource stop=new CancellationTokenSource();
@@ -46,12 +47,12 @@ namespace ChipArena.UnityConversion
         {int at=0;while(at<count){int n=await stream.ReadAsync(buffer,at,count-at,stop.Token);if(n==0)throw new EndOfStreamException();at+=n;}}
         private async Task ReadLoop()
         {
-            try{var header=new byte[8];DateTime interval=DateTime.UtcNow;int rate=0;while(!Closed){await Exact(header,8);if(header[0]!=67||header[1]!=65||header[2]!=85||header[3]!=2)throw new InvalidDataException("Incompatible conversion protocol");int size=header[4]<<24|header[5]<<16|header[6]<<8|header[7];if(size<2||size>Math.Min(MaxFrame+1,receiveLimit+1024))throw new InvalidDataException("Invalid packet length");var data=new byte[size];await Exact(data,size);var now=DateTime.UtcNow;if((now-interval).TotalSeconds>=1){interval=now;rate=0;}if(++rate>180||Interlocked.Increment(ref receivedCount)>128)throw new InvalidDataException("Peer exceeded message budget");string message=Decode(data,receiveLimit);Received.Enqueue(message);LastReceived=now;}}
+            try{var header=new byte[8];DateTime interval=DateTime.UtcNow;int rate=0;while(!Closed){await Exact(header,8);if(header[0]!=67||header[1]!=65||header[2]!=85||header[3]!=Protocol)throw new InvalidDataException("Incompatible conversion protocol");int size=header[4]<<24|header[5]<<16|header[6]<<8|header[7];if(size<2||size>Math.Min(MaxFrame+1,receiveLimit+1024))throw new InvalidDataException("Invalid packet length");var data=new byte[size];await Exact(data,size);var now=DateTime.UtcNow;if((now-interval).TotalSeconds>=1){interval=now;rate=0;}if(++rate>180||Interlocked.Increment(ref receivedCount)>128)throw new InvalidDataException("Peer exceeded message budget");string message=Decode(data,receiveLimit);Received.Enqueue(message);LastReceived=now;}}
             catch(Exception e)when(e is WebSocketException||e is InvalidDataException||e is IOException||e is SocketException||e is OperationCanceledException||e is ObjectDisposedException||e is ArgumentException){if(!Closed)Fail(e is EndOfStreamException?"Peer disconnected":e.Message);}
         }
         private async Task WriteLoop()
         {
-            try{while(!Closed){await ready.WaitAsync(stop.Token);do{byte[] data;if(reliable.TryDequeue(out data))Interlocked.Decrement(ref reliableCount);else data=Interlocked.Exchange(ref latest,null);if(data==null)break;int n=data.Length;byte[] header={67,65,85,2,(byte)(n>>24),(byte)(n>>16),(byte)(n>>8),(byte)n};await stream.WriteAsync(header,0,header.Length,stop.Token);await stream.WriteAsync(data,0,n,stop.Token);}while(!Closed);}}
+            try{while(!Closed){await ready.WaitAsync(stop.Token);do{byte[] data;if(reliable.TryDequeue(out data))Interlocked.Decrement(ref reliableCount);else data=Interlocked.Exchange(ref latest,null);if(data==null)break;int n=data.Length;byte[] header={67,65,85,Protocol,(byte)(n>>24),(byte)(n>>16),(byte)(n>>8),(byte)n};await stream.WriteAsync(header,0,header.Length,stop.Token);await stream.WriteAsync(data,0,n,stop.Token);}while(!Closed);}}
             catch(Exception e)when(e is WebSocketException||e is InvalidDataException||e is IOException||e is SocketException||e is OperationCanceledException||e is ObjectDisposedException){if(!Closed)Fail(e.Message);}
         }
         private void Fail(string error){Error=error;Dispose();}

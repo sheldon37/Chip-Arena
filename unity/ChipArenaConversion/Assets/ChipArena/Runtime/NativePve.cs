@@ -7,11 +7,11 @@ namespace ChipArena.UnityConversion
     public sealed class NativePvePick {public int Id;public string Tier;public List<string> Offers;public float At;}
     public sealed class NativePveRow
     {public NativePilot Pilot;public int Money,Earned,Spent,Kills,Assists,Deaths,Revived,Revives,Bought,Hired,SelfRevives;public float SelfAt=-1,HealAt=-1,HealReady,ThinkAt,DamageBoss;public int HealPulses=4,BossPaid;public readonly List<NativePvePick> Picks=new List<NativePvePick>();public NativePvePick Open;}
-    public sealed class NativePvePickup {public int Id;public NativePilot Owner;public string Tier;public Vector3 Position;public float Born;}
+    public sealed class NativePvePickup {public int Id,Machine;public NativePilot Owner;public string Tier;public Vector3 Position;public float Born;}
     public sealed class NativePveRecruit {public NativePilot Pilot,Owner;public string Role;public float At,HealAt,RemoveAt;}
     public sealed class NativePveState
     {
-        public NativePveContent Content;public NativeWaveSchedule Schedule;public NativePilot Boss;public bool Skip,Started,Hidden,Holding;public string Stage="opening",Cinematic,Outcome,Notice;public int Wave,Phase=1,Reveal,SpawnBudget,Spawned,WaveTotal;public float Rate,SpawnAt,StageAt,StageUntil,ResolvedAt=-1,HoldLeft,HoldDuration,PossessionAt,Floor;public int Cap,Possessed;public bool Solo;public float MaxHp;
+        public readonly List<NativeMachineUse> Machines=new List<NativeMachineUse>();public NativePveContent Content;public NativeWaveSchedule Schedule;public NativePilot Boss;public bool Skip,Started,Hidden,Holding;public string Stage="opening",Cinematic,Outcome,Notice;public int Wave,Phase=1,Reveal,SpawnBudget,Spawned,WaveTotal;public float Rate,SpawnAt,StageAt,StageUntil,ResolvedAt=-1,HoldLeft,HoldDuration,PossessionAt,Floor;public int Cap,Possessed;public bool Solo;public float MaxHp;
         public readonly Dictionary<int,NativePveRow> Rows=new Dictionary<int,NativePveRow>();public readonly List<NativePvePickup> Pickups=new List<NativePvePickup>();public readonly List<NativePveRecruit> Recruits=new List<NativePveRecruit>();
         public readonly List<(NativePilot owner,float at,int machine)> Hires=new List<(NativePilot,float,int)>();public NativePveRandom SpawnRandom,EconomyRandom;
     }
@@ -67,13 +67,13 @@ namespace ChipArena.UnityConversion
             float Flat(Vector3 q)=>new Vector2(q.x-p.Body.position.x,q.z-p.Body.position.z).magnitude;
             var pickup=Pve.Pickups.Where(k=>k.Owner==p&&Time>=k.Born&&Flat(k.Position)<=1.6f).OrderBy(k=>Flat(k.Position)).FirstOrDefault();if(pickup!=null){Pve.Pickups.Remove(pickup);GrantPvePick(p,pickup.Tier,false);return;}
             var dead=Members().Where(q=>q.Hp<=0&&q.Seat.connected&&!InShaft(q)&&Flat(q.Body.position)<=2.2f).OrderBy(q=>Flat(q.Body.position)).FirstOrDefault();if(dead!=null){var target=Pve.Rows[dead.Seat.id];int price=NativePveRules.RevivePrice(target.Revived);if(row.Money<price){Pve.Notice="Not enough money to revive";return;}row.Money-=price;row.Spent+=price;row.Revives++;target.Revived++;RevivePve(dead);return;}
-            var m=Pve.Content.machines.Where(x=>Flat(Vec(x.front.Position()))<=2.2f).OrderBy(x=>Flat(Vec(x.front.Position()))).FirstOrDefault();if(m==null)return;int cost=m.kind=="chip"?NativePveRules.ChipPrice(row.Bought):m.kind=="recruit"?300:75;
-            if(row.Money<cost){Pve.Notice="Not enough money";return;}
+            var m=Pve.Content.machines.Where(x=>Flat(Vec(x.front.Position()))<=2.2f).OrderBy(x=>Flat(Vec(x.front.Position()))).FirstOrDefault();if(m==null)return;void Use(string result){Pve.Machines.RemoveAll(u=>Time-u.at>4);while(Pve.Machines.Count>=32)Pve.Machines.RemoveAt(0);Pve.Machines.Add(new NativeMachineUse{machine=m.m,owner=p.Seat.id,result=result,at=Time});}int cost=m.kind=="chip"?NativePveRules.ChipPrice(row.Bought):m.kind=="recruit"?300:75;
+            if(row.Money<cost){Pve.Notice="Not enough money";Use("deny");return;}
             if(m.kind=="chip")
-            {if(Pve.Pickups.Count(k=>k.Owner==p)>=3){Pve.Notice="Collect your waiting Chips first";return;}Pve.Pickups.Add(new NativePvePickup{Id=nextPick++,Owner=p,Tier=NativePveRules.Weighted(Pve.Content.dropOdds,Pve.EconomyRandom.Next),Position=Vec(m.chipDrop.Position(.9f)),Born=Time+.6f});row.Bought++;}
-            else if(m.kind=="recruit"){if(Pve.Recruits.Count(r=>r.Owner==p)+Pve.Hires.Count(h=>h.owner==p)>=2||Pve.Recruits.Count+Pve.Hires.Count>=3||Pilots.Count+Pve.Hires.Count>=8){Pve.Notice="Recruit limit reached";return;}Pve.Hires.Add((p,Time+.8f,m.m));}
-            else{if(p.Hp>=p.Stats["hp"]){Pve.Notice="Health is full";return;}if(Time<row.HealReady){Pve.Notice="Med station is recharging";return;}row.HealAt=Time;row.HealReady=Time+12;row.HealPulses=0;}
-            row.Money-=cost;row.Spent+=cost;Pve.Notice="";
+            {if(Pve.Pickups.Count(k=>k.Owner==p)>=3){Pve.Notice="Collect your waiting Chips first";Use("deny");return;}Pve.Pickups.Add(new NativePvePickup{Id=nextPick++,Machine=m.m,Owner=p,Tier=NativePveRules.Weighted(Pve.Content.dropOdds,Pve.EconomyRandom.Next),Position=Vec(m.chipDrop.Position(.9f)),Born=Time+.6f});row.Bought++;}
+            else if(m.kind=="recruit"){if(Pve.Recruits.Count(r=>r.Owner==p)+Pve.Hires.Count(h=>h.owner==p)>=2||Pve.Recruits.Count+Pve.Hires.Count>=3||Pilots.Count+Pve.Hires.Count>=8){Pve.Notice="Recruit limit reached";Use("deny");return;}Pve.Hires.Add((p,Time+.8f,m.m));}
+            else{if(p.Hp>=p.Stats["hp"]){Pve.Notice="Health is full";Use("deny");return;}if(Time<row.HealReady){Pve.Notice="Med station is recharging";Use("deny");return;}row.HealAt=Time;row.HealReady=Time+12;row.HealPulses=0;}
+            row.Money-=cost;row.Spent+=cost;Use(m.kind);Pve.Notice="";
         }
         private void RevivePve(NativePilot p)
         {

@@ -5,7 +5,7 @@ using UnityEngine;
 namespace ChipArena.UnityConversion
 {
     // One event cursor, bounded voices, and one music clock for local and replicated matches.
-    public sealed class NativeAudio:MonoBehaviour
+    public sealed partial class NativeAudio:MonoBehaviour
     {
         public float Effects=.3f,Music=.35f,Menu=.6f;public bool Muted;
         private readonly Dictionary<string,AudioClip> clips=new Dictionary<string,AudioClip>();
@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
               int frequency=(int)(550+Mathf.Clamp01((at-mark.lockAt)/(mark.throwAt-mark.lockAt))*850);if(!beepClips.TryGetValue(frequency,out var clip)){float[] data=new float[2880];for(int n=0;n<data.Length;n++){float t=n/48000f;data[n]=Mathf.Sin(2*Mathf.PI*frequency*t)*.055f*Mathf.Pow(.001f/.055f,Math.Min(1,t/.055f));}clip=AudioClip.Create("Siren lock pulse",data.Length,1,48000,false);clip.SetData(data,0);beepClips[frequency]=clip;}var voice=voices.FirstOrDefault(v=>!v.isPlaying);if(voice==null)continue;voice.clip=clip;voice.volume=Effects;voice.panStereo=0;voice.pitch=1;voice.PlayDelayed(Math.Max(0,at-arena.Time));}
             }
         }
-        private void OnDestroy(){foreach(var c in beepClips.Values)CapturedAnimation.Release(c);}
+        private void OnDestroy(){ClearSceneAudio();ClearSlender();foreach(var c in beepClips.Values)CapturedAnimation.Release(c);}
         private bool Once(string key,float at){if(cues.TryGetValue(key,out float old)&&old==at)return false;cues[key]=at;return true;}
         private void Track(string id,float volume,bool pause=false,double? clock=null)
         {
@@ -49,9 +49,9 @@ namespace ChipArena.UnityConversion
         public void Render(NativeArena arena,bool menu,Camera camera)
         {
             if(camera!=null){listener=camera.transform.position;yaw=camera.transform.eulerAngles.y*Mathf.Deg2Rad;}
-            if(arena==null){Track("music/menu-afterglow",Menu);return;}
-            if(generation!=arena.Generation){generation=arena.Generation;cursor=0;cues.Clear();gates.Clear();phase="";countdown=-1;foreach(var v in voices)v.Stop();}
-            var me=arena.Local;var match=arena.Match;float t=arena.Time;if(!menu)MarkBeeps(arena);
+            Slender(arena,menu);if(arena==null){Track("music/menu-afterglow",Menu);return;}
+            if(generation!=arena.Generation){generation=arena.Generation;cursor=0;deathAudio.Tick(0,true);cues.Clear();gates.Clear();phase="";countdown=-1;foreach(var v in voices)v.Stop();}
+            var me=arena.Local;var match=arena.Match;float t=arena.Time;SceneCues(arena,menu);if(!menu)MarkBeeps(arena);
             if(menu)Track("music/menu-afterglow",Menu);
             else if(arena.BossSongTime>=0)Track("music/black-siren-protocol",Music*.55f,arena.Pve?.Holding==true&&arena.Pve.Cinematic!="intro",arena.BossTrack.Looped(arena.BossSongTime));
             else if(arena.Pve!=null)Track("music/restricted-zone-pulse",Music*.55f,match.Phase==NativePhase.Match);
@@ -76,7 +76,7 @@ namespace ChipArena.UnityConversion
             }
             foreach(var p in arena.Pilots)
             {
-                string id=p.Seat.id+":";Vector3 pos=p.Body.position;
+                string id=p.Seat.id+":";Vector3 pos=p.Body.position;if(p==me&&t<p.ScareUntil&&Once(id+"scare",p.ScareAt)){Play("darkness",null,.9f);Play("metal",null,.6f);}
                 if(p.RollAt>0&&t-p.RollAt<.15f&&Once(id+"roll",p.RollAt))Play(p.Seat.spec=="ansatsuken"?"demon-step":"dash",pos,.45f);
                 if(p.AttackAt>0&&t-p.AttackAt<.15f&&p.Weapon.@class=="melee"&&Once(id+"attack",p.AttackAt))Play(p.Seat.spec=="emperor"?(p.Fighter?.Kind=="electric"?"electric-hook":"arcade-punch"):p.Seat.spec=="ansatsuken"?"sword":p.Seat.spec=="siren"?"darkness":p.Seat.spec,pos,.4f);
                 var cast=p.AbilityCast;string ability=cast?.Definition.id??p.Pose.AbilityId;float release=cast?.Release??p.Pose.AbilityRelease;if(ability!=null&&t>=release&&t-release<.2f&&Once(id+"cast",release)){Play(ability=="frag-grenade"||ability=="blink-strike"?"dash":ability=="rocket"?"arcade-heavy":ability=="orbital-mark"?"lightning":p.Seat.spec,pos,.6f);}

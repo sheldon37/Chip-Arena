@@ -10,9 +10,9 @@ var builder=WebApplication.CreateBuilder(args);
 builder.Logging.AddFilter("Microsoft.AspNetCore",LogLevel.Warning);
 builder.Services.AddRateLimiter(o=>{o.RejectionStatusCode=429;o.GlobalLimiter=PartitionedRateLimiter.Create<HttpContext,string>(c=>RateLimitPartition.GetFixedWindowLimiter(c.Connection.RemoteIpAddress?.ToString()??"unknown",_=>new FixedWindowRateLimiterOptions{PermitLimit=60,Window=TimeSpan.FromMinutes(1),QueueLimit=0}));});
 var app=builder.Build();app.UseRateLimiter();app.UseWebSockets(new WebSocketOptions{KeepAliveInterval=TimeSpan.FromSeconds(3)});var rooms=new ConcurrentDictionary<string,Room>();
-app.MapGet("/health",()=>Results.Ok(new{service="chip-arena-native-relay",protocol=2}));
-app.MapGet("/native/v2/rooms",(HttpContext c)=>Results.Json(new{rooms=rooms.Values.Where(r=>r.Ready&&r.Listed&&r.Source==c.Request.Query["source"].ToString()).Take(100).Select(r=>new{code=r.Code,name=r.Name,players=1+r.Pipes.Count,capacity=8})}));
-app.Map("/native/v2/host",async c=>{
+app.MapGet("/health",()=>Results.Ok(new{service="chip-arena-native-relay",protocol=3}));
+app.MapGet("/native/v3/rooms",(HttpContext c)=>Results.Json(new{rooms=rooms.Values.Where(r=>r.Ready&&r.Listed&&r.Source==c.Request.Query["source"].ToString()).Take(100).Select(r=>new{code=r.Code,name=r.Name,players=1+r.Pipes.Count,capacity=8})}));
+app.Map("/native/v3/host",async c=>{
  if(!c.WebSockets.IsWebSocketRequest||rooms.Count>=1000||!Regex.IsMatch(c.Request.Query["source"].ToString(),"^[a-f0-9]{40}$")){c.Response.StatusCode=400;return;}
  string name=Regex.Replace(c.Request.Query["name"].ToString(),"[<>\\p{Cc}\\p{Cf}]"," ").Trim();if(name.Length>40)name=name[..40];var room=new Room{Code=Token(4).ToUpperInvariant(),Secret=Token(32),Source=c.Request.Query["source"].ToString(),Name=name,Listed=c.Request.Query["listed"]=="1"};if(!rooms.TryAdd(room.Code,room)){c.Response.StatusCode=503;return;}
  using var socket=await c.WebSockets.AcceptWebSocketAsync();room.Host=socket;using var linked=CancellationTokenSource.CreateLinkedTokenSource(c.RequestAborted,room.Stop.Token);
@@ -20,7 +20,7 @@ app.Map("/native/v2/host",async c=>{
  catch(Exception e)when(e is WebSocketException or OperationCanceledException or IOException){}
  finally{rooms.TryRemove(room.Code,out _);room.Stop.Cancel();foreach(var pipe in room.Pipes.Values){pipe.Stop.Cancel();pipe.Ready.TrySetCanceled();}}
 });
-app.Map("/native/v2/join",async c=>{
+app.Map("/native/v3/join",async c=>{
  if(!c.WebSockets.IsWebSocketRequest||!rooms.TryGetValue(c.Request.Query["room"].ToString(),out var room)||room.Source!=c.Request.Query["source"]||room.Stop.IsCancellationRequested||!room.Ready){c.Response.StatusCode=404;return;}
  var pipe=new Pipe{Ticket=Token(32)};lock(room.Gate){if(room.Pipes.Count>=7){c.Response.StatusCode=409;return;}room.Pipes[pipe.Ticket]=pipe;}
  using var socket=await c.WebSockets.AcceptWebSocketAsync();pipe.Guest=socket;using var linked=CancellationTokenSource.CreateLinkedTokenSource(c.RequestAborted,room.Stop.Token,pipe.Stop.Token);
@@ -28,7 +28,7 @@ app.Map("/native/v2/join",async c=>{
  catch(Exception e)when(e is WebSocketException or OperationCanceledException or TimeoutException or IOException){}
  finally{pipe.Stop.Cancel();pipe.Done.TrySetResult();room.Pipes.TryRemove(pipe.Ticket,out _);}
 });
-app.Map("/native/v2/accept",async c=>{
+app.Map("/native/v3/accept",async c=>{
  if(!c.WebSockets.IsWebSocketRequest||!rooms.TryGetValue(c.Request.Query["room"].ToString(),out var room)||!Fixed(room.Secret,c.Request.Query["secret"].ToString())||!room.Pipes.TryGetValue(c.Request.Query["ticket"].ToString(),out var pipe)||Interlocked.Exchange(ref pipe.Claimed,1)!=0||pipe.Stop.IsCancellationRequested){c.Response.StatusCode=403;return;}
  using var socket=await c.WebSockets.AcceptWebSocketAsync();pipe.Ready.TrySetResult(socket);try{await pipe.Done.Task.WaitAsync(c.RequestAborted);}catch(OperationCanceledException){}finally{pipe.Stop.Cancel();}
 });

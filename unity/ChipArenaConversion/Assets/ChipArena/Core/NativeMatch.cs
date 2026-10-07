@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
         public readonly Dictionary<string,int> chips=new Dictionary<string,int>();public List<string> offers=new List<string>();
     }
     [Serializable] public class NativeMatchFrame
-    {public int introSeat;public double introStarted;public string introStyle;public int round,set,winner,setWinner,draftSeat;public string result,chosen;public NativePhase phase;public double time,phaseEnd,fightAt,readyAt;public bool teams,cooperative;}
+    {public int introSeat;public double introStarted;public string introStyle;public int round,set,winner,setWinner,draftSeat;public string result,chosen;public NativePhase phase;public double time,phaseEnd,fightAt,readyAt,chosenAt;public bool teams,cooperative;}
     public sealed class NativeMatch
     {
         public readonly List<NativeSeat> Seats=new List<NativeSeat>();
@@ -26,6 +26,7 @@ namespace ChipArena.UnityConversion
         public int DraftSeat { get;private set; }
         public string Result { get;private set; }="";
         public string Chosen { get;private set; }
+        public double ChosenAt=>chosenAt;
         public double ReadyAt { get;private set; }
         public bool ShowIntros;public int IntroSeat{get;private set;}public double IntroStarted{get;private set;}public string IntroStyle{get;private set;}private int introIndex;
         public bool Cooperative;public bool Teams,BothDraft,SkipBotDrafts=true;
@@ -36,7 +37,7 @@ namespace ChipArena.UnityConversion
         private readonly ConversionContent data;private readonly SourceRandom random;
         private readonly List<int> queue=new List<int>();private int turn;private double chosenAt;
         public NativeMatch(ConversionContent data,uint seed=12345){this.data=data;random=new SourceRandom(seed);}
-        public void ApplyNetwork(NativeMatchFrame f){IntroSeat=f.introSeat;IntroStarted=f.introStarted;IntroStyle=f.introStyle;Phase=f.phase;Time=f.time;PhaseEnd=f.phaseEnd;FightAt=f.fightAt;ReadyAt=f.readyAt;Round=f.round;Set=f.set;Winner=f.winner;SetWinner=f.setWinner;DraftSeat=f.draftSeat;Chosen=f.chosen;Result=f.result;Teams=f.teams;Cooperative=f.cooperative;}
+        public void ApplyNetwork(NativeMatchFrame f){IntroSeat=f.introSeat;IntroStarted=f.introStarted;IntroStyle=f.introStyle;Phase=f.phase;Time=f.time;PhaseEnd=f.phaseEnd;FightAt=f.fightAt;ReadyAt=f.readyAt;Round=f.round;Set=f.set;Winner=f.winner;SetWinner=f.setWinner;DraftSeat=f.draftSeat;Chosen=f.chosen;chosenAt=f.chosenAt;Result=f.result;Teams=f.teams;Cooperative=f.cooperative;}
         public bool SameSide(NativeSeat a,NativeSeat b)=>a!=null&&b!=null&&(a.id==b.id||Teams&&a.team==b.team);
         public NativeSeat Seat(int id)=>Seats.Find(p=>p.id==id);
         public bool Start()

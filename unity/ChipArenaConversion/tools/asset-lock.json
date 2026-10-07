@@ -501,9 +501,9 @@
     },
     {
       "path": "Assets/Conversion/Resources/SourceModels.json",
-      "bytes": 6543303,
-      "gitBlob": "786bf710e127c49ab9af4dc7326c6fb8a353fbda",
-      "source": "pinned source export"
+      "bytes": 6541603,
+      "gitBlob": "47fbc51a6eba9af0d2b47479bbf001411d9191e2",
+      "source": "generated from pinned source"
     },
     {
       "path": "Assets/Conversion/Resources/SourceMotion.json",
@@ -525,9 +525,33 @@
     },
     {
       "path": "Assets/Conversion/Resources/SceneMotion.json",
-      "source": "generated from pinned source",
-      "bytes": 13450027,
-      "gitBlob": "2121fe29ce21997a5237074053a282df5a55bb32"
+      "bytes": 13459631,
+      "gitBlob": "c47b048119ae86481f6fe00bbc838e9589f3d27f",
+      "source": "generated from pinned source"
+    },
+    {
+      "path": "Assets/Conversion/Resources/WoundParts.json",
+      "bytes": 42604,
+      "gitBlob": "06c8290e850663e8ed91a912a81021eb8813be73",
+      "source": "generated from pinned source"
+    },
+    {
+      "path": "Assets/Conversion/Resources/SceneryMotion.json",
+      "bytes": 74081,
+      "gitBlob": "f2357a782afac7624bff1eaa6b3e7ed27cc553e3",
+      "source": "generated from pinned source"
+    },
+    {
+      "path": "Assets/Conversion/Resources/SlenderRig.json",
+      "bytes": 6396,
+      "gitBlob": "60331d0f977b96a946ecd1abd76e08f3d75a4e80",
+      "source": "generated from pinned source"
+    },
+    {
+      "path": "Assets/Conversion/Resources/SlenderScare.jpg",
+      "bytes": 177648,
+      "gitBlob": "39813e99bae17cec879ecff572a0a06980361c44",
+      "source": "public/images/l44t-slenderman.jpg"
     }
   ]
 }

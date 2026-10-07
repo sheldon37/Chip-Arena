@@ -9,6 +9,8 @@ namespace ChipArena.UnityConversion
     {
         private static Material sky;private static Light moon,rim;private static bool introActive;private static readonly List<Light> stageLights=new List<Light>();
         public static void EndIntro(ContentMap map,Camera camera){if(!introActive)return;introActive=false;foreach(var light in stageLights)if(light!=null)light.enabled=false;if(moon!=null){moon.enabled=true;moon.intensity=.9f;}if(rim!=null){rim.enabled=true;rim.intensity=.24f;}Ambient();Apply(map,camera);}
+        public static void Draft(Camera camera,Color tint)
+        {introActive=true;foreach(var light in stageLights)if(light!=null)light.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=new Color(.025f,.032f,.055f);RenderSettings.skybox=null;RenderSettings.fogStartDistance=30;RenderSettings.fogEndDistance=100;Ambient();if(moon!=null){moon.enabled=true;moon.color=new Color(.8f,.88f,1);moon.intensity=1.4f;moon.transform.rotation=Quaternion.Euler(35,-145,0);}if(rim!=null){rim.enabled=true;rim.color=tint;rim.intensity=1.2f;rim.transform.rotation=Quaternion.Euler(15,35,0);}}
         private static void Ambient(){RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=NativeArena.ColorOf(0x92b4f0)*.48f;RenderSettings.ambientEquatorColor=NativeArena.ColorOf(0x9aaccd)*.27f;RenderSettings.ambientGroundColor=NativeArena.ColorOf(0x171320)*.48f;}
         public static void Intro(NativeSceneClip clip,float age,Camera camera)
         {
@@ -16,6 +18,7 @@ namespace ChipArena.UnityConversion
             foreach(var track in clip.lights){int j=f*11;var v=track.values;Color color=new Color(v[j+3],v[j+4],v[j+5]);float intensity=v[j+6];if(track.kind=="ambient"||track.kind=="hemisphere"){ambient+=color*intensity;ground+=new Color(v[j+8],v[j+9],v[j+10])*intensity;continue;}if(intensity<=0)continue;if(count>=16)break;while(stageLights.Count<=count)stageLights.Add(null);var light=stageLights[count];if(light==null){var go=new GameObject("Entrance light "+count);if(moon!=null)go.transform.SetParent(moon.transform.parent);light=go.AddComponent<Light>();stageLights[count]=light;}count++;light.enabled=true;light.type=track.kind=="directional"?LightType.Directional:LightType.Point;light.color=color;light.intensity=intensity;light.range=v[j+7]>0?v[j+7]:20;light.transform.position=new Vector3(-v[j],v[j+1],v[j+2]);if(light.type==LightType.Directional)light.transform.LookAt(Vector3.zero);light.shadows=light.type==LightType.Directional?LightShadows.Soft:LightShadows.None;}
             for(int i=count;i<stageLights.Count;i++)if(stageLights[i]!=null)stageLights[i].enabled=false;RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=ambient;RenderSettings.ambientEquatorColor=(ambient+ground)*.5f;RenderSettings.ambientGroundColor=ground;
         }
+        public static void Clock(float time){if(sky!=null)sky.SetFloat("_SceneTime",time);}
         public static void Apply(ContentMap map,Camera camera)
         {
             bool indoor=map.id=="siren",cold=map.theme=="moonlit"||map.theme=="snow",fire=map.id=="forge";camera.farClipPlane=350;camera.backgroundColor=NativeArena.ColorOf(indoor?0x050407:map.sky);camera.clearFlags=indoor?CameraClearFlags.SolidColor:CameraClearFlags.Skybox;

@@ -1471,7 +1471,7 @@
   "models": [
     {
       "id": "pilot",
-      "batches": 21,
+      "batches": 48,
       "vertices": 5232
     },
     {
@@ -1700,49 +1700,89 @@
       "vertices": 24792
     },
     {
+      "id": "summon-toy",
+      "batches": 21,
+      "vertices": 5376
+    },
+    {
+      "id": "summon-zombie",
+      "batches": 21,
+      "vertices": 5232
+    },
+    {
+      "id": "slender",
+      "batches": 40,
+      "vertices": 1488
+    },
+    {
       "id": "machine-chip",
+      "batches": 2,
+      "vertices": 1608
+    },
+    {
+      "id": "machine-moving-chip",
       "batches": 1,
-      "vertices": 1656
+      "vertices": 48
     },
     {
       "id": "machine-recruit",
-      "batches": 1,
-      "vertices": 1104
+      "batches": 2,
+      "vertices": 912
+    },
+    {
+      "id": "machine-moving-recruit",
+      "batches": 2,
+      "vertices": 196
     },
     {
       "id": "machine-med",
-      "batches": 1,
+      "batches": 2,
       "vertices": 672
+    },
+    {
+      "id": "machine-moving-med",
+      "batches": 1,
+      "vertices": 10
+    },
+    {
+      "id": "pve-pickup",
+      "batches": 2,
+      "vertices": 1368
     },
     {
       "id": "map-foundry",
       "batches": 2,
-      "vertices": 28720
+      "vertices": 28984
     },
     {
       "id": "map-moonlit",
       "batches": 3,
-      "vertices": 62707
+      "vertices": 51187
+    },
+    {
+      "id": "scenery-snow",
+      "batches": 1,
+      "vertices": 24
     },
     {
       "id": "map-neon",
       "batches": 2,
-      "vertices": 29272
+      "vertices": 29536
     },
     {
       "id": "map-freight",
       "batches": 2,
-      "vertices": 28912
+      "vertices": 29176
     },
     {
       "id": "map-rooftops",
       "batches": 2,
-      "vertices": 30088
+      "vertices": 30352
     },
     {
       "id": "map-reactor",
       "batches": 2,
-      "vertices": 29414
+      "vertices": 29678
     },
     {
       "id": "map-outpost",
@@ -1752,7 +1792,7 @@
     {
       "id": "map-citadel",
       "batches": 2,
-      "vertices": 6774
+      "vertices": 7038
     },
     {
       "id": "map-frozen",
@@ -1761,28 +1801,33 @@
     },
     {
       "id": "map-canal",
-      "batches": 3,
-      "vertices": 42520
+      "batches": 2,
+      "vertices": 42760
+    },
+    {
+      "id": "scenery-water",
+      "batches": 1,
+      "vertices": 24
     },
     {
       "id": "map-forge",
       "batches": 2,
-      "vertices": 21691
+      "vertices": 21955
     },
     {
       "id": "map-sawmill",
       "batches": 2,
-      "vertices": 30640
+      "vertices": 30904
     },
     {
       "id": "map-spikevault",
       "batches": 2,
-      "vertices": 6630
+      "vertices": 6894
     },
     {
       "id": "map-lavaworks",
       "batches": 2,
-      "vertices": 20515
+      "vertices": 20779
     },
     {
       "id": "map-siren",
@@ -1935,5 +1980,5 @@
       "vertices": 24
     }
   ],
-  "uncompressedBytes": 67549542
+  "uncompressedBytes": 67516429
 }

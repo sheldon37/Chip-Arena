@@ -7,6 +7,8 @@ namespace ChipArena.UnityConversion
     {public int id,part;public float at,radius,severity,energy,momentum,speed;public string kind,trauma;public V3 point,direction;public bool destroyed;}
     public static class NativeBodyDamage
     {
+        public static bool Valid(NativeWound w)
+        {bool Vector(V3 v)=>MathUtil.Finite(v.x)&&MathUtil.Finite(v.y)&&MathUtil.Finite(v.z)&&v.Length<10000;return w!=null&&w.id>=0&&w.part>=0&&w.part<22&&MathUtil.Finite(w.at)&&w.at>=0&&MathUtil.Finite(w.radius)&&w.radius>=.001f&&w.radius<=1&&MathUtil.Finite(w.severity)&&w.severity>=0&&w.severity<=1&&Vector(w.point)&&Vector(w.direction)&&(w.kind=="cut"||w.kind=="puncture"||w.kind=="cavity"||w.kind=="bruise"||w.kind=="scorch"||w.kind=="sever"||w.kind=="crush");}
         public static int Part(V3 hit,float yaw,bool head=false)
         {float a=yaw*(float)Math.PI/180,x=hit.x*(float)Math.Cos(a)-hit.z*(float)Math.Sin(a);if(head||hit.y>.4f)return CapturedRig.Head;if(hit.y<-.28f)return x>=0?(hit.y<-.56f?CapturedRig.LKnee:CapturedRig.LHip):(hit.y<-.56f?CapturedRig.RKnee:CapturedRig.RHip);if(Math.Abs(x)>.235f)return x>=0?(hit.y>.02f?CapturedRig.LArm:CapturedRig.LElbow):(hit.y>.02f?CapturedRig.RArm:CapturedRig.RElbow);return CapturedRig.Spine;}
         private static float Clamp(float x,float lo,float hi)=>Math.Max(lo,Math.Min(hi,x));

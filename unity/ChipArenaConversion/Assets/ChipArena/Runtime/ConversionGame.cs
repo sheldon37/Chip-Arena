@@ -90,8 +90,8 @@ namespace ChipArena.UnityConversion
         }
         private void LateUpdate()
         {
-            if(cameraView==null)return;if(PreviewFrame())return;ObserveReplay();if(arena!=null&&RenderReplay())return;nativeAudio.Muted=!prefs.sound;nativeAudio.Entrance(arena!=null&&!menu&&IntroActive?arena.Generation+":"+IntroPilot?.Seat.id+":"+IntroStyle:null,arena!=null&&IntroActive?IntroStyle:null,arena!=null&&IntroActive?IntroAge:0);nativeAudio.Render(arena,menu,cameraView);if(arena==null)return;
-            if(!menu&&IntroActive){arena.Root.SetActive(false);viewModelCamera.enabled=false;presentation.RenderIntro(arena,IntroPilot,IntroStyle,IntroAge,cameraView);return;}NativeLighting.EndIntro(content.Map(arena.MapId),cameraView);arena.Root.SetActive(true);
+            if(cameraView==null)return;if(PreviewFrame())return;ObserveReplay();if(arena!=null&&RenderReplay())return;nativeAudio.Muted=!prefs.sound;nativeAudio.Entrance(arena!=null&&!menu&&IntroActive?arena.Generation+":"+IntroPilot?.Seat.id+":"+IntroStyle:null,arena!=null&&IntroActive?IntroStyle:null,arena!=null&&IntroActive?IntroAge:0);nativeAudio.Render(arena,menu,cameraView);SlenderFrame();if(arena==null)return;
+            if(DraftFrame())return;if(!menu&&IntroActive){arena.Root.SetActive(false);viewModelCamera.enabled=false;presentation.RenderIntro(arena,IntroPilot,IntroStyle,IntroAge,cameraView);return;}NativeLighting.EndIntro(content.Map(arena.MapId),cameraView);arena.Root.SetActive(true);
             var p=arena.ViewPilot;bool play=!menu&&match.Phase==NativePhase.Fight&&p.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true;
             UpdateCamera();
             if(play)
@@ -168,11 +168,13 @@ namespace ChipArena.UnityConversion
         }
         private void OnGUI()
         {
-            if(dedicated)return;Styles();float scale=Mathf.Max(.65f,Screen.height/900f);GUI.matrix=Matrix4x4.Scale(Vector3.one*scale);float width=Screen.width/scale,height=Screen.height/scale;
+            if(dedicated)return;if(SlenderGUI())return;Styles();float scale=Mathf.Max(.65f,Screen.height/900f);GUI.matrix=Matrix4x4.Scale(Vector3.one*scale);float width=Screen.width/scale,height=Screen.height/scale;
             if(error.Length>0){GUI.Box(new Rect(30,30,width-60,height-60),"");GUI.Label(new Rect(45,45,width-90,height-90),error,label);return;}
+            CombatWorldHud(scale,width,height);
             if(arena!=null&&!menu&&match.Phase==NativePhase.Fight&&presentation.ScopeActive)DrawScope(width,height);
             GUI.Label(new Rect(22,15,width-44,35),"CHIP ARENA  /  NATIVE CONVERSION",heading);
             if(previewArena!=null){PreviewHud(width,height);return;}
+            if(arena!=null&&!menu&&match.Phase==NativePhase.Draft){Draft(width,height);return;}
             if(arena!=null)
             {
                 var p=arena.Local;
@@ -234,21 +236,8 @@ namespace ChipArena.UnityConversion
             foreach(var c in content.chips.Where(c=>(c.name+" "+c.description).IndexOf(search,StringComparison.OrdinalIgnoreCase)>=0)){GUILayout.Label(c.name+"  /  "+c.rarity+(NativeArena.ImplementedChip(c)?"  /  draft enabled":"  /  pending"),label);GUILayout.Label(c.description,small);}
             GUILayout.EndScrollView();
         }
-        private void Draft(float width,float height)
-        {
-            var seat=match.Seat(match.DraftSeat);if(seat==null)return;float cardWidth=Mathf.Min(260,(width-70)/3);
-            GUI.Box(new Rect(20,230,width-40,height-300),"");GUI.Label(new Rect(38,245,width-76,55),seat.name+" chooses a Chip  ·  "+Math.Ceiling(match.PhaseEnd-match.Time)+"s",heading);
-            GUI.Label(new Rect(38,294,width-76,35),"Choose a Chip to add to this match’s build.",small);
-            if(match.Chosen!=null){DraftReveal(width,height);return;}var viewport=new Rect(30,330,width-60,Math.Max(100,height-405));draftScroll=GUI.BeginScrollView(viewport,draftScroll,new Rect(0,0,width-85,Mathf.Ceil(seat.offers.Count/3f)*180));
-            for(int i=0;i<seat.offers.Count;i++)
-            {
-                var chip=content.Chip(seat.offers[i]);float x=10+(i%3)*(cardWidth+12),y=(i/3)*180;
-                GUI.color=RarityColor(chip.rarity);GUI.Box(new Rect(x,y,cardWidth,170),"");GUI.color=Color.white;GUI.Label(new Rect(x+10,y+8,cardWidth-20,40),chip.name,label);GUI.Label(new Rect(x+10,y+48,cardWidth-20,78),chip.description,small);
-                GUI.enabled=!seat.bot&&seat.id==arena.Local.Seat.id&&match.Time>=match.ReadyAt&&match.Chosen==null;if(GUI.Button(new Rect(x+10,y+132,cardWidth-20,30),match.Chosen==chip.id?"Installed":"Install",button))ChooseChip(seat.id,chip.id);GUI.enabled=true;
-            }GUI.EndScrollView();
-        }
         private void Board(float width)
         {if(inspectSeat!=0)return;GUI.Box(new Rect(width/2-280,80,560,70+match.Seats.Count*36),"");GUI.Label(new Rect(width/2-260,92,520,28),"Click a pilot to inspect their build",small);int row=0;foreach(var p in match.Seats)if(GUI.Button(new Rect(width/2-260,122+row++*36,520,32),p.name+" · "+p.spec+" · sets "+p.score+" / rounds "+p.roundWins+" · "+(p.alive?"alive":"out"),button))inspectSeat=p.id;}
-        private void OnDestroy(){Time.timeScale=1;EndPreview();ClearReplay();CloseNetwork();if(scopeMask!=null)CapturedAnimation.Release(scopeMask);arena?.Dispose();if(ownsPhysics){Physics.simulationMode=previousSimulation;Physics.gravity=previousGravity;}Cursor.lockState=CursorLockMode.None;Cursor.visible=true;}
+        private void OnDestroy(){CapturedAnimation.Release(slenderNoise);Time.timeScale=1;EndPreview();ClearReplay();CloseNetwork();if(scopeMask!=null)CapturedAnimation.Release(scopeMask);arena?.Dispose();if(ownsPhysics){Physics.simulationMode=previousSimulation;Physics.gravity=previousGravity;}Cursor.lockState=CursorLockMode.None;Cursor.visible=true;}
     }
 }

@@ -13,7 +13,7 @@ class CinematicChecks(unittest.TestCase):
         cls.models={m['id']:m for m in resource('SourceModels')['models']}
     def test_complete_geometry_and_tracks(self):
         self.assertEqual(len(self.clips),31)
-        self.assertEqual(len(self.models),124)
+        self.assertEqual(len(self.models),133)
         for key,c in self.clips.items():
             self.assertIn(key,self.models)
             self.assertEqual(len(c['values']),c['frames']*c['tracks']*20,key)
@@ -47,4 +47,37 @@ class CinematicChecks(unittest.TestCase):
             c=self.clips[key]
             self.assertGreater(c['tracks'],100,key)
             self.assertNotEqual(c['values'][:c['frames']*20],c['values'][-c['frames']*20:],key)
+    def test_wounds_bind_to_exported_pilot_parts(self):
+        data=json.loads((ROOT/'Assets/Conversion/Resources/WoundParts.json').read_text())
+        self.assertEqual(len(data['parts']),31)
+        names={s['part'] for s in self.models['pilot']['sections']}
+        for p in data['parts']:
+            self.assertIn(p['name'],names)
+            self.assertTrue(0<=p['bone']<22)
+            self.assertEqual(len(p['matrix']),16)
+            self.assertGreater(len(p['solids']),0)
+            for solid in p['solids']:
+                for axis in 'xyz':self.assertLess(solid['min'][axis],solid['max'][axis])
+    def test_scenery_motion_and_machine_geometry(self):
+        data=json.loads((ROOT/'Assets/Conversion/Resources/SceneryMotion.json').read_text())
+        self.assertEqual(len(data['maps']),14)
+        for m in data['maps']:
+            self.assertIn('map-'+m['id'],self.models)
+            self.assertIn(len(m['snow']),(0,480))
+            self.assertEqual(len(m['smoke'])%4,0)
+            self.assertTrue(all(math.isfinite(v) for v in m['smoke']))
+            for seed in m['snow']:self.assertGreater(seed['speed'],0)
+        for name in ('scenery-snow','scenery-water','summon-toy','summon-zombie','pve-pickup','machine-moving-chip','machine-moving-med','machine-moving-recruit'):
+            self.assertTrue(self.models[name]['sections'])
+    def test_slender_hierarchy_and_source_image(self):
+        import hashlib
+        data=json.loads((ROOT/'Assets/Conversion/Resources/SlenderRig.json').read_text())
+        nodes=data['nodes'];self.assertEqual(len(nodes),49)
+        for i,n in enumerate(nodes):
+            self.assertTrue(-1<=n['parent']<i)
+            self.assertEqual(len(n['rotation']),4)
+            self.assertAlmostEqual(sum(v*v for v in n['rotation']),1,places=5)
+        for s in self.models['slender']['sections']:self.assertTrue(0<=s['bone']<len(nodes))
+        b=(ROOT/'Assets/Conversion/Resources/SlenderScare.jpg').read_bytes()
+        self.assertEqual(hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest(),'39813e99bae17cec879ecff572a0a06980361c44')
 if __name__=='__main__':unittest.main()

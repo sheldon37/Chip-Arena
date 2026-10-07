@@ -1,6 +1,6 @@
 # Native conversion rooms
 
-The Unity client can host a direct TCP LAN room or connect through this separate .NET 8 WebSocket relay. No account session, developer password or production endpoint is bundled. Native rooms use protocol 2 and require the same pinned game source; they cannot join Electron rooms.
+The Unity client can host a direct TCP LAN room or connect through this separate .NET 8 WebSocket relay. No account session, developer password or production endpoint is bundled. Native rooms use protocol 3 and require the same pinned game source; they cannot join Electron rooms.
 
 Run `dotnet run --project Relay/ChipArena.Relay.csproj --urls http://127.0.0.1:8080` for local development. In the Unity menu, enable **Internet room via conversion relay**, enter `ws://127.0.0.1:8080`, and host or join. Private rooms are omitted from discovery; listing a room is an explicit host option.
 
@@ -9,7 +9,7 @@ For an internet deployment, place the relay behind an HTTPS/WebSocket reverse pr
 A Windows Unity build can also run an unattended authority:
 
 ```powershell
-.\Chip-Arena-Native-Conversion.exe -batchmode -nographics --ca-server --ca-port 29941 --ca-map foundry --ca-min-players 2
+.\ChipArena-Native-Conversion-TEST.exe -batchmode -nographics --ca-server --ca-port 29941 --ca-map foundry --ca-min-players 2
 ```
 
 Add `--ca-pve` for Ward Zero, `--ca-bots 2` for bots, or `--ca-relay wss://YOUR-RELAY-HOST --ca-public` to list a relayed server. The server logs its room code. Players choose Ready; a match starts when the configured minimum is ready. Rejoin leases last 90 seconds. A fully empty server returns to its lobby after that lease expires. Dedicated mode is compiled but requires native Unity execution to validate.
