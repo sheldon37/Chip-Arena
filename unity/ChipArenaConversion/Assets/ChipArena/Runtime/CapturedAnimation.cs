@@ -79,7 +79,7 @@ namespace ChipArena.UnityConversion
                     }
                 }
                 // Actual Unity clip sampling must not feed the previous rendered pose back into the base layer.
-                foreach(var actor in new[]{new Actor{MagicVisual=1,AttackAt=1.9f},new Actor{Weapon=WeaponId.MachineGun,AbilityId="rocket",AbilityAt=1.7f,AbilityRelease=1.97f}})
+                foreach(var actor in new[]{new Actor{MagicVisual=1,AttackAt=1.9f},new Actor{Weapon=WeaponId.MachineGun,AbilityId="rocket",AbilityAt=1.7f,AbilityRelease=1.97f},new Actor{SpecialKind="sword-launch",SpecialAt=1.9f,SpecialRelease=2.16f,SpecialUntil=2.66f},new Actor{SpecialKind="wolf-spin",SpecialAt=1.5f,SpecialRelease=1.78f,SpecialUntil=5,SpecialReleased=true}})
                 using(var repeat=Create(parent.transform,-2))
                 {
                     var positions=new Vector3[repeat.Bones.Length];var rotations=new Quaternion[repeat.Bones.Length];
@@ -94,7 +94,7 @@ namespace ChipArena.UnityConversion
                         }
                     }
                 }
-                Debug.Log("PASS native first-person repeat-frame playback: magic and rocket poses remain stable between fixed ticks.");
+                Debug.Log("PASS native first-person repeat-frame playback: magic, rocket and melee-special poses remain stable between fixed ticks.");
                 Debug.Log("PASS native animation playback: "+count+" poses / "+ClipCount+" clips; position and quaternion bindings match the source conversion.");
             }
             finally { rig.Dispose(); Release(parent); }
@@ -152,7 +152,8 @@ namespace ChipArena.UnityConversion
                 Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,Quaternion.Euler(0,a.Yaw,0));
                 float speed=new Vector2(a.Velocity.x,a.Velocity.z).magnitude;
                 bool attack=a.MagicVisual==0&&a.Attacking(time),roll=a.Rolling(time),stun=a.StunUntil>time,ground=a.Grounded;
-                bool moving=speed>.08f&&!attack&&!roll&&!stun&&ground;
+                bool special=NativeSpecialPose.Active(a,time),down=NativeSpecialPose.Down(a,time);
+                bool moving=speed>.08f&&!attack&&!roll&&!stun&&!special&&!down&&ground;
                 if(moving) phase+=dt*Mathf.Min(3.7f,speed/Mathf.Min(2.1f,.62f+.22f*speed));
                 Sample(set,"idle",time);
                 if(moving)
@@ -225,7 +226,9 @@ namespace ChipArena.UnityConversion
                     Root.transform.rotation=Quaternion.LookRotation(ArenaPresentation.Vec(a.RollDirection));
                     CapturedRig.Roll(pose,(time-a.RollAt)/a.VisualRollDuration); State="roll (adapted)";
                 }
-                if(a.Weapon==WeaponId.Sword&&a.MagicVisual==0&&ground&&!roll) CapturedRig.BladeFloor(pose,false,1.28f);
+                if(special){NativeSpecialPose.Special(pose,a,time,firstPerson);State=a.SpecialKind;}
+                if(down){NativeSpecialPose.Recover(pose,a,time);State="recovery "+NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time);}
+                if(a.Weapon==WeaponId.Sword&&a.MagicVisual==0&&ground&&!roll&&!special&&!down) CapturedRig.BladeFloor(pose,false,1.28f);
                 if(firstPerson)NativeFirstPersonPose.SettleTorso(pose);
                 WritePose(); fresh=false;
             }

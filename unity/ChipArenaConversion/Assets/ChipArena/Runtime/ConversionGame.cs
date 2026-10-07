@@ -87,7 +87,7 @@ namespace ChipArena.UnityConversion
             {
                 pending.AimTarget=NativeArena.Vec(AimPoint((float)p.Weapon.range));
                 var ability=content.Ability(p.Seat.spec,pending.AbilityEHeld||pending.AbilityE||pending.AbilityEReleased?"e":"q");
-                pending.AbilityTarget=NativeArena.Vec(AimPoint(ability!=null?(float)ability.range:60));
+                pending.AbilityTarget=NativeArena.Vec(AimPoint(ability!=null?(float)ability.range:p.Seat.spec=="shield"?25:p.Seat.spec=="daggers"?48:60,p.Seat.spec=="shield"||p.Seat.spec=="daggers"));
             }
             presentation.SoundEnabled=prefs.sound;presentation.LocalId=1;
             float renderTime=visualClock.Sample(match.Time,Time.timeAsDouble-Time.fixedTimeAsDouble,menu);
@@ -109,10 +109,10 @@ namespace ChipArena.UnityConversion
             if(arena==null||menu)return;timer.Restart();arena.Step(pending);Physics.Simulate(1f/60);timer.Stop();stepMs=timer.Elapsed.TotalMilliseconds;
             bool melee=arena.Local.Weapon.@class=="melee";pending=pending.HeldOnly();if(melee)pending.Shoot=false;
         }
-        private Vector3 AimPoint(float range)
+        private Vector3 AimPoint(float range,bool thrownMelee=false)
         {
-            Ray ray=cameraView.ViewportPointToRay(new Vector3(.5f,.5f));float nearest=range+Vector3.Distance(ray.origin,arena.Local.Body.position);
-            Vector3 target=ray.origin+ray.direction*nearest;
+            Ray ray=cameraView.ViewportPointToRay(new Vector3(.5f,.5f));float nearest=range+(thrownMelee?0:Vector3.Distance(ray.origin,arena.Local.Body.position));
+            Vector3 target=ray.origin+ray.direction*(thrownMelee?48:nearest);
             foreach(var hit in Physics.RaycastAll(ray,nearest,NativeArena.ShotMask,QueryTriggerInteraction.Ignore))
             {var pilot=hit.collider.GetComponent<NativePilotBody>();if(pilot!=null&&pilot.Pilot==arena.Local)continue;if(hit.distance<nearest){target=hit.point;nearest=hit.distance;}}
             return target;
@@ -120,8 +120,8 @@ namespace ChipArena.UnityConversion
         private void UpdateCamera()
         {
             var p=arena.Local;Vector3 focus=p.Body.transform.position+Vector3.up*NativeViewRules.EyeHeight;var ads=content.Ads(p.Seat.spec);
-            bool aim=ads!=null&&pending.Aim&&arena.Time>=p.ReloadEnd&&arena.Time>=p.RollEnd&&arena.Time>=p.BlockEnd&&arena.Time>=p.StunEnd;
-            bool first=NativeViewRules.FirstPerson(prefs.firstPerson||aim,p.Hp>0,menu);
+            bool aim=ads!=null&&pending.Aim&&arena.Time>=p.ReloadEnd&&arena.Time>=p.RollEnd&&arena.Time>=p.BlockEnd&&!arena.Incapacitated(p);
+            bool first=NativeViewRules.FirstPerson(prefs.firstPerson||aim,p.Hp>0&&!arena.Downed(p),menu);
             cameraView.fieldOfView=Mathf.Lerp(cameraView.fieldOfView,aim?(float)ads.fov:first?NativeViewRules.FirstFov:NativeViewRules.ThirdFov,1-Mathf.Exp(-16*Time.unscaledDeltaTime));
             Quaternion rotation=Quaternion.Euler(pitch,yaw,0);Vector3 location=focus;
             if(!first)
@@ -135,7 +135,15 @@ namespace ChipArena.UnityConversion
         }
         private string AbilityStatus(NativePilot p,string slot)
         {
-            var d=content.Ability(p.Seat.spec,slot);if(d==null)return p.Weapon.@class=="melee"&&slot=="q"?"LMB  "+(p.Weapon.cost*p.Stats["resourceCost"]).ToString("0.#")+" stamina  ·  Shift cancels swing":p.Weapon.@class=="melee"?"E special moves: pending conversion":"";
+            var d=content.Ability(p.Seat.spec,slot);
+            if(d==null)
+            {
+                if(p.Weapon.@class!="melee")return "";
+                if(slot=="q")return "LMB  "+(p.Weapon.cost*p.Stats["resourceCost"]).ToString("0.#")+" stamina  ·  Shift cancels primary";
+                string specialState=p.Special!=null?"active":p.EReady>arena.Time?(p.EReady-arena.Time).ToString("0.0")+"s":p.Stamina<p.Weapon.secondaryCost*p.Stats["resourceCost"]?"low stamina":"ready";
+                string name=p.Seat.spec=="sword"?"Rising slash":p.Seat.spec=="daggers"?"Dagger throw":p.Seat.spec=="shield"?"Shield throw":"Wolf leap";
+                return "E  "+name+" · "+specialState;
+            }
             if(d.kind=="ads")return "Q  Aim (hold)";
             float left=slot=="q"?p.QReady-arena.Time:p.ECharges>0?0:p.EReady-arena.Time;
             string state=p.AbilityCast?.Definition==d?"casting":left>0?left.ToString("0.0")+"s":p.Mana<NativeAbilityRules.Cost(d,p.Stats)?"low mana":"ready";
@@ -162,6 +170,7 @@ namespace ChipArena.UnityConversion
                 if(!menu&&match.Phase==NativePhase.Fight)
                 {
                     if(!presentation.ScopeActive)GUI.Label(new Rect(width/2-10,height/2-14,30,30),"+",heading);
+                    if(arena.Downed(p))GUI.Label(new Rect(width/2-155,height/2+80,310,42),"RECOVERING  ·  WASD chooses roll direction",small);
                     if(arena.RiposteOpen(p))GUI.Label(new Rect(width/2-155,height/2+40,310,42),"RIPOSTE  ·  LMB counter",label);
                     if(p.Hp<=0)GUI.Label(new Rect(width/2-160,height/2-80,320,60),"ELIMINATED — round in progress",heading);
                     if(Time.unscaledTime<presentation.LastHitUntil)GUI.Label(new Rect(width/2+20,height/2-35,160,50),(presentation.LastHeadshot?"HEADSHOT ":"HIT ")+presentation.LastHitDamage.ToString("0.#"),label);
@@ -175,7 +184,7 @@ namespace ChipArena.UnityConversion
             if(!menu&&arena!=null)return;
             float panel=Mathf.Min(850,width-60);GUI.Box(new Rect((width-panel)/2,68,panel,height-120),"");
             GUILayout.BeginArea(new Rect((width-panel)/2+22,86,panel-44,height-155));scroll=GUILayout.BeginScrollView(scroll);
-            GUILayout.Label("Native conversion · Melee & riposte",heading);
+            GUILayout.Label("Native conversion · Melee specials & recovery",heading);
             GUILayout.Label("Native physics, first/third-person cameras, standard weapons and Q/E abilities, rounds and a stat-Chip draft. Full conversion is in progress.",label);
             if(arena!=null&&GUILayout.Button("Resume",button))menu=false;
             if(GUILayout.Button(showCatalogue?"Back to match setup":"Browse source catalogue (15 weapons / 236 Chips)",button))showCatalogue=!showCatalogue;
@@ -197,7 +206,7 @@ namespace ChipArena.UnityConversion
             bool first=GUILayout.Toggle(prefs.firstPerson,"First-person camera (V switches during play)");if(first!=prefs.firstPerson){prefs.firstPerson=first;Save();}
             GUILayout.BeginHorizontal();GUILayout.Label("Combat glow",label);
             foreach(string quality in new[]{"Off","Low","Full"})if(GUILayout.Button((prefs.combatGlow==quality||string.IsNullOrEmpty(prefs.combatGlow)&&quality=="Full"?"✓ ":"")+quality,button)){prefs.combatGlow=quality;Save();}GUILayout.EndHorizontal();
-            GUILayout.Label("Gun Q: hold to aim. Magic Q / E: cast abilities. Hold E to preview grenade, meteor, geysers or black hole; release to cast.",small);
+            GUILayout.Label("Melee E: special attack. Gun Q: hold to aim. Magic Q / E: cast abilities. Hold E to preview grenade, meteor, geysers or black hole; release to cast.",small);
             GUILayout.Label("Rounds to win a set: "+prefs.rounds,label);prefs.rounds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.rounds,1,5));GUILayout.Label("Sets to win the match: "+prefs.sets,label);prefs.sets=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.sets,1,10));
             if(GUILayout.Button("Start native match",button))StartMatch();
         }

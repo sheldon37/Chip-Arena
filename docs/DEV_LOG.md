@@ -18,6 +18,29 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-07 — Codex — native melee E specials and recovery
+- Separate `codex/unity-conversion`, base `34b0375c1b4817a5c72cd789a0ce8415cfeef377`; source remains `05950ea`.
+  Checked branch/source heads, shared policy/state/log and open PRs; no overlapping conversion writer found.
+- Ported Sword launcher, ballistic Dagger throw/reflection, returning Shield and Greatsword leap/direct strike/real-landing
+  slam. Native scene sphere sweeps include starting overlaps; shield retrieval cannot damage or refund resources. Special
+  stamina/cooldowns, one shared slam target ledger, camera aim convergence, owner cleanup and total projectile cap are included.
+- Added standard-melee knockdown, one 0.22 s pickup window, two early airborne follow-ups, protected ground recovery and
+  latched directional roll away. Shield primary now launches. HUD and same-weapon bots exercise the new moves.
+- Added source special envelopes, adapted native joints/grips/recovery poses, visible thrown weapons, glow and voxel slam dust.
+  First-person Greatsword arms stay braced; knockdown temporarily shows third person and restores the saved preference.
+  Base-pose history remains separate from procedural layers to preserve the first-person feedback fix.
+- Authority impact: new E hit timing/damage/cooldowns and launch/recovery movement/protection replace missing behavior;
+  base weapon values and collider dimensions remain unchanged. Native head detection and recovery planting remain adaptations.
+  No new network/service behavior; DEV juggle, PvE revive, physical ragdolls and special Chip handlers remain pending.
+- Passed: nine-blob source fixtures (96 start gates, 324 strike filters, 216 recovery samples, 36 ballistic steps, 24 ceiling
+  cases, 108 special envelopes), 2,400 finite/repeatable native poses, inherited managed/animation/parity checks, real Unity
+  6000.3.24f1 Runtime/Editor/Windows-conditional compilation, GUID/dependency checks and four package regressions.
+- Added Windows gates for actual E/contact/overlap/reflection/return/recovery handlers, special repeat-frame playback and
+  thrown-shield glow lifecycle. These gates compile but are NOT executed here; activated Editor, rendered gameplay/PhysX
+  acceptance and the Windows EXE build remain unrun. The deliverable is a separate source ZIP with the existing Windows builder/CA icon.
+- Status: isolated unmerged checkpoint; no updater publication. Next: owner tests the four E moves, cover, blocking, pickup
+  and roll recovery in first/third person; continue remaining combat modifiers/Chip handlers and production presentation.
+
 ## 2026-10-07 — Codex — native melee primaries, riposte and impulses
 - Separate `codex/unity-conversion`, base `fc87b9510de9fd49eb5b67863be99fd0b06655a7`; original source remains `05950ea`.
   Checked current branch/source, shared policy/state/log and open PRs; no overlapping conversion writer found.

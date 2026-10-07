@@ -12,14 +12,14 @@ namespace ChipArena.UnityConversion
         private void CancelMelee(NativePilot p){p.Swing=null;p.HitPending=false;p.AttackEnd=0;}
         private bool TryBlock(NativePilot p)
         {
-            if(Time<p.BlockReady||Time<p.BlockEnd||Time<p.RollEnd||Time<p.StunEnd||Time<p.AttackEnd)return false;
+            if(Time<p.BlockReady||Time<p.BlockEnd||Time<p.RollEnd||Incapacitated(p)||Time<p.AttackEnd)return false;
             p.BlockAt=Time;p.BlockEnd=Time+NativeMeleeRules.BlockDuration(p.Stats);p.BlockReady=Time+NativeMeleeRules.BlockCooldown(p.Stats);
-            p.RiposteAt=-100;CancelMelee(p);CancelAbilities(p);return true;
+            p.RiposteAt=-100;CancelMelee(p);CancelSpecial(p);CancelAbilities(p);return true;
         }
         private bool TryRoll(NativePilot p)
         {
             bool live=Time<p.AttackEnd||p.Swing!=null,cancel=!p.Seat.bot&&NativeMeleeRules.Standard(p.Seat.spec)&&live;
-            if(!p.Grounded||Time<p.RollReady||Time<p.RollEnd||Time<p.StunEnd||p.ReloadEnd>Time||p.AbilityCast!=null||p.CastAt>0||live&&!cancel||Time<p.BlockEnd&&!RiposteOpen(p))return false;
+            if(SpecialBusy(p)||!p.Grounded||Time<p.RollReady||Time<p.RollEnd||Incapacitated(p)||p.ReloadEnd>Time||p.AbilityCast!=null||p.CastAt>0||live&&!cancel||Time<p.BlockEnd&&!RiposteOpen(p))return false;
             var roll=NativeContentRules.Roll(Content,p.Seat.spec,p.Stats);if(p.Stamina<roll.cost)return false;
             if(cancel&&NativeMeleeRules.BeforeStrike(p.Swing,Time))p.Ready=Math.Min(p.Ready,Time+(float)roll.duration);
             p.Roll=roll;p.RollAt=Time;p.RollEnd=Time+(float)roll.duration;p.RollReady=Time+(float)roll.cooldown;p.Stamina-=(float)roll.cost;
@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
         }
         private bool TryMelee(NativePilot p)
         {
-            if(!NativeMeleeRules.Standard(p.Seat.spec)||Time<p.RollEnd||Time<p.StunEnd||Time<p.AttackEnd||Time<p.Ready||p.ReloadEnd>Time||p.AbilityCast!=null||p.CastAt>0||Time<p.BlockEnd&&!RiposteOpen(p))return false;
+            if(SpecialBusy(p)||!NativeMeleeRules.Standard(p.Seat.spec)||Time<p.RollEnd||Incapacitated(p)||Time<p.AttackEnd||Time<p.Ready||p.ReloadEnd>Time||p.AbilityCast!=null||p.CastAt>0||Time<p.BlockEnd&&!RiposteOpen(p))return false;
             float cost=(float)(p.Weapon.cost*p.Stats["resourceCost"]);if(p.Stamina<cost)return false;
             p.Stamina-=cost;p.Combo++;p.LastAttack=p.AttackAt=Time;p.Yaw=p.Input.Yaw;
             p.Swing=NativeMeleeRules.Begin(p.Weapon,p.Stats,Time,p.Combo+1,p.Input.Yaw*Mathf.Deg2Rad);
@@ -58,7 +58,7 @@ namespace ChipArena.UnityConversion
                 if(target.Hp<=0||!Enemy(p,target))continue;var delta=target.Body.position-origin;
                 if(!NativeMeleeRules.Contact(swing,Time,Vec(delta),.45f)||!swing.Contact("pilot:"+target.Seat.id,Time,Vec(delta),.45f,MeleeVisible(origin,target.Body.position,p,target.Collider)))continue;
                 float actual=Damage(target,p,(float)(p.Weapon.damage*p.Stats["damage"]),(delta+Vector3.up*.15f).normalized,(float)(p.Weapon.impulse*p.Stats["impulse"]),false,melee:true);
-                if(actual>0&&target.Hp>0)StaggerMelee(target,NativeMeleeRules.HitStun(p.Weapon,(float)p.Stats["attackRate"]));
+                if(actual>0&&target.Hp>0)PrimaryMeleeImpact(p,target);
                 if(p.Hp<=0||p.Swing!=swing)return; // A block or thorns death interrupts remaining contacts.
             }
             foreach(var prop in Props.ToArray())
@@ -70,14 +70,14 @@ namespace ChipArena.UnityConversion
         }
         private void StunMelee(NativePilot p,float seconds)
         {
-            CancelMelee(p);CancelAbilities(p);p.Roll=null;p.RollEnd=Time;p.BlockEnd=0;p.LastAttack=-100;p.StunEnd=Math.Max(p.StunEnd,Time+seconds);
+            CancelMelee(p);CancelSpecial(p);CancelAbilities(p);p.Roll=null;p.RollEnd=Time;p.BlockEnd=0;p.LastAttack=-100;p.StunEnd=Math.Max(p.StunEnd,Time+seconds);
             p.MoveVelocity=Vector3.zero;p.Pose.Sprinting=false;
             if(!p.Body.isKinematic)p.Body.linearVelocity=new Vector3(p.Knockback.x,p.Body.linearVelocity.y,p.Knockback.z);
         }
-        private void StaggerMelee(NativePilot p,float seconds)
+        private bool StaggerMelee(NativePilot p,float seconds)
         {
-            if(Time<p.StunEnd||Time<p.StaggerImmune)return;
-            StunMelee(p,seconds);p.StaggerImmune=p.StunEnd+.75f;
+            if(p.Hp<=0||Incapacitated(p)||Time<p.StaggerImmune)return false;
+            StunMelee(p,seconds);p.StaggerImmune=p.StunEnd+.75f;return true;
         }
         private void SuccessfulMeleeBlock(NativePilot blocker,NativePilot attacker,float damage,Vector3 direction,float impulse)
         {

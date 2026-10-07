@@ -81,7 +81,7 @@ namespace ChipArena.UnityConversion
                     Part(viewRig.Bones[box.Bone].localToWorldMatrix,CapturedAnimation.Vec(CapturedRig.Mirror(box.Position)),CapturedAnimation.Vec(box.Size),Quaternion.identity,box.Color<0?0:box.Color);
                 if(gun)GunPresentation.Draw(viewRig,shown,time,Add);
                 else if(magic)DrawStaff(viewRig,shown.MagicVisual,true);
-                else {Weapon(viewRig.Bones[CapturedRig.RHand].localToWorldMatrix,viewRig.Set,0);if(viewRig.Set==1)Weapon(viewRig.Bones[CapturedRig.LHand].localToWorldMatrix,1,0);}
+                else {if(!shown.WeaponAway)Weapon(MeleeHand(viewRig,shown,time),viewRig.Set,0);if(viewRig.Set==1)Weapon(MeleeHand(viewRig,shown,time,true),1,0);}
             }
             DrawBatches(ViewCamera,10,false);
         }

@@ -36,13 +36,13 @@ namespace ChipArena.UnityConversion
             p.AbilityCast=null;
             if(p.CastAt>0){p.CastAt=0;p.AttackAt=-100;}
         }
-        private bool AbilityBusy(NativePilot p)=>p.AbilityCast!=null||p.CastAt>0||Time<p.RollEnd||Time<p.AttackEnd||Time<p.StunEnd||Time<p.Ready||p.ReloadEnd>Time;
+        private bool AbilityBusy(NativePilot p)=>p.AbilityCast!=null||p.CastAt>0||Time<p.RollEnd||Time<p.AttackEnd||Incapacitated(p)||Time<p.Ready||p.ReloadEnd>Time;
         private void StepAbilities(NativePilot p)
         {
             int max=NativeAbilityRules.Charges(p.Stats);
             if(p.ECharges<max&&Time>=p.EReady){p.ECharges++;if(p.ECharges<max)p.EReady=Time+NativeAbilityRules.Cooldown(Content.Ability(p.Seat.spec,"e"),p.Stats);}
             if(p.Input.CancelAbilities||Time<p.BlockEnd){CancelAbilities(p);return;}
-            bool interrupted=Time<p.RollEnd||Time<p.StunEnd;
+            bool interrupted=Time<p.RollEnd||Incapacitated(p);
             if(interrupted){CancelWindup(p);p.HoldAt=-1;}
             if(p.AbilityCast!=null&&Time>=p.AbilityCast.Release)ReleaseAbility(p);
             if(p.BufferedSlot!=null)
@@ -78,7 +78,7 @@ namespace ChipArena.UnityConversion
         private void ReleaseAbility(NativePilot p)
         {
             var cast=p.AbilityCast;p.AbilityCast=null;var d=cast.Definition;float cost=NativeAbilityRules.Cost(d,p.Stats);
-            if(p.Hp<=0||p.Mana<cost||Time<p.BlockEnd||Time<p.StunEnd)return;
+            if(p.Hp<=0||p.Mana<cost||Time<p.BlockEnd||Incapacitated(p))return;
             float scale=NativeAbilityRules.Scale(p.Stats,p.Mana>=.75f*p.Stats["maxMana"]);
             p.Mana-=cost;
             if(d.slot=="q")p.QReady=Time+NativeAbilityRules.Cooldown(d,p.Stats);
@@ -98,7 +98,7 @@ namespace ChipArena.UnityConversion
                 }
                 return;
             }
-            if(AbilityShots.Count>=100)return;
+            if(ProjectileCount>=100)return;
             Vector3 start=Muzzle(p),dir=(cast.Point-start).normalized;
             if(dir.sqrMagnitude<.01f)dir=cast.Direction;
             var shot=new NativeAbilityShot{Id=nextBullet++,Owner=p,Definition=d,Position=start,Velocity=dir*(float)d.speed,Damage=damage,Radius=(float)d.shotRadius,Gravity=(float)d.gravity,Life=d.id=="rocket"?2.5f:d.id=="orbital-mark"?1:d.id=="frag-grenade"?4:d.duration>0?(float)d.duration:3,MaxTravel=d.id=="frag-grenade"?200:(float)d.range,NextTick=Time+(float)d.tick,RemainingPierces=(int)d.pierce};

@@ -38,6 +38,9 @@ namespace ChipArena.UnityConversion
     public class Actor
     {
         public int VisualSet,MagicVisual;
+        // Native authority presentation only; the inherited lab wire codec does not transport these.
+        public string SpecialKind;public float SpecialAt=-100,SpecialRelease,SpecialUntil,SpecialLanded=-1;
+        public bool SpecialReleased,WeaponAway,DownUsed;public float DownAt=-100,DownUntil,DownLanded=-1,DownPickup,DownRoll=-1,DownRollEnd=-1;public V3 DownDirection;
         public float CastRate=1,AbilityAt=-100,AbilityRelease;public string AbilityId;
         public bool Grounded=true;
         public float VisualWindup=Rules.SwordWindup,VisualActive=Rules.SwordActive,VisualDuration=Rules.SwordDuration,VisualRollDuration=Rules.RollDuration;

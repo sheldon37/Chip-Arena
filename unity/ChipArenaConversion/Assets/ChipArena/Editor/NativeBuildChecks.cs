@@ -18,10 +18,11 @@ namespace ChipArena.UnityConversion.Editor
                 for(int n=1;n<=200;n++)arena.Events.Add(new ArenaEvent{Id=n,Kind=EventKind.Impact,Time=arena.Time,SurfaceId=prop.Definition.id,Position=NativeArena.Vec(prop.transform.position+Vector3.up),Normal=new V3(0,1,0),Color=0x58cfff});
                 arena.Bullets.Add(new NativeBullet{Id=500,Spec="pistol",Position=Vector3.up,Radius=.045f});
                 arena.AbilityShots.Add(new NativeAbilityShot{Id=501,Owner=arena.Local,Position=Vector3.up*2,Radius=.2f});
+                arena.MeleeShots.Add(new NativeMeleeShot{Id=502,Original=arena.Local,Owner=arena.Local,Shield=true,Position=Vector3.up*3,Radius=.28f});
                 void Sample()=>glow.Render(arena,camera,null,false,rigs,null,null,false);
-                Sample();if(glow.LiveMarks!=200||glow.LiveTraces!=2)throw new Exception("Combat glow dropped a live burst or ability trace");
+                Sample();if(glow.LiveMarks!=200||glow.LiveTraces!=3)throw new Exception("Combat glow dropped a live burst or ability trace");
                 if(host.GetComponentsInChildren<Light>().Length!=7)throw new Exception("Combat lights must use exactly seven pooled objects");
-                arena.Bullets.Clear();arena.AbilityShots.Clear();match.Tick(.2);Sample();
+                arena.Bullets.Clear();arena.AbilityShots.Clear();arena.MeleeShots.Clear();match.Tick(.2);Sample();
                 if(glow.LiveMarks!=200||glow.LiveTraces!=0)throw new Exception("Glow/trail lifetimes differ from the source");
                 for(int i=0;i<4;i++)match.Tick(.16);Sample();if(glow.LiveMarks!=200)throw new Exception("Impact burst was evicted before natural expiry");
                 match.Tick(.02);Sample();if(glow.LiveMarks!=0)throw new Exception("Expired impact marks leaked");
@@ -29,7 +30,7 @@ namespace ChipArena.UnityConversion.Editor
                 glow.Clear();if(glow.LiveMarks!=0||glow.LiveTraces!=0)throw new Exception("Glow reset leaked presentation state");
             }
             arena.Events.Clear();CapturedAnimation.Release(host);
-            Debug.Log("PASS native glow lifecycle: 200 simultaneous impacts, primary/ability traces, seven pooled lights, natural expiry and reset (draw submission skipped)");
+            Debug.Log("PASS native glow lifecycle: 200 simultaneous impacts, primary/ability/thrown-shield traces, seven pooled lights, natural expiry and reset (draw submission skipped)");
         }
         public static void Run()
         {
@@ -40,6 +41,8 @@ namespace ChipArena.UnityConversion.Editor
             foreach(var test in NativeParityChecks.Run(data,fixtures))Debug.Log("PASS "+test);
             var presentation=JsonUtility.FromJson<PresentationFixtures>(File.ReadAllText(Path.Combine(Application.dataPath,"../Tests/presentation-parity.json")));
             var melee=JsonUtility.FromJson<MeleeFixtures>(File.ReadAllText(Path.Combine(Application.dataPath,"../Tests/melee-parity.json")));
+            var specials=JsonUtility.FromJson<SpecialFixtures>(File.ReadAllText(Path.Combine(Application.dataPath,"../Tests/specials-parity.json")));
+            foreach(var test in NativeSpecialChecks.Run(data,specials))Debug.Log("PASS "+test);
             foreach(var test in NativeMeleeChecks.Run(data,melee))Debug.Log("PASS "+test);
             foreach(var test in NativeMotionChecks.Run())Debug.Log("PASS "+test);
             foreach(var test in NativeVisualChecks.Run(data))Debug.Log("PASS "+test);
@@ -80,7 +83,7 @@ namespace ChipArena.UnityConversion.Editor
                             if(ReferenceEquals(shown.Actors[0],pilot.Pose)||Vector3.Distance(NativeArena.Vec(shown.Actors[0].Position),pilot.Body.transform.position-Vector3.up*.865f)>.00001f)
                                 throw new Exception("Render snapshot must copy the interpolated transform");
                             float hp=pilot.Pose.Hp;shown.Actors[0].Hp=0;if(pilot.Pose.Hp!=hp)throw new Exception("Render snapshot changed authority");
-                            CheckGlow(arena,match);arena.ValidateMelee();
+                            CheckGlow(arena,match);arena.ValidateMelee();arena.ValidateSpecials();
                         }
                         Debug.Log("PASS native map "+map.id+": isolated Edit-mode physics, 8 spawn floors, capsule settling");
                     }

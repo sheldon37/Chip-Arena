@@ -69,6 +69,7 @@ namespace ChipArena.UnityConversion
             var glowShots=new List<(int id,Vector3 position,float radius,int color,bool magic)>();
             foreach(var shot in arena.Bullets)glowShots.Add((shot.Id,shot.Position,shot.Radius,(int)arena.Content.Weapon(shot.Spec).color,arena.Content.Weapon(shot.Spec).@class=="magic"));
             foreach(var shot in arena.AbilityShots)glowShots.Add((shot.Id,shot.Position,shot.Radius,(int)shot.Owner.Weapon.color,shot.Owner.Weapon.@class=="magic"));
+            foreach(var shot in arena.MeleeShots)glowShots.Add((shot.Id,shot.Position,shot.Radius,(int)shot.Original.Weapon.color,false));
             foreach(var shot in glowShots)
             {
                 world.Halo(shot.position,right,up,NativeGlowRules.HaloSize(shot.radius,Quality),Tint(shot.color),.88f);

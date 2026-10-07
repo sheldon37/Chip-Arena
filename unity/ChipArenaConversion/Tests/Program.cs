@@ -14,6 +14,8 @@ internal static class Program
             var fixtures=System.Text.Json.JsonSerializer.Deserialize<ParityFixtures>(System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Tests/source-parity.json")),options);
             var presentation=System.Text.Json.JsonSerializer.Deserialize<PresentationFixtures>(System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Tests/presentation-parity.json")),options);
             var melee=System.Text.Json.JsonSerializer.Deserialize<MeleeFixtures>(System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Tests/melee-parity.json")),options);
+            var specials=System.Text.Json.JsonSerializer.Deserialize<SpecialFixtures>(System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Tests/specials-parity.json")),options);
+            foreach(var result in NativeSpecialChecks.Run(data,specials))Console.WriteLine("PASS "+result);
             foreach(var result in NativeMeleeChecks.Run(data,melee))Console.WriteLine("PASS "+result);
             foreach(var result in NativeMotionChecks.Run())Console.WriteLine("PASS "+result);
             foreach(var result in NativeVisualChecks.Run(data))Console.WriteLine("PASS "+result);

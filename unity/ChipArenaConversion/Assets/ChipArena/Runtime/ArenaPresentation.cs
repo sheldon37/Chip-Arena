@@ -203,9 +203,11 @@ namespace ChipArena.UnityConversion
                 DrawStaff(rig,a.MagicVisual);
                 return;
             }
-            Weapon(rig.Bones[CapturedRig.RHand].localToWorldMatrix,rig.Set,color);
-            if(rig.Set==1) Weapon(rig.Bones[CapturedRig.LHand].localToWorldMatrix,1,color);
+            if(!a.WeaponAway)Weapon(MeleeHand(rig,a,time),rig.Set,color);
+            if(rig.Set==1) Weapon(MeleeHand(rig,a,time,true),1,color);
         }
+        private static Matrix4x4 MeleeHand(CapturedAnimation.Player rig,Actor a,float time,bool left=false)
+        {return rig.Bones[left?CapturedRig.LHand:CapturedRig.RHand].localToWorldMatrix*Matrix4x4.Rotate(CapturedAnimation.Quat(CapturedRig.Mirror(NativeSpecialPose.HeldRotation(a,time,left))));}
         private void Weapon(Matrix4x4 hand,int set,int color)
         {
             // Source weapon-visuals.ts proportions. Grip is at the wrist; +z is the captured blade direction.

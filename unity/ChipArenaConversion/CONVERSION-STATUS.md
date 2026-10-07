@@ -1,8 +1,8 @@
-# Native conversion status — melee primaries and riposte
+# Native conversion status — melee specials and recovery
 
 Target approved by the owner: **native Unity/C#**, with gameplay simulation and physics converted too. Branch: `codex/unity-conversion`. Source remains `05950ea`; the accepted lab and original game are preserved separately.
 
-**The full-game conversion is incomplete.** Imported definitions do not establish implemented mechanics. This checkpoint ports standard-primary moving sweeps/footwork, timed blocks/ripostes, roll-cancel rules and external impulse integration. The first-person, staff/glow and gun/magic ability work remains included. Native Windows visual/combat acceptance is still required.
+**The full-game conversion is incomplete.** Imported definitions do not establish implemented mechanics. This checkpoint adds all four standard melee E actions, thrown weapons, Shield knockdown and bounded pickup/juggle/roll-away recovery. Primary sweeps, footwork, timed blocks/ripostes and corrected external impulses remain included. The first-person, staff/glow and gun/magic ability work remains included. Native Windows visual/combat acceptance is still required.
 
 | System | This checkpoint | Remaining work |
 | --- | --- | --- |
@@ -11,14 +11,14 @@ Target approved by the owner: **native Unity/C#**, with gameplay simulation and 
 | Match flow | Native countdown, round/set wins, draw replay, losing-side draft, bot skip, rematch | Specialization screen, intros, exact draft staging, disconnect/rejoin and complete options |
 | Source maps | 15 collision layouts / 3,451 blocks; rotations, masses and support IDs retained; moon/rim lighting, fog, shadows and wood/metal trim | Full scene dressing/material detail, weather/music and Ward Zero machinery/vents |
 | Gameplay physics | Unity capsules/rigid bodies, CCD, swept shots, support release, breakable props | Source external-velocity decay/counter-steering and one-shot lift now ported; native Windows acceptance, collision feedback/stepping, debris damage and complete destruction remain |
-| Standard melee | Four primaries with source sweep filters, once-per-swing contacts, footwork, block rebound/riposte and human roll-cancels; Sword/Daggers/Greatsword stagger timing | Native collision/feel acceptance, E moves, Shield knockdown and launch/juggle/recovery; inactive legacy held-guard path intentionally not activated |
+| Standard melee | Four primaries with source sweep filters, once-per-swing contacts, footwork, block rebound/riposte and human roll-cancels; four E actions, Shield knockdown, one pickup window, capped air follow-ups and protected roll recovery | Native collision/feel acceptance, body/head hit fidelity, modifier Chips and full production animation; inactive legacy held-guard path intentionally not activated |
 | Guns | Three primaries, magazines, reload, ADS, gravity, reflection and head/body hits; Frag/Rocket/Orbital Mark E handlers | Native ability contacts, source collision/aim and animation polish |
 | Magic | Four primaries, source cast phrases, left-hand staff/guard, eight Q/E handlers, mana/cooldowns, basic fields/status effects | Native verification, exact collision/impulse integration and production VFX |
 | Chips in combat | 89 stat-only entries enabled; unimplemented effects are not offered | Remaining 147 entries, special effects, summons, proc ownership/recursion and combinations |
 | Stage hazards | Source C# schedules for saws, spikes and lava; basic native visuals/contact/swimming | Native acceptance, production effects, Siren song/vent hazards |
 | DEV weapons | Definitions are reference-only; unavailable for match selection | Ansatsuken, Emperor, L33T H4x, Siren, associated exclusive mechanics and entitlement gates |
 | PvE / Siren | Source inventory only | Director, waves/horde, boss phases, economy, machines, picks, downed/revive, recruits, completion cleanup |
-| Animation | Captured melee / procedural guns, source magic phrase math, adapted staff IK and gun ability gestures | Full source spring/IK/gait fidelity, intros, cinematics, body wounds, ragdolls and kill effects |
+| Animation | Captured melee / procedural guns, source magic phrase math, adapted staff IK, gun ability gestures and standard melee special/recovery poses | Full source spring/IK/gait fidelity, intros, cinematics, body wounds, ragdolls and kill effects |
 | Camera | Saved V/menu toggle, isolated first-person rig, interpolated body following, continuous animation clock, smooth ADS/sight alignment and source-style rifle scope | Native frame-pacing/framing/obstruction acceptance, full source sway/bob/recoil layers |
 | Combat effects | Source-style additive projectile/armor halos, 0.18 s trails, 0.85 s attached surface marks, seven pooled spill lights, soft zone/explosion fills and saved quality setting | Native visual/performance acceptance, elemental modifiers, full spell geometry/particles and production effects |
 | Multiplayer | Not connected to this native authority | Native host/guest transport, eight-player tests, prediction, reconnect and isolated service configuration |
@@ -33,7 +33,7 @@ One intentional contact change: lava is checked against its individual channel, 
 ## Conversion sequence
 
 1. **Implemented; Windows gate pending:** content parity, native layouts/physics and first match loop. Confirm walking/climbing, collision, dynamic supports and round reset on the owner's activated Unity installation.
-2. Complete standard combat parity: verify the new primary sweep/footwork/riposte layer; add melee specials and knockdown/juggle/recovery, native acceptance and source parity of gun/magic Q/E handlers, health/status/impulse rules, projectile modifiers and native network ownership.
+2. Complete standard combat parity: verify primary sweeps/footwork/riposte plus the new melee specials and knockdown/juggle/recovery; continue native acceptance and source parity of gun/magic Q/E handlers, health/status/impulse rules, projectile modifiers and native network ownership.
 3. Implement every Chip handler against source-derived scenarios; retain exclusions and proc-recursion rules. Do not enable a catalogue entry merely because its data imported.
 4. Port DEV styles, Siren and all PvE contracts/director/economy/AI. Carry the current wave cleanup and impact-effect lifetime behavior.
 5. Port the remaining models, animation layers, maps/scenery, VFX, audio, cosmetics, intros, body damage, kill effects and killcam.
@@ -62,4 +62,14 @@ The primary sweep's source expressions and pure commitment/block/movement functi
 
 Base damage/costs, cooldown values and collider dimensions are unchanged. Actual damage timing now follows each tick of the active sweep, with one contact per target; movement uses attack steps and corrected external impulses. This intentionally changes the previous native placeholder behavior. Block cannot cancel a committed attack. A human roll-cancel does not refund stamina; only a cancel at least half a tick before contact shortens the remaining attack cooldown. Counter protection lasts only the remainder of the existing block window, not the entire attacker stun. Standard combo indices continue through the round, matching the source instead of resetting after a DEV-style 2.4 s timeout.
 
-The current source sets Shield E to shield-throw, leaving its earlier held-guard branch inactive. That obsolete guard path was not made playable. E throws/launches/slam, Shield knockdown, grounded protection, juggle/pickup, body reactions and full production animation fidelity are still pending. Shield uses a grounded stagger until recovery is ported; this is not full standard-melee parity. The inherited wire protocol is unchanged and does not network the native authority.
+The current source sets Shield E to shield-throw, leaving its earlier held-guard branch inactive. That obsolete guard path was not made playable. The inherited wire protocol is unchanged and does not network the native authority.
+
+## Special/recovery boundary of this pass
+
+Sword launch, Dagger throw/reflection, Shield outbound hit/harmless return/catch and Greatsword leap/direct strike/landing slam are implemented. The leap shares one target ledger with its slam. Throws use the scene sphere sweep plus explicit starting-overlap checks, an arena-wide projectile cap and the source ballistic/ceiling rules. Headshots retain the native approximate capsule-height test; source body-wound/head volumes and unsupported bounce/proc/summon handlers are not ported by this pass.
+
+Knockdowns land only after grounded contact, expose one 0.22-second pickup window, permit at most two early air follow-ups, then protect ground recovery. The recovery roll latches WASD or backward aim direction and runs at the source 6 m/s for 0.4 seconds. Death and round reset clear state. Stagger escape immunity remains active. These are standard-melee knockdowns, not DEV juggle, PvE downed/revive or physical ragdolls.
+
+Source special envelope math and recovery timestamps are ported; joint tables are adapted to the captured native guard, wrist geometry and voxel floor clearance. Recovery uses stateless landing estimates rather than the source per-rig air memory/planting solver. First-person Greatsword keeps braced arms without rotating the camera; knockdown temporarily uses third person and restores the saved preference. No rendered-pose feedback is added to animation history. Exact production IK, landing continuity, weapon framing and full visual fidelity still need Windows comparison.
+
+Source fixtures cover 96 start gates, 324 strike filters, 216 recovery samples, 36 ballistic steps, 24 ceiling cases and 108 animation envelopes; 2,400 native pose samples check finite/repeatable transforms and floor clearance. These establish math contracts only. The new NativeSpecialValidation integration gate is compiled into the builder but has not executed here. It checks real query/handler paths, launch/pickup, protection, real landing, reflection and shield retrieval.

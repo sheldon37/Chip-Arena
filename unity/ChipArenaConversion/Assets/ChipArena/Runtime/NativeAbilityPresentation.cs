@@ -14,6 +14,26 @@ namespace ChipArena.UnityConversion
                 if(shot.Definition.id=="tidal-wave")scale=new Vector3(2,.8f,.35f);
                 Add(color,Matrix4x4.TRS(shot.Position,shot.Velocity.sqrMagnitude>.01f?Quaternion.LookRotation(shot.Velocity):Quaternion.identity,scale));
             }
+            foreach(var shot in arena.MeleeShots)
+            {
+                float age=arena.Time-shot.At;
+                Quaternion direction=shot.Velocity.sqrMagnitude>.001f?Quaternion.LookRotation(shot.Velocity):Quaternion.identity;
+                Quaternion spin=shot.Shield?Quaternion.Euler(90,0,age*24*Mathf.Rad2Deg):Quaternion.Euler(age*2160,0,0);
+                var matrix=Matrix4x4.TRS(shot.Position,direction*spin,Vector3.one);
+                if(!shot.Shield)matrix*=Matrix4x4.Translate(new Vector3(0,0,-.44f));
+                Weapon(matrix,shot.Shield?3:1,shot.Original.Seat.id==arena.Local?.Seat.id?0:1);
+            }
+            foreach(var impact in arena.MeleeImpacts)
+            {
+                float age=arena.Time-impact.At,life=Mathf.Clamp01(1-age/1.1f);
+                // Low voxel dust across the slam volume; source intentionally has no outlined damage ring.
+                for(int i=0;i<20;i++)
+                {
+                    float angle=i*2.399963f,r=impact.Radius*Mathf.Sqrt((i+.5f)/20)*Mathf.Clamp01(age*4);
+                    Vector3 at=impact.Position+new Vector3(Mathf.Sin(angle)*r,.06f+Mathf.Sin(Mathf.Clamp01(age)*Mathf.PI)*(.12f+(i%3)*.07f),Mathf.Cos(angle)*r);
+                    Add(4,Matrix4x4.TRS(at,Quaternion.Euler(i*17,age*60,i*29),Vector3.one*(.10f+.04f*(i%3))*life));
+                }
+            }
             foreach(var zone in arena.AbilityZones)
             {
                 int color=zone.Owner.Pose.MagicVisual>0?6+zone.Owner.Pose.MagicVisual:6;

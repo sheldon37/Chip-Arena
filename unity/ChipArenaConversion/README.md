@@ -1,6 +1,6 @@
 # Chip Arena — native Unity conversion
 
-**Melee and riposte checkpoint; the full conversion is not complete.** This project is separate from both the Electron game and the accepted Unity lab. The target is native Unity/C# gameplay and physics, with no Node/Rapier sidecar.
+**Melee specials and recovery checkpoint; the full conversion is not complete.** This project is separate from both the Electron game and the accepted Unity lab. The target is native Unity/C# gameplay and physics, with no Node/Rapier sidecar.
 
 ## Run this milestone
 
@@ -29,16 +29,21 @@ The build creates `Builds/Chip-Arena-Native-Conversion-TEST-Windows.zip`. Keep t
 
 ## New in this checkpoint
 
-- Standard melee now checks the source moving sweep throughout its active window. Targets and props can be hit once per swing; intervening cover and other pilots obstruct contact. The third Sword attack uses its narrower overhead sweep.
-- Source attack footwork is present: 0.65 m Sword, 0.85 m Daggers, 0.55 m Shield and 0.45 m Greatsword, subject to native collisions. Attack commitment stops voluntary movement immediately.
-- Timed melee blocks rebound/stun the attacker. Human melee blockers can counter with LMB or roll out during the remaining block window; an action that cannot start preserves the block. The counter replaces its own riposte stun with the weapon's ordinary stagger; Daggers retain the two-hit opportunity and stagger escape window.
-- Shift can cancel a human standard primary. Cancelling before contact refunds only the remaining attack cooldown down to the roll duration, never spent stamina. Casts, reloads and ordinary block windows stay committed.
-- Contact impulses now use source external-velocity decay, counter-steering and a single vertical kick. This changes knockback across weapon classes; actual PhysX response needs playtesting.
-- **Bots use my weapon** makes weapon-specific duels easier to test. The HUD displays a riposte prompt after a successful melee block.
+| Weapon | E move |
+| --- | --- |
+| Sword | Rising slash launches a nearby opponent |
+| Daggers | Ballistic dagger throw; timed blocks reflect it |
+| Shield | Throw, hit and return; returning shields cannot deal extra damage |
+| Greatsword | Leaping somersault followed by a slam on an actual landing |
 
-The menu title is **Melee & riposte**. Start with Sword, one bot, **Bots use my weapon** enabled and Stationary targets off. Try RMB just before its swing lands, then LMB; try Shift during your windup and recovery. Repeat with Daggers/Greatsword and check strikes near cover. First-person fixes, V toggle, scope, staff and glow remain included.
+- E uses the source stamina costs, windups and cooldowns. Throwing hides the held weapon for its source release/retrieval window. HUD status shows readiness, cooldown and low stamina.
+- Shield primary/throw and the launch/slam moves can knock targets down. Recovery has one brief legs-up pickup window, at most two early airborne follow-ups, protected ground recovery and a roll away. Hold **WASD** to choose that recovery direction; it locks when the roll starts.
+- Special animations, thrown weapon models, glow trails and voxel slam dust are included. First-person arms stay braced during the Greatsword flip. Being knocked down temporarily shows the world character; your saved V preference resumes afterward.
+- Previous moving primary sweeps, footwork, riposte, Shift primary cancellation, first-person stability, scope, staff and glow are retained. Bots can use the four E moves.
 
-Melee E specials, Shield knockdown, launch/juggle/recovery and special Chip handlers are **still pending**. Shield currently uses a grounded stagger. The pinned source's old held-shield-guard path is inactive: its E definition is a throw, so no new held-guard control was invented here.
+The menu title is **Melee specials & recovery**. Start with one bot and **Bots use my weapon** enabled. Try each E near a target and cover; compare third person and **V**. Block an incoming dagger or shield. Try launching, landing, the single pickup window and directional recovery. With Greatsword, check that the slam happens on landing and cannot hit the same opponent twice in one action.
+
+Special Chip handlers, full body reactions and source collision/animation fidelity remain pending. Shield uses the current source throw; its obsolete held-guard path remains inactive.
 
 ## First-person stability and aiming (retained)
 
@@ -64,7 +69,7 @@ Try Fire or Darkness, press **V**, fire repeatedly, cast Q/E, and enter/leave RM
 - Basic fire burn/blast, water slow, lightning chain and darkness drain, plus native saw/spike/lava schedules. These combat integrations still need native acceptance.
 - Separate preferences under `ChipArenaConversion/Chip Arena Native Conversion TEST`; no production accounts, saves, updater or service endpoints are used.
 
-This is not yet the full game. Special Chip mechanics, melee E moves, DEV styles, Siren/PvE, body damage/ragdoll fidelity, production UI/audio/cosmetics and multiplayer remain work in progress. Read **CONVERSION-STATUS.md** for the exact boundary.
+This is not yet the full game. Special Chip mechanics, DEV styles, Siren/PvE, body damage/ragdoll fidelity, production UI/audio/cosmetics and multiplayer remain work in progress. Read **CONVERSION-STATUS.md** for the exact boundary.
 
 ## Abilities in this checkpoint
 
@@ -78,11 +83,11 @@ This is not yet the full game. Special Chip mechanics, melee E moves, DEV styles
 | Lightning | Blink Strike | Ball Lightning |
 | Darkness | Shadow Shackles | Black Hole |
 
-Hold E for grenade/ground-target previews; release to cast. Block, roll, death or opening the menu cancels the hold. Ability mana and cooldown are spent on release. Existing unsupported ability-modifier Chips remain excluded from the draft.
+Hold E for grenade/ground-target previews; release to cast. Block, roll, death or opening the menu cancels the hold. Gun/magic ability mana and cooldown are spent on release. Melee E spends stamina and starts its cooldown immediately. Existing unsupported ability-modifier Chips remain excluded from the draft.
 
 ## Required Windows check
 
-First run the build. It checks 1,728 source casting poses, 44 ability-rule cases, 60 original-source stat cases, all 15 map imports, 120 spawn-floor queries and capsule settling in native Unity physics before packaging. This gate is implemented but could not execute in the Linux authoring workspace without an activated Unity Editor.
+First run the build. It includes actual melee-special collision/return/recovery gates and source-derived rule/pose checks alongside 1,728 source casting poses, 44 ability-rule cases, 60 original-source stat cases, all 15 map imports, 120 spawn-floor queries and capsule settling in native Unity physics before packaging. This gate is implemented but could not execute in the Linux authoring workspace without an activated Unity Editor.
 
 Test **V** with every weapon, reload and ADS, switching near walls, death/round reset and persistence after restart. Test magic staff carry/block and the four primary casts. Exercise each Q/E against targets and cover; check mana/cooldown on interruption, grenade bounce, unarmed/armed rockets, mark tracking, piercing, blink clearance and timed fields.
 
@@ -92,6 +97,6 @@ Also test ramps, stairs and upper floors; shooting close to cover; dynamic props
 
 Pinned game source: `05950eaef80ff2483a9c44d898cad98be1a76bbc`. Accepted Unity lab: `f1207e65b9ba3db39239b7996c8b516fa58bd775`.
 
-`tools/source-lock.json` pins 108 source files. `tools/export_source.mjs <source-checkout>` verifies those blobs, then exports definitions/layouts and reference fixtures at build time. The shipped game loads JSON and C#; no JavaScript engine is embedded. `tools/presentation-provenance.json` additionally pins the eleven presentation/ability reference files; `node tools/export_presentation.mjs <source-checkout>` reproduces the new fixtures from original pure functions (timestamps quantized to the native float clock). `tools/conversion-inventory.json` records the wider remaining source/assets.
+`tools/source-lock.json` pins 108 source files. `tools/export_source.mjs <source-checkout>` verifies those blobs, then exports definitions/layouts and reference fixtures at build time. The shipped game loads JSON and C#; no JavaScript engine is embedded. `tools/presentation-provenance.json` additionally pins the eleven presentation/ability reference files; `node tools/export_presentation.mjs <source-checkout>` reproduces the new fixtures from original pure functions (timestamps quantized to the native float clock). `tools/conversion-inventory.json` records the wider remaining source/assets. `node tools/export_specials.mjs <source-checkout>` verifies nine pinned source blobs and reproduces the melee special/recovery fixtures; its adapter exercises source start rules without constructing Rapier.
 
 Run `dotnet run --project Tests/CoreTests.csproj -c Release`, then `python3 -m unittest discover -s Tests -p test_source_packages.py` and `python3 tools/package_source.py --check`. See VALIDATION.md for actual checks and their limits.

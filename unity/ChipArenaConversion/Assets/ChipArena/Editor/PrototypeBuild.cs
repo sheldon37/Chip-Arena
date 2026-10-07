@@ -40,7 +40,7 @@ namespace ChipArena.UnityConversion.Editor
         {
             PlayerSettings.companyName="ChipArenaConversion";
             PlayerSettings.productName="Chip Arena Native Conversion TEST";
-            PlayerSettings.bundleVersion="0.4.0-native-melee-riposte";
+            PlayerSettings.bundleVersion="0.4.1-native-melee-specials";
             PlayerSettings.defaultScreenWidth=1600; PlayerSettings.defaultScreenHeight=900;
             PlayerSettings.fullScreenMode=FullScreenMode.Windowed;
             PlayerSettings.runInBackground=true;
