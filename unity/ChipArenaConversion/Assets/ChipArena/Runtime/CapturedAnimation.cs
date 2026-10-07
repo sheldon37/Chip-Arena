@@ -92,7 +92,7 @@ namespace ChipArena.UnityConversion
             private readonly Quaternion[] previousQ=new Quaternion[CapturedRig.Bones.Length],blendQ=new Quaternion[CapturedRig.Bones.Length];
             private readonly CapturedRig.Pose pose=new CapturedRig.Pose();
             private float lastTime=-100,phase,lastStun=-100,stunAt,gunAimWeight=1;
-            private bool fresh=true;
+            private bool fresh=true;private readonly float[] magicChannels=new float[13];
             public string State { get; private set; }="idle";
             public int Set { get; private set; }
             public WeaponId Weapon { get; private set; }
@@ -124,14 +124,14 @@ namespace ChipArena.UnityConversion
             {
                 for(int i=0;i<Bones.Length;i++) { Bones[i].localPosition=Vec(CapturedRig.Mirror(pose.Position[i])); Bones[i].localRotation=Quat(CapturedRig.Mirror(pose.Rotation[i])); }
             }
-            public void ActorPose(Actor a,Vector3 position,float time)
+            public void ActorPose(Actor a,Vector3 position,float time,bool firstPerson=false)
             {
                 Weapon=a.Weapon; int set=Mathf.Clamp(a.VisualSet,0,3);
                 float dt=Mathf.Clamp(time-lastTime,0,.1f); bool reset=fresh||time<lastTime||time-lastTime>.35f;
                 if(reset) phase=0; lastTime=time;
                 Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,Quaternion.Euler(0,a.Yaw,0));
                 float speed=new Vector2(a.Velocity.x,a.Velocity.z).magnitude;
-                bool attack=a.Attacking(time),roll=a.Rolling(time),stun=a.StunUntil>time,ground=a.Grounded;
+                bool attack=a.MagicVisual==0&&a.Attacking(time),roll=a.Rolling(time),stun=a.StunUntil>time,ground=a.Grounded;
                 bool moving=speed>.08f&&!attack&&!roll&&!stun&&ground;
                 if(moving) phase+=dt*Mathf.Min(3.7f,speed/Mathf.Min(2.1f,.62f+.22f*speed));
                 Sample(set,"idle",time);
@@ -154,12 +154,12 @@ namespace ChipArena.UnityConversion
                         Blend(blendP,blendQ,CapturedClip.Ease((age-a.VisualWindup-a.VisualActive)/recovery)); State=cut+" recovery";
                     }
                 }
-                if(a.Weapon==WeaponId.Sword&&time<a.BlockUntil)
+                if(a.Weapon==WeaponId.Sword&&a.MagicVisual==0&&time<a.BlockUntil)
                 {
                     Save(blendP,blendQ); float age=time-(a.BlockUntil-Rules.BlockDuration); var block=Find(set,"block");
                     Sample(set,"block",CapturedClip.Retime(new[]{0f,.13f,.36f},block.Marks,age)); Blend(blendP,blendQ,CapturedClip.Ease(age/.05f));
                 }
-                if(a.Weapon==WeaponId.Sword&&stun)
+                if(a.Weapon==WeaponId.Sword&&a.MagicVisual==0&&stun)
                 {
                     if(a.StunUntil!=lastStun) { stunAt=time; lastStun=a.StunUntil; }
                     Save(blendP,blendQ); var hit=Find(set,"stagger"); float span=Mathf.Max(.05f,a.StunUntil-stunAt);
@@ -173,7 +173,8 @@ namespace ChipArena.UnityConversion
                     Vector3 velocity=Quaternion.Inverse(Root.transform.rotation)*new Vector3(a.Velocity.x,0,a.Velocity.z);
                     float want=!moving||velocity.z/Mathf.Max(.01f,speed)<.6f||a.Aiming||a.ReloadUntil>time||time<a.BlockUntil||time-a.LastShot<.4f?1:0;
                     gunAimWeight=reset?want:Mathf.Lerp(gunAimWeight,want,1-Mathf.Exp(-24*dt));
-                    RangedPose.Apply(pose,a,time,gunAimWeight);
+                    RangedPose.Apply(pose,a,time,firstPerson?1:gunAimWeight);
+                    RangedAbilityPose.Apply(pose,a,time,firstPerson);
                     State=a.ReloadUntil>time?"reload":time<a.BlockUntil?"block":time-a.LastShot<.2f?"fire":a.Aiming?"aim":moving?"carry":"ready";
                 }
                 if(moving)
@@ -192,6 +193,8 @@ namespace ChipArena.UnityConversion
                         CapturedRig.Leg(pose,i==0,foot);
                     }
                 }
+                if(a.MagicVisual>0)
+                {MagicPose.Apply(pose,a,time,firstPerson,magicChannels);State=time<a.BlockUntil?"staff guard":time-a.AbilityAt<1?"ability cast":time-a.AttackAt<.8f?"magic cast":"staff carry";}
                 if(!ground&&!roll)
                 {
                     pose.Rotation[CapturedRig.LHip]=CapturedRig.Euler(-.65f); pose.Rotation[CapturedRig.RHip]=CapturedRig.Euler(-.35f);

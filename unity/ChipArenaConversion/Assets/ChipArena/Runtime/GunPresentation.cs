@@ -61,6 +61,8 @@ namespace ChipArena.UnityConversion
                 }
             }
             if(visible) Box(mag,mg?6:5,0,0,mg?.04f:0,pistol?.095f:mg?.10f:.08f,pistol?.13f:mg?.24f:.22f,pistol?.10f:mg?.22f:.15f);
+            if(actor.AbilityId=="frag-grenade"&&time>actor.AbilityAt+.3f*(actor.AbilityRelease-actor.AbilityAt)&&time<actor.AbilityRelease)
+                Box(left,6,0,-.09f,.03f,.075f,.085f,.075f);
             float age=time-actor.LastShot;
             if(age>=0&&age<.065f&&actor.ReloadUntil<=time)
             {

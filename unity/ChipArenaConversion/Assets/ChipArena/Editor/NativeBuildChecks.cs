@@ -15,6 +15,8 @@ namespace ChipArena.UnityConversion.Editor
             var data=JsonUtility.FromJson<ConversionContent>(asset.text);
             var fixtures=JsonUtility.FromJson<ParityFixtures>(File.ReadAllText(Path.Combine(Application.dataPath,"../Tests/source-parity.json")));
             foreach(var test in NativeParityChecks.Run(data,fixtures))Debug.Log("PASS "+test);
+            var presentation=JsonUtility.FromJson<PresentationFixtures>(File.ReadAllText(Path.Combine(Application.dataPath,"../Tests/presentation-parity.json")));
+            foreach(var test in NativePresentationChecks.Run(data,presentation))Debug.Log("PASS "+test);
             var active=SceneManager.GetActiveScene();Vector3 gravity=Physics.gravity;int pads=0;
             try
             {

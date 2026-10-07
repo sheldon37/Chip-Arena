@@ -27,10 +27,10 @@ jobs:
         run: |
           python3 -m unittest discover -s unity/ChipArenaConversion/Tests -p 'test_source_packages.py'
           python3 unity/ChipArenaConversion/tools/package_source.py
-      - name: Retain private foundation source
+      - name: Retain private conversion source
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: Chip-Arena-Native-Conversion-Foundation-Source
+          name: Chip-Arena-Native-Conversion-Source
           path: |
             unity/ChipArenaConversion/Builds/Chip-Arena-Native-Conversion-Source.zip
             unity/ChipArenaConversion/Builds/Chip-Arena-Native-Conversion-Source.zip.sha256

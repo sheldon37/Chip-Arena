@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion.Editor
             using(var animations=new CapturedAnimation()) animations.ValidatePlayback();
             foreach(string name in new[] { "pistol", "rifle", "machinegun", "reload-start", "reload-end", "hit" })
                 if(Resources.Load<AudioClip>("GunAudio/"+name)==null) throw new Exception("Gun audio failed to import: "+name);
-            foreach(string name in new[] { "PrototypeLit", "PrototypeParticles" })
+            foreach(string name in new[] { "PrototypeLit", "PrototypeParticles", "NativeLit" })
             {
                 Shader shader=Resources.Load<Shader>(name);
                 if(shader==null||ShaderUtil.ShaderHasError(shader)) throw new Exception("Missing or invalid shader: "+name);

@@ -21,9 +21,9 @@ namespace ChipArena.UnityConversion
         public int Sequence;
         public float X, Z, Yaw, Pitch;
         public byte SelectWeapon; // 0=no change, 1=Sword, 2=Pistol, 3=Rifle, 4=MachineGun
-        public V3 AimTarget;
-        public bool Attack, Block, Roll, Shoot, Jump, Sprint, Aim, Reload;
-        public bool Valid { get { return Sequence >= 0 && MathUtil.Finite(X) && MathUtil.Finite(Z) && MathUtil.Finite(Yaw) && MathUtil.Finite(Pitch) && MathUtil.Finite(AimTarget.x) && MathUtil.Finite(AimTarget.y) && MathUtil.Finite(AimTarget.z) && AimTarget.Length<=10000 && SelectWeapon<=4; } }
+        public V3 AimTarget,AbilityTarget;
+        public bool Attack, Block, Roll, Shoot, Jump, Sprint, Aim, Reload, AbilityQ, AbilityE, AbilityEHeld, AbilityEReleased, CancelAbilities;
+        public bool Valid { get { return Sequence >= 0 && MathUtil.Finite(X) && MathUtil.Finite(Z) && MathUtil.Finite(Yaw) && MathUtil.Finite(Pitch) && MathUtil.Finite(AbilityTarget.x) && MathUtil.Finite(AbilityTarget.y) && MathUtil.Finite(AbilityTarget.z) && AbilityTarget.Length<=10000 && MathUtil.Finite(AimTarget.x) && MathUtil.Finite(AimTarget.y) && MathUtil.Finite(AimTarget.z) && AimTarget.Length<=10000 && SelectWeapon<=4; } }
         public InputFrame Sanitized()
         {
             if (!Valid) return new InputFrame();
@@ -31,13 +31,14 @@ namespace ChipArena.UnityConversion
             V3 move = new V3(X, 0, Z); if (move.Length > 1) move = move.Normalized;
             input.X = move.x; input.Z = move.z; input.Yaw = Yaw % 360; input.Pitch=MathUtil.Clamp(Pitch,-75,75); return input;
         }
-        public InputFrame HeldOnly() { InputFrame i = this; i.Attack = i.Block = i.Roll = i.Jump = i.Reload = false; i.SelectWeapon=0; return i; }
+        public InputFrame HeldOnly() { InputFrame i = this; i.Attack = i.Block = i.Roll = i.Jump = i.Reload = false; i.AbilityQ=i.AbilityE=i.AbilityEReleased=i.CancelAbilities=false; i.SelectWeapon=0; return i; }
     }
 
     [Serializable]
     public class Actor
     {
         public int VisualSet,MagicVisual;
+        public float CastRate=1,AbilityAt=-100,AbilityRelease;public string AbilityId;
         public bool Grounded=true;
         public float VisualWindup=Rules.SwordWindup,VisualActive=Rules.SwordActive,VisualDuration=Rules.SwordDuration,VisualRollDuration=Rules.RollDuration;
         public int Id, Team, Combo, Action, Kills, LastInput;
@@ -53,6 +54,7 @@ namespace ChipArena.UnityConversion
         public float StunUntil, StaggerImmuneUntil, RegenAt, ShootReady, RespawnAt, FlashUntil;
         internal bool QueuedAttack;
         internal readonly HashSet<int> Hit = new HashSet<int>();
+        public Actor ViewCopy() => (Actor)MemberwiseClone();
         public bool Alive { get { return Hp > 0; } }
         public bool Rolling(float t) { return t >= RollAt && t < RollAt + VisualRollDuration; }
         public bool Invulnerable(float t) { return t >= RollAt + Rules.IframeStart && t < RollAt + Rules.IframeEnd; }
@@ -70,7 +72,7 @@ namespace ChipArena.UnityConversion
     [Serializable]
     public class Shot
     {
-        public int Id, Owner, Team, Reflections;
+        public int Id, Owner, Team, Reflections, MagicVisual;
         public V3 Position, Velocity;
         public float Damage = 20, Life = 3, Gravity, Radius=.1f, DistanceLeft=320, Impulse=325;
         public WeaponId Weapon;

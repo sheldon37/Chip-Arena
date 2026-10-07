@@ -4,7 +4,7 @@ using UnityEngine.Rendering;
 
 namespace ChipArena.UnityConversion
 {
-    public sealed class ArenaPresentation : MonoBehaviour
+    public sealed partial class ArenaPresentation : MonoBehaviour
     {
         private Mesh cube;
         private CapturedAnimation captured;
@@ -34,7 +34,7 @@ namespace ChipArena.UnityConversion
         public string PreviewSource => ViewerSet<4?CapturedClips.Sets[ViewerSet][ViewerClip].Source:"Source gun pose adaptation";
         private readonly List<Material> materials = new List<Material>();
         private readonly List<Material> compatibilityMaterials = new List<Material>();
-        private readonly List<Matrix4x4>[] batches = { new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>() };
+        private readonly List<Matrix4x4>[] batches = MakeBatches();
         private readonly Matrix4x4[] drawBuffer = new Matrix4x4[1023];
         private readonly Dictionary<int, Vector3> visualPositions = new Dictionary<int, Vector3>();
         private readonly List<GameObject> debris = new List<GameObject>();
@@ -56,14 +56,15 @@ namespace ChipArena.UnityConversion
         {
             GameObject sample = GameObject.CreatePrimitive(PrimitiveType.Cube);
             cube = sample.GetComponent<MeshFilter>().sharedMesh; Destroy(sample);
-            Color[] colors = { new Color(.17f,.85f,.83f), new Color(.45f,.58f,1), new Color(.92f,.30f,.38f), new Color(.08f,.11f,.17f), new Color(.87f,.95f,1), new Color(.43f,.51f,.56f), new Color(1,.75f,.3f) };
-            Shader shader = Resources.Load<Shader>("PrototypeLit");
+            Color[] colors = { new Color(.17f,.85f,.83f), new Color(.45f,.58f,1), new Color(.92f,.30f,.38f), new Color(.08f,.11f,.17f), new Color(.87f,.95f,1), new Color(.43f,.51f,.56f), new Color(1,.75f,.3f), new Color(1,.32f,.08f), new Color(.15f,.8f,1), new Color(.72f,.76f,1), new Color(.65f,.25f,.9f) };
+            Shader shader = Resources.Load<Shader>(buildArena?"PrototypeLit":"NativeLit");
             if (shader == null) throw new System.InvalidOperationException("PrototypeLit shader is missing");
             foreach (Color color in colors)
             {
                 materials.Add(new Material(shader) { color = color, enableInstancing = true });
                 compatibilityMaterials.Add(new Material(shader) { color = color, enableInstancing = false });
             }
+            for(int i=7;i<materials.Count;i++){materials[i].SetColor("_Emission",colors[i]*.55f);compatibilityMaterials[i].SetColor("_Emission",colors[i]*.55f);}
             Debug.Log($"Unity prototype renderer: {RenderingMode}; {SystemInfo.graphicsDeviceType}; {SystemInfo.graphicsDeviceName}; shaderSupported={shader.isSupported}");
             captured=new CapturedAnimation();
             string[] soundNames={"","pistol","rifle","machinegun"};
@@ -103,7 +104,7 @@ namespace ChipArena.UnityConversion
         }
         public void ResetPresentation()
         {
-            lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
+            viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
             foreach(var source in shotAudio) if(source!=null) source.Stop(); if(localAudio!=null) localAudio.Stop();
             foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear();
             foreach(var o in debris) if(o!=null) Destroy(o); debris.Clear();
@@ -124,7 +125,7 @@ namespace ChipArena.UnityConversion
                 if(!visualPositions.TryGetValue(a.Id,out old)||(old-target).sqrMagnitude>64) old=target;
                 Vector3 p=smooth?Vector3.Lerp(old,target,1-Mathf.Exp(-18*Time.unscaledDeltaTime)):target;
                 visualPositions[a.Id]=p;
-                if(!a.Alive) continue;
+                if(!a.Alive||(FirstPerson&&a.Id==LocalId)) continue;
                 int color=a.Bot?2:a.Id-1;
                 if(renderTime<a.FlashUntil) color=4;
                 if(CapturedPlayers||Viewer||GunRules.Ranged(a.Weapon)) CapturedPose(a,p,renderTime,color);
@@ -134,29 +135,10 @@ namespace ChipArena.UnityConversion
             foreach(Shot p in s.Shots)
             {
                 if(GunRules.Ranged(p.Weapon)) Add(6,Matrix4x4.TRS(Vec(p.Position),Quaternion.LookRotation(Vec(p.Velocity)),new Vector3(.04f,.04f,Mathf.Clamp(p.Velocity.Length*.01f,.25f,1.5f))));
-                else Add(4, Matrix4x4.TRS(Vec(p.Position),Quaternion.identity,Vector3.one*.18f));
+                else Add(p.MagicVisual>0?6+p.MagicVisual:4, Matrix4x4.TRS(Vec(p.Position),Quaternion.Euler(renderTime*140,renderTime*90,0),Vector3.one*Mathf.Max(.18f,p.Radius*2)));
             }
-            for(int k=0;k<batches.Length;k++)
-            {
-                var list=batches[k];
-                for(int start=0;start<list.Count;start+=1023)
-                {
-                    int count=Mathf.Min(1023,list.Count-start); list.CopyTo(start,drawBuffer,0,count);
-                    bool drawn=false;
-                    if(UsesInstancing)
-                    {
-                        try
-                        {
-                            Graphics.DrawMeshInstanced(cube,0,materials[k],drawBuffer,count,null,ShadowCastingMode.Off,false);
-                            drawn=true;
-                        }
-                        catch(System.InvalidOperationException e) { UseCompatibility(e.Message); }
-                        catch(System.ArgumentException e) { UseCompatibility(e.Message); }
-                    }
-                    if(!drawn)
-                        for(int j=0;j<count;j++) Graphics.DrawMesh(cube,drawBuffer[j],compatibilityMaterials[k],0);
-                }
-            }
+            DrawBatches(null,0,true);
+            if(FirstPerson)RenderFirstPerson(s,renderTime);
             while(coverObjects.Count<s.Covers.Length) coverObjects.Add(null);
             for(int i=0;i<s.Covers.Length;i++)
             {
@@ -214,9 +196,7 @@ namespace ChipArena.UnityConversion
             }
             if(a.MagicVisual>0)
             {
-                var hand=rig.Bones[CapturedRig.RHand].localToWorldMatrix;
-                Part(hand,new Vector3(0,0,.36f),new Vector3(.08f,.08f,1.25f),Quaternion.identity,3);
-                Part(hand,new Vector3(0,0,1.04f),new Vector3(.24f,.24f,.3f),Quaternion.Euler(0,0,45),a.MagicVisual==1?6:a.MagicVisual==2?0:1);
+                DrawStaff(rig,a.MagicVisual);
                 return;
             }
             Weapon(rig.Bones[CapturedRig.RHand].localToWorldMatrix,rig.Set,color);
@@ -307,7 +287,7 @@ namespace ChipArena.UnityConversion
         }
         private void OnDestroy()
         {
-            foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
+            viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
             foreach(var m in materials) Destroy(m);
             foreach(var m in compatibilityMaterials) Destroy(m);
             if(particleMaterial!=null) Destroy(particleMaterial);

@@ -1,6 +1,6 @@
 # Chip Arena — native Unity conversion
 
-**Foundation milestone; the full conversion is not complete.** This project is separate from both the Electron game and the accepted Unity lab. The target is native Unity/C# gameplay and physics, with no Node/Rapier sidecar.
+**Camera, casting and standard-ability checkpoint; the full conversion is not complete.** This project is separate from both the Electron game and the accepted Unity lab. The target is native Unity/C# gameplay and physics, with no Node/Rapier sidecar.
 
 ## Run this milestone
 
@@ -18,6 +18,9 @@ The build creates `Builds/Chip-Arena-Native-Conversion-TEST-Windows.zip`. Keep t
 | Double-tap W | Sprint |
 | LMB | Gun/magic primary; individual melee strikes |
 | Q held / R | Gun aiming / reload |
+| Q / E | Magic Q / weapon E abilities |
+| E held, then released | Aim grenade, meteor, geysers or black hole; preview appears after 0.2 s |
+| V | Switch first/third person; saved in the menu too |
 | RMB | Timed block |
 | Shift / Space | Roll / jump |
 | Tab | Scoreboard |
@@ -26,26 +29,44 @@ The build creates `Builds/Chip-Arena-Native-Conversion-TEST-Windows.zip`. Keep t
 
 ## What is available
 
-- All 15 original **collision layouts**, including slopes, upper floors, dynamic props and support relationships. Decorative map scenery is not yet ported.
+- All 15 original **collision layouts**, including slopes, upper floors, dynamic props and support relationships. Moon/rim lights, fog, receiving/casting shadows and wood/metal trim are now included. Full scenery is not yet ported.
 - Native Unity rigid bodies, capsule pilots, swept projectiles, basic standard-weapon combat and simple bots.
 - Local free-for-all or alternating teams, rounds/sets, eliminations, rematch and a turn-based losing-side Chip draft.
 - Native source-stat calculations and eligibility for all 236 source Chips. **89 stat Chips** are enabled in the combat draft; unsupported mechanics are excluded. The complete catalogue is browsable as reference.
-- Source captured melee clips and articulated gun poses inherited from the accepted lab.
+- Source captured melee clips, articulated gun poses, left-hand staff carry/guard, and element-specific primary/Q/E casting phrases. First person has a separate arm/weapon rig; it does not move the authoritative muzzle or hitboxes.
+- Saved first/third-person preference. Gun ADS temporarily enters first person and uses centred sights; the rifle hides its housing while scoped.
+- All eleven standard gun/magic ability handlers, mana costs, cooldowns, short input buffer, interruption, target previews and basic impact/zone effects. Native contacts and visual polish remain acceptance work.
 - Basic fire burn/blast, water slow, lightning chain and darkness drain, plus native saw/spike/lava schedules. These combat integrations still need native acceptance.
 - Separate preferences under `ChipArenaConversion/Chip Arena Native Conversion TEST`; no production accounts, saves, updater or service endpoints are used.
 
-This is not yet the full game. Q/E combat abilities, special Chip mechanics, DEV styles, Siren/PvE, body damage/ragdoll fidelity, production UI/audio/cosmetics and multiplayer remain work in progress. Read **CONVERSION-STATUS.md** for the exact boundary.
+This is not yet the full game. Special Chip mechanics, melee E moves, DEV styles, Siren/PvE, body damage/ragdoll fidelity, production UI/audio/cosmetics and multiplayer remain work in progress. Read **CONVERSION-STATUS.md** for the exact boundary.
+
+## Abilities in this checkpoint
+
+| Weapon | Q | E |
+| --- | --- | --- |
+| Pistol | ADS | Frag Grenade |
+| Machine Gun | ADS | Underbarrel Rocket |
+| Rifle | ADS | Orbital Mark |
+| Fire | Flame Lance | Meteor Strike |
+| Water | Tidal Wave | Geyser Wall |
+| Lightning | Blink Strike | Ball Lightning |
+| Darkness | Shadow Shackles | Black Hole |
+
+Hold E for grenade/ground-target previews; release to cast. Block, roll, death or opening the menu cancels the hold. Ability mana and cooldown are spent on release. Existing unsupported ability-modifier Chips remain excluded from the draft.
 
 ## Required Windows check
 
-First run the build. It now checks 60 original-source parity cases, all 15 map imports, 120 spawn-floor queries and capsule settling in native Unity physics before packaging. This gate is implemented but could not execute in the Linux authoring workspace without an activated Unity Editor.
+First run the build. It checks 1,728 source casting poses, 44 ability-rule cases, 60 original-source stat cases, all 15 map imports, 120 spawn-floor queries and capsule settling in native Unity physics before packaging. This gate is implemented but could not execute in the Linux authoring workspace without an activated Unity Editor.
 
-Then test ramps, stairs and upper floors; shooting close to cover; dynamic props and breakable supports; all standard primaries; round reset and one complete losing-player draft. Preserve `Builds/build.log` and report movement/contact problems before treating the new physics as a reliable base for the remaining conversion.
+Test **V** with every weapon, reload and ADS, switching near walls, death/round reset and persistence after restart. Test magic staff carry/block and the four primary casts. Exercise each Q/E against targets and cover; check mana/cooldown on interruption, grenade bounce, unarmed/armed rockets, mark tracking, piercing, blink clearance and timed fields.
+
+Also test ramps, stairs and upper floors; shooting close to cover; dynamic props and breakable supports; all standard primaries; round reset and one complete losing-player draft. Preserve `Builds/build.log` and report movement/contact problems before treating the new physics as a reliable base for the remaining conversion.
 
 ## Source and tests
 
 Pinned game source: `05950eaef80ff2483a9c44d898cad98be1a76bbc`. Accepted Unity lab: `f1207e65b9ba3db39239b7996c8b516fa58bd775`.
 
-`tools/source-lock.json` pins 108 source files. `tools/export_source.mjs <source-checkout>` verifies those blobs, then exports definitions/layouts and reference fixtures at build time. The shipped game loads JSON and C#; no JavaScript engine is embedded. `tools/conversion-inventory.json` records the wider remaining source/assets.
+`tools/source-lock.json` pins 108 source files. `tools/export_source.mjs <source-checkout>` verifies those blobs, then exports definitions/layouts and reference fixtures at build time. The shipped game loads JSON and C#; no JavaScript engine is embedded. `tools/presentation-provenance.json` additionally pins the eleven presentation/ability reference files; `node tools/export_presentation.mjs <source-checkout>` reproduces the new fixtures from original pure functions (timestamps quantized to the native float clock). `tools/conversion-inventory.json` records the wider remaining source/assets.
 
 Run `dotnet run --project Tests/CoreTests.csproj -c Release`, then `python3 -m unittest discover -s Tests -p test_source_packages.py` and `python3 tools/package_source.py --check`. See VALIDATION.md for actual checks and their limits.

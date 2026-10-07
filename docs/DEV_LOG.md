@@ -18,6 +18,27 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-07 — Codex — native first-person, magic poses, lighting and standard abilities
+- Continued `codex/unity-conversion` from remote `0ce87bc7e4a58bc0150aef3daf3ef11d2a8e149b`; shared source remains `05950ea`.
+  Owner requested continued conversion and restoration of the first-person toggle; prior magic/lighting feedback is included.
+- Restored saved V/menu first-person selection, source camera dimensions and dedicated forearm/weapon pass, with ADS sight
+  alignment. Magic now carries/guards with the left-hand staff and casts with source element-specific primary/Q/E phrases.
+  Added source-based gun ability gestures, moon/rim scene lights, fog/shadows and wood/metal voxel trim.
+- Implemented eleven standard gun/magic Q/E handlers, mana/cooldowns, release spending, buffering/cancellation,
+  hold-to-preview ground targeting, bounded swept shots, grenade fuse/bounce, rocket arming, orbital tracking, pierce,
+  slow/heal, blink clearance, timed fire/geyser/orb/black-hole fields and basic effects. The 89-entry stat draft stays filtered.
+- Presentation leaves authoritative hitboxes/muzzles and melee timings alone. Native ability combat is newly implemented;
+  damage/status/impulse integration needs Windows comparison. Existing primary casts now record their animation timestamp
+  and cancel on accepted defensive interruption. No native multiplayer or production service/save change is included.
+- Passed: 1,728 original-source magic samples, 44 ability-rule cases, input/gating/camera/staff checks, eight previous native
+  rule groups, 35 inherited managed checks and 34 clips / 3,384 poses. Eleven reference blobs match the source tree.
+  Runtime/Editor/Windows-conditional C# compilation against actual 6000.3.24f1 assemblies, four package regressions and
+  source/GUID checks pass. Reproducible fixture exporter and exact remaining scope are committed with the project.
+- Not run: native Editor/shader import/lighting, first-person visual playtest, ability PhysX contacts, Windows build/EXE.
+  Next: build the new full source package in 6000.3.24f1, test V/ADS/reload and all Q/E against targets/cover, then continue
+  melee/contact parity, special Chips, DEV/PvE and production presentation. Full conversion is still incomplete.
+- Status: separate conversion checkpoint, not merged or released through the updater; accepted lab/shared game preserved.
+
 ## 2026-10-07 — Codex — repair native conversion Edit-mode build gate
 - Continued isolated `codex/unity-conversion` from `f811738`; remote head and open PRs verified, no overlapping conversion writer found.
 - Owner's 6000.3.24f1 Windows log confirms all eight native rule groups pass, then stops at the build check's

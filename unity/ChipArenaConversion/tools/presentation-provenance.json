@@ -1,0 +1,60 @@
+{
+  "commit": "05950eaef80ff2483a9c44d898cad98be1a76bbc",
+  "files": [
+    {
+      "path": "src/client/magic-motion.ts",
+      "git_blob_sha": "fae93982ec372dd3997fde739d0a4348f98c876e",
+      "size": 12280
+    },
+    {
+      "path": "src/client/first-person-view.ts",
+      "git_blob_sha": "f115514e757d22b66477e69dd2d213507f02192d",
+      "size": 9793
+    },
+    {
+      "path": "src/client/arena-lighting.ts",
+      "git_blob_sha": "75d397cc23a4a807235eaa7ce9397596fd59aab4",
+      "size": 926
+    },
+    {
+      "path": "src/client/weapon-visuals.ts",
+      "git_blob_sha": "913f954df486a8ebb73f46d48363b2d447a04521",
+      "size": 18095
+    },
+    {
+      "path": "src/client/character-animation.ts",
+      "git_blob_sha": "7adee1f45fb45b1cc20245ebf0ae559e6db99870",
+      "size": 7832
+    },
+    {
+      "path": "src/client/motion-quality.ts",
+      "git_blob_sha": "8cf5e454cf05dd19734c144c14fa69805e53864d",
+      "size": 36710
+    },
+    {
+      "path": "src/client/ranged-motion.ts",
+      "git_blob_sha": "9022ffa2426b60e7f7a4eff0b100457fc2914a27",
+      "size": 21339
+    },
+    {
+      "path": "src/shared/abilities.ts",
+      "git_blob_sha": "3defa81e49a9df1e7e0e966cb0e86e5b5f936e5c",
+      "size": 7441
+    },
+    {
+      "path": "src/shared/gun-abilities.ts",
+      "git_blob_sha": "15240922bfd554b3aa5512b63787f2b48306c339",
+      "size": 4898
+    },
+    {
+      "path": "src/shared/magic-abilities.ts",
+      "git_blob_sha": "e768d8cb6aad65fd4624485638a2356db6ae8206",
+      "size": 8824
+    },
+    {
+      "path": "src/shared/view.ts",
+      "git_blob_sha": "a192c7d6204b31500895c37a62596a88e4dbf92c",
+      "size": 1252
+    }
+  ]
+}

@@ -79,3 +79,9 @@ appear in your Unity Console/build log. This workspace only compiled against act
 
 Unity API references: [SampleAnimation](https://docs.unity3d.com/6000.3/Documentation/ScriptReference/AnimationClip.SampleAnimation.html),
 [SetCurve](https://docs.unity3d.com/6000.3/Documentation/ScriptReference/AnimationClip.SetCurve.html).
+
+## Native conversion additions — 2026-10-07
+
+`MagicPose` ports the source analytic primary/Q/E casting phrase and first-person variants. Magic no longer plays sword attacks/blocks: the staff is in the left hand, the right hand casts, and the guard lays the staff across the chest. Source phrase validation covers 1,728 samples. The Unity quaternion/IK adaptation and guard transitions still require visual acceptance. `RangedAbilityPose` adds support-hand grenade throws/visor taps and rocket recoil using source gesture keys.
+
+`NativeViewPresentation` draws a separate forearm/weapon rig on layer 10 through a depth-only camera. The saved V/menu toggle and ADS choose this view; the authoritative pilot, collision shape and muzzle remain world-space. Head/body are excluded from the local first-person pass. Presentation changes do not change melee contact timing, projectile authority, damage, cooldowns, movement or networking. The new ability handlers separately add native gameplay behavior; no native network implementation is added.

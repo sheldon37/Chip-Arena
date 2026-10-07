@@ -19,6 +19,7 @@ namespace ChipArena.UnityConversion
         public int Ammo,Combo=-1,AimShots;public float Ready,RegenAt,ReloadAt,ReloadEnd,BlockEnd,BlockReady,RollAt=-100,RollEnd,RollReady,StunEnd,StaggerImmune,CastAt,SlowEnd,SoakedAt=-100;
         public float AttackAt=-100,HitAt,AttackEnd,LastAttack=-100,LastShot=-100,AimAt=-100,QReady,EReady;
         public Vector3 Knockback,RollDirection;public RollValues Roll;public bool HitPending,Aiming,SprintExhausted,Grounded;
+        public NativeAbilityCast AbilityCast;public string BufferedSlot;public float BufferedAt,HoldAt=-1,SlowFactor=1,SlowImmune;public int ECharges=1;
         public readonly Dictionary<string,NativeDot> Dots=new Dictionary<string,NativeDot>();
     }
     public sealed class NativeDot { public int Source;public double Dps,Next,Until; }
@@ -27,7 +28,7 @@ namespace ChipArena.UnityConversion
         public int Id,Owner,Reflections;public Vector3 Position,Velocity;public float Damage,Gravity,Radius,Life=3,Travel=160,Impulse;
         public string Spec;public HashSet<int> Hit=new HashSet<int>();
     }
-    public sealed class NativeArena : IDisposable
+    public sealed partial class NativeArena : IDisposable
     {
         public const int ActorLayer=8,PropLayer=9;
         public const int WorldMask=1<<PropLayer,ShotMask=(1<<PropLayer)|(1<<ActorLayer);
@@ -54,12 +55,12 @@ namespace ChipArena.UnityConversion
         private void DestroyScene()
         {
             if(root!=null){foreach(var c in root.GetComponentsInChildren<Collider>())c.enabled=false;CapturedAnimation.Release(root);}
-            Pilots.Clear();Props.Clear();Bullets.Clear();Events.Clear();hazardViews.Clear();hazardHits.Clear();
+            Pilots.Clear();Props.Clear();Bullets.Clear();Events.Clear();hazardViews.Clear();hazardHits.Clear();AbilityShots.Clear();AbilityZones.Clear();AbilityEffects.Clear();
         }
         public void Reset()
         {
             Generation++;DestroyScene();root=new GameObject("Native match authority");
-            var map=Content.Map(MapId);var shader=Resources.Load<Shader>("PrototypeLit");
+            var map=Content.Map(MapId);var shader=Resources.Load<Shader>("NativeLit");
             foreach(var definition in Content.materials)if(!materials.ContainsKey(definition.id))
             {materials[definition.id]=new Material(shader){color=ColorOf(definition.id=="foundation"?map.floor:definition.color)};surfaces[definition.id]=new PhysicsMaterial(definition.id){dynamicFriction=definition.friction,staticFriction=definition.friction,bounciness=0};}
             if(!surfaces.ContainsKey("pilot"))surfaces["pilot"]=new PhysicsMaterial("Pilot friction"){dynamicFriction=0,staticFriction=0,bounciness=0,frictionCombine=PhysicsMaterialCombine.Minimum};
@@ -70,7 +71,7 @@ namespace ChipArena.UnityConversion
                 obj.GetComponent<Renderer>().sharedMaterial=materials[block.material];obj.GetComponent<Collider>().sharedMaterial=surfaces[block.material];var prop=obj.AddComponent<NativePropBody>();prop.Definition=block;prop.Health=def.durability;prop.Indestructible=def.indestructible;
                 if(!def.indestructible)
                 {prop.Body=obj.AddComponent<Rigidbody>();prop.Body.mass=block.mass>0?block.mass:def.mass;prop.Body.isKinematic=!block.dynamic;prop.Body.collisionDetectionMode=block.dynamic?CollisionDetectionMode.ContinuousDynamic:CollisionDetectionMode.Discrete;}
-                Props.Add(prop);
+                Props.Add(prop);DetailProp(prop);
             }
             for(int i=0;i<Match.Seats.Count;i++)
             {
@@ -82,7 +83,7 @@ namespace ChipArena.UnityConversion
                 p.Pose.Id=seat.id;p.Pose.Bot=seat.bot;p.Pose.Weapon=seat.spec=="pistol"?WeaponId.Pistol:seat.spec=="rifle"?WeaponId.Rifle:seat.spec=="machinegun"?WeaponId.MachineGun:WeaponId.Sword;
                 p.Pose.VisualSet=seat.spec=="daggers"?1:seat.spec=="greatsword"?2:seat.spec=="shield"?3:0;
                 p.Pose.MagicVisual=seat.spec=="fire"?1:seat.spec=="water"?2:seat.spec=="lightning"?3:seat.spec=="darkness"?4:0;
-                obj.AddComponent<NativePilotBody>().Pilot=p;Pilots.Add(p);
+                p.ECharges=NativeAbilityRules.Charges(stats);obj.AddComponent<NativePilotBody>().Pilot=p;Pilots.Add(p);
             }
             Physics.SyncTransforms();
         }
@@ -97,29 +98,31 @@ namespace ChipArena.UnityConversion
                 if(p.Hp<=0)continue;p.Input=p.Seat.bot?Bot(p):input;p.Input=p.Input.Sanitized();
                 p.Grounded=Physics.SphereCast(p.Body.position+Vector3.down*.4f,.39f,Vector3.down,out _,.17f,WorldMask,QueryTriggerInteraction.Ignore);
                 if(p.Input.Block&&Time>=p.BlockReady&&Time>=p.RollEnd&&Time>=p.StunEnd)
-                {p.BlockEnd=Time+(float)Math.Min(.65,.3+p.Stats["blockWindow"]);p.BlockReady=Time+(float)Math.Max(1.5,4*p.Stats["blockCooldown"]);p.HitPending=false;p.AttackEnd=0;}
+                {p.BlockEnd=Time+(float)Math.Min(.65,.3+p.Stats["blockWindow"]);p.BlockReady=Time+(float)Math.Max(1.5,4*p.Stats["blockCooldown"]);p.HitPending=false;p.AttackEnd=0;CancelAbilities(p);}
                 if(p.Input.Roll&&p.Grounded&&Time>=p.RollReady&&Time>=p.RollEnd&&Time>=p.StunEnd&&p.ReloadEnd<=Time)
                 {
                     var roll=NativeContentRules.Roll(Content,p.Seat.spec,p.Stats);
-                    if(p.Stamina>=roll.cost){p.Roll=roll;p.RollAt=Time;p.RollEnd=Time+(float)roll.duration;p.RollReady=Time+(float)roll.cooldown;p.Stamina-=(float)roll.cost;p.RegenAt=p.RollEnd+.45f;p.HitPending=false;p.AttackEnd=p.BlockEnd=0;p.RollDirection=new Vector3(p.Input.X,0,p.Input.Z).normalized;if(p.RollDirection.sqrMagnitude<.1f)p.RollDirection=Quaternion.Euler(0,p.Yaw,0)*Vector3.forward;}
+                    if(p.Stamina>=roll.cost){p.Roll=roll;p.RollAt=Time;p.RollEnd=Time+(float)roll.duration;p.RollReady=Time+(float)roll.cooldown;p.Stamina-=(float)roll.cost;CancelAbilities(p);p.RegenAt=p.RollEnd+.45f;p.HitPending=false;p.AttackEnd=p.BlockEnd=0;p.RollDirection=new Vector3(p.Input.X,0,p.Input.Z).normalized;if(p.RollDirection.sqrMagnitude<.1f)p.RollDirection=Quaternion.Euler(0,p.Yaw,0)*Vector3.forward;}
                 }
             }
             foreach(var p in Pilots)if(p.Hp>0){AdvanceDots(p);if(p.Hp>0)StepPilot(p);}
-            StepBullets();
+            StepBullets();StepAbilityWorld();
             foreach(var p in Pilots)if(p.Hp>0&&p.Body.position.y<-12)Damage(p,null,p.Hp+1,Vector3.zero,0,false,true);
             Match.Resolve();
         }
         private void StepPilot(NativePilot p)
         {
+            if(Time>=p.SlowEnd&&p.SlowFactor<1){if(p.SlowFactor<=.6f)p.SlowImmune=Time+1;p.SlowFactor=1;}
             var i=p.Input;float dt=1f/60;bool rolling=Time<p.RollEnd,locked=Time<p.AttackEnd||Time<p.StunEnd,swimming=NativeHazards.InLava(MapId,Vec(p.Body.position));
             if(!rolling&&!locked)p.Yaw=i.Yaw;p.Pitch=i.Pitch;
+            StepAbilities(p);
             if(p.ReloadEnd>0&&Time>=p.ReloadEnd){p.Ammo=Magazine(p);p.ReloadEnd=0;Emit(EventKind.ReloadEnd,p,0,p.Body.position,0);}
             bool aim=p.Weapon.@class=="ranged"&&i.Aim&&!rolling&&p.ReloadEnd==0&&Time>=p.BlockEnd&&Time>=p.StunEnd;
             if(aim&&!p.Aiming)p.AimAt=Time;p.Aiming=aim;
-            if(i.Reload)Reload(p);
+            if(i.Reload&&p.AbilityCast==null)Reload(p);
             if(p.CastAt>0&&Time>=p.CastAt){p.CastAt=0;Fire(p);}
             if(p.HitPending&&Time>=p.HitAt){p.HitPending=false;Melee(p);}
-            if(!rolling&&!locked&&Time>=p.Ready&&p.ReloadEnd==0&&Time>=p.BlockEnd&&i.Shoot)
+            if(p.AbilityCast==null&&p.CastAt<=0&&!rolling&&!locked&&Time>=p.Ready&&p.ReloadEnd==0&&Time>=p.BlockEnd&&i.Shoot)
             {
                 if(p.Weapon.@class=="melee")
                 {
@@ -132,16 +135,16 @@ namespace ChipArena.UnityConversion
                 else if(p.Weapon.@class=="ranged"||p.Mana>=p.Weapon.cost*p.Stats["resourceCost"])
                 {
                     if(p.Weapon.@class=="ranged"){p.Ammo--;Fire(p);}
-                    else {p.Mana-=(float)(p.Weapon.cost*p.Stats["resourceCost"]);p.CastAt=Time+(float)((p.Seat.spec=="fire"?.16:p.Seat.spec=="water"?.12:p.Seat.spec=="lightning"?.065:.22)/p.Stats["attackRate"]);p.Ready=Time+(float)(p.Weapon.interval/p.Stats["attackRate"]);}
+                    else {p.AttackAt=p.LastAttack=Time;p.Mana-=(float)(p.Weapon.cost*p.Stats["resourceCost"]);p.CastAt=Time+(float)((p.Seat.spec=="fire"?.16:p.Seat.spec=="water"?.12:p.Seat.spec=="lightning"?.065:.22)/p.Stats["attackRate"]);p.Ready=Time+(float)(p.Weapon.interval/p.Stats["attackRate"]);}
                 }
             }
             var move=new Vector3(i.X,0,i.Z);if(!i.Sprint)p.SprintExhausted=false;
-            bool sprint=i.Sprint&&!p.SprintExhausted&&!locked&&!rolling&&!i.Shoot&&!aim&&p.ReloadEnd==0&&Time>=p.BlockEnd&&p.Stamina>0&&move.magnitude>.5f&&Vector3.Dot(move.normalized,Quaternion.Euler(0,p.Yaw,0)*Vector3.forward)>=.6f;
+            bool sprint=i.Sprint&&p.AbilityCast==null&&p.CastAt<=0&&!p.SprintExhausted&&!locked&&!rolling&&!i.Shoot&&!aim&&p.ReloadEnd==0&&Time>=p.BlockEnd&&p.Stamina>0&&move.magnitude>.5f&&Vector3.Dot(move.normalized,Quaternion.Euler(0,p.Yaw,0)*Vector3.forward)>=.6f;
             if(sprint){p.Stamina=Math.Max(0,p.Stamina-12*dt);p.RegenAt=Time+.45f;if(p.Stamina<=0)p.SprintExhausted=true;}
             if(Time>=p.RegenAt&&!sprint)p.Stamina=Math.Min((float)p.Stats["maxStamina"],p.Stamina+(float)(24*p.Stats["staminaRegen"]*dt));
             p.Mana=Math.Min((float)p.Stats["maxMana"],p.Mana+(float)(12*p.Stats["manaRegen"]*dt));
             p.Hp=Math.Min((float)p.Stats["hp"],p.Hp+(float)(p.Stats["regeneration"]*dt));
-            float speed=(float)(6.8*p.Stats["speed"])*(sprint?1.35f:1)*(Time<p.BlockEnd?.45f:1)*(aim?(float)Content.Ads(p.Seat.spec).move:1)*(Time<p.SlowEnd?.8f:1)*(swimming?.6f:1);
+            float speed=(float)(6.8*p.Stats["speed"])*(sprint?1.35f:1)*(Time<p.BlockEnd?.45f:1)*(aim?(float)Content.Ads(p.Seat.spec).move:1)*(Time<p.SlowEnd?p.SlowFactor:1)*(swimming?.6f:1);
             Vector3 velocity=p.Body.linearVelocity;
             if(rolling){float duration=p.RollEnd-p.RollAt,u=(Time-p.RollAt)/duration,q=(Time+dt-p.RollAt)/duration;var roll=p.RollDirection*((float)p.Roll.distance*(MathUtil.Smooth(q)-MathUtil.Smooth(u))/dt);velocity.x=roll.x;velocity.z=roll.z;}
             else {velocity.x=Mathf.MoveTowards(velocity.x,locked?0:move.x*speed,35*dt);velocity.z=Mathf.MoveTowards(velocity.z,locked?0:move.z*speed,35*dt);}
@@ -208,24 +211,25 @@ namespace ChipArena.UnityConversion
             }
         }
         private bool Invulnerable(NativePilot p)=>p.Roll!=null&&Time>=p.RollAt+p.Roll.iframeStart&&Time<p.RollAt+p.Roll.iframeStart+p.Roll.iframeSeconds;
-        private void Damage(NativePilot target,NativePilot source,float amount,Vector3 direction,float impulse,bool head,bool forced=false,bool direct=true)
+        private float Damage(NativePilot target,NativePilot source,float amount,Vector3 direction,float impulse,bool head,bool forced=false,bool direct=true,bool primary=true)
         {
-            if(target.Hp<=0||!forced&&direct&&Invulnerable(target))return;
-            if(source!=null&&!forced&&direct&&Time<target.BlockEnd){Emit(EventKind.Block,target,source.Seat.id,target.Body.position,0);if(source.Weapon.@class=="melee"){source.StunEnd=Time+.55f;source.AttackEnd=0;source.HitPending=false;}return;}
+            if(target.Hp<=0||!forced&&direct&&Invulnerable(target))return 0;
+            if(source!=null&&!forced&&direct&&Time<target.BlockEnd){Emit(EventKind.Block,target,source.Seat.id,target.Body.position,0);if(source.Weapon.@class=="melee"){source.StunEnd=Time+.55f;source.AttackEnd=0;source.HitPending=false;}return 0;}
             amount=forced?amount:amount*(float)target.Stats["damageTaken"];float actual=Math.Min(amount,target.Hp);target.Hp=Math.Max(0,target.Hp-amount);target.Pose.FlashUntil=Time+.14f;
             target.Knockback+=direction*(impulse/65f)*(float)target.Stats["knockbackTaken"];
-            if(direct&&Time>=target.StaggerImmune){target.StunEnd=Time+.25f;target.StaggerImmune=target.StunEnd+.75f;target.HitPending=false;target.AttackEnd=0;}
-            if(source!=null&&source.Hp>0&&direct&&actual>0)
+            if(direct&&Time>=target.StaggerImmune){target.StunEnd=Time+.25f;target.StaggerImmune=target.StunEnd+.75f;target.HitPending=false;target.AttackEnd=0;CancelAbilities(target);}
+            if(source!=null&&source.Hp>0&&direct&&primary&&actual>0)
             {
                 source.Hp=Math.Min((float)source.Stats["hp"],source.Hp+actual*(float)(source.Stats["lifeSteal"]+source.Weapon.drain));
                 RefreshDot(target,source,"fire",source.Weapon.burn+source.Stats["burn"],2);RefreshDot(target,source,"poison",source.Stats["poison"],4);
                 if(target.Stats["thorns"]>0)Damage(source,target,actual*(float)target.Stats["thorns"],Vector3.zero,0,false,false,false);
-                if(source.Seat.spec=="water"&&Time>=target.SoakedAt+1.5f){target.SoakedAt=Time;target.SlowEnd=Time+.8f;}
+                if(source.Seat.spec=="water"&&Time>=target.SoakedAt+1.5f){target.SoakedAt=Time;Slow(target,.8f,.8f);}
                 if(source.Weapon.chain>0)
                 {var next=Pilots.Where(p=>p!=target&&p.Hp>0&&Enemy(source,p)&&(p.Body.position-target.Body.position).magnitude<4&&!Physics.Linecast(target.Body.position,p.Body.position,WorldMask)).OrderBy(p=>(p.Body.position-target.Body.position).sqrMagnitude).FirstOrDefault();if(next!=null)Damage(next,source,(float)source.Weapon.chain,Vector3.zero,0,false,false,false);}
             }
             Emit(head?EventKind.Headshot:EventKind.Hit,source,target.Seat.id,target.Body.position,actual);
-            if(target.Hp<=0){target.Seat.alive=false;target.Collider.enabled=false;target.Body.isKinematic=true;Emit(EventKind.Death,source,target.Seat.id,target.Body.position,0);}
+            if(target.Hp<=0){CancelAbilities(target);target.Seat.alive=false;target.Collider.enabled=false;target.Body.isKinematic=true;Emit(EventKind.Death,source,target.Seat.id,target.Body.position,0);}
+            return actual;
         }
         private void RefreshDot(NativePilot target,NativePilot source,string kind,double dps,double duration)
         {
@@ -246,7 +250,7 @@ namespace ChipArena.UnityConversion
                 if(!hazardViews.TryGetValue(h.id,out var visual))
                 {
                     visual=GameObject.CreatePrimitive(h.kind=="saw"?PrimitiveType.Cylinder:PrimitiveType.Cube);visual.name=h.id;visual.transform.SetParent(root.transform);visual.GetComponent<Collider>().enabled=false;CapturedAnimation.Release(visual.GetComponent<Collider>());
-                    if(!materials.ContainsKey("hazard"))materials["hazard"]=new Material(Resources.Load<Shader>("PrototypeLit")){color=new Color(1,.24f,.12f)};
+                    if(!materials.ContainsKey("hazard"))materials["hazard"]=new Material(Resources.Load<Shader>("NativeLit")){color=new Color(1,.24f,.12f)};
                     visual.GetComponent<Renderer>().sharedMaterial=materials["hazard"];hazardViews[h.id]=visual;
                 }
                 visual.transform.position=new Vector3(h.x,h.y+(h.kind=="spikes"?h.extension*.5f:.015f),h.z);
@@ -278,16 +282,16 @@ namespace ChipArena.UnityConversion
             var target=Pilots.Where(x=>x.Hp>0&&Enemy(p,x)).OrderBy(x=>(x.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();if(target==null||StationaryBots)return new InputFrame{Yaw=p.Yaw};
             Vector3 delta=target.Body.position-p.Body.position;float distance=delta.magnitude;bool melee=p.Weapon.@class=="melee",clear=!Physics.Linecast(p.Body.position,target.Body.position,WorldMask);float desired=melee?(float)p.Weapon.range:12;
             Vector3 move=distance>desired?delta.normalized:!melee&&distance<8?-delta.normalized:Vector3.zero;
-            return new InputFrame{X=move.x,Z=move.z,Yaw=Mathf.Atan2(delta.x,delta.z)*Mathf.Rad2Deg,Pitch=Mathf.Atan2(delta.y,new Vector2(delta.x,delta.z).magnitude)*Mathf.Rad2Deg,AimTarget=Vec(target.Body.position),Shoot=clear&&(melee?distance<desired+.3f:true),Aim=!melee,Jump=!clear&&p.Grounded&&((int)(Time*60)+p.Seat.id)%80==0,Reload=p.Ammo==0,Block=distance<3&&((int)(Time*60)+p.Seat.id*11)%137==0};
+            return new InputFrame{X=move.x,Z=move.z,Yaw=Mathf.Atan2(delta.x,delta.z)*Mathf.Rad2Deg,Pitch=Mathf.Atan2(delta.y,new Vector2(delta.x,delta.z).magnitude)*Mathf.Rad2Deg,AimTarget=Vec(target.Body.position),AbilityTarget=Vec(target.Body.position),AbilityQ=clear&&p.Weapon.@class=="magic"&&Time>=p.QReady&&((int)(Time*60)+p.Seat.id)%45==0,AbilityE=clear&&!melee&&Time>=p.EReady&&((int)(Time*60)+p.Seat.id)%60==0,Shoot=clear&&(melee?distance<desired+.3f:true),Aim=!melee,Jump=!clear&&p.Grounded&&((int)(Time*60)+p.Seat.id)%80==0,Reload=p.Ammo==0,Block=distance<3&&((int)(Time*60)+p.Seat.id*11)%137==0};
         }
         public Snapshot Snapshot()
         {
             foreach(var p in Pilots)
             {
                 var a=p.Pose;a.Hp=p.Hp;a.Stamina=p.Stamina;a.Position=Vec(p.Body.position-Vector3.up*.865f);a.Velocity=Vec(p.Body.linearVelocity);a.Yaw=p.Yaw;a.AimYaw=p.Yaw;a.Pitch=p.Pitch;a.Combo=Math.Max(0,p.Combo);a.AttackAt=p.AttackAt;a.AttackUntil=p.AttackEnd;a.BlockUntil=p.BlockEnd;a.BlockReady=p.BlockReady;a.RollAt=p.RollAt;a.RollDirection=Vec(p.RollDirection);a.StunUntil=p.StunEnd;a.Aiming=p.Aiming;a.AimAt=p.AimAt;a.Ammo=p.Ammo;a.LastShot=p.LastShot;a.ReloadAt=p.ReloadAt;a.ReloadUntil=p.ReloadEnd;
-                a.Grounded=p.Grounded;a.VisualWindup=(float)(p.Weapon.windup/p.Stats["attackRate"]);a.VisualActive=(float)(.16/p.Stats["attackRate"]);a.VisualDuration=p.AttackEnd-p.AttackAt;a.VisualRollDuration=p.RollEnd-p.RollAt;
+                a.CastRate=(float)p.Stats["attackRate"];a.Grounded=p.Grounded;a.VisualWindup=(float)(p.Weapon.windup/p.Stats["attackRate"]);a.VisualActive=(float)(.16/p.Stats["attackRate"]);a.VisualDuration=p.AttackEnd-p.AttackAt;a.VisualRollDuration=p.RollEnd-p.RollAt;
             }
-            return new Snapshot{Tick=(int)Math.Round(Match.Time*60),Actors=Pilots.Select(p=>p.Pose).ToArray(),Covers=Array.Empty<Cover>(),Shots=Bullets.Select(b=>new Shot{Id=b.Id,Owner=b.Owner,Position=Vec(b.Position),Velocity=Vec(b.Velocity),Weapon=Content.Weapon(b.Spec).@class=="ranged"?WeaponId.Pistol:WeaponId.Sword}).ToArray(),Events=Events.ToArray()};
+            return new Snapshot{Tick=(int)Math.Round(Match.Time*60),Actors=Pilots.Select(p=>p.Pose).ToArray(),Covers=Array.Empty<Cover>(),Shots=Bullets.Select(b=>new Shot{Id=b.Id,Owner=b.Owner,Position=Vec(b.Position),Velocity=Vec(b.Velocity),Radius=b.Radius,MagicVisual=b.Spec=="fire"?1:b.Spec=="water"?2:b.Spec=="lightning"?3:b.Spec=="darkness"?4:0,Weapon=Content.Weapon(b.Spec).@class=="ranged"?WeaponId.Pistol:WeaponId.Sword}).ToArray(),Events=Events.ToArray()};
         }
         public void Dispose(){DestroyScene();foreach(var m in materials.Values)CapturedAnimation.Release(m);materials.Clear();foreach(var m in surfaces.Values)CapturedAnimation.Release(m);surfaces.Clear();}
     }
