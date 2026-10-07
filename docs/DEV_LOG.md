@@ -18,6 +18,25 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-07 — Codex — isolated Unity ranged weapons test
+- Owner accepted the animation test and requested ranged weapons. Continued `codex/unity-prototype`
+  from `7d3126d4797f0848a281e73a2d744f64aeafce54`; shared source is still `05950ea`.
+- Added Pistol/Rifle/Machine Gun primary and Q-aim constants, ammo/reload/switch rules, gravity/zeroing,
+  swept body/head hits, muzzle obstruction, models, procedural shoulder/recoil/reload poses, animated magazines,
+  flashes/tracers and six byte-identical original WAVs. Source receipts are in tools/ranged-provenance.json.
+- Added weapon controls/HUD, shoulder camera, hit receipts, mixed gun bots, stationary targets and gun viewer sets.
+  RANGED.md identifies preserved values and simplified rules/geometry; E specials and Chip modifiers are omitted.
+- New gun hit volumes/damage, fire/reload cooldowns and ADS movement rules affect the Unity authority only.
+  The bounded LAN protocol changes from CAP1 to CAP2 for loadout/aim/ammo/reload/projectile state; both players
+  must update. Existing Sword combat regressions pass; no production game, feed or account-system edits.
+- Checks passed: 35 managed combat/network regressions (including real TCP gun fire/reload and 192 ranged bots),
+  909 gun pose samples, unchanged 34 clips / 3,384 captured pose checks, four package regressions and source checks.
+  Runtime, Editor and Windows-conditional scripts compile against real Unity 6000.3.24f1 APIs with warnings as errors.
+  Exact original sound blob hashes verified; the Windows builder now checks AudioClip imports as well.
+- Not run here: native Unity import/graphics/audio, Windows EXE build, camera/pose visual acceptance and two-window
+  LAN gameplay. Next: apply the source patch, rebuild with Build-Windows.cmd, and run RANGED.md's gunplay steps.
+- Status: isolated branch source update; patch/full source deliverables. No merge, release or feed publication.
+
 ## 2026-10-07 — Codex — enhanced isolated Unity player-animation test
 - Continued `codex/unity-prototype` from `14e9ba9dff63a7cd70a2ed8a4ddd28db5f180f4f` at owner request.
   Reused exact committed animation data from shared source `05950eaef80ff2483a9c44d898cad98be1a76bbc`;

@@ -1,5 +1,9 @@
 # Captured player animation test
 
+Ranged update: Pistol, Rifle and Machine Gun now have playable procedural poses and viewer sets 5–7.
+See RANGED.md. The captured melee data and original conversion below remain unchanged. Select Sword
+with 1 during play; the default loadout is now Pistol. The ranged update adds combat rules and CAP2 networking.
+
 This update imports the **34 retargeted captures already committed in Chip Arena**, from source
 `05950eaef80ff2483a9c44d898cad98be1a76bbc`. It does not require importing the original FBX pack.
 The game source identifies these captures as derived from the owner's Explosive RPG Character pack.
@@ -7,9 +11,9 @@ Keep this source distribution within the private project; the source pack itself
 
 ## What to try
 
-Choose **Play solo** for sword gameplay. Players and bots now use the captured idle, walk/run carry,
+Choose Sword, **Play solo**, and disable **Ranged bots** for the sword animation workload. Sword actors use the captured idle, walk/run carry,
 three sword cuts, block and stagger. Attack contact marks are mapped onto the existing .14 s windup
-and .16 s active window. Damage, stamina, hitboxes, movement, cooldowns and the LAN protocol are unchanged.
+and .16 s active window. The original animation-only update did not alter damage, stamina, hitboxes, movement, cooldowns or the LAN protocol.
 Jump remains procedural; the roll adapts the source game's tuck and floor contact.
 
 Choose **Animation viewer** for all four sets. Mouse movement orbits a stationary player. Press
@@ -24,7 +28,7 @@ It does not simulate combat or record benchmarks. Choose Play solo to return to 
 | Greatsword | 8 | Idle, walk, run, 2 cuts, block, block impact, stagger |
 | Shield | 7 | Idle, walk, run, 2 cuts, block, block impact |
 
-Only sword rules are playable. The other weapon sets and block-impact clips are inspection samples,
+Of these four melee sets, only Sword rules are playable. The other melee sets and block-impact clips are inspection samples,
 not new playable classes or proof their abilities have been ported.
 
 ## What is being evaluated

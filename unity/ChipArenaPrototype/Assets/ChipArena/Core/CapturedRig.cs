@@ -145,7 +145,7 @@ namespace ChipArena.UnityPrototype
             if(p.LengthSquared()<1e-8f) p=X-d*d.X;
             return Vector3.Normalize(p);
         }
-        private static void Arm(Pose p,bool left,Vector3 target,Quaternion wrist,Vector3 pole)
+        public static void Arm(Pose p,bool left,Vector3 target,Quaternion wrist,Vector3 pole)
         {
             int c=left?LClav:RClav,a=c+1,e=c+2,h=c+3;
             Quaternion inverse=Quaternion.Inverse(p.Rotation[c]);

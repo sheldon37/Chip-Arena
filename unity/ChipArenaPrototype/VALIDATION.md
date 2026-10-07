@@ -2,6 +2,28 @@
 
 This is source for an isolated Unity prototype. **No Unity Editor playtest or Windows executable build is claimed.**
 
+## Ranged weapons update
+
+- Owner accepted the enhanced animation test visually and requested guns. No numeric performance results were supplied.
+- Added source Pistol/Rifle/Machine Gun primary and ADS values, magazines/reloads, gravity/zeroing, spread,
+  headshots, models, procedural poses, original sounds, stationary targets and gun viewer modes (RANGED.md).
+- All **35 combat/network checks pass**: the 22 existing checks plus 13 gun checks covering fire cadence,
+  magazine/reload/switch rules, ballistic convergence, thin cover, muzzle obstruction, head/body damage,
+  aim movement/spread, versioned serialization, 192 ranged bots and real TCP guest fire/reload.
+- **909 ranged pose samples** check finite normalized joints and barrel alignment, alongside the unchanged
+  **34 clips / 3,384 captured-pose checks**. These are conversion/rule checks, not native visual acceptance.
+- Runtime, Editor and Windows-conditional scripts compile against actual pinned Unity 6000.3.24f1 assemblies,
+  with warnings as errors. Four package regressions and source-package validation pass.
+- Six original WAVs are copied byte-for-byte with source Git-blob receipts. The Editor validation checks their
+  AudioClip imports before building. Native import/audio, graphics, input feel and Windows build are **not run here**.
+- Gun damage, hit volumes, cooldowns, ammo, ADS movement and aim inputs are new authority behavior.
+  LAN is now **CAP2**; both players need this version. Existing Sword regressions pass.
+  No changes to the original Electron game, shared source branch or update feeds.
+
+Remaining acceptance: build with Build-Windows.cmd, inspect each gun's ready/aim/fire/reload/block poses,
+test crosshair alignment close to cover, hip drop versus Q zeroing, sounds, and host/guest gun state in two windows.
+The previous update sections below record their checks at that time.
+
 ## Enhanced animation update
 
 - Imported **34 actual committed capture clips** from source 05950ea, with strict original Git-blob checks and SHA256 provenance.

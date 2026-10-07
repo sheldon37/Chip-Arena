@@ -22,7 +22,10 @@ namespace ChipArena.UnityPrototype.Editor
         {
             Prepare();
             foreach(string name in RegressionTests.Run()) Debug.Log("PASS " + name);
+            foreach(string name in RangedRegressionTests.Run()) Debug.Log("PASS " + name);
             using(var animations=new CapturedAnimation()) animations.ValidatePlayback();
+            foreach(string name in new[] { "pistol", "rifle", "machinegun", "reload-start", "reload-end", "hit" })
+                if(Resources.Load<AudioClip>("GunAudio/"+name)==null) throw new Exception("Gun audio failed to import: "+name);
             foreach(string name in new[] { "PrototypeLit", "PrototypeParticles" })
             {
                 Shader shader=Resources.Load<Shader>(name);
@@ -36,7 +39,7 @@ namespace ChipArena.UnityPrototype.Editor
         {
             PlayerSettings.companyName="ChipArenaPrototype";
             PlayerSettings.productName="Chip Arena Unity Lab TEST";
-            PlayerSettings.bundleVersion="0.2.0-unity-animation-test";
+            PlayerSettings.bundleVersion="0.3.0-unity-ranged-test";
             PlayerSettings.defaultScreenWidth=1600; PlayerSettings.defaultScreenHeight=900;
             PlayerSettings.fullScreenMode=FullScreenMode.Windowed;
             PlayerSettings.runInBackground=true;
@@ -104,9 +107,11 @@ namespace ChipArena.UnityPrototype.Editor
             File.WriteAllText(Path.Combine(folder,"READ-ME.txt"),
                 "Chip Arena Unity Lab - isolated TEST prototype\r\n\r\nRun ChipArena-Unity-TEST.exe. Keep the entire folder together.\r\n"+
                 "The EXE uses the voxel CA icon. Create a Windows shortcut to the EXE for a desktop launcher; do not move the EXE alone.\r\n"+
-                "WASD move, double-tap W sprint, mouse look, LMB sword, RMB block, Shift dodge, Space jump, E bolts. Esc opens menu; F8 records frame times.\r\n"+
+                "WASD move, double-tap W sprint, mouse look, LMB fire/attack, hold Q aim, R reload, RMB block, Shift dodge, Space jump.\r\n"+
+                "1 Sword, 2 Pistol, 3 Rifle, 4 Machine Gun. E bolts on Sword only; gun special abilities are not included. Esc menu; F8 frame capture.\r\n"+
                 "Host LAN / Join accept a trusted local IPv4 address (default port 27880). For two windows on one PC, join 127.0.0.1.\r\n"+
-                "No accounts, updater or connection to the current Chip Arena game. Placeholder art/animation. No full gameplay parity.\r\n"+
+                "Both LAN players need this ranged test version (CAP2). No accounts, updater or connection to the current Chip Arena game.\r\n"+
+                "Captured melee animations plus procedural gun poses and original gun sounds. Prototype map/art; no full gameplay parity.\r\n"+
                 "Built with Unity "+Application.unityVersion+". Core checks and player build passed on the build machine; human gameplay acceptance is separate.\r\n");
             string zip=Path.Combine(root,"Builds","Chip-Arena-Unity-TEST-Windows.zip");
             if(File.Exists(zip)) File.Delete(zip);

@@ -8,6 +8,16 @@ namespace ChipArena.UnityPrototype
     {
         private Mesh cube;
         private CapturedAnimation captured;
+        private readonly AudioClip[] gunSounds=new AudioClip[4];
+        private AudioClip reloadStart,reloadEnd,hitSound;
+        private AudioSource localAudio;
+        private readonly AudioSource[] shotAudio=new AudioSource[24];
+        private int nextAudio;
+        public int LocalId=1;
+        public bool SoundEnabled=true;
+        public float LastHitUntil,LastHitDamage;
+        public bool LastHeadshot;
+        private static readonly string[] GunStates={"ready","aim","fire","reload","block"};
         private readonly Dictionary<int,CapturedAnimation.Player> rigs=new Dictionary<int,CapturedAnimation.Player>();
         private readonly List<int> removedRigs=new List<int>();
         private readonly System.Diagnostics.Stopwatch animationTimer=new System.Diagnostics.Stopwatch();
@@ -15,13 +25,16 @@ namespace ChipArena.UnityPrototype
         public int ViewerSet, ViewerClip;
         public float ViewerTime;
         public double AnimationMs { get; private set; }
-        public string AnimationMode => CapturedPlayers?"Captured clips":"Original test poses";
+        public string AnimationMode => CapturedPlayers?"Captured melee + procedural guns":"Original melee + procedural guns";
         public string PlayerState { get; private set; }="idle";
-        public string PreviewName => CapturedClips.Sets[ViewerSet][ViewerClip].Name;
-        public string PreviewSource => CapturedClips.Sets[ViewerSet][ViewerClip].Source;
+        public int PreviewCount => ViewerSet<4?CapturedClips.Sets[ViewerSet].Length:GunStates.Length;
+        public float PreviewDuration => ViewerSet<4?CapturedClips.Sets[ViewerSet][ViewerClip].Duration:ViewerClip==3?GunRules.Get((WeaponId)(ViewerSet-3)).Reload:1.5f;
+        public bool PreviewLoop => ViewerSet<4?CapturedClips.Sets[ViewerSet][ViewerClip].Loop:ViewerClip!=3;
+        public string PreviewName => ViewerSet<4?CapturedClips.Sets[ViewerSet][ViewerClip].Name:GunRules.Name((WeaponId)(ViewerSet-3))+" / "+GunStates[ViewerClip];
+        public string PreviewSource => ViewerSet<4?CapturedClips.Sets[ViewerSet][ViewerClip].Source:"Source gun pose adaptation";
         private readonly List<Material> materials = new List<Material>();
         private readonly List<Material> compatibilityMaterials = new List<Material>();
-        private readonly List<Matrix4x4>[] batches = { new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>() };
+        private readonly List<Matrix4x4>[] batches = { new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>() };
         private readonly Matrix4x4[] drawBuffer = new Matrix4x4[1023];
         private readonly Dictionary<int, Vector3> visualPositions = new Dictionary<int, Vector3>();
         private readonly List<GameObject> debris = new List<GameObject>();
@@ -43,7 +56,7 @@ namespace ChipArena.UnityPrototype
         {
             GameObject sample = GameObject.CreatePrimitive(PrimitiveType.Cube);
             cube = sample.GetComponent<MeshFilter>().sharedMesh; Destroy(sample);
-            Color[] colors = { new Color(.17f,.85f,.83f), new Color(.45f,.58f,1), new Color(.92f,.30f,.38f), new Color(.08f,.11f,.17f), new Color(.87f,.95f,1), new Color(.43f,.51f,.56f) };
+            Color[] colors = { new Color(.17f,.85f,.83f), new Color(.45f,.58f,1), new Color(.92f,.30f,.38f), new Color(.08f,.11f,.17f), new Color(.87f,.95f,1), new Color(.43f,.51f,.56f), new Color(1,.75f,.3f) };
             Shader shader = Resources.Load<Shader>("PrototypeLit");
             if (shader == null) throw new System.InvalidOperationException("PrototypeLit shader is missing");
             foreach (Color color in colors)
@@ -53,6 +66,11 @@ namespace ChipArena.UnityPrototype
             }
             Debug.Log($"Unity prototype renderer: {RenderingMode}; {SystemInfo.graphicsDeviceType}; {SystemInfo.graphicsDeviceName}; shaderSupported={shader.isSupported}");
             captured=new CapturedAnimation();
+            string[] soundNames={"","pistol","rifle","machinegun"};
+            for(int i=1;i<4;i++) gunSounds[i]=Resources.Load<AudioClip>("GunAudio/"+soundNames[i]);
+            reloadStart=Resources.Load<AudioClip>("GunAudio/reload-start"); reloadEnd=Resources.Load<AudioClip>("GunAudio/reload-end");hitSound=Resources.Load<AudioClip>("GunAudio/hit");
+            localAudio=gameObject.AddComponent<AudioSource>();localAudio.playOnAwake=false;
+            for(int i=0;i<shotAudio.Length;i++) { var go=new GameObject("Shot sound "+i);go.transform.SetParent(transform);var source=go.AddComponent<AudioSource>();source.playOnAwake=false;source.spatialBlend=1;source.minDistance=3;source.maxDistance=50;shotAudio[i]=source; }
             stage = new GameObject("Arena geometry").transform; stage.SetParent(transform);
             Block("Floor", new Vector3(0, -.35f, 0), new Vector3(50, .7f, 50), materials[3], true);
             for (int i = -24; i <= 24; i += 4)
@@ -82,7 +100,8 @@ namespace ChipArena.UnityPrototype
         }
         public void ResetPresentation()
         {
-            lastEvent=0; visualPositions.Clear(); particles.Clear();
+            lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
+            foreach(var source in shotAudio) if(source!=null) source.Stop(); if(localAudio!=null) localAudio.Stop();
             foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear();
             foreach(var o in debris) if(o!=null) Destroy(o); debris.Clear();
             foreach(var o in coverObjects) if(o!=null) Destroy(o); coverObjects.Clear();
@@ -105,11 +124,15 @@ namespace ChipArena.UnityPrototype
                 if(!a.Alive) continue;
                 int color=a.Bot?2:a.Id-1;
                 if(renderTime<a.FlashUntil) color=4;
-                if(CapturedPlayers||Viewer) CapturedPose(a,p,renderTime,color);
+                if(CapturedPlayers||Viewer||GunRules.Ranged(a.Weapon)) CapturedPose(a,p,renderTime,color);
                 else Pose(a,p,renderTime,color);
             }
             animationTimer.Stop(); AnimationMs=animationTimer.Elapsed.TotalMilliseconds;
-            foreach(Shot p in s.Shots) Add(4, Matrix4x4.TRS(Vec(p.Position),Quaternion.identity,Vector3.one*.18f));
+            foreach(Shot p in s.Shots)
+            {
+                if(GunRules.Ranged(p.Weapon)) Add(6,Matrix4x4.TRS(Vec(p.Position),Quaternion.LookRotation(Vec(p.Velocity)),new Vector3(.04f,.04f,Mathf.Clamp(p.Velocity.Length*.01f,.25f,1.5f))));
+                else Add(4, Matrix4x4.TRS(Vec(p.Position),Quaternion.identity,Vector3.one*.18f));
+            }
             for(int k=0;k<batches.Length;k++)
             {
                 var list=batches[k];
@@ -141,7 +164,24 @@ namespace ChipArena.UnityPrototype
             foreach(ArenaEvent e in s.Events)
             {
                 if(e.Id<=lastEvent) continue; lastEvent=e.Id;
-                if(e.Kind==EventKind.Shot||e.Kind==EventKind.Dodge) continue;
+                if(e.Kind==EventKind.Shot)
+                {
+                    int weapon=(int)e.Amount;
+                    if(SoundEnabled&&weapon>0&&weapon<4&&gunSounds[weapon]!=null)
+                    { var audio=shotAudio[nextAudio++%shotAudio.Length];audio.transform.position=Vec(e.Position);audio.clip=gunSounds[weapon];audio.volume=.35f;audio.Play(); }
+                    continue;
+                }
+                if(e.Kind==EventKind.ReloadStart||e.Kind==EventKind.ReloadEnd)
+                {
+                    if(SoundEnabled&&e.Source==LocalId) localAudio.PlayOneShot(e.Kind==EventKind.ReloadStart?reloadStart:reloadEnd,.5f);
+                    continue;
+                }
+                if(e.Source==LocalId&&(e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot)&&e.Target>0)
+                {
+                    LastHitUntil=Time.unscaledTime+.25f;LastHitDamage=e.Amount;LastHeadshot=e.Kind==EventKind.Headshot;
+                    if(SoundEnabled) localAudio.PlayOneShot(hitSound,.45f);
+                }
+                if(e.Kind==EventKind.Dodge) continue;
                 Burst(Vec(e.Position), e.Kind==EventKind.Block?new Color(.3f,.9f,1):e.Kind==EventKind.Death?new Color(1,.2f,.35f):new Color(1,.7f,.3f),e.Kind==EventKind.Death?24:12);
                 if(DebrisEnabled&&(e.Kind==EventKind.Break||e.Kind==EventKind.Death)) Debris(Vec(e.Position)+Vector3.up*.3f,e.Kind==EventKind.Death?materials[2]:materials[3]);
             }
@@ -150,13 +190,24 @@ namespace ChipArena.UnityPrototype
         {
             CapturedAnimation.Player rig;
             if(!rigs.TryGetValue(a.Id,out rig)) { rig=captured.Create(transform,a.Id); rigs.Add(a.Id,rig); }
-            if(Viewer) rig.Preview(ViewerSet,PreviewName.Substring(PreviewName.IndexOf('/')+1),ViewerTime,Vector3.zero);
+            if(Viewer&&ViewerSet>=4) rig.PreviewGun((WeaponId)(ViewerSet-3),ViewerClip,ViewerTime);
+            else if(Viewer) rig.Preview(ViewerSet,PreviewName.Substring(PreviewName.IndexOf('/')+1),ViewerTime,Vector3.zero);
             else rig.ActorPose(a,position,time);
-            if(a.Id==1||a.Id==2) PlayerState=rig.State;
+            if(a.Id==LocalId) PlayerState=rig.State;
             foreach(var box in CapturedRig.Boxes)
             {
                 int tint=time<a.FlashUntil?4:box.Color<0?color:box.Color;
                 Part(rig.Bones[box.Bone].localToWorldMatrix,CapturedAnimation.Vec(CapturedRig.Mirror(box.Position)),CapturedAnimation.Vec(box.Size),Quaternion.identity,tint);
+            }
+            if(GunRules.Ranged(rig.Weapon))
+            {
+                Actor shown=a;
+                if(Viewer)
+                {
+                    var w=rig.Weapon; shown=new Actor { Weapon=w,LastShot=ViewerClip==2?ViewerTime-CapturedClip.Wrap(ViewerTime,GunRules.Get(w).Interval):-100 };
+                    if(ViewerClip==3) { shown.ReloadAt=ViewerTime-CapturedClip.Wrap(ViewerTime,GunRules.Get(w).Reload+.6f); shown.ReloadUntil=shown.ReloadAt+GunRules.Get(w).Reload; }
+                }
+                GunPresentation.Draw(rig,shown,Viewer?ViewerTime:time,Add); return;
             }
             Weapon(rig.Bones[CapturedRig.RHand].localToWorldMatrix,rig.Set,color);
             if(rig.Set==1) Weapon(rig.Bones[CapturedRig.LHand].localToWorldMatrix,1,color);

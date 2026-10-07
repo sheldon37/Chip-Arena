@@ -9,7 +9,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 TOP = {'Assets', 'Packages', 'ProjectSettings', 'Tests', 'tools'}
-FILES = {'README.md', 'PROTOTYPE-SCOPE.md', 'VALIDATION.md', 'ICON.md', 'ANIMATIONS.md', 'Build-Windows.cmd', '.gitignore'}
+FILES = {'README.md', 'PROTOTYPE-SCOPE.md', 'VALIDATION.md', 'ICON.md', 'ANIMATIONS.md', 'RANGED.md', 'Build-Windows.cmd', '.gitignore'}
 SKIP = {'bin', 'obj', '__pycache__', 'LocalAssets', 'Library', 'Temp', 'Logs', 'Builds', 'UserSettings'}
 
 

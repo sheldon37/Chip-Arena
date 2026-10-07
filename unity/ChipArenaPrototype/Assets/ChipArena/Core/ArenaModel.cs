@@ -19,23 +19,30 @@ namespace ChipArena.UnityPrototype
     public struct InputFrame
     {
         public int Sequence;
-        public float X, Z, Yaw;
-        public bool Attack, Block, Roll, Shoot, Jump, Sprint;
-        public bool Valid { get { return Sequence >= 0 && MathUtil.Finite(X) && MathUtil.Finite(Z) && MathUtil.Finite(Yaw); } }
+        public float X, Z, Yaw, Pitch;
+        public byte SelectWeapon; // 0=no change, 1=Sword, 2=Pistol, 3=Rifle, 4=MachineGun
+        public V3 AimTarget;
+        public bool Attack, Block, Roll, Shoot, Jump, Sprint, Aim, Reload;
+        public bool Valid { get { return Sequence >= 0 && MathUtil.Finite(X) && MathUtil.Finite(Z) && MathUtil.Finite(Yaw) && MathUtil.Finite(Pitch) && MathUtil.Finite(AimTarget.x) && MathUtil.Finite(AimTarget.y) && MathUtil.Finite(AimTarget.z) && AimTarget.Length<=10000 && SelectWeapon<=4; } }
         public InputFrame Sanitized()
         {
             if (!Valid) return new InputFrame();
             InputFrame input = this;
             V3 move = new V3(X, 0, Z); if (move.Length > 1) move = move.Normalized;
-            input.X = move.x; input.Z = move.z; input.Yaw = Yaw % 360; return input;
+            input.X = move.x; input.Z = move.z; input.Yaw = Yaw % 360; input.Pitch=MathUtil.Clamp(Pitch,-75,75); return input;
         }
-        public InputFrame HeldOnly() { InputFrame i = this; i.Attack = i.Block = i.Roll = i.Jump = false; return i; }
+        public InputFrame HeldOnly() { InputFrame i = this; i.Attack = i.Block = i.Roll = i.Jump = i.Reload = false; i.SelectWeapon=0; return i; }
     }
 
     [Serializable]
     public class Actor
     {
         public int Id, Team, Combo, Action, Kills, LastInput;
+        public WeaponId Weapon;
+        public int Ammo, ShotsFired, AimShots;
+        public bool Aiming;
+        public float Pitch, AimYaw, AimAt=-100, LastShot=-100, ReloadAt=-100, ReloadUntil;
+        internal readonly int[] Magazines={0,7,3,48};
         public bool Bot, Sprinting, SprintExhausted;
         public float Hp = 100, Stamina = 100, Yaw;
         public V3 Position, Velocity, Knockback, RollDirection;
@@ -62,10 +69,11 @@ namespace ChipArena.UnityPrototype
     {
         public int Id, Owner, Team, Reflections;
         public V3 Position, Velocity;
-        public float Damage = 20, Life = 3;
+        public float Damage = 20, Life = 3, Gravity, Radius=.1f, DistanceLeft=320, Impulse=325;
+        public WeaponId Weapon;
     }
 
-    public enum EventKind { Hit, Block, Dodge, Shot, Death, Break }
+    public enum EventKind { Hit, Block, Dodge, Shot, Death, Break, ReloadStart, ReloadEnd, Headshot, Impact }
     [Serializable]
     public struct ArenaEvent
     {

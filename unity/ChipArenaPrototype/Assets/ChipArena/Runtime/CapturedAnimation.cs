@@ -92,10 +92,11 @@ namespace ChipArena.UnityPrototype
             private readonly Vector3[] previousP=new Vector3[CapturedRig.Bones.Length],blendP=new Vector3[CapturedRig.Bones.Length];
             private readonly Quaternion[] previousQ=new Quaternion[CapturedRig.Bones.Length],blendQ=new Quaternion[CapturedRig.Bones.Length];
             private readonly CapturedRig.Pose pose=new CapturedRig.Pose();
-            private float lastTime=-100,phase,lastStun=-100,stunAt;
+            private float lastTime=-100,phase,lastStun=-100,stunAt,gunAimWeight=1;
             private bool fresh=true;
             public string State { get; private set; }="idle";
             public int Set { get; private set; }
+            public WeaponId Weapon { get; private set; }
             public Player(CapturedAnimation library,Transform parent,int id)
             {
                 this.library=library; Root=new GameObject("Captured player "+id); Root.transform.SetParent(parent,false);
@@ -126,6 +127,7 @@ namespace ChipArena.UnityPrototype
             }
             public void ActorPose(Actor a,Vector3 position,float time)
             {
+                Weapon=a.Weapon;
                 float dt=Mathf.Clamp(time-lastTime,0,.1f); bool reset=fresh||time<lastTime||time-lastTime>.35f;
                 if(reset) phase=0; lastTime=time;
                 Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,Quaternion.Euler(0,a.Yaw,0));
@@ -153,12 +155,12 @@ namespace ChipArena.UnityPrototype
                         Blend(blendP,blendQ,CapturedClip.Ease((age-Rules.SwordWindup-Rules.SwordActive)/recovery)); State=cut+" recovery";
                     }
                 }
-                if(time<a.BlockUntil)
+                if(a.Weapon==WeaponId.Sword&&time<a.BlockUntil)
                 {
                     Save(blendP,blendQ); float age=time-(a.BlockUntil-Rules.BlockDuration); var block=Find(0,"block");
                     Sample(0,"block",CapturedClip.Retime(new[]{0f,.13f,.36f},block.Marks,age)); Blend(blendP,blendQ,CapturedClip.Ease(age/.05f));
                 }
-                if(stun)
+                if(a.Weapon==WeaponId.Sword&&stun)
                 {
                     if(a.StunUntil!=lastStun) { stunAt=time; lastStun=a.StunUntil; }
                     Save(blendP,blendQ); var hit=Find(0,"stagger"); float span=Mathf.Max(.05f,a.StunUntil-stunAt);
@@ -167,6 +169,14 @@ namespace ChipArena.UnityPrototype
                 // Smooth snapshot transitions, but leave contact frames and the roll turn at their authoritative times.
                 if(!reset&&!attack&&!roll) Blend(previousP,previousQ,1-Mathf.Exp(-22*dt));
                 ReadPose();
+                if(GunRules.Ranged(a.Weapon))
+                {
+                    Vector3 velocity=Quaternion.Inverse(Root.transform.rotation)*new Vector3(a.Velocity.x,0,a.Velocity.z);
+                    float want=!moving||velocity.z/Mathf.Max(.01f,speed)<.6f||a.Aiming||a.ReloadUntil>time||time<a.BlockUntil||time-a.LastShot<.4f?1:0;
+                    gunAimWeight=reset?want:Mathf.Lerp(gunAimWeight,want,1-Mathf.Exp(-24*dt));
+                    RangedPose.Apply(pose,a,time,gunAimWeight);
+                    State=a.ReloadUntil>time?"reload":time<a.BlockUntil?"block":time-a.LastShot<.2f?"fire":a.Aiming?"aim":moving?"carry":"ready";
+                }
                 if(moving)
                 {
                     // The source game also layers procedural travel-aware feet under captured upper-body carry.
@@ -193,17 +203,25 @@ namespace ChipArena.UnityPrototype
                     Root.transform.rotation=Quaternion.LookRotation(ArenaPresentation.Vec(a.RollDirection));
                     CapturedRig.Roll(pose,(time-a.RollAt)/Rules.RollDuration); State="roll (adapted)";
                 }
-                if(ground&&!roll) CapturedRig.BladeFloor(pose,false,1.28f);
+                if(a.Weapon==WeaponId.Sword&&ground&&!roll) CapturedRig.BladeFloor(pose,false,1.28f);
                 WritePose(); Save(previousP,previousQ); fresh=false;
             }
             public void Preview(int set,string state,float time,Vector3 position)
             {
-                Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,Quaternion.identity); Sample(set,state,time);
+                Weapon=WeaponId.Sword; Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,Quaternion.identity); Sample(set,state,time);
                 if(set!=3)
                 {
                     ReadPose(); CapturedRig.BladeFloor(pose,false,set==2?1.69f:set==1?.84f:1.28f);
                     if(set==1) CapturedRig.BladeFloor(pose,true,.84f); WritePose();
                 }
+            }
+            public void PreviewGun(WeaponId weapon,int state,float time)
+            {
+                var a=new Actor { Id=-1,Weapon=weapon,Ammo=GunRules.Get(weapon).Magazine,Aiming=state==1,LastShot=state==2?time-CapturedClip.Wrap(time,GunRules.Get(weapon).Interval):-100 };
+                if(state==3) { a.ReloadAt=time-CapturedClip.Wrap(time,GunRules.Get(weapon).Reload+.6f); a.ReloadUntil=a.ReloadAt+GunRules.Get(weapon).Reload; }
+                if(state==4) a.BlockUntil=time+.15f;
+                Weapon=weapon; Sample(0,"idle",time); ReadPose(); RangedPose.Apply(pose,a,time,1); WritePose();
+                Root.transform.SetPositionAndRotation(Vector3.up*.865f,Quaternion.identity); State=new[]{"ready","aim","fire","reload","block"}[state];
             }
             public void Dispose() { if(Root!=null) Release(Root); }
         }

@@ -25,6 +25,8 @@ namespace ChipArena.UnityPrototype
         private bool sprint, menu = true, invulnerablePractice;
         private string address = "127.0.0.1", portText = "27880", message = "", lanAddresses = "", capturePath = "";
         private int botCount = 8;
+        private WeaponId selectedWeapon=WeaponId.Pistol;
+        private bool rangedBots=true,stationaryBots;
         private double stepMs;
         private readonly float[] frames = new float[600], acknowledgments = new float[512];
         private int frameAt, frameCount;
@@ -51,7 +53,7 @@ namespace ChipArena.UnityPrototype
             presentation=gameObject.AddComponent<ArenaPresentation>(); presentation.Initialize();
             var cameraObject=new GameObject("Prototype camera"); cameraObject.transform.SetParent(transform);
             view=cameraObject.AddComponent<Camera>(); view.tag="MainCamera"; view.clearFlags=CameraClearFlags.SolidColor;
-            view.backgroundColor=new Color(.018f,.025f,.048f); view.nearClipPlane=.08f; view.farClipPlane=120; view.fieldOfView=65;
+            view.backgroundColor=new Color(.018f,.025f,.048f); view.nearClipPlane=.08f; view.farClipPlane=120; view.fieldOfView=65; cameraObject.AddComponent<AudioListener>();
             world=new ArenaWorld(); world.SetBots(botCount); snapshot=world.Capture();
             lastStateAt=Time.unscaledTime;
             try
@@ -74,13 +76,14 @@ namespace ChipArena.UnityPrototype
             StopLink(); presentation.Viewer=false; presentation.ResetPresentation();
             sequence=0; lastRemoteSequence=-1; pending=remote=new InputFrame(); sprint=false; ackMs=0;
             captureUntil=0; captureRows.Clear(); frameCount=frameAt=0;
-            world=new ArenaWorld(); world.SetBots(botCount); world.BotAttacks=!invulnerablePractice;
+            world=new ArenaWorld { RangedBots=rangedBots,StationaryBots=stationaryBots }; world.SetBots(botCount); world.BotAttacks=!invulnerablePractice;
+            world.Equip(world.Find(1),selectedWeapon);
             snapshot=world.Capture();
             try
             {
                 if(next==Session.Host) link=LanLink.Host(port);
                 if(next==Session.Guest) { link=LanLink.Join(address,port); snapshot=null; }
-                session=next; menu=false; message=""; yaw=0; lastStateAt=Time.unscaledTime;
+                session=next; pending.SelectWeapon=(byte)((int)selectedWeapon+1); menu=false; message=""; yaw=0; lastStateAt=Time.unscaledTime;
                 Cursor.lockState=CursorLockMode.Locked; Cursor.visible=false;
             }
             catch(Exception e) { session=Session.Menu; menu=true; message=e.Message; StopLink(); }
@@ -93,15 +96,21 @@ namespace ChipArena.UnityPrototype
             snapshot=new Snapshot { Tick=0,Actors=new[]{new Actor { Id=1 }},Covers=Array.Empty<Cover>(),Shots=Array.Empty<Shot>(),Events=Array.Empty<ArenaEvent>() };
             Cursor.lockState=CursorLockMode.Locked; Cursor.visible=false;
         }
+        private void RequestWeapon(WeaponId weapon)
+        {
+            selectedWeapon=weapon; pending.SelectWeapon=(byte)((int)weapon+1);
+            if(captureUntil>0) { captureUntil=0; captureRows.Clear(); }
+            message="Selected "+GunRules.Name(weapon)+". If busy, retry after reloading, firing or rolling. Any active frame capture was cancelled.";
+        }
         private void ChangePreviewSet(int set) { presentation.ViewerSet=set; presentation.ViewerClip=0; presentation.ViewerTime=0; }
         private void ChangePreviewClip(int delta)
         {
-            int count=CapturedClips.Sets[presentation.ViewerSet].Length;
+            int count=presentation.PreviewCount;
             presentation.ViewerClip=(presentation.ViewerClip+delta+count)%count; presentation.ViewerTime=0;
         }
         private void Update()
         {
-            PollNetwork();
+            PollNetwork(); bool cameraUpdated=false;
             if(Input.GetKeyDown(KeyCode.Escape)) ToggleMenu();
             if(Input.GetKeyDown(KeyCode.F8)&&session!=Session.Menu&&session!=Session.Viewer) StartCapture();
             if(Input.GetKeyDown(KeyCode.F9)) SetCompatibilityRendering(!presentation.ForceCompatibilityRendering);
@@ -118,30 +127,46 @@ namespace ChipArena.UnityPrototype
                     if(Input.GetKeyDown(KeyCode.Alpha3)) ChangePreviewSet(2);
                     if(Input.GetKeyDown(KeyCode.Alpha4)) ChangePreviewSet(3);
                     if(!previewPaused) presentation.ViewerTime+=Time.unscaledDeltaTime*previewSpeed;
-                    var clip=CapturedClips.Sets[presentation.ViewerSet][presentation.ViewerClip];
-                    if(!clip.Loop&&presentation.ViewerTime>clip.Duration+.6f) presentation.ViewerTime=0;
+                    if(Input.GetKeyDown(KeyCode.Alpha5)) ChangePreviewSet(4);
+                    if(Input.GetKeyDown(KeyCode.Alpha6)) ChangePreviewSet(5);
+                    if(Input.GetKeyDown(KeyCode.Alpha7)) ChangePreviewSet(6);
+                    if(!presentation.PreviewLoop&&presentation.ViewerTime>presentation.PreviewDuration+.6f) presentation.ViewerTime=0;
                 }
             }
             else if(!menu&&session!=Session.Menu)
             {
-                yaw+=Input.GetAxisRaw("Mouse X")*2; pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f,5,65);
+                Actor local=Local(); bool gun=local!=null&&GunRules.Ranged(local.Weapon);
+                float sensitivity=gun&&Input.GetKey(KeyCode.Q)?GunRules.Get(local.Weapon).Sensitivity:1;
+                yaw+=Input.GetAxisRaw("Mouse X")*2*sensitivity; pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f*sensitivity,gun?-70:5,65);
+                if(Input.GetKeyDown(KeyCode.Alpha1)) RequestWeapon(WeaponId.Sword);
+                if(Input.GetKeyDown(KeyCode.Alpha2)) RequestWeapon(WeaponId.Pistol);
+                if(Input.GetKeyDown(KeyCode.Alpha3)) RequestWeapon(WeaponId.Rifle);
+                if(Input.GetKeyDown(KeyCode.Alpha4)) RequestWeapon(WeaponId.MachineGun);
                 if(Input.GetKeyDown(KeyCode.W)) { if(Time.unscaledTime-lastW<.3f) sprint=true; lastW=Time.unscaledTime; }
                 if(!Input.GetKey(KeyCode.W)) sprint=false;
                 float x=(Input.GetKey(KeyCode.D)?1:0)-(Input.GetKey(KeyCode.A)?1:0);
                 float z=(Input.GetKey(KeyCode.W)?1:0)-(Input.GetKey(KeyCode.S)?1:0);
                 Vector3 move=Quaternion.Euler(0,yaw,0)*new Vector3(x,0,z).normalized;
                 pending.X=move.x; pending.Z=move.z; pending.Yaw=yaw;
-                pending.Attack|=Input.GetMouseButtonDown(0); pending.Block|=Input.GetMouseButtonDown(1);
+                pending.Attack|=!gun&&Input.GetMouseButtonDown(0); pending.Block|=Input.GetMouseButtonDown(1);
                 pending.Roll|=Input.GetKeyDown(KeyCode.LeftShift); pending.Jump|=Input.GetKeyDown(KeyCode.Space);
-                pending.Shoot=Input.GetKey(KeyCode.E); pending.Sprint=sprint;
+                pending.Shoot=gun?Input.GetMouseButton(0):Input.GetKey(KeyCode.E); pending.Sprint=sprint;
+                pending.Aim=gun&&Input.GetKey(KeyCode.Q); pending.Reload|=gun&&Input.GetKeyDown(KeyCode.R); pending.Pitch=-pitch;
+                UpdateCamera();cameraUpdated=true;
+                if(gun&&snapshot!=null)
+                {
+                    Ray ray=view.ViewportPointToRay(new Vector3(.5f,.5f));
+                    pending.AimTarget=GunRules.AimPoint(snapshot,local.Id,new V3(ray.origin.x,ray.origin.y,ray.origin.z),new V3(ray.direction.x,ray.direction.y,ray.direction.z),GunRules.Get(local.Weapon).Range+5);
+                }
+                else pending.AimTarget=new V3();
             }
-            else pending=new InputFrame { Yaw=yaw };
+            else pending=new InputFrame { Yaw=yaw,SelectWeapon=pending.SelectWeapon };
             if(snapshot!=null)
             {
                 float t=snapshot.Tick*Rules.Dt+(session==Session.Guest?Mathf.Min(.1f,Time.unscaledTime-lastStateAt):0);
-                presentation.Render(snapshot,t,session==Session.Guest);
+                presentation.LocalId=session==Session.Guest?2:1; presentation.Render(snapshot,t,session==Session.Guest);
             }
-            UpdateCamera(); UpdateMetrics();
+            if(!cameraUpdated) UpdateCamera(); UpdateMetrics();
         }
         private void FixedUpdate()
         {
@@ -149,8 +174,12 @@ namespace ChipArena.UnityPrototype
             pending.Sequence=++sequence;
             if(session==Session.Guest)
             {
-                if(link!=null&&link.Connected) { acknowledgments[sequence%acknowledgments.Length]=Time.unscaledTime; link.Send(WireCodec.Input(pending)); }
-                pending=pending.HeldOnly(); return;
+                if(link!=null&&link.Connected)
+                {
+                    acknowledgments[sequence%acknowledgments.Length]=Time.unscaledTime; link.Send(WireCodec.Input(pending));
+                    pending=pending.HeldOnly();
+                }
+                return; // Keep the selected loadout until the first connected send.
             }
             bool connected=link!=null&&link.Connected;
             if(session==Session.Host)
@@ -174,7 +203,7 @@ namespace ChipArena.UnityPrototype
                     {
                         var input=WireCodec.ReadInput(data); if(input.Sequence<=lastRemoteSequence) continue;
                         lastRemoteSequence=input.Sequence;
-                        input.Attack|=remote.Attack; input.Block|=remote.Block; input.Roll|=remote.Roll; input.Jump|=remote.Jump;
+                        input.Attack|=remote.Attack; input.Block|=remote.Block; input.Roll|=remote.Roll; input.Jump|=remote.Jump; input.Reload|=remote.Reload; if(input.SelectWeapon==0) input.SelectWeapon=remote.SelectWeapon;
                         remote=input; lastRemoteAt=Time.unscaledTime;
                     }
                     else
@@ -194,9 +223,24 @@ namespace ChipArena.UnityPrototype
         {
             if(session==Session.Viewer)
             {
-                Vector3 focus=new Vector3(0,.95f,0); view.transform.position=focus+Quaternion.Euler(previewPitch,previewYaw,0)*new Vector3(0,0,-3.6f); view.transform.LookAt(focus); return;
+                view.fieldOfView=65; Vector3 focus=new Vector3(0,.95f,0); view.transform.position=focus+Quaternion.Euler(previewPitch,previewYaw,0)*new Vector3(0,0,-3.6f); view.transform.LookAt(focus); return;
             }
-            Actor a=Local(); Vector3 target=a==null?new Vector3(0,1,0):presentation.Position(a)+Vector3.up*1.15f;
+            Actor a=Local();
+            if(a!=null&&GunRules.Ranged(a.Weapon)&&session!=Session.Menu)
+            {
+                float now=snapshot.Tick*Rules.Dt;
+                bool aimed=!menu&&Input.GetKey(KeyCode.Q)&&a.Alive&&a.ReloadUntil<=now&&a.BlockUntil<=now&&a.StunUntil<=now&&!a.Rolling(now);
+                float fov=aimed?GunRules.Get(a.Weapon).Fov:65;
+                view.fieldOfView=Mathf.Lerp(view.fieldOfView,fov,1-Mathf.Exp(-16*Time.unscaledDeltaTime));
+                Quaternion rotation=Quaternion.Euler(pitch,yaw,0);
+                Vector3 focus=presentation.Position(a)+Vector3.up*1.3f;
+                Vector3 cameraOffset=rotation*new Vector3(aimed?.34f:.55f,.10f,aimed?-1.6f:-3.7f),gunCameraPosition=focus+cameraOffset;
+                RaycastHit obstruction;
+                if(Physics.SphereCast(focus,.12f,cameraOffset.normalized,out obstruction,cameraOffset.magnitude,~0,QueryTriggerInteraction.Ignore)) gunCameraPosition=focus+cameraOffset.normalized*Mathf.Max(.2f,obstruction.distance-.13f);
+                view.transform.SetPositionAndRotation(gunCameraPosition,rotation); return;
+            }
+            view.fieldOfView=Mathf.Lerp(view.fieldOfView,65,1-Mathf.Exp(-16*Time.unscaledDeltaTime));
+            Vector3 target=a==null?new Vector3(0,1,0):presentation.Position(a)+Vector3.up*1.15f;
             if(session==Session.Menu)
             {
                 view.transform.position=new Vector3(Mathf.Sin(Time.unscaledTime*.07f)*27,22,-27); view.transform.LookAt(new Vector3(0,0,2)); return;
@@ -237,7 +281,7 @@ namespace ChipArena.UnityPrototype
             {
                 if(Time.unscaledTime>=captureUntil) { FinishCapture(); return; }
                 if(captureRows.Count<20000) captureRows.Add(string.Join(",",Time.unscaledTime.ToString("F3",CultureInfo.InvariantCulture),frame.ToString("F3",CultureInfo.InvariantCulture),
-                    session==Session.Guest?"":stepMs.ToString("F3",CultureInfo.InvariantCulture),snapshot?.Actors.Length??0,snapshot?.Shots.Length??0,presentation.DebrisCount,presentation.ParticleCount,presentation.RenderingMode,presentation.AnimationMode,presentation.AnimationMs.ToString("F3",CultureInfo.InvariantCulture)));
+                    session==Session.Guest?"":stepMs.ToString("F3",CultureInfo.InvariantCulture),snapshot?.Actors.Length??0,snapshot?.Shots.Length??0,presentation.DebrisCount,presentation.ParticleCount,presentation.RenderingMode,presentation.AnimationMode,presentation.AnimationMs.ToString("F3",CultureInfo.InvariantCulture),Local()==null?"":GunRules.Name(Local().Weapon)));
             }
         }
         private void StartCapture()
@@ -256,7 +300,7 @@ namespace ChipArena.UnityPrototype
                 var data=new StringBuilder(); data.AppendLine("# Prototype workload; NOT a full-game benchmark. Frame time is wall time, not GPU duration.");
                 data.AppendLine("# Unity "+Application.unityVersion+" | "+SystemInfo.operatingSystem+" | "+SystemInfo.processorType+" | "+SystemInfo.graphicsDeviceName);
                 data.AppendLine("# Mode: "+session+" | Resolution: "+Screen.width+"x"+Screen.height+" | Target FPS: "+Application.targetFrameRate+" | VSync: "+QualitySettings.vSyncCount);
-                data.AppendLine("elapsed_seconds,frame_ms,authority_step_ms,actors,projectiles,physx_debris,particles,renderer_mode,animation_mode,animation_pose_ms");
+                data.AppendLine("elapsed_seconds,frame_ms,authority_step_ms,actors,projectiles,physx_debris,particles,renderer_mode,animation_mode,animation_pose_ms,local_weapon");
                 foreach(string row in captureRows) data.AppendLine(row); File.WriteAllText(capturePath,data.ToString()); message="Benchmark saved. Open menu to copy its path.";
             }
             catch(Exception e) { message="Could not save benchmark: "+e.Message; }
@@ -295,14 +339,29 @@ namespace ChipArena.UnityPrototype
                 GUI.Label(new Rect(width-287,82,260,225),$"{session}  ·  {snapshot?.Actors.Length??0} actors\nFrame: {meanMs:F1} ms mean / {p95Ms:F1} ms p95\n"+
                     (session==Session.Guest?$"Input acknowledgment: {ackMs:F0} ms\n":"Authority step: "+stepMs.ToString("F2")+" ms\n")+
                     $"Shots: {snapshot?.Shots.Length??0}  ·  Debris: {presentation.DebrisCount}\nParticles: {presentation.ParticleCount}  ·  Parts: {presentation.DrawnParts}\nRendering: {presentation.RenderingMode} (F9)\nAnimation: {presentation.AnimationMode}\nPose: {presentation.AnimationMs:F2} ms  /  {presentation.PlayerState}\n"+(link?.Status??"Local simulation"),small);
-                GUI.Label(new Rect(22,height-48,width-44,30),"WASD move   ·   Double-tap W sprint   ·   Mouse look   ·   LMB sword   ·   RMB block   ·   Shift dodge   ·   Space jump   ·   E bolts   ·   F8 record   ·   Esc menu",small);
+                GUI.Label(new Rect(22,height-48,width-44,30),"1 Sword  ·  2 Pistol  ·  3 Rifle  ·  4 Machine Gun  |  WASD move  ·  LMB attack/fire  ·  Q aim  ·  R reload  ·  RMB block  ·  Shift roll  ·  Space jump  ·  Esc menu",small);
+                if(a!=null&&GunRules.Ranged(a.Weapon))
+                {
+                    float t=snapshot.Tick*Rules.Dt; var gun=GunRules.Get(a.Weapon);
+                    Panel(new Rect(width-300,height-140,285,78),new Color(.025f,.035f,.06f,.9f));
+                    GUI.Label(new Rect(width-282,height-133,260,65),gun.Name+"   "+a.Ammo+" / "+gun.Magazine+"\n"+(a.ReloadUntil>t?"RELOADING  "+(a.ReloadUntil-t).ToString("F1")+"s":a.Aiming?"AIMING  ·  Q held":a.Ammo==0?"R to reload":"Q aim  ·  R reload"),text);
+                    if(a.Aiming&&a.Weapon==WeaponId.Rifle)
+                    {
+                        Panel(new Rect(width/2-100,height/2,80,1),new Color(.1f,.9f,.8f,.7f));
+                        Panel(new Rect(width/2+20,height/2,80,1),new Color(.1f,.9f,.8f,.7f));
+                        Panel(new Rect(width/2,height/2-100,1,80),new Color(.1f,.9f,.8f,.7f));
+                        Panel(new Rect(width/2,height/2+20,1,80),new Color(.1f,.9f,.8f,.7f));
+                    }
+                }
+                if(Time.unscaledTime<presentation.LastHitUntil)
+                    GUI.Label(new Rect(width/2+20,height/2-35,150,50),(presentation.LastHeadshot?"HEADSHOT ":"HIT ")+presentation.LastHitDamage.ToString("0.#"),text);
                 Panel(new Rect(width/2-1,height/2-6,2,12),Color.white); Panel(new Rect(width/2-6,height/2-1,12,2),Color.white);
                 if(captureUntil>0) GUI.Label(new Rect(width/2-120,73,300,28),"RECORDING  "+Mathf.CeilToInt(captureUntil-Time.unscaledTime)+"s",text);
             }
             if(session==Session.Viewer)
             {
                 Panel(new Rect(15,70,470,130),new Color(.025f,.035f,.06f,.9f));
-                GUI.Label(new Rect(30,82,440,108),"ANIMATION VIEWER  /  "+presentation.PreviewName+"\n"+presentation.PreviewSource+"\n"+(previewPaused?"PAUSED":previewSpeed.ToString("0.00")+"x speed")+"  ·  "+presentation.ViewerTime.ToString("F2")+"s\n1-4 weapon  ·  [ / ] clip  ·  Space pause\nMouse orbit  ·  Esc options / return to gameplay",text);
+                GUI.Label(new Rect(30,82,440,108),"ANIMATION VIEWER  /  "+presentation.PreviewName+"\n"+presentation.PreviewSource+"\n"+(previewPaused?"PAUSED":previewSpeed.ToString("0.00")+"x speed")+"  ·  "+presentation.ViewerTime.ToString("F2")+"s\n1-7 weapon  ·  [ / ] clip  ·  Space pause\nMouse orbit  ·  Esc options / return to gameplay",text);
             }
             if(!menu) return;
             float panelWidth=570,panelX=(width-panelWidth)/2;
@@ -310,14 +369,16 @@ namespace ChipArena.UnityPrototype
             GUILayout.BeginArea(new Rect(panelX+26,108,panelWidth-52,height-200));
             menuScroll=GUILayout.BeginScrollView(menuScroll);
             GUILayout.Label(session==Session.Menu?"Test the next foundation":"Test session",title);
-            GUILayout.Label("Captured player animations from Chip Arena: sword gameplay and a close-up viewer for sword, daggers, greatsword and shield.",text);
+            GUILayout.Label("Sword, pistol, rifle and machine gun gameplay. Original gun sounds, aim, recoil, ammo and reloads. Special gun abilities are not included in this test.",text);
             GUILayout.Space(12);
             if(session!=Session.Menu&&GUILayout.Button("Resume",button)) ToggleMenu();
-            if(GUILayout.Button("Animation viewer - inspect all four weapon sets",button)) BeginViewer();
+            if(GUILayout.Button("Animation viewer - melee clips and gun poses",button)) BeginViewer();
             if(session==Session.Viewer)
             {
                 GUILayout.BeginHorizontal();
                 for(int i=0;i<4;i++) if(GUILayout.Button(CapturedClips.Names[i],button)) ChangePreviewSet(i);
+                GUILayout.EndHorizontal(); GUILayout.BeginHorizontal();
+                for(int i=1;i<=3;i++) if(GUILayout.Button(GunRules.Name((WeaponId)i),button)) ChangePreviewSet(i+3);
                 GUILayout.EndHorizontal();
                 GUILayout.BeginHorizontal();
                 if(GUILayout.Button("Previous clip",button)) ChangePreviewClip(-1);
@@ -327,8 +388,12 @@ namespace ChipArena.UnityPrototype
                 GUILayout.BeginHorizontal();
                 foreach(float rate in new[]{.25f,.5f,1f}) if(GUILayout.Button(rate+"x",button)) previewSpeed=rate;
                 GUILayout.EndHorizontal();
-                GUILayout.Label("The viewer poses a stationary mannequin; it does not run combat or benchmarks. Play solo to test movement and fighting with the sword captures.",small);
+                GUILayout.Label("The viewer poses a stationary mannequin; it does not run combat or benchmarks. Play solo to test live sword and gun combat.",small);
             }
+            GUILayout.Label("Player weapon (1-4 during play)",text);
+            GUILayout.BeginHorizontal();
+            for(int i=0;i<4;i++) if(GUILayout.Button(GunRules.Name((WeaponId)i)+(selectedWeapon==(WeaponId)i?" ✓":""),button)) RequestWeapon((WeaponId)i);
+            GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
             if(GUILayout.Button("Play solo",button)) Begin(Session.Solo);
             if(GUILayout.Button("Host LAN",button)) Begin(Session.Host);
@@ -343,15 +408,19 @@ namespace ChipArena.UnityPrototype
             GUILayout.BeginHorizontal();
             foreach(int n in new[] { 0,8,32,96,192 }) if(GUILayout.Button(n+(n==botCount?" ✓":""),button)) { botCount=n; world.SetBots(n); snapshot=world.Capture(); }
             GUILayout.EndHorizontal();
+            bool guns=GUILayout.Toggle(rangedBots,"Ranged bots (pistol / rifle / machine gun)");
+            if(guns!=rangedBots) { rangedBots=guns; world.RangedBots=guns; world.SetBots(botCount); snapshot=world.Capture(); }
+            stationaryBots=GUILayout.Toggle(stationaryBots,"Stationary targets (no movement or attacks)");world.StationaryBots=stationaryBots;
             bool harmless=GUILayout.Toggle(invulnerablePractice,"Movement-only crowd (bots do not attack)");
             if(harmless!=invulnerablePractice) { invulnerablePractice=harmless; if(world!=null) world.BotAttacks=!harmless; }
             GUI.enabled=true;
-            bool capturedPlayers=GUILayout.Toggle(presentation.CapturedPlayers,"Captured player animations (off = original test poses)");
+            bool capturedPlayers=GUILayout.Toggle(presentation.CapturedPlayers,"Captured sword animations (guns always use the articulated rig)");
             if(capturedPlayers!=presentation.CapturedPlayers)
             {
                 presentation.CapturedPlayers=capturedPlayers; frameCount=frameAt=0;
                 if(captureUntil>0) { captureUntil=0; captureRows.Clear(); message="Capture cancelled because animation mode changed."; }
             }
+            presentation.SoundEnabled=GUILayout.Toggle(presentation.SoundEnabled,"Gun, reload and hit sounds");
             presentation.DebrisEnabled=GUILayout.Toggle(presentation.DebrisEnabled,"PhysX debris on kills and broken cover");
             bool compatibility=GUILayout.Toggle(presentation.ForceCompatibilityRendering,"Compatibility rendering (F9) - use if characters or bolts are invisible");
             if(compatibility!=presentation.ForceCompatibilityRendering) SetCompatibilityRendering(compatibility);
@@ -366,7 +435,7 @@ namespace ChipArena.UnityPrototype
             GUILayout.Label("Frame time includes frame limiting. Authority timing excludes rendering, serialization and PhysX. This is a simplified prototype workload, not production parity.",small);
             if(message.Length>0) GUILayout.Label(message,text);
             GUILayout.Space(6);
-            if(session!=Session.Menu&&GUILayout.Button("End session",button)) { StopLink(); session=Session.Menu; menu=true; presentation.Viewer=false; presentation.ResetPresentation(); world=new ArenaWorld(); world.SetBots(botCount); snapshot=world.Capture(); }
+            if(session!=Session.Menu&&GUILayout.Button("End session",button)) { StopLink(); session=Session.Menu; menu=true; presentation.Viewer=false; presentation.ResetPresentation(); world=new ArenaWorld { RangedBots=rangedBots,StationaryBots=stationaryBots }; world.SetBots(botCount); snapshot=world.Capture(); }
             if(GUILayout.Button("Quit",button)) Application.Quit();
             GUILayout.EndScrollView(); GUILayout.EndArea();
         }

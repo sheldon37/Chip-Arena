@@ -16,27 +16,37 @@ The existing Electron game, saved accounts and update channels are separate. Thi
 | --- | --- |
 | WASD / mouse | Move / look |
 | Double-tap W | Sprint; release W to reset exhaustion |
-| Left click | Sword attack; another click queues the next hit |
-| Right click | Timed block; reflects energy bolts |
+| 1 / 2 / 3 / 4 | Sword / Pistol / Rifle / Machine Gun |
+| Left click | Sword attack; hold to fire the selected gun |
+| Hold Q / R | Aim gun / reload |
+| Right click | Timed block; reflects projectiles |
 | Left Shift | Dodge; cancels sword attack and has a brief invulnerability window |
 | Space | Jump |
-| Hold E | Fire test energy bolts |
+| Hold E | Fire test energy bolts with Sword; gun specials are not included |
 | Escape | Session menu; pauses local combat, but not hosted combat |
 | F8 | Record an uninterrupted 30-second frame-time sample |
 | F9 | Toggle compatibility rendering for characters and projectiles |
 
 Characters automatically respawn. All three sword combo stages currently use the source sword's 30 damage, 14 stamina, .14 s windup and .62 s interval. Their poses now use the game’s captured sword clips and articulated rig. The ability/cosmetic catalog and original FBX packs are not included. See `ANIMATIONS.md` for scope and source provenance.
 
+## Ranged weapons test
+
+Pistol, Rifle and Machine Gun are playable, with source primary-fire values, ammo, reloads, projectile
+drop, Q aiming, headshots, models, procedural gun poses and original sounds. Pistol is the default.
+Use **Stationary targets** in the menu for a shooting range, or fight a mixed gun crowd.
+See **RANGED.md** for controls, values, test steps and limits. Both LAN windows need this version (CAP2).
+
 ## Enhanced animation test
 
-**Play solo** now uses captured sword idle, movement, cuts, block and hit reactions.
+Select Sword (**1**) in **Play solo** for captured sword idle, movement, cuts, block and hit reactions.
 Choose **Animation viewer** to inspect 34 clips across sword, daggers, greatsword and shield.
 Mouse orbits; **1–4** selects a set; **[ / ]** changes clips; **Space** pauses.
+**5–7** selects Pistol / Rifle / Machine Gun procedural poses in the same viewer.
 Escape offers 0.25× / 0.5× / 1× playback and a return to solo play.
 
-For a before/after workload comparison, toggle **Captured player animations** in the menu.
+For a before/after Sword workload comparison, toggle **Captured sword animations** in the menu.
 The rig and geometry also change with this toggle; CSV rows record the mode and pose CPU time.
-The viewer does not run gameplay or benchmark captures. Other weapon sets are viewer-only.
+The viewer does not run gameplay or benchmark captures. Daggers, Greatsword and Shield are viewer-only.
 Read `ANIMATIONS.md` for fidelity limits and native build validation.
 
 ## Build a Windows test ZIP

@@ -12,7 +12,8 @@ namespace ChipArena.UnityPrototype
         public readonly List<ArenaEvent> Events = new List<ArenaEvent>();
         public int Tick { get; private set; }
         public float Time { get { return Tick * Rules.Dt; } }
-        public bool BotAttacks = true;
+        public bool BotAttacks = true, StationaryBots, RangedBots;
+        private uint randomState=0xCAFE4321;
         private int nextShot = 1, nextEvent = 1;
 
         public ArenaWorld()
@@ -38,6 +39,7 @@ namespace ChipArena.UnityPrototype
             {
                 double angle = i * 2.399963; float r = 8 + i % 7 * 1.5f;
                 Actor a = new Actor { Id = 100 + i, Team = 3, Bot = true, Position = new V3((float)Math.Sin(angle) * r, 0, (float)Math.Cos(angle) * r + 2) };
+                if(RangedBots) { a.Weapon=(WeaponId)(1+i%3); a.Ammo=GunRules.Get(a.Weapon).Magazine; }
                 Move(a, new V3()); Actors.Add(a);
             }
         }
@@ -53,12 +55,26 @@ namespace ChipArena.UnityPrototype
                 InputFrame input = a.Bot ? BotInput(a) : (a.Id == 1 ? host : guest);
                 input = input.Sanitized();
                 a.LastInput = input.Sequence;
+                if(input.SelectWeapon>0) Equip(a,(WeaponId)(input.SelectWeapon-1));
+                if(a.ReloadUntil>0&&Time>=a.ReloadUntil)
+                {
+                    a.Ammo=GunRules.Get(a.Weapon).Magazine; a.Magazines[(int)a.Weapon]=a.Ammo; a.ReloadUntil=0;
+                    Emit(EventKind.ReloadEnd,a.Id,0,a.Position,0);
+                }
+                bool aim=input.Aim&&GunRules.Ranged(a.Weapon)&&Time>=a.BlockUntil&&Time>=a.StunUntil&&!a.Rolling(Time)&&a.ReloadUntil<=0&&!input.Roll&&!input.Block;
+                if(aim&&!a.Aiming) { a.AimAt=Time; a.AimShots=0; }
+                a.Aiming=aim; a.Pitch=input.Pitch; a.AimYaw=input.Yaw;
                 a.Yaw = a.Attacking(Time) || a.Rolling(Time) ? a.Yaw : input.Yaw;
+                if(input.AimTarget.Length>.001f&&GunRules.Ranged(a.Weapon))
+                {
+                    V3 d=input.AimTarget-GunRules.Muzzle(a); a.AimYaw=(float)(Math.Atan2(d.x,d.z)*180/Math.PI);
+                    a.Pitch=MathUtil.Clamp((float)(Math.Atan2(d.y,Math.Sqrt(d.x*d.x+d.z*d.z))*180/Math.PI),-75,75);
+                }
                 if (!input.Sprint) a.SprintExhausted = false;
                 a.Sprinting = false;
                 if (Time < a.StunUntil) { a.QueuedAttack = false; MoveActor(a, new InputFrame()); continue; }
 
-                if (input.Roll && Time >= a.RollReady && !a.Rolling(Time) && a.Stamina >= Rules.RollCost)
+                if (input.Roll && Time >= a.RollReady && !a.Rolling(Time) && a.ReloadUntil<=0 && a.Stamina >= Rules.RollCost)
                 {
                     Spend(a, Rules.RollCost); a.RollAt = Time; a.RollReady = Time + Rules.RollCooldown;
                     a.RollDirection = new V3(input.X, 0, input.Z).Normalized;
@@ -71,10 +87,18 @@ namespace ChipArena.UnityPrototype
                     a.BlockUntil = Time + Rules.BlockDuration; a.BlockReady = Time + Rules.BlockCooldown;
                     a.AttackUntil = -1; a.QueuedAttack = false;
                 }
-                if (input.Attack && a.Attacking(Time)) a.QueuedAttack = true;
+                if (input.Reload) BeginReload(a);
+                if (a.Weapon==WeaponId.Sword && input.Attack && a.Attacking(Time)) a.QueuedAttack = true;
                 if (!a.Attacking(Time) && !a.Rolling(Time) && Time >= a.BlockUntil)
                 {
-                    if (input.Attack || a.QueuedAttack) { StartAttack(a); a.QueuedAttack = false; }
+                    if(GunRules.Ranged(a.Weapon))
+                    {
+                        if(input.Shoot&&Time>=a.ShootReady&&a.ReloadUntil<=0)
+                        {
+                            if(a.Ammo<=0) BeginReload(a); else FireGun(a,input);
+                        }
+                    }
+                    else if (input.Attack || a.QueuedAttack) { StartAttack(a); a.QueuedAttack = false; }
                     else if (input.Shoot && Time >= a.ShootReady && Shots.Count < Rules.MaxProjectiles)
                     {
                         a.ShootReady = Time + .35f;
@@ -93,6 +117,41 @@ namespace ChipArena.UnityPrototype
             StepShots();
         }
 
+        public bool Equip(Actor a,WeaponId weapon)
+        {
+            if(!GunRules.Valid(weapon)||a.Weapon==weapon||!a.Alive||a.ReloadUntil>Time||a.Attacking(Time)||a.Rolling(Time)||Time<a.StunUntil||Time<a.ShootReady) return false;
+            a.Magazines[(int)a.Weapon]=a.Ammo; a.Weapon=weapon; a.Ammo=a.Magazines[(int)weapon];
+            a.LastShot=-100; a.ReloadAt=-100; a.ReloadUntil=0; a.Aiming=false; a.AimShots=0;
+            a.ShootReady=Time+.25f; a.QueuedAttack=false; return true;
+        }
+        private void BeginReload(Actor a)
+        {
+            if(!GunRules.Ranged(a.Weapon)||a.ReloadUntil>0||a.Rolling(Time)||Time<a.StunUntil||a.Ammo>=GunRules.Get(a.Weapon).Magazine) return;
+            a.ReloadAt=Time; a.ReloadUntil=Time+GunRules.Get(a.Weapon).Reload; a.Aiming=false;
+            Emit(EventKind.ReloadStart,a.Id,0,a.Position,0);
+        }
+        private float RandomUnit() { randomState^=randomState<<13; randomState^=randomState>>17; randomState^=randomState<<5; return (randomState&0xffffff)/16777216f; }
+        private void FireGun(Actor a,InputFrame input)
+        {
+            if(Shots.Count>=Rules.MaxProjectiles) return;
+            var gun=GunRules.Get(a.Weapon); V3 start=GunRules.Muzzle(a),target=input.AimTarget;
+            // A missing target is an aim direction, never a special point at world zero.
+            if(target.Length<.001f) target=start+GunRules.Direction(a.Yaw,a.Pitch)*gun.Range;
+            V3 offset=target-start; if(offset.Length>gun.Range+5) offset=offset.Normalized*(gun.Range+5);
+            float yaw=(float)(Math.Atan2(offset.x,offset.z)*180/Math.PI),distance=(float)Math.Sqrt(offset.x*offset.x+offset.z*offset.z);
+            float pitch=a.Aiming?GunRules.BallisticPitch(distance,offset.y,gun.Speed,gun.Gravity):(float)(Math.Atan2(offset.y,distance)*180/Math.PI);
+            float spread=GunRules.Spread(a,Time); V3 forward=(GunRules.Direction(yaw,pitch)+new V3((RandomUnit()-.5f)*spread,(RandomUnit()-.5f)*spread,(RandomUnit()-.5f)*spread)).Normalized;
+            a.Ammo--; a.ShotsFired++; a.Magazines[(int)a.Weapon]=a.Ammo;
+            a.AimShots=Time-a.LastShot>.25f?1:a.AimShots+1; a.LastShot=Time;
+            a.ShootReady=Time+gun.Interval*(a.Aiming?gun.AimInterval:1);
+            // Resolve the short torso-to-muzzle path too: even a barrel overlapping cover cannot fire through it.
+            V3 torso=a.Position+new V3(0,1.18f,0); Cover blocked=null; float near=2;
+            foreach(var c in Covers) { float t; if(c.Hp>0&&MathUtil.SegmentBox(torso,start,c,.045f,out t)&&t<near) { near=t;blocked=c; } }
+            Emit(EventKind.Shot,a.Id,0,start,(int)a.Weapon);
+            if(blocked!=null) { DamageCover(blocked,gun.Damage,a.Id); return; }
+            Shots.Add(new Shot { Id=nextShot++,Owner=a.Id,Team=a.Team,Weapon=a.Weapon,Position=start,Velocity=forward*gun.Speed,
+                Damage=gun.Damage,Gravity=gun.Gravity,Radius=.045f,Impulse=gun.Impulse,Life=3,DistanceLeft=160 });
+        }
         private void StartAttack(Actor a)
         {
             if (a.Stamina < Rules.SwordCost) return;
@@ -110,9 +169,19 @@ namespace ChipArena.UnityPrototype
                 float distance = (other.Position - a.Position).Length;
                 if (distance < nearest) { target = other; nearest = distance; }
             }
-            if (target == null) return new InputFrame();
+            if (target == null || StationaryBots) return new InputFrame();
             V3 direction = (target.Position - a.Position).Normalized;
             float yaw = (float)(Math.Atan2(direction.x, direction.z) * 180 / Math.PI);
+            if(GunRules.Ranged(a.Weapon))
+            {
+                float desired=a.Weapon==WeaponId.Rifle?20:10;
+                V3 aim=target.Position+new V3(0,1.1f,0),offset=aim-GunRules.Muzzle(a);
+                float advance=nearest>desired+1?1:nearest<desired-2?-.7f:0;
+                return new InputFrame { X=direction.x*advance,Z=direction.z*advance,Yaw=yaw,
+                    Pitch=(float)(Math.Atan2(offset.y,Math.Sqrt(offset.x*offset.x+offset.z*offset.z))*180/Math.PI),AimTarget=aim,Aim=true,
+                    Shoot=BotAttacks&&nearest<40&&Visible(GunRules.Muzzle(a),aim),Reload=a.Ammo==0,
+                    Block=BotAttacks&&nearest<4&&(Tick+a.Id*13)%211==0 };
+            }
             return new InputFrame { X = nearest > 1.8f ? direction.x : 0, Z = nearest > 1.8f ? direction.z : 0, Yaw = yaw,
                 Attack = BotAttacks && nearest < 2.6f && (Tick + a.Id * 7) % 61 == 0,
                 Shoot = BotAttacks && a.Id % 5 == 0 && nearest > 6 && (Tick + a.Id) % 110 < 2,
@@ -133,11 +202,12 @@ namespace ChipArena.UnityPrototype
             else
             {
                 bool locked = stunned || a.Attacking(Time);
-                bool sprint = !locked && Time >= a.BlockUntil && !input.Shoot && input.Sprint && !a.SprintExhausted
+                bool sprint = !locked && Time >= a.BlockUntil && !input.Shoot && !a.Aiming && a.ReloadUntil<=0 && input.Sprint && !a.SprintExhausted
                     && a.Stamina > .0001f && move.Length > .5f && V3.Dot(move.Normalized, V3.Forward(a.Yaw)) >= .6f;
                 a.Sprinting = sprint;
                 if (sprint) { Spend(a, Rules.SprintDrain * dt); if (a.Stamina <= .0001f) a.SprintExhausted = true; }
                 float speed = Rules.Speed * (sprint ? Rules.SprintMultiplier : 1) * (Time < a.BlockUntil ? .45f : 1);
+                if(a.Aiming) speed*=GunRules.Get(a.Weapon).AimMove;
                 if (locked) { a.Velocity.x = a.Velocity.z = 0; }
                 else
                 {
@@ -194,7 +264,7 @@ namespace ChipArena.UnityPrototype
                 a.Hit.Add(-c.Id); DamageCover(c, Rules.SwordDamage, a.Id);
             }
         }
-        private void Hit(Actor source, Actor target, float damage, V3 direction, bool projectile)
+        private void Hit(Actor source, Actor target, float damage, V3 direction, bool projectile, float impulse=325, bool headshot=false)
         {
             if (target.Invulnerable(Time)) return;
             if (Time < target.BlockUntil)
@@ -204,13 +274,13 @@ namespace ChipArena.UnityPrototype
                 return;
             }
             target.Hp = Math.Max(0, target.Hp - damage); target.FlashUntil = Time + .14f;
-            target.Knockback += new V3(direction.x, 0, direction.z).Normalized * 5;
+            target.Knockback += new V3(direction.x, 0, direction.z).Normalized * (impulse/65f);
             if (Time >= target.StaggerImmuneUntil)
             {
                 target.StunUntil = Time + .25f; target.StaggerImmuneUntil = target.StunUntil + .75f;
                 target.AttackUntil = -1; target.QueuedAttack = false;
             }
-            Emit(EventKind.Hit, source.Id, target.Id, target.Position + new V3(0, 1, 0), damage);
+            Emit(headshot?EventKind.Headshot:EventKind.Hit, source.Id, target.Id, target.Position + new V3(0, headshot?1.51f:1, 0), damage);
             if (!target.Alive)
             {
                 source.Kills++; target.RespawnAt = Time + (target.Bot ? 5 : 3);
@@ -227,16 +297,25 @@ namespace ChipArena.UnityPrototype
             for (int i = Shots.Count - 1; i >= 0; i--)
             {
                 Shot shot = Shots[i]; shot.Life -= Rules.Dt;
-                V3 end = shot.Position + shot.Velocity * Rules.Dt;
-                float nearest = 2; Actor target = null; Cover cover = null;
+                V3 end = shot.Position + shot.Velocity * Rules.Dt + new V3(0,-.5f*shot.Gravity*Rules.Dt*Rules.Dt,0);
+                shot.Velocity.y-=shot.Gravity*Rules.Dt;
+                shot.DistanceLeft-=(end-shot.Position).Length;
+                float nearest = 2; Actor target = null; Cover cover = null; bool headshot=false,ground=false;
                 foreach (Cover c in Covers)
                 {
-                    float t; if (c.Hp > 0 && MathUtil.SegmentBox(shot.Position, end, c, .1f, out t) && t < nearest) { nearest = t; cover = c; }
+                    float t; if (c.Hp > 0 && MathUtil.SegmentBox(shot.Position, end, c, shot.Radius, out t) && t < nearest) { nearest = t; cover = c; }
                 }
                 foreach (Actor a in Actors)
                 {
                     if (!a.Alive || a.Team == shot.Team || a.Invulnerable(Time)) continue;
-                    float t; if (MathUtil.SegmentSphere(shot.Position, end, a.Position + new V3(0, .9f, 0), .6f, out t) && t < nearest) { nearest = t; target = a; cover = null; }
+                    float t; bool head=false;
+                    bool hit=GunRules.Ranged(shot.Weapon)?GunRules.SegmentActor(shot.Position,end,a,shot.Radius,out t,out head):MathUtil.SegmentSphere(shot.Position,end,a.Position+new V3(0,.9f,0),.6f,out t);
+                    if(hit&&t<nearest) { nearest=t;target=a;cover=null;headshot=head; }
+                }
+                if(end.y<=shot.Radius&&shot.Position.y>shot.Radius)
+                {
+                    float t=(shot.Position.y-shot.Radius)/(shot.Position.y-end.y);
+                    if(t<nearest) { nearest=t;target=null;cover=null;ground=true; }
                 }
                 if (nearest <= 1)
                 {
@@ -251,11 +330,12 @@ namespace ChipArena.UnityPrototype
                             continue;
                         }
                     }
-                    else if (target != null) { Actor source = Find(shot.Owner); if (source != null) Hit(source, target, shot.Damage, shot.Velocity.Normalized, true); }
+                    else if (target != null) { Actor source = Find(shot.Owner); if (source != null) Hit(source, target, shot.Damage*(headshot?1.5f:1), shot.Velocity.Normalized, true,shot.Impulse,headshot); }
                     else if (cover != null) DamageCover(cover, shot.Damage, shot.Owner);
+                    else if(ground) Emit(EventKind.Impact,shot.Owner,0,shot.Position,0);
                     Shots.RemoveAt(i);
                 }
-                else if (shot.Life <= 0 || Math.Abs(end.x) >= Rules.ArenaHalf || Math.Abs(end.z) >= Rules.ArenaHalf) Shots.RemoveAt(i);
+                else if (shot.Life <= 0 || shot.DistanceLeft<=0 || end.y<0 || Math.Abs(end.x) >= Rules.ArenaHalf || Math.Abs(end.z) >= Rules.ArenaHalf) Shots.RemoveAt(i);
                 else shot.Position = end;
             }
         }
@@ -264,7 +344,9 @@ namespace ChipArena.UnityPrototype
             a.Hp = a.Stamina = 100; a.Position = new V3(a.Id == 1 ? -3 : a.Id == 2 ? 3 : (a.Id % 15 - 7) * 2, 0, a.Bot ? 17 : -13);
             a.Velocity = a.Knockback = new V3(); a.AttackAt = a.AttackUntil = a.RollAt = -100;
             a.BlockUntil = a.BlockReady = a.RollReady = a.StunUntil = a.RegenAt = a.StaggerImmuneUntil = 0;
-            a.QueuedAttack = a.SprintExhausted = false; a.Hit.Clear(); Move(a, new V3());
+            a.QueuedAttack = a.SprintExhausted = false;
+            for(int i=1;i<4;i++) a.Magazines[i]=GunRules.All[i].Magazine;
+            a.Ammo=a.Magazines[(int)a.Weapon]; a.ReloadUntil=0; a.ReloadAt=a.LastShot=-100; a.Aiming=false; a.AimShots=0; a.ShootReady=Time; a.Hit.Clear(); Move(a, new V3());
         }
         private void Emit(EventKind kind, int source, int target, V3 position, float amount)
         { Events.Add(new ArenaEvent { Id = nextEvent++, Kind = kind, Source = source, Target = target, Position = position, Amount = amount }); }
