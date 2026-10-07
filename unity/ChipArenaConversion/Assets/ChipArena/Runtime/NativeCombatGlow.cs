@@ -85,7 +85,8 @@ namespace ChipArena.UnityConversion
                 Vector3 normal=NativeArena.Vec(e.Normal).normalized;if(normal.sqrMagnitude<.5f)continue;
                 Vector3 point=NativeArena.Vec(e.Position)+normal*.018f;
                 marks.Add(new SurfaceMark{Prop=prop,LocalPosition=prop.transform.InverseTransformPoint(point),LocalRotation=Quaternion.Inverse(prop.transform.rotation)*Quaternion.LookRotation(normal),Born=e.Time,Color=Color.Lerp(Tint(e.Color),Tint(0x95eaff),.25f)});
-                if(traces.TryGetValue(e.Projectile,out var trail))trail.Sample(e.Position,e.Time,e.Color);
+                // A bounce event can predate the current render sample after several fixed ticks.
+                if(traces.TryGetValue(e.Projectile,out var trail)&&e.Time>=trail.Seen)trail.Sample(e.Position,e.Time,e.Color);
             }
             foreach(var pair in traces.ToArray())
             {
