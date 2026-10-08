@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!129 &1
+PlayerSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 28
+  companyName: ChipArenaConversion
+  productName: Chip Arena Native Conversion TEST
+  bundleVersion: 0.1.0-native-foundation
+  defaultScreenWidth: 1600
+  defaultScreenHeight: 900
+  defaultIsNativeResolution: 0
+  runInBackground: 1
+  resizableWindow: 1
+  fullscreenMode: 3
+  activeInputHandler: 0
+  scriptingBackend:
+    Standalone: 0

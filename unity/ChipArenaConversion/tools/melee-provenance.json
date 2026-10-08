@@ -1,0 +1,35 @@
+{
+  "commit": "05950eaef80ff2483a9c44d898cad98be1a76bbc",
+  "files": [
+    {
+      "path": "src/shared/config.ts",
+      "git_blob_sha": "54454ee3110e936ada16d429813bb55b4a07eb1f",
+      "size": 3677
+    },
+    {
+      "path": "src/shared/souls-combat.ts",
+      "git_blob_sha": "f0a65799251f93731d9b77bf04e631b8f85f5217",
+      "size": 4518
+    },
+    {
+      "path": "src/shared/blocking.ts",
+      "git_blob_sha": "084b7ed7603c187634b6b9102cf7cbcd4e4dc7e1",
+      "size": 2100
+    },
+    {
+      "path": "src/shared/standard-melee.ts",
+      "git_blob_sha": "dd585fa1d99138044aaab07d26800b7b269622c4",
+      "size": 15587
+    },
+    {
+      "path": "src/shared/simulation.ts",
+      "git_blob_sha": "2b25ae376a881594e942c7ae77fb7b9e6abe933c",
+      "size": 112779
+    },
+    {
+      "path": "src/shared/movement.ts",
+      "git_blob_sha": "bf0d5411bea3e064d1670d26472f1264c651da49",
+      "size": 5877
+    }
+  ]
+}

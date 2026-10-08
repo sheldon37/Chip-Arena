@@ -1,0 +1,42 @@
+import * as T from 'three';
+import type {KillEffectFactory} from './death-effects.js';
+import type {CharacterRig} from './character-rig.js';
+import {cinematicVictim,DeathPoseCarry} from './cinematic-victim.js';
+import {dressRig} from './cosmetics.js';
+import {createBassVan,createVanDriver} from './bass-van-rig.js';
+import {BASS_VAN,vanBass} from './bass-van-timing.js';
+
+const clamp=(x:number)=>T.MathUtils.clamp(x,0,1),smooth=(x:number)=>{const a=clamp(x);return a*a*(3-2*a);};
+function reset(r:CharacterRig){for(const j of [r.group,r.body,r.spine,r.head,r.leftArm,r.rightArm,r.leftElbow,r.rightElbow,r.leftLeg,r.rightLeg,r.leftKnee,r.rightKnee])j.rotation.set(0,0,0);r.body.position.set(0,0,0);}
+function seated(r:CharacterRig){r.leftLeg.rotation.x=r.rightLeg.rotation.x=-Math.PI/2;r.leftKnee.rotation.x=r.rightKnee.rotation.x=Math.PI/2;r.leftArm.rotation.x=r.rightArm.rotation.x=-.75;r.leftElbow.rotation.x=r.rightElbow.rotation.x=-.8;}
+function run(r:CharacterRig,t:number){const stride=Math.sin(t*26);r.leftLeg.rotation.x=stride*.75;r.rightLeg.rotation.x=-stride*.75;r.leftKnee.rotation.x=Math.max(0,stride);r.rightKnee.rotation.x=Math.max(0,-stride);r.leftArm.rotation.x=-stride;r.rightArm.rotation.x=stride;}
+
+/** Toss, hop into the driver's seat, close the doors, then a musical getaway. */
+export const bassVan:KillEffectFactory=(scene,original,p,d,quality,_budget,state)=>{
+ const root=new T.Group();root.name='bass-van';root.position.set(d.pos.x,d.pos.y,d.pos.z);root.rotation.y=d.yaw;scene.add(root);
+ const vehicle=createBassVan(quality),driver=createVanDriver(),guy=driver.rig,victim=cinematicVictim(p,state),van=vehicle.van,carry=new DeathPoseCarry(victim,original);
+ victim.group.name='bass-passenger';dressRig(victim,p.cosmetics);root.add(van,guy.group,victim.group);
+ const seat=new T.Vector3(-.40,.13,.02),driverSeat=new T.Vector3(1.2,.12,.12),cabStep=new T.Vector3(1.2,.02,1.35),grabPos=new T.Vector3(-.67,.02,.1);
+ const inVan=(r:CharacterRig,position:T.Vector3,yaw:number)=>{r.group.position.copy(position).applyMatrix4(van.matrix);r.group.quaternion.copy(van.quaternion).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),yaw));};
+ return {count:quality<.5?98:104,update(age){
+  const t=Math.max(0,age),arrive=smooth(t/BASS_VAN.arrive),depart=Math.max(0,t-BASS_VAN.drive),bass=vanBass(t);
+  carry.reset();reset(victim);reset(guy);victim.group.position.set(0,0,0);victim.weapon.visible=victim.offWeapon.visible=false;
+  van.position.set(T.MathUtils.lerp(-10,.65,arrive)+depart*depart*17,bass*.20,-1.65);
+  van.rotation.set(Math.sin((t-BASS_VAN.musicStart)*19)*bass*.035,0,0);van.updateMatrix();
+  const close=smooth((t-BASS_VAN.doorClose)/(BASS_VAN.musicStart-BASS_VAN.doorClose)),open=smooth((t-.52)/.18)*(1-close);
+  vehicle.cargoDoor.position.set(-.08-open*1.65,0,.82+Math.min(1,open*5)*.09);vehicle.cabDoor.rotation.y=open*1.25;
+  for(const wheel of vehicle.wheels)wheel.rotation.z=-van.position.x/.33;
+  vehicle.cabinLight.intensity=(quality<.5?1.8:3.5)*open;
+  vehicle.passengers.forEach((r,i)=>{r.head.rotation.set(Math.sin(t*2+i)*.05,Math.sin(t*1.4+i)*.13,Math.sin(t*9+i)*bass*.06);r.chest.rotation.z=Math.sin(t*2.5+i)*.035;r.leftArm.rotation.x=-.55;r.rightArm.rotation.x=-.55;});
+  if(t<BASS_VAN.arrive){inVan(guy,driverSeat,Math.PI/2);seated(guy);}
+  else if(t<BASS_VAN.grab){const walk=smooth((t-BASS_VAN.arrive)/(BASS_VAN.grab-BASS_VAN.arrive));guy.group.position.copy(driverSeat).applyMatrix4(van.matrix).lerp(grabPos,walk);guy.group.rotation.y=Math.PI/2;run(guy,t);}
+  else if(t<BASS_VAN.toss+.1){guy.group.position.copy(grabPos);const wind=smooth((t-BASS_VAN.grab)/.17);guy.group.rotation.y=Math.PI/2+wind*.45;guy.spine.rotation.x=.17*(1-wind);guy.leftArm.rotation.x=guy.rightArm.rotation.x=-1.15-wind*.8;guy.leftElbow.rotation.x=guy.rightElbow.rotation.x=-.25;}
+  else if(t<BASS_VAN.jumpStart){const back=smooth((t-BASS_VAN.toss-.1)/(BASS_VAN.jumpStart-BASS_VAN.toss-.1));guy.group.position.copy(grabPos).lerp(cabStep.clone().applyMatrix4(van.matrix),back);guy.group.rotation.y=Math.PI/2;run(guy,t);}
+  else if(t<BASS_VAN.driverSeated){const jump=clamp((t-BASS_VAN.jumpStart)/(BASS_VAN.driverSeated-BASS_VAN.jumpStart)),sit=smooth(jump);inVan(guy,cabStep.clone().lerp(driverSeat,sit),Math.PI/2);guy.group.position.y+=Math.sin(jump*Math.PI)*.16;seated(guy);guy.leftLeg.rotation.x=guy.rightLeg.rotation.x=-Math.PI/2*sit;guy.leftKnee.rotation.x=guy.rightKnee.rotation.x=.55+(Math.PI/2-.55)*sit;guy.rightArm.rotation.z=-.8*(1-sit);}
+  else{inVan(guy,driverSeat,Math.PI/2);seated(guy);guy.head.rotation.z=bass*.09;guy.rightArm.rotation.z=-.85*(1-close);}
+  if(t>=BASS_VAN.grab&&t<BASS_VAN.toss){const lift=smooth((t-BASS_VAN.grab)/(BASS_VAN.toss-BASS_VAN.grab));victim.group.position.y=lift*.28;victim.leftArm.rotation.z=.5*lift;victim.rightArm.rotation.z=-.5*lift;}
+  else if(t>=BASS_VAN.toss&&t<BASS_VAN.land){const flight=clamp((t-BASS_VAN.toss)/(BASS_VAN.land-BASS_VAN.toss)),target=seat.clone().applyMatrix4(van.matrix),land=smooth((flight-.55)/.45);victim.group.position.set(target.x*flight,.28+(target.y-.28)*flight+Math.sin(flight*Math.PI)*.30,target.z*flight);victim.group.rotation.z=-Math.PI/2*Math.sin(flight*Math.PI);victim.leftArm.rotation.z=1.3*Math.sin(flight*Math.PI);victim.rightArm.rotation.z=-victim.leftArm.rotation.z;victim.leftLeg.rotation.x=T.MathUtils.lerp(-.7,-Math.PI/2,land);victim.rightLeg.rotation.x=T.MathUtils.lerp(.4,-Math.PI/2,land);victim.leftKnee.rotation.x=victim.rightKnee.rotation.x=Math.PI/2*land;victim.leftArm.rotation.x=victim.rightArm.rotation.x=-1.1*land;victim.leftElbow.rotation.x=victim.rightElbow.rotation.x=-.8*land;}
+  else if(t>=BASS_VAN.land){inVan(victim,seat,0);seated(victim);victim.head.rotation.z=Math.sin(t*12)*bass*.13;victim.leftArm.rotation.x=-1.1;victim.rightArm.rotation.x=-1.1;}
+  carry.apply(t);
+ },dispose(){scene.remove(root);vehicle.dispose();driver.dispose();}};
+};

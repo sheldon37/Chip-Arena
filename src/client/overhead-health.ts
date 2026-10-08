@@ -1,0 +1,41 @@
+import {TEAMS,sameTeam} from '../shared/teams.js';
+import * as T from 'three';
+import type {Snapshot} from '../shared/simulation.js';
+import {pveOf} from '../shared/pve/contract.js';
+const plane=new T.PlaneGeometry(1,1),summonAlly=new T.MeshBasicMaterial({color:0x59dd83,depthWrite:false,toneMapped:false}),summonEnemy=new T.MeshBasicMaterial({color:0xff5a46,depthWrite:false,toneMapped:false}),lagMaterial=new T.MeshBasicMaterial({color:0xffd9a0,depthWrite:false,toneMapped:false});
+/** World geometry uses depth testing so health never reveals players behind cover. */
+export class OverheadHealth{
+ private bars=new Map<string,{root:T.Group;fill:T.Mesh<T.PlaneGeometry,T.MeshBasicMaterial>;lag:T.Mesh;lagValue?:number;lastHealth?:number;hold?:number;time?:number;label?:T.Mesh<T.PlaneGeometry,T.MeshBasicMaterial>;labelKey?:string}>();
+ private back=new T.MeshBasicMaterial({color:0x080b12,transparent:true,opacity:.7,depthWrite:false,toneMapped:false});
+ constructor(private scene:T.Scene){}
+ update(state:Snapshot,camera:T.Camera,visible:boolean,localId:string,first:boolean){
+  for(const[id,b]of this.bars)if(!state.players.some(p=>p.id===id)){b.root.removeFromParent();b.fill.material.dispose();b.label?.material.map?.dispose();b.label?.material.dispose();this.bars.delete(id);}
+  for(const p of state.players){let b=this.bars.get(p.id);if(!b){const root=new T.Group();root.name='health-'+p.id;const bg=new T.Mesh(plane,this.back);bg.scale.set(.78,.065,1);root.add(bg);const fill=new T.Mesh(plane,new T.MeshBasicMaterial({color:0x59dd83,depthWrite:false,toneMapped:false}));fill.position.z=.006;root.add(fill);const lag=new T.Mesh(plane,lagMaterial);lag.name='health-lag';lag.position.z=.003;lag.visible=false;root.add(lag);b={root,fill,lag};this.bars.set(p.id,b);this.scene.add(root);}
+   const team=state.options.gameMode==='teams'?p.team:undefined,key=team?team+':'+(sameTeam(p,state.players.find(q=>q.id===localId),'teams')?'ALLY':'ENEMY'):'';
+   if(b.labelKey!==key){b.label?.removeFromParent();b.label?.material.map?.dispose();b.label?.material.dispose();b.label=undefined;b.labelKey=key;
+    if(team&&typeof document!=='undefined'&&document.createElement){const canvas=document.createElement('canvas');canvas.width=512;canvas.height=96;const ctx=canvas.getContext('2d');if(ctx){ctx.clearRect(0,0,512,96);ctx.fillStyle=TEAMS[team].color;ctx.shadowColor='#000';ctx.shadowBlur=4;ctx.font='bold 36px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(TEAMS[team].name.toUpperCase()+' · '+key.split(':')[1],256,48);const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;b.label=new T.Mesh(plane,new T.MeshBasicMaterial({map:texture,transparent:true,depthTest:true,depthWrite:false,toneMapped:false}));b.label.name='team-label';b.label.position.y=.12;b.label.scale.set(.76,.142,1);b.root.add(b.label);}}
+   }
+   b.root.visible=visible&&p.hp>0&&p.connected&&!(pveOf(state)?.bossView?.hidden&&p.id===pveOf(state)?.bossView?.id)&&!(first&&p.id===localId)&&camera.position.distanceToSquared(new T.Vector3(p.pos.x,p.pos.y,p.pos.z))<55*55;if(!b.root.visible)continue;
+   if(b.label){const distance=camera.position.distanceTo(new T.Vector3(p.pos.x,p.pos.y,p.pos.z));b.label.visible=p.id!==localId&&distance<32;b.label.material.opacity=distance<20?.85:.85*(32-distance)/12;}
+   b.root.position.set(p.pos.x,p.pos.y+1.3*(p.siren?.boost?.scale??1),p.pos.z);b.root.quaternion.copy(camera.quaternion);const health=Math.max(0,Math.min(1,p.hp/Math.max(1,p.maxHp)));b.fill.scale.set(.72*health,.035,1);b.fill.position.x=-.36*(1-health);b.fill.material.color.set(health<.25?0xff7381:state.options.gameMode==='teams'?p.color:0x59dd83);
+   // Damage lag: a pale segment holds briefly where the bar was, then drains to the new health (authoritative time, dt-clamped, reset on jumps).
+   const dt=b.time===undefined?-1:state.time-b.time;b.time=state.time;if(dt<0||dt>.35||b.lagValue===undefined||health>=b.lagValue){b.lagValue=health;b.hold=0;}else{b.hold=health<(b.lastHealth??health)?0:(b.hold||0)+Math.min(dt,.05);if(b.hold>.22)b.lagValue=Math.max(health,b.lagValue-Math.min(dt,.05)*.9);}
+   b.lastHealth=health;b.lag.visible=b.lagValue>health+.002;if(b.lag.visible){b.lag.scale.set(.72*b.lagValue,.035,1);b.lag.position.x=-.36*(1-b.lagValue);}
+  }
+  this.summonBars(state,camera,visible,localId);
+ }
+ /** Summon health (2026-10-04): the pilot bar's style at a smaller size over zombies, toy soldiers and the Slenderman, shown
+  *  once damaged. Ally (own/team) green, enemy red; shared materials, bars pooled by summon id. */
+ private minionBars=new Map<string,{root:T.Group;fill:T.Mesh;seen:number}>();private stamp=0;
+ private summonBars(state:Snapshot,camera:T.Camera,visible:boolean,localId:string){const stamp=++this.stamp;if(!visible&&!this.minionBars.size)return;
+  for(const m of state.minions||[])if(m.kind==='zombie'||m.kind==='toy')this.showBar(state,camera,visible,localId,m.id,m.owner,m.pos.x,m.pos.y+(m.kind==='toy'?.85:1.2),m.pos.z,m.hp,m.maxHp,m.kind==='toy'?.42:.6);
+  for(const f of state.leetFields||[])if(f.slender&&f.walker&&f.hp!==undefined&&f.maxHp)this.showBar(state,camera,visible,localId,f.slender,f.owner,f.walker.x,f.walker.y+2.75,f.walker.z,f.hp,f.maxHp,.7);
+  for(const[id,b]of this.minionBars)if(b.seen!==stamp){if(b.root.visible)b.root.visible=false;if(stamp-b.seen>300){b.root.removeFromParent();this.minionBars.delete(id);}}
+ }
+ private showBar(state:Snapshot,camera:T.Camera,visible:boolean,localId:string,id:string,owner:string,x:number,y:number,z:number,hp:number,maxHp:number,width:number){const stamp=this.stamp;if(!visible||!(hp<maxHp)||hp<=0)return;const dx=camera.position.x-x,dy=camera.position.y-y,dz=camera.position.z-z;if(dx*dx+dy*dy+dz*dz>40*40)return;
+   let b=this.minionBars.get(id);if(!b){const root=new T.Group();root.name='summon-health';const bg=new T.Mesh(plane,this.back);bg.scale.set(1.08,.09,1);root.add(bg);const fill=new T.Mesh(plane,summonAlly);fill.position.z=.006;root.add(fill);b={root,fill,seen:0};this.minionBars.set(id,b);this.scene.add(root);}
+   b.seen=stamp;b.root.visible=true;b.root.position.set(x,y,z);b.root.quaternion.copy(camera.quaternion);b.root.scale.setScalar(width);const h=Math.max(0,Math.min(1,hp/Math.max(1,maxHp)));b.fill.scale.set(h,.05,1);b.fill.position.x=-.5*(1-h);
+   const ally=owner===localId||state.options.gameMode==='teams'&&sameTeam(state.players.find(p=>p.id===owner),state.players.find(p=>p.id===localId),'teams');b.fill.material=ally?summonAlly:summonEnemy;
+ }
+ clear(){for(const b of this.minionBars.values())b.root.removeFromParent();this.minionBars.clear();for(const b of this.bars.values()){b.root.removeFromParent();b.fill.material.dispose();b.label?.material.map?.dispose();b.label?.material.dispose();}this.bars.clear();}
+}

@@ -1,0 +1,97 @@
+CHIP ARENA - WINDOWS x64 PORTABLE SERVER
+
+1. Right-click the ZIP and choose Extract All. Open the extracted folder.
+2. Double-click Start-Chip-Arena.bat. The game opens in your browser.
+3. Keep the server window open. Close it or press Ctrl+C to stop.
+
+Node is included. You do NOT need npm, a terminal command, an installer,
+administrator access, or a ChatGPT account. Windows 10/11 x64 is required.
+The .bat launches the included official node.exe and the bundled game server.
+This prototype bundle is not code-signed. Do not run it from inside the ZIP.
+
+PLAY WITH A FRIEND
+Same network: share the LAN link printed by the launcher. If Windows asks,
+allow the server on your private network. Both players use that link, then
+Create Room / Join Room or the in-game invite link.
+
+Different networks: double-click Start-Online.bat instead. Its first run
+downloads the official Cloudflare connector and verifies its checksum.
+It prints and opens a temporary HTTPS game link. Share that link, create a
+room, then use the room code/invite. No accounts or router configuration.
+Anyone with the link can access this temporary prototype server. It closes
+when you stop the launcher. This free testing tunnel has no uptime guarantee.
+Do not run both launchers at once. Internet access is needed for online mode.
+
+The usual published Chip Arena website has separate rooms. To use YOUR laptop
+server, both players must use the link from this launcher. Existing website
+rooms are not automatically redirected to your laptop.
+
+CONTROLS
+WASD move | Mouse aim | Left click attack | Right click timed block
+Space jump | Shift dash/roll (a roll cancels a melee attack) | Double-tap W sprint
+R reload | E specialization secondary | V first/third person | Q rifle scope | M mute
+Tab player/chip board (melee in a fight: lock-on; tap next target, hold release)
+Escape menu and player board
+
+TROUBLESHOOTING
+Port in use: close your previous launcher. Changing launcher/start.mjs is
+not necessary; advanced users can set PORT before launching (default 8788).
+An online tunnel may fail on restricted networks. Local/LAN play still works.
+Keep the whole extracted folder together. No installation or persistent
+background service is created. Match state ends when the server stops.
+
+Included runtime: Node.js 24.21.0, official Windows x64 release.
+Runtime license: runtime/NODE-LICENSE.txt
+Editable game source and technical notes: chip-arena-source.zip
+
+NIGHT ARENA UPDATE
+Darker arena lighting, glowing projectiles and luminous trails. Player colors
+pulse darker while Block is recharging and return to normal when ready.
+Knockback Chips and melee Block retaliation now push much farther; resistance
+Chips and solid cover still matter. Bass Van has a solid passenger door and
+plays the supplied music from 0:04 after boarding and closing the doors.
+
+THIS UPDATE
+100 weapon-compatible Chips in six rarity tiers. Draft six by default, or
+choose 1-12 in match setup. Try Pong Shot, Hurricane Edge, Meteor Foundry,
+Return to Sender and Repulsor Crown. Blocking melee knocks the attacker back;
+heavier blows rebound farther. Mages gather then release from one hand, and
+daggers alternate left/right. The Developer Sandbox (DEV accounts only) includes
+rarity and animation previews.
+
+CHAOS UPDATE
+150 Chips including Event Horizon black holes, Necronomicon zombies, sticky
+bombs, time bubbles, portals, toy soldiers and more. Draft choices reveal in
+player turns; both pilots watch each selection. Customize body/accent colors,
+choose from 9 hats, and select a knockout effect. Ten original music tracks
+shuffle during combat; adjust music separately in Settings.
+
+OPTIONAL DEVELOPER LOGIN
+Use Log in from the main menu. Regular play needs no account. The developer
+account unlocks Clown Getaway in Customize > Kill Effect and the local sandbox.
+Passwords are verified by the game's HTTPS service, not stored in this ZIP.
+A verified developer session lasts up to 8 hours in the current browser tab.
+Login needs internet; ordinary local play still works offline.
+
+CLOWN LOVE
+Developer accounts can select Clown Love in Customize > Kill Effect or the
+Developer Sandbox. The clown takes the opponent's hands for a face-to-face
+dance, with six dips, hearts and 1 UP pop-ups, then carries them away.
+The supplied violin clip and hit-marker accents follow the same five-second
+timeline. Effects volume / mute controls this audio; arena music ducks briefly.
+In Developer Sandbox, select Clown Love and use Preview Knockout to try it.
+
+FUTURE UPDATES
+First-block fixes: Supernova Guard and Counter Pulse have visible shockwaves;
+first-block Chips show an activation label. Pulses now hit nearby enemy summons
+without being obstructed by the blocker's own collider. Supernova is a 3 m blast
+around the blocker, so distant shooters are outside its blast range.
+
+The launcher checks the game's official update channel before starting.
+Updates replace the client, game server and migration files together. Checksums
+are checked before installation, and interrupted installs recover on startup.
+If offline or a check fails, your installed version starts normally.
+Update-Chip-Arena.bat runs a manual check. Close active game servers first.
+To skip automatic checks, set CHIP_AUTO_UPDATE=0 before launching.
+The included Node 24 runtime stays installed. Releases that need a different
+runtime or launcher format will require a new portable package.

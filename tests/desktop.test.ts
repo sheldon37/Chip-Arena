@@ -1,0 +1,5 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {createRequire} from 'node:module';
+const {gameUrl,tunnelUrl,freePort}=createRequire(import.meta.url)('../desktop/policy.cjs');
+test('desktop accepts complete HTTPS or LAN invites and rejects executable schemes and embedded credentials',()=>{assert.equal(gameUrl(' https://test.trycloudflare.com/?room=ABCD2345 '),'https://test.trycloudflare.com/?room=ABCD2345');assert.equal(gameUrl('http://192.168.1.24:8788'),'http://192.168.1.24:8788/');for(const value of ['javascript:alert(1)','file:///C:/secret','data:text/html,bad','https://u:p@example.com','http://example.com','not a url'])assert.throws(()=>gameUrl(value));});
+test('desktop discovers tunnel URLs across log fragments without taking unrelated links',()=>{assert.equal(tunnelUrl('https://www.cloudflare.com/terms'),null);assert.equal(tunnelUrl('Registered https://alpha-beta.trycloudflare.com\n'),'https://alpha-beta.trycloudflare.com');});
+test('desktop chooses a free unprivileged local port',async()=>{const port=await freePort();assert.ok(port>=1024&&port<=65535);});
