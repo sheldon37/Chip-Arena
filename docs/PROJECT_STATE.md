@@ -174,6 +174,7 @@ must be published before installed copies can receive it. Not merged/released.
 
 Cloud build continuation (2026-10-08): `codex/unity-cloud-build` builds on PR #63.
 Unity Build Automation hooks and verified delivery packaging are implemented, with
-Git/build provenance and Linux/Windows CI fixtures. Account configuration is blocked
+Git/build provenance; Linux/Windows native CI passes on code `905ab8d` (draft PR #64,
+stacked on #63). Account configuration is blocked
 by unavailable Unity connection/browser access; no cloud build, merge or publication
 has run. Exact setup and Claude continuation: `docs/UNITY-CLOUD-BUILD-HANDOFF.md`.

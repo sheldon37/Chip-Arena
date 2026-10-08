@@ -8,6 +8,8 @@ in [UNITY-NATIVE-UPDATE-HANDOFF.md](UNITY-NATIVE-UPDATE-HANDOFF.md).
 
 - Task: `codex/unity-cloud-build`, based on PR #63 `codex/unity-native-publish`
   at `5331741da76c5ec317cf06006e79ffbd2558dcd0`.
+- Draft PR [#64](https://github.com/sheldon37/Chip-Arena/pull/64); implementation commit
+  `905ab8da171c1f9cb5976d83c2cda002faf556f3`. Stacked on #63; neither is merged here.
 - Preserves Claude's corrected handoff from `e36253af63824c0b2d8178c2ecd2a5858bac0134`
   and PR #63's publisher follow-up. That Claude commit changes documentation only.
 - Implemented: cloud export hooks, Windows player staging, validated delivery packaging,
@@ -94,8 +96,11 @@ build folders to test upgrades; never overwrite it with the next starter.
 
 - Local: eight delivery tests pass; 15 publisher tests pass, with the Windows command
   test skipped on Linux. Shell syntax and whitespace checks pass.
-- New C# staging checks run in the existing updater test executable on Linux and Windows;
-  Windows also runs all eight delivery tests. Record the resulting GitHub run/commit below.
+- GitHub [run 37784636310](https://github.com/sheldon37/Chip-Arena/actions/runs/37784636310)
+  passes on `905ab8da171c1f9cb5976d83c2cda002faf556f3`: Linux source/managed/relay,
+  42 Python tests (one Windows-only skip), 623-file source package, C# staging fixtures
+  and 51 updater transaction checks; Windows C# staging, all 16 publisher tests, all eight
+  delivery tests, shipping launcher compilation and real fixture-player restart/rollback.
 - Actual Unity hook compilation/import, Windows UBA export, .NET launcher tool availability,
   environment/path conventions, artifact collection and rendered gameplay remain unrun
   until the account is configured. The hooks deliberately fail if provider context is
