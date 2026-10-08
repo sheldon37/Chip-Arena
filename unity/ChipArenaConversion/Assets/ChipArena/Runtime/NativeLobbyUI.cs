@@ -306,6 +306,21 @@ namespace ChipArena.UnityConversion
             int step=U.Button(prev)?-1:U.Button(next)||U.Button(name)?1:0;if(step!=0){index=(index+step+n)%n;Click();}return index;
         }
 
+        // #connection .top-meta in the lobby's top bar (main.ts drawHud; style.css .top-meta,.light): a 6 px light
+        // (#59dd83, #ef9b7a when disconnected), the connection and " / " the room code, in 12 px mono #c3c4ce on
+        // #18191ee8 with a #45464f edge and 10 / 14 px padding, right-aligned at `right`. The source appends
+        // " · N MS"; Unity measures no round trip yet (A27), so the reading is left off.
+        private void ConnectionPill(float right,float top)
+        {
+            // As main.ts: DISCONNECTED once the link closes, CONNECTION STALLED after 3 s without a message from the host.
+            bool lost=!Hosting&&(server==null||server.Closed),stalled=!Hosting&&!lost&&(DateTime.UtcNow-server.LastReceived).TotalSeconds>3;string code=Hosting?roomCode:joinCode;
+            string text=(lost?"DISCONNECTED":stalled?"CONNECTION STALLED":listener!=null?"LAN · HOST":Hosting?"INTERNET RELAY · HOST":internetRooms?"INTERNET RELAY":"LOCAL NETWORK")+(string.IsNullOrEmpty(code)?"":" / "+code);
+            float w=14+6+8+U.Measure(text,12,false,true).x+14;var r=new Rect(right-w,top,w,36);
+            U.Fill(r,U.Hex(0x45464f));U.Fill(new Rect(r.x+1,r.y+1,r.width-2,r.height-2),U.Hex(0x18191e,.91f));
+            U.Round(new Rect(r.x+14,r.center.y-3,6,6),lost?U.Hex(0xef9b7a):U.Hex(0x59dd83),3);
+            U.Text(new Rect(r.x+28,r.y,w-42,r.height),text,12,U.Hex(0xc3c4ce),TextAnchor.MiddleLeft,mono:true);
+        }
+
         // ---- Room column -----------------------------------------------------------------------------------------------
         // .lobby-room-settings: the room code card, then HOST CONTROLS / MATCH RULES (or BOSS TEST · The Siren) and,
         // for the host, the mode and essential rules with the detailed ones under Advanced Options.
@@ -325,7 +340,7 @@ namespace ChipArena.UnityConversion
                 U.Defer(()=>{bool pve=SelectField(7430,new Rect(mode.x+4,mode.y,mode.width-8,mode.height),new[]{"Versus","Boss Test"},prefs.pve?1:0)==1;if(pve!=prefs.pve){prefs.pve=pve;prefs.bots=Mathf.Clamp(prefs.bots,0,pve?3:7);}});
                 choiceColumns=2;if(prefs.pve)BossBody(true);else MatchRulesBody(true);choiceColumns=3;
             }
-            else{GUILayout.BeginHorizontal();GUILayout.Space(4);Fine(prefs.pve?"The host sets the party bots and where the run starts. Ready up when your loadout is set.":"The host sets the mode, arena and rules. Ready up when your loadout is set.");GUILayout.Space(4);GUILayout.EndHorizontal();}
+            else{GUILayout.BeginHorizontal();GUILayout.Label(prefs.pve?"The host sets the party bots and where the run starts. Ready up when your loadout is set.":"The host sets the mode, arena and rules. Ready up when your loadout is set.",fine,GUILayout.Width(lobbyRoomInner));GUILayout.EndHorizontal();}
             GUI.enabled=true;GUILayout.Space(4);if(Event.current.type==EventType.Repaint)lobbyRoomContent=GUILayoutUtility.GetLastRect().yMax;
             GUILayout.EndScrollView();GUILayout.EndArea();GUI.color=c;U.EndDeferred(area,lobbyRoomScroll);
         }

@@ -111,6 +111,7 @@ namespace ChipArena.UnityConversion
             float bx=tx+U.Measure("CHIP ARENA",16,true,false,.08f).x+18,bw=U.Measure("PROTOTYPE",11,false,true,.08f).x+14;var badge=new Rect(bx,cy-10.5f,bw,21);
             U.Round(badge,U.Hex(0x18191e,.91f),4,U.Hex(0x45464f));U.Text(badge,"PROTOTYPE",11,U.Hex(0xc3c4ce),TextAnchor.MiddleCenter,mono:true,tracking:.08f);
             if(home&&Updater!=null)UpdateControl(W-30,24);
+            if(menuScreen==MenuScreen.Lobby&&InRoom)ConnectionPill(W-30,24);
         }
         // .brandmark: a 29 px orange square with a 5 px #152733 inset ring and 2 px dashed #a7cfc2 rules 5 px above and
         // below; the dashes march slowly here.
