@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
         private void DeathLine()
         {
             var lines=presentation.DeathMessages(arena.Time).ToArray();if(lines.Length==0)return;float since=arena.Time-presentation.LatestDeathMessage(arena.Time),e=NativeUiMotion.Bezier(.2f,.8f,.2f,1,Mathf.Clamp01(since/.26f));
-            float maxW=Mathf.Min(320,NativeUi.W*.42f),w=Mathf.Min(maxW,lines.Max(l=>NativeUi.Measure(l,13).x)+22),h=lines.Length*13*1.45f+14;var r=new Rect(22-10*(1-e),70,w,h);
+            float maxW=Mathf.Min(320,NativeUi.W*.42f),w=Mathf.Min(maxW,lines.Max(l=>NativeUi.Measure(l,13).x)+22),h=lines.Length*13*1.45f+14;var r=new Rect(22-10*(1-e),arena.Pve!=null?96:70,w,h);
             NativeUi.Round(r,NativeUi.Hex(0x0d0f16,.72f*e),6);NativeUi.Fill(new Rect(r.x,r.y+3,2,r.height-6),NativeUi.Hex(0xff6b35,e));
             for(int i=0;i<lines.Length;i++)NativeUi.Text(new Rect(r.x+11,r.y+7+i*13*1.45f,w-22,13*1.45f),lines[i],13,NativeUi.Hex(0xd9ecf3,e),TextAnchor.MiddleLeft,shadow:new Color(0,0,0,e));
         }
@@ -32,7 +32,10 @@ namespace ChipArena.UnityConversion
             }
             foreach(var p in arena.Pilots){if(!p.Seat.connected||prefs.firstPerson&&p==arena.ViewPilot||p.Seat.AuthorityBoss&&arena.Pve?.Hidden==true)continue;bool ally=p==arena.Local||match.SameSide(p.Seat,arena.Local.Seat);Health(p.Seat.id,p.Body.transform.position+Vector3.up*1.3f*(p.Seat.spec=="siren"?p.Pose.RigScale:1),p.Hp,(float)p.Stats["hp"],.72f,ally,match.Teams?(ally?"ALLY · ":"ENEMY · ")+p.Seat.name:p.Seat.name,true);}
             foreach(var m in arena.Minions)if(m.Hp<m.MaxHp)Health(m.Id,m.Body.transform.position+Vector3.up*(m.Kind=="slender"?1.52f:m.Kind=="toy"?.85f:1.2f),m.Hp,m.MaxHp,m.Kind=="toy"?.42f:.6f,m.Owner==arena.Local||match.SameSide(m.Owner.Seat,arena.Local.Seat),null,false);
-            foreach(var e in arena.Events){float age=arena.Time-e.Time;if(age<0||age>.8f||e.Source!=arena.LocalId||(e.Kind!=EventKind.Hit&&e.Kind!=EventKind.Headshot)||e.Amount<=0)continue;if(ScreenPoint(NativeArena.Vec(e.Position)+Vector3.up*(.9f+age*.7f),55,out var point)){GUI.color=new Color(1,e.Kind==EventKind.Headshot?.45f:.9f,.5f,1-age/.8f);GUI.Label(new Rect(point.x-32,height-point.y,80,30),Math.Ceiling(e.Amount).ToString(),small);}}
+            // lobby.css .combat-number: clamp(18px,1.65vw,25px), heavy, with a dark outline; headshots in the hit red.
+            float numberSize=Mathf.Clamp(NativeUi.W*.0165f,18,25);
+            foreach(var e in arena.Events){float age=arena.Time-e.Time;if(age<0||age>.8f||e.Source!=arena.LocalId||(e.Kind!=EventKind.Hit&&e.Kind!=EventKind.Headshot)||e.Amount<=0)continue;if(ScreenPoint(NativeArena.Vec(e.Position)+Vector3.up*(.9f+age*.7f),55,out var point)){float a=1-age/.8f;string n=e.Amount<1?e.Amount.ToString("0.#"):Mathf.RoundToInt(e.Amount).ToString();
+                NativeUi.Text(new Rect(point.x-60,height-point.y-numberSize/2,120,numberSize*1.2f),n,numberSize,e.Kind==EventKind.Headshot?NativeUi.Hex(0xff535f,a):NativeUi.Hex(0xffddcf,a),TextAnchor.MiddleCenter,bold:true,glow:NativeUi.Hex(0x111111,.9f*a),shadow:NativeUi.Hex(0x111111,a));}}
             GUI.color=old;
             DeathLine();
             var local=arena.Local;if(local.Controlling!=null)GUI.Label(new Rect(width/2-180,140,360,40),"CONTROLLING "+local.Controlling.Seat.name,label);else if(arena.Time<local.FrozenUntil)GUI.Label(new Rect(width/2-180,140,360,40),"ADMIN PAUSE · "+(local.FrozenUntil-arena.Time).ToString("0.0")+"s",label);

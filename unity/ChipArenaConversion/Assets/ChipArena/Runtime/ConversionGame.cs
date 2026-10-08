@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using UnityEngine;
 
+using U=ChipArena.UnityConversion.NativeUi;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class ConversionPreferences
@@ -191,28 +192,23 @@ namespace ChipArena.UnityConversion
             if(previewArena==null&&SirenRevealActive){SirenReveal();return;}
             CombatWorldHud(scale,width,height);
             if(arena!=null&&!menu&&match.Phase==NativePhase.Fight&&presentation.ScopeActive)DrawScope(width,height);
-            GUI.Label(new Rect(22,15,width-44,35),"CHIP ARENA  /  NATIVE CONVERSION",heading);
+            // The title and diagnostics belong to the menu; in a fight the HUD is the source layout (match-hud.css).
+            if(menu||arena==null)GUI.Label(new Rect(22,15,width-44,35),"CHIP ARENA  /  NATIVE CONVERSION",heading);
             if(previewArena!=null){PreviewHud(width,height);return;}
             if(arena!=null)
             {
-                var p=arena.Local;
-                GUI.Box(new Rect(15,65,300,146),"");GUI.Label(new Rect(28,78,274,127),p.Seat.name+"  ·  "+p.Weapon.name+"\nHP "+p.Hp.ToString("0")+" / "+p.Stats["hp"].ToString("0")+"   STAMINA "+p.Stamina.ToString("0")+"\n"+(p.Weapon.@class=="magic"?"MANA "+p.Mana.ToString("0")+" / "+p.Stats["maxMana"].ToString("0"):p.Weapon.@class=="ranged"?"AMMO "+p.Ammo+" / "+Math.Ceiling(p.Weapon.ammo*p.Stats["ammoCapacity"]):"LMB attack  ·  RMB block")+"\n"+(p.ReloadEnd>arena.Time?"Reloading "+(p.ReloadEnd-arena.Time).ToString("0.0")+"s":"Block "+(p.BlockReady>arena.Time?(p.BlockReady-arena.Time).ToString("0.0")+"s":"ready")),label);
-                GUI.Label(new Rect(26,216,355,70),AbilityStatus(p,"q")+"\n"+AbilityStatus(p,"e"),small);
-                GUI.Label(new Rect(width-295,70,280,150),content.Map(prefs.map).name+"\nSET "+match.Set+"  ·  ROUND "+match.Round+"\n"+match.Phase+"  ·  "+arena.Bullets.Count+" projectiles\nV: "+(prefs.firstPerson?"First-person":"Third-person")+"\nNative step + PhysX "+stepMs.ToString("0.00")+" ms\n"+presentation.RenderingMode,small);
-                GUI.Label(new Rect(20,height-42,width-40,30),"WASD move  ·  Double-tap W sprint  ·  LMB fire/attack  ·  Q/E abilities  ·  R reload  ·  V camera  ·  RMB block  ·  Shift roll  ·  Space jump  ·  Esc menu",small);
+                var p=arena.Local;bool fighting=match.Phase==NativePhase.Fight||match.Phase==NativePhase.Countdown;
+                if(!menu&&(fighting||match.Phase==NativePhase.Result))FightHud(p);
+                if(!menu&&fighting&&p.Hp>0&&!presentation.ScopeActive)Crosshair();
                 if(!menu&&match.Phase==NativePhase.Fight)
                 {
-                    if(!presentation.ScopeActive)GUI.Label(new Rect(width/2-10,height/2-14,30,30),"+",heading);
-                    if(arena.Downed(p))GUI.Label(new Rect(width/2-155,height/2+80,310,42),"RECOVERING  ·  WASD chooses roll direction",small);
-                    if(arena.RiposteOpen(p))GUI.Label(new Rect(width/2-155,height/2+40,310,42),"RIPOSTE  ·  LMB counter",label);
-                    if(p.Hp<=0)GUI.Label(new Rect(width/2-160,height/2-80,320,60),"ELIMINATED — round in progress",heading);
-                    if(Time.unscaledTime<presentation.LastHitUntil)GUI.Label(new Rect(width/2+20,height/2-35,160,50),(presentation.LastHeadshot?"HEADSHOT ":"HIT ")+presentation.LastHitDamage.ToString("0.#"),label);
+                    if(arena.Downed(p))Prompt(U.H/2+80,"RECOVERING  ·  WASD chooses roll direction",14,NativeUi.Hex(0xd7d8de));
+                    if(arena.RiposteOpen(p))Prompt(U.H/2+40,"RIPOSTE  ·  LMB counter",17,NativeUi.Hex(0xff996f));
                 }
                 if(!menu&&match.Phase==NativePhase.Countdown)CountdownOverlay();
                 if(!menu&&match.Phase==NativePhase.Result)ResultOverlay();
                 if(!menu&&match.Phase==NativePhase.Match&&arena.Pve==null)MatchEndPanel();
-                else if(!menu&&match.Phase==NativePhase.Match)
-                {GUI.Label(new Rect(width/2-280,height/2-90,560,65),match.Result,heading);if(GUI.Button(new Rect(width/2-130,height/2,260,45),"Rematch",button)){if(server!=null)SendServer(new NativeNetMessage{type="rematch"});else StartMatch();}}
+                else if(!menu&&match.Phase==NativePhase.Match)PveResultsPanel();
                 if(BoardOpen)Board(width);if(inspectSeat!=0)Inspect(width,height);LockHud(scale);
             }
             if(!menu&&arena!=null){ReplayHud(width,height);PveHud(width,height);return;}
@@ -221,6 +217,8 @@ namespace ChipArena.UnityConversion
             GUILayout.BeginArea(new Rect(panelX+22,86,panel-44,height-155));scroll=GUILayout.BeginScrollView(scroll);
             GUILayout.Label("Native Unity conversion",heading);
             GUILayout.Label("Native combat, full Chip catalog, source models and animations, PvP rounds and Siren co-op.",label);
+            if(arena!=null)GUILayout.Label(content.Map(arena.MapId).name+"  ·  SET "+match.Set+" · ROUND "+match.Round+"  ·  "+match.Phase+"  ·  "+arena.Bullets.Count+" projectiles  ·  native step + PhysX "+stepMs.ToString("0.00")+" ms  ·  "+presentation.RenderingMode+"  ·  V: "+(prefs.firstPerson?"first-person":"third-person"),small);
+            GUILayout.Label("WASD move  ·  Double-tap W sprint  ·  LMB fire/attack  ·  Q/E abilities  ·  R reload  ·  V camera  ·  RMB block  ·  Shift roll  ·  Space jump  ·  Tab lock-on / board  ·  G scores  ·  Esc menu",small);
             if(arena!=null&&GUILayout.Button("Resume",button))menu=false;
             if(GUILayout.Button(showCatalogue?"Back to match setup":"Browse source catalogue (15 weapons / 236 Chips)",button))showCatalogue=!showCatalogue;
             if(showCatalogue)Catalogue();else Setup();
@@ -256,8 +254,24 @@ namespace ChipArena.UnityConversion
             foreach(var c in content.chips.Where(c=>(c.name+" "+c.description).IndexOf(search,StringComparison.OrdinalIgnoreCase)>=0)){GUILayout.Label(c.name+"  /  "+c.rarity+(NativeArena.ImplementedChip(c)?"  /  draft enabled":"  /  pending"),label);GUILayout.Label(c.description,small);}
             GUILayout.EndScrollView();
         }
+        // The pilot board (G / Tab) at the top right, where the source keeps scores: each row opens that pilot's build.
         private void Board(float width)
-        {if(inspectSeat!=0)return;GUI.Box(new Rect(width/2-280,80,560,70+match.Seats.Count*36),"");GUI.Label(new Rect(width/2-260,92,520,28),"Click a pilot to inspect their build",small);int row=0;foreach(var p in match.Seats)if(GUI.Button(new Rect(width/2-260,122+row++*36,520,32),p.name+" · "+p.spec+" · sets "+p.score+" / rounds "+p.roundWins+" · "+(p.alive?"alive":"out"),button))inspectSeat=p.id;}
+        {
+            if(inspectSeat!=0)return;float W=NativeUi.W,w=360,x=W-24-w,y=62;var seats=match.Seats.Where(s=>!s.AuthorityBoss).ToList();float h=14+20+10+seats.Count*46+10;
+            NativeUi.Round(new Rect(x,y,w,h),NativeUi.Hex(0x13141c,.92f),10,new Color(1,1,1,.14f));NativeUi.Text(new Rect(x+14,y+14,w-28,20),arena?.Pve!=null?"PARTY":"PILOTS",12,NativeUi.Hex(0xedf2fc),TextAnchor.MiddleLeft,bold:true,tracking:.08f);
+            NativeUi.Text(new Rect(x+14,y+14,w-28,20),"Click to inspect a build",11,NativeUi.Hex(0xaeb6c8),TextAnchor.MiddleRight);float cy=y+44;
+            foreach(var p in seats)
+            {
+                var r=new Rect(x+10,cy,w-20,40);float hv=NativeUi.HoverAmount(7100+p.id,r);bool you=p.id==arena?.Local?.Seat.id;var pilot=arena?.Pilots.Find(q=>q.Seat==p);bool alive=pilot!=null&&pilot.Hp>0&&p.connected;
+                NativeUi.Round(new Rect(r.x,r.y-hv,r.width,r.height),NativeUi.Mix(NativeUi.Hex(0x18191f,.9f),NativeUi.Hex(0x22232a),hv),6,NativeUi.Mix(new Color(1,1,1,.06f),NativeUi.Hex(0xff784b),hv));
+                NativeUi.Fill(new Rect(r.x,r.y+6-hv,2,r.height-12),match.Teams?TeamColor(p.team):SeatColor(p));
+                NativeUi.Text(new Rect(r.x+12,r.y-hv,r.width-24,22),p.name+(you?"  · YOU":""),13,NativeUi.Hex(0xf4f4f5,alive?1:.6f),TextAnchor.MiddleLeft,bold:you);
+                NativeUi.Text(new Rect(r.x+12,r.y+19-hv,r.width-24,18),(content.weapons.FirstOrDefault(c=>c.id==p.spec)?.name??p.spec)+"  ·  "+p.chips.Values.Sum()+" chips",11,NativeUi.Hex(0xa6a7ad),TextAnchor.MiddleLeft);
+                NativeUi.Text(new Rect(r.x+12,r.y-hv,r.width-24,22),arena?.Pve!=null?"":"SETS "+p.score+" · ROUNDS "+p.roundWins,11,NativeUi.Hex(0xd6d7e1),TextAnchor.MiddleRight,mono:true);
+                NativeUi.Text(new Rect(r.x+12,r.y+19-hv,r.width-24,18),!p.connected?"OFFLINE":alive?"ALIVE":"OUT",10,alive?NativeUi.Hex(0xa9f4ca):NativeUi.Hex(0xa4a9b6),TextAnchor.MiddleRight,mono:true,tracking:.1f);
+                if(NativeUi.Button(r))inspectSeat=p.id;cy+=46;
+            }
+        }
         private void OnDestroy(){CapturedAnimation.Release(slenderNoise);Time.timeScale=1;EndPreview();ClearReplay();CloseNetwork();if(scopeMask!=null)CapturedAnimation.Release(scopeMask);arena?.Dispose();if(ownsPhysics){Physics.simulationMode=previousSimulation;Physics.gravity=previousGravity;}Cursor.lockState=CursorLockMode.None;Cursor.visible=true;}
     }
 }

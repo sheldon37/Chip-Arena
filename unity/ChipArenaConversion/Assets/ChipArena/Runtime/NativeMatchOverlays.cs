@@ -149,6 +149,32 @@ namespace ChipArena.UnityConversion
             if(U.Btn(new Rect(ix+bw+10,y,bw,48),"Return to Lobby",false,lobby,enter))ReturnToLobby();
             U.Pop();
         }
+        // pve/results.ts: VICTORY / DEFEAT under the boss test eyebrow, the Siren's remaining health, a card per pilot (MVP by
+        // boss damage) and Retry / Return to Menu.
+        private void PveResultsPanel()
+        {
+            var v=arena.Pve;if(matchEndAt<0)matchEndAt=Time.unscaledTime;float enter=U.PanelIn(Time.unscaledTime-matchEndAt),W=U.W,H=U.H;bool victory=v.Outcome=="victory";
+            var rows=v.Rows.Values.Where(r=>!r.Pilot.Seat.bot||r.Pilot.Seat.connected).OrderByDescending(r=>r.DamageBoss).ThenByDescending(r=>r.Kills).ToList();var mvp=rows.FirstOrDefault();
+            int cols=Mathf.Clamp(rows.Count,1,4);float cw=Mathf.Min(250,(Mathf.Min(1180,W-32)-64-(cols-1)*12)/cols),pw=Mathf.Min(1180,Mathf.Max(560,cols*(cw+12)-12+64)),ch=232,ph=32+16+48+22+24+ch+28+48+32,px=(W-pw)/2,py=Mathf.Max(16,(H-ph)/2)+10*(1-enter);
+            U.Panel(new Rect(px,py,pw,ph),enter);float y=py+32,ix=px+32,iw=pw-64;
+            U.Text(new Rect(ix,y,iw,16),"BOSS TEST · THE SIREN",12,U.A(U.Hex(0xc9bfff),enter),TextAnchor.MiddleLeft,bold:true,tracking:.2f);y+=22;
+            U.Text(new Rect(ix,y,iw,44),victory?"VICTORY":"DEFEAT",40,U.A(victory?U.Hex(0xffe7a6):U.Hex(0xff8a7a),enter),TextAnchor.MiddleLeft,bold:true,tracking:.04f,glow:U.A(victory?U.Hex(0xffb84a):U.Hex(0xff3535),.4f*enter));y+=48;
+            float boss=v.MaxHp>0&&v.Boss!=null?Mathf.Clamp01(v.Boss.Hp/v.MaxHp):victory?0:1;U.Text(new Rect(ix,y,iw,20),victory?"The Siren is silenced":"The Siren smiles  ·  "+Mathf.CeilToInt(boss*100)+"% health remaining",15,U.A(U.Hex(0xbfc0c9),enter),TextAnchor.MiddleLeft);y+=22+24;
+            float cx=ix+(iw-(cols*(cw+12)-12))/2;int i=0;
+            foreach(var r in rows.Take(8))
+            {
+                var c=new Rect(cx+(i%cols)*(cw+12),y+(i/cols)*(ch+12),cw,ch);if(i/cols>0)break;bool best=r==mvp&&r.DamageBoss>0;U.Round(c,U.Hex(0x18191f,.94f*enter),8,best?U.Hex(0xffd27a,.7f*enter):U.A(U.Hex(0x454650),enter));
+                float cy=c.y+12;U.Fill(new Rect(c.x,c.y+10,3,22),SeatColor(r.Pilot.Seat));U.Text(new Rect(c.x+14,cy,c.width-28,22),r.Pilot.Seat.name+(r.Pilot==arena.Local?"  · YOU":""),15,U.A(U.Hex(0xf4f4f5),enter),TextAnchor.MiddleLeft,bold:true);
+                if(best)U.Text(new Rect(c.x+14,cy,c.width-28,22),"MVP",11,U.A(U.Hex(0xffd27a),enter),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.14f);cy+=26;
+                U.Text(new Rect(c.x+14,cy,c.width-28,16),(content.weapons.FirstOrDefault(w=>w.id==r.Pilot.Seat.spec)?.name??r.Pilot.Seat.spec)+"  ·  "+r.Pilot.Seat.chips.Values.Sum()+" chips",11,U.A(U.Hex(0xa6a7ad),enter),TextAnchor.MiddleLeft);cy+=24;
+                foreach(var (label,value) in new[]{("Boss damage",Mathf.RoundToInt(r.DamageBoss).ToString()),("Kills",r.Kills.ToString()),("Assists",r.Assists.ToString()),("Revives",r.Revives.ToString()),("Deaths",r.Deaths.ToString()),("Earned","$"+r.Earned)})
+                {U.Text(new Rect(c.x+14,cy,c.width-28,22),label,13,U.A(U.Hex(0xbfc0c9),enter),TextAnchor.MiddleLeft);U.Text(new Rect(c.x+14,cy,c.width-28,22),value,13,U.A(label=="Earned"?U.Hex(0xffd27a):Color.white,enter),TextAnchor.MiddleRight,bold:true,mono:true);cy+=26;}
+                i++;
+            }
+            y+=ch+28;float bw=(iw-10)/2;
+            if(U.Btn(new Rect(ix,y,bw,48),"Retry",true,true,enter)){if(server!=null)SendServer(new NativeNetMessage{type="rematch"});else StartMatch();}
+            if(U.Btn(new Rect(ix+bw+10,y,bw,48),"Return to Menu",false,Hosting||!Online,enter))ReturnToLobby();
+        }
         private void ReturnToLobby()
         {
             ClearReplay();arena?.Dispose();arena=null;match=null;presentation?.ResetPresentation();matchEndAt=-1;menu=true;

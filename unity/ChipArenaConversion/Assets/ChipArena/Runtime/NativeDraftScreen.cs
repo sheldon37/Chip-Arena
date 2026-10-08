@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
     // only draws the authoritative draft (offers, ready time, pick, pick time) and sends the same choose messages.
     public sealed partial class ConversionGame
     {
-        private int draftFocus=-1,draftSoundKey,draftContactKey;private float draftTrayBottom=.3f;private readonly Dictionary<int,float> cardSweep=new Dictionary<int,float>();private readonly bool[] cardHovered=new bool[16];
+        private int draftFocus=-1,draftContactKey;private float draftTrayBottom=.3f;private readonly Dictionary<int,float> cardSweep=new Dictionary<int,float>();private readonly bool[] cardHovered=new bool[16];
         private static float DraftRevealSeconds(string id)=>id.StartsWith("l44t-")?4.6f:id.StartsWith("arcade-")||id.StartsWith("mishima-")?4.8f:3.2f;
         // NativeMatch.NextDraft's offer pause, recovered from the replicated ready time (the turn's start is not sent).
         private double DraftStarted(NativeSeat seat)
