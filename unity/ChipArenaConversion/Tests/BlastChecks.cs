@@ -18,8 +18,8 @@ namespace ChipArena.UnityConversion
             Check(k.GetProperty("frontSeconds").GetDouble()==NativeBlastSim.FrontSeconds&&k.GetProperty("minVoxels").GetInt32()==NativeBlastSim.MinVoxels,"front seconds and minimum voxels match the source");
             Check(capacity.GetProperty("solid").GetInt32()==NativeBlastSim.SolidCapacity&&capacity.GetProperty("glow").GetInt32()==NativeBlastSim.GlowCapacity&&capacity.GetProperty("lights").GetInt32()==NativeBlastSim.LightCapacity,"pool capacities match the source");
             int cases=0,frames=0;foreach(var c in json.GetProperty("cases").EnumerateArray()){frames+=Replay(c,cases);cases++;}
-            Determinism();Front();Capacity();Minimum();Quality();Cues();Winding();
-            Console.WriteLine("PASS "+cases+" source chip blast runs ("+frames+" drawn frames: 11 styles x 3 radii, quality/compat, tints, impacts, 20 fields, line, paddle) and blast determinism, front, capacity, minimum-voxel, quality, cue and winding checks");
+            Determinism();Front();Capacity();Minimum();Quality();Cues();Frames();Winding();
+            Console.WriteLine("PASS "+cases+" source chip blast runs ("+frames+" drawn frames: 11 styles x 3 radii, quality/compat, tints, impacts, 20 fields, line, paddle) and blast determinism, front, capacity, minimum-voxel, quality, cue, frame-rule and winding checks");
         }
         private static void Start(NativeBlastSim sim,JsonElement c,out NativeBlastField? field)
         {
@@ -158,6 +158,32 @@ namespace ChipArena.UnityConversion
             foreach(var (tag,style) in table)Check(NativeBlastSim.StyleOf(tag)==style,"source style of "+(tag??"(none)"));
             Check(NativeBlastSim.TintOf("rocket")==null&&NativeBlastSim.TintOf(null)==null&&NativeBlastSim.TintOf("frag").Value.Cool==0x676b72,"tints");
             Check(NativeBlastSim.Round(2.5)==3&&NativeBlastSim.Round(-2.5)==-2&&NativeBlastSim.Hex(1,1,1)==0xffffff,"JavaScript rounding and three.js getHex");
+        }
+        private static NativeBlastFrame.Candidate At(double x,double radius,string tag,NativeBlastCues.Cue cue)=>new NativeBlastFrame.Candidate{X=x,Y=1.1,Z=-2,Radius=radius,Tag=tag,Cue=cue};
+        private static string Collapsed(params NativeBlastFrame.Candidate[] records)
+        {var list=new System.Collections.Generic.List<NativeBlastFrame.Candidate>(records);NativeBlastFrame.Collapse(list);return string.Join(",",list.ConvertAll(c=>c.Cue.ToString()));}
+        // NativeBlastFrame: the blast step, one cue per source event, and the Siren's records.
+        private static void Frames()
+        {
+            const NativeBlastCues.Cue Blast=NativeBlastCues.Cue.Blast,Dud=NativeBlastCues.Cue.Dud,Teleport=NativeBlastCues.Cue.Teleport;
+            Check(NativeBlastFrame.Step(1/144.0,false)==1/144.0&&NativeBlastFrame.Step(.2,false)==NativeBlastFrame.MaxFrame&&NativeBlastFrame.Step(1/60.0,true)==0&&NativeBlastFrame.Step(-1,false)==0&&NativeBlastFrame.Step(double.NaN,false)==0,"step: the render frame, capped at 0.05 s, zero only while the match is paused");
+            // An online match behind the menu keeps recording effects; the blasts keep expiring, so the pools stay small.
+            var sim=new NativeBlastSim();int peak=0;
+            for(int s=0;s<30;s++){sim.Blast(NativeBlastStyle.Fire,s%10,1.35,0,3);for(int i=0;i<4;i++)sim.Impact(i,1.2,s%7,.6,0x8de9ee,1);for(int f=0;f<144;f++){sim.Update(NativeBlastFrame.Step(1/144.0,false));peak=Math.Max(peak,sim.Solid.Drawn+sim.Glow.Drawn);}}
+            Check(peak<1000&&sim.Solid.Capacity==NativeBlastSim.SolidCapacity&&sim.Glow.Capacity==NativeBlastSim.GlowCapacity,"blasts expire while the match runs (peak "+peak+" drawn)");
+            // The same source event recorded twice in a tick draws once.
+            Check(Collapsed(At(4,1,null,Teleport),At(4,1,null,Teleport),At(4,2.5,"blink-strike",Blast))=="Teleport,None,Blast","Blink Strike: one teleport and its blast");
+            Check(Collapsed(At(0,3.5,"ball-lightning",Blast),At(0,.6,"ball-lightning",Blast))=="Blast,None"&&Collapsed(At(0,.6,"ball-lightning",Blast),At(0,3.5,"ball-lightning",Blast))=="None,Blast","ball-lightning wall hit: one burst");
+            Check(Collapsed(At(0,3.6,"rocket",Blast),At(0,.3,"rocket",Dud))=="Blast,None"&&Collapsed(At(0,.3,"rocket",Dud))=="Dud","armed rocket on a summon: no extra dud; an unarmed rocket keeps it");
+            Check(Collapsed(At(0,2,"frag",Blast),At(0,2,"frag",Blast))=="Blast,None","equal records: the first wins");
+            Check(Collapsed(At(0,3,null,Blast),At(0,1.8,null,Blast))=="Blast,Blast","untagged chip blasts may share a spot");
+            Check(Collapsed(At(0,3,"frag",Blast),At(0,.6,"flame-lance",Blast))=="Blast,Blast"&&Collapsed(At(0,3,"frag",Blast),At(1,.6,"frag",Blast))=="Blast,Blast","other tags and other spots are kept");
+            Check(Collapsed(At(0,1,null,Teleport),At(3,1,null,Teleport))=="Teleport,Teleport","separate landings are kept");
+            // The Siren's own records keep the flat halos.
+            Check(NativeBlastCues.Classify(false,1,4,null,true)==NativeBlastCues.Cue.Halo&&NativeBlastCues.Classify(false,5,4,null,true)==NativeBlastCues.Cue.Halo&&NativeBlastCues.Classify(true,1,3,null,true)==Teleport&&NativeBlastCues.Classify(false,1,4,null)==Blast,"siren records are halos, not blasts");
+            var sites=new System.Collections.Generic.List<NativeBlastFrame.SirenSite>{new NativeBlastFrame.SirenSite{X=0,Y=1.5,Z=0,Reach=.6,Below=true},new NativeBlastFrame.SirenSite{X=10,Y=2,Z=0,Reach=1.2}};
+            Check(NativeBlastFrame.AtSiren(sites,.2,.03,.1)&&!NativeBlastFrame.AtSiren(sites,.2,1.4,.1)&&!NativeBlastFrame.AtSiren(sites,1,.03,0),"slam: on the ground under the Siren, not on its body or beside it");
+            Check(NativeBlastFrame.AtSiren(sites,10.5,2.3,0)&&!NativeBlastFrame.AtSiren(sites,12,2,0)&&!NativeBlastFrame.AtSiren(new System.Collections.Generic.List<NativeBlastFrame.SirenSite>(),0,0,0),"siren shots and fields");
         }
         private static void Winding()
         {

@@ -8,6 +8,7 @@ namespace ChipArena.UnityConversion
     // Draws the pure NativeBlastSim (source chip-blasts.ts) in the arena: one dynamic mesh per pool (unlit opaque voxels and
     // additive glow voxels) refilled from reused buffers each frame, and three pooled point lights. Blasts are keyed to what
     // host and guests both hold: the ability/chip effect list, ability zones, chip fields, ability shots and surface impacts.
+    // The Siren's own attack records are not blasts in the source; they are handed to NativeCombatGlow as Halos.
     // Cosmetic only; nothing here touches the match.
     public sealed class NativeBlastPresentation : IDisposable
     {
@@ -20,10 +21,14 @@ namespace ChipArena.UnityConversion
         private struct Marker{public Vector3 Position;public string Tag;public float Reach;}
         private readonly NativeBlastSim sim=new NativeBlastSim();
         private readonly Layer solid,glow;private readonly GameObject root;private readonly Light[] lights=new Light[NativeBlastSim.LightCapacity];
-        private HashSet<long> seen=new HashSet<long>(),seenBefore=new HashSet<long>();
+        private HashSet<long> seen=new HashSet<long>(),seenBefore=new HashSet<long>(),halos=new HashSet<long>(),halosBefore=new HashSet<long>();
         private readonly HashSet<long> liveFields=new HashSet<long>();private readonly Dictionary<long,float> zoneBorn=new Dictionary<long,float>();private readonly List<long> stale=new List<long>();
         private List<Marker> sites=new List<Marker>(),sitesBefore=new List<Marker>(),shots=new List<Marker>(),shotsBefore=new List<Marker>();
+        private List<NativeBlastFrame.SirenSite> sirens=new List<NativeBlastFrame.SirenSite>(),sirensBefore=new List<NativeBlastFrame.SirenSite>();private readonly HashSet<int> sirenSeats=new HashSet<int>();
         private readonly List<Vector3> landings=new List<Vector3>();
+        private readonly List<NativeBlastFrame.Candidate> fresh=new List<NativeBlastFrame.Candidate>();private readonly List<NativeAbilityFx> freshFx=new List<NativeAbilityFx>();
+        /// <summary>Live Siren attack records, which keep the flat halos (NativeCombatGlow) until siren/fx.ts is ported (C25).</summary>
+        public readonly List<NativeAbilityFx> Halos=new List<NativeAbilityFx>();
         private static readonly Bounds Everywhere=new Bounds(Vector3.zero,Vector3.one*4000);
         private int generation=-1,lastEvent;private float lastTime=-1;
         public NativeBlastPresentation(Transform parent)
@@ -40,7 +45,7 @@ namespace ChipArena.UnityConversion
         }
         public void Clear()
         {
-            sim.Clear();seen.Clear();seenBefore.Clear();liveFields.Clear();zoneBorn.Clear();sites.Clear();sitesBefore.Clear();shots.Clear();shotsBefore.Clear();
+            sim.Clear();seen.Clear();seenBefore.Clear();halos.Clear();halosBefore.Clear();Halos.Clear();liveFields.Clear();zoneBorn.Clear();sites.Clear();sitesBefore.Clear();shots.Clear();shotsBefore.Clear();sirens.Clear();sirensBefore.Clear();
             lastEvent=0;lastTime=-1;solid.Mesh.Clear();glow.Mesh.Clear();foreach(var light in lights)if(light!=null)light.enabled=false;
         }
         private static long Mix(long h,int v){unchecked{h^=(uint)v;h*=0x100000001b3L;return h;}}
@@ -69,17 +74,37 @@ namespace ChipArena.UnityConversion
             // ChipField.Effect (the chip id the source keys styles on) exists on the host only; guests fall back to the kind.
             foreach(var f in arena.ChipFields)if(Explodes(f.Kind))sites.Add(new Marker{Position=f.Position+Vector3.up*.15f,Tag=string.IsNullOrEmpty(f.Effect)?f.Kind:f.Effect});
             foreach(var s in arena.AbilityShots)if(s.Definition!=null)shots.Add(new Marker{Position=s.Position,Tag=Fx(s.Definition),Reach=Math.Max(1,s.Velocity.magnitude*.1f)+s.Radius});
+            // Where the Siren's attacks record their darkness effects (NativeSiren SirenArea and StepSirenShot, NativeSirenStage).
+            var swapSirens=sirensBefore;sirensBefore=sirens;sirens=swapSirens;sirens.Clear();sirenSeats.Clear();
+            foreach(var p in arena.Pilots)if(p.Seat.spec=="siren"){sirenSeats.Add(p.Seat.id);Vector3 at=p.Body.position;sirens.Add(new NativeBlastFrame.SirenSite{X=at.x,Y=at.y,Z=at.z,Reach=.6,Below=true});}
+            if(sirenSeats.Count>0)foreach(var b in arena.Bullets)if(sirenSeats.Contains(b.Owner))sirens.Add(new NativeBlastFrame.SirenSite{X=b.Position.x,Y=b.Position.y,Z=b.Position.z,Reach=Math.Max(1,b.Velocity.magnitude*.1f)+b.Radius});
+            foreach(var f in arena.SirenFields)sirens.Add(new NativeBlastFrame.SirenSite{X=f.Position.x,Y=f.Position.y,Z=f.Position.z,Reach=NativeBlastFrame.SameSpot});
+            if(arena.MapId=="siren")foreach(var v in NativeArena.StageVents)sirens.Add(new NativeBlastFrame.SirenSite{X=v.x,Y=v.y,Z=v.z,Reach=NativeBlastFrame.SameSpot});
         }
+        private bool AtSiren(Vector3 at)=>NativeBlastFrame.AtSiren(sirens,at.x,at.y,at.z)||NativeBlastFrame.AtSiren(sirensBefore,at.x,at.y,at.z);
         private void Effects(NativeArena arena,float now,double quality)
         {
-            var swap=seenBefore;seenBefore=seen;seen=swap;seen.Clear();landings.Clear();
+            var swap=seenBefore;seenBefore=seen;seen=swap;seen.Clear();swap=halosBefore;halosBefore=halos;halos=swap;halos.Clear();
+            Halos.Clear();landings.Clear();fresh.Clear();freshFx.Clear();
             foreach(var fx in arena.AbilityEffects)if(fx.Beam&&NativeBlastCues.Classify(true,fx.Radius,fx.Element,null)==NativeBlastCues.Cue.Teleport)landings.Add(fx.Position);
             foreach(var fx in arena.AbilityEffects)
             {
-                long key=Key(fx);seen.Add(key);if(seenBefore.Contains(key)||now-(fx.Until-.22f)>.4f)continue;
-                string tag=null;if(!fx.Beam){foreach(var p in landings)if((p-fx.Position).sqrMagnitude<.0025f){tag=NativeBlastCues.Colocated(fx.Element);break;}tag??=TagAt(fx.Position);}
-                Vector3 at=fx.Position;
-                switch(NativeBlastCues.Classify(fx.Beam,fx.Radius,fx.Element,tag))
+                // A second record with the same key in one frame is the same event recorded twice (Blink Strike: ChipBlink, then Blink).
+                long key=Key(fx);if(!seen.Add(key))continue;
+                if(seenBefore.Contains(key)){if(halosBefore.Contains(key)){halos.Add(key);Halos.Add(fx);}continue;}
+                if(now-(fx.Until-.22f)>.4f)continue;
+                bool siren=!fx.Beam&&fx.Element==4&&AtSiren(fx.Position);
+                string tag=null;if(!fx.Beam&&!siren){foreach(var p in landings)if((p-fx.Position).sqrMagnitude<.0025f){tag=NativeBlastCues.Colocated(fx.Element);break;}tag??=TagAt(fx.Position);}
+                var cue=NativeBlastCues.Classify(fx.Beam,fx.Radius,fx.Element,tag,siren);
+                if(cue==NativeBlastCues.Cue.Halo){halos.Add(key);Halos.Add(fx);continue;}
+                if(cue==NativeBlastCues.Cue.None)continue;
+                fresh.Add(new NativeBlastFrame.Candidate{X=fx.Position.x,Y=fx.Position.y,Z=fx.Position.z,Radius=fx.Radius,Tag=tag,Cue=cue});freshFx.Add(fx);
+            }
+            NativeBlastFrame.Collapse(fresh);
+            for(int i=0;i<fresh.Count;i++)
+            {
+                var fx=freshFx[i];string tag=fresh[i].Tag;Vector3 at=fx.Position;
+                switch(fresh[i].Cue)
                 {
                     case NativeBlastCues.Cue.Blast:sim.Blast(NativeBlastCues.Style(tag,fx.Element),at.x,at.y,at.z,fx.Radius,quality*NativeBlastCues.Quality(tag),false,NativeBlastSim.TintOf(tag));break;
                     case NativeBlastCues.Cue.Vacuum:sim.Blast(NativeBlastStyle.Void,at.x,at.y,at.z,fx.Radius,quality);break;
@@ -124,11 +149,13 @@ namespace ChipArena.UnityConversion
             }
             sim.Prune(liveFields);stale.Clear();foreach(var key in zoneBorn.Keys)if(!liveFields.Contains(key))stale.Add(key);foreach(var key in stale)zoneBorn.Remove(key);
         }
-        public void Render(NativeArena arena,Camera camera,float now,float quality)
+        /// <summary>now is the arena presentation clock (record ages, field emitters, rewinds). paused: the match itself is
+        /// stopped (offline menu); the blasts then hold still, otherwise they advance with the render frame as in the source.</summary>
+        public void Render(NativeArena arena,Camera camera,float now,float quality,bool paused)
         {
-            // Same clock as the other arena presentation; a menu pause stops it, a rewind (killcam, new round) clears.
+            // A rewind (killcam, new round) clears.
             if(generation!=arena.Generation||now<lastTime-.25f){Clear();generation=arena.Generation;}
-            float dt=lastTime<0?0:Mathf.Clamp(now-lastTime,0,.1f);lastTime=Math.Max(lastTime,now);
+            lastTime=Math.Max(lastTime,now);double dt=NativeBlastFrame.Step(Time.unscaledDeltaTime,paused);
             double q=Math.Max(0,Math.Min(1,quality));
             // Source renderer order: event blasts, then fields(state), then update(dt), then draw.
             Remember(arena);Effects(arena,now,q);Impacts(arena,now,q);Fields(arena,now,q);sim.Update(dt);

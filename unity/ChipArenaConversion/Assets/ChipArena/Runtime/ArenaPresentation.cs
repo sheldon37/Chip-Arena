@@ -10,8 +10,9 @@ namespace ChipArena.UnityConversion
         private CapturedAnimation captured;
         private NativeCombatGlow combatGlow;private NativeBlastPresentation blasts;
         public float GlowQuality=1,BlastQuality=1;public bool TrailsEnabled=true;
-        public void RenderGlow(NativeArena arena,Camera camera)
-        {blasts?.Render(arena,camera,PresentationClock(arena),BlastQuality);if(combatGlow==null)return;combatGlow.Quality=GlowQuality;combatGlow.Trails=TrailsEnabled;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.ViewPilot.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);}
+        // paused: the match itself is stopped (offline menu), so the blasts hold still; see NativeBlastFrame.Step.
+        public void RenderGlow(NativeArena arena,Camera camera,bool paused=false)
+        {blasts?.Render(arena,camera,PresentationClock(arena),BlastQuality,paused);if(combatGlow==null)return;combatGlow.Halos=blasts?.Halos;combatGlow.Quality=GlowQuality;combatGlow.Trails=TrailsEnabled;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.ViewPilot.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);}
         private readonly AudioClip[] gunSounds=new AudioClip[4];
         private AudioClip reloadStart,reloadEnd,hitSound;
         private AudioSource localAudio;

@@ -390,12 +390,17 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public static class NativeBlastCues
     {
-        public enum Cue{None,Blast,Teleport,Vacuum,Dud}
+        /// <summary>Halo: keep Unity's two flat halos (the Siren's own attacks; see Classify).</summary>
+        public enum Cue{None,Blast,Teleport,Vacuum,Dud,Halo}
         public const double TeleportRadius=1.2,TeleportQuality=.5,TeleportImpactRadius=.9,TeleportLineJitter=.3,TeleportLineLife=.22,TeleportLineSweep=.08;
         public const int TeleportColor=0xb66cff;
         public static NativeBlastStyle School(int element)=>element==1?NativeBlastStyle.Fire:element==2?NativeBlastStyle.Frost:element==3?NativeBlastStyle.Shock:element==4?NativeBlastStyle.Implosion:NativeBlastStyle.Fire;
-        public static Cue Classify(bool beam,double radius,int element,string tag)
+        public static Cue Classify(bool beam,double radius,int element,string tag,bool siren=false)
         {
+            // The Siren's own attacks (NativeBlastFrame.AtSiren). The source sends them as siren-* events that client/siren/fx.ts
+            // draws as black fire, shock rings and cracks, never as chip blasts. They keep Unity's flat halos until that module
+            // is ported (parity item C25) and the records carry their owner (A21).
+            if(siren&&!beam)return Cue.Halo;
             // Blink and the wormhole blink record a radius-1 lightning beam; every other beam is an arc and draws no blast.
             if(beam)return radius>=.99&&element==3?Cue.Teleport:Cue.None;
             // Vacuum() always records (position, 5, darkness).
@@ -408,5 +413,64 @@ namespace ChipArena.UnityConversion
         public static string Colocated(int element)=>element==3?"blink-strike":"wormhole";
         public static NativeBlastStyle Style(string tag,int element)=>tag!=null?NativeBlastSim.StyleOf(tag):School(element);
         public static double Quality(string tag)=>tag=="flame-lance"?.5:1;
+    }
+
+    /// <summary>
+    /// Per-frame rules the blast presentation applies to Unity's effect records before they reach the sim: how far the
+    /// blasts advance, duplicate records of one source event, and which records belong to the Siren.
+    /// </summary>
+    public static class NativeBlastFrame
+    {
+        /// <summary>Records closer than this (metres) are at the same spot: the match writes both from one Vector3.</summary>
+        public const double SameSpot=.05;
+        /// <summary>The source main loop caps a frame at 0.05 s before the renderer steps the blasts with it (main.ts frame()).</summary>
+        public const double MaxFrame=.05;
+        /// <summary>
+        /// Seconds the blasts advance this frame. The source steps ChipBlasts with the render frame time, not the match clock;
+        /// a guest's match clock only moves when a 20 Hz snapshot arrives. They stop only while the match itself is paused
+        /// (the offline menu). An online match keeps running behind the menu, and so do its blasts.
+        /// </summary>
+        public static double Step(double frameSeconds,bool paused)=>paused||double.IsNaN(frameSeconds)?0:Math.Max(0,Math.Min(MaxFrame,frameSeconds));
+        /// <summary>A record first seen this frame, with the cue and source tag the presentation resolved for it.</summary>
+        public struct Candidate{public double X,Y,Z,Radius;public string Tag;public NativeBlastCues.Cue Cue;}
+        private static bool Same(Candidate a,Candidate b){double x=a.X-b.X,y=a.Y-b.Y,z=a.Z-b.Z;return x*x+y*y+z*z<SameSpot*SameSpot;}
+        private static bool Explosive(NativeBlastCues.Cue cue)=>cue==NativeBlastCues.Cue.Blast||cue==NativeBlastCues.Cue.Dud;
+        /// <summary>
+        /// The match records some single source events more than once in a tick, and the source draws one cue for each:
+        /// Blink Strike's teleport (ChipBlink, then Blink), a ball-lightning wall hit (its blast, then a 0.6 m hit) and an
+        /// armed rocket on a summon (its blast, then the dud's 0.3 m hit). Sets Cue.None on a teleport that lands where an
+        /// earlier one landed, and on a blast or dud at the spot of a larger one with the same source tag (the earlier one
+        /// wins a tie). Untagged records are kept, because distinct chip blasts can share a spot.
+        /// </summary>
+        public static void Collapse(List<Candidate> fresh)
+        {
+            for(int i=0;i<fresh.Count;i++)
+            {
+                var a=fresh[i];
+                if(a.Cue==NativeBlastCues.Cue.Teleport){for(int j=0;j<i;j++)if(fresh[j].Cue==NativeBlastCues.Cue.Teleport&&Same(a,fresh[j])){a.Cue=NativeBlastCues.Cue.None;break;}}
+                else if(Explosive(a.Cue)&&a.Tag!=null)for(int j=0;j<fresh.Count;j++)
+                {
+                    var b=fresh[j];if(j==i||!Explosive(b.Cue)||b.Tag!=a.Tag||!Same(a,b))continue;
+                    if(b.Radius>a.Radius||b.Radius==a.Radius&&j<i){a.Cue=NativeBlastCues.Cue.None;break;}
+                }
+                fresh[i]=a;
+            }
+        }
+        /// <summary>
+        /// Where the Siren's own attacks land: under a Siren pilot (slam), on its shots (seekers, rain drops, damnation), on
+        /// its fields (eruption) and on the Siren stage's vents. A Below site matches on the ground plane under its centre.
+        /// </summary>
+        public struct SirenSite{public double X,Y,Z,Reach;public bool Below;}
+        /// <summary>How far under a Below site's centre a record must lie (the slam lands on the ground under the body).</summary>
+        public const double BelowDepth=.3;
+        public static bool AtSiren(List<SirenSite> sites,double x,double y,double z)
+        {
+            for(int i=0;i<sites.Count;i++)
+            {
+                var s=sites[i];double dx=x-s.X,dy=y-s.Y,dz=z-s.Z,r=s.Reach*s.Reach;
+                if(s.Below?dx*dx+dz*dz<=r&&dy<=-BelowDepth:dx*dx+dy*dy+dz*dz<=r)return true;
+            }
+            return false;
+        }
     }
 }

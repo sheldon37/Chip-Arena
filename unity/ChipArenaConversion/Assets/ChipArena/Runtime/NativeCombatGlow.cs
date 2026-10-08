@@ -39,6 +39,8 @@ namespace ChipArena.UnityConversion
         private readonly Light[] projectileLights=new Light[3],impactLights=new Light[2],armorLights=new Light[2];
         private readonly Dictionary<int,NativeTrace> traces=new Dictionary<int,NativeTrace>();
         private readonly List<SurfaceMark> marks=new List<SurfaceMark>();private int generation=-1,lastEvent;
+        /// <summary>Effect records still drawn as two flat halos (NativeBlastPresentation.Halos: the Siren's own attacks).</summary>
+        public IReadOnlyList<NativeAbilityFx> Halos;
         private float lastTime=-1;public float Quality=1;public bool Trails=true;
         public int LiveMarks=>marks.Count;public int LiveTraces=>traces.Count;
         public NativeCombatGlow(Transform parent)
@@ -118,7 +120,14 @@ namespace ChipArena.UnityConversion
                 world.Halo(zone.Position+Vector3.up*.035f,Vector3.right,Vector3.forward,zone.Radius*2,color,(zone.Kind=="bomb"?.30f:.45f)*pulse);
                 if(zone.Kind=="black-hole")world.Halo(zone.Position+Vector3.up*.7f,right,up,2,color,.7f);
             }
-            // Ability and chip blasts are volumetric voxels now (NativeBlastPresentation), not two flat halos.
+            // Ability and chip blasts are volumetric voxels now (NativeBlastPresentation). Only the Siren's own attack records keep
+            // the two flat halos, because the source draws them with siren/fx.ts rather than as chip blasts (C25).
+            if(Halos!=null)for(int i=0;i<Halos.Count;i++)
+            {
+                var fx=Halos[i];float fade=Mathf.Clamp01((fx.Until-now)/.22f);Color color=School(fx.Element);
+                world.Halo(fx.Position,right,up,Mathf.Max(.3f,fx.Radius*2*(1-fade*.5f)),color,fade*.85f);
+                world.Halo(fx.Position+Vector3.up*.025f,Vector3.right,Vector3.forward,fx.Radius*2,color,fade*.5f);
+            }
             int lightIndex=0;
             foreach(var pilot in arena.Pilots)
             {

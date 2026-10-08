@@ -6,6 +6,7 @@ No native Unity playtest or Windows executable build was run in the authoring wo
 
 - Runtime and Editor assemblies compile against the real Unity 6000.3.24f1 managed DLLs. `tools/check_relay.py` passes; the new BlastChecks replay 88 runs of the pinned client/chip-blasts.ts (`tools/export_blast_fixtures.mjs <source checkout>` writes `Tests/blast-parity.json`), with counts, weighted voxel sums, first voxels and lights per frame. They also check determinism, the front on the gameplay radius at 0.3 s, pool capacities, the 16-voxel minimum, quality scaling, the effect cues and cube winding. 24 Python tests pass; `tools/package_source.py` passes.
 - **Not run:** Unity import and compile of `NativeBlast.shader`, rendering on a GPU, the blasts in a hosted or joined match, frame-time cost on the owner's PC.
+- Review fixes (`claude/wip-c6-fixes`): the BlastChecks frame rules cover the frame step (capped at 0.05 s, zero only while paused), the pools staying small with the match running, the collapse of Blink Strike, ball-lightning and armed-rocket duplicates, and the Siren sites and halo cue. The checks above pass again. **Not run:** a Siren match, a 144 Hz guest or an online menu pause in the player.
 
 ## Melee runtime, presentation polish and updater integration (2026-10-08, `claude/sleepy-ritchie-g8ruhv`)
 
