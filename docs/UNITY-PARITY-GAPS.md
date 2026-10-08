@@ -112,6 +112,24 @@ Source: client/main.ts:248 drawSandbox; sandbox-panel.ts:34-38; shared/simulatio
 
 ## Claude (visuals)
 
+**Progress on `claude/sleepy-ritchie-g8ruhv` (updated 2026-10-08).** Implemented on the branch (not merged to a
+release, not verified in Unity or on Windows; checks are the Unity API compile, the Python and managed checks and
+offline menu renders):
+- C2 room lobby: pilot cards, ready meter and bar, room column in the source order with selects and Advanced
+  Options, Siren face, source panel shell (`ea8981b`, `5c75ed4`, `77e320d`).
+- C4 class row and weapon cards in Play vs Bots, Test Boss, the lobby and Customize (`81939f9`).
+- C5 PvE results member cards and the match-end panel (`87f093d`, `6ece053`).
+- C15/C21 account screen, toasts, M mute key, Test Sound, display names, colour presets (`469db9a`, `c67273f`).
+- C7 combat numbers for every pilot (`2517303`); C22 source camera shake (`b75d3c4`).
+- C20 lobby connection pill (`4207641`); the "· N MS" reading and the Connection report wait on A27.
+- C24 ANIMATIONS.md corrected (`3da391d`); the note on issue #60 is not posted yet.
+- Kit: deferred kit drawing in scrolled bodies (`662c9d3`), translucent borders as rings (`77e320d`).
+
+In progress: C6 blasts (`claude/wip-c6`, under review); C7 status/team visuals and first-person sway; C17 gore and
+beacons. C9 telegraphs and C10 projectiles follow C6 (they share its voxel pools); C11 and C12 have specs. C1 and C3
+wait on PR #65 (room options, invite URL, LAN addresses).
+
+
 ### Blockers
 
 - **C1** P1/S different (visual half of the join flow): the host lobby should show the LAN address and room code, the lobby needs a Copy Invite Link button and invite field, and the Join field should accept 'CA-ABCD-2345 or room invite link' (source client/main.ts:155-156), once A8 exposes them. Unity currently offers only Copy Code (Runtime/NativeNetwork.cs:153-154). New.
