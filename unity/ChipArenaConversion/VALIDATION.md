@@ -28,6 +28,13 @@ Remaining: activated Unity import/Editor gates, genuine Mono token verification,
 - **Not run:** Unity import and compile of `NativeBlast.shader`, rendering on a GPU, the blasts in a hosted or joined match, frame-time cost on the owner's PC.
 - Review fixes (`claude/wip-c6-fixes`): the BlastChecks frame rules cover the frame step (capped at 0.05 s, zero only while paused), the pools staying small with the match running, the collapse of Blink Strike, ball-lightning and armed-rocket duplicates, and the Siren sites and halo cue. The checks above pass again. **Not run:** a Siren match, a 144 Hz guest or an online menu pause in the player.
 
+## First-person view layer (2026-10-08, `claude/wip-c7-fp-sway`)
+
+- `tools/export_first_person.mjs` runs the pinned source `poseFirstPersonView` (blob-checked against the inventory) and writes `Tests/first-person-sway-parity.json`: 8 timelines, 2,567 frames at 30/60/90/144/240 Hz with respawn-sized gaps, a rewind, a pause and a pilot change.
+- `Tests/FirstPersonSwayChecks.cs` reproduces every frame with `Core/NativeViewSway.cs` (worst 0.006 mm / 0.00003 rad): look sway, stride bob, landing kick, recoil, reload dip, run-low, rocket/mark kicks and the ADS blend. It also checks the Unity root mapping against the source Euler root, the camera look, the pilot-view inputs, and the four staff schools (idle/primary/guard/Q/E) under the layer: 0 crosshair intersections.
+- Guest path (review fix, rebased onto `a0ca6b9`): held presentation frames are no-ops that pass their turn and landing on to the next step (60 frames). A modelled guest on the replica `NativeSnapshotClock` (20 Hz host frames, 30 ms jitter) matches the host at 60/144/240 Hz: 12.0 mm look sway, the host's bob step and no held frames. With a 250 ms frame stall and a 5 % slow host clock (200 held frames), look sway stays at 12.0-12.1 mm.
+- **Not run:** Unity rendering and the feel in play (host and guest).
+
 ## Melee runtime, presentation polish and updater integration (2026-10-08, `claude/sleepy-ritchie-g8ruhv`)
 
 Run in the Linux authoring workspace on the combined tree (updater merge `d185be4` and later):
