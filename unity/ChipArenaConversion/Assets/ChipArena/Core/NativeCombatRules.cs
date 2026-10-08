@@ -3,8 +3,8 @@ namespace ChipArena.UnityConversion
 {
     public static class NativeCombatRules
     {
-        public static bool Enemy(NativeSeat a,NativeSeat b,bool teams)=>a!=null&&b!=null&&a.id!=b.id&&(!teams||a.team!=b.team);
-        public static bool CanHit(NativeSeat a,NativeSeat b,bool teams,bool friendlyFire)=>a!=null&&b!=null&&a.id!=b.id&&(friendlyFire||!teams||a.team!=b.team);
+        public static bool Enemy(NativeSeat a,NativeSeat b,bool teams)=>a!=null&&b!=null&&a.connected&&b.connected&&a.id!=b.id&&(!teams||a.team!=b.team);
+        public static bool CanHit(NativeSeat a,NativeSeat b,bool teams,bool friendlyFire)=>a!=null&&b!=null&&a.connected&&b.connected&&a.id!=b.id&&(friendlyFire||!teams||a.team!=b.team);
         public static bool Headshot(V3 position,float yaw,V3 origin,V3 velocity,float radius,bool down)
         {
             if(down||velocity.Length<.00001f)return false;var direction=velocity.Normalized;var center=position+new V3(0,.64f,0);float along=V3.Dot(center-origin,direction);if(along<0)return false;

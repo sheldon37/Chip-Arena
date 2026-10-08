@@ -2,6 +2,26 @@
 
 No native Unity playtest or Windows executable build was run in the authoring workspace.
 
+## Logic parity PR #65 (2026-10-08)
+
+Branch `codex/unity-parity-logic` into `claude/sleepy-ritchie-g8ruhv`; code `718cd4f` and `d80d974` with Claude UI through `4207641`. Current status takes precedence over historical entries below.
+
+Actual checks in this session:
+
+- Runtime C# 9 compilation against genuine Unity **6000.3.24f1** API DLLs: pass. Roslyn suppresses existing deprecated-API/unused-field warnings (`0618`, `0649`); other warnings are errors. No UnityEditor assembly or activated Editor was available for this checkpoint.
+- CoreTests: **100 PASS lines**, including managed P-256 known/independently signed vectors, 30/60/144 Hz snapshot clocks, prediction acknowledgement/replay, event/frame order budgets, real UDP discovery/TCP, paused Unity synchronization-context transport, options/AI, save recovery, pending profile choices, rematch/retry votes, round ledger, process lifetime lock and connection metrics.
+- `tools/check_relay.py`: pass with the compiled Relay/CoreTests assemblies, including real WebSocket rooms, isolation, private discovery and ordered 130 KB snapshots.
+- `python -m unittest discover -s Tests -p 'test_*.py'`: **24 pass**.
+- UpdaterTests: **51 pass** (transaction recovery, rollback, archive/path defenses). This does not test a live feed or Unity-to-Unity update.
+- Direct SDK `dotnet run` is unavailable in this container because MSBuild process discovery fails; the exact source sets were compiled with the SDK's Roslyn driver and run with its .NET 8 host. The normal GitHub CI remains the project-file build check.
+- `tools/package_source.py`: pass, **670 source files**, ZIP generated.
+- GitHub CI **37808988291** on `d80d974`: native-source and native-updater-windows both pass. This includes standard project-file builds, shipping launcher compilation and real Windows process fixtures. The final source also includes intro-order and 12-second disconnect-grace regressions.
+- `cmd.exe /c Build-Windows.cmd`: **could not start, exit 127: cmd.exe not found**. No Windows/Unity executable was built and `UNITY_TEST_BUILD_READY` was not emitted.
+
+Added real-Unity regressions: `NativeNetworkBuildChecks` and `NativeArena.ValidateParityCombat/ValidateFollowupParity`. They exercise JsonUtility optional nested fields and saved pose, replica transforms/isolated scenes, replay snapshots, loadout payloads, frame budgets, authority aim, block/roll/reload semantics, direct-hit classification, summon attachment, projectile ceilings, corpse revives/cleanup, private notices, entry scheduling and disconnect colliders. These tests are **not claimed executed**; the Windows build gate invokes them.
+
+Remaining: activated Unity import/Editor gates, genuine Mono token verification, headless Unity, 30/60/144 FPS two-client play and four-player Ward Zero load, LAN discovery across machines, account login/grant refresh, fullscreen/duplicate-launch, launcher startup/rollback and four-resolution presentation acceptance. Owner decisions remain for endpoints/hosting, cutover, specialization, intro length, dedicated topology and publication. See `docs/UNITY-LOGIC-HANDOFF.md`.
+
 ## Melee runtime, presentation polish and updater integration (2026-10-08, `claude/sleepy-ritchie-g8ruhv`)
 
 Run in the Linux authoring workspace on the combined tree (updater merge `d185be4` and later):
@@ -167,7 +187,7 @@ The existing native clip-binding, shader, audio import, icon and Windows package
 - Combat glow Full/Low/Off and saved setting, nearby-wall light spill, surface marks following moving cover, sustained gunfire/spell bursts, destroyed-cover cleanup and round resets. Judge actual brightness, transparency and frame time on the target GPU.
 - All eleven ability handlers: cancellation/cost/cooldown, target previews, close-cover collision, bounce/reflection, pierce, blink clearance, tracking, timed fields and status/proc interactions.
 - Primary weapon/roll/block contacts and frame timing, status effects, hazards, complete rounds/sets/draft/rematch.
-- Windows EXE launch/icon and isolated preferences. New multiplayer is not implemented yet; old TCP tests are not a substitute.
+- Windows EXE launch/icon and isolated preferences. Native multiplayer is now implemented and has managed transport regressions; its Unity/Windows host-and-guest acceptance is still required.
 - Full mechanic, presentation, online, account and save compatibility; all pending rows in CONVERSION-STATUS.md.
 
 No production update, live endpoint, save migration or automatic release was performed.

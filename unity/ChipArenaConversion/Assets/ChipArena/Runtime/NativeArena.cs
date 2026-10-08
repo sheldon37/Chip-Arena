@@ -89,13 +89,13 @@ namespace ChipArena.UnityConversion
                 p.Pose.Id=seat.id;p.Pose.Bot=seat.bot;p.Pose.Weapon=seat.spec=="pistol"?WeaponId.Pistol:seat.spec=="rifle"?WeaponId.Rifle:seat.spec=="machinegun"?WeaponId.MachineGun:WeaponId.Sword;
                 p.Pose.VisualSet=seat.spec=="daggers"?1:seat.spec=="greatsword"?2:seat.spec=="shield"?3:0;
                 p.Pose.MagicVisual=seat.spec=="fire"?1:seat.spec=="water"?2:seat.spec=="lightning"?3:seat.spec=="darkness"?4:0;
-                p.ECharges=NativeAbilityRules.Charges(stats);obj.AddComponent<NativePilotBody>().Pilot=p;Pilots.Add(p);
+                p.ECharges=NativeAbilityRules.Charges(stats);obj.AddComponent<NativePilotBody>().Pilot=p;Pilots.Add(p);if(!seat.connected){p.Hp=0;seat.alive=false;capsule.enabled=false;body.isKinematic=true;}
             return p;
         }
         public NativePilot Local=>Pilots.Find(p=>p.Seat.id==LocalId);
         public void Step(InputFrame input)
         {
-            if(PveHoldTick(1f/60))return;SandboxStep();Match.Tick(1d/60);if(Pve==null&&Match.Phase==NativePhase.Intro&&Match.IntroStyle=="dev-siren"&&BossSongAt<0)BossSongAt=(float)Match.IntroStarted;if(Pve!=null&&!Pve.Started&&Match.Phase==NativePhase.Fight)StartPve();StepHazards();StepSirenStage();if(Match.Phase!=NativePhase.Fight){foreach(var p in Pilots)if(p.Body!=null&&!p.Body.isKinematic)p.Body.linearVelocity=Vector3.zero;return;}
+            if(PveHoldTick(1f/60))return;foreach(var p in Pilots)if(!p.Seat.connected&&p.Seat.disconnectedAt>=0&&Time-p.Seat.disconnectedAt>=12){p.Hp=0;p.Seat.alive=false;}SandboxStep();Match.Tick(1d/60);if(Pve==null&&Match.Phase==NativePhase.Intro&&Match.IntroStyle=="dev-siren"&&BossSongAt<0)BossSongAt=(float)Match.IntroStarted;if(Pve!=null&&!Pve.Started&&Match.Phase==NativePhase.Fight)StartPve();StepHazards();StepSirenStage();if(Match.Phase!=NativePhase.Fight){foreach(var p in Pilots)if(p.Body!=null&&!p.Body.isKinematic)p.Body.linearVelocity=Vector3.zero;return;}
             Events.RemoveAll(e=>Time-e.Time>1); // Preserve the full burst for its natural glow lifetime.
             // Establish every defense before resolving attacks.
             foreach(var p in Pilots)
