@@ -14,6 +14,7 @@ namespace ChipArena.UnityConversion
             Updater.Initialize(()=>menu&&!Online&&(arena==null||match.Phase==NativePhase.Match),Save);
         }
         private const float UpdateCardWidth=340;private float updateCardAt=-1,updateCardSeen=-1;
+        private static string UpdateChip(NativeUpdater u)=>NotPublished(u)?"NOT PUBLISHED":UpdateChip(u.State,u.Progress);
         private static string UpdateChip(NativeUpdateState s,float progress)=>s==NativeUpdateState.Available?"UPDATE READY":s==NativeUpdateState.Downloading?"DOWNLOADING "+Mathf.RoundToInt(progress*100)+"%":s==NativeUpdateState.Checking?"CHECKING":s==NativeUpdateState.Verifying?"VERIFYING":s==NativeUpdateState.Preparing?"PREPARING":s==NativeUpdateState.Restarting?"RESTARTING":s==NativeUpdateState.Current?"UP TO DATE":s==NativeUpdateState.Error?"ERROR":s==NativeUpdateState.Unavailable?"UNAVAILABLE":"IDLE";
         private static Color UpdateTone(NativeUpdateState s)=>s==NativeUpdateState.Available?U.Hex(0xff6b35):s==NativeUpdateState.Current?U.Hex(0x59dd83):s==NativeUpdateState.Error?U.Hex(0xff535f):s==NativeUpdateState.Unavailable||s==NativeUpdateState.Idle?U.Hex(0xa6a7ad):U.Hex(0xffb15c);
         // The update card, opened by the home screen's Update Game pill and hanging beneath it from (right, top) (the
@@ -31,7 +32,7 @@ namespace ChipArena.UnityConversion
             var r=new Rect(right-w,top-8*(1-enter),w,h);updateCard=r;U.Panel(r,enter);float y=r.y+pad,x=r.x+pad,iw=w-2*pad;
             // Eyebrow and the state chip.
             U.Text(new Rect(x,y,iw,16),"UNITY UPDATES",11,U.Hex(0xa6a7ad,enter),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.2f);
-            string chip=UpdateChip(state,u.Progress);Color tone=UpdateTone(state);float cw=U.Measure(chip,10,true,true,.12f).x+18;var cr=new Rect(r.xMax-pad-cw,y-2,cw,20);
+            string chip=UpdateChip(u);Color tone=UpdateTone(state);float cw=U.Measure(chip,10,true,true,.12f).x+18;var cr=new Rect(r.xMax-pad-cw,y-2,cw,20);
             U.Pill(cr,U.A(tone,.14f*enter),U.A(tone,.55f*enter));U.Text(cr,chip,10,U.A(tone,enter),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.12f);
             if(state==NativeUpdateState.Checking){float a=Time.unscaledTime*6;for(int i=0;i<6;i++){float t=a-i*.5f;var d=new Rect(cr.x-16+5*Mathf.Cos(t),cr.center.y-1.5f+5*Mathf.Sin(t),3,3);U.Round(d,U.A(tone,enter*(1-i/6f)),2);}}
             y+=16+12;

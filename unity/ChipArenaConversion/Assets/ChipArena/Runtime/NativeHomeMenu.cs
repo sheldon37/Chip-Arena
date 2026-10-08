@@ -131,9 +131,13 @@ namespace ChipArena.UnityConversion
                 case NativeUpdateState.Preparing:return "Preparing update…";
                 case NativeUpdateState.Restarting:return "Restarting…";
                 case NativeUpdateState.Error:return "Update check failed";
-                default:return "Update check unavailable";
+                // Idle covers three different outcomes; say which (the card shows the full status text).
+                case NativeUpdateState.Idle:return NotPublished(u)?"No update published yet":(u.Status??"").IndexOf("cancel",StringComparison.OrdinalIgnoreCase)>=0?"Update cancelled":"Not checked yet";
+                default:return "Updater off · open for details";
             }
         }
+        // NativeUpdater reports a missing feed (HTTP 404 on latest.json) as Idle with this status.
+        private static bool NotPublished(NativeUpdater u)=>u.State==NativeUpdateState.Idle&&(u.Status??"").StartsWith("No Unity update",StringComparison.Ordinal);
         // .update-pill + .update-alert. The source opens the desktop updater window; here the pill opens the update card
         // (UpdatePanel) beneath it, which stays open on its own while a download is verified, prepared and installed.
         private void UpdateControl(float right,float top)
@@ -146,7 +150,9 @@ namespace ChipArena.UnityConversion
             if(h>0)U.Capsule(new Rect(r.x+1,r.y+1,r.width-2,r.height-2),new[]{0f},new[]{U.Hex(0x393039)},default,h);
             U.Fill(new Rect(r.x+19,r.y+1,r.width-38,1),new Color(1,1,1,.05f));
             NativeIcons.Draw(new Rect(r.x+17,r.center.y-7.5f,15,15),"download",U.Hex(0xefb587));U.Text(new Rect(r.x+17+15+8,r.y,r.width,r.height),label,12,U.Hex(0xf4e6dc),TextAnchor.MiddleLeft,bold:true);
-            if(U.Button(r)&&!MenuBlocked()){updateOpen=!updateOpen;Click();}
+            // Opening the card also checks again (the automatic check runs once per launch), unless one is running,
+            // an update is already waiting or the updater is off.
+            if(U.Button(r)&&!MenuBlocked()){updateOpen=!updateOpen;Click();var st=u.State;if(updateOpen&&!u.Busy&&(st==NativeUpdateState.Idle||st==NativeUpdateState.Current||st==NativeUpdateState.Error))u.CheckForUpdates();}
             string text=UpdateBadge(u,out var color,out bool pulse);float a=pulse?M.Keys(Mathf.Repeat(Time.unscaledTime/1.7f,1),new[]{0f,.5f,1f},new[]{1f,.4f,1f},M.EaseInOut):1;
             float bw=U.Measure(text,12,pulse).x+16;var b=new Rect(r.center.x-bw/2,r.yMax+7,bw,20);
             if(b.xMax>right){b.x=right-bw;}U.Round(b,U.Hex(0x101114,.8f),6);U.Text(b,text,12,U.A(color,a),TextAnchor.MiddleCenter,bold:pulse,glow:pulse?U.Hex(0xffac68,.25f*a):default);
