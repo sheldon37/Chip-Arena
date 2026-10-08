@@ -139,7 +139,7 @@ wait on PR #65 (room options, invite URL, LAN addresses).
    - No burn, poison, slow, shackle or mark visuals.
    - No team bands.
    - Combat numbers show only your own hits.
-   - First person has no sway, bob or recoil.
+   - First person has no sway, bob or recoil. Implemented on `claude/wip-c7-fp-sway` (the first-person-view.ts view layer); not playtested.
 Tracked #30/#62/#63/#122/#94 (also #29, #23/#24).
 - **C8** P2/M partial: audio.
    - Stereo panning is reversed (#31).

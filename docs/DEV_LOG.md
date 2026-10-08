@@ -16,6 +16,14 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-08 — Claude — C7 first-person sway, bob and recoil (implemented on branch)
+- Branch `claude/wip-c7-fp-sway` from `3da391d` (`claude/sleepy-ritchie-g8ruhv` before the lobby-pill commit). It finishes the uncommitted partial work left in the `claude/wip-c7-fp` worktree, which this session could not commit to. No PR yet.
+- Ported the view layer of `client/first-person-view.ts:48-73` to `Core/NativeViewSway.cs` (pure, no UnityEngine). It covers look-sway springs from aim rate (ω 14, ζ .8; ±.03/±.025 m, ±.05 rad roll), stride bob from the first-person rig's gait (`motion-quality.ts` locomotion: blend 13/s, cycle length, 3.7 Hz cap, planted actions), the landing kick (fall speed/9 × .9 into ω 16, ζ .55, × .05 m) and gun recoil (exp(-20·age); rifle 14/s and × 1.4, MG × .6; ADS kick profile). It also covers the reload dip/roll, run-low carry, rocket kick, mark flick and ADS damping to 30 %, with the source clock (.05 clamp, fresh after .35 s or a rewind).
+- `Runtime/NativeViewSwayPresentation.cs` applies the layer to the view root after the existing ADS sight alignment, so the sight is measured on the steady pose as in the source. The only edit to an existing runtime file is one hook line in `NativeViewPresentation.RenderFirstPerson`. Inputs are the presented pilot (host state, or the replicated snapshot on a guest) and the local camera look; it runs on the presentation clock and allocates nothing per frame.
+- Unchanged: simulation, hit timing, hitboxes, damage, cooldowns, movement, muzzle/aim rays, the network protocol and the third-person view. Reduced effects does not gate the layer; the source does not gate it either.
+- Checks: `tools/export_first_person.mjs` runs the pinned source poseFirstPersonView on 8 scripted timelines (30-240 Hz, gaps, rewind, pause, pilot change). The managed check reproduces all 2,567 frames: worst 0.006 mm / 0.00003 rad. It also checks the Unity frame mapping (400 poses), camera look, input mapping, and 4,820 staff view models under a 9 rad/s flick with sprint bob, landing and Q/E (0 crosshair intersections; 0 of 2,976 at the clamp envelope). The existing first-person checks still pass. Real-Unity compile, `check_relay.py`, unittest and `package_source.py` pass. No Unity playtest was run.
+- Risks/next: on guests, recoil and the landing kick start one host frame late (20 Hz snapshots, as the source's authoritative snapshot). Not changed: Unity still places fighters (ansatsuken/emperor) and Leet at the melee view offset, while the source uses (0, -.48, -.2) and the staff offset. Next: an owner playtest of the first-person feel at 60 and 144 Hz, hip-fire and ADS.
+
 
 
 
