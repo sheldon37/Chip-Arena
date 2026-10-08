@@ -58,8 +58,10 @@ namespace ChipArena.UnityConversion
 
         public void Initialize(bool buildArena=true)
         {
+            // Unity native allocations must run after AddComponent, never in field initializers.
+            pitProperties=new MaterialPropertyBlock();
             GameObject sample = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            cube = sample.GetComponent<MeshFilter>().sharedMesh; Destroy(sample);
+            cube = sample.GetComponent<MeshFilter>().sharedMesh; CapturedAnimation.Release(sample);
             Color[] colors = { new Color(.17f,.85f,.83f), new Color(.45f,.58f,1), new Color(.92f,.30f,.38f), new Color(.08f,.11f,.17f), new Color(.87f,.95f,1), new Color(.43f,.51f,.56f), new Color(1,.75f,.3f), new Color(1,.32f,.08f), new Color(.15f,.8f,1), new Color(.72f,.76f,1), new Color(.65f,.25f,.9f), new Color(1,.95f,.72f) };
             Shader shader = Resources.Load<Shader>(buildArena?"PrototypeLit":"NativeLit");
             if (shader == null) throw new System.InvalidOperationException("PrototypeLit shader is missing");
@@ -295,9 +297,9 @@ namespace ChipArena.UnityConversion
         private void OnDestroy()
         {
             ClearSourceActors();sourceModels?.Dispose();combatGlow?.Dispose();viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
-            foreach(var m in materials) Destroy(m);
-            foreach(var m in compatibilityMaterials) Destroy(m);
-            if(particleMaterial!=null) Destroy(particleMaterial);
+            foreach(var m in materials) CapturedAnimation.Release(m);
+            foreach(var m in compatibilityMaterials) CapturedAnimation.Release(m);
+            if(particleMaterial!=null) CapturedAnimation.Release(particleMaterial);
         }
     }
 }

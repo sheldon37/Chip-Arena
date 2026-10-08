@@ -40,6 +40,9 @@ namespace ChipArena.UnityConversion
                 Near(NativeAbilityRules.CastTime(d.windup,s),f.windup,"Ability windup");Near(NativeAbilityRules.Cooldown(d,s),f.cooldown,"Ability cooldown");
                 Near(NativeAbilityRules.Cost(d,s),f.cost,"Ability cost");Near(NativeAbilityRules.Radius(d,s),f.radius,"Ability radius");
                 Near(NativeAbilityRules.Scale(s,true),f.scale,"Ability power");Near(NativeAbilityRules.Scale(s,true,true),f.echo,"Ability echo scale");Check(NativeAbilityRules.Charges(s)==f.charges,"Ability charge cap");
+                float cost=NativeAbilityRules.Cost(d,s);
+                Check(NativeAbilityRules.Decide(true,true,false,cost,cost,0,false)==NativeAbilityRules.Press.Cast,"Exact-cost mana must allow "+d.id);
+                Check(NativeAbilityRules.Decide(true,true,false,0,cost,0,false)==(f.cost==0?NativeAbilityRules.Press.Cast:NativeAbilityRules.Press.Refused),"Zero-mana gate differs from source cost: "+d.id);
             }
             results.Add(fixtures.rules.Length+" original-source ability rule cases: all eleven handlers and stat clamps");
             Check(NativeAbilityRules.Decide(true,true,false,16,16,0,false)==NativeAbilityRules.Press.Cast,"Exact mana must allow cast");

@@ -20,6 +20,19 @@ namespace ChipArena.UnityConversion
                 a.Input=new InputFrame{Yaw=0,AimTarget=Vec(b.Body.position),AbilityTarget=Vec(b.Body.position)};Physics.SyncTransforms();
             }
             NativeBullet Shot(string spec){Setup(spec);a.Input.Shoot=true;StepPilot(a);if(a.Weapon.@class=="magic"){Check(Bullets.Count==0&&a.CastAt>Time,"magic released before windup "+spec);a.Input.Shoot=false;Advance(a.CastAt-Time+.001f);StepPilot(a);}Check(Bullets.Count==1,"primary release "+spec);return Bullets[0];}
+            void CheckAbilityRelease(ContentAbility ability,float mana)
+            {
+                a.Mana=mana;float cost=NativeAbilityRules.Cost(ability,a.Stats);int charges=a.ECharges;
+                PressAbility(a,ability.slot);Check(a.AbilityCast?.Definition==ability,"ability start "+ability.id);
+                float release=a.AbilityCast.Release;
+                Check(a.Mana==mana&&a.QReady==0&&a.EReady==0&&a.ECharges==charges,"ability spent before release "+ability.id);
+                Advance(release-Time+.001f);StepAbilities(a);
+                Check(a.AbilityCast==null,"ability did not release "+ability.id);
+                Check(Math.Abs(a.Mana-(mana-cost))<.0003f,"mana after "+ability.id+": expected "+(mana-cost)+", got "+a.Mana);
+                float ready=ability.slot=="q"?a.QReady:a.EReady;
+                Check(Math.Abs(ready-(Time+NativeAbilityRules.Cooldown(ability,a.Stats)))<.0003f,"cooldown after "+ability.id);
+                Check(a.ECharges==charges-(ability.slot=="e"?1:0),"charges after "+ability.id);
+            }
             try
             {
                 foreach(string spec in new[]{"pistol","rifle","machinegun","fire","water","lightning","darkness"})
@@ -31,12 +44,20 @@ namespace ChipArena.UnityConversion
                 var reflected=Shot("pistol");b.BlockEnd=Time+1;b.Stats["reflectSpeed"]=10;b.Stats["reflectDamage"]=10;reflected.Position=b.Body.position;reflected.Velocity=Vector3.forward*240;float life=reflected.Life;StepBullets();Check(Bullets.Contains(reflected)&&reflected.Owner==b.Seat.id&&reflected.Velocity.z<0&&reflected.Damage<=100&&reflected.Velocity.magnitude<=120&&reflected.Life<life,"block reflection/limits");
                 foreach(var ability in Content.abilities.Where(d=>d.live&&d.kind!="ads"))
                 {
-                    var weapon=Content.weapons.FirstOrDefault(w=>Content.Ability(w.id,ability.slot)?.id==ability.id);if(weapon==null)throw new Exception("Unmapped live ability: "+ability.id);Setup(weapon.id);a.Mana=1000;float before=a.Mana;PressAbility(a,ability.slot);Check(a.AbilityCast?.Definition==ability,"ability start "+ability.id);float release=a.AbilityCast.Release;Check(a.Mana==before,"ability spent before release");Advance(release-Time+.001f);StepAbilities(a);Check(a.AbilityCast==null&&a.Mana<before&&(ability.slot=="q"?a.QReady>Time:a.ECharges==0),"release/cost/cooldown "+ability.id);
-                    Setup(weapon.id);a.Mana=0;PressAbility(a,ability.slot);Check(a.AbilityCast==null&&a.QReady==0&&a.EReady==0,"unfunded ability spent state "+ability.id);
+                    var weapon=Content.weapons.FirstOrDefault(w=>Content.Ability(w.id,ability.slot)?.id==ability.id);if(weapon==null)throw new Exception("Unmapped live ability: "+ability.id);
+                    Setup(weapon.id);CheckAbilityRelease(ability,(float)a.Stats["maxMana"]);
+                    Setup(weapon.id);
+                    // Gun E abilities cost no mana: they must still cast from an empty pool.
+                    if(NativeAbilityRules.Cost(ability,a.Stats)==0)CheckAbilityRelease(ability,0);
+                    else
+                    {
+                        a.Mana=0;PressAbility(a,ability.slot);
+                        Check(a.AbilityCast==null&&a.Mana==0&&a.QReady==0&&a.EReady==0&&a.ECharges==1,"unfunded ability spent state "+ability.id);
+                    }
                 }
                 Setup("pistol");a.Stats["extraProjectiles"]=3;a.Stats["split"]=2;Fire(a);Check(Bullets.Count==4,"multishot volley");var parent=Bullets[0];SplitBullet(a,parent,b.Body.position,b.Collider.GetInstanceID());Check(Bullets.Count==8&&Bullets.Skip(4).All(x=>!x.Direct&&x.EffectsUsed&&x.Life<=1.2f&&x.Hit.Contains(b.Collider.GetInstanceID())),"split recursion/ledger");
                 Setup("pistol");b.Hp=1;b.Grounded=true;Damage(b,a,100,Vector3.forward,0,true,primary:false,impact:NativeBodyDamage.Projectile("rifle",140,.045f),hitPoint:b.Body.position+Vector3.up*.6f);Check(b.Death?.kneel==true&&b.StunEnd>Time,"fatal projectile stagger suppressed headshot collapse");Setup("pistol");b.Hp=1;b.Grounded=false;Damage(b,a,100,Vector3.forward,0,true,primary:false,impact:NativeBodyDamage.Projectile("rifle",140,.045f),hitPoint:b.Body.position+Vector3.up*.6f);Check(b.Death!=null&&!b.Death.kneel,"airborne collapse selected");
-                Debug.Log("PASS native gun/magic primaries, release resources, swept capsule/cover, reload, reflection bounds, all live Q/E release gates, multishot/split ledger and headshot choreography selection");
+                Debug.Log("PASS native gun/magic primaries, release resources, swept capsule/cover, reload, reflection bounds, all live Q/E exact costs/cooldowns/charges, free casts at zero mana, paid cast refusal, multishot/split ledger and headshot choreography selection");
             }
             finally{CapturedAnimation.Release(wall);Bullets.Clear();AbilityShots.Clear();AbilityZones.Clear();AbilityEffects.Clear();}
         }
