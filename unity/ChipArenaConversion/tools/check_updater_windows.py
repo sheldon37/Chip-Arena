@@ -4,11 +4,13 @@ import json
 import os
 from pathlib import Path
 import shutil
+import struct
 import subprocess
 import tempfile
 import time
 import uuid
 import zipfile
+import zlib
 
 PROJECT = Path(__file__).resolve().parents[1]
 EXE = 'ChipArena-Native-Conversion-TEST.exe'
@@ -30,6 +32,14 @@ def identity(char, revision):
     return dict(schema=1, product='chip-arena-unity', channel='native-test', platform='windows-x64', version=char * 64, revision=revision, bootstrap=1)
 
 
+def fixture_icon(path):
+    def chunk(name, data):
+        return struct.pack('>I', len(data)) + name + data + struct.pack('>I', zlib.crc32(name + data))
+    png = b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', 256, 256, 8, 6, 0, 0, 0))
+    png += chunk(b'IDAT', zlib.compress((b'\0' + bytes([30, 180, 90, 255]) * 256) * 256)) + chunk(b'IEND', b'')
+    path.write_bytes(struct.pack('<HHHBBBBHHII', 0, 1, 1, 0, 0, 0, 0, 1, 32, len(png), 22) + png)
+
+
 def run():
     if os.name != 'nt':
         raise SystemExit('This integration gate requires Windows.')
@@ -38,10 +48,32 @@ def run():
     common = [str(PROJECT / 'Assets/ChipArena/Core/NativeUpdateRules.cs'), str(PROJECT / 'Updater/UpdateStorage.cs')]
     with tempfile.TemporaryDirectory(prefix='chip updater spaces ') as temporary:
         base = Path(temporary)
-        launcher = base / 'launcher.exe'
+        source = base / 'Unity project with spaces'
+        for relative in ['Updater/Launcher.cs', 'Updater/UpdateStorage.cs', 'Updater/UpdateInstaller.cs',
+                         'Updater/Launcher.exe.config', 'Assets/ChipArena/Core/NativeUpdateRules.cs']:
+            target = source / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(PROJECT / relative, target)
+        icon = base / 'launcher icon.ico'
+        fixture_icon(icon)
+        driver = base / 'compiler driver.exe'
+        subprocess.run([str(compiler), '/nologo', '/warnaserror+', '/target:exe', '/out:' + str(driver), *refs,
+                        str(PROJECT / 'Assets/ChipArena/Core/NativeUpdateRules.cs'),
+                        str(PROJECT / 'Assets/ChipArena/Editor/NativeLauncherCompiler.cs'),
+                        str(PROJECT / 'Updater/LauncherBuildFixture.cs')], check=True)
+        destination = base / 'packaged Windows'
+        # Unity supplies slash-separated paths; exercise mixed separators, spaces, response file and icon.
+        subprocess.run([str(driver), source.as_posix() + '\\.', destination.as_posix(), icon.as_posix()], cwd=base, check=True)
+        launcher = destination / EXE
+        assert launcher.is_file() and (destination / (EXE + '.config')).is_file()
+        print('PASS Windows packaging: exact Editor compiler step with mixed separators, spaces and icon')
+        missing = source / 'Updater/UpdateInstaller.cs'
+        missing.unlink()
+        rejected = subprocess.run([str(driver), str(source), str(base / 'incomplete output'), str(icon)], capture_output=True, text=True)
+        assert rejected.returncode != 0 and 'Native launcher source is missing' in (rejected.stdout + rejected.stderr)
+        assert not (base / 'incomplete output' / EXE).exists()
+        print('PASS Windows packaging: missing source rejected before compiler invocation')
         fixture = base / 'fixture.exe'
-        subprocess.run([str(compiler), '/nologo', '/warnaserror+', '/target:winexe', '/out:' + str(launcher), *refs, *common,
-                        str(PROJECT / 'Updater/UpdateInstaller.cs'), str(PROJECT / 'Updater/Launcher.cs')], check=True)
         subprocess.run([str(compiler), '/nologo', '/warnaserror+', '/target:exe', '/out:' + str(fixture), *refs, *common,
                         str(PROJECT / 'Updater/WindowsFixture.cs')], check=True)
         for fails in (False, True):

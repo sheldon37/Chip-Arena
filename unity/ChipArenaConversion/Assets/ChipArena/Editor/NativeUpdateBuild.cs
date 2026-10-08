@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -14,6 +13,7 @@ namespace ChipArena.UnityConversion.Editor
     {
         public static string PlayerFolder(string root)
         {
+            NativeLauncherCompiler.ValidateProject(root);
             string folder=Path.Combine(root,"Builds","Windows","app");
             if(Directory.Exists(folder))
             {
@@ -72,9 +72,6 @@ namespace ChipArena.UnityConversion.Editor
         }
         private static void CompileLauncher(string project,string destination)
         {
-            string windows=Environment.GetFolderPath(Environment.SpecialFolder.Windows);
-            string compiler=new[]{"Framework64","Framework"}.Select(p=>Path.Combine(windows,"Microsoft.NET",p,"v4.0.30319","csc.exe")).FirstOrDefault(File.Exists);
-            if(compiler==null)throw new IOException("The native launcher requires the Windows .NET Framework 4.8 compiler. Build on Windows with .NET Framework 4.8 installed.");
             string icon=Path.Combine(project,"Builds","native-launcher.ico");byte[] png;
             var source=new Texture2D(2,2,TextureFormat.RGBA32,false);var sized=new Texture2D(256,256,TextureFormat.RGBA32,false);
             try
@@ -87,12 +84,7 @@ namespace ChipArena.UnityConversion.Editor
             finally{UnityEngine.Object.DestroyImmediate(source);UnityEngine.Object.DestroyImmediate(sized);}
             using(var output=new BinaryWriter(File.Create(icon)))
             {output.Write((ushort)0);output.Write((ushort)1);output.Write((ushort)1);output.Write((byte)0);output.Write((byte)0);output.Write((byte)0);output.Write((byte)0);output.Write((ushort)1);output.Write((ushort)32);output.Write(png.Length);output.Write(22);output.Write(png);}
-            string exe=Path.Combine(destination,NativeUpdateRules.Executable);
-            string args="/nologo /warnaserror+ /target:winexe /optimize+ /r:System.Runtime.Serialization.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll /r:System.Windows.Forms.dll /out:"+NativeUpdateRules.QuoteArgument(exe)+" /win32icon:"+NativeUpdateRules.QuoteArgument(icon);
-            foreach(string path in new[]{"Updater/Launcher.cs","Updater/UpdateStorage.cs","Updater/UpdateInstaller.cs","Assets/ChipArena/Core/NativeUpdateRules.cs"})args+=" "+NativeUpdateRules.QuoteArgument(Path.Combine(project,path));
-            using(var process=Process.Start(new ProcessStartInfo{FileName=compiler,Arguments=args,UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true}))
-            {string output=process.StandardOutput.ReadToEnd();process.WaitForExit();if(process.ExitCode!=0||!File.Exists(exe))throw new IOException("Native launcher compilation failed: "+output);}
-            File.Copy(Path.Combine(project,"Updater","Launcher.exe.config"),exe+".config",true);
+            NativeLauncherCompiler.Compile(project,destination,icon);
         }
         public static void SeedZip(string install,string zip)
         {
