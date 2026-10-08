@@ -165,3 +165,5 @@ the update card opens from the home Update Game pill. Offline renders of the rea
 a Unity playtest of every screen (including a two-player room) is the next step.
 Owner direction (2026-10-08): all future game changes target the Unity Chip Arena; Astra
 handles logic and programming, Claude handles visuals (AGENTS.md).
+Remaining Unity-vs-Electron gaps, split by owner, are in `docs/UNITY-PARITY-GAPS.md` (online play,
+sign-in, hosting, killcam and combat rules are the blockers).

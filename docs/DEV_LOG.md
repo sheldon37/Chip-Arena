@@ -21,6 +21,13 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-08 — Claude — Unity vs Electron parity gap list (handoff)
+- Branch `claude/sleepy-ritchie-g8ruhv` (PR #62), audited at `eb8f7f7` against the original `05950ea`. Docs only; no code changed.
+- Added `docs/UNITY-PARITY-GAPS.md`: a read-only code audit of screens, gameplay, networking, presentation and trackers, with each P1 re-checked by a refuting reviewer. Items are split by the role split: A1–A31 for Astra (logic) and C1–C24 for Claude (visuals), plus 12 owner decisions and a not-verified list.
+- Main result: content is at parity in code, but real sessions are blocked. Guests drop on the first match frame (A1, #1/#3), with transport/frozen-view/frame-size defects behind it (A2–A4). Sign-in fails under Mono ECDsa (A6). No zero-setup online hosting or code/invite join (A7/A8). The killcam throws outside PvE (A5). Combat rules and bot AI differ (A10/A11). None of the 17 critical/high findings in #60 is fixed in code.
+- Checks: none run; nothing was built or played in Unity. I spot-checked the cited code for A5 (JsonUtility round trip), A10 (0.25 s stun), A14 (intros forced on), A15 (fixed draft seed 12345) and A16 (Enemy predicate).
+- Next: Astra starts at A1/A5 (shared JsonUtility root), then A2–A4 and A6. Claude's independent items: C2, C4–C6 (existing blast events), C9–C12. Owner: the hosting and endpoint decisions (decisions 1–2) gate A7/A8/C1.
+
 ## 2026-10-08 — Claude — native main menu rebuilt from the source home screen
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62, draft, base `codex/unity-updater`), on top of the entry below. Commits `de94ebe` (icon set + rasteriser), `4fbd54c` (menu), then the review-fix commit that adds this entry. Owner request: restore the normal menu UI, made more appealing.
 - Home screen (`NativeHomeMenu.cs`) follows the live source rules (main.ts drawMenu; style.css/lobby.css/pve.css after all override layers): brandmark + PROTOTYPE, eyebrow, CHIP / ARENA. (clamp 68–104 px), tagline, Play vs Bots / Create Room / Join Room, flex-sized Customize / Settings / account / DEV Menu tiles, Developer Sandbox · Catalogue · Quit links, the Boss Test pill with the source skull, footer, entrance stagger. Extras: per-letter title entrance and light sweep, voxel motes, primary sheen, keys 1–4. Fits short canvases (large interface scale).
