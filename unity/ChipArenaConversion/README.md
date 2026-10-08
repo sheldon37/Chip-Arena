@@ -4,6 +4,10 @@ This separate Unity/C# project contains the native conversion candidate. The ori
 
 ## Open or build
 
+This package includes the October 7 Windows build repairs for procedural texture
+mip upload and the account component's invalid `Start(...)` callback. Use the
+whole project in a new folder; the repaired native build still needs to run.
+
 1. Extract the whole source archive into a new folder and add `ChipArenaConversion` in Unity Hub.
 2. Open with Unity **6000.3.24f1**, choose **Chip Arena → Open test arena**, then Play.
 3. For Windows, close this project in the Editor and run **Build-Windows.cmd**.

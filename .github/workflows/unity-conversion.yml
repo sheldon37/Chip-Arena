@@ -1,7 +1,7 @@
 name: Native Unity conversion source checks
 on:
   push:
-    branches: [codex/unity-conversion]
+    branches: [codex/unity-conversion, codex/unity-build-fix]
     paths: ['unity/ChipArenaConversion/**', '.github/workflows/unity-conversion.yml']
   workflow_dispatch:
 permissions:

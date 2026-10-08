@@ -29,11 +29,11 @@ namespace ChipArena.UnityConversion
         }
         private static bool ValidSession(string value)=>value!=null&&System.Text.RegularExpressions.Regex.IsMatch(value,"^[A-Za-z0-9_-]{43}$");
         public void Login(string action,string username,string password,string recovery,bool save)
-        {if(action!="login"&&action!="register"&&action!="recover")throw new ArgumentException(nameof(action));remember=save;Start(action,JsonUtility.ToJson(new NativeLoginRequest{username=username,password=password,recoveryCode=recovery,remember=save}),true);}
-        public void Refresh(){if(session.Length>0)Start("me",null,false);}
-        public void Save(NativeProfile profile){if(Account!=null)Start("profile",JsonUtility.ToJson(new NativeProfileRequest{revision=Account.revision,profile=profile}),false);}
-        public void Logout(){if(session.Length==0){Clear();return;}Start("logout","{}",false);}
-        private void Start(string action,string body,bool authenticating)
+        {if(action!="login"&&action!="register"&&action!="recover")throw new ArgumentException(nameof(action));remember=save;BeginRequest(action,JsonUtility.ToJson(new NativeLoginRequest{username=username,password=password,recoveryCode=recovery,remember=save}),true);}
+        public void Refresh(){if(session.Length>0)BeginRequest("me",null,false);}
+        public void Save(NativeProfile profile){if(Account!=null)BeginRequest("profile",JsonUtility.ToJson(new NativeProfileRequest{revision=Account.revision,profile=profile}),false);}
+        public void Logout(){if(session.Length==0){Clear();return;}BeginRequest("logout","{}",false);}
+        private void BeginRequest(string action,string body,bool authenticating)
         {if(Busy)return;if(Origin.Length==0){Status="Set the account service URL first.";return;}Busy=true;Status="Connecting…";StartCoroutine(Request(action,body,authenticating));}
         private IEnumerator Request(string action,string body,bool authenticating)
         {

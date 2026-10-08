@@ -10,7 +10,24 @@ class CinematicChecks(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.clips={c['key']:c for c in resource('SceneMotion')['clips']}
-        cls.models={m['id']:m for m in resource('SourceModels')['models']}
+        models=resource('SourceModels')
+        cls.models={m['id']:m for m in models['models']}
+        cls.textures=models['textures']
+    def test_procedural_textures_contain_one_complete_rgba_base_level(self):
+        # The Windows failure came from treating these base-only exports as a full mip chain.
+        self.assertEqual(len(self.textures),3)
+        for i,texture in enumerate(self.textures):
+            with self.subTest(texture=i):
+                self.assertGreater(texture['width'],0)
+                self.assertGreater(texture['height'],0)
+                self.assertEqual(texture['channels'],4)
+                pixels=base64.b64decode(texture['pixels'],validate=True)
+                self.assertEqual(len(pixels),texture['width']*texture['height']*4)
+                self.assertEqual(len(texture['repeat']),2)
+                self.assertTrue(all(math.isfinite(v) and v>0 for v in texture['repeat']))
+        for model in self.models.values():
+            for section in model['sections']:
+                self.assertTrue(-1<=section['texture']<len(self.textures),model['id'])
     def test_complete_geometry_and_tracks(self):
         self.assertEqual(len(self.clips),31)
         self.assertEqual(len(self.models),133)
