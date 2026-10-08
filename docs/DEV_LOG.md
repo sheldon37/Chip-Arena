@@ -21,6 +21,17 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-08 — Claude — C17 Ward Zero gore and revive beacons in Unity
+- Branch `claude/wip-c17` (local, not pushed), base `claude/sleepy-ritchie-g8ruhv` `4207641` (PR #62 head). Presentation only.
+- Gore (client/pve/gore.ts): `Core/NativeGoreRules.cs` ports gib() (hash-seeded throw, CHUNK sizes, spin), chunkAt() (arc, landing at size.y/4, .35 s skid), update() (spin stop, last-.6 s shrink, 12-chunk cap, rewind drop, slot colours) and the BurstPool ink with hashed randoms. `Runtime/NativeGorePresentation.cs` throws one chunk per severed part when the replicated `NativePveAdd.Lost` (or a fresh corpse's `lost`) gains bits, from the posed rig joint, timed and aimed by the newest Hit/Headshot event on the add; hits splash 6-10 ink drops. Instanced NativeLit cubes, no shadows; Reduced effects = quality .3. The body keeps hiding the lost limb as before.
+- Beacons (beacons.ts, downed.ts): `Core/NativeBeaconRules.cs` (state, clock, ring arc, column/ring geometry, motes map and HELP bubble pixels); `Runtime/NativeBeaconPresentation.cs` draws column + ring for each downed, connected party member (not in a vent shaft, run not ended) in one additive mesh with the new `Resources/NativeBeacon.shader`; `Runtime/NativeBeaconHud.cs` draws the label (depth via raycast) and the HELP bubble (not for the downed player) with the kit at the projected point, sized by view depth like a sprite. Hooks: NativeSourcePresentation (SourceWorld end, ClearSourceActors), ConversionGame (EffectsQuality, HUD call), NativeBuildChecks shader list.
+- No change to simulation, revive rules or timing, hit timing, hitboxes, damage, cooldowns, movement or the network protocol.
+- Checks: Unity runtime+editor compile OK; 24 Python tests OK; package_source OK; check_relay OK (new GoreBeaconChecks from `tools/export_gore_beacon_fixtures.mjs`). Scratch renders of source vs port (fxref chunk frames; three.js beacon scenes with the shader replica and HUD layout) match; the bubble shape matches the Chromium canvas to 0.27/255 mean alpha.
+- Not run: Unity import and shader compile, a GPU, the Windows player, a hosted/joined Ward Zero match, performance.
+- Not ported: the black-flame FlameField puffs and stump drips (siren/flames.ts, with C12).
+- Needs Astra: replicate `NativePveRow.Revived` (add `revived` to NativePveRowFrame, set in the pve frame rows and ApplyPve) so a guest's label shows the real revive price (now $150). Optional: a replicated pve-gib event per severed part from NativePveHorde.HitPveAdd (time, gibs.ts joint, hit direction, limb) to replace the inferred time and direction.
+- Status: implemented on branch; not merged; not released.
+
 ## 2026-10-08 — Claude — Unity vs Electron parity gap list (handoff)
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62), audited at `eb8f7f7` against the original `05950ea`. Docs only; no code changed.
 - Added `docs/UNITY-PARITY-GAPS.md`: a read-only code audit of screens, gameplay, networking, presentation and trackers, with each P1 re-checked by a refuting reviewer. Items are split by the role split: A1–A31 for Astra (logic) and C1–C24 for Claude (visuals), plus 12 owner decisions and a not-verified list.
