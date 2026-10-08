@@ -43,19 +43,38 @@ namespace ChipArena.UnityConversion
 
         private void LobbyScreen(float age)
         {
-            bool pve=prefs.pve;roomGuest=!Hosting;screenContent=Mathf.Max(lobbyRosterContent,lobbyRoomContent+180);
-            var l=BeginScreen(pve?"BOSS TEST LOBBY":"PRIVATE ROOM",pve?"Boss test · The Siren":"Match lobby",1370,age,false,close:false);
+            bool pve=prefs.pve;roomGuest=!Hosting;screenContent=Mathf.Max(lobbyRosterContent+90,lobbyRoomContent);
+            var l=BeginScreen(pve?"BOSS TEST LOBBY":"PRIVATE ROOM",pve?"Boss test · The Siren":"Match lobby",1370,age,false,actions:false,close:false);
             // Customize and Settings open over the room (their close returns here); saving a new look updates the room.
             float bx=l.Panel.xMax-32;foreach(var (icon,text,screen) in new[]{("settings","Settings",MenuScreen.Settings),("palette","Customize",MenuScreen.Customize)})
             {float w=U.Measure(text,13,true).x+19+18+28;bx-=w;if(MenuButton(new Rect(bx,l.Panel.y+30,w,40),icon,text,null,false,true,l.Enter,13,true))Go(screen);bx-=10;}
-            // .lobby-room: the roster column and the 300 px room column (260 px and 20 px gaps below 1100 px). The host's
-            // column holds the rules, so it widens to keep the arena and option grids readable.
-            var b=l.Body;float W=U.W,gap=W<1100?20:26,side=Hosting?Mathf.Clamp(b.width*.34f,300,420):W<1100?260:300;
-            var roster=LobbyRoster();LobbyRosterColumn(new Rect(b.x,b.y,b.width-side-gap,b.height),roster,l.Enter);LobbyRoomColumn(new Rect(b.xMax-side,b.y,side,b.height),l.Enter);
-            ScreenStatus(l,networkStatus,NetworkError);
-            if(Hosting){int a=ScreenActions(l,("play",pve?"Start Boss Fight":"Start Match",true,server==null),("log-out","Leave Room",false,true));if(a==0)StartMatch();else if(a==1)LeaveRoom();}
-            else{int a=ScreenActions(l,("check",networkReady?"Cancel Ready":"Ready",!networkReady,server!=null),("download","Send Loadout",false,server!=null),("log-out","Leave Room",false,true));
-                if(a==0){networkReady=!networkReady;SendServer(new NativeNetMessage{type="ready",ready=networkReady});}else if(a==1)SendServer(new NativeNetMessage{type="profile",profile=Profile(),token=account?.Token});else if(a==2)LeaveRoom();}
+            // .lobby-room: the roster column (with the Ready bar at its foot) beside the 300 px room column, which runs the
+            // panel's full height (260 px and 20 px gaps below 1100 px). The host's column holds the rules, so it widens to
+            // keep the arena and option grids readable.
+            var b=l.Body;float W=U.W,gap=W<1100?20:26,side=Hosting?Mathf.Clamp(b.width*.34f,300,420):W<1100?260:300,leftW=b.width-side-gap;
+            var roster=LobbyRoster();LobbyRosterColumn(new Rect(b.x,b.y,leftW,b.height-77-12),roster,l.Enter);LobbyRoomColumn(new Rect(b.xMax-side,b.y,side,b.height),l.Enter);
+            LobbyBar(new Rect(b.x,b.yMax-77,leftW,77),roster,l.Enter);
+        }
+        // .lobby-actions at the foot of the roster column: a #4b414c rule, then Ready (280 px, 56 px tall, 18 px) or the
+        // host's Start, Leave Room and, for guests, Send Loadout; the ready status fills the rest of the line. A network
+        // message (copied, errors) sits above the rule.
+        private void LobbyBar(Rect r,List<LobbyPilot> roster,float e)
+        {
+            if(!string.IsNullOrEmpty(networkStatus))U.Text(new Rect(r.x,r.y-26,r.width,18),Fit(networkStatus,13,r.width,false,0),13,NetworkError?U.Hex(0xff8a7a,e):U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);
+            U.Fill(new Rect(r.x,r.y,r.width,1),U.Hex(0x4b414c,e));float y=r.y+21,x=r.x;
+            if(Hosting)
+            {
+                float w=Mathf.Min(280,r.width*.4f);if(MenuButton(new Rect(x,y,w,56),"play",prefs.pve?"Start Boss Fight":"Start Match",null,true,server==null,e,18,true))StartMatch();x+=w+10;
+            }
+            else
+            {
+                float w=Mathf.Min(280,r.width*.34f);var rb=new Rect(x,y,w,56);
+                if(MenuButton(rb,"check",networkReady?"Cancel Ready":"Ready",null,!networkReady,server!=null,e,18,true)){networkReady=!networkReady;SendServer(new NativeNetMessage{type="ready",ready=networkReady});}
+                if(networkReady)U.Round(rb,Color.clear,4,U.Hex(0x3ddc84,.67f*e));x+=w+10;
+                float sw=U.Measure("Send Loadout",15,true).x+19+18+36;if(MenuButton(new Rect(x,y+4,sw,48),"download","Send Loadout",null,false,server!=null,e,15,true))SendServer(new NativeNetMessage{type="profile",profile=Profile(),token=account?.Token});x+=sw+10;
+            }
+            float lw=U.Measure("Leave Room",15,true).x+19+18+36;if(MenuButton(new Rect(x,y+4,lw,48),"log-out","Leave Room",null,false,true,e,15,true))LeaveRoom();x+=lw+16;
+            int ready=roster.Count(p=>p.ready&&p.connected);ReadyLine(new Rect(x,y,r.xMax-x,56),ready,roster.Count,e);
         }
 
         // ---- Roster column ---------------------------------------------------------------------------------------------
@@ -75,7 +94,7 @@ namespace ChipArena.UnityConversion
             float est=(estimate-g*(cols-1))/cols;bool wrap=roster.Any(p=>12+U.Measure("00",14,false,true).x+6+U.Measure(p.tag,10,false,false,.04f).x+10+PillWidth(p)+12>est);float topH=wrap?61:large?40:49;
             // The portraits give way first so the roster, its status line and the weapon picker's first row fit the
             // column (the source's 1080p panel shows them together); they never go below about 60% of their size.
-            float rest=CardHeight(topH,compact,0)+(teams?43:0),fit=(area.height-48-44-100-(rows-1)*g)/rows-rest;portrait=Mathf.Clamp(fit,portrait*.6f,portrait);
+            float rest=CardHeight(topH,compact,0)+(teams?43:0),fit=(area.height-48-100-(rows-1)*g)/rows-rest;portrait=Mathf.Clamp(fit,portrait*.6f,portrait);
             float cardH=CardHeight(topH,compact,portrait),slotH=cardH+(teams?43:0);
             var grid=GUILayoutUtility.GetRect(0,rows*slotH+(rows-1)*g,GUILayout.ExpandWidth(true));
             if(Event.current.type==EventType.Repaint)
@@ -87,7 +106,6 @@ namespace ChipArena.UnityConversion
                     if(i<count){LobbyCard(r,roster[i],i,portrait,topH,wrap,compact,e,t);if(teams)TeamTag(new Rect(r.x+2,r.yMax+9,r.width-4,34),roster[i],e);}else LobbyEmpty(new Rect(r.x,r.y,r.width,slotH),e);
                 }
             }
-            var status=GUILayoutUtility.GetRect(0,44,GUILayout.ExpandWidth(true));ReadyLine(status,ready,count,e);
             Field("Your weapon");WeaponGrid();
             GUI.enabled=true;GUILayout.Space(4);if(Event.current.type==EventType.Repaint)lobbyRosterContent=GUILayoutUtility.GetLastRect().yMax;
             U.EndClip();GUILayout.EndScrollView();GUILayout.EndArea();GUI.color=c;
@@ -192,10 +210,16 @@ namespace ChipArena.UnityConversion
             var mine=!Hosting?lobbySeats.FirstOrDefault(s=>s.id==networkId):null;string want=content.weapons.FirstOrDefault(w=>w.id==prefs.weapon)?.name??prefs.weapon;
             if(mine!=null&&mine.spec!=prefs.weapon){lead="Send Loadout";rest="so the host gives you "+want+".";tone=U.Hex(0xf4c8a0);}
             else if(Hosting&&!prefs.pve&&total<2){lead="Add a bot";rest="or wait for a pilot to join.";tone=U.Hex(0xf4c8a0);}
-            else if(waiting>0){lead="Waiting for "+waiting+" pilot"+(waiting==1?"":"s");rest=Hosting?"· Start when every pilot is ready.":"· The host starts the match.";tone=U.Hex(0xf4c8a0);}
+            else if(waiting>0){lead="Waiting for "+waiting+" pilot"+(waiting==1?"":"s");rest="· "+(Hosting?"Start when every pilot is ready.":"The host starts the match.");tone=U.Hex(0xf4c8a0);}
             else{lead="Everyone is ready.";rest=Hosting?(prefs.pve?"Start the boss fight when you are.":"Start the match when you are."):"Waiting for the host to start.";tone=U.Hex(0x8ff0b6);}
-            float y=r.y+14,lw=U.Measure(lead,14,true).x;U.Text(new Rect(r.x,y,lw+4,22),lead,14,U.A(tone,e),TextAnchor.MiddleLeft,bold:true);
-            U.Text(new Rect(r.x+lw+6,y,Mathf.Max(10,r.width-lw-6),22),Fit(rest,14,Mathf.Max(10,r.width-lw-6),false,0),14,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);
+            // 14 px, line-height 1.5: the lead in its tone, then the rest; both wrap within the space beside the buttons.
+            if(r.width<60)return;var lines=U.Wrap(lead+"\u0001 "+rest,14,r.width,true,3);float lh=21,y=r.center.y-lines.Count*lh/2;
+            foreach(var line in lines)
+            {
+                int cut=line.IndexOf('\u0001');if(cut<0&&line.StartsWith(lead)==false){U.Text(new Rect(r.x,y,r.width,lh),line,14,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);y+=lh;continue;}
+                string head=cut>=0?line.Substring(0,cut):line,tail=cut>=0?line.Substring(cut+1):"";float hw=U.Measure(head,14,true).x;
+                U.Text(new Rect(r.x,y,hw+4,lh),head,14,U.A(tone,e),TextAnchor.MiddleLeft,bold:true);if(tail.Length>0)U.Text(new Rect(r.x+hw,y,r.width-hw,lh),tail,14,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);y+=lh;
+            }
         }
         // One line that fits `width`, cut with an ellipsis.
         private static string Fit(string text,float size,float width,bool bold,float tracking)
@@ -256,7 +280,7 @@ namespace ChipArena.UnityConversion
             if(two){int cut=label.IndexOf(" · ",StringComparison.Ordinal);U.Text(new Rect(r.x+16,r.y+16,r.width-32,14),label.Substring(0,cut),10,U.Hex(0x8da7ae,e),TextAnchor.MiddleLeft,tracking:.16f);U.Text(new Rect(r.x+16,r.y+30,r.width-32,14),Fit(label.Substring(cut+3),10,r.width-32,false,.16f),10,U.Hex(0x8da7ae,e),TextAnchor.MiddleLeft,tracking:.16f);}
             else U.Text(new Rect(r.x+16,r.y+16,r.width-32,14),label,10,U.Hex(0x8da7ae,e),TextAnchor.MiddleLeft,tracking:.16f);
             bool has=!string.IsNullOrEmpty(code);U.Text(new Rect(r.x+16,r.y+(two?48:34),r.width-32,32),has?code:"—",24,U.Hex(0xff996f,e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.09f);
-            if(MenuButton(new Rect(r.x+16,r.yMax-16-40,r.width-32,40),"copy","Copy Code",null,false,has,e,14,true)){GUIUtility.systemCopyBuffer=code;networkStatus="Room code copied.";}
+            if(MenuButton(new Rect(r.x+16,r.yMax-16-40,r.width-32,40),"copy","Copy Code",null,true,has,e,14,true)){GUIUtility.systemCopyBuffer=code;networkStatus="Room code copied.";}
         }
         private void RoomHeading(Rect r,float e)
         {
