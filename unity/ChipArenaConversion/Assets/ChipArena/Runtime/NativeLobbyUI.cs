@@ -28,21 +28,10 @@ namespace ChipArena.UnityConversion
             foreach(var s in lobbySeats)
             {
                 var w=content.weapons.FirstOrDefault(x=>x.id==s.spec);bool you=s.id==me;
-                list.Add(new LobbyPilot{name=you?NativeCosmeticRules.Name(prefs.name):s.name,weapon=s.spec,tag=you?"YOU":s.id==1&&!Hosting?"ROOM OWNER":"PLAYER",ready=s.ready,connected=s.connected,team=s.team,
+                list.Add(new LobbyPilot{name=you?NativeCosmeticRules.Name(prefs.name):s.name,weapon=s.spec,tag=you?"YOU":s.bot?"BOT":s.id==1&&!Hosting?"ROOM OWNER":"PLAYER",bot=s.bot,ready=s.ready,connected=s.connected,team=s.team,
                     accent=you?HexColor(prefs.accentColor,0x70e1d0):HexColor(s.accentColor,w!=null?(int)w.color:0xb8aabb),body=you?HexColor(prefs.bodyColor,0xe5e7eb):HexColor(s.bodyColor,0xe5e7eb)});
             }
             if(Hosting&&!dedicated&&!lobbySeats.Any(s=>s.id==1))list.Insert(0,new LobbyPilot{name=NativeCosmeticRules.Name(prefs.name),weapon=prefs.weapon,tag="YOU",ready=true,connected=true,accent=HexColor(prefs.accentColor,0x70e1d0),body=HexColor(prefs.bodyColor,0xe5e7eb)});
-            // The bots StartMatch will add (ConversionGame.StartMatch): they fill the seats the connected pilots leave (four
-            // for a party, eight for versus) as "Pilot N" with mixed loadouts (or the host's weapon) and alternate teams.
-            if(Hosting)
-            {
-                var weapons=content.weapons.Where(w=>!w.devOnly).ToArray();int n=Math.Min(prefs.bots,(prefs.pve?4:8)-list.Count(p=>p.connected));
-                for(int i=0;i<n&&weapons.Length>0;i++)
-                {
-                    var w=prefs.mirrorWeapons?content.weapons.FirstOrDefault(x=>x.id==prefs.weapon)??weapons[0]:weapons[i%weapons.Length];
-                    list.Add(new LobbyPilot{name="Pilot "+(i+2),weapon=w.id,tag="BOT",ready=true,connected=true,bot=true,team=prefs.pve?0:prefs.teams?(i+1)%2:i+1,accent=U.Hex((int)w.color),body=U.Hex(0xe5e7eb)});
-                }
-            }
             return list;
         }
 
@@ -73,7 +62,7 @@ namespace ChipArena.UnityConversion
             else
             {
                 float w=Mathf.Min(280,r.width*.34f);var rb=new Rect(x,y,w,56);
-                if(MenuButton(rb,"check",networkReady?"Cancel Ready":"Ready",null,!networkReady,server!=null,e,18,true)){networkReady=!networkReady;SendServer(new NativeNetMessage{type="ready",ready=networkReady});}
+                if(MenuButton(rb,"check",networkReady?"Cancel Ready":"Ready",null,!networkReady,server!=null,e,18,true)){GuestReady(!networkReady);}
                 if(networkReady)U.Round(rb,Color.clear,4,U.Hex(0x3ddc84,.67f*e));x+=w+10;
                 float sw=U.Measure("Send Loadout",15,true).x+19+18+36;if(MenuButton(new Rect(x,y+4,sw,48),"download","Send Loadout",null,false,server!=null,e,15,true))SendServer(new NativeNetMessage{type="profile",profile=Profile(),token=account?.Token});x+=sw+10;
             }
@@ -332,6 +321,7 @@ namespace ChipArena.UnityConversion
             lobbyRoomScroll=GUILayout.BeginScrollView(lobbyRoomScroll,false,false,GUIStyle.none,GUI.skin.verticalScrollbar);
             string label=RoomCodeLabel();bool two=U.Measure(label,10,false,false,.16f).x>area.width-12-32;
             var invite=GUILayoutUtility.GetRect(0,two?146:132,GUILayout.ExpandWidth(true));string code=Hosting?roomCode:joinCode;U.Defer(()=>RoomInvite(new Rect(invite.x+4,invite.y+2,invite.width-8,invite.height-2),code,label,two,e));GUILayout.Space(16);
+            if(listener!=null)Fine("LAN address · "+string.Join(", ",LanAddresses)+" · port "+listener.Port);
             var head=GUILayoutUtility.GetRect(0,RoomHeadingHeight(),GUILayout.ExpandWidth(true));if(Event.current.type==EventType.Repaint)lobbyRoomInner=head.width-8;U.Defer(()=>RoomHeading(head,e));
             if(Hosting)
             {

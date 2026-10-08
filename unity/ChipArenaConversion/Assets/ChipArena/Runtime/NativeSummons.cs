@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
                 var c=obj.AddComponent<CapsuleCollider>();c.radius=.28f;c.height=1.2f;c.sharedMaterial=surfaces["pilot"];
                 var body=obj.AddComponent<Rigidbody>();body.mass=35;body.constraints=RigidbodyConstraints.FreezeRotation;body.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;body.interpolation=RigidbodyInterpolation.Interpolate;
                 float hp=kind=="toy"?25:(float)owner.Stats["hp"]*2;
-                var m=new NativeMinion{Id=nextMinion++,Owner=owner,Kind=kind,Body=body,Collider=c,Hp=hp,MaxHp=hp,Speed=6.8f*(float)owner.Stats["speed"]*(kind=="toy"?.7f:.5f),Until=Time+life,NextAttack=Time+.7f,Yaw=owner.Input.Yaw};obj.AddComponent<NativeMinionBody>().Minion=m;Minions.Add(m);Fx(pos,.6f,4);
+                var m=new NativeMinion{Id=nextMinion++,Owner=owner,Kind=kind,Body=body,Collider=c,Hp=hp,MaxHp=hp,Speed=6.8f*(float)owner.Stats["speed"]*(kind=="toy"?.7f:.5f),Until=Time+life,NextAttack=Time+.7f,Yaw=owner.Input.Yaw};obj.AddComponent<NativeMinionBody>().Minion=m;Minions.Add(m);Emit(EventKind.Summon,owner,m.Id,pos,hp,kind);Fx(pos,.6f,4);
             }
             Physics.SyncTransforms();
         }
@@ -37,7 +37,7 @@ namespace ChipArena.UnityConversion
         }
         private float HitMinion(NativeMinion m,NativePilot owner,float damage,Vector3 direction,float impulse,Vector3? point=null,string kind=null,float radius=0,bool head=false)
         {
-            if(m.Hp<=0||!Enemy(owner,m.Owner))return 0;if(m.Pve!=null)return HitPveAdd(m,owner,damage,direction,impulse,point,kind,radius,head);float actual=Math.Max(0,Math.Min(m.Hp,damage));m.Hp-=actual;m.LastHitAt=Time;if(!m.Body.isKinematic)m.Body.AddForce(direction*impulse,ForceMode.Impulse);Emit(EventKind.Hit,owner,m.Id,m.Body.position,actual);if(m.Hp<=0)RemoveMinion(m);return actual;
+            if(m.Hp<=0||!CanHit(owner,m.Owner))return 0;if(m.Pve!=null)return HitPveAdd(m,owner,damage,direction,impulse,point,kind,radius,head);float actual=Math.Max(0,Math.Min(m.Hp,damage));m.Hp-=actual;m.LastHitAt=Time;if(!m.Body.isKinematic)m.Body.AddForce(direction*impulse,ForceMode.Impulse);Emit(EventKind.Hit,owner,m.Id,m.Body.position,actual);if(m.Hp<=0)RemoveMinion(m);return actual;
         }
         private void MinionWeaponHit(NativeMinion m,NativePilot owner,float actual,float burn,float poison)
         {

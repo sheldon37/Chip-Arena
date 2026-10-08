@@ -7,10 +7,10 @@ using U=ChipArena.UnityConversion.NativeUi;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class ConversionPreferences
-    { public int choices=6,selectionSeconds=18;public bool bothDraft;public string relayOrigin="";public string graphics="auto",sirenMode="Q";public float sensitivity=1,audio=.3f,music=.35f,menuMusic=.6f,uiScale=1;public bool trails=true,reducedEffects,cameraShake;public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll",intro="neon-drop",introText="Ready to make an impact",accountOrigin="";public bool overrideIntro;public string name="Pilot",map="foundry",weapon="pistol";public int bots=3,sets=3,rounds=2;public string combatGlow="Full";public bool pve,skipWaves;public bool mirrorWeapons,teams,friendlyFire,stationary,skipBotDrafts=true,sound=true,firstPerson; }
+    { public bool fullscreen;public int team;public string botDifficulty="normal";public NativeBotOption[] botOptions=Array.Empty<NativeBotOption>();public bool skipPlayerIntros,randomizeMap,autoStart=true;public int choices=6,selectionSeconds=18;public bool bothDraft;public string relayOrigin="";public string graphics="auto",sirenMode="Q";public float sensitivity=1,audio=.3f,music=.35f,menuMusic=.6f,uiScale=1;public bool trails=true,reducedEffects,cameraShake;public string lobbyPose="weapon";public NativePendingEffect[] pendingEffects=Array.Empty<NativePendingEffect>();public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll",intro="neon-drop",introText="Ready to make an impact",accountOrigin="";public bool overrideIntro;public string name="Pilot",map="moonlit",weapon="pistol";public int bots=3,sets=5,rounds=2;public string combatGlow="Full";public bool pve,skipWaves;public bool mirrorWeapons,teams,friendlyFire,stationary,skipBotDrafts,sound=true,firstPerson; }
     public sealed partial class ConversionGame : MonoBehaviour
     {
-        private ConversionContent content;private ConversionPreferences prefs;private NativeMatch match;private NativeArena arena;private ArenaPresentation presentation;
+        private NativeSingleInstance singleInstance;private ConversionContent content;private ConversionPreferences prefs;private NativeMatch match;private NativeArena arena;private ArenaPresentation presentation;
         private NativeAudio nativeAudio;private Camera cameraView,viewModelCamera;private InputFrame pending;private SimulationMode previousSimulation;private Vector3 previousGravity;private bool ownsPhysics;private int generation;
         private bool menu=true;private float yaw,pitch=12,lastW=-1;private bool sprint;
         private string search="",error="";private GUIStyle heading,label,small,button;
@@ -25,8 +25,11 @@ namespace ChipArena.UnityConversion
             {
                 var asset=Resources.Load<TextAsset>("GameContent");if(asset==null)throw new InvalidOperationException("GameContent.json is missing");
                 content=JsonUtility.FromJson<ConversionContent>(asset.text);content.Validate();if(InitializeDedicated())return;
-                prefs=File.Exists(PreferencePath)?JsonUtility.FromJson<ConversionPreferences>(File.ReadAllText(PreferencePath)):new ConversionPreferences();
-                if(prefs==null)prefs=new ConversionPreferences();if(!content.maps.Any(m=>m.id==prefs.map))prefs.map="foundry";
+#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
+                singleInstance=new NativeSingleInstance("Local\\ChipArena.Native.Player");if(!singleInstance.Acquired){Application.Quit(0);return;}
+#endif
+                prefs=NativeFileStore.Read(PreferencePath,s=>JsonUtility.FromJson<ConversionPreferences>(s),()=>new ConversionPreferences(),out var preferenceWarning);if(preferenceWarning!=null)networkStatus=preferenceWarning;
+                if(prefs.map!="random"&&!content.maps.Any(m=>m.id==prefs.map))prefs.map="moonlit";
                 if(!content.weapons.Any(w=>w.id==prefs.weapon&&!w.devOnly))prefs.weapon="pistol";prefs.bots=Mathf.Clamp(prefs.bots,prefs.pve?0:1,prefs.pve?3:7);
                 InitializeAccount();Application.runInBackground=true;Application.targetFrameRate=144;QualitySettings.vSyncCount=0;Time.fixedDeltaTime=1f/60;Time.maximumDeltaTime=.1f;
                 previousSimulation=Physics.simulationMode;previousGravity=Physics.gravity;ownsPhysics=true;Physics.simulationMode=SimulationMode.Script;
@@ -35,37 +38,36 @@ namespace ChipArena.UnityConversion
                 cameraView.cullingMask=~(1<<10);NativeLighting.Create(transform);
                 var model=new GameObject("First-person view");model.transform.SetParent(cam.transform,false);viewModelCamera=model.AddComponent<Camera>();
                 viewModelCamera.clearFlags=CameraClearFlags.Depth;viewModelCamera.cullingMask=1<<10;viewModelCamera.depth=cameraView.depth+1;viewModelCamera.nearClipPlane=.01f;viewModelCamera.farClipPlane=10;viewModelCamera.enabled=false;presentation.ViewCamera=viewModelCamera;
-                cameraView.nearClipPlane=.06f;cameraView.farClipPlane=200;NativeLighting.Apply(content.Map(prefs.map),cameraView);
+                cameraView.nearClipPlane=.06f;cameraView.farClipPlane=200;NativeLighting.Apply(content.Map(PreviewMapId),cameraView);
                 cameraView.transform.SetPositionAndRotation(new Vector3(0,22,-35),Quaternion.Euler(30,0,0));ApplySettings();InitializeUpdater();
             }
-            catch(Exception e){error=e.ToString();Debug.LogException(e);}
+            catch(Exception e){error=e.ToString();Debug.LogException(e);if(dedicated)Application.Quit(2);}
         }
         private void Save()
         {
-            try{Directory.CreateDirectory(Application.persistentDataPath);File.WriteAllText(PreferencePath,JsonUtility.ToJson(prefs,true));}catch(IOException e){error="Could not save test preferences: "+e.Message;}
+            try{NativeFileStore.Write(PreferencePath,JsonUtility.ToJson(prefs,true));}catch(Exception e)when(e is IOException||e is UnauthorizedAccessException){networkStatus="Could not save pilot preferences: "+e.Message;Notice(networkStatus);}
         }
         private void StartMatch()
         {
-            Time.timeScale=1;sandboxSpeed=1;
+            Time.timeScale=1;sandboxSpeed=1;endFlow.Reset();
             if(prefs.pve){prefs.map="siren";prefs.bots=Mathf.Clamp(prefs.bots,0,3);}else prefs.bots=Mathf.Clamp(prefs.bots,Online||dedicated?0:1,7);
             if(server!=null)return;if(prefs.pve&&peers.Count(p=>p.Seat!=null&&p.Connection?.Closed==false)>(dedicated?4:3)){networkStatus="Siren co-op supports up to four party members.";return;}if(Hosting&&peers.Any(p=>p.Seat!=null&&p.Connection?.Closed==false&&!p.Ready)){networkStatus="Wait for the other pilots to be ready.";return;}
             // Refuse a match that cannot start (a host alone with no bots, or every pilot on one team) before the running arena
             // is touched, so the reason shows in the menu instead of the fatal error screen.
-            {var sides=new System.Collections.Generic.HashSet<int>();int n=0;if(!dedicated){sides.Add(prefs.pve||prefs.teams?0:1);n++;}
+            {var sides=new System.Collections.Generic.HashSet<int>();int n=0;if(!dedicated){sides.Add(prefs.pve?0:prefs.teams?prefs.team:1);n++;}
              foreach(var p in peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false)){sides.Add(prefs.pve?0:prefs.teams?p.Seat.team:p.Seat.id);n++;}
-             int fill=Math.Min(prefs.bots,(prefs.pve?4:8)-n);for(int i=0;i<fill;i++){sides.Add(prefs.pve?0:prefs.teams?(i+1)%2:100+i);n++;}if(prefs.pve){sides.Add(1);n++;}
+             foreach(var bot in LobbyBots(n)){sides.Add(prefs.pve?0:prefs.teams?bot.team:bot.id);n++;}if(prefs.pve){sides.Add(1);n++;}
              if(n<2||sides.Count<2){networkStatus=n>=2?"Both teams need a pilot: add a bot or change teams.":"Add a bot or wait for a pilot to join.";return;}}
             if(!dedicated)Save();EndPreview();inspectSeat=0;ClearReplay();arena?.Dispose();presentation?.ResetPresentation();networkEpoch++;
-            match=new NativeMatch(content){ShowIntros=true,Cooperative=prefs.pve,Teams=prefs.pve||prefs.teams,RoundsPerSet=prefs.rounds,SetsToWin=prefs.sets,SkipBotDrafts=prefs.skipBotDrafts,BothDraft=prefs.bothDraft,Choices=prefs.choices,SelectionSeconds=prefs.selectionSeconds};
-            if(!dedicated){var local=SanitizedSeat(1,Profile(),account.Token);local.team=0;match.Seats.Add(local);}
+            match=new NativeMatch(content){ShowIntros=!prefs.skipPlayerIntros&&!sandboxWanted,Cooperative=prefs.pve,Teams=prefs.pve||prefs.teams,RoundsPerSet=prefs.rounds,SetsToWin=prefs.sets,SkipBotDrafts=prefs.skipBotDrafts,BothDraft=prefs.bothDraft,Choices=prefs.choices,SelectionSeconds=prefs.selectionSeconds};
+            if(!dedicated){var local=SanitizedSeat(1,Profile(),account.Token);local.team=prefs.pve?0:prefs.team;match.Seats.Add(local);}
             foreach(var peer in peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false)){peer.Seat.team=prefs.pve?0:peer.Seat.team;match.Seats.Add(peer.Seat);peer.Ready=false;}
-            var weapons=content.weapons.Where(w=>!w.devOnly).Select(w=>w.id).ToArray();
-            int botCount=Math.Min(prefs.bots,(prefs.pve?4:8)-match.Seats.Count);for(int i=0;i<botCount;i++)match.Seats.Add(new NativeSeat{id=100+i,name="Pilot "+(i+2),spec=prefs.mirrorWeapons?prefs.weapon:weapons[i%weapons.Length],bot=true,team=prefs.pve?0:prefs.teams?(i+1)%2:i+1});
+            match.Seats.AddRange(LobbyBots(match.Seats.Count));
             if(prefs.pve)match.Seats.Add(new NativeSeat{id=900,name="The Siren",spec="siren",bot=true,team=1,AuthorityBoss=true});
-            arena=new NativeArena(content,match,prefs.map){FriendlyFire=prefs.friendlyFire,LocalId=dedicated?0:1,StationaryBots=prefs.stationary,Sandbox=sandboxWanted&&account.Developer&&!Online&&!prefs.pve};
-            if(!match.Start()){error="A match needs at least two opposing sides.";return;}
-            if(prefs.pve)arena.ConfigurePve(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text),prefs.skipWaves);
-            if(dedicated){menu=false;return;}generation=arena.Generation;visualClock.Reset(match.Time);pending=new InputFrame();yaw=arena.Local.Yaw;pitch=12;sprint=false;menu=false;NativeLighting.Apply(content.Map(prefs.map),cameraView);
+            arena=new NativeArena(content,match,SelectMatchMap()){RandomizeMapEachSet=prefs.randomizeMap,FriendlyFire=prefs.friendlyFire,LocalId=dedicated?0:1,StationaryBots=prefs.stationary,Sandbox=sandboxWanted&&account.Developer&&!Online&&!prefs.pve};
+            if(!match.Start()){arena.Dispose();arena=null;match=null;foreach(var peer in peers)peer.Ready=true;networkStatus="A match needs at least two opposing sides.";LobbyBroadcast();return;}
+            if(prefs.pve)arena.ConfigurePve(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text),prefs.skipWaves,NativeMatch.NewSeed());
+            if(dedicated){menu=false;return;}generation=arena.Generation;visualClock.Reset(match.Time);pending=new InputFrame();yaw=arena.Local.Yaw;pitch=12;sprint=false;menu=false;NativeLighting.Apply(content.Map(arena.MapId),cameraView);
         }
         private float shakeAmount;private int shakeEvent;
         private void Update()
@@ -93,7 +95,7 @@ namespace ChipArena.UnityConversion
                 if(Input.GetKeyDown(KeyCode.W)){if(Time.unscaledTime-lastW<.3f)sprint=true;lastW=Time.unscaledTime;}if(!Input.GetKey(KeyCode.W))sprint=false;
                 var move=Quaternion.Euler(0,yaw,0)*new Vector3((Input.GetKey(KeyCode.D)?1:0)-(Input.GetKey(KeyCode.A)?1:0),0,(Input.GetKey(KeyCode.W)?1:0)-(Input.GetKey(KeyCode.S)?1:0)).normalized;
                 pending.X=move.x;pending.Z=move.z;pending.Yaw=yaw;pending.Pitch=-pitch;pending.Sprint=sprint;pending.Aim=aiming;
-                if(p.Weapon.@class=="melee")pending.Shoot|=Input.GetMouseButtonDown(0);else pending.Shoot=Input.GetMouseButton(0);
+                pending.Shoot=Input.GetMouseButton(0);
                 pending.AbilityQ|=p.Weapon.@class=="magic"&&Input.GetKeyDown(KeyCode.Q);pending.AbilityE|=Input.GetKeyDown(KeyCode.E);pending.AbilityEReleased|=Input.GetKeyUp(KeyCode.E);pending.AbilityEHeld=Input.GetKey(KeyCode.E);
                 pending.Hadoken|=Input.GetKeyDown(KeyCode.Alpha1);pending.HadokenHeld=Input.GetKey(KeyCode.Alpha1);pending.Uppercut|=Input.GetKeyDown(KeyCode.Alpha2);
                 for(int key=0;key<4;key++)if(Input.GetKeyDown(KeyCode.Alpha1+key))pending.SirenAbility=(byte)(key+1);
@@ -119,7 +121,7 @@ namespace ChipArena.UnityConversion
             if(play){int newest=0;foreach(var e in arena.Events){newest=Math.Max(newest,e.Id);if(e.Id>shakeEvent&&e.Target==p.Seat.id&&(e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot||e.Kind==EventKind.Block)&&prefs.cameraShake)shakeAmount=.12f;}shakeEvent=newest<shakeEvent?newest:Math.Max(shakeEvent,newest);}
             if(shakeAmount>0){cameraView.transform.position+=Vector3.right*((UnityEngine.Random.value-.5f)*shakeAmount);shakeAmount=Math.Max(0,shakeAmount-Time.deltaTime);}
             presentation.SoundEnabled=false;presentation.LocalId=arena.ViewPilot.Seat.id;
-            float renderTime=visualClock.Sample(match.Time,Time.timeAsDouble-Time.fixedTimeAsDouble,menu);
+            float renderTime=arena.Replica?arena.ReplicaRenderTime:visualClock.Sample(match.Time,Time.timeAsDouble-Time.fixedTimeAsDouble,menu);
             presentation.Render(arena.Snapshot(true),renderTime,false);
             Vector3? preview=null;
             if(play&&p.HoldAt>=0&&arena.Time-p.HoldAt>=.2f)
@@ -137,14 +139,14 @@ namespace ChipArena.UnityConversion
         private string backdropMap;
         private void MenuBackdrop()
         {
-            string map=prefs.pve?"siren":prefs.map;var definition=content.Map(map);if(definition==null||presentation==null)return;
+            string map=PreviewMapId;var definition=content.Map(map);if(definition==null||presentation==null)return;
             if(backdropMap!=map){backdropMap=map;NativeLighting.Apply(definition,cameraView);}
             viewModelCamera.enabled=false;ArenaPresentation.OverviewCamera(cameraView,Time.unscaledTime);presentation.RenderBackdrop(content.sourceCommit,map,Time.unscaledTime);
         }
         private void FixedUpdate()
         {
-            if(arena==null||menu&&!Online)return;if(arena.Replica){if(server!=null){pending.Sequence=++inputSequence;SendServer(new NativeNetMessage{type="input",input=pending});pending=pending.HeldOnly();if(arena.ViewPilot.Weapon.@class=="melee")pending.Shoot=false;}return;}timer.Restart();bool held=arena.Pve?.Holding==true;arena.Step(pending);if(!held&&arena.Pve?.Holding!=true){arena.BeforePhysics();Physics.Simulate(1f/60);arena.AfterPhysics();}timer.Stop();stepMs=timer.Elapsed.TotalMilliseconds;
-            bool melee=arena.ViewPilot?.Weapon.@class=="melee";pending=pending.HeldOnly();if(melee)pending.Shoot=false;
+            if(arena==null||menu&&!Online)return;if(arena.Replica){if(server!=null){pending.Sequence=++inputSequence;SendServer(new NativeNetMessage{type="input",input=pending});arena.PredictReplica(pending);pending=pending.HeldOnly();}return;}timer.Restart();bool held=arena.Pve?.Holding==true;arena.Step(pending);if(!held&&arena.Pve?.Holding!=true){arena.BeforePhysics();Physics.Simulate(1f/60);arena.AfterPhysics();}timer.Stop();stepMs=timer.Elapsed.TotalMilliseconds;
+            pending=pending.HeldOnly();
         }
         private Vector3 AimPoint(float range,bool thrownMelee=false)
         {
@@ -244,7 +246,7 @@ namespace ChipArena.UnityConversion
             Field("Bots");GUILayout.Label(prefs.bots==1?"1 bot":prefs.bots+" bots",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(Mathf.Clamp(prefs.bots,1,7),1,7));
             Fine("Up to 8 pilots total. Bots use player slots.");prefs.mirrorWeapons=GUILayout.Toggle(prefs.mirrorWeapons,"Bots use my weapon (otherwise mixed loadouts)");prefs.stationary=GUILayout.Toggle(prefs.stationary,"Stationary targets");
             Field("Match mode");prefs.teams=ChoiceRow(new[]{"Free-for-all","Teams"},prefs.teams?1:0)==1;if(prefs.teams){prefs.friendlyFire=GUILayout.Toggle(prefs.friendlyFire,"Friendly fire");Fine("Teams alternate red and blue sides.");}
-            Field("Sets and rounds");GUILayout.Label("Sets to win the match: "+prefs.sets,label);prefs.sets=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.sets,1,10));GUILayout.Label("Rounds to win a set: "+prefs.rounds,label);prefs.rounds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.rounds,1,5));
+            Field("Sets and rounds");GUILayout.Label("Sets to win the match: "+prefs.sets,label);prefs.sets=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.sets,1,10));GUILayout.Label("Rounds to win a set: "+prefs.rounds,label);prefs.rounds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.rounds,1,10));
             Field("Draft and intro rules");prefs.bothDraft=GUILayout.Toggle(prefs.bothDraft,"All players draft after each set (otherwise the set's losers)");
             GUILayout.Label("Chip choices per draft: "+prefs.choices,label);prefs.choices=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.choices,1,12));GUILayout.Label("Chip selection timer: "+prefs.selectionSeconds+"s",label);prefs.selectionSeconds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.selectionSeconds,5,120));
             prefs.skipBotDrafts=GUILayout.Toggle(prefs.skipBotDrafts,"Skip bot draft screens");
@@ -314,6 +316,6 @@ namespace ChipArena.UnityConversion
                 if(NativeUi.Button(r))inspectSeat=p.id;cy+=46;
             }
         }
-        private void OnDestroy(){CapturedAnimation.Release(slenderNoise);Time.timeScale=1;EndPreview();ClearReplay();CloseNetwork();if(scopeMask!=null)CapturedAnimation.Release(scopeMask);arena?.Dispose();if(ownsPhysics){Physics.simulationMode=previousSimulation;Physics.gravity=previousGravity;}Cursor.lockState=CursorLockMode.None;Cursor.visible=true;}
+        private void OnDestroy(){singleInstance?.Dispose();CapturedAnimation.Release(slenderNoise);Time.timeScale=1;EndPreview();ClearReplay();CloseNetwork();if(scopeMask!=null)CapturedAnimation.Release(scopeMask);arena?.Dispose();if(ownsPhysics){Physics.simulationMode=previousSimulation;Physics.gravity=previousGravity;}Cursor.lockState=CursorLockMode.None;Cursor.visible=true;}
     }
 }

@@ -14,13 +14,13 @@ namespace ChipArena.UnityConversion
         {if(BossSongTime<0||entry<0||entry>=8)return false;for(float t=0;t<=span+.0001f;t+=.25f){var h=BossTrack.Vent(BossSongTime+t,entry%2);if(h.active||h.warning>0)return true;}return false;}
         private (float spawn,float walk,float active,bool first) PlanEntry(PveEntry entry)
         {
-            var view=Entry(entry.e);bool first=view==null||Time>=view.closeAt;float start=Time;
+            var view=Entries.Where(e=>e.entry==entry.e).OrderByDescending(e=>e.closeAt).FirstOrDefault();bool first=view==null||Time>=view.closeAt;float start=Time;
             if(first){view=new NativeEntryView{entry=entry.e,kind=entry.kind,mode="spawn",openAt=Time,closeAt=Time};Entries.Add(view);}
             else if(pveEntries.TryGetValue(entry.e,out float last))start=Math.Max(Time,last+(entry.kind=="vent"?.8f:.7f));
             var timeline=NativeEntryRules.Timeline(entry.kind,first);pveEntries[entry.e]=start;view.closeAt=Math.Max(view.closeAt,start+timeline.duration+1.2f);return(start,start+timeline.walk,start+timeline.duration,first);
         }
         private void DiveEntry(PveEntry entry)
-        {var view=Entry(entry.e);if(view==null||Time>=view.closeAt){view=new NativeEntryView{entry=entry.e,kind="vent",mode="dive",openAt=Time,closeAt=Time};Entries.Add(view);}view.closeAt=Math.Max(view.closeAt,Time+2.1f);}
+        {var view=Entries.Where(e=>e.entry==entry.e).OrderByDescending(e=>e.closeAt).FirstOrDefault();if(view==null||Time>=view.closeAt){view=new NativeEntryView{entry=entry.e,kind="vent",mode="dive",openAt=Time,closeAt=Time};Entries.Add(view);}view.closeAt=Math.Max(view.closeAt,Time+2.1f);}
         public bool InShaft(NativePilot p)=>p.Death!=null&&(p.Death.style=="vent-fall"||p.Death.style=="vent-splat"&&Time<p.Death.landAt);
         private void StepVents()
         {
@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
             {
                 if(p.Hp>0&&p.Seat.connected&&!p.Seat.AuthorityBoss)
                 {for(int e=0;e<8;e++)if(NativeVentRules.Falls(Vec(p.Body.position),Vec(StageVents[e]),NativeVentRules.Open(Entry(e),Time)))
-                 {Damage(p,null,100000,Vector3.down,0,false,true);if(p.Death==null)break;p.Death.style="vent-fall";p.Death.velocity=Vector3.down;p.Death.wound=null;p.Death.landAt=Time+10;p.Death.kept=Pve?.Rows.ContainsKey(p.Seat.id)==true||SandboxAllowed;p.Wounds.Clear();p.Knockback=p.MoveVelocity=Vector3.zero;break;}}
+                 {Damage(p,null,100000,Vector3.down,0,false,true);if(p.Death==null)break;p.Death.style="vent-fall";p.Death.velocity=Vector3.down;p.Death.wound=null;p.Death.landAt=Time+(SandboxAllowed?Mathf.Clamp(SandboxSplatDelay,1,30):10);p.Death.kept=Pve?.Rows.ContainsKey(p.Seat.id)==true||SandboxAllowed;p.Wounds.Clear();p.Knockback=p.MoveVelocity=Vector3.zero;break;}}
                 var d=p.Death;if(d==null||p.Hp>0||d.style!="vent-fall"||!d.kept||Time<d.landAt-.6f)continue;
                 Vector3 spot=SplatSpot(p);d.seed=nextEvent++;d.style="vent-splat";d.at=d.landAt-.6f;d.position=spot;d.velocity=Vector3.down*22;p.Body.position=spot;
             }

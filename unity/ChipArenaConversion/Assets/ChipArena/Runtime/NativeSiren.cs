@@ -19,7 +19,7 @@ namespace ChipArena.UnityConversion
         private bool SirenArmor(NativePilot p)=>Dev(p,"siren")&&p.Hp>0&&p.Siren?.Move!=null&&p.Siren.Move.Rule.Id!="swipe"&&p.Siren.Move.Rule.Id!="hellfire"&&Time<p.Siren.Move.Until;
         private void CancelSiren(NativePilot p)
         {var m=p.Siren?.Move;if(m?.Caught!=null){m.Caught.HeldBy=null;m.Caught.Body.useGravity=true;m.Caught.Knockback=m.Caught.MoveVelocity=m.Caught.Body.linearVelocity=Vector3.zero;}if(p.Siren!=null)p.Siren.Move=null;if(p.HeldBy!=null){var owner=p.HeldBy;p.HeldBy=null;CancelSiren(owner);}p.Body.useGravity=true;}
-        private NativePilot SirenTarget(NativePilot p,float range,bool aimed=false)=>Pilots.Where(q=>q.Hp>0&&q.Seat.connected&&Enemy(p,q)&&Vector3.Distance(q.Body.position,p.Body.position+Vector3.up*.45f)<=range&&(!aimed||Vector3.Dot((q.Body.position-p.Body.position-Vector3.up*.45f).normalized,Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch)))>.7f)&&MeleeVisible(p.Body.position+Vector3.up*.45f,q.Body.position,p,q.Collider)).OrderBy(q=>(q.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();
+        private NativePilot SirenTarget(NativePilot p,float range,bool aimed=false)=>Pilots.Where(q=>q.Hp>0&&q.Seat.connected&&Enemy(p,q)&&Vector3.Distance(q.Body.position,p.Body.position+Vector3.up*.45f)<=range&&(!aimed||Vector3.Dot((q.Body.position-p.Body.position-Vector3.up*.45f).normalized,Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch)))>.7f)&&MeleeVisible(p.Body.position+Vector3.up*.45f,q.Body.position,p,q.Collider,Pve!=null)).OrderBy(q=>(q.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();
         private bool StartSiren(NativePilot p,string id)
         {
             var state=Siren(p);var r=NativeSirenRules.Rule(id);if(!Dev(p,"siren")||r==null||!FighterReady(p)||state.Move!=null||p.HeldBy!=null||Time<p.Ready||state.Ready.TryGetValue(id,out float ready)&&Time<ready)return false;
@@ -27,23 +27,23 @@ namespace ChipArena.UnityConversion
             if(id=="rain"&&SirenFields.Count(f=>f.Owner==p&&f.Kind=="rain")>=state.MaxRains||id=="eruption"&&SirenFields.Count(f=>f.Owner==p&&f.Kind=="eruption")>=state.MaxEruptions)return false;
             if(id=="mark"&&Bullets.Any(b=>b.Owner==p.Seat.id&&b.SirenKind=="seeker"))return false;var target=id=="mark"?SirenTarget(p,40,true):null;if(id=="mark"&&target==null)return false;
             var m=new NativeSirenMove{Id=nextAttack++,Rule=r,At=Time,HitAt=Time+r.Windup,EndAt=Time+r.Windup+r.Travel,Until=Time+NativeSirenRules.Duration(r),Target=target,Direction=Vec(V3.Forward(p.Input.Yaw)),Side=state.Side};state.Side=-state.Side;
-            Vector3 point=p.Input.AbilityTarget.Length>.01f?Vec(p.Input.AbilityTarget):p.Body.position+Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch))*28;m.Aim=GroundPoint(p.Body.position+Vector3.ClampMagnitude(point-p.Body.position,28));
-            state.Move=m;state.Ready[id]=Time+(r.Cooldown>0?r.Cooldown:NativeSirenRules.Duration(r))*state.Cooldown;p.AttackAt=p.LastAttack=Time;p.AttackEnd=p.Ready=m.Until;p.Combo++;return true;
+            Vector3 point=AuthorityAim(p,28);m.Aim=GroundPoint(p.Body.position+Vector3.ClampMagnitude(point-p.Body.position,28));
+            Emit(EventKind.Siren,p,0,m.Aim,0,id);state.Move=m;state.Ready[id]=Time+(r.Cooldown>0?r.Cooldown:NativeSirenRules.Duration(r))*state.Cooldown;p.AttackAt=p.LastAttack=Time;p.AttackEnd=p.Ready=m.Until;p.Combo++;return true;
         }
         private float SirenHit(NativePilot p,NativePilot q,float damage,bool melee=false,Vector3? direction=null)
         {
-            if(q.Hp<=0||!q.Seat.connected||!Enemy(p,q)||Invulnerable(q)||NativeSpecialRules.Protected(q.Down,Time))return 0;Vector3 dir=direction??(q.Body.position-p.Body.position).normalized;
+            if(q.Hp<=0||!q.Seat.connected||!CanHit(p,q)||Invulnerable(q)||NativeSpecialRules.Protected(q.Down,Time))return 0;Vector3 dir=direction??(q.Body.position-p.Body.position).normalized;
             if(Time<q.BlockEnd){BlockProc(q,p,q.Body.position);if(melee)SuccessfulMeleeBlock(q,p,damage,dir,100);return 0;}
             return Damage(q,p,damage*(float)p.Stats["damage"],dir,0,false,direct:false,primary:false,melee:melee);
         }
         private void SirenLaunch(NativePilot p,NativePilot q,float speed)
         {if(q.Hp<=0||SirenArmor(q))return;StunMelee(q,.45f);q.Down=null;q.Juggle=new NativeJuggle{At=Time,Until=Time+2,LastHit=Time,Hits=1,Owner=p};q.Knockback.y=speed-q.Body.linearVelocity.y;q.Grounded=false;}
         private void SirenArea(NativePilot p,Vector3 at,float radius,float damage,float lift=0,bool falloff=false)
-        {foreach(var q in Pilots){Vector3 d=q.Body.position-at;float dist=new Vector2(d.x,d.z).magnitude;if(dist>radius+.35f||Math.Abs(d.y)>4*Siren(p).Scale||!MeleeVisible(at+Vector3.up*.12f,q.Body.position,p,q.Collider))continue;if(SirenHit(p,q,damage*(falloff?Math.Max(.15f,1-dist/(radius+.4f)):1))>0&&lift>0)SirenLaunch(p,q,lift);}Fx(at,radius,4);}
+        {foreach(var q in Pilots){Vector3 d=q.Body.position-at;float dist=new Vector2(d.x,d.z).magnitude;if(dist>radius+.35f||Math.Abs(d.y)>4*Siren(p).Scale||!MeleeVisible(at+Vector3.up*.12f,q.Body.position,p,q.Collider,Pve!=null))continue;if(SirenHit(p,q,damage*(falloff?Math.Max(.15f,1-dist/(radius+.4f)):1))>0&&lift>0)SirenLaunch(p,q,lift);}Fx(at,radius,4);}
         private void SirenMelee(NativePilot p,NativeSirenMove m,float range,float damage,float arc)
         {
             Vector3 at=p.Body.position,dir=Vec(V3.Forward(p.Input.Yaw));foreach(var q in Pilots)
-            {Vector3 d=q.Body.position-at;if(m.Hit.Contains(q.Seat.id)||new Vector2(d.x,d.z).magnitude>range+.35f||Math.Abs(d.y)>1.9f*Siren(p).Scale||Vector3.Dot(new Vector3(d.x,0,d.z).normalized,dir)<Mathf.Cos(arc/2)||!MeleeVisible(at,q.Body.position,p,q.Collider))continue;m.Hit.Add(q.Seat.id);if(SirenHit(p,q,damage,true)>0&&m.Rule.Id=="rend"&&q.Hp>0&&!SirenArmor(q)){StunMelee(q,.1f);q.Down=new NativeRecovery{At=Time,Until=Time+1.2f,Source=p.Seat.id};q.Knockback=dir*3+Vector3.up*2.5f;}if(p.Hp<=0||Incapacitated(p))break;}
+            {Vector3 d=q.Body.position-at;if(m.Hit.Contains(q.Seat.id)||new Vector2(d.x,d.z).magnitude>range+.35f||Math.Abs(d.y)>1.9f*Siren(p).Scale||Vector3.Dot(new Vector3(d.x,0,d.z).normalized,dir)<Mathf.Cos(arc/2)||!MeleeVisible(at,q.Body.position,p,q.Collider,Pve!=null))continue;m.Hit.Add(q.Seat.id);if(SirenHit(p,q,damage,true)>0&&m.Rule.Id=="rend"&&q.Hp>0&&!SirenArmor(q)){StunMelee(q,.1f);q.Down=new NativeRecovery{At=Time,Until=Time+1.2f,Source=p.Seat.id};q.Knockback=dir*3+Vector3.up*2.5f;}if(p.Hp<=0||Incapacitated(p))break;}
         }
         private void SirenPatch(NativePilot p,Vector3 at,bool trail=false)
         {string kind=trail?"trail":"hellfire";var own=SirenFields.Where(f=>f.Owner==p&&f.Kind==kind).ToArray();if(own.Length>=(trail?24:12))SirenFields.Remove(own[0]);SirenFields.Add(new NativeSirenField{Id=nextEvent++,Owner=p,Kind=kind,Position=GroundPoint(at),Radius=(trail?.85f:1.1f)*Siren(p).Reach,At=Time,Until=Time+(trail?3:10)});}
@@ -74,7 +74,7 @@ namespace ChipArena.UnityConversion
             if((r.Id=="swipe"||r.Id=="rend")&&Time>=m.HitAt&&Time<m.HitAt+r.Active)SirenMelee(p,m,r.Range*s.Reach,r.Damage,r.Arc);
             if(r.Id=="rush"&&Time>=m.HitAt&&Time<m.EndAt){SirenMelee(p,m,1.1f*s.Reach,14,Mathf.PI*2);if(Time>=m.TrailAt){SirenPatch(p,p.Body.position,true);m.TrailAt=Time+.07f;}}
             if(r.Id=="laugh"&&m.Caught==null&&Time>=m.HitAt&&Time<m.EndAt)
-            {var q=m.Target;if(q?.Hp>0&&q.Seat.connected&&!Invulnerable(q)&&!NativeSpecialRules.Protected(q.Down,Time)&&q.HeldBy==null&&Vector3.Distance(q.Body.position,p.Body.position)<=1.05f*s.Reach&&MeleeVisible(p.Body.position,q.Body.position,p,q.Collider)){StunMelee(q,.1f);q.Roll=null;q.RollEnd=Time;q.HeldBy=p;m.Caught=q;m.CaughtAt=Time;m.CrushAt=Time+3.2f;m.Until=Time+3.8f;p.AttackEnd=p.Ready=m.Until;}}
+            {var q=m.Target;if(q?.Hp>0&&q.Seat.connected&&!Invulnerable(q)&&!NativeSpecialRules.Protected(q.Down,Time)&&q.HeldBy==null&&Vector3.Distance(q.Body.position,p.Body.position)<=1.05f*s.Reach&&MeleeVisible(p.Body.position,q.Body.position,p,q.Collider,Pve!=null)){StunMelee(q,.1f);q.Roll=null;q.RollEnd=Time;q.HeldBy=p;m.Caught=q;m.CaughtAt=Time;m.CrushAt=Time+3.2f;m.Until=Time+3.8f;p.AttackEnd=p.Ready=m.Until;}}
             if(Time>=m.Until)CancelSiren(p);
         }
         private Vector3 SirenMotion(NativePilot p)
@@ -100,7 +100,7 @@ namespace ChipArena.UnityConversion
             Vector3 delta=b.Velocity/60+Vector3.down*b.Gravity/(2*3600);b.Velocity.y-=b.Gravity/60;float left=delta.magnitude;Vector3 dir=delta.normalized;
             for(int i=0;i<512&&left>.000001f;i++)
             {
-                var hit=SweepNative(b.Position,dir*left,b.Radius,c=>{var q=c.GetComponent<NativePilotBody>()?.Pilot;return q!=null?q.Hp>0&&q.Seat.connected&&Enemy(p,q)&&!Invulnerable(q)&&!NativeSpecialRules.Protected(q.Down,Time)&&(!seeker||q.Seat.id==b.SirenTarget):c.GetComponent<NativePropBody>()!=null;});
+                var hit=SweepNative(b.Position,dir*left,b.Radius,c=>{var q=c.GetComponent<NativePilotBody>()?.Pilot;return q!=null?q.Hp>0&&q.Seat.connected&&CanHit(p,q)&&!Invulnerable(q)&&!NativeSpecialRules.Protected(q.Down,Time)&&(!seeker||q.Seat.id==b.SirenTarget):c.GetComponent<NativePropBody>()!=null;});
                 if(!hit.HasValue){b.Position+=dir*left;break;}var h=hit.Value;b.Position=h.Point;var target=h.Collider.GetComponent<NativePilotBody>()?.Pilot;var prop=h.Collider.GetComponent<NativePropBody>();
                 if(seeker&&prop!=null&&!prop.Indestructible){DamageProp(prop,prop.Health+1,Vector3.zero,h.Point);left-=h.Distance;continue;}
                 if(seeker){if(target!=null)SirenHit(p,target,85);Fx(h.Point,1,4);}

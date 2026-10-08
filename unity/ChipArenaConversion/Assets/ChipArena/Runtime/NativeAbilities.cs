@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion
             p.AbilityCast=null;
             if(p.CastAt>0){p.CastAt=0;p.AttackAt=-100;}
         }
-        private bool AbilityBusy(NativePilot p)=>p.AbilityCast!=null||p.CastAt>0||Time<p.RollEnd||Time<p.AttackEnd||Incapacitated(p)||Time<p.Ready||p.ReloadEnd>Time;
+        private bool AbilityBusy(NativePilot p)=>p.AbilityCast!=null||p.CastAt>0||Time<p.RollEnd||Time<p.AttackEnd||Incapacitated(p);
         private void StepAbilities(NativePilot p)
         {
             int max=NativeAbilityRules.Charges(p.Stats);
@@ -70,9 +70,7 @@ namespace ChipArena.UnityConversion
             {if(p.BufferedSlot==slot)p.BufferedSlot=null;return;}
             if(gate==NativeAbilityRules.Press.Buffered)
             {if(!retry||p.BufferedSlot==null){p.BufferedSlot=slot;p.BufferedAt=Time;}return;}
-            Vector3 point=Vec(p.Input.AbilityTarget);
-            if(point.sqrMagnitude<.001f)point=p.Body.position+Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch))*(float)d.range;
-            point=p.Body.position+Vector3.ClampMagnitude(point-p.Body.position,(float)d.range);
+            Vector3 point=AuthorityAim(p,(float)d.range);
             if(d.kind=="strike"||d.kind=="line"||d.kind=="zone")point=GroundPoint(point);
             Vector3 dir=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch));
             if(d.id=="blink-strike"){dir=new Vector3(p.Input.X,0,p.Input.Z);if(dir.sqrMagnitude<.01f)dir=Quaternion.Euler(0,p.Input.Yaw,0)*Vector3.forward;point=p.Body.position+dir.normalized*(float)d.range;}
@@ -148,37 +146,37 @@ namespace ChipArena.UnityConversion
         }
         private void AbilityOnDamage(NativePilot p,float actual)
         {if(actual<=0)return;p.Mana=Math.Min((float)p.Stats["maxMana"],p.Mana+actual*(float)p.Stats["manaSurge"]);p.LeechPending+=actual*(float)p.Stats["abilityLeech"];}
-        private List<NativePilot> AbilityBlast(NativePilot owner,Vector3 at,float radius,float damage,float impulse,int element,float propScale=1)
+        private List<NativePilot> AbilityBlast(NativePilot owner,Vector3 at,float radius,float damage,float impulse,int element,float propScale=1,Action onMinion=null)
         {
             var hits=new List<NativePilot>();
             foreach(var p in Pilots)
             {
                 Vector3 delta=p.Body.position-at;float fall=NativeAbilityRules.BlastFalloff(delta.magnitude,radius);
-                if(p.Hp<=0||!p.Seat.connected||!Enemy(owner,p)||fall<=0||SceneLinecast(at,p.Body.position,WorldMask))continue;
+                if(p.Hp<=0||!p.Seat.connected||!CanHit(owner,p)||fall<=0||SceneLinecast(at,p.Body.position,WorldMask))continue;
                 if(AbilityHit(p,owner,damage*fall,delta.normalized,impulse*fall)>0)hits.Add(p);
             }
-            foreach(var m in Minions.ToArray()){Vector3 delta=m.Body.position-at;float fall=NativeAbilityRules.BlastFalloff(delta.magnitude,radius);if(m.Hp>0&&Enemy(owner,m.Owner)&&fall>0&&MeleeVisible(at,m.Body.position,owner,m.Collider))AbilityOnDamage(owner,HitMinion(m,owner,damage,delta.normalized,impulse*fall,at,"blast",radius));}
+            foreach(var m in Minions.ToArray()){Vector3 delta=m.Body.position-at;float fall=NativeAbilityRules.BlastFalloff(delta.magnitude,radius);if(m.Hp>0&&CanHit(owner,m.Owner)&&fall>0&&MeleeVisible(at,m.Body.position,owner,m.Collider)){float actual=HitMinion(m,owner,damage,delta.normalized,impulse*fall,at,"blast",radius);AbilityOnDamage(owner,actual);if(actual>0)onMinion?.Invoke();}}
             foreach(var prop in Props.ToArray())if(prop!=null&&!prop.Indestructible)
             {
                 Vector3 delta=prop.transform.position-at;float reach=radius+prop.transform.localScale.magnitude*.35f;
                 if(delta.magnitude>=reach)continue;float fall=1-Mathf.Clamp(delta.magnitude/reach,0,.85f);
                 DamageProp(prop,damage*fall*propScale*(float)owner.Stats["demolition"],(delta+Vector3.up*.3f).normalized*impulse*fall,at,owner);
             }
-            Fx(at,radius,element);return hits;
+            Emit(EventKind.Explosion,owner,0,at,damage,"ability",radius);Fx(at,radius,element);return hits;
         }
         private void Fx(Vector3 at,float radius,int element,Vector3? from=null)
-        {AbilityEffects.Add(new NativeAbilityFx{Position=at,Radius=radius,Element=element,Until=Time+.22f,Beam=from.HasValue,From=from??at});}
+        {if(from.HasValue)Emit(EventKind.Arc,null,0,at,0,radius:radius,from:from);AbilityEffects.Add(new NativeAbilityFx{Position=at,Radius=radius,Element=element,Until=Time+.22f,Beam=from.HasValue,From=from??at});}
         private void Blink(NativePilot p,Vector3 point,float damage,float radius)
         {
             Vector3 a=p.Body.position;ChipBlink(p,point-a);Vector3 b=p.Body.position,delta=b-a,dir=delta.normalized;float distance=delta.magnitude;var struck=new HashSet<int>();
             foreach(var target in Pilots)
             {
-                if(target.Hp<=0||!Enemy(p,target))continue;
+                if(target.Hp<=0||!CanHit(p,target))continue;
                 Vector3 nearest=a+dir*Mathf.Clamp(Vector3.Dot(target.Body.position-a,dir),0,distance);
                 if(Vector3.Distance(target.Body.position,nearest)<=1.4f&&MeleeVisible(nearest,target.Body.position,p,target.Collider)&&AbilityHit(target,p,damage,target.Body.position-nearest,0)>0)struck.Add(target.Seat.id);
             }
-            foreach(var m in Minions.ToArray()){Vector3 nearest=a+dir*Mathf.Clamp(Vector3.Dot(m.Body.position-a,dir),0,distance);if(Enemy(p,m.Owner)&&Vector3.Distance(m.Body.position,nearest)<=1.4f&&MeleeVisible(nearest,m.Body.position,p,m.Collider)){float actual=HitMinion(m,p,damage,Vector3.zero,0);AbilityOnDamage(p,actual);if(actual>0)struck.Add(m.Id);}}
-            Fx(b,1,3,a);foreach(var q in AbilityBlast(p,b,radius,damage*2/3,300,3))struck.Add(q.Seat.id);if(Has(p,"storm-recall"))p.QReady=Math.Max(Time,p.QReady-Math.Min(4,struck.Count*2));
+            foreach(var m in Minions.ToArray()){Vector3 nearest=a+dir*Mathf.Clamp(Vector3.Dot(m.Body.position-a,dir),0,distance);if(CanHit(p,m.Owner)&&Vector3.Distance(m.Body.position,nearest)<=1.4f&&MeleeVisible(nearest,m.Body.position,p,m.Collider)){float actual=HitMinion(m,p,damage,Vector3.zero,0);AbilityOnDamage(p,actual);if(actual>0)struck.Add(m.Id);}}
+            bool blastMinion=false;Fx(b,1,3,a);foreach(var q in AbilityBlast(p,b,radius,damage*2/3,300,3,onMinion:()=>blastMinion=true))struck.Add(q.Seat.id);if(blastMinion)struck.Add(-1);if(Has(p,"storm-recall"))p.QReady=Math.Max(Time,p.QReady-Math.Min(4,struck.Count*2));
         }
         private void StepAbilityWorld()
         {
@@ -202,8 +200,8 @@ namespace ChipArena.UnityConversion
                     foreach(var h in hits)
                     {
                         var body=h.collider.GetComponent<NativePilotBody>();
-                        var minion=h.collider.GetComponent<NativeMinionBody>()?.Minion;if(minion!=null&&(minion.Hp<=0||!Enemy(s.Owner,minion.Owner)||s.Hit.Contains(minion.Id)))continue;
-                        if(body!=null&&(body.Pilot==s.Owner||body.Pilot.Hp<=0||!Enemy(s.Owner,body.Pilot)||s.Hit.Contains(body.Pilot.Seat.id)||Invulnerable(body.Pilot)))continue;
+                        var minion=h.collider.GetComponent<NativeMinionBody>()?.Minion;if(minion!=null&&(minion.Hp<=0||!CanHit(s.Owner,minion.Owner)||s.Hit.Contains(minion.Id)))continue;
+                        if(body!=null&&(body.Pilot==s.Owner||body.Pilot.Hp<=0||!CanHit(s.Owner,body.Pilot)||s.Hit.Contains(body.Pilot.Seat.id)||Invulnerable(body.Pilot)))continue;
                         s.Travel+=h.distance;s.Position+=delta.normalized*h.distance;
                         if(body!=null&&Time<body.Pilot.BlockEnd&&d.id!="tidal-wave"&&s.Reflections<3)
                         {BlockProc(body.Pilot,s.Owner,s.Position);s.Owner=body.Pilot;s.Reflections++;s.Damage=Math.Min(100,s.Damage*(float)s.Owner.Stats["reflectDamage"]);s.Velocity=Vector3.ClampMagnitude(-s.Velocity*(float)s.Owner.Stats["reflectSpeed"],120);s.Position+=s.Velocity.normalized*(s.Radius+.5f);s.Hit.Clear();contact=true;break;}
@@ -212,7 +210,7 @@ namespace ChipArena.UnityConversion
                         if(!remove&&(body!=null||minion!=null)&&d.id!="frag-grenade")s.Position+=delta.normalized*.05f;
                         break;
                     }
-                    if(!contact){s.Position+=delta;s.Travel+=delta.magnitude;}
+                    if(!contact){if(NativeSpecialRules.Ceiling(Vec(s.Position),Vec(delta),s.Radius,out float ceilingAt,out var ceilingPoint)){s.Position=Vec(ceilingPoint);remove=true;Emit(EventKind.CeilingHit,s.Owner,0,s.Position,0);}else{s.Position+=delta;s.Travel+=delta.magnitude;}}
                 }
                 bool expired=s.Life<=0||s.Travel>=s.MaxTravel-.0001f||s.Position.y<-15||d.id=="frag-grenade"&&Time>=s.Fuse;
                 if(!remove&&expired)
@@ -226,25 +224,25 @@ namespace ChipArena.UnityConversion
                 if(z.Kind!="bomb"&&Time>=z.NextTick)
                 {
                     z.NextTick+=.25f;
-                    foreach(var m in Minions.ToArray())if(m.Hp>0&&Enemy(z.Owner,m.Owner)&&Vector3.Distance(z.Position,m.Body.position)<z.Radius&&MeleeVisible(z.Position+Vector3.up*.15f,m.Body.position,z.Owner,m.Collider))AbilityOnDamage(z.Owner,HitMinion(m,z.Owner,z.Kind=="fire"?z.Damage*.25f:(float)d.tick*z.Damage/(float)d.damage*.25f,Vector3.zero,0,null,"dot"));
+                    foreach(var m in Minions.ToArray())if(m.Hp>0&&CanHit(z.Owner,m.Owner)&&Vector3.Distance(z.Position,m.Body.position)<z.Radius&&MeleeVisible(z.Position+Vector3.up*.15f,m.Body.position,z.Owner,m.Collider))AbilityOnDamage(z.Owner,HitMinion(m,z.Owner,z.Kind=="fire"?z.Damage*.25f:(float)d.tick*z.Damage/(float)d.damage*.25f,Vector3.zero,0,null,"dot"));
                     foreach(var p in Pilots)
                     {
                         Vector3 delta=z.Position+Vector3.up*.15f-p.Body.position;
-                        if(p.Hp<=0||!Enemy(z.Owner,p)||delta.magnitude>z.Radius||SceneLinecast(z.Position+Vector3.up*.15f,p.Body.position,WorldMask))continue;
+                        if(p.Hp<=0||!CanHit(z.Owner,p)||delta.magnitude>z.Radius||SceneLinecast(z.Position+Vector3.up*.15f,p.Body.position,WorldMask))continue;
                         AbilityHit(p,z.Owner,z.Kind=="fire"?z.Damage*.25f:(float)d.tick*z.Damage/(float)d.damage*.25f,Vector3.zero,0,false,false);
                     }
                 }
-                if(z.Kind=="black-hole")foreach(var m in Minions){Vector3 pull=z.Position+Vector3.up*.4f-m.Body.position;if(m.Hp>0&&Enemy(z.Owner,m.Owner)&&pull.magnitude<z.Radius&&MeleeVisible(z.Position+Vector3.up*.15f,m.Body.position,z.Owner,m.Collider)){if(m.Pve!=null)m.Pve.External+=pull.normalized*(float)d.force*dt;else if(!m.Body.isKinematic)m.Body.AddForce(pull.normalized*(float)d.force*dt,ForceMode.VelocityChange);}}
+                if(z.Kind=="black-hole")foreach(var m in Minions){Vector3 pull=z.Position+Vector3.up*.4f-m.Body.position;if(m.Hp>0&&CanHit(z.Owner,m.Owner)&&pull.magnitude<z.Radius&&MeleeVisible(z.Position+Vector3.up*.15f,m.Body.position,z.Owner,m.Collider)){if(m.Pve!=null)m.Pve.External+=pull.normalized*(float)d.force*dt;else if(!m.Body.isKinematic)m.Body.AddForce(pull.normalized*(float)d.force*dt,ForceMode.VelocityChange);}}
                 if(z.Kind=="black-hole")foreach(var p in Pilots)
                 {
                     Vector3 delta=z.Position+Vector3.up*.4f-p.Body.position;
-                    if(p.Hp>0&&Enemy(z.Owner,p)&&delta.magnitude<z.Radius&&!SceneLinecast(p.Body.position,z.Position+Vector3.up*.15f,WorldMask))p.Body.AddForce(delta.normalized*(float)d.force*dt,ForceMode.VelocityChange);
+                    if(p.Hp>0&&CanHit(z.Owner,p)&&delta.magnitude<z.Radius&&!SceneLinecast(p.Body.position,z.Position+Vector3.up*.15f,WorldMask))p.Knockback+=delta.normalized*(float)d.force*dt*(float)p.Stats["knockbackTaken"]*(p.SlowFactor<.6f?.5f:1);
                 }
                 if(Time<z.Until)continue;
                 if(z.Kind=="bomb")
                 {
                     var hit=AbilityBlast(z.Owner,z.Position+Vector3.up*.15f,z.Radius,z.Damage,(float)d.impulse,element);
-                    if(d.id=="geyser-wall"){foreach(var p in hit)Slow(p,(float)d.speedFactor,(float)d.slowFor);foreach(var m in Minions)if(m.Hp>0&&Enemy(z.Owner,m.Owner)&&Vector3.Distance(m.Body.position,z.Position)<z.Radius&&MeleeVisible(z.Position+Vector3.up*.15f,m.Body.position,z.Owner,m.Collider))SlowMinion(m,(float)d.speedFactor,(float)d.slowFor);}
+                    if(d.id=="geyser-wall"){foreach(var p in hit)Slow(p,(float)d.speedFactor,(float)d.slowFor);foreach(var m in Minions)if(m.Hp>0&&CanHit(z.Owner,m.Owner)&&Vector3.Distance(m.Body.position,z.Position)<z.Radius&&MeleeVisible(z.Position+Vector3.up*.15f,m.Body.position,z.Owner,m.Collider))SlowMinion(m,(float)d.speedFactor,(float)d.slowFor);}
                     if(d.id=="meteor-strike")
                     {z.Kind="fire";z.Radius=3.2f*z.Radius/(float)d.radius*(Has(z.Owner,"cinder-field")?1.5f:1);z.Damage=12*z.Damage/(float)d.damage;z.Until=Time+(float)d.duration*(Has(z.Owner,"cinder-field")?1.5f:1);z.NextTick=Time+.25f;continue;}
                 }
@@ -253,7 +251,7 @@ namespace ChipArena.UnityConversion
                     AbilityBlast(z.Owner,z.Position+Vector3.up*.15f,z.Radius*4/(float)d.radius,z.Damage*(Has(z.Owner,"abyssal-core")?1.2f:1),0,element);
                     Vector3 center=z.Position+Vector3.up*.15f;
                     foreach(var p in Pilots)
-                    {Vector3 delta=center-p.Body.position;float distance=delta.magnitude;if(p.Hp>0&&Enemy(z.Owner,p)&&distance>.1f&&distance<5&&!SceneLinecast(p.Body.position,center,WorldMask))p.Knockback+=delta.normalized*(1300/65f)*(1-distance/5)*(float)p.Stats["knockbackTaken"];}
+                    {Vector3 delta=center-p.Body.position;float distance=delta.magnitude;if(p.Hp>0&&CanHit(z.Owner,p)&&distance>.1f&&distance<5&&!SceneLinecast(p.Body.position,center,WorldMask))p.Knockback+=delta.normalized*(1300/65f)*(1-distance/5)*(float)p.Stats["knockbackTaken"];}
                     foreach(var prop in Props)if(prop!=null&&prop.Body!=null&&!prop.Body.isKinematic)
                     {Vector3 delta=center-prop.transform.position;float distance=delta.magnitude;if(distance>.1f&&distance<5)prop.Body.AddForce(delta.normalized*1300*(1-distance/5),ForceMode.Impulse);}
                 }
@@ -284,7 +282,7 @@ namespace ChipArena.UnityConversion
             {
                 s.Hit.Add(target.Seat.id);
                 if(d.id=="ball-lightning")return false;
-                bool head=d.id=="flame-lance"&&hit.point.y>target.Body.position.y+.4f;
+                bool head=d.id=="flame-lance"&&NativeCombatRules.Headshot(Vec(target.Body.position),target.Yaw,Vec(hit.point-s.Velocity.normalized*.1f),Vec(s.Velocity),s.Radius,target.Down!=null||target.Juggle!=null);
                 Vector3 impulse=s.Velocity.normalized*(d.id=="tidal-wave"&&Has(s.Owner,"undertow")?-700:(float)d.impulse)+(d.id=="tidal-wave"?Vector3.up*200:Vector3.zero);
                 float actual=AbilityHit(target,s.Owner,s.Damage*(head?1.5f:1),impulse.normalized,impulse.magnitude,head,true,d.id=="flame-lance"||d.id=="shadow-shackles");
                 if(actual>0)
@@ -298,7 +296,7 @@ namespace ChipArena.UnityConversion
             }
             if(d.id=="ball-lightning")AbilityBlast(s.Owner,at,NativeAbilityRules.Radius(d,s.Owner.Stats),s.Damage,400,element);
             else if(d.id=="tidal-wave"&&hit.normal.y>.6f){s.Position.y=hit.point.y+s.Radius+.02f;return false;}
-            else DamageProp(hit.collider.GetComponent<NativePropBody>(),s.Damage,s.Velocity.normalized*(float)(d.id=="tidal-wave"?600:d.impulse),hit.point,s.Owner);
+            else if(d.id=="tidal-wave"){var prop=hit.collider.GetComponent<NativePropBody>();if(prop?.Body!=null&&!prop.Body.isKinematic)prop.Body.AddForceAtPosition(s.Velocity.normalized*600,hit.point,ForceMode.Impulse);}
             Fx(at,.6f,element);return true;
         }
     }
