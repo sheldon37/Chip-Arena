@@ -118,12 +118,7 @@ namespace ChipArena.UnityConversion
                 world.Halo(zone.Position+Vector3.up*.035f,Vector3.right,Vector3.forward,zone.Radius*2,color,(zone.Kind=="bomb"?.30f:.45f)*pulse);
                 if(zone.Kind=="black-hole")world.Halo(zone.Position+Vector3.up*.7f,right,up,2,color,.7f);
             }
-            foreach(var fx in arena.AbilityEffects)if(!fx.Beam)
-            {
-                float fade=Mathf.Clamp01((fx.Until-now)/.22f);Color color=School(fx.Element);
-                world.Halo(fx.Position,right,up,Mathf.Max(.3f,fx.Radius*2*(1-fade*.5f)),color,fade*.85f);
-                world.Halo(fx.Position+Vector3.up*.025f,Vector3.right,Vector3.forward,fx.Radius*2,color,fade*.5f);
-            }
+            // Ability and chip blasts are volumetric voxels now (NativeBlastPresentation), not two flat halos.
             int lightIndex=0;
             foreach(var pilot in arena.Pilots)
             {

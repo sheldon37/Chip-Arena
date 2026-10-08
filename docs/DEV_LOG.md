@@ -21,6 +21,16 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-08 — Claude — C6 volumetric chip blasts in Unity
+- Branch `claude/wip-c6` (local, not pushed), base `claude/sleepy-ritchie-g8ruhv` `662c9d3` (PR #62 head). Presentation only.
+- `Core/NativeBlastSim.cs` is a pure port of client/chip-blasts.ts (05950ea): 11 styles, palettes and tints, the 0.3 s front, 900/700 doubling pools, the 16-voxel minimum, quality and compat scaling, impact(), field emitters, line, paddle, three pooled lights, the source's seeded LCG and Float32 storage. `Runtime/NativeBlastPresentation.cs` draws it with one dynamic mesh per pool from reused buffers (new unlit `Resources/NativeBlast.shader`: opaque, and additive with no depth write) and three point lights (three.js intensity x .35, as NativeCombatGlow). Clock: the render clock, so a menu pause freezes it. Reduced effects = 0.3, as the source.
+- Driven on host and guests from replicated data: every non-beam ability/chip effect (this replaces the two 0.22 s halos in NativeCombatGlow, Leet nuke included), blink teleports (void blast, origin impact, streak), Vacuum, ability zones and chip fields (emitters, arrival and lock impacts) and surface impacts (water, kinetic and demolition procs). Style: the source tag of a zone, field, ability shot or teleport that ends at the effect; otherwise the owner's school (fire, frost, shock, implosion; no school = fire). The host reads ChipField.Effect; guests have only the kind until it is replicated.
+- No change to hit timing, hitboxes, damage, cooldowns, movement, networking or the event model. Coordinates go in as Unity positions; the converted maps keep the source's numbers, so the in-game layout is mirrored in Z just as the maps are.
+- Checks: Unity runtime+editor compile OK; 24 Python tests OK; package_source OK; check_relay OK (new BlastChecks: 88 source runs, 481 frames from `tools/export_blast_fixtures.mjs` -> `Tests/blast-parity.json`, plus determinism, front at 0.3 s, capacity, minimum voxels, quality, cues and winding). fxref harness: 97 numeric runs equal voxel for voxel; 43 rendered comparisons (11 styles x r 1.2/3/6, tints, impacts, fields) have 0 pixel diff.
+- Not run: Unity import and shader compile, rendering on a GPU, the Windows player, an online session, performance.
+- Needs Astra (A21): carry the source event type and blast message, plus the owner, on ability/chip effects and NativeEffectFrame; replicate ChipField.Effect, zone ids and lockAt; add the missing events (freeze, panic-button nova, summon, critical/catch/split/meleeRebound/slowed/ricochet, arcs, impacts on players, slash). Then switch NativeBlastCues to the tags.
+- Status: implemented on branch; not merged; not released.
+
 ## 2026-10-08 — Claude — Unity vs Electron parity gap list (handoff)
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62), audited at `eb8f7f7` against the original `05950ea`. Docs only; no code changed.
 - Added `docs/UNITY-PARITY-GAPS.md`: a read-only code audit of screens, gameplay, networking, presentation and trackers, with each P1 re-checked by a refuting reviewer. Items are split by the role split: A1–A31 for Astra (logic) and C1–C24 for Claude (visuals), plus 12 owner decisions and a not-verified list.

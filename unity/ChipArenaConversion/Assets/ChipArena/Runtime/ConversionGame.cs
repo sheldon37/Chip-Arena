@@ -127,7 +127,7 @@ namespace ChipArena.UnityConversion
                 preview=point;
             }
             presentation.RenderAbilities(arena,preview);
-            presentation.GlowQuality=prefs.reducedEffects?.3f:prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?.4f:1;presentation.RenderGlow(arena,cameraView);presentation.FinishSourceFrame();
+            presentation.GlowQuality=prefs.reducedEffects?.3f:prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?.4f:1;presentation.BlastQuality=prefs.reducedEffects?.3f:1;presentation.RenderGlow(arena,cameraView);presentation.FinishSourceFrame();
         }
         // No match: the selected map behind the menu with the source's slow overview orbit (renderer.ts idle camera).
         private string backdropMap;

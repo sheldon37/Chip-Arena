@@ -2,6 +2,11 @@
 
 No native Unity playtest or Windows executable build was run in the authoring workspace.
 
+## Volumetric chip blasts, C6 (2026-10-08, `claude/wip-c6`)
+
+- Runtime and Editor assemblies compile against the real Unity 6000.3.24f1 managed DLLs. `tools/check_relay.py` passes; the new BlastChecks replay 88 runs of the pinned client/chip-blasts.ts (`tools/export_blast_fixtures.mjs <source checkout>` writes `Tests/blast-parity.json`), with counts, weighted voxel sums, first voxels and lights per frame. They also check determinism, the front on the gameplay radius at 0.3 s, pool capacities, the 16-voxel minimum, quality scaling, the effect cues and cube winding. 24 Python tests pass; `tools/package_source.py` passes.
+- **Not run:** Unity import and compile of `NativeBlast.shader`, rendering on a GPU, the blasts in a hosted or joined match, frame-time cost on the owner's PC.
+
 ## Melee runtime, presentation polish and updater integration (2026-10-08, `claude/sleepy-ritchie-g8ruhv`)
 
 Run in the Linux authoring workspace on the combined tree (updater merge `d185be4` and later):
