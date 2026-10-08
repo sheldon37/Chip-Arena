@@ -5,10 +5,11 @@ using UnityEngine.Rendering;
 namespace ChipArena.UnityConversion
 {
     // C17 (client/pve/gore.ts): a limb severed from a Ward Zero add is thrown as a tumbling chunk with a spray of black
-    // ink, and every hit on an add splashes ink. Chunks and drops are pure in their event time (NativeGoreRules). This side
-    // only notices new losses in the replicated add state (NativePveAdd.Lost, and a corpse's `lost` when the blow killed),
-    // so the host, guests and killcam replays throw the same chunk. The body keeps hiding the lost limb as before
-    // (NativeSourcePresentation). Presentation only: no simulation, hit or network state is read back or changed.
+    // ink, and a directed hit on an add splashes ink (NativeGoreHits: field and burn ticks do not). Chunks and drops are
+    // pure in their event time (NativeGoreRules). This side only notices new losses in the replicated add state
+    // (NativePveAdd.Lost, and a corpse's `lost` when the blow killed), so the host, guests and killcam replays throw the
+    // same chunk. The body keeps hiding the lost limb as before (NativeSourcePresentation). Presentation only: no
+    // simulation, hit or network state is read back or changed.
     public sealed partial class ArenaPresentation
     {
         // Settings · Reduced effects scales the ink like the source's effects quality (Full 1, Reduced .3).
@@ -18,9 +19,11 @@ namespace ChipArena.UnityConversion
         private readonly NativeGoreRules.ChunkList goreChunks=new NativeGoreRules.ChunkList();
         private readonly NativeGoreRules.DropList goreDrops=new NativeGoreRules.DropList();
         private readonly Dictionary<int,int> goreLost=new Dictionary<int,int>(),goreSeen=new Dictionary<int,int>();
+        // Each add's last ink splash (event time); goreDirections: this arena's Hit events carry their direction (Normal).
+        private readonly Dictionary<int,double> goreSplash=new Dictionary<int,double>();private bool goreDirections;
         private readonly List<int> goreStale=new List<int>();
         private readonly Matrix4x4[] goreOlive=new Matrix4x4[NativeGoreRules.ChunkMax],goreShell=new Matrix4x4[NativeGoreRules.ChunkMax],goreInk=new Matrix4x4[NativeGoreRules.DropMax];
-        private Material[] goreMaterials;private NativeArena goreArena;private int goreFrame,goreEvent,goreHitTarget=-1;private float goreTime=float.NegativeInfinity,goreHitAt=float.NaN;
+        private Material[] goreMaterials;private NativeArena goreArena;private int goreFrame,goreEvent;private float goreTime=float.NegativeInfinity;
 
         private void PveGore(NativeArena arena)
         {
@@ -28,16 +31,19 @@ namespace ChipArena.UnityConversion
             float now=arena.Time;
             if(goreArena!=arena){ClearWardZero();goreArena=arena;}
             // A rewind re-learns the adds without throwing; the chunks themselves are rewind-safe (gore.ts:71).
-            else if(now<goreTime-.35f){goreLost.Clear();goreSeen.Clear();}
+            else if(now<goreTime-.35f){goreLost.Clear();goreSeen.Clear();goreSplash.Clear();}
             goreTime=now;goreFrame++;float quality=Mathf.Clamp01(EffectsQuality);
-            // gore.ts:46-47 / horde-view.ts:211: a hit on an add, once per hit time, drops 6-10 ink drops at chest height (a hit
-            // up to .5 s ahead of the presented clock waits in the pool, as chunks do).
+            // gore.ts:46-47 / horde-view.ts:211: a directed hit on an add, once per hit time, drops 6-10 ink drops at chest
+            // height (a hit up to .5 s ahead of the presented clock waits in the pool, as chunks do). Until hits carry their
+            // direction, every hit counts but an add splashes at most every .25 s (NativeGoreHits.Splash).
             int newest=goreEvent;
             foreach(var e in arena.Events)
             {
                 if(e.Id<=goreEvent)continue;newest=Math.Max(newest,e.Id);
-                if(e.Kind!=EventKind.Hit&&e.Kind!=EventKind.Headshot||e.Time-now>.5f||now-e.Time>=.3f||e.Target==goreHitTarget&&e.Time==goreHitAt)continue;
-                if(!AddBody(arena,e.Target,e.Time,out Vector3 body,out bool crawl))continue;goreHitTarget=e.Target;goreHitAt=e.Time;
+                if(!NativeGoreHits.IsHit(e)||!NativeGoreHits.Recent(e.Time,now))continue;bool aimed=NativeGoreHits.Directional(e.Normal);
+                if(goreDirections&&!aimed||!AddBody(arena,e.Target,e.Time,out Vector3 body,out bool crawl))continue;if(aimed)goreDirections=true;
+                if(!goreSplash.TryGetValue(e.Target,out double last))last=double.NegativeInfinity;
+                if(!NativeGoreHits.Splash(goreDirections,e.Normal,e.Time,last))continue;goreSplash[e.Target]=e.Time;
                 float ground=body.y-(crawl?.44f:.85f);
                 GoreInk(e.Time,NativeGoreRules.GibSeed(e.Time,NativeGoreRules.FnvDigits(e.Target),0x68697421u),new Vector3(body.x,ground+1.05f,body.z),NativeGoreRules.HitInk(quality),2.2f,quality);
             }
@@ -57,6 +63,8 @@ namespace ChipArena.UnityConversion
             }
             goreStale.Clear();foreach(var pair in goreSeen)if(pair.Value!=goreFrame)goreStale.Add(pair.Key);
             foreach(int id in goreStale){goreSeen.Remove(id);goreLost.Remove(id);}
+            goreStale.Clear();foreach(var pair in goreSplash)if(!goreSeen.ContainsKey(pair.Key))goreStale.Add(pair.Key);
+            foreach(int id in goreStale)goreSplash.Remove(id);
             // gore.ts:69-76 pose the live chunks (slot colours by draw order) and the ink.
             goreChunks.Update(now);goreDrops.Update(now);int olive=0,shell=0,ink=0,slot=0;
             for(int i=0;i<goreChunks.Count;i++)
@@ -77,16 +85,18 @@ namespace ChipArena.UnityConversion
             foreach(var d in arena.MinionDeaths)if(d.id==id&&Math.Abs(d.at-at)<.05f&&d.model!=null&&d.model.StartsWith("horde-",StringComparison.Ordinal)){body=d.position;crawl=false;return true;}
             body=default;crawl=false;return false;
         }
-        // gore.ts:52-61: one chunk and an ink spray per severed part, timed and aimed by the newest hit on the add (the
-        // replicated events), seeded from that time, the add and the limb.
+        // gore.ts:52-61: one chunk and an ink spray per severed part, timed and aimed by the severing hit on the add (the
+        // replicated events, NativeGoreHits.SeverHit), seeded from that time, the add and the limb. A directed hit aims along
+        // its direction; a field or burn tick has none and the chunk rises, as the source's zero dir. Until hits carry their
+        // direction, the newest hit is aimed from its attacker to the hit point.
         private void Sever(NativeArena arena,int id,int fresh,Vector3 body,float yaw,bool crawl,float quality)
         {
-            float at=arena.Time;bool hasFrom=false;Vector3 from=Vector3.zero;
-            for(int i=arena.Events.Count-1;i>=0;i--)
+            float at=arena.Time;bool hasFrom=false;Vector3 from=Vector3.zero;int hit=NativeGoreHits.SeverHit(arena.Events,id,arena.Time,goreDirections,out bool aimed);
+            if(hit>=0)
             {
-                var e=arena.Events[i];if(e.Target!=id||e.Kind!=EventKind.Hit&&e.Kind!=EventKind.Headshot||e.Time-arena.Time>.5f||arena.Time-e.Time>=.3f)continue;
-                at=e.Time;foreach(var p in arena.Pilots)if(p.Seat.id==e.Source){from=NativeArena.Vec(e.Position)-p.Body.position;hasFrom=from.sqrMagnitude>1e-6f;break;}
-                break;
+                var e=arena.Events[hit];at=e.Time;
+                if(goreDirections){hasFrom=true;if(aimed)from=NativeArena.Vec(e.Normal);}
+                else foreach(var p in arena.Pilots)if(p.Seat.id==e.Source){from=NativeArena.Vec(e.Position)-p.Body.position;hasFrom=from.sqrMagnitude>1e-6f;break;}
             }
             minionRigs.TryGetValue(id,out var rig);uint target=NativeGoreRules.FnvDigits(id);
             for(int limb=0;limb<GoreLimbBones.Length;limb++)
@@ -127,7 +137,7 @@ namespace ChipArena.UnityConversion
         // beacon resources (recreated on the next Ward Zero frame).
         private void ClearWardZero()
         {
-            goreChunks.Clear();goreDrops.Clear();goreLost.Clear();goreSeen.Clear();goreArena=null;goreEvent=0;goreTime=float.NegativeInfinity;goreHitTarget=-1;goreHitAt=float.NaN;
+            goreChunks.Clear();goreDrops.Clear();goreLost.Clear();goreSeen.Clear();goreSplash.Clear();goreDirections=false;goreArena=null;goreEvent=0;goreTime=float.NegativeInfinity;
             if(goreMaterials!=null){foreach(var m in goreMaterials)if(m!=null)CapturedAnimation.Release(m);goreMaterials=null;}
             ReleaseBeacons();
         }

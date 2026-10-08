@@ -24,7 +24,7 @@ internal static class Program
             foreach(var result in MeleeMotionChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in UiMotionChecks.Run(root))Console.WriteLine("PASS "+result);
             NativeSystemsChecks.Run(root,data);WoundCarveChecks.Run(root);CollapseChecks.Run(root);ExtraPresentationChecks.Run(root);
-            GoreBeaconChecks.Run(root);
+            GoreBeaconChecks.Run(root);GoreHitChecks.Run();
             var tests = RegressionTests.Run(); tests.AddRange(RangedRegressionTests.Run());
             foreach (string test in tests) Console.WriteLine("PASS " + test);
             Console.WriteLine(tests.Count + " managed-core checks passed. Unity Editor/rendering/PhysX and Windows build NOT exercised.");
