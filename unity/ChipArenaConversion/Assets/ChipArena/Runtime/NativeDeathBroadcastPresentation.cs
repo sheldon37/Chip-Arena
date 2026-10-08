@@ -16,6 +16,8 @@ namespace ChipArena.UnityConversion
     {
         private readonly NativeDeathBroadcast broadcasts=new NativeDeathBroadcast();private readonly Dictionary<int,CapturedAnimation.Player> broadcastRigs=new Dictionary<int,CapturedAnimation.Player>();
         public IEnumerable<string> DeathMessages(float time)=>broadcasts.Items.Where(i=>time>=i.At+1.05f&&time<i.At+5.15f).Select(i=>i.Text);
+        // When the newest visible death line appeared (the source's .is-new entrance), or -1 when none is shown.
+        public float LatestDeathMessage(float time)=>broadcasts.Items.Where(i=>time>=i.At+1.05f&&time<i.At+5.15f).Select(i=>i.At+1.05f).DefaultIfEmpty(-1).Max();
         private void DeathBroadcasts(NativeArena arena)
         {
             float t=arena.Time;bool clear=arena.Match.Phase==NativePhase.Lobby||arena.Match.Phase==NativePhase.Intro;broadcasts.Tick(t,clear);if(!clear)foreach(var p in arena.Pilots.Where(p=>p.Hp<=0&&p.Death!=null).OrderBy(p=>p.Death.at).ThenBy(p=>p.Death.seed))broadcasts.Add(p.Death.seed,p.Seat.id,p.Death.owner,p.Death.at,t,p.Seat.name,arena.Match.Seat(p.Death.owner)?.name);

@@ -181,6 +181,8 @@ namespace ChipArena.UnityConversion
             NativeUi.Begin();if(match?.Phase!=NativePhase.Match)matchEndAt=-1;
             // The intro overlay replaces the whole HUD (main.ts drawHud), so nothing else draws while it runs.
             if(arena!=null&&!menu&&previewArena==null&&IntroActive){IntroOverlay();return;}
+            // The killcam is a broadcast frame of the past: the live HUD steps aside while it plays (killcam.css).
+            if(arena!=null&&!menu&&previewArena==null&&ReplayActive){ReplayHud(width,height);return;}
             CombatWorldHud(scale,width,height);
             if(arena!=null&&!menu&&match.Phase==NativePhase.Fight&&presentation.ScopeActive)DrawScope(width,height);
             GUI.Label(new Rect(22,15,width-44,35),"CHIP ARENA  /  NATIVE CONVERSION",heading);

@@ -8,6 +8,14 @@ namespace ChipArena.UnityConversion
     {
         private sealed class HealthLag {public float Value,Last,Time=-100,Hold;}
         private readonly Dictionary<int,HealthLag> healthLags=new Dictionary<int,HealthLag>();private int hudGeneration=-1;
+        // match-hud.css .death-announcement: top left, a dark card with an orange edge; a new line slides in over .26 s.
+        private void DeathLine()
+        {
+            var lines=presentation.DeathMessages(arena.Time).ToArray();if(lines.Length==0)return;float since=arena.Time-presentation.LatestDeathMessage(arena.Time),e=NativeUiMotion.Bezier(.2f,.8f,.2f,1,Mathf.Clamp01(since/.26f));
+            float maxW=Mathf.Min(320,NativeUi.W*.42f),w=Mathf.Min(maxW,lines.Max(l=>NativeUi.Measure(l,13).x)+22),h=lines.Length*13*1.45f+14;var r=new Rect(22-10*(1-e),70,w,h);
+            NativeUi.Round(r,NativeUi.Hex(0x0d0f16,.72f*e),6);NativeUi.Fill(new Rect(r.x,r.y+3,2,r.height-6),NativeUi.Hex(0xff6b35,e));
+            for(int i=0;i<lines.Length;i++)NativeUi.Text(new Rect(r.x+11,r.y+7+i*13*1.45f,w-22,13*1.45f),lines[i],13,NativeUi.Hex(0xd9ecf3,e),TextAnchor.MiddleLeft,shadow:new Color(0,0,0,e));
+        }
         private void CombatWorldHud(float scale,float width,float height)
         {
             if(menu||arena?.Local==null||cameraView==null||IntroActive||ReplayActive)return;
@@ -26,7 +34,7 @@ namespace ChipArena.UnityConversion
             foreach(var m in arena.Minions)if(m.Hp<m.MaxHp)Health(m.Id,m.Body.transform.position+Vector3.up*(m.Kind=="slender"?1.52f:m.Kind=="toy"?.85f:1.2f),m.Hp,m.MaxHp,m.Kind=="toy"?.42f:.6f,m.Owner==arena.Local||match.SameSide(m.Owner.Seat,arena.Local.Seat),null,false);
             foreach(var e in arena.Events){float age=arena.Time-e.Time;if(age<0||age>.8f||e.Source!=arena.LocalId||(e.Kind!=EventKind.Hit&&e.Kind!=EventKind.Headshot)||e.Amount<=0)continue;if(ScreenPoint(NativeArena.Vec(e.Position)+Vector3.up*(.9f+age*.7f),55,out var point)){GUI.color=new Color(1,e.Kind==EventKind.Headshot?.45f:.9f,.5f,1-age/.8f);GUI.Label(new Rect(point.x-32,height-point.y,80,30),Math.Ceiling(e.Amount).ToString(),small);}}
             GUI.color=old;
-            GUI.Label(new Rect(width/2-260,height-235,520,65),string.Join("\n",presentation.DeathMessages(arena.Time)),small);
+            DeathLine();
             var local=arena.Local;if(local.Controlling!=null)GUI.Label(new Rect(width/2-180,140,360,40),"CONTROLLING "+local.Controlling.Seat.name,label);else if(arena.Time<local.FrozenUntil)GUI.Label(new Rect(width/2-180,140,360,40),"ADMIN PAUSE · "+(local.FrozenUntil-arena.Time).ToString("0.0")+"s",label);
             if(arena.Pve!=null)
             {
