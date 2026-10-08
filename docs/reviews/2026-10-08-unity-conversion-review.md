@@ -132,6 +132,159 @@ findings are 2 distinct problems and the 14 high are about 9.
     - The owner has asked Claude to port the captured-melee runtime layer; see the tracking
       issue.
 
+## Index
+
+Paths are under `unity/ChipArenaConversion/Assets/ChipArena/` unless shown otherwise.
+
+| # | Severity | Area | Where | Finding |
+|---|---|---|---|---|
+| [1](#f1) | critical | Networking | `Runtime/NativeNetworkFrame.cs` | JsonUtility cannot send null, so every match frame fails Valid() and every guest is disconnected when the match starts |
+| [2](#f2) | critical | Networking | `Core/NativeTransport.cs` | Socket async loops resume on Unity's main-thread sync context, so throughput is capped at about fps/2 messages per connection: guests below ~120 fps overflow and drop, and a 60 fps dedicated host falls behind on input |
+| [3](#f3) | critical | Unity engine | `Runtime/NativeNetworkFrame.cs` | JsonUtility turns every null nested object into a default object, so all replicated frames fail validation and every network client disconnects on the first frame |
+| [4](#f4) | high | Accounts & security | `Core/NativeAccess.cs` | Token verification depends on ECDsa, which Unity's Mono runtime does not implement, so sign-in and all DEV/grant access fail in the built game. A crafted token can also freeze a host. |
+| [5](#f5) | high | Accounts & security | `Relay/Program.cs` | The relay's 'per-address' limit becomes one global 60 requests/min bucket behind the documented reverse proxy, and nothing caps rooms per address |
+| [6](#f6) | high | Combat | `Runtime/NativeArena.cs` | Every direct gun/magic/ability hit applies a 0.25 s stun; the original has no hit stun for these |
+| [7](#f7) | high | Combat | `Runtime/NativeArena.cs` | Block makes a pilot immune to all ability damage (blasts, tidal wave, blink, ball-lightning zaps) |
+| [8](#f8) | high | Combat | `Runtime/NativeAbilities.cs` | Q/E presses are silently dropped during the primary-fire interval and while reloading |
+| [9](#f9) | high | Delivery & docs | `Core/NativeAccess.cs` | Signed account and DEV-unlock verification uses ECDsa P-256, likely unimplemented in Unity's Mono, and no test checks a valid token |
+| [10](#f10) | high | Networking | `Runtime/NativeReplay.cs` | Killcam in any non-PvE match throws in ApplyFrame every frame and drops a full collidable copy of the arena into the live physics scene for ~4 s |
+| [11](#f11) | high | Networking | `Runtime/NativeNetworkFrame.cs` | Guest replica moves kinematic bodies with Rigidbody.position but never simulates, so transforms used by the camera, health bars, lock-on and horde rendering stay at spawn |
+| [12](#f12) | high | Networking | `Runtime/NativeNetworkFrame.cs` | No client-side prediction or snapshot-timeline interpolation: your own movement lags a full round trip, and guest animation time advances in 20 Hz steps |
+| [13](#f13) | high | Networking | `Relay/Program.cs` | Relay rate limiter keys on the socket peer IP; behind the required TLS reverse proxy all players share one 60-requests/minute bucket |
+| [14](#f14) | high | PvE & DEV | `Runtime/NativePveHorde.cs` | Every horde hit and DoT tick is retained 1 s and serialized into every 20 Hz frame with no budget (the original caps and coalesces horde events) |
+| [15](#f15) | high | Unity engine | `Runtime/NativeReplay.cs` | Elimination replay throws every frame in non-PvE matches and leaks replica arenas into the live physics scene |
+| [16](#f16) | high | Unity engine | `Core/NativeTransport.cs` | Socket read/write loops resume on Unity's main-thread SynchronizationContext, so throughput is about fps/2 messages per second; clients below ~120 fps overflow and the 60 fps --ca-server falls behind |
+| [17](#f17) | high | Unity engine | `Runtime/NativeNetworkFrame.cs` | Replica clients never step physics, so Rigidbody.position writes never reach Transforms while camera, HUD, lock-on and minion rendering read Transforms |
+| [18](#f18) | medium | Accounts & security | `Runtime/NativeProfileUI.cs` | Signing in to an account with no saved pilot overwrites the local pilot with server defaults instead of uploading it |
+| [19](#f19) | medium | Accounts & security | `Runtime/ConversionGame.cs` | A corrupt or briefly unwritable preferences file replaces the whole game UI with an error screen that never clears |
+| [20](#f20) | medium | Accounts & security | `Runtime/NativeSandbox.cs` | DEV and grant access expires mid-session: the sandbox dummy's scoped grant is never refreshed, and in-match access depends on 15-minute token refreshes |
+| [21](#f21) | medium | Animation & presentation | `Runtime/CapturedAnimation.cs` | Captured cuts have no phrase footwork: feet skate 25-81 cm across the floor on every melee attack |
+| [22](#f22) | medium | Animation & presentation | `Core/CapturedRig.cs` | Blade/body clearance solver not ported: greatsword blade sits inside the head during idle guard and block |
+| [23](#f23) | medium | Animation & presentation | `Core/NativeSpecialPose.cs` | Melee E specials push the legs 23-38 cm through the floor; VALIDATION's 'voxel floor clearance' claim does not cover specials |
+| [24](#f24) | medium | Animation & presentation | `Core/MagicPose.cs` | Magic casts sink the feet about 8.5 cm into the floor and slide them 7-9 cm |
+| [25](#f25) | medium | Animation & presentation | `Runtime/CapturedAnimation.cs` | Locomotion feet jump 15-28 cm whenever a player starts or stops, and skate about 20 cm per step when sprinting |
+| [26](#f26) | medium | Animation & presentation | `Runtime/CapturedAnimation.cs` | Echo Strike follow-ups: contact pose shown up to 0.34 s after the hit, and a one-frame snap of up to 2.85 m at the blade tip |
+| [27](#f27) | medium | Animation & presentation | `Runtime/CapturedAnimation.cs` | Daggers' 4th-cut spin and Hurricane Edge's full turn are never shown, although gameplay sweeps 360° |
+| [28](#f28) | medium | Animation & presentation | `Runtime/CapturedAnimation.cs` | Runtime blade floor guard uses a 1.28 m sword length for every set: dagger wrists bent up to 63°, left dagger and shield unguarded |
+| [29](#f29) | medium | Animation & presentation | `Runtime/NativeViewPresentation.cs` | First-person melee uses the third-person captured clips; the dagger view model is off-screen most of the idle loop |
+| [30](#f30) | medium | Animation & presentation | `Runtime/ArenaPresentation.cs` | No muzzle flash, slide recoil or magazine choreography for anyone in the native game: GunPresentation is unreachable once source models are active |
+| [31](#f31) | medium | Animation & presentation | `Runtime/NativeAudio.cs` | Stereo panning is reversed: sounds on the right play in the left ear |
+| [32](#f32) | medium | Animation & presentation | `Runtime/CapturedAnimation.cs` | Directional hit reactions (impulse flinch, light-hit recoil, parry reaction) are not ported |
+| [33](#f33) | medium | Animation & presentation | `Runtime/NativeSourcePresentation.cs` | Horde minions play gait clips baked at fixed speeds, in lockstep per variant, with a hard walk/run switch: feet skate |
+| [34](#f34) | medium | Animation & presentation | `Runtime/NativeDeathPresentation.cs` | Cosmetic corpse physics scene receives only the first 48 foundation blocks, so bodies fall through upper floors and stairs |
+| [35](#f35) | medium | Animation & presentation | `Runtime/NativeArena.cs` | Leet (a magic-class weapon) is animated with the sword capture set and has no casting animation |
+| [36](#f36) | medium | Chips & match | `Core/NativeMatch.cs` | Draft offers come from a fixed-seed RNG used only for drafts, so every match (and every rematch) deals the same Chips |
+| [37](#f37) | medium | Chips & match | `Runtime/NativeArena.cs` | A disconnected player's pilot respawns every round as an invisible, collidable, damageable capsule on the host |
+| [38](#f38) | medium | Chips & match | `Core/NativeMatch.cs` | Disconnects forfeit the round instantly, and a player who reconnects during the countdown is counted as eliminated while still playable |
+| [39](#f39) | medium | Chips & match | `Runtime/NativeNetwork.cs` | Teams mode cannot put two human players on the same side: guest team = seat id - 1 and there is no team picker |
+| [40](#f40) | medium | Chips & match | `Runtime/NativeArena.cs` | Roll / Demon Step i-frames only avoid 'direct' damage, so chip bombs, mines, fields, shrapnel, static, summons and hazards hit rolling pilots |
+| [41](#f41) | medium | Chips & match | `Core/NativeMatch.cs` | Round overtime (sudden death after 100 s) is missing, so rounds can last indefinitely |
+| [42](#f42) | medium | Chips & match | `Core/NativeMatch.cs` | Every bot gets an entrance intro (about 4.8 s each) at match start, there is no skip option, and the DEV Siren is not ordered last |
+| [43](#f43) | medium | Chips & match | `Runtime/NativeDraftPresentation.cs` | Draft and inspect cards show only the raw description: no stat lines (gains/penalties) and no owned/max count |
+| [44](#f44) | medium | Chips & match | `Runtime/NativeMelee.cs` | Ansatsuken's 'no-cooldown parry' gets the normal 4 s Block cooldown in Unity |
+| [45](#f45) | medium | Chips & match | `Runtime/NativeInspect.cs` | Build inspection throws ArgumentException for any pilot holding a Ward Zero money Chip |
+| [46](#f46) | medium | Combat | `Runtime/NativeArena.cs` | Bot AI has no difficulty levels and aims perfectly (rifle bots never miss stationary targets) |
+| [47](#f47) | medium | Combat | `Runtime/NativeAbilities.cs` | Black Hole (singularity) barely pulls: AddForce velocity is overwritten by StepPilot every tick |
+| [48](#f48) | medium | Combat | `Runtime/NativeProjectiles.cs` | Headshots are any contact above capsule centre +0.4 m (shoulders count) instead of the source head box |
+| [49](#f49) | medium | Combat | `Runtime/NativeArena.cs` | Roll i-frames only stop 'direct' damage: explosions, hazards, debris, chip fields and thorns hit rolling pilots |
+| [50](#f50) | medium | Combat | `Runtime/NativeArena.cs` | Round overtime (100 s limit, 18 HP/s to everyone) is not implemented |
+| [51](#f51) | medium | Combat | `Runtime/ConversionGame.cs` | Melee primary requires a fresh click per swing; holding LMB no longer chains attacks |
+| [52](#f52) | medium | Combat | `Runtime/NativeArena.cs` | Collision-induced velocity on pilots is discarded every tick (no finishMotion), so debris and body pushes vanish |
+| [53](#f53) | medium | Combat | `Runtime/NativeProjectiles.cs` | At the 100-projectile cap a ranged pilot loses one round of ammo per tick (60/s) without firing |
+| [54](#f54) | medium | Combat | `Runtime/NativeAbilities.cs` | Ability shots damage props on contact (Flame Lance, Shackles, Tidal Wave); the original does not |
+| [55](#f55) | medium | Combat | `Runtime/NativeAbilities.cs` | Authority trusts the client's AbilityTarget point: ground-targeted E can be placed through walls |
+| [56](#f56) | medium | Combat | `Runtime/NativeProjectiles.cs` | Primary gun/magic muzzle is 0.22 m lower and 0.2 m shorter than the source (and than Unity's own ability muzzle) |
+| [57](#f57) | medium | Combat | `Runtime/NativeArena.cs` | ADS is dropped by reload, block and stun, so settle restarts; TS keeps ADS while Q is held |
+| [58](#f58) | medium | Combat | `Runtime/NativeMelee.cs` | Siren attacker is given the human riposte stun, and rebound knockback ignores Siren armor |
+| [59](#f59) | medium | Delivery & docs | `Runtime/ConversionGame.cs` | A corrupt or unsaveable preferences file locks the whole game UI on an error screen; the error is never cleared |
+| [60](#f60) | medium | Gaps found later | `Runtime/NativeAudio.cs` | Event sounds stay muted after a Ward Zero rematch, or after a match that had only one round, because the audio event cursor is never reset for a new arena |
+| [61](#f61) | medium | Gaps found later | `Core/ArenaModel.cs` | Explosions, jumps, stage hazards, DoT ticks, slams and ability blasts make no sound: the 10-kind event model cannot represent them |
+| [62](#f62) | medium | Gaps found later | `Runtime/NativeWorldEffects.cs` | No visual status effects: burning, poisoned, slowed, shackled and Orbital-Marked pilots and adds look unaffected |
+| [63](#f63) | medium | Gaps found later | `Runtime/NativeArena.cs` | Teams mode has no team identity on pilots: the red/blue bands are never drawn |
+| [64](#f64) | medium | Gaps found later | `Runtime/ConversionGame.cs` | Bot roster diverges: mixed loadouts never include a melee bot, and all bots share one default look and generic names |
+| [65](#f65) | medium | Networking | `Relay/Program.cs` | Relay has no per-address cap on concurrent rooms or pipes: one client can fill all 1000 rooms or squat every slot of a listed room |
+| [66](#f66) | medium | Networking | `Runtime/NativeNetwork.cs` | Any seated guest can disconnect every other guest by triggering many lobby broadcasts (reliable-queue amplification) |
+| [67](#f67) | medium | Networking | `Runtime/NativeNetwork.cs` | A stale match frame sent after "Return room to lobby" puts the guest back into a frozen ghost match with no Ready button |
+| [68](#f68) | medium | Networking | `Runtime/NativeNetwork.cs` | A disconnected player stays on the host as an invisible but collidable and damageable body, respawned every round |
+| [69](#f69) | medium | Networking | `Runtime/NativeNetwork.cs` | Snapshots are ~190 KB of JSON (all static props and default-object padding every 50 ms), deflated separately per peer on the main thread |
+| [70](#f70) | medium | Networking | `Runtime/NativeRelayUI.cs` | Dedicated authority never recovers after a relay disconnect or a failed relay/LAN startup; it keeps running with no room |
+| [71](#f71) | medium | Networking | `Runtime/NativeReplay.cs` | Killcam history deep-copies the whole network frame with JsonUtility 20 times a second in every match, including offline |
+| [72](#f72) | medium | PvE & DEV | `Runtime/NativePve.cs` | Paid revives and solo self-revives teleport the downed player to a spawn pad instead of reviving them where they fell |
+| [73](#f73) | medium | PvE & DEV | `Runtime/NativePve.cs` | 'Find me...' hunt ends automatically after 60 s even when an add is possessed, leaving a harmless possessed add that pays the bounty again |
+| [74](#f74) | medium | PvE & DEV | `Runtime/NativePve.cs` | Possession picks the oldest living add (even one still entering or crawling) and keeps its damage, instead of a far, active add at full 3x HP |
+| [75](#f75) | medium | PvE & DEV | `Runtime/NativePveHorde.cs` | Possession hints are missing: no glow, grin, 'FIND ME...' whisper or screen-edge arrow toward the possessed add |
+| [76](#f76) | medium | PvE & DEV | `Runtime/NativeSiren.cs` | In PvE, adds block line of sight for the Siren's attacks and for other adds' strikes; the original ignores adds |
+| [77](#f77) | medium | PvE & DEV | `Runtime/NativePveHorde.cs` | Medic recruits heal one target with distance falloff and half the cap; the original pulses heal every party member and recruit in range |
+| [78](#f78) | medium | PvE & DEV | `Runtime/NativePveHorde.cs` | Player hits knock adds back twice as far as the original |
+| [79](#f79) | medium | PvE & DEV | `Runtime/NativePveHorde.cs` | Horde navigation allocates a full BFS (about 185 KB) whenever a target changes cell, and rebuilds the grid with 3,465 physics overlaps on any prop-count change |
+| [80](#f80) | medium | PvE & DEV | `Runtime/NativeNetwork.cs` | DEV players can enter Ward Zero co-op as the Siren; that kit cannot damage adds (the original forces the class default) |
+| [81](#f81) | medium | Unity engine | `Runtime/NativeNetworkFrame.cs` | Online clients render raw 20 Hz host frames with no interpolation buffer or local prediction (source interpolates and predicts) |
+| [82](#f82) | medium | Unity engine | `Runtime/NativeLighting.cs` | Fog shader variants are stripped from the Windows player, so the EXE renders without the fog seen in the Editor |
+| [83](#f83) | medium | Unity engine | `Runtime/NativeSourceModels.cs` | Synchronous main-thread decode of ~82-86 MB embedded JSON at startup and at the first intro/death of a match |
+| [84](#f84) | medium | Unity engine | `Runtime/NativeSourcePresentation.cs` | Horde rendering allocates about 0.5 MB of garbage per frame with 192 adds (array initialisers inside per-part visibility callbacks) |
+| [85](#f85) | medium | Unity engine | `Runtime/NativeNetwork.cs` | Host compresses the same 20 Hz snapshot separately for every peer on the main thread |
+| [86](#f86) | medium | Unity engine | `Runtime/NativeReplay.cs` | Every local match deep-copies the whole world through JsonUtility 20 times per second for the replay buffer, on top of other per-frame LINQ allocations |
+| [87](#f87) | medium | Unity engine | `Runtime/NativeInspect.cs` | Build inspection panel throws for Ward Zero money Chips |
+| [88](#f88) | low | Accounts & security | `Runtime/NativeSandbox.cs` | The sandbox 'rarity' sort orders chips alphabetically by rarity id instead of by tier |
+| [89](#f89) | low | Accounts & security | `Runtime/NativeAccount.cs` | Remembered sign-in is fragile: never retried after a startup failure, wiped by a mistyped password, and account saves are silently dropped while a request is in flight |
+| [90](#f90) | low | Accounts & security | `Runtime/NativeProfileUI.cs` | An empty or whitespace entrance message produces a blank intro banner instead of the default text |
+| [91](#f91) | low | Animation & presentation | `Runtime/CapturedAnimation.cs` | Melee recovery, anticipation, hit-stop and block-impact captures are simplified: hilt hand leaves the greatsword, daggers lose their captured recovery |
+| [92](#f92) | low | Animation & presentation | `Core/RangedPose.cs` | Reload hand and magazine choreography ignore reload-speed Chips |
+| [93](#f93) | low | Animation & presentation | `tools/import_mocap.py` | Documented mocap regeneration command produces a file that does not compile |
+| [94](#f94) | low | Animation & presentation | `Runtime/NativeViewPresentation.cs` | First-person view layer omits the source sway, stride bob, landing kick, recoil push and reload dip |
+| [95](#f95) | low | Animation & presentation | `Runtime/NativeWoundGeometry.cs` | Every new wound re-carves all wounded parts on the main thread (10-82 ms in .NET 8 for 8 wounds on one part) |
+| [96](#f96) | low | Animation & presentation | `Runtime/NativeSourcePresentation.cs` | Per-frame GC allocations in presentation hot loops |
+| [97](#f97) | low | Animation & presentation | `Runtime/NativeAudio.cs` | Break impacts always play the 'stone' sound |
+| [98](#f98) | low | Animation & presentation | `Runtime/NativeSourcePresentation.cs` | Reach Chips do not lengthen the drawn blade |
+| [99](#f99) | low | Animation & presentation | `Runtime/CapturedAnimation.cs` | Replicated actor presentation fields are unvalidated; a bad host frame can throw every render frame |
+| [100](#f100) | low | Animation & presentation | `Runtime/CapturedAnimation.cs` | Gun carry returns 0.4 s after a shot while moving; the source holds aim for max(0.38, interval+0.15) |
+| [101](#f101) | low | Chips & match | `Runtime/ConversionGame.cs` | Hosted-room Rematch is silently refused until every guest has pressed Rematch, and never starts automatically |
+| [102](#f102) | low | Chips & match | `Runtime/NativeArena.cs` | L44T Y33t: the ×1000 knockback is applied to pilots but not to cover |
+| [103](#f103) | low | Chips & match | `Runtime/NativeChips.cs` | Several chip handlers are partial: Siren-armor checks and summon paths missing (coin-toss, trampoline, swap-shop, vampire-dash, sticky-bomb, storm-recall) |
+| [104](#f104) | low | Chips & match | `Runtime/NativeProjectiles.cs` | Late Bloomer + Splitter fragments and Sidewinder extras diverge because CopyBullet drops motion state |
+| [105](#f105) | low | Chips & match | `Runtime/NativeChips.cs` | Return Address (revenge-mail) also triggers on ability, echo, storm-trail and horde damage |
+| [106](#f106) | low | Chips & match | `Runtime/NativeChips.cs` | Once-per-round Chips can re-trigger in the same round after 4096 other procs (ledger eviction) |
+| [107](#f107) | low | Chips & match | `Runtime/NativeChips.cs` | StepChipFields allocates per field per tick and fields are unbounded (GC hot spot with 8 players) |
+| [108](#f108) | low | Chips & match | `Runtime/ConversionGame.cs` | Match setup defaults, ranges and options differ from the source (sets 3 vs 5, rounds max 5, skip-bot-drafts on, no random map, dedicated has no sets/rounds/teams options, result text) |
+| [109](#f109) | low | Combat | `Runtime/NativeArena.cs` | Sprint is blocked during reload, block window and ability/cast windups (TS allows it) and allowed while swimming |
+| [110](#f110) | low | Combat | `Runtime/NativeAbilities.cs` | 4th reflection of an ability shot resolves its contact (a rocket explodes) instead of being absorbed |
+| [111](#f111) | low | Combat | `Runtime/NativeDestruction.cs` | Debris damage is applied outside the Fight phase (countdown/result) |
+| [112](#f112) | low | Combat | `Runtime/NativeArena.cs` | Pilots bounce off an invisible 19 m ceiling that the original does not have |
+| [113](#f113) | low | Combat | `Runtime/NativeArena.cs` | Per-frame GC churn: Snapshot(true) every LateUpdate allocates actor clones, Shot objects and event arrays; per-tick LINQ in Bot() |
+| [114](#f114) | low | Delivery & docs | `.github/workflows/unity-conversion.yml` | Unity CI only runs on pushes to codex/unity-conversion; PR checks skip Unity entirely and nothing compiles Runtime/Editor code |
+| [115](#f115) | low | Delivery & docs | `Runtime/NativeNetwork.cs` | Every Unity build presents the same compatibility identity, so mismatched tester builds join each other and desync |
+| [116](#f116) | low | Delivery & docs | `tools/import_mocap.py` | import_mocap.py emits the wrong namespace; following the documented regeneration step breaks the build |
+| [117](#f117) | low | Delivery & docs | `tools/export_models.mjs` | The data-export pipeline cannot be reproduced as documented (wrong usage, hidden ordering, CWD-relative output, unscripted lock files, byte-exact locks) |
+| [118](#f118) | low | Delivery & docs | `VALIDATION.md` | Several current docs are stale or contradict the code and the builder's real output |
+| [119](#f119) | low | Delivery & docs | `tools/package_source.py` | package_source.py enforces asset locks, GUID and meta checks with assert, so they vanish under python -O / PYTHONOPTIMIZE |
+| [120](#f120) | low | Delivery & docs | `tools/asset-lock.json` | Third-party copyrighted audio is carried into the Unity distributable with no credits or notices |
+| [121](#f121) | low | Gaps found later | `Runtime/ConversionGame.cs` | "Bots use my weapon" with a DEV weapon creates bots that cannot attack, and each Siren bot's entrance throws every frame |
+| [122](#f122) | low | Gaps found later | `Runtime/NativeCombatHud.cs` | Floating combat numbers show only the local player's outgoing hits; damage taken, other players' hits and all heals never appear |
+| [123](#f123) | low | Gaps found later | `Runtime/ConversionGame.cs` | Mouse look is 66% faster horizontally and 45% faster vertically than the original at the same sensitivity, with a wider pitch limit |
+| [124](#f124) | low | Networking | `Runtime/ConversionGame.cs` | StartMatch failure leaves a non-started arena in place, wedging a dedicated server (e.g. --ca-min-players 1 with no bots) |
+| [125](#f125) | low | Networking | `Core/NativeMatch.cs` | In a 1v1, a disconnect makes the remaining player win every round in ~48 s while the 90-second seat is still reserved |
+| [126](#f126) | low | Networking | `Runtime/NativeNetwork.cs` | Resuming a lobby seat after the match started without it puts the guest in a disconnect loop |
+| [127](#f127) | low | Networking | `Runtime/NativeNetwork.cs` | Fast rejoin before the host's 12 s timeout fails or creates a duplicate seat |
+| [128](#f128) | low | Networking | `Relay/Program.cs` | Relay endpoints let InvalidDataException/ObjectDisposedException escape, logging an unhandled error with stack trace per request |
+| [129](#f129) | low | Networking | `Core/NativeRelay.cs` | NativeRelayHost.Listen does not catch InvalidDataException, so a malformed control message kills the accept loop while the host still shows as hosting |
+| [130](#f130) | low | Networking | `Relay/Program.cs` | Private room codes are 8 hex characters (32 bits), weaker than the original 40-bit codes, and are the only join credential |
+| [131](#f131) | low | PvE & DEV | `Runtime/NativePve.cs` | Wave clear (PR #57), victory and defeat make adds vanish without deaths or corpses; victory and defeat leave the horde standing |
+| [132](#f132) | low | PvE & DEV | `Runtime/NativePve.cs` | Solo self-revive fires while the body is still in a vent shaft (the original waits for the splat) |
+| [133](#f133) | low | PvE & DEV | `Runtime/NativePve.cs` | Opening ends early only if every human actually installs the start Chip; 'Choose later' should count as resolved |
+| [134](#f134) | low | PvE & DEV | `Runtime/NativeSandbox.cs` | Developer sandbox 'rarity' sort is alphabetical by rarity id, not by rarity tier |
+| [135](#f135) | low | PvE & DEV | `Runtime/NativeArena.cs` | A player's dev-siren entrance starts the boss song and vent eruptions during Ward Zero waves |
+| [136](#f136) | low | PvE & DEV | `Runtime/NativePve.cs` | Machine denial notice is global: every player sees it, and it never clears on its own |
+| [137](#f137) | low | PvE & DEV | `Runtime/NativeVents.cs` | Entry view lookup returns the most-open view, so spawns just after an entry reopens are all treated as 'first' and overlap |
+| [138](#f138) | low | PvE & DEV | `Runtime/NativePveHorde.cs` | Possessed add always moves at run speed |
+| [139](#f139) | low | PvE & DEV | `Runtime/NativeFighters.cs` | Emperor hits on adds/summons use the player jab table instead of the original minion values (electric hooks no longer stagger adds) |
+| [140](#f140) | low | PvE & DEV | `Runtime/NativePveHorde.cs` | Horde strikes credit the Siren boss as attacker (Return Address bombs the boss, deaths attributed to the Siren) |
+| [141](#f141) | low | PvE & DEV | `Runtime/NativeArena.cs` | Boss fall and spawn handling missing: a boss below y=-6 is floor-clamped into an instant phase skip, and nobody is pushed off the spawn |
+| [142](#f142) | low | PvE & DEV | `Runtime/NativeAudio.cs` | Boss music pauses during every reveal and outro hold |
+| [143](#f143) | low | PvE & DEV | `Runtime/NativeFighters.cs` | DEV kits and the sandbox switch off mid-match when the 15-minute signed claim expires |
+| [144](#f144) | low | Unity engine | `Runtime/NativeAccount.cs` | NativeAccount declares a private Start(string,string,bool), which collides with Unity's Start message |
+| [145](#f145) | low | Unity engine | `Runtime/ConversionGame.cs` | Preferences are saved non-atomically, and an unreadable file permanently blocks startup |
+| [146](#f146) | low | Unity engine | `Editor/PrototypeBuild.cs` | Windows packager zips whatever is already in Builds/Windows |
+
 ## All confirmed findings
 Severity is the verifier's rating after checking. Paths are under `unity/ChipArenaConversion/` at `a8fa796`; "Original" paths are the Electron game at `05950ea`.
 
