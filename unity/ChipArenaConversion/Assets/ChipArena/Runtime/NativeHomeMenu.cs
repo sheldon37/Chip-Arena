@@ -473,8 +473,8 @@ namespace ChipArena.UnityConversion
             float under=60+30*(.5f+.5f*Mathf.Sin(t*1.6f));U.Fill(new Rect(r.center.x-under/2,y+2,under,2),U.A(tone,.85f*e));y+=12;
             U.Text(new Rect(r.x+16,y,r.width-32,16),ClassLabel(weapon.@class),10,U.Hex(0xa6a7ad,e),TextAnchor.MiddleCenter,mono:true,tracking:.1f);y+=30;
             float sw=(r.width-44-12)/2;for(int i=0;i<2;i++){var s=new Rect(r.x+22+i*(sw+12),y,sw,30);U.Round(s,U.Hex(0x111216,.7f*e),6,new Color(1,1,1,.07f*e));U.Disc(new Rect(s.x+9,s.y+8,14,14),U.A(i==0?body:accent,e));U.Text(new Rect(s.x+30,s.y,s.width-34,s.height),i==0?"BODY":"ACCENT",10,U.Hex(0xc0c1ca,e),TextAnchor.MiddleLeft,mono:true,tracking:.12f);}y+=44;
-            foreach(var (k,v) in new[]{("HEADWEAR",prefs.hat),("KILL EFFECT",prefs.killEffect),("INTRO",prefs.overrideIntro?prefs.intro:"weapon signature")})
-            {if(y+18>r.yMax-46)break;U.Text(new Rect(r.x+22,y,r.width-44,18),k,10,U.Hex(0x8f909a,e),TextAnchor.MiddleLeft,mono:true,tracking:.12f);U.Text(new Rect(r.x+22,y,r.width-44,18),(v??"none").Replace("-"," "),12,U.Hex(0xe6e7ec,e),TextAnchor.MiddleRight);y+=22;}
+            foreach(var (k,v) in new[]{("HEADWEAR",prefs.hat),("KILL EFFECT",prefs.killEffect),("INTRO",prefs.overrideIntro?prefs.intro:"neon-drop")})
+            {if(y+18>r.yMax-46)break;U.Text(new Rect(r.x+22,y,r.width-44,18),k,10,U.Hex(0x8f909a,e),TextAnchor.MiddleLeft,mono:true,tracking:.12f);U.Text(new Rect(r.x+110,y,r.width-132,18),Fit(NativeCosmeticRules.Label(v??"none").Replace(" · DEV ONLY",""),12,r.width-132,false,0),12,U.Hex(0xe6e7ec,e),TextAnchor.MiddleRight);y+=22;}
             if(note!=null){var lines=U.Wrap(note,12,r.width-44,false,3);float ny=r.yMax-18-lines.Count*17;foreach(var line in lines){U.Text(new Rect(r.x+22,ny,r.width-44,17),line,12,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);ny+=17;}}
         }
 
