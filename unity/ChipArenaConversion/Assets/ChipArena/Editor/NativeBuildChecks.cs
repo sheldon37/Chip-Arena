@@ -25,16 +25,30 @@ namespace ChipArena.UnityConversion.Editor
                     try
                     {
                         var presentation=host.AddComponent<ArenaPresentation>();presentation.Initialize(false);
+                        var audio=host.GetComponentsInChildren<AudioSource>(true);
+                        var particles=host.GetComponentsInChildren<ParticleSystem>(true);
+                        var lights=host.GetComponentsInChildren<Light>(true);
+                        var combatPool=host.transform.Find("Native combat light pool");
+                        var blastPool=host.transform.Find("Native blast light pool");
+                        int combatLights=combatPool==null?0:combatPool.GetComponentsInChildren<Light>(true).Length;
+                        int blastLights=blastPool==null?0:blastPool.GetComponentsInChildren<Light>(true).Length;
+                        if(audio.Length!=25||particles.Length!=1||combatLights!=7||blastLights!=NativeBlastSim.LightCapacity||lights.Length!=7+NativeBlastSim.LightCapacity)
+                            throw new Exception($"Presentation startup inventory: audio={audio.Length}/25, particles={particles.Length}/1, combat lights={combatLights}/7, blast lights={blastLights}/{NativeBlastSim.LightCapacity}, total lights={lights.Length}/{7+NativeBlastSim.LightCapacity}");
+                        // Seed both pools so omitting either Clear() is caught, even without rendering a frame.
+                        foreach(var light in lights)light.enabled=true;
+                        particles[0].Emit(3);
                         presentation.ResetPresentation();presentation.ResetPresentation();
-                        if(host.GetComponentsInChildren<AudioSource>(true).Length!=25||host.GetComponentsInChildren<ParticleSystem>(true).Length!=1||host.GetComponentsInChildren<Light>(true).Length!=7||presentation.ParticleCount!=0)
-                            throw new Exception("Presentation startup did not initialize/reset its audio, particles and light pool");
+                        if(presentation.ParticleCount!=0||lights.Any(light=>light.enabled)||audio.Any(source=>source.isPlaying))
+                            throw new Exception("Presentation reset left live particles, audio or combat/blast lights");
+                        if(!audio.SequenceEqual(host.GetComponentsInChildren<AudioSource>(true))||!particles.SequenceEqual(host.GetComponentsInChildren<ParticleSystem>(true))||!lights.SequenceEqual(host.GetComponentsInChildren<Light>(true)))
+                            throw new Exception("Presentation reset replaced or leaked pooled components");
                     }
                     finally{CapturedAnimation.Release(host);}
                 }
             }
             finally{Application.logMessageReceived-=Capture;}
             if(errors.Count>0)throw new Exception("Presentation startup logged Unity errors: "+string.Join("\n",errors));
-            Debug.Log("PASS native presentation startup: component construction, initialization, repeated reset and teardown (two cycles; no rendered frame)");
+            Debug.Log("PASS native presentation startup: audio, particles, seven combat lights and blast pool, seeded repeated reset and teardown (two cycles; no rendered frame)");
         }
         private static void CheckGlow(NativeArena arena,NativeMatch match)
         {
@@ -139,3 +153,4 @@ namespace ChipArena.UnityConversion.Editor
         }
     }
 }
+
