@@ -1,6 +1,6 @@
-# Unity logic handoff — PR #65
+# Unity logic handoff — PR #66
 
-2026-10-08, Codex/Astra. Branch `codex/unity-parity-logic`, PR [#65](https://github.com/sheldon37/Chip-Arena/pull/65) into `claude/sleepy-ritchie-g8ruhv` (#62). Requested baseline `b828acb`; first logic commit `718cd4f`, follow-up `d80d974`. Claude presentation changes through `4207641` are preserved. Implemented on the branch only: nothing merged or released.
+2026-10-08, Codex/Astra. Branch `codex/unity-parity-logic-current`, PR [#66](https://github.com/sheldon37/Chip-Arena/pull/66) into `claude/sleepy-ritchie-g8ruhv` (#62). Requested baseline `b828acb`; earlier logic checkpoints `718cd4f`, `d80d974`, `c9888fc`. PR #65 had conflicts after Claude advanced; replacement PR #66 starts directly at `4207641` and carries the identical reviewed tree in `9921c78`, without a merge or force push. Claude presentation changes through `4207641` are preserved. Implemented on the branch only: nothing merged or released.
 
 Read the status prefix on each A1–A31 entry in `UNITY-PARITY-GAPS.md`. Original findings remain below those prefixes as evidence. Do not infer acceptance from “0 pending” catalogue entries.
 
@@ -42,7 +42,7 @@ All carry Id/Time/Source/Target/Position/Amount. `Radius` is the gameplay radius
 
 ## Verification and remaining gates
 
-Actual: managed CoreTests and real UDP/TCP; check_relay.py with real WebSocket; 24 Python tests; 51 UpdaterTests. Runtime API compilation uses real Unity 6000.3.24f1 DLLs with .NET 8 Roslyn/C# 9, not Unity's Mono runtime. The cloud SDK's MSBuild process discovery is unsupported, so checks used directly compiled assemblies; GitHub CI builds the normal projects. Native CI run 37808988291 on d80d974 passed both native-source and native-updater-windows, including shipping launcher compilation and real Windows process fixtures. Local CoreTests report 100 PASS lines; source packaging validates 670 files.
+Actual: managed CoreTests and real UDP/TCP; check_relay.py with real WebSocket; 24 Python tests; 51 UpdaterTests. Runtime API compilation uses real Unity 6000.3.24f1 DLLs with .NET 8 Roslyn/C# 9, not Unity's Mono runtime. The cloud SDK's MSBuild process discovery is unsupported, so checks used directly compiled assemblies; GitHub CI builds the normal projects. Native CI run 37811222667 on c9888fc passed both native-source and native-updater-windows, including shipping launcher compilation and real Windows process fixtures. Local CoreTests report 100 PASS lines; source packaging validates 670 files.
 
 `NativeNetworkBuildChecks` invokes real JsonUtility and isolated PhysX regressions, including `ValidateParityCombat` and `ValidateFollowupParity`; **they have not run here**. The Windows launcher fixture is not a Unity player build: no rendered test, live sign-in, WAN test, headless Unity or real native update is claimed. `cmd.exe /c Build-Windows.cmd` was attempted and exited 127 because cmd.exe is unavailable; no Unity Editor/license is present. Run the exact PR head with Build-Windows.cmd and retain build.log and the `UNITY_TEST_BUILD_READY` line, then test two-client host/join/ready/reconnect, four-player Ward Zero, deaths/replay, end votes, account grants, duplicate launch/fullscreen, update startup/rollback and four resolutions.
 

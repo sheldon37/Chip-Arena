@@ -1,7 +1,7 @@
 # Native Unity conversion candidate
 
 Source baseline: `05950eaef80ff2483a9c44d898cad98be1a76bbc`. Editor: **6000.3.24f1**.
-Logic branch: **codex/unity-parity-logic**, PR #65 into **claude/sleepy-ritchie-g8ruhv**. The Electron game and accepted Unity lab remain separate.
+Logic branch: **codex/unity-parity-logic**, PR #66 into **claude/sleepy-ritchie-g8ruhv**. The Electron game and accepted Unity lab remain separate.
 This is an implementation candidate with explicit open decisions and unrun acceptance gates. Catalogue coverage does not prove every Chip, network path or presentation is at parity. See docs/UNITY-PARITY-GAPS.md and docs/UNITY-LOGIC-HANDOFF.md.
 
 | Source feature group | Native implementation |
@@ -33,7 +33,7 @@ This is an implementation candidate with explicit open decisions and unrun accep
 
 ## Acceptance status
 
-PR #65 checkpoints `718cd4f` / `d80d974`: managed regressions, real loopback UDP/TCP/WebSocket, 24 Python tests and 51 updater transaction checks pass. Runtime source compiles against genuine Unity 6000.3.24f1 API DLLs using .NET 8 Roslyn (C# 9). That is API compilation, not Mono execution or a Unity build. The new Editor JsonUtility/PhysX gates are wired but unrun. Build-Windows.cmd was attempted through cmd.exe and could not start (Linux host, exit 127). GitHub CI 37808988291 on d80d974 passed normal-project checks and Windows launcher/process fixtures; those do not execute a Unity player. No merge, feed publication or Site release.
+PR #66 checkpoints `718cd4f` / `d80d974`: managed regressions, real loopback UDP/TCP/WebSocket, 24 Python tests and 51 updater transaction checks pass. Runtime source compiles against genuine Unity 6000.3.24f1 API DLLs using .NET 8 Roslyn (C# 9). That is API compilation, not Mono execution or a Unity build. The new Editor JsonUtility/PhysX gates are wired but unrun. Build-Windows.cmd was attempted through cmd.exe and could not start (Linux host, exit 127). GitHub CI 37808988291 on d80d974 passed normal-project checks and Windows launcher/process fixtures; those do not execute a Unity player. No merge, feed publication or Site release.
 
 **Not run:** activated Unity import, shader compilation, rendered play, actual native physics gates, remote internet rooms, live account flows, headless Unity execution and the Windows EXE build. These require the activated Windows Editor. Run Build-Windows.cmd; it must print UNITY_TEST_BUILD_READY before the resulting package is treated as built. Review Builds/build.log if a gate fails.
 

@@ -2,9 +2,9 @@
 
 No native Unity playtest or Windows executable build was run in the authoring workspace.
 
-## Logic parity PR #65 (2026-10-08)
+## Logic parity PR #66 (2026-10-08)
 
-Branch `codex/unity-parity-logic` into `claude/sleepy-ritchie-g8ruhv`; code `718cd4f` and `d80d974` with Claude UI through `4207641`. Current status takes precedence over historical entries below.
+Branch `codex/unity-parity-logic-current` into `claude/sleepy-ritchie-g8ruhv`; code `718cd4f` and `d80d974` with Claude UI through `4207641`. Current status takes precedence over historical entries below.
 
 Actual checks in this session:
 
@@ -15,7 +15,7 @@ Actual checks in this session:
 - UpdaterTests: **51 pass** (transaction recovery, rollback, archive/path defenses). This does not test a live feed or Unity-to-Unity update.
 - Direct SDK `dotnet run` is unavailable in this container because MSBuild process discovery fails; the exact source sets were compiled with the SDK's Roslyn driver and run with its .NET 8 host. The normal GitHub CI remains the project-file build check.
 - `tools/package_source.py`: pass, **670 source files**, ZIP generated.
-- GitHub CI **37808988291** on `d80d974`: native-source and native-updater-windows both pass. This includes standard project-file builds, shipping launcher compilation and real Windows process fixtures. The final source also includes intro-order and 12-second disconnect-grace regressions.
+- GitHub CI **37811222667** on `c9888fc`: native-source and native-updater-windows both pass. This includes standard project-file builds, shipping launcher compilation and real Windows process fixtures. The final source also includes intro-order and 12-second disconnect-grace regressions.
 - `cmd.exe /c Build-Windows.cmd`: **could not start, exit 127: cmd.exe not found**. No Windows/Unity executable was built and `UNITY_TEST_BUILD_READY` was not emitted.
 
 Added real-Unity regressions: `NativeNetworkBuildChecks` and `NativeArena.ValidateParityCombat/ValidateFollowupParity`. They exercise JsonUtility optional nested fields and saved pose, replica transforms/isolated scenes, replay snapshots, loadout payloads, frame budgets, authority aim, block/roll/reload semantics, direct-hit classification, summon attachment, projectile ceilings, corpse revives/cleanup, private notices, entry scheduling and disconnect colliders. These tests are **not claimed executed**; the Windows build gate invokes them.
