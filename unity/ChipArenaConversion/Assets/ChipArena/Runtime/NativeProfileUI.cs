@@ -46,7 +46,7 @@ namespace ChipArena.UnityConversion
         private void CustomizeBody()
         {
             Field("Player name");prefs.name=GUILayout.TextField(prefs.name??"",20);
-            Field("Preferred weapon");WeaponGrid();Fine("Your preferred weapon is your pilot's default and is sent to rooms you join.");
+            ClassRow("Preferred class",ClassCardStyle.Customize);WeaponCards("Preferred weapon",true);Fine("Your preferred weapon is your pilot's default and is sent to rooms you join.");
             Field("Colours");GUILayout.BeginHorizontal();ColourField("Body",ref prefs.bodyColor,"#e5e7eb");GUILayout.Space(12);ColourField("Accent",ref prefs.accentColor,"#70e1d0");GUILayout.EndHorizontal();
             var hats=NativeCosmeticRules.Hats.Where(id=>NativeCosmeticRules.Allowed(account.Access,"hat",id)).ToArray();var kills=NativeCosmeticRules.Kills.Where(id=>NativeCosmeticRules.Allowed(account.Access,"effect",id)).ToArray();
             Field("Headwear");prefs.hat=ChoiceGrid(hats,prefs.hat,NativeCosmeticRules.LabelsOf(hats));

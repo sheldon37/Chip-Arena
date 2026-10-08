@@ -110,7 +110,7 @@ namespace ChipArena.UnityConversion
                     if(i<count){LobbyCard(r,roster[i],i,portrait,topH,wrap,compact,e,t);if(teams)TeamTag(new Rect(r.x+2,r.yMax+9,r.width-4,34),roster[i],e);}else LobbyEmpty(new Rect(r.x,r.y,r.width,slotH),e);
                 }
             });
-            Field("Your weapon");WeaponGrid();
+            ClassRow("Your class",ClassCardStyle.Lobby);WeaponCards("Your weapon");
             GUI.enabled=true;GUILayout.Space(4);if(Event.current.type==EventType.Repaint)lobbyRosterContent=GUILayoutUtility.GetLastRect().yMax;
             GUILayout.EndScrollView();GUILayout.EndArea();GUI.color=c;U.EndDeferred(area,lobbyRosterScroll);
         }
