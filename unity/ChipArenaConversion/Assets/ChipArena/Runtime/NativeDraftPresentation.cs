@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
             if(pve)HideLive();else arena.Root.SetActive(false);viewModelCamera.enabled=false;
             // Stage lights take the picker's colour, blending to the chip's rarity over .5 s after the pick (the Siren pick: its tier).
             Color tint=pve?(row.Open?.Tier=="rainbow"?Color.white:RarityColor(row.Open?.Tier??"common")):SeatColor(seat);if(age>=0)tint=Color.Lerp(tint,RarityColor(content.Chip(match.Chosen).rarity),Mathf.Clamp01(age/.5f));
-            presentation.DraftBandTeam=NativeStatusVisuals.BandTeam(match.Teams,match.Cooperative,seat.AuthorityBoss,seat.team);draftPalm=presentation.RenderDraft(seat,pve?arena.Time:match.Time,age,new Vector2(card.center.x/width,1-card.center.y/height),bottom,tint,cameraView,draftHover>=0||age>=0,prefs.reducedEffects)/scale;draftPalm.y=height-draftPalm.y;return true;
+            presentation.DraftBandTeam=seat.spec=="siren"?-1:NativeStatusVisuals.BandTeam(match.Teams,match.Cooperative,seat.AuthorityBoss,seat.team);draftPalm=presentation.RenderDraft(seat,pve?arena.Time:match.Time,age,new Vector2(card.center.x/width,1-card.center.y/height),bottom,tint,cameraView,draftHover>=0||age>=0,prefs.reducedEffects)/scale;draftPalm.y=height-draftPalm.y;return true;
         }
     }
     public sealed partial class ArenaPresentation
