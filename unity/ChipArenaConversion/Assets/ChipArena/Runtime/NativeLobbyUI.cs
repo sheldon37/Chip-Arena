@@ -88,7 +88,7 @@ namespace ChipArena.UnityConversion
                 }
             }
             var status=GUILayoutUtility.GetRect(0,44,GUILayout.ExpandWidth(true));ReadyLine(status,ready,count,e);
-            Field("Your weapon");WeaponGrid();
+            ClassRow("Your class",ClassCardStyle.Lobby);WeaponCards("Your weapon");
             GUI.enabled=true;GUILayout.Space(4);if(Event.current.type==EventType.Repaint)lobbyRosterContent=GUILayoutUtility.GetLastRect().yMax;
             U.EndClip();GUILayout.EndScrollView();GUILayout.EndArea();GUI.color=c;
         }

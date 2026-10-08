@@ -21,6 +21,13 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-08 — Claude — C4 class cards and weapon cards in the Unity menus
+- Branch `claude/wip-c4` (local, not pushed), base `ea8981b` (`claude/sleepy-ritchie-g8ruhv`, PR #62). Parity item C4 in `docs/UNITY-PARITY-GAPS.md`.
+- The weapon name grid is replaced by the source's YOUR CLASS row (Ranged / Magic / Melee, `???` · DEV CLASSES for developers) and the class's weapons as the source's specialization chips: icon well, name, verbatim description with the aim-higher hint, mono stat line (DMG · /SEC · cost · range), gold pins, 5 px hover lift. Play vs Bots and Test Boss use the stacked class card, the room lobby (host, guest, PvE) the lobby card, Customize its compact card plus compact weapon cards. `Runtime/NativeLoadoutUI.cs` draws them inside the existing bodies; `Core/NativeLoadoutText.cs` holds the text, grouping and stat formatting (invariant culture).
+- UI state only: the class filters the cards; a pick sets `prefs.weapon` with the old side effect (host rebroadcast). No save, network, rules, hit timing, hitbox, damage, cooldown or movement change. Adaptations: weapon cards in the menus (the source picks them in its in-match phase, A18 / owner decision 5), a selected look borrowed from the active class card, 25 px between card rows, a 60 px lobby class card so the row fits under the roster.
+- Checks: Unity 6000.3.24f1 Runtime+Editor compile (warnings as errors) OK; managed core checks 35 passed incl. new `Tests/LoadoutChecks.cs` (15 stat lines, comma locale, hints, class lists for guest/developer/grant); 24 Python tests OK; package_source OK. Offline renders of the real menu code at 1920×1080, 1280×720, interface scale 1.5 and 3440×1440 for Play, Boss, lobby host/guest/PvE and Customize. Not run: Unity import/play, real IMGUI input, Windows build, multiplayer.
+- Next: owner check in Unity; Astra items from the C4 spec (A18 phase and seat class, Siren uniqueness, PvE Siren rule, unready on loadout change). Create/Join class rows and the pilot card's DEV class label were left out (networking file / C2 overlap).
+
 ## 2026-10-08 — Claude — Unity vs Electron parity gap list (handoff)
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62), audited at `eb8f7f7` against the original `05950ea`. Docs only; no code changed.
 - Added `docs/UNITY-PARITY-GAPS.md`: a read-only code audit of screens, gameplay, networking, presentation and trackers, with each P1 re-checked by a refuting reviewer. Items are split by the role split: A1–A31 for Astra (logic) and C1–C24 for Claude (visuals), plus 12 owner decisions and a not-verified list.
