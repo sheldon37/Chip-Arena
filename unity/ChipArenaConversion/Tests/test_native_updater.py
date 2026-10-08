@@ -37,7 +37,12 @@ class NativePublisherTests(unittest.TestCase):
         stream = io.BytesIO()
         with zipfile.ZipFile(stream, 'w', zipfile.ZIP_DEFLATED) as z:
             for name, data in files.items():
-                z.writestr(name, data)
+                # Keep hostile names byte-for-byte; ZipInfo's constructor otherwise
+                # sanitizes Windows separators and NULs before the validator sees them.
+                row = zipfile.ZipInfo(name)
+                row.filename = name
+                row.compress_type = zipfile.ZIP_DEFLATED
+                z.writestr(row, data)
         data = stream.getvalue()
         digest = hashlib.sha256(data).hexdigest()
         part = dict(name=digest + '-0000.part', sha256=digest, bytes=len(data))
@@ -82,7 +87,7 @@ class NativePublisherTests(unittest.TestCase):
         self.assertFalse(self.channel.exists())
 
     def test_reject_unsafe_archive_paths(self):
-        for name in ('../escape', '/absolute', 'C:/escape', 'CON.dll', 'bad\\path', 'UnityPlayer.DLL', 'trailing. '):
+        for name in ('../escape', '/absolute', 'C:/escape', 'CON.dll', 'bad\\path', 'bad\0suffix', 'UnityPlayer.DLL', 'trailing. '):
             with self.subTest(name=name):
                 self.payload(extra={name: b'bad'})
                 with self.assertRaises(ValueError):

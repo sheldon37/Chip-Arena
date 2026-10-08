@@ -41,4 +41,3 @@ echo Compare published status: Publish-Native.cmd --status
 echo After testing this build, run Publish-Native.cmd to review and publish it.
 start "" "%~dp0Builds\Windows"
 pause
-

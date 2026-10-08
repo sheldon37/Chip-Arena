@@ -132,7 +132,9 @@ def validate(feed):
                 raise ValueError('Archive inventory mismatch')
             names = set()
             for row in rows:
-                path = row.filename
+                # ZipInfo.filename normalizes backslashes on Windows and truncates NULs.
+                # Validate the original archive name, as the runtime extractor does.
+                path = row.orig_filename
                 segments = path.split('/')
                 if not path or len(path) > 220 or '\\' in path or any(not s or s in ('.', '..') or s.endswith(('.', ' ')) or re.search(r'[\x00-\x1f\x7f<>:"|?*]', s) or re.fullmatch(r'(CON|PRN|AUX|NUL|CONIN\$|CONOUT\$|CLOCK\$|COM[0-9¹²³]|LPT[0-9¹²³])', s.split('.')[0], re.I) for s in segments):
                     raise ValueError('Unsafe archive path')

@@ -160,4 +160,3 @@ folders, rebuild, then publish the second build. Do **not** publish the current 
 (Package, SourceHash), `Assets/ChipArena/Core/NativeUpdateRules.cs` (Feed, IsNewer), `Assets/ChipArena/Runtime/NativeUpdater.cs`
 (Initialize, Check), `tools/publish_native_update.py`, `Assets/ChipArena/Runtime/NativeHomeMenu.cs` (UpdateControl, UpdateBadge),
 `Assets/ChipArena/Runtime/NativeUpdateUI.cs`, and the newest Claude and Codex entries in `docs/DEV_LOG.md`.
-

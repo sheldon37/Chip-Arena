@@ -161,4 +161,3 @@ not Unity players and are never packaged in the game. Transaction tests also
 cover journal interruption points and malicious/corrupt archives on Windows/Linux.
 GitHub Actions runs these alongside existing native source, managed and relay
 checks. None of these replaces the real Unity build and rendered gameplay test.
-

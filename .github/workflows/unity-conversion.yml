@@ -55,4 +55,3 @@ jobs:
         run: python -m unittest discover -s unity/ChipArenaConversion/Tests -p 'test_native_updater.py'
       - name: Compile shipping launcher and exercise real Windows processes
         run: python unity/ChipArenaConversion/tools/check_updater_windows.py
-
