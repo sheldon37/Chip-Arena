@@ -2679,4 +2679,3 @@ containing an entry; no self-referential commit hash is required.
 - Next: each agent synchronizes this branch before making its own task branch;
   after migration merges, start new tasks from updated main. Review relevant open
   PRs to avoid overlapping work. Resolve baseline failures before release work.
-

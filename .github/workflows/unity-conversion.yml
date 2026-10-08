@@ -36,4 +36,3 @@ jobs:
             unity/ChipArenaConversion/Builds/Chip-Arena-Native-Conversion-Source.zip.sha256
           if-no-files-found: error
           retention-days: 30
-
