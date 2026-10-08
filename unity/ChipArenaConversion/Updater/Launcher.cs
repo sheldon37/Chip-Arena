@@ -1,6 +1,8 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 using ChipArena.UnityConversion;
@@ -78,8 +80,10 @@ namespace ChipArena.NativeUpdater
                 using(var parent=Process.GetProcessById(request.parentPid))
                 {
                     if(parent.StartTime.ToUniversalTime().Ticks!=request.parentStartedUtcTicks)return;
-                    string expected=Path.GetFullPath(Path.Combine(root,"app",NativeUpdateRules.Executable));
-                    if(!string.Equals(parent.MainModule.FileName,expected,StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("The requesting process is not this native game.");
+                    string expected=LongPath(Path.Combine(root,"app",NativeUpdateRules.Executable));
+                    try
+                    {if(!string.Equals(LongPath(parent.MainModule.FileName),expected,StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("The requesting process is not this native game.");}
+                    catch(InvalidOperationException){if(parent.HasExited)return;throw;}
                     if(!parent.WaitForExit(120000))throw new IOException("The game did not close; its files were left unchanged.");
                 }
             }
@@ -87,15 +91,23 @@ namespace ChipArena.NativeUpdater
         }
         private static bool AnyGameRunning()
         {
-            string expected=Path.GetFullPath(Path.Combine(root,"app",NativeUpdateRules.Executable));
+            string expected=LongPath(Path.Combine(root,"app",NativeUpdateRules.Executable));
             foreach(var p in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(NativeUpdateRules.Executable)))
             using(p)
             {
-                try{if(string.Equals(p.MainModule.FileName,expected,StringComparison.OrdinalIgnoreCase))return true;}
+                try{if(string.Equals(LongPath(p.MainModule.FileName),expected,StringComparison.OrdinalIgnoreCase))return true;}
                 catch(System.ComponentModel.Win32Exception){throw new IOException("Cannot verify that other native game instances have closed.");}
                 catch(InvalidOperationException){}
             }
             return false;
+        }
+        [DllImport("kernel32.dll",CharSet=CharSet.Unicode,SetLastError=true)]
+        private static extern uint GetLongPathName(string path,StringBuilder buffer,uint length);
+        private static string LongPath(string path)
+        {
+            var buffer=new StringBuilder(32768);uint length=GetLongPathName(Path.GetFullPath(path),buffer,(uint)buffer.Capacity);
+            if(length==0||length>=buffer.Capacity)throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+            return buffer.ToString();
         }
     }
 }

@@ -105,7 +105,7 @@ def run():
                 if parent.poll() is None:
                     parent.kill()
                     parent.wait()
-            time.sleep(2)  # Fixture child exits; release Windows executable handles before cleanup.
+                time.sleep(2)  # Fixture child exits; release Windows handles even when an assertion fails.
 
 
 if __name__ == '__main__':

@@ -155,7 +155,11 @@ namespace ChipArena.UnityConversion
         private static void CheckResponse(UnityWebRequest request,BoundedDownload handler)
         {if(handler.Failure!=null)throw new IOException(handler.Failure);if(request.result!=UnityWebRequest.Result.Success||request.responseCode!=200)throw new IOException("Could not download the Unity update. Check your connection and try again. (HTTP "+request.responseCode+")");}
         private void OnDestroy()
-        {cancelled=true;if(active!=null)active.Abort();(running as IDisposable)?.Dispose();downloadFile?.Dispose();downloadLock?.Dispose();}
+        {
+            cancelled=true;
+            try{if(active!=null)active.Abort();}catch(ObjectDisposedException){}
+            finally{(running as IDisposable)?.Dispose();downloadFile?.Dispose();downloadLock?.Dispose();}
+        }
         private sealed class BoundedDownload : DownloadHandlerScript
         {
             private readonly Stream target;private readonly long limit;
