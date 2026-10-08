@@ -115,19 +115,55 @@ namespace ChipArena.UnityConversion
             {arena?.Dispose();match=new NativeMatch(content);arena=new NativeArena(content,match,f.map){Replica=true,LocalId=networkId};networkEpoch=message.epoch;presentation?.ResetPresentation();prefs.map=f.map;NativeLighting.Apply(content.Map(f.map),cameraView);prefs.pve=f.cooperative;menu=false;visualClock.Reset(f.time);}
             arena.ApplyFrame(f,networkId);generation=arena.Generation;if(inputSequence==0){yaw=arena.Local.Yaw;pitch=12;}networkStatus="Connected";
         }
-        private void NetworkPanel()
+        // Create Room (main.ts create screen): where the room runs, its port or relay, and the mode; rules are set in the lobby.
+        private void CreateBody()
         {
-            GUILayout.Space(16);GUILayout.Label("Multiplayer · Unity conversion",heading);GUILayout.Label(networkStatus,small);RelayPanel();
-            if(!Online){GUILayout.BeginHorizontal();GUILayout.Label("Host address",small);hostAddress=GUILayout.TextField(hostAddress,253);GUILayout.Label("Port",small);portText=GUILayout.TextField(portText,5,GUILayout.Width(75));GUILayout.EndHorizontal();GUILayout.BeginHorizontal();GUILayout.Label("Room code",small);joinCode=GUILayout.TextField(joinCode,8);GUILayout.EndHorizontal();GUILayout.BeginHorizontal();if(!internetRooms&&GUILayout.Button("Host LAN room",button))HostRoom();GUI.enabled=connecting==null;if(GUILayout.Button("Join host",button))JoinRoom();GUI.enabled=true;GUILayout.EndHorizontal();GUILayout.Label("Guests need the same conversion build, the host’s address and room code.",small);}
+            Fine("Create Room hosts the match on this computer. Friends join with the room code over your network, or over the internet through the conversion relay.");
+            Field("Connection");internetRooms=ChoiceRow(new[]{"Local network","Internet relay"},internetRooms?1:0)==1;
+            if(!internetRooms){Field("Port");portText=GUILayout.TextField(portText,5,GUILayout.Width(120));Fine("Guests need this computer's address, the port and the room code.");}
+            else{Field("Relay URL");prefs.relayOrigin=GUILayout.TextField(prefs.relayOrigin??"",240);listedRoom=GUILayout.Toggle(listedRoom,"List my room for other players");}
+            Field("Mode");bool pve=ChoiceRow(new[]{"Versus","Boss Test · The Siren"},prefs.pve?1:0)==1;if(pve!=prefs.pve){prefs.pve=pve;prefs.bots=Mathf.Clamp(prefs.bots,0,pve?3:7);}
+            Fine("The arena, bots and match rules are set in the lobby. Guests need the same conversion build.");
+        }
+        // Join Room (main.ts join screen): the room code, then the host's address and port, or the relay and its room list.
+        private void JoinBody()
+        {
+            Field("Connection");internetRooms=ChoiceRow(new[]{"Local network","Internet relay"},internetRooms?1:0)==1;
+            Field("Room code");joinCode=GUILayout.TextField(joinCode,8,codeField).ToUpperInvariant();
+            if(!internetRooms)
+            {
+                Field("Host address");GUILayout.BeginHorizontal();hostAddress=GUILayout.TextField(hostAddress,253);GUILayout.Label("Port",small,GUILayout.Width(44));portText=GUILayout.TextField(portText,5,GUILayout.Width(90));GUILayout.EndHorizontal();
+                Fine("Guests need the same conversion build, the host’s address and the room code.");
+            }
             else
             {
-                if(Hosting)GUILayout.Label("Room "+roomCode+(listener!=null?" · port "+listener.Port:" · internet relay"),label);
-                foreach(var s in lobbySeats)GUILayout.Label(s.name+" · "+s.spec+" · team "+(s.team+1)+" · "+(!s.connected?"disconnected":s.ready?"ready":"choosing"),small);
-                if(!Hosting&&arena==null){if(GUILayout.Button(networkReady?"Not ready":"Ready",button)){networkReady=!networkReady;SendServer(new NativeNetMessage{type="ready",ready=networkReady});}if(GUILayout.Button("Send my loadout",button))SendServer(new NativeNetMessage{type="profile",profile=Profile(),token=account?.Token});}
-                if(Hosting&&arena!=null&&GUILayout.Button("Return room to lobby",button)){ClearReplay();arena.Dispose();arena=null;match=null;presentation?.ResetPresentation();networkEpoch++;foreach(var p in peers)p.Ready=false;LobbyBroadcast();}
-                if(GUILayout.Button("Leave room",button)){ClearReplay();CloseNetwork();arena?.Dispose();arena=null;match=null;presentation?.ResetPresentation();}
+                Field("Relay URL");prefs.relayOrigin=GUILayout.TextField(prefs.relayOrigin??"",240);GUI.enabled=relayConnecting==null&&connecting==null;
+                if(GUILayout.Button("Refresh room list",button))StartCoroutine(ListRelayRooms());
+                foreach(var room in relayRooms)if(GUILayout.Button(room.name+" · "+room.players+" / "+room.capacity+" · "+room.code,button)){joinCode=room.code;JoinRoom();}GUI.enabled=true;
             }
         }
+        // The room lobby (main.ts lobby / pve/menu.ts): the code, the pilots and their ready state; the host sets the mode and
+        // rules, guests pick a weapon. Start, Ready, Send Loadout and Leave Room are the panel's actions.
+        private void LobbyBody()
+        {
+            if(Hosting)
+            {
+                Field(listener!=null?"Room code · local network · port "+listener.Port:"Room code · internet relay");GUILayout.BeginHorizontal();GUILayout.TextField(roomCode,codeField);
+                if(GUILayout.Button("Copy Code",button,GUILayout.Width(140))){GUIUtility.systemCopyBuffer=roomCode;networkStatus="Room code copied.";}GUILayout.EndHorizontal();
+            }
+            int ready=lobbySeats.Count(s=>s.connected&&s.ready),joined=lobbySeats.Count(s=>s.connected);
+            Field("Pilots · "+joined+" / "+(prefs.pve&&Hosting?4:8)+" joined · "+ready+"/"+joined+" ready");
+            foreach(var s in lobbySeats)GUILayout.Label((s.ready&&s.connected?"● ":"○ ")+s.name+"  ·  "+(content.weapons.FirstOrDefault(w=>w.id==s.spec)?.name??s.spec)+"  ·  team "+(s.team+1)+"  ·  "+(!s.connected?"disconnected":s.ready?"ready":"choosing"),label);
+            if(lobbySeats.Length==0)Fine(Hosting?"Waiting for pilots to join.":"Waiting for the host.");
+            if(Hosting)
+            {
+                Field("Mode");bool pve=ChoiceRow(new[]{"Versus","Boss Test · The Siren"},prefs.pve?1:0)==1;if(pve!=prefs.pve){prefs.pve=pve;prefs.bots=Mathf.Clamp(prefs.bots,0,pve?3:7);}
+                if(prefs.pve)BossBody();else MatchRulesBody(true);
+            }
+            else{Fine("The host sets the mode, arena and rules. Ready up when your loadout is set.");Field("Your weapon");WeaponGrid();Fine("Send Loadout after changing your weapon or Customize choices.");}
+        }
+        // Leave Room: close the connection or room and drop any running match (the source's Leave Room / Return to Main Menu).
+        private void LeaveRoom(){ClearReplay();CloseNetwork();arena?.Dispose();arena=null;match=null;presentation?.ResetPresentation();menu=true;}
         private void ChooseChip(int seat,string chip){if(server!=null)SendServer(new NativeNetMessage{type="chip",chip=chip});else match.Choose(seat,chip);}
         private void ChoosePveChip(int pick,string chip){if(server!=null)SendServer(new NativeNetMessage{type="pve-pick",pick=pick,chip=chip});else arena.ChoosePve(arena.Local,pick,chip);}
         private void PveOpen(bool open){if(server!=null)SendServer(new NativeNetMessage{type=open?"pve-open":"pve-close"});else if(open)arena.OpenPvePick(arena.Local);else arena.ClosePvePick(arena.Local);}

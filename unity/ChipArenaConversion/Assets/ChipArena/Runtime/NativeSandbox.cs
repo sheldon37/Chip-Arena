@@ -41,17 +41,18 @@ namespace ChipArena.UnityConversion
     }
     public sealed partial class ConversionGame
     {
-        private bool sandboxWanted,showSandbox;private string sandboxSearch="",dummySpec="pistol",dummyKey="ai",sandboxTarget="dummy",sandboxSort="name";private float sandboxSpeed=1;private Vector2 sandboxScroll;
-        private void SandboxPanel()
+        private bool sandboxWanted;private string sandboxSearch="",dummySpec="pistol",dummyKey="ai",sandboxTarget="dummy",sandboxSort="name";private float sandboxSpeed=1;
+        // Sandbox tools (pause menu of a developer sandbox match, started from the home screen's Developer Sandbox link).
+        private void SandboxBody()
         {
-            if(!account.Developer||Online)return;sandboxWanted=GUILayout.Toggle(sandboxWanted,"Developer sandbox (local only)");if(arena?.Sandbox!=true)return;if(GUILayout.Button(showSandbox?"Close sandbox tools":"Sandbox tools",button))showSandbox=!showSandbox;if(!showSandbox)return;
-            sandboxSpeed=Slider("Simulation speed",sandboxSpeed,.1f,2);Time.timeScale=sandboxSpeed;Time.fixedDeltaTime=1f/60;sandboxSort=ChoiceGrid(new[]{"name","rarity","installed"},sandboxSort);
+            if(arena?.Sandbox!=true||!account.Developer||Online)return;
+            Field("Simulation");sandboxSpeed=Slider("Simulation speed",sandboxSpeed,.1f,2);Time.timeScale=sandboxSpeed;Time.fixedDeltaTime=1f/60;
             arena.SafeMode=GUILayout.Toggle(arena.SafeMode,"Safe mode — player retains 1 HP");arena.DummyRespawn=Mathf.Round(Slider("Dummy respawn seconds (0 disables)",arena.DummyRespawn,0,30));arena.SandboxRepeat=Mathf.Round(Slider("Repeat cast seconds (0 disables)",arena.SandboxRepeat,0,60));if(arena.SandboxRepeat>0)arena.SandboxRepeat=Math.Max(2,arena.SandboxRepeat);
-            dummySpec=ChoiceGrid(content.weapons.Where(AllowedWeapon).Select(w=>w.id).ToArray(),dummySpec);dummyKey=ChoiceGrid(new[]{"ai","e","q","block","dash","jump","1","2","3","4","mode"},dummyKey);if(GUILayout.Button("Make dummy cast",button)){arena.SandboxCast(dummySpec,dummyKey);menu=false;}
-            sandboxTarget=ChoiceGrid(new[]{"self","dummy"},sandboxTarget);GUILayout.BeginHorizontal();foreach(string action in new[]{"restore","hit","down","summons","vent"})if(GUILayout.Button(action,button)){arena.SandboxAction(action,sandboxTarget=="self");menu=false;}GUILayout.EndHorizontal();
-            sandboxSearch=GUILayout.TextField(sandboxSearch,100);var target=sandboxTarget=="self"?arena.Local:arena.Pilots.FirstOrDefault(p=>p.Seat.bot);if(target==null)return;sandboxScroll=GUILayout.BeginScrollView(sandboxScroll,GUILayout.Height(230));
+            Field("Dummy weapon");dummySpec=ChoiceGrid(content.weapons.Where(AllowedWeapon).Select(w=>w.id).ToArray(),dummySpec);Field("Dummy input");dummyKey=ChoiceGrid(new[]{"ai","e","q","block","dash","jump","1","2","3","4","mode"},dummyKey);if(GUILayout.Button("Make dummy cast",button)){arena.SandboxCast(dummySpec,dummyKey);menu=false;}
+            Field("Target");sandboxTarget=ChoiceGrid(new[]{"self","dummy"},sandboxTarget);GUILayout.BeginHorizontal();foreach(string action in new[]{"restore","hit","down","summons","vent"})if(GUILayout.Button(action,button)){arena.SandboxAction(action,sandboxTarget=="self");menu=false;}GUILayout.EndHorizontal();
+            Field("Chips");sandboxSort=ChoiceGrid(new[]{"name","rarity","installed"},sandboxSort);sandboxSearch=GUILayout.TextField(sandboxSearch,100);var target=sandboxTarget=="self"?arena.Local:arena.Pilots.FirstOrDefault(p=>p.Seat.bot);if(target==null)return;
             foreach(var chip in content.chips.OrderBy(c=>sandboxSort=="rarity"?c.rarity:sandboxSort=="installed"?(target.Seat.chips.ContainsKey(c.id)?"0":"1"):c.name).ThenBy(c=>c.name).Where(c=>sandboxSearch.Split(new[]{' '},StringSplitOptions.RemoveEmptyEntries).All(term=>(c.name+" "+c.id+" "+c.description).IndexOf(term,StringComparison.OrdinalIgnoreCase)>=0)))
-            {target.Seat.chips.TryGetValue(chip.id,out int count);GUILayout.BeginHorizontal();GUILayout.Label(chip.name+" ×"+count,small);if(GUILayout.Button("+",GUILayout.Width(32)))arena.SandboxChip(target.Seat.id,chip.id,1);if(GUILayout.Button("−",GUILayout.Width(32)))arena.SandboxChip(target.Seat.id,chip.id,-1);GUILayout.EndHorizontal();}GUILayout.EndScrollView();
+            {target.Seat.chips.TryGetValue(chip.id,out int count);GUILayout.BeginHorizontal();GUILayout.Label(chip.name+" ×"+count,small);if(GUILayout.Button("+",GUILayout.Width(32)))arena.SandboxChip(target.Seat.id,chip.id,1);if(GUILayout.Button("−",GUILayout.Width(32)))arena.SandboxChip(target.Seat.id,chip.id,-1);GUILayout.EndHorizontal();}
         }
     }
 }

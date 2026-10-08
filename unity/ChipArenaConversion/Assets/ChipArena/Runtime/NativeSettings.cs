@@ -4,14 +4,20 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class ConversionGame
     {
-        private bool showSettings;
-        private void SettingsPanel()
+        // Settings (main.ts settings screen): graphics, camera, controls, audio (volumes apply as they move), effects,
+        // interface scale and the Siren mode key. Save Settings applies quality and writes the preferences.
+        private void SettingsBody()
         {
-            if(GUILayout.Button(showSettings?"Close settings":"Audio, graphics and controls",button))showSettings=!showSettings;if(!showSettings)return;
-            prefs.sensitivity=Slider("Mouse sensitivity",prefs.sensitivity,.2f,2.5f);prefs.audio=Slider("Effects volume",prefs.audio,0,1);prefs.music=Slider("Match music",prefs.music,0,1);prefs.menuMusic=Slider("Menu music",prefs.menuMusic,0,1);prefs.uiScale=Mathf.Round(Slider("Interface scale",prefs.uiScale>0?prefs.uiScale:1,.75f,1.5f)*20)/20;
-            prefs.graphics=ChoiceGrid(new[]{"auto","high","performance"},prefs.graphics);prefs.trails=GUILayout.Toggle(prefs.trails,"Projectile trails");prefs.reducedEffects=GUILayout.Toggle(prefs.reducedEffects,"Reduced effects");prefs.cameraShake=GUILayout.Toggle(prefs.cameraShake,"Camera shake");
-            GUILayout.Label("Siren mode key (V also changes camera)",small);prefs.sirenMode=ChoiceGrid(new[]{"Q","F","V"},prefs.sirenMode);
-            if(GUILayout.Button("Save settings",button)){ApplySettings();Save();}
+            Field("Graphics");prefs.graphics=ChoiceGrid(new[]{"auto","high","performance"},prefs.graphics,new[]{"Auto · targets 60 FPS","High · sharper image","Performance · no shadows"});
+            Field("Camera view");prefs.firstPerson=ChoiceRow(new[]{"Third person","First person"},prefs.firstPerson?1:0)==1;Fine("Press V during play to switch views.");
+            Field("Controls");prefs.sensitivity=Slider("Mouse sensitivity",prefs.sensitivity,.2f,2.5f);
+            Field("Audio");prefs.sound=!GUILayout.Toggle(!prefs.sound,"Mute audio");prefs.audio=Slider("Effects volume",prefs.audio,0,1);prefs.music=Slider("Arena music volume",prefs.music,0,1);prefs.menuMusic=Slider("Menu music volume",prefs.menuMusic,0,1);
+            if(nativeAudio!=null){nativeAudio.Effects=Mathf.Clamp01(prefs.audio);nativeAudio.Music=Mathf.Clamp01(prefs.music);nativeAudio.Menu=Mathf.Clamp01(prefs.menuMusic);}
+            Field("Effects");prefs.trails=GUILayout.Toggle(prefs.trails,"Projectile trails");prefs.reducedEffects=GUILayout.Toggle(prefs.reducedEffects,"Reduced effects");prefs.cameraShake=GUILayout.Toggle(prefs.cameraShake,"Camera shake");
+            GUILayout.Label("Combat glow",small);int glow=prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?1:2;prefs.combatGlow=new[]{"Off","Low","Full"}[ChoiceRow(new[]{"Off","Low","Full"},glow)];
+            Field("Interface");prefs.uiScale=Mathf.Round(Slider("Interface scale",prefs.uiScale>0?prefs.uiScale:1,.75f,1.5f)*20)/20;Fine("Scales every menu and overlay; the canvas follows as you drag.");
+            Field("Siren mode key");prefs.sirenMode=ChoiceGrid(new[]{"Q","F","V"},prefs.sirenMode);Fine("V also changes the camera view.");
+            Field("Credits");Fine("Icons: Lucide (ISC licence), from the source client.");
         }
         private float Slider(string name,float value,float min,float max){GUILayout.Label(name+"  "+value.ToString("0.00"),small);return GUILayout.HorizontalSlider(value,min,max);}
         private void ApplySettings()

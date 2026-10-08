@@ -12,12 +12,6 @@ namespace ChipArena.UnityConversion
     public sealed partial class ConversionGame
     {
         private NativeRelayHost relayHost;private Task<NativeRelayHost> relayConnecting;private bool internetRooms,listedRoom;private NativeRoomListing[] relayRooms=Array.Empty<NativeRoomListing>();
-        private void RelayPanel()
-        {
-            if(Online)return;internetRooms=GUILayout.Toggle(internetRooms,"Internet room via conversion relay");if(!internetRooms)return;
-            GUILayout.Label("Relay URL",small);prefs.relayOrigin=GUILayout.TextField(prefs.relayOrigin??"",240);listedRoom=GUILayout.Toggle(listedRoom,"List my room for other players");GUILayout.BeginHorizontal();GUI.enabled=relayConnecting==null&&connecting==null;
-            if(GUILayout.Button("Host internet room",button))HostRelay();if(GUILayout.Button("Refresh room list",button))StartCoroutine(ListRelayRooms());GUI.enabled=true;GUILayout.EndHorizontal();foreach(var room in relayRooms){if(GUILayout.Button(room.name+" · "+room.players+" / "+room.capacity+" · "+room.code,button)){joinCode=room.code;JoinRoom();}}
-        }
         private void HostRelay()
         {
             try{NativeWebSocketStream.Endpoint(prefs.relayOrigin,"native/v3/host");CloseNetwork();ClearReplay();arena?.Dispose();arena=null;match=null;presentation?.ResetPresentation();if(!dedicated)Save();connectStop=new CancellationTokenSource();relayConnecting=NativeRelayHost.Host(prefs.relayOrigin,content.sourceCommit,prefs.name+"’s room",listedRoom,connectStop.Token);networkStatus="Creating internet room…";}

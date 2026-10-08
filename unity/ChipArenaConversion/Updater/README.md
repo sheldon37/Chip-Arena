@@ -56,6 +56,9 @@ new releases remains a developer step; players no longer rebuild or replace file
 that file as part of the menu work. `ConversionGame.cs` has two hooks:
 `InitializeUpdater()` after settings initialization and `UpdatePanel()` in the
 menu. Retain both, or call their equivalents from the replacement menu.
+In the native home menu (`NativeHomeMenu.cs`) the top bar's Update Game pill shows
+the state line and opens `UpdatePanel(right, top)` as a card beneath it; the card
+stays open while a download is verified, prepared and installed.
 
 Use `ConversionGame.Updater`:
 

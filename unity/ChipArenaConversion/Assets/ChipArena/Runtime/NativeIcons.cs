@@ -5,13 +5,14 @@ using System.Text.RegularExpressions;
 using UnityEngine;
 namespace ChipArena.UnityConversion
 {
-    // The source's line icons (client/icons.ts: 24x24 SVG, 2-unit round strokes) rasterised at the exact pixel size they
-    // are drawn, so they stay crisp at every UI scale. Supports the SVG subset those icons use: path (M L H V C S Q T A Z,
-    // absolute and relative), circle, ellipse, rect (rx/ry), line, polyline and polygon, stroked and/or filled.
-    // Textures are white with coverage in alpha and are tinted when drawn; built lazily, never in field initializers.
+    // The source's line icons (client/icons.ts: Lucide 24x24 SVG, 1.7-unit round strokes) rasterised at the exact pixel
+    // size they are drawn, so they stay crisp at every UI scale. Supports the SVG subset those icons use: path (M L H V C S
+    // Q T A Z, absolute and relative, minified arc flags), circle, ellipse, rect (rx/ry), line, polyline and polygon,
+    // stroked and/or filled, plus solid and vertical linear-gradient fills for the source's few coloured drawings (the
+    // Boss Test skull). Icon textures are white and tinted when drawn; built lazily, never in field initializers.
     public static class NativeIcons
     {
-        private sealed class Shape {public readonly List<List<Vector2>> Lines=new List<List<Vector2>>();public bool Fill,Stroke=true;public float Width;}
+        private sealed class Shape {public readonly List<List<Vector2>> Lines=new List<List<Vector2>>();public bool Fill,Stroke=true;public float Width;public Color FillColor=Color.white,StrokeColor=Color.white;public float[] GradientAt;public Color[] GradientColors;}
         private static readonly Dictionary<string,List<Shape>> parsed=new Dictionary<string,List<Shape>>();
         private static readonly Dictionary<string,Texture2D> textures=new Dictionary<string,Texture2D>();
         [Serializable] public sealed class IconEntry {public string id,markup,icon;}
@@ -36,18 +37,34 @@ namespace ChipArena.UnityConversion
         {
             if(c.a<=0||Event.current.type!=EventType.Repaint)return;Ensure();if(!markup.TryGetValue(id??"",out string svg)&&!markup.TryGetValue("cpu",out svg))return;
             int px=Mathf.Clamp(Mathf.RoundToInt(Mathf.Max(r.width,r.height)*NativeUi.S),8,512);string key=id+"@"+px;
-            if(!textures.TryGetValue(key,out var t)){if(textures.Count>256)Clear();t=Rasterise(Shapes(id,svg),px);textures[key]=t;}
+            if(!textures.TryGetValue(key,out var t)){if(textures.Count>256)Clear();t=Texture(Raster(Shapes(id,svg,true),px,24),px);textures[key]=t;}
+            NativeUi.Image(r,t,c);
+        }
+        // Draw coloured markup (its own fills and strokes; default fill black as in SVG) on a `box`-unit square viewBox.
+        // `key` names the drawing for the cache; `c` tints it (white keeps its colours).
+        public static void DrawMarkup(Rect r,string key,string svg,float box,Color c)
+        {
+            if(c.a<=0||Event.current.type!=EventType.Repaint)return;int px=Mathf.Clamp(Mathf.RoundToInt(Mathf.Max(r.width,r.height)*NativeUi.S),8,512);string k="svg:"+key+"@"+px;
+            if(!textures.TryGetValue(k,out var t)){if(textures.Count>256)Clear();t=Texture(Raster(Shapes("svg:"+key,svg,false),px,box),px);textures[k]=t;}
             NativeUi.Image(r,t,c);
         }
         public static void Clear(){foreach(var t in textures.Values)if(t!=null)UnityEngine.Object.Destroy(t);textures.Clear();}
-        private static List<Shape> Shapes(string id,string svg){if(!parsed.TryGetValue(id,out var list))parsed[id]=list=Parse(svg,strokeWidth);return list;}
-        private static List<Shape> Parse(string svg,float width)
+        private static List<Shape> Shapes(string id,string svg,bool lucide){if(!parsed.TryGetValue(id,out var list))parsed[id]=list=Parse(svg,lucide?strokeWidth:1,lucide);return list;}
+        // Lucide markup inherits fill="none" stroke="currentColor" from icons.ts's <svg>; other markup uses SVG defaults.
+        private static List<Shape> Parse(string svg,float width,bool lucide)
         {
-            var list=new List<Shape>();
+            var list=new List<Shape>();var gradients=new Dictionary<string,(float[] at,Color[] colors)>();
+            foreach(Match g in Regex.Matches(svg,@"<linearGradient\b([^>]*)>(.*?)</linearGradient>",RegexOptions.Singleline))
+            {
+                var ga=Attributes(g.Groups[1].Value);var at=new List<float>();var colors=new List<Color>();
+                foreach(Match st in Regex.Matches(g.Groups[2].Value,@"<stop\b([^>]*?)/?>")){var sa=Attributes(st.Groups[1].Value);at.Add(sa.TryGetValue("offset",out var o)?Num(o):0);colors.Add(Paint(sa.TryGetValue("stop-color",out var sc)?sc:"#000",Color.black));}
+                if(ga.TryGetValue("id",out var gid)&&at.Count>0)gradients[gid]=(at.ToArray(),colors.ToArray());
+            }
             foreach(Match m in Regex.Matches(svg,@"<(path|circle|ellipse|rect|line|polyline|polygon)\b([^>]*?)/?>"))
             {
-                var a=Attributes(m.Groups[2].Value);var s=new Shape{Width=width};string fill=a.TryGetValue("fill",out var f)?f:"none",stroke=a.TryGetValue("stroke",out var k)?k:"currentColor";
-                s.Fill=fill!="none";s.Stroke=stroke!="none";if(a.TryGetValue("stroke-width",out var sw))s.Width=Num(sw);
+                var a=Attributes(m.Groups[2].Value);var s=new Shape{Width=width};string fill=a.TryGetValue("fill",out var f)?f:lucide?"none":"#000",stroke=a.TryGetValue("stroke",out var k)?k:lucide?"currentColor":"none";
+                s.Fill=fill!="none";s.Stroke=stroke!="none";if(a.TryGetValue("stroke-width",out var sw))s.Width=Num(sw);s.FillColor=Paint(fill,Color.white);s.StrokeColor=Paint(stroke,Color.white);
+                var url=Regex.Match(fill,@"url\(#([^)]+)\)");if(url.Success&&gradients.TryGetValue(url.Groups[1].Value,out var grad)){s.GradientAt=grad.at;s.GradientColors=grad.colors;}
                 switch(m.Groups[1].Value)
                 {
                     case "path":if(a.TryGetValue("d",out var d))PathLines(d,s.Lines);break;
@@ -60,6 +77,13 @@ namespace ChipArena.UnityConversion
                 list.Add(s);
             }
             return list;
+        }
+        // currentColor (and anything unrecognised) is white so the caller's tint decides; #rgb and #rrggbb are honoured.
+        private static Color Paint(string value,Color fallback)
+        {
+            value=(value??"").Trim();if(value.StartsWith("#")&&(value.Length==4||value.Length==7)&&int.TryParse(value.Substring(1),NumberStyles.HexNumber,CultureInfo.InvariantCulture,out int rgb))
+            {if(value.Length==4)rgb=((rgb>>8&15)*17<<16)|((rgb>>4&15)*17<<8)|((rgb&15)*17);return NativeUi.Hex(rgb);}
+            return fallback;
         }
         private static Dictionary<string,string> Attributes(string text){var a=new Dictionary<string,string>();foreach(Match m in Regex.Matches(text,@"([\w:-]+)\s*=\s*""([^""]*)"""))a[m.Groups[1].Value]=m.Groups[2].Value;return a;}
         private static float Num(string s)=>float.TryParse(s,NumberStyles.Float,CultureInfo.InvariantCulture,out float v)?v:0;
@@ -125,34 +149,40 @@ namespace ChipArena.UnityConversion
             for(int k=1;k<=n;k++){float t=t0+dt*k/n;float ex=rx*Mathf.Cos(t),ey=ry*Mathf.Sin(t);to(new Vector2(cos*ex-sin*ey,sin*ex+cos*ey)+c);}
         }
         private static float SegmentDistance(Vector2 p,Vector2 a,Vector2 b){var ab=b-a;float l=ab.sqrMagnitude;float t=l>0?Mathf.Clamp01(Vector2.Dot(p-a,ab)/l):0;return (p-(a+ab*t)).magnitude;}
-        private static Texture2D Rasterise(List<Shape> shapes,int px)
+        private static Texture2D Texture(Color[] pixels,int px)
+        {var t=new Texture2D(px,px,TextureFormat.RGBA32,false){wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Bilinear,hideFlags=HideFlags.HideAndDontSave};t.SetPixels(pixels);t.Apply(false,true);return t;}
+        // Coverage (alpha) of a Lucide icon, bottom row first (texture order). Pure managed code so the checks can run it.
+        public static float[] Coverage(string svg,int px,float width=1.7f){var c=Raster(Parse(svg,width,true),px,24);var a=new float[c.Length];for(int i=0;i<c.Length;i++)a[i]=c[i].a;return a;}
+        // Shapes composited in order (source-over): strokes by distance to the flattened segments (round caps and joins),
+        // fills by nonzero winding with subpaths implicitly closed and a half-pixel edge ramp. Straight-alpha output.
+        private static Color[] Raster(List<Shape> shapes,int px,float box)
         {
-            var t=new Texture2D(px,px,TextureFormat.RGBA32,false){wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Bilinear,hideFlags=HideFlags.HideAndDontSave};var cover=Coverage(shapes,px);var pixels=new Color[px*px];
-            for(int i=0;i<pixels.Length;i++)pixels[i]=new Color(1,1,1,cover[i]);t.SetPixels(pixels);t.Apply(false,true);return t;
-        }
-        // Coverage per pixel, bottom row first (texture order): strokes by distance to the flattened segments (round caps and
-        // joins), fills by nonzero winding with a half-pixel edge ramp. Pure managed code so the checks can run it.
-        public static float[] Coverage(string svg,int px,float width=1.7f)=>Coverage(Parse(svg,width),px);
-        private static float[] Coverage(List<Shape> shapes,int px)
-        {
-            var cover=new float[px*px];float scale=px/24f;
+            var output=new Color[px*px];float scale=px/box;var bounds=new Rect[shapes.Count];
+            for(int i=0;i<shapes.Count;i++){float x0=float.MaxValue,y0=float.MaxValue,x1=float.MinValue,y1=float.MinValue;foreach(var line in shapes[i].Lines)foreach(var q in line){x0=Mathf.Min(x0,q.x);y0=Mathf.Min(y0,q.y);x1=Mathf.Max(x1,q.x);y1=Mathf.Max(y1,q.y);}bounds[i]=Rect.MinMaxRect(x0,y0,x1,y1);}
             for(int y=0;y<px;y++)for(int x=0;x<px;x++)
             {
-                var p=new Vector2((x+.5f)/scale,(px-y-.5f)/scale);float c=0;
-                foreach(var s in shapes)
+                var p=new Vector2((x+.5f)/scale,(px-y-.5f)/scale);float r=0,g=0,b=0,a=0;
+                void Over(Color c,float cover){float sa=c.a*cover;if(sa<=0)return;r=c.r*sa+r*(1-sa);g=c.g*sa+g*(1-sa);b=c.b*sa+b*(1-sa);a=sa+a*(1-sa);}
+                for(int i=0;i<shapes.Count;i++)
                 {
-                    float d=float.MaxValue;int winding=0;
-                    foreach(var line in s.Lines)for(int k=0;k+1<line.Count;k++)
+                    var s=shapes[i];float d=float.MaxValue;int winding=0;
+                    foreach(var line in s.Lines)for(int k=0;k<line.Count;k++)
                     {
-                        var a=line[k];var b=line[k+1];d=Mathf.Min(d,SegmentDistance(p,a,b));
-                        if(s.Fill){float side=(b.x-a.x)*(p.y-a.y)-(p.x-a.x)*(b.y-a.y);if(a.y<=p.y){if(b.y>p.y&&side>0)winding++;}else if(b.y<=p.y&&side<0)winding--;}
+                        bool closing=k==line.Count-1;if(closing&&!s.Fill)break;var q0=line[k];var q1=line[closing?0:k+1];
+                        if(!closing)d=Mathf.Min(d,SegmentDistance(p,q0,q1));
+                        if(s.Fill){float side=(q1.x-q0.x)*(p.y-q0.y)-(p.x-q0.x)*(q1.y-q0.y);if(q0.y<=p.y){if(q1.y>p.y&&side>0)winding++;}else if(q1.y<=p.y&&side<0)winding--;}
                     }
-                    if(s.Fill&&s.Lines.Count>0)c=Mathf.Max(c,winding!=0?1:Mathf.Clamp01(.5f-d*scale));
-                    if(s.Stroke&&d<float.MaxValue)c=Mathf.Max(c,Mathf.Clamp01((s.Width/2-d)*scale+.5f));
+                    if(s.Fill&&s.Lines.Count>0)
+                    {
+                        float cover=winding!=0?1:Mathf.Clamp01(.5f-d*scale);var c=s.FillColor;
+                        if(s.GradientAt!=null&&bounds[i].height>0){float t=Mathf.Clamp01((p.y-bounds[i].y)/bounds[i].height);c=s.GradientColors[0];for(int k=1;k<s.GradientAt.Length;k++)if(t>=s.GradientAt[k-1])c=t>=s.GradientAt[k]?s.GradientColors[k]:Color.Lerp(s.GradientColors[k-1],s.GradientColors[k],(t-s.GradientAt[k-1])/Mathf.Max(1e-5f,s.GradientAt[k]-s.GradientAt[k-1]));}
+                        Over(c,cover);
+                    }
+                    if(s.Stroke&&d<float.MaxValue)Over(s.StrokeColor,Mathf.Clamp01((s.Width/2-d)*scale+.5f));
                 }
-                cover[y*px+x]=c;
+                output[y*px+x]=a>0?new Color(r/a,g/a,b/a,a):Color.clear;
             }
-            return cover;
+            return output;
         }
     }
 }

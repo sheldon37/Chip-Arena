@@ -19,45 +19,67 @@ namespace ChipArena.UnityConversion
     }
     public sealed partial class ConversionGame
     {
-        private NativeAccount account;private bool showProfile,showAccount,rememberAccount=true;private string accountUser="",accountPassword="",accountRecovery="",accountAction="login",accountNotice="";
+        private NativeAccount account;private bool rememberAccount=true;private string accountUser="",accountPassword="",accountRecovery="",accountAction="login",accountNotice="";
         private bool AllowedWeapon(ContentWeapon w)=>!w.devOnly||(account?.Access??NativeAccess.Guest).Allows("weapon:"+w.id,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         private void InitializeAccount()
         {
             account=gameObject.AddComponent<NativeAccount>();account.Accepted=(data,load)=>{if(arena?.Local!=null)arena.Local.Seat.access=account.Access;if(server!=null)SendServer(new NativeNetMessage{type="auth-refresh",token=account.Token});if(!load)return;var p=data.profile;if(p==null)return;prefs.name=NativeCosmeticRules.Name(p.name);prefs.accentColor=NativeCosmeticRules.Color(p.color,"#70e1d0");var c=p.cosmetics??new NativeCosmetics();prefs.bodyColor=NativeCosmeticRules.Color(c.bodyColor,"#e5e7eb");prefs.hat=NativeCosmeticRules.Hat(c.hat,account.Access);prefs.killEffect=NativeCosmeticRules.Kill(c.killEffect,account.Access);prefs.intro=NativeCosmeticRules.Intro(c.intro,account.Access);prefs.introText=c.introText;prefs.overrideIntro=c.overrideWeaponIntro;if(content.weapons.Any(w=>w.id==c.preferredSpec&&AllowedWeapon(w)))prefs.weapon=c.preferredSpec;accountPassword=accountRecovery="";Save();};
             try{account.Configure(prefs.accountOrigin,true);}catch(ArgumentException){prefs.accountOrigin="";}
         }
-        private void ProfilePanel()
+        // Customize (main.ts customize screen): name, preferred weapon, colours, headwear, kill effect, intro and its text.
+        private void CustomizeBody()
         {
-            if(GUILayout.Button("Preview appearance and entrance",button))StartPreview();
-            if(GUILayout.Button(showProfile?"Close appearance":"Appearance and entrances",button))showProfile=!showProfile;
-            if(showProfile)
-            {
-                GUILayout.BeginHorizontal();GUILayout.Label("Body colour",small);prefs.bodyColor=GUILayout.TextField(prefs.bodyColor,7);GUILayout.Label("Accent colour",small);prefs.accentColor=GUILayout.TextField(prefs.accentColor,7);GUILayout.EndHorizontal();
-                GUILayout.Label("Hat",label);prefs.hat=ChoiceGrid(NativeCosmeticRules.Hats.Where(id=>NativeCosmeticRules.Allowed(account.Access,"hat",id)).ToArray(),prefs.hat);
-                GUILayout.Label("Elimination effect",label);prefs.killEffect=ChoiceGrid(NativeCosmeticRules.Kills.Where(id=>NativeCosmeticRules.Allowed(account.Access,"effect",id)).ToArray(),prefs.killEffect);
-                prefs.overrideIntro=GUILayout.Toggle(prefs.overrideIntro,"Use a custom entrance instead of this weapon’s signature");
-                if(prefs.overrideIntro)prefs.intro=ChoiceGrid(NativeCosmeticRules.Intros.Where(id=>NativeCosmeticRules.Allowed(account.Access,"intro",id)).ToArray(),prefs.intro);
-                GUILayout.Label("Entrance message",small);prefs.introText=GUILayout.TextField(prefs.introText??"Ready to make an impact",64);
-                if(GUILayout.Button("Save appearance",button)){prefs.bodyColor=NativeCosmeticRules.Color(prefs.bodyColor,"#e5e7eb");prefs.accentColor=NativeCosmeticRules.Color(prefs.accentColor,"#70e1d0");Save();if(account.Account!=null)account.Save(Profile());}
-            }
-            if(GUILayout.Button(showAccount?"Close account":"Account · "+account.Status,button))showAccount=!showAccount;
-            if(showAccount)
-            {
-                GUILayout.Label("Account service URL",small);prefs.accountOrigin=GUILayout.TextField(prefs.accountOrigin??"",240);GUILayout.Label(account.Status+" "+accountNotice,small);
-                if(account.Account==null)
-                {
-                    accountAction=ChoiceGrid(new[]{"login","register","recover"},accountAction);GUILayout.Label("Username",small);accountUser=GUILayout.TextField(accountUser,32);GUILayout.Label("Password",small);accountPassword=GUILayout.PasswordField(accountPassword,'●',256);
-                    if(accountAction=="recover"){GUILayout.Label("Recovery code",small);accountRecovery=GUILayout.TextField(accountRecovery,128);}rememberAccount=GUILayout.Toggle(rememberAccount,"Remember sign-in on this Windows account");
-                    GUI.enabled=!account.Busy;if(GUILayout.Button(accountAction=="register"?"Create account":accountAction=="recover"?"Recover account":"Sign in",button))try{account.Configure(prefs.accountOrigin);Save();account.Login(accountAction,accountUser,accountPassword,accountRecovery,rememberAccount);accountNotice="";}catch(ArgumentException e){accountNotice=e.Message;}GUI.enabled=true;
-                }
-                else
-                {
-                    AdminPanel();if(account.RecoveryCode.Length>0){GUILayout.Label("Save this recovery code somewhere private:",label);GUILayout.TextField(account.RecoveryCode);}
-                    GUI.enabled=!account.Busy;if(GUILayout.Button("Save current profile to account",button))account.Save(Profile());if(GUILayout.Button("Sign out",button))account.Logout();GUI.enabled=true;
-                }
-            }
+            Field("Player name");prefs.name=GUILayout.TextField(prefs.name??"",20);
+            Field("Preferred weapon");WeaponGrid();Fine("Your preferred weapon is your pilot's default and is sent to rooms you join.");
+            Field("Colours");GUILayout.BeginHorizontal();ColourField("Body",ref prefs.bodyColor,"#e5e7eb");GUILayout.Space(12);ColourField("Accent",ref prefs.accentColor,"#70e1d0");GUILayout.EndHorizontal();
+            Field("Headwear");prefs.hat=ChoiceGrid(NativeCosmeticRules.Hats.Where(id=>NativeCosmeticRules.Allowed(account.Access,"hat",id)).ToArray(),prefs.hat);
+            Field("Kill effect");prefs.killEffect=ChoiceGrid(NativeCosmeticRules.Kills.Where(id=>NativeCosmeticRules.Allowed(account.Access,"effect",id)).ToArray(),prefs.killEffect);
+            Field("Match intro");prefs.overrideIntro=GUILayout.Toggle(prefs.overrideIntro,"Use a custom entrance instead of this weapon’s signature");
+            if(prefs.overrideIntro)prefs.intro=ChoiceGrid(NativeCosmeticRules.Intros.Where(id=>NativeCosmeticRules.Allowed(account.Access,"intro",id)).ToArray(),prefs.intro);
+            Field("Intro text");prefs.introText=GUILayout.TextField(prefs.introText??"Ready to make an impact",64);Fine("Shown under your name while your entrance plays. Preview Intro plays it on its own.");
         }
-        private string ChoiceGrid(string[] choices,string selected)
-        {int index=0;foreach(string id in choices){if(index%3==0)GUILayout.BeginHorizontal();if(GUILayout.Button((id==selected?"✓ ":"")+id.Replace("-"," "),button))selected=id;index++;if(index%3==0)GUILayout.EndHorizontal();}if(index%3!=0)GUILayout.EndHorizontal();return selected;}
+        // A #rrggbb field with a live swatch of the colour it will save as.
+        private void ColourField(string name,ref string value,string fallback)
+        {
+            GUILayout.BeginVertical();GUILayout.Label(name,small);GUILayout.BeginHorizontal();var swatch=GUILayoutUtility.GetRect(30,30,GUILayout.Width(30),GUILayout.Height(30));
+            if(Event.current.type==EventType.Repaint){var c=GUI.color;GUI.color=HexColor(NativeCosmeticRules.Color(value,fallback),0xffffff);GUI.DrawTexture(swatch,Texture2D.whiteTexture);GUI.color=c;}
+            value=GUILayout.TextField(value??fallback,7);GUILayout.EndHorizontal();GUILayout.EndVertical();
+        }
+        private void SavePilot()
+        {
+            prefs.name=NativeCosmeticRules.Name(prefs.name);prefs.introText=NativeCosmeticRules.IntroText(prefs.introText);prefs.bodyColor=NativeCosmeticRules.Color(prefs.bodyColor,"#e5e7eb");prefs.accentColor=NativeCosmeticRules.Color(prefs.accentColor,"#70e1d0");
+            Save();if(account.Account!=null)account.Save(Profile());
+        }
+        // Account (main.ts login / account screens): the Log in / Register / Recovery form, or the signed-in account with its
+        // one-time recovery code; the service URL stays editable at the foot. Submit, save, DEV Menu and Log out are actions.
+        private void AccountBody()
+        {
+            if(account.Account==null)
+            {
+                Fine("Save your pilot, intro text and unlocked items across computers. Guest play is still available.");
+                int tab=ChoiceRow(new[]{"Log in","Register","Recovery"},accountAction=="register"?1:accountAction=="recover"?2:0);accountAction=tab==1?"register":tab==2?"recover":"login";
+                Field("Username");accountUser=GUILayout.TextField(accountUser,32);Field(accountAction=="login"?"Password":"New password");accountPassword=GUILayout.PasswordField(accountPassword,'●',256);
+                if(accountAction=="recover"){Field("Recovery code");accountRecovery=GUILayout.TextField(accountRecovery,128);}
+                rememberAccount=GUILayout.Toggle(rememberAccount,"Remember sign-in on this Windows account");
+            }
+            else
+            {
+                Fine(account.Developer?"DEV access":"Registered player");
+                if(account.RecoveryCode.Length>0){Field("Recovery code");GUILayout.Label("Save this recovery code somewhere private. It is shown once.",label);GUILayout.TextField(account.RecoveryCode);}
+                Fine("Items and flags refresh here when the account service grants them. Save Current Pilot uploads your Customize choices.");
+            }
+            Field("Account service URL");prefs.accountOrigin=GUILayout.TextField(prefs.accountOrigin??"",240);
+        }
+        private void AccountSubmit()
+        {try{account.Configure(prefs.accountOrigin);Save();account.Login(accountAction,accountUser,accountPassword,accountRecovery,rememberAccount);accountNotice="";}catch(ArgumentException e){accountNotice=e.Message;}}
+        private string ChoiceGrid(string[] choices,string selected,string[] labels=null)
+        {
+            int index=0;foreach(string id in choices)
+            {
+                if(index%3==0)GUILayout.BeginHorizontal();string text=labels!=null?labels[index]:id.Replace("-"," ");
+                if(GUILayout.Toggle(id==selected,(id==selected?"✓ ":"")+text,button)&&id!=selected){selected=id;Click();}index++;if(index%3==0)GUILayout.EndHorizontal();
+            }
+            if(index%3!=0)GUILayout.EndHorizontal();return selected;
+        }
     }
 }

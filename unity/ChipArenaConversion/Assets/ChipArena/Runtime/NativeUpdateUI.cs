@@ -16,18 +16,19 @@ namespace ChipArena.UnityConversion
         private const float UpdateCardWidth=340;private float updateCardAt=-1,updateCardSeen=-1;
         private static string UpdateChip(NativeUpdateState s,float progress)=>s==NativeUpdateState.Available?"UPDATE READY":s==NativeUpdateState.Downloading?"DOWNLOADING "+Mathf.RoundToInt(progress*100)+"%":s==NativeUpdateState.Checking?"CHECKING":s==NativeUpdateState.Verifying?"VERIFYING":s==NativeUpdateState.Preparing?"PREPARING":s==NativeUpdateState.Restarting?"RESTARTING":s==NativeUpdateState.Current?"UP TO DATE":s==NativeUpdateState.Error?"ERROR":s==NativeUpdateState.Unavailable?"UNAVAILABLE":"IDLE";
         private static Color UpdateTone(NativeUpdateState s)=>s==NativeUpdateState.Available?U.Hex(0xff6b35):s==NativeUpdateState.Current?U.Hex(0x59dd83):s==NativeUpdateState.Error?U.Hex(0xff535f):s==NativeUpdateState.Unavailable||s==NativeUpdateState.Idle?U.Hex(0xa6a7ad):U.Hex(0xffb15c);
-        // The update card in the menu's bottom-right corner (the source .panel look): build identities, status, progress,
-        // and the actions the service allows — Check / Retry, Cancel while checking or downloading, and Update and restart
-        // only while CanInstall (outside a match and room). The service closes and restarts the game itself.
-        private void UpdatePanel()
+        // The update card, opened by the home screen's Update Game pill and hanging beneath it from (right, top) (the
+        // source .panel look): build identities, status, progress, and the actions the service allows — Check / Retry,
+        // Cancel while checking or downloading, and Update and restart only while CanInstall (outside a match and room).
+        // The service closes and restarts the game itself.
+        private void UpdatePanel(float right,float top)
         {
-            if(Updater==null)return;var u=Updater;var state=u.State;float W=U.W,H=U.H,w=UpdateCardWidth,pad=18;
+            if(Updater==null)return;var u=Updater;var state=u.State;float w=UpdateCardWidth,pad=18;
             if(Time.unscaledTime-updateCardSeen>.25f)updateCardAt=Time.unscaledTime;updateCardSeen=Time.unscaledTime;float enter=U.PanelIn(Time.unscaledTime-updateCardAt);
             bool progress=state==NativeUpdateState.Downloading||state==NativeUpdateState.Verifying||state==NativeUpdateState.Preparing||state==NativeUpdateState.Restarting;
             var status=U.Wrap(u.Status??"",13,w-2*pad,false,4);bool hint=state==NativeUpdateState.Available&&!u.CanInstall;var hintLines=hint?U.Wrap("Finish the match and leave the room before updating.",12,w-2*pad,false,2):null;
             bool check=!u.Busy&&state!=NativeUpdateState.Unavailable,install=state==NativeUpdateState.Available,cancel=u.CanCancel;bool buttons=check||install||cancel;
             float h=pad+16+12+18+(u.Available!=null&&install?18:0)+8+status.Count*13*1.45f+(progress?22:0)+(hint?6+hintLines.Count*12*1.45f:0)+(buttons?14+44:0)+pad;
-            var r=new Rect(W-24-w,H-24-h+10*(1-enter),w,h);U.Panel(r,enter);float y=r.y+pad,x=r.x+pad,iw=w-2*pad;
+            var r=new Rect(right-w,top-8*(1-enter),w,h);updateCard=r;U.Panel(r,enter);float y=r.y+pad,x=r.x+pad,iw=w-2*pad;
             // Eyebrow and the state chip.
             U.Text(new Rect(x,y,iw,16),"UNITY UPDATES",11,U.Hex(0xa6a7ad,enter),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.2f);
             string chip=UpdateChip(state,u.Progress);Color tone=UpdateTone(state);float cw=U.Measure(chip,10,true,true,.12f).x+18;var cr=new Rect(r.xMax-pad-cw,y-2,cw,20);

@@ -12,8 +12,8 @@ namespace ChipArena.UnityConversion
     {
         private ConversionContent content;private ConversionPreferences prefs;private NativeMatch match;private NativeArena arena;private ArenaPresentation presentation;
         private NativeAudio nativeAudio;private Camera cameraView,viewModelCamera;private InputFrame pending;private SimulationMode previousSimulation;private Vector3 previousGravity;private bool ownsPhysics;private int generation;
-        private bool menu=true,showCatalogue;private float yaw,pitch=12,lastW=-1;private bool sprint;
-        private Vector2 scroll,catalogueScroll;private string search="",error="";private GUIStyle heading,label,small,button;
+        private bool menu=true;private float yaw,pitch=12,lastW=-1;private bool sprint;
+        private string search="",error="";private GUIStyle heading,label,small,button;
         private readonly NativeVisualClock visualClock=new NativeVisualClock();
         private double stepMs;private readonly System.Diagnostics.Stopwatch timer=new System.Diagnostics.Stopwatch();
         private string PreferencePath=>Path.Combine(Application.persistentDataPath,"native-preferences-v1.json");
@@ -59,12 +59,14 @@ namespace ChipArena.UnityConversion
             arena=new NativeArena(content,match,prefs.map){FriendlyFire=prefs.friendlyFire,LocalId=dedicated?0:1,StationaryBots=prefs.stationary,Sandbox=sandboxWanted&&account.Developer&&!Online&&!prefs.pve};
             if(!match.Start()){error="A match needs at least two opposing sides.";return;}
             if(prefs.pve)arena.ConfigurePve(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text),prefs.skipWaves);
-            if(dedicated){menu=false;return;}generation=arena.Generation;visualClock.Reset(match.Time);pending=new InputFrame();yaw=arena.Local.Yaw;pitch=12;sprint=false;menu=false;showCatalogue=false;NativeLighting.Apply(content.Map(prefs.map),cameraView);
+            if(dedicated){menu=false;return;}generation=arena.Generation;visualClock.Reset(match.Time);pending=new InputFrame();yaw=arena.Local.Yaw;pitch=12;sprint=false;menu=false;NativeLighting.Apply(content.Map(prefs.map),cameraView);
         }
         private void Update()
         {
             if(content==null)return;if(dedicated){DedicatedTick();return;}if(cameraView==null)return;NetworkTick();
-            if(Input.GetKeyDown(KeyCode.Escape)&&previewArena!=null){EndPreview();return;}if(Input.GetKeyDown(KeyCode.Escape)&&inspectSeat!=0){inspectSeat=0;return;}if(Input.GetKeyDown(KeyCode.Escape)&&ReplayActive){EndReplay();return;}if(Input.GetKeyDown(KeyCode.Escape)){if(PvePickOpen)PveOpen(false);else menu=!menu;pending=new InputFrame();pending.CancelAbilities=true;if(server==null)arena?.CancelLocalAbilities();}
+            // The main menu is always open without a match (an Escape there steps back instead), so the updater's install gate holds.
+            if(arena==null)menu=true;if(!menu)pauseScreen=PauseScreen.Menu;
+            if(Input.GetKeyDown(KeyCode.Escape)&&previewArena!=null){EndPreview();return;}if(Input.GetKeyDown(KeyCode.Escape)&&inspectSeat!=0){inspectSeat=0;return;}if(Input.GetKeyDown(KeyCode.Escape)&&ReplayActive){EndReplay();return;}if(Input.GetKeyDown(KeyCode.Escape)){if(arena==null)MenuBack();else if(PvePickOpen)PveOpen(false);else if(menu&&pauseScreen!=PauseScreen.Menu)pauseScreen=PauseScreen.Menu;else menu=!menu;pending=new InputFrame();pending.CancelAbilities=true;if(server==null)arena?.CancelLocalAbilities();}
             if(Input.GetKeyDown(KeyCode.V)&&!(arena?.ViewPilot?.Seat.spec=="siren"&&prefs.sirenMode=="V"&&!menu)){prefs.firstPerson=!prefs.firstPerson;Save();}
             if(Input.GetKeyDown(KeyCode.C)&&arena?.Pve!=null){if(PvePickOpen)PveOpen(false);else PveOpen(true);}
             if(Input.GetKeyDown(KeyCode.F9))presentation.ForceCompatibilityRendering=!presentation.ForceCompatibilityRendering;
@@ -183,7 +185,7 @@ namespace ChipArena.UnityConversion
             // One canvas for every overlay and the menus (NativeUiMotion.Measure): 900 units tall at 16:9, wider at 21:9 (2150 at 3440x1440).
             var ui=NativeUi.Begin(prefs?.uiScale??1);float scale=ui.Scale,width=ui.Width,height=ui.Height;GUI.matrix=Matrix4x4.Scale(Vector3.one*scale);
             if(error.Length>0){GUI.Box(new Rect(30,30,width-60,height-60),"");GUI.Label(new Rect(45,45,width-90,height-90),error,label);return;}
-            if(match?.Phase!=NativePhase.Match)matchEndAt=-1;
+            if(match?.Phase!=NativePhase.Match)matchEndAt=-1;if(arena!=null)menuFromMatch=true;
             // The intro overlay replaces the whole HUD (main.ts drawHud), so nothing else draws while it runs.
             if(arena!=null&&!menu&&previewArena==null&&IntroActive){IntroOverlay();return;}
             // The killcam is a broadcast frame of the past: the live HUD steps aside while it plays (killcam.css).
@@ -194,8 +196,6 @@ namespace ChipArena.UnityConversion
             if(previewArena==null&&SirenRevealActive){SirenReveal();return;}
             CombatWorldHud(scale,width,height);
             if(arena!=null&&!menu&&match.Phase==NativePhase.Fight&&presentation.ScopeActive)DrawScope(width,height);
-            // The title and diagnostics belong to the menu; in a fight the HUD is the source layout (match-hud.css).
-            if(menu||arena==null)GUI.Label(new Rect(22,15,width-44,35),"CHIP ARENA  /  NATIVE CONVERSION",heading);
             if(previewArena!=null){PreviewHud(width,height);return;}
             if(arena!=null)
             {
@@ -214,49 +214,43 @@ namespace ChipArena.UnityConversion
                 if(BoardOpen)Board(width);if(inspectSeat!=0)Inspect(width,height);LockHud(scale);
             }
             if(!menu&&arena!=null){ReplayHud(width,height);PveHud(width,height);return;}
-            float panel=Mathf.Min(850,width-60),panelX=(width-panel)/2;if(Updater!=null&&width-(panelX+panel)<UpdateCardWidth+48){panel=Mathf.Min(850,width-60-UpdateCardWidth-24);panelX=30;}
-            // A shade over the paused match (or a lighter one over the menu backdrop) so the panel reads.
-            NativeUi.Fill(new Rect(0,0,width,height),NativeUi.Hex(0x06070b,arena!=null?.55f:.2f));NativeUi.Glow(new Rect(panelX,98,panel,height-120),new Color(0,0,0,.45f),60);
-            GUI.Box(new Rect(panelX,68,panel,height-120),"");
-            GUILayout.BeginArea(new Rect(panelX+22,86,panel-44,height-155));scroll=GUILayout.BeginScrollView(scroll);
-            GUILayout.Label("Native Unity conversion",heading);
-            GUILayout.Label("Native combat, full Chip catalog, source models and animations, PvP rounds and Siren co-op.",label);
-            if(arena!=null)GUILayout.Label(content.Map(arena.MapId).name+"  ·  SET "+match.Set+" · ROUND "+match.Round+"  ·  "+match.Phase+"  ·  "+arena.Bullets.Count+" projectiles  ·  native step + PhysX "+stepMs.ToString("0.00")+" ms  ·  "+presentation.RenderingMode+"  ·  V: "+(prefs.firstPerson?"first-person":"third-person"),small);
-            GUILayout.Label("WASD move  ·  Double-tap W sprint  ·  LMB fire/attack  ·  Q/E abilities  ·  R reload  ·  V camera  ·  RMB block  ·  Shift roll  ·  Space jump  ·  Tab lock-on / board  ·  G scores  ·  Esc menu",small);
-            if(arena!=null&&GUILayout.Button("Resume",button))menu=false;
-            if(GUILayout.Button(showCatalogue?"Back to match setup":"Browse source catalogue (15 weapons / 236 Chips)",button))showCatalogue=!showCatalogue;
-            if(showCatalogue)Catalogue();else Setup();
-            GUILayout.Space(14);GUILayout.Label("Host or join a separate Unity room from Match setup. Account access uses your configured service and signed unlocks.",small);
-            GUILayout.Label("The accepted ranged lab remains a separate project. This conversion uses its own settings and executable.",small);
-            if(GUILayout.Button("Quit",button))Application.Quit();GUILayout.EndScrollView();GUILayout.EndArea();UpdatePanel();
+            // The menus (NativeHomeMenu): the home screen and its panels without a match, the pause menu during one.
+            if(arena!=null)PauseMenu();else HomeMenu();
         }
-        private void Setup()
+        // Play vs Bots (main.ts practice screen) over the native match options; also the host's rules in a room lobby.
+        private void MatchRulesBody(bool lobby)
         {
-            GUILayout.BeginHorizontal();foreach(bool mode in new[]{false,true})if(GUILayout.Button((prefs.pve==mode?"✓ ":"")+(mode?"PvE · Ward Zero":"Arena · Versus"),button)){prefs.pve=mode;prefs.bots=Mathf.Clamp(prefs.bots,mode?0:1,mode?3:7);}GUILayout.EndHorizontal();
-            if(prefs.pve)prefs.skipWaves=GUILayout.Toggle(prefs.skipWaves,"Skip opening waves (boss practice)");
-            GUILayout.Label("Pilot name",label);prefs.name=GUILayout.TextField(prefs.name,20);
-            GUILayout.Label("Weapon",label);int at=0;foreach(var w in content.weapons.Where(AllowedWeapon))
-            {if(at%3==0)GUILayout.BeginHorizontal();if(GUILayout.Button((prefs.weapon==w.id?"✓ ":"")+w.name,button))prefs.weapon=w.id;at++;if(at%3==0)GUILayout.EndHorizontal();}if(at%3!=0)GUILayout.EndHorizontal();
-            GUILayout.Label("Arena",label);at=0;foreach(var map in content.maps.Where(m=>!prefs.pve||m.id=="siren"))
-            {if(at%3==0)GUILayout.BeginHorizontal();if(GUILayout.Button((prefs.map==map.id?"✓ ":"")+map.name,button))prefs.map=map.id;at++;if(at%3==0)GUILayout.EndHorizontal();}if(at%3!=0)GUILayout.EndHorizontal();
-            GUILayout.Label("Bots: "+prefs.bots+"  (up to 8 total pilots)",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.bots,prefs.pve?0:1,prefs.pve?3:7));
-            prefs.mirrorWeapons=GUILayout.Toggle(prefs.mirrorWeapons,"Bots use my weapon (otherwise mixed loadouts)");
-            prefs.teams=GUILayout.Toggle(prefs.teams,"Teams — alternating red / blue sides");prefs.friendlyFire=GUILayout.Toggle(prefs.friendlyFire,"Friendly fire");prefs.stationary=GUILayout.Toggle(prefs.stationary,"Stationary targets");prefs.skipBotDrafts=GUILayout.Toggle(prefs.skipBotDrafts,"Skip bot draft screens");prefs.sound=GUILayout.Toggle(prefs.sound,"Sound and music");
-            bool first=GUILayout.Toggle(prefs.firstPerson,"First-person camera (V switches during play)");if(first!=prefs.firstPerson){prefs.firstPerson=first;Save();}
-            GUILayout.BeginHorizontal();GUILayout.Label("Combat glow",label);
-            foreach(string quality in new[]{"Off","Low","Full"})if(GUILayout.Button((prefs.combatGlow==quality||string.IsNullOrEmpty(prefs.combatGlow)&&quality=="Full"?"✓ ":"")+quality,button)){prefs.combatGlow=quality;Save();}GUILayout.EndHorizontal();
-            GUILayout.Label("Melee E: special attack. Gun Q: hold to aim. Magic Q / E: cast abilities. Hold E to preview grenade, meteor, geysers or black hole; release to cast.",small);
-            prefs.bothDraft=GUILayout.Toggle(prefs.bothDraft,"Both sides draft after a set");GUILayout.Label("Draft choices: "+prefs.choices,label);prefs.choices=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.choices,1,12));GUILayout.Label("Selection time: "+prefs.selectionSeconds+"s",label);prefs.selectionSeconds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.selectionSeconds,5,120));
-            GUILayout.Label("Rounds to win a set: "+prefs.rounds,label);prefs.rounds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.rounds,1,5));GUILayout.Label("Sets to win the match: "+prefs.sets,label);prefs.sets=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.sets,1,10));
-            GUI.enabled=server==null;if(GUILayout.Button(Hosting?"Start room match":"Start native match",button))StartMatch();GUI.enabled=true;SettingsPanel();ProfilePanel();SandboxPanel();NetworkPanel();
+            Fine(lobby?"Rules for this room. Guests ready up, then you start the match.":"First to "+prefs.sets+(prefs.sets==1?" set":" sets")+". Win "+prefs.rounds+(prefs.rounds==1?" round":" rounds")+" to take a set.");
+            Field("Your weapon");WeaponGrid();
+            Field("Arena");MapGrid();
+            int min=lobby?0:1;Field("Bots");GUILayout.Label(prefs.bots==1?"1 bot":prefs.bots+" bots",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(Mathf.Clamp(prefs.bots,min,7),min,7));
+            Fine("Up to 8 pilots total. Bots use player slots.");prefs.mirrorWeapons=GUILayout.Toggle(prefs.mirrorWeapons,"Bots use my weapon (otherwise mixed loadouts)");prefs.stationary=GUILayout.Toggle(prefs.stationary,"Stationary targets");
+            Field("Match mode");prefs.teams=ChoiceRow(new[]{"Free-for-all","Teams"},prefs.teams?1:0)==1;if(prefs.teams){prefs.friendlyFire=GUILayout.Toggle(prefs.friendlyFire,"Friendly fire");Fine("Teams alternate red and blue sides.");}
+            Field("Sets and rounds");GUILayout.Label("Sets to win the match: "+prefs.sets,label);prefs.sets=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.sets,1,10));GUILayout.Label("Rounds to win a set: "+prefs.rounds,label);prefs.rounds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.rounds,1,5));
+            Field("Draft and intro rules");prefs.bothDraft=GUILayout.Toggle(prefs.bothDraft,"All players draft after each set (otherwise the set's losers)");
+            GUILayout.Label("Chip choices per draft: "+prefs.choices,label);prefs.choices=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.choices,1,12));GUILayout.Label("Chip selection timer: "+prefs.selectionSeconds+"s",label);prefs.selectionSeconds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.selectionSeconds,5,120));
+            prefs.skipBotDrafts=GUILayout.Toggle(prefs.skipBotDrafts,"Skip bot draft screens");
+            Fine("Melee E: special attack. Gun Q: hold to aim. Magic Q / E: cast abilities. Hold E to preview grenade, meteor, geysers or black hole; release to cast.");
         }
+        // Boss Test (pve/menu.ts testBossBody): party bots, the skip to the Siren, and the weapon.
+        private void BossBody()
+        {
+            Field("Party bots");GUILayout.Label(prefs.bots==1?"1 party bot":prefs.bots+" party bots",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(Mathf.Clamp(prefs.bots,0,3),0,3));
+            Fine("AI pilots fill the party (up to 4). In a hosted room, friends who join take the party slots.");prefs.skipWaves=GUILayout.Toggle(prefs.skipWaves,"Start at the Siren (skip the opening waves)");
+            Field("Your weapon");WeaponGrid();
+            Fine("Intros play as normal. Earn money from minions to buy chips, heals, revives and recruits. F interacts · C opens your chips; chips you take wait there until you choose.");
+        }
+        private void WeaponGrid()
+        {
+            var weapons=content.weapons.Where(AllowedWeapon).ToArray();string pick=ChoiceGrid(weapons.Select(w=>w.id).ToArray(),prefs.weapon,weapons.Select(w=>w.name).ToArray());if(pick!=prefs.weapon){prefs.weapon=pick;}
+        }
+        // Every arena, Ward Zero included (its PvP variant); picking one also turns the menu backdrop to it (main.ts previewMap).
+        private void MapGrid(){var maps=content.maps;prefs.map=ChoiceGrid(maps.Select(m=>m.id).ToArray(),prefs.map,maps.Select(m=>m.name).ToArray());}
         private void Catalogue()
         {
-            GUILayout.Label("Reference catalogue — importing a definition does not enable its mechanic",label);search=GUILayout.TextField(search);
-            catalogueScroll=GUILayout.BeginScrollView(catalogueScroll,GUILayout.Height(360));
+            Fine("Reference catalogue: the source's weapons and Chips. Importing a definition does not enable its mechanic.");Field("Search");search=GUILayout.TextField(search);
             foreach(var w in content.weapons.Where(w=>(w.name+" "+w.id).IndexOf(search,StringComparison.OrdinalIgnoreCase)>=0)){GUILayout.Label(w.name+(w.devOnly?" — signed unlock required":""),label);GUILayout.Label(w.description,small);}
             foreach(var c in content.chips.Where(c=>(c.name+" "+c.description).IndexOf(search,StringComparison.OrdinalIgnoreCase)>=0)){GUILayout.Label(c.name+"  /  "+c.rarity+(NativeArena.ImplementedChip(c)?"  /  draft enabled":"  /  pending"),label);GUILayout.Label(c.description,small);}
-            GUILayout.EndScrollView();
         }
         // The pilot board (G / Tab) at the top right, where the source keeps scores: each row opens that pilot's build.
         private void Board(float width)

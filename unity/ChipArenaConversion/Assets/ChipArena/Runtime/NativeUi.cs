@@ -36,7 +36,10 @@ namespace ChipArena.UnityConversion
             soft=Make(64,64,(x,y)=>{float dx=Mathf.Clamp01((Mathf.Abs(x-31.5f)-14)/18f),dy=Mathf.Clamp01((Mathf.Abs(y-31.5f)-14)/18f),d=Mathf.Clamp01(Mathf.Sqrt(dx*dx+dy*dy));return new Color(1,1,1,(1-d)*(1-d));});
             for(int i=0;i<rounds.Length;i++){int r=4+i*4,n=r*2+2;rounds[i]=Make(n,n,(x,y)=>{float cx=Mathf.Clamp(x+.5f,r,n-r),cy=Mathf.Clamp(y+.5f,r,n-r),d=Mathf.Sqrt((x+.5f-cx)*(x+.5f-cx)+(y+.5f-cy)*(y+.5f-cy));return new Color(1,1,1,Mathf.Clamp01(r-d+.5f));});}
             text=new GUIStyle(GUI.skin.label){wordWrap=true,richText=false,clipping=TextClipping.Overflow,padding=new RectOffset(0,0,0,0),margin=new RectOffset(0,0,0,0)};
+            // White base so GUI.contentColor is the exact colour drawn (the menu skin's label colour would tint every overlay).
+            text.normal.textColor=Color.white;
         }
+        public static Font MonoFont=>Mono();
         private static Font Mono()
         {
             if(!monoTried){monoTried=true;try{mono=Font.CreateDynamicFontFromOSFont(new[]{"Consolas","Cascadia Mono","DejaVu Sans Mono","Courier New"},14);}catch(Exception){mono=null;}}
@@ -100,6 +103,32 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<3;i++)for(int j=0;j<3;j++){var q=new Rect(xs[i],ys[j],xs[i+1]-xs[i],ys[j+1]-ys[j]);if(q.width<=0||q.height<=0)continue;GUI.DrawTextureWithTexCoords(q,t,new Rect(us[i],vs[j+1],us[i+1]-us[i],vs[j]-vs[j+1]));}
         }
         public static void Pill(Rect r,Color fill,Color border){Round(r,fill,Mathf.Min(16,r.height/2),border);}
+        // A full capsule (border-radius 999px) filled with a vertical gradient (CSS linear-gradient(180deg, stops)),
+        // optionally with a 1 px border; three-sliced so the caps stay round at any width. `tint` multiplies everything.
+        public static void Capsule(Rect r,float[] at,Color[] colors,Color border=default,float tint=1)
+        {
+            if(Event.current.type!=EventType.Repaint||r.width<=0||r.height<=0)return;var m=Enter();var o=GUI.color;var pr=P(r);
+            if(border.a>0){CapsuleSlices(pr,CapsuleTexture(new[]{0f},new[]{Color.white}),A(border,tint));float b=Mathf.Max(1,S);pr=new Rect(pr.x+b,pr.y+b,pr.width-2*b,pr.height-2*b);}
+            CapsuleSlices(pr,CapsuleTexture(at,colors),new Color(1,1,1,tint));GUI.color=o;GUI.matrix=m;
+        }
+        private static Texture2D CapsuleTexture(float[] at,Color[] colors)
+        {
+            var key=new System.Text.StringBuilder("cap");for(int i=0;i<at.Length;i++)key.Append('|').Append(at[i]).Append(':').Append(ColorUtility.ToHtmlStringRGBA(colors[i]));string k=key.ToString();
+            if(stops.TryGetValue(k,out var t))return t;const int n=128;
+            t=Make(n,n,(x,y)=>{float v=1-(y+.5f)/n,cx=x+.5f,cy=y+.5f,d=Mathf.Sqrt((cx-n/2f)*(cx-n/2f)+(cy-n/2f)*(cy-n/2f));var c=colors[0];
+                for(int i=1;i<at.Length;i++)if(v>=at[i-1])c=v>=at[i]?colors[i]:Color.Lerp(colors[i-1],colors[i],(v-at[i-1])/Mathf.Max(1e-5f,at[i]-at[i-1]));
+                c.a*=Mathf.Clamp01(n/2f-d+.5f);return c;});
+            stops[k]=t;return t;
+        }
+        private static void CapsuleSlices(Rect r,Texture2D t,Color c)
+        {
+            GUI.color=c;float cap=Mathf.Min(r.height/2,r.width/2);
+            GUI.DrawTextureWithTexCoords(new Rect(r.x,r.y,cap,r.height),t,new Rect(0,0,.5f,1));
+            if(r.width>2*cap)GUI.DrawTextureWithTexCoords(new Rect(r.x+cap,r.y,r.width-2*cap,r.height),t,new Rect(.5f,0,0,1));
+            GUI.DrawTextureWithTexCoords(new Rect(r.xMax-cap,r.y,cap,r.height),t,new Rect(.5f,0,.5f,1));
+        }
+        // A filled disc with a soft edge (CSS border-radius:50%).
+        public static void Disc(Rect r,Color c)=>RadialStops(r,c,new[]{0f,.96f,1f},new[]{1f,1f,0f});
         // Filled circle segment from 12 o'clock clockwise (CSS conic-gradient fill), cached per 1/24 turn.
         public static void Pie(Rect r,Color c,float fraction)
         {
