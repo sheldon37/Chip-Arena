@@ -72,7 +72,7 @@ namespace ChipArena.UnityConversion
                     {Vector3 d=target.Body.position+Vector3.up*.15f-b.Position;if(target.Hp<=0||!Enemy(owner,target)||b.Hit.Contains(target.Collider.GetInstanceID())||d.magnitude>16||Vector3.Dot(b.Velocity.normalized,d.normalized)<Mathf.Cos(50*Mathf.Deg2Rad)||!MeleeVisible(b.Position,target.Body.position,owner,target.Collider))continue;b.Velocity=Vec(NativeProjectileRules.Steer(Vec(b.Velocity),Vec(d),b.Homing*Mathf.Deg2Rad*h));break;}
                 Vector3 before=b.Velocity;var velocity=Vec(before);Vector3 previous=b.Position;Vector3 delta=Vector3.ClampMagnitude(Vec(NativeSpecialRules.Ballistic(ref velocity,b.Gravity,h)),b.Travel);b.Velocity=Vec(velocity);b.Life-=h;b.Travel-=delta.magnitude;b.Travelled+=delta.magnitude;
                 var hit=SweepNative(b.Position,delta,b.Radius,c=>
-                {var p=c.GetComponent<NativePilotBody>()?.Pilot;var m=c.GetComponent<NativeMinionBody>()?.Minion;return (m==null||m.Hp>0&&Enemy(owner,m.Owner))&& !b.Hit.Contains(c.GetInstanceID())&&(!b.Pong||!b.Contacts.TryGetValue(c.GetInstanceID(),out float contact)||Time-contact>.18f)&&(p==null||p.Hp>0&&Enemy(owner,p)&&!Invulnerable(p));});
+                {var p=c.GetComponent<NativePilotBody>()?.Pilot;var m=c.GetComponent<NativeMinionBody>()?.Minion;return (m==null||m.Hp>0&&CanHit(owner,m.Owner))&& !b.Hit.Contains(c.GetInstanceID())&&(!b.Pong||!b.Contacts.TryGetValue(c.GetInstanceID(),out float contact)||Time-contact>.18f)&&(p==null||p.Hp>0&&CanHit(owner,p)&&!Invulnerable(p));});
                 bool ceiling=NativeSpecialRules.Ceiling(Vec(b.Position),Vec(delta),b.Radius,out float fraction,out V3 center),remove=false;
                 if(ceiling&&(!hit.HasValue||delta.magnitude*fraction<=hit.Value.Distance))
                 {
@@ -119,7 +119,7 @@ namespace ChipArena.UnityConversion
             }
             else if(target!=null)
             {
-                bool head=hit.Point.y>target.Body.position.y+.4f;float actual=Damage(target,owner,b.Damage*(head?1.5f:1),b.Velocity.normalized,b.Impulse,head,primary:b.Direct,impact:NativeBodyDamage.Projectile(b.Spec,b.Velocity.magnitude,b.Radius),hitPoint:hit.Point);
+                bool head=NativeCombatRules.Headshot(Vec(target.Body.position),target.Yaw,Vec(hit.Point-b.Velocity.normalized*.1f),Vec(b.Velocity),b.Radius,target.Down!=null||target.Juggle!=null);float actual=Damage(target,owner,b.Damage*(head?1.5f:1),b.Velocity.normalized,b.Impulse,head,primary:b.Direct,impact:NativeBodyDamage.Projectile(b.Spec,b.Velocity.magnitude,b.Radius),hitPoint:hit.Point);
                 FighterProjectileHit(b,owner,target,actual);
                 if(actual>0&&!b.Direct&&(b.Reflections>0||b.WeaponFx)){RefreshDot(target,owner,"fire",b.Burn,2);RefreshDot(target,owner,"poison",b.Poison,4);if(b.WeaponFx&&b.Reflections==0)Heal(owner,actual*(float)(owner.Stats["lifeSteal"]+owner.Weapon.drain));}
                 if(actual>0&&(b.Direct||b.ChipImpact)&&b.Reflections==0)ImpactChips(owner,target,null,hit.Point,b.Velocity.normalized,b.Attack,b.Id);

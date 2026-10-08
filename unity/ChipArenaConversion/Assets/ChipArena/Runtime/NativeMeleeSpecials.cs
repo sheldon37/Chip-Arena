@@ -81,7 +81,7 @@ namespace ChipArena.UnityConversion
             foreach(var target in Pilots)
             {
                 string id="pilot:"+target.Seat.id;Vector3 delta=target.Body.position-origin;
-                if(target.Hp<=0||!Enemy(p,target)||NativeSpecialRules.Protected(target.Down,Time)||action.Hit.Contains(id)||!NativeSpecialRules.Strike(Vec(delta),range,.45f,action.Yaw,kind)||!MeleeVisible(origin,target.Body.position,p,target.Collider))continue;
+                if(target.Hp<=0||!CanHit(p,target)||NativeSpecialRules.Protected(target.Down,Time)||action.Hit.Contains(id)||!NativeSpecialRules.Strike(Vec(delta),range,.45f,action.Yaw,kind)||!MeleeVisible(origin,target.Body.position,p,target.Collider))continue;
                 action.Hit.Add(id);float actual=Damage(target,p,(float)(p.Weapon.damage*p.Stats["damage"])*1.12f,(delta+Vector3.up*(kind=="slam"?.2f:.5f)).normalized,impulse*(float)p.Stats["impulse"],false,melee:true);
                 if(actual>0)ImpactChips(p,target,null,target.Body.position,delta.normalized,(int)(action.At*60)*1000+p.Seat.id,nextAttack++);
                 if(actual>0&&target.Hp>0)
@@ -94,7 +94,7 @@ namespace ChipArena.UnityConversion
             foreach(var m in Minions.ToArray())
             {
                 string key="minion:"+m.Id;Vector3 d=m.Body.position-origin;
-                if(m.Hp<=0||!Enemy(p,m.Owner)||action.Hit.Contains(key)||!NativeSpecialRules.Strike(Vec(d),range,.35f,action.Yaw,kind)||!MeleeVisible(origin,m.Body.position,p,m.Collider))continue;
+                if(m.Hp<=0||!CanHit(p,m.Owner)||action.Hit.Contains(key)||!NativeSpecialRules.Strike(Vec(d),range,.35f,action.Yaw,kind)||!MeleeVisible(origin,m.Body.position,p,m.Collider))continue;
                 action.Hit.Add(key);Vector3 at=m.Body.position;float actual=HitMinion(m,p,(float)(p.Weapon.damage*p.Stats["damage"])*1.12f,(d+Vector3.up*.5f).normalized,impulse*(float)p.Stats["impulse"],at,"melee");
                 MinionWeaponHit(m,p,actual,(float)p.Stats["burn"],(float)p.Stats["poison"]);if(actual>0)ImpactChips(p,null,null,at,d.normalized,(int)(action.At*60)*1000+p.Seat.id,nextAttack++);
             }
@@ -115,7 +115,7 @@ namespace ChipArena.UnityConversion
         private Collider[] meleeOverlaps=new Collider[16];private RaycastHit[] meleeSweeps=new RaycastHit[32];
         private struct MeleeContact {public Collider Collider;public Vector3 Point,Normal;public float Distance;}
         private bool ShotCollider(NativeMeleeShot s,Collider collider)
-        {var m=collider.GetComponent<NativeMinionBody>();if(m!=null)return m.Minion.Hp>0&&Enemy(s.Owner,m.Minion.Owner);var p=collider.GetComponent<NativePilotBody>();return p==null||p.Pilot.Hp>0&&Enemy(s.Owner,p.Pilot)&&!Invulnerable(p.Pilot);}
+        {var m=collider.GetComponent<NativeMinionBody>();if(m!=null)return m.Minion.Hp>0&&CanHit(s.Owner,m.Minion.Owner);var p=collider.GetComponent<NativePilotBody>();return p==null||p.Pilot.Hp>0&&CanHit(s.Owner,p.Pilot)&&!Invulnerable(p.Pilot);}
         private MeleeContact? SweepMeleeShot(NativeMeleeShot s,Vector3 delta)
         {
             var physics=root.scene.GetPhysicsScene();int n;
@@ -150,7 +150,7 @@ namespace ChipArena.UnityConversion
             if(minion!=null){float actual=HitMinion(minion,s.Owner,s.Damage,s.Velocity.normalized,s.Impulse,hit.Point,"melee");MinionWeaponHit(minion,s.Owner,actual,s.Burn,s.Poison);if(actual>0&&!s.Reflected)ImpactChips(s.Owner,null,null,hit.Point,s.Velocity.normalized,s.Id,s.Id);}
             else if(target!=null)
             {
-                bool head=!s.Shield&&hit.Point.y>target.Body.position.y+.4f;
+                bool head=!s.Shield&&NativeCombatRules.Headshot(Vec(target.Body.position),target.Yaw,Vec(hit.Point-s.Velocity.normalized*.1f),Vec(s.Velocity),s.Radius,target.Down!=null||target.Juggle!=null);
                 float actual=Damage(target,s.Owner,s.Damage*(head?1.5f:1),s.Velocity.normalized,s.Impulse,head,primary:!s.Reflected,melee:true);
                 if(actual>0&&!s.Reflected)ImpactChips(s.Owner,target,null,hit.Point,s.Velocity.normalized,s.Id,s.Id);
                 if(actual>0&&s.Reflected){RefreshDot(target,s.Owner,"fire",s.Burn,2);RefreshDot(target,s.Owner,"poison",s.Poison,4);}

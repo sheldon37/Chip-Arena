@@ -37,7 +37,7 @@ namespace ChipArena.UnityConversion
         }
         private float HitMinion(NativeMinion m,NativePilot owner,float damage,Vector3 direction,float impulse,Vector3? point=null,string kind=null,float radius=0,bool head=false)
         {
-            if(m.Hp<=0||!Enemy(owner,m.Owner))return 0;if(m.Pve!=null)return HitPveAdd(m,owner,damage,direction,impulse,point,kind,radius,head);float actual=Math.Max(0,Math.Min(m.Hp,damage));m.Hp-=actual;m.LastHitAt=Time;if(!m.Body.isKinematic)m.Body.AddForce(direction*impulse,ForceMode.Impulse);Emit(EventKind.Hit,owner,m.Id,m.Body.position,actual);if(m.Hp<=0)RemoveMinion(m);return actual;
+            if(m.Hp<=0||!CanHit(owner,m.Owner))return 0;if(m.Pve!=null)return HitPveAdd(m,owner,damage,direction,impulse,point,kind,radius,head);float actual=Math.Max(0,Math.Min(m.Hp,damage));m.Hp-=actual;m.LastHitAt=Time;if(!m.Body.isKinematic)m.Body.AddForce(direction*impulse,ForceMode.Impulse);Emit(EventKind.Hit,owner,m.Id,m.Body.position,actual);if(m.Hp<=0)RemoveMinion(m);return actual;
         }
         private void MinionWeaponHit(NativeMinion m,NativePilot owner,float actual,float burn,float poison)
         {

@@ -7,6 +7,7 @@ namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class NativeFighter
     {
+        public NativeFighter ViewCopy()=>(NativeFighter)MemberwiseClone();
         public string Kind;public int Id,Index,Total,Next,Count;public float At,HitAt,Until,Gap,HadokenReady,UppercutReady,LastHit=-100,LastUntil,Charge,StepUntil;
         public int ComboTarget,Hits;public float ComboDamage;public bool Single;
     }
@@ -53,7 +54,7 @@ namespace ChipArena.UnityConversion
             if(f.Kind!=null&&f.Kind!="charge")
             {
                 while(f.Next<f.Count&&Time>=f.HitAt+f.Next*f.Gap){int index=f.Single?f.Index:f.Next;FighterStrike(p,f.Kind,index,f.Total,f.Id);if(!FighterReady(p)||f.Kind==null)return;f.Next++;}
-                if(f.Kind=="tatsu"&&Has(p,"arcade-cyclone"))foreach(var q in Pilots){Vector3 d=p.Body.position-q.Body.position;if(q.Hp>0&&Enemy(p,q)&&d.magnitude<4.5f&&MeleeVisible(p.Body.position,q.Body.position,p,q.Collider))q.Knockback+=d.normalized*(7f/60);}
+                if(f.Kind=="tatsu"&&Has(p,"arcade-cyclone"))foreach(var q in Pilots){Vector3 d=p.Body.position-q.Body.position;if(q.Hp>0&&CanHit(p,q)&&d.magnitude<4.5f&&MeleeVisible(p.Body.position,q.Body.position,p,q.Collider))q.Knockback+=d.normalized*(7f/60);}
                 if(Time>=f.Until)f.Kind=null;
             }
             if(p.Input.Shoot)StartFighter(p,emperor?"jab":"combo");
@@ -87,7 +88,7 @@ namespace ChipArena.UnityConversion
             foreach(var q in Pilots.ToArray())
             {
                 Vector3 d=q.Body.position-origin;float distance=emperor?new Vector2(d.x,d.z).magnitude:d.magnitude;
-                if(q.Hp<=0||!Enemy(p,q)||distance>radius+(emperor?.35f:.4f)||Math.Abs(d.y)>(emperor?(electric?3.2f:2.1f):kind=="shoryuken"?3:1.8f)||kind!="tatsu"&&Vector3.Dot(new Vector3(d.x,0,d.z).normalized,dir)<Mathf.Cos((emperor?.9f:.8f)*(float)p.Stats["meleeArc"])||!MeleeVisible(origin,q.Body.position,p,q.Collider))continue;
+                if(q.Hp<=0||!CanHit(p,q)||distance>radius+(emperor?.35f:.4f)||Math.Abs(d.y)>(emperor?(electric?3.2f:2.1f):kind=="shoryuken"?3:1.8f)||kind!="tatsu"&&Vector3.Dot(new Vector3(d.x,0,d.z).normalized,dir)<Mathf.Cos((emperor?.9f:.8f)*(float)p.Stats["meleeArc"])||!MeleeVisible(origin,q.Body.position,p,q.Collider))continue;
                 float scale=emperor?(Has(p,"mishima-rage")&&p.Hp<p.Stats["hp"]/3?1.45f:1)*(electric&&Has(p,"mishima-counter")&&Time-q.LastAttack<.4f?1.6f:1)*(Has(p,"mishima-screw")&&((q.Juggle?.Hits??0)+1)%3==0?1.25f:1):(Has(p,"arcade-juggle")&&!q.Grounded?1.45f:1)*(Has(p,"arcade-counter")&&Time-q.LastAttack<.35f?1.35f:1);
                 Vector3 aim=electric?(dir+Vector3.up*1.2f).normalized:kind=="shoryuken"?(dir*.3f+Vector3.up).normalized:(d.normalized+Vector3.up*(last?.25f:0)).normalized;
                 float actual=Damage(q,p,damage*(float)p.Stats["damage"]*scale,aim,impulse*(!emperor&&Has(p,"arcade-counter")&&Time-q.LastAttack<.35f?1.4f:1),false,melee:true);
@@ -96,7 +97,7 @@ namespace ChipArena.UnityConversion
             }
             foreach(var prop in Props.ToArray())
             {if(prop==null||prop.Indestructible)continue;Vector3 d=prop.transform.position-origin;if(d.magnitude>radius+.4f||kind!="tatsu"&&Vector3.Dot(new Vector3(d.x,0,d.z).normalized,dir)<Mathf.Cos((emperor?.9f:.8f)*(float)p.Stats["meleeArc"])||!MeleeVisible(origin,prop.transform.position,p,prop.GetComponent<Collider>()))continue;ImpactChips(p,null,prop,prop.transform.position,d.normalized,id,id+index);DamageProp(prop,damage*(float)(p.Stats["damage"]*p.Stats["demolition"]),d.normalized*impulse,prop.transform.position,p);}
-            foreach(var m in Minions.ToArray()){Vector3 d=m.Body.position-origin;if(Enemy(p,m.Owner)&&d.magnitude<radius+.4f&&(kind=="tatsu"||Vector3.Dot(d.normalized,dir)>.25f)&&MeleeVisible(origin,m.Body.position,p,m.Collider))Heal(p,HitMinion(m,p,damage*(float)p.Stats["damage"],d.normalized,impulse)*(float)p.Stats["lifeSteal"]);}
+            foreach(var m in Minions.ToArray()){Vector3 d=m.Body.position-origin;if(CanHit(p,m.Owner)&&d.magnitude<radius+.4f&&(kind=="tatsu"||Vector3.Dot(d.normalized,dir)>.25f)&&MeleeVisible(origin,m.Body.position,p,m.Collider))Heal(p,HitMinion(m,p,damage*(float)p.Stats["damage"],d.normalized,impulse)*(float)p.Stats["lifeSteal"]);}
             if(!emperor&&kind=="combo"&&Has(p,"arcade-afterimage")&&FighterEchoes.Count<64)FighterEchoes.Add(new NativeFighterEcho{Owner=p,Position=origin+dir*1.1f,Direction=dir,Radius=1.1f*(float)p.Stats["reach"],Damage=damage*.38f*(float)p.Stats["damage"],Impulse=50,At=Time+.22f,Until=Time+.3f,Remaining=1});
             if(kind=="shoryuken"&&last&&Has(p,"arcade-rising"))foreach(var prop in Props.ToArray())if(prop!=null&&!prop.Indestructible&&Vector3.Distance(prop.transform.position,origin)<3.5f)DamageProp(prop,80,(prop.transform.position-origin+Vector3.up*2).normalized*1500*(float)p.Stats["impulse"],prop.transform.position,p);
             Fx(origin,radius,electric?1:3);
@@ -120,9 +121,9 @@ namespace ChipArena.UnityConversion
         private void StepFighterWorld()
         {
             foreach(var e in FighterEchoes.ToArray())
-            {if(e.Remaining<=0||Time>e.Until||e.Owner.Hp<=0){FighterEchoes.Remove(e);continue;}if(Time<e.At)continue;foreach(var q in Pilots)if(q!=e.Spare&&q.Hp>0&&Enemy(e.Owner,q)&&Vector3.Distance(q.Body.position,e.Position)<e.Radius&&MeleeVisible(e.Position,q.Body.position,e.Owner,q.Collider)){if(Time<q.BlockEnd){BlockProc(q,e.Owner,q.Body.position);continue;}float actual=Damage(q,e.Owner,e.Damage,e.Direction,e.Remaining==1?e.Impulse:25,false,primary:false);if(actual>0)ConfirmFighter(e.Owner,q,actual,e.Electric,e.Remaining==1?.26f:.14f,true);}e.Remaining--;e.At+=e.Gap;Fx(e.Position,e.Radius,e.Electric?1:3);}
+            {if(e.Remaining<=0||Time>e.Until||e.Owner.Hp<=0){FighterEchoes.Remove(e);continue;}if(Time<e.At)continue;foreach(var q in Pilots)if(q!=e.Spare&&q.Hp>0&&CanHit(e.Owner,q)&&Vector3.Distance(q.Body.position,e.Position)<e.Radius&&MeleeVisible(e.Position,q.Body.position,e.Owner,q.Collider)){if(Time<q.BlockEnd){BlockProc(q,e.Owner,q.Body.position);continue;}float actual=Damage(q,e.Owner,e.Damage,e.Direction,e.Remaining==1?e.Impulse:25,false,primary:false);if(actual>0)ConfirmFighter(e.Owner,q,actual,e.Electric,e.Remaining==1?.26f:.14f,true);}e.Remaining--;e.At+=e.Gap;Fx(e.Position,e.Radius,e.Electric?1:3);}
             foreach(var trail in StormTrails.ToArray())
-            {if(Time>=trail.Until||trail.Owner.Hp<=0){StormTrails.Remove(trail);continue;}foreach(var q in Pilots)if(q.Hp>0&&Enemy(trail.Owner,q)&&!trail.Hit.Contains(q.Seat.id)&&Vector3.Distance(q.Body.position,trail.Position)<1.4f&&MeleeVisible(trail.Position,q.Body.position,trail.Owner,q.Collider)){trail.Hit.Add(q.Seat.id);Damage(q,trail.Owner,6*(float)trail.Owner.Stats["damage"],Vector3.zero,0,false,primary:false);}}
+            {if(Time>=trail.Until||trail.Owner.Hp<=0){StormTrails.Remove(trail);continue;}foreach(var q in Pilots)if(q.Hp>0&&CanHit(trail.Owner,q)&&!trail.Hit.Contains(q.Seat.id)&&Vector3.Distance(q.Body.position,trail.Position)<1.4f&&MeleeVisible(trail.Position,q.Body.position,trail.Owner,q.Collider)){trail.Hit.Add(q.Seat.id);Damage(q,trail.Owner,6*(float)trail.Owner.Stats["damage"],Vector3.zero,0,false,primary:false);}}
             foreach(var q in Pilots)
             {
                 var j=q.Juggle;if(j==null)continue;if(q.Hp<=0||!q.Seat.connected){q.Juggle=null;continue;}var p=j.Owner;

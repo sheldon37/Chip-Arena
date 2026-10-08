@@ -27,12 +27,12 @@ namespace ChipArena.UnityConversion
             if(id=="rain"&&SirenFields.Count(f=>f.Owner==p&&f.Kind=="rain")>=state.MaxRains||id=="eruption"&&SirenFields.Count(f=>f.Owner==p&&f.Kind=="eruption")>=state.MaxEruptions)return false;
             if(id=="mark"&&Bullets.Any(b=>b.Owner==p.Seat.id&&b.SirenKind=="seeker"))return false;var target=id=="mark"?SirenTarget(p,40,true):null;if(id=="mark"&&target==null)return false;
             var m=new NativeSirenMove{Id=nextAttack++,Rule=r,At=Time,HitAt=Time+r.Windup,EndAt=Time+r.Windup+r.Travel,Until=Time+NativeSirenRules.Duration(r),Target=target,Direction=Vec(V3.Forward(p.Input.Yaw)),Side=state.Side};state.Side=-state.Side;
-            Vector3 point=p.Input.AbilityTarget.Length>.01f?Vec(p.Input.AbilityTarget):p.Body.position+Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch))*28;m.Aim=GroundPoint(p.Body.position+Vector3.ClampMagnitude(point-p.Body.position,28));
+            Vector3 point=AuthorityAim(p,28);m.Aim=GroundPoint(p.Body.position+Vector3.ClampMagnitude(point-p.Body.position,28));
             state.Move=m;state.Ready[id]=Time+(r.Cooldown>0?r.Cooldown:NativeSirenRules.Duration(r))*state.Cooldown;p.AttackAt=p.LastAttack=Time;p.AttackEnd=p.Ready=m.Until;p.Combo++;return true;
         }
         private float SirenHit(NativePilot p,NativePilot q,float damage,bool melee=false,Vector3? direction=null)
         {
-            if(q.Hp<=0||!q.Seat.connected||!Enemy(p,q)||Invulnerable(q)||NativeSpecialRules.Protected(q.Down,Time))return 0;Vector3 dir=direction??(q.Body.position-p.Body.position).normalized;
+            if(q.Hp<=0||!q.Seat.connected||!CanHit(p,q)||Invulnerable(q)||NativeSpecialRules.Protected(q.Down,Time))return 0;Vector3 dir=direction??(q.Body.position-p.Body.position).normalized;
             if(Time<q.BlockEnd){BlockProc(q,p,q.Body.position);if(melee)SuccessfulMeleeBlock(q,p,damage,dir,100);return 0;}
             return Damage(q,p,damage*(float)p.Stats["damage"],dir,0,false,direct:false,primary:false,melee:melee);
         }
@@ -100,7 +100,7 @@ namespace ChipArena.UnityConversion
             Vector3 delta=b.Velocity/60+Vector3.down*b.Gravity/(2*3600);b.Velocity.y-=b.Gravity/60;float left=delta.magnitude;Vector3 dir=delta.normalized;
             for(int i=0;i<512&&left>.000001f;i++)
             {
-                var hit=SweepNative(b.Position,dir*left,b.Radius,c=>{var q=c.GetComponent<NativePilotBody>()?.Pilot;return q!=null?q.Hp>0&&q.Seat.connected&&Enemy(p,q)&&!Invulnerable(q)&&!NativeSpecialRules.Protected(q.Down,Time)&&(!seeker||q.Seat.id==b.SirenTarget):c.GetComponent<NativePropBody>()!=null;});
+                var hit=SweepNative(b.Position,dir*left,b.Radius,c=>{var q=c.GetComponent<NativePilotBody>()?.Pilot;return q!=null?q.Hp>0&&q.Seat.connected&&CanHit(p,q)&&!Invulnerable(q)&&!NativeSpecialRules.Protected(q.Down,Time)&&(!seeker||q.Seat.id==b.SirenTarget):c.GetComponent<NativePropBody>()!=null;});
                 if(!hit.HasValue){b.Position+=dir*left;break;}var h=hit.Value;b.Position=h.Point;var target=h.Collider.GetComponent<NativePilotBody>()?.Pilot;var prop=h.Collider.GetComponent<NativePropBody>();
                 if(seeker&&prop!=null&&!prop.Indestructible){DamageProp(prop,prop.Health+1,Vector3.zero,h.Point);left-=h.Distance;continue;}
                 if(seeker){if(target!=null)SirenHit(p,target,85);Fx(h.Point,1,4);}

@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
     public enum NativePhase { Lobby, Countdown, Fight, Result, Draft, Match, Intro }
     [Serializable] public sealed class NativeSeat
     {
-        public bool overrideIntro;public string intro="neon-drop",introText="Ready to make an impact";public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll";internal bool AuthorityBoss=false;public NativeAccess access=NativeAccess.Guest;public int id,team,roundWins,score;public string name,spec="pistol";public bool bot,connected=true,alive=true;
+        public bool overrideIntro;public string intro="neon-drop",introText="Ready to make an impact";public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll";internal bool AuthorityBoss=false;public NativeAccess access=NativeAccess.Guest;public int id,team,roundWins,score;public string name,spec="pistol",difficulty="normal";public bool bot,connected=true,alive=true;
         public readonly Dictionary<string,int> chips=new Dictionary<string,int>();public List<string> offers=new List<string>();
     }
     [Serializable] public class NativeMatchFrame
@@ -36,7 +36,8 @@ namespace ChipArena.UnityConversion
         public Action ResetRound;public Func<bool> HoldResolution;
         private readonly ConversionContent data;private readonly SourceRandom random;
         private readonly List<int> queue=new List<int>();private int turn;private double chosenAt;
-        public NativeMatch(ConversionContent data,uint seed=12345){this.data=data;random=new SourceRandom(seed);}
+        public static uint NewSeed(){var bytes=new byte[4];using(var rng=System.Security.Cryptography.RandomNumberGenerator.Create())rng.GetBytes(bytes);return BitConverter.ToUInt32(bytes,0);}
+        public NativeMatch(ConversionContent data,uint? seed=null){this.data=data;random=new SourceRandom(seed??NewSeed());}
         public void ApplyNetwork(NativeMatchFrame f){IntroSeat=f.introSeat;IntroStarted=f.introStarted;IntroStyle=f.introStyle;Phase=f.phase;Time=f.time;PhaseEnd=f.phaseEnd;FightAt=f.fightAt;ReadyAt=f.readyAt;Round=f.round;Set=f.set;Winner=f.winner;SetWinner=f.setWinner;DraftSeat=f.draftSeat;Chosen=f.chosen;chosenAt=f.chosenAt;Result=f.result;Teams=f.teams;Cooperative=f.cooperative;}
         public bool SameSide(NativeSeat a,NativeSeat b)=>a!=null&&b!=null&&(a.id==b.id||Teams&&a.team==b.team);
         public NativeSeat Seat(int id)=>Seats.Find(p=>p.id==id);

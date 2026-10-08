@@ -8,7 +8,7 @@ using UnityEditor.SceneManagement;
 
 namespace ChipArena.UnityConversion.Editor
 {
-    public static class NativeBuildChecks
+    public static partial class NativeBuildChecks
     {
         private static void CheckPresentation(NativeArena arena)
         {
@@ -122,7 +122,7 @@ namespace ChipArena.UnityConversion.Editor
                             if(ReferenceEquals(shown.Actors[0],pilot.Pose)||Vector3.Distance(NativeArena.Vec(shown.Actors[0].Position),pilot.Body.transform.position-Vector3.up*.865f)>.00001f)
                                 throw new Exception("Render snapshot must copy the interpolated transform");
                             float hp=pilot.Pose.Hp;shown.Actors[0].Hp=0;if(pilot.Pose.Hp!=hp)throw new Exception("Render snapshot changed authority");
-                            CheckPresentation(arena);CheckGlow(arena,match);arena.ValidateMelee();arena.ValidateSpecials();arena.ValidateRangedAndMagic();
+                            CheckNetworkSerialization(arena);CheckCombatParity(data);CheckPresentation(arena);CheckGlow(arena,match);arena.ValidateMelee();arena.ValidateSpecials();arena.ValidateRangedAndMagic();
                         }
                         if(map.id=="siren")arena.ValidatePveEconomy(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text));
                         Debug.Log("PASS native map "+map.id+": isolated Edit-mode physics, 8 spawn floors, capsule settling");

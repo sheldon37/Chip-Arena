@@ -21,6 +21,17 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-08 — Codex/Astra — Unity parity logic checkpoint (work in progress)
+
+- Branch: `codex/unity-parity-logic`. Started from `b828acb` on PR #62; integrated Claude's visual updates through `662c9d3` without changing the drawing design. Local implementation checkpoint `92cf245`; remote PR/commit recorded below when pushed. Not merged or released.
+- First priority pass: explicit optional-object presence for real JsonUtility (network and replay), protocol 4; background socket loops; input acknowledgement/prediction and buffered replica transforms; bounded presentation events/snapshots, shared compression, lobby broadcast throttling, epoch fencing, relay error/retry handling; managed P-256 verification with catch-all trust boundaries.
+- Lobby/combat pass: `GuestReady(bool)` includes loadout, team defaults/changes, bots and options/cosmetics in lobby state, automatic ready start; held melee, head-volume tests, ability/block/reload/roll rules, authority aim and persistent pull; bot difficulty/reaction/kit decisions, LAN discovery/invite data. Fresh draft seeds, overtime, random arena/per-set option and source setup defaults are included. Remaining A-items are still being worked through; the gap list will be finalized at handoff.
+- Claude integration API: `LobbySeats`, `RoomOptions`, `SetRoomOptions`, `ChangeTeam`, `GuestReady`, `LanAddresses`, `RoomCode`, `InviteUrl`, `JoinInvite`; seat `difficulty`, cosmetics and `bot`; options include per-bot loadout/team/difficulty and intro/random-map toggles. Wired Ready and real bot records into the latest lobby with small data/action edits only. Profile reload, specialization decision, expanded events and connection metrics follow later in this task.
+- Checked at the first logic checkpoint: genuine Unity 6000.3.24f1 player API compilation of Core+Runtime using C# 9; managed regressions including RFC 6979 plus 24 independent P-256 signatures, paused synchronization context, prediction, event/order budgets, headshots, teams/bot rules, real UDP/TCP discovery; `check_relay.py` with precompiled Roslyn assemblies passed; Python unittest 24/24; UpdaterTests 51/51; `package_source.py` passed (642 files). Recheck after integrating later commits. Roslyn is invoked directly because this container's .NET SDK driver cannot read process metadata.
+- Not run: Unity Editor/JsonUtility/PhysX build-gate execution, Windows Mono gameplay, or `Build-Windows.cmd` (Linux container has no cmd.exe, Unity Editor or activated Unity license). New real-JsonUtility/physics regression gates are source only until that run; API compilation is not a Unity build or playtest. No `UNITY_TEST_BUILD_READY` receipt exists here.
+- Owner gates preserved: A7 endpoints/relay hosting, A13 publication/merges, A18 specialization choice, A24 canonical Siren intro duration, A25 server topology, A26 migration/cutover, and A22 visual sandbox scope. No feed/Site publication, merge, Claude-branch push, or secrets.
+
+
 ## 2026-10-08 — Claude — Unity vs Electron parity gap list (handoff)
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62), audited at `eb8f7f7` against the original `05950ea`. Docs only; no code changed.
 - Added `docs/UNITY-PARITY-GAPS.md`: a read-only code audit of screens, gameplay, networking, presentation and trackers, with each P1 re-checked by a refuting reviewer. Items are split by the role split: A1–A31 for Astra (logic) and C1–C24 for Claude (visuals), plus 12 owner decisions and a not-verified list.

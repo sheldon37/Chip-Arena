@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
             if(p.Stats["blockPulseDamage"]>0)ChipBlast(p,p.Body.position,3,(float)p.Stats["blockPulseDamage"],(float)p.Stats["blockPulseImpulse"]);
             if(Has(p,"supernova"))p.BlockReady=Math.Min(p.BlockReady,Time+.6f);
             if(Has(p,"mirror-mine"))MineRing(p,p.Body.position,"mirror-mine");
-            if(Has(p,"freezer-block")){Field(p,"time",p.Body.position,5,3,0,"freezer-block");foreach(var q in Pilots)if(q.Hp>0&&Enemy(p,q)&&Vector3.Distance(p.Body.position,q.Body.position)<5&&MeleeVisible(p.Body.position,q.Body.position,p,q.Collider)&&!SirenArmor(q)){q.FrozenUntil=Math.Max(q.FrozenUntil,Time+1.2f);StunMelee(q,1.2f);}}
+            if(Has(p,"freezer-block")){Field(p,"time",p.Body.position,5,3,0,"freezer-block");foreach(var q in Pilots)if(q.Hp>0&&CanHit(p,q)&&Vector3.Distance(p.Body.position,q.Body.position)<5&&MeleeVisible(p.Body.position,q.Body.position,p,q.Collider)&&!SirenArmor(q)){q.FrozenUntil=Math.Max(q.FrozenUntil,Time+1.2f);StunMelee(q,1.2f);}}
             if(Has(p,"graveyard-shift")||Has(p,"corpse-party"))Summon(p,1,"zombie",p.Body.position,10);
             if(Has(p,"poltergeist"))foreach(var prop in Props)if(prop.Body!=null&&!prop.Body.isKinematic&&Vector3.Distance(prop.Body.position,p.Body.position)<6&&MeleeVisible(p.Body.position,prop.Body.position,p,prop.GetComponent<Collider>()))prop.Body.AddForce((prop.Body.position-p.Body.position+Vector3.up*.4f).normalized*900,ForceMode.Impulse);
         }
@@ -32,15 +32,15 @@ namespace ChipArena.UnityConversion
         {
             if(owner==null)return 0;float total=0;Fx(at,radius,owner.Pose.MagicVisual);
             foreach(var target in Pilots.ToArray())
-            {Vector3 delta=target.Body.position-at;float fall=NativeProjectileRules.Falloff(delta.magnitude,radius);if(target.Hp<=0||!Enemy(owner,target)||fall<=0||!MeleeVisible(at+delta.normalized*.1f,target.Body.position,owner,target.Collider))continue;total+=Damage(target,owner,damage*fall,delta.normalized,impulse*fall,false,direct:false,primary:false);}
-            foreach(var m in Minions.ToArray()){Vector3 d=m.Body.position-at;float f=NativeProjectileRules.Falloff(d.magnitude,radius);if(f>0&&Enemy(owner,m.Owner)&&MeleeVisible(at,m.Body.position,owner,m.Collider))total+=HitMinion(m,owner,damage,d.normalized,impulse*f,at,"blast",radius);}
+            {Vector3 delta=target.Body.position-at;float fall=NativeProjectileRules.Falloff(delta.magnitude,radius);if(target.Hp<=0||!CanHit(owner,target)||fall<=0||!MeleeVisible(at+delta.normalized*.1f,target.Body.position,owner,target.Collider))continue;total+=Damage(target,owner,damage*fall,delta.normalized,impulse*fall,false,direct:false,primary:false);}
+            foreach(var m in Minions.ToArray()){Vector3 d=m.Body.position-at;float f=NativeProjectileRules.Falloff(d.magnitude,radius);if(f>0&&CanHit(owner,m.Owner)&&MeleeVisible(at,m.Body.position,owner,m.Collider))total+=HitMinion(m,owner,damage,d.normalized,impulse*f,at,"blast",radius);}
             if(props)foreach(var prop in Props.ToArray())
             {if(prop==null||prop.Indestructible)continue;Vector3 delta=prop.transform.position-at;float reach=radius+prop.Definition.size.Length*.35f;if(delta.magnitude>=reach||!MeleeVisible(at,prop.transform.position,owner,prop.GetComponent<Collider>()))continue;float fall=1-Mathf.Clamp(delta.magnitude/reach,0,.85f);DamageProp(prop,damage*fall*(float)owner.Stats["demolition"],(delta+Vector3.up*.3f).normalized*impulse*fall,at,owner);}
             return total;
         }
         private void Vacuum(NativePilot owner,Vector3 at,float impulse)
         {
-            foreach(var p in Pilots){Vector3 d=at-p.Body.position;float distance=d.magnitude;if(p.Hp<=0||!Enemy(owner,p)||SirenArmor(p)||distance<.1f||distance>5||!MeleeVisible(at-d.normalized*.12f,p.Body.position,owner,p.Collider))continue;p.Knockback+=d.normalized*Math.Min(2000,impulse)*(1-distance/5)/65*(float)p.Stats["knockbackTaken"];}
+            foreach(var p in Pilots){Vector3 d=at-p.Body.position;float distance=d.magnitude;if(p.Hp<=0||!CanHit(owner,p)||SirenArmor(p)||distance<.1f||distance>5||!MeleeVisible(at-d.normalized*.12f,p.Body.position,owner,p.Collider))continue;p.Knockback+=d.normalized*Math.Min(2000,impulse)*(1-distance/5)/65*(float)p.Stats["knockbackTaken"];}
             foreach(var p in Props)if(p.Body!=null&&!p.Body.isKinematic){Vector3 d=at-p.Body.position;float distance=d.magnitude;if(distance>.1f&&distance<5&&MeleeVisible(at-d.normalized*.12f,p.Body.position,owner,p.GetComponent<Collider>()))p.Body.AddForce(d.normalized*Math.Min(2000,impulse)*(1-distance/5),ForceMode.Impulse);}
             Fx(at,5,4);
         }
@@ -51,7 +51,7 @@ namespace ChipArena.UnityConversion
         private void ImpactChips(NativePilot owner,NativePilot target,NativePropBody prop,Vector3 point,Vector3 dir,int attack,int impact)
         {
             if(owner==null)return;
-            if(target!=null&&target.Hp>0&&Enemy(owner,target))
+            if(target!=null&&target.Hp>0&&CanHit(owner,target))
             {
                 if(!SirenArmor(target)&&Has(owner,"uppercut"))target.Knockback.y+=8*(float)target.Stats["knockbackTaken"];
                 if(!SirenArmor(target)&&Has(owner,"grappling-shot"))target.Knockback+=(owner.Body.position-target.Body.position).normalized*(1800f/65)*(float)target.Stats["knockbackTaken"];
@@ -95,11 +95,11 @@ namespace ChipArena.UnityConversion
             Vector3 at=p.Body.position;if(p.Stats["dashBlast"]>0)ChipBlast(p,at,3,(float)p.Stats["dashBlast"],(float)p.Stats["dashBlast"]/14*380);
             if(Has(p,"bread-crumbs"))Field(p,"mine",at,2.8f,5,24,"bread-crumbs");if(Has(p,"hot-foot"))Field(p,"fire",at,3,3,15,"hot-foot");
             if(Has(p,"comet"))Field(p,"bomb",at,3.5f,.32f,45*(float)p.Stats["damage"],"comet",p);
-            if(Has(p,"vampire-dash")){foreach(var q in Pilots)if(q.Hp>0&&Enemy(p,q)&&Vector3.Distance(at,q.Body.position)<3&&MeleeVisible(at,q.Body.position,p,q.Collider))Heal(p,Damage(q,p,12,Vector3.zero,0,false,direct:false,primary:false));}
+            if(Has(p,"vampire-dash")){foreach(var q in Pilots)if(q.Hp>0&&CanHit(p,q)&&Vector3.Distance(at,q.Body.position)<3&&MeleeVisible(at,q.Body.position,p,q.Collider))Heal(p,Damage(q,p,12,Vector3.zero,0,false,direct:false,primary:false));}
             if(Has(p,"thunderstep")){var targets=Pilots.Where(q=>q.Hp>0&&Enemy(p,q)&&Vector3.Distance(at,q.Body.position)<12&&MeleeVisible(at+Vector3.up*.5f,q.Body.position,p,q.Collider)).OrderBy(q=>(at-q.Body.position).sqrMagnitude).Take(2).ToArray();if(targets.Length==0)Field(p,"bomb",at,4,.5f,35,"thunderstep");foreach(var q in targets)Field(p,"bomb",q.Body.position,2.5f,.35f,30*(float)p.Stats["damage"],"thunderstep",q);}
         }
         private void ChipJump(NativePilot p)
-        {if(!Has(p,"trampoline"))return;ChipBlast(p,p.Body.position,3,10,0,false);foreach(var q in Pilots)if(q.Hp>0&&Enemy(p,q)&&Vector3.Distance(q.Body.position,p.Body.position)<3&&MeleeVisible(p.Body.position,q.Body.position,p,q.Collider))q.Knockback.y+=8*(float)q.Stats["knockbackTaken"];}
+        {if(!Has(p,"trampoline"))return;ChipBlast(p,p.Body.position,3,10,0,false);foreach(var q in Pilots)if(q.Hp>0&&CanHit(p,q)&&Vector3.Distance(q.Body.position,p.Body.position)<3&&MeleeVisible(p.Body.position,q.Body.position,p,q.Collider))q.Knockback.y+=8*(float)q.Stats["knockbackTaken"];}
         private float ChipMeleeStart(NativePilot p)
         {
             float scale=1;if(Has(p,"blink-cut")){var aim=Vec(V3.Forward(p.Input.Yaw));var target=Pilots.Where(q=>q.Hp>0&&Enemy(p,q)&&Vector3.Distance(p.Body.position,q.Body.position)>1.6f&&Vector3.Distance(p.Body.position,q.Body.position)<7&&Vector3.Dot(aim,(q.Body.position-p.Body.position).normalized)>Mathf.Cos(40*Mathf.Deg2Rad)&&MeleeVisible(p.Body.position,q.Body.position,p,q.Collider)).OrderBy(q=>(q.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();if(target!=null&&ChipReady(p,"blink-cut",1)){Vector3 d=target.Body.position-p.Body.position;d.y=0;ChipBlink(p,d.normalized*Math.Max(0,d.magnitude-1.1f));p.Input.Yaw=Mathf.Atan2(d.x,d.z)*Mathf.Rad2Deg;scale=1.5f;p.ShieldUntil=Time+.25f;}else ChipBlink(p,aim*2.5f);}
@@ -107,18 +107,18 @@ namespace ChipArena.UnityConversion
             return scale;
         }
         private float ChipFieldSpeed(NativePilot p)
-        {float speed=1;foreach(var f in ChipFields)if(Enemy(f.Owner,p)&&Vector3.Distance(f.Position,p.Body.position)<f.Radius){if(f.Kind=="frost")speed=Math.Min(speed,.45f);if(f.Kind=="time")speed=Math.Min(speed,.6f);}return speed;}
+        {float speed=1;foreach(var f in ChipFields)if(CanHit(f.Owner,p)&&Vector3.Distance(f.Position,p.Body.position)<f.Radius){if(f.Kind=="frost")speed=Math.Min(speed,.45f);if(f.Kind=="time")speed=Math.Min(speed,.6f);}return speed;}
         private void StepChipFields()
         {
             const float dt=1f/60;
             foreach(var f in ChipFields.ToArray())
             {
                 if(f.Attached!=null&&f.Attached.Hp>0)f.Position=f.Attached.Body.position;else if(f.Prop!=null)f.Position=f.Prop.transform.position;
-                bool mine=f.Kind=="mine",trigger=mine&&Time>=f.Arm&&Pilots.Any(p=>p.Hp>0&&Enemy(f.Owner,p)&&Vector3.Distance(p.Body.position,f.Position)<f.Radius&&MeleeVisible(f.Position,p.Body.position,f.Owner,p.Collider));
+                bool mine=f.Kind=="mine",trigger=mine&&Time>=f.Arm&&Pilots.Any(p=>p.Hp>0&&CanHit(f.Owner,p)&&Vector3.Distance(p.Body.position,f.Position)<f.Radius&&MeleeVisible(f.Position,p.Body.position,f.Owner,p.Collider));
                 if(Time>=f.Until||trigger){ChipFields.Remove(f);if(trigger||f.Kind=="bomb"||f.Kind=="implosion")ChipBlast(f.Owner,f.Position+Vector3.up*.15f,f.Radius,f.Damage,f.Kind=="implosion"?0:1100);if(f.Kind=="implosion")Vacuum(f.Owner,f.Position+Vector3.up*.15f,1300);continue;}
                 if(mine||f.Kind=="bomb"||f.Kind=="implosion")continue;
-                foreach(var p in Pilots){Vector3 d=p.Body.position-f.Position;if(p.Hp<=0||d.magnitude>f.Radius)continue;if(f.Kind=="heal"){if(p==f.Owner)Heal(p,f.Damage*dt);continue;}if(!Enemy(f.Owner,p)||!MeleeVisible(f.Position+Vector3.up*.2f,p.Body.position,f.Owner,p.Collider))continue;if(f.Damage>0)Damage(p,f.Owner,f.Damage*dt,Vector3.zero,0,false,direct:false,primary:false);if(!SirenArmor(p)&&(f.Kind=="black-hole"||f.Kind=="repulsion"))p.Knockback+=d.normalized*(f.Kind=="black-hole"?-35:65)*dt*(float)p.Stats["knockbackTaken"];}
-                foreach(var m in Minions.ToArray())if(f.Damage>0&&f.Kind!="heal"&&Enemy(f.Owner,m.Owner)&&Vector3.Distance(m.Body.position,f.Position)<f.Radius)HitMinion(m,f.Owner,f.Damage*dt,Vector3.zero,0);
+                foreach(var p in Pilots){Vector3 d=p.Body.position-f.Position;if(p.Hp<=0||d.magnitude>f.Radius)continue;if(f.Kind=="heal"){if(p==f.Owner)Heal(p,f.Damage*dt);continue;}if(!CanHit(f.Owner,p)||!MeleeVisible(f.Position+Vector3.up*.2f,p.Body.position,f.Owner,p.Collider))continue;if(f.Damage>0)Damage(p,f.Owner,f.Damage*dt,Vector3.zero,0,false,direct:false,primary:false);if(!SirenArmor(p)&&(f.Kind=="black-hole"||f.Kind=="repulsion"))p.Knockback+=d.normalized*(f.Kind=="black-hole"?-35:65)*dt*(float)p.Stats["knockbackTaken"];}
+                foreach(var m in Minions.ToArray())if(f.Damage>0&&f.Kind!="heal"&&CanHit(f.Owner,m.Owner)&&Vector3.Distance(m.Body.position,f.Position)<f.Radius)HitMinion(m,f.Owner,f.Damage*dt,Vector3.zero,0);
                 if(f.Kind=="black-hole"||f.Kind=="repulsion"||f.Kind=="fire"||f.Kind=="acid")foreach(var prop in Props.ToArray())
                 {if(prop==null||prop.Indestructible||Vector3.Distance(prop.transform.position,f.Position)>f.Radius||!MeleeVisible(f.Position+Vector3.up*.2f,prop.transform.position,f.Owner,prop.GetComponent<Collider>()))continue;Vector3 d=prop.transform.position-f.Position;if(f.Kind=="fire"||f.Kind=="acid")DamageProp(prop,f.Damage*dt,Vector3.zero,prop.transform.position,f.Owner);else if(prop.Body!=null&&!prop.Body.isKinematic)prop.Body.AddForce(d.normalized*(f.Kind=="black-hole"?-1:1)*prop.Body.mass*20*dt,ForceMode.Impulse);}
             }
@@ -146,7 +146,7 @@ namespace ChipArena.UnityConversion
             if(Has(s,"stop-go")&&s.Direct&&s.Reflections==0){if(age>=.25f&&age<.55f){s.Life-=dt;return 0;}if(age>=.55f&&!s.Relaunched){s.Relaunched=true;Vector3 aim=owner.Input.AimTarget.Length>.01f?Vec(owner.Input.AimTarget):owner.Body.position+Vec(GunRules.Direction(owner.Input.Yaw,owner.Input.Pitch))*60;s.Velocity=(aim-s.Position).normalized*Math.Min(160,s.BaseVelocity.magnitude*2);s.Gravity=0;s.Damage*=1.5f;s.Hit.Clear();}}
             if(Has(s,"accelerating-shot")){float scale=.25f+Math.Min(1,age)*1.75f;s.Velocity*=scale/s.MotionScale;s.MotionScale=scale;}
             if(Has(s,"corkscrew")){float a=.1f*s.Mods["corkscrew"]*Mathf.Sin(age*25);s.Velocity=Quaternion.Euler(0,a*Mathf.Rad2Deg,0)*s.Velocity;s.Velocity.y+=Mathf.Cos(age*25)*30*dt;}
-            float speed=1;foreach(var f in ChipFields)if(Enemy(f.Owner,owner)&&Vector3.Distance(s.Position,f.Position)<f.Radius){if(f.Kind=="time")speed=.2f;if(f.Kind=="black-hole")s.Velocity+=(f.Position-s.Position).normalized*45*dt;}return speed;
+            float speed=1;foreach(var f in ChipFields)if(CanHit(f.Owner,owner)&&Vector3.Distance(s.Position,f.Position)<f.Radius){if(f.Kind=="time")speed=.2f;if(f.Kind=="black-hole")s.Velocity+=(f.Position-s.Position).normalized*45*dt;}return speed;
         }
     }
 }
