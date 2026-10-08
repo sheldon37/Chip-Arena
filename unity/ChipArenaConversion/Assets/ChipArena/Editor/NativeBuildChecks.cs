@@ -56,23 +56,36 @@ namespace ChipArena.UnityConversion.Editor
             var rigs=new System.Collections.Generic.Dictionary<int,CapturedAnimation.Player>();
             using(var glow=new NativeCombatGlow(host.transform))
             {
-                var prop=arena.Props[0];
-                for(int n=1;n<=200;n++)arena.Events.Add(new ArenaEvent{Id=n,Kind=EventKind.Impact,Time=arena.Time,SurfaceId=prop.Definition.id,Position=NativeArena.Vec(prop.transform.position+Vector3.up),Normal=new V3(0,1,0),Color=0x58cfff});
+                const int impactCount=200;var prop=arena.Props[0];float firstImpactAt=arena.Time;
+                arena.Events.Clear();arena.Bullets.Clear();arena.AbilityShots.Clear();arena.MeleeShots.Clear();
+                // Exercise 200 overlapping marks without violating the authority's per-tick event budget.
+                // This is a glow-lifetime test, not a request to bypass or disable network/event limits.
+                for(int n=1;n<=impactCount;n++)
+                {
+                    if(n>1&&(n-1)%NativeEventBuffer.PerTickEffects==0)match.Tick(1d/60);
+                    arena.Events.Add(new ArenaEvent{Id=n,Kind=EventKind.Impact,Time=arena.Time,SurfaceId=prop.Definition.id,Position=NativeArena.Vec(prop.transform.position+Vector3.up),Normal=new V3(0,1,0),Color=0x58cfff});
+                }
+                float lastImpactAt=arena.Time;
+                if(arena.Events.Count!=impactCount)throw new Exception($"Glow fixture exceeded the event budget: accepted {arena.Events.Count}/{impactCount} impacts");
                 arena.Bullets.Add(new NativeBullet{Id=500,Spec="pistol",Position=Vector3.up,Radius=.045f});
                 arena.AbilityShots.Add(new NativeAbilityShot{Id=501,Owner=arena.Local,Position=Vector3.up*2,Radius=.2f});
                 arena.MeleeShots.Add(new NativeMeleeShot{Id=502,Original=arena.Local,Owner=arena.Local,Shield=true,Position=Vector3.up*3,Radius=.28f});
                 void Sample()=>glow.Render(arena,camera,null,false,rigs,null,null,false);
-                Sample();if(glow.LiveMarks!=200||glow.LiveTraces!=3)throw new Exception("Combat glow dropped a live burst or ability trace");
+                void Expect(int marks,int traces,string stage)
+                {if(glow.LiveMarks!=marks||glow.LiveTraces!=traces)throw new Exception($"Combat glow {stage}: marks={glow.LiveMarks}/{marks}, traces={glow.LiveTraces}/{traces}, accepted events={arena.Events.Count}");}
+                void AdvanceTo(double time){while(match.Time<time)match.Tick(Math.Min(.2,time-match.Time));Sample();}
+                Sample();Expect(impactCount,3,"initial burst");
                 if(host.GetComponentsInChildren<Light>().Length!=7)throw new Exception("Combat lights must use exactly seven pooled objects");
                 arena.Bullets.Clear();arena.AbilityShots.Clear();arena.MeleeShots.Clear();match.Tick(.2);Sample();
-                if(glow.LiveMarks!=200||glow.LiveTraces!=0)throw new Exception("Glow/trail lifetimes differ from the source");
-                for(int i=0;i<4;i++)match.Tick(.16);Sample();if(glow.LiveMarks!=200)throw new Exception("Impact burst was evicted before natural expiry");
-                match.Tick(.02);Sample();if(glow.LiveMarks!=0)throw new Exception("Expired impact marks leaked");
+                Expect(impactCount,0,"trail expiry");
+                AdvanceTo(firstImpactAt+NativeGlowRules.ImpactLife-.01);Expect(impactCount,0,"before first impact expiry");
+                AdvanceTo(firstImpactAt+NativeGlowRules.ImpactLife+.005);Expect(impactCount-NativeEventBuffer.PerTickEffects,0,"first tick expiry");
+                AdvanceTo(lastImpactAt+NativeGlowRules.ImpactLife+.01);Expect(0,0,"last impact expiry");
                 glow.Quality=0;Sample();foreach(var light in host.GetComponentsInChildren<Light>())if(light.enabled)throw new Exception("Off leaves a combat light enabled");
                 glow.Clear();if(glow.LiveMarks!=0||glow.LiveTraces!=0)throw new Exception("Glow reset leaked presentation state");
             }
             arena.Events.Clear();CapturedAnimation.Release(host);
-            Debug.Log("PASS native glow lifecycle: 200 simultaneous impacts, primary/ability/thrown-shield traces, seven pooled lights, natural expiry and reset (draw submission skipped)");
+            Debug.Log("PASS native glow lifecycle: 200 overlapping impacts across budgeted ticks, primary/ability/thrown-shield traces, seven pooled lights, staggered expiry and reset (draw submission skipped)");
         }
         public static void Run()
         {
