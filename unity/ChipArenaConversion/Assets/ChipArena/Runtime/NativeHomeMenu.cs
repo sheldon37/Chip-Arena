@@ -459,18 +459,25 @@ namespace ChipArena.UnityConversion
         // and the presentation picks, all updating live as the form changes.
         private static Color HexColor(string value,int fallback)=>value!=null&&value.Length==7&&value[0]=='#'&&int.TryParse(value.Substring(1),System.Globalization.NumberStyles.HexNumber,null,out int rgb)?U.Hex(rgb):U.Hex(fallback);
         private static string ClassLabel(string c)=>c=="ranged"?"RANGED · PRECISION & PRESSURE":c=="magic"?"MAGIC · ELEMENTS & CONTROL":c=="melee"?"MELEE · CLOSE & PERSONAL":"DEV CLASS";
+        // The pilot emblem that stands in for the source's live 3D portrait: the weapon icon in its colour on a dark disc
+        // edged in the body colour, inside a slowly turning tick ring and glow in the accent colour, with an orbiting
+        // dot. `phase` offsets the motion so a row of cards does not turn in lockstep.
+        private static void PilotEmblem(Vector2 c,float ring,Color accent,Color body,ContentWeapon weapon,float e,float t,float phase=0,int ticks=28)
+        {
+            Color tone=U.Hex((int)weapon.color);t+=phase;
+            U.Radial(new Rect(c.x-ring*1.6f,c.y-ring*1.6f,ring*3.2f,ring*3.2f),U.A(accent,.16f*e));
+            for(int i=0;i<ticks;i++){float a=i/(float)ticks*360+t*12;U.Push(c,Vector2.zero,1,a);U.Fill(new Rect(c.x-1.5f,c.y-ring-3,3,i%7==0?9:5),U.A(accent,(i%7==0?.9f:.45f)*e));U.Pop();}
+            U.Disc(new Rect(c.x-ring*.78f,c.y-ring*.78f,ring*1.56f,ring*1.56f),U.Hex(0x0f1015,.92f*e));U.RadialStops(new Rect(c.x-ring*.78f,c.y-ring*.78f,ring*1.56f,ring*1.56f),U.A(body,.1f*e),new[]{0f,.9f,.97f,1f},new[]{0f,0f,1f,0f});
+            float orbit=t*.9f;U.Disc(new Rect(c.x+Mathf.Cos(orbit)*ring*.92f-3,c.y+Mathf.Sin(orbit)*ring*.92f-3,6,6),U.A(accent,e));
+            float icon=ring*.86f;NativeIcons.Draw(new Rect(c.x-icon/2+1,c.y-icon/2+2,icon,icon),NativeIcons.Spec(weapon.id),new Color(0,0,0,.5f*e));NativeIcons.Draw(new Rect(c.x-icon/2,c.y-icon/2,icon,icon),NativeIcons.Spec(weapon.id),U.A(U.Mix(tone,Color.white,.15f),e));
+        }
         private void PilotCard(Rect r,string tag,float e,string note)
         {
             var weapon=content.weapons.FirstOrDefault(w=>w.id==prefs.weapon)??content.weapons[0];Color accent=HexColor(prefs.accentColor,0x70e1d0),body=HexColor(prefs.bodyColor,0xe5e7eb),tone=U.Hex((int)weapon.color);float t=Time.unscaledTime;
             U.Glow(new Rect(r.x,r.y+18,r.width,r.height),new Color(0,0,0,.33f*e),45);U.Round(r,U.Hex(0x1b1a21,e),16,U.Hex(0x514955,e));
             U.RadialStops(new Rect(r.x+r.width*.05f,r.y+r.height*.06f,r.width*.9f,r.height*.72f),U.A(accent,.2f*e),new[]{0f,.64f,1f},new[]{1f,0f,0f});
             U.Text(new Rect(r.x+22,r.y+20,60,16),"01",12,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft,mono:true);U.Text(new Rect(r.x,r.y+20,r.width-22,16),tag,11,U.Hex(0xff996f,e),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.16f);
-            var c=new Vector2(r.center.x,r.y+Mathf.Min(r.height*.36f,180));float ring=Mathf.Min(86,r.width*.26f);
-            U.Radial(new Rect(c.x-ring*1.6f,c.y-ring*1.6f,ring*3.2f,ring*3.2f),U.A(accent,.16f*e));
-            for(int i=0;i<28;i++){float a=i/28f*360+t*12;U.Push(c,Vector2.zero,1,a);U.Fill(new Rect(c.x-1.5f,c.y-ring-3,3,i%7==0?9:5),U.A(accent,(i%7==0?.9f:.45f)*e));U.Pop();}
-            U.Disc(new Rect(c.x-ring*.78f,c.y-ring*.78f,ring*1.56f,ring*1.56f),U.Hex(0x0f1015,.92f*e));U.RadialStops(new Rect(c.x-ring*.78f,c.y-ring*.78f,ring*1.56f,ring*1.56f),U.A(body,.1f*e),new[]{0f,.9f,.97f,1f},new[]{0f,0f,1f,0f});
-            float orbit=t*.9f;U.Disc(new Rect(c.x+Mathf.Cos(orbit)*ring*.92f-3,c.y+Mathf.Sin(orbit)*ring*.92f-3,6,6),U.A(accent,e));
-            float icon=ring*.86f;NativeIcons.Draw(new Rect(c.x-icon/2+1,c.y-icon/2+2,icon,icon),NativeIcons.Spec(weapon.id),new Color(0,0,0,.5f*e));NativeIcons.Draw(new Rect(c.x-icon/2,c.y-icon/2,icon,icon),NativeIcons.Spec(weapon.id),U.A(U.Mix(tone,Color.white,.15f),e));
+            var c=new Vector2(r.center.x,r.y+Mathf.Min(r.height*.36f,180));float ring=Mathf.Min(86,r.width*.26f);PilotEmblem(c,ring,accent,body,weapon,e,t);
             float y=c.y+ring+26;string name=NativeCosmeticRules.Name(prefs.name);float ns=Mathf.Clamp(r.width*.075f,22,30);
             U.Text(new Rect(r.x+16,y,r.width-32,ns*1.3f),name,ns,U.Hex(0xf4f4f5,e),TextAnchor.MiddleCenter,bold:true);y+=ns*1.3f+4;
             U.Text(new Rect(r.x+16,y,r.width-32,18),weapon.name.ToUpperInvariant(),13,U.A(U.Mix(tone,Color.white,.25f),e),TextAnchor.MiddleCenter,bold:true,tracking:.12f);y+=20;
