@@ -18,6 +18,12 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-07 — Codex — zero-cost ability Windows gate repair
+- Continue isolated `codex/unity-build-fix` from `1e96f3b53305ee3dbdb3dd0a3ec2e5cecd1c8866`, draft PR #59 targeting `codex/unity-conversion`. Owner's second Windows log confirms script compilation and the previous texture fix, asset imports, glow, native melee and E-special gates pass; the next gate fails on `frag-grenade`.
+- Source grenade, rocket and orbital mark cost zero mana. Correct the validator's blanket mana-debit and empty-pool-refusal assumptions. Assert exact configured debit/cooldown/charge use, no spend before release, zero-mana free casts and paid-cast refusal without state changes. Add exact-cost/zero-mana checks to all 44 managed source ability fixtures. No runtime rules, source content, hit timing, hitboxes, damage, cooldowns, movement or networking changed.
+- Actual checks: 12 local Python tests, source package/asset receipts/GUID checks and diff checks pass. Managed checks run in branch CI; corrected native gate, remaining map/PvE gates, rendered gameplay and Windows EXE are unrun here because Unity is unavailable.
+- Deliver refreshed complete source ZIP. Next: owner reruns `Build-Windows.cmd`, confirms `UNITY_TEST_BUILD_READY`, then playtests the isolated native build. Implemented on repair branch only; no merge, updater/feed release, live account mutation or service deployment.
+
 ## 2026-10-07 — Codex — Windows texture upload and account callback repair
 - Isolated `codex/unity-build-fix`, based on conversion candidate `a8fa79611d84f171e5c79899b379231570b8337d`. Owner supplied the failing Windows build log. No open PR targeted the conversion branch when checked.
 - The activated Windows Editor compiled scripts and passed the source combat/presentation checks, then failed because the source model loader supplied mip-0 bytes to `LoadRawTextureData` on a mipmapped texture. It also rejected `NativeAccount.Start(string, string, bool)` as an invalid Unity callback.

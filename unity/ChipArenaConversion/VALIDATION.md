@@ -2,6 +2,28 @@
 
 No native Unity playtest or Windows executable build was run in the authoring workspace.
 
+## Zero-cost ability gate repair (2026-10-07, late evening)
+
+The owner's follow-up Windows log confirms the repaired texture gate passes:
+all three base images survive import, mip chains are retained and truncated input
+is rejected. Script compilation, source checks, imported models/motion/audio,
+glow lifecycle, native melee and native E-special checks also pass. Execution then
+stops at `Native combat gate: release/cost/cooldown frag-grenade`.
+
+The combat validator incorrectly required every live ability to reduce mana and
+refuse an empty mana pool. The pinned source defines grenade, rocket and orbital
+mark with zero cost. Gameplay and source data are unchanged. The gate now checks
+the exact configured debit, cooldown deadline and charge consumption, requires no
+debit before release, exercises free abilities with zero mana, and retains paid
+ability refusal without state changes. Separate failure messages identify which
+condition failed. Managed source-fixture checks cover the exact-cost and zero-mana
+boundary across all 44 exported ability/stat cases.
+
+Local 12 Python asset/package checks, source receipts/GUIDs and diff checks pass.
+The managed suite runs in conversion CI. The corrected native gate and remaining
+Windows build gates still require the owner's activated Editor; no executable or
+rendered gameplay acceptance is claimed from this repair.
+
 ## Windows import/build repair (2026-10-07, evening)
 
 The owner's Unity 6000.3.24f1 log reached the content, special, melee, first-person,
