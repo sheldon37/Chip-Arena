@@ -5,6 +5,26 @@ Owner request (Sheldon, 2026-10-08): "Why isn't the update button grabbing this 
 Goal for Astra: make the Unity update button deliver new Unity builds to an installed copy, end to end,
 with the owner's approval for every native feed publication.
 
+## Astra follow-up — 2026-10-08
+
+Implemented on `codex/unity-native-publish`, based on this branch at `d804663`:
+
+- `Publish-Native.cmd` validates the completed Windows build and previews exact build identities before
+  typed publication confirmation. `Publish-Native.cmd --status` compares the verified local package with
+  the public feed without writes. The Python interface remains available.
+- Clean behind-only channel checkouts fast-forward; wrong repositories, local changes and ahead/divergent
+  histories stop without resetting anything. Publication rechecks the channel after confirmation.
+- Build output explains the separate installed baseline and explicitly says the prepared feed is local.
+  The source packager includes the new command. Native CI now covers `codex/unity-*` and `claude/**` with
+  native path filtering, including publisher tests and a Windows command-entrypoint test.
+- Local publication tests use disposable bare Git repositories and fixture players, never the actual feed.
+  A compiled Unity candidate and a real older installed player are still needed for end-to-end acceptance.
+- At investigation time the native feed still returns 404. No compiled native update is published by this
+  change. Nothing is merged and no gameplay, animation, UI, runtime updater or Electron feed is changed.
+
+Use the updated `Updater/README.md` instructions below the Unity project for the current command workflow.
+The original investigation below is retained as the historical handoff.
+
 ## Where things stand (verified 2026-10-08 ~09:30 UTC)
 
 | Item | State |
@@ -140,3 +160,4 @@ folders, rebuild, then publish the second build. Do **not** publish the current 
 (Package, SourceHash), `Assets/ChipArena/Core/NativeUpdateRules.cs` (Feed, IsNewer), `Assets/ChipArena/Runtime/NativeUpdater.cs`
 (Initialize, Check), `tools/publish_native_update.py`, `Assets/ChipArena/Runtime/NativeHomeMenu.cs` (UpdateControl, UpdateBadge),
 `Assets/ChipArena/Runtime/NativeUpdateUI.cs`, and the newest Claude and Codex entries in `docs/DEV_LOG.md`.
+

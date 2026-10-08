@@ -13,6 +13,11 @@ All existing native build gates must pass. Extract the resulting
 Run the EXE at the top level and keep its `app` folder beside it. Shortcuts should
 point to this top-level EXE. Windows players need .NET Framework 4.8.
 
+Keep that installed copy **outside the source project** (for example,
+`C:\ChipArena\NativeTest`). `Builds\Windows` and the starter ZIP are replaced by
+each build. Extract your baseline starter before rebuilding, then leave that
+installed folder alone so it can receive the newer build through the button.
+
 This is a **one-time starter installation**. Older copies cannot acquire an
 updater they do not contain. Later builds appear in the menu after their compiled
 player is published. Choose **Update and restart** outside a match and room.
@@ -31,7 +36,38 @@ and its `objects/` payload parts. Build identity is a SHA-256 of the project sou
 a UTC build revision prevents downgrades. Rebuilding identical source does not
 offer another update. Keep the build machine clock accurate.
 
-From this Unity project's folder, validate and stage without publication:
+### Owner shortcut
+
+From this Unity project's folder, run `Publish-Native.cmd --status` to validate
+the local compiled package and compare it with the public feed. This writes
+nothing. A 404 means no native build is published; connectivity or permission
+failures are reported separately. Same source and older revisions are explained.
+
+After testing the Windows build, double-click **`Publish-Native.cmd`**. It requires
+Python 3.8+ and Git with your existing push access to the test-channel repository.
+It checks both success markers in `Builds\build.log`, matches the feed to the
+packaged player, verifies every payload/ZIP, prepares a staging preview, and
+shows the local and published identities. Type the displayed `PUBLISH <version>`
+phrase to authorize that exact build, or press Enter to cancel. It rechecks the
+channel after confirmation before staging/committing/pushing. Building alone
+never publishes.
+
+The shortcut uses `Builds\native-channel-checkout`. A clean, behind-only `main`
+is fast-forwarded. Dirty, ahead or divergent checkouts are refused without reset;
+inspect any unfinished commit after a failed push before retrying. Once pushed,
+the tool checks the same public URL the game uses. GitHub cache delay is reported
+as pending feed verification, not a failed push. Use `--status` again if needed.
+Then open the **older installed copy** and choose Check for updates, followed by
+Update and restart. A copy built from the published source will not offer itself.
+
+The native feed is still empty until an accepted compiled build is published.
+The shortcut does not compile Unity or prove a Unity-to-Unity update. Capture the
+actual download/restart, settings/account retention, cancellation, room/match
+install blocking and startup rollback results in DEV_LOG.
+
+### Script interface
+
+To validate and stage without publication:
 
 ```powershell
 python tools/publish_native_update.py --feed Builds/NativeUpdateFeed --channel-checkout C:/ChipArena/native-feed-preview
@@ -44,11 +80,15 @@ python tools/publish_native_update.py --feed Builds/NativeUpdateFeed --channel-c
 ```
 
 The explicit `--publish` command clones the named test-channel repository if
-absent, or requires a clean `main` checkout already at `origin/main`. It validates
+absent, or requires a clean `main` checkout that can fast-forward to `origin/main`. It validates
 all chunks and archive contents, commits only `native/windows-x64`, and pushes
 without force. It retains prior payload objects so a download already underway
 can finish. Never include account credentials in a player. Building and publishing
 new releases remains a developer step; players no longer rebuild or replace files.
+
+The script also accepts `--status`, `--confirm` (with `--publish`) and
+`--build-log Builds/build.log`. The shortcut supplies the latter two guards;
+explicit script callers are responsible for choosing and accepting their build.
 
 ## UI handoff for Claude
 
@@ -121,3 +161,4 @@ not Unity players and are never packaged in the game. Transaction tests also
 cover journal interruption points and malicious/corrupt archives on Windows/Linux.
 GitHub Actions runs these alongside existing native source, managed and relay
 checks. None of these replaces the real Unity build and rendered gameplay test.
+
