@@ -5,7 +5,8 @@ namespace ChipArena.UnityConversion
     public sealed partial class ConversionGame
     {
         // Settings (main.ts settings screen): graphics, camera, controls, audio (volumes apply as they move), effects,
-        // interface scale and the Siren mode key. Save Settings applies quality and writes the preferences.
+        // interface and the Siren mode key. Save Settings applies quality and writes the preferences; Connection report
+        // sits beside it as in the source's actions row (NativeHomeMenu SettingsScreen).
         private void SettingsBody()
         {
             // The Siren mode key comes first and only for pilots who can play the Siren (main.ts settings).
@@ -17,7 +18,9 @@ namespace ChipArena.UnityConversion
             if(nativeAudio!=null){nativeAudio.Effects=Mathf.Clamp01(prefs.audio);nativeAudio.Music=Mathf.Clamp01(prefs.music);nativeAudio.Menu=Mathf.Clamp01(prefs.menuMusic);}
             Field("Effects");prefs.trails=GUILayout.Toggle(prefs.trails,"Projectile trails");prefs.reducedEffects=GUILayout.Toggle(prefs.reducedEffects,"Reduced effects");prefs.cameraShake=GUILayout.Toggle(prefs.cameraShake,"Camera shake");
             GUILayout.Label("Combat glow",small);int glow=prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?1:2;prefs.combatGlow=new[]{"Off","Low","Full"}[ChoiceRow(new[]{"Off","Low","Full"},glow)];
-            Field("Interface");prefs.uiScale=Mathf.Round(Slider("Interface scale",prefs.uiScale>0?prefs.uiScale:1,.75f,1.5f)*20)/20;Fine("Scales every menu and overlay; the canvas follows as you drag.");
+            // The desktop shell's View menu (desktop/main.cjs:47): togglefullscreen beside the zoom roles that Interface scale
+            // stands in for. It applies and saves at once through SetFullscreen.
+            Field("Interface");bool full=GUILayout.Toggle(Fullscreen,"Full screen");if(full!=Fullscreen)SetFullscreen(full);prefs.uiScale=Mathf.Round(Slider("Interface scale",prefs.uiScale>0?prefs.uiScale:1,.75f,1.5f)*20)/20;Fine("Scales every menu and overlay; the canvas follows as you drag.");
             Field("Credits");Fine("Icons: Lucide (ISC licence), from the source client.");
         }
         // .sound-test: Test Sound (13 px .btn with the volume icon) and the status in 12 px mono #aac5ce beside it.

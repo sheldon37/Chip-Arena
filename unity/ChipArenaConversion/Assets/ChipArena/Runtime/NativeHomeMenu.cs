@@ -426,7 +426,7 @@ namespace ChipArena.UnityConversion
         private void SettingsScreen(float age,Action back)
         {
             var l=BeginScreen("CHIP ARENA","Settings",640,age);if(l.Closed){back();return;}
-            ScreenBody(l,SettingsBody);if(ScreenActions(l,("check","Save Settings",true,true))==0)back();
+            ScreenBody(l,SettingsBody);int a=ScreenActions(l,("check","Save Settings",true,true),("activity","Connection report",false,true));if(a==0)back();else if(a==1)OpenConnectionReport();
         }
         private void AccountScreen(float age)
         {
@@ -434,8 +434,7 @@ namespace ChipArena.UnityConversion
             var l=BeginScreen("CHIP ARENA",title,640,age);if(l.Closed){Go(MenuScreen.Home);return;}
             ScreenBody(l,AccountBody);ScreenStatus(l,(account.Status+" "+accountNotice).Trim(),accountNotice.Length>0);
             if(a==null){if(ScreenActions(l,("users",accountAction=="register"?"Create account":accountAction=="recover"?"Reset password":"Log in",true,!account.Busy))==0)AccountSubmit();return;}
-            var items=new List<(string,string,bool,bool)>{("download","Save current pilot",true,!account.Busy)};if(account.Developer)items.Add(("cpu","DEV Menu",false,true));items.Add(("log-out","Log out",false,!account.Busy));
-            int hit=ScreenActions(l,items.ToArray());if(hit==0)SavePilot();else if(hit==1&&account.Developer)Go(MenuScreen.Dev);else if(hit>=1){account.Logout();Go(MenuScreen.Home);Notice("Logged out. Your saved pilot stays on your account.");}
+            AccountActions(l);
         }
         private void DevScreen(float age)
         {
@@ -486,9 +485,12 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- Pause menu ----------------------------------------------------------------------------------------------
-        // main.ts "Match menu" (Escape during a match): the status line, Resume, Settings, the sandbox tools in a sandbox,
-        // Restart offline, Return to Lobby (host; disabled for guests), Return to Main Menu, the control hints; with the
-        // pilot board beside it outside the sandbox. The panel enters once per opening; there is no close X.
+        // main.ts:157 "Match menu" (Escape during a match): the status line, Resume, Connection report, Settings, the
+        // sandbox tools in a sandbox, Restart offline, Return to Lobby, Return to Main Menu, the control hints; with the
+        // pilot board beside it outside the sandbox. Return to Lobby starts the cancellable three-second return
+        // (RequestLobbyReturn) and closes the menu as the source's 'lobby' action does; it is disabled for guests and
+        // while the return runs, whose banner (NativeConnectionReport.cs) shows over this menu. The panel enters once per
+        // opening; there is no close X.
         private void PauseMenu()
         {
             if(inspectSeat!=0)return;MenuStyles();float now=Time.unscaledTime;if(now-menuSeen>.25f)menuScreenAt=now;menuSeen=now;float age=now-menuScreenAt,W=U.W,H=U.H;
@@ -498,13 +500,15 @@ namespace ChipArena.UnityConversion
             if(!arena.Sandbox)Board(W);
             // A guest whose host is gone keeps a frozen replica: say so and offer the way back to Join Room to reclaim the seat.
             bool lost=arena.Replica&&server==null;
-            string status=lost?(networkStatus.Length==0||networkStatus.StartsWith("Disconnected")?"The host disconnected. Return to the main menu, then use Join Room within 90 seconds to reclaim your seat.":networkStatus+" Return to the main menu."):Online?"The online match continues while this menu is open."+(networkStatus.Length>0?" "+networkStatus:""):arena.Pve!=null?"The boss test is paused.":"Local practice is paused.";
+            bool returning=LobbyReturnSeconds>0;
+            string status=lost?(networkStatus.Length==0||networkStatus.StartsWith("Disconnected")?"The host disconnected. Return to the main menu, then use Join Room within 90 seconds to reclaim your seat.":networkStatus+" Return to the main menu."):Online?"The online match continues while this menu is open."+(networkStatus.Length>0?" "+networkStatus:""):returning?"The return countdown continues while this menu is open.":arena.Pve!=null?"The boss test is paused.":"Local practice is paused.";
             var items=new List<(string icon,string label,bool primary,bool enabled,Action act)>();if(!lost)items.Add(("play","Resume",true,true,()=>menu=false));
+            items.Add(("activity","Connection report",false,true,OpenConnectionReport));
             items.Add(("settings","Settings",false,true,()=>{pauseScreen=PauseScreen.Settings;menuScreenAt=Time.unscaledTime;screenScroll=Vector2.zero;screenContent=400;}));
             if(arena.Sandbox&&account.Developer&&!Online)items.Add(("flask-conical","Sandbox Tools",false,true,()=>{pauseScreen=PauseScreen.Sandbox;menuScreenAt=Time.unscaledTime;screenScroll=Vector2.zero;screenContent=400;}));
             if(!Online&&!lost)items.Add(("rotate-cw","Restart Match",false,true,StartMatch));
-            if(Online)items.Add(("undo-2","Return to Lobby",false,Hosting,ReturnToLobby));
-            items.Add(("log-out","Return to Main Menu",lost,true,()=>{if(Online)LeaveRoom();else{if(lost)afterMatch=MenuScreen.Join;ReturnToLobby();}}));
+            if(!lost)items.Add(("undo-2","Return to Lobby",false,(Hosting||!Online)&&!returning,()=>{if(!Online)afterMatch=OfflineLobby();RequestLobbyReturn();menu=false;}));
+            items.Add(("log-out","Return to Main Menu",lost,true,()=>{if(Online)LeaveRoom();else{afterMatch=lost?MenuScreen.Join:MenuScreen.Home;ReturnToLobby();}}));
             string hints="WASD move · double-tap W sprint · LMB fire / attack · RMB block · Q / E abilities · R reload · Shift roll · Space jump · V camera · Tab lock-on / board · G scores · Esc menu";
             string diag=content.Map(arena.MapId).name+"  ·  SET "+match.Set+" · ROUND "+match.Round+"  ·  "+match.Phase+"  ·  "+arena.Bullets.Count+" projectiles  ·  step "+stepMs.ToString("0.00")+" ms  ·  "+presentation.RenderingMode;
             float pw=Mathf.Min(520,W-56),iw=pw-64;var statusLines=U.Wrap(status,16,iw);var hintLines=U.Wrap(hints,13,iw);var diagLines=MonoLines(diag,11,iw);bool guest=Online&&!Hosting;
@@ -512,8 +516,9 @@ namespace ChipArena.UnityConversion
             var p=new Rect(arena.Sandbox?(W-pw)/2:Mathf.Max(28,W*.05f),Mathf.Max(80,(H-ph)/2)+10*(1-e),pw,ph);U.Panel(p,e);
             U.Text(new Rect(p.x+32,p.y+30,iw,16),"CHIP ARENA",12,U.Hex(0xc0c1ca,e),TextAnchor.MiddleLeft,bold:true,tracking:.2f);U.Text(new Rect(p.x+32,p.y+52,iw,38),"Match menu",30,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true,tracking:-.03f);
             float y=p.y+108;foreach(var s in statusLines){U.Text(new Rect(p.x+32,y,iw,16*1.6f),s,16,U.Hex(0xbfc0c9,e),TextAnchor.MiddleLeft);y+=16*1.6f;}y+=16;
-            Action chosen=null;for(int i=0;i<items.Count;i++){float be=In(age,i*.03f,.3f);var r=new Rect(p.x+32,y,iw,48);U.Push(r.center,new Vector2(0,8*(1-be)));if(MenuButton(r,items[i].icon,items[i].label,null,items[i].primary,items[i].enabled,e*be))chosen=items[i].act;U.Pop();y+=56;}y-=8;
-            if(guest){U.Text(new Rect(p.x+32,y+4,iw,18),"The host can return everyone to the lobby.",13,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);y+=24;}y+=20;
+            // A guest's note sits under Return to Lobby, as in the source's menu list.
+            Action chosen=null;for(int i=0;i<items.Count;i++){float be=In(age,i*.03f,.3f);var r=new Rect(p.x+32,y,iw,48);U.Push(r.center,new Vector2(0,8*(1-be)));if(MenuButton(r,items[i].icon,items[i].label,null,items[i].primary,items[i].enabled,e*be))chosen=items[i].act;U.Pop();y+=56;
+                if(guest&&items[i].label=="Return to Lobby"){U.Text(new Rect(p.x+32,y-4,iw,18),"The host can return everyone to the lobby.",13,U.Hex(0xa6a7ad,e*be),TextAnchor.MiddleLeft);y+=24;}}y-=8;y+=20;
             foreach(var s in hintLines){U.Text(new Rect(p.x+32,y,iw,13*1.55f),s,13,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);y+=13*1.55f;}y+=8;
             foreach(var s in diagLines){U.Text(new Rect(p.x+32,y,iw,16),s,11,U.Hex(0x7c7d86,e),TextAnchor.MiddleLeft,mono:true);y+=16;}
             if(chosen!=null){pauseScreen=PauseScreen.Menu;chosen();}

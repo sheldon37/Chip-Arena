@@ -266,6 +266,7 @@ namespace ChipArena.UnityConversion
             Field("Draft rules");prefs.bothDraft=GUILayout.Toggle(prefs.bothDraft,"All players draft");Fine(prefs.bothDraft?"Everyone drafts after each set.":"Otherwise the set's losers draft.");
             GUILayout.Label("Chip choices per draft: "+prefs.choices,label);prefs.choices=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.choices,1,12));GUILayout.Label("Chip selection timer: "+prefs.selectionSeconds+"s",label);prefs.selectionSeconds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.selectionSeconds,5,120));
             Fine(prefs.choices+" choices per draft · "+prefs.selectionSeconds+"s to pick · "+(prefs.bothDraft?"All players draft":"Set losers draft")+" · Intros on");
+            ConnectionReportButton();
             AdvancedEnd();
         }
         // Boss Test (pve/menu.ts testBossBody): party bots, the skip to the Siren, and the weapon (picked under the roster
@@ -279,6 +280,7 @@ namespace ChipArena.UnityConversion
                 Field("Party bots");GUILayout.Label(prefs.bots==1?"1 party bot":prefs.bots+" party bots",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(Mathf.Clamp(prefs.bots,0,3),0,3));
                 Fine("Friends who join take party slots; bots fill the rest (up to 4).");prefs.mirrorWeapons=GUILayout.Toggle(prefs.mirrorWeapons,"Party bots use my weapon");prefs.skipWaves=GUILayout.Toggle(prefs.skipWaves,"Start at the Siren");
                 Fine("Earn money from minions for chips, heals, revives and recruits. F interacts · C opens your chips.");
+                ConnectionReportButton();
                 AdvancedEnd();return;
             }
             Field("Party bots");GUILayout.Label(prefs.bots==1?"1 party bot":prefs.bots+" party bots",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(Mathf.Clamp(prefs.bots,0,3),0,3));
