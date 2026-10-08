@@ -30,7 +30,8 @@ class CinematicChecks(unittest.TestCase):
                 self.assertTrue(-1<=section['texture']<len(self.textures),model['id'])
     def test_complete_geometry_and_tracks(self):
         self.assertEqual(len(self.clips),31)
-        self.assertEqual(len(self.models),133)
+        # 133 source models plus the six Ward Zero beacon beams exported as moving parts.
+        self.assertEqual(len(self.models),139)
         for key,c in self.clips.items():
             self.assertIn(key,self.models)
             self.assertEqual(len(c['values']),c['frames']*c['tracks']*20,key)
@@ -44,6 +45,25 @@ class CinematicChecks(unittest.TestCase):
                 self.assertTrue(any(abs(v)>.00001 for v in s['positions']),key+' collapsed mesh')
                 self.assertTrue(all(math.isfinite(v) for v in s['positions']+s['normals']),key)
             self.assertIn(len(c['victim']),(0,22),key)
+    def test_ward_zero_bakes_a_rendered_frame(self):
+        # The hall is baked from its first source update: the gallery crowd stands in place (not stacked at the origin),
+        # zero-scale instances are dropped, and glows carry their intensity instead of full brightness.
+        sections=self.models['map-siren']['sections'];positions=[s['positions'] for s in sections]
+        origin=sum(1 for p in positions for i in range(0,len(p),3) if abs(p[i])<1 and abs(p[i+2])<1 and 0<=p[i+1]<=2.5)
+        self.assertLess(origin,8)
+        self.assertFalse(any(max(s['emission'][i:i+3])>.9 for s in sections for i in range(0,len(s['emission']),4)))
+        ward=json.loads((ROOT/'Assets/Conversion/Resources/WardMotion.json').read_text())['parts']
+        beams=[p for p in ward if p['kind']=='beam']
+        self.assertEqual(len(beams),6)
+        for p in beams:self.assertTrue(self.models[p['id']]['sections'][0]['transparent'])
+    def test_stage_hazard_parts(self):
+        hazards={m['id']:m for m in resource('HazardModels')['models']}
+        self.assertEqual(set(hazards),{'hazard-'+n for n in ('saw','saw-track','spikes','spikes-cones','spikes-surface','lava','lava-surface','lava-currents','lava-bubble-0','lava-bubble-1')})
+        for m in hazards.values():
+            self.assertTrue(m['sections']and all(s['texture']==-1 for s in m['sections']),m['id'])
+        # Animated glows are exported as unit white; presentation supplies the source colour and intensity.
+        for id in ('hazard-spikes-surface','hazard-lava-surface'):
+            e=hazards[id]['sections'][0]['emission'];self.assertTrue(all(abs(e[i]-1)<1e-6 for i in range(0,len(e),4)),id)
     def test_clown_drop_and_victim(self):
         c=self.clips['death-dev-clown']
         def opacity(track,t):return c['values'][(track*c['frames']+round(t/c['duration']*(c['frames']-1)))*20+16]
