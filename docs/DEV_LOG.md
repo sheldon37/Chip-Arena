@@ -16,6 +16,21 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-08 — Claude — C11 weapon presentation in Unity (plus the C7 muzzle flash)
+- Branch `claude/wip-c11` (local, not pushed), base `claude/sleepy-ritchie-g8ruhv` `81939f9` (PR #62 head). Presentation only.
+- `Core/NativeWeaponDressing.cs` is a pure port of the pinned source (05950ea). It covers the client/melee-trails.ts sweep: the window, ribbon identity, 3/1 sub-samples slerped about the grip, the 16-sweep and 48-sample caps, the per-weapon life (x.7 reduced) and the glow formula. It also covers weapon-visuals.ts chip modules (all 17 kinds, the orb bob and coil spin), fire/poison enchants, the muzzle flash and three r180's four primitives.
+- `Runtime/NativeWeaponPresentation.cs` draws them through the source-model batches (`Runtime/NativeSourcePrimitives.cs`: NativeSourceLit glow/lit pieces; glow pieces cast no shadow). The ribbons use one dynamic NativeGlow mesh. Melee weapons stretch along +z by stats.reach, blade, modules, enchant and tip together.
+- Hooks: SourceCharacter (weapon bone + dressing), the Render loop, ResetPresentation/OnDestroy, the thrown-weapon loop, and the loadout arena set before Render (ConversionGame, killcam replay).
+- First person: modules at half size, hidden past half ADS. Enchant on both view daggers; flash on the view gun. The hidden body rig is posed, not drawn, so the pilot's own world sweep shows as in the source. Guests draw from replicated actors, seat chips and recomputed stats.
+- Settings: sweeps follow Projectile trails and Reduced effects only, as in the source; the Unity-only Combat glow setting does not hide them.
+- No change to hit timing, hitboxes, damage, cooldowns, movement, networking or the event model; meshes never define reach or hit volumes (weapon-visuals.ts:20).
+- Slide recoil not added: the source never moves the pistol slide (its voxel part is unnamed, so ranged-motion.ts:222 finds nothing; checked with tsx). The visible gun kick is the hand recoil RangedPose already ports.
+- Checks: Unity runtime+editor compile OK; check_relay OK (new WeaponPresentationChecks against `tools/export_weapon_fixtures.mjs` -> `Tests/weapon-presentation-parity.json`; 7 deliberate Core mutations caught); 24 Python tests OK; package_source OK. Voxel renders of modules, enchants, flashes and ribbons through the fxref harness match the source data.
+- Not run: Unity import, GPU rendering, a hosted or joined match, the Windows player, performance.
+- Needs Astra: a per-hit fighter timestamp on Actor (e.g. `Actor.LastAttack = p.LastAttack` in NativeArena.Snapshot, replicated with the snapshot) so every Emperor/Ansatsuken punch sweeps; until then only the first punch of an action does.
+- Risks: the reach-stretched greatsword is not known to MeleeClearance (check reach 2.0 and Hurricane cuts on the floor). Glow pieces read a little brighter than the source without ACES (C19). The Siren stays bare: the source would draw modules and flames on its empty weapon socket.
+- Status: implemented on branch; not merged; not released.
+
 
 
 

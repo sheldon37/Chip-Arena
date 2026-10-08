@@ -116,6 +116,7 @@ namespace ChipArena.UnityConversion
             foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear();
             foreach(var o in debris) if(o!=null) Destroy(o); debris.Clear();
             foreach(var o in coverObjects) if(o!=null) Destroy(o); coverObjects.Clear();
+            ClearWeaponPresentation();
         }
         public Vector3 Position(Actor actor) { Vector3 p; return visualPositions.TryGetValue(actor.Id,out p)?p:Vec(actor.Position); }
         public void Render(Snapshot s, float renderTime, bool smooth)
@@ -132,6 +133,7 @@ namespace ChipArena.UnityConversion
                 if(!visualPositions.TryGetValue(a.Id,out old)||(old-target).sqrMagnitude>64) old=target;
                 Vector3 p=smooth?Vector3.Lerp(old,target,1-Mathf.Exp(-18*Time.unscaledDeltaTime)):target;
                 visualPositions[a.Id]=p;
+                if(FirstPerson&&a.Id==LocalId&&a.Alive)HiddenSweep(a,p,renderTime);
                 if(!a.Alive||(FirstPerson&&a.Id==LocalId)) continue;
                 int color=a.Bot?2:a.Id-1;
                 if(renderTime<a.FlashUntil) color=4;
@@ -139,6 +141,7 @@ namespace ChipArena.UnityConversion
                 else Pose(a,p,renderTime,color);
             }
             animationTimer.Stop(); AnimationMs=animationTimer.Elapsed.TotalMilliseconds;
+            RenderMeleeTrails(renderTime);
             foreach(Shot p in s.Shots)
             {
                 if(GunRules.Ranged(p.Weapon)) Add(11,Matrix4x4.TRS(Vec(p.Position),Quaternion.LookRotation(Vec(p.Velocity)),new Vector3(.04f,.04f,Mathf.Clamp(p.Velocity.Length*.01f,.25f,1.5f))));
@@ -304,6 +307,7 @@ namespace ChipArena.UnityConversion
             foreach(var m in materials) CapturedAnimation.Release(m);
             foreach(var m in compatibilityMaterials) CapturedAnimation.Release(m);
             if(particleMaterial!=null) CapturedAnimation.Release(particleMaterial);
+            DisposeWeaponPresentation();
         }
     }
 }

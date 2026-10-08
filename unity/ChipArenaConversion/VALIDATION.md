@@ -2,6 +2,11 @@
 
 No native Unity playtest or Windows executable build was run in the authoring workspace.
 
+## Weapon presentation, C11 (2026-10-08, `claude/wip-c11`)
+
+- Runtime and Editor assemblies compile against the real Unity 6000.3.24f1 managed DLLs. `tools/check_relay.py` passes; the new WeaponPresentationChecks compare against `tools/export_weapon_fixtures.mjs <source checkout> <temp>` (writes `Tests/weapon-presentation-parity.json` from the pinned weapon-visuals.ts, melee-trails.ts, attackPose and three r180). They cover 195 primitive vertices, 292 module pieces over 34 loadouts (and the native stats on every key the modules read), 306 enchant pieces, 81 muzzle-flash frames, 4,432 sweep-window samples, and 94 ribbons over 79 frames, including the 16-sweep and 48-sample caps, reduced quality, a frame gap, time running backwards and trails switched off. Seven deliberate mutations of the Core rules were each caught. 24 Python tests pass; `tools/package_source.py` passes.
+- **Not run:** Unity import, rendering on a GPU, the effects in a hosted or joined match, first person in the player, frame-time cost on the owner's PC.
+
 ## Melee runtime, presentation polish and updater integration (2026-10-08, `claude/sleepy-ritchie-g8ruhv`)
 
 Run in the Linux authoring workspace on the combined tree (updater merge `d185be4` and later):
