@@ -132,6 +132,7 @@ namespace ChipArena.UnityConversion
                 if(e.kind!="throw"&&Physics.Raycast(point+Vector3.up*.08f,Vector3.down,out var ground,40,NativeArena.WorldMask))point=ground.point;
                 preview=point;
             }
+            presentation.EffectsQuality=prefs.reducedEffects?.3f:1;
             presentation.RenderAbilities(arena,preview);presentation.RenderStatus(arena,cameraView,prefs.reducedEffects?.3f:1);
             presentation.GlowQuality=prefs.reducedEffects?.3f:prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?.4f:1;presentation.BlastQuality=prefs.reducedEffects?.3f:1;presentation.RenderGlow(arena,cameraView,menu&&!Online);presentation.FinishSourceFrame();
         }
@@ -214,6 +215,7 @@ namespace ChipArena.UnityConversion
             if(previewArena==null&&PvePickScreen){PveChipScreen();return;}
             if(previewArena==null&&SirenRevealActive){SirenReveal();return;}
             CombatWorldHud(scale,width,height);
+            PveBeaconHud();
             if(arena!=null&&!menu&&match.Phase==NativePhase.Fight&&presentation.ScopeActive)DrawScope(width,height);
             if(previewArena!=null){PreviewHud(width,height);return;}
             if(arena!=null)

@@ -27,7 +27,7 @@ internal static class Program
             foreach(var result in LoadoutChecks.Run(data))Console.WriteLine("PASS "+result);
             NativeSystemsChecks.Run(root,data);WoundCarveChecks.Run(root);CollapseChecks.Run(root);ExtraPresentationChecks.Run(root);BlastChecks.Run(root);
             foreach(var result in FirstPersonSwayChecks.Run(root,data))Console.WriteLine("PASS "+result);
-            StatusVisualChecks.Run(root);
+            StatusVisualChecks.Run(root);GoreBeaconChecks.Run(root);GoreHitChecks.Run();
             var tests = RegressionTests.Run(); tests.AddRange(RangedRegressionTests.Run());
             foreach (string test in tests) Console.WriteLine("PASS " + test);
             Console.WriteLine(tests.Count + " managed-core checks passed. Unity Editor/rendering/PhysX and Windows build NOT exercised.");
