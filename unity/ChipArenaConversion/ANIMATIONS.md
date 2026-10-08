@@ -63,10 +63,12 @@ No GameObject colliders or authoritative root motion are added to characters.
 The compact capture channels, source marks/pace keys and primary rig dimensions are preserved.
 The rig uses the source's plain-box detail level. Sculpted armor bevels, cosmetics, production maps,
 material glow, melee trails, first-person arms, Q/E abilities, death animations and the full catalog remain outside this update.
-The viewer uses captured legs; live travel uses a smaller procedural foot-placement layer, not the complete
-production planted-foot state machine/attack footwork. Body-shell floor correction and a final blade-tip floor guard
-are included. The original full blade/body-clearance solver and recovery wrist limiter are not ported,
-so tight shoulder/head carries and transitional clipping need visual review. Shield has no stagger capture.
+The viewer uses captured legs. Since commit 1c0f257 live melee runs the original runtime layer (`Core/Melee*.cs`):
+travel-aware gait feet, cut footwork planted against the authoritative step, blade clearance against the voxel
+shoulders/chest/head, chest-space recoveries and the daggers' wrist limiter, with a per-weapon floor guard;
+`Tests/MeleeMotionChecks.cs` matches 872 recorded frames of the pinned original within 1.73 mm. Visual review on
+Windows is still needed for tight carries and transitions. Shield has no stagger capture and keeps its captured guard
+through a stun.
 
 ## Implementation and reproduction
 
