@@ -67,6 +67,7 @@ namespace ChipArena.UnityConversion
             if(prefs.pve)arena.ConfigurePve(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text),prefs.skipWaves);
             if(dedicated){menu=false;return;}generation=arena.Generation;visualClock.Reset(match.Time);pending=new InputFrame();yaw=arena.Local.Yaw;pitch=12;sprint=false;menu=false;NativeLighting.Apply(content.Map(prefs.map),cameraView);
         }
+        private float shakeAmount;private int shakeEvent;
         private void Update()
         {
             if(content==null)return;if(dedicated){DedicatedTick();return;}if(cameraView==null)return;NetworkTick();
@@ -113,7 +114,10 @@ namespace ChipArena.UnityConversion
                 var ability=content.Ability(p.Seat.spec,pending.AbilityEHeld||pending.AbilityE||pending.AbilityEReleased?"e":"q");
                 pending.AbilityTarget=NativeArena.Vec(AimPoint(ability!=null?(float)ability.range:p.Seat.spec=="shield"?25:p.Seat.spec=="daggers"?48:60,p.Seat.spec=="shield"||p.Seat.spec=="daggers"));
             }
-            if(prefs.cameraShake&&play){float force=0;foreach(var e in arena.Events)if(e.Target==p.Seat.id&&(e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot))force=Math.Max(force,Mathf.Clamp01(1-(arena.Time-e.Time)/.18f)*Math.Min(.08f,e.Amount*.002f));cameraView.transform.position+=cameraView.transform.right*(Mathf.Sin(Time.unscaledTime*91)*force)+cameraView.transform.up*(Mathf.Sin(Time.unscaledTime*113)*force*.7f);}
+            // renderer.ts camera shake: a hit, headshot, block or parry aimed at the local pilot sets .12, which decays by 1 per
+            // second while each frame nudges the camera's world X by a random ±half of it (Settings · camera shake).
+            if(play){int newest=0;foreach(var e in arena.Events){newest=Math.Max(newest,e.Id);if(e.Id>shakeEvent&&e.Target==p.Seat.id&&(e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot||e.Kind==EventKind.Block)&&prefs.cameraShake)shakeAmount=.12f;}shakeEvent=newest<shakeEvent?newest:Math.Max(shakeEvent,newest);}
+            if(shakeAmount>0){cameraView.transform.position+=Vector3.right*((UnityEngine.Random.value-.5f)*shakeAmount);shakeAmount=Math.Max(0,shakeAmount-Time.deltaTime);}
             presentation.SoundEnabled=false;presentation.LocalId=arena.ViewPilot.Seat.id;
             float renderTime=visualClock.Sample(match.Time,Time.timeAsDouble-Time.fixedTimeAsDouble,menu);
             presentation.Render(arena.Snapshot(true),renderTime,false);
