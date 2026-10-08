@@ -84,7 +84,13 @@ namespace ChipArena.UnityConversion
                 var f=p.Fighter;if(f?.LastHit>0&&t-f.LastHit<.15f&&Once(id+"fighter",f.LastHit))Play(f.Kind=="electric"?"electric-hook-hit":f.Kind=="tatsu"?"arcade-kick":f.Index==f.Total-1?"arcade-heavy":"arcade-punch",pos,.9f);
             }
             int n=match.Phase==NativePhase.Countdown?(int)Math.Ceiling(match.PhaseEnd-match.Time):0;if(n>0&&n!=countdown)Play("countdown",null,.7f);countdown=n;
-            string current=match.Phase.ToString();if(current!=phase){if(match.Phase==NativePhase.Fight)Play("go",null,.7f);if(match.Phase==NativePhase.Result||match.Phase==NativePhase.Match&&phase!="Result")Play(arena.Pve!=null?arena.Pve.Outcome=="victory"?"win":"lose":match.SameSide(me?.Seat,match.Seat(match.Winner))?"win":"lose",null,.65f);phase=current;}
+            string current=match.Phase.ToString();if(current!=phase){if(match.Phase==NativePhase.Fight)Play("go",null,.7f);if((match.Phase==NativePhase.Result||match.Phase==NativePhase.Match&&phase!="Result")&&(match.Winner!=0||arena.Pve?.Outcome!=null))Play(arena.Pve!=null?arena.Pve.Outcome=="victory"?"win":"lose":match.SameSide(me?.Seat,match.Seat(match.Winner))?"win":"lose",null,.65f);phase=current;}
+            // audio.ts PvE stage cues: a wave start counts in, a clear / possession / my respawn sounds "go".
+            var stage=arena.Pve;if(stage!=null&&!stage.Holding)
+            {
+                if(stage.Stage=="wave"&&Once("pve-wave",stage.Wave))Play("countdown",null,.6f);else if(stage.Stage=="intermission"&&stage.Wave>0&&Once("pve-clear",stage.Wave))Play("go",null,.6f);
+                if(stage.Stage=="boss"&&stage.Phase==2&&stage.Hidden&&Once("pve-possess",stage.Phase))Play("go",null,.5f);if(me!=null&&me.RevivedAt>0&&t-me.RevivedAt<.5f&&Once("pve-revive",me.RevivedAt))Play("go",null,.6f);
+            }
             if(cues.Count>1024)cues.Clear();
         }
     }
