@@ -19,6 +19,12 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+
+## 2026-10-08 — Codex — updater Editor compression-name compile fix
+- Continue `codex/unity-updater` / PR #61 from `ba936a86b54bfcac7aee93680148196e78ab59ea`. Owner's Unity 6000.3.24f1 Windows build log (01:55 UTC) reports three CS0104 errors in `NativeUpdateBuild.cs`: both UnityEngine and System.IO.Compression define CompressionLevel. The Editor-target runtime assembly compiled; the Editor assembly failed before any native build gates or player build ran.
+- Add an explicit alias to System.IO.Compression.CompressionLevel for all three ZIP packaging calls. No runtime, animation, gameplay or network changes. Refresh the full source package and provide the single-file build patch. The shared Windows launcher tests did not compile the Unity Editor packager, which is why preceding CI missed this error.
+- Local package/source checks pass; existing branch CI runs for this correction. Actual corrected Unity Editor compilation and Windows player build remain unrun here. Next: replace `Assets/ChipArena/Editor/NativeUpdateBuild.cs` in the owner's project and rerun `Build-Windows.cmd`. No merge or native feed publication.
+
 ## 2026-10-08 — Codex — native Unity update button and rollback launcher
 - Isolated `codex/unity-updater`, based on repair `c2cb7fda9c7a0e04f856dcfdc381d9eef9fac4a3` (PR #59); implementation checkpoints `4be166e` and `5d657a1`. No animation, combat timing, hitbox, damage, cooldown, movement or gameplay-network changes. Claude's melee/visual branch remains independent.
 - Added a menu update service with bounded HTTPS downloads, progress/cancel/error states, SHA-256 and version/product checks. A .NET Framework 4.8 launcher stages and swaps `app/`, waits for the requesting player, verifies startup, and rolls back or recovers interrupted directory swaps. Preferences/account data stay outside the replaced folder; stable top-level EXE preserves shortcuts.

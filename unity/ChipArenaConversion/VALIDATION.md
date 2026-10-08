@@ -224,3 +224,14 @@ an actual Unity-to-Unity update are still required. The source package contains
 no executable and no compiled native feed has been published. Existing genuine
 Unity compilation results elsewhere in this document predate this updater.
 See `Updater/README.md` for release steps and the Claude UI integration contract.
+
+
+### Owner build follow-up: Editor packaging compile repair
+
+The owner's October 8 01:55 UTC Unity 6000.3.24f1 log shows successful
+Editor-target runtime script compilation, then three CS0104 errors for the
+ambiguous `CompressionLevel` name in `NativeUpdateBuild.cs`. An explicit
+`System.IO.Compression.CompressionLevel` alias fixes those three references.
+The corrected Editor assembly and Windows player have not been built here;
+the owner must rerun `Build-Windows.cmd`. Launcher CI does not compile Unity
+Editor packaging code and therefore did not catch this collision.

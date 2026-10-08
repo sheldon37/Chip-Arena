@@ -1,4 +1,0 @@
-/** Original vector brushwork and headband motif; no external sprite dependency. */
-export const warriorSeal=()=>`<svg viewBox="0 0 100 100" aria-hidden="true" class="warrior-seal"><path d="M26 23L76 19L74 28L25 31ZM13 42L89 36L86 46L12 51ZM48 29L58 28Q57 76 18 94L10 86Q47 67 48 29ZM56 48Q68 70 92 81L88 94Q61 83 50 60Z" fill="currentColor"/></svg>`;
-export function fightingAura(){return `<span class="fighting-aura" aria-hidden="true">${warriorSeal()}<i class="red-headband"></i><i class="ki-ring"></i><i class="ki-ring second"></i><span class="dojo-grid"></span></span>`;}
-export function fightingCinematic(){return `<div class="fighting-cinema" aria-hidden="true"><div class="dojo-sun">${warriorSeal()}</div><i class="cinema-slash slash-one"></i><i class="cinema-slash slash-two"></i><span class="fight-word">AWAKEN</span><div class="cinema-embers">${Array.from({length:20},(_,i)=>`<i style="--n:${i};--angle:${i*18}deg"></i>`).join('')}</div></div>`;}

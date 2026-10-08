@@ -1,9 +1,0 @@
-# Block stun and world-space death broadcasts
-
-Timed melee blocks now interrupt the attacker and apply a strength-dependent stun. The authority uses outgoing attack damage and physical impulse (including their base stat multipliers) before defender mitigation. Duration is clamped to 0.25–0.95 seconds, independent of attack speed. Base dagger, sword, shield and greatsword hits cause approximately 0.32, 0.50, 0.52 and 0.74 seconds respectively. Existing stronger stun is never shortened. Recoil is reduced to give the defender an opening to counterattack; block-force upgrades and Counter Pulse still work.
-
-The interruption cancels normal sweeps, chip follow-up swings, melee specials and both dev combo queues immediately, including catch-up strikes within the same tick. Movement, jump, dash, wavedash, attack and block inputs remain locked until recovery. Shared snapshots and local movement prediction reuse the authoritative hit-stun timestamp. Projectile blocks, including thrown daggers, returning shields and dev ranged echoes, never stun their distant owner.
-
-Death fireworks and portraits now have fixed world positions above the northern skyline, centered at height 72 and depth -115. Portraits are over 40 world units tall. Up to three separated slots stay fixed throughout each broadcast; neither looking around, moving nor scoping repositions or resizes them. Geometry respects scene depth so roofs and buildings can occlude it. A player name and kill/suicide announcement appear beneath the sky portrait. The existing discreet kill log and death audio remain.
-
-Validation: 74 focused combat, block, recovery, multiplayer movement, presentation and ragdoll tests passed; TypeScript passed. Production build and update package verification are included in publishing. Offline Three.js views from the ground, a rooftop, a side angle and facing away confirmed sky placement. Browser playtesting was unavailable.

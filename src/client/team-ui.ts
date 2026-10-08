@@ -1,6 +1,0 @@
-import {TEAMS,type TeamId} from '../shared/teams.js';
-import type {PlayerView} from '../shared/simulation.js';
-const escape=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
-export function teamOptions(selected:TeamId='red'){return Object.entries(TEAMS).map(([id,t])=>`<option value="${id}" ${id===selected?'selected':''}>${t.name}</option>`).join('');}
-export function teamPicker(player:PlayerView,editable:boolean){const team=player.team||'red';return `<label class="team-assignment" style="--team-color:${TEAMS[team].color}"><span><i aria-hidden="true"></i>Team</span><select data-player-team="${escape(player.id)}" aria-label="${escape(player.name)} team" ${editable?'':'disabled'}>${teamOptions(team)}</select></label>`;}
-export function practiceTeamSetup(count:number,own:TeamId,bots:TeamId[]){return `<section class="team-setup"><div class="section-title"><h2>Teams</h2><span>8 colors available</span></div><label class="settings-row">Your team <select id="practice-team">${teamOptions(own)}</select></label>${Array.from({length:count},(_,i)=>`<label class="settings-row">Bot ${i+1} team <select data-bot-team="${i}">${teamOptions(bots[i])}</select></label>`).join('')}<p class="fine">Choose at least two different teams. Teammates share round and set wins.</p></section>`;}

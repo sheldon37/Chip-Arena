@@ -1,8 +1,0 @@
-node_modules
-.git
-.env
-.dev-logs
-.sites-runtime
-dist
-server-dist
-*.tar.gz

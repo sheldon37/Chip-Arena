@@ -145,3 +145,7 @@ the Unity project for integration and release instructions. Source/managed and
 Windows helper verification are recorded in DEV_LOG. A real Unity Windows build
 and update acceptance remain required before publishing the native test feed.
 Players need one starter installation to acquire the updater. Not merged/released.
+
+Owner build follow-up: the October 8 01:55 UTC log exposed a Unity/.NET
+`CompressionLevel` name collision in the updater Editor packager. PR #61 now
+explicitly selects the .NET ZIP enum; the corrected native build must be rerun.
