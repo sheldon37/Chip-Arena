@@ -95,9 +95,37 @@ namespace ChipArena.UnityConversion
                     }
                 }
                 Debug.Log("PASS native first-person repeat-frame playback: magic, rocket and melee-special poses remain stable between fixed ticks.");
+                ValidateMelee(parent);
                 Debug.Log("PASS native animation playback: "+count+" poses / "+ClipCount+" clips; position and quaternion bindings match the source conversion.");
             }
             finally { rig.Dispose(); Release(parent); }
+        }
+        // Captured melee through the native boundary (mirroring, root yaw and travel): a sword cut with its authoritative step
+        // keeps the planted lead foot still in the world from contact until it steps home, the ankles and blade tip above
+        // the floor and every bone finite. The Core port itself is checked against the source in Tests/MeleeMotionChecks.cs.
+        private void ValidateMelee(GameObject parent)
+        {
+            using(var rig=Create(parent.transform,-3))
+            {
+                const float at=2,windup=.14f,active=.16f,yaw=30,distance=.65f;
+                var a=new Actor{Id=7,SourceSpec="sword",Weapon=WeaponId.Sword,Grounded=true,CastRate=1,Yaw=yaw,Combo=0,AttackAt=at,AttackUntil=at+.72f,VisualWindup=windup,VisualActive=active,VisualDuration=.72f,
+                    SwingAt=at+windup,SwingUntil=at+windup+active,CommitAt=at,CommitUntil=at+.72f,CommitYaw=yaw,StepAt=at+windup*.55f,StepUntil=at+windup+active*.8f,StepDistance=distance};
+                Vector3 forward=Quaternion.Euler(0,yaw,0)*Vector3.forward,planted=Vector3.zero;bool hasPlant=false;float drift=0,lowest=float.MaxValue,lowTip=float.MaxValue;
+                for(int f=0;f<=96;f++)
+                {
+                    float t=1.4f+f/60f,travel=distance*MathUtil.Smooth((t-a.StepAt)/(a.StepUntil-a.StepAt));rig.ActorPose(a,forward*travel,t);
+                    foreach(var b in rig.Bones)if(float.IsNaN(b.position.x)||float.IsInfinity(b.position.y)||b.position.magnitude>20)throw new InvalidOperationException("Captured melee produced a non-finite bone: "+b.name);
+                    lowest=Mathf.Min(lowest,Mathf.Min(rig.Bones[CapturedRig.LFoot].position.y,rig.Bones[CapturedRig.RFoot].position.y));
+                    lowTip=Mathf.Min(lowTip,rig.Bones[CapturedRig.RHand].TransformPoint(0,0,1.28f).y);
+                    // The first cut leads with the left foot: world-fixed from its plant (65% of the contact) to its step home.
+                    Vector3 lead=rig.Bones[CapturedRig.LFoot].position;
+                    if(t>=at+windup+active*.7f&&t<=at+windup+active+.06f){if(!hasPlant){planted=lead;hasPlant=true;}drift=Mathf.Max(drift,Vector3.Distance(new Vector3(lead.x,0,lead.z),new Vector3(planted.x,0,planted.z)));}
+                }
+                if(drift>.015f)throw new InvalidOperationException("Captured melee lead foot skated "+(drift*100).ToString("0.0")+" cm while planted");
+                if(lowest<.07f-.006f)throw new InvalidOperationException("Captured melee ankle dropped through the floor: "+lowest.ToString("0.000"));
+                if(lowTip<.085f-.01f)throw new InvalidOperationException("Captured melee blade tip went through the floor: "+lowTip.ToString("0.000"));
+                Debug.Log("PASS native captured melee: sword cut with step travel, planted lead foot drift "+(drift*1000).ToString("0.0")+" mm, ankles and blade above the floor");
+            }
         }
         public Player Create(Transform parent,int id) => new Player(this,parent,id);
         public sealed class Player : IDisposable
