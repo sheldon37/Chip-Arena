@@ -163,3 +163,5 @@ the Windows Unity build, rendered acceptance and an actual in-game update remain
 The Unity menu is now the source home screen with panel screens and a pause menu (`NativeHomeMenu.cs`);
 the update card opens from the home Update Game pill. Offline renders of the real drawing code pass;
 a Unity playtest of every screen (including a two-player room) is the next step.
+Owner direction (2026-10-08): all future game changes target the Unity Chip Arena; Astra
+handles logic and programming, Claude handles visuals (AGENTS.md).

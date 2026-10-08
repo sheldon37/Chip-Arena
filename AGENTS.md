@@ -68,6 +68,12 @@ Update channel unless the owner says otherwise. No per-update publication
 confirmation is required. Follow DEVELOPMENT.md and record actual verification
 and publication results. This does not authorize automatic merges, live-feed or
 Site releases, or bypassing verification.
+Owner direction (2026-10-08): all game changes going forward go into the Unity
+Chip Arena (`unity/ChipArenaConversion`). Do not add new features to the Electron
+game; keep its existing runtime, hosting, accounts and updater working as above.
+Until the owner names a shared Unity base branch, build on the newest Unity
+integration head, which contains the other Unity branches (currently
+`claude/sleepy-ritchie-g8ruhv`, PR #62, stacked on #61 and #59).
 Owner role split (2026-10-08): Astra (Codex) handles game logic and programming:
 simulation, rules, networking, accounts, updater, build/publish tooling and tests.
 Claude handles visuals: rendering, animation, VFX, menus/HUD presentation and
