@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
                 var model=new GameObject("First-person view");model.transform.SetParent(cam.transform,false);viewModelCamera=model.AddComponent<Camera>();
                 viewModelCamera.clearFlags=CameraClearFlags.Depth;viewModelCamera.cullingMask=1<<10;viewModelCamera.depth=cameraView.depth+1;viewModelCamera.nearClipPlane=.01f;viewModelCamera.farClipPlane=10;viewModelCamera.enabled=false;presentation.ViewCamera=viewModelCamera;
                 cameraView.nearClipPlane=.06f;cameraView.farClipPlane=200;NativeLighting.Apply(content.Map(prefs.map),cameraView);
-                cameraView.transform.SetPositionAndRotation(new Vector3(0,22,-35),Quaternion.Euler(30,0,0));ApplySettings();
+                cameraView.transform.SetPositionAndRotation(new Vector3(0,22,-35),Quaternion.Euler(30,0,0));ApplySettings();InitializeUpdater();
             }
             catch(Exception e){error=e.ToString();Debug.LogException(e);}
         }
@@ -206,7 +206,7 @@ namespace ChipArena.UnityConversion
             if(showCatalogue)Catalogue();else Setup();
             GUILayout.Space(14);GUILayout.Label("Host or join a separate Unity room from Match setup. Account access uses your configured service and signed unlocks.",small);
             GUILayout.Label("The accepted ranged lab remains a separate project. This conversion uses its own settings and executable.",small);
-            if(GUILayout.Button("Quit",button))Application.Quit();GUILayout.EndScrollView();GUILayout.EndArea();
+            UpdatePanel();if(GUILayout.Button("Quit",button))Application.Quit();GUILayout.EndScrollView();GUILayout.EndArea();
         }
         private void Setup()
         {

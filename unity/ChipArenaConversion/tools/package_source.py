@@ -8,7 +8,7 @@ import sys
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-TOP = {'Assets', 'Packages', 'ProjectSettings', 'Tests', 'tools', 'Relay'}
+TOP = {'Assets', 'Packages', 'ProjectSettings', 'Tests', 'tools', 'Relay', 'Updater'}
 FILES = {'README.md', 'CONVERSION-STATUS.md', 'VALIDATION.md', 'ICON.md', 'ANIMATIONS.md', 'Build-Windows.cmd', '.gitignore'}
 SKIP = {'bin', 'obj', '__pycache__', 'LocalAssets', 'Library', 'Temp', 'Logs', 'Builds', 'UserSettings'}
 
