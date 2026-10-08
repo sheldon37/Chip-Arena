@@ -427,8 +427,8 @@ namespace ChipArena.UnityConversion
             var l=BeginScreen("CHIP ARENA",title,640,age);if(l.Closed){Go(MenuScreen.Home);return;}
             ScreenBody(l,AccountBody);ScreenStatus(l,(account.Status+" "+accountNotice).Trim(),accountNotice.Length>0);
             if(a==null){if(ScreenActions(l,("users",accountAction=="register"?"Create account":accountAction=="recover"?"Reset password":"Log in",true,!account.Busy))==0)AccountSubmit();return;}
-            var items=new List<(string,string,bool,bool)>{("download","Save Current Pilot",true,!account.Busy)};if(account.Developer)items.Add(("cpu","DEV Menu",false,true));items.Add(("log-out","Log Out",false,!account.Busy));
-            int hit=ScreenActions(l,items.ToArray());if(hit==0)account.Save(Profile());else if(hit==1&&account.Developer)Go(MenuScreen.Dev);else if(hit>=1)account.Logout();
+            var items=new List<(string,string,bool,bool)>{("download","Save current pilot",true,!account.Busy)};if(account.Developer)items.Add(("cpu","DEV Menu",false,true));items.Add(("log-out","Log out",false,!account.Busy));
+            int hit=ScreenActions(l,items.ToArray());if(hit==0)account.Save(Profile());else if(hit==1&&account.Developer)Go(MenuScreen.Dev);else if(hit>=1){account.Logout();Go(MenuScreen.Home);Notice("Logged out. Your saved pilot stays on your account.");}
         }
         private void DevScreen(float age)
         {

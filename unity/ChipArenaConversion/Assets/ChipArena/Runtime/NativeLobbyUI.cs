@@ -282,7 +282,7 @@ namespace ChipArena.UnityConversion
             if(two){int cut=label.IndexOf(" · ",StringComparison.Ordinal);U.Text(new Rect(r.x+16,r.y+16,r.width-32,14),label.Substring(0,cut),10,U.Hex(0x8da7ae,e),TextAnchor.MiddleLeft,tracking:.16f);U.Text(new Rect(r.x+16,r.y+30,r.width-32,14),Fit(label.Substring(cut+3),10,r.width-32,false,.16f),10,U.Hex(0x8da7ae,e),TextAnchor.MiddleLeft,tracking:.16f);}
             else U.Text(new Rect(r.x+16,r.y+16,r.width-32,14),label,10,U.Hex(0x8da7ae,e),TextAnchor.MiddleLeft,tracking:.16f);
             bool has=!string.IsNullOrEmpty(code);U.Text(new Rect(r.x+16,r.y+(two?48:34),r.width-32,32),has?code:"—",24,U.Hex(0xff996f,e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.09f);
-            if(MenuButton(new Rect(r.x+16,r.yMax-16-40,r.width-32,40),"copy","Copy Code",null,true,has,e,14,true)){GUIUtility.systemCopyBuffer=code;networkStatus="Room code copied.";}
+            if(MenuButton(new Rect(r.x+16,r.yMax-16-40,r.width-32,40),"copy","Copy Code",null,true,has,e,14,true)){GUIUtility.systemCopyBuffer=code;Notice("Room code copied.");}
         }
         private void RoomHeading(Rect r,float e)
         {

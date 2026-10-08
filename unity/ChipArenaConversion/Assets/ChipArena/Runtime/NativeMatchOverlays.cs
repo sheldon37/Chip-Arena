@@ -20,14 +20,20 @@ namespace ChipArena.UnityConversion
         // ---- Intro (style.css .intro-*, pve.css boss variant) ----
         private void IntroOverlay()
         {
-            var pilot=IntroPilot;if(pilot==null)return;bool boss=match.Phase!=NativePhase.Intro;string style=IntroStyle;
-            float duration=(float)NativeIntroRules.OverlayDuration(style),nameAt=(float)NativeIntroRules.NameAt(style),age=Mathf.Min(IntroAge,duration),W=U.W,H=U.H;
+            var pilot=IntroPilot;if(pilot==null)return;var order=match.Seats.Where(s=>s.connected&&!s.AuthorityBoss).ToList();
+            IntroCard(pilot,IntroStyle,IntroAge,match.Phase!=NativePhase.Intro,Math.Max(0,order.FindIndex(s=>s.id==pilot.Seat.id)),Math.Max(1,order.Count),match.Teams&&!match.Cooperative);
+        }
+        // The overlay for one pilot's entrance at `rawAge`: the match intro, and the intro preview from Customize (index 0
+        // of 1, no team line).
+        private void IntroCard(NativePilot pilot,string style,float rawAge,bool boss,int index,int total,bool team)
+        {
+            float duration=(float)NativeIntroRules.OverlayDuration(style),nameAt=(float)NativeIntroRules.NameAt(style),age=Mathf.Min(rawAge,duration),W=U.W,H=U.H;
             var ink=U.Hex(boss?0x020103:0x040610);
             U.Fade(new Rect(0,0,W,H*(boss?.2f:.17f)),U.A(ink,.867f));float lower=boss?.6f:.7f;U.Fade(new Rect(0,H*lower,W,H*(1-lower)+1),U.A(ink,boss?.96f:.94f),false);
             // :before — radial-gradient(ellipse 60% 92% at 50% 100%) over the bottom 46vh, in over .7 s at the name time.
             float shade=M.EaseOut(M.Progress(age,nameAt,.7f)),ry=H*.46f*.92f;U.RadialStops(new Rect(-W*.1f,H-ry,W*1.2f,ry*2),U.A(U.Hex(0x040610),shade),new[]{0,.46f,.76f},new[]{.96f,.70f,0});
             // Topline at 88 px with 6vw margins; a 1 px rule and a progress bar that fills linearly over the intro.
-            float top=M.EaseOut(M.Progress(age,0,.45f)),x0=W*.06f,tw=W*.88f,y=88;var order=match.Seats.Where(s=>s.connected&&!s.AuthorityBoss).ToList();int index=Math.Max(0,order.FindIndex(s=>s.id==pilot.Seat.id)),total=Math.Max(1,order.Count);
+            float top=M.EaseOut(M.Progress(age,0,.45f)),x0=W*.06f,tw=W*.88f,y=88;
             string left=boss?"BOSS":"MATCH INTRO / "+(index+1).ToString("00")+" — "+total.ToString("00"),right=boss?"THE SIREN":NativeIntroRules.StyleName(style).ToUpperInvariant();
             U.Text(new Rect(x0,y,tw,15),left,12,U.A(U.Hex(boss?0xd9d0ff:0xd7d8de),top),TextAnchor.UpperLeft,mono:true,tracking:.2f);
             U.Text(new Rect(x0,y,tw,15),right,12,U.A(U.Hex(boss?0xc9bfff:0xff996f),top),TextAnchor.UpperRight,mono:true,tracking:boss?.42f:.2f);
@@ -37,7 +43,7 @@ namespace ChipArena.UnityConversion
             // .intro-name: bottom 5vh, 90% wide; each line rises 14 px in over .55 s, staggered; the block leaves at duration-.35 s.
             float exit=M.Bezier(.4f,0,1,1,M.Progress(age,duration-.35f,.34f)),alpha=1-exit,bottom=H*.95f-10*exit,cx=W*.05f,cw=W*.9f;
             if(boss){BossTitle(pilot,age,nameAt,alpha,bottom,cx,cw);return;}
-            var seat=pilot.Seat;string weapon=(content.weapons.FirstOrDefault(w=>w.id==seat.spec)?.name??seat.spec).ToUpperInvariant(),text=(string.IsNullOrWhiteSpace(seat.introText)?"Ready to make an impact":seat.introText).ToUpperInvariant();bool team=match.Teams&&!match.Cooperative;
+            var seat=pilot.Seat;string weapon=(content.weapons.FirstOrDefault(w=>w.id==seat.spec)?.name??seat.spec).ToUpperInvariant(),text=(string.IsNullOrWhiteSpace(seat.introText)?"Ready to make an impact":seat.introText).ToUpperInvariant();
             float F=Mathf.Clamp(W*.065f,30,82);float fit=U.Measure(seat.name,F,true,false,-.035f).x;if(fit>cw)F*=cw/fit;
             float ySpan=bottom-18,yStrong=ySpan-9-1.15f*F,yTeam=yStrong-13-18,ySmall=(team?yTeam-8:yStrong-9)-15;var shadow=new Color(0,0,0,.8f*alpha);
             float e=Line(age,nameAt);U.Text(new Rect(cx,ySmall+14*(1-e),cw,15),weapon,12,U.A(U.Hex(0xffd3bf),alpha*e),TextAnchor.UpperCenter,bold:true,tracking:.3f,shadow:U.A(shadow,e));

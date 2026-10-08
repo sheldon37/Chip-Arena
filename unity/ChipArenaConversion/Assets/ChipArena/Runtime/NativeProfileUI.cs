@@ -92,11 +92,43 @@ namespace ChipArena.UnityConversion
             }
             else
             {
-                Fine(account.Developer?"DEV access":"Registered player");
-                if(account.RecoveryCode.Length>0){Field("Recovery code");GUILayout.Label("Save this recovery code somewhere private. It is shown once.",label);GUILayout.TextField(account.RecoveryCode);}
-                Fine("Items and flags refresh here when the account service grants them. Save Current Pilot uploads your Customize choices.");
+                // main.ts account screen: the one-time recovery code box, the status, the flags, the unlocked items and the
+                // refresh note.
+                if(account.RecoveryCode.Length>0)RecoveryBox(account.RecoveryCode);
+                AccountLine(account.Developer?"DEV access":"Registered player",16,NativeUi.Hex(0xbfc0c9));
+                var a=account.Account;var flags=(a.flags??Array.Empty<string>()).Select(NativeCosmeticRules.Label).ToArray();if(flags.Length>0)Fine(string.Join(" · ",flags));
+                if(account.Developer)AccountLine("All DEV weapons and intros are available.",16,NativeUi.Hex(0xf4f4f5));
+                else if(a.unlocks==null||a.unlocks.Length==0)AccountLine("No restricted items granted yet.",16,NativeUi.Hex(0xf4f4f5));
+                else UnlockChips(a.unlocks.Select(NativeCosmeticRules.Label).ToArray());
+                AccountLine("Items and flags refresh here. Rejoin a room after a grant changes.",16,NativeUi.Hex(0xbfc0c9));
             }
             Field("Account service URL");prefs.accountOrigin=GUILayout.TextField(prefs.accountOrigin??"",240);
+        }
+        private float accountWidth=576;
+        // A wrapped paragraph drawn by the kit (.panel p: line-height 1.6, 10 / 22 px margins).
+        private void AccountLine(string text,float size,Color c)
+        {
+            var lines=NativeUi.Wrap(text,size,accountWidth-8);var r=GUILayoutUtility.GetRect(0,10+lines.Count*size*1.6f+12,GUILayout.ExpandWidth(true));if(Event.current.type==EventType.Repaint)accountWidth=r.width;
+            for(int i=0;i<lines.Count;i++)NativeUi.Text(new Rect(r.x+4,r.y+10+i*size*1.6f,r.width-8,size*1.6f),lines[i],size,c,TextAnchor.MiddleLeft);
+        }
+        // .account-unlocks: one square chip per granted item (#0c2425, 1 px #547270, 8 / 12 px padding, 16 px), wrapping.
+        private void UnlockChips(string[] names)
+        {
+            float x=0,y=0;var spots=new System.Collections.Generic.List<Rect>();foreach(var n in names){float w=NativeUi.Measure(n,16).x+26;if(x>0&&x+w>accountWidth-8){x=0;y+=45;}spots.Add(new Rect(x,y,w,37));x+=w+8;}
+            var r=GUILayoutUtility.GetRect(0,y+37+14,GUILayout.ExpandWidth(true));
+            for(int i=0;i<names.Length;i++){var c=new Rect(r.x+4+spots[i].x,r.y+6+spots[i].y,spots[i].width,37);NativeUi.Fill(c,NativeUi.Hex(0x547270));NativeUi.Fill(new Rect(c.x+1,c.y+1,c.width-2,c.height-2),NativeUi.Hex(0x0c2425));NativeUi.Text(new Rect(c.x+13,c.y,c.width-26,c.height),names[i],16,NativeUi.Hex(0xf4f4f5),TextAnchor.MiddleLeft);}
+        }
+        // The recovery code box after register / recover: #292516 with a #d7ba72 edge, square, 20 px padding; the code in
+        // 15 px mono #fff1bb and a shrink-to-fit "Copy recovery code" button.
+        private void RecoveryBox(string code)
+        {
+            float iw=accountWidth-8-42;var lead=NativeUi.Wrap("Shown once. Use it to reset your password if you forget it.",16,iw);float h=21+20+10+lead.Count*25.6f+22+18+16+48+21;
+            var r=GUILayoutUtility.GetRect(0,h+8,GUILayout.ExpandWidth(true));var b=new Rect(r.x+4,r.y+4,r.width-8,h);
+            NativeUi.Fill(b,NativeUi.Hex(0xd7ba72));NativeUi.Fill(new Rect(b.x+1,b.y+1,b.width-2,b.height-2),NativeUi.Hex(0x292516));float y=b.y+21;
+            NativeUi.Text(new Rect(b.x+21,y,b.width-42,20),"Save your recovery code",16,NativeUi.Hex(0xf4f4f5),TextAnchor.MiddleLeft,bold:true);y+=30;
+            foreach(var l in lead){NativeUi.Text(new Rect(b.x+21,y,b.width-42,25.6f),l,16,NativeUi.Hex(0xbfc0c9),TextAnchor.MiddleLeft);y+=25.6f;}y+=22;
+            NativeUi.Text(new Rect(b.x+21,y,b.width-42,18),code,15,NativeUi.Hex(0xfff1bb),TextAnchor.MiddleLeft,mono:true);y+=34;
+            float w=NativeUi.Measure("Copy recovery code",15,true).x+38;if(MenuButton(new Rect(b.x+21,y,w,48),null,"Copy recovery code",null,false,true,1,15,true)){GUIUtility.systemCopyBuffer=code;Notice("Recovery code copied. Store it somewhere safe.");}
         }
         private void AccountSubmit()
         {try{account.Configure(prefs.accountOrigin);Save();account.Login(accountAction,accountUser,accountPassword,accountRecovery,rememberAccount);accountNotice="";}catch(ArgumentException e){accountNotice=e.Message;}}

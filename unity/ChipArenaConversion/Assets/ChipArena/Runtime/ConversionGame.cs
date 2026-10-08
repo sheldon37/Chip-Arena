@@ -73,7 +73,11 @@ namespace ChipArena.UnityConversion
             // The main menu is always open without a match (an Escape there steps back instead), so the updater's install gate holds.
             if(arena==null)menu=true;if(!menu)pauseScreen=PauseScreen.Menu;
             if(Input.GetKeyDown(KeyCode.Escape)&&previewArena!=null){EndPreview();return;}if(Input.GetKeyDown(KeyCode.Escape)&&inspectSeat!=0){inspectSeat=0;return;}if(Input.GetKeyDown(KeyCode.Escape)&&ReplayActive){EndReplay();return;}if(Input.GetKeyDown(KeyCode.Escape)){if(arena==null)MenuBack();else if(PvePickOpen)PveOpen(false);else if(menu&&pauseScreen!=PauseScreen.Menu){if(pauseScreen==PauseScreen.Settings){ApplySettings();Save();}pauseScreen=PauseScreen.Menu;}else menu=!menu;pending=new InputFrame();pending.CancelAbilities=true;if(server==null)arena?.CancelLocalAbilities();}
-            if(Input.GetKeyDown(KeyCode.V)&&!(arena?.ViewPilot?.Seat.spec=="siren"&&prefs.sirenMode=="V"&&!menu)){prefs.firstPerson=!prefs.firstPerson;Save();}
+            // M mutes anywhere and V switches the camera during a match (main.ts keydown), neither while a text field has focus
+            // or the board is open; both confirm with a notice.
+            bool typing=GUIUtility.keyboardControl!=0;
+            if(Input.GetKeyDown(KeyCode.M)&&!typing&&!BoardOpen){prefs.sound=!prefs.sound;if(nativeAudio!=null)nativeAudio.Muted=!prefs.sound;Save();Notice(prefs.sound?"Sound on · M to mute":"Sound muted · M to unmute");}
+            if(Input.GetKeyDown(KeyCode.V)&&arena!=null&&!typing&&!BoardOpen&&!(arena.ViewPilot?.Seat.spec=="siren"&&prefs.sirenMode=="V"&&!menu)){prefs.firstPerson=!prefs.firstPerson;Save();Notice(prefs.firstPerson?"First person · V to switch":"Third person · V to switch");}
             if(Input.GetKeyDown(KeyCode.C)&&arena?.Pve!=null){if(PvePickOpen)PveOpen(false);else PveOpen(true);}
             if(Input.GetKeyDown(KeyCode.F9))presentation.ForceCompatibilityRendering=!presentation.ForceCompatibilityRendering;
             bool play=arena!=null&&!menu&&!BoardOpen&&match.Phase==NativePhase.Fight&&arena.Local.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true;
@@ -187,7 +191,10 @@ namespace ChipArena.UnityConversion
         }
         private void OnGUI()
         {
-            if(dedicated)return;if(SlenderGUI())return;Styles();
+            if(dedicated)return;if(SlenderGUI())return;Styles();GuiFrame();if(error.Length==0)NoticeToast();
+        }
+        private void GuiFrame()
+        {
             // One canvas for every overlay and the menus (NativeUiMotion.Measure): 900 units tall at 16:9, wider at 21:9 (2150 at 3440x1440).
             var ui=NativeUi.Begin(prefs?.uiScale??1);float scale=ui.Scale,width=ui.Width,height=ui.Height;GUI.matrix=Matrix4x4.Scale(Vector3.one*scale);
             if(error.Length>0){GUI.Box(new Rect(30,30,width-60,height-60),"");GUI.Label(new Rect(45,45,width-90,height-90),error,label);return;}
