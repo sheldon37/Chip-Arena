@@ -300,7 +300,7 @@ namespace ChipArena.UnityConversion
         }
         private void OnDestroy()
         {
-            ClearSourceActors();sourceModels?.Dispose();combatGlow?.Dispose();viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
+            ClearSourceActors();sourceModels?.Dispose();combatGlow?.Dispose();DisposeStatus();viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
             foreach(var m in materials) CapturedAnimation.Release(m);
             foreach(var m in compatibilityMaterials) CapturedAnimation.Release(m);
             if(particleMaterial!=null) CapturedAnimation.Release(particleMaterial);

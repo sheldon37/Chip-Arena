@@ -125,8 +125,7 @@ Source: client/main.ts:248 drawSandbox; sandbox-panel.ts:34-38; shared/simulatio
 - **C6** P2/L partial (re-rated from P1): event-driven combat VFX. Every chip or ability blast, including the Leet nuke, is drawn as two flat halos for 0.22 s (Runtime/NativeAbilities.cs:169; NativeCombatGlow.cs:121-125; NativeChips.cs:31-33). Every other event uses the same 12- or 24-cube burst (Runtime/ArenaPresentation.cs:180). The source has 11 volumetric BlastStyles sized to the gameplay radius (client/chip-blasts.ts), and the owner asked on 2026-10-03 that explosions read as real explosions. Persistent fields and beams already render. New. Full parity needs A21; the blasts that already have events can be upgraded first.
 - **C7** P2/L partial: feedback visuals that are still open.
    - No muzzle flash or slide recoil: GunPresentation is never reached while source models are active (Runtime/ArenaPresentation.cs:192-206).
-   - No burn, poison, slow, shackle or mark visuals.
-   - No team bands.
+   - Burn, poison, slow, shackle and Orbital Mark rigs and team bands are ported on `claude/wip-c7-status` (Runtime/NativeStatusPresentation.cs; parity in Tests/status-parity.json). Guests see only the bands: DoTs, slows and the mark's target/lock are host-only (Astra).
    - Combat numbers show only your own hits.
    - First person has no sway, bob or recoil.
 Tracked #30/#62/#63/#122/#94 (also #29, #23/#24).
