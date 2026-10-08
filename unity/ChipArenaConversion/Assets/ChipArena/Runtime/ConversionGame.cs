@@ -132,7 +132,7 @@ namespace ChipArena.UnityConversion
                 if(e.kind!="throw"&&Physics.Raycast(point+Vector3.up*.08f,Vector3.down,out var ground,40,NativeArena.WorldMask))point=ground.point;
                 preview=point;
             }
-            presentation.RenderAbilities(arena,preview);
+            presentation.RenderAbilities(arena,preview);presentation.RenderStatus(arena,cameraView,prefs.reducedEffects?.3f:1);
             presentation.GlowQuality=prefs.reducedEffects?.3f:prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?.4f:1;presentation.BlastQuality=prefs.reducedEffects?.3f:1;presentation.RenderGlow(arena,cameraView,menu&&!Online);presentation.FinishSourceFrame();
         }
         // No match: the selected map behind the menu with the source's slow overview orbit (renderer.ts idle camera).

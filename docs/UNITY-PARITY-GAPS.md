@@ -136,8 +136,7 @@ wait on PR #65 (room options, invite URL, LAN addresses).
 - **C6** P2/L partial (re-rated from P1): event-driven combat VFX. On `claude/wip-c6` (not merged), the source's volumetric blasts (client/chip-blasts.ts: 11 styles sized to the gameplay radius, impacts, field emitters, pooled lights) run in Core/NativeBlastSim.cs. They match the source voxel for voxel (Tests/BlastChecks.cs). Runtime/NativeBlastPresentation.cs draws them on host and guests from the existing ability/chip effects, zones, chip fields, ability shots and surface impacts, replacing the two flat 0.22 s halos. The Siren's own attack records are excluded and keep the halos (see C25). Still open: a blast's style and tint are exact only when a zone, field, shot or teleport identifies it; other chip blasts use the owner's school. Every other event still uses the same 12- or 24-cube burst (Runtime/ArenaPresentation.cs:180). Both need A21. The owner asked on 2026-10-03 that explosions read as real explosions.
 - **C7** P2/L partial: feedback visuals that are still open.
    - No muzzle flash or slide recoil: GunPresentation is never reached while source models are active (Runtime/ArenaPresentation.cs:192-206).
-   - No burn, poison, slow, shackle or mark visuals.
-   - No team bands.
+   - Burn, poison, slow, shackle and Orbital Mark rigs and team bands are ported on `claude/wip-c7-status` (Runtime/NativeStatusPresentation.cs; parity in Tests/status-parity.json). Guests see only the bands: DoTs, slows and the mark's target/lock are host-only (Astra).
    - Combat numbers show only your own hits.
    - First person has no sway, bob or recoil. Implemented on `claude/wip-c7-fp-sway` (the first-person-view.ts view layer); not playtested.
 Tracked #30/#62/#63/#122/#94 (also #29, #23/#24).

@@ -77,6 +77,14 @@ containing an entry; no self-referential commit hash is required.
 - Needs Astra (A21): carry the source event type and blast message, plus the owner, on ability/chip effects and NativeEffectFrame; replicate ChipField.Effect, zone ids and lockAt; add the missing events (freeze, panic-button nova, summon, critical/catch/split/meleeRebound/slowed/ricochet, arcs, impacts on players, slash). Then switch NativeBlastCues to the tags.
 - Status: implemented on branch; not merged; not released.
 
+## 2026-10-08 — Claude — Unity C7 status visuals and team bands
+- Branch `claude/wip-c7-status` from `claude/sleepy-ritchie-g8ruhv` `4207641` (PR #62 head). Not pushed, merged or released.
+- Ported client/status-effects.ts (burn flames + embers, poison bubbles, slow droplets, shackle cuffs, Orbital Mark reticle; world rigs, the first-person hands rig and up to 16 PvE adds) and client/team-identity.ts bands (in-match, draft stage, entrances; PvE party blue / Siren purple as pve/contract.ts). Motion and shapes are pure Core (`NativeStatusVisuals`); `NativeStatusPresentation` draws them with a new unlit fogged shader (`NativeStatusUnlit`), allocation-free per frame, quality .3 under Reduced effects.
+- Checks: Runtime+Editor compile against Unity 6000.3.24f1; check_relay (all managed checks, plus the new status parity check: 53 source StatusRig samples, geometry, materials and 36 bands from `tools/export_status_fixtures.mjs`); 24 Python tests; package check. Not run: Unity Editor, shader compile, rendering, Windows build, multiplayer.
+- No simulation, damage, timing, hitbox, cooldown, movement or protocol change. Shackles are read from the slow factor (.4 is only Shadow Shackles in the pinned content).
+- For Astra: replicate pilot DoTs (fire/poison until), SlowEnd/SlowFactor (or a slow kind), the Orbital Mark zone's target and LockAt, and add DoTs/SlowUntil, so guests and killcam replays show these statuses.
+- Next: owner build and look at burn/poison/slow/shackle/mark and team bands in a host match at 1080p (reduced effects on and off).
+
 ## 2026-10-08 — Claude — Unity vs Electron parity gap list (handoff)
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62), audited at `eb8f7f7` against the original `05950ea`. Docs only; no code changed.
 - Added `docs/UNITY-PARITY-GAPS.md`: a read-only code audit of screens, gameplay, networking, presentation and trackers, with each P1 re-checked by a refuting reviewer. Items are split by the role split: A1–A31 for Astra (logic) and C1–C24 for Claude (visuals), plus 12 owner decisions and a not-verified list.
