@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
         private void SettingsPanel()
         {
             if(GUILayout.Button(showSettings?"Close settings":"Audio, graphics and controls",button))showSettings=!showSettings;if(!showSettings)return;
-            prefs.sensitivity=Slider("Mouse sensitivity",prefs.sensitivity,.2f,2.5f);prefs.audio=Slider("Effects volume",prefs.audio,0,1);prefs.music=Slider("Match music",prefs.music,0,1);prefs.menuMusic=Slider("Menu music",prefs.menuMusic,0,1);
+            prefs.sensitivity=Slider("Mouse sensitivity",prefs.sensitivity,.2f,2.5f);prefs.audio=Slider("Effects volume",prefs.audio,0,1);prefs.music=Slider("Match music",prefs.music,0,1);prefs.menuMusic=Slider("Menu music",prefs.menuMusic,0,1);prefs.uiScale=Mathf.Round(Slider("Interface scale",prefs.uiScale>0?prefs.uiScale:1,.75f,1.5f)*20)/20;
             prefs.graphics=ChoiceGrid(new[]{"auto","high","performance"},prefs.graphics);prefs.trails=GUILayout.Toggle(prefs.trails,"Projectile trails");prefs.reducedEffects=GUILayout.Toggle(prefs.reducedEffects,"Reduced effects");prefs.cameraShake=GUILayout.Toggle(prefs.cameraShake,"Camera shake");
             GUILayout.Label("Siren mode key (V also changes camera)",small);prefs.sirenMode=ChoiceGrid(new[]{"Q","F","V"},prefs.sirenMode);
             if(GUILayout.Button("Save settings",button)){ApplySettings();Save();}

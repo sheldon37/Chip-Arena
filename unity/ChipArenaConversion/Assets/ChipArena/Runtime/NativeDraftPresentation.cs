@@ -20,7 +20,7 @@ namespace ChipArena.UnityConversion
             if(!active&&!pve){if(draftViewing){draftViewing=false;RestoreLive();presentation.ResetPresentation();}return false;}
             var seat=pve?arena.Local.Seat:match.Seat(match.DraftSeat);if(seat==null)return false;
             if(!draftViewing||draftViewSeat!=seat.id){RestoreLive();presentation.ResetPresentation();draftHover=-1;draftFocus=-1;draftViewSeat=seat.id;draftViewing=true;}
-            float scale=NativeUiMotion.Measure(Screen.width,Screen.height).Scale,width=Screen.width/scale,height=Screen.height/scale;
+            float scale=NativeUiMotion.Measure(Screen.width,Screen.height,prefs.uiScale).Scale,width=Screen.width/scale,height=Screen.height/scale;
             var row=pve?arena.Pve.Rows[seat.id]:null;int count=pve?row.Open?.Offers?.Count??0:seat.offers.Count;float age=pve||match.Chosen==null?-1:(float)(match.Time-match.ChosenAt);
             // Look target: the chosen card, the local picker's hovered or focused card, else the boot scan then a 1.8 s cycle.
             float since=pve?Time.unscaledTime-pveOpenAt:(float)(match.Time-DraftStarted(seat));int scan=since<count*.22f?Mathf.FloorToInt(Math.Max(0,since)/.22f):(int)(since/1.8f)%Math.Max(1,count);
