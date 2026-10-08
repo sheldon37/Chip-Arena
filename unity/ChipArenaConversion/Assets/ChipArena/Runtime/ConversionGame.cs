@@ -172,8 +172,10 @@ namespace ChipArena.UnityConversion
         }
         private void Styles()
         {
-            if(heading!=null)return;heading=new GUIStyle(GUI.skin.label){fontSize=24,fontStyle=FontStyle.Bold,wordWrap=true};
-            label=new GUIStyle(GUI.skin.label){fontSize=17,wordWrap=true};small=new GUIStyle(GUI.skin.label){fontSize=14,wordWrap=true};button=new GUIStyle(GUI.skin.button){fontSize=16,wordWrap=true,fixedHeight=36};
+            GUI.skin=NativeMenuSkin.Skin;if(heading!=null)return;var skin=NativeMenuSkin.Skin;heading=new GUIStyle(skin.label){fontSize=24,fontStyle=FontStyle.Bold,wordWrap=true};heading.normal.textColor=NativeUi.Hex(0xf4f4f5);
+            label=new GUIStyle(skin.label){fontSize=17,wordWrap=true};small=new GUIStyle(skin.label){fontSize=14,wordWrap=true};small.normal.textColor=NativeUi.Hex(0xbfc0c9);
+            // Buttons grow with their label (the old fixed 36 px height clipped two-line labels).
+            button=new GUIStyle(skin.button){fontSize=16,wordWrap=true,fixedHeight=0,stretchHeight=false};button.padding=new RectOffset(14,14,9,9);
         }
         private void OnGUI()
         {
@@ -213,6 +215,8 @@ namespace ChipArena.UnityConversion
             }
             if(!menu&&arena!=null){ReplayHud(width,height);PveHud(width,height);return;}
             float panel=Mathf.Min(850,width-60),panelX=(width-panel)/2;if(Updater!=null&&width-(panelX+panel)<UpdateCardWidth+48){panel=Mathf.Min(850,width-60-UpdateCardWidth-24);panelX=30;}
+            // A shade over the paused match (or a lighter one over the menu backdrop) so the panel reads.
+            NativeUi.Fill(new Rect(0,0,width,height),NativeUi.Hex(0x06070b,arena!=null?.55f:.2f));NativeUi.Glow(new Rect(panelX,98,panel,height-120),new Color(0,0,0,.45f),60);
             GUI.Box(new Rect(panelX,68,panel,height-120),"");
             GUILayout.BeginArea(new Rect(panelX+22,86,panel-44,height-155));scroll=GUILayout.BeginScrollView(scroll);
             GUILayout.Label("Native Unity conversion",heading);
