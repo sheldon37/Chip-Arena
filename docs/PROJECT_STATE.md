@@ -168,6 +168,6 @@ Native publication setup (2026-10-08): `codex/unity-native-publish`, based on Cl
 `d804663`, adds `Publish-Native.cmd`, read-only feed comparison, completed-build
 validation, typed publication confirmation and safe fast-forward of clean channel
 checkouts. Native CI covers both agent branch families; source packages include
-the command. Local publisher fixtures pass; Windows and Unity-to-Unity acceptance
-remain. The native feed is still absent; a compiled, accepted Windows candidate
+the command. Linux and Windows native CI pass at `375bd25`, including publisher
+and real launcher/rollback fixtures. Unity-to-Unity acceptance remains. The native feed is still absent; a compiled, accepted Windows candidate
 must be published before installed copies can receive it. Not merged/released.

@@ -17,6 +17,9 @@ Implemented on `codex/unity-native-publish`, based on this branch at `d804663`:
 - Build output explains the separate installed baseline and explicitly says the prepared feed is local.
   The source packager includes the new command. Native CI now covers `codex/unity-*` and `claude/**` with
   native path filtering, including publisher tests and a Windows command-entrypoint test.
+- PR #63 code `375bd25` passes native Linux and Windows CI (`37781110655`): all 16 Windows publisher
+  tests, 51 updater checks, launcher compilation and fixture-player install/restart/rollback. Raw ZIP names
+  are now validated before Python filename normalization can hide backslashes/NULs.
 - Local publication tests use disposable bare Git repositories and fixture players, never the actual feed.
   A compiled Unity candidate and a real older installed player are still needed for end-to-end acceptance.
 - At investigation time the native feed still returns 404. No compiled native update is published by this
