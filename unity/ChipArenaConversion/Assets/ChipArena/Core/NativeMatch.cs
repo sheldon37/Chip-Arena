@@ -85,11 +85,15 @@ namespace ChipArena.UnityConversion
             {
                 var win=Seat(Winner);foreach(var p in Seats.Where(p=>SameSide(p,win)))p.roundWins++;
                 if(win.roundWins>=RoundsPerSet){foreach(var p in Seats.Where(p=>SameSide(p,win)))p.score++;SetWinner=win.id;}
-                Result=win.name+(SetWinner!=0?(win.score>=SetsToWin?" wins the match":" wins set "+Set):" wins round "+Round);
+                // shared/simulation.ts round result lines (replicated text only).
+                string name=Teams&&!Cooperative?TeamNames[((win.team%8)+8)%8]+" team":win.name;
+                Result=SetWinner==0?name+" wins the round · "+win.roundWins+"/"+RoundsPerSet+" rounds in this set":win.score>=SetsToWin?name+" wins the match · "+SetsToWin+" sets":name+" wins set "+Set+" · "+win.roundWins+" round wins";
             }
-            else Result="Simultaneous knockout — replay this round";
+            else Result="Simultaneous knockout · replay this round; set progress stays";
             Phase=NativePhase.Result;PhaseEnd=Time+5;
         }
+        // shared/teams.ts order for the native integer teams.
+        public static readonly string[] TeamNames={"Red","Blue","Green","Yellow","Purple","Orange","Cyan","Pink"};
         public void FinishCooperative(bool victory){if(!Cooperative)return;Phase=NativePhase.Match;Result= victory?"The Siren has fallen — victory":"Party defeated";PhaseEnd=0;}
         private static double RevealSeconds(string id)=>id.StartsWith("l44t-")?4.6:id.StartsWith("arcade-")||id.StartsWith("mishima-")?4.8:3.2;
         private void NextDraft()

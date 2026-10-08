@@ -8,11 +8,6 @@ namespace ChipArena.UnityConversion
         private NativePilot IntroPilot=>match.Phase==NativePhase.Intro?arena.Pilots.Find(p=>p.Seat.id==match.IntroSeat):arena.Pve.Boss;
         private string IntroStyle=>match.Phase==NativePhase.Intro?match.IntroStyle:"dev-siren";
         private float IntroAge=>match.Phase==NativePhase.Intro?(float)(match.Time-match.IntroStarted):arena.Pve.HoldDuration-arena.Pve.HoldLeft;
-        private void IntroHud(float width,float height)
-        {
-            GUI.Box(new Rect(0,0,width,82),"");GUI.Box(new Rect(0,height-116,width,116),"");
-            if(IntroAge>=NativeIntroRules.NameAt(IntroStyle)){GUI.Label(new Rect(45,height-102,width-90,45),IntroPilot.Seat.name,heading);GUI.Label(new Rect(45,height-58,width-90,40),IntroPilot.Seat.introText,label);}
-        }
     }
     public sealed partial class ArenaPresentation
     {

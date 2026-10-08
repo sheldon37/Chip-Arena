@@ -178,6 +178,9 @@ namespace ChipArena.UnityConversion
         {
             if(dedicated)return;if(SlenderGUI())return;Styles();float scale=Mathf.Max(.65f,Screen.height/900f);GUI.matrix=Matrix4x4.Scale(Vector3.one*scale);float width=Screen.width/scale,height=Screen.height/scale;
             if(error.Length>0){GUI.Box(new Rect(30,30,width-60,height-60),"");GUI.Label(new Rect(45,45,width-90,height-90),error,label);return;}
+            NativeUi.Begin();if(match?.Phase!=NativePhase.Match)matchEndAt=-1;
+            // The intro overlay replaces the whole HUD (main.ts drawHud), so nothing else draws while it runs.
+            if(arena!=null&&!menu&&previewArena==null&&IntroActive){IntroOverlay();return;}
             CombatWorldHud(scale,width,height);
             if(arena!=null&&!menu&&match.Phase==NativePhase.Fight&&presentation.ScopeActive)DrawScope(width,height);
             GUI.Label(new Rect(22,15,width-44,35),"CHIP ARENA  /  NATIVE CONVERSION",heading);
@@ -198,13 +201,15 @@ namespace ChipArena.UnityConversion
                     if(p.Hp<=0)GUI.Label(new Rect(width/2-160,height/2-80,320,60),"ELIMINATED — round in progress",heading);
                     if(Time.unscaledTime<presentation.LastHitUntil)GUI.Label(new Rect(width/2+20,height/2-35,160,50),(presentation.LastHeadshot?"HEADSHOT ":"HIT ")+presentation.LastHitDamage.ToString("0.#"),label);
                 }
-                if(!menu&&(match.Phase==NativePhase.Countdown||match.Phase==NativePhase.Result))GUI.Label(new Rect(width/2-280,height/2-60,560,100),match.Phase==NativePhase.Countdown?"READY  "+Math.Ceiling(match.PhaseEnd-match.Time):match.Result,heading);
-                if(!menu&&match.Phase==NativePhase.Match)
+                if(!menu&&match.Phase==NativePhase.Countdown)CountdownOverlay();
+                if(!menu&&match.Phase==NativePhase.Result)ResultOverlay();
+                if(!menu&&match.Phase==NativePhase.Match&&arena.Pve==null)MatchEndPanel();
+                else if(!menu&&match.Phase==NativePhase.Match)
                 {GUI.Label(new Rect(width/2-280,height/2-90,560,65),match.Result,heading);if(GUI.Button(new Rect(width/2-130,height/2,260,45),"Rematch",button)){if(server!=null)SendServer(new NativeNetMessage{type="rematch"});else StartMatch();}}
                 if(!menu&&match.Phase==NativePhase.Draft)Draft(width,height);
                 if(BoardOpen)Board(width);if(inspectSeat!=0)Inspect(width,height);LockHud(scale);
             }
-            if(!menu&&arena!=null){ReplayHud(width,height);if(IntroActive)IntroHud(width,height);else PveHud(width,height);return;}
+            if(!menu&&arena!=null){ReplayHud(width,height);PveHud(width,height);return;}
             float panel=Mathf.Min(850,width-60);GUI.Box(new Rect((width-panel)/2,68,panel,height-120),"");
             GUILayout.BeginArea(new Rect((width-panel)/2+22,86,panel-44,height-155));scroll=GUILayout.BeginScrollView(scroll);
             GUILayout.Label("Native Unity conversion",heading);
