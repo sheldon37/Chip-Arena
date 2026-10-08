@@ -93,3 +93,21 @@ Unity API references: [SampleAnimation](https://docs.unity3d.com/6000.3/Document
 `MagicPose` ports the source analytic primary/Q/E casting phrase and first-person variants. Magic no longer plays sword attacks/blocks: the staff is in the left hand, the right hand casts, and the guard lays the staff across the chest. Source phrase validation covers 1,728 samples. The Unity quaternion/IK adaptation and guard transitions still require visual acceptance. `RangedAbilityPose` adds support-hand grenade throws/visor taps and rocket recoil using source gesture keys.
 
 `NativeViewPresentation` draws a separate forearm/weapon rig on layer 10 through a depth-only camera. The saved V/menu toggle and ADS choose this view; the authoritative pilot, collision shape and muzzle remain world-space. Head/body are excluded from the local first-person pass. Presentation changes do not change melee contact timing, projectile authority, damage, cooldowns, movement or networking. The new ability handlers separately add native gameplay behavior; no native network implementation is added.
+
+# Captured-melee runtime layer — 2026-10-08
+
+The 34 captured clips were already ported; this adds the source runtime that plays them (mocap/*.ts, locomotion, rig-ik,
+blade-clearance), engine-free in `Core/Melee*.cs` and driven from `CapturedAnimation`:
+
+- Gait and stances (melee, daggers, greatsword, neutral), phrase footwork with planted lead foot, hip seating, ankle
+  holds and reachable targets; recovery blending with the wrist limiter; blades kept off the floor.
+- Blade clearance against the rig's 11 body boxes (turn-only for cuts, full for carries), with the flat rolled onto the surface.
+- Hit reactions and parry motion from the Hit/Block events, light reactions and torso recoil for non-melee weapons.
+- Parity: `Tests/MeleeMotionChecks.cs` replays scripted timelines through the transpiled pinned TS and compares joint
+  points (872 frames, worst 1.73 mm). Deviation: after a shield hitstun the source uses its procedural guard (about a
+  16 cm hip pop); those frames are excluded and the native pose keeps the captured guard.
+
+Presentation only: hit timing, hitboxes, damage, cooldowns, movement and networking are unchanged. The build gate
+(`ValidateMelee`) checks lead-foot drift, ankle and tip clearance and finite bones. Rendered motion still needs the
+owner's Windows playtest.
+

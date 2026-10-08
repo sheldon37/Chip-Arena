@@ -2,6 +2,18 @@
 
 No native Unity playtest or Windows executable build was run in the authoring workspace.
 
+## Melee runtime, presentation polish and updater integration (2026-10-08, `claude/sleepy-ritchie-g8ruhv`)
+
+Run in the Linux authoring workspace on the combined tree (updater merge `d185be4` and later):
+
+- Runtime and Editor assemblies compile against the real Unity 6000.3.24f1 managed DLLs with warnings as errors (`netstandard2.1`, `UNITY_STANDALONE_WIN`); a strict pass with unused-field warnings enabled is also clean.
+- `dotnet run --project Tests/CoreTests.csproj`: 93 PASS lines, 0 failures. New: captured-melee motion parity against the transpiled pinned source (872 scripted frames, worst joint error 1.73 mm, 5 mm limit; shield frames after the first stun excluded, see ANIMATIONS.md), CSS cubic-bezier/keyframe curves, the UI canvas at 720p–4K and 3440×1440 (2150×900), intro name-card times and style names, and chip card text coverage (242 chips plus the four-chip Siren track).
+- `python -m unittest discover -s Tests -p "test_*.py"`: 20 tests OK. New: Ward Zero bake (crowd off the origin, no full-intensity glows, six transparent beam parts) and the ten stage-hazard parts; the model count is now 139.
+- `dotnet run --project Updater/Tests/UpdaterTests.csproj -c Release`: 51 updater transaction/archive checks pass. `tools/check_relay.py` passes. `tools/package_source.py --check` passes (605 source files; asset receipts include HazardModels.json, ChipText.json and the regenerated SourceModels/WardMotion/SceneryMotion).
+- Exports reproduced from the pinned source: `tools/export_cinematics.mjs` (Ward Zero bake), `tools/export_hazards.mjs`, `tools/export_chip_text.mjs`; only Ward Zero models changed in SourceModels.json.
+
+**Not run (needs the owner's Windows Unity):** Unity import, shader compilation and rendering of every new overlay, card, hazard, Ward mood, HUD and menu-skin change; the in-match melee runtime in motion; `Build-Windows.cmd` with the updater packaging (`UNITY_TEST_BUILD_READY`), the starter ZIP, and an actual Unity-to-Unity update through the menu card; `tools/check_updater_windows.py` (Windows only). Rendered appearance at 1280×720, 1920×1080, 2560×1440 and 3440×1440 is unverified.
+
 ## Presentation startup repair (2026-10-07, 20:27 owner report)
 
 The owner reaches the match-setup UI but reports a failed match start. The

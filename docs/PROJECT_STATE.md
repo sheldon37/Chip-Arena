@@ -155,3 +155,8 @@ build pass. Launcher packaging then failed with CS1504 source paths. The shared
 compiler step now uses validated absolute paths and a response file, with a real
 Windows packaging regression. Final starter ZIP/feed and in-game update acceptance
 still require the repaired build to run on the owner's Unity installation.
+
+Presentation and updater integration (2026-10-08): `claude/sleepy-ritchie-g8ruhv` carries the
+captured-melee runtime, stage/overlay/draft/HUD/menu polish and Astra's updater (`6235a82`) with a
+styled update card. Source, managed, Python, updater-transaction and Unity API compile checks pass;
+the Windows Unity build, rendered acceptance and an actual in-game update remain. Not merged/released.
