@@ -84,6 +84,7 @@ namespace ChipArena.UnityConversion
             var m=Enter();var o=GUI.color;GUI.color=c;GUI.DrawTexture(P(r),t);GUI.color=o;GUI.matrix=m;
         }
         public static void Radial(Rect r,Color c){if(c.a<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=c;GUI.DrawTexture(P(r),radial);GUI.color=o;GUI.matrix=m;}
+        public static void Image(Rect r,Texture t,Color c){if(t==null||c.a<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=c;GUI.DrawTexture(P(r),t);GUI.color=o;GUI.matrix=m;}
         public static void Glow(Rect r,Color c,float spread){if(c.a<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=c;GUI.DrawTexture(P(new Rect(r.x-spread,r.y-spread,r.width+spread*2,r.height+spread*2)),soft);GUI.color=o;GUI.matrix=m;}
         // Rounded rectangle (radius 4/8/12/16 px class) with an optional border.
         public static void Round(Rect r,Color fill,float radius=8,Color border=default,float borderWidth=1)
