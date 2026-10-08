@@ -19,6 +19,8 @@ namespace ChipArena.UnityConversion
         private NativeListener listener;private NativeConnection server;private readonly List<NativePeer> peers=new List<NativePeer>();
         private Task<NativeConnection> connecting;private CancellationTokenSource connectStop;private string hostAddress="127.0.0.1",portText="29941",roomCode="",joinCode="",resumeToken="",networkStatus="";private int networkId=1,networkEpoch,inputSequence;private float nextSnapshot,nextPing;private bool networkReady;private NativeSeatFrame[] lobbySeats=Array.Empty<NativeSeatFrame>();
         private bool Online=>Hosting||server!=null;private bool Hosting=>listener!=null||relayHost!=null;
+        // In a room: hosting, or a guest the host has welcomed (JoinRoom resets networkId to 0; welcome assigns 1-8).
+        private bool InRoom=>Hosting||server!=null&&networkId>=1;private string joinError="";
         private static string RandomToken(int bytes){var data=new byte[bytes];using(var random=RandomNumberGenerator.Create())random.GetBytes(data);return BitConverter.ToString(data).Replace("-","").ToLowerInvariant();}
         private NativeProfile Profile()=>new NativeProfile{name=prefs.name,@class=content.Weapon(prefs.weapon).@class,color=prefs.accentColor,cosmetics=new NativeCosmetics{bodyColor=prefs.bodyColor,hat=prefs.hat,killEffect=prefs.killEffect,preferredSpec=prefs.weapon,intro=prefs.intro,introText=prefs.introText,overrideWeaponIntro=prefs.overrideIntro}};
         private void HostRoom()
@@ -30,7 +32,7 @@ namespace ChipArena.UnityConversion
         private void JoinRoom()
         {
             Time.timeScale=1;EndPreview();
-            if(connecting!=null)return;if(!int.TryParse(portText,out int port)||port<1||port>65535){networkStatus="Invalid port.";return;}
+            if(connecting!=null)return;int port=0;if(!internetRooms&&(!int.TryParse(portText,out port)||port<1||port>65535)){networkStatus="Invalid port.";return;}joinError="";
             server?.Dispose();server=null;networkId=0;connectStop?.Cancel();connectStop=new CancellationTokenSource();try{connecting=internetRooms?NativeRelayHost.Join(prefs.relayOrigin,joinCode.Trim().ToUpperInvariant(),content.sourceCommit,connectStop.Token):NativeConnection.Connect(hostAddress.Trim(),port,connectStop.Token);}catch(ArgumentException e){networkStatus=e.Message;return;}networkStatus="Connecting…";
         }
         private void CloseNetwork()
@@ -60,7 +62,7 @@ namespace ChipArena.UnityConversion
             if(server!=null)
             {
                 int count=0;while(count++<64&&server.TryReceive(out string json))try{var m=JsonUtility.FromJson<NativeNetMessage>(json);ClientMessage(m);}catch(Exception e)when(e is ArgumentException||e is InvalidOperationException){server.Dispose();networkStatus="Invalid or incompatible host state.";break;}
-                if(server.Closed||(DateTime.UtcNow-server.LastReceived).TotalSeconds>12){networkStatus="Disconnected. Rejoin this host within 90 seconds to reclaim your seat.";server.Dispose();server=null;menu=true;pending=new InputFrame();}
+                if(server.Closed||(DateTime.UtcNow-server.LastReceived).TotalSeconds>12){networkStatus=joinError.Length>0?joinError:"Disconnected. Rejoin this host within 90 seconds to reclaim your seat.";joinError="";server.Dispose();server=null;menu=true;pending=new InputFrame();}
             }
             if(Online&&Time.unscaledTime>=nextPing){nextPing=Time.unscaledTime+1;var ping=JsonUtility.ToJson(new NativeNetMessage{type="ping"});server?.Send(ping);foreach(var p in peers)if(p.Connection?.Closed==false)p.Connection.Send(ping);}
             if(arena?.Replica==true)arena.InterpolateReplica(Time.unscaledDeltaTime);
@@ -107,7 +109,7 @@ namespace ChipArena.UnityConversion
         private void ClientMessage(NativeNetMessage message)
         {
             if(message==null||message.version!=NativeConnection.Protocol)throw new ArgumentException();if(message.type=="ping")return;
-            if(message.type=="error"){networkStatus=message.error?.Substring(0,Math.Min(message.error.Length,160))??"Room rejected the request.";return;}
+            if(message.type=="error"){networkStatus=message.error?.Substring(0,Math.Min(message.error.Length,160))??"Room rejected the request.";if(networkId<1){joinError=networkStatus;server.Dispose();}return;}
             if(message.type=="welcome"){if(message.id<1||message.id>8||message.resume?.Length!=64)throw new ArgumentException();networkId=message.id;resumeToken=message.resume;networkEpoch=message.epoch;networkStatus="Connected · waiting for the host";return;}
             if(message.type=="lobby"){if(message.seats==null||message.seats.Length>8||message.seats.Any(s=>s==null||s.name==null||s.name.Length>40||!content.weapons.Any(w=>w.id==s.spec)))throw new ArgumentException();lobbySeats=message.seats;if(message.epoch!=networkEpoch){arena?.Dispose();arena=null;match=null;presentation?.ResetPresentation();menu=true;networkEpoch=message.epoch;}return;}
             if(message.type!="frame"||networkId<1)return;var f=message.frame;if(f==null||!f.Valid(content)||!f.seats.Any(s=>s.id==networkId))throw new ArgumentException();
@@ -160,10 +162,10 @@ namespace ChipArena.UnityConversion
                 Field("Mode");bool pve=ChoiceRow(new[]{"Versus","Boss Test · The Siren"},prefs.pve?1:0)==1;if(pve!=prefs.pve){prefs.pve=pve;prefs.bots=Mathf.Clamp(prefs.bots,0,pve?3:7);}
                 if(prefs.pve)BossBody();else MatchRulesBody(true);
             }
-            else{Fine("The host sets the mode, arena and rules. Ready up when your loadout is set.");Field("Your weapon");WeaponGrid();Fine("Send Loadout after changing your weapon or Customize choices.");}
+            else{Fine("The host sets the mode, arena and rules. Ready up when your loadout is set.");Field("Your weapon");WeaponGrid();Fine("Send Loadout after changing your weapon. Saving in Customize sends your new look automatically.");}
         }
         // Leave Room: close the connection or room and drop any running match (the source's Leave Room / Return to Main Menu).
-        private void LeaveRoom(){ClearReplay();CloseNetwork();arena?.Dispose();arena=null;match=null;presentation?.ResetPresentation();menu=true;}
+        private void LeaveRoom(){ClearReplay();CloseNetwork();arena?.Dispose();arena=null;match=null;presentation?.ResetPresentation();menu=true;Go(MenuScreen.Home);}
         private void ChooseChip(int seat,string chip){if(server!=null)SendServer(new NativeNetMessage{type="chip",chip=chip});else match.Choose(seat,chip);}
         private void ChoosePveChip(int pick,string chip){if(server!=null)SendServer(new NativeNetMessage{type="pve-pick",pick=pick,chip=chip});else arena.ChoosePve(arena.Local,pick,chip);}
         private void PveOpen(bool open){if(server!=null)SendServer(new NativeNetMessage{type=open?"pve-open":"pve-close"});else if(open)arena.OpenPvePick(arena.Local);else arena.ClosePvePick(arena.Local);}

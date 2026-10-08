@@ -49,6 +49,12 @@ namespace ChipArena.UnityConversion
             Time.timeScale=1;sandboxSpeed=1;
             if(prefs.pve){prefs.map="siren";prefs.bots=Mathf.Clamp(prefs.bots,0,3);}else prefs.bots=Mathf.Clamp(prefs.bots,Online||dedicated?0:1,7);
             if(server!=null)return;if(prefs.pve&&peers.Count(p=>p.Seat!=null&&p.Connection?.Closed==false)>(dedicated?4:3)){networkStatus="Siren co-op supports up to four party members.";return;}if(Hosting&&peers.Any(p=>p.Seat!=null&&p.Connection?.Closed==false&&!p.Ready)){networkStatus="Wait for the other pilots to be ready.";return;}
+            // Refuse a match that cannot start (a host alone with no bots, or every pilot on one team) before the running arena
+            // is touched, so the reason shows in the menu instead of the fatal error screen.
+            {var sides=new System.Collections.Generic.HashSet<int>();int n=0;if(!dedicated){sides.Add(prefs.pve||prefs.teams?0:1);n++;}
+             foreach(var p in peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false)){sides.Add(prefs.pve?0:prefs.teams?p.Seat.team:p.Seat.id);n++;}
+             int fill=Math.Min(prefs.bots,(prefs.pve?4:8)-n);for(int i=0;i<fill;i++){sides.Add(prefs.pve?0:prefs.teams?(i+1)%2:100+i);n++;}if(prefs.pve){sides.Add(1);n++;}
+             if(n<2||sides.Count<2){networkStatus=n>=2?"Both teams need a pilot: add a bot or change teams.":"Add a bot or wait for a pilot to join.";return;}}
             if(!dedicated)Save();EndPreview();inspectSeat=0;ClearReplay();arena?.Dispose();presentation?.ResetPresentation();networkEpoch++;
             match=new NativeMatch(content){ShowIntros=true,Cooperative=prefs.pve,Teams=prefs.pve||prefs.teams,RoundsPerSet=prefs.rounds,SetsToWin=prefs.sets,SkipBotDrafts=prefs.skipBotDrafts,BothDraft=prefs.bothDraft,Choices=prefs.choices,SelectionSeconds=prefs.selectionSeconds};
             if(!dedicated){var local=SanitizedSeat(1,Profile(),account.Token);local.team=0;match.Seats.Add(local);}
@@ -66,7 +72,7 @@ namespace ChipArena.UnityConversion
             if(content==null)return;if(dedicated){DedicatedTick();return;}if(cameraView==null)return;NetworkTick();
             // The main menu is always open without a match (an Escape there steps back instead), so the updater's install gate holds.
             if(arena==null)menu=true;if(!menu)pauseScreen=PauseScreen.Menu;
-            if(Input.GetKeyDown(KeyCode.Escape)&&previewArena!=null){EndPreview();return;}if(Input.GetKeyDown(KeyCode.Escape)&&inspectSeat!=0){inspectSeat=0;return;}if(Input.GetKeyDown(KeyCode.Escape)&&ReplayActive){EndReplay();return;}if(Input.GetKeyDown(KeyCode.Escape)){if(arena==null)MenuBack();else if(PvePickOpen)PveOpen(false);else if(menu&&pauseScreen!=PauseScreen.Menu)pauseScreen=PauseScreen.Menu;else menu=!menu;pending=new InputFrame();pending.CancelAbilities=true;if(server==null)arena?.CancelLocalAbilities();}
+            if(Input.GetKeyDown(KeyCode.Escape)&&previewArena!=null){EndPreview();return;}if(Input.GetKeyDown(KeyCode.Escape)&&inspectSeat!=0){inspectSeat=0;return;}if(Input.GetKeyDown(KeyCode.Escape)&&ReplayActive){EndReplay();return;}if(Input.GetKeyDown(KeyCode.Escape)){if(arena==null)MenuBack();else if(PvePickOpen)PveOpen(false);else if(menu&&pauseScreen!=PauseScreen.Menu){if(pauseScreen==PauseScreen.Settings){ApplySettings();Save();}pauseScreen=PauseScreen.Menu;}else menu=!menu;pending=new InputFrame();pending.CancelAbilities=true;if(server==null)arena?.CancelLocalAbilities();}
             if(Input.GetKeyDown(KeyCode.V)&&!(arena?.ViewPilot?.Seat.spec=="siren"&&prefs.sirenMode=="V"&&!menu)){prefs.firstPerson=!prefs.firstPerson;Save();}
             if(Input.GetKeyDown(KeyCode.C)&&arena?.Pve!=null){if(PvePickOpen)PveOpen(false);else PveOpen(true);}
             if(Input.GetKeyDown(KeyCode.F9))presentation.ForceCompatibilityRendering=!presentation.ForceCompatibilityRendering;
@@ -236,13 +242,13 @@ namespace ChipArena.UnityConversion
         private void BossBody()
         {
             Field("Party bots");GUILayout.Label(prefs.bots==1?"1 party bot":prefs.bots+" party bots",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(Mathf.Clamp(prefs.bots,0,3),0,3));
-            Fine("AI pilots fill the party (up to 4). In a hosted room, friends who join take the party slots.");prefs.skipWaves=GUILayout.Toggle(prefs.skipWaves,"Start at the Siren (skip the opening waves)");
+            Fine("AI pilots fill the party (up to 4). In a hosted room, friends who join take the party slots.");prefs.mirrorWeapons=GUILayout.Toggle(prefs.mirrorWeapons,"Party bots use my weapon (otherwise mixed loadouts)");prefs.skipWaves=GUILayout.Toggle(prefs.skipWaves,"Start at the Siren (skip the opening waves)");
             Field("Your weapon");WeaponGrid();
             Fine("Intros play as normal. Earn money from minions to buy chips, heals, revives and recruits. F interacts · C opens your chips; chips you take wait there until you choose.");
         }
         private void WeaponGrid()
         {
-            var weapons=content.weapons.Where(AllowedWeapon).ToArray();string pick=ChoiceGrid(weapons.Select(w=>w.id).ToArray(),prefs.weapon,weapons.Select(w=>w.name).ToArray());if(pick!=prefs.weapon){prefs.weapon=pick;}
+            var weapons=content.weapons.Where(AllowedWeapon).ToArray();string pick=ChoiceGrid(weapons.Select(w=>w.id).ToArray(),prefs.weapon,weapons.Select(w=>w.name).ToArray());if(pick!=prefs.weapon){prefs.weapon=pick;if(Hosting&&arena==null)LobbyBroadcast();}
         }
         // Every arena, Ward Zero included (its PvP variant); picking one also turns the menu backdrop to it (main.ts previewMap).
         private void MapGrid(){var maps=content.maps;prefs.map=ChoiceGrid(maps.Select(m=>m.id).ToArray(),prefs.map,maps.Select(m=>m.name).ToArray());}

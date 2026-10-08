@@ -17,19 +17,23 @@ namespace ChipArena.UnityConversion
         private enum MenuScreen{Home,Play,Create,Join,Lobby,Boss,Customize,Settings,Account,Dev,Catalogue}
         private enum PauseScreen{Menu,Settings,Sandbox}
         private MenuScreen menuScreen;private PauseScreen pauseScreen;private float menuScreenAt=-1,menuSeen=-1,screenContent=400;private Vector2 screenScroll;
-        private bool updateOpen,menuFromMatch;private Rect updateCard;private GUIStyle fieldLabel,fine,codeField;
+        private bool updateOpen,menuFromMatch,menuBlockedNow,roomGuest,playSandbox;private MenuScreen afterMatch=MenuScreen.Home;private Rect updateCard;private GUIStyle fieldLabel,fine,codeField;
         private void Click()=>nativeAudio?.Play("ui",null,.4f);
         // CSS panel-in (.26 s cubic-bezier(.2,.8,.2,1)) progress for an element entering `delay` seconds into the screen.
         private static float In(float age,float delay,float duration)=>M.Bezier(.2f,.8f,.2f,1,M.Clamp01((age-delay)/duration));
         private void Go(MenuScreen screen)
         {
+            // Leaving Settings keeps what was changed (applied and saved); leaving Create / Join abandons a pending connection.
+            if(menuScreen==MenuScreen.Settings&&screen!=MenuScreen.Settings){ApplySettings();Save();}
+            if((menuScreen==MenuScreen.Create||menuScreen==MenuScreen.Join)&&screen!=MenuScreen.Lobby&&!InRoom&&(connecting!=null||relayConnecting!=null||server!=null)){CloseNetwork();networkStatus="Connection cancelled.";}
+            if(screen!=MenuScreen.Home)updateOpen=false;playSandbox=false;
             if(screen==MenuScreen.Play){prefs.pve=false;prefs.bots=Mathf.Clamp(prefs.bots,1,7);sandboxWanted=false;}
             if(screen==MenuScreen.Boss){prefs.pve=true;prefs.bots=Mathf.Clamp(prefs.bots,0,3);sandboxWanted=false;}
             menuScreen=screen;menuScreenAt=Time.unscaledTime;screenScroll=Vector2.zero;screenContent=400;GUIUtility.keyboardControl=0;
         }
         // Escape on the main menu: close the update card, else return to the home screen (the source close X); the room
         // lobby stays until Leave Room.
-        private void MenuBack(){if(updateOpen){updateOpen=false;return;}if(menuScreen!=MenuScreen.Home&&menuScreen!=MenuScreen.Lobby)Go(MenuScreen.Home);}
+        private void MenuBack(){if(updateOpen&&menuScreen==MenuScreen.Home){updateOpen=false;return;}if(menuScreen!=MenuScreen.Home&&menuScreen!=MenuScreen.Lobby)Go(MenuScreen.Home);}
         private void MenuStyles()
         {
             if(fieldLabel!=null)return;fieldLabel=new GUIStyle(small){fontSize=12,fontStyle=FontStyle.Bold,wordWrap=true};fieldLabel.normal.textColor=U.Hex(0xc0c1ca);fieldLabel.margin=new RectOffset(4,4,18,6);
@@ -46,8 +50,12 @@ namespace ChipArena.UnityConversion
         private void HomeMenu()
         {
             MenuStyles();float now=Time.unscaledTime;if(now-menuSeen>.25f)menuScreenAt=now;menuSeen=now;
-            if(menuFromMatch){menuFromMatch=false;Go(MenuScreen.Home);}
-            if(Online&&menuScreen!=MenuScreen.Lobby)Go(MenuScreen.Lobby);else if(!Online&&menuScreen==MenuScreen.Lobby)Go(MenuScreen.Home);
+            if(menuFromMatch){menuFromMatch=false;Go(afterMatch);afterMatch=MenuScreen.Home;}
+            // In a room the lobby is home (Customize and Settings stay open over it); a room lost without Leave Room returns
+            // to Join (guest) or Create (host), where the reason is shown.
+            if(InRoom&&menuScreen!=MenuScreen.Lobby&&menuScreen!=MenuScreen.Customize&&menuScreen!=MenuScreen.Settings)Go(MenuScreen.Lobby);
+            else if(!InRoom&&menuScreen==MenuScreen.Lobby)Go(roomGuest?MenuScreen.Join:MenuScreen.Create);
+            menuBlockedNow=menuScreen==MenuScreen.Home&&updateOpen&&updateCard.width>0&&U.Hover(updateCard);
             float age=now-menuScreenAt;bool home=menuScreen==MenuScreen.Home;
             MenuShade(1);MenuMotes(home?1:.5f);TopBar(home);Footer();
             switch(menuScreen)
@@ -133,7 +141,9 @@ namespace ChipArena.UnityConversion
             var u=Updater;string label="Update Game";float w=17+15+8+U.Measure(label,12,true).x+17;var r=new Rect(right-w,top,w,38);
             float h=U.HoverAmount(9101,r,!MenuBlocked());
             U.Glow(new Rect(r.x,r.y+5,r.width,r.height),new Color(0,0,0,.27f),18);
-            U.Capsule(r,new[]{0f,1f},new[]{h>0?U.Mix(U.Hex(0x302a32),U.Hex(0x393039),h):U.Hex(0x302a32),h>0?U.Mix(U.Hex(0x191a22),U.Hex(0x393039),h):U.Hex(0x191a22)},U.Mix(U.Hex(0x71616a),U.Hex(0xefb587),Mathf.Max(h,updateOpen?1:0)));
+            // Two fixed capsules (rest gradient, hover fill faded in by h) so the hover transition reuses cached textures.
+            U.Capsule(r,new[]{0f,1f},new[]{U.Hex(0x302a32),U.Hex(0x191a22)},U.Mix(U.Hex(0x71616a),U.Hex(0xefb587),Mathf.Max(h,updateOpen?1:0)));
+            if(h>0)U.Capsule(new Rect(r.x+1,r.y+1,r.width-2,r.height-2),new[]{0f},new[]{U.Hex(0x393039)},default,h);
             U.Fill(new Rect(r.x+19,r.y+1,r.width-38,1),new Color(1,1,1,.05f));
             NativeIcons.Draw(new Rect(r.x+17,r.center.y-7.5f,15,15),"download",U.Hex(0xefb587));U.Text(new Rect(r.x+17+15+8,r.y,r.width,r.height),label,12,U.Hex(0xf4e6dc),TextAnchor.MiddleLeft,bold:true);
             if(U.Button(r)&&!MenuBlocked()){updateOpen=!updateOpen;Click();}
@@ -146,7 +156,8 @@ namespace ChipArena.UnityConversion
         private Vector2 updateAnchor;
         private void UpdateDropdown(){if(Updater!=null&&updateOpen)UpdatePanel(updateAnchor.x,updateAnchor.y);else updateCard=Rect.zero;}
         // While the update card is open, controls underneath it ignore the pointer (IMGUI gives clicks to the first control).
-        private bool MenuBlocked()=>menuScreen==MenuScreen.Home&&updateOpen&&updateCard.width>0&&U.Hover(updateCard);
+        // Computed once per event at the top of HomeMenu, untransformed, from the card drawn last frame.
+        private bool MenuBlocked()=>menuBlockedNow;
         // .bottom-line: a #415362 rule 23 px above the bottom with the build and arena counts in 12 px mono.
         private void Footer()
         {
@@ -193,7 +204,7 @@ namespace ChipArena.UnityConversion
             y+=40;
             // .subtle-link row: Developer Sandbox (developers, offline), the source catalogue and Quit.
             float lx=x0;float le=ce*In(age,.22f,.3f);
-            if(dev&&!Online&&SubtleLink(ref lx,y+15,"flask-conical","Developer Sandbox",le)){sandboxWanted=true;prefs.pve=false;prefs.bots=Mathf.Clamp(prefs.bots,1,7);StartMatch();}
+            if(dev&&!Online&&SubtleLink(ref lx,y+15,"flask-conical","Developer Sandbox",le)){Go(MenuScreen.Play);playSandbox=true;}
             if(SubtleLink(ref lx,y+15,"book-open","Catalogue",le))Go(MenuScreen.Catalogue);
             if(SubtleLink(ref lx,y+15,"log-out","Quit",le)){Save();Application.Quit();}
             U.Pop();
@@ -351,13 +362,14 @@ namespace ChipArena.UnityConversion
         // A one-line status under the actions' rule (errors in the source's .connection-error red).
         private static void ScreenStatus(ScreenLayout l,string text,bool error=false)
         {if(string.IsNullOrEmpty(text))return;var p=l.Panel;var line=U.Wrap(text,13,p.width-64,false,1);U.Text(new Rect(p.x+32,p.yMax-30-48-20-24,p.width-64,18),line.Count>0?line[0]:text,13,error?U.Hex(0xff8a7a,l.Enter):U.Hex(0xa6a7ad,l.Enter),TextAnchor.MiddleLeft);}
-        private bool NetworkError=>networkStatus.IndexOf("fail",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("invalid",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("could not",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("choose a port",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("rejected",StringComparison.OrdinalIgnoreCase)>=0;
+        private bool NetworkError=>networkStatus.IndexOf("fail",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("disconnect",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("does not match",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("is full",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("add a bot",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("both teams",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("invalid",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("could not",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("choose a port",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("rejected",StringComparison.OrdinalIgnoreCase)>=0;
 
         private void PlayScreen(float age)
         {
-            var l=BeginScreen("LOCAL MATCH","Play vs Bots",650,age,true);if(l.Closed){Go(MenuScreen.Home);return;}
-            ScreenBody(l,()=>MatchRulesBody(false));if(l.Card.width>0)PilotCard(l.Card,"YOUR PILOT",l.Enter,"Change your lobby look and preferred weapon in Customize.");
-            if(ScreenActions(l,("play","Start Match",true,server==null))==0){prefs.pve=false;sandboxWanted=false;StartMatch();}
+            // The Developer Sandbox link opens this screen in sandbox mode, so the arena and bots are chosen before it starts.
+            var l=BeginScreen(playSandbox?"DEVELOPER SANDBOX":"LOCAL MATCH",playSandbox?"Developer Sandbox":"Play vs Bots",650,age,true);if(l.Closed){Go(MenuScreen.Home);return;}
+            ScreenBody(l,()=>MatchRulesBody(false));if(l.Card.width>0)PilotCard(l.Card,"YOUR PILOT",l.Enter,playSandbox?"Local only. Sandbox tools are in the pause menu (Esc).":"Change your lobby look and preferred weapon in Customize.");
+            if(ScreenActions(l,("play",playSandbox?"Start Sandbox":"Start Match",true,server==null&&(!playSandbox||account.Developer)))==0){prefs.pve=false;sandboxWanted=playSandbox&&account.Developer;StartMatch();}
         }
         private void BossScreen(float age)
         {
@@ -388,13 +400,16 @@ namespace ChipArena.UnityConversion
         {
             var l=BeginScreen("CHIP ARENA","Join a private room",650,age,true);if(l.Closed){Go(MenuScreen.Home);return;}
             ScreenBody(l,JoinBody);if(l.Card.width>0)PilotCard(l.Card,"YOUR PILOT",l.Enter,"Your loadout is sent to the host when you join.");
-            bool busy=connecting!=null;ScreenStatus(l,networkStatus,NetworkError);
+            bool busy=connecting!=null||server!=null&&!InRoom;ScreenStatus(l,networkStatus,NetworkError);
             if(ScreenActions(l,("play",busy?"Finding room…":"Join Room",true,!busy&&joinCode.Trim().Length>0))==0)JoinRoom();
         }
         private void LobbyScreen(float age)
         {
-            bool pve=Hosting&&prefs.pve;
+            bool pve=Hosting&&prefs.pve;roomGuest=!Hosting;
             var l=BeginScreen(pve?"BOSS TEST LOBBY":"PRIVATE ROOM",Hosting?"Match lobby":"Room lobby",1020,age,false,close:false);
+            // Customize and Settings open over the room (their close returns here); saving a new look updates the room.
+            float bx=l.Panel.xMax-32;foreach(var (icon,text,screen) in new[]{("settings","Settings",MenuScreen.Settings),("palette","Customize",MenuScreen.Customize)})
+            {float w=U.Measure(text,13,true).x+19+18+28;bx-=w;if(MenuButton(new Rect(bx,l.Panel.y+30,w,40),icon,text,null,false,true,l.Enter,13,true))Go(screen);bx-=10;}
             ScreenBody(l,LobbyBody);ScreenStatus(l,networkStatus,NetworkError);
             if(Hosting){int a=ScreenActions(l,("play","Start Match",true,server==null),("log-out","Leave Room",false,true));if(a==0)StartMatch();else if(a==1)LeaveRoom();}
             else{int a=ScreenActions(l,("check",networkReady?"Cancel Ready":"Ready",!networkReady,server!=null),("download","Send Loadout",false,server!=null),("log-out","Leave Room",false,true));
@@ -405,12 +420,12 @@ namespace ChipArena.UnityConversion
             var l=BeginScreen("CUSTOMIZATION","Your pilot",560,age,true,left:true);if(l.Closed){Go(MenuScreen.Home);return;}
             ScreenBody(l,CustomizeBody);if(l.Card.width>0)PilotCard(l.Card,"LIVE PREVIEW",l.Enter,"Your lobby look is visible to everyone in your room.");
             int a=ScreenActions(l,("check","Save Pilot",true,true),("play","Preview Intro",false,true));
-            if(a==0){SavePilot();Go(MenuScreen.Home);}else if(a==1)StartPreview();
+            if(a==0){SavePilot();if(server!=null&&InRoom)SendServer(new NativeNetMessage{type="profile",profile=Profile(),token=account?.Token});if(Hosting)LobbyBroadcast();Go(MenuScreen.Home);}else if(a==1)StartPreview();
         }
         private void SettingsScreen(float age,Action back)
         {
             var l=BeginScreen("CHIP ARENA","Settings",640,age);if(l.Closed){back();return;}
-            ScreenBody(l,SettingsBody);if(ScreenActions(l,("check","Save Settings",true,true))==0){ApplySettings();Save();back();}
+            ScreenBody(l,SettingsBody);if(ScreenActions(l,("check","Save Settings",true,true))==0)back();
         }
         private void AccountScreen(float age)
         {
@@ -468,19 +483,22 @@ namespace ChipArena.UnityConversion
         private void PauseMenu()
         {
             if(inspectSeat!=0)return;MenuStyles();float now=Time.unscaledTime;if(now-menuSeen>.25f)menuScreenAt=now;menuSeen=now;float age=now-menuScreenAt,W=U.W,H=U.H;
-            MenuShade(.9f);
-            if(pauseScreen==PauseScreen.Settings){SettingsScreen(age,()=>{pauseScreen=PauseScreen.Menu;menuScreenAt=Time.unscaledTime;});return;}
+            menuBlockedNow=false;updateCard=Rect.zero;updateOpen=false;MenuShade(.9f);
+            if(pauseScreen==PauseScreen.Settings){SettingsScreen(age,()=>{ApplySettings();Save();pauseScreen=PauseScreen.Menu;menuScreenAt=Time.unscaledTime;});return;}
             if(pauseScreen==PauseScreen.Sandbox){if(arena.Sandbox&&account.Developer&&!Online){SandboxScreen(age);return;}pauseScreen=PauseScreen.Menu;}
             if(!arena.Sandbox)Board(W);
-            string status=Online?"The online match continues while this menu is open."+(networkStatus.Length>0?" "+networkStatus:""):arena.Pve!=null?"The boss test is paused.":"Local practice is paused.";
-            var items=new List<(string icon,string label,bool primary,bool enabled,Action act)>{("play","Resume",true,true,()=>menu=false),("settings","Settings",false,true,()=>{pauseScreen=PauseScreen.Settings;menuScreenAt=Time.unscaledTime;screenScroll=Vector2.zero;screenContent=400;})};
+            // A guest whose host is gone keeps a frozen replica: say so and offer the way back to Join Room to reclaim the seat.
+            bool lost=arena.Replica&&server==null;
+            string status=lost?(networkStatus.Length==0||networkStatus.StartsWith("Disconnected")?"The host disconnected. Return to the main menu, then use Join Room within 90 seconds to reclaim your seat.":networkStatus+" Return to the main menu."):Online?"The online match continues while this menu is open."+(networkStatus.Length>0?" "+networkStatus:""):arena.Pve!=null?"The boss test is paused.":"Local practice is paused.";
+            var items=new List<(string icon,string label,bool primary,bool enabled,Action act)>();if(!lost)items.Add(("play","Resume",true,true,()=>menu=false));
+            items.Add(("settings","Settings",false,true,()=>{pauseScreen=PauseScreen.Settings;menuScreenAt=Time.unscaledTime;screenScroll=Vector2.zero;screenContent=400;}));
             if(arena.Sandbox&&account.Developer&&!Online)items.Add(("flask-conical","Sandbox Tools",false,true,()=>{pauseScreen=PauseScreen.Sandbox;menuScreenAt=Time.unscaledTime;screenScroll=Vector2.zero;screenContent=400;}));
-            if(!Online)items.Add(("rotate-cw","Restart Match",false,true,StartMatch));
+            if(!Online&&!lost)items.Add(("rotate-cw","Restart Match",false,true,StartMatch));
             if(Online)items.Add(("undo-2","Return to Lobby",false,Hosting,ReturnToLobby));
-            items.Add(("log-out","Return to Main Menu",false,true,()=>{if(Online)LeaveRoom();else ReturnToLobby();}));
+            items.Add(("log-out","Return to Main Menu",lost,true,()=>{if(Online)LeaveRoom();else{if(lost)afterMatch=MenuScreen.Join;ReturnToLobby();}}));
             string hints="WASD move · double-tap W sprint · LMB fire / attack · RMB block · Q / E abilities · R reload · Shift roll · Space jump · V camera · Tab lock-on / board · G scores · Esc menu";
             string diag=content.Map(arena.MapId).name+"  ·  SET "+match.Set+" · ROUND "+match.Round+"  ·  "+match.Phase+"  ·  "+arena.Bullets.Count+" projectiles  ·  step "+stepMs.ToString("0.00")+" ms  ·  "+presentation.RenderingMode;
-            float pw=Mathf.Min(520,W-56),iw=pw-64;var statusLines=U.Wrap(status,16,iw);var hintLines=U.Wrap(hints,13,iw);var diagLines=U.Wrap(diag,11,iw);bool guest=Online&&!Hosting;
+            float pw=Mathf.Min(520,W-56),iw=pw-64;var statusLines=U.Wrap(status,16,iw);var hintLines=U.Wrap(hints,13,iw);var diagLines=MonoLines(diag,11,iw);bool guest=Online&&!Hosting;
             float ph=108+statusLines.Count*16*1.6f+16+items.Count*56-8+(guest?24:0)+20+hintLines.Count*13*1.55f+8+diagLines.Count*16+30,e=In(age,0,.26f);
             var p=new Rect(arena.Sandbox?(W-pw)/2:Mathf.Max(28,W*.05f),Mathf.Max(80,(H-ph)/2)+10*(1-e),pw,ph);U.Panel(p,e);
             U.Text(new Rect(p.x+32,p.y+30,iw,16),"CHIP ARENA",12,U.Hex(0xc0c1ca,e),TextAnchor.MiddleLeft,bold:true,tracking:.2f);U.Text(new Rect(p.x+32,p.y+52,iw,38),"Match menu",30,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true,tracking:-.03f);
@@ -490,6 +508,12 @@ namespace ChipArena.UnityConversion
             foreach(var s in hintLines){U.Text(new Rect(p.x+32,y,iw,13*1.55f),s,13,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);y+=13*1.55f;}y+=8;
             foreach(var s in diagLines){U.Text(new Rect(p.x+32,y,iw,16),s,11,U.Hex(0x7c7d86,e),TextAnchor.MiddleLeft,mono:true);y+=16;}
             if(chosen!=null){pauseScreen=PauseScreen.Menu;chosen();}
+        }
+        // Greedy lines of `  ·  `-separated parts measured in the mono face they are drawn in (not cached: the values change).
+        private static List<string> MonoLines(string text,float size,float width)
+        {
+            var lines=new List<string>();string line="";foreach(var part in text.Split(new[]{"  ·  "},StringSplitOptions.None)){string next=line.Length==0?part:line+"  ·  "+part;if(line.Length>0&&U.Measure(next,size,false,true).x>width){lines.Add(line);line=part;}else line=next;}
+            if(line.Length>0)lines.Add(line);return lines;
         }
         private void SandboxScreen(float age)
         {

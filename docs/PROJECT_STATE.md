@@ -160,3 +160,6 @@ Presentation and updater integration (2026-10-08): `claude/sleepy-ritchie-g8ruhv
 captured-melee runtime, stage/overlay/draft/HUD/menu polish and Astra's updater (`6235a82`) with a
 styled update card. Source, managed, Python, updater-transaction and Unity API compile checks pass;
 the Windows Unity build, rendered acceptance and an actual in-game update remain. Not merged/released.
+The Unity menu is now the source home screen with panel screens and a pause menu (`NativeHomeMenu.cs`);
+the update card opens from the home Update Game pill. Offline renders of the real drawing code pass;
+a Unity playtest of every screen (including a two-player room) is the next step.
