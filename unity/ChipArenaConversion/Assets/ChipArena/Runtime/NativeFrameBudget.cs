@@ -15,6 +15,7 @@ namespace ChipArena.UnityConversion
                 string json=NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=epoch,frame=frame});
                 if(Encoding.UTF8.GetByteCount(json)<=MaxJsonBytes){var bytes=NativeConnection.Encode(json);if(bytes.Length<=MaxPacketBytes)return bytes;}
                 if(frame.snapshot.Events.Length>0){frame.snapshot.Events=frame.snapshot.Events.Skip((frame.snapshot.Events.Length+1)/2).ToArray();continue;}
+                if(frame.corpses!=null&&frame.corpses.Length>0){frame.corpses=frame.corpses.Skip((frame.corpses.Length+1)/2).ToArray();continue;}
                 if(frame.effects.Length>0){frame.effects=frame.effects.Take(frame.effects.Length/2).ToArray();continue;}
                 if(frame.snapshot.Shots.Length>0){frame.snapshot.Shots=frame.snapshot.Shots.Take(frame.snapshot.Shots.Length/2).ToArray();continue;}
                 // A future authority schema expansion must not terminate every peer or escape Update.

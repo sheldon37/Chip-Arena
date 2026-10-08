@@ -7,10 +7,10 @@ using U=ChipArena.UnityConversion.NativeUi;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class ConversionPreferences
-    { public int team;public string botDifficulty="normal";public NativeBotOption[] botOptions=Array.Empty<NativeBotOption>();public bool skipPlayerIntros,randomizeMap,autoStart=true;public int choices=6,selectionSeconds=18;public bool bothDraft;public string relayOrigin="";public string graphics="auto",sirenMode="Q";public float sensitivity=1,audio=.3f,music=.35f,menuMusic=.6f,uiScale=1;public bool trails=true,reducedEffects,cameraShake;public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll",intro="neon-drop",introText="Ready to make an impact",accountOrigin="";public bool overrideIntro;public string name="Pilot",map="moonlit",weapon="pistol";public int bots=3,sets=5,rounds=2;public string combatGlow="Full";public bool pve,skipWaves;public bool mirrorWeapons,teams,friendlyFire,stationary,skipBotDrafts,sound=true,firstPerson; }
+    { public bool fullscreen;public int team;public string botDifficulty="normal";public NativeBotOption[] botOptions=Array.Empty<NativeBotOption>();public bool skipPlayerIntros,randomizeMap,autoStart=true;public int choices=6,selectionSeconds=18;public bool bothDraft;public string relayOrigin="";public string graphics="auto",sirenMode="Q";public float sensitivity=1,audio=.3f,music=.35f,menuMusic=.6f,uiScale=1;public bool trails=true,reducedEffects,cameraShake;public string lobbyPose="weapon";public NativePendingEffect[] pendingEffects=Array.Empty<NativePendingEffect>();public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll",intro="neon-drop",introText="Ready to make an impact",accountOrigin="";public bool overrideIntro;public string name="Pilot",map="moonlit",weapon="pistol";public int bots=3,sets=5,rounds=2;public string combatGlow="Full";public bool pve,skipWaves;public bool mirrorWeapons,teams,friendlyFire,stationary,skipBotDrafts,sound=true,firstPerson; }
     public sealed partial class ConversionGame : MonoBehaviour
     {
-        private ConversionContent content;private ConversionPreferences prefs;private NativeMatch match;private NativeArena arena;private ArenaPresentation presentation;
+        private NativeSingleInstance singleInstance;private ConversionContent content;private ConversionPreferences prefs;private NativeMatch match;private NativeArena arena;private ArenaPresentation presentation;
         private NativeAudio nativeAudio;private Camera cameraView,viewModelCamera;private InputFrame pending;private SimulationMode previousSimulation;private Vector3 previousGravity;private bool ownsPhysics;private int generation;
         private bool menu=true;private float yaw,pitch=12,lastW=-1;private bool sprint;
         private string search="",error="";private GUIStyle heading,label,small,button;
@@ -25,8 +25,11 @@ namespace ChipArena.UnityConversion
             {
                 var asset=Resources.Load<TextAsset>("GameContent");if(asset==null)throw new InvalidOperationException("GameContent.json is missing");
                 content=JsonUtility.FromJson<ConversionContent>(asset.text);content.Validate();if(InitializeDedicated())return;
-                prefs=File.Exists(PreferencePath)?JsonUtility.FromJson<ConversionPreferences>(File.ReadAllText(PreferencePath)):new ConversionPreferences();
-                if(prefs==null)prefs=new ConversionPreferences();if(!content.maps.Any(m=>m.id==prefs.map))prefs.map="foundry";
+#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
+                singleInstance=new NativeSingleInstance("Local\\ChipArena.Native.Player");if(!singleInstance.Acquired){Application.Quit(0);return;}
+#endif
+                prefs=NativeFileStore.Read(PreferencePath,s=>JsonUtility.FromJson<ConversionPreferences>(s),()=>new ConversionPreferences(),out var preferenceWarning);if(preferenceWarning!=null)networkStatus=preferenceWarning;
+                if(prefs.map!="random"&&!content.maps.Any(m=>m.id==prefs.map))prefs.map="moonlit";
                 if(!content.weapons.Any(w=>w.id==prefs.weapon&&!w.devOnly))prefs.weapon="pistol";prefs.bots=Mathf.Clamp(prefs.bots,prefs.pve?0:1,prefs.pve?3:7);
                 InitializeAccount();Application.runInBackground=true;Application.targetFrameRate=144;QualitySettings.vSyncCount=0;Time.fixedDeltaTime=1f/60;Time.maximumDeltaTime=.1f;
                 previousSimulation=Physics.simulationMode;previousGravity=Physics.gravity;ownsPhysics=true;Physics.simulationMode=SimulationMode.Script;
@@ -35,18 +38,18 @@ namespace ChipArena.UnityConversion
                 cameraView.cullingMask=~(1<<10);NativeLighting.Create(transform);
                 var model=new GameObject("First-person view");model.transform.SetParent(cam.transform,false);viewModelCamera=model.AddComponent<Camera>();
                 viewModelCamera.clearFlags=CameraClearFlags.Depth;viewModelCamera.cullingMask=1<<10;viewModelCamera.depth=cameraView.depth+1;viewModelCamera.nearClipPlane=.01f;viewModelCamera.farClipPlane=10;viewModelCamera.enabled=false;presentation.ViewCamera=viewModelCamera;
-                cameraView.nearClipPlane=.06f;cameraView.farClipPlane=200;NativeLighting.Apply(content.Map(arena.MapId),cameraView);
+                cameraView.nearClipPlane=.06f;cameraView.farClipPlane=200;NativeLighting.Apply(content.Map(PreviewMapId),cameraView);
                 cameraView.transform.SetPositionAndRotation(new Vector3(0,22,-35),Quaternion.Euler(30,0,0));ApplySettings();InitializeUpdater();
             }
             catch(Exception e){error=e.ToString();Debug.LogException(e);if(dedicated)Application.Quit(2);}
         }
         private void Save()
         {
-            try{Directory.CreateDirectory(Application.persistentDataPath);File.WriteAllText(PreferencePath,JsonUtility.ToJson(prefs,true));}catch(IOException e){error="Could not save test preferences: "+e.Message;}
+            try{NativeFileStore.Write(PreferencePath,JsonUtility.ToJson(prefs,true));}catch(Exception e)when(e is IOException||e is UnauthorizedAccessException){networkStatus="Could not save pilot preferences: "+e.Message;Notice(networkStatus);}
         }
         private void StartMatch()
         {
-            Time.timeScale=1;sandboxSpeed=1;
+            Time.timeScale=1;sandboxSpeed=1;endFlow.Reset();
             if(prefs.pve){prefs.map="siren";prefs.bots=Mathf.Clamp(prefs.bots,0,3);}else prefs.bots=Mathf.Clamp(prefs.bots,Online||dedicated?0:1,7);
             if(server!=null)return;if(prefs.pve&&peers.Count(p=>p.Seat!=null&&p.Connection?.Closed==false)>(dedicated?4:3)){networkStatus="Siren co-op supports up to four party members.";return;}if(Hosting&&peers.Any(p=>p.Seat!=null&&p.Connection?.Closed==false&&!p.Ready)){networkStatus="Wait for the other pilots to be ready.";return;}
             // Refuse a match that cannot start (a host alone with no bots, or every pilot on one team) before the running arena
@@ -63,9 +66,10 @@ namespace ChipArena.UnityConversion
             if(prefs.pve)match.Seats.Add(new NativeSeat{id=900,name="The Siren",spec="siren",bot=true,team=1,AuthorityBoss=true});
             arena=new NativeArena(content,match,SelectMatchMap()){RandomizeMapEachSet=prefs.randomizeMap,FriendlyFire=prefs.friendlyFire,LocalId=dedicated?0:1,StationaryBots=prefs.stationary,Sandbox=sandboxWanted&&account.Developer&&!Online&&!prefs.pve};
             if(!match.Start()){arena.Dispose();arena=null;match=null;foreach(var peer in peers)peer.Ready=true;networkStatus="A match needs at least two opposing sides.";LobbyBroadcast();return;}
-            if(prefs.pve)arena.ConfigurePve(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text),prefs.skipWaves);
-            if(dedicated){menu=false;return;}generation=arena.Generation;visualClock.Reset(match.Time);pending=new InputFrame();yaw=arena.Local.Yaw;pitch=12;sprint=false;menu=false;NativeLighting.Apply(content.Map(prefs.map),cameraView);
+            if(prefs.pve)arena.ConfigurePve(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text),prefs.skipWaves,NativeMatch.NewSeed());
+            if(dedicated){menu=false;return;}generation=arena.Generation;visualClock.Reset(match.Time);pending=new InputFrame();yaw=arena.Local.Yaw;pitch=12;sprint=false;menu=false;NativeLighting.Apply(content.Map(arena.MapId),cameraView);
         }
+        private float shakeAmount;private int shakeEvent;
         private void Update()
         {
             if(content==null)return;if(dedicated){DedicatedTick();return;}if(cameraView==null)return;NetworkTick();
@@ -112,7 +116,10 @@ namespace ChipArena.UnityConversion
                 var ability=content.Ability(p.Seat.spec,pending.AbilityEHeld||pending.AbilityE||pending.AbilityEReleased?"e":"q");
                 pending.AbilityTarget=NativeArena.Vec(AimPoint(ability!=null?(float)ability.range:p.Seat.spec=="shield"?25:p.Seat.spec=="daggers"?48:60,p.Seat.spec=="shield"||p.Seat.spec=="daggers"));
             }
-            if(prefs.cameraShake&&play){float force=0;foreach(var e in arena.Events)if(e.Target==p.Seat.id&&(e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot))force=Math.Max(force,Mathf.Clamp01(1-(arena.Time-e.Time)/.18f)*Math.Min(.08f,e.Amount*.002f));cameraView.transform.position+=cameraView.transform.right*(Mathf.Sin(Time.unscaledTime*91)*force)+cameraView.transform.up*(Mathf.Sin(Time.unscaledTime*113)*force*.7f);}
+            // renderer.ts camera shake: a hit, headshot, block or parry aimed at the local pilot sets .12, which decays by 1 per
+            // second while each frame nudges the camera's world X by a random ±half of it (Settings · camera shake).
+            if(play){int newest=0;foreach(var e in arena.Events){newest=Math.Max(newest,e.Id);if(e.Id>shakeEvent&&e.Target==p.Seat.id&&(e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot||e.Kind==EventKind.Block)&&prefs.cameraShake)shakeAmount=.12f;}shakeEvent=newest<shakeEvent?newest:Math.Max(shakeEvent,newest);}
+            if(shakeAmount>0){cameraView.transform.position+=Vector3.right*((UnityEngine.Random.value-.5f)*shakeAmount);shakeAmount=Math.Max(0,shakeAmount-Time.deltaTime);}
             presentation.SoundEnabled=false;presentation.LocalId=arena.ViewPilot.Seat.id;
             float renderTime=arena.Replica?arena.ReplicaRenderTime:visualClock.Sample(match.Time,Time.timeAsDouble-Time.fixedTimeAsDouble,menu);
             presentation.Render(arena.Snapshot(true),renderTime,false);
@@ -132,7 +139,7 @@ namespace ChipArena.UnityConversion
         private string backdropMap;
         private void MenuBackdrop()
         {
-            string map=prefs.pve?"siren":prefs.map;var definition=content.Map(map);if(definition==null||presentation==null)return;
+            string map=PreviewMapId;var definition=content.Map(map);if(definition==null||presentation==null)return;
             if(backdropMap!=map){backdropMap=map;NativeLighting.Apply(definition,cameraView);}
             viewModelCamera.enabled=false;ArenaPresentation.OverviewCamera(cameraView,Time.unscaledTime);presentation.RenderBackdrop(content.sourceCommit,map,Time.unscaledTime);
         }
@@ -233,26 +240,50 @@ namespace ChipArena.UnityConversion
         // where the weapon is picked under the roster and the draft rules sit under Advanced Options (room-options.ts).
         private void MatchRulesBody(bool lobby)
         {
-            if(!lobby){Fine("First to "+prefs.sets+(prefs.sets==1?" set":" sets")+". Win "+prefs.rounds+(prefs.rounds==1?" round":" rounds")+" to take a set.");Field("Your weapon");WeaponGrid();}
+            if(lobby){LobbyRulesBody();return;}
+            Fine("First to "+prefs.sets+(prefs.sets==1?" set":" sets")+". Win "+prefs.rounds+(prefs.rounds==1?" round":" rounds")+" to take a set.");Field("Your weapon");WeaponGrid();
             Field("Arena");MapGrid();
-            int min=lobby?0:1;Field("Bots");GUILayout.Label(prefs.bots==1?"1 bot":prefs.bots+" bots",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(Mathf.Clamp(prefs.bots,min,7),min,7));
+            Field("Bots");GUILayout.Label(prefs.bots==1?"1 bot":prefs.bots+" bots",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(Mathf.Clamp(prefs.bots,1,7),1,7));
             Fine("Up to 8 pilots total. Bots use player slots.");prefs.mirrorWeapons=GUILayout.Toggle(prefs.mirrorWeapons,"Bots use my weapon (otherwise mixed loadouts)");prefs.stationary=GUILayout.Toggle(prefs.stationary,"Stationary targets");
             Field("Match mode");prefs.teams=ChoiceRow(new[]{"Free-for-all","Teams"},prefs.teams?1:0)==1;if(prefs.teams){prefs.friendlyFire=GUILayout.Toggle(prefs.friendlyFire,"Friendly fire");Fine("Teams alternate red and blue sides.");}
             Field("Sets and rounds");GUILayout.Label("Sets to win the match: "+prefs.sets,label);prefs.sets=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.sets,1,10));GUILayout.Label("Rounds to win a set: "+prefs.rounds,label);prefs.rounds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.rounds,1,10));
-            if(lobby&&!AdvancedFold("First to "+prefs.sets+" set"+(prefs.sets==1?"":"s")+" · "+prefs.rounds+" round"+(prefs.rounds==1?"":"s")+" per set · "+prefs.bots+" bot"+(prefs.bots==1?"":"s")+(prefs.teams?" · friendly fire "+(prefs.friendlyFire?"on":"off"):"")))return;
             Field("Draft and intro rules");prefs.bothDraft=GUILayout.Toggle(prefs.bothDraft,"All players draft after each set (otherwise the set's losers)");
             GUILayout.Label("Chip choices per draft: "+prefs.choices,label);prefs.choices=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.choices,1,12));GUILayout.Label("Chip selection timer: "+prefs.selectionSeconds+"s",label);prefs.selectionSeconds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.selectionSeconds,5,120));
             prefs.skipBotDrafts=GUILayout.Toggle(prefs.skipBotDrafts,"Skip bot draft screens");
             Fine("Melee E: special attack. Gun Q: hold to aim. Magic Q / E: cast abilities. Hold E to preview grenade, meteor, geysers or black hole; release to cast.");
-            if(lobby)AdvancedEnd();
+        }
+        // The room column's rules in the source order (main.ts matchOptions(true,'essential') then roomAdvanced): the match
+        // mode and arena box, then Advanced Options with friendly fire, sets and rounds, bots and the draft rules, under a note
+        // that summarises them. Labels are short enough for the 300 px column.
+        private void LobbyRulesBody()
+        {
+            LobbyEssentials();
+            if(!AdvancedFold("First to "+prefs.sets+" set"+(prefs.sets==1?"":"s")+" · "+prefs.rounds+" round"+(prefs.rounds==1?"":"s")+" per set · "+prefs.bots+" bot"+(prefs.bots==1?"":"s")+(prefs.teams?" · friendly fire "+(prefs.friendlyFire?"on":"off"):"")))return;
+            if(prefs.teams){prefs.friendlyFire=GUILayout.Toggle(prefs.friendlyFire,"Friendly fire");Fine(prefs.friendlyFire?"Teammates can damage each other.":"Allied attacks and harmful effects pass through teammates.");}
+            GUILayout.Label("Sets to win the match: "+prefs.sets,label);prefs.sets=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.sets,1,10));GUILayout.Label("Rounds to win a set: "+prefs.rounds,label);prefs.rounds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.rounds,1,5));
+            Field("Bots");GUILayout.Label(prefs.bots==1?"1 bot":prefs.bots+" bots",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(Mathf.Clamp(prefs.bots,0,7),0,7));
+            Fine("Up to 8 pilots total. Bots use player slots.");prefs.mirrorWeapons=GUILayout.Toggle(prefs.mirrorWeapons,"Bots use my weapon");prefs.stationary=GUILayout.Toggle(prefs.stationary,"Stationary targets");prefs.skipBotDrafts=GUILayout.Toggle(prefs.skipBotDrafts,"Skip bot draft screens");
+            Field("Draft rules");prefs.bothDraft=GUILayout.Toggle(prefs.bothDraft,"All players draft");Fine(prefs.bothDraft?"Everyone drafts after each set.":"Otherwise the set's losers draft.");
+            GUILayout.Label("Chip choices per draft: "+prefs.choices,label);prefs.choices=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.choices,1,12));GUILayout.Label("Chip selection timer: "+prefs.selectionSeconds+"s",label);prefs.selectionSeconds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.selectionSeconds,5,120));
+            Fine(prefs.choices+" choices per draft · "+prefs.selectionSeconds+"s to pick · "+(prefs.bothDraft?"All players draft":"Set losers draft")+" · Intros on");
+            AdvancedEnd();
         }
         // Boss Test (pve/menu.ts testBossBody): party bots, the skip to the Siren, and the weapon (picked under the roster
         // in a room lobby).
         private void BossBody(bool lobby=false)
         {
+            // The room column (pve/menu.ts lobby rules): the party settings under Advanced Options, with labels that fit it.
+            if(lobby)
+            {
+                if(!AdvancedFold(prefs.bots+" party bot"+(prefs.bots==1?"":"s")+" · "+(prefs.skipWaves?"starts at the Siren":"opening waves on")+" · "+(prefs.mirrorWeapons?"bots use your weapon":"mixed bot loadouts")))return;
+                Field("Party bots");GUILayout.Label(prefs.bots==1?"1 party bot":prefs.bots+" party bots",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(Mathf.Clamp(prefs.bots,0,3),0,3));
+                Fine("Friends who join take party slots; bots fill the rest (up to 4).");prefs.mirrorWeapons=GUILayout.Toggle(prefs.mirrorWeapons,"Party bots use my weapon");prefs.skipWaves=GUILayout.Toggle(prefs.skipWaves,"Start at the Siren");
+                Fine("Earn money from minions for chips, heals, revives and recruits. F interacts · C opens your chips.");
+                AdvancedEnd();return;
+            }
             Field("Party bots");GUILayout.Label(prefs.bots==1?"1 party bot":prefs.bots+" party bots",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(Mathf.Clamp(prefs.bots,0,3),0,3));
             Fine("AI pilots fill the party (up to 4). In a hosted room, friends who join take the party slots.");prefs.mirrorWeapons=GUILayout.Toggle(prefs.mirrorWeapons,"Party bots use my weapon (otherwise mixed loadouts)");prefs.skipWaves=GUILayout.Toggle(prefs.skipWaves,"Start at the Siren (skip the opening waves)");
-            if(!lobby){Field("Your weapon");WeaponGrid();}
+            Field("Your weapon");WeaponGrid();
             Fine("Intros play as normal. Earn money from minions to buy chips, heals, revives and recruits. F interacts · C opens your chips; chips you take wait there until you choose.");
         }
         private void WeaponGrid()
@@ -285,6 +316,6 @@ namespace ChipArena.UnityConversion
                 if(NativeUi.Button(r))inspectSeat=p.id;cy+=46;
             }
         }
-        private void OnDestroy(){CapturedAnimation.Release(slenderNoise);Time.timeScale=1;EndPreview();ClearReplay();CloseNetwork();if(scopeMask!=null)CapturedAnimation.Release(scopeMask);arena?.Dispose();if(ownsPhysics){Physics.simulationMode=previousSimulation;Physics.gravity=previousGravity;}Cursor.lockState=CursorLockMode.None;Cursor.visible=true;}
+        private void OnDestroy(){singleInstance?.Dispose();CapturedAnimation.Release(slenderNoise);Time.timeScale=1;EndPreview();ClearReplay();CloseNetwork();if(scopeMask!=null)CapturedAnimation.Release(scopeMask);arena?.Dispose();if(ownsPhysics){Physics.simulationMode=previousSimulation;Physics.gravity=previousGravity;}Cursor.lockState=CursorLockMode.None;Cursor.visible=true;}
     }
 }

@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
     {
         public const int CapacityLimit=512,PerTickEffects=32;
         private float tickTime=-1;private int effects;
-        private static bool Transient(EventKind kind)=>kind==EventKind.Hit||kind==EventKind.Headshot||kind==EventKind.Impact||kind==EventKind.Shot;
+        private static bool Transient(EventKind kind)=>kind==EventKind.Hit||kind==EventKind.Headshot||kind==EventKind.Impact||kind==EventKind.Shot||kind==EventKind.BurnTick||kind==EventKind.PoisonTick||kind==EventKind.Arc||kind==EventKind.Heal;
         public new void Add(ArenaEvent value)
         {
             if(value.Time!=tickTime){tickTime=value.Time;effects=0;}

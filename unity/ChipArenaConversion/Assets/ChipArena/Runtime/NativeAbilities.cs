@@ -146,7 +146,7 @@ namespace ChipArena.UnityConversion
         }
         private void AbilityOnDamage(NativePilot p,float actual)
         {if(actual<=0)return;p.Mana=Math.Min((float)p.Stats["maxMana"],p.Mana+actual*(float)p.Stats["manaSurge"]);p.LeechPending+=actual*(float)p.Stats["abilityLeech"];}
-        private List<NativePilot> AbilityBlast(NativePilot owner,Vector3 at,float radius,float damage,float impulse,int element,float propScale=1)
+        private List<NativePilot> AbilityBlast(NativePilot owner,Vector3 at,float radius,float damage,float impulse,int element,float propScale=1,Action onMinion=null)
         {
             var hits=new List<NativePilot>();
             foreach(var p in Pilots)
@@ -155,17 +155,17 @@ namespace ChipArena.UnityConversion
                 if(p.Hp<=0||!p.Seat.connected||!CanHit(owner,p)||fall<=0||SceneLinecast(at,p.Body.position,WorldMask))continue;
                 if(AbilityHit(p,owner,damage*fall,delta.normalized,impulse*fall)>0)hits.Add(p);
             }
-            foreach(var m in Minions.ToArray()){Vector3 delta=m.Body.position-at;float fall=NativeAbilityRules.BlastFalloff(delta.magnitude,radius);if(m.Hp>0&&CanHit(owner,m.Owner)&&fall>0&&MeleeVisible(at,m.Body.position,owner,m.Collider))AbilityOnDamage(owner,HitMinion(m,owner,damage,delta.normalized,impulse*fall,at,"blast",radius));}
+            foreach(var m in Minions.ToArray()){Vector3 delta=m.Body.position-at;float fall=NativeAbilityRules.BlastFalloff(delta.magnitude,radius);if(m.Hp>0&&CanHit(owner,m.Owner)&&fall>0&&MeleeVisible(at,m.Body.position,owner,m.Collider)){float actual=HitMinion(m,owner,damage,delta.normalized,impulse*fall,at,"blast",radius);AbilityOnDamage(owner,actual);if(actual>0)onMinion?.Invoke();}}
             foreach(var prop in Props.ToArray())if(prop!=null&&!prop.Indestructible)
             {
                 Vector3 delta=prop.transform.position-at;float reach=radius+prop.transform.localScale.magnitude*.35f;
                 if(delta.magnitude>=reach)continue;float fall=1-Mathf.Clamp(delta.magnitude/reach,0,.85f);
                 DamageProp(prop,damage*fall*propScale*(float)owner.Stats["demolition"],(delta+Vector3.up*.3f).normalized*impulse*fall,at,owner);
             }
-            Fx(at,radius,element);return hits;
+            Emit(EventKind.Explosion,owner,0,at,damage,"ability",radius);Fx(at,radius,element);return hits;
         }
         private void Fx(Vector3 at,float radius,int element,Vector3? from=null)
-        {AbilityEffects.Add(new NativeAbilityFx{Position=at,Radius=radius,Element=element,Until=Time+.22f,Beam=from.HasValue,From=from??at});}
+        {if(from.HasValue)Emit(EventKind.Arc,null,0,at,0,radius:radius,from:from);AbilityEffects.Add(new NativeAbilityFx{Position=at,Radius=radius,Element=element,Until=Time+.22f,Beam=from.HasValue,From=from??at});}
         private void Blink(NativePilot p,Vector3 point,float damage,float radius)
         {
             Vector3 a=p.Body.position;ChipBlink(p,point-a);Vector3 b=p.Body.position,delta=b-a,dir=delta.normalized;float distance=delta.magnitude;var struck=new HashSet<int>();
@@ -176,7 +176,7 @@ namespace ChipArena.UnityConversion
                 if(Vector3.Distance(target.Body.position,nearest)<=1.4f&&MeleeVisible(nearest,target.Body.position,p,target.Collider)&&AbilityHit(target,p,damage,target.Body.position-nearest,0)>0)struck.Add(target.Seat.id);
             }
             foreach(var m in Minions.ToArray()){Vector3 nearest=a+dir*Mathf.Clamp(Vector3.Dot(m.Body.position-a,dir),0,distance);if(CanHit(p,m.Owner)&&Vector3.Distance(m.Body.position,nearest)<=1.4f&&MeleeVisible(nearest,m.Body.position,p,m.Collider)){float actual=HitMinion(m,p,damage,Vector3.zero,0);AbilityOnDamage(p,actual);if(actual>0)struck.Add(m.Id);}}
-            Fx(b,1,3,a);foreach(var q in AbilityBlast(p,b,radius,damage*2/3,300,3))struck.Add(q.Seat.id);if(Has(p,"storm-recall"))p.QReady=Math.Max(Time,p.QReady-Math.Min(4,struck.Count*2));
+            bool blastMinion=false;Fx(b,1,3,a);foreach(var q in AbilityBlast(p,b,radius,damage*2/3,300,3,onMinion:()=>blastMinion=true))struck.Add(q.Seat.id);if(blastMinion)struck.Add(-1);if(Has(p,"storm-recall"))p.QReady=Math.Max(Time,p.QReady-Math.Min(4,struck.Count*2));
         }
         private void StepAbilityWorld()
         {
@@ -210,7 +210,7 @@ namespace ChipArena.UnityConversion
                         if(!remove&&(body!=null||minion!=null)&&d.id!="frag-grenade")s.Position+=delta.normalized*.05f;
                         break;
                     }
-                    if(!contact){s.Position+=delta;s.Travel+=delta.magnitude;}
+                    if(!contact){if(NativeSpecialRules.Ceiling(Vec(s.Position),Vec(delta),s.Radius,out float ceilingAt,out var ceilingPoint)){s.Position=Vec(ceilingPoint);remove=true;Emit(EventKind.CeilingHit,s.Owner,0,s.Position,0);}else{s.Position+=delta;s.Travel+=delta.magnitude;}}
                 }
                 bool expired=s.Life<=0||s.Travel>=s.MaxTravel-.0001f||s.Position.y<-15||d.id=="frag-grenade"&&Time>=s.Fuse;
                 if(!remove&&expired)

@@ -34,7 +34,7 @@ namespace ChipArena.UnityConversion
         }
         private NativePilot LeetTarget(NativePilot owner,Vector3 point)=>Pilots.Where(p=>p.Hp>0&&p.Seat.connected&&Enemy(owner,p)&&Vector3.Distance(p.Body.position,point)<=28&&MeleeVisible(point,p.Body.position,owner,p.Collider)).OrderBy(p=>(p.Body.position-point).sqrMagnitude).FirstOrDefault();
         private void Possess(NativePilot owner,NativePilot target)
-        {if(!Leet(owner,"brain")||!CanHit(owner,target)||target.Hp<=0||!target.Seat.connected||owner.ControlledBy!=null||target.Controlling!=null||target.ControlledBy!=null)return;ReleaseControl(owner);owner.Controlling=target;target.ControlledBy=owner;target.ControlUntil=owner.ControlUntil=Time+5;CancelAbilities(owner);CancelMelee(owner);CancelAbilities(target);CancelMelee(target);Fx(target.Body.position,1,2,owner.Body.position);}
+        {if(!Leet(owner,"brain")||!Enemy(owner,target)||target.Hp<=0||!target.Seat.connected||owner.ControlledBy!=null||target.Controlling!=null||target.ControlledBy!=null)return;ReleaseControl(owner);owner.Controlling=target;target.ControlledBy=owner;target.ControlUntil=owner.ControlUntil=Time+5;CancelAbilities(owner);CancelMelee(owner);CancelAbilities(target);CancelMelee(target);Fx(target.Body.position,1,2,owner.Body.position);}
         private void LeetOrb(NativePilot p,Vector3 position,Vector3 dir,string kind,Vector3? target=null,float release=0)
         {if(ProjectileCount>=100)return;Bullets.Add(new NativeBullet{Id=nextBullet++,Attack=nextAttack++,Owner=p.Seat.id,Original=p.Seat.id,Spec=p.Seat.spec,Born=Time,Position=position,Velocity=dir*(kind=="brain"?23:32),Damage=kind=="brain"?0:24,Impulse=180,Life=7,Radius=kind=="brain"?.27f:.16f,Direct=false,ChipImpact=kind=="copy",EffectsUsed=true,Travel=100,LeetKind=kind,LockTarget=target,ReleaseAt=release,LeetLaunched=kind=="brain"});}
         private bool LeetBlock(NativePilot p)
@@ -56,6 +56,7 @@ namespace ChipArena.UnityConversion
         }
         private void LeetImpact(NativePilot p,NativeBullet b,Vector3 at)
         {
+            if(Leet(p))Emit(EventKind.Leet,p,0,at,b.Damage,b.LeetKind);
             if(!Leet(p)||b.Reflections>0||!(b.Direct||b.ChipImpact)||!ProcOnce("leet:"+b.Id))return;
             if(Leet(p,"nuke"))LeetFields.Add(new NativeLeetField{Id=nextEvent++,Owner=p,Kind="nuke",Position=at,At=Time,Until=Time+1.4f});
             if(b.Direct&&Leet(p,"copy"))for(int i=0;i<3;i++)LeetOrb(p,at+new Vector3((i-1)*1.1f,2.5f,.4f),Vector3.zero,"copy",at,Time+.5f+i*.16f);

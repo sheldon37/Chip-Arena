@@ -10,6 +10,10 @@ namespace ChipArena.UnityConversion.Editor
     {
         private static void CheckNetworkSerialization(NativeArena authority)
         {
+            var preferences=JsonUtility.FromJson<ConversionPreferences>(JsonUtility.ToJson(new ConversionPreferences{map="random",lobbyPose="crossed-arms",fullscreen=true}));
+            if(preferences.map!="random"||preferences.lobbyPose!="crossed-arms"||!preferences.fullscreen)throw new Exception("Saved pilot pose/map/fullscreen did not round trip");
+            var profile=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="ready",profile=new NativeProfile{cosmetics=new NativeCosmetics{lobbyPose="crossed-arms"}}}));
+            if(profile.profile.cosmetics.lobbyPose!="crossed-arms")throw new Exception("Ready/save DTO lost lobby pose");
             var original=authority.Local.Death;
             var scene=EditorSceneManager.NewPreviewScene();NativeArena replica=null;
             try
@@ -54,7 +58,7 @@ namespace ChipArena.UnityConversion.Editor
             try
             {
                 var match=new NativeMatch(content,7);match.Seats.Add(new NativeSeat{id=1,name="A",spec="pistol"});match.Seats.Add(new NativeSeat{id=2,name="B",spec="pistol"});
-                arena=new NativeArena(content,match,"foundry"){ReplicaScene=scene};match.Start();match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10});arena.ValidateParityCombat();
+                arena=new NativeArena(content,match,"foundry"){ReplicaScene=scene};match.Start();match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10});arena.ValidateParityCombat();arena.ValidateFollowupParity();
                 Debug.Log("PASS native combat: no generic stun, ability block rules, splash/DoT roll rules, reload-independent abilities and authority wall-clamped aim");
             }
             finally{arena?.Dispose();EditorSceneManager.ClosePreviewScene(scene);}

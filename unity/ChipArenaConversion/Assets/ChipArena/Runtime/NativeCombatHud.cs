@@ -2,11 +2,28 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using U=ChipArena.UnityConversion.NativeUi;
 namespace ChipArena.UnityConversion
 {
     public sealed partial class ConversionGame
     {
         private sealed class HealthLag {public float Value,Last,Time=-100,Hold;}
+        // combat-numbers.ts CombatNumberTrack: each health event once; a target's hits within .16 s share one number, in one
+        // of three lanes; numbers live 1.15 s (at most 64).
+        private sealed class CombatNumber {public int Id,Target,Lane;public float Amount,At;public Vector3 Position;}
+        private readonly List<CombatNumber> combatNumbers=new List<CombatNumber>();private int combatEvent,combatGeneration=-1;private float combatTime=-1;
+        private List<CombatNumber> CombatNumbers()
+        {
+            if(arena.Time<combatTime||combatGeneration!=arena.Generation){combatNumbers.Clear();combatEvent=0;}combatGeneration=arena.Generation;combatTime=arena.Time;
+            foreach(var e in arena.Events)
+            {
+                if(e.Id<=combatEvent)continue;combatEvent=e.Id;if(e.Kind!=EventKind.Hit&&e.Kind!=EventKind.Headshot||e.Target<=0||!(e.Amount>0)||arena.Time-e.Time>1.15f)continue;
+                var pilot=arena.Pilots.Find(p=>p.Seat.id==e.Target);if(pilot==null&&!(arena.Pve!=null&&e.Source==arena.LocalId))continue;
+                var old=combatNumbers.LastOrDefault(n=>n.Target==e.Target&&e.Time-n.At>=0&&e.Time-n.At<.16f);if(old!=null){old.Amount+=e.Amount;continue;}
+                combatNumbers.Add(new CombatNumber{Id=e.Id,Target=e.Target,Amount=e.Amount,At=e.Time,Lane=combatNumbers.Count(n=>n.Target==e.Target)%3,Position=pilot!=null?pilot.Body.transform.position+Vector3.up*1.15f:NativeArena.Vec(e.Position)+Vector3.up*.35f});
+            }
+            combatNumbers.RemoveAll(n=>arena.Time-n.At>=1.15f);if(combatNumbers.Count>64)combatNumbers.RemoveRange(0,combatNumbers.Count-64);return combatNumbers;
+        }
         private readonly Dictionary<int,HealthLag> healthLags=new Dictionary<int,HealthLag>();private int hudGeneration=-1;
         // match-hud.css .death-announcement: top left, a dark card with an orange edge; a new line slides in over .26 s.
         private void DeathLine()
@@ -32,10 +49,19 @@ namespace ChipArena.UnityConversion
             }
             foreach(var p in arena.Pilots){if(!p.Seat.connected||prefs.firstPerson&&p==arena.ViewPilot||p.Seat.AuthorityBoss&&arena.Pve?.Hidden==true)continue;bool ally=p==arena.Local||match.SameSide(p.Seat,arena.Local.Seat);Health(p.Seat.id,p.Body.transform.position+Vector3.up*1.3f*(p.Seat.spec=="siren"?p.Pose.RigScale:1),p.Hp,(float)p.Stats["hp"],.72f,ally,match.Teams?(ally?"ALLY · ":"ENEMY · ")+p.Seat.name:p.Seat.name,true);}
             foreach(var m in arena.Minions)if(m.Hp<m.MaxHp)Health(m.Id,m.Body.transform.position+Vector3.up*(m.Kind=="slender"?1.52f:m.Kind=="toy"?.85f:1.2f),m.Hp,m.MaxHp,m.Kind=="toy"?.42f:.6f,m.Owner==arena.Local||match.SameSide(m.Owner.Seat,arena.Local.Seat),null,false);
-            // lobby.css .combat-number: clamp(18px,1.65vw,25px), heavy, with a dark outline; headshots in the hit red.
+            // combat-numbers.ts FloatingCombatNumbers with lobby.css .combat-number (clamp(18px,1.65vw,25px), 850, #ffddcf with a
+            // dark outline): every pilot's damage, and in PvE the local pilot's hits on adds.
             float numberSize=Mathf.Clamp(NativeUi.W*.0165f,18,25);
-            foreach(var e in arena.Events){float age=arena.Time-e.Time;if(age<0||age>.8f||e.Source!=arena.LocalId||(e.Kind!=EventKind.Hit&&e.Kind!=EventKind.Headshot)||e.Amount<=0)continue;if(ScreenPoint(NativeArena.Vec(e.Position)+Vector3.up*(.9f+age*.7f),55,out var point)){float a=1-age/.8f;string n=e.Amount<1?e.Amount.ToString("0.#"):Mathf.RoundToInt(e.Amount).ToString();
-                NativeUi.Text(new Rect(point.x-60,height-point.y-numberSize/2,120,numberSize*1.2f),n,numberSize,e.Kind==EventKind.Headshot?NativeUi.Hex(0xff535f,a):NativeUi.Hex(0xffddcf,a),TextAnchor.MiddleCenter,bold:true,glow:NativeUi.Hex(0x111111,.9f*a),shadow:NativeUi.Hex(0x111111,a));}}
+            foreach(var n in CombatNumbers())
+            {
+                float age=Math.Max(0,arena.Time-n.At),alpha=Mathf.Min(1,(1.15f-age)/.48f),grow=1+Math.Max(0,.16f-age)*1.5f;Vector3 at;bool own=prefs.firstPerson&&n.Target==arena.ViewPilot?.Seat.id;
+                // A first-person pilot cannot see their own head: their numbers sit under the crosshair.
+                if(own)at=new Vector3(width*(.5f+(n.Lane-1)*.03f),height*(1-(.62f-age*.07f)),1);
+                else{at=cameraView.WorldToScreenPoint(n.Position+new Vector3((n.Lane-1)*.2f*age,age*.9f,0))/scale;if(at.z<=0||at.x<-width*.05f||at.x>width*1.05f||at.y<-height*.05f||at.y>height*1.05f)continue;}
+                string label="−"+(n.Amount>=1?Mathf.RoundToInt(n.Amount).ToString():n.Amount.ToString(n.Amount<.1f?"0.00":"0.0",System.Globalization.CultureInfo.InvariantCulture));
+                var c=new Vector2(at.x,height-at.y);U.Push(c,Vector2.zero,grow);
+                NativeUi.Text(new Rect(c.x-70,c.y-numberSize*.6f,140,numberSize*1.2f),label,numberSize,NativeUi.Hex(0xffddcf,alpha),TextAnchor.MiddleCenter,bold:true,glow:NativeUi.Hex(0x1a0808,.9f*alpha),shadow:NativeUi.Hex(0x111111,alpha));U.Pop();
+            }
             GUI.color=old;
             DeathLine();
             var local=arena.Local;if(local.Controlling!=null)GUI.Label(new Rect(width/2-180,140,360,40),"CONTROLLING "+local.Controlling.Seat.name,label);else if(arena.Time<local.FrozenUntil)GUI.Label(new Rect(width/2-180,140,360,40),"ADMIN PAUSE · "+(local.FrozenUntil-arena.Time).ToString("0.0")+"s",label);

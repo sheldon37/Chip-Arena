@@ -82,7 +82,7 @@ namespace ChipArena.UnityConversion
             {
                 string id="pilot:"+target.Seat.id;Vector3 delta=target.Body.position-origin;
                 if(target.Hp<=0||!CanHit(p,target)||NativeSpecialRules.Protected(target.Down,Time)||action.Hit.Contains(id)||!NativeSpecialRules.Strike(Vec(delta),range,.45f,action.Yaw,kind)||!MeleeVisible(origin,target.Body.position,p,target.Collider))continue;
-                action.Hit.Add(id);float actual=Damage(target,p,(float)(p.Weapon.damage*p.Stats["damage"])*1.12f,(delta+Vector3.up*(kind=="slam"?.2f:.5f)).normalized,impulse*(float)p.Stats["impulse"],false,melee:true);
+                action.Hit.Add(id);float actual=Damage(target,p,(float)(p.Weapon.damage*p.Stats["damage"])*1.12f,(delta+Vector3.up*(kind=="slam"?.2f:.5f)).normalized,impulse*(float)p.Stats["impulse"],false,melee:true,weaponHit:true);
                 if(actual>0)ImpactChips(p,target,null,target.Body.position,delta.normalized,(int)(action.At*60)*1000+p.Seat.id,nextAttack++);
                 if(actual>0&&target.Hp>0)
                 {
@@ -151,7 +151,7 @@ namespace ChipArena.UnityConversion
             else if(target!=null)
             {
                 bool head=!s.Shield&&NativeCombatRules.Headshot(Vec(target.Body.position),target.Yaw,Vec(hit.Point-s.Velocity.normalized*.1f),Vec(s.Velocity),s.Radius,target.Down!=null||target.Juggle!=null);
-                float actual=Damage(target,s.Owner,s.Damage*(head?1.5f:1),s.Velocity.normalized,s.Impulse,head,primary:!s.Reflected,melee:true);
+                float actual=Damage(target,s.Owner,s.Damage*(head?1.5f:1),s.Velocity.normalized,s.Impulse,head,primary:!s.Reflected,melee:true,weaponHit:!s.Reflected);
                 if(actual>0&&!s.Reflected)ImpactChips(s.Owner,target,null,hit.Point,s.Velocity.normalized,s.Id,s.Id);
                 if(actual>0&&s.Reflected){RefreshDot(target,s.Owner,"fire",s.Burn,2);RefreshDot(target,s.Owner,"poison",s.Poison,4);}
                 if(actual>0&&target.Hp>0){if(s.Shield)LaunchMelee(target,s.Owner,3.8f);else StaggerMelee(target,.16f+(float)s.Owner.Weapon.weight*.018f);}

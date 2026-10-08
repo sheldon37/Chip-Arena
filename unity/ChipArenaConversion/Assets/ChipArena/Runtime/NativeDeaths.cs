@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
         }
         private void RecordMinionDeath(NativeMinion m)
         {
-            if(m.Hp>0||m.Kind=="slender")return;MinionDeaths.RemoveAll(d=>Time-d.at>5);while(MinionDeaths.Count>=24)MinionDeaths.RemoveAt(0);
+            if(m.Hp>0||m.Kind=="slender")return;MinionDeaths.RemoveAll(d=>Time-d.at>5);while(MinionDeaths.Count>=256)MinionDeaths.RemoveAt(0);
             MinionDeaths.Add(new NativeDeath{id=m.Id,seed=nextEvent++,at=Time,position=m.Body.position,yaw=m.Yaw,velocity=m.Body.isKinematic?Vector3.zero:m.Body.linearVelocity,style="impact-ragdoll",lost=m.Pve?.Lost??0,model=m.Pve==null?"summon-"+m.Kind:"horde-"+(m.Id%6),actor=new Actor{Id=m.Id,SourceSpec="pistol",BodyColor="#e5e7eb",AccentColor="#70e1d0",Yaw=m.Yaw,RigScale=m.Kind=="toy"?.65f:1}});
         }
     }

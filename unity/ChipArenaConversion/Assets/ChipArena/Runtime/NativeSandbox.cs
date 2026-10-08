@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
         private bool SandboxHolds()=>SandboxAllowed&&(Pilots.Any(p=>InShaft(p))||DummyRespawn>0&&Local.Hp>0);
         private void SandboxStep()
         {
-            if(!SandboxAllowed)return;foreach(var p in Pilots)if(p.Seat.bot&&p.Hp<=0&&p.Death!=null&&DummyRespawn>0&&!InShaft(p)&&Time-p.Death.at>=DummyRespawn)SandboxRestore(p);
+            if(!SandboxAllowed)return;SandboxNextChip();foreach(var p in Pilots)if(p.Seat.bot&&p.Hp<=0&&p.Death!=null&&DummyRespawn>0&&!InShaft(p)&&Time-p.Death.at>=DummyRespawn)SandboxRestore(p);
             if(SandboxRepeat>0&&Time>=sandboxRepeatAt&&sandboxDummy!=null){SandboxCast(sandboxDummy.Seat.spec,sandboxKey);sandboxRepeatAt=Time+SandboxRepeat;}
         }
         private void SandboxRestore(NativePilot p)
@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
     }
     public sealed partial class ConversionGame
     {
-        private bool sandboxWanted;private string sandboxSearch="",dummySpec="pistol",dummyKey="ai",sandboxTarget="dummy",sandboxSort="name";private float sandboxSpeed=1;
+        private bool sandboxWanted;private string sandboxSearch="",dummySpec="pistol",dummyKey="ai",sandboxTarget="dummy",sandboxSort="rarity";private float sandboxSpeed=1;
         // Sandbox tools (pause menu of a developer sandbox match, started from the home screen's Developer Sandbox link).
         private void SandboxBody()
         {
@@ -51,7 +51,7 @@ namespace ChipArena.UnityConversion
             Field("Dummy weapon");dummySpec=ChoiceGrid(content.weapons.Where(AllowedWeapon).Select(w=>w.id).ToArray(),dummySpec);Field("Dummy input");dummyKey=ChoiceGrid(new[]{"ai","e","q","block","dash","jump","1","2","3","4","mode"},dummyKey);if(GUILayout.Button("Make dummy cast",button)){arena.SandboxCast(dummySpec,dummyKey);menu=false;}
             Field("Target");sandboxTarget=ChoiceGrid(new[]{"self","dummy"},sandboxTarget);GUILayout.BeginHorizontal();foreach(string action in new[]{"restore","hit","down","summons","vent"})if(GUILayout.Button(action,button)){arena.SandboxAction(action,sandboxTarget=="self");menu=false;}GUILayout.EndHorizontal();
             Field("Chips");sandboxSort=ChoiceGrid(new[]{"name","rarity","installed"},sandboxSort);sandboxSearch=GUILayout.TextField(sandboxSearch,100);var target=sandboxTarget=="self"?arena.Local:arena.Pilots.FirstOrDefault(p=>p.Seat.bot);if(target==null)return;
-            foreach(var chip in content.chips.OrderBy(c=>sandboxSort=="rarity"?c.rarity:sandboxSort=="installed"?(target.Seat.chips.ContainsKey(c.id)?"0":"1"):c.name).ThenBy(c=>c.name).Where(c=>sandboxSearch.Split(new[]{' '},StringSplitOptions.RemoveEmptyEntries).All(term=>(c.name+" "+c.id+" "+c.description).IndexOf(term,StringComparison.OrdinalIgnoreCase)>=0)))
+            foreach(var chip in content.chips.OrderBy(c=>sandboxSort=="rarity"?NativeChipRanks.RarityRank(c.rarity).ToString("D2"):sandboxSort=="installed"?(target.Seat.chips.ContainsKey(c.id)?"0":"1"):c.name).ThenBy(c=>c.name).Where(c=>sandboxSearch.Split(new[]{' '},StringSplitOptions.RemoveEmptyEntries).All(term=>(c.name+" "+c.id+" "+c.description).IndexOf(term,StringComparison.OrdinalIgnoreCase)>=0)))
             {target.Seat.chips.TryGetValue(chip.id,out int count);GUILayout.BeginHorizontal();GUILayout.Label(chip.name+" ×"+count,small);if(GUILayout.Button("+",GUILayout.Width(32)))arena.SandboxChip(target.Seat.id,chip.id,1);if(GUILayout.Button("−",GUILayout.Width(32)))arena.SandboxChip(target.Seat.id,chip.id,-1);GUILayout.EndHorizontal();}
         }
     }

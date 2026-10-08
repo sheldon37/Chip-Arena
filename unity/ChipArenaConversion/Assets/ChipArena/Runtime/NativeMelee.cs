@@ -41,12 +41,12 @@ namespace ChipArena.UnityConversion
             p.HitAt=p.Swing.HitAt;p.HitPending=true;p.AttackEnd=p.Ready=p.Swing.Until;p.RegenAt=p.AttackEnd+.45f;
             p.BlockEnd=0;p.MoveVelocity=Vector3.zero;return true;
         }
-        private bool MeleeVisible(Vector3 origin,Vector3 target,NativePilot owner,Collider destination)
+        private bool MeleeVisible(Vector3 origin,Vector3 target,NativePilot owner,Collider destination,bool ignoreAdds=false)
         {
             Vector3 delta=target-origin;float distance=delta.magnitude;if(distance<.0001f)return true;
             var physics=root.scene.GetPhysicsScene();int n;
             // Grow on saturation: a full nonalloc query is not guaranteed to contain the closest hit.
-            while((n=physics.Raycast(origin,delta.normalized,meleeSightHits,distance,ShotMask,QueryTriggerInteraction.Ignore))==meleeSightHits.Length)
+            while((n=physics.Raycast(origin,delta.normalized,meleeSightHits,distance,ignoreAdds?ShotMask&~(1<<11):ShotMask,QueryTriggerInteraction.Ignore))==meleeSightHits.Length)
                 Array.Resize(ref meleeSightHits,meleeSightHits.Length*2);
             RaycastHit? nearest=null;
             for(int i=0;i<n;i++)if(meleeSightHits[i].collider!=owner.Collider&&(!nearest.HasValue||meleeSightHits[i].distance<nearest.Value.distance))nearest=meleeSightHits[i];
@@ -62,7 +62,7 @@ namespace ChipArena.UnityConversion
             {
                 if(target.Hp<=0||!CanHit(p,target))continue;var delta=target.Body.position-origin;
                 if(!NativeMeleeRules.Contact(swing,Time,Vec(delta),.45f)||!swing.Contact("pilot:"+target.Seat.id,Time,Vec(delta),.45f,MeleeVisible(origin,target.Body.position,p,target.Collider)))continue;
-                float actual=Damage(target,p,(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),(delta+Vector3.up*.15f).normalized,(float)(p.Weapon.impulse*p.Stats["impulse"]*swing.DamageScale),false,melee:true);
+                float actual=Damage(target,p,(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),(delta+Vector3.up*.15f).normalized,(float)(p.Weapon.impulse*p.Stats["impulse"]*swing.DamageScale),false,melee:true,weaponHit:true);
                 if(actual>0){ImpactChips(p,target,null,target.Body.position,delta.normalized,swing.Id,swing.Id);if(target.Hp>0)PrimaryMeleeImpact(p,target);}
                 if(p.Hp<=0||p.Swing!=swing)return; // A block or thorns death interrupts remaining contacts.
             }

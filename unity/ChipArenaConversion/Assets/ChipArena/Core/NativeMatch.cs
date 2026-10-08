@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
         public readonly Dictionary<string,int> chips=new Dictionary<string,int>();public List<string> offers=new List<string>();
     }
     [Serializable] public class NativeMatchFrame
-    {public int introSeat;public double introStarted;public string introStyle;public int round,set,winner,setWinner,draftSeat;public string result,chosen;public NativePhase phase;public double time,phaseEnd,fightAt,readyAt,chosenAt;public bool teams,cooperative;}
+    {public int[] rematchVotes=Array.Empty<int>();public int rematchRequired;public float lobbyReturnSeconds;public int introSeat;public double introStarted;public string introStyle;public int round,set,winner,setWinner,draftSeat;public string result,chosen;public NativePhase phase;public double time,phaseEnd,fightAt,readyAt,chosenAt;public bool teams,cooperative;}
     public sealed class NativeMatch
     {
         public readonly List<NativeSeat> Seats=new List<NativeSeat>();
@@ -57,6 +57,7 @@ namespace ChipArena.UnityConversion
         public void Tick(double dt)
         {
             if(double.IsNaN(dt)||double.IsInfinity(dt)||dt<0||dt>.25)throw new ArgumentOutOfRangeException(nameof(dt));Time+=dt;
+            if(!Cooperative&&Phase!=NativePhase.Lobby&&Phase!=NativePhase.Match&&Seats.Any(p=>!p.connected)){var live=Seats.Where(p=>p.connected).ToArray();if(live.Length>0&&live.Select(p=>Teams?p.team:p.id).Distinct().Count()==1&&Seats.Any(p=>!p.connected&&!SameSide(p,live[0]))){Winner=SetWinner=live[0].id;foreach(var p in live)p.score=SetsToWin;Result=live[0].name+" wins by disconnect";Phase=NativePhase.Match;PhaseEnd=0;return;}}
             if(Phase==NativePhase.Intro&&Time>=PhaseEnd)NextIntro();
             else if(Phase==NativePhase.Countdown&&Time>=PhaseEnd){Phase=NativePhase.Fight;FightAt=Time;}
             else if(Phase==NativePhase.Fight)Resolve();
@@ -109,6 +110,8 @@ namespace ChipArena.UnityConversion
             }
             NextSet();
         }
+        public bool PreviewDraft(int id,string rarity=null)
+        {var p=Seat(id);if(p==null)return false;p.offers=NativeContentRules.Eligible(data,p.spec,p.chips).Where(c=>rarity==null||c.rarity==rarity).Take(Choices).Select(c=>c.id).ToList();if(p.offers.Count==0)return false;queue.Clear();queue.Add(id);turn=0;Phase=NativePhase.Draft;NextDraft();return true;}
         public bool Choose(int seat,string id)
         {
             var p=Seat(seat);if(Phase!=NativePhase.Draft||p==null||!p.connected||DraftSeat!=seat||Chosen!=null||Time<ReadyAt||!p.offers.Contains(id))return false;

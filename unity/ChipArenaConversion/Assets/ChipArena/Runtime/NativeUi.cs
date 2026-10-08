@@ -110,8 +110,21 @@ namespace ChipArena.UnityConversion
         public static void Round(Rect r,Color fill,float radius=8,Color border=default,float borderWidth=1)
         {
             if(Event.current.type!=EventType.Repaint)return;var m=Enter();int i=Mathf.Clamp(Mathf.RoundToInt(radius*S/4)-1,0,rounds.Length-1);var t=rounds[i];int rr=4+i*4;var o=GUI.color;var pr=P(r);
-            if(border.a>0){Nine(pr,t,rr,border);float b=Mathf.Max(1,borderWidth*S);pr=new Rect(pr.x+b,pr.y+b,pr.width-2*b,pr.height-2*b);}
-            if(fill.a>0)Nine(pr,t,rr,fill);GUI.color=o;GUI.matrix=m;
+            // CSS paints the background under the border (background-clip: border-box), then the border ring over it, so a
+            // translucent fill stays translucent inside its edge.
+            if(fill.a>0)Nine(pr,t,rr,fill);if(border.a>0)Nine(pr,Ring(i,Mathf.Max(1,borderWidth*S)),rr,border);GUI.color=o;GUI.matrix=m;
+        }
+        // A rounded fill drawn now in the current GUI space (inside a GUILayout group, under its matrix and clip), for a
+        // backdrop that must sit beneath GUILayout controls: deferred kit drawing lands above them.
+        public static void UnderRound(Rect r,Color fill,float radius=8)
+        {if(Event.current.type!=EventType.Repaint||fill.a<=0)return;Ensure();var o=GUI.color;int i=Mathf.Clamp(Mathf.RoundToInt(radius/4)-1,0,rounds.Length-1);Nine(r,rounds[i],4+i*4,fill);GUI.color=o;}
+        private static readonly Dictionary<int,Texture2D> rings=new Dictionary<int,Texture2D>();
+        // The outline of rounds[i], `w` physical pixels thick: the outer contour less the inner one (radius r - w).
+        private static Texture2D Ring(int i,float w)
+        {
+            int key=i*1000+Mathf.RoundToInt(w*8);if(rings.TryGetValue(key,out var t)&&t!=null)return t;int r=4+i*4,n=r*2+2;w=Mathf.Min(w,r);
+            t=Make(n,n,(x,y)=>{float cx=Mathf.Clamp(x+.5f,r,n-r),cy=Mathf.Clamp(y+.5f,r,n-r),d=Mathf.Sqrt((x+.5f-cx)*(x+.5f-cx)+(y+.5f-cy)*(y+.5f-cy));return new Color(1,1,1,Mathf.Clamp01(r-d+.5f)-Mathf.Clamp01(r-w-d+.5f));});
+            rings[key]=t;return t;
         }
         // Rounded rectangle filled with a linear gradient (CSS linear-gradient under border-radius): from `a` at the top
         // (left when `horizontal`) to `b`, reached at `until` of the length and held after it. The corner bands take the
@@ -119,7 +132,6 @@ namespace ChipArena.UnityConversion
         public static void RoundGradient(Rect r,Color a,Color b,float radius=8,Color border=default,float until=1,bool horizontal=false,float borderWidth=1)
         {
             if(Event.current.type!=EventType.Repaint)return;var m=Enter();int i=Mathf.Clamp(Mathf.RoundToInt(radius*S/4)-1,0,rounds.Length-1);var t=rounds[i];int rr=4+i*4;var o=GUI.color;var pr=P(r);
-            if(border.a>0){Nine(pr,t,rr,border);float bw=Mathf.Max(1,borderWidth*S);pr=new Rect(pr.x+bw,pr.y+bw,pr.width-2*bw,pr.height-2*bw);}
             float k=Mathf.Min(rr,Mathf.Min(pr.width,pr.height)/2),u=rr/(float)t.width;
             for(int band=0;band<2;band++)
             {
@@ -145,6 +157,7 @@ namespace ChipArena.UnityConversion
                 GUI.color=Color.white;if(ramp.width>0&&ramp.height>0)GUI.DrawTexture(ramp,ramp1);
                 var rest=horizontal?new Rect(ramp.xMax,mid.y,mid.xMax-ramp.xMax,mid.height):new Rect(mid.x,ramp.yMax,mid.width,mid.yMax-ramp.yMax);if(rest.width>0&&rest.height>0){GUI.color=b;GUI.DrawTexture(rest,white);}
             }
+            if(border.a>0)Nine(pr,Ring(i,Mathf.Max(1,borderWidth*S)),rr,border);
             GUI.color=o;GUI.matrix=m;
         }
         // A 1 px dashed line (6 px dashes, 4 px gaps at virtual scale) tiled from one cached texture: one draw per edge.

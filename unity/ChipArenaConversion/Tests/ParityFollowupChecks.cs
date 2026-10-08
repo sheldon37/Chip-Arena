@@ -1,0 +1,27 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using ChipArena.UnityConversion;
+internal static class ParityFollowupChecks
+{
+    private static void Check(bool ok,string why){if(!ok)throw new Exception(why);}
+    public static void Run(ConversionContent data)
+    {
+        Check(NativeLobbyRules.PreviewMap("random",false)=="moonlit"&&NativeLobbyRules.PreviewMap("random",true)=="siren","boot/preview random maps never dereference an absent arena or map");
+        var effects=NativePendingEffect.Remember(null,"a","confetti","ragdoll",_=>true);
+        Check(NativePendingEffect.Restore(effects,"a","ragdoll",_=>true)=="confetti"&&NativePendingEffect.Restore(effects,"b","ragdoll",_=>true)=="ragdoll","pending effects isolated by account and preserved across stale cloud reply");
+        Check(NativePendingEffect.Restore(effects,"a","launch",_=>true)=="launch"&&effects[0].account==null,"later remote edit supersedes a pending choice");
+        effects=NativePendingEffect.Remember(null,"a","dev-clown","ragdoll",_=>true);Check(NativePendingEffect.Restore(effects,"a","ragdoll",_=>false)=="ragdoll","pending effect cannot grant or retain revoked access");
+        string dir=Path.Combine(Path.GetTempPath(),"chip-native-save-"+Guid.NewGuid().ToString("N")),path=Path.Combine(dir,"prefs.json");
+        try{NativeFileStore.Write(path,"first");NativeFileStore.Write(path,"second");Check(File.ReadAllText(path)=="second"&&File.ReadAllText(path+".bak")=="first","atomic preferences keep last good backup");var value=NativeFileStore.Read<string>(path,_=>throw new ArgumentException("malformed"),()=>"default",out var warning);Check(value=="default"&&warning!=null&&File.ReadAllText(path+".corrupt")=="second","corrupt preferences recover with original preserved");}finally{if(Directory.Exists(dir))Directory.Delete(dir,true);}
+        var end=new NativeEndFlow();end.Reconcile(new[]{1,2,3});Check(!end.Vote(99)&&end.Vote(1)&&!end.Vote(1)&&!end.Unanimous,"only eligible humans vote once");end.Vote(2);end.Reconcile(new[]{1,2});Check(end.Unanimous,"disconnect adjusts required rematch votes");end.RequestReturn(5);Check(!end.Due(7.99)&&end.Due(8),"three second lobby return");end.CancelReturn();Check(!end.Due(99),"return countdown cancellable");end.Reset();Check(end.Votes==0&&!end.Unanimous,"no votes bleed into the next run");
+        var match=new NativeMatch(data,17);match.Seats.Add(new NativeSeat{id=1,name="A"});match.Seats.Add(new NativeSeat{id=2,name="B"});Check(match.Start(),"forfeit fixture starts");match.Seats[1].connected=false;match.Tick(.1);Check(match.Phase==NativePhase.Match&&match.Winner==1,"disconnected opposing side ends the match instead of farming rounds forever");
+        Check(Math.Abs(NativePveParity.AddImpulse(175)-2.1875)<.0001&&NativePveParity.AddImpulse(99999)==6,"horde knockback half impulse and cap");Check(NativePveParity.MedicHeal(1,100,false)==3&&NativePveParity.MedicHeal(3,100,false)==4&&Math.Abs(NativePveParity.MedicHeal(3,100,true)-2.4)<.0001,"medics stack with shared HP cap before under-fire penalty");
+        Check(NativeChipRanks.BotRank("mythic")==NativeChipRanks.BotRank("l44t")&&NativeChipRanks.RarityRank("epic")>NativeChipRanks.RarityRank("rare")&&NativeChipRanks.RarityRank("unknown")==10,"PvE bot tie uses equal top-tier score; sandbox sorts actual tiers");
+        var ledger=new NativeProcLedger();foreach(string key in new[]{"1:exit","1:panic","1:round-two","undo:1"})Check(ledger.Add(key),"first round trigger");for(int i=0;i<9000;i++)ledger.Add(i+":impact");foreach(string key in new[]{"1:exit","1:panic","1:round-two","undo:1"})Check(!ledger.Add(key),"once-per-round flags survive impact eviction");ledger.Clear();Check(ledger.Add("1:exit"),"round reset rearms flags");
+        var metrics=new NativeConnectionMetrics();for(int i=1;i<=200;i++){int id=metrics.Ping(i);Check(metrics.Pong(id,i+.05)&&!metrics.Pong(id,i+.06),"correlated pong accepted once");metrics.Snapshot(i*.05);metrics.Received(2048);}var report=metrics.Report(true);Check(report.samples==128&&Math.Abs(report.rttP95Ms-50)<.001&&Math.Abs(report.snapshotGapP95Ms-50)<.001&&report.decodedKiB==400&&report.largestFrameKiB==2,"bounded diagnostics compute measured p95 and decoded bytes");Check(!metrics.Pong(999,3),"unsolicited pong rejected");
+        string name="ChipArenaParity"+Guid.NewGuid().ToString("N");using(var first=new NativeSingleInstance(name)){Check(first.Acquired,"first process lock acquired");Check(Task.Run(()=>{using(var second=new NativeSingleInstance(name))return !second.Acquired;}).GetAwaiter().GetResult(),"second launch blocked while first owns named mutex");}using(var next=new NativeSingleInstance(name))Check(next.Acquired,"process lock releases on exit");
+        Console.WriteLine("PASS follow-up: random-map boot, account-scoped pending effects, atomic/corrupt preferences, rematch/retry votes, return cancellation, disconnect forfeit, medic/impulse parity, draft ties, round ledger, connection metrics and process lifetime lock");
+    }
+}

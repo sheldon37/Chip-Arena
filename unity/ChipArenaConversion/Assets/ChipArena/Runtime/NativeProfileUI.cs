@@ -36,10 +36,10 @@ namespace ChipArena.UnityConversion
     public sealed partial class ConversionGame
     {
         private NativeAccount account;private bool rememberAccount=true;private string accountUser="",accountPassword="",accountRecovery="",accountAction="login",accountNotice="";
-        private bool AllowedWeapon(ContentWeapon w)=>!w.devOnly||(account?.Access??NativeAccess.Guest).Allows("weapon:"+w.id,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+        private bool AllowedWeapon(ContentWeapon w)=>(!prefs.pve||w.id!="siren")&&(!w.devOnly||(account?.Access??NativeAccess.Guest).Allows("weapon:"+w.id,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()));
         private void InitializeAccount()
         {
-            account=gameObject.AddComponent<NativeAccount>();account.Accepted=(data,load)=>{if(arena?.Local!=null)arena.Local.Seat.access=account.Access;if(server!=null)SendServer(new NativeNetMessage{type="auth-refresh",token=account.Token});if(!load)return;var p=data.profile;if(p==null)return;prefs.name=NativeCosmeticRules.Name(p.name);prefs.accentColor=NativeCosmeticRules.Color(p.color,"#70e1d0");var c=p.cosmetics??new NativeCosmetics();prefs.bodyColor=NativeCosmeticRules.Color(c.bodyColor,"#e5e7eb");prefs.hat=NativeCosmeticRules.Hat(c.hat,account.Access);prefs.killEffect=NativeCosmeticRules.Kill(c.killEffect,account.Access);prefs.intro=NativeCosmeticRules.Intro(c.intro,account.Access);prefs.introText=c.introText;prefs.overrideIntro=c.overrideWeaponIntro;if(content.weapons.Any(w=>w.id==c.preferredSpec&&AllowedWeapon(w)))prefs.weapon=c.preferredSpec;accountPassword=accountRecovery="";Save();};
+            account=gameObject.AddComponent<NativeAccount>();account.Accepted=(data,load)=>{if(arena?.Local!=null)arena.Local.Seat.access=account.Access;if(server!=null)SendServer(new NativeNetMessage{type="auth-refresh",token=account.Token});if(!load)return;if(!data.hasProfile){account.Save(Profile());return;}var p=data.profile;if(p==null)return;prefs.name=NativeCosmeticRules.Name(p.name);prefs.accentColor=NativeCosmeticRules.Color(p.color,"#70e1d0");var c=p.cosmetics??new NativeCosmetics();prefs.bodyColor=NativeCosmeticRules.Color(c.bodyColor,"#e5e7eb");prefs.hat=NativeCosmeticRules.Hat(c.hat,account.Access);prefs.lobbyPose=c.lobbyPose??"weapon";prefs.killEffect=NativeCosmeticRules.Kill(NativePendingEffect.Restore(prefs.pendingEffects,data.id,c.killEffect,e=>NativeCosmeticRules.Allowed(account.Access,"effect",e)),account.Access);prefs.intro=NativeCosmeticRules.Intro(c.intro,account.Access);prefs.introText=c.introText;prefs.overrideIntro=c.overrideWeaponIntro;if(content.weapons.Any(w=>w.id==c.preferredSpec&&AllowedWeapon(w)))prefs.weapon=c.preferredSpec;accountPassword=accountRecovery="";Save();};
             try{account.Configure(prefs.accountOrigin,true);}catch(ArgumentException){prefs.accountOrigin="";}
         }
         // Customize (main.ts customize screen): name, preferred weapon, colours, headwear, kill effect, intro and its text.
@@ -80,9 +80,11 @@ namespace ChipArena.UnityConversion
             });
             GUILayout.EndVertical();
         }
+        public void ReloadSavedPilot()=>account?.ReloadSavedProfile();
         private void SavePilot()
         {
             prefs.name=NativeCosmeticRules.Name(prefs.name);prefs.introText=NativeCosmeticRules.IntroText(prefs.introText);prefs.bodyColor=NativeCosmeticRules.Color(prefs.bodyColor,"#e5e7eb");prefs.accentColor=NativeCosmeticRules.Color(prefs.accentColor,"#70e1d0");
+            if(account.Account!=null)prefs.pendingEffects=NativePendingEffect.Remember(prefs.pendingEffects,account.Account.id,prefs.killEffect,account.Account.profile?.cosmetics?.killEffect,e=>NativeCosmeticRules.Allowed(account.Access,"effect",e));
             Save();if(account.Account!=null)account.Save(Profile());
         }
         // Account (main.ts login / account screens): the Log in / Register / Recovery form, or the signed-in account with its

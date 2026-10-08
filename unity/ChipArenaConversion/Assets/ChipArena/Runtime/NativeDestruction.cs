@@ -18,11 +18,12 @@ namespace ChipArena.UnityConversion
         }
         public void AfterPhysics()
         {
+            foreach(var p in Pilots)if(!p.Body.isKinematic&&p.Hp>0&&beforePhysics.TryGetValue(p.Body.GetInstanceID(),out var before)){var change=p.Body.linearVelocity-before.velocity;p.Knockback+=new Vector3(change.x,0,change.z)*(float)p.Stats["knockbackTaken"];}
             Vector3 Velocity(Rigidbody body,Vector3 point){if(body==null)return Vector3.zero;if(beforePhysics.TryGetValue(body.GetInstanceID(),out var pre))return pre.velocity+Vector3.Cross(pre.angular,point-pre.position);return body.isKinematic?Vector3.zero:body.GetPointVelocity(point);}
             foreach(var c in contacts)
             {
                 var prop=c.prop;if(prop==null||prop.Body==null)continue;Vector3 a=Velocity(prop.Body,c.point);bool recent=Time-prop.SourceAt<7;
-                if(c.pilot!=null&&c.pilot.Hp>0)
+                if(Match.Phase==NativePhase.Fight&&c.pilot!=null&&c.pilot.Hp>0)
                 {var p=c.pilot;Vector3 b=Velocity(p.Body,c.point);double speed=Math.Max(0,Vector3.Dot(a-b,c.normal));double damage=a.magnitude<3.6?0:NativeDebrisRules.Damage(prop.Body.mass,speed);double capped=debrisLedger.Claim(prop.Definition.id+":"+p.Seat.id,(prop.Group??prop.Definition.id)+":"+p.Seat.id,Time,damage);if(capped>0)Damage(p,recent?prop.Source:null,(float)(capped*p.Stats["debrisTaken"]),(a-b).normalized,0,false,direct:false,primary:false);}
                 else if(c.other?.Body!=null&&!c.other.Body.isKinematic&&c.other.Source==null&&prop.Source!=null&&recent&&a.magnitude>3.6){c.other.Source=prop.Source;c.other.SourceAt=Time;}
             }
@@ -48,7 +49,7 @@ namespace ChipArena.UnityConversion
             CapturedAnimation.Release(prop.gameObject);CheckSupports(source);
         }
         private void CheckSupports(NativePilot source)
-        {foreach(var p in Props)if(p.Body!=null&&p.Body.isKinematic&&p.Definition.support!=null&&p.Definition.support.Length>0&&p.Definition.support.All(id=>!Props.Any(q=>q.Definition.id==id&&q.Health>0))){p.Body.isKinematic=false;p.Body.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;p.Source=source;p.SourceAt=Time;p.Group="collapse-"+nextChunk++;}}
+        {foreach(var p in Props)if(p.Body!=null&&p.Body.isKinematic&&p.Definition.support!=null&&p.Definition.support.Length>0&&p.Definition.support.All(id=>!Props.Any(q=>q.Definition.id==id&&q.Health>0))){p.Body.isKinematic=false;p.Body.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;p.Source=source;p.SourceAt=Time;p.Group="collapse-"+nextChunk++;Emit(EventKind.Collapse,source,0,p.transform.position,0,p.Definition.id);}}
         private bool SceneLinecast(Vector3 from,Vector3 to,int mask)=>SceneLinecast(from,to,out _,mask);
         private bool SceneLinecast(Vector3 from,Vector3 to,out RaycastHit hit,int mask){var delta=to-from;return root.scene.GetPhysicsScene().Raycast(from,delta.normalized,out hit,delta.magnitude,mask,QueryTriggerInteraction.Ignore);}
     }

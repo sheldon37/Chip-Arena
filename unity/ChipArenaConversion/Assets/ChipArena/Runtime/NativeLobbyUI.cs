@@ -38,14 +38,13 @@ namespace ChipArena.UnityConversion
         private void LobbyScreen(float age)
         {
             bool pve=prefs.pve;roomGuest=!Hosting;screenContent=Mathf.Max(lobbyRosterContent+90,lobbyRoomContent);
-            var l=BeginScreen(pve?"BOSS TEST LOBBY":"PRIVATE ROOM",pve?"Boss test · The Siren":"Match lobby",1370,age,false,actions:false,close:false);
+            var l=BeginScreen(pve?"BOSS TEST LOBBY":"PRIVATE ROOM",pve?"Boss test · The Siren":"Match lobby",1370,age,false,actions:false,close:false,lobby:true);
             // Customize and Settings open over the room (their close returns here); saving a new look updates the room.
-            float bx=l.Panel.xMax-32;foreach(var (icon,text,screen) in new[]{("settings","Settings",MenuScreen.Settings),("palette","Customize",MenuScreen.Customize)})
-            {float w=U.Measure(text,13,true).x+19+18+28;bx-=w;if(MenuButton(new Rect(bx,l.Panel.y+30,w,40),icon,text,null,false,true,l.Enter,13,true))Go(screen);bx-=10;}
+            float bx=l.Panel.xMax-28;foreach(var (icon,text,screen) in new[]{("settings","Settings",MenuScreen.Settings),("palette","Customize",MenuScreen.Customize)})
+            {float w=U.Measure(text,13,true).x+19+18+28;bx-=w;if(MenuButton(new Rect(bx,l.Panel.y+26,w,40),icon,text,null,false,true,l.Enter,13,true))Go(screen);bx-=10;}
             // .lobby-room: the roster column (with the Ready bar at its foot) beside the 300 px room column, which runs the
-            // panel's full height (260 px and 20 px gaps below 1100 px). The host's column holds the rules, so it widens to
-            // keep the arena and option grids readable.
-            var b=l.Body;float W=U.W,gap=W<1100?20:26,side=Hosting?Mathf.Clamp(b.width*.34f,300,420):W<1100?260:300,leftW=b.width-side-gap;
+            // panel's full height (260 px and 20 px gaps below 1100 px).
+            var b=l.Body;float W=U.W,gap=W<1100?20:26,side=W<1100?260:300,leftW=b.width-side-gap;
             var roster=LobbyRoster();LobbyRosterColumn(new Rect(b.x,b.y,leftW,b.height-77-12),roster,l.Enter);LobbyRoomColumn(new Rect(b.xMax-side,b.y,side,b.height),l.Enter);
             LobbyBar(new Rect(b.x,b.yMax-77,leftW,77),roster,l.Enter);
         }
@@ -230,24 +229,86 @@ namespace ChipArena.UnityConversion
         private float lobbyAdvancedHeight;
         private bool AdvancedFold(string note)
         {
-            GUILayout.Space(14);var r=GUILayoutUtility.GetRect(0,64,GUILayout.ExpandWidth(true));bool open=lobbyAdvanced;if(open&&Event.current.type==EventType.Repaint)advancedTop=r.yMax;float extra=lobbyAdvancedHeight;
+            GUILayout.Space(14);int noteLines=Mathf.Max(1,U.Wrap(note,12,lobbyRoomInner-48,false,2).Count);var r=GUILayoutUtility.GetRect(0,48+noteLines*16,GUILayout.ExpandWidth(true));r=new Rect(r.x+4,r.y,r.width-8,r.height);bool open=lobbyAdvanced;if(open&&Event.current.type==EventType.Repaint)advancedTop=r.yMax;float extra=lobbyAdvancedHeight;
+            // The open fold's backdrop goes down now, under the rules that follow; its edge and header are deferred.
+            var frame=open?new Rect(r.x,r.y,r.width,r.height+extra+12):r;if(open)U.UnderRound(frame,U.Hex(0x13141a,.4f*GUI.color.a),9);
             U.Defer(()=>
             {
                 if(Event.current.type==EventType.Repaint)
                 {
-                    float h=U.HoverAmount(7390,r);var frame=open?new Rect(r.x,r.y,r.width,r.height+extra+12):r;
-                    U.Round(frame,U.Hex(0x13141a,.4f),9,U.Hex(0x4c434e));if(h>0)U.Round(new Rect(r.x+1,r.y+1,r.width-2,r.height-2),new Color(1,1,1,.03f*h),9);if(open)U.Fill(new Rect(r.x+1,r.yMax-1,r.width-2,1),U.Hex(0x4c434e));
+                    float h=U.HoverAmount(7390,r);
+                    U.Round(frame,open?Color.clear:U.Hex(0x13141a,.4f),9,U.Hex(0x4c434e));if(h>0)U.Round(new Rect(r.x+1,r.y+1,r.width-2,r.height-2),new Color(1,1,1,.03f*h),9);if(open)U.Fill(new Rect(r.x+1,r.yMax-1,r.width-2,1),U.Hex(0x4c434e));
                     var c=new Vector2(r.x+19,r.y+23);U.Push(c,Vector2.zero,1,open?45:-45);U.Fill(new Rect(c.x+2,c.y-4,2,8),U.Hex(0xefb587));U.Fill(new Rect(c.x-4,c.y+2,8,2),U.Hex(0xefb587));U.Pop();
                     U.Text(new Rect(r.x+33,r.y+12,r.width-45,22),"Advanced Options",15,U.Hex(0xded5e0),TextAnchor.MiddleLeft,bold:true);
                     var lines=U.Wrap(note,12,r.width-48,false,2);float y=r.y+35;foreach(var l in lines){U.Text(new Rect(r.x+33,y,r.width-45,16),l,12,U.Hex(0xb3a8b6),TextAnchor.MiddleLeft);y+=16;}
                 }
                 if(U.Button(r)){lobbyAdvanced=!lobbyAdvanced;Click();}
             });
+            // .room-advanced>.match-options: the open content sits 14 px inside the frame on both sides.
+            foldOpen=open;if(open){GUILayout.Space(10);GUILayout.BeginHorizontal();GUILayout.Space(18);GUILayout.BeginVertical(GUILayout.Width(Mathf.Max(120,lobbyRoomInner-28)));}
             return open;
         }
-        private float advancedTop;
-        // Called after the fold's content: its height for the next paint's frame.
-        private void AdvancedEnd(){if(lobbyAdvanced&&Event.current.type==EventType.Repaint)lobbyAdvancedHeight=Mathf.Max(0,GUILayoutUtility.GetLastRect().yMax-advancedTop);}
+        private float advancedTop;private bool foldOpen;
+        // Called after the open fold's content: closes its inset and keeps its height for the next paint's frame.
+        private void AdvancedEnd()
+        {
+            if(!foldOpen)return;foldOpen=false;GUILayout.EndVertical();GUILayout.Space(10);GUILayout.EndHorizontal();
+            if(Event.current.type==EventType.Repaint)lobbyAdvancedHeight=Mathf.Max(0,GUILayoutUtility.GetLastRect().yMax-advancedTop);
+        }
+
+        // .lobby-room-settings>.match-options: the essentials box (10 px corners, the border colour, 125deg #23242ae6 →
+        // #1a1b20e6, 12 / 16 / 6 px padding) with Match mode and ARENA as the source's selects and the arena's description.
+        private float lobbyRoomInner=254;
+        private void LobbyEssentials()
+        {
+            var maps=content.maps??new ContentMap[0];int mi=Mathf.Max(0,Array.FindIndex(maps,m=>m.id==prefs.map));var map=maps.Length>0?maps[mi]:null;
+            var desc=U.Wrap(map?.tag??"",14,lobbyRoomInner-32,false,3);float h=12+21+6+44+14+16+8+44+8+desc.Count*20+12;
+            GUILayout.Space(12);var r=GUILayoutUtility.GetRect(0,h,GUILayout.ExpandWidth(true));GUILayout.Space(6);
+            U.Defer(()=>
+            {
+                bool paint=Event.current.type==EventType.Repaint;var b=new Rect(r.x+4,r.y,r.width-8,r.height);float x=b.x+16,iw=b.width-32,y=b.y+12;
+                if(paint){U.RoundGradient(b,U.Hex(0x23242a,.9f),U.Hex(0x1a1b20,.9f),10,U.Hex(0x45464e),1,true);U.Text(new Rect(x,y,iw,21),"Match mode",14,U.Hex(0xe6e6ea),TextAnchor.MiddleLeft);}
+                y+=27;prefs.teams=SelectField(7410,new Rect(x,y,iw,44),new[]{"Free-for-all","Teams"},prefs.teams?1:0)==1;y+=44+14;
+                if(paint)U.Text(new Rect(x,y,iw,16),"ARENA",12,U.Hex(0xc0c1ca),TextAnchor.MiddleLeft,bold:true);y+=24;
+                if(maps.Length>0){int pick=SelectField(7420,new Rect(x,y,iw,44),maps.Select(m=>m.name).ToArray(),mi);if(pick!=mi)prefs.map=maps[pick].id;}y+=44+8;
+                if(paint)foreach(var l in desc){U.Text(new Rect(x,y,iw,20),l,14,U.Hex(0xa6a7ad),TextAnchor.MiddleLeft);y+=20;}
+            });
+        }
+        // The source's select (#222329, #484952 edge warming to #ff784b on hover, 4 px corners) as a stepper: the choice,
+        // then ‹ › at the right; a click on the choice steps forward. Returns the new index.
+        private const string ChevronLeft="<path d=\"M15 6 L9 12 L15 18\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>";
+        private const string ChevronRight="<path d=\"M9 6 L15 12 L9 18\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>";
+        private int SelectField(int id,Rect r,string[] labels,int index)
+        {
+            int n=labels.Length;if(n==0)return index;index=Mathf.Clamp(index,0,n-1);
+            var prev=new Rect(r.xMax-74,r.y+(r.height-32)/2,32,32);var next=new Rect(r.xMax-38,prev.y,32,32);var name=new Rect(r.x,r.y,r.width-78,r.height);
+            float hp=U.HoverAmount(id+1,prev),hn=U.HoverAmount(id+2,next),hf=U.HoverAmount(id,r);
+            if(Event.current.type==EventType.Repaint)
+            {
+                U.Round(r,U.Mix(U.Hex(0x222329),U.Hex(0x26272d),hf),4,U.Mix(U.Hex(0x484952),U.Hex(0xff784b),hf));
+                U.Text(new Rect(r.x+14,r.y,name.width-16,r.height),Fit(labels[index],15,name.width-18,false,0),15,U.Hex(0xf5f5f7),TextAnchor.MiddleLeft);
+                U.Fill(new Rect(r.xMax-79,r.y+10,1,r.height-20),U.Hex(0x484952));
+                if(hp>0)U.Round(prev,new Color(1,1,1,.07f*hp),4);if(hn>0)U.Round(next,new Color(1,1,1,.07f*hn),4);
+                NativeIcons.DrawMarkup(new Rect(prev.x+7,prev.y+7,18,18),"chevron-left",ChevronLeft,24,U.Mix(U.Hex(0xb9bac2),Color.white,hp));
+                NativeIcons.DrawMarkup(new Rect(next.x+7,next.y+7,18,18),"chevron-right",ChevronRight,24,U.Mix(U.Hex(0xb9bac2),Color.white,hn));
+            }
+            int step=U.Button(prev)?-1:U.Button(next)||U.Button(name)?1:0;if(step!=0){index=(index+step+n)%n;Click();}return index;
+        }
+
+        // #connection .top-meta in the lobby's top bar (main.ts drawHud; style.css .top-meta,.light): a 6 px light
+        // (#59dd83, #ef9b7a when disconnected), the connection and " / " the room code, in 12 px mono #c3c4ce on
+        // #18191ee8 with a #45464f edge and 10 / 14 px padding, right-aligned at `right`. The source appends
+        // " · N MS"; Unity measures no round trip yet (A27), so the reading is left off.
+        private void ConnectionPill(float right,float top)
+        {
+            // As main.ts: DISCONNECTED once the link closes, CONNECTION STALLED after 3 s without a message from the host.
+            bool lost=!Hosting&&(server==null||server.Closed),stalled=!Hosting&&!lost&&(DateTime.UtcNow-server.LastReceived).TotalSeconds>3;string code=Hosting?roomCode:joinCode;
+            string text=(lost?"DISCONNECTED":stalled?"CONNECTION STALLED":listener!=null?"LAN · HOST":Hosting?"INTERNET RELAY · HOST":internetRooms?"INTERNET RELAY":"LOCAL NETWORK")+(string.IsNullOrEmpty(code)?"":" / "+code);
+            float w=14+6+8+U.Measure(text,12,false,true).x+14;var r=new Rect(right-w,top,w,36);
+            U.Fill(r,U.Hex(0x45464f));U.Fill(new Rect(r.x+1,r.y+1,r.width-2,r.height-2),U.Hex(0x18191e,.91f));
+            U.Round(new Rect(r.x+14,r.center.y-3,6,6),lost?U.Hex(0xef9b7a):U.Hex(0x59dd83),3);
+            U.Text(new Rect(r.x+28,r.y,w-42,r.height),text,12,U.Hex(0xc3c4ce),TextAnchor.MiddleLeft,mono:true);
+        }
 
         // ---- Room column -----------------------------------------------------------------------------------------------
         // .lobby-room-settings: the room code card, then HOST CONTROLS / MATCH RULES (or BOSS TEST · The Siren) and,
@@ -261,13 +322,15 @@ namespace ChipArena.UnityConversion
             string label=RoomCodeLabel();bool two=U.Measure(label,10,false,false,.16f).x>area.width-12-32;
             var invite=GUILayoutUtility.GetRect(0,two?146:132,GUILayout.ExpandWidth(true));string code=Hosting?roomCode:joinCode;U.Defer(()=>RoomInvite(new Rect(invite.x+4,invite.y+2,invite.width-8,invite.height-2),code,label,two,e));GUILayout.Space(16);
             if(listener!=null)Fine("LAN address · "+string.Join(", ",LanAddresses)+" · port "+listener.Port);
-            var head=GUILayoutUtility.GetRect(0,prefs.pve?118:62,GUILayout.ExpandWidth(true));U.Defer(()=>RoomHeading(head,e));
+            var head=GUILayoutUtility.GetRect(0,RoomHeadingHeight(),GUILayout.ExpandWidth(true));if(Event.current.type==EventType.Repaint)lobbyRoomInner=head.width-8;U.Defer(()=>RoomHeading(head,e));
             if(Hosting)
             {
-                Field("Mode");bool pve=ChoiceRow(new[]{"Versus","Boss Test"},prefs.pve?1:0)==1;if(pve!=prefs.pve){prefs.pve=pve;prefs.bots=Mathf.Clamp(prefs.bots,0,pve?3:7);}
+                // Versus or Boss Test as a select, so the narrow column never wraps the choice.
+                Field("Mode");var mode=GUILayoutUtility.GetRect(0,44,GUILayout.ExpandWidth(true));
+                U.Defer(()=>{bool pve=SelectField(7430,new Rect(mode.x+4,mode.y,mode.width-8,mode.height),new[]{"Versus","Boss Test"},prefs.pve?1:0)==1;if(pve!=prefs.pve){prefs.pve=pve;prefs.bots=Mathf.Clamp(prefs.bots,0,pve?3:7);}});
                 choiceColumns=2;if(prefs.pve)BossBody(true);else MatchRulesBody(true);choiceColumns=3;
             }
-            else Fine(prefs.pve?"The host sets the party bots and where the run starts. Ready up when your loadout is set.":"The host sets the mode, arena and rules. Ready up when your loadout is set.");
+            else{GUILayout.BeginHorizontal();GUILayout.Label(prefs.pve?"The host sets the party bots and where the run starts. Ready up when your loadout is set.":"The host sets the mode, arena and rules. Ready up when your loadout is set.",fine,GUILayout.Width(lobbyRoomInner));GUILayout.EndHorizontal();}
             GUI.enabled=true;GUILayout.Space(4);if(Event.current.type==EventType.Repaint)lobbyRoomContent=GUILayoutUtility.GetLastRect().yMax;
             GUILayout.EndScrollView();GUILayout.EndArea();GUI.color=c;U.EndDeferred(area,lobbyRoomScroll);
         }
@@ -283,14 +346,25 @@ namespace ChipArena.UnityConversion
             bool has=!string.IsNullOrEmpty(code);U.Text(new Rect(r.x+16,r.y+(two?48:34),r.width-32,32),has?code:"—",24,U.Hex(0xff996f,e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.09f);
             if(MenuButton(new Rect(r.x+16,r.yMax-16-40,r.width-32,40),"copy","Copy Code",null,true,has,e,14,true)){GUIUtility.systemCopyBuffer=code;Notice("Room code copied.");}
         }
+        // siren-card.ts: the eyes and grin (#f6f3ff) with the teeth line (#050409, 3.4) on a 200 × 120 view box; drawn on
+        // a 200 square, so the face sits in its top 60 %.
+        private const string SirenFace="<path d=\"M32 36 L86 48 C74 58 46 58 32 36 Z\" fill=\"#f6f3ff\"/><path d=\"M168 36 L114 48 C126 58 154 58 168 36 Z\" fill=\"#f6f3ff\"/>"
+            +"<path d=\"M22 70 C70 86 130 86 178 70 C140 116 60 116 22 70 Z\" fill=\"#f6f3ff\"/>"
+            +"<path d=\"M28 70.9 L37 82.7 L46 76.1 L55 93.2 L64 79.8 L73 100.2 L82 82.1 L91 103.8 L100 82.8 L109 103.8 L118 82.1 L127 100.2 L136 79.8 L145 93.2 L154 76.1 L163 82.7 L172 70.9\" fill=\"none\" stroke=\"#050409\" stroke-width=\"3.4\"/>";
+        private string[] SirenNotes()=>new[]{"Ward Zero · 3 waves of minions, then the Siren and his four chips."+(prefs.skipWaves?" Starts at the Siren.":""),"Intros on · personal chip screens · money from kills."};
+        private float RoomHeadingHeight(){if(!prefs.pve)return 62;float h=126;foreach(var text in SirenNotes())h+=U.Wrap(text,14,lobbyRoomInner,false,4).Count*20+6;return h;}
         private void RoomHeading(Rect r,float e)
         {
             string eyebrow=prefs.pve?"BOSS TEST":Hosting?"HOST CONTROLS":"MATCH RULES";U.Text(new Rect(r.x+4,r.y,r.width-8,16),eyebrow,12,U.Hex(0xc0c1ca,e),TextAnchor.MiddleLeft,bold:true,tracking:.2f);
             U.Text(new Rect(r.x+4,r.y+20,r.width-8,34),prefs.pve?"The Siren":"Match setup",23,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true,tracking:-.025f);
-            if(!prefs.pve)return;float pulse=.5f+.5f*Mathf.Sin(Time.unscaledTime*2.1f);U.Radial(new Rect(r.x-6,r.y+50,72,72),U.Hex(0xb7a8ff,(.12f+.1f*pulse)*e));Skull(new Rect(r.x+6,r.y+62,48,48),e,pulse*.6f);
-            var lines=U.Wrap("Ward Zero · 3 waves of minions, then the Siren and his four chips."+(prefs.skipWaves?" Starts at the Siren.":""),13,r.width-70,false,3);float y=r.y+58;
-            foreach(var l in lines){U.Text(new Rect(r.x+64,y,r.width-68,18),l,13,U.Hex(0xc9bfff,e),TextAnchor.MiddleLeft);y+=18;}
-            U.Text(new Rect(r.x+64,y+2,r.width-68,18),Fit("Intros on · personal chip screens · money from kills.",13,r.width-68,false,0),13,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);
+            if(!prefs.pve)return;
+            // .pve-boss-face.small: the Siren's face (siren-card.ts, 200 × 120 view box met into 96 × 52, 6 px margins) with
+            // its #b7a8ff88 12 px glow, breathing to 1.04 over 3.6 s; then the two fine lines across the column.
+            float breathe=.5f-.5f*Mathf.Cos(Time.unscaledTime*2*Mathf.PI/3.6f),sc=1+.04f*breathe;var c=new Vector2(r.x+4+48,r.y+68+26);
+            U.Radial(new Rect(c.x-62,c.y-36,124,72),U.Hex(0xb7a8ff,(.26f+.06f*breathe)*e));
+            NativeIcons.DrawMarkup(new Rect(c.x-43.33f*sc,c.y-26*sc,86.67f*sc,86.67f*sc),"siren-face",SirenFace,200,new Color(1,1,1,e));
+            float y=r.y+126,w=r.width-8;foreach(var text in SirenNotes())
+            {foreach(var l in U.Wrap(text,14,w,false,4)){U.Text(new Rect(r.x+4,y,w,20),l,14,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);y+=20;}y+=6;}
         }
     }
 }

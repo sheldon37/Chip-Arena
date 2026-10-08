@@ -10,7 +10,7 @@ var builder=WebApplication.CreateBuilder(args);
 builder.Logging.AddFilter("Microsoft.AspNetCore",LogLevel.Warning);
 builder.Services.AddRateLimiter(o=>{o.RejectionStatusCode=429;o.GlobalLimiter=PartitionedRateLimiter.Create<HttpContext,string>(c=>RateLimitPartition.GetFixedWindowLimiter(c.Connection.RemoteIpAddress?.ToString()??"unknown",_=>new FixedWindowRateLimiterOptions{PermitLimit=60,Window=TimeSpan.FromMinutes(1),QueueLimit=0}));});
 var app=builder.Build();app.UseRateLimiter();app.UseWebSockets(new WebSocketOptions{KeepAliveInterval=TimeSpan.FromSeconds(3)});var rooms=new ConcurrentDictionary<string,Room>();
-app.MapGet("/health",()=>Results.Ok(new{service="chip-arena-native-relay",protocol=4}));
+app.MapGet("/health",()=>Results.Ok(new{service="chip-arena-native-relay",protocol=5}));
 app.MapGet("/native/v3/rooms",(HttpContext c)=>Results.Json(new{rooms=rooms.Values.Where(r=>r.Ready&&r.Listed&&r.Source==c.Request.Query["source"].ToString()).Take(100).Select(r=>new{code=r.Code,name=r.Name,players=1+r.Pipes.Count,capacity=8})}));
 app.Map("/native/v3/host",async c=>{
  if(!c.WebSockets.IsWebSocketRequest||rooms.Count>=1000||!Regex.IsMatch(c.Request.Query["source"].ToString(),"^[a-f0-9]{40}$")){c.Response.StatusCode=400;return;}

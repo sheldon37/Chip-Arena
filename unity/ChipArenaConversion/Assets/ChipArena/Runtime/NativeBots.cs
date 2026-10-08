@@ -12,13 +12,13 @@ namespace ChipArena.UnityConversion
             var target=Pilots.Where(q=>q.Hp>0&&q.Seat.connected&&Enemy(p,q)).OrderBy(q=>(q.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();
             if(target==null||(StationaryBots||p.Seat.difficulty=="dummy")&&!force)return new InputFrame{Yaw=p.Yaw};
             var summon=Minions.Where(m=>m.Pve==null&&m.Hp>0&&Enemy(p,m.Owner)&&Vector3.Distance(m.Body.position,p.Body.position)<Math.Min(6,Vector3.Distance(target.Body.position,p.Body.position)-1.5f)).OrderBy(m=>(m.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();
-            return BotFocus(p,summon?.Body.position??target.Body.position,summon!=null?MinionVelocity(summon):PilotVelocity(target),summon?.Collider??target.Collider,target);
+            return BotFocus(p,summon?.Body.position??target.Body.position,summon!=null?MinionVelocity(summon):PilotVelocity(target),summon?.Collider??target.Collider,target,force);
         }
         private static Vector3 PilotVelocity(NativePilot p)=>p.Body.isKinematic?Vector3.zero:p.Body.linearVelocity;
         private static Vector3 MinionVelocity(NativeMinion m)=>m.Body.isKinematic?Vector3.zero:m.Body.linearVelocity;
-        private InputFrame BotFocus(NativePilot p,Vector3 target,Vector3 targetVelocity,Collider collider,NativePilot opponent=null)
+        private InputFrame BotFocus(NativePilot p,Vector3 target,Vector3 targetVelocity,Collider collider,NativePilot opponent=null,bool force=false)
         {
-            if(p.Seat.difficulty=="dummy"||StationaryBots)return new InputFrame{Yaw=p.Yaw};
+            if(!force&&(p.Seat.difficulty=="dummy"||StationaryBots))return new InputFrame{Yaw=p.Yaw};
             int level=NativeBotRules.Level(p.Seat.difficulty);var pos=p.Body.position;var eye=pos+Vector3.up*.5f;var delta=target-pos;float distance=delta.magnitude;
             Vector3 aimAt=Vec(p.BotBrain.Observe(Time,p.Seat.difficulty,Vec(target),random.NextDouble)),aim=aimAt-eye;bool visible=MeleeVisible(eye,target,p,collider),melee=p.Weapon.@class=="melee";
             var input=new InputFrame{Yaw=Mathf.Atan2(aim.x,aim.z)*Mathf.Rad2Deg,Pitch=Mathf.Atan2(aim.y,new Vector2(aim.x,aim.z).magnitude)*Mathf.Rad2Deg,AimTarget=Vec(aimAt),AbilityTarget=Vec(aimAt),Aim=visible&&NativeBotRules.Ads(p.Seat.spec,distance)};

@@ -67,7 +67,7 @@ namespace ChipArena.UnityConversion
                 if(turned&&original!=null){if(b.ReturnAt<0){b.ReturnAt=Time;b.Hit.Clear();b.Damage*=1.4f;}b.Velocity=Vec(NativeProjectileRules.Return(Vec(b.Velocity),Vec(original.Body.position+Vector3.up*.3f-b.Position),Mathf.PI*4/3*dt));}
                 if(b.Zigzag){float angle=.55f*(Mathf.Sin((age+dt)*Mathf.PI*12)-Mathf.Sin(age*Mathf.PI*12));b.Velocity=Quaternion.AngleAxis(angle*Mathf.Rad2Deg,Vector3.up)*b.Velocity;}
                 if(b.Pong)b.Velocity=b.Velocity.normalized*b.FixedSpeed;
-                if((b.Direct||b.WeaponFx)&&b.Homing>0&&!turned)
+                if(b.Direct&&b.Homing>0&&!turned)
                     foreach(var target in Pilots)
                     {Vector3 d=target.Body.position+Vector3.up*.15f-b.Position;if(target.Hp<=0||!Enemy(owner,target)||b.Hit.Contains(target.Collider.GetInstanceID())||d.magnitude>16||Vector3.Dot(b.Velocity.normalized,d.normalized)<Mathf.Cos(50*Mathf.Deg2Rad)||!MeleeVisible(b.Position,target.Body.position,owner,target.Collider))continue;b.Velocity=Vec(NativeProjectileRules.Steer(Vec(b.Velocity),Vec(d),b.Homing*Mathf.Deg2Rad*h));break;}
                 Vector3 before=b.Velocity;var velocity=Vec(before);Vector3 previous=b.Position;Vector3 delta=Vector3.ClampMagnitude(Vec(NativeSpecialRules.Ballistic(ref velocity,b.Gravity,h)),b.Travel);b.Velocity=Vec(velocity);b.Life-=h;b.Travel-=delta.magnitude;b.Travelled+=delta.magnitude;
@@ -76,7 +76,7 @@ namespace ChipArena.UnityConversion
                 bool ceiling=NativeSpecialRules.Ceiling(Vec(b.Position),Vec(delta),b.Radius,out float fraction,out V3 center),remove=false;
                 if(ceiling&&(!hit.HasValue||delta.magnitude*fraction<=hit.Value.Distance))
                 {
-                    b.Position=Vec(center);Vector3 reflected=before+Vector3.down*b.Gravity*h*fraction;reflected.y=-Math.Abs(reflected.y);
+                    b.Position=Vec(center);Emit(EventKind.CeilingHit,owner,0,b.Position,0);Vector3 reflected=before+Vector3.down*b.Gravity*h*fraction;reflected.y=-Math.Abs(reflected.y);
                     if(b.Pong)remove=PongBounce(b,owner,b.Position,reflected);else if(b.Bounces>0){b.Bounces--;b.Velocity=reflected;b.Damage=Math.Min(1000,b.Damage*b.BounceRetention);}else remove=true;
                 }
                 else if(hit.HasValue){b.Velocity=before+Vector3.down*b.Gravity*h*Mathf.Clamp01(hit.Value.Distance/Math.Max(.00001f,delta.magnitude));remove=BulletImpact(b,owner,hit.Value);}else b.Position+=delta;
@@ -86,7 +86,7 @@ namespace ChipArena.UnityConversion
                 }
                 if(!hit.HasValue&&turned&&original!=null&&Vector3.Distance(previous+delta.normalized*Mathf.Clamp(Vector3.Dot(original.Body.position+Vector3.up*.3f-previous,delta.normalized),0,delta.magnitude),original.Body.position+Vector3.up*.3f)<.8f)
                 {
-                    if(b.Direct&&ProcOnce("catch:"+b.Attack)){if(original.Weapon.@class=="ranged")original.Ammo=Math.Min(Magazine(original),original.Ammo+1);else original.Mana=Math.Min((float)original.Stats["maxMana"],original.Mana+(float)original.Weapon.cost*.5f);}remove=true;
+                    if(b.Direct&&ProcOnce("catch:"+b.Attack)){Emit(EventKind.Catch,original,0,b.Position,0);if(original.Weapon.@class=="ranged")original.Ammo=Math.Min(Magazine(original),original.Ammo+1);else original.Mana=Math.Min((float)original.Stats["maxMana"],original.Mana+(float)original.Weapon.cost*.5f);}remove=true;
                 }
                 if(remove||b.Life<=0||b.Travel<=0||b.Position.y<-15)Bullets.Remove(b);
             }
@@ -94,7 +94,7 @@ namespace ChipArena.UnityConversion
         private bool PongBounce(NativeBullet b,NativePilot owner,Vector3 point,Vector3 velocity)
         {
             if(b.Bounces--<=0){var w=Content.Weapon(b.Spec);if(w.blast>0&&(b.Direct||b.Reflections>0))ChipBlast(owner,point,b.Radius>.2f?3:(float)w.blast,b.Damage*.38f,b.Impulse);return true;}
-            b.FixedSpeed=Math.Min(b.RallyCap,b.FixedSpeed*1.12f);Vector3 from=point+velocity.normalized*(b.Radius+.1f);
+            Emit(EventKind.Pong,owner,0,point,b.Damage);b.FixedSpeed=Math.Min(b.RallyCap,b.FixedSpeed*1.12f);Vector3 from=point+velocity.normalized*(b.Radius+.1f);
             if(!(b.Velocity.y<0&&velocity.y>0)&&Vector3.Distance(point,b.RallyMark)>=6)
             {
                 var candidates=Pilots.Where(p=>p.Hp>0&&Enemy(owner,p)&&Vector3.Distance(from,p.Body.position)<12&&MeleeVisible(from,p.Body.position,owner,p.Collider)).OrderBy(p=>(p.Body.position-from).sqrMagnitude).Take(4);
@@ -115,18 +115,18 @@ namespace ChipArena.UnityConversion
             if(minion!=null)
             {
                 float actual=HitMinion(minion,owner,b.Damage,b.Velocity.normalized,b.Impulse,hit.Point,"projectile");if(b.Direct||b.WeaponFx&&b.Reflections==0)MinionWeaponHit(minion,owner,actual,b.Burn,b.Poison);
-                if((b.Direct||b.ChipImpact)&&b.Reflections==0)ImpactChips(owner,null,null,hit.Point,b.Velocity.normalized,b.Attack,b.Id);
+                if((b.Direct||b.ChipImpact)&&b.Reflections==0)ImpactChips(owner,null,null,hit.Point,b.Velocity.normalized,b.Attack,b.Id,minion);
             }
             else if(target!=null)
             {
-                bool head=NativeCombatRules.Headshot(Vec(target.Body.position),target.Yaw,Vec(hit.Point-b.Velocity.normalized*.1f),Vec(b.Velocity),b.Radius,target.Down!=null||target.Juggle!=null);float actual=Damage(target,owner,b.Damage*(head?1.5f:1),b.Velocity.normalized,b.Impulse,head,primary:b.Direct,impact:NativeBodyDamage.Projectile(b.Spec,b.Velocity.magnitude,b.Radius),hitPoint:hit.Point);
+                bool head=NativeCombatRules.Headshot(Vec(target.Body.position),target.Yaw,Vec(hit.Point-b.Velocity.normalized*.1f),Vec(b.Velocity),b.Radius,target.Down!=null||target.Juggle!=null);float actual=Damage(target,owner,b.Damage*(head?1.5f:1),b.Velocity.normalized,b.Impulse,head,primary:b.Direct,impact:NativeBodyDamage.Projectile(b.Spec,b.Velocity.magnitude,b.Radius),hitPoint:hit.Point,weaponHit:b.Direct&&b.Reflections==0);
                 FighterProjectileHit(b,owner,target,actual);
                 if(actual>0&&!b.Direct&&(b.Reflections>0||b.WeaponFx)){RefreshDot(target,owner,"fire",b.Burn,2);RefreshDot(target,owner,"poison",b.Poison,4);if(b.WeaponFx&&b.Reflections==0)Heal(owner,actual*(float)(owner.Stats["lifeSteal"]+owner.Weapon.drain));}
                 if(actual>0&&(b.Direct||b.ChipImpact)&&b.Reflections==0)ImpactChips(owner,target,null,hit.Point,b.Velocity.normalized,b.Attack,b.Id);
             }
             else
             {
-                DamageProp(prop,b.Damage*b.Demolition,b.Velocity.normalized*b.Impulse,hit.Point,owner);
+                DamageProp(prop,b.Damage*b.Demolition,b.Velocity.normalized*b.Impulse*(b.Direct&&b.Reflections==0&&Leet(owner,"yeet")?1000:1),hit.Point,owner);
                 if((b.Direct||b.ChipImpact)&&b.Reflections==0)ImpactChips(owner,null,prop,hit.Point,b.Velocity.normalized,b.Attack,b.Id);
                 if(prop!=null)Events.Add(new ArenaEvent{Id=nextEvent++,Kind=EventKind.Impact,Source=owner.Seat.id,Time=Time,Position=Vec(hit.Point),Normal=Vec(hit.Normal),SurfaceId=prop.Definition.id,Color=(int)Content.Weapon(b.Spec).color,Projectile=b.Id});
             }
@@ -134,18 +134,18 @@ namespace ChipArena.UnityConversion
             {b.EffectsUsed=true;var w=Content.Weapon(b.Spec);if(w.blast>0)ChipBlast(owner,hit.Point,b.Radius>.2f?3:(float)w.blast,b.Damage*.38f,b.Impulse);if(b.Direct&&!b.Pong)SplitBullet(owner,b,hit.Point,target?.Collider.GetInstanceID());}
             if(b.Pong)return true;
             if((target!=null||minion!=null)&&b.Pierces>0){b.Pierces--;b.Hit.Add(hit.Collider.GetInstanceID());b.Position+=b.Velocity.normalized*.08f;return false;}
-            if(prop!=null&&b.Bounces>0&&Props.Contains(prop)){b.Bounces--;b.Velocity=Vector3.Reflect(b.Velocity,hit.Normal);b.Position+=b.Velocity.normalized*(b.Radius+.06f);b.Damage=Math.Min(1000,b.Damage*b.BounceRetention);return false;}
+            if(prop!=null&&b.Bounces>0&&Props.Contains(prop)){Emit(EventKind.Ricochet,owner,0,hit.Point,b.Damage);b.Bounces--;b.Velocity=Vector3.Reflect(b.Velocity,hit.Normal);b.Position+=b.Velocity.normalized*(b.Radius+.06f);b.Damage=Math.Min(1000,b.Damage*b.BounceRetention);return false;}
             return true;
         }
         private void SplitBullet(NativePilot owner,NativeBullet parent,Vector3 point,int? skip)
         {
-            if(owner.Stats["split"]<=0)return;int count=2+(int)owner.Stats["split"];
+            if(owner.Stats["split"]<=0)return;Emit(EventKind.Split,owner,0,point,parent.Damage);int count=2+(int)owner.Stats["split"];
             for(int i=0;i<count&&ProjectileCount<100;i++)
             {
                 var b=CopyBullet(parent);b.Position=point-parent.Velocity.normalized*.18f;b.Velocity=Vec(GunRules.Direction(owner.Input.Yaw+(i-(count-1)/2f)*.32f*Mathf.Rad2Deg,owner.Input.Pitch))*parent.Velocity.magnitude*.75f;
                 b.Damage*=.22f;b.Impulse*=.2f;b.Direct=b.WeaponFx=b.Pong=b.Boomerang=b.Zigzag=false;b.ChipImpact=Has(owner,"fireworks")&&i<5;b.EffectsUsed=true;b.Reflections=b.Bounces=b.Pierces=0;b.Burn=b.Poison=b.Homing=0;b.Life=1.2f;b.Travel=18;if(skip.HasValue)b.Hit.Add(skip.Value);Bullets.Add(b);
             }
         }
-        private NativeBullet CopyBullet(NativeBullet b)=>new NativeBullet{Id=nextBullet++,Attack=b.Attack,Owner=b.Owner,Original=b.Original,Spec=b.Spec,Born=b.Born,Position=b.Position,Velocity=b.Velocity,BaseVelocity=b.BaseVelocity,Damage=b.Damage,Impulse=b.Impulse,Radius=b.Radius,Gravity=b.Gravity,Life=b.Life,Travel=b.Travel,Bounces=b.Bounces,Pierces=b.Pierces,BounceRetention=b.BounceRetention,FixedSpeed=b.FixedSpeed,Homing=b.Homing,Burn=b.Burn,Poison=b.Poison,Demolition=b.Demolition,Mods=new Dictionary<string,int>(b.Mods)};
+        private NativeBullet CopyBullet(NativeBullet b)=>new NativeBullet{Id=nextBullet++,Attack=b.Attack,Owner=b.Owner,Original=b.Original,Spec=b.Spec,Born=b.Born,Position=b.Position,Velocity=b.Velocity,BaseVelocity=b.BaseVelocity,Motion=b.Motion,Zigzag=b.Zigzag,Damage=b.Damage,Impulse=b.Impulse,Radius=b.Radius,Gravity=b.Gravity,Life=b.Life,Travel=b.Travel,Bounces=b.Bounces,Pierces=b.Pierces,BounceRetention=b.BounceRetention,FixedSpeed=b.FixedSpeed,Homing=b.Homing,Burn=b.Burn,Poison=b.Poison,Demolition=b.Demolition,Mods=new Dictionary<string,int>(b.Mods)};
     }
 }
