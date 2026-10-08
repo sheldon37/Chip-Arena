@@ -137,16 +137,17 @@ namespace ChipArena.UnityConversion
         private void MatchEndPanel()
         {
             if(matchEndAt<0)matchEndAt=Time.unscaledTime;float enter=U.PanelIn(Time.unscaledTime-matchEndAt),W=U.W,H=U.H;var me=arena.Local.Seat;var winner=match.Seats.Find(s=>s.id==match.Winner);
-            var players=match.Seats.Where(s=>!s.AuthorityBoss).OrderByDescending(s=>s.score).ToList();float pw=Mathf.Min(640,W-32),ph=32+40+60+24+players.Count*68+40+24+48+32,px=(W-pw)/2,py=Mathf.Max(16,(H-ph)/2)+10*(1-enter);
+            var players=match.Seats.Where(s=>!s.AuthorityBoss).OrderByDescending(s=>s.score).ToList();float pw=Mathf.Min(640,W-32),ph=32+22+40+60+24+players.Count*68+40+24+48+32,px=(W-pw)/2,py=Mathf.Max(16,(H-ph)/2)+10*(1-enter);
             U.Push(new Vector2(W/2,py+ph/2),Vector2.zero,.99f+.01f*enter);U.Panel(new Rect(px,py,pw,ph),enter);float y=py+32,ix=px+32,iw=pw-64;
+            U.Text(new Rect(ix,y,iw,16),"CHIP ARENA",12,U.A(U.Hex(0xc0c1ca),enter),TextAnchor.MiddleLeft,bold:true,tracking:.18f);y+=22;
             U.Text(new Rect(ix,y,iw,40),OnMySide(winner)?"Match won":winner!=null?"Match lost":"Match ended",30,U.A(U.Hex(0xf4f4f5),enter),TextAnchor.MiddleLeft,bold:true,tracking:-.035f);y+=50;
             U.Text(new Rect(ix,y,iw,40),match.Result,16,U.A(U.Hex(0xbfc0c9),enter),TextAnchor.UpperLeft,wrap:true);y+=60;
             U.Text(new Rect(ix,y,iw,20),"SETS WON",12,U.A(U.Hex(0x9799a6),enter),TextAnchor.MiddleCenter,mono:true);y+=24;
             foreach(var p in players){var r=new Rect(ix,y+12,iw,56);U.Round(r,U.Hex(0x18191f,.94f*enter),4,U.A(U.Hex(0x454650),enter));U.Text(new Rect(r.x+17,r.y,r.width-34,r.height),p.name+(p.id==me.id?" · YOU":""),15,U.A(U.Hex(0xf4f4f5),enter),TextAnchor.MiddleLeft);U.Text(new Rect(r.x+17,r.y,r.width-34,r.height),p.score.ToString(),15,U.A(Color.white,enter),TextAnchor.MiddleRight,bold:true);y+=68;}
             U.Text(new Rect(ix,y+8,iw,20),me.chips.Values.Sum()+" CHIPS INSTALLED · BUILD COMPLETE",13,U.A(U.Hex(0xa6a7ad),enter),TextAnchor.MiddleCenter);y+=40+24;
             float bw=(iw-10)/2;bool lobby=Hosting||!Online;
-            if(U.Btn(new Rect(ix,y,bw,48),"Rematch",true,true,enter)){if(server!=null)SendServer(new NativeNetMessage{type="rematch"});else StartMatch();}
-            if(U.Btn(new Rect(ix+bw+10,y,bw,48),"Return to Lobby",false,lobby,enter))ReturnToLobby();
+            if(MenuButton(new Rect(ix,y,bw,48),"rotate-cw","Rematch",null,true,true,enter,15,true)){if(server!=null)SendServer(new NativeNetMessage{type="rematch"});else StartMatch();}
+            if(MenuButton(new Rect(ix+bw+10,y,bw,48),"undo-2","Return to Lobby",null,false,lobby,enter,15,true))ReturnToLobby();
             U.Pop();
         }
         // pve/results.ts: VICTORY / DEFEAT under the boss test eyebrow, the Siren's remaining health, a card per pilot (MVP by
