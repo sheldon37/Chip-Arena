@@ -176,9 +176,11 @@ namespace ChipArena.UnityConversion
         }
         private void OnGUI()
         {
-            if(dedicated)return;if(SlenderGUI())return;Styles();float scale=Mathf.Max(.65f,Screen.height/900f);GUI.matrix=Matrix4x4.Scale(Vector3.one*scale);float width=Screen.width/scale,height=Screen.height/scale;
+            if(dedicated)return;if(SlenderGUI())return;Styles();
+            // One canvas for every overlay and the menus (NativeUiMotion.Measure): 900 units tall at 16:9, wider at 21:9 (2150 at 3440x1440).
+            var ui=NativeUi.Begin();float scale=ui.Scale,width=ui.Width,height=ui.Height;GUI.matrix=Matrix4x4.Scale(Vector3.one*scale);
             if(error.Length>0){GUI.Box(new Rect(30,30,width-60,height-60),"");GUI.Label(new Rect(45,45,width-90,height-90),error,label);return;}
-            NativeUi.Begin();if(match?.Phase!=NativePhase.Match)matchEndAt=-1;
+            if(match?.Phase!=NativePhase.Match)matchEndAt=-1;
             // The intro overlay replaces the whole HUD (main.ts drawHud), so nothing else draws while it runs.
             if(arena!=null&&!menu&&previewArena==null&&IntroActive){IntroOverlay();return;}
             // The killcam is a broadcast frame of the past: the live HUD steps aside while it plays (killcam.css).
@@ -214,8 +216,9 @@ namespace ChipArena.UnityConversion
                 if(BoardOpen)Board(width);if(inspectSeat!=0)Inspect(width,height);LockHud(scale);
             }
             if(!menu&&arena!=null){ReplayHud(width,height);PveHud(width,height);return;}
-            float panel=Mathf.Min(850,width-60);GUI.Box(new Rect((width-panel)/2,68,panel,height-120),"");
-            GUILayout.BeginArea(new Rect((width-panel)/2+22,86,panel-44,height-155));scroll=GUILayout.BeginScrollView(scroll);
+            float panel=Mathf.Min(850,width-60),panelX=(width-panel)/2;if(Updater!=null&&width-(panelX+panel)<UpdateCardWidth+48){panel=Mathf.Min(850,width-60-UpdateCardWidth-24);panelX=30;}
+            GUI.Box(new Rect(panelX,68,panel,height-120),"");
+            GUILayout.BeginArea(new Rect(panelX+22,86,panel-44,height-155));scroll=GUILayout.BeginScrollView(scroll);
             GUILayout.Label("Native Unity conversion",heading);
             GUILayout.Label("Native combat, full Chip catalog, source models and animations, PvP rounds and Siren co-op.",label);
             if(arena!=null&&GUILayout.Button("Resume",button))menu=false;
@@ -223,7 +226,7 @@ namespace ChipArena.UnityConversion
             if(showCatalogue)Catalogue();else Setup();
             GUILayout.Space(14);GUILayout.Label("Host or join a separate Unity room from Match setup. Account access uses your configured service and signed unlocks.",small);
             GUILayout.Label("The accepted ranged lab remains a separate project. This conversion uses its own settings and executable.",small);
-            UpdatePanel();if(GUILayout.Button("Quit",button))Application.Quit();GUILayout.EndScrollView();GUILayout.EndArea();
+            if(GUILayout.Button("Quit",button))Application.Quit();GUILayout.EndScrollView();GUILayout.EndArea();UpdatePanel();
         }
         private void Setup()
         {
