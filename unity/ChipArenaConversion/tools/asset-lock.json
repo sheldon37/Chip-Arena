@@ -538,7 +538,13 @@
     {
       "path": "Assets/Conversion/Resources/SceneryMotion.json",
       "bytes": 74081,
-      "gitBlob": "f2357a782afac7624bff1eaa6b3e7ed27cc553e3",
+      "gitBlob": "a57fcd9e196b617520e827a9f8faa8ede334d502",
+      "source": "generated from pinned source"
+    },
+    {
+      "path": "Assets/Conversion/Resources/HazardModels.json",
+      "bytes": 42615,
+      "gitBlob": "f167f14acaf0a8c98d8fda93c1116c77fecc9fc9",
       "source": "generated from pinned source"
     },
     {

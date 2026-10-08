@@ -57,7 +57,7 @@ for(const map of content.maps){const scene=new T.Scene();if(map.id==='siren'){le
  add('fan',ward.fan.blades);add('doors',ward.doors);for(const c of ward.chandeliers)add('chandelier',c.pivot,-1,0,c.phase);for(const c of ward.clocks){add('minute',c.minute);add('hour',c.hour);}ward.group.updateMatrixWorld(true);
  const dynamic=new Set(moving.map(p=>p.node));exportModel('map-siren',ward.group,null,o=>{for(let p=o;p;p=p.parent)if(dynamic.has(p))return false;return true;});
  for(const p of moving)exportModel(p.id,p.node);
- fs.writeFileSync(path.join(root,'Assets/Conversion/Resources/WardMotion.json'),JSON.stringify({commit:inventory.sourceCommit,parts:moving.map(({node,...p})=>({...p,matrix:node.matrixWorld.elements.map(snap)}))})+'\n');}else{const scenery=new MapScenery(scene);scenery.set(map.id);sceneryMotion.push({id:map.id,snow:scenery.snowSeeds,smoke:scenery.world.smokeSeeds,smokeColor:map.id==='forge'?0x745769:0x526077});
+ fs.writeFileSync(path.join(root,'Assets/Conversion/Resources/WardMotion.json'),JSON.stringify({commit:inventory.sourceCommit,parts:moving.map(({node,...p})=>({...p,matrix:node.matrixWorld.elements.map(snap)}))})+'\n');}else{const scenery=new MapScenery(scene);scenery.set(map.id);sceneryMotion.push({id:map.id,snow:scenery.snowSeeds,smoke:scenery.world.smokeSeeds,smokeColor:map.theme==='forge'?0x745769:0x526077});
  const dynamic=new Set([scenery.snow,scenery.water]);exportModel('map-'+map.id,scene,null,o=>!dynamic.has(o));
  if(scenery.snow&&!snowExported){const mesh=new T.Mesh(scenery.snow.geometry,scenery.snow.material);exportModel('scenery-snow',mesh);snowExported=true;}
  if(scenery.water)exportModel('scenery-water',scenery.water);

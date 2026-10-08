@@ -48,7 +48,6 @@ namespace ChipArena.UnityConversion
         public int Generation {get;private set;}
         private GameObject root;private int nextBullet=1,nextEvent=1,nextAttack=1;private readonly Dictionary<string,Material> materials=new Dictionary<string,Material>();
         private readonly Dictionary<string,PhysicsMaterial> surfaces=new Dictionary<string,PhysicsMaterial>();
-        private readonly Dictionary<string,GameObject> hazardViews=new Dictionary<string,GameObject>();
         private readonly Dictionary<string,float> hazardHits=new Dictionary<string,float>();
         public GameObject Root=>root;
         private readonly System.Random random=new System.Random(12345);private readonly RaycastHit[] rayHits=new RaycastHit[256];
@@ -64,7 +63,7 @@ namespace ChipArena.UnityConversion
         private void DestroyScene()
         {
             if(root!=null){foreach(var c in root.GetComponentsInChildren<Collider>())c.enabled=false;CapturedAnimation.Release(root);}
-            Pilots.Clear();Props.Clear();Bullets.Clear();Events.Clear();hazardViews.Clear();hazardHits.Clear();AbilityShots.Clear();AbilityZones.Clear();AbilityEffects.Clear();abilityEchoes.Clear();MeleeShots.Clear();MeleeImpacts.Clear();procLedger.Clear();procOrder.Clear();chipCooldowns.Clear();ChipFields.Clear();Minions.Clear();FighterEchoes.Clear();StormTrails.Clear();LeetFields.Clear();originalInputs.Clear();SirenFields.Clear();sirenFieldAt=0;
+            Pilots.Clear();Props.Clear();Bullets.Clear();Events.Clear();hazardHits.Clear();AbilityShots.Clear();AbilityZones.Clear();AbilityEffects.Clear();abilityEchoes.Clear();MeleeShots.Clear();MeleeImpacts.Clear();procLedger.Clear();procOrder.Clear();chipCooldowns.Clear();ChipFields.Clear();Minions.Clear();FighterEchoes.Clear();StormTrails.Clear();LeetFields.Clear();originalInputs.Clear();SirenFields.Clear();sirenFieldAt=0;
         }
         public void Reset()
         {
@@ -214,16 +213,6 @@ namespace ChipArena.UnityConversion
         {
             foreach(var h in NativeHazards.At(MapId,Match.Time))
             {
-                if(!hazardViews.TryGetValue(h.id,out var visual))
-                {
-                    visual=GameObject.CreatePrimitive(h.kind=="saw"?PrimitiveType.Cylinder:PrimitiveType.Cube);visual.name=h.id;visual.transform.SetParent(root.transform);visual.GetComponent<Collider>().enabled=false;CapturedAnimation.Release(visual.GetComponent<Collider>());
-                    if(!materials.ContainsKey("hazard"))materials["hazard"]=new Material(Resources.Load<Shader>("NativeLit")){color=new Color(1,.24f,.12f)};
-                    visual.GetComponent<Renderer>().sharedMaterial=materials["hazard"];hazardViews[h.id]=visual;
-                }
-                visual.transform.position=new Vector3(h.x,h.y+(h.kind=="spikes"?h.extension*.5f:.015f),h.z);
-                visual.transform.localScale=h.kind=="saw"?new Vector3(h.sx,.09f,h.sx):new Vector3(h.sx,h.kind=="spikes"?Math.Max(.03f,h.extension):.03f,h.sz);
-                if(h.kind=="saw")visual.transform.rotation=Quaternion.Euler(90,0,Time*700);
-                visual.SetActive(h.kind!="spikes"||h.active||h.warning);
                 if(!h.active||Match.Phase!=NativePhase.Fight||Match.Time-Match.FightAt<2)continue;
                 foreach(var p in Pilots)
                 {
