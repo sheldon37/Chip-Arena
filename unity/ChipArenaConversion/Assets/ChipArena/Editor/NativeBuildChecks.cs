@@ -10,6 +10,32 @@ namespace ChipArena.UnityConversion.Editor
 {
     public static class NativeBuildChecks
     {
+        private static void CheckPresentation(NativeArena arena)
+        {
+            // Exercise the component creation/startup path that pure combat checks never instantiate.
+            var errors=new System.Collections.Generic.List<string>();
+            void Capture(string message,string trace,LogType type)
+            {if(type==LogType.Error||type==LogType.Exception||type==LogType.Assert)errors.Add(message+"\n"+trace);}
+            Application.logMessageReceived+=Capture;
+            try
+            {
+                for(int cycle=0;cycle<2;cycle++)
+                {
+                    var host=new GameObject("Presentation startup check");host.transform.SetParent(arena.Root.transform);
+                    try
+                    {
+                        var presentation=host.AddComponent<ArenaPresentation>();presentation.Initialize(false);
+                        presentation.ResetPresentation();presentation.ResetPresentation();
+                        if(host.GetComponentsInChildren<AudioSource>(true).Length!=25||host.GetComponentsInChildren<ParticleSystem>(true).Length!=1||host.GetComponentsInChildren<Light>(true).Length!=7||presentation.ParticleCount!=0)
+                            throw new Exception("Presentation startup did not initialize/reset its audio, particles and light pool");
+                    }
+                    finally{CapturedAnimation.Release(host);}
+                }
+            }
+            finally{Application.logMessageReceived-=Capture;}
+            if(errors.Count>0)throw new Exception("Presentation startup logged Unity errors: "+string.Join("\n",errors));
+            Debug.Log("PASS native presentation startup: component construction, initialization, repeated reset and teardown (two cycles; no rendered frame)");
+        }
         private static void CheckGlow(NativeArena arena,NativeMatch match)
         {
             var host=new GameObject("Glow lifecycle check");host.transform.SetParent(arena.Root.transform);var camera=host.AddComponent<Camera>();camera.enabled=false;
@@ -96,7 +122,7 @@ namespace ChipArena.UnityConversion.Editor
                             if(ReferenceEquals(shown.Actors[0],pilot.Pose)||Vector3.Distance(NativeArena.Vec(shown.Actors[0].Position),pilot.Body.transform.position-Vector3.up*.865f)>.00001f)
                                 throw new Exception("Render snapshot must copy the interpolated transform");
                             float hp=pilot.Pose.Hp;shown.Actors[0].Hp=0;if(pilot.Pose.Hp!=hp)throw new Exception("Render snapshot changed authority");
-                            CheckGlow(arena,match);arena.ValidateMelee();arena.ValidateSpecials();arena.ValidateRangedAndMagic();
+                            CheckPresentation(arena);CheckGlow(arena,match);arena.ValidateMelee();arena.ValidateSpecials();arena.ValidateRangedAndMagic();
                         }
                         if(map.id=="siren")arena.ValidatePveEconomy(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text));
                         Debug.Log("PASS native map "+map.id+": isolated Edit-mode physics, 8 spawn floors, capsule settling");

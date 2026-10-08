@@ -6,7 +6,7 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class NativeWardPart {public string id,kind;public int entry,side;public float phase;public float[] matrix;}
     public sealed partial class ArenaPresentation
     {
-        private NativeWardMotion wardMotion;private Material pitMaterial;private readonly MaterialPropertyBlock pitProperties=new MaterialPropertyBlock();
+        private NativeWardMotion wardMotion;private Material pitMaterial;private MaterialPropertyBlock pitProperties;
         private void WardPresentation(NativeArena arena)
         {
             if(wardMotion==null){wardMotion=JsonUtility.FromJson<NativeWardMotion>(Resources.Load<TextAsset>("WardMotion").text);if(wardMotion.commit!=arena.Content.sourceCommit)throw new InvalidOperationException("Ward motion source differs");}

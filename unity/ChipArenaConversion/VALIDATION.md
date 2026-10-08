@@ -2,6 +2,31 @@
 
 No native Unity playtest or Windows executable build was run in the authoring workspace.
 
+## Presentation startup repair (2026-10-07, 20:27 owner report)
+
+The owner reaches the match-setup UI but reports a failed match start. The
+screenshot shows `CreateImpl is not allowed to be called from a MonoBehaviour
+constructor (or instance field initializer)` on `ArenaPresentation`, followed by
+null-reference errors. Its Ward `MaterialPropertyBlock` was allocated by a field
+initializer. Allocation now occurs in `Initialize`, called after `AddComponent`
+by `ConversionGame.Awake`. Existing shader properties and rendering behavior are
+preserved. The later null-reference errors are consistent with incomplete startup;
+their individual stacks were not supplied.
+
+Previous native build checks constructed the arena and glow helpers but never the
+presentation component. A new Editor gate creates that component, initializes the
+native presentation, resets it twice and tears it down, repeated for two fresh
+instances. It verifies the audio/particle/light pools and captures Unity errors,
+including errors that Unity logs without propagating an exception. Initialization
+and teardown now use the existing play/edit-aware release helper so this test can
+run in an isolated preview scene. It does not draw or validate a frame.
+
+Local 12 asset/package tests and source/GUID checks pass. The new native lifecycle
+gate, rebuilt Windows executable and actual match start are **unrun here**. The
+screenshot alone does not establish that the preceding Windows builder finished.
+Unity's [initialization guidance](https://docs.unity3d.com/6000.3/Documentation/ScriptReference/MonoBehaviour.Awake.html)
+requires engine-dependent initialization outside the component constructor.
+
 ## Zero-cost ability gate repair (2026-10-07, late evening)
 
 The owner's follow-up Windows log confirms the repaired texture gate passes:

@@ -18,6 +18,12 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+## 2026-10-07 — Codex — presentation component startup repair
+- Continue isolated `codex/unity-build-fix` from `a46043a126b77407af6cd762a2dfe50eb78db87a`, draft PR #59. Owner's 20:27 screenshot shows the match-setup UI with an `ArenaPresentation` constructor/field-initializer `CreateImpl` error followed by null references. No successful build log or rendered match is supplied.
+- Move the Ward `MaterialPropertyBlock` allocation from the component field initializer into explicit `Initialize`, after `AddComponent`. Inspect related component/presentation initializers. No combat, hit timing, hitboxes, damage, cooldown, movement or networking changes; material properties are unchanged.
+- Close the native build coverage gap: instantiate/initialize/reset/tear down the actual presentation component twice, verify audio/particle/light pools and reject logged Unity errors. Reuse the existing play/edit-aware object release helper for the initialization sample and material cleanup. This native gate is unrun here.
+- Actual local checks: 12 asset/package tests, source receipts/GUIDs and diff checks pass. Conversion CI runs on the repair branch. The preceding `a46043a` conversion CI passed all managed/source/relay/package checks; those tests did not instantiate Unity components. Rebuilt Windows player, native lifecycle gate and match start remain owner verification. Refreshed full source ZIP; no merge or updater/feed/service publication.
+
 ## 2026-10-07 — Codex — zero-cost ability Windows gate repair
 - Continue isolated `codex/unity-build-fix` from `1e96f3b53305ee3dbdb3dd0a3ec2e5cecd1c8866`, draft PR #59 targeting `codex/unity-conversion`. Owner's second Windows log confirms script compilation and the previous texture fix, asset imports, glow, native melee and E-special gates pass; the next gate fails on `frag-grenade`.
 - Source grenade, rocket and orbital mark cost zero mana. Correct the validator's blanket mana-debit and empty-pool-refusal assumptions. Assert exact configured debit/cooldown/charge use, no spend before release, zero-mana free casts and paid-cast refusal without state changes. Add exact-cost/zero-mana checks to all 44 managed source ability fixtures. No runtime rules, source content, hit timing, hitboxes, damage, cooldowns, movement or networking changed.
