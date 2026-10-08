@@ -171,3 +171,9 @@ checkouts. Native CI covers both agent branch families; source packages include
 the command. Linux and Windows native CI pass at `375bd25`, including publisher
 and real launcher/rollback fixtures. Unity-to-Unity acceptance remains. The native feed is still absent; a compiled, accepted Windows candidate
 must be published before installed copies can receive it. Not merged/released.
+
+Cloud build continuation (2026-10-08): `codex/unity-cloud-build` builds on PR #63.
+Unity Build Automation hooks and verified delivery packaging are implemented, with
+Git/build provenance and Linux/Windows CI fixtures. Account configuration is blocked
+by unavailable Unity connection/browser access; no cloud build, merge or publication
+has run. Exact setup and Claude continuation: `docs/UNITY-CLOUD-BUILD-HANDOFF.md`.
