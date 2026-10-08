@@ -501,8 +501,8 @@
     },
     {
       "path": "Assets/Conversion/Resources/SourceModels.json",
-      "bytes": 6541603,
-      "gitBlob": "47fbc51a6eba9af0d2b47479bbf001411d9191e2",
+      "bytes": 6687495,
+      "gitBlob": "d0bbb6185b13d7a39469103f26d7f84cf70c7c0e",
       "source": "generated from pinned source"
     },
     {
@@ -520,8 +520,8 @@
     {
       "path": "Assets/Conversion/Resources/WardMotion.json",
       "source": "generated from pinned source",
-      "bytes": 3516,
-      "gitBlob": "9066f31e0571dc26dd328e1d1c8337a285c31316"
+      "bytes": 4249,
+      "gitBlob": "52080074508401c8baa3085a5774693eed1e5758"
     },
     {
       "path": "Assets/Conversion/Resources/SceneMotion.json",

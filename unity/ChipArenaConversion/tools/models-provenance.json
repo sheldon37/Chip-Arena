@@ -1831,8 +1831,8 @@
     },
     {
       "id": "map-siren",
-      "batches": 5,
-      "vertices": 133597
+      "batches": 4,
+      "vertices": 116417
     },
     {
       "id": "ward-motion-0",
@@ -1978,7 +1978,37 @@
       "id": "ward-motion-28",
       "batches": 1,
       "vertices": 24
+    },
+    {
+      "id": "ward-motion-29",
+      "batches": 1,
+      "vertices": 50
+    },
+    {
+      "id": "ward-motion-30",
+      "batches": 1,
+      "vertices": 50
+    },
+    {
+      "id": "ward-motion-31",
+      "batches": 1,
+      "vertices": 50
+    },
+    {
+      "id": "ward-motion-32",
+      "batches": 1,
+      "vertices": 50
+    },
+    {
+      "id": "ward-motion-33",
+      "batches": 1,
+      "vertices": 50
+    },
+    {
+      "id": "ward-motion-34",
+      "batches": 1,
+      "vertices": 50
     }
   ],
-  "uncompressedBytes": 67516429
+  "uncompressedBytes": 67516326
 }

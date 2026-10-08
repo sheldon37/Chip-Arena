@@ -120,7 +120,7 @@ namespace ChipArena.UnityConversion
         public Vector3 Position(Actor actor) { Vector3 p; return visualPositions.TryGetValue(actor.Id,out p)?p:Vec(actor.Position); }
         public void Render(Snapshot s, float renderTime, bool smooth)
         {
-            if(s==null) return;sourceModels?.Begin();
+            if(s==null) return;sourceModels?.Begin();hazardClock=renderTime;
             foreach(var list in batches) list.Clear(); DrawnParts=0;
             removedRigs.Clear();
             foreach(int id in rigs.Keys) { bool exists=false; foreach(var a in s.Actors) if(a.Id==id) { exists=true; break; } if(!exists) removedRigs.Add(id); }
