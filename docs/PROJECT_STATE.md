@@ -133,3 +133,25 @@ Windows validation and desktop distribution cutover remain separate work.
 Source/managed, real loopback relay/TCP, eleven asset/package checks and genuine Unity API compilation pass. Actual Unity import/shaders/native physics/rendering, live service flows and Windows EXE remain unrun in the authoring environment. This is an owner-test candidate, not a tested binary or release. Native adapters and acceptance boundaries are in unity/ChipArenaConversion/CONVERSION-STATUS.md and VALIDATION.md. No merge, test updater publication or production deployment.
 
 Windows follow-up (Oct. 7, 20:27): `codex/unity-build-fix`, draft PR #59. Owner's earlier log confirms texture/account and native asset/glow/melee/E-special repairs; free-ability gate correction passes conversion CI at `a46043a`. Latest screenshot reaches setup UI but shows an `ArenaPresentation` constructor allocation error. Move the Ward graphics property block into explicit initialization; add actual presentation component initialization/reset/teardown coverage to the Windows build gate. Twelve local asset/package tests pass. Rebuilt player, new native gate and successful match start remain unverified here. See newest DEV_LOG and refreshed source ZIP. No merge or publication.
+
+## Native updater — 2026-10-08
+
+`codex/unity-updater` starts from repair `c2cb7fd` (PR #59). It adds an isolated
+Unity update button, a stable Windows launcher, verified player replacement and
+startup rollback. Packaging prepares a native feed; it does not publish it. The
+Electron feed is unchanged. Claude can style `NativeUpdateUI.cs`; the two menu
+hooks are the only changes to `ConversionGame.cs`. See `Updater/README.md` inside
+the Unity project for integration and release instructions. Source/managed and
+Windows helper verification are recorded in DEV_LOG. A real Unity Windows build
+and update acceptance remain required before publishing the native test feed.
+Players need one starter installation to acquire the updater. Not merged/released.
+
+Owner build follow-up: the October 8 01:55 UTC log exposed a Unity/.NET
+`CompressionLevel` name collision in the updater Editor packager. PR #61 now
+explicitly selects the .NET ZIP enum; the corrected native build must be rerun.
+
+The next owner log confirms the alias repair, native gates and Windows player
+build pass. Launcher packaging then failed with CS1504 source paths. The shared
+compiler step now uses validated absolute paths and a response file, with a real
+Windows packaging regression. Final starter ZIP/feed and in-game update acceptance
+still require the repaired build to run on the owner's Unity installation.
