@@ -50,8 +50,70 @@ namespace ChipArena.UnityConversion
             Check(swayX>.0295f&&swayRoll>.045f&&landDip<-.01f&&reload>.99f&&rocket>.85f&&flick>.05f&&motion>1.1f&&planted&&aimedKick>0&&pilotChange,$"Fixture no longer covers every view layer: sway {swayX} roll {swayRoll} land {landDip} reload {reload} rocket {rocket} flick {flick} motion {motion} planted {planted} aimed kick {aimedKick} pilot change {pilotChange}");
             results.Add($"{frames} source first-person view-layer frames (look sway, stride bob, landing kick, recoil, reload dip, run-low, rocket/mark kicks, ADS damping, pilot change; 30-240 Hz, gaps, rewinds, pause); worst {worst*1000:0.000} mm / {worstAngle:0.00000} rad");
             results.Add(Frames());
+            results.Add(HeldFrames());
+            results.Add(GuestClock());
             results.Add(StaffUnderSway(content));
             return results;
+        }
+        // A frame on which the presentation clock does not advance (a pause, or a guest clock at the newest host frame) must be
+        // a no-op that keeps the stored look and ground contact: a turn and a landing made meanwhile count on the next step.
+        private static string HeldFrames()
+        {
+            NativeViewSwayInput At(int f,float time){float u=f/60f;bool air=f>=40&&f<52;return new NativeViewSwayInput{Pilot=1,Time=time,Yaw=3*u+.4f*(float)Math.Sin(7*u),Pitch=.3f*(float)Math.Sin(5*u),VelocityZ=6.8f,VelocityY=air?-9:0,Grounded=!air,Gait=true,Ranged=true,Weapon=WeaponId.Pistol,AdsKick=.5f,LastShot=.3f,ReloadAt=-100};}
+            var held=new NativeViewSway();var plain=new NativeViewSway();int skipped=0;float worst=0,landed=0;var last=default(NativeViewSwayPose);
+            for(int f=0;f<=90;f++)
+            {
+                // Every third frame advances the clock (as a 20 Hz staircase at 60 Hz); the frames between hold it, landing included.
+                float time=1+(f/3)*.05f;var pose=held.Sample(At(f,time));
+                if(f%3!=0){skipped++;Check(pose.X==last.X&&pose.Y==last.Y&&pose.Z==last.Z&&pose.Pitch==last.Pitch&&pose.Roll==last.Roll,"A held view-layer frame moved the view model");continue;}
+                var expected=plain.Sample(At(f,time));last=pose;landed=Math.Min(landed,plain.Land);
+                worst=Math.Max(worst,Math.Max(Math.Abs(pose.X-expected.X),Math.Max(Math.Abs(pose.Y-expected.Y),Math.Max(Math.Abs(pose.Roll-expected.Roll),Math.Abs(held.Land-plain.Land)))));
+            }
+            Check(worst<1e-6f&&landed<-.01f,$"Held frames dropped the look or the landing: {worst} (landing {landed})");
+            return $"{skipped} held view-layer frames (look turning, landing on a held frame) are no-ops; the next step carries their turn (worst {worst*1000:0.0000} mm)";
+        }
+        // The guest path: the host sends a frame every 50 ms of wall time stamped with its match clock; NativeNetwork.Update observes
+        // them and advances the replica's NativeSnapshotClock by the unscaled frame time, which is the guest's render time
+        // (arena.ReplicaRenderTime); the camera look is local and moves every frame. A steady 3 rad/s turn and a 6.8 m/s run must
+        // give the host's look sway and stride bob, and late frames or a slow host clock must not drop the look.
+        private struct GuestRun{public int Held;public float SwayX,BobStep,BobRange;}
+        private static GuestRun Guest(int hz,bool guest,bool look,double hostRate,double latency,double jitter,bool stall)
+        {
+            var random=new Random(11);var arrivals=new List<(double at,double time)>();
+            for(int k=0;k*.05<7;k++){double at=k*.05+latency+random.NextDouble()*jitter;if(stall&&at>=3&&at<3.25)at=3.25;arrivals.Add((at,k*.05*hostRate));}
+            arrivals.Sort((a,b)=>a.at.CompareTo(b.at));
+            var clock=new NativeSnapshotClock();var sway=new NativeViewSway();bool started=false;double latest=double.NaN,previous=double.NaN,wall=0;int next=0;
+            var run=new GuestRun();double sum=0;int count=0;float lastY=float.NaN,lo=1,hi=-1;
+            for(int f=0;wall<5.5;f++)
+            {
+                double now=f/(double)hz+.0013*60/hz*((f*.618034)%1),delta=now-wall;wall=now;
+                while(next<arrivals.Count&&arrivals[next].at<=now){var a=arrivals[next++];if(started&&a.time<=latest)continue;latest=a.time;if(!started){clock.Reset(a.time);started=true;}else clock.Observe(a.time);}
+                if(!started)continue;
+                double time=guest?clock.Advance((float)delta):now;
+                var pose=sway.Sample(new NativeViewSwayInput{Pilot=1,Time=(float)time,Yaw=look?(float)(3*now):0,VelocityZ=look?0:6.8f,Grounded=true,Gait=true});
+                if(now>=2&&now<5){if(time<=previous)run.Held++;sum+=Math.Abs(pose.X);count++;if(!float.IsNaN(lastY))run.BobStep=Math.Max(run.BobStep,Math.Abs(pose.Y-lastY));lo=Math.Min(lo,pose.Y);hi=Math.Max(hi,pose.Y);}
+                previous=time;lastY=pose.Y;
+            }
+            run.SwayX=(float)(sum/Math.Max(1,count));run.BobRange=hi-lo;return run;
+        }
+        private static string GuestClock()
+        {
+            var report=new List<string>();int lateHeld=0;
+            foreach(int hz in new[]{60,144,240})
+            {
+                GuestRun host=Guest(hz,false,true,1,.04,0,false),hostRun=Guest(hz,false,false,1,.04,0,false);
+                GuestRun look=Guest(hz,true,true,1,.04,.03,false),stride=Guest(hz,true,false,1,.04,.03,false);
+                Check(Math.Abs(host.SwayX-.012f)<.0002f,$"Host look sway at {hz} Hz is not the source's 12 mm: {host.SwayX*1000}");
+                Check(look.Held==0&&stride.Held==0,$"Guest render clock held {look.Held} frames at {hz} Hz with on-time host frames");
+                Check(Math.Abs(look.SwayX-host.SwayX)<.0003f,$"Guest look sway at {hz} Hz is {look.SwayX*1000:0.00} mm, host {host.SwayX*1000:0.00} mm");
+                Check(stride.BobStep<=hostRun.BobStep*1.1f+.0002f&&Math.Abs(stride.BobRange-hostRun.BobRange)<.001f,$"Guest stride bob at {hz} Hz steps {stride.BobStep*1000:0.00} mm per frame (host {hostRun.BobStep*1000:0.00}), range {stride.BobRange*1000:0.00} mm");
+                // A 250 ms stall of host frames and a host match clock running 5 % slower than wall time hold the guest clock at
+                // the newest frame; the turn made on those frames still reaches the view model.
+                GuestRun stalled=Guest(hz,true,true,1,.04,.03,true),slow=Guest(hz,true,true,.95,.04,.03,true);lateHeld+=stalled.Held+slow.Held;
+                Check(stalled.Held>0&&stalled.SwayX>host.SwayX*.97f&&slow.SwayX>host.SwayX*.97f,$"Late host frames dropped the guest look sway at {hz} Hz: {stalled.SwayX*1000:0.00} / {slow.SwayX*1000:0.00} mm over {stalled.Held} held frames");
+                report.Add($"{hz} Hz {look.SwayX*1000:0.0} mm, bob step {stride.BobStep*1000:0.0} mm (host {hostRun.BobStep*1000:0.0}), stalled {stalled.SwayX*1000:0.0} mm");
+            }
+            return $"Guest view layer on the replica snapshot clock (20 Hz host frames, 3 rad/s turn, 6.8 m/s run): no held frames on time, look sway and bob as the host; {lateHeld} held frames from late frames keep the look ({string.Join("; ",report)})";
         }
         private static Vector3 Rx(Vector3 v,float a){float c=(float)Math.Cos(a),s=(float)Math.Sin(a);return new Vector3(v.X,v.Y*c-v.Z*s,v.Y*s+v.Z*c);}
         private static Vector3 Ry(Vector3 v,float a){float c=(float)Math.Cos(a),s=(float)Math.Sin(a);return new Vector3(v.X*c+v.Z*s,v.Y,-v.X*s+v.Z*c);}

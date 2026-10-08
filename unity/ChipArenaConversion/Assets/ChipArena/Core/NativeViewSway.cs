@@ -93,7 +93,10 @@ namespace ChipArena.UnityConversion
                 if(i.Grounded&&!grounded)landv-=Math.Min(1,Math.Max(0,-vy)/9)*.9f;
                 NativeFirstPersonPose.Spring(ref land,ref landv,0,16,.55f,h);
             }
-            t=i.Time;yaw=i.Yaw;pitch=i.Pitch;grounded=i.Grounded;if(!i.Grounded)vy=i.VelocityY;
+            // A held clock (h 0: a pause, or a guest's snapshot clock waiting at the newest host frame) keeps the stored look
+            // and ground contact, so a turn or landing made meanwhile counts on the next step that runs instead of being lost.
+            // The camera look keeps moving on those frames; the source's smooth interpolation cursor never holds them.
+            t=i.Time;if(h>0){yaw=i.Yaw;pitch=i.Pitch;grounded=i.Grounded;}if(!i.Grounded)vy=i.VelocityY;
             // Stride bob from the rig's own stride phase, scaled by how much it is running.
             float run=Math.Min(1,Motion),bx=(float)Math.Sin(Stride)*.012f*run,by=-Math.Abs((float)Math.Cos(Stride))*.015f*run,a=MathUtil.Clamp(i.Ads,0,1);
             // Recoil push, reload dip, run-low carry, rocket kick and mark flick: guns only.
