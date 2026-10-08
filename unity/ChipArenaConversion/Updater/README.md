@@ -109,9 +109,11 @@ dotnet run --project Updater/Tests/UpdaterTests.csproj -c Release
 python tools/check_updater_windows.py
 ```
 
-The last gate requires Windows. It compiles the shipping launcher with the actual
-.NET Framework compiler and exercises live child processes, locked executable
-handoff, restart and startup-failure rollback with fixture players. Fixtures are
+The last gate requires Windows. It runs the same `NativeLauncherCompiler` code
+used by the Editor packager, with mixed path separators, spaces, the actual .NET
+Framework compiler and an ICO. It rejects missing source before compilation,
+then exercises live child processes, locked executable handoff, restart and
+startup-failure rollback with the resulting launcher and fixture players. Fixtures are
 not Unity players and are never packaged in the game. Transaction tests also
 cover journal interruption points and malicious/corrupt archives on Windows/Linux.
 GitHub Actions runs these alongside existing native source, managed and relay

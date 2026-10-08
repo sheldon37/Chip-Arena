@@ -149,3 +149,9 @@ Players need one starter installation to acquire the updater. Not merged/release
 Owner build follow-up: the October 8 01:55 UTC log exposed a Unity/.NET
 `CompressionLevel` name collision in the updater Editor packager. PR #61 now
 explicitly selects the .NET ZIP enum; the corrected native build must be rerun.
+
+The next owner log confirms the alias repair, native gates and Windows player
+build pass. Launcher packaging then failed with CS1504 source paths. The shared
+compiler step now uses validated absolute paths and a response file, with a real
+Windows packaging regression. Final starter ZIP/feed and in-game update acceptance
+still require the repaired build to run on the owner's Unity installation.

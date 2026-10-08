@@ -20,6 +20,13 @@ containing an entry; no self-referential commit hash is required.
 
 
 
+
+## 2026-10-08 — Codex — native launcher packaging path repair
+- Continue `codex/unity-updater` / PR #61 from `bfb4079156ef021eae74e88e331a3d2cca130323`. Owner's next build.log confirms Editor/player compilation, native gates (including all 15 maps/120 spawn floors, presentation lifecycle, gameplay and animation playback) and Unity player build Success. Launcher packaging then fails CS1504 looking for its four source files at the project root; no final starter/feed marker was emitted.
+- Move launcher compilation to `NativeLauncherCompiler`, shared by Editor packaging and a Windows regression driver. Normalize absolute paths, preflight every source/config input, set the project working directory and use a UTF-8 csc response file; diagnostics name the retained response file. Existing ZIP enum alias remains. No gameplay, animation, damage, timing, hitbox, cooldown, movement or networking changes.
+- Windows gate now invokes the exact compiler implementation with mixed separators, spaces, an icon and real sources, then tests the resulting install/restart/rollback/recovery launcher. Previously CI compiled the launcher separately and missed the Editor's argument construction. CI 37716445819 at `3036366` passes both native jobs, including this exact packaging regression, missing-input rejection, 51 transaction/archive checks, real Windows install/restart/rollback/recovery, managed/relay checks and all 18 Python tests; local source/package/diff checks pass. The complete Unity packaging run and actual in-game update still need owner verification.
+- Refresh the cumulative Editor patch and full source package. Next: close Unity, extract the patch at the project root (both Editor source files plus the new .meta), rerun Build-Windows.cmd and require UNITY_TEST_BUILD_READY. No merge, native feed publication, account mutation or production change.
+
 ## 2026-10-08 — Codex — updater Editor compression-name compile fix
 - Continue `codex/unity-updater` / PR #61 from `ba936a86b54bfcac7aee93680148196e78ab59ea`. Owner's Unity 6000.3.24f1 Windows build log (01:55 UTC) reports three CS0104 errors in `NativeUpdateBuild.cs`: both UnityEngine and System.IO.Compression define CompressionLevel. The Editor-target runtime assembly compiled; the Editor assembly failed before any native build gates or player build ran.
 - Add an explicit alias to System.IO.Compression.CompressionLevel for all three ZIP packaging calls. No runtime, animation, gameplay or network changes. Refresh the full source package and provide the single-file build patch. The shared Windows launcher tests did not compile the Unity Editor packager, which is why preceding CI missed this error.

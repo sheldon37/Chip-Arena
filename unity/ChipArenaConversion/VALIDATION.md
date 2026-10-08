@@ -235,3 +235,26 @@ ambiguous `CompressionLevel` name in `NativeUpdateBuild.cs`. An explicit
 The corrected Editor assembly and Windows player have not been built here;
 the owner must rerun `Build-Windows.cmd`. Launcher CI does not compile Unity
 Editor packaging code and therefore did not catch this collision.
+
+
+### Owner build follow-up: launcher source paths
+
+The owner's subsequent `build.log` confirms the compression alias compiled,
+all logged native gates passed (including presentation initialization, all 15
+maps/120 spawn floors, gameplay and animation playback), and the Windows Unity
+player build returned Success. The later launcher packaging step failed with
+CS1504; it resolved the four launcher source filenames at the project root.
+The final starter ZIP/feed completion markers were therefore absent.
+
+The packager now calls the shared `NativeLauncherCompiler` implementation,
+normalizes absolute Windows paths, validates source/configuration inputs, sets
+an explicit working directory, and invokes csc through a UTF-8 response file.
+Its Windows gate uses the exact implementation with mixed path separators,
+spaces, an ICO and real source files; then exercises the resulting launcher.
+Missing input is checked before the player build starts. Compiler diagnostics
+identify `Builds/native-launcher.rsp` if a further failure needs investigation.
+The revised Unity packaging invocation and actual in-game update remain owner
+verification; successful player compilation alone is not complete packaging.
+
+CI 37716445819 at `3036366` passed both native jobs, including the exact Windows
+compiler invocation, missing-input rejection and subsequent launcher process tests.
