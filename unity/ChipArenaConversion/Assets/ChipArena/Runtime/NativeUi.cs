@@ -136,6 +136,22 @@ namespace ChipArena.UnityConversion
         {
             var s=Style(size,bold,mono,TextAnchor.UpperLeft,false);content.text=str??"";var v=s.CalcSize(content)/S;if(tracking!=0&&str!=null)v.x+=tracking*size*Math.Max(0,str.Length-1);return v;
         }
+        private static readonly Dictionary<string,List<string>> wraps=new Dictionary<string,List<string>>();
+        // Greedy word wrap at the current pixel size (cached), clamped to `maxLines` with an ellipsis like -webkit-line-clamp.
+        public static List<string> Wrap(string str,float size,float width,bool bold=false,int maxLines=int.MaxValue)
+        {
+            if(maxLines<=0)return new List<string>();str=str??"";string key=str+"\u0001"+size+"|"+width+"|"+bold+"|"+maxLines+"|"+S;if(wraps.TryGetValue(key,out var cached))return cached;if(wraps.Count>4096)wraps.Clear();
+            var s=Style(size,bold,false,TextAnchor.UpperLeft,false);float limit=width*S;var lines=new List<string>();var line="";
+            float Width(string t){content.text=t;return s.CalcSize(content).x;}
+            foreach(string word in str.Split(' '))
+            {
+                if(word.Length==0)continue;string next=line.Length==0?word:line+" "+word;if(Width(next)<=limit||line.Length==0){line=next;continue;}
+                lines.Add(line);line=word;if(lines.Count>=maxLines)break;
+            }
+            if(lines.Count<maxLines&&line.Length>0)lines.Add(line);
+            else if(lines.Count>=maxLines&&maxLines>0){string last=lines[maxLines-1];while(last.Length>1&&Width(last+"…")>limit)last=last.Substring(0,last.Length-1).TrimEnd();lines[maxLines-1]=last+"…";lines.RemoveRange(maxLines,lines.Count-maxLines);}
+            wraps[key]=lines;return lines;
+        }
         // Text in a virtual rect. `tracking` is CSS letter-spacing in em; `glow` draws a soft halo in that colour.
         public static void Text(Rect r,string str,float size,Color c,TextAnchor align=TextAnchor.MiddleCenter,bool bold=false,bool mono=false,float tracking=0,Color glow=default,bool wrap=false,Color shadow=default,bool italic=false)
         {

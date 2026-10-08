@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using NVector=System.Numerics.Vector3;
 using NQuaternion=System.Numerics.Quaternion;
@@ -7,37 +8,28 @@ namespace ChipArena.UnityConversion
     public sealed partial class ConversionGame
     {
         private int draftHover=-1,draftViewSeat;private bool draftViewing;private Rect[] draftCards=Array.Empty<Rect>();private Vector2 draftPalm;
+        private readonly Dictionary<Renderer,bool> pickVisibility=new Dictionary<Renderer,bool>();
+        // The Siren personal pick replaces the arena view for the local player only (pve/chip-screen.ts): the fight keeps
+        // simulating, so the live renderers are hidden instead of deactivating the arena.
+        private void HideLive(){foreach(var r in arena.Root.GetComponentsInChildren<Renderer>()){if(!pickVisibility.ContainsKey(r))pickVisibility[r]=r.enabled;r.enabled=false;}}
+        private void RestoreLive(){foreach(var pair in pickVisibility)if(pair.Key!=null)pair.Key.enabled=pair.Value;pickVisibility.Clear();}
+        private bool PvePickScreen=>!menu&&arena!=null&&PvePickOpen&&arena.Pve?.Holding!=true&&arena.Local.Hp>0&&!ReplayActive&&match.Phase==NativePhase.Fight;
         private bool DraftFrame()
         {
-            bool active=!menu&&arena!=null&&match.Phase==NativePhase.Draft;
-            if(!active){if(draftViewing){draftViewing=false;presentation.ResetPresentation();}return false;}
-            var seat=match.Seat(match.DraftSeat);if(seat==null)return false;
-            if(!draftViewing||draftViewSeat!=seat.id){presentation.ResetPresentation();draftHover=-1;draftViewSeat=seat.id;draftViewing=true;}
-            float scale=Mathf.Max(.65f,Screen.height/900f),width=Screen.width/scale,height=Screen.height/scale;DraftLayout(width,height);
-            int index=match.Chosen!=null?seat.offers.IndexOf(match.Chosen):draftHover>=0?draftHover:(int)(match.Time/1.8)%Math.Max(1,seat.offers.Count);index=Mathf.Clamp(index,0,Math.Max(0,draftCards.Length-1));
-            Rect card=draftCards.Length>0?draftCards[index]:new Rect(width/2,180,1,1);float bottom=0;foreach(var r in draftCards)bottom=Math.Max(bottom,r.yMax);bottom=Mathf.Min(bottom,height*.49f);
-            arena.Root.SetActive(false);viewModelCamera.enabled=false;float age=match.Chosen==null?-1:(float)(match.Time-match.ChosenAt);Color tint=match.Chosen==null?NativeArena.ColorOf(0x70e1d0):RarityColor(content.Chip(match.Chosen).rarity);
-            draftPalm=presentation.RenderDraft(seat,match.Time,age,new Vector2((card.center.x-draftScroll.x)/width,1-card.center.y/height),bottom/height,tint,cameraView,draftHover>=0||age>=0,prefs.reducedEffects)/scale;draftPalm.y=height-draftPalm.y;return true;
-        }
-        private void DraftLayout(float width,float height)
-        {
-            int count=match.Seat(match.DraftSeat).offers.Count;draftCards=new Rect[count];int fit=width<=760?count:Mathf.Clamp(Mathf.FloorToInt((width-42)/164),2,6),columns=count<=fit?Math.Max(1,count):(count+1)/2;float w=Math.Max(150,Math.Min(260,(width-56-(columns-1)*14)/columns)),h=height<650?126:148;
-            for(int i=0;i<count;i++){int row=i/columns,n=Math.Min(columns,count-row*columns);float left=Math.Max(28,(width-(n*w+(n-1)*14))/2);draftCards[i]=new Rect(left+i%columns*(w+14),118+row*(h+12),w,h);}
-        }
-        private void Draft(float width,float height)
-        {
-            var seat=match.Seat(match.DraftSeat);if(seat==null)return;DraftLayout(width,height);float age=match.Chosen==null?-1:(float)(match.Time-match.ChosenAt);
-            GUI.Label(new Rect(28,63,width-56,45),seat.name+" chooses a Chip  ·  "+Math.Max(0,Math.Ceiling(match.PhaseEnd-match.Time))+"s",heading);
-            float extent=width;foreach(var card in draftCards)extent=Math.Max(extent,card.xMax+28);draftScroll=GUI.BeginScrollView(new Rect(0,110,width,Math.Min(height*.4f,350)),draftScroll,new Rect(0,110,extent,Math.Min(height*.4f,350)),false,false);draftHover=-1;
-            for(int i=0;i<draftCards.Length;i++)
-            {
-                var chip=content.Chip(seat.offers[i]);Rect rect=draftCards[i];bool selected=chip.id==match.Chosen;if(age>=0&&(!selected||age>=.48f))continue;if(rect.Contains(Event.current.mousePosition))draftHover=i;
-                if(selected){float fly=NativeDraftRules.Fly(age);Vector2 centre=Vector2.Lerp(rect.center,draftPalm+new Vector2(draftScroll.x,0),fly);rect=new Rect(centre.x-rect.width*(1-fly*.82f)/2,centre.y-rect.height*(1-fly*.82f)/2,rect.width*(1-fly*.82f),rect.height*(1-fly*.82f));}
-                GUI.color=RarityColor(chip.rarity);GUI.Box(rect,"");GUI.color=Color.white;if(selected&&age>.15f)continue;
-                GUI.Label(new Rect(rect.x+9,rect.y+7,rect.width-18,40),chip.name,label);GUI.Label(new Rect(rect.x+9,rect.y+48,rect.width-18,rect.height-82),chip.description,small);
-                GUI.enabled=!seat.bot&&seat.id==arena.Local.Seat.id&&match.Time>=match.ReadyAt&&match.Chosen==null;if(GUI.Button(new Rect(rect.x+9,rect.yMax-32,rect.width-18,27),"Install"))ChooseChip(seat.id,chip.id);GUI.enabled=true;
-            }GUI.EndScrollView();
-            if(age>=.85f){var c=content.Chip(match.Chosen);float w=Math.Min(380,width*.34f);GUI.Box(new Rect(width-w-28,height*.58f,w,height*.31f),"");GUI.color=RarityColor(c.rarity);GUI.Label(new Rect(width-w-12,height*.6f,w-32,60),c.name,heading);GUI.color=Color.white;GUI.Label(new Rect(width-w-12,height*.6f+62,w-32,height*.18f),c.description,label);GUI.Label(new Rect(28,height-48,width-56,40),"INSTALLED · "+seat.name,heading);}
+            bool pve=PvePickScreen,active=!menu&&arena!=null&&match.Phase==NativePhase.Draft;
+            if(!active&&!pve){if(draftViewing){draftViewing=false;RestoreLive();presentation.ResetPresentation();}return false;}
+            var seat=pve?arena.Local.Seat:match.Seat(match.DraftSeat);if(seat==null)return false;
+            if(!draftViewing||draftViewSeat!=seat.id){RestoreLive();presentation.ResetPresentation();draftHover=-1;draftFocus=-1;draftViewSeat=seat.id;draftViewing=true;}
+            float scale=NativeUiMotion.Measure(Screen.width,Screen.height).Scale,width=Screen.width/scale,height=Screen.height/scale;
+            var row=pve?arena.Pve.Rows[seat.id]:null;int count=pve?row.Open?.Offers?.Count??0:seat.offers.Count;float age=pve||match.Chosen==null?-1:(float)(match.Time-match.ChosenAt);
+            // Look target: the chosen card, the local picker's hovered or focused card, else the boot scan then a 1.8 s cycle.
+            float since=pve?Time.unscaledTime-pveOpenAt:(float)(match.Time-DraftStarted(seat));int scan=since<count*.22f?Mathf.FloorToInt(Math.Max(0,since)/.22f):(int)(since/1.8f)%Math.Max(1,count);
+            int index=!pve&&match.Chosen!=null?seat.offers.IndexOf(match.Chosen):draftHover>=0?draftHover:scan;index=Mathf.Clamp(index,0,Math.Max(0,draftCards.Length-1));
+            Rect card=draftCards.Length>0?draftCards[index]:new Rect(width/2,180,1,1);float bottom=Mathf.Min(draftTrayBottom,.49f);
+            if(pve)HideLive();else arena.Root.SetActive(false);viewModelCamera.enabled=false;
+            // Stage lights take the picker's colour, blending to the chip's rarity over .5 s after the pick (the Siren pick: its tier).
+            Color tint=pve?(row.Open?.Tier=="rainbow"?Color.white:RarityColor(row.Open?.Tier??"common")):SeatColor(seat);if(age>=0)tint=Color.Lerp(tint,RarityColor(content.Chip(match.Chosen).rarity),Mathf.Clamp01(age/.5f));
+            draftPalm=presentation.RenderDraft(seat,pve?arena.Time:match.Time,age,new Vector2(card.center.x/width,1-card.center.y/height),bottom,tint,cameraView,draftHover>=0||age>=0,prefs.reducedEffects)/scale;draftPalm.y=height-draftPalm.y;return true;
         }
     }
     public sealed partial class ArenaPresentation

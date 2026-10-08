@@ -183,11 +183,14 @@ namespace ChipArena.UnityConversion
             if(arena!=null&&!menu&&previewArena==null&&IntroActive){IntroOverlay();return;}
             // The killcam is a broadcast frame of the past: the live HUD steps aside while it plays (killcam.css).
             if(arena!=null&&!menu&&previewArena==null&&ReplayActive){ReplayHud(width,height);return;}
+            // Chip selection is a full screen: the PvP draft, and the Siren personal pick (main HUD hidden while it is open).
+            if(arena!=null&&!menu&&previewArena==null&&match.Phase==NativePhase.Draft){DraftScreen();return;}
+            if(previewArena==null&&PvePickScreen){PveChipScreen();return;}
+            if(previewArena==null&&SirenRevealActive){SirenReveal();return;}
             CombatWorldHud(scale,width,height);
             if(arena!=null&&!menu&&match.Phase==NativePhase.Fight&&presentation.ScopeActive)DrawScope(width,height);
             GUI.Label(new Rect(22,15,width-44,35),"CHIP ARENA  /  NATIVE CONVERSION",heading);
             if(previewArena!=null){PreviewHud(width,height);return;}
-            if(arena!=null&&!menu&&match.Phase==NativePhase.Draft){Draft(width,height);return;}
             if(arena!=null)
             {
                 var p=arena.Local;
@@ -208,7 +211,6 @@ namespace ChipArena.UnityConversion
                 if(!menu&&match.Phase==NativePhase.Match&&arena.Pve==null)MatchEndPanel();
                 else if(!menu&&match.Phase==NativePhase.Match)
                 {GUI.Label(new Rect(width/2-280,height/2-90,560,65),match.Result,heading);if(GUI.Button(new Rect(width/2-130,height/2,260,45),"Rematch",button)){if(server!=null)SendServer(new NativeNetMessage{type="rematch"});else StartMatch();}}
-                if(!menu&&match.Phase==NativePhase.Draft)Draft(width,height);
                 if(BoardOpen)Board(width);if(inspectSeat!=0)Inspect(width,height);LockHud(scale);
             }
             if(!menu&&arena!=null){ReplayHud(width,height);PveHud(width,height);return;}

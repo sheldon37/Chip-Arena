@@ -548,6 +548,12 @@
       "source": "generated from pinned source"
     },
     {
+      "path": "Assets/Conversion/Resources/ChipText.json",
+      "bytes": 44631,
+      "gitBlob": "68a7bf4bc21035fd3c5098e71a5b44a46fe40786",
+      "source": "generated from pinned source"
+    },
+    {
       "path": "Assets/Conversion/Resources/SlenderRig.json",
       "bytes": 6396,
       "gitBlob": "60331d0f977b96a946ecd1abd76e08f3d75a4e80",

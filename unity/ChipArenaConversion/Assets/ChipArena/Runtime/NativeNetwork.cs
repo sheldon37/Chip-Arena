@@ -128,8 +128,8 @@ namespace ChipArena.UnityConversion
                 if(GUILayout.Button("Leave room",button)){ClearReplay();CloseNetwork();arena?.Dispose();arena=null;match=null;presentation?.ResetPresentation();}
             }
         }
-        private void ChooseChip(int seat,string chip){if(server!=null)SendServer(new NativeNetMessage{type="chip",chip=chip});else match.Choose(seat,chip);nativeAudio.Play("install",null,.6f);}
-        private void ChoosePveChip(int pick,string chip){if(server!=null)SendServer(new NativeNetMessage{type="pve-pick",pick=pick,chip=chip});else arena.ChoosePve(arena.Local,pick,chip);nativeAudio.Play("install",null,.6f);}
+        private void ChooseChip(int seat,string chip){if(server!=null)SendServer(new NativeNetMessage{type="chip",chip=chip});else match.Choose(seat,chip);}
+        private void ChoosePveChip(int pick,string chip){if(server!=null)SendServer(new NativeNetMessage{type="pve-pick",pick=pick,chip=chip});else arena.ChoosePve(arena.Local,pick,chip);}
         private void PveOpen(bool open){if(server!=null)SendServer(new NativeNetMessage{type=open?"pve-open":"pve-close"});else if(open)arena.OpenPvePick(arena.Local);else arena.ClosePvePick(arena.Local);}
     }
 }
