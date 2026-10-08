@@ -91,6 +91,8 @@ namespace ChipArena.NativeUpdater
         }
         private static bool AnyGameRunning()
         {
+            // Recovery may resume between moving app to backup and moving the staged player in.
+            if(!Directory.Exists(Path.Combine(root,"app")))return false;
             string expected=LongPath(Path.Combine(root,"app",NativeUpdateRules.Executable));
             foreach(var p in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(NativeUpdateRules.Executable)))
             using(p)

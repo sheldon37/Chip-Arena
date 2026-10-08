@@ -207,3 +207,20 @@ or Windows EXE ran in this workspace. These checks do not certify complete conve
 ## Source cinematic checkpoint (2026-10-07)
 
 Four asset tests cover all 31 original sampled scenes / 124 native models: finite and correctly sized tracks, noncollapsed geometry, the clown weapon drop, the Siren blackout and animated demon/flame instances. Ragdoll forces, preview/inspection/draft UI and scene lighting compile against the real Unity Runtime, Windows-player and Editor assemblies. These checks do not execute shaders, render images, play audio or verify native body physics. Original source receipts and prior checks are retained.
+
+
+## Native updater programming — 2026-10-08
+
+CI run 37712635437 on `5d657a1` passed source/managed/real-relay verification,
+18 Python package/publisher tests, 51 updater transaction/archive checks on both
+Linux and Windows, and real .NET Framework launcher compilation plus Windows
+process install/restart and startup-failure rollback fixtures. This found and
+fixed Windows short-path executable identity handling. The final branch adds a
+real-launcher interrupted-directory-swap recovery fixture to the same CI gate.
+
+The new Unity runtime/UI and Editor packaging code have not been compiled or run
+in an activated Unity Editor here. Native build/import/rendered acceptance and
+an actual Unity-to-Unity update are still required. The source package contains
+no executable and no compiled native feed has been published. Existing genuine
+Unity compilation results elsewhere in this document predate this updater.
+See `Updater/README.md` for release steps and the Claude UI integration contract.

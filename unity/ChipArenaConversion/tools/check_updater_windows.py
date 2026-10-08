@@ -107,6 +107,18 @@ def run():
                     parent.wait()
                 time.sleep(2)  # Fixture child exits; release Windows handles even when an assertion fails.
 
+        # Simulate power loss after app -> previous, before the new player directory moves in.
+        app.rename(work / 'previous')
+        (work / 'journal.json').write_text(json.dumps(dict(token=token, phase='old-moved', before=identity('a', 1), after=identity('b', 2))))
+        try:
+            recovered = subprocess.run([str(root / EXE)], env=environment, timeout=20)
+            assert recovered.returncode == 0, (work / 'updater.log').read_text()
+            assert json.loads((app / 'native-build.json').read_text())['version'] == 'a' * 64
+            assert not (work / 'journal.json').exists()
+            print('PASS Windows launcher: normal launch recovers an interrupted directory swap')
+        finally:
+            time.sleep(2)
+
 
 if __name__ == '__main__':
     run()
