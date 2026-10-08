@@ -110,4 +110,3 @@ blade-clearance), engine-free in `Core/Melee*.cs` and driven from `CapturedAnima
 Presentation only: hit timing, hitboxes, damage, cooldowns, movement and networking are unchanged. The build gate
 (`ValidateMelee`) checks lead-foot drift, ankle and tip clearance and finite bones. Rendered motion still needs the
 owner's Windows playtest.
-
