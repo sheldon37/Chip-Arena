@@ -68,6 +68,11 @@ Update channel unless the owner says otherwise. No per-update publication
 confirmation is required. Follow DEVELOPMENT.md and record actual verification
 and publication results. This does not authorize automatic merges, live-feed or
 Site releases, or bypassing verification.
+Owner role split (2026-10-08): Astra (Codex) handles game logic and programming:
+simulation, rules, networking, accounts, updater, build/publish tooling and tests.
+Claude handles visuals: rendering, animation, VFX, menus/HUD presentation and
+audio-visual polish. Route each change to its owner; when a task spans both, split
+it and hand off through DEV_LOG/PR notes rather than taking over the other's part.
 At completion or handoff, add a concise entry to DEV_LOG on your own task branch:
 date/agent/task, branch and base, PR or implementation commit if known, changes and
 rationale, affected systems, actual checks/results, remaining risks and next step.
