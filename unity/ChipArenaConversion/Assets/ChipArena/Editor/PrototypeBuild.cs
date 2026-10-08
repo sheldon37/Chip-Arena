@@ -40,7 +40,7 @@ namespace ChipArena.UnityConversion.Editor
         {
             PlayerSettings.companyName="ChipArenaConversion";
             PlayerSettings.productName="Chip Arena Native Conversion TEST";
-            PlayerSettings.bundleVersion="0.4.1-native-melee-specials";
+            PlayerSettings.bundleVersion="0.5.0-native-updater";
             PlayerSettings.defaultScreenWidth=1600; PlayerSettings.defaultScreenHeight=900;
             PlayerSettings.fullScreenMode=FullScreenMode.Windowed;
             PlayerSettings.runInBackground=true;
@@ -98,24 +98,25 @@ namespace ChipArena.UnityConversion.Editor
                 throw new Exception("Install Windows Build Support for this Unity Editor version via Unity Hub.");
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.Standalone,ScriptingImplementation.Mono2x);
             string root=Path.GetFullPath(Path.Combine(Application.dataPath,".."));
-            string folder=Path.Combine(root,"Builds","Windows"); Directory.CreateDirectory(folder);
+            string folder=NativeUpdateBuild.PlayerFolder(root);
             string exe=Path.Combine(folder,"ChipArena-Native-Conversion-TEST.exe");
             var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions { scenes=new[] { ScenePath }, locationPathName=exe,
                 target=BuildTarget.StandaloneWindows64,options=BuildOptions.Development });
             if(report.summary.result!=BuildResult.Succeeded||!File.Exists(exe)) throw new Exception("Unity Windows build failed: "+report.summary.result);
             if(!File.Exists(Path.Combine(folder,"UnityPlayer.dll"))||!Directory.Exists(Path.Combine(folder,"ChipArena-Native-Conversion-TEST_Data")))
                 throw new Exception("The Windows player is incomplete: UnityPlayer.dll or its game data folder is missing.");
-            File.WriteAllText(Path.Combine(folder,"READ-ME.txt"),
+            NativeUpdateBuild.Package(root,folder);string install=Path.GetDirectoryName(folder);
+            File.WriteAllText(Path.Combine(install,"READ-ME.txt"),
                 "Chip Arena Native Conversion - CONVERSION CANDIDATE\r\n\r\nRun ChipArena-Native-Conversion-TEST.exe. Keep the entire folder together.\r\n"+
-                "The EXE uses the voxel CA icon. Create a Windows shortcut to the EXE for a desktop launcher; do not move the EXE alone.\r\n"+
+                "Use the EXE in the top folder: it is the stable launcher. Keep its app subfolder together. Updates are in the game menu.\r\n"+
+                "Updates download published Unity player builds, verify them, restart and restore the previous build if startup fails. Settings stay in the existing user-data folder.\r\n"+
                 "WASD move, double-tap W sprint, mouse look, LMB fire/attack, Q aim/magic ability, E ability, V first/third-person, R reload, RMB block, Shift dodge, Space jump.\r\n"+
                 "Choose weapon and map before starting. G scoreboard / build inspection. Tab melee lock-on. Esc menu. Local, LAN and configured relay rooms.\r\n"+
                 "15 maps, 236 Chips, native PvP and Ward Zero co-op. Full conversion remains in active completion.\r\n"+
                 "Read CONVERSION-STATUS.md and VALIDATION.md for implementation boundaries and unrun native acceptance.\r\n"+
                 "Built with Unity "+Application.unityVersion+". Core checks and player build passed on the build machine; human gameplay acceptance is separate.\r\n");
             string zip=Path.Combine(root,"Builds","Chip-Arena-Native-Conversion-TEST-Windows.zip");
-            if(File.Exists(zip)) File.Delete(zip);
-            ZipFile.CreateFromDirectory(folder,zip,System.IO.Compression.CompressionLevel.Optimal,false);
+            NativeUpdateBuild.SeedZip(install,zip);
             Debug.Log("UNITY_TEST_BUILD_READY: "+zip);
         }
     }

@@ -207,3 +207,54 @@ or Windows EXE ran in this workspace. These checks do not certify complete conve
 ## Source cinematic checkpoint (2026-10-07)
 
 Four asset tests cover all 31 original sampled scenes / 124 native models: finite and correctly sized tracks, noncollapsed geometry, the clown weapon drop, the Siren blackout and animated demon/flame instances. Ragdoll forces, preview/inspection/draft UI and scene lighting compile against the real Unity Runtime, Windows-player and Editor assemblies. These checks do not execute shaders, render images, play audio or verify native body physics. Original source receipts and prior checks are retained.
+
+
+## Native updater programming — 2026-10-08
+
+CI run 37712635437 on `5d657a1` passed source/managed/real-relay verification,
+18 Python package/publisher tests, 51 updater transaction/archive checks on both
+Linux and Windows, and real .NET Framework launcher compilation plus Windows
+process install/restart and startup-failure rollback fixtures. This found and
+fixed Windows short-path executable identity handling. The final branch adds a
+real-launcher interrupted-directory-swap recovery fixture to the same CI gate.
+
+The new Unity runtime/UI and Editor packaging code have not been compiled or run
+in an activated Unity Editor here. Native build/import/rendered acceptance and
+an actual Unity-to-Unity update are still required. The source package contains
+no executable and no compiled native feed has been published. Existing genuine
+Unity compilation results elsewhere in this document predate this updater.
+See `Updater/README.md` for release steps and the Claude UI integration contract.
+
+
+### Owner build follow-up: Editor packaging compile repair
+
+The owner's October 8 01:55 UTC Unity 6000.3.24f1 log shows successful
+Editor-target runtime script compilation, then three CS0104 errors for the
+ambiguous `CompressionLevel` name in `NativeUpdateBuild.cs`. An explicit
+`System.IO.Compression.CompressionLevel` alias fixes those three references.
+The corrected Editor assembly and Windows player have not been built here;
+the owner must rerun `Build-Windows.cmd`. Launcher CI does not compile Unity
+Editor packaging code and therefore did not catch this collision.
+
+
+### Owner build follow-up: launcher source paths
+
+The owner's subsequent `build.log` confirms the compression alias compiled,
+all logged native gates passed (including presentation initialization, all 15
+maps/120 spawn floors, gameplay and animation playback), and the Windows Unity
+player build returned Success. The later launcher packaging step failed with
+CS1504; it resolved the four launcher source filenames at the project root.
+The final starter ZIP/feed completion markers were therefore absent.
+
+The packager now calls the shared `NativeLauncherCompiler` implementation,
+normalizes absolute Windows paths, validates source/configuration inputs, sets
+an explicit working directory, and invokes csc through a UTF-8 response file.
+Its Windows gate uses the exact implementation with mixed path separators,
+spaces, an ICO and real source files; then exercises the resulting launcher.
+Missing input is checked before the player build starts. Compiler diagnostics
+identify `Builds/native-launcher.rsp` if a further failure needs investigation.
+The revised Unity packaging invocation and actual in-game update remain owner
+verification; successful player compilation alone is not complete packaging.
+
+CI 37716445819 at `3036366` passed both native jobs, including the exact Windows
+compiler invocation, missing-input rejection and subsequent launcher process tests.

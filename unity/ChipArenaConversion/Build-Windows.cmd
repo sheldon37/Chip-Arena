@@ -32,6 +32,7 @@ if errorlevel 1 (
 )
 echo Ready: "%~dp0Builds\Chip-Arena-Native-Conversion-TEST-Windows.zip"
 echo Play: "%~dp0Builds\Windows\ChipArena-Native-Conversion-TEST.exe"
-echo The EXE carries the voxel CA icon. Keep its DLLs and Data folder together.
+echo The EXE carries the voxel CA icon. Keep the launcher and app folder together.
+echo Update feed prepared at Builds\NativeUpdateFeed. See Updater\README.md to publish it.
 start "" "%~dp0Builds\Windows"
 pause

@@ -13,7 +13,13 @@ whole project in a new folder; the repaired native build still needs to run.
 3. For Windows, close this project in the Editor and run **Build-Windows.cmd**.
 4. Wait for **UNITY_TEST_BUILD_READY**. Run `Builds/Windows/ChipArena-Native-Conversion-TEST.exe`.
 
-The builder runs the import, content, animation, shader and native physics gates before packaging `Builds/Chip-Arena-Native-Conversion-TEST-Windows.zip`. Keep the entire Windows folder together. The EXE retains the voxel CA icon. This source archive contains no precompiled executable; an activated Windows Editor is required.
+The builder runs the import, content, animation, shader and native physics gates before packaging `Builds/Chip-Arena-Native-Conversion-TEST-Windows.zip`. Keep the top-level launcher and `app` folder together. The EXE retains the voxel CA icon. This source archive contains no precompiled executable; an activated Windows Editor is required.
+
+This version adds **Check for updates / Update and restart** to the menu. Install
+the newly built starter ZIP once; later published Unity players can be downloaded
+and installed from the button. No compiled Unity update has been published by this
+change. Build/publish instructions and Claude's UI handoff are in
+[Updater/README.md](Updater/README.md).
 
 ## Current implementation
 
