@@ -11,10 +11,10 @@ namespace ChipArena.UnityConversion
         // The smoothed render clock runs at most one fixed step ahead of the simulation clock; anything else falls back to it.
         private float hazardClock;
         private float PresentationClock(NativeArena arena)=>hazardClock>=arena.Time&&hazardClock-arena.Time<.1f?hazardClock:arena.Time;
-        private void HazardPresentation(NativeArena arena)
+        private void HazardPresentation(NativeArena arena)=>HazardPresentation(arena.MapId,PresentationClock(arena));
+        private void HazardPresentation(string mapId,float time)
         {
-            float time=PresentationClock(arena);
-            foreach(var h in NativeHazards.At(arena.MapId,time))
+            foreach(var h in NativeHazards.At(mapId,time))
             {
                 var root=Matrix4x4.Translate(new Vector3(h.x,h.y,h.z));
                 if(h.kind=="saw"){sourceModels.Queue("hazard-saw",root*Matrix4x4.Rotate(Quaternion.Euler(0,0,-(time*12%(2*Mathf.PI))*Mathf.Rad2Deg)));sourceModels.Queue("hazard-saw-track",Matrix4x4.Translate(new Vector3(0,0,h.z)));continue;}
