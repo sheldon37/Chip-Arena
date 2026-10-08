@@ -55,7 +55,7 @@ namespace ChipArena.UnityConversion
         private void StepMelee(NativePilot p)
         {
             var swing=p.Swing;if(swing==null)return;
-            if(Time>swing.HitUntil){p.HitPending=false;if(swing.Remaining>0){p.Combo++;float rate=(float)p.Stats["attackRate"];var echo=NativeMeleeRules.Begin(p.Weapon,p.Stats,Time,p.Combo+1,p.Input.Yaw*Mathf.Deg2Rad);echo.Id=swing.Id;echo.Remaining=swing.Remaining-1;echo.DamageScale=.45f;echo.HitAt=Time+.08f/rate;echo.HitUntil=echo.HitAt+.16f/rate;echo.StepAt=echo.At+.08f/rate*.55f;echo.StepUntil=echo.HitAt+.16f/rate*.8f;echo.Until=Math.Max(swing.Until,echo.HitUntil+NativeMeleeRules.Recovery(p.Seat.spec)/rate);p.Swing=echo;p.AttackAt=p.LastAttack=Time;p.HitAt=echo.HitAt;p.HitPending=true;p.AttackEnd=p.Ready=echo.Until;p.RegenAt=p.AttackEnd+.45f;}else if(Time>=swing.Until)p.Swing=null;return;}
+            if(Time>swing.HitUntil){p.HitPending=false;if(swing.Remaining>0){p.Combo++;float rate=(float)p.Stats["attackRate"];var echo=NativeMeleeRules.Begin(p.Weapon,p.Stats,Time,p.Combo+1,p.Input.Yaw*Mathf.Deg2Rad);echo.Id=swing.Id;echo.Followup=true;echo.Remaining=swing.Remaining-1;echo.DamageScale=.45f;echo.HitAt=Time+.08f/rate;echo.HitUntil=echo.HitAt+.16f/rate;echo.StepAt=echo.At+.08f/rate*.55f;echo.StepUntil=echo.HitAt+.16f/rate*.8f;echo.Until=Math.Max(swing.Until,echo.HitUntil+NativeMeleeRules.Recovery(p.Seat.spec)/rate);p.Swing=echo;p.AttackAt=p.LastAttack=Time;p.HitAt=echo.HitAt;p.HitPending=true;p.AttackEnd=p.Ready=echo.Until;p.RegenAt=p.AttackEnd+.45f;}else if(Time>=swing.Until)p.Swing=null;return;}
             if(Time<swing.HitAt)return;
             Vector3 origin=p.Body.position+Vector3.up*.15f;
             foreach(var target in Pilots)
@@ -97,14 +97,14 @@ namespace ChipArena.UnityConversion
             if(riposte)stun=Math.Max(stun,NativeMeleeRules.BlockPunish(damage,Math.Max(0,blocker.Ready-Time)+(float)(blocker.Weapon.windup/blocker.Stats["attackRate"]),travel));
             StunMelee(attacker,stun);
             if(riposte){blocker.RiposteAt=Time;attacker.RiposteBy=blocker.Seat.id;attacker.RiposteUntil=attacker.StunEnd;attacker.StaggerImmune=0;}
-            Vector3 away=(attacker.Body.position-blocker.Body.position).normalized;if(away.sqrMagnitude<.0001f)away=-direction;
+            Vector3 away=(attacker.Body.position-blocker.Body.position).normalized;if(away.sqrMagnitude<.0001f)away=-direction;MeleeParryReaction(attacker,away);
             attacker.Knockback+=away*(force/65)*(float)attacker.Stats["knockbackTaken"];attacker.Ready=Math.Max(attacker.Ready,Time+.18f);
         }
         private void SettleRiposte(NativePilot target,NativePilot hitter,float actual)
         {
             if(target.RiposteBy<0)return;bool live=target.StunEnd==target.RiposteUntil&&Time<target.RiposteUntil;
             if(live&&(target.RiposteBy!=hitter.Seat.id||actual<=0))return;
-            target.RiposteBy=-1;if(live)target.StunEnd=Time;
+            target.RiposteBy=-1;if(live){target.StunEnd=Time;SettleMeleeReaction(target);}
         }
     }
 }

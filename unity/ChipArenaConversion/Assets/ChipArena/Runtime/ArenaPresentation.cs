@@ -23,6 +23,7 @@ namespace ChipArena.UnityConversion
         public bool LastHeadshot;
         private static readonly string[] GunStates={"ready","aim","fire","reload","block"};
         private readonly Dictionary<int,CapturedAnimation.Player> rigs=new Dictionary<int,CapturedAnimation.Player>();
+        private readonly MeleeImpacts meleeImpacts=new MeleeImpacts();
         private readonly List<int> removedRigs=new List<int>();
         private readonly System.Diagnostics.Stopwatch animationTimer=new System.Diagnostics.Stopwatch();
         public bool CapturedPlayers=true, Viewer;
@@ -155,6 +156,9 @@ namespace ChipArena.UnityConversion
             foreach(ArenaEvent e in s.Events)
             {
                 if(e.Id<=lastEvent) continue; lastEvent=e.Id;
+                // Captured melee hit-stop (attacker) and block impact (defender), as the source's block-impacts records.
+                if((e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot)&&e.Source>0) meleeImpacts.RecordHit(e.Source.ToString(),e.Time);
+                else if(e.Kind==EventKind.Block&&e.Source>0) meleeImpacts.RecordBlock(e.Source.ToString(),e.Time);
                 if(e.Kind==EventKind.Shot)
                 {
                     int weapon=(int)e.Amount;
@@ -180,7 +184,7 @@ namespace ChipArena.UnityConversion
         private void CapturedPose(Actor a,Vector3 position,float time,int color)
         {
             CapturedAnimation.Player rig;
-            if(!rigs.TryGetValue(a.Id,out rig)) { rig=captured.Create(transform,a.Id); rigs.Add(a.Id,rig); }
+            if(!rigs.TryGetValue(a.Id,out rig)) { rig=captured.Create(transform,a.Id); rig.Impacts=meleeImpacts; rigs.Add(a.Id,rig); }
             if(Viewer&&ViewerSet>=4) rig.PreviewGun((WeaponId)(ViewerSet-3),ViewerClip,ViewerTime);
             else if(Viewer) rig.Preview(ViewerSet,PreviewName.Substring(PreviewName.IndexOf('/')+1),ViewerTime,Vector3.zero);
             else rig.ActorPose(a,position,time);

@@ -144,8 +144,51 @@ namespace ChipArena.UnityConversion
             {
                 for(int i=0;i<Bones.Length;i++) { Bones[i].localPosition=Vec(CapturedRig.Mirror(pose.Position[i])); Bones[i].localRotation=Quat(CapturedRig.Mirror(pose.Rotation[i])); }
             }
+            // Captured melee (sword, daggers, shield, greatsword) runs the source's full melee pipeline (Core/MeleeMotion):
+            // gait feet, captured guard and carries, cut footwork and hip seating, blade clearance, recoveries, blocks with
+            // their impacts, staggers and hit reactions, the ground pass, pose transitions and the final floor guard.
+            // The native roll, E special and knockdown recovery layers ride on it where the source runs its own.
+            private MeleeMotion melee;private readonly MeleeView meleeView=new MeleeView();private float meleeTime=-100;
+            public MeleeImpacts Impacts;
+            public static bool CapturedMelee(Actor a)=>a.MagicVisual==0&&a.Weapon==WeaponId.Sword&&MeleeMotion.Handles(a.SourceSpec);
+            private void MeleePose(Actor a,Vector3 position,float time)
+            {
+                Weapon=a.Weapon;Set=Mathf.Clamp(a.VisualSet,0,3);if(melee==null)melee=new MeleeMotion();melee.Impacts=Impacts;
+                float dt=meleeTime<-90||time<meleeTime||time-meleeTime>.35f?1/60f:Mathf.Min(.1f,time-meleeTime);meleeTime=time;
+                var v=MeleeViewOf(a,time,meleeView);bool roll=a.Rolling(time),special=NativeSpecialPose.Active(a,time),down=NativeSpecialPose.Down(a,time);
+                float yaw=-melee.PresentedYaw(v,time,v.Yaw)*Mathf.Rad2Deg;
+                Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,roll?Quaternion.LookRotation(ArenaPresentation.Vec(a.RollDirection)):Quaternion.Euler(0,yaw,0));Root.transform.localScale=Vector3.one*a.RigScale;
+                Vector3 at=Root.transform.position;melee.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);melee.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;
+                melee.Sample(v,time,dt,r=>
+                {
+                    r.WritePose(pose);
+                    if(roll)CapturedRig.Roll(pose,(time-a.RollAt)/a.VisualRollDuration);
+                    if(special)NativeSpecialPose.Special(pose,a,time,false);
+                    if(down)NativeSpecialPose.Recover(pose,a,time);
+                    r.ReadPose(pose);
+                });
+                melee.Rig.WritePose(pose);WritePose();fresh=false;lastTime=time;
+                State=roll?"roll (adapted)":special?a.SpecialKind:down?"recovery "+NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time):melee.State;
+            }
+            // The native actor in the source frame (+x the rig's left, radians), as the source's PlayerView.
+            private static MeleeView MeleeViewOf(Actor a,float time,MeleeView v)
+            {
+                const float D=Mathf.Deg2Rad;
+                v.Id=a.Id.ToString();v.Spec=a.SourceSpec;v.Yaw=-a.Yaw*D;v.Pitch=a.Pitch*D;v.Vel=new NVector(-a.Velocity.x,a.Velocity.y,a.Velocity.z);v.Grounded=a.Grounded;v.Hp=a.Hp;v.Sprinting=a.Sprinting;
+                v.LastAttack=a.AttackAt;v.Windup=a.VisualWindup;v.AttackRate=a.CastRate>0?a.CastRate:1;v.AttackIndex=a.Combo+1;
+                v.SwingAt=a.SwingAt>-90?a.SwingAt:float.NaN;v.SwingUntil=a.SwingAt>-90?a.SwingUntil:float.NaN;
+                v.Commit=a.CommitAt>-90;v.CommitAt=a.CommitAt;v.CommitUntil=a.CommitUntil;v.CommitYaw=-a.CommitYaw*D;v.StepAt=a.StepAt;v.StepUntil=a.StepUntil;v.StepDistance=a.StepDistance;v.Followup=a.Followup;v.Hurricane=a.Hurricane;
+                v.Guarding=false;v.BlockTime=time<a.BlockUntil?a.BlockUntil-time:0;v.LastBlock=a.BlockAt;v.HitStunUntil=a.StunUntil;
+                v.RollAt=a.RollAt;v.RollUntil=a.RollAt>-90?a.RollAt+a.VisualRollDuration:-100;
+                v.ActionKind=a.SpecialKind;v.ActionAt=a.SpecialAt;v.ActionUntil=a.SpecialUntil;
+                v.Reaction=a.ReactionAt>-90;v.Parry=a.ReactionParry;v.ReactionAt=a.ReactionAt;v.ReactionUntil=a.ReactionUntil;v.ReactionYaw=a.ReactionYaw;v.ReactionTurn=a.ReactionTurn;v.ReactionStrength=a.ReactionStrength;
+                v.ReactionDir=new NVector(a.ReactionDir.x,a.ReactionDir.y,a.ReactionDir.z);v.ReactionPoint=new NVector(a.ReactionPoint.x,a.ReactionPoint.y,a.ReactionPoint.z);v.ReactionZone=a.ReactionZone;
+                v.Down=NativeSpecialPose.Down(a,time);v.DownPhase=v.Down?NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time):null;v.WeaponAway=a.WeaponAway;
+                return v;
+            }
             public void ActorPose(Actor a,Vector3 position,float time,bool firstPerson=false)
             {
+                if(!firstPerson&&CapturedMelee(a)){MeleePose(a,position,time);return;}
                 Weapon=a.Weapon; int set=Mathf.Clamp(a.VisualSet,0,3);
                 float dt=Mathf.Clamp(time-lastTime,0,.1f); bool reset=fresh||time<lastTime||time-lastTime>.35f;
                 if(reset) phase=0; lastTime=time;
@@ -226,6 +269,7 @@ namespace ChipArena.UnityConversion
                     Root.transform.rotation=Quaternion.LookRotation(ArenaPresentation.Vec(a.RollDirection));
                     CapturedRig.Roll(pose,(time-a.RollAt)/a.VisualRollDuration); State="roll (adapted)";
                 }
+                if(!firstPerson&&!roll&&!special&&!down&&a.ReactionAt>-90){if(melee==null)melee=new MeleeMotion();melee.ReactOver(pose,MeleeViewOf(a,time,meleeView),time);}
                 NativeSourceMotion.Pilot(pose,a,time);
                 if(special){NativeSpecialPose.Special(pose,a,time,firstPerson);State=a.SpecialKind;}
                 if(down){NativeSpecialPose.Recover(pose,a,time);State="recovery "+NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time);}
