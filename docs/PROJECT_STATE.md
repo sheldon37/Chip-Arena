@@ -163,3 +163,11 @@ the Windows Unity build, rendered acceptance and an actual in-game update remain
 The Unity menu is now the source home screen with panel screens and a pause menu (`NativeHomeMenu.cs`);
 the update card opens from the home Update Game pill. Offline renders of the real drawing code pass;
 a Unity playtest of every screen (including a two-player room) is the next step.
+
+Native publication setup (2026-10-08): `codex/unity-native-publish`, based on Claude
+`d804663`, adds `Publish-Native.cmd`, read-only feed comparison, completed-build
+validation, typed publication confirmation and safe fast-forward of clean channel
+checkouts. Native CI covers both agent branch families; source packages include
+the command. Local publisher fixtures pass; Windows and Unity-to-Unity acceptance
+remain. The native feed is still absent; a compiled, accepted Windows candidate
+must be published before installed copies can receive it. Not merged/released.
