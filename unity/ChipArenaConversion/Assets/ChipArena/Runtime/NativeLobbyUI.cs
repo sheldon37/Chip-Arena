@@ -80,10 +80,10 @@ namespace ChipArena.UnityConversion
         // ---- Roster column ---------------------------------------------------------------------------------------------
         private void LobbyRosterColumn(Rect area,List<LobbyPilot> roster,float e)
         {
-            var c=GUI.color;GUI.color=new Color(c.r,c.g,c.b,c.a*e);GUILayout.BeginArea(area);
-            lobbyRosterScroll=GUILayout.BeginScrollView(lobbyRosterScroll,false,false,GUIStyle.none,GUI.skin.verticalScrollbar);U.BeginClip(area.position-lobbyRosterScroll);
+            var c=GUI.color;GUI.color=new Color(c.r,c.g,c.b,c.a*e);U.BeginDeferred();GUILayout.BeginArea(area);
+            lobbyRosterScroll=GUILayout.BeginScrollView(lobbyRosterScroll,false,false,GUIStyle.none,GUI.skin.verticalScrollbar);
             int count=roster.Count,ready=roster.Count(p=>p.ready&&p.connected),max=prefs.pve?4:8;float t=Time.unscaledTime;
-            var head=GUILayoutUtility.GetRect(0,48,GUILayout.ExpandWidth(true));RosterHeading(head,prefs.pve?"Party":"Pilots",count+" / "+max+" joined",ready,count,e);
+            var head=GUILayoutUtility.GetRect(0,48,GUILayout.ExpandWidth(true));U.Defer(()=>RosterHeading(head,prefs.pve?"Party":"Pilots",count+" / "+max+" joined",ready,count,e));
             // .lobby-roster[data-density]: large (1-2 pilots, 2 columns), medium (3 in 3 columns, 4 in 4), compact (5-8 in 4);
             // narrower columns step down (lobby.css 1100 px rules); short canvases use the max-height:820px portraits.
             int slots=count<2?count+1:count;string density=count<=2?"large":count<=4?"medium":"compact";bool compact=density=="compact",large=density=="large",teams=prefs.teams&&!prefs.pve;
@@ -97,18 +97,18 @@ namespace ChipArena.UnityConversion
             float rest=CardHeight(topH,compact,0)+(teams?43:0),fit=(area.height-48-100-(rows-1)*g)/rows-rest;portrait=Mathf.Clamp(fit,portrait*.6f,portrait);
             float cardH=CardHeight(topH,compact,portrait),slotH=cardH+(teams?43:0);
             var grid=GUILayoutUtility.GetRect(0,rows*slotH+(rows-1)*g,GUILayout.ExpandWidth(true));
-            if(Event.current.type==EventType.Repaint)
+            U.Defer(()=>
             {
-                float cw=(grid.width-g*(cols-1))/cols;
+                if(Event.current.type!=EventType.Repaint)return;float cw=(grid.width-g*(cols-1))/cols;
                 for(int i=0;i<slots;i++)
                 {
                     var r=new Rect(grid.x+(i%cols)*(cw+g),grid.y+(i/cols)*(slotH+g),cw,cardH);
                     if(i<count){LobbyCard(r,roster[i],i,portrait,topH,wrap,compact,e,t);if(teams)TeamTag(new Rect(r.x+2,r.yMax+9,r.width-4,34),roster[i],e);}else LobbyEmpty(new Rect(r.x,r.y,r.width,slotH),e);
                 }
-            }
+            });
             Field("Your weapon");WeaponGrid();
             GUI.enabled=true;GUILayout.Space(4);if(Event.current.type==EventType.Repaint)lobbyRosterContent=GUILayoutUtility.GetLastRect().yMax;
-            U.EndClip();GUILayout.EndScrollView();GUILayout.EndArea();GUI.color=c;
+            GUILayout.EndScrollView();GUILayout.EndArea();GUI.color=c;U.EndDeferred(area,lobbyRosterScroll);
         }
         // .pilot-card in .lobby-roster: top row (49 px, 40 px when large, 61 px wrapped), the portrait, the name (20 px; 17 px compact,
         // line-height 1.2), a 7 px gap, the class line (24 / 21 px) with its 8 px underline pad, and 17 px (14 px) below.
@@ -149,9 +149,9 @@ namespace ChipArena.UnityConversion
             float pad=compact?12:14,ny=stage.yMax+(result?4:0),ns=result?18:compact?17:20,nh=ns*1.2f;
             U.Text(new Rect(r.x+pad,ny,r.width-pad*2,nh),Fit(p.name,ns,r.width-pad*2,true,-.035f),ns,U.Hex(0xf4f4f5,a),TextAnchor.MiddleLeft,bold:true,tracking:-.035f);if(result)return;
             float cy=ny+nh+7,cs=compact?21:24,ch=compact?24:28,ic=compact?20:24;string cls=weapon!=null?ClassName(weapon.@class):"Mixed";
-            Color clsColor=U.Mix(Color.white,style,.38f);float cw=Mathf.Min(r.width-pad*2,ic+(compact?6:9)+U.Measure(cls,cs,true,false,.015f).x);
+            Color clsColor=U.Mix(Color.white,style,.38f);float cw=Mathf.Min(r.width-pad*2,ic+(compact?6:9)+U.Measure(cls,cs,true).x);
             NativeIcons.Draw(new Rect(r.x+pad,cy+(ch-ic)/2,ic,ic),weapon!=null?NativeIcons.Class(weapon.@class):"shuffle",U.A(style,a));
-            U.Text(new Rect(r.x+pad+ic+(compact?6:9),cy,cw,ch),cls,cs,U.A(clsColor,a),TextAnchor.MiddleLeft,bold:true,tracking:.015f,glow:U.A(style,.35f*a));
+            U.Text(new Rect(r.x+pad+ic+(compact?6:9),cy,cw,ch),cls,cs,U.A(clsColor,a),TextAnchor.MiddleLeft,bold:true,glow:U.A(style,.35f*a));
             ClassUnderline(new Rect(r.x+pad,cy+ch+6,cw,2),weapon?.id,style,a,t+index*.9f);
         }
         // .pilot-ready: NOT READY (clock) in the warm outline, READY (check) on solid #3ddc84; OFFLINE when disconnected.
@@ -189,18 +189,18 @@ namespace ChipArena.UnityConversion
             U.Text(new Rect(box.x+10,box.y,box.width-20,box.height),known?TeamNames[TeamIndex(p.team)]:"Auto",12,U.Hex(0xe6e7ec,a),TextAnchor.MiddleLeft);
         }
         // .lobby-empty: a dashed card holding the next seat while the room has fewer than two pilots.
-        private static void LobbyEmpty(Rect r,float e)
+        private void LobbyEmpty(Rect r,float e)
         {
             U.Round(r,U.Hex(0x1b1921,.5f*e),11);DashedRound(r,U.Hex(0x685766,e),11);
             float cy=r.center.y-36;NativeIcons.Draw(new Rect(r.center.x-17,cy,34,34),"users",U.Hex(0xb9acbd,e));
             U.Text(new Rect(r.x+25,cy+46,r.width-50,24),"Waiting for a pilot",17,U.Hex(0xe6dfe8,e),TextAnchor.MiddleCenter,bold:true);
-            var lines=U.Wrap("Share your room code or add a bot.",14,r.width-50,false,3);float y=cy+46+30;foreach(var l in lines){U.Text(new Rect(r.x+25,y,r.width-50,21),l,14,U.Hex(0xb9acbd,e),TextAnchor.MiddleCenter);y+=21;}
+            var lines=U.Wrap(Hosting?"Share your room code or add a bot.":"Share the room code with a friend.",14,r.width-50,false,3);float y=cy+46+30;foreach(var l in lines){U.Text(new Rect(r.x+25,y,r.width-50,21),l,14,U.Hex(0xb9acbd,e),TextAnchor.MiddleCenter);y+=21;}
         }
         // A 1 px dashed outline (6 px dashes, 4 px gaps) along the straight edges of a rounded rect.
         private static void DashedRound(Rect r,Color c,float radius)
         {
-            for(float x=r.x+radius;x<r.xMax-radius;x+=10){float w=Mathf.Min(6,r.xMax-radius-x);U.Fill(new Rect(x,r.y,w,1),c);U.Fill(new Rect(x,r.yMax-1,w,1),c);}
-            for(float y=r.y+radius;y<r.yMax-radius;y+=10){float h=Mathf.Min(6,r.yMax-radius-y);U.Fill(new Rect(r.x,y,1,h),c);U.Fill(new Rect(r.xMax-1,y,1,h),c);}
+            U.Dashed(new Rect(r.x+radius,r.y,r.width-2*radius,1),c);U.Dashed(new Rect(r.x+radius,r.yMax-1,r.width-2*radius,1),c);
+            U.Dashed(new Rect(r.x,r.y+radius,1,r.height-2*radius),c,false);U.Dashed(new Rect(r.xMax-1,r.y+radius,1,r.height-2*radius),c,false);
             U.Round(r,Color.clear,radius,U.A(c,.35f));
         }
         // room-options.ts readyStatus under the roster: who the room is waiting for. The host starts the match here (the
@@ -210,7 +210,8 @@ namespace ChipArena.UnityConversion
         {
             int waiting=Mathf.Max(0,total-ready);string lead,rest;Color tone;
             var mine=!Hosting?lobbySeats.FirstOrDefault(s=>s.id==networkId):null;string want=content.weapons.FirstOrDefault(w=>w.id==prefs.weapon)?.name??prefs.weapon;
-            if(mine!=null&&mine.spec!=prefs.weapon){lead="Send Loadout";rest="so the host gives you "+want+".";tone=U.Hex(0xf4c8a0);}
+            if(total==0){lead=Hosting?"Waiting for pilots":"Joining the room…";rest=Hosting?"· Share your room code.":"";tone=U.Hex(0xf4c8a0);}
+            else if(mine!=null&&mine.spec!=prefs.weapon){lead="Send Loadout";rest="so the host gives you "+want+".";tone=U.Hex(0xf4c8a0);}
             else if(Hosting&&!prefs.pve&&total<2){lead="Add a bot";rest="or wait for a pilot to join.";tone=U.Hex(0xf4c8a0);}
             else if(waiting>0){lead="Waiting for "+waiting+" pilot"+(waiting==1?"":"s");rest="· "+(Hosting?"Start when every pilot is ready.":"The host starts the match.");tone=U.Hex(0xf4c8a0);}
             else{lead="Everyone is ready.";rest=Hosting?(prefs.pve?"Start the boss fight when you are.":"Start the match when you are."):"Waiting for the host to start.";tone=U.Hex(0x8ff0b6);}
@@ -235,17 +236,20 @@ namespace ChipArena.UnityConversion
         private float lobbyAdvancedHeight;
         private bool AdvancedFold(string note)
         {
-            GUILayout.Space(14);var r=GUILayoutUtility.GetRect(0,64,GUILayout.ExpandWidth(true));bool open=lobbyAdvanced;
-            if(Event.current.type==EventType.Repaint)
+            GUILayout.Space(14);var r=GUILayoutUtility.GetRect(0,64,GUILayout.ExpandWidth(true));bool open=lobbyAdvanced;if(open&&Event.current.type==EventType.Repaint)advancedTop=r.yMax;float extra=lobbyAdvancedHeight;
+            U.Defer(()=>
             {
-                float h=U.HoverAmount(7390,r);var frame=open?new Rect(r.x,r.y,r.width,r.height+lobbyAdvancedHeight+12):r;
-                U.Round(frame,U.Hex(0x13141a,.4f),9,U.Hex(0x4c434e));if(h>0)U.Round(new Rect(r.x+1,r.y+1,r.width-2,r.height-2),new Color(1,1,1,.03f*h),9);if(open)U.Fill(new Rect(r.x+1,r.yMax-1,r.width-2,1),U.Hex(0x4c434e));
-                var c=new Vector2(r.x+19,r.y+23);U.Push(c,Vector2.zero,1,open?45:-45);U.Fill(new Rect(c.x+2,c.y-4,2,8),U.Hex(0xefb587));U.Fill(new Rect(c.x-4,c.y+2,8,2),U.Hex(0xefb587));U.Pop();
-                U.Text(new Rect(r.x+33,r.y+12,r.width-45,22),"Advanced Options",15,U.Hex(0xded5e0),TextAnchor.MiddleLeft,bold:true);
-                var lines=U.Wrap(note,12,r.width-48,false,2);float y=r.y+35;foreach(var l in lines){U.Text(new Rect(r.x+33,y,r.width-45,16),l,12,U.Hex(0xb3a8b6),TextAnchor.MiddleLeft);y+=16;}
-            }
-            if(U.Button(r)){lobbyAdvanced=!lobbyAdvanced;Click();}
-            if(open&&Event.current.type==EventType.Repaint)advancedTop=r.yMax;return open;
+                if(Event.current.type==EventType.Repaint)
+                {
+                    float h=U.HoverAmount(7390,r);var frame=open?new Rect(r.x,r.y,r.width,r.height+extra+12):r;
+                    U.Round(frame,U.Hex(0x13141a,.4f),9,U.Hex(0x4c434e));if(h>0)U.Round(new Rect(r.x+1,r.y+1,r.width-2,r.height-2),new Color(1,1,1,.03f*h),9);if(open)U.Fill(new Rect(r.x+1,r.yMax-1,r.width-2,1),U.Hex(0x4c434e));
+                    var c=new Vector2(r.x+19,r.y+23);U.Push(c,Vector2.zero,1,open?45:-45);U.Fill(new Rect(c.x+2,c.y-4,2,8),U.Hex(0xefb587));U.Fill(new Rect(c.x-4,c.y+2,8,2),U.Hex(0xefb587));U.Pop();
+                    U.Text(new Rect(r.x+33,r.y+12,r.width-45,22),"Advanced Options",15,U.Hex(0xded5e0),TextAnchor.MiddleLeft,bold:true);
+                    var lines=U.Wrap(note,12,r.width-48,false,2);float y=r.y+35;foreach(var l in lines){U.Text(new Rect(r.x+33,y,r.width-45,16),l,12,U.Hex(0xb3a8b6),TextAnchor.MiddleLeft);y+=16;}
+                }
+                if(U.Button(r)){lobbyAdvanced=!lobbyAdvanced;Click();}
+            });
+            return open;
         }
         private float advancedTop;
         // Called after the fold's content: its height for the next paint's frame.
@@ -258,11 +262,11 @@ namespace ChipArena.UnityConversion
         {
             // The code card scrolls with the rules, so short canvases keep the whole column reachable.
             U.Round(r,U.Hex(0x11131a,.53f*e),12,U.Hex(0x514353,e));var area=new Rect(r.x+16,r.y+18,r.width-30,r.height-30);
-            var c=GUI.color;GUI.color=new Color(c.r,c.g,c.b,c.a*e);GUILayout.BeginArea(area);
-            lobbyRoomScroll=GUILayout.BeginScrollView(lobbyRoomScroll,false,false,GUIStyle.none,GUI.skin.verticalScrollbar);U.BeginClip(area.position-lobbyRoomScroll);
+            var c=GUI.color;GUI.color=new Color(c.r,c.g,c.b,c.a*e);U.BeginDeferred();GUILayout.BeginArea(area);
+            lobbyRoomScroll=GUILayout.BeginScrollView(lobbyRoomScroll,false,false,GUIStyle.none,GUI.skin.verticalScrollbar);
             string label=RoomCodeLabel();bool two=U.Measure(label,10,false,false,.16f).x>area.width-12-32;
-            var invite=GUILayoutUtility.GetRect(0,two?146:132,GUILayout.ExpandWidth(true));RoomInvite(new Rect(invite.x+4,invite.y+2,invite.width-8,invite.height-2),Hosting?roomCode:joinCode,label,two,e);GUILayout.Space(16);
-            var head=GUILayoutUtility.GetRect(0,prefs.pve?118:62,GUILayout.ExpandWidth(true));RoomHeading(head,e);
+            var invite=GUILayoutUtility.GetRect(0,two?146:132,GUILayout.ExpandWidth(true));string code=Hosting?roomCode:joinCode;U.Defer(()=>RoomInvite(new Rect(invite.x+4,invite.y+2,invite.width-8,invite.height-2),code,label,two,e));GUILayout.Space(16);
+            var head=GUILayoutUtility.GetRect(0,prefs.pve?118:62,GUILayout.ExpandWidth(true));U.Defer(()=>RoomHeading(head,e));
             if(Hosting)
             {
                 Field("Mode");bool pve=ChoiceRow(new[]{"Versus","Boss Test"},prefs.pve?1:0)==1;if(pve!=prefs.pve){prefs.pve=pve;prefs.bots=Mathf.Clamp(prefs.bots,0,pve?3:7);}
@@ -270,7 +274,7 @@ namespace ChipArena.UnityConversion
             }
             else Fine(prefs.pve?"The host sets the party bots and where the run starts. Ready up when your loadout is set.":"The host sets the mode, arena and rules. Ready up when your loadout is set.");
             GUI.enabled=true;GUILayout.Space(4);if(Event.current.type==EventType.Repaint)lobbyRoomContent=GUILayoutUtility.GetLastRect().yMax;
-            U.EndClip();GUILayout.EndScrollView();GUILayout.EndArea();GUI.color=c;
+            GUILayout.EndScrollView();GUILayout.EndArea();GUI.color=c;U.EndDeferred(area,lobbyRoomScroll);
         }
         // .lobby-room .room-invite in the settings column: ROOM CODE, the code (24 px mono, .09em, #ff996f) and Copy Code,
         // on the warm 110deg #392b26 → #1a1b23 card with its #6e554c edge.

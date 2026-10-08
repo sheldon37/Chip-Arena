@@ -15,12 +15,11 @@ namespace ChipArena.UnityConversion
         private static Texture2D white,vertical,horizontal,radial,soft;private static readonly Dictionary<string,Texture2D> stops=new Dictionary<string,Texture2D>();private static Texture2D[] rounds=new Texture2D[4];
         private static GUIStyle text;private static Font mono;private static bool monoTried;
         private static readonly Stack<Matrix4x4> stack=new Stack<Matrix4x4>();private static Matrix4x4 current=Matrix4x4.identity;
-        private static readonly Stack<Vector2> clips=new Stack<Vector2>();private static Vector2 clip;
         private static readonly GUIContent content=new GUIContent();
         public static NativeUiMotion.Layout Begin(float uiScale=1)
         {
             var l=NativeUiMotion.Measure(Screen.width,Screen.height,uiScale);S=l.Scale;W=l.Width;H=l.Height;SafeX=l.SafeX;SafeW=l.SafeWidth;
-            stack.Clear();current=Matrix4x4.identity;clips.Clear();clip=Vector2.zero;Ensure();return l;
+            stack.Clear();current=Matrix4x4.identity;deferring=0;deferred.Clear();pivotShift=Vector2.zero;Ensure();return l;
         }
         private static Texture2D Make(int w,int h,Func<int,int,Color> f)
         {
@@ -51,17 +50,28 @@ namespace ChipArena.UnityConversion
         public static Vector2 P(Vector2 v)=>v*S;
         // Every draw sets the kit's transform and restores the caller's GUI.matrix, so legacy virtual-canvas GUI code
         // interleaves freely with kit drawing.
-        private static Matrix4x4 Enter(){var m=GUI.matrix;GUI.matrix=clips.Count>0?Matrix4x4.Translate(clip*S)*current*Matrix4x4.Translate(-clip):current;return m;}
-        // Kit drawing inside an IMGUI clip group (a GUILayout area or scroll view) whose local origin sits at `origin` on the
-        // virtual canvas. IMGUI adds a group's offset in GUI space before GUI.matrix applies, so the kit's physical-pixel
-        // transform is wrapped to remove that unscaled offset and add it back scaled; rects stay in the group's local space
-        // (as GUILayoutUtility.GetRect returns them), clipping and hit tests follow the group, and text stays crisp.
-        public static void BeginClip(Vector2 origin){clips.Push(clip);clip=origin;}
-        public static void EndClip(){if(clips.Count>0)clip=clips.Pop();}
+        private static Matrix4x4 Enter(){var m=GUI.matrix;GUI.matrix=current;return m;}
+        // Kit drawing for content laid out inside a GUILayout area and scroll view. IMGUI clips such a group in virtual
+        // units under GUI.matrix and maps that clip with the matrix current at draw time, so the kit (physical-pixel
+        // matrix, crisp text) cannot draw inside it. The body reserves space with GUILayoutUtility.GetRect and queues its
+        // kit drawing with Defer; EndDeferred, called at the root after GUILayout.EndArea, replays the queue inside a
+        // physical-pixel clip of the area, shifted by the scroll, so rects stay in the scroll content's space as GetRect
+        // returned them. The queue runs in every event, so kit buttons and hover work as anywhere else.
+        private static readonly List<Action> deferred=new List<Action>();private static int deferring;private static Vector2 pivotShift;
+        public static void BeginDeferred(){if(deferring++==0)deferred.Clear();}
+        public static void Defer(Action draw){if(deferring>0)deferred.Add(draw);else draw();}
+        public static void EndDeferred(Rect area,Vector2 scroll)
+        {
+            if(deferring>0&&--deferring>0)return;if(deferred.Count==0)return;var actions=deferred.ToArray();deferred.Clear();
+            // IMGUI adds the group's offset before GUI.matrix, so rotations pushed during the replay pivot about the pivot
+            // plus that offset (Push applies pivotShift).
+            var m=GUI.matrix;GUI.matrix=Matrix4x4.identity;var pa=P(area);var offset=new Vector2(-Mathf.Round(scroll.x*S),-Mathf.Round(scroll.y*S));GUI.BeginClip(pa,offset,Vector2.zero,false);GUI.matrix=m;pivotShift=pa.position+offset;
+            try{foreach(var a in actions)a();}finally{pivotShift=Vector2.zero;GUI.matrix=Matrix4x4.identity;GUI.EndClip();GUI.matrix=m;}
+        }
         // Push a transform about a virtual-space pivot: translate (virtual units), uniform scale and rotation (degrees).
         public static void Push(Vector2 pivot,Vector2 translate,float scale=1,float degrees=0,float scaleY=float.NaN)
         {
-            stack.Push(current);Vector3 p=pivot*S;float sy=float.IsNaN(scaleY)?scale:scaleY;
+            stack.Push(current);Vector3 p=pivot*S+pivotShift;float sy=float.IsNaN(scaleY)?scale:scaleY;
             current=current*Matrix4x4.TRS(p+(Vector3)(translate*S),Quaternion.Euler(0,0,degrees),new Vector3(scale,sy,1))*Matrix4x4.Translate(-p);
         }
         public static void Pop(){current=stack.Count>0?stack.Pop():Matrix4x4.identity;}
@@ -129,10 +139,22 @@ namespace ChipArena.UnityConversion
             {
                 float span=Mathf.Clamp01(until)*(horizontal?pr.width:pr.height)-k;
                 Rect ramp=horizontal?new Rect(mid.x,mid.y,Mathf.Clamp(span,0,mid.width),mid.height):new Rect(mid.x,mid.y,mid.width,Mathf.Clamp(span,0,mid.height));
-                if(b.a>0){GUI.color=b;GUI.DrawTexture(mid,white);}
-                if(a.a>0&&ramp.width>0&&ramp.height>0){GUI.color=a;if(horizontal)GUI.DrawTextureWithTexCoords(ramp,NativeUi.horizontal,new Rect(1,0,-1,1));else GUI.DrawTexture(ramp,vertical);}
+                // One layer with the ramp baked into a cached texture (overlaying two translucent layers would compound).
+                string key=(horizontal?"rgh|":"rgv|")+ColorUtility.ToHtmlStringRGBA(a)+"|"+ColorUtility.ToHtmlStringRGBA(b);
+                if(!stops.TryGetValue(key,out var ramp1)){ramp1=horizontal?Make(64,1,(x,y)=>Color.Lerp(a,b,x/63f)):Make(1,64,(x,y)=>Color.Lerp(b,a,y/63f));stops[key]=ramp1;}
+                GUI.color=Color.white;if(ramp.width>0&&ramp.height>0)GUI.DrawTexture(ramp,ramp1);
+                var rest=horizontal?new Rect(ramp.xMax,mid.y,mid.xMax-ramp.xMax,mid.height):new Rect(mid.x,ramp.yMax,mid.width,mid.yMax-ramp.yMax);if(rest.width>0&&rest.height>0){GUI.color=b;GUI.DrawTexture(rest,white);}
             }
             GUI.color=o;GUI.matrix=m;
+        }
+        // A 1 px dashed line (6 px dashes, 4 px gaps at virtual scale) tiled from one cached texture: one draw per edge.
+        private static Texture2D dashH,dashV;
+        public static void Dashed(Rect r,Color c,bool horizontal=true)
+        {
+            if(c.a<=0||Event.current.type!=EventType.Repaint)return;
+            if(dashH==null){dashH=Make(10,1,(x,y)=>new Color(1,1,1,x<6?1:0));dashH.wrapMode=TextureWrapMode.Repeat;dashH.filterMode=FilterMode.Point;dashV=Make(1,10,(x,y)=>new Color(1,1,1,y>=4?1:0));dashV.wrapMode=TextureWrapMode.Repeat;dashV.filterMode=FilterMode.Point;}
+            var m=Enter();var o=GUI.color;GUI.color=c;float len=horizontal?r.width:r.height;
+            GUI.DrawTextureWithTexCoords(P(r),horizontal?dashH:dashV,horizontal?new Rect(0,0,len/10,1):new Rect(0,0,1,len/10));GUI.color=o;GUI.matrix=m;
         }
         private static void Nine(Rect r,Texture2D t,int radius,Color c)
         {

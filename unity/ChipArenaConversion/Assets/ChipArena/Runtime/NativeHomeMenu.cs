@@ -29,6 +29,8 @@ namespace ChipArena.UnityConversion
             if(screen!=MenuScreen.Home)updateOpen=false;playSandbox=false;
             if(screen==MenuScreen.Play){prefs.pve=false;prefs.bots=Mathf.Clamp(prefs.bots,1,7);sandboxWanted=false;}
             if(screen==MenuScreen.Boss){prefs.pve=true;prefs.bots=Mathf.Clamp(prefs.bots,0,3);sandboxWanted=false;}
+            // A room opens at the top of both lobby columns; Customize and Settings return to where the lobby was.
+            if(screen==MenuScreen.Lobby&&menuScreen!=MenuScreen.Customize&&menuScreen!=MenuScreen.Settings){lobbyRosterScroll=lobbyRoomScroll=Vector2.zero;lobbyRosterContent=lobbyRoomContent=400;}
             menuScreen=screen;menuScreenAt=Time.unscaledTime;screenScroll=Vector2.zero;screenContent=400;GUIUtility.keyboardControl=0;
         }
         // Escape on the main menu: close the update card, else return to the home screen (the source close X); the room
@@ -354,8 +356,8 @@ namespace ChipArena.UnityConversion
         private void ScreenBody(ScreenLayout l,Action draw)
         {
             var c=GUI.color;GUI.color=new Color(c.r,c.g,c.b,c.a*l.Enter);GUILayout.BeginArea(l.Body);
-            screenScroll=GUILayout.BeginScrollView(screenScroll,false,false,GUIStyle.none,GUI.skin.verticalScrollbar);U.BeginClip(l.Body.position-screenScroll);draw();GUI.enabled=true;GUILayout.Space(4);
-            if(Event.current.type==EventType.Repaint)screenContent=GUILayoutUtility.GetLastRect().yMax;U.EndClip();GUILayout.EndScrollView();GUILayout.EndArea();GUI.color=c;
+            U.BeginDeferred();screenScroll=GUILayout.BeginScrollView(screenScroll,false,false,GUIStyle.none,GUI.skin.verticalScrollbar);draw();GUI.enabled=true;GUILayout.Space(4);
+            if(Event.current.type==EventType.Repaint)screenContent=GUILayoutUtility.GetLastRect().yMax;GUILayout.EndScrollView();GUILayout.EndArea();GUI.color=c;U.EndDeferred(l.Body,screenScroll);
         }
         // .lobby-actions: a rule, then equal-width actions along the panel's foot; returns the index clicked, or -1.
         private int ScreenActions(ScreenLayout l,params (string icon,string label,bool primary,bool enabled)[] items)

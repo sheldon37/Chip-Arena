@@ -24,8 +24,11 @@ namespace ChipArena.UnityConversion
         private void SoundTestRow()
         {
             var r=GUILayoutUtility.GetRect(0,46,GUILayout.ExpandWidth(true));float w=NativeUi.Measure("Test Sound",13,true).x+19+18+36;
-            if(MenuButton(new Rect(r.x+4,r.y+4,w,38),"volume-2","Test Sound",null,false,true,1,13,true))StartCoroutine(TestSound());
-            NativeUi.Text(new Rect(r.x+4+w+18,r.y+4,r.width-w-26,38),soundStatus,12,NativeUi.Hex(0xaac5ce),TextAnchor.MiddleLeft,mono:true);
+            NativeUi.Defer(()=>
+            {
+                if(MenuButton(new Rect(r.x+4,r.y+4,w,38),"volume-2","Test Sound",null,false,true,1,13,true))StartCoroutine(TestSound());
+                NativeUi.Text(new Rect(r.x+4+w+18,r.y+4,r.width-w-26,38),soundStatus,12,NativeUi.Hex(0xaac5ce),TextAnchor.MiddleLeft,mono:true);
+            });
         }
         private float Slider(string name,float value,float min,float max){GUILayout.Label(name+"  "+value.ToString("0.00"),small);return GUILayout.HorizontalSlider(value,min,max);}
         private void ApplySettings()

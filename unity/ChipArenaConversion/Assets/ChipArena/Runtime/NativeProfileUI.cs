@@ -59,18 +59,25 @@ namespace ChipArena.UnityConversion
         // source's colour picker (input type=color): clicking one sets the field.
         private static readonly string[] BodyPresets={"#e5e7eb","#9ca3af","#4b5563","#1f2937","#fca5a5","#fdba74","#fde68a","#86efac","#93c5fd","#c4b5fd","#f9a8d4","#f4f4f5"};
         private static readonly string[] AccentPresets={"#70e1d0","#ff6b35","#ffd27a","#7ed78a","#69a6ff","#ba94f5","#ff6575","#65dce0","#f18dcc","#ffa565","#b8aabb","#ffffff"};
+        // A preset clicked in the deferred drawing: applied to the field on the next event.
+        private readonly System.Collections.Generic.Dictionary<string,string> colourPicks=new System.Collections.Generic.Dictionary<string,string>();
         private void ColourField(string name,ref string value,string fallback)
         {
+            if(colourPicks.TryGetValue(name,out var pick)){value=pick;colourPicks.Remove(name);}
             GUILayout.BeginVertical();GUILayout.Label(name,small);GUILayout.BeginHorizontal();var swatch=GUILayoutUtility.GetRect(30,30,GUILayout.Width(30),GUILayout.Height(30));
             if(Event.current.type==EventType.Repaint){var c=GUI.color;GUI.color=HexColor(NativeCosmeticRules.Color(value,fallback),0xffffff);GUI.DrawTexture(swatch,Texture2D.whiteTexture);GUI.color=c;}
             value=GUILayout.TextField(value??fallback,7);GUILayout.EndHorizontal();
-            var row=GUILayoutUtility.GetRect(0,62,GUILayout.ExpandWidth(true));var presets=fallback=="#e5e7eb"?BodyPresets:AccentPresets;float size=Mathf.Min(22,(row.width-5*6)/6);
-            for(int i=0;i<presets.Length;i++)
+            var row=GUILayoutUtility.GetRect(0,62,GUILayout.ExpandWidth(true));var presets=fallback=="#e5e7eb"?BodyPresets:AccentPresets;string current=value;
+            NativeUi.Defer(()=>
             {
-                var r=new Rect(row.x+2+(i%6)*(size+6),row.y+6+(i/6)*(size+6),size,size);bool on=string.Equals(value,presets[i],StringComparison.OrdinalIgnoreCase);float h=NativeUi.HoverAmount(name.GetHashCode()^i*977,r);
-                NativeUi.Round(new Rect(r.x-2*h,r.y-2*h,r.width+4*h,r.height+4*h),HexColor(presets[i],0xffffff),5,on?NativeUi.Hex(0xff6b35):NativeUi.Mix(new Color(1,1,1,.18f),NativeUi.Hex(0xff784b),h),on?2:1);
-                if(NativeUi.Button(r)){value=presets[i];Click();}
-            }
+                float size=Mathf.Min(22,(row.width-5*6)/6);
+                for(int i=0;i<presets.Length;i++)
+                {
+                    var r=new Rect(row.x+2+(i%6)*(size+6),row.y+6+(i/6)*(size+6),size,size);bool on=string.Equals(current,presets[i],StringComparison.OrdinalIgnoreCase);float h=NativeUi.HoverAmount(name.GetHashCode()^i*977,r);
+                    NativeUi.Round(new Rect(r.x-2*h,r.y-2*h,r.width+4*h,r.height+4*h),HexColor(presets[i],0xffffff),5,on?NativeUi.Hex(0xff6b35):NativeUi.Mix(new Color(1,1,1,.18f),NativeUi.Hex(0xff784b),h),on?2:1);
+                    if(NativeUi.Button(r)){colourPicks[name]=presets[i];Click();}
+                }
+            });
             GUILayout.EndVertical();
         }
         private void SavePilot()
@@ -109,21 +116,24 @@ namespace ChipArena.UnityConversion
         private void AccountLine(string text,float size,Color c)
         {
             var lines=NativeUi.Wrap(text,size,accountWidth-8);var r=GUILayoutUtility.GetRect(0,10+lines.Count*size*1.6f+12,GUILayout.ExpandWidth(true));if(Event.current.type==EventType.Repaint)accountWidth=r.width;
-            for(int i=0;i<lines.Count;i++)NativeUi.Text(new Rect(r.x+4,r.y+10+i*size*1.6f,r.width-8,size*1.6f),lines[i],size,c,TextAnchor.MiddleLeft);
+            NativeUi.Defer(()=>{for(int i=0;i<lines.Count;i++)NativeUi.Text(new Rect(r.x+4,r.y+10+i*size*1.6f,r.width-8,size*1.6f),lines[i],size,c,TextAnchor.MiddleLeft);});
         }
         // .account-unlocks: one square chip per granted item (#0c2425, 1 px #547270, 8 / 12 px padding, 16 px), wrapping.
         private void UnlockChips(string[] names)
         {
             float x=0,y=0;var spots=new System.Collections.Generic.List<Rect>();foreach(var n in names){float w=NativeUi.Measure(n,16).x+26;if(x>0&&x+w>accountWidth-8){x=0;y+=45;}spots.Add(new Rect(x,y,w,37));x+=w+8;}
             var r=GUILayoutUtility.GetRect(0,y+37+14,GUILayout.ExpandWidth(true));
-            for(int i=0;i<names.Length;i++){var c=new Rect(r.x+4+spots[i].x,r.y+6+spots[i].y,spots[i].width,37);NativeUi.Fill(c,NativeUi.Hex(0x547270));NativeUi.Fill(new Rect(c.x+1,c.y+1,c.width-2,c.height-2),NativeUi.Hex(0x0c2425));NativeUi.Text(new Rect(c.x+13,c.y,c.width-26,c.height),names[i],16,NativeUi.Hex(0xf4f4f5),TextAnchor.MiddleLeft);}
+            NativeUi.Defer(()=>{for(int i=0;i<names.Length;i++){var c=new Rect(r.x+4+spots[i].x,r.y+6+spots[i].y,spots[i].width,37);NativeUi.Fill(c,NativeUi.Hex(0x547270));NativeUi.Fill(new Rect(c.x+1,c.y+1,c.width-2,c.height-2),NativeUi.Hex(0x0c2425));NativeUi.Text(new Rect(c.x+13,c.y,c.width-26,c.height),names[i],16,NativeUi.Hex(0xf4f4f5),TextAnchor.MiddleLeft);}});
         }
         // The recovery code box after register / recover: #292516 with a #d7ba72 edge, square, 20 px padding; the code in
         // 15 px mono #fff1bb and a shrink-to-fit "Copy recovery code" button.
         private void RecoveryBox(string code)
         {
             float iw=accountWidth-8-42;var lead=NativeUi.Wrap("Shown once. Use it to reset your password if you forget it.",16,iw);float h=21+20+10+lead.Count*25.6f+22+18+16+48+21;
-            var r=GUILayoutUtility.GetRect(0,h+8,GUILayout.ExpandWidth(true));var b=new Rect(r.x+4,r.y+4,r.width-8,h);
+            var r=GUILayoutUtility.GetRect(0,h+8,GUILayout.ExpandWidth(true));NativeUi.Defer(()=>RecoveryBoxDraw(new Rect(r.x+4,r.y+4,r.width-8,h),code,lead));
+        }
+        private void RecoveryBoxDraw(Rect b,string code,System.Collections.Generic.List<string> lead)
+        {
             NativeUi.Fill(b,NativeUi.Hex(0xd7ba72));NativeUi.Fill(new Rect(b.x+1,b.y+1,b.width-2,b.height-2),NativeUi.Hex(0x292516));float y=b.y+21;
             NativeUi.Text(new Rect(b.x+21,y,b.width-42,20),"Save your recovery code",16,NativeUi.Hex(0xf4f4f5),TextAnchor.MiddleLeft,bold:true);y+=30;
             foreach(var l in lead){NativeUi.Text(new Rect(b.x+21,y,b.width-42,25.6f),l,16,NativeUi.Hex(0xbfc0c9),TextAnchor.MiddleLeft);y+=25.6f;}y+=22;
