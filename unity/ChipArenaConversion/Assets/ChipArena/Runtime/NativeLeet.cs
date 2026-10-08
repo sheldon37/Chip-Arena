@@ -42,7 +42,7 @@ namespace ChipArena.UnityConversion
         private void StepLeetPilot(NativePilot p)
         {
             if(!Leet(p)||!p.Input.AbilityE||AbilityBusy(p)||Time<p.EReady||Time<p.BlockEnd||Frozen(p))return;float cost=30*(float)p.Stats["resourceCost"];if(p.Mana<cost)return;p.Mana-=cost;p.EReady=Time+12;p.Ready=Time+.4f;p.LastAttack=p.AttackAt=Time;
-            if(Leet(p,"time"))foreach(var q in Pilots)if(q.Hp>0&&Enemy(p,q)&&!SirenArmor(q))q.FrozenUntil=Time+4;
+            if(Leet(p,"time"))foreach(var q in Pilots)if(q.Hp>0&&CanHit(p,q)&&!SirenArmor(q))q.FrozenUntil=Time+4;
             if(Leet(p,"scare")){foreach(var f in LeetFields.Where(f=>f.Owner==p&&f.Kind=="tree").ToArray())RemoveLeetField(f);Vector3 pos=p.Body.position+Vec(V3.Forward(p.Input.Yaw))*2;pos.y=.05f;LeetFields.Add(new NativeLeetField{Id=nextEvent++,Owner=p,Kind="tree",Position=pos,At=Time,Until=Time+22});}
             if(!Leet(p,"time")&&!Leet(p,"scare"))ChipBlast(p,p.Body.position,6,35,1200);
         }
@@ -56,6 +56,7 @@ namespace ChipArena.UnityConversion
         }
         private void LeetImpact(NativePilot p,NativeBullet b,Vector3 at)
         {
+            if(Leet(p))Emit(EventKind.Leet,p,0,at,b.Damage,b.LeetKind);
             if(!Leet(p)||b.Reflections>0||!(b.Direct||b.ChipImpact)||!ProcOnce("leet:"+b.Id))return;
             if(Leet(p,"nuke"))LeetFields.Add(new NativeLeetField{Id=nextEvent++,Owner=p,Kind="nuke",Position=at,At=Time,Until=Time+1.4f});
             if(b.Direct&&Leet(p,"copy"))for(int i=0;i<3;i++)LeetOrb(p,at+new Vector3((i-1)*1.1f,2.5f,.4f),Vector3.zero,"copy",at,Time+.5f+i*.16f);
@@ -74,7 +75,7 @@ namespace ChipArena.UnityConversion
             foreach(var f in LeetFields.ToArray())
             {
                 if(!f.Owner.Seat.connected||f.Kind=="tree"&&f.Owner.Hp<=0){RemoveLeetField(f);continue;}
-                if(Time>=f.Until){RemoveLeetField(f);if(f.Kind=="nuke"){foreach(var q in Pilots)if(Enemy(f.Owner,q)&&Vector3.Distance(q.Body.position,f.Position)<11)q.LaunchUntil=Time+1;ChipBlast(f.Owner,f.Position,11,160,42000);}continue;}
+                if(Time>=f.Until){RemoveLeetField(f);if(f.Kind=="nuke"){foreach(var q in Pilots)if(CanHit(f.Owner,q)&&Vector3.Distance(q.Body.position,f.Position)<11)q.LaunchUntil=Time+1;ChipBlast(f.Owner,f.Position,11,160,42000);}continue;}
                 if(f.Kind!="tree"||Time-f.At<.9f)continue;
                 if(f.Slender==null)
                 {

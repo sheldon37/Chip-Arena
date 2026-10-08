@@ -22,9 +22,9 @@ namespace ChipArena.UnityConversion
     }
     public sealed class NativeRelayHost:IDisposable
     {
-        private readonly ClientWebSocket control;private readonly CancellationTokenSource stop;private readonly string origin,secret;private readonly Task loop;private int accepting,disposed;
+        private readonly ClientWebSocket control;private readonly CancellationTokenSource stop;private readonly string origin,secret;private readonly Task loop,heartbeat;private int accepting,disposed;
         public readonly ConcurrentQueue<NativeConnection> Accepted=new ConcurrentQueue<NativeConnection>();public string Room{get;}public string Error{get;private set;}public bool Closed=>stop.IsCancellationRequested;
-        private NativeRelayHost(ClientWebSocket socket,CancellationTokenSource cancellation,string origin,string room,string secret){control=socket;stop=cancellation;this.origin=origin;Room=room;this.secret=secret;loop=Listen();}
+        private NativeRelayHost(ClientWebSocket socket,CancellationTokenSource cancellation,string origin,string room,string secret){control=socket;stop=cancellation;this.origin=origin;Room=room;this.secret=secret;loop=Task.Run(Listen);heartbeat=Task.Run(Heartbeat);}
         public static async Task<NativeRelayHost> Host(string origin,string source,string name,bool listed,CancellationToken cancellation)
         {
             var socket=new ClientWebSocket();var stop=CancellationTokenSource.CreateLinkedTokenSource(cancellation);socket.Options.KeepAliveInterval=TimeSpan.FromSeconds(3);try{using(var timeout=CancellationTokenSource.CreateLinkedTokenSource(stop.Token)){timeout.CancelAfter(10000);await socket.ConnectAsync(NativeWebSocketStream.Endpoint(origin,"native/v3/host?source="+Uri.EscapeDataString(source)+"&name="+Uri.EscapeDataString(name)+"&listed="+(listed?"1":"0")),timeout.Token);string[] ack=(await Control(socket,timeout.Token)).Split('\t');if(ack.Length!=3||ack[0]!="ROOM"||ack[1].Length!=8||ack[2].Length!=64)throw new InvalidDataException("Invalid relay room response");return new NativeRelayHost(socket,stop,origin,ack[1],ack[2]);}}catch{socket.Dispose();stop.Dispose();throw;}
@@ -33,10 +33,26 @@ namespace ChipArena.UnityConversion
         {var stream=await NativeWebSocketStream.Connect(NativeWebSocketStream.Endpoint(origin,"native/v3/join?room="+Uri.EscapeDataString(room)+"&source="+Uri.EscapeDataString(source)),token);return new NativeConnection(stream);}
         private static async Task<string> Control(ClientWebSocket socket,CancellationToken token)
         {var bytes=new byte[512];int total=0;while(true){var read=await socket.ReceiveAsync(new ArraySegment<byte>(bytes,total,bytes.Length-total),token);if(read.MessageType!=WebSocketMessageType.Text)throw new IOException("Relay control disconnected");total+=read.Count;if(read.EndOfMessage)break;if(total==bytes.Length)throw new InvalidDataException("Control message too long");}return new UTF8Encoding(false,true).GetString(bytes,0,total);}
+        private async Task Heartbeat()
+        {
+            try{var ping=Encoding.UTF8.GetBytes("PING");while(!Closed){await Task.Delay(3000,stop.Token).ConfigureAwait(false);await control.SendAsync(new ArraySegment<byte>(ping),WebSocketMessageType.Text,true,stop.Token).ConfigureAwait(false);}}
+            catch(Exception){if(!Closed)Error="Relay heartbeat failed.";Dispose();}
+        }
         private async Task Listen()
-        {try{while(!Closed){var fields=(await Control(control,stop.Token)).Split('\t');if(fields.Length!=2||fields[0]!="JOIN"||fields[1].Length!=64)throw new InvalidDataException("Invalid relay invitation");if(Interlocked.Increment(ref accepting)>15){Interlocked.Decrement(ref accepting);continue;}_=Accept(fields[1]);}}catch(Exception e)when(e is IOException||e is WebSocketException||e is OperationCanceledException||e is ObjectDisposedException||e is ArgumentException){if(!Closed)Error=e.Message;Dispose();}}
+        {
+            try
+            {
+                while(!Closed)
+                {
+                    string message;using(var timeout=CancellationTokenSource.CreateLinkedTokenSource(stop.Token)){timeout.CancelAfter(12000);message=await Control(control,timeout.Token).ConfigureAwait(false);}
+                    if(message=="PONG")continue;var fields=message.Split('\t');if(fields.Length!=2||fields[0]!="JOIN"||fields[1].Length!=64)throw new InvalidDataException("Invalid relay invitation");
+                    if(Interlocked.Increment(ref accepting)>15){Interlocked.Decrement(ref accepting);continue;}_=Accept(fields[1]);
+                }
+            }
+            catch(Exception){if(!Closed)Error="Relay control disconnected, timed out or sent an invalid message.";Dispose();}
+        }
         private async Task Accept(string ticket)
-        {try{var uri=NativeWebSocketStream.Endpoint(origin,"native/v3/accept?room="+Room+"&secret="+secret+"&ticket="+ticket);var stream=await NativeWebSocketStream.Connect(uri,stop.Token);if(Closed){stream.Dispose();return;}Accepted.Enqueue(new NativeConnection(stream,32768));}catch(Exception e)when(e is IOException||e is WebSocketException||e is OperationCanceledException||e is ObjectDisposedException){if(!Closed)Error="A relay connection failed.";}finally{Interlocked.Decrement(ref accepting);}}
+        {try{var uri=NativeWebSocketStream.Endpoint(origin,"native/v3/accept?room="+Room+"&secret="+secret+"&ticket="+ticket);var stream=await NativeWebSocketStream.Connect(uri,stop.Token);if(Closed){stream.Dispose();return;}Accepted.Enqueue(new NativeConnection(stream,32768));}catch(Exception e)when(e is InvalidDataException||e is IOException||e is WebSocketException||e is OperationCanceledException||e is ObjectDisposedException){if(!Closed)Error="A relay connection failed.";}finally{Interlocked.Decrement(ref accepting);}}
         public void Dispose(){if(Interlocked.Exchange(ref disposed,1)!=0)return;stop.Cancel();control.Dispose();while(Accepted.TryDequeue(out var c))c.Dispose();}
     }
 }

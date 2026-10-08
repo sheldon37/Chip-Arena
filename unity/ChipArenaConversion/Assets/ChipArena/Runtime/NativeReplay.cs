@@ -19,16 +19,19 @@ namespace ChipArena.UnityConversion
             if(p.Hp>0){EndReplay();spectatorId=0;}var d=p.Hp<=0?p.Death:null;bool fresh=d!=null&&replaySeen!=d.seed;
             if(fresh){replaySeen=d.seed;if(replayWasAlive&&replayFrames.Count>1&&arena.Time-replayFrames[0].time>=.2f){replayDeath=d.at;replayWait=Time.unscaledTime+1.6f;replayView=d.owner>0?d.owner:p.Seat.id;}}
             replayWasAlive=p.Hp>0;if(arena.Time<replayNext&&!fresh)return;replayNext=arena.Time+.05f;
-            // JsonUtility provides a deep copy of mutable authority data; entity and time budgets bound history.
-            var frame=JsonUtility.FromJson<NativeGameFrame>(JsonUtility.ToJson(arena.NetworkFrame()));replayFrames.Add(frame);replayEntities+=ReplaySize(frame);
+            // NetworkFrame detaches mutable pilot state and shares immutable prop records; no 20 Hz JSON deep copy.
+            var frame=arena.NetworkFrame();replayFrames.Add(frame);replayEntities+=ReplaySize(frame);
             while(replayFrames.Count>1&&(replayFrames.Count>132||replayEntities>150000||arena.Time-replayFrames[0].time>6)){replayEntities-=ReplaySize(replayFrames[0]);replayFrames.RemoveAt(0);}
         }
         private static int ReplaySize(NativeGameFrame f)=>f.pilots.Length+f.props.Length+f.minions.Length+f.effects.Length+f.snapshot.Shots.Length+f.snapshot.Events.Length;
         private void ClearReplay(){EndReplay();replayFrames.Clear();replayEntities=0;replayNext=0;replaySeen=0;replayWasAlive=false;spectatorId=0;}
         private void EndReplay()
         {
-            replayDeath=-1;if(!replayRunning&&replayArena==null)return;if(replayRunning&&arena?.Local?.Hp<=0&&match?.Phase==NativePhase.Fight)replayReturnAt=Time.unscaledTime;replayRunning=false;replaySource=null;replayArena?.Dispose();replayArena=null;if(replayScene.IsValid())SceneManager.UnloadSceneAsync(replayScene);
-            foreach(var pair in liveVisibility)if(pair.Key!=null)pair.Key.enabled=pair.Value;liveVisibility.Clear();presentation?.ResetPresentation();nativeAudio?.ResetCursor();
+            replayDeath=-1;if(!replayRunning&&replayArena==null&&!replayScene.IsValid()&&liveVisibility.Count==0)return;
+            if(replayRunning&&arena?.Local?.Hp<=0&&match?.Phase==NativePhase.Fight)replayReturnAt=Time.unscaledTime;
+            replayRunning=false;replaySource=null;var old=replayArena;replayArena=null;
+            try{old?.Dispose();}
+            finally{if(replayScene.IsValid())SceneManager.UnloadSceneAsync(replayScene);replayScene=default;foreach(var pair in liveVisibility)if(pair.Key!=null)pair.Key.enabled=pair.Value;liveVisibility.Clear();presentation?.ResetPresentation();nativeAudio?.ResetCursor();}
         }
         private void SpectatorControls()
         {
@@ -39,18 +42,23 @@ namespace ChipArena.UnityConversion
         }
         private bool RenderReplay()
         {
+            try{return RenderReplayFrame();}
+            catch(Exception e){EndReplay();Debug.LogWarning("Death replay stopped: "+e.Message);return false;}
+        }
+        private bool RenderReplayFrame()
+        {
             if(menu||arena.Local.Hp>0){EndReplay();return false;}
             if(!replayRunning&&replayDeath>=0&&(arena.Time>=replayDeath+.6f||Time.unscaledTime>=replayWait))
             {
                 if(replayFrames.Count<2){replayDeath=-1;return false;}replayStart=Math.Max((float)replayFrames[0].time,replayDeath-3);replayEnd=replayDeath+1.25f;replayStarted=Time.unscaledTime;replayRunning=true;replayBody=false;
-                replayScene=SceneManager.CreateScene("Killcam presentation",new CreateSceneParameters(LocalPhysicsMode.Physics3D));replayArena=new NativeArena(content,new NativeMatch(content),arena.MapId){Replica=true,LocalId=arena.LocalId};presentation.ResetPresentation();nativeAudio.ResetCursor();
+                replayScene=SceneManager.CreateScene("Killcam presentation",new CreateSceneParameters(LocalPhysicsMode.Physics3D));replayArena=new NativeArena(content,new NativeMatch(content),arena.MapId){Replica=true,LocalId=arena.LocalId,ReplicaScene=replayScene};presentation.ResetPresentation();nativeAudio.ResetCursor();
 
             }
             if(!replayRunning)return false;foreach(var r in arena.Root.GetComponentsInChildren<Renderer>()){if(!liveVisibility.ContainsKey(r))liveVisibility[r]=r.enabled;r.enabled=false;}float time=replayStart+Time.unscaledTime-replayStarted;replayTime=time;if(time>replayEnd||time>replayFrames[replayFrames.Count-1].time+.5){EndReplay();return false;}
             var a=replayFrames[0];var b=a;foreach(var f in replayFrames){if(f.time>time){b=f;break;}a=b=f;}
-            if(replaySource!=a){var copy=JsonUtility.FromJson<NativeGameFrame>(JsonUtility.ToJson(a));replayArena.ApplyFrame(copy,arena.LocalId);SceneManager.MoveGameObjectToScene(replayArena.Root,replayScene);replaySource=a;}
+            if(replaySource!=a){var copy=NativeFrameCodec.Clone(a);replayArena.ApplyFrame(copy,arena.LocalId);SceneManager.MoveGameObjectToScene(replayArena.Root,replayScene);replaySource=a;}
             float blend=Mathf.Clamp01((time-(float)a.time)/Math.Max(.00001f,(float)(b.time-a.time)));
-            foreach(var p in replayArena.Pilots){var x=a.pilots.First(v=>v.id==p.Seat.id);var y=b.pilots.FirstOrDefault(v=>v.id==p.Seat.id);if(y!=null&&(x.hp>0)==(y.hp>0)){p.Body.position=Vector3.Lerp(x.position,y.position,blend);p.Yaw=Mathf.LerpAngle(x.yaw,y.yaw,blend);p.Pitch=Mathf.Lerp(x.pitch,y.pitch,blend);}}
+            foreach(var p in replayArena.Pilots){var x=a.pilots.First(v=>v.id==p.Seat.id);var y=b.pilots.FirstOrDefault(v=>v.id==p.Seat.id);if(y!=null&&(x.hp>0)==(y.hp>0)){p.Body.transform.position=Vector3.Lerp(x.position,y.position,blend);p.Body.position=p.Body.transform.position;p.Yaw=Mathf.LerpAngle(x.yaw,y.yaw,blend);p.Pitch=Mathf.Lerp(x.pitch,y.pitch,blend);}}
             foreach(var p in replayArena.Props){var x=a.props.FirstOrDefault(v=>v.id==p.Definition.id);var y=b.props.FirstOrDefault(v=>v.id==p.Definition.id);if(x!=null&&y!=null&&p.Body!=null)p.transform.SetPositionAndRotation(Vector3.Lerp(x.position,y.position,blend),Quaternion.Slerp(x.rotation,y.rotation,blend));}
             var target=replayArena.Pilots.Find(p=>p.Seat.id==replayView);if(time>replayDeath&&(target==null||target.Hp<=0||Vector3.Distance(target.Body.position,replayArena.Local.Body.position)>24))replayBody=true;if(replayBody||target==null)target=replayArena.Local;
             Vector3 focus=target.Body.position+Vector3.up*(NativeViewRules.EyeHeight+.22f)+Quaternion.Euler(0,target.Yaw,0)*Vector3.right*.85f;Quaternion rotation=Quaternion.Euler(-target.Pitch,target.Yaw,0);Vector3 offset=rotation*Vector3.back*NativeViewRules.ThirdDistance+Vector3.up*NativeViewRules.ThirdLift;

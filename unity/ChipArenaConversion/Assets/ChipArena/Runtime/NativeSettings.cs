@@ -31,8 +31,11 @@ namespace ChipArena.UnityConversion
             });
         }
         private float Slider(string name,float value,float min,float max){GUILayout.Label(name+"  "+value.ToString("0.00"),small);return GUILayout.HorizontalSlider(value,min,max);}
+        public bool Fullscreen=>prefs.fullscreen;
+        public void SetFullscreen(bool enabled){prefs.fullscreen=enabled;Screen.fullScreenMode=enabled?FullScreenMode.FullScreenWindow:FullScreenMode.Windowed;Save();}
         private void ApplySettings()
         {
+            Screen.fullScreenMode=prefs.fullscreen?FullScreenMode.FullScreenWindow:FullScreenMode.Windowed;
             prefs.sensitivity=Mathf.Clamp(prefs.sensitivity,.2f,2.5f);prefs.audio=Mathf.Clamp01(prefs.audio);prefs.music=Mathf.Clamp01(prefs.music);prefs.menuMusic=Mathf.Clamp01(prefs.menuMusic);
             bool low=prefs.graphics=="performance"||prefs.graphics=="auto"&&(SystemInfo.graphicsMemorySize<2048||SystemInfo.graphicsShaderLevel<45);QualitySettings.shadows=low?ShadowQuality.Disable:ShadowQuality.All;QualitySettings.antiAliasing=low?0:4;QualitySettings.pixelLightCount=low?3:9;
             if(nativeAudio!=null){nativeAudio.Effects=prefs.audio;nativeAudio.Music=prefs.music;nativeAudio.Menu=prefs.menuMusic;}if(presentation!=null)presentation.TrailsEnabled=prefs.trails;

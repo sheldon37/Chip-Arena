@@ -86,7 +86,7 @@ namespace ChipArena.UnityConversion
         public WeaponId Weapon;
     }
 
-    public enum EventKind { Hit, Block, Dodge, Shot, Death, Break, ReloadStart, ReloadEnd, Headshot, Impact }
+    public enum EventKind { Hit, Block, Dodge, Shot, Death, Break, ReloadStart, ReloadEnd, Headshot, Impact, Explosion, BlockPulse, Vacuum, Arc, Freeze, Teleport, Critical, Catch, Split, Ricochet, Pong, CeilingHit, HazardHit, BurnTick, PoisonTick, Collapse, Leet, Emperor, Arcade, Siren, PveBuy, PveGib, PvePhase, PveRevive, PveMoney, Install, Field, Summon, Heal }
     [Serializable]
     public struct ArenaEvent
     {
@@ -95,7 +95,7 @@ namespace ChipArena.UnityConversion
         public V3 Position;
         public float Amount;
         // Native surface FX payload; the retained lab wire format is unchanged.
-        public float Time;public V3 Normal;public string SurfaceId;public int Color,Projectile;
+        public string Detail;public float Radius;public V3 From;public float Time;public V3 Normal;public string SurfaceId;public int Color,Projectile;
     }
 
     [Serializable]

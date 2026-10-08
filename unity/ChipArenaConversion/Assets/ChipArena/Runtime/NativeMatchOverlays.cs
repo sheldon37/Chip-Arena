@@ -152,8 +152,8 @@ namespace ChipArena.UnityConversion
             foreach(var p in players){var r=new Rect(ix,y+12,iw,56);U.Round(r,U.Hex(0x18191f,.94f*enter),4,U.A(U.Hex(0x454650),enter));U.Text(new Rect(r.x+17,r.y,r.width-34,r.height),p.name+(p.id==me.id?" · YOU":""),15,U.A(U.Hex(0xf4f4f5),enter),TextAnchor.MiddleLeft);U.Text(new Rect(r.x+17,r.y,r.width-34,r.height),p.score.ToString(),15,U.A(Color.white,enter),TextAnchor.MiddleRight,bold:true);y+=68;}
             U.Text(new Rect(ix,y+8,iw,20),me.chips.Values.Sum()+" CHIPS INSTALLED · BUILD COMPLETE",13,U.A(U.Hex(0xa6a7ad),enter),TextAnchor.MiddleCenter);y+=40+24;
             float bw=(iw-10)/2;bool lobby=Hosting||!Online;
-            if(MenuButton(new Rect(ix,y,bw,48),"rotate-cw","Rematch",null,true,true,enter,15,true)){if(server!=null)SendServer(new NativeNetMessage{type="rematch"});else StartMatch();}
-            if(MenuButton(new Rect(ix+bw+10,y,bw,48),"undo-2","Return to Lobby",null,false,lobby,enter,15,true))ReturnToLobby();
+            if(MenuButton(new Rect(ix,y,bw,48),"rotate-cw",HostLost?"Return to Main Menu":"Rematch ("+RematchVotes+"/"+RematchRequired+")",null,true,true,enter,15,true))VoteRematch();
+            if(MenuButton(new Rect(ix+bw+10,y,bw,48),"undo-2",LobbyReturnSeconds>0?"Cancel · "+Mathf.CeilToInt(LobbyReturnSeconds)+"s":"Return to Lobby",null,false,lobby,enter,15,true)){if(LobbyReturnSeconds>0)CancelLobbyReturn();else RequestLobbyReturn();}
             U.Pop();
         }
         // pve/results.ts: VICTORY / DEFEAT under the boss test eyebrow, the Siren's remaining health, a card per pilot (MVP by
@@ -186,8 +186,8 @@ namespace ChipArena.UnityConversion
                 var r=rows[i];var c=new Rect(ix+(i%cols)*(cw+14),y+(i/cols)*(resH+14),cw,resH);bool crown=r==mvp&&r.DamageBoss>0;PveResultCard(c,r,i,crown,portrait,topH,cardH,statCols,enter,t);
             }
             y=py+ph-32-48;float bw=Mathf.Min(240,(iw-12)/2),bx=px+pw/2-bw-6;
-            if(MenuButton(new Rect(bx,y,bw,48),"rotate-cw","Retry",null,true,true,enter,15,true)){if(server!=null)SendServer(new NativeNetMessage{type="rematch"});else StartMatch();}
-            if(MenuButton(new Rect(bx+bw+12,y,bw,48),"log-out","Return to Menu",null,true,Hosting||!Online,enter,15,true))ReturnToLobby();
+            if(MenuButton(new Rect(bx,y,bw,48),"rotate-cw",HostLost?"Return to Main Menu":"Retry ("+RematchVotes+"/"+RematchRequired+")",null,true,true,enter,15,true))VoteRematch();
+            if(MenuButton(new Rect(bx+bw+12,y,bw,48),"log-out","Return to Menu",null,true,true,enter,15,true))ReturnMainMenu();
         }
         // .pve-result-boss on a defeat: the Siren's remaining health, or the wave the party fell on before she appeared.
         private static string PveBossLine(NativePveState v,bool victory)

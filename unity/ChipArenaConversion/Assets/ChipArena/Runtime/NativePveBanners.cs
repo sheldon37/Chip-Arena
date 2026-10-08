@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion
                     if(t-at>=35){float k=Mathf.Floor((t-at-35)/8),ping=at+35+k*8;list.Add(new PveBannerSpec{Key="whisper-"+k,Title="Find me...",Tone="phase",At=ping,Duration=1.2f});}
                 }
             }
-            if(!string.IsNullOrEmpty(v.Notice)&&v.Notice!=lastNotice){lastNotice=v.Notice;bannerSeen["deny"]=t;}else if(string.IsNullOrEmpty(v.Notice))lastNotice="";
+            if(!string.IsNullOrEmpty(arena.PveNotice(arena.Local.Seat.id))&&arena.PveNotice(arena.Local.Seat.id)!=lastNotice){lastNotice=arena.PveNotice(arena.Local.Seat.id);bannerSeen["deny"]=t;}else if(string.IsNullOrEmpty(arena.PveNotice(arena.Local.Seat.id)))lastNotice="";
             if(bannerSeen.TryGetValue("deny",out float denied)&&!string.IsNullOrEmpty(lastNotice))list.Add(new PveBannerSpec{Key="deny",Title=Deny(lastNotice),Tone="deny",At=denied,Duration=1.4f});
             var me=arena.Local;if(me!=null&&me.Hp>0&&t-me.RevivedAt<2.2f&&me.RevivedAt>0){bool respawn=v.Stage=="intermission"||v.Stage=="boss"&&t-v.StageAt<3;list.Add(new PveBannerSpec{Key="revive-"+me.RevivedAt,Title=respawn?"BACK IN THE FIGHT":"REVIVED",Sub=respawn?"Free respawn at 50% health":null,Tone="respawn",At=me.RevivedAt,Duration=respawn?2.2f:2});}
             return list.Where(b=>t>=b.At-.05f&&t<b.At+b.Duration).OrderByDescending(b=>b.At).FirstOrDefault();

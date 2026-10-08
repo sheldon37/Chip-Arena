@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
         {
             if(Time<p.BlockReady||Time<p.BlockEnd||Time<p.RollEnd||Incapacitated(p)||Time<p.AttackEnd)return false;
             if(LeetBlock(p))return true;
-            p.BlockAt=Time;p.BlockEnd=Time+NativeMeleeRules.BlockDuration(p.Stats);p.BlockReady=Time+NativeMeleeRules.BlockCooldown(p.Stats);
+            p.BlockAt=Time;p.BlockEnd=Time+NativeMeleeRules.BlockDuration(p.Stats);p.BlockReady=Time+(Dev(p,"ansatsuken")?0:NativeMeleeRules.BlockCooldown(p.Stats));
             CancelFighter(p);p.BlockProcUsed=false;p.RiposteAt=-100;CancelMelee(p);CancelSpecial(p);CancelAbilities(p);return true;
         }
         private bool TryRoll(NativePilot p)
@@ -41,12 +41,12 @@ namespace ChipArena.UnityConversion
             p.HitAt=p.Swing.HitAt;p.HitPending=true;p.AttackEnd=p.Ready=p.Swing.Until;p.RegenAt=p.AttackEnd+.45f;
             p.BlockEnd=0;p.MoveVelocity=Vector3.zero;return true;
         }
-        private bool MeleeVisible(Vector3 origin,Vector3 target,NativePilot owner,Collider destination)
+        private bool MeleeVisible(Vector3 origin,Vector3 target,NativePilot owner,Collider destination,bool ignoreAdds=false)
         {
             Vector3 delta=target-origin;float distance=delta.magnitude;if(distance<.0001f)return true;
             var physics=root.scene.GetPhysicsScene();int n;
             // Grow on saturation: a full nonalloc query is not guaranteed to contain the closest hit.
-            while((n=physics.Raycast(origin,delta.normalized,meleeSightHits,distance,ShotMask,QueryTriggerInteraction.Ignore))==meleeSightHits.Length)
+            while((n=physics.Raycast(origin,delta.normalized,meleeSightHits,distance,ignoreAdds?ShotMask&~(1<<11):ShotMask,QueryTriggerInteraction.Ignore))==meleeSightHits.Length)
                 Array.Resize(ref meleeSightHits,meleeSightHits.Length*2);
             RaycastHit? nearest=null;
             for(int i=0;i<n;i++)if(meleeSightHits[i].collider!=owner.Collider&&(!nearest.HasValue||meleeSightHits[i].distance<nearest.Value.distance))nearest=meleeSightHits[i];
@@ -60,14 +60,14 @@ namespace ChipArena.UnityConversion
             Vector3 origin=p.Body.position+Vector3.up*.15f;
             foreach(var target in Pilots)
             {
-                if(target.Hp<=0||!Enemy(p,target))continue;var delta=target.Body.position-origin;
+                if(target.Hp<=0||!CanHit(p,target))continue;var delta=target.Body.position-origin;
                 if(!NativeMeleeRules.Contact(swing,Time,Vec(delta),.45f)||!swing.Contact("pilot:"+target.Seat.id,Time,Vec(delta),.45f,MeleeVisible(origin,target.Body.position,p,target.Collider)))continue;
-                float actual=Damage(target,p,(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),(delta+Vector3.up*.15f).normalized,(float)(p.Weapon.impulse*p.Stats["impulse"]*swing.DamageScale),false,melee:true);
+                float actual=Damage(target,p,(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),(delta+Vector3.up*.15f).normalized,(float)(p.Weapon.impulse*p.Stats["impulse"]*swing.DamageScale),false,melee:true,weaponHit:true);
                 if(actual>0){ImpactChips(p,target,null,target.Body.position,delta.normalized,swing.Id,swing.Id);if(target.Hp>0)PrimaryMeleeImpact(p,target);}
                 if(p.Hp<=0||p.Swing!=swing)return; // A block or thorns death interrupts remaining contacts.
             }
             foreach(var m in Minions.ToArray())
-            {Vector3 delta=m.Body.position-origin;if(m.Hp<=0||!Enemy(p,m.Owner)||!swing.Contact("minion:"+m.Id,Time,Vec(delta),.3f,MeleeVisible(origin,m.Body.position,p,m.Collider)))continue;Vector3 point=m.Body.position;float actual=HitMinion(m,p,(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),delta.normalized,(float)(p.Weapon.impulse*p.Stats["impulse"]*swing.DamageScale));MinionWeaponHit(m,p,actual,(float)(p.Weapon.burn+p.Stats["burn"]),(float)p.Stats["poison"]);ImpactChips(p,null,null,point,delta.normalized,swing.Id,swing.Id);}
+            {Vector3 delta=m.Body.position-origin;if(m.Hp<=0||!CanHit(p,m.Owner)||!swing.Contact("minion:"+m.Id,Time,Vec(delta),.3f,MeleeVisible(origin,m.Body.position,p,m.Collider)))continue;Vector3 point=m.Body.position;float actual=HitMinion(m,p,(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),delta.normalized,(float)(p.Weapon.impulse*p.Stats["impulse"]*swing.DamageScale));MinionWeaponHit(m,p,actual,(float)(p.Weapon.burn+p.Stats["burn"]),(float)p.Stats["poison"]);ImpactChips(p,null,null,point,delta.normalized,swing.Id,swing.Id);}
             foreach(var prop in Props.ToArray())
             {
                 if(prop==null||prop.Indestructible)continue;Vector3 delta=prop.transform.position-origin;float extra=Math.Min(.8f,prop.Definition.size.Length*.3f);
@@ -90,9 +90,10 @@ namespace ChipArena.UnityConversion
         }
         private void SuccessfulMeleeBlock(NativePilot blocker,NativePilot attacker,float damage,Vector3 direction,float impulse)
         {
+            if(attacker.Hp<=0||SirenArmor(attacker))return;
             float force=NativeMeleeRules.Rebound(damage,(float)blocker.Stats["blockForce"]);
             float travel=NativeMeleeRules.ReboundTravel(damage,force,(float)attacker.Stats["damage"],(float)attacker.Stats["knockbackTaken"],(float)blocker.Stats["speed"]);
-            bool riposte=!blocker.Seat.bot&&NativeMeleeRules.Standard(blocker.Seat.spec);
+            bool riposte=!blocker.Seat.bot&&NativeMeleeRules.Standard(blocker.Seat.spec)&&attacker.Seat.spec!="siren";
             float stun=NativeMeleeRules.BlockStun(damage,impulse);
             if(riposte)stun=Math.Max(stun,NativeMeleeRules.BlockPunish(damage,Math.Max(0,blocker.Ready-Time)+(float)(blocker.Weapon.windup/blocker.Stats["attackRate"]),travel));
             StunMelee(attacker,stun);

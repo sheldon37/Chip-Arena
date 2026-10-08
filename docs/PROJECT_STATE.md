@@ -1,5 +1,9 @@
 # Chip Arena — current state
 
+Current Unity logic checkpoint (2026-10-08): draft PR #66, `codex/unity-parity-logic-current` into `claude/sleepy-ritchie-g8ruhv`, code `718cd4f` / `d80d974` plus final intro/disconnect regressions. Native source and Windows launcher CI pass; an activated Unity build/playtest is still required (`cmd.exe` unavailable in authoring, no `UNITY_TEST_BUILD_READY`). Nothing merged or published. A1–A31 status and Claude UI contracts: `docs/UNITY-PARITY-GAPS.md` and `docs/UNITY-LOGIC-HANDOFF.md`. Owner decisions for services, specialization, migration and release remain open.
+
+Historical migration/runtime context follows.
+
 Migration imported to private GitHub; not merged or released (2026-09-29).
 
 - Destination: `sheldon37/Chip-Arena`, private. Owner pushed the verified baseline

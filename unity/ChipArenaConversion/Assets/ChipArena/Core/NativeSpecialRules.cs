@@ -10,6 +10,7 @@ namespace ChipArena.UnityConversion
     }
     [Serializable] public sealed class NativeRecovery
     {
+        public NativeRecovery ViewCopy()=>(NativeRecovery)MemberwiseClone();
         public float At,Until,Landed=-1,PickupUntil,RollAt=-1,RollUntil,JuggleUntil;public bool PickupUsed,HasDirection,Ragdoll;
         public int JuggleHits,Source;public V3 Direction;
     }

@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
             EndPreview();ClearReplay();previewScene=SceneManager.CreateScene("Appearance preview",new CreateSceneParameters(LocalPhysicsMode.Physics3D));var m=new NativeMatch(content);var seat=SanitizedSeat(1,Profile(),account.Token);m.Seats.Add(seat);previewStyle=NativeIntroRules.Style(seat);previewArena=new NativeArena(content,m,"foundry"){Replica=true};previewArena.Reset();SceneManager.MoveGameObjectToScene(previewArena.Root,previewScene);previewArena.Root.SetActive(false);previewStarted=Time.unscaledTime;previewSerial++;presentation.ResetPresentation();
         }
         private void EndPreview()
-        {if(previewArena==null)return;previewArena.Dispose();previewArena=null;foreach(var pair in previewVisibility)if(pair.Key!=null)pair.Key.enabled=pair.Value;previewVisibility.Clear();if(previewScene.IsValid())SceneManager.UnloadSceneAsync(previewScene);presentation?.ResetPresentation();nativeAudio?.Entrance(null,null,0);if(cameraView!=null)NativeLighting.EndIntro(content.Map(arena?.MapId??prefs.map),cameraView);}
+        {if(previewArena==null)return;previewArena.Dispose();previewArena=null;foreach(var pair in previewVisibility)if(pair.Key!=null)pair.Key.enabled=pair.Value;previewVisibility.Clear();if(previewScene.IsValid())SceneManager.UnloadSceneAsync(previewScene);presentation?.ResetPresentation();nativeAudio?.Entrance(null,null,0);if(cameraView!=null)NativeLighting.EndIntro(content.Map(arena?.MapId??PreviewMapId),cameraView);}
         private bool PreviewFrame()
         {
             if(previewArena==null)return false;float age=Time.unscaledTime-previewStarted;if(age>NativeIntroRules.Duration(previewStyle)+.7f){EndPreview();return false;}
