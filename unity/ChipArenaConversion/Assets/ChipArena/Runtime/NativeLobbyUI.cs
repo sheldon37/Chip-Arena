@@ -9,12 +9,13 @@ namespace ChipArena.UnityConversion
     // room-options.ts readySummary / readyStatus / roomAdvanced, lobby.css after its override layers): a roster of pilot
     // cards with ready pills and the READY meter beside the room column (the code card, then the host's controls or the
     // rules note), the weapon picker under the roster, and the Advanced Options fold for the detailed rules. The cards
-    // show the 2D pilot emblem in place of the live 3D portrait. The host lists its bots from its own settings; guests see
-    // the seats the host broadcasts, which do not carry bots, colours or rules yet (each guest card uses its weapon's
-    // colour). Drawing only: every setting, message and action is the one the lobby already had.
+    // show the 2D pilot emblem in place of the live 3D portrait. Every card, bots included, comes from the broadcast seats
+    // (LobbySeats: name, weapon, colours, team, bot); a teams room adds the team picker under each card, and the room
+    // column shows the code with its LAN address and invite, then the rules (read-only for guests, from RoomOptions).
+    // Drawing only: settings go through SetRoomOptions / ChangeTeam / GuestReady (NativeLobbyLogic.cs, PR #66).
     public sealed partial class ConversionGame
     {
-        private struct LobbyPilot{public string name,tag,weapon;public bool ready,connected,bot;public Color accent,body;public int team;}
+        private struct LobbyPilot{public string name,tag,weapon;public bool ready,connected,bot,you;public Color accent,body;public int team,id;}
         private Vector2 lobbyRosterScroll,lobbyRoomScroll;private float lobbyRosterContent=400,lobbyRoomContent=400;private bool lobbyAdvanced;
         private static readonly string[] TeamNames={"Red","Blue","Green","Yellow","Purple","Orange","Cyan","Pink"};
         private static readonly Color ReadyGreen=U.Hex(0x3ddc84);
@@ -22,22 +23,31 @@ namespace ChipArena.UnityConversion
 
         // Everyone in the room in seat order: the broadcast seats (the viewer's own card shows its local name and
         // colours), the host's own card if no broadcast has listed it yet, then the host's bots or party bots.
+        // A bot seat (NativeLobbyRules.Bot: id 100 + its index) is a BOT card with the seat's colours and team.
+        private readonly List<LobbyPilot> lobbyRoster=new List<LobbyPilot>(8);
         private List<LobbyPilot> LobbyRoster()
         {
-            var list=new List<LobbyPilot>();int me=Hosting?(dedicated?-1:1):networkId;
+            var list=lobbyRoster;list.Clear();int me=Hosting?(dedicated?-1:1):networkId;bool own=false;
             foreach(var s in lobbySeats)
             {
-                var w=content.weapons.FirstOrDefault(x=>x.id==s.spec);bool you=s.id==me;
-                list.Add(new LobbyPilot{name=you?NativeCosmeticRules.Name(prefs.name):s.name,weapon=s.spec,tag=you?"YOU":s.bot?"BOT":s.id==1&&!Hosting?"ROOM OWNER":"PLAYER",bot=s.bot,ready=s.ready,connected=s.connected,team=s.team,
+                if(s==null)continue;var w=LobbyWeapon(s.spec);bool you=s.id==me;own|=s.id==1;
+                list.Add(new LobbyPilot{id=s.id,you=you,name=you?NativeCosmeticRules.Name(prefs.name):s.name,weapon=s.spec,tag=you?"YOU":s.bot?"BOT":s.id==1&&!Hosting?"ROOM OWNER":"PLAYER",bot=s.bot,ready=s.ready,connected=s.connected,team=s.team,
                     accent=you?HexColor(prefs.accentColor,0x70e1d0):HexColor(s.accentColor,w!=null?(int)w.color:0xb8aabb),body=you?HexColor(prefs.bodyColor,0xe5e7eb):HexColor(s.bodyColor,0xe5e7eb)});
             }
-            if(Hosting&&!dedicated&&!lobbySeats.Any(s=>s.id==1))list.Insert(0,new LobbyPilot{name=NativeCosmeticRules.Name(prefs.name),weapon=prefs.weapon,tag="YOU",ready=true,connected=true,accent=HexColor(prefs.accentColor,0x70e1d0),body=HexColor(prefs.bodyColor,0xe5e7eb)});
+            if(Hosting&&!dedicated&&!own)list.Insert(0,new LobbyPilot{id=1,you=true,name=NativeCosmeticRules.Name(prefs.name),weapon=prefs.weapon,tag="YOU",ready=true,connected=true,team=prefs.team,accent=HexColor(prefs.accentColor,0x70e1d0),body=HexColor(prefs.bodyColor,0xe5e7eb)});
             return list;
         }
+        private ContentWeapon LobbyWeapon(string id){if(id!=null)foreach(var w in content.weapons)if(w.id==id)return w;return null;}
+        // A teams room as the viewer knows it: the host's own setting, or the guest's copy of the host's rules.
+        private bool RoomTeams=>!prefs.pve&&(RulesGuest?RoomOptions?.teams==true:prefs.teams);
+        // main.ts:156 teamsBlocked: every pilot on one team.
+        private static bool TeamsBlocked(List<LobbyPilot> roster){int mask=0,n=0;foreach(var p in roster){int bit=1<<TeamIndex(p.team);if((mask&bit)==0){mask|=bit;n++;}}return n<2;}
 
         private void LobbyScreen(float age)
         {
             bool pve=prefs.pve;roomGuest=!Hosting;screenContent=Mathf.Max(lobbyRosterContent+90,lobbyRoomContent);
+            // The team list belongs to this screen: it closes when the lobby was not drawn a moment ago (left and re-entered).
+            if(Time.unscaledTime-lobbySeenAt>.25f)teamPopupSeat=0;lobbySeenAt=Time.unscaledTime;TeamPopupInput();
             var l=BeginScreen(pve?"BOSS TEST LOBBY":"PRIVATE ROOM",pve?"Boss test · The Siren":"Match lobby",1370,age,false,actions:false,close:false,lobby:true);
             // Customize and Settings open over the room (their close returns here); saving a new look updates the room.
             float bx=l.Panel.xMax-28;foreach(var (icon,text,screen) in new[]{("settings","Settings",MenuScreen.Settings),("palette","Customize",MenuScreen.Customize)})
@@ -45,58 +55,61 @@ namespace ChipArena.UnityConversion
             // .lobby-room: the roster column (with the Ready bar at its foot) beside the 300 px room column, which runs the
             // panel's full height (260 px and 20 px gaps below 1100 px).
             var b=l.Body;float W=U.W,gap=W<1100?20:26,side=W<1100?260:300,leftW=b.width-side-gap;
-            var roster=LobbyRoster();LobbyRosterColumn(new Rect(b.x,b.y,leftW,b.height-77-12),roster,l.Enter);LobbyRoomColumn(new Rect(b.xMax-side,b.y,side,b.height),l.Enter);
-            LobbyBar(new Rect(b.x,b.yMax-77,leftW,77),roster,l.Enter);
+            var roster=LobbyRoster();bool teams=RoomTeams,blocked=teams&&TeamsBlocked(roster);TeamPopupCheck(roster,teams);
+            LobbyRosterColumn(new Rect(b.x,b.y,leftW,b.height-77-12),roster,l.Enter,teams);LobbyRoomColumn(new Rect(b.xMax-side,b.y,side,b.height),l.Enter);
+            LobbyBar(new Rect(b.x,b.yMax-77,leftW,77),roster,l.Enter,blocked);TeamPopupDraw();
         }
         // .lobby-actions at the foot of the roster column: a #4b414c rule, then Ready (280 px, 56 px tall, 18 px) or the
         // host's Start, Leave Room and, for guests, Send Loadout; the ready status fills the rest of the line. A network
-        // message (copied, errors) sits above the rule.
-        private void LobbyBar(Rect r,List<LobbyPilot> roster,float e)
+        // message (copied, errors) sits above the rule. A teams room with a single team cannot start: Start and Ready are
+        // disabled with the source's reason (main.ts:156 teamsBlocked).
+        private void LobbyBar(Rect r,List<LobbyPilot> roster,float e,bool blocked)
         {
             if(!string.IsNullOrEmpty(networkStatus))U.Text(new Rect(r.x,r.y-26,r.width,18),Fit(networkStatus,13,r.width,false,0),13,NetworkError?U.Hex(0xff8a7a,e):U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);
             U.Fill(new Rect(r.x,r.y,r.width,1),U.Hex(0x4b414c,e));float y=r.y+21,x=r.x;
             if(Hosting)
             {
-                float w=Mathf.Min(280,r.width*.4f);if(MenuButton(new Rect(x,y,w,56),"play",prefs.pve?"Start Boss Fight":"Start Match",null,true,server==null,e,18,true))StartMatch();x+=w+10;
+                float w=Mathf.Min(280,r.width*.4f);if(MenuButton(new Rect(x,y,w,56),"play",prefs.pve?"Start Boss Fight":"Start Match",null,true,server==null&&!blocked,e,18,true))StartMatch();x+=w+10;
             }
             else
             {
                 float w=Mathf.Min(280,r.width*.34f);var rb=new Rect(x,y,w,56);
-                if(MenuButton(rb,"check",networkReady?"Cancel Ready":"Ready",null,!networkReady,server!=null,e,18,true)){GuestReady(!networkReady);}
+                if(MenuButton(rb,"check",networkReady?"Cancel Ready":"Ready",null,!networkReady,server!=null&&!blocked,e,18,true)){GuestReady(!networkReady);}
                 if(networkReady)U.Round(rb,Color.clear,4,U.Hex(0x3ddc84,.67f*e));x+=w+10;
                 float sw=U.Measure("Send Loadout",15,true).x+19+18+36;if(MenuButton(new Rect(x,y+4,sw,48),"download","Send Loadout",null,false,server!=null,e,15,true))SendServer(new NativeNetMessage{type="profile",profile=Profile(),token=account?.Token});x+=sw+10;
             }
             float lw=U.Measure("Leave Room",15,true).x+19+18+36;if(MenuButton(new Rect(x,y+4,lw,48),"log-out","Leave Room",null,false,true,e,15,true))LeaveRoom();x+=lw+16;
-            int ready=roster.Count(p=>p.ready&&p.connected);ReadyLine(new Rect(x,y,r.xMax-x,56),ready,roster.Count,e);
+            int ready=0;foreach(var p in roster)if(p.ready&&p.connected)ready++;ReadyLine(new Rect(x,y,r.xMax-x,56),ready,roster.Count,e,blocked);
         }
 
         // ---- Roster column ---------------------------------------------------------------------------------------------
-        private void LobbyRosterColumn(Rect area,List<LobbyPilot> roster,float e)
+        private void LobbyRosterColumn(Rect area,List<LobbyPilot> roster,float e,bool teams)
         {
             var c=GUI.color;GUI.color=new Color(c.r,c.g,c.b,c.a*e);U.BeginDeferred();GUILayout.BeginArea(area);
             lobbyRosterScroll=GUILayout.BeginScrollView(lobbyRosterScroll,false,false,GUIStyle.none,GUI.skin.verticalScrollbar);
-            int count=roster.Count,ready=roster.Count(p=>p.ready&&p.connected),max=prefs.pve?4:8;float t=Time.unscaledTime;
+            int count=roster.Count,ready=0,max=prefs.pve?4:8;foreach(var p in roster)if(p.ready&&p.connected)ready++;float t=Time.unscaledTime;
             var head=GUILayoutUtility.GetRect(0,48,GUILayout.ExpandWidth(true));U.Defer(()=>RosterHeading(head,prefs.pve?"Party":"Pilots",count+" / "+max+" joined",ready,count,e));
             // .lobby-roster[data-density]: large (1-2 pilots, 2 columns), medium (3 in 3 columns, 4 in 4), compact (5-8 in 4);
             // narrower columns step down (lobby.css 1100 px rules); short canvases use the max-height:820px portraits.
-            int slots=count<2?count+1:count;string density=count<=2?"large":count<=4?"medium":"compact";bool compact=density=="compact",large=density=="large",teams=prefs.teams&&!prefs.pve;
+            int slots=count<2?count+1:count;string density=count<=2?"large":count<=4?"medium":"compact";bool compact=density=="compact",large=density=="large";
             int cols=large?2:density=="medium"?(count==3?3:4):4;float estimate=area.width-14;if(estimate<640){if(density=="medium")cols=2;else if(compact)cols=3;}if(estimate<420)cols=Mathf.Min(cols,2);
             bool low=U.H<=820;float portrait=large?(low?205:280):density=="medium"?(low?170:220):(low?135:165),g=compact?11:14;int rows=Mathf.CeilToInt(slots/(float)cols);
             // .pilot-card-top wraps: when a card is too narrow for its tag and ready pill on one line, the pill drops to a
             // second line (every card in the roster takes the taller top so the rows stay even).
-            float est=(estimate-g*(cols-1))/cols;bool wrap=roster.Any(p=>12+U.Measure("00",14,false,true).x+6+U.Measure(p.tag,10,false,false,.04f).x+10+PillWidth(p)+12>est);float topH=wrap?61:large?40:49;
+            float est=(estimate-g*(cols-1))/cols,numW=U.Measure("00",14,false,true).x;bool wrap=false;foreach(var p in roster)wrap|=12+numW+6+U.Measure(p.tag,10,false,false,.04f).x+10+PillWidth(p)+12>est;float topH=wrap?61:large?40:49;
             // The portraits give way first so the roster, its status line and the weapon picker's first row fit the
             // column (the source's 1080p panel shows them together); they never go below about 60% of their size.
             float rest=CardHeight(topH,compact,0)+(teams?43:0),fit=(area.height-48-100-(rows-1)*g)/rows-rest;portrait=Mathf.Clamp(fit,portrait*.6f,portrait);
             float cardH=CardHeight(topH,compact,portrait),slotH=cardH+(teams?43:0);
             var grid=GUILayoutUtility.GetRect(0,rows*slotH+(rows-1)*g,GUILayout.ExpandWidth(true));
+            // The cards paint on repaint; the team pickers also take their clicks (the list opens in canvas space).
             U.Defer(()=>
             {
-                if(Event.current.type!=EventType.Repaint)return;float cw=(grid.width-g*(cols-1))/cols;
+                bool paint=Event.current.type==EventType.Repaint;if(!paint&&!teams)return;float cw=(grid.width-g*(cols-1))/cols;var toCanvas=area.position-lobbyRosterScroll;
                 for(int i=0;i<slots;i++)
                 {
                     var r=new Rect(grid.x+(i%cols)*(cw+g),grid.y+(i/cols)*(slotH+g),cw,cardH);
-                    if(i<count){LobbyCard(r,roster[i],i,portrait,topH,wrap,compact,e,t);if(teams)TeamTag(new Rect(r.x+2,r.yMax+9,r.width-4,34),roster[i],e);}else LobbyEmpty(new Rect(r.x,r.y,r.width,slotH),e);
+                    if(i<count){var p=roster[i];if(paint)LobbyCard(r,p,i,portrait,topH,wrap,compact,e,t);if(teams)TeamPicker(new Rect(r.x+2,r.yMax+9,r.width-4,34),p,p.you||Hosting&&p.bot,e,toCanvas);}else if(paint)LobbyEmpty(new Rect(r.x,r.y,r.width,slotH),e);
                 }
             });
             ClassRow("Your class",ClassCardStyle.Lobby);WeaponCards("Your weapon");
@@ -121,7 +134,7 @@ namespace ChipArena.UnityConversion
         // at 18 px.
         private void LobbyCard(Rect r,LobbyPilot p,int index,float portrait,float topH,bool wrap,bool compact,float e,float t,bool result=false)
         {
-            var weapon=p.weapon!=null?content.weapons.FirstOrDefault(w=>w.id==p.weapon):null;Color style=weapon!=null?U.Hex((int)weapon.color):U.Hex(0xb8aabb);bool ready=p.ready&&p.connected;float a=e*(p.connected?1:.55f);
+            var weapon=LobbyWeapon(p.weapon);Color style=weapon!=null?U.Hex((int)weapon.color):U.Hex(0xb8aabb);bool ready=p.ready&&p.connected;float a=e*(p.connected?1:.55f);
             // box-shadow 0 18px 45px #0005; ready: #3ddc84 edge with a 1 px #3ddc8466 ring and a 28 px #3ddc8426 glow.
             U.Glow(new Rect(r.x,r.y+18,r.width,r.height),new Color(0,0,0,.33f*a),45);
             if(ready){U.Glow(r,U.A(ReadyGreen,.17f*a),28);U.Round(new Rect(r.x-1,r.y-1,r.width+2,r.height+2),Color.clear,12,U.A(ReadyGreen,.4f*a));}
@@ -173,13 +186,47 @@ namespace ChipArena.UnityConversion
             float sw=r.width*.45f,sx=r.x+(pos+1)/2*(r.width+sw)-sw;float x0=Mathf.Max(r.x,sx),x1=Mathf.Min(r.xMax,sx+sw);
             if(x1>x0){float half=(x0+x1)/2;U.HGradient(new Rect(x0,r.y,half-x0,r.height),Color.clear,U.A(Color.Lerp(style,Color.white,.4f),alpha*a));U.HGradient(new Rect(half,r.y,x1-half,r.height),U.A(Color.Lerp(style,Color.white,.4f),alpha*a),Color.clear);}
         }
-        // .team-assignment under a card in a teams room: the team dot and name (chosen by the host for now).
-        private static void TeamTag(Rect r,LobbyPilot p,float a)
+        // .team-assignment under a card in a teams room (team-ui.ts teamPicker, lobby.css:87): the 9 px team dot with its 9 px
+        // glow at 45% and "Team" (12 px #c7c1ce), and the 100 x 34 select at the right (#222329, its edge the team colour
+        // mixed 45% into #333, the 12 px name and a chevron). Editable for the viewer's own card (ChangeTeam) and, for the
+        // host, each bot (its room option); a click opens the team list. Others are drawn disabled, at half strength.
+        private const string ChevronDown="<path d=\"M6 9 L12 15 L18 9\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>";
+        private void TeamPicker(Rect r,LobbyPilot p,bool editable,float a,Vector2 toCanvas)
         {
-            bool known=p.team>=0;Color team=known?TeamColor(p.team):U.Hex(0x8f909a);
-            U.Disc(new Rect(r.x,r.center.y-4.5f,9,9),U.A(team,a));U.Glow(new Rect(r.x,r.center.y-4.5f,9,9),U.A(team,.35f*a),6);U.Text(new Rect(r.x+15,r.y,80,r.height),"Team",12,U.Hex(0xc7c1ce,a),TextAnchor.MiddleLeft);
-            float w=Mathf.Min(120,r.width*.55f);var box=new Rect(r.xMax-w,r.y,w,r.height);U.Round(box,U.Hex(0x111216,.85f*a),4,U.A(U.Mix(U.Hex(0x333333),team,.45f),a));
-            U.Text(new Rect(box.x+10,box.y,box.width-20,box.height),known?TeamNames[TeamIndex(p.team)]:"Auto",12,U.Hex(0xe6e7ec,a),TextAnchor.MiddleLeft);
+            int team=TeamIndex(p.team);Color tc=TeamColor(team);var box=new Rect(r.xMax-100,r.y,100,r.height);float h=U.HoverAmount(7800+p.id,box,editable),s=editable?1:.5f;
+            if(Event.current.type==EventType.Repaint)
+            {
+                var dot=new Rect(r.x,r.center.y-4.5f,9,9);U.Radial(new Rect(dot.x-9,dot.y-9,27,27),U.A(tc,.3f*a));U.Disc(dot,U.A(tc,a));U.Text(new Rect(r.x+15,r.y,Mathf.Max(10,box.x-r.x-20),r.height),"Team",12,U.Hex(0xc7c1ce,a),TextAnchor.MiddleLeft);
+                U.Round(box,U.Hex(0x222329,a),4,U.A(U.Mix(U.Mix(U.Hex(0x333333),tc,.45f),U.Hex(0xff784b),h),a*s));
+                U.Text(new Rect(box.x+8,box.y,box.width-30,box.height),TeamNames[team],12,U.Hex(0xf5f5f7,a*s),TextAnchor.MiddleLeft);
+                NativeIcons.DrawMarkup(new Rect(box.xMax-21,box.center.y-7,14,14),"chevron-down",ChevronDown,24,U.Hex(0xf5f5f7,.7f*a*s));
+            }
+            if(U.Button(box,editable)){Click();teamPopupSeat=p.id;teamPopupBot=p.bot?p.id-100:-1;teamPopupSelf=p.you;teamPopupTeam=team;teamPopupAnchor=new Rect(box.x+toCanvas.x,box.y+toCanvas.y,box.width,box.height);}
+        }
+        // The open team list (8 rows of 28 px, 140 px wide; #222329 with a #484952 edge, #303138 on hover, the current team
+        // ticked), under its picker or above it at the canvas foot.
+        private float lobbySeenAt=-1;private int teamPopupSeat,teamPopupBot=-1,teamPopupTeam;private bool teamPopupSelf;private Rect teamPopupAnchor;
+        private Rect TeamPopupRect(){const float w=140,h=8*28+8;var a=teamPopupAnchor;float x=Mathf.Clamp(a.xMax-w,8,U.W-8-w),y=a.yMax+4;if(y+h>U.H-8)y=a.y-4-h;return new Rect(x,Mathf.Max(8,y),w,h);}
+        private static Rect TeamPopupRow(Rect box,int t)=>new Rect(box.x+4,box.y+4+t*28,box.width-8,28);
+        // Before the lobby draws a control, so the list takes the click from what lies under it: a row picks that team,
+        // anywhere else closes the list; the hover under the list is suppressed.
+        private void TeamPopupInput()
+        {
+            if(teamPopupSeat==0)return;var box=TeamPopupRect();if(U.Hover(box))menuBlockedNow=true;var ev=Event.current;if(ev.type!=EventType.MouseDown)return;
+            for(int t=0;t<8;t++)if(U.Hover(TeamPopupRow(box,t))){if(teamPopupSelf)ChangeTeam(t);else if(teamPopupBot>=0&&Hosting)ApplyRule(RoomOpt.BotTeam,t,teamPopupBot);Click();break;}
+            teamPopupSeat=0;ev.Use();
+        }
+        // The list closes when its seat leaves or the room stops being a teams room.
+        private void TeamPopupCheck(List<LobbyPilot> roster,bool teams){if(teamPopupSeat==0)return;bool found=false;foreach(var p in roster)found|=p.id==teamPopupSeat;if(!found||!teams)teamPopupSeat=0;}
+        private void TeamPopupDraw()
+        {
+            if(teamPopupSeat==0||Event.current.type!=EventType.Repaint)return;var box=TeamPopupRect();
+            U.Glow(new Rect(box.x,box.y+8,box.width,box.height),new Color(0,0,0,.45f),20);U.Round(box,U.Hex(0x222329),4,U.Hex(0x484952));
+            for(int t=0;t<8;t++)
+            {
+                var row=TeamPopupRow(box,t);if(U.Hover(row))U.Round(row,U.Hex(0x303138),4);var dot=new Rect(row.x+9,row.center.y-4.5f,9,9);U.Disc(dot,TeamColor(t));
+                U.Text(new Rect(row.x+26,row.y,row.width-50,row.height),TeamNames[t],12,U.Hex(0xf5f5f7),TextAnchor.MiddleLeft);if(t==teamPopupTeam)NativeIcons.Draw(new Rect(row.xMax-22,row.center.y-7,14,14),"check",U.Hex(0xff996f));
+            }
         }
         // .lobby-empty: a dashed card holding the next seat while the room has fewer than two pilots.
         private void LobbyEmpty(Rect r,float e)
@@ -199,10 +246,11 @@ namespace ChipArena.UnityConversion
         // room-options.ts readyStatus under the roster: who the room is waiting for. The host starts the match here (the
         // source starts it on its own once everyone is ready); a guest whose weapon differs from the one the host has is
         // reminded to send the loadout.
-        private void ReadyLine(Rect r,int ready,int total,float e)
+        private void ReadyLine(Rect r,int ready,int total,float e,bool blocked=false)
         {
+            if(blocked){if(r.width<60)return;var why=U.Wrap("Choose at least two teams to start.",14,r.width,false,3);float wy=r.center.y-why.Count*10.5f;foreach(var w in why){U.Text(new Rect(r.x,wy,r.width,21),w,14,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);wy+=21;}return;}
             int waiting=Mathf.Max(0,total-ready);string lead,rest;Color tone;
-            var mine=!Hosting?lobbySeats.FirstOrDefault(s=>s.id==networkId):null;string want=content.weapons.FirstOrDefault(w=>w.id==prefs.weapon)?.name??prefs.weapon;
+            NativeSeatFrame mine=null;if(!Hosting)foreach(var s in lobbySeats)if(s!=null&&s.id==networkId)mine=s;string want=LobbyWeapon(prefs.weapon)?.name??prefs.weapon;
             if(total==0){lead=Hosting?"Waiting for pilots":"Joining the room…";rest=Hosting?"· Share your room code.":"";tone=U.Hex(0xf4c8a0);}
             else if(mine!=null&&mine.spec!=prefs.weapon){lead="Send Loadout";rest="so the host gives you "+want+".";tone=U.Hex(0xf4c8a0);}
             else if(Hosting&&!prefs.pve&&total<2){lead="Add a bot";rest="or wait for a pilot to join.";tone=U.Hex(0xf4c8a0);}
@@ -238,7 +286,7 @@ namespace ChipArena.UnityConversion
                 {
                     float h=U.HoverAmount(7390,r);
                     U.Round(frame,open?Color.clear:U.Hex(0x13141a,.4f),9,U.Hex(0x4c434e));if(h>0)U.Round(new Rect(r.x+1,r.y+1,r.width-2,r.height-2),new Color(1,1,1,.03f*h),9);if(open)U.Fill(new Rect(r.x+1,r.yMax-1,r.width-2,1),U.Hex(0x4c434e));
-                    var c=new Vector2(r.x+19,r.y+23);U.Push(c,Vector2.zero,1,open?45:-45);U.Fill(new Rect(c.x+2,c.y-4,2,8),U.Hex(0xefb587));U.Fill(new Rect(c.x-4,c.y+2,8,2),U.Hex(0xefb587));U.Pop();
+                    FoldChevron(new Vector2(r.x+19,r.y+23),open,1);
                     U.Text(new Rect(r.x+33,r.y+12,r.width-45,22),"Advanced Options",15,U.Hex(0xded5e0),TextAnchor.MiddleLeft,bold:true);
                     var lines=U.Wrap(note,12,r.width-48,false,2);float y=r.y+35;foreach(var l in lines){U.Text(new Rect(r.x+33,y,r.width-45,16),l,12,U.Hex(0xb3a8b6),TextAnchor.MiddleLeft);y+=16;}
                 }
@@ -249,50 +297,42 @@ namespace ChipArena.UnityConversion
             return open;
         }
         private float advancedTop;private bool foldOpen;
+        // The fold's #efb587 chevron (› closed, ⌄ open) at `c`, as unrotated markup: a rotated draw inside the scroll view's
+        // clip has its clip mapped by the rotation too (Unity's draw-time clip), which cut it away near the column edge.
+        private const string FoldOpenMark="<path d=\"M7 9.5 L12 14.5 L17 9.5\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.6\" stroke-linecap=\"square\" stroke-linejoin=\"miter\"/>";
+        private const string FoldClosedMark="<path d=\"M9.5 7 L14.5 12 L9.5 17\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.6\" stroke-linecap=\"square\" stroke-linejoin=\"miter\"/>";
+        private static void FoldChevron(Vector2 c,bool open,float e)=>NativeIcons.DrawMarkup(new Rect(c.x-8,c.y-8,16,16),open?"fold-open":"fold-closed",open?FoldOpenMark:FoldClosedMark,24,U.Hex(0xefb587,e));
         // Called after the open fold's content: closes its inset and keeps its height for the next paint's frame.
         private void AdvancedEnd()
         {
             if(!foldOpen)return;foldOpen=false;GUILayout.EndVertical();GUILayout.Space(10);GUILayout.EndHorizontal();
             if(Event.current.type==EventType.Repaint)lobbyAdvancedHeight=Mathf.Max(0,GUILayoutUtility.GetLastRect().yMax-advancedTop);
         }
-
-        // .lobby-room-settings>.match-options: the essentials box (10 px corners, the border colour, 125deg #23242ae6 →
-        // #1a1b20e6, 12 / 16 / 6 px padding) with Match mode and ARENA as the source's selects and the arena's description.
+        // The room column's inner width from the last repaint (the rows' and notes' wrap width before the column is laid out).
         private float lobbyRoomInner=254;
-        private void LobbyEssentials()
-        {
-            var maps=content.maps??new ContentMap[0];int mi=Mathf.Max(0,Array.FindIndex(maps,m=>m.id==prefs.map));var map=maps.Length>0?maps[mi]:null;
-            var desc=U.Wrap(map?.tag??"",14,lobbyRoomInner-32,false,3);float h=12+21+6+44+14+16+8+44+8+desc.Count*20+12;
-            GUILayout.Space(12);var r=GUILayoutUtility.GetRect(0,h,GUILayout.ExpandWidth(true));GUILayout.Space(6);
-            U.Defer(()=>
-            {
-                bool paint=Event.current.type==EventType.Repaint;var b=new Rect(r.x+4,r.y,r.width-8,r.height);float x=b.x+16,iw=b.width-32,y=b.y+12;
-                if(paint){U.RoundGradient(b,U.Hex(0x23242a,.9f),U.Hex(0x1a1b20,.9f),10,U.Hex(0x45464e),1,true);U.Text(new Rect(x,y,iw,21),"Match mode",14,U.Hex(0xe6e6ea),TextAnchor.MiddleLeft);}
-                y+=27;prefs.teams=SelectField(7410,new Rect(x,y,iw,44),new[]{"Free-for-all","Teams"},prefs.teams?1:0)==1;y+=44+14;
-                if(paint)U.Text(new Rect(x,y,iw,16),"ARENA",12,U.Hex(0xc0c1ca),TextAnchor.MiddleLeft,bold:true);y+=24;
-                if(maps.Length>0){int pick=SelectField(7420,new Rect(x,y,iw,44),maps.Select(m=>m.name).ToArray(),mi);if(pick!=mi)prefs.map=maps[pick].id;}y+=44+8;
-                if(paint)foreach(var l in desc){U.Text(new Rect(x,y,iw,20),l,14,U.Hex(0xa6a7ad),TextAnchor.MiddleLeft);y+=20;}
-            });
-        }
+
         // The source's select (#222329, #484952 edge warming to #ff784b on hover, 4 px corners) as a stepper: the choice,
-        // then ‹ › at the right; a click on the choice steps forward. Returns the new index.
+        // then ‹ › at the right; a click on the choice steps forward. Returns the new index. Disabled (a guest's view of the
+        // host's rules) it keeps its value at about half strength and takes no clicks; `alpha` is the panel's fade.
         private const string ChevronLeft="<path d=\"M15 6 L9 12 L15 18\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>";
         private const string ChevronRight="<path d=\"M9 6 L15 12 L9 18\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>";
-        private int SelectField(int id,Rect r,string[] labels,int index)
+        private int SelectField(int id,Rect r,string[] labels,int index,bool enabled=true,float alpha=1)
         {
-            int n=labels.Length;if(n==0)return index;index=Mathf.Clamp(index,0,n-1);
-            var prev=new Rect(r.xMax-74,r.y+(r.height-32)/2,32,32);var next=new Rect(r.xMax-38,prev.y,32,32);var name=new Rect(r.x,r.y,r.width-78,r.height);
-            float hp=U.HoverAmount(id+1,prev),hn=U.HoverAmount(id+2,next),hf=U.HoverAmount(id,r);
+            int n=labels?.Length??0;if(n==0)return index;index=Mathf.Clamp(index,0,n-1);
+            // Under 200 px (the room column at a large interface scale) the arrows take 26 px each, leaving the value room.
+            float bw=r.width<200?26:32,zone=2*bw+14;var prev=new Rect(r.xMax-6-2*bw-4,r.y+(r.height-32)/2,bw,32);var next=new Rect(r.xMax-6-bw,prev.y,bw,32);var name=new Rect(r.x,r.y,r.width-zone,r.height);
+            float hp=U.HoverAmount(id+1,prev,enabled),hn=U.HoverAmount(id+2,next,enabled),hf=U.HoverAmount(id,r,enabled);
             if(Event.current.type==EventType.Repaint)
             {
-                U.Round(r,U.Mix(U.Hex(0x222329),U.Hex(0x26272d),hf),4,U.Mix(U.Hex(0x484952),U.Hex(0xff784b),hf));
-                U.Text(new Rect(r.x+14,r.y,name.width-16,r.height),Fit(labels[index],15,name.width-18,false,0),15,U.Hex(0xf5f5f7),TextAnchor.MiddleLeft);
-                U.Fill(new Rect(r.xMax-79,r.y+10,1,r.height-20),U.Hex(0x484952));
-                if(hp>0)U.Round(prev,new Color(1,1,1,.07f*hp),4);if(hn>0)U.Round(next,new Color(1,1,1,.07f*hn),4);
-                NativeIcons.DrawMarkup(new Rect(prev.x+7,prev.y+7,18,18),"chevron-left",ChevronLeft,24,U.Mix(U.Hex(0xb9bac2),Color.white,hp));
-                NativeIcons.DrawMarkup(new Rect(next.x+7,next.y+7,18,18),"chevron-right",ChevronRight,24,U.Mix(U.Hex(0xb9bac2),Color.white,hn));
+                float a=alpha,t=enabled?1:.55f,c=enabled?1:.35f;
+                U.Round(r,U.Hex(0x222329,a),4,U.A(U.Mix(U.Hex(0x484952),U.Hex(0xff784b),hf),a*(enabled?1:.7f)));if(hf>0)U.Round(r,U.A(U.Hex(0x26272d),hf*a),4);
+                string text=labels[index];float size=U.Measure(text,15).x<=name.width-18?15:14;U.Text(new Rect(r.x+14,r.y,name.width-16,r.height),size>14?text:Fit(text,14,name.width-18,false,0),size,U.Hex(0xf5f5f7,a*t),TextAnchor.MiddleLeft);
+                U.Fill(new Rect(name.xMax-1,r.y+10,1,r.height-20),U.Hex(0x484952,a));
+                if(hp>0)U.Round(prev,new Color(1,1,1,.07f*hp*a),4);if(hn>0)U.Round(next,new Color(1,1,1,.07f*hn*a),4);
+                NativeIcons.DrawMarkup(new Rect(prev.center.x-9,prev.y+7,18,18),"chevron-left",ChevronLeft,24,U.A(U.Mix(U.Hex(0xb9bac2),Color.white,hp),a*c));
+                NativeIcons.DrawMarkup(new Rect(next.center.x-9,next.y+7,18,18),"chevron-right",ChevronRight,24,U.A(U.Mix(U.Hex(0xb9bac2),Color.white,hn),a*c));
             }
-            int step=U.Button(prev)?-1:U.Button(next)||U.Button(name)?1:0;if(step!=0){index=(index+step+n)%n;Click();}return index;
+            bool back=U.Button(prev,enabled),forward=U.Button(next,enabled),cycle=U.Button(name,enabled);int step=back?-1:forward||cycle?1:0;if(step!=0){index=(index+step+n)%n;Click();}return index;
         }
 
         // #connection .top-meta in the lobby's top bar (main.ts drawHud; style.css .top-meta,.light): a 6 px light
@@ -311,47 +351,78 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- Room column -----------------------------------------------------------------------------------------------
-        // .lobby-room-settings: the room code card, then HOST CONTROLS / MATCH RULES (or BOSS TEST · The Siren) and,
-        // for the host, the mode and essential rules with the detailed ones under Advanced Options.
+        // .lobby-room-settings: the room code card, then HOST CONTROLS / MATCH RULES (or BOSS TEST · The Siren), the host's
+        // mode, and the essential rules with the detailed ones under Advanced Options; a guest sees the host's rules
+        // read-only (the source's disabled controls) once the first lobby message has carried them.
         private void LobbyRoomColumn(Rect r,float e)
         {
             // The code card scrolls with the rules, so short canvases keep the whole column reachable.
             U.Round(r,U.Hex(0x11131a,.53f*e),12,U.Hex(0x514353,e));var area=new Rect(r.x+16,r.y+18,r.width-30,r.height-30);
             var c=GUI.color;GUI.color=new Color(c.r,c.g,c.b,c.a*e);U.BeginDeferred();GUILayout.BeginArea(area);
             lobbyRoomScroll=GUILayout.BeginScrollView(lobbyRoomScroll,false,false,GUIStyle.none,GUI.skin.verticalScrollbar);
-            string label=RoomCodeLabel();bool two=U.Measure(label,10,false,false,.16f).x>area.width-12-32;
-            var invite=GUILayoutUtility.GetRect(0,two?146:132,GUILayout.ExpandWidth(true));string code=Hosting?roomCode:joinCode;U.Defer(()=>RoomInvite(new Rect(invite.x+4,invite.y+2,invite.width-8,invite.height-2),code,label,two,e));GUILayout.Space(16);
-            if(listener!=null)Fine("LAN address · "+string.Join(", ",LanAddresses)+" · port "+listener.Port);
+            string label=RoomCodeLabel();float cardW=area.width-8-32;bool two=U.Measure(label,10,false,false,.16f).x>cardW;RoomAddresses(cardW);bool link=inviteLink!=null;
+            var invite=GUILayoutUtility.GetRect(0,RoomInviteHeight(two,link),GUILayout.ExpandWidth(true));string code=Hosting?roomCode:joinCode;U.Defer(()=>RoomInvite(new Rect(invite.x+4,invite.y+2,invite.width-8,invite.height-2),code,label,two,link,e));GUILayout.Space(16);
             var head=GUILayoutUtility.GetRect(0,RoomHeadingHeight(),GUILayout.ExpandWidth(true));if(Event.current.type==EventType.Repaint)lobbyRoomInner=head.width-8;U.Defer(()=>RoomHeading(head,e));
             if(Hosting)
             {
                 // Versus or Boss Test as a select, so the narrow column never wraps the choice.
-                Field("Mode");var mode=GUILayoutUtility.GetRect(0,44,GUILayout.ExpandWidth(true));
-                U.Defer(()=>{bool pve=SelectField(7430,new Rect(mode.x+4,mode.y,mode.width-8,mode.height),new[]{"Versus","Boss Test"},prefs.pve?1:0)==1;if(pve!=prefs.pve){prefs.pve=pve;prefs.bots=Mathf.Clamp(prefs.bots,0,pve?3:7);}});
+                BeginRules(true,lobbyRoomInner+8);RuleField(7432,"MODE");RuleSelect(7430,RoomOpt.Versus,null,VersusLabels,prefs.pve?1:0);
                 choiceColumns=2;if(prefs.pve)BossBody(true);else MatchRulesBody(true);choiceColumns=3;
             }
-            else{GUILayout.BeginHorizontal();GUILayout.Label(prefs.pve?"The host sets the party bots and where the run starts. Ready up when your loadout is set.":"The host sets the mode, arena and rules. Ready up when your loadout is set.",fine,GUILayout.Width(lobbyRoomInner));GUILayout.EndHorizontal();}
+            else if(RoomOptions==null){GUILayout.BeginHorizontal();GUILayout.Label(prefs.pve?"The host sets the party bots and where the run starts. Ready up when your loadout is set.":"The host sets the mode, arena and rules. Ready up when your loadout is set.",fine,GUILayout.Width(lobbyRoomInner));GUILayout.EndHorizontal();}
+            else if(prefs.pve)BossBody(true);else MatchRulesBody(true);
             GUI.enabled=true;GUILayout.Space(4);if(Event.current.type==EventType.Repaint)lobbyRoomContent=GUILayoutUtility.GetLastRect().yMax;
             GUILayout.EndScrollView();GUILayout.EndArea();GUI.color=c;U.EndDeferred(area,lobbyRoomScroll);
         }
-        // .lobby-room .room-invite in the settings column: ROOM CODE, the code (24 px mono, .09em, #ff996f) and Copy Code,
-        // on the warm 110deg #392b26 → #1a1b23 card with its #6e554c edge.
-        private string RoomCodeLabel()=>!Hosting?"ROOM CODE":listener!=null?"ROOM CODE · LOCAL NETWORK · PORT "+listener.Port:"ROOM CODE · INTERNET RELAY";
-        private void RoomInvite(Rect r,string code,string label,bool two,float e)
+        // .lobby-room .room-invite in the settings column (lobby.css:125-127): ROOM CODE and how the room is reached, the code
+        // (24 px mono, .09em, #ff996f), for a LAN host the address and port it listens on (LanAddresses, in the label's
+        // 10 px caps), then Copy Code (primary) and Copy Invite Link stacked, on the warm 110deg #392b26 → #1a1b23 card with
+        // its #6e554c edge. Copy Invite Link needs InviteUrl, which only a LAN host has (internet invites wait on A8).
+        private string RoomCodeLabel()=>!Hosting?"ROOM CODE":listener!=null?"ROOM CODE · LOCAL NETWORK":"ROOM CODE · INTERNET RELAY";
+        private float RoomInviteHeight(bool two,bool link)=>16+(two?28:14)+4+30+(lanLines.Count>0?2+lanLines.Count*14:0)+12+40+(link?8+40:0)+16;
+        // The LAN address lines and the invite link, refreshed on a layout pass when the room changes and every 5 s
+        // (LanAddresses walks the network interfaces): one line when it fits the card, else an address per line and the port.
+        private float lanCheckedAt=-99;private int lanPort=-1;private string lanCode,inviteLink;private readonly List<string> lanLines=new List<string>(4);
+        private void RoomAddresses(float width)
         {
-            U.RoundGradient(r,U.Hex(0x392b26,e),U.Hex(0x1a1b23,e),10,U.Hex(0x6e554c,e),1,true);
+            if(Event.current.type!=EventType.Layout&&lanPort>=0)return;int port=listener!=null?listener.Port:0;if(port==lanPort&&roomCode==lanCode&&Time.unscaledTime-lanCheckedAt<5)return;
+            lanCheckedAt=Time.unscaledTime;lanPort=port;lanCode=roomCode;lanLines.Clear();inviteLink=null;if(listener==null)return;
+            var addresses=LanAddresses;inviteLink=InviteUrl;string at="PORT "+port;
+            if(addresses==null||addresses.Length==0){lanLines.Add("NO LAN ADDRESS · "+at);return;}
+            string one="LAN "+string.Join(", ",addresses)+" · "+at;if(U.Measure(one,10,false,false,.16f).x<=width){lanLines.Add(one);return;}
+            for(int i=0;i<addresses.Length&&i<3;i++)lanLines.Add((i==0?"LAN ":"")+addresses[i]);lanLines.Add(at);
+        }
+        private void RoomInvite(Rect r,string code,string label,bool two,bool link,float e)
+        {
+            U.RoundGradient(r,U.Hex(0x392b26,e),U.Hex(0x1a1b23,e),10,U.Hex(0x6e554c,e),1,true);float y=r.y+16,w=r.width-32;
             // The label breaks after ROOM CODE when the column is too narrow for one line.
-            if(two){int cut=label.IndexOf(" · ",StringComparison.Ordinal);U.Text(new Rect(r.x+16,r.y+16,r.width-32,14),label.Substring(0,cut),10,U.Hex(0x8da7ae,e),TextAnchor.MiddleLeft,tracking:.16f);U.Text(new Rect(r.x+16,r.y+30,r.width-32,14),Fit(label.Substring(cut+3),10,r.width-32,false,.16f),10,U.Hex(0x8da7ae,e),TextAnchor.MiddleLeft,tracking:.16f);}
-            else U.Text(new Rect(r.x+16,r.y+16,r.width-32,14),label,10,U.Hex(0x8da7ae,e),TextAnchor.MiddleLeft,tracking:.16f);
-            bool has=!string.IsNullOrEmpty(code);U.Text(new Rect(r.x+16,r.y+(two?48:34),r.width-32,32),has?code:"—",24,U.Hex(0xff996f,e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.09f);
-            if(MenuButton(new Rect(r.x+16,r.yMax-16-40,r.width-32,40),"copy","Copy Code",null,true,has,e,14,true)){GUIUtility.systemCopyBuffer=code;Notice("Room code copied.");}
+            if(two){int cut=label.IndexOf(" · ",StringComparison.Ordinal);U.Text(new Rect(r.x+16,y,w,14),label.Substring(0,cut),10,U.Hex(0x8da7ae,e),TextAnchor.MiddleLeft,tracking:.16f);U.Text(new Rect(r.x+16,y+14,w,14),Fit(label.Substring(cut+3),10,w,false,.16f),10,U.Hex(0x8da7ae,e),TextAnchor.MiddleLeft,tracking:.16f);y+=28;}
+            else{U.Text(new Rect(r.x+16,y,w,14),label,10,U.Hex(0x8da7ae,e),TextAnchor.MiddleLeft,tracking:.16f);y+=14;}
+            bool has=!string.IsNullOrEmpty(code);y+=4;U.Text(new Rect(r.x+16,y,w,30),has?code:"—",24,U.Hex(0xff996f,e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.09f);y+=30;
+            if(lanLines.Count>0){y+=2;foreach(var line in lanLines){U.Text(new Rect(r.x+16,y,w,14),line,10,U.Hex(0x8da7ae,e),TextAnchor.MiddleLeft,tracking:.16f);y+=14;}}
+            y+=12;if(MenuButton(new Rect(r.x+16,y,w,40),"copy","Copy Code",null,true,has,e,14,true)){GUIUtility.systemCopyBuffer=code;Notice("Room code copied.");}
+            if(link&&MenuButton(new Rect(r.x+16,y+48,w,40),"copy","Copy Invite Link",null,false,inviteLink!=null,e,14,true)){GUIUtility.systemCopyBuffer=inviteLink;Notice("Invite link copied.");}
+        }
+        // The fold's INVITE LINK (main.ts:156): the read-only link and its note for a LAN host; a relay room and a guest have
+        // no LAN invite (InviteUrl), only the code note.
+        private void RoomInviteLink()
+        {
+            if(Hosting&&inviteLink!=null){RuleField(7780,"INVITE LINK");InviteField(inviteLink);RuleFine(7782,"Share this invite with friends on the same local network.",8,6);}
+            else RuleFine(7784,"Friends can enter your code in Join Room. Keep the host’s game open.",8,6);
         }
         // siren-card.ts: the eyes and grin (#f6f3ff) with the teeth line (#050409, 3.4) on a 200 × 120 view box; drawn on
         // a 200 square, so the face sits in its top 60 %.
         private const string SirenFace="<path d=\"M32 36 L86 48 C74 58 46 58 32 36 Z\" fill=\"#f6f3ff\"/><path d=\"M168 36 L114 48 C126 58 154 58 168 36 Z\" fill=\"#f6f3ff\"/>"
             +"<path d=\"M22 70 C70 86 130 86 178 70 C140 116 60 116 22 70 Z\" fill=\"#f6f3ff\"/>"
             +"<path d=\"M28 70.9 L37 82.7 L46 76.1 L55 93.2 L64 79.8 L73 100.2 L82 82.1 L91 103.8 L100 82.8 L109 103.8 L118 82.1 L127 100.2 L136 79.8 L145 93.2 L154 76.1 L163 82.7 L172 70.9\" fill=\"none\" stroke=\"#050409\" stroke-width=\"3.4\"/>";
-        private string[] SirenNotes()=>new[]{"Ward Zero · 3 waves of minions, then the Siren and his four chips."+(prefs.skipWaves?" Starts at the Siren.":""),"Intros on · personal chip screens · money from kills."};
+        // pveLobbyBody's two fine lines, from the room's rules (a guest's copy of the host's); cached per combination.
+        private readonly string[] sirenNotes=new string[2];private int sirenNotesKey=-1;
+        private string[] SirenNotes()
+        {
+            var o=RulesNow();bool skip=o?.skipWaves??prefs.skipWaves,off=o?.skipPlayerIntros??prefs.skipPlayerIntros;int key=(skip?2:0)+(off?1:0);
+            if(key!=sirenNotesKey){sirenNotesKey=key;sirenNotes[0]="Ward Zero · 3 waves of minions, then the Siren and his four chips."+(skip?" Starts at the Siren.":"");sirenNotes[1]=(off?"Intros off":"Intros on")+" · personal chip screens · money from kills.";}
+            return sirenNotes;
+        }
         private float RoomHeadingHeight(){if(!prefs.pve)return 62;float h=126;foreach(var text in SirenNotes())h+=U.Wrap(text,14,lobbyRoomInner,false,4).Count*20+6;return h;}
         private void RoomHeading(Rect r,float e)
         {

@@ -382,7 +382,9 @@ namespace ChipArena.UnityConversion
             // The Developer Sandbox link opens this screen in sandbox mode, so the arena and bots are chosen before it starts.
             var l=BeginScreen(playSandbox?"DEVELOPER SANDBOX":"LOCAL MATCH",playSandbox?"Developer Sandbox":"Play vs Bots",650,age,true);if(l.Closed){Go(MenuScreen.Home);return;}
             ScreenBody(l,()=>MatchRulesBody(false));if(l.Card.width>0)PilotCard(l.Card,"YOUR PILOT",l.Enter,playSandbox?"Local only. Sandbox tools are in the pause menu (Esc).":"Change your lobby look and preferred weapon in Customize.");
-            if(ScreenActions(l,("play",playSandbox?"Start Sandbox":"Start Match",true,server==null&&(!playSandbox||account.Developer)))==0){prefs.pve=false;sandboxWanted=playSandbox&&account.Developer;StartMatch();}
+            // main.ts:147: in teams mode Start waits for two different teams; the reason is the team setup's note.
+            bool blocked=PracticeTeamsBlocked();if(blocked)ScreenStatus(l,"Choose at least two different teams. Teammates share round and set wins.");
+            if(ScreenActions(l,("play",playSandbox?"Start Sandbox":"Start Match",true,server==null&&(!playSandbox||account.Developer)&&!blocked))==0){prefs.pve=false;sandboxWanted=playSandbox&&account.Developer;StartMatch();}
         }
         private void BossScreen(float age)
         {
@@ -414,7 +416,8 @@ namespace ChipArena.UnityConversion
             var l=BeginScreen("CHIP ARENA","Join a private room",650,age,true);if(l.Closed){Go(MenuScreen.Home);return;}
             ScreenBody(l,JoinBody);if(l.Card.width>0)PilotCard(l.Card,"YOUR PILOT",l.Enter,"Your loadout is sent to the host when you join.");
             bool busy=connecting!=null||server!=null&&!InRoom;ScreenStatus(l,networkStatus,NetworkError);
-            if(ScreenActions(l,("play",busy?"Finding room…":"Join Room",true,!busy&&joinCode.Trim().Length>0))==0)JoinRoom();
+            // A pasted room invite link joins through JoinInvite (its address, port and code); anything else is a room code.
+            if(ScreenActions(l,("play",busy?"Finding room…":"Join Room",true,!busy&&joinCode.Trim().Length>0))==0){string entry=joinCode.Trim();if(!JoinInvite(entry)){if(entry.IndexOf("://",StringComparison.Ordinal)>=0)networkStatus="Could not find the room.";else JoinRoom();}}
         }
         private void CustomizeScreen(float age)
         {
