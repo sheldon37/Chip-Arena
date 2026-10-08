@@ -144,26 +144,6 @@ namespace ChipArena.UnityConversion
                 foreach(var room in relayRooms)if(GUILayout.Button(room.name+" · "+room.players+" / "+room.capacity+" · "+room.code,button)){joinCode=room.code;JoinRoom();}GUI.enabled=true;
             }
         }
-        // The room lobby (main.ts lobby / pve/menu.ts): the code, the pilots and their ready state; the host sets the mode and
-        // rules, guests pick a weapon. Start, Ready, Send Loadout and Leave Room are the panel's actions.
-        private void LobbyBody()
-        {
-            if(Hosting)
-            {
-                Field(listener!=null?"Room code · local network · port "+listener.Port:"Room code · internet relay");GUILayout.BeginHorizontal();GUILayout.TextField(roomCode,codeField);
-                if(GUILayout.Button("Copy Code",button,GUILayout.Width(140))){GUIUtility.systemCopyBuffer=roomCode;networkStatus="Room code copied.";}GUILayout.EndHorizontal();
-            }
-            int ready=lobbySeats.Count(s=>s.connected&&s.ready),joined=lobbySeats.Count(s=>s.connected);
-            Field("Pilots · "+joined+" / "+(prefs.pve&&Hosting?4:8)+" joined · "+ready+"/"+joined+" ready");
-            foreach(var s in lobbySeats)GUILayout.Label((s.ready&&s.connected?"● ":"○ ")+s.name+"  ·  "+(content.weapons.FirstOrDefault(w=>w.id==s.spec)?.name??s.spec)+"  ·  team "+(s.team+1)+"  ·  "+(!s.connected?"disconnected":s.ready?"ready":"choosing"),label);
-            if(lobbySeats.Length==0)Fine(Hosting?"Waiting for pilots to join.":"Waiting for the host.");
-            if(Hosting)
-            {
-                Field("Mode");bool pve=ChoiceRow(new[]{"Versus","Boss Test · The Siren"},prefs.pve?1:0)==1;if(pve!=prefs.pve){prefs.pve=pve;prefs.bots=Mathf.Clamp(prefs.bots,0,pve?3:7);}
-                if(prefs.pve)BossBody();else MatchRulesBody(true);
-            }
-            else{Fine("The host sets the mode, arena and rules. Ready up when your loadout is set.");Field("Your weapon");WeaponGrid();Fine("Send Loadout after changing your weapon. Saving in Customize sends your new look automatically.");}
-        }
         // Leave Room: close the connection or room and drop any running match (the source's Leave Room / Return to Main Menu).
         private void LeaveRoom(){ClearReplay();CloseNetwork();arena?.Dispose();arena=null;match=null;presentation?.ResetPresentation();menu=true;Go(MenuScreen.Home);}
         private void ChooseChip(int seat,string chip){if(server!=null)SendServer(new NativeNetMessage{type="chip",chip=chip});else match.Choose(seat,chip);}

@@ -72,14 +72,16 @@ namespace ChipArena.UnityConversion
         }
         private void AccountSubmit()
         {try{account.Configure(prefs.accountOrigin);Save();account.Login(accountAction,accountUser,accountPassword,accountRecovery,rememberAccount);accountNotice="";}catch(ArgumentException e){accountNotice=e.Message;}}
+        // Choices per row in ChoiceGrid: three, or two while a narrow column (the lobby's room column) is drawn.
+        private int choiceColumns=3;
         private string ChoiceGrid(string[] choices,string selected,string[] labels=null)
         {
-            int index=0;foreach(string id in choices)
+            int index=0,n=Mathf.Max(1,choiceColumns);foreach(string id in choices)
             {
-                if(index%3==0)GUILayout.BeginHorizontal();string text=labels!=null?labels[index]:id.Replace("-"," ");
-                if(GUILayout.Toggle(id==selected,(id==selected?"✓ ":"")+text,button)&&id!=selected){selected=id;Click();}index++;if(index%3==0)GUILayout.EndHorizontal();
+                if(index%n==0)GUILayout.BeginHorizontal();string text=labels!=null?labels[index]:id.Replace("-"," ");
+                if(GUILayout.Toggle(id==selected,(id==selected?"✓ ":"")+text,button)&&id!=selected){selected=id;Click();}index++;if(index%n==0)GUILayout.EndHorizontal();
             }
-            if(index%3!=0)GUILayout.EndHorizontal();return selected;
+            if(index%n!=0)GUILayout.EndHorizontal();return selected;
         }
     }
 }

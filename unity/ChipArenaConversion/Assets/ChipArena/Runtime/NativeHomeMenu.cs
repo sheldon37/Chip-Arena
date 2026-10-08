@@ -354,8 +354,8 @@ namespace ChipArena.UnityConversion
         private void ScreenBody(ScreenLayout l,Action draw)
         {
             var c=GUI.color;GUI.color=new Color(c.r,c.g,c.b,c.a*l.Enter);GUILayout.BeginArea(l.Body);
-            screenScroll=GUILayout.BeginScrollView(screenScroll,false,false,GUIStyle.none,GUI.skin.verticalScrollbar);draw();GUI.enabled=true;GUILayout.Space(4);
-            if(Event.current.type==EventType.Repaint)screenContent=GUILayoutUtility.GetLastRect().yMax;GUILayout.EndScrollView();GUILayout.EndArea();GUI.color=c;
+            screenScroll=GUILayout.BeginScrollView(screenScroll,false,false,GUIStyle.none,GUI.skin.verticalScrollbar);U.BeginClip(l.Body.position-screenScroll);draw();GUI.enabled=true;GUILayout.Space(4);
+            if(Event.current.type==EventType.Repaint)screenContent=GUILayoutUtility.GetLastRect().yMax;U.EndClip();GUILayout.EndScrollView();GUILayout.EndArea();GUI.color=c;
         }
         // .lobby-actions: a rule, then equal-width actions along the panel's foot; returns the index clicked, or -1.
         private int ScreenActions(ScreenLayout l,params (string icon,string label,bool primary,bool enabled)[] items)
@@ -381,7 +381,7 @@ namespace ChipArena.UnityConversion
         {
             var l=BeginScreen("PVE · BOSS TEST","Test Boss",650,age,true,head:122);if(l.Closed){Go(MenuScreen.Home);return;}
             BossCard(new Rect(l.Panel.x+32,l.Panel.y+104,l.Panel.width-64,108),l.Enter);
-            ScreenBody(l,BossBody);if(l.Card.width>0)PilotCard(l.Card,"YOUR PILOT",l.Enter,"Up to four pilots: party bots fill the empty seats.");
+            ScreenBody(l,()=>BossBody());if(l.Card.width>0)PilotCard(l.Card,"YOUR PILOT",l.Enter,"Up to four pilots: party bots fill the empty seats.");
             int a=ScreenActions(l,("play","Start Boss Fight",true,server==null),("network","Host Co-op Room",false,true));
             if(a==0){prefs.pve=true;sandboxWanted=false;StartMatch();}else if(a==1){prefs.pve=true;Go(MenuScreen.Create);}
         }
@@ -408,18 +408,6 @@ namespace ChipArena.UnityConversion
             ScreenBody(l,JoinBody);if(l.Card.width>0)PilotCard(l.Card,"YOUR PILOT",l.Enter,"Your loadout is sent to the host when you join.");
             bool busy=connecting!=null||server!=null&&!InRoom;ScreenStatus(l,networkStatus,NetworkError);
             if(ScreenActions(l,("play",busy?"Finding room…":"Join Room",true,!busy&&joinCode.Trim().Length>0))==0)JoinRoom();
-        }
-        private void LobbyScreen(float age)
-        {
-            bool pve=Hosting&&prefs.pve;roomGuest=!Hosting;
-            var l=BeginScreen(pve?"BOSS TEST LOBBY":"PRIVATE ROOM",Hosting?"Match lobby":"Room lobby",1020,age,false,close:false);
-            // Customize and Settings open over the room (their close returns here); saving a new look updates the room.
-            float bx=l.Panel.xMax-32;foreach(var (icon,text,screen) in new[]{("settings","Settings",MenuScreen.Settings),("palette","Customize",MenuScreen.Customize)})
-            {float w=U.Measure(text,13,true).x+19+18+28;bx-=w;if(MenuButton(new Rect(bx,l.Panel.y+30,w,40),icon,text,null,false,true,l.Enter,13,true))Go(screen);bx-=10;}
-            ScreenBody(l,LobbyBody);ScreenStatus(l,networkStatus,NetworkError);
-            if(Hosting){int a=ScreenActions(l,("play","Start Match",true,server==null),("log-out","Leave Room",false,true));if(a==0)StartMatch();else if(a==1)LeaveRoom();}
-            else{int a=ScreenActions(l,("check",networkReady?"Cancel Ready":"Ready",!networkReady,server!=null),("download","Send Loadout",false,server!=null),("log-out","Leave Room",false,true));
-                if(a==0){networkReady=!networkReady;SendServer(new NativeNetMessage{type="ready",ready=networkReady});}else if(a==1)SendServer(new NativeNetMessage{type="profile",profile=Profile(),token=account?.Token});else if(a==2)LeaveRoom();}
         }
         private void CustomizeScreen(float age)
         {
@@ -462,14 +450,15 @@ namespace ChipArena.UnityConversion
         // The pilot emblem that stands in for the source's live 3D portrait: the weapon icon in its colour on a dark disc
         // edged in the body colour, inside a slowly turning tick ring and glow in the accent colour, with an orbiting
         // dot. `phase` offsets the motion so a row of cards does not turn in lockstep.
-        private static void PilotEmblem(Vector2 c,float ring,Color accent,Color body,ContentWeapon weapon,float e,float t,float phase=0,int ticks=28)
+        private static void PilotEmblem(Vector2 c,float ring,Color accent,Color body,ContentWeapon weapon,float e,float t,float phase=0,int ticks=28)=>PilotEmblem(c,ring,accent,body,NativeIcons.Spec(weapon.id),U.Hex((int)weapon.color),e,t,phase,ticks);
+        private static void PilotEmblem(Vector2 c,float ring,Color accent,Color body,string iconId,Color tone,float e,float t,float phase=0,int ticks=28)
         {
-            Color tone=U.Hex((int)weapon.color);t+=phase;
+            t+=phase;
             U.Radial(new Rect(c.x-ring*1.6f,c.y-ring*1.6f,ring*3.2f,ring*3.2f),U.A(accent,.16f*e));
             for(int i=0;i<ticks;i++){float a=i/(float)ticks*360+t*12;U.Push(c,Vector2.zero,1,a);U.Fill(new Rect(c.x-1.5f,c.y-ring-3,3,i%7==0?9:5),U.A(accent,(i%7==0?.9f:.45f)*e));U.Pop();}
             U.Disc(new Rect(c.x-ring*.78f,c.y-ring*.78f,ring*1.56f,ring*1.56f),U.Hex(0x0f1015,.92f*e));U.RadialStops(new Rect(c.x-ring*.78f,c.y-ring*.78f,ring*1.56f,ring*1.56f),U.A(body,.1f*e),new[]{0f,.9f,.97f,1f},new[]{0f,0f,1f,0f});
             float orbit=t*.9f;U.Disc(new Rect(c.x+Mathf.Cos(orbit)*ring*.92f-3,c.y+Mathf.Sin(orbit)*ring*.92f-3,6,6),U.A(accent,e));
-            float icon=ring*.86f;NativeIcons.Draw(new Rect(c.x-icon/2+1,c.y-icon/2+2,icon,icon),NativeIcons.Spec(weapon.id),new Color(0,0,0,.5f*e));NativeIcons.Draw(new Rect(c.x-icon/2,c.y-icon/2,icon,icon),NativeIcons.Spec(weapon.id),U.A(U.Mix(tone,Color.white,.15f),e));
+            float icon=ring*.86f;NativeIcons.Draw(new Rect(c.x-icon/2+1,c.y-icon/2+2,icon,icon),iconId,new Color(0,0,0,.5f*e));NativeIcons.Draw(new Rect(c.x-icon/2,c.y-icon/2,icon,icon),iconId,U.A(U.Mix(tone,Color.white,.15f),e));
         }
         private void PilotCard(Rect r,string tag,float e,string note)
         {

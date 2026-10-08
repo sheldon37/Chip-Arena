@@ -223,27 +223,30 @@ namespace ChipArena.UnityConversion
             // The menus (NativeHomeMenu): the home screen and its panels without a match, the pause menu during one.
             if(arena!=null)PauseMenu();else HomeMenu();
         }
-        // Play vs Bots (main.ts practice screen) over the native match options; also the host's rules in a room lobby.
+        // Play vs Bots (main.ts practice screen) over the native match options; also the host's rules in a room lobby,
+        // where the weapon is picked under the roster and the draft rules sit under Advanced Options (room-options.ts).
         private void MatchRulesBody(bool lobby)
         {
-            Fine(lobby?"Rules for this room. Guests ready up, then you start the match.":"First to "+prefs.sets+(prefs.sets==1?" set":" sets")+". Win "+prefs.rounds+(prefs.rounds==1?" round":" rounds")+" to take a set.");
-            Field("Your weapon");WeaponGrid();
+            if(!lobby){Fine("First to "+prefs.sets+(prefs.sets==1?" set":" sets")+". Win "+prefs.rounds+(prefs.rounds==1?" round":" rounds")+" to take a set.");Field("Your weapon");WeaponGrid();}
             Field("Arena");MapGrid();
             int min=lobby?0:1;Field("Bots");GUILayout.Label(prefs.bots==1?"1 bot":prefs.bots+" bots",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(Mathf.Clamp(prefs.bots,min,7),min,7));
             Fine("Up to 8 pilots total. Bots use player slots.");prefs.mirrorWeapons=GUILayout.Toggle(prefs.mirrorWeapons,"Bots use my weapon (otherwise mixed loadouts)");prefs.stationary=GUILayout.Toggle(prefs.stationary,"Stationary targets");
             Field("Match mode");prefs.teams=ChoiceRow(new[]{"Free-for-all","Teams"},prefs.teams?1:0)==1;if(prefs.teams){prefs.friendlyFire=GUILayout.Toggle(prefs.friendlyFire,"Friendly fire");Fine("Teams alternate red and blue sides.");}
             Field("Sets and rounds");GUILayout.Label("Sets to win the match: "+prefs.sets,label);prefs.sets=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.sets,1,10));GUILayout.Label("Rounds to win a set: "+prefs.rounds,label);prefs.rounds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.rounds,1,5));
+            if(lobby&&!AdvancedFold("First to "+prefs.sets+" set"+(prefs.sets==1?"":"s")+" · "+prefs.rounds+" round"+(prefs.rounds==1?"":"s")+" per set · "+prefs.bots+" bot"+(prefs.bots==1?"":"s")+(prefs.teams?" · friendly fire "+(prefs.friendlyFire?"on":"off"):"")))return;
             Field("Draft and intro rules");prefs.bothDraft=GUILayout.Toggle(prefs.bothDraft,"All players draft after each set (otherwise the set's losers)");
             GUILayout.Label("Chip choices per draft: "+prefs.choices,label);prefs.choices=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.choices,1,12));GUILayout.Label("Chip selection timer: "+prefs.selectionSeconds+"s",label);prefs.selectionSeconds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.selectionSeconds,5,120));
             prefs.skipBotDrafts=GUILayout.Toggle(prefs.skipBotDrafts,"Skip bot draft screens");
             Fine("Melee E: special attack. Gun Q: hold to aim. Magic Q / E: cast abilities. Hold E to preview grenade, meteor, geysers or black hole; release to cast.");
+            if(lobby)AdvancedEnd();
         }
-        // Boss Test (pve/menu.ts testBossBody): party bots, the skip to the Siren, and the weapon.
-        private void BossBody()
+        // Boss Test (pve/menu.ts testBossBody): party bots, the skip to the Siren, and the weapon (picked under the roster
+        // in a room lobby).
+        private void BossBody(bool lobby=false)
         {
             Field("Party bots");GUILayout.Label(prefs.bots==1?"1 party bot":prefs.bots+" party bots",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(Mathf.Clamp(prefs.bots,0,3),0,3));
             Fine("AI pilots fill the party (up to 4). In a hosted room, friends who join take the party slots.");prefs.mirrorWeapons=GUILayout.Toggle(prefs.mirrorWeapons,"Party bots use my weapon (otherwise mixed loadouts)");prefs.skipWaves=GUILayout.Toggle(prefs.skipWaves,"Start at the Siren (skip the opening waves)");
-            Field("Your weapon");WeaponGrid();
+            if(!lobby){Field("Your weapon");WeaponGrid();}
             Fine("Intros play as normal. Earn money from minions to buy chips, heals, revives and recruits. F interacts · C opens your chips; chips you take wait there until you choose.");
         }
         private void WeaponGrid()

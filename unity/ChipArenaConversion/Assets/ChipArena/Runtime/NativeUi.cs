@@ -15,11 +15,12 @@ namespace ChipArena.UnityConversion
         private static Texture2D white,vertical,horizontal,radial,soft;private static readonly Dictionary<string,Texture2D> stops=new Dictionary<string,Texture2D>();private static Texture2D[] rounds=new Texture2D[4];
         private static GUIStyle text;private static Font mono;private static bool monoTried;
         private static readonly Stack<Matrix4x4> stack=new Stack<Matrix4x4>();private static Matrix4x4 current=Matrix4x4.identity;
+        private static readonly Stack<Vector2> clips=new Stack<Vector2>();private static Vector2 clip;
         private static readonly GUIContent content=new GUIContent();
         public static NativeUiMotion.Layout Begin(float uiScale=1)
         {
             var l=NativeUiMotion.Measure(Screen.width,Screen.height,uiScale);S=l.Scale;W=l.Width;H=l.Height;SafeX=l.SafeX;SafeW=l.SafeWidth;
-            stack.Clear();current=Matrix4x4.identity;Ensure();return l;
+            stack.Clear();current=Matrix4x4.identity;clips.Clear();clip=Vector2.zero;Ensure();return l;
         }
         private static Texture2D Make(int w,int h,Func<int,int,Color> f)
         {
@@ -50,7 +51,13 @@ namespace ChipArena.UnityConversion
         public static Vector2 P(Vector2 v)=>v*S;
         // Every draw sets the kit's transform and restores the caller's GUI.matrix, so legacy virtual-canvas GUI code
         // interleaves freely with kit drawing.
-        private static Matrix4x4 Enter(){var m=GUI.matrix;GUI.matrix=current;return m;}
+        private static Matrix4x4 Enter(){var m=GUI.matrix;GUI.matrix=clips.Count>0?Matrix4x4.Translate(clip*S)*current*Matrix4x4.Translate(-clip):current;return m;}
+        // Kit drawing inside an IMGUI clip group (a GUILayout area or scroll view) whose local origin sits at `origin` on the
+        // virtual canvas. IMGUI adds a group's offset in GUI space before GUI.matrix applies, so the kit's physical-pixel
+        // transform is wrapped to remove that unscaled offset and add it back scaled; rects stay in the group's local space
+        // (as GUILayoutUtility.GetRect returns them), clipping and hit tests follow the group, and text stays crisp.
+        public static void BeginClip(Vector2 origin){clips.Push(clip);clip=origin;}
+        public static void EndClip(){if(clips.Count>0)clip=clips.Pop();}
         // Push a transform about a virtual-space pivot: translate (virtual units), uniform scale and rotation (degrees).
         public static void Push(Vector2 pivot,Vector2 translate,float scale=1,float degrees=0,float scaleY=float.NaN)
         {
@@ -95,6 +102,37 @@ namespace ChipArena.UnityConversion
             if(Event.current.type!=EventType.Repaint)return;var m=Enter();int i=Mathf.Clamp(Mathf.RoundToInt(radius*S/4)-1,0,rounds.Length-1);var t=rounds[i];int rr=4+i*4;var o=GUI.color;var pr=P(r);
             if(border.a>0){Nine(pr,t,rr,border);float b=Mathf.Max(1,borderWidth*S);pr=new Rect(pr.x+b,pr.y+b,pr.width-2*b,pr.height-2*b);}
             if(fill.a>0)Nine(pr,t,rr,fill);GUI.color=o;GUI.matrix=m;
+        }
+        // Rounded rectangle filled with a linear gradient (CSS linear-gradient under border-radius): from `a` at the top
+        // (left when `horizontal`) to `b`, reached at `until` of the length and held after it. The corner bands take the
+        // nearer end colour; the straight middle carries the ramp. Optional border as Round.
+        public static void RoundGradient(Rect r,Color a,Color b,float radius=8,Color border=default,float until=1,bool horizontal=false,float borderWidth=1)
+        {
+            if(Event.current.type!=EventType.Repaint)return;var m=Enter();int i=Mathf.Clamp(Mathf.RoundToInt(radius*S/4)-1,0,rounds.Length-1);var t=rounds[i];int rr=4+i*4;var o=GUI.color;var pr=P(r);
+            if(border.a>0){Nine(pr,t,rr,border);float bw=Mathf.Max(1,borderWidth*S);pr=new Rect(pr.x+bw,pr.y+bw,pr.width-2*bw,pr.height-2*bw);}
+            float k=Mathf.Min(rr,Mathf.Min(pr.width,pr.height)/2),u=rr/(float)t.width;
+            for(int band=0;band<2;band++)
+            {
+                GUI.color=band==0?a:b;
+                for(int c=0;c<3;c++)
+                {
+                    // Along the gradient: the band's corner slice; across it: the three slices of that edge.
+                    float[] xs={pr.x,pr.x+k,pr.xMax-k,pr.xMax},ys={pr.y,pr.y+k,pr.yMax-k,pr.yMax},us={0,u,1-u,1},vs={1,1-u,u,0};
+                    Rect q,uv;
+                    if(!horizontal){int j=band==0?0:2;q=new Rect(xs[c],ys[j],xs[c+1]-xs[c],ys[j+1]-ys[j]);uv=new Rect(us[c],vs[j+1],us[c+1]-us[c],vs[j]-vs[j+1]);}
+                    else{int j=band==0?0:2;q=new Rect(xs[j],ys[c],xs[j+1]-xs[j],ys[c+1]-ys[c]);uv=new Rect(us[j],vs[c+1],us[j+1]-us[j],vs[c]-vs[c+1]);}
+                    if(q.width>0&&q.height>0)GUI.DrawTextureWithTexCoords(q,t,uv);
+                }
+            }
+            var mid=horizontal?new Rect(pr.x+k,pr.y,pr.width-2*k,pr.height):new Rect(pr.x,pr.y+k,pr.width,pr.height-2*k);
+            if(mid.width>0&&mid.height>0)
+            {
+                float span=Mathf.Clamp01(until)*(horizontal?pr.width:pr.height)-k;
+                Rect ramp=horizontal?new Rect(mid.x,mid.y,Mathf.Clamp(span,0,mid.width),mid.height):new Rect(mid.x,mid.y,mid.width,Mathf.Clamp(span,0,mid.height));
+                if(b.a>0){GUI.color=b;GUI.DrawTexture(mid,white);}
+                if(a.a>0&&ramp.width>0&&ramp.height>0){GUI.color=a;if(horizontal)GUI.DrawTextureWithTexCoords(ramp,NativeUi.horizontal,new Rect(1,0,-1,1));else GUI.DrawTexture(ramp,vertical);}
+            }
+            GUI.color=o;GUI.matrix=m;
         }
         private static void Nine(Rect r,Texture2D t,int radius,Color c)
         {
