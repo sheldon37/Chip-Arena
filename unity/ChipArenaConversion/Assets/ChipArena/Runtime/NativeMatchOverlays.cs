@@ -151,29 +151,88 @@ namespace ChipArena.UnityConversion
         }
         // pve/results.ts: VICTORY / DEFEAT under the boss test eyebrow, the Siren's remaining health, a card per pilot (MVP by
         // boss damage) and Retry / Return to Menu.
+        // pve/results.ts pveResults with pve.css: VICTORY / DEFEAT over the outcome line, then one result per party member,
+        // each with its pilot card (portrait clamp(80px,12vh,200px), no class line), the installed chips as rarity badges
+        // with ×count, and the run's stats; the MVP (most boss damage) wears the gold edge and badge. Retry and Return to
+        // Menu sit centred below. Total damage and headshots are not tracked by the native PvE rows yet, so those stats are
+        // left out rather than shown as zero.
         private void PveResultsPanel()
         {
-            var v=arena.Pve;if(matchEndAt<0)matchEndAt=Time.unscaledTime;float enter=U.PanelIn(Time.unscaledTime-matchEndAt),W=U.W,H=U.H;bool victory=v.Outcome=="victory";
-            var rows=v.Rows.Values.Where(r=>!r.Pilot.Seat.bot||r.Pilot.Seat.connected).OrderByDescending(r=>r.DamageBoss).ThenByDescending(r=>r.Kills).ToList();var mvp=rows.FirstOrDefault();
-            int cols=Mathf.Clamp(rows.Count,1,4);float cw=Mathf.Min(250,(Mathf.Min(1180,W-32)-64-(cols-1)*12)/cols),pw=Mathf.Min(1180,Mathf.Max(560,cols*(cw+12)-12+64)),ch=232,ph=32+16+48+22+24+ch+28+48+32,px=(W-pw)/2,py=Mathf.Max(16,(H-ph)/2)+10*(1-enter);
-            U.Panel(new Rect(px,py,pw,ph),enter);float y=py+32,ix=px+32,iw=pw-64;
-            U.Text(new Rect(ix,y,iw,16),"BOSS TEST · THE SIREN",12,U.A(U.Hex(0xc9bfff),enter),TextAnchor.MiddleLeft,bold:true,tracking:.2f);y+=22;
-            U.Text(new Rect(ix,y,iw,44),victory?"VICTORY":"DEFEAT",40,U.A(victory?U.Hex(0xffe7a6):U.Hex(0xff8a7a),enter),TextAnchor.MiddleLeft,bold:true,tracking:.04f,glow:U.A(victory?U.Hex(0xffb84a):U.Hex(0xff3535),.4f*enter));y+=48;
-            float boss=v.MaxHp>0&&v.Boss!=null?Mathf.Clamp01(v.Boss.Hp/v.MaxHp):victory?0:1;U.Text(new Rect(ix,y,iw,20),victory?"The Siren is silenced":"The Siren smiles  ·  "+Mathf.CeilToInt(boss*100)+"% health remaining",15,U.A(U.Hex(0xbfc0c9),enter),TextAnchor.MiddleLeft);y+=22+24;
-            float cx=ix+(iw-(cols*(cw+12)-12))/2;int i=0;
-            foreach(var r in rows.Take(8))
+            var v=arena.Pve;if(matchEndAt<0)matchEndAt=Time.unscaledTime;float enter=U.PanelIn(Time.unscaledTime-matchEndAt),W=U.W,H=U.H,t=Time.unscaledTime;bool victory=v.Outcome=="victory";
+            var rows=v.Rows.Values.Where(r=>!r.Pilot.Seat.bot||r.Pilot.Seat.connected).OrderBy(r=>r.Pilot.Seat.id).ToList();var mvp=rows.OrderByDescending(r=>r.DamageBoss).ThenByDescending(r=>r.Kills).FirstOrDefault();
+            // .panel:has(.pve-results): min(1180px, 100vw-32px); .pve-result-grid repeat(auto-fit, minmax(210px,1fr)), gap 14.
+            float pw=Mathf.Min(1180,W-32),iw=pw-64;int cols=Mathf.Clamp(Mathf.Min(rows.Count,Mathf.FloorToInt((iw+14)/(210+14))),1,4);float cw=(iw-(cols-1)*14)/cols;
+            // Portrait clamp(80px,12vh,200px); when the cards would not fit the canvas, the source's short-screen rule
+            // (max-height:480px) hides the portraits and lays the stats out in three columns.
+            string bossLine=PveBossLine(v,victory);float head=32+16+8+46+6+20+(bossLine!=null?26:0)+16,foot=28+48+32;int lines=Mathf.CeilToInt(rows.Count/(float)cols),statCols=2;
+            float chipsH=rows.Count>0?Mathf.Max(24,rows.Max(r=>ChipBadgeRows(r.Pilot.Seat,cw-20)*28-4)):24,portrait=Mathf.Clamp(H*.12f,80,200),topH=49;int stats=StatRows(rows.FirstOrDefault()).Length;
+            float ResultH()=>10+(topH+portrait+4+21.6f+17)+10+chipsH+10+Mathf.CeilToInt(stats/(float)statCols)*25+10;
+            if(head+lines*ResultH()+(lines-1)*14+foot>H-32){portrait=0;topH=36;if((cw-20-20)/3>=90)statCols=3;}
+            float resH=ResultH(),cardH=topH+portrait+4+21.6f+17,ph=Mathf.Min(H-32,head+lines*resH+(lines-1)*14+foot),px=(W-pw)/2,py=Mathf.Max(16,(H-ph)/2)+10*(1-enter);
+            U.Panel(new Rect(px,py,pw,ph),enter);float y=py+32,ix=px+32;
+            U.Text(new Rect(ix,y,iw,16),"BOSS TEST · THE SIREN",12,U.A(U.Hex(0xc0c1ca),enter),TextAnchor.MiddleLeft,bold:true,tracking:.18f);y+=16+8;
+            U.Text(new Rect(ix,y,iw,46),victory?"VICTORY":"DEFEAT",38,U.A(victory?U.Hex(0xffe7a6):U.Hex(0xff8a7a),enter),TextAnchor.MiddleLeft,bold:true,tracking:.08f,glow:U.A(victory?U.Hex(0xffb84a):U.Hex(0xff3535),.4f*enter));y+=46+6;
+            U.Text(new Rect(ix,y,iw,20),victory?"THE SIREN IS SILENCED":"THE SIREN SMILES",13,U.A(victory?U.Hex(0xc9bfff):U.Hex(0xff8a7a),enter),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.24f);y+=20;
+            if(bossLine!=null){U.Text(new Rect(ix,y+6,iw,20),bossLine,15,U.A(U.Hex(0xcfd2dc),enter),TextAnchor.MiddleLeft);y+=26;}y+=16;
+            for(int i=0;i<rows.Count;i++)
             {
-                var c=new Rect(cx+(i%cols)*(cw+12),y+(i/cols)*(ch+12),cw,ch);if(i/cols>0)break;bool best=r==mvp&&r.DamageBoss>0;U.Round(c,U.Hex(0x18191f,.94f*enter),8,best?U.Hex(0xffd27a,.7f*enter):U.A(U.Hex(0x454650),enter));
-                float cy=c.y+12;U.Fill(new Rect(c.x,c.y+10,3,22),SeatColor(r.Pilot.Seat));U.Text(new Rect(c.x+14,cy,c.width-28,22),r.Pilot.Seat.name+(r.Pilot==arena.Local?"  · YOU":""),15,U.A(U.Hex(0xf4f4f5),enter),TextAnchor.MiddleLeft,bold:true);
-                if(best)U.Text(new Rect(c.x+14,cy,c.width-28,22),"MVP",11,U.A(U.Hex(0xffd27a),enter),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.14f);cy+=26;
-                U.Text(new Rect(c.x+14,cy,c.width-28,16),(content.weapons.FirstOrDefault(w=>w.id==r.Pilot.Seat.spec)?.name??r.Pilot.Seat.spec)+"  ·  "+r.Pilot.Seat.chips.Values.Sum()+" chips",11,U.A(U.Hex(0xa6a7ad),enter),TextAnchor.MiddleLeft);cy+=24;
-                foreach(var (label,value) in new[]{("Boss damage",Mathf.RoundToInt(r.DamageBoss).ToString()),("Kills",r.Kills.ToString()),("Assists",r.Assists.ToString()),("Revives",r.Revives.ToString()),("Deaths",r.Deaths.ToString()),("Earned","$"+r.Earned)})
-                {U.Text(new Rect(c.x+14,cy,c.width-28,22),label,13,U.A(U.Hex(0xbfc0c9),enter),TextAnchor.MiddleLeft);U.Text(new Rect(c.x+14,cy,c.width-28,22),value,13,U.A(label=="Earned"?U.Hex(0xffd27a):Color.white,enter),TextAnchor.MiddleRight,bold:true,mono:true);cy+=26;}
-                i++;
+                var r=rows[i];var c=new Rect(ix+(i%cols)*(cw+14),y+(i/cols)*(resH+14),cw,resH);bool crown=r==mvp&&r.DamageBoss>0;PveResultCard(c,r,i,crown,portrait,topH,cardH,statCols,enter,t);
             }
-            y+=ch+28;float bw=(iw-10)/2;
-            if(U.Btn(new Rect(ix,y,bw,48),"Retry",true,true,enter)){if(server!=null)SendServer(new NativeNetMessage{type="rematch"});else StartMatch();}
-            if(U.Btn(new Rect(ix+bw+10,y,bw,48),"Return to Menu",false,Hosting||!Online,enter))ReturnToLobby();
+            y=py+ph-32-48;float bw=Mathf.Min(240,(iw-12)/2),bx=px+pw/2-bw-6;
+            if(MenuButton(new Rect(bx,y,bw,48),"rotate-cw","Retry",null,true,true,enter,15,true)){if(server!=null)SendServer(new NativeNetMessage{type="rematch"});else StartMatch();}
+            if(MenuButton(new Rect(bx+bw+12,y,bw,48),"log-out","Return to Menu",null,true,Hosting||!Online,enter,15,true))ReturnToLobby();
+        }
+        // .pve-result-boss on a defeat: the Siren's remaining health, or the wave the party fell on before she appeared.
+        private static string PveBossLine(NativePveState v,bool victory)
+        {
+            if(victory)return null;if(v.Boss!=null&&v.MaxHp>0&&v.Stage=="boss")return "The Siren kept "+Mathf.Max(0,Mathf.RoundToInt(v.Boss.Hp/v.MaxHp*100))+"% health ("+Mathf.Max(0,Mathf.RoundToInt(v.Boss.Hp)).ToString("N0",System.Globalization.CultureInfo.InvariantCulture)+" / "+Mathf.RoundToInt(v.MaxHp).ToString("N0",System.Globalization.CultureInfo.InvariantCulture)+").";
+            int waves=v.Content?.waves?.Length??0;return v.Wave>0&&waves>0?"The party fell on wave "+v.Wave+" of "+waves+".":null;
+        }
+        private static (string label,string value)[] StatRows(NativePveRow r)
+        {
+            if(r==null)return new (string,string)[0];string N(float x)=>Mathf.RoundToInt(x).ToString("N0",System.Globalization.CultureInfo.InvariantCulture);
+            var list=new System.Collections.Generic.List<(string,string)>{("Boss damage",N(r.DamageBoss)),("Kills",N(r.Kills)),("Assists",N(r.Assists)),("Revives",N(r.Revives)),("Deaths",N(r.Deaths))};
+            if(!r.Pilot.Seat.bot)list.Add(("Earned","$"+N(r.Earned)));return list.ToArray();
+        }
+        // .pve-result: #121319, 1 px #ffffff14, radius 12, padding 10, gap 10; MVP: #ffd36a77 edge, #ffb84a22 glow and the
+        // gold badge on the top edge.
+        private void PveResultCard(Rect c,NativePveRow r,int index,bool crown,float portrait,float topH,float cardH,int statCols,float e,float t)
+        {
+            var seat=r.Pilot.Seat;if(crown)U.Glow(c,U.Hex(0xffb84a,.13f*e),24);U.Round(c,U.Hex(0x121319,e),12,crown?U.Hex(0xffd36a,.47f*e):new Color(1,1,1,.08f*e));
+            var weapon=content.weapons.FirstOrDefault(w=>w.id==seat.spec);bool you=r.Pilot==arena.Local;
+            var pilot=new LobbyPilot{name=seat.name,weapon=seat.spec,tag=seat.bot?"BOT":you?"YOU":"PILOT",ready=false,connected=true,bot=seat.bot,accent=HexColor(seat.accentColor,weapon!=null?(int)weapon.color:0xff6b35),body=HexColor(seat.bodyColor,0xe5e7eb)};
+            var card=new Rect(c.x+10,c.y+10,c.width-20,cardH);LobbyCard(card,pilot,index,portrait,topH,false,false,e,t,true);
+            if(crown){float bw=U.Measure("MVP",11,true,true,.1f).x+12+14+16;var b=new Rect(c.xMax-10-bw,c.y-9,bw,20);U.Glow(b,U.Hex(0xffb84a,.3f*e),10);U.Round(b,U.Hex(0xffd36a,e),10);
+                NativeIcons.Draw(new Rect(b.x+8,b.center.y-6,12,12),"sparkles",U.Hex(0x2a1d05,e));U.Text(new Rect(b.x+24,b.y,bw-28,b.height),"MVP",11,U.Hex(0x2a1d05,e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);}
+            float y=card.yMax+10;y=ChipBadges(new Rect(c.x+10,y,c.width-20,0),seat,e)+10;
+            var stats=StatRows(r);float colW=(c.width-20-10*(statCols-1))/statCols;
+            for(int i=0;i<stats.Length;i++)
+            {
+                var cell=new Rect(c.x+10+(i%statCols)*(colW+10),y+(i/statCols)*25,colW,21);U.Fill(new Rect(cell.x,cell.yMax,cell.width,1),new Color(1,1,1,.05f*e));
+                float ls=statCols>2?10:11,room=cell.width-U.Measure(stats[i].value,12,true,true).x-6;string label=stats[i].label;if(U.Measure(label,ls).x>room&&label=="Boss damage")label="Boss dmg";
+                U.Text(cell,Fit(label,ls,room,false,0),ls,U.Hex(0x9fa3b3,e),TextAnchor.MiddleLeft);U.Text(cell,stats[i].value,12,U.Hex(0xf1f2f6,e),TextAnchor.MiddleRight,bold:true,mono:true);
+            }
+        }
+        // .pve-result-chip badges (flex-wrap, gap 4): rarity-tinted fill and edge, the chip icon in the rarity colour, the name
+        // (11 px, 600) and ×count in mono; "No chips installed" when empty. Returns the bottom edge.
+        private float ChipBadges(Rect r,NativeSeat seat,float e)
+        {
+            var chips=seat.chips.Where(k=>k.Value>0).Select(k=>(chip:content.chips.FirstOrDefault(c=>c.id==k.Key),count:k.Value)).Where(k=>k.chip!=null).ToList();
+            if(chips.Count==0){U.Text(new Rect(r.x,r.y,r.width,24),"No chips installed",11,U.Hex(0x8f93a3,e),TextAnchor.MiddleLeft);return r.y+24;}
+            float x=r.x,y=r.y;
+            foreach(var (chip,count) in chips)
+            {
+                Color rarity=RarityColor(chip.rarity);float w=BadgeWidth(chip.name,count);if(x>r.x&&x+w>r.xMax){x=r.x;y+=28;}var b=new Rect(x,y,Mathf.Min(w,r.width),24);
+                U.Round(b,U.A(U.Mix(U.Hex(0x0d0e12),rarity,.14f),e),6,U.A(U.Mix(Color.black,rarity,.6f),e));NativeIcons.Draw(new Rect(b.x+7,b.center.y-6,12,12),NativeIcons.Chip(chip.id),U.A(rarity,e));
+                float nw=U.Measure(chip.name,11,true).x;U.Text(new Rect(b.x+23,b.y,Mathf.Min(nw+2,b.width-30),b.height),chip.name,11,U.Hex(0xe9eaf0,e),TextAnchor.MiddleLeft,bold:true);
+                if(count>1)U.Text(new Rect(b.x+23+nw+4,b.y,30,b.height),"×"+count,10,U.A(rarity,e),TextAnchor.MiddleLeft,bold:true,mono:true);x+=w+4;
+            }
+            return y+24;
+        }
+        private static float BadgeWidth(string name,int count)=>7+12+4+U.Measure(name,11,true).x+(count>1?4+U.Measure("×"+count,10,true,true).x:0)+7;
+        private int ChipBadgeRows(NativeSeat seat,float width)
+        {
+            float x=0;int lines=1;foreach(var k in seat.chips.Where(k=>k.Value>0)){var chip=content.chips.FirstOrDefault(c=>c.id==k.Key);if(chip==null)continue;float w=BadgeWidth(chip.name,k.Value);if(x>0&&x+w>width){lines++;x=0;}x+=w+4;}return lines;
         }
         private void ReturnToLobby()
         {

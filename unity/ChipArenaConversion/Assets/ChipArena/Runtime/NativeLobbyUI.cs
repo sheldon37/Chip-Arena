@@ -124,7 +124,9 @@ namespace ChipArena.UnityConversion
             U.Text(new Rect(pill.x+16,y,nw+4,h),n,22,U.Hex(0xffffff,e),TextAnchor.MiddleLeft,bold:true,tracking:.02f);
             U.Text(new Rect(pill.x+16+nw+8,y+2,lw+4,h),"READY",13,all?U.Hex(0x8ff0b6,e):U.Hex(0xf4c8a0,e),TextAnchor.MiddleLeft,bold:true,tracking:.16f);
         }
-        private void LobbyCard(Rect r,LobbyPilot p,int index,float portrait,float topH,bool wrap,bool compact,float e,float t)
+        // `result`: the PvE results variant (pve.css .pve-result .pilot-card) without the ready pill or class line, the name
+        // at 18 px.
+        private void LobbyCard(Rect r,LobbyPilot p,int index,float portrait,float topH,bool wrap,bool compact,float e,float t,bool result=false)
         {
             var weapon=p.weapon!=null?content.weapons.FirstOrDefault(w=>w.id==p.weapon):null;Color style=weapon!=null?U.Hex((int)weapon.color):U.Hex(0xb8aabb);bool ready=p.ready&&p.connected;float a=e*(p.connected?1:.55f);
             // box-shadow 0 18px 45px #0005; ready: #3ddc84 edge with a 1 px #3ddc8466 ring and a 28 px #3ddc8426 glow.
@@ -137,15 +139,15 @@ namespace ChipArena.UnityConversion
             Color bar=ready?ReadyGreen:p.accent;float mid=r.y+r.height/2;U.Fade(new Rect(r.x+1,r.y+2,3,mid-r.y-2),U.A(bar,.75f*a),false);U.Fade(new Rect(r.x+1,mid,3,r.yMax-2-mid),U.A(bar,.75f*a));
             // .pilot-card-top: the seat number in the accent (14 px mono), the tag, and the ready pill at the right.
             float top=r.y+12,lh=wrap?17:26;string num=(index+1).ToString("00");U.Text(new Rect(r.x+12,top,40,lh),num,14,U.A(p.accent,a),TextAnchor.MiddleLeft,mono:true);
-            float tx=r.x+12+U.Measure(num,14,false,true).x+6;ReadyPill(new Rect(r.x,wrap?top+lh+6:top,r.width-12,26),p,a,out float pillX);float room=(wrap?r.xMax-12:pillX-6)-tx;
+            float tx=r.x+12+U.Measure(num,14,false,true).x+6,pillX=r.xMax-12;if(!result)ReadyPill(new Rect(r.x,wrap?top+lh+6:top,r.width-12,26),p,a,out pillX);float room=(wrap||result?r.xMax-12:pillX-6)-tx;
             U.Text(new Rect(tx,top,Mathf.Max(10,room),lh),Fit(p.tag,10,Mathf.Max(10,room),false,.04f),10,U.Hex(0xc0b8c5,a),TextAnchor.MiddleLeft,tracking:.04f);
             // .portrait-stage: the emblem, sized to the portrait, its motion offset per seat.
             var stage=new Rect(r.x,r.y+topH,r.width,portrait);float ring=Mathf.Min(portrait*.3f,r.width*.27f);var cpos=new Vector2(stage.center.x,stage.center.y+2);
-            if(weapon!=null)PilotEmblem(cpos,ring,p.accent,p.body,weapon,a,t,index*1.7f,ring<56?20:28);else PilotEmblem(cpos,ring,p.accent,p.body,"shuffle",style,a,t,index*1.7f,ring<56?20:28);
+            if(portrait<40){}else if(weapon!=null)PilotEmblem(cpos,ring,p.accent,p.body,weapon,a,t,index*1.7f,ring<56?20:28);else PilotEmblem(cpos,ring,p.accent,p.body,"shuffle",style,a,t,index*1.7f,ring<56?20:28);
             // .pilot-card-name: the name, then the class line in the weapon colour (38% mix with white, glowing) over its
             // animated 2 px underline (.pilot-class-fx).
-            float pad=compact?12:14,ny=stage.yMax,ns=compact?17:20,nh=ns*1.2f;
-            U.Text(new Rect(r.x+pad,ny,r.width-pad*2,nh),Fit(p.name,ns,r.width-pad*2,true,-.035f),ns,U.Hex(0xf4f4f5,a),TextAnchor.MiddleLeft,bold:true,tracking:-.035f);
+            float pad=compact?12:14,ny=stage.yMax+(result?4:0),ns=result?18:compact?17:20,nh=ns*1.2f;
+            U.Text(new Rect(r.x+pad,ny,r.width-pad*2,nh),Fit(p.name,ns,r.width-pad*2,true,-.035f),ns,U.Hex(0xf4f4f5,a),TextAnchor.MiddleLeft,bold:true,tracking:-.035f);if(result)return;
             float cy=ny+nh+7,cs=compact?21:24,ch=compact?24:28,ic=compact?20:24;string cls=weapon!=null?ClassName(weapon.@class):"Mixed";
             Color clsColor=U.Mix(Color.white,style,.38f);float cw=Mathf.Min(r.width-pad*2,ic+(compact?6:9)+U.Measure(cls,cs,true,false,.015f).x);
             NativeIcons.Draw(new Rect(r.x+pad,cy+(ch-ic)/2,ic,ic),weapon!=null?NativeIcons.Class(weapon.@class):"shuffle",U.A(style,a));
