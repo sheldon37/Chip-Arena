@@ -339,17 +339,21 @@ namespace ChipArena.UnityConversion
         // main.ts panel(): eyebrow, 30 px title and the close X over a .panel (#17181df5, #45464e edge, 10 px radius, 32 px
         // padding), at most 100dvh-158 tall, panel-in on entry. `showcase` adds the pilot card beside it (pilot-lobby-layout)
         // when the canvas has room; `head` reserves kit-drawn space under the title. The body is sized to its content.
-        private ScreenLayout BeginScreen(string eyebrow,string title,float width,float age,bool showcase=false,bool left=false,bool actions=true,float head=0,bool close=true)
+        // `lobby` is the room's shell (lobby.css .menus[data-screen=lobby]>.panel.wide): 28 px padding, at most 100dvh-140
+        // tall, on the 125deg #25212bf5 → #17191ff7 gradient (drawn left to right).
+        private ScreenLayout BeginScreen(string eyebrow,string title,float width,float age,bool showcase=false,bool left=false,bool actions=true,float head=0,bool close=true,bool lobby=false)
         {
-            float W=U.W,H=U.H,e=In(age,0,.26f),dy=10*(1-e);
+            float W=U.W,H=U.H,e=In(age,0,.26f),dy=10*(1-e),pad=lobby?28:32,top=lobby?94:108;
             float card=showcase&&W-56-width-26>=270?Mathf.Min(390,W-56-width-26):0,pw=Mathf.Min(width,W-56-(card>0?card+26:0)),total=pw+(card>0?26+card:0);
-            float px=left?Mathf.Max(28,W*.05f):(W-total)/2,maxH=Mathf.Max(320,H-158),bottom=actions?26+20+48+30:30,ph=Mathf.Min(maxH,108+head+screenContent+bottom),cardH=card>0?Mathf.Min(maxH,Mathf.Max(ph,520)):0;
+            float px=left?Mathf.Max(28,W*.05f):(W-total)/2,maxH=Mathf.Max(320,H-(lobby?140:158)),bottom=actions?26+20+48+30:pad-2,ph=Mathf.Min(maxH,top+head+screenContent+bottom),cardH=card>0?Mathf.Min(maxH,Mathf.Max(ph,520)):0;
             float py=Mathf.Max(80,90+(H-154-Mathf.Max(ph,cardH))/2);
-            var panel=new Rect(px,py+dy,pw,ph);U.Panel(panel,e);
-            U.Text(new Rect(panel.x+32,panel.y+30,pw-120,16),eyebrow,12,U.Hex(0xc0c1ca,e),TextAnchor.MiddleLeft,bold:true,tracking:.2f);
-            U.Text(new Rect(panel.x+32,panel.y+52,pw-120,38),title,30,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true,tracking:-.03f);
-            bool closed=false;if(close){var x=new Rect(panel.xMax-32-40,panel.y+28,40,40);float h=U.HoverAmount(9103,x);U.Round(x,U.A(U.Mix(U.Hex(0x222329),U.Hex(0x303138),h),e),4,U.A(U.Mix(U.Hex(0x45464e),U.Hex(0xff6b35),h),e));NativeIcons.Draw(new Rect(x.center.x-10.5f,x.center.y-10.5f,21,21),"x",U.Hex(0xf4f4f5,e));closed=U.Button(x);if(closed)Click();}
-            var layout=new ScreenLayout{Panel=panel,Enter=e,Closed=closed,Body=new Rect(panel.x+32,panel.y+108+head,pw-64,ph-108-head-bottom),Card=card>0?new Rect(panel.xMax+26,panel.y,card,cardH):Rect.zero};
+            var panel=new Rect(px,py+dy,pw,ph);
+            if(lobby){U.Glow(new Rect(panel.x,panel.y+30,panel.width,panel.height),new Color(0,0,0,.45f*e),60);U.RoundGradient(panel,U.Hex(0x25212b,.96f*e),U.Hex(0x17191f,.97f*e),10,U.Hex(0x45464e,e),1,true);}
+            else U.Panel(panel,e);
+            U.Text(new Rect(panel.x+pad,panel.y+pad-2,pw-120,16),eyebrow,12,U.Hex(0xc0c1ca,e),TextAnchor.MiddleLeft,bold:true,tracking:lobby?.18f:.2f);
+            U.Text(new Rect(panel.x+pad,panel.y+pad+20,pw-120,38),title,30,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true,tracking:-.03f);
+            bool closed=false;if(close){var x=new Rect(panel.xMax-pad-40,panel.y+pad-4,40,40);float h=U.HoverAmount(9103,x);U.Round(x,U.A(U.Mix(U.Hex(0x222329),U.Hex(0x303138),h),e),4,U.A(U.Mix(U.Hex(0x45464e),U.Hex(0xff6b35),h),e));NativeIcons.Draw(new Rect(x.center.x-10.5f,x.center.y-10.5f,21,21),"x",U.Hex(0xf4f4f5,e));closed=U.Button(x);if(closed)Click();}
+            var layout=new ScreenLayout{Panel=panel,Enter=e,Closed=closed,Body=new Rect(panel.x+pad,panel.y+top+head,pw-2*pad,ph-top-head-bottom),Card=card>0?new Rect(panel.xMax+26,panel.y,card,cardH):Rect.zero};
             return layout;
         }
         // The panel body: the existing GUILayout form inside its own area and scroll view, faded with the panel.

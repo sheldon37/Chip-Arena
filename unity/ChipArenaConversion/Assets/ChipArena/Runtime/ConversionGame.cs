@@ -238,26 +238,50 @@ namespace ChipArena.UnityConversion
         // where the weapon is picked under the roster and the draft rules sit under Advanced Options (room-options.ts).
         private void MatchRulesBody(bool lobby)
         {
-            if(!lobby){Fine("First to "+prefs.sets+(prefs.sets==1?" set":" sets")+". Win "+prefs.rounds+(prefs.rounds==1?" round":" rounds")+" to take a set.");Field("Your weapon");WeaponGrid();}
+            if(lobby){LobbyRulesBody();return;}
+            Fine("First to "+prefs.sets+(prefs.sets==1?" set":" sets")+". Win "+prefs.rounds+(prefs.rounds==1?" round":" rounds")+" to take a set.");Field("Your weapon");WeaponGrid();
             Field("Arena");MapGrid();
-            int min=lobby?0:1;Field("Bots");GUILayout.Label(prefs.bots==1?"1 bot":prefs.bots+" bots",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(Mathf.Clamp(prefs.bots,min,7),min,7));
+            Field("Bots");GUILayout.Label(prefs.bots==1?"1 bot":prefs.bots+" bots",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(Mathf.Clamp(prefs.bots,1,7),1,7));
             Fine("Up to 8 pilots total. Bots use player slots.");prefs.mirrorWeapons=GUILayout.Toggle(prefs.mirrorWeapons,"Bots use my weapon (otherwise mixed loadouts)");prefs.stationary=GUILayout.Toggle(prefs.stationary,"Stationary targets");
             Field("Match mode");prefs.teams=ChoiceRow(new[]{"Free-for-all","Teams"},prefs.teams?1:0)==1;if(prefs.teams){prefs.friendlyFire=GUILayout.Toggle(prefs.friendlyFire,"Friendly fire");Fine("Teams alternate red and blue sides.");}
             Field("Sets and rounds");GUILayout.Label("Sets to win the match: "+prefs.sets,label);prefs.sets=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.sets,1,10));GUILayout.Label("Rounds to win a set: "+prefs.rounds,label);prefs.rounds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.rounds,1,5));
-            if(lobby&&!AdvancedFold("First to "+prefs.sets+" set"+(prefs.sets==1?"":"s")+" · "+prefs.rounds+" round"+(prefs.rounds==1?"":"s")+" per set · "+prefs.bots+" bot"+(prefs.bots==1?"":"s")+(prefs.teams?" · friendly fire "+(prefs.friendlyFire?"on":"off"):"")))return;
             Field("Draft and intro rules");prefs.bothDraft=GUILayout.Toggle(prefs.bothDraft,"All players draft after each set (otherwise the set's losers)");
             GUILayout.Label("Chip choices per draft: "+prefs.choices,label);prefs.choices=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.choices,1,12));GUILayout.Label("Chip selection timer: "+prefs.selectionSeconds+"s",label);prefs.selectionSeconds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.selectionSeconds,5,120));
             prefs.skipBotDrafts=GUILayout.Toggle(prefs.skipBotDrafts,"Skip bot draft screens");
             Fine("Melee E: special attack. Gun Q: hold to aim. Magic Q / E: cast abilities. Hold E to preview grenade, meteor, geysers or black hole; release to cast.");
-            if(lobby)AdvancedEnd();
+        }
+        // The room column's rules in the source order (main.ts matchOptions(true,'essential') then roomAdvanced): the match
+        // mode and arena box, then Advanced Options with friendly fire, sets and rounds, bots and the draft rules, under a note
+        // that summarises them. Labels are short enough for the 300 px column.
+        private void LobbyRulesBody()
+        {
+            LobbyEssentials();
+            if(!AdvancedFold("First to "+prefs.sets+" set"+(prefs.sets==1?"":"s")+" · "+prefs.rounds+" round"+(prefs.rounds==1?"":"s")+" per set · "+prefs.bots+" bot"+(prefs.bots==1?"":"s")+(prefs.teams?" · friendly fire "+(prefs.friendlyFire?"on":"off"):"")))return;
+            if(prefs.teams){prefs.friendlyFire=GUILayout.Toggle(prefs.friendlyFire,"Friendly fire");Fine(prefs.friendlyFire?"Teammates can damage each other.":"Allied attacks and harmful effects pass through teammates.");}
+            GUILayout.Label("Sets to win the match: "+prefs.sets,label);prefs.sets=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.sets,1,10));GUILayout.Label("Rounds to win a set: "+prefs.rounds,label);prefs.rounds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.rounds,1,5));
+            Field("Bots");GUILayout.Label(prefs.bots==1?"1 bot":prefs.bots+" bots",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(Mathf.Clamp(prefs.bots,0,7),0,7));
+            Fine("Up to 8 pilots total. Bots use player slots.");prefs.mirrorWeapons=GUILayout.Toggle(prefs.mirrorWeapons,"Bots use my weapon");prefs.stationary=GUILayout.Toggle(prefs.stationary,"Stationary targets");prefs.skipBotDrafts=GUILayout.Toggle(prefs.skipBotDrafts,"Skip bot draft screens");
+            Field("Draft rules");prefs.bothDraft=GUILayout.Toggle(prefs.bothDraft,"All players draft");Fine(prefs.bothDraft?"Everyone drafts after each set.":"Otherwise the set's losers draft.");
+            GUILayout.Label("Chip choices per draft: "+prefs.choices,label);prefs.choices=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.choices,1,12));GUILayout.Label("Chip selection timer: "+prefs.selectionSeconds+"s",label);prefs.selectionSeconds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.selectionSeconds,5,120));
+            Fine(prefs.choices+" choices per draft · "+prefs.selectionSeconds+"s to pick · "+(prefs.bothDraft?"All players draft":"Set losers draft")+" · Intros on");
+            AdvancedEnd();
         }
         // Boss Test (pve/menu.ts testBossBody): party bots, the skip to the Siren, and the weapon (picked under the roster
         // in a room lobby).
         private void BossBody(bool lobby=false)
         {
+            // The room column (pve/menu.ts lobby rules): the party settings under Advanced Options, with labels that fit it.
+            if(lobby)
+            {
+                if(!AdvancedFold(prefs.bots+" party bot"+(prefs.bots==1?"":"s")+" · "+(prefs.skipWaves?"starts at the Siren":"opening waves on")+" · "+(prefs.mirrorWeapons?"bots use your weapon":"mixed bot loadouts")))return;
+                Field("Party bots");GUILayout.Label(prefs.bots==1?"1 party bot":prefs.bots+" party bots",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(Mathf.Clamp(prefs.bots,0,3),0,3));
+                Fine("Friends who join take party slots; bots fill the rest (up to 4).");prefs.mirrorWeapons=GUILayout.Toggle(prefs.mirrorWeapons,"Party bots use my weapon");prefs.skipWaves=GUILayout.Toggle(prefs.skipWaves,"Start at the Siren");
+                Fine("Earn money from minions for chips, heals, revives and recruits. F interacts · C opens your chips.");
+                AdvancedEnd();return;
+            }
             Field("Party bots");GUILayout.Label(prefs.bots==1?"1 party bot":prefs.bots+" party bots",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(Mathf.Clamp(prefs.bots,0,3),0,3));
             Fine("AI pilots fill the party (up to 4). In a hosted room, friends who join take the party slots.");prefs.mirrorWeapons=GUILayout.Toggle(prefs.mirrorWeapons,"Party bots use my weapon (otherwise mixed loadouts)");prefs.skipWaves=GUILayout.Toggle(prefs.skipWaves,"Start at the Siren (skip the opening waves)");
-            if(!lobby){Field("Your weapon");WeaponGrid();}
+            Field("Your weapon");WeaponGrid();
             Fine("Intros play as normal. Earn money from minions to buy chips, heals, revives and recruits. F interacts · C opens your chips; chips you take wait there until you choose.");
         }
         private void WeaponGrid()
