@@ -1,5 +1,17 @@
 # Native publishing automation development log
 
+## 2026-10-09 — Astra — handle UBA's actual artifact-link response
+
+- Version repair PR #74 passed both hosted jobs and merged at `0975cba`.
+  Real run `37964439938` now selects #7 and reaches download; UBA's HTTP redirect
+  body decodes to a JSON string, rather than the documented `{url: ...}` object.
+- Handle both response shapes. Non-string/malformed link values and untrusted
+  hosts still fail before any download. Auth is still removed before storage
+  requests; signed URLs are never logged. Added regression and negative cases.
+- Local: 51 tests collected, 50 passed, one Windows-only skip; hosted tests and
+  actual download/publication next. Task `codex/unity-publish-download` from `0975cba`.
+  No Unity rebuild or game change. Build #7 has not been published yet.
+
 ## 2026-10-09 — Astra — match the actual UBA version identifier
 
 - PR #73 diagnostics (main `32870a0`, run `37964117907`) prove UBA #7 list and

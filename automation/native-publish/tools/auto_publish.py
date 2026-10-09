@@ -86,11 +86,13 @@ def api_json(url, authorization):
 
 
 def storage_url(value):
+    if not isinstance(value, str):
+        raise ValueError('Build download URL must be a string')
     parsed = urlsplit(value)
     host = parsed.hostname or ''
     allowed = host == 'storage.googleapis.com' or host.endswith('.storage.googleapis.com') or host.endswith('.amazonaws.com') or host.endswith('.blob.core.windows.net')
     if parsed.scheme != 'https' or not allowed or parsed.username or parsed.password or parsed.port not in (None, 443):
-        raise ValueError('Build download is not on an allowed HTTPS storage host')
+        raise ValueError('Build download is not on an allowed HTTPS storage host: ' + host[:160])
     return value
 
 
@@ -101,10 +103,11 @@ def download_api(url, destination, authorization, limit):
             return
         if status not in (202, 301, 302, 303, 307, 308):
             raise ValueError('Unexpected download response')
-        # UBA v2 artifact downloads return 303 JSON {url: ...}, without Location.
+        # UBA v2 returns either a JSON URL string or {url: ...}, without Location.
         link = headers.get('Location')
         if not link:
-            link = json.loads(data).get('url')
+            payload = json.loads(data)
+            link = payload.get('url') if isinstance(payload, dict) else payload
         status, headers, data = request(storage_url(link), limit=limit, destination=destination)
     raise ValueError('Too many download redirects')
 
