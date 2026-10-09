@@ -16,6 +16,12 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-08 20:21 EDT — Codex/Astra — owner reports older installation updated successfully
+
+- Owner reports: “Looks like my older build successfully updated.” This is the first owner-reported successful Unity-to-Unity update through the published native test feed, following channel commit `c5251fb` (version `83e6a566`, revision `639271006350008324`). Combined with the prior verified public download, native update delivery is working in this observed case. No new client log or installed identity was supplied; do not imply independent verification of settings retention, rollback or all acceptance cases.
+- Future ordinary game releases can reuse this installation and feed: update source, produce a newer Windows Unity build, validate and publish the approved native candidate, then use Update in installed clients. Builds still run on the owner's Windows PC; cloud-build PR #64 remains open/unmerged and its Unity service setup is not active. Publisher PR #63 and build-repair PR #67 also remain open/unmerged. Future source checkouts must retain the v3 build repairs until integrated; publishing a compiled candidate does not merge source branches.
+- Handoff branch `codex/unity-startup-build-check`, PR #67, previous docs `23ad201`; documentation only. Record the owner result in A13/project status and the publisher PR. No rebuild, new feed publication, source merge or gameplay/presentation change in this follow-up. Remaining follow-ups are installed-identity/retention/repeat-update/rollback checks and the broader multiplayer/service/resolution acceptance; they do not negate the reported successful update.
+
 ## 2026-10-08 20:17 EDT — Codex/Astra — native test feed published and download verified
 
 - Owner reported the candidate looked good and explicitly authorized publication at 20:10 EDT. Published approved version **`83e6a566052ac3167eb076abb0803e71a32337226674fa9446710bdb533f39e4`**, revision **`639271006350008324`**, to `sheldon37/chip-arena-test-updates` main in channel commit **`c5251fbb0113bf9544a37989318336dae0df1840`** (parent `5ddab5b`). Public feed: https://raw.githubusercontent.com/sheldon37/chip-arena-test-updates/main/native/windows-x64/latest.json .
