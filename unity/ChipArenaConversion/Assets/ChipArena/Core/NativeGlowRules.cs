@@ -14,6 +14,9 @@ namespace ChipArena.UnityConversion
         public static float ImpactLight(float age)=>age<0?0:2.5f*(float)Math.Pow(Math.Max(0,1-age/.35f),2);
         public static float TrailFade(float age)=>Math.Max(0,1-age/TrailLife);
         public static float TrailWidth(float distance,float width)=>(.012f+distance*.00065f)*width;
+        // armor-glow.ts:23: halos and the chest spill take the pilot's own accent (p.color, bots included) lerped 26 % toward
+        // #d1edff in linear light; absent or malformed: the default accent.
+        public static System.Numerics.Vector3 ArmorTint(string accent)=>System.Numerics.Vector3.Lerp(NativePortraitRules.Linear(NativePortraitRules.Parse(accent,NativePortraitRules.ExportAccent)),NativePortraitRules.Linear(0xd1edff),.26f);
         public static float ArmorPulse(float time,float cooldown,bool blocking)=>cooldown>0&&!blocking?1-(1-(.70f+.30f*(float)Math.Cos(time*Math.PI*3)))*Math.Min(1,cooldown/.25f):1;
     }
     public sealed class NativeTrace

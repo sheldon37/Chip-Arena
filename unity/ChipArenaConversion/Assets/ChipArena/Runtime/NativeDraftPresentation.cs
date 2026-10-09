@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
             if(pve)HideLive();else arena.Root.SetActive(false);viewModelCamera.enabled=false;
             // Stage lights take the picker's colour, blending to the chip's rarity over .5 s after the pick (the Siren pick: its tier).
             string tier=follow?pveFollowTier:open?.Tier;Color tint=pve?(tier=="rainbow"?Color.white:RarityColor(tier??"common")):SeatColor(seat);if(age>=0)tint=Color.Lerp(tint,RarityColor(chips[chosen].rarity),Mathf.Clamp01(age/.5f));
-            presentation.DraftBandTeam=seat.spec=="siren"?-1:NativeStatusVisuals.BandTeam(match.Teams,match.Cooperative,seat.AuthorityBoss,seat.team);
+            presentation.DraftBandTeam=seat.spec=="siren"?-1:NativeStatusVisuals.PilotBand(match.Teams,match.Cooperative,seat.AuthorityBoss,seat.team,seat.id==arena.LocalId);
             // The table frames itself left of the side card column, under the heading and above the nameplate.
             var ui=NativeUiMotion.Measure(Screen.width,Screen.height,prefs.uiScale);float right=Mathf.Clamp((DraftCardLeft(ui.Width,ui.Height)-24)/ui.Width,.45f,.9f);
             draftCardCount=presentation.RenderDraftTable(seat,chips,count,pve?arena.Time:(float)match.Time,elapsed,draftHover,own&&age<0?draftHover:-1,scan,chosen,age,tint,cameraView,prefs.reducedEffects,new Rect(.03f,.1f,right-.03f,.73f),ui.Scale,draftCards,draftCores,draftBadges,draftOrder);

@@ -171,10 +171,10 @@ namespace ChipArena.UnityConversion
         {
             if(killBody!=null)return true;if(killBodyFailed)return false;var shader=Resources.Load<Shader>("NativeKillBody");if(shader==null||!shader.isSupported){killBodyFailed=true;return false;}
             killBody=new Material(shader){enableInstancing=true,name="Kill recolour"};materials.Add(killBody);
-            // The export's shell and accent colours (createCharacterRig('#70e1d0','#e5e7eb')): a shell vertex's colour divided by
-            // them is its voxel shade.
-            NativeKillEffectRules.Linear(0xe5e7eb,out double sr,out double sg,out double sb);NativeKillEffectRules.Linear(0x70e1d0,out double ar,out double ag,out double ab);
-            killBody.SetVector("_ShellSource",new Vector4((float)sr,(float)sg,(float)sb,1));killBody.SetVector("_AccentSource",new Vector4((float)ar,(float)ag,(float)ab,1));return true;
+            // The export's shell and accent colours (createCharacterRig('#70e1d0','#e5e7eb',true): the glowing accent parts carry
+            // ember('#70e1d0')): a shell vertex's colour divided by them is its voxel shade.
+            NativeKillEffectRules.Linear(0xe5e7eb,out double sr,out double sg,out double sb);var accent=NativePortraitRules.ExportEmber;
+            killBody.SetVector("_ShellSource",new Vector4((float)sr,(float)sg,(float)sb,1));killBody.SetVector("_AccentSource",new Vector4(accent.X,accent.Y,accent.Z,1));return true;
         }
         private Part Recolor(Part part)
         {

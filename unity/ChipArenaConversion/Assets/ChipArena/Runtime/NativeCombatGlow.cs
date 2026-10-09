@@ -69,6 +69,9 @@ namespace ChipArena.UnityConversion
         }
         private static Color Tint(int value)=>NativeArena.ColorOf(value);
         private Color ShotTint(int value)=>linear?NativeArena.ColorOf(value).linear:NativeArena.ColorOf(value);
+        // armor-glow.ts:23 via NativeGlowRules.ArmorTint: the pilot's own accent. Halo vertex colours follow the project's
+        // colour space (as ShotTint); the spill light gets sRGB.
+        private Color ArmorTint(string accent,out Color spill){var c=NativeGlowRules.ArmorTint(accent);var tint=new Color(c.X,c.Y,c.Z);spill=tint.gamma;return linear?tint:spill;}
         private static Color School(int element)=>element==1?Tint(0xff743d):element==2?Tint(0x58cfff):element==3?Tint(0xb6c8ff):element==4?Tint(0xbb77ff):Tint(0xffe8a3);
         private static void SetLight(Light light,Vector3 position,Color color,float intensity,float range)
         {
@@ -167,18 +170,18 @@ namespace ChipArena.UnityConversion
             {
                 // The Siren never wears the armor glow (siren/fx.ts:274-275; renderer.ts excludes it).
                 if(pilot.Hp<=0||pilot.Seat.spec=="siren"||first&&pilot.Seat.id==arena.ViewPilot.Seat.id||!rigs.TryGetValue(pilot.Seat.id,out var rig))continue;
-                Color color=Color.Lerp(pilot.Seat.bot?Tint(0xeb4d61):Tint(0x2bd9d4),Tint(0xd1edff),.26f);
+                Color color=ArmorTint(pilot.Seat.accentColor,out var spill);
                 float pulse=NativeGlowRules.ArmorPulse(now,pilot.BlockReady-now,now<pilot.BlockEnd),alpha=(Quality<.5f?.43f:.70f)*pulse;
                 void Joint(int bone,Vector3 local,float size)=>world.Halo(rig.Bones[bone].TransformPoint(local),right,up,size,color,alpha);
                 Joint(CapturedRig.Chest,new Vector3(0,.13f,.19f),.75f);Joint(CapturedRig.Chest,new Vector3(0,.12f,-.20f),.62f);
                 Joint(CapturedRig.LClav,new Vector3(-.08f,0,0),.52f);Joint(CapturedRig.RClav,new Vector3(.08f,0,0),.52f);
                 Joint(CapturedRig.LKnee,new Vector3(0,-.06f,.15f),.38f);Joint(CapturedRig.RKnee,new Vector3(0,-.06f,.15f),.38f);
                 Joint(CapturedRig.LHand,new Vector3(0,0,.10f),.26f);Joint(CapturedRig.RHand,new Vector3(0,0,.10f),.26f);
-                if(Quality>=.5f&&lightIndex<2)SetLight(armorLights[lightIndex++],rig.Bones[CapturedRig.Chest].TransformPoint(new Vector3(0,.06f,.20f)),color,8*pulse,3.6f);
+                if(Quality>=.5f&&lightIndex<2)SetLight(armorLights[lightIndex++],rig.Bones[CapturedRig.Chest].TransformPoint(new Vector3(0,.06f,.20f)),spill,8*pulse,3.6f);
             }
             if(first&&viewRig!=null&&viewCamera!=null&&arena.ViewPilot.Seat.spec!="siren")
             {
-                Color color=Tint(0x70e1d0);float pulse=NativeGlowRules.ArmorPulse(now,arena.ViewPilot.BlockReady-now,now<arena.ViewPilot.BlockEnd);
+                Color color=ArmorTint(arena.ViewPilot.Seat.accentColor,out _);float pulse=NativeGlowRules.ArmorPulse(now,arena.ViewPilot.BlockReady-now,now<arena.ViewPilot.BlockEnd);
                 foreach(int bone in viewHands)view.Halo(viewRig.Bones[bone].TransformPoint(new Vector3(0,0,.1f)),right,up,.13f,color,.45f*pulse);
                 if(viewStaff.HasValue)view.Halo(viewStaff.Value.MultiplyPoint3x4(new Vector3(0,0,.72f)),right,up,.28f,School(arena.ViewPilot.Pose.MagicVisual),.55f);
                 if(submitDraws)view.Draw(material,viewCamera,10);
