@@ -23,8 +23,9 @@ in [UNITY-NATIVE-UPDATE-HANDOFF.md](UNITY-NATIVE-UPDATE-HANDOFF.md).
   `639271111007548341`, channel commit `1d4b4f62762698f0c3e9f01d114dcbc29574f1df`.
   Owner approved publication at 23:02 EDT; the public manifest and all 12 parts passed
   complete download/archive/identity verification at 23:07 EDT. Older native installations
-  can now use Update. This candidate's Windows gameplay/installed upgrade remains unrun;
-  the earlier owner-reported successful update concerned the previous `83e6a566` release.
+  can now use Update. At 23:14 EDT the owner reports this cloud-built update worked.
+  Installed identity/settings retention and full Windows gameplay remain independently
+  unverified; this report is distinct from the earlier `83e6a566` upgrade.
 - Current local tooling checks: 27 publisher/delivery tests collected, 26 pass and the
   Windows command-entrypoint case skips on Linux; Bash syntax and diff checks pass.
   Full source/relay/package and UpdaterTests run in GitHub CI on the pushed candidate.
@@ -48,8 +49,9 @@ The payload hash and all original delivery receipts below are unchanged. Previou
 objects and the Electron feed subtree (`59d8f200fdc4ee22014a92561031cbfd1b2d7d72`) were preserved.
 
 Existing native installations can press Update and let the game install/restart. No new
-starter install or owner-PC Unity build is required for this ordinary update. This specific
-Windows startup/gameplay/retention/old-to-cloud upgrade remains for the owner to confirm.
+starter install or owner-PC Unity build is required for this ordinary update. At 23:14 EDT
+the owner reports “looks like it worked”, establishing an owner-reported successful installed
+cloud update. Installed identity, retained settings and full gameplay are not independently verified.
 The cloud build and verified feed publication are working; automatic triggering, artifact
 retrieval and release publication are not connected. No source merge or Site/live release.
 
@@ -271,9 +273,9 @@ build folders to test upgrades; never overwrite it with the next starter.
   collection. All four markers and the downloaded sidecar/receipt/payload checks pass.
   Earlier runs show UBA can report success after a missing script or Python failure, so
   retain the full delivery verification for every candidate.
-- Build #4 is now owner-approved, published and public-download verified. The next step
-  is the Windows installed-update/gameplay acceptance below. Automatic triggering/publication
-  is not configured.
+- Build #4 is owner-approved, published, public-download verified and now owner-reported
+  successfully updated in the existing installation. Extended Windows/gameplay/retention
+  checks below remain; automatic triggering/publication is not configured.
 - Launch the inner starter on Windows. Perform menu/match/settings/account checks and
   then an older-to-newer update, cancellation, room gating and startup rollback. Issue #60
   still contains native networking/sign-in findings which may block these checks.

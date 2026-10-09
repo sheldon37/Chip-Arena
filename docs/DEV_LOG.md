@@ -16,6 +16,12 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-08 23:14 EDT — Codex/Astra — owner reports cloud-built update worked
+
+- Owner reports “looks like it worked” after being asked to update the existing native installation to cloud build #4. Record this as the first **owner-reported successful cloud-to-installed Update**: compiled source `51841828e142c551b521ca6698d7487390cd4880`, version `659a376e`, revision `639271111007548341`, published channel `1d4b4f62762698f0c3e9f01d114dcbc29574f1df`. Actual cloud build/delivery and public-download checks are recorded below.
+- This completes the initial cloud-build -> native test feed -> installed Update workflow on the owner's report. It is not independent installed-identity/settings-retention, full Windows gameplay, multiplayer or rollback verification. Future ordinary releases can reuse the same installation/feed without a local-PC Unity build; triggering, artifact retrieval and publication remain separate steps, not automatic.
+- Handoff branch `codex/unity-cloud-current`, PR #68, previous head `89f5090`. Updated project/cloud/native/A13 notes. Documentation-only diff check passes; no rebuild, code tests, new feed publication, merge, gameplay/visual changes or Site action in this follow-up.
+
 ## 2026-10-08 23:07 EDT — Codex/Astra — cloud build #4 published to native test feed and public download verified
 
 - Owner explicitly approved publication at 23:02 EDT. Published verified UBA `chip-arena` build **4**, source **`51841828e142c551b521ca6698d7487390cd4880`**, version **`659a376e5185f5ec9282d698eeda3622661a14fc70ad1eb79d8dac09142e0651`**, revision **`639271111007548341`**. Channel commit **`1d4b4f62762698f0c3e9f01d114dcbc29574f1df`**, parent `c5251fbb0113bf9544a37989318336dae0df1840`. Feed: https://raw.githubusercontent.com/sheldon37/chip-arena-test-updates/main/native/windows-x64/latest.json .
