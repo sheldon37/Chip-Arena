@@ -1,5 +1,26 @@
 # Native publishing automation development log
 
+## 2026-10-09 — Astra — start a missing verified cloud build
+
+- Task `codex/unity-cloud-trigger`, main base `93e491d`. Owner requested publishing
+  account PR #81 to Update. Shared/cloud `ae0a003` passed both native CI jobs, but
+  publisher run `37973568012` attempts 1–2 still found no build newer than #7.
+  This confirms the remaining gap is build triggering, not delivery publication.
+- Add a separate authorized build step before the read-only delivery checks. It
+  validates the existing enabled Windows target/branch, requires exact-head native
+  CI, avoids any active build, and pins one request to the checked commit. No target
+  settings, machine, branch, credentials or permissions are changed. Check mode
+  stays read-only. Failed/cancelled builds are not automatically retried; branch
+  advancement stops the step. Poll for at most 15 minutes, then let the backstop
+  resume. Existing delivery/compiler/shader/receipt/hash gates remain unchanged.
+- Local suite: 66 tests, 65 passed / one expected platform skip. Ten added trigger
+  tests cover CI/config/branch gates, duplicate prevention, commit pinning, rejected
+  requests and safe conflict handling. Hosted Linux/Windows checks and the actual
+  service start remain pending. Unity native player is still build #7 until verified.
+- Account PR legacy Checks reproduces the documented 12 Electron unit failures and
+  TypeScript errors in chaos.ts, leet.ts and standard-melee.ts. Native checks passed;
+  those unrelated legacy failures are not relabeled as success. No gameplay changes.
+
 ## 2026-10-09 13:29 EDT — Astra — UBA #7 published and publicly verified
 
 - Owner asked to fix the remaining automatic publisher integration. Repairs

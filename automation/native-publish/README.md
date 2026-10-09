@@ -69,14 +69,24 @@ hourly backstop at minute 17. Unity may still be building when source CI finishe
 Reviewed publisher changes on `main` also recheck after both hosted tests pass.
 Expect publication on the first scheduled run after both are ready, usually
 within an hour, plus GitHub scheduling/CDN delay. Run workflow manually for an
-immediate check. No long-running polling loop, AI invocation or Unity build is
-started by this workflow. Unity's existing Auto-build remains the build trigger.
+immediate check. Authorized publish runs now check for a missing cloud build after
+both exact-head native checks pass. If none exists or is active, they request one
+build pinned to that SHA using the existing `chip-arena` configuration. Check mode
+remains read-only. No configuration, branch, machine or permission changes occur.
+
+The build step waits up to 15 minutes, polling every 30 seconds, so a normal build
+can publish in the same run. Longer builds resume on the hourly backstop. Active
+builds prevent duplicate requests, failed/cancelled builds are not automatically
+retried, and an advancing branch stops the old request. Unity's existing Auto-build
+can still trigger first; the API returns 409 if another build is already pending.
 
 The hourly job runs on GitHub's hosted Linux runner in a private repository and
 uses Actions minutes. An idle check typically rounds to one billed minute, about
 720 checks in a 30-day month, plus CI-triggered checks/publication/tests. Actual
 usage depends on GitHub scheduling and execution time; retain the account's
-existing spending cap. Unity minutes are consumed only by the separate builds.
+existing spending cap. Unity minutes are consumed by the existing target when a new build is needed;
+the wait also consumes hosted Actions minutes. No extra build is requested for an
+already successful current candidate.
 Successful, verified builds are not repeatedly downloaded on idle checks.
 If publication succeeds but the public CDN has not refreshed, the run reports
 that explicitly. The next check resumes download verification without rebuilding
@@ -87,8 +97,9 @@ are candidates; pushing solely to another Claude/Astra task branch is insufficie
 
 - Trusted automation code is checked out from `main`, never from a delivery ZIP
   or downloaded game branch. No received player/source is executed with credentials.
-- Unity API requests are GET-only. Credentials are not forwarded to signed
-  storage URLs. The publisher token is available only to the separate feed checkout
+- Delivery API requests are GET-only. The separate build step can POST once to
+  the fixed build-target endpoint after native CI passes. Credentials are not
+  forwarded to redirects or signed storage URLs. The publisher token is available only to the separate feed checkout
   after validation; it is never placed on the Unity builder or in game files.
 - Requires the exact current `codex/unity-cloud-current` commit, successful UBA
   build, expected target/platform/editor and both latest native CI jobs

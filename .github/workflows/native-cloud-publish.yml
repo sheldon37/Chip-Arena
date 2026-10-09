@@ -55,6 +55,13 @@ jobs:
         with:
           persist-credentials: false
           sparse-checkout: automation/native-publish
+      - name: Ensure the verified cloud commit has a Unity build
+        if: github.event_name != 'workflow_dispatch' || inputs.mode == 'publish'
+        env:
+          UNITY_SERVICE_KEY_ID: ${{ secrets.UNITY_SERVICE_KEY_ID }}
+          UNITY_SERVICE_SECRET: ${{ secrets.UNITY_SERVICE_SECRET }}
+          GH_TOKEN: ${{ github.token }}
+        run: python automation/native-publish/tools/ensure_cloud_build.py
       - name: Verify service credentials, exact commit, native CI, and Unity delivery
         id: prepare
         env:
