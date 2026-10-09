@@ -40,19 +40,34 @@ namespace ChipArena.UnityConversion
 
         // ---- What the rows show ------------------------------------------------------------------------------------------
         private readonly NativeRoomOptions rulesMirror=new NativeRoomOptions();private NativeRoomOptions rules;private bool rulesLocked,rulesNarrow;private float rulesL=4,rulesR=4,rulesEstimate=578;
-        private bool RulesGuest=>Online&&!Hosting;
-        // A guest reads the host's broadcast RoomOptions (null until the first lobby message). The host and the offline
-        // menus read their own preferences, mirrored into one reused object (RoomOptions would allocate a copy per call).
+        // A guest is a viewer the host has welcomed (InRoom). A connection still waiting for the welcome is not in a room
+        // yet: the menus keep the player's own preferences then (RoomOptions is the host's copy for any open connection,
+        // and none before the first lobby message).
+        private bool RulesGuest=>InRoom&&!Hosting;
+        // receivedOptions and lobbySeats outlive the connection that brought them: nothing clears them before the next
+        // lobby message (needsAstra: clear both in CloseNetwork and JoinRoom). The Join screen, the only place a join
+        // starts and never in a room, marks what is held as stale every frame, so a guest who joins another room sees the
+        // "host sets the mode" note and no seats until this connection's own first lobby message replaces them.
+        private NativeRoomOptions staleRules;private NativeSeatFrame[] staleSeats;
+        private void MarkRoomStale(){staleRules=receivedOptions;staleSeats=lobbySeats;}
+        private NativeRoomOptions GuestRules{get{var o=RoomOptions;return o!=null&&!ReferenceEquals(o,staleRules)?o:null;}}
+        private NativeSeatFrame[] RoomSeats=>!Hosting&&ReferenceEquals(lobbySeats,staleSeats)?Array.Empty<NativeSeatFrame>():lobbySeats;
+        // A guest in the lobby reads the host's broadcast rules (null until they arrive; the lobby draws its note then).
+        // Everywhere else, and for the host, the rows read the player's own preferences, mirrored into one reused object
+        // (RoomOptions would allocate a copy per call).
         private NativeRoomOptions RulesNow()
         {
-            if(RulesGuest)return RoomOptions;var m=rulesMirror;
+            if(RulesGuest&&menuScreen==MenuScreen.Lobby)return GuestRules;var m=rulesMirror;
             m.map=prefs.map;m.cooperative=prefs.pve;m.teams=prefs.teams;m.friendlyFire=prefs.friendlyFire;m.bots=prefs.bots;m.rounds=prefs.rounds;m.sets=prefs.sets;m.choices=prefs.choices;m.selectionSeconds=prefs.selectionSeconds;
             m.skipBotDrafts=prefs.skipBotDrafts;m.bothDraft=prefs.bothDraft;m.skipPlayerIntros=prefs.skipPlayerIntros;m.randomizeMap=prefs.randomizeMap;m.mirrorWeapons=prefs.mirrorWeapons;m.stationary=prefs.stationary;m.skipWaves=prefs.skipWaves;
             m.botDifficulty=prefs.botDifficulty;m.botOptions=prefs.botOptions??Array.Empty<NativeBotOption>();m.hostTeam=prefs.team;m.autoStart=prefs.autoStart;return m;
         }
         // Starts a body's rows. `narrow` is the 300 px room column, where labels stack over their selects (lobby.css narrow
         // .settings-row); `estimate` is the row width before a repaint has measured it; `inset` matches the form's 4 px margins.
-        private void BeginRules(bool narrow,float estimate,float inset=4){rules=RulesNow();rulesLocked=RulesGuest;rulesNarrow=narrow;rulesEstimate=estimate;rulesL=rulesR=inset;RuleLists();}
+        // The rows rest disabled while a guest connection is open, in a room or still joining (SetRoomOptions refuses then,
+        // and the Join screen's connection should not change under a pending join).
+        private bool GuestConnection=>!Hosting&&(server!=null||connecting!=null);
+        private void BeginRules(bool narrow,float estimate,float inset=4){rules=RulesNow();rulesLocked=GuestConnection;rulesNarrow=narrow;rulesEstimate=estimate;rulesL=rulesR=inset;RuleLists();}
         private static NativeBotOption BotOption(NativeRoomOptions o,int i)=>o?.botOptions!=null&&i<o.botOptions.Length?o.botOptions[i]:null;
         // A bot's team as NativeLobbyRules.Bot seats it: its own choice, else the alternating default.
         private static int BotTeamOf(NativeRoomOptions o,int i){var b=BotOption(o,i);return b!=null&&b.team>=0?b.team:(i+1)%2;}
@@ -72,8 +87,11 @@ namespace ChipArena.UnityConversion
         private void ApplyRule(RoomOpt opt,int v,int arg)
         {
             if(opt==RoomOpt.Online||opt==RoomOpt.Connection){internetRooms=v==1;return;}
+            // An open guest connection changes no rules: RoomOptions is then the host's copy (or none) and SetRoomOptions
+            // refuses; a guest's own team goes through the lobby's team picker.
+            if(!Hosting&&server!=null)return;
             if(opt==RoomOpt.HostTeam){ChangeTeam(v);return;}
-            var o=RoomOptions;if(o==null||RulesGuest)return;
+            var o=RoomOptions;if(o==null)return;
             switch(opt)
             {
                 case RoomOpt.Mode:o.teams=v==1;break;
@@ -109,6 +127,8 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- Rows --------------------------------------------------------------------------------------------------------
+        // Row ids (their widths here, their hover in SelectField / RuleCheck) start at 7460: the weapon cards hover as 7400
+        // plus the content index (NativeLoadoutUI.cs SpecCards), and Play and the lobby draw both.
         private readonly Dictionary<int,float> ruleWidths=new Dictionary<int,float>();
         private float RuleWidth(int id)=>ruleWidths.TryGetValue(id,out float w)?w:Mathf.Max(60,rulesEstimate-rulesL-rulesR);
         // The row's layout rect less the current insets; its width is kept for the next layout pass.
@@ -221,7 +241,7 @@ namespace ChipArena.UnityConversion
         {
             var o=rules;bool narrow=rulesNarrow;int k=part==RulesPart.Advanced?2:part==RulesPart.Essential?1:0;
             float pad=!narrow?20:RuleWidth(7500+k)<230?10:part==RulesPart.Advanced?12:16;RulesBoxBegin(k,narrow?12:14,pad);
-            if(part!=RulesPart.Advanced)RuleSelect(7410,RoomOpt.Mode,"Match mode",ModeLabels,o.teams?1:0);
+            if(part!=RulesPart.Advanced)RuleSelect(7460,RoomOpt.Mode,"Match mode",ModeLabels,o.teams?1:0);
             if(part!=RulesPart.Essential)
             {
                 if(o.teams){RuleCheck(7540,RoomOpt.FriendlyFire,"Friendly fire",o.friendlyFire);RuleFine(7541,o.friendlyFire?"Teammates can damage each other.":"Allied attacks and harmful effects pass through teammates.",0,8);}
@@ -309,12 +329,15 @@ namespace ChipArena.UnityConversion
             if(typed!=timerText){timerText=typed;if(int.TryParse(typed,out int v)&&v>=5&&v<=120&&!rulesLocked)ApplyRule(RoomOpt.Timer,v,0);}
             U.Defer(()=>{if(Event.current.type!=EventType.Repaint)return;U.Text(new Rect(label.x,label.y,label.width,67),"Chip selection timer",14,U.Hex(0xe6e6ea,e),TextAnchor.MiddleLeft);U.Text(new Rect(unit.x+11,unit.y,unit.width-11,67),"seconds",14,U.Hex(0xe6e6ea,e),TextAnchor.MiddleLeft);});
         }
+        // The two long text fields sit on a row reserved like every other (RuleRow) and draw with GUI.TextField on it: a
+        // GUILayout.TextField's layout entry is at least as wide as its text, so a pasted link would widen the whole
+        // scroll content (or overrun a fixed fold) past the panel instead of scrolling inside the field.
         // A read-only invite field (input.invite-url): selectable text that is never edited.
         private GUIStyle inviteStyle;
         private void InviteField(string invite)
         {
             if(inviteStyle==null){inviteStyle=new GUIStyle(GUI.skin.textField){fontSize=12,alignment=TextAnchor.MiddleLeft,clipping=TextClipping.Clip,wordWrap=false};inviteStyle.padding=new RectOffset(14,14,8,8);}
-            GUILayout.BeginHorizontal();GUILayout.Space(rulesL);GUILayout.TextField(invite??"",512,inviteStyle,GUILayout.Height(44),GUILayout.ExpandWidth(true));GUILayout.Space(rulesR);GUILayout.EndHorizontal();
+            GUI.TextField(RuleRow(7786,44),invite??"",512,inviteStyle);
         }
 
         // input.room-code-input (maxlength 2048, the source's placeholder): a code is kept in capitals as typed, a pasted
@@ -324,7 +347,7 @@ namespace ChipArena.UnityConversion
         private void JoinCodeField()
         {
             if(joinStyle==null){joinStyle=new GUIStyle(GUI.skin.textField){fontSize=22,alignment=TextAnchor.MiddleLeft,font=U.MonoFont,clipping=TextClipping.Clip,wordWrap=false};joinStyle.padding=new RectOffset(15,15,10,10);}
-            GUILayout.BeginHorizontal();GUILayout.Space(rulesL);string typed=GUILayout.TextField(joinCode??"",2048,joinStyle,GUILayout.Height(46),GUILayout.ExpandWidth(true));var field=GUILayoutUtility.GetLastRect();GUILayout.Space(rulesR);GUILayout.EndHorizontal();
+            var field=RuleRow(7498,46);string typed=GUI.TextField(field,joinCode??"",2048,joinStyle);
             if(typed!=joinCode)joinCode=typed.IndexOf(':')>=0?typed:typed.ToUpperInvariant();
             float e=GUI.color.a;bool empty=string.IsNullOrEmpty(joinCode);
             U.Defer(()=>{if(empty&&Event.current.type==EventType.Repaint)U.Text(new Rect(field.x+15,field.y,field.width-30,field.height),"CA-ABCD-2345 OR ROOM INVITE LINK",15,U.Hex(0x8b8c94,e),TextAnchor.MiddleLeft,tracking:.06f);});

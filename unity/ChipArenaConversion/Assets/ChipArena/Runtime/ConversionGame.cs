@@ -302,8 +302,8 @@ namespace ChipArena.UnityConversion
         // the menu backdrop to it, main.ts previewMap), and the description under it (map-description).
         private void MapGrid()
         {
-            var o=rules;RuleField(7420,"ARENA");RuleSelect(7424,RoomOpt.Map,null,mapLabels,MapIndex(o));
-            int k=Array.IndexOf(mapIds,o.map);string desc=o.map=="random"?"Choose from all arenas when the match is created.":k>=0?content.maps[k].tag:null;RuleFine(7428,desc,rulesNarrow?0:4,rulesNarrow?4:6);
+            var o=rules;RuleField(7464,"ARENA");RuleSelect(7466,RoomOpt.Map,null,mapLabels,MapIndex(o));
+            int k=Array.IndexOf(mapIds,o.map);string desc=o.map=="random"?"Choose from all arenas when the match is created.":k>=0?content.maps[k].tag:null;RuleFine(7470,desc,rulesNarrow?0:4,rulesNarrow?4:6);
         }
         private void Catalogue()
         {

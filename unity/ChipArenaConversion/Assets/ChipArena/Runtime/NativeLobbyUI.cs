@@ -28,7 +28,7 @@ namespace ChipArena.UnityConversion
         private List<LobbyPilot> LobbyRoster()
         {
             var list=lobbyRoster;list.Clear();int me=Hosting?(dedicated?-1:1):networkId;bool own=false;
-            foreach(var s in lobbySeats)
+            foreach(var s in RoomSeats)
             {
                 if(s==null)continue;var w=LobbyWeapon(s.spec);bool you=s.id==me;own|=s.id==1;
                 list.Add(new LobbyPilot{id=s.id,you=you,name=you?NativeCosmeticRules.Name(prefs.name):s.name,weapon=s.spec,tag=you?"YOU":s.bot?"BOT":s.id==1&&!Hosting?"ROOM OWNER":"PLAYER",bot=s.bot,ready=s.ready,connected=s.connected,team=s.team,
@@ -38,8 +38,9 @@ namespace ChipArena.UnityConversion
             return list;
         }
         private ContentWeapon LobbyWeapon(string id){if(id!=null)foreach(var w in content.weapons)if(w.id==id)return w;return null;}
-        // A teams room as the viewer knows it: the host's own setting, or the guest's copy of the host's rules.
-        private bool RoomTeams=>!prefs.pve&&(RulesGuest?RoomOptions?.teams==true:prefs.teams);
+        // A teams room as the viewer knows it: the host's own setting, or the guest's copy of the host's rules once this
+        // connection has received them.
+        private bool RoomTeams=>!prefs.pve&&(RulesGuest?GuestRules?.teams==true:prefs.teams);
         // main.ts:156 teamsBlocked: every pilot on one team.
         private static bool TeamsBlocked(List<LobbyPilot> roster){int mask=0,n=0;foreach(var p in roster){int bit=1<<TeamIndex(p.team);if((mask&bit)==0){mask|=bit;n++;}}return n<2;}
 
@@ -190,6 +191,9 @@ namespace ChipArena.UnityConversion
         // glow at 45% and "Team" (12 px #c7c1ce), and the 100 x 34 select at the right (#222329, its edge the team colour
         // mixed 45% into #333, the 12 px name and a chevron). Editable for the viewer's own card (ChangeTeam) and, for the
         // host, each bot (its room option); a click opens the team list. Others are drawn disabled, at half strength.
+        // Deviation: the source lets the room owner set every pilot's team (main.ts:156 teamPicker(p,p.id===id||
+        // roomOwner===id)); ChangeTeam(int) moves only the caller's own seat, so a guest's picker stays disabled for the
+        // host until a host-side per-seat team API exists (needsAstra).
         private const string ChevronDown="<path d=\"M6 9 L12 15 L18 9\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>";
         private void TeamPicker(Rect r,LobbyPilot p,bool editable,float a,Vector2 toCanvas)
         {
@@ -201,23 +205,26 @@ namespace ChipArena.UnityConversion
                 U.Text(new Rect(box.x+8,box.y,box.width-30,box.height),TeamNames[team],12,U.Hex(0xf5f5f7,a*s),TextAnchor.MiddleLeft);
                 NativeIcons.DrawMarkup(new Rect(box.xMax-21,box.center.y-7,14,14),"chevron-down",ChevronDown,24,U.Hex(0xf5f5f7,.7f*a*s));
             }
-            if(U.Button(box,editable)){Click();teamPopupSeat=p.id;teamPopupBot=p.bot?p.id-100:-1;teamPopupSelf=p.you;teamPopupTeam=team;teamPopupAnchor=new Rect(box.x+toCanvas.x,box.y+toCanvas.y,box.width,box.height);}
+            if(U.Button(box,editable)){Click();teamPopupSeat=p.id;teamPopupBot=p.bot?p.id-100:-1;teamPopupSelf=p.you;teamPopupTeam=team;teamPopupAnchor=new Rect(box.x+toCanvas.x,box.y+toCanvas.y,box.width,box.height);teamPopupScroll=lobbyRosterScroll;}
         }
         // The open team list (8 rows of 28 px, 140 px wide; #222329 with a #484952 edge, #303138 on hover, the current team
         // ticked), under its picker or above it at the canvas foot.
-        private float lobbySeenAt=-1;private int teamPopupSeat,teamPopupBot=-1,teamPopupTeam;private bool teamPopupSelf;private Rect teamPopupAnchor;
+        private float lobbySeenAt=-1;private int teamPopupSeat,teamPopupBot=-1,teamPopupTeam;private bool teamPopupSelf;private Rect teamPopupAnchor;private Vector2 teamPopupScroll;
         private Rect TeamPopupRect(){const float w=140,h=8*28+8;var a=teamPopupAnchor;float x=Mathf.Clamp(a.xMax-w,8,U.W-8-w),y=a.yMax+4;if(y+h>U.H-8)y=a.y-4-h;return new Rect(x,Mathf.Max(8,y),w,h);}
         private static Rect TeamPopupRow(Rect box,int t)=>new Rect(box.x+4,box.y+4+t*28,box.width-8,28);
         // Before the lobby draws a control, so the list takes the click from what lies under it: a row picks that team,
-        // anywhere else closes the list; the hover under the list is suppressed.
+        // anywhere else closes the list; the hover under the list is suppressed. The list is anchored in canvas space, so
+        // the wheel over it is taken too (it would scroll the roster beneath), and TeamPopupCheck closes it once the
+        // roster scrolls any other way.
         private void TeamPopupInput()
         {
-            if(teamPopupSeat==0)return;var box=TeamPopupRect();if(U.Hover(box))menuBlockedNow=true;var ev=Event.current;if(ev.type!=EventType.MouseDown)return;
+            if(teamPopupSeat==0)return;var box=TeamPopupRect();if(U.Hover(box))menuBlockedNow=true;var ev=Event.current;
+            if(ev.type==EventType.ScrollWheel&&U.Hover(box)){ev.Use();return;}if(ev.type!=EventType.MouseDown)return;
             for(int t=0;t<8;t++)if(U.Hover(TeamPopupRow(box,t))){if(teamPopupSelf)ChangeTeam(t);else if(teamPopupBot>=0&&Hosting)ApplyRule(RoomOpt.BotTeam,t,teamPopupBot);Click();break;}
             teamPopupSeat=0;ev.Use();
         }
-        // The list closes when its seat leaves or the room stops being a teams room.
-        private void TeamPopupCheck(List<LobbyPilot> roster,bool teams){if(teamPopupSeat==0)return;bool found=false;foreach(var p in roster)found|=p.id==teamPopupSeat;if(!found||!teams)teamPopupSeat=0;}
+        // The list closes when its seat leaves, the room stops being a teams room or the roster has scrolled from under it.
+        private void TeamPopupCheck(List<LobbyPilot> roster,bool teams){if(teamPopupSeat==0)return;bool found=false;foreach(var p in roster)found|=p.id==teamPopupSeat;if(!found||!teams||lobbyRosterScroll!=teamPopupScroll)teamPopupSeat=0;}
         private void TeamPopupDraw()
         {
             if(teamPopupSeat==0||Event.current.type!=EventType.Repaint)return;var box=TeamPopupRect();
@@ -250,7 +257,7 @@ namespace ChipArena.UnityConversion
         {
             if(blocked){if(r.width<60)return;var why=U.Wrap("Choose at least two teams to start.",14,r.width,false,3);float wy=r.center.y-why.Count*10.5f;foreach(var w in why){U.Text(new Rect(r.x,wy,r.width,21),w,14,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);wy+=21;}return;}
             int waiting=Mathf.Max(0,total-ready);string lead,rest;Color tone;
-            NativeSeatFrame mine=null;if(!Hosting)foreach(var s in lobbySeats)if(s!=null&&s.id==networkId)mine=s;string want=LobbyWeapon(prefs.weapon)?.name??prefs.weapon;
+            NativeSeatFrame mine=null;if(!Hosting)foreach(var s in RoomSeats)if(s!=null&&s.id==networkId)mine=s;string want=LobbyWeapon(prefs.weapon)?.name??prefs.weapon;
             if(total==0){lead=Hosting?"Waiting for pilots":"Joining the room…";rest=Hosting?"· Share your room code.":"";tone=U.Hex(0xf4c8a0);}
             else if(mine!=null&&mine.spec!=prefs.weapon){lead="Send Loadout";rest="so the host gives you "+want+".";tone=U.Hex(0xf4c8a0);}
             else if(Hosting&&!prefs.pve&&total<2){lead="Add a bot";rest="or wait for a pilot to join.";tone=U.Hex(0xf4c8a0);}
@@ -366,10 +373,10 @@ namespace ChipArena.UnityConversion
             if(Hosting)
             {
                 // Versus or Boss Test as a select, so the narrow column never wraps the choice.
-                BeginRules(true,lobbyRoomInner+8);RuleField(7432,"MODE");RuleSelect(7430,RoomOpt.Versus,null,VersusLabels,prefs.pve?1:0);
+                BeginRules(true,lobbyRoomInner+8);RuleField(7476,"MODE");RuleSelect(7472,RoomOpt.Versus,null,VersusLabels,prefs.pve?1:0);
                 choiceColumns=2;if(prefs.pve)BossBody(true);else MatchRulesBody(true);choiceColumns=3;
             }
-            else if(RoomOptions==null){GUILayout.BeginHorizontal();GUILayout.Label(prefs.pve?"The host sets the party bots and where the run starts. Ready up when your loadout is set.":"The host sets the mode, arena and rules. Ready up when your loadout is set.",fine,GUILayout.Width(lobbyRoomInner));GUILayout.EndHorizontal();}
+            else if(GuestRules==null){GUILayout.BeginHorizontal();GUILayout.Label(prefs.pve?"The host sets the party bots and where the run starts. Ready up when your loadout is set.":"The host sets the mode, arena and rules. Ready up when your loadout is set.",fine,GUILayout.Width(lobbyRoomInner));GUILayout.EndHorizontal();}
             else if(prefs.pve)BossBody(true);else MatchRulesBody(true);
             GUI.enabled=true;GUILayout.Space(4);if(Event.current.type==EventType.Repaint)lobbyRoomContent=GUILayoutUtility.GetLastRect().yMax;
             GUILayout.EndScrollView();GUILayout.EndArea();GUI.color=c;U.EndDeferred(area,lobbyRoomScroll);
@@ -387,8 +394,10 @@ namespace ChipArena.UnityConversion
         {
             if(Event.current.type!=EventType.Layout&&lanPort>=0)return;int port=listener!=null?listener.Port:0;if(port==lanPort&&roomCode==lanCode&&Time.unscaledTime-lanCheckedAt<5)return;
             lanCheckedAt=Time.unscaledTime;lanPort=port;lanCode=roomCode;lanLines.Clear();inviteLink=null;if(listener==null)return;
-            var addresses=LanAddresses;inviteLink=InviteUrl;string at="PORT "+port;
-            if(addresses==null||addresses.Length==0){lanLines.Add("NO LAN ADDRESS · "+at);return;}
+            // With no LAN address InviteUrl falls back to 127.0.0.1, which would send a friend to their own machine: no
+            // invite then, only the code (Copy Invite Link and the fold's field give way to the code note).
+            var addresses=LanAddresses;string at="PORT "+port;
+            if(addresses==null||addresses.Length==0){lanLines.Add("NO LAN ADDRESS · "+at);return;}inviteLink=InviteUrl;
             string one="LAN "+string.Join(", ",addresses)+" · "+at;if(U.Measure(one,10,false,false,.16f).x<=width){lanLines.Add(one);return;}
             for(int i=0;i<addresses.Length&&i<3;i++)lanLines.Add((i==0?"LAN ":"")+addresses[i]);lanLines.Add(at);
         }

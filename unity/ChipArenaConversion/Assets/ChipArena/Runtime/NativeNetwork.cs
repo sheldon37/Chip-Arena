@@ -140,14 +140,14 @@ namespace ChipArena.UnityConversion
         {
             Fine("Create Room hosts the match on this computer. Friends join with the room code over your network, or over the internet through the conversion relay.");
             BeginRules(false,578);var o=rules;
-            RuleSelect(7440,RoomOpt.Versus,"Mode",VersusLabels,o.cooperative?1:0);ClassRow("Your class",ClassCardStyle.Stacked);
+            RuleSelect(7478,RoomOpt.Versus,"Mode",VersusLabels,o.cooperative?1:0);ClassRow("Your class",ClassCardStyle.Stacked);
             if(!o.cooperative)MatchOptions(RulesPart.All,false,false);
-            RuleCheck(7444,RoomOpt.Online,"Online room",internetRooms);RuleFine(7446,internetRooms?"Create a public join code for friends.":"LAN only. Friends use your local-network invite link.",0,4);
+            RuleCheck(7482,RoomOpt.Online,"Online room",internetRooms);RuleFine(7484,internetRooms?"Create a public join code for friends.":"LAN only. Friends use your local-network invite link.",0,4);
             if(!internetRooms){Field("Port");portText=GUILayout.TextField(portText,5,GUILayout.Width(120));Fine("The lobby shows your LAN address and invite link once the room is open. Friends on the same LAN can join with just the code.");}
             else{Field("Relay URL");prefs.relayOrigin=GUILayout.TextField(prefs.relayOrigin??"",240);listedRoom=GUILayout.Toggle(listedRoom,"List my room for other players");}
             if(!o.cooperative)DraftOptions();IntroOptions();
-            if(!o.cooperative)RuleCheck(7448,RoomOpt.BothDraft,"All players draft after each set",o.bothDraft);else RuleFine(7449,"Party bots and where the run starts are set in the lobby.",0,6);
-            RuleFine(7451,"Keep your game open while friends are in your room.",8,6);
+            if(!o.cooperative)RuleCheck(7486,RoomOpt.BothDraft,"All players draft after each set",o.bothDraft);else RuleFine(7488,"Party bots and where the run starts are set in the lobby.",0,6);
+            RuleFine(7494,"Keep your game open while friends are in your room.",8,6);
         }
         // Join Room (main.ts:154 join screen): the ROOM CODE field, which takes 'CA-ABCD-2345 or room invite link' (JoinScreen
         // hands a pasted link to JoinInvite), Unity's connection with the host address and port (blank: find the code on
@@ -155,8 +155,8 @@ namespace ChipArena.UnityConversion
         private void JoinBody()
         {
             BeginRules(false,578);
-            RuleSelect(7450,RoomOpt.Connection,"Connection",ConnectionLabels,internetRooms?1:0);
-            RuleField(7454,"ROOM CODE");JoinCodeField();
+            RuleSelect(7490,RoomOpt.Connection,"Connection",ConnectionLabels,internetRooms?1:0);
+            RuleField(7496,"ROOM CODE");JoinCodeField();
             if(!internetRooms)
             {
                 Field("Host address");GUILayout.BeginHorizontal();hostAddress=GUILayout.TextField(hostAddress,253);GUILayout.Label("Port",small,GUILayout.Width(44));portText=GUILayout.TextField(portText,5,GUILayout.Width(90));GUILayout.EndHorizontal();
