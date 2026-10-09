@@ -64,6 +64,16 @@ namespace ChipArena.UnityConversion.Editor
             graphics.Update();
             if(graphics.FindProperty("m_InstancingStripping").intValue!=2)
                 throw new BuildFailedException("Instancing Variants must be Keep All for runtime-created characters and projectiles.");
+            // Review #82: NativeLighting turns linear fog on at runtime and no scene in the build uses fog, so Automatic fog
+            // stripping would drop every FOG_LINEAR variant and the player would render without the Editor's fog. Keep
+            // linear fog (Custom mode) for the lit, transparent, blast, status and field shaders.
+            var fog=graphics.FindProperty("m_FogStripping");var linear=graphics.FindProperty("m_FogKeepLinear");
+            if(fog==null||linear==null) throw new BuildFailedException("Cannot configure fog shader retention in this Unity Editor.");
+            fog.intValue=1;linear.boolValue=true; // 0=Automatic, 1=Custom.
+            graphics.ApplyModifiedPropertiesWithoutUndo();
+            graphics.Update();
+            if(graphics.FindProperty("m_FogStripping").intValue!=1||!graphics.FindProperty("m_FogKeepLinear").boolValue)
+                throw new BuildFailedException("Fog Modes must be Custom with Linear kept: the game enables linear fog at runtime.");
         }
 
         private static void ConfigureIcon()

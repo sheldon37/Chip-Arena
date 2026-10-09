@@ -24,6 +24,7 @@ namespace ChipArena.UnityConversion
                 var matrix=Matrix4x4.TRS(shot.Position,direction*spin,Vector3.one);
                 if(!shot.Shield)matrix*=Matrix4x4.Translate(new Vector3(0,0,-.44f));
                 Weapon(matrix,shot.Shield?3:1,shot.Original.Seat.id==arena.Local?.Seat.id?0:1);
+                ThrownEnchant(shot,matrix,arena.Time);
             }
             foreach(var impact in arena.MeleeImpacts)
             {
