@@ -165,7 +165,8 @@ namespace ChipArena.UnityConversion
             int lightIndex=0;
             foreach(var pilot in arena.Pilots)
             {
-                if(pilot.Hp<=0||first&&pilot.Seat.id==arena.ViewPilot.Seat.id||!rigs.TryGetValue(pilot.Seat.id,out var rig))continue;
+                // The Siren never wears the armor glow (siren/fx.ts:274-275; renderer.ts excludes it).
+                if(pilot.Hp<=0||pilot.Seat.spec=="siren"||first&&pilot.Seat.id==arena.ViewPilot.Seat.id||!rigs.TryGetValue(pilot.Seat.id,out var rig))continue;
                 Color color=Color.Lerp(pilot.Seat.bot?Tint(0xeb4d61):Tint(0x2bd9d4),Tint(0xd1edff),.26f);
                 float pulse=NativeGlowRules.ArmorPulse(now,pilot.BlockReady-now,now<pilot.BlockEnd),alpha=(Quality<.5f?.43f:.70f)*pulse;
                 void Joint(int bone,Vector3 local,float size)=>world.Halo(rig.Bones[bone].TransformPoint(local),right,up,size,color,alpha);
@@ -175,7 +176,7 @@ namespace ChipArena.UnityConversion
                 Joint(CapturedRig.LHand,new Vector3(0,0,.10f),.26f);Joint(CapturedRig.RHand,new Vector3(0,0,.10f),.26f);
                 if(Quality>=.5f&&lightIndex<2)SetLight(armorLights[lightIndex++],rig.Bones[CapturedRig.Chest].TransformPoint(new Vector3(0,.06f,.20f)),color,8*pulse,3.6f);
             }
-            if(first&&viewRig!=null&&viewCamera!=null)
+            if(first&&viewRig!=null&&viewCamera!=null&&arena.ViewPilot.Seat.spec!="siren")
             {
                 Color color=Tint(0x70e1d0);float pulse=NativeGlowRules.ArmorPulse(now,arena.ViewPilot.BlockReady-now,now<arena.ViewPilot.BlockEnd);
                 foreach(int bone in viewHands)view.Halo(viewRig.Bones[bone].TransformPoint(new Vector3(0,0,.1f)),right,up,.13f,color,.45f*pulse);

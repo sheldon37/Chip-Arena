@@ -19,7 +19,7 @@ namespace ChipArena.UnityConversion
         private float FieldClock(NativeArena arena)=>arena.Replica&&hazardClock<=arena.Time&&arena.Time-hazardClock<1?hazardClock:PresentationClock(arena);
         // paused: the match itself is stopped (offline menu), so the blasts hold still; see NativeBlastFrame.Step.
         public void RenderGlow(NativeArena arena,Camera camera,bool paused=false)
-        {float now=PresentationClock(arena),fields=FieldClock(arena);fieldTelegraphs?.Collect(arena,fields);blasts?.Render(arena,camera,now,BlastQuality,paused,fieldTelegraphs);fieldTelegraphs?.Render(arena,camera,fields,abilityPreview,abilityPreviewClamped);shotTracker.Begin(arena,arena.Generation,arena.Replica,arena.Time);shots?.Render(arena,camera,fields,BlastQuality,paused,shotTracker);if(combatGlow==null)return;combatGlow.Halos=blasts?.Halos;combatGlow.Tracker=shotTracker;combatGlow.Clock=fields;combatGlow.Quality=GlowQuality;combatGlow.Trails=TrailsEnabled;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.ViewPilot.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);}
+        {float now=PresentationClock(arena),fields=FieldClock(arena);fieldTelegraphs?.Collect(arena,fields);blasts?.Render(arena,camera,now,BlastQuality,paused,fieldTelegraphs);fieldTelegraphs?.Render(arena,camera,fields,abilityPreview,abilityPreviewClamped);shotTracker.Begin(arena,arena.Generation,arena.Replica,arena.Time);shots?.Render(arena,camera,fields,BlastQuality,paused,shotTracker);DevEffects(arena,camera,fields);if(combatGlow==null)return;combatGlow.Halos=null;combatGlow.Tracker=shotTracker;combatGlow.Clock=fields;combatGlow.Quality=GlowQuality;combatGlow.Trails=TrailsEnabled;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.ViewPilot.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);}
         private readonly AudioClip[] gunSounds=new AudioClip[4];
         private AudioClip reloadStart,reloadEnd,hitSound;
         private AudioSource localAudio;
@@ -314,7 +314,7 @@ namespace ChipArena.UnityConversion
         }
         private void OnDestroy()
         {
-            ClearSourceActors();sourceModels?.Dispose();combatGlow?.Dispose();blasts?.Dispose();fieldTelegraphs?.Dispose();shots?.Dispose();DisposeStatus();viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
+            ClearSourceActors();DisposeDevEffects();sourceModels?.Dispose();combatGlow?.Dispose();blasts?.Dispose();fieldTelegraphs?.Dispose();shots?.Dispose();DisposeStatus();viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
             foreach(var m in materials) CapturedAnimation.Release(m);
             foreach(var m in compatibilityMaterials) CapturedAnimation.Release(m);
             if(particleMaterial!=null) CapturedAnimation.Release(particleMaterial);
