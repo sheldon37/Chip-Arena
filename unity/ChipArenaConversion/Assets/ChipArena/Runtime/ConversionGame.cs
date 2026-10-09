@@ -91,7 +91,7 @@ namespace ChipArena.UnityConversion
             UpdateLock();if(play)
             {
                 var ads=content.Ads(p.Seat.spec);bool aiming=ads!=null&&Input.GetKey(KeyCode.Q);
-                if(!lockPoint.HasValue){yaw+=Input.GetAxisRaw("Mouse X")*2*prefs.sensitivity*(aiming?(float)ads.sens:1);pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f*prefs.sensitivity*(aiming?(float)ads.sens:1),-70,70);}
+                if(!lockPoint.HasValue&&!cinematic.Directing){yaw+=Input.GetAxisRaw("Mouse X")*2*prefs.sensitivity*(aiming?(float)ads.sens:1);pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f*prefs.sensitivity*(aiming?(float)ads.sens:1),-70,70);}
                 if(Input.GetKeyDown(KeyCode.W)){if(Time.unscaledTime-lastW<.3f)sprint=true;lastW=Time.unscaledTime;}if(!Input.GetKey(KeyCode.W))sprint=false;
                 var move=Quaternion.Euler(0,yaw,0)*new Vector3((Input.GetKey(KeyCode.D)?1:0)-(Input.GetKey(KeyCode.A)?1:0),0,(Input.GetKey(KeyCode.W)?1:0)-(Input.GetKey(KeyCode.S)?1:0)).normalized;
                 pending.X=move.x;pending.Z=move.z;pending.Yaw=yaw;pending.Pitch=-pitch;pending.Sprint=sprint;pending.Aim=aiming;
@@ -106,7 +106,7 @@ namespace ChipArena.UnityConversion
         }
         private void LateUpdate()
         {
-            if(cameraView==null)return;if(PreviewFrame())return;ObserveReplay();if(arena!=null&&RenderReplay())return;nativeAudio.Muted=!prefs.sound;nativeAudio.Entrance(arena!=null&&!menu&&IntroActive?arena.Generation+":"+IntroPilot?.Seat.id+":"+IntroStyle:null,arena!=null&&IntroActive?IntroStyle:null,arena!=null&&IntroActive?IntroAge:0);nativeAudio.Render(arena,menu,cameraView);SlenderFrame();if(arena==null){MenuBackdrop();return;}backdropMap=null;
+            if(cameraView==null)return;cinematic.BeginFrame();if(PreviewFrame())return;ObserveReplay();if(arena!=null&&RenderReplay())return;nativeAudio.Muted=!prefs.sound;nativeAudio.Entrance(arena!=null&&!menu&&IntroActive?arena.Generation+":"+IntroPilot?.Seat.id+":"+IntroStyle:null,arena!=null&&IntroActive?IntroStyle:null,arena!=null&&IntroActive?IntroAge:0);nativeAudio.Render(arena,menu,cameraView);SlenderFrame();if(arena==null){MenuBackdrop();return;}backdropMap=null;
             if(DraftFrame())return;if(!menu&&IntroActive){arena.Root.SetActive(false);viewModelCamera.enabled=false;presentation.RenderIntro(arena,IntroPilot,IntroStyle,IntroAge,cameraView);return;}NativeLighting.EndIntro(content.Map(arena.MapId),cameraView);arena.Root.SetActive(true);
             var p=arena.ViewPilot;bool play=!menu&&match.Phase==NativePhase.Fight&&p.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true;
             UpdateCamera();
@@ -127,7 +127,7 @@ namespace ChipArena.UnityConversion
                 int newest=0;foreach(var e in arena.Events)newest=Math.Max(newest,e.Id);if(newest>0&&newest<shakeEvent)shakeEvent=0;
                 foreach(var e in arena.Events)if(e.Id>shakeEvent&&prefs.cameraShake&&NativeShakeRules.Fresh(arena.Time,e.Time)&&NativeShakeRules.Triggers(e.Kind,e.Target,e.Amount,p.Seat.id))shakeAmount=NativeShakeRules.Amount;
                 shakeEvent=Math.Max(shakeEvent,newest);
-                if(shakeAmount>0){if(!menu&&Spectator==null)cameraView.transform.position+=Vector3.right*NativeShakeRules.Offset(shakeAmount,UnityEngine.Random.value);shakeAmount=NativeShakeRules.Decay(shakeAmount,Time.unscaledDeltaTime);}
+                if(shakeAmount>0){if(!menu&&Spectator==null&&!cinematic.Directing)cameraView.transform.position+=Vector3.right*NativeShakeRules.Offset(shakeAmount,UnityEngine.Random.value);shakeAmount=NativeShakeRules.Decay(shakeAmount,Time.unscaledDeltaTime);}
             }
             presentation.SoundEnabled=false;presentation.LocalId=arena.ViewPilot.Seat.id;
             float renderTime=arena.Replica?arena.ReplicaRenderTime:visualClock.Sample(match.Time,Time.timeAsDouble-Time.fixedTimeAsDouble,menu);
@@ -174,6 +174,8 @@ namespace ChipArena.UnityConversion
         }
         private void UpdateCamera()
         {
+            // C16: the Last Laugh cutscene directs this camera for the pilots in it (the demon victim screen has its own).
+            if(cinematic.Direct(arena,presentation,cameraView,match.Phase==NativePhase.Fight||match.Phase==NativePhase.Result)){viewModelCamera.enabled=false;return;}
             var p=Spectator??arena.ViewPilot;Vector3 focus=p.Body.transform.position+Vector3.up*NativeViewRules.EyeHeight;var ads=content.Ads(p.Seat.spec);
             bool aim=ads!=null&&pending.Aim&&arena.Time>=p.ReloadEnd&&arena.Time>=p.RollEnd&&arena.Time>=p.BlockEnd&&!arena.Incapacitated(p);
             bool first=NativeViewRules.FirstPerson(prefs.firstPerson||aim,arena.Local.Hp>0&&p.Hp>0&&!arena.Downed(p),menu);
@@ -229,7 +231,9 @@ namespace ChipArena.UnityConversion
             if(arena!=null&&!menu&&previewArena==null&&match.Phase==NativePhase.Draft){DraftScreen();return;}
             if(previewArena==null&&PvePickScreen){PveChipScreen();return;}
             if(previewArena==null&&SirenRevealActive){SirenReveal();return;}
-            CombatWorldHud(scale,width,height);
+            // The Last Laugh cutscene hides the HUD behind its letterbox (style.css data-cutscene); the board and pause menu stay.
+            if(arena!=null&&previewArena==null&&cinematic.Directing){cinematic.Letterbox(width,height);if(BoardOpen)Board(width);if(menu)PauseMenu();return;}
+            if(!cinematic.Private)CombatWorldHud(scale,width,height);
             PveBeaconHud();
             if(arena!=null&&!menu&&match.Phase==NativePhase.Fight&&presentation.ScopeActive)DrawScope(width,height);
             if(previewArena!=null){PreviewHud(width,height);return;}
@@ -348,6 +352,6 @@ namespace ChipArena.UnityConversion
                 if(NativeUi.Button(r))inspectSeat=p.id;cy+=46;
             }
         }
-        private void OnDestroy(){singleInstance?.Dispose();CapturedAnimation.Release(slenderNoise);Time.timeScale=1;EndPreview();ClearReplay();CloseNetwork();if(scopeMask!=null)CapturedAnimation.Release(scopeMask);arena?.Dispose();if(ownsPhysics){Physics.simulationMode=previousSimulation;Physics.gravity=previousGravity;}Cursor.lockState=CursorLockMode.None;Cursor.visible=true;}
+        private void OnDestroy(){singleInstance?.Dispose();cinematic.Dispose();CapturedAnimation.Release(slenderNoise);Time.timeScale=1;EndPreview();ClearReplay();CloseNetwork();if(scopeMask!=null)CapturedAnimation.Release(scopeMask);arena?.Dispose();if(ownsPhysics){Physics.simulationMode=previousSimulation;Physics.gravity=previousGravity;}Cursor.lockState=CursorLockMode.None;Cursor.visible=true;}
     }
 }
