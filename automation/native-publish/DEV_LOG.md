@@ -1,5 +1,19 @@
 # Native publishing automation development log
 
+## 2026-10-09 — Astra — support this project's Unity artifact storage
+
+- PR #75 passed hosted tests and merged at `03888ad`. Real run `37964788287`
+  reached the signed download URL on `prd-azure-eastus-01-cloud.plasticscm.com`.
+  The original storage allowlist omitted Unity's own UVCS artifact storage.
+- Added only this observed exact host, HTTPS on 443 or its documented 7178 port;
+  Unity's official proxy-endpoint list and UVCS Server API confirm the endpoint.
+  https://docs.unity.com/en-us/oas-unity-version-control-server/1.0.0
+  Service authorization still cannot be forwarded there. Regression covers
+  UVCS-to-Azure redirects, credential stripping, lookalike domains and wrong ports.
+- Local: 52 tests collected, 51 pass, one Windows-only skip. Task
+  `codex/unity-publish-storage`, base `03888ad`; hosted/publication checks next.
+  All archive and identity gates remain; no new Unity build or game changes.
+
 ## 2026-10-09 — Astra — handle UBA's actual artifact-link response
 
 - Version repair PR #74 passed both hosted jobs and merged at `0975cba`.

@@ -168,12 +168,25 @@ class AutoPublishTests(unittest.TestCase):
             auto.download_api(auto.BASE + '/42/log', self.work / 'test.log', 'Basic secret', 123)
 
     def test_download_handles_real_uba_json_string_without_forwarding_credentials(self):
-        responses = [(303, {}, b'"https://storage.googleapis.com/bucket/signed"'), (200, {}, b'')]
+        responses = [(303, {}, json.dumps('https://' + auto.UVCS_HOST + ':7178/artifacts/signed').encode()),
+                     (307, {'Location': 'https://fixture.blob.core.windows.net/bucket/file'}, b''), (200, {}, b'')]
         with patch.object(auto, 'request', side_effect=responses) as request:
             auto.download_api(auto.BASE + '/42/download/file.zip', self.work / 'test.zip', 'Basic secret', 123)
         self.assertEqual(request.call_args_list[0].args[1], 'Basic secret')
         self.assertEqual(len(request.call_args_list[1].args), 1)
         self.assertNotIn('authorization', request.call_args_list[1].kwargs)
+        self.assertEqual(len(request.call_args_list[2].args), 1)
+        self.assertNotIn('authorization', request.call_args_list[2].kwargs)
+
+    def test_uvcs_destination_is_exact_and_cannot_receive_service_credentials(self):
+        for port in ('', ':443', ':7178'):
+            url = 'https://' + auto.UVCS_HOST + port + '/signed'
+            self.assertEqual(auto.storage_url(url), url)
+            with self.assertRaisesRegex(ValueError, 'Credential destination'):
+                auto.request(url, 'Basic secret')
+        for host in (auto.UVCS_HOST + '.evil.test', 'evil.plasticscm.com', 'storage.googleapis.com:7178', auto.UVCS_HOST + ':8080'):
+            with self.subTest(host=host), self.assertRaises(ValueError):
+                auto.storage_url('https://' + host + '/signed')
 
     def test_download_rejects_non_url_json_and_untrusted_strings(self):
         for data in (b'null', b'[]', b'42', b'{}', b'"https://evil.test/file"'):

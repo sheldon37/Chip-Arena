@@ -35,6 +35,13 @@ PUBLICATION = 'native/windows-x64/cloud-publication.json'
 SHA = re.compile(r'^[a-f0-9]{40}$')
 MAX_DOWNLOAD = 3 * 1024**3
 MAX_LOG = 64 * 1024**2
+# Observed UBA #7 artifact host; documented Unity DevOps US East endpoint.
+# https://docs.unity.com/en-us/oas-unity-version-control-server/1.0.0
+UVCS_HOST = 'prd-azure-eastus-01-cloud.plasticscm.com'
+
+
+def valid_https_port(parsed):
+    return parsed.port in (None, 443) or (parsed.hostname == UVCS_HOST and parsed.port == 7178)
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -45,7 +52,7 @@ class NoRedirect(HTTPRedirectHandler):
 def request(url, authorization=None, limit=16 * 1024**2, destination=None):
     """Never forward an Authorization header through a redirect or log a signed URL."""
     parsed = urlsplit(url)
-    if parsed.scheme != 'https' or parsed.username or parsed.password or parsed.port not in (None, 443):
+    if parsed.scheme != 'https' or parsed.username or parsed.password or not valid_https_port(parsed):
         raise ValueError('Expected a public HTTPS endpoint')
     if authorization and parsed.hostname not in ('api.github.com', 'build-automation.services.api.unity.com'):
         raise ValueError('Credential destination is not an API endpoint')
@@ -90,8 +97,8 @@ def storage_url(value):
         raise ValueError('Build download URL must be a string')
     parsed = urlsplit(value)
     host = parsed.hostname or ''
-    allowed = host == 'storage.googleapis.com' or host.endswith('.storage.googleapis.com') or host.endswith('.amazonaws.com') or host.endswith('.blob.core.windows.net')
-    if parsed.scheme != 'https' or not allowed or parsed.username or parsed.password or parsed.port not in (None, 443):
+    allowed = host in ('storage.googleapis.com', UVCS_HOST) or host.endswith('.storage.googleapis.com') or host.endswith('.amazonaws.com') or host.endswith('.blob.core.windows.net')
+    if parsed.scheme != 'https' or not allowed or parsed.username or parsed.password or not valid_https_port(parsed):
         raise ValueError('Build download is not on an allowed HTTPS storage host: ' + host[:160])
     return value
 
