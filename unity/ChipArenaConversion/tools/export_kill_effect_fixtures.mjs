@@ -11,7 +11,7 @@ const pinned={'src/client/ragdoll-vfx.ts':'5d0c30a37b5b398da153621f5024b402b834a
  'src/client/body-trauma.ts':'ca72905edbb822426f8b3aef1c7bc18e397faff6','src/client/death-effects.ts':'ea5832858a19444d9b1b94f28e1ed8f9c55466e2',
  'src/client/ragdoll.ts':'02d00c0893efeca829c1ffe6f32a7be4050903b0','src/client/character-rig.ts':'5a020f684a9a2a29238769f3e18a61cddf545e20',
  'src/client/weapon-visuals.ts':'913f954df486a8ebb73f46d48363b2d447a04521','src/client/cosmetics.ts':'1c2586c79b5020fbc385aa0e4a32951f8ccf9cc5',
- 'src/client/body-wounds.ts':'216f47aba9f0e965d8ed8aad862c876765bd44b6','src/client/character-animation.ts':'7adee1f45fb45b1cc20245ebf0ae559e6db99870',
+ 'src/client/body-wounds.ts':'216f47aba9f0e965d8ed8aad862c876765bd44b6','src/client/team-identity.ts':'2d7c6d277325be6908922fbe1cbee4726fdaafc6','src/shared/teams.ts':'5ba513aa50878b9e58b9d90b70a121d03128374e','src/client/character-animation.ts':'7adee1f45fb45b1cc20245ebf0ae559e6db99870',
  'src/client/pve/downed.ts':'d55118853db5c7b34a3ae7cbaf0943a7fc196249','src/shared/arena.ts':'d476b1c8049169273d79f45b9300dff61ba5c039',
  'src/shared/ragdoll-styles.ts':'3e32b814d6da0735af5b365e680624cd97891ce5','src/shared/body-ragdoll.ts':'0b4411c9e7cf8b553861df24868cf63e20da5f03',
  'src/shared/config.ts':'54454ee3110e936ada16d429813bb55b4a07eb1f'};
@@ -21,7 +21,7 @@ const T=await import(pathToFileURL(path.join(source,'node_modules/three/build/th
 const load=f=>import(pathToFileURL(path.join(source,'src',f)).href);
 const {RagdollVfx}=await load('client/ragdoll-vfx.ts'),{GibberVfx,GIBBER_PROFILE,SEVER_PROFILE,CRUSH_PROFILE}=await load('client/gibber-vfx.ts');
 const {woundCap,faceAlong,CrushDebris,CAP_MESH,boneSign}=await load('client/body-trauma.ts'),{KILL_EFFECTS}=await load('client/death-effects.ts');
-const {createCharacterRig}=await load('client/character-rig.ts'),{buildWeapon}=await load('client/weapon-visuals.ts'),{dressRig}=await load('client/cosmetics.ts');
+const {createCharacterRig}=await load('client/character-rig.ts'),{buildWeapon}=await load('client/weapon-visuals.ts'),{dressRig}=await load('client/cosmetics.ts'),{teamArmor}=await load('client/team-identity.ts'),{TEAMS}=await load('shared/teams.ts');
 const {bodyPartVelocity,BODY_RAGDOLL}=await load('shared/body-ragdoll.ts'),{ANIMATION}=await load('client/character-animation.ts'),{DOWNED}=await load('client/pve/downed.ts'),{ARENA}=await load('shared/arena.ts'),{RAGDOLL_STYLES}=await load('shared/ragdoll-styles.ts');
 // A decomposed rotation is compared with its sign fixed (w >= 0).
 const canon=q=>q.w<0?new T.Quaternion(-q.x,-q.y,-q.z,-q.w):q;
@@ -156,23 +156,24 @@ for(const [width,depth,kind,seed,shell,bone,low] of [[.138,.138,'clean',12345678
 }
 // Inputs a check rebuilds from (bone matrices, debris sources) keep full precision.
 // 5. A posed rig: bone world matrices, box world matrices (checks the table) and faceAlong at each cap joint and side.
-function posed(spec,hat,accent,bodyColor,x=1.5){const rig=weaponRig(spec,accent,bodyColor);rig.group.position.set(x,.1,-2);rig.group.rotation.y=.7;rig.spine.rotation.x=.25;rig.leftArm.rotation.z=.6;rig.leftElbow.rotation.x=-.9;rig.rightArm.rotation.x=-.8;rig.rightElbow.rotation.x=-.5;rig.head.rotation.y=.35;rig.leftLeg.rotation.x=.4;rig.rightKnee.rotation.x=.7;
- if(hat)dressRig(rig,{bodyColor,hat,killEffect:'impact-ragdoll'});rig.group.updateMatrixWorld(true);return rig;}
+function posed(spec,hat,accent,bodyColor,x=1.5,team){const rig=weaponRig(spec,accent,bodyColor);rig.group.position.set(x,.1,-2);rig.group.rotation.y=.7;rig.spine.rotation.x=.25;rig.leftArm.rotation.z=.6;rig.leftElbow.rotation.x=-.9;rig.rightArm.rotation.x=-.8;rig.rightElbow.rotation.x=-.5;rig.head.rotation.y=.35;rig.leftLeg.rotation.x=.4;rig.rightKnee.rotation.x=.7;
+ if(hat)dressRig(rig,{bodyColor,hat,killEffect:'impact-ragdoll'});if(team)teamArmor(rig,team);rig.group.updateMatrixWorld(true);return rig;}
 out.rigs=[];
-for(const [spec,hat,accent,bodyColor] of [['pistol','crown','#ff3366','#33aa77'],['fire',null,'#70e1d0','#e5e7eb'],['daggers','cap','#ffd166','#26547c']]){
- const rig=posed(spec,hat,accent,bodyColor),bones=BONES.map(b=>[...rig[b].matrixWorld.elements]),boxes=[];
+// The last rig is in a teams match: team-identity.ts bands ride in the rig (voxel-burst, the ragdoll copies, caps and fragments).
+for(const [spec,hat,accent,bodyColor,team] of [['pistol','crown','#ff3366','#33aa77'],['fire',null,'#70e1d0','#e5e7eb'],['daggers','cap','#ffd166','#26547c'],['sword','top','#70e1d0','#e5e7eb','blue']]){
+ const rig=posed(spec,hat,accent,bodyColor,1.5,team),bones=BONES.map(b=>[...rig[b].matrixWorld.elements]),boxes=[];
  rig.group.traverse(o=>{if(isBox(o))boxes.push({name:o.name,m:o.matrixWorld.elements.map(r6),c:hex(o.material.color)});});
  const faces=[];
  for(const name of Object.keys(CAP_MESH)){const joint=rig.group.getObjectByName(name);if(!joint)continue;const jp=joint.getWorldPosition(new T.Vector3()),jq=joint.getWorldQuaternion(new T.Quaternion()),bone=new T.Vector3(0,boneSign(name),0).applyQuaternion(jq);
   let parent=joint.parent;while(parent&&!ROOTS.includes(parent.name))parent=parent.parent;
   for(const [side,owner] of [['parent',parent],['child',joint]]){if(!owner)continue;const inverses=[];const walk=n=>{if(n!==owner&&ROOTS.includes(n.name))return;if(SOCKETS[n.name])return;if(n.isMesh&&!n.userData.bodyWound&&!n.userData.detail)inverses.push(n.matrixWorld.clone().invert());for(const c of n.children)walk(c);};walk(owner);
    faces.push({joint:BONES.findIndex(b=>rig[b]===joint),side,owner:BONES.findIndex(b=>rig[b]===owner),count:inverses.length,s:r6(faceAlong(jp,bone,inverses,side))});}}
- out.rigs.push({spec,hat,accent,body:bodyColor,bones,boxes,faces});
+ out.rigs.push({spec,hat,accent,body:bodyColor,...(team?{team,band:new T.Color(TEAMS[team].color).getHex()}:{}),bones,boxes,faces});
 }
 // 6. voxel-burst from those rigs (the effect factory exactly as DeathEffects calls it).
 out.burst=[];const burstAges=[0,.05,.2,.4,.7,1,1.5,2.5,4.4,4.8];
-for(const [k,quality,budget,death] of [[0,1,280,{seed:20481,pos:{x:1.5,y:1.05,z:-2},velocity:{x:3,y:1,z:-9},direction:{x:.2,y:.1,z:-1}}],[0,.3,280,{seed:20481,pos:{x:1.5,y:1.05,z:-2},velocity:{x:3,y:1,z:-9},direction:{x:.2,y:.1,z:-1}}],[1,1,280,{seed:7,pos:{x:32.4,y:1.05,z:-2},velocity:{x:0,y:0,z:0},direction:{x:0,y:0,z:0}}],[2,1,60,{seed:99,pos:{x:1.5,y:1.05,z:-2},velocity:{x:-1,y:4,z:2},direction:{x:-1,y:0,z:0}}]]){
- const rigCase=out.rigs[k],rig=posed(rigCase.spec,rigCase.hat,rigCase.accent,rigCase.body,death.pos.x),scene=new T.Scene();
+for(const [k,quality,budget,death] of [[0,1,280,{seed:20481,pos:{x:1.5,y:1.05,z:-2},velocity:{x:3,y:1,z:-9},direction:{x:.2,y:.1,z:-1}}],[0,.3,280,{seed:20481,pos:{x:1.5,y:1.05,z:-2},velocity:{x:3,y:1,z:-9},direction:{x:.2,y:.1,z:-1}}],[1,1,280,{seed:7,pos:{x:32.4,y:1.05,z:-2},velocity:{x:0,y:0,z:0},direction:{x:0,y:0,z:0}}],[2,1,60,{seed:99,pos:{x:1.5,y:1.05,z:-2},velocity:{x:-1,y:4,z:2},direction:{x:-1,y:0,z:0}}],[3,1,280,{seed:515,pos:{x:1.5,y:1.05,z:-2},velocity:{x:2,y:0,z:1},direction:{x:0,y:0,z:1}}]]){
+ const rigCase=out.rigs[k],rig=posed(rigCase.spec,rigCase.hat,rigCase.accent,rigCase.body,death.pos.x,rigCase.team),scene=new T.Scene();
  const effect=KILL_EFFECTS['voxel-burst'](scene,rig.group,{id:'p',color:rigCase.accent,cosmetics:{bodyColor:rigCase.body},yaw:0},{id:'p',at:0,effect:'voxel-burst',source:null,kind:'shot',yaw:0,...death},quality,budget);
  const frames=[];for(const age of burstAges){effect.update(age);frames.push({age,chunks:digest(scene.children.map(c=>[c.position.x,c.position.y,c.position.z,c.rotation.x,c.rotation.y,c.rotation.z,c.scale.x]))});}
  out.burst.push({rig:k,quality,budget,death,bones:BONES.map(b=>[...rig[b].matrixWorld.elements]),count:effect.count,colors:scene.children.map(c=>hex(c.material.color)),frames});effect.dispose();

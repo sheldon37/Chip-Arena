@@ -39,22 +39,34 @@ namespace ChipArena.UnityConversion
         /// RagdollVfx collapse; scale is about the part's own joint, as the source scales each part group).</summary>
         internal void Present(Matrix4x4 overlay,float sink,float scale){this.overlay=overlay;this.sink=sink;partScale=scale;}
         internal Matrix4x4 PartMatrix(int part)=>overlay*Matrix4x4.Translate(new Vector3(0,-sink,0))*Parts[part].transform.localToWorldMatrix*Matrix4x4.Scale(new Vector3(partScale,partScale,partScale));
+        /// <summary>The dropped weapon as its hand part is presented (ragdoll.ts keeps the held weapon's meshes in the hand
+        /// part's group): the same sink, shrink and collapse, scaled about the weapon body's own origin.</summary>
+        internal Matrix4x4? PresentedWeapon=>weapon==null?(Matrix4x4?)null:overlay*Matrix4x4.Translate(new Vector3(0,-sink,0))*weapon.transform.localToWorldMatrix*Matrix4x4.Scale(new Vector3(partScale,partScale,partScale));
+        private float fxAge;
+        /// <summary>The effect's age on the presentation clock (<paramref name="clockAge"/>), held so it never runs backwards
+        /// or below 0.</summary>
+        internal float FxAge(float clockAge){if(clockAge>fxAge)fxAge=clockAge;return fxAge;}
         private Matrix4x4 Presented(int b){int a=Anchor[b];return PartMatrix(a)*CollapseFoot(b)*inverse[a]*Bind[b];}
         private bool Shown(int b)=>Death.wound?.kind!="crush"||Anchor[b]!=Death.wound.part;
         internal bool Crushed=>Death.wound?.kind=="crush"&&Parts.ContainsKey(Death.wound.part);
         internal Vector3 PresentedPosition(int part)=>PartMatrix(part).GetColumn(3);
 
+        /// <summary>The team band colour index (NativeStatusVisuals.TeamColors) the pilot wore at death, or -1.</summary>
+        internal int Band=-1;
         /// <summary>Builds the effect pieces for a corpse that received <paramref name="budget"/> (DeathEffects: 280 minus the
-        /// live effects' counts, or a kept body's 96). <paramref name="hat"/>: the hat model exists.</summary>
-        internal void SetupKill(int budget,double quality,bool counted,bool hat)
+        /// live effects' counts, or a kept body's 96). <paramref name="hat"/>: the hat model exists. <paramref name="band"/>: the
+        /// team band colour index in a teams match (team-identity.ts bands are part of the rig the source cuts and copies), or -1.</summary>
+        internal void SetupKill(int budget,double quality,bool counted,bool hat,int band=-1)
         {
+            Band=band>=0&&band<NativeStatusVisuals.TeamColors.Length?band:-1;
             Counted=counted;bool low=quality<.5;var wound=Death.wound;bool crush=Crushed;int parts=Parts.Count-(crush?1:0);budget=Math.Max(0,budget);
             bool rig=(Death.model??"pilot")=="pilot";var bind=new double[22][];for(int i=0;i<22;i++)bind[i]=Source(Bind[i]);
             int body=NativeKillEffectRules.ParseHex(Death.actor?.BodyColor,0xe5e7eb),accent=NativeKillEffectRules.ParseHex(Death.actor?.AccentColor,0x70e1d0);
             var scratch=new double[16];var world=new double[16];
             if(rig)
             {
-                RigBoxes=new KillBox[NativeKillBoxes.MaxRigBoxes];RigCount=NativeKillBoxes.Rig(Death.actor?.SourceSpec,Death.actor?.Hat,RigBoxes);BoxLocal=new Matrix4x4[RigCount];
+                RigBoxes=new KillBox[NativeKillBoxes.MaxRigBoxes];RigCount=NativeKillBoxes.Rig(Death.actor?.SourceSpec,Death.actor?.Hat,RigBoxes);
+                if(Band>=0)RigCount=NativeKillBoxes.Bands(RigBoxes,RigCount,NativeStatusVisuals.TeamColors[Band]);BoxLocal=new Matrix4x4[RigCount];
                 for(int i=0;i<RigCount;i++){var b=RigBoxes[i];NativeKillEffectRules.Compose(scratch,b.Px,b.Py,b.Pz,b.Qx,b.Qy,b.Qz,b.Qw,b.Sx,b.Sy,b.Sz);BoxLocal[i]=Unity(scratch);}
             }
             Vector3 dir=Death.direction.sqrMagnitude>.01f?Death.direction.normalized:Quaternion.Euler(0,Death.yaw,0)*Vector3.back;
@@ -70,7 +82,8 @@ namespace ChipArena.UnityConversion
             if(!rig)return;
             // The fatal wound (the authority's sever / crush, or the Gibber's part): caps, spray and fragments, as ragdoll.ts.
             bool gib=Style=="dev-gibber";int severed=gib?(wound?.part??5):wound!=null&&wound.destroyed&&wound.kind=="sever"?wound.part:-1;
-            if(!Parts.ContainsKey(severed))severed=-1;if(severed<0&&!crush)return;
+            // A part the authority crushed has no body to sever (it is hidden and frozen): the Gibber then breaks it into fragments.
+            if(!Parts.ContainsKey(severed)||crush&&severed==wound.part)severed=-1;if(severed<0&&!crush)return;bool gibSpray=gib&&severed>=0;
             int capBudget=Math.Max(0,budget-parts);var cells=new List<Matrix4x4>();var cellColors=new List<Color>();var buffer=new KillCell[NativeKillCaps.MaxCells];
             bool AddCap(int joint,int on,bool parentSide,bool ragged,int owner)
             {
@@ -130,7 +143,7 @@ namespace ChipArena.UnityConversion
                 }
             }
             CapCells=cells.ToArray();CapColors=cellColors.ToArray();
-            int sprayBudget=gib?Math.Max(0,budget-parts-2):Math.Max(0,Math.Max(0,budget-parts-Caps.Count)-(Debris?.Count??0));
+            int sprayBudget=gibSpray?Math.Max(0,budget-parts-2):Math.Max(0,Math.Max(0,budget-parts-Caps.Count)-(Debris?.Count??0));
             if(sprayPart>=0)Spray=new NativeKillSpray(Death.seed,sprayBudget,quality,gib?KillSprayProfile.Gibber:crush?KillSprayProfile.Crush:KillSprayProfile.Sever,Death.position.y-.85);
             FxCount+=Caps.Count+(Debris?.Count??0)+(Spray?.Count??0);
         }
@@ -220,27 +233,29 @@ namespace ChipArena.UnityConversion
                 killCores.Add(Matrix4x4.TRS(center,Quaternion.identity,Vector3.one*(float)swarm.CoreScale));
             }
         }
-        /// <summary>GibberVfx: drops and splat disks.</summary>
-        private void KillSpray(NativeCorpse corpse,float age)
+        /// <summary>GibberVfx: drops and splat disks. <paramref name="alpha"/>: the body's fade (a kept body being revived);
+        /// the opaque drops shrink with it, the splats fade.</summary>
+        private void KillSpray(NativeCorpse corpse,float age,float alpha)
         {
-            var spray=corpse.Spray;if(spray==null)return;spray.Update(age);float glow=spray.Glow?.3f:0;
+            var spray=corpse.Spray;if(spray==null||alpha<=.001f)return;spray.Update(age);float glow=spray.Glow?.3f:0;
             for(int d=0;d<spray.Drops;d++)
             {
                 if(!spray.Shown[d])continue;spray.DropColor(d,out double r,out double g,out double b);
-                sourceModels.KillDrop(NativeCorpse.Mirror(spray.Pos[d*3],spray.Pos[d*3+1],spray.Pos[d*3+2],spray.Q[d*4],spray.Q[d*4+1],spray.Q[d*4+2],spray.Q[d*4+3],spray.S[d*3],spray.S[d*3+1],spray.S[d*3+2]),new Color((float)r,(float)g,(float)b,1),glow);
+                sourceModels.KillDrop(NativeCorpse.Mirror(spray.Pos[d*3],spray.Pos[d*3+1],spray.Pos[d*3+2],spray.Q[d*4],spray.Q[d*4+1],spray.Q[d*4+2],spray.Q[d*4+3],spray.S[d*3]*alpha,spray.S[d*3+1]*alpha,spray.S[d*3+2]*alpha),new Color((float)r,(float)g,(float)b,1),glow);
             }
-            if(spray.PoolOpacity<=.001)return;NativeKillEffectRules.Linear(NativeKillSpray.PoolColor,out double pr,out double pg,out double pb);var pool=new Color((float)pr,(float)pg,(float)pb,1);
+            if(spray.PoolOpacity*alpha<=.001)return;NativeKillEffectRules.Linear(NativeKillSpray.PoolColor,out double pr,out double pg,out double pb);var pool=new Color((float)pr,(float)pg,(float)pb,1);
             for(int p=0;p<spray.Pools;p++)
             {
                 if(!spray.PoolVisible[p])continue;NativeKillEffectRules.EulerXyz(-Math.PI/2,0,spray.PoolRz[p],out double qx,out double qy,out double qz,out double qw);
-                sourceModels.KillPool(NativeCorpse.Mirror(spray.PoolPos[p*3],spray.PoolPos[p*3+1],spray.PoolPos[p*3+2],qx,qy,qz,qw,spray.PoolScale[p*2],spray.PoolScale[p*2+1],1),pool,(float)spray.PoolOpacity);
+                sourceModels.KillPool(NativeCorpse.Mirror(spray.PoolPos[p*3],spray.PoolPos[p*3+1],spray.PoolPos[p*3+2],qx,qy,qz,qw,spray.PoolScale[p*2],spray.PoolScale[p*2+1],1),pool,(float)spray.PoolOpacity*alpha);
             }
         }
-        /// <summary>woundCap cross-sections riding on their part, and the crushed part's fragments and loose hat.</summary>
+        /// <summary>woundCap cross-sections riding on their part (no shadow, as woundCap), and the crushed part's fragments (which
+        /// cast one, as CrushDebris) and loose hat.</summary>
         private void KillWound(NativeCorpse corpse,float age,float alpha)
         {
             if(alpha<=.001f)return;
-            foreach(var cap in corpse.Caps){var on=corpse.PartMatrix(cap.Part)*cap.Local;for(int i=0;i<cap.Count;i++)sourceModels.WoundCube(on*corpse.CapCells[cap.Start+i],corpse.CapColors[cap.Start+i],alpha);}
+            foreach(var cap in corpse.Caps){var on=corpse.PartMatrix(cap.Part)*cap.Local;for(int i=0;i<cap.Count;i++)sourceModels.KillCap(on*corpse.CapCells[cap.Start+i],corpse.CapColors[cap.Start+i],alpha);}
             var debris=corpse.Debris;if(debris==null)return;
             for(int i=0;i<debris.Chunks;i++)
             {
@@ -251,7 +266,7 @@ namespace ChipArena.UnityConversion
             {
                 debris.LooseAt(corpse.LooseHat,age,out double x,out double y,out double z,out double qx,out double qy,out double qz,out double qw,out double s);
                 var start=corpse.HatStart;killLooseHat=Matrix4x4.TRS(new Vector3(-(float)x,(float)y,(float)z),new Quaternion((float)qx,-(float)qy,-(float)qz,(float)qw),Vector3.one*(float)s)*Matrix4x4.Translate(-start)*corpse.Bind[5];
-                sourceModels.Queue(corpse.HatModel,Matrix4x4.identity,LooseHatBone,null,opacity:alpha);
+                sourceModels.QueueShadowless(corpse.HatModel,Matrix4x4.identity,LooseHatBone,null,null,null,alpha);
             }
         }
         private Matrix4x4 killLooseHat;private Func<int,Matrix4x4> looseHatBone;private Func<int,Matrix4x4> LooseHatBone=>looseHatBone??=b=>killLooseHat;
@@ -271,7 +286,7 @@ namespace ChipArena.UnityConversion
         {
             // The corpse's dropped weapon body starts at the wrist (NativeCorpse) and draws the weapon model at its own origin, so
             // the weapon's boxes (on the hand socket) are moved back by the socket offset; an off-hand weapon is not dropped.
-            if(opacity<=.001f)return true;var drop=corpse.Weapon;int s=NativeKillBoxes.SpecIndex(corpse.Death.actor?.SourceSpec),hand=s>=0&&NativeKillBoxes.Magic[s]?9:13;
+            if(opacity<=.001f)return true;var drop=corpse.PresentedWeapon;int s=NativeKillBoxes.SpecIndex(corpse.Death.actor?.SourceSpec),hand=s>=0&&NativeKillBoxes.Magic[s]?9:13;
             var socket=hand==9?NativeKillBoxes.LeftHandSocket:NativeKillBoxes.RightHandSocket;var unsocket=Matrix4x4.Translate(new Vector3(socket[0],-socket[1],-socket[2]));
             int h=NativeKillBoxes.HatIndex(corpse.Death.actor?.Hat);bool hatModel=hat&&h>=0&&NativeKillBoxes.HatRound[h],weaponModel=weapon&&s>=0&&NativeKillBoxes.WeaponRound[s];
             if(hatModel&&!sourceModels.QueueGhost(corpse.HatModel,Matrix4x4.identity,corpse.PresentedBone,albedo,opacity))return false;

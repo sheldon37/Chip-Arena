@@ -12,13 +12,15 @@ namespace ChipArena.UnityConversion
     //  - KillPool: a splat disk, CircleGeometry(1,12), translucent.
     //  - QueueRecolor: a model's own meshes with their albedo replaced (Frostbreak: material.color.set, emissive.set), through
     //    Resources/NativeKillBody.shader, which keeps each vertex's voxel shade.
+    //  - QueueShadowless / KillCap: a model's meshes, or a wound-cube cap cell, casting no shadow (ragdoll.ts copies the rig
+    //    with copyVoxelPart and woundCap turns castShadow off; only CrushDebris fragments cast one).
     // All geometry is built in source (three.js) axes and mirrored on x with the winding reversed, like tools/export_models.mjs.
     // Tints are linear colours. Meshes and materials are owned here and released by Dispose with the other source models.
     public sealed partial class NativeSourceModels
     {
-        private Part killCube,killGhost,killDrop,killPool;private Material killBody,killGhostMaterial;private bool killBodyFailed,killGhostFailed;
+        private Part killCube,killGhost,killDrop,killPool,killCap;private Material killBody,killGhostMaterial;private bool killBodyFailed,killGhostFailed;
         private readonly Dictionary<Material,Material> recolorMaterials=new Dictionary<Material,Material>(),ghostMaterials=new Dictionary<Material,Material>();
-        private readonly Dictionary<Part,Part> recolorParts=new Dictionary<Part,Part>(),ghostParts=new Dictionary<Part,Part>();private readonly List<Part> recolorStale=new List<Part>();
+        private readonly Dictionary<Part,Part> recolorParts=new Dictionary<Part,Part>(),ghostParts=new Dictionary<Part,Part>(),shadowlessParts=new Dictionary<Part,Part>();private readonly List<Part> recolorStale=new List<Part>();
         private static readonly Vector4 NoGlow=Vector4.zero;
 
         // ---- geometry (source axes, CCW) mirrored into Unity -------------------------------------------------------------
@@ -62,10 +64,33 @@ namespace ChipArena.UnityConversion
             var material=new Material(shader){enableInstancing=true,name="Kill effect "+id};material.SetInt("_Cull",transparent?0:2);materials.Add(material);
             var part=new Part{Name=id,Bone=-1,Mesh=mesh,Material=material,NoShadow=true};models[id]=new[]{part};return part;
         }
-        private void Draw(Part part,Matrix4x4 matrix,Vector4 body,Color tint,Vector4 glow)
+        private void Draw(Part part,Matrix4x4 matrix,Vector4 body,Color tint,Vector4 glow)=>Draw(part,matrix,body,tint,glow,Vector4.one);
+        private void Draw(Part part,Matrix4x4 matrix,Vector4 body,Color tint,Vector4 glow,Vector4 accent)
         {
             var key=(part,0);if(!draws.TryGetValue(key,out var draw)){draw=new Draws{Part=part};draws[key]=draw;}
-            draw.Matrices.Add(matrix);draw.Bodies.Add(body);draw.Accents.Add(Vector4.one);draw.Tints.Add(tint);draw.Glows.Add(glow);
+            draw.Matrices.Add(matrix);draw.Bodies.Add(body);draw.Accents.Add(accent);draw.Tints.Add(tint);draw.Glows.Add(glow);
+        }
+        /// <summary>A model's meshes as <see cref="Queue"/> draws them, but casting no shadow (a ragdoll's copied parts).</summary>
+        public void QueueShadowless(string id,Matrix4x4 root,Func<int,Matrix4x4> bone,Func<int,bool> visible,Color? body,Color? accent,float opacity)
+        {
+            if(id==null||!models.TryGetValue(id,out var model))return;Color bc=body??Color.white,ac=accent??Color.white;
+            if(shadowlessParts.Count>512)PruneRecolor();
+            foreach(var part in model)
+            {
+                if(visible!=null&&!visible(part.Bone))continue;
+                Draw(Shadowless(part),part.Bone>=0&&bone!=null?bone(part.Bone):root,new Vector4(bc.r,bc.g,bc.b,opacity),Color.white,Vector4.one,new Vector4(ac.r,ac.g,ac.b,1));
+            }
+        }
+        private Part Shadowless(Part part)
+        {
+            if(part.NoShadow)return part;if(!shadowlessParts.TryGetValue(part,out var twin)){twin=new Part{Name=part.Name,Bone=part.Bone,Mesh=part.Mesh,Material=part.Material,NoShadow=true};shadowlessParts[part]=twin;}
+            return twin;
+        }
+        /// <summary>A stump cap cell: the wound cube (lit, wound glow .3) without a shadow.</summary>
+        public void KillCap(Matrix4x4 matrix,Color color,float opacity)
+        {
+            if(killCap==null)killCap=KillPart("kill-cap",Cube().Mesh("Kill cap",Color.white,new Vector4(.3f,.3f,.3f,0)),false);
+            if(killCap!=null)Draw(killCap,matrix,new Vector4(1,1,1,opacity),color,Vector4.one);
         }
         /// <summary>A lit cube without emission (a voxel-burst chunk).</summary>
         public void KillCube(Matrix4x4 matrix,Color albedo)
@@ -133,11 +158,11 @@ namespace ChipArena.UnityConversion
         public bool QueueRecolor(string id,Matrix4x4 root,Func<int,Matrix4x4> bone,Func<int,bool> visible,Color albedo,Color emission,float opacity=1)
         {
             if(id==null||!models.TryGetValue(id,out var model)||!EnsureKillBody())return false;
-            if(recolorParts.Count>512)PruneRecolor();
+            if(recolorParts.Count>512||shadowlessParts.Count>512)PruneRecolor();
             foreach(var part in model)
             {
                 if(visible!=null&&!visible(part.Bone))continue;var matrix=part.Bone>=0&&bone!=null?bone(part.Bone):root;
-                var twin=Recolor(part);if(twin==null){Draw(part,matrix,new Vector4(1,1,1,opacity),Color.white,Vector4.one);continue;}
+                var twin=Recolor(part);if(twin==null){Draw(Shadowless(part),matrix,new Vector4(1,1,1,opacity),Color.white,Vector4.one);continue;}
                 Draw(twin,matrix,new Vector4(1,1,1,opacity),albedo,new Vector4(emission.r,emission.g,emission.b,1));
             }
             return true;
@@ -160,10 +185,10 @@ namespace ChipArena.UnityConversion
                 material=new Material(killBody){name="Kill recolour "+part.Material.name};material.mainTexture=part.Material.mainTexture;material.mainTextureScale=part.Material.mainTextureScale;
                 if(part.Material.HasProperty("_Cull"))material.SetInt("_Cull",part.Material.GetInt("_Cull"));materials.Add(material);recolorMaterials[part.Material]=material;
             }
-            twin=new Part{Name=part.Name,Bone=part.Bone,Mesh=part.Mesh,Material=material,NoShadow=part.NoShadow};recolorParts[part]=twin;return twin;
+            twin=new Part{Name=part.Name,Bone=part.Bone,Mesh=part.Mesh,Material=material,NoShadow=true};recolorParts[part]=twin;return twin;
         }
         // Wound-carved pilots are rebuilt and released (NativeWoundGeometry); forget twins of released meshes.
-        private void PruneRecolor(){Prune(recolorParts);Prune(ghostParts);}
+        private void PruneRecolor(){Prune(recolorParts);Prune(ghostParts);Prune(shadowlessParts);}
         private void Prune(Dictionary<Part,Part> twins)
         {
             recolorStale.Clear();foreach(var pair in twins)if(pair.Key.Mesh==null)recolorStale.Add(pair.Key);

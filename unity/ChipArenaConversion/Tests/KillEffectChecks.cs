@@ -119,10 +119,12 @@ namespace ChipArena.UnityConversion
             var rig=new KillBox[NativeKillBoxes.MaxRigBoxes];var scratch=new double[16];var world=new double[16];var inverse=new double[16];
             double[][] Bones(JsonElement list){var bones=new double[22][];int i=0;foreach(var m in list.EnumerateArray())bones[i++]=Arr(m);return bones;}
             var rigs=new List<JsonElement>();foreach(var r in R.GetProperty("rigs").EnumerateArray())rigs.Add(r);
+            // A rig in a teams match also carries team-identity.ts's four bands, in traversal order.
+            int Dressed(JsonElement r,string spec,string hat){int n=NativeKillBoxes.Rig(spec,hat,rig);return r.TryGetProperty("band",out var band)?NativeKillBoxes.Bands(rig,n,band.GetInt32()):n;}
             foreach(var r in rigs)
             {
                 string spec=r.GetProperty("spec").GetString(),hat=r.GetProperty("hat").ValueKind==JsonValueKind.Null?"none":r.GetProperty("hat").GetString();int accent=ColorHex(r.GetProperty("accent").GetString()),body=ColorHex(r.GetProperty("body").GetString());
-                var bones=Bones(r.GetProperty("bones"));int n=NativeKillBoxes.Rig(spec,hat,rig);var boxes=r.GetProperty("boxes");Check(n==boxes.GetArrayLength(),spec+" rig boxes "+n+" != "+boxes.GetArrayLength());int i=0;
+                var bones=Bones(r.GetProperty("bones"));int n=Dressed(r,spec,hat);var boxes=r.GetProperty("boxes");Check(n==boxes.GetArrayLength(),spec+" rig boxes "+n+" != "+boxes.GetArrayLength());int i=0;
                 foreach(var e in boxes.EnumerateArray())
                 {
                     var box=rig[i++];Check(box.Name==e.GetProperty("name").GetString(),spec+" box order "+box.Name);NativeKillEffectRules.BoxWorld(box,bones[box.Bone],scratch,world);var m=Arr(e.GetProperty("m"));
@@ -140,7 +142,7 @@ namespace ChipArena.UnityConversion
             foreach(var run in R.GetProperty("burst").EnumerateArray())
             {
                 var r=rigs[run.GetProperty("rig").GetInt32()];string spec=r.GetProperty("spec").GetString(),hat=r.GetProperty("hat").ValueKind==JsonValueKind.Null?"none":r.GetProperty("hat").GetString();int accent=ColorHex(r.GetProperty("accent").GetString()),body=ColorHex(r.GetProperty("body").GetString());
-                var bones=Bones(run.GetProperty("bones"));int n=NativeKillBoxes.Rig(spec,hat,rig);var matrices=new double[n*16];var colors=new int[n];
+                var bones=Bones(run.GetProperty("bones"));int n=Dressed(r,spec,hat);var matrices=new double[n*16];var colors=new int[n];
                 for(int b=0;b<n;b++){NativeKillEffectRules.BoxWorld(rig[b],bones[rig[b].Bone],scratch,world);Array.Copy(world,0,matrices,b*16,16);colors[b]=NativeKillEffectRules.BoxColor(rig[b],body,accent);}
                 var d=run.GetProperty("death");var p=d.GetProperty("pos");var vel=d.GetProperty("velocity");var dir=d.GetProperty("direction");string tag="burst "+spec+" q"+D(run,"quality");
                 var burst=new NativeKillBurst(matrices,colors,n,d.GetProperty("seed").GetInt32(),D(p,"x"),D(p,"y"),D(p,"z"),D(vel,"x"),D(vel,"y"),D(vel,"z"),D(dir,"x"),D(dir,"y"),D(dir,"z"),D(run,"quality"),run.GetProperty("budget").GetInt32());

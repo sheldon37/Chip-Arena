@@ -34,6 +34,25 @@ namespace ChipArena.UnityConversion
             return n;
         }
         private static void Append(KillBox[] list,KillBox[] into,ref int n){foreach(var b in list)if(n<into.Length)into[n++]=b;}
+        /// <summary>team-identity.ts teamArmor: the four unlit team bands (chest, spine, left arm, right arm, in that order;
+        /// NativeStatusVisuals.Band*). Each is added as the last child of its bone's group, so rig.group.traverse meets it right
+        /// after that bone's subtree. Inserts them into a <see cref="Rig"/> list of <paramref name="n"/> boxes and returns the
+        /// new count (a band that does not fit is left out). <paramref name="color"/>: the team colour, 0xRRGGBB.</summary>
+        public static int Bands(KillBox[] into,int n,int color)
+        {
+            for(int k=0;k<NativeStatusVisuals.BandBones.Length&&n<into.Length;k++)
+            {
+                int bone=NativeStatusVisuals.BandBones[k],at=n;for(int i=0;i<n;i++)if(Within(into[i].Bone,bone))at=i+1;
+                int root=bone;while(root>=0&&Array.IndexOf(PartRoots,root)<0)root=CapturedRig.Bones[root].Parent;
+                var p=NativeStatusVisuals.BandPositions[k];var s=NativeStatusVisuals.BandSizes[k];
+                for(int i=n;i>at;i--)into[i]=into[i-1];
+                into[at]=new KillBox("team-identity",bone,root,0,false,false,0,color,0,0,0,p.X,p.Y,p.Z,0,0,0,1,s.X,s.Y,s.Z);n++;
+            }
+            return n;
+        }
+        /// <summary>The ragdoll part roots (rig bones), ragdoll.ts names.</summary>
+        public static readonly int[] PartRoots={1,2,5,7,8,11,12,14,15,18,19};
+        private static bool Within(int bone,int root){for(int b=bone;b>=0;b=CapturedRig.Bones[b].Parent)if(b==root)return true;return false;}
         /// <summary>CAP_MESH: the box a cut through this joint (rig bone) exposes, or null.</summary>
         public static string CapMesh(int joint){int k=Array.IndexOf(CapJoints,joint);return k<0?null:CapMeshes[k];}
         public static int Find(string name){for(int i=0;i<Body.Length;i++)if(Body[i].Name==name)return i;return -1;}
