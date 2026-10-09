@@ -343,14 +343,13 @@ namespace ChipArena.UnityConversion
         }
 
         // #connection .top-meta in the lobby's top bar (main.ts drawHud; style.css .top-meta,.light): a 6 px light
-        // (#59dd83, #ef9b7a when disconnected), the connection and " / " the room code, in 12 px mono #c3c4ce on
-        // #18191ee8 with a #45464f edge and 10 / 14 px padding, right-aligned at `right`. The source appends
-        // " · N MS"; Unity measures no round trip yet (A27), so the reading is left off.
+        // (#59dd83, #ef9b7a when disconnected), the connection, " / " the room code and the source's " · N MS" round trip
+        // from ConnectionMetrics (a room is main.ts mode online; the host's own reading is 0, as the source host's is),
+        // in 12 px mono #c3c4ce on #18191ee8 with a #45464f edge and 10 / 14 px padding, right-aligned at `right`.
+        // The text comes cached from ConnectionPillText (NativeConnectionReport.cs).
         private void ConnectionPill(float right,float top)
         {
-            // As main.ts: DISCONNECTED once the link closes, CONNECTION STALLED after 3 s without a message from the host.
-            bool lost=!Hosting&&(server==null||server.Closed),stalled=!Hosting&&!lost&&(DateTime.UtcNow-server.LastReceived).TotalSeconds>3;string code=Hosting?roomCode:joinCode;
-            string text=(lost?"DISCONNECTED":stalled?"CONNECTION STALLED":listener!=null?"LAN · HOST":Hosting?"INTERNET RELAY · HOST":internetRooms?"INTERNET RELAY":"LOCAL NETWORK")+(string.IsNullOrEmpty(code)?"":" / "+code);
+            string text=ConnectionPillText(out bool lost);
             float w=14+6+8+U.Measure(text,12,false,true).x+14;var r=new Rect(right-w,top,w,36);
             U.Fill(r,U.Hex(0x45464f));U.Fill(new Rect(r.x+1,r.y+1,r.width-2,r.height-2),U.Hex(0x18191e,.91f));
             U.Round(new Rect(r.x+14,r.center.y-3,6,6),lost?U.Hex(0xef9b7a):U.Hex(0x59dd83),3);

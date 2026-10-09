@@ -138,22 +138,31 @@ namespace ChipArena.UnityConversion
             }
         }
 
-        // ---- Match end (main.ts phase 'match', .panel) ----
+        // ---- Match end (main.ts:161 phase 'match', .panel) ----
+        // Rematch and Return to Lobby, or only Return to Main Menu once the host is gone (main.ts peerLost: "Match ended"
+        // over the reason). Return to Lobby starts the cancellable three-second return and is disabled for guests and while
+        // it runs; its banner and Cancel are in NativeConnectionReport.cs, and each vote's "n/N pilots ready for rematch."
+        // toast is EndFlowNotices there (the source's button carries no count). The reason says the seat can be reclaimed
+        // for 90 seconds, so Return to Main Menu keeps the resume token and lands on Join Room (LeaveLostHost).
         private float matchEndAt=-1;
         private void MatchEndPanel()
         {
-            if(matchEndAt<0)matchEndAt=Time.unscaledTime;float enter=U.PanelIn(Time.unscaledTime-matchEndAt),W=U.W,H=U.H;var me=arena.Local.Seat;var winner=match.Seats.Find(s=>s.id==match.Winner);
+            if(matchEndAt<0)matchEndAt=Time.unscaledTime;float enter=U.PanelIn(Time.unscaledTime-matchEndAt),W=U.W,H=U.H;var me=arena.Local.Seat;var winner=match.Seats.Find(s=>s.id==match.Winner);bool lost=HostLost;
             var players=match.Seats.Where(s=>!s.AuthorityBoss).OrderByDescending(s=>s.score).ToList();float pw=Mathf.Min(640,W-32),ph=32+22+40+60+24+players.Count*68+40+24+48+32,px=(W-pw)/2,py=Mathf.Max(16,(H-ph)/2)+10*(1-enter);
             U.Push(new Vector2(W/2,py+ph/2),Vector2.zero,.99f+.01f*enter);U.Panel(new Rect(px,py,pw,ph),enter);float y=py+32,ix=px+32,iw=pw-64;
             U.Text(new Rect(ix,y,iw,16),"CHIP ARENA",12,U.A(U.Hex(0xc0c1ca),enter),TextAnchor.MiddleLeft,bold:true,tracking:.18f);y+=22;
-            U.Text(new Rect(ix,y,iw,40),OnMySide(winner)?"Match won":winner!=null?"Match lost":"Match ended",30,U.A(U.Hex(0xf4f4f5),enter),TextAnchor.MiddleLeft,bold:true,tracking:-.035f);y+=50;
-            U.Text(new Rect(ix,y,iw,40),match.Result,16,U.A(U.Hex(0xbfc0c9),enter),TextAnchor.UpperLeft,wrap:true);y+=60;
+            U.Text(new Rect(ix,y,iw,40),lost?"Match ended":OnMySide(winner)?"Match won":winner!=null?"Match lost":"Match ended",30,U.A(U.Hex(0xf4f4f5),enter),TextAnchor.MiddleLeft,bold:true,tracking:-.035f);y+=50;
+            U.Text(new Rect(ix,y,iw,40),lost?(networkStatus.Length>0?networkStatus:"The host disconnected."):match.Result,16,U.A(U.Hex(0xbfc0c9),enter),TextAnchor.UpperLeft,wrap:true);y+=60;
             U.Text(new Rect(ix,y,iw,20),"SETS WON",12,U.A(U.Hex(0x9799a6),enter),TextAnchor.MiddleCenter,mono:true);y+=24;
             foreach(var p in players){var r=new Rect(ix,y+12,iw,56);U.Round(r,U.Hex(0x18191f,.94f*enter),4,U.A(U.Hex(0x454650),enter));U.Text(new Rect(r.x+17,r.y,r.width-34,r.height),p.name+(p.id==me.id?" · YOU":""),15,U.A(U.Hex(0xf4f4f5),enter),TextAnchor.MiddleLeft);U.Text(new Rect(r.x+17,r.y,r.width-34,r.height),p.score.ToString(),15,U.A(Color.white,enter),TextAnchor.MiddleRight,bold:true);y+=68;}
             U.Text(new Rect(ix,y+8,iw,20),me.chips.Values.Sum()+" CHIPS INSTALLED · BUILD COMPLETE",13,U.A(U.Hex(0xa6a7ad),enter),TextAnchor.MiddleCenter);y+=40+24;
-            float bw=(iw-10)/2;bool lobby=Hosting||!Online;
-            if(MenuButton(new Rect(ix,y,bw,48),"rotate-cw",HostLost?"Return to Main Menu":"Rematch ("+RematchVotes+"/"+RematchRequired+")",null,true,true,enter,15,true))VoteRematch();
-            if(MenuButton(new Rect(ix+bw+10,y,bw,48),"undo-2",LobbyReturnSeconds>0?"Cancel · "+Mathf.CeilToInt(LobbyReturnSeconds)+"s":"Return to Lobby",null,false,lobby,enter,15,true)){if(LobbyReturnSeconds>0)CancelLobbyReturn();else RequestLobbyReturn();}
+            float bw=(iw-10)/2;
+            if(lost){if(MenuButton(new Rect(ix,y,iw,48),"log-out","Return to Main Menu",null,true,true,enter,15,true))LeaveLostHost();}
+            else
+            {
+                if(MenuButton(new Rect(ix,y,bw,48),"rotate-cw","Rematch",null,true,true,enter,15,true))VoteRematch();
+                if(MenuButton(new Rect(ix+bw+10,y,bw,48),"undo-2","Return to Lobby",null,false,(Hosting||!Online)&&LobbyReturnSeconds<=0,enter,15,true)){if(!Online)afterMatch=OfflineLobby();RequestLobbyReturn();}
+            }
             U.Pop();
         }
         // pve/results.ts: VICTORY / DEFEAT under the boss test eyebrow, the Siren's remaining health, a card per pilot (MVP by
@@ -185,10 +194,16 @@ namespace ChipArena.UnityConversion
             {
                 var r=rows[i];var c=new Rect(ix+(i%cols)*(cw+14),y+(i/cols)*(resH+14),cw,resH);bool crown=r==mvp&&r.DamageBoss>0;PveResultCard(c,r,i,crown,portrait,topH,cardH,statCols,enter,t);
             }
-            y=py+ph-32-48;float bw=Mathf.Min(240,(iw-12)/2),bx=px+pw/2-bw-6;
-            if(MenuButton(new Rect(bx,y,bw,48),"rotate-cw",HostLost?"Return to Main Menu":"Retry ("+RematchVotes+"/"+RematchRequired+")",null,true,true,enter,15,true))VoteRematch();
-            if(MenuButton(new Rect(bx+bw+12,y,bw,48),"log-out","Return to Menu",null,true,true,enter,15,true))ReturnMainMenu();
+            // .pve-result-actions: Retry (not once the host is gone) and Return to Menu, both primary, at least min(240px,40vw),
+            // gap 12, centred together with the 13 px muted "Waiting for N more…" after a vote while others have not voted.
+            y=py+ph-32-48;float bw=Mathf.Min(240,(iw-12)/2);bool retry=!HostLost;int votes=RematchVotes,required=RematchRequired;
+            if(votes>0&&votes<required){if(required-votes!=waitingFor){waitingFor=required-votes;waitingText="Waiting for "+waitingFor+" more…";}}else waitingFor=-1;
+            float ww=waitingFor>0?U.Measure(waitingText,13).x:0,group=(retry?bw+12:0)+bw+(ww>0?12+ww:0),bx=px+(pw-group)/2;
+            if(retry){if(MenuButton(new Rect(bx,y,bw,48),"rotate-cw","Retry",null,true,true,enter,15,true))VoteRematch();bx+=bw+12;}
+            if(MenuButton(new Rect(bx,y,bw,48),"log-out","Return to Menu",null,true,true,enter,15,true)){if(HostLost)LeaveLostHost();else{afterMatch=MenuScreen.Home;ReturnMainMenu();}}
+            if(ww>0)U.Text(new Rect(bx+bw+12,y,ww+4,48),waitingText,13,U.Hex(0xa6a7ad,enter),TextAnchor.MiddleLeft);
         }
+        private int waitingFor=-1;private string waitingText="";
         // .pve-result-boss on a defeat: the Siren's remaining health, or the wave the party fell on before she appeared.
         private static string PveBossLine(NativePveState v,bool victory)
         {
@@ -241,6 +256,9 @@ namespace ChipArena.UnityConversion
         {
             float x=0;int lines=1;foreach(var k in seat.chips.Where(k=>k.Value>0)){var chip=content.chips.FirstOrDefault(c=>c.id==k.Key);if(chip==null)continue;float w=BadgeWidth(chip.name,k.Value);if(x>0&&x+w>width){lines++;x=0;}x+=w+4;}return lines;
         }
+        // A guest whose host is gone: back to Join Room with the resume token kept, so Join Room within the 90-second lease
+        // reclaims the seat (the pause menu's lost path). ReturnMainMenu() closes the network, which clears the token.
+        private void LeaveLostHost(){afterMatch=MenuScreen.Join;ReturnToLobby();}
         private void ReturnToLobby()
         {
             ClearReplay();arena?.Dispose();arena=null;match=null;presentation?.ResetPresentation();matchEndAt=-1;menu=true;

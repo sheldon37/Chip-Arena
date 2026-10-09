@@ -285,6 +285,7 @@ namespace ChipArena.UnityConversion
             if(!rulesLocked)BotLoadouts(LobbyBotSeats(),16);
             RuleFine(7578,DraftNote(o),10,4);
             RoomInviteLink();
+            ConnectionReportButton();
             AdvancedEnd();
         }
         // Boss Test (pve/menu.ts testBossBody): Party bots, its note and Start at the Siren (with Unity's "Party bots use my
@@ -302,6 +303,7 @@ namespace ChipArena.UnityConversion
                 RuleCheck(7586,RoomOpt.Mirror,rulesLocked?"Party bots use the host's weapon":"Party bots use my weapon",g.mirrorWeapons);RuleCheck(7588,RoomOpt.SkipWaves,"Start at the Siren",g.skipWaves);
                 RuleFine(7589,"Earn money from minions for chips, heals, revives and recruits. F interacts · C opens your chips.",4,4);
                 RoomInviteLink();
+                ConnectionReportButton();
                 AdvancedEnd();return;
             }
             BeginRules(false,578);var o=rules;

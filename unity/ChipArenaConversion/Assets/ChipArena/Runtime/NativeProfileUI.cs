@@ -142,6 +142,33 @@ namespace ChipArena.UnityConversion
             NativeUi.Text(new Rect(b.x+21,y,b.width-42,18),code,15,NativeUi.Hex(0xfff1bb),TextAnchor.MiddleLeft,mono:true);y+=34;
             float w=NativeUi.Measure("Copy recovery code",15,true).x+38;if(MenuButton(new Rect(b.x+21,y,w,48),null,"Copy recovery code",null,false,true,1,15,true)){GUIUtility.systemCopyBuffer=code;Notice("Recovery code copied. Store it somewhere safe.");}
         }
+        // The signed-in account's actions (main.ts:151): Reload saved pilot | Save current pilot (primary) | DEV Menu (DEV
+        // access) | Log out, in sentence case along the panel's foot as ScreenActions lays them out. The source draws no
+        // icons; Unity's stay while every label fits beside one, then the row drops them together, then falls back to 13 px,
+        // and a label still too long breaks onto two lines inside the 48 px button (the source's button grows instead).
+        // Reload loads the account's saved pilot (ReloadSavedPilot) and says "Saved pilot loaded." or the service's error
+        // when the request ends (EndFlowNotices); Reload, Save and Log out wait while a request is running.
+        private static readonly string[] AccountIcons={"rotate-cw","download","cpu","log-out"};
+        private static readonly string[] AccountLabels={"Reload saved pilot","Save current pilot","DEV Menu","Log out"};
+        private void AccountActions(ScreenLayout l)
+        {
+            var p=l.Panel;bool dev=account.Developer;int n=dev?4:3;float y=p.yMax-30-48,x=p.x+32,iw=p.width-64,gap=10,w=(iw-gap*(n-1))/n,size=15;bool icons=true;
+            for(int i=0;i<AccountLabels.Length;i++)if(i!=2||dev){float t=NativeUi.Measure(AccountLabels[i],15,true).x;if(19+18+t+36>w)icons=false;if(t+36>w)size=13;}
+            NativeUi.Fill(new Rect(x,y-20,iw,1),NativeUi.Hex(0x4b414c,.7f*l.Enter));int hit=-1,k=0;
+            for(int i=0;i<AccountLabels.Length;i++)
+            {
+                if(i==2&&!dev)continue;var r=new Rect(x+k*(w+gap),y,w,48);k++;string label=AccountLabels[i];bool enabled=i==2||!account.Busy;
+                if(NativeUi.Measure(label,size,true).x+36<=w){if(MenuButton(r,icons?AccountIcons[i]:null,label,null,i==1,enabled,l.Enter,size,true))hit=i;continue;}
+                // Two centred lines over a label-less button, lifting with its hover.
+                if(MenuButton(r,null,"",null,i==1,enabled,l.Enter,size,true))hit=i;
+                var lines=NativeUi.Wrap(label,size,w-36,true,2);float lift=NativeUi.HoverAmount(label.GetHashCode()^7253,r,enabled&&!MenuBlocked()),lh=size*1.25f,ty=r.center.y-lines.Count*lh/2-lift;
+                var ink=NativeUi.A(i==1?NativeUi.Hex(0x111216):NativeUi.Hex(0xf5f5f7),l.Enter*(enabled?1:.45f));
+                for(int j=0;j<lines.Count;j++)NativeUi.Text(new Rect(r.x+18,ty+j*lh,r.width-36,lh),lines[j],size,ink,TextAnchor.MiddleCenter,bold:true);
+            }
+            if(hit==0){ReloadSavedPilot();if(account.Busy)reloadPending=true;else Notice(account.Status);}
+            else if(hit==1)SavePilot();else if(hit==2)Go(MenuScreen.Dev);
+            else if(hit==3){account.Logout();Go(MenuScreen.Home);Notice("Logged out. Your saved pilot stays on your account.");}
+        }
         private void AccountSubmit()
         {try{account.Configure(prefs.accountOrigin);Save();account.Login(accountAction,accountUser,accountPassword,accountRecovery,rememberAccount);accountNotice="";}catch(ArgumentException e){accountNotice=e.Message;}}
         // Choices per row in ChoiceGrid: three, or two while a narrow column (the lobby's room column) is drawn.
