@@ -190,7 +190,7 @@ namespace ChipArena.UnityConversion
             if(!rigs.TryGetValue(a.Id,out rig)) { rig=captured.Create(transform,a.Id); rig.Impacts=meleeImpacts; rigs.Add(a.Id,rig); }
             if(Viewer&&ViewerSet>=4) rig.PreviewGun((WeaponId)(ViewerSet-3),ViewerClip,ViewerTime);
             else if(Viewer) rig.Preview(ViewerSet,PreviewName.Substring(PreviewName.IndexOf('/')+1),ViewerTime,Vector3.zero);
-            else rig.ActorPose(a,position,time);
+            else { PoseReach(rig,a,time); rig.ActorPose(a,position,time); }
             if(a.Id==LocalId) PlayerState=rig.State;
             if(SourceCharacter(rig,a,time))return;
             foreach(var box in CapturedRig.Boxes)

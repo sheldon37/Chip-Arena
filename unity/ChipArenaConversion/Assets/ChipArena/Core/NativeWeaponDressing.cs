@@ -30,6 +30,12 @@ namespace ChipArena.UnityConversion
         public static bool Melee(string spec)=>spec=="sword"||spec=="daggers"||spec=="greatsword"||spec=="shield"||spec=="emperor"||spec=="ansatsuken"||spec=="siren";
         // Chip modules and blade enchants are skipped for the fighters' fists (weapon-visuals.ts:88,128).
         public static bool Fist(string spec)=>spec=="emperor"||spec=="ansatsuken";
+        // character-animation.ts:57: a melee-class weapon (and its off-hand copy) is scaled along +z by reach / range, i.e.
+        // stats.reach, before any layer runs. The fighters' own layers reset their fists to scale 1 (emperor-animation.ts:45,
+        // ansatsuken-animation.ts:44), so a fist keeps the stretch only where sampleCharacter returns before them (stunned,
+        // knocked down or rolling: `fighterLayersSkipped`). The siren returns before sampleCharacter and is never scaled.
+        public static float ReachScale(string spec,float reach,bool fighterLayersSkipped)
+            =>!Melee(spec)||spec=="siren"||Fist(spec)&&!fighterLayersSkipped||!(reach>0)||float.IsInfinity(reach)?1:reach;
         // The 'blade-tip' sockets the sweep samples (weapon-visuals.ts:28,29,73,82).
         public static bool BladeTip(string spec,out Vector3 tip)
         {

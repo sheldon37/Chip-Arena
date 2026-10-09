@@ -16,6 +16,18 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-09 — Claude — C11 review fix: reach-stretched blades and the captured-melee floor guard
+- Branch `claude/wip-c11` (local, not pushed), on the C11 commit `a3cd5af` (base `81939f9`, PR #62 head). Presentation only.
+- Review finding: the renderer stretched melee weapons by stats.reach, but the captured-melee floor guard, blade clearance and support grip measured the unstretched blade. Daggers with one Extended Reach chip put their tips 2–6 cm into the floor in idle, walk and combo; at reach 2.0 daggers went up to 65 cm in. The source scales `r.weapon` before the melee layers (character-animation.ts:57), so its guard, `bladeEnd` and support grip read the stretched sockets.
+- Fix: `MeleeView.Reach` → `MeleeRig.WeaponReach`. The floor guard tip, the clearance blade end and pommel, the support grip (also the hit-reaction two-hand test) and the recovery-cache key all use it. The presentation sets it per actor from the renderer's `WeaponReach` before posing. `NativeWeaponDressing.ReachScale` also stretches the fighters' fists only while stunned, rolling or knocked down: their layers reset the fists to 1 (emperor-animation.ts:45, ansatsuken-animation.ts:44; checked with the pinned source).
+- Fixture: `tools/export_melee_motion.mjs` adds 7 reach scenarios (daggers 1.2 walk/combo, daggers/sword/greatsword combo at 2.0, greatsword hits 2.0, shield block 2.0). The 22 existing scenarios are byte-identical. With reach ignored, six new scenarios differ by 14–50 cm. The shield has no clearance and stays far from the floor, so it does not change. Each of the floor-guard, clearance and support-grip changes is needed for parity.
+- Checks: check_relay OK (captured melee parity 1196 frames, the original 872 plus 324 reach frames, within 1.73 mm; new ReachScale contract checks, mutation caught); Unity runtime+editor compile OK; 24 Python tests OK; package_source OK. A probe over every timeline at reach 1, 1.2, 1.35 and 2.0 finds no grounded frame with a stretched tip under the floor (lowest -0.780, the guard plane). Airborne frames are not guarded, as in the source.
+- Not run: Unity import, GPU rendering, a hosted or joined match, the Windows player.
+- No change to hit timing, hitboxes, damage, cooldowns, movement or networking.
+- Needs Astra (low priority, dev-only weapons): `Actor.JuggleUntil`, set from `NativePilot.Juggle.Until` in `NativeArena.Snapshot` and replicated with the snapshot. Without it, a juggled Emperor/Ansatsuken's fists stop stretching when the .45 s stun ends; the source keeps them stretched for the whole juggle.
+- Risks: the first-person fallback pose keeps its fixed-length blade floor clamp; the source does not guard first person at all.
+- Status: implemented on branch; not merged; not released.
+
 ## 2026-10-08 — Claude — C11 weapon presentation in Unity (plus the C7 muzzle flash)
 - Branch `claude/wip-c11` (local, not pushed), base `claude/sleepy-ritchie-g8ruhv` `81939f9` (PR #62 head). Presentation only.
 - `Core/NativeWeaponDressing.cs` is a pure port of the pinned source (05950ea). It covers the client/melee-trails.ts sweep: the window, ribbon identity, 3/1 sub-samples slerped about the grip, the 16-sweep and 48-sample caps, the per-weapon life (x.7 reduced) and the glow formula. It also covers weapon-visuals.ts chip modules (all 17 kinds, the orb bob and coil spin), fire/poison enchants, the muzzle flash and three r180's four primitives.
@@ -28,7 +40,7 @@ containing an entry; no self-referential commit hash is required.
 - Checks: Unity runtime+editor compile OK; check_relay OK (new WeaponPresentationChecks against `tools/export_weapon_fixtures.mjs` -> `Tests/weapon-presentation-parity.json`; 7 deliberate Core mutations caught); 24 Python tests OK; package_source OK. Voxel renders of modules, enchants, flashes and ribbons through the fxref harness match the source data.
 - Not run: Unity import, GPU rendering, a hosted or joined match, the Windows player, performance.
 - Needs Astra: a per-hit fighter timestamp on Actor (e.g. `Actor.LastAttack = p.LastAttack` in NativeArena.Snapshot, replicated with the snapshot) so every Emperor/Ansatsuken punch sweeps; until then only the first punch of an action does.
-- Risks: the reach-stretched greatsword is not known to MeleeClearance (check reach 2.0 and Hurricane cuts on the floor). Glow pieces read a little brighter than the source without ACES (C19). The Siren stays bare: the source would draw modules and flames on its empty weapon socket.
+- Risks: the reach-stretched blades were not known to the captured-melee floor guard and clearance (fixed in the 2026-10-09 entry above). Glow pieces read a little brighter than the source without ACES (C19). The Siren stays bare: the source would draw modules and flames on its empty weapon socket.
 - Status: implemented on branch; not merged; not released.
 
 

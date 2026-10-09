@@ -18,12 +18,16 @@ namespace ChipArena.UnityConversion
         private NativePilot LoadoutPilot(int id)
         {var arena=WeaponLoadout;if(arena==null)return null;var pilots=arena.Pilots;for(int i=0;i<pilots.Count;i++)if(pilots[i].Seat!=null&&pilots[i].Seat.id==id)return pilots[i];return null;}
         // character-animation.ts:57: every melee weapon (and the off-hand) is scaled along its +z by stats.reach, so the blade,
-        // its modules, enchant and blade tip stretch together. The intro, draft and sandbox viewer rigs stay bare.
-        private float WeaponReach(CapturedAnimation.Player rig,Actor a)
+        // its modules, enchant and blade tip stretch together (fists only where the source skips its fighter layers). The
+        // intro, draft and sandbox viewer rigs stay bare.
+        private float WeaponReach(CapturedAnimation.Player rig,Actor a,float time)
         {
             if(Viewer||rig==introRig||!NativeWeaponDressing.Melee(a.SourceSpec))return 1;var stats=LoadoutPilot(a.Id)?.Stats;
-            float reach=stats!=null?(float)stats["reach"]:1;return reach>0&&MathUtil.Finite(reach)?reach:1;
+            return NativeWeaponDressing.ReachScale(a.SourceSpec,stats!=null?(float)stats["reach"]:1,a.StunUntil>time||a.Rolling(time)||NativeSpecialPose.Down(a,time));
         }
+        // Before a rig is posed: the captured-melee layers measure the same stretched blade tip, blade end, pommel and support
+        // grip the renderer draws (the source scales r.weapon before meleeMotion and the floor guard read its sockets).
+        private void PoseReach(CapturedAnimation.Player rig,Actor a,float time)=>rig.WeaponReach=WeaponReach(rig,a,time);
         // The frame the baked 'weapon-'+spec parts are queued in (guns: the hand; staffs and leet: the staff grip; the sword
         // family: the held melee hand), with the reach stretch for melee.
         private Matrix4x4 SourceWeaponBone(CapturedAnimation.Player rig,Actor a,float time,bool first,int bone,float reach)
@@ -87,7 +91,7 @@ namespace ChipArena.UnityConversion
         {
             if(sourceModels==null||Viewer||!meleeSweeps.Enabled||a.WeaponAway||!NativeWeaponDressing.BladeTip(a.SourceSpec,out _))return;
             if(!rigs.TryGetValue(a.Id,out var rig)){rig=captured.Create(transform,a.Id);rig.Impacts=meleeImpacts;rigs.Add(a.Id,rig);}
-            rig.ActorPose(a,position,time);SampleSweep(rig,a,time,WeaponReach(rig,a),LoadoutPilot(a.Id)?.Seat.chips);
+            PoseReach(rig,a,time);rig.ActorPose(a,position,time);SampleSweep(rig,a,time,rig.WeaponReach,LoadoutPilot(a.Id)?.Seat.chips);
         }
         // melee-trails.ts:67-102 once per frame after every blade sample: prune, release and draw the additive ribbons.
         private void RenderMeleeTrails(float time)

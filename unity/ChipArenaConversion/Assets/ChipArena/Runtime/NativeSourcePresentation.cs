@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
             if(!first)LivingWounds(rig,a,time);
             if(!first&&!string.IsNullOrEmpty(a.Hat)&&a.SourceSpec!="siren")sourceModels.Queue("hat-"+a.Hat,rig.Root.transform.localToWorldMatrix,Bone,null,layer,camera);
             if(a.SourceSpec=="siren"||a.WeaponAway)return true;
-            float reach=WeaponReach(rig,a);Matrix4x4 WeaponBone(int b)=>SourceWeaponBone(rig,a,time,first,b,reach);
+            float reach=WeaponReach(rig,a,time);Matrix4x4 WeaponBone(int b)=>SourceWeaponBone(rig,a,time,first,b,reach);
             sourceModels.Queue("weapon-"+a.SourceSpec,rig.Root.transform.localToWorldMatrix,WeaponBone,null,layer,camera);WeaponDressing(rig,a,time,first,layer,camera,reach);return true;
         }
         private void SourceWorld(NativeArena arena)

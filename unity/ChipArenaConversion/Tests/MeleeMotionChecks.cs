@@ -7,7 +7,8 @@ using ChipArena.UnityConversion;
 
 // Captured-melee runtime parity: the original character animation's poses (tools/export_melee_motion.mjs) against
 // MeleeMotion over the same scripted timelines (walk/run/sprint, combos, Echo Strike, Hurricane, block impacts,
-// staggers, light hits, parries, strafing and jumps), all four captured weapons, every recorded frame.
+// staggers, light hits, parries, strafing and jumps, and Extended Reach stretches), all four captured weapons, every
+// recorded frame.
 internal static class MeleeMotionChecks
 {
     private static readonly string[] Keys={"gx","gz","yaw","vx","vy","vz","g","sp","la","ai","sa","su","bt","lb","hs","ca","cu","cy","sta","stu","sd","fu","rk","ra","ru","ry","rdx","rdy","rdz","rpx","rpy","rpz","rz","rt","rs"};
@@ -19,7 +20,7 @@ internal static class MeleeMotionChecks
         float dt=(float)document.RootElement.GetProperty("dt").GetDouble();int total=0;float worst=0;
         foreach(var scenario in document.RootElement.GetProperty("scenarios").EnumerateArray())
         {
-            string spec=scenario.GetProperty("spec").GetString(),name=scenario.GetProperty("name").GetString();
+            string spec=scenario.GetProperty("spec").GetString(),name=scenario.GetProperty("name").GetString();float reach=scenario.TryGetProperty("reach",out var stretch)?(float)stretch.GetDouble():1;
             var motion=new MeleeMotion{Impacts=new MeleeImpacts()};var input=new Dictionary<string,double?>();int f=0,compared=0;float max=0,sum=0;int n=0;
             foreach(var frame in scenario.GetProperty("frames").EnumerateArray())
             {
@@ -28,7 +29,7 @@ internal static class MeleeMotionChecks
                 double? I(string k)=>input.TryGetValue(k,out var v)?v:null;float F(string k,float d=0)=>(float)(I(k)??d);
                 var view=new MeleeView{Id="pilot-"+spec,Spec=spec,Yaw=F("yaw"),Vel=new Vector3(F("vx"),F("vy"),F("vz")),Grounded=F("g")>0,Sprinting=F("sp")>0,LastAttack=F("la",-100),
                     Windup=(float)scenario.GetProperty("windup").GetDouble(),AttackRate=(float)scenario.GetProperty("rate").GetDouble(),AttackIndex=(int)F("ai"),SwingAt=I("sa").HasValue?F("sa"):float.NaN,SwingUntil=I("su").HasValue?F("su"):float.NaN,
-                    Hurricane=scenario.GetProperty("hurricane").GetBoolean(),BlockTime=F("bt"),LastBlock=F("lb"),HitStunUntil=F("hs")};
+                    Hurricane=scenario.GetProperty("hurricane").GetBoolean(),BlockTime=F("bt"),LastBlock=F("lb"),HitStunUntil=F("hs"),Reach=reach};
                 if(I("ca").HasValue){view.Commit=true;view.CommitAt=F("ca");view.CommitUntil=F("cu");view.CommitYaw=F("cy");view.StepAt=F("sta");view.StepUntil=F("stu");view.StepDistance=F("sd");view.Followup=F("fu")>0;}
                 if(I("ra").HasValue){view.Reaction=true;view.Parry=F("rk")>0;view.ReactionAt=F("ra");view.ReactionUntil=F("ru");view.ReactionYaw=F("ry");view.ReactionDir=new Vector3(F("rdx"),F("rdy"),F("rdz"));view.ReactionPoint=new Vector3(F("rpx"),F("rpy"),F("rpz"));view.ReactionZone=(int)F("rz");view.ReactionTurn=F("rt");view.ReactionStrength=F("rs");}
                 if(frame.TryGetProperty("ev",out var events))foreach(var e in events.EnumerateArray()){string kind=e[0].GetString();float at=(float)e[1].GetDouble();if(kind=="hit")motion.Impacts.RecordHit(view.Id,at);else motion.Impacts.RecordBlock(view.Id,at);}
