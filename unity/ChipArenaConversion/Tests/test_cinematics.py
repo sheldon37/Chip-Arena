@@ -79,6 +79,39 @@ class CinematicChecks(unittest.TestCase):
         self.assertGreater(max(light(f) for f in range(c['frames'])),10)
         self.assertAlmostEqual(light(c['frames']-1),0,places=4)
         self.assertGreater(len(self.models['stage-dev-siren']['sections']),20)
+    def test_every_staged_entrance_has_its_scene_and_motion(self):
+        # NativeIntroRules.Entrances is what RenderIntro stages (anything else falls back to neon-drop, never a missing stage).
+        import re
+        core=(ROOT/'Assets/ChipArena/Core/NativeIntroRules.cs').read_text(encoding='utf-8')
+        styles=re.findall(r'"([a-z-]+)"',re.search(r'Entrances=\{([^}]*)\}',core).group(1))
+        self.assertEqual(len(styles),20)
+        motion={c['key'] for c in resource('SourceMotion')['clips']}
+        for style in styles:
+            with self.subTest(style=style):
+                self.assertIn('stage-'+style,self.clips)
+                self.assertIn('stage-'+style,self.models)
+                self.assertIn('intro-'+style,motion)
+    def test_siren_cell_is_lit_by_its_bulb_through_the_entrance_light_conversion(self):
+        # The cell has no directional light and almost no ambient: only the bulb and fill show it, so their conversion
+        # into Unity lights (NativeEntranceLight, colour space and intensity mode) decides whether the room is visible.
+        c=self.clips['stage-dev-siren']
+        lit=[f for f in range(c['frames']) if any(l['kind']=='point' and l['values'][f*11+6]>20 for l in c['lights'])]
+        self.assertGreater(len(lit),60)
+        for f in lit:
+            self.assertFalse(any(l['kind']=='directional' and l['values'][f*11+6]>0 for l in c['lights']),f)
+            self.assertLess(sum(l['values'][f*11+6]*max(l['values'][f*11+3:f*11+6]) for l in c['lights'] if l['kind'] in ('ambient','hemisphere')),.05,f)
+        lighting=(ROOT/'Assets/ChipArena/Runtime/NativeLighting.cs').read_text(encoding='utf-8')
+        intro=lighting[lighting.index('public static void Intro('):lighting.index('public static void Clock(')]
+        self.assertIn('NativeEntranceLight.Light(',intro)
+        self.assertIn('NativeEntranceLight.Ambient(',intro)
+        self.assertNotIn('light.intensity=intensity',intro)
+        self.assertIn('env[e+2]).gamma',intro)
+    def test_intro_rig_holds_only_a_weapon_intros_weapon(self):
+        # player-intros.ts builds a weapon only for a weapon intro; the L33T Throne's staff is its own stage prop.
+        intros=(ROOT/'Assets/ChipArena/Runtime/NativeIntros.cs').read_text(encoding='utf-8')
+        self.assertIn('SourceCharacter(introRig,actor,arena.Time,weapon:false)',intros)
+        self.assertIn('NativeIntroRules.IntroWeapon(style)',intros)
+        self.assertIn('stage-dev-matrix',self.clips)
     def test_demon_and_flames_are_animated(self):
         for key in ('death-dev-raging-demon','death-siren-crush','death-siren-dissipate','stage-dev-ansatsuken'):
             c=self.clips[key]

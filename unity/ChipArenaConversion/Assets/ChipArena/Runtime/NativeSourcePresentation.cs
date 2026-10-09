@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
         private NativeSourceModels sourceModels;private readonly Dictionary<int,CapturedAnimation.Player> minionRigs=new Dictionary<int,CapturedAnimation.Player>();private readonly CapturedRig.Pose minionPose=new CapturedRig.Pose();
         private static Color BodyTint(string text){if(!ColorUtility.TryParseHtmlString(text??"#e5e7eb",out var color))return Color.white;Color source=new Color(229/255f,231/255f,235/255f).linear,target=color.linear;return new Color(target.r/source.r,target.g/source.g,target.b/source.b);}
         private static Color AccentTint(string text){if(!ColorUtility.TryParseHtmlString(text??"#e5e7eb",out var color))return Color.white;Color source=new Color(112/255f,225/255f,208/255f).linear,target=color.linear;return new Color(target.r/source.r,target.g/source.g,target.b/source.b);}
-        private bool SourceCharacter(CapturedAnimation.Player rig,Actor a,float time,bool first=false)
+        private bool SourceCharacter(CapturedAnimation.Player rig,Actor a,float time,bool first=false,bool weapon=true)
         {
             if(sourceModels==null||string.IsNullOrEmpty(a.SourceSpec))return false;int layer=first?10:0;Camera camera=first?ViewCamera:null;
             Matrix4x4 Bone(int b)=>rig.Bones[b].localToWorldMatrix;bool Visible(int b)=>!first||NativeViewRules.ViewModelBone(b);
@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
             sourceModels.Queue(model,rig.Root.transform.localToWorldMatrix,Bone,Visible,layer,camera,BodyTint(a.BodyColor),AccentTint(a.AccentColor),partTint:first?null:SirenCharTint(a.Id));
             if(!first)LivingWounds(rig,a,time);
             if(!first&&!string.IsNullOrEmpty(a.Hat)&&a.SourceSpec!="siren")sourceModels.Queue("hat-"+a.Hat,rig.Root.transform.localToWorldMatrix,Bone,null,layer,camera);
-            if(a.SourceSpec=="siren"||a.WeaponAway)return true;
+            if(a.SourceSpec=="siren"||a.WeaponAway||!weapon)return true;
             float reach=WeaponReach(rig,a,time);Matrix4x4 WeaponBone(int b)=>SourceWeaponBone(rig,a,time,first,b,reach);
             sourceModels.Queue("weapon-"+a.SourceSpec,rig.Root.transform.localToWorldMatrix,WeaponBone,null,layer,camera);WeaponDressing(rig,a,time,first,layer,camera,reach);return true;
         }
