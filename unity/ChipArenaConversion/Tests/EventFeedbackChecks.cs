@@ -125,6 +125,16 @@ namespace ChipArena.UnityConversion
             Check(Near(NativeEventSounds.Pan(new V3(5,0,0),0),.85,1e-6)&&Near(NativeEventSounds.Pan(new V3(-5,0,0),0),-.85,1e-6)&&Near(NativeEventSounds.Pan(new V3(0,0,-5),(float)(Math.PI/2)),.85,1e-6)&&Near(NativeEventSounds.Pan(new V3(1,0,0),0),.5,1e-6)&&NativeEventSounds.Pan(new V3(0,0,6),0)==0,"pan");
             Check(Near(NativeEventSounds.Falloff(1),1,1e-7)&&Near(NativeEventSounds.Falloff(12),1/2.3,1e-6)&&NativeEventSounds.Rate("hit",.9f)==1&&NativeEventSounds.Rate("ui",0)==1&&Near(NativeEventSounds.Rate("stone",0),.97,1e-7)&&Near(NativeEventSounds.Rate("stone",1),1.03,1e-6),"falloff and rate");
             passed.Add("event feedback: proc kinds; under-attack ticks; legacy burst kinds; pan, falloff and rate");
+
+            // Music per match phase (ArenaAudio.updateStageMusic): PvP map music stays silent under the player intros, draft and match
+            // screens; the PvE stage track dips under an intro sting. NativeAudio must route both tracks through these rules.
+            int phases=0;foreach(var m in json.GetProperty("music").EnumerateArray())
+            {var phase=(NativePhase)Enum.Parse(typeof(NativePhase),m.GetProperty("phase").GetString(),true);bool pve=m.GetProperty("pve").GetBoolean(),boss=m.GetProperty("boss").GetBoolean();string what=(pve?"PvE ":"PvP ")+phase+(boss?" with the boss song":"");
+             Check(NativeStageMusic.Plays(phase,pve,boss)==m.GetProperty("active").GetBoolean(),"music playing in "+what);Check(Near(NativeStageMusic.Dip(phase,pve),m.GetProperty("dip").GetDouble(),1e-6),"music dip in "+what);phases++;}
+            Check(phases==28,"music phase scenarios "+phases);
+            string audio=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeAudio.cs"));
+            Check(audio.Split("NativeStageMusic.Plays(match.Phase,").Length==3&&audio.Contains("NativeStageMusic.Dip(match.Phase,true)"),"NativeAudio routes the map and stage tracks through NativeStageMusic");
+            passed.Add("event feedback: map and stage music per match phase match updateStageMusic over "+phases+" phases (silent PvP intros, PvE intro dip)");
             return passed;
         }
     }
