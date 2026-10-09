@@ -16,6 +16,17 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-09 — Claude — Room UI on the PR #66 contracts (C1 join/invite, C3 options, C2 E12 team pickers)
+- Branch `claude/wip-ui-room` (build `dc17893`, review fixes `bafaa28`, base merge `517eeb2`), merged into `claude/sleepy-ritchie-g8ruhv` (PR #62). Menus only.
+- New `Runtime/NativeRoomOptionsUI.cs` holds the source's option rows (SelectField selects, checkboxes, notes, sections, the draft fold). Play vs Bots, Create Room and the lobby's essentials box and Advanced Options follow main.ts matchOptions/roomAdvanced/botDraftOption/botLoadouts: BOT DIFFICULTY, Random arena with its description, Randomize map after each set, rounds/sets, Skip player intros, per-bot weapon and team, the teams setup with Start blocked when everyone is on one team.
+- Host changes go through `RoomOptions`/`SetRoomOptions`, your own team through `ChangeTeam`; guests see the host's rules read-only. Bot cards come only from `LobbySeats`.
+- Join takes a code or a pasted invite link (`JoinInvite`, then `JoinRoom`). The lobby invite card shows the code, the LAN line (`LanAddresses` + port, refreshed every 5 s), Copy Code and Copy Invite Link (`InviteUrl`); Advanced Options ends with the INVITE LINK field.
+- Two-lens review: 12 findings (2 medium: a pasted link broke the Join form; Play/Create/Boss threw while a guest join was pending), all fixed.
+- Checks on the merged integration tree: Unity runtime+editor compile OK; check_relay 122 PASS; 24 Python tests OK; package_source OK (729 files). Offline renders of Play, Create, Join, host/guest/teams/PvE lobbies at 1280x720 (UI 1.5), 1920x1080, 2560x1440 and 3440x1440 compared with the source renders.
+- Not run: Unity import/play mode, real IMGUI input (clicks, text focus, the team list taking clicks and the wheel), Windows build, a LAN invite round trip.
+- Needs Astra: a host-side per-seat team call (e.g. `RequestTeam(seatId, team)`; `ChangeTeam` moves only the caller, so the host cannot set a guest's team as the source can); clear `receivedOptions`/`lobbySeats` (and the copied `prefs.pve`) in `CloseNetwork`/`JoinRoom` (the UI ignores stale ones for now); online CA- directory codes (A8).
+- No simulation, rules, protocol, save or account change.
+
 ## 2026-10-09 — Claude — C11 review fix: reach-stretched blades and the captured-melee floor guard
 - Branch `claude/wip-c11` (local, not pushed), on the C11 commit `a3cd5af` (base `81939f9`, PR #62 head). Presentation only.
 - Review finding: the renderer stretched melee weapons by stats.reach, but the captured-melee floor guard, blade clearance and support grip measured the unstretched blade. Daggers with one Extended Reach chip put their tips 2–6 cm into the floor in idle, walk and combo; at reach 2.0 daggers went up to 65 cm in. The source scales `r.weapon` before the melee layers (character-animation.ts:57), so its guard, `bladeEnd` and support grip read the stretched sockets.
