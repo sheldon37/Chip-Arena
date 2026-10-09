@@ -14,15 +14,15 @@ internal static class IntroPresentationChecks
     {
         var styles=NativeIntroRules.Entrances;Check(styles.Length==20,"twenty entrances");
         var seen=new HashSet<string>();foreach(var s in styles)Check(seen.Add(s),"duplicate entrance "+s);
-        // Hands: only a weapon intro holds a weapon, and it is that intro's own weapon model.
+        // Hands: a weapon intro holds its own weapon model and the Emperor's Oath holds the emperor gauntlets.
         int armed=0;
         foreach(var s in styles)
         {
             string held=NativeIntroRules.IntroWeapon(s);bool weapon=Array.IndexOf(WeaponIntros,s)>=0;
-            Check(weapon?held==s:held==null,s+" holds "+(held??"nothing"));if(held!=null)armed++;
+            Check(weapon?held==s:s=="dev-emperor"?held=="weapon-emperor":held==null,s+" holds "+(held??"nothing"));if(held!=null)armed++;
         }
-        Check(armed==WeaponIntros.Length,"eleven weapon intros are armed");
-        foreach(var s in new[]{"dev-matrix","dev-emperor","dev-ansatsuken","dev-siren","neon-drop","pulse-wave"})Check(NativeIntroRules.IntroWeapon(s)==null,s+" must keep its hands empty");
+        Check(armed==WeaponIntros.Length+1,"eleven weapon intros and the Emperor's Oath are armed");
+        foreach(var s in new[]{"dev-matrix","dev-ansatsuken","dev-siren","neon-drop","pulse-wave"})Check(NativeIntroRules.IntroWeapon(s)==null,s+" must keep its hands empty");
         Check(NativeIntroRules.IntroWeapon("weapon-siren")==null&&NativeIntroRules.IntroWeapon(null)==null&&NativeIntroRules.IntroWeapon("weapon-")==null,"unknown weapon intros hold nothing");
         // Staging: every entrance stages itself; anything else (a Siren seat without its grant) stages the source fallback.
         foreach(var s in styles)Check(NativeIntroRules.Entrance(s)==s,s+" stages itself");
@@ -50,7 +50,7 @@ internal static class IntroPresentationChecks
         Near(NativeEntranceLight.Applied(br,bulbUnity,true,false),bulb*power/Math.PI,"Siren bulb");Check(bulbUnity<8,"Siren bulb fits Unity's light intensity range");
         // Ambient goes through sRGB authoring: Unity's linearised value is the source's ambient / PI.
         foreach(double a in new[]{0,.0012,.004,.05,.4,1.3})Near(NativeEntranceLight.ToLinear(NativeEntranceLight.Ambient(a,true)),a/Math.PI,"ambient");
-        yield return "intro hands: 11 weapon intros hold their own weapon, 9 entrances (L33T Throne, Emperor, Rain Warrior, Siren, poses) hold none";
+        yield return "intro hands: 11 weapon intros hold their own weapon, the Emperor's Oath holds weapon-emperor, 8 entrances (L33T Throne, Rain Warrior, Siren, poses) hold none";
         yield return "intro staging: 20 entrances stage themselves, unknown styles stage neon-drop with unchanged timing";
         yield return "entrance lights: "+lights+" conversions apply the source's diffuse light in Linear, linear-intensity and Gamma modes; Siren bulb no longer blown out";
     }

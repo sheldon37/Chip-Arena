@@ -22,8 +22,8 @@ namespace ChipArena.UnityConversion
             if(style!="dev-siren"){SourceCharacter(introRig,actor,arena.Time,weapon:false);IntroWeapon(style);TeamBands(introRig,NativeStatusVisuals.BandTeam(arena.Match.Teams,arena.Match.Cooperative,pilot.Seat.AuthorityBoss,pilot.Seat.team));}if(!SourceStage(style,age,camera))throw new System.InvalidOperationException("Missing source entrance stage: "+style);
             DrawBatches(null,0,false);sourceModels.Flush(UsesInstancing);
         }
-        // player-intros.ts: the bare intro rig holds only a weapon intro's own weapon (WEAPON_INTROS[style].spec), at its hand
-        // sockets with no chip dressing; every other entrance keeps its hands empty, so the L33T Throne's floating staff (a
+        // player-intros.ts: the bare intro rig holds only a weapon intro's own weapon (WEAPON_INTROS[style].spec) or the Emperor's
+        // gauntlets, at its hand sockets with no chip dressing; every other entrance keeps its hands empty, so the L33T Throne's floating staff (a
         // stage prop, grabbed at 4 s) is the only staff. Staff models ride the left hand bone, where the arena's grip puts them.
         private void IntroWeapon(string style)
         {

@@ -21,11 +21,12 @@ namespace ChipArena.UnityConversion
         // A style with no entrance (a Siren seat without its DEV grant gets "weapon-siren") is staged as the source's own
         // fallback, 'neon-drop' (shared/intros.ts effectiveIntro), instead of failing the intro frame.
         public static string Entrance(string style)=>style!=null&&Array.IndexOf(Entrances,style)>=0?style:"neon-drop";
-        // The weapon model the intro rig holds, or null. player-intros.ts builds a weapon into the bare intro rig only for a
-        // weapon intro (WEAPON_INTROS[style].spec: the model "weapon-"+spec is the style itself; daggers fill both hands).
-        // Every other entrance shows empty hands: the poses, the Rain Warrior and the L33T Throne hide r.weapon, the Emperor's
-        // socket stays empty and the Siren hides it. The L33T Throne's staff is the stage's own prop, grabbed at 4 s.
-        public static string IntroWeapon(string style)=>style!=null&&style.StartsWith("weapon-",StringComparison.Ordinal)&&Array.IndexOf(Entrances,style)>=0?style:null;
+        // The weapon model the intro rig holds, or null. player-intros.ts builds a weapon into the bare intro rig for a weapon
+        // intro (WEAPON_INTROS[style].spec: the model "weapon-"+spec is the style itself; daggers fill both hands) and for the
+        // Emperor's Oath (buildWeapon(weapon/offWeapon,'emperor'), shown by poseEmperor; weapon-emperor holds both gauntlets).
+        // Every other entrance shows empty hands: the poses, the Rain Warrior and the L33T Throne hide r.weapon and the Siren
+        // hides it. The L33T Throne's staff is the stage's own prop, grabbed at 4 s.
+        public static string IntroWeapon(string style)=>style=="dev-emperor"?"weapon-emperor":style!=null&&style.StartsWith("weapon-",StringComparison.Ordinal)&&Array.IndexOf(Entrances,style)>=0?style:null;
         // shared/intros.ts INTRO_STYLES display names.
         public static string StyleName(string style)
         {
