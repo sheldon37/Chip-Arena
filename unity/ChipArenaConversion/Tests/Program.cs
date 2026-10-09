@@ -28,7 +28,7 @@ internal static class Program
             foreach(var result in LoadoutChecks.Run(data))Console.WriteLine("PASS "+result);
             NativeSystemsChecks.Run(root,data);WoundCarveChecks.Run(root);CollapseChecks.Run(root);ExtraPresentationChecks.Run(root);BlastChecks.Run(root);FieldChecks.Run(root);ShotChecks.Run(root,data);
             foreach(var result in FirstPersonSwayChecks.Run(root,data))Console.WriteLine("PASS "+result);
-            StatusVisualChecks.Run(root);GoreBeaconChecks.Run(root);GoreHitChecks.Run();
+            StatusVisualChecks.Run(root);GoreBeaconChecks.Run(root);GoreHitChecks.Run();KillEffectChecks.Run(root);
             LobbyPoseChecks.Run(root);
             foreach(var result in EventFeedbackChecks.Run(root))Console.WriteLine("PASS "+result);
             var tests = RegressionTests.Run(); tests.AddRange(RangedRegressionTests.Run());
