@@ -8,11 +8,11 @@ namespace ChipArena.UnityConversion
     {
         private Mesh cube;
         private CapturedAnimation captured;
-        private NativeCombatGlow combatGlow;private NativeBlastPresentation blasts;
+        private NativeCombatGlow combatGlow;private NativeBlastPresentation blasts;private NativeFieldPresentation fieldTelegraphs;
         public float GlowQuality=1,BlastQuality=1;public bool TrailsEnabled=true;
         // paused: the match itself is stopped (offline menu), so the blasts hold still; see NativeBlastFrame.Step.
         public void RenderGlow(NativeArena arena,Camera camera,bool paused=false)
-        {blasts?.Render(arena,camera,PresentationClock(arena),BlastQuality,paused);if(combatGlow==null)return;combatGlow.Halos=blasts?.Halos;combatGlow.Quality=GlowQuality;combatGlow.Trails=TrailsEnabled;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.ViewPilot.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);}
+        {float now=PresentationClock(arena);fieldTelegraphs?.Collect(arena,now);blasts?.Render(arena,camera,now,BlastQuality,paused,fieldTelegraphs);fieldTelegraphs?.Render(arena,camera,now,abilityPreview,abilityPreviewClamped);if(combatGlow==null)return;combatGlow.Halos=blasts?.Halos;combatGlow.Quality=GlowQuality;combatGlow.Trails=TrailsEnabled;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.ViewPilot.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);}
         private readonly AudioClip[] gunSounds=new AudioClip[4];
         private AudioClip reloadStart,reloadEnd,hitSound;
         private AudioSource localAudio;
@@ -75,6 +75,7 @@ namespace ChipArena.UnityConversion
             for(int i=7;i<materials.Count;i++){materials[i].SetColor("_Emission",colors[i]*.55f);compatibilityMaterials[i].SetColor("_Emission",colors[i]*.55f);}
             Debug.Log($"Unity prototype renderer: {RenderingMode}; {SystemInfo.graphicsDeviceType}; {SystemInfo.graphicsDeviceName}; shaderSupported={shader.isSupported}");
             captured=new CapturedAnimation();if(!buildArena){combatGlow=new NativeCombatGlow(transform);blasts=new NativeBlastPresentation(transform);sourceModels=new NativeSourceModels();}
+            if(!buildArena)fieldTelegraphs=new NativeFieldPresentation();
             string[] soundNames={"","pistol","rifle","machinegun"};
             for(int i=1;i<4;i++) gunSounds[i]=Resources.Load<AudioClip>("GunAudio/"+soundNames[i]);
             reloadStart=Resources.Load<AudioClip>("GunAudio/reload-start"); reloadEnd=Resources.Load<AudioClip>("GunAudio/reload-end");hitSound=Resources.Load<AudioClip>("GunAudio/hit");
@@ -112,7 +113,7 @@ namespace ChipArena.UnityConversion
         }
         public void ResetPresentation()
         {
-            ClearSourceActors();combatGlow?.Clear();blasts?.Clear();aimMotion.Reset();viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
+            ClearSourceActors();combatGlow?.Clear();blasts?.Clear();fieldTelegraphs?.Clear();aimMotion.Reset();viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
             foreach(var source in shotAudio) if(source!=null) source.Stop(); if(localAudio!=null) localAudio.Stop();
             foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear();
             foreach(var o in debris) if(o!=null) Destroy(o); debris.Clear();
@@ -301,7 +302,7 @@ namespace ChipArena.UnityConversion
         }
         private void OnDestroy()
         {
-            ClearSourceActors();sourceModels?.Dispose();combatGlow?.Dispose();blasts?.Dispose();viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
+            ClearSourceActors();sourceModels?.Dispose();combatGlow?.Dispose();blasts?.Dispose();fieldTelegraphs?.Dispose();viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
             foreach(var m in materials) CapturedAnimation.Release(m);
             foreach(var m in compatibilityMaterials) CapturedAnimation.Release(m);
             if(particleMaterial!=null) CapturedAnimation.Release(particleMaterial);

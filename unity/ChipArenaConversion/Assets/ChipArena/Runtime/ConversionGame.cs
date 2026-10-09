@@ -123,16 +123,18 @@ namespace ChipArena.UnityConversion
             presentation.SoundEnabled=false;presentation.LocalId=arena.ViewPilot.Seat.id;
             float renderTime=arena.Replica?arena.ReplicaRenderTime:visualClock.Sample(match.Time,Time.timeAsDouble-Time.fixedTimeAsDouble,menu);
             presentation.Render(arena.Snapshot(true),renderTime,false);
-            Vector3? preview=null;
+            Vector3? preview=null;bool previewClamped=false;
             if(play&&p.HoldAt>=0&&arena.Time-p.HoldAt>=.2f)
             {
                 Vector3 point=NativeArena.Vec(pending.AbilityTarget);var e=content.Ability(p.Seat.spec,"e");
+                // An out-of-range (sky) or arena-clamped aim draws the source's gapped preview.
+                previewClamped=(point-p.Body.position).sqrMagnitude>(float)(e.range*e.range);
                 point=p.Body.position+Vector3.ClampMagnitude(point-p.Body.position,(float)e.range);
-                point.x=Mathf.Clamp(point.x,-31,31);point.z=Mathf.Clamp(point.z,-27,27);
+                float clampedX=Mathf.Clamp(point.x,-31,31),clampedZ=Mathf.Clamp(point.z,-27,27);previewClamped|=clampedX!=point.x||clampedZ!=point.z;point.x=clampedX;point.z=clampedZ;
                 if(e.kind!="throw"&&Physics.Raycast(point+Vector3.up*.08f,Vector3.down,out var ground,40,NativeArena.WorldMask))point=ground.point;
                 preview=point;
             }
-            presentation.RenderAbilities(arena,preview);
+            presentation.RenderAbilities(arena,preview,previewClamped);
             presentation.GlowQuality=prefs.reducedEffects?.3f:prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?.4f:1;presentation.BlastQuality=prefs.reducedEffects?.3f:1;presentation.RenderGlow(arena,cameraView,menu&&!Online);presentation.FinishSourceFrame();
         }
         // No match: the selected map behind the menu with the source's slow overview orbit (renderer.ts idle camera).

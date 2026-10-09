@@ -28,6 +28,17 @@ Remaining: activated Unity import/Editor gates, genuine Mono token verification,
 - **Not run:** Unity import and compile of `NativeBlast.shader`, rendering on a GPU, the blasts in a hosted or joined match, frame-time cost on the owner's PC.
 - Review fixes (`claude/wip-c6-fixes`): the BlastChecks frame rules cover the frame step (capped at 0.05 s, zero only while paused), the pools staying small with the match running, the collapse of Blink Strike, ball-lightning and armed-rocket duplicates, and the Siren sites and halo cue. The checks above pass again. **Not run:** a Siren match, a 144 Hz guest or an online menu pause in the player.
 
+## Field telegraphs, C9 (2026-10-09, `claude/wip-c9`)
+
+- Runtime and Editor assemblies compile against the real Unity 6000.3.24f1 managed DLLs. `tools/check_relay.py` passes; the new FieldChecks compare with `tools/export_field_fixtures.mjs <source checkout>`, which writes `Tests/field-parity.json` from the pinned chaos-visuals.ts, siren/fx.ts and ability-preview.ts. They cover:
+  - 30 field runs (324 frames) over every kind and fx: glow disc vertices and alpha, cores, domes;
+  - 120 tint rows (self, ally, teams, PvE, no viewer, owner gone, chip fields);
+  - 54 Siren scorch and warning frames and 269 aim preview motes;
+  - glow alpha 0 at the rim, no geometry on the radius, the core and orbit formulas, and the Siren glow colour.
+  24 Python tests pass; `tools/package_source.py` passes.
+- A scratch three.js harness rendered source and port side by side for 30 cases: every field kind and fx, ally/enemy/no-viewer tints, Siren hellfire/trail/eruption and the aim preview (clamped too). Mean pixel difference is 0 to 0.06 of 255, and 0.6 to 1.6 for the time/repulsion domes, which the source tone-maps (C19).
+- **Not run:** Unity import and compile of `NativeFieldGlow.shader`, rendering on a GPU (Gamma vs Linear colour space blending), the telegraphs in a hosted or joined match, frame-time cost on the owner's PC.
+
 ## Melee runtime, presentation polish and updater integration (2026-10-08, `claude/sleepy-ritchie-g8ruhv`)
 
 Run in the Linux authoring workspace on the combined tree (updater merge `d185be4` and later):
