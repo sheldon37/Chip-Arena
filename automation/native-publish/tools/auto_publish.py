@@ -137,9 +137,15 @@ def native_checks(sha, token):
 
 def build_rejections(build, sha):
     expected = dict(buildStatus='success', lastBuiltRevision=sha, scmBranch=BRANCH,
-                    buildtargetid=TARGET, platform='standalonewindows64', unityVersion=UNITY)
-    return ([key for key, value in expected.items() if build.get(key) != value]
-            + [key for key in ('deleted', 'deletedArtifacts', 'deletedLogs', 'headless') if build.get(key)])
+                    buildtargetid=TARGET, platform='standalonewindows64')
+    rejected = [key for key, value in expected.items() if build.get(key) != value]
+    # UBA uses an underscore version ID, while the installed Editor and receipt
+    # use dotted versions. Accept only the two spellings of our exact pinned ID.
+    if build.get('unityVersion') not in (UNITY, UNITY.replace('.', '_')):
+        rejected.append('unityVersion')
+    if build.get('localUnityVersion') not in (None, '', UNITY):
+        rejected.append('localUnityVersion')
+    return rejected + [key for key in ('deleted', 'deletedArtifacts', 'deletedLogs', 'headless') if build.get(key)]
 
 
 def eligible_build(build, sha):
