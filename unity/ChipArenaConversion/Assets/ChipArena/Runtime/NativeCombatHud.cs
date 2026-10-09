@@ -24,12 +24,12 @@ namespace ChipArena.UnityConversion
                 glow:NativeUi.Hex(n.Heal?NativeCombatNumbers.HealOutline:NativeCombatNumbers.DamageOutline,.9f*alpha),shadow:NativeUi.Hex(n.Heal?NativeCombatNumbers.HealShadow:NativeCombatNumbers.DamageShadow,alpha));U.Pop();
         }
         private readonly Dictionary<int,HealthLag> healthLags=new Dictionary<int,HealthLag>();private int hudGeneration=-1;
-        // match-hud.css .death-announcement: top left, a dark card with an orange edge; a new line slides in over .26 s.
+        // match-hud.css .death-announcement: top left, a dark card (backdrop blur 4 px) with an orange edge; a new line slides in over .26 s.
         private void DeathLine()
         {
             var lines=presentation.DeathMessages(arena.Time).ToArray();if(lines.Length==0)return;float since=arena.Time-presentation.LatestDeathMessage(arena.Time),e=NativeUiMotion.Bezier(.2f,.8f,.2f,1,Mathf.Clamp01(since/.26f));
             float maxW=Mathf.Min(320,NativeUi.W*.42f),w=Mathf.Min(maxW,lines.Max(l=>NativeUi.Measure(l,13).x)+22),h=lines.Length*13*1.45f+14;var r=new Rect(22-10*(1-e),arena.Pve!=null?96:70,w,h);
-            NativeUi.Round(r,NativeUi.Hex(0x0d0f16,.72f*e),6);NativeUi.Fill(new Rect(r.x,r.y+3,2,r.height-6),NativeUi.Hex(0xff6b35,e));
+            NativeUi.Backdrop(r,6,4,e);NativeUi.Round(r,NativeUi.Hex(0x0d0f16,.72f*e),6);NativeUi.Fill(new Rect(r.x,r.y+3,2,r.height-6),NativeUi.Hex(0xff6b35,e));
             for(int i=0;i<lines.Length;i++)NativeUi.Text(new Rect(r.x+11,r.y+7+i*13*1.45f,w-22,13*1.45f),lines[i],13,NativeUi.Hex(0xd9ecf3,e),TextAnchor.MiddleLeft,shadow:new Color(0,0,0,e));
         }
         private void CombatWorldHud(float scale,float width,float height)

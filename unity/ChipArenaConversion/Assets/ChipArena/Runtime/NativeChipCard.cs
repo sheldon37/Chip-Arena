@@ -85,7 +85,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<l.Name.Count;i++)
             {
                 var nr=new Rect(tx,ny+i*s.Name*s.NameLine,tw+4,s.Name*s.NameLine);Color nc=mythic?Color.HSVToRGB(Mathf.Repeat(t/4+i*.08f,1),.45f,1):name;
-                if(tier=="siren"){float g=Mathf.Repeat(t,4.2f)/4.2f;if(g>=.65f&&g<.72f){U.Text(new Rect(nr.x-2,nr.y,nr.width,nr.height),l.Name[i],s.Name,A(U.Hex(0xff2d55),.8f),TextAnchor.MiddleLeft,bold:true);U.Text(new Rect(nr.x+2,nr.y,nr.width,nr.height),l.Name[i],s.Name,A(U.Hex(0x2de2ff),.8f),TextAnchor.MiddleLeft,bold:true);}}
+                if(tier=="siren"){float g=Mathf.Repeat(t,4.2f)/4.2f;var block=new Rect(tx,ny,tw+4,l.Name.Count*s.Name*s.NameLine);U.SplitCopy(block,nr,g,false,l.Name[i],s.Name,a,TextAnchor.MiddleLeft);U.SplitCopy(block,nr,g,true,l.Name[i],s.Name,a,TextAnchor.MiddleLeft);}
                 U.Text(nr,l.Name[i],s.Name,A(nc),TextAnchor.MiddleLeft,bold:true,tracking:.01f,glow:legendary?A(U.Hex(0xf39a35),.5f):default);
             }
             // Description and stat lines on the substrate.
@@ -102,7 +102,9 @@ namespace ChipArena.UnityConversion
             if(look.Focus)U.Round(new Rect(r.x-7,r.y-7,r.width+14,r.height+14),Color.clear,s.Radius+4,A(rare),2);
             if(look.Chosen)U.Round(new Rect(r.x-6,r.y-6,r.width+12,r.height+12),Color.clear,s.Radius+4,A(rare),2);
         }
-        // Per-tier power-on reveal (chip-cards.css draft-reveal keyframes) at `t` seconds after the card's own delay.
+        // Per-tier power-on reveal (chip-cards.css draft-reveal keyframes) at `t` seconds after the card's own delay. Only the
+        // Siren reveal calls it now ("siren": siren-boot, flat transforms only); the rotateX/rotateY tiers' cos() squashes served
+        // the draft tray the chip table replaced and are drawn nowhere.
         public struct Reveal {public float Alpha,Dx,Dy,Scale,ScaleX,ScaleY,Degrees,Bright;}
         public static Reveal Entrance(string tier,float t)
         {

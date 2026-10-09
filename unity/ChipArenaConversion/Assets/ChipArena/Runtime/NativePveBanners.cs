@@ -58,8 +58,8 @@ namespace ChipArena.UnityConversion
             U.Push(new Vector2(W/2,top+F/2),new Vector2(0,dy),s);
             if(siren&&b.Tone!="found")
             {   // The violet glitch split: red and cyan copies flicker in steps every 1.6 s.
-                float g=Mathf.Repeat(age+1,1.6f)/1.6f,h=Mathf.Repeat(age+1.1f,1.6f)/1.6f;float Off(float p,float x,float y,float z)=>p>=.65f&&p<.67f?x:p>=.67f&&p<.69f?y:p>=.69f&&p<.72f?z:float.NaN;
-                float ra=Off(g,-3,4,-2),ca=Off(h,3,-4,2);if(!float.IsNaN(ra))U.Text(new Rect(ra,top,W,F),title,F,U.A(U.Hex(0xff2d55),.85f*a),TextAnchor.MiddleCenter,bold:true,tracking:track);if(!float.IsNaN(ca))U.Text(new Rect(ca,top,W,F),title,F,U.A(U.Hex(0x2de2ff),.85f*a),TextAnchor.MiddleCenter,bold:true,tracking:track);
+                float g=Mathf.Repeat(age+1,1.6f)/1.6f,h=Mathf.Repeat(age+1.1f,1.6f)/1.6f;var box=new Rect(0,top,W,F);
+                U.SplitCopy(box,box,g,false,title,F,a,TextAnchor.MiddleCenter,track);U.SplitCopy(box,box,h,true,title,F,a,TextAnchor.MiddleCenter,track);
             }
             U.Text(new Rect(0,top,W,F),title,F,U.A(c,a),TextAnchor.MiddleCenter,bold:true,tracking:track,glow:U.A(glow,a),shadow:new Color(0,0,0,a));
             if(!string.IsNullOrEmpty(b.Sub))

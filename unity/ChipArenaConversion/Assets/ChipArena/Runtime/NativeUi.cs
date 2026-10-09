@@ -135,6 +135,59 @@ namespace ChipArena.UnityConversion
         public static void Radial(Rect r,Color c){if(c.a<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=Tone(c);GUI.DrawTexture(P(r),LightRamp(c)?radialL:radial);GUI.color=o;GUI.matrix=m;}
         public static void Image(Rect r,Texture t,Color c){if(t==null||c.a<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=Tone(c);GUI.DrawTexture(P(r),t);GUI.color=o;GUI.matrix=m;}
         public static void Glow(Rect r,Color c,float spread){if(c.a<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=Tone(c);GUI.DrawTexture(P(new Rect(r.x-spread,r.y-spread,r.width+spread*2,r.height+spread*2)),LightRamp(c)?softL:soft);GUI.color=o;GUI.matrix=m;}
+        // CSS backdrop-filter: blur(px) under a translucent panel. NativeUiBlur keeps one shared blurred copy of the 3D frame
+        // (a small and a large blur) while a panel asked for it in the last frames; this draws its texels under the panel's
+        // rounded shape (corner rows stepped inside the radius), before the panel's own fill. The copy is the same scene the
+        // panel covers, so its alpha is the panel's opacity as is (Tone is for colour layers). Without the copy (its first
+        // frame, a missing shader, Gamma tests) nothing is drawn and the panel shows its plain translucent fill.
+        public static Texture BlurSmall,BlurLarge;public static int BlurRequested=-100;
+        public static void Backdrop(Rect r,float radius,float blur,float alpha)
+        {
+            if(alpha<=0||blur<=0||Event.current.type!=EventType.Repaint)return;BlurRequested=Time.frameCount;var t=blur>8?BlurLarge:BlurSmall;if(t==null)return;
+            var m=Enter();var o=GUI.color;GUI.color=new Color(1,1,1,Mathf.Clamp01(alpha));var pr=P(r);float rad=Mathf.Min(radius*S,Mathf.Min(pr.width,pr.height)/2);
+            BackdropSlice(new Rect(pr.x,pr.y+rad,pr.width,pr.height-2*rad),t);
+            for(int i=0;i<4&&rad>0;i++)
+            {   // Row i of each corner band: inset by the circle at its outer edge, so it stays inside the rounded shape.
+                float d0=rad*i/4,h=rad/4,dy=rad-d0,inset=rad-Mathf.Sqrt(Mathf.Max(0,rad*rad-dy*dy));
+                BackdropSlice(new Rect(pr.x+inset,pr.y+d0,pr.width-2*inset,h),t);BackdropSlice(new Rect(pr.x+inset,pr.yMax-d0-h,pr.width-2*inset,h),t);
+            }
+            GUI.color=o;GUI.matrix=m;
+        }
+        // A physical rect drawn with the texels of the screen pixels it covers: the kit transform, plus a deferred clip's offset
+        // (IMGUI adds it before the matrix), gives its screen rect; the copy's v runs bottom-up.
+        private static void BackdropSlice(Rect q,Texture t)
+        {
+            if(q.width<=0||q.height<=0)return;Vector3 a=current.MultiplyPoint3x4(q.min+pivotShift),b=current.MultiplyPoint3x4(q.max+pivotShift);float sw=Mathf.Max(1,Screen.width),sh=Mathf.Max(1,Screen.height);
+            GUI.DrawTextureWithTexCoords(q,t,new Rect(Mathf.Min(a.x,b.x)/sw,1-Mathf.Max(a.y,b.y)/sh,Mathf.Abs(b.x-a.x)/sw,Mathf.Abs(b.y-a.y)/sh));
+        }
+        // CSS clip-path: polygon() filled with a horizontal alpha profile: `shape` in fractions of the box (x right, y down),
+        // the profile's stops `at` (0..1 across) and `alpha`. The anti-aliased mask is baked once per shape and profile
+        // (cached like RadialStops) and drawn stretched over `r` in `c`; light colours use the alpha^2.2 bake (see Tone).
+        public static void Polygon(Rect r,Vector2[] shape,float[] at,float[] alpha,Color c)
+        {
+            if(c.a<=0||Event.current.type!=EventType.Repaint||shape==null||shape.Length<3)return;bool light=LightRamp(c);ulong key=Mix(KeySeed,light?8:7);
+            foreach(var v in shape)key=Mix(Mix(key,v.x),v.y);key=Mix(key,float.NaN);foreach(float v in at)key=Mix(key,v);key=Mix(key,float.NaN);foreach(float v in alpha)key=Mix(key,v);
+            if(!stops.TryGetValue(key,out var t)){t=PolygonTexture(shape,at,alpha,light?2.2f:1);stops[key]=t;}
+            var m=Enter();var o=GUI.color;GUI.color=Tone(c);GUI.DrawTexture(P(r),t);GUI.color=o;GUI.matrix=m;
+        }
+        // Scanline coverage at four sub-rows per texel row (even-odd), exact horizontally; texture row 0 is the bottom.
+        private static Texture2D PolygonTexture(Vector2[] shape,float[] at,float[] alpha,float power)
+        {
+            const int w=192,h=24,sub=4;var px=new Color[w*h];var row=new float[w];var xs=new List<float>(shape.Length);
+            for(int y=0;y<h;y++)
+            {
+                Array.Clear(row,0,w);
+                for(int k=0;k<sub;k++)
+                {
+                    float sy=(y+(k+.5f)/sub)/h;xs.Clear();
+                    for(int i=0;i<shape.Length;i++){var a=shape[i];var b=shape[(i+1)%shape.Length];if((a.y<=sy)!=(b.y<=sy))xs.Add((a.x+(sy-a.y)/(b.y-a.y)*(b.x-a.x))*w);}
+                    xs.Sort();
+                    for(int n=0;n+1<xs.Count;n+=2)for(int x=Mathf.Max(0,(int)xs[n]);x<Mathf.Min(w,Mathf.CeilToInt(xs[n+1]));x++)row[x]+=Mathf.Max(0,Mathf.Min(x+1,xs[n+1])-Mathf.Max(x,xs[n]))/sub;
+                }
+                for(int x=0;x<w;x++)px[(h-1-y)*w+x]=new Color(1,1,1,Mathf.Pow(Mathf.Clamp01(row[x]*NativeUiMotion.Keys((x+.5f)/w,at,alpha)),power));
+            }
+            var t=new Texture2D(w,h,TextureFormat.RGBA32,false){wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Bilinear,hideFlags=HideFlags.HideAndDontSave};t.SetPixels(px);t.Apply(false,true);return t;
+        }
         // Rounded rectangle (radius 4/8/12/16 px class) with an optional border.
         public static void Round(Rect r,Color fill,float radius=8,Color border=default,float borderWidth=1)
         {
@@ -244,11 +297,12 @@ namespace ChipArena.UnityConversion
             if(!stops.TryGetValue(key,out var t)){float f=k/24f;t=Make(48,48,(x,y)=>{float dx=x-23.5f,dy=y-23.5f,d=Mathf.Sqrt(dx*dx+dy*dy),a=Mathf.Repeat(Mathf.Atan2(dx,dy)/(2*Mathf.PI),1);return new Color(1,1,1,Mathf.Clamp01(23.5f-d)*(a<=f?1:0));});stops[key]=t;}
             var m=Enter();var o=GUI.color;GUI.color=Tone(c);GUI.DrawTexture(P(r),t);GUI.color=o;GUI.matrix=m;
         }
-        // CSS .panel (visual revision): #17181df5, 1px #45464e, 10px radius, deep shadow; `enter` 0..1 runs panel-in.
+        // CSS .panel (visual revision): #17181df5, 1px #45464e, 10px radius, deep shadow, backdrop-filter: blur(16px); `enter`
+        // 0..1 runs panel-in.
         public static void Panel(Rect r,float enter=1,Color fill=default,Color border=default)
         {
             if(fill.a<=0)fill=Hex(0x17181d,.96f);if(border.a<=0)border=Hex(0x45464e);
-            Glow(new Rect(r.x,r.y+30,r.width,r.height),new Color(0,0,0,.45f*enter),60);Round(r,A(fill,enter),10,A(border,enter));
+            Glow(new Rect(r.x,r.y+30,r.width,r.height),new Color(0,0,0,.45f*enter),60);Backdrop(r,10,16,enter);Round(r,A(fill,enter),10,A(border,enter));
         }
         public static float PanelIn(float age)=>NativeUiMotion.Bezier(.2f,.8f,.2f,1,NativeUiMotion.Clamp01(age/.26f));
         private static readonly Dictionary<int,float> hover=new Dictionary<int,float>();
@@ -291,21 +345,56 @@ namespace ChipArena.UnityConversion
             else if(lines.Count>=maxLines&&maxLines>0){string last=lines[maxLines-1];while(last.Length>1&&Width(last+"…")>limit)last=last.Substring(0,last.Length-1).TrimEnd();lines[maxLines-1]=last+"…";lines.RemoveRange(maxLines,lines.Count-maxLines);}
             wraps[key]=lines;return lines;
         }
-        // Text in a virtual rect. `tracking` is CSS letter-spacing in em; `glow` draws a soft halo in that colour.
-        public static void Text(Rect r,string str,float size,Color c,TextAnchor align=TextAnchor.MiddleCenter,bool bold=false,bool mono=false,float tracking=0,Color glow=default,bool wrap=false,Color shadow=default,bool italic=false)
+        // Text in a virtual rect. `tracking` is CSS letter-spacing in em; `glow` draws a soft halo in that colour; `blur` is
+        // CSS filter: blur(px) (entrance animations): the glyphs spread over a ring of dim copies that closes as it eases to 0.
+        public static void Text(Rect r,string str,float size,Color c,TextAnchor align=TextAnchor.MiddleCenter,bool bold=false,bool mono=false,float tracking=0,Color glow=default,bool wrap=false,Color shadow=default,bool italic=false,float blur=0)
         {
             if(string.IsNullOrEmpty(str)||c.a<=0)return;var m=Enter();var s=Style(size,bold,mono,align,wrap&&tracking==0,italic);var pr=P(r);var o=GUI.contentColor;
-            if(tracking!=0){TrackedText(pr,str,s,size,c,tracking,glow,shadow);GUI.contentColor=o;GUI.matrix=m;return;}
+            if(tracking!=0){TrackedText(pr,str,s,size,c,tracking,glow,shadow,blur);GUI.contentColor=o;GUI.matrix=m;return;}
             content.text=str;
             if(shadow.a>0){GUI.contentColor=Tone(shadow);GUI.Label(new Rect(pr.x+S,pr.y+S*1.5f,pr.width,pr.height),content,s);}
             if(glow.a>0){float g=Mathf.Max(1,size*S*.06f);GUI.contentColor=Tone(new Color(glow.r,glow.g,glow.b,glow.a*.35f));foreach(var d in Halo)GUI.Label(new Rect(pr.x+d.x*g,pr.y+d.y*g,pr.width,pr.height),content,s);}
-            GUI.contentColor=Tone(c);GUI.Label(pr,content,s);GUI.contentColor=o;GUI.matrix=m;
+            Blurred(pr,s,size,c,blur);GUI.contentColor=o;GUI.matrix=m;
+        }
+        // The text itself; with a blur, two rings of eight copies (at .45 and 1x the blur radius) around a dimmer core, the
+        // outer ring faintest. The share leaving the core grows with the radius against the stroke width (~12% of the size),
+        // as a Gaussian thins a stroke it outgrows.
+        private static void Blurred(Rect q,GUIStyle s,float size,Color c,float blur)
+        {
+            float g=blur*S;if(g<.35f){GUI.contentColor=Tone(c);GUI.Label(q,content,s);return;}
+            float f=Mathf.Clamp01(g/Mathf.Max(1,size*S*.12f));
+            GUI.contentColor=Tone(new Color(c.r,c.g,c.b,c.a*Mathf.Lerp(.35f,.08f,f)));foreach(var d in Halo)GUI.Label(new Rect(q.x+d.x*g,q.y+d.y*g,q.width,q.height),content,s);
+            GUI.contentColor=Tone(new Color(c.r,c.g,c.b,c.a*Mathf.Lerp(.55f,.14f,f)));foreach(var d in Halo)GUI.Label(new Rect(q.x+d.x*g*.45f,q.y+d.y*g*.45f,q.width,q.height),content,s);
+            GUI.contentColor=Tone(new Color(c.r,c.g,c.b,c.a*Mathf.Lerp(.75f,.2f,f)));GUI.Label(q,content,s);
+        }
+        // CSS clip-path: inset() bands: kit drawing between BeginBand and EndBand is clipped to `r` (virtual units, under the
+        // current transform). The clip's scroll offset cancels its origin, so callers keep their absolute rects; IMGUI maps a
+        // clip with the matrix current at draw time, which the kit sets for each draw.
+        public static void BeginBand(Rect r){var m=Enter();var p=P(r);GUI.BeginClip(p,-p.position,Vector2.zero,false);GUI.matrix=m;}
+        public static void EndBand(){var m=Enter();GUI.EndClip();GUI.matrix=m;}
+        // The Siren title glitch (chip-cards.css siren-split-a, or -b for the cyan copy; steps(1,end)): from 65% to 72% of its
+        // cycle `k`, three steps each showing one horizontal band of the title's box (clip-path: inset, top/bottom fractions)
+        // shifted by dx px at .85/.85/.7 opacity. False outside the window.
+        public static bool SirenSplit(float k,bool cyan,out float dx,out float top,out float bottom,out float opacity)
+        {
+            dx=0;top=0;bottom=1;opacity=0;if(!(k>=.65f&&k<.72f))return false;int step=k<.67f?0:k<.69f?1:2;opacity=step==2?.7f:.85f;
+            if(!cyan){dx=step==0?-3:step==1?4:-2;top=step==0?0:step==1?.4f:.7f;bottom=step==0?.45f:step==1?.8f:1;}
+            else{dx=step==0?3:step==1?-4:2;top=step==0?.45f:step==1?0:.2f;bottom=step==0?1:step==1?.4f:.55f;}
+            return true;
+        }
+        // One glitch copy: `line` is the text's rect, `block` the title's box the band is cut from (several lines for a wrapped
+        // name). Repaint only (labels draw nothing in other events).
+        public static void SplitCopy(Rect block,Rect line,float k,bool cyan,string str,float size,float alpha,TextAnchor align,float tracking=0)
+        {
+            if(Event.current.type!=EventType.Repaint||!SirenSplit(k,cyan,out float dx,out float top,out float bottom,out float op))return;
+            BeginBand(new Rect(block.x-block.width,block.y+block.height*top,block.width*3,block.height*(bottom-top)));
+            Text(new Rect(line.x+dx,line.y,line.width,line.height),str,size,Hex(cyan?0x2de2ff:0xff2d55,op*alpha),align,bold:true,tracking:tracking);EndBand();
         }
         private static readonly Vector2[] Halo={new Vector2(-1,0),new Vector2(1,0),new Vector2(0,-1),new Vector2(0,1),new Vector2(-.7f,-.7f),new Vector2(.7f,.7f),new Vector2(-.7f,.7f),new Vector2(.7f,-.7f)};
         // Tracked text draws a glyph at a time; the per-glyph strings and the width buffer are reused across frames.
         private static float[] trackWidths=new float[64];private static readonly Dictionary<char,string> glyphs=new Dictionary<char,string>();
         private static string Glyph(char c){if(!glyphs.TryGetValue(c,out var g)){g=c.ToString();glyphs[c]=g;}return g;}
-        private static void TrackedText(Rect pr,string str,GUIStyle s,float size,Color c,float tracking,Color glow,Color shadow)
+        private static void TrackedText(Rect pr,string str,GUIStyle s,float size,Color c,float tracking,Color glow,Color shadow,float blur)
         {
             var align=s.alignment;s.alignment=TextAnchor.UpperLeft;s.wordWrap=false;float gap=tracking*size*S,total=0;if(trackWidths.Length<str.Length)trackWidths=new float[Math.Max(str.Length,trackWidths.Length*2)];var widths=trackWidths;
             for(int i=0;i<str.Length;i++){content.text=Glyph(str[i]);widths[i]=s.CalcSize(content).x;total+=widths[i]+(i>0?gap:0);}
@@ -317,7 +406,7 @@ namespace ChipArena.UnityConversion
                 content.text=Glyph(str[i]);var q=new Rect(x,y,widths[i]+2,h);
                 if(shadow.a>0){GUI.contentColor=Tone(shadow);GUI.Label(new Rect(q.x+S,q.y+S*1.5f,q.width,q.height),content,s);}
                 if(glow.a>0){float g=Mathf.Max(1,size*S*.06f);GUI.contentColor=Tone(new Color(glow.r,glow.g,glow.b,glow.a*.35f));foreach(var d in Halo)GUI.Label(new Rect(q.x+d.x*g,q.y+d.y*g,q.width,q.height),content,s);}
-                GUI.contentColor=Tone(c);GUI.Label(q,content,s);x+=widths[i]+gap;
+                Blurred(q,s,size,c,blur);x+=widths[i]+gap;
             }
             s.alignment=align;
         }

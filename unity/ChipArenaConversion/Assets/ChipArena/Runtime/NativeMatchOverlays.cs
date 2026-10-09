@@ -46,25 +46,27 @@ namespace ChipArena.UnityConversion
             var seat=pilot.Seat;string weapon=(content.weapons.FirstOrDefault(w=>w.id==seat.spec)?.name??seat.spec).ToUpperInvariant(),text=(string.IsNullOrWhiteSpace(seat.introText)?"Ready to make an impact":seat.introText).ToUpperInvariant();
             float F=Mathf.Clamp(W*.065f,30,82);float fit=U.Measure(seat.name,F,true,false,-.035f).x;if(fit>cw)F*=cw/fit;
             float ySpan=bottom-18,yStrong=ySpan-9-1.15f*F,yTeam=yStrong-13-18,ySmall=(team?yTeam-8:yStrong-9)-15;var shadow=new Color(0,0,0,.8f*alpha);
-            float e=Line(age,nameAt);U.Text(new Rect(cx,ySmall+14*(1-e),cw,15),weapon,12,U.A(U.Hex(0xffd3bf),alpha*e),TextAnchor.UpperCenter,bold:true,tracking:.3f,shadow:U.A(shadow,e));
-            if(team){e=Line(age,nameAt+.07f);U.Text(new Rect(cx,yTeam+14*(1-e),cw,18),NativeMatch.TeamNames[TeamIndex(seat.team)].ToUpperInvariant()+" TEAM",14,U.A(TeamColor(seat.team),alpha*e),TextAnchor.UpperCenter,bold:true,tracking:.12f,shadow:U.A(shadow,e));}
-            // intro-name-in .72 s: up 22 px from scale .96 while the tracking closes from .14em to -.035em.
-            float n=Line(age,nameAt+.12f,.72f);U.Push(new Vector2(W/2,yStrong+.575f*F),new Vector2(0,22*(1-n)),.96f+.04f*n);
-            U.Text(new Rect(cx,yStrong,cw,1.15f*F),seat.name,F,U.A(U.Hex(0xf6fcff),alpha*n),TextAnchor.MiddleCenter,bold:true,tracking:.14f-.175f*n,glow:U.A(SeatColor(seat),.65f*alpha*n));U.Pop();
-            e=Line(age,nameAt+.24f);U.Text(new Rect(cx,ySpan+14*(1-e),cw,18),text,12,U.A(U.Hex(0xb9bac4),alpha*e),TextAnchor.UpperCenter,tracking:.3f);
+            // intro-line-in: each line also sharpens from blur(6px).
+            float e=Line(age,nameAt);U.Text(new Rect(cx,ySmall+14*(1-e),cw,15),weapon,12,U.A(U.Hex(0xffd3bf),alpha*e),TextAnchor.UpperCenter,bold:true,tracking:.3f,shadow:U.A(shadow,e),blur:6*(1-e));
+            if(team){e=Line(age,nameAt+.07f);U.Text(new Rect(cx,yTeam+14*(1-e),cw,18),NativeMatch.TeamNames[TeamIndex(seat.team)].ToUpperInvariant()+" TEAM",14,U.A(TeamColor(seat.team),alpha*e),TextAnchor.UpperCenter,bold:true,tracking:.12f,shadow:U.A(shadow,e),blur:6*(1-e));}
+            // intro-name-in .72 s: up 22 px from scale .96 while the tracking closes from .14em to -.035em and blur(10px) clears by
+            // 60% (its own eased segment).
+            float n=Line(age,nameAt+.12f,.72f),nb=10*(1-Line(age,nameAt+.12f,.72f*.6f));U.Push(new Vector2(W/2,yStrong+.575f*F),new Vector2(0,22*(1-n)),.96f+.04f*n);
+            U.Text(new Rect(cx,yStrong,cw,1.15f*F),seat.name,F,U.A(U.Hex(0xf6fcff),alpha*n),TextAnchor.MiddleCenter,bold:true,tracking:.14f-.175f*n,glow:U.A(SeatColor(seat),.65f*alpha*n),blur:nb);U.Pop();
+            e=Line(age,nameAt+.24f);U.Text(new Rect(cx,ySpan+14*(1-e),cw,18),text,12,U.A(U.Hex(0xb9bac4),alpha*e),TextAnchor.UpperCenter,tracking:.3f,blur:6*(1-e));
         }
         // pve/hud.ts bossIntroName: "BOSS · WARD ZERO", the per-letter THE SIREN title with its red/cyan glitch, and the line.
         private void BossTitle(NativePilot pilot,float age,float nameAt,float alpha,float bottom,float cx,float cw)
         {
             float W=U.W,F=Mathf.Clamp(W*.086f,48,132),lh=.95f*F,yLine=bottom-21,yTitle=yLine-10-lh,ySmall=yTitle-6-15;var shadow=new Color(0,0,0,.8f*alpha);
-            float e=Line(age,nameAt);U.Text(new Rect(cx,ySmall+14*(1-e),cw,15),"BOSS · WARD ZERO",12,U.A(U.Hex(0xc9bfff),alpha*e),TextAnchor.UpperCenter,bold:true,tracking:.5f,shadow:U.A(shadow,e));
+            float e=Line(age,nameAt);U.Text(new Rect(cx,ySmall+14*(1-e),cw,15),"BOSS · WARD ZERO",12,U.A(U.Hex(0xc9bfff),alpha*e),TextAnchor.UpperCenter,bold:true,tracking:.5f,shadow:U.A(shadow,e),blur:6*(1-e));
             string title=(pilot.Seat.name??"The Siren").ToUpperInvariant();float gap=.06f*F;var widths=new float[title.Length];float total=0;
             for(int i=0;i<title.Length;i++){widths[i]=title[i]==' '?.3f*F:U.Measure(title[i].ToString(),F,true).x;total+=widths[i]+(i>0?gap:0);}
             // siren-title-jolt every 2.4 s from name+1.2 s (steps): -6 / +5 / -2 px at 87 / 89 / 91 %.
             float jolt=0;if(age>=nameAt+1.2f){float c=Mathf.Repeat(age-nameAt-1.2f,2.4f)/2.4f;jolt=c>=.87f&&c<.89f?-6:c>=.89f&&c<.91f?5:c>=.91f&&c<.94f?-2:0;}
-            float Split(float start,float a,float b,float c){if(age<start)return float.NaN;float k=Mathf.Repeat(age-start,2.4f)/2.4f;return k>=.65f&&k<.67f?a:k>=.67f&&k<.69f?b:k>=.69f&&k<.72f?c:float.NaN;}
-            float red=Split(nameAt+.9f,-3,4,-2),cyan=Split(nameAt+1,3,-4,2);
-            float x=W/2-total/2+jolt;
+            // siren-split-a/-b on the title's box (2.4 s, from name+.9 / +1 s): banded red and cyan copies of each letter.
+            float Cycle(float start)=>age<start?-1:Mathf.Repeat(age-start,2.4f)/2.4f;float red=Cycle(nameAt+.9f),cyan=Cycle(nameAt+1);
+            float x=W/2-total/2+jolt;var block=new Rect(x,yTitle,total,lh);
             for(int i=0;i<title.Length;i++)
             {
                 if(title[i]==' '){x+=widths[i]+gap;continue;}
@@ -72,12 +74,11 @@ namespace ChipArena.UnityConversion
                 float u=Line(age,nameAt+i*.038f,.5f),seg=Mathf.Clamp01(u/.55f),op=Mathf.Clamp01(u/.4f)*alpha;
                 float tx=u<.55f?-4*seg:u<.62f?-4+7*((u-.55f)/.07f):u<.7f?3-3*((u-.62f)/.08f):0;var box=new Rect(x,yTitle,widths[i]+2,lh);string ch=title[i].ToString();
                 U.Push(box.center,new Vector2(tx,.4f*lh*(1-seg)),1,0,1.8f-.8f*seg);
-                if(!float.IsNaN(red))U.Text(new Rect(box.x+red,box.y,box.width,box.height),ch,F,U.A(U.Hex(0xff2d55),.85f*op),TextAnchor.MiddleLeft,bold:true);
-                if(!float.IsNaN(cyan))U.Text(new Rect(box.x+cyan,box.y,box.width,box.height),ch,F,U.A(U.Hex(0x2de2ff),.85f*op),TextAnchor.MiddleLeft,bold:true);
+                U.SplitCopy(block,box,red,false,ch,F,op,TextAnchor.MiddleLeft);U.SplitCopy(block,box,cyan,true,ch,F,op,TextAnchor.MiddleLeft);
                 U.Text(box,ch,F,U.A(U.Hex(0xf6f3ff),op),TextAnchor.MiddleLeft,bold:true,glow:U.A(U.Hex(0x9b87ff),.8f*op),shadow:U.A(Color.black,op));U.Pop();
                 x+=widths[i]+gap;
             }
-            e=Line(age,nameAt+.24f);U.Text(new Rect(cx,yLine+14*(1-e),cw,21),"IT WAS WAITING BEHIND THE GREAT DOORS",14,U.A(U.Hex(0xd9d0ff),alpha*e),TextAnchor.UpperCenter,bold:true,tracking:.24f,shadow:U.A(shadow,e),italic:true);
+            e=Line(age,nameAt+.24f);U.Text(new Rect(cx,yLine+14*(1-e),cw,21),"IT WAS WAITING BEHIND THE GREAT DOORS",14,U.A(U.Hex(0xd9d0ff),alpha*e),TextAnchor.UpperCenter,bold:true,tracking:.24f,shadow:U.A(shadow,e),italic:true,blur:6*(1-e));
         }
 
         // ---- Countdown (.countdown, count-tick) ----
@@ -85,9 +86,9 @@ namespace ChipArena.UnityConversion
         {
             float remaining=(float)(match.PhaseEnd-match.Time);int tick=Mathf.CeilToInt(remaining);if(tick<=0)return;
             // count-tick 1 s: transparent at 1.5x, opaque at 1x by 18%, settling to .93x (cubic-bezier(.2,.9,.25,1) per segment).
-            float t=Mathf.Clamp01(tick-remaining),a,s;if(t<.18f){float u=M.Bezier(.2f,.9f,.25f,1,t/.18f);a=u;s=1.5f-.5f*u;}else{a=1;s=1-.07f*M.Bezier(.2f,.9f,.25f,1,(t-.18f)/.82f);}
+            float t=Mathf.Clamp01(tick-remaining),a,s,blur=0;if(t<.18f){float u=M.Bezier(.2f,.9f,.25f,1,t/.18f);a=u;s=1.5f-.5f*u;blur=6*(1-u);}else{a=1;s=1-.07f*M.Bezier(.2f,.9f,.25f,1,(t-.18f)/.82f);}
             float W=U.W,top=U.H*.38f-65;U.Push(new Vector2(W/2,top+52),Vector2.zero,s);
-            U.Text(new Rect(0,top,W,104),tick.ToString(),104,U.A(U.Hex(0xf4f4f5),a),TextAnchor.MiddleCenter,bold:true,tracking:-.04f,glow:U.A(U.Hex(0xff6b35),.44f*a),shadow:new Color(0,0,0,.6f*a));U.Pop();
+            U.Text(new Rect(0,top,W,104),tick.ToString(),104,U.A(U.Hex(0xf4f4f5),a),TextAnchor.MiddleCenter,bold:true,tracking:-.04f,glow:U.A(U.Hex(0xff6b35),.44f*a),shadow:new Color(0,0,0,.6f*a),blur:blur);U.Pop();
             U.Text(new Rect(0,top+114,W,17),"GET READY",13,U.Hex(0xff996f),TextAnchor.UpperCenter,bold:true,tracking:.32f,shadow:new Color(0,0,0,.8f));
         }
 
@@ -102,7 +103,7 @@ namespace ChipArena.UnityConversion
             float bh=16+F+12+h2*1.35f+6+8+20+10+16;var band=U.A(U.Hex(0x101116),.88f*arrive);
             U.HGradient(new Rect(bx,by,bw*.22f,bh),Color.clear,band);U.Fill(new Rect(bx+bw*.22f,by,bw*.56f,bh),band);U.HGradient(new Rect(bx+bw*.78f,by,bw*.22f,bh),band,Color.clear);
             Color tc=won?U.Hex(0xff6b35):winner!=null?U.Hex(0xff5a6a):Color.white;
-            U.Text(new Rect(bx,by+16,bw,F),title,F,U.A(tc,word*arrive),TextAnchor.MiddleCenter,bold:true,tracking:.4f-.32f*word,shadow:new Color(0,0,0,.66f*word*arrive));
+            U.Text(new Rect(bx,by+16,bw,F),title,F,U.A(tc,word*arrive),TextAnchor.MiddleCenter,bold:true,tracking:.4f-.32f*word,shadow:new Color(0,0,0,.66f*word*arrive),blur:6*(1-word));
             float y=by+16+F+12;U.Text(new Rect(bx+28,y,bw-56,h2*1.35f),match.Result,h2,U.A(U.Hex(0xd7d8de),arrive),TextAnchor.MiddleCenter,bold:true);y+=h2*1.35f+14;
             string next=(final?"Match results":match.SetWinner!=0?"Chip selection":winner!=null?"Next round":"Round replay")+" in "+Mathf.CeilToInt(left)+"s";
             U.Text(new Rect(bx,y,bw,20),next,13,U.A(U.Hex(0xa6a7ad),arrive),TextAnchor.MiddleCenter);

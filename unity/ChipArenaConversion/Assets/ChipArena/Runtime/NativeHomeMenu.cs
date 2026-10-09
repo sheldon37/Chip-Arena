@@ -350,7 +350,7 @@ namespace ChipArena.UnityConversion
             float px=left?Mathf.Max(28,W*.05f):(W-total)/2,maxH=Mathf.Max(320,H-(lobby?140:158)),bottom=actions?26+20+48+30:pad-2,ph=Mathf.Min(maxH,top+head+screenContent+bottom),cardH=card>0?Mathf.Min(maxH,Mathf.Max(ph,520)):0;
             float py=Mathf.Max(80,90+(H-154-Mathf.Max(ph,cardH))/2);
             var panel=new Rect(px,py+dy,pw,ph);
-            if(lobby){U.Glow(new Rect(panel.x,panel.y+30,panel.width,panel.height),new Color(0,0,0,.45f*e),60);U.RoundGradient(panel,U.Hex(0x25212b,.96f*e),U.Hex(0x17191f,.97f*e),10,U.Hex(0x45464e,e),1,true);}
+            if(lobby){U.Glow(new Rect(panel.x,panel.y+30,panel.width,panel.height),new Color(0,0,0,.45f*e),60);U.Backdrop(panel,10,16,e);U.RoundGradient(panel,U.Hex(0x25212b,.96f*e),U.Hex(0x17191f,.97f*e),10,U.Hex(0x45464e,e),1,true);}
             else U.Panel(panel,e);
             U.Text(new Rect(panel.x+pad,panel.y+pad-2,pw-120,16),eyebrow,12,U.Hex(0xc0c1ca,e),TextAnchor.MiddleLeft,bold:true,tracking:lobby?.18f:.2f);
             U.Text(new Rect(panel.x+pad,panel.y+pad+20,pw-120,38),title,30,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true,tracking:-.03f);
