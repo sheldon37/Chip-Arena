@@ -55,7 +55,7 @@ function run(spec,name,duration,steps,opts={}){
   else if(!stunned&&s.speed>0){const fw=forward(s.yaw+s.dir);vx=fw.x*s.speed;vz=fw.z*s.speed;}
   if(!s.grounded){s.vy-=23*DT;if(s.pos.y+s.vy*DT<=.865){s.pos.y=.865;s.vy=0;s.grounded=true;}}
   const p={id,spec,color:'#70e1d0',hp:100,pos:{...s.pos},vel:{x:vx,y:s.vy,z:vz},yaw:s.yaw,pitch:0,grounded:s.grounded,dashTime:0,sprinting:s.sprinting,lastAttack:s.lastAttack,windup:w.windup/rate,swingAt:s.swingAt,swingUntil:s.swingUntil,attackRate:rate,
-   attackIndex:s.attackIndex,attackCommitment:s.commit,chips:s.hurricane?{hurricane:1}:{},guarding:false,blockTime:Math.max(0,s.blockUntil-t),lastBlock:s.lastBlock,hitStunUntil:s.hitStunUntil,hitReaction:s.hitReaction,reach:w.range,stats:{},reloadTime:0,weaponAway:false};
+   attackIndex:s.attackIndex,attackCommitment:s.commit,chips:s.hurricane?{hurricane:1}:{},guarding:false,blockTime:Math.max(0,s.blockUntil-t),lastBlock:s.lastBlock,hitStunUntil:s.hitStunUntil,hitReaction:s.hitReaction,reach:w.range*(opts.reach??1),stats:{},reloadTime:0,weaponAway:false};
   rig.group.position.set(s.pos.x,s.pos.y,s.pos.z);const yaw=presentedYaw(rig,p,t,p.yaw);rig.group.rotation.y=yaw;
   animateCharacter(rig,p,t,dt);
   for(const o of [rig.weapon,rig.offWeapon])if(o.visible!==false||o===rig.weapon)maxWeapon=Math.max(maxWeapon,o.position.clone().sub(new T.Vector3(0,.065,-.055)).length(),o.quaternion.angleTo(new T.Quaternion()));
@@ -77,19 +77,23 @@ function run(spec,name,duration,steps,opts={}){
   if(!committed){s.pos.x+=vx*DT;s.pos.z+=vz*DT;}else{s.pos.x+=vx*DT;s.pos.z+=vz*DT;}
   if(!s.grounded)s.pos.y+=s.vy*DT;
  }
- return {spec,name,rate,windup:w.windup/rate,hurricane:!!opts.hurricane,weaponDeviation:r5(maxWeapon),frames};
+ return {spec,name,rate,windup:w.windup/rate,hurricane:!!opts.hurricane,...(opts.reach?{reach:opts.reach}:{}),weaponDeviation:r5(maxWeapon),frames};
 }
 const scenarios=[];
-for(const spec of ['sword','daggers','shield','greatsword']){
- const cuts=spec==='daggers'?4:spec==='sword'?3:2,interval=Math.max(WEAPONS[spec].interval,WEAPONS[spec].windup+.16+meleeRecovery(spec))+.12;
- scenarios.push(run(spec,'stand-walk-run-stop',3.2,[[.4,{move:[2.8]}],[1.1,{move:[6.8],sprint:true}],[1.9,{yaw:.9}],[2.2,{move:[0],sprint:false}]]));
- scenarios.push(run(spec,'combo',cuts*interval+1,Array.from({length:cuts},(_,i)=>[.2+i*interval,{attack:true}]).concat([[.2+WEAPONS[spec].windup+.02,{landed:true}]])));
- scenarios.push(run(spec,'run-attack-block',2.6,[[.1,{move:[6.8]}],[.7,{attack:true}],[.7+interval,{block:true,move:[0]}],[.7+interval+.12,{blockHit:true}]]));
- scenarios.push(run(spec,'hits',2.4,[[.3,{hit:{from:Math.PI*.9,stun:.42,damage:30}}],[1.1,{hit:{from:-1.2,damage:12,px:.3}}],[1.5,{parry:.6}]]));
- scenarios.push(run(spec,'strafe-jump',2.2,[[.2,{move:[4,1.4]}],[.8,{jump:true}],[1.6,{move:[3,Math.PI]}],[2,{move:[0]}]]));
-}
+// Each timeline as [duration, steps] for a weapon.
+const plans=spec=>{const cuts=spec==='daggers'?4:spec==='sword'?3:2,interval=Math.max(WEAPONS[spec].interval,WEAPONS[spec].windup+.16+meleeRecovery(spec))+.12;return {
+ 'stand-walk-run-stop':[3.2,[[.4,{move:[2.8]}],[1.1,{move:[6.8],sprint:true}],[1.9,{yaw:.9}],[2.2,{move:[0],sprint:false}]]],
+ combo:[cuts*interval+1,Array.from({length:cuts},(_,i)=>[.2+i*interval,{attack:true}]).concat([[.2+WEAPONS[spec].windup+.02,{landed:true}]])],
+ 'run-attack-block':[2.6,[[.1,{move:[6.8]}],[.7,{attack:true}],[.7+interval,{block:true,move:[0]}],[.7+interval+.12,{blockHit:true}]]],
+ hits:[2.4,[[.3,{hit:{from:Math.PI*.9,stun:.42,damage:30}}],[1.1,{hit:{from:-1.2,damage:12,px:.3}}],[1.5,{parry:.6}]]],
+ 'strafe-jump':[2.2,[[.2,{move:[4,1.4]}],[.8,{jump:true}],[1.6,{move:[3,Math.PI]}],[2,{move:[0]}]]]};};
+for(const spec of ['sword','daggers','shield','greatsword'])for(const [name,[duration,steps]] of Object.entries(plans(spec)))scenarios.push(run(spec,name,duration,steps));
 scenarios.push(run('sword','echo-hurricane',2.4,[[.2,{attack:true,followups:2}],[1.4,{attack:true}]],{hurricane:true}));
 scenarios.push(run('greatsword','fast-rate',2.2,[[.2,{attack:true}],[.9,{attack:true}]],{rate:1.6}));
+// Extended Reach (stats.reach 1 + .2 per stack, up to 2): the weapons stretch along +z before the melee layers run, so the
+// blade clearance, recovery and floor guard measure the stretched blade and the support hand takes the stretched grip.
+for(const [spec,name,reach] of [['daggers','stand-walk-run-stop',1.2],['daggers','combo',1.2],['daggers','combo',2],['sword','combo',2],['greatsword','combo',2],['greatsword','hits',2],['shield','run-attack-block',2]]){
+ const [duration,steps]=plans(spec)[name];scenarios.push(run(spec,name+'-reach'+reach,duration,steps,{reach}));}
 const only=process.env.MELEE_ONLY;if(only)scenarios.splice(0,scenarios.length,...scenarios.filter(s=>s.spec+':'+s.name===only));
 fs.writeFileSync(process.env.MELEE_OUT??path.join(root,'Tests/melee-motion-parity.json'),JSON.stringify({source:inventory.sourceCommit,dt:DT,record:RECORD,points:BONES.length+7,scenarios}));
 console.log('melee motion fixtures',scenarios.length,'scenarios',scenarios.reduce((n,s)=>n+s.frames.length,0),'frames; max weapon-grip deviation',Math.max(...scenarios.map(s=>s.weaponDeviation)));

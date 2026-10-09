@@ -383,7 +383,9 @@ namespace ChipArena.UnityConversion
             // The Developer Sandbox link opens this screen in sandbox mode, so the arena and bots are chosen before it starts.
             var l=BeginScreen(playSandbox?"DEVELOPER SANDBOX":"LOCAL MATCH",playSandbox?"Developer Sandbox":"Play vs Bots",650,age,true);if(l.Closed){Go(MenuScreen.Home);return;}
             ScreenBody(l,()=>MatchRulesBody(false));if(l.Card.width>0)PilotCard(l.Card,"YOUR PILOT",l.Enter,playSandbox?"Local only. Sandbox tools are in the pause menu (Esc).":"Change your lobby look and preferred weapon in Customize.");
-            if(ScreenActions(l,("play",playSandbox?"Start Sandbox":"Start Match",true,server==null&&(!playSandbox||account.Developer)))==0){prefs.pve=false;sandboxWanted=playSandbox&&account.Developer;StartMatch();}
+            // main.ts:147: in teams mode Start waits for two different teams; the reason is the team setup's note, shown once.
+            bool blocked=PracticeTeamsBlocked();
+            if(ScreenActions(l,("play",playSandbox?"Start Sandbox":"Start Match",true,server==null&&(!playSandbox||account.Developer)&&!blocked))==0){prefs.pve=false;sandboxWanted=playSandbox&&account.Developer;StartMatch();}
         }
         private void BossScreen(float age)
         {
@@ -414,9 +416,20 @@ namespace ChipArena.UnityConversion
         {
             var l=BeginScreen("CHIP ARENA","Join a private room",650,age,true);if(l.Closed){Go(MenuScreen.Home);return;}
             ScreenBody(l,JoinBody);if(l.Card.width>0)PilotCard(l.Card,"YOUR PILOT",l.Enter,"Your loadout is sent to the host when you join.");
-            bool busy=connecting!=null||server!=null&&!InRoom;ScreenStatus(l,networkStatus,NetworkError);
-            if(ScreenActions(l,("play",busy?"Finding room…":"Join Room",true,!busy&&joinCode.Trim().Length>0))==0)JoinRoom();
+            bool busy=connecting!=null||server!=null&&!InRoom;ScreenStatus(l,networkStatus,NetworkError);MarkRoomStale();
+            // A pasted room invite link joins through JoinInvite (its address, port and code); anything else is a room code:
+            // eight characters of NativeRoomCodes.Alphabet for a LAN or relay room. The source's online CA- directory codes
+            // are not wired in this build (UNITY-LOGIC-HANDOFF A8), so they get their own reason instead of a LAN failure.
+            if(ScreenActions(l,("play",busy?"Finding room…":"Join Room",true,!busy&&joinCode.Trim().Length>0))==0)
+            {
+                string entry=joinCode.Trim();if(JoinInvite(entry))return;
+                if(entry.IndexOf("://",StringComparison.Ordinal)>=0)networkStatus="Could not find the room.";
+                else if(entry.StartsWith("CA-",StringComparison.OrdinalIgnoreCase))networkStatus="Online join codes are not available in this build yet. Use the 8-character room code or an invite link.";
+                else if(!RoomCodeShape(entry))networkStatus="Enter the 8-character room code or paste a room invite link.";
+                else JoinRoom();
+            }
         }
+        private static bool RoomCodeShape(string code){if(code.Length!=8)return false;foreach(char ch in code)if(NativeRoomCodes.Alphabet.IndexOf(char.ToUpperInvariant(ch))<0)return false;return true;}
         private void CustomizeScreen(float age)
         {
             var l=BeginScreen("CUSTOMIZATION","Your pilot",560,age,true,left:true);if(l.Closed){Go(MenuScreen.Home);return;}

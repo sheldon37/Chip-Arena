@@ -122,18 +122,25 @@ namespace ChipArena.UnityConversion
             if(shakeAmount>0){cameraView.transform.position+=Vector3.right*((UnityEngine.Random.value-.5f)*shakeAmount);shakeAmount=Math.Max(0,shakeAmount-Time.deltaTime);}
             presentation.SoundEnabled=false;presentation.LocalId=arena.ViewPilot.Seat.id;
             float renderTime=arena.Replica?arena.ReplicaRenderTime:visualClock.Sample(match.Time,Time.timeAsDouble-Time.fixedTimeAsDouble,menu);
+            presentation.WeaponLoadout=arena;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;
             presentation.Render(arena.Snapshot(true),renderTime,false);
-            Vector3? preview=null;
-            if(play&&p.HoldAt>=0&&arena.Time-p.HoldAt>=.2f)
+            Vector3? preview=null;bool previewClamped=false;
+            // previewOn: E held .2 s and casting, or ready (a charge or no cooldown left) and, for magic, affordable. Casting is
+            // read from the pose (PressAbility sets it, CancelWindup clears it), which guests also receive.
+            var held=play&&p.HoldAt>=0&&arena.Time-p.HoldAt>=NativeFieldRules.HoldAimSeconds?content.Ability(p.Seat.spec,"e"):null;
+            if(held!=null&&NativeFieldRules.PreviewOn(p.Pose.AbilityId==held.id&&arena.Time<p.Pose.AbilityRelease,p.ECharges>0?0:p.EReady-arena.Time,p.Weapon.@class=="magic",p.Mana,NativeAbilityRules.Cost(held,p.Stats),p.Seat.chips.TryGetValue("necronomicon",out int tome)&&tome>0,arena.Time-p.HoldAt))
             {
-                Vector3 point=NativeArena.Vec(pending.AbilityTarget);var e=content.Ability(p.Seat.spec,"e");
-                point=p.Body.position+Vector3.ClampMagnitude(point-p.Body.position,(float)e.range);
-                point.x=Mathf.Clamp(point.x,-31,31);point.z=Mathf.Clamp(point.z,-27,27);
-                if(e.kind!="throw"&&Physics.Raycast(point+Vector3.up*.08f,Vector3.down,out var ground,40,NativeArena.WorldMask))point=ground.point;
+                Vector3 point=NativeArena.Vec(pending.AbilityTarget);
+                // An out-of-range (sky) or arena-clamped aim draws the source's gapped preview.
+                previewClamped=(point-p.Body.position).sqrMagnitude>(float)(held.range*held.range);
+                point=p.Body.position+Vector3.ClampMagnitude(point-p.Body.position,(float)held.range);
+                float clampedX=Mathf.Clamp(point.x,-31,31),clampedZ=Mathf.Clamp(point.z,-27,27);previewClamped|=clampedX!=point.x||clampedZ!=point.z;point.x=clampedX;point.z=clampedZ;
+                if(held.kind!="throw"&&Physics.Raycast(point+Vector3.up*.08f,Vector3.down,out var ground,40,NativeArena.WorldMask))point=ground.point;
                 preview=point;
             }
-            presentation.RenderAbilities(arena,preview);
-            presentation.GlowQuality=prefs.reducedEffects?.3f:prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?.4f:1;presentation.RenderGlow(arena,cameraView);presentation.FinishSourceFrame();
+            presentation.EffectsQuality=prefs.reducedEffects?.3f:1;
+            presentation.RenderAbilities(arena,preview,previewClamped);presentation.RenderStatus(arena,cameraView,prefs.reducedEffects?.3f:1);
+            presentation.GlowQuality=prefs.reducedEffects?.3f:prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?.4f:1;presentation.BlastQuality=prefs.reducedEffects?.3f:1;presentation.RenderGlow(arena,cameraView,menu&&!Online);presentation.FinishSourceFrame();
         }
         // No match: the selected map behind the menu with the source's slow overview orbit (renderer.ts idle camera).
         private string backdropMap;
@@ -214,6 +221,7 @@ namespace ChipArena.UnityConversion
             if(previewArena==null&&PvePickScreen){PveChipScreen();return;}
             if(previewArena==null&&SirenRevealActive){SirenReveal();return;}
             CombatWorldHud(scale,width,height);
+            PveBeaconHud();
             if(arena!=null&&!menu&&match.Phase==NativePhase.Fight&&presentation.ScopeActive)DrawScope(width,height);
             if(previewArena!=null){PreviewHud(width,height);return;}
             if(arena!=null)
@@ -236,55 +244,63 @@ namespace ChipArena.UnityConversion
             // The menus (NativeHomeMenu): the home screen and its panels without a match, the pause menu during one.
             if(arena!=null)PauseMenu();else HomeMenu();
         }
-        // Play vs Bots (main.ts practice screen) over the native match options; also the host's rules in a room lobby,
-        // where the weapon is picked under the roster and the draft rules sit under Advanced Options (room-options.ts).
+        // Play vs Bots (main.ts:147 practice screen) in the source order: the set line, YOUR CLASS (and the weapon cards),
+        // matchOptions() in its box, botLoadouts, the team setup in teams mode, and the "Draft & intro rules" fold (BETWEEN
+        // SETS, draftOptions, introOptions); rows from NativeRoomOptionsUI.cs. In a room lobby the host's rules instead.
         private void MatchRulesBody(bool lobby)
         {
             if(lobby){LobbyRulesBody();return;}
-            Fine("First to "+prefs.sets+(prefs.sets==1?" set":" sets")+". Win "+prefs.rounds+(prefs.rounds==1?" round":" rounds")+" to take a set.");ClassRow("Your class",ClassCardStyle.Stacked);WeaponCards("Your weapon");
-            Field("Arena");MapGrid();
-            Field("Bots");GUILayout.Label(prefs.bots==1?"1 bot":prefs.bots+" bots",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(Mathf.Clamp(prefs.bots,1,7),1,7));
-            Fine("Up to 8 pilots total. Bots use player slots.");prefs.mirrorWeapons=GUILayout.Toggle(prefs.mirrorWeapons,"Bots use my weapon (otherwise mixed loadouts)");prefs.stationary=GUILayout.Toggle(prefs.stationary,"Stationary targets");
-            Field("Match mode");prefs.teams=ChoiceRow(new[]{"Free-for-all","Teams"},prefs.teams?1:0)==1;if(prefs.teams){prefs.friendlyFire=GUILayout.Toggle(prefs.friendlyFire,"Friendly fire");Fine("Teams alternate red and blue sides.");}
-            Field("Sets and rounds");GUILayout.Label("Sets to win the match: "+prefs.sets,label);prefs.sets=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.sets,1,10));GUILayout.Label("Rounds to win a set: "+prefs.rounds,label);prefs.rounds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.rounds,1,10));
-            Field("Draft and intro rules");prefs.bothDraft=GUILayout.Toggle(prefs.bothDraft,"All players draft after each set (otherwise the set's losers)");
-            GUILayout.Label("Chip choices per draft: "+prefs.choices,label);prefs.choices=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.choices,1,12));GUILayout.Label("Chip selection timer: "+prefs.selectionSeconds+"s",label);prefs.selectionSeconds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.selectionSeconds,5,120));
-            prefs.skipBotDrafts=GUILayout.Toggle(prefs.skipBotDrafts,"Skip bot draft screens");
-            Fine("Melee E: special attack. Gun Q: hold to aim. Magic Q / E: cast abilities. Hold E to preview grenade, meteor, geysers or black hole; release to cast.");
+            BeginRules(false,578);var o=rules;
+            Fine(FirstToText(prefs.sets,prefs.rounds));ClassRow("Your class",ClassCardStyle.Stacked);WeaponCards("Your weapon");
+            MatchOptions(RulesPart.All,true,false);int bots=Mathf.Clamp(o.bots,1,7);BotLoadouts(bots,24);if(o.teams)TeamSetup(bots);
+            if(RulesFoldBegin(0,"Draft & intro rules"))
+            {
+                RuleField(7760,"BETWEEN SETS");RuleSelect(7762,RoomOpt.BothDraft,null,BetweenSetsLabels,o.bothDraft?1:0);
+                DraftOptions();IntroOptions();RulesFoldEnd(0);
+            }
+            RuleFine(7766,"Melee E: special attack. Gun Q: hold to aim. Magic Q / E: cast abilities. Hold E to preview grenade, meteor, geysers or black hole; release to cast.",14,6);
         }
-        // The room column's rules in the source order (main.ts matchOptions(true,'essential') then roomAdvanced): the match
-        // mode and arena box, then Advanced Options with friendly fire, sets and rounds, bots and the draft rules, under a note
-        // that summarises them. Labels are short enough for the 300 px column.
+        // The room column's rules in the source order (main.ts:156): matchOptions(true,'essential') in its box, then the
+        // Advanced Options fold (roomAdvanced) with matchOptions(true,'advanced'), botDraftOption, the host's botLoadouts,
+        // the draft summary and the INVITE LINK. A guest gets the same rows read-only from RoomOptions. Skip player intros is
+        // here as well (the source sets it only when the room is created; Unity's Create offers it too).
         private void LobbyRulesBody()
         {
-            LobbyEssentials();
-            if(!AdvancedFold("First to "+prefs.sets+" set"+(prefs.sets==1?"":"s")+" · "+prefs.rounds+" round"+(prefs.rounds==1?"":"s")+" per set · "+prefs.bots+" bot"+(prefs.bots==1?"":"s")+(prefs.teams?" · friendly fire "+(prefs.friendlyFire?"on":"off"):"")))return;
-            if(prefs.teams){prefs.friendlyFire=GUILayout.Toggle(prefs.friendlyFire,"Friendly fire");Fine(prefs.friendlyFire?"Teammates can damage each other.":"Allied attacks and harmful effects pass through teammates.");}
-            GUILayout.Label("Sets to win the match: "+prefs.sets,label);prefs.sets=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.sets,1,10));GUILayout.Label("Rounds to win a set: "+prefs.rounds,label);prefs.rounds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.rounds,1,5));
-            Field("Bots");GUILayout.Label(prefs.bots==1?"1 bot":prefs.bots+" bots",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(Mathf.Clamp(prefs.bots,0,7),0,7));
-            Fine("Up to 8 pilots total. Bots use player slots.");prefs.mirrorWeapons=GUILayout.Toggle(prefs.mirrorWeapons,"Bots use my weapon");prefs.stationary=GUILayout.Toggle(prefs.stationary,"Stationary targets");prefs.skipBotDrafts=GUILayout.Toggle(prefs.skipBotDrafts,"Skip bot draft screens");
-            Field("Draft rules");prefs.bothDraft=GUILayout.Toggle(prefs.bothDraft,"All players draft");Fine(prefs.bothDraft?"Everyone drafts after each set.":"Otherwise the set's losers draft.");
-            GUILayout.Label("Chip choices per draft: "+prefs.choices,label);prefs.choices=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.choices,1,12));GUILayout.Label("Chip selection timer: "+prefs.selectionSeconds+"s",label);prefs.selectionSeconds=Mathf.RoundToInt(GUILayout.HorizontalSlider(prefs.selectionSeconds,5,120));
-            Fine(prefs.choices+" choices per draft · "+prefs.selectionSeconds+"s to pick · "+(prefs.bothDraft?"All players draft":"Set losers draft")+" · Intros on");
+            BeginRules(true,lobbyRoomInner+8);var o=rules;if(o==null)return;
+            MatchOptions(RulesPart.Essential,false,true);
+            if(!AdvancedFold(LobbyRulesNote(o,LobbyBotSeats())))return;
+            rulesL=rulesR=0;rulesEstimate=Mathf.Max(120,lobbyRoomInner-28);
+            MatchOptions(RulesPart.Advanced,false,true);
+            RuleCheck(7570,RoomOpt.SkipBotDrafts,"Skip bot chip choices",o.skipBotDrafts);RuleFine(7572,"Bots still receive a Chip instantly. Their selection screens and reveals are skipped.",0,6);
+            RuleCheck(7574,RoomOpt.SkipIntros,"Skip player intros",o.skipPlayerIntros);RuleFine(7576,"Intros play once per match, before the opening countdown.",0,6);
+            if(!rulesLocked)BotLoadouts(LobbyBotSeats(),16);
+            RuleFine(7578,DraftNote(o),10,4);
+            RoomInviteLink();
             ConnectionReportButton();
             AdvancedEnd();
         }
-        // Boss Test (pve/menu.ts testBossBody): party bots, the skip to the Siren, and the weapon (picked under the roster
-        // in a room lobby).
+        // Boss Test (pve/menu.ts testBossBody): Party bots, its note and Start at the Siren (with Unity's "Party bots use my
+        // weapon"), then the weapon. In the PvE room lobby the same rows sit under Advanced Options with the invite link
+        // (pveLobbyBody), read-only for guests.
         private void BossBody(bool lobby=false)
         {
-            // The room column (pve/menu.ts lobby rules): the party settings under Advanced Options, with labels that fit it.
             if(lobby)
             {
-                if(!AdvancedFold(prefs.bots+" party bot"+(prefs.bots==1?"":"s")+" · "+(prefs.skipWaves?"starts at the Siren":"opening waves on")+" · "+(prefs.mirrorWeapons?"bots use your weapon":"mixed bot loadouts")))return;
-                Field("Party bots");GUILayout.Label(prefs.bots==1?"1 party bot":prefs.bots+" party bots",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(Mathf.Clamp(prefs.bots,0,3),0,3));
-                Fine("Friends who join take party slots; bots fill the rest (up to 4).");prefs.mirrorWeapons=GUILayout.Toggle(prefs.mirrorWeapons,"Party bots use my weapon");prefs.skipWaves=GUILayout.Toggle(prefs.skipWaves,"Start at the Siren");
-                Fine("Earn money from minions for chips, heals, revives and recruits. F interacts · C opens your chips.");
+                BeginRules(true,lobbyRoomInner+8);var g=rules;if(g==null)return;
+                if(!AdvancedFold(PartyNote(g,rulesLocked)))return;
+                rulesL=rulesR=0;rulesEstimate=Mathf.Max(120,lobbyRoomInner-28);
+                RuleSelect(7580,RoomOpt.Bots,"Party bots",PartyBotLabels,Mathf.Clamp(g.bots,0,3));
+                RuleFine(7584,"AI pilots fill the party (up to 4). A friend who joins replaces the newest bot.",0,6);
+                RuleCheck(7586,RoomOpt.Mirror,rulesLocked?"Party bots use the host's weapon":"Party bots use my weapon",g.mirrorWeapons);RuleCheck(7588,RoomOpt.SkipWaves,"Start at the Siren",g.skipWaves);
+                RuleFine(7589,"Earn money from minions for chips, heals, revives and recruits. F interacts · C opens your chips.",4,4);
+                RoomInviteLink();
                 ConnectionReportButton();
                 AdvancedEnd();return;
             }
-            Field("Party bots");GUILayout.Label(prefs.bots==1?"1 party bot":prefs.bots+" party bots",label);prefs.bots=Mathf.RoundToInt(GUILayout.HorizontalSlider(Mathf.Clamp(prefs.bots,0,3),0,3));
-            Fine("AI pilots fill the party (up to 4). In a hosted room, friends who join take the party slots.");prefs.mirrorWeapons=GUILayout.Toggle(prefs.mirrorWeapons,"Party bots use my weapon (otherwise mixed loadouts)");prefs.skipWaves=GUILayout.Toggle(prefs.skipWaves,"Start at the Siren (skip the opening waves)");
+            BeginRules(false,578);var o=rules;
+            RuleSelect(7580,RoomOpt.Bots,"Party bots",PartyBotLabels,Mathf.Clamp(o.bots,0,3));
+            RuleFine(7584,"AI pilots fill the party (up to 4). A friend who joins replaces the newest bot.",0,6);
+            RuleCheck(7586,RoomOpt.Mirror,"Party bots use my weapon (otherwise mixed loadouts)",o.mirrorWeapons);RuleCheck(7588,RoomOpt.SkipWaves,"Start at the Siren",o.skipWaves);
             ClassRow("Your class",ClassCardStyle.Stacked);WeaponCards("Your weapon");
             Fine("Intros play as normal. Earn money from minions to buy chips, heals, revives and recruits. F interacts · C opens your chips; chips you take wait there until you choose.");
         }
@@ -292,8 +308,13 @@ namespace ChipArena.UnityConversion
         {
             var weapons=content.weapons.Where(AllowedWeapon).ToArray();string pick=ChoiceGrid(weapons.Select(w=>w.id).ToArray(),prefs.weapon,weapons.Select(w=>w.name).ToArray());if(pick!=prefs.weapon){prefs.weapon=pick;if(Hosting&&arena==null)LobbyBroadcast();}
         }
-        // Every arena, Ward Zero included (its PvP variant); picking one also turns the menu backdrop to it (main.ts previewMap).
-        private void MapGrid(){var maps=content.maps;prefs.map=ChoiceGrid(maps.Select(m=>m.id).ToArray(),prefs.map,maps.Select(m=>m.name).ToArray());}
+        // ARENA (main.ts matchOptions arena): Random, or an arena (Ward Zero included, its PvP variant; picking one also turns
+        // the menu backdrop to it, main.ts previewMap), and the description under it (map-description).
+        private void MapGrid()
+        {
+            var o=rules;RuleField(7464,"ARENA");RuleSelect(7466,RoomOpt.Map,null,mapLabels,MapIndex(o));
+            int k=Array.IndexOf(mapIds,o.map);string desc=o.map=="random"?"Choose from all arenas when the match is created.":k>=0?content.maps[k].tag:null;RuleFine(7470,desc,rulesNarrow?0:4,rulesNarrow?4:6);
+        }
         private void Catalogue()
         {
             Fine("Reference catalogue: the source's weapons and Chips. Importing a definition does not enable its mechanic.");Field("Search");search=GUILayout.TextField(search);

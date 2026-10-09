@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
             if(pve)HideLive();else arena.Root.SetActive(false);viewModelCamera.enabled=false;
             // Stage lights take the picker's colour, blending to the chip's rarity over .5 s after the pick (the Siren pick: its tier).
             Color tint=pve?(row.Open?.Tier=="rainbow"?Color.white:RarityColor(row.Open?.Tier??"common")):SeatColor(seat);if(age>=0)tint=Color.Lerp(tint,RarityColor(content.Chip(match.Chosen).rarity),Mathf.Clamp01(age/.5f));
-            draftPalm=presentation.RenderDraft(seat,pve?arena.Time:match.Time,age,new Vector2(card.center.x/width,1-card.center.y/height),bottom,tint,cameraView,draftHover>=0||age>=0,prefs.reducedEffects)/scale;draftPalm.y=height-draftPalm.y;return true;
+            presentation.DraftBandTeam=seat.spec=="siren"?-1:NativeStatusVisuals.BandTeam(match.Teams,match.Cooperative,seat.AuthorityBoss,seat.team);draftPalm=presentation.RenderDraft(seat,pve?arena.Time:match.Time,age,new Vector2(card.center.x/width,1-card.center.y/height),bottom,tint,cameraView,draftHover>=0||age>=0,prefs.reducedEffects)/scale;draftPalm.y=height-draftPalm.y;return true;
         }
     }
     public sealed partial class ArenaPresentation
@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
             var look=age>=.48f?point:sourceTarget;draftPose.World();float eye=draftPose.WorldPosition[5].Y+.165f;look.Y=eye+(look.Y-eye)*(look.Y>eye?.55f:.5f);NativeDraftRules.Look(draftPose,look,1);Apply();Matrix4x4 Bone(int b)=>draftRig.Bones[b].localToWorldMatrix;
             sourceModels.Queue(seat.spec=="siren"?"siren":"pilot",draftRig.Root.transform.localToWorldMatrix,Bone,body:BodyTint(seat.bodyColor),accent:AccentTint(seat.accentColor));if(seat.spec!="siren")sourceModels.Queue("hat-"+seat.hat,draftRig.Root.transform.localToWorldMatrix,Bone);
             var palm=draftRig.Bones[hand].TransformPoint(new Vector3(0,-.035f,.04f));if(age>=.48f){var m=Matrix4x4.TRS(palm,draftRig.Bones[hand].rotation*Quaternion.Euler(90,0,0),Vector3.one*(.5f+.5f*Mathf.Clamp01((age-.48f)/.12f)));sourceModels.Queue("pve-pickup",m,b=>m,partTint:b=>b==1?tint.linear:Color.white);}
-            DrawBatches(null,0,false);sourceModels.Flush(UsesInstancing);return camera.WorldToScreenPoint(palm);
+            TeamBands(draftRig,DraftBandTeam);DrawBatches(null,0,false);sourceModels.Flush(UsesInstancing);return camera.WorldToScreenPoint(palm);
         }
     }
 }

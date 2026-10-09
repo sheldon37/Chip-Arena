@@ -67,8 +67,9 @@ namespace ChipArena.UnityConversion
             if(!o.Arms)return;
             Vector3 grip=Row(f,Grip),blade=Vector3.Normalize(Row(f,Blade)),edge=Row(f,Edge);edge-=blade*Vector3.Dot(edge,blade);
             if(edge.LengthSquared()<1e-8f)edge=new Vector3(1,0,0)-blade*blade.X;edge=Vector3.Normalize(edge);
-            // The voxel shoulders, chest and head are bigger than the captured human's: keep the blade (and hilt) clear.
-            if(o.Clear!=MeleeClear.None)MeleeClearance.Shared.Clear(r,ref grip,ref blade,ref edge,-o.Fit.Pommel,set.BladeEnd,o.Clear!=MeleeClear.Turn,o.Fit.HalfWidth,o.Fit.Floor);
+            // The voxel shoulders, chest and head are bigger than the captured human's: keep the blade (and hilt) clear. The
+            // extent is the weapon's at its current length scale (mocap-pose.ts bladeEnd and pommel times weapon.scale.z).
+            if(o.Clear!=MeleeClear.None)MeleeClearance.Shared.Clear(r,ref grip,ref blade,ref edge,-o.Fit.Pommel*r.WeaponReach,set.BladeEnd*r.WeaponReach,o.Clear!=MeleeClear.Turn,o.Fit.HalfWidth,o.Fit.Floor);
             r.BraceWeapon(grip,MeleeMath.Basis(edge,Vector3.Cross(blade,edge),blade),w,Pole(r,false,grip,f,RPole),!o.Fit.OneHand);
             // The support hand leaves the grip only where the capture lets go of it.
             float free=(1-MeleeMath.Clamp(f[TwoHand],0,1))*w;
@@ -93,6 +94,7 @@ namespace ChipArena.UnityConversion
         }
         // Final floor guard: a blade tip below the floor plane turns its wrist up about the horizontal axis across the blade
         // just enough to bring the tip onto the plane; a near-vertical blade keeps the axis its weapon turned about before.
+        // The tip is the stretched 'blade-tip' socket the source reads (its z times the weapon's reach scale).
         private static readonly float VertIn=(float)Math.Sin(15*Math.PI/180),VertOut=(float)Math.Sin(30*Math.PI/180);
         public static void KeepBladesOffFloor(MeleeRig r,MeleeSet set,Vector3[] keptWorld)
         {
@@ -100,7 +102,7 @@ namespace ChipArena.UnityConversion
             for(int k=0;k<2;k++)
             {
                 bool left=k==1;if(left?!set.Dual:!r.WeaponVisible)continue;int wrist=left?CapturedRig.LHand:CapturedRig.RHand;
-                Quaternion wq=r.ChainQuat(wrist,-1);Vector3 gg=r.ChainPoint(wrist,-1),gt=gg+Vector3.Transform(set.Tip,wq),gd=gt-gg;float len=gd.Length();if(len<1e-4f)continue;gd/=len;
+                Quaternion wq=r.ChainQuat(wrist,-1);Vector3 gg=r.ChainPoint(wrist,-1),gt=gg+Vector3.Transform(r.Reached(set.Tip),wq),gd=gt-gg;float len=gd.Length();if(len<1e-4f)continue;gd/=len;
                 Vector3 kept=Vector3.Transform(keptWorld[k],gi),gn=Vector3.Cross(gd,MeleeMath.Y);float own=gn.Length(),u=MeleeMath.SmoothStep(own,VertIn,VertOut);
                 Vector3 ga=kept-gd*Vector3.Dot(kept,gd);if(ga.LengthSquared()<1e-8f)ga=gn;ga=ga.LengthSquared()>0?Vector3.Normalize(ga):ga;
                 // Leaning out again, the kept axis turns about the blade onto the blade's own, never flipping over to it.
@@ -115,7 +117,7 @@ namespace ChipArena.UnityConversion
         // Recovery between the already fitted contact and guard poses (applyMocapRecovery). The wrists interpolate in chest
         // space, then convert through the blended arm chain, so a reverse-grip blade never swings through the floor.
         private static readonly int[] RecoveryBones={CapturedRig.Pelvis,CapturedRig.Spine,CapturedRig.Chest,CapturedRig.Neck,CapturedRig.Head,CapturedRig.LClav,CapturedRig.RClav,CapturedRig.LArm,CapturedRig.RArm,CapturedRig.LElbow,CapturedRig.RElbow,CapturedRig.LHand,CapturedRig.RHand};
-        public sealed class RecoveryCache{public bool Has;public string Spec;public float Attack,Rate;public int Index;public readonly Quaternion[] From=new Quaternion[13],To=new Quaternion[13];public float FromY,ToY;public readonly Quaternion[] FromWrist=new Quaternion[2],ToWrist=new Quaternion[2];}
+        public sealed class RecoveryCache{public bool Has;public string Spec;public float Attack,Rate,Reach;public int Index;public readonly Quaternion[] From=new Quaternion[13],To=new Quaternion[13];public float FromY,ToY;public readonly Quaternion[] FromWrist=new Quaternion[2],ToWrist=new Quaternion[2];}
         private static void Capture(MeleeRig r,Quaternion[] q,Quaternion[] wrists,out float y)
         {
             for(int i=0;i<RecoveryBones.Length;i++)q[i]=r.Q[RecoveryBones[i]];y=r.P[CapturedRig.Body].Y;
@@ -123,11 +125,11 @@ namespace ChipArena.UnityConversion
         }
         public static void Recovery(MeleeRig r,MeleeSet set,float[] contact,float[] guard,float k,float attack,int index,float rate,RecoveryCache cache,Vector3[] kept)
         {
-            // Keyed by the attack (the source's id:spec:lastAttack:attackIndex:reach:rate string; reach is fixed natively).
-            if(!(cache.Has&&cache.Spec==set.Spec&&cache.Attack==attack&&cache.Index==index&&cache.Rate==rate))
+            // Keyed by the attack (the source's id:spec:lastAttack:attackIndex:reach:rate string; the id is the cache's owner).
+            if(!(cache.Has&&cache.Spec==set.Spec&&cache.Attack==attack&&cache.Index==index&&cache.Rate==rate&&cache.Reach==r.WeaponReach))
             {
                 ApplyCleared(r,set,contact,MeleeClear.Turn);KeepBladesOffFloor(r,set,kept);Capture(r,cache.From,cache.FromWrist,out cache.FromY);
-                ApplyCleared(r,set,guard,MeleeClear.Full);KeepBladesOffFloor(r,set,kept);Capture(r,cache.To,cache.ToWrist,out cache.ToY);cache.Has=true;cache.Spec=set.Spec;cache.Attack=attack;cache.Index=index;cache.Rate=rate;
+                ApplyCleared(r,set,guard,MeleeClear.Full);KeepBladesOffFloor(r,set,kept);Capture(r,cache.To,cache.ToWrist,out cache.ToY);cache.Has=true;cache.Spec=set.Spec;cache.Attack=attack;cache.Index=index;cache.Rate=rate;cache.Reach=r.WeaponReach;
             }
             r.MocapPosed=true;
             for(int i=0;i<RecoveryBones.Length;i++)r.SetQ(RecoveryBones[i],MeleeMath.Slerp(cache.From[i],cache.To[i],k));
