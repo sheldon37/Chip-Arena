@@ -17,9 +17,8 @@ namespace ChipArena.UnityConversion
             if(!first)LivingWounds(rig,a,time);
             if(!first&&!string.IsNullOrEmpty(a.Hat)&&a.SourceSpec!="siren")sourceModels.Queue("hat-"+a.Hat,rig.Root.transform.localToWorldMatrix,Bone,null,layer,camera);
             if(a.SourceSpec=="siren"||a.WeaponAway)return true;
-            Matrix4x4 WeaponBone(int b)
-            {if(a.MagicVisual>0||a.SourceSpec=="leet")return StaffMatrix(rig,first);if(a.Weapon==WeaponId.Sword&&a.SourceSpec!="emperor"&&a.SourceSpec!="ansatsuken")return MeleeHand(rig,a,time,b==CapturedRig.LHand);return Bone(b);}
-            sourceModels.Queue("weapon-"+a.SourceSpec,rig.Root.transform.localToWorldMatrix,WeaponBone,null,layer,camera);return true;
+            float reach=WeaponReach(rig,a,time);Matrix4x4 WeaponBone(int b)=>SourceWeaponBone(rig,a,time,first,b,reach);
+            sourceModels.Queue("weapon-"+a.SourceSpec,rig.Root.transform.localToWorldMatrix,WeaponBone,null,layer,camera);WeaponDressing(rig,a,time,first,layer,camera,reach);return true;
         }
         private void SourceWorld(NativeArena arena)
         {
@@ -40,8 +39,10 @@ namespace ChipArena.UnityConversion
                 int lost=add?.Lost??0;bool Visible(int b){int[] bits={1,2,4,8,16,32,64,128,256},bones={5,7,11,8,12,14,18,15,19};for(int i=0;i<bits.Length;i++)if((lost&bits[i])!=0&&BoneWithin(b,bones[i]))return false;return true;}
                 sourceModels.Queue(m.Pve==null?"summon-"+m.Kind:"horde-"+variant,rig.Root.transform.localToWorldMatrix,b=>rig.Bones[b].localToWorldMatrix,Visible);
             }
+            // C17: severed limbs fly off as chunks (the rigs above are posed), and the downed get revive beacons.
+            PveGore(arena);PveBeacons(arena);
         }
-        private void ClearSourceActors(){draftRig?.Dispose();draftRig=null;ClearBroadcasts();slenderHops.Clear();ClearSceneryMotion();ClearWoundSpray();sourceModels?.ClearWounds();ClearCorpses();if(pitMaterial!=null){CapturedAnimation.Release(pitMaterial);pitMaterial=null;}introRig?.Dispose();introRig=null;foreach(var rig in minionRigs.Values)rig.Dispose();minionRigs.Clear();sourceModels?.Begin();}
+        private void ClearSourceActors(){ClearWardZero();draftRig?.Dispose();draftRig=null;ClearBroadcasts();slenderHops.Clear();ClearSceneryMotion();ClearWoundSpray();sourceModels?.ClearWounds();ClearCorpses();if(pitMaterial!=null){CapturedAnimation.Release(pitMaterial);pitMaterial=null;}introRig?.Dispose();introRig=null;foreach(var rig in minionRigs.Values)rig.Dispose();minionRigs.Clear();sourceModels?.Begin();}
         public void FinishSourceFrame()=>sourceModels?.Flush(UsesInstancing);
     }
 }

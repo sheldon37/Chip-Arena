@@ -22,6 +22,29 @@ Added real-Unity regressions: `NativeNetworkBuildChecks` and `NativeArena.Valida
 
 Remaining: activated Unity import/Editor gates, genuine Mono token verification, headless Unity, 30/60/144 FPS two-client play and four-player Ward Zero load, LAN discovery across machines, account login/grant refresh, fullscreen/duplicate-launch, launcher startup/rollback and four-resolution presentation acceptance. Owner decisions remain for endpoints/hosting, cutover, specialization, intro length, dedicated topology and publication. See `docs/UNITY-LOGIC-HANDOFF.md`.
 
+## Volumetric chip blasts, C6 (2026-10-08, `claude/wip-c6`)
+
+- Runtime and Editor assemblies compile against the real Unity 6000.3.24f1 managed DLLs. `tools/check_relay.py` passes; the new BlastChecks replay 88 runs of the pinned client/chip-blasts.ts (`tools/export_blast_fixtures.mjs <source checkout>` writes `Tests/blast-parity.json`), with counts, weighted voxel sums, first voxels and lights per frame. They also check determinism, the front on the gameplay radius at 0.3 s, pool capacities, the 16-voxel minimum, quality scaling, the effect cues and cube winding. 24 Python tests pass; `tools/package_source.py` passes.
+- **Not run:** Unity import and compile of `NativeBlast.shader`, rendering on a GPU, the blasts in a hosted or joined match, frame-time cost on the owner's PC.
+- Review fixes (`claude/wip-c6-fixes`): the BlastChecks frame rules cover the frame step (capped at 0.05 s, zero only while paused), the pools staying small with the match running, the collapse of Blink Strike, ball-lightning and armed-rocket duplicates, and the Siren sites and halo cue. The checks above pass again. **Not run:** a Siren match, a 144 Hz guest or an online menu pause in the player.
+
+## First-person view layer (2026-10-08, `claude/wip-c7-fp-sway`)
+
+- `tools/export_first_person.mjs` runs the pinned source `poseFirstPersonView` (blob-checked against the inventory) and writes `Tests/first-person-sway-parity.json`: 8 timelines, 2,567 frames at 30/60/90/144/240 Hz with respawn-sized gaps, a rewind, a pause and a pilot change.
+- `Tests/FirstPersonSwayChecks.cs` reproduces every frame with `Core/NativeViewSway.cs` (worst 0.006 mm / 0.00003 rad): look sway, stride bob, landing kick, recoil, reload dip, run-low, rocket/mark kicks and the ADS blend. It also checks the Unity root mapping against the source Euler root, the camera look, the pilot-view inputs, and the four staff schools (idle/primary/guard/Q/E) under the layer: 0 crosshair intersections.
+- Guest path (review fix, rebased onto `a0ca6b9`): held presentation frames are no-ops that pass their turn and landing on to the next step (60 frames). A modelled guest on the replica `NativeSnapshotClock` (20 Hz host frames, 30 ms jitter) matches the host at 60/144/240 Hz: 12.0 mm look sway, the host's bob step and no held frames. With a 250 ms frame stall and a 5 % slow host clock (200 held frames), look sway stays at 12.0-12.1 mm.
+- **Not run:** Unity rendering and the feel in play (host and guest).
+
+## Ward Zero gore and revive beacons, C17 (2026-10-08, `claude/wip-c17`)
+
+- Runtime and Editor assemblies compile against the real Unity 6000.3.24f1 managed DLLs. `tools/check_relay.py` passes. The new GoreBeaconChecks compare against the pinned client/pve/gore.ts, beacons.ts, downed.ts and siren/minions/look.ts (`tools/export_gore_beacon_fixtures.mjs <source checkout> [chromium]` writes `Tests/gore-beacon-parity.json`). Covered: hash01/FNV, gib seeds, velocities, sizes and spin, ink counts, chunkAt, every HordeGore.update slot matrix over a chunk's life, the 12-chunk cap and rewind, beaconState, the ring draw range and vertices, HELP width and bob, and the motes map and HELP bubble pixels from Chromium. They also check determinism, the floor, lifetime and the ink pool. GoreHitChecks pins which Hit events splash ink and which one aims a sever (horde.ts:354: directed hits only), and the interim .25 s per-add spacing while Hit events carry no direction: an add standing in a field keeps at most 30 live drops. 24 Python tests pass; `tools/package_source.py` passes.
+- **Not run:** Unity import and compile of `NativeBeacon.shader`, rendering on a GPU, beacons, chunks and HELP in a hosted or joined Ward Zero match, frame-time cost on the owner's PC.
+
+## Weapon presentation, C11 (2026-10-08, `claude/wip-c11`)
+
+- Runtime and Editor assemblies compile against the real Unity 6000.3.24f1 managed DLLs. `tools/check_relay.py` passes; the new WeaponPresentationChecks compare against `tools/export_weapon_fixtures.mjs <source checkout> <temp>` (writes `Tests/weapon-presentation-parity.json` from the pinned weapon-visuals.ts, melee-trails.ts, attackPose and three r180). They cover 195 primitive vertices, 292 module pieces over 34 loadouts (and the native stats on every key the modules read), 306 enchant pieces, 81 muzzle-flash frames, 4,432 sweep-window samples, and 94 ribbons over 79 frames, including the 16-sweep and 48-sample caps, reduced quality, a frame gap, time running backwards and trails switched off. Seven deliberate mutations of the Core rules were each caught. 24 Python tests pass; `tools/package_source.py` passes.
+- **Not run:** Unity import, rendering on a GPU, the effects in a hosted or joined match, first person in the player, frame-time cost on the owner's PC.
+
 ## Melee runtime, presentation polish and updater integration (2026-10-08, `claude/sleepy-ritchie-g8ruhv`)
 
 Run in the Linux authoring workspace on the combined tree (updater merge `d185be4` and later):

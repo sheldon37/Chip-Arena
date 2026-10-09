@@ -18,6 +18,11 @@ namespace ChipArena.UnityConversion
         public float Motion,Stride,GroundWeight=1,Land;public bool WasGrounded=true;
         public bool LegsAuthored,LegsLayered,MocapPosed;
         public bool WeaponVisible=true;
+        // Both weapons' length scale along their +z (character-animation.ts:57 scales r.weapon and r.offWeapon by
+        // reach / range before the melee layers run), so the blade tip, blade end, pommel and support grip the layers
+        // measure are the stretched ones the renderer draws.
+        public float WeaponReach=1;
+        public Vector3 Reached(Vector3 weaponLocal)=>new Vector3(weaponLocal.X,weaponLocal.Y,weaponLocal.Z*WeaponReach);
         public MeleeRig(){Reset();}
         public void Reset(){for(int i=0;i<N;i++){P[i]=CapturedRig.Bones[i].Position;Q[i]=Quaternion.Identity;E[i]=Vector3.Zero;}}
         public static int Parent(int i)=>CapturedRig.Bones[i].Parent;
@@ -65,7 +70,7 @@ namespace ChipArena.UnityConversion
         public static readonly Vector3 SupportGrip=new Vector3(0,0,-.11f);
         public void SupportHand(float weight)
         {
-            if(weight<=.001f)return;int c=CapturedRig.LClav;Quaternion hq=ChainQuat(CapturedRig.RHand,-1);Vector3 grip=ChainPoint(CapturedRig.RHand,-1)+Vector3.Transform(SupportGrip,hq);
+            if(weight<=.001f)return;int c=CapturedRig.LClav;Quaternion hq=ChainQuat(CapturedRig.RHand,-1);Vector3 grip=ChainPoint(CapturedRig.RHand,-1)+Vector3.Transform(Reached(SupportGrip),hq);
             Vector3 e=Vector3.Transform(grip-ChainPoint(c,-1),MeleeMath.Inverse(ChainQuat(c,-1)));
             SolveArm(true,e,new Vector3(1,-.8f,-.25f),weight,SUPPORT_MIN);
             Slerp(CapturedRig.LHand,MeleeMath.Inverse(ChainQuat(CapturedRig.LElbow,-1))*hq,weight);

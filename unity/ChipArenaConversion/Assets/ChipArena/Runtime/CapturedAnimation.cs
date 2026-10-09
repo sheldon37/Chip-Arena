@@ -178,12 +178,14 @@ namespace ChipArena.UnityConversion
             // The native roll, E special and knockdown recovery layers ride on it where the source runs its own.
             private MeleeMotion melee;private readonly MeleeView meleeView=new MeleeView();private float meleeTime=-100;
             public MeleeImpacts Impacts;
+            // The held weapons' reach stretch, set by the presentation before posing (the melee layers measure the stretched blade).
+            public float WeaponReach=1;
             public static bool CapturedMelee(Actor a)=>a.MagicVisual==0&&a.Weapon==WeaponId.Sword&&MeleeMotion.Handles(a.SourceSpec);
             private void MeleePose(Actor a,Vector3 position,float time)
             {
                 Weapon=a.Weapon;Set=Mathf.Clamp(a.VisualSet,0,3);if(melee==null)melee=new MeleeMotion();melee.Impacts=Impacts;
                 float dt=meleeTime<-90||time<meleeTime||time-meleeTime>.35f?1/60f:Mathf.Min(.1f,time-meleeTime);meleeTime=time;
-                var v=MeleeViewOf(a,time,meleeView);bool roll=a.Rolling(time),special=NativeSpecialPose.Active(a,time),down=NativeSpecialPose.Down(a,time);
+                var v=MeleeViewOf(a,time,meleeView);v.Reach=WeaponReach;bool roll=a.Rolling(time),special=NativeSpecialPose.Active(a,time),down=NativeSpecialPose.Down(a,time);
                 float yaw=-melee.PresentedYaw(v,time,v.Yaw)*Mathf.Rad2Deg;
                 Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,roll?Quaternion.LookRotation(ArenaPresentation.Vec(a.RollDirection)):Quaternion.Euler(0,yaw,0));Root.transform.localScale=Vector3.one*a.RigScale;
                 Vector3 at=Root.transform.position;melee.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);melee.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;

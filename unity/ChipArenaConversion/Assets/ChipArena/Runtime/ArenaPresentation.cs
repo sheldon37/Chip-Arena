@@ -8,10 +8,11 @@ namespace ChipArena.UnityConversion
     {
         private Mesh cube;
         private CapturedAnimation captured;
-        private NativeCombatGlow combatGlow;
-        public float GlowQuality=1;public bool TrailsEnabled=true;
-        public void RenderGlow(NativeArena arena,Camera camera)
-        {if(combatGlow==null)return;combatGlow.Quality=GlowQuality;combatGlow.Trails=TrailsEnabled;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.ViewPilot.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);}
+        private NativeCombatGlow combatGlow;private NativeBlastPresentation blasts;
+        public float GlowQuality=1,BlastQuality=1;public bool TrailsEnabled=true;
+        // paused: the match itself is stopped (offline menu), so the blasts hold still; see NativeBlastFrame.Step.
+        public void RenderGlow(NativeArena arena,Camera camera,bool paused=false)
+        {blasts?.Render(arena,camera,PresentationClock(arena),BlastQuality,paused);if(combatGlow==null)return;combatGlow.Halos=blasts?.Halos;combatGlow.Quality=GlowQuality;combatGlow.Trails=TrailsEnabled;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.ViewPilot.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);}
         private readonly AudioClip[] gunSounds=new AudioClip[4];
         private AudioClip reloadStart,reloadEnd,hitSound;
         private AudioSource localAudio;
@@ -73,7 +74,7 @@ namespace ChipArena.UnityConversion
             }
             for(int i=7;i<materials.Count;i++){materials[i].SetColor("_Emission",colors[i]*.55f);compatibilityMaterials[i].SetColor("_Emission",colors[i]*.55f);}
             Debug.Log($"Unity prototype renderer: {RenderingMode}; {SystemInfo.graphicsDeviceType}; {SystemInfo.graphicsDeviceName}; shaderSupported={shader.isSupported}");
-            captured=new CapturedAnimation();if(!buildArena){combatGlow=new NativeCombatGlow(transform);sourceModels=new NativeSourceModels();}
+            captured=new CapturedAnimation();if(!buildArena){combatGlow=new NativeCombatGlow(transform);blasts=new NativeBlastPresentation(transform);sourceModels=new NativeSourceModels();}
             string[] soundNames={"","pistol","rifle","machinegun"};
             for(int i=1;i<4;i++) gunSounds[i]=Resources.Load<AudioClip>("GunAudio/"+soundNames[i]);
             reloadStart=Resources.Load<AudioClip>("GunAudio/reload-start"); reloadEnd=Resources.Load<AudioClip>("GunAudio/reload-end");hitSound=Resources.Load<AudioClip>("GunAudio/hit");
@@ -111,11 +112,12 @@ namespace ChipArena.UnityConversion
         }
         public void ResetPresentation()
         {
-            ClearSourceActors();combatGlow?.Clear();aimMotion.Reset();viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
+            ClearSourceActors();combatGlow?.Clear();blasts?.Clear();aimMotion.Reset();viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
             foreach(var source in shotAudio) if(source!=null) source.Stop(); if(localAudio!=null) localAudio.Stop();
             foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear();
             foreach(var o in debris) if(o!=null) Destroy(o); debris.Clear();
             foreach(var o in coverObjects) if(o!=null) Destroy(o); coverObjects.Clear();
+            ClearWeaponPresentation();
         }
         public Vector3 Position(Actor actor) { Vector3 p; return visualPositions.TryGetValue(actor.Id,out p)?p:Vec(actor.Position); }
         public void Render(Snapshot s, float renderTime, bool smooth)
@@ -132,6 +134,7 @@ namespace ChipArena.UnityConversion
                 if(!visualPositions.TryGetValue(a.Id,out old)||(old-target).sqrMagnitude>64) old=target;
                 Vector3 p=smooth?Vector3.Lerp(old,target,1-Mathf.Exp(-18*Time.unscaledDeltaTime)):target;
                 visualPositions[a.Id]=p;
+                if(FirstPerson&&a.Id==LocalId&&a.Alive)HiddenSweep(a,p,renderTime);
                 if(!a.Alive||(FirstPerson&&a.Id==LocalId)) continue;
                 int color=a.Bot?2:a.Id-1;
                 if(renderTime<a.FlashUntil) color=4;
@@ -139,6 +142,7 @@ namespace ChipArena.UnityConversion
                 else Pose(a,p,renderTime,color);
             }
             animationTimer.Stop(); AnimationMs=animationTimer.Elapsed.TotalMilliseconds;
+            RenderMeleeTrails(renderTime);
             foreach(Shot p in s.Shots)
             {
                 if(GunRules.Ranged(p.Weapon)) Add(11,Matrix4x4.TRS(Vec(p.Position),Quaternion.LookRotation(Vec(p.Velocity)),new Vector3(.04f,.04f,Mathf.Clamp(p.Velocity.Length*.01f,.25f,1.5f))));
@@ -187,7 +191,7 @@ namespace ChipArena.UnityConversion
             if(!rigs.TryGetValue(a.Id,out rig)) { rig=captured.Create(transform,a.Id); rig.Impacts=meleeImpacts; rigs.Add(a.Id,rig); }
             if(Viewer&&ViewerSet>=4) rig.PreviewGun((WeaponId)(ViewerSet-3),ViewerClip,ViewerTime);
             else if(Viewer) rig.Preview(ViewerSet,PreviewName.Substring(PreviewName.IndexOf('/')+1),ViewerTime,Vector3.zero);
-            else rig.ActorPose(a,position,time);
+            else { PoseReach(rig,a,time); rig.ActorPose(a,position,time); }
             if(a.Id==LocalId) PlayerState=rig.State;
             if(SourceCharacter(rig,a,time))return;
             foreach(var box in CapturedRig.Boxes)
@@ -300,10 +304,11 @@ namespace ChipArena.UnityConversion
         }
         private void OnDestroy()
         {
-            ClearSourceActors();sourceModels?.Dispose();combatGlow?.Dispose();viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
+            ClearSourceActors();sourceModels?.Dispose();combatGlow?.Dispose();blasts?.Dispose();DisposeStatus();viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
             foreach(var m in materials) CapturedAnimation.Release(m);
             foreach(var m in compatibilityMaterials) CapturedAnimation.Release(m);
             if(particleMaterial!=null) CapturedAnimation.Release(particleMaterial);
+            DisposeWeaponPresentation();
         }
     }
 }
