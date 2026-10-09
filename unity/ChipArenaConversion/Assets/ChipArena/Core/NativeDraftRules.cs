@@ -9,6 +9,12 @@ namespace ChipArena.UnityConversion
         public static float Fly(float age)=>MathUtil.Smooth((age-.10f)/.38f);
         public static float Fade(float age)=>MathUtil.Smooth((age-.40f)/.08f);
         public static float Pull(float age)=>MathUtil.Smooth((age-.48f)/.37f);
+        // draft-stage.ts chipModel/update: the chip closed in the hand from the .48 s contact is a .17 x .12 m processor
+        // package, popping from half size over .12 s and breathing by .08 (not under reduced motion). Unity draws it with the
+        // PvE pickup model (chip-model.ts, a .8 m package), so the scale carries .17/.8 and the chip stays hand-sized instead
+        // of outgrowing the pilot.
+        public const float PickupWidth=.8f,HeldChipWidth=.17f;
+        public static float HeldChipScale(float age,float time,bool reduced)=>HeldChipWidth/PickupWidth*(.5f+.5f*Math.Min(1,Math.Max(0,(age-.48f)/.12f))+(reduced?0:.08f*(float)Math.Sin(time*5)));
         public static void Pose(CapturedRig.Pose p,float time)
         {
             p.Reset();float b=(float)Math.Sin(time*1.65f),s=(float)Math.Sin(time*.72f),d=(float)Math.Sin(time*.41f+1.3f);

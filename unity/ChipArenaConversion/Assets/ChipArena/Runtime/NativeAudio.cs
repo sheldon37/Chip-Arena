@@ -98,20 +98,19 @@ namespace ChipArena.UnityConversion
             }
             if(cues.Count>1024)cues.Clear();
         }
-        // One fresh event: resolve what the router needs from the arena (pilots, prop material, the block-pulse, teleport and
-        // Blink Strike pairings, the saw) and play its cues. A pilot's death keeps the DEV kill clips on top of the source's
-        // cue, at rate 1 like audio.ts updateLove (its beats are timed to the clip).
+        // One fresh event: resolve what the router needs from the arena (pilots, an impact's prop material; a Break carries
+        // its material, an Explosion its fx tag, a HazardHit its hazard kind, a Teleport/Arc its source) and play its cues.
+        // A pilot's death keeps the DEV kill clips on top of the source's cue, at rate 1 like audio.ts updateLove (its beats
+        // are timed to the clip).
         private void EventSounds(NativeArena arena,List<ArenaEvent> events,int index,NativePilot me)
         {
             var e=events[index];NativePilot source=null,target=null;foreach(var p in arena.Pilots){if(p.Seat.id==e.Source)source=p;if(p.Seat.id==e.Target)target=p;}
             int local=me?.Seat.id??0;string material=e.Kind==EventKind.Break?e.Detail:null;int supernova=0;
-            if(e.Kind==EventKind.Impact||e.Kind==EventKind.Break)foreach(var prop in arena.Props)if(prop.Definition.id==e.SurfaceId){material=prop.Definition.material;break;}
+            if(e.Kind==EventKind.Impact)foreach(var prop in arena.Props)if(prop.Definition.id==e.SurfaceId){material=prop.Definition.material;break;}
             if(e.Kind==EventKind.BlockPulse)source?.Seat.chips?.TryGetValue("supernova",out supernova);
             var context=new NativeEventSounds.Context{Kind=e.Kind,Detail=e.Detail,SourceSpec=source?.Seat.spec,Material=material,Amount=e.Amount,Radius=e.Radius,
                 TargetMe=local>0&&e.Target==local,SourceMe=local>0&&e.Source==local,TargetPilot=target!=null,Ally=source!=null&&target!=null&&arena.Match.SameSide(source.Seat,target.Seat),Pve=arena.Pve!=null,
-                Supernova=supernova>0,Saw=e.Kind==EventKind.HazardHit&&(e.Detail=="saw"||e.Detail==null&&NativeEventFeedback.SawHit(arena.MapId,e.Time,e.Position)),
-                Shadowed=e.Kind==EventKind.Explosion&&NativeEventFeedback.PulseBlast(events,index)||e.Kind==EventKind.Arc&&NativeEventFeedback.TeleportBeam(events,index),
-                BlinkStrike=e.Kind==EventKind.Teleport&&NativeEventFeedback.BlinkStrike(events,index)};
+                Supernova=supernova>0};
             Vector3 pos=NativeArena.Vec(e.Position);int n=NativeEventSounds.Route(context,routed);
             for(int i=0;i<n;i++){var s=routed[i];if(s.Tone)ArcadeTone();else Play(s.Clip,s.Positional?pos:(Vector3?)null,s.Gain,s.Rate,s.Gate);}
             if(e.Kind==EventKind.Death&&target!=null){if(source?.Seat.killEffect=="dev-clown-love")Play("clown-love",pos,.8f,1);if(source?.Seat.killEffect=="dev-bass-van")Play("bass-van",pos,.8f,1);}

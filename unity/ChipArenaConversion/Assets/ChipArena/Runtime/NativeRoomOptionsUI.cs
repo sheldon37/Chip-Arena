@@ -44,10 +44,9 @@ namespace ChipArena.UnityConversion
         // yet: the menus keep the player's own preferences then (RoomOptions is the host's copy for any open connection,
         // and none before the first lobby message).
         private bool RulesGuest=>InRoom&&!Hosting;
-        // receivedOptions and lobbySeats outlive the connection that brought them: nothing clears them before the next
-        // lobby message (needsAstra: clear both in CloseNetwork and JoinRoom). The Join screen, the only place a join
-        // starts and never in a room, marks what is held as stale every frame, so a guest who joins another room sees the
-        // "host sets the mode" note and no seats until this connection's own first lobby message replaces them.
+        // CloseNetwork and JoinRoom clear receivedOptions and lobbySeats. As a guard for any other path, the Join screen (the
+        // only place a join starts, never in a room) also marks what is held as stale every frame, so a guest who joins
+        // another room sees the "host sets the mode" note and no seats until this connection's first lobby message.
         private NativeRoomOptions staleRules;private NativeSeatFrame[] staleSeats;
         private void MarkRoomStale(){staleRules=receivedOptions;staleSeats=lobbySeats;}
         private NativeRoomOptions GuestRules{get{var o=RoomOptions;return o!=null&&!ReferenceEquals(o,staleRules)?o:null;}}

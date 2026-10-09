@@ -72,7 +72,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Own fields, any PvE field and same-team fields in teams mode are allied. Unity teams are seat numbers (0 is a team).</summary>
         public static bool IsAlly(bool self,bool pve,bool teams,bool sameTeam)=>self||pve||teams&&sameTeam;
         /// <summary>
-        /// An ability zone's birth (zones carry no id or birth time yet; Astra), first computed when the zone is first seen
+        /// The fallback birth of an ability zone that carries no replicated Born (0), first computed when it is first seen
         /// (firstSeen: the field clock then). Exact where it follows from the expiry (NativeAbilities): Singularity lasts its
         /// duration, Meteor Strike's burning ground its duration (x1.5 with Cinder Field), the Orbital Mark its fuse. These are
         /// the zones with an arrival burst or an aged core, so a late joiner or a presentation reset (killcam start and end)

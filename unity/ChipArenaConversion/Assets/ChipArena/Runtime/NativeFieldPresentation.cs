@@ -34,7 +34,7 @@ namespace ChipArena.UnityConversion
         public readonly HashSet<long> Live=new HashSet<long>();
         private readonly List<int> colors=new List<int>();
         private readonly Dictionary<long,int> colorOf=new Dictionary<long,int>();private readonly Dictionary<long,float> zoneBorn=new Dictionary<long,float>();
-        private readonly Dictionary<int,string> guestFx=new Dictionary<int,string>();private readonly List<long> stale=new List<long>();private readonly List<int> staleIds=new List<int>();
+        private readonly List<long> stale=new List<long>();
         private readonly Layer glow,decal,dome,warn,motes,cores;private readonly Layer[] layers;private readonly Material[] owned;
         private readonly NativeFieldCube[] cubes=new NativeFieldCube[NativeFieldRules.MaxCubes];private readonly float[] preview=new float[NativeFieldRules.PreviewCap*4];
         private int generation=-1;private float lastTime=-1;private bool linear;private NativeArena lastArena;
@@ -60,27 +60,18 @@ namespace ChipArena.UnityConversion
         }
         public void Clear()
         {
-            Views.Clear();Live.Clear();colors.Clear();colorOf.Clear();zoneBorn.Clear();guestFx.Clear();lastTime=-1;lastArena=null;
+            Views.Clear();Live.Clear();colors.Clear();colorOf.Clear();zoneBorn.Clear();lastTime=-1;lastArena=null;
             foreach(var layer in layers){layer.Clear();layer.Mesh.Clear();}
         }
-        // Zones carry no id; owner, ability, kind and expiry stay fixed for a zone's life on host and guests (meteor-strike's
-        // burning ground changes kind and expiry, which makes it a new field exactly as in the source).
+        // A zone's replicated Id names it (meteor-strike's burning ground gets a fresh one, a new field exactly as in the
+        // source). A zone without one (Id 0) is named by its owner, ability, kind and expiry, fixed for its life.
         private static long Mix(long h,int v){unchecked{h^=(uint)v;h*=0x100000001b3L;return h;}}
         private static long ZoneKey(NativeAbilityZone z)
         {if(z.Id!=0)return (1L<<62)|(uint)z.Id;long h=Mix(unchecked((long)0x9e3779b97f4a7c15UL),z.Owner?.Seat.id??0);h=Mix(h,z.Definition?.id?.GetHashCode()??0);h=Mix(h,z.Kind?.GetHashCode()??0);h=Mix(h,BitConverter.SingleToInt32Bits(z.Until));return h|(1L<<62);}
         private static string Fx(ContentAbility d)=>string.IsNullOrEmpty(d.fx)?null:d.fx;
-        /// <summary>The chip id that made a field (the source's fx). Guests recover it from the field's own Field event.</summary>
-        public string Fx(NativeChipField f)=>!string.IsNullOrEmpty(f.Effect)?f.Effect:guestFx.TryGetValue(f.Id,out var fx)?fx:null;
-        private string Effect(NativeArena arena,NativeChipField f)
-        {
-            if(!string.IsNullOrEmpty(f.Effect))return f.Effect;
-            if(guestFx.TryGetValue(f.Id,out var fx))return fx;
-            // NativeArena.Field numbers the field, then emits its Field event (Detail = chip id) with the next number. The
-            // effect frame does not carry Effect yet (needs Astra); a guest that missed the event falls back to the kind.
-            var events=arena.Events;
-            for(int i=events.Count-1;i>=0;i--){var e=events[i];if(e.Kind==EventKind.Field&&e.Id==f.Id+1&&Math.Abs(e.Time-f.Born)<.01f){fx=string.IsNullOrEmpty(e.Detail)?null:e.Detail;break;}}
-            guestFx[f.Id]=fx;return fx;
-        }
+        /// <summary>The chip id that made a field (the source's fx), replicated in the `chip` effect frame. A JsonUtility
+        /// round trip turns an absent one into "", which is no fx (the field then styles by its kind).</summary>
+        public string Fx(NativeChipField f)=>string.IsNullOrEmpty(f.Effect)?null:f.Effect;
         private void Add(NativeBlastField v,NativePilot owner,NativePilot viewer,bool pve,bool teams)
         {
             Live.Add(v.Id);
@@ -108,7 +99,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<fields.Count;i++)
             {
                 var f=fields[i];
-                Add(new NativeBlastField{Id=f.Id,Kind=f.Kind,Fx=Effect(arena,f),X=f.Position.x,Y=f.Position.y,Z=f.Position.z,Radius=f.Radius,Born=f.Born,Until=f.Until},f.Owner,viewer,pve,teams);
+                Add(new NativeBlastField{Id=f.Id,Kind=f.Kind,Fx=Fx(f),X=f.Position.x,Y=f.Position.y,Z=f.Position.z,Radius=f.Radius,Born=f.Born,Until=f.Until},f.Owner,viewer,pve,teams);
             }
             var zones=arena.AbilityZones;
             for(int i=0;i<zones.Count;i++)
@@ -119,9 +110,9 @@ namespace ChipArena.UnityConversion
                     // A zone whose expiry was just cut to now (a newer cast replaced its group) hashes to a new key for its
                     // last frame; it is not a new field, so it gets no glow flash and no arrival burst.
                     if(z.Until<=arena.Time)continue;
-                    // Exact where the expiry gives it (Singularity, burning ground, Orbital Mark); bombs no later than their fuse.
+                    // The replicated birth; a zone without one (Born 0) falls back to its expiry (NativeFieldRules.ZoneBorn).
                     var d=z.Definition;
-                    zoneBorn[key]=born=z.Id!=0?z.Born:(float)NativeFieldRules.ZoneBorn(d.id,z.Kind,z.Until,d.duration,d.fuse,Has(z.Owner,"cinder-field"),now);
+                    zoneBorn[key]=born=z.Born>0?z.Born:(float)NativeFieldRules.ZoneBorn(d.id,z.Kind,z.Until,d.duration,d.fuse,Has(z.Owner,"cinder-field"),now);
                 }
                 // The mark locks when its fuse has duration left to run (NativeAbilities orbital-mark: LockAt=born+duration, Until=born+fuse).
                 double? lockAt=z.Definition.id=="orbital-mark"?z.Until-z.Definition.fuse+z.Definition.duration:(double?)null;
@@ -129,7 +120,6 @@ namespace ChipArena.UnityConversion
             }
             stale.Clear();foreach(var key in zoneBorn.Keys)if(!Live.Contains(key))stale.Add(key);foreach(var key in stale)zoneBorn.Remove(key);
             stale.Clear();foreach(var key in colorOf.Keys)if(!Live.Contains(key))stale.Add(key);foreach(var key in stale)colorOf.Remove(key);
-            staleIds.Clear();foreach(var id in guestFx.Keys)if(!Live.Contains(id))staleIds.Add(id);foreach(var id in staleIds)guestFx.Remove(id);
         }
         // Vertex colours are not colour-space converted: write linear values under Linear colour space, sRGB under Gamma.
         private Color Vertex(int hex,float alpha){var c=NativeArena.ColorOf(hex);if(linear)c=c.linear;c.a=alpha;return c;}

@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
             if(weight>.001f&&seat.spec!="siren"){var local=NVector.Transform(point-draftPose.WorldPosition[3],NQuaternion.Inverse(draftPose.WorldRotation[3]));var wrist=CapturedRig.Euler(-1.45f+.45f*pull,0,(left?-1:1)*.5f*pull);CapturedRig.Arm(draftPose,left,local,wrist,new NVector(left?1:-1,-.8f,-.25f));}
             var look=age>=.48f?point:sourceTarget;draftPose.World();float eye=draftPose.WorldPosition[5].Y+.165f;look.Y=eye+(look.Y-eye)*(look.Y>eye?.55f:.5f);NativeDraftRules.Look(draftPose,look,1);Apply();Matrix4x4 Bone(int b)=>draftRig.Bones[b].localToWorldMatrix;
             sourceModels.Queue(seat.spec=="siren"?"siren":"pilot",draftRig.Root.transform.localToWorldMatrix,Bone,body:BodyTint(seat.bodyColor),accent:AccentTint(seat.accentColor));if(seat.spec!="siren")sourceModels.Queue("hat-"+seat.hat,draftRig.Root.transform.localToWorldMatrix,Bone);
-            var palm=draftRig.Bones[hand].TransformPoint(new Vector3(0,-.035f,.04f));if(age>=.48f){var m=Matrix4x4.TRS(palm,draftRig.Bones[hand].rotation*Quaternion.Euler(90,0,0),Vector3.one*(.5f+.5f*Mathf.Clamp01((age-.48f)/.12f)));sourceModels.Queue("pve-pickup",m,b=>m,partTint:b=>b==1?tint.linear:Color.white);}
+            var palm=draftRig.Bones[hand].TransformPoint(new Vector3(0,-.035f,.04f));if(age>=.48f){var m=Matrix4x4.TRS(palm,draftRig.Bones[hand].rotation*Quaternion.Euler(90,0,0),Vector3.one*NativeDraftRules.HeldChipScale(age,(float)time,reduced));sourceModels.Queue("pve-pickup",m,b=>m,partTint:b=>b==1?tint.linear:Color.white);}
             TeamBands(draftRig,DraftBandTeam);DrawBatches(null,0,false);sourceModels.Flush(UsesInstancing);return camera.WorldToScreenPoint(palm);
         }
     }

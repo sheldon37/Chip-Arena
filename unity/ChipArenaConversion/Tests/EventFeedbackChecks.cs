@@ -75,7 +75,7 @@ namespace ChipArena.UnityConversion
 
             // ArenaAudio.update's event routing
             int scenarios=0;var buffer=new NativeEventSounds.Sound[NativeEventSounds.MaxSounds];
-            string Describe(string fn,string clip,string key,double gain,bool positional)=>fn+":"+clip+":"+(key??"-")+":"+gain.ToString("0.###",System.Globalization.CultureInfo.InvariantCulture)+":"+(positional?"3d":"2d");
+            string Describe(string fn,string clip,string key,double gain,bool positional,double rate)=>fn+":"+clip+":"+(key??"-")+":"+gain.ToString("0.###",System.Globalization.CultureInfo.InvariantCulture)+":"+(positional?"3d":"2d")+":"+rate.ToString("0.###",System.Globalization.CultureInfo.InvariantCulture);
             foreach(var scenario in json.GetProperty("sounds").EnumerateArray())
             {
                 string name=scenario.GetProperty("name").GetString();var got=new List<string>();
@@ -85,14 +85,14 @@ namespace ChipArena.UnityConversion
                     bool Flag(string field)=>u.TryGetProperty(field,out var v)&&v.ValueKind==JsonValueKind.True;
                     float Number(string field)=>u.TryGetProperty(field,out var v)&&v.ValueKind==JsonValueKind.Number?v.GetSingle():0;
                     var context=new NativeEventSounds.Context{Kind=Kind(Text("Kind")),Detail=Text("Detail"),SourceSpec=Text("SourceSpec"),Material=Text("Material"),Amount=Number("Amount"),Radius=Number("Radius"),
-                        TargetMe=Flag("TargetMe"),SourceMe=Flag("SourceMe"),TargetPilot=Flag("TargetPilot"),Ally=Flag("Ally"),Pve=Flag("Pve"),Supernova=Flag("Supernova"),Saw=Flag("Saw"),Shadowed=Flag("Shadowed"),BlinkStrike=Flag("BlinkStrike")};
+                        TargetMe=Flag("TargetMe"),SourceMe=Flag("SourceMe"),TargetPilot=Flag("TargetPilot"),Ally=Flag("Ally"),Pve=Flag("Pve"),Supernova=Flag("Supernova")};
                     int count=NativeEventSounds.Route(context,buffer);
-                    for(int i=0;i<count;i++){var s=buffer[i];Check(s.Rate==0,name+" rate");got.Add(Describe(s.Tone?"tone":s.Gate!=null?"cue":"play",s.Clip,s.Gate,s.Gain,s.Positional));}
+                    for(int i=0;i<count;i++){var s=buffer[i];got.Add(Describe(s.Tone?"tone":s.Gate!=null?"cue":"play",s.Clip,s.Gate,s.Gain,s.Positional,s.Rate));}
                 }
                 // A source event Unity derives from state (NativeAudio): its fixed sound.
-                if(scenario.TryGetProperty("derived",out var derived)){Check(derived.GetString()=="SpikeRise",name+" derived");var s=NativeEventSounds.SpikeRise;Check(s.Rate==0&&!s.Tone,name+" rate");got.Add(Describe(s.Gate!=null?"cue":"play",s.Clip,s.Gate,s.Gain,s.Positional));}
-                var want=scenario.GetProperty("expected").EnumerateArray().Select(c=>{Check(c.GetProperty("rate").GetDouble()==0,name+" source rate");if(c.GetProperty("fn").GetString()=="tone")Check(c.GetProperty("hit").GetInt32()==5&&c.GetProperty("move").GetBoolean()&&c.GetProperty("superMove").GetBoolean(),name+" tone");
-                    return Describe(c.GetProperty("fn").GetString(),c.GetProperty("name").GetString(),c.GetProperty("key").ValueKind==JsonValueKind.String?c.GetProperty("key").GetString():null,c.GetProperty("gain").GetDouble(),c.GetProperty("positional").GetBoolean());}).OrderBy(x=>x,StringComparer.Ordinal).ToList();
+                if(scenario.TryGetProperty("derived",out var derived)){Check(derived.GetString()=="SpikeRise",name+" derived");var s=NativeEventSounds.SpikeRise;Check(!s.Tone,name+" tone");got.Add(Describe(s.Gate!=null?"cue":"play",s.Clip,s.Gate,s.Gain,s.Positional,s.Rate));}
+                var want=scenario.GetProperty("expected").EnumerateArray().Select(c=>{if(c.GetProperty("fn").GetString()=="tone")Check(c.GetProperty("hit").GetInt32()==5&&c.GetProperty("move").GetBoolean()&&c.GetProperty("superMove").GetBoolean(),name+" tone");
+                    return Describe(c.GetProperty("fn").GetString(),c.GetProperty("name").GetString(),c.GetProperty("key").ValueKind==JsonValueKind.String?c.GetProperty("key").GetString():null,c.GetProperty("gain").GetDouble(),c.GetProperty("positional").GetBoolean(),c.GetProperty("rate").GetDouble());}).OrderBy(x=>x,StringComparer.Ordinal).ToList();
                 got.Sort(StringComparer.Ordinal);Check(got.SequenceEqual(want),name+": ["+string.Join(", ",got)+"] != ["+string.Join(", ",want)+"]");scenarios++;
             }
             // Every kind routes within the buffer; the PR #66 kinds without a source cue stay silent by default.
@@ -113,17 +113,9 @@ namespace ChipArena.UnityConversion
                 passed.Add("event feedback: spike rises match StageHazards.step over "+want.Count+" rises (fight gate, round reset, bed positions)");
             }
 
-            // Unity-only correlations: a block pulse's own blast, a teleport's beam, Blink Strike's teleport, the saw.
-            V3 at=new V3(2,1,3),far=new V3(9,1,3);
+            V3 at=new V3(2,1,3);
             ArenaEvent E(int id,EventKind kind,int source,float time,V3 position,string detail=null,float radius=0,float amount=0,int target=0)=>new ArenaEvent{Id=id,Kind=kind,Source=source,Time=time,Position=position,From=position,Detail=detail,Radius=radius,Amount=amount,Target=target};
-            var pulse=new List<ArenaEvent>{E(1,EventKind.BlockPulse,3,1,at,radius:3),E(2,EventKind.Explosion,3,1,at,"chip",3),E(3,EventKind.Explosion,4,1,at,"chip",3),E(4,EventKind.Explosion,3,1.0167f,at,"chip",3),E(5,EventKind.Explosion,3,1,far,"chip",3)};
-            Check(NativeEventFeedback.PulseBlast(pulse,1)&&!NativeEventFeedback.PulseBlast(pulse,2)&&!NativeEventFeedback.PulseBlast(pulse,3)&&!NativeEventFeedback.PulseBlast(pulse,4)&&!NativeEventFeedback.PulseBlast(pulse,0),"block pulse blast");
-            var blink=new List<ArenaEvent>{E(1,EventKind.Teleport,2,1,at),E(2,EventKind.Arc,0,1,at,radius:1),E(3,EventKind.Arc,0,1,new V3(2,1.02f,3),radius:1),E(4,EventKind.Explosion,2,1,at,"ability",3),E(5,EventKind.Arc,0,1,far,radius:.15f),E(6,EventKind.Teleport,5,1,far),E(7,EventKind.Explosion,5,1,far,"chip",3),E(8,EventKind.Teleport,6,2,far,"blink-strike")};
-            Check(NativeEventFeedback.TeleportBeam(blink,1)&&NativeEventFeedback.TeleportBeam(blink,2)&&NativeEventFeedback.TeleportBeam(blink,4)==true&&!NativeEventFeedback.TeleportBeam(blink,0),"teleport beam");
-            var lone=new List<ArenaEvent>{E(1,EventKind.Arc,0,1,far,radius:.15f)};Check(!NativeEventFeedback.TeleportBeam(lone,0),"a lone arc is no teleport beam");
-            Check(NativeEventFeedback.BlinkStrike(blink,0)&&!NativeEventFeedback.BlinkStrike(blink,5)&&NativeEventFeedback.BlinkStrike(blink,7)&&!NativeEventFeedback.BlinkStrike(blink,1),"blink strike teleport");
-            double t=12.3;float sawX=(float)(Math.Sin(t*.65)*17);
-            Check(NativeEventFeedback.SawHit("sawmill",t,new V3(sawX+1,1,-8.3f))&&NativeEventFeedback.SawHit("sawmill",t,new V3(-(float)(Math.Sin(t*.65)*17),1.2f,8))&&!NativeEventFeedback.SawHit("sawmill",t,new V3(sawX+3,1,-8))&&!NativeEventFeedback.SawHit("lavaworks",t,new V3(sawX,1,-8)),"saw contact");
+            Check(NativeEventSounds.Proc("dash-blast")&&NativeEventSounds.Proc("drainDash")&&!NativeEventSounds.Proc("direct")&&!NativeEventSounds.Proc("")&&!NativeEventSounds.Proc(null),"proc kinds");
             // PvE "under attack" (pve/tracks.ts AttackedTrack): any hit on me with damage, burn and poison ticks included.
             Check(NativeEventFeedback.Attacked(E(1,EventKind.BurnTick,2,1,at,amount:.5f,target:1),1,1.5f,1.2f)&&NativeEventFeedback.Attacked(E(1,EventKind.Hit,2,1,at,amount:5,target:1),1,2.1f,1.2f)&&!NativeEventFeedback.Attacked(E(1,EventKind.Hit,2,1,at,amount:5,target:1),1,2.2f,1.2f)
                 &&!NativeEventFeedback.Attacked(E(1,EventKind.Heal,1,1,at,amount:5,target:1),1,1.1f,1.2f)&&!NativeEventFeedback.Attacked(E(1,EventKind.Hit,2,1,at,amount:.04f,target:1),1,1.1f,1.2f)&&!NativeEventFeedback.Attacked(E(1,EventKind.Hit,2,1,at,amount:5,target:3),1,1.1f,1.2f),"under attack");
@@ -132,7 +124,7 @@ namespace ChipArena.UnityConversion
             // Pan on the Unity camera's right (left-handed), falloff and rate as ArenaAudio.play.
             Check(Near(NativeEventSounds.Pan(new V3(5,0,0),0),.85,1e-6)&&Near(NativeEventSounds.Pan(new V3(-5,0,0),0),-.85,1e-6)&&Near(NativeEventSounds.Pan(new V3(0,0,-5),(float)(Math.PI/2)),.85,1e-6)&&Near(NativeEventSounds.Pan(new V3(1,0,0),0),.5,1e-6)&&NativeEventSounds.Pan(new V3(0,0,6),0)==0,"pan");
             Check(Near(NativeEventSounds.Falloff(1),1,1e-7)&&Near(NativeEventSounds.Falloff(12),1/2.3,1e-6)&&NativeEventSounds.Rate("hit",.9f)==1&&NativeEventSounds.Rate("ui",0)==1&&Near(NativeEventSounds.Rate("stone",0),.97,1e-7)&&Near(NativeEventSounds.Rate("stone",1),1.03,1e-6),"falloff and rate");
-            passed.Add("event feedback: block-pulse blast, teleport beam, Blink Strike and saw correlations; under-attack ticks; legacy burst kinds; pan, falloff and rate");
+            passed.Add("event feedback: proc kinds; under-attack ticks; legacy burst kinds; pan, falloff and rate");
             return passed;
         }
     }

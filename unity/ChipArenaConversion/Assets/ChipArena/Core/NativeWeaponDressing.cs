@@ -132,15 +132,18 @@ namespace ChipArena.UnityConversion
         // from 88% of the windup until 70 ms after the hit window, and through a released sword launch or wolf spin.
         // AttackAt is the source's lastAttack; SwingAt/SwingUntil are its swing window while it lasts (else -100, the source's
         // fallback to windup and .16/rate); CastRate is attackRate. Unity cancels a strike by zeroing AttackUntil (block, roll,
-        // stun), where the source resets lastAttack, so a cancelled strike stops sweeping as in the source.
+        // stun), where the source resets lastAttack, so a cancelled strike stops sweeping as in the source. An Emperor or
+        // Ansatsuken action strikes several times and stamps each strike in LastAttack (emperor.ts strike, arcade.ts:60), so
+        // every punch of the action sweeps.
         public static bool Sweeping(Actor a,float time)
         {
             if(a==null||!a.Alive||!Melee(a.SourceSpec))return false;
             if(a.SpecialReleased&&(a.SpecialKind=="sword-launch"||a.SpecialKind=="wolf-spin")&&time<a.SpecialUntil)return true;
-            float rate=a.CastRate>0?a.CastRate:1,age=Math.Max(0,time-a.AttackAt);bool swing=a.SwingAt>-90;
-            float windup=swing?Math.Max(.025f,a.SwingAt-a.AttackAt):Math.Max(.025f,a.VisualWindup),window=swing?a.SwingUntil-a.SwingAt:a.VisualActive;
-            bool rolled=a.RollAt>a.AttackAt&&a.RollAt<=time;
-            bool active=a.AttackUntil>a.AttackAt&&age<windup+window+NativeMeleeRules.Recovery(a.SourceSpec)/rate&&!rolled;
+            float at=(a.SourceSpec=="emperor"||a.SourceSpec=="ansatsuken")&&a.LastAttack>a.AttackAt?a.LastAttack:a.AttackAt;
+            float rate=a.CastRate>0?a.CastRate:1,age=Math.Max(0,time-at);bool swing=a.SwingAt>-90;
+            float windup=swing?Math.Max(.025f,a.SwingAt-at):Math.Max(.025f,a.VisualWindup),window=swing?a.SwingUntil-a.SwingAt:a.VisualActive;
+            bool rolled=a.RollAt>at&&a.RollAt<=time;
+            bool active=a.AttackUntil>at&&age<windup+window+NativeMeleeRules.Recovery(a.SourceSpec)/rate&&!rolled;
             return active&&age>=windup*.88f&&age<=windup+window+.07f;
         }
         // three r180 primitives as weapon-visuals.ts:9 builds them: BoxGeometry(1,1,1), SphereGeometry(1,8,6), ConeGeometry(1,1,5)
