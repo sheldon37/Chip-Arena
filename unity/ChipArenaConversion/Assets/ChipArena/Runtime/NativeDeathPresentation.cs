@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
                 var bounds=new Bounds(Vector3.zero,Vector3.one*.1f);foreach(var point in points)bounds.Encapsulate(point);box.center=bounds.center;box.size=new Vector3(Mathf.Clamp(bounds.size.x,.1f,.8f),Mathf.Clamp(bounds.size.y,.1f,.9f),Mathf.Clamp(bounds.size.z,.1f,.8f));body.mass=Math.Max(.01f,2*box.size.x*box.size.y*box.size.z);
                 inverse[b]=go.transform.worldToLocalMatrix;Parts[b]=body;
                 Vector3 dir=death.direction.sqrMagnitude>.01f?death.direction.normalized:Quaternion.Euler(0,death.yaw,0)*Vector3.back;
-                if(Style=="impact-ragdoll"||death.kept)body.linearVelocity=Vector3.ClampMagnitude(death.velocity,100);
+                if(Style=="impact-ragdoll"||death.kept)body.linearVelocity=Vector3.ClampMagnitude(death.velocity,(float)NativeKillEffectRules.MaxBodySpeed);
                 else
                 {
                     float force=death.melee?8+Math.Min(7,death.force/100):2.2f+Math.Min(2,death.force/160);body.linearVelocity=dir*force+Vector3.ClampMagnitude(death.velocity,5)*.3f+Vector3.up*(death.melee?3.8f:1);body.angularVelocity=Vector3.Cross(death.position-go.transform.position,dir)*(death.melee?15:5);
@@ -34,6 +34,13 @@ namespace ChipArena.UnityConversion
                     if(Style=="dev-gibber"&&b!=CapturedRig.Pelvis&&b==(death.wound?.part??5)){body.linearVelocity=body.linearVelocity*1.65f+Vector3.up*5;body.angularVelocity=new Vector3(11,-8,9);}
                 }
             }
+            if(death.wound?.destroyed==true)
+            {
+                var w=death.wound;var direction=Quaternion.Euler(0,death.yaw,0)*new Vector3(-w.direction.x,w.direction.y,w.direction.z);
+                NativeKillEffectRules.DetachedVelocity(death.velocity.x,death.velocity.y,death.velocity.z,w.part,w.momentum,direction.x,direction.y,direction.z,out double vx,out double vy,out double vz);
+                foreach(var part in Parts){int bone=part.Key;while(bone>=0&&bone!=w.part)bone=CapturedRig.Bones[bone].Parent;if(bone==w.part)part.Value.linearVelocity=new Vector3((float)vx,(float)vy,(float)vz);}
+            }
+            foreach(var part in Parts.Values)part.linearVelocity=Vector3.ClampMagnitude(part.linearVelocity,(float)NativeKillEffectRules.MaxBodySpeed);
             if(death.wound?.kind=="crush"&&Parts.TryGetValue(death.wound.part,out var crushed)){crushed.GetComponent<Collider>().enabled=false;crushed.isKinematic=true;}
             for(int i=0;i<22;i++){int a=i;while(a>=0&&!Parts.ContainsKey(a))a=CapturedRig.Bones[a].Parent;Anchor[i]=a<0?1:a;}
             foreach(var pair in Parts)

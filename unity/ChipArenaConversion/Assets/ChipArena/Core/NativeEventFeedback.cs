@@ -242,7 +242,7 @@ namespace ChipArena.UnityConversion
                 // summon shots) have no source cue. An Arc that carries a Detail is taken as a real arc.
                 case EventKind.Arc:
                     if(e.Shadowed)break;
-                    if(!string.IsNullOrEmpty(e.Detail)||Math.Abs(e.Radius-.15f)<.01f)n=Add(o,n,"lightning",.5f,true,"arc");else if(Math.Abs(e.Radius-.25f)<.01f)n=Add(o,n,"lightning",.35f,true);
+                    if(e.Detail=="ball-lightning"||string.IsNullOrEmpty(e.Detail)&&Math.Abs(e.Radius-.15f)<.01f)n=Add(o,n,"lightning",.5f,true,"arc");else if(e.Detail=="leet-lock"||string.IsNullOrEmpty(e.Detail)&&Math.Abs(e.Radius-.25f)<.01f)n=Add(o,n,"lightning",.35f,true);
                     break;
                 case EventKind.Teleport:if(e.BlinkStrike)n=Add(o,n,"lightning",.6f,true);break;
                 // The panic-button field is the source's `nova` (chaos.ts:72), which shares the arc cue, and a Thunder Step bolt

@@ -94,7 +94,7 @@ namespace ChipArena.UnityConversion
             foreach(var m in Minions.ToArray())
             {
                 string key="minion:"+m.Id;Vector3 d=m.Body.position-origin;
-                if(m.Hp<=0||!CanHit(p,m.Owner)||action.Hit.Contains(key)||!NativeSpecialRules.Strike(Vec(d),range,.35f,action.Yaw,kind)||!MeleeVisible(origin,m.Body.position,p,m.Collider))continue;
+                if(m.Hp<=0||!CanHit(p,m)||action.Hit.Contains(key)||!NativeSpecialRules.Strike(Vec(d),range,.35f,action.Yaw,kind)||!MeleeVisible(origin,m.Body.position,p,m.Collider))continue;
                 action.Hit.Add(key);Vector3 at=m.Body.position;float actual=HitMinion(m,p,(float)(p.Weapon.damage*p.Stats["damage"])*1.12f,(d+Vector3.up*.5f).normalized,impulse*(float)p.Stats["impulse"],at,"melee");
                 MinionWeaponHit(m,p,actual,(float)p.Stats["burn"],(float)p.Stats["poison"]);if(actual>0)ImpactChips(p,null,null,at,d.normalized,(int)(action.At*60)*1000+p.Seat.id,nextAttack++);
             }
@@ -115,7 +115,7 @@ namespace ChipArena.UnityConversion
         private Collider[] meleeOverlaps=new Collider[16];private RaycastHit[] meleeSweeps=new RaycastHit[32];
         private struct MeleeContact {public Collider Collider;public Vector3 Point,Normal;public float Distance;}
         private bool ShotCollider(NativeMeleeShot s,Collider collider)
-        {var m=collider.GetComponent<NativeMinionBody>();if(m!=null)return m.Minion.Hp>0&&CanHit(s.Owner,m.Minion.Owner);var p=collider.GetComponent<NativePilotBody>();return p==null||p.Pilot.Hp>0&&CanHit(s.Owner,p.Pilot)&&!Invulnerable(p.Pilot);}
+        {var m=collider.GetComponent<NativeMinionBody>();if(m!=null)return m.Minion.Hp>0&&CanHit(s.Owner,m.Minion);var p=collider.GetComponent<NativePilotBody>();return p==null||p.Pilot.Hp>0&&CanHit(s.Owner,p.Pilot)&&!Invulnerable(p.Pilot);}
         private MeleeContact? SweepMeleeShot(NativeMeleeShot s,Vector3 delta)
         {
             var physics=root.scene.GetPhysicsScene();int n;

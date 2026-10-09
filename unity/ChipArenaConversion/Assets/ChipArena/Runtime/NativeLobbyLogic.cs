@@ -21,7 +21,18 @@ namespace ChipArena.UnityConversion
         {if(server==null||arena!=null)return;networkReady=ready;SendServer(new NativeNetMessage{type="ready",ready=ready,profile=Profile(),token=account?.Token});}
         public void ChangeTeam(int team)
         {team=Math.Max(0,Math.Min(7,team));if(arena!=null)return;if(server!=null)SendServer(new NativeNetMessage{type="team",team=team});else{prefs.team=team;LobbyBroadcast();}}
-        private NativeSeatFrame LobbySeat(NativeSeat s,bool ready)=>new NativeSeatFrame{id=s.id,name=s.name,spec=s.spec,team=s.team,connected=s.connected,ready=ready,bot=s.bot,difficulty=s.difficulty,bodyColor=s.bodyColor,accentColor=s.accentColor,hat=s.hat,killEffect=s.killEffect,intro=s.intro,introText=s.introText};
+        public bool RequestTeam(int seatId,int team)
+        {
+            if(!Hosting||arena!=null||team<0||team>7)return false;
+            if(prefs.pve)team=0;
+            if(!dedicated&&seatId==1){prefs.team=team;LobbyBroadcast();return true;}
+            var peer=peers.Find(p=>p.Seat?.id==seatId&&p.Seat.connected);
+            if(peer!=null){peer.Seat.team=team;peer.Ready=false;LobbyBroadcast();return true;}
+            var bots=LobbyBots((dedicated?0:1)+peers.Count(p=>p.Seat!=null&&p.Seat.connected));
+            int index=Array.FindIndex(bots,b=>b.id==seatId);if(index<0)return false;
+            var options=CaptureRoomOptions();options.Normalize(content);if(options.botOptions.Length<=index){var expanded=options.botOptions;Array.Resize(ref expanded,index+1);options.botOptions=expanded;for(int i=0;i<expanded.Length;i++)if(expanded[i]==null)expanded[i]=new NativeBotOption();}options.botOptions[index].team=team;SetRoomOptions(options);return true;
+        }
+        private NativeSeatFrame LobbySeat(NativeSeat s,bool ready)=>new NativeSeatFrame{id=s.id,name=s.name,spec=s.spec,team=s.team,connected=s.connected,ready=ready,bot=s.bot,difficulty=s.difficulty,bodyColor=s.bodyColor,accentColor=s.accentColor,hat=s.hat,lobbyPose=s.lobbyPose,killEffect=s.killEffect,intro=s.intro,introText=s.introText};
         private NativeSeat[] LobbyBots(int humans)
         {var options=CaptureRoomOptions();options.Normalize(content);return Enumerable.Range(0,Math.Max(0,Math.Min(options.bots,(prefs.pve?4:8)-humans))).Select(i=>NativeLobbyRules.Bot(content,options,i,prefs.weapon,roomSeed)).ToArray();}
         private void LobbyTick()

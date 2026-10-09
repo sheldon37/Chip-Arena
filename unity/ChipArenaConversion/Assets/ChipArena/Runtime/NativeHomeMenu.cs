@@ -418,14 +418,13 @@ namespace ChipArena.UnityConversion
             ScreenBody(l,JoinBody);if(l.Card.width>0)PilotCard(l.Card,"YOUR PILOT",l.Enter,"Your loadout is sent to the host when you join.");
             bool busy=connecting!=null||server!=null&&!InRoom;ScreenStatus(l,networkStatus,NetworkError);MarkRoomStale();
             // A pasted room invite link joins through JoinInvite (its address, port and code); anything else is a room code:
-            // eight characters of NativeRoomCodes.Alphabet for a LAN or relay room. The source's online CA- directory codes
-            // are not wired in this build (UNITY-LOGIC-HANDOFF A8), so they get their own reason instead of a LAN failure.
+            // CA- selects the online relay; the eight-character payload remains compatible with existing native rooms.
             if(ScreenActions(l,("play",busy?"Finding room…":"Join Room",true,!busy&&joinCode.Trim().Length>0))==0)
             {
                 string entry=joinCode.Trim();if(JoinInvite(entry))return;
                 if(entry.IndexOf("://",StringComparison.Ordinal)>=0)networkStatus="Could not find the room.";
-                else if(entry.StartsWith("CA-",StringComparison.OrdinalIgnoreCase))networkStatus="Online join codes are not available in this build yet. Use the 8-character room code or an invite link.";
-                else if(!RoomCodeShape(entry))networkStatus="Enter the 8-character room code or paste a room invite link.";
+                else if(entry.StartsWith("CA-",StringComparison.OrdinalIgnoreCase))JoinRoom();
+                else if(!RoomCodeShape(entry))networkStatus="Enter a CA- online code, an 8-character local code, or a room invite link.";
                 else JoinRoom();
             }
         }

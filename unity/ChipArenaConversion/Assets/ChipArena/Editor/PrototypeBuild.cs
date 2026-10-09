@@ -56,6 +56,9 @@ namespace ChipArena.UnityConversion.Editor
         // Runtime-created actor/bolt materials are invisible to scene-based variant stripping.
         internal static void ConfigureRendering()
         {
+            PlayerSettings.colorSpace=ColorSpace.Linear;
+            if(PlayerSettings.colorSpace!=ColorSpace.Linear)throw new BuildFailedException("Native builds require Linear colour space.");
+            Debug.Log("NATIVE_COLOR_SPACE: Linear");
             var graphics=new SerializedObject(GraphicsSettings.GetGraphicsSettings());
             var stripping=graphics.FindProperty("m_InstancingStripping");
             if(stripping==null) throw new BuildFailedException("Cannot configure instancing shader retention in this Unity Editor.");

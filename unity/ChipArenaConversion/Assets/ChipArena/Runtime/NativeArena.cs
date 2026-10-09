@@ -174,11 +174,12 @@ namespace ChipArena.UnityConversion
         {if(p.Weapon.@class!="ranged"||p.ReloadEnd>0||p.Ammo>=Magazine(p)||Time<p.RollEnd||Incapacitated(p))return;p.ReloadAt=Time;p.ReloadEnd=Time+Math.Max(.2f,(float)(p.Weapon.reload*p.Stats["reloadSpeed"]));p.Aiming=false;Emit(EventKind.ReloadStart,p,0,p.Body.position,0);}
         private bool Enemy(NativePilot a,NativePilot b)=>NativeCombatRules.Enemy(a?.Seat,b?.Seat,Match.Teams);
         private bool CanHit(NativePilot a,NativePilot b)=>NativeCombatRules.CanHit(a?.Seat,b?.Seat,Match.Teams,FriendlyFire);
+        private bool CanHit(NativePilot source,NativeMinion target)=>target!=null&&NativeCombatRules.MinionCanHit(source?.Seat,target.Owner?.Seat,target.Pve!=null,Match.Teams,FriendlyFire);
+        private bool Enemy(NativePilot source,NativeMinion target)=>target!=null&&NativeCombatRules.MinionEnemy(source?.Seat,target.Owner?.Seat,target.Pve!=null,Match.Teams);
         private bool Invulnerable(NativePilot p)=>p.Roll!=null&&Time>=p.RollAt+p.Roll.iframeStart&&Time<p.RollAt+p.Roll.iframeStart+p.Roll.iframeSeconds;
-        private float Damage(NativePilot target,NativePilot source,float amount,Vector3 direction,float impulse,bool head,bool forced=false,bool direct=true,bool primary=true,bool melee=false,bool stage=false,NativeBodyImpact impact=null,Vector3? hitPoint=null,bool rollAvoidable=true,bool weaponHit=false,EventKind eventKind=EventKind.Hit)
+        private float Damage(NativePilot target,NativePilot source,float amount,Vector3 direction,float impulse,bool head,bool forced=false,bool direct=true,bool primary=true,bool melee=false,bool stage=false,NativeBodyImpact impact=null,Vector3? hitPoint=null,bool rollAvoidable=true,bool weaponHit=false,EventKind eventKind=EventKind.Hit,string damageKind=null)
         {
             if(target.Hp<=0||!target.Seat.connected||source!=null&&!forced&&!CanHit(source,target)||float.IsNaN(amount)||float.IsInfinity(amount)||amount<=0||!forced&&(target.ScareBy!=null||Time<target.ShieldUntil||!stage&&NativeSpecialRules.Protected(target.Down,Time)||rollAvoidable&&Invulnerable(target)))return 0;
-            if(stage)Emit(EventKind.HazardHit,source,target.Seat.id,target.Body.position,amount);
             if(source!=null&&!forced&&direct&&(primary||melee)&&Time<target.BlockEnd){BlockProc(target,source,target.Body.position);if(melee)SuccessfulMeleeBlock(target,source,amount,direction,impulse);return 0;}
             if(source!=null&&primary&&direct&&!forced){float chaosRoll=(float)random.NextDouble(),criticalRoll=(float)random.NextDouble();if(criticalRoll<source.Stats["critical"])Emit(EventKind.Critical,source,target.Seat.id,target.Body.position,amount);amount=NativeProjectileRules.Damage(amount,source.Stats,target.Hp,(float)target.Stats["hp"],Vector3.Distance(source.Body.position,target.Body.position),source.Weapon.@class=="melee",Vector3.Dot(Quaternion.Euler(0,target.Input.Yaw,0)*Vector3.forward,(source.Body.position-target.Body.position).normalized),chaosRoll,criticalRoll);}
             amount=forced?amount:amount*(float)target.Stats["damageTaken"]*(Dev(target,"ansatsuken")&&target.Fighter?.Kind=="charge"&&Has(target,"arcade-focus")?.5f:1)*(Dev(target,"emperor")&&target.Fighter?.Kind=="wave"&&Has(target,"mishima-armor")?.5f:1);if(!forced&&Dev(target,"ansatsuken")&&Has(target,"arcade-secondwind")&&amount>=target.Hp&&ProcOnce(target.Seat.id+":round-two")){target.Hp=1;target.Stamina=(float)target.Stats["maxStamina"];target.Dots.Clear();return 0;}amount=PveDamageRoom(target,amount,source);if(amount<=0)return 0;if(!forced&&LeetSave(target,amount))return 0;if(ChipSave(target,amount,forced))return 0;if(SandboxAllowed&&SafeMode&&!target.Seat.bot&&!forced)amount=Math.Min(amount,Math.Max(0,target.Hp-1));float actual=Math.Min(amount,target.Hp);target.Hp=Math.Max(0,target.Hp-amount);target.Pose.FlashUntil=Time+.14f;if(actual>0)target.LastDamage=Time;
@@ -190,15 +191,16 @@ namespace ChipArena.UnityConversion
             if(source!=null&&source.Hp>0&&direct&&primary&&actual>0)
             {
                 Heal(source,actual*(float)(source.Stats["lifeSteal"]+source.Weapon.drain));source.DirectHits++;
-                if(source.Stats["staticEvery"]>0&&source.DirectHits%(int)source.Stats["staticEvery"]==0)ChipBlast(source,target.Body.position,3,(float)source.Stats["staticDamage"],60,false);
+                if(source.Stats["staticEvery"]>0&&source.DirectHits%(int)source.Stats["staticEvery"]==0)ChipBlast(source,target.Body.position,3,(float)source.Stats["staticDamage"],60,false,effect:"static");
                 RefreshDot(target,source,"fire",source.Weapon.burn+source.Stats["burn"],2);RefreshDot(target,source,"poison",source.Stats["poison"],4);
-                if(target.Stats["thorns"]>0)Damage(source,target,actual*(float)target.Stats["thorns"],Vector3.zero,0,false,false,false);
+                if(target.Stats["thorns"]>0)Damage(source,target,actual*(float)target.Stats["thorns"],Vector3.zero,0,false,false,false,damageKind:"thorns");
                 if(source.Seat.spec=="water"&&Time>=target.SoakedAt+1.5f){target.SoakedAt=Time;Slow(target,.8f,.8f);}
                 if(source.Weapon.chain>0)
-                {var next=Pilots.Where(p=>p!=target&&p.Hp>0&&Enemy(source,p)&&(p.Body.position-target.Body.position).magnitude<4&&!SceneLinecast(target.Body.position,p.Body.position,WorldMask)).OrderBy(p=>(p.Body.position-target.Body.position).sqrMagnitude).FirstOrDefault();if(next!=null)Damage(next,source,(float)source.Weapon.chain,Vector3.zero,0,false,false,false);}
+                {var next=Pilots.Where(p=>p!=target&&p.Hp>0&&Enemy(source,p)&&(p.Body.position-target.Body.position).magnitude<4&&!SceneLinecast(target.Body.position,p.Body.position,WorldMask)).OrderBy(p=>(p.Body.position-target.Body.position).sqrMagnitude).FirstOrDefault();if(next!=null)Damage(next,source,(float)source.Weapon.chain,Vector3.zero,0,false,false,false,damageKind:"chain");}
             }
             if(actual>0){PveDamaged(target,source,actual);if(!forced)ChipDamaged(target,source,weaponHit);}
-            Emit(eventKind==EventKind.Hit&&head?EventKind.Headshot:eventKind,source,target.Seat.id,target.Body.position,actual);
+            Emit(eventKind==EventKind.Hit&&head?EventKind.Headshot:eventKind,source,target.Seat.id,target.Body.position,actual,damageKind??(direct?"direct":"secondary"));
+            if(stage&&actual>0)Emit(EventKind.HazardHit,source,target.Seat.id,target.Body.position,actual,damageKind!=null&&damageKind.StartsWith("stage-",StringComparison.Ordinal)?damageKind.Substring(6):damageKind??"stage");
             if(target.Hp<=0){RecordDeath(target,source,direction,impulse,melee);target.Down=null;target.Juggle=null;CancelSiren(target);CancelFighter(target);CancelSpecial(target);CancelMelee(target);CancelAbilities(target);PveDied(target);target.Seat.alive=false;target.Collider.enabled=false;target.Body.isKinematic=true;Emit(EventKind.Death,source,target.Seat.id,target.Body.position,0);}
             return actual;
         }
@@ -211,7 +213,7 @@ namespace ChipArena.UnityConversion
         {foreach(var pair in p.Dots.ToArray()){var dot=pair.Value;while(dot.Next<=Match.Time+1e-8&&dot.Next<=dot.Until+1e-8){Damage(p,Pilots.Find(x=>x.Seat.id==dot.Source),(float)(dot.Dps*.25),Vector3.zero,0,false,false,false,rollAvoidable:false,eventKind:pair.Key.EndsWith(":fire")?EventKind.BurnTick:EventKind.PoisonTick);dot.Next+=.25;}if(Match.Time>dot.Until+1e-8)p.Dots.Remove(pair.Key);}}
         private void Blast(NativePilot source,Vector3 position,float radius,float damage,float impulse)
         {
-            foreach(var p in Pilots){Vector3 delta=p.Body.position-position;if(p.Hp<=0||!CanHit(source,p)||delta.magnitude>radius||SceneLinecast(position+Vector3.up*.05f,p.Body.position,WorldMask))continue;float scale=1-delta.magnitude/radius;Damage(p,source,damage*scale,delta.normalized,impulse*scale,false,false,false);}
+            foreach(var p in Pilots){Vector3 delta=p.Body.position-position;if(p.Hp<=0||!CanHit(source,p)||delta.magnitude>radius||SceneLinecast(position+Vector3.up*.05f,p.Body.position,WorldMask))continue;float scale=1-delta.magnitude/radius;Damage(p,source,damage*scale,delta.normalized,impulse*scale,false,false,false,damageKind:"blast");}
             foreach(var prop in Props.ToArray())if(prop!=null&&(prop.transform.position-position).magnitude<radius)DamageProp(prop,damage,(prop.transform.position-position).normalized*impulse,position,source);
         }
         private void StepHazards()
@@ -224,7 +226,7 @@ namespace ChipArena.UnityConversion
                     if(p.Hp<=0)continue;var pos=p.Body.position;string key=h.id+":"+p.Seat.id;
                     if(hazardHits.TryGetValue(key,out float until)&&Time<until)continue;
                     bool lava=h.kind=="lava",touch=lava?NativeHazards.InLavaChannel(h,Vec(pos)):h.kind=="saw"?Math.Abs(pos.z-h.z)<.62&&Math.Sqrt((pos.x-h.x)*(pos.x-h.x)+Math.Pow(Math.Max(0,Math.Abs(pos.y-h.y)-.43),2))<1.62:Math.Abs(pos.x-h.x)<h.sx/2+.3&&Math.Abs(pos.z-h.z)<h.sz/2+.3&&pos.y-.85<1.1*h.extension&&pos.y>-.5;
-                    if(!touch)continue;hazardHits[key]=Time+(lava?.25f:.65f);Damage(p,null,lava?8:h.kind=="saw"?22:25,lava?Vector3.zero:new Vector3(Mathf.Sign(pos.x-h.x)*.4f,.35f,Mathf.Sign(pos.z-h.z)),lava?0:150,false,direct:false,stage:true);
+                    if(!touch)continue;hazardHits[key]=Time+(lava?.25f:.65f);Damage(p,null,lava?8:h.kind=="saw"?22:25,lava?Vector3.zero:new Vector3(Mathf.Sign(pos.x-h.x)*.4f,.35f,Mathf.Sign(pos.z-h.z)),lava?0:150,false,direct:false,stage:true,damageKind:"stage-"+h.kind);
                 }
             }
         }
@@ -238,8 +240,8 @@ namespace ChipArena.UnityConversion
             var prop=hit.collider.GetComponent<NativePropBody>();if(prop==null)return;
             Events.Add(new ArenaEvent{Id=nextEvent++,Kind=EventKind.Impact,Source=source?.Seat.id??0,Time=Time,Position=Vec(hit.point),Normal=Vec(hit.normal),SurfaceId=prop.Definition.id,Color=color,Projectile=projectile});
         }
-        private void Emit(EventKind kind,NativePilot source,int target,Vector3 position,float amount,string detail=null,float radius=0,Vector3? from=null)
-        {Events.Add(new ArenaEvent{Id=nextEvent++,Kind=kind,Time=Time,Source=source?.Seat.id??0,Target=target,Position=Vec(position),Amount=amount,Detail=detail,Radius=radius,From=Vec(from??position)});}
+        private void Emit(EventKind kind,NativePilot source,int target,Vector3 position,float amount,string detail=null,float radius=0,Vector3? from=null,Vector3? normal=null,string surfaceId=null)
+        {Events.Add(new ArenaEvent{Id=nextEvent++,Kind=kind,Time=Time,Source=source?.Seat.id??0,Target=target,Position=Vec(position),Amount=amount,Detail=detail,Radius=radius,From=Vec(from??position),Normal=Vec(normal??Vector3.zero),SurfaceId=surfaceId});}
         public Snapshot Snapshot(bool interpolated=false)
         {
             if(Replica&&replicaFrame!=null)return ReplicaSnapshot();
@@ -247,14 +249,14 @@ namespace ChipArena.UnityConversion
             {
                 var a=p.Pose;a.Wounds=p.Wounds.ToArray();a.Weapon=p.Seat.spec=="pistol"?WeaponId.Pistol:p.Seat.spec=="rifle"?WeaponId.Rifle:p.Seat.spec=="machinegun"?WeaponId.MachineGun:WeaponId.Sword;a.VisualSet=p.Seat.spec=="daggers"?1:p.Seat.spec=="greatsword"?2:p.Seat.spec=="shield"?3:0;a.MagicVisual=p.Seat.spec=="fire"?1:p.Seat.spec=="water"?2:p.Seat.spec=="lightning"?3:p.Seat.spec=="darkness"?4:0;a.SourceSpec=p.Seat.spec;a.BodyColor=p.Seat.bodyColor;a.AccentColor=p.Seat.accentColor;a.Hat=p.Seat.hat;a.SourceAction=p.Fighter?.Kind;a.SourceAt=p.Fighter?.At??0;a.SourceUntil=p.Fighter?.Until??0;a.SourceTotal=p.Fighter?.Total??0;a.SourceIndex=p.Fighter?.Index??0;a.RigScale=p.Siren?.Scale??1;
                 if(p.Seat.spec=="siren"){var m=p.Siren?.Move;a.SourceAction=m?.Caught!=null?"grab":m?.Rule.Id;a.SourceAt=m?.Caught!=null?m.CaughtAt:m?.At??0;a.SourceUntil=m?.Until??0;a.SourceSide=m?.Side??1;a.SourceRanged=p.Siren?.Ranged??false;}
-                a.Hp=p.Hp;a.Stamina=p.Stamina;a.Position=Vec(p.Body.position-Vector3.up*.865f);a.Velocity=Vec(p.Body.linearVelocity);a.Yaw=p.Yaw;a.AimYaw=p.Yaw;a.Pitch=p.Pitch;a.Combo=Math.Max(0,p.Combo);a.AttackAt=p.AttackAt;a.AttackUntil=p.AttackEnd;a.BlockAt=p.BlockAt;a.BlockUntil=p.BlockEnd;a.BlockReady=p.BlockReady;a.RollAt=p.RollAt;a.RollDirection=Vec(p.RollDirection);a.StunUntil=p.StunEnd;a.Aiming=p.Aiming;a.AimAt=p.AimAt;a.Ammo=p.Ammo;a.LastShot=p.LastShot;a.ReloadAt=p.ReloadAt;a.ReloadUntil=p.ReloadEnd;
+                a.Hp=p.Hp;a.Stamina=p.Stamina;a.Position=Vec(p.Body.position-Vector3.up*.865f);a.Velocity=Vec(p.Body.linearVelocity);a.Yaw=p.Yaw;a.AimYaw=p.Yaw;a.Pitch=p.Pitch;a.Combo=Math.Max(0,p.Combo);a.LastAttack=p.LastAttack;a.JuggleUntil=p.Juggle?.Until??0;a.AttackAt=p.AttackAt;a.AttackUntil=p.AttackEnd;a.BlockAt=p.BlockAt;a.BlockUntil=p.BlockEnd;a.BlockReady=p.BlockReady;a.RollAt=p.RollAt;a.RollDirection=Vec(p.RollDirection);a.StunUntil=p.StunEnd;a.Aiming=p.Aiming;a.AimAt=p.AimAt;a.Ammo=p.Ammo;a.LastShot=p.LastShot;a.ReloadAt=p.ReloadAt;a.ReloadUntil=p.ReloadEnd;
                 var special=p.Special;var down=p.Down;
                 a.SpecialKind=special?.Kind;a.SpecialAt=special?.At??-100;a.SpecialRelease=special?.Release??0;a.SpecialUntil=special?.Until??0;a.SpecialLanded=special?.Landed??-1;a.SpecialReleased=special?.Released??false;
                 a.WeaponAway=p.Seat.spec=="shield"&&MeleeShots.Any(s=>s.Shield&&s.Original==p)||special!=null&&special.Kind=="dagger-throw"&&special.Released&&Time<special.Until-.12f;
                 a.DownAt=down?.At??-100;a.DownUntil=down?.Until??0;a.DownLanded=down?.Landed??-1;a.DownPickup=down?.PickupUntil??0;a.DownUsed=down?.PickupUsed??false;a.DownRoll=down?.RollAt??-1;a.DownRollEnd=down?.RollUntil??-1;a.DownDirection=down?.Direction??new V3();
                 MeleePresentation(p,a);a.CastRate=(float)p.Stats["attackRate"];a.Grounded=p.Grounded;a.VisualWindup=(float)(p.Weapon.windup/p.Stats["attackRate"]);a.VisualActive=(float)(.16/p.Stats["attackRate"]);a.VisualDuration=p.AttackEnd-p.AttackAt;a.VisualRollDuration=p.RollEnd-p.RollAt;
             }
-            return new Snapshot{Tick=(int)Math.Round(Match.Time*60),Actors=Pilots.Where(p=>p.Seat.connected).Select(p=>{if(!interpolated)return p.Pose;var shown=p.Pose.ViewCopy();shown.Position=Vec(p.Body.transform.position-Vector3.up*.865f);return shown;}).ToArray(),Covers=Array.Empty<Cover>(),Shots=Bullets.Select(b=>new Shot{Id=b.Id,Owner=b.Owner,Position=Vec(b.Position),Velocity=Vec(b.Velocity),Radius=b.Radius,MagicVisual=b.Spec=="fire"?1:b.Spec=="water"?2:b.Spec=="lightning"?3:b.Spec=="darkness"?4:0,Weapon=Content.Weapon(b.Spec).@class=="ranged"?WeaponId.Pistol:WeaponId.Sword}).ToArray(),Events=Events.ToArray()};
+            return new Snapshot{Tick=(int)Math.Round(Match.Time*60),Actors=Pilots.Where(p=>p.Seat.connected).Select(p=>{if(!interpolated)return p.Pose;var shown=p.Pose.ViewCopy();shown.Position=Vec(p.Body.transform.position-Vector3.up*.865f);return shown;}).ToArray(),Covers=Array.Empty<Cover>(),Shots=Bullets.Select(b=>new Shot{Id=b.Id,Owner=b.Owner,Original=b.Original,Spec=b.Spec,SirenKind=b.SirenKind,LeetKind=b.LeetKind,Born=b.Born,Burn=b.Burn,Poison=b.Poison,Hadoken=b.Hadoken,Super=b.Super,Direct=b.Direct,ChipImpact=b.ChipImpact,WeaponFx=b.WeaponFx,Pong=b.Pong,Boomerang=b.Boomerang,Zigzag=b.Zigzag,Mods=b.Mods.Select(c=>new ChipCount{id=c.Key,count=c.Value}).ToArray(),Position=Vec(b.Position),Velocity=Vec(b.Velocity),Radius=b.Radius,MagicVisual=b.Spec=="fire"?1:b.Spec=="water"?2:b.Spec=="lightning"?3:b.Spec=="darkness"?4:0,Weapon=Content.Weapon(b.Spec).@class=="ranged"?WeaponId.Pistol:WeaponId.Sword}).ToArray(),Events=Events.ToArray()};
         }
         public void Dispose(){DestroyScene();foreach(var m in materials.Values)CapturedAnimation.Release(m);materials.Clear();foreach(var m in surfaces.Values)CapturedAnimation.Release(m);surfaces.Clear();}
     }

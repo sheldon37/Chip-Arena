@@ -67,7 +67,7 @@ namespace ChipArena.UnityConversion
         // burning ground changes kind and expiry, which makes it a new field exactly as in the source).
         private static long Mix(long h,int v){unchecked{h^=(uint)v;h*=0x100000001b3L;return h;}}
         private static long ZoneKey(NativeAbilityZone z)
-        {long h=Mix(unchecked((long)0x9e3779b97f4a7c15UL),z.Owner?.Seat.id??0);h=Mix(h,z.Definition?.id?.GetHashCode()??0);h=Mix(h,z.Kind?.GetHashCode()??0);h=Mix(h,BitConverter.SingleToInt32Bits(z.Until));return h|(1L<<62);}
+        {if(z.Id!=0)return (1L<<62)|(uint)z.Id;long h=Mix(unchecked((long)0x9e3779b97f4a7c15UL),z.Owner?.Seat.id??0);h=Mix(h,z.Definition?.id?.GetHashCode()??0);h=Mix(h,z.Kind?.GetHashCode()??0);h=Mix(h,BitConverter.SingleToInt32Bits(z.Until));return h|(1L<<62);}
         private static string Fx(ContentAbility d)=>string.IsNullOrEmpty(d.fx)?null:d.fx;
         /// <summary>The chip id that made a field (the source's fx). Guests recover it from the field's own Field event.</summary>
         public string Fx(NativeChipField f)=>!string.IsNullOrEmpty(f.Effect)?f.Effect:guestFx.TryGetValue(f.Id,out var fx)?fx:null;
@@ -121,7 +121,7 @@ namespace ChipArena.UnityConversion
                     if(z.Until<=arena.Time)continue;
                     // Exact where the expiry gives it (Singularity, burning ground, Orbital Mark); bombs no later than their fuse.
                     var d=z.Definition;
-                    zoneBorn[key]=born=(float)NativeFieldRules.ZoneBorn(d.id,z.Kind,z.Until,d.duration,d.fuse,Has(z.Owner,"cinder-field"),now);
+                    zoneBorn[key]=born=z.Id!=0?z.Born:(float)NativeFieldRules.ZoneBorn(d.id,z.Kind,z.Until,d.duration,d.fuse,Has(z.Owner,"cinder-field"),now);
                 }
                 // The mark locks when its fuse has duration left to run (NativeAbilities orbital-mark: LockAt=born+duration, Until=born+fuse).
                 double? lockAt=z.Definition.id=="orbital-mark"?z.Until-z.Definition.fuse+z.Definition.duration:(double?)null;

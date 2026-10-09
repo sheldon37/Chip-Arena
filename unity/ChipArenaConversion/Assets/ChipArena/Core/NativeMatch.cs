@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
     public enum NativePhase { Lobby, Countdown, Fight, Result, Draft, Match, Intro }
     [Serializable] public sealed class NativeSeat
     {
-        public double disconnectedAt=-1;public bool overrideIntro;public string intro="neon-drop",introText="Ready to make an impact";public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll";internal bool AuthorityBoss=false;public NativeAccess access=NativeAccess.Guest;public int id,team,roundWins,score;public string name,spec="pistol",difficulty="normal";public bool bot,connected=true,alive=true;
+        public double disconnectedAt=-1;public bool overrideIntro;public string lobbyPose="weapon";public string intro="neon-drop",introText="Ready to make an impact";public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll";internal bool AuthorityBoss=false;public NativeAccess access=NativeAccess.Guest;public int id,team,roundWins,score;public string name,spec="pistol",difficulty="normal";public bool bot,connected=true,alive=true;
         public readonly Dictionary<string,int> chips=new Dictionary<string,int>();public List<string> offers=new List<string>();
     }
     [Serializable] public class NativeMatchFrame

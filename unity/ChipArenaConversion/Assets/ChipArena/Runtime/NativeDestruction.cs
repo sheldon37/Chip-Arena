@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
             {
                 var prop=c.prop;if(prop==null||prop.Body==null)continue;Vector3 a=Velocity(prop.Body,c.point);bool recent=Time-prop.SourceAt<7;
                 if(Match.Phase==NativePhase.Fight&&c.pilot!=null&&c.pilot.Hp>0)
-                {var p=c.pilot;Vector3 b=Velocity(p.Body,c.point);double speed=Math.Max(0,Vector3.Dot(a-b,c.normal));double damage=a.magnitude<3.6?0:NativeDebrisRules.Damage(prop.Body.mass,speed);double capped=debrisLedger.Claim(prop.Definition.id+":"+p.Seat.id,(prop.Group??prop.Definition.id)+":"+p.Seat.id,Time,damage);if(capped>0)Damage(p,recent?prop.Source:null,(float)(capped*p.Stats["debrisTaken"]),(a-b).normalized,0,false,direct:false,primary:false);}
+                {var p=c.pilot;Vector3 b=Velocity(p.Body,c.point);double speed=Math.Max(0,Vector3.Dot(a-b,c.normal));double damage=a.magnitude<3.6?0:NativeDebrisRules.Damage(prop.Body.mass,speed);double capped=debrisLedger.Claim(prop.Definition.id+":"+p.Seat.id,(prop.Group??prop.Definition.id)+":"+p.Seat.id,Time,damage);if(capped>0)Damage(p,recent?prop.Source:null,(float)(capped*p.Stats["debrisTaken"]),(a-b).normalized,0,false,direct:false,primary:false,damageKind:"debris");}
                 else if(c.other?.Body!=null&&!c.other.Body.isKinematic&&c.other.Source==null&&prop.Source!=null&&recent&&a.magnitude>3.6){c.other.Source=prop.Source;c.other.SourceAt=Time;}
             }
             StepVents();debrisLedger.End(Time);foreach(var p in Props.Where(p=>p.Body!=null&&!p.Body.isKinematic&&p.Body.position.y<-15).ToArray()){Props.Remove(p);CapturedAnimation.Release(p.gameObject);}
@@ -40,7 +40,7 @@ namespace ChipArena.UnityConversion
             if(prop.Fragment)return;
             if(Props.Count+3>360){prop.Fragment=true;prop.Body.isKinematic=false;prop.Body.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;prop.Body.AddForce(extra,ForceMode.Impulse);prop.Source=source;prop.SourceAt=Time;CheckSupports(source);return;}
             Vector3 position=prop.transform.position,size=Vec(prop.Definition.size),velocity=prop.Body.isKinematic?Vector3.zero:prop.Body.linearVelocity,angular=prop.Body.isKinematic?Vector3.zero:prop.Body.angularVelocity;Quaternion rotation=prop.transform.rotation;float mass=prop.Body.mass;string group="fracture-"+nextChunk++;
-            Props.Remove(prop);prop.GetComponent<Collider>().enabled=false;Emit(EventKind.Break,source,0,position,0);
+            Props.Remove(prop);prop.GetComponent<Collider>().enabled=false;Emit(EventKind.Break,source,0,position,0,prop.Definition.material,surfaceId:prop.Definition.id);
             for(int i=0;i<4;i++)
             {
                 Vector3 offset=new Vector3((i%2==1?1:-1)*size.x*.25f,(i<2?1:-1)*size.y*.25f,0),point=position+rotation*offset;

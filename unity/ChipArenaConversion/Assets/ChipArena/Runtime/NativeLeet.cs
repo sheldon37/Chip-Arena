@@ -34,7 +34,7 @@ namespace ChipArena.UnityConversion
         }
         private NativePilot LeetTarget(NativePilot owner,Vector3 point)=>Pilots.Where(p=>p.Hp>0&&p.Seat.connected&&Enemy(owner,p)&&Vector3.Distance(p.Body.position,point)<=28&&MeleeVisible(point,p.Body.position,owner,p.Collider)).OrderBy(p=>(p.Body.position-point).sqrMagnitude).FirstOrDefault();
         private void Possess(NativePilot owner,NativePilot target)
-        {if(!Leet(owner,"brain")||!Enemy(owner,target)||target.Hp<=0||!target.Seat.connected||owner.ControlledBy!=null||target.Controlling!=null||target.ControlledBy!=null)return;ReleaseControl(owner);owner.Controlling=target;target.ControlledBy=owner;target.ControlUntil=owner.ControlUntil=Time+5;CancelAbilities(owner);CancelMelee(owner);CancelAbilities(target);CancelMelee(target);Fx(target.Body.position,1,2,owner.Body.position);}
+        {if(!Leet(owner,"brain")||!Enemy(owner,target)||target.Hp<=0||!target.Seat.connected||owner.ControlledBy!=null||target.Controlling!=null||target.ControlledBy!=null)return;ReleaseControl(owner);owner.Controlling=target;target.ControlledBy=owner;target.ControlUntil=owner.ControlUntil=Time+5;CancelAbilities(owner);CancelMelee(owner);CancelAbilities(target);CancelMelee(target);Fx(target.Body.position,1,2,owner.Body.position,owner,"leet-control");}
         private void LeetOrb(NativePilot p,Vector3 position,Vector3 dir,string kind,Vector3? target=null,float release=0)
         {if(ProjectileCount>=100)return;Bullets.Add(new NativeBullet{Id=nextBullet++,Attack=nextAttack++,Owner=p.Seat.id,Original=p.Seat.id,Spec=p.Seat.spec,Born=Time,Position=position,Velocity=dir*(kind=="brain"?23:32),Damage=kind=="brain"?0:24,Impulse=180,Life=7,Radius=kind=="brain"?.27f:.16f,Direct=false,ChipImpact=kind=="copy",EffectsUsed=true,Travel=100,LeetKind=kind,LockTarget=target,ReleaseAt=release,LeetLaunched=kind=="brain"});}
         private bool LeetBlock(NativePilot p)
@@ -44,14 +44,14 @@ namespace ChipArena.UnityConversion
             if(!Leet(p)||!p.Input.AbilityE||AbilityBusy(p)||Time<p.EReady||Time<p.BlockEnd||Frozen(p))return;float cost=30*(float)p.Stats["resourceCost"];if(p.Mana<cost)return;p.Mana-=cost;p.EReady=Time+12;p.Ready=Time+.4f;p.LastAttack=p.AttackAt=Time;
             if(Leet(p,"time"))foreach(var q in Pilots)if(q.Hp>0&&CanHit(p,q)&&!SirenArmor(q))q.FrozenUntil=Time+4;
             if(Leet(p,"scare")){foreach(var f in LeetFields.Where(f=>f.Owner==p&&f.Kind=="tree").ToArray())RemoveLeetField(f);Vector3 pos=p.Body.position+Vec(V3.Forward(p.Input.Yaw))*2;pos.y=.05f;LeetFields.Add(new NativeLeetField{Id=nextEvent++,Owner=p,Kind="tree",Position=pos,At=Time,Until=Time+22});}
-            if(!Leet(p,"time")&&!Leet(p,"scare"))ChipBlast(p,p.Body.position,6,35,1200);
+            if(!Leet(p,"time")&&!Leet(p,"scare"))ChipBlast(p,p.Body.position,6,35,1200,effect:"leet-block");
         }
         private void LeetSpawned(NativePilot p,List<NativeBullet> shots)
         {if(!Leet(p))return;foreach(var b in shots){b.LeetKind="bolt";b.Homing=b.Gravity=0;b.Boomerang=b.Zigzag=false;b.Life=7;}}
         private bool LeetShotStep(NativeBullet b,NativePilot owner,float dt)
         {
             if(Frozen(owner))return false;if(b.LeetKind==null||b.LeetKind=="brain"||b.LeetLaunched)return true;if(b.Reflections>0){b.LeetLaunched=true;return true;}
-            if(!b.LockTarget.HasValue){var enemy=LeetTarget(owner,b.Position);if(enemy==null)return true;b.LockTarget=enemy.Body.position;b.ReleaseAt=Time+.42f;b.FixedSpeed=Math.Max(25,b.Velocity.magnitude);b.Velocity=Vector3.zero;Fx(b.Position,.25f,2,b.LockTarget.Value);}
+            if(!b.LockTarget.HasValue){var enemy=LeetTarget(owner,b.Position);if(enemy==null)return true;b.LockTarget=enemy.Body.position;b.ReleaseAt=Time+.42f;b.FixedSpeed=Math.Max(25,b.Velocity.magnitude);b.Velocity=Vector3.zero;Fx(b.Position,.25f,2,b.LockTarget.Value,owner,"leet-lock");}
             if(Time<b.ReleaseAt){b.Life-=dt;return false;}b.Velocity=(b.LockTarget.Value-b.Position).normalized*(b.FixedSpeed>0?b.FixedSpeed:32);b.LeetLaunched=true;return true;
         }
         private void LeetImpact(NativePilot p,NativeBullet b,Vector3 at)
@@ -75,7 +75,7 @@ namespace ChipArena.UnityConversion
             foreach(var f in LeetFields.ToArray())
             {
                 if(!f.Owner.Seat.connected||f.Kind=="tree"&&f.Owner.Hp<=0){RemoveLeetField(f);continue;}
-                if(Time>=f.Until){RemoveLeetField(f);if(f.Kind=="nuke"){foreach(var q in Pilots)if(CanHit(f.Owner,q)&&Vector3.Distance(q.Body.position,f.Position)<11)q.LaunchUntil=Time+1;ChipBlast(f.Owner,f.Position,11,160,42000);}continue;}
+                if(Time>=f.Until){RemoveLeetField(f);if(f.Kind=="nuke"){foreach(var q in Pilots)if(CanHit(f.Owner,q)&&Vector3.Distance(q.Body.position,f.Position)<11)q.LaunchUntil=Time+1;ChipBlast(f.Owner,f.Position,11,160,42000,effect:"leet-nuke");}continue;}
                 if(f.Kind!="tree"||Time-f.At<.9f)continue;
                 if(f.Slender==null)
                 {
@@ -93,7 +93,7 @@ namespace ChipArena.UnityConversion
                 {
                     float aggression=Mathf.Clamp01((Time-f.At)/Math.Max(1,f.Until-f.At)),noise=Mathf.Sin((f.Hops+1)*12.9898f+f.At*78.233f)*43758.5453f,r=noise-Mathf.Floor(noise),angle=target.Input.Yaw+180+(r-.5f)*2*.85f*Mathf.Rad2Deg,want=Math.Max(1.35f,gap*Mathf.Lerp(.72f,.5f,aggression));Vector3 dir=Vec(V3.Forward(angle));float distance=want;
                     if(root.scene.GetPhysicsScene().Raycast(tp+Vector3.up*.2f,dir,out var hit,want,WorldMask))distance=Math.Max(Math.Min(want,1.35f),hit.distance-.45f);
-                    Vector3 spot=tp+dir*distance;spot.x=Mathf.Clamp(spot.x,-31,31);spot.z=Mathf.Clamp(spot.z,-27,27);spot.y=tp.y-.85f;f.From=feetAt;f.Hops++;f.HopAt=Time+Mathf.Lerp(3.2f,1.3f,aggression);m.Body.position=spot+Vector3.up*1.23f;Fx(spot,1,2,feetAt);
+                    Vector3 spot=tp+dir*distance;spot.x=Mathf.Clamp(spot.x,-31,31);spot.z=Mathf.Clamp(spot.z,-27,27);spot.y=tp.y-.85f;f.From=feetAt;f.Hops++;f.HopAt=Time+Mathf.Lerp(3.2f,1.3f,aggression);m.Body.position=spot+Vector3.up*1.23f;Fx(spot,1,2,feetAt,f.Owner,"slender-hop");
                 }
             }
         }

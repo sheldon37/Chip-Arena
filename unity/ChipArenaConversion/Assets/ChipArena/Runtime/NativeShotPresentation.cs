@@ -6,9 +6,8 @@ using UnityEngine.Rendering;
 namespace ChipArena.UnityConversion
 {
     /// <summary>
-    /// What the projectile visuals read from the arena. The host has each shot's own data. A replica (guest, killcam)
-    /// receives only id, owner, position, velocity and radius for bullets (Snapshot.Shots) and ability shots, so it falls
-    /// back to the owner's seat chips and replicated stats (see the Astra notes in docs/UNITY-PARITY-GAPS.md C10). Each
+    /// What the projectile visuals read from the arena. Host, guest and replay receive each shot's original visual
+    /// flags and chip stacks, so a late first sight after reflection still uses the firing identity. Each
     /// view keeps the identity its id had when first seen (NativeShotTracker): a reflect changes only the owner, as in the
     /// source. Allocation free: views are structs and seats are found by a plain loop.
     /// </summary>
@@ -20,21 +19,19 @@ namespace ChipArena.UnityConversion
         // burn and poison are base stats, so every pilot's ChipStats has them.
         private static double Stat(NativePilot p,string name)=>p?.Stats==null?0:p.Stats[name];
         private static long Mix(string id,int count){unchecked{ulong h=(uint)id.GetHashCode()|(ulong)(uint)count<<32;h^=h>>33;h*=0xff51afd7ed558ccdUL;h^=h>>33;h*=0xc4ceb9fe1a85ec53UL;h^=h>>33;return (long)h;}}
-        // A replica has no Hadoken flag; there every ansatsuken bullet is taken for one (Blade Runner's beam excepted on the host).
-        private static bool Hadouken(NativeArena arena,NativeBullet b)=>arena.Replica?b.Spec=="ansatsuken":b.Hadoken;
+        // The authority sends the explicit Hadoken flag, including on first sight after a reflect.
+        private static bool Hadouken(NativeArena arena,NativeBullet b)=>b.Hadoken;
         // Blade Runner's beam is the only other melee-class bullet (NativeChips sword-beam; source mods {'sword-beam':1}).
         private static bool SwordBeam(ContentWeapon w,bool hadouken)=>w!=null&&w.@class=="melee"&&!hadouken;
-        // The seat that fired the bullet: Original is set at spawn and kept on a reflect (Owner becomes the reflector). A
-        // replica bullet carries only its owner.
+        // Original is set at spawn and kept on a reflect (Owner becomes the reflector).
         private static int Firer(NativeBullet b)=>b.Original!=0?b.Original:b.Owner;
         /// <summary>
-        /// The chip stacks a bullet carries (source p.mods): the host's copy of the firer's chips; the firer's seat chips for
-        /// a hadouken (Unity leaves its Mods empty; arcade.ts copies them) and on a replica; none for the sword beam.
+        /// The chip stacks captured at firing and replicated with the shot (source p.mods).
         /// </summary>
         public static Dictionary<string,int> BulletMods(NativeArena arena,NativeBullet b)
         {
             bool hadouken=Hadouken(arena,b);if(SwordBeam(Weapon(arena,b.Spec),hadouken))return null;
-            return arena.Replica||hadouken?Seat(arena,Firer(b))?.chips:b.Mods;
+            return b.Mods;
         }
         /// <summary>
         /// One bullet this frame: its live motion with the identity it had when first seen; on a replica, moved to the
@@ -52,21 +49,15 @@ namespace ChipArena.UnityConversion
             // Siren shots are drawn by the Siren's own effects in the source (sirenEffects.owns); they keep a placeholder (C12).
             if(b.SirenKind!=null||b.Spec=="siren"){v.Siren=true;return;}
             bool hadouken=Hadouken(arena,b);int firer=Firer(b);
-            if(hadouken)v.Arcade=Count(Seat(arena,firer)?.chips,"arcade-red")>0?1:2;
+            if(hadouken)v.Arcade=Count(b.Mods,"arcade-red")>0?1:2;
             v.SwordBeam=SwordBeam(w,hadouken);
             var mods=BulletMods(arena,b);v.VelocityChips=Count(mods,"velocity");v.Bowling=w!=null&&w.@class=="ranged"&&Count(mods,"bowling-ball")>0;
-            if(!arena.Replica){v.Fire=b.Burn>0;v.Poison=b.Poison>0;}
-            else if(!v.SwordBeam)
-            {
-                // attackElements(w.burn + stats.burn, stats.poison) from the firer's replicated stats; a hadouken always burns.
-                var owner=Owner(arena,firer);
-                v.Fire=hadouken||(w?.burn??0)+Stat(owner,"burn")>0;v.Poison=Stat(owner,"poison")>0;
-            }
+            v.Fire=b.Burn>0;v.Poison=b.Poison>0;
             v.Modules=Modules(arena,mods,cache);
         }
         public static void Ability(NativeArena arena,NativeAbilityShot s,NativeShotTracker tracker,double clock,out NativeShotView v)
         {
-            // The frag fuse is host data (NativeAbilities); a replica has none and shows no blink.
+            // Fuse is an authority deadline carried to guests and replays.
             v=new NativeShotView{Kind=NativeShotKind.Ability,Id=s.Id,X=s.Position.x,Y=s.Position.y,Z=s.Position.z,VX=s.Velocity.x,VY=s.Velocity.y,VZ=s.Velocity.z,Radius=s.Radius,FuseLeft=s.Fuse>0?s.Fuse-arena.Time:1e9};
             if(!tracker.Recall(ref v))
             {
@@ -85,7 +76,7 @@ namespace ChipArena.UnityConversion
             {
                 var original=s.Original??s.Owner;var w=Weapon(arena,s.Spec)??original?.Weapon;
                 v.Spec=s.Spec??original?.Seat?.spec;v.Class=w?.@class;v.WeaponColor=w!=null?(int)w.color:NativeShotRules.White;v.Shield=s.Shield;
-                if(!arena.Replica){v.Fire=s.Burn>0;v.Poison=s.Poison>0;}else{v.Fire=Stat(original,"burn")>0;v.Poison=Stat(original,"poison")>0;}
+                v.Fire=s.Burn>0;v.Poison=s.Poison>0;
                 v.Modules=Modules(arena,original?.Seat?.chips,tracker.ModuleCache);tracker.Remember(v);
             }
             tracker.Present(ref v,clock);

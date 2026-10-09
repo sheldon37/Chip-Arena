@@ -50,7 +50,7 @@ namespace ChipArena.UnityConversion.Editor
                 a.Seat.chips.Clear();a.Seat.chips["arcade-red"]=1;
                 // Host hadouken thrown by seat 1 (Arcade Red) and blocked by seat 2: Owner is now 2, Original stays 1.
                 var tracker=new NativeShotTracker();tracker.Begin(arena,arena.Generation,false,arena.Time);
-                var hadouken=new NativeBullet{Id=610,Spec="ansatsuken",Hadoken=true,Owner=2,Original=1,Position=Vector3.up,Velocity=Vector3.forward*23,Radius=.24f};
+                var hadouken=new NativeBullet{Id=610,Spec="ansatsuken",Hadoken=true,Mods=new System.Collections.Generic.Dictionary<string,int>(a.Seat.chips),Owner=2,Original=1,Position=Vector3.up,Velocity=Vector3.forward*23,Radius=.24f};
                 NativeShotViews.Bullet(arena,hadouken,tracker,arena.Time,out var v);
                 if(v.Arcade!=1||NativeShotRules.HaloColor(v,0)!=NativeShotRules.HaloRed)throw new Exception("A reflected hadouken took the reflector's colour (Arcade "+v.Arcade+")");
                 // An ability shot keeps its caster's look after the owner changes, and a hadouken after its firer's chips change.

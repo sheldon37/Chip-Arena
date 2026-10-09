@@ -5,7 +5,7 @@ using System.Threading;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class NativeConnectionReport
-    {public int protocol=NativeConnection.Protocol,samples;public double rttMs,rttP95Ms,snapshotGapMs,snapshotGapP95Ms,decodedKiB,largestFrameKiB;public bool connected;}
+    {public int seatId;public string name;public int protocol=NativeConnection.Protocol,samples;public double rttMs,rttP95Ms,snapshotGapMs,snapshotGapP95Ms,decodedKiB,largestFrameKiB;public bool connected;}
     public sealed class NativeConnectionMetrics
     {
         private readonly Queue<double> rtts=new Queue<double>(),gaps=new Queue<double>();private readonly Dictionary<int,double> probes=new Dictionary<int,double>();private int serial;private double lastSnapshot=-1;private long bytes,largest;

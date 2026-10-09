@@ -109,7 +109,7 @@ namespace ChipArena.UnityConversion
             if(e.Kind==EventKind.BlockPulse)source?.Seat.chips?.TryGetValue("supernova",out supernova);
             var context=new NativeEventSounds.Context{Kind=e.Kind,Detail=e.Detail,SourceSpec=source?.Seat.spec,Material=material,Amount=e.Amount,Radius=e.Radius,
                 TargetMe=local>0&&e.Target==local,SourceMe=local>0&&e.Source==local,TargetPilot=target!=null,Ally=source!=null&&target!=null&&arena.Match.SameSide(source.Seat,target.Seat),Pve=arena.Pve!=null,
-                Supernova=supernova>0,Saw=e.Kind==EventKind.HazardHit&&NativeEventFeedback.SawHit(arena.MapId,e.Time,e.Position),
+                Supernova=supernova>0,Saw=e.Kind==EventKind.HazardHit&&(e.Detail=="saw"||e.Detail==null&&NativeEventFeedback.SawHit(arena.MapId,e.Time,e.Position)),
                 Shadowed=e.Kind==EventKind.Explosion&&NativeEventFeedback.PulseBlast(events,index)||e.Kind==EventKind.Arc&&NativeEventFeedback.TeleportBeam(events,index),
                 BlinkStrike=e.Kind==EventKind.Teleport&&NativeEventFeedback.BlinkStrike(events,index)};
             Vector3 pos=NativeArena.Vec(e.Position);int n=NativeEventSounds.Route(context,routed);

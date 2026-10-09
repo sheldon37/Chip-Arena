@@ -138,9 +138,9 @@ namespace ChipArena.UnityConversion
             if(result)
             {
                 var seat=ResultSeat(p,index);if(seat==null){key=29000+index;return true;}
-                look.Hat=seat.hat;key=20000+seat.id;return true;
+                look.Hat=seat.hat;look.Pose=seat.lobbyPose;key=20000+seat.id;return true;
             }
-            key=10000+p.id;foreach(var s in RoomSeats)if(s!=null&&s.id==p.id){look.Hat=s.hat;break;}
+            key=10000+p.id;foreach(var s in RoomSeats)if(s!=null&&s.id==p.id){look.Hat=s.hat;look.Pose=s.lobbyPose;break;}
             return true;
         }
         // PveResultsPanel's order: the party rows (bots only while connected) by seat id.

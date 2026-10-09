@@ -57,7 +57,7 @@ namespace ChipArena.UnityConversion
                     if(a.Possessed){float age=Time-a.PossessedAt;if(age<60){if(age%6>=5.2f||distance>=8&&distance<=14)dir=Vector3.zero;else if(distance<8)dir=-dir;speed=(m.Hp<m.MaxHp*.5f?a.Stats.run:a.Stats.walk)*(a.Crawl?.35f:a.Limp?.55f:1);}}
                     move=distance>1.1f||a.Possessed?dir*speed:Vector3.zero;
                 }
-                if(move.sqrMagnitude>.001f){float factor=Time<a.SlowUntil?a.SlowFactor:1;foreach(var f in ChipFields)if(CanHit(f.Owner,m.Owner)&&Vector3.Distance(f.Position,at)<f.Radius)factor=Math.Min(factor,f.Kind=="frost"?.45f:f.Kind=="time"?.6f:1);move*=factor;int n=0;foreach(var other in adds){if(other==m||Time<other.Pve.ActiveAt||n>=6)continue;Vector3 diff=at-other.Body.position;diff.y=0;float dist=diff.magnitude;if(dist<.9f){n++;move+=dist<.0001f?Vector3.right*(m.Id<other.Id?-1.8f:1.8f):diff/dist*(.9f-dist)*2;}}m.Yaw=Mathf.Atan2(move.x,move.z)*Mathf.Rad2Deg;}
+                if(move.sqrMagnitude>.001f){float factor=Time<a.SlowUntil?a.SlowFactor:1;foreach(var f in ChipFields)if(CanHit(f.Owner,m)&&Vector3.Distance(f.Position,at)<f.Radius)factor=Math.Min(factor,f.Kind=="frost"?.45f:f.Kind=="time"?.6f:1);move*=factor;int n=0;foreach(var other in adds){if(other==m||Time<other.Pve.ActiveAt||n>=6)continue;Vector3 diff=at-other.Body.position;diff.y=0;float dist=diff.magnitude;if(dist<.9f){n++;move+=dist<.0001f?Vector3.right*(m.Id<other.Id?-1.8f:1.8f):diff/dist*(.9f-dist)*2;}}m.Yaw=Mathf.Atan2(move.x,move.z)*Mathf.Rad2Deg;}
                 a.External*=Mathf.Exp(-6*dt);move+=Vector3.ClampMagnitude(a.External,6);m.Body.linearVelocity=new Vector3(move.x,m.Body.linearVelocity.y,move.z);
             }
         }
@@ -94,7 +94,7 @@ namespace ChipArena.UnityConversion
             }
             a.LastHit=source;a.LastDamage=Time;a.Dealt.TryGetValue(source.Seat.id,out float dealt);a.Dealt[source.Seat.id]=dealt+actual;
             if(amount>=m.MaxHp*.25f||impulse>=400){a.StaggerAt=Time+a.Stats.stagger;a.Struck=true;a.RecoverAt=Time;}if(Time>=a.ActiveAt)a.External=Vector3.ClampMagnitude(a.External+new Vector3(dir.x,0,dir.z)*NativePveParity.AddImpulse(impulse),6);
-            Emit(EventKind.Hit,source,m.Id,point??m.Body.position,actual);
+            m.LastHitAt=Time;Emit(EventKind.Hit,source,m.Id,point??m.Body.position,actual,kind=="energy"?"ability":kind=="projectile"||kind==null?"direct":kind=="dot"?"field":kind,normal:dir.x*dir.x+dir.z*dir.z>1e-12f?dir:Vector3.zero);
             if(m.Hp<=0){Vector3 at=m.Body.position;PveAddKilled(m,source);RemoveMinion(m,false);if(a.Possessed)FoundPveBoss(at);}return actual;
         }
         private void PveAddKilled(NativeMinion m,NativePilot source)

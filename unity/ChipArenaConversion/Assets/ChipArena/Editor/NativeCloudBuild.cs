@@ -33,13 +33,13 @@ namespace ChipArena.UnityConversion.Editor
             if(!prepared) throw new BuildFailedException("NativeCloudBuild.PreExport must pass before packaging.");
             var receipt=Context();
             if(EditorUserBuildSettings.activeBuildTarget!=BuildTarget.StandaloneWindows64||
-               PlayerSettings.GetScriptingBackend(NamedBuildTarget.Standalone)!=ScriptingImplementation.Mono2x)
-                throw new BuildFailedException("Cloud target must remain Windows x64 / Mono.");
+               PlayerSettings.GetScriptingBackend(NamedBuildTarget.Standalone)!=ScriptingImplementation.Mono2x||PlayerSettings.colorSpace!=ColorSpace.Linear)
+                throw new BuildFailedException("Cloud target must remain Windows x64 / Mono / Linear colour space.");
             // UBA builds once. Adapt its exported player to the stable updater's naming/layout.
             string player=NativeUpdateBuild.PlayerFolder(Root);
             NativeCloudPlayer.Stage(exportPath,player);
             receipt.build=PrototypeBuild.PackageWindows(Root,player);
-            receipt.unityVersion=Application.unityVersion;
+            receipt.unityVersion=Application.unityVersion;receipt.colorSpace=PlayerSettings.colorSpace.ToString();
             receipt.editorLog=Application.consoleLogPath;
             File.WriteAllText(ReceiptPath,JsonUtility.ToJson(receipt,true));
             Debug.Log("NATIVE_CLOUD_EXPORT_READY: "+receipt.sourceCommit+" / "+receipt.buildNumber);
@@ -59,7 +59,7 @@ namespace ChipArena.UnityConversion.Editor
         private sealed class Receipt
         {
             public int schema=1;
-            public string sourceCommit,buildTarget,buildNumber,unityVersion,editorLog;
+            public string sourceCommit,buildTarget,buildNumber,unityVersion,editorLog,colorSpace;
             public NativeBuildIdentity build;
         }
     }

@@ -81,7 +81,7 @@ namespace ChipArena.UnityConversion
             if(p.SlowEnd>time&&p.SlowFactor<1){status.Slowed=true;status.SlowUntil=p.SlowEnd;status.Shackled=NativeStatusVisuals.Shackled(p.SlowFactor);}
             foreach(var zone in arena.AbilityZones)
                 if(zone.Attached==p&&zone.Definition!=null&&zone.Definition.id=="orbital-mark")
-                {status.Marked=true;status.MarkUntil=zone.Until;status.MarkBorn=zone.Until-(float)zone.Definition.fuse;status.MarkLock=zone.LockAt>0?zone.LockAt:zone.Until;break;}
+                {status.Marked=true;status.MarkUntil=zone.Until;status.MarkBorn=zone.Born;status.MarkLock=zone.LockAt>0?zone.LockAt:zone.Until;break;}
             return status;
         }
         private void QueueStatus(in NativeStatusVisuals.Rig rig,float time,Matrix4x4 parent,StatusBatch[] target)

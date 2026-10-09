@@ -58,7 +58,7 @@ namespace ChipArena.UnityConversion
         public bool Bot, Sprinting, SprintExhausted;
         public float Hp = 100, Stamina = 100, Yaw;
         public V3 Position, Velocity, Knockback, RollDirection;
-        public float AttackAt = -100, AttackUntil = -100, BlockAt=-100, BlockUntil, BlockReady, RollAt = -100, RollReady;
+        public float LastAttack=-100,JuggleUntil;public float AttackAt = -100, AttackUntil = -100, BlockAt=-100, BlockUntil, BlockReady, RollAt = -100, RollReady;
         public float StunUntil, StaggerImmuneUntil, RegenAt, ShootReady, RespawnAt, FlashUntil;
         internal bool QueuedAttack;
         internal readonly HashSet<int> Hit = new HashSet<int>();
@@ -81,6 +81,8 @@ namespace ChipArena.UnityConversion
     public class Shot
     {
         public int Id, Owner, Team, Reflections, MagicVisual;
+        public string Spec,SirenKind,LeetKind;public int Original;public float Born,Burn,Poison;
+        public bool Hadoken,Super,Direct,ChipImpact,WeaponFx,Pong,Boomerang,Zigzag;public ChipCount[] Mods=Array.Empty<ChipCount>();
         public V3 Position, Velocity;
         public float Damage = 20, Life = 3, Gravity, Radius=.1f, DistanceLeft=320, Impulse=325;
         public WeaponId Weapon;

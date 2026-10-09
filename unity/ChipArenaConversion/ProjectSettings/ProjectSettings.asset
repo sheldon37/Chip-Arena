@@ -4,6 +4,7 @@
 PlayerSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 28
+  m_ColorSpace: 1
   companyName: ChipArenaConversion
   productName: Chip Arena Native Conversion TEST
   bundleVersion: 0.1.0-native-foundation

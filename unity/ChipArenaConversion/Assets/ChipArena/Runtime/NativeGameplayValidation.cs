@@ -81,7 +81,29 @@ namespace ChipArena.UnityConversion
             var med=Pve.Content.machines.First(m=>m.kind=="med");pilot.Body.position=Vec(med.front.Position(.9f));pilot.Hp=20;before=row.Money;PveInteract(pilot,row);Check(row.Money==before-75&&row.HealPulses==0&&row.HealReady>Time,"paid healing");before=row.Money;PveInteract(pilot,row);Check(row.Money==before&&Pve.Machines.Last().result=="deny","med cooldown charged twice");
             var recruit=Pve.Content.machines.First(m=>m.kind=="recruit");pilot.Body.position=Vec(recruit.front.Position(.9f));row.Money=1000;PveInteract(pilot,row);PveInteract(pilot,row);before=row.Money;PveInteract(pilot,row);Check(Pve.Hires.Count==2&&row.Money==before,"pending recruit cap");
             pilot.Hp=0;pilot.Seat.alive=false;pilot.Collider.enabled=false;pilot.Body.isKinematic=true;RevivePve(pilot);Check(pilot.Hp==(float)pilot.Stats["hp"]*.5f&&pilot.Collider.enabled&&!pilot.Body.isKinematic&&pilot.ShieldUntil>Time&&pilot.Wounds.Count==0,"safe revival state");
+            ValidatePveMinionContacts(pilot);
+            var copy=NativeFrameCodec.Clone(NetworkFrame());if(copy.pve.rows.First(r=>r.id==pilot.Seat.id).revived!=row.Revived)throw new Exception("PvE revive count lost in guest/replay frame");
             Debug.Log("PASS native PvE opening/personal picks, machine purchases and denial, pickup ownership, healing cooldown, pending recruit caps and revival state");
+        }
+        private void ValidatePveMinionContacts(NativePilot pilot)
+        {
+            void Check(bool ok,string message){if(!ok)throw new Exception("Native PvE contact gate: "+message);}
+            Pve.Holding=false;SetBossHidden(true);var add=SpawnPveAdd("shambler",true);Check(add!=null,"spawn fixture");
+            add.Body.position=new Vector3(20,10,20);add.Collider.enabled=true;add.Pve.ActiveAt=add.Pve.ExposedAt=Time-1;add.Pve.Travelling=false;add.Hp=add.MaxHp=1000;
+            pilot.Body.position=add.Body.position-Vector3.forward*2;pilot.Seat.connected=true;pilot.Seat.chips.Clear();pilot.Seat.spec="pistol";pilot.Weapon=Content.Weapon("pistol");pilot.Stats=NativeContentRules.Stats(Content,"pistol",pilot.Seat.chips);Physics.SyncTransforms();
+            Check(!Pve.Boss.Seat.connected&&Enemy(pilot,add)&&!CanHit(pilot,Pve.Boss),"hidden boss and target acquisition");
+            float hp=add.Hp;Bullets.Add(new NativeBullet{Id=nextBullet++,Attack=nextAttack++,Owner=pilot.Seat.id,Original=pilot.Seat.id,Spec="pistol",Position=add.Body.position-Vector3.forward,Velocity=Vector3.forward*120,Radius=.045f,Damage=10,Life=1,Travel=10,Direct=true});
+            StepBullets();Check(add.Hp<hp,"swept projectile passed through the hidden boss's add");
+            hp=add.Hp;Check(HitMinion(add,pilot,5,Vector3.forward,0)>0&&add.Hp<hp,"melee contact rejected");
+            hp=add.Hp;AbilityBlast(pilot,add.Body.position,3,5,0,0,effect="frag");Check(add.Hp<hp,"ability blast rejected");
+            hp=add.Hp;ChipBlast(pilot,add.Body.position,3,5,0,effect="block-pulse");Check(add.Hp<hp,"chip blast rejected");
+            Pve.Holding=true;hp=add.Hp;Check(HitMinion(add,pilot,5,Vector3.forward,0)==0&&add.Hp==hp,"cinematic protection lost");Pve.Holding=false;
+            add.Pve.Travelling=true;Check(HitMinion(add,pilot,5,Vector3.forward,0)==0,"vent travel protection lost");add.Pve.Travelling=false;
+            add.Pve.ExposedAt=Time+1;Check(HitMinion(add,pilot,5,Vector3.forward,0)==0,"unexposed entry protection lost");add.Pve.ExposedAt=Time-1;
+            Events.Clear();HitMinion(add,pilot,1,Vector3.right,0);var hit=Events.Last(e=>e.Kind==EventKind.Hit);Check(hit.Normal.x==1&&hit.Normal.y==0&&hit.Detail=="direct","directed add hit payload");
+            Events.Clear();HitMinion(add,pilot,1,Vector3.zero,0,null,"dot");Check(Events.Last(e=>e.Kind==EventKind.Hit).Normal.Length==0,"DoT generated a directed splatter");
+            RemoveMinion(add,false);Bullets.Clear();
+            Debug.Log("PASS hidden Siren adds: projectile sweep, melee, ability/chip blast, target acquisition, hold/entry/travel protections and hit direction");
         }
     }
 }

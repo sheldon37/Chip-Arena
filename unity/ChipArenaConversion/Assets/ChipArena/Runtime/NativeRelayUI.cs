@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
         }
         private void RelayTick()
         {
-            if(relayConnecting?.IsCompleted==true){if(relayConnecting.IsCanceled||relayConnecting.IsFaulted)networkStatus="Relay connection failed. Check the relay URL.";else{relayHost=relayConnecting.Result;roomCode=relayHost.Room;networkStatus="Hosting internet room "+roomCode;LobbyBroadcast();}relayConnecting=null;}
+            if(relayConnecting?.IsCompleted==true){if(relayConnecting.IsCanceled||relayConnecting.IsFaulted)networkStatus="Relay connection failed. Check the relay URL.";else{relayHost=relayConnecting.Result;roomCode=relayHost.Room;networkStatus="Hosting internet room "+RoomCode;LobbyBroadcast();}relayConnecting=null;}
             if(relayHost?.Closed==true){networkStatus="Relay disconnected. The match has stopped.";ClearReplay();arena?.Dispose();arena=null;match=null;presentation?.ResetPresentation();networkEpoch++;relayHost.Dispose();relayHost=null;foreach(var p in peers){p.Connection?.Dispose();p.Connection=null;if(p.Seat!=null)p.Seat.connected=false;}menu=true;}
         }
     }

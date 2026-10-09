@@ -110,7 +110,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<slots;i++)
                 {
                     var r=new Rect(grid.x+(i%cols)*(cw+g),grid.y+(i/cols)*(slotH+g),cw,cardH);
-                    if(i<count){var p=roster[i];if(paint)LobbyCard(r,p,i,portrait,topH,wrap,compact,e,t);if(teams)TeamPicker(new Rect(r.x+2,r.yMax+9,r.width-4,34),p,p.you||Hosting&&p.bot,e,toCanvas);}else if(paint)LobbyEmpty(new Rect(r.x,r.y,r.width,slotH),e);
+                    if(i<count){var p=roster[i];if(paint)LobbyCard(r,p,i,portrait,topH,wrap,compact,e,t);if(teams)TeamPicker(new Rect(r.x+2,r.yMax+9,r.width-4,34),p,p.you||Hosting,e,toCanvas);}else if(paint)LobbyEmpty(new Rect(r.x,r.y,r.width,slotH),e);
                 }
             });
             ClassRow("Your class",ClassCardStyle.Lobby);WeaponCards("Your weapon");
@@ -197,7 +197,7 @@ namespace ChipArena.UnityConversion
         private const string ChevronDown="<path d=\"M6 9 L12 15 L18 9\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>";
         private void TeamPicker(Rect r,LobbyPilot p,bool editable,float a,Vector2 toCanvas)
         {
-            int team=TeamIndex(p.team);Color tc=TeamColor(team);var box=new Rect(r.xMax-100,r.y,100,r.height);float h=U.HoverAmount(7800+p.id,box,editable),s=editable?1:.5f;
+            int team=TeamIndex(p.team);Color tc=TeamColor(team);var box=new Rect(r.xMax-100,r.y,100,r.height);float h=U.HoverAmount(7800+p.id,box,editable&&!MenuBlocked()),s=editable?1:.5f;
             if(Event.current.type==EventType.Repaint)
             {
                 var dot=new Rect(r.x,r.center.y-4.5f,9,9);U.Radial(new Rect(dot.x-9,dot.y-9,27,27),U.A(tc,.3f*a));U.Disc(dot,U.A(tc,a));U.Text(new Rect(r.x+15,r.y,Mathf.Max(10,box.x-r.x-20),r.height),"Team",12,U.Hex(0xc7c1ce,a),TextAnchor.MiddleLeft);
@@ -220,7 +220,7 @@ namespace ChipArena.UnityConversion
         {
             if(teamPopupSeat==0)return;var box=TeamPopupRect();if(U.Hover(box))menuBlockedNow=true;var ev=Event.current;
             if(ev.type==EventType.ScrollWheel&&U.Hover(box)){ev.Use();return;}if(ev.type!=EventType.MouseDown)return;
-            for(int t=0;t<8;t++)if(U.Hover(TeamPopupRow(box,t))){if(teamPopupSelf)ChangeTeam(t);else if(teamPopupBot>=0&&Hosting)ApplyRule(RoomOpt.BotTeam,t,teamPopupBot);Click();break;}
+            for(int t=0;t<8;t++)if(U.Hover(TeamPopupRow(box,t))){if(teamPopupSelf)ChangeTeam(t);else if(Hosting)RequestTeam(teamPopupSeat,t);Click();break;}
             teamPopupSeat=0;ev.Use();
         }
         // The list closes when its seat leaves, the room stops being a teams room or the roster has scrolled from under it.
@@ -291,7 +291,7 @@ namespace ChipArena.UnityConversion
             {
                 if(Event.current.type==EventType.Repaint)
                 {
-                    float h=U.HoverAmount(7390,r);
+                    float h=U.HoverAmount(7390,r,!MenuBlocked());
                     U.Round(frame,open?Color.clear:U.Hex(0x13141a,.4f),9,U.Hex(0x4c434e));if(h>0)U.Round(new Rect(r.x+1,r.y+1,r.width-2,r.height-2),new Color(1,1,1,.03f*h),9);if(open)U.Fill(new Rect(r.x+1,r.yMax-1,r.width-2,1),U.Hex(0x4c434e));
                     FoldChevron(new Vector2(r.x+19,r.y+23),open,1);
                     U.Text(new Rect(r.x+33,r.y+12,r.width-45,22),"Advanced Options",15,U.Hex(0xded5e0),TextAnchor.MiddleLeft,bold:true);
@@ -328,7 +328,7 @@ namespace ChipArena.UnityConversion
             int n=labels?.Length??0;if(n==0)return index;index=Mathf.Clamp(index,0,n-1);
             // Under 200 px (the room column at a large interface scale) the arrows take 26 px each, leaving the value room.
             float bw=r.width<200?26:32,zone=2*bw+14;var prev=new Rect(r.xMax-6-2*bw-4,r.y+(r.height-32)/2,bw,32);var next=new Rect(r.xMax-6-bw,prev.y,bw,32);var name=new Rect(r.x,r.y,r.width-zone,r.height);
-            float hp=U.HoverAmount(id+1,prev,enabled),hn=U.HoverAmount(id+2,next,enabled),hf=U.HoverAmount(id,r,enabled);
+            float hp=U.HoverAmount(id+1,prev,enabled&&!MenuBlocked()),hn=U.HoverAmount(id+2,next,enabled&&!MenuBlocked()),hf=U.HoverAmount(id,r,enabled&&!MenuBlocked());
             if(Event.current.type==EventType.Repaint)
             {
                 float a=alpha,t=enabled?1:.55f,c=enabled?1:.35f;
@@ -367,7 +367,7 @@ namespace ChipArena.UnityConversion
             var c=GUI.color;GUI.color=new Color(c.r,c.g,c.b,c.a*e);U.BeginDeferred();GUILayout.BeginArea(area);
             lobbyRoomScroll=GUILayout.BeginScrollView(lobbyRoomScroll,false,false,GUIStyle.none,GUI.skin.verticalScrollbar);
             string label=RoomCodeLabel();float cardW=area.width-8-32;bool two=U.Measure(label,10,false,false,.16f).x>cardW;RoomAddresses(cardW);bool link=inviteLink!=null;
-            var invite=GUILayoutUtility.GetRect(0,RoomInviteHeight(two,link),GUILayout.ExpandWidth(true));string code=Hosting?roomCode:joinCode;U.Defer(()=>RoomInvite(new Rect(invite.x+4,invite.y+2,invite.width-8,invite.height-2),code,label,two,link,e));GUILayout.Space(16);
+            var invite=GUILayoutUtility.GetRect(0,RoomInviteHeight(two,link),GUILayout.ExpandWidth(true));string code=Hosting?RoomCode:internetRooms?NativeRoomCodes.Online(joinCode):joinCode;U.Defer(()=>RoomInvite(new Rect(invite.x+4,invite.y+2,invite.width-8,invite.height-2),code,label,two,link,e));GUILayout.Space(16);
             var head=GUILayoutUtility.GetRect(0,RoomHeadingHeight(),GUILayout.ExpandWidth(true));if(Event.current.type==EventType.Repaint)lobbyRoomInner=head.width-8;U.Defer(()=>RoomHeading(head,e));
             if(Hosting)
             {

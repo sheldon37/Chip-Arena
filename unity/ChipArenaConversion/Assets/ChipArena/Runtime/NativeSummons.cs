@@ -37,7 +37,7 @@ namespace ChipArena.UnityConversion
         }
         private float HitMinion(NativeMinion m,NativePilot owner,float damage,Vector3 direction,float impulse,Vector3? point=null,string kind=null,float radius=0,bool head=false)
         {
-            if(m.Hp<=0||!CanHit(owner,m.Owner))return 0;if(m.Pve!=null)return HitPveAdd(m,owner,damage,direction,impulse,point,kind,radius,head);float actual=Math.Max(0,Math.Min(m.Hp,damage));m.Hp-=actual;m.LastHitAt=Time;if(!m.Body.isKinematic)m.Body.AddForce(direction*impulse,ForceMode.Impulse);Emit(EventKind.Hit,owner,m.Id,m.Body.position,actual);if(m.Hp<=0)RemoveMinion(m);return actual;
+            if(m.Hp<=0||!CanHit(owner,m))return 0;if(m.Pve!=null)return HitPveAdd(m,owner,damage,direction,impulse,point,kind,radius,head);float actual=Math.Max(0,Math.Min(m.Hp,damage));m.Hp-=actual;m.LastHitAt=Time;if(!m.Body.isKinematic)m.Body.AddForce(direction*impulse,ForceMode.Impulse);Emit(EventKind.Hit,owner,m.Id,m.Body.position,actual,kind=="energy"?"ability":kind=="projectile"||kind==null?"direct":kind=="dot"?"field":kind);if(m.Hp<=0)RemoveMinion(m);return actual;
         }
         private void MinionWeaponHit(NativeMinion m,NativePilot owner,float actual,float burn,float poison)
         {
@@ -66,7 +66,7 @@ namespace ChipArena.UnityConversion
                     if(Time<m.StrikeAt){m.Body.linearVelocity=new Vector3(0,velocity.y,0);continue;}
                     m.StrikeAt=-1;m.NextAttack=Time+recover;if(!toy)m.Body.linearVelocity=Quaternion.Euler(0,m.Yaw,0)*Vector3.forward*4.5f+Vector3.up*velocity.y;
                     if(!goal.HasValue)continue;Vector3 origin=at+Vector3.up*(toy?.25f:0),target=goal.Value+Vector3.up*(toy?.35f:0),aim=target-origin;Collider collider=m.Foe?.Hp>0?m.Foe.Collider:m.Other.Collider;
-                    if(toy)Fx(target,.1f,0,origin);if(aim.magnitude>(toy?9.5f:2.4f)||!SummonVisible(m,origin+Vector3.up*(toy?0:.3f),target+Vector3.up*(toy?0:.3f),collider))continue;
+                    if(toy)Fx(target,.1f,0,origin,m.Owner,"minionShot");if(aim.magnitude>(toy?9.5f:2.4f)||!SummonVisible(m,origin+Vector3.up*(toy?0:.3f),target+Vector3.up*(toy?0:.3f),collider))continue;
                     float damage=(toy?8:12)*(float)m.Owner.Stats["damage"],impulse=toy?50:120;Vector3 flat=new Vector3(aim.x,0,aim.z).normalized;
                     if(m.Foe?.Hp>0){if(Time<m.Foe.BlockEnd){BlockProc(m.Foe,m.Owner,at);if(!toy)m.Body.AddForce((at-m.Foe.Body.position).normalized*400,ForceMode.Impulse);}else Damage(m.Foe,m.Owner,damage,flat,impulse*(float)m.Owner.Stats["impulse"],false,direct:false,primary:false);}
                     else if(m.Other?.Hp>0)HitMinion(m.Other,m.Owner,damage,flat,impulse);continue;
@@ -74,7 +74,7 @@ namespace ChipArena.UnityConversion
                 if(Time<m.NextAttack&&m.LastAttack>=0&&Time-m.LastAttack<windup+recover){if(Time-m.LastAttack>windup+.12f)m.Body.linearVelocity=new Vector3(0,velocity.y,0);continue;}
                 m.Foe=null;m.Other=null;float best=float.PositiveInfinity;
                 foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&Enemy(m.Owner,p)){float d=(p.Body.position-at).sqrMagnitude;if(d<best){best=d;m.Foe=p;}}
-                foreach(var q in Minions)if(q!=m&&q.Hp>0&&Enemy(m.Owner,q.Owner)){float d=(q.Body.position-at).sqrMagnitude;if(d<best){best=d;m.Other=q;m.Foe=null;}}
+                foreach(var q in Minions)if(q!=m&&q.Hp>0&&Enemy(m.Owner,q)){float d=(q.Body.position-at).sqrMagnitude;if(d<best){best=d;m.Other=q;m.Foe=null;}}
                 if(m.Foe==null&&m.Other==null){m.Body.linearVelocity=new Vector3(0,velocity.y,0);continue;}
                 Vector3 destination=m.Foe!=null?m.Foe.Body.position:m.Other.Body.position,diff=destination-at;Collider end=m.Foe!=null?m.Foe.Collider:m.Other.Collider;float distance=new Vector2(diff.x,diff.z).magnitude;
                 if(distance<(toy?7:1.75f)&&Time>=m.NextAttack&&SummonVisible(m,at+Vector3.up*.3f,destination+Vector3.up*.3f,end)){m.LastAttack=Time;m.StrikeAt=Time+windup;m.Yaw=Mathf.Atan2(diff.x,diff.z)*Mathf.Rad2Deg;m.Body.linearVelocity=new Vector3(0,velocity.y,0);continue;}

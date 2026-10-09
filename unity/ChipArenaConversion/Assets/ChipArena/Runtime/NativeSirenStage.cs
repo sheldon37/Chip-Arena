@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
                 {
                     if(p.Hp<=0||!p.Seat.connected)continue;Vector3 pos=p.Body.position;string key="vent:"+i+":"+p.Seat.id;
                     if(hazardHits.TryGetValue(key,out float until)&&Time<until||Math.Abs(pos.x-vent.x)>1.5f||Math.Abs(pos.z-vent.z)>1.5f||pos.y-.85f>2.2f||pos.y<-.5f)continue;
-                    hazardHits[key]=Time+.65f;float actual=Damage(p,null,14,Vector3.up,0,false,direct:false,stage:true);
+                    hazardHits[key]=Time+.65f;float actual=Damage(p,null,14,Vector3.up,0,false,direct:false,stage:true,damageKind:"stage-vent");
                     if(actual>0&&!SirenArmor(p)){p.Knockback.y=6.5f-p.Body.linearVelocity.y;p.Grounded=false;}Fx(vent,1.2f,4);
                 }
             }

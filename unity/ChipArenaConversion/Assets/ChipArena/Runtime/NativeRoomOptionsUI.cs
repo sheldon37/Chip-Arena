@@ -161,7 +161,7 @@ namespace ChipArena.UnityConversion
             var r=RuleRow(id,th+22);
             U.Defer(()=>
             {
-                var row=new Rect(r.x,r.y+11,r.width,th);var box=new Rect(row.xMax-4-18,row.center.y-9,18,18);float h=U.HoverAmount(id,row,!locked);
+                var row=new Rect(r.x,r.y+11,r.width,th);var box=new Rect(row.xMax-4-18,row.center.y-9,18,18);float h=U.HoverAmount(id,row,!locked&&!MenuBlocked());
                 if(Event.current.type==EventType.Repaint){float y=row.center.y-lines.Count*10;foreach(var l in lines){U.Text(new Rect(row.x,y,row.width-34,20),l,14,U.Hex(0xe6e6ea,e),TextAnchor.MiddleLeft);y+=20;}CheckBox(box,value,!locked,h,e);}
                 if(U.Button(row,!locked)){Click();ApplyRule(opt,value?0:1,0);}
             });
@@ -223,7 +223,7 @@ namespace ChipArena.UnityConversion
             {
                 if(Event.current.type==EventType.Repaint)
                 {
-                    float h=U.HoverAmount(7525+k,r);U.Round(frame,open?Color.clear:U.Hex(0x13141a,.4f*e),9,U.Hex(0x4c434e,e));if(h>0)U.Round(new Rect(r.x+1,r.y+1,r.width-2,r.height-2),new Color(1,1,1,.03f*h*e),9);if(open)U.Fill(new Rect(r.x+1,r.yMax-1,r.width-2,1),U.Hex(0x4c434e,e));
+                    float h=U.HoverAmount(7525+k,r,!MenuBlocked());U.Round(frame,open?Color.clear:U.Hex(0x13141a,.4f*e),9,U.Hex(0x4c434e,e));if(h>0)U.Round(new Rect(r.x+1,r.y+1,r.width-2,r.height-2),new Color(1,1,1,.03f*h*e),9);if(open)U.Fill(new Rect(r.x+1,r.yMax-1,r.width-2,1),U.Hex(0x4c434e,e));
                     FoldChevron(new Vector2(r.x+19,r.center.y),open,e);
                     U.Text(new Rect(r.x+33,r.y,r.width-45,r.height),title,15,U.Hex(0xded5e0,e),TextAnchor.MiddleLeft,bold:true);
                 }
