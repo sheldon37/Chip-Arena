@@ -1,5 +1,6 @@
 """Real delivery ZIPs and failure injection; no remote requests or publication."""
 import io
+import gzip
 import json
 import os
 from pathlib import Path
@@ -100,6 +101,20 @@ class AutoPublishTests(unittest.TestCase):
     def test_accepts_json_encoded_full_provider_log_without_losing_markers(self):
         self.provider.write_text(json.dumps(self.provider.read_text()).replace('/', '\\/'))
         auto.validate_delivery(self.unpack(), self.build, self.provider)
+
+    def test_accepts_gzipped_provider_log_and_still_rejects_errors(self):
+        original = self.provider.read_bytes()
+        self.provider.write_bytes(gzip.compress(original))
+        delivery = self.unpack()
+        auto.validate_delivery(delivery, self.build, self.provider)
+        self.provider.write_bytes(gzip.compress(original + b"Shader error in 'NativePortrait': failed\n"))
+        with self.assertRaisesRegex(ValueError, 'Compiler/shader'):
+            auto.validate_delivery(delivery, self.build, self.provider)
+
+    def test_decoded_provider_log_has_a_size_limit(self):
+        self.provider.write_bytes(gzip.compress(b'x' * 1000))
+        with patch.object(auto, 'MAX_LOG', 100), self.assertRaisesRegex(ValueError, 'decoded size limit'):
+            auto.provider_log_text(self.provider)
 
     def test_download_handles_manual_log_url_response(self):
         responses = [(202, {}, b'{"redirect_url":"https://storage.googleapis.com/bucket/full.log"}'), (200, {}, b'')]

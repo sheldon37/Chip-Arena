@@ -1,5 +1,18 @@
 # Native publishing automation development log
 
+## 2026-10-09 — Astra — decode compressed stored provider logs
+
+- PR #78 passed hosted tests and merged at `890a677`; run `37965946382` retrieves
+  the stored log but literal marker search sees only 77,353 decoded characters.
+  The owner's real log has 1,527,518 bytes / 9,320 lines; gzipping it reproduces
+  the small corrupted-text shape. Add gzip magic detection and bounded decoding
+  before existing log checks, with a diagnostic confirming when this occurs.
+- Raw and JSON-string logs remain supported. Decompressed logs over 64 MiB fail;
+  markers and compiler/shader checks run on decoded text, with regression coverage.
+- Local: 56 tests, 55 pass, one Windows-only skip. Task
+  `codex/unity-publish-gzip`, base `890a677`; hosted and actual publication next.
+  No bypass of any acceptance gate, no source/build change.
+
 ## 2026-10-09 — Astra — use the log endpoint's documented redirect field
 
 - PR #77 passed hosted tests and merged at `0971446`. Run `37965640899`
