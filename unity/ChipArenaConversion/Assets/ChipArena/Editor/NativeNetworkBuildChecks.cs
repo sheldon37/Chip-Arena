@@ -31,7 +31,7 @@ namespace ChipArena.UnityConversion.Editor
                 var visual=NativeFrameCodec.Clone(frame);int source=visual.seats[0].id,target=visual.seats[1].id;
                 visual.seats[0].lobbyPose="crossed";visual.pilots[0].dots=new[]{new NativeDotFrame{key=target+":fire",source=target,dps=4,next=1,until=4}};visual.pilots[0].slowEnd=4;visual.pilots[0].slowFactor=.5f;
                 visual.snapshot.Actors[0].LastAttack=.4f;visual.snapshot.Actors[0].JuggleUntil=2;
-                visual.snapshot.Shots=new[]{new Shot{Id=901,Owner=target,Original=source,Spec="ansatsuken",Hadoken=true,Burn=3,Poison=2,Born=.2f,Radius=.2f,Mods=new[]{new ChipCount{id="arcade-red",count=1}}}};
+                visual.snapshot.Shots=new[]{new Shot{Id=901,Owner=target,Original=source,Spec="ansatsuken",SirenKind="",LeetKind="",Hadoken=true,Burn=3,Poison=2,Born=.2f,Radius=.2f,Mods=new[]{new ChipCount{id="arcade-red",count=1}}}};
                 visual.effects=new[]{
                     new NativeEffectFrame{type="ability",id=902,owner=source,ability="frag-grenade",radius=.14f,fuse=3},
                     new NativeEffectFrame{type="zone",id=903,owner=source,ability="orbital-mark",kind="bomb",radius=3,at=.2f,until=5,attached=target,lockAt=2},
@@ -41,7 +41,12 @@ namespace ChipArena.UnityConversion.Editor
                 var guestPilot=replica.Pilots.First(p=>p.Seat.id==source);var bullet=replica.Bullets.Single();
                 if(guestPilot.Seat.lobbyPose!="crossed"||guestPilot.Dots[target+":fire"].Dps!=4||guestPilot.SlowFactor!=.5f||guestPilot.SlowEnd!=4||guestPilot.Pose.LastAttack!=.4f||guestPilot.Pose.JuggleUntil!=2||!bullet.Hadoken||bullet.Original!=source||bullet.Mods["arcade-red"]!=1||bullet.Burn!=3||bullet.Poison!=2||replica.AbilityShots.Single().Fuse!=3||replica.AbilityZones.Single().Id!=903||replica.AbilityZones.Single().Born!=.2f||replica.AbilityZones.Single().Attached?.Seat.id!=target||replica.MeleeShots.Single().Burn!=4||replica.MeleeShots.Single().Poison!=2||replica.ChipFields.Single().Effect!="hot-foot")
                     throw new Exception("Guest/replay lost pose, status, zone identity, fuse or original projectile effects");
-                var tracker=new NativeShotTracker();tracker.Begin(replica,replica.Generation,true,replica.Time);NativeShotViews.Bullet(replica,bullet,tracker,replica.Time,out var view);if(view.Arcade!=1||!view.Fire||!view.Poison)throw new Exception("Late reflected hadouken took the current owner's appearance");
+                if(bullet.SirenKind!=null||bullet.LeetKind!=null)throw new Exception("Empty optional shot tags were not restored to null after JsonUtility");
+                var tracker=new NativeShotTracker();tracker.Begin(replica,replica.Generation,true,replica.Time);NativeShotViews.Bullet(replica,bullet,tracker,replica.Time,out var view);if(view.Siren||view.Arcade!=1||!view.Fire||!view.Poison)throw new Exception("Late reflected hadouken appearance: Siren="+view.Siren+", Arcade="+view.Arcade+", Fire="+view.Fire+", Poison="+view.Poison);
+                // Nonempty special tags must survive the same boundary; normalization must not hide real Siren shots.
+                var special=NativeFrameCodec.Clone(visual);special.snapshot.Shots[0].SirenKind="seeker";special.snapshot.Shots[0].LeetKind="lock";
+                replica.ApplyFrame(NativeFrameCodec.Clone(special),authority.LocalId);var specialBullet=replica.Bullets.Single();tracker.Clear();tracker.Begin(replica,replica.Generation,true,replica.Time);NativeShotViews.Bullet(replica,specialBullet,tracker,replica.Time,out var specialView);
+                if(specialBullet.SirenKind!="seeker"||specialBullet.LeetKind!="lock"||!specialView.Siren)throw new Exception("Nonempty special projectile tags lost their identity");
                 var invalid=NativeFrameCodec.Clone(visual);invalid.snapshot.Shots[0].Mods=new[]{new ChipCount{id="x",count=1},new ChipCount{id="x",count=2}};if(invalid.Valid(authority.Content))throw new Exception("Duplicate projectile mods accepted");
                 invalid=NativeFrameCodec.Clone(visual);invalid.pilots[0].dots[0].dps=double.NaN;if(invalid.Valid(authority.Content))throw new Exception("Nonfinite status accepted");
                 replica.ApplyFrame(copy,authority.LocalId);if(guestPilot.Dots.Count!=0||replica.AbilityZones.Count!=0||replica.Bullets.Count!=0)throw new Exception("Expired replicated effects survived the next frame");

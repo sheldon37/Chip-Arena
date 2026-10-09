@@ -133,7 +133,8 @@ namespace ChipArena.UnityConversion
                 else if(e.type=="leet")LeetFields.Add(new NativeLeetField{Id=e.id,Owner=p,Kind=e.kind,Position=e.position,From=e.from,At=e.at,Until=e.until,Sanity=e.radius,Target=Pilots.Find(x=>x.Seat.id==e.target),Slender=Minions.Find(x=>x.Id==e.slender),Hops=e.hops,Seen=e.seen,HopAt=e.hopAt});
                 else if(e.type=="storm")StormTrails.Add(new NativeStormTrail{Owner=p,Position=e.position,At=e.at,Until=e.until});
             }
-            foreach(var s in f.snapshot.Shots)Bullets.Add(new NativeBullet{Id=s.Id,Owner=s.Owner,Original=s.Original,Position=Vec(s.Position),Velocity=Vec(s.Velocity),Radius=s.Radius,Spec=s.Spec??"pistol",SirenKind=s.SirenKind,LeetKind=s.LeetKind,Born=s.Born,Burn=s.Burn,Poison=s.Poison,Hadoken=s.Hadoken,Super=s.Super,Direct=s.Direct,ChipImpact=s.ChipImpact,WeaponFx=s.WeaponFx,Pong=s.Pong,Boomerang=s.Boomerang,Zigzag=s.Zigzag,Mods=(s.Mods??Array.Empty<ChipCount>()).ToDictionary(c=>c.id,c=>c.count)});
+            // JsonUtility represents absent string tags as empty strings; runtime special-shot dispatch uses null.
+            foreach(var s in f.snapshot.Shots)Bullets.Add(new NativeBullet{Id=s.Id,Owner=s.Owner,Original=s.Original,Position=Vec(s.Position),Velocity=Vec(s.Velocity),Radius=s.Radius,Spec=s.Spec??"pistol",SirenKind=string.IsNullOrEmpty(s.SirenKind)?null:s.SirenKind,LeetKind=string.IsNullOrEmpty(s.LeetKind)?null:s.LeetKind,Born=s.Born,Burn=s.Burn,Poison=s.Poison,Hadoken=s.Hadoken,Super=s.Super,Direct=s.Direct,ChipImpact=s.ChipImpact,WeaponFx=s.WeaponFx,Pong=s.Pong,Boomerang=s.Boomerang,Zigzag=s.Zigzag,Mods=(s.Mods??Array.Empty<ChipCount>()).ToDictionary(c=>c.id,c=>c.count)});
         }
         private void ApplyPve(NativePveFrame f)
         {
