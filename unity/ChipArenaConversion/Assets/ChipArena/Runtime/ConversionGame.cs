@@ -263,12 +263,12 @@ namespace ChipArena.UnityConversion
         {
             BeginRules(true,lobbyRoomInner+8);var o=rules;if(o==null)return;
             MatchOptions(RulesPart.Essential,false,true);
-            if(!AdvancedFold(LobbyRulesNote(o,LobbyBotSeats())))return;
+            if(!AdvancedFold(LobbyRulesNote(o,LobbyBotCount(o))))return;
             rulesL=rulesR=0;rulesEstimate=Mathf.Max(120,lobbyRoomInner-28);
             MatchOptions(RulesPart.Advanced,false,true);
             RuleCheck(7570,RoomOpt.SkipBotDrafts,"Skip bot chip choices",o.skipBotDrafts);RuleFine(7572,"Bots still receive a Chip instantly. Their selection screens and reveals are skipped.",0,6);
             RuleCheck(7574,RoomOpt.SkipIntros,"Skip player intros",o.skipPlayerIntros);RuleFine(7576,"Intros play once per match, before the opening countdown.",0,6);
-            if(!rulesLocked)BotLoadouts(LobbyBotSeats(),16);
+            if(!rulesLocked)BotLoadouts(LobbyBotCount(o),16);
             RuleFine(7578,DraftNote(o),10,4);
             RoomInviteLink();
             AdvancedEnd();
