@@ -122,6 +122,7 @@ namespace ChipArena.UnityConversion
             if(shakeAmount>0){cameraView.transform.position+=Vector3.right*((UnityEngine.Random.value-.5f)*shakeAmount);shakeAmount=Math.Max(0,shakeAmount-Time.deltaTime);}
             presentation.SoundEnabled=false;presentation.LocalId=arena.ViewPilot.Seat.id;
             float renderTime=arena.Replica?arena.ReplicaRenderTime:visualClock.Sample(match.Time,Time.timeAsDouble-Time.fixedTimeAsDouble,menu);
+            presentation.WeaponLoadout=arena;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;
             presentation.Render(arena.Snapshot(true),renderTime,false);
             Vector3? preview=null;
             if(play&&p.HoldAt>=0&&arena.Time-p.HoldAt>=.2f)
