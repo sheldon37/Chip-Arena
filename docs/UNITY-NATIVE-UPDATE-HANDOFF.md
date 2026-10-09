@@ -4,7 +4,7 @@
 
 The original investigation below is historical. The owner's Windows build with PR #67 v3 passed all build/package gates; the approved native candidate `83e6a566` was published at channel `c5251fb` and its complete public download verified. The owner reports the older installation updated successfully; extended acceptance remains open. See DEV_LOG for exact identity, hashes and limitations.
 
-To remove local-PC builds, use the refreshed `codex/unity-cloud-current` candidate on shared `2604b2a`, which includes Claude C11, the four PR #67 repairs and PRs #63/#64's tooling. The owner is configuring the free-tier Unity Cloud project. First actual cloud build and artifact acceptance remain pending. Dashboard settings, non-secret project IDs and next steps are in [UNITY-CLOUD-BUILD-HANDOFF.md](UNITY-CLOUD-BUILD-HANDOFF.md). No new release or source merge occurred.
+To remove local-PC builds, use the refreshed `codex/unity-cloud-current` candidate on shared `2604b2a`, which includes Claude C11, the four PR #67 repairs and PRs #63/#64's tooling. Cloud build #2 at `8fd2f78` now passes the actual Unity/Windows export and Editor launcher/feed packaging. Final delivery is blocked because UBA skipped the configured post-build script; the uploaded ZIP contains only the raw player. Change the dashboard Post-build script to `tools/cloud_post_build.sh` (project-relative) and confirm the correction with another cloud run. Delivery artifact acceptance and Windows playtest remain pending. Dashboard settings, non-secret project IDs and next steps are in [UNITY-CLOUD-BUILD-HANDOFF.md](UNITY-CLOUD-BUILD-HANDOFF.md). No new release or source merge occurred.
 
 ## Original investigation
 

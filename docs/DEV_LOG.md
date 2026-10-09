@@ -16,6 +16,15 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-08 21:41 EDT — Codex/Astra — first cloud build inspected; delivery path correction
+
+- Branch `codex/unity-cloud-current`, PR #68, inspected remote/source head `8fd2f78d84695f4f6fc0fafe2967e0fda5b707da`, shared base `2604b2a`. Owner uploaded UBA build #2 log and ZIP; target ID is now verified as `chip-arena` for the recorded Chip Arena project.
+- Actual cloud evidence: Unity 6000.3.24f1 / Windows x64; both configured export methods ran; 86 PASS lines, 15 maps / 120 spawn floors, all three Editor packaging markers, Unity exit 0 and provider SUCCESS. This validates cloud compilation/export and launcher packaging on the newer C11 candidate. It does not establish rendered gameplay or updater acceptance.
+- Delivery blocker: log line 9803 reports the configured `unity/ChipArenaConversion/tools/cloud_post_build.sh` was not found and was skipped. No delivery marker. ZIP inventory is 228 raw-player files, 191,590,212 unpacked bytes, all CRCs pass; launcher/starter/feed/receipt/delivery are absent. SHA-256 log `4411960258badaaa37e1240fe4e97040ebd96a0cba0e76c5dde34dba7c507bc0`; ZIP `c50614c48fae8aaea3a7ccb12bf99522f03af0129a268a2ec41d1af8293a5729`.
+- Corrected dashboard/handoff instruction to project-relative `tools/cloud_post_build.sh`. Local path lookup reproduces that the old path is absent under the configured project and the corrected one exists. The diagnosis is inferred from that layout and the provider warning; Unity's generic docs say repository-relative, so the next actual run must verify this target's behavior. No source-code repair or new automated regression test is claimed for this external configuration change.
+- Updated cloud/native handoffs, PROJECT_STATE and A12/A13 status; documentation-only diff check passes. Existing source/helper CI remains `37866917576` on `8a99e96`; no code suites rerun. Full uploaded archive CRC/inventory inspection and targeted log review actually ran. No raw provider log, binary or credential is committed.
+- Next: owner changes that one Post-build script field, saves and reruns the same branch; inspect all four markers and the delivery/sidecar/receipt/starter/feed before accepting it. Unity dashboard access is unavailable in this session. Actual post-build Python/path behavior, delivery collection and Windows gameplay/update acceptance remain open. No merge, feed/Site publication, paid upgrade or gameplay/presentation/network change; current native feed remains `83e6a566` at `c5251fb`.
+
 ## 2026-10-08 21:03 EDT — Codex/Astra — cloud target setup and automatic Mono clarification
 
 - Branch `codex/unity-cloud-current`, PR #68, previous documentation head `60d2be8`, unchanged tested source `8a99e96`. Owner reports dashboard settings complete except a missing Scripting backend selector. The uploaded PDF verifies branch/subfolder/editor/Windows builder; advanced hooks, Micro tier and scheduling are owner-reported.

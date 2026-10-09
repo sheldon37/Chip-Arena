@@ -10,11 +10,11 @@ in [UNITY-NATIVE-UPDATE-HANDOFF.md](UNITY-NATIVE-UPDATE-HANDOFF.md).
   shared `2604b2ae587b0af3a5378cd52bf10dba93143515`.** It preserves Claude's latest C11
   weapon presentation, carries the four PR #67 build-check/rescue repairs from `9903a66`,
   and reapplies the publisher/cloud tooling from PRs #63/#64. Use this candidate for the
-  first cloud run; the original #64 branch predates the parity and presentation changes.
-- Owner has created the Chip Arena cloud project and is configuring its first target.
+  cloud runs; the original #64 branch predates the parity and presentation changes.
+- Owner has created the Chip Arena cloud project and completed its first inspected build.
   Organization ID: `2474084689228`; project ID: `06275870-8c41-42b2-b21a-f75ff362f3dc`.
-  These non-secret IDs are observed in the owner's dashboard. Target/configuration ID
-  is not available yet. Platform choice is Windows desktop 64-bit.
+  These non-secret IDs are observed in the owner's dashboard. Build #2 confirms target
+  ID `chip-arena`. Platform is Windows desktop 64-bit.
 - Dashboard shows the free tier, including 200 Windows Micro minutes monthly. Use the
   included Windows Micro machine and keep automatic builds off during acceptance.
   No paid upgrade or spend is authorized. GitHub source connection uses repository-scoped
@@ -22,16 +22,49 @@ in [UNITY-NATIVE-UPDATE-HANDOFF.md](UNITY-NATIVE-UPDATE-HANDOFF.md).
 - The native test feed is already published at channel commit `c5251fb` and the owner
   reports an older installation updated successfully. That candidate came from the
   owner's local build of shared `5900583` plus PR #67 v3; it does **not** validate the
-  newer C11 source or the cloud hooks. This refreshed candidate is not built or released.
+  newer C11 source or the cloud hooks. Build #2 now validates the refreshed candidate's
+  Unity export and Editor packaging, but its final delivery was skipped; it is unreleased.
 - Local refreshed-tool checks: 24 publisher/delivery tests collected, 23 pass and the
   Windows command-entrypoint case skips on Linux; Bash syntax and diff checks pass.
   Full source/relay/package and UpdaterTests run in GitHub CI on the pushed candidate.
-  An actual Windows Unity cloud export, provider paths/tool availability and artifact
-  collection still need the first real UBA run. No working Unity API client is claimed.
+  Build #2 passed the Windows Unity export and launcher compilation. Post-build Python,
+  delivery validation and artifact collection still need a corrected UBA run. No working
+  Unity API client is claimed.
 
 GitHub native CI [37866917576](https://github.com/sheldon37/Chip-Arena/actions/runs/37866917576) passes on implementation `8a99e962554887f758f4edc7132199aceb40f38d` (draft PR #68): Linux check_relay.py, full Python suite (42 collected, 41 pass, one Windows-only skip), package_source.py (737 files), cloud staging and 51 UpdaterTests; Windows all 16 publisher and eight cloud-delivery tests, staging/51 updater checks, shipping launcher compilation and real fixture-player install/restart/acknowledgement, rollback and interrupted-swap recovery. These are source/helper checks, not an actual Unity build. The follow-up commit records results in documentation only.
 
-Owner setup checkpoint (2026-10-08 21:03 EDT): the owner reports all requested target settings completed except a Scripting backend selector, which was not present. The supplied PDF independently shows the correct branch, project subfolder, Unity 6000.3.24f1 and Windows 11 24H2 builder. Advanced fields/Micro tier are owner-reported, not independently viewed. Code confirms PreExport explicitly selects Mono and PostExport rejects a backend mismatch, so no additional dashboard field is needed. Next is the first clean cloud build, followed by its full log and delivery-artifact inspection. No actual UBA run/result is recorded yet.
+Owner setup checkpoint (2026-10-08 21:03 EDT): the owner reports all requested target settings completed except a Scripting backend selector, which was not present. The supplied PDF independently shows the correct branch, project subfolder, Unity 6000.3.24f1 and Windows 11 24H2 builder. Code confirms PreExport explicitly selects Mono and PostExport rejects a backend mismatch, so no additional dashboard field is needed. The inspected run below supersedes the earlier pending-build status; billing tier and automatic-build settings remain owner-reported.
+
+## Build #2 receipt — game built, delivery missing (2026-10-08 21:41 EDT)
+
+- Uploaded full log confirms source `8fd2f78d84695f4f6fc0fafe2967e0fda5b707da`,
+  target `chip-arena`, build `2`, Unity `6000.3.24f1` and Windows x64. Both export hooks
+  ran; 86 PASS lines include real JsonUtility, all 15 maps / 120 spawn floors and the
+  startup/glow/headshot/rescue gates. Unity exited 0; UBA ended `Finished: SUCCESS`.
+- `NATIVE_UPDATE_FEED_READY`, `UNITY_TEST_BUILD_READY` and the matching
+  `NATIVE_CLOUD_EXPORT_READY` are present. The Editor prepared the launcher/starter/feed
+  on the builder. This establishes actual cloud compilation/export, not a Windows playtest.
+- At log line 9803, UBA warns `Script configured, but not found at
+  unity/ChipArenaConversion/tools/cloud_post_build.sh. Skipping.` There is no
+  `NATIVE_CLOUD_DELIVERY_READY` marker. The downloaded ZIP has only 228 raw-player files
+  (191,590,212 unpacked bytes), with no stable launcher, starter, feed, receipt or delivery.
+  Its full CRC check passes, but it is **not an accepted updater delivery**.
+- Correct the target's **Post-build script** to `tools/cloud_post_build.sh`, relative to
+  the configured Unity project subfolder. The previous repository-relative instruction
+  was wrong for this target. This diagnosis is inferred from the observed missing-file
+  warning and project layout: the old path does not exist under the project, the shorter
+  path does. Unity's general custom-script documentation says repository-relative, so
+  retain this discrepancy and confirm the correction with the next actual run.
+- Owner must save that dashboard field and start another build on `codex/unity-cloud-current`;
+  this session cannot access Unity Cloud to edit the setting. Keep both export methods.
+  Inspect the next full log and ZIP for the delivery marker, sidecar, portable receipt and
+  matching starter/feed hashes before acceptance. Windows gameplay/update acceptance is
+  still open. No local-PC rebuild, feed publication or merge was performed.
+- Input receipts (no raw provider logs or binaries committed): log
+  `2474084689228-chip-arena-chip-arena-2.log`, 1,618,352 bytes, SHA-256
+  `4411960258badaaa37e1240fe4e97040ebd96a0cba0e76c5dde34dba7c507bc0`;
+  ZIP `2474084689228-chip-arena-chip-arena-2.zip`, 99,717,383 bytes, SHA-256
+  `c50614c48fae8aaea3a7ccb12bf99522f03af0129a268a2ec41d1af8293a5729`.
 
 The following is the original tooling implementation history, superseded by the
 current candidate/account status above:
@@ -75,7 +108,7 @@ account decisions; no budget or payment authorization was provided here.
 | Scene | `Assets/ChipArena/Scenes/Prototype.unity` |
 | Pre-export method | `ChipArena.UnityConversion.Editor.NativeCloudBuild.PreExport` |
 | Post-export method | `ChipArena.UnityConversion.Editor.NativeCloudBuild.PostExport` |
-| Post-build script (from repository root) | `unity/ChipArenaConversion/tools/cloud_post_build.sh` |
+| Post-build script (from the Unity project subfolder; build #2 correction) | `tools/cloud_post_build.sh` |
 | First run | Clean build; Library caching only afterward |
 | Automatic branch builds | Leave off for initial acceptance; one concurrent build |
 | Feed write credential | None needed by this candidate build |
@@ -131,13 +164,13 @@ build folders to test upgrades; never overwrite it with the next starter.
   42 Python tests (one Windows-only skip), 623-file source package, C# staging fixtures
   and 51 updater transaction checks; Windows C# staging, all 16 publisher tests, all eight
   delivery tests, shipping launcher compilation and real fixture-player restart/rollback.
-- Actual Unity hook compilation/import, Windows UBA export, .NET launcher tool availability,
-  environment/path conventions, artifact collection and rendered gameplay remain unrun
-  until the account is configured. The hooks deliberately fail if provider context is
-  absent or different rather than label an unidentified build as accepted.
-- First UBA run: inspect its log for all three markers, source SHA and completed delivery;
-  download and verify the sidecar; inspect the receipt against the requested commit.
-  Download the full UBA log too. Fix any observed integration failure before accepting it.
+- Build #2 confirms actual Unity hook compilation/import, Windows UBA export, .NET launcher
+  availability and the three Editor markers. Its skipped Bash script leaves post-build
+  Python/path conventions and final artifact collection unverified. UBA can report success
+  when a configured script is missing; require the fourth delivery marker and ZIP contents.
+- Next UBA run after the path correction: inspect all four markers, source SHA and completed
+  delivery; verify the sidecar and portable receipt against the requested commit. Download
+  the full UBA log too. Fix any observed integration failure before accepting it.
 - Launch the inner starter on Windows. Perform menu/match/settings/account checks and
   then an older-to-newer update, cancellation, room gating and startup rollback. Issue #60
   still contains native networking/sign-in findings which may block these checks.
