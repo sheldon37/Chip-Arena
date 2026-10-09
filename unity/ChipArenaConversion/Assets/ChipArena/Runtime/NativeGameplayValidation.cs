@@ -95,8 +95,8 @@ namespace ChipArena.UnityConversion
             float hp=add.Hp;Bullets.Add(new NativeBullet{Id=nextBullet++,Attack=nextAttack++,Owner=pilot.Seat.id,Original=pilot.Seat.id,Spec="pistol",Position=add.Body.position-Vector3.forward,Velocity=Vector3.forward*120,Radius=.045f,Damage=10,Life=1,Travel=10,Direct=true});
             StepBullets();Check(add.Hp<hp,"swept projectile passed through the hidden boss's add");
             hp=add.Hp;Check(HitMinion(add,pilot,5,Vector3.forward,0)>0&&add.Hp<hp,"melee contact rejected");
-            hp=add.Hp;AbilityBlast(pilot,add.Body.position,3,5,0,0,effect="frag");Check(add.Hp<hp,"ability blast rejected");
-            hp=add.Hp;ChipBlast(pilot,add.Body.position,3,5,0,effect="block-pulse");Check(add.Hp<hp,"chip blast rejected");
+            hp=add.Hp;AbilityBlast(pilot,add.Body.position,3,5,0,0,effect:"frag");Check(add.Hp<hp,"ability blast rejected");
+            hp=add.Hp;ChipBlast(pilot,add.Body.position,3,5,0,effect:"block-pulse");Check(add.Hp<hp,"chip blast rejected");
             Pve.Holding=true;hp=add.Hp;Check(HitMinion(add,pilot,5,Vector3.forward,0)==0&&add.Hp==hp,"cinematic protection lost");Pve.Holding=false;
             add.Pve.Travelling=true;Check(HitMinion(add,pilot,5,Vector3.forward,0)==0,"vent travel protection lost");add.Pve.Travelling=false;
             add.Pve.ExposedAt=Time+1;Check(HitMinion(add,pilot,5,Vector3.forward,0)==0,"unexposed entry protection lost");add.Pve.ExposedAt=Time-1;
