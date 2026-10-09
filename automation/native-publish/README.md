@@ -56,14 +56,17 @@ subtree of `sheldon37/chip-arena-test-updates`. Electron `feed/` is preserved.
 
 No Unity installation, local Git, or personal-computer files are needed. After
 configuration, Claude/Astra push completed batches to the existing cloud branch.
-The actual service roles, authenticated API response shapes and first real
-publication still require validation in the owner's account; local fixture tests
-are not a claim that those account connections already work.
+First real automatic publication verified 2026-10-09: UBA #7, source `27a7833`,
+native version `3686f40e`, with public downloads verified in Actions run
+`37966337783` (attempt 2). Unity service authentication and the scoped feed
+credential both worked. Auto-publication is enabled. Windows installed-game
+update/playtesting is still the owner's final check.
 
 ## Timing and costs
 
 The job checks once when native source CI finishes on the cloud branch and has an
 hourly backstop at minute 17. Unity may still be building when source CI finishes.
+Reviewed publisher changes on `main` also recheck after both hosted tests pass.
 Expect publication on the first scheduled run after both are ready, usually
 within an hour, plus GitHub scheduling/CDN delay. Run workflow manually for an
 immediate check. No long-running polling loop, AI invocation or Unity build is
@@ -75,6 +78,10 @@ uses Actions minutes. An idle check typically rounds to one billed minute, about
 usage depends on GitHub scheduling and execution time; retain the account's
 existing spending cap. Unity minutes are consumed only by the separate builds.
 Successful, verified builds are not repeatedly downloaded on idle checks.
+If publication succeeds but the public CDN has not refreshed, the run reports
+that explicitly. The next check resumes download verification without rebuilding
+or republishing the game. Only pushes integrated into `codex/unity-cloud-current`
+are candidates; pushing solely to another Claude/Astra task branch is insufficient.
 
 ## Gates and behavior
 
