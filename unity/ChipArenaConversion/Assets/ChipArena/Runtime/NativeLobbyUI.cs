@@ -136,7 +136,7 @@ namespace ChipArena.UnityConversion
             U.Text(new Rect(tx,top,Mathf.Max(10,room),lh),Fit(p.tag,10,Mathf.Max(10,room),false,.04f),10,U.Hex(0xc0b8c5,a),TextAnchor.MiddleLeft,tracking:.04f);
             // .portrait-stage: the emblem, sized to the portrait, its motion offset per seat.
             var stage=new Rect(r.x,r.y+topH,r.width,portrait);float ring=Mathf.Min(portrait*.3f,r.width*.27f);var cpos=new Vector2(stage.center.x,stage.center.y+2);
-            if(portrait<40){}else if(weapon!=null)PilotEmblem(cpos,ring,p.accent,p.body,weapon,a,t,index*1.7f,ring<56?20:28);else PilotEmblem(cpos,ring,p.accent,p.body,"shuffle",style,a,t,index*1.7f,ring<56?20:28);
+            if(portrait>=40)LobbyPortrait(stage,cpos,ring,p,index,a,t,weapon,style,result);
             // .pilot-card-name: the name, then the class line in the weapon colour (38% mix with white, glowing) over its
             // animated 2 px underline (.pilot-class-fx).
             float pad=compact?12:14,ny=stage.yMax+(result?4:0),ns=result?18:compact?17:20,nh=ns*1.2f;
