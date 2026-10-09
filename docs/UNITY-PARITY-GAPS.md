@@ -140,10 +140,9 @@ wait on PR #65 (room options, invite URL, LAN addresses).
    - Combat numbers show only your own hits.
    - First person has no sway, bob or recoil. Implemented on `claude/wip-c7-fp-sway` (the first-person-view.ts view layer); not playtested.
 Tracked #30/#62/#63/#122/#94 (also #29, #23/#24).
-- **C8** P2/M partial: audio.
-   - Stereo panning is reversed (#31).
-   - Many events are silent (#61; needs the event-model work).
-   - No master limiter, pitch variation, music ducking, PvE intro dip or clown laugh (Runtime/NativeAudio.cs:63-73 vs client/audio.ts and music.ts). The silent events need A21.
+- **C8** P2/M partial: audio. On `claude/wip-ui-events` (not merged), Core/NativeEventFeedback.cs routes the PR #66 event kinds as client/audio.ts ArenaAudio.update does, with its SoundLimiter, per-play rate, the local pilot as listener and panning on the Unity camera's right (#31); Tests/event-feedback-parity.json compares it with the source. The spike rise and the PvP draft install have no Unity event and are derived from state.
+   - Source cues with no Unity event yet (Astra): the lightning weapon's chain arc (shared/magic-abilities.ts:82), Blink Strike's per-target arcs (:51), leet-freeze and leet-undo (darkness .6) and leet-brain (lightning .35), and the shield-throw catch (shield .45).
+   - No master limiter, music ducking, PvE intro dip or clown laugh (client/audio.ts and music.ts). Clown Love and Bass Van play as one positional clip, not the source's scheduled song and beat hits (audio.ts updateLove).
 Tracked #31/#60/#61/#97/#142; the mix items are new.
 - **C9** P2/M different: field telegraphs are outlined dashed rings in kind colours with no ally/enemy tint (Runtime/NativeWorldEffects.cs:13-19; NativeAbilityPresentation.cs:30-57). The source uses soft ground glows (ally 0x55dcff, enemy 0xff5a46), domes and voxel cores (client/chaos-visuals.ts; owner 2026-10-04: 'areas are no longer outlined'). New.
 - **C10** P2/M partial: projectile and ability-shot models are generic. Ranged shots are thin boxes, magic shots are spinning cubes, and every ability shot is a cube (Runtime/ArenaPresentation.cs:142-146; NativeAbilityPresentation.cs:10-15). The source has per-spec meshes, including a frag grenade, a finned rocket, a tidal wave, a bowling ball and element orbs (client/renderer.ts abilityGeometry). New.

@@ -89,6 +89,8 @@ namespace ChipArena.UnityConversion
                     int count=NativeEventSounds.Route(context,buffer);
                     for(int i=0;i<count;i++){var s=buffer[i];Check(s.Rate==0,name+" rate");got.Add(Describe(s.Tone?"tone":s.Gate!=null?"cue":"play",s.Clip,s.Gate,s.Gain,s.Positional));}
                 }
+                // A source event Unity derives from state (NativeAudio): its fixed sound.
+                if(scenario.TryGetProperty("derived",out var derived)){Check(derived.GetString()=="SpikeRise",name+" derived");var s=NativeEventSounds.SpikeRise;Check(s.Rate==0&&!s.Tone,name+" rate");got.Add(Describe(s.Gate!=null?"cue":"play",s.Clip,s.Gate,s.Gain,s.Positional));}
                 var want=scenario.GetProperty("expected").EnumerateArray().Select(c=>{Check(c.GetProperty("rate").GetDouble()==0,name+" source rate");if(c.GetProperty("fn").GetString()=="tone")Check(c.GetProperty("hit").GetInt32()==5&&c.GetProperty("move").GetBoolean()&&c.GetProperty("superMove").GetBoolean(),name+" tone");
                     return Describe(c.GetProperty("fn").GetString(),c.GetProperty("name").GetString(),c.GetProperty("key").ValueKind==JsonValueKind.String?c.GetProperty("key").GetString():null,c.GetProperty("gain").GetDouble(),c.GetProperty("positional").GetBoolean());}).OrderBy(x=>x,StringComparer.Ordinal).ToList();
                 got.Sort(StringComparer.Ordinal);Check(got.SequenceEqual(want),name+": ["+string.Join(", ",got)+"] != ["+string.Join(", ",want)+"]");scenarios++;
@@ -96,6 +98,20 @@ namespace ChipArena.UnityConversion
             // Every kind routes within the buffer; the PR #66 kinds without a source cue stay silent by default.
             foreach(EventKind kind in Enum.GetValues(typeof(EventKind)))Check(NativeEventSounds.Route(new NativeEventSounds.Context{Kind=kind},buffer)<=NativeEventSounds.MaxSounds,"route "+kind);
             passed.Add("event feedback: ArenaAudio.update's event cues match the source for "+scenarios+" scenarios across the PR #66 kinds");
+
+            // stage-spikes-rise (stage-hazards.ts:21) derived from the NativeHazards clock: same ticks, beds and positions.
+            {
+                var spikes=json.GetProperty("spikes");int hz=spikes.GetProperty("hz").GetInt32();var rises=new NativeSpikeRises();var got=new List<(int tick,int bed)>();
+                foreach(var seg in spikes.GetProperty("segments").EnumerateArray())
+                {
+                    bool fight=seg.GetProperty("fight").GetBoolean();double fightStart=seg.GetProperty("fightStart").GetDouble();
+                    for(int tick=seg.GetProperty("from").GetInt32();tick<seg.GetProperty("to").GetInt32();tick++){double time=tick/(double)hz;int rose=rises.Step("spikevault",fight&&time-fightStart>=2,time);for(int bed=0;bed<NativeSpikeRises.Beds;bed++)if((rose&1<<bed)!=0)got.Add((tick,bed));}
+                }
+                var want=spikes.GetProperty("rises").EnumerateArray().ToList();Check(got.Count==want.Count&&want.Count>0,"spike rises: "+got.Count+" != "+want.Count);
+                for(int i=0;i<got.Count;i++){var w=want[i];var bedAt=NativeSpikeRises.Position(got[i].bed);Check(got[i].tick==w.GetProperty("tick").GetInt32()&&(bedAt-Vec(w.GetProperty("pos"))).Length<1e-6,"spike rise #"+i+": tick "+got[i].tick+" bed "+got[i].bed+" != tick "+w.GetProperty("tick").GetInt32());}
+                Check(new NativeSpikeRises().Step("sawmill",true,10)==0,"spike rises off spikevault");
+                passed.Add("event feedback: spike rises match StageHazards.step over "+want.Count+" rises (fight gate, round reset, bed positions)");
+            }
 
             // Unity-only correlations: a block pulse's own blast, a teleport's beam, Blink Strike's teleport, the saw.
             V3 at=new V3(2,1,3),far=new V3(9,1,3);
@@ -111,8 +127,8 @@ namespace ChipArena.UnityConversion
             // PvE "under attack" (pve/tracks.ts AttackedTrack): any hit on me with damage, burn and poison ticks included.
             Check(NativeEventFeedback.Attacked(E(1,EventKind.BurnTick,2,1,at,amount:.5f,target:1),1,1.5f,1.2f)&&NativeEventFeedback.Attacked(E(1,EventKind.Hit,2,1,at,amount:5,target:1),1,2.1f,1.2f)&&!NativeEventFeedback.Attacked(E(1,EventKind.Hit,2,1,at,amount:5,target:1),1,2.2f,1.2f)
                 &&!NativeEventFeedback.Attacked(E(1,EventKind.Heal,1,1,at,amount:5,target:1),1,1.1f,1.2f)&&!NativeEventFeedback.Attacked(E(1,EventKind.Hit,2,1,at,amount:.04f,target:1),1,1.1f,1.2f)&&!NativeEventFeedback.Attacked(E(1,EventKind.Hit,2,1,at,amount:5,target:3),1,1.1f,1.2f),"under attack");
-            // The legacy hit burst keeps exactly the kinds it was written for.
-            foreach(EventKind kind in Enum.GetValues(typeof(EventKind)))Check(NativeEventFeedback.HitBurst(kind)==(kind==EventKind.Hit||kind==EventKind.Headshot||kind==EventKind.Block||kind==EventKind.Death||kind==EventKind.Break||kind==EventKind.Impact),"burst "+kind);
+            // The legacy hit burst keeps exactly the kinds it was written for, plus collapse (event-vfx.ts:29 bursts it like a hit).
+            foreach(EventKind kind in Enum.GetValues(typeof(EventKind)))Check(NativeEventFeedback.HitBurst(kind)==(kind==EventKind.Hit||kind==EventKind.Headshot||kind==EventKind.Block||kind==EventKind.Death||kind==EventKind.Break||kind==EventKind.Impact||kind==EventKind.Collapse),"burst "+kind);
             // Pan on the Unity camera's right (left-handed), falloff and rate as ArenaAudio.play.
             Check(Near(NativeEventSounds.Pan(new V3(5,0,0),0),.85,1e-6)&&Near(NativeEventSounds.Pan(new V3(-5,0,0),0),-.85,1e-6)&&Near(NativeEventSounds.Pan(new V3(0,0,-5),(float)(Math.PI/2)),.85,1e-6)&&Near(NativeEventSounds.Pan(new V3(1,0,0),0),.5,1e-6)&&NativeEventSounds.Pan(new V3(0,0,6),0)==0,"pan");
             Check(Near(NativeEventSounds.Falloff(1),1,1e-7)&&Near(NativeEventSounds.Falloff(12),1/2.3,1e-6)&&NativeEventSounds.Rate("hit",.9f)==1&&NativeEventSounds.Rate("ui",0)==1&&Near(NativeEventSounds.Rate("stone",0),.97,1e-7)&&Near(NativeEventSounds.Rate("stone",1),1.03,1e-6),"falloff and rate");

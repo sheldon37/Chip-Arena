@@ -12,7 +12,7 @@ fs.mkdirSync(temp,{recursive:true});fs.writeFileSync(path.join(temp,'package.jso
 for(const f of inventory.files.filter(f=>f.path.startsWith('src/')&&f.path.endsWith('.ts'))){const input=path.join(source,f.path);if(!fs.existsSync(input))continue;const b=fs.readFileSync(input);if(createHash('sha1').update(`blob ${b.length}\0`).update(b).digest('hex')!==f.gitBlob)throw Error('Source mismatch '+f.path);const out=path.join(temp,f.path.replace(/\.ts$/,'.js'));fs.mkdirSync(path.dirname(out),{recursive:true});let code=b.toString().replace(/import\s*\{([^}]+)\}\s*from\s*(['"])([^'"]+)\2/g,(whole,names,quote,module)=>{if(!module.startsWith('.'))return whole;let target=path.resolve(path.dirname(input),module.replace(/\.js$/,'.ts'));if(!fs.existsSync(target))return whole;let text=fs.readFileSync(target,'utf8'),kept=names.split(',').filter(n=>!new RegExp('(?:export\\s+)?(?:interface|type)\\s+'+n.trim().split(/\s+as\s+/)[0]+'\\b').test(text));return kept.length?'import {'+kept.join(',')+'} from '+quote+module+quote:'import '+quote+module+quote;});fs.writeFileSync(out,stripTypeScriptTypes(code,{mode:'transform'}));}
 const load=async p=>import(pathToFileURL(path.join(temp,'src',p+'.js')));
 const T=await import(pathToFileURL(path.join(temp,'node_modules/three/build/three.module.js')));
-const {EventVfx}=await load('client/event-vfx'),{CombatNumberTrack,numberLabel}=await load('client/combat-numbers'),{ArenaAudio,SoundLimiter,HIT_TRIM}=await load('client/audio');
+const {EventVfx}=await load('client/event-vfx'),{CombatNumberTrack,numberLabel}=await load('client/combat-numbers'),{ArenaAudio,SoundLimiter,HIT_TRIM}=await load('client/audio'),{StageHazards}=await load('shared/stage-hazards');
 const P=(x,y,z)=>({x,y,z});
 
 // ---- numberLabel ----
@@ -68,7 +68,7 @@ function numberScenario(name,me,pve,frames){
 
 // ---- ArenaAudio event routing ----
 const sounds=[];
-function soundScenario(name,events,unity,{pve=false,mode='ffa',extraPlayers=[]}={}){
+function soundScenario(name,events,unity,{pve=false,mode='ffa',extraPlayers=[],derived}={}){
  const a=new ArenaAudio(),noop=new Proxy({},{get:(t,k)=>k==='cueVolume'||k==='playbackVolume'?1:()=>{}});a.music=a.boss=a.siren=a.slender=a.intros=noop;const calls=[];
  a.play=(n,pos,gain=1,rate=0)=>calls.push({fn:'play',name:n,key:null,gain,positional:!!pos,rate});
  a.cue=(key,n,pos,gain,rate=0)=>calls.push({fn:'cue',name:n,key,gain,positional:!!pos,rate});
@@ -77,7 +77,7 @@ function soundScenario(name,events,unity,{pve=false,mode='ffa',extraPlayers=[]}=
  const state={time:5,tick:300,phase:'fight',generation:1,setNumber:1,round:1,remaining:0,options:{map:'foundry',gameMode:mode},players:ps,events:[],pve:pve?{entries:[],party:{}}:undefined};
  a.update(state,'me',0);calls.length=0;// the first update only announces the fight phase ('go')
  let id=10;state.events=events.map(e=>({id:++id,time:5,pos:P(1,1,1),...e}));a.update(state,'me',0);
- sounds.push({name,unity,expected:calls});
+ sounds.push({name,unity,...(derived?{derived}:{}),expected:calls});
 }
 const U=(Kind,o={})=>({Kind,...o});
 for(const spec of ['pistol','fire','leet','emperor','ansatsuken','siren','greatsword'])soundScenario('shot-'+spec,[{type:'shot',source:'foe',spec}],[U('Shot',{SourceSpec:spec})]);
@@ -101,7 +101,13 @@ soundScenario('minion-hit-pvp',[{type:'minionHit',source:'me',target:'zombie-1',
 for(const material of ['wood','metal','stone'])soundScenario('impact-'+material,[{type:'impact',source:'foe',material}],[U('Impact',{Material:material})]);
 soundScenario('impact-player',[{type:'impact',source:'foe',target:'me'}],[U('Impact')]);
 for(const material of ['wood','metal','stone'])soundScenario('break-'+material,[{type:'break',source:'foe',material}],[U('Break',{Material:material})]);
-soundScenario('death',[{type:'death',source:'foe',target:'ally'}],[U('Death')]);
+soundScenario('death',[{type:'death',source:'foe',target:'ally'}],[U('Death',{TargetPilot:true})]);
+soundScenario('death-me',[{type:'death',source:'foe',target:'me'}],[U('Death',{TargetMe:true,TargetPilot:true})]);
+// A Siren add's kill (horde.ts:445 pve-kill) and a summon's (chaos.ts:113 minionDeath) are silent; Unity emits Death on the
+// add id (10001), also from KillPveHorde with no source.
+soundScenario('pve-kill-add',[{type:'pve-kill',source:'me',target:'add-1',amount:30,message:'walker'}],[U('Death',{SourceMe:true,Pve:true})],{pve:true});
+soundScenario('pve-horde-clear',[{type:'pve-kill',target:'add-1',amount:0,message:'walker'}],[U('Death',{Pve:true})],{pve:true});
+soundScenario('minion-death-add',[{type:'minionDeath',source:'me',target:'add-1',message:'walker'}],[U('Death',{SourceMe:true,Pve:true})],{pve:true});
 soundScenario('explosion-chip',[{type:'explosion',source:'foe',message:'shrapnel',radius:1.8}],[U('Explosion',{Detail:'chip',Radius:1.8})]);
 soundScenario('explosion-weapon',[{type:'explosion',source:'foe',radius:1.5}],[U('Explosion',{Detail:'chip',Radius:1.5})]);
 soundScenario('explosion-ability-frag',[{type:'explosion',source:'foe',message:'frag',radius:3}],[U('Explosion',{Detail:'ability',Radius:3})]);
@@ -114,11 +120,18 @@ soundScenario('teleport',[{type:'teleport',source:'foe',from:P(0,1,0)}],[U('Tele
 soundScenario('blink-strike',[{type:'teleport',source:'foe',from:P(0,1,0),message:'blink-strike'},{type:'explosion',source:'foe',message:'blink-strike',radius:3}],[U('Teleport',{BlinkStrike:true}),U('Arc',{Radius:1,Shadowed:true}),U('Arc',{Radius:1,Shadowed:true}),U('Explosion',{Detail:'ability',Radius:3})]);
 soundScenario('panic-button',[{type:'field',source:'foe',message:'repulsion',radius:6},{type:'nova',source:'foe',radius:6,message:'panic-button'}],[U('Field',{Detail:'panic-button',Radius:6})]);
 soundScenario('field',[{type:'field',source:'foe',message:'time',radius:5}],[U('Field',{Detail:'freezer-block',Radius:5})]);
+// chaos.ts:100 Thunder Step: a bomb on each locked pilot with its arc, or one bomb at the start with no arc.
+soundScenario('thunderstep',[{type:'field',source:'me',message:'bomb',radius:2.5},{type:'arc',source:'me',from:P(0,1.6,0),color:0xbfe6ff}],[U('Field',{Detail:'thunderstep',Radius:2.5,SourceMe:true,TargetPilot:true})]);
+soundScenario('thunderstep-miss',[{type:'field',source:'me',message:'bomb',radius:4}],[U('Field',{Detail:'thunderstep',Radius:4,SourceMe:true})]);
 soundScenario('ceiling-hit',[{type:'ceiling-hit',source:'foe',message:'ABSORB'}],[U('CeilingHit')]);
 soundScenario('stage-saw',[{type:'hit',target:'me',amount:22,message:'stage-saw'},{type:'stage-saw-hit',target:'me',amount:22,message:'SAW'}],[U('HazardHit',{TargetMe:true,TargetPilot:true,Amount:22,Saw:true}),U('Hit',{TargetMe:true,TargetPilot:true,Amount:22})]);
 soundScenario('stage-lava',[{type:'hit',target:'foe',amount:8,message:'stage-lava'},{type:'stage-lava-hit',target:'foe',amount:8,message:'LAVA'}],[U('HazardHit',{TargetPilot:true,Amount:8}),U('Hit',{TargetPilot:true,Amount:8})]);
 soundScenario('install-mishima',[{type:'install',source:'me',message:'mishima-armor'}],[U('Install',{SourceMe:true,Detail:'mishima-armor'})]);
 soundScenario('install-arcade',[{type:'install',source:'me',message:'arcade-focus'}],[U('Install',{SourceMe:true,Detail:'arcade-focus'})]);
+// simulation.ts:156: a PvP draft pick emits install for any pilot; Unity derives it from Match.Chosen (Kind and Detail only).
+soundScenario('draft-install-mishima',[{type:'install',source:'foe',message:'mishima-screw'}],[U('Install',{Detail:'mishima-screw'})]);
+soundScenario('draft-install-chip',[{type:'install',source:'foe',message:'kinetic'}],[U('Install',{Detail:'kinetic'})]);
+soundScenario('spikes-rise',[{type:'stage-spikes-rise',pos:P(-8,.1,-5)}],[],{derived:'SpikeRise'});
 soundScenario('install-chip',[{type:'install',source:'me',message:'kinetic'}],[U('Install',{SourceMe:true,Detail:'kinetic'})],{pve:true});
 soundScenario('pve-buy-me',[{type:'pve-buy',target:'me',message:'chip',amount:200}],[U('PveBuy',{SourceMe:true,Detail:'chip',Amount:200})],{pve:true});
 soundScenario('pve-buy-other',[{type:'pve-buy',target:'ally',message:'heal',amount:75}],[U('PveBuy',{Detail:'med',Amount:75})],{pve:true});
@@ -131,5 +144,10 @@ soundScenario('pve-cash',[{type:'pve-cash',target:'me',amount:100,message:'kill'
 for(const [type,kind,extra] of [['vacuum','Vacuum',{radius:5}],['freeze','Freeze',{target:'foe'}],['critical','Critical',{}],['catch','Catch',{}],['split','Split',{}],['ricochet','Ricochet',{}],['summon','Summon',{message:'zombie'}],['heal','Heal',{target:'me',amount:5}]])
  soundScenario('silent-'+type,[{type,source:'foe',...extra}],[U(kind,{Amount:extra.amount??0})]);
 
-fs.writeFileSync(path.join(root,'Tests/event-feedback-parity.json'),JSON.stringify({source:'05950ea',hitTrim:HIT_TRIM,labels,limiter,shake,numbers,sounds}));
-console.log('labels',labels.length,'limiter',limiter.length,'shake',shake.length,'number scenarios',numbers.length,'sound scenarios',sounds.length);
+// ---- stage-spikes-rise (stage-hazards.ts:21 StageHazards.step) at 60 Hz: a fight from .5 s, a result break, then the next
+// round's fight (resetArena clears the cycles) from 25 s. ----
+const spikes={hz:60,segments:[{from:0,to:1200,fight:true,fightStart:.5},{from:1200,to:1500,fight:false,fightStart:.5},{from:1500,to:2400,fight:true,fightStart:25}],rises:[]};
+{const sim={phase:'fight',time:0,fightStart:0,options:{map:'spikevault'},players:new Map(),emit:(type,pos)=>{if(type==='stage-spikes-rise')spikes.rises.push({tick:sim.tick,time:sim.time,pos});}},hazards=new StageHazards(sim);
+ for(const seg of spikes.segments){if(seg.from>0&&seg.fight)hazards.clear();for(let tick=seg.from;tick<seg.to;tick++){sim.tick=tick;sim.time=tick/spikes.hz;sim.phase=seg.fight?'fight':'result';sim.fightStart=seg.fightStart;hazards.step();}}}
+fs.writeFileSync(path.join(root,'Tests/event-feedback-parity.json'),JSON.stringify({source:'05950ea',hitTrim:HIT_TRIM,labels,limiter,shake,numbers,sounds,spikes}));
+console.log('labels',labels.length,'limiter',limiter.length,'shake',shake.length,'number scenarios',numbers.length,'sound scenarios',sounds.length,'spike rises',spikes.rises.length);

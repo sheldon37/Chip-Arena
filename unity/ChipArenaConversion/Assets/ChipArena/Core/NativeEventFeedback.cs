@@ -14,9 +14,10 @@ namespace ChipArena.UnityConversion
         public static bool Damages(EventKind kind)=>kind==EventKind.Hit||kind==EventKind.Headshot||kind==EventKind.BurnTick||kind==EventKind.PoisonTick;
         // A Unity damage event the source would have emitted at all (`if(actual>.05)this.emit('hit',...)`).
         public static bool SourceHit(EventKind kind,float amount)=>Damages(kind)&&amount>HitFloor;
-        // The kinds the legacy ParticleSystem burst was written for. The PR #66 kinds (blasts, fields, ticks, procs, PvE, DEV
-        // moves) are not ordinary hits; C6/C10 own their visuals.
-        public static bool HitBurst(EventKind kind)=>kind==EventKind.Hit||kind==EventKind.Headshot||kind==EventKind.Block||kind==EventKind.Death||kind==EventKind.Break||kind==EventKind.Impact;
+        // The kinds the legacy ParticleSystem burst was written for, plus collapse, which event-vfx.ts:29 bursts like a hit
+        // (6 particles, 0xfbc98b). The other PR #66 kinds (blasts, fields, ticks, procs, PvE, DEV moves) are not ordinary
+        // hits; C6/C10 own their visuals.
+        public static bool HitBurst(EventKind kind)=>kind==EventKind.Hit||kind==EventKind.Headshot||kind==EventKind.Block||kind==EventKind.Death||kind==EventKind.Break||kind==EventKind.Impact||kind==EventKind.Collapse;
         // pve/tracks.ts AttackedTrack: any `hit` on me with damage, burn and poison ticks included.
         public static bool Attacked(in ArenaEvent e,int local,float now,float window)=>local>0&&e.Target==local&&SourceHit(e.Kind,e.Amount)&&now-e.Time>=0&&now-e.Time<window;
         static bool Near(V3 a,V3 b,float d)=>(a-b).Length<=d;
@@ -53,6 +54,26 @@ namespace ChipArena.UnityConversion
                 if(h.kind=="saw"&&Math.Abs(at.z-h.z)<.67f&&Math.Sqrt((at.x-h.x)*(at.x-h.x)+Math.Pow(Math.Max(0,Math.Abs(at.y-h.y)-.43),2))<1.67)return true;
             return false;
         }
+    }
+
+    // stage-hazards.ts:21 StageHazards.step: in the fight, from 2 s after it starts, each spikevault bed's rise cycle
+    // floor((time + i*1.5 + j*.65 - 3.6) / 5) is tracked from its first sample, and a higher cycle emits stage-spikes-rise
+    // at (x, .1, z); the cycles clear with the round (resetArena). Unity's hazards emit no rise event, so the presentation
+    // derives it from the same NativeHazards clock.
+    public sealed class NativeSpikeRises
+    {
+        public const int Beds=4;
+        private readonly double[] cycles=new double[Beds];private readonly bool[] seen=new bool[Beds];
+        public void Clear(){for(int k=0;k<Beds;k++)seen[k]=false;}
+        // `live`: the fight phase and at least 2 s into it. Returns a mask of the beds (bit i*2+j) that rose at `time`.
+        public int Step(string map,bool live,double time)
+        {
+            if(map!="spikevault"||!live){Clear();return 0;}
+            int rose=0;
+            for(int i=0;i<2;i++)for(int j=0;j<2;j++){int k=i*2+j;double cycle=Math.Floor((time+i*1.5+j*.65-3.6)/5);if(seen[k]&&cycle>cycles[k])rose|=1<<k;cycles[k]=cycle;seen[k]=true;}
+            return rose;
+        }
+        public static V3 Position(int bed)=>new V3(bed/2==0?-8:8,.1f,bed%2==0?-5:5);
     }
 
     // renderer.ts:136/:149 with event-vfx.ts:29: a fresh impact, break, hit (not burn/poison), debrisHit, parry, blockHit,
@@ -178,6 +199,8 @@ namespace ChipArena.UnityConversion
             public bool TargetMe,SourceMe,TargetPilot,Ally,Pve,Supernova,Saw,Shadowed,BlinkStrike;
         }
         public const int MaxSounds=3;
+        // audio.ts: `stage-spikes-rise` plays spike-rise at the bed (NativeSpikeRises derives the event).
+        public static readonly Sound SpikeRise=new Sound{Clip="spike-rise",Gain=1,Positional=true};
         // ArenaAudio.play: a fresh rate of .97-1.03 per play, except these clips (and explicit rates).
         public static float Rate(string clip,float random01)=>clip=="hit"||clip=="ui"||clip=="countdown"||clip=="demon-step"||clip=="electric-hook"||clip=="electric-hook-hit"?1:.97f+random01*.06f;
         public static float Falloff(float distance)=>1/(1+Math.Max(0,distance-2)*.13f);
@@ -206,7 +229,9 @@ namespace ChipArena.UnityConversion
                     if(e.TargetMe)n=Add(o,n,"hurt",.6f,false,"hurt");else if(e.SourceMe&&!e.Ally)n=Add(o,n,"hit",.9f,false,"hit");break;
                 case EventKind.Impact:n=Add(o,n,e.Material=="metal"?"metal":e.Material=="wood"?"wood":"stone",.22f,true,"impact");break;
                 case EventKind.Break:n=Add(o,n,e.Material=="metal"?"metal":e.Material=="wood"?"wood":"stone",.65f,true);break;
-                case EventKind.Death:n=Add(o,n,"stone",.65f,true);n=Add(o,n,"explosion",.3f,true);break;
+                // `death` is a pilot's only: a PvE add's kill (pve-kill, horde.ts:445) and a summon's (minionDeath, chaos.ts:113)
+                // are silent, also when KillPveHorde clears the remaining adds.
+                case EventKind.Death:if(e.TargetPilot){n=Add(o,n,"stone",.65f,true);n=Add(o,n,"explosion",.3f,true);}break;
                 // BLAST_CUE is keyed by the ability fx tag; Unity's Explosion Detail is only chip/ability, so every blast and
                 // collapse takes the default layer. A block pulse's own blast is the pulse.
                 case EventKind.Explosion:if(!e.Shadowed)n=Add(o,n,"explosion",.65f,true,"explosion");break;
@@ -220,8 +245,9 @@ namespace ChipArena.UnityConversion
                     if(!string.IsNullOrEmpty(e.Detail)||Math.Abs(e.Radius-.15f)<.01f)n=Add(o,n,"lightning",.5f,true,"arc");else if(Math.Abs(e.Radius-.25f)<.01f)n=Add(o,n,"lightning",.35f,true);
                     break;
                 case EventKind.Teleport:if(e.BlinkStrike)n=Add(o,n,"lightning",.6f,true);break;
-                // The panic-button field is the source's `nova` (chaos.ts:72), which shares the arc cue.
-                case EventKind.Field:if(e.Detail=="panic-button")n=Add(o,n,"lightning",.5f,true,"arc");break;
+                // The panic-button field is the source's `nova` (chaos.ts:72), which shares the arc cue, and a Thunder Step bolt
+                // locked on a pilot comes with its `arc` (chaos.ts:100; the no-target fallback bomb has none).
+                case EventKind.Field:if(e.Detail=="panic-button"||e.Detail=="thunderstep"&&e.TargetPilot)n=Add(o,n,"lightning",.5f,true,"arc");break;
                 case EventKind.CeilingHit:n=Add(o,n,"parry",.45f,true);break;
                 case EventKind.HazardHit:if(e.Saw)n=Add(o,n,"saw-cut",1.1f,true);break;
                 case EventKind.Install:
@@ -235,6 +261,9 @@ namespace ChipArena.UnityConversion
                 case EventKind.PveRevive:if(e.TargetMe)n=Add(o,n,"go",.6f,false);break;
                 // No source cue: vacuum, freeze, critical, the chip catch, split, ricochet, pong, Leet impacts, fields,
                 // summons, heals and PvE cash. Emperor/Arcade hits and Siren moves play from NativeAudio's fighter state.
+                // Source cues with no Unity event yet (Astra): the lightning weapon's chain arc (magic-abilities.ts:82), Blink
+                // Strike's per-target arcs (:51), leet-freeze/leet-undo (darkness .6) and leet-brain (lightning .35), and the
+                // shield-throw catch (shield .45). NativeAudio derives the spike rise and the PvP draft install from state.
                 case EventKind.Vacuum:case EventKind.Freeze:case EventKind.Critical:case EventKind.Catch:case EventKind.Split:case EventKind.Ricochet:case EventKind.Pong:
                 case EventKind.Leet:case EventKind.Emperor:case EventKind.Arcade:case EventKind.Siren:case EventKind.PveMoney:case EventKind.Summon:case EventKind.Heal:case EventKind.Dodge:
                 default:break;

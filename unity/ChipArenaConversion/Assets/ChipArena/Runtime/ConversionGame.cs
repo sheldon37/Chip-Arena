@@ -117,15 +117,17 @@ namespace ChipArena.UnityConversion
                 pending.AbilityTarget=NativeArena.Vec(AimPoint(ability!=null?(float)ability.range:p.Seat.spec=="shield"?25:p.Seat.spec=="daggers"?48:60,p.Seat.spec=="shield"||p.Seat.spec=="daggers"));
             }
             // renderer.ts:136/:149 camera shake with event-vfx.ts:29 (NativeShakeRules): a fresh (.4 s) hit, impact, break, block or
-            // collapse aimed at the view pilot, never a burn/poison tick, sets .12 while Settings · camera shake is on. Every live
-            // local-view frame (the death cam too, not a spectated pilot) nudges the camera's world X by a random ±half of it, and
-            // the amount falls by the frame time (at most .05 s). Events are consumed in every frame, as the source's renderer does.
+            // collapse aimed at the view pilot, never a burn/poison tick, sets .12 while Settings · camera shake is on. The amount
+            // falls by the frame time (at most .05 s) in every frame, so a shake held back never plays late; only a live local
+            // view (not the pause menu, not a spectated pilot) is nudged on world X by a random ±half of it. Events are consumed
+            // in every frame, as the source's renderer does. The killing hit shakes the death cam only when no other connected
+            // pilot is alive: otherwise SpectatorControls has already moved the view to one in that frame.
             {
                 if(arena.Generation!=shakeGeneration){shakeGeneration=arena.Generation;shakeEvent=0;shakeAmount=0;}
                 int newest=0;foreach(var e in arena.Events)newest=Math.Max(newest,e.Id);if(newest>0&&newest<shakeEvent)shakeEvent=0;
                 foreach(var e in arena.Events)if(e.Id>shakeEvent&&prefs.cameraShake&&NativeShakeRules.Fresh(arena.Time,e.Time)&&NativeShakeRules.Triggers(e.Kind,e.Target,e.Amount,p.Seat.id))shakeAmount=NativeShakeRules.Amount;
                 shakeEvent=Math.Max(shakeEvent,newest);
-                if(shakeAmount>0&&!menu&&Spectator==null){cameraView.transform.position+=Vector3.right*NativeShakeRules.Offset(shakeAmount,UnityEngine.Random.value);shakeAmount=NativeShakeRules.Decay(shakeAmount,Time.unscaledDeltaTime);}
+                if(shakeAmount>0){if(!menu&&Spectator==null)cameraView.transform.position+=Vector3.right*NativeShakeRules.Offset(shakeAmount,UnityEngine.Random.value);shakeAmount=NativeShakeRules.Decay(shakeAmount,Time.unscaledDeltaTime);}
             }
             presentation.SoundEnabled=false;presentation.LocalId=arena.ViewPilot.Seat.id;
             float renderTime=arena.Replica?arena.ReplicaRenderTime:visualClock.Sample(match.Time,Time.timeAsDouble-Time.fixedTimeAsDouble,menu);

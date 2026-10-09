@@ -10,7 +10,7 @@ namespace ChipArena.UnityConversion
         public float Effects=.3f,Music=.35f,Menu=.6f;public bool Muted;
         private readonly Dictionary<string,AudioClip> clips=new Dictionary<string,AudioClip>();
         private readonly NativeSoundLimiter limiter=new NativeSoundLimiter();private bool[] keyedVoices;
-        private readonly NativeEventSounds.Sound[] routed=new NativeEventSounds.Sound[NativeEventSounds.MaxSounds];
+        private readonly NativeEventSounds.Sound[] routed=new NativeEventSounds.Sound[NativeEventSounds.MaxSounds];private readonly NativeSpikeRises spikeRises=new NativeSpikeRises();
         private readonly Dictionary<string,float> cues=new Dictionary<string,float>();
         private AudioSource[] voices;private AudioSource music,introVoice;private string introKey="";private readonly Dictionary<int,AudioClip> beepClips=new Dictionary<int,AudioClip>();private string track="",phase="";private int cursor,generation=-1,countdown=-1,rotation=-1;private Vector3 listener;private float yaw;
         private readonly string[] rotationTracks={"foundry-rush","orange-line","kinetic-city","afterburner","night-circuit","critical-mass","jump-drive","neon-recoil","overpass","last-set"};
@@ -54,9 +54,10 @@ namespace ChipArena.UnityConversion
         }
         public void Render(NativeArena arena,bool menu,Camera camera)
         {
-            if(camera!=null){listener=camera.transform.position;yaw=camera.transform.eulerAngles.y*Mathf.Deg2Rad;}
+            // audio.ts update: falloff and pan are heard from the local pilot (`listener=self.pos`), turned by the view yaw.
+            if(camera!=null){listener=camera.transform.position;yaw=camera.transform.eulerAngles.y*Mathf.Deg2Rad;}if(arena?.Local?.Body!=null)listener=arena.Local.Body.position;
             Slender(arena,menu);if(arena==null){Track("music/menu-afterglow",Menu);return;}
-            if(generation!=arena.Generation){generation=arena.Generation;cursor=0;deathAudio.Tick(0,true);cues.Clear();limiter.Clear();phase="";countdown=-1;foreach(var v in voices)v.Stop();}
+            if(generation!=arena.Generation){generation=arena.Generation;cursor=0;deathAudio.Tick(0,true);cues.Clear();limiter.Clear();spikeRises.Clear();phase="";countdown=-1;foreach(var v in voices)v.Stop();}
             var me=arena.Local;var match=arena.Match;float t=arena.Time;SceneCues(arena,menu);if(!menu)MarkBeeps(arena);
             if(menu)Track("music/menu-afterglow",Menu);
             else if(arena.BossSongTime>=0)Track("music/black-siren-protocol",Music*.55f,arena.Pve?.Holding==true&&arena.Pve.Cinematic!="intro",arena.BossTrack.Looped(arena.BossSongTime));
@@ -81,6 +82,12 @@ namespace ChipArena.UnityConversion
                 if(p.Death?.style=="dev-raging-demon"){float[] hits={.80f,1.02f,1.24f,1.46f,1.69f,1.94f,2.21f,2.56f};for(int i=0;i<hits.Length;i++){float at=p.Death.at+hits[i];if(t>=at&&t-at<.12f&&Once(id+"demon:"+i,at))Play(i==7?"arcade-heavy":i==3||i==5?"arcade-kick":"arcade-punch",p.Death.position,i==7?1.1f:.85f);}}
                 var f=p.Fighter;if(f?.LastHit>0&&t-f.LastHit<.15f&&Once(id+"fighter",f.LastHit))Play(f.Kind=="electric"?"electric-hook-hit":f.Kind=="tatsu"?"arcade-kick":f.Index==f.Total-1?"arcade-heavy":"arcade-punch",pos,.9f);
             }
+            // Source events Unity derives from state: stage-spikes-rise (stage-hazards.ts:21) and the PvP draft pick's `install`
+            // (simulation.ts:156, message = the chip), whose Mishima/arcade cue routes like the PvE Install.
+            int rose=spikeRises.Step(arena.MapId,match.Phase==NativePhase.Fight&&match.Time-match.FightAt>=2,match.Time);
+            for(int bed=0;rose!=0&&bed<NativeSpikeRises.Beds;bed++)if((rose&1<<bed)!=0){var s=NativeEventSounds.SpikeRise;Play(s.Clip,NativeArena.Vec(NativeSpikeRises.Position(bed)),s.Gain,s.Rate,s.Gate);}
+            if(match.Phase==NativePhase.Draft&&match.Chosen!=null&&match.Time>=match.ChosenAt&&match.Time-match.ChosenAt<.4&&Once("draft-install",(float)match.ChosenAt))
+            {int routes=NativeEventSounds.Route(new NativeEventSounds.Context{Kind=EventKind.Install,Detail=match.Chosen},routed);for(int i=0;i<routes;i++){var s=routed[i];if(s.Tone)ArcadeTone();else Play(s.Clip,null,s.Gain,s.Rate,s.Gate);}}
             int n=match.Phase==NativePhase.Countdown?(int)Math.Ceiling(match.PhaseEnd-match.Time):0;if(n>0&&n!=countdown)Play("countdown",null,.7f);countdown=n;
             string current=match.Phase.ToString();if(current!=phase){if(match.Phase==NativePhase.Fight)Play("go",null,.7f);if((match.Phase==NativePhase.Result||match.Phase==NativePhase.Match&&phase!="Result")&&(match.Winner!=0||arena.Pve?.Outcome!=null))Play(arena.Pve!=null?arena.Pve.Outcome=="victory"?"win":"lose":match.SameSide(me?.Seat,match.Seat(match.Winner))?"win":"lose",null,.65f);phase=current;}
             // audio.ts PvE stage cues: a wave start counts in, a clear or the possession sounds "go" (my revive is its event).
@@ -92,7 +99,8 @@ namespace ChipArena.UnityConversion
             if(cues.Count>1024)cues.Clear();
         }
         // One fresh event: resolve what the router needs from the arena (pilots, prop material, the block-pulse, teleport and
-        // Blink Strike pairings, the saw) and play its cues. Death keeps the DEV kill clips on top of the source's cue.
+        // Blink Strike pairings, the saw) and play its cues. A pilot's death keeps the DEV kill clips on top of the source's
+        // cue, at rate 1 like audio.ts updateLove (its beats are timed to the clip).
         private void EventSounds(NativeArena arena,List<ArenaEvent> events,int index,NativePilot me)
         {
             var e=events[index];NativePilot source=null,target=null;foreach(var p in arena.Pilots){if(p.Seat.id==e.Source)source=p;if(p.Seat.id==e.Target)target=p;}
@@ -106,7 +114,7 @@ namespace ChipArena.UnityConversion
                 BlinkStrike=e.Kind==EventKind.Teleport&&NativeEventFeedback.BlinkStrike(events,index)};
             Vector3 pos=NativeArena.Vec(e.Position);int n=NativeEventSounds.Route(context,routed);
             for(int i=0;i<n;i++){var s=routed[i];if(s.Tone)ArcadeTone();else Play(s.Clip,s.Positional?pos:(Vector3?)null,s.Gain,s.Rate,s.Gate);}
-            if(e.Kind==EventKind.Death){if(source?.Seat.killEffect=="dev-clown-love")Play("clown-love",pos,.8f);if(source?.Seat.killEffect=="dev-bass-van")Play("bass-van",pos,.8f);}
+            if(e.Kind==EventKind.Death&&target!=null){if(source?.Seat.killEffect=="dev-clown-love")Play("clown-love",pos,.8f,1);if(source?.Seat.killEffect=="dev-bass-van")Play("bass-van",pos,.8f,1);}
         }
     }
 }
