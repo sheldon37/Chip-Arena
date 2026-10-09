@@ -102,7 +102,7 @@ class AutoPublishTests(unittest.TestCase):
         auto.validate_delivery(self.unpack(), self.build, self.provider)
 
     def test_download_handles_manual_log_url_response(self):
-        responses = [(202, {}, b'{"url":"https://storage.googleapis.com/bucket/full.log"}'), (200, {}, b'')]
+        responses = [(202, {}, b'{"redirect_url":"https://storage.googleapis.com/bucket/full.log"}'), (200, {}, b'')]
         with patch.object(auto, 'request', side_effect=responses) as request:
             auto.download_api(auto.BASE + '/42/log?redirect=manual', self.work / 'test.log', 'Basic secret', 123)
         self.assertEqual(len(request.call_args_list[1].args), 1)

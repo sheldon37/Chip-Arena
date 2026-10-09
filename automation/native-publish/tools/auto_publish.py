@@ -114,7 +114,8 @@ def download_api(url, destination, authorization, limit):
         link = headers.get('Location')
         if not link:
             payload = json.loads(data)
-            link = payload.get('url') if isinstance(payload, dict) else payload
+            # The log endpoint calls this field redirect_url; artifacts use url.
+            link = (payload.get('url') or payload.get('redirect_url')) if isinstance(payload, dict) else payload
         status, headers, data = request(storage_url(link), limit=limit, destination=destination)
     raise ValueError('Too many download redirects')
 
