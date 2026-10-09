@@ -17,7 +17,8 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeAccount:MonoBehaviour
     {
         public string Origin{get;private set;}="";public string Token{get;private set;}="";public NativeAccess Access{get;private set;}=NativeAccess.Guest;
-        public NativeAccountData Account{get;private set;}public string RecoveryCode{get;private set;}="";public string Status{get;private set;}="Offline profile";public bool Busy{get;private set;}public Action<NativeAccountData,bool> Accepted;
+        private const string OfflineStatus="Signed out / offline";
+        public NativeAccountData Account{get;private set;}public string RecoveryCode{get;private set;}="";public string Status{get;private set;}=OfflineStatus;public bool Busy{get;private set;}public Action<NativeAccountData,bool> Accepted;
         private NativeProfile pendingProfile;private bool reloadProfile;private string session="";private bool remember;private float refreshAt;
         private string SessionPath=>Path.Combine(Application.persistentDataPath,"conversion-account.bin");
         public static string ValidateOrigin(string value)
@@ -35,7 +36,7 @@ namespace ChipArena.UnityConversion
         public void Save(NativeProfile profile){if(Account==null)return;if(Busy){pendingProfile=profile;return;}BeginRequest("profile",JsonUtility.ToJson(new NativeProfileRequest{revision=Account.revision,profile=profile}),false);}
         public void Logout(){if(session.Length==0){Clear();return;}BeginRequest("logout","{}",false);}
         private void BeginRequest(string action,string body,bool authenticating)
-        {if(Busy)return;if(Origin.Length==0){Status="Set the account service URL first.";return;}Busy=true;refreshAt=Time.unscaledTime+60;Status="Connecting…";StartCoroutine(Request(action,body,authenticating));}
+        {if(Busy)return;if(Origin.Length==0){Status=OfflineStatus;return;}Busy=true;refreshAt=Time.unscaledTime+60;Status="Connecting…";StartCoroutine(Request(action,body,authenticating));}
         private IEnumerator Request(string action,string body,bool authenticating)
         {
             using(var request=new UnityWebRequest(Origin+"/api/accounts/"+action,body==null?"GET":"POST"))
@@ -57,7 +58,7 @@ namespace ChipArena.UnityConversion
             }
         }
         private void Update(){if(Account==null||Busy)return;if(pendingProfile!=null){var profile=pendingProfile;pendingProfile=null;Save(profile);}else if(Time.unscaledTime>=refreshAt)Refresh();}
-        public void Clear(bool erase=true){pendingProfile=null;reloadProfile=false;Account=null;Token=session=RecoveryCode="";Access=NativeAccess.Guest;Status="Offline profile";if(erase)try{if(File.Exists(SessionPath))File.Delete(SessionPath);}catch(Exception e)when(e is IOException||e is UnauthorizedAccessException){Status="Signed out; saved session could not be removed.";}}
+        public void Clear(bool erase=true){pendingProfile=null;reloadProfile=false;Account=null;Token=session=RecoveryCode="";Access=NativeAccess.Guest;Status=OfflineStatus;if(erase)try{if(File.Exists(SessionPath))File.Delete(SessionPath);}catch(Exception e)when(e is IOException||e is UnauthorizedAccessException){Status="Signed out; saved session could not be removed.";}}
     }
     public static class NativeSessionVault
     {

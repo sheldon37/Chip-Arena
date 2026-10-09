@@ -16,6 +16,25 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-09 — Astra — preserve account contracts and a plain offline state
+- Task `codex/unity-account-contract`, base shared/cloud `27a7833`. Owner requires
+  the existing NativeAccount API, all NativeProfile/NativeCosmetics fields, signed
+  DEV/grant/flag behavior, existing pilots and Reload saved pilot to survive any
+  storage change. Full contract recorded in UNITY-LOGIC-HANDOFF.md.
+- Initial/signed-out/no-service status is now `Signed out / offline`. Configure
+  and service URL controls remain functional. No API, schema, signature, profile,
+  grant or Connection report changes. No credentials added to source or notes.
+- An unauthenticated check of the existing Electron account service returned
+  Cloudflare 403/1010 before credentials were sent. The requested owner DEV account
+  has NOT been created, reset or verified. Native service URL defaults empty.
+  No replacement provider decision was found in current source/handoff notes.
+- Source contract review and diff whitespace checks passed; hosted source CI is
+  requested on the draft PR. Unity runtime, live login and migration NOT RUN.
+  Next: clarify existing-service vs replacement backend target/access. Draft only,
+  not merged/released. Current released player is UBA #7 / 3686f40e / 27a7833;
+  automatic publishing is verified in main workflow 37966337783 attempt 2.
+  No gameplay, hitboxes, timing, movement or animation changes.
+
 ## 2026-10-09 — Astra — UBA #6 replica projectile tag repair
 - Task `codex/unity-shot-tag-repair`, base cloud `8ebe73214dc16b7010542ca47b9da5f94af21453`. Uploaded UBA #6 confirms that exact source, successful C# compilation and `NATIVE_COLOR_SPACE: Linear`. PreExport then stops at NativeNetworkBuildChecks:44, "Late reflected hadouken took the current owner's appearance". No shader error is reported; remaining Editor gates, final player shader compilation and delivery are not accepted.
 - The preceding payload assertions passed (Hadoken, original owner, Arcade Red mods, burn and poison), and the tracker is fresh. The appearance builder's Siren-tag early return is therefore the failure path: an absent optional string arrives as empty through JsonUtility and the non-null check misclassifies the ordinary shot. Normalize empty SirenKind/LeetKind to null at ApplyFrame; keep nonempty values. This corrects guest/replay projectile identity without changing authority combat, timing, hitboxes, damage, cooldowns or movement.

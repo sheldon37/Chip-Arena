@@ -1,5 +1,42 @@
 # Unity logic handoff — PR #66
 
+## 2026-10-09 — account/profile compatibility contract (owner request)
+
+Task `codex/unity-account-contract`, based on shared/cloud `27a7833`. The existing
+account service and storage remain in use; no replacement provider was specified
+or deployed, and no account database migration has run.
+
+- Preserve NativeAccount `Account`, `Access` (including `Developer`), `Status`,
+  `Busy`, `Token`, `RecoveryCode`, `Accepted`; calls `Login(action,user,pass,recovery,save)`,
+  `Logout`, `Save(profile)`, `ReloadSavedProfile`, `Refresh`, `Configure(origin)`.
+  Configure remains functional, including its optional loadRemembered argument;
+  the Account/Settings service URL controls remain valid. It is not a no-op.
+- No configured service shows exactly **Signed out / offline**, including an
+  attempted sign-in while offline. No network request starts and Busy stays false.
+  Actual configured-service errors remain distinguishable from offline mode.
+- Keep all profile fields: `name`, `class`, `color`; all cosmetics:
+  `lobbyPose`, `preferredSpec`, `intro`, `introText`, `bodyColor`, `hat`,
+  `killEffect`, `overrideWeaponIntro`. Existing local preferences, account profiles,
+  queued saves, account-scoped pending effects and Reload saved pilot are unchanged.
+  A future backend migration must preserve account IDs, profile/grant revisions,
+  developer/unlocks/flags and the existing profile values, and must not treat a
+  missing server profile as permission to overwrite an existing local pilot.
+- Continue signed access for DEV class/weapons, DEV menu, sandbox, Catalogue,
+  playtester flags and granted cosmetics. Do not derive DEV rights from a local
+  username or add a client-side bypass. Preserve Account.flags/unlocks and signed
+  claim data when migrating. Any new issuer requires compatible signature handling
+  and an explicit migration plan, not dropping fields or flags.
+- No supplied passwords, session/token values or recovery codes were written to
+  source, docs, fixtures, or Connection report. The owner requested restoring the
+  Sheldon DEV account, but it is **not restored or reset by this patch**. An
+  unauthenticated read-only check of the existing configured Electron service
+  returned Cloudflare 403 / 1010 before credentials were sent. Do not route around
+  that access block. Confirm which service/storage target to use before migration.
+- Implemented on task branch only. This patch changes status text, no account API,
+  database, menu layout, profile schema, grants, gameplay or animation behavior.
+  Unity runtime/Windows sign-in and actual migration remain unverified.
+
+
 2026-10-08, Codex/Astra. Branch `codex/unity-parity-logic-current`, PR [#66](https://github.com/sheldon37/Chip-Arena/pull/66) into `claude/sleepy-ritchie-g8ruhv` (#62). Requested baseline `b828acb`; earlier logic checkpoints `718cd4f`, `d80d974`, `c9888fc`. PR #65 had conflicts after Claude advanced; replacement PR #66 starts directly at `4207641` and carries the identical reviewed tree in `9921c78`, without a merge or force push. Claude presentation changes through `4207641` are preserved. Implemented on the branch only: nothing merged or released.
 
 Read the status prefix on each A1–A31 entry in `UNITY-PARITY-GAPS.md`. Original findings remain below those prefixes as evidence. Do not infer acceptance from “0 pending” catalogue entries.
@@ -47,3 +84,4 @@ Actual: managed CoreTests and real UDP/TCP; check_relay.py with real WebSocket; 
 `NativeNetworkBuildChecks` invokes real JsonUtility and isolated PhysX regressions, including `ValidateParityCombat` and `ValidateFollowupParity`; **they have not run here**. The Windows launcher fixture is not a Unity player build: no rendered test, live sign-in, WAN test, headless Unity or real native update is claimed. `cmd.exe /c Build-Windows.cmd` was attempted and exited 127 because cmd.exe is unavailable; no Unity Editor/license is present. Run the exact PR head with Build-Windows.cmd and retain build.log and the `UNITY_TEST_BUILD_READY` line, then test two-client host/join/ready/reconnect, four-player Ward Zero, deaths/replay, end votes, account grants, duplicate launch/fullscreen, update startup/rollback and four resolutions.
 
 Open decisions: A7 endpoints/hosting (1–2), A8 internet invites (1–2), A13 native feed/release (4), A18 specialization (5), A24 Siren intro duration (7), A25 dedicated topology (9), A26 migration/cutover (3), and A22 visual-test scope (8). A12 remains the environment/acceptance gate. No live feed, Site, shared branch or signing secrets were changed. Owner retains merges and publication.
+
