@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
         private float WeaponReach(CapturedAnimation.Player rig,Actor a,float time)
         {
             if(Viewer||rig==introRig||!NativeWeaponDressing.Melee(a.SourceSpec))return 1;var stats=LoadoutPilot(a.Id)?.Stats;
-            return NativeWeaponDressing.ReachScale(a.SourceSpec,stats!=null?(float)stats["reach"]:1,a.StunUntil>time||a.JuggleUntil>time||a.Rolling(time)||NativeSpecialPose.Down(a,time));
+            return NativeWeaponDressing.ReachScale(a.SourceSpec,stats!=null?(float)stats["reach"]:1,a.StunUntil>time||NativeJugglePose.Active(a.JuggleUntil,time)||a.Rolling(time)||NativeSpecialPose.Down(a,time));
         }
         // Before a rig is posed: the captured-melee layers measure the same stretched blade tip, blade end, pommel and support
         // grip the renderer draws (the source scales r.weapon before meleeMotion and the floor guard read its sockets).

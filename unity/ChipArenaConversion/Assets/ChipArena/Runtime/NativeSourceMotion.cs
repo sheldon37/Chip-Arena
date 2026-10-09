@@ -29,13 +29,27 @@ namespace ChipArena.UnityConversion
         }
         public static void Pilot(CapturedRig.Pose pose,Actor a,float time)
         {
-            if(a.SourceSpec!="emperor"&&a.SourceSpec!="ansatsuken"&&a.SourceSpec!="siren")return;
-            string key=a.SourceSpec+"-idle",action=a.SourceAction;float at=a.SourceAt,duration=a.SourceUntil-at;
-            if(a.SourceSpec=="siren")key="siren-"+(action=="grab"?"grab":!string.IsNullOrEmpty(action)?action+"-"+a.SourceSide:"idle-"+(a.SourceRanged?"ranged":"melee"));
-            else if(a.SourceSpec=="ansatsuken"&&a.Rolling(time)){key="ansatsuken-step";at=a.RollAt;duration=.3f;}
-            else if(time<a.BlockUntil){key=a.SourceSpec+"-block";at=a.BlockAt;duration=a.BlockUntil-a.BlockAt;}
-            else if(!string.IsNullOrEmpty(action)){key=a.SourceSpec+"-"+action+"-"+(action=="charge"||action=="wave"||action=="hadoken"||action=="shinku"||action=="electric"?1:a.SourceTotal)+"-"+(action=="jab"||action=="combo"?a.SourceIndex:0);if(action=="charge")duration=1.4f;}
-            if(!string.IsNullOrEmpty(action)||time<a.BlockUntil||a.Rolling(time)||a.SourceSpec=="siren"||a.Velocity.Length<.3f)Sample(key,key.Contains("idle")?time:time-at,duration,pose);
+            if(a.SourceSpec=="siren")
+            {
+                string action=a.SourceAction,key="siren-"+(action=="grab"?"grab":!string.IsNullOrEmpty(action)?action+"-"+a.SourceSide:"idle-"+(a.SourceRanged?"ranged":"melee"));
+                Sample(key,key.Contains("idle")?time:time-a.SourceAt,a.SourceUntil-a.SourceAt,pose);return;
+            }
+            Fighter(pose,a,time,false,out _);
+        }
+        /// <summary>
+        /// Samples the DEV fighting style's own clip for this frame (NativeFighterPose.Clip: Demon Step, block, the action while
+        /// it lasts, else the guard idle, also while travelling) into `pose`. False, with nothing written, for other specs and for
+        /// the Emperor's dodge roll, which keeps the roll pose. `stunned` keeps the guard under a hit reaction.
+        /// </summary>
+        public static bool Fighter(CapturedRig.Pose pose,Actor a,float time,bool stunned,out string key)
+        {
+            key=null;if(!NativeFighterPose.Handles(a.SourceSpec))return false;
+            bool roll=a.Rolling(time),block=!stunned&&time<a.BlockUntil,acting=!stunned&&NativeFighterPose.Acting(a.SourceAction,a.SourceUntil,time);
+            key=NativeFighterPose.Clip(a.SourceSpec,acting?a.SourceAction:null,a.SourceTotal,a.SourceIndex,roll,block);if(key==null)return false;
+            float at,duration;
+            if(roll){at=a.RollAt;duration=.3f;}else if(block){at=a.BlockAt;duration=a.BlockUntil-a.BlockAt;}
+            else if(acting){at=a.SourceAt;duration=a.SourceAction=="charge"?1.4f:a.SourceUntil-a.SourceAt;}else{at=0;duration=0;}
+            return Sample(key,time-at,duration,pose);
         }
     }
 }

@@ -13,7 +13,7 @@ namespace ChipArena.UnityConversion
         public bool Commit,Followup;public float CommitAt,CommitUntil,CommitYaw,StepAt,StepUntil,StepDistance;
         public float BlockTime,LastBlock=float.NaN,HitStunUntil,RollAt=-100,RollUntil=-100,ActionAt=-100,ActionUntil=-100;public string ActionKind;
         public bool Reaction,Parry;public float ReactionAt,ReactionUntil,ReactionYaw,ReactionTurn,ReactionStrength;public Vector3 ReactionDir,ReactionPoint;public int ReactionZone;
-        public bool Down;public string DownPhase;
+        public bool Down,Juggle;public string DownPhase;
         // The held weapons' length scale along +z: PlayerView.reach / WEAPONS[spec].range (stats.reach), 1 when absent.
         public float Reach=1;
         public bool Rolling(float t)=>RollAt>-90&&t>=RollAt&&t<RollUntil;
@@ -380,7 +380,7 @@ namespace ChipArena.UnityConversion
         private static string TransitionAction(MeleeView p,float time,out int index,out string phase)
         {
             var a=AttackPose(p,time);float rate=p.AttackRate>0?p.AttackRate:1,duration=a.Windup+a.Window+Recovery(p.Spec)/rate;index=0;phase=null;
-            if(p.Down){phase=p.DownPhase??"";return "down";}
+            if(p.Juggle)return "juggle";if(p.Down){phase=p.DownPhase??"";return "down";}
             if(p.HitStunUntil>time)return "flinch";if(p.Rolling(time))return "roll";if(p.Guarding||p.BlockTime>0)return "block";if(p.Action(time))return p.ActionKind;
             if(time-p.LastAttack<duration&&!p.RollCancelled(time)){index=p.AttackIndex;return "attack";}
             return "base";
@@ -449,9 +449,9 @@ namespace ChipArena.UnityConversion
             var vel=planted?new Vector3(0,p.Vel.Y,0):p.Vel;var shown=p;if(planted){shown=p.Clone();shown.Vel=vel;}
             gait.Locomotion(r,shown,time,dt,planted);SprintLean(p,dt);
             var a=AttackPose(p,time);
-            // Source order (sampleCharacter): knockdown, hitstun, roll, then block, special, cut or guard; the light hit
-            // reaction rides the last three. Native layers pose knockdowns, rolls and specials over the captured guard.
-            if(p.Down){Ready(set,p,time,MeleeReady(p,time));overlay?.Invoke(r);r.MocapPosed=false;}
+            // Source order (sampleCharacter): juggle, knockdown, hitstun, roll, then block, special, cut or guard; the light hit
+            // reaction rides the last three. Native layers pose juggles, knockdowns, rolls and specials over the captured guard.
+            if(p.Juggle||p.Down){Ready(set,p,time,MeleeReady(p,time));overlay?.Invoke(r);r.MocapPosed=false;}
             else if(p.HitStunUntil>time)
             {
                 Stagger(set,p,time,MeleeReady(p,time));State="hit reaction";
@@ -473,16 +473,31 @@ namespace ChipArena.UnityConversion
                 }
                 var light=ReactionOf(p);if(light!=null)React(p,light,time,false);
             }
-            gait.GroundPass(r,p,time,dt,p.Hp<=0||p.Down||p.Rolling(time));
+            gait.GroundPass(r,p,time,dt,p.Hp<=0||p.Juggle||p.Down||p.Rolling(time));
             FinishPose(p,time);
             FloorGuard(set,p,time);
             CaptureTo(trLast);
+        }
+        // ---- the DEV fighting styles (Core/NativeFighterPose): the same gait, then the caller's style layer, then FighterFinish ----
+        public void FighterBase(MeleeView p,float time,float dt)
+        {
+            var r=Rig;r.Reset();r.LegsAuthored=r.LegsLayered=r.MocapPosed=false;r.WeaponVisible=!p.WeaponAway;r.WeaponReach=1;
+            bool planted=p.Committed(time)||p.HitStunUntil>time||p.Rolling(time);
+            if(planted)r.Motion*=(float)Math.Exp(-MeleeMath.Clamp(dt,0,.05f)*22);
+            var vel=p.Vel;if(planted)p.Vel=new Vector3(0,vel.Y,0);gait.Locomotion(r,p,time,dt,planted);p.Vel=vel;SprintLean(p,dt);
+        }
+        // The hit stun's reaction (or flinch) and otherwise the light reaction over the style, then the ground pass.
+        public void FighterFinish(MeleeView p,float time,float dt)
+        {
+            if(!p.Juggle&&!p.Down&&p.HitStunUntil>time){var h=ReactionOf(p);if(h==null||!React(p,h,time,true))FallbackFlinch(p,time);}
+            else if(!p.Juggle&&!p.Down&&!p.Rolling(time)){var light=ReactionOf(p);if(light!=null)React(p,light,time,false);}
+            gait.GroundPass(Rig,p,time,dt,p.Hp<=0||p.Juggle||p.Down||p.Rolling(time));
         }
         // Forward sprint lean under the carries (melee-guard sprintLean): read by the gait's spine before the captures pose it.
         private float sprintBlend;
         private void SprintLean(MeleeView p,float dt)
         {
-            float k=p.Spec=="sword"?.1f:p.Spec=="daggers"?.12f:p.Spec=="shield"?.08f:.14f,run=MeleeMath.Ease((Rig.Motion-.1f)/.65f);
+            float k=p.Spec=="sword"?.1f:p.Spec=="daggers"?.12f:p.Spec=="shield"?.08f:p.Spec=="greatsword"?.14f:0,run=MeleeMath.Ease((Rig.Motion-.1f)/.65f);
             sprintBlend+=((p.Sprinting?1:0)-sprintBlend)*(1-(float)Math.Exp(-Math.Min(.05f,Math.Max(0,dt))*10));
             Rig.AddE(CapturedRig.Spine,k*run,0,0);if(sprintBlend>1e-4f)Rig.AddE(CapturedRig.Spine,.12f*sprintBlend*run,0,0);
         }

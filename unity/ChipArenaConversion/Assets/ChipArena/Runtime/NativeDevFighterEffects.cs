@@ -33,7 +33,8 @@ namespace ChipArena.UnityConversion
     {
         private sealed class FighterTrack
         {
-            public float ElectricAt=-100,ElectricKey=float.NaN,PunchAt=-100,PrevPunchAt=-100,JuggleUntil,JuggleHitAt=-100;public bool PunchElectric,PrevPunchElectric;public int JuggleHits,Frame;
+            public float ElectricAt=-100,ElectricKey=float.NaN,PunchAt=-100,PrevPunchAt=-100,ElectricPunchAt=-100;public bool PunchElectric,PrevPunchElectric;public int Frame;
+            public readonly NativeJuggleTrack Juggle=new NativeJuggleTrack();
             /// <summary>Whether the punch landing at t (Actor.LastAttack, stamped on every strike) was the Electric Hook's.</summary>
             public bool ElectricBy(float t)=>Mathf.Abs(t-PunchAt)<.03f?PunchElectric:Mathf.Abs(t-PrevPunchAt)<.03f&&PrevPunchElectric;
         }
@@ -70,20 +71,20 @@ namespace ChipArena.UnityConversion
         private Vector3 BodyCentre(NativeArena arena,NativePilot p)
         {bool own=FirstPerson&&arena.ViewPilot==p;return !own&&rigs.TryGetValue(p.Seat.id,out var rig)?rig.Root.transform.position:p.Body.position;}
         // Per pilot: the Electric Hook's start (electricAt), the last two punches (Actor.LastAttack moves on every strike, with
-        // SourceAction naming the action), and juggle hits seen as JuggleUntil moving (each hit sets it to the hit + 1.25 s, a
-        // bound or wall splat + .85 s).
+        // SourceAction naming the action) and the last Electric Hook strike, and the juggle (NativeJuggleTrack: JuggleUntil moves
+        // to the hit + 1.25 s, a bound or wall splat + .85 s).
         private void FighterTracks(NativeArena arena,float now)
         {
             foreach(var p in arena.Pilots)
             {
-                var a=p.Pose;if(a==null)continue;int seat=p.Seat.id;if(!fighterTracks.TryGetValue(seat,out var t)){t=new FighterTrack{JuggleUntil=a.JuggleUntil};fighterTracks.Add(seat,t);}t.Frame=devFrame;
+                var a=p.Pose;if(a==null)continue;int seat=p.Seat.id;if(!fighterTracks.TryGetValue(seat,out var t)){t=new FighterTrack();fighterTracks.Add(seat,t);}t.Frame=devFrame;
                 string action=string.IsNullOrEmpty(a.SourceAction)?null:a.SourceAction;
                 if(a.SourceSpec=="emperor")
                 {
-                    if(action=="electric"&&a.SourceAt!=t.ElectricKey){t.ElectricKey=a.SourceAt;t.ElectricAt=a.SourceAt;}
-                    if(a.LastAttack!=t.PunchAt){t.PrevPunchAt=t.PunchAt;t.PrevPunchElectric=t.PunchElectric;t.PunchAt=a.LastAttack;t.PunchElectric=action=="electric";}
+                    if(NativeEmperorTriggers.Fist(a.SourceSpec,action)&&a.SourceAt!=t.ElectricKey){t.ElectricKey=a.SourceAt;t.ElectricAt=a.SourceAt;}
+                    if(a.LastAttack!=t.PunchAt){t.PrevPunchAt=t.PunchAt;t.PrevPunchElectric=t.PunchElectric;t.PunchAt=a.LastAttack;t.PunchElectric=action=="electric";if(t.PunchElectric)t.ElectricPunchAt=a.LastAttack;}
                 }
-                if(a.JuggleUntil>t.JuggleUntil+.001f){t.JuggleHits++;t.JuggleHitAt=a.JuggleUntil-(a.JuggleUntil-now>1.05f?1.25f:.85f);}t.JuggleUntil=a.JuggleUntil;
+                t.Juggle.Observe(a.JuggleUntil,now);
             }
             devStale.Clear();foreach(var pair in fighterTracks)if(pair.Value.Frame!=devFrame)devStale.Add(pair.Key);foreach(int seat in devStale)fighterTracks.Remove(seat);
         }
@@ -97,22 +98,18 @@ namespace ChipArena.UnityConversion
                 // matrix-effects.ts keeps its own 1.7 s window for the nuke.
                 if(e.Kind==EventKind.Explosion&&e.Detail=="leet-nuke"){if(now-e.Time<NativeLeetFx.BlastLife&&nukeBlasts.Count<8)nukeBlasts.Add(new NukeBlast{At=at,Born=e.Time});continue;}
                 if(now-e.Time>.4f||e.Kind!=EventKind.Hit&&e.Kind!=EventKind.Headshot||e.Amount<=0)continue;
-                var source=SeatPilot(arena,e.Source);if(source?.Pose?.SourceSpec!="emperor"||!fighterTracks.TryGetValue(e.Source,out var t))continue;
+                var source=SeatPilot(arena,e.Source);if(source?.Pose==null||!fighterTracks.TryGetValue(e.Source,out var t))continue;
                 // emperor.ts confirm: a punch (direct) is 1.3 for the Electric Hook, else .65, at the target + .2. Of the follow-ups
                 // (secondary), a bound or wall splat resets the juggle to + .85 s (emperor-bound 1.8), a storm-trail SHOCK has no
                 // radius (.75, at the target) and the Twin echo confirms as electric (1.3).
-                double size;float lift=.2f;
                 // The echo and storm-trail hits arrive tagged "direct" too (only bound and wall splats are direct:false), so tell
-                // them apart here: a tracked punch, else a storm trail near the target, else the Twin echo.
-                if(e.Detail=="direct")
-                {
-                    if(Mathf.Abs(e.Time-t.PunchAt)<.03f||Mathf.Abs(e.Time-t.PrevPunchAt)<.03f)size=t.ElectricBy(e.Time)?1.3:.65;
-                    else if(NearStorm(arena,e.Source,at)){size=NativeEmperorBolts.DefaultRadius;lift=0;}
-                    else size=1.3;
-                }
-                else if(e.Detail=="secondary"){size=1.8;lift=0;}
-                else continue;
-                emperorBolts.Impact(-at.x,at.y+lift,at.z,now,e.Id,size);
+                // them apart here (NativeEmperorTriggers): a tracked punch, else a storm trail near the target, else the Twin echo
+                // .13 s after an Electric Hook strike; a secondary hit only as the bound or wall splat that reset the juggle.
+                bool punch=Mathf.Abs(e.Time-t.PunchAt)<.03f||Mathf.Abs(e.Time-t.PrevPunchAt)<.03f,storm=!punch&&e.Detail=="direct"&&NearStorm(arena,e.Source,at);
+                bool splat=e.Detail=="secondary"&&Mathf.Abs((SeatPilot(arena,e.Target)?.Pose?.JuggleUntil??0)-(e.Time+.85f))<.05f;
+                double size=NativeEmperorTriggers.Impact(source.Pose.SourceSpec,e.Detail,punch,punch&&t.ElectricBy(e.Time),e.Time-t.ElectricPunchAt,storm,splat);
+                if(size<=0)continue;
+                emperorBolts.Impact(-at.x,at.y+(e.Detail=="direct"&&!storm?.2f:0),at.z,now,e.Id,size);
             }
             devEvent=Math.Max(devEvent,newest);
         }
@@ -137,8 +134,9 @@ namespace ChipArena.UnityConversion
                     bool own=FirstPerson&&arena.ViewPilot==p;Vector3 hand=!own&&rigs.TryGetValue(p.Seat.id,out var rig)?rig.Bones[CapturedRig.RHand].position:p.Body.position+Vector3.up*.4f;
                     bolts.Bolt(-hand.x,hand.y,hand.z,now,p.Seat.id,NativeEmperorBolts.FistSize);
                 }
-                // A juggle hit in the last .28 s (FighterTracks: when the replicated JuggleUntil moved).
-                if(a.JuggleUntil>0&&now-t.JuggleHitAt<NativeEmperorBolts.JuggleSeconds){Vector3 c=BodyCentre(arena,p);bolts.Bolt(-c.x,c.y,c.z,now,t.JuggleHits,NativeEmperorBolts.JuggleSize);}
+                // A juggle hit in the last .28 s (FighterTracks: when the replicated JuggleUntil moved); only Emperor confirms and the
+                // Siren's launch juggle a pilot.
+                if(NativeJugglePose.Active(a.JuggleUntil,now)&&now-t.Juggle.LastHit<NativeEmperorBolts.JuggleSeconds){Vector3 c=BodyCentre(arena,p);bolts.Bolt(-c.x,c.y,c.z,now,t.Juggle.Hits,NativeEmperorBolts.JuggleSize);}
             }
             bolts.DrawImpacts(now);
             if(q>=.5)foreach(var s in arena.StormTrails)bolts.Bolt(-s.Position.x,NativeEmperorBolts.TrailHeight,s.Position.z,now,Math.Floor(s.At*10),NativeEmperorBolts.TrailSize);

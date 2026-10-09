@@ -95,7 +95,7 @@ namespace ChipArena.UnityConversion
                     }
                 }
                 Debug.Log("PASS native first-person repeat-frame playback: magic, rocket and melee-special poses remain stable between fixed ticks.");
-                ValidateMelee(parent);
+                ValidateMelee(parent);ValidateFighters(parent);
                 Debug.Log("PASS native animation playback: "+count+" poses / "+ClipCount+" clips; position and quaternion bindings match the source conversion.");
             }
             finally { rig.Dispose(); Release(parent); }
@@ -126,6 +126,33 @@ namespace ChipArena.UnityConversion
                 if(lowTip<.085f-.01f)throw new InvalidOperationException("Captured melee blade tip went through the floor: "+lowTip.ToString("0.000"));
                 Debug.Log("PASS native captured melee: sword cut with step travel, planted lead foot drift "+(drift*1000).ToString("0.0")+" mm, ankles and blade above the floor");
             }
+        }
+        // The DEV fighting styles through the native boundary: travelling plays the style's own guard on the gait (never the
+        // sword walk or run), the Emperor's Shift keeps its dodge roll, the Ansatsuken's plays its Demon Step, and a juggled
+        // fighter is juggled, with every bone finite. Core/NativeFighterPose is checked in Tests/FighterMotionChecks.cs.
+        private void ValidateFighters(GameObject parent)
+        {
+            using(var rig=Create(parent.transform,-4))
+            {
+                float t=3;
+                foreach(var spec in new[]{"emperor","ansatsuken"})
+                {
+                    var a=new Actor{Id=spec=="emperor"?8:9,SourceSpec=spec,Weapon=WeaponId.Sword,Grounded=true,Hp=100,CastRate=1,Velocity=new V3(0,0,6.8f),RollDirection=new V3(0,0,1)};
+                    void Pose(string want,int frames)
+                    {
+                        for(int f=0;f<frames;f++,t+=1/60f)
+                        {
+                            rig.ActorPose(a,new Vector3(0,0,t*a.Velocity.z),t);
+                            foreach(var b in rig.Bones)if(float.IsNaN(b.position.x)||float.IsInfinity(b.position.y)||b.position.magnitude>1e4f)throw new InvalidOperationException(spec+" fighter pose produced a non-finite bone: "+b.name);
+                        }
+                        if(rig.State!=want)throw new InvalidOperationException(spec+" fighter shows "+rig.State+", expected "+want);
+                    }
+                    Pose(spec+"-idle",40);
+                    a.RollAt=t;Pose(spec=="emperor"?"roll (adapted)":"ansatsuken-step",8);a.RollAt=-100;Pose(spec+"-idle",30);
+                    a.JuggleUntil=t+1.25f;Pose("juggle",10);a.JuggleUntil=0;Pose(spec+"-idle",10);t+=1;
+                }
+            }
+            Debug.Log("PASS native DEV fighters: Emperor and Ansatsuken travel in their own guard on the gait, show their Shift and the juggle");
         }
         public Player Create(Transform parent,int id) => new Player(this,parent,id);
         public sealed class Player : IDisposable
@@ -185,7 +212,7 @@ namespace ChipArena.UnityConversion
             {
                 Weapon=a.Weapon;Set=Mathf.Clamp(a.VisualSet,0,3);if(melee==null)melee=new MeleeMotion();melee.Impacts=Impacts;
                 float dt=meleeTime<-90||time<meleeTime||time-meleeTime>.35f?1/60f:Mathf.Min(.1f,time-meleeTime);meleeTime=time;
-                var v=MeleeViewOf(a,time,meleeView);v.Reach=WeaponReach;bool roll=a.Rolling(time),special=NativeSpecialPose.Active(a,time),down=NativeSpecialPose.Down(a,time);
+                var v=MeleeViewOf(a,time,meleeView);v.Reach=WeaponReach;bool roll=a.Rolling(time),special=NativeSpecialPose.Active(a,time),down=NativeSpecialPose.Down(a,time),juggle=Juggled(a,time);v.Juggle=juggle;
                 float yaw=-melee.PresentedYaw(v,time,v.Yaw)*Mathf.Rad2Deg;
                 Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,roll?Quaternion.LookRotation(ArenaPresentation.Vec(a.RollDirection)):Quaternion.Euler(0,yaw,0));Root.transform.localScale=Vector3.one*a.RigScale;
                 Vector3 at=Root.transform.position;melee.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);melee.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;
@@ -195,16 +222,48 @@ namespace ChipArena.UnityConversion
                     if(roll)CapturedRig.Roll(pose,(time-a.RollAt)/a.VisualRollDuration);
                     if(special)NativeSpecialPose.Special(pose,a,time,false);
                     if(down)NativeSpecialPose.Recover(pose,a,time);
+                    if(juggle)NativeJugglePose.Apply(pose,time,juggleTrack,a.Velocity.y);
                     r.ReadPose(pose);
                 });
                 melee.Rig.WritePose(pose);WritePose();fresh=false;lastTime=time;
-                State=roll?"roll (adapted)":special?a.SpecialKind:down?"recovery "+NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time):melee.State;
+                State=juggle?"juggle":roll?"roll (adapted)":special?a.SpecialKind:down?"recovery "+NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time):melee.State;
+            }
+            // A juggle (any spec, emperor-animation.ts animateJuggle) observed from the replicated JuggleUntil.
+            private readonly NativeJuggleTrack juggleTrack=new NativeJuggleTrack();
+            private bool Juggled(Actor a,float time)=>juggleTrack.Observe(a.JuggleUntil,time)&&NativeJugglePose.Active(a.JuggleUntil,time);
+            // The DEV fighting styles (Core/NativeFighterPose) in sampleCharacter's order over the gait: a juggle, a knockdown,
+            // the Emperor's dodge roll (Shift), else the style's own clip (guard while standing or travelling, block, action,
+            // the Ansatsuken's Demon Step on Shift), with the hit stun keeping the guard under its reaction. Never the sword set.
+            private readonly CapturedRig.Pose fighterClip=new CapturedRig.Pose();
+            private void FighterPose(Actor a,Vector3 position,float time)
+            {
+                Weapon=a.Weapon;Set=0;if(melee==null)melee=new MeleeMotion();melee.Impacts=Impacts;
+                float dt=meleeTime<-90||time<meleeTime||time-meleeTime>.35f?1/60f:Mathf.Min(.1f,time-meleeTime);meleeTime=time;
+                bool emperor=a.SourceSpec=="emperor",juggle=Juggled(a,time),down=!juggle&&NativeSpecialPose.Down(a,time),stun=!juggle&&!down&&a.StunUntil>time;
+                bool dodge=emperor&&a.Rolling(time)&&!juggle&&!down&&!stun;
+                var v=MeleeViewOf(a,time,meleeView);v.Reach=1;v.Juggle=juggle;v.Down=down;v.HitStunUntil=stun?a.StunUntil:0;
+                // Only the Emperor's Shift is a dodge roll (souls-combat.ts usesRoll); the Demon Step is the Ansatsuken's own layer.
+                if(!dodge){v.RollAt=v.RollUntil=-100;}
+                float yaw=-melee.PresentedYaw(v,time,v.Yaw)*Mathf.Rad2Deg;
+                Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,dodge?Quaternion.LookRotation(ArenaPresentation.Vec(a.RollDirection)):Quaternion.Euler(0,yaw,0));Root.transform.localScale=Vector3.one*a.RigScale;
+                Vector3 at=Root.transform.position;melee.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);melee.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;
+                melee.FighterBase(v,time,dt);var r=melee.Rig;
+                if(juggle){r.WritePose(pose);NativeJugglePose.Apply(pose,time,juggleTrack,a.Velocity.y);r.ReadPose(pose);State="juggle";}
+                else if(down){r.WritePose(pose);NativeSpecialPose.Recover(pose,a,time);r.ReadPose(pose);State="recovery";}
+                else if(dodge){r.WritePose(pose);CapturedRig.Roll(pose,(time-a.RollAt)/a.VisualRollDuration);r.ReadPose(pose);State="roll (adapted)";}
+                else if(NativeSourceMotion.Fighter(fighterClip,a,time,stun,out string key))
+                {
+                    bool acting=!stun&&(NativeFighterPose.Acting(a.SourceAction,a.SourceUntil,time)||a.Rolling(time)),blocking=!stun&&time<a.BlockUntil;
+                    NativeFighterPose.Layer(r,fighterClip,emperor,a.Grounded,a.SourceAction=="wave",acting,blocking);State=stun?"hit reaction":key;
+                }
+                melee.FighterFinish(v,time,dt);
+                r.WritePose(pose);WritePose();fresh=false;lastTime=time;
             }
             // The native actor in the source frame (+x the rig's left, radians), as the source's PlayerView.
             private static MeleeView MeleeViewOf(Actor a,float time,MeleeView v)
             {
                 const float D=Mathf.Deg2Rad;
-                v.Id=a.Id.ToString();v.Spec=a.SourceSpec;v.Yaw=-a.Yaw*D;v.Pitch=a.Pitch*D;v.Vel=new NVector(-a.Velocity.x,a.Velocity.y,a.Velocity.z);v.Grounded=a.Grounded;v.Hp=a.Hp;v.Sprinting=a.Sprinting;
+                if(!(int.TryParse(v.Id,out int seen)&&seen==a.Id))v.Id=a.Id.ToString();v.Spec=a.SourceSpec;v.Yaw=-a.Yaw*D;v.Pitch=a.Pitch*D;v.Vel=new NVector(-a.Velocity.x,a.Velocity.y,a.Velocity.z);v.Grounded=a.Grounded;v.Hp=a.Hp;v.Sprinting=a.Sprinting;
                 v.LastAttack=a.AttackAt;v.Windup=a.VisualWindup;v.AttackRate=a.CastRate>0?a.CastRate:1;v.AttackIndex=a.Combo+1;
                 v.SwingAt=a.SwingAt>-90?a.SwingAt:float.NaN;v.SwingUntil=a.SwingAt>-90?a.SwingUntil:float.NaN;
                 v.Commit=a.CommitAt>-90;v.CommitAt=a.CommitAt;v.CommitUntil=a.CommitUntil;v.CommitYaw=-a.CommitYaw*D;v.StepAt=a.StepAt;v.StepUntil=a.StepUntil;v.StepDistance=a.StepDistance;v.Followup=a.Followup;v.Hurricane=a.Hurricane;
@@ -219,14 +278,15 @@ namespace ChipArena.UnityConversion
             public void ActorPose(Actor a,Vector3 position,float time,bool firstPerson=false)
             {
                 if(!firstPerson&&CapturedMelee(a)){MeleePose(a,position,time);return;}
+                if(!firstPerson&&a.MagicVisual==0&&NativeFighterPose.Handles(a.SourceSpec)){FighterPose(a,position,time);return;}
                 Weapon=a.Weapon; int set=Mathf.Clamp(a.VisualSet,0,3);
                 float dt=Mathf.Clamp(time-lastTime,0,.1f); bool reset=fresh||time<lastTime||time-lastTime>.35f;
                 if(reset) phase=0; lastTime=time;
                 Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,Quaternion.Euler(0,a.Yaw,0));Root.transform.localScale=Vector3.one*a.RigScale;
                 float speed=new Vector2(a.Velocity.x,a.Velocity.z).magnitude;
                 bool attack=a.MagicVisual==0&&a.Attacking(time),roll=a.Rolling(time),stun=a.StunUntil>time,ground=a.Grounded;
-                bool special=NativeSpecialPose.Active(a,time),down=NativeSpecialPose.Down(a,time);
-                bool moving=speed>.08f&&!attack&&!roll&&!stun&&!special&&!down&&ground;
+                bool special=NativeSpecialPose.Active(a,time),down=NativeSpecialPose.Down(a,time),juggle=!firstPerson&&Juggled(a,time);
+                bool moving=speed>.08f&&!attack&&!roll&&!stun&&!special&&!down&&!juggle&&ground;
                 if(moving) phase+=dt*Mathf.Min(3.7f,speed/Mathf.Min(2.1f,.62f+.22f*speed));
                 Sample(set,"idle",time);
                 if(moving)
@@ -303,7 +363,8 @@ namespace ChipArena.UnityConversion
                 NativeSourceMotion.Pilot(pose,a,time);
                 if(special){NativeSpecialPose.Special(pose,a,time,firstPerson);State=a.SpecialKind;}
                 if(down){NativeSpecialPose.Recover(pose,a,time);State="recovery "+NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time);}
-                if(a.Weapon==WeaponId.Sword&&a.MagicVisual==0&&ground&&!roll&&!special&&!down) CapturedRig.BladeFloor(pose,false,1.28f);
+                if(juggle){NativeJugglePose.Apply(pose,time,juggleTrack,a.Velocity.y);State="juggle";}
+                if(a.Weapon==WeaponId.Sword&&a.MagicVisual==0&&ground&&!roll&&!special&&!down&&!juggle) CapturedRig.BladeFloor(pose,false,1.28f);
                 if(firstPerson)NativeFirstPersonPose.SettleTorso(pose);
                 WritePose(); fresh=false;
             }
