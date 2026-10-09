@@ -177,7 +177,8 @@ namespace ChipArena.UnityConversion
                     LastHitUntil=Time.unscaledTime+.25f;LastHitDamage=e.Amount;LastHeadshot=e.Kind==EventKind.Headshot;
                     if(SoundEnabled) localAudio.PlayOneShot(hitSound,.45f);
                 }
-                if(e.Kind==EventKind.Dodge) continue;
+                // Only the kinds this burst was written for; PR #66's blasts, fields, ticks, procs and PvE kinds are not hits.
+                if(!NativeEventFeedback.HitBurst(e.Kind)) continue;
                 Burst(Vec(e.Position), e.Kind==EventKind.Block?new Color(.3f,.9f,1):e.Kind==EventKind.Death?new Color(1,.2f,.35f):new Color(1,.7f,.3f),e.Kind==EventKind.Death?24:12);
                 if(DebrisEnabled&&(e.Kind==EventKind.Break||e.Kind==EventKind.Death)) Debris(Vec(e.Position)+Vector3.up*.3f,e.Kind==EventKind.Death?materials[2]:materials[3]);
             }

@@ -8,21 +8,20 @@ namespace ChipArena.UnityConversion
     public sealed partial class ConversionGame
     {
         private sealed class HealthLag {public float Value,Last,Time=-100,Hold;}
-        // combat-numbers.ts CombatNumberTrack: each health event once; a target's hits within .16 s share one number, in one
-        // of three lanes; numbers live 1.15 s (at most 64).
-        private sealed class CombatNumber {public int Id,Target,Lane;public float Amount,At;public Vector3 Position;}
-        private readonly List<CombatNumber> combatNumbers=new List<CombatNumber>();private int combatEvent,combatGeneration=-1;private float combatTime=-1;
-        private List<CombatNumber> CombatNumbers()
+        // combat-numbers.ts CombatNumberTrack (NativeCombatNumbers): every hit (burn/poison ticks included) and heal once; a
+        // target's numbers of one kind within .16 s share one, in one of three lanes; numbers live 1.15 s (at most 64).
+        private readonly NativeCombatNumbers combatTrack=new NativeCombatNumbers();private NativeCombatNumbers.Anchor combatAnchor;
+        private bool CombatAnchor(int id,out V3 at)
+        {foreach(var p in arena.Pilots)if(p.Seat.id==id){at=NativeArena.Vec(p.Body.transform.position);return true;}at=default;return false;}
+        private List<NativeCombatNumbers.Number> CombatNumbers()
+        {combatAnchor??=CombatAnchor;return combatTrack.Update(arena.Events,arena.Time,arena.Generation,arena.ViewPilot?.Seat.id??0,arena.Pve!=null,combatAnchor);}
+        // One number centred on `c`: .combat-number translate(-50%,-50%) scale(1 + max(0, .16 - age) x 1.5), fading out over
+        // its last .48 s; damage red, heals green, each with its drop shadow and dark outline.
+        private static void CombatNumberText(NativeCombatNumbers.Number n,Vector2 c,float size,float age)
         {
-            if(arena.Time<combatTime||combatGeneration!=arena.Generation){combatNumbers.Clear();combatEvent=0;}combatGeneration=arena.Generation;combatTime=arena.Time;
-            foreach(var e in arena.Events)
-            {
-                if(e.Id<=combatEvent)continue;combatEvent=e.Id;if(e.Kind!=EventKind.Hit&&e.Kind!=EventKind.Headshot||e.Target<=0||!(e.Amount>0)||arena.Time-e.Time>1.15f)continue;
-                var pilot=arena.Pilots.Find(p=>p.Seat.id==e.Target);if(pilot==null&&!(arena.Pve!=null&&e.Source==arena.LocalId))continue;
-                var old=combatNumbers.LastOrDefault(n=>n.Target==e.Target&&e.Time-n.At>=0&&e.Time-n.At<.16f);if(old!=null){old.Amount+=e.Amount;continue;}
-                combatNumbers.Add(new CombatNumber{Id=e.Id,Target=e.Target,Amount=e.Amount,At=e.Time,Lane=combatNumbers.Count(n=>n.Target==e.Target)%3,Position=pilot!=null?pilot.Body.transform.position+Vector3.up*1.15f:NativeArena.Vec(e.Position)+Vector3.up*.35f});
-            }
-            combatNumbers.RemoveAll(n=>arena.Time-n.At>=1.15f);if(combatNumbers.Count>64)combatNumbers.RemoveRange(0,combatNumbers.Count-64);return combatNumbers;
+            float alpha=NativeCombatNumbers.Alpha(age);U.Push(c,Vector2.zero,NativeCombatNumbers.Scale(age));
+            NativeUi.Text(new Rect(c.x-70,c.y-size*.6f,140,size*1.2f),n.Label,size,NativeUi.Hex(n.Heal?NativeCombatNumbers.HealColor:NativeCombatNumbers.DamageColor,alpha),TextAnchor.MiddleCenter,bold:true,
+                glow:NativeUi.Hex(n.Heal?NativeCombatNumbers.HealOutline:NativeCombatNumbers.DamageOutline,.9f*alpha),shadow:NativeUi.Hex(n.Heal?NativeCombatNumbers.HealShadow:NativeCombatNumbers.DamageShadow,alpha));U.Pop();
         }
         private readonly Dictionary<int,HealthLag> healthLags=new Dictionary<int,HealthLag>();private int hudGeneration=-1;
         // match-hud.css .death-announcement: top left, a dark card with an orange edge; a new line slides in over .26 s.
@@ -49,19 +48,22 @@ namespace ChipArena.UnityConversion
             }
             foreach(var p in arena.Pilots){if(!p.Seat.connected||prefs.firstPerson&&p==arena.ViewPilot||p.Seat.AuthorityBoss&&arena.Pve?.Hidden==true)continue;bool ally=p==arena.Local||match.SameSide(p.Seat,arena.Local.Seat);Health(p.Seat.id,p.Body.transform.position+Vector3.up*1.3f*(p.Seat.spec=="siren"?p.Pose.RigScale:1),p.Hp,(float)p.Stats["hp"],.72f,ally,match.Teams?(ally?"ALLY · ":"ENEMY · ")+p.Seat.name:p.Seat.name,true);}
             foreach(var m in arena.Minions)if(m.Hp<m.MaxHp)Health(m.Id,m.Body.transform.position+Vector3.up*(m.Kind=="slender"?1.52f:m.Kind=="toy"?.85f:1.2f),m.Hp,m.MaxHp,m.Kind=="toy"?.42f:.6f,m.Owner==arena.Local||match.SameSide(m.Owner.Seat,arena.Local.Seat),null,false);
-            // combat-numbers.ts FloatingCombatNumbers with lobby.css .combat-number (clamp(18px,1.65vw,25px), 850, #ffddcf with a
-            // dark outline): every pilot's damage, and in PvE the local pilot's hits on adds.
-            float numberSize=Mathf.Clamp(NativeUi.W*.0165f,18,25);
-            foreach(var n in CombatNumbers())
+            // combat-numbers.ts FloatingCombatNumbers with lobby.css:92 / match-hud.css:3 .combat-number (clamp(18px,1.65vw,25px),
+            // 850): red damage and green heals over every pilot, and in PvE the view pilot's hits on adds; shown only in the fight
+            // and result phases, the track cleared otherwise (main.ts combatNumbers.update).
+            if(match.Phase==NativePhase.Fight||match.Phase==NativePhase.Result)
             {
-                float age=Math.Max(0,arena.Time-n.At),alpha=Mathf.Min(1,(1.15f-age)/.48f),grow=1+Math.Max(0,.16f-age)*1.5f;Vector3 at;bool own=prefs.firstPerson&&n.Target==arena.ViewPilot?.Seat.id;
-                // A first-person pilot cannot see their own head: their numbers sit under the crosshair.
-                if(own)at=new Vector3(width*(.5f+(n.Lane-1)*.03f),height*(1-(.62f-age*.07f)),1);
-                else{at=cameraView.WorldToScreenPoint(n.Position+new Vector3((n.Lane-1)*.2f*age,age*.9f,0))/scale;if(at.z<=0||at.x<-width*.05f||at.x>width*1.05f||at.y<-height*.05f||at.y>height*1.05f)continue;}
-                string label="−"+(n.Amount>=1?Mathf.RoundToInt(n.Amount).ToString():n.Amount.ToString(n.Amount<.1f?"0.00":"0.0",System.Globalization.CultureInfo.InvariantCulture));
-                var c=new Vector2(at.x,height-at.y);U.Push(c,Vector2.zero,grow);
-                NativeUi.Text(new Rect(c.x-70,c.y-numberSize*.6f,140,numberSize*1.2f),label,numberSize,NativeUi.Hex(0xffddcf,alpha),TextAnchor.MiddleCenter,bold:true,glow:NativeUi.Hex(0x1a0808,.9f*alpha),shadow:NativeUi.Hex(0x111111,alpha));U.Pop();
+                float numberSize=Mathf.Clamp(NativeUi.W*.0165f,18,25);int view=arena.ViewPilot?.Seat.id??0;
+                foreach(var n in CombatNumbers())
+                {
+                    float age=Math.Max(0,arena.Time-n.At);Vector3 at;bool own=prefs.firstPerson&&n.Target==view;
+                    // A first-person pilot cannot see their own head: their numbers sit under the crosshair.
+                    if(own)at=new Vector3(width*NativeCombatNumbers.OwnX(n.Lane),height*(1-NativeCombatNumbers.OwnY(age)),1);
+                    else{at=cameraView.WorldToScreenPoint(NativeArena.Vec(NativeCombatNumbers.World(n,age)))/scale;if(at.z<=0||at.x<-width*.05f||at.x>width*1.05f||at.y<-height*.05f||at.y>height*1.05f)continue;}
+                    CombatNumberText(n,new Vector2(at.x,height-at.y),numberSize,age);
+                }
             }
+            else combatTrack.Clear();
             GUI.color=old;
             DeathLine();
             var local=arena.Local;if(local.Controlling!=null)GUI.Label(new Rect(width/2-180,140,360,40),"CONTROLLING "+local.Controlling.Seat.name,label);else if(arena.Time<local.FrozenUntil)GUI.Label(new Rect(width/2-180,140,360,40),"ADMIN PAUSE · "+(local.FrozenUntil-arena.Time).ToString("0.0")+"s",label);
