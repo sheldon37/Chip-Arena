@@ -8,22 +8,8 @@ namespace ChipArena.UnityConversion
         {
             float time=arena.Time;
             // Chip fields and ability zones are never outlined (owner request 2026-10-04): NativeFieldPresentation draws their
-            // ground glow, cores and domes, NativeBlastPresentation their volume. The Siren's patch scorch decals and eruption
-            // warning ring/fill are drawn there too; the flames, column and rain below stay until C12 ports siren/fx.ts.
-            foreach(var f in arena.SirenFields)
-            {
-                float age=time-f.At;Vector3 at=f.Position;
-                if(f.Kind=="rain")
-                {Ring(at+Vector3.up*.025f,f.Radius,7,-age*25);Ring(at+Vector3.up*4.5f,f.Radius,10,age*16);for(int j=0;j<16;j++){float a=j*2.399f,r=f.Radius*Mathf.Sqrt((j+.5f)/16),y=4.5f*(1-Mathf.Repeat(age*.75f+j*.17f,1));Vector3 p=at+new Vector3(Mathf.Sin(a)*r,y,Mathf.Cos(a)*r);Beam(p,p+Vector3.up*.22f,.045f,7);}}
-                else if(f.Kind=="eruption")
-                {
-                    // Stand-in column from the burst (At + 1 = the damage, where the warning ring and fill end) on the field
-                    // clock of that warning; nothing during the warning itself.
-                    float since=FieldClock(arena)-f.At-(float)NativeFieldRules.EruptionWarning;if(since<0)continue;float rise=Mathf.Clamp01(since*8);
-                    for(int j=0;j<12;j++){float a=j*Mathf.PI/6;Vector3 p=at+new Vector3(Mathf.Sin(a)*f.Radius*.6f,0,Mathf.Cos(a)*f.Radius*.6f);Beam(p,p+Vector3.up*(.06f+rise*2.5f),.14f,7);}
-                }
-                else for(int j=0;j<10;j++){float a=j*2.399f,r=f.Radius*Mathf.Sqrt((j+.5f)/10),u=Mathf.Repeat(age+j*.13f,1);Add(7,Matrix4x4.TRS(at+new Vector3(Mathf.Sin(a)*r,.15f+u*.6f,Mathf.Cos(a)*r),Quaternion.Euler(0,45,0),new Vector3(.11f,.25f*(1-u)+.05f,.11f)));}
-            }
+            // ground glow, cores and domes, NativeBlastPresentation their volume. The Siren's fields are its scorch decals and
+            // eruption warnings (C9) and black flames, eruption columns and rain (C12, ArenaPresentation.DevEffects).
             foreach(var f in arena.LeetFields)
             {
                 float age=time-f.At;Vector3 at=f.Position;

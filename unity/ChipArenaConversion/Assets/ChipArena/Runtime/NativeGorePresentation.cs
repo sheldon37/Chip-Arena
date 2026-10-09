@@ -22,6 +22,8 @@ namespace ChipArena.UnityConversion
         // Each add's last ink splash (event time); goreDirections: this arena's Hit events carry their direction (Normal).
         private readonly Dictionary<int,double> goreSplash=new Dictionary<int,double>();private bool goreDirections;
         private readonly List<int> goreStale=new List<int>();
+        // C12 FlameField part of gore.ts: each stump's drip accumulator, keyed add id·16 + limb.
+        private readonly Dictionary<long,double> goreDrips=new Dictionary<long,double>();
         private readonly Matrix4x4[] goreOlive=new Matrix4x4[NativeGoreRules.ChunkMax],goreShell=new Matrix4x4[NativeGoreRules.ChunkMax],goreInk=new Matrix4x4[NativeGoreRules.DropMax];
         private Material[] goreMaterials;private NativeArena goreArena;private int goreFrame,goreEvent;private float goreTime=float.NegativeInfinity;
 
@@ -32,7 +34,7 @@ namespace ChipArena.UnityConversion
             if(goreArena!=arena){ClearWardZero();goreArena=arena;}
             // A rewind re-learns the adds without throwing; the chunks themselves are rewind-safe (gore.ts:71).
             else if(now<goreTime-.35f){goreLost.Clear();goreSeen.Clear();goreSplash.Clear();}
-            goreTime=now;goreFrame++;float quality=Mathf.Clamp01(EffectsQuality);
+            float goreDt=float.IsNegativeInfinity(goreTime)?0:Mathf.Clamp(now-goreTime,0,.05f);goreTime=now;goreFrame++;float quality=Mathf.Clamp01(EffectsQuality);
             // gore.ts:46-47 / horde-view.ts:211: a directed hit on an add, once per hit time, drops 6-10 ink drops at chest
             // height (a hit up to .5 s ahead of the presented clock waits in the pool, as chunks do). Until hits carry their
             // direction, every hit counts but an add splashes at most every .25 s (NativeGoreHits.Splash).
@@ -46,6 +48,8 @@ namespace ChipArena.UnityConversion
                 if(!NativeGoreHits.Splash(goreDirections,e.Normal,e.Time,last))continue;goreSplash[e.Target]=e.Time;
                 float ground=body.y-(crawl?.44f:.85f);
                 GoreInk(e.Time,NativeGoreRules.GibSeed(e.Time,NativeGoreRules.FnvDigits(e.Target),0x68697421u),new Vector3(body.x,ground+1.05f,body.z),NativeGoreRules.HitInk(quality),2.2f,quality);
+                // gore.ts hit: two black-flame cubes pushed along the hit direction (source frame: x mirrored).
+                NativeGoreFlames.Hit(WorldFlames(),-body.x,ground+1.05f,body.z,aimed?Math.Atan2(-e.Normal.x,e.Normal.z):0);
             }
             goreEvent=newest;
             // New LIMB bits on a living add, then on an add that died this frame (its corpse carries the final bits).
@@ -62,7 +66,18 @@ namespace ChipArena.UnityConversion
                 goreLost[d.id]=d.lost;   // the add is gone: the sweep below forgets it (unseen this frame), so a death throws once
             }
             goreStale.Clear();foreach(var pair in goreSeen)if(pair.Value!=goreFrame)goreStale.Add(pair.Key);
-            foreach(int id in goreStale){goreSeen.Remove(id);goreLost.Remove(id);}
+            foreach(int id in goreStale){goreSeen.Remove(id);goreLost.Remove(id);for(int limb=0;limb<GoreLimbBones.Length;limb++)goreDrips.Remove((long)id*16+limb);}
+            // gore.ts drip / horde-view.ts:212: black flame drips off each stump of a living add within 12 m (about 6 a second).
+            var viewer=arena.ViewPilot;
+            if(goreDt>0&&viewer!=null)foreach(var m in arena.Minions)
+            {
+                var a=m.Pve;if(a==null||a.Lost==0||m.Hp<=0||(m.Body.position-viewer.Body.position).sqrMagnitude>12*12||!minionRigs.TryGetValue(m.Id,out var rig))continue;
+                for(int limb=0;limb<GoreLimbBones.Length;limb++)
+                {
+                    if(!NativeGoreRules.RootLimb(a.Lost,limb))continue;long key=(long)m.Id*16+limb;if(!goreDrips.TryGetValue(key,out double acc))acc=NativeGoreFlames.Phase(m.Id,limb);
+                    Vector3 stump=rig.Bones[GoreLimbBones[limb]].position;goreDrips[key]=NativeGoreFlames.Drip(WorldFlames(),-stump.x,stump.y-.04f,stump.z,goreDt,quality,acc);
+                }
+            }
             goreStale.Clear();foreach(var pair in goreSplash)if(!goreSeen.ContainsKey(pair.Key))goreStale.Add(pair.Key);
             foreach(int id in goreStale)goreSplash.Remove(id);
             // gore.ts:69-76 pose the live chunks (slot colours by draw order) and the ink.
@@ -108,6 +123,8 @@ namespace ChipArena.UnityConversion
                 uint seed=NativeGoreRules.GibSeed(at,target,NativeGoreRules.LimbHash(limb));
                 goreChunks.Add(NativeGoreRules.Gib(at,seed,limb,-joint.x,joint.y,joint.z,hasFrom,-from.x,from.y,from.z));
                 GoreInk(at,seed^0x9e3779b9u,joint,NativeGoreRules.GibInk(quality),3.2f,quality);
+                // gore.ts gib: the soot spray cone along the blow and a black-flame puff at the joint.
+                NativeGoreFlames.Gib(WorldFlames(),seed,-joint.x,joint.y,joint.z,hasFrom,-from.x,from.y,from.z,quality);
             }
         }
         private void GoreInk(double at,uint seed,Vector3 position,int count,float power,float quality)
@@ -137,7 +154,7 @@ namespace ChipArena.UnityConversion
         // beacon resources (recreated on the next Ward Zero frame).
         private void ClearWardZero()
         {
-            goreChunks.Clear();goreDrops.Clear();goreLost.Clear();goreSeen.Clear();goreSplash.Clear();goreDirections=false;goreArena=null;goreEvent=0;goreTime=float.NegativeInfinity;
+            goreChunks.Clear();goreDrops.Clear();goreLost.Clear();goreSeen.Clear();goreSplash.Clear();goreDrips.Clear();goreDirections=false;goreArena=null;goreEvent=0;goreTime=float.NegativeInfinity;
             if(goreMaterials!=null){foreach(var m in goreMaterials)if(m!=null)CapturedAnimation.Release(m);goreMaterials=null;}
             ReleaseBeacons();
         }

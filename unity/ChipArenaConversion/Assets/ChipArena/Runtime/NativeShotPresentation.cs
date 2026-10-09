@@ -46,7 +46,7 @@ namespace ChipArena.UnityConversion
         private static void BulletIdentity(NativeArena arena,NativeBullet b,ref NativeShotView v,Dictionary<long,NativeShotModules> cache)
         {
             var w=Weapon(arena,b.Spec);v.Spec=b.Spec;v.Class=w?.@class;v.WeaponColor=w!=null?(int)w.color:NativeShotRules.White;
-            // Siren shots are drawn by the Siren's own effects in the source (sirenEffects.owns); they keep a placeholder (C12).
+            // Siren shots are drawn by the Siren's own effects in the source (sirenEffects.owns), here ArenaPresentation.DevEffects.
             if(b.SirenKind!=null||b.Spec=="siren"){v.Siren=true;return;}
             bool hadouken=Hadouken(arena,b);int firer=Firer(b);
             if(hadouken)v.Arcade=Count(b.Mods,"arcade-red")>0?1:2;
@@ -154,7 +154,7 @@ namespace ChipArena.UnityConversion
             // The darkness pulse and tail wobble follow the source's state.time: the match clock on the host, the
             // interpolated snapshot time (this clock) on a replica.
             scene.Begin(now,arena.Replica?now:arena.Time,dt,Math.Max(0,quality));
-            // Siren shots keep their placeholder cube (ArenaPresentation.SirenShotPlaceholders) until the Siren effects port (C12).
+            // Siren shots are the Siren effects' own orbs and flame trails (ArenaPresentation.DevEffects, C12).
             foreach(var b in arena.Bullets){NativeShotViews.Bullet(arena,b,tracker,now,out var v);if(!v.Siren)scene.Shot(v);}
             foreach(var s in arena.AbilityShots){NativeShotViews.Ability(arena,s,tracker,now,out var v);scene.Shot(v);}
             foreach(var s in arena.MeleeShots){NativeShotViews.Melee(arena,s,tracker,now,out var v);scene.Shot(v);}
@@ -230,12 +230,5 @@ namespace ChipArena.UnityConversion
         public void SourceBurst(Vector3 at,int hex,int count=8,float power=3)=>shots?.Burst(at,hex,count,power,BlastQuality);
         /// <summary>Source EventVfx.beam (renderer.beam): a 0.09 s lit streak.</summary>
         public void SourceBeam(Vector3 a,Vector3 b,int hex)=>shots?.Beam(a,b,hex,BlastQuality);
-        // The Siren's shots keep the earlier placeholder cube until client/siren/fx.ts is ported (C12); NativeShotPresentation
-        // draws every other projectile.
-        private void SirenShotPlaceholders(NativeArena arena)
-        {
-            foreach(var b in arena.Bullets)if(b.SirenKind!=null||b.Spec=="siren")
-                Add(4,Matrix4x4.TRS(b.Position,Quaternion.Euler(hazardClock*140,hazardClock*90,0),Vector3.one*Mathf.Max(.18f,b.Radius*2)));
-        }
     }
 }
