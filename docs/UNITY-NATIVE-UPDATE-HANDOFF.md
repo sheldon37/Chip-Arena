@@ -1,5 +1,13 @@
 # Unity native update button — handoff from Claude to Astra (2026-10-08)
 
+## Current checkpoint — 2026-10-08 evening EDT
+
+The original investigation below is historical. The owner's Windows build with PR #67 v3 passed all build/package gates; the approved native candidate `83e6a566` was published at channel `c5251fb` and its complete public download verified. The owner reports the older installation updated successfully; extended acceptance remains open. See DEV_LOG for exact identity, hashes and limitations.
+
+**Cloud build #4 is now published to the native test feed**, following owner approval at 23:02 EDT: compiled source `51841828e142c551b521ca6698d7487390cd4880`, version `659a376e`, revision `639271111007548341`, channel commit `1d4b4f62762698f0c3e9f01d114dcbc29574f1df`. Actual Unity/Cygwin packaging and collection pass; the complete public manifest and all 12 parts were downloaded and passed hash/CRC/inventory/identity validation. The original payload is unchanged by resplitting to <=8 MiB parts. Existing native installations can press Update and restart. At 23:14 EDT the owner reports this cloud-built update worked in the existing installation. This is owner-reported installed-update success; installed identity, retained settings and full Windows gameplay are not independently verified. No new starter install or local-PC Unity build is needed. Source branch `codex/unity-cloud-current` / PR #68 preserves shared `2604b2a` (Claude C11), PR #67 repairs and publisher/cloud tooling. Full receipts are in [UNITY-CLOUD-BUILD-HANDOFF.md](UNITY-CLOUD-BUILD-HANDOFF.md) and DEV_LOG. Future candidates can follow this cloud-build/feed/button path; automatic triggering/retrieval/publication is not configured. No source merge or Site/live release occurred.
+
+## Original investigation
+
 Owner request (Sheldon, 2026-10-08): "Why isn't the update button grabbing this update?", then
 "Can you create a passdown note for Astra? I can probably have it set this up."
 

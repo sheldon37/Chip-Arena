@@ -113,9 +113,15 @@ namespace ChipArena.UnityConversion.Editor
             var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions { scenes=new[] { ScenePath }, locationPathName=exe,
                 target=BuildTarget.StandaloneWindows64,options=BuildOptions.Development });
             if(report.summary.result!=BuildResult.Succeeded||!File.Exists(exe)) throw new Exception("Unity Windows build failed: "+report.summary.result);
+            PackageWindows(root,folder);
+        }
+
+        // Shared by the local builder and the already-exported Build Automation player.
+        internal static NativeBuildIdentity PackageWindows(string root,string folder)
+        {
             if(!File.Exists(Path.Combine(folder,"UnityPlayer.dll"))||!Directory.Exists(Path.Combine(folder,"ChipArena-Native-Conversion-TEST_Data")))
                 throw new Exception("The Windows player is incomplete: UnityPlayer.dll or its game data folder is missing.");
-            NativeUpdateBuild.Package(root,folder);string install=Path.GetDirectoryName(folder);
+            var identity=NativeUpdateBuild.Package(root,folder);string install=Path.GetDirectoryName(folder);
             File.WriteAllText(Path.Combine(install,"READ-ME.txt"),
                 "Chip Arena Native Conversion - CONVERSION CANDIDATE\r\n\r\nRun ChipArena-Native-Conversion-TEST.exe. Keep the entire folder together.\r\n"+
                 "Use the EXE in the top folder: it is the stable launcher. Keep its app subfolder together. Updates are in the game menu.\r\n"+
@@ -128,6 +134,7 @@ namespace ChipArena.UnityConversion.Editor
             string zip=Path.Combine(root,"Builds","Chip-Arena-Native-Conversion-TEST-Windows.zip");
             NativeUpdateBuild.SeedZip(install,zip);
             Debug.Log("UNITY_TEST_BUILD_READY: "+zip);
+            return identity;
         }
     }
 

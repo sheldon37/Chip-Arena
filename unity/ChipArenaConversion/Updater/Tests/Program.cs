@@ -39,6 +39,7 @@ static class Program
     }
     static void Main()
     {
+        CloudPlayerChecks.Run();
         foreach(string path in new[]{"../outside","C:/escape","a\\b","/absolute","a/../b","CON.dll","LPT1.txt","COM¹.dll","a. ","a ","a.","a//b","a:stream","dir/NUL","dir/./b"})Reject(()=>NativeUpdateRules.SafeRelativePath(path),"reject unsafe path "+path);
         Check(NativeUpdateRules.SafeRelativePath("MonoBleedingEdge/etc/mono/4.5/machine.config")!="","normal Unity path accepted");
         Check(NativeUpdateRules.IsNewer(Identity('a',1),Identity('b',2)),"new build available");

@@ -56,8 +56,18 @@ namespace ChipArena.UnityConversion
                     }
                 }
                 Setup("pistol");a.Stats["extraProjectiles"]=3;a.Stats["split"]=2;Fire(a);Check(Bullets.Count==4,"multishot volley");var parent=Bullets[0];SplitBullet(a,parent,b.Body.position,b.Collider.GetInstanceID());Check(Bullets.Count==8&&Bullets.Skip(4).All(x=>!x.Direct&&x.EffectsUsed&&x.Life<=1.2f&&x.Hit.Contains(b.Collider.GetInstanceID())),"split recursion/ledger");
-                Setup("pistol");b.Hp=1;b.Grounded=true;Damage(b,a,100,Vector3.forward,0,true,primary:false,impact:NativeBodyDamage.Projectile("rifle",140,.045f),hitPoint:b.Body.position+Vector3.up*.6f);Check(b.Death?.kneel==true&&b.StunEnd>Time,"fatal projectile stagger suppressed headshot collapse");Setup("pistol");b.Hp=1;b.Grounded=false;Damage(b,a,100,Vector3.forward,0,true,primary:false,impact:NativeBodyDamage.Projectile("rifle",140,.045f),hitPoint:b.Body.position+Vector3.up*.6f);Check(b.Death!=null&&!b.Death.kneel,"airborne collapse selected");
-                Debug.Log("PASS native gun/magic primaries, release resources, swept capsule/cover, reload, reflection bounds, all live Q/E exact costs/cooldowns/charges, free casts at zero mana, paid cast refusal, multishot/split ledger and headshot choreography selection");
+                // A10 removes generic hit stun. Death choreography must remain correct both
+                // with no stun and with a pre-existing stun, without the projectile changing it.
+                foreach(bool grounded in new[]{true,false})foreach(bool stunned in new[]{false,true})
+                {
+                    Setup("pistol");b.Hp=1;b.Grounded=grounded;float stunEnd=stunned?Time+1:0;b.StunEnd=stunEnd;
+                    string state="grounded="+grounded+", pre-existing stun="+stunned;
+                    Damage(b,a,100,Vector3.forward,0,true,primary:false,impact:NativeBodyDamage.Projectile("rifle",140,.045f),hitPoint:b.Body.position+Vector3.up*.6f);
+                    Check(b.Hp==0&&!b.Seat.alive&&b.Death!=null,"fatal headshot did not record death ("+state+")");
+                    Check(b.Death.kneel==grounded,"headshot collapse selection ("+state+"): kneel="+b.Death.kneel);
+                    Check(b.StunEnd==stunEnd,"fatal projectile changed stun ("+state+"): expected "+stunEnd+", got "+b.StunEnd);
+                }
+                Debug.Log("PASS native gun/magic primaries, release resources, swept capsule/cover, reload, reflection bounds, all live Q/E exact costs/cooldowns/charges, free casts at zero mana, paid cast refusal, multishot/split ledger and grounded/airborne headshot choreography with unchanged stun (four cases)");
             }
             finally{CapturedAnimation.Release(wall);Bullets.Clear();AbilityShots.Clear();AbilityZones.Clear();AbilityEffects.Clear();}
         }
