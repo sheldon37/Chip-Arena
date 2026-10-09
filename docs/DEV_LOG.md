@@ -16,6 +16,14 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-09 — Claude — Chip selection at a table (owner redesign) and the Linear UI blend fix
+- Owner, after native build #7: the chips had lost their polish, the selection was not smooth, and the chips were bigger than the pilot; asked for the pilot seated at a table with the chips laid out, seen from above, planting the chosen chip into the wrist. Answers: both the PvP draft and the Siren picks; a high tilted view (~65°); real-size chips with lift + side card.
+- Branch `claude/wip-chip-table` (`fee2c20`, review fix `1c098af`), merged into `claude/sleepy-ritchie-g8ruhv`. Presentation only: draft/pick rules, timers, messages, networking and saves unchanged.
+- New `Core/NativeDraftTable.cs` (layout by grade, 65° framing for 16:9 and 21:9, seated chair pose with IK lean/look/reach, lift-tilt-glow hover, grab-carry-plant-pulse pick on the replicated pick age) and `Runtime/NativeDraftFollow.cs` (the Siren pick's 1.7 s follow-through, skippable by any key/click and cut short when attacked, dying, leaving or holding). `NativeDraftPresentation` draws the table with the existing cube/ring batches (no new shaders); `NativeDraftScreen` drops the tray/shatter/fly-to-palm/spotlight for table hover/click and the full chip card beside the table (INSTALLED state after the plant). Chips: largest lifted chip 75% of a palm; 41-49 px at 720p, 67-73 px at 1080p, 89-98 px at 3440x1440.
+- Linear UI fix (`Runtime/NativeUi.cs`, kit-wide, alpha only): build #7 pinned Linear, so IMGUI blends translucent layers in linear light and the card's 3% tints, glows, halos and shadows came out far stronger/hazier than CSS. `NativeUi.Tone` remaps alpha (light layers a^2.2, dark layers 1-(1-a)^2.2, mixed by lightness, ramp textures likewise) only when the colour space is Linear and sRGB write is on. Offline linear-blend emulation of the card: mean error vs the sRGB reference 8.98 -> 3.72. Assumes Unity linearises IMGUI vertex colours; confirm on a Windows build.
+- Checks on the merged tree: Unity runtime+editor compile OK; check_relay 137 PASS (new DraftTable layout/framing/motion checks incl. 0-allocation Step); 24+21 Python tests OK; package_source OK (811 files).
+- Not run: Unity GPU rendering of the table and of the Linear blend fix, a hosted PvP draft with guests, a live Siren pick, Windows build. Known: the routed install cue still plays at the click (NativeAudio), not at the plant.
+
 ## 2026-10-09 — Astra — connect existing accounts and preserve pilot contracts
 - Task `codex/unity-account-contract`, PR #81, base shared/cloud `27a7833`. Owner
   chose efficient implementation, asked to hide the service URL and explicitly
