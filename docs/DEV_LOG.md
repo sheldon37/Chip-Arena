@@ -16,6 +16,29 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-09 — Claude — Owner playtest fixes (chip tray, DEV fighters, lightning, intros, music, accent glow, magic walk)
+- Base `claude/sleepy-ritchie-g8ruhv` at `ece4c11`. Fix branches were each reviewed, then merged: `claude/fix-accent-glow-b`, `claude/fix-magic-walk`, `claude/fix-siren-leet-intro`, `claude/fix-intro-music-d`, `claude/fix-emperor-anim-d`, `claude/fix-chip-select-d`. Lightning follow-up commit `25054a6`. All presentation or audio only.
+- Chip selection: the table is reverted and the tray draft is restored (603ca76 screen and presentation, card sizes and motion), with a wrist plant at real size: chip at most 14 cm, smaller than the 14.5 cm palm; plant at .88 s; install cue at the plant.
+  - Card art ported for the first time (`Runtime/NativeChipArt.cs`): per-tier metals, traces, spreader, die and line icon, gradient names, and kit art for Emperor, Ansatsuken, L44T and Siren.
+  - The Tone light-layer remap now follows the sRGB curve. The owner screenshot shows the player blends IMGUI in sRGB, so Tone was not why the cards looked plain.
+- DEV fighters: own pose path (`FighterPose`, Emperor/Karate stances) so running no longer uses the sword run. Emperor Shift roll shows. The juggle pose (`NativeJugglePose`) and the knockdown now show on all rigs; the juggle reads the replicated JuggleUntil, so it works on host, guests and the killcam.
+- Lightning (owner: none on basic attacks): removed the first-port swing and echo blast in `NativeFighters.Fx(...,electric?1:3)`, which drew the Shock blast on every non-electric fighter hit (Ansatsuken moves included). The Emperor jab's .65 impact and the bolt on a jab's juggle hit are dropped. Kept: Electric Hook, Twin echo, storm SHOCK, bound/wall splat and Siren launch bolts. The first edit removes calls in Astra's sim file; they only fed the visual ability-effect list, so hits, damage and timing are unchanged.
+- Intros:
+  - Lighting: lights are converted for the Linear pin, fixing the Siren cell's blow-out (bulb about 30x too bright since build #7). All 20 entrances are darker and closer to the source.
+  - The intro rig holds only a weapon intro's own weapon or the Emperor gauntlets, which fixes the L33T Throne double staff and the Rain Warrior fists.
+  - A style with no entrance stage falls back to neon-drop instead of a black intro.
+- Music: PvP stage music is silent outside countdown, fight and result, and the PvE intro dips to .35 (`NativeStageMusic`, 28-phase fixture). A paused rotation track no longer reshuffles every frame. Menu music is held under the intro preview.
+- Already pushed: accent glow (accent tint on trims and halos, own team band hidden for the local pilot) and the magic walk (the torso follows the magic gait instead of being reset every frame).
+- Checks on the merged tree: Unity runtime+editor compile OK; check_relay 155 PASS, exit 0; Python 48 OK (1 skip); package_source OK.
+  - Not run: Unity Editor/GPU, Windows build, hosted multiplayer, a listening test, the card art per-frame IMGUI cost (about 270 draws per card), and on-screen confirmation of the Siren cell lighting.
+- For Astra:
+  - `NativeIntroRules.Style` can return an unknown `weapon-siren` for a Siren seat whose access check fails, including an expired 15-minute token. It should return neon-drop. Source gates dev-* intros on canUse.
+  - Replicate the juggle start and screw-spin end (JuggleAt, JuggleSpinUntil).
+  - Port the stepJuggle extension (`if(Time>=j.Until)j.Until=Time+.2f`).
+- Open:
+  - The arena Siren is a static export (no claw retract, palm orbs, eye halos or face animation). The owner has not said which model problem they meant.
+  - L33t H4x (MagicVisual 0) still walks on the sword set.
+
 ## 2026-10-09 — Claude — C23 CSS effects and the chip install cue at the plant
 - Owner direction (2026-10-09): Claude pushes verified completed game batches directly to `codex/unity-cloud-current` (Unity auto-build and automatic test-channel publication); no per-batch confirmation. The previous batch (`9f16ca2`) was pushed there by Astra at the owner's request.
 - Branch `claude/wip-c23` (`54d4de3`, review found nothing), merged into `claude/sleepy-ritchie-g8ruhv`. Presentation and audio timing only.
