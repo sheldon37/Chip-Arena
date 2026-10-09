@@ -124,17 +124,22 @@ namespace ChipArena.UnityConversion
             float renderTime=arena.Replica?arena.ReplicaRenderTime:visualClock.Sample(match.Time,Time.timeAsDouble-Time.fixedTimeAsDouble,menu);
             presentation.WeaponLoadout=arena;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;
             presentation.Render(arena.Snapshot(true),renderTime,false);
-            Vector3? preview=null;
-            if(play&&p.HoldAt>=0&&arena.Time-p.HoldAt>=.2f)
+            Vector3? preview=null;bool previewClamped=false;
+            // previewOn: E held .2 s and casting, or ready (a charge or no cooldown left) and, for magic, affordable. Casting is
+            // read from the pose (PressAbility sets it, CancelWindup clears it), which guests also receive.
+            var held=play&&p.HoldAt>=0&&arena.Time-p.HoldAt>=NativeFieldRules.HoldAimSeconds?content.Ability(p.Seat.spec,"e"):null;
+            if(held!=null&&NativeFieldRules.PreviewOn(p.Pose.AbilityId==held.id&&arena.Time<p.Pose.AbilityRelease,p.ECharges>0?0:p.EReady-arena.Time,p.Weapon.@class=="magic",p.Mana,NativeAbilityRules.Cost(held,p.Stats),p.Seat.chips.TryGetValue("necronomicon",out int tome)&&tome>0,arena.Time-p.HoldAt))
             {
-                Vector3 point=NativeArena.Vec(pending.AbilityTarget);var e=content.Ability(p.Seat.spec,"e");
-                point=p.Body.position+Vector3.ClampMagnitude(point-p.Body.position,(float)e.range);
-                point.x=Mathf.Clamp(point.x,-31,31);point.z=Mathf.Clamp(point.z,-27,27);
-                if(e.kind!="throw"&&Physics.Raycast(point+Vector3.up*.08f,Vector3.down,out var ground,40,NativeArena.WorldMask))point=ground.point;
+                Vector3 point=NativeArena.Vec(pending.AbilityTarget);
+                // An out-of-range (sky) or arena-clamped aim draws the source's gapped preview.
+                previewClamped=(point-p.Body.position).sqrMagnitude>(float)(held.range*held.range);
+                point=p.Body.position+Vector3.ClampMagnitude(point-p.Body.position,(float)held.range);
+                float clampedX=Mathf.Clamp(point.x,-31,31),clampedZ=Mathf.Clamp(point.z,-27,27);previewClamped|=clampedX!=point.x||clampedZ!=point.z;point.x=clampedX;point.z=clampedZ;
+                if(held.kind!="throw"&&Physics.Raycast(point+Vector3.up*.08f,Vector3.down,out var ground,40,NativeArena.WorldMask))point=ground.point;
                 preview=point;
             }
             presentation.EffectsQuality=prefs.reducedEffects?.3f:1;
-            presentation.RenderAbilities(arena,preview);presentation.RenderStatus(arena,cameraView,prefs.reducedEffects?.3f:1);
+            presentation.RenderAbilities(arena,preview,previewClamped);presentation.RenderStatus(arena,cameraView,prefs.reducedEffects?.3f:1);
             presentation.GlowQuality=prefs.reducedEffects?.3f:prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?.4f:1;presentation.BlastQuality=prefs.reducedEffects?.3f:1;presentation.RenderGlow(arena,cameraView,menu&&!Online);presentation.FinishSourceFrame();
         }
         // No match: the selected map behind the menu with the source's slow overview orbit (renderer.ts idle camera).

@@ -114,12 +114,7 @@ namespace ChipArena.UnityConversion
                 var m=marks[marks.Count-1-i];Quaternion rotation=m.Prop.transform.rotation*m.LocalRotation;
                 SetLight(impactLights[i],m.Prop.transform.TransformPoint(m.LocalPosition)+rotation*Vector3.forward*.14f,m.Color,NativeGlowRules.ImpactLight(now-m.Born),2.7f);
             }
-            foreach(var zone in arena.AbilityZones)
-            {
-                Color color=School(zone.Owner.Pose.MagicVisual);float pulse=.85f+.15f*Mathf.Sin(now*5);
-                world.Halo(zone.Position+Vector3.up*.035f,Vector3.right,Vector3.forward,zone.Radius*2,color,(zone.Kind=="bomb"?.30f:.45f)*pulse);
-                if(zone.Kind=="black-hole")world.Halo(zone.Position+Vector3.up*.7f,right,up,2,color,.7f);
-            }
+            // Ability zones have no additive halo in the source: NativeFieldPresentation draws their normal-blend ground glow.
             // Ability and chip blasts are volumetric voxels now (NativeBlastPresentation). Only the Siren's own attack records keep
             // the two flat halos, because the source draws them with siren/fx.ts rather than as chip blasts (C25).
             if(Halos!=null)for(int i=0;i<Halos.Count;i++)
