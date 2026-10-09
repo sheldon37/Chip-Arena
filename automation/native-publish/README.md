@@ -17,7 +17,8 @@ subtree of `sheldon37/chip-arena-test-updates`. Electron `feed/` is preserved.
 2. In Unity Cloud, open **Account menu > Manage organization > Administration >
    Service Accounts > New**. Name it `chip-arena-update-reader`. Grant project
    access only to **Chip Arena**, with permission to read Build Automation build
-   status, artifacts and logs. Use the least-privileged applicable Automation
+   status, artifacts and logs and to start builds for the existing target. The
+   project-scoped Automation User role was verified for these operations. Use the least-privileged applicable Automation
    role shown in the dashboard; do not grant organization owner/admin. If role
    labels do not expose build-read permissions, inspect them before granting
    broader access. The API check below is the definitive access test.
@@ -61,6 +62,12 @@ native version `3686f40e`, with public downloads verified in Actions run
 `37966337783` (attempt 2). Unity service authentication and the scoped feed
 credential both worked. Auto-publication is enabled. Windows installed-game
 update/playtesting is still the owner's final check.
+
+Build-start fallback verified 2026-10-09: automation requested UBA #8 for `603ca76`,
+validated Unity/Linear and delivery gates, then published native `80b8edb9`. Run
+`37974643037` attempt 2 verified all public downloads at 18:52:39 UTC, receipt
+`b4462d36e4cc63625a48487b9ad6eb5a1de5184f`. Existing credentials were sufficient;
+no target, role or permission changes were made.
 
 ## Timing and costs
 
