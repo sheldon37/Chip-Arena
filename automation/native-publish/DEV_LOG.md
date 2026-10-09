@@ -1,5 +1,23 @@
 # Native publishing automation development log
 
+## 2026-10-09 14:52 EDT — Astra — build-start fallback and account update verified
+
+- PR #82 merged as `f6137be` after hosted Linux/Windows checks (66 tests, one
+  expected skip). Workflow 37974643037 authenticated using existing service-account
+  credentials, observed Auto-build=true, and requested UBA #8 for exact game source
+  `603ca76b69b2256d58b24abc4ac23166306e1fd4` at 18:38:17 UTC. No target or permission
+  changes. Unity was provisioned then built successfully; detected at 18:50:37.
+- Full delivery validated; native version `80b8edb9` pushed at feed commit
+  `e19ece73917f3320a0f38a7a1804e2c5ae51955f`. Initial public cache delay correctly
+  failed verification. Attempt 2 reused the published candidate, verified every
+  public part/manifest and succeeded at 18:52:39. Receipt commit
+  `b4462d36e4cc63625a48487b9ad6eb5a1de5184f`, publicDownloadsVerified=true.
+- Game PR #81 and fixture isolation #83 hide the account URL, configure the existing
+  service automatically, and preserve saved pilots/account APIs/grants. Existing
+  Sheldon DEV record and credential verified through authorized owner administration;
+  no account reset, database mutation, backend deployment or secrets committed.
+  Windows sign-in and save/reload remain owner runtime checks after Update.
+
 ## 2026-10-09 — Astra — start a missing verified cloud build
 
 - Task `codex/unity-cloud-trigger`, main base `93e491d`. Owner requested publishing
