@@ -7,25 +7,21 @@ namespace ChipArena.UnityConversion
         private void WorldEffects(NativeArena arena)
         {
             float time=arena.Time;
-            foreach(var f in arena.ChipFields)
-            {
-                float age=time-f.Born;Vector3 at=f.Position;int color=f.Kind=="fire"||f.Kind=="bomb"?7:f.Kind=="acid"||f.Kind=="heal"?0:f.Kind=="frost"?8:f.Kind=="storm"?9:10;
-                bool bomb=f.Kind=="mine"||f.Kind=="bomb"||f.Kind=="implosion";
-                Ring(at+Vector3.up*.06f,f.Radius,color,age*(f.Kind=="time"?8:22));
-                if(bomb)
-                {float pulse=.15f+.045f*Mathf.Sin(age*25);Add(color,Matrix4x4.TRS(at+Vector3.up*.16f,Quaternion.Euler(0,age*90,0),new Vector3(pulse,.14f,pulse)));float u=Mathf.Clamp01(age/Math.Max(.01f,f.Until-f.Born));Ring(at+Vector3.up*.03f,f.Radius*u,color,0);continue;}
-                if(f.Kind=="black-hole"){Add(3,Matrix4x4.TRS(at+Vector3.up*.7f,Quaternion.Euler(age*80,age*120,0),Vector3.one*.5f));for(int j=0;j<16;j++){float u=Mathf.Repeat(age*.7f+j/16f,1),a=j*2.399f+age*3;Vector3 p=at+new Vector3(Mathf.Sin(a)*f.Radius*(1-u),u*.7f,Mathf.Cos(a)*f.Radius*(1-u));Add(color,Matrix4x4.TRS(p,Quaternion.identity,Vector3.one*.09f));}}
-                else for(int j=0;j<20;j++)
-                {float angle=j*2.399f,r=f.Radius*Mathf.Sqrt((j+.5f)/20),u=Mathf.Repeat(age*(f.Kind=="acid"?1.8f:.6f)+j*.17f,1);Vector3 p=at+new Vector3(Mathf.Sin(angle+age*.3f)*r,f.Kind=="acid"?(1-u)*2:f.Kind=="frost"?.05f:u*.8f,Mathf.Cos(angle+age*.3f)*r);Add(color,Matrix4x4.TRS(p,Quaternion.Euler(0,age*50,j*30),new Vector3(.055f,f.Kind=="acid"?.2f:f.Kind=="fire"?.35f:.08f,.055f)));}
-                if(f.Kind=="storm"&&Mathf.Repeat(age,.33f)<.09f)Beam(at+Vector3.up*3,at,.035f,9);
-            }
+            // Chip fields and ability zones are never outlined (owner request 2026-10-04): NativeFieldPresentation draws their
+            // ground glow, cores and domes, NativeBlastPresentation their volume. The Siren's patch scorch decals and eruption
+            // warning ring/fill are drawn there too; the flames, column and rain below stay until C12 ports siren/fx.ts.
             foreach(var f in arena.SirenFields)
             {
-                float age=time-f.At;Vector3 at=f.Position;Ring(at+Vector3.up*.025f,f.Radius,7,-age*25);
+                float age=time-f.At;Vector3 at=f.Position;
                 if(f.Kind=="rain")
-                {Ring(at+Vector3.up*4.5f,f.Radius,10,age*16);for(int j=0;j<16;j++){float a=j*2.399f,r=f.Radius*Mathf.Sqrt((j+.5f)/16),y=4.5f*(1-Mathf.Repeat(age*.75f+j*.17f,1));Vector3 p=at+new Vector3(Mathf.Sin(a)*r,y,Mathf.Cos(a)*r);Beam(p,p+Vector3.up*.22f,.045f,7);}}
+                {Ring(at+Vector3.up*.025f,f.Radius,7,-age*25);Ring(at+Vector3.up*4.5f,f.Radius,10,age*16);for(int j=0;j<16;j++){float a=j*2.399f,r=f.Radius*Mathf.Sqrt((j+.5f)/16),y=4.5f*(1-Mathf.Repeat(age*.75f+j*.17f,1));Vector3 p=at+new Vector3(Mathf.Sin(a)*r,y,Mathf.Cos(a)*r);Beam(p,p+Vector3.up*.22f,.045f,7);}}
                 else if(f.Kind=="eruption")
-                {float rise=Mathf.Clamp01((age-1.2f)*8);for(int j=0;j<12;j++){float a=j*Mathf.PI/6;Vector3 p=at+new Vector3(Mathf.Sin(a)*f.Radius*.6f,0,Mathf.Cos(a)*f.Radius*.6f);Beam(p,p+Vector3.up*(.06f+rise*2.5f),.14f,7);}Ring(at,f.Radius*Mathf.Clamp01(age/1.2f),10,age*80);}
+                {
+                    // Stand-in column from the burst (At + 1 = the damage, where the warning ring and fill end) on the field
+                    // clock of that warning; nothing during the warning itself.
+                    float since=FieldClock(arena)-f.At-(float)NativeFieldRules.EruptionWarning;if(since<0)continue;float rise=Mathf.Clamp01(since*8);
+                    for(int j=0;j<12;j++){float a=j*Mathf.PI/6;Vector3 p=at+new Vector3(Mathf.Sin(a)*f.Radius*.6f,0,Mathf.Cos(a)*f.Radius*.6f);Beam(p,p+Vector3.up*(.06f+rise*2.5f),.14f,7);}
+                }
                 else for(int j=0;j<10;j++){float a=j*2.399f,r=f.Radius*Mathf.Sqrt((j+.5f)/10),u=Mathf.Repeat(age+j*.13f,1);Add(7,Matrix4x4.TRS(at+new Vector3(Mathf.Sin(a)*r,.15f+u*.6f,Mathf.Cos(a)*r),Quaternion.Euler(0,45,0),new Vector3(.11f,.25f*(1-u)+.05f,.11f)));}
             }
             foreach(var f in arena.LeetFields)

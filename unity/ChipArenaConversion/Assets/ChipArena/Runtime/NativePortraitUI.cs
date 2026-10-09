@@ -123,15 +123,16 @@ namespace ChipArena.UnityConversion
             }
         }
         // A lobby or results card's look and portrait key. The viewer's own card is its saved look (prefs); others come from
-        // the seat: the lobby's broadcast seats (LobbySeats: weapon, colours, hat) or the PvE party rows (NativeSeat). Seats
-        // carry no lobby pose yet, so other pilots stand with their weapon (the source's default and every bot's pose).
+        // the seat: the lobby's broadcast seat with the card's seat id (RoomSeats: weapon, colours, hat; bots included) or
+        // the PvE party rows (NativeSeat). Seats carry no lobby pose yet, so other pilots stand with their weapon (the
+        // source's default and every bot's pose).
         private bool CardLook(in LobbyPilot p,int index,bool result,out int key,out PortraitLook look)
         {
             look=new PortraitLook{Spec=p.weapon,Pose="weapon",Hat="none",Body=HexOf(p.body),Accent=HexOf(p.accent)};key=0;
-            if(p.tag=="YOU")
+            if(result?p.tag=="YOU":p.you)
             {
                 look.Pose=prefs.lobbyPose;look.Hat=prefs.hat;
-                if(!result){key=10000+(Hosting?1:networkId);return true;}
+                if(!result){key=10000+p.id;return true;}
                 var mine=arena?.Local?.Seat;key=20000+(mine!=null?mine.id:0);return true;
             }
             if(result)
@@ -139,16 +140,8 @@ namespace ChipArena.UnityConversion
                 var seat=ResultSeat(p,index);if(seat==null){key=29000+index;return true;}
                 look.Hat=seat.hat;key=20000+seat.id;return true;
             }
-            var frame=LobbySeatFor(p,index);if(frame==null){key=19000+index;return true;}
-            look.Hat=frame.hat;key=10000+frame.id;return true;
-        }
-        // LobbyRoster's order: the broadcast seats, after the host's own card when no broadcast lists it yet.
-        private NativeSeatFrame LobbySeatFor(in LobbyPilot p,int index)
-        {
-            bool own=false;foreach(var s in lobbySeats)own|=s!=null&&s.id==1;int n=index-(Hosting&&!dedicated&&!own?1:0),k=0;
-            foreach(var s in lobbySeats){if(s==null)continue;if(k++==n){if(s.spec==p.weapon&&s.bot==p.bot&&s.name==p.name)return s;break;}}
-            foreach(var s in lobbySeats)if(s!=null&&s.spec==p.weapon&&s.bot==p.bot&&s.name==p.name)return s;
-            return null;
+            key=10000+p.id;foreach(var s in RoomSeats)if(s!=null&&s.id==p.id){look.Hat=s.hat;break;}
+            return true;
         }
         // PveResultsPanel's order: the party rows (bots only while connected) by seat id.
         private NativeSeat ResultSeat(in LobbyPilot p,int index)

@@ -14,7 +14,8 @@ namespace ChipArena.UnityConversion
     {
         private sealed class Shape {public readonly List<List<Vector2>> Lines=new List<List<Vector2>>();public bool Fill,Stroke=true;public float Width;public Color FillColor=Color.white,StrokeColor=Color.white;public float[] GradientAt;public Color[] GradientColors;}
         private static readonly Dictionary<string,List<Shape>> parsed=new Dictionary<string,List<Shape>>();
-        private static readonly Dictionary<string,Texture2D> textures=new Dictionary<string,Texture2D>();
+        // Rasterised textures by (id or markup key, markup, pixel size): a value key, so a cached draw builds no string.
+        private static readonly Dictionary<(string,bool,int),Texture2D> textures=new Dictionary<(string,bool,int),Texture2D>();
         [Serializable] public sealed class IconEntry {public string id,markup,icon;}
         [Serializable] public sealed class IconSet {public string commit,license;public float strokeWidth;public IconEntry[] icons,chips,classes,specs,actions;}
         private static Dictionary<string,string> markup,chips,classes,specs,actions;private static float strokeWidth=1.7f;
@@ -36,7 +37,7 @@ namespace ChipArena.UnityConversion
         public static void Draw(Rect r,string id,Color c)
         {
             if(c.a<=0||Event.current.type!=EventType.Repaint)return;Ensure();if(!markup.TryGetValue(id??"",out string svg)&&!markup.TryGetValue("cpu",out svg))return;
-            int px=Mathf.Clamp(Mathf.RoundToInt(Mathf.Max(r.width,r.height)*NativeUi.S),8,512);string key=id+"@"+px;
+            int px=Mathf.Clamp(Mathf.RoundToInt(Mathf.Max(r.width,r.height)*NativeUi.S),8,512);var key=(id,false,px);
             if(!textures.TryGetValue(key,out var t)){if(textures.Count>256)Clear();t=Texture(Raster(Shapes(id,svg,true),px,24),px);textures[key]=t;}
             NativeUi.Image(r,t,c);
         }
@@ -44,7 +45,7 @@ namespace ChipArena.UnityConversion
         // `key` names the drawing for the cache; `c` tints it (white keeps its colours).
         public static void DrawMarkup(Rect r,string key,string svg,float box,Color c)
         {
-            if(c.a<=0||Event.current.type!=EventType.Repaint)return;int px=Mathf.Clamp(Mathf.RoundToInt(Mathf.Max(r.width,r.height)*NativeUi.S),8,512);string k="svg:"+key+"@"+px;
+            if(c.a<=0||Event.current.type!=EventType.Repaint)return;int px=Mathf.Clamp(Mathf.RoundToInt(Mathf.Max(r.width,r.height)*NativeUi.S),8,512);var k=(key,true,px);
             if(!textures.TryGetValue(k,out var t)){if(textures.Count>256)Clear();t=Texture(Raster(Shapes("svg:"+key,svg,false),px,box),px);textures[k]=t;}
             NativeUi.Image(r,t,c);
         }
