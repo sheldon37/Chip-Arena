@@ -262,11 +262,19 @@ def validate_delivery(delivery, build, provider_log):
     marker = f'NATIVE_CLOUD_EXPORT_READY: {sha} / {number}'
     editor_text = (delivery / 'build.log').read_text(encoding='utf-8-sig', errors='replace')
     provider_text = provider_log.read_text(encoding='utf-8-sig', errors='replace')
+    # The v2 direct-log response can be a JSON string instead of raw log bytes.
+    # Decode that representation before checking literal source/build markers.
+    if provider_text.lstrip().startswith('"'):
+        decoded = json.loads(provider_text)
+        if not isinstance(decoded, str):
+            raise ValueError('Unexpected provider log representation')
+        provider_text = decoded
     if marker not in editor_text or 'NATIVE_COLOR_SPACE: Linear' not in editor_text:
         raise ValueError('Editor log is missing export or Linear markers')
     for value in (marker, 'NATIVE_UPDATE_FEED_READY:', 'UNITY_TEST_BUILD_READY:', 'NATIVE_CLOUD_DELIVERY_READY:'):
         if value not in provider_text:
-            raise ValueError('Provider log is missing a completed packaging gate')
+            raise ValueError('Provider log is missing a completed packaging gate: ' + value
+                             + f' (chars={len(provider_text)}, lines={len(provider_text.splitlines())})')
     if re.search(r'(?im)^.*Shader error in|^.*error CS\d{4}\b', editor_text + '\n' + provider_text):
         raise ValueError('Compiler/shader errors found in build logs')
     return manifest, receipt
@@ -327,7 +335,8 @@ def prepare(work, token, unity_auth):
     artifacts = api_json(BASE + '/' + str(number) + '/artifacts', unity_auth)
     filename = artifact_filename(artifacts)
     download_api(BASE + '/' + str(number) + '/download/' + quote(filename, safe=''), work / 'primary.zip', unity_auth, MAX_DOWNLOAD)
-    download_api(BASE + '/' + str(number) + '/log', work / 'provider.log', unity_auth, MAX_LOG)
+    # Request the complete stored log URL explicitly instead of a progressive view.
+    download_api(BASE + '/' + str(number) + '/log?redirect=manual', work / 'provider.log', unity_auth, MAX_LOG)
     delivery = unpack_delivery(work / 'primary.zip', work)
     manifest, receipt = validate_delivery(delivery, build, work / 'provider.log')
     problem = publisher.publication_problem(manifest, current)

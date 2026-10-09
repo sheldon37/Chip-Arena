@@ -1,5 +1,19 @@
 # Native publishing automation development log
 
+## 2026-10-09 — Astra — retrieve and interpret the complete provider log
+
+- Storage repair PR #76 passed hosted tests and merged at `a8aadb9`. Real run
+  `37965171329` downloads/unpacks the game and passes receipt/archive/seed checks,
+  then fails a provider-log marker. Owner's complete #7 log contains all markers.
+- Use the documented `log?redirect=manual` URL retrieval rather than a default
+  progressive response, and accept a JSON-encoded log string as well as raw text.
+  Missing-marker errors identify the exact gate and text size, never log contents
+  or signed URLs. No gate is skipped. Downloaded GitHub diagnostic artifact was
+  unavailable locally (403), so real response validation remains pending.
+- Local: 54 tests, 53 pass, one Windows-only skip. Added manual-log redirect and
+  escaped JSON-log fixtures. Task `codex/unity-publish-log`, base `a8aadb9`.
+  No Unity/game rebuild; public feed is still unchanged pending validation.
+
 ## 2026-10-09 — Astra — support this project's Unity artifact storage
 
 - PR #75 passed hosted tests and merged at `03888ad`. Real run `37964788287`
