@@ -462,9 +462,9 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- Pilot card ----------------------------------------------------------------------------------------------
-        // .pilot-card beside the panel: the source shows a live 3D portrait; this card shows the pilot's emblem (weapon
-        // icon in its colour inside a slowly turning ring lit by the accent colour), name, weapon and class, the two colours
-        // and the presentation picks, all updating live as the form changes.
+        // .pilot-card beside the panel: the pilot's live 3D portrait in its lobby pose inside the turning ring lit by the
+        // accent colour (NativePortraitUI.cs PilotStage; the emblem where it cannot render), name, weapon and class, the
+        // two colours and the presentation picks, all updating live as the form changes.
         private static Color HexColor(string value,int fallback)=>value!=null&&value.Length==7&&value[0]=='#'&&int.TryParse(value.Substring(1),System.Globalization.NumberStyles.HexNumber,null,out int rgb)?U.Hex(rgb):U.Hex(fallback);
         private static string ClassLabel(string c)=>c=="ranged"?"RANGED · PRECISION & PRESSURE":c=="magic"?"MAGIC · ELEMENTS & CONTROL":c=="melee"?"MELEE · CLOSE & PERSONAL":"DEV CLASS";
         // The pilot emblem that stands in for the source's live 3D portrait: the weapon icon in its colour on a dark disc
@@ -486,8 +486,8 @@ namespace ChipArena.UnityConversion
             U.Glow(new Rect(r.x,r.y+18,r.width,r.height),new Color(0,0,0,.33f*e),45);U.Round(r,U.Hex(0x1b1a21,e),16,U.Hex(0x514955,e));
             U.RadialStops(new Rect(r.x+r.width*.05f,r.y+r.height*.06f,r.width*.9f,r.height*.72f),U.A(accent,.2f*e),new[]{0f,.64f,1f},new[]{1f,0f,0f});
             U.Text(new Rect(r.x+22,r.y+20,60,16),"01",12,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft,mono:true);U.Text(new Rect(r.x,r.y+20,r.width-22,16),tag,11,U.Hex(0xff996f,e),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.16f);
-            var c=new Vector2(r.center.x,r.y+Mathf.Min(r.height*.36f,180));float ring=Mathf.Min(86,r.width*.26f);PilotEmblem(c,ring,accent,body,weapon,e,t);
-            float y=c.y+ring+26;string name=NativeCosmeticRules.Name(prefs.name);float ns=Mathf.Clamp(r.width*.075f,22,30);
+            float y=PilotStage(r,accent,body,weapon,e,t,note);
+            string name=NativeCosmeticRules.Name(prefs.name);float ns=Mathf.Clamp(r.width*.075f,22,30);
             U.Text(new Rect(r.x+16,y,r.width-32,ns*1.3f),name,ns,U.Hex(0xf4f4f5,e),TextAnchor.MiddleCenter,bold:true);y+=ns*1.3f+4;
             U.Text(new Rect(r.x+16,y,r.width-32,18),weapon.name.ToUpperInvariant(),13,U.A(U.Mix(tone,Color.white,.25f),e),TextAnchor.MiddleCenter,bold:true,tracking:.12f);y+=20;
             float under=60+30*(.5f+.5f*Mathf.Sin(t*1.6f));U.Fill(new Rect(r.center.x-under/2,y+2,under,2),U.A(tone,.85f*e));y+=12;
