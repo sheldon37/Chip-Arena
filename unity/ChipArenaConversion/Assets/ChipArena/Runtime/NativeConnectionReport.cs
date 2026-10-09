@@ -32,19 +32,22 @@ namespace ChipArena.UnityConversion
         internal void TopLayerGUI()
         {
             if(dedicated||prefs==null||content==null||error.Length>0)return;
-            var e=Event.current;if(e.type==EventType.Repaint)EndFlowNotices();
+            var e=Event.current;if(e.type==EventType.Repaint){EndFlowNotices();SessionSamples();}
             if(reportOpen&&(arena!=reportArena||arena!=null&&!menu))reportOpen=false;
             bool banner=arena!=null&&LobbyReturnSeconds>0&&!TopLayerCovered();if(!banner&&!reportOpen)return;
             GUI.skin=NativeMenuSkin.Skin;GUI.matrix=Matrix4x4.identity;GUI.color=GUI.contentColor=Color.white;GUI.enabled=true;U.Begin(prefs.uiScale);
-            // The home screen's update card blocks the menu's buttons under it, not these.
+            // The menus below set menuBlockedNow while the dialog is open (and the home screen's update card blocks the buttons
+            // under it); neither blocks these.
             bool blocked=menuBlockedNow;menuBlockedNow=false;
             // The dialog is above the banner: painted after it, but given input first so its backdrop blocks the banner's Cancel.
             if(e.type==EventType.Repaint){if(banner)LobbyReturnBanner();if(reportOpen)ConnectionReportDialog();}
             else{if(reportOpen)ConnectionReportDialog();if(banner)LobbyReturnBanner();}
             menuBlockedNow=blocked;
         }
-        // The Slender jumpscare and stalk static (SlenderGUI, z 9000+ in the source) replace the whole GUI; nothing goes over them.
-        private bool TopLayerCovered()=>!menu&&arena!=null&&(arena.Local!=null&&arena.Local.ScareUntil>arena.Time||stalkLevel>0);
+        // The Slender jumpscare replaces the whole GUI (SlenderGUI returns true): nothing goes over it. The stalk static is
+        // drawn under the HUD, which stays, so the banner stays too (the source's .slender-static is a translucent
+        // pointer-events:none layer over it).
+        private bool TopLayerCovered()=>!menu&&arena?.Local!=null&&arena.Local.ScareUntil>arena.Time;
 
         // ---- Notices from the end flow and the account ----------------------------------------------------------------
         // main.ts:182: each rematch vote broadcast shows "n/N pilots ready for rematch." (rooms only: an offline vote
@@ -68,7 +71,9 @@ namespace ChipArena.UnityConversion
         private void LobbyReturnBanner()
         {
             int s=Mathf.Max(1,Mathf.CeilToInt(LobbyReturnSeconds));if(s!=bannerSeconds){bannerSeconds=s;bannerTitle="Returning to lobby in "+s+"…";}
-            string sub=Online?"Everyone will return together.":"Your match will reset.";bool cancel=!Online||Hosting;
+            // The source runs a local boss test as a room of one (mode 'online' over a LocalRoom, main.ts:197), so it gets the
+            // room line; its local host keeps Cancel (mode 'local' or the room owner).
+            string sub=Online||arena.Pve!=null?"Everyone will return together.":"Your match will reset.";bool cancel=!Online||Hosting;
             float tw=Mathf.Max(U.Measure(bannerTitle,20,true).x,U.Measure(sub,14).x),bw=cancel?Mathf.Max(90,U.Measure("Cancel",15,true).x+38):0,content=cancel?48:45;
             float w=Mathf.Min(U.W-32,1+22+tw+(cancel?24+bw:0)+22+1),h=1+16+content+16+1;var r=new Rect((U.W-w)/2,22,w,h);
             U.Glow(new Rect(r.x,r.y+12,r.width,r.height),new Color(0,0,0,.6f),40);U.Round(r,U.Hex(0x171c27),12,U.Hex(0xffac70));
@@ -96,7 +101,7 @@ namespace ChipArena.UnityConversion
             entries.Add("  \"transport\": "+JsonText(TransportLabel()));entries.Add("  \"room\": "+JsonText(Online?(Hosting?roomCode:joinCode):""));
             entries.Add("  \"phase\": "+JsonText(match!=null?match.Phase.ToString().ToLowerInvariant():"lobby"));
             entries.Add("  \"players\": "+(match!=null?match.Seats.Count:InRoom?lobbySeats.Length:0).ToString(inv));
-            entries.Add("  \"fps\": "+Mathf.RoundToInt(1/Mathf.Max(.0001f,Time.smoothDeltaTime)).ToString(inv));entries.Add("  \"simulationTickMs\": "+stepMs.ToString("0.##",inv));
+            entries.Add("  \"fps\": "+Mathf.RoundToInt(FrameRate()).ToString(inv));entries.Add("  \"simulationTickMs\": "+stepMs.ToString("0.##",inv));
             if(Hosting)
             {
                 var peers=PeerMetrics??Array.Empty<NativeConnectionReport>();var sb=new StringBuilder("  \"peers\": [");
@@ -106,11 +111,25 @@ namespace ChipArena.UnityConversion
             else
             {
                 // The client report's fields at the top level (its outer braces dropped), in the 2-space style of JSON.stringify.
-                var lines=Reindent(ConnectionReportJson()??"{}","").Split('\n');var inner=new StringBuilder();
+                // Once the host is lost the link's metrics are gone (ConnectionMetrics reads zeros), so the last ones measured
+                // while it was up are used, marked disconnected: the source keeps networkMetrics until disconnect() on leave.
+                string json;if(HostLost&&lastMetrics!=null&&lastMetricsArena==arena){lastMetrics.connected=false;json=JsonUtility.ToJson(lastMetrics,true);}else json=ConnectionReportJson()??"{}";
+                var lines=Reindent(json,"").Split('\n');var inner=new StringBuilder();
                 for(int i=1;i<lines.Length-1;i++){if(inner.Length>0)inner.Append('\n');inner.Append(lines[i]);}if(inner.Length>0)entries.Add(inner.ToString());
             }
             reportText="{\n"+string.Join(",\n",entries)+"\n}";reportWrapW=-1;reportScroll=0;reportArena=arena;reportOpen=true;
         }
+        // Sampled once per painted frame: the frame rate as renderer.ts measures it (the mean of the last 120 real frame
+        // times, so the sandbox's simulation speed does not scale it), and the guest's link metrics twice a second while the
+        // host is reachable (kept for a report taken after the host is lost).
+        private readonly float[] frameTimes=new float[120];private int frameCount,frameHead;private double frameSum;
+        private NativeConnectionReport lastMetrics;private NativeArena lastMetricsArena;private float lastMetricsAt=-9;
+        private void SessionSamples()
+        {
+            float dt=Time.unscaledDeltaTime;if(dt>0){if(frameCount==frameTimes.Length)frameSum-=frameTimes[frameHead];else frameCount++;frameTimes[frameHead]=dt;frameSum+=dt;frameHead=(frameHead+1)%frameTimes.Length;}
+            if(server!=null&&arena!=null&&Time.unscaledTime>=lastMetricsAt){lastMetricsAt=Time.unscaledTime+.5f;lastMetrics=ConnectionMetrics;lastMetricsArena=arena;}
+        }
+        private float FrameRate()=>frameCount>0&&frameSum>0?(float)(frameCount/frameSum):1/Mathf.Max(.0001f,Time.unscaledDeltaTime);
         private static string JsonText(string s)=>"\""+(s??"").Replace("\\","\\\\").Replace("\"","\\\"")+"\"";
         // JsonUtility's pretty print, re-indented to two spaces per level (its own unit measured from the first indented
         // line) under `prefix`.

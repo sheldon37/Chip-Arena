@@ -57,7 +57,8 @@ namespace ChipArena.UnityConversion
             // to Join (guest) or Create (host), where the reason is shown.
             if(InRoom&&menuScreen!=MenuScreen.Lobby&&menuScreen!=MenuScreen.Customize&&menuScreen!=MenuScreen.Settings)Go(MenuScreen.Lobby);
             else if(!InRoom&&menuScreen==MenuScreen.Lobby)Go(roomGuest?MenuScreen.Join:MenuScreen.Create);
-            menuBlockedNow=menuScreen==MenuScreen.Home&&updateOpen&&updateCard.width>0&&U.Hover(updateCard);
+            // The open Connection report (NativeConnectionReport.cs) blocks everything under its backdrop, as its ::backdrop takes the pointer.
+            menuBlockedNow=reportOpen||menuScreen==MenuScreen.Home&&updateOpen&&updateCard.width>0&&U.Hover(updateCard);
             float age=now-menuScreenAt;bool home=menuScreen==MenuScreen.Home;
             MenuShade(1);MenuMotes(home?1:.5f);TopBar(home);Footer();
             switch(menuScreen)
@@ -494,26 +495,33 @@ namespace ChipArena.UnityConversion
         private void PauseMenu()
         {
             if(inspectSeat!=0)return;MenuStyles();float now=Time.unscaledTime;if(now-menuSeen>.25f)menuScreenAt=now;menuSeen=now;float age=now-menuScreenAt,W=U.W,H=U.H;
-            menuBlockedNow=false;updateCard=Rect.zero;updateOpen=false;MenuShade(.9f);
+            menuBlockedNow=reportOpen;updateCard=Rect.zero;updateOpen=false;MenuShade(.9f);
             if(pauseScreen==PauseScreen.Settings){SettingsScreen(age,()=>{ApplySettings();Save();pauseScreen=PauseScreen.Menu;menuScreenAt=Time.unscaledTime;});return;}
             if(pauseScreen==PauseScreen.Sandbox){if(arena.Sandbox&&account.Developer&&!Online){SandboxScreen(age);return;}pauseScreen=PauseScreen.Menu;}
             if(!arena.Sandbox)Board(W);
             // A guest whose host is gone keeps a frozen replica: say so and offer the way back to Join Room to reclaim the seat.
             bool lost=arena.Replica&&server==null;
             bool returning=LobbyReturnSeconds>0;
-            string status=lost?(networkStatus.Length==0||networkStatus.StartsWith("Disconnected")?"The host disconnected. Return to the main menu, then use Join Room within 90 seconds to reclaim your seat.":networkStatus+" Return to the main menu."):Online?"The online match continues while this menu is open."+(networkStatus.Length>0?" "+networkStatus:""):returning?"The return countdown continues while this menu is open.":arena.Pve!=null?"The boss test is paused.":"Local practice is paused.";
+            // main.ts:157 checks the mode first: a local boss test is a room of one there (mode 'online' over a LocalRoom), so it
+            // stays "The boss test is paused." while a return runs.
+            string status=lost?(networkStatus.Length==0||networkStatus.StartsWith("Disconnected")?"The host disconnected. Return to the main menu, then use Join Room within 90 seconds to reclaim your seat.":networkStatus+" Return to the main menu."):Online?"The online match continues while this menu is open."+(networkStatus.Length>0?" "+networkStatus:""):arena.Pve!=null?"The boss test is paused.":returning?"The return countdown continues while this menu is open.":"Local practice is paused.";
             var items=new List<(string icon,string label,bool primary,bool enabled,Action act)>();if(!lost)items.Add(("play","Resume",true,true,()=>menu=false));
             items.Add(("activity","Connection report",false,true,OpenConnectionReport));
             items.Add(("settings","Settings",false,true,()=>{pauseScreen=PauseScreen.Settings;menuScreenAt=Time.unscaledTime;screenScroll=Vector2.zero;screenContent=400;}));
             if(arena.Sandbox&&account.Developer&&!Online)items.Add(("flask-conical","Sandbox Tools",false,true,()=>{pauseScreen=PauseScreen.Sandbox;menuScreenAt=Time.unscaledTime;screenScroll=Vector2.zero;screenContent=400;}));
             if(!Online&&!lost)items.Add(("rotate-cw","Restart Match",false,true,StartMatch));
             if(!lost)items.Add(("undo-2","Return to Lobby",false,(Hosting||!Online)&&!returning,()=>{if(!Online)afterMatch=OfflineLobby();RequestLobbyReturn();menu=false;}));
-            items.Add(("log-out","Return to Main Menu",lost,true,()=>{if(Online)LeaveRoom();else{afterMatch=lost?MenuScreen.Join:MenuScreen.Home;ReturnToLobby();}}));
+            items.Add(("log-out","Return to Main Menu",lost,true,()=>{afterMatch=lost?MenuScreen.Join:MenuScreen.Home;if(Online)LeaveRoom();else ReturnToLobby();}));
             string hints="WASD move · double-tap W sprint · LMB fire / attack · RMB block · Q / E abilities · R reload · Shift roll · Space jump · V camera · Tab lock-on / board · G scores · Esc menu";
             string diag=content.Map(arena.MapId).name+"  ·  SET "+match.Set+" · ROUND "+match.Round+"  ·  "+match.Phase+"  ·  "+arena.Bullets.Count+" projectiles  ·  step "+stepMs.ToString("0.00")+" ms  ·  "+presentation.RenderingMode;
             float pw=Mathf.Min(520,W-56),iw=pw-64;var statusLines=U.Wrap(status,16,iw);var hintLines=U.Wrap(hints,13,iw);var diagLines=MonoLines(diag,11,iw);bool guest=Online&&!Hosting;
             float ph=108+statusLines.Count*16*1.6f+16+items.Count*56-8+(guest?24:0)+20+hintLines.Count*13*1.55f+8+diagLines.Count*16+30,e=In(age,0,.26f);
-            var p=new Rect(arena.Sandbox?(W-pw)/2:Mathf.Max(28,W*.05f),Mathf.Max(80,(H-ph)/2)+10*(1-e),pw,ph);U.Panel(p,e);
+            // The source's .panel scrolls past calc(100dvh - 158px); this one cannot, so on a short canvas (a large interface
+            // scale on a small window) it scales about its top corner (top centre in the sandbox) to end 24 above the bottom,
+            // as HomeScreen fits its block. The top stays at least 80 down, under the lobby-return banner. Push scales the
+            // buttons' hit areas with them.
+            float fit=Mathf.Min(1,(H-80-24)/ph);
+            var p=new Rect(arena.Sandbox?(W-pw)/2:Mathf.Max(28,W*.05f),Mathf.Max(80,(H-ph*fit)/2)+10*(1-e),pw,ph);U.Push(new Vector2(arena.Sandbox?p.center.x:p.x,p.y),Vector2.zero,fit);U.Panel(p,e);
             U.Text(new Rect(p.x+32,p.y+30,iw,16),"CHIP ARENA",12,U.Hex(0xc0c1ca,e),TextAnchor.MiddleLeft,bold:true,tracking:.2f);U.Text(new Rect(p.x+32,p.y+52,iw,38),"Match menu",30,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true,tracking:-.03f);
             float y=p.y+108;foreach(var s in statusLines){U.Text(new Rect(p.x+32,y,iw,16*1.6f),s,16,U.Hex(0xbfc0c9,e),TextAnchor.MiddleLeft);y+=16*1.6f;}y+=16;
             // A guest's note sits under Return to Lobby, as in the source's menu list.
@@ -521,7 +529,7 @@ namespace ChipArena.UnityConversion
                 if(guest&&items[i].label=="Return to Lobby"){U.Text(new Rect(p.x+32,y-4,iw,18),"The host can return everyone to the lobby.",13,U.Hex(0xa6a7ad,e*be),TextAnchor.MiddleLeft);y+=24;}}y-=8;y+=20;
             foreach(var s in hintLines){U.Text(new Rect(p.x+32,y,iw,13*1.55f),s,13,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);y+=13*1.55f;}y+=8;
             foreach(var s in diagLines){U.Text(new Rect(p.x+32,y,iw,16),s,11,U.Hex(0x7c7d86,e),TextAnchor.MiddleLeft,mono:true);y+=16;}
-            if(chosen!=null){pauseScreen=PauseScreen.Menu;chosen();}
+            U.Pop();if(chosen!=null){pauseScreen=PauseScreen.Menu;chosen();}
         }
         // Greedy lines of `  ·  `-separated parts measured in the mono face they are drawn in (not cached: the values change).
         private static List<string> MonoLines(string text,float size,float width)

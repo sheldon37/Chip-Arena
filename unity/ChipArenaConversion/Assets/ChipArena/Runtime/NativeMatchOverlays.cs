@@ -142,7 +142,8 @@ namespace ChipArena.UnityConversion
         // Rematch and Return to Lobby, or only Return to Main Menu once the host is gone (main.ts peerLost: "Match ended"
         // over the reason). Return to Lobby starts the cancellable three-second return and is disabled for guests and while
         // it runs; its banner and Cancel are in NativeConnectionReport.cs, and each vote's "n/N pilots ready for rematch."
-        // toast is EndFlowNotices there (the source's button carries no count).
+        // toast is EndFlowNotices there (the source's button carries no count). The reason says the seat can be reclaimed
+        // for 90 seconds, so Return to Main Menu keeps the resume token and lands on Join Room (LeaveLostHost).
         private float matchEndAt=-1;
         private void MatchEndPanel()
         {
@@ -156,7 +157,7 @@ namespace ChipArena.UnityConversion
             foreach(var p in players){var r=new Rect(ix,y+12,iw,56);U.Round(r,U.Hex(0x18191f,.94f*enter),4,U.A(U.Hex(0x454650),enter));U.Text(new Rect(r.x+17,r.y,r.width-34,r.height),p.name+(p.id==me.id?" · YOU":""),15,U.A(U.Hex(0xf4f4f5),enter),TextAnchor.MiddleLeft);U.Text(new Rect(r.x+17,r.y,r.width-34,r.height),p.score.ToString(),15,U.A(Color.white,enter),TextAnchor.MiddleRight,bold:true);y+=68;}
             U.Text(new Rect(ix,y+8,iw,20),me.chips.Values.Sum()+" CHIPS INSTALLED · BUILD COMPLETE",13,U.A(U.Hex(0xa6a7ad),enter),TextAnchor.MiddleCenter);y+=40+24;
             float bw=(iw-10)/2;
-            if(lost){if(MenuButton(new Rect(ix,y,iw,48),"log-out","Return to Main Menu",null,true,true,enter,15,true))ReturnMainMenu();}
+            if(lost){if(MenuButton(new Rect(ix,y,iw,48),"log-out","Return to Main Menu",null,true,true,enter,15,true))LeaveLostHost();}
             else
             {
                 if(MenuButton(new Rect(ix,y,bw,48),"rotate-cw","Rematch",null,true,true,enter,15,true))VoteRematch();
@@ -199,7 +200,7 @@ namespace ChipArena.UnityConversion
             if(votes>0&&votes<required){if(required-votes!=waitingFor){waitingFor=required-votes;waitingText="Waiting for "+waitingFor+" more…";}}else waitingFor=-1;
             float ww=waitingFor>0?U.Measure(waitingText,13).x:0,group=(retry?bw+12:0)+bw+(ww>0?12+ww:0),bx=px+(pw-group)/2;
             if(retry){if(MenuButton(new Rect(bx,y,bw,48),"rotate-cw","Retry",null,true,true,enter,15,true))VoteRematch();bx+=bw+12;}
-            if(MenuButton(new Rect(bx,y,bw,48),"log-out","Return to Menu",null,true,true,enter,15,true))ReturnMainMenu();
+            if(MenuButton(new Rect(bx,y,bw,48),"log-out","Return to Menu",null,true,true,enter,15,true)){if(HostLost)LeaveLostHost();else{afterMatch=MenuScreen.Home;ReturnMainMenu();}}
             if(ww>0)U.Text(new Rect(bx+bw+12,y,ww+4,48),waitingText,13,U.Hex(0xa6a7ad,enter),TextAnchor.MiddleLeft);
         }
         private int waitingFor=-1;private string waitingText="";
@@ -255,6 +256,9 @@ namespace ChipArena.UnityConversion
         {
             float x=0;int lines=1;foreach(var k in seat.chips.Where(k=>k.Value>0)){var chip=content.chips.FirstOrDefault(c=>c.id==k.Key);if(chip==null)continue;float w=BadgeWidth(chip.name,k.Value);if(x>0&&x+w>width){lines++;x=0;}x+=w+4;}return lines;
         }
+        // A guest whose host is gone: back to Join Room with the resume token kept, so Join Room within the 90-second lease
+        // reclaims the seat (the pause menu's lost path). ReturnMainMenu() closes the network, which clears the token.
+        private void LeaveLostHost(){afterMatch=MenuScreen.Join;ReturnToLobby();}
         private void ReturnToLobby()
         {
             ClearReplay();arena?.Dispose();arena=null;match=null;presentation?.ResetPresentation();matchEndAt=-1;menu=true;

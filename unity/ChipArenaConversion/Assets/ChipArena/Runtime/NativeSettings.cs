@@ -19,8 +19,9 @@ namespace ChipArena.UnityConversion
             Field("Effects");prefs.trails=GUILayout.Toggle(prefs.trails,"Projectile trails");prefs.reducedEffects=GUILayout.Toggle(prefs.reducedEffects,"Reduced effects");prefs.cameraShake=GUILayout.Toggle(prefs.cameraShake,"Camera shake");
             GUILayout.Label("Combat glow",small);int glow=prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?1:2;prefs.combatGlow=new[]{"Off","Low","Full"}[ChoiceRow(new[]{"Off","Low","Full"},glow)];
             // The desktop shell's View menu (desktop/main.cjs:47): togglefullscreen beside the zoom roles that Interface scale
-            // stands in for. It applies and saves at once through SetFullscreen.
-            Field("Interface");bool full=GUILayout.Toggle(Fullscreen,"Full screen");if(full!=Fullscreen)SetFullscreen(full);prefs.uiScale=Mathf.Round(Slider("Interface scale",prefs.uiScale>0?prefs.uiScale:1,.75f,1.5f)*20)/20;Fine("Scales every menu and overlay; the canvas follows as you drag.");
+            // stands in for. It applies and saves at once through SetFullscreen, and shows the window's actual mode, which the
+            // player's Alt+Enter can change without the saved preference.
+            Field("Interface");bool now=Screen.fullScreenMode!=FullScreenMode.Windowed,full=GUILayout.Toggle(now,"Full screen");if(full!=now)SetFullscreen(full);prefs.uiScale=Mathf.Round(Slider("Interface scale",prefs.uiScale>0?prefs.uiScale:1,.75f,1.5f)*20)/20;Fine("Scales every menu and overlay; the canvas follows as you drag.");
             Field("Credits");Fine("Icons: Lucide (ISC licence), from the source client.");
         }
         // .sound-test: Test Sound (13 px .btn with the volume icon) and the status in 12 px mono #aac5ce beside it.
