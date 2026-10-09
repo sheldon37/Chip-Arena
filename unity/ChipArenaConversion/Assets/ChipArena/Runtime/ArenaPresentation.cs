@@ -10,9 +10,15 @@ namespace ChipArena.UnityConversion
         private CapturedAnimation captured;
         private NativeCombatGlow combatGlow;private NativeBlastPresentation blasts;private NativeFieldPresentation fieldTelegraphs;
         public float GlowQuality=1,BlastQuality=1;public bool TrailsEnabled=true;
+        // The clock of the field telegraphs, their C6 field emitters and the eruption stand-in. A replica's arena.Time only
+        // moves when a 20 Hz host frame lands, so a guest uses the continuous snapshot clock it renders at (Render's
+        // renderTime, arena.ReplicaRenderTime: about 0.1 s behind the newest frame, as the source's SnapshotBuffer cursor).
+        // Fields born in the newest frame then start with a briefly negative age, as in the source. Host and killcam replay:
+        // PresentationClock. It never runs backwards within a generation, so the .25 s rewind clears hold.
+        private float FieldClock(NativeArena arena)=>arena.Replica&&hazardClock<=arena.Time&&arena.Time-hazardClock<1?hazardClock:PresentationClock(arena);
         // paused: the match itself is stopped (offline menu), so the blasts hold still; see NativeBlastFrame.Step.
         public void RenderGlow(NativeArena arena,Camera camera,bool paused=false)
-        {float now=PresentationClock(arena);fieldTelegraphs?.Collect(arena,now);blasts?.Render(arena,camera,now,BlastQuality,paused,fieldTelegraphs);fieldTelegraphs?.Render(arena,camera,now,abilityPreview,abilityPreviewClamped);if(combatGlow==null)return;combatGlow.Halos=blasts?.Halos;combatGlow.Quality=GlowQuality;combatGlow.Trails=TrailsEnabled;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.ViewPilot.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);}
+        {float now=PresentationClock(arena),fields=FieldClock(arena);fieldTelegraphs?.Collect(arena,fields);blasts?.Render(arena,camera,now,BlastQuality,paused,fieldTelegraphs);fieldTelegraphs?.Render(arena,camera,fields,abilityPreview,abilityPreviewClamped);if(combatGlow==null)return;combatGlow.Halos=blasts?.Halos;combatGlow.Quality=GlowQuality;combatGlow.Trails=TrailsEnabled;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.ViewPilot.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);}
         private readonly AudioClip[] gunSounds=new AudioClip[4];
         private AudioClip reloadStart,reloadEnd,hitSound;
         private AudioSource localAudio;

@@ -129,16 +129,17 @@ namespace ChipArena.UnityConversion
             }
         }
         // The field views (chip fields and ability zones: key, fx, birth) are built once per frame by NativeFieldPresentation,
-        // which draws their glow, cores and domes from the same views.
-        private void Fields(NativeFieldPresentation fields,float now,double quality)
+        // which draws their glow, cores and domes from the same views. The emitters run on the views' clock (fields.Clock:
+        // continuous on guests), so births and emission stay in step with the telegraphs.
+        private void Fields(NativeFieldPresentation fields,double quality)
         {
-            if(fields==null)return;var views=fields.Views;
+            if(fields==null)return;var views=fields.Views;double now=fields.Clock;
             for(int i=0;i<views.Count;i++)sim.Field(views[i],now,quality);
             sim.Prune(fields.Live);
         }
         /// <summary>now is the arena presentation clock (record ages, field emitters, rewinds). paused: the match itself is
         /// stopped (offline menu); the blasts then hold still, otherwise they advance with the render frame as in the source.
-        /// fields: this frame's field views (NativeFieldPresentation.Collect already ran with the same clock).</summary>
+        /// fields: this frame's field views and their clock (NativeFieldPresentation.Collect already ran).</summary>
         public void Render(NativeArena arena,Camera camera,float now,float quality,bool paused,NativeFieldPresentation fields)
         {
             // A rewind (killcam, new round) clears.
@@ -146,7 +147,7 @@ namespace ChipArena.UnityConversion
             lastTime=Math.Max(lastTime,now);double dt=NativeBlastFrame.Step(Time.unscaledDeltaTime,paused);
             double q=Math.Max(0,Math.Min(1,quality));
             // Source renderer order: event blasts, then fields(state), then update(dt), then draw.
-            Remember(arena,fields);Effects(arena,now,q);Impacts(arena,now,q);Fields(fields,now,q);sim.Update(dt);
+            Remember(arena,fields);Effects(arena,now,q);Impacts(arena,now,q);Fields(fields,q);sim.Update(dt);
             Fill(solid,sim.Solid,camera);Fill(glow,sim.Glow,camera);
             for(int i=0;i<lights.Length;i++)
             {

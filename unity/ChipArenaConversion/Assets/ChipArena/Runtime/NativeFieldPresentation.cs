@@ -10,8 +10,8 @@ namespace ChipArena.UnityConversion
     // source's FieldViews from chip fields and ability zones; NativeBlastPresentation runs its field emitters (the volumes,
     // strike cues and arrival bursts) from the same views, so both keep one key, birth time and fx per field.
     // Layers, each one dynamic mesh refilled from reused buffers: the edge-less ground glow (Transparent-1, as renderOrder
-    // -1) and the Siren scorch decals, the time/repulsion domes and the Siren warning rings (Transparent), the aim preview
-    // motes (Transparent+3) and the opaque unlit cores. Host and guests draw from replicated data. Cosmetic only.
+    // -1) and the Siren scorch decals, the time/repulsion domes and the Siren warnings (Transparent; fills, then rings), the
+    // aim preview motes (Transparent+3) and the opaque unlit cores. Host and guests draw from replicated data. Cosmetic only.
     public sealed class NativeFieldPresentation : IDisposable
     {
         private sealed class Layer
@@ -38,6 +38,8 @@ namespace ChipArena.UnityConversion
         private readonly Layer glow,decal,dome,warn,motes,cores;private readonly Layer[] layers;private readonly Material[] owned;
         private readonly NativeFieldCube[] cubes=new NativeFieldCube[NativeFieldRules.MaxCubes];private readonly float[] preview=new float[NativeFieldRules.PreviewCap*4];
         private int generation=-1;private float lastTime=-1;private bool linear;private NativeArena lastArena;
+        /// <summary>The clock of the last <see cref="Collect"/>; NativeBlastPresentation runs the field emitters on it.</summary>
+        public float Clock{get;private set;}
         private string previewSpec;private ContentAbility previewAbility;
         public NativeFieldPresentation()
         {
@@ -90,12 +92,16 @@ namespace ChipArena.UnityConversion
             }
             Views.Add(v);colors.Add(color);
         }
-        /// <summary>Builds this frame's field views. now is the arena presentation clock (the blasts' clock).</summary>
+        private static bool Has(NativePilot p,string chip)=>p!=null&&p.Seat.chips.TryGetValue(chip,out int count)&&count>0;
+        /// <summary>
+        /// Builds this frame's field views. now is the field clock (ArenaPresentation.FieldClock): the presentation clock on the
+        /// host, the continuous snapshot clock on guests, so the telegraphs animate every rendered frame.
+        /// </summary>
         public void Collect(NativeArena arena,float now)
         {
             // A rewind (killcam, new round) or another arena (the replay's) clears: field ids and colours are per arena.
             if(arena!=lastArena||generation!=arena.Generation||now<lastTime-.25f){Clear();generation=arena.Generation;lastArena=arena;}
-            lastTime=Math.Max(lastTime,now);Views.Clear();colors.Clear();Live.Clear();
+            lastTime=Math.Max(lastTime,now);Clock=now;Views.Clear();colors.Clear();Live.Clear();
             // arena.Local, not ViewPilot: Leet mind control does not flip the tint. Dedicated hosts have no local pilot.
             var viewer=arena.Local;bool pve=arena.Pve!=null,teams=arena.Match.Teams;
             var fields=arena.ChipFields;
@@ -113,7 +119,9 @@ namespace ChipArena.UnityConversion
                     // A zone whose expiry was just cut to now (a newer cast replaced its group) hashes to a new key for its
                     // last frame; it is not a new field, so it gets no glow flash and no arrival burst.
                     if(z.Until<=arena.Time)continue;
-                    zoneBorn[key]=born=now;
+                    // Exact where the expiry gives it (Singularity, burning ground, Orbital Mark); bombs no later than their fuse.
+                    var d=z.Definition;
+                    zoneBorn[key]=born=(float)NativeFieldRules.ZoneBorn(d.id,z.Kind,z.Until,d.duration,d.fuse,Has(z.Owner,"cinder-field"),now);
                 }
                 // The mark locks when its fuse has duration left to run (NativeAbilities orbital-mark: LockAt=born+duration, Until=born+fuse).
                 double? lockAt=z.Definition.id=="orbital-mark"?z.Until-z.Definition.fuse+z.Definition.duration:(double?)null;
@@ -170,16 +178,21 @@ namespace ChipArena.UnityConversion
         private void SirenTelegraphs(NativeArena arena,float now)
         {
             var list=arena.SirenFields;Color scorch=Vertex(NativeFieldRules.Scorch,(float)NativeFieldRules.ScorchAlpha),fill=Display(NativeFieldRules.WarnDeep,1,(float)NativeFieldRules.FillAlpha);
-            for(int i=0;i<list.Count;i++)
-            {
-                var f=list[i];Vector3 at=f.Position;
-                if(NativeFieldRules.SirenPatch(f.Kind)){if(NativeFieldRules.ScorchDecal(f.At,f.Until,f.Radius,now,out double scale))Append(decal,NativeFieldRules.SirenDisc,at+Vector3.up*(float)NativeFieldRules.ScorchLift,(float)scale,scorch,true);}
-                else if(f.Kind=="eruption"&&NativeFieldRules.EruptionWarn(f.At,f.At+NativeFieldRules.EruptionWarning,f.Radius,now,out double ring,out double grown))
+            Color ringColor=Display(NativeFieldRules.Warn,NativeFieldRules.Flicker(now),(float)NativeFieldRules.WarnAlpha);
+            // The warning layer is one mesh, drawn in index order: every fill first, then every ring. In the source they are
+            // separate meshes that three.js depth-sorts, and the ring sits 1 cm above its fill, so the ring lands on top once
+            // the fill grows under it (the last ~0.1 s before the burst).
+            for(int pass=0;pass<2;pass++)
+                for(int i=0;i<list.Count;i++)
                 {
-                    var c=Display(NativeFieldRules.Warn,NativeFieldRules.Flicker(now),(float)NativeFieldRules.WarnAlpha);
-                    Append(warn,NativeFieldRules.WarnRing,at+Vector3.up*(float)NativeFieldRules.RingLift,(float)ring,c);Append(warn,NativeFieldRules.SirenDisc,at+Vector3.up*(float)NativeFieldRules.FillLift,(float)grown,fill);
+                    var f=list[i];Vector3 at=f.Position;
+                    if(NativeFieldRules.SirenPatch(f.Kind)){if(pass==0&&NativeFieldRules.ScorchDecal(f.At,f.Until,f.Radius,now,out double scale))Append(decal,NativeFieldRules.SirenDisc,at+Vector3.up*(float)NativeFieldRules.ScorchLift,(float)scale,scorch,true);}
+                    else if(f.Kind=="eruption"&&NativeFieldRules.EruptionWarn(f.At,f.At+NativeFieldRules.EruptionWarning,f.Radius,now,out double ring,out double grown))
+                    {
+                        if(pass==0)Append(warn,NativeFieldRules.SirenDisc,at+Vector3.up*(float)NativeFieldRules.FillLift,(float)grown,fill);
+                        else Append(warn,NativeFieldRules.WarnRing,at+Vector3.up*(float)NativeFieldRules.RingLift,(float)ring,ringColor);
+                    }
                 }
-            }
         }
         // ability-preview.ts: motes rising on the gameplay radius of a point-targeted E ability (Geyser Wall: three circles 3 m
         // apart across the aim, as NativeAbilities places them; Singularity: x1.25 with Abyssal Core).

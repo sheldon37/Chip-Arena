@@ -71,6 +71,24 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>Own fields, any PvE field and same-team fields in teams mode are allied. Unity teams are seat numbers (0 is a team).</summary>
         public static bool IsAlly(bool self,bool pve,bool teams,bool sameTeam)=>self||pve||teams&&sameTeam;
+        /// <summary>
+        /// An ability zone's birth (zones carry no id or birth time yet; Astra), first computed when the zone is first seen
+        /// (firstSeen: the field clock then). Exact where it follows from the expiry (NativeAbilities): Singularity lasts its
+        /// duration, Meteor Strike's burning ground its duration (x1.5 with Cinder Field), the Orbital Mark its fuse. These are
+        /// the zones with an arrival burst or an aged core, so a late joiner or a presentation reset (killcam start and end)
+        /// does not replay them. The Meteor Strike and Geyser Wall bombs expire after their fuse plus a close-cast fuse and a
+        /// .35 s stagger per geyser, which the zone does not record: their birth is at most until - fuse, so a bomb first seen
+        /// late is aged from there (exact for a far-cast meteor and the first geyser), else from when it was first seen. They
+        /// are fused, so they get no arrival burst either way.
+        /// </summary>
+        public static double ZoneBorn(string ability,string kind,double until,double duration,double fuse,bool cinderField,double firstSeen)
+        {
+            if(ability=="singularity")return until-duration;
+            if(ability=="meteor-strike"&&kind=="fire")return until-duration*(cinderField?1.5:1);
+            if(ability=="orbital-mark")return until-fuse;
+            if((ability=="meteor-strike"||ability=="geyser-wall")&&fuse>0)return Math.Min(firstSeen,until-fuse);
+            return firstSeen;
+        }
 
         /// <summary>The field group's base height: a body-centred point (y .85-.95) sits .7 lower, a floor point stays at .07.</summary>
         public static double Origin(double y)=>Math.Max(.07,y-.7);
@@ -190,7 +208,17 @@ namespace ChipArena.UnityConversion
         public static bool SirenPatch(string kind)=>kind=="hellfire"||kind=="trail"||kind=="scorch";
 
         // ---- Ability aim preview (ability-preview.ts): rising motes on the gameplay radius of point-targeted E abilities. ----
-        public const int PreviewColor=0x8af4ff,PreviewCap=120;public const double PreviewAlpha=.85,PreviewSize=.14,GeyserSpacing=3;
+        public const int PreviewColor=0x8af4ff,PreviewCap=120;public const double PreviewAlpha=.85,PreviewSize=.14,GeyserSpacing=3,HoldAimSeconds=.2;
+        /// <summary>
+        /// previewOn (ability-hud.ts): the E slot is casting, or ready (a charge left, or no cooldown left) and affordable
+        /// (only magic pilots pay mana; cost includes resourceCost); never with the Necronomicon (E raises the dead); and on a
+        /// hold-aim E only once it has been held HOLD_AIM_SECONDS. On cooldown or without mana nothing is drawn.
+        /// </summary>
+        public static bool PreviewOn(bool casting,double cooldownLeft,bool magic,double mana,double cost,bool necronomicon,double heldFor)
+        {
+            if(necronomicon||!(heldFor>=HoldAimSeconds))return false;
+            return casting||(!magic||mana>=cost)&&cooldownLeft<=0;
+        }
         /// <summary>POINT: the point-targeted E abilities that preview; ground: the spells project onto the ground, the frag does not.</summary>
         public static bool Previews(string ability,out bool ground)
         {

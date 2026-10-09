@@ -20,7 +20,7 @@ namespace ChipArena.UnityConversion
             Check(k.GetProperty("glowAlpha").GetDouble()==NativeFieldRules.GlowAlpha&&k.GetProperty("ally").GetInt32()==NativeFieldRules.Ally&&k.GetProperty("enemy").GetInt32()==NativeFieldRules.Enemy,"glow alpha and telegraph colours match the source");
             Geometry(json);int frames=Fields(json),rows=Tint(json),siren=Siren(json),motes=Preview(json);
             Rim();NoOutline();Truth();Formulas();
-            Console.WriteLine("PASS "+json.GetProperty("fields").GetArrayLength()+" source field telegraph runs ("+frames+" frames: glow, cores, domes for every kind and fx), "+rows+" tint rows, "+siren+" Siren floor telegraph frames, "+motes+" aim preview motes, and rim alpha, no-outline, tint truth table and core formula checks");
+            Console.WriteLine("PASS "+json.GetProperty("fields").GetArrayLength()+" source field telegraph runs ("+frames+" frames: glow, cores, domes for every kind and fx), "+rows+" tint rows, "+siren+" Siren floor telegraph frames, "+motes+" aim preview motes, and rim alpha, no-outline, tint truth table, core formula, aim preview gate and zone birth checks");
         }
         private static void Mesh(JsonElement g,NativeFieldMesh mesh,double x,double y,double z,double scale,double alpha,string what)
         {
@@ -203,6 +203,37 @@ namespace ChipArena.UnityConversion
             Check(NativeFieldRules.EruptionWarn(0,1,2,.99,out _,out double fill)&&Math.Abs(fill-1.98)<1e-9&&!NativeFieldRules.EruptionWarn(0,1,2,1,out _,out _),"eruption warning ends at the burst");
             var into=new float[NativeFieldRules.PreviewCap*4];int used=0;for(int i=0;i<5;i++)used=NativeFieldRules.PreviewMotes(i*10,0,0,7,false,1,into,used);Check(used==NativeFieldRules.PreviewCap,"preview motes are capped at 120");
             Check(NativeFieldRules.Previews("geyser-wall",out bool ground)&&ground&&NativeFieldRules.Previews("frag-grenade",out ground)&&!ground&&!NativeFieldRules.Previews("flame-lance",out _),"preview abilities");
+            Gates();
+        }
+        // The aim preview gate (previewOn) and the zone births that follow from the expiry, as NativeAbilities sets them.
+        private static void Gates()
+        {
+            // E ready / casting / on cooldown / no mana / Necronomicon / held less than HOLD_AIM_SECONDS.
+            Check(NativeFieldRules.PreviewOn(false,0,true,50,40,false,.2),"ready and affordable E previews once held .2 s");
+            Check(!NativeFieldRules.PreviewOn(false,0,true,50,40,false,.19),"no preview before HOLD_AIM_SECONDS");
+            Check(!NativeFieldRules.PreviewOn(false,2.5,true,50,40,false,1),"no preview on cooldown");
+            Check(!NativeFieldRules.PreviewOn(false,0,true,39.9,40,false,1),"no preview without the mana (magic)");
+            Check(NativeFieldRules.PreviewOn(false,0,false,0,0,false,1)&&NativeFieldRules.PreviewOn(false,0,false,0,35,false,1),"gun pilots pay no mana");
+            Check(NativeFieldRules.PreviewOn(true,3,true,0,40,false,1),"a casting E keeps its preview");
+            Check(!NativeFieldRules.PreviewOn(false,0,true,99,40,true,1)&&!NativeFieldRules.PreviewOn(true,0,true,99,40,true,1),"no preview with the Necronomicon");
+            // Host formulas (NativeAbilities.ExecuteAbility, StepAbilityWorld, the orbital-mark hit; GameContent.json timings),
+            // float like the match. firstSeen: the field clock when the zone is first seen (late: a killcam reset or a late join).
+            float cast=37.123f;
+            void Born(string ability,string kind,float until,bool cinder,double firstSeen,double expected,string what)
+            {
+                double born=NativeFieldRules.ZoneBorn(ability,kind,until,ability=="singularity"?2.2:ability=="meteor-strike"?3:.8,ability=="orbital-mark"?1:ability=="geyser-wall"?.45:.9,cinder,firstSeen);
+                Check(Math.Abs(born-expected)<1e-4,what+": born "+born+", expected "+expected);
+            }
+            Born("singularity","black-hole",cast+(float)2.2,false,cast+1.3,cast,"Singularity lasts its duration");
+            Born("meteor-strike","fire",cast+(float)3.0*1f,false,cast+2,cast,"burning ground lasts its duration");
+            Born("meteor-strike","fire",cast+(float)3.0*1.5f,true,cast+2,cast,"burning ground with Cinder Field lasts 1.5x");
+            Born("orbital-mark","bomb",cast+(float)1.0,false,cast+.6,cast,"the Orbital Mark strikes at its fuse");
+            Born("meteor-strike","bomb",cast+(float).9,false,cast+.5,cast,"a far-cast meteor seen late is aged from its fuse");
+            Born("meteor-strike","bomb",cast+(float).9+.3f,false,cast+.6,cast+.3,"a close-cast meteor seen late: at most until - fuse");
+            Born("meteor-strike","bomb",cast+(float).9+.3f,false,cast,cast,"a meteor seen at its cast is born then");
+            Born("geyser-wall","bomb",cast+(float).45,false,cast+.3,cast,"the first geyser seen late is aged from its fuse");
+            Born("geyser-wall","bomb",cast+(float).45+.7f,false,cast,cast,"a staggered geyser seen at its cast is born then");
+            Born("geyser-wall","bomb",cast+(float).45+.7f,false,cast+1,cast+.7,"a staggered geyser seen late: at most until - fuse");
         }
     }
 }
