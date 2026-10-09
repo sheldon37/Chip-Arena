@@ -28,6 +28,12 @@ Remaining: activated Unity import/Editor gates, genuine Mono token verification,
 - **Not run:** Unity import and compile of `NativeBlast.shader`, rendering on a GPU, the blasts in a hosted or joined match, frame-time cost on the owner's PC.
 - Review fixes (`claude/wip-c6-fixes`): the BlastChecks frame rules cover the frame step (capped at 0.05 s, zero only while paused), the pools staying small with the match running, the collapse of Blink Strike, ball-lightning and armed-rocket duplicates, and the Siren sites and halo cue. The checks above pass again. **Not run:** a Siren match, a 144 Hz guest or an online menu pause in the player.
 
+## Projectile and ability-shot models, C10 (2026-10-09, `claude/wip-c10`)
+
+- Runtime and Editor assemblies compile against the real Unity 6000.3.24f1 managed DLLs. `tools/check_relay.py` passes; the new ShotChecks replay 31 runs of the pinned projectile path (`tools/export_shot_fixtures.mjs <source checkout>` cuts the renderer.ts shot loop, abilityShot, burst/beam and frame calls verbatim into a stage with chip-effects.ts, event-vfx.ts, projectile-trails.ts and projectile-glow.ts, and writes `Tests/shot-parity.json`). Per captured frame they compare every model (shape, matrix, colour, world vertices), every chip-module part, every spark and beam, every trail (colour lock, width, points, drawn ribbon), every halo and the lit lights. Covered: 3 guns, 5 magic schools, Bowling Club/Velocity Coil/element chips, both hadoukens, the sword beam, 7 ability shots and the fallback, all chip modules, thrown dagger and shield, Siren exclusion, a volley, reduced and off effects. The 17 three.js geometries match exactly. A deliberately moved module cone was caught. 24 Python tests pass; `tools/package_source.py` passes.
+- `Editor/NativeShotBuildChecks.cs` adds an Edit-mode lifecycle check (bullets, a null-definition ability shot, a frag, a thrown dagger, a skipped Siren shot, pruning, reset).
+- **Not run:** Unity import, rendering on a GPU, the models in a hosted or joined match, the Editor build checks, frame-time cost on the owner's PC.
+
 ## Melee runtime, presentation polish and updater integration (2026-10-08, `claude/sleepy-ritchie-g8ruhv`)
 
 Run in the Linux authoring workspace on the combined tree (updater merge `d185be4` and later):

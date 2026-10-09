@@ -7,13 +7,8 @@ namespace ChipArena.UnityConversion
         public void RenderAbilities(NativeArena arena,Vector3? preview=null)
         {
             foreach(var b in batches)b.Clear();SourceWorld(arena);DeathPresentation(arena);RenderWoundSpray(arena.Time);DeathBroadcasts(arena);WorldEffects(arena);
-            foreach(var shot in arena.AbilityShots)
-            {
-                int color=shot.Owner.Pose.MagicVisual>0?6+shot.Owner.Pose.MagicVisual:6;
-                Vector3 scale=Vector3.one*Mathf.Max(.16f,shot.Radius*2);
-                if(shot.Definition.id=="tidal-wave")scale=new Vector3(2,.8f,.35f);
-                Add(color,Matrix4x4.TRS(shot.Position,shot.Velocity.sqrMagnitude>.01f?Quaternion.LookRotation(shot.Velocity):Quaternion.identity,scale));
-            }
+            // Bullets and ability shots are NativeShotPresentation's source models (RenderGlow); the Siren keeps its placeholder.
+            SirenShotPlaceholders(arena);
             foreach(var shot in arena.MeleeShots)
             {
                 float age=arena.Time-shot.At;
