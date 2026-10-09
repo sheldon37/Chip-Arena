@@ -1,5 +1,36 @@
 # Native publishing automation development log
 
+## 2026-10-09 13:29 EDT — Astra — UBA #7 published and publicly verified
+
+- Owner asked to fix the remaining automatic publisher integration. Repairs
+  PRs #73–79 are merged on main, latest code `f24f393`. Real UBA responses required
+  exact underscore version IDs, JSON-string artifact URLs, the documented Unity
+  US East UVCS storage endpoint, the log `redirect_url` field, and gzip decoding.
+  The successful run confirms gzip was the final marker-reading problem. No
+  source/CI/receipt/Linear/ZIP/checksum/compiler/shader gate was bypassed.
+- Every repair passed hosted Linux and Windows suites before merge. Final suite
+  has 56 tests (one expected platform-specific skip); source native CI and UBA #7
+  passed on `27a7833609b69f3067a7acb8b1c81344e649f5c3`. No new Unity build needed.
+- Automatic main-push run `37966337783` validated the complete delivery, used the
+  scoped feed credential successfully, and published #7 at channel commit
+  `3cf2b0f8caa0d7c498edf6c51d2f0e7bcc63f05d`. Initial public-cache delay was reported
+  accurately; verification-only attempt 2 completed SUCCESS. Public manifest and
+  all three payload parts passed full download/hash/archive validation. Receipt
+  `publicDownloadsVerified=true`, `verifiedAt=2026-10-09T17:29:37.385421+00:00`,
+  persisted at channel commit `fc5eb96759a9c946fcff93fd7fdbee096db0a415`.
+- Released version `3686f40e5a1c7600d8abcb6e050701af7719aaedd976936efd003e33b9953a55`,
+  revision `639271614362672189`, payload SHA256
+  `a9bd4f1f729ff7a6aa4d56b7413b89b1028a21a7e39e127829be35836df4ba2e`,
+  94,229,097 bytes / 229 files, Linear / Unity 6000.3.24f1. Previous objects and
+  Electron feed preserved. No game/visual changes, live feed, Site or paid upgrade.
+- Owner next step: use Update in an older native installation, then verify launch,
+  retained settings and gameplay (including Siren minion hits). Runtime Windows/GPU
+  playtesting is not performed by the publisher. Future completed batches must
+  reach `codex/unity-cloud-current`; enabled Unity Auto-build creates candidates,
+  native-CI completion/hourly checks publish validated successful current heads.
+  Publication automation is now verified; future Unity push-trigger behavior was
+  owner-configured, while this accepted Unity build was manually started.
+
 ## 2026-10-09 — Astra — decode compressed stored provider logs
 
 - PR #78 passed hosted tests and merged at `890a677`; run `37965946382` retrieves
