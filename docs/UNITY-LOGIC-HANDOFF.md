@@ -2,8 +2,9 @@
 
 ## 2026-10-09 — account/profile compatibility and service setup (PR #81)
 
-Task `codex/unity-account-contract`, based on shared/cloud `27a7833`. The owner
-chose the most efficient implementation and authorized publication to Update.
+Account PR #81 and Editor-test isolation PR #83 are merged into shared/cloud
+`603ca76b69b2256d58b24abc4ac23166306e1fd4`. The owner chose the most efficient
+implementation and authorized publication to Update.
 Reuse the existing hosted account service and D1 records; no database migration,
 new issuer, credential reset, or backend deployment is necessary.
 
@@ -36,13 +37,26 @@ new issuer, credential reset, or backend deployment is necessary.
 - Authorized Sites owner inspection confirmed the existing Sheldon record already
   has DEV access and a saved pilot. The supplied password matches its stored verifier
   (checked in memory; no secret logged or saved). No account reset or row change.
-- Local Python suite: 44 pass / one platform skip; diff check passed. Hosted native
-  CI and real UBA compile/Editor gates pending for the completed patch. Live Windows
-  sign-in is not tested: this environment's unauthenticated service request was
-  blocked by Cloudflare 403/1010, and no workaround or authenticated request was
-  attempted. Owner administration inspection is not an end-to-end client login.
-- No combat, animation, profile schema or server API changes. Publication pending
-  the exact-head native CI and Unity build gates; see DEV_LOG for the receipt.
+- Released through Update: UBA **#8**, native version **80b8edb9**, source `603ca76`.
+  Both exact-head native CI jobs passed (`37974507246`), followed by real Unity
+  6000.3.24f1 / Linear compile, Editor checks and full delivery validation.
+  Publisher `37974643037` attempt 2 verified the public manifest and every payload
+  part; receipt commit `b4462d36e4cc63625a48487b9ad6eb5a1de5184f` at 18:52:39 UTC.
+- Main automation PR #82 (`f6137be`) starts a missing build pinned to the checked
+  cloud commit when Unity's repository hook does not queue one. It uses the existing
+  target, avoids duplicates and failed-build retries, then runs all publication
+  gates. The actual API start successfully produced build #8. Future Claude/Astra
+  game batches still must reach `codex/unity-cloud-current`; task-only pushes are
+  not published. No combat, animation, profile schema or server API changes.
+- Local checks: 44 passed / one platform skip for the game; publisher suite 65
+  passed / one skip, also green on hosted Linux/Windows. Legacy Electron Checks
+  still has its documented 12 unit failures and TypeScript errors in chaos.ts,
+  leet.ts and standard-melee.ts; the native pipeline does not relabel them green.
+- Windows sign-in remains untested: this environment's unauthenticated service
+  request was blocked by Cloudflare 403/1010, with no workaround or credential
+  submission. Owner administration inspection and password verification are not an
+  end-to-end login. After Update, test Sheldon sign-in, DEV access, pilot load/save
+  and Reload saved pilot on Windows. Existing accounts and records were untouched.
 
 
 2026-10-08, Codex/Astra. Branch `codex/unity-parity-logic-current`, PR [#66](https://github.com/sheldon37/Chip-Arena/pull/66) into `claude/sleepy-ritchie-g8ruhv` (#62). Requested baseline `b828acb`; earlier logic checkpoints `718cd4f`, `d80d974`, `c9888fc`. PR #65 had conflicts after Claude advanced; replacement PR #66 starts directly at `4207641` and carries the identical reviewed tree in `9921c78`, without a merge or force push. Claude presentation changes through `4207641` are preserved. Implemented on the branch only: nothing merged or released.
