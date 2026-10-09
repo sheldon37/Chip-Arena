@@ -40,10 +40,13 @@ jobs:
       - name: Exercise delivery and publisher failure cases
         run: python -m unittest discover -s automation/native-publish/Tests -p "test_*.py"
   publish:
+    needs: tests
     if: >-
+      always() && (needs.tests.result == 'success' || needs.tests.result == 'skipped') &&
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'workflow_dispatch' ||
-       ((github.event_name == 'schedule' || github.event_name == 'workflow_run') &&
+       ((github.event_name == 'schedule' || github.event_name == 'workflow_run' ||
+         (github.event_name == 'push' && needs.tests.result == 'success')) &&
         vars.NATIVE_AUTO_PUBLISH_ENABLED == 'true'))
     runs-on: ubuntu-24.04
     timeout-minutes: 20

@@ -62,6 +62,16 @@ class AutoPublishTests(unittest.TestCase):
             with self.subTest(extra=extra), self.assertRaises(ValueError):
                 auto.check_build(dict(self.build, **extra), self.sha)
 
+    def test_metadata_diagnostic_excludes_links_and_credentials(self):
+        build = dict(self.build, unityVersion='latest', links={'download': 'secret-url'},
+                     environment={'TOKEN': 'secret-value'})
+        with patch('builtins.print') as printed:
+            auto.describe_build(build, self.sha, 'list')
+        diagnostic = printed.call_args.args[0]
+        self.assertNotIn('secret', diagnostic)
+        self.assertEqual(auto.build_rejections(build, self.sha), ['unityVersion'])
+        self.assertIn('latest', diagnostic)
+
     def test_receipt_rejects_wrong_context_and_gamma(self):
         delivery = self.unpack()
         path = delivery / 'cloud-build-receipt.json'
