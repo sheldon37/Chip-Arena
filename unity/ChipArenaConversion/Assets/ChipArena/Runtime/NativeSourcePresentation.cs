@@ -8,7 +8,8 @@ namespace ChipArena.UnityConversion
     {
         private NativeSourceModels sourceModels;private readonly Dictionary<int,CapturedAnimation.Player> minionRigs=new Dictionary<int,CapturedAnimation.Player>();private readonly CapturedRig.Pose minionPose=new CapturedRig.Pose();
         private static Color BodyTint(string text){if(!ColorUtility.TryParseHtmlString(text??"#e5e7eb",out var color))return Color.white;Color source=new Color(229/255f,231/255f,235/255f).linear,target=color.linear;return new Color(target.r/source.r,target.g/source.g,target.b/source.b);}
-        private static Color AccentTint(string text){if(!ColorUtility.TryParseHtmlString(text??"#e5e7eb",out var color))return Color.white;Color source=new Color(112/255f,225/255f,208/255f).linear,target=color.linear;return new Color(target.r/source.r,target.g/source.g,target.b/source.b);}
+        // Accent trims and armor strips carry ember('#70e1d0'); the pilot's ember(accent) replaces it (NativePortraitRules.GlowAccentTint).
+        private static Color AccentTint(string text){var tint=NativePortraitRules.GlowAccentTint(text);return new Color(tint.X,tint.Y,tint.Z);}
         private bool SourceCharacter(CapturedAnimation.Player rig,Actor a,float time,bool first=false)
         {
             if(sourceModels==null||string.IsNullOrEmpty(a.SourceSpec))return false;int layer=first?10:0;Camera camera=first?ViewCamera:null;

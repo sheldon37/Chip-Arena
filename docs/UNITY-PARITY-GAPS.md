@@ -147,6 +147,7 @@ wait on PR #65 (room options, invite URL, LAN addresses).
 - **C7** P2/L partial: feedback visuals that are still open.
    - Muzzle flash: ported with C11 (Runtime/NativeWeaponPresentation.cs). Slide recoil: the source never moves the pistol slide, because its voxel part has no name and ranged-motion.ts:222 finds nothing. The whole gun kicks with the hand, which RangedPose already ports. GunPresentation's slide kick has no source counterpart.
    - Burn, poison, slow, shackle and Orbital Mark rigs and team bands are ported on `claude/wip-c7-status` (Runtime/NativeStatusPresentation.cs; parity in Tests/status-parity.json). Guests and replays draw them from the replicated DoT, slow and mark state (PR #69).
+   - Owner direction (2026-10-09): the local player's own pilot wears no team band (the source's teamArmor marks every rig, own included, e.g. the PvE party's blue). Teammates and opponents keep their bands (NativeStatusVisuals.PilotBand). The armor halos and spill light take each pilot's accent, as armor-glow.ts does, and accent trims use ember(accent), as character-rig.ts does.
    - Combat numbers show only your own hits.
    - First person has no sway, bob or recoil. Implemented on `claude/wip-c7-fp-sway` (the first-person-view.ts view layer); not playtested.
 Tracked #30/#62/#63/#122/#94 (also #29, #23/#24).

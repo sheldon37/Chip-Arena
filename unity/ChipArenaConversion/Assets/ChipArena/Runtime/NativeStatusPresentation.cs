@@ -37,7 +37,7 @@ namespace ChipArena.UnityConversion
             foreach(var p in arena.Pilots)
             {
                 if(!p.Seat.connected||p.Hp<=0)continue;bool own=FirstPerson&&p.Seat.id==LocalId;rigs.TryGetValue(p.Seat.id,out var rig);
-                if(teams&&!own&&rig!=null)Bands(rig,NativeStatusVisuals.BandTeam(true,arena.Match.Cooperative,p.Seat.AuthorityBoss,p.Seat.team));
+                if(!own&&rig!=null)Bands(rig,NativeStatusVisuals.PilotBand(teams,arena.Match.Cooperative,p.Seat.AuthorityBoss,p.Seat.team,p.Seat.id==arena.LocalId));
                 if(own||!fight)continue;
                 Vector3 at=rig!=null?rig.Root.transform.position:p.Body.position;var status=PilotStatus(arena,p,now,quality);
                 status.Root=new NVector(-at.x,at.y,at.z);status.Camera=sourceEye;status.CameraRotation=sourceLook;QueueStatus(status,time,Matrix4x4.Translate(at),statusWorld);

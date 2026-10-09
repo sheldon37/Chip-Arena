@@ -103,6 +103,13 @@ namespace ChipArena.UnityConversion
         private static Vector3 Ratio(Vector3 a,Vector3 b)=>new Vector3(b.X>0?a.X/b.X:1,b.Y>0?a.Y/b.Y:1,b.Z>0?a.Z/b.Z:1);
         public static Vector3 BodyTint(int body)=>Ratio(Linear(body),Linear(ExportBody));
         public static Vector3 AccentTint(int accent)=>Ratio(Linear(accent),Ember(ExportAccent));
+        // The arena rig (renderer.ts makeRig, first-person, draft stage, intros, kill-cam victim: createCharacterRig(.., true))
+        // paints its accent trims and armor strips ember(accent) as both diffuse and emissive, and the export carries
+        // ember('#70e1d0'), so the per-pilot tint is the ember ratio. A plain accent ratio multiplied every pick by
+        // ember(teal)/teal = (.27,.67,.65), which turned any chosen colour cyan. Absent or malformed ("" from JsonUtility): the default.
+        public static readonly Vector3 ExportEmber=Ember(ExportAccent);
+        public static Vector3 GlowAccentTint(int accent)=>Ratio(Ember(accent),ExportEmber);
+        public static Vector3 GlowAccentTint(string accent)=>GlowAccentTint(Parse(accent,ExportAccent));
         public static Vector3 EdgeTint(int body)=>Ratio(Linear(EdgeOf(body)),Linear(EdgeOf(ExportBody)));
         public static Vector3 FlexTint(int body)=>Ratio(Linear(FlexOf(body)),Linear(FlexOf(ExportBody)));
 

@@ -97,6 +97,10 @@ namespace ChipArena.UnityConversion
         // The band team (TeamColors index) or -1. PvE forces a teams match with the party in blue and the Siren in purple
         // (pve/contract.ts:26,29); the native PvE seats use their own team numbers, so the source colours are applied here.
         public static int BandTeam(bool teams,bool cooperative,bool boss,int team)=>!teams?-1:cooperative?(boss?4:1):TeamIndex(team);
+        // Owner direction (2026-10-09 playtest, "there's also blue on the model"): the local player's own pilot never wears its
+        // band, so it shows only the colours chosen in Customize. teamArmor marks every rig in the source, own included (the
+        // PvE party's blue #69a6ff); teammates and opponents keep their bands here.
+        public static int PilotBand(bool teams,bool cooperative,bool boss,int team,bool local)=>local?-1:BandTeam(teams,cooperative,boss,team);
 
         // ---- Source geometry (three r180) for the status meshes; z = 0 flame plane, unit spheres/ring. ----
         // ShapeGeometry(flameShape,4) output (status-effects.ts:8-9), checked against three in Tests/status-parity.json.
