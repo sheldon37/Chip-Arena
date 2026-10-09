@@ -16,6 +16,12 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-08 21:03 EDT — Codex/Astra — cloud target setup and automatic Mono clarification
+
+- Branch `codex/unity-cloud-current`, PR #68, previous documentation head `60d2be8`, unchanged tested source `8a99e96`. Owner reports dashboard settings complete except a missing Scripting backend selector. The uploaded PDF verifies branch/subfolder/editor/Windows builder; advanced hooks, Micro tier and scheduling are owner-reported.
+- Read `NativeCloudBuild.cs`: PreExport sets `NamedBuildTarget.Standalone` to `ScriptingImplementation.Mono2x` and enables development; PostExport rejects a backend mismatch. A manual Mono selector is unnecessary. Corrected the dashboard handoff so Claude/the owner do not search for an optional field.
+- Documentation-only update; diff check passes. Existing CI receipt remains unchanged, no tests rerun. Next: first clean Windows cloud build, full log and delivery archive validation. No cloud build result, new release, merge, paid upgrade or Unity API access claimed.
+
 ## 2026-10-08 evening EDT — Codex/Astra — refresh cloud build candidate for owner setup
 
 - Branch `codex/unity-cloud-current`, based on current shared Unity head `2604b2ae587b0af3a5378cd52bf10dba93143515`. Shared advanced from the owner's tested `5900583` to Claude's C11 weapon presentation while account setup was underway; all those changes are retained. No shared branch was changed or merged by this task.

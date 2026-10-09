@@ -31,6 +31,8 @@ in [UNITY-NATIVE-UPDATE-HANDOFF.md](UNITY-NATIVE-UPDATE-HANDOFF.md).
 
 GitHub native CI [37866917576](https://github.com/sheldon37/Chip-Arena/actions/runs/37866917576) passes on implementation `8a99e962554887f758f4edc7132199aceb40f38d` (draft PR #68): Linux check_relay.py, full Python suite (42 collected, 41 pass, one Windows-only skip), package_source.py (737 files), cloud staging and 51 UpdaterTests; Windows all 16 publisher and eight cloud-delivery tests, staging/51 updater checks, shipping launcher compilation and real fixture-player install/restart/acknowledgement, rollback and interrupted-swap recovery. These are source/helper checks, not an actual Unity build. The follow-up commit records results in documentation only.
 
+Owner setup checkpoint (2026-10-08 21:03 EDT): the owner reports all requested target settings completed except a Scripting backend selector, which was not present. The supplied PDF independently shows the correct branch, project subfolder, Unity 6000.3.24f1 and Windows 11 24H2 builder. Advanced fields/Micro tier are owner-reported, not independently viewed. Code confirms PreExport explicitly selects Mono and PostExport rejects a backend mismatch, so no additional dashboard field is needed. Next is the first clean cloud build, followed by its full log and delivery-artifact inspection. No actual UBA run/result is recorded yet.
+
 The following is the original tooling implementation history, superseded by the
 current candidate/account status above:
 
@@ -68,7 +70,7 @@ account decisions; no budget or payment authorization was provided here.
 | Editor | Exactly `6000.3.24f1` from ProjectVersion.txt |
 | Builder OS | Windows; choose included Micro machine (launcher needs the installed .NET Framework compiler) |
 | Target | Windows standalone, x86_64; graphical client, not dedicated server |
-| Scripting backend | Mono |
+| Scripting backend | Mono; set automatically by `NativeCloudBuild.PreExport`, checked again in `PostExport`; no dashboard selector required |
 | Development build | Enabled, matching Build-Windows.cmd |
 | Scene | `Assets/ChipArena/Scenes/Prototype.unity` |
 | Pre-export method | `ChipArena.UnityConversion.Editor.NativeCloudBuild.PreExport` |
