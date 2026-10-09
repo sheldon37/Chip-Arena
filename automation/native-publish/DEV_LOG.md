@@ -1,5 +1,15 @@
 # Native publishing automation development log
 
+## 2026-10-09 — Astra — use the log endpoint's documented redirect field
+
+- PR #77 passed hosted tests and merged at `0971446`. Run `37965640899`
+  reaches the explicit manual-log response, whose payload uses `redirect_url`,
+  not the artifact endpoint's `url`. Confirmed in Unity's v2 OpenAPI source:
+  `GetBuildLogResponse.properties.redirect_url`. Handle both distinct API fields.
+- Updated the manual-log regression to the exact schema. Local 54 tests:
+  53 pass, one Windows-only skip. Hosted then real publication checks next.
+  Task `codex/unity-publish-log-schema`, base `0971446`; all validation remains.
+
 ## 2026-10-09 — Astra — retrieve and interpret the complete provider log
 
 - Storage repair PR #76 passed hosted tests and merged at `a8aadb9`. Real run
