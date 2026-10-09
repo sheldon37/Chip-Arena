@@ -16,24 +16,27 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
-## 2026-10-09 — Astra — preserve account contracts and a plain offline state
-- Task `codex/unity-account-contract`, base shared/cloud `27a7833`. Owner requires
-  the existing NativeAccount API, all NativeProfile/NativeCosmetics fields, signed
-  DEV/grant/flag behavior, existing pilots and Reload saved pilot to survive any
-  storage change. Full contract recorded in UNITY-LOGIC-HANDOFF.md.
-- Initial/signed-out/no-service status is now `Signed out / offline`. Configure
-  and service URL controls remain functional. No API, schema, signature, profile,
-  grant or Connection report changes. No credentials added to source or notes.
-- An unauthenticated check of the existing Electron account service returned
-  Cloudflare 403/1010 before credentials were sent. The requested owner DEV account
-  has NOT been created, reset or verified. Native service URL defaults empty.
-  No replacement provider decision was found in current source/handoff notes.
-- Source contract review and diff whitespace checks passed; hosted source CI is
-  requested on the draft PR. Unity runtime, live login and migration NOT RUN.
-  Next: clarify existing-service vs replacement backend target/access. Draft only,
-  not merged/released. Current released player is UBA #7 / 3686f40e / 27a7833;
-  automatic publishing is verified in main workflow 37966337783 attempt 2.
-  No gameplay, hitboxes, timing, movement or animation changes.
+## 2026-10-09 — Astra — connect existing accounts and preserve pilot contracts
+- Task `codex/unity-account-contract`, PR #81, base shared/cloud `27a7833`. Owner
+  chose efficient implementation, asked to hide the service URL and explicitly
+  authorized publishing through Update. Reuse existing hosted accounts and D1.
+- Authorized owner administration inspection confirms Sheldon already has DEV and
+  a saved pilot; supplied password matches the stored verifier. No account reset,
+  database mutation or backend deployment needed. Secrets stayed in memory only.
+- NativeAccount default service plus one-time blank-URL preference migration;
+  preserve custom URLs, other pilot settings and later explicit offline choice.
+  Account URL field removed as requested. Configure and all existing account APIs,
+  signed DEV/unlocks/flags, profile fields, DPAPI sessions and reload remain intact.
+  No-service status is `Signed out / offline`; Connection report unchanged.
+- Added real JsonUtility Editor gates for migration, all profile fields across
+  save/reload/lobby payloads, grant/flag data and offline account calls. Local Python
+  suite 44 passed / one Windows-only skip; diff checks passed. Hosted native CI and
+  real Unity build pending; no local Unity/.NET. Windows login not run: this runtime
+  received Cloudflare 403/1010 on an unauthenticated service read, with no workaround
+  or credential submission. Database inspection/password verification is not login.
+- Implemented on task branch; publication pending exact-head gates. Current release
+  remains UBA #7 / 3686f40e / 27a7833. Detailed menu/API handoff in
+  UNITY-LOGIC-HANDOFF.md. No gameplay, timing, hitbox, movement or animation changes.
 
 ## 2026-10-09 — Astra — UBA #6 replica projectile tag repair
 - Task `codex/unity-shot-tag-repair`, base cloud `8ebe73214dc16b7010542ca47b9da5f94af21453`. Uploaded UBA #6 confirms that exact source, successful C# compilation and `NATIVE_COLOR_SPACE: Linear`. PreExport then stops at NativeNetworkBuildChecks:44, "Late reflected hadouken took the current owner's appearance". No shader error is reported; remaining Editor gates, final player shader compilation and delivery are not accepted.

@@ -16,6 +16,7 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class NativeProfileRequest {public int revision;public NativeProfile profile;}
     public sealed partial class NativeAccount:MonoBehaviour
     {
+        public const string DefaultOrigin="https://chip-arena-prototype.sheldon37.chatgpt.site";
         public string Origin{get;private set;}="";public string Token{get;private set;}="";public NativeAccess Access{get;private set;}=NativeAccess.Guest;
         private const string OfflineStatus="Signed out / offline";
         public NativeAccountData Account{get;private set;}public string RecoveryCode{get;private set;}="";public string Status{get;private set;}=OfflineStatus;public bool Busy{get;private set;}public Action<NativeAccountData,bool> Accepted;
