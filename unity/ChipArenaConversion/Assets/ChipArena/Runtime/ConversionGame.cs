@@ -69,7 +69,7 @@ namespace ChipArena.UnityConversion
             if(prefs.pve)arena.ConfigurePve(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text),prefs.skipWaves,NativeMatch.NewSeed());
             if(dedicated){menu=false;return;}generation=arena.Generation;visualClock.Reset(match.Time);pending=new InputFrame();yaw=arena.Local.Yaw;pitch=12;sprint=false;menu=false;NativeLighting.Apply(content.Map(arena.MapId),cameraView);
         }
-        private float shakeAmount;private int shakeEvent;
+        private float shakeAmount;private int shakeEvent,shakeGeneration=-1;
         private void Update()
         {
             if(content==null)return;if(dedicated){DedicatedTick();return;}if(cameraView==null)return;NetworkTick();
@@ -116,10 +116,19 @@ namespace ChipArena.UnityConversion
                 var ability=content.Ability(p.Seat.spec,pending.AbilityEHeld||pending.AbilityE||pending.AbilityEReleased?"e":"q");
                 pending.AbilityTarget=NativeArena.Vec(AimPoint(ability!=null?(float)ability.range:p.Seat.spec=="shield"?25:p.Seat.spec=="daggers"?48:60,p.Seat.spec=="shield"||p.Seat.spec=="daggers"));
             }
-            // renderer.ts camera shake: a hit, headshot, block or parry aimed at the local pilot sets .12, which decays by 1 per
-            // second while each frame nudges the camera's world X by a random ±half of it (Settings · camera shake).
-            if(play){int newest=0;foreach(var e in arena.Events){newest=Math.Max(newest,e.Id);if(e.Id>shakeEvent&&e.Target==p.Seat.id&&(e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot||e.Kind==EventKind.Block)&&prefs.cameraShake)shakeAmount=.12f;}shakeEvent=newest<shakeEvent?newest:Math.Max(shakeEvent,newest);}
-            if(shakeAmount>0){cameraView.transform.position+=Vector3.right*((UnityEngine.Random.value-.5f)*shakeAmount);shakeAmount=Math.Max(0,shakeAmount-Time.deltaTime);}
+            // renderer.ts:136/:149 camera shake with event-vfx.ts:29 (NativeShakeRules): a fresh (.4 s) hit, impact, break, block or
+            // collapse aimed at the view pilot, never a burn/poison tick, sets .12 while Settings · camera shake is on. The amount
+            // falls by the frame time (at most .05 s) in every frame, so a shake held back never plays late; only a live local
+            // view (not the pause menu, not a spectated pilot) is nudged on world X by a random ±half of it. Events are consumed
+            // in every frame, as the source's renderer does. The killing hit shakes the death cam only when no other connected
+            // pilot is alive: otherwise SpectatorControls has already moved the view to one in that frame.
+            {
+                if(arena.Generation!=shakeGeneration){shakeGeneration=arena.Generation;shakeEvent=0;shakeAmount=0;}
+                int newest=0;foreach(var e in arena.Events)newest=Math.Max(newest,e.Id);if(newest>0&&newest<shakeEvent)shakeEvent=0;
+                foreach(var e in arena.Events)if(e.Id>shakeEvent&&prefs.cameraShake&&NativeShakeRules.Fresh(arena.Time,e.Time)&&NativeShakeRules.Triggers(e.Kind,e.Target,e.Amount,p.Seat.id))shakeAmount=NativeShakeRules.Amount;
+                shakeEvent=Math.Max(shakeEvent,newest);
+                if(shakeAmount>0){if(!menu&&Spectator==null)cameraView.transform.position+=Vector3.right*NativeShakeRules.Offset(shakeAmount,UnityEngine.Random.value);shakeAmount=NativeShakeRules.Decay(shakeAmount,Time.unscaledDeltaTime);}
+            }
             presentation.SoundEnabled=false;presentation.LocalId=arena.ViewPilot.Seat.id;
             float renderTime=arena.Replica?arena.ReplicaRenderTime:visualClock.Sample(match.Time,Time.timeAsDouble-Time.fixedTimeAsDouble,menu);
             presentation.WeaponLoadout=arena;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;
