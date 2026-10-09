@@ -1,5 +1,20 @@
 # Native publishing automation development log
 
+## 2026-10-09 — Astra — match the actual UBA version identifier
+
+- PR #73 diagnostics (main `32870a0`, run `37964117907`) prove UBA #7 list and
+  detail both report `unityVersion=6000_3_24f1`, `localUnityVersion=6000.3.24f1`.
+  Only the version spelling was rejected; status, source, branch, target, platform
+  and artifact availability all matched. This was a publisher bug, not a Unity failure.
+- Accept only the dotted or underscore spelling of the exact pinned Editor;
+  reject mismatching installed Editor versions when supplied. Dotted receipt,
+  Linear, logs, archive, current-head/CI and public download gates remain intact.
+- Regression covers real metadata, incorrect/mixed IDs and mismatched installed
+  Editor. End-to-end fixture now uses real UBA version spelling. Local 49 tests:
+  48 pass, one Windows-only skip. Hosted and real publication verification next.
+- Repair continues on `codex/unity-publish-version`, based on `32870a0`. No game
+  source change or new Unity build; successful game source remains `27a7833`.
+
 ## 2026-10-09 — Astra — diagnose successful UBA build detection
 
 - Owner requests completion of automated publication. Task `codex/unity-publish-detection`,

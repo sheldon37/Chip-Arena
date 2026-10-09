@@ -72,6 +72,15 @@ class AutoPublishTests(unittest.TestCase):
         self.assertEqual(auto.build_rejections(build, self.sha), ['unityVersion'])
         self.assertIn('latest', diagnostic)
 
+    def test_accepts_real_uba_version_id_but_rejects_other_editor_versions(self):
+        # UBA #7 list and detail responses observed on 2026-10-09.
+        build = dict(self.build, unityVersion='6000_3_24f1', localUnityVersion='6000.3.24f1')
+        auto.check_build(build, self.sha)
+        for extra in ({'unityVersion': '6000_3_25f1'}, {'unityVersion': 'latest'},
+                      {'unityVersion': '6000_3.24f1'}, {'localUnityVersion': '6000.3.25f1'}):
+            with self.subTest(extra=extra), self.assertRaises(ValueError):
+                auto.check_build(dict(build, **extra), self.sha)
+
     def test_receipt_rejects_wrong_context_and_gamma(self):
         delivery = self.unpack()
         path = delivery / 'cloud-build-receipt.json'
@@ -218,7 +227,7 @@ class AutoPublishTests(unittest.TestCase):
         def download(url, path, *_):
             shutil.copyfile(self.provider if url.endswith('/log') else self.outer, path)
         with patch.object(auto, 'current_head', return_value=self.sha), patch.object(auto, 'native_checks', return_value=True), \
-             patch.object(auto, 'api_json', side_effect=[[self.build], self.build, [{'primary': True, 'files': [{'filename': 'game.zip'}]}]]), \
+             patch.object(auto, 'api_json', side_effect=[[dict(self.build, unityVersion='6000_3_24f1', localUnityVersion=auto.UNITY)], dict(self.build, unityVersion='6000_3_24f1', localUnityVersion=auto.UNITY), [{'primary': True, 'files': [{'filename': 'game.zip'}]}]]), \
              patch.object(auto.publisher, 'remote_manifest', return_value=None), \
              patch.object(auto, 'request', side_effect=ValueError('HTTP 404 from raw.githubusercontent.com')), \
              patch.object(auto, 'download_api', side_effect=download), patch.object(auto, 'output') as output:
