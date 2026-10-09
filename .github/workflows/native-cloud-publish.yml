@@ -1,0 +1,98 @@
+name: Publish native Unity cloud update
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_run:
+    workflows: ['Native Unity conversion source checks']
+    types: [completed]
+    branches: ['codex/unity-cloud-current']
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Check credentials/package, or publish the verified current cloud build'
+        type: choice
+        options: [check, publish]
+        default: check
+  pull_request:
+    paths: ['automation/native-publish/**', '.github/workflows/native-cloud-publish.yml']
+  push:
+    branches: [main, codex/unity-auto-publish]
+    paths: ['automation/native-publish/**', '.github/workflows/native-cloud-publish.yml']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: native-cloud-publish-${{ github.event_name == 'pull_request' && github.event.number || 'automation' }}
+  cancel-in-progress: false
+jobs:
+  tests:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          sparse-checkout: automation/native-publish
+      - name: Exercise delivery and publisher failure cases
+        run: python -m unittest discover -s automation/native-publish/Tests -p "test_*.py"
+  publish:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       ((github.event_name == 'schedule' || github.event_name == 'workflow_run') &&
+        vars.NATIVE_AUTO_PUBLISH_ENABLED == 'true'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          sparse-checkout: automation/native-publish
+      - name: Verify service credentials, exact commit, native CI, and Unity delivery
+        id: prepare
+        env:
+          UNITY_SERVICE_KEY_ID: ${{ secrets.UNITY_SERVICE_KEY_ID }}
+          UNITY_SERVICE_SECRET: ${{ secrets.UNITY_SERVICE_SECRET }}
+          GH_TOKEN: ${{ github.token }}
+        run: python automation/native-publish/tools/auto_publish.py prepare --work "$RUNNER_TEMP/native-delivery"
+      - name: Require the scoped native feed credential
+        if: steps.prepare.outputs.ready == 'true' && (github.event_name != 'workflow_dispatch' || inputs.mode == 'publish')
+        env:
+          NATIVE_FEED_TOKEN: ${{ secrets.NATIVE_FEED_TOKEN }}
+        run: |
+          if [ -z "$NATIVE_FEED_TOKEN" ]; then
+            echo 'Add NATIVE_FEED_TOKEN with Contents read/write for chip-arena-test-updates only.'
+            exit 1
+          fi
+      - name: Check out the existing test feed
+        if: steps.prepare.outputs.ready == 'true' && (github.event_name != 'workflow_dispatch' || inputs.mode == 'publish')
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: sheldon37/chip-arena-test-updates
+          ref: main
+          token: ${{ secrets.NATIVE_FEED_TOKEN }}
+          path: native-channel
+          fetch-depth: 1
+      - name: Publish validated native files and verify public downloads
+        if: steps.prepare.outputs.ready == 'true' && (github.event_name != 'workflow_dispatch' || inputs.mode == 'publish')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git -C native-channel config user.name 'github-actions[bot]'
+          git -C native-channel config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          python automation/native-publish/tools/auto_publish.py publish --work "$RUNNER_TEMP/native-delivery" --channel "$GITHUB_WORKSPACE/native-channel"
+      - name: Keep diagnostic logs in the private game repository
+        if: always() && steps.prepare.outcome != 'skipped'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: native-cloud-publication-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/native-delivery/provider.log
+            ${{ runner.temp }}/native-delivery/delivery/build.log
+            ${{ runner.temp }}/native-delivery/publication.json
+          if-no-files-found: ignore
+          retention-days: 7
