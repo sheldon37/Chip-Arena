@@ -107,12 +107,13 @@ namespace ChipArena.UnityConversion
         public static Vector3 FlexTint(int body)=>Ratio(Linear(FlexOf(body)),Linear(FlexOf(ExportBody)));
 
         // ---- Physical texture size --------------------------------------------------------------------------------------
-        // menu-portraits.ts:66: the canvas is the card rect at min(devicePixelRatio, 1.5); here the rect's physical pixels
-        // at most 1.5 per canvas unit, and the longer side at most `cap`. False when the stage is too small to read
-        // (the emblem stands in then).
+        // menu-portraits.ts:66 sizes the canvas to the card rect at min(devicePixelRatio, 1.5). The kit's scale is not a
+        // device pixel ratio: `pixelsPerUnit` (U.S) is the physical pixels per unit of the 1600x900 canvas (1.2 at 1080p,
+        // 2.4 at 4K), so the texture is the rect's physical pixels, drawn 1:1, with only the longer side capped at `cap`.
+        // False when the stage is too small to read (the emblem stands in then).
         public static bool TextureSize(float width,float height,float pixelsPerUnit,int cap,out int w,out int h)
         {
-            float s=Math.Min(pixelsPerUnit,1.5f);float pw=width*s,ph=height*s,longest=Math.Max(pw,ph);if(longest>cap){pw*=cap/longest;ph*=cap/longest;}
+            float s=Math.Max(pixelsPerUnit,0);float pw=width*s,ph=height*s,longest=Math.Max(pw,ph);if(longest>cap){pw*=cap/longest;ph*=cap/longest;}
             w=Math.Max(1,(int)Math.Round(pw));h=Math.Max(1,(int)Math.Round(ph));return width>=48&&height>=48&&w>=32&&h>=32;
         }
 

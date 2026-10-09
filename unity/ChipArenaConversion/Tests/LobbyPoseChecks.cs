@@ -130,7 +130,8 @@ namespace ChipArena.UnityConversion
 
             // Texture size and the sleep marks (lobby.css; no script to capture: the CSS values themselves).
             Check(NativePortraitRules.TextureSize(390,520,1.2f,1280,out int tw,out int th)&&tw==468&&th==624,"texture size at 1.2");
-            Check(NativePortraitRules.TextureSize(390,700,1.6f,1024,out tw,out th)&&th==1024&&tw==Math.Round(390*1.5*1024/1050.0),"texture capped");
+            Check(NativePortraitRules.TextureSize(388,436,2.4f,1280,out tw,out th)&&tw==931&&th==1046,"texture at physical size at 4K (no per-unit cap)");
+            Check(NativePortraitRules.TextureSize(390,700,1.6f,1024,out tw,out th)&&th==1024&&tw==Math.Round(390*1.6*1024/1120.0),"texture capped");
             Check(!NativePortraitRules.TextureSize(200,30,1,1280,out _,out _),"too small for a portrait");
             NativePortraitRules.SleepMark(0,0,false,out var off0,out float sc0,out float op0);Check(off0==new Vector2(0,8)&&Math.Abs(sc0-.7f)<1e-6&&op0==0,"sleep mark start");
             NativePortraitRules.SleepMark(0,3.3f*.2f,false,out _,out _,out float op1);Near(op1,.8,1e-5,"sleep mark peak");NativePortraitRules.SleepMark(2,0,true,out var off2,out _,out float op2);Check(off2==new Vector2(27,-27)&&op2==.6f,"reduced sleep marks");

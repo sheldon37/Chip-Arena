@@ -34,7 +34,7 @@ namespace ChipArena.UnityConversion
         // name starts. The portrait comes first: the card keeps its three presentation rows (headwear, kill effect, intro)
         // only while the stage stays at least PilotStageRows tall, else the stage takes their room too (PilotCard's row loop
         // then stops by itself: no row fits above r.yMax-46). A card too short even then keeps the emblem layout.
-        private const float PilotStageRows=210,PilotStageMin=120;
+        private const float PilotStageRows=210,PilotStageMin=120,PilotRowsRoom=62.5f;
         private float PilotStage(Rect r,Color accent,Color body,ContentWeapon weapon,float e,float t,string note)
         {
             // PilotCard below the stage: a 6 unit gap, the name, weapon, underline, class and colour rows (`text`), then the
@@ -42,25 +42,28 @@ namespace ChipArena.UnityConversion
             float ns=Mathf.Clamp(r.width*.075f,22,30),text=ns*1.3f+4+20+12+30+44,top=r.y+44;int lines=note!=null?U.Wrap(note,12,r.width-44,false,3).Count:0;
             float noteTop=lines>0?r.yMax-18-lines*17-6:r.yMax-46;
             // Where the colour rows may end: above all three presentation rows (62 units) and the note, or above the note alone.
-            float withRows=Mathf.Min(r.yMax-46-62,noteTop-62),alone=Mathf.Min(r.yMax-46,noteTop);
+            // The rows' room keeps half a unit spare: with exactly 62 the last row would end on PilotCard's limit, where float
+            // rounding of the stage maths (1920x1080, 4K) drops it.
+            float withRows=Mathf.Min(r.yMax-46,noteTop)-PilotRowsRoom,alone=Mathf.Min(r.yMax-46,noteTop);
             float h=withRows-text-6-top;if(h<PilotStageRows)h=alone-text-6-top;
             var stage=new Rect(r.x+1,top,r.width-2,h);
             if(stage.height<PilotStageMin){var c=new Vector2(r.center.x,r.y+Mathf.Min(r.height*.36f,180));float ring=Mathf.Min(86,r.width*.26f);PilotEmblem(c,ring,accent,body,weapon,e,t);return c.y+ring+26;}
             var look=new PortraitLook{Spec=weapon.id,Pose=prefs.lobbyPose,Hat=prefs.hat,Body=HexOf(body),Accent=HexOf(accent)};
             float emblemRing=Mathf.Min(86,r.width*.26f);var centre=new Vector2(stage.center.x,stage.y+Mathf.Min(stage.height*.42f,emblemRing+60));
-            PortraitStage(stage,1,look,accent,body,NativeIcons.Spec(weapon.id),U.Hex((int)weapon.color),e,t,0,centre,emblemRing,28);
+            PortraitStage(stage,1,look,accent,body,NativeIcons.Spec(weapon.id),U.Hex((int)weapon.color),e,t,0,centre,emblemRing,28,false);
             return stage.yMax+6;
         }
-        // LobbyCard's .portrait-stage (lobby and PvE results cards): the seat's portrait, else the emblem the card had.
+        // LobbyCard's .portrait-stage (lobby and PvE results cards): the seat's portrait, else the emblem the card had. Only
+        // the lobby roster's cards sit in a scroll clip (the results grid is laid out on the panel).
         private void LobbyPortrait(Rect stage,Vector2 centre,float ring,in LobbyPilot p,int index,float a,float t,ContentWeapon weapon,Color style,bool result)
         {
             string icon=weapon!=null?NativeIcons.Spec(weapon.id):"shuffle";Color tone=weapon!=null?U.Hex((int)weapon.color):style;int ticks=ring<56?20:28;
             if(weapon==null||!CardLook(p,index,result,out int key,out var look)){PilotEmblem(centre,ring,p.accent,p.body,icon,tone,a,t,index*1.7f,ticks);return;}
-            PortraitStage(stage,key,look,p.accent,p.body,icon,tone,a,t,index*1.7f,centre,ring,ticks);
+            PortraitStage(stage,key,look,p.accent,p.body,icon,tone,a,t,index*1.7f,centre,ring,ticks,!result);
         }
         // The portrait over its frame: the emblem's accent glow, turning tick ring and orbiting dot around the pilot's upper
         // body (the ring follows the framing), then the pilot; the sleeping pilot's z Z Z over it. The emblem until ready.
-        private void PortraitStage(Rect stage,int key,in PortraitLook look,Color accent,Color body,string icon,Color tone,float e,float t,float phase,Vector2 emblemCentre,float emblemRing,int ticks)
+        private void PortraitStage(Rect stage,int key,in PortraitLook look,Color accent,Color body,string icon,Color tone,float e,float t,float phase,Vector2 emblemCentre,float emblemRing,int ticks,bool clipped)
         {
             var texture=Portrait(key,look,stage,out float top);if(texture==null){PilotEmblem(emblemCentre,emblemRing,accent,body,icon,tone,e,t,phase,ticks);return;}
             if(Event.current.type!=EventType.Repaint)return;
@@ -69,22 +72,24 @@ namespace ChipArena.UnityConversion
             var view=frame.Target-frame.Position;float cos=Mathf.Sqrt(view.X*view.X+view.Z*view.Z)/view.Length(),units=stage.height/(2*frame.Half);
             float anchor=sleep?.32f:pose==NativeLobbyPoses.Chair?.98f:1.12f,radius=sleep?.86f:.8f;
             var c=new Vector2(stage.center.x,stage.center.y-(anchor-frame.Target.Y)*cos*units);float ring=Mathf.Clamp(radius*units,24,stage.width*.44f);
-            PortraitRing(c,ring,accent,e,t+phase,ticks);
+            PortraitRing(c,ring,accent,e,t+phase,ticks,clipped);
             U.Image(stage,texture,new Color(1,1,1,e));
             if(sleep)SleepMarks(stage,e);
         }
-        // The emblem's frame without its disc and icon (PilotEmblem's glow, turning ticks and orbiting dot). Each tick is drawn
-        // unrotated, as a dash image at the nearest 22.5 degrees placed on the turning ring: a rotated draw inside the lobby
-        // roster's scroll clip has its clip rotated with it (Unity's draw-time clip), so ticks of a card scrolled out of the
-        // column would show outside it.
-        private static readonly Texture2D[] tickTextures=new Texture2D[16];private static float tickScale;
-        // A 3-unit-wide dash (5 or 9 units long, square ends) at 22.5-degree steps in a 12-unit square, rasterised at the
-        // kit's pixel scale (made again when the scale changes).
+        // The emblem's frame without its disc and icon (PilotEmblem's glow, turning ticks and orbiting dot). Outside a scroll
+        // clip each tick is a rotated dash, exactly as PilotEmblem turns it. Inside the lobby roster's scroll clip a rotated
+        // draw has its clip rotated with it (Unity's draw-time clip), so ticks of a card scrolled out of the column would
+        // show outside it: there each tick is drawn unrotated, as a dash image at the nearest of TickSteps orientations
+        // (at most 1.4 degrees off radial, a quarter pixel at a major tick's end at 4K) placed on the turning ring.
+        private const int TickSteps=64;
+        private static readonly Texture2D[] tickTextures=new Texture2D[TickSteps*2];private static float tickScale;
+        // A 3-unit-wide dash (5 or 9 units long, square ends) at one of TickSteps orientations over 180 degrees (the dash is
+        // symmetric) in a 12-unit square, rasterised at the kit's pixel scale (made again when the scale changes).
         private static Texture2D Tick(int k)
         {
             if(tickScale!=U.S){tickScale=U.S;for(int i=0;i<tickTextures.Length;i++)if(tickTextures[i]!=null){Object.Destroy(tickTextures[i]);tickTextures[i]=null;}}
             if(tickTextures[k]!=null)return tickTextures[k];
-            int n=Mathf.Clamp(Mathf.RoundToInt(12*U.S),4,64);float len=k<8?5:9,a=(k%8)*22.5f*Mathf.Deg2Rad,sin=Mathf.Sin(a),cos=Mathf.Cos(a);var px=new Color[n*n];
+            int n=Mathf.Clamp(Mathf.RoundToInt(12*U.S),4,64);float len=k<TickSteps?5:9,a=(k%TickSteps)*(180f/TickSteps)*Mathf.Deg2Rad,sin=Mathf.Sin(a),cos=Mathf.Cos(a);var px=new Color[n*n];
             for(int y=0;y<n;y++)for(int x=0;x<n;x++)
             {
                 // (vx, vy) in GUI units from the centre (y down; texture row 0 is the bottom); the dash runs along (sin, -cos).
@@ -94,13 +99,15 @@ namespace ChipArena.UnityConversion
             var t=new Texture2D(n,n,TextureFormat.RGBA32,false){wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Bilinear,hideFlags=HideFlags.HideAndDontSave};t.SetPixels(px);t.Apply(false,true);
             return tickTextures[k]=t;
         }
-        private static void PortraitRing(Vector2 c,float ring,Color accent,float e,float t,int ticks)
+        private static void PortraitRing(Vector2 c,float ring,Color accent,float e,float t,int ticks,bool clipped)
         {
             U.Radial(new Rect(c.x-ring*1.6f,c.y-ring*1.6f,ring*3.2f,ring*3.2f),U.A(accent,.16f*e));
             for(int i=0;i<ticks;i++)
             {
-                bool major=i%7==0;float deg=i/(float)ticks*360+t*12,a=deg*Mathf.Deg2Rad,h=major?9:5,rc=ring+3-h/2;int k=(major?8:0)+Mathf.RoundToInt(Mathf.Repeat(deg,180)/22.5f)%8;
-                var p=new Vector2(c.x+Mathf.Sin(a)*rc,c.y-Mathf.Cos(a)*rc);U.Image(new Rect(p.x-6,p.y-6,12,12),Tick(k),U.A(accent,(major?.9f:.45f)*e));
+                bool major=i%7==0;float deg=i/(float)ticks*360+t*12,h=major?9:5;var tint=U.A(accent,(major?.9f:.45f)*e);
+                if(!clipped){U.Push(c,Vector2.zero,1,deg);U.Fill(new Rect(c.x-1.5f,c.y-ring-3,3,h),tint);U.Pop();continue;}
+                float a=deg*Mathf.Deg2Rad,rc=ring+3-h/2;int k=(major?TickSteps:0)+Mathf.RoundToInt(Mathf.Repeat(deg,180)/(180f/TickSteps))%TickSteps;
+                var p=new Vector2(c.x+Mathf.Sin(a)*rc,c.y-Mathf.Cos(a)*rc);U.Image(new Rect(p.x-6,p.y-6,12,12),Tick(k),tint);
             }
             float orbit=t*.9f;U.RadialStops(new Rect(c.x+Mathf.Cos(orbit)*ring*.92f-3,c.y+Mathf.Sin(orbit)*ring*.92f-3,6,6),U.A(accent,e),DotAt,DotAlpha);
         }

@@ -18,7 +18,8 @@ namespace ChipArena.UnityConversion
     // (Core/NativeLobbyPoses.cs), on the podium (and the chair), framed and lit as the source frames and lights it.
     //  - One disabled orthographic Camera on its own layer renders each visible portrait by hand (Camera.Render) into a
     //    pooled multisampled RenderTexture the card's physical size (capped), then resolves it to straight alpha in the slot's
-    //    pooled texture, which the card draws through the kit (so scroll clips apply) the next frame.
+    //    pooled texture (empty texels carry the edge colour, so bilinear sampling keeps the silhouette's anti-aliasing),
+    //    which the card draws through the kit (so scroll clips apply) the next frame.
     //  - The portrait meshes are queued for that camera only (Graphics.DrawMesh with the camera), each portrait at its own
     //    far-away stage so one render never sees another's pilot; no GameObject, renderer or light is added to the scene.
     //    The portrait shader lights itself (Resources/NativePortrait.shader) and reads no scene light, ambient, fog or shadow.
@@ -182,7 +183,7 @@ namespace ChipArena.UnityConversion
                 Model(p,bones[held.Bone]*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(held.Position)),CapturedAnimation.Quat(CapturedRig.Mirror(held.Rotation)),Vector3.one),Vector4.one,Vector4.one,Vector4.one,Vector4.one);
             }
             // The camera: menu-portraits.ts framePortrait (orthographic, looking at the framing centre).
-            var target=RenderTexture.GetTemporary(s.W,s.H,24,RenderTextureFormat.ARGB32,RenderTextureReadWrite.Default,Samples(s.W,s.H));
+            var target=RenderTexture.GetTemporary(s.W,s.H,24,RenderTextureFormat.ARGB32,RenderTextureReadWrite.Default,Samples(s.W,s.H));target.wrapMode=TextureWrapMode.Clamp;
             try
             {
                 view.targetTexture=target;view.aspect=s.Aspect;view.orthographicSize=frame.Half;
