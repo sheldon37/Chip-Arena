@@ -105,7 +105,7 @@ Source: client/main.ts:248 drawSandbox; sandbox-panel.ts:34-38; shared/simulatio
 
 ## Claude (visuals)
 
-**Progress on `claude/sleepy-ritchie-g8ruhv` (updated 2026-10-08).** Implemented on the branch (not merged to a
+**Progress on `claude/sleepy-ritchie-g8ruhv` (updated 2026-10-09).** Implemented on the branch (not merged to a
 release, not verified in Unity or on Windows; checks are the Unity API compile, the Python and managed checks and
 offline menu renders):
 - C2 room lobby: pilot cards, ready meter and bar, room column in the source order with selects and Advanced
@@ -117,6 +117,16 @@ offline menu renders):
 - C20 lobby connection pill (`4207641`); the "· N MS" reading and the Connection report wait on A27.
 - C24 ANIMATIONS.md corrected (`3da391d`); the note on issue #60 is not posted yet.
 - Kit: deferred kit drawing in scrolled bodies (`662c9d3`), translucent borders as rings (`77e320d`).
+- 2026-10-09 batch, each branch built, reviewed through two lenses, fixed and merged (details and Astra items in DEV_LOG):
+  C1/C3/C2-E12 room UI on the PR #66 contracts (`48f005a`); C6 volumetric blasts and C7 status visuals and
+  first-person sway (merged 2026-10-08); C9 field telegraphs; C10 projectile models (`d6e1c7d`); C11 weapon
+  presentation (`2604b2a`); C17 Ward Zero gore and beacons; C20 connection report, match-end votes and the
+  return-to-lobby banner, fullscreen, reload pilot (`d7657a9`); C22 shake, combat numbers and event sounds for the
+  PR #66 event kinds; C14 live pilot portraits and lobby poses (`ded0d22`); C18 kill-effect visuals (`4654059`).
+- Still open (paused by the owner on 2026-10-09 to save usage): C6b (route blasts and bursts through the PR #66
+  events; needs Explosion Detail from Astra for exact styles), C8 audio mix (limiter, pitch variation, ducking,
+  PvE intro dip, clown laugh, scheduled DEV songs), C12 DEV fighter and Siren effects, C13 sandbox visual tools,
+  C16 private cinematic cameras, C19 ACES tone mapping, C23 (owner decision), the C24 note on issue #60.
 
 In progress: C6 blasts (`claude/wip-c6`, under review); C7 status/team visuals and first-person sway; C17 gore and
 beacons. C9 telegraphs and C10 projectiles follow C6 (they share its voxel pools); C11 and C12 have specs. C1 and C3

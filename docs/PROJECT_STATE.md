@@ -2,6 +2,8 @@
 
 Current Unity logic checkpoint (2026-10-08): draft PR #66, `codex/unity-parity-logic-current` into `claude/sleepy-ritchie-g8ruhv`, code `718cd4f` / `d80d974` plus final intro/disconnect regressions. Native source and Windows launcher CI pass; an activated Unity build/playtest is still required (`cmd.exe` unavailable in authoring, no `UNITY_TEST_BUILD_READY`). Nothing merged or published. A1–A31 status and Claude UI contracts: `docs/UNITY-PARITY-GAPS.md` and `docs/UNITY-LOGIC-HANDOFF.md`. Owner decisions for services, specialization, migration and release remain open.
 
+Claude visual parity batch (2026-10-09): `claude/sleepy-ritchie-g8ruhv` (PR #62, head `4654059`) holds PR #66 plus C1-C5, C6/C7, C9-C11, C14 (live pilot portraits), C17, C18, C20 and C22, each reviewed and merged on the branch; Unity Editor/Windows not run. Paused by the owner to save usage; open items and Astra data requests: `docs/UNITY-PARITY-GAPS.md` (progress list) and `docs/DEV_LOG.md` (2026-10-09 entries). Next: owner Windows build and playtest of the branch; resume C6b/C8/C12/C13/C16/C19 when the owner asks.
+
 Historical migration/runtime context follows.
 
 Migration imported to private GitHub; not merged or released (2026-09-29).
