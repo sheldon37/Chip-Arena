@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
     /// Shared C12 render primitives (Resources/NativeSirenFx.shader): dynamic world-space meshes refilled from reused
     /// buffers each frame, so a frame's flames, rings, sprites, slashes, flame shells and orbs cost one draw per layer and
     /// no per-frame allocation. Solid layers (flame cubes, orbs, claws) write depth in the opaque queue; the effect layer
-    /// is premultiplied and sorted after the scene. The DEV fighter effects of C12 part 2 reuse these.
+    /// is premultiplied and sorted after the scene. The DEV fighter effects of C12 part 2 reuse these (Geometry, Strip).
     /// </summary>
     public sealed class NativeFxDraw : IDisposable
     {
@@ -23,6 +23,7 @@ namespace ChipArena.UnityConversion
             private readonly List<Vector4> uv=new List<Vector4>(),p=new List<Vector4>(),q=new List<Vector4>();private readonly List<int> indices=new List<int>();
             public Layer(string name){Mesh.name=name;Mesh.MarkDynamic();}
             public int Count=>points.Count;
+            public Vector3 Point(int i)=>points[i];
             public void Clear(){points.Clear();normals.Clear();colors.Clear();uv.Clear();p.Clear();q.Clear();indices.Clear();}
             public int Vertex(Vector3 position,Vector3 normal,Color color,Vector4 uv0,Vector4 p0,Vector4 q0)
             {points.Add(position);normals.Add(normal);colors.Add(color);uv.Add(uv0);p.Add(p0);q.Add(q0);return points.Count-1;}
@@ -124,6 +125,34 @@ namespace ChipArena.UnityConversion
             int start=layer.Count;var uv=Uv(0,0,OrbMode,flags);var q=new Vector4(rim.r,rim.g,rim.b,1);
             for(int i=0;i<orbPoints.Length;i++){var o=orbPoints[i];layer.Vertex(m.MultiplyPoint3x4(o),m.MultiplyVector(o).normalized,core,uv,new Vector4(-o.x,o.y,o.z,strength),q);}
             for(int i=0;i<orbIndices.Length;i+=3)layer.Triangle(start+orbIndices[i],start+orbIndices[i+1],start+orbIndices[i+2]);
+        }
+        /// <summary>
+        /// A three.js geometry (source numbers) through m, flat coloured (C12 part 2). With an eye only the faces turned toward it
+        /// are kept (three's FrontSide, so a see-through closed box is not drawn twice); without, both sides (DoubleSide).
+        /// </summary>
+        public void Geometry(Layer layer,Matrix4x4 m,NativeShotMesh mesh,Color color,float flags,Vector3? eye=null)
+        {
+            var p=mesh.Positions;int start=layer.Count;Vector4 uv=Uv(0,0,Flat,flags);
+            for(int i=0;i<p.Length;i+=3)layer.Vertex(m.MultiplyPoint3x4(new Vector3(p[i],p[i+1],p[i+2])),Vector3.up,color,uv,Vector4.zero,Vector4.zero);
+            Faces(layer,start,mesh.Indices,m,eye);
+        }
+        /// <summary>A strip of source-frame points (xyz triples) through m, both sides (the hadouken tongues).</summary>
+        public void Strip(Layer layer,Matrix4x4 m,double[] points,int[] indices,Color color,float flags)
+        {
+            int start=layer.Count;Vector4 uv=Uv(0,0,Flat,flags);
+            for(int i=0;i<points.Length;i+=3)layer.Vertex(m.MultiplyPoint3x4(new Vector3((float)points[i],(float)points[i+1],(float)points[i+2])),Vector3.up,color,uv,Vector4.zero,Vector4.zero);
+            Faces(layer,start,indices,m,null);
+        }
+        // three's front faces wind counter-clockwise seen from outside; a mirroring m (negative determinant) turns them over.
+        private static void Faces(Layer layer,int start,int[] indices,Matrix4x4 m,Vector3? eye)
+        {
+            if(eye==null){for(int i=0;i<indices.Length;i+=3)layer.Triangle(start+indices[i],start+indices[i+1],start+indices[i+2]);return;}
+            Vector3 e=eye.Value;float sign=m.m00*(m.m11*m.m22-m.m12*m.m21)-m.m01*(m.m10*m.m22-m.m12*m.m20)+m.m02*(m.m10*m.m21-m.m11*m.m20)<0?-1:1;
+            for(int i=0;i<indices.Length;i+=3)
+            {
+                int a=start+indices[i],b=start+indices[i+1],c=start+indices[i+2];Vector3 pa=layer.Point(a);
+                if(Vector3.Dot(Vector3.Cross(layer.Point(b)-pa,layer.Point(c)-pa),e-pa)*sign>0)layer.Triangle(a,b,c);
+            }
         }
         public void Dispose(){Clear();CapturedAnimation.Release(Solid.Mesh);CapturedAnimation.Release(Effects.Mesh);CapturedAnimation.Release(ViewSolid.Mesh);CapturedAnimation.Release(solid);CapturedAnimation.Release(effects);}
     }

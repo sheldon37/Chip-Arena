@@ -30,7 +30,7 @@ namespace ChipArena.UnityConversion
     // SirenKind, the Siren fields and the Hit events from a Siren seat. A one-shot fires on the first frame at or past its
     // source time, is born at that time, and is skipped when more than .4 s late (the source renderer's event cutoff).
     // Presentation only: nothing here touches hit timing, hitboxes, damage, cooldowns, movement or networking.
-    // Part 2 (Emperor, Leet, Ansatsuken) adds its effects to DevEffects and reuses NativeFxDraw and NativeFlameField.
+    // Part 2 (Emperor, Leet, Ansatsuken) is DevFighters (NativeDevFighterEffects.cs) on the same NativeFxDraw layers.
     public sealed partial class ArenaPresentation
     {
         private sealed class SirenTrack
@@ -58,10 +58,10 @@ namespace ChipArena.UnityConversion
         {float burn=SirenChar(seat);if(burn<=0)return null;sirenCharColor=Color.white*(1-.85f*burn);sirenCharColor.a=1;return sirenCharTint??(sirenCharTint=_=>sirenCharColor);}
         private void ClearDevEffects()
         {
-            sirenFx?.Clear();viewFlames?.Clear();fxDraw?.Clear();sirenTracks.Clear();sirenChar.Clear();sirenFieldFlags.Clear();sirenShots.Clear();
+            sirenFx?.Clear();viewFlames?.Clear();fxDraw?.Clear();ClearDevFighters();sirenTracks.Clear();sirenChar.Clear();sirenFieldFlags.Clear();sirenShots.Clear();
             fxArena=null;fxGeneration=-1;fxEvent=0;fxLast=viewLast=float.NegativeInfinity;viewAcc=0;
         }
-        private void DisposeDevEffects(){ClearDevEffects();fxDraw?.Dispose();fxDraw=null;sirenInk=null;}
+        private void DisposeDevEffects(){ClearDevEffects();fxDraw?.Dispose();fxDraw=null;sirenInk=null;ghostsLoaded=false;ghostPilot=ghostGloves=null;ghostHats.Clear();}
         private static Vector3 Src(Vector3 v)=>new Vector3(-v.x,v.y,v.z);
         // A Unity transform matrix in the source frame (x mirrored): S·M·S, row-major into o at offset.
         private static void Source(Matrix4x4 m,double[] o,int offset)
@@ -78,7 +78,7 @@ namespace ChipArena.UnityConversion
             if(arena!=fxArena||arena.Generation!=fxGeneration||arena.Match.Set!=fxSet||arena.Match.Round!=fxRound||now<fxLast-.25f)
             {ClearDevEffects();fxArena=arena;fxGeneration=arena.Generation;fxSet=arena.Match.Set;fxRound=arena.Match.Round;}
             fxLast=now;fxFrame++;var fx=sirenFx;fx.Begin(now,BlastQuality);fxDraw.Clear();sirenChar.Clear();
-            SirenPilots(arena,now);SirenHits(arena,now);SirenShots(arena,camera,now);SirenFields(arena,now);fx.Tick();DrawSirenFx(camera);SirenViewModel(arena,now);
+            SirenPilots(arena,now);SirenHits(arena,now);SirenShots(arena,camera,now);SirenFields(arena,now);fx.Tick();DrawSirenFx(camera);SirenViewModel(arena,now);DevFighters(arena,camera,now);
             fxDraw.Draw(camera,ViewCamera,now);
         }
         private NativePilot SeatPilot(NativeArena arena,int seat){var list=arena.Pilots;for(int i=0;i<list.Count;i++)if(list[i].Seat.id==seat)return list[i];return null;}
