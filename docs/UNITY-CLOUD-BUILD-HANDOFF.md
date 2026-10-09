@@ -60,7 +60,8 @@ Owner setup checkpoint (2026-10-08 21:03 EDT): the owner reports all requested t
   actual Bash-to-Python entrypoint with spaces/real fixture delivery plus missing-receipt
   nonzero exit. Cygwin path conversion is emulated locally, not a real Cygwin execution.
   Local scoped publisher/delivery suite: **27 collected, 26 pass, one Windows-only skip**;
-  Bash syntax and diff whitespace pass. Full source/Windows helper CI is pending this push.
+  Bash syntax and diff whitespace pass.
+- GitHub native CI [37874907141](https://github.com/sheldon37/Chip-Arena/actions/runs/37874907141) passes on repair `82ddcfbb03b774805fb088d505ed1e7e7d2e326e`: Linux check_relay.py, full Python suite (45 collected, 44 pass / one Windows-only skip), package_source.py (737 files), cloud staging and 51 UpdaterTests; Windows all 16 publisher tests, cloud delivery 11 collected / 10 pass / one POSIX-shell-fixture skip, staging/51 updater checks, shipping launcher compilation and real install/restart/acknowledgement, startup rollback and interrupted-swap recovery. This verifies source/helpers, not the repaired script on UBA or delivery collection.
 - Despite the Python failure, UBA ended SUCCESS again. Require the fourth
   `NATIVE_CLOUD_DELIVERY_READY` marker **and** a validated delivery ZIP; the green provider
   badge alone is insufficient. The upload has only 228 raw-player files / 191,590,212
@@ -69,7 +70,7 @@ Owner setup checkpoint (2026-10-08 21:03 EDT): the owner reports all requested t
   SHA-256 `1b814d846477261078ddaba28d304affc654078683d2773462bf29ceeed4d9f7`;
   ZIP of the same stem, 99,717,380 bytes,
   SHA-256 `180d3c9d4b50788ac00777781d94ed10f6b3ec22ac6d1508db548d223626a052`.
-- Next: once this repair is pushed and its source checks pass, run the current
+- Next: repair `82ddcfb` is pushed and source/Windows helper CI passes; run the current
   `codex/unity-cloud-current` again with the already-corrected dashboard settings.
   Inspect the new full log, delivery sidecar/receipt and starter/feed before accepting or
   publishing. No owner-PC build is needed. Actual provider execution/collection and
