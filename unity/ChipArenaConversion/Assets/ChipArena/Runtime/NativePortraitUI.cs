@@ -124,8 +124,8 @@ namespace ChipArena.UnityConversion
         }
         // A lobby or results card's look and portrait key. The viewer's own card is its saved look (prefs); others come from
         // the seat: the lobby's broadcast seat with the card's seat id (RoomSeats: weapon, colours, hat; bots included) or
-        // the PvE party rows (NativeSeat). Seats carry no lobby pose yet, so other pilots stand with their weapon (the
-        // source's default and every bot's pose).
+        // the PvE party rows (NativeSeat), each with its replicated lobbyPose (bots, and an absent pose that JsonUtility
+        // turns into "", stand with their weapon: the source's default).
         private bool CardLook(in LobbyPilot p,int index,bool result,out int key,out PortraitLook look)
         {
             look=new PortraitLook{Spec=p.weapon,Pose="weapon",Hat="none",Body=HexOf(p.body),Accent=HexOf(p.accent)};key=0;

@@ -98,7 +98,7 @@ namespace ChipArena.UnityConversion
         private void OpenConnectionReport()
         {
             var inv=CultureInfo.InvariantCulture;var entries=new List<string>();
-            entries.Add("  \"transport\": "+JsonText(TransportLabel()));entries.Add("  \"room\": "+JsonText(Online?(Hosting?roomCode:joinCode):""));
+            entries.Add("  \"transport\": "+JsonText(TransportLabel()));entries.Add("  \"room\": "+JsonText(Online?ShownRoomCode():""));
             entries.Add("  \"phase\": "+JsonText(match!=null?match.Phase.ToString().ToLowerInvariant():"lobby"));
             entries.Add("  \"players\": "+(match!=null?match.Seats.Count:InRoom?lobbySeats.Length:0).ToString(inv));
             entries.Add("  \"fps\": "+Mathf.RoundToInt(FrameRate()).ToString(inv));entries.Add("  \"simulationTickMs\": "+stepMs.ToString("0.##",inv));
@@ -115,7 +115,8 @@ namespace ChipArena.UnityConversion
                 // while it was up are used, marked disconnected: the source keeps networkMetrics until disconnect() on leave.
                 string json;if(HostLost&&lastMetrics!=null&&lastMetricsArena==arena){lastMetrics.connected=false;json=JsonUtility.ToJson(lastMetrics,true);}else json=ConnectionReportJson()??"{}";
                 var lines=Reindent(json,"").Split('\n');var inner=new StringBuilder();
-                for(int i=1;i<lines.Length-1;i++){if(inner.Length>0)inner.Append('\n');inner.Append(lines[i]);}if(inner.Length>0)entries.Add(inner.ToString());
+                // Its seatId/name belong to the host's per-guest rows (PeerMetrics); a client report leaves them unset.
+                for(int i=1;i<lines.Length-1;i++){string t=lines[i].TrimStart();if(t.StartsWith("\"seatId\"",StringComparison.Ordinal)||t.StartsWith("\"name\"",StringComparison.Ordinal))continue;if(inner.Length>0)inner.Append('\n');inner.Append(lines[i]);}if(inner.Length>0)entries.Add(inner.ToString());
             }
             reportText="{\n"+string.Join(",\n",entries)+"\n}";reportWrapW=-1;reportScroll=0;reportArena=arena;reportOpen=true;
         }
@@ -203,10 +204,20 @@ namespace ChipArena.UnityConversion
         }
         // The lobby pill's text with the source's " · N MS" (main.ts drawHud, mode online): the round trip from
         // ConnectionMetrics, read twice a second; rebuilt only when a part changes.
+        // The room code as the lobby shows it: an online room's CA- code (relay host, or a guest of an internet room), else
+        // the 8-character local code. Cached per code so the pill does not format it every frame.
+        private string shownRaw,shownCode;private bool shownOnline;
+        private string ShownRoomCode()
+        {
+            string raw=Hosting?roomCode:joinCode;bool online=Hosting?relayHost!=null:internetRooms;
+            if(raw!=shownRaw||online!=shownOnline||shownCode==null)
+            {shownRaw=raw;shownOnline=online;shownCode=raw??"";if(online&&!string.IsNullOrEmpty(raw))try{shownCode=NativeRoomCodes.Online(raw);}catch(ArgumentException){}}
+            return shownCode;
+        }
         private string pillText="",pillLabel,pillCode;private int pillMs=-1,pillMsNow;private float pillMsAt=-9;
         private string ConnectionPillText(out bool lost)
         {
-            string label=TransportLabel(),code=Hosting?roomCode:joinCode;lost=label=="DISCONNECTED";
+            string label=TransportLabel(),code=ShownRoomCode();lost=label=="DISCONNECTED";
             if(Time.unscaledTime>=pillMsAt){pillMsAt=Time.unscaledTime+.5f;pillMsNow=Mathf.Max(0,Mathf.RoundToInt((float)ConnectionMetrics.rttMs));}
             if(label!=pillLabel||code!=pillCode||pillMsNow!=pillMs){pillLabel=label;pillCode=code;pillMs=pillMsNow;pillText=label+(string.IsNullOrEmpty(code)?"":" / "+code)+" · "+pillMs+" MS";}
             return pillText;

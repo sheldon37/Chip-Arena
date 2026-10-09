@@ -7,9 +7,9 @@ namespace ChipArena.UnityConversion
     // new hitAt splashes ink (client/pve/horde-view.ts:211). Chip fields, ability zones and burn/poison ticks hit with no
     // direction (shared/chaos.ts:122,138; hitMinion's dir=v()), so they never bleed, and a gib flies along the direction of
     // the hit that severed it (gore.ts:52-61; zero for those ticks, so it rises with only its hashed jitter).
-    // A Unity Hit event carries that direction in ArenaEvent.Normal (Unity space) once the simulation fills it (DEV_LOG,
-    // needs Astra). Until an arena shows one directed hit, no hit can be told from a tick: each add then splashes at most
-    // once per HitInkGap so a damaging field cannot flood the ink pool, and a sever takes the newest hit as before.
+    // A Unity Hit event carries that direction in ArenaEvent.Normal (Unity space; HitPveAdd fills it, zero for ticks). The
+    // `directions` false path (each add splashes at most once per HitInkGap, a sever takes the newest hit) is kept for the
+    // checks and for event streams that carry no directions.
     public static class NativeGoreHits
     {
         // HitInkGap: the per-add splash spacing while directions are unknown. Ahead/Behind: a hit up to .5 s ahead of the

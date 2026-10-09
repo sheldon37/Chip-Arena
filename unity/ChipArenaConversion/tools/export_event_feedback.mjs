@@ -87,8 +87,17 @@ soundScenario('reload-start-me',[{type:'reloadStart',source:'me'}],[U('ReloadSta
 soundScenario('reload-end-me',[{type:'reloadEnd',source:'me'}],[U('ReloadEnd',{SourceMe:true})]);
 soundScenario('reload-other',[{type:'reloadStart',source:'foe'}],[U('ReloadStart')]);
 soundScenario('hit-me',[{type:'hit',source:'foe',target:'me',amount:10,message:'direct'}],[U('Hit',{TargetMe:true,TargetPilot:true,Amount:10})]);
-soundScenario('self-hit',[{type:'hit',source:'me',target:'me',amount:4,message:'blast'}],[U('Hit',{TargetMe:true,SourceMe:true,TargetPilot:true,Ally:true,Amount:4})]);
-soundScenario('hit-by-me',[{type:'hit',source:'me',target:'foe',amount:10,message:'direct'}],[U('Hit',{SourceMe:true,TargetPilot:true,Amount:10})]);
+soundScenario('self-hit',[{type:'hit',source:'me',target:'me',amount:4,message:'blast'}],[U('Hit',{Detail:'blast',TargetMe:true,SourceMe:true,TargetPilot:true,Ally:true,Amount:4})]);
+soundScenario('hit-by-me',[{type:'hit',source:'me',target:'foe',amount:10,message:'direct'}],[U('Hit',{Detail:'direct',SourceMe:true,TargetPilot:true,Amount:10})]);
+// hitmarker.ts procHit: proc damage kinds (the Hit Detail) take the quieter, higher proc cue; a guest's absent kind is ''.
+for(const kind of ['blast','chain','field','thorns','ability'])soundScenario('proc-hit-'+kind,[{type:'hit',source:'me',target:'foe',amount:10,message:kind}],[U('Hit',{Detail:kind,SourceMe:true,TargetPilot:true,Amount:10})]);
+soundScenario('hit-by-me-secondary',[{type:'hit',source:'me',target:'foe',amount:10,message:'secondary'}],[U('Hit',{Detail:'secondary',SourceMe:true,TargetPilot:true,Amount:10})]);
+soundScenario('hit-by-me-guest',[{type:'hit',source:'me',target:'foe',amount:10}],[U('Hit',{Detail:'',SourceMe:true,TargetPilot:true,Amount:10})]);
+soundScenario('proc-add-hit-pve',[{type:'minionHit',source:'me',target:'add-1',amount:5,message:'blast'}],[U('Hit',{Detail:'blast',SourceMe:true,Pve:true,Amount:5})],{pve:true});
+// simulation.ts:473: debris damage emits its `hit` (above .05) and then `debrisHit` (any bounded damage).
+soundScenario('debris-hit-me',[{type:'hit',source:'foe',target:'me',amount:12,message:'debris'},{type:'debrisHit',source:'foe',target:'me',amount:12}],[U('Hit',{Detail:'debris',TargetMe:true,TargetPilot:true,Amount:12})]);
+soundScenario('debris-hit-by-me',[{type:'hit',source:'me',target:'foe',amount:12,message:'debris'},{type:'debrisHit',source:'me',target:'foe',amount:12}],[U('Hit',{Detail:'debris',SourceMe:true,TargetPilot:true,Amount:12})]);
+soundScenario('debris-hit-tiny',[{type:'debrisHit',target:'ally',amount:.03}],[U('Hit',{Detail:'debris',TargetPilot:true,Amount:.03})]);
 soundScenario('headshot-by-me',[{type:'hit',source:'me',target:'foe',amount:30,message:'direct',headshot:true}],[U('Headshot',{SourceMe:true,TargetPilot:true,Amount:30})]);
 soundScenario('hit-ally-teams',[{type:'hit',source:'me',target:'ally',amount:10,message:'direct'}],[U('Hit',{SourceMe:true,TargetPilot:true,Ally:true,Amount:10})],{mode:'teams'});
 soundScenario('hit-enemy-teams',[{type:'hit',source:'me',target:'foe',amount:10,message:'direct'}],[U('Hit',{SourceMe:true,TargetPilot:true,Amount:10})],{mode:'teams'});
@@ -108,24 +117,31 @@ soundScenario('death-me',[{type:'death',source:'foe',target:'me'}],[U('Death',{T
 soundScenario('pve-kill-add',[{type:'pve-kill',source:'me',target:'add-1',amount:30,message:'walker'}],[U('Death',{SourceMe:true,Pve:true})],{pve:true});
 soundScenario('pve-horde-clear',[{type:'pve-kill',target:'add-1',amount:0,message:'walker'}],[U('Death',{Pve:true})],{pve:true});
 soundScenario('minion-death-add',[{type:'minionDeath',source:'me',target:'add-1',message:'walker'}],[U('Death',{SourceMe:true,Pve:true})],{pve:true});
-soundScenario('explosion-chip',[{type:'explosion',source:'foe',message:'shrapnel',radius:1.8}],[U('Explosion',{Detail:'chip',Radius:1.8})]);
-soundScenario('explosion-weapon',[{type:'explosion',source:'foe',radius:1.5}],[U('Explosion',{Detail:'chip',Radius:1.5})]);
-soundScenario('explosion-ability-frag',[{type:'explosion',source:'foe',message:'frag',radius:3}],[U('Explosion',{Detail:'ability',Radius:3})]);
-soundScenario('collapse',[{type:'collapse',source:'foe',radius:3}],[U('Collapse')]);
-soundScenario('block-pulse-supernova',[{type:'blockPulse',source:'ally',radius:3,mods:{supernova:1}}],[U('BlockPulse',{Supernova:true,Radius:3}),U('Explosion',{Detail:'chip',Radius:3,Shadowed:true})]);
-soundScenario('block-pulse',[{type:'blockPulse',source:'ally',radius:3,mods:{'block-pulse':2}}],[U('BlockPulse',{Radius:3}),U('Explosion',{Detail:'chip',Radius:3,Shadowed:true})]);
-soundScenario('arc-ball-lightning',[{type:'arc',source:'foe',from:P(0,2,0)}],[U('Arc',{Radius:.15})]);
-soundScenario('leet-lock',[{type:'leet-lock',source:'foe',from:P(0,2,0)}],[U('Arc',{Radius:.25})]);
-soundScenario('teleport',[{type:'teleport',source:'foe',from:P(0,1,0)}],[U('Teleport'),U('Arc',{Radius:1,Shadowed:true})]);
-soundScenario('blink-strike',[{type:'teleport',source:'foe',from:P(0,1,0),message:'blink-strike'},{type:'explosion',source:'foe',message:'blink-strike',radius:3}],[U('Teleport',{BlinkStrike:true}),U('Arc',{Radius:1,Shadowed:true}),U('Arc',{Radius:1,Shadowed:true}),U('Explosion',{Detail:'ability',Radius:3})]);
+// The Explosion Detail is the source's explode message: the fx tag (BLAST_CUE), a chip or the weapon spec.
+soundScenario('explosion-chip',[{type:'explosion',source:'foe',message:'shrapnel',radius:1.8}],[U('Explosion',{Detail:'shrapnel',Radius:1.8})]);
+soundScenario('explosion-weapon',[{type:'explosion',source:'foe',radius:1.5}],[U('Explosion',{Detail:'fire',Radius:1.5})]);
+soundScenario('explosion-ability-frag',[{type:'explosion',source:'foe',message:'frag',radius:3}],[U('Explosion',{Detail:'frag',Radius:3})]);
+for(const fx of ['meteor-strike','geyser-wall','orbital-mark','ball-lightning','shackles','flame-lance','tidal-wave','blink-strike','singularity'])soundScenario('explosion-'+fx,[{type:'explosion',source:'foe',message:fx,radius:3}],[U('Explosion',{Detail:fx,Radius:3})]);
+// simulation.ts:285: the static discharge's explode is the source's `arc`; leet.ts:53: the nuke's blast and its `leet-nuke`.
+soundScenario('static-discharge',[{type:'arc',source:'me',message:'static',radius:3}],[U('Explosion',{Detail:'static',SourceMe:true,Radius:3})]);
+soundScenario('leet-nuke',[{type:'explosion',source:'foe',message:'leet-nuke',radius:11},{type:'leet-nuke',source:'foe',radius:11}],[U('Explosion',{Detail:'leet-nuke',Radius:11})]);
+soundScenario('explosion-guest-untagged',[{type:'explosion',source:'foe',radius:3}],[U('Explosion',{Detail:'',Radius:3})]);
+soundScenario('collapse',[{type:'collapse',source:'foe',radius:3}],[U('Collapse',{Detail:'crate-2'})]);
+soundScenario('block-pulse-supernova',[{type:'blockPulse',source:'ally',radius:3,mods:{supernova:1}}],[U('BlockPulse',{Supernova:true,Radius:3}),U('Explosion',{Detail:'supernova',Radius:3})]);
+soundScenario('block-pulse',[{type:'blockPulse',source:'ally',radius:3,mods:{'block-pulse':2}}],[U('BlockPulse',{Radius:3}),U('Explosion',{Detail:'block-pulse',Radius:3})]);
+// Arc carries its source (ball-lightning's chain or the Leet lock); teleport beams emit no Arc; Blink Strike tags its teleport.
+soundScenario('arc-ball-lightning',[{type:'arc',source:'foe',from:P(0,2,0)}],[U('Arc',{Detail:'ball-lightning',Radius:.15})]);
+soundScenario('leet-lock',[{type:'leet-lock',source:'foe',from:P(0,2,0)}],[U('Arc',{Detail:'leet-lock',Radius:.25})]);
+soundScenario('teleport',[{type:'teleport',source:'foe',from:P(0,1,0)}],[U('Teleport',{Detail:''})]);
+soundScenario('blink-strike',[{type:'teleport',source:'foe',from:P(0,1,0),message:'blink-strike'},{type:'explosion',source:'foe',message:'blink-strike',radius:3}],[U('Teleport',{Detail:'blink-strike'}),U('Explosion',{Detail:'blink-strike',Radius:3})]);
 soundScenario('panic-button',[{type:'field',source:'foe',message:'repulsion',radius:6},{type:'nova',source:'foe',radius:6,message:'panic-button'}],[U('Field',{Detail:'panic-button',Radius:6})]);
 soundScenario('field',[{type:'field',source:'foe',message:'time',radius:5}],[U('Field',{Detail:'freezer-block',Radius:5})]);
 // chaos.ts:100 Thunder Step: a bomb on each locked pilot with its arc, or one bomb at the start with no arc.
 soundScenario('thunderstep',[{type:'field',source:'me',message:'bomb',radius:2.5},{type:'arc',source:'me',from:P(0,1.6,0),color:0xbfe6ff}],[U('Field',{Detail:'thunderstep',Radius:2.5,SourceMe:true,TargetPilot:true})]);
 soundScenario('thunderstep-miss',[{type:'field',source:'me',message:'bomb',radius:4}],[U('Field',{Detail:'thunderstep',Radius:4,SourceMe:true})]);
 soundScenario('ceiling-hit',[{type:'ceiling-hit',source:'foe',message:'ABSORB'}],[U('CeilingHit')]);
-soundScenario('stage-saw',[{type:'hit',target:'me',amount:22,message:'stage-saw'},{type:'stage-saw-hit',target:'me',amount:22,message:'SAW'}],[U('HazardHit',{TargetMe:true,TargetPilot:true,Amount:22,Saw:true}),U('Hit',{TargetMe:true,TargetPilot:true,Amount:22})]);
-soundScenario('stage-lava',[{type:'hit',target:'foe',amount:8,message:'stage-lava'},{type:'stage-lava-hit',target:'foe',amount:8,message:'LAVA'}],[U('HazardHit',{TargetPilot:true,Amount:8}),U('Hit',{TargetPilot:true,Amount:8})]);
+soundScenario('stage-saw',[{type:'hit',target:'me',amount:22,message:'stage-saw'},{type:'stage-saw-hit',target:'me',amount:22,message:'SAW'}],[U('HazardHit',{Detail:'saw',TargetMe:true,TargetPilot:true,Amount:22}),U('Hit',{Detail:'stage-saw',TargetMe:true,TargetPilot:true,Amount:22})]);
+soundScenario('stage-lava',[{type:'hit',target:'foe',amount:8,message:'stage-lava'},{type:'stage-lava-hit',target:'foe',amount:8,message:'LAVA'}],[U('HazardHit',{Detail:'lava',TargetPilot:true,Amount:8}),U('Hit',{Detail:'stage-lava',TargetPilot:true,Amount:8})]);
 soundScenario('install-mishima',[{type:'install',source:'me',message:'mishima-armor'}],[U('Install',{SourceMe:true,Detail:'mishima-armor'})]);
 soundScenario('install-arcade',[{type:'install',source:'me',message:'arcade-focus'}],[U('Install',{SourceMe:true,Detail:'arcade-focus'})]);
 // simulation.ts:156: a PvP draft pick emits install for any pilot; Unity derives it from Match.Chosen (Kind and Detail only).

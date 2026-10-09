@@ -44,10 +44,9 @@ namespace ChipArena.UnityConversion
         // yet: the menus keep the player's own preferences then (RoomOptions is the host's copy for any open connection,
         // and none before the first lobby message).
         private bool RulesGuest=>InRoom&&!Hosting;
-        // receivedOptions and lobbySeats outlive the connection that brought them: nothing clears them before the next
-        // lobby message (needsAstra: clear both in CloseNetwork and JoinRoom). The Join screen, the only place a join
-        // starts and never in a room, marks what is held as stale every frame, so a guest who joins another room sees the
-        // "host sets the mode" note and no seats until this connection's own first lobby message replaces them.
+        // CloseNetwork and JoinRoom clear receivedOptions and lobbySeats. As a guard for any other path, the Join screen (the
+        // only place a join starts, never in a room) also marks what is held as stale every frame, so a guest who joins
+        // another room sees the "host sets the mode" note and no seats until this connection's first lobby message.
         private NativeRoomOptions staleRules;private NativeSeatFrame[] staleSeats;
         private void MarkRoomStale(){staleRules=receivedOptions;staleSeats=lobbySeats;}
         private NativeRoomOptions GuestRules{get{var o=RoomOptions;return o!=null&&!ReferenceEquals(o,staleRules)?o:null;}}
@@ -253,13 +252,18 @@ namespace ChipArena.UnityConversion
             {
                 RuleCheck(7549,RoomOpt.RandomMap,"Randomize map after each set",o.randomizeMap);
                 if(practice)BotsAndDifficulty(PracticeBotLabels,Mathf.Clamp(o.bots,1,7)-1,1,DifficultyIndex(o.botDifficulty));
-                else{int max=RoomBotMax(lobby);BotsAndDifficulty(RoomBotLabels[max],Mathf.Clamp(lobby?LobbyBotSeats():o.bots,0,max),0,DifficultyIndex(o.botDifficulty));}
+                else{int max=RoomBotMax(lobby);BotsAndDifficulty(RoomBotLabels[max],Mathf.Clamp(lobby?LobbyBotCount(o):o.bots,0,max),0,DifficultyIndex(o.botDifficulty));}
                 RuleFine(7560,lobby?"Up to 8 pilots total. Bots use player slots. Only the room owner can change these settings.":"Up to 8 pilots total. Bots use player slots.",2,4);
             }
             RulesBoxEnd(k,!narrow?22:part==RulesPart.Essential?6:10,pad);
         }
         // The room's bot seats as broadcast (the source counts its bot players), and how many seats the humans leave.
         private int LobbyBotSeats(){int n=0;foreach(var s in lobbySeats)if(s!=null&&s.bot)n++;return n;}
+        // The lobby's bot count. The host's is its own setting as LobbyBots seats it (up to the free seats), so the BOTS
+        // stepper, Bot loadouts and the fold note follow a click at once (the source's lobby updates synchronously); the
+        // seat broadcast is throttled to 0.2 s (FlushLobby), and stepping from its stale count dropped quick clicks. A
+        // guest counts the host's broadcast bot seats.
+        private int LobbyBotCount(NativeRoomOptions o)=>Hosting?Mathf.Clamp(o.bots,0,RoomBotMax(true)):LobbyBotSeats();
         private int RoomBotMax(bool lobby){if(!lobby)return 7;int humans=0;foreach(var s in lobbySeats)if(s!=null&&!s.bot)humans++;return Mathf.Clamp(8-Mathf.Max(1,humans),0,7);}
         // .row of BOTS and BOT DIFFICULTY side by side; stacked in the narrow column, where two steppers would not fit.
         private void BotsAndDifficulty(string[] counts,int index,int first,int difficulty)

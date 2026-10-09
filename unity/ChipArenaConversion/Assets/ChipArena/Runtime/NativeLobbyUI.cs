@@ -190,10 +190,8 @@ namespace ChipArena.UnityConversion
         // .team-assignment under a card in a teams room (team-ui.ts teamPicker, lobby.css:87): the 9 px team dot with its 9 px
         // glow at 45% and "Team" (12 px #c7c1ce), and the 100 x 34 select at the right (#222329, its edge the team colour
         // mixed 45% into #333, the 12 px name and a chevron). Editable for the viewer's own card (ChangeTeam) and, for the
-        // host, each bot (its room option); a click opens the team list. Others are drawn disabled, at half strength.
-        // Deviation: the source lets the room owner set every pilot's team (main.ts:156 teamPicker(p,p.id===id||
-        // roomOwner===id)); ChangeTeam(int) moves only the caller's own seat, so a guest's picker stays disabled for the
-        // host until a host-side per-seat team API exists (needsAstra).
+        // host, every seat, guests and bots (RequestTeam), as main.ts:156 teamPicker(p,p.id===id||roomOwner===id); a click
+        // opens the team list. Others are drawn disabled, at half strength.
         private const string ChevronDown="<path d=\"M6 9 L12 15 L18 9\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>";
         private void TeamPicker(Rect r,LobbyPilot p,bool editable,float a,Vector2 toCanvas)
         {
@@ -205,11 +203,11 @@ namespace ChipArena.UnityConversion
                 U.Text(new Rect(box.x+8,box.y,box.width-30,box.height),TeamNames[team],12,U.Hex(0xf5f5f7,a*s),TextAnchor.MiddleLeft);
                 NativeIcons.DrawMarkup(new Rect(box.xMax-21,box.center.y-7,14,14),"chevron-down",ChevronDown,24,U.Hex(0xf5f5f7,.7f*a*s));
             }
-            if(U.Button(box,editable)){Click();teamPopupSeat=p.id;teamPopupBot=p.bot?p.id-100:-1;teamPopupSelf=p.you;teamPopupTeam=team;teamPopupAnchor=new Rect(box.x+toCanvas.x,box.y+toCanvas.y,box.width,box.height);teamPopupScroll=lobbyRosterScroll;}
+            if(U.Button(box,editable)){Click();teamPopupSeat=p.id;teamPopupSelf=p.you;teamPopupTeam=team;teamPopupAnchor=new Rect(box.x+toCanvas.x,box.y+toCanvas.y,box.width,box.height);teamPopupScroll=lobbyRosterScroll;}
         }
         // The open team list (8 rows of 28 px, 140 px wide; #222329 with a #484952 edge, #303138 on hover, the current team
         // ticked), under its picker or above it at the canvas foot.
-        private float lobbySeenAt=-1;private int teamPopupSeat,teamPopupBot=-1,teamPopupTeam;private bool teamPopupSelf;private Rect teamPopupAnchor;private Vector2 teamPopupScroll;
+        private float lobbySeenAt=-1;private int teamPopupSeat,teamPopupTeam;private bool teamPopupSelf;private Rect teamPopupAnchor;private Vector2 teamPopupScroll;
         private Rect TeamPopupRect(){const float w=140,h=8*28+8;var a=teamPopupAnchor;float x=Mathf.Clamp(a.xMax-w,8,U.W-8-w),y=a.yMax+4;if(y+h>U.H-8)y=a.y-4-h;return new Rect(x,Mathf.Max(8,y),w,h);}
         private static Rect TeamPopupRow(Rect box,int t)=>new Rect(box.x+4,box.y+4+t*28,box.width-8,28);
         // Before the lobby draws a control, so the list takes the click from what lies under it: a row picks that team,
@@ -367,7 +365,7 @@ namespace ChipArena.UnityConversion
             var c=GUI.color;GUI.color=new Color(c.r,c.g,c.b,c.a*e);U.BeginDeferred();GUILayout.BeginArea(area);
             lobbyRoomScroll=GUILayout.BeginScrollView(lobbyRoomScroll,false,false,GUIStyle.none,GUI.skin.verticalScrollbar);
             string label=RoomCodeLabel();float cardW=area.width-8-32;bool two=U.Measure(label,10,false,false,.16f).x>cardW;RoomAddresses(cardW);bool link=inviteLink!=null;
-            var invite=GUILayoutUtility.GetRect(0,RoomInviteHeight(two,link),GUILayout.ExpandWidth(true));string code=Hosting?RoomCode:internetRooms?NativeRoomCodes.Online(joinCode):joinCode;U.Defer(()=>RoomInvite(new Rect(invite.x+4,invite.y+2,invite.width-8,invite.height-2),code,label,two,link,e));GUILayout.Space(16);
+            var invite=GUILayoutUtility.GetRect(0,RoomInviteHeight(two,link),GUILayout.ExpandWidth(true));string code=ShownRoomCode();U.Defer(()=>RoomInvite(new Rect(invite.x+4,invite.y+2,invite.width-8,invite.height-2),code,label,two,link,e));GUILayout.Space(16);
             var head=GUILayoutUtility.GetRect(0,RoomHeadingHeight(),GUILayout.ExpandWidth(true));if(Event.current.type==EventType.Repaint)lobbyRoomInner=head.width-8;U.Defer(()=>RoomHeading(head,e));
             if(Hosting)
             {
