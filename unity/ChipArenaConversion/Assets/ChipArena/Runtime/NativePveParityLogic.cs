@@ -21,10 +21,12 @@ namespace ChipArena.UnityConversion
         }
         private void PlacePveBoss(Vector3 at)
         {
-            Pve.Boss.Body.position=at;Pve.Boss.Body.linearVelocity=Pve.Boss.Knockback=Pve.Boss.MoveVelocity=Vector3.zero;
-            foreach(var p in Members().Where(p=>p.Hp>0)){Vector3 d=p.Body.position-at;d.y=0;if(d.magnitude>=4)continue;if(d.sqrMagnitude<.001f)d=Vector3.forward;p.Body.position=at+d.normalized*4;p.Body.linearVelocity=p.Knockback=p.MoveVelocity=Vector3.zero;}
+            Pve.Boss.Body.position=at;Pve.Boss.Knockback=Pve.Boss.MoveVelocity=Vector3.zero;
+            if(!Pve.Boss.Body.isKinematic)Pve.Boss.Body.linearVelocity=Vector3.zero;
+            foreach(var p in Members().Where(p=>p.Hp>0)){Vector3 d=p.Body.position-at;d.y=0;if(d.magnitude>=4)continue;if(d.sqrMagnitude<.001f)d=Vector3.forward;p.Body.position=at+d.normalized*4;p.Knockback=p.MoveVelocity=Vector3.zero;if(!p.Body.isKinematic)p.Body.linearVelocity=Vector3.zero;}
         }
         private void KillPveHorde()
         {foreach(var m in Minions.Where(m=>m.Pve!=null).ToArray()){if(Time>=m.Pve.ExposedAt){m.Hp=0;Emit(EventKind.Death,null,m.Id,m.Body.position,0);}RemoveMinion(m,false);}}
     }
 }
+

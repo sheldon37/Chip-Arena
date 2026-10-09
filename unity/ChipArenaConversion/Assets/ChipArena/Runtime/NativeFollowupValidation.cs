@@ -18,7 +18,25 @@ namespace ChipArena.UnityConversion
             a.Stats["critical"]=1;Damage(b,a,1,Vector3.zero,0,false);Check(Events.Any(e=>e.Kind==EventKind.Critical),"critical outcome reaches event stream");ChipBlast(a,a.Body.position,1,5,0);Check(Events.Any(e=>e.Kind==EventKind.Explosion&&e.Radius==1),"blast event carries gameplay radius");
             var ability=Content.abilities.First(d=>d.id=="rocket");AbilityShots.Clear();AbilityShots.Add(new NativeAbilityShot{Owner=a,Definition=ability,Position=new Vector3(0,23.9f,0),Velocity=Vector3.up*60,Radius=.1f,Life=2,MaxTravel=100});StepAbilityWorld();Check(AbilityShots.Count==0&&Events.Any(e=>e.Kind==EventKind.CeilingHit),"ability ceiling absorbs upward projectile");
             b.Seat.AuthorityBoss=true;ConfigurePve(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text),false);StartPve();a.Hp=0;a.Death=new NativeDeath{position=new Vector3(5,2,5)};a.Mana=3;a.Stamina=4;a.Ammo=2;RevivePve(a);Check(a.Body.position==new Vector3(5,2,5)&&a.Mana==3&&a.Stamina==4&&a.Ammo==2,"paid/self revive at death position without resource refill");
-            float hp=b.Hp;PlacePveBoss(new Vector3(0,.9f,24.2f));Check(b.Hp==hp&&b.Body.position.y>0,"boss fall rescue cannot skip an HP phase");
+            float hp=b.Hp;bool aWasKinematic=a.Body.isKinematic,bWasKinematic=b.Body.isKinematic;var rescuedAt=new Vector3(0,.9f,24.2f);var placementErrors=new System.Collections.Generic.List<string>();
+            void CapturePlacement(string message,string trace,LogType type){if(type==LogType.Warning||type==LogType.Error||type==LogType.Exception||type==LogType.Assert)placementErrors.Add(message);}
+            Application.logMessageReceived+=CapturePlacement;
+            try
+            {
+                foreach(bool kinematic in new[]{true,false})
+                {
+                    a.Body.isKinematic=b.Body.isKinematic=kinematic;a.Body.position=rescuedAt;
+                    a.Knockback=b.Knockback=a.MoveVelocity=b.MoveVelocity=Vector3.one;
+                    if(!kinematic)a.Body.linearVelocity=b.Body.linearVelocity=Vector3.one;
+                    PlacePveBoss(rescuedAt);
+                    Check(b.Hp==hp&&b.Body.position==rescuedAt,"boss fall rescue cannot skip an HP phase");
+                    Check(Vector3.Distance(a.Body.position,rescuedAt)>=3.99f&&a.Knockback==Vector3.zero&&b.Knockback==Vector3.zero&&a.MoveVelocity==Vector3.zero&&b.MoveVelocity==Vector3.zero,"rescue clears motion and pushes party off spawn");
+                    Check(a.Body.isKinematic==kinematic&&b.Body.isKinematic==kinematic,"rescue preserves the body's physics mode");
+                    if(!kinematic)Check(a.Body.linearVelocity==Vector3.zero&&b.Body.linearVelocity==Vector3.zero,"dynamic rescue clears velocity");
+                }
+            }
+            finally{Application.logMessageReceived-=CapturePlacement;a.Body.isKinematic=aWasKinematic;b.Body.isKinematic=bWasKinematic;}
+            Check(placementErrors.Count==0,"boss/party placement logged Unity warnings or errors: "+string.Join("; ",placementErrors));
             var add=SpawnPveAdd("shambler",true);add.Pve.ExposedAt=Time;KillPveHorde();Check(!Minions.Any(m=>m.Pve!=null)&&MinionDeaths.Any(d=>d.id==add.Id)&&Events.Any(e=>e.Kind==EventKind.Death&&e.Target==add.Id),"wave/outro cleanup records exposed add deaths");
             var row=Pve.Rows[a.Seat.id];row.Notice="Only A";row.NoticeUntil=Time+1;Check(PveNotice(a.Seat.id)=="Only A"&&PveNotice(b.Seat.id)==null,"machine denial isolated to affected pilot");row.NoticeUntil=Time;Check(PveNotice(a.Seat.id)==null,"machine denial expires");
             var entry=Pve.Content.entries.First();Entries.Add(new NativeEntryView{entry=entry.e,kind=entry.kind,closeAt=Time-.1f});var planned=PlanEntry(entry);var follower=PlanEntry(entry);Check(!follower.first&&follower.spawn>planned.spawn,"entry reopening keeps follower spacing");
@@ -27,3 +45,4 @@ namespace ChipArena.UnityConversion
         }
     }
 }
+

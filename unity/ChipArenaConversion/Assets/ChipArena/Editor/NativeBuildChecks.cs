@@ -25,16 +25,30 @@ namespace ChipArena.UnityConversion.Editor
                     try
                     {
                         var presentation=host.AddComponent<ArenaPresentation>();presentation.Initialize(false);
+                        var audio=host.GetComponentsInChildren<AudioSource>(true);
+                        var particles=host.GetComponentsInChildren<ParticleSystem>(true);
+                        var lights=host.GetComponentsInChildren<Light>(true);
+                        var combatPool=host.transform.Find("Native combat light pool");
+                        var blastPool=host.transform.Find("Native blast light pool");
+                        int combatLights=combatPool==null?0:combatPool.GetComponentsInChildren<Light>(true).Length;
+                        int blastLights=blastPool==null?0:blastPool.GetComponentsInChildren<Light>(true).Length;
+                        if(audio.Length!=25||particles.Length!=1||combatLights!=7||blastLights!=NativeBlastSim.LightCapacity||lights.Length!=7+NativeBlastSim.LightCapacity)
+                            throw new Exception($"Presentation startup inventory: audio={audio.Length}/25, particles={particles.Length}/1, combat lights={combatLights}/7, blast lights={blastLights}/{NativeBlastSim.LightCapacity}, total lights={lights.Length}/{7+NativeBlastSim.LightCapacity}");
+                        // Seed both pools so omitting either Clear() is caught, even without rendering a frame.
+                        foreach(var light in lights)light.enabled=true;
+                        particles[0].Emit(3);
                         presentation.ResetPresentation();presentation.ResetPresentation();
-                        if(host.GetComponentsInChildren<AudioSource>(true).Length!=25||host.GetComponentsInChildren<ParticleSystem>(true).Length!=1||host.GetComponentsInChildren<Light>(true).Length!=7||presentation.ParticleCount!=0)
-                            throw new Exception("Presentation startup did not initialize/reset its audio, particles and light pool");
+                        if(presentation.ParticleCount!=0||lights.Any(light=>light.enabled)||audio.Any(source=>source.isPlaying))
+                            throw new Exception("Presentation reset left live particles, audio or combat/blast lights");
+                        if(!audio.SequenceEqual(host.GetComponentsInChildren<AudioSource>(true))||!particles.SequenceEqual(host.GetComponentsInChildren<ParticleSystem>(true))||!lights.SequenceEqual(host.GetComponentsInChildren<Light>(true)))
+                            throw new Exception("Presentation reset replaced or leaked pooled components");
                     }
                     finally{CapturedAnimation.Release(host);}
                 }
             }
             finally{Application.logMessageReceived-=Capture;}
             if(errors.Count>0)throw new Exception("Presentation startup logged Unity errors: "+string.Join("\n",errors));
-            Debug.Log("PASS native presentation startup: component construction, initialization, repeated reset and teardown (two cycles; no rendered frame)");
+            Debug.Log("PASS native presentation startup: audio, particles, seven combat lights and blast pool, seeded repeated reset and teardown (two cycles; no rendered frame)");
         }
         private static void CheckGlow(NativeArena arena,NativeMatch match)
         {
@@ -42,23 +56,36 @@ namespace ChipArena.UnityConversion.Editor
             var rigs=new System.Collections.Generic.Dictionary<int,CapturedAnimation.Player>();
             using(var glow=new NativeCombatGlow(host.transform))
             {
-                var prop=arena.Props[0];
-                for(int n=1;n<=200;n++)arena.Events.Add(new ArenaEvent{Id=n,Kind=EventKind.Impact,Time=arena.Time,SurfaceId=prop.Definition.id,Position=NativeArena.Vec(prop.transform.position+Vector3.up),Normal=new V3(0,1,0),Color=0x58cfff});
+                const int impactCount=200;var prop=arena.Props[0];float firstImpactAt=arena.Time;
+                arena.Events.Clear();arena.Bullets.Clear();arena.AbilityShots.Clear();arena.MeleeShots.Clear();
+                // Exercise 200 overlapping marks without violating the authority's per-tick event budget.
+                // This is a glow-lifetime test, not a request to bypass or disable network/event limits.
+                for(int n=1;n<=impactCount;n++)
+                {
+                    if(n>1&&(n-1)%NativeEventBuffer.PerTickEffects==0)match.Tick(1d/60);
+                    arena.Events.Add(new ArenaEvent{Id=n,Kind=EventKind.Impact,Time=arena.Time,SurfaceId=prop.Definition.id,Position=NativeArena.Vec(prop.transform.position+Vector3.up),Normal=new V3(0,1,0),Color=0x58cfff});
+                }
+                float lastImpactAt=arena.Time;
+                if(arena.Events.Count!=impactCount)throw new Exception($"Glow fixture exceeded the event budget: accepted {arena.Events.Count}/{impactCount} impacts");
                 arena.Bullets.Add(new NativeBullet{Id=500,Spec="pistol",Position=Vector3.up,Radius=.045f});
                 arena.AbilityShots.Add(new NativeAbilityShot{Id=501,Owner=arena.Local,Position=Vector3.up*2,Radius=.2f});
                 arena.MeleeShots.Add(new NativeMeleeShot{Id=502,Original=arena.Local,Owner=arena.Local,Shield=true,Position=Vector3.up*3,Radius=.28f});
                 void Sample()=>glow.Render(arena,camera,null,false,rigs,null,null,false);
-                Sample();if(glow.LiveMarks!=200||glow.LiveTraces!=3)throw new Exception("Combat glow dropped a live burst or ability trace");
+                void Expect(int marks,int traces,string stage)
+                {if(glow.LiveMarks!=marks||glow.LiveTraces!=traces)throw new Exception($"Combat glow {stage}: marks={glow.LiveMarks}/{marks}, traces={glow.LiveTraces}/{traces}, accepted events={arena.Events.Count}");}
+                void AdvanceTo(double time){while(match.Time<time)match.Tick(Math.Min(.2,time-match.Time));Sample();}
+                Sample();Expect(impactCount,3,"initial burst");
                 if(host.GetComponentsInChildren<Light>().Length!=7)throw new Exception("Combat lights must use exactly seven pooled objects");
                 arena.Bullets.Clear();arena.AbilityShots.Clear();arena.MeleeShots.Clear();match.Tick(.2);Sample();
-                if(glow.LiveMarks!=200||glow.LiveTraces!=0)throw new Exception("Glow/trail lifetimes differ from the source");
-                for(int i=0;i<4;i++)match.Tick(.16);Sample();if(glow.LiveMarks!=200)throw new Exception("Impact burst was evicted before natural expiry");
-                match.Tick(.02);Sample();if(glow.LiveMarks!=0)throw new Exception("Expired impact marks leaked");
+                Expect(impactCount,0,"trail expiry");
+                AdvanceTo(firstImpactAt+NativeGlowRules.ImpactLife-.01);Expect(impactCount,0,"before first impact expiry");
+                AdvanceTo(firstImpactAt+NativeGlowRules.ImpactLife+.005);Expect(impactCount-NativeEventBuffer.PerTickEffects,0,"first tick expiry");
+                AdvanceTo(lastImpactAt+NativeGlowRules.ImpactLife+.01);Expect(0,0,"last impact expiry");
                 glow.Quality=0;Sample();foreach(var light in host.GetComponentsInChildren<Light>())if(light.enabled)throw new Exception("Off leaves a combat light enabled");
                 glow.Clear();if(glow.LiveMarks!=0||glow.LiveTraces!=0)throw new Exception("Glow reset leaked presentation state");
             }
             arena.Events.Clear();CapturedAnimation.Release(host);
-            Debug.Log("PASS native glow lifecycle: 200 simultaneous impacts, primary/ability/thrown-shield traces, seven pooled lights, natural expiry and reset (draw submission skipped)");
+            Debug.Log("PASS native glow lifecycle: 200 overlapping impacts across budgeted ticks, primary/ability/thrown-shield traces, seven pooled lights, staggered expiry and reset (draw submission skipped)");
         }
         public static void Run()
         {
@@ -139,3 +166,4 @@ namespace ChipArena.UnityConversion.Editor
         }
     }
 }
+
