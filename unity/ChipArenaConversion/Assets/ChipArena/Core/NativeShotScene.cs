@@ -8,7 +8,8 @@ namespace ChipArena.UnityConversion
     /// client/chip-effects.ts ChipEffects.update): one model per projectile with its colour, orientation, spin and fuse
     /// blink, its chip module parts, and the spark and beam emitters, drawn into a reused list of parts plus the shared
     /// NativeBurstPool. Halos, spill lights and trails stay in NativeCombatGlow and read NativeShotRules.
-    /// Sizes freeze at the radius first seen for an id, as the source builds each mesh once. Cosmetic only.
+    /// Sizes freeze at the radius first seen for an id, as the source builds each mesh once; the rest of a shot's look is
+    /// frozen upstream (NativeShotTracker). Cosmetic only.
     /// </summary>
     public sealed class NativeShotScene
     {
@@ -31,7 +32,8 @@ namespace ChipArena.UnityConversion
         public void Clear(){foreach(var s in states.Values){s.Reset();spare.Push(s);}states.Clear();Draws.Clear();Bursts.Clear();emitClock=0;}
         /// <summary>
         /// Starts a frame. time is the presentation clock (spin, blink, element cycling, puffs, module animation),
-        /// simTime the match clock (darkness pulse and tail wobble), dt the frame step, quality the effects quality.
+        /// simTime the source's state.time (darkness pulse and tail wobble: the match clock on the host, the interpolated
+        /// snapshot time on a replica), dt the frame step, quality the effects quality.
         /// The source emits its per-frame sparks and beams once per rendered frame; here once per 1/60 s of frame time
         /// at most once a frame, which equals the source at 60 Hz and below and keeps the density on faster displays.
         /// </summary>

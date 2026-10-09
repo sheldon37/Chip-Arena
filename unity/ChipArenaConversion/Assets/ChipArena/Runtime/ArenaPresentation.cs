@@ -10,9 +10,15 @@ namespace ChipArena.UnityConversion
         private CapturedAnimation captured;
         private NativeCombatGlow combatGlow;private NativeBlastPresentation blasts;
         public float GlowQuality=1,BlastQuality=1;public bool TrailsEnabled=true;
+        // The guest clock of the projectile models, modules, emitters, halos and trails (C10); C9's field telegraphs use the
+        // same one. A replica's arena.Time only moves when a 20 Hz host frame lands, so a guest uses the continuous snapshot
+        // clock it renders at (Render's renderTime, arena.ReplicaRenderTime: about 0.1 s behind the newest frame, as the
+        // source's SnapshotBuffer cursor). Host and killcam replay: PresentationClock. It never runs backwards within a
+        // generation, so the .25 s rewind clears hold.
+        private float FieldClock(NativeArena arena)=>arena.Replica&&hazardClock<=arena.Time&&arena.Time-hazardClock<1?hazardClock:PresentationClock(arena);
         // paused: the match itself is stopped (offline menu), so the blasts hold still; see NativeBlastFrame.Step.
         public void RenderGlow(NativeArena arena,Camera camera,bool paused=false)
-        {blasts?.Render(arena,camera,PresentationClock(arena),BlastQuality,paused);shots?.Render(arena,camera,PresentationClock(arena),BlastQuality,paused);if(combatGlow==null)return;combatGlow.Halos=blasts?.Halos;combatGlow.Clock=PresentationClock(arena);combatGlow.Quality=GlowQuality;combatGlow.Trails=TrailsEnabled;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.ViewPilot.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);}
+        {float now=PresentationClock(arena),fields=FieldClock(arena);blasts?.Render(arena,camera,now,BlastQuality,paused);shotTracker.Begin(arena,arena.Generation,arena.Replica,arena.Time);shots?.Render(arena,camera,fields,BlastQuality,paused,shotTracker);if(combatGlow==null)return;combatGlow.Halos=blasts?.Halos;combatGlow.Tracker=shotTracker;combatGlow.Clock=fields;combatGlow.Quality=GlowQuality;combatGlow.Trails=TrailsEnabled;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.ViewPilot.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);}
         private readonly AudioClip[] gunSounds=new AudioClip[4];
         private AudioClip reloadStart,reloadEnd,hitSound;
         private AudioSource localAudio;
@@ -112,7 +118,7 @@ namespace ChipArena.UnityConversion
         }
         public void ResetPresentation()
         {
-            ClearSourceActors();combatGlow?.Clear();blasts?.Clear();shots?.Clear();aimMotion.Reset();viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
+            ClearSourceActors();combatGlow?.Clear();blasts?.Clear();shots?.Clear();shotTracker.Clear();aimMotion.Reset();viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
             foreach(var source in shotAudio) if(source!=null) source.Stop(); if(localAudio!=null) localAudio.Stop();
             foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear();
             foreach(var o in debris) if(o!=null) Destroy(o); debris.Clear();

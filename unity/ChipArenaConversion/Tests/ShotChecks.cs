@@ -32,7 +32,8 @@ namespace ChipArena.UnityConversion
             using var document=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Tests/shot-parity.json")));var json=document.RootElement;
             int shapes=Geometries(json.GetProperty("geometries"));
             int cases=0,frames=0;foreach(var c in json.GetProperty("cases").EnumerateArray()){frames+=Replay(json,c,content);cases++;}
-            Emitter();Pool();Trace();Blink();Fallbacks(content);Nearest();Modules(content);
+            Emitter();Pool();Trace();Blink();Fallbacks(content);Nearest();Modules(content);Identity();int renders=Motion(root,out int shotsChecked,out int ahead);
+            Console.WriteLine("PASS projectile tracker: first-seen identity survives a reflected owner, eviction, rewind and arena change; "+renders+" guest renders ("+shotsChecked+" shot positions, "+ahead+" past the newest frame) against the pinned client/snapshots.ts SnapshotBuffer (tools/export_shot_motion.mjs)");
             Console.WriteLine("PASS "+cases+" source projectile runs ("+frames+" captured frames: 3 guns, 5 magic schools, bowling/velocity/element chips, 2 hadoukens, sword beam, 7 ability shots and the fallback, every chip module, thrown dagger and shield, Siren exclusion, a volley, reduced and off effects) against renderer.ts/chip-effects.ts/burst-pool.ts/event-vfx.ts/projectile-trails.ts/projectile-glow.ts, "+shapes+" three.js geometries, and emitter-step, pool-growth, trail colour lock, frag blink, fallback, light and module checks");
         }
         // NativeShotGeometry against the three r180 geometries the source builds (positions as float32, index order).
@@ -269,6 +270,66 @@ namespace ChipArena.UnityConversion
             bolt.Arcade=1;Check(NativeShotRules.HaloColor(bolt,.06)==NativeShotRules.HaloRed&&NativeShotRules.LightIntensity(bolt)==6,"arcade halo and light");
             bolt.Arcade=0;bolt.Fire=bolt.Poison=false;Check(NativeShotRules.HaloColor(bolt,0)==0xff7d3e&&NativeShotRules.LightIntensity(bolt)==5&&NativeShotRules.LightRange(bolt)==5,"weapon halo and magic light");
             var gun=new NativeShotView{Kind=NativeShotKind.Bullet,WeaponColor=0xffd88d,Class="ranged",VelocityChips=2};Check(NativeShotRules.MeshColor(gun,0)==NativeShotRules.Ranged&&Math.Abs(NativeShotRules.TrailWidth(gun)-1.56)<1e-12,"ranged colour and Velocity Coil width");
+        }
+        // NativeShotTracker identity: a shot keeps the look it had when first seen (source p.spec, p.arcade, p.elements and
+        // p.mods never change; reflectProjectile changes only the owner), while its motion, radius and fuse stay live.
+        private static void Identity()
+        {
+            var tracker=new NativeShotTracker();var arena=new object();tracker.Begin(arena,1,false,0);
+            var red=new NativeShotView{Kind=NativeShotKind.Bullet,Id=7,Spec="ansatsuken",Class="melee",WeaponColor=0xffd6c1,Arcade=1,Fire=true,X=1,VX=23,Radius=.24,FuseLeft=1e9};
+            Check(!tracker.Recall(ref red),"a new id is not known");tracker.Remember(red);
+            // The next frame the runtime would derive the reflector's look (a blue hadouken, a fire mage's bolt).
+            tracker.Begin(arena,1,false,0);var after=new NativeShotView{Kind=NativeShotKind.Bullet,Id=7,Spec="fire",Class="magic",WeaponColor=0xff7d3e,Arcade=2,Poison=true,X=2,VX=-23,Radius=.3,FuseLeft=4};
+            Check(tracker.Recall(ref after),"a seen id is known");
+            Check(after.Spec=="ansatsuken"&&after.Class=="melee"&&after.WeaponColor==0xffd6c1&&after.Arcade==1&&after.Fire&&!after.Poison,"the first identity survives a reflected owner");
+            Check(after.X==2&&after.VX==-23&&after.Radius==.3&&after.FuseLeft==4,"motion, radius and fuse stay live");
+            Check(NativeShotRules.MeshColor(after,0)==NativeShotRules.ArcadeRed&&NativeShotRules.HaloColor(after,0)==NativeShotRules.HaloRed&&NativeShotRules.TrailColor(after,0)==NativeShotRules.TrailRed,"the reflected hadouken stays red");
+            var rocket=new NativeShotView{Kind=NativeShotKind.Ability,Id=7,Ability="rocket",Spec="pistol",Class="ranged",WeaponColor=0xffd88d,FuseLeft=1e9};tracker.Remember(rocket);
+            var mage=rocket;mage.Spec="lightning";mage.Class="magic";mage.WeaponColor=0xc2a3ff;Check(tracker.Recall(ref mage)&&NativeShotRules.HaloColor(mage,0)==0xffd88d&&NativeShotRules.LightIntensity(mage)==2.8&&NativeShotRules.LightRange(mage)==3.8,"a reflected rocket keeps the gun's halo and light (kinds are tracked apart)");
+            // Not seen for a frame: forgotten; a new generation or arena: everything forgotten.
+            tracker.Begin(arena,1,false,0);tracker.Begin(arena,1,false,0);Check(tracker.Live==0,"ids not seen in a frame are forgotten");
+            tracker.Remember(red);tracker.Begin(arena,2,false,0);Check(tracker.Live==0,"a new generation forgets every id");
+            tracker.Remember(red);tracker.Begin(new object(),2,false,0);Check(tracker.Live==0,"another arena forgets every id");
+            // Replica frames that run backwards (a new killcam clip) start over.
+            tracker.Begin(arena,3,true,1);tracker.Remember(red);tracker.Begin(arena,3,true,1.05);Check(tracker.Live==1&&tracker.FrameCount==2,"replica frames are recorded once each");
+            var held=red;Check(tracker.Recall(ref held),"still known");tracker.Begin(arena,3,true,.5);Check(tracker.Live==0&&tracker.FrameCount==1,"a rewound replica starts over");
+            // The host's positions are never moved.
+            var host=new NativeShotTracker();host.Begin(arena,1,false,0);var shot=red;host.Remember(shot);host.Present(ref shot,5);Check(shot.X==red.X&&shot.VX==red.VX,"host shots are drawn where they are");
+        }
+        // NativeShotTracker.Present against SnapshotBuffer.sample: a 20 Hz host stream delivered 60-90 ms late and sampled at
+        // 144 Hz; the tracker sees the newest frame each render, as a Unity guest's arena does. Past the newest frame the port
+        // carries every shot by its velocity for at most 80 ms (SnapshotBuffer only shots in its oldest sample); those
+        // renders are checked against that rule instead.
+        private static int Motion(string root,out int shots,out int ahead)
+        {
+            using var document=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Tests/shot-motion-parity.json")));var json=document.RootElement;
+            Near(json.GetProperty("extrapolationMax").GetDouble(),NativeShotTracker.ExtrapolationMax,1e-12,"extrapolation limit");
+            var frames=new List<(double time,List<(int id,double[] p,double[] v)> shots)>();
+            foreach(var f in json.GetProperty("frames").EnumerateArray()){var list=new List<(int,double[],double[])>();foreach(var s in f.GetProperty("shots").EnumerateArray())list.Add((s.GetProperty("id").GetInt32(),Doubles(s.GetProperty("pos")),Doubles(s.GetProperty("vel"))));frames.Add((f.GetProperty("time").GetDouble(),list));}
+            var tracker=new NativeShotTracker();var arena=new object();int renders=0;shots=0;ahead=0;
+            foreach(var r in json.GetProperty("renders").EnumerateArray())
+            {
+                var frame=frames[r.GetProperty("frame").GetInt32()];double cursor=r.GetProperty("cursor").GetDouble();bool past=cursor>frame.time;tracker.Begin(arena,1,true,frame.time);
+                var expected=new Dictionary<int,(double[] p,double[] v)>();foreach(var s in r.GetProperty("shots").EnumerateArray())expected[s.GetProperty("id").GetInt32()]=(Doubles(s.GetProperty("pos")),Doubles(s.GetProperty("vel")));
+                Check(expected.Count==frame.shots.Count,"render "+renders+" shot count");
+                foreach(var (id,p,v) in frame.shots)
+                {
+                    // The identity is irrelevant here; it changes every frame to show it is not what moves the shot.
+                    var view=new NativeShotView{Kind=NativeShotKind.Bullet,Id=id,X=p[0],Y=p[1],Z=p[2],VX=v[0],VY=v[1],VZ=v[2],Radius=.05,Spec=renders%2==0?"pistol":"fire",FuseLeft=1e9};
+                    if(!tracker.Recall(ref view))tracker.Remember(view);tracker.Present(ref view,cursor);
+                    string what="guest render "+renders+" shot "+id;var e=expected[id];
+                    if(past)
+                    {
+                        double extra=Math.Min(NativeShotTracker.ExtrapolationMax,cursor-frame.time);
+                        for(int k=0;k<3;k++){Near(new[]{view.X,view.Y,view.Z}[k],p[k]+v[k]*extra,1e-9,what+" carried position");Near(new[]{view.VX,view.VY,view.VZ}[k],v[k],1e-12,what+" carried velocity");}
+                        ahead++;
+                    }
+                    else{for(int k=0;k<3;k++){Near(new[]{view.X,view.Y,view.Z}[k],e.p[k],1e-9,what+" position");Near(new[]{view.VX,view.VY,view.VZ}[k],e.v[k],1e-9,what+" velocity");}}
+                    shots++;
+                }
+                renders++;
+            }
+            return renders;
         }
         private static void Nearest()
         {

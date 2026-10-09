@@ -37,6 +37,37 @@ namespace ChipArena.UnityConversion.Editor
                 CapturedAnimation.Release(host);
             }
             Debug.Log("PASS native projectile visuals: bullets, fire bolt with puffs, null-definition and frag ability shots, thrown dagger modules, Siren skipped, pruning and reset (draw submission only)");
+            CheckShotIdentity(arena);
+        }
+        // The runtime mapping (NativeShotViews with a NativeShotTracker) on real projectile objects: a reflect changes only
+        // the owner in the source (reflectProjectile), so a reflected hadouken, rocket or replica bullet keeps its first look.
+        private static void CheckShotIdentity(NativeArena arena)
+        {
+            var a=arena.Pilots.Find(p=>p.Seat.id==1);var b=arena.Pilots.Find(p=>p.Seat.id==2);if(a==null||b==null)throw new Exception("Projectile identity check needs seats 1 and 2");
+            var chips=new System.Collections.Generic.Dictionary<string,int>(a.Seat.chips);bool replica=arena.Replica;var rocket=Array.Find(arena.Content.abilities,d=>d.id=="rocket");
+            try
+            {
+                a.Seat.chips.Clear();a.Seat.chips["arcade-red"]=1;
+                // Host hadouken thrown by seat 1 (Arcade Red) and blocked by seat 2: Owner is now 2, Original stays 1.
+                var tracker=new NativeShotTracker();tracker.Begin(arena,arena.Generation,false,arena.Time);
+                var hadouken=new NativeBullet{Id=610,Spec="ansatsuken",Hadoken=true,Owner=2,Original=1,Position=Vector3.up,Velocity=Vector3.forward*23,Radius=.24f};
+                NativeShotViews.Bullet(arena,hadouken,tracker,arena.Time,out var v);
+                if(v.Arcade!=1||NativeShotRules.HaloColor(v,0)!=NativeShotRules.HaloRed)throw new Exception("A reflected hadouken took the reflector's colour (Arcade "+v.Arcade+")");
+                // An ability shot keeps its caster's look after the owner changes, and a hadouken after its firer's chips change.
+                var shot=new NativeAbilityShot{Id=611,Owner=a,Definition=rocket,Position=Vector3.up*2,Velocity=Vector3.forward*30,Radius=.2f};
+                NativeShotViews.Ability(arena,shot,tracker,arena.Time,out var before);shot.Owner=b;a.Seat.chips.Clear();
+                tracker.Begin(arena,arena.Generation,false,arena.Time);NativeShotViews.Ability(arena,shot,tracker,arena.Time,out var after);NativeShotViews.Bullet(arena,hadouken,tracker,arena.Time,out v);
+                if(after.Class!=before.Class||after.WeaponColor!=before.WeaponColor||NativeShotRules.LightIntensity(after)!=NativeShotRules.LightIntensity(before)||v.Arcade!=1)
+                    throw new Exception("A reflected ability shot or hadouken changed its look ("+before.Class+" -> "+after.Class+")");
+                // A replica bullet whose rebuilt spec follows the new owner keeps the first spec and so its model.
+                arena.Replica=true;var guest=new NativeShotTracker();guest.Begin(arena,arena.Generation,true,arena.Time);
+                var bullet=new NativeBullet{Id=612,Owner=1,Spec="pistol",Position=Vector3.up,Velocity=Vector3.forward*40,Radius=.045f};
+                NativeShotViews.Bullet(arena,bullet,guest,arena.Time,out var first);bullet.Owner=2;bullet.Spec="fire";
+                guest.Begin(arena,arena.Generation,true,arena.Time+.05f);NativeShotViews.Bullet(arena,bullet,guest,arena.Time,out var later);
+                if(later.Spec!="pistol"||NativeShotRules.PrimaryShape(later)!=NativeShotRules.PrimaryShape(first)||later.Fire)throw new Exception("A reflected replica bullet changed its model ("+later.Spec+")");
+            }
+            finally{a.Seat.chips.Clear();foreach(var pair in chips)a.Seat.chips[pair.Key]=pair.Value;arena.Replica=replica;}
+            Debug.Log("PASS native projectile identity: a reflected hadouken, rocket and replica bullet keep the look they were fired with");
         }
     }
 }
