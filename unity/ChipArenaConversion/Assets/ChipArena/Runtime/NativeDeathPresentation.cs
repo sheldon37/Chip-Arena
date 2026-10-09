@@ -67,7 +67,7 @@ namespace ChipArena.UnityConversion
                     body.linearVelocity=velocity;body.AddForce(Vector3.down*gravity,ForceMode.Acceleration);
                 }
                 if(weapon!=null)weapon.AddForce(Vector3.down*18,ForceMode.Acceleration);
-                physics.Simulate(1f/60);clock+=1f/60;
+                physics.Simulate(1f/60);StepSpray();clock+=1f/60;
             }
             if(age>4.2f&&Death.kept){foreach(var b in Parts.Values)b.isKinematic=true;frozen=true;}
         }
@@ -75,44 +75,91 @@ namespace ChipArena.UnityConversion
     }
     public sealed partial class ArenaPresentation
     {
-        private readonly Dictionary<int,NativeCorpse> corpses=new Dictionary<int,NativeCorpse>();
-        private void ClearCorpses(){foreach(var c in corpses.Values)c.Dispose();corpses.Clear();carriedDeaths.Clear();}
+        private readonly Dictionary<int,NativeCorpse> corpses=new Dictionary<int,NativeCorpse>();private readonly List<int> staleCorpses=new List<int>();
+        private void ClearCorpses(){foreach(var c in corpses.Values)c.Dispose();corpses.Clear();carriedDeaths.Clear();ReleaseKillEffects();}
+        private static bool StockEnding(string style)=>style=="impact-ragdoll"||style=="ragdoll"||style=="dev-gibber"||NativeKillEffectRules.Swarm(style);
+        private static bool DeathListed(NativeArena arena,int id,int seed)
+        {
+            foreach(var p in arena.Pilots)if(p.Death!=null&&p.Death.id==id&&p.Death.seed==seed)return true;
+            foreach(var d in arena.MinionDeaths)if(d.id==id&&d.seed==seed)return true;return false;
+        }
+        private static NativePilot PilotOf(NativeArena arena,int id){foreach(var p in arena.Pilots)if(p.Seat.id==id)return p;return null;}
         private void DeathPresentation(NativeArena arena)
         {
-            var deaths=arena.Pilots.Where(p=>p.Death!=null).Select(p=>p.Death).Concat(arena.MinionDeaths).ToArray();
-            foreach(var item in corpses.ToArray())if(!deaths.Any(d=>d.id==item.Key&&d.seed==item.Value.Death.seed)||arena.Time-item.Value.Death.at>5&&!item.Value.Death.kept||arena.Pilots.Any(p=>p.Seat.id==item.Key&&p.Hp>0&&arena.Time-p.RevivedAt>1.1f)){item.Value.Dispose();corpses.Remove(item.Key);}
-            foreach(var death in deaths)
+            staleCorpses.Clear();
+            foreach(var item in corpses){var d=item.Value.Death;var live=PilotOf(arena,item.Key);if(!DeathListed(arena,item.Key,d.seed)||arena.Time-d.at>5&&!d.kept||live!=null&&live.Hp>0&&arena.Time-live.RevivedAt>1.1f)staleCorpses.Add(item.Key);}
+            foreach(int id in staleCorpses){corpses[id].Dispose();corpses.Remove(id);}
+            // DeathEffects: live (not kept) pilot effects share ANIMATION.maxDeathVoxels pieces; a new one gets what is left.
+            killUsed=0;foreach(var c in corpses.Values)if(c.Counted)killUsed+=c.FxCount;
+            BeginKillFrame();
+            foreach(var p in arena.Pilots)if(p.Death!=null)PresentDeath(arena,p.Death,true);
+            foreach(var d in arena.MinionDeaths)PresentDeath(arena,d,false);
+            EndKillFrame();
+        }
+        private void PresentDeath(NativeArena arena,NativeDeath death,bool pilot)
+        {
+            float age=arena.Time-death.at;var live=PilotOf(arena,death.id);bool revived=live?.Hp>0;float up=revived?arena.Time-live.RevivedAt:-1;if(age<0||!death.kept&&age>5||revived&&up>1.1f)return;
+            if(SourceMinionDeath(death,age)||SourceDeathScene(death,age,up))return;
+            if(!corpses.TryGetValue(death.id,out var corpse))
             {
-                float age=arena.Time-death.at;var live=arena.Pilots.Find(p=>p.Seat.id==death.id);bool revived=live?.Hp>0;float up=revived?arena.Time-live.RevivedAt:-1;if(age<0||!death.kept&&age>5||revived&&up>1.1f)continue;
-                if(SourceMinionDeath(death,age)||SourceDeathScene(death,age,up))continue;
-                if(!corpses.TryGetValue(death.id,out var corpse))
-                {
-                    if(corpses.Count>=32)continue;CapturedAnimation.Player rig=null;bool temporary=false;
-                    if(!rigs.TryGetValue(death.id,out rig)&&!minionRigs.TryGetValue(death.id,out rig)){rig=captured.Create(transform,death.id);var actor=death.actor??new Actor();actor.Hp=Math.Max(1,actor.Hp);rig.ActorPose(actor,death.position-Vector3.up*.865f,death.at);temporary=true;}
-                    corpse=new NativeCorpse(death,rig,arena);corpses[death.id]=corpse;if(temporary)rig.Dispose();
-                }
-                corpse.Step(age);string style=corpse.Style??"impact-ragdoll";float alpha=death.kept?1:Mathf.Clamp01((5-age)/.65f);Vector3 center=corpse.Center;Matrix4x4 overlay=Matrix4x4.identity;float scale=1;
-                float burst=style=="ragdoll-frost"?1.7f:style=="ragdoll-fireworks"?1.6f:style=="dev-singularity"?2.4f:style=="ragdoll-gravity"?1.8f:-1;if(burst>0)scale=Math.Max(0,1-Math.Max(0,age-burst)*5);if(style=="ragdoll-soul")alpha*=Math.Max(0,.72f-age*.12f);
-                if(style=="ascension"||style=="ghost")overlay=Matrix4x4.Translate(Vector3.up*age*(style=="ascension"?2:1));
-                if(style=="vent-fall"){overlay=Matrix4x4.Translate(Vector3.down*Mathf.Min(15,age*age*9));if(age>.6f)alpha=0;}
-                if(style=="vent-splat"){overlay=Matrix4x4.Translate(Vector3.up*Math.Max(0,1-age/.6f)*10);if(age>.6f&&age<1.5f)VoxelCloud(death.position,age-.6f,4,death.seed,30);}
-                if(style=="launch")overlay=Matrix4x4.Translate(Vector3.up*Mathf.Min(20,age*age*9));
-                if(style=="voxel-burst"||style=="confetti"||style=="siren-dissipate"||style=="siren-crush")alpha=0;
-                if(revived){alpha*=1-Mathf.Clamp01(up/.8f);Ring(center,.6f+up,2,up*45);VoxelCloud(center,up,2,death.seed,30);}
-                Matrix4x4 Bone(int b)=>overlay*Matrix4x4.Translate(center)*Matrix4x4.Scale(Vector3.one*scale)*Matrix4x4.Translate(-center)*corpse.Bone(b);
-                bool Visible(int b)=>death.wound?.kind!="crush"||corpse.Anchor[b]!=death.wound.part;
-                if(alpha>.001f){sourceModels.Queue((death.model??"pilot")=="pilot"?sourceModels.WoundedPilot(death.id,death.actor?.Wounds,death.actor?.BodyColor,ForceCompatibilityRendering):death.model,Matrix4x4.identity,Bone,Visible,body:BodyTint(death.actor?.BodyColor),accent:AccentTint(death.actor?.AccentColor),opacity:alpha);if(death.model=="pilot"&&!string.IsNullOrEmpty(death.actor?.Hat))sourceModels.Queue("hat-"+death.actor.Hat,Matrix4x4.identity,Bone,null,opacity:alpha);}
-                FatalWound(death,corpse,age,alpha);
-                if(corpse.Weapon.HasValue)sourceModels.Queue("loose-"+death.actor.SourceSpec,corpse.Weapon.Value,opacity:alpha);
-                if(style=="ragdoll-ember")VoxelCloud(center,age,7,death.seed,28,true);
-                if(style=="ragdoll-frost")VoxelCloud(center,age,8,death.seed,20);
-                if(style=="ragdoll-static")for(int j=0;j<4;j++)Beam(corpse.Bone(5).GetColumn(3),corpse.Bone(new[]{8,12,15,19}[j]).GetColumn(3),.018f*(1+Mathf.Sin(age*90+j)),9);
-                if(style=="ragdoll-fireworks"||style=="confetti"||style=="voxel-burst")VoxelCloud(death.position,age,style=="voxel-burst"?4:6,death.seed,60,style=="ragdoll-fireworks");
-                if(style=="ragdoll-petals")VoxelCloud(center,age,6,death.seed,24,true);
-                if(style=="dev-singularity"){Ring(center,.3f+Mathf.Sin(age*2)*.3f,10,age*180);VoxelCloud(center,Math.Max(0,2-age),10,death.seed,44);}
-                if(style=="siren-dissipate"||style=="siren-crush"){VoxelCloud(death.position,age,10,death.seed,50,true);Ring(death.position-Vector3.up*.75f,Mathf.Clamp01(age)*2,7,age*60);}
-                if(style=="dev-raging-demon")for(int j=0;j<12;j++){float t=j*.13f;if(age>=t&&age<t+.12f){Vector3 p=death.position+new Vector3(Mathf.Sin(j*13)*.45f,Mathf.Cos(j*9)*.7f,Mathf.Cos(j*11)*.45f);Beam(p-Vector3.up*.24f,p+Vector3.up*.24f,.08f,7);}}
+                if(corpses.Count>=32)return;CapturedAnimation.Player rig=null;bool temporary=false;
+                if(!rigs.TryGetValue(death.id,out rig)&&!minionRigs.TryGetValue(death.id,out rig)){rig=captured.Create(transform,death.id);var actor=death.actor??new Actor();actor.Hp=Math.Max(1,actor.Hp);rig.ActorPose(actor,death.position-Vector3.up*.865f,death.at);temporary=true;}
+                corpse=new NativeCorpse(death,rig,arena);corpses[death.id]=corpse;if(temporary)rig.Dispose();
+                bool counted=pilot&&!death.kept;int budget=death.kept?NativeKillEffectRules.KeptBudget:counted?NativeKillEffectRules.MaxDeathVoxels-killUsed:NativeKillEffectRules.MaxDeathVoxels;
+                bool hatModel=!string.IsNullOrEmpty(death.actor?.Hat)&&death.actor.Hat!="none"&&sourceModels.Has("hat-"+death.actor.Hat);
+                corpse.SetupKill(budget,Mathf.Clamp01(EffectsQuality),counted,hatModel);if(counted)killUsed+=corpse.FxCount;
             }
+            corpse.Step(age);string style=corpse.Style??"impact-ragdoll";bool stock=StockEnding(style);
+            // A PvE kept body holds the frame at DOWNED.keepAge (DeathEffects keep: update(min(age, keepAge))).
+            float shown=death.kept?Math.Min(age,(float)NativeKillEffectRules.KeepAge):age;
+            float alpha=death.kept||stock?1:Mathf.Clamp01((5-age)/.65f);Matrix4x4 overlay=Matrix4x4.identity;
+            if(style=="ascension"||style=="ghost")overlay=Matrix4x4.Translate(Vector3.up*age*(style=="ascension"?2:1));
+            if(style=="vent-fall"){overlay=Matrix4x4.Translate(Vector3.down*Mathf.Min(15,age*age*9));if(age>.6f)alpha=0;}
+            if(style=="vent-splat"){overlay=Matrix4x4.Translate(Vector3.up*Math.Max(0,1-age/.6f)*10);if(age>.6f&&age<1.5f)VoxelCloud(death.position,age-.6f,4,death.seed,30);}
+            if(style=="launch")overlay=Matrix4x4.Translate(Vector3.up*Mathf.Min(20,age*age*9));
+            if(style=="voxel-burst"||style=="confetti"||style=="siren-dissipate"||style=="siren-crush")alpha=0;
+            // ragdoll.ts update(): the stock sink and shrink, then RagdollVfx (centred on the presented pelvis) and its collapse.
+            float sink=stock?(float)NativeKillEffectRules.Sink(shown):0,scale=stock?(float)NativeKillEffectRules.PartScale(shown):1;corpse.Present(overlay,sink,scale);
+            var swarm=corpse.Swarm;
+            if(swarm!=null)
+            {
+                int n=0;foreach(var part in corpse.Parts.Keys){if(corpse.Crushed&&part==death.wound.part)continue;Vector3 at=corpse.PresentedPosition(part);corpse.SwarmParts[n*3]=-at.x;corpse.SwarmParts[n*3+1]=at.y;corpse.SwarmParts[n*3+2]=at.z;n++;}
+                Vector3 pelvis=corpse.PresentedPosition(1);swarm.Update(shown,-pelvis.x,pelvis.y,pelvis.z,corpse.SwarmParts,n);corpse.Present(overlay,sink,scale*(float)swarm.Collapse);
+            }
+            Vector3 center=corpse.PresentedPosition(1);
+            if(revived){alpha*=1-Mathf.Clamp01(up/.8f);Ring(center,.6f+up,2,up*45);VoxelCloud(center,up,2,death.seed,30);}
+            bool soul=swarm!=null&&swarm.BodyColor>=0&&style=="ragdoll-soul"&&corpse.RigCount>0,frost=swarm!=null&&swarm.BodyColor>=0&&style=="ragdoll-frost";
+            // The hat rides on the head unless it flies loose; a crushed head that threw no hat shows none (it had no part).
+            bool hat=death.model=="pilot"&&corpse.HatModel!=null&&corpse.LooseHat<0&&!(corpse.Crushed&&death.wound.part==CapturedRig.Head),weapon=corpse.Weapon.HasValue&&corpse.LooseModel!=null;
+            if(soul)
+            {
+                // Soul Drift: the body and what it carried as translucent cyan plain boxes (round hats and weapons from their models).
+                NativeKillEffectRules.Linear(swarm.BodyColor,out double r,out double g,out double b);soul=KillGhost(corpse,new Color((float)r,(float)g,(float)b,1),alpha*(float)swarm.BodyOpacity,hat,weapon);
+            }
+            if(!soul&&alpha>.001f)
+            {
+                string model=(death.model??"pilot")=="pilot"?sourceModels.WoundedPilot(death.id,death.actor?.Wounds,death.actor?.BodyColor,ForceCompatibilityRendering):death.model;bool recolored=false;
+                if(frost)
+                {
+                    // Frostbreak after 1.1 s: every mesh icy with the source's emissive.
+                    NativeKillEffectRules.Linear(swarm.BodyColor,out double r,out double g,out double b);NativeKillEffectRules.Linear(swarm.BodyEmissive,out double er,out double eg,out double eb);
+                    Color ice=new Color((float)r,(float)g,(float)b,1),glow=new Color((float)er,(float)eg,(float)eb,1);
+                    if(sourceModels.QueueRecolor(model,Matrix4x4.identity,corpse.PresentedBone,corpse.ShownBone,ice,glow,alpha))
+                    {
+                        recolored=true;if(hat)sourceModels.QueueRecolor(corpse.HatModel,Matrix4x4.identity,corpse.PresentedBone,null,ice,glow,alpha);
+                        if(weapon)sourceModels.QueueRecolor(corpse.LooseModel,corpse.Weapon.Value,null,null,ice,glow,alpha);
+                    }
+                }
+                if(!recolored)
+                {
+                    sourceModels.Queue(model,Matrix4x4.identity,corpse.PresentedBone,corpse.ShownBone,body:BodyTint(death.actor?.BodyColor),accent:AccentTint(death.actor?.AccentColor),opacity:alpha);
+                    if(hat)sourceModels.Queue(corpse.HatModel,Matrix4x4.identity,corpse.PresentedBone,null,opacity:alpha);if(weapon)sourceModels.Queue(corpse.LooseModel,corpse.Weapon.Value,opacity:alpha);
+                }
+            }
+            KillWound(corpse,shown,alpha);KillSpray(corpse,shown);KillSwarm(corpse,shown);KillBurst(corpse,age);
+            if(style=="confetti")VoxelCloud(death.position,age,6,death.seed,60);
+            if(style=="siren-dissipate"||style=="siren-crush"){VoxelCloud(death.position,age,10,death.seed,50,true);Ring(death.position-Vector3.up*.75f,Mathf.Clamp01(age)*2,7,age*60);}
+            if(style=="dev-raging-demon")for(int j=0;j<12;j++){float t=j*.13f;if(age>=t&&age<t+.12f){Vector3 p=death.position+new Vector3(Mathf.Sin(j*13)*.45f,Mathf.Cos(j*9)*.7f,Mathf.Cos(j*11)*.45f);Beam(p-Vector3.up*.24f,p+Vector3.up*.24f,.08f,7);}}
         }
         private static bool BoneWithin(int bone,int root){while(bone>=0){if(bone==root)return true;bone=CapturedRig.Bones[bone].Parent;}return false;}
         private void Beam(Vector3 from,Vector3 to,float width,int color){Vector3 d=to-from;if(d.sqrMagnitude>.00001f)Add(color,Matrix4x4.TRS((from+to)*.5f,Quaternion.LookRotation(d),new Vector3(width,width,d.magnitude)));}
