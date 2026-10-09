@@ -219,6 +219,7 @@ namespace ChipArena.UnityConversion
             public void ActorPose(Actor a,Vector3 position,float time,bool firstPerson=false)
             {
                 if(!firstPerson&&CapturedMelee(a)){MeleePose(a,position,time);return;}
+                if(!firstPerson&&a.MagicVisual>0){MagicGaitPose(a,position,time);return;}
                 Weapon=a.Weapon; int set=Mathf.Clamp(a.VisualSet,0,3);
                 float dt=Mathf.Clamp(time-lastTime,0,.1f); bool reset=fresh||time<lastTime||time-lastTime>.35f;
                 if(reset) phase=0; lastTime=time;
@@ -306,6 +307,25 @@ namespace ChipArena.UnityConversion
                 if(a.Weapon==WeaponId.Sword&&a.MagicVisual==0&&ground&&!roll&&!special&&!down) CapturedRig.BladeFloor(pose,false,1.28f);
                 if(firstPerson)NativeFirstPersonPose.SettleTorso(pose);
                 WritePose(); fresh=false;
+            }
+            // Third-person magic pilots (host, guests, killcam) walk on the source's gait (Core/MagicMotion): the magic layer
+            // rides the gait's body bob, torso counter-twist and arm swing instead of resetting the torso over the captured
+            // sword walk, which froze it. The native roll, reaction, special and recovery layers pose before the ground pass.
+            private MagicMotion magicMotion;
+            private void MagicGaitPose(Actor a,Vector3 position,float time)
+            {
+                Weapon=a.Weapon;Set=Mathf.Clamp(a.VisualSet,0,3);if(magicMotion==null)magicMotion=new MagicMotion();
+                bool roll=a.Rolling(time),special=NativeSpecialPose.Active(a,time),down=NativeSpecialPose.Down(a,time);
+                Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,roll?Quaternion.LookRotation(ArenaPresentation.Vec(a.RollDirection)):Quaternion.Euler(0,a.Yaw,0));Root.transform.localScale=Vector3.one*a.RigScale;
+                Vector3 at=Root.transform.position;magicMotion.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);magicMotion.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;
+                magicMotion.Sample(a,time,pose,magicChannels,magicGuard.Sample(time,time<a.BlockUntil));
+                State=time<a.BlockUntil?"staff guard":time-a.AbilityAt<1?"ability cast":time-a.AttackAt<.8f?"magic cast":"staff carry";
+                if(roll){CapturedRig.Roll(pose,(time-a.RollAt)/a.VisualRollDuration);State="roll (adapted)";}
+                if(!roll&&!special&&!down&&a.ReactionAt>-90){if(melee==null)melee=new MeleeMotion();melee.ReactOver(pose,MeleeViewOf(a,time,meleeView),time);}
+                if(special){NativeSpecialPose.Special(pose,a,time,false);State=a.SpecialKind;}
+                if(down){NativeSpecialPose.Recover(pose,a,time);State="recovery "+NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time);}
+                magicMotion.Finish(pose,time,a.Hp<=0||down||roll);
+                WritePose();fresh=false;lastTime=time;
             }
             public void Preview(int set,string state,float time,Vector3 position)
             {

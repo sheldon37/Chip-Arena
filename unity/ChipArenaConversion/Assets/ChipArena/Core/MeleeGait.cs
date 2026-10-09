@@ -3,7 +3,8 @@ using System.Numerics;
 
 namespace ChipArena.UnityConversion
 {
-    // Port of motion-quality.ts locomotion / groundPass and stances.ts for the captured melee weapons (presentation only).
+    // Port of motion-quality.ts locomotion / groundPass and stances.ts for the captured melee weapons and the magic gait
+    // (presentation only).
     // Planted feet are integrated against the root's ground travel in group space, so they stay still on the floor while
     // the hips travel over them; swing feet follow a cubic path to a speed-matched landing target. The ground pass, after
     // every action layer, turns the pelvis toward the travel (counter-rotating the chest) and re-solves the legs so the
@@ -17,7 +18,10 @@ namespace ChipArena.UnityConversion
         public static readonly MeleeStance Melee=S(.16f,.09f,.17f,-.17f,-.08f,.44f,-.03f,-.12f,.03f),
             Daggers=S(.19f,.13f,.2f,-.2f,-.12f,.5f,-.07f,-.15f,.03f,.1f),Greatsword=S(.19f,.12f,.2f,-.19f,-.11f,.5f,-.045f,-.14f,.05f),
             Neutral=S(.13f,0,0,-.13f,0,0,0,0,0);
-        public static MeleeStance For(string spec)=>spec=="daggers"?Daggers:spec=="greatsword"?Greatsword:spec=="sword"||spec=="shield"?Melee:Neutral;
+        // stances.ts MAGIC: planted stagger with the staff side back (the magic gait, MagicMotion).
+        public static readonly MeleeStance Magic=S(.15f,.08f,.14f,-.16f,-.07f,.36f,-.02f,-.08f,.02f);
+        public static bool MagicSpec(string spec)=>spec=="fire"||spec=="water"||spec=="lightning"||spec=="darkness"||spec=="leet";
+        public static MeleeStance For(string spec)=>spec=="daggers"?Daggers:spec=="greatsword"?Greatsword:spec=="sword"||spec=="shield"?Melee:MagicSpec(spec)?Magic:Neutral;
         // Idle stance ankle target (group space) for one foot.
         public void Foot(bool left,out float x,out float z,out float yaw){bool lead=left==LeadLeft;x=lead?LeadX:RearX;z=lead?LeadZ:RearZ;yaw=(left?1:-1)*(lead?LeadToe:RearToe);}
     }
