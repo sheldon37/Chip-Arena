@@ -1,6 +1,6 @@
 # Chip Arena — current state
 
-Current Unity logic checkpoint (2026-10-08): draft PR #66, `codex/unity-parity-logic-current` into `claude/sleepy-ritchie-g8ruhv`, code `718cd4f` / `d80d974` plus final intro/disconnect regressions. Native source and Windows launcher CI pass; an activated Unity build/playtest is still required (`cmd.exe` unavailable in authoring, no `UNITY_TEST_BUILD_READY`). Nothing merged or published. A1–A31 status and Claude UI contracts: `docs/UNITY-PARITY-GAPS.md` and `docs/UNITY-LOGIC-HANDOFF.md`. Owner decisions for services, specialization, migration and release remain open.
+Current Unity Windows checkpoint (2026-10-08 19:58 EDT): the owner's `build(4).log` records 86 PASS lines, all 15 maps / 120 spawn floors, successful Windows player build, native feed and starter ZIP preparation, and final exit 0 in Unity 6000.3.24f1. Reported source is shared `5900583` plus draft PR #67's cumulative v3 patch (`9903a66`), branch `codex/unity-startup-build-check`; candidate identity/hash validation is pending because the log does not embed the source SHA. No feed publication or actual Unity-to-Unity update is verified. Next: validate the new NativeUpdateFeed and native-build.json, playtest the separately extracted starter, then complete owner-gated update delivery. A12 build/packaging is passed; rendered gameplay, two-client/services and the remaining acceptance matrix are still open. See DEV_LOG, `docs/UNITY-PARITY-GAPS.md` and `docs/UNITY-LOGIC-HANDOFF.md`.
 
 Historical migration/runtime context follows.
 
