@@ -97,6 +97,17 @@ class AutoPublishTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'packaging gate'):
             auto.validate_delivery(delivery, self.build, self.provider)
 
+    def test_accepts_json_encoded_full_provider_log_without_losing_markers(self):
+        self.provider.write_text(json.dumps(self.provider.read_text()).replace('/', '\\/'))
+        auto.validate_delivery(self.unpack(), self.build, self.provider)
+
+    def test_download_handles_manual_log_url_response(self):
+        responses = [(202, {}, b'{"url":"https://storage.googleapis.com/bucket/full.log"}'), (200, {}, b'')]
+        with patch.object(auto, 'request', side_effect=responses) as request:
+            auto.download_api(auto.BASE + '/42/log?redirect=manual', self.work / 'test.log', 'Basic secret', 123)
+        self.assertEqual(len(request.call_args_list[1].args), 1)
+        self.assertNotIn('authorization', request.call_args_list[1].kwargs)
+
     def test_rejects_compiler_and_shader_errors_in_provider_log(self):
         delivery = self.unpack()
         original = self.provider.read_text()
@@ -253,7 +264,7 @@ class AutoPublishTests(unittest.TestCase):
     def prepared_candidate(self):
         destination = self.work / 'candidate'
         def download(url, path, *_):
-            shutil.copyfile(self.provider if url.endswith('/log') else self.outer, path)
+            shutil.copyfile(self.provider if url.endswith('/log?redirect=manual') else self.outer, path)
         with patch.object(auto, 'current_head', return_value=self.sha), patch.object(auto, 'native_checks', return_value=True), \
              patch.object(auto, 'api_json', side_effect=[[dict(self.build, unityVersion='6000_3_24f1', localUnityVersion=auto.UNITY)], dict(self.build, unityVersion='6000_3_24f1', localUnityVersion=auto.UNITY), [{'primary': True, 'files': [{'filename': 'game.zip'}]}]]), \
              patch.object(auto.publisher, 'remote_manifest', return_value=None), \
