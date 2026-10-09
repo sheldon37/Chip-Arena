@@ -12,15 +12,32 @@ namespace ChipArena.UnityConversion
     public static class NativeUi
     {
         public static float S=1,W=1600,H=900,SafeX,SafeW=1600;
-        private static Texture2D white,vertical,horizontal,radial,soft;private static readonly Dictionary<ulong,Texture2D> stops=new Dictionary<ulong,Texture2D>();private static Texture2D[] rounds=new Texture2D[4];
+        private static Texture2D white,vertical,horizontal,radial,soft,verticalL,horizontalL,radialL,softL;private static readonly Dictionary<ulong,Texture2D> stops=new Dictionary<ulong,Texture2D>();private static Texture2D[] rounds=new Texture2D[4];
         private static GUIStyle text;private static Font mono;private static bool monoTried;
         private static readonly Stack<Matrix4x4> stack=new Stack<Matrix4x4>();private static Matrix4x4 current=Matrix4x4.identity;
         private static readonly GUIContent content=new GUIContent();
         public static NativeUiMotion.Layout Begin(float uiScale=1)
         {
             var l=NativeUiMotion.Measure(Screen.width,Screen.height,uiScale);S=l.Scale;W=l.Width;H=l.Height;SafeX=l.SafeX;SafeW=l.SafeWidth;
-            stack.Clear();current=Matrix4x4.identity;deferring=0;deferred.Clear();pivotShift=Vector2.zero;Ensure();return l;
+            stack.Clear();current=Matrix4x4.identity;deferring=0;deferred.Clear();pivotShift=Vector2.zero;LinearBlend=QualitySettings.activeColorSpace==ColorSpace.Linear&&GL.sRGBWrite;Ensure();return l;
         }
+        // Colour space. The overlays reproduce CSS, which blends translucent layers on sRGB values. Since build #7 the player
+        // renders in Linear colour space: the backbuffer is sRGB and IMGUI's alpha blending happens in linear light, so every
+        // translucent layer lands elsewhere. A light layer over the dark UI comes out far stronger (a 19% white sheen reads as
+        // ~47% grey, a 26% rarity glow spreads into a haze) and a dark layer weaker (a 55% shadow darkens by ~30%), flattening
+        // the chip card's glows, sheens, shadows and text halos. Tone remaps a translucent draw's alpha so the linear blend
+        // lands where the sRGB one does: a light layer takes a^2.2 (exact over black, as the dark UI mostly is) and draws its
+        // ramp textures (fades, glows, radial gradients) with alpha^2.2 too; a dark layer takes 1-(1-a)^2.2 (exact for black
+        // over anything); mixed by the colour's lightness. Opaque draws, solid colours and Gamma builds are unchanged.
+        public static bool LinearBlend;
+        public static Color Tone(Color c)
+        {
+            if(!LinearBlend||c.a<=0||c.a>=1)return c;float w=Lightness(c),a=c.a;
+            c.a=Mathf.Lerp(1-Mathf.Pow(1-a,2.2f),Mathf.Pow(a,2.2f),w);return c;
+        }
+        private static float Lightness(Color c){float v=Mathf.Max(c.r,Mathf.Max(c.g,c.b));return Mathf.SmoothStep(0,1,Mathf.Clamp01((v-.08f)/.25f));}
+        // Light layers in Linear blending use the ramp textures re-shaped to alpha^2.2.
+        private static bool LightRamp(Color c)=>LinearBlend&&Lightness(c)>.5f;
         private static Texture2D Make(int w,int h,Func<int,int,Color> f)
         {
             var t=new Texture2D(w,h,TextureFormat.RGBA32,false){wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Bilinear,hideFlags=HideFlags.HideAndDontSave};
@@ -34,6 +51,10 @@ namespace ChipArena.UnityConversion
             horizontal=Make(64,1,(x,y)=>new Color(1,1,1,x/63f));                                 // alpha 0 at the left, 1 at the right
             radial=Make(64,64,(x,y)=>{float dx=(x-31.5f)/31.5f,dy=(y-31.5f)/31.5f,d=Mathf.Clamp01(Mathf.Sqrt(dx*dx+dy*dy));return new Color(1,1,1,1-d);});
             soft=Make(64,64,(x,y)=>{float dx=Mathf.Clamp01((Mathf.Abs(x-31.5f)-14)/18f),dy=Mathf.Clamp01((Mathf.Abs(y-31.5f)-14)/18f),d=Mathf.Clamp01(Mathf.Sqrt(dx*dx+dy*dy));return new Color(1,1,1,(1-d)*(1-d));});
+            // The same ramps with alpha^2.2, for light layers under Linear blending (see Tone).
+            verticalL=Make(1,64,(x,y)=>new Color(1,1,1,Mathf.Pow(y/63f,2.2f)));horizontalL=Make(64,1,(x,y)=>new Color(1,1,1,Mathf.Pow(x/63f,2.2f)));
+            radialL=Make(64,64,(x,y)=>{float dx=(x-31.5f)/31.5f,dy=(y-31.5f)/31.5f,d=Mathf.Clamp01(Mathf.Sqrt(dx*dx+dy*dy));return new Color(1,1,1,Mathf.Pow(1-d,2.2f));});
+            softL=Make(64,64,(x,y)=>{float dx=Mathf.Clamp01((Mathf.Abs(x-31.5f)-14)/18f),dy=Mathf.Clamp01((Mathf.Abs(y-31.5f)-14)/18f),d=Mathf.Clamp01(Mathf.Sqrt(dx*dx+dy*dy));return new Color(1,1,1,Mathf.Pow((1-d)*(1-d),2.2f));});
             for(int i=0;i<rounds.Length;i++){int r=4+i*4,n=r*2+2;rounds[i]=Make(n,n,(x,y)=>{float cx=Mathf.Clamp(x+.5f,r,n-r),cy=Mathf.Clamp(y+.5f,r,n-r),d=Mathf.Sqrt((x+.5f-cx)*(x+.5f-cx)+(y+.5f-cy)*(y+.5f-cy));return new Color(1,1,1,Mathf.Clamp01(r-d+.5f));});}
             text=new GUIStyle(GUI.skin.label){wordWrap=true,richText=false,clipping=TextClipping.Overflow,padding=new RectOffset(0,0,0,0),margin=new RectOffset(0,0,0,0)};
             // White base so GUI.contentColor is the exact colour drawn (the menu skin's label colour would tint every overlay).
@@ -75,25 +96,25 @@ namespace ChipArena.UnityConversion
             current=current*Matrix4x4.TRS(p+(Vector3)(translate*S),Quaternion.Euler(0,0,degrees),new Vector3(scale,sy,1))*Matrix4x4.Translate(-p);
         }
         public static void Pop(){current=stack.Count>0?stack.Pop():Matrix4x4.identity;}
-        public static void Fill(Rect r,Color c){if(c.a<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=c;GUI.DrawTexture(P(r),white);GUI.color=o;GUI.matrix=m;}
+        public static void Fill(Rect r,Color c){if(c.a<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=Tone(c);GUI.DrawTexture(P(r),white);GUI.color=o;GUI.matrix=m;}
         // Vertical gradient: `bottom` underneath, `top` laid over it with an alpha ramp that is full at the top edge.
         public static void Gradient(Rect r,Color top,Color bottom)
         {
             if(Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;var pr=P(r);
-            if(bottom.a>0){GUI.color=bottom;GUI.DrawTexture(pr,white);}if(top.a>0){GUI.color=top;GUI.DrawTexture(pr,vertical);}
+            if(bottom.a>0){GUI.color=Tone(bottom);GUI.DrawTexture(pr,white);}if(top.a>0){GUI.color=Tone(top);GUI.DrawTexture(pr,LightRamp(top)?verticalL:vertical);}
             GUI.color=o;GUI.matrix=m;
         }
         // Fade from `c` at the top to transparent at the bottom (or the reverse).
         public static void Fade(Rect r,Color c,bool fromTop=true)
         {
-            if(c.a<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=c;var pr=P(r);
-            if(fromTop)GUI.DrawTexture(pr,vertical);else GUI.DrawTextureWithTexCoords(pr,vertical,new Rect(0,1,1,-1));GUI.color=o;GUI.matrix=m;
+            if(c.a<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=Tone(c);var pr=P(r);var ramp=LightRamp(c)?verticalL:vertical;
+            if(fromTop)GUI.DrawTexture(pr,ramp);else GUI.DrawTextureWithTexCoords(pr,ramp,new Rect(0,1,1,-1));GUI.color=o;GUI.matrix=m;
         }
         // Horizontal gradient from `left` to `right`.
         public static void HGradient(Rect r,Color left,Color right)
         {
             if(Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;var pr=P(r);
-            if(left.a>0){GUI.color=left;GUI.DrawTextureWithTexCoords(pr,horizontal,new Rect(1,0,-1,1));}if(right.a>0){GUI.color=right;GUI.DrawTexture(pr,horizontal);}
+            if(left.a>0){GUI.color=Tone(left);GUI.DrawTextureWithTexCoords(pr,LightRamp(left)?horizontalL:horizontal,new Rect(1,0,-1,1));}if(right.a>0){GUI.color=Tone(right);GUI.DrawTexture(pr,LightRamp(right)?horizontalL:horizontal);}
             GUI.color=o;GUI.matrix=m;
         }
         // CSS radial-gradient(ellipse ...) filling `r` (the ellipse's bounding box): alpha stops at normalised radii.
@@ -103,17 +124,17 @@ namespace ChipArena.UnityConversion
         private static ulong Mix(ulong h,Color c)=>Mix(Mix(Mix(Mix(h,c.r),c.g),c.b),c.a);
         // Texture builders live in their own methods: a lambda capturing the drawing call's parameters would allocate its
         // closure on every call, cache hit or not.
-        private static Texture2D RadialTexture(float[] at,float[] alpha)=>Make(96,96,(x,y)=>{float dx=(x-47.5f)/47.5f,dy=(y-47.5f)/47.5f;return new Color(1,1,1,NativeUiMotion.Keys(Mathf.Sqrt(dx*dx+dy*dy),at,alpha));});
-        private static Texture2D RampTexture(Color a,Color b,bool horizontal)=>horizontal?Make(64,1,(x,y)=>Color.Lerp(a,b,x/63f)):Make(1,64,(x,y)=>Color.Lerp(b,a,y/63f));
+        private static Texture2D RadialTexture(float[] at,float[] alpha,float power)=>Make(96,96,(x,y)=>{float dx=(x-47.5f)/47.5f,dy=(y-47.5f)/47.5f;return new Color(1,1,1,Mathf.Pow(NativeUiMotion.Keys(Mathf.Sqrt(dx*dx+dy*dy),at,alpha),power));});
+        private static Texture2D RampTexture(Color a,Color b,bool horizontal)=>horizontal?Make(64,1,(x,y)=>Tone(Color.Lerp(a,b,x/63f))):Make(1,64,(x,y)=>Tone(Color.Lerp(b,a,y/63f)));
         public static void RadialStops(Rect r,Color c,float[] at,float[] alpha)
         {
-            if(c.a<=0||Event.current.type!=EventType.Repaint)return;ulong key=Mix(KeySeed,1);foreach(float v in at)key=Mix(key,v);key=Mix(key,float.NaN);foreach(float v in alpha)key=Mix(key,v);
-            if(!stops.TryGetValue(key,out var t)){t=RadialTexture(at,alpha);stops[key]=t;}
-            var m=Enter();var o=GUI.color;GUI.color=c;GUI.DrawTexture(P(r),t);GUI.color=o;GUI.matrix=m;
+            if(c.a<=0||Event.current.type!=EventType.Repaint)return;float power=LightRamp(c)?2.2f:1;ulong key=Mix(KeySeed,power>1?6:1);foreach(float v in at)key=Mix(key,v);key=Mix(key,float.NaN);foreach(float v in alpha)key=Mix(key,v);
+            if(!stops.TryGetValue(key,out var t)){t=RadialTexture(at,alpha,power);stops[key]=t;}
+            var m=Enter();var o=GUI.color;GUI.color=Tone(c);GUI.DrawTexture(P(r),t);GUI.color=o;GUI.matrix=m;
         }
-        public static void Radial(Rect r,Color c){if(c.a<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=c;GUI.DrawTexture(P(r),radial);GUI.color=o;GUI.matrix=m;}
-        public static void Image(Rect r,Texture t,Color c){if(t==null||c.a<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=c;GUI.DrawTexture(P(r),t);GUI.color=o;GUI.matrix=m;}
-        public static void Glow(Rect r,Color c,float spread){if(c.a<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=c;GUI.DrawTexture(P(new Rect(r.x-spread,r.y-spread,r.width+spread*2,r.height+spread*2)),soft);GUI.color=o;GUI.matrix=m;}
+        public static void Radial(Rect r,Color c){if(c.a<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=Tone(c);GUI.DrawTexture(P(r),LightRamp(c)?radialL:radial);GUI.color=o;GUI.matrix=m;}
+        public static void Image(Rect r,Texture t,Color c){if(t==null||c.a<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=Tone(c);GUI.DrawTexture(P(r),t);GUI.color=o;GUI.matrix=m;}
+        public static void Glow(Rect r,Color c,float spread){if(c.a<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=Tone(c);GUI.DrawTexture(P(new Rect(r.x-spread,r.y-spread,r.width+spread*2,r.height+spread*2)),LightRamp(c)?softL:soft);GUI.color=o;GUI.matrix=m;}
         // Rounded rectangle (radius 4/8/12/16 px class) with an optional border.
         public static void Round(Rect r,Color fill,float radius=8,Color border=default,float borderWidth=1)
         {
@@ -146,7 +167,7 @@ namespace ChipArena.UnityConversion
             float k=Mathf.Min(rr,Mathf.Min(pr.width,pr.height)/2),u=rr/(float)t.width;
             for(int band=0;band<2;band++)
             {
-                GUI.color=band==0?a:b;
+                GUI.color=Tone(band==0?a:b);
                 for(int c=0;c<3;c++)
                 {
                     // Along the gradient: the band's corner slice; across it: the three slices of that edge.
@@ -163,10 +184,10 @@ namespace ChipArena.UnityConversion
                 float span=Mathf.Clamp01(until)*(horizontal?pr.width:pr.height)-k;
                 Rect ramp=horizontal?new Rect(mid.x,mid.y,Mathf.Clamp(span,0,mid.width),mid.height):new Rect(mid.x,mid.y,mid.width,Mathf.Clamp(span,0,mid.height));
                 // One layer with the ramp baked into a cached texture (overlaying two translucent layers would compound).
-                ulong key=Mix(Mix(Mix(KeySeed,horizontal?2:3),a),b);
+                ulong key=Mix(Mix(Mix(KeySeed,(horizontal?2:3)+(LinearBlend?8:0)),a),b);
                 if(!stops.TryGetValue(key,out var ramp1)){ramp1=RampTexture(a,b,horizontal);stops[key]=ramp1;}
                 GUI.color=Color.white;if(ramp.width>0&&ramp.height>0)GUI.DrawTexture(ramp,ramp1);
-                var rest=horizontal?new Rect(ramp.xMax,mid.y,mid.xMax-ramp.xMax,mid.height):new Rect(mid.x,ramp.yMax,mid.width,mid.yMax-ramp.yMax);if(rest.width>0&&rest.height>0){GUI.color=b;GUI.DrawTexture(rest,white);}
+                var rest=horizontal?new Rect(ramp.xMax,mid.y,mid.xMax-ramp.xMax,mid.height):new Rect(mid.x,ramp.yMax,mid.width,mid.yMax-ramp.yMax);if(rest.width>0&&rest.height>0){GUI.color=Tone(b);GUI.DrawTexture(rest,white);}
             }
             if(border.a>0)Nine(pr,Ring(i,Mathf.Max(1,borderWidth*S)),rr,border);
             GUI.color=o;GUI.matrix=m;
@@ -177,12 +198,12 @@ namespace ChipArena.UnityConversion
         {
             if(c.a<=0||Event.current.type!=EventType.Repaint)return;
             if(dashH==null){dashH=Make(10,1,(x,y)=>new Color(1,1,1,x<6?1:0));dashH.wrapMode=TextureWrapMode.Repeat;dashH.filterMode=FilterMode.Point;dashV=Make(1,10,(x,y)=>new Color(1,1,1,y>=4?1:0));dashV.wrapMode=TextureWrapMode.Repeat;dashV.filterMode=FilterMode.Point;}
-            var m=Enter();var o=GUI.color;GUI.color=c;float len=horizontal?r.width:r.height;
+            var m=Enter();var o=GUI.color;GUI.color=Tone(c);float len=horizontal?r.width:r.height;
             GUI.DrawTextureWithTexCoords(P(r),horizontal?dashH:dashV,horizontal?new Rect(0,0,len/10,1):new Rect(0,0,1,len/10));GUI.color=o;GUI.matrix=m;
         }
         private static void Nine(Rect r,Texture2D t,int radius,Color c)
         {
-            float k=Mathf.Min(radius,Mathf.Min(r.width,r.height)/2);float u=radius/(float)t.width;GUI.color=c;
+            float k=Mathf.Min(radius,Mathf.Min(r.width,r.height)/2);float u=radius/(float)t.width;GUI.color=Tone(c);
             float[] xs={r.x,r.x+k,r.xMax-k,r.xMax},ys={r.y,r.y+k,r.yMax-k,r.yMax},us={0,u,1-u,1},vs={1,1-u,u,0};
             for(int i=0;i<3;i++)for(int j=0;j<3;j++){var q=new Rect(xs[i],ys[j],xs[i+1]-xs[i],ys[j+1]-ys[j]);if(q.width<=0||q.height<=0)continue;GUI.DrawTextureWithTexCoords(q,t,new Rect(us[i],vs[j+1],us[i+1]-us[i],vs[j]-vs[j+1]));}
         }
@@ -209,7 +230,7 @@ namespace ChipArena.UnityConversion
         }
         private static void CapsuleSlices(Rect r,Texture2D t,Color c)
         {
-            GUI.color=c;float cap=Mathf.Min(r.height/2,r.width/2);
+            GUI.color=Tone(c);float cap=Mathf.Min(r.height/2,r.width/2);
             GUI.DrawTextureWithTexCoords(new Rect(r.x,r.y,cap,r.height),t,new Rect(0,0,.5f,1));
             if(r.width>2*cap)GUI.DrawTextureWithTexCoords(new Rect(r.x+cap,r.y,r.width-2*cap,r.height),t,new Rect(.5f,0,0,1));
             GUI.DrawTextureWithTexCoords(new Rect(r.xMax-cap,r.y,cap,r.height),t,new Rect(.5f,0,.5f,1));
@@ -221,7 +242,7 @@ namespace ChipArena.UnityConversion
         {
             if(c.a<=0||fraction<=0||Event.current.type!=EventType.Repaint)return;int k=Mathf.Clamp(Mathf.RoundToInt(fraction*24),1,24);ulong key=Mix(Mix(KeySeed,5),k);
             if(!stops.TryGetValue(key,out var t)){float f=k/24f;t=Make(48,48,(x,y)=>{float dx=x-23.5f,dy=y-23.5f,d=Mathf.Sqrt(dx*dx+dy*dy),a=Mathf.Repeat(Mathf.Atan2(dx,dy)/(2*Mathf.PI),1);return new Color(1,1,1,Mathf.Clamp01(23.5f-d)*(a<=f?1:0));});stops[key]=t;}
-            var m=Enter();var o=GUI.color;GUI.color=c;GUI.DrawTexture(P(r),t);GUI.color=o;GUI.matrix=m;
+            var m=Enter();var o=GUI.color;GUI.color=Tone(c);GUI.DrawTexture(P(r),t);GUI.color=o;GUI.matrix=m;
         }
         // CSS .panel (visual revision): #17181df5, 1px #45464e, 10px radius, deep shadow; `enter` 0..1 runs panel-in.
         public static void Panel(Rect r,float enter=1,Color fill=default,Color border=default)
@@ -276,9 +297,9 @@ namespace ChipArena.UnityConversion
             if(string.IsNullOrEmpty(str)||c.a<=0)return;var m=Enter();var s=Style(size,bold,mono,align,wrap&&tracking==0,italic);var pr=P(r);var o=GUI.contentColor;
             if(tracking!=0){TrackedText(pr,str,s,size,c,tracking,glow,shadow);GUI.contentColor=o;GUI.matrix=m;return;}
             content.text=str;
-            if(shadow.a>0){GUI.contentColor=shadow;GUI.Label(new Rect(pr.x+S,pr.y+S*1.5f,pr.width,pr.height),content,s);}
-            if(glow.a>0){float g=Mathf.Max(1,size*S*.06f);GUI.contentColor=new Color(glow.r,glow.g,glow.b,glow.a*.35f);foreach(var d in Halo)GUI.Label(new Rect(pr.x+d.x*g,pr.y+d.y*g,pr.width,pr.height),content,s);}
-            GUI.contentColor=c;GUI.Label(pr,content,s);GUI.contentColor=o;GUI.matrix=m;
+            if(shadow.a>0){GUI.contentColor=Tone(shadow);GUI.Label(new Rect(pr.x+S,pr.y+S*1.5f,pr.width,pr.height),content,s);}
+            if(glow.a>0){float g=Mathf.Max(1,size*S*.06f);GUI.contentColor=Tone(new Color(glow.r,glow.g,glow.b,glow.a*.35f));foreach(var d in Halo)GUI.Label(new Rect(pr.x+d.x*g,pr.y+d.y*g,pr.width,pr.height),content,s);}
+            GUI.contentColor=Tone(c);GUI.Label(pr,content,s);GUI.contentColor=o;GUI.matrix=m;
         }
         private static readonly Vector2[] Halo={new Vector2(-1,0),new Vector2(1,0),new Vector2(0,-1),new Vector2(0,1),new Vector2(-.7f,-.7f),new Vector2(.7f,.7f),new Vector2(-.7f,.7f),new Vector2(.7f,-.7f)};
         // Tracked text draws a glyph at a time; the per-glyph strings and the width buffer are reused across frames.
@@ -294,9 +315,9 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<str.Length;i++)
             {
                 content.text=Glyph(str[i]);var q=new Rect(x,y,widths[i]+2,h);
-                if(shadow.a>0){GUI.contentColor=shadow;GUI.Label(new Rect(q.x+S,q.y+S*1.5f,q.width,q.height),content,s);}
-                if(glow.a>0){float g=Mathf.Max(1,size*S*.06f);GUI.contentColor=new Color(glow.r,glow.g,glow.b,glow.a*.35f);foreach(var d in Halo)GUI.Label(new Rect(q.x+d.x*g,q.y+d.y*g,q.width,q.height),content,s);}
-                GUI.contentColor=c;GUI.Label(q,content,s);x+=widths[i]+gap;
+                if(shadow.a>0){GUI.contentColor=Tone(shadow);GUI.Label(new Rect(q.x+S,q.y+S*1.5f,q.width,q.height),content,s);}
+                if(glow.a>0){float g=Mathf.Max(1,size*S*.06f);GUI.contentColor=Tone(new Color(glow.r,glow.g,glow.b,glow.a*.35f));foreach(var d in Halo)GUI.Label(new Rect(q.x+d.x*g,q.y+d.y*g,q.width,q.height),content,s);}
+                GUI.contentColor=Tone(c);GUI.Label(q,content,s);x+=widths[i]+gap;
             }
             s.alignment=align;
         }
