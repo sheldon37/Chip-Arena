@@ -94,8 +94,9 @@ namespace ChipArena.UnityConversion
     {
         private readonly Dictionary<int,NativeCorpse> corpses=new Dictionary<int,NativeCorpse>();private readonly List<int> staleCorpses=new List<int>();
         private void ClearCorpses(){foreach(var c in corpses.Values)c.Dispose();corpses.Clear();carriedDeaths.Clear();ReleaseKillEffects();}
-        // The clock kill effects are presented on (see PresentDeath).
-        private float KillClock(NativeArena arena)=>PresentationClock(arena);
+        // The clock kill effects are presented on (see PresentDeath): FieldClock, the continuous snapshot clock a guest renders at
+        // (PresentationClock on the host and in the killcam replay).
+        private float KillClock(NativeArena arena)=>FieldClock(arena);
         private static bool StockEnding(string style)=>style=="impact-ragdoll"||style=="ragdoll"||style=="dev-gibber"||NativeKillEffectRules.Swarm(style);
         private static bool DeathListed(NativeArena arena,int id,int seed)
         {
