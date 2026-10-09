@@ -6,7 +6,13 @@ if [[ "${BUILDER_OS:-}" != "WINDOWS" ]]; then
   exit 1
 fi
 
-# UBA invokes bash on Windows. Python needs native paths, including for spaces.
+# A Windows builder can expose native Windows Python or Cygwin's POSIX Python.
+# Use the interpreter's path convention, not just the builder OS. In particular,
+# backslash paths make POSIX pathlib infer the wrong project from __file__.
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-python "$(cygpath -wa "$script_dir/package_cloud_build.py")" \
-  --player "$(cygpath -wa "${UNITY_PLAYER_PATH:?UBA did not provide UNITY_PLAYER_PATH}")"
+project_dir="$(cd -- "$script_dir/.." && pwd)"
+path_mode="$(python -c 'import os; print("-wa" if os.name == "nt" else "-ua")')"
+script_path="$(cygpath "$path_mode" "$script_dir/package_cloud_build.py")"
+project_path="$(cygpath "$path_mode" "$project_dir")"
+player_path="$(cygpath "$path_mode" "${UNITY_PLAYER_PATH:?UBA did not provide UNITY_PLAYER_PATH}")"
+exec python "$script_path" --project "$project_path" --player "$player_path"

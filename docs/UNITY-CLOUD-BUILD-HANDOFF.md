@@ -22,18 +22,58 @@ in [UNITY-NATIVE-UPDATE-HANDOFF.md](UNITY-NATIVE-UPDATE-HANDOFF.md).
 - The native test feed is already published at channel commit `c5251fb` and the owner
   reports an older installation updated successfully. That candidate came from the
   owner's local build of shared `5900583` plus PR #67 v3; it does **not** validate the
-  newer C11 source or the cloud hooks. Build #2 now validates the refreshed candidate's
-  Unity export and Editor packaging, but its final delivery was skipped; it is unreleased.
-- Local refreshed-tool checks: 24 publisher/delivery tests collected, 23 pass and the
+  newer C11 source or the cloud hooks. Builds #2/#3 validate the refreshed candidate's
+  Unity export and Editor packaging. Build #3 runs the script but fails receipt lookup;
+  the path-handling repair below is implemented, awaiting another cloud run. Unreleased.
+- Current local tooling checks: 27 publisher/delivery tests collected, 26 pass and the
   Windows command-entrypoint case skips on Linux; Bash syntax and diff checks pass.
   Full source/relay/package and UpdaterTests run in GitHub CI on the pushed candidate.
-  Build #2 passed the Windows Unity export and launcher compilation. Post-build Python,
-  delivery validation and artifact collection still need a corrected UBA run. No working
-  Unity API client is claimed.
+  Builds #2/#3 passed the Windows Unity export and launcher compilation. Build #3 confirms
+  Python is available; corrected path handling, delivery validation and collection still
+  need another UBA run. No working Unity API client is claimed.
 
 GitHub native CI [37866917576](https://github.com/sheldon37/Chip-Arena/actions/runs/37866917576) passes on implementation `8a99e962554887f758f4edc7132199aceb40f38d` (draft PR #68): Linux check_relay.py, full Python suite (42 collected, 41 pass, one Windows-only skip), package_source.py (737 files), cloud staging and 51 UpdaterTests; Windows all 16 publisher and eight cloud-delivery tests, staging/51 updater checks, shipping launcher compilation and real fixture-player install/restart/acknowledgement, rollback and interrupted-swap recovery. These are source/helper checks, not an actual Unity build. The follow-up commit records results in documentation only.
 
 Owner setup checkpoint (2026-10-08 21:03 EDT): the owner reports all requested target settings completed except a Scripting backend selector, which was not present. The supplied PDF independently shows the correct branch, project subfolder, Unity 6000.3.24f1 and Windows 11 24H2 builder. Code confirms PreExport explicitly selects Mono and PostExport rejects a backend mismatch, so no additional dashboard field is needed. The inspected run below supersedes the earlier pending-build status; billing tier and automatic-build settings remain owner-reported.
+
+## Build #3 receipt and path-handling repair (2026-10-08 22:25 EDT)
+
+- Build #3 checked out `c2baa210251f441c4f1d8d97e7da04dc0ed54977`; Unity passed the
+  same 86 checks, both export hooks and all three Editor packaging markers. At log
+  line 8893 it **executed `tools/cloud_post_build.sh`**, confirming the dashboard path
+  correction. Keep this project-relative setting and the existing export methods.
+- At line 8895 Python failed with `No such file or directory:
+  'BUILD_PATH/Builds/cloud-build-receipt.json'`. The actual Editor output is under
+  `BUILD_PATH/p/unity/ChipArenaConversion/Builds`. This proves a project-root lookup
+  defect. The old wrapper always passed Windows-backslash paths to whichever `python`
+  was on PATH, while Python derived its root with platform-dependent pathlib. Cygwin's
+  POSIX Python misinterpreting those paths explains the symptom; build #3 did not log
+  the interpreter platform, so that precise runtime diagnosis remains inferred.
+- Repaired `cloud_post_build.sh` to select POSIX/native paths from Python's `os.name`,
+  pass the project root explicitly with required `--project`, and preserve failures in
+  path conversion and the Python exit code. `package_cloud_build.py` no longer derives
+  its project from `__file__`; it converts Unity's native Windows Editor-log path when
+  running on Cygwin. It logs the interpreter platform and selected project for the next
+  actual run. Receipt/identity/hash/starter validation and no-publication behavior stay intact.
+- Three added regression tests failed before the repair and pass afterward: CLI from an
+  unrelated working directory, Cygwin conversion of the Windows Editor-log path, and the
+  actual Bash-to-Python entrypoint with spaces/real fixture delivery plus missing-receipt
+  nonzero exit. Cygwin path conversion is emulated locally, not a real Cygwin execution.
+  Local scoped publisher/delivery suite: **27 collected, 26 pass, one Windows-only skip**;
+  Bash syntax and diff whitespace pass. Full source/Windows helper CI is pending this push.
+- Despite the Python failure, UBA ended SUCCESS again. Require the fourth
+  `NATIVE_CLOUD_DELIVERY_READY` marker **and** a validated delivery ZIP; the green provider
+  badge alone is insufficient. The upload has only 228 raw-player files / 191,590,212
+  unpacked bytes (CRC pass), no launcher, starter, feed, receipt or delivery.
+- Upload receipts: `2474084689228-chip-arena-chip-arena-3.log`, 1,488,679 bytes,
+  SHA-256 `1b814d846477261078ddaba28d304affc654078683d2773462bf29ceeed4d9f7`;
+  ZIP of the same stem, 99,717,380 bytes,
+  SHA-256 `180d3c9d4b50788ac00777781d94ed10f6b3ec22ac6d1508db548d223626a052`.
+- Next: once this repair is pushed and its source checks pass, run the current
+  `codex/unity-cloud-current` again with the already-corrected dashboard settings.
+  Inspect the new full log, delivery sidecar/receipt and starter/feed before accepting or
+  publishing. No owner-PC build is needed. Actual provider execution/collection and
+  Windows gameplay/update acceptance remain open; current native feed is unchanged.
 
 ## Build #2 receipt — game built, delivery missing (2026-10-08 21:41 EDT)
 
@@ -108,7 +148,7 @@ account decisions; no budget or payment authorization was provided here.
 | Scene | `Assets/ChipArena/Scenes/Prototype.unity` |
 | Pre-export method | `ChipArena.UnityConversion.Editor.NativeCloudBuild.PreExport` |
 | Post-export method | `ChipArena.UnityConversion.Editor.NativeCloudBuild.PostExport` |
-| Post-build script (from the Unity project subfolder; build #2 correction) | `tools/cloud_post_build.sh` |
+| Post-build script (from the Unity project subfolder; verified by build #3) | `tools/cloud_post_build.sh` |
 | First run | Clean build; Library caching only afterward |
 | Automatic branch builds | Leave off for initial acceptance; one concurrent build |
 | Feed write credential | None needed by this candidate build |
@@ -135,13 +175,14 @@ selection and any billed build require the owner's account/cost decision.
 3. The existing packager compiles the stable launcher and creates the starter ZIP and
    native feed. A receipt ties their identity to `BUILD_REVISION`, `BUILD_TARGET`,
    `UCB_BUILD_NUMBER`, Editor version and the real Editor log path.
-4. The post-build Bash script converts Cygwin paths for Windows Python. Python verifies
-   that receipt belongs to this job, both success markers and the run-specific export
+4. The post-build Bash script selects native Windows or POSIX paths to match Python,
+   and passes the Unity project root explicitly. Python converts the Editor-log path
+   under Cygwin and verifies that the receipt belongs to this job, both success markers and the run-specific export
    marker appear in the real log, and the starter's complete player bytes match the
    verified update archive. It includes only the current manifest's payload parts.
 5. It adds `Chip-Arena-Native-Cloud-Delivery.zip` and its SHA-256 sidecar alongside UBA's
    raw exported EXE, for collection inside the normal Windows build artifact. **Verify
-   this collection behavior on the first real UBA run.** A successful source CI job is
+   this collection behavior on the next real UBA run.** A successful source CI job is
    not evidence that UBA collected the delivery.
 
 The delivery contains the starter ZIP, `NativeUpdateFeed/`, `build.log`, the matching
@@ -157,7 +198,7 @@ build folders to test upgrades; never overwrite it with the next starter.
 
 ## Validation and activation checklist
 
-- Local: eight delivery tests pass; 15 publisher tests pass, with the Windows command
+- Local: eleven delivery tests pass; 15 publisher tests pass, with the Windows command
   test skipped on Linux. Shell syntax and whitespace checks pass.
 - GitHub [run 37784636310](https://github.com/sheldon37/Chip-Arena/actions/runs/37784636310)
   passes on `905ab8da171c1f9cb5976d83c2cda002faf556f3`: Linux source/managed/relay,
@@ -165,10 +206,11 @@ build folders to test upgrades; never overwrite it with the next starter.
   and 51 updater transaction checks; Windows C# staging, all 16 publisher tests, all eight
   delivery tests, shipping launcher compilation and real fixture-player restart/rollback.
 - Build #2 confirms actual Unity hook compilation/import, Windows UBA export, .NET launcher
-  availability and the three Editor markers. Its skipped Bash script leaves post-build
-  Python/path conventions and final artifact collection unverified. UBA can report success
-  when a configured script is missing; require the fourth delivery marker and ZIP contents.
-- Next UBA run after the path correction: inspect all four markers, source SHA and completed
+  availability and the three Editor markers. Build #3 confirms the corrected Bash
+  script path but exposes wrong Python project-root lookup. Repaired interpreter/path
+  handling and final collection remain unverified. UBA can report success after either
+  a missing script or a Python packaging failure; require the fourth delivery marker and ZIP contents.
+- Next UBA run after the build #3 code repair: inspect all four markers, source SHA and completed
   delivery; verify the sidecar and portable receipt against the requested commit. Download
   the full UBA log too. Fix any observed integration failure before accepting it.
 - Launch the inner starter on Windows. Perform menu/match/settings/account checks and

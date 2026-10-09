@@ -3,17 +3,30 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import re
+import subprocess
 import sys
 import tempfile
 import zipfile
 
 import publish_native_update as publisher
 
-PROJECT = Path(__file__).resolve().parents[1]
 SEED = 'Chip-Arena-Native-Conversion-TEST-Windows.zip'
 DELIVERY = 'Chip-Arena-Native-Cloud-Delivery.zip'
+
+
+def editor_log_path(value):
+    # Unity records a native Windows path even when the post-build Python is
+    # Cygwin. Convert before pathlib interprets separators and the drive name.
+    if sys.platform == 'cygwin' and PureWindowsPath(value).is_absolute():
+        try:
+            value = subprocess.check_output(['cygpath', '-ua', value], text=True).strip()
+        except subprocess.CalledProcessError as error:
+            raise ValueError('Could not convert the Unity Editor log path') from error
+        if not value:
+            raise ValueError('Empty converted Unity Editor log path')
+    return Path(value)
 
 
 def digest(path):
@@ -66,7 +79,7 @@ def package(project, player, environment):
     identity = builds / 'Windows/app/native-build.json'
     if json.loads(identity.read_text(encoding='utf-8-sig')) != manifest['build']:
         raise ValueError('Cloud player identity differs from the native feed')
-    log = Path(receipt['editorLog'])
+    log = editor_log_path(receipt['editorLog'])
     log_data = log.read_bytes()
     log_text = log_data.decode('utf-8-sig', errors='replace')
     for marker in ('NATIVE_UPDATE_FEED_READY:', 'UNITY_TEST_BUILD_READY:',
@@ -106,9 +119,12 @@ def package(project, player, environment):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--project', type=Path, required=True,
+                        help='Unity project root, in the Python interpreter\'s path format')
     parser.add_argument('--player', type=Path, required=True)
     args = parser.parse_args()
-    package(PROJECT, args.player, os.environ)
+    print('Cloud packaging Python: ' + sys.platform + '; project: ' + str(args.project), flush=True)
+    package(args.project, args.player, os.environ)
 
 
 if __name__ == '__main__':

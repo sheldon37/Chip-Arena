@@ -1,7 +1,10 @@
 """Exercise cloud handoff packaging with real archives, without Unity/account/network access."""
 import hashlib
 import json
+import os
 from pathlib import Path
+import shutil
+import subprocess
 import sys
 import unittest
 from unittest.mock import patch
@@ -52,6 +55,65 @@ class CloudBuildTests(unittest.TestCase):
 
     def run_package(self):
         return cloud.package(self.project, self.player, self.env)
+
+    def test_cli_uses_explicit_project_from_an_unrelated_working_directory(self):
+        working = self.project / 'Provider working directory'
+        working.mkdir()
+        result = subprocess.run([sys.executable, str(Path(cloud.__file__).resolve()),
+                                 '--project', str(self.project), '--player', str(self.player)],
+                                cwd=working, env=dict(os.environ, **self.env),
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        with zipfile.ZipFile(self.player.parent / cloud.DELIVERY) as archive:
+            receipt = json.loads(archive.read('cloud-build-receipt.json'))
+            self.assertEqual(receipt['sourceCommit'], self.env['BUILD_REVISION'])
+            self.assertEqual(receipt['buildLogSha256'], cloud.digest(self.log))
+
+    def test_cygwin_converts_the_native_editor_log_path(self):
+        windows_log = r'C:\cloud workspace\Unity Editor.log'
+        self.receipt['editorLog'] = windows_log
+        self.save_receipt()
+        with patch.object(sys, 'platform', 'cygwin'), \
+                patch.object(subprocess, 'check_output', return_value=str(self.log) + '\n') as convert:
+            output = self.run_package()
+        convert.assert_called_once_with(['cygpath', '-ua', windows_log], text=True)
+        with zipfile.ZipFile(output) as archive:
+            self.assertEqual(archive.read('build.log'), self.log.read_bytes())
+
+    @unittest.skipUnless(os.name == 'posix' and shutil.which('bash'), 'POSIX shell path fixture')
+    def test_shell_entrypoint_uses_posix_python_paths_and_propagates_failure(self):
+        # Emulate Cygwin's POSIX Python, with paths containing spaces and a provider
+        # working directory unrelated to the project. Native tools are not needed.
+        tools = self.project / 'tools'
+        tools.mkdir()
+        for name in ('cloud_post_build.sh', 'package_cloud_build.py', 'publish_native_update.py'):
+            shutil.copyfile(Path(cloud.__file__).parent / name, tools / name)
+        shims = self.project / 'path shims'
+        shims.mkdir()
+        converter = shims / 'cygpath'
+        converter.write_text('#!/usr/bin/env bash\nset -eu\n'
+                             'if [[ "$1" != "-ua" ]]; then echo "Wrong Python path convention" >&2; exit 9; fi\n'
+                             'printf "%s\\n" "$2"\n')
+        converter.chmod(0o755)
+        (shims / 'python').symlink_to(sys.executable)
+        working = self.project / 'Provider working directory'
+        working.mkdir()
+        env = dict(os.environ, **self.env, BUILDER_OS='WINDOWS', UNITY_PLAYER_PATH=str(self.player))
+        env['PATH'] = str(shims) + os.pathsep + env['PATH']
+        command = ['bash', str(tools / 'cloud_post_build.sh')]
+        success = subprocess.run(command, cwd=working, env=env, capture_output=True, text=True)
+        self.assertEqual(success.returncode, 0, success.stdout + success.stderr)
+        output = self.player.parent / cloud.DELIVERY
+        self.assertTrue(output.is_file())
+        self.assertIn('NATIVE_CLOUD_DELIVERY_READY:', success.stdout)
+        output.unlink()
+        output.with_suffix('.zip.sha256').unlink()
+        (self.builds / 'cloud-build-receipt.json').unlink()
+        failure = subprocess.run(command, cwd=working, env=env, capture_output=True, text=True)
+        self.assertNotEqual(failure.returncode, 0)
+        self.assertIn('cloud-build-receipt.json', failure.stderr)
+        self.assertNotIn('NATIVE_CLOUD_DELIVERY_READY:', failure.stdout)
+        self.assertFalse(output.exists())
 
     def test_delivery_is_portable_publishable_and_excludes_old_objects(self):
         (self.builds / 'NativeUpdateFeed/objects/old.part').write_bytes(b'old')
