@@ -16,6 +16,25 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-09 — Codex — Authorize Claude's completed Unity batch for automatic Update publication
+- Owner explicitly requested the handoff for `9f16ca20a8b13e479085e1d4b7494a86834031b0` (PR #62):
+  chip selection table, Linear UI alpha fix, C12 DEV/Siren effects, C16 cinematic cameras and presentation follow-ups.
+  GitHub compare confirms 17 commits ahead / zero behind cloud base `603ca76b69b2256d58b24abc4ac23166306e1fd4`;
+  the delta is confined to Unity and documentation and retains the already released account integration.
+- Verified exact-head native CI run `37978210600`: `native-source` and `native-updater-windows` both pass.
+  Electron Checks `37978216780` remains failed; inspected its verify log and PR #62's baseline explanation.
+  The delta contains no Electron source/test changes. No failed check was relabeled or bypassed.
+- Fast-forwarded `codex/unity-cloud-current` to that exact SHA with an expected-head lease and force=false;
+  read back the matching ref. Release-branch native run `37981078816` then passed both jobs and automatically
+  triggered publisher run `37981208443` on main. Observed it in progress at the Unity build step.
+- Status at handoff: source branch advanced; build/publication pending in the existing automation.
+  The publisher must pass real Unity, delivery and public-download gates before the new release is accepted.
+  Latest verified release remains UBA #8 / `80b8edb9` until a newer verified publication receipt appears.
+  No gameplay edits, manual rebuild, CI-policy change, target/configuration change or Electron-feed change made.
+  Native Windows gameplay, GPU visuals, live guests and audio were not tested in this handoff.
+- Receipt branch `codex/unity-claude-batch-handoff-9f16ca2` is documentation only and is not a cloud build candidate.
+  Next: existing automatic build/publisher completes; inspect its final result and native cloud-publication receipt.
+
 ## 2026-10-09 14:52 EDT — Astra — account setup released through Update
 - Game PR #81 plus test-isolation PR #83 are merged at shared/cloud
   `603ca76b69b2256d58b24abc4ac23166306e1fd4`. UBA #8 built that exact commit;
