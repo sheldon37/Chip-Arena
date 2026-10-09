@@ -1,6 +1,6 @@
 # Chip Arena — current state
 
-2026-10-09 build candidate: `codex/unity-siren-data` on shared `5b97d9a` contains the Siren hidden-owner minion hit fix, requested visual/network data contracts and a Linear colour-space pin. Native CI pending; real Unity/shader compile and Windows testing are still required. Cloud branch integration and UBA delivery validation are the next steps; no new Update publication. See the newest DEV_LOG entry.
+2026-10-09 build candidate: `codex/unity-siren-data` on shared `5b97d9a` contains the Siren hidden-owner minion hit fix, requested visual/network data contracts and a Linear colour-space pin. Draft PR #69 / implementation `694f5bd` passed both native CI jobs (run `37940400473`). `codex/unity-cloud-current` carries this candidate. Real Unity/shader compile and Windows gameplay testing are still required; the next step is a UBA build and delivery validation. No new Update publication. See the newest DEV_LOG entry.
 
 Cloud/native update checkpoint (2026-10-08 23:14 EDT): owner-approved UBA build #4 (`chip-arena`), compiled source `51841828e142c551b521ca6698d7487390cd4880`, is **published** as version `659a376e`, revision `639271111007548341`, channel commit `1d4b4f62762698f0c3e9f01d114dcbc29574f1df`. Build passes 86 Unity checks and complete cloud delivery validation; the public main-branch manifest and all 12 parts were downloaded and passed full hash/CRC/inventory/identity validation. Previous native objects and Electron feed are preserved. At 23:14 EDT the owner reports the installed update worked: the first cloud-build-to-Update workflow is owner-confirmed. Installed identity, retained settings and full Windows gameplay are not independently verified. No further local-PC build or starter install is required. Source branch `codex/unity-cloud-current` / PR #68 and cloud/native handoffs contain full receipts; implementation `82ddcfb` passed native CI `37874907141`. No source merge or Site/live release; cloud triggering/retrieval/publication remain separate actions.
 
@@ -177,4 +177,3 @@ Owner direction (2026-10-08): all future game changes target the Unity Chip Aren
 handles logic and programming, Claude handles visuals (AGENTS.md).
 Remaining Unity-vs-Electron gaps, split by owner, are in `docs/UNITY-PARITY-GAPS.md` (online play,
 sign-in, hosting, killcam and combat rules are the blockers).
-
