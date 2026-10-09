@@ -14,6 +14,8 @@ namespace ChipArena.UnityConversion
         public float BlockTime,LastBlock=float.NaN,HitStunUntil,RollAt=-100,RollUntil=-100,ActionAt=-100,ActionUntil=-100;public string ActionKind;
         public bool Reaction,Parry;public float ReactionAt,ReactionUntil,ReactionYaw,ReactionTurn,ReactionStrength;public Vector3 ReactionDir,ReactionPoint;public int ReactionZone;
         public bool Down;public string DownPhase;
+        // The held weapons' length scale along +z: PlayerView.reach / WEAPONS[spec].range (stats.reach), 1 when absent.
+        public float Reach=1;
         public bool Rolling(float t)=>RollAt>-90&&t>=RollAt&&t<RollUntil;
         public bool Committed(float t)=>Commit&&t<CommitUntil;
         public bool RollCancelled(float t)=>RollAt>-90&&RollAt>LastAttack&&RollAt<=t;
@@ -308,7 +310,7 @@ namespace ChipArena.UnityConversion
             float strength=pelvis*h.Strength,torso=chest*h.Strength;bool low=h.Zone==2,headHit=h.Zone==1;float side=h.Point.X>=0?1:-1;
             // A two-handed hold keeps its support hand on the grip through the recoil.
             bool twoHand=false;
-            if(p.Spec!="shield"&&MeleeSet.For(p.Spec)!=null&&r.WeaponVisible){Vector3 grip=r.ChainPoint(CapturedRig.RHand,-1)+Vector3.Transform(MeleeRig.SupportGrip,r.ChainQuat(CapturedRig.RHand,-1));twoHand=Vector3.Distance(grip,r.ChainPoint(CapturedRig.LHand,-1))<.06f;}
+            if(p.Spec!="shield"&&MeleeSet.For(p.Spec)!=null&&r.WeaponVisible){Vector3 grip=r.ChainPoint(CapturedRig.RHand,-1)+Vector3.Transform(r.Reached(MeleeRig.SupportGrip),r.ChainQuat(CapturedRig.RHand,-1));twoHand=Vector3.Distance(grip,r.ChainPoint(CapturedRig.LHand,-1))<.06f;}
             Vector3 b=r.P[CapturedRig.Body];b.X+=d.X*.05f*strength;b.Z+=d.Z*.05f*strength;b.Y-=(low?.16f:.07f)*strength;r.P[CapturedRig.Body]=b;
             r.AddE(CapturedRig.Body,d.Z*(low?.12f:headHit?.22f:.32f)*strength,0,0);r.AddE(CapturedRig.Body,0,0,-d.X*.25f*strength);r.AddE(CapturedRig.Body,0,h.Turn*strength,0);
             r.AddE(CapturedRig.Chest,0,h.Turn*.65f*torso,0);r.AddE(CapturedRig.Chest,d.Z*(low?.06f:.15f)*torso,0,0);
@@ -441,7 +443,7 @@ namespace ChipArena.UnityConversion
         // `overlay` poses native layers (roll, E special, knockdown recovery, source motions) over the base when active.
         public void Sample(MeleeView p,float time,float dt,Action<MeleeRig> overlay=null)
         {
-            var set=MeleeSet.For(p.Spec);var r=Rig;r.Reset();r.LegsAuthored=r.LegsLayered=r.MocapPosed=false;r.WeaponVisible=!p.WeaponAway;
+            var set=MeleeSet.For(p.Spec);var r=Rig;r.Reset();r.LegsAuthored=r.LegsLayered=r.MocapPosed=false;r.WeaponVisible=!p.WeaponAway;r.WeaponReach=p.Reach>0&&p.Reach<1e3f?p.Reach:1;
             bool planted=p.Committed(time)||p.HitStunUntil>time||p.Rolling(time);
             if(planted)r.Motion*=(float)Math.Exp(-MeleeMath.Clamp(dt,0,.05f)*22);
             var vel=planted?new Vector3(0,p.Vel.Y,0):p.Vel;var shown=p;if(planted){shown=p.Clone();shown.Vel=vel;}

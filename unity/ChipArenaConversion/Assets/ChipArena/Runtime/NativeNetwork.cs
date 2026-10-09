@@ -132,25 +132,35 @@ namespace ChipArena.UnityConversion
             {arena?.Dispose();match=new NativeMatch(content);arena=new NativeArena(content,match,f.map){Replica=true,LocalId=networkId};networkEpoch=message.epoch;presentation?.ResetPresentation();prefs.map=f.map;NativeLighting.Apply(content.Map(f.map),cameraView);prefs.pve=f.cooperative;menu=false;visualClock.Reset(f.time);}
             server.Metrics.Snapshot(NativeConnectionMetrics.Now);guestVotes=f.rematchVotes?.Length??0;guestRequired=f.rematchRequired;guestReturnUntil=f.lobbyReturnSeconds>0?Time.unscaledTime+f.lobbyReturnSeconds:-1;arena.ApplyFrame(f,networkId);generation=arena.Generation;if(inputSequence==0){yaw=arena.Local.Yaw;pitch=12;}networkStatus="Connected";
         }
-        // Create Room (main.ts create screen): where the room runs, its port or relay, and the mode; rules are set in the lobby.
+        // Create Room (main.ts:154 create screen): Unity's mode (Versus / Boss Test), YOUR CLASS, matchOptions() in its box,
+        // the "Online room" check (here the conversion relay) with the port or relay URL it needs, then draftOptions,
+        // introOptions and All players draft (NativeRoomOptionsUI.cs). A Boss Test room sets its party in the lobby; the
+        // lobby can still change the match rules.
         private void CreateBody()
         {
             Fine("Create Room hosts the match on this computer. Friends join with the room code over your network, or over the internet through the conversion relay.");
-            Field("Connection");internetRooms=ChoiceRow(new[]{"Local network","Internet relay"},internetRooms?1:0)==1;
-            if(!internetRooms){Field("Port");portText=GUILayout.TextField(portText,5,GUILayout.Width(120));Fine("Your LAN addresses appear after hosting. Friends on the same LAN can join with just the code.");}
+            BeginRules(false,578);var o=rules;
+            RuleSelect(7478,RoomOpt.Versus,"Mode",VersusLabels,o.cooperative?1:0);ClassRow("Your class",ClassCardStyle.Stacked);
+            if(!o.cooperative)MatchOptions(RulesPart.All,false,false);
+            RuleCheck(7482,RoomOpt.Online,"Online room",internetRooms);RuleFine(7484,internetRooms?"Create a public join code for friends.":"LAN only. Friends use your local-network invite link.",0,4);
+            if(!internetRooms){Field("Port");portText=GUILayout.TextField(portText,5,GUILayout.Width(120));Fine("The lobby shows your LAN address and invite link once the room is open. Friends on the same LAN can join with just the code.");}
             else{Field("Relay URL");prefs.relayOrigin=GUILayout.TextField(prefs.relayOrigin??"",240);listedRoom=GUILayout.Toggle(listedRoom,"List my room for other players");}
-            Field("Mode");bool pve=ChoiceRow(new[]{"Versus","Boss Test · The Siren"},prefs.pve?1:0)==1;if(pve!=prefs.pve){prefs.pve=pve;prefs.bots=Mathf.Clamp(prefs.bots,0,pve?3:7);}
-            Fine("The arena, bots and match rules are set in the lobby. Guests need the same conversion build.");
+            if(!o.cooperative)DraftOptions();IntroOptions();
+            if(!o.cooperative)RuleCheck(7486,RoomOpt.BothDraft,"All players draft after each set",o.bothDraft);else RuleFine(7488,"Party bots and where the run starts are set in the lobby.",0,6);
+            RuleFine(7494,"Keep your game open while friends are in your room.",8,6);
         }
-        // Join Room (main.ts join screen): the room code, then the host's address and port, or the relay and its room list.
+        // Join Room (main.ts:154 join screen): the ROOM CODE field, which takes 'CA-ABCD-2345 or room invite link' (JoinScreen
+        // hands a pasted link to JoinInvite), Unity's connection with the host address and port (blank: find the code on
+        // this LAN) or the relay and its room list, and YOUR CLASS.
         private void JoinBody()
         {
-            Field("Connection");internetRooms=ChoiceRow(new[]{"Local network","Internet relay"},internetRooms?1:0)==1;
-            Field("Room code");joinCode=GUILayout.TextField(joinCode,8,codeField).ToUpperInvariant();
+            BeginRules(false,578);
+            RuleSelect(7490,RoomOpt.Connection,"Connection",ConnectionLabels,internetRooms?1:0);
+            RuleField(7496,"ROOM CODE");JoinCodeField();
             if(!internetRooms)
             {
                 Field("Host address");GUILayout.BeginHorizontal();hostAddress=GUILayout.TextField(hostAddress,253);GUILayout.Label("Port",small,GUILayout.Width(44));portText=GUILayout.TextField(portText,5,GUILayout.Width(90));GUILayout.EndHorizontal();
-                Fine("Leave the address blank to find this code on the same LAN. If discovery is blocked, enter the host’s address.");
+                Fine("Leave the address blank to find this code on the same LAN. If discovery is blocked, enter the host’s address. An invite link fills both.");
             }
             else
             {
@@ -158,6 +168,7 @@ namespace ChipArena.UnityConversion
                 if(GUILayout.Button("Refresh room list",button))StartCoroutine(ListRelayRooms());
                 foreach(var room in relayRooms)if(GUILayout.Button(room.name+" · "+room.players+" / "+room.capacity+" · "+room.code,button)){joinCode=room.code;JoinRoom();}GUI.enabled=true;
             }
+            ClassRow("Your class",ClassCardStyle.Stacked);
         }
         // Leave Room: close the connection or room and drop any running match (the source's Leave Room / Return to Main Menu).
         private void LeaveRoom(){ClearReplay();CloseNetwork();arena?.Dispose();arena=null;match=null;presentation?.ResetPresentation();menu=true;Go(MenuScreen.Home);}
