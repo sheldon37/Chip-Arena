@@ -43,9 +43,10 @@ namespace ChipArena.UnityConversion
         }
         // Draw coloured markup (its own fills and strokes; default fill black as in SVG) on a `box`-unit square viewBox.
         // `key` names the drawing for the cache; `c` tints it (white keeps its colours).
-        public static void DrawMarkup(Rect r,string key,string svg,float box,Color c)
+        // `maxPx` caps the raster size (soft art drawn large, such as the chip card's flame row, rasterises once at a lower size).
+        public static void DrawMarkup(Rect r,string key,string svg,float box,Color c,int maxPx=512)
         {
-            if(c.a<=0||Event.current.type!=EventType.Repaint)return;int px=Mathf.Clamp(Mathf.RoundToInt(Mathf.Max(r.width,r.height)*NativeUi.S),8,512);var k=(key,true,px);
+            if(c.a<=0||Event.current.type!=EventType.Repaint)return;int px=Mathf.Clamp(Mathf.RoundToInt(Mathf.Max(r.width,r.height)*NativeUi.S),8,Mathf.Clamp(maxPx,8,512));var k=(key,true,px);
             if(!textures.TryGetValue(k,out var t)){if(textures.Count>256)Clear();t=Texture(Raster(Shapes("svg:"+key,svg,false),px,box),px);textures[k]=t;}
             NativeUi.Image(r,t,c);
         }
@@ -166,7 +167,12 @@ namespace ChipArena.UnityConversion
                 void Over(Color c,float cover){float sa=c.a*cover;if(sa<=0)return;r=c.r*sa+r*(1-sa);g=c.g*sa+g*(1-sa);b=c.b*sa+b*(1-sa);a=sa+a*(1-sa);}
                 for(int i=0;i<shapes.Count;i++)
                 {
-                    var s=shapes[i];float d=float.MaxValue;int winding=0;
+                    // A pixel farther from a shape's bounds than its stroke half-width plus a pixel gets no coverage from it
+                    // (fill and stroke both fade to zero within half a pixel), so it skips the shape's segments: large
+                    // drawings with many small parts (the chip card's flame row) rasterise in a fraction of the time.
+                    var s=shapes[i];var bb=bounds[i];float margin=(s.Stroke?s.Width/2:0)+1.5f/scale;
+                    if(p.x<bb.xMin-margin||p.x>bb.xMax+margin||p.y<bb.yMin-margin||p.y>bb.yMax+margin)continue;
+                    float d=float.MaxValue;int winding=0;
                     foreach(var line in s.Lines)for(int k=0;k<line.Count;k++)
                     {
                         bool closing=k==line.Count-1;if(closing&&!s.Fill)break;var q0=line[k];var q1=line[closing?0:k+1];

@@ -365,7 +365,7 @@ namespace ChipArena.UnityConversion
                 if(special){NativeSpecialPose.Special(pose,a,time,firstPerson);State=a.SpecialKind;}
                 if(down){NativeSpecialPose.Recover(pose,a,time);State="recovery "+NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time);}
                 if(juggle){NativeJugglePose.Apply(pose,time,juggleTrack,a.Velocity.y);State="juggle";}
-                if(a.Weapon==WeaponId.Sword&&a.MagicVisual==0&&ground&&!roll&&!special&&!down&&!juggle) CapturedRig.BladeFloor(pose,false,1.28f);
+                if(a.Weapon==WeaponId.Sword&&a.MagicVisual==0&&ground&&!roll&&!special&&!down&&!juggle&&!NativeFighterPose.Handles(a.SourceSpec)) CapturedRig.BladeFloor(pose,false,1.28f);
                 if(firstPerson)NativeFirstPersonPose.SettleTorso(pose);
                 WritePose(); fresh=false;
             }

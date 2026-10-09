@@ -18,9 +18,10 @@ namespace ChipArena.UnityConversion
             foreach(var s in document.RootElement.GetProperty("drafts").EnumerateArray())
             {NativeDraftRules.Pose(p,s.GetProperty("time").GetSingle());var target=s.GetProperty("target");if(target.ValueKind!=JsonValueKind.Null)NativeDraftRules.Look(p,new Vector3(target[0].GetSingle(),target[1].GetSingle(),target[2].GetSingle()),.8f);var v=s.GetProperty("values");for(int i=0;i<22;i++){int n=i*7;Near(Vector3.Distance(p.Position[i],new Vector3(v[n].GetSingle(),v[n+1].GetSingle(),v[n+2].GetSingle())),0,"draft joint "+i);Near(1-Math.Abs(Quaternion.Dot(p.Rotation[i],new Quaternion(v[n+3].GetSingle(),v[n+4].GetSingle(),v[n+5].GetSingle(),v[n+6].GetSingle()))),0,"draft rotation "+i);}count++;}
             foreach(var s in document.RootElement.GetProperty("grabs").EnumerateArray()){float a=s.GetProperty("age").GetSingle();Near(NativeDraftRules.Reach(a),s.GetProperty("reach").GetSingle(),"draft reach");Near(NativeDraftRules.Fly(a),s.GetProperty("fly").GetSingle(),"draft fly");Near(NativeDraftRules.Fade(a),s.GetProperty("fade").GetSingle(),"draft fade");Near(NativeDraftRules.Pull(a),s.GetProperty("pull").GetSingle(),"draft pull");count++;}
-            // The held chip (draft-stage.ts chipModel, .17 m across) drawn with the .8 m pickup model stays hand-sized.
-            Near(NativeDraftRules.PickupWidth*NativeDraftRules.HeldChipScale(.48f,3,true),.085f,"held chip at contact");Near(NativeDraftRules.PickupWidth*NativeDraftRules.HeldChipScale(.9f,0,false),.17f,"held chip");
-            for(float t=0;t<2;t+=.05f){float w=NativeDraftRules.PickupWidth*NativeDraftRules.HeldChipScale(1,t,false);if(w>.17f*1.08f+1e-5f||w<.17f*.92f-1e-5f)throw new Exception("held chip width "+w);}
+            // The held chip (draft-stage.ts chipModel, capped at .13 m under the .145 m palm) drawn with the .8 m pickup model
+            // stays hand-sized while it rides the hand (NativeDraftPlant; DraftPlantChecks covers the plant).
+            Near(NativeDraftPlant.PickupWidth*NativeDraftPlant.HeldChipScale(.48f,3,true),.065f,"held chip at contact");Near(NativeDraftPlant.PickupWidth*NativeDraftPlant.HeldChipScale(.7f,0,false),.13f,"held chip");
+            for(float t=0;t<2;t+=.05f){float w=NativeDraftPlant.PickupWidth*NativeDraftPlant.HeldChipScale(.75f,t,false);if(w>.13f*1.08f+1e-5f||w<.13f*.92f-1e-5f)throw new Exception("held chip width "+w);}
             Console.WriteLine("PASS "+count+" original summon joint, machine/pickup, draft pose/look and grab timing samples");
         }
     }

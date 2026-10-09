@@ -9,10 +9,10 @@ namespace ChipArena.UnityConversion
     {
         private static Material sky;private static Light moon,rim;private static bool introActive;private static readonly List<Light> stageLights=new List<Light>();
         public static void EndIntro(ContentMap map,Camera camera){if(!introActive)return;introActive=false;foreach(var light in stageLights)if(light!=null)light.enabled=false;if(moon!=null){moon.enabled=true;moon.intensity=.9f;}if(rim!=null){rim.enabled=true;rim.intensity=.24f;}Ambient();Apply(map,camera);}
-        // The chip-draft table: a cool key from high over the camera's shoulder (the table top and chips read flat-on), the rim
-        // from behind the drafter in the stage tint, briefly brighter while a planted chip pulses (`flash` 0..1).
+        // The chip-draft stage: the cool key and the rim in the stage tint (draft-stage.ts), the rim briefly brighter while a
+        // chip planted into the wrist pulses (`flash` 0..1).
         public static void Draft(Camera camera,Color tint,float flash=0)
-        {introActive=true;foreach(var light in stageLights)if(light!=null)light.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=new Color(.025f,.032f,.055f);RenderSettings.skybox=null;RenderSettings.fogStartDistance=30;RenderSettings.fogEndDistance=100;Ambient();if(moon!=null){moon.enabled=true;moon.color=new Color(.8f,.88f,1);moon.intensity=1.35f;moon.transform.rotation=Quaternion.Euler(58,-155,0);}if(rim!=null){rim.enabled=true;rim.color=tint;rim.intensity=1.2f+1.6f*Mathf.Clamp01(flash);rim.transform.rotation=Quaternion.Euler(22,30,0);}}
+        {introActive=true;foreach(var light in stageLights)if(light!=null)light.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=new Color(.025f,.032f,.055f);RenderSettings.skybox=null;RenderSettings.fogStartDistance=30;RenderSettings.fogEndDistance=100;Ambient();if(moon!=null){moon.enabled=true;moon.color=new Color(.8f,.88f,1);moon.intensity=1.4f;moon.transform.rotation=Quaternion.Euler(35,-145,0);}if(rim!=null){rim.enabled=true;rim.color=tint;rim.intensity=1.2f+1.6f*Mathf.Clamp01(flash);rim.transform.rotation=Quaternion.Euler(15,35,0);}}
         private static void Ambient(){RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=NativeArena.ColorOf(0x92b4f0)*.48f;RenderSettings.ambientEquatorColor=NativeArena.ColorOf(0x9aaccd)*.27f;RenderSettings.ambientGroundColor=NativeArena.ColorOf(0x171320)*.48f;}
         // An entrance stage from the scene bank (NativeSceneMotion): three's linear backdrop, fog and lights as Unity authors
         // them. Colours go to sRGB (Unity linearises them in Linear space) and each light through NativeEntranceLight, so the

@@ -26,17 +26,29 @@ namespace ChipArena.UnityConversion
         // translucent layer lands elsewhere. A light layer over the dark UI comes out far stronger (a 19% white sheen reads as
         // ~47% grey, a 26% rarity glow spreads into a haze) and a dark layer weaker (a 55% shadow darkens by ~30%), flattening
         // the chip card's glows, sheens, shadows and text halos. Tone remaps a translucent draw's alpha so the linear blend
-        // lands where the sRGB one does: a light layer takes a^2.2 (exact over black, as the dark UI mostly is) and draws its
-        // ramp textures (fades, glows, radial gradients) with alpha^2.2 too; a dark layer takes 1-(1-a)^2.2 (exact for black
-        // over anything); mixed by the colour's lightness. Opaque draws, solid colours and Gamma builds are unchanged.
+        // lands where the sRGB one does: a light layer takes LightAlpha (exact for white over the UI's dark base, #0f0f0f, and
+        // close over the cards' substrates) and draws its ramp textures (fades, glows, radial gradients, polygons) with it too;
+        // a dark layer takes 1-(1-a)^2.2 (exact for black over anything); mixed by the colour's lightness. Opaque draws,
+        // solid colours and Gamma builds are unchanged.
+        // Calibration (2026-10-09): the first remap gave light layers a^2.2, exact only over pure black and far too faint for
+        // the 2-20% layers (a 2.4% brushed line or a 10% trace came out at a tenth of their CSS contrast). The owner's Windows
+        // screenshot of the card measures sRGB blending with the plain alpha in the player itself (a footer rule of 8% white
+        // over (21,15,20) reads (39,34,38): sRGB blend 40,34,39; linear blend with a^2.2 would read 28): GL.sRGBWrite is off
+        // while the IMGUI pass draws, so LinearBlend is false there and Tone leaves every layer as authored. Tone stays for
+        // any target that does blend in linear light.
         public static bool LinearBlend;
         public static Color Tone(Color c)
         {
             if(!LinearBlend||c.a<=0||c.a>=1)return c;float w=Lightness(c),a=c.a;
-            c.a=Mathf.Lerp(1-Mathf.Pow(1-a,2.2f),Mathf.Pow(a,2.2f),w);return c;
+            c.a=Mathf.Lerp(1-Mathf.Pow(1-a,2.2f),LightAlpha(a),w);return c;
         }
+        // The linear-light alpha that puts white over the UI's dark base (sRGB .06) where the sRGB blend of `a` puts it.
+        private const float ToneBase=.06f;private static readonly float ToneBaseLinear=SrgbToLinear(ToneBase);
+        private static float SrgbToLinear(float v)=>v<=.04045f?v/12.92f:Mathf.Pow((v+.055f)/1.055f,2.4f);
+        public static float LightAlpha(float a)=>a<=0?0:a>=1?1:(SrgbToLinear(ToneBase+(1-ToneBase)*a)-ToneBaseLinear)/(1-ToneBaseLinear);
         private static float Lightness(Color c){float v=Mathf.Max(c.r,Mathf.Max(c.g,c.b));return Mathf.SmoothStep(0,1,Mathf.Clamp01((v-.08f)/.25f));}
-        // Light layers in Linear blending use the ramp textures re-shaped to alpha^2.2.
+        // Light layers in Linear blending use the ramp textures re-shaped by LightAlpha (the radial and polygon bakes take it when
+        // their `power` flag is above 1).
         private static bool LightRamp(Color c)=>LinearBlend&&Lightness(c)>.5f;
         private static Texture2D Make(int w,int h,Func<int,int,Color> f)
         {
@@ -51,10 +63,10 @@ namespace ChipArena.UnityConversion
             horizontal=Make(64,1,(x,y)=>new Color(1,1,1,x/63f));                                 // alpha 0 at the left, 1 at the right
             radial=Make(64,64,(x,y)=>{float dx=(x-31.5f)/31.5f,dy=(y-31.5f)/31.5f,d=Mathf.Clamp01(Mathf.Sqrt(dx*dx+dy*dy));return new Color(1,1,1,1-d);});
             soft=Make(64,64,(x,y)=>{float dx=Mathf.Clamp01((Mathf.Abs(x-31.5f)-14)/18f),dy=Mathf.Clamp01((Mathf.Abs(y-31.5f)-14)/18f),d=Mathf.Clamp01(Mathf.Sqrt(dx*dx+dy*dy));return new Color(1,1,1,(1-d)*(1-d));});
-            // The same ramps with alpha^2.2, for light layers under Linear blending (see Tone).
-            verticalL=Make(1,64,(x,y)=>new Color(1,1,1,Mathf.Pow(y/63f,2.2f)));horizontalL=Make(64,1,(x,y)=>new Color(1,1,1,Mathf.Pow(x/63f,2.2f)));
-            radialL=Make(64,64,(x,y)=>{float dx=(x-31.5f)/31.5f,dy=(y-31.5f)/31.5f,d=Mathf.Clamp01(Mathf.Sqrt(dx*dx+dy*dy));return new Color(1,1,1,Mathf.Pow(1-d,2.2f));});
-            softL=Make(64,64,(x,y)=>{float dx=Mathf.Clamp01((Mathf.Abs(x-31.5f)-14)/18f),dy=Mathf.Clamp01((Mathf.Abs(y-31.5f)-14)/18f),d=Mathf.Clamp01(Mathf.Sqrt(dx*dx+dy*dy));return new Color(1,1,1,Mathf.Pow((1-d)*(1-d),2.2f));});
+            // The same ramps through LightAlpha, for light layers under Linear blending (see Tone).
+            verticalL=Make(1,64,(x,y)=>new Color(1,1,1,LightAlpha(y/63f)));horizontalL=Make(64,1,(x,y)=>new Color(1,1,1,LightAlpha(x/63f)));
+            radialL=Make(64,64,(x,y)=>{float dx=(x-31.5f)/31.5f,dy=(y-31.5f)/31.5f,d=Mathf.Clamp01(Mathf.Sqrt(dx*dx+dy*dy));return new Color(1,1,1,LightAlpha(1-d));});
+            softL=Make(64,64,(x,y)=>{float dx=Mathf.Clamp01((Mathf.Abs(x-31.5f)-14)/18f),dy=Mathf.Clamp01((Mathf.Abs(y-31.5f)-14)/18f),d=Mathf.Clamp01(Mathf.Sqrt(dx*dx+dy*dy));return new Color(1,1,1,LightAlpha((1-d)*(1-d)));});
             for(int i=0;i<rounds.Length;i++){int r=4+i*4,n=r*2+2;rounds[i]=Make(n,n,(x,y)=>{float cx=Mathf.Clamp(x+.5f,r,n-r),cy=Mathf.Clamp(y+.5f,r,n-r),d=Mathf.Sqrt((x+.5f-cx)*(x+.5f-cx)+(y+.5f-cy)*(y+.5f-cy));return new Color(1,1,1,Mathf.Clamp01(r-d+.5f));});}
             text=new GUIStyle(GUI.skin.label){wordWrap=true,richText=false,clipping=TextClipping.Overflow,padding=new RectOffset(0,0,0,0),margin=new RectOffset(0,0,0,0)};
             // White base so GUI.contentColor is the exact colour drawn (the menu skin's label colour would tint every overlay).
@@ -124,7 +136,7 @@ namespace ChipArena.UnityConversion
         private static ulong Mix(ulong h,Color c)=>Mix(Mix(Mix(Mix(h,c.r),c.g),c.b),c.a);
         // Texture builders live in their own methods: a lambda capturing the drawing call's parameters would allocate its
         // closure on every call, cache hit or not.
-        private static Texture2D RadialTexture(float[] at,float[] alpha,float power)=>Make(96,96,(x,y)=>{float dx=(x-47.5f)/47.5f,dy=(y-47.5f)/47.5f;return new Color(1,1,1,Mathf.Pow(NativeUiMotion.Keys(Mathf.Sqrt(dx*dx+dy*dy),at,alpha),power));});
+        private static Texture2D RadialTexture(float[] at,float[] alpha,float power)=>Make(96,96,(x,y)=>{float dx=(x-47.5f)/47.5f,dy=(y-47.5f)/47.5f;float v=NativeUiMotion.Keys(Mathf.Sqrt(dx*dx+dy*dy),at,alpha);return new Color(1,1,1,power>1?LightAlpha(v):v);});
         private static Texture2D RampTexture(Color a,Color b,bool horizontal)=>horizontal?Make(64,1,(x,y)=>Tone(Color.Lerp(a,b,x/63f))):Make(1,64,(x,y)=>Tone(Color.Lerp(b,a,y/63f)));
         public static void RadialStops(Rect r,Color c,float[] at,float[] alpha)
         {
@@ -134,6 +146,14 @@ namespace ChipArena.UnityConversion
         }
         public static void Radial(Rect r,Color c){if(c.a<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=Tone(c);GUI.DrawTexture(P(r),LightRamp(c)?radialL:radial);GUI.color=o;GUI.matrix=m;}
         public static void Image(Rect r,Texture t,Color c){if(t==null||c.a<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=Tone(c);GUI.DrawTexture(P(r),t);GUI.color=o;GUI.matrix=m;}
+        // A CSS repeating pattern: texture `t` (wrap mode Repeat) repeated over `r` every `period` virtual px from its top-left
+        // corner shifted by `phase`, in one draw; `flipY` mirrors it vertically (scaleY(-1)).
+        public static void Tile(Rect r,Texture t,Color c,Vector2 period,Vector2 phase=default,bool flipY=false)
+        {
+            if(t==null||c.a<=0||r.width<=0||r.height<=0||period.x<=0||period.y<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=Tone(c);
+            float uw=r.width/period.x,vh=r.height/period.y,u=phase.x/period.x,v=phase.y/period.y;
+            GUI.DrawTextureWithTexCoords(P(r),t,flipY?new Rect(u,1-v,uw,-vh):new Rect(u,1-v-vh,uw,vh));GUI.color=o;GUI.matrix=m;
+        }
         public static void Glow(Rect r,Color c,float spread){if(c.a<=0||Event.current.type!=EventType.Repaint)return;var m=Enter();var o=GUI.color;GUI.color=Tone(c);GUI.DrawTexture(P(new Rect(r.x-spread,r.y-spread,r.width+spread*2,r.height+spread*2)),LightRamp(c)?softL:soft);GUI.color=o;GUI.matrix=m;}
         // CSS backdrop-filter: blur(px) under a translucent panel. NativeUiBlur keeps one shared blurred copy of the 3D frame
         // (a small and a large blur) while a panel asked for it in the last frames; this draws its texels under the panel's
@@ -184,7 +204,7 @@ namespace ChipArena.UnityConversion
                     xs.Sort();
                     for(int n=0;n+1<xs.Count;n+=2)for(int x=Mathf.Max(0,(int)xs[n]);x<Mathf.Min(w,Mathf.CeilToInt(xs[n+1]));x++)row[x]+=Mathf.Max(0,Mathf.Min(x+1,xs[n+1])-Mathf.Max(x,xs[n]))/sub;
                 }
-                for(int x=0;x<w;x++)px[(h-1-y)*w+x]=new Color(1,1,1,Mathf.Pow(Mathf.Clamp01(row[x]*NativeUiMotion.Keys((x+.5f)/w,at,alpha)),power));
+                for(int x=0;x<w;x++){float v=Mathf.Clamp01(row[x]*NativeUiMotion.Keys((x+.5f)/w,at,alpha));px[(h-1-y)*w+x]=new Color(1,1,1,power>1?LightAlpha(v):v);}
             }
             var t=new Texture2D(w,h,TextureFormat.RGBA32,false){wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Bilinear,hideFlags=HideFlags.HideAndDontSave};t.SetPixels(px);t.Apply(false,true);return t;
         }
