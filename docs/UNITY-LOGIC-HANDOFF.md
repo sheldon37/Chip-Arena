@@ -1,5 +1,50 @@
 # Unity logic handoff — PR #66
 
+## 2026-10-09 — account/profile compatibility and service setup (PR #81)
+
+Task `codex/unity-account-contract`, based on shared/cloud `27a7833`. The owner
+chose the most efficient implementation and authorized publication to Update.
+Reuse the existing hosted account service and D1 records; no database migration,
+new issuer, credential reset, or backend deployment is necessary.
+
+- All existing NativeAccount members remain: `Account`, `Access` (including
+  `Developer`), `Status`, `Busy`, `Token`, `RecoveryCode`, `Accepted`;
+  `Login(action,user,pass,recovery,save)`, `Logout`, `Save(profile)`,
+  `ReloadSavedProfile`, `Refresh`, `Configure(origin)`. Configure is functional,
+  including its optional loadRemembered argument; it is not a no-op.
+- **Menu change requested by owner:** removed the Account service URL field from
+  NativeProfileUI. No other Settings/Account URL control exists in this head.
+  Players sign in normally without entering an endpoint. Claude should keep the
+  field hidden; internal Configure and existing custom endpoint preferences work.
+- `NativeAccount.DefaultOrigin` points to the existing Chip Arena hosted service.
+  New preferences use it. `ConversionPreferences.MigrateAccountService()` upgrades
+  older blank/unset URLs once and persists `accountServiceVersion=1`, preserving
+  custom URLs and every other preference. Later explicit empty URLs remain empty.
+- No configured service shows exactly **Signed out / offline**, including attempted
+  sign-in. No network request starts and Busy stays false. Configured-service
+  connection failures remain distinguishable from offline mode.
+- All NativeProfile fields remain: `name`, `class`, `color`; cosmetics:
+  `lobbyPose`, `preferredSpec`, `intro`, `introText`, `bodyColor`, `hat`,
+  `killEffect`, `overrideWeaponIntro`. Existing local pilots, account IDs/revisions,
+  queued saves, account-scoped pending effects and Reload saved pilot are retained.
+  New real JsonUtility Editor checks cover migration and full profile save/reload/
+  lobby serialization, including developer/unlocks/flags.
+- Signed access remains authoritative for DEV, weapons and cosmetics; flags remain
+  in Account.flags and signed claim data. No username-based grants or client bypass.
+  No passwords, session/token values or recovery codes were added to source, docs,
+  fixtures or Connection report. Existing DPAPI remembered sessions are unchanged.
+- Authorized Sites owner inspection confirmed the existing Sheldon record already
+  has DEV access and a saved pilot. The supplied password matches its stored verifier
+  (checked in memory; no secret logged or saved). No account reset or row change.
+- Local Python suite: 44 pass / one platform skip; diff check passed. Hosted native
+  CI and real UBA compile/Editor gates pending for the completed patch. Live Windows
+  sign-in is not tested: this environment's unauthenticated service request was
+  blocked by Cloudflare 403/1010, and no workaround or authenticated request was
+  attempted. Owner administration inspection is not an end-to-end client login.
+- No combat, animation, profile schema or server API changes. Publication pending
+  the exact-head native CI and Unity build gates; see DEV_LOG for the receipt.
+
+
 2026-10-08, Codex/Astra. Branch `codex/unity-parity-logic-current`, PR [#66](https://github.com/sheldon37/Chip-Arena/pull/66) into `claude/sleepy-ritchie-g8ruhv` (#62). Requested baseline `b828acb`; earlier logic checkpoints `718cd4f`, `d80d974`, `c9888fc`. PR #65 had conflicts after Claude advanced; replacement PR #66 starts directly at `4207641` and carries the identical reviewed tree in `9921c78`, without a merge or force push. Claude presentation changes through `4207641` are preserved. Implemented on the branch only: nothing merged or released.
 
 Read the status prefix on each A1–A31 entry in `UNITY-PARITY-GAPS.md`. Original findings remain below those prefixes as evidence. Do not infer acceptance from “0 pending” catalogue entries.

@@ -88,8 +88,8 @@ namespace ChipArena.UnityConversion
             if(account.Account!=null)prefs.pendingEffects=NativePendingEffect.Remember(prefs.pendingEffects,account.Account.id,prefs.killEffect,account.Account.profile?.cosmetics?.killEffect,e=>NativeCosmeticRules.Allowed(account.Access,"effect",e));
             Save();if(account.Account!=null)account.Save(Profile());
         }
-        // Account (main.ts login / account screens): the Log in / Register / Recovery form, or the signed-in account with its
-        // one-time recovery code; the service URL stays editable at the foot. Submit, save, DEV Menu and Log out are actions.
+        // Account: the Log in / Register / Recovery form, or the signed-in account and
+        // one-time recovery code. The service is configured internally, not by players.
         private void AccountBody()
         {
             if(account.Account==null)
@@ -112,7 +112,6 @@ namespace ChipArena.UnityConversion
                 else UnlockChips(a.unlocks.Select(NativeCosmeticRules.Label).ToArray());
                 AccountLine("Items and flags refresh here. Rejoin a room after a grant changes.",16,NativeUi.Hex(0xbfc0c9));
             }
-            Field("Account service URL");prefs.accountOrigin=GUILayout.TextField(prefs.accountOrigin??"",240);
         }
         private float accountWidth=576;
         // A wrapped paragraph drawn by the kit (.panel p: line-height 1.6, 10 / 22 px margins).

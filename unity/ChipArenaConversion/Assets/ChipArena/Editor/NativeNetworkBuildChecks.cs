@@ -10,6 +10,7 @@ namespace ChipArena.UnityConversion.Editor
     {
         private static void CheckNetworkSerialization(NativeArena authority)
         {
+            CheckAccountCompatibility();
             var preferences=JsonUtility.FromJson<ConversionPreferences>(JsonUtility.ToJson(new ConversionPreferences{map="random",lobbyPose="crossed-arms",fullscreen=true}));
             if(preferences.map!="random"||preferences.lobbyPose!="crossed-arms"||!preferences.fullscreen)throw new Exception("Saved pilot pose/map/fullscreen did not round trip");
             var profile=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="ready",profile=new NativeProfile{cosmetics=new NativeCosmetics{lobbyPose="crossed-arms"}}}));
@@ -75,6 +76,29 @@ namespace ChipArena.UnityConversion.Editor
                 Debug.Log("PASS real JsonUtility: PvP frames validate/apply, optional nested death/PvE/props preserved, replay stays in isolated physics, compact controls");
             }
             finally{authority.Local.Death=original;replica?.Dispose();EditorSceneManager.ClosePreviewScene(scene);}
+        }
+        private static void CheckAccountCompatibility()
+        {
+            var old=JsonUtility.FromJson<ConversionPreferences>("{\"name\":\"Saved Pilot\",\"weapon\":\"rifle\",\"lobbyPose\":\"crossed\",\"accountOrigin\":\"\",\"introText\":\"My old pilot\"}");
+            if(!old.MigrateAccountService()||old.accountOrigin!=NativeAccount.DefaultOrigin||old.name!="Saved Pilot"||old.weapon!="rifle"||old.lobbyPose!="crossed"||old.introText!="My old pilot")throw new Exception("Account service migration changed the saved pilot");
+            old.accountOrigin="";old=JsonUtility.FromJson<ConversionPreferences>(JsonUtility.ToJson(old));
+            if(old.MigrateAccountService()||old.accountOrigin!="")throw new Exception("Explicit offline account choice was overwritten on reload");
+            var custom=new ConversionPreferences{accountOrigin="https://accounts.example.test"};custom.MigrateAccountService();
+            if(custom.accountOrigin!="https://accounts.example.test"||new ConversionPreferences().accountOrigin!=NativeAccount.DefaultOrigin)throw new Exception("Account service default/custom URL compatibility failed");
+            var profile=new NativeProfile{name="Saved Pilot",@class="magic",color="#123456",cosmetics=new NativeCosmetics{lobbyPose="crossed",preferredSpec="lightning",intro="pulse-wave",introText="My saved entrance",bodyColor="#abcdef",hat="crown",killEffect="ragdoll-petals",overrideWeaponIntro=true}};
+            string expected=JsonUtility.ToJson(profile);
+            var saved=JsonUtility.FromJson<NativeProfileRequest>(JsonUtility.ToJson(new NativeProfileRequest{revision=17,profile=profile}));
+            var loaded=JsonUtility.FromJson<NativeAccountResponse>(JsonUtility.ToJson(new NativeAccountResponse{account=new NativeAccountData{id="fixture-account",profile=profile,hasProfile=true,revision=17,grantVersion=4,developer=true,unlocks=new[]{"weapon:emperor","hat:auditor-halo"},flags=new[]{"playtester","vip"}}}));
+            var ready=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="ready",profile=profile}));
+            if(saved.revision!=17||JsonUtility.ToJson(saved.profile)!=expected||JsonUtility.ToJson(loaded.account.profile)!=expected||JsonUtility.ToJson(ready.profile)!=expected||!loaded.account.hasProfile||!loaded.account.developer||loaded.account.revision!=17||loaded.account.grantVersion!=4||loaded.account.unlocks.Length!=2||loaded.account.flags.Length!=2)throw new Exception("Account save/reload or lobby payload dropped profile fields, grants or flags");
+            var go=new GameObject("Account compatibility check");
+            try
+            {
+                var account=go.AddComponent<NativeAccount>();account.Configure("");account.Login("login","fixture-user","",null,false);account.Save(profile);account.ReloadSavedProfile();account.Refresh();account.Logout();
+                if(account.Status!="Signed out / offline"||account.Busy||account.Account!=null||account.Access.Developer||account.Token!=""||account.RecoveryCode!="")throw new Exception("Unconfigured accounts must stay signed out/offline without a request or grants");
+            }
+            finally{UnityEngine.Object.DestroyImmediate(go);}
+            Debug.Log("PASS account compatibility: one-time service migration, explicit offline/custom URL, complete profile save/reload/lobby data, grants and flags");
         }
         private static void CheckCombatParity(ConversionContent content)
         {
