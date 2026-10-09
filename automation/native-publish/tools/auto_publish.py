@@ -7,6 +7,8 @@ import argparse
 import base64
 from datetime import datetime, timezone
 import hashlib
+import gzip
+import io
 import json
 import os
 from pathlib import Path
@@ -239,6 +241,22 @@ def unpack_delivery(outer, work):
     return destination
 
 
+def provider_log_text(path):
+    data = path.read_bytes()
+    if data.startswith(b'\x1f\x8b'):
+        with gzip.GzipFile(fileobj=io.BytesIO(data)) as archive:
+            data = archive.read(MAX_LOG + 1)
+        print('Decoded gzip-compressed Unity provider log.')
+    if len(data) > MAX_LOG:
+        raise ValueError('Provider log exceeds decoded size limit')
+    text = data.decode('utf-8-sig', errors='replace')
+    if text.lstrip().startswith('"'):
+        text = json.loads(text)
+        if not isinstance(text, str):
+            raise ValueError('Unexpected provider log representation')
+    return text
+
+
 def validate_delivery(delivery, build, provider_log):
     sha, number = build['lastBuiltRevision'], str(build['build'])
     receipt = json.loads((delivery / 'cloud-build-receipt.json').read_text(encoding='utf-8-sig'))
@@ -262,14 +280,7 @@ def validate_delivery(delivery, build, provider_log):
     cloud.validate_seed(delivery / cloud.SEED, feed, manifest)
     marker = f'NATIVE_CLOUD_EXPORT_READY: {sha} / {number}'
     editor_text = (delivery / 'build.log').read_text(encoding='utf-8-sig', errors='replace')
-    provider_text = provider_log.read_text(encoding='utf-8-sig', errors='replace')
-    # The v2 direct-log response can be a JSON string instead of raw log bytes.
-    # Decode that representation before checking literal source/build markers.
-    if provider_text.lstrip().startswith('"'):
-        decoded = json.loads(provider_text)
-        if not isinstance(decoded, str):
-            raise ValueError('Unexpected provider log representation')
-        provider_text = decoded
+    provider_text = provider_log_text(provider_log)
     if marker not in editor_text or 'NATIVE_COLOR_SPACE: Linear' not in editor_text:
         raise ValueError('Editor log is missing export or Linear markers')
     for value in (marker, 'NATIVE_UPDATE_FEED_READY:', 'UNITY_TEST_BUILD_READY:', 'NATIVE_CLOUD_DELIVERY_READY:'):
