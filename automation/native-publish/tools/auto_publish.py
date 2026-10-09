@@ -135,11 +135,25 @@ def native_checks(sha, token):
     return {'native-source', 'native-updater-windows'} <= passed
 
 
+def build_rejections(build, sha):
+    expected = dict(buildStatus='success', lastBuiltRevision=sha, scmBranch=BRANCH,
+                    buildtargetid=TARGET, platform='standalonewindows64', unityVersion=UNITY)
+    return ([key for key, value in expected.items() if build.get(key) != value]
+            + [key for key in ('deleted', 'deletedArtifacts', 'deletedLogs', 'headless') if build.get(key)])
+
+
 def eligible_build(build, sha):
-    return (build.get('buildStatus') == 'success' and build.get('lastBuiltRevision') == sha
-            and build.get('scmBranch') == BRANCH and build.get('buildtargetid') == TARGET
-            and build.get('platform') == 'standalonewindows64' and build.get('unityVersion') == UNITY
-            and not any(build.get(k) for k in ('deleted', 'deletedArtifacts', 'deletedLogs', 'headless')))
+    return not build_rejections(build, sha)
+
+
+def describe_build(build, sha, source):
+    # Allowlist bounded scalar metadata only: no signed links, environment or credentials.
+    keys = ('build', 'buildStatus', 'lastBuiltRevision', 'scmBranch', 'buildtargetid',
+            'platform', 'unityVersion', 'localUnityVersion', 'deleted', 'deletedArtifacts',
+            'deletedLogs', 'headless')
+    values = {key: str(build.get(key))[:160] for key in keys}
+    print('Unity candidate metadata: ' + json.dumps(dict(source=source, values=values,
+                                                        rejected=build_rejections(build, sha))))
 
 
 def check_build(build, sha):
@@ -260,6 +274,15 @@ def prepare(work, token, unity_auth):
         return
     candidates = [b for b in rows if eligible_build(b, sha)]
     if not candidates:
+        for row in rows[:5]:
+            describe_build(row, sha, 'list')
+        for row in rows:
+            if row.get('lastBuiltRevision') == sha and row.get('buildStatus') == 'success':
+                number = row.get('build')
+                if type(number) is int and number > 0:
+                    detail = api_json(BASE + '/' + str(number), unity_auth)
+                    describe_build(detail, sha, 'detail')
+                break
         output(False, 'Waiting for a successful Unity build of cloud commit ' + sha)
         return
     number = max(b['build'] for b in candidates)

@@ -1,5 +1,20 @@
 # Native publishing automation development log
 
+## 2026-10-09 — Astra — diagnose successful UBA build detection
+
+- Owner requests completion of automated publication. Task `codex/unity-publish-detection`,
+  remote base default main `4babc69`. UBA #7 log confirms commit `27a7833`, Linear,
+  all four export/delivery markers and final SUCCESS, with no C# or shader errors.
+  Publisher run `37958519880` attempt 2 still excludes it before retrieval.
+- Added bounded allowlisted list/detail metadata diagnostics and named rejection
+  reasons; no acceptance gate changed and credentials/signed links are not logged.
+  Trusted main publisher changes now recheck publication after both hosted test
+  jobs pass, only with the existing auto-publish variable enabled. This avoids a
+  manual dispatch for each reviewed tooling correction; no source auto-merges.
+- Local suite: 48 tests collected, 47 passed, one Windows-only skip. Hosted tests
+  and real metadata diagnosis are next. Build #7 has not yet reached the feed.
+  No game or visual changes; cloud branch stays `27a7833`, no rebuild required.
+
 ## 2026-10-09 — Astra — browser-configurable cloud delivery publication
 
 - Owner asked to finish automatic cloud-build-to-Update publication from another
