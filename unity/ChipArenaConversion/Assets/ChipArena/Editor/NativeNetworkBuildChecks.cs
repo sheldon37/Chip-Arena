@@ -94,7 +94,8 @@ namespace ChipArena.UnityConversion.Editor
             var go=new GameObject("Account compatibility check");
             try
             {
-                var account=go.AddComponent<NativeAccount>();account.Configure("");account.Login("login","fixture-user","",null,false);account.Save(profile);account.ReloadSavedProfile();account.Refresh();account.Logout();
+                // A build check must never erase a developer's remembered sign-in.
+                var account=go.AddComponent<NativeAccount>();account.Configure("");account.Login("login","fixture-user","",null,false);account.Save(profile);account.ReloadSavedProfile();account.Refresh();account.Clear(false);
                 if(account.Status!="Signed out / offline"||account.Busy||account.Account!=null||account.Access.Developer||account.Token!=""||account.RecoveryCode!="")throw new Exception("Unconfigured accounts must stay signed out/offline without a request or grants");
             }
             finally{UnityEngine.Object.DestroyImmediate(go);}
