@@ -16,6 +16,35 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-09 14:52 EDT — Astra — account setup released through Update
+- Game PR #81 plus test-isolation PR #83 are merged at shared/cloud
+  `603ca76b69b2256d58b24abc4ac23166306e1fd4`. UBA #8 built that exact commit;
+  native CI `37974507246` and real Unity 6000.3.24f1 / Linear compile, Editor and
+  delivery gates passed. Account URL hidden, default service/migration installed,
+  full profile/API/grant contracts retained. No account database changes or resets.
+- Initial Unity auto-build did not queue after the push. Main automation PR #82
+  (`f6137be`) adds a pinned, CI-gated build-start fallback using the existing target.
+  Ten added failure/duplicate/branch/request tests pass; full suite 65 pass / one
+  skip locally and both hosted platforms pass. Actual API call requested #8 at
+  18:38:17 UTC; success observed at 18:50:37. No configuration or access changes.
+- Released native version `80b8edb903c75a79175839ef4a26090526c794d03f1cc1b4a1a1b092bba130a8`,
+  revision `639271684416413583`, payload SHA256
+  `0226ccd91ad9eb3120607d18bb294646c440d58b55c1982a0fbfeb87f71cdb15`.
+  Feed push `e19ece73917f3320a0f38a7a1804e2c5ae51955f`; first run accurately reported
+  a public-cache delay. Verification-only attempt 2 of `37974643037` succeeded;
+  every public payload part and manifest passed archive/hash validation at 18:52:39
+  UTC, receipt `b4462d36e4cc63625a48487b9ad6eb5a1de5184f`, verified=true.
+- Private diagnostic logs: Actions run 37974643037 / artifact
+  native-cloud-publication-37974643037. Publisher validated complete provider and
+  delivery logs; no compiler/shader failure accepted. The returned artifact's
+  temporary download was blocked (403) in this runtime, so no separate local log
+  inspection is claimed. Existing Electron Checks still reproduces 12 unit failures
+  and the documented chaos/leet/standard-melee TypeScript errors; native CI passes.
+- Sheldon account already has DEV and its existing credential matches. No passwords,
+  tokens, recovery codes or user records committed or exposed in Connection report.
+  All requested APIs/profile fields and Reload saved pilot remain. Windows sign-in,
+  DEV menu and cross-device save/load need owner runtime verification after Update.
+  No gameplay, hit timing, hitbox, cooldown, movement or animation changes.
 ## 2026-10-09 — Claude — Chip selection at a table (owner redesign) and the Linear UI blend fix
 - Owner, after native build #7: the chips had lost their polish, the selection was not smooth, and the chips were bigger than the pilot; asked for the pilot seated at a table with the chips laid out, seen from above, planting the chosen chip into the wrist. Answers: both the PvP draft and the Siren picks; a high tilted view (~65°); real-size chips with lift + side card.
 - Branch `claude/wip-chip-table` (`fee2c20`, review fix `1c098af`), merged into `claude/sleepy-ritchie-g8ruhv`. Presentation only: draft/pick rules, timers, messages, networking and saves unchanged.
