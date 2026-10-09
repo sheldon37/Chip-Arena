@@ -183,12 +183,12 @@ namespace ChipArena.UnityConversion
             int first=Mathf.Max(0,Mathf.FloorToInt(reportScroll/18)),last=Mathf.Min(reportLines.Count,Mathf.CeilToInt((reportScroll+reportPreH)/18)+1);var ink=U.Hex(0xe3f1fa);
             for(int i=first;i<last;i++)U.Text(new Rect(0,i*18,reportWrapW,18),reportLines[i],12,ink,TextAnchor.MiddleLeft,mono:true);
         }
-        // The lobby's Advanced Options entry (main.ts:156 roomAdvanced): the full-width .btn with the activity icon at
-        // 14 px under the fold's last note (22 px above, 15 px below).
+        // The lobby's Advanced Options entry (main.ts:156 roomAdvanced, pve/menu.ts:43): the full-width .btn with the
+        // activity icon at 14 px under the INVITE LINK (22 px above, 15 px below), on the room rows' insets (RuleRow).
         private void ConnectionReportButton()
         {
-            var r=GUILayoutUtility.GetRect(0,22+48+15,GUILayout.ExpandWidth(true));float a=GUI.color.a;
-            U.Defer(()=>{if(MenuButton(new Rect(r.x+4,r.y+22,r.width-8,48),"activity","Connection report",null,false,true,a,14))OpenConnectionReport();});
+            var r=GUILayoutUtility.GetRect(0,22+48+15,GUILayout.ExpandWidth(true));float a=GUI.color.a,l=rulesL,w=Mathf.Max(10,r.width-rulesL-rulesR);
+            U.Defer(()=>{if(MenuButton(new Rect(r.x+l,r.y+22,w,48),"activity","Connection report",null,false,true,a,14))OpenConnectionReport();});
         }
 
         // ---- Connection label -----------------------------------------------------------------------------------------
