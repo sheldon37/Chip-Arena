@@ -33,7 +33,7 @@ namespace ChipArena.UnityConversion
             U.Text(new Rect(0,y,W,16),eyebrow,12,U.Hex(0xc9bfff,fade),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.32f,glow:U.Hex(0x7d5cff,.6f*fade));y+=34;
             float k=M.Clamp01(since/.7f),u=M.Bezier(.16f,.8f,.22f,1,k),sy=k<.12f?.04f:k<.3f?Mathf.Lerp(.04f,1.05f,(k-.12f)/.18f):k<.56f?1:1,tx=k>=.3f&&k<.4f?-8:k>=.4f&&k<.48f?6:0,op=M.Clamp01(k/.12f)*fade;
             float F=Mathf.Clamp(W*.056f,34,84);U.Push(new Vector2(W/2,y+F/2),new Vector2(tx,0),1,0,sy);
-            float g=Mathf.Repeat(since+.2f,1.8f)/1.8f,h=Mathf.Repeat(since+.3f,1.8f)/1.8f;if(g>=.65f&&g<.72f)U.Text(new Rect(-3,y,W,F),current.name,F,U.Hex(0xff2d55,.85f*op),TextAnchor.MiddleCenter,bold:true);if(h>=.65f&&h<.72f)U.Text(new Rect(3,y,W,F),current.name,F,U.Hex(0x2de2ff,.85f*op),TextAnchor.MiddleCenter,bold:true);
+            float g=Mathf.Repeat(since+.2f,1.8f)/1.8f,h=Mathf.Repeat(since+.3f,1.8f)/1.8f;var title=new Rect(0,y,W,F);U.SplitCopy(title,title,g,false,current.name,F,op,TextAnchor.MiddleCenter);U.SplitCopy(title,title,h,true,current.name,F,op,TextAnchor.MiddleCenter);
             U.Text(new Rect(0,y,W,F),current.name,F,U.Hex(0xf6f3ff,op),TextAnchor.MiddleCenter,bold:true,tracking:.01f,glow:U.Hex(0x9b87ff,.8f*op),shadow:new Color(0,0,0,op));
             float ds=Mathf.Clamp(W*.015f,15,20);var lines=U.Wrap(current.description,ds,Mathf.Min(W*.6f,62*ds*.5f));float ly=y+F+12;foreach(var line in lines){U.Text(new Rect(0,ly,W,ds*1.45f),line,ds,U.Hex(0xddd6fb,op),TextAnchor.MiddleCenter,shadow:new Color(0,0,0,op));ly+=ds*1.45f;}
             U.Pop();

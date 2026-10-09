@@ -57,6 +57,7 @@ internal static class DraftTableChecks
         Check(NativeDraftTable.Reach(NativeDraftTable.ReachEnd)>.999f&&NativeDraftTable.Grab(NativeDraftTable.ReachEnd)<.001f&&NativeDraftTable.Plant(NativeDraftTable.PlantEnd)>.999f,"timeline ends");
         Check(NativeDraftTable.SoundAt>=NativeDraftTable.PlantStart&&NativeDraftTable.SoundAt<=NativeDraftTable.PlantEnd&&NativeDraftTable.InstalledAt>=NativeDraftTable.PlantStart,"the install sound and label land on the plant");
         Check(NativeDraftTable.Pulse(NativeDraftTable.PulseStart-.01f)<0&&NativeDraftTable.Pulse(NativeDraftTable.PulseEnd+.01f)<0&&Math.Abs(NativeDraftTable.Pulse((NativeDraftTable.PulseStart+NativeDraftTable.PulseEnd)/2)-.5f)<1e-4f,"pulse window");
+        yield return InstallCue();
 
         // Motion: the same hover-then-pick session at 30, 60, 144 and 240 Hz. Wrists and the picked chip never jump between
         // frames (bounded speed), the rates agree at shared instants, the chip ends planted and the step allocates nothing.
@@ -84,5 +85,24 @@ internal static class DraftTableChecks
             Check(fastest<4.5f,"a wrist or the chip moves "+fastest+" m/s between frames (a pop) at "+fastestAt);Check(spread<.03f,"rates disagree by "+spread+" m");Check(allocated==0,"DraftTableMotion.Step allocated "+allocated+" bytes");
             yield return "Table motion at 30/60/144/240 Hz: fastest wrist or chip "+fastest.ToString("0.00")+" m/s (no pops), rates agree within "+(spread*1000).ToString("0.0")+" mm over "+count/3+" shared instants, the pick plants and hides the chip, 0 bytes allocated per step";
         }
+    }
+    // The install cue lands on the plant: PvP from the pick time; the follow-through holds my own event and plays it once.
+    private static string InstallCue()
+    {
+        float at=NativeDraftTable.SoundAt;double plant=10+(double)at;
+        Check(!NativeInstallCue.DraftDue(10,10)&&!NativeInstallCue.DraftDue(10,plant-.01)&&NativeInstallCue.DraftDue(10,plant)&&NativeInstallCue.DraftDue(10,plant+.39)&&!NativeInstallCue.DraftDue(10,plant+NativeInstallCue.Fresh),"PvP cue window");
+        int Plays(float[] arrive,float endAt,out float playedAt)
+        {   // A follow-through from t=0 to endAt at 60 Hz; my event arrives at arrive[0] (and again at arrive[1] if given).
+            var c=new NativeInstallCue();int plays=0;playedAt=-1;
+            for(int f=0;f<=180;f++){float t=f/60f;string chip=t<endAt?"mishima-armor":null;if(c.Step(chip,0,t)!=null){plays++;playedAt=t;}
+                foreach(float a in arrive)if(Math.Abs(t-a)<.5f/60&&!c.Hold("mishima-armor")){plays++;playedAt=t;}}
+            return plays;
+        }
+        Check(Plays(new[]{.02f},NativeDraftTable.ReturnEnd,out float p)==1&&Math.Abs(p-at)<1.5f/60,"host pick: played "+p+" s, not at the plant");
+        Check(Plays(new[]{1.2f},NativeDraftTable.ReturnEnd,out p)==1&&Math.Abs(p-1.2f-1/60f)<1.5f/60,"late guest event: played "+p);
+        Check(Plays(new[]{.02f},.3f,out p)==1&&Math.Abs(p-.3f)<1.5f/60,"ended early: played "+p);
+        Check(Plays(new[]{2.5f},NativeDraftTable.ReturnEnd,out p)==1&&Math.Abs(p-2.5f)<1.5f/60,"event after the follow-through: played "+p);
+        Check(Plays(new[]{.02f,.5f},NativeDraftTable.ReturnEnd,out _)==2,"a second event is not swallowed");
+        return "Install cue: PvP at the plant ("+at.ToString("0.00")+" s after the pick, .4 s fresh); the Siren follow-through plays my own Install once at the plant, at an early end, or on a late event";
     }
 }

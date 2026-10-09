@@ -16,6 +16,14 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-09 — Claude — C23 CSS effects and the chip install cue at the plant
+- Owner direction (2026-10-09): Claude pushes verified completed game batches directly to `codex/unity-cloud-current` (Unity auto-build and automatic test-channel publication); no per-batch confirmation. The previous batch (`9f16ca2`) was pushed there by Astra at the owner's request.
+- Branch `claude/wip-c23` (`54d4de3`, review found nothing), merged into `claude/sleepy-ritchie-g8ruhv`. Presentation and audio timing only.
+- Backdrop blur: new `Runtime/NativeUiBlur.cs` + `Resources/NativeUiBlur.shader` (13-tap separable Gaussian). A command buffer on the last screen camera (AfterEverything) copies the finished 3D frame at quarter and eighth size only while a panel asked for it in the last 30 frames, then releases it; `NativeUi.Backdrop` draws it under rounded panels (U.Panel, the lobby shell, the death card), falling back to the plain tint. Text `filter: blur` is drawn as soft kit copies (intro lines and name, boss intro, count tick, result word). Clip-path: `U.Polygon` (lightning/Emperor class band) and exact Siren split bands (chip card name, Siren reveal, PvE banners, boss title letters). CSS 3D card turns: none remain after the chip table.
+- Install cue (`Core/NativeInstallCue.cs`): PvP draft plays once at the plant (ChosenAt + 0.9 s); the Siren pick holds the player's own Install event until the follow-through's plant (or its early end). DraftTableChecks covers the windows.
+- Checks on the merged tree: Unity runtime+editor compile OK; check_relay 143 PASS; Python 45 OK (1 skip); package_source OK (846 files).
+- Not run: the blur capture and shader on a GPU (HDR/MSAA, orientation, frame cost), real IMGUI band clipping, Windows build, listening test.
+
 ## 2026-10-09 14:52 EDT — Astra — account setup released through Update
 - Game PR #81 plus test-isolation PR #83 are merged at shared/cloud
   `603ca76b69b2256d58b24abc4ac23166306e1fd4`. UBA #8 built that exact commit;

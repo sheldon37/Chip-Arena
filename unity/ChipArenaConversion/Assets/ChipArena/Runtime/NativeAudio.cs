@@ -10,7 +10,7 @@ namespace ChipArena.UnityConversion
         public float Effects=.3f,Music=.35f,Menu=.6f;public bool Muted;
         private readonly Dictionary<string,AudioClip> clips=new Dictionary<string,AudioClip>();
         private readonly NativeSoundLimiter limiter=new NativeSoundLimiter();private bool[] keyedVoices;
-        private readonly NativeEventSounds.Sound[] routed=new NativeEventSounds.Sound[NativeEventSounds.MaxSounds];private readonly NativeSpikeRises spikeRises=new NativeSpikeRises();
+        private readonly NativeEventSounds.Sound[] routed=new NativeEventSounds.Sound[NativeEventSounds.MaxSounds];private readonly NativeSpikeRises spikeRises=new NativeSpikeRises();private readonly NativeInstallCue installCue=new NativeInstallCue();
         private readonly Dictionary<string,float> cues=new Dictionary<string,float>();
         private AudioSource[] voices;private AudioSource music,introVoice;private string introKey="";private readonly Dictionary<int,AudioClip> beepClips=new Dictionary<int,AudioClip>();private string track="",phase="";private int cursor,generation=-1,countdown=-1,rotation=-1;private Vector3 listener;private float yaw;
         private readonly string[] rotationTracks={"foundry-rush","orange-line","kinetic-city","afterburner","night-circuit","critical-mass","jump-drive","neon-recoil","overpass","last-set"};
@@ -57,7 +57,7 @@ namespace ChipArena.UnityConversion
             // audio.ts update: falloff and pan are heard from the local pilot (`listener=self.pos`), turned by the view yaw.
             if(camera!=null){listener=camera.transform.position;yaw=camera.transform.eulerAngles.y*Mathf.Deg2Rad;}if(arena?.Local?.Body!=null)listener=arena.Local.Body.position;
             Slender(arena,menu);if(arena==null){Track("music/menu-afterglow",Menu);return;}
-            if(generation!=arena.Generation){generation=arena.Generation;cursor=0;deathAudio.Tick(0,true);cues.Clear();limiter.Clear();spikeRises.Clear();phase="";countdown=-1;foreach(var v in voices)v.Stop();}
+            if(generation!=arena.Generation){generation=arena.Generation;cursor=0;deathAudio.Tick(0,true);cues.Clear();limiter.Clear();spikeRises.Clear();installCue.Clear();phase="";countdown=-1;foreach(var v in voices)v.Stop();}
             var me=arena.Local;var match=arena.Match;float t=arena.Time;SceneCues(arena,menu);if(!menu)MarkBeeps(arena);
             if(menu)Track("music/menu-afterglow",Menu);
             else if(arena.BossSongTime>=0)Track("music/black-siren-protocol",Music*.55f,arena.Pve?.Holding==true&&arena.Pve.Cinematic!="intro",arena.BossTrack.Looped(arena.BossSongTime));
@@ -70,6 +70,8 @@ namespace ChipArena.UnityConversion
             }
             // audio.ts AudioCursor: each event once, played only while .4 s fresh (never ahead of the clock), routed by
             // NativeEventSounds (ArenaAudio.update's event branch).
+            // The Siren pick's follow-through holds my own Install cue for its plant (NativeInstallCue).
+            string held=installCue.Step(FollowChip,FollowStarted,FollowAge);if(held!=null)InstallCue(held);
             var events=arena.Events;int newest=0;for(int i=0;i<events.Count;i++)newest=Math.Max(newest,events[i].Id);if(newest>0&&newest<cursor)cursor=0;
             for(int i=0;i<events.Count;i++){var e=events[i];if(e.Id<=cursor||t-e.Time>.4f||t<e.Time)continue;EventSounds(arena,events,i,me);}
             cursor=Math.Max(cursor,newest);
@@ -86,8 +88,8 @@ namespace ChipArena.UnityConversion
             // (simulation.ts:156, message = the chip), whose Mishima/arcade cue routes like the PvE Install.
             int rose=spikeRises.Step(arena.MapId,match.Phase==NativePhase.Fight&&match.Time-match.FightAt>=2,match.Time);
             for(int bed=0;rose!=0&&bed<NativeSpikeRises.Beds;bed++)if((rose&1<<bed)!=0){var s=NativeEventSounds.SpikeRise;Play(s.Clip,NativeArena.Vec(NativeSpikeRises.Position(bed)),s.Gain,s.Rate,s.Gate);}
-            if(match.Phase==NativePhase.Draft&&match.Chosen!=null&&match.Time>=match.ChosenAt&&match.Time-match.ChosenAt<.4&&Once("draft-install",(float)match.ChosenAt))
-            {int routes=NativeEventSounds.Route(new NativeEventSounds.Context{Kind=EventKind.Install,Detail=match.Chosen},routed);for(int i=0;i<routes;i++){var s=routed[i];if(s.Tone)ArcadeTone();else Play(s.Clip,null,s.Gain,s.Rate,s.Gate);}}
+            // It lands on the table's plant (NativeDraftTable.SoundAt after the pick), as the pilot sets the chip down.
+            if(match.Phase==NativePhase.Draft&&match.Chosen!=null&&NativeInstallCue.DraftDue(match.ChosenAt,match.Time)&&Once("draft-install",(float)match.ChosenAt))InstallCue(match.Chosen);
             int n=match.Phase==NativePhase.Countdown?(int)Math.Ceiling(match.PhaseEnd-match.Time):0;if(n>0&&n!=countdown)Play("countdown",null,.7f);countdown=n;
             string current=match.Phase.ToString();if(current!=phase){if(match.Phase==NativePhase.Fight)Play("go",null,.7f);if((match.Phase==NativePhase.Result||match.Phase==NativePhase.Match&&phase!="Result")&&(match.Winner!=0||arena.Pve?.Outcome!=null))Play(arena.Pve!=null?arena.Pve.Outcome=="victory"?"win":"lose":match.SameSide(me?.Seat,match.Seat(match.Winner))?"win":"lose",null,.65f);phase=current;}
             // audio.ts PvE stage cues: a wave start counts in, a clear or the possession sounds "go" (my revive is its event).
@@ -98,6 +100,9 @@ namespace ChipArena.UnityConversion
             }
             if(cues.Count>1024)cues.Clear();
         }
+        // The local Siren / Ward Zero pick follow-through (NativeDraftFollow sets these each frame; FollowChip null when none).
+        [NonSerialized] public string FollowChip;[NonSerialized] public float FollowStarted,FollowAge;
+        private void InstallCue(string chip){int routes=NativeEventSounds.Route(new NativeEventSounds.Context{Kind=EventKind.Install,Detail=chip},routed);for(int i=0;i<routes;i++){var s=routed[i];if(s.Tone)ArcadeTone();else Play(s.Clip,null,s.Gain,s.Rate,s.Gate);}}
         // One fresh event: resolve what the router needs from the arena (pilots, an impact's prop material; a Break carries
         // its material, an Explosion its fx tag, a HazardHit its hazard kind, a Teleport/Arc its source) and play its cues.
         // A pilot's death keeps the DEV kill clips on top of the source's cue, at rate 1 like audio.ts updateLove (its beats
@@ -105,7 +110,7 @@ namespace ChipArena.UnityConversion
         private void EventSounds(NativeArena arena,List<ArenaEvent> events,int index,NativePilot me)
         {
             var e=events[index];NativePilot source=null,target=null;foreach(var p in arena.Pilots){if(p.Seat.id==e.Source)source=p;if(p.Seat.id==e.Target)target=p;}
-            int local=me?.Seat.id??0;string material=e.Kind==EventKind.Break?e.Detail:null;int supernova=0;
+            int local=me?.Seat.id??0;if(e.Kind==EventKind.Install&&local>0&&e.Source==local&&installCue.Hold(e.Detail))return;string material=e.Kind==EventKind.Break?e.Detail:null;int supernova=0;
             if(e.Kind==EventKind.Impact)foreach(var prop in arena.Props)if(prop.Definition.id==e.SurfaceId){material=prop.Definition.material;break;}
             if(e.Kind==EventKind.BlockPulse)source?.Seat.chips?.TryGetValue("supernova",out supernova);
             var context=new NativeEventSounds.Context{Kind=e.Kind,Detail=e.Detail,SourceSpec=source?.Seat.spec,Material=material,Amount=e.Amount,Radius=e.Radius,

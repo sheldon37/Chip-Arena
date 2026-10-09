@@ -176,13 +176,20 @@ namespace ChipArena.UnityConversion
         // .pilot-class-fx: a dim 2 px line in the weapon colour with a light that sweeps across it (lobby-metal, 3.6 s);
         // the source's per-weapon variants: a dashed pulse (machine gun, L33T), a short scanning segment (rifle), a
         // flickering current (lightning, Emperor) and a breathing tide (water, darkness, shield).
+        // Lightning / Emperor: the 7 px bar's zigzag current (clip-path polygon) under linear-gradient(90deg, transparent, the
+        // weapon colour, #fff8, transparent), drawn as the colour's and the white stop's shares of that gradient.
+        private static readonly Vector2[] Bolt={new Vector2(0,.35f),new Vector2(.24f,.35f),new Vector2(.30f,0),new Vector2(.46f,.70f),new Vector2(.53f,.25f),new Vector2(.76f,.40f),new Vector2(1,.30f),new Vector2(1,.65f),new Vector2(.74f,.70f),new Vector2(.54f,.55f),new Vector2(.46f,1),new Vector2(.29f,.45f),new Vector2(.24f,.65f),new Vector2(0,.70f)};
+        private static readonly float[] BoltAt={0,1/3f,2/3f,1},BoltColour={0,1,0,0},BoltWhite={0,0,.533f,0};
         private static void ClassUnderline(Rect r,string spec,Color style,float a,float t)
         {
+            bool bolt=spec=="lightning"||spec=="emperor";if(bolt)r=new Rect(r.x,r.yMax-7,r.width,7);
             U.Fill(r,U.A(style,.2f*a));U.Glow(r,U.A(style,.18f*a),6);
             if(spec=="machinegun"||spec=="leet"){float pulse=.3f+.6f*(.5f+.5f*Mathf.Sin(t*Mathf.PI*2/1.8f));for(float x=r.x;x<r.xMax;x+=10)U.Fill(new Rect(x,r.y,Mathf.Min(5,r.xMax-x),r.height),U.A(style,pulse*a));return;}
             if(spec=="rifle"){float k=.5f-.5f*Mathf.Cos(t*Mathf.PI*2/3);float w=r.width*.25f;U.Fill(new Rect(r.x+k*(r.width-w),r.y,w,r.height),U.A(style,.9f*a));return;}
-            if(spec=="lightning"||spec=="emperor"){float ph=Mathf.Repeat(t/2.8f,1);float o=ph>.70f&&ph<.82f?.9f:ph>=.82f&&ph<.86f?.45f:.3f;U.Fill(new Rect(r.x,r.y-2,r.width,r.height+4),U.A(style,o*.6f*a));U.Fill(r,U.A(Color.white,o*.5f*a));return;}
-            if(spec=="water"||spec=="darkness"||spec=="shield"){float period=spec=="water"?3:spec=="shield"?3.8f:4;float k=.5f-.5f*Mathf.Cos(t*Mathf.PI*2/period);float w=r.width*(.35f+.65f*k);U.Fill(new Rect(r.center.x-w/2,r.y,w,r.height),U.A(style,(.4f+.6f*k)*a));return;}
+            if(bolt){float ph=Mathf.Repeat(t/2.8f,1);float o=.7f*(ph>.70f&&ph<.82f?.9f:ph>=.82f&&ph<.86f?.45f:.3f);U.Polygon(r,Bolt,BoltAt,BoltColour,U.A(style,o*a));U.Polygon(r,Bolt,BoltAt,BoltWhite,U.A(Color.white,o*a));return;}
+            if(spec=="water"||spec=="darkness"||spec=="shield"){float period=spec=="water"?3:spec=="shield"?3.8f:4;float k=.5f-.5f*Mathf.Cos(t*Mathf.PI*2/period);float w=r.width*(.35f+.65f*k);var tide=new Rect(r.center.x-w/2,r.y,w,r.height);
+                // Darkness: filter: blur(2px) spreads the tide into a soft band about a third as bright at its core.
+                if(spec=="darkness")U.Glow(tide,U.A(style,.45f*(.4f+.6f*k)*a),4);else U.Fill(tide,U.A(style,(.4f+.6f*k)*a));return;}
             float dur=spec=="pistol"?2.8f:spec=="daggers"?1.8f:spec=="greatsword"?5f:3.6f,f=Mathf.Repeat(t/dur,1);float pos=f<.9f?Mathf.Lerp(-1,1,f/.9f):1,alpha=f<.2f?f/.2f:f<.8f?1:f<.9f?(.9f-f)/.1f:0;
             float sw=r.width*.45f,sx=r.x+(pos+1)/2*(r.width+sw)-sw;float x0=Mathf.Max(r.x,sx),x1=Mathf.Min(r.xMax,sx+sw);
             if(x1>x0){float half=(x0+x1)/2;U.HGradient(new Rect(x0,r.y,half-x0,r.height),Color.clear,U.A(Color.Lerp(style,Color.white,.4f),alpha*a));U.HGradient(new Rect(half,r.y,x1-half,r.height),U.A(Color.Lerp(style,Color.white,.4f),alpha*a),Color.clear);}

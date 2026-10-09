@@ -25,6 +25,8 @@ namespace ChipArena.UnityConversion
                 return true;
             }
         }
+        // NativeAudio plays my held Install cue at the follow-through's plant (NativeInstallCue).
+        private void PveFollowAudio(){bool on=PveFollowing;nativeAudio.FollowChip=on?pveFollowChips[pveFollowIndex].id:null;nativeAudio.FollowStarted=pveFollowAt;nativeAudio.FollowAge=on?PveFollowAge:0;}
         // The overlay over the follow-through: the header and the installed chip's side card, nothing to click.
         private void PveFollowScreen(float W,float H)
         {
