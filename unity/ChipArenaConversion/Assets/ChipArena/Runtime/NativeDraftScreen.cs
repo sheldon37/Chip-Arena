@@ -169,7 +169,8 @@ namespace ChipArena.UnityConversion
         // ---- Siren / Ward Zero personal pick (pve/chip-screen.ts) ----
         private float pveOpenAt=-1;private int pveOpenId=-1;private Tray pveTray;
         private static string TierName(string t)=>t=="rainbow"?"Rainbow":NativeChipCard.RarityName(t);
-        private bool PveUnderAttack()=>arena.Events.Any(e=>e.Target==arena.Local.Seat.id&&(e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot)&&arena.Time-e.Time>=0&&arena.Time-e.Time<1.2f);
+        // pve/tracks.ts AttackedTrack: any hit on me with damage, burn and poison ticks included.
+        private bool PveUnderAttack(){int me=arena.Local?.Seat.id??0;foreach(var e in arena.Events)if(NativeEventFeedback.Attacked(e,me,arena.Time,1.2f))return true;return false;}
         private void PveChipScreen()
         {
             var v=arena.Pve;if(v==null||!v.Rows.TryGetValue(arena.Local.Seat.id,out var row)||row.Open==null||row.Open.Offers==null)return;var pick=row.Open;float W=U.W,H=U.H;

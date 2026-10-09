@@ -22,7 +22,6 @@ namespace ChipArena.UnityConversion
         private readonly NativeBlastSim sim=new NativeBlastSim();
         private readonly Layer solid,glow;private readonly GameObject root;private readonly Light[] lights=new Light[NativeBlastSim.LightCapacity];
         private HashSet<long> seen=new HashSet<long>(),seenBefore=new HashSet<long>(),halos=new HashSet<long>(),halosBefore=new HashSet<long>();
-        private readonly HashSet<long> liveFields=new HashSet<long>();private readonly Dictionary<long,float> zoneBorn=new Dictionary<long,float>();private readonly List<long> stale=new List<long>();
         private List<Marker> sites=new List<Marker>(),sitesBefore=new List<Marker>(),shots=new List<Marker>(),shotsBefore=new List<Marker>();
         private List<NativeBlastFrame.SirenSite> sirens=new List<NativeBlastFrame.SirenSite>(),sirensBefore=new List<NativeBlastFrame.SirenSite>();private readonly HashSet<int> sirenSeats=new HashSet<int>();
         private readonly List<Vector3> landings=new List<Vector3>();
@@ -45,17 +44,13 @@ namespace ChipArena.UnityConversion
         }
         public void Clear()
         {
-            sim.Clear();seen.Clear();seenBefore.Clear();halos.Clear();halosBefore.Clear();Halos.Clear();liveFields.Clear();zoneBorn.Clear();sites.Clear();sitesBefore.Clear();shots.Clear();shotsBefore.Clear();sirens.Clear();sirensBefore.Clear();
+            sim.Clear();seen.Clear();seenBefore.Clear();halos.Clear();halosBefore.Clear();Halos.Clear();sites.Clear();sitesBefore.Clear();shots.Clear();shotsBefore.Clear();sirens.Clear();sirensBefore.Clear();
             lastEvent=0;lastTime=-1;solid.Mesh.Clear();glow.Mesh.Clear();foreach(var light in lights)if(light!=null)light.enabled=false;
         }
         private static long Mix(long h,int v){unchecked{h^=(uint)v;h*=0x100000001b3L;return h;}}
         private static int Bits(float v)=>BitConverter.SingleToInt32Bits(v);
         private static long Key(NativeAbilityFx fx)
         {long h=unchecked((long)0xcbf29ce484222325UL);h=Mix(h,Bits(fx.Until));h=Mix(h,Bits(fx.Position.x));h=Mix(h,Bits(fx.Position.y));h=Mix(h,Bits(fx.Position.z));h=Mix(h,Bits(fx.Radius));return Mix(h,fx.Element*2+(fx.Beam?1:0));}
-        // Zones carry no id; owner, ability, kind and expiry stay fixed for a zone's life on host and guests (meteor-strike's
-        // burning ground changes kind and expiry, which makes it a new field exactly as in the source).
-        private static long ZoneKey(NativeAbilityZone z)
-        {long h=Mix(unchecked((long)0x9e3779b97f4a7c15UL),z.Owner?.Seat.id??0);h=Mix(h,z.Definition?.id?.GetHashCode()??0);h=Mix(h,z.Kind?.GetHashCode()??0);h=Mix(h,Bits(z.Until));return h|(1L<<62);}
         private static bool Explodes(string kind)=>kind=="bomb"||kind=="mine"||kind=="implosion";
         private static string Fx(ContentAbility d)=>string.IsNullOrEmpty(d.fx)?null:d.fx;
         private static string Site(List<Marker> list,Vector3 at){foreach(var s in list)if((s.Position-at).sqrMagnitude<.0025f)return s.Tag;return null;}
@@ -67,12 +62,13 @@ namespace ChipArena.UnityConversion
             string tag=Site(sites,at)??Site(sitesBefore,at);if(tag!=null)return tag;
             float best=float.MaxValue;Nearest(shots,at,ref best,ref tag);Nearest(shotsBefore,at,ref best,ref tag);return tag;
         }
-        private void Remember(NativeArena arena)
+        private void Remember(NativeArena arena,NativeFieldPresentation fields)
         {
             var swap=sitesBefore;sitesBefore=sites;sites=swap;sites.Clear();swap=shotsBefore;shotsBefore=shots;shots=swap;shots.Clear();
             foreach(var z in arena.AbilityZones)if(z.Definition!=null)sites.Add(new Marker{Position=z.Position+Vector3.up*.15f,Tag=Fx(z.Definition)});
-            // ChipField.Effect (the chip id the source keys styles on) exists on the host only; guests fall back to the kind.
-            foreach(var f in arena.ChipFields)if(Explodes(f.Kind))sites.Add(new Marker{Position=f.Position+Vector3.up*.15f,Tag=string.IsNullOrEmpty(f.Effect)?f.Kind:f.Effect});
+            // ChipField.Effect (the chip id the source keys styles on) exists on the host only; guests recover it from the field's
+            // Field event (NativeFieldPresentation.Fx) and fall back to the kind.
+            foreach(var f in arena.ChipFields)if(Explodes(f.Kind))sites.Add(new Marker{Position=f.Position+Vector3.up*.15f,Tag=fields?.Fx(f)??(string.IsNullOrEmpty(f.Effect)?f.Kind:f.Effect)});
             foreach(var s in arena.AbilityShots)if(s.Definition!=null)shots.Add(new Marker{Position=s.Position,Tag=Fx(s.Definition),Reach=Math.Max(1,s.Velocity.magnitude*.1f)+s.Radius});
             // Where the Siren's attacks record their darkness effects (NativeSiren SirenArea and StepSirenShot, NativeSirenStage).
             var swapSirens=sirensBefore;sirensBefore=sirens;sirens=swapSirens;sirens.Clear();sirenSeats.Clear();
@@ -132,33 +128,26 @@ namespace ChipArena.UnityConversion
                 if(seat.chips.TryGetValue("demolition",out int demolition)&&demolition>0)sim.Impact(x,y,z,.5+.12*demolition,0xffd45f,quality);
             }
         }
-        private void Fields(NativeArena arena,float now,double quality)
+        // The field views (chip fields and ability zones: key, fx, birth) are built once per frame by NativeFieldPresentation,
+        // which draws their glow, cores and domes from the same views. The emitters run on the views' clock (fields.Clock:
+        // continuous on guests), so births and emission stay in step with the telegraphs.
+        private void Fields(NativeFieldPresentation fields,double quality)
         {
-            liveFields.Clear();
-            foreach(var f in arena.ChipFields)
-            {
-                liveFields.Add(f.Id);
-                sim.Field(new NativeBlastField{Id=f.Id,Kind=f.Kind,Fx=string.IsNullOrEmpty(f.Effect)?null:f.Effect,X=f.Position.x,Y=f.Position.y,Z=f.Position.z,Radius=f.Radius,Born=f.Born,Until=f.Until},now,quality);
-            }
-            foreach(var z in arena.AbilityZones)
-            {
-                if(z.Definition==null)continue;long key=ZoneKey(z);liveFields.Add(key);if(!zoneBorn.TryGetValue(key,out float born))zoneBorn[key]=born=now;
-                // The mark locks when its fuse has duration left to run (NativeAbilities orbital-mark: LockAt=born+duration, Until=born+fuse).
-                double? lockAt=z.Definition.id=="orbital-mark"?z.Until-z.Definition.fuse+z.Definition.duration:(double?)null;
-                sim.Field(new NativeBlastField{Id=key,Kind=z.Kind,Fx=Fx(z.Definition),X=z.Position.x,Y=z.Position.y,Z=z.Position.z,Radius=z.Radius,Born=born,Until=z.Until,LockAt=lockAt},now,quality);
-            }
-            sim.Prune(liveFields);stale.Clear();foreach(var key in zoneBorn.Keys)if(!liveFields.Contains(key))stale.Add(key);foreach(var key in stale)zoneBorn.Remove(key);
+            if(fields==null)return;var views=fields.Views;double now=fields.Clock;
+            for(int i=0;i<views.Count;i++)sim.Field(views[i],now,quality);
+            sim.Prune(fields.Live);
         }
         /// <summary>now is the arena presentation clock (record ages, field emitters, rewinds). paused: the match itself is
-        /// stopped (offline menu); the blasts then hold still, otherwise they advance with the render frame as in the source.</summary>
-        public void Render(NativeArena arena,Camera camera,float now,float quality,bool paused)
+        /// stopped (offline menu); the blasts then hold still, otherwise they advance with the render frame as in the source.
+        /// fields: this frame's field views and their clock (NativeFieldPresentation.Collect already ran).</summary>
+        public void Render(NativeArena arena,Camera camera,float now,float quality,bool paused,NativeFieldPresentation fields)
         {
             // A rewind (killcam, new round) clears.
             if(generation!=arena.Generation||now<lastTime-.25f){Clear();generation=arena.Generation;}
             lastTime=Math.Max(lastTime,now);double dt=NativeBlastFrame.Step(Time.unscaledDeltaTime,paused);
             double q=Math.Max(0,Math.Min(1,quality));
             // Source renderer order: event blasts, then fields(state), then update(dt), then draw.
-            Remember(arena);Effects(arena,now,q);Impacts(arena,now,q);Fields(arena,now,q);sim.Update(dt);
+            Remember(arena,fields);Effects(arena,now,q);Impacts(arena,now,q);Fields(fields,q);sim.Update(dt);
             Fill(solid,sim.Solid,camera);Fill(glow,sim.Glow,camera);
             for(int i=0;i<lights.Length;i++)
             {

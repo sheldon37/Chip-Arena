@@ -17,16 +17,27 @@ namespace ChipArena.UnityConversion
         {
             float t=arena.Time;deathAudio.Tick(t,menu||arena.Match.Phase==NativePhase.Lobby||arena.Match.Phase==NativePhase.Intro);if(menu)return;
             foreach(var p in arena.Pilots.Where(p=>p.Hp<=0&&p.Death!=null).OrderBy(p=>p.Death.at).ThenBy(p=>p.Death.seed))deathAudio.Add(p.Death.seed,p.Seat.id,p.Death.owner,p.Death.at,t,p.Seat.name,null);
-            foreach(var item in deathAudio.Items)for(int i=0;i<2;i++){float at=item.At+(i==0?0:1.05f);if(t<at||t-at>.25f||!Once("broadcast:"+item.Seed+":"+i,at)||Muted||Effects<=0)continue;var voice=voices.FirstOrDefault(v=>!v.isPlaying);if(voice!=null){voice.clip=i==0?(deathLaunch??(deathLaunch=DeathTone(false))):(deathBurst??(deathBurst=DeathTone(true)));voice.pitch=1;voice.panStereo=0;voice.volume=Effects;voice.Play();}if(i==1)Play("explosion",null,.7f);}
+            foreach(var item in deathAudio.Items)for(int i=0;i<2;i++){float at=item.At+(i==0?0:1.05f);if(t<at||t-at>.25f||!Once("broadcast:"+item.Seed+":"+i,at)||Muted||Effects<=0)continue;var voice=Voice();if(voice!=null){voice.clip=i==0?(deathLaunch??(deathLaunch=DeathTone(false))):(deathBurst??(deathBurst=DeathTone(true)));voice.pitch=1;voice.panStereo=0;voice.volume=Effects;voice.Play();}if(i==1)Play("explosion",null,.7f);}
             foreach(var e in arena.Entries)if(t>=e.openAt&&t-e.openAt<.4f&&Once("entry:"+e.entry,e.openAt))Play("metal",null,.18f);
+            // pve-deny has no Unity event: my denied machine use plays from the machine log. Buys, the reveal phase and my
+            // revive play from their PveBuy / PvePhase / PveRevive events, and the wave count-in from NativeAudio.Render.
             if(arena.Pve!=null)
-            {
-                foreach(var use in arena.Pve.Machines)if(use.owner==arena.LocalId&&t>=use.at&&t-use.at<.3f&&Once("machine:"+use.machine+":"+use.result,use.at))Play("ui",null,use.result=="deny"?.3f:.6f);
-                if(Once("pve-stage:"+arena.Pve.Stage+":"+arena.Pve.Wave,0)&&arena.Pve.Stage=="wave")Play("countdown",null,.6f);
-                if(arena.Pve.Reveal>0&&Once("pve-reveal",arena.Pve.Reveal)){Play("darkness",null,.7f);Play("metal",null,.35f);}
-                if(arena.Local?.RevivedAt>=0&&t-arena.Local.RevivedAt<.3f&&Once("revive",arena.Local.RevivedAt))Play("go",null,.6f);
-            }
+                foreach(var use in arena.Pve.Machines)if(use.result=="deny"&&use.owner==arena.LocalId&&t>=use.at&&t-use.at<.3f&&Once("machine:"+use.machine+":"+use.result,use.at))Play("ui",null,.3f);
         }
-        private void ClearSceneAudio(){CapturedAnimation.Release(deathLaunch);CapturedAnimation.Release(deathBurst);}
+        // audio.ts arcadeTone(5, true, true) for an arcade-* install: a sawtooth sweeping 120 -> 920 Hz over .25 s, its gain
+        // falling .09 -> .001 over .35 s, stopped at .38 s.
+        private AudioClip arcadeTone;
+        private void ArcadeTone()
+        {
+            if(Muted||Effects<=0)return;
+            if(arcadeTone==null)
+            {
+                const int rate=48000;var samples=new float[(int)(rate*.38f)];double phase=0;
+                for(int i=0;i<samples.Length;i++){double t=i/(double)rate,f=t<.25?120*Math.Pow(920/120.0,t/.25):920,g=t<.35?.09*Math.Pow(.001/.09,t/.35):.001;phase+=f/rate;samples[i]=(float)(2*(phase-Math.Floor(phase+.5))*g);}
+                arcadeTone=AudioClip.Create("Arcade install tone",samples.Length,1,rate,false);arcadeTone.SetData(samples,0);
+            }
+            var voice=Voice();if(voice==null)return;voice.clip=arcadeTone;voice.pitch=1;voice.panStereo=0;voice.volume=Effects;voice.Play();
+        }
+        private void ClearSceneAudio(){CapturedAnimation.Release(deathLaunch);CapturedAnimation.Release(deathBurst);CapturedAnimation.Release(arcadeTone);}
     }
 }

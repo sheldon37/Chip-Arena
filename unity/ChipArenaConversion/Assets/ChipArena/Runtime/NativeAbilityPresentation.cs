@@ -4,16 +4,13 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class ArenaPresentation
     {
-        public void RenderAbilities(NativeArena arena,Vector3? preview=null)
+        // The local E aim point and whether it was clamped; NativeFieldPresentation draws the source's mote preview in RenderGlow.
+        private Vector3? abilityPreview;private bool abilityPreviewClamped;
+        public void RenderAbilities(NativeArena arena,Vector3? preview=null,bool previewClamped=false)
         {
             foreach(var b in batches)b.Clear();SourceWorld(arena);DeathPresentation(arena);RenderWoundSpray(arena.Time);DeathBroadcasts(arena);WorldEffects(arena);
-            foreach(var shot in arena.AbilityShots)
-            {
-                int color=shot.Owner.Pose.MagicVisual>0?6+shot.Owner.Pose.MagicVisual:6;
-                Vector3 scale=Vector3.one*Mathf.Max(.16f,shot.Radius*2);
-                if(shot.Definition.id=="tidal-wave")scale=new Vector3(2,.8f,.35f);
-                Add(color,Matrix4x4.TRS(shot.Position,shot.Velocity.sqrMagnitude>.01f?Quaternion.LookRotation(shot.Velocity):Quaternion.identity,scale));
-            }
+            // Bullets and ability shots are NativeShotPresentation's source models (RenderGlow); the Siren keeps its placeholder.
+            SirenShotPlaceholders(arena);
             foreach(var shot in arena.MeleeShots)
             {
                 float age=arena.Time-shot.At;
@@ -35,31 +32,13 @@ namespace ChipArena.UnityConversion
                     Add(4,Matrix4x4.TRS(at,Quaternion.Euler(i*17,age*60,i*29),Vector3.one*(.10f+.04f*(i%3))*life));
                 }
             }
-            foreach(var zone in arena.AbilityZones)
-            {
-                int color=zone.Owner.Pose.MagicVisual>0?6+zone.Owner.Pose.MagicVisual:6;
-                if(zone.Kind=="bomb")
-                {
-                    float pulse=.3f+.1f*Mathf.Sin(arena.Time*16);
-                    Add(color,Matrix4x4.TRS(zone.Position+Vector3.up*.14f,Quaternion.Euler(0,45,0),new Vector3(pulse,.12f,pulse)));
-                }
-                else if(zone.Kind=="black-hole")
-                {
-                    Add(10,Matrix4x4.TRS(zone.Position+Vector3.up*.7f,Quaternion.Euler(arena.Time*50,arena.Time*80,0),Vector3.one*.75f));
-                }
-                else for(int i=0;i<12;i++)
-                {float a=i*Mathf.PI/6;Vector3 p=zone.Position+new Vector3(Mathf.Cos(a)*zone.Radius*.65f,.15f,Mathf.Sin(a)*zone.Radius*.65f);Add(7,Matrix4x4.TRS(p,Quaternion.identity,new Vector3(.13f,.25f+.15f*Mathf.Sin(arena.Time*12+i),.13f)));}
-            }
+            // Ability zones draw with the chip fields (NativeFieldPresentation: glow, singularity core; NativeBlastPresentation: volume).
             foreach(var fx in arena.AbilityEffects)
             {
                 int color=fx.Element>0?6+fx.Element:6;
                 if(fx.Beam){Vector3 d=fx.Position-fx.From;if(d.sqrMagnitude>.001f)Add(color,Matrix4x4.TRS((fx.Position+fx.From)*.5f,Quaternion.LookRotation(d),new Vector3(.055f,.055f,d.magnitude)));}
             }
-            if(preview.HasValue)
-            {
-                var d=arena.Content.Ability(arena.ViewPilot.Seat.spec,"e");
-                Ring(preview.Value+Vector3.up*.08f,Mathf.Max(.3f,NativeAbilityRules.Radius(d,arena.ViewPilot.Stats)),4,0);
-            }
+            abilityPreview=preview;abilityPreviewClamped=previewClamped;
             DrawBatches(null,0,false);
         }
         private void Ring(Vector3 center,float radius,int color,float angle)

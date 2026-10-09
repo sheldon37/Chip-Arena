@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion.Editor
                     {
                         var presentation=host.AddComponent<ArenaPresentation>();presentation.Initialize(false);
                         presentation.ResetPresentation();presentation.ResetPresentation();
-                        if(host.GetComponentsInChildren<AudioSource>(true).Length!=25||host.GetComponentsInChildren<ParticleSystem>(true).Length!=1||host.GetComponentsInChildren<Light>(true).Length!=7||presentation.ParticleCount!=0)
+                        if(host.GetComponentsInChildren<AudioSource>(true).Length!=25||host.GetComponentsInChildren<ParticleSystem>(true).Length!=1||host.GetComponentsInChildren<Light>(true).Length!=7+NativeBlastSim.LightCapacity||presentation.ParticleCount!=0)
                             throw new Exception("Presentation startup did not initialize/reset its audio, particles and light pool");
                     }
                     finally{CapturedAnimation.Release(host);}
@@ -83,7 +83,7 @@ namespace ChipArena.UnityConversion.Editor
             if(NativeSceneMotion.Count!=31)throw new Exception("Source cinematic scenes are incomplete");
             if(NativeSourceMotion.ClipCount!=165)throw new Exception("Source motion bank is incomplete");
             using(var models=new NativeSourceModels()){foreach(var map in data.maps)if(!models.Has("map-"+map.id))throw new Exception("Missing map model: "+map.id);foreach(var weapon in data.weapons)if(!models.Has("weapon-"+weapon.id)&&weapon.id!="siren")throw new Exception("Missing weapon model: "+weapon.id);foreach(var part in new[]{"saw","saw-track","spikes","spikes-cones","spikes-surface","lava","lava-surface","lava-currents","lava-bubble-0","lava-bubble-1"})if(!models.Has("hazard-"+part))throw new Exception("Missing stage hazard model: "+part);}
-            foreach(var name in new[]{"NativeSourceLit","NativeSourceTransparent","NativeWardPit","NativeNightSky","NativeSmoke","NativeHologram","NativeStatusUnlit","NativeBeacon","NativeKillPoints","NativeKillBody","NativeKillGhost"}){var shader=Resources.Load<Shader>(name);if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: "+name);}
+            foreach(var name in new[]{"NativeSourceLit","NativeSourceTransparent","NativeWardPit","NativeNightSky","NativeSmoke","NativeHologram","NativeStatusUnlit","NativeBeacon","NativeFieldGlow","NativeKillPoints","NativeKillBody","NativeKillGhost"}){var shader=Resources.Load<Shader>(name);if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: "+name);}
             var audioDir=Path.Combine(Application.dataPath,"Conversion/Resources/Audio");int audioCount=0;foreach(var file in Directory.EnumerateFiles(audioDir,"*",SearchOption.AllDirectories).Where(p=>p.EndsWith(".mp3")||p.EndsWith(".wav"))){var path="Assets"+file.Substring(Application.dataPath.Length).Replace('\\','/');if(AssetDatabase.LoadAssetAtPath<AudioClip>(path)==null)throw new Exception("Audio import failed: "+path);audioCount++;}if(audioCount!=83)throw new Exception("Source audio bank is incomplete: "+audioCount);
             Debug.Log("PASS imported conversion assets: 165 source motion clips, 133 source models / 31 cosmetic scenes, 83 audio clips and full draft catalog");
             var active=SceneManager.GetActiveScene();Vector3 gravity=Physics.gravity;int pads=0;
@@ -122,7 +122,7 @@ namespace ChipArena.UnityConversion.Editor
                             if(ReferenceEquals(shown.Actors[0],pilot.Pose)||Vector3.Distance(NativeArena.Vec(shown.Actors[0].Position),pilot.Body.transform.position-Vector3.up*.865f)>.00001f)
                                 throw new Exception("Render snapshot must copy the interpolated transform");
                             float hp=pilot.Pose.Hp;shown.Actors[0].Hp=0;if(pilot.Pose.Hp!=hp)throw new Exception("Render snapshot changed authority");
-                            CheckNetworkSerialization(arena);CheckCombatParity(data);CheckPresentation(arena);CheckGlow(arena,match);arena.ValidateMelee();arena.ValidateSpecials();arena.ValidateRangedAndMagic();
+                            CheckNetworkSerialization(arena);CheckCombatParity(data);CheckPresentation(arena);CheckGlow(arena,match);CheckShots(arena);arena.ValidateMelee();arena.ValidateSpecials();arena.ValidateRangedAndMagic();
                         }
                         if(map.id=="siren")arena.ValidatePveEconomy(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text));
                         Debug.Log("PASS native map "+map.id+": isolated Edit-mode physics, 8 spawn floors, capsule settling");
