@@ -105,15 +105,28 @@ namespace ChipArena.UnityConversion
                 p.Rotation[CapturedRig.RArm]=Quaternion.Slerp(p.Rotation[CapturedRig.RArm],CapturedRig.Euler(o[0],o[1],o[2]),c);
                 p.Rotation[CapturedRig.RElbow]=Quaternion.Slerp(p.Rotation[CapturedRig.RElbow],CapturedRig.Euler(o[3]),c);
                 p.Rotation[CapturedRig.RHand]=Quaternion.Slerp(Quaternion.Identity,CapturedRig.Euler(o[4],o[5],o[6]),c);
-                float release=NativeAbilityRules.PrimaryWindup(a.MagicVisual,a.CastRate),windup=release*.6f,age=time-a.AttackAt;
-                float coil=age<windup?Smooth(age/Math.Max(.01f,windup)):1-Smooth((age-windup)/Math.Max(.01f,release-windup));
-                float drive=age>=windup?Smooth((age-windup)/Math.Max(.01f,release-windup))*(1-Smooth((age-release-.1f)/.3f)):0;
-                tilt+=a.AbilityAt>a.AttackAt?o[11]*c*(firstPerson?.5f:1):(-.2f*coil+.12f*drive)*c;
+                tilt+=CastTilt(a,time,firstPerson,o,c);
             }
+            Staff(p,a,time,tilt,0,guardWeight);
+        }
+        // Staff tilt of the cast phrase over its weight `c`: dips back on the coil, tips toward the target through the release.
+        public static float CastTilt(Actor a,float time,bool firstPerson,float[] o,float c)
+        {
+            float release=NativeAbilityRules.PrimaryWindup(a.MagicVisual,a.CastRate),windup=release*.6f,age=time-a.AttackAt;
+            float coil=age<windup?Smooth(age/Math.Max(.01f,windup)):1-Smooth((age-windup)/Math.Max(.01f,release-windup));
+            float drive=age>=windup?Smooth((age-windup)/Math.Max(.01f,release-windup))*(1-Smooth((age-release-.1f)/.3f)):0;
+            return a.AbilityAt>a.AttackAt?o[11]*c*(firstPerson?.5f:1):(-.2f*coil+.12f*drive)*c;
+        }
+        private static readonly int[] ArmBones={CapturedRig.LArm,CapturedRig.LElbow,CapturedRig.LHand,CapturedRig.RArm,CapturedRig.RElbow,CapturedRig.RHand};
+        private static readonly Quaternion[] SavedArms=new Quaternion[6];
+        // The staff held in chest space (pitched `tiltX` from upright, rolled `rollZ`: the magic gait's stride sway), then the
+        // staff guard over it.
+        public static void Staff(CapturedRig.Pose p,Actor a,float time,float tiltX,float rollZ,float guardWeight)
+        {
             // The shaft's +z points up in chest space, independent of the carrying elbow.
             p.World();var chest=p.WorldRotation[CapturedRig.Chest];
             int parent=CapturedRig.Bones[CapturedRig.LHand].Parent;
-            p.Rotation[CapturedRig.LHand]=Quaternion.Inverse(p.WorldRotation[parent])*chest*CapturedRig.Euler(-(float)Math.PI/2+tilt);
+            p.Rotation[CapturedRig.LHand]=Quaternion.Inverse(p.WorldRotation[parent])*chest*CapturedRig.Euler(-(float)Math.PI/2+tiltX,0,rollZ);
             float g=guardWeight<0?(time<a.BlockUntil?1:0):MathUtil.Clamp(guardWeight,0,1);
             if(g>.001f)
             {
@@ -121,7 +134,7 @@ namespace ChipArena.UnityConversion
                 var spine=NativeFirstPersonPose.EulerXYZ(p.Rotation[CapturedRig.Spine]);p.Rotation[CapturedRig.Spine]=CapturedRig.Euler(spine.X,spine.Y*(1-g),spine.Z);
                 p.Rotation[CapturedRig.Chest]*=CapturedRig.Euler(.1f*g);p.Rotation[CapturedRig.Head]*=CapturedRig.Euler(.15f*g);p.World();
                 var guardChest=p.WorldRotation[CapturedRig.Chest];
-                var saved=new Quaternion[6];int[] armBones={CapturedRig.LArm,CapturedRig.LElbow,CapturedRig.LHand,CapturedRig.RArm,CapturedRig.RElbow,CapturedRig.RHand};
+                var saved=SavedArms;var armBones=ArmBones;
                 for(int i=0;i<6;i++)saved[i]=p.Rotation[armBones[i]];
                 var wrist=CapturedRig.Rot(CapturedRig.Y,-(float)Math.PI/2)*CapturedRig.Rot(CapturedRig.X,-.25f);
                 Vector3 left=CapturedRig.V(.2f,.22f,.34f),axis=Vector3.Transform(CapturedRig.Z,wrist);
@@ -133,6 +146,64 @@ namespace ChipArena.UnityConversion
                 p.World();p.Rotation[CapturedRig.LHand]=Quaternion.Inverse(p.WorldRotation[parent])*Quaternion.Slerp(carryWrist,guardChest*wrist,g);
             }
             p.World();
+        }
+    }
+    // A third-person magic pilot as the source's sampleCharacter poses it (presentation only): motion-quality locomotion in
+    // the magic stance (gait feet, body bob, sway and lean, the pelvis/spine/chest counter-twist, head, shoulders and arm
+    // swing), the sprint lean, then magic-motion's magicLayer over that gait rather than over a reset rest pose: the staff
+    // carry fades into the arm swing with speed, the cast phrase adds its twist, weight shift and right-arm drive, the staff
+    // stays upright in chest space with its stride sway, then the staff guard. Finish runs the ground pass after the native
+    // overlays (roll, reactions, recovery). The first-person view model keeps MagicPose.Apply.
+    public sealed class MagicMotion
+    {
+        public readonly MeleeRig Rig=new MeleeRig();
+        private readonly MeleeGait gait=new MeleeGait();
+        private readonly MeleeView view=new MeleeView();
+        private float last=-100,dt=1/60f,sprintBlend;private int viewId=int.MinValue;
+        private static string Spec(int element)=>element==2?"water":element==3?"lightning":element==4?"darkness":"fire";
+        // The caller sets Rig.GroupPosition / GroupYaw (source frame) first.
+        public void Sample(Actor a,float time,CapturedRig.Pose pose,float[] channels,float guardWeight)
+        {
+            dt=last<-90||time<last||time-last>.35f?1/60f:Math.Min(.1f,time-last);last=time;
+            const float D=(float)Math.PI/180;var v=view;var r=Rig;
+            if(a.Id!=viewId){viewId=a.Id;v.Id=a.Id.ToString();}
+            v.Spec=Spec(a.MagicVisual);v.Yaw=-a.Yaw*D;v.Pitch=a.Pitch*D;v.Grounded=a.Grounded;v.Hp=a.Hp;v.Sprinting=a.Sprinting;v.HitStunUntil=a.StunUntil;
+            v.RollAt=a.RollAt;v.RollUntil=a.RollAt>-90?a.RollAt+a.VisualRollDuration:-100;
+            // sampleCharacter: hitstun and rolls hold the stride (the action moves the root, not running steps).
+            bool planted=v.HitStunUntil>time||v.Rolling(time);
+            r.Reset();r.LegsAuthored=r.LegsLayered=r.MocapPosed=false;
+            if(planted)r.Motion*=(float)Math.Exp(-MeleeMath.Clamp(dt,0,.05f)*22);
+            v.Vel=planted?new Vector3(0,a.Velocity.y,0):new Vector3(-a.Velocity.x,a.Velocity.y,a.Velocity.z);
+            gait.Locomotion(r,v,time,dt,planted);
+            v.Vel=new Vector3(-a.Velocity.x,a.Velocity.y,a.Velocity.z);
+            // melee-guard sprintLean: the magic specs have no stance lean, only the sprint lean.
+            float run=MeleeMath.Ease((r.Motion-.1f)/.65f);
+            sprintBlend+=((v.Sprinting?1:0)-sprintBlend)*(1-(float)Math.Exp(-Math.Min(.05f,Math.Max(0,dt))*10));
+            if(sprintBlend>1e-4f)r.AddE(CapturedRig.Spine,.12f*sprintBlend*run,0,0);
+            // magicLayer: the staff carry, faded out with speed so the arm swings with the gait.
+            float pitch=v.Pitch,carry=MeleeMath.Clamp(1-MeleeMath.Ease((r.Motion-.10f)/.65f),0,1);
+            r.Slerp(CapturedRig.LArm,MeleeMath.Euler(-.24f-pitch*.08f,-.08f,.16f),carry);r.Slerp(CapturedRig.LElbow,MeleeMath.Euler(-.42f,0,0),carry);r.SetE(CapturedRig.LHand,0,0,0);
+            float c=MagicPose.Sample(a,time,pitch,false,channels),tilt=.12f;
+            if(c>.001f)
+            {
+                // Hip/shoulder separation added over the gait (pelvis leads, chest follows, the head stays on the target).
+                var o=channels;float twist=o[7]*(a.MagicVisual==4?1.15f:a.MagicVisual==2?1.1f:1)*c;
+                r.AddE(CapturedRig.Pelvis,0,twist*.35f,0);r.AddE(CapturedRig.Spine,0,twist*.65f,0);r.AddE(CapturedRig.Chest,0,twist*.48f,0);
+                var head=r.E[CapturedRig.Head];r.SetE(CapturedRig.Head,head.X,-twist*.55f,head.Z);
+                r.AddE(CapturedRig.Body,o[8]*c,0,0);r.P[CapturedRig.Body]+=new Vector3(0,-o[10]*c,o[9]*c);
+                var clav=r.E[CapturedRig.RClav];r.SetE(CapturedRig.RClav,clav.X,-.12f*c,clav.Z);r.AddE(CapturedRig.LArm,o[12]*c,0,0);
+                r.Slerp(CapturedRig.RArm,MeleeMath.Euler(o[0],o[1],o[2]),c);r.Slerp(CapturedRig.RElbow,MeleeMath.Euler(o[3],0,0),c);r.Slerp(CapturedRig.RHand,MeleeMath.Euler(o[4],o[5],o[6]),c);
+                tilt+=MagicPose.CastTilt(a,time,false,o,c);
+            }
+            r.WritePose(pose);
+            // Staff upright in chest space with the small stride sway.
+            float sway=MeleeMath.Clamp(r.Motion,0,1);
+            MagicPose.Staff(pose,a,time,tilt+(float)Math.Cos(2*r.Stride)*.04f*sway,(float)Math.Sin(r.Stride)*.08f*sway,guardWeight);
+        }
+        // Ground pass after every layer: the pelvis follows the travel (chest counter-rotated) and the legs re-plant.
+        public void Finish(CapturedRig.Pose pose,float time,bool skip)
+        {
+            Rig.ReadPose(pose);gait.GroundPass(Rig,view,time,dt,skip);Rig.WritePose(pose);pose.World();
         }
     }
 }
