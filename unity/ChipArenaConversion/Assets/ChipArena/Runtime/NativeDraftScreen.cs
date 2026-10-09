@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
     // messages. Hovering or arrowing to a chip lifts it on the table and shows its full card beside the table.
     public sealed partial class ConversionGame
     {
-        private int draftFocus=-1,draftContactKey,draftPress=-1;
+        private int draftFocus=-1,draftPress=-1;
         // NativeMatch.NextDraft's offer pause, recovered from the replicated ready time (the turn's start is not sent).
         private double DraftStarted(NativeSeat seat)
         {
@@ -156,8 +156,6 @@ namespace ChipArena.UnityConversion
             if(pick>=0&&enabled){nativeAudio.Play("ui",null,.4f);ChooseChip(seat.id,chips[pick].id);}
             if(!enabled&&chosen==null&&draftFocus>=0&&!own)draftFocus=-1;
             int lifted=chosen!=null?-1:hovered>=0?hovered:own?draftFocus:-1;if(Event.current.type==EventType.Repaint)draftHover=lifted;
-            // One install sound per pick as the chip is planted in the wrist, for every viewer (late joiners stay quiet).
-            if(chosen!=null){int pickKey=(seat.id*397)^match.Round^(int)(match.ChosenAt*1000);if(age>=NativeDraftTable.SoundAt&&draftContactKey!=pickKey){draftContactKey=pickKey;if(age<NativeDraftTable.SoundAt+.3f)nativeAudio.Play("install",null,.5f);}}
             int show=chosen!=null?index:lifted,owned=show>=0&&seat.chips.TryGetValue(chips[show].id,out int n)?n-(show==index?1:0):0;
             string cue=chosen!=null?"":enabled?"CLICK OR PRESS ENTER TO INSTALL":own?"":seat.name.ToUpperInvariant()+" IS CHOOSING";
             DraftSideCard(show>=0?chips[show]:null,show>=0?TablePosition(show,count):-1,count,owned,show==draftFocus&&hovered<0,enabled,chosen!=null&&age>=NativeDraftTable.InstalledAt,seat,cue,W,H);
@@ -178,6 +176,7 @@ namespace ChipArena.UnityConversion
         }
         private void PveChipScreen()
         {
+            if(PveFollowing){PveFollowScreen(U.W,U.H);return;}
             var v=arena.Pve;if(v==null||!v.Rows.TryGetValue(arena.Local.Seat.id,out var row)||row.Open==null||row.Open.Offers==null)return;var pick=row.Open;float W=U.W,H=U.H;
             PveOpenClock(pick);float elapsed=Time.unscaledTime-pveOpenAt;
             var chips=DraftChips(true,arena.Local.Seat);int count=Math.Min(chips.Count,NativeDraftTable.MaxChips);bool rainbow=pick.Tier=="rainbow";Color tier=rainbow?Color.white:NativeChipCard.Rarity(pick.Tier);
@@ -187,7 +186,7 @@ namespace ChipArena.UnityConversion
             float x=W-28,y=22;string warn="YOU ARE VULNERABLE WHILE CHOOSING";float ww=U.Measure(warn,11,true,true,.08f).x;U.Text(new Rect(x-ww,y,ww+2,24),warn,11,U.Hex(0xd8dae4),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.08f);
             int queued=Math.Max(0,row.Picks.Count-1);if(queued>0){string q=(queued+" more waiting").ToUpperInvariant();float qw=U.Measure(q,11,true,true,.08f).x+20;var r=new Rect(x-ww-12-qw,y,qw,24);U.Pill(r,U.Hex(0xff6b35,.13f),Color.clear);U.Text(r,q,11,U.Hex(0xffb38f),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.08f);}
             int hovered=TableHover(count,elapsed,true),choice=TableClick(hovered,true),key=DraftKeys(count,true,true);if(key>=0)choice=key;
-            if(choice>=0){pveOpenId=-1;ChoosePveChip(pick.Id,chips[choice].id);return;}
+            if(choice>=0){RecordPvePick(chips,choice,pick);pveOpenId=-1;ChoosePveChip(pick.Id,chips[choice].id);return;}
             int lifted=hovered>=0?hovered:draftFocus;if(Event.current.type==EventType.Repaint)draftHover=lifted;
             TableBadges(count,elapsed);
             int position=lifted>=0?TablePosition(lifted,count):-1;

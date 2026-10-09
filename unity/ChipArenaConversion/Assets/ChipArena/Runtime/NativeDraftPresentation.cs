@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
         // simulating, so the live renderers are hidden instead of deactivating the arena.
         private void HideLive(){foreach(var r in arena.Root.GetComponentsInChildren<Renderer>()){if(!pickVisibility.ContainsKey(r))pickVisibility[r]=r.enabled;r.enabled=false;}}
         private void RestoreLive(){foreach(var pair in pickVisibility)if(pair.Key!=null)pair.Key.enabled=pair.Value;pickVisibility.Clear();}
-        private bool PvePickScreen=>!menu&&arena!=null&&PvePickOpen&&arena.Pve?.Holding!=true&&arena.Local.Hp>0&&!ReplayActive&&match.Phase==NativePhase.Fight;
+        private bool PvePickScreen=>!menu&&arena!=null&&(PveFollowing||PvePickOpen)&&arena.Pve?.Holding!=true&&arena.Local.Hp>0&&!ReplayActive&&match.Phase==NativePhase.Fight;
         // The offers as chips (the PvP draft's or the open personal pick's), rebuilt only when the offered ids change, since
         // replicas receive a fresh list with every frame. Unknown PvE ids are skipped, as the pick screen always did.
         private List<ContentChip> DraftChips(bool pve,NativeSeat seat)
@@ -32,19 +32,22 @@ namespace ChipArena.UnityConversion
         // Siren personal pick use it; the overlay (NativeDraftScreen) reads back the chips' screen areas for hover and clicks.
         private bool DraftFrame()
         {
-            bool pve=PvePickScreen,active=!menu&&arena!=null&&match.Phase==NativePhase.Draft;
+            bool pve=PvePickScreen,follow=pve&&PveFollowing,active=!menu&&arena!=null&&match.Phase==NativePhase.Draft;
+            // The Siren pick's follow-through played on its own snapshot; the next queued pick starts from a fresh table.
+            if(draftFollowed&&!follow)presentation.ResetDraftTable();draftFollowed=follow;
             if(!active&&!pve){if(draftViewing){draftViewing=false;RestoreLive();presentation.ResetPresentation();}draftCardCount=0;return false;}
             var seat=pve?arena.Local.Seat:match.Seat(match.DraftSeat);if(seat==null)return false;
             if(!draftViewing||draftViewSeat!=seat.id){RestoreLive();presentation.ResetPresentation();presentation.ResetDraftTable();draftHover=-1;draftFocus=-1;draftViewSeat=seat.id;draftViewing=true;}
-            NativePvePick open=null;if(pve&&arena.Pve.Rows.TryGetValue(seat.id,out var row))open=row.Open;if(pve)PveOpenClock(open);
-            var chips=DraftChips(pve,seat);int count=Math.Min(chips.Count,NativeDraftTable.MaxChips),chosen=-1;float age=-1;
+            NativePvePick open=null;if(pve&&!follow&&arena.Pve.Rows.TryGetValue(seat.id,out var row))open=row.Open;if(pve&&!follow)PveOpenClock(open);
+            var chips=follow?pveFollowChips:DraftChips(pve,seat);int count=Math.Min(chips.Count,NativeDraftTable.MaxChips),chosen=-1;float age=-1;
             if(!pve&&match.Chosen!=null){for(int i=0;i<count;i++)if(chips[i].id==match.Chosen){chosen=i;break;}if(chosen>=0)age=(float)(match.Time-match.ChosenAt);}
-            float elapsed=pve?Time.unscaledTime-pveOpenAt:(float)(match.Time-DraftStarted(seat));bool own=pve||!seat.bot&&seat.id==arena.Local.Seat.id;
+            if(follow&&pveFollowIndex<count){chosen=pveFollowIndex;age=PveFollowAge;}
+            float elapsed=pve?Time.unscaledTime-(follow?pveFollowOpened:pveOpenAt):(float)(match.Time-DraftStarted(seat));bool own=pve||!seat.bot&&seat.id==arena.Local.Seat.id;
             // Idle gaze: the boot scan in reading order, then a 1.8 s cycle (watchers see the drafter look over the table).
             int scan=count==0?0:elapsed<count*.22f?Mathf.FloorToInt(Math.Max(0,elapsed)/.22f):(int)(Math.Max(0,elapsed)/1.8f)%count;
             if(pve)HideLive();else arena.Root.SetActive(false);viewModelCamera.enabled=false;
             // Stage lights take the picker's colour, blending to the chip's rarity over .5 s after the pick (the Siren pick: its tier).
-            Color tint=pve?(open?.Tier=="rainbow"?Color.white:RarityColor(open?.Tier??"common")):SeatColor(seat);if(age>=0)tint=Color.Lerp(tint,RarityColor(chips[chosen].rarity),Mathf.Clamp01(age/.5f));
+            string tier=follow?pveFollowTier:open?.Tier;Color tint=pve?(tier=="rainbow"?Color.white:RarityColor(tier??"common")):SeatColor(seat);if(age>=0)tint=Color.Lerp(tint,RarityColor(chips[chosen].rarity),Mathf.Clamp01(age/.5f));
             presentation.DraftBandTeam=seat.spec=="siren"?-1:NativeStatusVisuals.BandTeam(match.Teams,match.Cooperative,seat.AuthorityBoss,seat.team);
             // The table frames itself left of the side card column, under the heading and above the nameplate.
             var ui=NativeUiMotion.Measure(Screen.width,Screen.height,prefs.uiScale);float right=Mathf.Clamp((DraftCardLeft(ui.Width,ui.Height)-24)/ui.Width,.45f,.9f);
