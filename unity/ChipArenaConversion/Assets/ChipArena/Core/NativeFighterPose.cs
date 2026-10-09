@@ -144,10 +144,14 @@ namespace ChipArena.UnityConversion
         /// hit matches a tracked strike (LastAttack), `electricPunch`: that strike was the Electric Hook's, `sinceElectric`: seconds
         /// since the last Electric Hook strike, `storm`: an owned storm trail lies near the target, `splat`: the target's juggle
         /// was just reset to the hit + .85 s.</summary>
+        /// <summary>Whether a juggle hit at `hit` shows the juggle bolt: not when it was a basic (non-electric) Emperor jab, per the
+        /// owner direction above. `jabAt`/`prevJabAt` are an Emperor's last two non-electric strike times (-100 for none).</summary>
+        public static bool JuggleBolt(float hit,float jabAt,float prevJabAt)=>Math.Abs(hit-jabAt)>=.05f&&Math.Abs(hit-prevJabAt)>=.05f;
         public static double Impact(string sourceSpec,string detail,bool punch,bool electricPunch,float sinceElectric,bool storm,bool splat)
         {
             if(sourceSpec!="emperor")return 0;
-            if(detail=="direct")return punch?(electricPunch?1.3:.65):storm?NativeEmperorBolts.DefaultRadius:sinceElectric>=EchoDelay-.04f&&sinceElectric<=EchoDelay+.08f?1.3:0;
+            // Owner direction (2026-10-09): basic attacks show no lightning, so the source's .65 jab impact is not drawn.
+            if(detail=="direct")return punch?(electricPunch?1.3:0):storm?NativeEmperorBolts.DefaultRadius:sinceElectric>=EchoDelay-.04f&&sinceElectric<=EchoDelay+.08f?1.3:0;
             return detail=="secondary"&&splat?1.8:0;
         }
     }

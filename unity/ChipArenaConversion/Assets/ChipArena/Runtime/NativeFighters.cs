@@ -100,7 +100,8 @@ namespace ChipArena.UnityConversion
             foreach(var m in Minions.ToArray()){Vector3 d=m.Body.position-origin;if(p.Hp>0&&CanHit(p,m)&&d.magnitude<radius+(emperor?.5f:.4f)&&(kind=="tatsu"||Vector3.Dot(d.normalized,dir)>(emperor?.2f:.25f))&&MeleeVisible(origin,m.Body.position,p,m.Collider))Heal(p,HitMinion(m,p,(emperor?(electric?8:10):damage)*(float)p.Stats["damage"],emperor?dir:d.normalized,emperor?(electric?550:150):impulse)*(float)p.Stats["lifeSteal"]);}
             if(!emperor&&kind=="combo"&&Has(p,"arcade-afterimage")&&FighterEchoes.Count<64)FighterEchoes.Add(new NativeFighterEcho{Owner=p,Position=origin+dir*1.1f,Direction=dir,Radius=1.1f*(float)p.Stats["reach"],Damage=damage*.38f*(float)p.Stats["damage"],Impulse=50,At=Time+.22f,Until=Time+.3f,Remaining=1});
             if(kind=="shoryuken"&&last&&Has(p,"arcade-rising"))foreach(var prop in Props.ToArray())if(prop!=null&&!prop.Indestructible&&Vector3.Distance(prop.transform.position,origin)<3.5f)DamageProp(prop,80,(prop.transform.position-origin+Vector3.up*2).normalized*1500*(float)p.Stats["impulse"],prop.transform.position,p);
-            Fx(origin,radius,electric?1:3);
+            // No swing blast: the source draws none (emperor-effects.ts bolts and the C12 DEV effects cover the fighters), and the
+            // old stand-in drew the lightning (Shock) blast on every basic hit (owner, 2026-10-09). Presentation feed only.
         }
         private void ConfirmFighter(NativePilot p,NativePilot q,float actual,bool electric,float stun,bool echo=false)
         {
@@ -121,7 +122,7 @@ namespace ChipArena.UnityConversion
         private void StepFighterWorld()
         {
             foreach(var e in FighterEchoes.ToArray())
-            {if(e.Remaining<=0||Time>e.Until||e.Owner.Hp<=0){FighterEchoes.Remove(e);continue;}if(Time<e.At)continue;foreach(var q in Pilots)if(q!=e.Spare&&q.Hp>0&&CanHit(e.Owner,q)&&Vector3.Distance(q.Body.position,e.Position)<e.Radius&&MeleeVisible(e.Position,q.Body.position,e.Owner,q.Collider)){if(Time<q.BlockEnd){BlockProc(q,e.Owner,q.Body.position);continue;}float actual=Damage(q,e.Owner,e.Damage,e.Direction,e.Remaining==1?e.Impulse:25,false,primary:false);if(actual>0)ConfirmFighter(e.Owner,q,actual,e.Electric,e.Remaining==1?.26f:.14f,true);}e.Remaining--;e.At+=e.Gap;Fx(e.Position,e.Radius,e.Electric?1:3);}
+            {if(e.Remaining<=0||Time>e.Until||e.Owner.Hp<=0){FighterEchoes.Remove(e);continue;}if(Time<e.At)continue;foreach(var q in Pilots)if(q!=e.Spare&&q.Hp>0&&CanHit(e.Owner,q)&&Vector3.Distance(q.Body.position,e.Position)<e.Radius&&MeleeVisible(e.Position,q.Body.position,e.Owner,q.Collider)){if(Time<q.BlockEnd){BlockProc(q,e.Owner,q.Body.position);continue;}float actual=Damage(q,e.Owner,e.Damage,e.Direction,e.Remaining==1?e.Impulse:25,false,primary:false);if(actual>0)ConfirmFighter(e.Owner,q,actual,e.Electric,e.Remaining==1?.26f:.14f,true);}e.Remaining--;e.At+=e.Gap;}
             foreach(var trail in StormTrails.ToArray())
             {if(Time>=trail.Until||trail.Owner.Hp<=0){StormTrails.Remove(trail);continue;}foreach(var q in Pilots)if(q.Hp>0&&CanHit(trail.Owner,q)&&!trail.Hit.Contains(q.Seat.id)&&Vector3.Distance(q.Body.position,trail.Position)<1.4f&&MeleeVisible(trail.Position,q.Body.position,trail.Owner,q.Collider)){trail.Hit.Add(q.Seat.id);Damage(q,trail.Owner,6*(float)trail.Owner.Stats["damage"],Vector3.zero,0,false,primary:false);}}
             foreach(var q in Pilots)

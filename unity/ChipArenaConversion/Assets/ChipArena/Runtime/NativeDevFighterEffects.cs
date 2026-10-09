@@ -119,6 +119,9 @@ namespace ChipArena.UnityConversion
             foreach(var p in arena.Pilots)if(p.ScareUntil>now&&now-p.ScareAt>=0&&now-p.ScareAt<.3f)return true;
             return false;
         }
+        // A juggle hit from an Emperor's basic jab (NativeEmperorTriggers.JuggleBolt): no bolt.
+        private bool JabJuggle(float hit)
+        {foreach(var pair in fighterTracks){var t=pair.Value;if(!NativeEmperorTriggers.JuggleBolt(hit,t.PunchElectric?-100:t.PunchAt,t.PrevPunchElectric?-100:t.PrevPunchAt))return true;}return false;}
         private static bool NearStorm(NativeArena arena,int owner,Vector3 at)
         {foreach(var s in arena.StormTrails)if(s.Owner!=null&&s.Owner.Seat.id==owner&&(s.Position-at).sqrMagnitude<1.6f*1.6f)return true;return false;}
         // emperor-effects.ts update: Electric Hook fist, fresh juggle hits, impacts, storm-step trails (Full only); three layers.
@@ -136,7 +139,7 @@ namespace ChipArena.UnityConversion
                 }
                 // A juggle hit in the last .28 s (FighterTracks: when the replicated JuggleUntil moved); only Emperor confirms and the
                 // Siren's launch juggle a pilot.
-                if(NativeJugglePose.Active(a.JuggleUntil,now)&&now-t.Juggle.LastHit<NativeEmperorBolts.JuggleSeconds){Vector3 c=BodyCentre(arena,p);bolts.Bolt(-c.x,c.y,c.z,now,t.Juggle.Hits,NativeEmperorBolts.JuggleSize);}
+                if(NativeJugglePose.Active(a.JuggleUntil,now)&&now-t.Juggle.LastHit<NativeEmperorBolts.JuggleSeconds&&!JabJuggle(t.Juggle.LastHit)){Vector3 c=BodyCentre(arena,p);bolts.Bolt(-c.x,c.y,c.z,now,t.Juggle.Hits,NativeEmperorBolts.JuggleSize);}
             }
             bolts.DrawImpacts(now);
             if(q>=.5)foreach(var s in arena.StormTrails)bolts.Bolt(-s.Position.x,NativeEmperorBolts.TrailHeight,s.Position.z,now,Math.Floor(s.At*10),NativeEmperorBolts.TrailSize);

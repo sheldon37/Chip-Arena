@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
         private static float Angle(Quaternion a,Quaternion b)=>2*(float)Math.Acos(Math.Min(1,Math.Abs(Quaternion.Dot(Quaternion.Normalize(a),Quaternion.Normalize(b)))));
         public static void Run(string root)
         {
-            Stances();Routing(root);Locomotion();Juggle();Bolts();
+            Stances();Routing(root);Locomotion();Juggle();Bolts(root);
             Console.WriteLine("PASS DEV fighter motion ("+count+" checks: Emperor/Ansatsuken stances, own guard on the gait at rest and in travel, Shift, exported clip routing, juggle pose, bolt trigger table per move)");
         }
         // stances.ts EMPEROR_STANCE and KARATE_STANCE (lead x,z,toeOut; rear x,z,toeOut; crouch, pelvisYaw, lean all 0).
@@ -111,14 +111,19 @@ namespace ChipArena.UnityConversion
             var knee=MeleeMath.ToEuler(p.Rotation[CapturedRig.RKnee]);Near(knee.X,.85f+.2f*(float)Math.Sin(time*9)+.25f*.12f,"right knee x",1e-3f);Near(knee.Y,.2f,"knee keeps its y",1e-3f);
         }
         // emperor-effects.ts per fighter and move.
-        private static void Bolts()
+        private static void Bolts(string root)
         {
             foreach(var move in new[]{"electric"})Check(NativeEmperorTriggers.Fist("emperor",move),"Emperor "+move+" fist bolt");
             foreach(var move in new[]{"jab","wave",null,""})Check(!NativeEmperorTriggers.Fist("emperor",move),"Emperor "+(move??"idle")+" no fist bolt");
             foreach(var move in new[]{"combo","tatsu","shoryuken","charge","hadoken","shinku","step","electric",null})Check(!NativeEmperorTriggers.Fist("ansatsuken",move),"Ansatsuken "+(move??"idle")+" no fist bolt");
             foreach(var spec in new[]{"ansatsuken","sword","siren","lightning"})foreach(var detail in new[]{"direct","secondary"})foreach(bool punch in new[]{false,true})
                 Check(NativeEmperorTriggers.Impact(spec,detail,punch,punch,.13f,!punch,true)==0,spec+" "+detail+" hit spawns no Emperor impact");
-            Check(NativeEmperorTriggers.Impact("emperor","direct",true,false,9,false,false)==.65,"Emperor jab impact .65");
+            // Owner direction (2026-10-09): basic attacks show no lightning (the source's .65 jab impact and jab juggle bolt are dropped).
+            Check(NativeEmperorTriggers.Impact("emperor","direct",true,false,9,false,false)==0,"Emperor jab: no impact");
+            Check(!NativeEmperorTriggers.JuggleBolt(4,4.01f,-100)&&!NativeEmperorTriggers.JuggleBolt(4,3.5f,3.99f),"a jab's juggle hit draws no bolt");
+            Check(NativeEmperorTriggers.JuggleBolt(4,3.2f,-100)&&NativeEmperorTriggers.JuggleBolt(4,-100,-100),"an Electric Hook, echo or Siren launch juggle hit keeps its bolt");
+            string fighters=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeFighters.cs"));
+            Check(!fighters.Contains("Fx("),"fighter swings and echoes add no ability blast (the old stand-in drew the lightning blast on basic hits)");
             Check(NativeEmperorTriggers.Impact("emperor","direct",true,true,0,false,false)==1.3,"Electric Hook impact 1.3");
             Check(NativeEmperorTriggers.Impact("emperor","direct",false,false,.13f,false,false)==1.3,"Twin echo impact 1.3");
             Check(NativeEmperorTriggers.Impact("emperor","direct",false,false,9,true,false)==NativeEmperorBolts.DefaultRadius,"storm SHOCK impact .75");
