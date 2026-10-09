@@ -25,9 +25,11 @@ in [UNITY-NATIVE-UPDATE-HANDOFF.md](UNITY-NATIVE-UPDATE-HANDOFF.md).
   newer C11 source or the cloud hooks. This refreshed candidate is not built or released.
 - Local refreshed-tool checks: 24 publisher/delivery tests collected, 23 pass and the
   Windows command-entrypoint case skips on Linux; Bash syntax and diff checks pass.
-  Full source/relay/package and UpdaterTests will run in GitHub CI on the pushed candidate.
+  Full source/relay/package and UpdaterTests run in GitHub CI on the pushed candidate.
   An actual Windows Unity cloud export, provider paths/tool availability and artifact
   collection still need the first real UBA run. No working Unity API client is claimed.
+
+GitHub native CI [37866917576](https://github.com/sheldon37/Chip-Arena/actions/runs/37866917576) passes on implementation `8a99e962554887f758f4edc7132199aceb40f38d` (draft PR #68): Linux check_relay.py, full Python suite (42 collected, 41 pass, one Windows-only skip), package_source.py (737 files), cloud staging and 51 UpdaterTests; Windows all 16 publisher and eight cloud-delivery tests, staging/51 updater checks, shipping launcher compilation and real fixture-player install/restart/acknowledgement, rollback and interrupted-swap recovery. These are source/helper checks, not an actual Unity build. The follow-up commit records results in documentation only.
 
 The following is the original tooling implementation history, superseded by the
 current candidate/account status above:
