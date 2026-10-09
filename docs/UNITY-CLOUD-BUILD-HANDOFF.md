@@ -11,7 +11,7 @@ in [UNITY-NATIVE-UPDATE-HANDOFF.md](UNITY-NATIVE-UPDATE-HANDOFF.md).
   weapon presentation, carries the four PR #67 build-check/rescue repairs from `9903a66`,
   and reapplies the publisher/cloud tooling from PRs #63/#64. Use this candidate for the
   cloud runs; the original #64 branch predates the parity and presentation changes.
-- Owner has created the Chip Arena cloud project and completed its first inspected build.
+- Owner has created the Chip Arena cloud project; build #4 produced its first verified complete delivery.
   Organization ID: `2474084689228`; project ID: `06275870-8c41-42b2-b21a-f75ff362f3dc`.
   These non-secret IDs are observed in the owner's dashboard. Build #2 confirms target
   ID `chip-arena`. Platform is Windows desktop 64-bit.
@@ -22,19 +22,61 @@ in [UNITY-NATIVE-UPDATE-HANDOFF.md](UNITY-NATIVE-UPDATE-HANDOFF.md).
 - The native test feed is already published at channel commit `c5251fb` and the owner
   reports an older installation updated successfully. That candidate came from the
   owner's local build of shared `5900583` plus PR #67 v3; it does **not** validate the
-  newer C11 source or the cloud hooks. Builds #2/#3 validate the refreshed candidate's
-  Unity export and Editor packaging. Build #3 runs the script but fails receipt lookup;
-  the path-handling repair below is implemented, awaiting another cloud run. Unreleased.
+  newer C11 source or the cloud hooks. Build #4 now validates the refreshed candidate's
+  complete cloud export, Editor packaging, Cygwin post-build script and collected delivery.
+  Candidate `659a376e` is verified and staged, not published; Windows playtest remains open.
 - Current local tooling checks: 27 publisher/delivery tests collected, 26 pass and the
   Windows command-entrypoint case skips on Linux; Bash syntax and diff checks pass.
   Full source/relay/package and UpdaterTests run in GitHub CI on the pushed candidate.
-  Builds #2/#3 passed the Windows Unity export and launcher compilation. Build #3 confirms
-  Python is available; corrected path handling, delivery validation and collection still
-  need another UBA run. No working Unity API client is claimed.
+  Build #4 passes the actual Windows Unity export/launcher compilation and corrected
+  Cygwin Python packaging; final delivery collection and downloaded hashes are verified.
+  Triggering/retrieval still uses the owner dashboard; no working Unity API client is claimed.
 
 GitHub native CI [37866917576](https://github.com/sheldon37/Chip-Arena/actions/runs/37866917576) passes on implementation `8a99e962554887f758f4edc7132199aceb40f38d` (draft PR #68): Linux check_relay.py, full Python suite (42 collected, 41 pass, one Windows-only skip), package_source.py (737 files), cloud staging and 51 UpdaterTests; Windows all 16 publisher and eight cloud-delivery tests, staging/51 updater checks, shipping launcher compilation and real fixture-player install/restart/acknowledgement, rollback and interrupted-swap recovery. These are source/helper checks, not an actual Unity build. The follow-up commit records results in documentation only.
 
 Owner setup checkpoint (2026-10-08 21:03 EDT): the owner reports all requested target settings completed except a Scripting backend selector, which was not present. The supplied PDF independently shows the correct branch, project subfolder, Unity 6000.3.24f1 and Windows 11 24H2 builder. Code confirms PreExport explicitly selects Mono and PostExport rejects a backend mismatch, so no additional dashboard field is needed. The inspected run below supersedes the earlier pending-build status; billing tier and automatic-build settings remain owner-reported.
+
+## Build #4 — complete cloud delivery verified (2026-10-08 22:57 EDT)
+
+- Source `51841828e142c551b521ca6698d7487390cd4880`, target `chip-arena`, build `4`,
+  Unity `6000.3.24f1`, Windows x64 / Mono. All 86 Unity checks and both export hooks
+  pass; all **four** packaging markers, Unity exit 0 and provider SUCCESS are present.
+  The script logs `Cloud packaging Python: cygwin` with the correct Unity project root,
+  confirming the interpreter/path issue and real execution of repair `82ddcfb`.
+- The outer uploaded ZIP contains `Chip-Arena-Native-Cloud-Delivery.zip` and its SHA-256
+  sidecar alongside the raw player. Verified outer/inner CRCs, sidecar, portable receipt,
+  full source SHA, target/build/editor, all receipt hashes, native feed part/archive hashes,
+  safe unique paths, inventory and embedded build identity. The starter's entire player is
+  byte-identical to the update archive. All 228 raw exported player files also match the
+  starter after the expected EXE/Data rename; the staged player adds its matching identity.
+- Candidate build version `659a376e5185f5ec9282d698eeda3622661a14fc70ad1eb79d8dac09142e0651`,
+  revision `639271111007548341`, native-test/windows-x64/bootstrap 1. Update archive:
+  94,040,253 bytes, 191,590,466 unpacked bytes, 229 files, SHA-256
+  `e369e8870c77eaf744cb8980e87b28d7ba4ad900caaf8ea6122e98c274a55c6a`.
+- Starter: 94,118,952 bytes, SHA-256
+  `4d1180d5cc489c120fa5e18cb959e9eb481999090b3ad9b98637fe1bc803a1c1`.
+  Delivery: 189,373,528 bytes, SHA-256
+  `c4220e78629b9f544fb210d3aa8ca93ddbfff554bcfdd7c685c72be0914e46a6`.
+  Embedded Editor log: 1,210,647 bytes, SHA-256
+  `87ff061ea0206d557d43a10be8f1e1d40e071c0b9793e5955a6781c10a97d3c4`.
+- Upload receipts: `2474084689228-chip-arena-chip-arena-4.log`, 1,483,799 bytes,
+  SHA-256 `28d2c5090f2cfed4b8d15f1e7f5a5808daa67e8077d2f0c4c253db062cd3b8fe`;
+  ZIP of the same stem, 287,290,493 bytes,
+  SHA-256 `8e32eef1f99ae32296dc77b7cb0e1f558f06c34a4616378fdf36df1e53c8353f`.
+- Prepared a local publication copy with 12 parts of at most 8 MiB to fit the GitHub
+  connector's request limit. Revalidated it: identical full payload hash, identity and
+  player bytes; only part boundaries/metadata change. Original uploaded delivery is intact.
+- Read the public native manifest and channel ref: still approved `83e6a566`, revision
+  `639271006350008324`, channel `c5251fbb0113bf9544a37989318336dae0df1840`.
+  The candidate has a different version and newer revision, so it is eligible for the
+  existing installation's Update button once published. No feed write was made.
+- Packaging/delivery acceptance **passes**; rendered Windows gameplay and installation of
+  this particular cloud candidate are not run. Source/helper CI is already recorded below
+  on `82ddcfb`; no redundant suites rerun for this receipt-only change. No additional cloud
+  rebuild or dashboard change is needed for this candidate. Native test-feed publication
+  awaits the owner's A13 approval for this new candidate; no merge, Site or live-feed action.
+  For a fresh playtest use the starter ZIP inside the delivery, leaving the older installed
+  copy separate for an upgrade test. Claude can resume from these receipts and PR #68.
 
 ## Build #3 receipt and path-handling repair (2026-10-08 22:25 EDT)
 
@@ -182,9 +224,9 @@ selection and any billed build require the owner's account/cost decision.
    marker appear in the real log, and the starter's complete player bytes match the
    verified update archive. It includes only the current manifest's payload parts.
 5. It adds `Chip-Arena-Native-Cloud-Delivery.zip` and its SHA-256 sidecar alongside UBA's
-   raw exported EXE, for collection inside the normal Windows build artifact. **Verify
-   this collection behavior on the next real UBA run.** A successful source CI job is
-   not evidence that UBA collected the delivery.
+   raw exported EXE, for collection inside the normal Windows build artifact. **Build #4
+   verifies this collection behavior and the downloaded delivery.** Future runs still
+   require their own marker/receipt/hash checks.
 
 The delivery contains the starter ZIP, `NativeUpdateFeed/`, `build.log`, the matching
 `Windows/app/native-build.json` and `cloud-build-receipt.json`. The portable receipt
@@ -206,14 +248,13 @@ build folders to test upgrades; never overwrite it with the next starter.
   42 Python tests (one Windows-only skip), 623-file source package, C# staging fixtures
   and 51 updater transaction checks; Windows C# staging, all 16 publisher tests, all eight
   delivery tests, shipping launcher compilation and real fixture-player restart/rollback.
-- Build #2 confirms actual Unity hook compilation/import, Windows UBA export, .NET launcher
-  availability and the three Editor markers. Build #3 confirms the corrected Bash
-  script path but exposes wrong Python project-root lookup. Repaired interpreter/path
-  handling and final collection remain unverified. UBA can report success after either
-  a missing script or a Python packaging failure; require the fourth delivery marker and ZIP contents.
-- Next UBA run after the build #3 code repair: inspect all four markers, source SHA and completed
-  delivery; verify the sidecar and portable receipt against the requested commit. Download
-  the full UBA log too. Fix any observed integration failure before accepting it.
+- Build #4 confirms actual Unity hook compilation/import, Windows export, launcher compiler,
+  corrected project-relative script path, Cygwin Python/path handling and final artifact
+  collection. All four markers and the downloaded sidecar/receipt/payload checks pass.
+  Earlier runs show UBA can report success after a missing script or Python failure, so
+  retain the full delivery verification for every candidate.
+- The next step for build #4 is owner-approved native test-feed publication and the Windows
+  acceptance below, not another build. Automatic triggering/publication is not configured.
 - Launch the inner starter on Windows. Perform menu/match/settings/account checks and
   then an older-to-newer update, cancellation, room gating and startup rollback. Issue #60
   still contains native networking/sign-in findings which may block these checks.
