@@ -114,7 +114,11 @@ class AutoPublishTests(unittest.TestCase):
             with self.subTest(name=name):
                 stream = io.BytesIO()
                 with zipfile.ZipFile(stream, 'w') as z:
-                    z.writestr(name, 'bad')
+                    # Preserve the hostile bytes: ZipInfo otherwise repairs Windows
+                    # backslashes before the fixture ever reaches the validator.
+                    row = zipfile.ZipInfo(name)
+                    row.filename = name
+                    z.writestr(row, 'bad')
                 with zipfile.ZipFile(stream) as z, self.assertRaises(ValueError):
                     auto.safe_entries(z)
         stream = io.BytesIO()
