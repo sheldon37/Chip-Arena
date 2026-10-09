@@ -117,6 +117,7 @@ namespace ChipArena.UnityConversion
             foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear();
             foreach(var o in debris) if(o!=null) Destroy(o); debris.Clear();
             foreach(var o in coverObjects) if(o!=null) Destroy(o); coverObjects.Clear();
+            ClearWeaponPresentation();
         }
         public Vector3 Position(Actor actor) { Vector3 p; return visualPositions.TryGetValue(actor.Id,out p)?p:Vec(actor.Position); }
         public void Render(Snapshot s, float renderTime, bool smooth)
@@ -133,6 +134,7 @@ namespace ChipArena.UnityConversion
                 if(!visualPositions.TryGetValue(a.Id,out old)||(old-target).sqrMagnitude>64) old=target;
                 Vector3 p=smooth?Vector3.Lerp(old,target,1-Mathf.Exp(-18*Time.unscaledDeltaTime)):target;
                 visualPositions[a.Id]=p;
+                if(FirstPerson&&a.Id==LocalId&&a.Alive)HiddenSweep(a,p,renderTime);
                 if(!a.Alive||(FirstPerson&&a.Id==LocalId)) continue;
                 int color=a.Bot?2:a.Id-1;
                 if(renderTime<a.FlashUntil) color=4;
@@ -140,6 +142,7 @@ namespace ChipArena.UnityConversion
                 else Pose(a,p,renderTime,color);
             }
             animationTimer.Stop(); AnimationMs=animationTimer.Elapsed.TotalMilliseconds;
+            RenderMeleeTrails(renderTime);
             // Native arenas draw their projectiles with NativeShotPresentation (source models); only the prototype draws these.
             if(sourceModels==null)foreach(Shot p in s.Shots)
             {
@@ -189,7 +192,7 @@ namespace ChipArena.UnityConversion
             if(!rigs.TryGetValue(a.Id,out rig)) { rig=captured.Create(transform,a.Id); rig.Impacts=meleeImpacts; rigs.Add(a.Id,rig); }
             if(Viewer&&ViewerSet>=4) rig.PreviewGun((WeaponId)(ViewerSet-3),ViewerClip,ViewerTime);
             else if(Viewer) rig.Preview(ViewerSet,PreviewName.Substring(PreviewName.IndexOf('/')+1),ViewerTime,Vector3.zero);
-            else rig.ActorPose(a,position,time);
+            else { PoseReach(rig,a,time); rig.ActorPose(a,position,time); }
             if(a.Id==LocalId) PlayerState=rig.State;
             if(SourceCharacter(rig,a,time))return;
             foreach(var box in CapturedRig.Boxes)
@@ -302,10 +305,11 @@ namespace ChipArena.UnityConversion
         }
         private void OnDestroy()
         {
-            ClearSourceActors();sourceModels?.Dispose();combatGlow?.Dispose();blasts?.Dispose();shots?.Dispose();viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
+            ClearSourceActors();sourceModels?.Dispose();combatGlow?.Dispose();blasts?.Dispose();shots?.Dispose();DisposeStatus();viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
             foreach(var m in materials) CapturedAnimation.Release(m);
             foreach(var m in compatibilityMaterials) CapturedAnimation.Release(m);
             if(particleMaterial!=null) CapturedAnimation.Release(particleMaterial);
+            DisposeWeaponPresentation();
         }
     }
 }

@@ -73,6 +73,7 @@ namespace ChipArena.UnityConversion
                 rear=hand.TransformPoint(new Vector3(0,y,z));Vector3 local=ViewCamera.transform.InverseTransformPoint(rear);
                 viewRig.Root.transform.position-=(ViewCamera.transform.right*local.x+ViewCamera.transform.up*local.y)*ads;
             }
+            ApplyViewSway(shown,time,ads);
             PlayerState=viewRig.State;
             // A scoped rifle uses the centred reticle; its magnified housing would obscure the whole screen.
             if(!ScopeActive&&!SourceCharacter(viewRig,shown,time,true))

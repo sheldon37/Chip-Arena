@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
     // Source-authored geometry is converted once at build time. Batches are shared across all actors using that model.
     public sealed partial class NativeSourceModels:IDisposable
     {
-        private sealed class Part {public string Name;public int Bone;public Mesh Mesh;public Material Material;}
+        private sealed class Part {public string Name;public int Bone;public Mesh Mesh;public Material Material;public bool NoShadow;}
         private sealed class Draws {public Part Part;public int Layer;public Camera Camera;public readonly List<Matrix4x4> Matrices=new List<Matrix4x4>();public readonly List<Vector4> Bodies=new List<Vector4>(),Accents=new List<Vector4>(),Tints=new List<Vector4>(),Glows=new List<Vector4>();}
         private readonly Dictionary<string,Part[]> models=new Dictionary<string,Part[]>();private readonly Dictionary<(Part,int),Draws> draws=new Dictionary<(Part,int),Draws>();
         private readonly List<Texture2D> textures=new List<Texture2D>();private readonly List<Material> materials=new List<Material>();private readonly Matrix4x4[] buffer=new Matrix4x4[512];private readonly Vector4[] bodies=new Vector4[512],accents=new Vector4[512],tints=new Vector4[512],glows=new Vector4[512];private readonly MaterialPropertyBlock properties=new MaterialPropertyBlock();
@@ -98,8 +98,8 @@ namespace ChipArena.UnityConversion
             foreach(var d in draws.Values)for(int start=0;start<d.Matrices.Count;start+=512)
             {
                 int count=Math.Min(512,d.Matrices.Count-start);d.Matrices.CopyTo(start,buffer,0,count);d.Bodies.CopyTo(start,bodies,0,count);d.Accents.CopyTo(start,accents,0,count);d.Tints.CopyTo(start,tints,0,count);d.Glows.CopyTo(start,glows,0,count);properties.Clear();properties.SetVectorArray("_BodyTint",bodies);properties.SetVectorArray("_AccentTint",accents);properties.SetVectorArray("_SceneTint",tints);properties.SetVectorArray("_GlowTint",glows);
-                bool drawn=false;if(instancing&&SystemInfo.supportsInstancing)try{Graphics.DrawMeshInstanced(d.Part.Mesh,0,d.Part.Material,buffer,count,properties,d.Layer==10?ShadowCastingMode.Off:ShadowCastingMode.On,true,d.Layer,d.Camera);drawn=true;}catch(InvalidOperationException){instancing=false;}
-                if(!drawn)for(int i=0;i<count;i++){properties.Clear();properties.SetVector("_BodyTint",bodies[i]);properties.SetVector("_AccentTint",accents[i]);properties.SetVector("_SceneTint",tints[i]);properties.SetVector("_GlowTint",glows[i]);Graphics.DrawMesh(d.Part.Mesh,buffer[i],d.Part.Material,d.Layer,d.Camera,0,properties,d.Layer==10?ShadowCastingMode.Off:ShadowCastingMode.On,true);}
+                bool drawn=false;if(instancing&&SystemInfo.supportsInstancing)try{Graphics.DrawMeshInstanced(d.Part.Mesh,0,d.Part.Material,buffer,count,properties,d.Layer==10||d.Part.NoShadow?ShadowCastingMode.Off:ShadowCastingMode.On,true,d.Layer,d.Camera);drawn=true;}catch(InvalidOperationException){instancing=false;}
+                if(!drawn)for(int i=0;i<count;i++){properties.Clear();properties.SetVector("_BodyTint",bodies[i]);properties.SetVector("_AccentTint",accents[i]);properties.SetVector("_SceneTint",tints[i]);properties.SetVector("_GlowTint",glows[i]);Graphics.DrawMesh(d.Part.Mesh,buffer[i],d.Part.Material,d.Layer,d.Camera,0,properties,d.Layer==10||d.Part.NoShadow?ShadowCastingMode.Off:ShadowCastingMode.On,true);}
             }
         }
         public void Dispose(){ClearWounds();foreach(var mesh in models.Values.SelectMany(p=>p).Select(p=>p.Mesh).Distinct())CapturedAnimation.Release(mesh);foreach(var m in materials)CapturedAnimation.Release(m);foreach(var t in textures)CapturedAnimation.Release(t);models.Clear();draws.Clear();}
