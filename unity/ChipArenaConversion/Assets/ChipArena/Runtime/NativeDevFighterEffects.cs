@@ -102,18 +102,25 @@ namespace ChipArena.UnityConversion
                 // (secondary), a bound or wall splat resets the juggle to + .85 s (emperor-bound 1.8), a storm-trail SHOCK has no
                 // radius (.75, at the target) and the Twin echo confirms as electric (1.3).
                 double size;float lift=.2f;
-                if(e.Detail=="direct")size=t.ElectricBy(e.Time)?1.3:.65;
-                else if(e.Detail=="secondary")
+                // The echo and storm-trail hits arrive tagged "direct" too (only bound and wall splats are direct:false), so tell
+                // them apart here: a tracked punch, else a storm trail near the target, else the Twin echo.
+                if(e.Detail=="direct")
                 {
-                    var target=SeatPilot(arena,e.Target);
-                    if(target?.Pose!=null&&Mathf.Abs(target.Pose.JuggleUntil-(e.Time+.85f))<.02f){size=1.8;lift=0;}
+                    if(Mathf.Abs(e.Time-t.PunchAt)<.03f||Mathf.Abs(e.Time-t.PrevPunchAt)<.03f)size=t.ElectricBy(e.Time)?1.3:.65;
                     else if(NearStorm(arena,e.Source,at)){size=NativeEmperorBolts.DefaultRadius;lift=0;}
                     else size=1.3;
                 }
+                else if(e.Detail=="secondary"){size=1.8;lift=0;}
                 else continue;
                 emperorBolts.Impact(-at.x,at.y+lift,at.z,now,e.Id,size);
             }
             devEvent=Math.Max(devEvent,newest);
+        }
+        private static bool TreeEndedQuietly(NativeArena arena,int owner,float now)
+        {
+            foreach(var f in arena.LeetFields)if(f.Kind=="tree"&&f.Owner!=null&&f.Owner.Seat.id==owner)return true;
+            foreach(var p in arena.Pilots)if(p.ScareUntil>now&&now-p.ScareAt>=0&&now-p.ScareAt<.3f)return true;
+            return false;
         }
         private static bool NearStorm(NativeArena arena,int owner,Vector3 at)
         {foreach(var s in arena.StormTrails)if(s.Owner!=null&&s.Owner.Seat.id==owner&&(s.Position-at).sqrMagnitude<1.6f*1.6f)return true;return false;}
@@ -164,7 +171,8 @@ namespace ChipArena.UnityConversion
                 var memo=pair.Value;if(memo.Frame==devFrame)continue;devStale.Add(pair.Key);
                 // A tree gone before its time while its owner lives: Slender was killed (minionDeath 'slender' at its body).
                 var owner=SeatPilot(arena,memo.Owner);
-                if(memo.Kind=="tree"&&memo.HasSlender&&now<memo.Until-.1f&&owner!=null&&owner.Seat.connected&&owner.Hp>0)pool.StaticColumn(-memo.Slender.x,memo.Slender.y,memo.Slender.z,now,q);
+                // A successful scare or a recast also ends the tree early, with no minionDeath: skip those.
+                if(memo.Kind=="tree"&&memo.HasSlender&&now<memo.Until-.1f&&owner!=null&&owner.Seat.connected&&owner.Hp>0&&!TreeEndedQuietly(arena,memo.Owner,now))pool.StaticColumn(-memo.Slender.x,memo.Slender.y,memo.Slender.z,now,q);
             }
             foreach(int id in devStale)leetMemos.Remove(id);
             // The mushroom: cap, stem and a ground ring racing out, fading over 1.7 s.
