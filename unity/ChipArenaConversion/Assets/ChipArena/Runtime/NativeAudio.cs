@@ -104,7 +104,7 @@ namespace ChipArena.UnityConversion
         private void EventSounds(NativeArena arena,List<ArenaEvent> events,int index,NativePilot me)
         {
             var e=events[index];NativePilot source=null,target=null;foreach(var p in arena.Pilots){if(p.Seat.id==e.Source)source=p;if(p.Seat.id==e.Target)target=p;}
-            int local=me?.Seat.id??0;string material=null;int supernova=0;
+            int local=me?.Seat.id??0;string material=e.Kind==EventKind.Break?e.Detail:null;int supernova=0;
             if(e.Kind==EventKind.Impact||e.Kind==EventKind.Break)foreach(var prop in arena.Props)if(prop.Definition.id==e.SurfaceId){material=prop.Definition.material;break;}
             if(e.Kind==EventKind.BlockPulse)source?.Seat.chips?.TryGetValue("supernova",out supernova);
             var context=new NativeEventSounds.Context{Kind=e.Kind,Detail=e.Detail,SourceSpec=source?.Seat.spec,Material=material,Amount=e.Amount,Radius=e.Radius,

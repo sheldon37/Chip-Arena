@@ -42,7 +42,7 @@ namespace ChipArena.UnityConversion
         private void MinionWeaponHit(NativeMinion m,NativePilot owner,float actual,float burn,float poison)
         {
             if(actual<=0||owner==null)return;owner.DirectHits++;if(owner.Stats["staticEvery"]>0&&owner.DirectHits%(int)owner.Stats["staticEvery"]==0)ChipBlast(owner,m.Body.position,3,(float)owner.Stats["staticDamage"],60,false);if(owner.Seat.spec=="water"&&Time>=m.SoakAt+1.5f){m.SoakAt=Time;SlowMinion(m,.8f,.8f);}
-            if(owner.Weapon.chain>0){var near=NearAbilityEnemies(owner,m.Body.position,4,2).FirstOrDefault(x=>x.m!=m);if(near.p!=null)Damage(near.p,owner,(float)owner.Weapon.chain,Vector3.zero,0,false,direct:false,primary:false);else if(near.m!=null)HitMinion(near.m,owner,(float)owner.Weapon.chain,Vector3.zero,0);}
+            if(owner.Weapon.chain>0){var near=NearAbilityEnemies(owner,m.Body.position,4,2).FirstOrDefault(x=>x.m!=m);if(near.p!=null)Damage(near.p,owner,(float)owner.Weapon.chain,Vector3.zero,0,false,direct:false,primary:false);else if(near.m!=null)HitMinion(near.m,owner,(float)owner.Weapon.chain,Vector3.zero,0,kind:"chain");}
             Heal(owner,actual*(float)(owner.Weapon.drain+owner.Stats["lifeSteal"]));if(m.Hp<=0)return;
             foreach(var item in new[]{(kind:"fire",dps:burn,duration:2f),(kind:"poison",dps:poison,duration:4f)})
             {if(item.dps<=0)continue;string key=owner.Seat.id+":"+item.kind;m.Dots.TryGetValue(key,out var old);bool live=old!=null&&old.Until>=Time;m.Dots[key]=new NativeDot{Source=owner.Seat.id,Dps=Math.Max(item.dps,live?old.Dps:0),Next=live?old.Next:Time+.25,Until=Time+item.duration};}
@@ -57,7 +57,7 @@ namespace ChipArena.UnityConversion
             foreach(var m in Minions.ToArray())
             {
                 if(!Minions.Contains(m)||m.Pve!=null)continue;if(m.Owner.Hp<=0||Time>=m.Until||m.Body.position.y<-6){RemoveMinion(m);continue;}
-                foreach(var pair in m.Dots.ToArray()){var d=pair.Value;while(m.Hp>0&&d.Next<=Time+1e-8&&d.Next<=d.Until+1e-8){HitMinion(m,Pilots.Find(p=>p.Seat.id==d.Source),(float)(d.Dps*.25),Vector3.zero,0);d.Next+=.25;}if(Time>d.Until)m.Dots.Remove(pair.Key);}if(m.Hp<=0||m.Kind=="slender")continue;
+                foreach(var pair in m.Dots.ToArray()){var d=pair.Value;while(m.Hp>0&&d.Next<=Time+1e-8&&d.Next<=d.Until+1e-8){HitMinion(m,Pilots.Find(p=>p.Seat.id==d.Source),(float)(d.Dps*.25),Vector3.zero,0,kind:"field");d.Next+=.25;}if(Time>d.Until)m.Dots.Remove(pair.Key);}if(m.Hp<=0||m.Kind=="slender")continue;
                 bool toy=m.Kind=="toy";float windup=toy?.45f:.42f,recover=toy?.55f:.48f;Vector3 at=m.Body.position,velocity=m.Body.linearVelocity;
                 if(m.StrikeAt>=0)
                 {

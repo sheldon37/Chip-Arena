@@ -175,7 +175,7 @@ namespace ChipArena.UnityConversion
                 Vector3 nearest=a+dir*Mathf.Clamp(Vector3.Dot(target.Body.position-a,dir),0,distance);
                 if(Vector3.Distance(target.Body.position,nearest)<=1.4f&&MeleeVisible(nearest,target.Body.position,p,target.Collider)&&AbilityHit(target,p,damage,target.Body.position-nearest,0)>0)struck.Add(target.Seat.id);
             }
-            foreach(var m in Minions.ToArray()){Vector3 nearest=a+dir*Mathf.Clamp(Vector3.Dot(m.Body.position-a,dir),0,distance);if(CanHit(p,m)&&Vector3.Distance(m.Body.position,nearest)<=1.4f&&MeleeVisible(nearest,m.Body.position,p,m.Collider)){float actual=HitMinion(m,p,damage,Vector3.zero,0);AbilityOnDamage(p,actual);if(actual>0)struck.Add(m.Id);}}
+            foreach(var m in Minions.ToArray()){Vector3 nearest=a+dir*Mathf.Clamp(Vector3.Dot(m.Body.position-a,dir),0,distance);if(CanHit(p,m)&&Vector3.Distance(m.Body.position,nearest)<=1.4f&&MeleeVisible(nearest,m.Body.position,p,m.Collider)){float actual=HitMinion(m,p,damage,Vector3.zero,0,kind:"ability");AbilityOnDamage(p,actual);if(actual>0)struck.Add(m.Id);}}
             bool blastMinion=false;Fx(b,1,3,a);foreach(var q in AbilityBlast(p,b,radius,damage*2/3,300,3,onMinion:()=>blastMinion=true,effect:d.fx??d.id))struck.Add(q.Seat.id);if(blastMinion)struck.Add(-1);if(Has(p,"storm-recall"))p.QReady=Math.Max(Time,p.QReady-Math.Min(4,struck.Count*2));
         }
         private void StepAbilityWorld()

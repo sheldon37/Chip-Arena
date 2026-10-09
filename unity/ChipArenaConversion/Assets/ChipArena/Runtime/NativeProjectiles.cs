@@ -114,7 +114,7 @@ namespace ChipArena.UnityConversion
             if(b.Pong&&target==null&&minion==null&&b.Bounces>0){b.Contacts[hit.Collider.GetInstanceID()]=Time;return PongBounce(b,owner,hit.Point,Vector3.Reflect(b.Velocity,hit.Normal));}
             if(minion!=null)
             {
-                float actual=HitMinion(minion,owner,b.Damage,b.Velocity.normalized,b.Impulse,hit.Point,"projectile");if(b.Direct||b.WeaponFx&&b.Reflections==0)MinionWeaponHit(minion,owner,actual,b.Burn,b.Poison);
+                float actual=HitMinion(minion,owner,b.Damage,b.Velocity.normalized,b.Impulse,hit.Point,b.Reflections>0?"reflected":b.Direct?"direct":"secondary");if(b.Direct||b.WeaponFx&&b.Reflections==0)MinionWeaponHit(minion,owner,actual,b.Burn,b.Poison);
                 if((b.Direct||b.ChipImpact)&&b.Reflections==0)ImpactChips(owner,null,null,hit.Point,b.Velocity.normalized,b.Attack,b.Id,minion);
             }
             else if(target!=null)
