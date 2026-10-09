@@ -30,7 +30,7 @@ namespace ChipArena.UnityConversion
             if(peer!=null){peer.Seat.team=team;peer.Ready=false;LobbyBroadcast();return true;}
             var bots=LobbyBots((dedicated?0:1)+peers.Count(p=>p.Seat!=null&&p.Seat.connected));
             int index=Array.FindIndex(bots,b=>b.id==seatId);if(index<0)return false;
-            var options=CaptureRoomOptions();options.Normalize(content);if(options.botOptions.Length<=index){var expanded=options.botOptions;Array.Resize(ref expanded,index+1);options.botOptions=expanded;for(int i=0;i<expanded.Length;i++)if(expanded[i]==null)expanded[i]=new NativeBotOption();}options.botOptions[index].team=team;SetRoomOptions(options);return true;
+            var options=CaptureRoomOptions();options.Normalize(content);if(options.botOptions.Length<=index){var expanded=options.botOptions;Array.Resize(ref expanded,index+1);options.botOptions=expanded;for(int i=0;i<expanded.Length;i++)if(expanded[i]==null)expanded[i]=new NativeBotOption{difficulty=options.botDifficulty};}options.botOptions[index].team=team;SetRoomOptions(options);return true;
         }
         private NativeSeatFrame LobbySeat(NativeSeat s,bool ready)=>new NativeSeatFrame{id=s.id,name=s.name,spec=s.spec,team=s.team,connected=s.connected,ready=ready,bot=s.bot,difficulty=s.difficulty,bodyColor=s.bodyColor,accentColor=s.accentColor,hat=s.hat,lobbyPose=s.lobbyPose,killEffect=s.killEffect,intro=s.intro,introText=s.introText};
         private NativeSeat[] LobbyBots(int humans)
