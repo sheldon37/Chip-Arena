@@ -1,7 +1,7 @@
 // Event feedback parity fixtures (presentation only). Runs the pinned original modules themselves, never the native port:
 // client/event-vfx.ts EventVfx.event (the camera-shake flag), client/combat-numbers.ts CombatNumberTrack and numberLabel,
 // and client/audio.ts SoundLimiter and ArenaAudio.update (its event branch, with play/cue/arcadeTone recorded and the
-// music/boss/siren/slender/intro players stubbed). Each scenario also states the Unity events or routing context that
+// music/boss/siren/slender/intro players stubbed) and ArenaAudio.updateStageMusic (music per match phase). Each scenario also states the Unity events or routing context that
 // stand for those source events, so Tests/EventFeedbackChecks.cs can run the Core rules on them and compare.
 // Usage: node tools/export_event_feedback.mjs <pinned source> <temporary output>  (link a node_modules containing three
 // r180 into the temporary output). Writes Tests/event-feedback-parity.json.
@@ -165,5 +165,12 @@ for(const [type,kind,extra] of [['vacuum','Vacuum',{radius:5}],['freeze','Freeze
 const spikes={hz:60,segments:[{from:0,to:1200,fight:true,fightStart:.5},{from:1200,to:1500,fight:false,fightStart:.5},{from:1500,to:2400,fight:true,fightStart:25}],rises:[]};
 {const sim={phase:'fight',time:0,fightStart:0,options:{map:'spikevault'},players:new Map(),emit:(type,pos)=>{if(type==='stage-spikes-rise')spikes.rises.push({tick:sim.tick,time:sim.time,pos});}},hazards=new StageHazards(sim);
  for(const seg of spikes.segments){if(seg.from>0&&seg.fight)hazards.clear();for(let tick=seg.from;tick<seg.to;tick++){sim.tick=tick;sim.time=tick/spikes.hz;sim.phase=seg.fight?'fight':'result';sim.fightStart=seg.fightStart;hazards.step();}}}
-fs.writeFileSync(path.join(root,'Tests/event-feedback-parity.json'),JSON.stringify({source:'05950ea',hitTrim:HIT_TRIM,labels,limiter,shake,numbers,sounds,spikes}));
-console.log('labels',labels.length,'limiter',limiter.length,'shake',shake.length,'number scenarios',numbers.length,'sound scenarios',sounds.length,'spike rises',spikes.rises.length);
+// ---- music per match phase (audio.ts ArenaAudio.updateStageMusic with ArenaMusic recorded): which phases play the PvP map
+// music or the PvE stage track, and the stage track's dip under a player intro sting. The boss song (bossSong) silences both. ----
+const music=[];
+for(const pve of [false,true])for(const phase of ['lobby','draft','intro','countdown','fight','result','match'])for(const boss of [false,true]){
+ const a=new ArenaAudio(),got={};a.music={setStage:t=>got.stage=t?t[0]:null,setDip:d=>got.dip=d,setActive:v=>got.active=v,rewindStage:()=>got.rewind=true};a.boss={preload:()=>{}};
+ const players=[{id:'me',spec:'pistol',cosmetics:{}}],state={time:10,phase,players,options:{map:pve?'siren':'foundry',gameMode:'ffa',...(pve?{pve:true}:{})},pve:pve?{entries:[],party:{}}:undefined,...(boss?{bossSong:{track:'black-siren-protocol',startedAt:9}}:{}),...(phase==='intro'?{intro:{started:9,players:['me']}}:{})};
+ a.updateStageMusic(state,state);music.push({pve,phase,boss,stage:got.stage,dip:got.dip,active:got.active,rewind:!!got.rewind});}
+fs.writeFileSync(path.join(root,'Tests/event-feedback-parity.json'),JSON.stringify({source:'05950ea',hitTrim:HIT_TRIM,labels,limiter,shake,numbers,sounds,spikes,music}));
+console.log('labels',labels.length,'limiter',limiter.length,'shake',shake.length,'number scenarios',numbers.length,'sound scenarios',sounds.length,'spike rises',spikes.rises.length,'music phases',music.length);
