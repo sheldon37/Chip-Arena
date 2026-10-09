@@ -61,6 +61,31 @@ namespace ChipArena.UnityConversion
             r.SetE(hand,h*weight+(float)Math.Sin(ph+(left?0:MeleeMath.PI)-.65f)*.04f*weight,0,sign*.05f);
         }
         private static readonly float[] ArmKeys={0,.17f,.38f,.55f,.73f,.90f,1},ArmShoulder={.66f,.18f,-.86f,-.55f,.18f,.63f,.66f},ArmBend={-1.05f,-1.25f,-1.42f,-1.55f,-1.16f,-1.04f,-1.05f};
+        // The DEV fighters' travel (ansatsuken-animation.ts / emperor-animation.ts over locomotion): the guard fades into the
+        // gait's unarmed carry as the stride picks up (carry = ease((motion-.1)/.65), motion = speed/6.8), so a running fighter
+        // pumps bent arms opposite the feet with the torso counter-twist (swingArm, clavicles, spine/chest yaw) instead of a
+        // weapon set's run. `guard` holds the fighter's sampled idle; `phase` is the stride in cycles with the left heel strike
+        // at 0 (the travel feet's phase); upper body only, the feet stay the gait's. Allocation-free.
+        public static readonly int[] FighterUpper={CapturedRig.Spine,CapturedRig.Chest,CapturedRig.Neck,CapturedRig.Head,CapturedRig.LClav,CapturedRig.LArm,CapturedRig.LElbow,CapturedRig.LHand,CapturedRig.RClav,CapturedRig.RArm,CapturedRig.RElbow,CapturedRig.RHand};
+        public static float FighterCarry(float speed)=>MeleeMath.Ease((MeleeMath.Clamp(speed/RunSpeed,0,1.2f)-.10f)/.65f);
+        public static void FighterTravel(CapturedRig.Pose pose,CapturedRig.Pose guard,float phase,float speed)
+        {
+            float motion=MeleeMath.Clamp(speed/RunSpeed,0,1.2f),weight=Math.Min(motion,1),carry=FighterCarry(speed),ph=phase*MeleeMath.TAU,gait=(float)Math.Sin(ph);
+            for(int i=0;i<FighterUpper.Length;i++){int b=FighterUpper[i];pose.Rotation[b]=guard.Rotation[b];}
+            if(carry<=0)return;
+            Quaternion Mix(int b,Quaternion travel)=>Quaternion.Slerp(guard.Rotation[b],travel,carry);
+            pose.Rotation[CapturedRig.Spine]=Mix(CapturedRig.Spine,CapturedRig.Euler(0,-(float)Math.Sin(ph-.35f)*.10f*weight,0));
+            pose.Rotation[CapturedRig.Chest]=Mix(CapturedRig.Chest,CapturedRig.Euler(0,-(float)Math.Sin(ph-.6f)*.12f*weight,-(float)Math.Cos(ph)*.02f*weight));
+            pose.Rotation[CapturedRig.Neck]=Mix(CapturedRig.Neck,Quaternion.Identity);pose.Rotation[CapturedRig.Head]=Mix(CapturedRig.Head,Quaternion.Identity);
+            pose.Rotation[CapturedRig.LClav]=Mix(CapturedRig.LClav,CapturedRig.Euler(0,gait*.045f*weight,.03f));pose.Rotation[CapturedRig.RClav]=Mix(CapturedRig.RClav,CapturedRig.Euler(0,-gait*.045f*weight,-.03f));
+            for(int side=0;side<2;side++)
+            {
+                bool left=side==0;float sign=left?1:-1,u=MeleeMath.Frac(phase+(left?0:.5f)-.06f);int arm=left?CapturedRig.LArm:CapturedRig.RArm;
+                float x=MeleeMath.Lerp(left?-.10f:-.14f,MeleeMath.PoseCurve(ArmKeys,ArmShoulder,u),weight),bend=MeleeMath.Lerp(-.22f,MeleeMath.PoseCurve(ArmKeys,ArmBend,u),weight);
+                pose.Rotation[arm]=Mix(arm,CapturedRig.Euler(x,0,sign*.10f));pose.Rotation[arm+1]=Mix(arm+1,CapturedRig.Euler(bend));
+                pose.Rotation[arm+2]=Mix(arm+2,CapturedRig.Euler((float)Math.Sin(ph+(left?0:MeleeMath.PI)-.65f)*.04f*weight,0,sign*.05f));
+            }
+        }
         private static readonly float[] RollKeys={0,.22f,.55f,1},PitchKeys={0,.3f,.72f,1},SprintKeys={0,.12f,.3f,.56f,.84f};
         private static float Landing(float t)=>t<0||t>.8f?0:(float)(Math.Exp(-8.25*t)*Math.Sin(7.27*t)/.2915);
         // Distance-driven locomotion under the action layers. `planted` (commitment, hitstun, rolls) freezes the stride.

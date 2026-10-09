@@ -88,7 +88,7 @@ namespace ChipArena.UnityConversion
             // (simulation.ts:156, message = the chip), whose Mishima/arcade cue routes like the PvE Install.
             int rose=spikeRises.Step(arena.MapId,match.Phase==NativePhase.Fight&&match.Time-match.FightAt>=2,match.Time);
             for(int bed=0;rose!=0&&bed<NativeSpikeRises.Beds;bed++)if((rose&1<<bed)!=0){var s=NativeEventSounds.SpikeRise;Play(s.Clip,NativeArena.Vec(NativeSpikeRises.Position(bed)),s.Gain,s.Rate,s.Gate);}
-            // It lands on the table's plant (NativeDraftTable.SoundAt after the pick), as the pilot sets the chip down.
+            // It lands on the stage's wrist plant (NativeDraftPlant.SoundAt after the pick), as the pilot presses the chip in.
             if(match.Phase==NativePhase.Draft&&match.Chosen!=null&&NativeInstallCue.DraftDue(match.ChosenAt,match.Time)&&Once("draft-install",(float)match.ChosenAt))InstallCue(match.Chosen);
             int n=match.Phase==NativePhase.Countdown?(int)Math.Ceiling(match.PhaseEnd-match.Time):0;if(n>0&&n!=countdown)Play("countdown",null,.7f);countdown=n;
             string current=match.Phase.ToString();if(current!=phase){if(match.Phase==NativePhase.Fight)Play("go",null,.7f);if((match.Phase==NativePhase.Result||match.Phase==NativePhase.Match&&phase!="Result")&&(match.Winner!=0||arena.Pve?.Outcome!=null))Play(arena.Pve!=null?arena.Pve.Outcome=="victory"?"win":"lose":match.SameSide(me?.Seat,match.Seat(match.Winner))?"win":"lose",null,.65f);phase=current;}

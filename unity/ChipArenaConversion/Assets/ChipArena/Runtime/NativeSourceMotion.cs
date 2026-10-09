@@ -27,7 +27,10 @@ namespace ChipArena.UnityConversion
             var roots=clip.roots;rig.Root.transform.position=V(roots,0);rig.Root.transform.rotation=Quaternion.Slerp(new Quaternion(roots[a+3],-roots[a+4],-roots[a+5],roots[a+6]),new Quaternion(roots[b+3],-roots[b+4],-roots[b+5],roots[b+6]),f);rig.Root.transform.localScale=new Vector3(At(roots,7),At(roots,8),At(roots,9));
             camera.transform.SetPositionAndRotation(V(clip.cameras,0),Quaternion.LookRotation(V(clip.cameras,3),V(clip.cameras,6)));camera.fieldOfView=At(clip.cameras,9);
         }
-        public static void Pilot(CapturedRig.Pose pose,Actor a,float time)
+        // The DEV fighting styles (bare fists, no blade): their poses come from the source clips and the fighter travel.
+        public static bool Fighter(string spec)=>spec=="emperor"||spec=="ansatsuken";
+        // `phase` is the travel stride (cycles) while the pilot moves on foot, else negative; `speed` its ground speed.
+        public static void Pilot(CapturedRig.Pose pose,Actor a,float time,float phase=-1,float speed=0)
         {
             if(a.SourceSpec!="emperor"&&a.SourceSpec!="ansatsuken"&&a.SourceSpec!="siren")return;
             string key=a.SourceSpec+"-idle",action=a.SourceAction;float at=a.SourceAt,duration=a.SourceUntil-at;
@@ -36,6 +39,10 @@ namespace ChipArena.UnityConversion
             else if(time<a.BlockUntil){key=a.SourceSpec+"-block";at=a.BlockAt;duration=a.BlockUntil-a.BlockAt;}
             else if(!string.IsNullOrEmpty(action)){key=a.SourceSpec+"-"+action+"-"+(action=="charge"||action=="wave"||action=="hadoken"||action=="shinku"||action=="electric"?1:a.SourceTotal)+"-"+(action=="jab"||action=="combo"?a.SourceIndex:0);if(action=="charge")duration=1.4f;}
             if(!string.IsNullOrEmpty(action)||time<a.BlockUntil||a.Rolling(time)||a.SourceSpec=="siren"||a.Velocity.Length<.3f)Sample(key,key.Contains("idle")?time:time-at,duration,pose);
+            // Travelling (or airborne) without an action: the guard over the gait's feet, fading into the unarmed running
+            // carry, never the sword set's run the base pose sampled (MeleeGait.FighterTravel).
+            else if(Sample(key,time,0,travelGuard))MeleeGait.FighterTravel(pose,travelGuard,Mathf.Max(0,phase),phase<0?0:speed);
         }
+        private static readonly CapturedRig.Pose travelGuard=new CapturedRig.Pose();
     }
 }

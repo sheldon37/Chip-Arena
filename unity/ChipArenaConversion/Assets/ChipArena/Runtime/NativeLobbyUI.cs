@@ -425,7 +425,7 @@ namespace ChipArena.UnityConversion
         }
         // siren-card.ts: the eyes and grin (#f6f3ff) with the teeth line (#050409, 3.4) on a 200 × 120 view box; drawn on
         // a 200 square, so the face sits in its top 60 %.
-        private const string SirenFace="<path d=\"M32 36 L86 48 C74 58 46 58 32 36 Z\" fill=\"#f6f3ff\"/><path d=\"M168 36 L114 48 C126 58 154 58 168 36 Z\" fill=\"#f6f3ff\"/>"
+        internal const string SirenFace="<path d=\"M32 36 L86 48 C74 58 46 58 32 36 Z\" fill=\"#f6f3ff\"/><path d=\"M168 36 L114 48 C126 58 154 58 168 36 Z\" fill=\"#f6f3ff\"/>"
             +"<path d=\"M22 70 C70 86 130 86 178 70 C140 116 60 116 22 70 Z\" fill=\"#f6f3ff\"/>"
             +"<path d=\"M28 70.9 L37 82.7 L46 76.1 L55 93.2 L64 79.8 L73 100.2 L82 82.1 L91 103.8 L100 82.8 L109 103.8 L118 82.1 L127 100.2 L136 79.8 L145 93.2 L154 76.1 L163 82.7 L172 70.9\" fill=\"none\" stroke=\"#050409\" stroke-width=\"3.4\"/>";
         // pveLobbyBody's two fine lines, from the room's rules (a guest's copy of the host's); cached per combination.
