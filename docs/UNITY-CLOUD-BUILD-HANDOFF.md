@@ -19,12 +19,12 @@ in [UNITY-NATIVE-UPDATE-HANDOFF.md](UNITY-NATIVE-UPDATE-HANDOFF.md).
   included Windows Micro machine and keep automatic builds off during acceptance.
   No paid upgrade or spend is authorized. GitHub source connection uses repository-scoped
   Contents read-only access; the owner enters credentials directly in Unity's dashboard.
-- The native test feed is already published at channel commit `c5251fb` and the owner
-  reports an older installation updated successfully. That candidate came from the
-  owner's local build of shared `5900583` plus PR #67 v3; it does **not** validate the
-  newer C11 source or the cloud hooks. Build #4 now validates the refreshed candidate's
-  complete cloud export, Editor packaging, Cygwin post-build script and collected delivery.
-  Candidate `659a376e` is verified and staged, not published; Windows playtest remains open.
+- **Cloud build #4 is published** as native version `659a376e`, revision
+  `639271111007548341`, channel commit `1d4b4f62762698f0c3e9f01d114dcbc29574f1df`.
+  Owner approved publication at 23:02 EDT; the public manifest and all 12 parts passed
+  complete download/archive/identity verification at 23:07 EDT. Older native installations
+  can now use Update. This candidate's Windows gameplay/installed upgrade remains unrun;
+  the earlier owner-reported successful update concerned the previous `83e6a566` release.
 - Current local tooling checks: 27 publisher/delivery tests collected, 26 pass and the
   Windows command-entrypoint case skips on Linux; Bash syntax and diff checks pass.
   Full source/relay/package and UpdaterTests run in GitHub CI on the pushed candidate.
@@ -35,6 +35,23 @@ in [UNITY-NATIVE-UPDATE-HANDOFF.md](UNITY-NATIVE-UPDATE-HANDOFF.md).
 GitHub native CI [37866917576](https://github.com/sheldon37/Chip-Arena/actions/runs/37866917576) passes on implementation `8a99e962554887f758f4edc7132199aceb40f38d` (draft PR #68): Linux check_relay.py, full Python suite (42 collected, 41 pass, one Windows-only skip), package_source.py (737 files), cloud staging and 51 UpdaterTests; Windows all 16 publisher and eight cloud-delivery tests, staging/51 updater checks, shipping launcher compilation and real fixture-player install/restart/acknowledgement, rollback and interrupted-swap recovery. These are source/helper checks, not an actual Unity build. The follow-up commit records results in documentation only.
 
 Owner setup checkpoint (2026-10-08 21:03 EDT): the owner reports all requested target settings completed except a Scripting backend selector, which was not present. The supplied PDF independently shows the correct branch, project subfolder, Unity 6000.3.24f1 and Windows 11 24H2 builder. Code confirms PreExport explicitly selects Mono and PostExport rejects a backend mismatch, so no additional dashboard field is needed. The inspected run below supersedes the earlier pending-build status; billing tier and automatic-build settings remain owner-reported.
+
+## Cloud build #4 publication — 2026-10-08 23:07 EDT
+
+Owner approved publication at 23:02 EDT. Native test feed now serves build #4 from source
+`51841828e142c551b521ca6698d7487390cd4880`, build version `659a376e`, revision
+`639271111007548341`, in channel commit
+`1d4b4f62762698f0c3e9f01d114dcbc29574f1df` (parent `c5251fb`). The manifest and all
+12 <=8 MiB parts were downloaded from their normal public main-branch raw URLs and verified:
+part sizes/hashes, full payload SHA-256, ZIP CRCs, safe inventory and embedded build identity.
+The payload hash and all original delivery receipts below are unchanged. Previous native
+objects and the Electron feed subtree (`59d8f200fdc4ee22014a92561031cbfd1b2d7d72`) were preserved.
+
+Existing native installations can press Update and let the game install/restart. No new
+starter install or owner-PC Unity build is required for this ordinary update. This specific
+Windows startup/gameplay/retention/old-to-cloud upgrade remains for the owner to confirm.
+The cloud build and verified feed publication are working; automatic triggering, artifact
+retrieval and release publication are not connected. No source merge or Site/live release.
 
 ## Build #4 — complete cloud delivery verified (2026-10-08 22:57 EDT)
 
@@ -74,7 +91,8 @@ Owner setup checkpoint (2026-10-08 21:03 EDT): the owner reports all requested t
   this particular cloud candidate are not run. Source/helper CI is already recorded below
   on `82ddcfb`; no redundant suites rerun for this receipt-only change. No additional cloud
   rebuild or dashboard change is needed for this candidate. Native test-feed publication
-  awaits the owner's A13 approval for this new candidate; no merge, Site or live-feed action.
+  was subsequently owner-approved and completed at channel `1d4b4f6` as recorded above;
+  no merge, Site or live-feed action.
   For a fresh playtest use the starter ZIP inside the delivery, leaving the older installed
   copy separate for an upgrade test. Claude can resume from these receipts and PR #68.
 
@@ -253,8 +271,9 @@ build folders to test upgrades; never overwrite it with the next starter.
   collection. All four markers and the downloaded sidecar/receipt/payload checks pass.
   Earlier runs show UBA can report success after a missing script or Python failure, so
   retain the full delivery verification for every candidate.
-- The next step for build #4 is owner-approved native test-feed publication and the Windows
-  acceptance below, not another build. Automatic triggering/publication is not configured.
+- Build #4 is now owner-approved, published and public-download verified. The next step
+  is the Windows installed-update/gameplay acceptance below. Automatic triggering/publication
+  is not configured.
 - Launch the inner starter on Windows. Perform menu/match/settings/account checks and
   then an older-to-newer update, cancellation, room gating and startup rollback. Issue #60
   still contains native networking/sign-in findings which may block these checks.
