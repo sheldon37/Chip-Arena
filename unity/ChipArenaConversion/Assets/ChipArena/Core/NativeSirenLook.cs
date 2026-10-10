@@ -1,4 +1,5 @@
 using System;
+using System.Numerics;
 
 namespace ChipArena.UnityConversion
 {
@@ -25,6 +26,10 @@ namespace ChipArena.UnityConversion
         public const int Eye=0,EyeHalo=2,GrinUpper=4,GrinLower=5,Claw=6,Orb=8,OrbHalo=10,Wisp=12,Tongue=24,Count=136;
         public const int TongueCount=16,TongueSteps=7,WispSteps=6,EyeSegments=40,Shapes=41;
         public const double EyeHaloOpacity=.42,OrbHaloOpacity=.32,Swap=.35,FaceRate=18,LeanRate=6;
+        /// <summary>motion.ts's swap shudder runs SIREN_TIMING.swap + .15 s from the mode change.</summary>
+        public const double Shudder=Swap+.15;
+        /// <summary>The idle clips (tools/export_motion.mjs) the body blends between while the mode swaps.</summary>
+        public const string IdleMelee="siren-idle-melee",IdleRanged="siren-idle-ranged";
         /// <summary>Sprite colours (haloMaterial: additive, radial alpha, not tone mapped).</summary>
         public const int EyeHaloColor=0xf4f0ff,OrbHaloColor=0xd8ceff;
         // Joints in the exporter's bone order: head 5, chest 3, shoulders 6/10, hands 9/13, knees 15/19.
@@ -148,6 +153,46 @@ namespace ChipArena.UnityConversion
             double index=fraction*(clip.frames-1);int a=Math.Min(clip.frames-1,Math.Max(0,(int)index)),b=Math.Min(clip.frames-1,a+1);double w=index-a;var v=clip.values;
             open=v[a*2]+(v[b*2]-v[a*2])*w;squint=v[a*2+1]+(v[b*2+1]-v[a*2+1])*w;return true;
         }
+        /// <summary>
+        /// animateSirenRig's mode blend: smoothstep over .35 s from the mode change (modeAt) toward the replicated mode, settled
+        /// before it (a guest's modeAt can sit ahead of its render clock). Drives the claws, the palm orbs and the stance.
+        /// </summary>
+        public static double SwapBlend(bool ranged,double time,double modeAt)
+        {double swap=Clamp((time-modeAt)/Swap,0,1),eased=swap*swap*(3-2*swap);return ranged?eased:1-eased;}
+        /// <summary>The swap shudder's weight, sin(π·span(time, modeAt, modeAt + .5)) inside the window, else 0.</summary>
+        public static double ShudderWeight(double time,double modeAt)=>time-modeAt<Shudder?Math.Sin(Clamp((time-modeAt)/Shudder,0,1)*Math.PI):0;
+        /// <summary>
+        /// The mode change time a viewer can know: the authoritative time of the snapshot that first shows the new mode (the
+        /// host's tick, a guest's newest frame, the killcam's frame), which only lags the source's modeAt by one snapshot. A
+        /// stamp more than a second from the presentation clock is not trusted.
+        /// </summary>
+        public static double ModeStamp(double stamp,double time)=>!double.IsNaN(stamp)&&Math.Abs(stamp-time)<=1?stamp:time;
+        /// <summary>three.js Euler.setFromRotationMatrix, order XYZ, of a unit quaternion.</summary>
+        private static void ToEuler(Quaternion q,out double x,out double y,out double z)
+        {
+            double qx=q.X,qy=q.Y,qz=q.Z,qw=q.W,m11=1-2*(qy*qy+qz*qz),m12=2*(qx*qy-qw*qz),m13=2*(qx*qz+qw*qy),m22=1-2*(qx*qx+qz*qz),m23=2*(qy*qz-qw*qx),m32=2*(qy*qz+qw*qx),m33=1-2*(qx*qx+qy*qy);
+            y=Math.Asin(Clamp(m13,-1,1));if(Math.Abs(m13)<.9999999){x=Math.Atan2(-m23,m33);z=Math.Atan2(-m12,m11);}else{x=Math.Atan2(m32,m22);z=0;}
+        }
+        private static double MixAngle(double a,double b,double w){double d=b-a;d-=2*Math.PI*Math.Floor(d/(2*Math.PI)+.5);return a+d*w;}
+        /// <summary>
+        /// motion.ts stance(t, ranged) and the swap shudder from the two idle clips sampled at the same time (source frame).
+        /// Every joint the mode moves is linear in the blend in its XYZ Euler angles (the arms, elbows and hands), so blending
+        /// the angles of the melee and ranged stances reproduces the source's in-between stance; the shudder then adds
+        /// .15·k and sin(50t)·.05·k to the chest, -.3·k to the head's roll and -.6·k to each hand. `into` may be `melee`.
+        /// </summary>
+        public static void SwapBody(CapturedRig.Pose melee,CapturedRig.Pose ranged,double blend,double shudder,double time,CapturedRig.Pose into)
+        {
+            float w=(float)blend;double chestRoll=Math.Sin(time*50)*.05*shudder;
+            for(int b=0;b<CapturedRig.Bones.Length;b++)
+            {
+                Quaternion q0=melee.Rotation[b],q1=ranged.Rotation[b];into.Position[b]=Vector3.Lerp(melee.Position[b],ranged.Position[b],w);
+                double sx=b==CapturedRig.Chest?.15*shudder:b==CapturedRig.LHand||b==CapturedRig.RHand?-.6*shudder:0,sz=b==CapturedRig.Chest?chestRoll:b==CapturedRig.Head?-.3*shudder:0;
+                if(q0==q1&&sx==0&&sz==0){into.Rotation[b]=q0;continue;}
+                ToEuler(q0,out double x0,out double y0,out double z0);ToEuler(q1,out double x1,out double y1,out double z1);
+                NativeFxMath.EulerQuaternion(MixAngle(x0,x1,blend)+sx,MixAngle(y0,y1,blend),MixAngle(z0,z1,blend)+sz,out double qx,out double qy,out double qz,out double qw);
+                into.Rotation[b]=new Quaternion((float)qx,(float)qy,(float)qz,(float)qw);
+            }
+        }
         /// <summary>finishLook's flare: Hellfire and Damnation burn hardest at the release (their windup), fading over .2 s.</summary>
         public static double Flare(string action,double age)
         {double hit=action=="hellfire"?HellfireHit:action=="damnation"?DamnationHit:-1;return hit<0?0:Math.Max(0,1-Math.Abs(age-hit)/.2);}
@@ -169,9 +214,12 @@ namespace ChipArena.UnityConversion
     }
 
     /// <summary>
-    /// One Siren's smoothed look (motion.ts animateSirenRig + finishLook): the claw/orb blend follows the mode swap
-    /// (smoothstep over .35 s from the frame the replicated ranged flag flipped; the source reads its replicated modeAt), the
-    /// mouth and squint ease toward the clip's targets at rate 18, and the forward drift eases at rate 6 into the lean.
+    /// One Siren's smoothed look (motion.ts animateSirenRig + finishLook): the claw/orb blend and the stance follow the mode
+    /// swap (smoothstep over .35 s from modeAt, then the shudder to .5 s), the mouth and squint ease toward the clip's
+    /// targets at rate 18, and the forward drift eases at rate 6 into the lean. The source reads its replicated modeAt; the
+    /// native pose replicates only the mode, so modeAt is the authoritative time of the first snapshot that shows the new
+    /// mode (ModeStamp): exact to a tick on the host, at most one frame late on a guest, whose render clock trails its newest
+    /// frame (the blend no longer starts early there), and in the killcam replay.
     /// </summary>
     public sealed class NativeSirenLookSmoother
     {
@@ -179,15 +227,24 @@ namespace ChipArena.UnityConversion
         public void Reset(){Started=false;Open=Squint=Forward=0;ModeAt=-100;}
         /// <summary>The frame step for a draw at `time` (clamped to .05 s like the source; 0 on the first frame).</summary>
         public double Delta(double time)=>!Started||time<Last-.25?0:Math.Max(0,Math.Min(.05,time-Last));
-        public SirenLookState Step(double time,double dt,double open,double squint,double flare,bool ranged,double forwardSpeed,bool alive)
+        /// <summary>
+        /// This frame's look: `ranged` is the replicated mode and `stamp` the authoritative time of the snapshot it came from
+        /// (NativeArena.Time: the host's sim time, a guest's newest frame, the killcam's frame).
+        /// </summary>
+        public SirenLookState Step(double time,double dt,double open,double squint,double flare,bool ranged,double forwardSpeed,bool alive,double stamp)
         {
-            // A fresh Siren (or a replay that jumped back) starts settled in its current mode, mouth closed, upright.
+            // A fresh Siren (or a replay that jumped back) starts settled in its current mode, mouth closed, upright. One drawn
+            // again after a gap (respawned, back from first person or the killcam) settles into its mode: its swap is unknown.
             if(!Started||time<Last-.25){Started=true;Open=Squint=Forward=0;Ranged=ranged;ModeAt=-100;}
-            Last=time;if(ranged!=Ranged){Ranged=ranged;ModeAt=time;}
-            double swap=Math.Max(0,Math.Min(1,(time-ModeAt)/NativeSirenLook.Swap)),eased=swap*swap*(3-2*swap);
+            else if(time>Last+.25){Ranged=ranged;ModeAt=-100;}
+            Last=time;if(ranged!=Ranged){Ranged=ranged;ModeAt=NativeSirenLook.ModeStamp(stamp,time);}
             dt=Math.Max(0,Math.Min(.05,dt));double k=1-Math.Exp(-dt*NativeSirenLook.FaceRate),k6=1-Math.Exp(-dt*NativeSirenLook.LeanRate);
             Forward+=(forwardSpeed-Forward)*k6;Open+=(open-Open)*k;Squint+=(squint-Squint)*k;
-            return new SirenLookState{Ranged=ranged?eased:1-eased,Open=Open,Squint=Squint,Anger=Math.Max(0,Math.Min(1,.5+Squint*.8+Open*.5)),Glow=alive?1:0,Time=time,Lean=Math.Max(-1,Math.Min(1,Forward/6.8)),Flare=flare,Clock=time};
+            return new SirenLookState{Ranged=NativeSirenLook.SwapBlend(ranged,time,ModeAt),Open=Open,Squint=Squint,Anger=Math.Max(0,Math.Min(1,.5+Squint*.8+Open*.5)),Glow=alive?1:0,Time=time,Lean=Math.Max(-1,Math.Min(1,Forward/6.8)),Flare=flare,Clock=time};
         }
+        /// <summary>Whether the swap still moves the body at `time` (the blend or the shudder, or a modeAt still ahead).</summary>
+        public bool Swapping(double time)=>Started&&time<ModeAt+NativeSirenLook.Shudder;
+        /// <summary>The swap shudder's weight at `time` (NativeSirenLook.ShudderWeight).</summary>
+        public double Shudder(double time)=>NativeSirenLook.ShudderWeight(time,ModeAt);
     }
 }

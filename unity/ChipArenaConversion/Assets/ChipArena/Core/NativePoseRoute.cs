@@ -20,8 +20,10 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>
         /// The generic path's sword-set layers (captured cuts, block, stagger and the blade floor guard): never for a
-        /// magic-class pilot, who carries the staff (a first-person L33t H4x casts with MagicPose.Apply like the schools).
+        /// magic-class pilot, who carries the staff (a first-person L33t H4x casts with MagicPose.Apply like the schools), nor
+        /// for the Siren, who carries no blade and whose motion writes every joint (motion.ts): the floor guard bent her right
+        /// claw up through the Slam and the Rush while the left one reached the floor.
         /// </summary>
-        public static bool SwordLayers(Actor a)=>a!=null&&a.Weapon==WeaponId.Sword&&MagicPose.School(a)==0;
+        public static bool SwordLayers(Actor a)=>a!=null&&a.Weapon==WeaponId.Sword&&MagicPose.School(a)==0&&a.SourceSpec!="siren";
     }
 }
