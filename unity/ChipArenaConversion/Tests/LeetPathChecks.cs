@@ -100,10 +100,14 @@ namespace ChipArena.UnityConversion
         private static void RootCommand()
         {
             Check(NativeBlastSim.StyleOf("root")==NativeBlastStyle.Fire&&NativeBlastSim.TintOf("root")==null,"source: blastStyle('root') is the default fire, untinted");
-            Check(NativeBlastCues.Classify(false,6,0,null)==NativeBlastCues.Cue.Blast,"Root Command record is a blast");
-            Check(NativeBlastCues.Style(null,0)==NativeBlastSim.StyleOf("root"),"Root Command draws the source's 'root' style (fire)");
-            Check(NativeBlastCues.Quality(null)==1&&NativeBlastSim.TintOf(null)==null,"at full quality, untinted, as a tagged source explosion");
-            Check(NativeBlastCues.Classify(false,11,0,null)==NativeBlastCues.Cue.Blast&&NativeBlastCues.Style(null,0)==NativeBlastSim.StyleOf("leet-nuke"),"the nuke's own blast is the source's 'leet-nuke' fire");
+            // The record draws through its Explosion event (NativeBlastPresentation matches them): Detail 'leet-block' is the
+            // source's 'root'.
+            Check(NativeBlastCues.Classify(false,6,0,null,explosion:true)==NativeBlastCues.Cue.Blast,"Root Command record (with its Explosion event) is a blast");
+            string root=NativeBlastCues.ExplosionTag("leet-block",6,false,out double rootQuality);
+            Check(root=="root"&&NativeBlastCues.Style(root)==NativeBlastSim.StyleOf("root"),"Root Command draws the source's 'root' style (fire)");
+            Check(rootQuality==1&&NativeBlastSim.TintOf(root)==null,"at full quality, untinted, as a tagged source explosion");
+            string nuke=NativeBlastCues.ExplosionTag("leet-nuke",11,false,out double nukeQuality);
+            Check(NativeBlastCues.Classify(false,11,0,null,explosion:true)==NativeBlastCues.Cue.Blast&&nuke=="leet-nuke"&&nukeQuality==1&&NativeBlastCues.Style(nuke)==NativeBlastSim.StyleOf("leet-nuke"),"the nuke's own blast is the source's 'leet-nuke' fire");
             foreach(var (r,what) in new[]{(.25,"bolt lock"),(1.0,"possession"),(1.0,"Slenderman hop")})
                 Check(NativeBlastCues.Classify(true,r,2,null)==NativeBlastCues.Cue.None,what+" beam draws no blast");
             var o=new NativeEventSounds.Sound[NativeEventSounds.MaxSounds];
