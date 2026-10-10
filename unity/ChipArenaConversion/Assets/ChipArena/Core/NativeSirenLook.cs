@@ -231,13 +231,13 @@ namespace ChipArena.UnityConversion
         /// This frame's look: `ranged` is the replicated mode and `stamp` the authoritative time of the snapshot it came from
         /// (NativeArena.Time: the host's sim time, a guest's newest frame, the killcam's frame).
         /// </summary>
-        public SirenLookState Step(double time,double dt,double open,double squint,double flare,bool ranged,double forwardSpeed,bool alive,double stamp)
+        public SirenLookState Step(double time,double dt,double open,double squint,double flare,bool ranged,double forwardSpeed,bool alive,double stamp,double? sourceModeAt=null)
         {
             // A fresh Siren (or a replay that jumped back) starts settled in its current mode, mouth closed, upright. One drawn
             // again after a gap (respawned, back from first person or the killcam) settles into its mode: its swap is unknown.
             if(!Started||time<Last-.25){Started=true;Open=Squint=Forward=0;Ranged=ranged;ModeAt=-100;}
             else if(time>Last+.25){Ranged=ranged;ModeAt=-100;}
-            Last=time;if(ranged!=Ranged){Ranged=ranged;ModeAt=NativeSirenLook.ModeStamp(stamp,time);}
+            Last=time;if(sourceModeAt.HasValue){Ranged=ranged;ModeAt=sourceModeAt.Value;}else if(ranged!=Ranged){Ranged=ranged;ModeAt=NativeSirenLook.ModeStamp(stamp,time);}
             dt=Math.Max(0,Math.Min(.05,dt));double k=1-Math.Exp(-dt*NativeSirenLook.FaceRate),k6=1-Math.Exp(-dt*NativeSirenLook.LeanRate);
             Forward+=(forwardSpeed-Forward)*k6;Open+=(open-Open)*k;Squint+=(squint-Squint)*k;
             return new SirenLookState{Ranged=NativeSirenLook.SwapBlend(ranged,time,ModeAt),Open=Open,Squint=Squint,Anger=Math.Max(0,Math.Min(1,.5+Squint*.8+Open*.5)),Glow=alive?1:0,Time=time,Lean=Math.Max(-1,Math.Min(1,Forward/6.8)),Flare=flare,Clock=time};

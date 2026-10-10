@@ -98,7 +98,7 @@ namespace ChipArena.UnityConversion
             {
                 var a=p.Pose;if(a==null||a.SourceSpec!="siren"||!p.Seat.connected)continue;int seat=p.Seat.id;
                 if(!sirenTracks.TryGetValue(seat,out var t)){t=new SirenTrack{Ranged=a.SourceRanged};sirenTracks.Add(seat,t);}
-                t.Frame=fxFrame;if(a.SourceRanged!=t.Ranged){t.Ranged=a.SourceRanged;t.ModeAt=(float)NativeSirenLook.ModeStamp(arena.Time,now);}
+                t.Frame=fxFrame;t.Ranged=a.SourceRanged;t.ModeAt=a.SourceModeAt;
                 rigs.TryGetValue(seat,out var rig);bool own=FirstPerson&&view!=null&&view.Seat.id==seat;
                 Vector3 body=rig!=null&&!own?rig.Root.transform.position:p.Body.position;float k=Mathf.Max(.1f,a.RigScale);Quaternion rot=Quaternion.Euler(0,a.Yaw,0);
                 string action=string.IsNullOrEmpty(a.SourceAction)?null:a.SourceAction;
@@ -296,7 +296,7 @@ namespace ChipArena.UnityConversion
             foreach(var b in arena.Bullets)
             {
                 if(b.SirenKind!="seeker")continue;
-                int target=!arena.Replica&&b.SirenTarget!=0?b.SirenTarget:tracker.Remembered(b.Owner);if(target==0)target=SeekerTarget(arena,b);
+                int target=b.SirenTarget!=0?b.SirenTarget:tracker.Remembered(b.Owner);if(target==0)target=SeekerTarget(arena,b);
                 tracker.Seeker(b.Owner,target,b.Born,Markable(target!=0?SeatPilot(arena,target):null),now);
             }
             tracker.End();if(tracker.Count==0)return;

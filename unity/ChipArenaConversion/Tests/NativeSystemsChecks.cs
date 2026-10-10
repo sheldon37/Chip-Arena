@@ -15,6 +15,9 @@ internal static class NativeSystemsChecks
     private static T Decode<T>(JsonElement e)=>JsonSerializer.Deserialize<T>(e.GetRawText(),Options);
     public static void Run(string root,ConversionContent content)
     {
+        var push=new V3(0,5,9);var carried=NativeMeleeRules.External(ref push,1f/60,out _,true);Near(carried.z,9,"wave push is not dragged during dash");Near(carried.y,5,"wave preserves one-shot lift");Near(push.y,0,"lift consumed once");
+        var dragged=NativeMeleeRules.External(ref push,1f/60,out _);Near(dragged.z,9*Math.Exp(-3.1/60),"post-wave drag");Near(dragged.y,0,"no repeated lift");
+        Check(NativeIntroRules.Style(new NativeSeat{spec="siren"})=="neon-drop","ungranted Siren standard intro");Check(NativeIntroRules.Style(new NativeSeat{spec="siren",AuthorityBoss=true})=="dev-siren","boss intro preserved");Check(NativeIntroRules.Style(new NativeSeat{spec="rifle"})=="weapon-rifle","weapon intro preserved");Check(NativeIntroRules.Style(new NativeSeat{spec="siren",overrideIntro=true,intro="missing-style"})=="neon-drop","unknown override normalized");
         var pve=JsonSerializer.Deserialize<NativePveContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/PveContent.json")),Options);
         using(var file=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Tests/pve-parity.json"))))
         {

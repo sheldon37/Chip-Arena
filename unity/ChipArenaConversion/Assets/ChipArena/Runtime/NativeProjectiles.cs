@@ -94,15 +94,15 @@ namespace ChipArena.UnityConversion
         private bool PongBounce(NativeBullet b,NativePilot owner,Vector3 point,Vector3 velocity)
         {
             if(b.Bounces--<=0){var w=Content.Weapon(b.Spec);if(w.blast>0&&(b.Direct||b.Reflections>0))ChipBlast(owner,point,b.Radius>.2f?3:(float)w.blast,b.Damage*.38f,b.Impulse,effect:b.Spec);return true;}
-            Emit(EventKind.Pong,owner,0,point,b.Damage);b.FixedSpeed=Math.Min(b.RallyCap,b.FixedSpeed*1.12f);Vector3 from=point+velocity.normalized*(b.Radius+.1f);
+            int rallyTarget=0;b.FixedSpeed=Math.Min(b.RallyCap,b.FixedSpeed*1.12f);Vector3 from=point+velocity.normalized*(b.Radius+.1f);
             if(!(b.Velocity.y<0&&velocity.y>0)&&Vector3.Distance(point,b.RallyMark)>=6)
             {
                 var candidates=Pilots.Where(p=>p.Hp>0&&Enemy(owner,p)&&Vector3.Distance(from,p.Body.position)<12&&MeleeVisible(from,p.Body.position,owner,p.Collider)).OrderBy(p=>(p.Body.position-from).sqrMagnitude).Take(4);
-                foreach(var target in candidates){Vector3 d=target.Body.position+Vector3.up*.15f-from;if(Vector3.Dot(d.normalized,velocity.normalized)<Mathf.Cos(30*Mathf.Deg2Rad))continue;velocity=d+target.Body.linearVelocity*(d.magnitude/b.FixedSpeed*.4f);b.Damage+=b.RallyBonus;break;}
+                foreach(var target in candidates){Vector3 d=target.Body.position+Vector3.up*.15f-from;if(Vector3.Dot(d.normalized,velocity.normalized)<Mathf.Cos(30*Mathf.Deg2Rad))continue;velocity=d+target.Body.linearVelocity*(d.magnitude/b.FixedSpeed*.4f);b.Damage+=b.RallyBonus;rallyTarget=target.Seat.id;break;}
             }
             // The bounce's look comes from its Pong event (the source's `ricochet`: NativeBlastPresentation.Impacts); the first port's
             // fire-school ability effect here drew a fireball on every rally. Presentation feed only.
-            b.RallyMark=point;b.Position=from;b.Velocity=velocity.normalized*b.FixedSpeed;return false;
+            b.RallyMark=point;b.Position=from;b.Velocity=velocity.normalized*b.FixedSpeed;Emit(EventKind.Pong,owner,rallyTarget,from,b.Damage,rallyTarget!=0?"rally":null,from:point);return false;
         }
         private bool BulletImpact(NativeBullet b,NativePilot owner,NativeContact hit)
         {

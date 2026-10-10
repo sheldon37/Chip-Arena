@@ -35,15 +35,20 @@ namespace ChipArena.UnityConversion
         private void RemoveMinion(NativeMinion m,bool explode=true)
         {
             if(!Minions.Remove(m))return;RecordMinionDeath(m);Vector3 pos=m.Body.position;m.Hp=0;m.Collider.enabled=false;CapturedAnimation.Release(m.Body.gameObject);
-            if(explode&&m.Kind=="zombie"&&Has(m.Owner,"corpse-party")&&Match.Phase==NativePhase.Fight)ChipBlast(m.Owner,pos,3.5f,30,300);
+            if(explode&&m.Kind=="zombie"&&Has(m.Owner,"corpse-party")&&Match.Phase==NativePhase.Fight)ChipBlast(m.Owner,pos,3.5f,30,300,effect:"corpse-party");
         }
         private float HitMinion(NativeMinion m,NativePilot owner,float damage,Vector3 direction,float impulse,Vector3? point=null,string kind=null,float radius=0,bool head=false)
         {
-            if(m.Hp<=0||!CanHit(owner,m))return 0;if(m.Pve!=null)return HitPveAdd(m,owner,damage,direction,impulse,point,kind,radius,head);float actual=Math.Max(0,Math.Min(m.Hp,damage));m.Hp-=actual;m.LastHitAt=Time;if(!m.Body.isKinematic)m.Body.AddForce(direction*impulse,ForceMode.Impulse);Emit(EventKind.Hit,owner,m.Id,m.Body.position,actual,kind=="energy"?"ability":kind=="projectile"||kind==null?"direct":kind=="dot"?"field":kind);if(m.Hp<=0)RemoveMinion(m);return actual;
+            if(m.Hp<=0||!CanHit(owner,m))return 0;if(m.Pve!=null)return HitPveAdd(m,owner,damage,direction,impulse,point,kind,radius,head);float actual=Math.Max(0,Math.Min(m.Hp,damage));m.Hp-=actual;m.LastHitAt=Time;if(!m.Body.isKinematic)m.Body.AddForce(direction*impulse,ForceMode.Impulse);Emit(EventKind.Hit,owner,m.Id,m.Body.position,actual,kind=="energy"?"ability":kind=="projectile"||kind==null?"direct":kind=="dot"?"field":kind);MinionImpact(m,owner,actual,point,kind,direction);if(m.Hp<=0)RemoveMinion(m);return actual;
+        }
+        private void MinionImpact(NativeMinion m,NativePilot owner,float actual,Vector3? point,string kind,Vector3 direction)
+        {
+            if(actual<=0||owner==null||!(kind==null||kind=="direct"||kind=="projectile"||kind=="secondary"||kind=="reflected"||kind=="melee"||kind=="energy"))return;
+            Emit(EventKind.Impact,owner,m.Id,point??m.Body.position,actual,kind,normal:-direction.normalized);
         }
         private void MinionWeaponHit(NativeMinion m,NativePilot owner,float actual,float burn,float poison)
         {
-            if(actual<=0||owner==null)return;owner.DirectHits++;if(owner.Stats["staticEvery"]>0&&owner.DirectHits%(int)owner.Stats["staticEvery"]==0)ChipBlast(owner,m.Body.position,3,(float)owner.Stats["staticDamage"],60,false);if(owner.Seat.spec=="water"&&Time>=m.SoakAt+1.5f){m.SoakAt=Time;SlowMinion(m,.8f,.8f);}
+            if(actual<=0||owner==null)return;owner.DirectHits++;if(owner.Stats["staticEvery"]>0&&owner.DirectHits%(int)owner.Stats["staticEvery"]==0)ChipBlast(owner,m.Body.position,3,(float)owner.Stats["staticDamage"],60,false,effect:"static");if(owner.Seat.spec=="water"&&Time>=m.SoakAt+1.5f){m.SoakAt=Time;SlowMinion(m,.8f,.8f);}
             if(owner.Weapon.chain>0){var near=NearAbilityEnemies(owner,m.Body.position,4,2).FirstOrDefault(x=>x.m!=m);if(near.p!=null)Damage(near.p,owner,(float)owner.Weapon.chain,Vector3.zero,0,false,direct:false,primary:false);else if(near.m!=null)HitMinion(near.m,owner,(float)owner.Weapon.chain,Vector3.zero,0,kind:"chain");}
             Heal(owner,actual*(float)(owner.Weapon.drain+owner.Stats["lifeSteal"]));if(m.Hp<=0)return;
             foreach(var item in new[]{(kind:"fire",dps:burn,duration:2f),(kind:"poison",dps:poison,duration:4f)})

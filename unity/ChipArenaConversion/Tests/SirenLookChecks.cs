@@ -160,6 +160,13 @@ namespace ChipArena.UnityConversion
                 var c=g.Step(5,0,0,0,0,true,0,true,5);Check(c.Ranged==1&&!g.Swapping(5),"a replay that jumps back starts settled");
                 Check(NativeSirenLook.ShudderWeight(10,10.2)==0&&NativeSirenLook.ShudderWeight(10.75,10)==0&&Math.Abs(NativeSirenLook.ShudderWeight(10.25,10)-1)<1e-12,"shudder window");
             }
+            // Late join / lost flip frame / replay seek retain the actual swap age, even on the first rendered frame.
+            foreach(double renderAt in new[]{10.10,10.22,11.0})
+            {
+                var exact=new NativeSirenLookSmoother();var state=exact.Step(renderAt,0,0,0,0,true,0,true,renderAt+.08,10);
+                Near(state.Ranged,NativeSirenLook.SwapBlend(true,renderAt,10),1e-9,"replicated mode age");Check(exact.ModeAt==10,"late sample moved mode deadline");
+                exact.Step(renderAt+.01,.01,0,0,0,true,0,true,renderAt+.09,10);Check(exact.ModeAt==10,"unchanged mode restarts blend");
+            }
             // The Siren takes no sword-set layer (the blade floor guard bent her right claw through the Slam and the Rush).
             Check(!NativePoseRoute.SwordLayers(new Actor{SourceSpec="siren",Weapon=WeaponId.Sword})&&NativePoseRoute.SwordLayers(new Actor{SourceSpec="sword",Weapon=WeaponId.Sword}),"no sword layers on the Siren");
             Console.WriteLine($"PASS Siren look parity: {NativeSirenLook.Count} piece joints, {eyes} eye outlines, {states} applySirenLook states, {frames} timeline frames ({guestFrames} as a guest; largest look-state gap {worst:0.0e+0}, {balls} Damnation balls), {bodyFrames} body frames (largest joint gap {worstBody:0.0e+0}), {tracks.Count} face tracks; {count} checks");

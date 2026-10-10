@@ -164,8 +164,8 @@ namespace ChipArena.UnityConversion
             Pve.Holding=true;hp=add.Hp;Check(HitMinion(add,pilot,5,Vector3.forward,0)==0&&add.Hp==hp,"cinematic protection lost");Pve.Holding=false;
             add.Pve.Travelling=true;Check(HitMinion(add,pilot,5,Vector3.forward,0)==0,"vent travel protection lost");add.Pve.Travelling=false;
             add.Pve.ExposedAt=Time+1;Check(HitMinion(add,pilot,5,Vector3.forward,0)==0,"unexposed entry protection lost");add.Pve.ExposedAt=Time-1;
-            Events.Clear();HitMinion(add,pilot,1,Vector3.right,0);var hit=Events.Last(e=>e.Kind==EventKind.Hit);Check(hit.Normal.x==1&&hit.Normal.y==0&&hit.Detail=="direct","directed add hit payload");
-            Events.Clear();HitMinion(add,pilot,1,Vector3.zero,0,null,"dot");Check(Events.Last(e=>e.Kind==EventKind.Hit).Normal.Length==0,"DoT generated a directed splatter");
+            Events.Clear();HitMinion(add,pilot,1,Vector3.right,0);var hit=Events.Last(e=>e.Kind==EventKind.Hit);Check(hit.Normal.x==1&&hit.Normal.y==0&&hit.Detail=="direct","directed add hit payload");Check(Events.Any(e=>e.Kind==EventKind.Impact&&e.Target==add.Id&&e.Source==pilot.Seat.id),"add contact impact missing");
+            Events.Clear();HitMinion(add,pilot,1,Vector3.zero,0,null,"dot");Check(Events.Last(e=>e.Kind==EventKind.Hit).Normal.Length==0,"DoT generated a directed splatter");Check(!Events.Any(e=>e.Kind==EventKind.Impact),"add DoT emitted contact impact");
             RemoveMinion(add,false);Bullets.Clear();
             Debug.Log("PASS hidden Siren adds: projectile sweep, melee, ability/chip blast, target acquisition, hold/entry/travel protections and hit direction");
         }

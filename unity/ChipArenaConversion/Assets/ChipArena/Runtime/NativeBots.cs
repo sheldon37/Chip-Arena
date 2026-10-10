@@ -50,7 +50,7 @@ namespace ChipArena.UnityConversion
         }
         private void BotAbilities(NativePilot p,ref InputFrame input,Vector3 target,Vector3 velocity,float distance,bool visible,int level)
         {
-            if(!FighterReady(p)||p.AbilityCast!=null||p.CastAt>0||Time<p.AttackEnd)return;
+            if(!FighterReady(p)||p.AbilityCast!=null||p.CastAt>0||Time<p.AttackEnd&&!(Dev(p,"emperor")&&p.Fighter?.Kind=="wave"))return;
             if(p.Fighter?.Kind=="charge"){input.HadokenHeld=visible&&Time-p.Fighter.At<1.45f&&p.Stamina>=30*p.Stats["resourceCost"];input.Shoot=input.Roll=false;return;}
             if(!visible)return;
             bool Ready(ContentAbility d)=>d!=null&&d.live&&d.kind!="ads"&&(d.slot=="q"?Time>=p.QReady:p.ECharges>0)&&p.Mana>=NativeAbilityRules.Cost(d,p.Stats)&&distance>=NativeBotRules.Ability(d.id).min&&distance<=NativeBotRules.Ability(d.id).max;

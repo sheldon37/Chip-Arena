@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class NativeFighter
     {
         public NativeFighter ViewCopy()=>(NativeFighter)MemberwiseClone();
-        public string Kind;public int Id,Index,Total,Next,Count;public float At,HitAt,Until,Gap,HadokenReady,UppercutReady,LastHit=-100,LastUntil,Charge,StepUntil;
+        public string Kind;public int Id,Index,Total,Next,Count;public float At,HitAt,Until,Gap,HadokenReady,UppercutReady,LastHit=-100,LastUntil,Charge,StepUntil,WaveUntil;
         public int ComboTarget,Hits;public float ComboDamage;public bool Single;
     }
     public sealed class NativeJuggle
@@ -23,12 +23,13 @@ namespace ChipArena.UnityConversion
         public readonly List<NativeFighterEcho> FighterEchoes=new List<NativeFighterEcho>();public readonly List<NativeStormTrail> StormTrails=new List<NativeStormTrail>();
         private bool Dev(NativePilot p,string spec)=>p!=null&&p.Seat.spec==spec&&(p.Seat.AuthorityBoss&&spec=="siren"||p.Seat.access.Allows("weapon:"+spec,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()));
         private NativeFighter Fighter(NativePilot p)=>p.Fighter??(p.Fighter=new NativeFighter());
-        private void CancelFighter(NativePilot p){if(p.Fighter==null)return;p.Fighter.Kind=null;p.Fighter.Charge=p.Fighter.StepUntil=0;p.Fighter.Count=p.Fighter.Next=0;}
+        private void CancelFighter(NativePilot p){if(p.Fighter==null)return;p.Fighter.Kind=null;p.Fighter.Charge=p.Fighter.StepUntil=p.Fighter.WaveUntil=0;p.Fighter.Count=p.Fighter.Next=0;}
         private bool FighterReady(NativePilot p)=>p.Hp>0&&p.Seat.connected&&!Incapacitated(p)&&Time>=p.BlockEnd&&Time>=p.RollEnd;
         private bool StartFighter(NativePilot p,string kind)
         {
             bool emperor=Dev(p,"emperor");if(!(emperor||Dev(p,"ansatsuken"))||!FighterReady(p))return false;var f=Fighter(p);
-            bool cancel=!emperor&&kind!="combo"&&Has(p,"arcade-cancel")&&f.Kind=="combo"&&f.LastHit>=f.At&&Time-f.LastHit<.5f;
+            // shared/emperor.ts: waves do not occupy the attack slot; a one-tick Q or jab can replace them.
+            bool cancel=emperor?f.Kind=="wave"&&(kind=="electric"||kind=="jab")&&Time>=p.Ready:kind!="combo"&&Has(p,"arcade-cancel")&&f.Kind=="combo"&&f.LastHit>=f.At&&Time-f.LastHit<.5f;
             if((Time<p.Ready||f.Kind!=null)&&!cancel)return false;if(kind=="tatsu"&&Time<p.EReady||kind=="shoryuken"&&Time<f.UppercutReady)return false;
             bool single=kind=="combo"||kind=="jab",electric=kind=="electric";
             int total=emperor?(electric?1:Has(p,"mishima-pressure")?3:2):kind=="combo"?(Has(p,"arcade-rush")?10:3):kind=="tatsu"?(Has(p,"arcade-cyclone")?7:4):(Has(p,"arcade-rising")?3:1);
@@ -61,7 +62,7 @@ namespace ChipArena.UnityConversion
             if(emperor)
             {
                 if(p.Input.AbilityQ)StartFighter(p,"electric");
-                if(p.Input.AbilityEHeld&&Time>=p.Ready&&f.Kind==null){f.Kind="wave";f.At=Time;f.Total=1;f.Until=Time+.18f;p.AttackEnd=f.Until;f.Next=f.Count=0;if(Has(p,"mishima-trail")&&StormTrails.Count<24)StormTrails.Add(new NativeStormTrail{Owner=p,Position=p.Body.position,At=Time,Until=Time+.7f});}
+                if(p.Input.AbilityEHeld&&p.Grounded&&Time>=p.Ready&&f.Kind==null){f.Kind="wave";f.At=Time;f.Total=1;f.Until=f.WaveUntil=Time+.18f;f.Single=false;p.Knockback=Vec(V3.Forward(p.Input.Yaw))*9+Vector3.up*p.Knockback.y;p.AttackEnd=f.Until;f.Next=f.Count=0;if(Has(p,"mishima-trail")&&StormTrails.Count<24)StormTrails.Add(new NativeStormTrail{Owner=p,Position=p.Body.position,At=Time,Until=Time+.7f});}
             }
             else
             {
@@ -71,7 +72,7 @@ namespace ChipArena.UnityConversion
             }
         }
         private Vector3 FighterMotion(NativePilot p)
-        {var f=p.Fighter;if(f==null)return Vector3.zero;return Vec(V3.Forward(p.Input.Yaw))*(f.Kind=="wave"&&Time<f.Until?9:f.Kind=="electric"&&Time<f.StepUntil?6:0);}
+        {var f=p.Fighter;if(f==null)return Vector3.zero;return Vec(V3.Forward(p.Input.Yaw))*(f.Kind=="electric"&&p.Grounded&&Time<f.StepUntil?6:0);}
         private void Hadoken(NativePilot p,bool super)
         {
             var f=Fighter(p);float cost=(super?30:12)*(float)p.Stats["resourceCost"];if(ProjectileCount>=100||p.Stamina<cost){CancelFighter(p);return;}p.Stamina-=cost;

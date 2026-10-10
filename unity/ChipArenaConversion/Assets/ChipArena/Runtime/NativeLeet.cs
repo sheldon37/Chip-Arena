@@ -41,8 +41,8 @@ namespace ChipArena.UnityConversion
         {if(!Leet(p,"brain"))return false;CancelAbilities(p);CancelMelee(p);p.BlockAt=Time;p.BlockReady=Time+6;p.BlockEnd=0;Vector3 dir=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch));LeetOrb(p,p.Body.position+Vector3.up*.2f+dir*.8f,dir,"brain");return true;}
         private void StepLeetPilot(NativePilot p)
         {
-            if(!Leet(p)||!p.Input.AbilityE||AbilityBusy(p)||Time<p.EReady||Time<p.BlockEnd||Frozen(p))return;float cost=30*(float)p.Stats["resourceCost"];if(p.Mana<cost)return;p.Mana-=cost;p.EReady=Time+12;p.Ready=Time+.4f;p.LastAttack=p.AttackAt=Time;
-            if(Leet(p,"time"))foreach(var q in Pilots)if(q.Hp>0&&CanHit(p,q)&&!SirenArmor(q))q.FrozenUntil=Time+4;
+            if(!Leet(p)||!p.Input.AbilityE||AbilityBusy(p)||Time<p.Ready||Time<p.EReady||Time<p.BlockEnd||Frozen(p))return;float cost=30*(float)p.Stats["resourceCost"];if(p.Mana<cost)return;p.Mana-=cost;p.EReady=Time+12;p.Ready=Time+.4f;p.LastAttack=p.AttackAt=Time;
+            if(Leet(p,"time")){foreach(var q in Pilots)if(q.Hp>0&&CanHit(p,q)&&!SirenArmor(q))q.FrozenUntil=Time+4;Emit(EventKind.Leet,p,0,p.Body.position,0,"leet-freeze",28);}
             if(Leet(p,"scare")){foreach(var f in LeetFields.Where(f=>f.Owner==p&&f.Kind=="tree").ToArray())RemoveLeetField(f);Vector3 pos=p.Body.position+Vec(V3.Forward(p.Input.Yaw))*2;pos.y=.05f;LeetFields.Add(new NativeLeetField{Id=nextEvent++,Owner=p,Kind="tree",Position=pos,At=Time,Until=Time+22});}
             if(!Leet(p,"time")&&!Leet(p,"scare"))ChipBlast(p,p.Body.position,6,35,1200,effect:"leet-block");
         }
