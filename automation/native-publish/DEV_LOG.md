@@ -1,5 +1,17 @@
 # Native publishing automation development log
 
+## 2026-10-10 — Astra — retain failed Unity diagnostics
+
+- Branch `codex/unity-failed-build-diagnostics`, base `0cdb0058`. Unity #24
+  for grab/revival source `d9ebe850` failed before preparation; publisher run
+  `38077039859` stopped correctly but retained no compiler/build-gate log.
+- Save the exact-source terminal build's provider log and minimal identity in
+  private Actions artifacts. Existing credentials, target, publication gates and
+  failed-build no-retry behavior remain unchanged. No game/animation changes.
+- Local publisher suite: 71 tests, 70 pass and one expected Windows-only skip.
+  Covers safe metadata, unavailable logs and failure propagation. Hosted checks
+  and actual #24 diagnosis remain pending.
+
 ## 2026-10-10 — Astra — expose deferred publication outcomes
 
 - Owner requested final Unity visual-batch publication and delegated pipeline
