@@ -36,18 +36,21 @@ namespace ChipArena.UnityConversion
             var m=a.Weapon==WeaponId.Sword&&!NativeWeaponDressing.Fist(a.SourceSpec)?MeleeHand(rig,a,time,bone==CapturedRig.LHand):rig.Bones[bone].localToWorldMatrix;
             return reach!=1?m*Matrix4x4.Scale(new Vector3(1,1,reach)):m;
         }
-        private void QueuePiece(in WeaponPiece p,Matrix4x4 parent,int layer,Camera camera)
+        // `dim`: the block-cooldown factor of the rig the piece belongs to (block-cooldown-tint.ts tints the weapon group too).
+        private void QueuePiece(in WeaponPiece p,Matrix4x4 parent,int layer,Camera camera,float dim=1)
         {
             var matrix=parent*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(p.Position)),CapturedAnimation.Quat(CapturedRig.Mirror(p.Rotation)),CapturedAnimation.Vec(p.Scale));
-            sourceModels.QueuePiece(p.Shape,p.Glow,matrix,NativeArena.ColorOf(p.Color).linear,layer,camera);
+            var color=NativeArena.ColorOf(p.Color).linear;if(dim!=1)color=new Color(color.r*dim,color.g*dim,color.b*dim,color.a);
+            sourceModels.QueuePiece(p.Shape,p.Glow,matrix,color,layer,camera);
         }
         // After the weapon model is queued (SourceCharacter): the muzzle flash, the chip modules (both daggers), the blade
         // enchant (both daggers) and, in third person, this frame's blade sample. First person draws on the view weapon:
-        // modules at half size and hidden past half ADS (first-person-view.ts:89), enchant and flash unscaled.
+        // modules at half size and hidden past half ADS (first-person-view.ts:89), enchant and flash unscaled. The flash and the
+        // modules dim with the rig's block cooldown (rigFactor); the enchant is exempt (block-cooldown-tint.ts:15).
         private void WeaponDressing(CapturedAnimation.Player rig,Actor a,float time,bool first,int layer,Camera camera,float reach)
         {
             if(sourceModels==null||Viewer||rig==introRig)return;string spec=a.SourceSpec;
-            if(NativeWeaponDressing.MuzzleFlash(spec,a.LastShot,time,out var flash))QueuePiece(flash,rig.Bones[CapturedRig.RHand].localToWorldMatrix,layer,camera);
+            if(NativeWeaponDressing.MuzzleFlash(spec,a.LastShot,time,out var flash))QueuePiece(flash,rig.Bones[CapturedRig.RHand].localToWorldMatrix,layer,camera,rigFactor);
             var pilot=LoadoutPilot(a.Id);
             if(!first)SampleSweep(rig,a,time,reach,pilot?.Seat.chips);
             if(pilot?.Stats==null||pilot.Weapon==null||pilot.Seat.chips==null)return;var chips=pilot.Seat.chips;var stats=pilot.Stats;bool daggers=spec=="daggers";
@@ -57,7 +60,7 @@ namespace ChipArena.UnityConversion
                 if(count>0)for(int hand=0;hand<(daggers?2:1);hand++)
                 {
                     var parent=SourceWeaponBone(rig,a,time,first,hand==0?CapturedRig.RHand:CapturedRig.LHand,reach);if(first)parent*=Matrix4x4.Scale(Vector3.one*NativeWeaponDressing.FirstPersonModuleScale);
-                    for(int i=0;i<count;i++){var p=weaponPieces[i];NativeWeaponDressing.Animate(ref p,time);QueuePiece(p,parent,layer,camera);}
+                    for(int i=0;i<count;i++){var p=weaponPieces[i];NativeWeaponDressing.Animate(ref p,time);QueuePiece(p,parent,layer,camera,rigFactor);}
                 }
             }
             // renderer.ts:83-84,129: elements only on melee-class weapons, from the burn and poison stats; stacks from the chips.
@@ -84,14 +87,19 @@ namespace ChipArena.UnityConversion
             int hand=a.SourceSpec=="daggers"&&(a.Combo+1)%2==0?CapturedRig.LHand:CapturedRig.RHand;var m=SourceWeaponBone(rig,a,time,false,hand,reach);
             meleeSweeps.Add(SweepKey.Of(a),a.SourceSpec,NativeWeaponDressing.SweepColor(chips),CapturedAnimation.Num(m.MultiplyPoint3x4(Vector3.zero)),CapturedAnimation.Num(m.MultiplyPoint3x4(CapturedAnimation.Vec(CapturedRig.Mirror(tip)))),time);
         }
-        // The source keeps posing the local pilot's hidden body rig in first person, so its own world sweep still shows in
-        // front of the camera (renderer.ts:122-126; melee-trails.ts:34 checks the weapon, not the body). The rig is posed but
-        // never queued.
+        // The source keeps posing the local pilot's hidden body rig in first person, so its own world sweep and hand motes still
+        // show in front of the camera (renderer.ts:122-128; melee-trails.ts:34 checks the weapon, not the body; spellMotes reads
+        // the body's right hand). The rig is posed (only while it sweeps or casts) but never queued.
         private void HiddenSweep(Actor a,Vector3 position,float time,bool posed=false)
         {
-            if(sourceModels==null||Viewer||!meleeSweeps.Enabled||a.WeaponAway||!NativeWeaponDressing.BladeTip(a.SourceSpec,out _))return;
+            if(sourceModels==null||Viewer)return;
+            bool sweep=meleeSweeps.Enabled&&!a.WeaponAway&&NativeWeaponDressing.BladeTip(a.SourceSpec,out _),motes=MagicPose.School(a)>0;
+            if(motes&&!NativeSpellMotes.Casting(a,time)){if(moteClocks.TryGetValue(a.Id,out var clock))clock.Reset();motes=false;}
+            if(!sweep&&!motes)return;
             if(!rigs.TryGetValue(a.Id,out var rig)){rig=captured.Create(transform,a.Id);rig.Impacts=meleeImpacts;rigs.Add(a.Id,rig);}
-            if(!posed){PoseReach(rig,a,time);rig.ActorPose(a,position,time);}SampleSweep(rig,a,time,rig.WeaponReach,LoadoutPilot(a.Id)?.Seat.chips);
+            if(!posed){PoseReach(rig,a,time);rig.ActorPose(a,position,time);}var pilot=LoadoutPilot(a.Id);
+            if(sweep)SampleSweep(rig,a,time,rig.WeaponReach,pilot?.Seat.chips);
+            if(motes)HandMotes(rig,a,time,pilot?.Weapon!=null?(int)pilot.Weapon.color:-1);
         }
         // melee-trails.ts:67-102 once per frame after every blade sample: prune, release and draw the additive ribbons.
         private void RenderMeleeTrails(float time)
