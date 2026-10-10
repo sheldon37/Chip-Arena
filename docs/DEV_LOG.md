@@ -1,5 +1,29 @@
 # Chip Arena — development log
 
+## 2026-10-10 — Claude — Early-port placeholders, batch 4: sky death broadcast and vent fall/splat (owner request)
+- Branch `claude/sleepy-ritchie-g8ruhv` (PR #62), on top of `e8bb235`; implementation commit `fcab36f`. I finished this from the partial `claude/placeholders-4` work. Presentation only. No change to simulation, death timing, `landAt`, revive rules, network frames or saves.
+- Sky broadcast (`Core/NativeBroadcastFx.cs`, `NativeBroadcastEdges.Generated.cs`, `Runtime/NativeDeathFxDraw.cs`) replaces the first port's cube rocket, cube stars and beam frame with the source `death-announcements.ts` look:
+  - a line-trail rocket;
+  - point-sprite stars;
+  - the flat 0x62dcff portrait hologram with its 24° edge lines;
+  - drifting scanlines and the corner/tick frame;
+  - the victim / verb / killer nameplate.
+  Only the newest three launched broadcasts show. The new `Resources/NativeDeathFx.shader` is listed in `NativeBuildChecks`.
+- Vent deaths (`Core/NativeVentDeath.cs`, `Runtime/NativeVentDeathPresentation.cs`) draw `vent-fall.ts`'s scripted victim instead of the sliding corpse:
+  - fall: the carried last pose, flail, drop and spin;
+  - splat: the fall, squash, wobble and held pose, the floor dust puff and the SPLAT! pop.
+- One-line hook in Astra's `NativeInteractionPresentation.StartRevival`: a kept vent-splat body is rebuilt from the body as drawn. The partial batch's own revive-hologram port (`NativeRegen`) is dropped, because Astra's `b1f908d` owns the revive.
+- Checks:
+  - unity-check: runtime+editor build OK;
+  - Python: 52 OK (1 skipped);
+  - package_source: passed, 966 files;
+  - check_relay: exit 0, 222 PASS. The new `DeathFxChecks` runs 32,618 checks against pinned-source frames for the broadcast, vent fall and splat, plus runtime-hook scans.
+  - `git diff --check` is clean.
+  - The offline sky-broadcast sheet matches the source.
+- Not run: no subagent review (usage limit), no offline render of the vent fall/splat runtime draw, no real D3D11 compile of the new shader (the cloud build's `NativeBuildChecks` gates it), no Windows play.
+- Remaining: B5 (world/stage items) is research only and waits.
+- Status: implemented on the branch; pushed to the cloud branch for the test channel; not released by Claude.
+
 ## 2026-10-10 — Claude — Early-port placeholders, batches 1–3: impact VFX, rig dressing, HUD/menus (owner request)
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62), merged on top of the cloud head `d9ebe85` (Astra's victim pose, revive hologram and intro audio clock). Batches built on `claude/placeholders-1` `9db1d32`, `-2` `8f95076` and `-3` `cf01e49`. Presentation only. No change to simulation, rules, hit timing, hitboxes, damage, cooldowns, movement, network frames or saves.
 - B1, impacts: the native-arena ParticleSystem hit burst is replaced by the source's event-vfx voxel sparks for hit, block, break, impact and collapse (`Core/NativeImpactCues.cs`). Also ported from the source:
