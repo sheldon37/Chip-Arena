@@ -1,5 +1,41 @@
 # Chip Arena — development log
 
+## 2026-10-10 — Claude — Early-port placeholders, batch 5: world, stage, summon and pickup effects; Astra handoff
+- Branch `claude/sleepy-ritchie-g8ruhv` (PR #62), on top of `0433c87`. Merged `claude/placeholders-5a` `dd2ab53` and `claude/placeholders-5b` `1a4fb9a`. Each half was built, reviewed from two angles (source fidelity, Unity build safety) and fixed. Presentation only.
+- B5a:
+  - The pilot cube stand-ins are deleted: the Admin Pause cage, the possession tether and the shield ring. The source draws none of them in 3D.
+  - Siren-stage and Ward Zero vents follow `stage.ts` (`Core/NativeStageVentFx.cs`, `Runtime/NativeStageVentPresentation.cs`):
+    - the square warn-red rim that turns white while erupting;
+    - the open-vent flicker and the lid rattle;
+    - warning wisps, burst, jets and lid smoke, emitted into the shared flame pool.
+    The orange cube rings are gone.
+  - The Siren Marked seeker carries its pooled point light (`Core/NativeSeekerLight.cs`, cap 4).
+- B5b:
+  - Summon break-up follows the source: jitter, the rig hides at 0.75 s, three gib-coloured bursts, and the minionHit puff (`Core/NativeSummonBreak.cs`).
+  - Ceiling-field hit holograms (`Core/NativeCeilingField.cs`, new `Resources/NativeCeilingField.shader`).
+  - PvE pickups (`Core/NativePickupFx.cs`, new `Resources/NativePickupGlow.shader`): the glow sprite, the YOURS label on your own chips and the pulsing tier beam for epic and above. The old IMGUI YOURS label is now only a fallback.
+  - Both new shaders are listed in `NativeBuildChecks`.
+- Fix to batch 4: the match camera is not tagged MainCamera, so `Camera.main` is null in matches. The SPLAT! pop now faces the last `RenderGlow` camera (`WorldEye`), and the pickup glow faces the camera in its shader.
+- Checks on the merged head:
+  - unity-check: runtime+editor build OK;
+  - Python: 52 OK;
+  - package_source: passed, 992 files;
+  - check_relay: exit 0, 224 PASS. New `StageVentChecks` runs 102,444 checks and `SummonCeilingPickupChecks` 1,665, both against pinned-source fixtures.
+  - `git diff --check` is clean.
+- Not run: a real D3D11 compile of the two new shaders (glslang HLSL syntax check only), the Windows font-atlas readback for YOURS (it falls back to the flat label), and live play.
+- Handoff to Astra (also given to the owner):
+  1. Melee hit stun (owner request "small hit stuns when hit by melee"; simulation is Astra's):
+     - On a clean standard-melee or fighter Hit/Headshot, set `StunEnd = max(StunEnd, now + d)` by attacker weight. Suggested d: daggers ~0.12 s, sword ~0.18, shield ~0.20, greatsword ~0.28, fighter light ~0.10 and heavy ~0.22.
+     - Exclude blocked hits, burn/poison ticks and ranged/magic hits. Bosses immune or reduced.
+     - Anti-stunlock: no new stun while `StaggerImmuneUntil > now`; set `StaggerImmuneUntil = StunEnd + ~0.5 s`.
+     - `stunEnd` is already replicated. Claude's hit-reaction work (in progress) plays a stun pose whenever `StunEnd > time`.
+  2. Ceiling holograms:
+     - set `Color`/`Detail` on `CeilingHit` (bounce 0x75ddff, absorb 0xb5a3ff; `NativeProjectiles.cs:79`);
+     - emit `CeilingHit` for melee shots (`NativeMeleeSpecials.cs:185`);
+     - drop or tag the ability-shot `CeilingHit` (`NativeAbilities.cs:213`), which the source never emits.
+  3. The optional presentation-data follow-ups from batches 1–4 are listed in their entries below.
+- Status: implemented and merged on the branch; pushed to the cloud branch for the test channel; not released by Claude.
+
 ## 2026-10-10 — Astra — correct the interaction build fixture
 
 - Follow-up `codex/unity-interaction-build-fix`, base `d9ebe850` / PR #94.
