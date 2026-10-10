@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
     public class Actor
     {
         public int VisualSet,MagicVisual;
-        public NativeWound[] Wounds=Array.Empty<NativeWound>();public string SourceSpec,SourceAction,BodyColor="#e5e7eb",AccentColor="#70e1d0",Hat="none";public float SourceAt,SourceUntil,RigScale=1;public int SourceIndex,SourceTotal,SourceSide=1;public bool SourceRanged;
+        public NativeWound[] Wounds=Array.Empty<NativeWound>();public string SourceSpec,SourceAction,BodyColor="#e5e7eb",AccentColor="#70e1d0",Hat="none";public float SourceModeAt=-100;public float SourceAt,SourceUntil,RigScale=1;public int SourceIndex,SourceTotal,SourceSide=1;public bool SourceRanged;
         // Native authority presentation only; the inherited lab wire codec does not transport these.
         public string SpecialKind;public float SpecialAt=-100,SpecialRelease,SpecialUntil,SpecialLanded=-1;
         public bool SpecialReleased,WeaponAway,DownUsed;public float DownAt=-100,DownUntil,DownLanded=-1,DownPickup,DownRoll=-1,DownRollEnd=-1;public V3 DownDirection;
@@ -81,7 +81,7 @@ namespace ChipArena.UnityConversion
     public class Shot
     {
         public int Id, Owner, Team, Reflections, MagicVisual;
-        public string Spec,SirenKind,LeetKind;public int Original;public float Born,Burn,Poison;
+        public string Spec,SirenKind,LeetKind;public int Original,SirenTarget;public float Born,Burn,Poison;
         public bool Hadoken,Super,Direct,ChipImpact,WeaponFx,Pong,Boomerang,Zigzag;public ChipCount[] Mods=Array.Empty<ChipCount>();
         public V3 Position, Velocity;
         public float Damage = 20, Life = 3, Gravity, Radius=.1f, DistanceLeft=320, Impulse=325;
