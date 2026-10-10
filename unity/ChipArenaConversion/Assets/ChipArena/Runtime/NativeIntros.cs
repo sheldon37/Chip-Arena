@@ -10,6 +10,15 @@ namespace ChipArena.UnityConversion
         // The staged entrance (NativeIntroRules.Entrance): the replicated style, or the source's fallback when it has no stage.
         private string IntroStyle=>NativeIntroRules.Entrance(match.Phase==NativePhase.Intro?match.IntroStyle:"dev-siren");
         private float IntroAge=>match.Phase==NativePhase.Intro?(float)(match.Time-match.IntroStarted):arena.Pve.HoldDuration-arena.Pve.HoldLeft;
+        // The age the live entrance is drawn at (NativeIntroClock): smooth at any frame rate on the host and on guests, whose
+        // IntroAge steps at 20 Hz, and for dev-siren locked to the boss song as this machine plays it (NativeAudio ran first
+        // this frame), so the cell's stutters land on the beats heard. The overlay card and the stings keep IntroAge.
+        private readonly NativeIntroClock introClock=new NativeIntroClock();
+        private float IntroClockAge()
+        {
+            float age=IntroAge;
+            return (float)introClock.Sample(NativeIntroClock.Target(age,nativeAudio.SongPlayback(NativeIntroRules.IntroSong(IntroStyle))),Time.unscaledDeltaTime);
+        }
     }
     public sealed partial class ArenaPresentation
     {
@@ -21,9 +30,9 @@ namespace ChipArena.UnityConversion
         {
             if(pilot==null)return;style=NativeIntroRules.Entrance(style);sirenLookCamera=camera;if(introRig==null||introActor!=pilot.Seat.id){introRig?.Dispose();introRig=captured.Create(transform,-100);introActor=pilot.Seat.id;}
             sourceModels.Begin();foreach(var b in batches)b.Clear();FirstPerson=false;combatGlow?.Clear();particles.Clear();
-            Actor actor=null;foreach(var a in arena.Snapshot().Actors)if(a.Id==pilot.Seat.id){actor=a;break;}actor??=pilot.Pose;NativeSourceMotion.Intro(introRig,style,age,camera);
+            Actor actor=null;foreach(var a in arena.Snapshot().Actors)if(a.Id==pilot.Seat.id){actor=a;break;}actor??=pilot.Pose;NativeSourceMotion.Intro(introRig,style,age,camera);introBeats=style=="dev-siren"?arena.BossTrack?.beats:null;
             if(style!="dev-siren"){SourceCharacter(introRig,actor,arena.Time,weapon:false,halo:age);IntroWeapon(style,age);TeamBands(introRig,NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,pilot.Seat.AuthorityBoss,pilot.Seat.team,pilot.Seat.id==arena.LocalId));}if(!IntroStage(style,age,camera))throw new System.InvalidOperationException("Missing source entrance stage: "+style);
-            DrawBatches(null,0,false);sourceModels.Flush(UsesInstancing);
+            DrawBatches(null,0,false);sourceModels.Stage=true;try{sourceModels.Flush(UsesInstancing);}finally{sourceModels.Stage=false;}
         }
         // player-intros.ts: the bare intro rig holds only a weapon intro's own weapon (WEAPON_INTROS[style].spec) or the Emperor's
         // gauntlets, with no chip dressing; every other entrance keeps its hands empty, so the L33T Throne's floating staff (a
@@ -43,7 +52,7 @@ namespace ChipArena.UnityConversion
         // so their tracks fade by alpha instead (NativeIntroRules.GlowAlpha).
         private bool IntroStage(string style,float age,Camera camera)
         {
-            if(style!=stageStyle){stageStyle=style;stageKey="stage-"+style;}string key=stageKey;var clip=NativeSceneMotion.Get(key);if(clip==null)return false;NativeLighting.Intro(clip,age,camera);
+            if(style!=stageStyle){stageStyle=style;stageKey="stage-"+style;}string key=stageKey;var clip=NativeSceneMotion.Get(key);if(clip==null)return false;NativeLighting.Intro(clip,age,camera,introBeats);SirenCell(clip,key,age,camera);
             if(!stageGlows.TryGetValue(key,out var glow))
             {
                 glow=new bool[clip.tracks];for(int t=0;t<clip.tracks;t++)glow[t]=NativeIntroRules.TintVaries(clip.values,clip.frames,t)&&sourceModels.TransparentBone(key,t);
@@ -53,7 +62,7 @@ namespace ChipArena.UnityConversion
             if(stageBone==null)
             {
                 stageBone=b=>NativeSceneMotion.Matrix(stageClip,b,stageAge);stageShown=b=>StageOpacity(b)>.001f;stageOpacity=StageOpacity;
-                stageTint=b=>{var c=NativeSceneMotion.Tint(stageClip,b,stageAge);if(b>=0&&b<stageGlow.Length&&stageGlow[b])NativeIntroRules.GlowAlpha(ref c.r,ref c.g,ref c.b);return c;};
+                stageTint=b=>{var c=NativeSceneMotion.Tint(stageClip,b,stageAge);if(b>=0&&b<stageGlow.Length&&stageGlow[b])NativeIntroRules.GlowAlpha(ref c.r,ref c.g,ref c.b);if(b==sirenBulb&&introBeats!=null){c.r*=sirenGlow;c.g*=sirenGlow;c.b*=sirenGlow;}return c;};
             }
             sourceModels.Queue(key,Matrix4x4.identity,stageBone,stageShown,partOpacity:stageOpacity,partTint:stageTint);return true;
         }

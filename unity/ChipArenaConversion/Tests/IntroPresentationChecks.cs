@@ -8,8 +8,9 @@ using ChipArena.UnityConversion;
 
 // Engine-free checks for the entrance presentation (Core/NativeIntroRules.cs): which weapon the bare intro rig holds
 // (player-intros.ts builds one only for a weapon intro, so the L33T Throne's stage staff is the only staff), the staged
-// fallback for a style without an entrance, and the entrance-stage light conversion (NativeEntranceLight) that keeps the
-// Siren cell lit as the source lights it once Linear colour space is pinned. The baked intro clips and weapon models are
+// fallback for a style without an entrance, and the entrance-stage light conversion (NativeEntranceLight) that gives Unity's
+// directional stage lights the source's diffuse light once Linear colour space is pinned (point lights and the Siren cell go
+// to the shaders' stage block, Tests/SirenIntroChecks.cs). The baked intro clips and weapon models are
 // checked too: both arms posed in every armed entrance, the braced weapons' free hand on their support grip, each intro
 // weapon exported on its wrist at the grip, and the glow-voxel fade. Unity's rendering is not exercised.
 internal static class IntroPresentationChecks

@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
         private bool PreviewFrame()
         {
             if(previewArena==null)return false;float age=Time.unscaledTime-previewStarted;if(age>NativeIntroRules.Duration(previewStyle)+.7f){EndPreview();return false;}
-            if(arena?.Root!=null)foreach(var r in arena.Root.GetComponentsInChildren<Renderer>()){if(!previewVisibility.ContainsKey(r))previewVisibility[r]=r.enabled;r.enabled=false;}viewModelCamera.enabled=false;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;presentation.RenderIntro(previewArena,previewArena.Local,previewStyle,age,cameraView);nativeAudio.Entrance("preview:"+previewSerial,previewStyle,age);nativeAudio.HoldMusic();return true;
+            if(arena?.Root!=null)foreach(var r in arena.Root.GetComponentsInChildren<Renderer>()){if(!previewVisibility.ContainsKey(r))previewVisibility[r]=r.enabled;r.enabled=false;}viewModelCamera.enabled=false;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;presentation.RenderIntro(previewArena,previewArena.Local,previewStyle,age,cameraView);nativeAudio.PreviewIntro("preview:"+previewSerial,previewStyle,age);return true;
         }
         // intro-preview (main.ts screen==='intro-preview'): exactly the match-intro overlay for the local pilot (01 — 01),
         // with .btn.intro-close "Back to customization" at the top right (right 3vw, top 145 px); Escape also closes it.

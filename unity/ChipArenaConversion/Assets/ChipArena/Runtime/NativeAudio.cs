@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
         private readonly NativeSoundLimiter limiter=new NativeSoundLimiter();private bool[] keyedVoices;
         private readonly NativeEventSounds.Sound[] routed=new NativeEventSounds.Sound[NativeEventSounds.MaxSounds];private readonly NativeSpikeRises spikeRises=new NativeSpikeRises();private readonly NativeInstallCue installCue=new NativeInstallCue();
         private readonly Dictionary<string,float> cues=new Dictionary<string,float>();
-        private AudioSource[] voices;private AudioSource music,introVoice;private string introKey="";private readonly Dictionary<int,AudioClip> beepClips=new Dictionary<int,AudioClip>();private string track="",phase="";private bool musicHeld;private int cursor,generation=-1,countdown=-1,rotation=-1;private Vector3 listener;private float yaw;
+        private AudioSource[] voices;private AudioSource music,introVoice;private string introKey="";private readonly Dictionary<int,AudioClip> beepClips=new Dictionary<int,AudioClip>();private string track="",phase="",resumeTrack;private float resumeTime;private bool musicHeld;private int cursor,generation=-1,countdown=-1,rotation=-1;private Vector3 listener;private float yaw;
         private readonly string[] rotationTracks={"foundry-rush","orange-line","kinetic-city","afterburner","night-circuit","critical-mass","jump-drive","neon-recoil","overpass","last-set"};
         private readonly Queue<string> bag=new Queue<string>();
         public void ResetCursor(){generation=-1;}
@@ -33,9 +33,26 @@ namespace ChipArena.UnityConversion
         }
         public void Entrance(string key,string style,float age)
         {
-            if(key==null||style=="dev-siren"||Muted||Music<=0){introVoice.Stop();introKey="";return;}introVoice.volume=Music;
-            if(introKey==key)return;introKey=key;introVoice.Stop();introVoice.clip=Clip("audio/intros/"+style);if(introVoice.clip==null||age>=introVoice.clip.length)return;introVoice.time=Math.Max(0,age);introVoice.Play();
+            string sting=NativeIntroRules.IntroSting(style);
+            if(key==null||sting==null||Muted||Music<=0){introVoice.Stop();introKey="";return;}introVoice.volume=Music;
+            if(introKey==key)return;introKey=key;introVoice.Stop();introVoice.clip=Clip(sting);if(introVoice.clip==null||age>=introVoice.clip.length)return;introVoice.time=Math.Max(0,age);introVoice.Play();
         }
+        // audio.ts previewIntro: the Customize preview holds the menu music; the dev-siren entrance plays its boss song from
+        // the preview's age instead of a sting (the cell's flashes are cued to it), every other entrance its sting.
+        // The track the song takes over (the menu music) resumes where it was when the preview closes, as the source's paused
+        // menu element does (music.ts setMenuActive), instead of restarting from 0:00.
+        public void PreviewIntro(string key,string style,float age)
+        {
+            string song=NativeIntroRules.IntroSong(style);
+            if(song==null){Entrance(key,style,age);HoldMusic();return;}
+            Entrance(null,null,0);string from=track;float at=music.clip!=null?music.time:0;Track(song,Music*.55f,false,age);
+            if(from!=song&&!string.IsNullOrEmpty(from)){resumeTrack=from;resumeTime=at;}
+        }
+        /// <summary>
+        /// The playback time (s) of music track `id` while it plays (muted or not), else -1: the boss song's beats as this machine
+        /// hears them, which the dev-siren entrance is drawn on (NativeIntroClock).
+        /// </summary>
+        public double SongPlayback(string id)=>id!=null&&track==id&&music!=null&&music.clip!=null&&music.isPlaying?music.time:-1;
         private void MarkBeeps(NativeArena arena)
         {
             foreach(var mark in arena.Marks())
@@ -48,7 +65,11 @@ namespace ChipArena.UnityConversion
         private bool Once(string key,float at){if(cues.TryGetValue(key,out float old)&&old==at)return false;cues[key]=at;return true;}
         private void Track(string id,float volume,bool pause=false,double? clock=null)
         {
-            if(track!=id){music.Stop();track=id;music.clip=string.IsNullOrEmpty(id)?null:Clip(id);music.loop=clock==null;}
+            if(track!=id)
+            {
+                music.Stop();track=id;music.clip=string.IsNullOrEmpty(id)?null:Clip(id);music.loop=clock==null;
+                if(id==resumeTrack&&music.clip!=null&&clock==null)music.time=Mathf.Clamp(resumeTime,0,Math.Max(0,music.clip.length-.02f));resumeTrack=null;
+            }
             music.volume=Muted?0:volume;musicHeld=pause;if(music.clip==null)return;if(pause){music.Pause();return;}
             if(clock.HasValue&&Math.Abs(music.time-clock.Value)>.12)music.time=Mathf.Clamp((float)clock.Value,0,Math.Max(0,music.clip.length-.02f));if(!music.isPlaying)music.Play();
         }
