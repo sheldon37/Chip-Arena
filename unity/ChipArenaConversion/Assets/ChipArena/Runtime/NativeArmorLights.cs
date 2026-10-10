@@ -13,9 +13,31 @@ namespace ChipArena.UnityConversion
         private static readonly int ArmorLightId=Shader.PropertyToID("_ArmorLight"),ArmorLevelId=Shader.PropertyToID("_ArmorLevel"),ArmorCountId=Shader.PropertyToID("_ArmorCount"),
             ArmorPhaseId=Shader.PropertyToID("_ArmorPhase"),ArmorEmitId=Shader.PropertyToID("_ArmorEmit"),ArmorSizeId=Shader.PropertyToID("_ArmorSize");
         private List<NativeArmorLight.Section> armorPilot;
-        // Corpses and regenerating pilots (QueueShadowless) skip the light boxes that cross a severable joint (glow.w .5): a
-        // severed limb or torso flies off without the glow of a trim it left behind; emission and every other box are kept.
+        // Corpses and regenerating pilots (QueueShadowless): a part whose light boxes cross a severable joint that is torn in
+        // that draw skips them (glow.w .5), so a severed limb or torso flies off without the glow of a trim it left behind;
+        // emission and every other box are kept, and an ordinary ragdoll keeps all of its spill (glow.w 1).
         private static readonly Vector4 CorpseGlow=new Vector4(NativeArmorLight.CorpseGlow.X,NativeArmorLight.CorpseGlow.Y,NativeArmorLight.CorpseGlow.Z,NativeArmorLight.CorpseGlow.W);
+        private readonly Dictionary<Material,int> armorSevers=new Dictionary<Material,int>();
+        private static readonly int[] severableJoints=SeverableJoints();
+        private static readonly Vector3[] restLocal=RestLocals();
+        private static int[] SeverableJoints(){var list=new List<int>();for(int j=0;j<CapturedRig.Bones.Length;j++)if(NativeArmorLight.Severable(j))list.Add(j);return list.ToArray();}
+        private static Vector3[] RestLocals(){var r=new Vector3[CapturedRig.Bones.Length];for(int j=0;j<r.Length;j++){var v=NativeArmorLight.RestLocal(j);r[j]=new Vector3(v.X,v.Y,v.Z);}return r;}
+        // A material's severable-joint boxes (NativeArmorLight.Plan.SeverJoints), 0 for every non-pilot material.
+        private int SeverJoints(Material material)=>material!=null&&armorSevers.TryGetValue(material,out int mask)?mask:0;
+        // Bit j: severable joint j is torn in this draw (NativeArmorLight.Detached): the bone on either side hidden, or the
+        // child's origin off where the presented parent holds it.
+        private static int TornJoints(Func<int,Matrix4x4> bone,Func<int,bool> visible)
+        {
+            int torn=0;
+            foreach(int j in severableJoints)
+            {
+                int parent=CapturedRig.Bones[j].Parent;
+                if(visible!=null&&(!visible(j)||!visible(parent))){torn|=1<<j;continue;}
+                Matrix4x4 held=bone(parent);Vector3 at=bone(j).GetColumn(3);
+                if(NativeArmorLight.Detached((at-held.MultiplyPoint3x4(restLocal[j])).magnitude,((Vector3)held.GetColumn(0)).magnitude))torn|=1<<j;
+            }
+            return torn;
+        }
         /// <summary>Pilot part materials given an armor-light role (emitters, receivers), for NativeBuildChecks.</summary>
         public int ArmorEmitters{get;private set;}
         public int ArmorReceivers{get;private set;}
@@ -47,6 +69,7 @@ namespace ChipArena.UnityConversion
             for(int k=0;k<plan.Boxes.Length&&k<emit.Length;k++){var b=plan.Boxes[k];emit[k]=new Vector4(b.Center.X,b.Center.Y,b.Center.Z,b.Level);size[k]=new Vector4(b.Half.X,b.Half.Y,b.Half.Z,b.Severs?-b.Sigma:b.Sigma);}
             material.SetFloat(ArmorLightId,plan.Role);material.SetFloat(ArmorLevelId,plan.Level);material.SetFloat(ArmorCountId,Math.Min(plan.Boxes.Length,NativeArmorLight.MaxBoxes));
             material.SetFloat(ArmorPhaseId,plan.Phase);material.SetVectorArray(ArmorEmitId,emit);material.SetVectorArray(ArmorSizeId,size);
+            if(plan.SeverJoints!=0)armorSevers[material]=plan.SeverJoints;
             if(plan.Role==NativeArmorLight.Emitter)ArmorEmitters++;else if(plan.Role==NativeArmorLight.Receiver)ArmorReceivers++;else ArmorHeld++;
         }
         /// <summary>

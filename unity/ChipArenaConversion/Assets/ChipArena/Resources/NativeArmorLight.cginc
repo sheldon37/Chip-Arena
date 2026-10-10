@@ -6,7 +6,7 @@
 //  - receiver parts (shell, joints, gloves, boots, and the gun held by a cuffed hand): wrapped Lambert spill from up to
 //    eight bone-local emitter boxes with an area-light near field, a glossy sheen lobe and a contact bleed hugging each
 //    trim's border (the diffuse share x .6 on an entrance stage; the sternum, the chest's core, at 1.15 of its level;
-//    corpse draws skip the boxes across a severable joint, so a severed limb carries no light from a trim it left);
+//    corpse parts across a torn severable joint skip those boxes, so a severed limb carries no light from a trim it left);
 //  - a slow breathing pulse that climbs the body, and hue-preserving highlight handling (arena shoulder, StageTone ACES).
 // Material constants come from NativeSourceModels.ArmorLights (Core/NativeArmorLight.cs) once at load; globals from
 // NativeArmorLights.Apply. _ArmorLight 0 (every non-pilot material, ink, ghosts) leaves the shader bit-identical.
@@ -18,7 +18,7 @@ float _ArmorPhase;          // rest height (m) of the part above the feet: the p
 float4 _ArmorEmit[8];       // box centre xyz (bone-local, Unity frame), w light level; receiver: its emitters' boxes, emitter: its own
                             // voxel boxes (w over _ArmorLevel lifts the face: the sternum's 1.15, Core NativeArmorLight.SternumBoost)
 float4 _ArmorSize[8];       // box half extents xyz; receiver: w = near-field radius sigma (m), negative across a severable joint
-                            // (skipped on corpse and regeneration draws, glow.w < 1: NativeArmorLight.CorpseGlow)
+                            // (skipped by corpse and regeneration parts across a torn joint, glow.w < 1: NativeArmorLight.CorpseGlow)
 float4 _ArmorExportEmber;   // global: ember('#70e1d0') linear, the exported accent colour that _AccentTint scales
 float _ArmorQuality;        // global: 0 off (current look), .5 reduced (profile + diffuse spill), 1 full
 float _ArmorPulse;          // global: breathing amplitude (.06; 0 with reduced effects)

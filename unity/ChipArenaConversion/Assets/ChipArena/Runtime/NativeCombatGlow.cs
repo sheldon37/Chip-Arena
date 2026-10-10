@@ -45,12 +45,14 @@ namespace ChipArena.UnityConversion
         private readonly List<SurfaceMark> marks=new List<SurfaceMark>();private int generation=-1,lastEvent;
         private float lastTime=-1;public float Quality=1;public bool Trails=true;
         /// <summary>
-        /// Armor halo size and opacity factor and the pooled armor spill intensity (three units; armor-glow.ts: 1 and 8). Owner
-        /// rollback of the halos and pools: ArmorHaloScale 1 and ArmorSpillIntensity 8 restore their size, opacity and strength
-        /// (the chest halos' facing fade, the pixel band, the hue-true pool colour and the nearest-pilot pick stay); the
-        /// armour's own light is the shader's (NativeArmorLights).
+        /// Armor halo size and opacity factor, the pooled armor spill intensity (three units) and its range (m; armor-glow.ts: 1,
+        /// 8 and 3.6). The pool reaches 2.4 m, at a strength that keeps the floor under the pilot as lit as at 3.6 m, so a
+        /// prop or wall beside another pilot does not take this pilot's hue through it (the light is unshadowed). Owner
+        /// rollback of the halos and pools: ArmorHaloScale 1, ArmorSpillIntensity 8 and ArmorSpillRange 3.6 restore their size,
+        /// opacity, strength and reach (the chest halos' facing fade, the pixel band, the hue-true pool colour and the steady
+        /// nearest-pilot pick stay); the armour's own light is the shader's (NativeArmorLights).
         /// </summary>
-        public const float ArmorHaloScale=.62f,ArmorSpillIntensity=3.1f;
+        public const float ArmorHaloScale=.62f,ArmorSpillIntensity=4.2f,ArmorSpillRange=2.4f;
         /// <summary>
         /// The presentation clock the projectile models use (element colours switch every 50 ms); on a replica also the
         /// clock its shots are drawn and its trails sampled at (ArenaPresentation.FieldClock). NaN: the arena clock.
@@ -59,6 +61,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The per-id memory shared with NativeShotPresentation, begun once this frame; null uses this glow's own.</summary>
         public NativeShotTracker Tracker;
         private readonly NativeShotTracker own=new NativeShotTracker();
+        // The two pooled armor spill lights' holders: nearest the camera, with hysteresis and a fade (Core NativeArmorSpillPicker).
+        private readonly NativeArmorSpillPicker spill=new NativeArmorSpillPicker();
         // NativeGlow writes vertex colours unconverted. Projectile halos and trails are linear in a linear-space project
         // (as the models, C6 blasts and C11 ribbons), sRGB in a gamma-space one; Light.color is always sRGB.
         private readonly bool linear;
@@ -88,7 +92,7 @@ namespace ChipArena.UnityConversion
         private void DisableLights(){Disable(projectileLights);Disable(impactLights);Disable(armorLights);}
         private void ClearTraces(){foreach(var trace in traces.Values){trace.Points.Clear();trace.Seen=0;spareTraces.Push(trace);}traces.Clear();}
         public void Clear()
-        {ClearTraces();own.Clear();marks.Clear();lastEvent=0;lastTime=-1;world.Clear();view.Clear();DisableLights();}
+        {ClearTraces();own.Clear();marks.Clear();lastEvent=0;lastTime=-1;world.Clear();view.Clear();DisableLights();spill.Clear();}
         private void AddShot(in NativeShotView v,float clock,Vector3 camera)
         {
             if(v.Siren)return;var position=new Vector3((float)v.X,(float)v.Y,(float)v.Z);
@@ -98,11 +102,11 @@ namespace ChipArena.UnityConversion
         public void Render(NativeArena arena,Camera camera,Camera viewCamera,bool first,Dictionary<int,CapturedAnimation.Player> rigs,CapturedAnimation.Player viewRig,Matrix4x4? viewStaff,bool submitDraws=true)
         {
             NativeArmorLights.Apply(Quality);
-            float now=arena.Time;if(generation!=arena.Generation||now<lastTime){Clear();generation=arena.Generation;}lastTime=now;
+            float now=arena.Time;if(generation!=arena.Generation||now<lastTime){Clear();generation=arena.Generation;}float spillDt=lastTime<0?0:now-lastTime;lastTime=now;
             world.Clear();view.Clear();DisableLights();
             // Combat glow off (a Unity setting; the source has none) drops halos, lights and marks but not the projectile
             // trails, which follow the trails setting alone as in the source.
-            bool glow=Quality>0;if(!glow){marks.Clear();if(arena.Events.Count>0)lastEvent=arena.Events[arena.Events.Count-1].Id;}
+            bool glow=Quality>0;if(!glow){marks.Clear();spill.Clear();if(arena.Events.Count>0)lastEvent=arena.Events[arena.Events.Count-1].Id;}
             Vector3 right=camera.transform.right,up=camera.transform.up,eye=camera.transform.position;float clock=float.IsNaN(Clock)?now:Clock;
             var tracker=Tracker;if(tracker==null){tracker=own;own.Begin(arena,arena.Generation,arena.Replica,arena.Time);}
             // Trails: the host samples at the match clock its shots move on; a replica at the render clock its shots are
@@ -167,11 +171,12 @@ namespace ChipArena.UnityConversion
             // siren/fx.ts effects (NativeDevEffects): no effect record keeps the first port's two flat halos.
             // The armour now lights itself in the shader (NativeArmorLight.cginc), so its halos are a tighter glare on the
             // trims (.62 of armor-glow.ts's size and opacity) and the two pooled spill lights a soft pool in the trims' own
-            // ember colour from the waist, given to the two lit pilots nearest the camera.
+            // ember colour from the waist, given to the two lit pilots nearest the camera; a light changes hands only to a
+            // clearly nearer pilot, fading out and back in (NativeArmorSpillPicker), so its pool and hue never flicker.
             // The chest halos fade as their side turns from the camera (the back light stops fogging a chest seen from the
             // front); every armour halo keeps a 4.5-70 px projected diameter (NativeArmorLight.HaloPixelClamp).
             Vector3 forward=camera.transform.forward;float fov=camera.fieldOfView,height=camera.pixelHeight;
-            int lit0=-1,lit1=-1;float near0=float.MaxValue,near1=float.MaxValue;
+            spill.Begin();
             for(int i=0;i<arena.Pilots.Count;i++)
             {
                 var pilot=arena.Pilots[i];
@@ -189,15 +194,15 @@ namespace ChipArena.UnityConversion
                 Joint(CapturedRig.LClav,new Vector3(-.08f,0,0),.52f);Joint(CapturedRig.RClav,new Vector3(.08f,0,0),.52f);
                 Joint(CapturedRig.LKnee,new Vector3(0,-.06f,.15f),.38f);Joint(CapturedRig.RKnee,new Vector3(0,-.06f,.15f),.38f);
                 Joint(CapturedRig.LHand,new Vector3(0,0,.10f),.26f);Joint(CapturedRig.RHand,new Vector3(0,0,.10f),.26f);
-                float d=(rig.Bones[CapturedRig.Chest].position-eye).sqrMagnitude;
-                if(d<near0){near1=near0;lit1=lit0;near0=d;lit0=i;}else if(d<near1){near1=d;lit1=i;}
+                spill.Offer(pilot.Seat.id,i,(rig.Bones[CapturedRig.Chest].position-eye).magnitude);
             }
-            if(Quality>=.5f)for(int k=0;k<2;k++)
+            spill.Resolve(spillDt);
+            if(Quality>=.5f)for(int k=0;k<NativeArmorSpillPicker.Slots;k++)
             {
-                int i=k==0?lit0:lit1;if(i<0)continue;var pilot=arena.Pilots[i];var rig=rigs[pilot.Seat.id];
+                int i=spill.Index(k);if(i<0)continue;var pilot=arena.Pilots[i];var rig=rigs[pilot.Seat.id];
                 var hue=NativeArmorLight.SpillColor(NativePortraitRules.Ember(NativePortraitRules.Parse(pilot.Seat.accentColor,NativePortraitRules.ExportAccent)));
                 float pulse=NativeGlowRules.ArmorPulse(now,pilot.BlockReady-now,now<pilot.BlockEnd);
-                SetLight(armorLights[k],rig.Bones[CapturedRig.Chest].TransformPoint(new Vector3(0,-.05f,.16f)),new Color(hue.X,hue.Y,hue.Z).gamma,ArmorSpillIntensity*pulse,3.6f);
+                SetLight(armorLights[k],rig.Bones[CapturedRig.Chest].TransformPoint(new Vector3(0,-.05f,.16f)),new Color(hue.X,hue.Y,hue.Z).gamma,ArmorSpillIntensity*pulse*spill.Weight(k),ArmorSpillRange);
             }
             if(first&&viewRig!=null&&viewCamera!=null&&arena.ViewPilot.Seat.spec!="siren")
             {

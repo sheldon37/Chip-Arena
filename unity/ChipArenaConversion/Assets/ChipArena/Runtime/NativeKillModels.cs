@@ -75,10 +75,13 @@ namespace ChipArena.UnityConversion
         {
             if(id==null||!models.TryGetValue(id,out var model))return;Color bc=body??Color.white,ac=accent??Color.white;
             if(shadowlessParts.Count>512)PruneRecolor();
+            int torn=-1;
             foreach(var part in model)
             {
                 if(visible!=null&&!visible(part.Bone))continue;
-                Draw(Shadowless(part),part.Bone>=0&&bone!=null?bone(part.Bone):root,new Vector4(bc.r,bc.g,bc.b,opacity),Color.white,CorpseGlow,new Vector4(ac.r,ac.g,ac.b,1));
+                // Only a part whose spill crosses a torn joint skips those boxes (NativeArmorLights.TornJoints).
+                int severs=SeverJoints(part.Material);if(severs!=0&&torn<0)torn=bone!=null?TornJoints(bone,visible):0;
+                Draw(Shadowless(part),part.Bone>=0&&bone!=null?bone(part.Bone):root,new Vector4(bc.r,bc.g,bc.b,opacity),Color.white,(severs&torn)!=0?CorpseGlow:Vector4.one,new Vector4(ac.r,ac.g,ac.b,1));
             }
         }
         private Part Shadowless(Part part)

@@ -8,9 +8,10 @@ namespace ChipArena.UnityConversion
     /// Pilot armor lights (Resources/NativeArmorLight.cginc): the per-material box tables, built once from the exported
     /// pilot. Each glowing trim (accent parts and armor-* strips: emission tag 2 with emission) is an emitter whose own
     /// voxel boxes shape its profile; every other pilot part is a receiver lit by up to eight emitter boxes in its own bone
-    /// frame (the bank's x-mirrored source frame), rest offsets from CapturedRig.Bones. A neighbour bone's emitter is held
-    /// at its rest offset: across a stiff joint always, across a hinge only when it reaches the shared pivot (shoulder cap,
-    /// cuff, kneecap), so no pose can leave a phantom light behind.
+    /// frame (the bank's x-mirrored source frame), rest offsets from CapturedRig.Bones; one with no trim in reach (head, jaw,
+    /// feet) is a receiver with no boxes, so the whole shell takes the same ARMOR_SHELL and arena shoulder. A neighbour
+    /// bone's emitter is held at its rest offset: across a stiff joint always, across a hinge only when it reaches the
+    /// shared pivot (shoulder cap, cuff, kneecap), so no pose can leave a phantom light behind.
     /// </summary>
     public static class NativeArmorLight
     {
@@ -33,19 +34,34 @@ namespace ChipArena.UnityConversion
         /// keeps a projected diameter of 4.5-70 px, so a far pilot keeps a spark and a close-up or killcam never fogs.
         /// </summary>
         public const float FacingStart=-.10f,FacingEnd=.45f,HaloMinPixels=4.5f,HaloMaxPixels=70f;
-        /// <summary>A light box. Severs: a neighbour bone's box across a joint a wound can sever (NativeBodyDamage.Part), skipped on corpse and regeneration draws (<see cref="CorpseGlow"/>) so a detached limb carries no light from a trim it left behind.</summary>
-        public struct Box {public Vector3 Center,Half;public float Level,Sigma;public bool Severs;}
+        /// <summary>A light box. Severs: a neighbour bone's box across a joint a wound can sever (NativeBodyDamage.Part), Joint that
+        /// joint (-1 for the part's own bone), skipped on corpse and regeneration draws whose joint is torn apart (<see cref="CorpseGlow"/>,
+        /// <see cref="Detached"/>) so a detached limb carries no light from a trim it left behind.</summary>
+        public struct Box {public Vector3 Center,Half;public float Level,Sigma;public bool Severs;public int Joint;}
         public sealed class Section
         {
             public string Part;public int Bone;public bool Emitter;public float Level;public Vector3 Min,Max;
             public readonly List<(Vector3 min,Vector3 max)> Voxels=new List<(Vector3 min,Vector3 max)>();
         }
-        public sealed class Plan {public int Role;public float Level,Phase;public Box[] Boxes=Array.Empty<Box>();}
+        /// <summary>A material's table. SeverJoints: bit j for each severable joint j its Severs boxes cross (0: none).</summary>
+        public sealed class Plan {public int Role;public float Level,Phase;public int SeverJoints;public Box[] Boxes=Array.Empty<Box>();}
 
         /// <summary>The joints a wound can sever (the parts NativeBodyDamage.Part hits): the limb, torso or head comes off there.</summary>
         public static bool Severable(int joint)=>joint==CapturedRig.Head||joint==CapturedRig.Spine||joint==CapturedRig.LArm||joint==CapturedRig.RArm||joint==CapturedRig.LElbow||joint==CapturedRig.RElbow||joint==CapturedRig.LHip||joint==CapturedRig.RHip||joint==CapturedRig.LKnee||joint==CapturedRig.RKnee;
-        /// <summary>The glow vector of a corpse or regeneration draw (NativeSourceModels.QueueShadowless): w below 1 skips Severs boxes.</summary>
+        /// <summary>The glow vector of a corpse or regeneration part draw (NativeSourceModels.QueueShadowless) whose SeverJoints
+        /// include a torn joint: w below 1 skips Severs boxes. Every other part of that body keeps glow w 1 and all its spill.</summary>
         public static readonly Vector4 CorpseGlow=new Vector4(1,1,1,.5f);
+        /// <summary>
+        /// A torn joint in a corpse or regeneration draw: the limb across it hidden in that draw (crushed, missing, healed in the
+        /// other draw), or its origin more than DetachGap m from where its parent bone holds it (CapturedRig rest offset), plus
+        /// DetachSlack m per unit the parent is shrunk below 1 (the corpse's sink and collapse scale each part about its own
+        /// joint). Ragdoll joints are locked and projected within .08 m, so an ordinary death keeps its cap, kneecap and band
+        /// spill; a severed or Gibber-thrown limb clears the gap within a few frames.
+        /// </summary>
+        public const float DetachGap=.15f,DetachSlack=.65f;
+        public static bool Detached(float error,float parentScale)=>error>DetachGap+DetachSlack*Math.Max(0,1-parentScale);
+        /// <summary>Bone <paramref name="joint"/>'s origin in its parent bone's frame (Unity frame, the rig's rest offset).</summary>
+        public static Vector3 RestLocal(int joint)=>CapturedRig.Mirror(CapturedRig.Bones[joint].Position);
         /// <summary>Joints that barely move against their parent: spine, chest, neck, head and the clavicles.</summary>
         public static bool Stiff(int child)=>child==CapturedRig.Spine||child==CapturedRig.Chest||child==CapturedRig.Neck||child==CapturedRig.Head||child==CapturedRig.LClav||child==CapturedRig.RClav;
         /// <summary>A bone's rest origin in the rig root, Unity (bank) frame.</summary>
@@ -73,7 +89,7 @@ namespace ChipArena.UnityConversion
                     list[i]=(umin,umax,union);list.RemoveAt(j);merged=true;
                 }
             }
-            var boxes=new List<Box>();foreach(var b in list){var half=(b.max-b.min)*.5f;boxes.Add(new Box{Center=(b.min+b.max)*.5f,Half=half,Level=level,Sigma=Sigma(half)});}
+            var boxes=new List<Box>();foreach(var b in list){var half=(b.max-b.min)*.5f;boxes.Add(new Box{Center=(b.min+b.max)*.5f,Half=half,Level=level,Sigma=Sigma(half),Joint=-1});}
             return boxes;
         }
         private static float Gap(Vector3 min,Vector3 max,Vector3 p){var d=Vector3.Max(Vector3.Zero,Vector3.Max(min-p,p-max));return d.Length();}
@@ -92,27 +108,27 @@ namespace ChipArena.UnityConversion
                 {
                     // Level: the baked emission level (the strip test, and the base its boxes' light levels scale the face from).
                     plan.Role=Emitter;plan.Level=s.Level;var own=new List<Box>();float light=Light(s);
-                    foreach(var v in s.Voxels){if(own.Count==MaxBoxes)break;var half=(v.max-v.min)*.5f;own.Add(new Box{Center=(v.min+v.max)*.5f,Half=half,Level=light,Sigma=Sigma(half)});}
+                    foreach(var v in s.Voxels){if(own.Count==MaxBoxes)break;var half=(v.max-v.min)*.5f;own.Add(new Box{Center=(v.min+v.max)*.5f,Half=half,Level=light,Sigma=Sigma(half),Joint=-1});}
                     plan.Boxes=own.ToArray();continue;
                 }
                 near.Clear();int parent=s.Bone>=0?CapturedRig.Bones[s.Bone].Parent:-1;
                 foreach(var (bone,box) in emitters)
                 {
                     bool child=bone>=0&&CapturedRig.Bones[bone].Parent==s.Bone;if(bone!=s.Bone&&bone!=parent&&!child)continue;
-                    bool severs=false;
+                    bool severs=false;int hinge=-1;
                     if(bone!=s.Bone)
                     {
-                        int hinge=bone==parent?s.Bone:bone;severs=Severable(hinge);
+                        hinge=bone==parent?s.Bone:bone;severs=Severable(hinge);
                         if(!Stiff(hinge)){var pivot=Rest(hinge);var at=box.Center+Rest(bone);if(Gap(at-box.Half,at+box.Half,pivot)>HingeGap)continue;}
                     }
-                    var moved=box;moved.Center=box.Center+Rest(bone)-Rest(s.Bone);moved.Severs=severs;
+                    var moved=box;moved.Center=box.Center+Rest(bone)-Rest(s.Bone);moved.Severs=severs;moved.Joint=hinge;
                     float d=Gap(moved.Center-moved.Half,moved.Center+moved.Half,s.Min,s.Max);if(d>Reach)continue;
                     float area=4*(box.Half.X*box.Half.Y+box.Half.Y*box.Half.Z+box.Half.X*box.Half.Z);
                     near.Add((moved,box.Level*area/(d*d+area/(float)Math.PI)));
                 }
                 near.Sort((a,b)=>b.score.CompareTo(a.score));
-                int n=Math.Min(MaxBoxes,near.Count);if(n==0)continue;
-                plan.Role=Receiver;plan.Boxes=new Box[n];for(int k=0;k<n;k++)plan.Boxes[k]=near[k].box;
+                int n=Math.Min(MaxBoxes,near.Count);
+                plan.Role=Receiver;plan.Boxes=new Box[n];for(int k=0;k<n;k++){plan.Boxes[k]=near[k].box;if(near[k].box.Severs)plan.SeverJoints|=1<<near[k].box.Joint;}
             }
             return plans;
         }
@@ -150,5 +166,65 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The pooled spill light's colour (linear): the pilot's ember hue with its brightest channel 1, so a pale accent lights the world in its hue, not pastel.</summary>
         public static Vector3 SpillColor(Vector3 ember){float m=Math.Max(ember.X,Math.Max(ember.Y,ember.Z));return m>1e-5f?ember/m:Vector3.One;}
+        /// <summary>
+        /// The pooled spill lights' hand-off (<see cref="NativeArmorSpillPicker"/>): a challenger takes a light only when it is
+        /// nearer the camera than the holder by SpillMargin of the holder's distance, and by at least SpillMarginMin m; a light
+        /// that changes hands fades out, then in, over SpillRamp s each way.
+        /// </summary>
+        public const float SpillMargin=.15f,SpillMarginMin=.5f,SpillRamp=.15f;
+    }
+    /// <summary>
+    /// Which lit pilots hold the two pooled armor spill lights (NativeCombatGlow): the two nearest the camera, held steady. Run
+    /// bob and camera motion reorder pilots at about the same distance from frame to frame; a holder keeps its light until a
+    /// challenger is nearer by <see cref="NativeArmorLight.SpillMargin"/> (at least SpillMarginMin m), and a light that changes
+    /// hands fades to dark and back up over SpillRamp each way instead of jumping, so a floor pool never flickers between
+    /// pilots or changes hue in a frame. A holder no longer offered (dead, the first-person pilot, no rig) drops at once, as
+    /// its halos do. Each frame: Begin, Offer every lit pilot, Resolve; then Index and Weight per slot. No allocation after
+    /// construction.
+    /// </summary>
+    public sealed class NativeArmorSpillPicker
+    {
+        public const int Slots=2;
+        private readonly int[] seat={-1,-1},target={-1,-1},index={-1,-1},bestSeat={-1,-1},bestIndex={-1,-1},offeredIndex={-1,-1};
+        private readonly float[] weight=new float[Slots],bestScore=new float[Slots];private readonly bool[] offered=new bool[Slots];
+        public void Clear(){for(int k=0;k<Slots;k++){seat[k]=target[k]=index[k]=-1;weight[k]=0;}Begin();}
+        public void Begin(){for(int k=0;k<Slots;k++){bestSeat[k]=bestIndex[k]=offeredIndex[k]=-1;bestScore[k]=float.MaxValue;offered[k]=false;}}
+        /// <summary>A lit pilot this frame: its seat id, its index in the caller's list and its distance (m) from the camera.</summary>
+        public void Offer(int id,int listIndex,float distance)
+        {
+            bool held=false;
+            for(int k=0;k<Slots;k++){if(seat[k]==id){offered[k]=true;offeredIndex[k]=listIndex;held=true;}if(target[k]==id)held=true;}
+            float score=held?distance-Math.Max(NativeArmorLight.SpillMargin*distance,NativeArmorLight.SpillMarginMin):distance;
+            if(score<bestScore[0]){bestScore[1]=bestScore[0];bestSeat[1]=bestSeat[0];bestIndex[1]=bestIndex[0];bestScore[0]=score;bestSeat[0]=id;bestIndex[0]=listIndex;}
+            else if(score<bestScore[1]){bestScore[1]=score;bestSeat[1]=id;bestIndex[1]=listIndex;}
+        }
+        /// <summary>Assigns the slots after <paramref name="dt"/> seconds (0 for a repeated render of the same frame).</summary>
+        public void Resolve(float dt)
+        {
+            float step=Math.Min(1,Math.Max(0,dt)/NativeArmorLight.SpillRamp);
+            // A slot keeps a holder that is still among the two best; the rest of the best go to the free slots.
+            for(int k=0;k<Slots;k++)target[k]=seat[k]>=0&&(seat[k]==bestSeat[0]||seat[k]==bestSeat[1])?seat[k]:-1;
+            for(int b=0;b<Slots;b++)
+            {
+                int id=bestSeat[b];if(id<0||id==target[0]||id==target[1])continue;
+                for(int k=0;k<Slots;k++)if(target[k]<0){target[k]=id;break;}
+            }
+            for(int k=0;k<Slots;k++)
+            {
+                if(seat[k]!=target[k])
+                {
+                    weight[k]=seat[k]<0||!offered[k]?0:Math.Max(0,weight[k]-step);
+                    if(weight[k]<=0)seat[k]=target[k];
+                }
+                else if(seat[k]>=0)weight[k]=Math.Min(1,weight[k]+step);
+                index[k]=seat[k]<0?-1:seat[k]==bestSeat[0]?bestIndex[0]:seat[k]==bestSeat[1]?bestIndex[1]:offered[k]?offeredIndex[k]:-1;
+            }
+        }
+        /// <summary>The caller's list index of the pilot slot <paramref name="slot"/> lights this frame, or -1.</summary>
+        public int Index(int slot)=>index[slot];
+        /// <summary>The seat id holding slot <paramref name="slot"/> (-1 none); a light fading out still names its old holder.</summary>
+        public int Seat(int slot)=>seat[slot];
+        /// <summary>The slot's light share 0..1 (smoothstep of its fade).</summary>
+        public float Weight(int slot){float w=index[slot]<0?0:weight[slot];return w*w*(3-2*w);}
     }
 }
