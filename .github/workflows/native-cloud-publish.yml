@@ -62,7 +62,7 @@ jobs:
           UNITY_SERVICE_KEY_ID: ${{ secrets.UNITY_SERVICE_KEY_ID }}
           UNITY_SERVICE_SECRET: ${{ secrets.UNITY_SERVICE_SECRET }}
           GH_TOKEN: ${{ github.token }}
-        run: python automation/native-publish/tools/ensure_cloud_build.py
+        run: python automation/native-publish/tools/ensure_cloud_build.py --work "$RUNNER_TEMP/native-delivery"
       - name: Verify service credentials, exact commit, native CI, and Unity delivery
         id: prepare
         if: steps.build.outputs.ready == 'true' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'check')
@@ -98,12 +98,13 @@ jobs:
           git -C native-channel config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           python automation/native-publish/tools/auto_publish.py publish --work "$RUNNER_TEMP/native-delivery" --channel "$GITHUB_WORKSPACE/native-channel"
       - name: Keep diagnostic logs in the private game repository
-        if: always() && steps.prepare.outcome != 'skipped'
+        if: always() && (steps.build.outcome != 'skipped' || steps.prepare.outcome != 'skipped')
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: native-cloud-publication-${{ github.run_id }}
           path: |
             ${{ runner.temp }}/native-delivery/provider.log
+            ${{ runner.temp }}/native-delivery/build-failure.json
             ${{ runner.temp }}/native-delivery/delivery/build.log
             ${{ runner.temp }}/native-delivery/publication.json
           if-no-files-found: ignore

@@ -80,6 +80,31 @@ class TriggerTests(unittest.TestCase):
         _, start, _ = self.run_case([dict(build=7, buildStatus='failure', lastBuiltRevision='b'*40)])
         start.assert_called_once()
 
+    def test_failed_build_retains_only_private_log_and_safe_identity(self):
+        rows = [dict(build=24, buildStatus='failure', signedUrl='private-url',
+                     requestedRevision=self.sha), dict(build=23, buildStatus='canceled')]
+        with tempfile.TemporaryDirectory() as temp, patch.object(auto, 'download_api') as download:
+            trigger.retain_failed_log(rows, self.sha, 'private-auth', temp)
+            download.assert_called_once_with(auto.BASE + '/24/log?redirect=manual',
+                                             Path(temp) / 'provider.log', 'private-auth', auto.MAX_LOG)
+            identity = json.loads((Path(temp) / 'build-failure.json').read_text())
+            self.assertEqual(identity, dict(sourceCommit=self.sha, build=24, buildStatus='failure'))
+
+    def test_unavailable_log_preserves_failure_and_does_not_print_provider_error(self):
+        with tempfile.TemporaryDirectory() as temp, patch.object(auto, 'download_api',
+                side_effect=ValueError('private-url')), patch('builtins.print') as output:
+            trigger.retain_failed_log([dict(build=24, buildStatus='failure')], self.sha, 'auth', temp)
+            self.assertTrue((Path(temp) / 'build-failure.json').exists())
+            self.assertNotIn('private-url', str(output.call_args_list))
+
+    def test_failed_build_diagnostics_cannot_request_a_retry(self):
+        with patch.object(trigger, 'retain_failed_log') as retain, patch.object(trigger, 'start_build') as start:
+            with self.assertRaisesRegex(ValueError, 'no automatic retry'):
+                self.run_case([dict(build=24, buildStatus='failure', requestedRevision=self.sha)])
+            retain.assert_called_once()
+            self.assertEqual(retain.call_args.args[1:3], (self.sha, 'unity'))
+            start.assert_not_called()
+
     def test_drifted_or_disabled_target_is_never_modified(self):
         for change in ({'enabled': False}, {'platform': 'webgl'}, {'settings': {'scm': {'branch': 'other'}}}):
             config = dict(buildtargetid=auto.TARGET, enabled=True, platform='standalonewindows64', settings={'scm': {'branch': auto.BRANCH}})

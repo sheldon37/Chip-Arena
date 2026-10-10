@@ -3,11 +3,13 @@
 Uses the existing target and service credential; never edits configuration,
 cancels builds, retries failed builds, or publishes unverified artifacts.
 """
+import argparse
 import base64
 import json
 import os
 import sys
 import time
+from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, build_opener
 
@@ -49,7 +51,31 @@ def start_build(sha, authorization):
         raise ValueError('Build request outcome is unknown; inspect Unity before retrying') from None
 
 
-def ensure_build(token, authorization, wait_seconds=900):
+def retain_failed_log(rows, sha, authorization, work):
+    """Save only the fixed-target log and non-sensitive identity, never API rows."""
+    if work is None:
+        return
+    numbered = [r for r in rows if type(r.get('build')) is int and r['build'] > 0]
+    if not numbered:
+        return
+    build = max(numbered, key=lambda row: row['build'])
+    work = Path(work)
+    work.mkdir(parents=True, exist_ok=True)
+    number = build['build']
+    (work / 'build-failure.json').write_text(json.dumps({
+        'sourceCommit': sha, 'build': number, 'buildStatus': build.get('buildStatus'),
+    }, indent=2) + '\n', encoding='utf-8')
+    try:
+        auto.download_api(auto.BASE + '/' + str(number) + '/log?redirect=manual',
+                          work / 'provider.log', authorization, auto.MAX_LOG)
+        print('Retained private Unity build #' + str(number) + ' diagnostic log.', flush=True)
+    except (ValueError, OSError, KeyError, TypeError):
+        # The build remains failed even if Unity has not made its log available.
+        # Do not print provider errors or signed storage URLs.
+        print('Unity build #' + str(number) + ' diagnostic log is unavailable.', flush=True)
+
+
+def ensure_build(token, authorization, wait_seconds=900, work=None):
     sha = auto.current_head(token)
     if not auto.native_checks(sha, token):
         auto.output(False, 'Build not requested: current cloud commit ' + sha + ' has not passed both native CI jobs.', 'waiting_ci')
@@ -72,7 +98,9 @@ def ensure_build(token, authorization, wait_seconds=900):
             auto.output(True, 'Current Unity build succeeded; delivery validation can proceed.')
             return True
         matching = [r for r in rows if sha in (r.get('lastBuiltRevision'), r.get('requestedRevision'))]
-        if any(r.get('buildStatus') in TERMINAL for r in matching):
+        completed = [r for r in matching if r.get('buildStatus') in TERMINAL]
+        if completed:
+            retain_failed_log(completed, sha, authorization, work)
             raise ValueError('Current commit has a failed/cancelled or ineligible completed build; inspect Unity, no automatic retry')
         active = [r for r in rows if r.get('buildStatus') not in TERMINAL and not r.get('deleted')]
         if not active and not requested:
@@ -95,13 +123,16 @@ def ensure_build(token, authorization, wait_seconds=900):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--work', type=Path, required=True)
+    args = parser.parse_args()
     token = os.environ.get('GH_TOKEN', '')
     key, secret = os.environ.get('UNITY_SERVICE_KEY_ID', ''), os.environ.get('UNITY_SERVICE_SECRET', '')
     if not token or not key or not secret:
         raise ValueError('Existing GitHub/Unity service credentials are required')
     auth = 'Basic ' + base64.b64encode((key + ':' + secret).encode()).decode()
     print('::add-mask::' + auth)
-    ensure_build(token, auth)
+    ensure_build(token, auth, work=args.work)
 
 
 if __name__ == '__main__':

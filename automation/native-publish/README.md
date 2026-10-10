@@ -140,6 +140,9 @@ are candidates; pushing solely to another Claude/Astra task branch is insufficie
 - Provider/editor logs remain private Actions artifacts for seven days; raw
   provider metadata/signed URLs are not uploaded. Public provenance contains only
   commit/build/version/hash/colour-space and verification information.
+  Failed Unity builds also retain their provider log and a small build identity
+  file, even when failure occurs before delivery preparation. Retrieval is
+  read-only and never retries the failed build or permits publication.
 - A green automation result is package/update-delivery validation, not a Windows
   playtest, GPU visual review, multiplayer test or proof of gameplay correctness.
 
