@@ -1,5 +1,28 @@
 # Chip Arena — development log
 
+## 2026-10-10 — Claude — Pilot armor lighting: trims light the armor around them (owner request)
+- Branch `claude/sleepy-ritchie-g8ruhv` (PR #62): merged `claude/armor-lighting` `eaeeb7e` (base `2815906`) on top of `d6a5dac`. Three rendered approaches were judged; the winner is shader-side spill, with grafts from the glow-lights and bloom proposals. Then built, reviewed from two angles and fixed: all four findings were real and fixed. Visual only.
+- New `Resources/NativeArmorLight.cginc`, `Core/NativeArmorLight.cs` and `Runtime/NativeArmorLights.cs`; small hunks in `NativeSourceLit.shader`, `NativeSourceModels`, `NativeSourcePresentation`, `NativeCombatGlow`, `NativeKillModels` and `NativeBuildChecks`.
+- What the armor lights now do:
+  - Each emitter face has a soft core-to-edge profile with a 1.2 cm contact bleed.
+  - Wrapped-Lambert spill: caps light the upper arms, the band lights the hips, cuffs light the forearm and the held gun, kneecaps light the shins.
+  - The shell self-glow drops to .80. The sternum is the hot core (x1.15). Hue-keeping roll-off: pale accents no longer wash out.
+  - Spill on stage-lit draws is x.6, for intros.
+  - Halos fade by facing and are clamped to 4.5-70 px.
+  - The two pooled floor lights are hue-true, kept by the nearest pilots with hysteresis and a 0.15 s fade, range 2.4 m.
+  - Breathing pulse ±6%, off with reduced effects.
+- Corpses: boxes crossing severable joints skip spill, so a detached limb never keeps a neighbour's glow.
+- Rollback values for the owner: ArmorHaloScale 1, ArmorSpillIntensity 8, ArmorSpillRange 3.6.
+- Siren ink, the death hologram and portraits are unchanged.
+- Checks on the merged head:
+  - unity-check: runtime+editor build OK;
+  - Python: 52 OK;
+  - package_source: passed, 1009 files;
+  - check_relay: exit 0, 254 PASS, including "Armor lights (777 checks)".
+  - `git diff --check` is clean.
+- Not run: a real D3D11 compile of the changed `NativeSourceLit` and the new cginc (the cloud build is the first true compile), GPU timing with 8 pilots, Windows play. The offline renderer emulates Unity shading.
+- Status: implemented and merged on the branch; pushed to the cloud branch; not released by Claude.
+
 ## 2026-10-10 — Claude — AoE blue/cyan lightning removed; Siren grab death ragdolls on drop (owner requests)
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62). Merged `claude/remove-aoe-lightning` `bfab574` and `claude/siren-grab-ragdoll` `822d815` on top of `2815906`. Each was built, reviewed from two angles and fixed. Presentation only.
 - AoE lightning (owner override of source parity):
