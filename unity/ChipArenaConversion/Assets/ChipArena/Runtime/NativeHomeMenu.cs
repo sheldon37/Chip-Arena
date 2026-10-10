@@ -212,10 +212,11 @@ namespace ChipArena.UnityConversion
             var widths=TileWidths(tiles.Select(t=>t.label).ToArray(),tiles.Select(t=>t.icon).ToArray(),colW,out bool icons);float tx=x0;
             for(int i=0;i<tiles.Count;i++){float e=In(age,.1f+i*.035f,.3f);var r=new Rect(tx,y,widths[i],40);U.Push(r.center,new Vector2(0,8*(1-e)));if(Tile(r,icons?tiles[i].icon:null,tiles[i].label,ce*e,i==2&&user!=null?user:null))tiles[i].go();U.Pop();tx+=widths[i]+8;}
             y+=40;
-            // .subtle-link row: Developer Sandbox (developers, offline), the source catalogue and Quit.
+            // .subtle-link row: Developer Sandbox (developers, offline), the conversion catalogue (developers only: the source
+            // has no such screen and its import notes are not for players) and Quit.
             float lx=x0;float le=ce*In(age,.22f,.3f);
             if(dev&&!Online&&SubtleLink(ref lx,y+15,"flask-conical","Developer Sandbox",le)){Go(MenuScreen.Play);playSandbox=true;}
-            if(SubtleLink(ref lx,y+15,"book-open","Catalogue",le))Go(MenuScreen.Catalogue);
+            if(dev&&SubtleLink(ref lx,y+15,"book-open","Catalogue",le))Go(MenuScreen.Catalogue);
             if(SubtleLink(ref lx,y+15,"log-out","Quit",le)){Save();Application.Quit();}
             U.Pop();
             float be=In(age,.12f,.34f);var br=stacked?new Rect(x0+colW-boss.x,y0+colH+18,boss.x,boss.y):new Rect(x0+blockW-boss.x,y0+colH/2-boss.y/2,boss.x,boss.y);
@@ -459,7 +460,7 @@ namespace ChipArena.UnityConversion
         }
         private void CatalogueScreen(float age)
         {
-            var l=BeginScreen("SOURCE REFERENCE","Catalogue",900,age,actions:false);if(l.Closed){Go(MenuScreen.Home);return;}
+            var l=BeginScreen("SOURCE REFERENCE","Catalogue",900,age,actions:false);if(l.Closed||!account.Developer){Go(MenuScreen.Home);return;}
             ScreenBody(l,Catalogue);
         }
 

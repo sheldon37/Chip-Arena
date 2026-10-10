@@ -42,6 +42,9 @@ namespace ChipArena.UnityConversion
     public sealed partial class ConversionGame
     {
         private bool sandboxWanted;private string sandboxSearch="",dummySpec="pistol",dummyKey="ai",sandboxTarget="dummy",sandboxSort="rarity";private float sandboxSpeed=1;
+        // main.ts drawSandbox's arena row, previews and DEBRIS LAUNCHER (8 kg at 15 m/s by default, up to 150 kg, wood /
+        // stone / metal); the impact choice is NativeSandboxTools' face / edge / corner orientation.
+        private string previewRarity="common",debrisMaterial="wood",debrisImpact="face";private float debrisMass=8,debrisSpeed=15;private string[] previewRarities,previewRarityNames;
         // Sandbox tools (pause menu of a developer sandbox match, started from the home screen's Developer Sandbox link).
         private void SandboxBody()
         {
@@ -50,6 +53,23 @@ namespace ChipArena.UnityConversion
             arena.SafeMode=GUILayout.Toggle(arena.SafeMode,"Safe mode — player retains 1 HP");arena.DummyRespawn=Mathf.Round(Slider("Dummy respawn seconds (0 disables)",arena.DummyRespawn,0,30));arena.SandboxRepeat=Mathf.Round(Slider("Repeat cast seconds (0 disables)",arena.SandboxRepeat,0,60));if(arena.SandboxRepeat>0)arena.SandboxRepeat=Math.Max(2,arena.SandboxRepeat);
             Field("Dummy weapon");dummySpec=ChoiceGrid(content.weapons.Where(AllowedWeapon).Select(w=>w.id).ToArray(),dummySpec);Field("Dummy input");dummyKey=ChoiceGrid(new[]{"ai","e","q","block","dash","jump","1","2","3","4","mode"},dummyKey);if(GUILayout.Button("Make dummy cast",button)){arena.SandboxCast(dummySpec,dummyKey);menu=false;}
             Field("Target");sandboxTarget=ChoiceGrid(new[]{"self","dummy"},sandboxTarget);GUILayout.BeginHorizontal();foreach(string action in new[]{"restore","hit","down","summons","vent"})if(GUILayout.Button(action,button)){arena.SandboxAction(action,sandboxTarget=="self");menu=false;}GUILayout.EndHorizontal();
+            // Restore (every pilot, as the source's heal), Arena Reset and Test Block.
+            Field("Arena");GUILayout.BeginHorizontal();
+            if(GUILayout.Button("Restore",button)){arena.SandboxAction("restore",true);arena.SandboxAction("restore");menu=false;}
+            if(GUILayout.Button("Arena Reset",button)){arena.SandboxReset();menu=false;}
+            if(GUILayout.Button("Test Block",button)){arena.SandboxTestBlock();menu=false;}
+            GUILayout.EndHorizontal();
+            // Preview Draft, Preview Rarities (a draft of the chosen tier), Preview Knockout (the dummy) and Preview My Death.
+            Field("Previews");if(previewRarities==null){var tiers=content.rarities.OrderBy(r=>NativeChipRanks.RarityRank(r.id)).ToArray();previewRarities=tiers.Select(r=>r.id).ToArray();previewRarityNames=tiers.Select(r=>r.name).ToArray();}
+            GUILayout.BeginHorizontal();
+            if(GUILayout.Button("Preview Draft",button)){arena.SandboxPreview("draft");menu=false;}
+            if(GUILayout.Button("Preview Rarities",button)){arena.SandboxPreview("rarity",previewRarity);menu=false;}
+            if(GUILayout.Button("Preview Knockout",button)){arena.SandboxPreview("knockout");menu=false;}
+            if(GUILayout.Button("Preview My Death",button)){arena.SandboxPreview("my-death");menu=false;}
+            GUILayout.EndHorizontal();previewRarity=ChoiceGrid(previewRarities,previewRarity,previewRarityNames);
+            Field("Debris launcher");debrisMass=Mathf.Round(Slider("Mass (kg)",debrisMass,1,150));debrisSpeed=Mathf.Round(Slider("Speed (m/s)",debrisSpeed,1,100));
+            debrisMaterial=ChoiceGrid(new[]{"wood","stone","metal"},debrisMaterial);debrisImpact=ChoiceGrid(new[]{"face","edge","corner"},debrisImpact);
+            if(GUILayout.Button("Launch at Opponent",button)&&arena.SandboxLaunchDebris(debrisMass,debrisSpeed,debrisMaterial,debrisImpact))menu=false;
             Field("Chips");sandboxSort=ChoiceGrid(new[]{"name","rarity","installed"},sandboxSort);sandboxSearch=GUILayout.TextField(sandboxSearch,100);var target=sandboxTarget=="self"?arena.Local:arena.Pilots.FirstOrDefault(p=>p.Seat.bot);if(target==null)return;
             foreach(var chip in content.chips.OrderBy(c=>sandboxSort=="rarity"?NativeChipRanks.RarityRank(c.rarity).ToString("D2"):sandboxSort=="installed"?(target.Seat.chips.ContainsKey(c.id)?"0":"1"):c.name).ThenBy(c=>c.name).Where(c=>sandboxSearch.Split(new[]{' '},StringSplitOptions.RemoveEmptyEntries).All(term=>(c.name+" "+c.id+" "+c.description).IndexOf(term,StringComparison.OrdinalIgnoreCase)>=0)))
             {target.Seat.chips.TryGetValue(chip.id,out int count);GUILayout.BeginHorizontal();GUILayout.Label(chip.name+" ×"+count,small);if(GUILayout.Button("+",GUILayout.Width(32)))arena.SandboxChip(target.Seat.id,chip.id,1);if(GUILayout.Button("−",GUILayout.Width(32)))arena.SandboxChip(target.Seat.id,chip.id,-1);GUILayout.EndHorizontal();}
