@@ -11,9 +11,8 @@ namespace ChipArena.UnityConversion.Editor
             var scene=EditorSceneManager.NewPreviewScene();var guestScene=EditorSceneManager.NewPreviewScene();NativeArena arena=null,guest=null;GameObject host=null,remote=null;
             try
             {
-                var match=new NativeMatch(content,7);match.Seats.Add(new NativeSeat{id=1,name="Victim",spec="pistol"});match.Seats.Add(new NativeSeat{id=8,name="Siren",spec="siren",team=7,AuthorityBoss=true});
+                var match=new NativeMatch(content,7);match.Seats.Add(new NativeSeat{id=1,name="Victim",spec="pistol"});match.Seats.Add(new NativeSeat{id=8,name="Siren",spec="siren",team=7});
                 arena=new NativeArena(content,match,"siren"){ReplicaScene=scene};match.Start();arena.Reset();match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10});
-                arena.ConfigurePve(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text),false);
                 guest=new NativeArena(content,new NativeMatch(content),"siren"){Replica=true,LocalId=1,ReplicaScene=guestScene};
                 host=new GameObject("Host interaction check");host.transform.SetParent(arena.Root.transform);var view=host.AddComponent<ArenaPresentation>();view.Initialize(false);
                 remote=new GameObject("Guest interaction check");var other=remote.AddComponent<ArenaPresentation>();other.Initialize(false);

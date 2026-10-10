@@ -1,5 +1,21 @@
 # Chip Arena — development log
 
+## 2026-10-10 — Astra — correct the interaction build fixture
+
+- Follow-up `codex/unity-interaction-build-fix`, base `d9ebe850` / PR #94.
+  Unity #24 failed with CS0117: the Editor assembly cannot initialize the runtime's
+  internal `NativeSeat.AuthorityBoss` field. Move that fixture-only assignment and
+  PvE setup into the existing runtime-assembly `UNITY_EDITOR` validation method.
+  Keep the field internal. Also advance the fixture clock in supported .25s ticks
+  instead of a rejected 2s `NativeMatch.Tick` call.
+- Production grab/revival behavior is unchanged. No authority, hitbox, damage,
+  movement, cooldown, audio or visual timeline edits in this follow-up.
+- Native CI passed for #94, including 33 original grab samples and repair timing.
+  Actual Unity compile/interaction checks and publication of this correction are
+  pending. Failed #24 was not published; last verified feed remains Unity #23.
+- Automation-only PR #95 now retains failed Unity logs privately; its 71-test
+  Linux/Windows suite passed. Log retrieved from run `38078057168`.
+
 ## 2026-10-10 — Codex/Astra — Siren victim animation and PvE holographic repair
 - Task `codex/unity-grab-revive`, base cloud `efb4fa4017e68b12dbfda2db166e52f397913539`; owner reports the grabbed player remains idle and requests the Electron holographic revival back. Restores the existing source presentations (`siren/fx.ts` and `pve/downed.ts`) in Unity.
 - Replicate the actual victim's holder/catch/crush/release fields. Pose all rigs before drawing, attach the struggling victim to this frame's claw, suppress the held weapon, and use explicit identity for guest flames/cameras. Held guests no longer predict locomotion. The visual pose does not move the authoritative collider.
