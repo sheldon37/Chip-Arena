@@ -1,5 +1,27 @@
 # Chip Arena — development log
 
+## 2026-10-10 — Claude — Melee hit reactions and the visible stun (owner request)
+- Branch `claude/sleepy-ritchie-g8ruhv` (PR #62): merged `claude/melee-hit-reactions` `a684b49` on top of Astra's `0e8a3ff`, which carries the authoritative melee hit stun. It was built, reviewed from two angles and fixed: all four findings were real and fixed.
+- New `Core/NativeHitReact.cs` plus `Runtime/NativeHitPresentation.cs`, applied as a per-rig layer on all four third-person routes:
+  - directional accents: front lean-back, back lurch, side bend and twist;
+  - weight by attacker weapon: daggers 0.6, sword 1, shield 1.15, greatsword 1.4, Siren 1.35, fighters by damage;
+  - chained hits alternate, headshots snap the head;
+  - a melee block shoves the guard;
+  - a dazed stun pose (guard dropped, head lolls, sway) while `StunUntil` is in the future, ending exactly at the stun end;
+  - gun and magic victims get recoil and a catch step (they were frozen before);
+  - light hits move only the upper body, so running continues.
+- First-person melee hit kick on the camera only, after the aim point is taken. It is off with screen shake off, scaled with reduced effects, and soft-limited.
+- One presentation-only hunk in `NativeArena.Damage`: `MeleeHitReaction(...,direct||melee)`, so the Siren claws record a `Reaction`. `MeleeHitReaction` only writes the presentation `Reaction`; it never stuns. No change to stun lengths, damage, hitboxes, timing, movement or network format.
+- Checks on the merged head:
+  - unity-check: runtime+editor build OK;
+  - Python: 52 OK;
+  - package_source: passed, 997 files;
+  - check_relay: exit 0, 252 PASS, including 25 new hit-reaction lines.
+  The offline renders (22 before/after scenarios) are in the scratchpad.
+- Not run: the Unity Editor, Windows play, live host/guest/killcam.
+- Next: a follow-up pass driving these reactions from the owner's Explosive pack clips (GetHit F/B/L/R, Block-GetHit, Stunned), with this procedural layer kept as the fallback.
+- Status: implemented and merged on the branch; pushed to the cloud branch; not released by Claude.
+
 ## 2026-10-10 — Claude — Early-port placeholders, batch 5: world, stage, summon and pickup effects; Astra handoff
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62), on top of `0433c87`. Merged `claude/placeholders-5a` `dd2ab53` and `claude/placeholders-5b` `1a4fb9a`. Each half was built, reviewed from two angles (source fidelity, Unity build safety) and fixed. Presentation only.
 - B5a:
