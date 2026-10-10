@@ -32,6 +32,19 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>Whether the replicated action still plays (the authority clears it at its end; a charge lasts until release).</summary>
         public static bool Acting(string action,float until,float time)=>!string.IsNullOrEmpty(action)&&(action=="charge"||time<until);
+        /// <summary>
+        /// The two baked frames and the blend for a clip sample at `fraction` (NativeSourceMotion.Sample's frame math). The
+        /// exporter bakes an action's last frame at its until, where emperorLayers has already returned to the guard; the
+        /// wavedash is closed (its dip, sin(pi u), is 0 at both ends), so its last segment eases into its first frame instead
+        /// of the guard and a chained wavedash (E held) carries on without a twitch.
+        /// </summary>
+        public static void Frames(int frames,float fraction,bool closed,out int a,out int b,out float t)
+        {
+            float index=fraction*(frames-1);a=Math.Min(frames-1,(int)index);b=Math.Min(frames-1,a+1);t=index-a;
+            if(closed){if(a==frames-1)a=0;if(b==frames-1)b=0;}
+        }
+        /// <summary>Whether a style clip is closed (ends on its first pose): the Emperor's wavedash.</summary>
+        public static bool Closed(string key)=>key=="emperor-wave-1-0";
 
         private static readonly int[] Upper={CapturedRig.Body,CapturedRig.Pelvis,CapturedRig.Spine,CapturedRig.Chest,CapturedRig.Neck,CapturedRig.Head,CapturedRig.LClav,
             CapturedRig.RClav,CapturedRig.LArm,CapturedRig.RArm,CapturedRig.LElbow,CapturedRig.RElbow,CapturedRig.LHand,CapturedRig.RHand};
@@ -48,16 +61,20 @@ namespace ChipArena.UnityConversion
         /// authors them); on the ground the hips keep travel*.8 (Ansatsuken .85) of the gait's body and twist with the stride
         /// (not during a wavedash); with no action, not blocking, the travel carries the upper body back to the gait's (its arm
         /// pump) by ease((motion-.10)/.65), so a running fighter runs with its own guard melting into the gait, not a sword carry.
+        /// The Emperor's guard writes only the hips' height (emperorGuard), so they keep the gait's sideways sway and forward lean
+        /// offset (the clips were baked with the body at the origin) and only the height takes the travel blend; `pinned` (its
+        /// Electric Hook and wavedash, which write the hips' height and depth after that blend) keeps the clip's height and depth.
         /// </summary>
-        public static void Layer(MeleeRig r,CapturedRig.Pose clip,bool emperor,bool grounded,bool wave,bool acting,bool blocking)
+        public static void Layer(MeleeRig r,CapturedRig.Pose clip,bool emperor,bool grounded,bool wave,bool acting,bool blocking,bool pinned=false)
         {
             for(int i=0;i<Upper.Length;i++)upperBase[i]=r.Q[Upper[i]];
-            Vector3 body=r.P[CapturedRig.Body];float travel=MeleeMath.Clamp(r.Motion*1.4f,0,1);bool legs=AuthorsLegs(clip);
+            Vector3 body=r.P[CapturedRig.Body],c=clip.Position[CapturedRig.Body];float travel=MeleeMath.Clamp(r.Motion*1.4f,0,1);bool legs=AuthorsLegs(clip);
             for(int b=0;b<MeleeRig.N;b++)if(legs||b<CapturedRig.LHip)r.SetQ(b,clip.Rotation[b]);
-            r.P[CapturedRig.Body]=clip.Position[CapturedRig.Body];if(legs)r.LegsAuthored=true;
+            r.P[CapturedRig.Body]=emperor?new Vector3(body.X+c.X,c.Y,pinned?c.Z:body.Z+c.Z):c;if(legs)r.LegsAuthored=true;
             if(grounded&&!(emperor&&wave))
             {
-                float s=(float)Math.Sin(r.Stride);r.P[CapturedRig.Body]=Vector3.Lerp(r.P[CapturedRig.Body],body,travel*(emperor?.8f:.85f));
+                float s=(float)Math.Sin(r.Stride);
+                if(!emperor)r.P[CapturedRig.Body]=Vector3.Lerp(r.P[CapturedRig.Body],body,travel*.85f);else if(!pinned)r.P[CapturedRig.Body].Y+=(body.Y-c.Y)*travel*.8f;
                 r.AddE(CapturedRig.Pelvis,0,s*.07f*travel,0);r.AddE(CapturedRig.Chest,0,-s*(emperor?.05f:.1f)*travel,0);
             }
             if(acting||blocking||!grounded)return;
@@ -65,6 +82,81 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<Upper.Length;i++)r.Slerp(Upper[i],upperBase[i],carry);
             r.P[CapturedRig.Body]=Vector3.Lerp(r.P[CapturedRig.Body],body,carry);
         }
+
+        /// <summary>
+        /// CapturedAnimation FighterPose's view of the replicated actor: the style action is the pose transition's key
+        /// (pose-transitions.ts transitionAction keys a fighter by its emperor/arcade action), and an Emperor's wavedash is the
+        /// gait's dash (movement.ts: each wave sets dashTime .18, which runs out on its own through a cancel), so the legs leave
+        /// the stride like a push-off instead of running at the dash speed. A hit, juggle, knockdown or dodge roll ends the dash
+        /// (emperor.ts confirm and beginRoll clear it). Call after the view's juggle, down and hit stun are set.
+        /// </summary>
+        public static void View(MeleeView v,Actor a,NativeWaveDash wave,float time)
+        {
+            v.ActionKind=string.IsNullOrEmpty(a.SourceAction)?null:a.SourceAction;v.ActionAt=a.SourceAt;v.ActionUntil=a.SourceUntil;
+            if(v.Juggle||v.Down||v.HitStunUntil>time||a.Rolling(time))wave.Stop(a.SourceAction,a.SourceAt);
+            v.DashTime=a.SourceSpec=="emperor"?wave.DashTime(a.SourceAction,a.SourceAt,a.SourceUntil,time):0;
+        }
+        /// <summary>
+        /// The style over the gait for a frame that plays a style clip (between MeleeMotion.FighterBase and FighterFinish): the
+        /// clip layer, then an acting Emperor's per-foot edits (emperorLayers then applyFighterLegs, as animateEmperor runs them).
+        /// </summary>
+        public static void Style(MeleeMotion m,CapturedRig.Pose clip,Actor a,bool stun,float time)
+        {
+            bool emperor=a.SourceSpec=="emperor",acting=!stun&&Acting(a.SourceAction,a.SourceUntil,time),blocking=!stun&&time<a.BlockUntil;
+            bool wave=acting&&a.SourceAction=="wave";
+            Layer(m.Rig,clip,emperor,a.Grounded,wave,acting||!stun&&a.Rolling(time),blocking,emperor&&(wave||acting&&a.SourceAction=="electric"));
+            if(emperor&&acting&&!blocking)Feet(m,a.SourceAction,time-a.SourceAt,a.SourceUntil-a.SourceAt);
+        }
+        /// <summary>emperorLayers' wavedash length (u = age / .18) and fighter-motion.ts's ball-of-foot offset.</summary>
+        public const float WaveSeconds=.18f,Ball=.09f;
+        private static readonly Vector3 WaveLead=new Vector3(.16f,-.772f,.24f),WaveRear=new Vector3(-.14f,-.765f,-.30f);
+        /// <summary>
+        /// emperorLayers' foot edits, solved over the gait as fighter-motion.ts applyFighterLegs does (the clips were exported
+        /// without a gait, so these never reached them). The wavedash skims the floor: the lead (left) ankle reaches to
+        /// (.16,-.772,.24) and the rear trails to (-.14,-.765,-.30) on its toes (heel +.55), both by sqrt(sin(pi u)). The
+        /// Electric Hook's rear heel drives up by .3 power (1 - travel) into the hook. Each ankle starts from its gait target
+        /// (a raised heel lifts it by Ball sin(heel), pitches the foot and bends the toe -.45 heel), blends to the edit's target
+        /// and stays above the floor; the leg is solved as layerLeg does, so a zero edit is exactly the gait leg. False (legs
+        /// left to the gait) for other actions or before the gait has run.
+        /// </summary>
+        public static bool Feet(MeleeMotion m,string action,float age,float duration)
+        {
+            float reach,heel;
+            if(action=="wave"){float dip=(float)Math.Sin(MeleeMath.Clamp(age/WaveSeconds,0,1)*MeleeMath.PI);reach=(float)Math.Sqrt(Math.Max(0,dip));heel=.55f*reach;}
+            else if(action=="electric")
+            {
+                float u=MeleeMath.Clamp(age/Math.Max(1e-4f,duration),0,1),power=MeleeMath.Ease((u-.115f)/.135f)*(1-MeleeMath.Ease((u-.48f)/.52f));
+                reach=0;heel=.3f*power*(1-MeleeMath.Clamp(m.Rig.Motion*1.4f,0,1));
+            }
+            else return false;
+            for(int i=0;i<2;i++)
+            {
+                bool left=i==0;if(!m.GaitFoot(left,out Vector3 g,out float yaw,out float pitch,out float toe))return false;
+                float h=left?0:heel;Vector3 target=new Vector3(g.X,g.Y+Ball*(float)Math.Sin(h),g.Z);
+                if(reach>0)target=Vector3.Lerp(target,left?WaveLead:WaveRear,Math.Min(1,reach));target.Y=Math.Max(MeleeRig.FLOOR,target.Y);
+                m.Rig.LayerLeg(left,target,yaw,pitch+h,toe-.45f*h);
+            }
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// The Emperor's wavedash push as the gait sees it (movement.ts: E sets dashTime .18 with the push; Q's Electric Hook
+    /// starting mid-wave clears waveTime but not dashTime). Observed from the replicated SourceAction/SourceAt: the latest
+    /// wave's window is kept when the action changes, so a cancel keeps the push-off legs until the dash runs out.
+    /// </summary>
+    public sealed class NativeWaveDash
+    {
+        public const float Seconds=.18f;
+        private float at=-100,until=-100,stopped=-100;
+        /// <summary>Seconds of dash left at `time` (0 outside the latest wave's window, also after a replay step back).</summary>
+        public float DashTime(string action,float sourceAt,float sourceUntil,float time)
+        {
+            if(action=="wave"&&time<sourceUntil&&time>=sourceAt&&sourceAt!=stopped){at=sourceAt;until=sourceAt+Seconds;}
+            return time>=at&&time<until?until-time:0;
+        }
+        /// <summary>End the dash now; the stopped wave (a replicated action that still reads 'wave') does not start it again.</summary>
+        public void Stop(string action,float sourceAt){until=-100;if(action=="wave")stopped=sourceAt;}
     }
 
     /// <summary>

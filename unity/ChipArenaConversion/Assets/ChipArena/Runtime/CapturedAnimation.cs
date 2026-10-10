@@ -150,9 +150,12 @@ namespace ChipArena.UnityConversion
                     Pose(spec+"-idle",40);
                     a.RollAt=t;Pose(spec=="emperor"?"roll (adapted)":"ansatsuken-step",8);a.RollAt=-100;Pose(spec+"-idle",30);
                     a.JuggleUntil=t+1.25f;Pose("juggle",10);a.JuggleUntil=0;Pose(spec+"-idle",10);t+=1;
+                    // The Emperor's wavedash (E), cancelled into the Electric Hook (Q) mid-wave: the wave clip with its foot edits on
+                    // the dashing gait, then the hook from the frame the action changes (Tests/WavedashChecks.cs checks the poses).
+                    if(spec=="emperor"){a.SourceTotal=1;a.SourceAction="wave";a.SourceAt=t;a.SourceUntil=t+.18f;Pose("emperor-wave-1-0",5);a.SourceAction="electric";a.SourceAt=t;a.SourceUntil=t+.4f;Pose("emperor-electric-1-0",12);a.SourceAction=null;Pose("emperor-idle",20);}
                 }
             }
-            Debug.Log("PASS native DEV fighters: Emperor and Ansatsuken travel in their own guard on the gait, show their Shift and the juggle");
+            Debug.Log("PASS native DEV fighters: Emperor and Ansatsuken travel in their own guard on the gait, show their Shift and the juggle; the Emperor's wavedash cancels into the Electric Hook");
         }
         // L33t H4x (a magic-class staff pilot whose replicated MagicVisual stays 0) through the native boundary: in third
         // person it runs, casts, guards, rolls, is stunned and is juggled on the magic gait; its first-person view model casts
@@ -271,14 +274,15 @@ namespace ChipArena.UnityConversion
             // The DEV fighting styles (Core/NativeFighterPose) in sampleCharacter's order over the gait: a juggle, a knockdown,
             // the Emperor's dodge roll (Shift), else the style's own clip (guard while standing or travelling, block, action,
             // the Ansatsuken's Demon Step on Shift), with the hit stun keeping the guard under its reaction. Never the sword set.
-            private readonly CapturedRig.Pose fighterClip=new CapturedRig.Pose();
+            // Its own view (the wavedash's dash time and the style action key never reach the captured-melee view) and wave track.
+            private readonly CapturedRig.Pose fighterClip=new CapturedRig.Pose();private readonly MeleeView fighterView=new MeleeView();private readonly NativeWaveDash waveDash=new NativeWaveDash();
             private void FighterPose(Actor a,Vector3 position,float time)
             {
                 Weapon=a.Weapon;Set=0;if(melee==null)melee=new MeleeMotion();melee.Impacts=Impacts;
                 float dt=meleeTime<-90||time<meleeTime||time-meleeTime>.35f?1/60f:Mathf.Min(.1f,time-meleeTime);meleeTime=time;
                 bool emperor=a.SourceSpec=="emperor",juggle=Juggled(a,time),down=!juggle&&NativeSpecialPose.Down(a,time),stun=!juggle&&!down&&a.StunUntil>time;
                 bool dodge=emperor&&a.Rolling(time)&&!juggle&&!down&&!stun;
-                var v=MeleeViewOf(a,time,meleeView);v.Reach=1;v.Juggle=juggle;v.Down=down;v.HitStunUntil=stun?a.StunUntil:0;
+                var v=MeleeViewOf(a,time,fighterView);v.Reach=1;v.Juggle=juggle;v.Down=down;v.HitStunUntil=stun?a.StunUntil:0;NativeFighterPose.View(v,a,waveDash,time);
                 // Only the Emperor's Shift is a dodge roll (souls-combat.ts usesRoll); the Demon Step is the Ansatsuken's own layer.
                 if(!dodge){v.RollAt=v.RollUntil=-100;}
                 float yaw=-melee.PresentedYaw(v,time,v.Yaw)*Mathf.Rad2Deg;
@@ -288,11 +292,7 @@ namespace ChipArena.UnityConversion
                 if(juggle){r.WritePose(pose);NativeJugglePose.Apply(pose,time,juggleTrack,a.Velocity.y);r.ReadPose(pose);State="juggle";}
                 else if(down){r.WritePose(pose);NativeSpecialPose.Recover(pose,a,time);r.ReadPose(pose);State="recovery";}
                 else if(dodge){r.WritePose(pose);CapturedRig.Roll(pose,(time-a.RollAt)/a.VisualRollDuration);r.ReadPose(pose);State="roll (adapted)";}
-                else if(NativeSourceMotion.Fighter(fighterClip,a,time,stun,out string key))
-                {
-                    bool acting=!stun&&(NativeFighterPose.Acting(a.SourceAction,a.SourceUntil,time)||a.Rolling(time)),blocking=!stun&&time<a.BlockUntil;
-                    NativeFighterPose.Layer(r,fighterClip,emperor,a.Grounded,a.SourceAction=="wave",acting,blocking);State=stun?"hit reaction":key;
-                }
+                else if(NativeSourceMotion.Fighter(fighterClip,a,time,stun,out string key,true)){NativeFighterPose.Style(melee,fighterClip,a,stun,time);State=stun?"hit reaction":key;}
                 melee.FighterFinish(v,time,dt);
                 r.WritePose(pose);WritePose();fresh=false;lastTime=time;
             }

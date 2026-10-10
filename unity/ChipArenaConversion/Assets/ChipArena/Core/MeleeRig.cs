@@ -128,11 +128,12 @@ namespace ChipArena.UnityConversion
         // layerLeg (no pole): a leg solved exactly as the gait solves its own, marked layered for the ground pass.
         public void LayerLeg(bool left,Vector3 target,float yaw,float pitch,float toe){SolveLeg(left,target,yaw,pitch,toe);LegsLayered=true;}
         // holdAnkles: keep both ankles (and foot orientation) where they are while `change` moves the body.
+        private readonly Vector3[] holdScratch=new Vector3[2];private readonly Quaternion[] keepScratch=new Quaternion[4];
         public void HoldAnkles(Action change,float weight)
         {
             if(weight<=1e-4f){change();return;}
-            var hold=new Vector3[2];for(int i=0;i<2;i++)hold[i]=ReadAnkle(i==0,out _,out _);change();
-            var keep=new Quaternion[4];
+            var hold=holdScratch;for(int i=0;i<2;i++)hold[i]=ReadAnkle(i==0,out _,out _);change();
+            var keep=keepScratch;
             for(int i=0;i<2;i++)
             {
                 int hip=Hip(i==0);ReadAnkle(i==0,out Quaternion aq,out Vector3 k);if(weight<1)for(int b=0;b<4;b++)keep[b]=Q[hip+b];
