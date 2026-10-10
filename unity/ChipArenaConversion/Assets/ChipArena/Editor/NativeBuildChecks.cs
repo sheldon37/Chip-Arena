@@ -105,6 +105,7 @@ namespace ChipArena.UnityConversion.Editor
             foreach(var test in NativeMeleeChecks.Run(data,melee))Debug.Log("PASS "+test);
             foreach(var test in NativeMotionChecks.Run())Debug.Log("PASS "+test);
             foreach(var test in NativeVisualChecks.Run(data))Debug.Log("PASS "+test);
+            foreach(var test in NativeDamageScreenChecks.Run())Debug.Log("PASS "+test);
             foreach(var test in NativePresentationChecks.Run(data,presentation))Debug.Log("PASS "+test);
             if(data.chips.Any(c=>!NativeArena.ImplementedChip(c)))throw new Exception("A source Chip is absent from the native draft");
             if(NativeSceneMotion.Count!=31)throw new Exception("Source cinematic scenes are incomplete");
@@ -115,7 +116,7 @@ namespace ChipArena.UnityConversion.Editor
                 // The dev-siren cell's bulb glow track (NativeSirenCell drives its glow with the bulb's level; the cell's lights go to the stage block).
                 var cell=NativeSceneMotion.Get("stage-dev-siren");int bulb=-1;if(cell?.values!=null)for(int t=0;t<cell.tracks&&bulb<0;t++)if(NativeSirenIntroLight.AtBulb(cell.values,cell.frames,t)&&models.OpaqueBone("stage-dev-siren",t))bulb=t;
                 if(bulb<0)throw new Exception("The Siren cell's bulb glow track is missing from the scene bank");}
-            foreach(var name in new[]{"NativeSourceLit","NativeSourceTransparent","NativeWardPit","NativeNightSky","NativeSmoke","NativeHologram","NativeRepair","NativeStatusUnlit","NativeBeacon","NativeFieldGlow","NativeBlast","NativePortrait","NativePortraitResolve","NativeKillPoints","NativeKillBody","NativeKillGhost","NativeSirenFx","NativeDevGhost","NativeUiBlur","NativeAuditorHalo"}){var shader=Resources.Load<Shader>(name);if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: "+name);}
+            foreach(var name in new[]{"NativeSourceLit","NativeSourceTransparent","NativeWardPit","NativeNightSky","NativeSmoke","NativeHologram","NativeRepair","NativeStatusUnlit","NativeBeacon","NativeFieldGlow","NativeBlast","NativePortrait","NativePortraitResolve","NativeKillPoints","NativeKillBody","NativeKillGhost","NativeSirenFx","NativeDevGhost","NativeUiBlur","NativeAuditorHalo","NativeDamageScreen"}){var shader=Resources.Load<Shader>(name);if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: "+name);}
             var audioDir=Path.Combine(Application.dataPath,"Conversion/Resources/Audio");int audioCount=0;foreach(var file in Directory.EnumerateFiles(audioDir,"*",SearchOption.AllDirectories).Where(p=>p.EndsWith(".mp3")||p.EndsWith(".wav"))){var path="Assets"+file.Substring(Application.dataPath.Length).Replace('\\','/');if(AssetDatabase.LoadAssetAtPath<AudioClip>(path)==null)throw new Exception("Audio import failed: "+path);audioCount++;}if(audioCount!=83)throw new Exception("Source audio bank is incomplete: "+audioCount);
             Debug.Log("PASS imported conversion assets: 165 source motion clips, 133 source models / 31 cosmetic scenes, 83 audio clips and full draft catalog");
             var active=SceneManager.GetActiveScene();Vector3 gravity=Physics.gravity;int pads=0;

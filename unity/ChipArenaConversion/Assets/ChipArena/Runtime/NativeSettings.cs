@@ -18,6 +18,8 @@ namespace ChipArena.UnityConversion
             if(nativeAudio!=null){nativeAudio.Effects=Mathf.Clamp01(prefs.audio);nativeAudio.Music=Mathf.Clamp01(prefs.music);nativeAudio.Menu=Mathf.Clamp01(prefs.menuMusic);}
             Field("Effects");prefs.trails=GUILayout.Toggle(prefs.trails,"Projectile trails");prefs.reducedEffects=GUILayout.Toggle(prefs.reducedEffects,"Reduced effects");prefs.cameraShake=GUILayout.Toggle(prefs.cameraShake,"Camera shake");
             GUILayout.Label("Combat glow",small);int glow=prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?1:2;prefs.combatGlow=new[]{"Off","Low","Full"}[ChoiceRow(new[]{"Off","Low","Full"},glow)];
+            // The damage screen (NativeDamageScreenPresentation): Off, Subtle (60%, no colour split) or Full; Reduced effects also stills it.
+            GUILayout.Label("Damage screen effect",small);int hurt=prefs.damageScreen=="Off"?0:prefs.damageScreen=="Subtle"?1:2;prefs.damageScreen=new[]{"Off","Subtle","Full"}[ChoiceRow(new[]{"Off","Subtle","Full"},hurt)];
             // The desktop shell's View menu (desktop/main.cjs:47): togglefullscreen beside the zoom roles that Interface scale
             // stands in for. It applies and saves at once through SetFullscreen, and shows the window's actual mode, which the
             // player's Alt+Enter can change without the saved preference.
