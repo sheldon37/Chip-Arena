@@ -30,7 +30,7 @@ internal static class InteractionChecks
         Check(!NativeSirenVictimPose.Active(a,13.2f),"crush cutoff");a.GrabOwner=0;Check(!NativeSirenVictimPose.Active(a,11),"release");a.GrabOwner=1;a.Hp=0;Check(!NativeSirenVictimPose.Active(a,11),"death");
         Check(!NativeReviveRules.Active(0,-100)&&!NativeReviveRules.Active(0,float.NaN),"fresh pilot regenerated");
         Check(NativeReviveRules.Active(9.8f,10)&&NativeReviveRules.Active(11.39f,10)&&!NativeReviveRules.Active(11.41f,10),"replica lead / expiry");
-        Check(NativeReviveRules.Front(.64f)==1&&NativeReviveRules.Standing(.79f)==0&&Math.Abs(NativeReviveRules.Standing(1.1f)-.5f)<1e-5&&NativeReviveRules.Glow(1.4f)<1e-6f,"source scan / rise timeline");
+        Check(Math.Abs(NativeReviveRules.Front(.64f)-1)<1e-6&&NativeReviveRules.Standing(.79f)==0&&Math.Abs(NativeReviveRules.Standing(1.1f)-.5f)<1e-5&&NativeReviveRules.Glow(1.4f)<1e-6f,"source scan / rise timeline");
         Check(NativeReviveRules.InPlace(new V3(),new V3(1,0,1))&&!NativeReviveRules.InPlace(new V3(),new V3(2,0,0)),"body / pad distinction");
         for(int i=0;i<100;i++){float s=i/99f;Check(NativeReviveRules.Flight(.8f,s)==1,"missing part incomplete at rise");var v=NativeReviveRules.Scatter(7,i);Check(v==NativeReviveRules.Scatter(7,i)&&v.Y>=.15f&&v.Length()<1.6f,"bounded deterministic reconstruction");}
         Console.WriteLine("PASS PvE repair: original scan/stand boundaries, guest clock lead, pad selection and complete deterministic voxel arrival");

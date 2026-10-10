@@ -151,7 +151,7 @@ namespace ChipArena.UnityConversion
                 case "grab":
                 {
                     // Last Laugh: black flame climbs over the held victim (its rig) and chars it until the crush.
-                    var v=SirenVictim(arena,p,t,body,rot,k,now);if(v!=null)t.Victim=v.Seat.id;
+                    var v=SirenVictim(arena,p,t,body,rot,k,now)??(now>=t.CrushAt?SeatPilot(arena,t.Victim):null);if(v!=null)t.Victim=v.Seat.id;
                     if(v!=null&&v.Hp>0&&now<t.CrushAt&&rigs.TryGetValue(v.Seat.id,out var vr)&&!(FirstPerson&&arena.ViewPilot==v))
                     {for(int b=0;b<vr.Bones.Length&&b<22;b++)Source(vr.Bones[b].localToWorldMatrix,fxJoints,b*16);fx.Grab(v.Seat.id,now-t.CaughtAt,fxJoints);sirenChar[v.Seat.id]=(float)NativeSirenFx.Burn(now-t.CaughtAt);}
                     if(Once(t,8,now,t.CrushAt)&&v!=null){t.Crushed=true;Vector3 h=v.Body.position+Vector3.up*.65f;fx.Event(NativeSirenEvent.Crush,-h.x,h.y,h.z,k:k,born:t.CrushAt);}
