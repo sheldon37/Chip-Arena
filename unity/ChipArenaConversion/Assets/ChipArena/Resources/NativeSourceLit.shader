@@ -2,10 +2,11 @@ Shader "ChipArena/SourceLit" {
  Properties { _SceneTint("Scene tint",Color)=(1,1,1,1) _MainTex("Texture",2D)="white"{} _BodyTint("Body tint",Color)=(1,1,1,1) _AccentTint("Accent tint",Color)=(1,1,1,1) _GlowTint("Emission tint (linear)",Vector)=(1,1,1,1) _Ink("Siren ink",Float)=0 _InkRim("Ink rim",Float)=.3 _InkFlow("Ink flow",Float)=.025 _InkFill("Ink fill",Float)=0 _InkColor("Ink colour",Color)=(.039,.031,.055,1) _Cull("Cull",Float)=2 }
  SubShader { Tags { "RenderType"="Opaque" } Cull [_Cull]
  CGPROGRAM
- #pragma surface surf Lambert fullforwardshadows addshadow vertex:vert finalcolor:StageTone
+ #pragma surface surfArmor Lambert fullforwardshadows addshadow vertex:vert finalcolor:StageTone
  #pragma target 3.5
  #pragma multi_compile_instancing
  sampler2D _MainTex;float _Ink,_InkRim,_InkFlow,_InkFill;float4 _InkColor;
+ #include "NativeArmorLight.cginc"
  UNITY_INSTANCING_BUFFER_START(Props)
  UNITY_DEFINE_INSTANCED_PROP(float4,_BodyTint)
  UNITY_DEFINE_INSTANCED_PROP(float4,_AccentTint)
@@ -45,6 +46,7 @@ Shader "ChipArena/SourceLit" {
  void StageTone(Input i,SurfaceOutput o,inout fixed4 color)
  {
   #ifndef UNITY_PASS_FORWARDADD
+  if(ArmorTone(color,i.emission.w,_StageLit))return;
   if(_StageLit>.5&&!Unlit(i.color.rgb,i.emission.rgb))color.rgb=StageAces(color.rgb);
   #endif
  }
@@ -54,6 +56,14 @@ Shader "ChipArena/SourceLit" {
  // flame tongues burn brighter: NativeSourceModels.SplitSirenPieces).
  void vert(inout appdata_full v,out Input o){UNITY_INITIALIZE_OUTPUT(Input,o);o.emission=v.texcoord1;}
  void surf(Input i,inout SurfaceOutput o){float4 shell=UNITY_ACCESS_INSTANCED_PROP(Props,_BodyTint);if(shell.a<.999)clip(shell.a-frac(sin(dot(floor(i.worldPos*120),float3(12.9898,78.233,37.719)))*43758.5453));float4 accent=UNITY_ACCESS_INSTANCED_PROP(Props,_AccentTint);float3 tint=i.emission.w>1.5?accent.rgb:i.emission.w>.5?shell.rgb:1;tint*=UNITY_ACCESS_INSTANCED_PROP(Props,_SceneTint).rgb;float4 tex=tex2D(_MainTex,i.uv_MainTex);o.Albedo=i.color.rgb*tint*tex.rgb;o.Emission=i.emission.rgb*tint*UNITY_ACCESS_INSTANCED_PROP(Props,_GlowTint).rgb;if(_InkFill>.5){o.Albedo=_InkColor.rgb;o.Emission=float3(0,0,0);}float rim=pow(1-saturate(abs(dot(normalize(i.viewDir),normalize(i.worldNormal)))),3);float rise=sin(i.worldPos.y*23-_Time.y*6.5+sin(i.worldPos.x*13+_Time.y*1.7)*2.2+i.worldPos.z*9);o.Emission+=_Ink*float3(.62,.56,.82)*(rim*_InkRim+smoothstep(.7,1,rise)*_InkFlow);if(_StageLit>.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=StageLight(o.Albedo,i.worldPos,normalize(i.worldNormal));o.Alpha=i.color.a*tex.a*shell.a;}
+ // Pilot armor lights (NativeArmorLight.cginc): surf, then the trims' profile and their spill on the armour around them;
+ // inked (_InkFill) and non-pilot materials (_ArmorLight 0) are untouched.
+ void surfArmor(Input i,inout SurfaceOutput o)
+ {
+  surf(i,o);if(_InkFill>.5)return;
+  float3 accent=UNITY_ACCESS_INSTANCED_PROP(Props,_AccentTint).rgb;float4 glow=UNITY_ACCESS_INSTANCED_PROP(Props,_GlowTint);
+  ArmorLight(o,i.emission.w,i.worldPos,i.worldNormal,i.viewDir,accent,_ArmorExportEmber.rgb*accent*UNITY_ACCESS_INSTANCED_PROP(Props,_SceneTint).rgb*glow.rgb,glow.w,_StageLit);
+ }
  ENDCG
  } Fallback "Diffuse"
 }

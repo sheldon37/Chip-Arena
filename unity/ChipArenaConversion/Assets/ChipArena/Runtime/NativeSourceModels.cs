@@ -83,7 +83,7 @@ namespace ChipArena.UnityConversion
                     var mesh=new Mesh{name=model.id+" / joint "+s.bone,indexFormat=count>65535?IndexFormat.UInt32:IndexFormat.UInt16};mesh.vertices=vertices;mesh.normals=normals;mesh.colors=colors;mesh.uv=uv;mesh.SetUVs(1,emission);mesh.triangles=s.indices;mesh.RecalculateBounds();mesh.UploadMeshData(true);
                     var shader=Resources.Load<Shader>(s.transparent?"NativeSourceTransparent":"NativeSourceLit");if(shader==null)throw new InvalidOperationException("Source material shader is missing");var material=new Material(shader){enableInstancing=true};material.SetInt("_Cull",s.doubleSide?0:2);material.SetFloat("_Ink",s.ink?1:0);
                     if(s.texture>=0){material.mainTexture=textures[s.texture];var repeat=data.textures[s.texture].repeat;material.mainTextureScale=new Vector2(repeat[0],repeat[1]);}materials.Add(material);parts.Add(new Part{Name=s.part,Bone=s.bone,Mesh=mesh,Material=material});
-                }models.Add(model.id,parts.ToArray());
+                }ArmorLights(model,parts);models.Add(model.id,parts.ToArray());
             }
             SplitSirenPieces(data);
         }

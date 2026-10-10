@@ -78,7 +78,7 @@ namespace ChipArena.UnityConversion
             foreach(var part in model)
             {
                 if(visible!=null&&!visible(part.Bone))continue;
-                Draw(Shadowless(part),part.Bone>=0&&bone!=null?bone(part.Bone):root,new Vector4(bc.r,bc.g,bc.b,opacity),Color.white,Vector4.one,new Vector4(ac.r,ac.g,ac.b,1));
+                Draw(Shadowless(part),part.Bone>=0&&bone!=null?bone(part.Bone):root,new Vector4(bc.r,bc.g,bc.b,opacity),Color.white,CorpseGlow,new Vector4(ac.r,ac.g,ac.b,1));
             }
         }
         private Part Shadowless(Part part)
