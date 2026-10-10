@@ -56,7 +56,8 @@ namespace ChipArena.UnityConversion
             var shown=source.ViewCopy();shown.Aiming=AimHeld;shown.Pitch=0;shown.Yaw=0;shown.AimYaw=0;
             // A camera-attached presentation rig never changes the authoritative pilot or muzzle.
             viewRig.ActorPose(shown,Vector3.zero,time,true);
-            bool gun=GunRules.Ranged(shown.Weapon),magic=shown.MagicVisual>0;
+            // Every magic-class pilot (first-person-view.ts cls 'magic': the four schools and the L33t H4x staff) frames the staff view.
+            int school=MagicPose.School(shown);bool gun=GunRules.Ranged(shown.Weapon),magic=school>0;
             Vector3 offset=gun?new Vector3(.24f,-.48f,.20f):magic?CapturedAnimation.Vec(NativeFirstPersonPose.MagicViewOffset(viewRig.MagicGuardWeight)):new Vector3(.16f,-.22f,.30f);
             float ads=aimMotion.Sample(time,gun&&AimHeld);
             if(gun)offset+=CapturedAnimation.Vec(NativeAimPresentation.Offset(shown.Weapon))*ads;
@@ -82,7 +83,7 @@ namespace ChipArena.UnityConversion
                 foreach(var box in CapturedRig.Boxes)if(NativeViewRules.ViewModelBone(box.Bone))
                     Part(viewRig.Bones[box.Bone].localToWorldMatrix,CapturedAnimation.Vec(CapturedRig.Mirror(box.Position)),CapturedAnimation.Vec(box.Size),Quaternion.identity,box.Color<0?0:box.Color);
                 if(gun)GunPresentation.Draw(viewRig,shown,time,Add);
-                else if(magic)DrawStaff(viewRig,shown.MagicVisual,true);
+                else if(magic)DrawStaff(viewRig,school==MagicPose.Leet?1:school,true);
                 else {if(!shown.WeaponAway)Weapon(MeleeHand(viewRig,shown,time),viewRig.Set,0);if(viewRig.Set==1)Weapon(MeleeHand(viewRig,shown,time,true),1,0);}
             }
             DrawBatches(ViewCamera,10,false);
