@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
             if(!(id==(state.Ranged?"hellfire":"swipe")||(state.Ranged?NativeSirenRules.Ranged:NativeSirenRules.Melee).Contains(id)))return false;
             if(id=="rain"&&SirenFields.Count(f=>f.Owner==p&&f.Kind=="rain")>=state.MaxRains||id=="eruption"&&SirenFields.Count(f=>f.Owner==p&&f.Kind=="eruption")>=state.MaxEruptions)return false;
             if(id=="mark"&&Bullets.Any(b=>b.Owner==p.Seat.id&&b.SirenKind=="seeker"))return false;var target=id=="mark"?SirenTarget(p,40,true):null;if(id=="mark"&&target==null)return false;
-            var m=new NativeSirenMove{Id=nextAttack++,Rule=r,At=Time,HitAt=Time+r.Windup,EndAt=Time+r.Windup+r.Travel,Until=Time+NativeSirenRules.Duration(r),Target=target,Direction=Vec(V3.Forward(p.Input.Yaw)),Side=state.Side};state.Side=-state.Side;
+            var m=new NativeSirenMove{Id=nextAttack++,Rule=r,At=Time,HitAt=Time+r.Windup,EndAt=Time+r.Windup+r.Travel,Until=Time+NativeSirenRules.Duration(r),Target=target,Direction=Vec(V3.Forward(p.Input.Yaw)),Side=id=="swipe"||id=="hellfire"?state.Side:1};if(id=="swipe"||id=="hellfire")state.Side=-state.Side;
             Vector3 point=AuthorityAim(p,28);m.Aim=GroundPoint(p.Body.position+Vector3.ClampMagnitude(point-p.Body.position,28));
             Emit(EventKind.Siren,p,0,m.Aim,0,id);state.Move=m;state.Ready[id]=Time+(r.Cooldown>0?r.Cooldown:NativeSirenRules.Duration(r))*state.Cooldown;p.AttackAt=p.LastAttack=Time;p.AttackEnd=p.Ready=m.Until;p.Combo++;return true;
         }

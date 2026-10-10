@@ -55,9 +55,9 @@ namespace ChipArena.UnityConversion
         }
         // Continuous external velocity plus a one-shot vertical kick, as in shared/movement.ts.
         public static V3 External(ref V3 remaining,float dt)=>External(ref remaining,dt,out _);
-        public static V3 External(ref V3 remaining,float dt,out float steeringSpeed)
+        public static V3 External(ref V3 remaining,float dt,out float steeringSpeed,bool preserveHorizontal=false)
         {
-            float lift=MathUtil.Clamp(remaining.y,-24,24),decay=(float)Math.Exp(-3.1f*dt);
+            float lift=MathUtil.Clamp(remaining.y,-24,24),decay=preserveHorizontal?1:(float)Math.Exp(-3.1f*dt);
             remaining=new V3(remaining.x*decay,0,remaining.z*decay);float speed=remaining.Length;steeringSpeed=speed;
             if(speed>70)remaining=remaining*(70/speed);return remaining+new V3(0,lift,0);
         }

@@ -6,8 +6,8 @@ namespace ChipArena.UnityConversion
         public static string Style(NativeSeat seat)
         {
             var access=seat.access??NativeAccess.Guest;double now=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();if(seat.spec=="siren"&&(seat.AuthorityBoss||access.Allows("weapon:siren",now)))return "dev-siren";
-            if(seat.overrideIntro&&!string.IsNullOrEmpty(seat.intro)&&(!seat.intro.StartsWith("dev-")||access.Allows("intro:"+seat.intro,now)))return seat.intro;
-            if(seat.spec=="emperor")return "dev-emperor";if(seat.spec=="ansatsuken")return "dev-ansatsuken";if(seat.spec=="leet")return "dev-matrix";return "weapon-"+seat.spec;
+            if(seat.overrideIntro&&!string.IsNullOrEmpty(seat.intro)&&(!seat.intro.StartsWith("dev-")||access.Allows("intro:"+seat.intro,now)))return Entrance(seat.intro);
+            if(seat.spec=="emperor")return "dev-emperor";if(seat.spec=="ansatsuken")return "dev-ansatsuken";if(seat.spec=="leet")return "dev-matrix";return Entrance("weapon-"+seat.spec);
         }
         public static double Duration(string style)=>style=="dev-siren"?9.0678:style=="dev-emperor"?7.8:style=="dev-matrix"?8:style=="dev-ansatsuken"?7.2:4.8;
         // Presentation only (the HUD's name card): shared/intros.ts introNameAt, SIREN_INTRO.nameAt 6.4261 for the Siren.
@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
         // Presentation only below: what the client stages for the replicated style; match timing keeps that style.
         // The entrances the client can stage (player-intros.ts; every one has a baked stage and intro clip).
         public static readonly string[] Entrances={"neon-drop","vector-slide","signal-spin","arc-salute","pulse-wave","weapon-sword","weapon-daggers","weapon-shield","weapon-greatsword","weapon-pistol","weapon-rifle","weapon-machinegun","weapon-fire","weapon-water","weapon-lightning","weapon-darkness","dev-emperor","dev-ansatsuken","dev-matrix","dev-siren"};
-        // A style with no entrance (a Siren seat without its DEV grant gets "weapon-siren") is staged as the source's own
+        // A style with no entrance (including an ungranted Siren seat) uses the source's own
         // fallback, 'neon-drop' (shared/intros.ts effectiveIntro), instead of failing the intro frame.
         public static string Entrance(string style)=>style!=null&&Array.IndexOf(Entrances,style)>=0?style:"neon-drop";
         // The weapon model the intro rig holds, or null. player-intros.ts builds a weapon into the bare intro rig for a weapon

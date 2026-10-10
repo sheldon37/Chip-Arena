@@ -207,7 +207,7 @@ namespace ChipArena.UnityConversion
             NativeSirenLook.Targets(NativeSirenLookTracks.Clip(action,a.SourceSide,a.SourceRanged),age,a.SourceUntil-a.SourceAt,out double open,out double squint);
             float yaw=a.Yaw*Mathf.Deg2Rad;double forward=a.Velocity.x*Mathf.Sin(yaw)+a.Velocity.z*Mathf.Cos(yaw);var s=t.Smoother;
             // WeaponLoadout is the arena this frame renders (live or killcam): its Time is the snapshot's authoritative time.
-            var state=s.Step(time,s.Delta(time),open,squint,NativeSirenLook.Flare(action,age),a.SourceRanged,forward,a.Alive,WeaponLoadout!=null?WeaponLoadout.Time:time);
+            var state=s.Step(time,s.Delta(time),open,squint,NativeSirenLook.Flare(action,age),a.SourceRanged,forward,a.Alive,WeaponLoadout!=null?WeaponLoadout.Time:time,a.SourceModeAt);
             if(action==null&&s.Swapping(time))SirenSwapBody(rig,a,t,time,state.Ranged,s.Shudder(time));
             return t.Pose.Set(state).SetCharge(action,age,time);
         }
