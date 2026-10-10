@@ -47,6 +47,9 @@ namespace ChipArena.UnityConversion
             float half=Math.Max(sleep?1.12f:(high-low)/2*1.16f,.95f/aspect+1e-6f);
             return new PortraitFrame{Half=half,Aspect=aspect,Position=new Vector3(0,sleep?4.8f:centre+.94f,sleep?3.2f:5.2f),Target=new Vector3(0,centre,0)};
         }
+        // The Siren's Unity finish (NativeSirenDetail): its nimbus rises behind the head, so the framing reaches this far above
+        // the head joint (world y, as HatTop) instead of the bare head's 1.72.
+        public static float SirenTop(CapturedRig.Pose worldPose)=>worldPose.WorldPosition[CapturedRig.Head].Y+NativeSirenDetail.PortraitTop+GroupY;
         // hatTop(): the world top of the head cosmetic's bounds (three Box3.setFromObject: each mesh's local box corners
         // through its world matrix), here the head-space box of a hat model through the head joint; 0 without a hat.
         public static float HatTop(CapturedRig.Pose worldPose,Vector3 min,Vector3 max)

@@ -166,7 +166,7 @@ namespace ChipArena.UnityConversion
             if(NativeLobbyPoses.UsesIdle(spec,pose)){s.Pose.Reset();if(NativeSourceMotion.Sample(s.IdleClip,time,0,s.Pose))s.Rig.ReadPose(s.Pose);else s.Rig.Reset();}
             NativeLobbyPoses.Sample(s.Rig,spec,pose,time,out var weapon,out var offhand);s.Rig.WritePose(s.Pose);s.Pose.World();
             // hatTop() once per outfit and pose (menu-portraits.ts measures it at the outfit's first frame).
-            if(s.TopPose!=pose){s.TopPose=pose;s.Top=hat=="none"?0:hat=="auditor-halo"?NativePortraitRules.HaloTop(s.Pose,time):HatBounds(s.HatModel,out var min,out var max)?NativePortraitRules.HatTop(s.Pose,min,max):0;}
+            if(s.TopPose!=pose){s.TopPose=pose;s.Top=hat=="none"?0:hat=="auditor-halo"?NativePortraitRules.HaloTop(s.Pose,time):HatBounds(s.HatModel,out var min,out var max)?NativePortraitRules.HatTop(s.Pose,min,max):0;if(siren)s.Top=Math.Max(s.Top,NativePortraitRules.SirenTop(s.Pose));}
             var frame=NativePortraitRules.Frame(pose,s.Aspect,s.Top);var turn=Quaternion.LookRotation(CapturedAnimation.Vec(CapturedRig.Mirror(frame.Target-frame.Position)),Vector3.up);
             // Each slot's stage stands far from the others and from the arena, so one render never frames another pilot.
             var origin=new Vector3(2000+index*60,-500,0);var root=origin+Vector3.up*NativePortraitRules.GroupY;
@@ -228,18 +228,23 @@ namespace ChipArena.UnityConversion
             var models=presentation.PortraitModels;var look=sirenLook.Set(NativeSirenLook.Neutral(time));
             for(int i=0,n=models.PortraitPieceCount("siren");i<n;i++)
             {
-                if(!models.PortraitPiece("siren",i,look,out var mesh,out int bone,out var local,out var material)||mesh==null||material==null||bone<0||bone>=22)continue;
+                // The Unity finish's glow lines draw with their own colour as the emission tint (NativeSirenDetail).
+                if(!models.PortraitPiece("siren",i,look,out var mesh,out int bone,out var local,out var material,out var glow)||mesh==null||material==null||bone<0||bone>=22)continue;
                 if(!pieceParts.TryGetValue(material,out var part)){var scale=material.mainTextureScale;var offset=material.mainTextureOffset;part=new Part{Bone=-1,Class=NativePortraitRules.PartOther,Joint=-1,Transparent=material.renderQueue>=3000,DoubleSide=material.GetFloat("_Cull")==0,Ink=material.GetFloat("_Ink"),Texture=material.mainTexture,St=new Vector4(scale.x,scale.y,offset.x,offset.y)};pieceParts.Add(material,part);}
-                part.Mesh=mesh;Model(part,bones[bone]*local,Vector4.one,Vector4.one,Vector4.one,Vector4.one);
+                part.Mesh=mesh;Model(part,bones[bone]*local,Vector4.one,Vector4.one,Vector4.one,glow);
             }
-            var radial=models.SirenHaloTexture;if(radial==null||look.EyeHalo<=0)return;
-            for(int i=0;i<2;i++)
-            {
-                int piece=NativeSirenLook.EyeHalo+i;var w=bones[NativeSirenLook.Joint(piece)]*look.Local[piece];float size=((Vector3)w.GetColumn(0)).magnitude;
-                block.Clear();block.SetVector(ColorId,Linear(NativeSirenLook.EyeHaloColor,look.EyeHalo));block.SetFloat(ModeId,2);block.SetTexture(MainTexId,radial);block.SetVector(MainStId,new Vector4(1,1,0,0));
-                block.SetVector(BodyId,Vector4.one);block.SetVector(AccentId,Vector4.one);block.SetVector(SceneId,Vector4.one);block.SetVector(GlowId,Vector4.one);block.SetFloat(InkId,0);
-                Draw(haloQuad,Matrix4x4.TRS(w.GetColumn(3),turn,Vector3.one*size),additive);
-            }
+            var radial=models.SirenHaloTexture;if(radial==null)return;
+            for(int i=0;i<2&&look.EyeHalo>0;i++)SirenSprite(radial,NativeSirenLook.EyeHalo+i,NativeSirenLook.EyeHaloColor,look.EyeHalo,look,turn);
+            // The two soft glows in the nimbus breaks (the detail's sprite pieces).
+            for(int i=NativeSirenLook.Detail;i<NativeSirenLook.Count;i++)if(NativeSirenDetail.Tone(i-NativeSirenLook.Detail)==NativeSirenDetail.Sprite&&look.Shown[i])SirenSprite(radial,i,NativeSirenDetail.GlowHex,(float)NativeSirenDetail.GlowAlpha(look.Breath),look,turn);
+        }
+        // An additive radial sprite on a Siren piece, its width the piece's x scale, turned to the portrait camera.
+        private void SirenSprite(Texture radial,int piece,int hex,float alpha,NativeSirenLookPose look,Quaternion turn)
+        {
+            var w=bones[NativeSirenLook.Joint(piece)]*look.Local[piece];float size=((Vector3)w.GetColumn(0)).magnitude;
+            block.Clear();block.SetVector(ColorId,Linear(hex,alpha));block.SetFloat(ModeId,2);block.SetTexture(MainTexId,radial);block.SetVector(MainStId,new Vector4(1,1,0,0));
+            block.SetVector(BodyId,Vector4.one);block.SetVector(AccentId,Vector4.one);block.SetVector(SceneId,Vector4.one);block.SetVector(GlowId,Vector4.one);block.SetFloat(InkId,0);
+            Draw(haloQuad,Matrix4x4.TRS(w.GetColumn(3),turn,Vector3.one*size),additive);
         }
         private void OnDestroy()
         {
