@@ -11,6 +11,10 @@ namespace ChipArena.UnityConversion
         public void ValidateInteractionFeedback(NativeArena guest,ArenaPresentation hostView,ArenaPresentation guestView)
         {
             void Check(bool ok,string message){if(!ok)throw new Exception("Interaction feedback: "+message);}
+            // AuthorityBoss is intentionally internal to the runtime assembly. Set it here,
+            // in the editor-only fixture, without exposing authority mutation to Editor/client APIs.
+            Pilots.Single(p=>p.Seat.id==8).Seat.AuthorityBoss=true;
+            ConfigurePve(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text),false);
             StartPve();SetBossHidden(false);var victim=Members().First();var owner=Pve.Boss;
             victim.Body.position=new Vector3(0,1,0);owner.Body.position=new Vector3(0,1,1);owner.Yaw=180;
             owner.Siren=new NativeSirenState{Move=new NativeSirenMove{Rule=NativeSirenRules.Rule("laugh"),Caught=victim,CaughtAt=Time-.3f,CrushAt=Time+2.2f,Until=Time+2.8f}};victim.HeldBy=owner;
@@ -31,7 +35,7 @@ namespace ChipArena.UnityConversion
             int seed=300;
             foreach(string style in new[]{"impact-ragdoll","dev-gibber","siren-crush","pad"})
             {
-                hostView.ResetPresentation();guestView.ResetPresentation();Match.Tick(2);
+                hostView.ResetPresentation();guestView.ResetPresentation();for(int tick=0;tick<8;tick++)Match.Tick(.25);
                 var wound=style=="dev-gibber"?new NativeWound{id=1,part=CapturedRig.Head,at=Time-2,radius=.18f,severity=1,kind="sever",destroyed=true}:null;
                 var actor=victim.Pose.ViewCopy();actor.Wounds=wound==null?Array.Empty<NativeWound>():new[]{wound};
                 victim.Death=new NativeDeath{id=victim.Seat.id,seed=seed++,kept=true,model="pilot",at=Time-5,position=new Vector3(0,1,0),style=style=="pad"?"impact-ragdoll":style,actor=actor,wound=wound};

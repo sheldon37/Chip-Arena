@@ -1,5 +1,21 @@
 # Chip Arena — development log
 
+## 2026-10-10 — Astra — correct the interaction build fixture
+
+- Follow-up `codex/unity-interaction-build-fix`, base `d9ebe850` / PR #94.
+  Unity #24 failed with CS0117: the Editor assembly cannot initialize the runtime's
+  internal `NativeSeat.AuthorityBoss` field. Move that fixture-only assignment and
+  PvE setup into the existing runtime-assembly `UNITY_EDITOR` validation method.
+  Keep the field internal. Also advance the fixture clock in supported .25s ticks
+  instead of a rejected 2s `NativeMatch.Tick` call.
+- Production grab/revival behavior is unchanged. No authority, hitbox, damage,
+  movement, cooldown, audio or visual timeline edits in this follow-up.
+- Native CI passed for #94, including 33 original grab samples and repair timing.
+  Actual Unity compile/interaction checks and publication of this correction are
+  pending. Failed #24 was not published; last verified feed remains Unity #23.
+- Automation-only PR #95 now retains failed Unity logs privately; its 71-test
+  Linux/Windows suite passed. Log retrieved from run `38078057168`.
+
 ## 2026-10-10 — Claude — Early-port placeholders, batch 4: sky death broadcast and vent fall/splat (owner request)
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62), on top of `e8bb235`; implementation commit `fcab36f`. I finished this from the partial `claude/placeholders-4` work. Presentation only. No change to simulation, death timing, `landAt`, revive rules, network frames or saves.
 - Sky broadcast (`Core/NativeBroadcastFx.cs`, `NativeBroadcastEdges.Generated.cs`, `Runtime/NativeDeathFxDraw.cs`) replaces the first port's cube rocket, cube stars and beam frame with the source `death-announcements.ts` look:
