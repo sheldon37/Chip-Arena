@@ -126,8 +126,8 @@ namespace ChipArena.UnityConversion
     /// Presentation only: the clock a live entrance is drawn at. The replicated intro age only moves when a host frame lands
     /// (20 Hz on a guest, the host's 60 Hz fixed step), and the dev-siren cell's stutters are 37-83 ms dark windows on the boss
     /// song's beats (NativeSirenIntroLight), so drawing at that age skips or doubles them and lets them drift from the song this
-    /// machine plays. This clock runs on the frame time and follows Target: the boss song's own playback time while it plays
-    /// near the intro age (the beats as heard; the source's interpolated snapshot time drives its song and its cell alike),
+    /// machine plays. This clock runs on the frame time and follows Target: the boss song's PCM playback time when this
+    /// entrance started that song (the beats as heard, independent of loading delay or network jitter),
     /// else the replicated age. Small errors (the age's steps, the audio position's mix-buffer steps) are pulled in without
     /// running backwards; a jump past Snap (a new entrance, a song resync, a hitch) is taken at once. Match timing never reads it.
     /// </summary>
@@ -137,12 +137,11 @@ namespace ChipArena.UnityConversion
         public const double Snap=.1;
         /// <summary>How fast (1/s) a small error is pulled in.</summary>
         public const double Pull=6;
-        /// <summary>The song only leads the clock while it is this close (s) to the intro age (a second dev-siren entrance in one match meets the song mid-track).</summary>
-        public const double SongWindow=.5;
         private double value=double.NaN;
         public void Reset(){value=double.NaN;}
-        /// <summary>The time to follow: `song` (playback seconds, negative when it is not playing) near `age`, else `age`.</summary>
-        public static double Target(double age,double song)=>song>=0&&Math.Abs(song-age)<SongWindow?song:age;
+        /// <summary>Follow the heard song only for the entrance that started it. A later Siren shares the running song but
+        /// has its own entrance age. Determine this from replicated start times, never from how close the clocks happen to be.</summary>
+        public static double Target(double age,double song,bool startsSong)=>startsSong&&song>=0&&!double.IsInfinity(song)?song:age;
         /// <summary>Advances by the frame time `dt` (at most .1 s) toward `target` and returns the age to draw (never negative).</summary>
         public double Sample(double target,double dt)
         {

@@ -190,15 +190,36 @@ internal static class SirenIntroChecks
         }
         var raw=GuestRun(beats,144,true,false);Check(raw.MaxError>.04&&raw.Skipped>0,"the stepped replicated age is "+raw.MaxError.ToString("F4")+" s off the song and skips "+raw.Skipped+" stutters (the harness no longer shows the 20 Hz steps)");
         var silent=GuestRun(beats,144,false,true);Check(silent.Monotonic&&silent.Smooth&&silent.MaxLag<=.06,"without the song the clock follows the replicated age smoothly ("+silent.MaxLag.ToString("F4")+" s)");
-        Check(NativeIntroClock.Target(1,1.2)==1.2&&NativeIntroClock.Target(1,-1)==1&&NativeIntroClock.Target(.1,9.2)==.1&&NativeIntroClock.Target(2,2+NativeIntroClock.SongWindow)==2,"intro clock target");
+        Check(NativeIntroClock.Target(1,1.2,true)==1.2&&NativeIntroClock.Target(1,-1,true)==1&&NativeIntroClock.Target(.1,9.2,false)==.1,"intro clock target");
+        foreach(double gap in new[]{.49,.5,.51,.8,-.8})
+        {
+            Check(NativeIntroClock.Target(2,2+gap,true)==2+gap,"loading/jitter must not switch the first Siren off its song");
+            Check(NativeIntroClock.Target(2,2+gap,false)==2,"a later Siren must not acquire the song when its clocks happen to approach");
+        }
+        Check(NativeIntroClock.Target(1,double.NaN,true)==1&&NativeIntroClock.Target(1,double.PositiveInfinity,true)==1,"invalid playback falls back");
+        // Model a streamed track with 2-second packet timestamps but 1024-sample PCM readbacks, including a cold .8 s
+        // load. NativeAudio waits for Loaded, starts at the latest age, and uses PCM for both resync and drawing.
+        var sync=new NativeMusicSync();int seeks=0,coarseSeeks=0;double lastDraw=0;var loadedClock=new NativeIntroClock();
+        for(int frame=0;frame<9*144;frame++)
+        {
+            double age=frame/144.0,pcm=age<.8?-1:NativeMusicSync.Position((int)(age*48000/1024)*1024,48000);
+            if(age>=.8){if(sync.Seek(pcm,age,age))seeks++;if(Math.Abs(Math.Floor(age/2)*2-age)>.12)coarseSeeks++;}
+            double drawn=loadedClock.Sample(NativeIntroClock.Target(age,pcm,true),1/144.0);
+            Check(drawn+1e-9>=lastDraw&&Math.Abs(drawn-age)<.03,"late stream load broke the sample clock");lastDraw=drawn;
+        }
+        Check(seeks==0&&coarseSeeks>1000,"PCM readbacks must not repeatedly seek a normally playing streamed song");
+        Check(sync.Seek(9,2,10)&&!sync.Seek(9,2,10.01)&&!sync.Seek(9,2,10.2)&&!sync.Seek(2.26,2.27,10.27),"a seek must settle without repeated corrections");
+        Check(sync.Seek(9,2,10.3),"a failed seek can retry after the audio thread settles");sync.Reset();Check(sync.Seek(90,0,10.31),"a new song epoch may restart immediately");
+        Check(NativeMusicSync.Sample(.8,48000,480000)==38400&&NativeMusicSync.Sample(-1,48000,480000)==0&&NativeMusicSync.Sample(20,48000,480000)==479999&&NativeMusicSync.Position(38400,48000)==.8,"sample seek bounds and cold-load position");
         var jumps=new NativeIntroClock();jumps.Sample(8.9,.016);double next=jumps.Sample(0,.016);double resync=jumps.Sample(1.13,.016);jumps.Reset();
         Check(next==0&&resync==1.13&&jumps.Sample(.5,.016)==.5&&jumps.Sample(double.NaN,.016)==.5,"intro clock jumps to a new entrance and a song resync at once");
         yield return "intro clock: on a 20 Hz guest the Siren entrance stays within "+(worstError*1000).ToString("F1")+" ms of the heard song at 30/60/144 fps and uneven frames ("+checkedWindows+" stutter windows, none skipped from 60 fps); the raw age was "+(raw.MaxError*1000).ToString("F0")+" ms off and skipped "+raw.Skipped+" of "+raw.Windows+" at 144 fps";
+        yield return "Siren audio timing: .8 s cold load, PCM versus compressed packet timestamps, seek settling/restart and explicit intro ownership across the old .5 s cutoff";
     }
     private struct GuestResult{public bool Monotonic,Smooth;public double MaxError,MaxOnset,MaxLag,Interval;public int Skipped,Windows;}
     // A guest watching the dev-siren entrance: the host sends its intro age every 50 ms; frames arrive in order 80-110 ms
     // later; the boss song starts when the first one lands (at its age, as NativeAudio.Track cues it) and plays on the audio
-    // clock, its position read in 1024-sample mix blocks at 48 kHz (AudioSource.time). Renders at `fps` (0: uneven frame
+    // clock, its PCM position read in 1024-sample mix blocks at 48 kHz (AudioSource.timeSamples). Renders at `fps` (0: uneven frame
     // times), drawing at NativeIntroClock (`clock`) or at the raw replicated age; `song` false is a guest with no audio.
     private static GuestResult GuestRun(double[] beats,double fps,bool song,bool clock)
     {
@@ -215,7 +236,7 @@ internal static class SirenIntroChecks
         {
             while(latest+1<arrive.Length&&arrive[latest+1]<=now)latest++;
             double age=latest*.05,heard=now-start,dt=frame==0?0:fps>0?1/fps:uneven[frame%uneven.Length];
-            double playback=song?Math.Floor(heard/block)*block:-1,drawn=clock?intro.Sample(NativeIntroClock.Target(age,playback),dt):age;
+            double playback=song?Math.Floor(heard/block)*block:-1,drawn=clock?intro.Sample(NativeIntroClock.Target(age,playback,true),dt):age;
             if(frame>0&&drawn<last)r.Monotonic=false;
             if(frame>1&&clock&&(drawn-last<.3*dt||drawn-last>1.7*dt+1e-9))r.Smooth=false;
             if(heard>.25){r.MaxError=Math.Max(r.MaxError,Math.Abs(drawn-heard));r.MaxLag=Math.Max(r.MaxLag,Math.Abs(drawn-age));}

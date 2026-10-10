@@ -14,10 +14,13 @@ namespace ChipArena.UnityConversion
         // IntroAge steps at 20 Hz, and for dev-siren locked to the boss song as this machine plays it (NativeAudio ran first
         // this frame), so the cell's stutters land on the beats heard. The overlay card and the stings keep IntroAge.
         private readonly NativeIntroClock introClock=new NativeIntroClock();
+        private NativeArena introClockArena;private double introClockStarted;private int introClockSeat;
         private float IntroClockAge()
         {
+            double started=match.Phase==NativePhase.Intro?match.IntroStarted:arena.BossSongAt;int seat=IntroPilot?.Seat.id??0;
+            if(introClockArena!=arena||introClockStarted!=started||introClockSeat!=seat){introClock.Reset();introClockArena=arena;introClockStarted=started;introClockSeat=seat;}
             float age=IntroAge;
-            return (float)introClock.Sample(NativeIntroClock.Target(age,nativeAudio.SongPlayback(NativeIntroRules.IntroSong(IntroStyle))),Time.unscaledDeltaTime);
+            return (float)introClock.Sample(NativeIntroClock.Target(age,nativeAudio.SongPlayback(NativeIntroRules.IntroSong(IntroStyle)),arena.IntroStartsBossSong),Time.unscaledDeltaTime);
         }
     }
     public sealed partial class ArenaPresentation

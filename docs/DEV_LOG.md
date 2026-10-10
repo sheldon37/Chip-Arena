@@ -1,5 +1,12 @@
 # Chip Arena — development log
 
+## 2026-10-10 — Codex/Astra — Siren intro audio clock repair
+- Task `codex/unity-siren-music-sync`, base cloud `7b2f035f319d7ae029effbb3298a689234e5ce13`; owner reports entrance/music drift and assigns audio/timing plumbing. Claude's `NativeSirenIntroLight` flicker timeline and all visual assets remain byte-for-byte unchanged.
+- Use the music source's PCM sample position for both drift correction and the intro clock. The old streamed/compressed `AudioSource.time` can report packet positions seconds apart, causing repeated seeks. Wait for background loading, cue the current age, allow seeks to settle, and resume paused sources with `UnPause`. Identify new previews/matches explicitly so the same song restarts only for a new song epoch.
+- Replace the playback/intro 0.5 s proximity test with replicated origin ownership: first PvP Siren and held PvE intro follow their heard song; later PvP Sirens retain their own entrance age while the original song continues. Customize now updates audio before rendering and uses the same clock. Explicitly reset the live clock for each entrance.
+- Added offline checks for 0.8 s cold loading, PCM versus packet readbacks, correction settling/restarts and clock ownership across the old cutoff. Added Unity gates for first/second PvP Siren origins through the real codec and PvE hold/start/finish plus actual guest frame application.
+- Local checks: `git diff --check` clean; cold-load fixture arithmetic checked (11.6 ms maximum simulated error). Local .NET/Unity are unavailable; hosted native CI and the real Unity build gates are pending at this commit. No Windows listening/playtest result claimed. No changes to authoritative phase duration, hit timing, hitboxes, damage, cooldowns, movement, network protocol or beat table. Release verification will be recorded on the task PR.
+
 ## 2026-10-10 — Codex/Astra — exact-head CI for publication
 - Task `codex/unity-publish-ci`, base shared/cloud `ff81074951cd94ad09e6974ae6a842646e6860c1`; owner requested final visual-batch build/publication and pipeline repair.
 - Remove the native workflow's push path filter so docs-only Unity/Claude branch heads run both native CI jobs. Keep the existing branch filters, job names, permissions and exact-head publication gate. No inherited/parent CI acceptance and no fallback to older game source.

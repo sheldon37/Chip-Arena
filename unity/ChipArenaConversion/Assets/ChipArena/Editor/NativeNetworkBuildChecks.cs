@@ -28,6 +28,15 @@ namespace ChipArena.UnityConversion.Editor
                 replica=new NativeArena(authority.Content,new NativeMatch(authority.Content),authority.MapId){Replica=true,LocalId=authority.LocalId,ReplicaScene=scene};
                 replica.ApplyFrame(copy,authority.LocalId);
                 if(replica.Pve!=null||replica.Root.scene!=scene)throw new Exception("PvP replay/replica escaped its isolated scene or created PvE");
+                var intro=NativeFrameCodec.Clone(copy);intro.phase=NativePhase.Intro;intro.introStyle="dev-siren";
+                intro.introStarted=10.1234567;intro.time=intro.introStarted+2;intro.bossSongAt=(float)intro.introStarted;intro.bossSongLead=0;
+                replica.ApplyFrame(NativeFrameCodec.Clone(intro),authority.LocalId);
+                if(!replica.IntroStartsBossSong||Math.Abs(replica.BossSongTime-2)>.0001)throw new Exception("First PvP Siren lost its song origin on the guest");
+                intro.introStarted+=NativeIntroRules.Duration("dev-siren");intro.time=intro.introStarted+.1;
+                replica.ApplyFrame(NativeFrameCodec.Clone(intro),authority.LocalId);
+                if(replica.IntroStartsBossSong||replica.BossSongTime<9)throw new Exception("Second PvP Siren restarted or acquired the first Siren's song");
+                replica.ApplyFrame(copy,authority.LocalId);
+                Debug.Log("PASS Siren PvP audio origins: real frame codec preserves first-intro ownership and a continuous song for later Sirens");
                 // Late first sight after a reflect must use the projectile payload, not the new owner's loadout.
                 var visual=NativeFrameCodec.Clone(frame);int source=visual.seats[0].id,target=visual.seats[1].id;
                 visual.seats[0].lobbyPose="crossed";visual.pilots[0].dots=new[]{new NativeDotFrame{key=target+":fire",source=target,dps=4,next=1,until=4}};visual.pilots[0].slowEnd=4;visual.pilots[0].slowFactor=.5f;
