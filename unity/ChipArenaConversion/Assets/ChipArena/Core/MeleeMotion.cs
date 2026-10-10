@@ -142,6 +142,9 @@ namespace ChipArena.UnityConversion
         private static readonly Dictionary<string,float[]> HitStopKeys=new Dictionary<string,float[]>{{"greatsword",new[]{.075f,.1f,.09f}},{"sword",new[]{.05f,.18f,.08f}},{"shield",new[]{.06f,.14f,.08f}},{"daggers",new[]{.028f,.3f,.05f}}};
         private bool gateHas,gateOn;private float gateAttack,gateAt,gateFrom;
         public MeleeImpacts Impacts;
+        // The native melee hit layer (Core/NativeHitReact), run after the reactions and before the ground pass; null outside
+        // the arena rigs (and in the source parity checks), which keep the source port exactly.
+        public NativeHitLayer HitLayer;
         private float HitStop(MeleeView p,Attack a)
         {
             if(!HitStopKeys.TryGetValue(p.Spec,out var k)||string.IsNullOrEmpty(p.Id)||Impacts==null)return 0;float t=p.LastAttack+a.Age,h=Impacts.HitAt(p.Id,t,.5f);
@@ -479,6 +482,7 @@ namespace ChipArena.UnityConversion
                 }
                 var light=ReactionOf(p);if(light!=null)React(p,light,time,false);
             }
+            HitLayer?.Layer(r,time);
             gait.GroundPass(r,p,time,dt,p.Hp<=0||p.Juggle||p.Down||p.Rolling(time));
             FinishPose(p,time);
             FloorGuard(set,p,time);
@@ -499,6 +503,7 @@ namespace ChipArena.UnityConversion
         {
             if(!p.Juggle&&!p.Down&&p.HitStunUntil>time){var h=ReactionOf(p);if(h==null||!React(p,h,time,true))FallbackFlinch(p,time);}
             else if(!p.Juggle&&!p.Down&&!p.Rolling(time)){var light=ReactionOf(p);if(light!=null)React(p,light,time,false);}
+            HitLayer?.Layer(Rig,time);
             gait.GroundPass(Rig,p,time,dt,p.Hp<=0||p.Juggle||p.Down||p.Rolling(time));
             FinishPose(p,time);
         }

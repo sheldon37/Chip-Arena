@@ -282,6 +282,8 @@ namespace ChipArena.UnityConversion
             // The native roll, E special and knockdown recovery layers ride on it where the source runs its own.
             private MeleeMotion melee;private readonly MeleeView meleeView=new MeleeView();private float meleeTime=-100;
             public MeleeImpacts Impacts;
+            // The arena's melee hit ledger (null for intro, portrait, corpse and viewer rigs) and this rig's hit layer (Core/NativeHitReact).
+            public NativeHitLedger Hits;private readonly NativeHitLayer hitLayer=new NativeHitLayer();
             // The held weapons' reach stretch, set by the presentation before posing (the melee layers measure the stretched blade).
             public float WeaponReach=1;
             public static bool CapturedMelee(Actor a)=>NativePoseRoute.For(a,false)==PoseRoute.CapturedMelee;
@@ -293,6 +295,7 @@ namespace ChipArena.UnityConversion
                 float yaw=-melee.PresentedYaw(v,time,v.Yaw)*Mathf.Rad2Deg;
                 Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,roll?Quaternion.LookRotation(ArenaPresentation.Vec(a.RollDirection)):Quaternion.Euler(0,yaw,0));Root.transform.localScale=Vector3.one*a.RigScale;
                 Vector3 at=Root.transform.position;melee.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);melee.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;
+                hitLayer.Bind(melee,a,Hits,HitVictim.Melee);
                 melee.Sample(v,time,dt,r=>
                 {
                     r.WritePose(pose);
@@ -325,6 +328,7 @@ namespace ChipArena.UnityConversion
                 float yaw=-melee.PresentedYaw(v,time,v.Yaw)*Mathf.Rad2Deg;
                 Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,dodge?Quaternion.LookRotation(ArenaPresentation.Vec(a.RollDirection)):Quaternion.Euler(0,yaw,0));Root.transform.localScale=Vector3.one*a.RigScale;
                 Vector3 at=Root.transform.position;melee.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);melee.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;
+                hitLayer.Bind(melee,a,Hits,HitVictim.Fighter);
                 melee.FighterBase(v,time,dt);var r=melee.Rig;
                 if(juggle){r.WritePose(pose);NativeJugglePose.Apply(pose,time,juggleTrack,a.Velocity.y);r.ReadPose(pose);State="juggle";}
                 else if(down){r.WritePose(pose);NativeSpecialPose.Recover(pose,a,time);r.ReadPose(pose);State="recovery";}
@@ -465,6 +469,7 @@ namespace ChipArena.UnityConversion
                 Vector3 at=Root.transform.position;magicMotion.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);magicMotion.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;
                 string state=magicMotion.Pose(a,time,pose,magicChannels,magicGuard.Sample(time,time<a.BlockUntil),juggle,juggleTrack,out bool react);
                 if(react){if(melee==null)melee=new MeleeMotion();melee.ReactOver(pose,MeleeViewOf(a,time,meleeView),time);}
+                if(Hits!=null)hitLayer.Over((melee??=new MeleeMotion()).Rig,pose,a,Hits,HitVictim.Magic,time,magicMotion.Rig.GroupYaw);
                 State=ReferenceEquals(state,MagicMotion.Recovery)?"recovery "+NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time):state;
                 magicMotion.Finish(pose,time);
                 WritePose();fresh=false;lastTime=time;
@@ -482,6 +487,7 @@ namespace ChipArena.UnityConversion
                 Vector3 at=Root.transform.position;gunMotion.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);gunMotion.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;
                 State=gunMotion.Pose(a,time,pose,juggle,juggleTrack,out bool react);
                 if(react){if(melee==null)melee=new MeleeMotion();melee.ReactOver(pose,MeleeViewOf(a,time,meleeView),time);}
+                if(Hits!=null)hitLayer.Over((melee??=new MeleeMotion()).Rig,pose,a,Hits,HitVictim.Gun,time,gunMotion.Rig.GroupYaw);
                 gunMotion.Finish(pose,time);
                 WritePose();fresh=false;lastTime=time;
             }

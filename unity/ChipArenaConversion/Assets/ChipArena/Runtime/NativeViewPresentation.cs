@@ -64,7 +64,8 @@ namespace ChipArena.UnityConversion
             float ads=aimMotion.Sample(time,gun&&AimHeld);
             if(gun)offset+=CapturedAnimation.Vec(NativeAimPresentation.Offset(shown.Weapon))*ads;
             float scale=gun?NativeAimPresentation.Scale(ViewCamera.fieldOfView,ads):NativeFirstPersonPose.Scale;
-            viewRig.Root.transform.SetPositionAndRotation(ViewCamera.transform.TransformPoint(offset),ViewCamera.transform.rotation);
+            offset+=HitViewDip(source,time,out float dip);
+            viewRig.Root.transform.SetPositionAndRotation(ViewCamera.transform.TransformPoint(offset),ViewCamera.transform.rotation*Quaternion.Euler(dip,0,0));
             viewRig.Root.transform.localScale=Vector3.one*scale;
             if(gun&&ads>0&&shown.ReloadUntil<=time&&time>=shown.BlockUntil&&!shown.Rolling(time)&&time>=shown.StunUntil)
             {
