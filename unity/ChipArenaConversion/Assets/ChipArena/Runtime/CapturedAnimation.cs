@@ -155,12 +155,15 @@ namespace ChipArena.UnityConversion
             Debug.Log("PASS native DEV fighters: Emperor and Ansatsuken travel in their own guard on the gait, show their Shift and the juggle");
         }
         // L33t H4x (a magic-class staff pilot whose replicated MagicVisual stays 0) through the native boundary: in third
-        // person it runs, casts, guards, rolls and is juggled on the magic gait, and its first-person view model casts with the
-        // staff; never a sword-set state, every bone finite. Core/MagicMotion is checked in Tests/LeetMotionChecks.cs.
+        // person it runs, casts, guards, rolls, is stunned and is juggled on the magic gait; its first-person view model casts
+        // and guards with the staff and keeps it under a hit stun (no sword cut, block or stagger); a corpse rig posed once at
+        // the death (NativeDeathPresentation) stands on the magic gait. Never a sword-set state, every bone finite.
+        // Core/MagicMotion is checked in Tests/LeetMotionChecks.cs, the other paths in Tests/LeetPathChecks.cs.
         private void ValidateLeet(GameObject parent)
         {
             using(var rig=Create(parent.transform,-5))
             using(var view=Create(parent.transform,-6))
+            using(var corpse=Create(parent.transform,-7))
             {
                 float t=3;var a=new Actor{Id=10,SourceSpec="leet",Weapon=WeaponId.Sword,Grounded=true,Hp=100,CastRate=1,Velocity=new V3(0,0,6.8f),RollDirection=new V3(0,0,1)};
                 void Pose(Player r,bool first,string want,int frames)
@@ -178,9 +181,15 @@ namespace ChipArena.UnityConversion
                 a.RollAt=t;Pose(rig,false,MagicMotion.Roll,8);a.RollAt=-100;
                 a.JuggleUntil=t+1.25f;Pose(rig,false,MagicMotion.Juggle,10);a.JuggleUntil=0;
                 t+=1;Pose(rig,false,MagicMotion.Carry,10);
-                a.AttackAt=t;a.AttackUntil=t+.6f;Pose(view,true,"magic cast",20);
+                a.StunUntil=t+.3f;Pose(rig,false,MagicMotion.Carry,10);a.StunUntil=0;
+                a.AttackAt=t;a.AttackUntil=t+.6f;Pose(view,true,"magic cast",20);a.AttackAt=a.AttackUntil=-100;
+                a.BlockAt=t;a.BlockUntil=t+.5f;Pose(view,true,MagicMotion.Guard,10);a.BlockUntil=0;
+                a.StunUntil=t+.3f;Pose(view,true,MagicMotion.Carry,10);a.StunUntil=0;
+                var dead=a.ViewCopy();dead.Hp=1;corpse.ActorPose(dead,Vector3.zero,t);
+                foreach(var b in corpse.Bones)if(float.IsNaN(b.position.x)||float.IsInfinity(b.position.y)||b.position.magnitude>1e4f)throw new InvalidOperationException("L33t H4x corpse pose produced a non-finite bone: "+b.name);
+                if(corpse.State!=MagicMotion.Carry)throw new InvalidOperationException("L33t H4x corpse rig shows "+corpse.State+", expected "+MagicMotion.Carry);
             }
-            Debug.Log("PASS native L33t H4x: runs, casts, guards, rolls and is juggled on the magic gait with its staff, and casts in first person");
+            Debug.Log("PASS native L33t H4x: runs, casts, guards, rolls, is stunned and is juggled on the magic gait with its staff, casts, guards and is stunned in first person with the staff, and its corpse rig stands on the magic gait");
         }
         public Player Create(Transform parent,int id) => new Player(this,parent,id);
         public sealed class Player : IDisposable
