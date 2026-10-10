@@ -35,6 +35,7 @@ internal static class Program
             SirenSmileChecks.Run(root);
             HudPlaceholderChecks.Run(root);
             DeathFxChecks.Run(root);
+            StageVentChecks.Run(root);
             LobbyPoseChecks.Run(root);FighterMotionChecks.Run(root);LeetMotionChecks.Run();LeetPathChecks.Run(data);GunMotionChecks.Run();AuditorHaloChecks.Run(root);
             foreach(var result in EventFeedbackChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in ImpactCueChecks.Run(root,data))Console.WriteLine("PASS "+result);

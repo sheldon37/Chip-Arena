@@ -59,7 +59,7 @@ namespace ChipArena.UnityConversion
         {float burn=SirenChar(seat);if(burn<=0)return null;sirenCharColor=Color.white*(1-.85f*burn);sirenCharColor.a=1;return sirenCharTint??(sirenCharTint=_=>sirenCharColor);}
         private void ClearDevEffects()
         {
-            sirenFx?.Clear();viewFlames?.Clear();fxDraw?.Clear();ClearDevFighters();sirenTracks.Clear();sirenChar.Clear();sirenFieldFlags.Clear();sirenShots.Clear();markTracker.Clear();
+            sirenFx?.Clear();viewFlames?.Clear();fxDraw?.Clear();SeekerLightsOff(0);ClearDevFighters();sirenTracks.Clear();sirenChar.Clear();sirenFieldFlags.Clear();sirenShots.Clear();markTracker.Clear();
             fxArena=null;fxGeneration=-1;fxEvent=0;fxLast=viewLast=float.NegativeInfinity;viewAcc=0;
         }
         private void DisposeDevEffects(){ClearDevEffects();DisposeSirenLooks();fxDraw?.Dispose();fxDraw=null;sirenInk=null;ghostsLoaded=false;ghostPilot=ghostGloves=null;ghostHats.Clear();}
@@ -176,7 +176,7 @@ namespace ChipArena.UnityConversion
         // fx.ts updateShots: trails, coronas, the orb cores and halos, the drop marker; impacts when a shot is gone.
         private void SirenShots(NativeArena arena,Camera camera,float now)
         {
-            var fx=sirenFx;Vector3 right=camera.transform.right,up=camera.transform.up;var draw=fxDraw;
+            var fx=sirenFx;Vector3 right=camera.transform.right,up=camera.transform.up;var draw=fxDraw;int seekers=0;
             foreach(var b in arena.Bullets)
             {
                 if(b.SirenKind==null&&b.Spec!="siren")continue;var kind=ShotKind(b.SirenKind);NativeShotViews.Bullet(arena,b,shotTracker,now,out var v);
@@ -188,6 +188,7 @@ namespace ChipArena.UnityConversion
                     draw.Sprite(draw.Effects,at,right,up,(float)(2.6+.7*pulse),Alpha(Color.white,.95),NativeFxDraw.Authored+NativeFxDraw.Additive);
                     draw.Sprite(draw.Effects,at,right,up,1.3f,Alpha(NativeArena.ColorOf(NativeSirenFx.Warn),.55),NativeFxDraw.Authored+NativeFxDraw.Additive);
                     draw.Orb(draw.Solid,Matrix4x4.TRS(at,MirrorEuler(0,age*2,0),Vector3.one*(float)(.42*(1+.08*pulse))),SeekerCore,Color.white,3.2f);
+                    SeekerLight(seekers++,at,now);
                 }
                 else if(kind==NativeSirenShotKind.Drop)
                 {
@@ -203,6 +204,7 @@ namespace ChipArena.UnityConversion
                     draw.Orb(draw.Solid,Matrix4x4.TRS(at,MirrorEuler(age*6,age*4,0),Vector3.one*(float)((big?.52:.27)*(1+.1*pulse))),InkRaw,AshRaw,1.8f);
                 }
             }
+            SeekerLightsOff(seekers);
             // A shot gone this frame: Damnation explodes, a drop splashes, a seeker bursts on its target (or puffs out).
             for(int i=0;i<fx.Shots.Count;i++)
             {
@@ -215,6 +217,20 @@ namespace ChipArena.UnityConversion
             sirenStale.Clear();foreach(var pair in sirenShots){bool live=false;for(int i=0;i<fx.Shots.Count;i++)if(fx.Shots[i].Id==pair.Key){live=true;break;}if(!live)sirenStale.Add(pair.Key);}
             foreach(int id in sirenStale)sirenShots.Remove(id);
         }
+        // fx.ts makeShot/updateShots: each live seeker's PointLight(0xf1ecff, 3 + 2·pulse, 9, 2) at its centre (NativeSeekerLight),
+        // one pooled light per seeker up to the cap, converted as the other pooled source lights; unused ones are disabled.
+        private Light[] seekerLights;
+        private void SeekerLight(int index,Vector3 at,float now)
+        {
+            if(index>=NativeSeekerLight.Cap)return;
+            if(seekerLights==null)
+            {
+                seekerLights=new Light[NativeSeekerLight.Cap];var root=new GameObject("Native seeker light pool");root.transform.SetParent(transform,false);
+                for(int i=0;i<seekerLights.Length;i++){var go=new GameObject("Seeker light "+i);go.transform.SetParent(root.transform,false);var l=go.AddComponent<Light>();l.type=LightType.Point;l.shadows=LightShadows.None;l.renderMode=LightRenderMode.ForcePixel;l.cullingMask=~(1<<10);l.color=NativeArena.ColorOf(NativeSeekerLight.Color);l.range=(float)NativeSeekerLight.Distance;l.enabled=false;seekerLights[i]=l;}
+            }
+            var light=seekerLights[index];if(light==null)return;light.transform.position=at;light.intensity=NativeBlastSim.UnityLightIntensity(NativeSeekerLight.Intensity(now));light.enabled=true;
+        }
+        private void SeekerLightsOff(int from){if(seekerLights==null)return;for(int i=Math.Max(0,from);i<seekerLights.Length;i++)if(seekerLights[i]!=null)seekerLights[i].enabled=false;}
         private static bool SeekerLanded(NativeArena arena,int owner,Vector3 at,float now)
         {foreach(var e in arena.Events)if(e.Source==owner&&(e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot)&&now-e.Time<.3f&&(NativeArena.Vec(e.Position)-at).sqrMagnitude<4)return true;return false;}
         private static bool RainFloor(NativeArena arena,int owner,Vector3 at,out float floor)
