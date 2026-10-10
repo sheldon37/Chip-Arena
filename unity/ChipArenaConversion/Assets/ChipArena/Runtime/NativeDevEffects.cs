@@ -59,7 +59,8 @@ namespace ChipArena.UnityConversion
         {float burn=SirenChar(seat);if(burn<=0)return null;sirenCharColor=Color.white*(1-.85f*burn);sirenCharColor.a=1;return sirenCharTint??(sirenCharTint=_=>sirenCharColor);}
         private void ClearDevEffects()
         {
-            sirenFx?.Clear();viewFlames?.Clear();fxDraw?.Clear();SeekerLightsOff(0);ClearDevFighters();sirenTracks.Clear();sirenChar.Clear();sirenFieldFlags.Clear();sirenShots.Clear();markTracker.Clear();
+            // The vents' flames live in this pool, so their burst and smoke state goes with it (re-armed on the next vent frame).
+            sirenFx?.Clear();ClearStageVents();viewFlames?.Clear();fxDraw?.Clear();SeekerLightsOff(0);ClearDevFighters();sirenTracks.Clear();sirenChar.Clear();sirenFieldFlags.Clear();sirenShots.Clear();markTracker.Clear();
             fxArena=null;fxGeneration=-1;fxEvent=0;fxLast=viewLast=float.NegativeInfinity;viewAcc=0;
         }
         private void DisposeDevEffects(){ClearDevEffects();DisposeSirenLooks();fxDraw?.Dispose();fxDraw=null;sirenInk=null;ghostsLoaded=false;ghostPilot=ghostGloves=null;ghostHats.Clear();}
