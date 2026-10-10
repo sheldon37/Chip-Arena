@@ -70,7 +70,7 @@ namespace ChipArena.UnityConversion
             Check(NativePoseRoute.For(new Actor{SourceSpec="sword",Weapon=WeaponId.Sword},false)==PoseRoute.CapturedMelee,"sword keeps captured melee");
             Check(NativePoseRoute.For(new Actor{SourceSpec="fire",MagicVisual=1,Weapon=WeaponId.Sword},false)==PoseRoute.Magic,"fire keeps the magic gait");
             Check(NativePoseRoute.For(new Actor{SourceSpec="emperor",Weapon=WeaponId.Sword},false)==PoseRoute.Fighter,"Emperor keeps its style");
-            Check(NativePoseRoute.For(new Actor{SourceSpec="siren",Weapon=WeaponId.Sword},false)==PoseRoute.Generic&&NativePoseRoute.For(new Actor{SourceSpec="pistol",Weapon=WeaponId.Pistol},false)==PoseRoute.Generic,"Siren and guns stay generic");
+            Check(NativePoseRoute.For(new Actor{SourceSpec="siren",Weapon=WeaponId.Sword},false)==PoseRoute.Generic&&NativePoseRoute.For(new Actor{SourceSpec="pistol",Weapon=WeaponId.Pistol},false)==PoseRoute.Gun,"the Siren stays generic, guns walk on the gun gait");
             Check(NativePoseRoute.SwordLayers(new Actor{SourceSpec="sword",Weapon=WeaponId.Sword})&&!NativePoseRoute.SwordLayers(new Actor{SourceSpec="fire",MagicVisual=3,Weapon=WeaponId.Sword}),"sword layers only for the sword family");
             Check(NativePoseRoute.For(null,false)==PoseRoute.Generic&&!NativePoseRoute.SwordLayers(null),"no actor");
         }

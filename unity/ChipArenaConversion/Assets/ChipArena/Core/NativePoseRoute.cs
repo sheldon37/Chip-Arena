@@ -1,12 +1,13 @@
 namespace ChipArena.UnityConversion
 {
     /// <summary>Which pose path a presented pilot takes (CapturedAnimation.Player.ActorPose). Presentation only.</summary>
-    public enum PoseRoute{Generic,CapturedMelee,Magic,Fighter}
+    public enum PoseRoute{Generic,CapturedMelee,Magic,Fighter,Gun}
     /// <summary>
     /// character-animation.ts sampleCharacter by weapon class: captured melee (sword, daggers, greatsword, shield) runs the
     /// melee pipeline; every magic-class pilot, the four schools and L33t H4x (MagicPose.School), walks on the magic gait
-    /// with the staff; the DEV fighting styles run their own layers; guns, the Siren and first-person view models take the
-    /// generic path. Only the four sword sets ever sample the sword set's idle, walk, run, cut, block or stagger.
+    /// with the staff; the DEV fighting styles run their own layers; the guns (pistol, rifle, machine gun, bots included) walk
+    /// on the gun gait (GunMotion); the Siren and first-person view models take the generic path. Only the four sword sets
+    /// ever sample the sword set's idle, walk, run, cut, block or stagger.
     /// </summary>
     public static class NativePoseRoute
     {
@@ -16,6 +17,7 @@ namespace ChipArena.UnityConversion
             if(a.MagicVisual==0&&a.Weapon==WeaponId.Sword&&MeleeMotion.Handles(a.SourceSpec))return PoseRoute.CapturedMelee;
             if(MagicPose.School(a)>0)return PoseRoute.Magic;
             if(NativeFighterPose.Handles(a.SourceSpec))return PoseRoute.Fighter;
+            if(GunRules.Ranged(a.Weapon)&&a.SourceSpec!="siren")return PoseRoute.Gun;
             return PoseRoute.Generic;
         }
         /// <summary>
