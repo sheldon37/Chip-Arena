@@ -112,6 +112,27 @@ class CinematicChecks(unittest.TestCase):
         self.assertIn('SourceCharacter(introRig,actor,arena.Time,weapon:false)',intros)
         self.assertIn('NativeIntroRules.IntroWeapon(style)',intros)
         self.assertIn('stage-dev-matrix',self.clips)
+        # The intro clips are baked from the rig player-intros.ts arms (braceWeapon's support grip needs the weapon).
+        export=(ROOT/'tools/export_motion.mjs').read_text(encoding='utf-8')
+        self.assertIn('armIntro(rig,style);',export)
+        self.assertIn('checkGrip(rig,style,age);',export)
+    def test_intro_glow_fade_only_touches_blast_glow_voxels(self):
+        # NativeIntros.IntroStage fades transparent stage tracks whose tint changes by alpha (additive ChipBlasts glow voxels);
+        # on every entrance stage those are emissive voxel boxes of the weapon intros, nothing else.
+        touched=0
+        for key,c in self.clips.items():
+            if not key.startswith('stage-'):continue
+            frames,values=c['frames'],c['values']
+            for s in self.models[key]['sections']:
+                if not s['transparent'] or not s['positions']:continue
+                o=s['bone']*frames*20
+                if all(values[o+f*20+17:o+f*20+20]==values[o+17:o+20] for f in range(frames)):continue
+                with self.subTest(stage=key,bone=s['bone']):
+                    self.assertTrue(key.startswith('stage-weapon-'))
+                    self.assertEqual(len(s['positions']),24*3)
+                    self.assertTrue(any(v>0 for i,v in enumerate(s['emission']) if i%4!=3))
+                touched+=1
+        self.assertGreater(touched,500)
     def test_demon_and_flames_are_animated(self):
         for key in ('death-dev-raging-demon','death-siren-crush','death-siren-dissipate','stage-dev-ansatsuken'):
             c=self.clips[key]

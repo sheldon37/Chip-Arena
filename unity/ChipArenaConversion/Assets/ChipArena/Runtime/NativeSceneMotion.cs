@@ -21,8 +21,6 @@ namespace ChipArena.UnityConversion
     }
     public sealed partial class ArenaPresentation
     {
-        private bool SourceStage(string style,float age,Camera camera)
-        {string key="stage-"+style;var clip=NativeSceneMotion.Get(key);if(clip==null)return false;NativeLighting.Intro(clip,age,camera);sourceModels.Queue(key,Matrix4x4.identity,b=>NativeSceneMotion.Matrix(clip,b,age),b=>NativeSceneMotion.Opacity(clip,b,age)>.001f,partOpacity:b=>NativeSceneMotion.Opacity(clip,b,age),partTint:b=>NativeSceneMotion.Tint(clip,b,age));return true;}
         private readonly Dictionary<int,(int seed,Matrix4x4[] bones)> carriedDeaths=new Dictionary<int,(int,Matrix4x4[])>();
         private bool SourceDeathScene(NativeDeath death,float age,float revival=-1)
         {
