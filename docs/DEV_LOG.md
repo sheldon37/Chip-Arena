@@ -1,5 +1,34 @@
 # Chip Arena — development log
 
+## 2026-10-10 — Claude — AoE blue/cyan lightning removed; Siren grab death ragdolls on drop (owner requests)
+- Branch `claude/sleepy-ritchie-g8ruhv` (PR #62). Merged `claude/remove-aoe-lightning` `bfab574` and `claude/siren-grab-ragdoll` `822d815` on top of `2815906`. Each was built, reviewed from two angles and fixed. Presentation only.
+- AoE lightning (owner override of source parity):
+  - The blue/cyan lightning came from `NativeBlastSim`: the Shock style's 9 m sky bolt, its side sparks and the ground arcs, plus the Storm In A Jar field's repeated strikes.
+  - It showed on Blink Strike (cyan), Thunder Step, Static and Storm In A Jar.
+  - New rule: no bolts or arcs for blue/cyan shock looks. Ball Lightning (violet) and Orbital Mark (red) keep theirs. The core, shock front, sweep, sparks and light stay, and so do the storm clouds and glow.
+  - `export_blast_fixtures.mjs` applies the same cuts to the pinned source (`owner.cuts=4`); only 7 of 88 parity runs changed. 208 new checks.
+  - Risk: the blue shock front and stretched sparks remain on those abilities. If the owner still reads them as electric, recolour or drop them next.
+- Grab ragdoll:
+  - Before: the `death-siren-crush` clip left the body about 1 m in the air, and kept PvE bodies froze mid-air.
+  - Now (new `Core/NativeSirenDrop.cs` and `Runtime/NativeSirenDropPresentation.cs`): after a 0.1 s limp beat, or the source's 0.45 s hang if the Siren still holds, the exact drawn pose plus its motion goes to a `NativeCorpse` physics ragdoll. It has a seeded backward tumble and a knee give, so it falls and settles on its back on the real floor.
+  - The weapon drops loose, the gibs land on the floor, flames come off the ragdoll, and the body shrinks into flame from 3.2 to 4.4 s.
+  - Host, guests and killcam are deterministic from replicated data.
+  - `NativeCorpse` gains a posed-matrices constructor.
+  - In Astra's `NativeInteractionPresentation.StartRevival`, the crush-clip block became `SirenDropPose(...)`, so kept bodies revive as they lie. The vent-splat hook is kept.
+- Checks on the merged head:
+  - unity-check: runtime+editor build OK;
+  - Python: 52 OK;
+  - package_source: passed, 1002 files;
+  - check_relay: exit 0, 253 PASS, including "Siren crush drop" and the no-blue-lightning checks.
+  - `git diff --check` is clean.
+- Not run: real PhysX (the renders used a Rapier stand-in with PhysX-like joint limits), Windows play, live host/guest/killcam.
+- For Astra:
+  1. `StepSirenWorld` calls `CancelSiren` at `CrushAt`, so the Siren's arm snaps to idle at the crush. The source keeps the laugh move until crush + 0.6 s. Keeping `SourceAction` 'grab' until `Until` makes the presentation use the source's 0.45 s hang automatically.
+  2. For siren-crush deaths `death.yaw` is the victim's own yaw from the catch, while the hold faces holder yaw + 180, so the body spins at the crush. Record the held facing (and if possible the drawn claw point) in the death record.
+  3. `RecordDeath` uses siren-crush whenever `HeldBy` is set, including a bystander kill mid-hold. The source uses it only for the actual crush. Please confirm which is intended.
+  4. Optional: add a floor-height assertion to the siren-crush revive validation (it now steps the drop body).
+- Status: implemented and merged on the branch; pushed to the cloud branch; not released by Claude.
+
 ## 2026-10-10 — Claude — Melee hit reactions and the visible stun (owner request)
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62): merged `claude/melee-hit-reactions` `a684b49` on top of Astra's `0e8a3ff`, which carries the authoritative melee hit stun. It was built, reviewed from two angles and fixed: all four findings were real and fixed.
 - New `Core/NativeHitReact.cs` plus `Runtime/NativeHitPresentation.cs`, applied as a per-rig layer on all four third-person routes:
