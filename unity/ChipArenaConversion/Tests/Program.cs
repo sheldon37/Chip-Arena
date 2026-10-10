@@ -25,6 +25,7 @@ internal static class Program
             foreach(var result in MeleeMotionChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in MagicMotionChecks.Run(root))Console.WriteLine("PASS "+result);
             WeaponPresentationChecks.Run(root,data);
+            RigDressingChecks.Run(root,data);
             foreach(var result in UiMotionChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in LoadoutChecks.Run(data))Console.WriteLine("PASS "+result);
             NativeSystemsChecks.Run(root,data);WoundCarveChecks.Run(root);CollapseChecks.Run(root);ExtraPresentationChecks.Run(root);BlastChecks.Run(root);FieldChecks.Run(root);ShotChecks.Run(root,data);

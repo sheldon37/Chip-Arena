@@ -58,7 +58,9 @@ namespace ChipArena.UnityConversion
             viewRig.ActorPose(shown,Vector3.zero,time,true);
             // Every magic-class pilot (first-person-view.ts cls 'magic': the four schools and the L33t H4x staff) frames the staff view.
             int school=MagicPose.School(shown);bool gun=GunRules.Ranged(shown.Weapon),magic=school>0;
-            Vector3 offset=gun?new Vector3(.24f,-.48f,.20f):magic?CapturedAnimation.Vec(NativeFirstPersonPose.MagicViewOffset(viewRig.MagicGuardWeight)):new Vector3(.16f,-.22f,.30f);
+            // first-person-view.ts:69 class bases (NativeViewBase): guns right of centre, the DEV fighters' fists centred and low
+            // (their view rig ends on the guard clip, NativeSourceMotion.Pilot), melee raised.
+            Vector3 offset=gun?CapturedAnimation.Vec(NativeViewBase.Gun):magic?CapturedAnimation.Vec(NativeFirstPersonPose.MagicViewOffset(viewRig.MagicGuardWeight)):CapturedAnimation.Vec(NativeViewBase.IsFighter(shown.SourceSpec)?NativeViewBase.Fighter:NativeViewBase.Melee);
             float ads=aimMotion.Sample(time,gun&&AimHeld);
             if(gun)offset+=CapturedAnimation.Vec(NativeAimPresentation.Offset(shown.Weapon))*ads;
             float scale=gun?NativeAimPresentation.Scale(ViewCamera.fieldOfView,ads):NativeFirstPersonPose.Scale;
