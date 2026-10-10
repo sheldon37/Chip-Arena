@@ -61,7 +61,7 @@ namespace ChipArena.UnityConversion
             sirenFx?.Clear();viewFlames?.Clear();fxDraw?.Clear();ClearDevFighters();sirenTracks.Clear();sirenChar.Clear();sirenFieldFlags.Clear();sirenShots.Clear();
             fxArena=null;fxGeneration=-1;fxEvent=0;fxLast=viewLast=float.NegativeInfinity;viewAcc=0;
         }
-        private void DisposeDevEffects(){ClearDevEffects();fxDraw?.Dispose();fxDraw=null;sirenInk=null;ghostsLoaded=false;ghostPilot=ghostGloves=null;ghostHats.Clear();}
+        private void DisposeDevEffects(){ClearDevEffects();DisposeSirenLooks();fxDraw?.Dispose();fxDraw=null;sirenInk=null;ghostsLoaded=false;ghostPilot=ghostGloves=null;ghostHats.Clear();}
         private static Vector3 Src(Vector3 v)=>new Vector3(-v.x,v.y,v.z);
         // A Unity transform matrix in the source frame (x mirrored): S·M·S, row-major into o at offset.
         private static void Source(Matrix4x4 m,double[] o,int offset)
@@ -74,7 +74,7 @@ namespace ChipArena.UnityConversion
         /// <summary>C12 entry point, after the rigs are posed (Render) and the shot tracker has begun (RenderGlow).</summary>
         private void DevEffects(NativeArena arena,Camera camera,float now)
         {
-            if(sourceModels==null||arena==null||camera==null)return;EnsureSirenFx();if(fxDraw==null)fxDraw=new NativeFxDraw();
+            if(sourceModels==null||arena==null||camera==null)return;sirenLookCamera=camera;EnsureSirenFx();if(fxDraw==null)fxDraw=new NativeFxDraw();
             if(arena!=fxArena||arena.Generation!=fxGeneration||arena.Match.Set!=fxSet||arena.Match.Round!=fxRound||now<fxLast-.25f)
             {ClearDevEffects();fxArena=arena;fxGeneration=arena.Generation;fxSet=arena.Match.Set;fxRound=arena.Match.Round;}
             fxLast=now;fxFrame++;var fx=sirenFx;fx.Begin(now,BlastQuality);fxDraw.Clear();sirenChar.Clear();

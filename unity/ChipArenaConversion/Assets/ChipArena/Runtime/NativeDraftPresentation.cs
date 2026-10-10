@@ -60,7 +60,9 @@ namespace ChipArena.UnityConversion
             if(planting)draftPlant.Pose(draftPose,left,local,age);
             var look=age<NativeDraftPlant.Contact?sourceTarget:planting?(draftPlant.ChipShown?draftPlant.Chip:draftPlant.At):point;draftPose.World();float eye=draftPose.WorldPosition[5].Y+.165f;look.Y=eye+(look.Y-eye)*(look.Y>eye?.55f:.5f);NativeDraftRules.Look(draftPose,look,1);Apply();
             if(planting)draftPlant.Place(draftPose,left,age);
-            var root=draftRig.Root.transform.localToWorldMatrix;sourceModels.Queue(siren?"siren":"pilot",root,draftBone,body:BodyTint(seat.bodyColor),accent:AccentTint(seat.accentColor));if(!siren)sourceModels.Queue("hat-"+seat.hat,root,draftBone);
+            // draft-stage.ts animates the Siren drafter (animateSiren on the match clock): its idle look, eye halos lit.
+            var root=draftRig.Root.transform.localToWorldMatrix;var sirenFace=siren?SirenStill(reduced?0:(float)time):null;sourceModels.Queue(siren?"siren":"pilot",root,draftBone,body:BodyTint(seat.bodyColor),accent:AccentTint(seat.accentColor),look:sirenFace);if(!siren)sourceModels.Queue("hat-"+seat.hat,root,draftBone);
+            if(siren){sirenLookCamera=camera;SirenLookFx(draftRig,sirenFace,0,null,reduced?0:(float)time);}
             // The chip at its real size in the hand (never bigger than the hand), carried to the other wrist and pressed in.
             var palm=draftRig.Bones[hand].TransformPoint(new Vector3(0,-.035f,.04f));draftChipTint=(chipTint.a>0?chipTint:tint).linear;
             if(age>=NativeDraftPlant.Contact&&(siren||draftPlant.ChipShown))

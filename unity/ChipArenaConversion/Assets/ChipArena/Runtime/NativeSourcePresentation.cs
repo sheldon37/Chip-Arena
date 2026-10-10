@@ -16,7 +16,10 @@ namespace ChipArena.UnityConversion
             Matrix4x4 Bone(int b)=>rig.Bones[b].localToWorldMatrix;bool Visible(int b)=>!first||NativeViewRules.ViewModelBone(b);
             // The first-person Siren shows inked pilot arms (first-person.ts); a Last Laugh victim chars as it burns (C12).
             string model=a.SourceSpec=="siren"?first?sirenInk??(sirenInk=sourceModels.Ink("pilot")):"siren":sourceModels.WoundedPilot(a.Id,a.Wounds,a.BodyColor,ForceCompatibilityRendering);
-            sourceModels.Queue(model,rig.Root.transform.localToWorldMatrix,Bone,Visible,layer,camera,BodyTint(a.BodyColor),AccentTint(a.AccentColor),partTint:first?null:SirenCharTint(a.Id));
+            // The world Siren animates its look (claws, palm orbs, halos, eyes, grin, tongues, wisps: NativeSirenLookPresentation.cs).
+            var look=a.SourceSpec=="siren"&&!first?SirenLook(a,time):null;
+            sourceModels.Queue(model,rig.Root.transform.localToWorldMatrix,Bone,Visible,layer,camera,BodyTint(a.BodyColor),AccentTint(a.AccentColor),partTint:first?null:SirenCharTint(a.Id),look:look);
+            if(look!=null)SirenLookFx(rig,look,layer,camera,time);
             if(!first)LivingWounds(rig,a,time);
             if(!first&&!string.IsNullOrEmpty(a.Hat)&&a.SourceSpec!="siren")sourceModels.Queue("hat-"+a.Hat,rig.Root.transform.localToWorldMatrix,Bone,null,layer,camera);
             if(a.SourceSpec=="siren"||a.WeaponAway||!weapon)return true;
@@ -45,7 +48,7 @@ namespace ChipArena.UnityConversion
             // C17: severed limbs fly off as chunks (the rigs above are posed), and the downed get revive beacons.
             PveGore(arena);PveBeacons(arena);
         }
-        private void ClearSourceActors(){ClearWardZero();ClearDevEffects();draftRig?.Dispose();draftRig=null;ClearBroadcasts();slenderHops.Clear();ClearSceneryMotion();ClearWoundSpray();sourceModels?.ClearWounds();ClearCorpses();if(pitMaterial!=null){CapturedAnimation.Release(pitMaterial);pitMaterial=null;}introRig?.Dispose();introRig=null;foreach(var rig in minionRigs.Values)rig.Dispose();minionRigs.Clear();sourceModels?.Begin();}
+        private void ClearSourceActors(){ClearWardZero();ClearSirenLooks();ClearDevEffects();draftRig?.Dispose();draftRig=null;ClearBroadcasts();slenderHops.Clear();ClearSceneryMotion();ClearWoundSpray();sourceModels?.ClearWounds();ClearCorpses();if(pitMaterial!=null){CapturedAnimation.Release(pitMaterial);pitMaterial=null;}introRig?.Dispose();introRig=null;foreach(var rig in minionRigs.Values)rig.Dispose();minionRigs.Clear();sourceModels?.Begin();}
         public void FinishSourceFrame()=>sourceModels?.Flush(UsesInstancing);
     }
 }

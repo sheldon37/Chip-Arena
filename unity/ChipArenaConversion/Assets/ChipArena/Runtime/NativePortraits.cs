@@ -48,7 +48,9 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<string,Part[]> parts=new Dictionary<string,Part[]>();private readonly Dictionary<string,Bounds> hatBounds=new Dictionary<string,Bounds>();
         private readonly Matrix4x4[] bones=new Matrix4x4[22];
         private ArenaPresentation presentation;private Camera view;private MaterialPropertyBlock block;
-        private Material opaque,opaqueDouble,transparent,transparentDouble,additive,resolve;private Mesh box,podium,arc,aura,flame;
+        private Material opaque,opaqueDouble,transparent,transparentDouble,additive,resolve;private Mesh box,podium,arc,aura,flame,haloQuad;
+        // The Siren's animated pieces (one look reused for every Siren portrait) and their portrait materials, by source material.
+        private readonly NativeSirenLookPose sirenLook=new NativeSirenLookPose();private readonly Dictionary<Material,Part> pieceParts=new Dictionary<Material,Part>();
         private bool failed;private float clock;private int screenW,screenH;
         private static readonly int ColorId=Shader.PropertyToID("_Color"),ModeId=Shader.PropertyToID("_Mode"),MainTexId=Shader.PropertyToID("_MainTex"),MainStId=Shader.PropertyToID("_MainTex_ST"),
             BodyId=Shader.PropertyToID("_BodyTint"),AccentId=Shader.PropertyToID("_AccentTint"),SceneId=Shader.PropertyToID("_SceneTint"),GlowId=Shader.PropertyToID("_GlowTint"),InkId=Shader.PropertyToID("_Ink");
@@ -116,6 +118,10 @@ namespace ChipArena.UnityConversion
             NativePortraitRules.Torus(m0,NativePortraitRules.HaloArcRadius,NativePortraitRules.HaloArcTube,4,22,NativePortraitRules.HaloArc);arc=Build(m0,"Auditor halo arc");m0.Clear();
             NativePortraitRules.Torus(m0,NativePortraitRules.HaloArcRadius,NativePortraitRules.HaloAuraTube,4,22,NativePortraitRules.HaloArc);aura=Build(m0,"Auditor halo glow");m0.Clear();
             NativePortraitRules.Flame(m0);flame=Build(m0,"Auditor halo flame");
+            // A sprite quad (both faces) for the Siren's eye halos, its uv spanning the radial texture.
+            haloQuad=new Mesh{name="Portrait Siren halo",hideFlags=HideFlags.HideAndDontSave};haloQuad.vertices=new[]{new Vector3(-.5f,-.5f,0),new Vector3(.5f,-.5f,0),new Vector3(-.5f,.5f,0),new Vector3(.5f,.5f,0)};
+            haloQuad.normals=new[]{Vector3.back,Vector3.back,Vector3.back,Vector3.back};haloQuad.colors=new[]{Color.white,Color.white,Color.white,Color.white};haloQuad.uv=new[]{new Vector2(0,0),new Vector2(1,0),new Vector2(0,1),new Vector2(1,1)};
+            haloQuad.SetUVs(1,new List<Vector4>{Vector4.zero,Vector4.zero,Vector4.zero,Vector4.zero});haloQuad.triangles=new[]{0,1,3,0,3,2,0,3,1,0,2,3};haloQuad.RecalculateBounds();haloQuad.UploadMeshData(true);
             return true;
         }
         private static Vector4 Light(int hex,float intensity){var c=NativePortraitRules.Linear(hex)*intensity;return new Vector4(c.X,c.Y,c.Z,0);}
@@ -161,7 +167,7 @@ namespace ChipArena.UnityConversion
             NativeLobbyPoses.Sample(s.Rig,spec,pose,time,out var weapon,out var offhand);s.Rig.WritePose(s.Pose);s.Pose.World();
             // hatTop() once per outfit and pose (menu-portraits.ts measures it at the outfit's first frame).
             if(s.TopPose!=pose){s.TopPose=pose;s.Top=hat=="none"?0:hat=="auditor-halo"?NativePortraitRules.HaloTop(s.Pose,time):HatBounds(s.HatModel,out var min,out var max)?NativePortraitRules.HatTop(s.Pose,min,max):0;}
-            var frame=NativePortraitRules.Frame(pose,s.Aspect,s.Top);
+            var frame=NativePortraitRules.Frame(pose,s.Aspect,s.Top);var turn=Quaternion.LookRotation(CapturedAnimation.Vec(CapturedRig.Mirror(frame.Target-frame.Position)),Vector3.up);
             // Each slot's stage stands far from the others and from the arena, so one render never frames another pilot.
             var origin=new Vector3(2000+index*60,-500,0);var root=origin+Vector3.up*NativePortraitRules.GroupY;
             for(int b=0;b<22;b++)bones[b]=Matrix4x4.TRS(root+CapturedAnimation.Vec(CapturedRig.Mirror(s.Pose.WorldPosition[b])),CapturedAnimation.Quat(CapturedRig.Mirror(s.Pose.WorldRotation[b])),Vector3.one);
@@ -175,6 +181,7 @@ namespace ChipArena.UnityConversion
                 var scene=p.Class==NativePortraitRules.PartEdge?s.EdgeTint:p.Class==NativePortraitRules.PartFlex?s.FlexTint:Vector4.one;
                 Model(p,m,siren?Vector4.one:s.BodyTint,siren?Vector4.one:s.AccentTint,scene,siren?Vector4.one:Vector4.zero);
             }
+            if(siren)SirenPieces(time,turn);
             if(!siren&&hat=="auditor-halo")Halo(bones[CapturedRig.Head],time);
             else if(!siren&&hat!="none")foreach(var p in Parts(s.HatModel))Model(p,p.Bone>=0&&p.Bone<22?bones[p.Bone]:rootMatrix,Vector4.one,Vector4.one,Vector4.one,Vector4.one);
             if(weapon.Visible||offhand.Visible)foreach(var p in Parts(s.WeaponModel))
@@ -187,7 +194,7 @@ namespace ChipArena.UnityConversion
             try
             {
                 view.targetTexture=target;view.aspect=s.Aspect;view.orthographicSize=frame.Half;
-                view.transform.SetPositionAndRotation(origin+CapturedAnimation.Vec(CapturedRig.Mirror(frame.Position)),Quaternion.LookRotation(CapturedAnimation.Vec(CapturedRig.Mirror(frame.Target-frame.Position)),Vector3.up));
+                view.transform.SetPositionAndRotation(origin+CapturedAnimation.Vec(CapturedRig.Mirror(frame.Position)),turn);
                 view.Render();
                 if(s.Texture==null||s.Texture.width!=s.W||s.Texture.height!=s.H){if(s.Texture!=null)RenderTexture.ReleaseTemporary(s.Texture);s.Texture=RenderTexture.GetTemporary(s.W,s.H,0,RenderTextureFormat.ARGB32,RenderTextureReadWrite.Default,1);s.Texture.filterMode=FilterMode.Bilinear;s.Texture.wrapMode=TextureWrapMode.Clamp;}
                 Graphics.Blit(target,s.Texture,resolve);s.Ready=true;
@@ -214,6 +221,26 @@ namespace ChipArena.UnityConversion
             block.SetVector(BodyId,body);block.SetVector(AccentId,accent);block.SetVector(SceneId,scene);block.SetVector(GlowId,glow);block.SetFloat(InkId,p.Ink);
             Draw(p.Mesh,m,p.Transparent?(p.DoubleSide?transparentDouble:transparent):p.DoubleSide?opaqueDouble:opaque);
         }
+        // menu-portraits.ts animates the Siren (animateSiren): its idle look on the portrait clock (claws out, eyes and grin at
+        // rest, tongues and wisps alive) and the eye halos, sprites turned to the portrait camera.
+        private void SirenPieces(float time,Quaternion turn)
+        {
+            var models=presentation.PortraitModels;var look=sirenLook.Set(NativeSirenLook.Neutral(time));
+            for(int i=0,n=models.PortraitPieceCount("siren");i<n;i++)
+            {
+                if(!models.PortraitPiece("siren",i,look,out var mesh,out int bone,out var local,out var material)||mesh==null||material==null||bone<0||bone>=22)continue;
+                if(!pieceParts.TryGetValue(material,out var part)){var scale=material.mainTextureScale;var offset=material.mainTextureOffset;part=new Part{Bone=-1,Class=NativePortraitRules.PartOther,Joint=-1,Transparent=material.renderQueue>=3000,DoubleSide=material.GetFloat("_Cull")==0,Ink=material.GetFloat("_Ink"),Texture=material.mainTexture,St=new Vector4(scale.x,scale.y,offset.x,offset.y)};pieceParts.Add(material,part);}
+                part.Mesh=mesh;Model(part,bones[bone]*local,Vector4.one,Vector4.one,Vector4.one,Vector4.one);
+            }
+            var radial=models.SirenHaloTexture;if(radial==null||look.EyeHalo<=0)return;
+            for(int i=0;i<2;i++)
+            {
+                int piece=NativeSirenLook.EyeHalo+i;var w=bones[NativeSirenLook.Joint(piece)]*look.Local[piece];float size=((Vector3)w.GetColumn(0)).magnitude;
+                block.Clear();block.SetVector(ColorId,Linear(NativeSirenLook.EyeHaloColor,look.EyeHalo));block.SetFloat(ModeId,2);block.SetTexture(MainTexId,radial);block.SetVector(MainStId,new Vector4(1,1,0,0));
+                block.SetVector(BodyId,Vector4.one);block.SetVector(AccentId,Vector4.one);block.SetVector(SceneId,Vector4.one);block.SetVector(GlowId,Vector4.one);block.SetFloat(InkId,0);
+                Draw(haloQuad,Matrix4x4.TRS(w.GetColumn(3),turn,Vector3.one*size),additive);
+            }
+        }
         // auditor-halo.ts: three red arcs with additive glow tubes and twelve flickering black flames, turning and bobbing.
         private void Halo(Matrix4x4 head,float time)
         {
@@ -229,8 +256,8 @@ namespace ChipArena.UnityConversion
         private void OnDestroy()
         {
             foreach(var s in slots)if(s!=null)Clear(s);
-            foreach(var o in new UnityEngine.Object[]{opaque,opaqueDouble,transparent,transparentDouble,additive,resolve,box,podium,arc,aura,flame})if(o!=null)CapturedAnimation.Release(o);
-            if(view!=null)CapturedAnimation.Release(view.gameObject);view=null;parts.Clear();hatBounds.Clear();
+            foreach(var o in new UnityEngine.Object[]{opaque,opaqueDouble,transparent,transparentDouble,additive,resolve,box,podium,arc,aura,flame,haloQuad})if(o!=null)CapturedAnimation.Release(o);
+            if(view!=null)CapturedAnimation.Release(view.gameObject);view=null;parts.Clear();hatBounds.Clear();pieceParts.Clear();
         }
     }
     public sealed partial class ArenaPresentation

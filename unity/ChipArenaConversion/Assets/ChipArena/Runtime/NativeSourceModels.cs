@@ -85,13 +85,16 @@ namespace ChipArena.UnityConversion
                     if(s.texture>=0){material.mainTexture=textures[s.texture];var repeat=data.textures[s.texture].repeat;material.mainTextureScale=new Vector2(repeat[0],repeat[1]);}materials.Add(material);parts.Add(new Part{Name=s.part,Bone=s.bone,Mesh=mesh,Material=material});
                 }models.Add(model.id,parts.ToArray());
             }
+            SplitSirenPieces(data);
         }
         public void Begin(){foreach(var d in draws.Values){d.Matrices.Clear();d.Bodies.Clear();d.Accents.Clear();d.Tints.Clear();d.Glows.Clear();}}
         public bool Has(string id)=>id!=null&&models.ContainsKey(id);
-        public void Queue(string id,Matrix4x4 root,Func<int,Matrix4x4> bone=null,Func<int,bool> visible=null,int layer=0,Camera camera=null,Color? body=null,Color? accent=null,float opacity=1,Func<int,float> partOpacity=null,Func<int,Color> partTint=null,Vector4? glow=null)
+        // `look` poses the Siren's animated pieces (NativeSirenLookPresentation.cs); without one they hold the rest look.
+        public void Queue(string id,Matrix4x4 root,Func<int,Matrix4x4> bone=null,Func<int,bool> visible=null,int layer=0,Camera camera=null,Color? body=null,Color? accent=null,float opacity=1,Func<int,float> partOpacity=null,Func<int,Color> partTint=null,Vector4? glow=null,NativeSirenLookPose look=null)
         {
             if(!models.TryGetValue(id,out var model))return;Color bc=body??Color.white,ac=accent??Color.white;
             foreach(var part in model){if(visible!=null&&!visible(part.Bone))continue;var key=(part,layer);if(!draws.TryGetValue(key,out var d)){d=new Draws{Part=part,Layer=layer,Camera=camera};draws.Add(key,d);}d.Matrices.Add(part.Bone>=0&&bone!=null?bone(part.Bone):root);d.Bodies.Add(new Vector4(bc.r,bc.g,bc.b,opacity*(partOpacity?.Invoke(part.Bone)??1)));d.Accents.Add(new Vector4(ac.r,ac.g,ac.b,1));d.Tints.Add(partTint?.Invoke(part.Bone)??Color.white);d.Glows.Add(glow??Vector4.one);}
+            if(lookPieces.Count>0&&lookPieces.TryGetValue(id,out var list))QueuePieces(list,root,bone,visible,layer,camera,bc,ac,opacity,partOpacity,partTint,glow,look);
         }
         public void Flush(bool instancing)
         {
@@ -102,6 +105,6 @@ namespace ChipArena.UnityConversion
                 if(!drawn)for(int i=0;i<count;i++){properties.Clear();properties.SetVector("_BodyTint",bodies[i]);properties.SetVector("_AccentTint",accents[i]);properties.SetVector("_SceneTint",tints[i]);properties.SetVector("_GlowTint",glows[i]);Graphics.DrawMesh(d.Part.Mesh,buffer[i],d.Part.Material,d.Layer,d.Camera,0,properties,d.Layer==10||d.Part.NoShadow?ShadowCastingMode.Off:ShadowCastingMode.On,true);}
             }
         }
-        public void Dispose(){ClearWounds();foreach(var mesh in models.Values.SelectMany(p=>p).Select(p=>p.Mesh).Distinct())CapturedAnimation.Release(mesh);foreach(var m in materials)CapturedAnimation.Release(m);foreach(var t in textures)CapturedAnimation.Release(t);models.Clear();draws.Clear();}
+        public void Dispose(){ClearWounds();DisposePieces();foreach(var mesh in models.Values.SelectMany(p=>p).Select(p=>p.Mesh).Distinct())CapturedAnimation.Release(mesh);foreach(var m in materials)CapturedAnimation.Release(m);foreach(var t in textures)CapturedAnimation.Release(t);models.Clear();draws.Clear();}
     }
 }

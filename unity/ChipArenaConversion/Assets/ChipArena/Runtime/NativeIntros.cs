@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
         private CapturedAnimation.Player introRig;private int introActor;private Func<int,Matrix4x4> introHand;
         public void RenderIntro(NativeArena arena,NativePilot pilot,string style,float age,Camera camera)
         {
-            if(pilot==null)return;style=NativeIntroRules.Entrance(style);if(introRig==null||introActor!=pilot.Seat.id){introRig?.Dispose();introRig=captured.Create(transform,-100);introActor=pilot.Seat.id;}
+            if(pilot==null)return;style=NativeIntroRules.Entrance(style);sirenLookCamera=camera;if(introRig==null||introActor!=pilot.Seat.id){introRig?.Dispose();introRig=captured.Create(transform,-100);introActor=pilot.Seat.id;}
             sourceModels.Begin();foreach(var b in batches)b.Clear();FirstPerson=false;combatGlow?.Clear();particles.Clear();
             var actor=arena.Snapshot().Actors.FirstOrDefault(a=>a.Id==pilot.Seat.id)??pilot.Pose;NativeSourceMotion.Intro(introRig,style,age,camera);
             if(style!="dev-siren"){SourceCharacter(introRig,actor,arena.Time,weapon:false);IntroWeapon(style);TeamBands(introRig,NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,pilot.Seat.AuthorityBoss,pilot.Seat.team,pilot.Seat.id==arena.LocalId));}if(!SourceStage(style,age,camera))throw new System.InvalidOperationException("Missing source entrance stage: "+style);
