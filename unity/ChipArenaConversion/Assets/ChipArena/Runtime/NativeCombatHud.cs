@@ -32,6 +32,39 @@ namespace ChipArena.UnityConversion
             NativeUi.Backdrop(r,6,4,e);NativeUi.Round(r,NativeUi.Hex(0x0d0f16,.72f*e),6);NativeUi.Fill(new Rect(r.x,r.y+3,2,r.height-6),NativeUi.Hex(0xff6b35,e));
             for(int i=0;i<lines.Length;i++)NativeUi.Text(new Rect(r.x+11,r.y+7+i*13*1.45f,w-22,13*1.45f),lines[i],13,NativeUi.Hex(0xd9ecf3,e),TextAnchor.MiddleLeft,shadow:new Color(0,0,0,e));
         }
+        // main.ts drawHud .leet-status (rules in NativeLeetStatus), in the fight: the controller's CONTROLLING name with the
+        // countdown and "Your body is vulnerable", the possessed pilot's POSSESSED BY name with the countdown, else the Admin
+        // Pause countdown. The host knows ControlledBy and ControlUntil; a guest is sent only each pilot's Controlling link,
+        // so it finds its possessor by that link and counts the 5 s from when the link first appears.
+        private int leetLinkFrom,leetLinkTo;private float leetLinkAt;private string leetTitle,leetTitleName;private bool leetTitleControlling;
+        private void LeetStatus()
+        {
+            if(match.Phase!=NativePhase.Fight||Event.current.type!=EventType.Repaint){if(match.Phase!=NativePhase.Fight)leetLinkFrom=leetLinkTo=0;return;}
+            var me=arena.Local;float now=arena.Time;NativePilot controller=null,target=null;bool controlling=me.Controlling!=null;
+            if(controlling){controller=me;target=me.Controlling;}
+            else{controller=me.ControlledBy;if(controller==null)foreach(var q in arena.Pilots)if(q.Controlling==me){controller=q;break;}if(controller!=null)target=me;}
+            if(controller==null){leetLinkFrom=leetLinkTo=0;if(now<me.FrozenUntil)LeetBox(NativeLeetStatus.PauseText,NativeHudText.Seconds(me.FrozenUntil-now));return;}
+            float until=me.ControlUntil;
+            if(controller.Seat.id!=leetLinkFrom||target.Seat.id!=leetLinkTo){leetLinkFrom=controller.Seat.id;leetLinkTo=target.Seat.id;leetLinkAt=now;}
+            if(arena.Replica||!(until>0))until=leetLinkAt+NativeLeetStatus.ControlSeconds;
+            string name=controlling?target.Seat.name:controller.Seat.name;
+            if(leetTitle==null||controlling!=leetTitleControlling||!ReferenceEquals(name,leetTitleName)){leetTitleControlling=controlling;leetTitleName=name;leetTitle=NativeLeetStatus.Title(controlling,name);}
+            LeetBox(leetTitle,controlling?NativeHudText.SecondsVulnerable(until-now):NativeHudText.Seconds(until-now));
+        }
+        // .leet-status: a grid of the bold, tracked title over the 13 px line, centred, 21% down; square #45ff87 edge.
+        private static void LeetBox(string title,string sub)
+        {
+            float tw=U.Measure(title,NativeLeetStatus.TitleSize,true,true,NativeLeetStatus.TitleTracking).x+NativeLeetStatus.TitleTracking*NativeLeetStatus.TitleSize,sw=U.Measure(sub,NativeLeetStatus.SubSize,false,true).x;
+            float inner=Mathf.Max(tw,sw),b=NativeLeetStatus.Border,w=inner+2*NativeLeetStatus.PadX+2*b,h=2*NativeLeetStatus.PadY+NativeLeetStatus.TitleLine+NativeLeetStatus.Gap+NativeLeetStatus.SubLine+2*b;
+            var r=new Rect(Mathf.Round(U.W/2-w/2),U.H*NativeLeetStatus.Top,w,h);Color ink=U.Hex(NativeLeetStatus.Ink);
+            U.Glow(r,U.Hex(NativeLeetStatus.GlowColor,NativeLeetStatus.GlowAlpha),NativeLeetStatus.GlowSpread);
+            U.Fill(r,U.Hex(NativeLeetStatus.Fill,NativeLeetStatus.FillAlpha));var edge=U.Hex(NativeLeetStatus.Edge);
+            U.Fill(new Rect(r.x,r.y,r.width,b),edge);U.Fill(new Rect(r.x,r.yMax-b,r.width,b),edge);U.Fill(new Rect(r.x,r.y+b,b,r.height-2*b),edge);U.Fill(new Rect(r.xMax-b,r.y+b,b,r.height-2*b),edge);
+            float x=r.x+b+NativeLeetStatus.PadX,y=r.y+b+NativeLeetStatus.PadY;
+            // The tracking follows the last glyph too, so the browser's centred title sits half a letter-space left.
+            U.Text(new Rect(x-NativeLeetStatus.TitleTracking*NativeLeetStatus.TitleSize/2,y,inner,NativeLeetStatus.TitleLine),title,NativeLeetStatus.TitleSize,ink,TextAnchor.MiddleCenter,bold:true,mono:true,tracking:NativeLeetStatus.TitleTracking);
+            U.Text(new Rect(x,y+NativeLeetStatus.TitleLine+NativeLeetStatus.Gap,inner,NativeLeetStatus.SubLine),sub,NativeLeetStatus.SubSize,ink,TextAnchor.MiddleCenter,mono:true);
+        }
         private void CombatWorldHud(float scale,float width,float height)
         {
             if(menu||arena?.Local==null||cameraView==null||IntroActive||ReplayActive)return;
@@ -66,7 +99,7 @@ namespace ChipArena.UnityConversion
             else combatTrack.Clear();
             GUI.color=old;
             DeathLine();
-            var local=arena.Local;if(local.Controlling!=null)GUI.Label(new Rect(width/2-180,140,360,40),"CONTROLLING "+local.Controlling.Seat.name,label);else if(arena.Time<local.FrozenUntil)GUI.Label(new Rect(width/2-180,140,360,40),"ADMIN PAUSE · "+(local.FrozenUntil-arena.Time).ToString("0.0")+"s",label);
+            LeetStatus();var local=arena.Local;
             if(arena.Pve!=null)
             {
                 var row=arena.Pve.Rows.TryGetValue(local.Seat.id,out var r)?r:null;

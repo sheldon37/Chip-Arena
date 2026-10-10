@@ -14,12 +14,11 @@ namespace ChipArena.UnityConversion
         public static bool Damages(EventKind kind)=>kind==EventKind.Hit||kind==EventKind.Headshot||kind==EventKind.BurnTick||kind==EventKind.PoisonTick;
         // A Unity damage event the source would have emitted at all (`if(actual>.05)this.emit('hit',...)`).
         public static bool SourceHit(EventKind kind,float amount)=>Damages(kind)&&amount>HitFloor;
-        // The kinds the legacy ParticleSystem burst was written for, plus collapse, which event-vfx.ts:29 bursts like a hit
-        // (6 particles, 0xfbc98b). The other PR #66 kinds (blasts, fields, ticks, procs, PvE, DEV moves) are not ordinary
-        // hits; C6/C10 own their visuals. native: a native arena, where a death draws no burst either: event-vfx.ts:29 has no
-        // death, a pilot's death is its kill effect (C18) and an add's its corpse (owner playtest 2026-10-10: every kill of a
-        // Siren add popped a 24-particle red burst). The prototype lab keeps its kill burst.
-        public static bool HitBurst(EventKind kind,bool native=false)=>kind==EventKind.Hit||kind==EventKind.Headshot||kind==EventKind.Block||kind==EventKind.Death&&!native||kind==EventKind.Break||kind==EventKind.Impact||kind==EventKind.Collapse;
+        // The kinds the prototype lab's legacy ParticleSystem burst was written for, plus collapse. native: a native arena,
+        // which never draws it: its hits, blocks, breaks, impacts and collapses take the source's voxel sparks (event-vfx.ts:29,
+        // NativeImpactCues, drawn by NativeBlastPresentation), and a death none at all (a pilot's death is its kill effect,
+        // C18, and an add's its corpse; owner playtest 2026-10-10).
+        public static bool HitBurst(EventKind kind,bool native=false)=>!native&&(kind==EventKind.Hit||kind==EventKind.Headshot||kind==EventKind.Block||kind==EventKind.Death||kind==EventKind.Break||kind==EventKind.Impact||kind==EventKind.Collapse);
         // pve/tracks.ts AttackedTrack: any `hit` on me with damage, burn and poison ticks included.
         public static bool Attacked(in ArenaEvent e,int local,float now,float window)=>local>0&&e.Target==local&&SourceHit(e.Kind,e.Amount)&&now-e.Time>=0&&now-e.Time<window;
     }

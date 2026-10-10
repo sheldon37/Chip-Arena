@@ -16,6 +16,49 @@
 - Automation-only PR #95 now retains failed Unity logs privately; its 71-test
   Linux/Windows suite passed. Log retrieved from run `38078057168`.
 
+## 2026-10-10 — Claude — Early-port placeholders, batches 1–3: impact VFX, rig dressing, HUD/menus (owner request)
+- Branch `claude/sleepy-ritchie-g8ruhv` (PR #62), merged on top of the cloud head `d9ebe85` (Astra's victim pose, revive hologram and intro audio clock). Batches built on `claude/placeholders-1` `9db1d32`, `-2` `8f95076` and `-3` `cf01e49`. Presentation only. No change to simulation, rules, hit timing, hitboxes, damage, cooldowns, movement, network frames or saves.
+- B1, impacts: the native-arena ParticleSystem hit burst is replaced by the source's event-vfx voxel sparks for hit, block, break, impact and collapse (`Core/NativeImpactCues.cs`). Also ported from the source:
+  - proc impacts (critical, catch, split, ricochet);
+  - saw, lava and spike-rise hazard sparks;
+  - green L33t bursts and streaks;
+  - Ball Lightning arc lines (the cube bars are gone);
+  - the Pong rally paddle and streak;
+  - the grey rocket dud.
+  The flat Siren halos are removed. Standard melee hits get the weight-scaled spark flash, and slams get the source's dust and stones (`Runtime/NativeMeleeFlash.cs`). No new shaders.
+- B2, rig dressing:
+  - body chips, i.e. the source `bodyModifiers` (`Core/NativeBodyChips.cs`);
+  - the right-hand spell charge orb, the Ansatsuken charge orb and the element hand motes (`Core/NativeSpellCharge.cs`);
+  - block-cooldown dimming, plus the Ansatsuken parry flash drawn as a ghost overlay, an approximation of the source tint (`Core/NativeBlockTint.cs`);
+  - the Siren's weapon socket stays hidden, as in the source (`NativeWeaponDressing.SocketShown`);
+  - the source first-person base for the fighters' fists.
+  Arena and first-person rigs only. Intro, viewer and draft rigs stay bare.
+- B3, HUD and menus (`Core/NativeHudRules.cs`):
+  - the proc/tick hitmarker and the crisp X with corner tips;
+  - SPRINT DEPLETED and the SPRINTING tag;
+  - the L33t CONTROLLING / POSSESSED BY / ADMIN PAUSE box;
+  - the DEV fighter cards, charge bar and combo meters;
+  - the Siren mode/move HUD.
+  The home Catalogue link is now developer-only. The Sandbox gains Restore, Arena Reset, Test Block, the Draft/Rarities/Knockout/My Death previews and a debris launcher, all wired to the existing calls.
+- Merge: kept both sides in `NativeSourcePresentation` (Astra's `NativeSirenVictimPose` weapon hide and `ClearRevives`, plus the rig dressing) and in `HiddenSweep` (Astra's `posed` reuse, plus the hand motes).
+- Checks on the merged head:
+  - unity-check: runtime+editor build OK;
+  - Python: 52 OK (1 skipped);
+  - package_source: passed, 951 files;
+  - check_relay: exit 0, 221 PASS, with new impact-cue, rig-dressing and HUD parity fixtures generated from the pinned source;
+  - `git diff --check` is clean.
+  The planned two-lens subagent reviews did not run because of the usage limit. I reviewed the three diffs myself.
+- Not run: the Unity Editor, a real D3D11 compile (no new shaders), a Windows player, live host/guest/killcam play, and the parry-flash look under real lighting.
+- Astra follow-ups (optional, presentation data only):
+  - Impact `From` and colour on every Impact; Hit events at the contact point;
+  - `slowed` / `meleeRebound` / missing `leet-*` events, the rocket-dud Detail, and lightning-chain / Blink Strike Arc events;
+  - guest replication of `SprintExhausted`, the L33t `ControlUntil` and the Siren cooldowns;
+  - hit elements on Hit events;
+  - the source Sandbox debris modes and the one-chip-per-rarity preview;
+  - an exact parry time and dash clock.
+- Not done: B4 has only partial work (the death-broadcast firework is ported; the vent fall/splat is unwired), and its revive hologram is superseded by Astra's `b1f908d`. B5 (world/stage items) is research only. Both wait.
+- Status: implemented and merged on the branch; pushed to the cloud branch for the test channel; not released by Claude.
+
 ## 2026-10-10 — Codex/Astra — Siren victim animation and PvE holographic repair
 - Task `codex/unity-grab-revive`, base cloud `efb4fa4017e68b12dbfda2db166e52f397913539`; owner reports the grabbed player remains idle and requests the Electron holographic revival back. Restores the existing source presentations (`siren/fx.ts` and `pve/downed.ts`) in Unity.
 - Replicate the actual victim's holder/catch/crush/release fields. Pose all rigs before drawing, attach the struggling victim to this frame's claw, suppress the held weapon, and use explicit identity for guest flames/cameras. Held guests no longer predict locomotion. The visual pose does not move the authoritative collider.
