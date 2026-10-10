@@ -67,7 +67,9 @@ namespace ChipArena.UnityConversion
         {
             int n=at.Length-1; if(t<=at[0]) return marks[0]; if(t>=at[n]) return marks[n];
             int i=0; while(at[i+1]<t) i++;
-            float Slope(int k) => (marks[k+1]-marks[k])/(at[k+1]-at[k]);
+            // A zero-length knot span (a cut with no windup: the Siren's, whose weapon windup is 0) has no slope; dividing by it
+            // made the Hermite tangents and the sampled clip time NaN, which SampleAnimation wrote into every joint.
+            float Slope(int k) => at[k+1]!=at[k]?(marks[k+1]-marks[k])/(at[k+1]-at[k]):0;
             float Tangent(int k) { if(k==0) return Slope(0); if(k==n) return Slope(n-1); float a=Slope(k-1),b=Slope(k); return a*b<=0?0:2*a*b/(a+b); }
             float h=at[i+1]-at[i],u=(t-at[i])/h,u2=u*u,u3=u2*u;
             return (2*u3-3*u2+1)*marks[i]+(u3-2*u2+u)*h*Tangent(i)+(-2*u3+3*u2)*marks[i+1]+(u3-u2)*h*Tangent(i+1);

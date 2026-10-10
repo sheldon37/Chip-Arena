@@ -65,7 +65,7 @@ namespace ChipArena.UnityConversion
             if(siren)NativeSourceMotion.Sample("siren-idle-melee",reduced?0:(float)time,0,draftPose);
             stage.Frame(camera.aspect,trayLine,seat.hat!="none",siren,dt);stage.Step(dt,age,focus,consider,cards,count,siren,reduced);
             draftRig.Root.transform.SetPositionAndRotation(new Vector3(0,.88f,0),Quaternion.identity);
-            for(int i=0;i<22;i++){draftRig.Bones[i].localPosition=CapturedAnimation.Vec(CapturedRig.Mirror(draftPose.Position[i]));draftRig.Bones[i].localRotation=CapturedAnimation.Quat(CapturedRig.Mirror(draftPose.Rotation[i]));}
+            NativePoseWriter.Write(draftRig.Bones,draftPose,"the draft rig");
             float pulse=age>=0&&!reduced?NativeDraftPlant.Pulse(age):-1,flash=pulse>=0?(1-pulse)*(1-pulse):0;
             camera.fieldOfView=NativeDraftStage.Fov;camera.transform.position=Stage(stage.CameraPosition);camera.transform.LookAt(Stage(stage.CameraTarget));NativeLighting.Draft(camera,tint,flash);
             var plant=stage.Plant;int hand=stage.Left?9:13;

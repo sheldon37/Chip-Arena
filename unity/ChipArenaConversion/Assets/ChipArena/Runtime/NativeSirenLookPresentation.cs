@@ -222,7 +222,7 @@ namespace ChipArena.UnityConversion
             var melee=t.Melee??(t.Melee=new CapturedRig.Pose());var ranged=t.Ranged??(t.Ranged=new CapturedRig.Pose());
             if(!NativeSourceMotion.Sample(NativeSirenLook.IdleMelee,time,0,melee)||!NativeSourceMotion.Sample(NativeSirenLook.IdleRanged,time,0,ranged))return;
             NativeSirenLook.SwapBody(melee,ranged,blend,shudder,time,melee);
-            for(int i=0;i<rig.Bones.Length&&i<CapturedRig.Bones.Length;i++){rig.Bones[i].localPosition=CapturedAnimation.Vec(CapturedRig.Mirror(melee.Position[i]));rig.Bones[i].localRotation=CapturedAnimation.Quat(CapturedRig.Mirror(melee.Rotation[i]));}
+            NativePoseWriter.Write(rig.Bones,melee,"a Siren rig");
         }
         /// <summary>A Siren nobody moves (the draft's idle): melee, mouth closed, the flames alive on `time`.</summary>
         private NativeSirenLookPose SirenStill(float time)=>sirenStill.Set(NativeSirenLook.Neutral(time));

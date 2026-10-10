@@ -11,19 +11,23 @@ namespace ChipArena.UnityConversion
     public static class NativeSourceMotion
     {
         private static Dictionary<string,SourceMotionClip> clips;
-        private static void Ensure(){if(clips!=null)return;var data=JsonUtility.FromJson<SourceMotionSet>(NativeSourceModels.Decode("SourceMotion"));clips=new Dictionary<string,SourceMotionClip>();foreach(var c in data.clips){if(c.frames<2||c.duration<=0||c.values==null||c.values.Length!=c.frames*22*7||c.values.Any(v=>!MathUtil.Finite(v))||c.key.StartsWith("intro-")&&(c.roots==null||c.roots.Length!=c.frames*10||c.cameras==null||c.cameras.Length!=c.frames*10||c.roots.Any(v=>!MathUtil.Finite(v))||c.cameras.Any(v=>!MathUtil.Finite(v))))throw new InvalidOperationException("Invalid motion clip "+c.key);clips.Add(c.key,c);}}
+        private static void Ensure(){if(clips!=null)return;var data=JsonUtility.FromJson<SourceMotionSet>(NativeSourceModels.Decode("SourceMotion"));clips=new Dictionary<string,SourceMotionClip>();foreach(var c in data.clips){if(c.frames<2||c.duration<=0||c.values==null||c.values.Length!=c.frames*22*7||c.values.Any(v=>!MathUtil.Finite(v))||c.key.StartsWith("intro-")&&(c.roots==null||c.roots.Length!=c.frames*10||c.cameras==null||c.cameras.Length!=c.frames*10||c.roots.Any(v=>!MathUtil.Finite(v))||c.cameras.Any(v=>!MathUtil.Finite(v))))throw new InvalidOperationException("Invalid motion clip "+c.key);clips.Add(c.key,c);}
+            // The weapon intros' clearance plans are built with the clips (NativeIntroMotion.Prepare), not on an entrance's first frame.
+            foreach(var c in data.clips)if(c.key.StartsWith("intro-weapon-",StringComparison.Ordinal))NativeIntroMotion.Prepare(c.key.Substring(6),c.values,c.frames,c.duration);}
         public static int ClipCount{get{Ensure();return clips.Count;}}
         public static bool Sample(string key,float age,float duration,CapturedRig.Pose pose)
         {
             Ensure();if(!clips.TryGetValue(key,out var clip))return false;float fraction=clip.loop?Mathf.Repeat(age,clip.duration)/clip.duration:Mathf.Clamp01(age/(duration>0?duration:clip.duration));float index=fraction*(clip.frames-1);int a=Math.Min(clip.frames-1,(int)index),b=Math.Min(clip.frames-1,a+1);float t=index-a;
             for(int bone=0;bone<22;bone++){int first=(a*22+bone)*7,last=(b*22+bone)*7;var v=clip.values;var p=new NVector(v[first],v[first+1],v[first+2]);var q=new NQuaternion(v[first+3],v[first+4],v[first+5],v[first+6]);pose.Position[bone]=NVector.Lerp(p,new NVector(v[last],v[last+1],v[last+2]),t);pose.Rotation[bone]=NQuaternion.Slerp(q,new NQuaternion(v[last+3],v[last+4],v[last+5],v[last+6]),t);}return true;
         }
-        // One pose for every intro frame (main thread only; Sample writes every joint), so the entrance allocates nothing per frame.
+        // One pose for every intro frame (main thread only; NativeIntroMotion writes every joint), so the entrance allocates nothing per frame.
         private static readonly CapturedRig.Pose introPose=new CapturedRig.Pose();private static string introStyle,introKey;
         public static void Intro(CapturedAnimation.Player rig,string style,float age,Camera camera)
         {
-            Ensure();if(style!=introStyle){introStyle=style;introKey="intro-"+style;}string key=introKey;if(!clips.TryGetValue(key,out var clip))return;var pose=introPose;Sample(key,age,clip.duration,pose);
-            for(int i=0;i<22;i++){rig.Bones[i].localPosition=CapturedAnimation.Vec(CapturedRig.Mirror(pose.Position[i]));rig.Bones[i].localRotation=CapturedAnimation.Quat(CapturedRig.Mirror(pose.Rotation[i]));}
+            Ensure();if(style!=introStyle){introStyle=style;introKey="intro-"+style;}string key=introKey;if(!clips.TryGetValue(key,out var clip))return;
+            // A non-finite clock (never produced by the match or preview clocks) holds the last frame instead of writing NaN.
+            if(!MathUtil.Finite(age)){NativePoseWriter.Warn("the intro rig (non-finite age)");return;}
+            var pose=introPose;NativeIntroMotion.Pose(style,clip.values,clip.frames,clip.duration,age,pose);NativePoseWriter.Write(rig.Bones,pose,"the intro rig");
             float index=Mathf.Clamp01(age/clip.duration)*(clip.frames-1);int a=Math.Min(clip.frames-1,(int)index)*10,b=Math.Min(clip.frames-1,(int)index+1)*10;float f=index-(int)index;
             float At(float[] v,int n)=>Mathf.Lerp(v[a+n],v[b+n],f);Vector3 V(float[] v,int n)=>new Vector3(-At(v,n),At(v,n+1),At(v,n+2));
             var roots=clip.roots;rig.Root.transform.position=V(roots,0);rig.Root.transform.rotation=Quaternion.Slerp(new Quaternion(roots[a+3],-roots[a+4],-roots[a+5],roots[a+6]),new Quaternion(roots[b+3],-roots[b+4],-roots[b+5],roots[b+6]),f);rig.Root.transform.localScale=new Vector3(At(roots,7),At(roots,8),At(roots,9));

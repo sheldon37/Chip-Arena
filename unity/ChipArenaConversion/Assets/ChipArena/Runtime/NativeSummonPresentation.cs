@@ -36,7 +36,7 @@ namespace ChipArena.UnityConversion
             if(summon&&age>=.9f){if(age<1.6f)VoxelCloud(death.position,age-.75f,death.model=="summon-toy"?7:4,death.seed,24);return true;}if(horde&&age>=2.3f)return true;
             if(!minionRigs.TryGetValue(death.id,out var rig)){rig=captured.Create(transform,death.id);minionRigs.Add(death.id,rig);}
             if(summon)NativeSummonPose.Death(minionPose,death.model=="summon-toy",age);else NativeSourceMotion.Sample(death.model+"-death",age,2.3f,minionPose);
-            for(int i=0;i<22;i++){rig.Bones[i].localPosition=CapturedAnimation.Vec(CapturedRig.Mirror(minionPose.Position[i]));rig.Bones[i].localRotation=CapturedAnimation.Quat(CapturedRig.Mirror(minionPose.Rotation[i]));}
+            NativePoseWriter.Write(rig.Bones,minionPose,"a summon rig");
             rig.Root.transform.SetPositionAndRotation(death.position,Quaternion.Euler(0,death.yaw,0));rig.Root.transform.localScale=Vector3.one*(summon?(death.model=="summon-toy"?.6f:.85f):1);
             sourceModels.Queue(death.model,rig.Root.transform.localToWorldMatrix,b=>rig.Bones[b].localToWorldMatrix,b=>MinionPartVisible(death.lost,b),opacity:summon?1:Mathf.Clamp01((2.3f-age)/.3f));return true;
         }

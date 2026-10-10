@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
                 if(burst<2.2f)for(int i=0;i<72;i++){float y=1-2*(i+.5f)/72,phi=i*2.39996323f,r=Mathf.Sqrt(1-y*y),distance=2+i%7*.22f;Vector3 dir=new Vector3(Mathf.Cos(phi)*r,y,Mathf.Sin(phi)*r)*distance;Add(8,Matrix4x4.TRS(center+(dir*burst-Vector3.up*burst*burst*.4f)*5.5f,Quaternion.identity,Vector3.one*.6f*(1-burst/2.2f)));}
                 if(!broadcastRigs.TryGetValue(item.Seed,out var rig)){rig=captured.Create(transform,-item.Seed);broadcastRigs[item.Seed]=rig;}
                 float q=Mathf.Clamp01(burst/.32f)-1,reveal=1+2.3f*q*q*q+1.3f*q*q,show=MathUtil.Smooth(burst/.26f);var seat=arena.Match.Seat(item.Victim);var pose=new CapturedRig.Pose();pose.Rotation[5]=CapturedRig.Euler(Mathf.Sin(age*.85f)*.018f,Mathf.Sin(age*.6f)*.045f);
-                for(int b=0;b<22;b++){rig.Bones[b].localPosition=CapturedAnimation.Vec(CapturedRig.Mirror(pose.Position[b]));rig.Bones[b].localRotation=CapturedAnimation.Quat(CapturedRig.Mirror(pose.Rotation[b]));}
+                NativePoseWriter.Write(rig.Bones,pose,"a death broadcast rig");
                 rig.Root.transform.SetPositionAndRotation(center-Vector3.up*7,Quaternion.identity);rig.Root.transform.localScale=new Vector3(28,28*Math.Max(.01f,reveal),28);
                 bool Visible(int b)=>b==3||b==4||b==5||b==6||b==10;float alpha=.55f*fade*show*(.96f+.04f*Mathf.Sin(age*29));sourceModels.Queue(sourceModels.Hologram("pilot"),rig.Root.transform.localToWorldMatrix,b=>rig.Bones[b].localToWorldMatrix,Visible,opacity:alpha);
                 if(seat?.hat!=null)sourceModels.Queue(sourceModels.Hologram("hat-"+seat.hat),rig.Root.transform.localToWorldMatrix,b=>rig.Bones[b].localToWorldMatrix,opacity:alpha);

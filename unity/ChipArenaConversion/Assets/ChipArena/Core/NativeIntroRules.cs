@@ -55,6 +55,41 @@ namespace ChipArena.UnityConversion
             int start=track*frames*20;for(int f=1;f<frames;f++)for(int k=17;k<20;k++)if(values[start+f*20+k]!=values[start+k])return true;return false;
         }
         /// <summary>
+        /// Where a baked scene track is sampled at `age` (NativeSceneMotion.Matrix): rows `a` and `b` (value offsets) and the
+        /// blend between them. The blend is held at 0 (row a as baked) when the next row is hidden: tools/export_cinematics.mjs
+        /// fills the rows outside an object's lifetime with an identity matrix, so lerping toward it flew every dying voxel to
+        /// the stage origin as a full-size 1 m box for one frame (the boxes flashing at the pilot's feet). It is also held for a
+        /// voxel-pool slot (`voxel`: its tint varies) that holds another particle in the next row: ChipBlasts swap-removes spent
+        /// voxels, so a slot jumps to a different voxel, and lerping slid a cube across the scene between the two (the trails).
+        /// </summary>
+        public static float StageBlend(float[] values,int frames,int track,float duration,float age,bool voxel,out int a,out int b)
+        {
+            float u=age/duration;if(!(u>0))u=0;else if(u>1)u=1;float frame=u*(frames-1);int f=Math.Min(frames-1,(int)frame);
+            a=(track*frames+f)*20;b=(track*frames+Math.Min(frames-1,f+1))*20;float blend=frame-f;
+            return blend>0&&StageContinuous(values,a,b,voxel)?blend:0;
+        }
+        /// <summary>Whether a scene track moves smoothly from row offset `a` to `b` (both shown; a voxel slot keeps its particle).</summary>
+        public static bool StageContinuous(float[] values,int a,int b,bool voxel)
+        {
+            if(!(values[b+16]>.001f))return false;if(!voxel)return true;
+            float dx=values[b+12]-values[a+12],dy=values[b+13]-values[a+13],dz=values[b+14]-values[a+14];if(dx*dx+dy*dy+dz*dz>.35f*.35f)return false;
+            float sa=values[a]*values[a]+values[a+1]*values[a+1]+values[a+2]*values[a+2],sb=values[b]*values[b]+values[b+1]*values[b+1]+values[b+2]*values[b+2];if(sa>sb*2.04f||sb>sa*2.04f)return false;
+            for(int k=17;k<20;k++)if(Math.Abs(values[b+k]-values[a+k])>.2f)return false;return true;
+        }
+        /// <summary>
+        /// The alpha of an opaque voxel on a weapon-intro stage. The barrel smoke and floor dust (ChipBlasts' solid pool: grey
+        /// voxels that rise, grow and darken from SMOKE to ASH, then shrink away, weapon-intro-effects.ts) are MeshBasicMaterial
+        /// in the source, so they read as flat puffs; lit and opaque here they read as hard grey cubes. Alpha-blended they
+        /// read as soft puffs, densest at the muzzle (linear tint `max` .38, alpha .7) and thinning as they darken (.2 spent),
+        /// while the bake's own growth and shrink still ends each one. Saturated voxels (brass casings, embers) stay opaque (1).
+        /// </summary>
+        public static bool SoftSmoke(string style)=>style=="weapon-pistol"||style=="weapon-rifle"||style=="weapon-machinegun";
+        public static float SoftVoxelAlpha(float r,float g,float b)
+        {
+            float max=Math.Max(r,Math.Max(g,b)),min=Math.Min(r,Math.Min(g,b));if(!(max>0))return 0;if((max-min)/max>.35f)return 1;
+            float t=(max-.02f)/.3f;t=t<0?0:t>1?1:t;return .2f+.5f*t*t*(3-2*t);
+        }
+        /// <summary>
         /// A glow voxel (ChipBlasts: MeshBasicMaterial, AdditiveBlending, fading by dimming its instance colour to black) drawn
         /// with the alpha-blended source material: the dimming moves into alpha and the colour keeps its hue, so colour x alpha is
         /// the source's additive term and a spent voxel fades out instead of turning into an opaque dark cube. Returns the alpha

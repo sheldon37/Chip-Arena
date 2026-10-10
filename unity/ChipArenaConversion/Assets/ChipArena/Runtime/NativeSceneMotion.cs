@@ -5,7 +5,7 @@ using UnityEngine;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class NativeSceneLight {public string kind;public float[] values;}
-    [Serializable] public sealed class NativeSceneClip {public string key;public float duration;public int frames,tracks,dropped=-1;public int[] victim;public float[] values,environment;public NativeSceneLight[] lights;}
+    [Serializable] public sealed class NativeSceneClip {public string key;public float duration;public int frames,tracks,dropped=-1;public int[] victim;public float[] values,environment;public NativeSceneLight[] lights;[NonSerialized] public bool[] voxel;}
     [Serializable] public sealed class NativeSceneClips {public NativeSceneClip[] clips;}
     public static class NativeSceneMotion
     {
@@ -14,7 +14,11 @@ namespace ChipArena.UnityConversion
         public static int Count{get{Ensure();return clips.Count;}}
         public static NativeSceneClip Get(string key){Ensure();return clips.TryGetValue(key,out var clip)?clip:null;}
         public static Matrix4x4 Matrix(NativeSceneClip c,int track,float age)
-        {if(track<0||track>=c.tracks)return Matrix4x4.identity;float frame=Mathf.Clamp01(age/c.duration)*(c.frames-1);int a=(track*c.frames+(int)frame)*20,b=(track*c.frames+Math.Min(c.frames-1,(int)frame+1))*20;float blend=frame-(int)frame;var m=new Matrix4x4();for(int i=0;i<16;i++){int row=i%4,column=i/4;float sign=(row==0?-1:1)*(column==0?-1:1);m[row,column]=Mathf.Lerp(c.values[a+i],c.values[b+i],blend)*sign;}return m;}
+        {
+            if(track<0||track>=c.tracks)return Matrix4x4.identity;
+            // Never toward a hidden row (the bake's identity filler) or across a voxel slot's change of particle (NativeIntroRules.StageBlend).
+            if(c.voxel==null){var voxel=new bool[c.tracks];for(int t=0;t<c.tracks;t++)voxel[t]=NativeIntroRules.TintVaries(c.values,c.frames,t);c.voxel=voxel;}
+            float blend=NativeIntroRules.StageBlend(c.values,c.frames,track,c.duration,age,c.voxel[track],out int a,out int b);var m=new Matrix4x4();for(int i=0;i<16;i++){int row=i%4,column=i/4;float sign=(row==0?-1:1)*(column==0?-1:1);m[row,column]=Mathf.Lerp(c.values[a+i],c.values[b+i],blend)*sign;}return m;}
         public static Color Tint(NativeSceneClip c,int track,float age){if(track<0||track>=c.tracks)return Color.white;int f=Math.Min(c.frames-1,(int)(Mathf.Clamp01(age/c.duration)*(c.frames-1))),i=(track*c.frames+f)*20+17;return new Color(c.values[i],c.values[i+1],c.values[i+2]);}
         public static float Opacity(NativeSceneClip c,int track,float age)
         {if(track<0||track>=c.tracks)return 1;int frame=Math.Min(c.frames-1,(int)(Mathf.Clamp01(age/c.duration)*(c.frames-1)));return c.values[(track*c.frames+frame)*20+16];}
