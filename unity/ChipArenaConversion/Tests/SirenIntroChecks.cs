@@ -11,7 +11,8 @@ using ChipArena.UnityConversion;
 // (PveContent bossMusic); the cell's geometry and bulb in the scene bank; the stage block's light actually reaching the
 // cell's walls and floor (three's falloff, independent of Unity's pixel-light limit), with the lit beats visible and the
 // dark beats black after the tone curve; every entrance stage's point lights fitting the block; the intro music routing;
-// and the source shaders' stage block contract. Unity's rendering is not exercised (see the offline renders in DEV_LOG).
+// the source shaders' stage block contract; and the clock a guest draws the entrance at (NativeIntroClock) against its locally
+// playing song. Unity's rendering and audio are not exercised (see the offline renders in DEV_LOG).
 internal static class SirenIntroChecks
 {
     private static void Check(bool ok,string what){if(!ok)throw new Exception("Siren intro: "+what);}
@@ -176,6 +177,60 @@ internal static class SirenIntroChecks
         }
         Check(NativeStageLighting.Exposure==.92&&NativeStageLighting.Aces(0)==0&&NativeStageLighting.Aces(100)<=1&&NativeStageLighting.Aces(.05)<.05&&NativeStageLighting.Aces(.3)>.3,"tone curve");
         yield return "stage shaders: NativeSourceLit and NativeSourceTransparent carry the "+NativeStageLighting.Max+"-light stage block, three's falloff and the ACES stage tone, gated to entrance draws";
+        // 9. The clock the live entrance is drawn at (NativeIntroClock). A guest's replicated age steps at 20 Hz behind a jittery
+        // link while its boss song plays locally; drawn on the clock, every stutter shows at 60 Hz and above, starts within a
+        // frame of the heard beat, and the age never runs backwards; drawn on the raw age it is up to 80 ms off the song.
+        double worstError=0;int checkedWindows=0;
+        foreach(double fps in new[]{30.0,60,144,0})
+        {
+            var run=GuestRun(beats,fps,true,true);string at=fps>0?" at "+fps+" fps":" at uneven frame times";
+            Check(run.Monotonic,"intro clock runs backwards"+at);Check(run.MaxError<=.025,"intro clock is "+run.MaxError.ToString("F4")+" s off the heard song"+at);
+            Check(run.Skipped==0,run.Skipped+" stutters skipped"+at);Check(run.MaxOnset<=run.Interval+.03,"a stutter starts "+run.MaxOnset.ToString("F4")+" s off its heard beat"+at);
+            worstError=Math.Max(worstError,run.MaxError);checkedWindows+=run.Windows;
+        }
+        var raw=GuestRun(beats,144,true,false);Check(raw.MaxError>.04&&raw.Skipped>0,"the stepped replicated age is "+raw.MaxError.ToString("F4")+" s off the song and skips "+raw.Skipped+" stutters (the harness no longer shows the 20 Hz steps)");
+        var silent=GuestRun(beats,144,false,true);Check(silent.Monotonic&&silent.Smooth&&silent.MaxLag<=.06,"without the song the clock follows the replicated age smoothly ("+silent.MaxLag.ToString("F4")+" s)");
+        Check(NativeIntroClock.Target(1,1.2)==1.2&&NativeIntroClock.Target(1,-1)==1&&NativeIntroClock.Target(.1,9.2)==.1&&NativeIntroClock.Target(2,2+NativeIntroClock.SongWindow)==2,"intro clock target");
+        var jumps=new NativeIntroClock();jumps.Sample(8.9,.016);double next=jumps.Sample(0,.016);double resync=jumps.Sample(1.13,.016);jumps.Reset();
+        Check(next==0&&resync==1.13&&jumps.Sample(.5,.016)==.5&&jumps.Sample(double.NaN,.016)==.5,"intro clock jumps to a new entrance and a song resync at once");
+        yield return "intro clock: on a 20 Hz guest the Siren entrance stays within "+(worstError*1000).ToString("F1")+" ms of the heard song at 30/60/144 fps and uneven frames ("+checkedWindows+" stutter windows, none skipped from 60 fps); the raw age was "+(raw.MaxError*1000).ToString("F0")+" ms off and skipped "+raw.Skipped+" of "+raw.Windows+" at 144 fps";
+    }
+    private struct GuestResult{public bool Monotonic,Smooth;public double MaxError,MaxOnset,MaxLag,Interval;public int Skipped,Windows;}
+    // A guest watching the dev-siren entrance: the host sends its intro age every 50 ms; frames arrive in order 80-110 ms
+    // later; the boss song starts when the first one lands (at its age, as NativeAudio.Track cues it) and plays on the audio
+    // clock, its position read in 1024-sample mix blocks at 48 kHz (AudioSource.time). Renders at `fps` (0: uneven frame
+    // times), drawing at NativeIntroClock (`clock`) or at the raw replicated age; `song` false is a guest with no audio.
+    private static GuestResult GuestRun(double[] beats,double fps,bool song,bool clock)
+    {
+        const double latency=.08,block=1024/48000.0;var arrive=new double[200];uint seed=12345;
+        for(int k=0;k<arrive.Length;k++){seed=seed*1664525+1013904223;arrive[k]=Math.Max(k>0?arrive[k-1]:0,k*.05+latency+(seed>>8)/16777216.0*.03);}
+        double[] uneven={.011,.019,.014,.024,.009,.016};
+        var r=new GuestResult{Monotonic=true,Smooth=true,Interval=fps>0?1/fps:.024};var intro=new NativeIntroClock();
+        double start=arrive[0],now=start,last=-1;int frame=0,latest=0;
+        // The heard stutter windows (song time), each with whether a drawn frame was dark in it and its first dark frame's local time.
+        var windows=new List<(double from,double to,bool seen,double onset)>();bool dark=false;double opened=0;
+        for(double t=beats[NativeSirenIntroLight.BulbBeat];t<beats[NativeSirenIntroLight.RevealBeat]+.1;t+=.0002)
+        {bool d=NativeSirenIntroLight.Level(t,beats)<.1;if(d&&!dark)opened=t;if(!d&&dark)windows.Add((opened,t,false,double.NaN));dark=d;}
+        while(now-start<NativeSirenIntroLight.Cue(beats,NativeSirenIntroLight.RevealBeat)+.2)
+        {
+            while(latest+1<arrive.Length&&arrive[latest+1]<=now)latest++;
+            double age=latest*.05,heard=now-start,dt=frame==0?0:fps>0?1/fps:uneven[frame%uneven.Length];
+            double playback=song?Math.Floor(heard/block)*block:-1,drawn=clock?intro.Sample(NativeIntroClock.Target(age,playback),dt):age;
+            if(frame>0&&drawn<last)r.Monotonic=false;
+            if(frame>1&&clock&&(drawn-last<.3*dt||drawn-last>1.7*dt+1e-9))r.Smooth=false;
+            if(heard>.25){r.MaxError=Math.Max(r.MaxError,Math.Abs(drawn-heard));r.MaxLag=Math.Max(r.MaxLag,Math.Abs(drawn-age));}
+            if(NativeSirenIntroLight.Level(drawn,beats)<.1)for(int i=0;i<windows.Count;i++)
+            {
+                var w=windows[i];if(drawn<w.from||drawn>=w.to)continue;
+                if(!w.seen){w.seen=true;w.onset=heard-w.from;}windows[i]=w;
+            }
+            last=drawn;frame++;now+=fps>0?1/fps:uneven[frame%uneven.Length];
+        }
+        foreach(var w in windows)
+        {
+            if(w.to-w.from<1.25*r.Interval)continue;r.Windows++;if(!w.seen){r.Skipped++;continue;}r.MaxOnset=Math.Max(r.MaxOnset,Math.Abs(w.onset));
+        }
+        return r;
     }
     private static JsonDocument Decode(string root,string name)
     {

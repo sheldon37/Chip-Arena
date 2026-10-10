@@ -5,7 +5,8 @@ namespace ChipArena.UnityConversion
     /// The dev-siren cell's light on its baked stage (Core/NativeSirenIntroLight.cs, client/siren/intro.ts): NativeLighting.Intro
     /// hands the bulb and fill to the source shaders' stage block; here the bulb glow mesh follows the bulb's level (glowMaterial
     /// uIntensity) and the bulb's halo sprite, which the scene bank cannot hold, is drawn on the Siren effect layer. All of it
-    /// reads the intro age (the boss song's time) and the song's beats, the same clock and beat table the music plays from.
+    /// reads the age the entrance is drawn at (live: NativeIntroClock, locked to the boss song as this machine plays it) and the
+    /// song's beats, the same clock and beat table the music plays from.
     /// </summary>
     public sealed partial class ArenaPresentation
     {

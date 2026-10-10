@@ -87,6 +87,37 @@ namespace ChipArena.UnityConversion
         }
     }
     /// <summary>
+    /// Presentation only: the clock a live entrance is drawn at. The replicated intro age only moves when a host frame lands
+    /// (20 Hz on a guest, the host's 60 Hz fixed step), and the dev-siren cell's stutters are 37-83 ms dark windows on the boss
+    /// song's beats (NativeSirenIntroLight), so drawing at that age skips or doubles them and lets them drift from the song this
+    /// machine plays. This clock runs on the frame time and follows Target: the boss song's own playback time while it plays
+    /// near the intro age (the beats as heard; the source's interpolated snapshot time drives its song and its cell alike),
+    /// else the replicated age. Small errors (the age's steps, the audio position's mix-buffer steps) are pulled in without
+    /// running backwards; a jump past Snap (a new entrance, a song resync, a hitch) is taken at once. Match timing never reads it.
+    /// </summary>
+    public sealed class NativeIntroClock
+    {
+        /// <summary>Errors past this (s) are jumped, not pulled; under 1/Pull, so a pull never turns the clock back.</summary>
+        public const double Snap=.1;
+        /// <summary>How fast (1/s) a small error is pulled in.</summary>
+        public const double Pull=6;
+        /// <summary>The song only leads the clock while it is this close (s) to the intro age (a second dev-siren entrance in one match meets the song mid-track).</summary>
+        public const double SongWindow=.5;
+        private double value=double.NaN;
+        public void Reset(){value=double.NaN;}
+        /// <summary>The time to follow: `song` (playback seconds, negative when it is not playing) near `age`, else `age`.</summary>
+        public static double Target(double age,double song)=>song>=0&&Math.Abs(song-age)<SongWindow?song:age;
+        /// <summary>Advances by the frame time `dt` (at most .1 s) toward `target` and returns the age to draw (never negative).</summary>
+        public double Sample(double target,double dt)
+        {
+            if(double.IsNaN(target)||double.IsInfinity(target))return double.IsNaN(value)?0:value;
+            dt=Math.Max(0,Math.Min(.1,dt));
+            if(double.IsNaN(value)||Math.Abs(target-(value+dt))>Snap)value=target;
+            else{value+=dt;value+=(target-value)*Math.Min(1,dt*Pull);}
+            return Math.Max(0,value);
+        }
+    }
+    /// <summary>
     /// Presentation only: an entrance-stage light from the baked scene bank as a Unity built-in light. The bank holds three's
     /// physically based lights (linear colour, intensity; Lambert diffuse is albedo/PI in three r180, albedo alone in Unity's
     /// built-in Lambert), so the light Unity applies must be the linear colour x intensity / PI. The source's exposure .92 and

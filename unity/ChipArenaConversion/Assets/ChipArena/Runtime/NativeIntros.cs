@@ -10,6 +10,15 @@ namespace ChipArena.UnityConversion
         // The staged entrance (NativeIntroRules.Entrance): the replicated style, or the source's fallback when it has no stage.
         private string IntroStyle=>NativeIntroRules.Entrance(match.Phase==NativePhase.Intro?match.IntroStyle:"dev-siren");
         private float IntroAge=>match.Phase==NativePhase.Intro?(float)(match.Time-match.IntroStarted):arena.Pve.HoldDuration-arena.Pve.HoldLeft;
+        // The age the live entrance is drawn at (NativeIntroClock): smooth at any frame rate on the host and on guests, whose
+        // IntroAge steps at 20 Hz, and for dev-siren locked to the boss song as this machine plays it (NativeAudio ran first
+        // this frame), so the cell's stutters land on the beats heard. The overlay card and the stings keep IntroAge.
+        private readonly NativeIntroClock introClock=new NativeIntroClock();
+        private float IntroClockAge()
+        {
+            float age=IntroAge;
+            return (float)introClock.Sample(NativeIntroClock.Target(age,nativeAudio.SongPlayback(NativeIntroRules.IntroSong(IntroStyle))),Time.unscaledDeltaTime);
+        }
     }
     public sealed partial class ArenaPresentation
     {
