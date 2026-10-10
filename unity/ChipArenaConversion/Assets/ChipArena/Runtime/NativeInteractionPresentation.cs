@@ -53,12 +53,8 @@ namespace ChipArena.UnityConversion
             if(d?.kept==true)
             {
                 r.Body=new Matrix4x4[22];float age=Math.Max(0,time-d.at);
-                var clip=d.style=="siren-crush"?NativeSceneMotion.Get("death-siren-crush"):null;
-                if(clip?.victim?.Length==22)
-                {
-                    var root=Matrix4x4.TRS(d.position-Vector3.up*.865f,Quaternion.Euler(0,d.yaw,0),Vector3.one);
-                    for(int b=0;b<22;b++){r.Body[b]=root*NativeSceneMotion.Matrix(clip,clip.victim[b],Math.Min(age,2.6f));r.Missing[b]=NativeSceneMotion.Opacity(clip,clip.victim[b],Math.Min(age,2.6f))<=.001f;}
-                }
+                // A kept Siren-crush body is rebuilt from its dropped ragdoll as it lies (NativeSirenDropPresentation.cs).
+                if(d.style=="siren-crush"&&SirenDropPose(WeaponLoadout,d,age,r.Body,r.Missing)){}
                 // A kept vent-splat rebuilds from the body as drawn (vent-fall.ts; NativeVentDeathPresentation.cs).
                 else if(Vent(d.id) is VentBody vent&&vent.Seed==d.seed)for(int b=0;b<22;b++)r.Body[b]=vent.Bones[b];
                 else
