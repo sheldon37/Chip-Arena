@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
             if(pilot==null)return;style=NativeIntroRules.Entrance(style);sirenLookCamera=camera;if(introRig==null||introActor!=pilot.Seat.id){introRig?.Dispose();introRig=captured.Create(transform,-100);introActor=pilot.Seat.id;}
             sourceModels.Begin();foreach(var b in batches)b.Clear();FirstPerson=false;combatGlow?.Clear();particles.Clear();
             Actor actor=null;foreach(var a in arena.Snapshot().Actors)if(a.Id==pilot.Seat.id){actor=a;break;}actor??=pilot.Pose;NativeSourceMotion.Intro(introRig,style,age,camera);
-            if(style!="dev-siren"){SourceCharacter(introRig,actor,arena.Time,weapon:false);IntroWeapon(style,age);TeamBands(introRig,NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,pilot.Seat.AuthorityBoss,pilot.Seat.team,pilot.Seat.id==arena.LocalId));}if(!IntroStage(style,age,camera))throw new System.InvalidOperationException("Missing source entrance stage: "+style);
+            if(style!="dev-siren"){SourceCharacter(introRig,actor,arena.Time,weapon:false,halo:age);IntroWeapon(style,age);TeamBands(introRig,NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,pilot.Seat.AuthorityBoss,pilot.Seat.team,pilot.Seat.id==arena.LocalId));}if(!IntroStage(style,age,camera))throw new System.InvalidOperationException("Missing source entrance stage: "+style);
             DrawBatches(null,0,false);sourceModels.Flush(UsesInstancing);
         }
         // player-intros.ts: the bare intro rig holds only a weapon intro's own weapon (WEAPON_INTROS[style].spec) or the Emperor's

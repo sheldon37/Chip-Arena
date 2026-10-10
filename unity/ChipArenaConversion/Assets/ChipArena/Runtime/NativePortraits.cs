@@ -14,7 +14,8 @@ namespace ChipArena.UnityConversion
         public bool Same(in PortraitLook o)=>Spec==o.Spec&&Pose==o.Pose&&Hat==o.Hat&&Body==o.Body&&Accent==o.Accent;
     }
     // The live 3D pilot portraits of the menu, lobby and results cards (client/menu-portraits.ts MenuPortraits at 05950ea):
-    // the pilot's own source model in its colours, with its hat (the Auditor halo animated) and weapon, in its lobby pose
+    // the pilot's own source model in its colours, with its hat (the Auditor halo: the arena's shared animated drawer,
+    // NativeAuditorHaloDraw, on the portrait clock) and weapon, in its lobby pose
     // (Core/NativeLobbyPoses.cs), on the podium (and the chair), framed and lit as the source frames and lights it.
     //  - One disabled orthographic Camera on its own layer renders each visible portrait by hand (Camera.Render) into a
     //    pooled multisampled RenderTexture the card's physical size (capped), then resolves it to straight alpha in the slot's
@@ -48,7 +49,7 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<string,Part[]> parts=new Dictionary<string,Part[]>();private readonly Dictionary<string,Bounds> hatBounds=new Dictionary<string,Bounds>();
         private readonly Matrix4x4[] bones=new Matrix4x4[22];
         private ArenaPresentation presentation;private Camera view;private MaterialPropertyBlock block;
-        private Material opaque,opaqueDouble,transparent,transparentDouble,additive,resolve;private Mesh box,podium,arc,aura,flame,haloQuad;
+        private Material opaque,opaqueDouble,transparent,transparentDouble,additive,resolve;private Mesh box,podium,haloQuad;private NativeAuditorHaloDraw haloDraw;
         // The Siren's animated pieces (one look reused for every Siren portrait) and their portrait materials, by source material.
         private readonly NativeSirenLookPose sirenLook=new NativeSirenLookPose();private readonly Dictionary<Material,Part> pieceParts=new Dictionary<Material,Part>();
         private bool failed;private float clock;private int screenW,screenH;
@@ -115,9 +116,8 @@ namespace ChipArena.UnityConversion
             resolve=new Material(blit){hideFlags=HideFlags.HideAndDontSave};block=new MaterialPropertyBlock();
             var m0=new PortraitMesh();NativePortraitRules.Box(m0);box=Build(m0,"Portrait box");m0.Clear();
             NativePortraitRules.Cylinder(m0,NativePortraitRules.PodiumTop,NativePortraitRules.PodiumBottom,NativePortraitRules.PodiumHeight,NativePortraitRules.PodiumSegments);podium=Build(m0,"Portrait podium");m0.Clear();
-            NativePortraitRules.Torus(m0,NativePortraitRules.HaloArcRadius,NativePortraitRules.HaloArcTube,4,22,NativePortraitRules.HaloArc);arc=Build(m0,"Auditor halo arc");m0.Clear();
-            NativePortraitRules.Torus(m0,NativePortraitRules.HaloArcRadius,NativePortraitRules.HaloAuraTube,4,22,NativePortraitRules.HaloArc);aura=Build(m0,"Auditor halo glow");m0.Clear();
-            NativePortraitRules.Flame(m0);flame=Build(m0,"Auditor halo flame");
+            // The Auditor halo: the same drawer as the arena (no scene fog here); without its shader the bank's hat model shows.
+            haloDraw=NativeAuditorHaloDraw.Create(false);
             // A sprite quad (both faces) for the Siren's eye halos, its uv spanning the radial texture.
             haloQuad=new Mesh{name="Portrait Siren halo",hideFlags=HideFlags.HideAndDontSave};haloQuad.vertices=new[]{new Vector3(-.5f,-.5f,0),new Vector3(.5f,-.5f,0),new Vector3(-.5f,.5f,0),new Vector3(.5f,.5f,0)};
             haloQuad.normals=new[]{Vector3.back,Vector3.back,Vector3.back,Vector3.back};haloQuad.colors=new[]{Color.white,Color.white,Color.white,Color.white};haloQuad.uv=new[]{new Vector2(0,0),new Vector2(1,0),new Vector2(0,1),new Vector2(1,1)};
@@ -171,7 +171,7 @@ namespace ChipArena.UnityConversion
             // Each slot's stage stands far from the others and from the arena, so one render never frames another pilot.
             var origin=new Vector3(2000+index*60,-500,0);var root=origin+Vector3.up*NativePortraitRules.GroupY;
             for(int b=0;b<22;b++)bones[b]=Matrix4x4.TRS(root+CapturedAnimation.Vec(CapturedRig.Mirror(s.Pose.WorldPosition[b])),CapturedAnimation.Quat(CapturedRig.Mirror(s.Pose.WorldRotation[b])),Vector3.one);
-            var rootMatrix=Matrix4x4.Translate(root);
+            var rootMatrix=Matrix4x4.Translate(root);view.transform.SetPositionAndRotation(origin+CapturedAnimation.Vec(CapturedRig.Mirror(frame.Position)),turn);
             // Scene: the podium, the chair when sitting, the pilot, its hat or halo, the held weapons.
             Basic(podium,Matrix4x4.TRS(origin+Vector3.up*NativePortraitRules.PodiumY,Quaternion.identity,Vector3.one),NativePortraitRules.PodiumColor,0,opaque);
             if(pose==NativeLobbyPoses.Chair)foreach(var piece in NativePortraitRules.Chair)Basic(box,Matrix4x4.TRS(origin+CapturedAnimation.Vec(CapturedRig.Mirror(piece.Position)),Quaternion.identity,CapturedAnimation.Vec(piece.Size)),piece.Color,0,opaque);
@@ -182,7 +182,7 @@ namespace ChipArena.UnityConversion
                 Model(p,m,siren?Vector4.one:s.BodyTint,siren?Vector4.one:s.AccentTint,scene,siren?Vector4.one:Vector4.zero);
             }
             if(siren)SirenPieces(time,turn);
-            if(!siren&&hat=="auditor-halo")Halo(bones[CapturedRig.Head],time);
+            if(!siren&&hat==NativeAuditorHalo.Hat&&haloDraw!=null)haloDraw.Draw(bones[CapturedRig.Head],time,1,Reduced,view,Layer,view);
             else if(!siren&&hat!="none")foreach(var p in Parts(s.HatModel))Model(p,p.Bone>=0&&p.Bone<22?bones[p.Bone]:rootMatrix,Vector4.one,Vector4.one,Vector4.one,Vector4.one);
             if(weapon.Visible||offhand.Visible)foreach(var p in Parts(s.WeaponModel))
             {
@@ -241,22 +241,10 @@ namespace ChipArena.UnityConversion
                 Draw(haloQuad,Matrix4x4.TRS(w.GetColumn(3),turn,Vector3.one*size),additive);
             }
         }
-        // auditor-halo.ts: three red arcs with additive glow tubes and twelve flickering black flames, turning and bobbing.
-        private void Halo(Matrix4x4 head,float time)
-        {
-            NativePortraitRules.HaloGroup(time,out var gp,out var gq,out float gs);var group=head*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(gp)),CapturedAnimation.Quat(CapturedRig.Mirror(gq)),Vector3.one*gs);
-            for(int i=0;i<3;i++)
-            {
-                NativePortraitRules.HaloArcLocal(i,out var ap,out var aq);var m=group*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(ap)),CapturedAnimation.Quat(CapturedRig.Mirror(aq)),Vector3.one);
-                Basic(arc,m,NativePortraitRules.HaloRed,2,opaque);Basic(aura,m,NativePortraitRules.HaloGlow,2,additive,NativePortraitRules.HaloAuraOpacity);
-            }
-            for(int n=0;n<NativePortraitRules.HaloFlames;n++)
-            {NativePortraitRules.HaloFlame(n,time,out var fp,out var fq,out var fs);Basic(flame,group*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(fp)),CapturedAnimation.Quat(CapturedRig.Mirror(fq)),CapturedAnimation.Vec(fs)),NativePortraitRules.HaloBlack,1,opaqueDouble);}
-        }
         private void OnDestroy()
         {
             foreach(var s in slots)if(s!=null)Clear(s);
-            foreach(var o in new UnityEngine.Object[]{opaque,opaqueDouble,transparent,transparentDouble,additive,resolve,box,podium,arc,aura,flame,haloQuad})if(o!=null)CapturedAnimation.Release(o);
+            foreach(var o in new UnityEngine.Object[]{opaque,opaqueDouble,transparent,transparentDouble,additive,resolve,box,podium,haloQuad})if(o!=null)CapturedAnimation.Release(o);haloDraw?.Dispose();haloDraw=null;
             if(view!=null)CapturedAnimation.Release(view.gameObject);view=null;parts.Clear();hatBounds.Clear();pieceParts.Clear();
         }
     }
