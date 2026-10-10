@@ -2,7 +2,8 @@ name: Native Unity conversion source checks
 on:
   push:
     branches: ['codex/unity-*', 'claude/**']
-    paths: ['unity/ChipArenaConversion/**', '.github/workflows/unity-conversion.yml']
+    # The publisher requires both native jobs on the exact cloud head, including
+    # documentation-only commits. Do not restore a push path filter here.
   workflow_dispatch:
 permissions:
   contents: read
