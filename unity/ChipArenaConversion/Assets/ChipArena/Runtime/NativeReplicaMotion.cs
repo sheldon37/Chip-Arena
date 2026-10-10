@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
         {body.interpolation=RigidbodyInterpolation.None;body.transform.position=position;body.position=position;}
         private NativePredictionState PredictionState(NativePilotFrame frame)
         {
-            var p=Local;bool unlocked=p!=null&&frame.hp>0&&Match.Phase==NativePhase.Fight&&frame.stunEnd<=Time&&frame.rollEnd<=Time&&frame.down==null&&string.IsNullOrEmpty(frame.fighter?.Kind)&&p.Pose.AttackUntil<=Time;
+            var p=Local;bool unlocked=p!=null&&frame.hp>0&&p.Pose.GrabOwner==0&&Match.Phase==NativePhase.Fight&&frame.stunEnd<=Time&&frame.rollEnd<=Time&&frame.down==null&&string.IsNullOrEmpty(frame.fighter?.Kind)&&p.Pose.AttackUntil<=Time;
             return new NativePredictionState{Position=Vec(frame.position),Velocity=new V3(frame.moveVelocity.x,frame.velocity.y,frame.moveVelocity.z),
                 Speed=p==null?6.8f:(float)(6.8*p.Stats["speed"])*(p.Input.Aim&&p.Weapon.@class=="ranged"?(float)Content.Ads(p.Seat.spec).move:1),
                 Gravity=p==null?23:(float)(23*p.Stats["playerGravity"]),JumpSpeed=p==null?8.5f:(float)(8.5*p.Stats["jumpPower"]),

@@ -14,7 +14,11 @@ namespace ChipArena.UnityConversion
         private float clock;private bool frozen,stepped;private int weaponPart;private static readonly int[] Bones={1,2,5,7,8,11,12,14,15,18,19};
         public NativeCorpse(NativeDeath death,CapturedAnimation.Player rig,NativeArena arena)
         {
-            Death=death;Style=death.kept&&!new[]{"impact-ragdoll","ragdoll","dev-gibber","siren-crush","vent-fall","vent-splat"}.Contains(death.style)?"impact-ragdoll":death.style;scene=SceneManager.CreateScene("Cosmetic body "+death.id+" "+death.seed,new CreateSceneParameters(LocalPhysicsMode.Physics3D));physics=scene.GetPhysicsScene();root=new GameObject("Cosmetic body");SceneManager.MoveGameObjectToScene(root,scene);
+            Death=death;Style=death.kept&&!new[]{"impact-ragdoll","ragdoll","dev-gibber","siren-crush","vent-fall","vent-splat"}.Contains(death.style)?"impact-ragdoll":death.style;
+#if UNITY_EDITOR
+            if(!Application.isPlaying)scene=UnityEditor.SceneManagement.EditorSceneManager.NewPreviewScene();else
+#endif
+            scene=SceneManager.CreateScene("Cosmetic body "+death.id+" "+death.seed,new CreateSceneParameters(LocalPhysicsMode.Physics3D));physics=scene.GetPhysicsScene();root=new GameObject("Cosmetic body");SceneManager.MoveGameObjectToScene(root,scene);
             surface=new PhysicsMaterial("Body surface"){dynamicFriction=.7f,staticFriction=.7f,bounciness=Style=="ragdoll-pinball"?.82f:.15f};
             Vector3 offset=death.position-rig.Root.transform.position;for(int i=0;i<22;i++)Bind[i]=Matrix4x4.Translate(offset)*rig.Bones[i].localToWorldMatrix;
             foreach(int b in Bones)
@@ -95,7 +99,14 @@ namespace ChipArena.UnityConversion
             if(Style=="dev-singularity"&&clock>.22f){gravity=0;Vector3 d=Death.position-pos;velocity=new Vector3(d.x*3-d.z*2.6f,(d.y+2.4f)*3,d.z*3+d.x*2.6f);body.angularVelocity=new Vector3(.8f,3,.6f);}
             body.linearVelocity=velocity;body.AddForce(Vector3.down*gravity,ForceMode.Acceleration);
         }
-        public void Dispose(){CapturedAnimation.Release(root);CapturedAnimation.Release(surface);if(scene.IsValid())SceneManager.UnloadSceneAsync(scene);}
+        public void Dispose()
+        {
+            CapturedAnimation.Release(root);CapturedAnimation.Release(surface);if(!scene.IsValid())return;
+#if UNITY_EDITOR
+            if(!Application.isPlaying&&UnityEditor.SceneManagement.EditorSceneManager.IsPreviewScene(scene)){UnityEditor.SceneManagement.EditorSceneManager.ClosePreviewScene(scene);return;}
+#endif
+            SceneManager.UnloadSceneAsync(scene);
+        }
     }
     public sealed partial class ArenaPresentation
     {
@@ -126,6 +137,8 @@ namespace ChipArena.UnityConversion
         private void PresentDeath(NativeArena arena,NativeDeath death,bool pilot)
         {
             float age=arena.Time-death.at;var live=PilotOf(arena,death.id);bool revived=live?.Hp>0;float up=revived?arena.Time-live.RevivedAt:-1;if(age<0||!death.kept&&age>5||revived&&up>1.1f)return;
+            // The repair owns the kept body until it hands the pose to the live rig; never also draw the old revive fade.
+            if(revived&&death.kept&&revivals.TryGetValue(death.id,out var repair)&&repair.At==live.RevivedAt)return;
             if(SourceMinionDeath(death,age)||SourceDeathScene(death,age,up))return;
             if(!corpses.TryGetValue(death.id,out var corpse))
             {
@@ -160,7 +173,7 @@ namespace ChipArena.UnityConversion
                 Vector3 pelvis=corpse.PresentedPosition(1);swarm.Update(shown,-pelvis.x,pelvis.y,pelvis.z,corpse.SwarmParts,n);corpse.Present(overlay,sink,scale*(float)swarm.Collapse);
             }
             Vector3 center=corpse.PresentedPosition(1);
-            if(revived){alpha*=1-Mathf.Clamp01(upFx/.8f);Ring(center,.6f+upFx,2,upFx*45);VoxelCloud(center,upFx,2,death.seed,30);}
+            if(revived)alpha*=1-Mathf.Clamp01(upFx/.8f);
             bool soul=swarm!=null&&swarm.BodyColor>=0&&style=="ragdoll-soul"&&corpse.RigCount>0,frost=swarm!=null&&swarm.BodyColor>=0&&style=="ragdoll-frost";
             // The hat rides on the head unless it flies loose; a crushed head that threw no hat shows none (it had no part). The
             // dropped weapon is presented like its hand part (sink, shrink, collapse; NativeCorpse.PresentedWeapon).

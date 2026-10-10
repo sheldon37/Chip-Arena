@@ -9,6 +9,7 @@ internal static class Program
         {
             AnimationChecks.Run();
             string root=ProjectRoot();
+            InteractionChecks.Run(root);
             var options=new System.Text.Json.JsonSerializerOptions{IncludeFields=true};
             var data=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),options);
             ParityLogicChecks.Run(data);ParityFollowupChecks.Run(data);
@@ -54,3 +55,4 @@ internal static class Program
         throw new System.IO.DirectoryNotFoundException("Run from the conversion project, or use dotnet run --project unity/ChipArenaConversion/Tests/CoreTests.csproj");
     }
 }
+

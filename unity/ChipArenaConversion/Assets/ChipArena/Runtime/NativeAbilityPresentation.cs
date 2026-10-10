@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
         private Vector3? abilityPreview;private bool abilityPreviewClamped;
         public void RenderAbilities(NativeArena arena,Vector3? preview=null,bool previewClamped=false)
         {
-            foreach(var b in batches)b.Clear();SourceWorld(arena);DeathPresentation(arena);RenderWoundSpray(arena.Time);DeathBroadcasts(arena);WorldEffects(arena);
+            foreach(var b in batches)b.Clear();SourceWorld(arena);DeathPresentation(arena);RenderRevives(arena);RenderWoundSpray(arena.Time);DeathBroadcasts(arena);WorldEffects(arena);
             // Bullets and ability shots are NativeShotPresentation's source models, the Siren's shots its own effects (RenderGlow).
             foreach(var shot in arena.MeleeShots)
             {

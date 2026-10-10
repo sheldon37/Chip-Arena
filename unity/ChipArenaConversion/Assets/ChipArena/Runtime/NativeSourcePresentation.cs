@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
             if(!first)LivingWounds(rig,a,time);
             // The hat rides the head (hidden on the first-person view model); the Auditor halo animates (NativeAuditorHaloPresentation.cs).
             if(!first&&!string.IsNullOrEmpty(a.Hat)&&a.SourceSpec!="siren"&&!AuditorHalo(a.Hat,rig.Bones[CapturedRig.Head].localToWorldMatrix,float.IsNaN(halo)?time:halo,1,HaloReduced,layer,camera))sourceModels.Queue("hat-"+a.Hat,rig.Root.transform.localToWorldMatrix,Bone,null,layer,camera);
-            if(a.SourceSpec=="siren"||a.WeaponAway||!weapon)return true;
+            if(a.SourceSpec=="siren"||a.WeaponAway||!weapon||NativeSirenVictimPose.Active(a,time))return true;
             float reach=WeaponReach(rig,a,time);Matrix4x4 WeaponBone(int b)=>SourceWeaponBone(rig,a,time,first,b,reach);
             sourceModels.Queue("weapon-"+a.SourceSpec,rig.Root.transform.localToWorldMatrix,WeaponBone,null,layer,camera);WeaponDressing(rig,a,time,first,layer,camera,reach);return true;
         }
@@ -50,7 +50,8 @@ namespace ChipArena.UnityConversion
             // C17: severed limbs fly off as chunks (the rigs above are posed), and the downed get revive beacons.
             PveGore(arena);PveBeacons(arena);
         }
-        private void ClearSourceActors(){ClearWardZero();ClearSirenLooks();ClearDevEffects();draftRig?.Dispose();draftRig=null;ClearBroadcasts();slenderHops.Clear();ClearSceneryMotion();ClearWoundSpray();sourceModels?.ClearWounds();ClearCorpses();if(pitMaterial!=null){CapturedAnimation.Release(pitMaterial);pitMaterial=null;}introRig?.Dispose();introRig=null;foreach(var rig in minionRigs.Values)rig.Dispose();minionRigs.Clear();sourceModels?.Begin();}
+        private void ClearSourceActors(){ClearRevives();ClearWardZero();ClearSirenLooks();ClearDevEffects();draftRig?.Dispose();draftRig=null;ClearBroadcasts();slenderHops.Clear();ClearSceneryMotion();ClearWoundSpray();sourceModels?.ClearWounds();ClearCorpses();if(pitMaterial!=null){CapturedAnimation.Release(pitMaterial);pitMaterial=null;}introRig?.Dispose();introRig=null;foreach(var rig in minionRigs.Values)rig.Dispose();minionRigs.Clear();sourceModels?.Begin();}
         public void FinishSourceFrame()=>sourceModels?.Flush(UsesInstancing);
     }
 }
+

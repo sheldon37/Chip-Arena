@@ -142,6 +142,13 @@ namespace ChipArena.UnityConversion
                 if(!visualPositions.TryGetValue(a.Id,out old)||(old-target).sqrMagnitude>64) old=target;
                 Vector3 p=smooth?Vector3.Lerp(old,target,1-Mathf.Exp(-18*Time.unscaledDeltaTime)):target;
                 visualPositions[a.Id]=p;
+                if(a.Alive&&(CapturedPlayers||Viewer||GunRules.Ranged(a.Weapon)))PrepareCapturedPose(a,p,renderTime);
+            }
+            // Pose everyone before drawing: a held victim must use this frame's claw, regardless of seat order.
+            PrepareInteractions(s,renderTime);
+            foreach(Actor a in s.Actors)
+            {
+                Vector3 p=visualPositions[a.Id];
                 if(FirstPerson&&a.Id==LocalId&&a.Alive)HiddenSweep(a,p,renderTime);
                 if(!a.Alive||(FirstPerson&&a.Id==LocalId)) continue;
                 int color=a.Bot?2:a.Id-1;
@@ -195,13 +202,17 @@ namespace ChipArena.UnityConversion
                 if(DebrisEnabled&&(e.Kind==EventKind.Break||e.Kind==EventKind.Death)) Debris(Vec(e.Position)+Vector3.up*.3f,e.Kind==EventKind.Death?materials[2]:materials[3]);
             }
         }
-        private void CapturedPose(Actor a,Vector3 position,float time,int color)
+        private void PrepareCapturedPose(Actor a,Vector3 position,float time)
         {
             CapturedAnimation.Player rig;
             if(!rigs.TryGetValue(a.Id,out rig)) { rig=captured.Create(transform,a.Id); rig.Impacts=meleeImpacts; rigs.Add(a.Id,rig); }
             if(Viewer&&ViewerSet>=4) rig.PreviewGun((WeaponId)(ViewerSet-3),ViewerClip,ViewerTime);
             else if(Viewer) rig.Preview(ViewerSet,PreviewName.Substring(PreviewName.IndexOf('/')+1),ViewerTime,Vector3.zero);
             else { PoseReach(rig,a,time); rig.ActorPose(a,position,time); }
+        }
+        private void CapturedPose(Actor a,Vector3 position,float time,int color)
+        {
+            var rig=rigs[a.Id];if(!ReviveVisible(a.Id,time))return;
             if(a.Id==LocalId) PlayerState=rig.State;
             if(SourceCharacter(rig,a,time))return;
             foreach(var box in CapturedRig.Boxes)

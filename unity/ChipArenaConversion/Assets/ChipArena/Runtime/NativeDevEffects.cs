@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
     {
         private sealed class SirenTrack
         {
-            public string Action;public float At,ModeAt=-100,Lean,CaughtAt=-100;public int Side=1,Fired,Victim,Frame;public bool Ranged,Crushed;
+            public string Action;public float At,ModeAt=-100,Lean,CaughtAt=-100,CrushAt=-100;public int Side=1,Fired,Victim,Frame;public bool Ranged,Crushed;
             public readonly NativeSirenBody Body=new NativeSirenBody();
         }
         private struct SirenShotMemo{public int Owner;public float Reach;public NativeSirenShotKind Kind;}
@@ -83,13 +83,12 @@ namespace ChipArena.UnityConversion
             fxDraw.Draw(camera,ViewCamera,now);
         }
         private NativePilot SeatPilot(NativeArena arena,int seat){var list=arena.Pilots;for(int i=0;i<list.Count;i++)if(list[i].Seat.id==seat)return list[i];return null;}
-        // The held victim: the authority's Move.Caught; a replica takes the live pilot nearest the pinned point.
+        // The held victim's explicit identity survives snapshots, joins and replays; nearby bystanders are never guessed.
         private NativePilot SirenVictim(NativeArena arena,NativePilot p,SirenTrack t,Vector3 body,Quaternion rot,float k,float now)
         {
-            if(!arena.Replica&&p.Siren?.Move?.Caught!=null)return p.Siren.Move.Caught;if(t.Victim!=0)return SeatPilot(arena,t.Victim);
-            float lift=Mathf.Clamp01((now-t.CaughtAt)/.5f);Vector3 pin=body+rot*new Vector3(0,(.2f+.75f*lift)*k,k);NativePilot best=null;float near=1.5f*1.5f;
-            foreach(var q in arena.Pilots){if(q==p||q.Hp<=0)continue;float d=(q.Body.position-pin).sqrMagnitude;if(d<near){near=d;best=q;}}
-            return best;
+            if(!arena.Replica&&p.Siren?.Move?.Caught!=null)return p.Siren.Move.Caught;
+            foreach(var q in arena.Pilots)if(q.Seat.connected&&q.Pose?.GrabOwner==p.Seat.id&&NativeSirenVictimPose.Active(q.Pose,now))return q;
+            return null;
         }
         private void SirenPilots(NativeArena arena,float now)
         {
@@ -105,9 +104,9 @@ namespace ChipArena.UnityConversion
                 if(action!=t.Action||a.SourceAt!=t.At)
                 {
                     // The previous move ended: a hold that lasted to the crush; a laugh that caught someone.
-                    if(t.Action=="grab"&&!t.Crushed&&now>=t.CaughtAt+3.1f){t.Crushed=true;var v=SeatPilot(arena,t.Victim);if(v!=null&&now-(t.CaughtAt+3.2f)<.4f){Vector3 h=v.Body.position+Vector3.up*.65f;fx.Event(NativeSirenEvent.Crush,-h.x,h.y,h.z,k:k,born:t.CaughtAt+3.2f);}}
+                    if(t.Action=="grab"&&!t.Crushed&&now>=t.CrushAt-.1f){t.Crushed=true;var v=SeatPilot(arena,t.Victim);if(v!=null&&now-(t.CrushAt)<.4f){Vector3 h=v.Body.position+Vector3.up*.65f;fx.Event(NativeSirenEvent.Crush,-h.x,h.y,h.z,k:k,born:t.CrushAt);}}
                     bool caught=t.Action=="laugh"&&action=="grab";t.Action=action;t.At=a.SourceAt;t.Fired=0;t.Side=a.SourceSide>=0?1:-1;
-                    if(action=="grab"){t.CaughtAt=a.SourceAt;t.Crushed=false;t.Victim=0;var v=SirenVictim(arena,p,t,body,rot,k,now);t.Victim=v?.Seat.id??0;
+                    if(action=="grab"){t.CaughtAt=a.SourceAt;t.CrushAt=a.SourceAt+3.2f;t.Crushed=false;t.Victim=0;var v=SirenVictim(arena,p,t,body,rot,k,now);t.Victim=v?.Seat.id??0;if(v?.Pose?.GrabOwner==p.Seat.id)t.CrushAt=v.Pose.GrabCrushAt;
                         if(caught&&v!=null&&now-t.CaughtAt<.4f){Vector3 c=v.Body.position;fx.Event(NativeSirenEvent.Catch,-c.x,c.y,c.z,k:k,born:t.CaughtAt);}}
                 }
                 SirenMove(arena,p,t,action,body,rot,k,now);
@@ -153,10 +152,10 @@ namespace ChipArena.UnityConversion
                 {
                     // Last Laugh: black flame climbs over the held victim (its rig) and chars it until the crush.
                     var v=SirenVictim(arena,p,t,body,rot,k,now);if(v!=null)t.Victim=v.Seat.id;
-                    if(v!=null&&v.Hp>0&&now<t.CaughtAt+3.2f&&rigs.TryGetValue(v.Seat.id,out var vr)&&!(FirstPerson&&arena.ViewPilot==v))
+                    if(v!=null&&v.Hp>0&&now<t.CrushAt&&rigs.TryGetValue(v.Seat.id,out var vr)&&!(FirstPerson&&arena.ViewPilot==v))
                     {for(int b=0;b<vr.Bones.Length&&b<22;b++)Source(vr.Bones[b].localToWorldMatrix,fxJoints,b*16);fx.Grab(v.Seat.id,now-t.CaughtAt,fxJoints);sirenChar[v.Seat.id]=(float)NativeSirenFx.Burn(now-t.CaughtAt);}
-                    if(Once(t,8,now,t.CaughtAt+3.2f)&&v!=null){t.Crushed=true;Vector3 h=v.Body.position+Vector3.up*.65f;fx.Event(NativeSirenEvent.Crush,-h.x,h.y,h.z,k:k,born:t.CaughtAt+3.2f);}
-                    else if(now>=t.CaughtAt+3.2f)t.Crushed=true;
+                    if(Once(t,8,now,t.CrushAt)&&v!=null){t.Crushed=true;Vector3 h=v.Body.position+Vector3.up*.65f;fx.Event(NativeSirenEvent.Crush,-h.x,h.y,h.z,k:k,born:t.CrushAt);}
+                    else if(now>=t.CrushAt)t.Crushed=true;
                     break;
                 }
             }
@@ -381,3 +380,4 @@ namespace ChipArena.UnityConversion
         }
     }
 }
+

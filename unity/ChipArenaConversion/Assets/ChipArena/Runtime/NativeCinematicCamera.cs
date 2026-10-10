@@ -10,8 +10,8 @@ namespace ChipArena.UnityConversion
     /// The camera is placed in the baked scene's fixture frame and carried by the same root as the scene, so it frames what is
     /// drawn; that scene is routed to this camera's layer while the screen is up.</para>
     /// <para>Last Laugh (siren/cutscene.ts): the held pilot and the Siren's pilot get the authored shots with letterbox bars and
-    /// no HUD; the arena camera is directed, then UpdateCamera's normal path takes over again. The host reads the Siren's move
-    /// (victim included); a guest reads the Siren's replicated pose (SourceAction "grab"), which does not name the victim.</para>
+    /// no HUD; the arena camera is directed, then UpdateCamera's normal path takes over again. Both peers read the victim's
+    /// replicated holder and catch/crush/release timeline; no distance-based victim inference.</para>
     /// Both stop for the killcam, previews, intros, drafts and a new arena (the frame is not continuous), keep running under
     /// the pause menu on the match clock (so an offline pause holds them), and leave no camera state behind: BeginFrame turns the
     /// screen off at the start of every LateUpdate and the arena camera is rebuilt by UpdateCamera when not directed.
@@ -63,9 +63,9 @@ namespace ChipArena.UnityConversion
             NativePilot owner=null;int victimId=0;float at=0,crushAt=0,releaseAt=0;var pilots=arena.Pilots;
             for(int i=0;i<pilots.Count&&owner==null;i++)
             {
-                var q=pilots[i];if(q?.Seat==null||!q.Seat.connected||q.Seat.spec!="siren")continue;
+                var q=pilots[i];if(q?.Seat==null||!q.Seat.connected)continue;
                 if(!arena.Replica){var m=q.Siren?.Move;if(m?.Caught?.Seat==null||q!=me&&m.Caught!=me)continue;owner=q;victimId=m.Caught.Seat.id;at=m.CaughtAt;crushAt=m.CrushAt;releaseAt=m.Until;}
-                else{var a=q.Pose;if(q!=me||a==null||a.SourceAction!="grab")continue;owner=q;at=a.SourceAt;crushAt=at+NativeSirenCutscene.Crush;releaseAt=a.SourceUntil;}
+                else{var a=q.Pose;if(!NativeSirenVictimPose.Active(a,time)||q!=me&&a.GrabOwner!=me.Seat.id)continue;owner=Find(pilots,a.GrabOwner);victimId=q.Seat.id;at=a.GrabAt;crushAt=a.GrabCrushAt;releaseAt=a.GrabUntil;}
             }
             if(!siren.Check(owner!=null,owner?.Seat.id??0,victimId,owner!=null&&owner!=me,at,crushAt,releaseAt,time,phaseOk))return false;
             var o=Find(pilots,siren.Owner);var v=Find(pilots,siren.Victim);

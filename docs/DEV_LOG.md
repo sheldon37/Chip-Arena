@@ -1,5 +1,12 @@
 # Chip Arena — development log
 
+## 2026-10-10 — Codex/Astra — Siren victim animation and PvE holographic repair
+- Task `codex/unity-grab-revive`, base cloud `efb4fa4017e68b12dbfda2db166e52f397913539`; owner reports the grabbed player remains idle and requests the Electron holographic revival back. Restores the existing source presentations (`siren/fx.ts` and `pve/downed.ts`) in Unity.
+- Replicate the actual victim's holder/catch/crush/release fields. Pose all rigs before drawing, attach the struggling victim to this frame's claw, suppress the held weapon, and use explicit identity for guest flames/cameras. Held guests no longer predict locomotion. The visual pose does not move the authoritative collider.
+- Replace the placeholder revive ring/fade with the cyan scan, wound sealing, bounded reconstruction voxels and a 0.8 s scan / 0.6 s stand from the kept body. A distant pad materialises the live body. Handles intact, severed and Siren-crushed bodies, newest-frame health ahead of the render clock, interruption, replay reset and reduced-effects budgets. Adds a dedicated additive scanline shader; existing holograms and Siren intro flicker remain unchanged.
+- Local: source-extracted fixtures generated from 33 Electron victim poses; `git diff --check` clean. Adds managed pose/timeline checks and real Unity gates for host/guest codec, release/prediction, intact/gibbed/crushed/pad repair, finite rig transforms and unchanged health/colliders. Native CI, activated Unity shader/rig/PhysX checks and publication are pending at this commit; Windows visual acceptance is not claimed.
+- No changes to hit timing, hitboxes, damage, cooldowns, authoritative movement, revive cost/health/shield or saves. Network payload additions are presentation fields with zero defaults; existing protocol retained. Release results will be recorded on the PR to avoid a docs-only cloud rebuild.
+
 ## 2026-10-10 — Codex/Astra — Siren intro audio clock repair
 - Task `codex/unity-siren-music-sync`, base cloud `7b2f035f319d7ae029effbb3298a689234e5ce13`; owner reports entrance/music drift and assigns audio/timing plumbing. Claude's `NativeSirenIntroLight` flicker timeline and all visual assets remain byte-for-byte unchanged.
 - Use the music source's PCM sample position for both drift correction and the intro clock. The old streamed/compressed `AudioSource.time` can report packet positions seconds apart, causing repeated seeks. Wait for background loading, cue the current age, allow seeks to settle, and resume paused sources with `UnPause`. Identify new previews/matches explicitly so the same song restarts only for a new song epoch.
@@ -3369,3 +3376,4 @@ containing an entry; no self-referential commit hash is required.
 - Next: each agent synchronizes this branch before making its own task branch;
   after migration merges, start new tasks from updated main. Review relevant open
   PRs to avoid overlapping work. Resolve baseline failures before release work.
+

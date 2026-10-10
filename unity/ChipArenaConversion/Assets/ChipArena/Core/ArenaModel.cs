@@ -38,6 +38,8 @@ namespace ChipArena.UnityConversion
     public class Actor
     {
         public int VisualSet,MagicVisual;
+        // Last Laugh victim identity/timeline, consumed by animation, flames and both participant cameras on every peer.
+        public int GrabOwner;public float GrabAt,GrabCrushAt,GrabUntil;
         public NativeWound[] Wounds=Array.Empty<NativeWound>();public string SourceSpec,SourceAction,BodyColor="#e5e7eb",AccentColor="#70e1d0",Hat="none";public float SourceModeAt=-100;public float SourceAt,SourceUntil,RigScale=1;public int SourceIndex,SourceTotal,SourceSide=1;public bool SourceRanged;
         // Native authority presentation only; the inherited lab wire codec does not transport these.
         public string SpecialKind;public float SpecialAt=-100,SpecialRelease,SpecialUntil,SpecialLanded=-1;
