@@ -80,6 +80,74 @@ namespace ChipArena.UnityConversion
             var set=JsonSerializer.Deserialize<SirenLookSet>(reader.ReadToEnd(),new JsonSerializerOptions{IncludeFields=true});Check(set.fps==60,"track fps");
             var map=new Dictionary<string,SirenLookClip>();foreach(var c in set.clips){Check(c.values.Length==c.frames*2,"track length "+c.key);map.Add(c.key,c);}return map;
         }
+        // The black flame (owner playtest 2026-10-10): flames.ts's palette, the baked flame pools of the Siren's entrance and
+        // kills, and the Unity finish (ink rims on the normal, per-part strengths, rimmed flame cubes, breathing), so neither
+        // the lavender 0xaea4c7 cubes nor the flat rimless body can come back. Returns the flame rows checked.
+        private static readonly float[] Fallback={.423268f,.371238f,.571125f};
+        private static bool IsFallback(float r,float g,float b)=>Math.Abs(r-Fallback[0])<.004f&&Math.Abs(g-Fallback[1])<.004f&&Math.Abs(b-Fallback[2])<.004f;
+        private static JsonDocument Bank(string root,string name)
+        {
+            using var envelope=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/"+name+".json")));
+            using var zip=new GZipStream(new MemoryStream(Convert.FromBase64String(envelope.RootElement.GetProperty("data").GetString())),CompressionMode.Decompress);using var reader=new StreamReader(zip);
+            return JsonDocument.Parse(reader.ReadToEnd());
+        }
+        private static int Flames(string root)
+        {
+            // flames.ts TONES and FADES: black cores (ink toward smoke) that age to violet tips; ember, smoke and soot as authored.
+            Check(NativeFlameField.Ink==0x0a080e&&NativeFlameField.SmokeTint==0x17121f&&NativeFlameField.EmberTint==0xe6defa,"flame start palette");
+            Check(NativeFlameField.Fade(NativeFlameTone.Black)==0x5b5078&&NativeFlameField.Fade(NativeFlameTone.Soot)==0x2b2436&&NativeFlameField.Fade(NativeFlameTone.Smoke)==0x7d7299&&NativeFlameField.Fade(NativeFlameTone.Ember)==0x2a2233,"flame fade palette");
+            {var rng=new Random(5);for(int i=0;i<64;i++){NativeFlameField.Start(NativeFlameTone.Black,rng.NextDouble,out double r,out double g,out double b);Check(Math.Max(r,Math.Max(g,b))<.012,"black flame starts black: "+r+","+g+","+b);}}
+            // The bank: no section anywhere keeps the exporter's fallback colour; the entrance's and the kills' flame slots
+            // (one 24-vertex cube per FlameField slot) are white and unlit, tinted per frame by their scene track.
+            var slots=new Dictionary<string,HashSet<int>>{{"stage-dev-siren",new HashSet<int>()},{"death-siren-crush",new HashSet<int>()},{"death-siren-dissipate",new HashSet<int>()}};
+            using(var bank=Bank(root,"SourceModels"))foreach(var m in bank.RootElement.GetProperty("models").EnumerateArray())
+            {
+                string id=m.GetProperty("id").GetString();slots.TryGetValue(id,out var mine);
+                foreach(var sec in m.GetProperty("sections").EnumerateArray())
+                {
+                    var c=sec.GetProperty("colors");var e=sec.GetProperty("emission");int n=c.GetArrayLength()/4;
+                    Check(n==0||!IsFallback(c[0].GetSingle(),c[1].GetSingle(),c[2].GetSingle()),"fallback colour in "+id);
+                    if(mine!=null&&n==24&&!sec.GetProperty("ink").GetBoolean()&&c[0].GetSingle()==1&&c[1].GetSingle()==1&&c[2].GetSingle()==1&&e[0].GetSingle()==1&&e[2].GetSingle()==1)mine.Add(sec.GetProperty("bone").GetInt32());
+                }
+            }
+            int rows=0;
+            using(var scenes=Bank(root,"SceneMotion"))foreach(var clip in scenes.RootElement.GetProperty("clips").EnumerateArray())
+            {
+                string key=clip.GetProperty("key").GetString();if(!slots.TryGetValue(key,out var tracks))continue;
+                Check(tracks.Count>=420,key+" flame slots: "+tracks.Count);int frames=clip.GetProperty("frames").GetInt32();var v=clip.GetProperty("values");int shown=0,dark=0,varying=0;
+                foreach(int t in tracks)
+                {
+                    bool varies=false;float r0=0,g0=0,b0=0;
+                    for(int f=0;f<frames;f++)
+                    {
+                        int o=(t*frames+f)*20;float sx=v[o].GetSingle(),sy=v[o+1].GetSingle(),sz=v[o+2].GetSingle(),r=v[o+17].GetSingle(),g=v[o+18].GetSingle(),b=v[o+19].GetSingle();
+                        if(f==0){r0=r;g0=g;b0=b;}else if(r!=r0||g!=g0||b!=b0)varies=true;
+                        Check(!IsFallback(r,g,b),key+" flame row in the fallback colour");
+                        if(v[o+16].GetSingle()<=.001f||sx*sx+sy*sy+sz*sz<1e-10f)continue;shown++;if(Math.Max(r,Math.Max(g,b))<.06f)dark++;
+                    }
+                    if(varies)varying++;
+                }
+                // Black flame: most burning cubes stay near black (raw violet tips, smoke and embers are the rest).
+                Check(shown>1000&&dark>=shown*.7&&varying>=tracks.Count*.9,key+" black flame rows: "+dark+" dark of "+shown+", "+varying+" varying slots");rows+=shown;
+            }
+            Check(rows>0,"flame rows");
+            // The exporter keeps the per-instance colour of colour-less ShaderMaterials (the FlameField) as a display value.
+            string exporter=File.ReadAllText(Path.Combine(root,"tools/export_cinematics.mjs"));
+            Check(exporter.Contains("rawInstanceColor")&&exporter.Contains("convertSRGBToLinear()"),"exporter keeps raw flame instance colours");
+            // The Unity finish: the ink rim follows the surface normal (NativeSourceLit, NativePortrait), buildSiren's per-part
+            // strengths, rimmed flame cubes unless reduced, and a breath that peaks at the source's look.
+            string lit=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Resources/NativeSourceLit.shader")),portrait=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Resources/NativePortrait.shader"));
+            Check(lit.Contains("dot(normalize(i.viewDir),normalize(i.worldNormal))")&&!lit.Contains("dot(normalize(i.viewDir),float3(0,0,1))"),"ink rim on the surface normal");
+            Check(portrait.Contains("abs(dot(n,toCamera))")&&!portrait.Contains("dot(toCamera,float3(0,0,1))"),"portrait ink rim on the surface normal");
+            Check(NativeSirenLook.BodyRim==.2&&NativeSirenLook.BodyFlow==.025&&NativeSirenLook.ClawRim==.75&&NativeSirenLook.ClawFlow==.02&&NativeSirenLook.TongueRim==.42&&NativeSirenLook.TongueFlow==.1,"buildSiren ink strengths");
+            Check(NativeSirenLook.FlameRim>0&&NativeSirenLook.FlameRim<=.5,"flame cube rim");
+            string look=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeSirenLookPresentation.cs")),fx=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeDevEffects.cs"));
+            Check(look.Contains("NativeSirenLook.ClawRim")&&look.Contains("NativeSirenLook.TongueRim")&&look.Contains("NativeSirenLook.BodyRim"),"per-part ink strengths applied");
+            Check(fx.Contains("if(flat)draw.Cube(")&&fx.Contains("draw.FlameCube(")&&fx.Contains("bool flat=HaloReduced"),"rimmed flame cubes, flat when reduced");
+            for(double t=0;t<6;t+=.05){double k=NativeSirenLook.Breath(t),grin=NativeSirenLook.GrinGlow(k),halo=NativeSirenLook.HaloSize(k);Check(k>=0&&k<=1&&grin>=.88&&grin<=1&&halo>=.92&&halo<=1,"breath range at "+t);}
+            Check(NativeSirenLook.GrinGlow(1)==1&&NativeSirenLook.HaloSize(1)==1&&look.Contains("t.Pose.Breath=HaloReduced?1:"),"breath peaks at the source look; reduced effects hold it");
+            return rows;
+        }
         public static void Run(string root)
         {
             count=0;var tracks=Tracks(root);
@@ -169,7 +237,8 @@ namespace ChipArena.UnityConversion
             }
             // The Siren takes no sword-set layer (the blade floor guard bent her right claw through the Slam and the Rush).
             Check(!NativePoseRoute.SwordLayers(new Actor{SourceSpec="siren",Weapon=WeaponId.Sword})&&NativePoseRoute.SwordLayers(new Actor{SourceSpec="sword",Weapon=WeaponId.Sword}),"no sword layers on the Siren");
-            Console.WriteLine($"PASS Siren look parity: {NativeSirenLook.Count} piece joints, {eyes} eye outlines, {states} applySirenLook states, {frames} timeline frames ({guestFrames} as a guest; largest look-state gap {worst:0.0e+0}, {balls} Damnation balls), {bodyFrames} body frames (largest joint gap {worstBody:0.0e+0}), {tracks.Count} face tracks; {count} checks");
+            int flameRows=Flames(root);
+            Console.WriteLine($"PASS Siren look parity: {flameRows} baked black-flame rows, {NativeSirenLook.Count} piece joints, {eyes} eye outlines, {states} applySirenLook states, {frames} timeline frames ({guestFrames} as a guest; largest look-state gap {worst:0.0e+0}, {balls} Damnation balls), {bodyFrames} body frames (largest joint gap {worstBody:0.0e+0}), {tracks.Count} face tracks; {count} checks");
         }
     }
 }
