@@ -237,8 +237,8 @@ namespace ChipArena.UnityConversion
             Buckets();Densities(W,H,out float face,out float flame);if(face==liveFace&&flame==liveFlame)return;
             if(job==null){float line=Smile.RimStrokeWidth*U.S;job=System.Threading.Tasks.Task.Run(()=>BakeAll(face,flame,line));uploaded=0;return;}
             if(!job.IsCompleted)return;
-            if(job.IsFaulted||job.Result==null){Debug.LogWarning("Siren smile textures failed to bake: "+job.Exception?.GetBaseException().Message);job=null;liveFace=face;liveFlame=flame;return;}
-            var b=job.Result;if(b.Face!=face||b.Flame!=flame){job=null;return;}   // the window changed while it baked
+            if(job.IsFaulted||job.Result==null){Debug.LogWarning("Siren smile textures failed to bake: "+job.Exception?.GetBaseException().Message);Discard();liveFace=face;liveFlame=flame;return;}
+            var b=job.Result;if(b.Face!=face||b.Flame!=flame){Discard();return;}   // the window changed while it baked (or uploaded)
             int n=b.Rgba.Length;if(pending==null||pending.Length!=n)pending=new Texture2D[n];
             if(uploaded<n){pending[uploaded]=Upload(null,b.W[uploaded],b.H[uploaded],b.Rgba[uploaded],false);uploaded++;if(uploaded<n)return;}
             // All made: swap them in.
@@ -246,6 +246,12 @@ namespace ChipArena.UnityConversion
             const int first=1+MouthLevels;eyes=pending[0];for(int l=0;l<MouthLevels;l++)mouth[l]=pending[1+l];faceDensity=b.Density[0];tongues=new Texture2D[n-first];tongueDensity=new float[n-first];
             for(int i=first;i<n;i++){tongues[i-first]=pending[i];tongueDensity[i-first]=b.Density[i];}
             pending=null;job=null;liveFace=face;liveFlame=flame;
+        }
+        // Drops an unfinished bake, destroying any of its textures already made so a resize mid-upload leaks nothing.
+        private static void Discard()
+        {
+            if(pending!=null)for(int i=0;i<pending.Length;i++)if(pending[i]!=null)UnityEngine.Object.Destroy(pending[i]);
+            pending=null;uploaded=0;job=null;
         }
         /// <summary>Blocks until this window's textures are in (the offline renders).</summary>
         internal static void Finish(float W,float H){for(int guard=0;guard<64;guard++){Warm(W,H);Densities(W,H,out float face,out float flame);if(job==null&&face==liveFace&&flame==liveFlame)return;job?.Wait();}}
