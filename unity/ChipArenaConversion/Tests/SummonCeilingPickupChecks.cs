@@ -231,6 +231,11 @@ namespace ChipArena.UnityConversion
             Check(!machine.Contains("Beam(new Vector3(k.Position.x")&&!machine.Contains("HSVToRGB")&&machine.Contains("NativePickupFx.Rainbow(t,"),"no amber bar beam; the rainbow is setHSL's");
             string glow=R("NativePickupGlowPresentation.cs");
             Check(glow.Contains("Resources.Load<Shader>(\"NativePickupGlow\")")&&glow.Contains("NativePickupFx.Glow(mine,label)")&&glow.Contains("NativePickupFx.Stamp(coverage,alpha,atlas.width,atlas.height,g)")&&glow.Contains("NativePickupFx.BeamVertex(column,row,"),"the glow texture and beam from Core");
+            // The native match camera is untagged (Camera.main is null in a match and the killcam): the glow faces the drawing
+            // camera from the view matrix, and the CPU-built SPLAT! pop uses RenderGlow's camera.
+            Check(!machine.Contains("Camera.main")&&glow.Contains("mesh.SetUVs(1,corners);")&&glow.Contains("Vertex(centre,color,new Vector4(u0,0,1,0),new Vector2(-h,-h));"),"glow quads carry corner offsets, no Camera.main");
+            Check(R("NativeVentDeathPresentation.cs").Contains("var fx=DeathFx();var eye=WorldEye;")&&ceiling.Contains("if(camera!=null)worldEye=camera;"),"the SPLAT! pop faces RenderGlow's camera");
+            Check(R("NativeCombatHud.cs").Contains("if(presentation?.PickupLabelDrawn!=true)foreach(var k in arena.Pve.Pickups)"),"the flat HUD YOURS only stands in without the textured label");
             foreach(var file in new[]{"Runtime/NativeCeilingFieldPresentation.cs","Runtime/NativePickupGlowPresentation.cs","Core/NativeSummonBreak.cs","Core/NativeCeilingField.cs","Core/NativePickupFx.cs","Resources/NativeCeilingField.shader","Resources/NativePickupGlow.shader"})
             {string path=Path.Combine(root,"Assets/ChipArena",file);Check(File.Exists(path)&&File.Exists(path+".meta"),file+" and its meta");}
             string ceilingShader=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Resources/NativeCeilingField.shader"));
@@ -246,6 +251,7 @@ namespace ChipArena.UnityConversion
             Check(statements==10,"ten source shader statements");
             Check(ceilingShader.Contains("Blend One One")&&ceilingShader.Contains("ZWrite Off")&&ceilingShader.Contains("Cull Off")&&!ceilingShader.Contains("multi_compile_fog")&&ceilingShader.Contains("#pragma target 3.0"),"ceiling shader: additive, both faces, no fog, target 3.0");
             string glowShader=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Resources/NativePickupGlow.shader"));
+            Check(glowShader.Contains("float3 world=mul(unity_ObjectToWorld,v.vertex).xyz+UNITY_MATRIX_V[0].xyz*v.corner.x+UNITY_MATRIX_V[1].xyz*v.corner.y;")&&glowShader.Contains("float2 corner:TEXCOORD1;"),"glow shader billboards along the view matrix");
             Check(glowShader.Contains("Blend One One")&&glowShader.Contains("Cull Off")&&glowShader.Contains("#pragma multi_compile_fog")&&glowShader.Contains("_MainTex")&&glowShader.Contains("#pragma target 3.0"),"glow shader: additive, both faces, fogged, textured, target 3.0");
             Check(File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Editor/NativeBuildChecks.cs")).Contains("new[]{\"NativeCeilingField\",\"NativePickupGlow\"}"),"both shaders build-checked");
         }

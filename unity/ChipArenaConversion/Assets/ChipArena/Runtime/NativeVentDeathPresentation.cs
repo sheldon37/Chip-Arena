@@ -95,7 +95,7 @@ namespace ChipArena.UnityConversion
                 sourceModels.KillDust(Matrix4x4.TRS(at,CapturedAnimation.Quat(CapturedRig.Mirror(MeleeMath.Euler(rx,ry,0))),Vector3.one*scale),i%5==0?chip:dust,opacity);
             }
             // SPLAT! pops over the body: a camera-facing sprite, drawn over everything (depthTest false, renderOrder 6).
-            var fx=DeathFx();var eye=Camera.main;
+            var fx=DeathFx();var eye=WorldEye;
             if(fx!=null&&eye!=null&&NativeVentDeath.Pop(v.Since,out float width,out float rise,out float alpha))
             {
                 var centre=new Vector3(death.position.x,floor+rise,death.position.z);float px=width/NativeVentDeath.PopWidth;

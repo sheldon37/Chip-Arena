@@ -10,34 +10,37 @@ namespace ChipArena.UnityConversion
     /// Resources/NativePickupGlow.shader). The glow texture is the source canvas made once: both variants side by side in
     /// one 512 x 256 texture (left: the plain glow, right: the owner's, with "YOURS"), the label rasterised from the
     /// HOLO_FONT glyphs (the SPLAT! pop's OS font) and its blurred shadow composited in Core. Every glow quad and beam
-    /// cylinder of a frame is one dynamic world-space mesh refilled from reused lists: one draw, no per-frame allocation.
+    /// cylinder of a frame is one dynamic world-space mesh refilled from reused lists: one draw, no per-frame allocation. The
+    /// glow quads face whichever camera draws them: the shader spreads each corner from the sprite centre along the view
+    /// matrix, so no camera is needed here (the match camera is not tagged MainCamera).
     /// </summary>
     public sealed class NativePickupGlowPresentation : IDisposable
     {
         private readonly Mesh mesh=new Mesh{name="Native pickup glows"};private readonly Material material;private Texture2D texture;
-        private readonly List<Vector3> vertices=new List<Vector3>();private readonly List<Color> colors=new List<Color>();private readonly List<Vector4> uv=new List<Vector4>();private readonly List<int> indices=new List<int>();
+        private readonly List<Vector3> vertices=new List<Vector3>();private readonly List<Color> colors=new List<Color>();private readonly List<Vector4> uv=new List<Vector4>();private readonly List<Vector2> corners=new List<Vector2>();private readonly List<int> indices=new List<int>();
         private static readonly Bounds Everywhere=new Bounds(Vector3.zero,Vector3.one*4000);
         private NativePickupGlowPresentation(Shader shader){material=new Material(shader){name="Native pickup glows",renderQueue=(int)RenderQueue.Transparent};mesh.MarkDynamic();}
         /// <summary>Null when the shader is missing or unsupported (the glows and beams then simply do not draw).</summary>
         public static NativePickupGlowPresentation Create(){var shader=Resources.Load<Shader>("NativePickupGlow");return shader!=null&&shader.isSupported?new NativePickupGlowPresentation(shader):null;}
         public bool HasLabel{get;private set;}
-        private void Vertex(Vector3 p,Color c,Vector4 t){vertices.Add(p);colors.Add(c);uv.Add(t);}
+        private void Vertex(Vector3 p,Color c,Vector4 t,Vector2 corner){vertices.Add(p);colors.Add(c);uv.Add(t);corners.Add(corner);}
         /// <summary>
-        /// A glow sprite: a camera-facing square of GlowSize centred at <paramref name="centre"/> (right and up: the camera's
-        /// axes). <paramref name="color"/>: the tier colour as the screen shows it, alpha the opacity.
+        /// A glow sprite: a camera-facing square of GlowSize centred at <paramref name="centre"/> (its four vertices sit at the
+        /// centre; the shader spreads them along the drawing camera's right and up). <paramref name="color"/>: the tier colour
+        /// as the screen shows it, alpha the opacity.
         /// </summary>
-        public void Glow(Vector3 centre,Vector3 right,Vector3 up,Color color,bool mine)
+        public void Glow(Vector3 centre,Color color,bool mine)
         {
             float h=NativePickupFx.GlowSize*.5f,u0=mine?.5f:0,u1=u0+.5f;int a=vertices.Count;
-            Vertex(centre-right*h-up*h,color,new Vector4(u0,0,1,0));Vertex(centre+right*h-up*h,color,new Vector4(u1,0,1,0));
-            Vertex(centre+right*h+up*h,color,new Vector4(u1,1,1,0));Vertex(centre-right*h+up*h,color,new Vector4(u0,1,1,0));
+            Vertex(centre,color,new Vector4(u0,0,1,0),new Vector2(-h,-h));Vertex(centre,color,new Vector4(u1,0,1,0),new Vector2(h,-h));
+            Vertex(centre,color,new Vector4(u1,1,1,0),new Vector2(h,h));Vertex(centre,color,new Vector4(u0,1,1,0),new Vector2(-h,h));
             indices.Add(a);indices.Add(a+1);indices.Add(a+2);indices.Add(a);indices.Add(a+2);indices.Add(a+3);
         }
         /// <summary>The light beam standing on <paramref name="floor"/>: the source cylinder, its x mirrored into Unity axes.</summary>
         public void Beam(Vector3 floor,Color color)
         {
             int a=vertices.Count,n=NativePickupFx.BeamSides+1;
-            for(int row=0;row<2;row++)for(int column=0;column<n;column++){NativePickupFx.BeamVertex(column,row,out float x,out float y,out float z);Vertex(floor+new Vector3(-x,y,z),color,Vector4.zero);}
+            for(int row=0;row<2;row++)for(int column=0;column<n;column++){NativePickupFx.BeamVertex(column,row,out float x,out float y,out float z);Vertex(floor+new Vector3(-x,y,z),color,Vector4.zero,Vector2.zero);}
             for(int column=0;column<NativePickupFx.BeamSides;column++)
             {int va=a+column,vb=a+n+column,vc=a+n+column+1,vd=a+column+1;indices.Add(va);indices.Add(vb);indices.Add(vd);indices.Add(vb);indices.Add(vc);indices.Add(vd);}
         }
@@ -48,10 +51,10 @@ namespace ChipArena.UnityConversion
             if(vertices.Count>0)
             {
                 EnsureTexture(font);
-                mesh.SetVertices(vertices);mesh.SetColors(colors);mesh.SetUVs(0,uv);mesh.SetTriangles(indices,0,false);mesh.bounds=Everywhere;
+                mesh.SetVertices(vertices);mesh.SetColors(colors);mesh.SetUVs(0,uv);mesh.SetUVs(1,corners);mesh.SetTriangles(indices,0,false);mesh.bounds=Everywhere;
                 Graphics.DrawMesh(mesh,Matrix4x4.identity,material,0,null,0,null,ShadowCastingMode.Off,false);
             }
-            vertices.Clear();colors.Clear();uv.Clear();indices.Clear();
+            vertices.Clear();colors.Clear();uv.Clear();corners.Clear();indices.Clear();
         }
         private void EnsureTexture(Font font)
         {
@@ -110,5 +113,7 @@ namespace ChipArena.UnityConversion
     {
         private NativePickupGlowPresentation pickupGlow;private bool pickupGlowFailed;
         private NativePickupGlowPresentation PickupGlow(){if(pickupGlow==null&&!pickupGlowFailed){pickupGlow=NativePickupGlowPresentation.Create();pickupGlowFailed=pickupGlow==null;}return pickupGlow;}
+        /// <summary>True once the owner's pickups carry the textured YOURS (the HUD then drops its flat stand-in label).</summary>
+        public bool PickupLabelDrawn=>pickupGlow!=null&&pickupGlow.HasLabel;
     }
 }

@@ -60,13 +60,20 @@ namespace ChipArena.UnityConversion
 
     public sealed partial class ArenaPresentation
     {
-        private NativeCeilingFieldPresentation ceilingField;private bool ceilingFieldFailed;
+        private NativeCeilingFieldPresentation ceilingField;private bool ceilingFieldFailed;private Camera worldEye;
+        /// <summary>
+        /// The camera the world effects are drawn for (RenderGlow's: the match view, the killcam replay's), kept from the last
+        /// RenderGlow for the CPU-built camera-facing text drawn earlier in the frame (the SPLAT! pop). The native match camera
+        /// is not tagged MainCamera, so Camera.main is only the fallback before the first RenderGlow.
+        /// </summary>
+        private Camera WorldEye=>worldEye!=null?worldEye:Camera.main;
         /// <summary>
         /// The event-driven world effects that replace the early stand-ins (placeholder batch 5b): the ceiling-field hit
         /// holograms and the summons' minionHit puffs. now: FieldClock, the source's state.time.
         /// </summary>
         private void EventWorldFx(NativeArena arena,Camera camera,float now)
         {
+            if(camera!=null)worldEye=camera;
             if(ceilingField==null&&!ceilingFieldFailed){ceilingField=NativeCeilingFieldPresentation.Create();ceilingFieldFailed=ceilingField==null;}
             ceilingField?.Render(arena,camera,now);SummonHitPuffs(arena,now);
         }

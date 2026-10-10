@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
             }
             // pickups.ts: the chip, its additive glow sprite (YOURS for the local seat's pickups) and, for epic and above once
             // landed, the translucent pulsing beam (Core/NativePickupFx.cs, NativePickupGlowPresentation.cs).
-            var glow=PickupGlow();var eye=Camera.main;
+            var glow=PickupGlow();
             foreach(var k in view.Pickups)
             {
                 var machine=view.Content.machines[0];foreach(var m in view.Content.machines)if(m.m==k.Machine){machine=m;break;}
@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
                 else{foreach(var rarity in arena.Content.rarities)if(rarity.id==k.Tier){ColorUtility.TryParseHtmlString(rarity.color,out shown);break;}tint=shown.linear;}
                 var root=Matrix4x4.TRS(NativeArena.Vec(pose.position),Quaternion.Euler(0,pose.spin*Mathf.Rad2Deg,0)*Quaternion.Euler(-1.25f*Mathf.Rad2Deg,0,0),Vector3.one*.62f);sourceModels.Queue("pve-pickup",root,b=>root,partTint:b=>b==1?tint:Color.white);
                 if(glow==null)continue;bool mine=k.Owner!=null&&k.Owner.Seat.id==arena.LocalId;Vector3 at=NativeArena.Vec(pose.position);
-                if(eye!=null)glow.Glow(at+Vector3.up*NativePickupFx.GlowLift,eye.transform.right,eye.transform.up,new Color(shown.r,shown.g,shown.b,NativePickupFx.GlowOpacity(mine,t)),mine);
+                glow.Glow(at+Vector3.up*NativePickupFx.GlowLift,new Color(shown.r,shown.g,shown.b,NativePickupFx.GlowOpacity(mine,t)),mine);
                 if(NativePickupFx.BeamShown(k.Tier,pose.progress))glow.Beam(new Vector3(at.x,0,at.z),new Color(shown.r,shown.g,shown.b,NativePickupFx.BeamOpacity(mine,t)));
             }
             glow?.Draw(DeathFx()?.PopFont);
