@@ -18,9 +18,11 @@ namespace ChipArena.UnityConversion
             Ensure();if(!clips.TryGetValue(key,out var clip))return false;float fraction=clip.loop?Mathf.Repeat(age,clip.duration)/clip.duration:Mathf.Clamp01(age/(duration>0?duration:clip.duration));float index=fraction*(clip.frames-1);int a=Math.Min(clip.frames-1,(int)index),b=Math.Min(clip.frames-1,a+1);float t=index-a;
             for(int bone=0;bone<22;bone++){int first=(a*22+bone)*7,last=(b*22+bone)*7;var v=clip.values;var p=new NVector(v[first],v[first+1],v[first+2]);var q=new NQuaternion(v[first+3],v[first+4],v[first+5],v[first+6]);pose.Position[bone]=NVector.Lerp(p,new NVector(v[last],v[last+1],v[last+2]),t);pose.Rotation[bone]=NQuaternion.Slerp(q,new NQuaternion(v[last+3],v[last+4],v[last+5],v[last+6]),t);}return true;
         }
+        // One pose for every intro frame (main thread only; Sample writes every joint), so the entrance allocates nothing per frame.
+        private static readonly CapturedRig.Pose introPose=new CapturedRig.Pose();private static string introStyle,introKey;
         public static void Intro(CapturedAnimation.Player rig,string style,float age,Camera camera)
         {
-            Ensure();string key="intro-"+style;if(!clips.TryGetValue(key,out var clip))return;var pose=new CapturedRig.Pose();Sample(key,age,clip.duration,pose);
+            Ensure();if(style!=introStyle){introStyle=style;introKey="intro-"+style;}string key=introKey;if(!clips.TryGetValue(key,out var clip))return;var pose=introPose;Sample(key,age,clip.duration,pose);
             for(int i=0;i<22;i++){rig.Bones[i].localPosition=CapturedAnimation.Vec(CapturedRig.Mirror(pose.Position[i]));rig.Bones[i].localRotation=CapturedAnimation.Quat(CapturedRig.Mirror(pose.Rotation[i]));}
             float index=Mathf.Clamp01(age/clip.duration)*(clip.frames-1);int a=Math.Min(clip.frames-1,(int)index)*10,b=Math.Min(clip.frames-1,(int)index+1)*10;float f=index-(int)index;
             float At(float[] v,int n)=>Mathf.Lerp(v[a+n],v[b+n],f);Vector3 V(float[] v,int n)=>new Vector3(-At(v,n),At(v,n+1),At(v,n+2));

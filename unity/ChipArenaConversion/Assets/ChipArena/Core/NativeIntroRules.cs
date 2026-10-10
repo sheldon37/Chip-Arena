@@ -27,6 +27,43 @@ namespace ChipArena.UnityConversion
         // Every other entrance shows empty hands: the poses, the Rain Warrior and the L33T Throne hide r.weapon and the Siren
         // hides it. The L33T Throne's staff is the stage's own prop, grabbed at 4 s.
         public static string IntroWeapon(string style)=>style=="dev-emperor"?"weapon-emperor":style!=null&&style.StartsWith("weapon-",StringComparison.Ordinal)&&Array.IndexOf(Entrances,style)>=0?style:null;
+        // character-rig.ts: the hand socket on the wrist joint, where an ungripped weapon sits (source frame, +x the rig's left).
+        public static readonly System.Numerics.Vector3 HandSocket=new System.Numerics.Vector3(0,-.065f,.055f);
+        /// <summary>
+        /// Where IntroWeapon's model sits on its wrist joint (the bank exports weapons with the hand sockets zeroed, so the
+        /// model origin is the wrist). Every weapon intro grips its weapon (rig-ik.ts gripWeapon: the weapon origin on the wrist,
+        /// no extra rotation, also for the staffs on the left hand); poseEmperor never grips, so the gauntlets stay on the hand
+        /// socket. tools/export_motion.mjs fails the intro bake if any frame holds a weapon anywhere else.
+        /// </summary>
+        public static System.Numerics.Vector3 IntroGrip(string style)=>style=="dev-emperor"?HandSocket:System.Numerics.Vector3.Zero;
+        /// <summary>
+        /// Belt Rattle's muzzle flash (weapon-intro-motion.ts: buildWeapon's flash at rest, shown on alternate 1/24 s frames of
+        /// the 1.93-2.33 s burst), on the right wrist like the gun; false for every other style and moment.
+        /// </summary>
+        public static bool IntroMuzzleFlash(string style,double age,out WeaponPiece flash)
+        {
+            flash=default;if(style!="weapon-machinegun"||!(age>1.93&&age<2.33)||(int)Math.Floor((age-1.93)*24)%2!=0)return false;
+            flash=new WeaponPiece{Shape=WeaponShape.Cone,Glow=true,Color=0xffdb90,Position=new System.Numerics.Vector3(0,0,NativeWeaponDressing.MuzzleZ("machinegun")+.14f),Scale=new System.Numerics.Vector3(.11f,.30f,.11f),Rotation=CapturedRig.Euler((float)Math.PI/2),Orbit=-1};
+            return true;
+        }
+        /// <summary>
+        /// An entrance-stage track whose tint changes over the clip (SceneMotion values: 20 floats per track frame, tint at
+        /// 17-19). On the intro stages these are exactly ChipBlasts' voxel pools; the transparent ones are its glow pools.
+        /// </summary>
+        public static bool TintVaries(float[] values,int frames,int track)
+        {
+            int start=track*frames*20;for(int f=1;f<frames;f++)for(int k=17;k<20;k++)if(values[start+f*20+k]!=values[start+k])return true;return false;
+        }
+        /// <summary>
+        /// A glow voxel (ChipBlasts: MeshBasicMaterial, AdditiveBlending, fading by dimming its instance colour to black) drawn
+        /// with the alpha-blended source material: the dimming moves into alpha and the colour keeps its hue, so colour x alpha is
+        /// the source's additive term and a spent voxel fades out instead of turning into an opaque dark cube. Returns the alpha
+        /// factor (0..1) and rewrites the tint; brighter-than-white tints keep alpha 1 and their overbright colour.
+        /// </summary>
+        public static float GlowAlpha(ref float r,ref float g,ref float b)
+        {
+            float k=Math.Max(r,Math.Max(g,b));if(!(k>0)){r=g=b=0;return 0;}float a=Math.Min(1,k);r/=a;g/=a;b/=a;return a;
+        }
         // shared/intros.ts INTRO_STYLES display names.
         public static string StyleName(string style)
         {
