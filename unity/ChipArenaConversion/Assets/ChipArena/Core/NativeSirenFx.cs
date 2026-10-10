@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
     {public long Id;public bool Burst,Column;public double Acc,Width,Height,Spin,Fade;public int Seen;}
 
     /// <summary>
-    /// Pure port of client/siren/fx.ts SirenFx at 05950ea (everything but the mark crosshair, which is C9, the victim's
+    /// Pure port of client/siren/fx.ts SirenFx at 05950ea (everything but the mark crosshair, NativeSirenMark below, the victim's
     /// struggle pose and cutscene, C16, and the draws): the event table, the one-shot pieces, the claw slash with its
     /// lingering flames, projectile trails and coronas, fire-patch, eruption and rain flames and the Last Laugh burn, all
     /// in the source's world frame and fed the source's random stream in the source's order. Also motion.ts emitFlames (the
@@ -410,6 +410,132 @@ namespace ChipArena.UnityConversion
             }
             return acc;
         }
+    }
+
+    /// <summary>
+    /// client/siren/fx.ts updateMarks and markBeeps at 05950ea: Marked's "You...." crosshair, the lock-on telegraph that the
+    /// Siren's fourth ranged move (keys 1-4 in ranged mode: Damnation, Eruption, Black Rain, Marked) puts on the marked player.
+    /// It shows from lockAt (the voice line ends, siren-lock) while the mark lives, centred <see cref="Lift"/> above the
+    /// target's body centre and turned with the camera (group.quaternion = camera.quaternion), over everything (depthTest
+    /// false, renderOrder 999) in one transparent DoubleSide glowMaterial of PALETTE.warn that each beep turns white. In the
+    /// billboard plane (x right, y up, before the group scale): RingGeometry(.86, 1, 64) turning, RingGeometry(.12, .17, 4)
+    /// turned 45 degrees (a square outline) and four TICK boxes .06 x .32 x .01 centred .98 out, which swing .8 rad into the
+    /// cardinal points over the lock. The group closes from 1.6 to .85 and swells 12% on each beep; once the seeker is thrown
+    /// it holds .85, turns slowly and pulses its opacity. The beeps (siren-audio.ts) climb from 550 Hz at the same instants.
+    /// </summary>
+    public static class NativeSirenMark
+    {
+        /// <summary>SIREN_TIMING.mark (shared/siren-contract.ts): the "You...." voice, then the lock until the seeker is thrown.</summary>
+        public const double Voice=1.2,Lock=1.2,Recover=.5;
+        public const double Lift=.35,RingInner=.86,SquareInner=.12,SquareOuter=.17,SquareTurn=Math.PI/4,TickRadius=.98,TickWidth=.06,TickLength=.32,TickSwing=.8;
+        public const int RingSegments=64,SquareSegments=4,TickCount=4,BeepCap=40;
+        public const double FirstGap=.3,MinGap=.07,GapDecay=.8,BeepTail=.02,BeepFlash=.09,BeepSwell=.12,WhiteAt=.3;
+        public const double StartSize=1.6,Closing=.75,ThrownSize=.85,Spin=2.4,ThrownSpin=.8,LowTone=550,ToneRise=850;
+        /// <summary>PALETTE.warn, and the beep flash (uColor 0xffffff); glowMaterial colours are raw ShaderMaterial colours.</summary>
+        public const int Warn=NativeSirenFx.Warn,Flash=0xffffff;
+        /// <summary>
+        /// The marked player's own first-person view (Unity readability, owner playtest 2026-10-10: "people won't know they're
+        /// getting targeted"). The source centres the billboard .17 m under the eye (Lift .35 against eyeHeight .52), inside the
+        /// near plane, so a first-person target only hears the beeps. Here the same crosshair is held ScreenDistance in front of
+        /// the eye with its ring spanning ScreenReach of the half-height at lock start (it then closes to .85/1.6 of that).
+        /// </summary>
+        public const double ScreenDistance=1,ScreenReach=.9;
+        /// <summary>A seeker steers at its target's body centre lifted .2 m (Runtime/NativeSiren.cs); with no record seen, the
+        /// crosshair goes on the player its velocity points at within this cosine.</summary>
+        public const double SeekerAim=.2,AimCos=.97;
+
+        /// <summary>markBeeps: from lockAt, gaps of .3 s shrinking by .8 toward .07 s, before throwAt - .02 (at most 40).
+        /// Writes up to into.Length instants into <paramref name="into"/> (may be null) and returns how many there are.</summary>
+        public static int Beeps(double lockAt,double throwAt,double[] into=null)
+        {
+            int n=0;double t=lockAt,gap=FirstGap;
+            while(t<throwAt-BeepTail&&n<BeepCap){if(into!=null&&n<into.Length)into[n]=t;n++;t+=gap;gap=Math.Max(MinGap,gap*GapDecay);}
+            return n;
+        }
+        /// <summary>siren-audio.ts: the beep at <paramref name="at"/> sounds at 550 + u·850 Hz, u its place in the lock.</summary>
+        public static double Tone(double lockAt,double throwAt,double at)=>LowTone+(at-lockAt)/(throwAt-lockAt)*ToneRise;
+        /// <summary>updateMarks beep: 1 - age/.09 for a beep under .09 s old (the latest wins), else 0.</summary>
+        public static double Beep(double lockAt,double throwAt,double time)
+        {
+            double beep=0,t=lockAt,gap=FirstGap;
+            for(int n=0;t<throwAt-BeepTail&&n<BeepCap;n++){if(time>=t&&time-t<BeepFlash)beep=1-(time-t)/BeepFlash;t+=gap;gap=Math.Max(MinGap,gap*GapDecay);}
+            return beep;
+        }
+        /// <summary>
+        /// updateMarks for a shown mark at <paramref name="time"/>: the group scale (beep swell included), the ring's turn
+        /// (rotation.z), the ticks' swing past the cardinal points, the shared material's opacity and whether it flashes white.
+        /// </summary>
+        public static void Look(double lockAt,double throwAt,double time,out double scale,out double spin,out double tickTurn,out double opacity,out bool white)
+        {
+            bool thrown=time>=throwAt;double u=NativeFxMath.Clamp01((time-lockAt)/Math.Max(.1,throwAt-lockAt)),size=thrown?ThrownSize:StartSize-Closing*NativeFxMath.Smooth(u);
+            double beep=Beep(lockAt,throwAt,time);
+            scale=size*(1+BeepSwell*beep);spin=time*(thrown?ThrownSpin:Spin);tickTurn=thrown?0:(1-u)*TickSwing;
+            opacity=thrown?.75+.2*Math.Sin(time*6):.85+.15*beep;white=beep>WhiteAt;
+        }
+        /// <summary>Tick i: its centre (x right, y up, before the group scale) and a, the angle from up toward right of its long
+        /// (radial) axis; the source turns the box by rotation.z = -a.</summary>
+        public static void Tick(int i,double tickTurn,out double x,out double y,out double a){a=i*Math.PI/2+tickTurn;x=Math.Sin(a)*TickRadius;y=Math.Cos(a)*TickRadius;}
+        /// <summary>World units per crosshair unit for the first-person target, from the camera's vertical field of view.</summary>
+        public static double ScreenUnit(double verticalFovDegrees)=>ScreenDistance*Math.Tan(verticalFovDegrees*Math.PI/360)*ScreenReach/StartSize;
+        /// <summary>Cosine between a seeker's velocity and the way from it to a candidate's aim point.</summary>
+        public static double Aim(double sx,double sy,double sz,double vx,double vy,double vz,double tx,double ty,double tz)
+        {
+            double dx=tx-sx,dy=ty-sy,dz=tz-sz,d=Math.Sqrt(dx*dx+dy*dy+dz*dz),v=Math.Sqrt(vx*vx+vy*vy+vz*vz);
+            return d<1e-6||v<1e-6?-1:(dx*vx+dy*vy+dz*vz)/(d*v);
+        }
+    }
+
+    /// <summary>
+    /// Who wears the Marked crosshair this frame, from what host, guests and the killcam all hold: the mark records
+    /// (NativeMarkView: owner, target, lockAt, throwAt) and the Siren's seekers. The source keeps a SirenMark from the cast
+    /// until its seeker is gone or fails to spawn (or the target dies; shared/siren.ts) and draws the crosshair on that target
+    /// from lockAt, so it vanishes on impact. The native record instead ends with the move's recovery .5 s after the throw,
+    /// so a record shows the crosshair from lockAt only until <see cref="Grace"/> past the throw; after that only a live seeker
+    /// of its owner shows it, on the target the record names and, once the record is gone, the one it last named (or the
+    /// authority's own seeker target, or, with no record seen, the player the seeker flies at). Only the marked player wears
+    /// it. Allocation free; Begin, then Record and Seeker, then End, once per frame.
+    /// </summary>
+    public sealed class NativeSirenMarkTracker
+    {
+        public const int Capacity=32;
+        /// <summary>How long past the throw a record alone keeps the crosshair, so a guest whose seeker arrives a frame or
+        /// two after the record's throw does not see it blink; a seeker that never spawned drops it this soon after.</summary>
+        public const double Grace=.1;
+        public struct Mark{public int Owner,Target;public double LockAt,ThrowAt;}
+        private struct Memo{public int Owner,Target,Frame,RecordFrame,ShownFrame;public double LockAt,ThrowAt;public bool Alive;}
+        private readonly Memo[] memos=new Memo[Capacity];private readonly Mark[] shown=new Mark[Capacity];private int memoCount,count,frame;
+        public int Count=>count;
+        public Mark this[int i]=>shown[i];
+        public void Clear(){memoCount=count=0;}
+        public void Begin(){frame++;count=0;}
+        private int Find(int owner){for(int i=0;i<memoCount;i++)if(memos[i].Owner==owner)return i;return -1;}
+        private void Show(int i)
+        {if(memos[i].ShownFrame==frame)return;memos[i].ShownFrame=frame;if(count<Capacity)shown[count++]=new Mark{Owner=memos[i].Owner,Target=memos[i].Target,LockAt=memos[i].LockAt,ThrowAt=memos[i].ThrowAt};}
+        /// <summary>A mark record: remembered for its seeker, shown from lockAt to <see cref="Grace"/> past the throw while its
+        /// target lives (later only with its seeker, <see cref="Seeker"/>).</summary>
+        public void Record(int owner,int target,double lockAt,double throwAt,bool targetAlive,double time)
+        {
+            int i=Find(owner);if(i<0){if(memoCount==Capacity)return;i=memoCount++;}
+            memos[i]=new Memo{Owner=owner,Target=target,LockAt=lockAt,ThrowAt=throwAt,Frame=frame,RecordFrame=frame,ShownFrame=-1,Alive=targetAlive};
+            if(targetAlive&&time>=lockAt&&time<throwAt+Grace)Show(i);
+        }
+        /// <summary>The target the owner's last record (or seeker) named; 0 when none was seen.</summary>
+        public int Remembered(int owner){int i=Find(owner);return i<0?0:memos[i].Target;}
+        /// <summary>
+        /// A live seeker of <paramref name="owner"/> flying at <paramref name="target"/> (0 when unknown): carries the crosshair
+        /// past the throw, on this frame's record's target while the record lives and on the remembered one after it. With no
+        /// record seen, the crosshair starts thrown (lock and throw at the seeker's birth).
+        /// </summary>
+        public void Seeker(int owner,int target,double born,bool targetAlive,double time)
+        {
+            int i=Find(owner);
+            if(i>=0&&memos[i].RecordFrame==frame){if(memos[i].Alive&&time>=memos[i].LockAt)Show(i);return;}
+            if(i<0){if(memoCount==Capacity||target==0)return;i=memoCount++;memos[i]=new Memo{Owner=owner,LockAt=born,ThrowAt=born,RecordFrame=-1,ShownFrame=-1};}
+            if(target!=0)memos[i].Target=target;memos[i].Frame=frame;
+            if(targetAlive&&memos[i].Target!=0&&time>=memos[i].LockAt)Show(i);
+        }
+        /// <summary>Forgets owners with neither a record nor a seeker this frame.</summary>
+        public void End(){int k=0;for(int i=0;i<memoCount;i++)if(memos[i].Frame==frame)memos[k++]=memos[i];memoCount=k;}
     }
 
     /// <summary>client/pve/gore.ts black flame: hit puffs, the gib spray and puff, and stump drips (C17's FlameField part).</summary>

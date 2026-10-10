@@ -38,7 +38,9 @@ namespace ChipArena.UnityConversion
         }
         private static readonly Bounds Everywhere=new Bounds(Vector3.zero,Vector3.one*4000);
         public readonly Layer Solid=new Layer("Native Siren flames"),Effects=new Layer("Native Siren effects"),ViewSolid=new Layer("Native Siren view model");
-        private readonly Material solid,effects;
+        /// <summary>The effect layer drawn over everything (depthTest false, renderOrder 999 in the source): the Marked crosshair.</summary>
+        public readonly Layer Overlay=new Layer("Native Siren overlay");
+        private readonly Material solid,effects,overlay;
         // Unit sphere for orbs (positions = normals) and the source's shell and jet geometry.
         private readonly Vector3[] orbPoints;private readonly int[] orbIndices;
         private readonly double[] shellPositions,shellUv,jetPositions,jetNormals,jetUv;private readonly int[] shellIndices,jetIndices;
@@ -48,14 +50,16 @@ namespace ChipArena.UnityConversion
             solid=new Material(shader){name="Native Siren solid",renderQueue=(int)RenderQueue.Geometry+10};solid.SetFloat("_Src",(float)BlendMode.One);solid.SetFloat("_Dst",(float)BlendMode.Zero);solid.SetFloat("_ZWrite",1);
             effects=new Material(shader){name="Native Siren effects",renderQueue=(int)RenderQueue.Transparent+1};effects.SetOverrideTag("RenderType","Transparent");
             effects.SetFloat("_Src",(float)BlendMode.One);effects.SetFloat("_Dst",(float)BlendMode.OneMinusSrcAlpha);effects.SetFloat("_ZWrite",0);
+            overlay=new Material(shader){name="Native Siren overlay",renderQueue=(int)RenderQueue.Overlay};overlay.SetOverrideTag("RenderType","Transparent");
+            overlay.SetFloat("_Src",(float)BlendMode.One);overlay.SetFloat("_Dst",(float)BlendMode.OneMinusSrcAlpha);overlay.SetFloat("_ZWrite",0);overlay.SetFloat("_ZTest",(float)CompareFunction.Always);
             NativeSirenFx.Sphere(out var sp,out _,out var si,12,8);orbPoints=new Vector3[sp.Length/3];for(int i=0;i<orbPoints.Length;i++)orbPoints[i]=new Vector3((float)sp[i*3],(float)sp[i*3+1],(float)sp[i*3+2]);orbIndices=si;
             NativeSirenFx.Sphere(out shellPositions,out shellUv,out shellIndices);NativeSirenFx.Jet(out jetPositions,out jetNormals,out jetUv,out jetIndices);
         }
-        public void Clear(){Solid.Clear();Effects.Clear();ViewSolid.Clear();}
+        public void Clear(){Solid.Clear();Effects.Clear();ViewSolid.Clear();Overlay.Clear();}
         public void Draw(Camera world,Camera view,float time)
         {
-            solid.SetFloat("_FxTime",time);effects.SetFloat("_FxTime",time);
-            Solid.Draw(solid,world,0);Effects.Draw(effects,world,0);ViewSolid.Draw(solid,view,10);
+            solid.SetFloat("_FxTime",time);effects.SetFloat("_FxTime",time);overlay.SetFloat("_FxTime",time);
+            Solid.Draw(solid,world,0);Effects.Draw(effects,world,0);ViewSolid.Draw(solid,view,10);Overlay.Draw(overlay,world,0);
         }
         private static Vector4 Uv(float u,float v,float mode,float flags)=>new Vector4(u,v,mode,flags);
         /// <summary>A flat-coloured cube (8 corners) with full edges <paramref name="scale"/>.</summary>
@@ -90,6 +94,17 @@ namespace ChipArena.UnityConversion
             const int segments=64;Vector4 uv=Uv(0,0,Flat,flags);int start=layer.Count;
             for(int i=0;i<=segments;i++){float a=i*Mathf.PI*2/segments,s=Mathf.Sin(a),c=Mathf.Cos(a);layer.Vertex(center+new Vector3(c*inner*radius,0,s*inner*radius),Vector3.up,color,uv,Vector4.zero,Vector4.zero);layer.Vertex(center+new Vector3(c*radius,0,s*radius),Vector3.up,color,uv,Vector4.zero,Vector4.zero);}
             for(int i=0;i<segments;i++){int a=start+i*2;layer.Triangle(a,a+1,a+3);layer.Triangle(a,a+3,a+2);}
+        }
+        /// <summary>
+        /// A flat RingGeometry(inner, outer, segments) in the plane of <paramref name="right"/> and <paramref name="up"/> (their
+        /// lengths are the scale), its first vertex <paramref name="start"/> radians from right toward up (rotation.z).
+        /// </summary>
+        public void Annulus(Layer layer,Vector3 center,Vector3 right,Vector3 up,float inner,float outer,int segments,float start,Color color,float flags)
+        {
+            Vector4 uv=Uv(0,0,Flat,flags);int first=layer.Count;Vector3 normal=Vector3.Cross(right,up).normalized;
+            for(int i=0;i<=segments;i++)
+            {float a=start+i*Mathf.PI*2/segments;Vector3 d=right*Mathf.Cos(a)+up*Mathf.Sin(a);layer.Vertex(center+d*inner,normal,color,uv,Vector4.zero,Vector4.zero);layer.Vertex(center+d*outer,normal,color,uv,Vector4.zero,Vector4.zero);}
+            for(int i=0;i<segments;i++){int a=first+i*2;layer.Triangle(a,a+1,a+3);layer.Triangle(a,a+3,a+2);}
         }
         /// <summary>A flat quad from four corners (crack tops).</summary>
         public void Quad(Layer layer,Vector3 a,Vector3 b,Vector3 c,Vector3 d,Color color,float flags)
@@ -154,6 +169,6 @@ namespace ChipArena.UnityConversion
                 if(Vector3.Dot(Vector3.Cross(layer.Point(b)-pa,layer.Point(c)-pa),e-pa)*sign>0)layer.Triangle(a,b,c);
             }
         }
-        public void Dispose(){Clear();CapturedAnimation.Release(Solid.Mesh);CapturedAnimation.Release(Effects.Mesh);CapturedAnimation.Release(ViewSolid.Mesh);CapturedAnimation.Release(solid);CapturedAnimation.Release(effects);}
+        public void Dispose(){Clear();CapturedAnimation.Release(Solid.Mesh);CapturedAnimation.Release(Effects.Mesh);CapturedAnimation.Release(ViewSolid.Mesh);CapturedAnimation.Release(Overlay.Mesh);CapturedAnimation.Release(solid);CapturedAnimation.Release(effects);CapturedAnimation.Release(overlay);}
     }
 }

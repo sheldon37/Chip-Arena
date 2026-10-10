@@ -45,6 +45,7 @@ namespace ChipArena.UnityConversion
         private readonly List<int> sirenStale=new List<int>();private readonly double[] fxJoints=new double[22*16],fxRoot=new double[16],fxLeft=new double[16],fxRight=new double[16],fxMatrix=new double[16];
         private NativeArena fxArena;private int fxGeneration=-1,fxSet,fxRound,fxEvent,fxFrame;private float fxLast=float.NegativeInfinity,viewLast=float.NegativeInfinity;private double viewAcc;
         private Color sirenCharColor=Color.white;private Func<int,Color> sirenCharTint;private string sirenInk;
+        private readonly NativeSirenMarkTracker markTracker=new NativeSirenMarkTracker();
         private static readonly Color InkRaw=Raw(NativeSirenFx.Ink),AshRaw=Raw(NativeSirenFx.Ash),WarnRaw=Raw(NativeSirenFx.Warn),SeekerCore=Raw(0x020103),ClawInk=NativeArena.ColorOf(0x07060a),AshAuthored=NativeArena.ColorOf(NativeSirenFx.Ash);
         // A ShaderMaterial colour as three holds it: the hex converted to linear (NativeSirenFx.shader "raw").
         private static Color Raw(int hex){NativeBlastSim.Linear(hex,out double r,out double g,out double b);return new Color((float)r,(float)g,(float)b,1);}
@@ -58,7 +59,7 @@ namespace ChipArena.UnityConversion
         {float burn=SirenChar(seat);if(burn<=0)return null;sirenCharColor=Color.white*(1-.85f*burn);sirenCharColor.a=1;return sirenCharTint??(sirenCharTint=_=>sirenCharColor);}
         private void ClearDevEffects()
         {
-            sirenFx?.Clear();viewFlames?.Clear();fxDraw?.Clear();ClearDevFighters();sirenTracks.Clear();sirenChar.Clear();sirenFieldFlags.Clear();sirenShots.Clear();
+            sirenFx?.Clear();viewFlames?.Clear();fxDraw?.Clear();ClearDevFighters();sirenTracks.Clear();sirenChar.Clear();sirenFieldFlags.Clear();sirenShots.Clear();markTracker.Clear();
             fxArena=null;fxGeneration=-1;fxEvent=0;fxLast=viewLast=float.NegativeInfinity;viewAcc=0;
         }
         private void DisposeDevEffects(){ClearDevEffects();DisposeSirenLooks();fxDraw?.Dispose();fxDraw=null;sirenInk=null;ghostsLoaded=false;ghostPilot=ghostGloves=null;ghostHats.Clear();}
@@ -78,7 +79,7 @@ namespace ChipArena.UnityConversion
             if(arena!=fxArena||arena.Generation!=fxGeneration||arena.Match.Set!=fxSet||arena.Match.Round!=fxRound||now<fxLast-.25f)
             {ClearDevEffects();fxArena=arena;fxGeneration=arena.Generation;fxSet=arena.Match.Set;fxRound=arena.Match.Round;}
             fxLast=now;fxFrame++;var fx=sirenFx;fx.Begin(now,BlastQuality);fxDraw.Clear();sirenChar.Clear();
-            SirenPilots(arena,now);SirenHits(arena,now);SirenShots(arena,camera,now);SirenFields(arena,now);fx.Tick();DrawSirenFx(camera);SirenViewModel(arena,now);DevFighters(arena,camera,now);
+            SirenPilots(arena,now);SirenHits(arena,now);SirenShots(arena,camera,now);SirenFields(arena,now);fx.Tick();DrawSirenFx(camera);SirenMarks(arena,camera,now);SirenViewModel(arena,now);DevFighters(arena,camera,now);
             fxDraw.Draw(camera,ViewCamera,now);
         }
         private NativePilot SeatPilot(NativeArena arena,int seat){var list=arena.Pilots;for(int i=0;i<list.Count;i++)if(list[i].Seat.id==seat)return list[i];return null;}
@@ -282,6 +283,54 @@ namespace ChipArena.UnityConversion
                     }
                 }
             }
+        }
+        // fx.ts updateMarks (NativeSirenMark): Marked's "You...." crosshair on the marked player from lockAt to the throw, then
+        // only while its seeker flies (gone on impact, not at the move's recovery end; NativeSirenMarkTracker.Grace), in the
+        // warn red over everything (the overlay layer), turned with the camera. The records are fed before the seekers. The marked
+        // player's own first-person view holds it in front of the eye (NativeSirenMark.ScreenReach). Host, guests and the
+        // killcam read the same mark records (NativeArena.LiveMarks) and seekers (NativeSirenMarkTracker); every viewer sees it.
+        private void SirenMarks(NativeArena arena,Camera camera,float now)
+        {
+            var tracker=markTracker;tracker.Begin();var marks=arena.LiveMarks();
+            for(int i=0;i<marks.Count;i++){var m=marks[i];tracker.Record(m.owner,m.target,m.lockAt,m.throwAt,Markable(SeatPilot(arena,m.target)),now);}
+            foreach(var b in arena.Bullets)
+            {
+                if(b.SirenKind!="seeker")continue;
+                int target=!arena.Replica&&b.SirenTarget!=0?b.SirenTarget:tracker.Remembered(b.Owner);if(target==0)target=SeekerTarget(arena,b);
+                tracker.Seeker(b.Owner,target,b.Born,Markable(target!=0?SeatPilot(arena,target):null),now);
+            }
+            tracker.End();if(tracker.Count==0)return;
+            var cam=camera.transform;var view=arena.ViewPilot;var layer=fxDraw.Overlay;
+            for(int i=0;i<tracker.Count;i++)
+            {
+                var m=tracker[i];var target=SeatPilot(arena,m.Target);if(target==null)continue;
+                NativeSirenMark.Look(m.LockAt,m.ThrowAt,now,out double scale,out double spin,out double turn,out double opacity,out bool white);
+                Vector3 center;float k=(float)scale;
+                if(FirstPerson&&view!=null&&view.Seat.id==m.Target){center=cam.position+cam.forward*(float)NativeSirenMark.ScreenDistance;k*=(float)NativeSirenMark.ScreenUnit(camera.fieldOfView);}
+                else center=(rigs.TryGetValue(m.Target,out var rig)&&rig!=null?rig.Root.transform.position:target.Body.position)+Vector3.up*(float)NativeSirenMark.Lift;
+                Vector3 right=cam.right*k,up=cam.up*k;Color color=Alpha(white?Color.white:WarnRaw,opacity);
+                fxDraw.Annulus(layer,center,right,up,(float)NativeSirenMark.RingInner,1,NativeSirenMark.RingSegments,(float)spin,color,0);
+                fxDraw.Annulus(layer,center,right,up,(float)NativeSirenMark.SquareInner,(float)NativeSirenMark.SquareOuter,NativeSirenMark.SquareSegments,(float)NativeSirenMark.SquareTurn,color,0);
+                for(int n=0;n<NativeSirenMark.TickCount;n++)
+                {
+                    NativeSirenMark.Tick(n,turn,out double x,out double y,out double a);float s=(float)Math.Sin(a),c=(float)Math.Cos(a);
+                    Vector3 at=center+right*(float)x+up*(float)y,along=(right*s+up*c)*(float)(NativeSirenMark.TickLength/2),across=(right*c-up*s)*(float)(NativeSirenMark.TickWidth/2);
+                    // The TICK box's front and back faces both blend (DoubleSide), so each tick is laid twice.
+                    for(int face=0;face<2;face++)fxDraw.Quad(layer,at-along-across,at-along+across,at+along+across,at+along-across,color,0);
+                }
+            }
+        }
+        private static bool Markable(NativePilot p)=>p!=null&&p.Hp>0&&p.Seat.connected;
+        // A seeker with no record seen (a killcam that opens after the throw, a late join): the live player it flies at.
+        private static int SeekerTarget(NativeArena arena,NativeBullet b)
+        {
+            int best=0;double near=NativeSirenMark.AimCos;
+            foreach(var p in arena.Pilots)
+            {
+                if(p.Seat.id==b.Owner||!Markable(p))continue;Vector3 aim=p.Body.position+Vector3.up*(float)NativeSirenMark.SeekerAim;
+                double cos=NativeSirenMark.Aim(b.Position.x,b.Position.y,b.Position.z,b.Velocity.x,b.Velocity.y,b.Velocity.z,aim.x,aim.y,aim.z);if(cos>near){near=cos;best=p.Seat.id;}
+            }
+            return best;
         }
         // first-person.ts: inked arms (NativeSourcePresentation), claws that retract into burning palm orbs, hand flames
         // riding with the view rig; restored to the normal view model for anyone else.
