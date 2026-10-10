@@ -82,8 +82,21 @@ build pinned to that SHA using the existing `chip-arena` configuration. Check mo
 remains read-only. No configuration, branch, machine or permission changes occur.
 
 The build step waits up to 15 minutes, polling every 30 seconds, so a normal build
-can publish in the same run. Longer builds resume on the hourly backstop. Active
-builds prevent duplicate requests, failed/cancelled builds are not automatically
+is observed without busy re-triggering. If it is still pending, the run emits a
+`Native update not published` warning and a `waiting_unity` summary with the
+commit and active build number/state; the hourly backstop resumes the wait.
+`waiting_ci` and `superseded` also mean no publication occurred. A green workflow
+means the check completed, not that an update shipped: require `published_verified`
+or `already_published`. A pushed update awaiting public-download verification is
+`published_unverified`. Check mode remains read-only. The prepare step runs only
+after a successful build gate, or in explicit check mode.
+
+The native game workflow must run on documentation-only cloud heads too: the
+publisher still requires both native jobs on the exact candidate SHA. Neither an
+older passing commit nor a parent's check results substitute for this gate.
+
+Builds that finish within the wait can publish in the same run. Active builds
+prevent duplicate requests, failed/cancelled builds are not automatically
 retried, and an advancing branch stops the old request. Unity's existing Auto-build
 can still trigger first; the API returns 409 if another build is already pending.
 
