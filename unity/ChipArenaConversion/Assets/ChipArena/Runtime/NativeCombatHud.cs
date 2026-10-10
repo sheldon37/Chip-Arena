@@ -104,7 +104,8 @@ namespace ChipArena.UnityConversion
             {
                 var row=arena.Pve.Rows.TryGetValue(local.Seat.id,out var r)?r:null;
                 foreach(var m in arena.Pve.Content.machines)if(ScreenPoint(new Vector3(m.x,2.62f,m.z),24,out var point)){int price=m.kind=="chip"?NativePveRules.ChipPrice(row?.Bought??0):m.kind=="recruit"?300:75;string value=m.kind=="med"&&row?.HealReady>arena.Time?Math.Ceiling(row.HealReady-arena.Time)+"s":"$"+price;var style=new GUIStyle(small){alignment=TextAnchor.MiddleCenter};GUI.Label(new Rect(point.x-80,height-point.y,160,50),m.kind.ToUpperInvariant()+"\n"+value,style);if(Vector3.Distance(local.Body.position,NativeArena.Vec(m.front.Position(.9f)))<2.2f)GUI.Label(new Rect(width/2-170,height-165,340,32),"F · "+(m.kind=="chip"?"Buy Chip":m.kind=="recruit"?"Hire recruit":"Heal")+"  "+value,label);}
-                foreach(var k in arena.Pve.Pickups)if(k.Owner==local&&arena.Time>=k.Born&&ScreenPoint(k.Position+Vector3.up*.65f,30,out var point))GUI.Label(new Rect(point.x-40,height-point.y,90,25),"YOURS",small);
+                // The owner's pickups wear the glow texture's YOURS (NativePickupGlowPresentation.cs); this flat label stands in only without it.
+                if(presentation?.PickupLabelDrawn!=true)foreach(var k in arena.Pve.Pickups)if(k.Owner==local&&arena.Time>=k.Born&&ScreenPoint(k.Position+Vector3.up*.65f,30,out var point))GUI.Label(new Rect(point.x-40,height-point.y,90,25),"YOURS",small);
             }
         }
     }
