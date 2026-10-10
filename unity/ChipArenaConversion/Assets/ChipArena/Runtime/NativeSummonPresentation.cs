@@ -30,14 +30,42 @@ namespace ChipArena.UnityConversion
             }
             sourceModels.Queue("slender",root,b=>slenderMatrices[b],b=>slenderRig.nodes[b].tentacle<0||ext>.02f);
         }
+        private readonly NativeSummonBreakups summonBreakups=new NativeSummonBreakups();
+        private NativeArena summonEventArena;private int summonEventGeneration=-1,summonEvent;
+        // chaos-visuals.ts summons(): a minionHit on a live summon puffs 3 voxels at the hit (Core/NativeSummonBreak.cs). Unity
+        // emits a summon's hits as Hit events targeting its id (NativeImpactCues draws nothing for a non-pilot target). now:
+        // FieldClock, the source's s.time.
+        private void SummonHitPuffs(NativeArena arena,float now)
+        {
+            if(arena!=summonEventArena||arena.Generation!=summonEventGeneration){summonEventArena=arena;summonEventGeneration=arena.Generation;summonEvent=0;}
+            var events=arena.Events;
+            for(int i=0;i<events.Count;i++)
+            {
+                var e=events[i];if(e.Id<=summonEvent)continue;summonEvent=e.Id;
+                if(e.Kind!=EventKind.Hit&&e.Kind!=EventKind.Headshot||!NativeSummonBreak.Fresh(now,e.Time)||!SummonTarget(arena,e.Target,out bool toy))continue;
+                SourceBurst(Vec(e.Position),NativeSummonBreak.HitColor(toy),NativeSummonBreak.HitCount,NativeSummonBreak.HitPower);
+            }
+        }
+        // A live summon, or the one this hit just killed (gone from the list; the source still holds its rig for the event).
+        private static bool SummonTarget(NativeArena arena,int id,out bool toy)
+        {
+            toy=false;if(id<=0)return false;
+            foreach(var m in arena.Minions)if(m.Id==id){toy=m.Kind=="toy";return m.Pve==null&&NativeSummonBreak.Summon(m.Kind);}
+            foreach(var d in arena.MinionDeaths)if(d.id==id)return NativeSummonBreak.SummonModel(d.model,out toy);
+            return false;
+        }
         private bool SourceMinionDeath(NativeDeath death,float age)
         {
-            bool summon=death.model?.StartsWith("summon-")==true,horde=death.model?.StartsWith("horde-")==true;if(!summon&&!horde)return false;
-            if(summon&&age>=.9f){if(age<1.6f)VoxelCloud(death.position,age-.75f,death.model=="summon-toy"?7:4,death.seed,24);return true;}if(horde&&age>=2.3f)return true;
+            bool summon=NativeSummonBreak.SummonModel(death.model,out bool toy),horde=death.model?.StartsWith("horde-")==true;if(!summon&&!horde)return false;
+            // At SUMMON_LOOK.death.breakAt the rig hides and three bursts fire up the body in the gib colours, once.
+            if(summon&&summonBreakups.Due(death.id,death.seed,age))for(int i=0;i<NativeSummonBreak.Bursts;i++){NativeSummonBreak.Burst(toy,i,out float lift,out int color,out int count);SourceBurst(death.position+Vector3.up*lift,color,count,NativeSummonBreak.BurstPower);}
+            if(summon&&age>=NativeSummonBreak.BreakAt)return true;if(horde&&age>=2.3f)return true;
             if(!minionRigs.TryGetValue(death.id,out var rig)){rig=captured.Create(transform,death.id);minionRigs.Add(death.id,rig);}
-            if(summon)NativeSummonPose.Death(minionPose,death.model=="summon-toy",age);else NativeSourceMotion.Sample(death.model+"-death",age,2.3f,minionPose);
+            if(summon)NativeSummonPose.Death(minionPose,toy,age);else NativeSourceMotion.Sample(death.model+"-death",age,2.3f,minionPose);
             NativePoseWriter.Write(rig.Bones,minionPose,"a summon rig");
-            rig.Root.transform.SetPositionAndRotation(death.position,Quaternion.Euler(0,death.yaw,0));rig.Root.transform.localScale=Vector3.one*(summon?(death.model=="summon-toy"?.6f:.85f):1);
+            // poseSummonDeath's jitter before the break-up moves the rig group's x (source axes; Unity's x is mirrored).
+            Vector3 at=summon?death.position-Vector3.right*NativeSummonBreak.Shake(age):death.position;
+            rig.Root.transform.SetPositionAndRotation(at,Quaternion.Euler(0,death.yaw,0));rig.Root.transform.localScale=Vector3.one*(summon?(toy?NativeSummonBreak.ToyScale:NativeSummonBreak.ZombieScale):1);
             sourceModels.Queue(death.model,rig.Root.transform.localToWorldMatrix,b=>rig.Bones[b].localToWorldMatrix,b=>MinionPartVisible(death.lost,b),opacity:summon?1:Mathf.Clamp01((2.3f-age)/.3f));return true;
         }
         private static bool MinionPartVisible(int lost,int b){int[] bits={1,2,4,8,16,32,64,128,256},bones={5,7,11,8,12,14,18,15,19};for(int i=0;i<bits.Length;i++)if((lost&bits[i])!=0&&BoneWithin(b,bones[i]))return false;return true;}

@@ -170,6 +170,7 @@ namespace ChipArena.UnityConversion.Editor
             finally{Physics.gravity=gravity;if(active.IsValid()&&active.isLoaded)SceneManager.SetActiveScene(active);}
             // The death presentation's primitives (sky broadcast lines, stars and nameplate; the vent splat's SPLAT!).
             {var shader=Resources.Load<Shader>("NativeDeathFx");if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: NativeDeathFx");}
+            foreach(var name in new[]{"NativeCeilingField","NativePickupGlow"}){var shader=Resources.Load<Shader>(name);if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: "+name);}
         }
     }
 }
