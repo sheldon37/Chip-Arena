@@ -8,7 +8,8 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativePilot { public MeleeReaction Reaction; }
     public sealed partial class NativeArena
     {
-        // shared/simulation.ts damage(): a direct, unarmoured hit that leaves the pilot alive records its reaction.
+        // shared/simulation.ts damage(): a direct, unarmoured hit that leaves the pilot alive records its reaction; so does a
+        // melee blow dealt as non-direct damage (the Siren's claws), so the struck pilot reacts to it (Core/NativeHitReact).
         private void MeleeHitReaction(NativePilot target,Vector3 direction,Vector3? hitPoint,float actual,bool head,bool direct)
         {
             if(SirenArmor(target)||actual<=0||target.Hp<=0||!direct||!hitPoint.HasValue&&direction.magnitude<=.01f)return;

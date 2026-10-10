@@ -120,7 +120,7 @@ namespace ChipArena.UnityConversion
         }
         public void ResetPresentation()
         {
-            ClearSourceActors();combatGlow?.Clear();blasts?.Clear();fieldTelegraphs?.Clear();shots?.Clear();meleeFlash?.Clear();shotTracker.Clear();aimMotion.Reset();viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
+            ClearSourceActors();combatGlow?.Clear();blasts?.Clear();fieldTelegraphs?.Clear();shots?.Clear();meleeFlash?.Clear();shotTracker.Clear();hitLedger.Clear();aimMotion.Reset();viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
             foreach(var source in shotAudio) if(source!=null) source.Stop(); if(localAudio!=null) localAudio.Stop();
             foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear();
             foreach(var o in debris) if(o!=null) Destroy(o); debris.Clear();
@@ -130,7 +130,7 @@ namespace ChipArena.UnityConversion
         public Vector3 Position(Actor actor) { Vector3 p; return visualPositions.TryGetValue(actor.Id,out p)?p:Vec(actor.Position); }
         public void Render(Snapshot s, float renderTime, bool smooth)
         {
-            if(s==null) return;sourceModels?.Begin();hazardClock=renderTime;
+            if(s==null) return;sourceModels?.Begin();hazardClock=renderTime;ObserveHits(s);
             foreach(var list in batches) list.Clear(); DrawnParts=0;
             removedRigs.Clear();
             foreach(int id in rigs.Keys) { bool exists=false; foreach(var a in s.Actors) if(a.Id==id) { exists=true; break; } if(!exists) removedRigs.Add(id); }
@@ -206,7 +206,7 @@ namespace ChipArena.UnityConversion
         private void PrepareCapturedPose(Actor a,Vector3 position,float time)
         {
             CapturedAnimation.Player rig;
-            if(!rigs.TryGetValue(a.Id,out rig)) { rig=captured.Create(transform,a.Id); rig.Impacts=meleeImpacts; rigs.Add(a.Id,rig); }
+            if(!rigs.TryGetValue(a.Id,out rig)) { rig=captured.Create(transform,a.Id); rig.Impacts=meleeImpacts; rig.Hits=hitLedger; rigs.Add(a.Id,rig); }
             if(Viewer&&ViewerSet>=4) rig.PreviewGun((WeaponId)(ViewerSet-3),ViewerClip,ViewerTime);
             else if(Viewer) rig.Preview(ViewerSet,PreviewName.Substring(PreviewName.IndexOf('/')+1),ViewerTime,Vector3.zero);
             else { PoseReach(rig,a,time); rig.ActorPose(a,position,time); }

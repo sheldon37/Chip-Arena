@@ -137,8 +137,12 @@ namespace ChipArena.UnityConversion
             }
             presentation.SoundEnabled=false;presentation.LocalId=arena.ViewPilot.Seat.id;
             float renderTime=arena.Replica?arena.ReplicaRenderTime:visualClock.Sample(match.Time,Time.timeAsDouble-Time.fixedTimeAsDouble,menu);
+            var frame=arena.Snapshot(true);
+            // Melee hit kick (Core/NativeHitReact): first person, a live local view and Settings · camera shake on (reduced
+            // with reduced effects); applied after the aim point above, and the view is rebuilt from the look angles next frame.
+            if(!menu&&Spectator==null&&!cinematic.Directing&&presentation.FirstPerson&&prefs.cameraShake){presentation.ObserveHits(frame);presentation.HitKick(cameraView.transform,frame,arena.ViewPilot.Seat.id,renderTime,prefs.reducedEffects?.4f:1);}
             presentation.WeaponLoadout=arena;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;
-            presentation.Render(arena.Snapshot(true),renderTime,false);
+            presentation.Render(frame,renderTime,false);
             Vector3? preview=null;bool previewClamped=false;
             // previewOn: E held .2 s and casting, or ready (a charge or no cooldown left) and, for magic, affordable. Casting is
             // read from the pose (PressAbility sets it, CancelWindup clears it), which guests also receive.
