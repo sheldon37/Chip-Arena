@@ -1,5 +1,36 @@
 # Chip Arena — development log
 
+## 2026-10-10 — Astra — Unity #26 grab/revival and visual batches released
+
+- Verified source `0433c8790e389f6b9a12a8f4c27d0a72be552386` on
+  `codex/unity-cloud-current`: grab/revival PR #94, build-fixture correction
+  PR #96, and Claude's placeholder batches 1–4. Includes the earlier Siren
+  music-clock repair from #23; the flicker timeline remains unchanged.
+- UBA #26 built Windows x64 with Unity 6000.3.24f1 / Linear. Exact-head native
+  source and Windows updater jobs passed in run `38078785296`.
+  Real Unity checks passed both new host/guest suites: explicit grab identity/
+  timing, claw attachment and struggle pose, release and invalid-frame handling;
+  intact/gibbed/Siren-crushed revival, remote pads, scan/voxels/stand-up,
+  interpolation lead, expiry/redeath/reset and finite imported rig matrices.
+  All existing build gates and the new repair/death shaders passed. Gameplay
+  health/colliders were unchanged by presentation checks; Windows visual/audio
+  acceptance and live multiplayer playtesting remain unrun.
+- Published through the existing test Update channel as `285d857f`, payload
+  SHA-256 `ec97c0962896d0b4b7e1a53a6576f818e35ca64695f22272ef3ea5748c95bcea`,
+  94,800,128 bytes / three parts. Publication commit `cf9bfb5cf92b971449413c2bf5482faf50ea0498`.
+  Public manifest and every part verified at 2026-10-10T19:38:15.596875+00:00; receipt commit
+  `e771b403072261a184451cdc5ccf56a3a401c3ab`, publisher run `38078865168` attempt 3.
+- #24 failed on the Editor fixture's internal-field access; #25 preceded the
+  fixture correction and was superseded. Neither was published. Automation PR #95
+  retains failed provider logs privately (71 Linux/Windows tests passed), without
+  retrying failed builds or weakening gates. #26's first publication attempt
+  pushed successfully but stopped on the stale public cache; the resumed run
+  verified downloads without rebuilding or republishing the player.
+- Known Electron verify/Required-check failures remain the old baseline. No
+  source merge into main or Site/live release. This documentation-only branch
+  records completion off the cloud head to avoid another build; combine it with
+  the next game batch. Prior #23 evidence remains in PR #91 and its branch.
+
 ## 2026-10-10 — Astra — correct the interaction build fixture
 
 - Follow-up `codex/unity-interaction-build-fix`, base `d9ebe850` / PR #94.
