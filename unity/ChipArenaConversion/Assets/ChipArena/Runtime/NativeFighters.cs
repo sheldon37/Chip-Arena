@@ -104,12 +104,14 @@ namespace ChipArena.UnityConversion
             // No swing blast: the source draws none (emperor-effects.ts bolts and the C12 DEV effects cover the fighters), and the
             // old stand-in drew the lightning (Shock) blast on every basic hit (owner, 2026-10-09). Presentation feed only.
         }
-        private void ConfirmFighter(NativePilot p,NativePilot q,float actual,bool electric,float stun,bool echo=false)
+        private void ConfirmFighter(NativePilot p,NativePilot q,float actual,bool electric,float stun,bool echo=false,bool meleeStrike=true)
         {
             var f=Fighter(p);bool emperor=Dev(p,"emperor");if(f.ComboTarget!=q.Seat.id||Time-f.LastHit>(emperor?1.35f:1.1f)){f.Hits=0;f.ComboDamage=0;}f.ComboTarget=q.Seat.id;f.Hits++;f.ComboDamage+=actual;f.LastHit=Time;
             if(q.Hp>0&&!SirenArmor(q))
             {
-                var old=q.Juggle;bool pickup=NativeSpecialRules.Pickup(q.Down,Time),air=old!=null||!q.Grounded||pickup;StunMelee(q,Math.Max(.09f,(emperor?(electric?.42f:.25f):stun)/(float)p.Stats["attackRate"]));
+                var old=q.Juggle;bool pickup=NativeSpecialRules.Pickup(q.Down,Time),air=old!=null||!q.Grounded||pickup;
+                // Strikes get a short, immunity-gated stun; projectiles and delayed echoes do not refresh it.
+                if(meleeStrike)StaggerMelee(q,NativeMeleeRules.FighterHitStun(emperor,electric||stun>=.3f,(float)p.Stats["attackRate"]));
                 if(emperor&&(electric||air))
                 {
                     var j=old??new NativeJuggle{At=Time,Owner=p,Pickup=pickup||q.Down?.PickupUsed==true};j.Hits++;if(electric&&!echo)j.ElectricHits++;j.LastHit=Time;j.Until=Time+1.25f;j.Owner=p;if(Has(p,"mishima-screw")&&j.Hits%3==0)j.SpinUntil=Time+.65f;q.Juggle=j;q.Down=null;
@@ -123,7 +125,7 @@ namespace ChipArena.UnityConversion
         private void StepFighterWorld()
         {
             foreach(var e in FighterEchoes.ToArray())
-            {if(e.Remaining<=0||Time>e.Until||e.Owner.Hp<=0){FighterEchoes.Remove(e);continue;}if(Time<e.At)continue;foreach(var q in Pilots)if(q!=e.Spare&&q.Hp>0&&CanHit(e.Owner,q)&&Vector3.Distance(q.Body.position,e.Position)<e.Radius&&MeleeVisible(e.Position,q.Body.position,e.Owner,q.Collider)){if(Time<q.BlockEnd){BlockProc(q,e.Owner,q.Body.position);continue;}float actual=Damage(q,e.Owner,e.Damage,e.Direction,e.Remaining==1?e.Impulse:25,false,primary:false);if(actual>0)ConfirmFighter(e.Owner,q,actual,e.Electric,e.Remaining==1?.26f:.14f,true);}e.Remaining--;e.At+=e.Gap;}
+            {if(e.Remaining<=0||Time>e.Until||e.Owner.Hp<=0){FighterEchoes.Remove(e);continue;}if(Time<e.At)continue;foreach(var q in Pilots)if(q!=e.Spare&&q.Hp>0&&CanHit(e.Owner,q)&&Vector3.Distance(q.Body.position,e.Position)<e.Radius&&MeleeVisible(e.Position,q.Body.position,e.Owner,q.Collider)){if(Time<q.BlockEnd){BlockProc(q,e.Owner,q.Body.position);continue;}float actual=Damage(q,e.Owner,e.Damage,e.Direction,e.Remaining==1?e.Impulse:25,false,primary:false);if(actual>0)ConfirmFighter(e.Owner,q,actual,e.Electric,e.Remaining==1?.26f:.14f,true,false);}e.Remaining--;e.At+=e.Gap;}
             foreach(var trail in StormTrails.ToArray())
             {if(Time>=trail.Until||trail.Owner.Hp<=0){StormTrails.Remove(trail);continue;}foreach(var q in Pilots)if(q.Hp>0&&CanHit(trail.Owner,q)&&!trail.Hit.Contains(q.Seat.id)&&Vector3.Distance(q.Body.position,trail.Position)<1.4f&&MeleeVisible(trail.Position,q.Body.position,trail.Owner,q.Collider)){trail.Hit.Add(q.Seat.id);Damage(q,trail.Owner,6*(float)trail.Owner.Stats["damage"],Vector3.zero,0,false,primary:false);}}
             foreach(var q in Pilots)
@@ -137,7 +139,7 @@ namespace ChipArena.UnityConversion
         }
         private void FighterProjectileHit(NativeBullet b,NativePilot p,NativePilot q,float actual)
         {
-            if(!b.Hadoken||actual<=0)return;RefreshDot(q,p,"fire",b.Burn,2);RefreshDot(q,p,"poison",b.Poison,4);ConfirmFighter(p,q,actual,false,b.Super?.15f:.26f);
+            if(!b.Hadoken||actual<=0)return;RefreshDot(q,p,"fire",b.Burn,2);RefreshDot(q,p,"poison",b.Poison,4);ConfirmFighter(p,q,actual,false,b.Super?.15f:.26f,false,false);
             if(b.Super&&FighterEchoes.Count<64)FighterEchoes.Add(new NativeFighterEcho{Owner=p,Position=q.Body.position,Direction=b.Velocity.normalized,At=Time+.1f,Until=Time+.5f,Radius=1.5f,Damage=Math.Min(40,b.Damage*.45f),Impulse=550,Remaining=4,Gap=.1f});
         }
     }

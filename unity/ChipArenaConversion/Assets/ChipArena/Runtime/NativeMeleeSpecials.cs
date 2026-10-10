@@ -151,7 +151,7 @@ namespace ChipArena.UnityConversion
             else if(target!=null)
             {
                 bool head=!s.Shield&&NativeCombatRules.Headshot(Vec(target.Body.position),target.Yaw,Vec(hit.Point-s.Velocity.normalized*.1f),Vec(s.Velocity),s.Radius,target.Down!=null||target.Juggle!=null);
-                float actual=Damage(target,s.Owner,s.Damage*(head?1.5f:1),s.Velocity.normalized,s.Impulse,head,primary:!s.Reflected,melee:true,weaponHit:!s.Reflected);
+                float actual=Damage(target,s.Owner,s.Damage*(head?1.5f:1),s.Velocity.normalized,s.Impulse,head,primary:!s.Reflected,melee:true,weaponHit:!s.Reflected,hitPoint:hit.Point);
                 if(actual>0&&!s.Reflected)ImpactChips(s.Owner,target,null,hit.Point,s.Velocity.normalized,s.Id,s.Id);
                 if(actual>0&&s.Reflected){RefreshDot(target,s.Owner,"fire",s.Burn,2);RefreshDot(target,s.Owner,"poison",s.Poison,4);}
                 if(actual>0&&target.Hp>0){if(s.Shield)LaunchMelee(target,s.Owner,3.8f);else StaggerMelee(target,.16f+(float)s.Owner.Weapon.weight*.018f);}
@@ -183,7 +183,7 @@ namespace ChipArena.UnityConversion
                     float h=Math.Min(dt,s.Life);var velocity=Vec(s.Velocity);Vector3 delta=Vec(NativeSpecialRules.Ballistic(ref velocity,s.Gravity,h));s.Velocity=Vec(velocity);s.Life-=h;
                     delta=Vector3.ClampMagnitude(delta,s.Travel);s.Travel-=delta.magnitude;var hit=SweepMeleeShot(s,delta);
                     bool ceiling=NativeSpecialRules.Ceiling(Vec(s.Position),Vec(delta),s.Radius,out float fraction,out V3 center);
-                    if(ceiling&&(!hit.HasValue||delta.magnitude*fraction<=hit.Value.Distance)){s.Position=Vec(center);if(s.Shield)s.Returning=true;else remove=true;}
+                    if(ceiling&&(!hit.HasValue||delta.magnitude*fraction<=hit.Value.Distance)){s.Position=Vec(center);Emit(EventKind.CeilingHit,s.Owner,0,s.Position,0,"ABSORB",color:0x75ddff);if(s.Shield)s.Returning=true;else remove=true;}
                     else if(hit.HasValue)remove=HitMeleeShot(s,hit.Value);else s.Position+=delta;
                 }
                 if(remove)MeleeShots.RemoveAt(i);

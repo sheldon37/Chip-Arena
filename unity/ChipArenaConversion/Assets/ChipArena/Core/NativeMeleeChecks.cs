@@ -25,7 +25,10 @@ namespace ChipArena.UnityConversion
                 var weapon=content.Weapon(expected.spec);var swing=NativeMeleeRules.Begin(weapon,stats,expected.at,expected.index,expected.yaw);
                 Near(swing.HitAt,expected.hitAt,"windup");Near(swing.HitUntil,expected.hitUntil,"active");Near(swing.Until,expected.until,"commitment");
                 Near(swing.StepAt,expected.stepAt,"step start");Near(swing.StepUntil,expected.stepUntil,"step end");Near(swing.Distance,expected.distance,"step distance");
-                Near(NativeMeleeRules.HitStun(weapon,expected.rate),expected.stun,"hit stun");
+                // Intentional owner-requested balance override: the pinned source fixture's longer hit stun is not the target.
+                // Preserve all its sweep, footwork, reach and block timing comparisons, but assert the new stun curve.
+                float baseline=expected.spec=="daggers"?.12f:expected.spec=="sword"?.18f:expected.spec=="shield"?.20f:.28f;
+                Near(NativeMeleeRules.HitStun(weapon,expected.rate),Math.Max(.09f,Math.Min(.32f,baseline/Math.Max(.75f,expected.rate))),"retuned hit stun");
                 foreach(var sample in expected.samples)
                 {
                     Near(NativeMeleeRules.Angle(swing,sample.time),sample.angle,"sweep angle");Vector(NativeMeleeRules.Step(swing,sample.time,1f/60),sample.step,"footwork",.001f);

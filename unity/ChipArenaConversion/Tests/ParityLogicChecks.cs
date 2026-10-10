@@ -48,6 +48,19 @@ internal static class ParityLogicChecks
         Check(NativeCombatRules.Headshot(new V3(),0,new V3(0,.64f,-3),new V3(0,0,1),0,false),"head trajectory receives bonus");
         foreach(var hit in new[]{new V3(.3f,.45f,-3),new V3(.35f,.5f,-3),new V3(0,.4f,-3)})Check(!NativeCombatRules.Headshot(new V3(),0,hit,new V3(0,0,1),.03f,false),"shoulder is not the head");
         Check(!NativeCombatRules.Headshot(new V3(),0,new V3(0,.64f,-3),new V3(0,0,1),0,true),"downed/juggled pilots do not receive headshots");
+        Check(Math.Abs(NativeMeleeRules.HitStun(content.Weapon("daggers"),1)-.12f)<1e-5f
+            &&Math.Abs(NativeMeleeRules.HitStun(content.Weapon("sword"),1)-.18f)<1e-5f
+            &&Math.Abs(NativeMeleeRules.HitStun(content.Weapon("shield"),1)-.20f)<1e-5f
+            &&Math.Abs(NativeMeleeRules.HitStun(content.Weapon("greatsword"),1)-.28f)<1e-5f,
+            "normal melee hits have small weight-specific hit-stun windows");
+        Check(Math.Abs(NativeMeleeRules.FighterHitStun(false,false,1)-.10f)<1e-5f
+            &&Math.Abs(NativeMeleeRules.FighterHitStun(true,false,1)-.12f)<1e-5f
+            &&Math.Abs(NativeMeleeRules.FighterHitStun(true,true,1)-.22f)<1e-5f,
+            "light and heavy fighter strikes have separate stun windows");
+        Check(!NativeMeleeRules.StaggerReady(1.25f,1.2f,1.7f)
+            &&NativeMeleeRules.StaggerReady(1.7f,1.2f,1.7f)
+            &&Math.Abs(NativeMeleeRules.StaggerImmuneThrough(1.2f)-1.7f)<1e-5f,
+            "a successful stun protects against follow-up stuns until half a second after it ends");
         var a=new NativeSeat{id=1,team=0};var b=new NativeSeat{id=2,team=0};Check(!NativeCombatRules.Enemy(a,b,true)&&NativeCombatRules.CanHit(a,b,true,true)&&!NativeCombatRules.CanHit(a,b,true,false),"friendly fire changes contacts, never enemy targeting");
         Check(NativeCombatRules.Overtime(100,100,false,false)==0&&Math.Abs(NativeCombatRules.Overtime(101,100,false,false)*60-18)<.001&&NativeCombatRules.Overtime(101,100,true,false)==0&&NativeCombatRules.Overtime(101,100,false,true)==0,"overtime timing, damage and mode exclusions");
         Check(NativeLobbyRules.DefaultTeam(3,false)==0&&NativeLobbyRules.DefaultTeam(2,false)==1&&NativeLobbyRules.DefaultTeam(2,true)==0,"guest default alternates two teams, coop stays allied");
