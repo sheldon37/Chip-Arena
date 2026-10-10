@@ -70,7 +70,7 @@ namespace ChipArena.UnityConversion
             camera.fieldOfView=NativeDraftStage.Fov;camera.transform.position=Stage(stage.CameraPosition);camera.transform.LookAt(Stage(stage.CameraTarget));NativeLighting.Draft(camera,tint,flash);
             var plant=stage.Plant;int hand=stage.Left?9:13;
             // draft-stage.ts animates the Siren drafter (animateSiren on the match clock): its idle look, eye halos lit.
-            var root=draftRig.Root.transform.localToWorldMatrix;var sirenFace=siren?SirenStill(reduced?0:(float)time):null;sourceModels.Queue(siren?"siren":"pilot",root,draftBone,body:BodyTint(seat.bodyColor),accent:AccentTint(seat.accentColor),look:sirenFace);if(!siren)sourceModels.Queue("hat-"+seat.hat,root,draftBone);
+            var root=draftRig.Root.transform.localToWorldMatrix;var sirenFace=siren?SirenStill(reduced?0:(float)time):null;sourceModels.Queue(siren?"siren":"pilot",root,draftBone,body:BodyTint(seat.bodyColor),accent:AccentTint(seat.accentColor),look:sirenFace);if(!siren&&!AuditorHalo(seat.hat,draftRig.Bones[CapturedRig.Head].localToWorldMatrix,(float)time,1,reduced,0,null,camera))sourceModels.Queue("hat-"+seat.hat,root,draftBone);
             if(siren){sirenLookCamera=camera;SirenLookFx(draftRig,sirenFace,0,null,reduced?0:(float)time);}
             // The chip at its real size in the hand (never bigger than the hand), carried to the other wrist and pressed in.
             var palm=Stage(stage.Palm);draftChipTint=(chipTint.a>0?chipTint:tint).linear;

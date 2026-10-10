@@ -189,7 +189,7 @@ namespace ChipArena.UnityConversion
                 if(!recolored)
                 {
                     sourceModels.QueueShadowless(model,Matrix4x4.identity,corpse.PresentedBone,corpse.ShownBone,BodyTint(death.actor?.BodyColor),AccentTint(death.actor?.AccentColor),alpha);
-                    if(hat)sourceModels.QueueShadowless(corpse.HatModel,Matrix4x4.identity,corpse.PresentedBone,null,null,null,alpha);if(weapon)sourceModels.QueueShadowless(corpse.LooseModel,drop.Value,null,null,null,null,alpha);
+                    if(hat&&!AuditorHalo(death.actor?.Hat,corpse.PresentedBone(CapturedRig.Head),clock,alpha,HaloReduced,0,null))sourceModels.QueueShadowless(corpse.HatModel,Matrix4x4.identity,corpse.PresentedBone,null,null,null,alpha);if(weapon)sourceModels.QueueShadowless(corpse.LooseModel,drop.Value,null,null,null,null,alpha);
                 }
                 // team-identity.ts bands ride in the part copies (unlit team colour; Frostbreak turns them ice, lit here). They are
                 // opaque, so a fading body drops them halfway.

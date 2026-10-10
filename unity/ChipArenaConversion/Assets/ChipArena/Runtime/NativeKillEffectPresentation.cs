@@ -266,7 +266,7 @@ namespace ChipArena.UnityConversion
             {
                 debris.LooseAt(corpse.LooseHat,age,out double x,out double y,out double z,out double qx,out double qy,out double qz,out double qw,out double s);
                 var start=corpse.HatStart;killLooseHat=Matrix4x4.TRS(new Vector3(-(float)x,(float)y,(float)z),new Quaternion((float)qx,-(float)qy,-(float)qz,(float)qw),Vector3.one*(float)s)*Matrix4x4.Translate(-start)*corpse.Bind[5];
-                sourceModels.QueueShadowless(corpse.HatModel,Matrix4x4.identity,LooseHatBone,null,null,null,alpha);
+                if(!AuditorHalo(corpse.Death.actor?.Hat,killLooseHat,corpse.Death.at+age,alpha,HaloReduced,0,null))sourceModels.QueueShadowless(corpse.HatModel,Matrix4x4.identity,LooseHatBone,null,null,null,alpha);
             }
         }
         private Matrix4x4 killLooseHat;private Func<int,Matrix4x4> looseHatBone;private Func<int,Matrix4x4> LooseHatBone=>looseHatBone??=b=>killLooseHat;

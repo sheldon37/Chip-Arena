@@ -109,7 +109,7 @@ class CinematicChecks(unittest.TestCase):
     def test_intro_rig_holds_only_a_weapon_intros_weapon(self):
         # player-intros.ts builds a weapon only for a weapon intro; the L33T Throne's staff is its own stage prop.
         intros=(ROOT/'Assets/ChipArena/Runtime/NativeIntros.cs').read_text(encoding='utf-8')
-        self.assertIn('SourceCharacter(introRig,actor,arena.Time,weapon:false)',intros)
+        self.assertIn('SourceCharacter(introRig,actor,arena.Time,weapon:false,halo:age)',intros)  # the Auditor halo on the entrance age
         self.assertIn('NativeIntroRules.IntroWeapon(style)',intros)
         self.assertIn('stage-dev-matrix',self.clips)
         # The intro clips are baked from the rig player-intros.ts arms (braceWeapon's support grip needs the weapon).
