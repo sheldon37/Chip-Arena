@@ -15,7 +15,7 @@ namespace ChipArena.UnityConversion
         private AudioSource[] voices;private AudioSource music,introVoice;private string introKey="";private readonly Dictionary<int,AudioClip> beepClips=new Dictionary<int,AudioClip>();private string track="",phase="",resumeTrack;private float resumeTime;private bool musicHeld;private int cursor,generation=-1,countdown=-1,rotation=-1;private Vector3 listener;private float yaw;
         private readonly string[] rotationTracks={"foundry-rush","orange-line","kinetic-city","afterburner","night-circuit","critical-mass","jump-drive","neon-recoil","overpass","last-set"};
         private readonly Queue<string> bag=new Queue<string>();
-        private readonly NativeMusicSync musicSync=new NativeMusicSync();private bool musicPaused,musicStarting;private double musicStartedAt,musicEpoch;private object musicClockOwner;
+        private readonly NativeMusicSync musicSync=new NativeMusicSync();private bool musicPaused,musicStarting,musicPlayed;private double musicStartedAt,musicEpoch;private object musicClockOwner;
         private double MusicPosition=>music.clip!=null?NativeMusicSync.Position(music.timeSamples,music.clip.frequency):-1;
         private void SeekMusic(double seconds){music.timeSamples=NativeMusicSync.Sample(seconds,music.clip.frequency,music.clip.samples);}
         public void ResetCursor(){generation=-1;}
@@ -71,7 +71,7 @@ namespace ChipArena.UnityConversion
             if(track!=id||clock.HasValue&&(!Equals(musicClockOwner,clockOwner)||musicEpoch!=clockEpoch))
             {
                 if(track!=id&&id!=resumeTrack)resumeTrack=null;
-                music.Stop();musicPaused=musicStarting=false;musicSync.Reset();track=id;music.clip=string.IsNullOrEmpty(id)?null:Clip(id);
+                music.Stop();musicPaused=musicStarting=musicPlayed=false;musicSync.Reset();track=id;music.clip=string.IsNullOrEmpty(id)?null:Clip(id);
             }
             musicClockOwner=clockOwner;musicEpoch=clockEpoch;
             music.volume=Muted?0:volume;musicHeld=pause;if(music.clip==null)return;music.loop=clock==null;
@@ -86,7 +86,7 @@ namespace ChipArena.UnityConversion
             if(!music.isPlaying)
             {
                 if(clock.HasValue)SeekMusic(clock.Value);else if(id==resumeTrack)SeekMusic(resumeTime);
-                if(id==resumeTrack)resumeTrack=null;musicSync.Reset();music.Play();musicStarting=true;musicStartedAt=now;return;
+                if(id==resumeTrack)resumeTrack=null;musicSync.Reset();music.Play();musicPlayed=musicStarting=true;musicStartedAt=now;return;
             }
             if(clock.HasValue&&musicSync.Seek(MusicPosition,clock.Value,now))SeekMusic(clock.Value);
         }
@@ -106,7 +106,7 @@ namespace ChipArena.UnityConversion
             else
             {
                 string theme=arena.Content.Map(arena.MapId).music;
-                if(string.IsNullOrEmpty(theme)){if(!track.StartsWith("music/")||track=="music/menu-afterglow"||music.clip!=null&&!music.isPlaying&&!musicHeld){if(bag.Count==0){foreach(var name in rotationTracks.OrderBy(_=>UnityEngine.Random.value))bag.Enqueue(name);if(bag.Peek()==rotationTracks[Math.Max(0,rotation)])bag.Enqueue(bag.Dequeue());}theme=bag.Dequeue();rotation=Array.IndexOf(rotationTracks,theme);}else theme=track.Substring(6);}
+                if(string.IsNullOrEmpty(theme)){if(!track.StartsWith("music/")||track=="music/menu-afterglow"||music.clip!=null&&musicPlayed&&!musicStarting&&!music.isPlaying&&!musicHeld){if(bag.Count==0){foreach(var name in rotationTracks.OrderBy(_=>UnityEngine.Random.value))bag.Enqueue(name);if(bag.Peek()==rotationTracks[Math.Max(0,rotation)])bag.Enqueue(bag.Dequeue());}theme=bag.Dequeue();rotation=Array.IndexOf(rotationTracks,theme);}else theme=track.Substring(6);}
                 Track("music/"+theme,Music*.55f,!NativeStageMusic.Plays(match.Phase,false,false));
             }
             // audio.ts AudioCursor: each event once, played only while .4 s fresh (never ahead of the clock), routed by
