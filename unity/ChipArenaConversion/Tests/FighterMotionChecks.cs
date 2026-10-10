@@ -20,6 +20,7 @@ namespace ChipArena.UnityConversion
         {
             Stances();Routing(root);Locomotion();Juggle();Bolts(root);
             Console.WriteLine("PASS DEV fighter motion ("+count+" checks: Emperor/Ansatsuken stances, own guard on the gait at rest and in travel, Shift, exported clip routing, juggle pose, bolt trigger table per move)");
+            WavedashChecks.Run(root);
         }
         // stances.ts EMPEROR_STANCE and KARATE_STANCE (lead x,z,toeOut; rear x,z,toeOut; crouch, pelvisYaw, lean all 0).
         private static void Stances()

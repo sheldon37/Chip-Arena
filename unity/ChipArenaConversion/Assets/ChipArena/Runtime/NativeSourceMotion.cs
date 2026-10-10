@@ -13,9 +13,9 @@ namespace ChipArena.UnityConversion
         private static Dictionary<string,SourceMotionClip> clips;
         private static void Ensure(){if(clips!=null)return;var data=JsonUtility.FromJson<SourceMotionSet>(NativeSourceModels.Decode("SourceMotion"));clips=new Dictionary<string,SourceMotionClip>();foreach(var c in data.clips){if(c.frames<2||c.duration<=0||c.values==null||c.values.Length!=c.frames*22*7||c.values.Any(v=>!MathUtil.Finite(v))||c.key.StartsWith("intro-")&&(c.roots==null||c.roots.Length!=c.frames*10||c.cameras==null||c.cameras.Length!=c.frames*10||c.roots.Any(v=>!MathUtil.Finite(v))||c.cameras.Any(v=>!MathUtil.Finite(v))))throw new InvalidOperationException("Invalid motion clip "+c.key);clips.Add(c.key,c);}}
         public static int ClipCount{get{Ensure();return clips.Count;}}
-        public static bool Sample(string key,float age,float duration,CapturedRig.Pose pose)
+        public static bool Sample(string key,float age,float duration,CapturedRig.Pose pose,bool closed=false)
         {
-            Ensure();if(!clips.TryGetValue(key,out var clip))return false;float fraction=clip.loop?Mathf.Repeat(age,clip.duration)/clip.duration:Mathf.Clamp01(age/(duration>0?duration:clip.duration));float index=fraction*(clip.frames-1);int a=Math.Min(clip.frames-1,(int)index),b=Math.Min(clip.frames-1,a+1);float t=index-a;
+            Ensure();if(!clips.TryGetValue(key,out var clip))return false;float fraction=clip.loop?Mathf.Repeat(age,clip.duration)/clip.duration:Mathf.Clamp01(age/(duration>0?duration:clip.duration));NativeFighterPose.Frames(clip.frames,fraction,closed,out int a,out int b,out float t);
             for(int bone=0;bone<22;bone++){int first=(a*22+bone)*7,last=(b*22+bone)*7;var v=clip.values;var p=new NVector(v[first],v[first+1],v[first+2]);var q=new NQuaternion(v[first+3],v[first+4],v[first+5],v[first+6]);pose.Position[bone]=NVector.Lerp(p,new NVector(v[last],v[last+1],v[last+2]),t);pose.Rotation[bone]=NQuaternion.Slerp(q,new NQuaternion(v[last+3],v[last+4],v[last+5],v[last+6]),t);}return true;
         }
         // One pose for every intro frame (main thread only; Sample writes every joint), so the entrance allocates nothing per frame.
@@ -41,9 +41,10 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// Samples the DEV fighting style's own clip for this frame (NativeFighterPose.Clip: Demon Step, block, the action while
         /// it lasts, else the guard idle, also while travelling) into `pose`. False, with nothing written, for other specs and for
-        /// the Emperor's dodge roll, which keeps the roll pose. `stunned` keeps the guard under a hit reaction.
+        /// the Emperor's dodge roll, which keeps the roll pose. `stunned` keeps the guard under a hit reaction. `closeWave` (the
+        /// third-person fighter pose) ends the wavedash clip on its first pose (NativeFighterPose.Frames); first person keeps it.
         /// </summary>
-        public static bool Fighter(CapturedRig.Pose pose,Actor a,float time,bool stunned,out string key)
+        public static bool Fighter(CapturedRig.Pose pose,Actor a,float time,bool stunned,out string key,bool closeWave=false)
         {
             key=null;if(!NativeFighterPose.Handles(a.SourceSpec))return false;
             bool roll=a.Rolling(time),block=!stunned&&time<a.BlockUntil,acting=!stunned&&NativeFighterPose.Acting(a.SourceAction,a.SourceUntil,time);
@@ -51,7 +52,7 @@ namespace ChipArena.UnityConversion
             float at,duration;
             if(roll){at=a.RollAt;duration=.3f;}else if(block){at=a.BlockAt;duration=a.BlockUntil-a.BlockAt;}
             else if(acting){at=a.SourceAt;duration=a.SourceAction=="charge"?1.4f:a.SourceUntil-a.SourceAt;}else{at=0;duration=0;}
-            return Sample(key,time-at,duration,pose);
+            return Sample(key,time-at,duration,pose,closeWave&&NativeFighterPose.Closed(key));
         }
     }
 }

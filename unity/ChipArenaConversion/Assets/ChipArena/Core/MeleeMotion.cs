@@ -376,10 +376,16 @@ namespace ChipArena.UnityConversion
         private Stored trLast=new Stored(),trPrev=new Stored();private readonly Stored trOffset=new Stored(),trCurrent=new Stored(),trProjected=new Stored();
         private void CaptureTo(Stored s){Array.Copy(Rig.Q,s.Q,MeleeRig.N);s.Position=Rig.P[CapturedRig.Body];}
         private static bool ReactionFamily(string action)=>action=="juggle"||action=="down";
+        // pose-transitions.ts DEV_GROUNDED: the fighter keys whose legs stand on the gait's planted feet.
+        private static bool DevGrounded(string spec,string action)=>NativeFighterPose.Handles(spec)&&(action=="base"||action=="attack"||action=="jab"||action=="combo"||action=="electric"||action=="hadoken"||action=="charge"||action=="shinku"||action=="guard"||action=="block");
+        private bool trHoldAll;private float trU;private Action trBlend;
+        // The decaying offset over the sampled pose (one cached delegate: no allocation while a transition holds the ankles).
+        private void BlendTransition(){float u=trU;for(int i=0;i<MeleeRig.N;i++)Rig.Multiply(i,MeleeMath.Slerp(trOffset.Q[i],Quaternion.Identity,u));Rig.P[CapturedRig.Body]+=trOffset.Position*(1-u);}
         // The pose family (transitionAction); an attack's index and a knockdown's phase are kept beside it, unconcatenated.
         private static string TransitionAction(MeleeView p,float time,out int index,out string phase)
         {
-            var a=AttackPose(p,time);float rate=p.AttackRate>0?p.AttackRate:1,duration=a.Windup+a.Window+Recovery(p.Spec)/rate;index=0;phase=null;
+            // A DEV fighter's strike tail lasts .8 s / rate (transitionAction's attackDuration outside the standard specs).
+            var a=AttackPose(p,time);float rate=p.AttackRate>0?p.AttackRate:1,duration=Handles(p.Spec)?a.Windup+a.Window+Recovery(p.Spec)/rate:.8f/rate;index=0;phase=null;
             if(p.Juggle)return "juggle";if(p.Down){phase=p.DownPhase??"";return "down";}
             if(p.HitStunUntil>time)return "flinch";if(p.Rolling(time))return "roll";if(p.Guarding||p.BlockTime>0)return "block";if(p.Action(time))return p.ActionKind;
             if(time-p.LastAttack<duration&&!p.RollCancelled(time)){index=p.AttackIndex;return "attack";}
@@ -395,7 +401,7 @@ namespace ChipArena.UnityConversion
                 float windup=!float.IsNaN(p.SwingAt)?Math.Max(.025f,p.SwingAt-p.LastAttack):Math.Max(.025f,p.Windup),d=Math.Min(.55f*windup,.09f);
                 if(!float.IsNaN(p.SwingAt)&&time<(float.IsNaN(p.SwingUntil)?p.SwingAt:p.SwingUntil))d=Math.Max(0,Math.Min(d,p.SwingAt-time));return d;
             }
-            if(action=="base")return previous=="attack"?(heavy?.28f:.22f):.13f;
+            if(action=="base")return previous=="attack"&&Handles(p.Spec)?(heavy?.28f:.22f):.13f;
             if(action=="block")return heavy?.11f:.09f;
             return .055f;
         }
@@ -422,7 +428,8 @@ namespace ChipArena.UnityConversion
             }
             if(incoming!=null)
             {
-                trHold=action=="base"&&trAction=="attack";Keep();trAt=time;trDuration=duration;trActive=duration>1e-4f;
+                // A DEV fighter's grounded keys (strings, specials, guard, base) keep the ankles where they are (holdAll).
+                trHold=action=="base"&&trAction=="attack";trHoldAll=reaction==null&&DevGrounded(p.Spec,action)&&DevGrounded(p.Spec,trAction);Keep();trAt=time;trDuration=duration;trActive=duration>1e-4f;
                 if(trActive){for(int i=0;i<MeleeRig.N;i++)trOffset.Q[i]=MeleeMath.Inverse(trCurrent.Q[i])*incoming.Q[i];trOffset.Position=incoming.Position-trCurrent.Position;}
             }
             if(trActive)
@@ -431,9 +438,8 @@ namespace ChipArena.UnityConversion
                 if(u>=1)trActive=false;
                 else
                 {
-                    void Blend(){for(int i=0;i<MeleeRig.N;i++)Rig.Multiply(i,MeleeMath.Slerp(trOffset.Q[i],Quaternion.Identity,u));Rig.P[CapturedRig.Body]+=trOffset.Position*(1-u);}
                     // Weighted by travel speed: a standing recovery keeps its joint-space leg blend, a run resuming keeps its planted feet.
-                    if(trHold&&p.Grounded&&p.Hp>0)Rig.HoldAnkles(Blend,Math.Min(1,(float)Math.Sqrt(p.Vel.X*p.Vel.X+p.Vel.Z*p.Vel.Z)/1.5f));else Blend();
+                    trU=u;if((trHold||trHoldAll)&&p.Grounded&&p.Hp>0)Rig.HoldAnkles(trBlend??=BlendTransition,trHoldAll?1:Math.Min(1,(float)Math.Sqrt(p.Vel.X*p.Vel.X+p.Vel.Z*p.Vel.Z)/1.5f));else BlendTransition();
                 }
             }
             var spare=trPrev;trPrev=trLast;trLast=spare;CaptureTo(trLast);trHasPrev=true;trPrevTime=trTime;trTime=time;
@@ -486,13 +492,18 @@ namespace ChipArena.UnityConversion
             if(planted)r.Motion*=(float)Math.Exp(-MeleeMath.Clamp(dt,0,.05f)*22);
             var vel=p.Vel;if(planted)p.Vel=new Vector3(0,vel.Y,0);gait.Locomotion(r,p,time,dt,planted);p.Vel=vel;SprintLean(p,dt);
         }
-        // The hit stun's reaction (or flinch) and otherwise the light reaction over the style, then the ground pass.
+        // The hit stun's reaction (or flinch) and otherwise the light reaction over the style, then the ground pass and the pose
+        // transitions (finishPose; a fighter's key is its style action, p.ActionKind, so a wavedash cancelled into the Electric
+        // Hook blends over .055 s instead of snapping).
         public void FighterFinish(MeleeView p,float time,float dt)
         {
             if(!p.Juggle&&!p.Down&&p.HitStunUntil>time){var h=ReactionOf(p);if(h==null||!React(p,h,time,true))FallbackFlinch(p,time);}
             else if(!p.Juggle&&!p.Down&&!p.Rolling(time)){var light=ReactionOf(p);if(light!=null)React(p,light,time,false);}
             gait.GroundPass(Rig,p,time,dt,p.Hp<=0||p.Juggle||p.Down||p.Rolling(time));
+            FinishPose(p,time);
         }
+        // gaitFoot: this sample's gait ankle target, heading, pitch and toe for a foot (the fighter layers edit over it).
+        public bool GaitFoot(bool left,out Vector3 target,out float yaw,out float pitch,out float toe)=>gait.GaitFoot(left,out target,out yaw,out pitch,out toe);
         // Forward sprint lean under the carries (melee-guard sprintLean): read by the gait's spine before the captures pose it.
         private float sprintBlend;
         private void SprintLean(MeleeView p,float dt)
