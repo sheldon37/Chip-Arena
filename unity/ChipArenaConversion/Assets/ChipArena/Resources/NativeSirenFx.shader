@@ -16,6 +16,8 @@ Shader "ChipArena/NativeSirenFx"
         [Enum(UnityEngine.Rendering.BlendMode)] _Src("Source blend",Float)=1
         [Enum(UnityEngine.Rendering.BlendMode)] _Dst("Destination blend",Float)=10
         _ZWrite("Depth write",Float)=0
+        // LEqual (4) for every layer but the overlay (Always, 8): the Marked crosshair draws over everything (depthTest false).
+        [Enum(UnityEngine.Rendering.CompareFunction)] _ZTest("Depth test",Float)=4
         _FxTime("Effect clock",Float)=0
     }
     SubShader
@@ -23,7 +25,7 @@ Shader "ChipArena/NativeSirenFx"
         Tags { "RenderType"="Transparent" "IgnoreProjector"="True" }
         Blend [_Src] [_Dst]
         ZWrite [_ZWrite]
-        ZTest LEqual
+        ZTest [_ZTest]
         Cull Off
         Pass
         {

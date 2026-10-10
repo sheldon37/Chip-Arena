@@ -10,13 +10,12 @@ namespace ChipArena.UnityConversion
             // Chip fields and ability zones are never outlined (owner request 2026-10-04): NativeFieldPresentation draws their
             // ground glow, cores and domes, NativeBlastPresentation their volume. The Siren's fields are its scorch decals and
             // eruption warnings (C9) and black flames, eruption columns and rain (C12, ArenaPresentation.DevEffects). Leet fields
-            // (nuke field, tree) and storm-step trails are C12's DevFighters.
-            foreach(var mark in arena.Marks()){var target=arena.Pilots.Find(p=>p.Seat.id==mark.target);if(target==null||time<mark.lockAt)continue;float u=Mathf.Clamp01((time-mark.lockAt)/Math.Max(.1f,mark.throwAt-mark.lockAt));Ring(target.Body.position+Vector3.up*.9f,1.6f-.75f*MathUtil.Smooth(u),7,time*60);}
+            // (nuke field, tree) and storm-step trails are C12's DevFighters. Marked's crosshair on the marked player is the
+            // source's camera-facing warn-red reticle over everything (ArenaPresentation.SirenMarks), not a ring of cubes.
             foreach(var p in arena.Pilots)
             {
                 if(p.Hp<=0)continue;Vector3 at=p.Body.position;if(time<p.FrozenUntil){Ring(at-Vector3.up*.75f,.65f,8,time*8);for(int j=0;j<6;j++){float a=j*Mathf.PI/3;Vector3 side=new Vector3(Mathf.Sin(a)*.5f,0,Mathf.Cos(a)*.5f);Beam(at+side-Vector3.up*.6f,at+side+Vector3.up*.8f,.055f,8);}}
                 if(p.Controlling!=null)Beam(at+Vector3.up*.6f,p.Controlling.Body.position+Vector3.up*.6f,.025f,10);
-                if(p.Siren?.Move?.Rule.Id=="mark"&&p.Siren.Move.Target!=null){Vector3 target=p.Siren.Move.Target.Body.position;Ring(target-Vector3.up*.75f,.7f,7,time*60);Beam(target+Vector3.up*1.1f,target+Vector3.up*1.6f,.07f,7);}
                 if(p.ShieldUntil>time)Ring(at-Vector3.up*.7f,.75f,0,time*90);
 
             }

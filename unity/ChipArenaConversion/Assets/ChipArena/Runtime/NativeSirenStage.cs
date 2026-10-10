@@ -8,6 +8,21 @@ namespace ChipArena.UnityConversion
     {
         public IEnumerable<NativeMarkView> Marks()
         {if(Replica)return replicaFrame?.marks??Array.Empty<NativeMarkView>();return Pilots.Where(p=>p.Siren?.Move?.Rule.Id=="mark"&&p.Siren.Move.Target!=null).Select(p=>new NativeMarkView{id=p.Siren.Move.Id,owner=p.Seat.id,target=p.Siren.Move.Target.Seat.id,lockAt=p.Siren.Move.At+1.2f,throwAt=p.Siren.Move.HitAt});}
+        // Marks() for the per-frame presentation without allocating (Runtime/NativeDevEffects.cs): a replica's frame records,
+        // or the authority's live mark moves in reused views. Read only; Marks() still feeds the network frame.
+        private readonly List<NativeMarkView> liveMarks=new List<NativeMarkView>(),markViews=new List<NativeMarkView>();
+        public List<NativeMarkView> LiveMarks()
+        {
+            liveMarks.Clear();
+            if(Replica){var frame=replicaFrame?.marks;if(frame!=null)foreach(var m in frame)if(m!=null)liveMarks.Add(m);return liveMarks;}
+            foreach(var p in Pilots)
+            {
+                var m=p.Siren?.Move;if(m?.Rule==null||m.Rule.Id!="mark"||m.Target==null)continue;
+                if(markViews.Count==liveMarks.Count)markViews.Add(new NativeMarkView());var v=markViews[liveMarks.Count];
+                v.id=m.Id;v.owner=p.Seat.id;v.target=m.Target.Seat.id;v.lockAt=m.At+1.2f;v.throwAt=m.HitAt;liveMarks.Add(v);
+            }
+            return liveMarks;
+        }
         public float BossSongAt=-1,BossSongLead;private NativeBossTrack bossTrack;
         public NativeBossTrack BossTrack=>bossTrack??(bossTrack=JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text).bossMusic);
         public double BossSongTime=>BossSongAt<0?-1:Time-BossSongAt+BossSongLead+(Pve?.Holding==true&&Pve.Cinematic=="intro"?Pve.HoldDuration-Pve.HoldLeft:0);
