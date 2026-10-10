@@ -14,6 +14,8 @@ namespace ChipArena.UnityConversion
     {
         public readonly Matrix4x4[] Local=new Matrix4x4[NativeSirenLook.Count];public readonly bool[] Shown=new bool[NativeSirenLook.Count];
         public int Shape;public float EyeHalo;public SirenLookState State;
+        /// <summary>The eyes' and grin's breathing this frame (NativeSirenLook.Breath); 1, the source's look, unless a caller sets it.</summary>
+        public float Breath=1;
         /// <summary>The Damnation ball and its halo relative to the rig root, while one shows (SetCharge).</summary>
         public bool Charging;public Matrix4x4 ChargeBall,ChargeHalo;
         private readonly double[] m=new double[NativeSirenLook.Count*16],charge=new double[32];
@@ -107,14 +109,14 @@ namespace ChipArena.UnityConversion
                 var hand=i==0?left:right;
                 if(look.Shown[NativeSirenLook.Orb+i])Graphics.DrawMesh(orb,hand*look.Local[NativeSirenLook.Orb+i],solid,layer,camera,0,null,ShadowCastingMode.Off,false);
                 if(facing==null)continue;var turn=facing.transform.rotation;
-                if(look.EyeHalo>0)Sprite(eyeHalo,head*look.Local[NativeSirenLook.EyeHalo+i],turn,layer,camera);
+                if(look.EyeHalo>0)Sprite(eyeHalo,head*look.Local[NativeSirenLook.EyeHalo+i],turn,layer,camera,(float)NativeSirenLook.HaloSize(look.Breath));
                 if(look.Shown[NativeSirenLook.OrbHalo+i])Sprite(orbHalo,hand*look.Local[NativeSirenLook.OrbHalo+i],turn,layer,camera);
             }
         }
-        // A sprite: centred on the piece, its world width the piece's x scale, turned to the camera.
-        private void Sprite(Mesh mesh,Matrix4x4 world,Quaternion turn,int layer,Camera camera)
+        // A sprite: centred on the piece, its world width the piece's x scale (times `scale`), turned to the camera.
+        private void Sprite(Mesh mesh,Matrix4x4 world,Quaternion turn,int layer,Camera camera,float scale=1)
         {
-            Vector3 at=world.GetColumn(3);float size=((Vector3)world.GetColumn(0)).magnitude;if(size<1e-4f)return;
+            Vector3 at=world.GetColumn(3);float size=((Vector3)world.GetColumn(0)).magnitude*scale;if(size<1e-4f)return;
             Graphics.DrawMesh(mesh,Matrix4x4.TRS(at,turn,new Vector3(size,size,size)),effects,layer,camera,0,null,ShadowCastingMode.Off,false);
         }
         public void Dispose(){CapturedAnimation.Release(orb);CapturedAnimation.Release(eyeHalo);CapturedAnimation.Release(orbHalo);CapturedAnimation.Release(chargeHalo);CapturedAnimation.Release(solid);CapturedAnimation.Release(effects);}
@@ -127,6 +129,7 @@ namespace ChipArena.UnityConversion
         private sealed class Piece {public int Index,Bone;public Part Part;public Part[] Shapes;}
         private readonly Dictionary<string,Piece[]> lookPieces=new Dictionary<string,Piece[]>();private readonly List<Mesh> pieceMeshes=new List<Mesh>();
         private static NativeSirenLookPose restLook;
+        private static readonly int InkId=Shader.PropertyToID("_Ink"),InkRimId=Shader.PropertyToID("_InkRim"),InkFlowId=Shader.PropertyToID("_InkFlow");
         /// <summary>The look of a Siren nobody animates (no motion, melee, lit), drawn when a caller passes no look.</summary>
         public static NativeSirenLookPose RestLook=>restLook??(restLook=new NativeSirenLookPose().Set(NativeSirenLook.Neutral(0)));
         /// <summary>radialTexture() (the Siren's shadow pool and every halo sprite), for the portraits' halos.</summary>
@@ -142,6 +145,10 @@ namespace ChipArena.UnityConversion
             models["siren"]=kept.ToArray();
             // The eyes and teeth cast no shadow (buildSiren).
             upper.NoShadow=lower.NoShadow=true;
+            // buildSiren's ink strengths per piece (NativeSourceLit _InkRim, _InkFlow): the claws' CLAW, the tongues' and wisps' TONGUE.
+            foreach(var claw in new[]{clawL,clawR}){claw.Material.SetFloat(InkRimId,(float)NativeSirenLook.ClawRim);claw.Material.SetFloat(InkFlowId,(float)NativeSirenLook.ClawFlow);}
+            box.Material.SetFloat(InkRimId,(float)NativeSirenLook.TongueRim);box.Material.SetFloat(InkFlowId,(float)NativeSirenLook.TongueFlow);
+            foreach(var p in kept)if(p.Material.GetFloat(InkId)>.5f){p.Material.SetFloat(InkRimId,(float)NativeSirenLook.BodyRim);p.Material.SetFloat(InkFlowId,(float)NativeSirenLook.BodyFlow);}
             SourceSection section=null;foreach(var m in data.models)if(m.id=="siren")foreach(var s in m.sections)if(s.part=="siren-eye")section=s;
             var color=new Color(section.colors[0],section.colors[1],section.colors[2],section.colors[3]);var glow=new Vector4(section.emission[0],section.emission[1],section.emission[2],section.emission[3]);
             var shapes=new Part[2][];var xy=new double[NativeSirenLook.EyeSegments*6];
@@ -174,7 +181,9 @@ namespace ChipArena.UnityConversion
                 var part=p.Shapes!=null?p.Shapes[pose.Shape]:p.Part;if(part==null||!pose.Shown[p.Index]||visible!=null&&!visible(p.Bone))continue;
                 if(p.Bone!=jointBone){jointBone=p.Bone;joint=bone!=null?bone(p.Bone):root;}
                 var key=(part,layer);if(!draws.TryGetValue(key,out var d)){d=new Draws{Part=part,Layer=layer,Camera=camera};draws.Add(key,d);}
-                d.Matrices.Add(joint*pose.Local[p.Index]);d.Bodies.Add(new Vector4(bc.r,bc.g,bc.b,opacity*(partOpacity?.Invoke(p.Bone)??1)));d.Accents.Add(new Vector4(ac.r,ac.g,ac.b,1));d.Tints.Add(partTint?.Invoke(p.Bone)??Color.white);d.Glows.Add(glow??Vector4.one);
+                // The grin breathes with the eye halos (NativeSirenLook.GrinGlow; the pose's Breath is 1 unless the arena set it).
+                var g=glow??Vector4.one;if(p.Index==NativeSirenLook.GrinUpper||p.Index==NativeSirenLook.GrinLower){float k=(float)NativeSirenLook.GrinGlow(pose.Breath);g.x*=k;g.y*=k;g.z*=k;}
+                d.Matrices.Add(joint*pose.Local[p.Index]);d.Bodies.Add(new Vector4(bc.r,bc.g,bc.b,opacity*(partOpacity?.Invoke(p.Bone)??1)));d.Accents.Add(new Vector4(ac.r,ac.g,ac.b,1));d.Tints.Add(partTint?.Invoke(p.Bone)??Color.white);d.Glows.Add(g);
             }
         }
         // The portraits draw the pieces themselves (their own camera and material).
@@ -209,7 +218,7 @@ namespace ChipArena.UnityConversion
             // WeaponLoadout is the arena this frame renders (live or killcam): its Time is the snapshot's authoritative time.
             var state=s.Step(time,s.Delta(time),open,squint,NativeSirenLook.Flare(action,age),a.SourceRanged,forward,a.Alive,WeaponLoadout!=null?WeaponLoadout.Time:time,a.SourceModeAt);
             if(action==null&&s.Swapping(time))SirenSwapBody(rig,a,t,time,state.Ranged,s.Shudder(time));
-            return t.Pose.Set(state).SetCharge(action,age,time);
+            t.Pose.Set(state).SetCharge(action,age,time);t.Pose.Breath=HaloReduced?1:(float)NativeSirenLook.Breath(time);return t.Pose;
         }
         /// <summary>
         /// stance(t, ranged) through a mode swap: NativeSourceMotion.Pilot snaps the idle clip to the replicated mode, while the
