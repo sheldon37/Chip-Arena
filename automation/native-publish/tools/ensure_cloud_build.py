@@ -52,7 +52,7 @@ def start_build(sha, authorization):
 def ensure_build(token, authorization, wait_seconds=900):
     sha = auto.current_head(token)
     if not auto.native_checks(sha, token):
-        print('Build not requested: current cloud commit has not passed both native CI jobs.')
+        auto.output(False, 'Build not requested: current cloud commit ' + sha + ' has not passed both native CI jobs.', 'waiting_ci')
         return False
     config = auto.api_json(auto.BASE.rsplit('/builds', 1)[0], authorization)
     settings = config.get('settings') or {}
@@ -65,11 +65,11 @@ def ensure_build(token, authorization, wait_seconds=900):
     requested = False
     while True:
         if auto.current_head(token) != sha:
-            print('Cloud branch advanced; leaving publication to the newer commit.')
+            auto.output(False, 'Cloud branch advanced; leaving publication to the newer commit.', 'superseded')
             return False
         rows = auto.api_json(auto.BASE + '?per_page=100&page=1', authorization)
         if any(auto.eligible_build(row, sha) for row in rows):
-            print('Current Unity build succeeded; delivery validation can proceed.', flush=True)
+            auto.output(True, 'Current Unity build succeeded; delivery validation can proceed.')
             return True
         matching = [r for r in rows if sha in (r.get('lastBuiltRevision'), r.get('requestedRevision'))]
         if any(r.get('buildStatus') in TERMINAL for r in matching):
@@ -79,13 +79,17 @@ def ensure_build(token, authorization, wait_seconds=900):
             # Recheck immediately before the only mutation. Never change target
             # settings or request a build for a moving/unchecked branch head.
             if auto.current_head(token) != sha:
+                auto.output(False, 'Cloud branch advanced before the build request; no build requested.', 'superseded')
                 return False
             start_build(sha, authorization)
             requested = True
         elif active:
             print('Waiting on Unity: ' + ', '.join('#' + str(r.get('build')) + ' ' + str(r.get('buildStatus')) for r in active), flush=True)
         if time.monotonic() >= deadline:
-            print('Unity is still pending; a later publisher check will resume.', flush=True)
+            pending = ', '.join('#' + str(r.get('build')) + ' ' + str(r.get('buildStatus')) for r in active)
+            auto.output(False, 'No update published: Unity is still pending for ' + sha
+                        + (': ' + pending if pending else '')
+                        + '. The scheduled publisher will resume; no duplicate build was requested.', 'waiting_unity')
             return False
         time.sleep(30)
 

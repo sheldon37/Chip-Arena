@@ -1,5 +1,28 @@
 # Native publishing automation development log
 
+## 2026-10-10 — Astra — expose deferred publication outcomes
+
+- Owner requested final Unity visual-batch publication and delegated pipeline
+  repairs. Task `codex/unity-publish-outcomes`, main base `f92c16eb`.
+- Run #44 (`38058241777`) waited on UBA #17 `sentToBuilder` for 15 minutes,
+  then deferred with exit 0. Its candidate stayed `64084ad`; branch movement was
+  not the cause. It never reached feed publication. Run #45 separately lacked
+  exact-head CI on documentation-only `ff81074`; the native workflow repair is
+  tracked on `codex/unity-publish-ci` against the cloud game branch.
+- Emit explicit ready/status outputs and summary labels. Deferred runs annotate
+  `Native update not published`, identifying waiting CI, waiting Unity (with
+  active build ID/state), or a superseded head. A pending build gate skips redundant
+  prepare/download work. Check mode stays read-only; published-unverified,
+  published-verified and already-published states remain distinct.
+- Local 68 tests: 67 passed, one expected Windows-only skip. Regression tests cover
+  actual workflow outputs/summaries for queued build #17, CI wait, branch advance,
+  successful build, and publication warning separation. Real fixture archive and
+  local-git publication tests pass; no test contacted a service or live feed.
+- Hosted Linux/Windows tests and activation pending. Existing exact-commit/native
+  CI, shader/compiler/Linear, receipt, archive/hash and public download gates stay
+  intact. No game/animation changes, source merge into main, target configuration,
+  credentials, permissions, automatic failed-build retry or new release claimed.
+
 ## 2026-10-09 14:52 EDT — Astra — build-start fallback and account update verified
 
 - PR #82 merged as `f6137be` after hosted Linux/Windows checks (66 tests, one

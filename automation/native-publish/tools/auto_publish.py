@@ -292,21 +292,24 @@ def validate_delivery(delivery, build, provider_log):
     return manifest, receipt
 
 
-def output(ready, message):
+def output(ready, message, status=None):
+    status = status or ('ready' if ready else 'deferred')
     print(message)
+    if status in ('deferred', 'waiting_ci', 'waiting_unity', 'superseded'):
+        print('::warning title=Native update not published::' + message)
     if os.environ.get('GITHUB_OUTPUT'):
         with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
-            stream.write('ready=' + str(ready).lower() + '\n')
+            stream.write('ready=' + str(ready).lower() + '\nstatus=' + status + '\n')
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as stream:
-            stream.write(message + '\n\n')
+            stream.write('**Native publication: ' + status + '**\n\n' + message + '\n\n')
 
 
 def prepare(work, token, unity_auth):
     sha = current_head(token)
     rows = api_json(BASE + '?per_page=100&page=1', unity_auth)
     if not native_checks(sha, token):
-        output(False, 'Waiting for both native CI jobs to pass on cloud commit ' + sha)
+        output(False, 'Waiting for both native CI jobs to pass on cloud commit ' + sha, 'waiting_ci')
         return
     candidates = [b for b in rows if eligible_build(b, sha)]
     if not candidates:
@@ -319,7 +322,7 @@ def prepare(work, token, unity_auth):
                     detail = api_json(BASE + '/' + str(number), unity_auth)
                     describe_build(detail, sha, 'detail')
                 break
-        output(False, 'Waiting for a successful Unity build of cloud commit ' + sha)
+        output(False, 'Waiting for a successful Unity build of cloud commit ' + sha, 'waiting_unity')
         return
     number = max(b['build'] for b in candidates)
     build = api_json(BASE + '/' + str(number) + '?include=testResults,buildReports,links.artifacts', unity_auth)
@@ -336,7 +339,7 @@ def prepare(work, token, unity_auth):
         previous = {}
     if current and previous.get('sourceCommit') == sha and previous.get('buildNumber') == number and previous.get('version') == current['build']['version'] and previous.get('sha256') == current['sha256']:
         if previous.get('publicDownloadsVerified') is True:
-            output(False, f'Unity build #{number} is already published and its downloads were verified.')
+            output(False, f'Unity build #{number} is already published and its downloads were verified.', 'already_published')
         else:
             work.mkdir(parents=True, exist_ok=False)
             previous['verificationOnly'] = True
@@ -356,7 +359,7 @@ def prepare(work, token, unity_auth):
         output(False, problem)
         return
     if current_head(token) != sha or not native_checks(sha, token):
-        output(False, 'Cloud branch or CI changed while downloading; the next run will recheck.')
+        output(False, 'Cloud branch or CI changed while downloading; the next run will recheck.', 'superseded')
         return
     record = dict(sourceCommit=sha, buildNumber=number, buildTarget=TARGET, version=manifest['build']['version'],
                   revision=manifest['build']['revision'], sha256=manifest['sha256'], colorSpace='Linear', unityVersion=UNITY,
@@ -395,7 +398,7 @@ def publish(work, channel, token):
     publisher.git(channel, 'add', '--', 'native/windows-x64')
     publisher.git(channel, 'commit', '-m', f"Publish Unity cloud build {record['buildNumber']} ({sha[:12]})")
     publisher.git(channel, 'push', 'origin', 'HEAD:main')
-    output(False, f"Published Unity build #{record['buildNumber']} to native-test. Channel commit: " + publisher.git(channel, 'rev-parse', 'HEAD'))
+    output(False, f"Published Unity build #{record['buildNumber']} to native-test. Channel commit: " + publisher.git(channel, 'rev-parse', 'HEAD'), 'published_unverified')
     # GitHub raw content can lag a successful push. Record this honestly; never rebuild.
     verify_published(manifest, record, work, channel)
 
@@ -414,7 +417,7 @@ def verify_published(manifest, record, work, channel):
     publisher.git(channel, 'add', '--', PUBLICATION)
     publisher.git(channel, 'commit', '-m', f"Verify public Unity build {record['buildNumber']} downloads")
     publisher.git(channel, 'push', 'origin', 'HEAD:main')
-    output(False, 'Public manifest and every downloaded payload part passed archive/hash verification. Update is ready.')
+    output(False, 'Public manifest and every downloaded payload part passed archive/hash verification. Update is ready.', 'published_verified')
 
 
 def verify_public_parts(manifest, destination):

@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import sys
 import shutil
+import tempfile
 import unittest
 from unittest.mock import patch
 import zipfile
@@ -13,6 +14,20 @@ import zipfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 import auto_publish as auto
 import test_cloud_build as cloud_fixtures
+
+
+class PublicationOutcomeTests(unittest.TestCase):
+    def test_only_deferred_outcomes_warn_that_update_was_not_published(self):
+        for status in ('waiting_ci', 'waiting_unity', 'superseded', 'already_published',
+                       'published_unverified', 'published_verified'):
+            with self.subTest(status=status), tempfile.TemporaryDirectory() as temp:
+                output, summary = Path(temp) / 'output', Path(temp) / 'summary'
+                with patch.dict(os.environ, GITHUB_OUTPUT=str(output), GITHUB_STEP_SUMMARY=str(summary)), patch('builtins.print') as log:
+                    auto.output(False, 'Candidate result', status)
+                self.assertEqual(output.read_text(), 'ready=false\nstatus=' + status + '\n')
+                self.assertIn('Native publication: ' + status, summary.read_text())
+                warned = any('::warning' in str(call) for call in log.call_args_list)
+                self.assertEqual(warned, status in ('waiting_ci', 'waiting_unity', 'superseded'))
 
 
 class AutoPublishTests(unittest.TestCase):

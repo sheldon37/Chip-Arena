@@ -2,8 +2,10 @@
 from contextlib import ExitStack
 import io
 import json
+import os
 from pathlib import Path
 import sys
+import tempfile
 import unittest
 from unittest.mock import patch, MagicMock
 from urllib.error import HTTPError
@@ -15,6 +17,27 @@ import auto_publish as auto
 
 class TriggerTests(unittest.TestCase):
     sha = 'a' * 40
+
+    def test_deferred_and_ready_runs_report_truthful_workflow_outputs(self):
+        success = dict(build=18, buildStatus='success', lastBuiltRevision=self.sha,
+                       scmBranch=auto.BRANCH, buildtargetid=auto.TARGET,
+                       platform='standalonewindows64', unityVersion=auto.UNITY)
+        cases = [({'passed': False}, 'waiting_ci', False),
+                 ({'rows': [dict(build=17, buildStatus='sentToBuilder')]}, 'waiting_unity', False),
+                 ({'heads': [self.sha, self.sha, 'b'*40]}, 'superseded', False),
+                 ({'rows': [success]}, 'ready', True)]
+        for kwargs, status, ready in cases:
+            with self.subTest(status=status), tempfile.TemporaryDirectory() as temp:
+                output, summary = Path(temp) / 'output', Path(temp) / 'summary'
+                with patch.dict(os.environ, GITHUB_OUTPUT=str(output), GITHUB_STEP_SUMMARY=str(summary)):
+                    result, start, _ = self.run_case(**kwargs)
+                self.assertEqual(result, ready)
+                start.assert_not_called()
+                self.assertEqual(output.read_text(), f'ready={str(ready).lower()}\nstatus={status}\n')
+                self.assertIn('**Native publication: ' + status + '**', summary.read_text())
+                if status == 'waiting_unity':
+                    self.assertIn('#17 sentToBuilder', summary.read_text())
+                    self.assertIn('No update published', summary.read_text())
 
     def run_case(self, rows=(), passed=True, config=None, heads=None):
         config = config if config is not None else dict(buildtargetid=auto.TARGET, enabled=True,
