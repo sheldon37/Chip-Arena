@@ -252,11 +252,13 @@ namespace ChipArena.UnityConversion
         // The flames (unlit opaque tongues), then the one-shot pieces: floor rings, flashes, cracks, slashes, flame shells.
         private void DrawSirenFx(Camera camera)
         {
-            var fx=sirenFx;var f=fx.Fire;var draw=fxDraw;
+            var fx=sirenFx;var f=fx.Fire;var draw=fxDraw;bool flat=HaloReduced;float rim=(float)NativeSirenLook.FlameRim;
             for(int i=0;i<f.Capacity;i++)
             {
                 if(!f.Pose(i,out double x,out double y,out double z,out double qx,out double qy,out double qz,out double qw,out double sx,out double sy,out double sz,out double r,out double g,out double b))continue;
-                draw.Cube(draw.Solid,new Vector3(-(float)x,(float)y,(float)z),new Quaternion((float)qx,-(float)qy,-(float)qz,(float)qw),new Vector3((float)sx,(float)sy,(float)sz),new Color((float)r,(float)g,(float)b,1));
+                Vector3 at=new Vector3(-(float)x,(float)y,(float)z),size=new Vector3((float)sx,(float)sy,(float)sz);var turn=new Quaternion((float)qx,-(float)qy,-(float)qz,(float)qw);var color=new Color((float)r,(float)g,(float)b,1);
+                // Black flame with a faint ash rim (NativeSirenLook.FlameRim), so it reads on dark maps; reduced effects draw it flat.
+                if(flat)draw.Cube(draw.Solid,at,turn,size,color);else draw.FlameCube(draw.Solid,at,turn,size,color,AshRaw,rim);
             }
             Vector3 right=camera.transform.right,up=camera.transform.up;
             for(int i=0;i<fx.Count;i++)

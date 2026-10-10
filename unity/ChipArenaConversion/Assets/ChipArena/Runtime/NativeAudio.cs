@@ -15,6 +15,9 @@ namespace ChipArena.UnityConversion
         private AudioSource[] voices;private AudioSource music,introVoice;private string introKey="";private readonly Dictionary<int,AudioClip> beepClips=new Dictionary<int,AudioClip>();private string track="",phase="",resumeTrack;private float resumeTime;private bool musicHeld;private int cursor,generation=-1,countdown=-1,rotation=-1;private Vector3 listener;private float yaw;
         private readonly string[] rotationTracks={"foundry-rush","orange-line","kinetic-city","afterburner","night-circuit","critical-mass","jump-drive","neon-recoil","overpass","last-set"};
         private readonly Queue<string> bag=new Queue<string>();
+        private readonly NativeMusicSync musicSync=new NativeMusicSync();private bool musicPaused,musicStarting,musicPlayed;private double musicStartedAt,musicEpoch;private object musicClockOwner;
+        private double MusicPosition=>music.clip!=null?NativeMusicSync.Position(music.timeSamples,music.clip.frequency):-1;
+        private void SeekMusic(double seconds){music.timeSamples=NativeMusicSync.Sample(seconds,music.clip.frequency,music.clip.samples);}
         public void ResetCursor(){generation=-1;}
         private void Awake(){voices=new AudioSource[24];keyedVoices=new bool[voices.Length];for(int i=0;i<voices.Length;i++){voices[i]=gameObject.AddComponent<AudioSource>();voices[i].playOnAwake=false;voices[i].spatialBlend=0;}music=gameObject.AddComponent<AudioSource>();music.playOnAwake=false;music.priority=0;introVoice=gameObject.AddComponent<AudioSource>();introVoice.playOnAwake=false;}
         // A free voice for an unlimited, unpanned play (beeps, death tones); Play counts the limited cue voices itself.
@@ -45,14 +48,14 @@ namespace ChipArena.UnityConversion
         {
             string song=NativeIntroRules.IntroSong(style);
             if(song==null){Entrance(key,style,age);HoldMusic();return;}
-            Entrance(null,null,0);string from=track;float at=music.clip!=null?music.time:0;Track(song,Music*.55f,false,age);
+            Entrance(null,null,0);string from=track;float at=(float)Math.Max(0,MusicPosition);Track(song,Music*.55f,false,age,key);
             if(from!=song&&!string.IsNullOrEmpty(from)){resumeTrack=from;resumeTime=at;}
         }
         /// <summary>
         /// The playback time (s) of music track `id` while it plays (muted or not), else -1: the boss song's beats as this machine
         /// hears them, which the dev-siren entrance is drawn on (NativeIntroClock).
         /// </summary>
-        public double SongPlayback(string id)=>id!=null&&track==id&&music!=null&&music.clip!=null&&music.isPlaying?music.time:-1;
+        public double SongPlayback(string id)=>id!=null&&track==id&&music!=null&&music.clip!=null&&music.isPlaying?MusicPosition:-1;
         private void MarkBeeps(NativeArena arena)
         {
             foreach(var mark in arena.Marks())
@@ -63,19 +66,33 @@ namespace ChipArena.UnityConversion
         }
         private void OnDestroy(){ClearSceneAudio();ClearSlender();foreach(var c in beepClips.Values)CapturedAnimation.Release(c);}
         private bool Once(string key,float at){if(cues.TryGetValue(key,out float old)&&old==at)return false;cues[key]=at;return true;}
-        private void Track(string id,float volume,bool pause=false,double? clock=null)
+        private void Track(string id,float volume,bool pause=false,double? clock=null,object clockOwner=null,double clockEpoch=0)
         {
-            if(track!=id)
+            if(track!=id||clock.HasValue&&(!Equals(musicClockOwner,clockOwner)||musicEpoch!=clockEpoch))
             {
-                music.Stop();track=id;music.clip=string.IsNullOrEmpty(id)?null:Clip(id);music.loop=clock==null;
-                if(id==resumeTrack&&music.clip!=null&&clock==null)music.time=Mathf.Clamp(resumeTime,0,Math.Max(0,music.clip.length-.02f));resumeTrack=null;
+                if(track!=id&&id!=resumeTrack)resumeTrack=null;
+                music.Stop();musicPaused=musicStarting=musicPlayed=false;musicSync.Reset();track=id;music.clip=string.IsNullOrEmpty(id)?null:Clip(id);
             }
-            music.volume=Muted?0:volume;musicHeld=pause;if(music.clip==null)return;if(pause){music.Pause();return;}
-            if(clock.HasValue&&Math.Abs(music.time-clock.Value)>.12)music.time=Mathf.Clamp((float)clock.Value,0,Math.Max(0,music.clip.length-.02f));if(!music.isPlaying)music.Play();
+            musicClockOwner=clockOwner;musicEpoch=clockEpoch;
+            music.volume=Muted?0:volume;musicHeld=pause;if(music.clip==null)return;music.loop=clock==null;
+            if(pause){HoldMusic();return;}
+            // Do not repeatedly Play or seek a clip still loading in the background. Once ready, cue the latest age,
+            // not the age at which Resources.Load was first requested (especially on a guest joining the entrance).
+            if(music.clip.loadState==AudioDataLoadState.Unloaded)music.clip.LoadAudioData();
+            if(music.clip.loadState!=AudioDataLoadState.Loaded)return;
+            if(musicPaused){music.UnPause();musicPaused=false;}
+            double now=AudioSettings.dspTime;
+            if(musicStarting){if(music.isPlaying)musicStarting=false;else if(now-musicStartedAt<1)return;else musicStarting=false;}
+            if(!music.isPlaying)
+            {
+                if(clock.HasValue)SeekMusic(clock.Value);else if(id==resumeTrack)SeekMusic(resumeTime);
+                if(id==resumeTrack)resumeTrack=null;musicSync.Reset();music.Play();musicPlayed=musicStarting=true;musicStartedAt=now;return;
+            }
+            if(clock.HasValue&&musicSync.Seek(MusicPosition,clock.Value,now))SeekMusic(clock.Value);
         }
         // main.ts intro-preview: neither the menu nor the arena music plays under a previewed intro (setMenuActive(false) and
         // previewIntro's setActive(false)); the next Render resumes the held track.
-        public void HoldMusic(){musicHeld=true;music.Pause();}
+        public void HoldMusic(){musicHeld=true;if(music.isPlaying||musicStarting){music.Pause();musicPaused=true;musicStarting=false;}}
         public void Render(NativeArena arena,bool menu,Camera camera)
         {
             // audio.ts update: falloff and pan are heard from the local pilot (`listener=self.pos`), turned by the view yaw.
@@ -84,12 +101,12 @@ namespace ChipArena.UnityConversion
             if(generation!=arena.Generation){generation=arena.Generation;cursor=0;deathAudio.Tick(0,true);cues.Clear();limiter.Clear();spikeRises.Clear();installCue.Clear();phase="";countdown=-1;foreach(var v in voices)v.Stop();}
             var me=arena.Local;var match=arena.Match;float t=arena.Time;SceneCues(arena,menu);if(!menu)MarkBeeps(arena);
             if(menu)Track("music/menu-afterglow",Menu);
-            else if(arena.BossSongTime>=0)Track("music/black-siren-protocol",Music*.55f,arena.Pve?.Holding==true&&arena.Pve.Cinematic!="intro",arena.BossTrack.Looped(arena.BossSongTime));
+            else if(arena.BossSongTime>=0)Track("music/black-siren-protocol",Music*.55f,arena.Pve?.Holding==true&&arena.Pve.Cinematic!="intro",arena.BossTrack.Looped(arena.BossSongTime),arena,arena.BossSongAt);
             else if(arena.Pve!=null)Track("music/restricted-zone-pulse",Music*.55f*NativeStageMusic.Dip(match.Phase,true),!NativeStageMusic.Plays(match.Phase,true,false));
             else
             {
                 string theme=arena.Content.Map(arena.MapId).music;
-                if(string.IsNullOrEmpty(theme)){if(!track.StartsWith("music/")||track=="music/menu-afterglow"||music.clip!=null&&!music.isPlaying&&!musicHeld){if(bag.Count==0){foreach(var name in rotationTracks.OrderBy(_=>UnityEngine.Random.value))bag.Enqueue(name);if(bag.Peek()==rotationTracks[Math.Max(0,rotation)])bag.Enqueue(bag.Dequeue());}theme=bag.Dequeue();rotation=Array.IndexOf(rotationTracks,theme);}else theme=track.Substring(6);}
+                if(string.IsNullOrEmpty(theme)){if(!track.StartsWith("music/")||track=="music/menu-afterglow"||music.clip!=null&&musicPlayed&&!musicStarting&&!music.isPlaying&&!musicHeld){if(bag.Count==0){foreach(var name in rotationTracks.OrderBy(_=>UnityEngine.Random.value))bag.Enqueue(name);if(bag.Peek()==rotationTracks[Math.Max(0,rotation)])bag.Enqueue(bag.Dequeue());}theme=bag.Dequeue();rotation=Array.IndexOf(rotationTracks,theme);}else theme=track.Substring(6);}
                 Track("music/"+theme,Music*.55f,!NativeStageMusic.Plays(match.Phase,false,false));
             }
             // audio.ts AudioCursor: each event once, played only while .4 s fresh (never ahead of the clock), routed by

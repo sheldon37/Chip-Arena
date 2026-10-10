@@ -69,6 +69,12 @@ namespace ChipArena.UnityConversion
             for(int k=0;k<8;k++)layer.Vertex(center+rotation*new Vector3(c[k*3]*scale.x*.5f,c[k*3+1]*scale.y*.5f,c[k*3+2]*scale.z*.5f),Vector3.up,color,uv,Vector4.zero,Vector4.zero);
             for(int k=0;k<t.Length;k+=3)layer.Triangle(start+t[k],start+t[k+1],start+t[k+2]);
         }
+        /// <summary>
+        /// A flame cube with flat faces and a faint rim (the ink's pow(1-|N·V|,3) at `strength`, `rim` a raw colour): its black
+        /// core stays its flat colour, its grazing faces catch the rim (NativeSirenLook.FlameRim). Reduced effects use Cube.
+        /// </summary>
+        public void FlameCube(Layer layer,Vector3 center,Quaternion rotation,Vector3 scale,Color color,Color rim,float strength)
+        =>Box(layer,Matrix4x4.TRS(center,rotation,scale),color,OrbMode,0,new Vector4(0,0,0,strength),new Vector4(rim.r,rim.g,rim.b,0));
         /// <summary>A box with flat face normals for the rim modes (claw blades) or a flat colour (claw edges).</summary>
         public void Box(Layer layer,Matrix4x4 m,Color color,float mode,float flags,Vector4 p,Vector4 q)
         {

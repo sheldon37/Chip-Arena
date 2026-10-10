@@ -26,6 +26,11 @@ namespace ChipArena.UnityConversion
         public float BossSongAt=-1,BossSongLead;private NativeBossTrack bossTrack;
         public NativeBossTrack BossTrack=>bossTrack??(bossTrack=JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text).bossMusic);
         public double BossSongTime=>BossSongAt<0?-1:Time-BossSongAt+BossSongLead+(Pve?.Holding==true&&Pve.Cinematic=="intro"?Pve.HoldDuration-Pve.HoldLeft:0);
+        // Both host and guest have these origins. Only the first PvP Siren starts the song; PvE starts it for its held intro.
+        // Compare at the precision of the replicated song epoch, not the drifting/stepped playback and intro ages.
+        public bool IntroStartsBossSong=>BossSongAt>=0&&(Match.Phase==NativePhase.Intro
+            ?Match.IntroStyle=="dev-siren"&&BossSongLead==0&&BossSongAt==(float)Match.IntroStarted
+            :Pve?.Holding==true&&Pve.Cinematic=="intro");
         public static readonly Vector3[] StageVents={new Vector3(-10,0,-9),new Vector3(10,0,9),new Vector3(-10,0,9),new Vector3(10,0,-9),new Vector3(0,0,-17),new Vector3(0,0,17),new Vector3(-21,0,-12),new Vector3(21,0,12)};
         private void StepSirenStage()
         {

@@ -65,7 +65,7 @@ Shader "Hidden/ChipArena/Portrait" {
      color=albedo*irradiance*UNITY_INV_PI+emission;
      if(_Ink>.5)
      {
-      float rim=pow(1-saturate(abs(dot(toCamera,float3(0,0,1)))),3);float rise=sin(i.world.y*23-_Time.y*6.5+sin(i.world.x*13+_Time.y*1.7)*2.2+i.world.z*9);
+      float rim=pow(1-saturate(abs(dot(n,toCamera))),3);float rise=sin(i.world.y*23-_Time.y*6.5+sin(i.world.x*13+_Time.y*1.7)*2.2+i.world.z*9);
       color+=float3(.62,.56,.82)*(rim*.3+smoothstep(.7,1,rise)*.025);
      }
     }

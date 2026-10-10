@@ -211,6 +211,26 @@ namespace ChipArena.UnityConversion
             double dm=Clamp(age/Math.Max(.05,DamnationHit),0,1),r=.08+.44*dm*dm,y=1.42-(1-dm)*.4,ball=r*(1+.08*Math.Sin(time*30));
             Compose(m,0,0,y,.12,0,time*5,0,ball,ball,ball);Compose(m,16,0,y,.12,0,0,0,r*6,r*6,r*6);return true;
         }
+
+        // The Unity finish of the black-flame look (owner playtest 2026-10-10), on top of the source's shapes and colours.
+        /// <summary>
+        /// The ink rim and rising-streak strengths of buildSiren's InkMaterials: the body (INK, rim .2, flow .025), the claws
+        /// (CLAW, .75 and .02) and the flame tongues and leg wisps (TONGUE, .42 and .1), where the bank keeps one ink flag. The
+        /// arena draws them without the source's tone mapping, so the rims read a little brighter on the dark maps.
+        /// </summary>
+        public const double ClawRim=.75,ClawFlow=.02,TongueRim=.42,TongueFlow=.1,BodyRim=.2,BodyFlow=.025;
+        /// <summary>
+        /// The world flame pool's cubes (flames.ts, unlit flat colour in the source) take a faint ash rim at this strength,
+        /// pow(1-|N·V|,3) like the ink: their black cores stay black, their edges catch a violet line, so the fire reads as
+        /// black flame on a dark map instead of scattered violet tips and embers. Reduced effects draw them flat.
+        /// </summary>
+        public const double FlameRim=.42;
+        /// <summary>The eyes' and grin's slow breathing, 0..1 on the Siren clock (about .38 Hz); 1 is the source's look.</summary>
+        public static double Breath(double clock)=>.5+.5*Math.Sin(clock*2.4);
+        /// <summary>The grin's glow over a breath: .88 at the trough to the source's 1.</summary>
+        public static double GrinGlow(double breath)=>.88+.12*Clamp(breath,0,1);
+        /// <summary>The eye halos' size over a breath: .92 at the trough to the source's 1.</summary>
+        public static double HaloSize(double breath)=>.92+.08*Clamp(breath,0,1);
     }
 
     /// <summary>

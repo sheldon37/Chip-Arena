@@ -48,8 +48,12 @@ Shader "ChipArena/SourceLit" {
   if(_StageLit>.5&&!Unlit(i.color.rgb,i.emission.rgb))color.rgb=StageAces(color.rgb);
   #endif
  }
+ // The Siren ink (InkMaterial): a pale fresnel rim pow(1-|N.V|,3) and slow rising streaks, added as emission. surf never
+ // writes o.Normal, so viewDir and worldNormal are both world space (dotting viewDir with a fixed axis lit the whole body
+ // by the camera's heading and left the silhouette without its rim). _InkRim and _InkFlow are set per part (the claws and
+ // flame tongues burn brighter: NativeSourceModels.SplitSirenPieces).
  void vert(inout appdata_full v,out Input o){UNITY_INITIALIZE_OUTPUT(Input,o);o.emission=v.texcoord1;}
- void surf(Input i,inout SurfaceOutput o){float4 shell=UNITY_ACCESS_INSTANCED_PROP(Props,_BodyTint);if(shell.a<.999)clip(shell.a-frac(sin(dot(floor(i.worldPos*120),float3(12.9898,78.233,37.719)))*43758.5453));float4 accent=UNITY_ACCESS_INSTANCED_PROP(Props,_AccentTint);float3 tint=i.emission.w>1.5?accent.rgb:i.emission.w>.5?shell.rgb:1;tint*=UNITY_ACCESS_INSTANCED_PROP(Props,_SceneTint).rgb;float4 tex=tex2D(_MainTex,i.uv_MainTex);o.Albedo=i.color.rgb*tint*tex.rgb;o.Emission=i.emission.rgb*tint*UNITY_ACCESS_INSTANCED_PROP(Props,_GlowTint).rgb;if(_InkFill>.5){o.Albedo=_InkColor.rgb;o.Emission=float3(0,0,0);}float rim=pow(1-saturate(abs(dot(normalize(i.viewDir),float3(0,0,1)))),3);float rise=sin(i.worldPos.y*23-_Time.y*6.5+sin(i.worldPos.x*13+_Time.y*1.7)*2.2+i.worldPos.z*9);o.Emission+=_Ink*float3(.62,.56,.82)*(rim*_InkRim+smoothstep(.7,1,rise)*_InkFlow);if(_StageLit>.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=StageLight(o.Albedo,i.worldPos,normalize(i.worldNormal));o.Alpha=i.color.a*tex.a*shell.a;}
+ void surf(Input i,inout SurfaceOutput o){float4 shell=UNITY_ACCESS_INSTANCED_PROP(Props,_BodyTint);if(shell.a<.999)clip(shell.a-frac(sin(dot(floor(i.worldPos*120),float3(12.9898,78.233,37.719)))*43758.5453));float4 accent=UNITY_ACCESS_INSTANCED_PROP(Props,_AccentTint);float3 tint=i.emission.w>1.5?accent.rgb:i.emission.w>.5?shell.rgb:1;tint*=UNITY_ACCESS_INSTANCED_PROP(Props,_SceneTint).rgb;float4 tex=tex2D(_MainTex,i.uv_MainTex);o.Albedo=i.color.rgb*tint*tex.rgb;o.Emission=i.emission.rgb*tint*UNITY_ACCESS_INSTANCED_PROP(Props,_GlowTint).rgb;if(_InkFill>.5){o.Albedo=_InkColor.rgb;o.Emission=float3(0,0,0);}float rim=pow(1-saturate(abs(dot(normalize(i.viewDir),normalize(i.worldNormal)))),3);float rise=sin(i.worldPos.y*23-_Time.y*6.5+sin(i.worldPos.x*13+_Time.y*1.7)*2.2+i.worldPos.z*9);o.Emission+=_Ink*float3(.62,.56,.82)*(rim*_InkRim+smoothstep(.7,1,rise)*_InkFlow);if(_StageLit>.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=StageLight(o.Albedo,i.worldPos,normalize(i.worldNormal));o.Alpha=i.color.a*tex.a*shell.a;}
  ENDCG
  } Fallback "Diffuse"
 }

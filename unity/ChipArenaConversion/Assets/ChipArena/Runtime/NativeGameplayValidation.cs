@@ -85,6 +85,21 @@ namespace ChipArena.UnityConversion
             var copy=NativeFrameCodec.Clone(NetworkFrame());if(copy.pve.rows.First(r=>r.id==pilot.Seat.id).revived!=row.Revived)throw new Exception("PvE revive count lost in guest/replay frame");
             Debug.Log("PASS native PvE opening/personal picks, machine purchases and denial, pickup ownership, healing cooldown, pending recruit caps and revival state");
             ValidatePveBotCombat();
+            // The held PvE entrance advances its song while match time is frozen, then transfers the full intro duration
+            // to BossSongLead. Exercise the real start/tick path and the guest's actual frame application.
+            BeginPveHold("intro");float started=Time;Check(IntroStartsBossSong&&Math.Abs(BossSongTime)<.0001,"intro/song start together");
+            PveHoldTick(.65f);Check(Time==started&&IntroStartsBossSong&&Math.Abs(BossSongTime-.65)<.0001,"held intro/song age");
+            var guest=new NativeArena(Content,new NativeMatch(Content),MapId){Replica=true,ReplicaScene=root.scene};
+            try
+            {
+                guest.ApplyFrame(NativeFrameCodec.Clone(NetworkFrame()),LocalId);
+                Check(guest.IntroStartsBossSong&&Math.Abs(guest.BossSongTime-BossSongTime)<.0001,"guest held intro/song age");
+                PveHoldTick(Pve.HoldLeft+.001f);Check(!IntroStartsBossSong&&Math.Abs(BossSongTime-Pve.HoldDuration)<.0001,"song continues after intro");
+                guest.ApplyFrame(NativeFrameCodec.Clone(NetworkFrame()),LocalId);
+                Check(!guest.IntroStartsBossSong&&Math.Abs(guest.BossSongTime-BossSongTime)<.0001,"guest song continues after intro");
+            }
+            finally{guest.Dispose();}
+            Debug.Log("PASS Siren PvE audio origins: real held-intro start/tick/finish and guest frame application share one continuous song clock");
         }
         private void ValidatePveBotCombat()
         {
