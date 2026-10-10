@@ -18,8 +18,8 @@ namespace ChipArena.UnityConversion
             Check(k.GetProperty("frontSeconds").GetDouble()==NativeBlastSim.FrontSeconds&&k.GetProperty("minVoxels").GetInt32()==NativeBlastSim.MinVoxels,"front seconds and minimum voxels match the source");
             Check(capacity.GetProperty("solid").GetInt32()==NativeBlastSim.SolidCapacity&&capacity.GetProperty("glow").GetInt32()==NativeBlastSim.GlowCapacity&&capacity.GetProperty("lights").GetInt32()==NativeBlastSim.LightCapacity,"pool capacities match the source");
             int cases=0,frames=0;foreach(var c in json.GetProperty("cases").EnumerateArray()){frames+=Replay(c,cases);cases++;}
-            Determinism();Front();Capacity();Minimum();Quality();Cues();Frames();Winding();
-            Console.WriteLine("PASS "+cases+" source chip blast runs ("+frames+" drawn frames: 11 styles x 3 radii, quality/compat, tints, impacts, 20 fields, line, paddle) and blast determinism, front, capacity, minimum-voxel, quality, cue, frame-rule and winding checks");
+            Determinism();Front();Capacity();Minimum();Quality();Cues();Frames();Winding();StandIns(root);
+            Console.WriteLine("PASS "+cases+" source chip blast runs ("+frames+" drawn frames: 11 styles x 3 radii, quality/compat, tints, impacts, 20 fields, line, paddle) and blast determinism, front, capacity, minimum-voxel, quality, cue, frame-rule and winding checks, and the event-to-effect table (no blast without a source blast)");
         }
         private static void Start(NativeBlastSim sim,JsonElement c,out NativeBlastField? field)
         {
@@ -143,11 +143,10 @@ namespace ChipArena.UnityConversion
         }
         private static void Cues()
         {
-            Check(NativeBlastCues.School(1)==NativeBlastStyle.Fire&&NativeBlastCues.School(2)==NativeBlastStyle.Frost&&NativeBlastCues.School(3)==NativeBlastStyle.Shock&&NativeBlastCues.School(4)==NativeBlastStyle.Implosion&&NativeBlastCues.School(0)==NativeBlastStyle.Fire,"school styles");
             Check(NativeBlastCues.Classify(true,1,3,null)==NativeBlastCues.Cue.Teleport&&NativeBlastCues.Classify(true,1,2,null)==NativeBlastCues.Cue.None&&NativeBlastCues.Classify(true,.15f,3,null)==NativeBlastCues.Cue.None,"beams: only blinks are teleports");
             Check(NativeBlastCues.Classify(false,5,4,"implosion-bomb")==NativeBlastCues.Cue.Vacuum&&NativeBlastCues.Classify(false,4,4,"implosion-bomb")==NativeBlastCues.Cue.Blast,"vacuum");
             Check(NativeBlastCues.Classify(false,.3f,0,"rocket")==NativeBlastCues.Cue.Dud&&NativeBlastCues.Classify(false,3.6f,0,"rocket")==NativeBlastCues.Cue.Blast,"rocket dud");
-            Check(NativeBlastCues.Style("frag",0)==NativeBlastStyle.Kinetic&&NativeBlastCues.Style(null,2)==NativeBlastStyle.Frost&&NativeBlastCues.Style("bomb",3)==NativeBlastStyle.Fire&&NativeBlastCues.Style("mine",0)==NativeBlastStyle.Mine,"tag beats school");
+            Check(NativeBlastCues.Style("frag")==NativeBlastStyle.Kinetic&&NativeBlastCues.Style(null)==NativeBlastStyle.Fire&&NativeBlastCues.Style("bomb")==NativeBlastStyle.Fire&&NativeBlastCues.Style("mine")==NativeBlastStyle.Mine,"the source message picks the style; none is fire");
             Check(NativeBlastCues.Quality("flame-lance")==.5&&NativeBlastCues.Quality(null)==1&&NativeBlastCues.Colocated(3)=="blink-strike"&&NativeBlastCues.Colocated(1)=="wormhole","quality and teleport landings");
             // The source's blastStyle switch (chip-blasts.ts:36-44), every case.
             var table=new (string tag,NativeBlastStyle style)[]{("thunder",NativeBlastStyle.Shock),("thunderstep",NativeBlastStyle.Shock),("static",NativeBlastStyle.Shock),("storm",NativeBlastStyle.Shock),("lightning-rod",NativeBlastStyle.Shock),("orbital-mark",NativeBlastStyle.Shock),("blink-strike",NativeBlastStyle.Shock),("ball-lightning",NativeBlastStyle.Shock),
@@ -180,10 +179,54 @@ namespace ChipArena.UnityConversion
             Check(Collapsed(At(0,3,"frag",Blast),At(0,.6,"flame-lance",Blast))=="Blast,Blast"&&Collapsed(At(0,3,"frag",Blast),At(1,.6,"frag",Blast))=="Blast,Blast","other tags and other spots are kept");
             Check(Collapsed(At(0,1,null,Teleport),At(3,1,null,Teleport))=="Teleport,Teleport","separate landings are kept");
             // The Siren's own records keep the flat halos.
-            Check(NativeBlastCues.Classify(false,1,4,null,true)==NativeBlastCues.Cue.Halo&&NativeBlastCues.Classify(false,5,4,null,true)==NativeBlastCues.Cue.Halo&&NativeBlastCues.Classify(true,1,3,null,true)==Teleport&&NativeBlastCues.Classify(false,1,4,null)==Blast,"siren records are halos, not blasts");
+            Check(NativeBlastCues.Classify(false,1,4,null,true)==NativeBlastCues.Cue.Halo&&NativeBlastCues.Classify(false,5,4,null,true)==NativeBlastCues.Cue.Halo&&NativeBlastCues.Classify(true,1,3,null,true)==Teleport&&NativeBlastCues.Classify(false,1,4,null,false,true)==Blast&&NativeBlastCues.Classify(false,1,4,null)==NativeBlastCues.Cue.None,"siren records are halos, not blasts");
             var sites=new System.Collections.Generic.List<NativeBlastFrame.SirenSite>{new NativeBlastFrame.SirenSite{X=0,Y=1.5,Z=0,Reach=.6,Below=true},new NativeBlastFrame.SirenSite{X=10,Y=2,Z=0,Reach=1.2}};
             Check(NativeBlastFrame.AtSiren(sites,.2,.03,.1)&&!NativeBlastFrame.AtSiren(sites,.2,1.4,.1)&&!NativeBlastFrame.AtSiren(sites,1,.03,0),"slam: on the ground under the Siren, not on its body or beside it");
             Check(NativeBlastFrame.AtSiren(sites,10.5,2.3,0)&&!NativeBlastFrame.AtSiren(sites,12,2,0)&&!NativeBlastFrame.AtSiren(new System.Collections.Generic.List<NativeBlastFrame.SirenSite>(),0,0,0),"siren shots and fields");
+        }
+        // Owner playtest 2026-10-10: "explosion effects seem to play randomly (one of which is killing Siren minions with guns)".
+        // Event -> effect fixture: what each Unity effect record (with the Explosion event the match emits beside it, or none)
+        // draws, against what event-vfx.ts blastEvent/event draws for the same source event. cue None: no blast at all.
+        private struct Record{public string What,Tag,Detail;public double Radius;public int Element;public bool Weapon;public NativeBlastCues.Cue Cue;public NativeBlastStyle Style;public double Quality;}
+        private static Record R(string what,double radius,int element,string tag,string detail,NativeBlastCues.Cue cue,NativeBlastStyle style=NativeBlastStyle.Fire,double quality=1,bool weapon=false)
+            =>new Record{What=what,Radius=radius,Element=element,Tag=tag,Detail=detail,Weapon=weapon,Cue=cue,Style=style,Quality=quality};
+        private static void StandIns(string root)
+        {
+            const NativeBlastCues.Cue None=NativeBlastCues.Cue.None,Blast=NativeBlastCues.Cue.Blast,Dud=NativeBlastCues.Cue.Dud,Vacuum=NativeBlastCues.Cue.Vacuum;
+            var table=new[]{
+                // First-port records with no source blast (no event, no tag): a horde gib on a gun kill (pve/gore.ts draws gore
+                // only), a summon (`summon` is a green impact), a PvE revive (no world effect), a pong rally (`ricochet`). Their
+                // school no longer picks a look, so element 0 or 1 is no fireball.
+                R("gun kill of a Siren add: severed limb",.35,1,null,null,None),R("severed limb, school 0",.35,0,null,null,None),
+                R("summon",.6,4,null,null,None),R("PvE revive",1,2,null,null,None),R("pong rally bounce",.3,1,null,null,None),R("unknown school",2,0,null,null,None),
+                // Explosion events (simulation.ts explode): the message picks the style, a bare weapon blast is fire at .55.
+                R("static discharge on a Siren add (ChipBlast 'chip', 3 m): source arc",3,0,null,"chip",Blast,NativeBlastStyle.Shock,.6),
+                R("static discharge on a pilot",3,1,null,"static",Blast,NativeBlastStyle.Shock,.6),
+                R("corpse party ('chip', 3.5 m)",3.5,4,null,"chip",Blast,NativeBlastStyle.Toxic),
+                R("block pulse",3,0,null,"block-pulse",Blast,NativeBlastStyle.Kinetic),R("supernova block pulse",3,2,null,"supernova",Blast,NativeBlastStyle.Nova),
+                R("fire weapon blast (no message)",1.5,1,null,"fire",Blast,NativeBlastStyle.Fire,.55,true),R("guest event without a Detail",2,3,null,"",Blast,NativeBlastStyle.Fire,.55),
+                R("dash blast",3,0,null,"dash-blast",Blast,NativeBlastStyle.Kinetic),R("trampoline",3,0,null,"trampoline",Blast,NativeBlastStyle.Quake),R("wormhole pulse",3,0,null,"wormhole",Blast,NativeBlastStyle.Void),
+                R("shrapnel",1.8,3,null,"shrapnel",Blast,NativeBlastStyle.Fire),R("L33t block (root)",6,0,null,"leet-block",Blast,NativeBlastStyle.Fire),R("L33t nuke",11,0,null,"leet-nuke",Blast,NativeBlastStyle.Fire),
+                R("meteor strike",3,1,null,"meteor-strike",Blast,NativeBlastStyle.Meteor),R("frag",3,0,null,"frag",Blast,NativeBlastStyle.Kinetic),R("cluster mine field",2.3,2,null,"cluster-mine",Blast,NativeBlastStyle.Mine),
+                R("vacuum",5,4,null,"",Vacuum),
+                // Ability hit blasts that are visual only in the source (no event; the tag comes from the ability shot).
+                R("flame lance hit",.6,1,"flame-lance",null,Blast,NativeBlastStyle.Fire,.5),R("shackles hit",.6,4,"shackles",null,Blast,NativeBlastStyle.Void),R("unarmed rocket",.3,0,"rocket",null,Dud)};
+            foreach(var r in table)
+            {
+                bool explosion=r.Detail!=null;string tag=r.Tag;double q=NativeBlastCues.Quality(tag);
+                if(explosion)tag=NativeBlastCues.ExplosionTag(r.Detail,r.Radius,r.Weapon,out q);
+                var cue=NativeBlastCues.Classify(false,r.Radius,r.Element,tag,false,explosion);
+                Check(cue==r.Cue,r.What+": cue "+cue+" vs "+r.Cue);if(cue!=Blast)continue;
+                Check(NativeBlastCues.Style(tag)==r.Style&&Math.Abs(q-r.Quality)<1e-9,r.What+": "+NativeBlastCues.Style(tag)+" at "+q+" vs "+r.Style+" at "+r.Quality);
+            }
+            Check(NativeBlastCues.Static("chip",3)&&NativeBlastCues.Static("static",2)&&!NativeBlastCues.Static("chip",3.5)&&!NativeBlastCues.Static(null,3),"static discharge");
+            // The stand-in records are gone from the match (presentation feed only) and the presentation draws the source's own looks.
+            string Read(string file)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",file));
+            Check(!Read("NativePveHorde.cs").Contains("Fx(")&&!Read("NativePve.cs").Contains("Fx(")&&!Read("NativeProjectiles.cs").Contains("Fx("),"no gib, revive or pong ability effect");
+            Check(!Read("NativeSummons.cs").Contains("Fx(pos")&&Read("NativeAbilities.cs").Contains("if(d.id==\"flame-lance\")Fx(at,.6f,element);"),"no summon effect; of the surface hits only Flame Lance records one");
+            string blasts=Read("NativeBlastPresentation.cs");
+            Check(blasts.Contains("EventKind.Summon){sim.Impact(x,y,z,1.2,0x93db67,quality,false,true)")&&blasts.Contains("EventKind.Pong){sim.Impact(x,y,z,1.2,0xff5269,quality)")&&blasts.Contains("ExplosionAt(arena,fx,out string detail)"),"summon and pong impacts, records keyed to their Explosion events");
+            Check(!Read("NativeWorldEffects.cs").Contains("MinionDeaths")&&Read("NativeSummonPresentation.cs").Contains("if(summon&&age>="),"a horde add or summon death draws no world puff; only a summon breaks up, in SourceMinionDeath");
         }
         private static void Winding()
         {

@@ -26,7 +26,9 @@ namespace ChipArena.UnityConversion
                 var c=obj.AddComponent<CapsuleCollider>();c.radius=.28f;c.height=1.2f;c.sharedMaterial=surfaces["pilot"];
                 var body=obj.AddComponent<Rigidbody>();body.mass=35;body.constraints=RigidbodyConstraints.FreezeRotation;body.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;body.interpolation=RigidbodyInterpolation.Interpolate;
                 float hp=kind=="toy"?25:(float)owner.Stats["hp"]*2;
-                var m=new NativeMinion{Id=nextMinion++,Owner=owner,Kind=kind,Body=body,Collider=c,Hp=hp,MaxHp=hp,Speed=6.8f*(float)owner.Stats["speed"]*(kind=="toy"?.7f:.5f),Until=Time+life,NextAttack=Time+.7f,Yaw=owner.Input.Yaw};obj.AddComponent<NativeMinionBody>().Minion=m;Minions.Add(m);Emit(EventKind.Summon,owner,m.Id,pos,hp,kind);Fx(pos,.6f,4);
+                // The Summon event is the source's `summon`, drawn as its green ground impact (NativeBlastPresentation.Impacts); the
+                // first port's extra darkness ability effect here drew an implosion blast. Presentation feed only.
+                var m=new NativeMinion{Id=nextMinion++,Owner=owner,Kind=kind,Body=body,Collider=c,Hp=hp,MaxHp=hp,Speed=6.8f*(float)owner.Stats["speed"]*(kind=="toy"?.7f:.5f),Until=Time+life,NextAttack=Time+.7f,Yaw=owner.Input.Yaw};obj.AddComponent<NativeMinionBody>().Minion=m;Minions.Add(m);Emit(EventKind.Summon,owner,m.Id,pos,hp,kind);
             }
             Physics.SyncTransforms();
         }

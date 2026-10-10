@@ -384,9 +384,9 @@ namespace ChipArena.UnityConversion
     /// <summary>
     /// How Unity's existing effect records map onto the source's blast calls (event-vfx.ts blastEvent and event) until the
     /// records carry the source's event type and message (A21). An ability/chip effect keeps only its position, radius, the
-    /// owner's magic school (0 none, 1 fire, 2 water, 3 lightning, 4 darkness) and a beam origin. A source tag is recovered
-    /// only where a replicated field, zone or ability shot ends exactly there (the caller's job); otherwise the school picks
-    /// the look, matching the school colours Unity already uses for these effects.
+    /// owner's magic school (0 none, 1 fire, 2 water, 3 lightning, 4 darkness) and a beam origin. Its source look comes from
+    /// the authoritative Explosion event the match emits with it (same spot, same tick: ExplosionTag), or else from a
+    /// replicated field, zone or ability shot that ends exactly there (the caller's job). The school never picks the look.
     /// </summary>
     public static class NativeBlastCues
     {
@@ -394,12 +394,18 @@ namespace ChipArena.UnityConversion
         public enum Cue{None,Blast,Teleport,Vacuum,Dud,Halo}
         public const double TeleportRadius=1.2,TeleportQuality=.5,TeleportImpactRadius=.9,TeleportLineJitter=.3,TeleportLineLife=.22,TeleportLineSweep=.08;
         public const int TeleportColor=0xb66cff;
-        public static NativeBlastStyle School(int element)=>element==1?NativeBlastStyle.Fire:element==2?NativeBlastStyle.Frost:element==3?NativeBlastStyle.Shock:element==4?NativeBlastStyle.Implosion:NativeBlastStyle.Fire;
-        public static Cue Classify(bool beam,double radius,int element,string tag,bool siren=false)
+        /// <summary>event-vfx.ts blastEvent: an explosion without a message (a bare weapon 'blast') draws fire at .55 quality.</summary>
+        public const double UntaggedQuality=.55;
+        /// <summary>event-vfx.ts blastEvent: the static discharge is an `arc` with a radius, a shock blast at .6 quality.</summary>
+        public const double ArcQuality=.6;
+        /// <summary>
+        /// explosion: the match emitted an Explosion or Vacuum event at this record's spot in its tick (ChipBlast, AbilityBlast,
+        /// Vacuum). tag: the source message recovered for it (ExplosionTag, a teleport landing, or a field, zone or ability shot).
+        /// </summary>
+        public static Cue Classify(bool beam,double radius,int element,string tag,bool siren=false,bool explosion=false)
         {
             // The Siren's own attacks (NativeBlastFrame.AtSiren). The source sends them as siren-* events that client/siren/fx.ts
-            // draws as black fire, shock rings and cracks, never as chip blasts. They keep Unity's flat halos until that module
-            // is ported (parity item C25) and the records carry their owner (A21).
+            // draws as black fire, shock rings and cracks, never as chip blasts (NativeDevEffects draws those from the events).
             if(siren&&!beam)return Cue.Halo;
             // Blink and the wormhole blink record a radius-1 lightning beam; every other beam is an arc and draws no blast.
             if(beam)return radius>=.99&&element==3?Cue.Teleport:Cue.None;
@@ -407,12 +413,46 @@ namespace ChipArena.UnityConversion
             if(element==4&&Math.Abs(radius-5)<1e-3)return Cue.Vacuum;
             // An unarmed rocket: the source draws a grey impact, not a blast.
             if(tag=="rocket"&&radius<.5)return Cue.Dud;
-            return Cue.Blast;
+            // Owner playtest 2026-10-10 ("explosion effects seem to play randomly", Siren adds killed by guns): a record draws a
+            // blast only where the source draws one, an authoritative explosion at its spot or an ability's own visual hit blast
+            // (flame-lance, tidal-wave, shackles: a tag from its shot). Anything else is a first-port stand-in record (the old
+            // gib, summon, revive and pong bounce records drew the owner's school, a fireball for school 0 or 1) and draws none.
+            return explosion||tag!=null?Cue.Blast:Cue.None;
         }
         /// <summary>The blast recorded where a teleport beam lands: Blink Strike's (always lightning) or the wormhole chip's.</summary>
         public static string Colocated(int element)=>element==3?"blink-strike":"wormhole";
-        public static NativeBlastStyle Style(string tag,int element)=>tag!=null?NativeBlastSim.StyleOf(tag):School(element);
+        /// <summary>chip-blasts.ts blastStyle for a source message; an explosion without one is fire (event-vfx.ts blastEvent).</summary>
+        public static NativeBlastStyle Style(string tag)=>tag!=null?NativeBlastSim.StyleOf(tag):NativeBlastStyle.Fire;
         public static double Quality(string tag)=>tag=="flame-lance"?.5:1;
+        /// <summary>
+        /// The static discharge. Unity's untagged ChipBlast ("chip") is either the discharge on a summon or PvE add
+        /// (NativeSummons.MinionWeaponHit, 3 m) or Corpse Party (3.5 m); the source emits the first as `arc`, the second as
+        /// `corpseParty` (simulation.ts:264/275, chaos.ts:111).
+        /// </summary>
+        public static bool Static(string detail,double radius)=>detail=="static"||detail=="chip"&&Math.Abs(radius-3)<1e-3;
+        /// <summary>
+        /// The source message (tag) and quality of the blast for a Unity Explosion event (the ChipBlast/AbilityBlast effect in
+        /// Detail), as simulation.ts explode() emits it and event-vfx.ts blastEvent draws it: kind 'static' is an `arc` (shock,
+        /// .6 quality), 'blockPulse' its pulse (nova with Supernova, otherwise kinetic), a bare weapon 'blast' an explosion with
+        /// no message (fire, .55), and any other kind an explosion whose message is its fx tag or kind (.5 for flame-lance).
+        /// weapon: Detail names a weapon spec (the fire weapon's blast, NativeProjectiles). Unity's own names map to the source
+        /// kinds (dash-blast: dashBlast, leet-block: root).
+        /// </summary>
+        public static string ExplosionTag(string detail,double radius,bool weapon,out double quality)
+        {
+            quality=1;
+            if(string.IsNullOrEmpty(detail)||weapon){quality=UntaggedQuality;return null;}
+            if(Static(detail,radius)){quality=ArcQuality;return "static";}
+            switch(detail)
+            {
+                case "chip":return "corpseParty";
+                case "block-pulse":return "kinetic";
+                case "supernova":return "nova";
+                case "dash-blast":return "dashBlast";
+                case "leet-block":return "root";
+                default:quality=Quality(detail);return detail;
+            }
+        }
     }
 
     /// <summary>
@@ -431,8 +471,8 @@ namespace ChipArena.UnityConversion
         /// (the offline menu). An online match keeps running behind the menu, and so do its blasts.
         /// </summary>
         public static double Step(double frameSeconds,bool paused)=>paused||double.IsNaN(frameSeconds)?0:Math.Max(0,Math.Min(MaxFrame,frameSeconds));
-        /// <summary>A record first seen this frame, with the cue and source tag the presentation resolved for it.</summary>
-        public struct Candidate{public double X,Y,Z,Radius;public string Tag;public NativeBlastCues.Cue Cue;}
+        /// <summary>A record first seen this frame, with the cue, source tag and quality factor the presentation resolved for it.</summary>
+        public struct Candidate{public double X,Y,Z,Radius,Quality;public string Tag;public NativeBlastCues.Cue Cue;}
         private static bool Same(Candidate a,Candidate b){double x=a.X-b.X,y=a.Y-b.Y,z=a.Z-b.Z;return x*x+y*y+z*z<SameSpot*SameSpot;}
         private static bool Explosive(NativeBlastCues.Cue cue)=>cue==NativeBlastCues.Cue.Blast||cue==NativeBlastCues.Cue.Dud;
         /// <summary>

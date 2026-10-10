@@ -100,7 +100,9 @@ namespace ChipArena.UnityConversion
                 var candidates=Pilots.Where(p=>p.Hp>0&&Enemy(owner,p)&&Vector3.Distance(from,p.Body.position)<12&&MeleeVisible(from,p.Body.position,owner,p.Collider)).OrderBy(p=>(p.Body.position-from).sqrMagnitude).Take(4);
                 foreach(var target in candidates){Vector3 d=target.Body.position+Vector3.up*.15f-from;if(Vector3.Dot(d.normalized,velocity.normalized)<Mathf.Cos(30*Mathf.Deg2Rad))continue;velocity=d+target.Body.linearVelocity*(d.magnitude/b.FixedSpeed*.4f);b.Damage+=b.RallyBonus;break;}
             }
-            b.RallyMark=point;b.Position=from;b.Velocity=velocity.normalized*b.FixedSpeed;Fx(from,.3f,1);return false;
+            // The bounce's look comes from its Pong event (the source's `ricochet`: NativeBlastPresentation.Impacts); the first port's
+            // fire-school ability effect here drew a fireball on every rally. Presentation feed only.
+            b.RallyMark=point;b.Position=from;b.Velocity=velocity.normalized*b.FixedSpeed;return false;
         }
         private bool BulletImpact(NativeBullet b,NativePilot owner,NativeContact hit)
         {

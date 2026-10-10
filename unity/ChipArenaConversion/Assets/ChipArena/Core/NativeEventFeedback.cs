@@ -16,8 +16,10 @@ namespace ChipArena.UnityConversion
         public static bool SourceHit(EventKind kind,float amount)=>Damages(kind)&&amount>HitFloor;
         // The kinds the legacy ParticleSystem burst was written for, plus collapse, which event-vfx.ts:29 bursts like a hit
         // (6 particles, 0xfbc98b). The other PR #66 kinds (blasts, fields, ticks, procs, PvE, DEV moves) are not ordinary
-        // hits; C6/C10 own their visuals.
-        public static bool HitBurst(EventKind kind)=>kind==EventKind.Hit||kind==EventKind.Headshot||kind==EventKind.Block||kind==EventKind.Death||kind==EventKind.Break||kind==EventKind.Impact||kind==EventKind.Collapse;
+        // hits; C6/C10 own their visuals. native: a native arena, where a death draws no burst either: event-vfx.ts:29 has no
+        // death, a pilot's death is its kill effect (C18) and an add's its corpse (owner playtest 2026-10-10: every kill of a
+        // Siren add popped a 24-particle red burst). The prototype lab keeps its kill burst.
+        public static bool HitBurst(EventKind kind,bool native=false)=>kind==EventKind.Hit||kind==EventKind.Headshot||kind==EventKind.Block||kind==EventKind.Death&&!native||kind==EventKind.Break||kind==EventKind.Impact||kind==EventKind.Collapse;
         // pve/tracks.ts AttackedTrack: any `hit` on me with damage, burn and poison ticks included.
         public static bool Attacked(in ArenaEvent e,int local,float now,float window)=>local>0&&e.Target==local&&SourceHit(e.Kind,e.Amount)&&now-e.Time>=0&&now-e.Time<window;
     }
@@ -231,10 +233,11 @@ namespace ChipArena.UnityConversion
                 // are silent, also when KillPveHorde clears the remaining adds.
                 case EventKind.Death:if(e.TargetPilot){n=Add(o,n,"stone",.65f,true);n=Add(o,n,"explosion",.3f,true);}break;
                 // The Explosion Detail is the source's explode message (the fx tag, chip or weapon spec). A block pulse's own
-                // blast is the pulse; the static discharge is the source's `arc`; the Leet nuke adds its `leet-nuke` play.
+                // blast is the pulse; the static discharge is the source's `arc` (on a summon or PvE add Unity tags it "chip":
+                // NativeBlastCues.Static); the Leet nuke adds its `leet-nuke` play.
                 case EventKind.Explosion:
                     if(e.Detail=="block-pulse"||e.Detail=="supernova")break;
-                    if(e.Detail=="static"){n=Add(o,n,"lightning",.5f,true,"arc");break;}
+                    if(NativeBlastCues.Static(e.Detail,e.Radius)){n=Add(o,n,"lightning",.5f,true,"arc");break;}
                     n=Blast(o,n,e.Detail);if(e.Detail=="leet-nuke")n=Add(o,n,"explosion",1,true);break;
                 case EventKind.Collapse:n=Blast(o,n,e.Detail);break;
                 case EventKind.BlockPulse:n=Add(o,n,"explosion",e.Supernova?.8f:.35f,true);break;
