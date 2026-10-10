@@ -16,6 +16,21 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-10 — Claude — Emperor wavedash legs and cancel blend (owner playtest); cancel fix for Astra
+- Branch `claude/emperor-wavedash` (`c8c5454`, base `530321e`). Two-lens review found nothing blocking (one low note about Unity's simulation stopping the body on a cancel, below). Merged. Presentation only.
+- Legs:
+  - The original places the wave's feet over the gait (emperorLayers editFoot/applyFighterLegs, dashTime .18). The baked `emperor-wave` clip has no leg tracks, so Unity's gait ran a 9 m/s stride under the crouch with the feet dragging flat.
+  - Now `NativeWaveDash` keeps the dash window and `NativeFighterPose.Feet` plants the lead and rear marks as in fighter-motion.ts, with the Electric Hook's rear heel lift.
+  - Chained waves no longer twitch, and `MeleeMotion.FighterFinish` runs the original's pose transitions for both fighters, so a wave cancelled into Q blends over .055 s.
+  - New `tools/export_fighter_motion.mjs`, `Tests/fighter-motion-parity.json`, `Tests/WavedashChecks.cs`. Legs within 2.3 mm of the original, against 70 cm before.
+- **For Astra (cancel, simulation):** in `Runtime/NativeFighters.cs` `NativeArena.StartFighter`, `if((Time<p.Ready||f.Kind!=null)&&!cancel)return false;` rejects Q while `f.Kind=="wave"` (0.18 s). Q is a one-tick GetKeyDown, so the press is lost (1/11 taps start the hook; the original gets 11/11).
+  - Suggested change: `bool cancel=emperor?kind=="electric"&&f.Kind=="wave":kind!="combo"&&Has(p,"arcade-cancel")&&f.Kind=="combo"&&f.LastHit>=f.At&&Time-f.LastHit<.5f;` (the original's emperor.start ignores the wave).
+  - Optional: let a jab cancel too (`f.Kind=="wave"`).
+  - Movement parity: in the original the 9 m/s wave push carries through a cancel, plus the hook's 6 m/s step, and the wave requires being grounded. Unity zeroes MoveVelocity on StartFighter.
+  - Harness: scratchpad `wavedash/cancel/run.sh`.
+- Checks on the merged tree: Unity runtime+editor compile OK; check_relay 179 PASS, exit 0; Python OK (1 skip); package_source OK. Not run: Unity Editor/GPU, Windows, multiplayer.
+- Also still in progress after the usage-limit interruption: chip seat (chest-up table), intro NaN/artifact fix, Siren intro lights (review fixes), Siren smile reveal and gun/Siren runs (reviews), placeholder sweep.
+
 ## 2026-10-10 — Claude — Siren Marked crosshair and the animated, upgraded Auditor halo (owner requests)
 - Base `claude/sleepy-ritchie-g8ruhv` at `4bdd90b`. Both branches were reviewed, then merged. Presentation only: no change to hit timing, hitboxes, damage, cooldowns, movement, networking or saves.
   - `claude/siren-target-telegraph` (`cb11846`). Review found the crosshair lingering 0.5 s after the seeker hit; fixed.
