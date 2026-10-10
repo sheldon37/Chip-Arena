@@ -374,35 +374,42 @@ internal static class HitReactionChecks
         var rnd=new Random(1177);string[] victims={"sword","daggers","greatsword","shield","rifle","pistol","machinegun","fire"},attackers={"sword","daggers","greatsword","shield","emperor","ansatsuken","add","siren","pistol"};
         // The procedural layer is bounded against the same route without it. Where a pack clip plays (Core/NativePackReact),
         // it replaces the route's own stagger, so that rig is bounded on its own: its hips' travel from where they stood as the
-        // blow landed, and every bone's turn from one frame to the next (no pop: at most the route's own crisp impact).
-        float worstAngle=0,worstBody=0,worstImpact=0,worstStep=0,worstTravel=0,routeStep=0;int frames=0,packed=0;
+        // blow landed, and, on every frame a clip is laid (its entry and exit frames included), each bone's turn since the last
+        // frame against the same frame's turn of the route without the layer (no pop: a bone turns at most PackPop more than
+        // the route's same bone on that frame, the rig's largest turn at most PackFramePop more than the route's; the worst
+        // today, about .6 / .5 rad, is a greatsword F2 entry bringing the two-handed hilt's shoulder in).
+        const float PackPop=.7f,PackFramePop=.6f;
+        float worstAngle=0,worstBody=0,worstImpact=0,worstStep=0,worstTravel=0,worstPop=0,worstFramePop=0;int frames=0,packed=0,packFrames=0;
         var last=new Quaternion[CapturedRig.Bones.Length];var lastOff=new Quaternion[CapturedRig.Bones.Length];
         for(int n=0;n<40;n++)
         {
             string victim=victims[rnd.Next(victims.Length)],attacker=attackers[rnd.Next(attackers.Length)];float angle=(float)rnd.NextDouble()*360-180,stun=(float)(rnd.NextDouble()*1.5),dmg=(float)(rnd.NextDouble()*80);
             bool head=rnd.Next(4)==0;bool fighter=NativeHitRules.Fighter(attacker);string detail=attacker=="siren"?"secondary":"direct";
-            bool pack=false,has=false;float angleRun=0,bodyRun=0;Vector3 hips0=Vector3.Zero;
+            bool pack=false,has=false,wasPack=false;float angleRun=0,bodyRun=0;Vector3 hips0=Vector3.Zero;
             var s=Scene(victim,attacker,angle,stun,dmg,(r,t)=>
             {
-                frames++;var P=r.On.Pose;
+                frames++;var P=r.On.Pose;var L=r.On.Layer;bool laid=L.PackWeight>0||L.PackStunWeight>0||L.PackBlockWeight>0,gauge=has&&(laid||wasPack);
+                float step=0,routeStep=0;
                 for(int b=0;b<CapturedRig.Bones.Length;b++)
                 {
                     var p=P.WorldPosition[b];Check(!float.IsNaN(p.X+p.Y+p.Z)&&!float.IsInfinity(p.X+p.Y+p.Z),"finite bones ("+victim+" by "+attacker+")");angleRun=Math.Max(angleRun,r.Angle(b));
-                    if(has){worstStep=Math.Max(worstStep,MeleeMath.AngleTo(last[b],P.WorldRotation[b]));routeStep=Math.Max(routeStep,MeleeMath.AngleTo(lastOff[b],r.Off.Pose.WorldRotation[b]));}
+                    if(gauge){float on=MeleeMath.AngleTo(last[b],P.WorldRotation[b]),off=MeleeMath.AngleTo(lastOff[b],r.Off.Pose.WorldRotation[b]);step=Math.Max(step,on);routeStep=Math.Max(routeStep,off);worstPop=Math.Max(worstPop,on-off);}
                     last[b]=P.WorldRotation[b];lastOff[b]=r.Off.Pose.WorldRotation[b];
                 }
+                if(gauge){packFrames++;worstStep=Math.Max(worstStep,step);worstFramePop=Math.Max(worstFramePop,step-routeStep);}
+                wasPack=laid;
                 if(!has)hips0=P.Position[CapturedRig.Body];has=true;worstTravel=Math.Max(worstTravel,(P.Position[CapturedRig.Body]-hips0).Length());
                 bodyRun=Math.Max(bodyRun,r.Delta(CapturedRig.Body).Length());
-                var L=r.On.Layer;Check(L.ImpactWeight>=-.05f&&L.ImpactWeight<=1.0001f&&L.DazeWeight>=0&&L.DazeWeight<=1&&L.BlockWeight>=-.05f&&L.BlockWeight<=1.0001f,"blend weights bounded");worstImpact=Math.Max(worstImpact,L.ImpactWeight);
+                Check(L.ImpactWeight>=-.05f&&L.ImpactWeight<=1.0001f&&L.DazeWeight>=0&&L.DazeWeight<=1&&L.BlockWeight>=-.05f&&L.BlockWeight<=1.0001f,"blend weights bounded");worstImpact=Math.Max(worstImpact,L.ImpactWeight);
                 Check(L.PackWeight>=0&&L.PackWeight<=1&&L.PackStunWeight>=0&&L.PackStunWeight<=1&&L.PackBlockWeight>=0&&L.PackBlockWeight<=1&&L.PackBody>=0&&L.PackBody<=1,"pack weights bounded");
-                pack|=L.PackWeight>0||L.PackStunWeight>0||L.PackBlockWeight>0;
+                pack|=laid;
             },3.4f,head,detail,fighter);
             if(pack)packed++;else{worstAngle=Math.Max(worstAngle,angleRun);worstBody=Math.Max(worstBody,bodyRun);}
         }
         Check(worstAngle<1.2f&&worstBody<.12f,"bounded procedural bone offsets (max "+worstAngle+" rad, hips "+worstBody+" m)");
-        Check(worstStep<=Math.Max(routeStep,.9f)&&worstTravel<.25f,"pack-driven rigs stay continuous (largest bone turn in a frame "+worstStep+" rad, the route's own "+routeStep+"; hips travel "+worstTravel+" m)");
+        Check(packFrames>0&&worstPop<=PackPop&&worstFramePop<=PackFramePop&&worstTravel<.25f,"pack-driven rigs stay continuous (on "+packFrames+" clip frames a bone turns at most "+worstPop+" rad more in a frame than the route's same bone, the rig's largest turn at most "+worstFramePop+" rad more than the route's on that frame; hips travel "+worstTravel+" m)");
         Check(packed>=8,"the random blows exercise the pack clips ("+packed+" of 40)");
-        log.Add(frames+" frames over 40 random blows (victims, weapons, sides, stuns, damage, headshots; "+packed+" with pack clips): finite; procedural bone turn <= "+worstAngle.ToString("0.000")+" rad, hips <= "+(worstBody*100).ToString("0.0")+" cm; largest bone turn in one frame "+worstStep.ToString("0.00")+" rad (route "+routeStep.ToString("0.00")+"), hips travel <= "+(worstTravel*100).ToString("0.0")+" cm; weights in range");
+        log.Add(frames+" frames over 40 random blows (victims, weapons, sides, stuns, damage, headshots; "+packed+" with pack clips): finite; procedural bone turn <= "+worstAngle.ToString("0.000")+" rad, hips <= "+(worstBody*100).ToString("0.0")+" cm; on clip frames the largest bone turn in one frame "+worstStep.ToString("0.00")+" rad, at most "+worstPop.ToString("0.00")+" rad (bone) / "+worstFramePop.ToString("0.00")+" rad (rig) over the route's same frame, hips travel <= "+(worstTravel*100).ToString("0.0")+" cm; weights in range");
     }
     private static void Kick(List<string> log)
     {

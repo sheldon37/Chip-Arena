@@ -46,9 +46,13 @@ namespace ChipArena.UnityConversion
         }
         public const float HeavyHeft=1.3f;
         /// <summary>
-        /// The Stunned loop's share of the daze for a continuous stun of `span` seconds: none for the short melee hit stuns
-        /// (.08-.32 s, where the capture's upright dazed posture would pop up and back inside a few frames; the procedural daze
-        /// shows those), full from .55 s (a freeze, a swap, a long stun), smooth in between.
+        /// The Stunned loop's share of the daze for a continuous stun of `span` seconds (measured from the stun's blow):
+        /// none for the short melee hit stuns (.08-.32 s, where the capture's upright dazed posture would pop up and back
+        /// inside a few frames; the procedural daze shows those), full from .55 s, smooth in between. In play only the
+        /// swap-shop stun (.5 s from its blow: about .9 here, the loop showing at about a third under the blow's GetHit
+        /// clip) reaches it: melee hit stuns are at most .32 s and are not extended while stunned, and a freezer-block
+        /// freeze lands with no blow of its own (NativeStunClock then dazes only its last .3 s, so this is 0; a blocked
+        /// attacker's freeze is its parry reel, the route's own).
         /// </summary>
         public static float LongStun(float span)=>MeleeMath.SmoothStep(NativeHitRules.Finite(span,0),.3f,.55f);
         public static CapturedClip Clip(int set,PackSlot slot)

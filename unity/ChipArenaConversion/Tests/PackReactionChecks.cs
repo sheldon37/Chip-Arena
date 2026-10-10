@@ -140,9 +140,10 @@ internal static class PackReactionChecks
             Check(NativeHitRules.Daze(2+span,2,2+span)==0,"the daze is 0 at the stun end ("+span+")");
         }
         Check(NativePackRules.LongStun(.28f)==0&&NativePackRules.LongStun(.6f)==1&&NativePackRules.LongStun(float.NaN)==0,"the Stunned loop is for long stuns only");
-        // Through the layer, for a melee hit stun and a long stun: on the first frame at or past StunUntil every stun share is 0.
+        // Through the layer, for a melee hit stun, the swap-shop stun (.5 s from its blow, the only one in play long enough for
+        // the Stunned loop) and a longer stun: on the first frame at or past StunUntil every stun share is 0.
         var lines=new List<string>();
-        foreach(var victim in new[]{"sword","greatsword","daggers"})foreach(float stun in new[]{.18f,1.2f})
+        foreach(var victim in new[]{"sword","greatsword","daggers"})foreach(float stun in new[]{.18f,.5f,1.2f})
         {
             float until=0,lastBody=0,lastLoop=0,body=-1,loop=-1,daze=-1,peakLoop=0;
             Scene(victim,"sword",0,stun,30,(s,t)=>
@@ -155,9 +156,25 @@ internal static class PackReactionChecks
             // A melee hit stun eases the GetHit clip's whole-body share out up to its last frame; a long stun outlasts the clip
             // and the Stunned loop eases out instead.
             if(stun>1)Check(peakLoop>.9f&&lastLoop>0&&lastLoop<.35f,victim+": a long stun holds the Stunned loop ("+peakLoop+") and eases it out up to the last frame ("+lastLoop+")");
+            else if(stun>.3f)Check(peakLoop>.25f&&peakLoop<.6f&&lastLoop<.05f,victim+": a swap-shop stun shows the Stunned loop under the blow's clip ("+peakLoop+") and eases it out by the last frame ("+lastLoop+")");
             else Check(peakLoop==0&&lastBody>0&&lastBody<.35f,victim+": a melee hit stun shows no Stunned loop ("+peakLoop+") and eases the whole-body share out up to the last frame ("+lastBody+")");
-            lines.Add(victim+" "+stun+"s: last frame body "+lastBody.ToString("0.00")+" loop "+lastLoop.ToString("0.00"));
+            lines.Add(victim+" "+stun+"s: last frame body "+lastBody.ToString("0.00")+" loop "+lastLoop.ToString("0.00")+(stun>.3f?", peak loop "+peakLoop.ToString("0.00"):""));
         }
+        // A freezer-block freeze (StunMelee 1.2 s with no blow of its own): no clip, no Stunned loop; the procedural daze only
+        // over its last .3 s, 0 from StunUntil.
+        foreach(var victim in new[]{"sword","greatsword"})
+        {
+            var r=new HitReactionChecks.Run2(victim);float clips=0,early=0,after=-1,until=0;
+            for(float t=1;t<3.6f;t+=HitReactionChecks.Dt)
+            {
+                if(until==0&&t>=HitReactionChecks.Hit-1e-4f){until=t+1.2f;r.On.A.StunUntil=r.Off.A.StunUntil=until;}
+                r.Step(t,HitReactionChecks.Dt);var L=r.On.Layer;
+                if(until>0&&t<until){clips=Math.Max(clips,L.PackWeight+L.PackStunWeight+L.PackBlockWeight);if(t<until-.3f)early=Math.Max(early,L.DazeWeight);}
+                else if(until>0&&after<0)after=L.DazeWeight+L.PackStunWeight+L.PackBody;
+            }
+            Check(clips==0&&early==0&&after==0,victim+": a freeze with no blow plays no pack clip or Stunned loop ("+clips+"), dazes only its last .3 s ("+early+" before) and ends at StunUntil ("+after+")");
+        }
+        lines.Add("freeze without a blow: no clip or loop");
         log.Add("stun end: fade, clip window and daze exactly 0 at StunUntil; through the layer every stun share is 0 on the first frame past it ("+string.Join("; ",lines)+")");
     }
     private static void NonMelee(List<string> log)
