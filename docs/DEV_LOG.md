@@ -1,5 +1,12 @@
 # Chip Arena — development log
 
+## 2026-10-10 — Codex/Astra — exact-head CI for publication
+- Task `codex/unity-publish-ci`, base shared/cloud `ff81074951cd94ad09e6974ae6a842646e6860c1`; owner requested final visual-batch build/publication and pipeline repair.
+- Remove the native workflow's push path filter so docs-only Unity/Claude branch heads run both native CI jobs. Keep the existing branch filters, job names, permissions and exact-head publication gate. No inherited/parent CI acceptance and no fallback to older game source.
+- Run #44 (`38058241777`) waited 15 minutes on UBA #17 `sentToBuilder`, then intentionally deferred; logs still targeted `64084ad`, so branch movement was not the cause. Main automation's separate `codex/unity-publish-outcomes` repair adds explicit deferred/published outcomes and skips redundant preparation after a wait.
+- Validation: YAML structure/diff review passed. Both hosted native jobs passed on `0cc2ecd` (run `38064992931`); scope/whitespace passed. Legacy verify retains the unchanged Electron TypeScript/unit/websocket failures. Main publisher repair PR #89 passed hosted Linux/Windows tests and merged as `0cdb005`.
+- This documentation-only follow-up exercises the repaired trigger. The final cloud head must still pass its own CI, real Unity shader/build gates and public delivery verification. No gameplay, shader, animation, networking, account or save changes here. Claude's placeholder batch is still absent from shared `ff81074`; no final visual-batch release claimed.
+
 Read recent entries and relevant open PRs before starting work. Keep entries concise,
 newest first; use Git diffs and tests as implementation evidence. Entries on task
 branches are not automatically visible in other checkouts. Check GitHub for current
