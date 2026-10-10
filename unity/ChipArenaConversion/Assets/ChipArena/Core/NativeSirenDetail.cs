@@ -93,6 +93,19 @@ namespace ChipArena.UnityConversion
         public static double GlowAlpha(double breath)=>GlowOpacity*(.8+.2*Math.Max(0,Math.Min(1,breath)));
         /// <summary>The arena cheek lift: .6 of the squint (a scream or a squint lifts them).</summary>
         public static double CheekLift(double squint)=>.6*Math.Max(0,Math.Min(1,squint));
+        /// <summary>The four cheek pieces (cheek-box and cheek-trim, left then right): their detail piece indices.</summary>
+        public static int CheekPiece(int k)=>cheekPieces[k];
+        /// <summary>
+        /// The four cheek pieces' head-local transforms at lift c into m (piece k at offset o + 16k), as Evaluate places them but
+        /// with c unclamped (the entrance smile's laugh lifts them to 1.15, Core/NativeSirenSmileFace.cs). No allocation.
+        /// </summary>
+        public static void Cheeks(double c,double[] m,int o)
+        {
+            var w=cheekScratch??(cheekScratch=new double[32]);
+            for(int k=0;k<2;k++){double sd=k==0?1:-1;Trs(w,k*16,cheekRest[k*4]+sd*CheekX*c,cheekRest[k*4+1]+CheekY*c,cheekRest[k*4+2]+CheekZ*c,0,0,cheekRest[k*4+3]+sd*CheekTurn*c,false,1,1,1);}
+            for(int j=0;j<4;j++){int i=cheekPieces[j];Mul(m,o+j*16,w,node[i]*16,post,i*16);}
+        }
+        private static readonly int[] cheekPieces=new int[4];[ThreadStatic] private static double[] cheekScratch;
 
         static NativeSirenDetail()
         {
@@ -132,7 +145,8 @@ namespace ChipArena.UnityConversion
                 if(e.Anim==Cheek){int s=e.Side>0?0:1;cheekRest[s*4]=e.P[0];cheekRest[s*4+1]=e.P[1];cheekRest[s*4+2]=e.P[2];cheekRest[s*4+3]=e.R[2];}
             }
             for(int i=0;i<Count;i++)visible[i]=(Nimbus||group[i]!="nimbus")&&(Gown||group[i]!="gown"&&group[i]!="train"&&group[i]!="hem");
-            moving=mov.ToArray();
+            moving=mov.ToArray();int cheeks=0;for(int i=0;i<Count;i++)if(motion[i]==Cheek){if(cheeks==4)throw new InvalidOperationException("Siren detail has more than four cheek pieces");cheekPieces[cheeks++]=i;}
+            if(cheeks!=4)throw new InvalidOperationException("Siren detail has "+cheeks+" cheek pieces, expected 4");
         }
         private static readonly double hingeRx;private static readonly double[] hingeTheta=new double[5];
 

@@ -68,7 +68,9 @@ namespace ChipArena.UnityConversion
                 stageBone=b=>NativeSceneMotion.Matrix(stageClip,b,stageAge);stageShown=b=>StageOpacity(b)>.001f;stageOpacity=StageOpacity;
                 stageTint=b=>{var c=NativeSceneMotion.Tint(stageClip,b,stageAge);if(b>=0&&b<stageGlow.Length&&stageGlow[b])NativeIntroRules.GlowAlpha(ref c.r,ref c.g,ref c.b);if(b==sirenBulb&&introBeats!=null){c.r*=sirenGlow;c.g*=sirenGlow;c.b*=sirenGlow;}return c;};
             }
-            sourceModels.Queue(SoftStage(style,key,clip),Matrix4x4.identity,stageBone,stageShown,partOpacity:stageOpacity,partTint:stageTint);return true;
+            sourceModels.Queue(SoftStage(style,key,clip),Matrix4x4.identity,stageBone,stageShown,partOpacity:stageOpacity,partTint:stageTint);
+            // The dev-siren face (its stare and the acted smile) rides the bake's head track (NativeSirenFace.cs).
+            if(style=="dev-siren")SirenEntranceFace(clip,age,camera);return true;
         }
         private float StageOpacity(int b)
         {

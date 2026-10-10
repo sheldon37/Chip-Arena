@@ -28,14 +28,14 @@ namespace ChipArena.UnityConversion
         }
         private static SirenLookState State(JsonElement s)=>new SirenLookState{Ranged=D(s,"ranged"),Open=D(s,"open"),Squint=D(s,"squint"),Anger=D(s,"anger"),Glow=D(s,"glow"),Time=D(s,"time"),Lean=D(s,"lean"),Flare=D(s,"flare"),Clock=D(s,"clock")};
         // Point (x, y) through a piece matrix (head-local), and the 8 corners of a unit box.
-        private static void Apply(double[] m,int o,double x,double y,double z,out double px,out double py,out double pz)
+        internal static void Apply(double[] m,int o,double x,double y,double z,out double px,out double py,out double pz)
         {px=m[o]*x+m[o+1]*y+m[o+2]*z+m[o+3];py=m[o+4]*x+m[o+5]*y+m[o+6]*z+m[o+7];pz=m[o+8]*x+m[o+9]*y+m[o+10]*z+m[o+11];}
-        private static double Cross(double ax,double ay,double bx,double by,double cx,double cy)=>(bx-ax)*(cy-ay)-(by-ay)*(cx-ax);
-        private static bool InTriangle(double x,double y,double ax,double ay,double bx,double by,double cx,double cy)
+        internal static double Cross(double ax,double ay,double bx,double by,double cx,double cy)=>(bx-ax)*(cy-ay)-(by-ay)*(cx-ax);
+        internal static bool InTriangle(double x,double y,double ax,double ay,double bx,double by,double cx,double cy)
         {double d1=Cross(ax,ay,bx,by,x,y),d2=Cross(bx,by,cx,cy,x,y),d3=Cross(cx,cy,ax,ay,x,y);bool neg=d1<0||d2<0||d3<0,pos=d1>0||d2>0||d3>0;return !(neg&&pos);}
         // A box's head-local xy footprint (convex hull of its corners) and its front z.
-        private sealed class Footprint {public string Id;public double[] X,Y;public double Front,MinX,MaxX,MinY,MaxY;}
-        private static Footprint Hull(string id,double[] m,int o)
+        internal sealed class Footprint {public string Id;public double[] X,Y;public double Front,MinX,MaxX,MinY,MaxY;}
+        internal static Footprint Hull(string id,double[] m,int o)
         {
             var pts=new List<(double x,double y)>();double front=double.MinValue;
             for(int c=0;c<8;c++){Apply(m,o,(c&1)!=0?.5:-.5,(c&2)!=0?.5:-.5,(c&4)!=0?.5:-.5,out double x,out double y,out double z);pts.Add((x,y));front=Math.Max(front,z);}
@@ -46,10 +46,10 @@ namespace ChipArena.UnityConversion
             return f;
         }
         private static IEnumerable<(double x,double y)> Reverse(List<(double x,double y)> l){for(int i=l.Count-1;i>=0;i--)yield return l[i];}
-        private static bool Inside(Footprint f,double x,double y)
+        internal static bool Inside(Footprint f,double x,double y)
         {if(x<f.MinX||x>f.MaxX||y<f.MinY||y>f.MaxY)return false;for(int i=0,j=f.X.Length-1;i<f.X.Length;j=i++)if(Cross(f.X[j],f.Y[j],f.X[i],f.Y[i],x,y)<0)return false;return true;}
-        // mm² of triangle (a, b, c) under any footprint in front of the glow plane, on a .4 mm grid.
-        private static double Covered(double ax,double ay,double bx,double by,double cx,double cy,List<Footprint> boxes,Dictionary<string,double> worst,string tag)
+        // mm² of triangle (a, b, c) under any footprint in front of the glow plane, on a .4 mm grid (also Tests/SirenSmileFaceChecks.cs).
+        internal static double Covered(double ax,double ay,double bx,double by,double cx,double cy,List<Footprint> boxes,Dictionary<string,double> worst,string tag)
         {
             const double step=.0004;double total=0;double x0=Math.Min(ax,Math.Min(bx,cx)),x1=Math.Max(ax,Math.Max(bx,cx)),y0=Math.Min(ay,Math.Min(by,cy)),y1=Math.Max(ay,Math.Max(by,cy));
             foreach(var f in boxes)

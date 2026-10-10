@@ -74,7 +74,7 @@ namespace ChipArena.UnityConversion
     /// The palm orbs (orbMaterial) and the eye and orb halos (additive radial sprites) on the Siren's own NativeSirenFx shader:
     /// one shared unit sphere and two baked sprite quads drawn per piece, so nothing is rebuilt or allocated per frame.
     /// </summary>
-    public sealed class NativeSirenLookDraw:IDisposable
+    public sealed partial class NativeSirenLookDraw:IDisposable
     {
         private readonly Mesh orb,eyeHalo,orbHalo,chargeHalo;private readonly Mesh[] crackHalo=new Mesh[CrackLevels];private readonly Material solid,effects;
         // The nimbus glows breathe between .8 and 1 of their opacity: one baked quad per step (no per-frame mesh or colour).
@@ -130,7 +130,7 @@ namespace ChipArena.UnityConversion
             Vector3 at=world.GetColumn(3);float size=((Vector3)world.GetColumn(0)).magnitude*scale;if(size<1e-4f)return;
             Graphics.DrawMesh(mesh,Matrix4x4.TRS(at,turn,new Vector3(size,size,size)),effects,layer,camera,0,null,ShadowCastingMode.Off,false);
         }
-        public void Dispose(){CapturedAnimation.Release(orb);CapturedAnimation.Release(eyeHalo);CapturedAnimation.Release(orbHalo);CapturedAnimation.Release(chargeHalo);foreach(var q in crackHalo)CapturedAnimation.Release(q);CapturedAnimation.Release(solid);CapturedAnimation.Release(effects);}
+        public void Dispose(){DisposeIntroHalos();CapturedAnimation.Release(orb);CapturedAnimation.Release(eyeHalo);CapturedAnimation.Release(orbHalo);CapturedAnimation.Release(chargeHalo);foreach(var q in crackHalo)CapturedAnimation.Release(q);CapturedAnimation.Release(solid);CapturedAnimation.Release(effects);}
     }
 
     public sealed partial class NativeSourceModels
@@ -158,8 +158,8 @@ namespace ChipArena.UnityConversion
             couture[NativeSirenDetail.Seam].NoShadow=true;
             var kept=new List<Part>();foreach(var p in all){if(string.IsNullOrEmpty(p.Name))kept.Add(p);else pieceMeshes.Add(p.Mesh);if(p.Material.mainTexture!=null&&SirenHaloTexture==null)SirenHaloTexture=p.Material.mainTexture;}
             models["siren"]=kept.ToArray();
-            // The eyes and teeth cast no shadow (buildSiren).
-            upper.NoShadow=lower.NoShadow=true;
+            // The eyes and teeth cast no shadow (buildSiren). The dev-siren entrance draws its fangs one by one (NativeSirenFace.cs).
+            upper.NoShadow=lower.NoShadow=true;SirenFangs(data,upper);
             // buildSiren's ink strengths per piece (NativeSourceLit _InkRim, _InkFlow): the claws' CLAW, the tongues' and wisps' TONGUE.
             foreach(var claw in new[]{clawL,clawR}){claw.Material.SetFloat(InkRimId,(float)NativeSirenLook.ClawRim);claw.Material.SetFloat(InkFlowId,(float)NativeSirenLook.ClawFlow);}
             box.Material.SetFloat(InkRimId,(float)NativeSirenLook.TongueRim);box.Material.SetFloat(InkFlowId,(float)NativeSirenLook.TongueFlow);

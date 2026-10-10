@@ -2,7 +2,7 @@
 // Usage: node tools/export_cinematics.mjs <pinned source> <temporary verified module stage>
 import fs from 'node:fs';import path from 'node:path';import {pathToFileURL} from 'node:url';import {gzipSync} from 'node:zlib';
 import {exportModel,models,textures,T,load,bones,root,inventory} from './export_models.mjs';
-import * as SirenDesign from './siren_design.mjs';
+import * as SirenDesign from './siren_design.mjs';import * as SirenSmile from './siren_smile.mjs';
 const {sirenParts}=await load('siren/model'),sirenMaterials=await load('siren/materials'),{SIREN_INTRO}=await import(pathToFileURL(path.join(process.argv[3],'src/shared/siren-contract.js')));
 const {createCharacterRig}=await load('character-rig'),{clownLove}=await load('clown-love'),{bassVan}=await load('bass-van'),{cinematic}=await load('kill-cinematics'),{PlayerIntros}=await load('player-intros'),{ragingDemon}=await load('raging-demon'),{sirenCrush,sirenDissipate}=await load('siren/kills');
 const fps=30,clips=[];const round=n=>Number(n.toFixed(5));
@@ -15,7 +15,8 @@ const death={id:'fixture',at:0,pos:{x:0,y:.865,z:0},yaw:0,velocity:{x:0,y:0,z:0}
 // colour as a display value: Unity's linear colour is that value decoded from sRGB.
 // A node marked userData.bakeStatic (the Siren's Unity-finish dressing, tools/siren_design.mjs) only becomes its own track
 // when its transform moves: a still one batches on the joint track above it and shares that track's opacity.
-function sample(id,scene,duration,tick,victimGroup=null,exclude=null,dropped=null){
+// `head` (the dev-siren stage's rig head) is recorded as the clip's head track: the entrance face is drawn on it natively.
+function sample(id,scene,duration,tick,victimGroup=null,exclude=null,dropped=null,head=null){
  const frames=Math.ceil(duration*fps)+1,tracks=new Map(),meshes=new Set(),prototype=createCharacterRig('#70e1d0'),victimNames=bones.map(b=>prototype[b].name);let victim=[];const sampledInstances=new Set(),lightTracks=new Map(),environment=[];
  if(victimGroup)victim=victimNames.map(n=>victimGroup.getObjectByName(n));
  for(let frame=0;frame<frames;frame++){
@@ -33,7 +34,8 @@ function sample(id,scene,duration,tick,victimGroup=null,exclude=null,dropped=nul
  for(const mesh of meshes)if(!scene.getObjectById(mesh.id)){scene.add(mesh);if(!anchors.includes(mesh))anchors.push(mesh);}
  const values=[];for(const anchor of anchors){const n=tracks.get(anchor);const rows=n?.data??[];for(let i=0;i<frames;i++){const row=rows[i]??[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1,0,1,1,1];if(!n?.dynamicColor)row.splice(17,3,1,1,1);values.push(...row);}if(n?.dynamicColor&&anchor.material?.color)anchor.material.color.setRGB(1,1,1);}
  exportModel(id,scene,true,o=>meshes.has(o)&&!victimSet.has(o),anchors,true);
- clips.push({key:id,duration,frames,tracks:anchors.length,values,victim:victim.map(b=>anchors.indexOf(b)),dropped:dropped?anchors.indexOf(dropped):-1,lights:[...lightTracks.values()],environment});console.log('Scene',id,anchors.length,'tracks',meshes.size,'meshes');
+ if(head&&anchors.indexOf(head)<1)throw Error('No head track in '+id);
+ clips.push({key:id,duration,frames,tracks:anchors.length,values,victim:victim.map(b=>anchors.indexOf(b)),dropped:dropped?anchors.indexOf(dropped):-1,...(head?{head:anchors.indexOf(head)}:{}),lights:[...lightTracks.values()],environment});console.log('Scene',id,anchors.length,'tracks',meshes.size,'meshes');
 }
 for(const style of ['dev-clown','dev-clown-love','dev-bass-van','confetti','ascension','shrink','launch','ghost','dev-raging-demon','siren-crush','siren-dissipate']){
  const scene=new T.Scene(),original=createCharacterRig('#70e1d0','#e5e7eb',true),p={...pilot},effect=(style==='dev-raging-demon'?ragingDemon:style==='siren-crush'?sirenCrush:style==='siren-dissipate'?sirenDissipate:style==='dev-clown-love'?clownLove:style==='dev-bass-van'?bassVan:cinematic(style))(scene,original.group,p,death,1,2000,{options:{gameMode:'ffa'}});
@@ -44,13 +46,15 @@ const styles=['neon-drop','vector-slide','signal-spin','arc-salute','pulse-wave'
 // bodice, girdle, gauntlets, claw rings, the sculpted mask and the turning nimbus (the gown and train sit below the frame;
 // the cheeks and the nimbus glows are drawn natively), the finer grin, the longer talons and the stratified flame.
 // Its glow lines keep their own tracks, dimmed through the blackout and kindled at the smile (SirenDesign.entranceGlow, on the
-// intro's own cue times).
+// intro's own cue times). The face is not baked: the source's eyes (one brow cut held for the whole bake) and its x-stretched
+// grin are hidden, and Core/NativeSirenSmileFace.cs draws the stare and the acted smile on the recorded head track at the
+// presentation clock; the bake carries the smile's body layer instead of the source's own smile dip (SirenSmile.stagePose).
 const sirenStageGroups=['collar','pauldron','bodice','girdle','gauntlet','rings','nimbus','face'],sirenCue=name=>SIREN_INTRO.cues.find(c=>c.cue===name).time;
 const sirenCues={blackout:sirenCue('blackout'),smile:sirenCue('smile'),name:sirenCue('name')};
 for(const style of styles){const stage=new PlayerIntros(),p={...pilot,hp:100,cosmetics:{...pilot.cosmetics,intro:style}},state={generation:1,setNumber:1,round:1,time:0,phase:'intro',intro:{started:0,players:['native']},players:[p],options:{gameMode:'ffa'},events:[],minions:[],projectiles:[]};const duration=style==='dev-siren'?9.0678:style==='dev-emperor'?7.8:style==='dev-matrix'?8:style==='dev-ansatsuken'?7.2:4.8;stage.update(state,16/9);
  // The dressing's three.js uuids come from the seeded stream, which is put back so the cell's flame pool keeps its stream.
- let dressing=null;if(style==='dev-siren'){const parts=sirenParts(stage.rig),kept=seed;SirenDesign.finish(T,parts,{grin:true,talons:true,twist:true});dressing=SirenDesign.dress(T,stage.rig,parts,sirenMaterials,{groups:sirenStageGroups,sprites:false,glowTracks:true});dressing.update({time:0,clock:0,c:0});seed=kept;}
- sample('stage-'+style,stage.scene,duration,t=>{state.time=t;stage.update(state,16/9);dressing?.update({time:t,clock:t,lean:0,flare:0,c:0,glow:SirenDesign.entranceGlow(t,sirenCues)});},null,style==='dev-siren'?null:stage.rig.group);stage.dispose();}
+ let dressing=null,siren=null;if(style==='dev-siren'){const parts=siren=sirenParts(stage.rig),kept=seed;SirenDesign.finish(T,parts,{grin:true,talons:true,twist:true});dressing=SirenDesign.dress(T,stage.rig,parts,sirenMaterials,{groups:sirenStageGroups,sprites:false,glowTracks:true});dressing.update({time:0,clock:0,c:0});seed=kept;}
+ sample('stage-'+style,stage.scene,duration,t=>{state.time=t;stage.update(state,16/9);if(siren)SirenSmile.stagePose(stage.rig,siren,t,sirenCues);dressing?.update({time:t,clock:t,lean:0,flare:0,c:0,glow:SirenDesign.entranceGlow(t,sirenCues)});},null,style==='dev-siren'?null:stage.rig.group,null,siren?stage.rig.head:null);stage.dispose();}
 function envelope(value){return JSON.stringify({schema:1,commit:inventory.sourceCommit,data:gzipSync(JSON.stringify(value),{level:9}).toString('base64')})+'\n';}
 fs.writeFileSync(path.join(root,'Assets/Conversion/Resources/SourceModels.json'),envelope({models,textures}));fs.writeFileSync(path.join(root,'Assets/Conversion/Resources/SceneMotion.json'),envelope({clips}));
 fs.writeFileSync(path.join(root,'tools/cinematic-export.json'),JSON.stringify({commit:inventory.sourceCommit,fps,clips:clips.map(({values,lights,environment,...c})=>({...c,lights:lights.length})),modelCount:models.length},null,2)+'\n');console.log('Exported',clips.length,'scenes',models.length,'models');

@@ -506,9 +506,10 @@
       "key": "stage-dev-siren",
       "duration": 9.0678,
       "frames": 274,
-      "tracks": 861,
+      "tracks": 856,
       "victim": [],
       "dropped": -1,
+      "head": 11,
       "lights": 16
     }
   ],

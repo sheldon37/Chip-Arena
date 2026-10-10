@@ -79,6 +79,18 @@ class CinematicChecks(unittest.TestCase):
         self.assertGreater(max(light(f) for f in range(c['frames'])),10)
         self.assertAlmostEqual(light(c['frames']-1),0,places=4)
         self.assertGreater(len(self.models['stage-dev-siren']['sections']),20)
+    def test_siren_entrance_face_rides_the_head_track(self):
+        # The dev-siren face (Core/NativeSirenSmileFace.cs: the stare and the acted smile) is drawn natively on the recorded
+        # head track; the bake leaves out the source's eyes (one held brow cut) and its x-stretched grin rows.
+        c=self.clips['stage-dev-siren']
+        self.assertTrue(1<=c['head']<c['tracks'])
+        self.assertTrue(all('head' not in clip for key,clip in self.clips.items() if key!='stage-dev-siren'))
+        def glow(s):return sum(abs(s['colors'][k]-s['emission'][k]) for k in range(3))<1e-4
+        sections=self.models['stage-dev-siren']['sections']
+        self.assertFalse([s['bone'] for s in sections if glow(s) and len(s['positions'])==120*3 and s['colors'][0]>.99])
+        self.assertFalse([s['bone'] for s in sections if glow(s) and abs(s['colors'][0]-.896)<.01 and abs(s['colors'][1]-.871)<.01])
+        intros=(ROOT/'Assets/ChipArena/Runtime/NativeIntros.cs').read_text(encoding='utf-8')
+        self.assertIn('if(style=="dev-siren")SirenEntranceFace(clip,age,camera);',intros)
     def test_every_staged_entrance_has_its_scene_and_motion(self):
         # NativeIntroRules.Entrances is what RenderIntro stages (anything else falls back to neon-drop, never a missing stage).
         import re
