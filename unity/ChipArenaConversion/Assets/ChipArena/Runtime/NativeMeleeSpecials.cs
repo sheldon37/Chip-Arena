@@ -151,7 +151,7 @@ namespace ChipArena.UnityConversion
             else if(target!=null)
             {
                 bool head=!s.Shield&&NativeCombatRules.Headshot(Vec(target.Body.position),target.Yaw,Vec(hit.Point-s.Velocity.normalized*.1f),Vec(s.Velocity),s.Radius,target.Down!=null||target.Juggle!=null);
-                float actual=Damage(target,s.Owner,s.Damage*(head?1.5f:1),s.Velocity.normalized,s.Impulse,head,primary:!s.Reflected,melee:true,weaponHit:!s.Reflected);
+                float actual=Damage(target,s.Owner,s.Damage*(head?1.5f:1),s.Velocity.normalized,s.Impulse,head,primary:!s.Reflected,melee:true,weaponHit:!s.Reflected,hitPoint:hit.Point);
                 if(actual>0&&!s.Reflected)ImpactChips(s.Owner,target,null,hit.Point,s.Velocity.normalized,s.Id,s.Id);
                 if(actual>0&&s.Reflected){RefreshDot(target,s.Owner,"fire",s.Burn,2);RefreshDot(target,s.Owner,"poison",s.Poison,4);}
                 if(actual>0&&target.Hp>0){if(s.Shield)LaunchMelee(target,s.Owner,3.8f);else StaggerMelee(target,.16f+(float)s.Owner.Weapon.weight*.018f);}
