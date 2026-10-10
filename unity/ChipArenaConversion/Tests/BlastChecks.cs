@@ -178,8 +178,8 @@ namespace ChipArena.UnityConversion
             Check(Collapsed(At(0,3,null,Blast),At(0,1.8,null,Blast))=="Blast,Blast","untagged chip blasts may share a spot");
             Check(Collapsed(At(0,3,"frag",Blast),At(0,.6,"flame-lance",Blast))=="Blast,Blast"&&Collapsed(At(0,3,"frag",Blast),At(1,.6,"frag",Blast))=="Blast,Blast","other tags and other spots are kept");
             Check(Collapsed(At(0,1,null,Teleport),At(3,1,null,Teleport))=="Teleport,Teleport","separate landings are kept");
-            // The Siren's own records keep the flat halos.
-            Check(NativeBlastCues.Classify(false,1,4,null,true)==NativeBlastCues.Cue.Halo&&NativeBlastCues.Classify(false,5,4,null,true)==NativeBlastCues.Cue.Halo&&NativeBlastCues.Classify(true,1,3,null,true)==Teleport&&NativeBlastCues.Classify(false,1,4,null,false,true)==Blast&&NativeBlastCues.Classify(false,1,4,null)==NativeBlastCues.Cue.None,"siren records are halos, not blasts");
+            // The Siren's own records draw nothing (siren/fx.ts draws its attacks from the events; the first port's halos are gone).
+            Check(NativeBlastCues.Classify(false,1,4,null,true)==NativeBlastCues.Cue.None&&NativeBlastCues.Classify(false,5,4,null,true)==NativeBlastCues.Cue.None&&NativeBlastCues.Classify(true,1,3,null,true)==Teleport&&NativeBlastCues.Classify(false,1,4,null,false,true)==Blast&&NativeBlastCues.Classify(false,1,4,null)==NativeBlastCues.Cue.None,"siren records draw neither halos nor blasts");
             var sites=new System.Collections.Generic.List<NativeBlastFrame.SirenSite>{new NativeBlastFrame.SirenSite{X=0,Y=1.5,Z=0,Reach=.6,Below=true},new NativeBlastFrame.SirenSite{X=10,Y=2,Z=0,Reach=1.2}};
             Check(NativeBlastFrame.AtSiren(sites,.2,.03,.1)&&!NativeBlastFrame.AtSiren(sites,.2,1.4,.1)&&!NativeBlastFrame.AtSiren(sites,1,.03,0),"slam: on the ground under the Siren, not on its body or beside it");
             Check(NativeBlastFrame.AtSiren(sites,10.5,2.3,0)&&!NativeBlastFrame.AtSiren(sites,12,2,0)&&!NativeBlastFrame.AtSiren(new System.Collections.Generic.List<NativeBlastFrame.SirenSite>(),0,0,0),"siren shots and fields");
@@ -225,7 +225,8 @@ namespace ChipArena.UnityConversion
             Check(!Read("NativePveHorde.cs").Contains("Fx(")&&!Read("NativePve.cs").Contains("Fx(")&&!Read("NativeProjectiles.cs").Contains("Fx("),"no gib, revive or pong ability effect");
             Check(!Read("NativeSummons.cs").Contains("Fx(pos")&&Read("NativeAbilities.cs").Contains("if(d.id==\"flame-lance\")Fx(at,.6f,element);"),"no summon effect; of the surface hits only Flame Lance records one");
             string blasts=Read("NativeBlastPresentation.cs");
-            Check(blasts.Contains("EventKind.Summon){sim.Impact(x,y,z,1.2,0x93db67,quality,false,true)")&&blasts.Contains("EventKind.Pong){sim.Impact(x,y,z,1.2,0xff5269,quality)")&&blasts.Contains("ExplosionAt(arena,fx,out string detail)"),"summon and pong impacts, records keyed to their Explosion events");
+            // Summons, pong bounces and rallies plan their source impacts per event (NativeImpactCues; Tests/ImpactCueChecks.cs).
+            Check(blasts.Contains("int count=NativeImpactCues.Plan(cue,plan);NativeImpactCues.Run(plan,count,sim,Sparks,quality);")&&blasts.Contains("ExplosionAt(arena,fx,out string detail)"),"summon and pong impacts per event, records keyed to their Explosion events");
             Check(!Read("NativeWorldEffects.cs").Contains("MinionDeaths")&&Read("NativeSummonPresentation.cs").Contains("if(summon&&age>="),"a horde add or summon death draws no world puff; only a summon breaks up, in SourceMinionDeath");
         }
         private static void Winding()

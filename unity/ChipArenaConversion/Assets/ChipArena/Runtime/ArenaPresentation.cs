@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
     {
         private Mesh cube;
         private CapturedAnimation captured;
-        private NativeCombatGlow combatGlow;private NativeBlastPresentation blasts;private NativeFieldPresentation fieldTelegraphs;
+        private NativeCombatGlow combatGlow;private NativeBlastPresentation blasts;private NativeFieldPresentation fieldTelegraphs;private NativeMeleeFlashPresentation meleeFlash;
         public float GlowQuality=1,BlastQuality=1;public bool TrailsEnabled=true;
         // The clock of the field telegraphs, their C6 field emitters, the eruption stand-in (C9) and the projectile models,
         // modules, emitters, halos and trails (C10). A replica's arena.Time only moves when a 20 Hz host frame lands, so a guest
@@ -19,7 +19,7 @@ namespace ChipArena.UnityConversion
         private float FieldClock(NativeArena arena)=>arena.Replica&&hazardClock<=arena.Time&&arena.Time-hazardClock<1?hazardClock:PresentationClock(arena);
         // paused: the match itself is stopped (offline menu), so the blasts hold still; see NativeBlastFrame.Step.
         public void RenderGlow(NativeArena arena,Camera camera,bool paused=false)
-        {float now=PresentationClock(arena),fields=FieldClock(arena);fieldTelegraphs?.Collect(arena,fields);blasts?.Render(arena,camera,now,BlastQuality,paused,fieldTelegraphs);fieldTelegraphs?.Render(arena,camera,fields,abilityPreview,abilityPreviewClamped);shotTracker.Begin(arena,arena.Generation,arena.Replica,arena.Time);shots?.Render(arena,camera,fields,BlastQuality,paused,shotTracker);DevEffects(arena,camera,fields);if(combatGlow==null)return;combatGlow.Halos=null;combatGlow.Tracker=shotTracker;combatGlow.Clock=fields;combatGlow.Quality=GlowQuality;combatGlow.Trails=TrailsEnabled;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.ViewPilot.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);}
+        {float now=PresentationClock(arena),fields=FieldClock(arena);fieldTelegraphs?.Collect(arena,fields);if(blasts!=null)blasts.Trails=TrailsEnabled;blasts?.Render(arena,camera,now,BlastQuality,paused,fieldTelegraphs);fieldTelegraphs?.Render(arena,camera,fields,abilityPreview,abilityPreviewClamped);shotTracker.Begin(arena,arena.Generation,arena.Replica,arena.Time);shots?.Render(arena,camera,fields,BlastQuality,paused,shotTracker);meleeFlash?.Render(arena,camera,fields,WeaponEffectsQuality);DevEffects(arena,camera,fields);if(combatGlow==null)return;combatGlow.Tracker=shotTracker;combatGlow.Clock=fields;combatGlow.Quality=GlowQuality;combatGlow.Trails=TrailsEnabled;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.ViewPilot.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);}
         private readonly AudioClip[] gunSounds=new AudioClip[4];
         private AudioClip reloadStart,reloadEnd,hitSound;
         private AudioSource localAudio;
@@ -81,7 +81,7 @@ namespace ChipArena.UnityConversion
             }
             for(int i=7;i<materials.Count;i++){materials[i].SetColor("_Emission",colors[i]*.55f);compatibilityMaterials[i].SetColor("_Emission",colors[i]*.55f);}
             Debug.Log($"Unity prototype renderer: {RenderingMode}; {SystemInfo.graphicsDeviceType}; {SystemInfo.graphicsDeviceName}; shaderSupported={shader.isSupported}");
-            captured=new CapturedAnimation();if(!buildArena){combatGlow=new NativeCombatGlow(transform);blasts=new NativeBlastPresentation(transform);shots=new NativeShotPresentation();sourceModels=new NativeSourceModels();}
+            captured=new CapturedAnimation();if(!buildArena){combatGlow=new NativeCombatGlow(transform);blasts=new NativeBlastPresentation(transform);shots=new NativeShotPresentation();blasts.Sparks=shots.SparkPool;meleeFlash=new NativeMeleeFlashPresentation();sourceModels=new NativeSourceModels();}
             if(!buildArena)fieldTelegraphs=new NativeFieldPresentation();
             string[] soundNames={"","pistol","rifle","machinegun"};
             for(int i=1;i<4;i++) gunSounds[i]=Resources.Load<AudioClip>("GunAudio/"+soundNames[i]);
@@ -120,7 +120,7 @@ namespace ChipArena.UnityConversion
         }
         public void ResetPresentation()
         {
-            ClearSourceActors();combatGlow?.Clear();blasts?.Clear();fieldTelegraphs?.Clear();shots?.Clear();shotTracker.Clear();aimMotion.Reset();viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
+            ClearSourceActors();combatGlow?.Clear();blasts?.Clear();fieldTelegraphs?.Clear();shots?.Clear();meleeFlash?.Clear();shotTracker.Clear();aimMotion.Reset();viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
             foreach(var source in shotAudio) if(source!=null) source.Stop(); if(localAudio!=null) localAudio.Stop();
             foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear();
             foreach(var o in debris) if(o!=null) Destroy(o); debris.Clear();
@@ -196,10 +196,11 @@ namespace ChipArena.UnityConversion
                     LastHitUntil=Time.unscaledTime+.25f;LastHitDamage=e.Amount;LastHeadshot=e.Kind==EventKind.Headshot;
                     if(SoundEnabled) localAudio.PlayOneShot(hitSound,.45f);
                 }
-                // Only the kinds this burst was written for; PR #66's blasts, fields, ticks, procs and PvE kinds are not hits.
-                if(!NativeEventFeedback.HitBurst(e.Kind,sourceModels!=null)) continue;
-                Burst(Vec(e.Position), e.Kind==EventKind.Block?new Color(.3f,.9f,1):e.Kind==EventKind.Death?new Color(1,.2f,.35f):new Color(1,.7f,.3f),e.Kind==EventKind.Death?24:12);
-                if(DebrisEnabled&&(e.Kind==EventKind.Break||e.Kind==EventKind.Death)) Debris(Vec(e.Position)+Vector3.up*.3f,e.Kind==EventKind.Death?materials[2]:materials[3]);
+                bool native=sourceModels!=null;
+                if(DebrisEnabled&&(e.Kind==EventKind.Break||e.Kind==EventKind.Death&&!native)) Debris(Vec(e.Position)+Vector3.up*.3f,e.Kind==EventKind.Death?materials[2]:materials[3]);
+                // The prototype lab's particle burst, only for the kinds it was written for. Native arenas draw the source's
+                // voxel sparks and streaks for these events instead (NativeImpactCues via NativeBlastPresentation).
+                if(NativeEventFeedback.HitBurst(e.Kind,native)) Burst(Vec(e.Position), e.Kind==EventKind.Block?new Color(.3f,.9f,1):e.Kind==EventKind.Death?new Color(1,.2f,.35f):new Color(1,.7f,.3f),e.Kind==EventKind.Death?24:12);
             }
         }
         private void PrepareCapturedPose(Actor a,Vector3 position,float time)
@@ -306,6 +307,7 @@ namespace ChipArena.UnityConversion
         }
         private void Part(Matrix4x4 parent,Vector3 p,Vector3 scale,Quaternion rotation,int color) { Add(color,parent*Matrix4x4.TRS(p,rotation,scale)); }
         private void Add(int color,Matrix4x4 matrix) { batches[color].Add(matrix); DrawnParts++; }
+        // The prototype lab's ParticleSystem burst (native arenas draw NativeImpactCues' source sparks instead).
         private void Burst(Vector3 position,Color color,int count)
         {
             particles.Play();
@@ -327,7 +329,7 @@ namespace ChipArena.UnityConversion
         }
         private void OnDestroy()
         {
-            ClearSourceActors();DisposeDevEffects();DisposeHalos();sourceModels?.Dispose();combatGlow?.Dispose();blasts?.Dispose();fieldTelegraphs?.Dispose();shots?.Dispose();DisposeStatus();viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
+            ClearSourceActors();DisposeDevEffects();DisposeHalos();sourceModels?.Dispose();combatGlow?.Dispose();blasts?.Dispose();meleeFlash?.Dispose();fieldTelegraphs?.Dispose();shots?.Dispose();DisposeStatus();viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
             foreach(var m in materials) CapturedAnimation.Release(m);
             foreach(var m in compatibilityMaterials) CapturedAnimation.Release(m);
             if(particleMaterial!=null) CapturedAnimation.Release(particleMaterial);

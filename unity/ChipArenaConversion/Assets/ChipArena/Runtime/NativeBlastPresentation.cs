@@ -8,8 +8,9 @@ namespace ChipArena.UnityConversion
     // Draws the pure NativeBlastSim (source chip-blasts.ts) in the arena: one dynamic mesh per pool (unlit opaque voxels and
     // additive glow voxels) refilled from reused buffers each frame, and three pooled point lights. Blasts are keyed to what
     // host and guests both hold: the ability/chip effect list with its Explosion events, ability zones, chip fields, ability
-    // shots, surface impacts, summons and pong bounces.
-    // The Siren's own attack records are not blasts in the source; they are handed to NativeCombatGlow as Halos.
+    // shots and the event stream. The event stream also feeds the source's event-vfx.ts draws (NativeImpactCues): voxel
+    // spark bursts and lit streaks into the projectile visuals' BurstPool port (Sparks), impacts, lines and paddles here.
+    // The Siren's own attack records are not blasts in the source (siren/fx.ts, NativeDevEffects) and draw nothing here.
     // Cosmetic only; nothing here touches the match.
     public sealed class NativeBlastPresentation : IDisposable
     {
@@ -22,13 +23,18 @@ namespace ChipArena.UnityConversion
         private struct Marker{public Vector3 Position;public string Tag;public float Reach;}
         private readonly NativeBlastSim sim=new NativeBlastSim();
         private readonly Layer solid,glow;private readonly GameObject root;private readonly Light[] lights=new Light[NativeBlastSim.LightCapacity];
-        private HashSet<long> seen=new HashSet<long>(),seenBefore=new HashSet<long>(),halos=new HashSet<long>(),halosBefore=new HashSet<long>();
+        private HashSet<long> seen=new HashSet<long>(),seenBefore=new HashSet<long>();
         private List<Marker> sites=new List<Marker>(),sitesBefore=new List<Marker>(),shots=new List<Marker>(),shotsBefore=new List<Marker>();
         private List<NativeBlastFrame.SirenSite> sirens=new List<NativeBlastFrame.SirenSite>(),sirensBefore=new List<NativeBlastFrame.SirenSite>();private readonly HashSet<int> sirenSeats=new HashSet<int>();
         private readonly List<Vector3> landings=new List<Vector3>();
         private readonly List<NativeBlastFrame.Candidate> fresh=new List<NativeBlastFrame.Candidate>();private readonly List<NativeAbilityFx> freshFx=new List<NativeAbilityFx>();
-        /// <summary>Live Siren attack records, which keep the flat halos (NativeCombatGlow) until siren/fx.ts is ported (C25).</summary>
-        public readonly List<NativeAbilityFx> Halos=new List<NativeAbilityFx>();
+        /// <summary>The source BurstPool the event sparks and streaks go into (NativeShotPresentation.SparkPool, drawn and stepped
+        /// with the projectile visuals). Null: no sparks.</summary>
+        public NativeBurstPool Sparks;
+        /// <summary>The projectile trails setting: the source streaks an impact from its from point only with trails on.</summary>
+        public bool Trails=true;
+        private readonly NativeImpactCommand[] plan=new NativeImpactCommand[NativeImpactCues.MaxCommands];
+        private readonly NativeSpikeRises spikeRises=new NativeSpikeRises();
         private static readonly Bounds Everywhere=new Bounds(Vector3.zero,Vector3.one*4000);
         private int generation=-1,lastEvent;private float lastTime=-1;
         public NativeBlastPresentation(Transform parent)
@@ -45,7 +51,7 @@ namespace ChipArena.UnityConversion
         }
         public void Clear()
         {
-            sim.Clear();seen.Clear();seenBefore.Clear();halos.Clear();halosBefore.Clear();Halos.Clear();sites.Clear();sitesBefore.Clear();shots.Clear();shotsBefore.Clear();sirens.Clear();sirensBefore.Clear();
+            sim.Clear();seen.Clear();seenBefore.Clear();spikeRises.Clear();sites.Clear();sitesBefore.Clear();shots.Clear();shotsBefore.Clear();sirens.Clear();sirensBefore.Clear();
             lastEvent=0;lastTime=-1;solid.Mesh.Clear();glow.Mesh.Clear();foreach(var light in lights)if(light!=null)light.enabled=false;
         }
         private static long Mix(long h,int v){unchecked{h^=(uint)v;h*=0x100000001b3L;return h;}}
@@ -98,15 +104,18 @@ namespace ChipArena.UnityConversion
         {var weapons=arena.Content?.weapons;if(weapons==null||string.IsNullOrEmpty(id))return false;for(int i=0;i<weapons.Length;i++)if(weapons[i].id==id)return true;return false;}
         private void Effects(NativeArena arena,float now,double quality)
         {
-            var swap=seenBefore;seenBefore=seen;seen=swap;seen.Clear();swap=halosBefore;halosBefore=halos;halos=swap;halos.Clear();
-            Halos.Clear();landings.Clear();fresh.Clear();freshFx.Clear();
+            var swap=seenBefore;seenBefore=seen;seen=swap;seen.Clear();
+            landings.Clear();fresh.Clear();freshFx.Clear();
             foreach(var fx in arena.AbilityEffects)if(fx.Beam&&NativeBlastCues.Classify(true,fx.Radius,fx.Element,null)==NativeBlastCues.Cue.Teleport)landings.Add(fx.Position);
             foreach(var fx in arena.AbilityEffects)
             {
                 // A second record with the same key in one frame is the same event recorded twice (Blink Strike: ChipBlink, then Blink).
                 long key=Key(fx);if(!seen.Add(key))continue;
-                if(seenBefore.Contains(key)){if(halosBefore.Contains(key)){halos.Add(key);Halos.Add(fx);}continue;}
+                if(seenBefore.Contains(key))continue;
                 if(now-(fx.Until-.22f)>.4f)continue;
+                // A beam record that stands for a source event with no Unity event: the L33t possession and Slenderman hop
+                // (green burst, the hop's streak) and the toy soldier's shot line. The first port's cube bars are gone.
+                if(fx.Beam){int count=NativeImpactCues.Record(fx.Element,fx.Radius,NativeArena.Vec(fx.Position),NativeArena.Vec(fx.From),Hop(arena,fx.From),plan);NativeImpactCues.Run(plan,count,sim,Sparks,quality);}
                 bool siren=!fx.Beam&&fx.Element==4&&AtSiren(fx.Position);
                 // The source look: the Explosion event's message, else a teleport landing or the field, zone or ability shot
                 // that ended here. A record with neither is not one of the source's blasts (NativeBlastCues.Classify).
@@ -117,7 +126,6 @@ namespace ChipArena.UnityConversion
                     else{foreach(var p in landings)if((p-fx.Position).sqrMagnitude<.0025f){tag=NativeBlastCues.Colocated(fx.Element);break;}tag??=TagAt(fx.Position);q=NativeBlastCues.Quality(tag);}
                 }
                 var cue=NativeBlastCues.Classify(fx.Beam,fx.Radius,fx.Element,tag,siren,explosion);
-                if(cue==NativeBlastCues.Cue.Halo){halos.Add(key);Halos.Add(fx);continue;}
                 if(cue==NativeBlastCues.Cue.None)continue;
                 fresh.Add(new NativeBlastFrame.Candidate{X=fx.Position.x,Y=fx.Position.y,Z=fx.Position.z,Radius=fx.Radius,Quality=q,Tag=tag,Cue=cue});freshFx.Add(fx);
             }
@@ -129,7 +137,7 @@ namespace ChipArena.UnityConversion
                 {
                     case NativeBlastCues.Cue.Blast:sim.Blast(NativeBlastCues.Style(tag),at.x,at.y,at.z,fx.Radius,quality*fresh[i].Quality,false,NativeBlastSim.TintOf(tag));break;
                     case NativeBlastCues.Cue.Vacuum:sim.Blast(NativeBlastStyle.Void,at.x,at.y,at.z,fx.Radius,quality);break;
-                    case NativeBlastCues.Cue.Dud:sim.Impact(at.x,at.y,at.z,fx.Radius,0x9a9a9a,quality);break;
+                    case NativeBlastCues.Cue.Dud:{int count=NativeImpactCues.Dud(NativeArena.Vec(at),plan);NativeImpactCues.Run(plan,count,sim,Sparks,quality);break;}
                     case NativeBlastCues.Cue.Teleport:
                     {
                         Vector3 from=fx.From;
@@ -140,24 +148,41 @@ namespace ChipArena.UnityConversion
                 }
             }
         }
-        // event-vfx.ts event(): surface impacts from a water pilot splash, kinetic and demolition chips add their procs. A summon
-        // lands with a green ground impact (`summon`, chaos.ts:110; it used to record a darkness blast). A pong ball's bounce is
-        // the source's `ricochet` with the pong mod, a red 1.2 m impact (it used to record a fire blast); the source draws a
-        // rally redirect's paddle there instead, which Unity's Pong event does not tell apart.
+        // Slenderman's hop record starts where Slender stood: the tree's From (host and replicated alike).
+        private static bool Hop(NativeArena arena,Vector3 from)
+        {const float same=(float)(NativeBlastFrame.SameSpot*NativeBlastFrame.SameSpot);foreach(var f in arena.LeetFields)if(f.Kind=="tree"&&(f.From-from).sqrMagnitude<same)return true;return false;}
+        // event-vfx.ts event() for every fresh event (NativeImpactCues.Plan): the hit/block/break/impact/collapse sparks and
+        // impact streaks, proc impacts, summon landings, pong bounces and rallies (PR #88: Detail 'rally', Target, From = the
+        // bounce), stage hazard sparks, L33t bursts and streaks and arc lines. Then the surface impact procs: a water pilot's
+        // splash and the kinetic and demolition chips.
         private void Impacts(NativeArena arena,float now,double quality)
         {
             foreach(var e in arena.Events)
             {
                 if(e.Id<=lastEvent)continue;lastEvent=e.Id;if(now-e.Time>.4f)continue;
-                double x=e.Position.x,y=e.Position.y,z=e.Position.z;
-                if(e.Kind==EventKind.Summon){sim.Impact(x,y,z,1.2,0x93db67,quality,false,true);continue;}
-                if(e.Kind==EventKind.Pong){sim.Impact(x,y,z,1.2,0xff5269,quality);continue;}
+                NativePilot source=null,target=null;foreach(var p in arena.Pilots){if(p.Seat.id==e.Source)source=p;if(p.Seat.id==e.Target)target=p;}
+                // The colour the source event carries where Unity's has none: a break's material (none for the Siren's seeker
+                // breaks), an impact's weapon colour.
+                int color=e.Color;
+                if(color==0&&e.Kind==EventKind.Break&&source?.Seat.spec!="siren")color=NativeImpactCues.MaterialColor(arena.Content?.materials,e.Detail);
+                else if(color==0&&e.Kind==EventKind.Impact){var w=NativeShotViews.Weapon(arena,source?.Seat.spec);if(w!=null)color=(int)w.color;}
+                var cue=new NativeImpactEvent{Kind=e.Kind,Detail=e.Detail,Position=e.Position,From=e.From,Amount=e.Amount,Radius=e.Radius,Color=color,TargetPilot=target!=null,Trails=Trails,HasTarget=target!=null,Target=target!=null?NativeArena.Vec(target.Body.position):default};
+                int count=NativeImpactCues.Plan(cue,plan);NativeImpactCues.Run(plan,count,sim,Sparks,quality);
                 if(e.Kind!=EventKind.Impact||e.Source<=0)continue;
+                double x=e.Position.x,y=e.Position.y,z=e.Position.z;
                 NativeSeat seat=null;foreach(var s in arena.Match.Seats)if(s.id==e.Source){seat=s;break;}if(seat==null)continue;
                 if(seat.spec=="water")sim.Impact(x,y,z,.6,0x8de9ee,quality);
                 if(seat.chips.TryGetValue("kinetic",out int kinetic)&&kinetic>0)sim.Impact(x,y,z,.65+Math.Min(3,kinetic)*.25,0xffaa64,quality);
                 if(seat.chips.TryGetValue("demolition",out int demolition)&&demolition>0)sim.Impact(x,y,z,.5+.12*demolition,0xffd45f,quality);
             }
+        }
+        // stage-spikes-rise (stage-hazards.ts:21): Unity's hazards emit no rise event, so it is derived from the same clock
+        // NativeAudio plays its cue from, and bursts the bed's dust.
+        private void SpikeRises(NativeArena arena,double quality)
+        {
+            var match=arena.Match;if(match==null)return;
+            int rose=spikeRises.Step(arena.MapId,match.Phase==NativePhase.Fight&&match.Time-match.FightAt>=2,match.Time);
+            for(int bed=0;rose!=0&&bed<NativeSpikeRises.Beds;bed++)if((rose&1<<bed)!=0){int count=NativeImpactCues.SpikeRise(NativeSpikeRises.Position(bed),plan);NativeImpactCues.Run(plan,count,sim,Sparks,quality);}
         }
         // The field views (chip fields and ability zones: key, fx, birth) are built once per frame by NativeFieldPresentation,
         // which draws their glow, cores and domes from the same views. The emitters run on the views' clock (fields.Clock:
@@ -178,7 +203,7 @@ namespace ChipArena.UnityConversion
             lastTime=Math.Max(lastTime,now);double dt=NativeBlastFrame.Step(Time.unscaledDeltaTime,paused);
             double q=Math.Max(0,Math.Min(1,quality));
             // Source renderer order: event blasts, then fields(state), then update(dt), then draw.
-            Remember(arena,fields);Effects(arena,now,q);Impacts(arena,now,q);Fields(fields,q);sim.Update(dt);
+            Remember(arena,fields);Effects(arena,now,q);Impacts(arena,now,q);SpikeRises(arena,q);Fields(fields,q);sim.Update(dt);
             Fill(solid,sim.Solid,camera);Fill(glow,sim.Glow,camera);
             for(int i=0;i<lights.Length;i++)
             {

@@ -121,6 +121,9 @@ namespace ChipArena.UnityConversion
         private readonly bool gamma;
         private NativeArena last;private int generation=-1;private float lastTime=-1;
         public int Parts=>scene.Draws.Count;public int Sparks=>scene.Bursts.Count;public int Beams=>scene.Bursts.Beams;public int Live=>scene.Live;
+        /// <summary>The source BurstPool port (renderer.burst/beam) these visuals draw and step each frame; event effects spawn
+        /// into it (NativeBlastPresentation via NativeImpactCues).</summary>
+        public NativeBurstPool SparkPool=>scene.Bursts;
         public NativeShotPresentation()
         {
             var unlit=Resources.Load<Shader>("NativeBlast");if(unlit==null)throw new InvalidOperationException("NativeBlast shader is missing");

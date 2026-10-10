@@ -390,8 +390,7 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public static class NativeBlastCues
     {
-        /// <summary>Halo: keep Unity's two flat halos (the Siren's own attacks; see Classify).</summary>
-        public enum Cue{None,Blast,Teleport,Vacuum,Dud,Halo}
+        public enum Cue{None,Blast,Teleport,Vacuum,Dud}
         public const double TeleportRadius=1.2,TeleportQuality=.5,TeleportImpactRadius=.9,TeleportLineJitter=.3,TeleportLineLife=.22,TeleportLineSweep=.08;
         public const int TeleportColor=0xb66cff;
         /// <summary>event-vfx.ts blastEvent: an explosion without a message (a bare weapon 'blast') draws fire at .55 quality.</summary>
@@ -405,13 +404,14 @@ namespace ChipArena.UnityConversion
         public static Cue Classify(bool beam,double radius,int element,string tag,bool siren=false,bool explosion=false)
         {
             // The Siren's own attacks (NativeBlastFrame.AtSiren). The source sends them as siren-* events that client/siren/fx.ts
-            // draws as black fire, shock rings and cracks, never as chip blasts (NativeDevEffects draws those from the events).
-            if(siren&&!beam)return Cue.Halo;
+            // draws as black fire, shock rings and cracks, never as chip blasts; NativeDevEffects draws those from the events, so
+            // the record itself draws nothing (the first port's two flat darkness halos are gone).
+            if(siren&&!beam)return Cue.None;
             // Blink and the wormhole blink record a radius-1 lightning beam; every other beam is an arc and draws no blast.
             if(beam)return radius>=.99&&element==3?Cue.Teleport:Cue.None;
             // Vacuum() always records (position, 5, darkness).
             if(element==4&&Math.Abs(radius-5)<1e-3)return Cue.Vacuum;
-            // An unarmed rocket: the source draws a grey impact, not a blast.
+            // An unarmed rocket: the source's dud `impact` (gun-abilities.ts:23), a grey spark burst, not a blast.
             if(tag=="rocket"&&radius<.5)return Cue.Dud;
             // Owner playtest 2026-10-10 ("explosion effects seem to play randomly", Siren adds killed by guns): a record draws a
             // blast only where the source draws one, an authoritative explosion at its spot or an ability's own visual hit blast

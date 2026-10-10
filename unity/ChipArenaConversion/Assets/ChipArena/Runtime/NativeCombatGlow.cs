@@ -43,8 +43,6 @@ namespace ChipArena.UnityConversion
         private readonly List<ShotGlow> glowShots=new List<ShotGlow>();private readonly List<double> glowDistances=new List<double>();private readonly int[] nearest=new int[3];
         private static readonly int[] viewHands={CapturedRig.LHand,CapturedRig.RHand};
         private readonly List<SurfaceMark> marks=new List<SurfaceMark>();private int generation=-1,lastEvent;
-        /// <summary>Effect records still drawn as two flat halos (NativeBlastPresentation.Halos: the Siren's own attacks).</summary>
-        public IReadOnlyList<NativeAbilityFx> Halos;
         private float lastTime=-1;public float Quality=1;public bool Trails=true;
         /// <summary>
         /// The presentation clock the projectile models use (element colours switch every 50 ms); on a replica also the
@@ -157,14 +155,8 @@ namespace ChipArena.UnityConversion
                 SetLight(impactLights[i],m.Prop.transform.TransformPoint(m.LocalPosition)+rotation*Vector3.forward*.14f,m.Color,NativeGlowRules.ImpactLight(now-m.Born),2.7f);
             }
             // Ability zones have no additive halo in the source: NativeFieldPresentation draws their normal-blend ground glow.
-            // Ability and chip blasts are volumetric voxels now (NativeBlastPresentation). Only the Siren's own attack records keep
-            // the two flat halos, because the source draws them with siren/fx.ts rather than as chip blasts (C25).
-            if(Halos!=null)for(int i=0;i<Halos.Count;i++)
-            {
-                var fx=Halos[i];float fade=Mathf.Clamp01((fx.Until-now)/.22f);Color color=School(fx.Element);
-                world.Halo(fx.Position,right,up,Mathf.Max(.3f,fx.Radius*2*(1-fade*.5f)),color,fade*.85f);
-                world.Halo(fx.Position+Vector3.up*.025f,Vector3.right,Vector3.forward,fx.Radius*2,color,fade*.5f);
-            }
+            // Ability and chip blasts are volumetric voxels (NativeBlastPresentation), and the Siren's own attacks draw only their
+            // siren/fx.ts effects (NativeDevEffects): no effect record keeps the first port's two flat halos.
             int lightIndex=0;
             foreach(var pilot in arena.Pilots)
             {
