@@ -16,6 +16,28 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-10 — Claude — Siren Marked crosshair and the animated, upgraded Auditor halo (owner requests)
+- Base `claude/sleepy-ritchie-g8ruhv` at `4bdd90b`. Both branches were reviewed, then merged. Presentation only: no change to hit timing, hitboxes, damage, cooldowns, movement, networking or saves.
+  - `claude/siren-target-telegraph` (`cb11846`). Review found the crosshair lingering 0.5 s after the seeker hit; fixed.
+  - `claude/auditor-halo` (`608a39b`). Review found the flames burying the arcs from above (fixed by slimming them into hooked horns) and red speckle at 12 m (fixed by a detail fade). One sort-order limitation was accepted.
+- Siren Marked (fourth ranged move):
+  - The source's warn-red lock-on crosshair was never ported, only a near-invisible cube-ring stand-in, now removed.
+  - New `NativeSirenMark` and `NativeSirenMarkTracker` port fx.ts updateMarks/markBeeps: ring, inner square and swinging ticks, shrinking 1.6 to .85, a flash and 12% swell per beep, drawn through walls on a depth-ignoring overlay layer.
+  - The NativeSirenFx shader gets a `_ZTest` property (default LEqual).
+  - Draws on host, guests and killcam from the mark records plus seeker bullets.
+  - Unity addition: the marked player's own first-person view holds the crosshair 1 m ahead (the source shows nothing there). It ignores reducedEffects because it is a warning.
+  - Fixture: `Tests/siren-mark-parity.json` from `tools/export_siren_mark_fixtures.mjs`.
+- Auditor halo:
+  - The arena, killcam, intro, draft, corpse and death-scene hats used the static bank model, so the halo never animated. Only portraits had an animated copy.
+  - New `Core/NativeAuditorHalo.cs`, `Resources/NativeAuditorHalo.shader` (registered in NativeBuildChecks) and `Runtime/NativeAuditorHaloPresentation.cs` now draw it everywhere it is worn, portraits included; the portrait-only copy is removed. First person stays hidden.
+  - Look: the source's bob, spin, tilt and scale, with three tapered arcs (hot core, travelling pulse, breathing gaps) and soft glow shells under black shader flames (hooked horns, ember rims, licking tongues). Plus crackle across narrow gaps, rising embers, a faint haze and a small red vertex light in the arena.
+  - Reduced effects falls back to the source's flat flames; a missing shader falls back to the static model.
+  - About 4 draws per halo.
+- Checks on the merged tree: Unity runtime+editor compile OK; check_relay 170 PASS, exit 0; Python OK (1 skip); package_source OK.
+  - GitHub Actions jobs were not starting (no runner, 3 s failures) until the owner upgraded the account. After the re-run, native-source and native-updater-windows passed on `4b3e178`.
+  - Not run: a Unity compile of the new halo shader (glslang HLSL check only), D3D11 player, Windows build, hosted multiplayer, on-screen check.
+- For Astra (optional): keep the mark record while its seeker lives, and add `sirenTarget` to the replicated Shot. That would make the post-throw crosshair exact on guests and the killcam.
+
 ## 2026-10-10 — Claude — Siren claw timing, weapon intros, random explosions, chip stage gaze, L33t H4x paths (owner playtest)
 - Base `claude/sleepy-ritchie-g8ruhv` at `7149fdc`. Branches, each reviewed then merged:
   - `claude/siren-claw-timing` (`331759a`, no findings)
