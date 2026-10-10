@@ -54,4 +54,3 @@ namespace ChipArena.UnityConversion
         public void FinishSourceFrame()=>sourceModels?.Flush(UsesInstancing);
     }
 }
-

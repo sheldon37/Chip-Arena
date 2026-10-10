@@ -55,4 +55,3 @@ internal static class Program
         throw new System.IO.DirectoryNotFoundException("Run from the conversion project, or use dotnet run --project unity/ChipArenaConversion/Tests/CoreTests.csproj");
     }
 }
-
