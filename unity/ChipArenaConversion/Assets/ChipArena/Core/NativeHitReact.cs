@@ -278,7 +278,7 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed class NativeHitLayer
     {
-        private struct Accent{public bool Live,Head,Stunned;public float At,Heft,Strength,Turn,Variant,FromYaw;public Vector3 Dir;}
+        private struct Accent{public bool Live,Head,Stunned;public float At,Heft,Strength,Turn,Variant,FromYaw;public Vector3 Dir;public int Set;public PackSlot Slot;}
         private Accent current,previous;private bool seen;private readonly NativeStunClock stun=new NativeStunClock();
         // The melee block being shoved and the one before it (fading out under it).
         private HitSource shove,shoveOld;private bool shoveLive,shoveOldLive;
@@ -290,13 +290,48 @@ namespace ChipArena.UnityConversion
         public float DazeWeight{get;private set;}
         public float BlockWeight{get;private set;}
         public bool Applied{get;private set;}
+        /// <summary>The last frame's pack clips (Core/NativePackReact, for the checks): the hit clip's set, slot and weight, the
+        /// Stunned loop's weight and the block hit's slot and weight (set -1 / weight 0: the procedural layer alone).</summary>
+        public int PackSet{get;private set;}=NativePackRules.None;
+        public PackSlot Slot{get;private set;}
+        public float PackWeight{get;private set;}
+        public float PackStunWeight{get;private set;}
+        public PackSlot BlockSlot{get;private set;}
+        public float PackBlockWeight{get;private set;}
+        /// <summary>The hit clip's whole-body share (hands, hips travel): 1 inside the stun, exactly 0 from its end on.</summary>
+        public float PackBody{get;private set;}
+        private float hitBody;
+        private readonly NativePackPose pack=new NativePackPose();private readonly float[] packAt=new float[3],packMarks=new float[3];
+        private bool blockSecond;
         public NativeHitLayer(){change=Apply;}
+        /// <summary>
+        /// Whether the layer's pack clips own this stun (the captured melee route then holds the guard instead of its captured
+        /// stagger and impulse recoil; the DEV fighters keep their recoil under the Unarmed clip): a melee blow (or an unknown one, which a stun implies) stunned a pilot whose weapon style has a
+        /// reaction set; a parried attacker's reel stays the route's own.
+        /// </summary>
+        public bool Drives(float time)
+        {
+            var a=actor;if(ledger==null||a==null||a.ReactionParry||!(a.StunUntil>time)||Skip(a,time)||NativePackRules.SetFor(a.SourceSpec,kind)<0)return false;
+            if(!(a.ReactionAt>-90&&a.ReactionAt<=time&&a.StunUntil>a.ReactionAt+.02f))return false;
+            if(ledger.Hit(a.Id,a.ReactionAt,out var hit)&&!hit.Melee)return false;
+            // The blow's clip as the layer chose it (or, on the frame it lands, as it will choose it): a blow from behind has none.
+            if(seen&&current.At==a.ReactionAt)return current.Slot!=PackSlot.None;
+            Vector3 dir=new Vector3(NativeHitRules.Finite(a.ReactionDir.x,0),0,NativeHitRules.Finite(a.ReactionDir.z,-1));
+            return NativePackRules.Direction(NativeHitRules.Reframe(dir,NativeHitRules.Finite(a.ReactionYaw,0),bound!=null?bound.Rig.GroupYaw:0),1)!=PackSlot.None;
+        }
+        /// <summary>Whether the layer's pack block hit owns this block's impact (a melee blow absorbed by a pilot whose weapon
+        /// style has a reaction set); MeleeMotion then leaves its own Block-GetHit out.</summary>
+        public bool DrivesBlock(float time)
+        {
+            var a=actor;return ledger!=null&&a!=null&&!Skip(a,time)&&NativePackRules.SetFor(a.SourceSpec,kind)>=0&&ledger.Block(a.Id,time,.5f,out var b)&&b.Melee&&a.BlockUntil>=b.At-.05f;
+        }
         /// <summary>The captured-melee and DEV fighter routes: MeleeMotion runs the layer (Layer) before its ground pass.</summary>
-        public void Bind(MeleeMotion m,Actor a,NativeHitLedger hits,HitVictim victim){if(m==null)return;m.HitLayer=this;actor=a;ledger=hits;kind=victim;rigYaw=float.NaN;}
+        public void Bind(MeleeMotion m,Actor a,NativeHitLedger hits,HitVictim victim){if(m==null)return;m.HitLayer=this;bound=m;actor=a;ledger=hits;kind=victim;rigYaw=float.NaN;}
+        private MeleeMotion bound;
         /// <summary>The gun and magic routes: over the posed native pose (in `scratch`), before the route's Finish.</summary>
         public void Over(MeleeRig scratch,CapturedRig.Pose pose,Actor a,NativeHitLedger hits,HitVictim victim,float time,float yaw)
         {
-            actor=a;ledger=hits;kind=victim;rigYaw=yaw;Applied=false;ImpactWeight=DazeWeight=BlockWeight=0;
+            actor=a;ledger=hits;kind=victim;rigYaw=yaw;Applied=false;ImpactWeight=DazeWeight=BlockWeight=0;PackSet=NativePackRules.None;PackWeight=PackStunWeight=PackBlockWeight=PackBody=0;
             if(scratch==null||pose==null||!Wanted(a,time))return;scratch.ReadPose(pose);scratch.GroupYaw=yaw;Layer(scratch,time);scratch.WritePose(pose);
         }
         // Dead, juggled, knocked down, rolling, in an E special, held by the Siren, the Siren herself, or no arena ledger
@@ -307,7 +342,7 @@ namespace ChipArena.UnityConversion
         private float stunAt,stunUntil,daze,blockE,blockHeft,oldE,oldHeft;private Vector3 blockDir,oldDir;private bool stepping,stepBased;private float stepU,stepPlant,stepAt;private Vector3 stepDir,stepBase;private float stepHeft;
         public void Layer(MeleeRig r,float time)
         {
-            Applied=false;ImpactWeight=DazeWeight=BlockWeight=0;var a=actor;if(r==null||!Wanted(a,time))return;
+            Applied=false;ImpactWeight=DazeWeight=BlockWeight=0;PackSet=NativePackRules.None;PackWeight=PackStunWeight=PackBlockWeight=PackBody=0;var a=actor;if(r==null||!Wanted(a,time))return;
             float yaw=float.IsNaN(rigYaw)?r.GroupYaw:rigYaw;rig=r;now=time;
             // The reaction being shown (a new one keeps the interrupted blow's tail for .09 s).
             bool reaction=a.ReactionAt>-90&&time>=a.ReactionAt;
@@ -317,12 +352,14 @@ namespace ChipArena.UnityConversion
                 // Unknown source (a missed event): a stun only comes from melee, so a stunned blow is melee of medium heft. A
                 // parried attacker's reel is the route's own (the source's parry motion).
                 bool melee=!a.ReactionParry&&(known?hit.Melee:stunned);
-                seen=true;previous=current;current=new Accent{Live=melee,Head=a.ReactionZone==1||known&&hit.Head,Stunned=stunned,At=a.ReactionAt,Heft=known?hit.Heft:1,
+                seen=true;previous=current;current=new Accent{Live=melee,Head=a.ReactionZone==1||known&&hit.Head,Stunned=stunned,At=a.ReactionAt,Heft=known?hit.Heft:1,Set=NativePackRules.SetFor(a.SourceSpec,kind),
                     Strength=NativeHitRules.Finite(a.ReactionStrength,.6f),Turn=NativeHitRules.Finite(a.ReactionTurn,0),Variant=NativeHitRules.Variant(a.ReactionAt),FromYaw=NativeHitRules.Finite(a.ReactionYaw,0),
                     Dir=new Vector3(NativeHitRules.Finite(a.ReactionDir.x,0),0,NativeHitRules.Finite(a.ReactionDir.z,-1))};
                 if(current.Dir.LengthSquared()<1e-6f)current.Dir=new Vector3(0,0,-1);else current.Dir=Vector3.Normalize(current.Dir);
                 // A blow chained within .8 s of the last one takes the other variant, so a combo reads hit by hit.
                 if(previous.Live&&current.At-previous.At<.8f)current.Variant=-previous.Variant;
+                // The pack clip for the blow, chosen once from where it came (the rig's facing as it landed).
+                current.Slot=NativePackRules.Direction(NativeHitRules.Reframe(current.Dir,current.FromYaw,yaw),current.Heft);
             }
             // A rewind (the killcam) or a cleared reaction starts over.
             if(a.ReactionAt<=-90||seen&&time<current.At){seen=false;current.Live=previous.Live=false;}
@@ -332,7 +369,7 @@ namespace ChipArena.UnityConversion
             blockE=oldE=0;blockHeft=oldHeft=0;blockDir=oldDir=new Vector3(0,0,-1);
             if(ledger.Block(a.Id,time,.5f,out var block)&&block.Melee&&a.BlockUntil>=block.At-.05f)
             {
-                if(!shoveLive||block.At!=shove.At){shoveOldLive=shoveLive&&shove.At<block.At;shoveOld=shove;shove=block;shoveLive=true;}
+                if(!shoveLive||block.At!=shove.At){blockSecond=shoveLive&&block.At>shove.At&&block.At-shove.At<.8f&&!blockSecond;shoveOldLive=shoveLive&&shove.At<block.At;shoveOld=shove;shove=block;shoveLive=true;}
                 Shoved(a,shove,time,yaw,out blockE,out blockHeft,out blockDir);
                 float fade=shoveOldLive?1-MeleeMath.Ease((time-shove.At)/.09f):0;
                 if(fade>0){Shoved(a,shoveOld,time,yaw,out oldE,out oldHeft,out oldDir);oldE*=fade;}else shoveOldLive=false;
@@ -346,7 +383,10 @@ namespace ChipArena.UnityConversion
             }
             // Nothing to add this frame: leave the route's pose exactly as it is.
             bool impact=Showing(ref current,time)||previous.Live&&previous.At<current.At&&time-current.At<.09f&&Showing(ref previous,time);
-            if(!impact&&!(daze>0)&&blockE==0&&oldE==0&&!stepping)return;
+            // A pack clip's window (Core/NativePackReact) can outlast the procedural accent's.
+            impact|=PackShowing(ref current,time)||previous.Live&&previous.At<current.At&&time-current.At<.09f&&PackShowing(ref previous,time);
+            bool blockClip=shoveLive&&NativePackRules.SetFor(a.SourceSpec,kind)>=0&&NativePackRules.BlockWeight(time-shove.At)>0;
+            if(!impact&&!(daze>0)&&blockE==0&&oldE==0&&!stepping&&!blockClip)return;
             // While stunned (planted feet) keep the ankles where the route put them; otherwise the ground pass re-plants the gait's feet.
             bool hold=grounded&&(r.LegsAuthored||r.LegsLayered||a.StunUntil>time);
             if(hold)for(int i=0;i<2;i++)heldAnkle[i]=r.ReadAnkle(i==0,out heldFoot[i],out heldKnee[i]);
@@ -373,17 +413,78 @@ namespace ChipArena.UnityConversion
         private void Apply()
         {
             var r=rig;float time=now,yaw=float.IsNaN(rigYaw)?r.GroupYaw:rigYaw;
+            PackSet=NativePackRules.None;PackWeight=PackStunWeight=PackBlockWeight=PackBody=0;int set=NativePackRules.SetFor(actor.SourceSpec,kind);
+            var fit=Fit(set);float routeClear=fit!=null&&(current.Live||daze>0||shoveLive)?pack.RouteClear(r,fit):0;
+            // The pack clips first (Core/NativePackReact): the blow's directional GetHit (the interrupted blow's clip fading out
+            // under it), the Stunned loop and the block hit, laid over the route's pose.
+            float fade=previous.Live&&previous.At<current.At?1-MeleeMath.Ease((time-current.At)/.09f):0;
+            float before=fade>0?PackHit(r,ref previous,time,fade):0,clip=current.Live?PackHit(r,ref current,time,1):0;
+            if(clip>0){PackSet=current.Set;Slot=current.Slot;PackWeight=clip;PackBody=hitBody;}
+            if(daze>0&&set>=0){PackStunWeight=daze*NativePackRules.LongStun(stunUntil-stunAt)*(1-.6f*clip);PackStun(r,set,time,PackStunWeight);}
+            if(set>=0&&shoveLive)
+            {
+                if(shoveOldLive)PackBlock(r,set,shoveOld,!blockSecond,time,1-MeleeMath.Ease((time-shove.At)/.09f));
+                PackBlockWeight=PackBlock(r,set,shove,blockSecond,time,1);BlockSlot=blockSecond?PackSlot.Block2:PackSlot.Block;
+            }
+            // The procedural layer on top: the fallback where no clip plays, and the blow's weight and exact direction over one.
             // The interrupted blow fades out under the new one, so chained hits read as separate impacts, not a pop.
-            if(previous.Live&&previous.At<current.At)Impact(r,ref previous,time,yaw,1-MeleeMath.Ease((time-current.At)/.09f));
-            if(current.Live)ImpactWeight=Impact(r,ref current,time,yaw,1);
-            if(daze>0)Daze(r,time,daze);
-            float k=kind==HitVictim.Melee?.55f:1;
+            if(fade>0)Impact(r,ref previous,time,yaw,fade,1-PackShare*Math.Min(1,before/fade));
+            if(current.Live)ImpactWeight=Impact(r,ref current,time,yaw,1,1-PackShare*clip);
+            if(daze>0)Daze(r,time,daze*(1-StunShare*PackStunWeight/daze));
+            float k=(kind==HitVictim.Melee?.55f:1)*(1-BlockShare*PackBlockWeight);
             if(oldE!=0)Shove(r,oldE*oldHeft*k,oldDir);
             if(blockE!=0)Shove(r,blockE*blockHeft*k,blockDir);
+            // The held blade's last clearance over everything above (with the clips, over a clear route pose).
+            if(routeClear>0)pack.ClearBlade(r,fit,set==NativePackRules.Greatsword,routeClear*Math.Max(Math.Max(clip,before),Math.Max(PackStunWeight,PackBlockWeight)));
             DazeWeight=daze;BlockWeight=blockE;
+        }
+        /// <summary>How much of the procedural accent, daze and block shove a fully weighted pack clip replaces.</summary>
+        public const float PackShare=.55f,StunShare=.65f,BlockShare=.5f;
+        /// <summary>A light (unstunned) blow's share of its clip: the upper body and a little of the hips over the gait.</summary>
+        public const float LightPack=.6f;
+        /// <summary>The share of a hit or block clip's turn about the vertical the pilot shows (the captures spin up to 67°).</summary>
+        public const float HitTurn=.5f;
+        /// <summary>The share of a stunned hit clip's hand travel and turn the hands show (the captures fling the arms wide); the
+        /// hands ease in over 70 ms behind the torso's crisp impact, so a held weapon is not snapped across the body.</summary>
+        public const float HitArms=.75f;
+        // A weapon style's blade (kept clear of the head and torso); null for the fists.
+        private static MeleeSet Fit(int set)=>set==NativePackRules.Sword?MeleeSet.For("sword"):set==NativePackRules.Daggers?MeleeSet.For("daggers"):set==NativePackRules.Greatsword?MeleeSet.For("greatsword"):set==NativePackRules.Shield?MeleeSet.For("shield"):null;
+        // The blow's GetHit clip over its window (a stunned blow's ends at the stun end): the whole body with the hands and
+        // hips over the held feet while stunned, the upper body and a little of the hips over the gait on a light blow;
+        // scaled by the attacker's heft. Returns the clip weight.
+        private float PackHit(MeleeRig r,ref Accent h,float time,float weight)
+        {
+            if(h.Set<0||!(weight>0))return 0;var clip=NativePackRules.Clip(h.Set,h.Slot);if(clip==null)return 0;
+            float heft=MeleeMath.Clamp(h.Heft,NativeHitRules.MinHeft,NativeHitRules.MaxHeft),age=time-h.At;
+            float span=NativePackRules.HitSpan(clip,h.Stunned,Span(ref h,heft),NativeHitRules.LightSpan(heft)),w=NativePackRules.Weight(age,span)*weight;if(!(w>1e-4f))return 0;
+            // The whole-body share (hands, hips travel over the held feet) is the stun's own and is gone at its end.
+            float body=hitBody=h.Stunned?NativePackRules.StunFade(time,h.At,stunUntil):0,amp=MeleeMath.Clamp(.1f+.5f*heft,.4f,.8f)*(LightPack+(1-LightPack)*body);
+            pack.Layer(r,clip,NativePackRules.ClipTime(clip,age,span,packAt,packMarks),null,0,w*amp,.4f+.6f*body,HitArms*body*MeleeMath.Ease(age/.07f),NativePackRules.MainHand(h.Set),Fit(h.Set),h.Set==NativePackRules.Greatsword,body,HitTurn);
+            return w;
+        }
+        // The Stunned loop, held as its offset from the set's guard, from the continuous stun's start.
+        private void PackStun(MeleeRig r,int set,float time,float w)
+        {
+            var clip=NativePackRules.Clip(set,PackSlot.Stun);if(clip==null||!(w>1e-4f))return;
+            pack.Layer(r,clip,Math.Max(0,time-stunAt),NativePackRules.Clip(set,PackSlot.Guard),0,w,1,1,NativePackRules.MainHand(set),Fit(set),set==NativePackRules.Greatsword,1,1);
+        }
+        // A melee blow absorbed by the guard: the set's Block-GetHit (alternating with its second take along a string of
+        // blocks), the guard arm shoved through the hands, scaled by the attacker's heft.
+        private float PackBlock(MeleeRig r,int set,HitSource block,bool second,float time,float weight)
+        {
+            var clip=NativePackRules.Clip(set,second?PackSlot.Block2:PackSlot.Block);if(clip==null||!(weight>0))return 0;
+            float age=time-block.At,w=NativePackRules.BlockWeight(age)*weight;if(!(w>1e-4f))return 0;
+            float heft=MeleeMath.Clamp(block.Heft,NativeHitRules.MinHeft,NativeHitRules.MaxHeft);
+            pack.Layer(r,clip,NativePackRules.BlockTime(clip,age,packAt,packMarks),null,0,w*MeleeMath.Clamp(.55f+.35f*heft,.75f,1),.5f,1,true,Fit(set),set==NativePackRules.Greatsword,0,HitTurn);
+            return w;
         }
         // The blow's impact window: its stun (or a light hit's own span), as Impact times it.
         private float Span(ref Accent h,float heft)=>h.Stunned?Math.Max(.05f,(stunUntil>h.At?stunUntil:h.At+.05f)-h.At):NativeHitRules.LightSpan(heft);
+        private bool PackShowing(ref Accent h,float time)
+        {
+            if(!h.Live||h.Set<0||time<h.At)return false;var clip=NativePackRules.Clip(h.Set,h.Slot);if(clip==null)return false;float heft=MeleeMath.Clamp(h.Heft,NativeHitRules.MinHeft,NativeHitRules.MaxHeft);
+            return NativePackRules.Weight(time-h.At,NativePackRules.HitSpan(clip,h.Stunned,Span(ref h,heft),NativeHitRules.LightSpan(heft)))>0;
+        }
         private bool Showing(ref Accent h,float time)
         {
             if(!h.Live||time<h.At)return false;float heft=MeleeMath.Clamp(h.Heft,NativeHitRules.MinHeft,NativeHitRules.MaxHeft);
@@ -391,13 +492,13 @@ namespace ChipArena.UnityConversion
         }
         // The impact accent. Base routes that already recoil (captured melee, fighters) get a lighter accent; gun and magic
         // pilots, whose routes show nothing while stunned, get the full stunned recoil from it.
-        private float Impact(MeleeRig r,ref Accent h,float time,float yaw,float weight)
+        private float Impact(MeleeRig r,ref Accent h,float time,float yaw,float weight,float amp=1)
         {
             if(!(weight>0))return 0;float age=time-h.At;if(age<0)return 0;
             float heft=MeleeMath.Clamp(h.Heft,NativeHitRules.MinHeft,NativeHitRules.MaxHeft);
             NativeHitRules.Timing(heft,Span(ref h,heft),out float rise,out float hold,out float fall);if(age>=rise+hold+fall)return 0;
             bool native=kind==HitVictim.Gun||kind==HitVictim.Magic;float route=h.Stunned?(native?1.3f:.75f):(native?.8f:.9f);
-            float A=heft*(.6f+.4f*MeleeMath.Clamp(h.Strength,0,1))*route*weight;
+            float A=heft*(.6f+.4f*MeleeMath.Clamp(h.Strength,0,1))*route*weight*MeleeMath.Clamp(amp,0,1);
             float e1=NativeHitRules.Envelope(age,rise,hold,fall),e2=NativeHitRules.Envelope(age-.016f,rise,hold,fall),e3=NativeHitRules.Envelope(age-.03f,rise,hold,fall),e4=NativeHitRules.Envelope(age-.045f,rise,hold,fall);
             Vector3 d=NativeHitRules.Reframe(h.Dir,h.FromYaw,yaw);float front=Math.Max(0,-d.Z),back=Math.Max(0,d.Z),sx=d.X,v=h.Variant;
             bool moving=!h.Stunned&&actor!=null&&actor.Velocity.x*actor.Velocity.x+actor.Velocity.z*actor.Velocity.z>1;

@@ -87,6 +87,10 @@ read onto the game's right hand; the daggers use a reverse grip; the converter k
 (fists, pommel, blade root) off the voxel head, pauldrons and torso; captured cuts stand on the procedural phrase's footwork.
 The earlier Mixamo greatsword set (`node scripts/mocap/convert-greatsword.mjs <pack dir>`, the owner's "Great Sword Pack")
 is superseded: running it writes that set back into greatsword-clips.ts.
+The Unity melee hit reactions use the same pack: `node unity/ChipArenaConversion/tools/export_pack_reactions.mjs
+<pack>/Animations` rewrites `Assets/ChipArena/Core/NativePackClips.Generated.cs` and `tools/pack-reactions-provenance.json`
+deterministically (GetHit, Block-GetHit and Stunned per weapon set; the choices are its SETS table), then run the
+Tests project (`Tests/PackReactionChecks.cs` compares each track with the provenance hashes).
 
 ## CI and agent access
 

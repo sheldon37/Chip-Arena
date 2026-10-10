@@ -128,3 +128,23 @@ later field, splash or Siren-shot hits) on host, guests and the killcam; non-mel
 only. The local pilot gets a bounded first-person camera kick (after the aim point; off with camera shake, 40% input
 with reduced effects) and a view-model guard drop while stunned. `Tests/HitReactionChecks.cs` covers selection, bounds,
 allocation and hooks; the source parity checks run without the layer.
+
+Pack hit reactions (2026-10-10, `Core/NativePackReact`, `Core/NativePackClips.Generated.cs`): on the captured melee and
+DEV fighter routes the hit layer plays the owner's Explosive pack reaction clips, laid additively over the route's guard
+(each joint's turn away from the clip's first frame, so nothing pops): GetHit-F1 from the front, F2 for heavy blows,
+R1/L1 from the sides (Armed for sword, daggers and shield, 2Hand-Sword for the greatsword, Unarmed for the fighters),
+Block-GetHit 1/2 alternating along a string of blocked melee blows (Armed-Shield for the shield, Block-Dual for the
+daggers), and the Stunned loop for long stuns only (from about .3 s; the melee hit stuns of .1-.28 s keep the procedural
+daze, where the loop popped up). Light hits move the upper body and hips; while stunned the whole body takes the clip
+with the feet planted, and that share and the Stunned loop are exactly zero from `StunUntil`. Blows from behind (B1 read
+as an upright flinch), gun and magic pilots (the Unarmed torso swept the muzzle and staff aside) and non-melee hits stay
+procedural. The procedural accent stays on top as the weight, direction and headshot modulation; the captured melee
+route holds its guard under the clip instead of its own stagger, while the DEV fighters keep the source's impulse recoil
+(the head snap) under theirs. Arms follow the clip's hand travel and a share of its blade turn through the rig's IK,
+keeping the route's elbow bend, the greatsword's two hands on the hilt in front of the chest, and the blade clear of the
+head and torso (`Core/MeleeClearance`, turn only, once more after the procedural accent); the trunk bend eases into a
+soft limit (the side captures fold the pack character by up to 1.7 rad). The tracks are exported offline by
+`tools/export_pack_reactions.mjs` (docs/DEVELOPMENT.md); `Tests/PackReactionChecks.cs` checks their provenance hashes,
+deterministic decoding, selection, stun end, non-melee hits, finite bones, blade clearance, allocation and the
+MeleeMotion hooks. Presentation only: damage, hitboxes, stun durations, timing, movement, input, network frames and
+saves are unchanged.

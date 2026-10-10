@@ -286,7 +286,7 @@ namespace ChipArena.UnityConversion
         {
             MeleeReady(p,time);float since=RaiseStart(p,time),impact=Impacts!=null?Impacts.BlockAt(p.Id,time,.3f):float.NaN,still=1-MeleeMath.Clamp(Rig.Motion/.32f,0,1),legs=p.Grounded?still:0;
             set.Block.Sample(CapturedClip.Retime(BlockKeys,set.Block.Marks,time-since),row);
-            if(set.BlockHit!=null&&!float.IsNaN(impact)&&time>=impact)
+            if(set.BlockHit!=null&&!float.IsNaN(impact)&&time>=impact&&!(HitLayer!=null&&HitLayer.DrivesBlock(time)))
             {
                 float u=time-impact,k=MeleeMath.Ease(u/.04f)*(1-MeleeMath.Ease((u-.35f)/.12f));
                 if(k>.001f){set.BlockHit.Sample(CapturedClip.Retime(BlockHitKeys,set.BlockHit.Marks,u),rowB);MeleeCapture.BlendRows(row,rowB,k,row);}
@@ -463,8 +463,13 @@ namespace ChipArena.UnityConversion
             if(p.Juggle||p.Down){Ready(set,p,time,MeleeReady(p,time));overlay?.Invoke(r);r.MocapPosed=false;}
             else if(p.HitStunUntil>time)
             {
-                Stagger(set,p,time,MeleeReady(p,time));State="hit reaction";
-                var h=ReactionOf(p);if(h==null||!React(p,h,time,true))FallbackFlinch(p,time);
+                // The native hit layer's pack reaction (Core/NativePackReact) owns a melee stun over the guard when it drives it.
+                if(HitLayer!=null&&HitLayer.Drives(time)){Ready(set,p,time,MeleeReady(p,time));State="hit reaction";}
+                else
+                {
+                    Stagger(set,p,time,MeleeReady(p,time));State="hit reaction";
+                    var h=ReactionOf(p);if(h==null||!React(p,h,time,true))FallbackFlinch(p,time);
+                }
             }
             else if(p.Rolling(time)){Ready(set,p,time,MeleeReady(p,time));overlay?.Invoke(r);r.MocapPosed=false;}
             else
