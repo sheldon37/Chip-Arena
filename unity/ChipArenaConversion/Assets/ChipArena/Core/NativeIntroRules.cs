@@ -79,8 +79,9 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// The alpha of an opaque voxel on a weapon-intro stage. The barrel smoke and floor dust (ChipBlasts' solid pool: grey
         /// voxels that rise, grow and darken from SMOKE to ASH, then shrink away, weapon-intro-effects.ts) are MeshBasicMaterial
-        /// in the source, so they read as flat puffs; lit and opaque here they read as hard grey cubes. Alpha-blended they
-        /// read as soft puffs, densest at the muzzle (linear tint `max` .38, alpha .7) and thinning as they darken (.2 spent),
+        /// in the source, so they read as flat puffs; lit and opaque here they read as hard, shaded grey cubes. Unlit and
+        /// alpha-blended (NativeSourceModels.Blended) they read as flat soft puffs, densest at the muzzle (linear tint `max`
+        /// .38, alpha .7) and thinning as they darken (.2 spent),
         /// while the bake's own growth and shrink still ends each one. Saturated voxels (brass casings, embers) stay opaque (1).
         /// </summary>
         public static bool SoftSmoke(string style)=>style=="weapon-pistol"||style=="weapon-rifle"||style=="weapon-machinegun";

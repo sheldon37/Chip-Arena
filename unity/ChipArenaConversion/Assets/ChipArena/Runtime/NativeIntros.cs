@@ -65,9 +65,10 @@ namespace ChipArena.UnityConversion
             if(b<0||b>=stageGlow.Length||!stageGlow[b])return opacity;
             var c=NativeSceneMotion.Tint(stageClip,b,stageAge);return opacity*NativeIntroRules.GlowAlpha(ref c.r,ref c.g,ref c.b);
         }
-        // The gun intros' barrel smoke and dust (ChipBlasts' opaque voxel pool) draw alpha-blended and thin out as they darken
-        // (NativeIntroRules.SoftVoxelAlpha) instead of hanging as hard grey cubes; the stage model variant swaps only those
-        // tracks' opaque parts to the source's alpha-blended material (made once per stage, nothing per frame).
+        // The gun intros' barrel smoke and dust (ChipBlasts' opaque voxel pool, MeshBasicMaterial in the source) draw unlit and
+        // alpha-blended and thin out as they darken (NativeIntroRules.SoftVoxelAlpha) instead of hanging as hard, shaded grey
+        // cubes; the stage model variant swaps only those tracks' opaque parts to an unlit alpha-blended material (made once
+        // per stage, nothing per frame).
         private string SoftStage(string style,string key,NativeSceneClip clip)
         {
             stageSoft=null;if(!NativeIntroRules.SoftSmoke(style))return key;
@@ -89,7 +90,8 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>
         /// Model `id` with the opaque parts on the joints or tracks flagged in `bones` drawn with the alpha-blended source
-        /// material (NativeSourceTransparent, which takes the part opacity as alpha); the id of that variant ("id~blend").
+        /// material (NativeSourceTransparent, which takes the part opacity as alpha) set unlit (`_Unlit`: the flat colour of
+        /// three's MeshBasicMaterial, vertex colour x tint, with no light term); the id of that variant ("id~blend").
         /// </summary>
         internal string Blended(string id,bool[] bones)
         {
@@ -97,7 +99,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<parts.Length;i++)
             {
                 var p=parts[i];bool swap=p.Bone>=0&&p.Bone<bones.Length&&bones[p.Bone]&&p.Material!=null&&p.Material.renderQueue<(int)UnityEngine.Rendering.RenderQueue.Transparent;
-                if(swap&&blended==null){var shader=Resources.Load<Shader>("NativeSourceTransparent");if(shader==null)return id;blended=new Material(shader){enableInstancing=true};blended.SetInt("_Cull",2);materials.Add(blended);}
+                if(swap&&blended==null){var shader=Resources.Load<Shader>("NativeSourceTransparent");if(shader==null)return id;blended=new Material(shader){enableInstancing=true};blended.SetInt("_Cull",2);blended.SetFloat("_Unlit",1);materials.Add(blended);}
                 copy[i]=swap?new Part{Name=p.Name,Bone=p.Bone,Mesh=p.Mesh,Material=blended,NoShadow=true}:p;
             }
             models[variant]=copy;return variant;
