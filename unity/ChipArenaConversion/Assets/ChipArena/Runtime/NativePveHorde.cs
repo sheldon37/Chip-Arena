@@ -126,13 +126,15 @@ namespace ChipArena.UnityConversion
             if(Pve==null)return input;if(p.Seat.AuthorityBoss)return SirenBot(p,input);var recruit=Pve.Recruits.Find(r=>r.Pilot==p);var anchor=recruit?.Owner.Hp>0?recruit.Owner:Members().Where(q=>!q.Seat.bot&&q.Hp>0).OrderBy(q=>(q.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();
             var minion=Minions.Where(m=>m.Pve!=null&&m.Hp>0&&Time>=m.Pve.ExposedAt&&(anchor==null||Vector3.Distance(m.Body.position,anchor.Body.position)<=18)&&MeleeVisible(p.Body.position+Vector3.up*.5f,m.Body.position,p,m.Collider)).OrderBy(m=>m.Pve.Target==anchor?0:1).ThenBy(m=>(m.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();Vector3? target=minion?.Body.position??(!Pve.Hidden&&Pve.Boss.Hp>0?(Vector3?)Pve.Boss.Body.position:null);
             if(recruit?.Role=="medic")target=null;Vector3 move=Vector3.zero;
-            if(target.HasValue){input=BotFocus(p,target.Value,minion!=null?MinionVelocity(minion):PilotVelocity(Pve.Boss),minion?.Collider??Pve.Boss.Collider,minion==null?Pve.Boss:null);move=new Vector3(input.X,0,input.Z);}else input=new InputFrame{Yaw=p.Yaw};
+            // PvE fighters must fight even when saved PvP practice settings specify
+            // stationary targets or dummies. Medics still have no combat target.
+            if(target.HasValue){input=BotFocus(p,target.Value,minion!=null?MinionVelocity(minion):PilotVelocity(Pve.Boss),minion?.Collider??Pve.Boss.Collider,minion==null?Pve.Boss:null,force:true);move=new Vector3(input.X,0,input.Z);}else input=new InputFrame{Yaw=p.Yaw};
             if(anchor!=null&&Vector3.Distance(anchor.Body.position,p.Body.position)>(target.HasValue?12:5))move=pveNavigation?.Direction(p.Body.position,anchor.Body.position,anchor.Seat.id)??(anchor.Body.position-p.Body.position).normalized;input.X=move.x;input.Z=move.z;return input;
         }
         private InputFrame SirenBot(NativePilot p,InputFrame input)
         {
             if(Pve.Hidden)return new InputFrame{Yaw=p.Yaw};var q=Members().Where(t=>t.Hp>0&&t.Seat.connected).OrderBy(t=>(t.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();if(q==null)return new InputFrame{Yaw=p.Yaw};p.Seat.difficulty=NativeBotRules.BossDifficulty(PartySize);
-            input=BotFocus(p,q.Body.position,PilotVelocity(q),q.Collider,q);var s=Siren(p);float distance=Vector3.Distance(q.Body.position,p.Body.position);
+            input=BotFocus(p,q.Body.position,PilotVelocity(q),q.Collider,q,force:true);var s=Siren(p);float distance=Vector3.Distance(q.Body.position,p.Body.position);
             Vector3 move=distance>(s.Ranged?12:2)?pveNavigation.Direction(p.Body.position,q.Body.position,q.Seat.id):Vector3.zero;input.X=move.x;input.Z=move.z;return input;
         }
     }

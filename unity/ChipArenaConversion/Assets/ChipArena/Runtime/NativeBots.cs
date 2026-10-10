@@ -9,6 +9,9 @@ namespace ChipArena.UnityConversion
     {
         private InputFrame Bot(NativePilot p,bool force=false)
         {
+            // Select one brain before observing a target. Running the PvP brain first
+            // consumes the reaction window on Siren, then PvE reuses that aim for an add.
+            if(Pve!=null)return PveBot(p,new InputFrame{Yaw=p.Yaw});
             var target=Pilots.Where(q=>q.Hp>0&&q.Seat.connected&&Enemy(p,q)).OrderBy(q=>(q.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();
             if(target==null||(StationaryBots||p.Seat.difficulty=="dummy")&&!force)return new InputFrame{Yaw=p.Yaw};
             var summon=Minions.Where(m=>m.Pve==null&&m.Hp>0&&Enemy(p,m)&&Vector3.Distance(m.Body.position,p.Body.position)<Math.Min(6,Vector3.Distance(target.Body.position,p.Body.position)-1.5f)).OrderBy(m=>(m.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();

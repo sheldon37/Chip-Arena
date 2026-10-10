@@ -16,6 +16,14 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-10 — Astra — allied bots attack in Siren boss mode
+- Task branch `codex/unity-boss-allied-bots`, base shared/cloud `530321ec2b5e3b0ee13678db1517166d6f2674ae`. Owner reports allied bots moving without attacking.
+- The arena evaluated PvP AI before PvE AI. The first pass consumed the bot reaction window on Siren; the second could select a minion but retain aim at Siren. Route through one mode-specific brain before observing a target.
+- PvE combat now bypasses inherited PvP stationary/dummy suppression, which previously stopped attacks while the PvE leash still moved allies. This follows the source's independent `src/shared/pve/recruit-ai.ts` fighter brain. Medics remain non-attacking; PvP practice settings still apply in PvP. Party bots and combat recruits use their existing weapons, abilities and cooldowns.
+- Added an actual Unity/PhysX Editor gate to the existing PvE acceptance run: gun, magic and melee bot inputs must damage minions with Siren hidden and visible; aim must follow the selected minion with Siren on the opposite side; inherited practice settings, combat recruits, medics, unexposed/dead targets, visible boss targeting and PvP dummy preservation are checked.
+- Local diff/whitespace review passed. Python run: 49 passed, 1 Windows-only skip, 2 visual-bank failures because the connector could not retrieve the latest large SourceModels bank into this partial checkout. No visual bank is changed by this patch; GitHub will test the complete remote tree. No local Unity/.NET runtime is installed. Real Unity gate, hosted checks and publication pending; do not treat the local run as release approval.
+- Gameplay impact: bot decision/aim and PvE attack suppression fixed; weapon hit timing, hitboxes, damage, cooldowns, player movement, network schema, account/profile saves and presentation unchanged. Implemented on task branch, not yet merged or released. Next: complete-tree native CI, real Unity build and verified existing test Update publication under owner authorization.
+
 ## 2026-10-10 — Claude — Siren Marked crosshair and the animated, upgraded Auditor halo (owner requests)
 - Base `claude/sleepy-ritchie-g8ruhv` at `4bdd90b`. Both branches were reviewed, then merged. Presentation only: no change to hit timing, hitboxes, damage, cooldowns, movement, networking or saves.
   - `claude/siren-target-telegraph` (`cb11846`). Review found the crosshair lingering 0.5 s after the seeker hit; fixed.
