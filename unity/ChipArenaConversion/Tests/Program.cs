@@ -30,6 +30,7 @@ internal static class Program
             NativeSystemsChecks.Run(root,data);WoundCarveChecks.Run(root);CollapseChecks.Run(root);ExtraPresentationChecks.Run(root);BlastChecks.Run(root);FieldChecks.Run(root);ShotChecks.Run(root,data);
             foreach(var result in FirstPersonSwayChecks.Run(root,data))Console.WriteLine("PASS "+result);
             StatusVisualChecks.Run(root);GoreBeaconChecks.Run(root);GoreHitChecks.Run();KillEffectChecks.Run(root);SirenFxChecks.Run(root);SirenMarkChecks.Run(root);SirenLookChecks.Run(root);DevFxChecks.Run(root);
+            SirenSmileChecks.Run(root);
             LobbyPoseChecks.Run(root);FighterMotionChecks.Run(root);LeetMotionChecks.Run();LeetPathChecks.Run(data);GunMotionChecks.Run();AuditorHaloChecks.Run(root);
             foreach(var result in EventFeedbackChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in DraftPlantChecks.Run())Console.WriteLine("PASS "+result);
