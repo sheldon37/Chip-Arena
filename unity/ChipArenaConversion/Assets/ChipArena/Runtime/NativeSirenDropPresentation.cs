@@ -43,11 +43,13 @@ namespace ChipArena.UnityConversion
             return true;
         }
         /// <summary>The body for this death, built once from the clip at the release (the Siren still showing the hold keeps the
-        /// source's limp hang; the native hold ends at the crush, so the body drops after one limp beat). Null: no room.</summary>
+        /// source's limp hang; the native hold ends at the crush, so the body drops after one limp beat). Null: no room. A PvE kept
+        /// body (one per downed member) always gets one past the 32-body cap, so what is drawn and what the repair rebuilds from
+        /// (StartRevival) are the same ragdoll.</summary>
         private NativeCorpse SirenDropBody(NativeArena arena,NativeDeath death)
         {
             if(corpses.TryGetValue(death.id,out var old)){if(old.Death.seed==death.seed&&old.Drop)return old;old.Dispose();corpses.Remove(death.id);}
-            if(arena==null||corpses.Count>=32)return null;var clip=dropClip;
+            if(arena==null||corpses.Count>=32&&!death.kept)return null;var clip=dropClip;
             var owner=PilotOf(arena,death.owner);var hold=owner?.Pose;
             bool holding=owner!=null&&owner.Hp>0&&hold!=null&&hold.SourceSpec=="siren"&&hold.SourceAction=="grab"&&hold.SourceUntil>death.at+NativeSirenDrop.Limp&&(death.actor==null||death.actor.GrabOwner!=death.owner||Math.Abs(hold.SourceAt-death.actor.GrabAt)<.05f);
             float release=NativeSirenDrop.Release(holding);var root=new float[16];NativeSirenDrop.Root(death.position.x,death.position.y,death.position.z,death.yaw,root);
@@ -88,9 +90,11 @@ namespace ChipArena.UnityConversion
             CinematicRoute(death,out int layer,out Camera only);float fade=revival>=0?1-Mathf.Clamp01(revival/.8f):1;
             var root=Matrix4x4.TRS(death.position-Vector3.up*.865f,Quaternion.Euler(0,death.yaw,0),Vector3.one);
             sourceModels.Queue("death-siren-crush",root,dropSceneBone,dropSceneShown,layer:layer,camera:only,opacity:fade,partOpacity:dropSceneOpacity,partTint:dropSceneTint);
-            // The body arrives charred by the hold. The crushed head (and its hat) is gone; the weapon stays hidden as in the hold.
+            // The body arrives charred by the hold. The crushed head (and its hat) is gone. The weapon, hidden in the hold, falls out
+            // of the opening hand at the release as the body's loose weapon (NativeCorpse's dropped weapon) and shrinks with it.
             Color ink=NativeArena.ColorOf(0x0c0a10),bodyTint=Color.Lerp(BodyTint(death.actor?.BodyColor),ink,.85f),accentTint=Color.Lerp(AccentTint(death.actor?.AccentColor),ink,.85f);
             sourceModels.Queue(sourceModels.WoundedPilot(death.id,death.actor?.Wounds,death.actor?.BodyColor,ForceCompatibilityRendering),root,dropVictimBone,dropVictimShown,layer,only,body:bodyTint,accent:accentTint,opacity:fade);
+            if(dropFallen&&body.LooseModel!=null&&body.PresentedWeapon is Matrix4x4 loose)sourceModels.Queue(body.LooseModel,DropShrink(loose),layer:layer,camera:only,opacity:fade);
             return true;
         }
         /// <summary>StartRevival: a kept crush body's bones as drawn at <paramref name="age"/> (the ragdoll as it lies) and the
@@ -107,13 +111,15 @@ namespace ChipArena.UnityConversion
         {
             if(dropFallen)
             {
-                var m=dropBody.Bone(b);if(dropGone<=0)return m;
-                // Coming apart into black flame: the body shrinks about its pelvis (kills.ts scales the victim group).
-                float k=Mathf.Max(.001f,1-dropGone);return Matrix4x4.Translate(dropPivot)*Matrix4x4.Scale(new Vector3(k,k,k))*Matrix4x4.Translate(-dropPivot)*m;
+                return DropShrink(dropBody.Bone(b));
             }
             var goal=DropClipBone(b,dropAge);if(dropCarried==null)return goal;
             float t=Mathf.Clamp01(dropAge/NativeSirenDrop.Carry);t=t*t*t*(t*(t*6-15)+10);if(t>=1)return goal;var from=dropCarried[b];for(int i=0;i<16;i++)goal[i]=Mathf.Lerp(from[i],goal[i],t);return goal;
         }
+        /// <summary>Coming apart into black flame: the fallen body (and its weapon) shrinks about its pelvis (kills.ts scales the
+        /// victim group, the weapon in its hand included).</summary>
+        private Matrix4x4 DropShrink(Matrix4x4 m)
+        {if(dropGone<=0)return m;float k=Mathf.Max(.001f,1-dropGone);return Matrix4x4.Translate(dropPivot)*Matrix4x4.Scale(new Vector3(k,k,k))*Matrix4x4.Translate(-dropPivot)*m;}
         private bool DropVictimShown(int b)=>NativeSceneMotion.Opacity(dropClip,dropClip.victim[b],dropAge)>.001f;
         private Matrix4x4 DropScene(int track)
         {

@@ -53,9 +53,23 @@ internal static class SirenDropChecks
                 float sp=(float)Math.Sqrt(lin[b*3]*lin[b*3]+lin[b*3+1]*lin[b*3+1]+lin[b*3+2]*lin[b*3+2]),sw=(float)Math.Sqrt(ang[b*3]*ang[b*3]+ang[b*3+1]*ang[b*3+1]+ang[b*3+2]*ang[b*3+2]);
                 Check(MathUtil.Finite(sp)&&MathUtil.Finite(sw)&&sp<(float)NativeKillEffectRules.MaxBodySpeed&&sp<4&&sw<4,"handed-over motion out of range, bone "+b+": "+sp+" m/s, "+sw+" rad/s");
             }
-            // The tumble tips the head back, away from the face, and pushes the body back a little.
+            // The tumble tips the head back, away from the face (hard enough that the body leans back when its feet land), and
+            // pushes the body back a little.
             var spin=new float[3];var push=new float[3];NativeSirenDrop.Tumble(seed,rootM,spin,push);float fx=rootM[8],fz=rootM[10];
-            Check(spin[0]*-fz+spin[2]*fx>.9f&&push[0]*fx+push[2]*fz<0&&push[1]==0,"tumble direction");
+            Check(spin[0]*-fz+spin[2]*fx>=.8f*NativeSirenDrop.Tip-1e-4f&&push[0]*fx+push[2]*fz<0&&push[1]==0,"tumble direction");
+            // The knees give: only the shins and feet turn, about each knee's own hinge (x) axis in its bend direction, pivoting on the
+            // knee, at the seeded rate; the rest of the handed-over motion is untouched.
+            var gl=new float[66];var ga=new float[66];NativeSirenDrop.Give(seed,bind,gl,ga);
+            for(int b=0;b<22;b++)
+            {
+                bool shin=b>=CapturedRig.LKnee&&b<=CapturedRig.LKnee+2||b>=CapturedRig.RKnee&&b<=CapturedRig.RKnee+2;
+                float a=(float)Math.Sqrt(ga[b*3]*ga[b*3]+ga[b*3+1]*ga[b*3+1]+ga[b*3+2]*ga[b*3+2]),l=(float)Math.Sqrt(gl[b*3]*gl[b*3]+gl[b*3+1]*gl[b*3+1]+gl[b*3+2]*gl[b*3+2]);
+                if(!shin){Check(a==0&&l==0,"knee give moved bone "+b);continue;}
+                int knee=b<=CapturedRig.LKnee+2?CapturedRig.LKnee:CapturedRig.RKnee,k=knee*16;
+                float along=(ga[b*3]*bind[k]+ga[b*3+1]*bind[k+1]+ga[b*3+2]*bind[k+2])/(float)Math.Sqrt(bind[k]*bind[k]+bind[k+1]*bind[k+1]+bind[k+2]*bind[k+2]);
+                Check(along>=.7f*NativeSirenDrop.KneeGive-1e-4f&&along<=1.3f*NativeSirenDrop.KneeGive+1e-4f&&Math.Abs(along-a)<1e-4f,"knee give not a bend about the knee hinge, bone "+b+": "+along+" of "+a);
+                if(b==knee)Check(l<1e-6f,"knee give moved the knee joint");
+            }
             // Where the body ends: it is dropped from the claw (crush clip root = death position) onto the floor .95 m below the
             // clip's floor; with the cosmetic 18 m/s² gravity it lands and has a second to settle well before a kept body is held
             // (2.6 s) or the body comes apart (3.2 s).
@@ -107,6 +121,10 @@ internal static class SirenDropChecks
         var death=Text("NativeDeathPresentation.cs");Check(death.Contains("SirenDrop(arena,death,age,up)||SourceDeathScene(death,age,up)")&&death.Contains("var wound=drop?null:death.wound;")&&death.Contains("if(drop&&b==CapturedRig.Head)continue;"),"death presentation hook");
         Check(Text("NativeInteractionPresentation.cs").Contains("SirenDropPose(WeaponLoadout,d,age,r.Body,r.Missing)"),"PvE repair hook");
         var drop=Text("NativeSirenDropPresentation.cs");Check(drop.Contains("NativeSirenDrop.Handoff(")&&drop.Contains("NativeSirenDrop.FlameShown(")&&drop.Contains("NativeSirenDrop.GibAt(")&&drop.Contains("NativeSirenDrop.Burn("),"drop presentation uses the Core rules");
-        Console.WriteLine("PASS Siren crush drop: "+cases+" deaths x release (handoff = drawn pose, worst step to it "+worstStep.ToString("0.0000")+" m / "+worstTurn.ToString("0.0000")+" rad, finite, deterministic, bounded motion, backward tumble, lands and settles before keep/come-apart), "+gibs+" gibs on the arena floor matching the clip flight, flame split at the release, authority timing and hooks unchanged");
+        // The weapon falls out of the hand at the release (kills.ts keeps it in the victim's hand) and a kept body is never left to
+        // the old clip by the corpse cap, so the repair rebuilds from the body that is drawn.
+        Check(death.Contains("if(drop){weapon.linearVelocity=linear[hand];")&&drop.Contains("body.LooseModel!=null&&body.PresentedWeapon is Matrix4x4 loose"),"dropped weapon");
+        Check(drop.Contains("corpses.Count>=32&&!death.kept"),"kept crush body capped away from its ragdoll");
+        Console.WriteLine("PASS Siren crush drop: "+cases+" deaths x release (handoff = drawn pose, worst step to it "+worstStep.ToString("0.0000")+" m / "+worstTurn.ToString("0.0000")+" rad, finite, deterministic, bounded motion, backward tumble, knees give about their hinges, lands and settles before keep/come-apart), "+gibs+" gibs on the arena floor matching the clip flight, flame split at the release, dropped weapon, kept body uncapped, authority timing and hooks unchanged");
     }
 }

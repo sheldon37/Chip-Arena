@@ -25,8 +25,13 @@ namespace ChipArena.UnityConversion
         public const float ApartAt=3.2f,ApartSeconds=1.2f;
         /// <summary>The finite-difference step for the release motion: one baked frame (the clip is sampled at 30 fps).</summary>
         public const float Step=1/30f;
-        /// <summary>The release tumble: a backward tip (rad/s, about the body's right axis) and a small backward push (m/s).</summary>
-        public const float Tip=1.25f,Push=.25f;
+        /// <summary>The release tumble: a backward tip (rad/s, about the body's right axis) and a backward push (m/s). The hanging
+        /// body slumps forward; the tip has it leaning back when its feet reach the floor, so it folds over backward as it lands
+        /// instead of standing on its feet, or squatting on its heels, for a beat before it topples.</summary>
+        public const float Tip=3.2f,Push=.5f;
+        /// <summary>The knees give at the release (rad/s, seeded ±30 % per leg), so the legs fold on impact. A much larger bend (or a
+        /// hip flex) leaves the body sitting on its heels.</summary>
+        public const float KneeGive=.6f;
         /// <summary>kills.ts burnRig joints: head, chest, spine, pelvis, arms, elbows, legs, knees.</summary>
         public static readonly int[] BurnJoints={CapturedRig.Head,CapturedRig.Chest,CapturedRig.Spine,CapturedRig.Pelvis,CapturedRig.LArm,CapturedRig.RArm,CapturedRig.LElbow,CapturedRig.RElbow,CapturedRig.LHip,CapturedRig.RHip,CapturedRig.LKnee,CapturedRig.RKnee};
 
@@ -58,7 +63,8 @@ namespace ChipArena.UnityConversion
         /// The handover: <paramref name="bind"/> (22×16) is the clip's victim pose at <paramref name="release"/> under
         /// <paramref name="root"/>, exactly what is drawn there; <paramref name="linear"/> and <paramref name="angular"/> (22×3)
         /// are each bone's motion over one baked frame (the last one, or the next one when the last still falls inside the clip's
-        /// own .08 s carry from its rest pose, which is not motion) plus the seeded tumble (a rigid spin about the pelvis and a push).
+        /// own .08 s carry from its rest pose, which is not motion) plus the seeded tumble (a rigid spin about the pelvis and a push)
+        /// and the knees giving (<see cref="Give"/>).
         /// </summary>
         public static void Handoff(float[] values,int frames,float duration,int[] victim,bool[] voxel,float[] root,float release,int seed,float[] bind,float[] linear,float[] angular)
         {
@@ -79,6 +85,28 @@ namespace ChipArena.UnityConversion
                 linear[b*3+2]=(after[i+14]-before[i+14])/Step+push[2]+spin[0]*ry-spin[1]*rx;
                 Turn(before,i,after,i,out float wx,out float wy,out float wz);
                 angular[b*3]=wx/Step+spin[0];angular[b*3+1]=wy/Step+spin[1];angular[b*3+2]=wz/Step+spin[2];
+            }
+            Give(seed,bind,linear,angular);
+        }
+        /// <summary>
+        /// The knees give (<see cref="KneeGive"/>): per leg, a seeded bend (knee rotation.x above 0, the only way the knee hinge
+        /// opens) as a rigid turn of the shin and foot about the knee's own x axis, pivoting on the knee, added to the handed-over
+        /// motion. The pose itself is untouched (the handoff stays exactly the drawn pose).
+        /// </summary>
+        public static void Give(int seed,float[] bind,float[] linear,float[] angular)
+        {
+            uint s=unchecked((uint)seed*2246822519u^0x85ebca6bu)|1u;
+            double Next(){s^=s<<13;s^=s>>17;s^=s<<5;return s/4294967296.0;}
+            foreach(int knee in new[]{CapturedRig.LKnee,CapturedRig.RKnee})
+            {
+                int j=knee*16;float ax=bind[j],ay=bind[j+1],az=bind[j+2],l=(float)Math.Sqrt(ax*ax+ay*ay+az*az),rate=KneeGive*(float)(.7+.6*Next());if(!(l>1e-6f))continue;
+                float wx=ax/l*rate,wy=ay/l*rate,wz=az/l*rate;
+                for(int b=knee;b<=knee+2;b++)
+                {
+                    int i=b*16;float rx=bind[i+12]-bind[j+12],ry=bind[i+13]-bind[j+13],rz=bind[i+14]-bind[j+14];
+                    angular[b*3]+=wx;angular[b*3+1]+=wy;angular[b*3+2]+=wz;
+                    linear[b*3]+=wy*rz-wz*ry;linear[b*3+1]+=wz*rx-wx*rz;linear[b*3+2]+=wx*ry-wy*rx;
+                }
             }
         }
         /// <summary>The seeded release tumble: a backward tip about the body's right axis, a little roll and twist, and a
