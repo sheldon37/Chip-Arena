@@ -259,12 +259,13 @@ namespace ChipArena.UnityConversion
             private void Save(Vector3[] p,Quaternion[] q) { for(int i=0;i<Bones.Length;i++) { p[i]=Bones[i].localPosition; q[i]=Bones[i].localRotation; } }
             private void Blend(Vector3[] p,Quaternion[] q,float weight)
             {
+                if(!MathUtil.Finite(weight)) weight=1; // a NaN weight passes Vector3.Lerp's clamp and would write NaN positions
                 for(int i=0;i<Bones.Length;i++) { Bones[i].localPosition=Vector3.Lerp(p[i],Bones[i].localPosition,weight); Bones[i].localRotation=Quaternion.Slerp(q[i],Bones[i].localRotation,weight); }
             }
             public void Sample(int set,string state,float time)
             {
                 var data=Find(set,state); Set=set; State=state;
-                float t=data.Loop?CapturedClip.Wrap(time,data.Duration):Mathf.Clamp(time,0,data.Duration);
+                float t=data.Loop?CapturedClip.Wrap(time,data.Duration):Mathf.Clamp(time,0,data.Duration); if(!MathUtil.Finite(t)) t=0; // SampleAnimation writes bones unchecked
                 library.clips[data.Name].SampleAnimation(Root,t);
             }
             private void ReadPose()
@@ -273,7 +274,7 @@ namespace ChipArena.UnityConversion
             }
             private void WritePose()
             {
-                for(int i=0;i<Bones.Length;i++) { Bones[i].localPosition=Vec(CapturedRig.Mirror(pose.Position[i])); Bones[i].localRotation=Quat(CapturedRig.Mirror(pose.Rotation[i])); }
+                NativePoseWriter.Write(Bones,pose,"a captured pilot rig");
             }
             // Captured melee (sword, daggers, shield, greatsword) runs the source's full melee pipeline (Core/MeleeMotion):
             // gait feet, captured guard and carries, cut footwork and hip seating, blade clearance, recoveries, blocks with

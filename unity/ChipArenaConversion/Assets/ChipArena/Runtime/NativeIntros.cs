@@ -26,6 +26,7 @@ namespace ChipArena.UnityConversion
         // This frame's baked entrance stage, read by delegates made once (no closure per frame).
         private NativeSceneClip stageClip;private float stageAge;private string stageStyle,stageKey;private bool[] stageGlow;private readonly Dictionary<string,bool[]> stageGlows=new Dictionary<string,bool[]>();
         private Func<int,Matrix4x4> stageBone;private Func<int,bool> stageShown;private Func<int,float> stageOpacity;private Func<int,Color> stageTint;
+        private bool[] stageSoft;private readonly Dictionary<string,(bool[] soft,string model)> stageSofts=new Dictionary<string,(bool[],string)>();
         public void RenderIntro(NativeArena arena,NativePilot pilot,string style,float age,Camera camera)
         {
             if(pilot==null)return;style=NativeIntroRules.Entrance(style);sirenLookCamera=camera;if(introRig==null||introActor!=pilot.Seat.id){introRig?.Dispose();introRig=captured.Create(transform,-100);introActor=pilot.Seat.id;}
@@ -64,12 +65,28 @@ namespace ChipArena.UnityConversion
                 stageBone=b=>NativeSceneMotion.Matrix(stageClip,b,stageAge);stageShown=b=>StageOpacity(b)>.001f;stageOpacity=StageOpacity;
                 stageTint=b=>{var c=NativeSceneMotion.Tint(stageClip,b,stageAge);if(b>=0&&b<stageGlow.Length&&stageGlow[b])NativeIntroRules.GlowAlpha(ref c.r,ref c.g,ref c.b);if(b==sirenBulb&&introBeats!=null){c.r*=sirenGlow;c.g*=sirenGlow;c.b*=sirenGlow;}return c;};
             }
-            sourceModels.Queue(key,Matrix4x4.identity,stageBone,stageShown,partOpacity:stageOpacity,partTint:stageTint);return true;
+            sourceModels.Queue(SoftStage(style,key,clip),Matrix4x4.identity,stageBone,stageShown,partOpacity:stageOpacity,partTint:stageTint);return true;
         }
         private float StageOpacity(int b)
         {
-            float opacity=NativeSceneMotion.Opacity(stageClip,b,stageAge);if(b<0||b>=stageGlow.Length||!stageGlow[b])return opacity;
+            float opacity=NativeSceneMotion.Opacity(stageClip,b,stageAge);
+            if(stageSoft!=null&&b>=0&&b<stageSoft.Length&&stageSoft[b]){var s=NativeSceneMotion.Tint(stageClip,b,stageAge);return opacity*NativeIntroRules.SoftVoxelAlpha(s.r,s.g,s.b);}
+            if(b<0||b>=stageGlow.Length||!stageGlow[b])return opacity;
             var c=NativeSceneMotion.Tint(stageClip,b,stageAge);return opacity*NativeIntroRules.GlowAlpha(ref c.r,ref c.g,ref c.b);
+        }
+        // The gun intros' barrel smoke and dust (ChipBlasts' opaque voxel pool, MeshBasicMaterial in the source) draw unlit and
+        // alpha-blended and thin out as they darken (NativeIntroRules.SoftVoxelAlpha) instead of hanging as hard, shaded grey
+        // cubes; the stage model variant swaps only those tracks' opaque parts to an unlit alpha-blended material (made once
+        // per stage, nothing per frame).
+        private string SoftStage(string style,string key,NativeSceneClip clip)
+        {
+            stageSoft=null;if(!NativeIntroRules.SoftSmoke(style))return key;
+            if(!stageSofts.TryGetValue(key,out var soft))
+            {
+                var tracks=new bool[clip.tracks];for(int t=0;t<clip.tracks;t++)tracks[t]=NativeIntroRules.TintVaries(clip.values,clip.frames,t)&&!sourceModels.TransparentBone(key,t);
+                soft=(tracks,sourceModels.Blended(key,tracks));stageSofts.Add(key,soft);
+            }
+            stageSoft=soft.soft;return soft.model;
         }
     }
     public sealed partial class NativeSourceModels
@@ -79,6 +96,22 @@ namespace ChipArena.UnityConversion
         {
             if(!models.TryGetValue(id,out var parts))return false;
             foreach(var part in parts)if(part.Bone==bone&&part.Material!=null&&part.Material.renderQueue>=(int)UnityEngine.Rendering.RenderQueue.Transparent)return true;return false;
+        }
+        /// <summary>
+        /// Model `id` with the opaque parts on the joints or tracks flagged in `bones` drawn with the alpha-blended source
+        /// material (NativeSourceTransparent, which takes the part opacity as alpha) set unlit (`_Unlit`: the flat colour of
+        /// three's MeshBasicMaterial, vertex colour x tint, with no light term); the id of that variant ("id~blend").
+        /// </summary>
+        internal string Blended(string id,bool[] bones)
+        {
+            string variant=id+"~blend";if(models.ContainsKey(variant))return variant;if(!models.TryGetValue(id,out var parts))return id;Material blended=null;var copy=new Part[parts.Length];
+            for(int i=0;i<parts.Length;i++)
+            {
+                var p=parts[i];bool swap=p.Bone>=0&&p.Bone<bones.Length&&bones[p.Bone]&&p.Material!=null&&p.Material.renderQueue<(int)UnityEngine.Rendering.RenderQueue.Transparent;
+                if(swap&&blended==null){var shader=Resources.Load<Shader>("NativeSourceTransparent");if(shader==null)return id;blended=new Material(shader){enableInstancing=true};blended.SetInt("_Cull",2);blended.SetFloat("_Unlit",1);materials.Add(blended);}
+                copy[i]=swap?new Part{Name=p.Name,Bone=p.Bone,Mesh=p.Mesh,Material=blended,NoShadow=true}:p;
+            }
+            models[variant]=copy;return variant;
         }
     }
 }
