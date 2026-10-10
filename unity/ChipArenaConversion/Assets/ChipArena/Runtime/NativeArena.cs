@@ -100,7 +100,7 @@ namespace ChipArena.UnityConversion
             // Establish every defense before resolving attacks.
             foreach(var p in Pilots)
             {
-                if(p.Hp<=0||!p.Seat.connected)continue;p.Input=p.Seat.bot?AvoidVents(p,SandboxInput(p,PveBot(p,Bot(p)))):p.Seat.id==LocalId?input:RemoteInput(p.Seat.id);p.Input=p.Input.Sanitized();PveInput(p);
+                if(p.Hp<=0||!p.Seat.connected)continue;p.Input=p.Seat.bot?AvoidVents(p,SandboxInput(p,Bot(p))):p.Seat.id==LocalId?input:RemoteInput(p.Seat.id);p.Input=p.Input.Sanitized();PveInput(p);
                 p.Grounded=root.scene.GetPhysicsScene().SphereCast(p.Body.position+Vector3.down*.4f,.39f,Vector3.down,out _,.17f,WorldMask,QueryTriggerInteraction.Ignore);
             }
             RouteLeetInputs();

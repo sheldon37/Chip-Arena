@@ -84,6 +84,70 @@ namespace ChipArena.UnityConversion
             ValidatePveMinionContacts(pilot);
             var copy=NativeFrameCodec.Clone(NetworkFrame());if(copy.pve.rows.First(r=>r.id==pilot.Seat.id).revived!=row.Revived)throw new Exception("PvE revive count lost in guest/replay frame");
             Debug.Log("PASS native PvE opening/personal picks, machine purchases and denial, pickup ownership, healing cooldown, pending recruit caps and revival state");
+            ValidatePveBotCombat();
+        }
+        private void ValidatePveBotCombat()
+        {
+            void Check(bool ok,string message){if(!ok)throw new Exception("Native PvE bot gate: "+message);}
+            bool Attacks(InputFrame i)=>i.Shoot||i.AbilityQ||i.AbilityE||i.Hadoken||i.Uppercut||i.SirenAbility>0;
+            var human=Members().First();var bot=Members().First(p=>p!=human);var state=Pve;
+            bool stationary=StationaryBots;Pve.Holding=false;Pve.Hires.Clear();
+            human.Seat.bot=false;human.Seat.team=bot.Seat.team=0;human.Body.position=new Vector3(7,20,0);
+            human.Collider.enabled=true;human.Hp=100;human.Seat.connected=true;
+            var add=SpawnPveAdd("shambler",true);Check(add!=null,"spawn target");
+            add.Body.position=new Vector3(0,20,2);add.Collider.enabled=true;add.Hp=add.MaxHp=10000;
+            add.Pve.ActiveAt=add.Pve.ExposedAt=Time-1;add.Pve.Travelling=false;add.Pve.Target=human;
+            void Setup(string spec,bool hidden,bool stationarySetting=false,string difficulty="hard")
+            {
+                Bullets.Clear();AbilityShots.Clear();AbilityZones.Clear();AbilityEffects.Clear();MeleeShots.Clear();
+                CancelSiren(bot);CancelFighter(bot);CancelSpecial(bot);CancelMelee(bot);CancelAbilities(bot);
+                bot.Seat.bot=bot.Seat.connected=bot.Seat.alive=true;bot.Seat.spec=spec;bot.Seat.difficulty=difficulty;bot.Seat.chips.Clear();
+                bot.Weapon=Content.Weapon(spec);bot.Stats=NativeContentRules.Stats(Content,spec,bot.Seat.chips);
+                bot.Hp=bot.Mana=bot.Stamina=100;bot.Body.isKinematic=false;bot.Body.position=new Vector3(0,20,0);
+                bot.Body.linearVelocity=bot.Knockback=bot.MoveVelocity=Vector3.zero;bot.Collider.enabled=true;
+                bot.Down=null;bot.Juggle=null;bot.Roll=null;bot.Death=null;bot.Wounds.Clear();bot.Dots.Clear();
+                bot.Ready=bot.ReloadEnd=bot.BlockEnd=bot.RollEnd=bot.StunEnd=bot.FrozenUntil=bot.ScareUntil=bot.ShieldUntil=bot.CastAt=bot.AttackEnd=0;
+                // Hold specials on cooldown so the assertion exercises primary weapon releases.
+                bot.QReady=bot.EReady=Time+100;bot.ECharges=0;bot.Ammo=Magazine(bot);bot.Grounded=true;
+                bot.BotBrain.ThinkAt=0;bot.BotBrain.Aim=new V3();bot.BotBlocked=0;bot.Yaw=bot.Pitch=0;
+                var row=Pve.Rows[bot.Seat.id];row.Open=null;row.Picks.Clear();
+                StationaryBots=stationarySetting;SetBossHidden(hidden);Pve.Boss.Hp=10000;
+                if(!hidden)Pve.Boss.Body.position=new Vector3(0,20,-8);
+                Physics.SyncTransforms();
+            }
+            try
+            {
+                // Exercise the same single entry point used by Step, with the boss on the
+                // opposite side of the bot. The former nested brains aimed at the boss here.
+                foreach(bool hidden in new[]{true,false})foreach(string spec in new[]{"pistol","fire","sword"})
+                {
+                    Setup(spec,hidden);bot.Input=Bot(bot);PveInput(bot);
+                    Check(bot.Input.Shoot&&bot.Input.AimTarget.z>1&&Math.Abs(bot.Input.AimTarget.x)<1,"primary/aim "+spec+", hidden="+hidden);
+                    float hp=add.Hp;
+                    for(int tick=0;tick<180&&add.Hp==hp;tick++)
+                    {
+                        bot.Input=Bot(bot);PveInput(bot);StepPilot(bot);StepBullets();Match.Tick(1d/60);
+                    }
+                    Check(add.Hp<hp,"bot primary did not damage minion: "+spec+", hidden="+hidden);
+                }
+                foreach(bool held in new[]{false,true})foreach(string difficulty in new[]{"normal","dummy"})
+                {
+                    Setup("pistol",true,held,difficulty);Check(Bot(bot).Shoot,"PvP practice setting silenced PvE fighter");
+                }
+                Setup("pistol",true);Pve.Recruits.Add(new NativePveRecruit{Pilot=bot,Owner=human,Role="dps"});
+                Check(Bot(bot).Shoot,"DPS recruit did not attack");Pve.Recruits.Last().Role="tank";
+                Check(Bot(bot).Shoot,"guardian did not attack");Pve.Recruits.Last().Role="medic";
+                Check(!Attacks(Bot(bot)),"medic attacked");Pve.Recruits.RemoveAll(r=>r.Pilot==bot);
+                add.Pve.ExposedAt=Time+10;Setup("pistol",true);Check(!Attacks(Bot(bot)),"unexposed add targeted");
+                add.Pve.ExposedAt=Time-1;add.Hp=0;Setup("pistol",true);Check(!Attacks(Bot(bot)),"dead add or hidden boss targeted");
+                Setup("pistol",false,true,"dummy");var bossInput=Bot(bot);
+                Check(bossInput.Shoot&&bossInput.AimTarget.z<0,"visible boss not attacked with inherited practice settings");
+                Pve=null;Match.Teams=false;
+                StationaryBots=true;bot.Seat.difficulty="normal";Check(!Attacks(Bot(bot)),"PvP stationary setting lost");
+                StationaryBots=false;bot.Seat.difficulty="dummy";Check(!Attacks(Bot(bot)),"PvP dummy setting lost");
+                Debug.Log("PASS native PvE allied bots: gun/magic/melee minion damage with hidden/visible Siren, single-target aim, inherited practice settings, recruits/medics and PvP dummy preservation");
+            }
+            finally{Pve=state;Match.Teams=true;StationaryBots=stationary;Pve.Recruits.RemoveAll(r=>r.Pilot==bot);RemoveMinion(add,false);Bullets.Clear();AbilityShots.Clear();AbilityZones.Clear();AbilityEffects.Clear();MeleeShots.Clear();}
         }
         private void ValidatePveMinionContacts(NativePilot pilot)
         {
