@@ -30,7 +30,7 @@ namespace ChipArena.UnityConversion
                 Near(s.RearX,rx,spec+" rear x");Near(s.RearZ,rz,spec+" rear z");Near(s.RearToe,rt,spec+" rear toe");Check(s.Crouch==0&&s.PelvisYaw==0&&s.Lean==0&&s.KneeSoft==0,spec+" guard owns hips");
             }
             Is("emperor",.17f,.08f,-.3f,-.13f,-.23f,.62f);Is("ansatsuken",.17f,.13f,-.15f,-.15f,-.21f,.55f);
-            Check(MeleeStance.For("sword")==MeleeStance.Melee&&MeleeStance.For("pistol")==MeleeStance.Neutral,"other stances unchanged");
+            Check(MeleeStance.For("sword")==MeleeStance.Melee&&MeleeStance.For("pistol")==MeleeStance.Pistol&&MeleeStance.For("siren")==MeleeStance.Neutral,"other stances unchanged");
             Check(NativeFighterPose.Handles("emperor")&&NativeFighterPose.Handles("ansatsuken")&&!NativeFighterPose.Handles("sword")&&!NativeFighterPose.Handles("siren"),"fighter specs");
             Check(!MeleeMotion.Handles("emperor")&&!MeleeMotion.Handles("ansatsuken"),"fighters are not on a captured sword set");
         }

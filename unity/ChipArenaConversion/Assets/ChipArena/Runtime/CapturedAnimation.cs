@@ -95,7 +95,7 @@ namespace ChipArena.UnityConversion
                     }
                 }
                 Debug.Log("PASS native first-person repeat-frame playback: magic, rocket and melee-special poses remain stable between fixed ticks.");
-                ValidateMelee(parent);ValidateFighters(parent);ValidateLeet(parent);
+                ValidateMelee(parent);ValidateFighters(parent);ValidateLeet(parent);ValidateGuns(parent);
                 Debug.Log("PASS native animation playback: "+count+" poses / "+ClipCount+" clips; position and quaternion bindings match the source conversion.");
             }
             finally { rig.Dispose(); Release(parent); }
@@ -190,6 +190,42 @@ namespace ChipArena.UnityConversion
                 if(corpse.State!=MagicMotion.Carry)throw new InvalidOperationException("L33t H4x corpse rig shows "+corpse.State+", expected "+MagicMotion.Carry);
             }
             Debug.Log("PASS native L33t H4x: runs, casts, guards, rolls, is stunned and is juggled on the magic gait with its staff, casts, guards and is stunned in first person with the staff, and its corpse rig stands on the magic gait");
+        }
+        // The guns through the native boundary (mirroring, root yaw and travel): running forward carries the lowered gun on the
+        // gait with the feet striding (the two ankles cross over, one planted on the floor), aiming, firing and reloading
+        // raise it, the roll and the juggle pose over it, the gun never dips into the floor and every bone stays finite. The
+        // Core port (Core/GunMotion) is checked in Tests/GunMotionChecks.cs.
+        private void ValidateGuns(GameObject parent)
+        {
+            using(var rig=Create(parent.transform,-8))
+            {
+                float t=3;
+                foreach(var weapon in new[]{WeaponId.Pistol,WeaponId.Rifle,WeaponId.MachineGun})
+                {
+                    var a=new Actor{Id=20+(int)weapon,SourceSpec=GunMotion.Spec(weapon),Weapon=weapon,Grounded=true,Hp=100,Velocity=new V3(0,0,6.8f),RollDirection=new V3(0,0,1),Ammo=GunRules.Get(weapon).Magazine};
+                    float z=0,lowTip=float.MaxValue,lead=0,trail=0;
+                    void Pose(string want,int frames)
+                    {
+                        for(int f=0;f<frames;f++,t+=1/60f)
+                        {
+                            z+=a.Velocity.z/60;rig.ActorPose(a,new Vector3(0,0,z),t);
+                            foreach(var b in rig.Bones)if(float.IsNaN(b.position.x)||float.IsInfinity(b.position.y)||b.position.magnitude>1e4f)throw new InvalidOperationException(weapon+" gun pose produced a non-finite bone: "+b.name);
+                            lowTip=Mathf.Min(lowTip,rig.Bones[CapturedRig.RHand].TransformPoint(0,0,weapon==WeaponId.Rifle?1.21f:weapon==WeaponId.MachineGun?.9f:.47f).y);
+                            float stride=rig.Bones[CapturedRig.LFoot].position.z-rig.Bones[CapturedRig.RFoot].position.z;lead=Mathf.Max(lead,stride);trail=Mathf.Min(trail,stride);
+                        }
+                        if(rig.State!=want)throw new InvalidOperationException(weapon+" shows "+rig.State+", expected "+want);
+                    }
+                    Pose(GunMotion.Carry,90);
+                    if(lead<.25f||trail>-.25f)throw new InvalidOperationException(weapon+" run does not stride: ankles "+lead.ToString("0.00")+" / "+trail.ToString("0.00")+" m apart");
+                    a.Aiming=true;Pose(GunMotion.Aim,20);a.Aiming=false;
+                    a.LastShot=t;Pose(GunMotion.Fire,6);
+                    a.ReloadAt=t;a.ReloadUntil=t+GunRules.Get(weapon).Reload;Pose(GunMotion.Reload,20);a.ReloadUntil=0;
+                    a.RollAt=t;Pose(GunMotion.Roll,8);a.RollAt=-100;
+                    a.JuggleUntil=t+1.25f;Pose(GunMotion.Juggle,10);a.JuggleUntil=0;t+=1;Pose(GunMotion.Carry,40);
+                    if(lowTip<.03f)throw new InvalidOperationException(weapon+" muzzle dipped into the floor: "+lowTip.ToString("0.000"));
+                }
+            }
+            Debug.Log("PASS native guns: pistol, rifle and machine gun run on the gait with the gun carried, aim, fire, reload, roll and juggle over it, muzzles above the floor");
         }
         public Player Create(Transform parent,int id) => new Player(this,parent,id);
         public sealed class Player : IDisposable
@@ -319,9 +355,10 @@ namespace ChipArena.UnityConversion
                     case PoseRoute.CapturedMelee:MeleePose(a,position,time);return;
                     case PoseRoute.Magic:MagicGaitPose(a,position,time);return;
                     case PoseRoute.Fighter:FighterPose(a,position,time);return;
+                    case PoseRoute.Gun:GunGaitPose(a,position,time);return;
                 }
-                // Generic: guns, the Siren and the first-person view models. A magic-class pilot (the four schools and the
-                // L33t H4x staff, MagicPose.School) never plays the sword set's cuts, block or stagger here.
+                // Generic: the Siren and the first-person view models (guns, magic and the rest). A magic-class pilot (the four
+                // schools and the L33t H4x staff, MagicPose.School) never plays the sword set's cuts, block or stagger here.
                 Weapon=a.Weapon; int set=Mathf.Clamp(a.VisualSet,0,3);bool magic=MagicPose.School(a)>0,sword=NativePoseRoute.SwordLayers(a);
                 float dt=Mathf.Clamp(time-lastTime,0,.1f); bool reset=fresh||time<lastTime||time-lastTime>.35f;
                 if(reset) phase=0; lastTime=time;
@@ -404,6 +441,8 @@ namespace ChipArena.UnityConversion
                 }
                 if(!firstPerson&&!roll&&!special&&!down&&a.ReactionAt>-90){if(melee==null)melee=new MeleeMotion();melee.ReactOver(pose,MeleeViewOf(a,time,meleeView),time);}
                 NativeSourceMotion.Pilot(pose,a,time);
+                // The Siren's baked clip stands still: her drift lean, trailing limbs, air tuck, aim pitch, flinch and guard ride on it.
+                if(!firstPerson&&a.SourceSpec=="siren"&&a.Hp>0&&!down&&!juggle){if(sirenDrift==null)sirenDrift=new NativeSirenDrift();sirenDrift.Apply(pose,a,time);}
                 if(special){NativeSpecialPose.Special(pose,a,time,firstPerson);State=a.SpecialKind;}
                 if(down){NativeSpecialPose.Recover(pose,a,time);State="recovery "+NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time);}
                 if(juggle){NativeJugglePose.Apply(pose,time,juggleTrack,a.Velocity.y);State="juggle";}
@@ -416,7 +455,7 @@ namespace ChipArena.UnityConversion
             // resetting the torso over the captured sword walk, which froze it. A juggle (observed from the replicated
             // JuggleUntil) owns the frame; otherwise the native roll, reaction, special and recovery layers pose before the
             // ground pass.
-            private MagicMotion magicMotion;
+            private MagicMotion magicMotion;private NativeSirenDrift sirenDrift;
             private void MagicGaitPose(Actor a,Vector3 position,float time)
             {
                 Weapon=a.Weapon;Set=Mathf.Clamp(a.VisualSet,0,3);if(magicMotion==null)magicMotion=new MagicMotion();
@@ -427,6 +466,22 @@ namespace ChipArena.UnityConversion
                 if(react){if(melee==null)melee=new MeleeMotion();melee.ReactOver(pose,MeleeViewOf(a,time,meleeView),time);}
                 State=ReferenceEquals(state,MagicMotion.Recovery)?"recovery "+NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time):state;
                 magicMotion.Finish(pose,time);
+                WritePose();fresh=false;lastTime=time;
+            }
+            // Third-person gun pilots (host, guests, bots and the killcam) run on the source's gait in the gun's stance
+            // (Core/GunMotion) with the native gun hold over it, instead of the captured sword walk/run under a reset torso and
+            // a stiff procedural leg cycle. A juggle (observed from the replicated JuggleUntil) owns the frame; otherwise the
+            // native roll, reaction, special and recovery layers pose before the ground pass.
+            private GunMotion gunMotion;
+            private void GunGaitPose(Actor a,Vector3 position,float time)
+            {
+                Weapon=a.Weapon;Set=0;if(gunMotion==null)gunMotion=new GunMotion();
+                bool juggle=Juggled(a,time),roll=!juggle&&a.Rolling(time);
+                Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,roll?Quaternion.LookRotation(ArenaPresentation.Vec(a.RollDirection)):Quaternion.Euler(0,a.Yaw,0));Root.transform.localScale=Vector3.one*a.RigScale;
+                Vector3 at=Root.transform.position;gunMotion.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);gunMotion.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;
+                State=gunMotion.Pose(a,time,pose,juggle,juggleTrack,out bool react);
+                if(react){if(melee==null)melee=new MeleeMotion();melee.ReactOver(pose,MeleeViewOf(a,time,meleeView),time);}
+                gunMotion.Finish(pose,time);
                 WritePose();fresh=false;lastTime=time;
             }
             public void Preview(int set,string state,float time,Vector3 position)

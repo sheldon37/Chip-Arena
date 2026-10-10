@@ -3,8 +3,8 @@ using System.Numerics;
 
 namespace ChipArena.UnityConversion
 {
-    // Port of motion-quality.ts locomotion / groundPass and stances.ts for the captured melee weapons, the magic gait and
-    // the DEV fighting styles (presentation only).
+    // Port of motion-quality.ts locomotion / groundPass and stances.ts for the captured melee weapons, the magic gait, the
+    // DEV fighting styles and the gun gait (presentation only).
     // Planted feet are integrated against the root's ground travel in group space, so they stay still on the floor while
     // the hips travel over them; swing feet follow a cubic path to a speed-matched landing target. The ground pass, after
     // every action layer, turns the pelvis toward the travel (counter-rotating the chest) and re-solves the legs so the
@@ -22,8 +22,14 @@ namespace ChipArena.UnityConversion
             Emperor=S(.17f,.08f,-.3f,-.13f,-.23f,.62f,0,0,0),Karate=S(.17f,.13f,-.15f,-.15f,-.21f,.55f,0,0,0);
         // stances.ts MAGIC: planted stagger with the staff side back (the magic gait, MagicMotion).
         public static readonly MeleeStance Magic=S(.15f,.08f,.14f,-.16f,-.07f,.36f,-.02f,-.08f,.02f);
+        // stances.ts guns (the gun gait, GunMotion): the pistol at shoulder width with a slight lean; the rifle bladed behind the
+        // gun (its pelvis turn scaled by the aim weight, MeleeGait.PelvisYawScale, the chest staying on aim); the machine gun
+        // wide and braced, knees soft, leaning into the weight.
+        public static readonly MeleeStance Pistol=S(.15f,.04f,.12f,-.15f,-.03f,.2f,-.015f,-.05f,.035f),Rifle=S(.09f,.12f,-.3f,-.10f,-.10f,.85f,-.025f,-.55f,.04f),
+            MachineGun=S(.19f,.10f,.2f,-.19f,-.04f,.4f,-.03f,-.1f,.08f,.15f);
         public static bool MagicSpec(string spec)=>spec=="fire"||spec=="water"||spec=="lightning"||spec=="darkness"||spec=="leet";
-        public static MeleeStance For(string spec)=>spec=="daggers"?Daggers:spec=="greatsword"?Greatsword:spec=="sword"||spec=="shield"?Melee:spec=="emperor"?Emperor:spec=="ansatsuken"?Karate:MagicSpec(spec)?Magic:Neutral;
+        public static MeleeStance For(string spec)=>spec=="daggers"?Daggers:spec=="greatsword"?Greatsword:spec=="sword"||spec=="shield"?Melee:spec=="emperor"?Emperor:spec=="ansatsuken"?Karate:MagicSpec(spec)?Magic:
+            spec=="pistol"?Pistol:spec=="rifle"?Rifle:spec=="machinegun"?MachineGun:Neutral;
         // Idle stance ankle target (group space) for one foot.
         public void Foot(bool left,out float x,out float z,out float yaw){bool lead=left==LeadLeft;x=lead?LeadX:RearX;z=lead?LeadZ:RearZ;yaw=(left?1:-1)*(lead?LeadToe:RearToe);}
     }
@@ -35,14 +41,25 @@ namespace ChipArena.UnityConversion
         public static bool TimeJumped(float prev,float time)=>time<prev-REWIND||time-prev>.35f;
         public static float CycleLength(float speed)=>speed<=RunSpeed?MeleeMath.Clamp(CycleBase+CyclePerSpeed*speed,CycleBase,CycleMax):MeleeMath.Lerp(CycleMax,DashCycle,MeleeMath.Clamp((speed-RunSpeed)/(DashSpeed-RunSpeed),0,1));
         public sealed class Foot{public float x,y,z,yaw,pitch,toe,fx,fy,fz,fyaw,uLift,lx,lz,lyaw,sx,sy,sz,syaw,spitch;public bool planted=true;
-            public Foot(float x,float z,float yaw){this.x=fx=lx=sx=x;this.z=fz=lz=sz=z;this.yaw=fyaw=lyaw=syaw=yaw;y=fy=sy=FLOOR;}}
+            public Foot(float x,float z,float yaw){Seat(x,z,yaw);}
+            // A fresh foot planted at a stance target (every field as the constructor leaves it).
+            public void Seat(float x,float z,float yaw){this.x=fx=lx=sx=x;this.z=fz=lz=sz=z;this.yaw=fyaw=lyaw=syaw=yaw;y=fy=sy=FLOOR;pitch=toe=uLift=spitch=0;planted=true;}}
         // Per-rig travel state (motion-quality Travel).
         private bool has;private string id;private float time,raw,px,pz,still,rvx,rvz,clock,forward,strafe,lean,bank,vx,vz,mvx,mvz,yaw,hipYaw,legYaw,legYawV,airAt,airVy,landAt,landDepth,dashLean,phaseOffset,phase;
         private int airLead;private bool settling,onGround,solved,fresh;private Foot[] feet;private readonly float[] armPrev={float.NaN,float.NaN},hand=new float[4];
         private readonly Quaternion[] legQ=new Quaternion[6];private readonly Vector3[] hips={new Vector3(.13f,-.32f,0),new Vector3(-.13f,-.32f,0)};
         private Vector3 solvedBodyP;private Quaternion solvedBodyQ,solvedPelvisQ;
         public bool Started=>has;
-        private static Foot[] IdleFeet(string spec){var st=MeleeStance.For(spec);st.Foot(true,out float lx,out float lz,out float ly);st.Foot(false,out float rx,out float rz,out float ry);return new[]{new Foot(lx,lz,ly),new Foot(rx,rz,ry)};}
+        // The share of the stance's pelvis turn the hips take (motion-quality: the rifle's is scaled by its aim weight); 1 for
+        // every other spec.
+        public float PelvisYawScale=1;
+        // Both feet re-seated on the stance (spawn, reset, teleport or a near-instant flip), reusing the rig's two feet.
+        private Foot[] IdleFeet(string spec)
+        {
+            var st=MeleeStance.For(spec);st.Foot(true,out float lx,out float lz,out float ly);st.Foot(false,out float rx,out float rz,out float ry);
+            if(feet==null)return new[]{new Foot(lx,lz,ly),new Foot(rx,rz,ry)};
+            feet[0].Seat(lx,lz,ly);feet[1].Seat(rx,rz,ry);return feet;
+        }
         // Per-frame scratch (no allocation in the frame loop).
         private readonly Foot[] idleFeet={new Foot(0,0,0),new Foot(0,0,0)};private readonly float[] k4=new float[4],k5=new float[5];
         private static void IdleInto(string spec,Foot[] o){var st=MeleeStance.For(spec);st.Foot(true,out o[0].x,out o[0].z,out o[0].yaw);st.Foot(false,out o[1].x,out o[1].z,out o[1].yaw);}
@@ -122,7 +139,7 @@ namespace ChipArena.UnityConversion
             // Hips turn toward the travel direction (backward travel keeps them facing the aim).
             float hipTravel=speed>1e-3f?(float)Math.Atan2(lvx,lvz):0;if(Math.Abs(hipTravel)>1.9f)hipTravel=MeleeMath.Wrap(hipTravel-MeleeMath.PI);hipTravel=MeleeMath.Clamp(hipTravel,-TravelYawMax,TravelYawMax)*MeleeMath.Clamp((speed-.1f)/.6f,0,1)*moving;
             var idle=idleFeet;IdleInto(p.Spec,idle);float mean=(MeleeMath.Wrap(feet[0].yaw-idle[0].yaw)+MeleeMath.Wrap(feet[1].yaw-idle[1].yaw))/2,turn=MeleeMath.Clamp(mean,-TurnDeadZone,TurnDeadZone);
-            var stance=MeleeStance.For(p.Spec);hipYaw=MeleeMath.Lerp(turn+stance.PelvisYaw,hipTravel,moving);
+            var stance=MeleeStance.For(p.Spec);hipYaw=MeleeMath.Lerp(turn+stance.PelvisYaw*PelvisYawScale,hipTravel,moving);
             bool settle=false;
             if(ground)for(int i=0;i<2;i++)
             {
