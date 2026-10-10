@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
     // only draws the authoritative draft (offers, ready time, pick, pick time) and sends the same choose messages.
     public sealed partial class ConversionGame
     {
-        private int draftFocus=-1;private float draftTrayBottom=.3f;private readonly Dictionary<int,float> cardSweep=new Dictionary<int,float>();private readonly bool[] cardHovered=new bool[16];
+        private int draftFocus=-1;private float draftTrayLine=-1;private readonly Dictionary<int,float> cardSweep=new Dictionary<int,float>();private readonly bool[] cardHovered=new bool[16];
         private static float DraftRevealSeconds(string id)=>id.StartsWith("l44t-")?4.6f:id.StartsWith("arcade-")||id.StartsWith("mishima-")?4.8f:3.2f;
         // NativeMatch.NextDraft's offer pause, recovered from the replicated ready time (the turn's start is not sent).
         private double DraftStarted(NativeSeat seat)
@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
         {
             var winner=match.Seat(match.SetWinner);return match.Seats.Where(p=>p.connected&&!p.AuthorityBoss&&(match.BothDraft||winner==null||!match.SameSide(p,winner))).OrderBy(p=>winner!=null&&match.SameSide(p,winner)).ToList();
         }
-        private sealed class Tray {public Rect[] Cards=Array.Empty<Rect>();public int Rows;public float Bottom;public ChipSize Size;}
+        private sealed class Tray {public Rect[] Cards=Array.Empty<Rect>();public int Rows;public float Top,Bottom;public ChipSize Size;}
         // draft-timeline.ts draftPerRow/draftRows and the .draft-row width rule; cards in a row share the tallest height.
         private Tray LayoutTray(IList<ContentChip> chips,float top,float W,float H)
         {
@@ -38,13 +38,22 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<cols;i++){float x=cols==1?(W-w)/2:28+i*(w+span);t.Cards[at+i]=new Rect(x,y,w,h);}
                 at+=cols;y+=h+8+rowGap;
             }
-            t.Bottom=y-rowGap;return t;
+            t.Top=t.Cards[0].y;t.Bottom=y-rowGap;return t;
         }
-        // draft-screen.css :before / :after shades behind the heading and over the cut across the pilot's chest.
-        private static void DraftShades(int rows,float W,float H)
+        // The tray sits low, in front of the pilot's waist (owner 2026-10-10: the pilot stands behind the chips and looks down
+        // at them; NativeDraftStage frames the pilot above it): moved down so its last row ends on `bottom` (above the
+        // nameplate and the footer), never above `top` (the heading's bottom edge). Card sizes and spacing are LayoutTray's.
+        private static void LowerTray(Tray t,float top,float bottom)
         {
-            float top=rows==2?Mathf.Min(H*.6f,640):Mathf.Min(H*.44f,460);U.Fill(new Rect(0,0,W,top*.52f),U.Hex(0x06070b,.5f));U.Fade(new Rect(0,0,W,top*.52f),U.Hex(0x06070b,.32f));U.Fade(new Rect(0,top*.52f,W,top*.48f),U.Hex(0x06070b,.5f));
-            U.Fade(new Rect(0,H*.84f,W,H*.16f),U.Hex(0x06070b,.6f),false);
+            float off=Mathf.Max(top-t.Top+10,bottom-t.Bottom);for(int i=0;i<t.Cards.Length;i++)t.Cards[i].y+=off;t.Top+=off;t.Bottom+=off;
+        }
+        // draft-screen.css :before / :after shades, moved with the composition: a light one behind the heading (the pilot's head
+        // stands below it) and one rising from behind the tray to the bottom, so the cards read in front of the pilot's lower
+        // body and the nameplate stays legible.
+        private static void DraftShades(Tray tray,float W,float H)
+        {
+            float head=Mathf.Min(H*.24f,230);U.Fill(new Rect(0,0,W,head*.4f),U.Hex(0x06070b,.42f));U.Fade(new Rect(0,head*.4f,W,head*.6f),U.Hex(0x06070b,.42f));
+            float line=tray!=null&&tray.Cards.Length>0?tray.Top:H*.72f;U.Fade(new Rect(0,line-90,W,H-line+90),U.Hex(0x06070b,.62f),false);
         }
         private static void Nameplate(NativeSeat seat,string label,float x,float y)
         {
@@ -93,10 +102,12 @@ namespace ChipArena.UnityConversion
         {
             var seat=match.Seat(match.DraftSeat);if(seat==null)return;float W=U.W,H=U.H,now=(float)match.Time;bool own=!seat.bot&&seat.id==arena.Local.Seat.id;
             var chips=seat.offers.Select(id=>content.Chip(id)).ToList();var chosen=match.Chosen!=null?content.Chip(match.Chosen):null;float age=chosen==null?-1:(float)(match.Time-match.ChosenAt);
+            // The fly, shatter and spotlight follow the stage's smooth copy of the pick's age (the replicated clock steps).
+            if(age>=0&&Math.Abs(presentation.DraftAge-age)<.3f)age=presentation.DraftAge;
             int turn=Mathf.Max(1,DraftOrder().FindIndex(p=>p.id==seat.id)+1),total=Math.Max(1,DraftOrder().Count);
             string title=chosen!=null?"Upgrade secured":own?"Make your next move":seat.name+" is choosing",hint=chosen!=null?"":own?"Choose one Chip. Everyone can see this draft.":"Watch the draft. All players see the same choices and the selected upgrade.";
             if(chosen==null||draftTraySize==Vector2.zero)draftTraySize=new Vector2(W,H);
-            DraftShades(draftTray?.Rows??1,W,H);DraftHeader("CHIP DRAFT / SET "+match.Set,U.Hex(0xc0c1ca),title,hint,W,H,out float top);if(chosen!=null)top=draftTrayTop;else draftTrayTop=top;
+            DraftShades(draftTray,W,H);DraftHeader("CHIP DRAFT / SET "+match.Set,U.Hex(0xc0c1ca),title,hint,W,H,out float top);if(chosen!=null)top=draftTrayTop;else draftTrayTop=top;
             // Turn order and the timer (top right); the timer leaves with the pick.
             float x=W-(H<=760?22:28),y=H<=760?16:22;var order=DraftOrder();int at=order.FindIndex(p=>p.id==seat.id);
             string turnText="TURN "+turn+" / "+total;float tw=U.Measure(turnText,12,true).x;U.Text(new Rect(x-tw,y,tw,28),turnText,12,U.Hex(0xf4f4f5),TextAnchor.MiddleLeft,bold:true);float px=x-tw-6;
@@ -107,8 +118,9 @@ namespace ChipArena.UnityConversion
                 var dot=new Rect(r.x+10,r.y+10,8,8);U.Round(dot,SeatColor(p),4);U.Text(new Rect(dot.xMax+6,r.y,lw,r.height),label,12,U.Hex(0xf4f4f5),TextAnchor.MiddleLeft);px=r.x-7;
             }
             if(chosen==null){string timer=Math.Max(0,Math.Ceiling(match.PhaseEnd-match.Time))+" seconds";float w=U.Measure(timer,13,true,true).x+22;var r=new Rect(x-w,y+38,w,28);U.Pill(r,U.Hex(0x15161c,.85f),new Color(1,1,1,.14f));U.Text(r,timer,13,U.Hex(0xff996f),TextAnchor.MiddleCenter,bold:true,mono:true);}
-            // The tray: offers boot in reading order from the turn's start; only the picker's cards enable, after the ready time.
-            if(chosen==null)draftTray=LayoutTray(chips,top,W,H);var tray=draftTray;if(tray==null||tray.Cards.Length!=chips.Count)return;draftCards=tray.Cards;draftTrayBottom=tray.Bottom/H;
+            // The tray (low, in front of the pilot): offers boot in reading order from the turn's start; only the picker's cards
+            // enable, after the ready time.
+            if(chosen==null){draftTray=LayoutTray(chips,top,W,H);LowerTray(draftTray,top,H-(H<=760?54:66));}var tray=draftTray;if(tray==null||tray.Cards.Length!=chips.Count)return;draftCards=tray.Cards;draftTrayLine=tray.Top/H;
             float elapsed=(float)(now-DraftStarted(seat));bool enabled=own&&chosen==null&&match.Time>=match.ReadyAt;int index=chosen!=null?chips.IndexOf(chosen):-1;
             int pick=DrawTray(tray,chips,i=>seat.chips.TryGetValue(chips[i].id,out int n)?n-(i==index?1:0):0,elapsed,enabled,index,i=>chosen!=null,false);
             int key=DraftKeys(chips.Count,enabled,false);if(key>=0)pick=key;if(pick>=0&&enabled){nativeAudio.Play("ui",null,.4f);ChooseChip(seat.id,chips[pick].id);}
@@ -145,10 +157,11 @@ namespace ChipArena.UnityConversion
                 U.Round(piece,U.Hex(0x14151b,a),3,U.A(edge,a));U.Fill(new Rect(piece.x+2,piece.y+2,piece.width-4,piece.height-4),U.A(rare,.12f*a*glow));U.Pop();
             }
         }
-        // draft-view.ts: translate toward the palm by fly, scale 1-.88 fly, rotate -9 deg x fly, fade with the grab.
+        // draft-view.ts: translate toward the palm by fly, scale 1-.88 fly, rotate -9 deg x fly, fade with the grab (the stage's
+        // slowed timeline, NativeDraftStage).
         private void FlyToPalm(Rect r,ContentChip chip,int copies,float age,ChipSize size)
         {
-            float fly=NativeDraftRules.Fly(age),fade=NativeDraftRules.Fade(age);if(fade>=1)return;Vector2 target=draftPalm;if(target==Vector2.zero)target=r.center;
+            float fly=NativeDraftStage.Fly(age),fade=NativeDraftStage.Fade(age);if(fade>=1)return;Vector2 target=draftPalm;if(target==Vector2.zero)target=r.center;
             U.Push(r.center,(target-r.center)*fly,1-.88f*fly,-9*fly);var rare=NativeChipCard.Rarity(chip.rarity);U.Glow(r,U.A(rare,.55f*(1-fade)),42);U.Round(new Rect(r.x-2,r.y-2,r.width+4,r.height+4),Color.clear,10,U.A(rare,1-fade),2);
             var look=ChipLook.Idle(Time.unscaledTime);look.Alpha=1-fade;look.Plain=true;NativeChipCard.Draw(r,chip,copies,size,look);U.Pop();
         }
@@ -183,11 +196,11 @@ namespace ChipArena.UnityConversion
             if(pveOpenId!=pick.Id){pveOpenId=pick.Id;pveOpenAt=Time.unscaledTime;draftFocus=-1;}float elapsed=Time.unscaledTime-pveOpenAt;
             var chips=pick.Offers.Select(id=>arena.PveChip(id)).Where(c=>c!=null).ToList();bool rainbow=pick.Tier=="rainbow";Color tier=rainbow?Color.white:NativeChipCard.Rarity(pick.Tier);
             string source=rainbow?"RAINBOW · 8 MAX-RARITY CHOICES":pick.Source=="start"?"BEGINNING CHIP":(pick.Source=="wave"?"WAVE REWARD · ":"DISPENSED · ")+TierName(pick.Tier).ToUpperInvariant();
-            DraftShades(pveTray?.Rows??1,W,H);DraftHeader(source,tier,"Make your next move","Choose one Chip. This choice is yours alone.",W,H,out float top);
+            DraftShades(pveTray,W,H);DraftHeader(source,tier,"Make your next move","Choose one Chip. This choice is yours alone.",W,H,out float top);
             // Meta (top right): the queue and the vulnerability warning.
             float x=W-28,y=22;string warn="YOU ARE VULNERABLE WHILE CHOOSING";float ww=U.Measure(warn,11,true,true,.08f).x;U.Text(new Rect(x-ww,y,ww+2,24),warn,11,U.Hex(0xd8dae4),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.08f);
             int queued=Math.Max(0,row.Picks.Count-1);if(queued>0){string q=(queued+" more waiting").ToUpperInvariant();float qw=U.Measure(q,11,true,true,.08f).x+20;var r=new Rect(x-ww-12-qw,y,qw,24);U.Pill(r,U.Hex(0xff6b35,.13f),Color.clear);U.Text(r,q,11,U.Hex(0xffb38f),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.08f);}
-            pveTray=LayoutTray(chips,top,W,H);draftCards=pveTray.Cards;draftTrayBottom=pveTray.Bottom/H;
+            pveTray=LayoutTray(chips,top,W,H);LowerTray(pveTray,top,H-142);draftCards=pveTray.Cards;draftTrayLine=pveTray.Top/H;
             int choice=DrawTray(pveTray,chips,i=>arena.Local.Seat.chips.TryGetValue(chips[i].id,out int n)?n:0,elapsed,true,-1,i=>false,true);int key=DraftKeys(chips.Count,true,true);if(key>=0)choice=key;
             if(choice>=0){RecordPvePick(chips,choice,pick);pveOpenId=-1;ChoosePveChip(pick.Id,chips[choice].id);return;}
             Nameplate(arena.Local.Seat,"Your pick",28,H-22-66);

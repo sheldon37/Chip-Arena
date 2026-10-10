@@ -12,7 +12,7 @@ internal static class DraftPlantChecks
     public static IEnumerable<string> Run()
     {
         // Size: the held chip at the top of its breath stays inside the pilot's palm, and reads as a real chip.
-        float biggest=0;for(float t=0;t<10;t+=.01f)biggest=Math.Max(biggest,NativeDraftPlant.HeldChipScale(.7f,t,false)*NativeDraftPlant.PickupWidth);
+        float biggest=0;for(float t=0;t<10;t+=.01f)biggest=Math.Max(biggest,NativeDraftPlant.HeldChipScale(NativeDraftPlant.Contact+.22f,t,false)*NativeDraftPlant.PickupWidth);
         Check(biggest<NativeDraftPlant.PalmWidth&&biggest>.1f,"held chip "+biggest+" m against a "+NativeDraftPlant.PalmWidth+" m palm");
         Check(NativeDraftPlant.HeldChipScale(NativeDraftPlant.PlantEnd,0,true)<1e-4f,"the chip is not gone after the plant");
         Check(NativeDraftPlant.SoundAt>=NativeDraftPlant.CarryEnd-.02f&&NativeDraftPlant.SoundAt<=NativeDraftPlant.PlantEnd&&NativeDraftPlant.DetailsAt>=NativeDraftPlant.PulseStart+.3f&&NativeDraftPlant.ReturnEnd<3.2f,"timeline");
@@ -47,12 +47,12 @@ internal static class DraftPlantChecks
         yield return "Wrist plant at 30/60/144/240 Hz, both sides: fastest wrist or chip "+fastest.ToString("0.00")+" m/s (no pops), palm on the wrist within "+(worstPlant*1000).ToString("0")+" mm at the plant, inner wrist facing the camera (normal z >= "+lowestNormal.ToString("0.00")+"), arms back to the idle, 0 bytes per frame";
         yield return InstallCue();
     }
-    // One stage frame as NativeDraftPresentation runs it: the idle, the tray's reach toward a card on the plane z=.42, then the
-    // plant. Returns the reaching side.
+    // A plant frame after a reach toward a card on the plane z=.42 (NativeDraftStage drives the full stage, DraftStageChecks).
+    // Returns the reaching side.
     private static bool Stage(CapturedRig.Pose pose,NativeDraftPlant plant,bool cardLeft,float age)
     {
         NativeDraftRules.Pose(pose,0);pose.World();var target=new Vector3(cardLeft?.62f:-.62f,.42f,.42f);bool left=target.X>0;
-        int hand=left?CapturedRig.LHand:CapturedRig.RHand,clav=left?CapturedRig.LClav:CapturedRig.RClav;float weight=1,reach=NativeDraftRules.Reach(age);
+        int hand=left?CapturedRig.LHand:CapturedRig.RHand,clav=left?CapturedRig.LClav:CapturedRig.RClav;float weight=1,reach=NativeDraftStage.Reach(age);
         var shoulder=pose.WorldPosition[clav+1];var point=shoulder+Vector3.Normalize(target-shoulder)*(.495f+.017f*reach);point.X=left?Math.Max(.36f,point.X):Math.Min(-.36f,point.X);
         var rest=pose.WorldPosition[hand];var control=shoulder+new Vector3(left?.06f:-.06f,-.12f,.34f);point=point*weight*weight+control*(2*weight*(1-weight))+rest*(1-weight)*(1-weight);
         var local=Vector3.Transform(point-pose.WorldPosition[CapturedRig.Chest],Quaternion.Inverse(pose.WorldRotation[CapturedRig.Chest]));

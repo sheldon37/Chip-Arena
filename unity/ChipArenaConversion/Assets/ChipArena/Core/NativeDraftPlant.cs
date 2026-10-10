@@ -2,14 +2,16 @@ using System;
 using System.Numerics;
 namespace ChipArena.UnityConversion
 {
-    // The wrist plant on the draft stage (owner request, after the source's palm contact at .48 s): the other forearm rises in
+    // The wrist plant on the draft stage (owner request, after the palm contact): the other forearm rises in
     // front of the chest with the inner wrist turned up toward the camera, the hand that took the chip carries it there over a
     // small arc and presses it into the wrist cuff, a short rarity pulse runs from the plant, then both arms settle back into
     // the idle. The details spotlight follows the pulse; the install cue lands on the plant (NativeInstallCue). Times are
-    // seconds after the authoritative pick, positions the stage rig's root frame in source axes. Presentation only.
+    // seconds after the authoritative pick (the source grab's .48 s contact slowed to .62 s and the plant with it, owner
+    // 2026-10-10: smooth and unhurried; NativeDraftStage runs the reach), positions the stage rig's root frame in source axes.
+    // Presentation only.
     public sealed class NativeDraftPlant
     {
-        public const float Contact=.48f,RaiseStart=.30f,RaiseEnd=.72f,CarryEnd=.88f,SeatSpan=.18f,PlantEnd=1.02f,PulseStart=.88f,PulseEnd=1.42f,ReturnStart=1.05f,ReturnEnd=1.5f,SoundAt=.88f,DetailsAt=1.3f;
+        public const float Contact=.62f,RaiseStart=.40f,RaiseEnd=.94f,CarryEnd=1.14f,SeatSpan=.24f,PlantEnd=1.32f,PulseStart=1.14f,PulseEnd=1.84f,ReturnStart=1.36f,ReturnEnd=1.95f,SoundAt=1.14f,DetailsAt=1.5f;
         public static float Raise(float age)=>MathUtil.Smooth((age-RaiseStart)/(RaiseEnd-RaiseStart))*(1-Return(age));
         public static float Carry(float age)=>MathUtil.Smooth((age-Contact)/(CarryEnd-Contact));
         public static float Seat(float age)=>MathUtil.Smooth((age-(CarryEnd-SeatSpan))/SeatSpan);
@@ -31,7 +33,7 @@ namespace ChipArena.UnityConversion
         public static Vector3 Raised(bool left)=>new Vector3(left?-.02f:.02f,.06f,.30f);
         // Where the chip goes in: the palm side of the wrist cuff (hand frame).
         public static readonly Vector3 CuffLocal=new Vector3(0,.005f,.105f);
-        // The tray's reaching wrist turn at the contact (NativeDraftPresentation), the carry's starting turn.
+        // The tray's reaching wrist turn at the contact (NativeDraftStage), the carry's starting turn.
         public static readonly Quaternion ContactWrist=CapturedRig.Euler(-1.45f);
 
         // Outputs (root frame): the chip, its turn and whether it shows; the plant point and the wrist's outward normal.
