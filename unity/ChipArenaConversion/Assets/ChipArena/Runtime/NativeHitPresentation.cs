@@ -9,6 +9,8 @@ namespace ChipArena.UnityConversion
     public sealed partial class ArenaPresentation
     {
         private readonly NativeHitLedger hitLedger=new NativeHitLedger();
+        // The view model's daze, held through a combo (resets itself for another pilot or a rewind).
+        private readonly NativeStunClock viewStun=new NativeStunClock();
         /// <summary>Reads this frame's events (once per event id); Render calls it before posing, the camera kick may call it first.</summary>
         public void ObserveHits(Snapshot s)=>hitLedger.Observe(s);
         /// <summary>
@@ -27,7 +29,7 @@ namespace ChipArena.UnityConversion
         // The first-person view model drops its guard while the local pilot is stunned and jolts back on a melee hit.
         private Vector3 HitViewDip(Actor source,float time,out float pitch)
         {
-            hitLedger.Hit(source.Id,source.ReactionAt,out var hit);var d=NativeHitRules.ViewDip(source,time,hit,out pitch);return new Vector3(d.X,d.Y,d.Z);
+            hitLedger.Hit(source.Id,source.ReactionAt,out var hit);var d=NativeHitRules.ViewDip(source,time,viewStun,hit,out pitch);return new Vector3(d.X,d.Y,d.Z);
         }
     }
 }

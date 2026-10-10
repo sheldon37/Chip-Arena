@@ -102,11 +102,12 @@ internal static class HitReactionChecks
     }
     private static void Classification(List<string> log)
     {
-        Check(NativeHitRules.Melee(0,"direct",null,false)&&!NativeHitRules.Melee(0,"secondary",null,false),"a direct source-less hit is a PvE add's swing; a stage hit is not");
-        foreach(var s in new[]{"sword","daggers","greatsword","shield"}){Check(NativeHitRules.Melee(2,"direct",s,false),s+" direct hits are melee");Check(!NativeHitRules.Melee(2,"thorns",s,false)&&!NativeHitRules.Melee(2,"secondary",s,false),s+" thorns and secondary damage are not melee");}
-        foreach(var s in new[]{"pistol","rifle","machinegun","fire","water","lightning","darkness","leet"})Check(!NativeHitRules.Melee(2,"direct",s,false)&&!NativeHitRules.Melee(2,"direct",s,true),s+" never melees");
-        foreach(var s in new[]{"emperor","ansatsuken"})Check(NativeHitRules.Melee(2,"direct",s,true)&&!NativeHitRules.Melee(2,"direct",s,false),s+": a strike is melee, a Hadoken is not");
-        Check(NativeHitRules.Melee(2,"secondary","siren",false)&&!NativeHitRules.Melee(2,"direct","siren",false),"the Siren's claws (secondary) are melee, her shots are not");
+        Check(NativeHitRules.Melee(0,"direct",null,false,true)&&!NativeHitRules.Melee(0,"secondary",null,false,true),"a direct source-less hit is a PvE add's swing; a stage hit is not");
+        foreach(var s in new[]{"sword","daggers","greatsword","shield"}){Check(NativeHitRules.Melee(2,"direct",s,false,true),s+" direct hits are melee");Check(!NativeHitRules.Melee(2,"thorns",s,false,true)&&!NativeHitRules.Melee(2,"secondary",s,false,true)&&!NativeHitRules.Melee(2,"blast",s,false,true),s+" thorns, secondary and blast damage are not melee");}
+        foreach(var s in new[]{"pistol","rifle","machinegun","fire","water","lightning","darkness","leet"})Check(!NativeHitRules.Melee(2,"direct",s,false,true)&&!NativeHitRules.Melee(2,"direct",s,true,true),s+" never melees");
+        foreach(var s in new[]{"emperor","ansatsuken"})Check(NativeHitRules.Melee(2,"direct",s,true,true)&&!NativeHitRules.Melee(2,"direct",s,false,true),s+": a strike is melee, a Hadoken is not");
+        // SirenHit deals every Siren hit as non-direct ("secondary"); only her claws record a reaction on that tick.
+        Check(NativeHitRules.Melee(2,"secondary","siren",false,true)&&!NativeHitRules.Melee(2,"secondary","siren",false,false),"a Siren hit that made the target's reaction is a claw; her shots, fields and areas (no reaction) are not");
         float dag=NativeHitRules.Heft("daggers",15),sw=NativeHitRules.Heft("sword",30),sh=NativeHitRules.Heft("shield",23),gs=NativeHitRules.Heft("greatsword",52);
         Check(dag<sw&&sw<sh&&sh<gs,"heft follows the content weights: daggers < sword < shield < greatsword");
         foreach(var s in new[]{"daggers","sword","shield","greatsword","siren","emperor","ansatsuken",null,"add","pistol","fire"})foreach(float amount in new[]{-5f,0,8,30,500,float.NaN,float.PositiveInfinity})
@@ -133,7 +134,32 @@ internal static class HitReactionChecks
         l.Observe(S(new ArenaEvent{Id=13,Kind=EventKind.Hit,Source=3,Target=1,Time=7,Detail="direct"},new ArenaEvent{Id=15,Kind=EventKind.Block,Source=1,Target=3,Time=9.1f}));Check(l.Hit(1,8,out _)&&l.Block(1,9.2f,.5f,out b)&&b.At==9,"events are read once per id");
         l.Observe(S(new ArenaEvent{Id=2,Kind=EventKind.Hit,Source=2,Target=1,Time=1,Detail="direct"}));Check(l.Hit(1,1,out h)&&h.Melee&&!l.Block(1,9.2f,.5f,out _),"restarted event ids start a fresh ledger");
         l.Observe(null);l.Observe(new Snapshot());Check(true,"null snapshots are ignored");
-        log.Add("ledger: melee and heft by attacker, fighter strike vs Hadoken, headshot flag, blocks with the attacker side and window, events read once, restart on new ids");
+        // The hit that made the target's reaction is kept: a same-tick shrapnel blast (NativeChips ChipBlast, damageKind
+        // "blast") or a later damage-field tick ("field") records no reaction and must not replace it.
+        var siren=new Actor{Id=5,SourceSpec="siren",Position=new V3(1.3f,0,0)};var rifle=new Actor{Id=6,SourceSpec="rifle"};
+        Snapshot V(params ArenaEvent[] e)=>new Snapshot{Actors=new[]{victim,sword,gun,emp,siren,rifle},Events=e};
+        l.Clear();victim.ReactionAt=20;
+        l.Observe(V(new ArenaEvent{Id=30,Kind=EventKind.Hit,Source=2,Target=1,Time=20,Amount=30,Detail="direct"},new ArenaEvent{Id=31,Kind=EventKind.Hit,Source=2,Target=1,Time=20,Amount=12,Detail="blast"}));
+        Check(l.Hit(1,20,out h)&&h.Melee&&Math.Abs(h.Heft-1)<1e-6f,"a same-tick chip blast after a sword blow keeps the blow's melee record");
+        for(int i=0;i<30;i++)l.Observe(V(new ArenaEvent{Id=32+i,Kind=EventKind.Hit,Source=3,Target=1,Time=20.02f+i/60f,Amount=1,Detail="field"}));
+        Check(l.Hit(1,20,out h)&&h.Melee,"later damage-field ticks keep the reaction's melee record (the kick and jolt run on)");
+        // The Siren's claw through the real path: SirenHit's "secondary" hit with the reaction on that tick; her hellfire and
+        // seeker hits (secondary, no reaction) neither replace it nor count as melee.
+        victim.ReactionAt=21;l.Observe(V(new ArenaEvent{Id=70,Kind=EventKind.Hit,Source=5,Target=1,Time=21,Amount=40,Detail="secondary"}));
+        Check(l.Hit(1,21,out h)&&h.Melee&&Math.Abs(h.Heft-1.35f)<1e-6f,"a Siren claw (secondary, with its reaction) is a heavy melee hit");
+        l.Observe(V(new ArenaEvent{Id=71,Kind=EventKind.Hit,Source=5,Target=1,Time=21.1f,Amount=1.25f,Detail="secondary"},new ArenaEvent{Id=72,Kind=EventKind.Hit,Source=5,Target=1,Time=21.2f,Amount=85,Detail="secondary"}));
+        Check(l.Hit(1,21,out h)&&h.Melee,"a Siren hellfire tick and seeker after her claw keep the claw's record");
+        var shots=new NativeHitLedger();victim.ReactionAt=-100;shots.Observe(V(new ArenaEvent{Id=1,Kind=EventKind.Hit,Source=5,Target=1,Time=3,Amount=85,Detail="secondary"}));
+        Check(shots.Hit(1,3,out h)&&!h.Melee,"a Siren shot that made no reaction is not melee");
+        // A later hit that made a new reaction (a direct pistol shot) does replace it.
+        victim.ReactionAt=22;l.Observe(V(new ArenaEvent{Id=73,Kind=EventKind.Hit,Source=3,Target=1,Time=22,Amount=23,Detail="direct"}));
+        Check(l.Hit(1,22,out h)&&!h.Melee&&!l.Hit(1,21,out _),"a later hit with its own reaction replaces the record");
+        // Only melee blocks are kept: a blocked bullet neither shoves nor replaces a melee block.
+        l.Observe(V(new ArenaEvent{Id=74,Kind=EventKind.Block,Source=1,Target=6,Time=23}));Check(!l.Block(1,23.1f,.5f,out _),"a blocked rifle bullet is not a melee block");
+        l.Observe(V(new ArenaEvent{Id=75,Kind=EventKind.Block,Source=1,Target=2,Time=24},new ArenaEvent{Id=76,Kind=EventKind.Block,Source=1,Target=6,Time=24.1f}));
+        Check(l.Block(1,24.2f,.5f,out b)&&b.At==24&&b.Melee,"a blocked bullet after a blocked sword blow keeps the melee block");
+        victim.ReactionAt=-100;
+        log.Add("ledger: melee and heft by attacker, fighter strike vs Hadoken, headshot flag, blocks with the attacker side and window, events read once, restart on new ids; the reaction's hit survives a same-tick blast, field ticks and Siren shots; Siren claws only with their reaction; melee blocks only");
     }
     private static void Envelope(List<string> log)
     {
@@ -216,7 +242,38 @@ internal static class HitReactionChecks
                 }
             }
             Check(shove>.01f&&none<1e-5f,victim+": a blocked greatsword blow shoves the guard ("+shove+"), a raised guard alone does nothing ("+none+")");
-            log.Add(victim+" block hit shoves the guard "+shove.ToString("0.000")+" m (none without a blow)");
+            // Blocked bullets (BlockProc runs for direct primary shots) do not shove; a fast string of blocked melee blows
+            // hands each shove to the next (no frame drops back to rest); a blocked bullet does not cut a melee shove short.
+            float gunShove=0,worstDrop=0,cut=1;
+            {
+                var g=new Run2(victim);
+                for(float t=1;t<3;t+=Dt)
+                {
+                    foreach(var r in g.Both){r.A.BlockAt=Hit-.12f;r.A.BlockUntil=Hit+1;}
+                    foreach(float at in new[]{2f,2.1f,2.2f,2.3f})if(t>=at-1e-4f&&t<at+Dt-1e-4f)g.Ledger.Observe(new Snapshot{Actors=new[]{g.On.A,new Actor{Id=3,SourceSpec="machinegun",Position=new V3(0,0,8)}},Events=new[]{new ArenaEvent{Id=++eventId,Kind=EventKind.Block,Source=1,Target=3,Time=t}}});
+                    g.Step(t,Dt);gunShove=Math.Max(gunShove,g.MaxDelta());
+                }
+                var m=new Run2(victim);float prev=0;
+                for(float t=1;t<3;t+=Dt)
+                {
+                    foreach(var r in m.Both){r.A.BlockAt=Hit-.12f;r.A.BlockUntil=Hit+1;}
+                    bool blow=false;
+                    foreach(float at in new[]{2f,2.2f,2.4f})if(t>=at-1e-4f&&t<at+Dt-1e-4f){blow=at>2;m.Ledger.Observe(new Snapshot{Actors=new[]{m.On.A,new Actor{Id=2,SourceSpec="greatsword",Position=new V3(0,0,1.3f)}},Events=new[]{new ArenaEvent{Id=++eventId,Kind=EventKind.Block,Source=1,Target=2,Time=t}}});}
+                    m.Step(t,Dt);float d=m.Delta(CapturedRig.Body).Length();if(blow&&prev>0)worstDrop=Math.Max(worstDrop,1-d/prev);prev=d;
+                }
+                var c=new Run2(victim);
+                for(float t=1;t<2.2f;t+=Dt)
+                {
+                    foreach(var r in c.Both){r.A.BlockAt=Hit-.12f;r.A.BlockUntil=Hit+1;}
+                    if(t>=2-1e-4f&&t<2+Dt-1e-4f)c.Ledger.Observe(new Snapshot{Actors=new[]{c.On.A,new Actor{Id=2,SourceSpec="greatsword",Position=new V3(0,0,1.3f)}},Events=new[]{new ArenaEvent{Id=++eventId,Kind=EventKind.Block,Source=1,Target=2,Time=t}}});
+                    if(t>=2.1f-1e-4f&&t<2.1f+Dt-1e-4f)c.Ledger.Observe(new Snapshot{Actors=new[]{c.On.A,new Actor{Id=3,SourceSpec="rifle",Position=new V3(0,0,8)}},Events=new[]{new ArenaEvent{Id=++eventId,Kind=EventKind.Block,Source=1,Target=3,Time=t}}});
+                    c.Step(t,Dt);if(t>2.1f)cut=Math.Min(cut,c.On.Layer.BlockWeight);
+                }
+            }
+            Check(gunShove<1e-5f,victim+": blocked machinegun fire does not shove the guard ("+gunShove+")");
+            Check(worstDrop<.25f,victim+": a string of blocked melee blows hands each shove to the next ("+worstDrop+" of the hips offset lost on a block frame)");
+            Check(cut>.3f,victim+": a blocked bullet does not cut a melee block's shove short ("+cut+")");
+            log.Add(victim+" block hit shoves the guard "+shove.ToString("0.000")+" m (none without a blow, none for blocked bullets); chained blocks lose at most "+(worstDrop*100).ToString("0")+"% on a block frame");
         }
     }
     private static void NonMelee(List<string> log)
@@ -242,6 +299,31 @@ internal static class HitReactionChecks
             Check(peak>.9f&&outside==0,victim+": the dazed stun pose holds while stunned ("+peak+") and is 0 after ("+outside+")");
             Check(after<.003f,victim+": after the stun the pose is the route's own again ("+after+" m)");
             log.Add(victim+" dazed stun pose: weight "+peak.ToString("0.00")+" during a .593 s dagger stun, 0 after, back to the route within "+(after*1000).ToString("0.00")+" mm");
+            // A combo inside the stun holds the daze: an Emperor chain (strikes .2 s apart, each extending the stun .25 s) and
+            // a second dagger hit inside a .593 s dagger stun never lower it by more than .05 on a hit frame; a blow after
+            // the stun has ended starts a fresh daze.
+            float drop=0,low=1,held=1,fresh=1;
+            {
+                var c=new Run2(victim);int n=0;float prev=0;
+                for(float t=1;t<3;t+=Dt)
+                {
+                    bool hit=false;if(n<3&&t>=2+.2f*n-1e-4f){Strike(c.Both,c.Ledger,"emperor",0,t,.25f,8,fighter:true);n++;hit=n>1;}
+                    c.Step(t,Dt);float w=c.On.Layer.DazeWeight;if(hit)drop=Math.Max(drop,prev-w);if(t>2.2f&&t<2.4f)low=Math.Min(low,w);prev=w;
+                }
+                var d=new Run2(victim);n=0;prev=0;
+                for(float t=1;t<3.2f;t+=Dt)
+                {
+                    bool hit=false;
+                    if(n==0&&t>=2-1e-4f){n=1;Strike(d.Both,d.Ledger,"daggers",0,t,.593f,15);}
+                    else if(n==1&&t>=2.3f-1e-4f){n=2;hit=true;Strike(d.Both,d.Ledger,"daggers",0,t,0,15);}
+                    else if(n==2&&t>=2.9f-1e-4f){n=3;Strike(d.Both,d.Ledger,"daggers",0,t,.25f,15);fresh=0;}
+                    d.Step(t,Dt);float w=d.On.Layer.DazeWeight;if(hit)drop=Math.Max(drop,prev-w);if(t>2.3f&&t<2.45f)held=Math.Min(held,w);if(n==3&&t<2.95f)fresh=Math.Max(fresh,w);prev=w;
+                }
+            }
+            Check(drop<=.05f,victim+": a blow inside the stun does not drop the daze ("+drop+" on a hit frame)");
+            Check(low>.8f&&held>.95f,victim+": the daze holds through an Emperor chain ("+low+") and a second dagger hit ("+held+")");
+            Check(fresh<.05f,victim+": a blow after the stun ended starts a fresh daze ("+fresh+")");
+            log.Add(victim+" daze through a combo: Emperor chain >= "+low.ToString("0.00")+", second dagger hit >= "+held.ToString("0.00")+", largest drop on a hit frame "+drop.ToString("0.000"));
         }
     }
     private static void Planted(List<string> log)
@@ -304,18 +386,42 @@ internal static class HitReactionChecks
             worst=Math.Max(worst,Math.Max(Math.Abs(k.Pitch),Math.Abs(k.Roll)));
         }
         // The first-person view model's guard drop: only while stunned, gone at the stun end.
-        float dipMid=NativeHitRules.ViewDip(front,2.15f,default,out float dp).Y,dipEnd=NativeHitRules.ViewDip(front,2.25f,default,out float de).Y,dipNone=NativeHitRules.ViewDip(new Actor{Id=1,Hp=100},2.1f,default,out _).Y;
+        var clock=new NativeStunClock();for(float t=1.9f;t<2.15f;t+=Dt)NativeHitRules.ViewDip(front,t,clock,default,out _);
+        float dipMid=NativeHitRules.ViewDip(front,2.15f,clock,default,out float dp).Y,dipEnd=NativeHitRules.ViewDip(front,2.25f,clock,default,out float de).Y,dipNone=NativeHitRules.ViewDip(new Actor{Id=1,Hp=100},2.1f,new NativeStunClock(),default,out _).Y;
         Check(dipMid<-.02f&&dp>2&&dipEnd==0&&de==0&&dipNone==0,"the view model drops its guard only while stunned");
-        log.Add("first-person kick: front up "+pitch.ToString("0.00")+" deg, back down, side roll with the push, heft-scaled, off with camera shake, reduced effects "+reduced.ToString("0.00")+" deg, none for non-melee, block light; bounded (max "+worst.ToString("0.00")+" deg over 4000 random inputs); view-model guard drop only while stunned");
+        // ...and holds it through a combo: an Emperor chain's strikes (.2 s apart, each extending the stun .25 s) never
+        // raise the guard by more than .05 of the drop on a hit frame.
+        {
+            var v=new Actor{Id=1,Hp=100};var vc=new NativeStunClock();float prev=0,rise=0,low=99;int n=0;
+            for(float t=1.9f;t<2.8f;t+=Dt)
+            {
+                bool hit=false;if(n<3&&t>=2+.2f*n-1e-4f){var s2=Struck(0,t);v.ReactionAt=s2.ReactionAt;v.ReactionDir=s2.ReactionDir;v.StunUntil=t+.25f;n++;hit=n>1;}
+                NativeHitRules.ViewDip(v,t,vc,default,out float vp);if(hit)rise=Math.Max(rise,prev-vp);if(t>2.2f&&t<2.4f)low=Math.Min(low,vp);prev=vp;
+            }
+            Check(rise<=7*.05f&&low>7*.8f,"the view model keeps its guard down through a combo (raised "+rise+" deg on a hit frame, held >= "+low+" deg)");
+        }
+        // The kick runs to the end of its recovery while damage-field ticks (no reaction) land on the pilot every frame.
+        {
+            var l=new NativeHitLedger();var v=Struck(0,2);var foe=new Actor{Id=2,SourceSpec="sword",Position=new V3(0,0,1.3f)};int id=0;float prevK=0,step=0,mid=0;
+            for(float t=1.9f;t<2.6f;t+=Dt)
+            {
+                if(t>=2-1e-4f&&t<2+Dt-1e-4f)l.Observe(new Snapshot{Actors=new[]{v,foe},Events=new[]{new ArenaEvent{Id=++id,Kind=EventKind.Hit,Source=2,Target=1,Time=2,Amount=30,Detail="direct"}}});
+                else if(t>2)l.Observe(new Snapshot{Actors=new[]{v,foe},Events=new[]{new ArenaEvent{Id=++id,Kind=EventKind.Hit,Source=2,Target=1,Time=t,Amount=1,Detail="field"}}});
+                l.Hit(1,v.ReactionAt,out var hh);NativeHitRules.CameraKick(v,t,hh,default,1,out var k);
+                if(t>2.05f)step=Math.Max(step,Math.Abs(k.Pitch-prevK));if(Math.Abs(t-2.2f)<Dt*.5f)mid=k.Pitch;prevK=k.Pitch;
+            }
+            Check(mid<-.3f&&step<.35f,"field ticks do not cut the kick short (pitch at .2 s "+mid+", largest frame step "+step+" deg)");
+        }
+        log.Add("first-person kick: front up "+pitch.ToString("0.00")+" deg, back down, side roll with the push, heft-scaled, off with camera shake, reduced effects "+reduced.ToString("0.00")+" deg, none for non-melee, block light; bounded (max "+worst.ToString("0.00")+" deg over 4000 random inputs); field ticks do not cut it short; view-model guard drop only while stunned and held through a combo");
     }
     private static void Allocation(List<string> log)
     {
-        var ledger=new NativeHitLedger();var layer=new NativeHitLayer();var scratch=new MeleeRig();var pose=new CapturedRig.Pose();
+        var ledger=new NativeHitLedger();var layer=new NativeHitLayer();var scratch=new MeleeRig();var pose=new CapturedRig.Pose();var clock=new NativeStunClock();
         var a=new Actor{Id=1,SourceSpec="rifle",Weapon=WeaponId.Rifle,Hp=100,Grounded=true,ReactionAt=2,ReactionUntil=2.24f,ReactionStrength=.9f,ReactionDir=new V3(0,0,-1),StunUntil=2.4f,BlockAt=2.5f,BlockUntil=2.9f};
         var snap=new Snapshot{Actors=new[]{a,new Actor{Id=2,SourceSpec="sword"}},Events=new[]{new ArenaEvent{Id=1,Kind=EventKind.Hit,Source=2,Target=1,Time=2,Detail="direct"},new ArenaEvent{Id=2,Kind=EventKind.Block,Source=1,Target=2,Time=2.6f}}};
         ledger.Observe(snap);for(float t=1.9f;t<2.5f;t+=Dt){layer.Over(scratch,pose,a,ledger,HitVictim.Gun,t,0);}
         long before=GC.GetAllocatedBytesForCurrentThread();
-        for(int i=0;i<600;i++){float t=1.95f+i*Dt*.1f;ledger.Observe(snap);layer.Over(scratch,pose,a,ledger,HitVictim.Gun,t,0);ledger.Hit(1,2,out var h);ledger.Block(1,t,.5f,out var b);NativeHitRules.CameraKick(a,t,h,b,1,out _);NativeHitRules.ViewDip(a,t,h,out _);}
+        for(int i=0;i<600;i++){float t=1.95f+i*Dt*.1f;ledger.Observe(snap);layer.Over(scratch,pose,a,ledger,HitVictim.Gun,t,0);ledger.Hit(1,2,out var h);ledger.Block(1,t,.5f,out var b);NativeHitRules.CameraKick(a,t,h,b,1,out _);NativeHitRules.ViewDip(a,t,clock,h,out _);}
         long used=GC.GetAllocatedBytesForCurrentThread()-before;Check(used==0,"no allocation per frame ("+used+" bytes over 600 frames)");
         log.Add("no allocation per frame (ledger, layer, kick and view dip over 600 frames)");
     }

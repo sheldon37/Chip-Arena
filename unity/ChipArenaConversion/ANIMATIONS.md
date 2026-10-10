@@ -120,10 +120,11 @@ owner's Windows playtest.
 Melee hit layer (2026-10-10, `Core/NativeHitReact`): every third-person route (captured melee, DEV fighters, gun and magic
 gaits) adds, after its own reactions and before its ground pass, a weight-scaled impact accent from the attacker's side
 (front, back, left, right; crisp rise, held impact frame, damped recovery, alternating along a combo), a head snap on a
-headshot, a dazed stun pose (guard dropped, head lolling, sway) only while `StunUntil` lasts, a guard shove on a blocked
-blow and, for gun and magic pilots (whose routes showed nothing while stunned), the stunned recoil with a planted catch
-step. A client-side ledger reads the snapshot's Hit/Block/Emperor/Arcade events (melee or not, attacker heft) on host,
-guests and the killcam; non-melee hits keep the source's light reaction only. The local pilot gets a bounded
-first-person camera kick (after the aim point; off with camera shake, 40% input with reduced effects) and a view-model
-guard drop while stunned. `Tests/HitReactionChecks.cs` covers selection, bounds, allocation and hooks; the source parity
-checks run without the layer.
+headshot, a dazed stun pose (guard dropped, head lolling, sway) only while `StunUntil` lasts and held through a combo's
+extensions, a guard shove on a blocked melee blow (blocked bullets do not shove) and, for gun and magic pilots (whose
+routes showed nothing while stunned), the stunned recoil with a planted catch step. A client-side ledger reads the
+snapshot's Hit/Block/Emperor/Arcade events (melee or not, attacker heft; the hit behind the current reaction is kept over
+later field, splash or Siren-shot hits) on host, guests and the killcam; non-melee hits keep the source's light reaction
+only. The local pilot gets a bounded first-person camera kick (after the aim point; off with camera shake, 40% input
+with reduced effects) and a view-model guard drop while stunned. `Tests/HitReactionChecks.cs` covers selection, bounds,
+allocation and hooks; the source parity checks run without the layer.

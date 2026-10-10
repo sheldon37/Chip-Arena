@@ -43,14 +43,16 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// Whether a Hit/Headshot event was a melee blow. Source 0 with a direct hit is a PvE add's swing (the only direct,
         /// source-less damage); a DEV fighter's strike announces itself with an Emperor/Arcade event at the same time (a Hadoken
-        /// does not); the Siren's claws are its non-direct ("secondary") hits; a standard melee pilot only deals direct damage
-        /// with its weapon (swings, specials, thrown shield and daggers). Guns and magic never melee.
+        /// does not); every Siren hit is non-direct ("secondary"), and only her claws (melee damage) record a reaction, so a
+        /// Siren hit is a claw when `reacted` (the target's replicated reaction is from that tick); her shots, fields and areas
+        /// are not. A standard melee pilot only deals direct damage with its weapon (swings, specials, thrown shield and
+        /// daggers). Guns and magic never melee.
         /// </summary>
-        public static bool Melee(int source,string detail,string spec,bool fighterStrike)
+        public static bool Melee(int source,string detail,string spec,bool fighterStrike,bool reacted)
         {
             if(source==0)return detail=="direct";
             if(Fighter(spec))return fighterStrike;
-            if(spec=="siren")return detail=="secondary";
+            if(spec=="siren")return reacted&&detail=="secondary";
             return Standard(spec)&&detail=="direct";
         }
         /// <summary>
@@ -77,14 +79,19 @@ namespace ChipArena.UnityConversion
         /// <summary>A light (unstunned) melee hit's own window: longer for heavier weapons.</summary>
         public static float LightSpan(float heft)=>.24f+.16f*MeleeMath.Clamp(heft,MinHeft,MaxHeft);
         /// <summary>
-        /// The dazed-stun weight: eases in from .06 s after the blow (past the impact frame) over .1 s and out over the last clamp(35%, .06, .16) s of
-        /// the stun; exactly 0 before the blow and from the authoritative stun end, so presentation never extends the lockout.
+        /// The dazed-stun weight: eases in from .06 s after the stun's first blow `at` (past the impact frame) over .1 s and out
+        /// over the last clamp(35%, .06, .16) s of what the latest blow `last` left of the stun (a combo's short extensions keep
+        /// a short ease-out); exactly 0 before the blow and from the authoritative stun end, so presentation never extends the
+        /// lockout. NativeStunClock holds `at` through a combo.
         /// </summary>
-        public static float Daze(float time,float at,float until)
+        public static float Daze(float time,float at,float until)=>Daze(time,at,until,at);
+        public static float Daze(float time,float at,float until,float last)
         {
-            if(!(time>=at)||!(time<until))return 0;float span=until-at,o=MeleeMath.Clamp(span*.35f,.06f,.16f);
+            if(!(time>=at)||!(time<until))return 0;float span=until-(last>at?last:at),o=MeleeMath.Clamp(span*.35f,.06f,.16f);
             return MeleeMath.Clamp(MeleeMath.Ease((time-at-.06f)/.1f)*(1-MeleeMath.Ease((time-(until-o))/o)),0,1);
         }
+        /// <summary>The fastest the daze climbs back when a blow extends a stun in its ease-out (per second; above the ease-in's 18.75).</summary>
+        public const float DazeRise=20;
         /// <summary>A blow's variant (+1 / -1 by its 60 Hz tick); the layer alternates it along a chain, so chained blows read as separate hits.</summary>
         public static float Variant(float at)=>!(Math.Abs(at)<1e6f)?1:(((long)Math.Floor(at*60+.5f))&1)==0?1:-1;
         /// <summary>A native (Unity-frame) world vector in a rig's facing frame (source frame: +x the rig's left), `yaw` in source radians.</summary>
@@ -130,12 +137,13 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>
         /// The first-person view model while the local pilot is stunned (the guard drops: lowered and tilted down, eased in and
-        /// out inside the stun) and jolted by a melee hit (pushed back toward the eye): camera-local offset (metres) and pitch (degrees).
+        /// out inside the stun, held through a combo by the viewer's `stun` clock) and jolted by a melee hit (pushed back toward
+        /// the eye): camera-local offset (metres) and pitch (degrees).
         /// </summary>
-        public static Vector3 ViewDip(Actor a,float time,HitSource hit,out float pitch)
+        public static Vector3 ViewDip(Actor a,float time,NativeStunClock stun,HitSource hit,out float pitch)
         {
             pitch=0;if(a==null||!(a.Hp>0))return Vector3.Zero;
-            float daze=a.ReactionParry?0:Daze(time,a.ReactionAt>-90&&a.ReactionAt<=time&&a.StunUntil>a.ReactionAt?a.ReactionAt:time,a.StunUntil);
+            float daze=stun!=null?stun.Weight(a,time):0;
             Vector3 off=new Vector3(0,-.05f,-.02f)*daze;pitch=7*daze;
             if(hit.Melee&&a.ReactionAt>-90&&Math.Abs(hit.At-a.ReactionAt)<.004f&&time>=a.ReactionAt)
             {
@@ -147,6 +155,42 @@ namespace ChipArena.UnityConversion
         public static float Finite(float v,float fallback)=>float.IsNaN(v)||float.IsInfinity(v)?fallback:v;
         private static float Soft(float v,float limit)=>MeleeMath.Clamp(limit*(float)Math.Tanh(Finite(v,0)/limit),-limit,limit);
         private static Vector3 Unit(Vector3 v){float l=v.Length();return l>1e-4f&&l<1e6f?v/l:new Vector3(0,0,-1);}
+    }
+
+    /// <summary>
+    /// One viewer's dazed-stun weight for one pilot (a rig's hit layer; the first-person view model). The daze eases in from
+    /// the start of the continuous stun: a blow landing while the pilot is still stunned (a fighter combo or a dagger string
+    /// extending StunUntil) keeps that start, so the pose stays dazed instead of dropping to zero and easing back in at every
+    /// hit. Its ease-out is sized by the latest blow, and a stun extended during its ease-out climbs back at DazeRise instead
+    /// of popping. A reaction older than the last unstunned frame is not this stun's blow. Exactly 0 from the authoritative
+    /// stun end and while a parried attacker reels (the route's own). Another pilot or a rewind (the killcam) starts over.
+    /// Presentation only, no allocation.
+    /// </summary>
+    public sealed class NativeStunClock
+    {
+        private int id=int.MinValue;private bool live;private float start=-100,end,calm=float.NegativeInfinity,last=float.NaN,weight;
+        /// <summary>The start of the stun being shown (the daze's ease-in and its sway phase); -100 before any.</summary>
+        public float Start=>start;
+        public void Reset(){id=int.MinValue;live=false;start=-100;end=0;calm=float.NegativeInfinity;last=float.NaN;weight=0;}
+        public float Weight(Actor a,float time)
+        {
+            if(a==null||!(Math.Abs(time)<1e6f)){Reset();return 0;}
+            if(a.Id!=id||!(time>=last-.05f)){Reset();id=a.Id;}
+            float dt=time>last?time-last:0;last=Math.Max(time,float.IsNaN(last)?time:last);
+            if(!(a.StunUntil>time)){live=false;calm=time;weight=0;return 0;}
+            if(a.ReactionParry){live=false;weight=0;return 0;}
+            // The host's render clock leads the simulation by up to a tick (a blow may land just after the last calm frame);
+            // a guest's trails its snapshot by about .1 s, so the stun's blow may still be ahead of `time`: it is the start.
+            bool fresh=a.ReactionAt>-90&&a.StunUntil>a.ReactionAt&&a.ReactionAt>=calm-.05f;
+            float at=fresh?a.ReactionAt:Math.Max(-100,a.StunUntil-.3f);
+            // A new stun (none shown, the shown one ended before this blow, or a blow before the start shown) restarts the
+            // daze; a blow inside the stun keeps its start while StunUntil is extended.
+            if(!live||at>=end||at<start)start=at;
+            live=true;end=a.StunUntil;
+            float w=NativeHitRules.Daze(time,start,a.StunUntil,fresh?a.ReactionAt:start);
+            if(w>weight)w=Math.Min(w,weight+dt*NativeHitRules.DazeRise);
+            weight=w;return w;
+        }
     }
 
     /// <summary>
@@ -177,17 +221,28 @@ namespace ChipArena.UnityConversion
                 var e=events[i];if(e.Id<=last)continue;
                 if((e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot)&&e.Target>0)
                 {
-                    var attacker=Find(s.Actors,e.Source);string spec=e.Source==0?null:attacker?.SourceSpec;
+                    var attacker=Find(s.Actors,e.Source);var target=Find(s.Actors,e.Target);string spec=e.Source==0?null:attacker?.SourceSpec;
                     bool fighter=strikes.TryGetValue(e.Target,out var st)&&st.Source==e.Source&&Math.Abs(st.At-e.Time)<.004f;
-                    hits[e.Target]=new HitSource{Known=true,Melee=NativeHitRules.Melee(e.Source,e.Detail,spec,fighter),Head=e.Kind==EventKind.Headshot,At=e.Time,
+                    // The target's replicated reaction is from this hit's tick.
+                    bool reacted=target!=null&&Math.Abs(target.ReactionAt-e.Time)<.004f;
+                    var hit=new HitSource{Known=true,Melee=NativeHitRules.Melee(e.Source,e.Detail,spec,fighter,reacted),Head=e.Kind==EventKind.Headshot,At=e.Time,
                         Heft=NativeHitRules.Heft(spec,fighter?st.Amount:e.Amount),HasFrom=attacker!=null,From=attacker!=null?attacker.Position:e.Position};
+                    // Keep the hit that made the target's current reaction: a later hit that recorded none (a damage field's
+                    // tick, a Siren shot, splash) never replaces it, and a same-tick non-melee hit (the shrapnel blast a sword
+                    // blow sets off) never replaces a melee one, so the layer, the kick and the view jolt keep their blow.
+                    bool store=true;
+                    if(hits.TryGetValue(e.Target,out var old))
+                        store=Math.Abs(old.At-e.Time)<.004f?hit.Melee||!old.Melee:reacted||target==null||!(Math.Abs(old.At-target.ReactionAt)<.004f);
+                    if(store)hits[e.Target]=hit;
                 }
                 else if(e.Kind==EventKind.Block&&e.Source>0)
                 {
-                    // BlockProc: Source the blocker, Target the attacker (0 for a PvE add).
+                    // BlockProc: Source the blocker, Target the attacker (0 for a PvE add). Only a melee blow's block shoves
+                    // the guard or kicks the view; a blocked bullet (BlockProc runs for direct primary shots too) is not kept,
+                    // so it never replaces the record of a melee block.
                     var attacker=Find(s.Actors,e.Target);string spec=attacker?.SourceSpec;
-                    blocks[e.Source]=new HitSource{Known=true,Melee=attacker==null||NativeHitRules.Standard(spec)||NativeHitRules.Fighter(spec)||spec=="siren",At=e.Time,
-                        Heft=attacker==null?.9f:NativeHitRules.Heft(spec,0),HasFrom=attacker!=null,From=attacker!=null?attacker.Position:e.Position};
+                    if(attacker==null||NativeHitRules.Standard(spec)||NativeHitRules.Fighter(spec)||spec=="siren")
+                        blocks[e.Source]=new HitSource{Known=true,Melee=true,At=e.Time,Heft=attacker==null?.9f:NativeHitRules.Heft(spec,0),HasFrom=attacker!=null,From=attacker!=null?attacker.Position:e.Position};
                 }
             }
             if(newest>last)last=newest;
@@ -197,7 +252,7 @@ namespace ChipArena.UnityConversion
         {
             if(hits.TryGetValue(target,out hit)&&Math.Abs(hit.At-reactionAt)<.004f)return true;hit=default;return false;
         }
-        /// <summary>The latest block by `blocker` within `window` seconds before `time`.</summary>
+        /// <summary>The latest melee block by `blocker` within `window` seconds before `time`.</summary>
         public bool Block(int blocker,float time,float window,out HitSource block)
         {
             if(blocks.TryGetValue(blocker,out block)&&time>=block.At&&time-block.At<=window)return true;block=default;return false;
@@ -214,9 +269,9 @@ namespace ChipArena.UnityConversion
     ///    attacker's front, back or side (lean back with the head snapped back and the guard knocked up; a lurch forward with
     ///    the head whipping back; a bend and twist away from a side blow), alternating a little between successive blows;
     ///  - a head snap on a headshot;
-    ///  - a dazed stun pose (guard dropped, head lolling, a slow sway, soft knees) for as long as the stun lasts, easing out
-    ///    to exactly zero at its authoritative end;
-    ///  - a guard shove when a block absorbs a blow, scaled by the attacker's heft;
+    ///  - a dazed stun pose (guard dropped, head lolling, a slow sway, soft knees) for as long as the stun lasts, held
+    ///    through a combo's extensions (NativeStunClock) and easing out to exactly zero at its authoritative end;
+    ///  - a guard shove when a block absorbs a melee blow, scaled by the attacker's heft (the last one fading under the next);
     ///  - for gun and magic pilots (whose route shows no stunned reaction) the stunned recoil with a planted catch step.
     /// A light (unstunned) melee hit is an upper-body accent over the gait, so travel keeps working. Non-melee hits keep
     /// the source's light reaction only. No allocation per frame.
@@ -224,7 +279,9 @@ namespace ChipArena.UnityConversion
     public sealed class NativeHitLayer
     {
         private struct Accent{public bool Live,Head,Stunned;public float At,Heft,Strength,Turn,Variant,FromYaw;public Vector3 Dir;}
-        private Accent current,previous;private bool seen;
+        private Accent current,previous;private bool seen;private readonly NativeStunClock stun=new NativeStunClock();
+        // The melee block being shoved and the one before it (fading out under it).
+        private HitSource shove,shoveOld;private bool shoveLive,shoveOldLive;
         private Actor actor;private NativeHitLedger ledger;private HitVictim kind;private float rigYaw;
         private MeleeRig rig;private float now;private readonly Action change;
         private readonly Vector3[] heldAnkle=new Vector3[2],heldKnee=new Vector3[2];private readonly Quaternion[] heldFoot=new Quaternion[2];
@@ -247,7 +304,7 @@ namespace ChipArena.UnityConversion
         private static bool Skip(Actor a,float time)=>a==null||!(a.Hp>0)||a.SourceSpec=="siren"||a.GrabOwner!=0||NativeJugglePose.Active(a.JuggleUntil,time)||NativeSpecialPose.Down(a,time)||a.Rolling(time)||NativeSpecialPose.Active(a,time);
         private bool Wanted(Actor a,float time)=>ledger!=null&&!Skip(a,time)&&(a.ReactionAt>-90&&time>=a.ReactionAt&&time<a.ReactionAt+2||a.StunUntil>time||time<a.BlockUntil+.5f);
         // per-frame values Apply reads
-        private float stunAt,stunUntil,daze,blockE,blockHeft;private Vector3 blockDir;private bool stepping,stepBased;private float stepU,stepPlant,stepAt;private Vector3 stepDir,stepBase;private float stepHeft;
+        private float stunAt,stunUntil,daze,blockE,blockHeft,oldE,oldHeft;private Vector3 blockDir,oldDir;private bool stepping,stepBased;private float stepU,stepPlant,stepAt;private Vector3 stepDir,stepBase;private float stepHeft;
         public void Layer(MeleeRig r,float time)
         {
             Applied=false;ImpactWeight=DazeWeight=BlockWeight=0;var a=actor;if(r==null||!Wanted(a,time))return;
@@ -269,16 +326,18 @@ namespace ChipArena.UnityConversion
             }
             // A rewind (the killcam) or a cleared reaction starts over.
             if(a.ReactionAt<=-90||seen&&time<current.At){seen=false;current.Live=previous.Live=false;}
-            // The stun this blow (or a directionless stun) holds.
-            stunUntil=a.StunUntil;stunAt=reaction&&a.StunUntil>a.ReactionAt?a.ReactionAt:Math.Max(-100,a.StunUntil-.3f);
-            daze=a.StunUntil>time&&!a.ReactionParry?NativeHitRules.Daze(time,stunAt,a.StunUntil):0;
-            // A block absorbing a blow.
-            blockE=0;blockHeft=0;blockDir=new Vector3(0,0,-1);
-            if(ledger.Block(a.Id,time,.5f,out var block)&&a.BlockUntil>=block.At-.05f)
+            // The continuous stun (held through a combo's extensions; 0 from its end and while a parried attacker reels).
+            stunUntil=a.StunUntil;daze=stun.Weight(a,time);stunAt=stun.Start;
+            // A block absorbing a melee blow; a new block takes over from the last one, which fades out under it.
+            blockE=oldE=0;blockHeft=oldHeft=0;blockDir=oldDir=new Vector3(0,0,-1);
+            if(ledger.Block(a.Id,time,.5f,out var block)&&block.Melee&&a.BlockUntil>=block.At-.05f)
             {
-                blockHeft=MeleeMath.Clamp(block.Heft,NativeHitRules.MinHeft,NativeHitRules.MaxHeft);blockE=NativeHitRules.Envelope(time-block.At,.026f,.03f,.2f+.1f*blockHeft);
-                if(block.HasFrom){var d=NativeHitRules.Local(new V3(a.Position.x-block.From.x,0,a.Position.z-block.From.z),yaw);d.Y=0;if(d.LengthSquared()>1e-6f)blockDir=Vector3.Normalize(d);}
+                if(!shoveLive||block.At!=shove.At){shoveOldLive=shoveLive&&shove.At<block.At;shoveOld=shove;shove=block;shoveLive=true;}
+                Shoved(a,shove,time,yaw,out blockE,out blockHeft,out blockDir);
+                float fade=shoveOldLive?1-MeleeMath.Ease((time-shove.At)/.09f):0;
+                if(fade>0){Shoved(a,shoveOld,time,yaw,out oldE,out oldHeft,out oldDir);oldE*=fade;}else shoveOldLive=false;
             }
+            else shoveLive=shoveOldLive=false;
             bool grounded=a.Grounded;stepping=false;
             if(current.Live&&current.Stunned&&(kind==HitVictim.Gun||kind==HitVictim.Magic)&&grounded&&time<stunUntil)
             {
@@ -287,7 +346,7 @@ namespace ChipArena.UnityConversion
             }
             // Nothing to add this frame: leave the route's pose exactly as it is.
             bool impact=Showing(ref current,time)||previous.Live&&previous.At<current.At&&time-current.At<.09f&&Showing(ref previous,time);
-            if(!impact&&!(daze>0)&&blockE==0&&!stepping)return;
+            if(!impact&&!(daze>0)&&blockE==0&&oldE==0&&!stepping)return;
             // While stunned (planted feet) keep the ankles where the route put them; otherwise the ground pass re-plants the gait's feet.
             bool hold=grounded&&(r.LegsAuthored||r.LegsLayered||a.StunUntil>time);
             if(hold)for(int i=0;i<2;i++)heldAnkle[i]=r.ReadAnkle(i==0,out heldFoot[i],out heldKnee[i]);
@@ -318,7 +377,9 @@ namespace ChipArena.UnityConversion
             if(previous.Live&&previous.At<current.At)Impact(r,ref previous,time,yaw,1-MeleeMath.Ease((time-current.At)/.09f));
             if(current.Live)ImpactWeight=Impact(r,ref current,time,yaw,1);
             if(daze>0)Daze(r,time,daze);
-            if(blockE!=0)Shove(r,blockE*blockHeft*(kind==HitVictim.Melee?.55f:1));
+            float k=kind==HitVictim.Melee?.55f:1;
+            if(oldE!=0)Shove(r,oldE*oldHeft*k,oldDir);
+            if(blockE!=0)Shove(r,blockE*blockHeft*k,blockDir);
             DazeWeight=daze;BlockWeight=blockE;
         }
         // The blow's impact window: its stun (or a light hit's own span), as Impact times it.
@@ -369,10 +430,16 @@ namespace ChipArena.UnityConversion
             r.AddE(CapturedRig.Neck,.08f*w,0,0);r.AddE(CapturedRig.Head,.15f*w,0,.09f*w*(float)Math.Sin(phase+.8f));
             Vector3 b=r.P[CapturedRig.Body];b.Y-=.035f*w;b.X+=.012f*w*s;r.P[CapturedRig.Body]=b;
         }
-        // A block absorbing a blow: the guard is driven up toward the face and the body is shoved back from the attacker.
-        private void Shove(MeleeRig r,float k)
+        // A melee block's shove envelope, heft and push direction (away from the attacker, in the rig's facing frame).
+        private static void Shoved(Actor a,HitSource block,float time,float yaw,out float e,out float heft,out Vector3 dir)
         {
-            Vector3 d=blockDir;Vector3 b=r.P[CapturedRig.Body];b.X+=d.X*.035f*k;b.Z+=d.Z*.035f*k;b.Y-=.02f*k;r.P[CapturedRig.Body]=b;
+            heft=MeleeMath.Clamp(block.Heft,NativeHitRules.MinHeft,NativeHitRules.MaxHeft);e=NativeHitRules.Envelope(time-block.At,.026f,.03f,.2f+.1f*heft);dir=new Vector3(0,0,-1);
+            if(block.HasFrom){var d=NativeHitRules.Local(new V3(a.Position.x-block.From.x,0,a.Position.z-block.From.z),yaw);d.Y=0;if(d.LengthSquared()>1e-6f)dir=Vector3.Normalize(d);}
+        }
+        // A block absorbing a blow: the guard is driven up toward the face and the body is shoved back from the attacker.
+        private static void Shove(MeleeRig r,float k,Vector3 d)
+        {
+            Vector3 b=r.P[CapturedRig.Body];b.X+=d.X*.035f*k;b.Z+=d.Z*.035f*k;b.Y-=.02f*k;r.P[CapturedRig.Body]=b;
             r.AddE(CapturedRig.Spine,d.Z*.1f*k,0,-d.X*.06f*k);r.AddE(CapturedRig.Chest,d.Z*.06f*k,0,0);r.AddE(CapturedRig.Head,d.Z*.08f*k,0,-d.X*.08f*k);
             r.Premultiply(CapturedRig.LClav,MeleeMath.Euler(-.1f*k,0,0));r.Premultiply(CapturedRig.RClav,MeleeMath.Euler(-.1f*k,0,0));
         }
