@@ -16,6 +16,49 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-10 — Claude — Intro NaN/boxes, Siren intro cell lights, Siren smile, seated chip draft, gun/Siren runs (owner playtest)
+- Merged into `claude/sleepy-ritchie-g8ruhv` after builders, two-lens reviews and fixes (one run was interrupted by a usage limit and resumed). Presentation only: no change to hit timing, hitboxes, damage, cooldowns, movement, networking or saves.
+  - `claude/intro-nan-fix` (`5d17801`)
+  - `claude/siren-intro-backdrop` (`e9f26f0`)
+  - `claude/siren-smile-reveal` (`d2e71f7`)
+  - `claude/chip-seat-table` (`212e29f`)
+  - `claude/run-animations` (`7e4f2c6`, no findings)
+- NaN bone spam (owner's dev console: localPosition NaN on elbows, wrists, hips, knees, ankles):
+  - Cause: the gameplay pilot rig. The Siren's weapon has windup 0, so `CapturedClip.Retime` divided by a zero-length knot span. The NaN clip time poisoned every joint and the pose history.
+  - Fix: zero spans get no slope. `NativePoseHistory`, Blend and Sample reject non-finite input. The new `Runtime/NativePoseWriter.cs` refuses non-finite poses, keeps the last good pose and logs once.
+  - A fuzz of every pose route went from 128,551 errors to 0.
+- Intro boxes and smoke:
+  - The flashing boxes were stage voxels blended toward empty placeholder rows in the cinematic bank. That blend is now held: 2,741 bad frames before, 0 after, across 20 entrances.
+  - Gun smoke draws unlit and see-through: a new `_Unlit` property on NativeSourceTransparent, set by the intro smoke material.
+- Weapon intros: new layered pass, `Core/NativeIntroMotion.cs`, on arms, chest and head only. Legs, hips, root, timing, name-card times and cameras are as baked.
+  - Deadeye cups the pistol and Longwatch braces the fore-end; Belt Rattle and the greatsword keep their two-hand brace.
+  - Pistol and rifle shots kick back and settle.
+  - Body clearance is planned per clip.
+  - Remaining: the greatsword sits about 17 cm inside the body in the slam, and the anchored cuts sink 4-6 cm.
+- Siren intro cell:
+  - Proven by a Unity-forward emulation: the instanced entrance stage never received Unity's point lights, so the cell was black.
+  - The intro draws now evaluate the stage's point lights in NativeSourceLit/NativeSourceTransparent (up to 8, three's falloff), with ACES at .92 on lit stage parts.
+  - `Core/NativeSirenIntroLight.cs` ports the intro.ts beat timeline, driven by the black-siren-protocol beat table. `Runtime/NativeSirenCell.cs` makes the bulb glow and halo follow it.
+  - Guests draw live entrances on a smooth `NativeIntroClock` locked to the song.
+  - The Customize preview plays the song and resumes the menu track.
+- Siren smile reveal:
+  - The old grin was a rounded bar. `Core/NativeSirenSmile.cs` ports pve-smile from the source: flames, flicker, almond eyes, a toothed grin opening from a slit, glow, scanlines and glitch streaks.
+  - The rest of the reveal is fixed too: backdrop, layout, title drop, booting card, locked cards.
+  - Textures are rasterised on a background thread; a leak on resize was fixed.
+- Chip draft:
+  - The pilot is framed chest-up, seated behind a lit table, with the designed 2D cards laid along its display. Forearms rest on the table, the hover lift and reach go across it, and the plant arcs from and to the rest.
+  - The framing allows for the worn hat's measured height (wizard hat).
+  - Known gap: two-row Siren picks float the first row over the chest.
+- Runs:
+  - Third-person guns take a new `PoseRoute.Gun` (`Core/GunMotion.cs`): the source gait plus the stances.ts gun stances, with the RangedPose hold layered on. The torso is on the aim while raised; running lowers the carry.
+  - The Siren gets `Core/NativeSirenDrift.cs`.
+  - Pose transitions are shared (`Core/NativePoseTransition.cs`).
+  - The pack's converted runs are melee carries only; tried on guns and rejected.
+- Checks on the merged tree (`0c0bb78`): Unity runtime+editor compile OK; check_relay 211 PASS, exit 0; Python 52 OK (1 skip); package_source OK.
+  - Not run: Unity Editor/GPU, real shader compile (glslang HLSL check only), D3D11 player, Windows, multiplayer, on-screen check.
+- Placeholder sweep: 50 distinct items, triaged into 5 fix batches. The batch agents did not build anything (an owner question reached them mid-task); they are being rerun.
+  - Astra list from the triage: merge PR #88 (Admin Pause event, Impact events on adds/summons, Pong rally fields); Impact From and colour; slowed/meleeRebound events; L33t event origins; Arc events for the lightning chain, Blink Strike and shield catch; replicate SprintExhausted, DEV fighter HUD/charge, Siren cooldowns, parry/dash timing, juggle timing, and the Siren grab victim and crush time.
+
 ## 2026-10-10 — Claude — Emperor wavedash legs and cancel blend (owner playtest); cancel fix for Astra
 - Branch `claude/emperor-wavedash` (`c8c5454`, base `530321e`). Two-lens review found nothing blocking (one low note about Unity's simulation stopping the body on a cancel, below). Merged. Presentation only.
 - Legs:
