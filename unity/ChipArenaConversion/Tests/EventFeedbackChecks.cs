@@ -121,10 +121,21 @@ namespace ChipArena.UnityConversion
                 &&!NativeEventFeedback.Attacked(E(1,EventKind.Heal,1,1,at,amount:5,target:1),1,1.1f,1.2f)&&!NativeEventFeedback.Attacked(E(1,EventKind.Hit,2,1,at,amount:.04f,target:1),1,1.1f,1.2f)&&!NativeEventFeedback.Attacked(E(1,EventKind.Hit,2,1,at,amount:5,target:3),1,1.1f,1.2f),"under attack");
             // The legacy hit burst keeps exactly the kinds it was written for, plus collapse (event-vfx.ts:29 bursts it like a hit).
             foreach(EventKind kind in Enum.GetValues(typeof(EventKind)))Check(NativeEventFeedback.HitBurst(kind)==(kind==EventKind.Hit||kind==EventKind.Headshot||kind==EventKind.Block||kind==EventKind.Death||kind==EventKind.Break||kind==EventKind.Impact||kind==EventKind.Collapse),"burst "+kind);
+            // A native arena bursts no death (event-vfx.ts:29; owner playtest 2026-10-10: Siren add kills popped a red burst).
+            foreach(EventKind kind in Enum.GetValues(typeof(EventKind)))Check(NativeEventFeedback.HitBurst(kind,true)==(NativeEventFeedback.HitBurst(kind)&&kind!=EventKind.Death),"native burst "+kind);
+            // The static discharge on a summon or PvE add (Unity ChipBlast "chip", 3 m) is the source's `arc`, not an explosion;
+            // Corpse Party ("chip", 3.5 m) keeps the explosion.
+            {
+                var sounds=new NativeEventSounds.Sound[NativeEventSounds.MaxSounds];
+                int n=NativeEventSounds.Route(new NativeEventSounds.Context{Kind=EventKind.Explosion,Detail="chip",Radius=3},sounds);
+                Check(n==1&&sounds[0].Clip=="lightning"&&Math.Abs(sounds[0].Gain-.5f)<1e-6&&sounds[0].Gate=="arc","minion static discharge sounds as an arc");
+                n=NativeEventSounds.Route(new NativeEventSounds.Context{Kind=EventKind.Explosion,Detail="chip",Radius=3.5f},sounds);
+                Check(n==1&&sounds[0].Clip=="explosion"&&Math.Abs(sounds[0].Gain-.65f)<1e-6,"corpse party sounds as an explosion");
+            }
             // Pan on the Unity camera's right (left-handed), falloff and rate as ArenaAudio.play.
             Check(Near(NativeEventSounds.Pan(new V3(5,0,0),0),.85,1e-6)&&Near(NativeEventSounds.Pan(new V3(-5,0,0),0),-.85,1e-6)&&Near(NativeEventSounds.Pan(new V3(0,0,-5),(float)(Math.PI/2)),.85,1e-6)&&Near(NativeEventSounds.Pan(new V3(1,0,0),0),.5,1e-6)&&NativeEventSounds.Pan(new V3(0,0,6),0)==0,"pan");
             Check(Near(NativeEventSounds.Falloff(1),1,1e-7)&&Near(NativeEventSounds.Falloff(12),1/2.3,1e-6)&&NativeEventSounds.Rate("hit",.9f)==1&&NativeEventSounds.Rate("ui",0)==1&&Near(NativeEventSounds.Rate("stone",0),.97,1e-7)&&Near(NativeEventSounds.Rate("stone",1),1.03,1e-6),"falloff and rate");
-            passed.Add("event feedback: proc kinds; under-attack ticks; legacy burst kinds; pan, falloff and rate");
+            passed.Add("event feedback: proc kinds; under-attack ticks; legacy burst kinds (none on a native death); static discharge arc; pan, falloff and rate");
 
             // Music per match phase (ArenaAudio.updateStageMusic): PvP map music stays silent under the player intros, draft and match
             // screens; the PvE stage track dips under an intro sting. NativeAudio must route both tracks through these rules.

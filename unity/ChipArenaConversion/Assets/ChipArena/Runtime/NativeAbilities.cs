@@ -297,7 +297,11 @@ namespace ChipArena.UnityConversion
             if(d.id=="ball-lightning")AbilityBlast(s.Owner,at,NativeAbilityRules.Radius(d,s.Owner.Stats),s.Damage,400,element,effect:d.fx??d.id);
             else if(d.id=="tidal-wave"&&hit.normal.y>.6f){s.Position.y=hit.point.y+s.Radius+.02f;return false;}
             else if(d.id=="tidal-wave"){var prop=hit.collider.GetComponent<NativePropBody>();if(prop?.Body!=null&&!prop.Body.isKinematic)prop.Body.AddForceAtPosition(s.Velocity.normalized*600,hit.point,ForceMode.Impulse);}
-            Fx(at,.6f,element);return true;
+            // Of the shots that reach a surface here only Flame Lance shows a visual blast in the source (magic-abilities.ts:41
+            // onSurface); Tidal Wave and Shadow Shackles stop without one and Ball Lightning's blast is recorded above.
+            // Presentation feed only.
+            if(d.id=="flame-lance")Fx(at,.6f,element);
+            return true;
         }
     }
 }

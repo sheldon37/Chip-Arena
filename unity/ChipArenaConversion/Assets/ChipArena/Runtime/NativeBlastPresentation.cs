@@ -7,7 +7,8 @@ namespace ChipArena.UnityConversion
 {
     // Draws the pure NativeBlastSim (source chip-blasts.ts) in the arena: one dynamic mesh per pool (unlit opaque voxels and
     // additive glow voxels) refilled from reused buffers each frame, and three pooled point lights. Blasts are keyed to what
-    // host and guests both hold: the ability/chip effect list, ability zones, chip fields, ability shots and surface impacts.
+    // host and guests both hold: the ability/chip effect list with its Explosion events, ability zones, chip fields, ability
+    // shots, surface impacts, summons and pong bounces.
     // The Siren's own attack records are not blasts in the source; they are handed to NativeCombatGlow as Halos.
     // Cosmetic only; nothing here touches the match.
     public sealed class NativeBlastPresentation : IDisposable
@@ -78,6 +79,23 @@ namespace ChipArena.UnityConversion
             if(arena.MapId=="siren")foreach(var v in NativeArena.StageVents)sirens.Add(new NativeBlastFrame.SirenSite{X=v.x,Y=v.y,Z=v.z,Reach=NativeBlastFrame.SameSpot});
         }
         private bool AtSiren(Vector3 at)=>NativeBlastFrame.AtSiren(sirens,at.x,at.y,at.z)||NativeBlastFrame.AtSiren(sirensBefore,at.x,at.y,at.z);
+        // The authoritative event the match emitted with this record: ChipBlast and AbilityBlast emit an Explosion, Vacuum() a
+        // Vacuum, from the same Vector3 and radius in the same tick (fx.Until is that tick + .22 s). Host, guests (the snapshot
+        // carries the event buffer) and the killcam replay all hold it. Newest first; the buffer is in time order.
+        private static bool ExplosionAt(NativeArena arena,NativeAbilityFx fx,out string detail)
+        {
+            detail=null;var events=arena.Events;float born=fx.Until-.22f;const float same=(float)(NativeBlastFrame.SameSpot*NativeBlastFrame.SameSpot);
+            for(int i=events.Count-1;i>=0;i--)
+            {
+                var e=events[i];if(e.Time<born-.05f)break;
+                if(e.Kind!=EventKind.Explosion&&e.Kind!=EventKind.Vacuum||e.Time>born+.05f||Math.Abs(e.Radius-fx.Radius)>1e-3f)continue;
+                float dx=e.Position.x-fx.Position.x,dy=e.Position.y-fx.Position.y,dz=e.Position.z-fx.Position.z;
+                if(dx*dx+dy*dy+dz*dz<same){detail=e.Detail;return true;}
+            }
+            return false;
+        }
+        private static bool WeaponSpec(NativeArena arena,string id)
+        {var weapons=arena.Content?.weapons;if(weapons==null||string.IsNullOrEmpty(id))return false;for(int i=0;i<weapons.Length;i++)if(weapons[i].id==id)return true;return false;}
         private void Effects(NativeArena arena,float now,double quality)
         {
             var swap=seenBefore;seenBefore=seen;seen=swap;seen.Clear();swap=halosBefore;halosBefore=halos;halos=swap;halos.Clear();
@@ -90,11 +108,18 @@ namespace ChipArena.UnityConversion
                 if(seenBefore.Contains(key)){if(halosBefore.Contains(key)){halos.Add(key);Halos.Add(fx);}continue;}
                 if(now-(fx.Until-.22f)>.4f)continue;
                 bool siren=!fx.Beam&&fx.Element==4&&AtSiren(fx.Position);
-                string tag=null;if(!fx.Beam&&!siren){foreach(var p in landings)if((p-fx.Position).sqrMagnitude<.0025f){tag=NativeBlastCues.Colocated(fx.Element);break;}tag??=TagAt(fx.Position);}
-                var cue=NativeBlastCues.Classify(fx.Beam,fx.Radius,fx.Element,tag,siren);
+                // The source look: the Explosion event's message, else a teleport landing or the field, zone or ability shot
+                // that ended here. A record with neither is not one of the source's blasts (NativeBlastCues.Classify).
+                string tag=null;bool explosion=false;double q=1;
+                if(!fx.Beam&&!siren)
+                {
+                    if(ExplosionAt(arena,fx,out string detail)){explosion=true;tag=NativeBlastCues.ExplosionTag(detail,fx.Radius,WeaponSpec(arena,detail),out q);}
+                    else{foreach(var p in landings)if((p-fx.Position).sqrMagnitude<.0025f){tag=NativeBlastCues.Colocated(fx.Element);break;}tag??=TagAt(fx.Position);q=NativeBlastCues.Quality(tag);}
+                }
+                var cue=NativeBlastCues.Classify(fx.Beam,fx.Radius,fx.Element,tag,siren,explosion);
                 if(cue==NativeBlastCues.Cue.Halo){halos.Add(key);Halos.Add(fx);continue;}
                 if(cue==NativeBlastCues.Cue.None)continue;
-                fresh.Add(new NativeBlastFrame.Candidate{X=fx.Position.x,Y=fx.Position.y,Z=fx.Position.z,Radius=fx.Radius,Tag=tag,Cue=cue});freshFx.Add(fx);
+                fresh.Add(new NativeBlastFrame.Candidate{X=fx.Position.x,Y=fx.Position.y,Z=fx.Position.z,Radius=fx.Radius,Quality=q,Tag=tag,Cue=cue});freshFx.Add(fx);
             }
             NativeBlastFrame.Collapse(fresh);
             for(int i=0;i<fresh.Count;i++)
@@ -102,7 +127,7 @@ namespace ChipArena.UnityConversion
                 var fx=freshFx[i];string tag=fresh[i].Tag;Vector3 at=fx.Position;
                 switch(fresh[i].Cue)
                 {
-                    case NativeBlastCues.Cue.Blast:sim.Blast(NativeBlastCues.Style(tag,fx.Element),at.x,at.y,at.z,fx.Radius,quality*NativeBlastCues.Quality(tag),false,NativeBlastSim.TintOf(tag));break;
+                    case NativeBlastCues.Cue.Blast:sim.Blast(NativeBlastCues.Style(tag),at.x,at.y,at.z,fx.Radius,quality*fresh[i].Quality,false,NativeBlastSim.TintOf(tag));break;
                     case NativeBlastCues.Cue.Vacuum:sim.Blast(NativeBlastStyle.Void,at.x,at.y,at.z,fx.Radius,quality);break;
                     case NativeBlastCues.Cue.Dud:sim.Impact(at.x,at.y,at.z,fx.Radius,0x9a9a9a,quality);break;
                     case NativeBlastCues.Cue.Teleport:
@@ -115,14 +140,20 @@ namespace ChipArena.UnityConversion
                 }
             }
         }
-        // event-vfx.ts event(): surface impacts from a water pilot splash, kinetic and demolition chips add their procs.
+        // event-vfx.ts event(): surface impacts from a water pilot splash, kinetic and demolition chips add their procs. A summon
+        // lands with a green ground impact (`summon`, chaos.ts:110; it used to record a darkness blast). A pong ball's bounce is
+        // the source's `ricochet` with the pong mod, a red 1.2 m impact (it used to record a fire blast); the source draws a
+        // rally redirect's paddle there instead, which Unity's Pong event does not tell apart.
         private void Impacts(NativeArena arena,float now,double quality)
         {
             foreach(var e in arena.Events)
             {
-                if(e.Id<=lastEvent)continue;lastEvent=e.Id;if(e.Kind!=EventKind.Impact||e.Source<=0||now-e.Time>.4f)continue;
-                NativeSeat seat=null;foreach(var s in arena.Match.Seats)if(s.id==e.Source){seat=s;break;}if(seat==null)continue;
+                if(e.Id<=lastEvent)continue;lastEvent=e.Id;if(now-e.Time>.4f)continue;
                 double x=e.Position.x,y=e.Position.y,z=e.Position.z;
+                if(e.Kind==EventKind.Summon){sim.Impact(x,y,z,1.2,0x93db67,quality,false,true);continue;}
+                if(e.Kind==EventKind.Pong){sim.Impact(x,y,z,1.2,0xff5269,quality);continue;}
+                if(e.Kind!=EventKind.Impact||e.Source<=0)continue;
+                NativeSeat seat=null;foreach(var s in arena.Match.Seats)if(s.id==e.Source){seat=s;break;}if(seat==null)continue;
                 if(seat.spec=="water")sim.Impact(x,y,z,.6,0x8de9ee,quality);
                 if(seat.chips.TryGetValue("kinetic",out int kinetic)&&kinetic>0)sim.Impact(x,y,z,.65+Math.Min(3,kinetic)*.25,0xffaa64,quality);
                 if(seat.chips.TryGetValue("demolition",out int demolition)&&demolition>0)sim.Impact(x,y,z,.5+.12*demolition,0xffd45f,quality);
