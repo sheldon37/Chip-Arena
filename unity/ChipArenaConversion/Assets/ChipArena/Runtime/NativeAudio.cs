@@ -33,8 +33,17 @@ namespace ChipArena.UnityConversion
         }
         public void Entrance(string key,string style,float age)
         {
-            if(key==null||style=="dev-siren"||Muted||Music<=0){introVoice.Stop();introKey="";return;}introVoice.volume=Music;
-            if(introKey==key)return;introKey=key;introVoice.Stop();introVoice.clip=Clip("audio/intros/"+style);if(introVoice.clip==null||age>=introVoice.clip.length)return;introVoice.time=Math.Max(0,age);introVoice.Play();
+            string sting=NativeIntroRules.IntroSting(style);
+            if(key==null||sting==null||Muted||Music<=0){introVoice.Stop();introKey="";return;}introVoice.volume=Music;
+            if(introKey==key)return;introKey=key;introVoice.Stop();introVoice.clip=Clip(sting);if(introVoice.clip==null||age>=introVoice.clip.length)return;introVoice.time=Math.Max(0,age);introVoice.Play();
+        }
+        // audio.ts previewIntro: the Customize preview holds the menu music; the dev-siren entrance plays its boss song from
+        // the preview's age instead of a sting (the cell's flashes are cued to it), every other entrance its sting.
+        public void PreviewIntro(string key,string style,float age)
+        {
+            string song=NativeIntroRules.IntroSong(style);
+            if(song==null){Entrance(key,style,age);HoldMusic();return;}
+            Entrance(null,null,0);Track(song,Music*.55f,false,age);
         }
         private void MarkBeeps(NativeArena arena)
         {

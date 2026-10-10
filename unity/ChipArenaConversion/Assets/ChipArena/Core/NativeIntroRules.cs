@@ -64,6 +64,14 @@ namespace ChipArena.UnityConversion
         {
             float k=Math.Max(r,Math.Max(g,b));if(!(k>0)){r=g=b=0;return 0;}float a=Math.Min(1,k);r/=a;g/=a;b/=a;return a;
         }
+        /// <summary>
+        /// intro-audio.ts: the entrance's own sting (Resources/Audio/audio/intros/&lt;style&gt;), or null for dev-siren, which has
+        /// none: the boss song plays from the Siren's intro start instead (IntroSong; simulation.ts updateBossSong, audio.ts
+        /// previewIntro), and the cell's bulb stutters on that song's beats (NativeSirenIntroLight).
+        /// </summary>
+        public static string IntroSting(string style)=>style==null||style=="dev-siren"||Array.IndexOf(Entrances,style)<0?null:"audio/intros/"+style;
+        /// <summary>The music an entrance plays from its first frame (song time = intro age), or null: black-siren-protocol for dev-siren.</summary>
+        public static string IntroSong(string style)=>style=="dev-siren"?"music/black-siren-protocol":null;
         // shared/intros.ts INTRO_STYLES display names.
         public static string StyleName(string style)
         {
