@@ -284,8 +284,9 @@ namespace ChipArena.UnityConversion
                 }
             }
         }
-        // fx.ts updateMarks (NativeSirenMark): Marked's "You...." crosshair on the marked player from lockAt while the mark, and
-        // then its seeker, lives, in the warn red over everything (the overlay layer), turned with the camera. The marked
+        // fx.ts updateMarks (NativeSirenMark): Marked's "You...." crosshair on the marked player from lockAt to the throw, then
+        // only while its seeker flies (gone on impact, not at the move's recovery end; NativeSirenMarkTracker.Grace), in the
+        // warn red over everything (the overlay layer), turned with the camera. The records are fed before the seekers. The marked
         // player's own first-person view holds it in front of the eye (NativeSirenMark.ScreenReach). Host, guests and the
         // killcam read the same mark records (NativeArena.LiveMarks) and seekers (NativeSirenMarkTracker); every viewer sees it.
         private void SirenMarks(NativeArena arena,Camera camera,float now)

@@ -488,42 +488,51 @@ namespace ChipArena.UnityConversion
     /// <summary>
     /// Who wears the Marked crosshair this frame, from what host, guests and the killcam all hold: the mark records
     /// (NativeMarkView: owner, target, lockAt, throwAt) and the Siren's seekers. The source keeps a SirenMark from the cast
-    /// until its seeker is gone (or the target dies) and draws the crosshair on that target from lockAt; the native record
-    /// ends with the move's recovery .5 s after the throw, so a live seeker keeps its owner's crosshair on the target the last
-    /// record named (or the authority's own seeker target, or, with no record seen, the player the seeker flies at). Only the
-    /// marked player wears it. Allocation free; Begin, then Record and Seeker, then End, once per frame.
+    /// until its seeker is gone or fails to spawn (or the target dies; shared/siren.ts) and draws the crosshair on that target
+    /// from lockAt, so it vanishes on impact. The native record instead ends with the move's recovery .5 s after the throw,
+    /// so a record shows the crosshair from lockAt only until <see cref="Grace"/> past the throw; after that only a live seeker
+    /// of its owner shows it, on the target the record names and, once the record is gone, the one it last named (or the
+    /// authority's own seeker target, or, with no record seen, the player the seeker flies at). Only the marked player wears
+    /// it. Allocation free; Begin, then Record and Seeker, then End, once per frame.
     /// </summary>
     public sealed class NativeSirenMarkTracker
     {
         public const int Capacity=32;
+        /// <summary>How long past the throw a record alone keeps the crosshair, so a guest whose seeker arrives a frame or
+        /// two after the record's throw does not see it blink; a seeker that never spawned drops it this soon after.</summary>
+        public const double Grace=.1;
         public struct Mark{public int Owner,Target;public double LockAt,ThrowAt;}
-        private struct Memo{public int Owner,Target,Frame,RecordFrame;public double LockAt,ThrowAt;}
+        private struct Memo{public int Owner,Target,Frame,RecordFrame,ShownFrame;public double LockAt,ThrowAt;public bool Alive;}
         private readonly Memo[] memos=new Memo[Capacity];private readonly Mark[] shown=new Mark[Capacity];private int memoCount,count,frame;
         public int Count=>count;
         public Mark this[int i]=>shown[i];
         public void Clear(){memoCount=count=0;}
         public void Begin(){frame++;count=0;}
         private int Find(int owner){for(int i=0;i<memoCount;i++)if(memos[i].Owner==owner)return i;return -1;}
-        private void Show(int owner,int target,double lockAt,double throwAt){if(count<Capacity)shown[count++]=new Mark{Owner=owner,Target=target,LockAt=lockAt,ThrowAt=throwAt};}
-        /// <summary>A mark record: remembered for its seeker, shown from lockAt while its target lives.</summary>
+        private void Show(int i)
+        {if(memos[i].ShownFrame==frame)return;memos[i].ShownFrame=frame;if(count<Capacity)shown[count++]=new Mark{Owner=memos[i].Owner,Target=memos[i].Target,LockAt=memos[i].LockAt,ThrowAt=memos[i].ThrowAt};}
+        /// <summary>A mark record: remembered for its seeker, shown from lockAt to <see cref="Grace"/> past the throw while its
+        /// target lives (later only with its seeker, <see cref="Seeker"/>).</summary>
         public void Record(int owner,int target,double lockAt,double throwAt,bool targetAlive,double time)
         {
             int i=Find(owner);if(i<0){if(memoCount==Capacity)return;i=memoCount++;}
-            memos[i]=new Memo{Owner=owner,Target=target,LockAt=lockAt,ThrowAt=throwAt,Frame=frame,RecordFrame=frame};
-            if(targetAlive&&time>=lockAt)Show(owner,target,lockAt,throwAt);
+            memos[i]=new Memo{Owner=owner,Target=target,LockAt=lockAt,ThrowAt=throwAt,Frame=frame,RecordFrame=frame,ShownFrame=-1,Alive=targetAlive};
+            if(targetAlive&&time>=lockAt&&time<throwAt+Grace)Show(i);
         }
         /// <summary>The target the owner's last record (or seeker) named; 0 when none was seen.</summary>
         public int Remembered(int owner){int i=Find(owner);return i<0?0:memos[i].Target;}
         /// <summary>
-        /// A live seeker of <paramref name="owner"/> flying at <paramref name="target"/> (0 when unknown): keeps the crosshair once
-        /// the record is gone. With no record seen, the crosshair starts thrown (lock and throw at the seeker's birth).
+        /// A live seeker of <paramref name="owner"/> flying at <paramref name="target"/> (0 when unknown): carries the crosshair
+        /// past the throw, on this frame's record's target while the record lives and on the remembered one after it. With no
+        /// record seen, the crosshair starts thrown (lock and throw at the seeker's birth).
         /// </summary>
         public void Seeker(int owner,int target,double born,bool targetAlive,double time)
         {
-            int i=Find(owner);if(i>=0&&memos[i].RecordFrame==frame)return;
-            if(i<0){if(memoCount==Capacity||target==0)return;i=memoCount++;memos[i]=new Memo{Owner=owner,LockAt=born,ThrowAt=born,RecordFrame=-1};}
+            int i=Find(owner);
+            if(i>=0&&memos[i].RecordFrame==frame){if(memos[i].Alive&&time>=memos[i].LockAt)Show(i);return;}
+            if(i<0){if(memoCount==Capacity||target==0)return;i=memoCount++;memos[i]=new Memo{Owner=owner,LockAt=born,ThrowAt=born,RecordFrame=-1,ShownFrame=-1};}
             if(target!=0)memos[i].Target=target;memos[i].Frame=frame;
-            if(targetAlive&&memos[i].Target!=0&&time>=memos[i].LockAt)Show(owner,memos[i].Target,memos[i].LockAt,memos[i].ThrowAt);
+            if(targetAlive&&memos[i].Target!=0&&time>=memos[i].LockAt)Show(i);
         }
         /// <summary>Forgets owners with neither a record nor a seeker this frame.</summary>
         public void End(){int k=0;for(int i=0;i<memoCount;i++)if(memos[i].Frame==frame)memos[k++]=memos[i];memoCount=k;}

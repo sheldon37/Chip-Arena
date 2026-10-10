@@ -49,7 +49,9 @@ namespace ChipArena.UnityConversion
             foreach(var f in json.GetProperty("frames").EnumerateArray())
             {
                 double time=D(f,"time");bool gone=f.TryGetProperty("targetGone",out _),noMark=f.TryGetProperty("markGone",out _);
-                tracker.Begin();if(!noMark)tracker.Record(7,2,11.2,12.4,!gone,time);tracker.End();
+                // The exporter's mark keeps its seeker q1 in flight, so natively the record lives to the move's recovery end
+                // (.5 s after the throw) and the seeker from the throw; the source's mark going is the seeker going.
+                tracker.Begin();if(!noMark&&time<12.4+NativeSirenMark.Recover)tracker.Record(7,2,11.2,12.4,!gone,time);if(!noMark&&time>=12.4)tracker.Seeker(7,tracker.Remembered(7),12.4,!gone,time);tracker.End();
                 bool shown=f.GetProperty("shown").GetBoolean();Check((tracker.Count==1)==shown,"shown at "+time+": "+(tracker.Count==1)+" != "+shown);if(!shown)continue;shownFrames++;
                 Check(tracker[0].Target==2&&tracker[0].Owner==7,"only the marked player wears it");
                 NativeSirenMark.Look(11.2,12.4,time,out double scale,out double spin,out double turn,out double opacity,out bool white);
@@ -96,6 +98,16 @@ namespace ChipArena.UnityConversion
                 m.Begin();m.Seeker(5,6,30,true,31);m.End();Check(m.Count==1&&m[0].Target==6&&m[0].LockAt==30&&m[0].ThrowAt==30,"no record seen: the seeker's target, thrown");
                 m.Begin();m.Seeker(5,0,30,true,31.1);m.End();Check(m.Count==1&&m[0].Target==6,"a guest's seeker without a target keeps the remembered one");
                 m.Begin();m.Record(1,2,40,41.2,false,40.5);m.End();Check(m.Count==0,"no crosshair on a marked player who died");
+                // The source drops the mark the moment its seeker hits or fails to spawn (shared/siren.ts), but the native record
+                // lives to the recovery end: past the throw a record alone shows it only for the short grace a late guest seeker needs.
+                Check(NativeSirenMarkTracker.Grace>0&&NativeSirenMarkTracker.Grace<=.1,"a short grace past the throw");
+                m.Begin();m.Record(8,9,50,51.2,true,51.2);m.End();Check(m.Count==1&&m[0].Target==9,"shown at the throw before its seeker is seen");
+                m.Begin();m.Record(8,9,50,51.2,true,51.2+NativeSirenMarkTracker.Grace*.8);m.End();Check(m.Count==1,"no blink while a guest's seeker is a frame late");
+                m.Begin();m.Record(8,9,50,51.2,true,51.25);m.Seeker(8,9,51.2,true,51.25);m.End();Check(m.Count==1,"record and seeker within the grace: one crosshair");
+                m.Begin();m.Record(8,9,50,51.2,true,51.4);m.Seeker(8,m.Remembered(8),51.2,true,51.4);m.End();Check(m.Count==1&&m[0].Target==9&&m[0].LockAt==50&&m[0].ThrowAt==51.2,"record alive with its seeker: held on the target");
+                m.Begin();m.Record(8,9,50,51.2,true,51.5);m.End();Check(m.Count==0,"record alive, seeker gone (hit), past the grace: not shown");
+                m.Begin();m.Record(8,9,50,51.2,false,51.6);m.Seeker(8,m.Remembered(8),51.2,false,51.6);m.End();Check(m.Count==0,"record and seeker on a dead target: not shown");
+                {var n=new NativeSirenMarkTracker();n.Begin();n.Record(8,9,50,51.2,true,51.2+NativeSirenMarkTracker.Grace+.01);n.End();Check(n.Count==0,"a seeker that never spawned: gone the grace after the throw");}
                 m.Clear();Check(m.Count==0&&m.Remembered(5)==0,"clear");
                 Near(NativeSirenMark.Aim(0,1,0,0,0,3,0,1.1,8),Math.Cos(Math.Atan2(.1,8)),"seeker aim cosine");
                 Check(NativeSirenMark.Aim(0,1,0,0,0,3,0,1.1,8)>NativeSirenMark.AimCos&&NativeSirenMark.Aim(0,1,0,0,0,3,3,1.1,8)<NativeSirenMark.AimCos&&NativeSirenMark.Aim(0,1,0,0,0,0,0,1,8)<0,"seeker target: the player ahead, not one beside it");
