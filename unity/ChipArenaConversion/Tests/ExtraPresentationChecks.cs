@@ -20,8 +20,8 @@ namespace ChipArena.UnityConversion
             foreach(var s in document.RootElement.GetProperty("grabs").EnumerateArray()){float a=s.GetProperty("age").GetSingle();Near(NativeDraftRules.Reach(a),s.GetProperty("reach").GetSingle(),"draft reach");Near(NativeDraftRules.Fly(a),s.GetProperty("fly").GetSingle(),"draft fly");Near(NativeDraftRules.Fade(a),s.GetProperty("fade").GetSingle(),"draft fade");Near(NativeDraftRules.Pull(a),s.GetProperty("pull").GetSingle(),"draft pull");count++;}
             // The held chip (draft-stage.ts chipModel, capped at .13 m under the .145 m palm) drawn with the .8 m pickup model
             // stays hand-sized while it rides the hand (NativeDraftPlant; DraftPlantChecks covers the plant).
-            Near(NativeDraftPlant.PickupWidth*NativeDraftPlant.HeldChipScale(.48f,3,true),.065f,"held chip at contact");Near(NativeDraftPlant.PickupWidth*NativeDraftPlant.HeldChipScale(.7f,0,false),.13f,"held chip");
-            for(float t=0;t<2;t+=.05f){float w=NativeDraftPlant.PickupWidth*NativeDraftPlant.HeldChipScale(.75f,t,false);if(w>.13f*1.08f+1e-5f||w<.13f*.92f-1e-5f)throw new Exception("held chip width "+w);}
+            Near(NativeDraftPlant.PickupWidth*NativeDraftPlant.HeldChipScale(NativeDraftPlant.Contact,3,true),.065f,"held chip at contact");Near(NativeDraftPlant.PickupWidth*NativeDraftPlant.HeldChipScale(NativeDraftPlant.Contact+.22f,0,false),.13f,"held chip");
+            for(float t=0;t<2;t+=.05f){float w=NativeDraftPlant.PickupWidth*NativeDraftPlant.HeldChipScale(NativeDraftPlant.Contact+.27f,t,false);if(w>.13f*1.08f+1e-5f||w<.13f*.92f-1e-5f)throw new Exception("held chip width "+w);}
             Console.WriteLine("PASS "+count+" original summon joint, machine/pickup, draft pose/look and grab timing samples");
         }
     }

@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
             if(age>.12f&&Input.anyKeyDown||PveUnderAttack()){EndPveFollow();return;}
             bool rainbow=pveFollowTier=="rainbow";
             string source=rainbow?"RAINBOW · 8 MAX-RARITY CHOICES":pveFollowSource=="start"?"BEGINNING CHIP":(pveFollowSource=="wave"?"WAVE REWARD · ":"DISPENSED · ")+TierName(pveFollowTier).ToUpperInvariant();
-            DraftShades(pveTray?.Rows??1,W,H);DraftHeader(source,rainbow?Color.white:NativeChipCard.Rarity(pveFollowTier),"Upgrade secured","",W,H,out _);
+            DraftShades(pveTray,W,H);DraftHeader(source,rainbow?Color.white:NativeChipCard.Rarity(pveFollowTier),"Upgrade secured","",W,H,out _);
             var tray=pveTray;if(tray!=null&&tray.Cards.Length==pveFollowChips.Count)PickedTray(tray,pveFollowChips,pveFollowIndex,pveFollowOwned,age);
             Nameplate(arena.Local.Seat,"Installing",28,H-22-66);
         }
