@@ -18,8 +18,8 @@ namespace ChipArena.UnityConversion
             Check(k.GetProperty("frontSeconds").GetDouble()==NativeBlastSim.FrontSeconds&&k.GetProperty("minVoxels").GetInt32()==NativeBlastSim.MinVoxels,"front seconds and minimum voxels match the source");
             Check(capacity.GetProperty("solid").GetInt32()==NativeBlastSim.SolidCapacity&&capacity.GetProperty("glow").GetInt32()==NativeBlastSim.GlowCapacity&&capacity.GetProperty("lights").GetInt32()==NativeBlastSim.LightCapacity,"pool capacities match the source");
             int cases=0,frames=0;foreach(var c in json.GetProperty("cases").EnumerateArray()){frames+=Replay(c,cases);cases++;}
-            Determinism();Front();Capacity();Minimum();Quality();Cues();Frames();Winding();StandIns(root);
-            Console.WriteLine("PASS "+cases+" source chip blast runs ("+frames+" drawn frames: 11 styles x 3 radii, quality/compat, tints, impacts, 20 fields, line, paddle) and blast determinism, front, capacity, minimum-voxel, quality, cue, frame-rule and winding checks, and the event-to-effect table (no blast without a source blast)");
+            Determinism();Front();Capacity();Minimum();Quality();Cues();Frames();Winding();StandIns(root);int lightning=NoBlueLightning(root,json);
+            Console.WriteLine("PASS "+cases+" source chip blast runs ("+frames+" drawn frames: 11 styles x 3 radii, quality/compat, tints, impacts, 20 fields, line, paddle) and blast determinism, front, capacity, minimum-voxel, quality, cue, frame-rule and winding checks, the event-to-effect table (no blast without a source blast) and "+lightning+" no-blue/cyan-lightning checks (owner 2026-10-10)");
         }
         private static void Start(NativeBlastSim sim,JsonElement c,out NativeBlastField? field)
         {
@@ -228,6 +228,74 @@ namespace ChipArena.UnityConversion
             // Summons, pong bounces and rallies plan their source impacts per event (NativeImpactCues; Tests/ImpactCueChecks.cs).
             Check(blasts.Contains("int count=NativeImpactCues.Plan(cue,plan);NativeImpactCues.Run(plan,count,sim,Sparks,quality);")&&blasts.Contains("ExplosionAt(arena,fx,out string detail)"),"summon and pong impacts per event, records keyed to their Explosion events");
             Check(!Read("NativeWorldEffects.cs").Contains("MinionDeaths")&&Read("NativeSummonPresentation.cs").Contains("if(summon&&age>="),"a horde add or summon death draws no world puff; only a summon breaks up, in SourceMinionDeath");
+        }
+        // Owner, Windows test build 2026-10-10: "Remove that blue/cyan lightning that shows when an area of effect is happening."
+        // A blue or cyan shock blast (Thunder Step, Static, Blink Strike, the storm style) never draws the sky bolt, its side
+        // sparks or the ground arcs, and Storm In A Jar never draws strikes. Ball Lightning (violet) and the Orbital Mark (red)
+        // keep theirs. Everything else those areas draw still draws. Rules, behaviour and source-text scans; returns the count.
+        private static int NoBlueLightning(string root,JsonElement json)
+        {
+            int n=0;void C(bool ok,string what){Check(ok,"no blue/cyan lightning: "+what);n++;}
+            var owner=json.GetProperty("owner");C(owner.GetProperty("lightning").GetString()=="2026-10-10"&&owner.GetProperty("cuts").GetInt32()==4,"the parity frames come from the source with the owner's cut");
+            foreach(int hex in new[]{0xbfe6ff,0x6f8dff,0x8fd6ff,0x9ffcff,0x1fc4e6,0x8fb8ff,0x9fd2ff,0x55dcff,0x80dfff,0x32b8ff})C(NativeBlastSim.BlueCyan(hex),hex.ToString("x6")+" is blue/cyan");
+            foreach(int hex in new[]{0xffffff,0xf2ffff,0x9a9a9a,0xd7a6ff,0x8a4cff,0xc2a3ff,0xc4b4ff,0xb66cff,0xff9a8a,0xe8323a,0xff304f,0x55ff88,0xffc23a})C(!NativeBlastSim.BlueCyan(hex),hex.ToString("x6")+" is not blue/cyan");
+            foreach(var tag in new[]{"thunder","thunderstep","static","storm","lightning-rod","blink-strike"})C(NativeBlastSim.StyleOf(tag)==NativeBlastStyle.Shock&&!NativeBlastSim.Lightning(NativeBlastStyle.Shock,NativeBlastSim.TintOf(tag)),tag+" draws no lightning");
+            foreach(var tag in new[]{"ball-lightning","orbital-mark"})C(NativeBlastSim.Lightning(NativeBlastSim.StyleOf(tag),NativeBlastSim.TintOf(tag)),tag+" keeps its violet or red lightning");
+            foreach(NativeBlastStyle style in Enum.GetValues(typeof(NativeBlastStyle)))if(style!=NativeBlastStyle.Shock)C(!NativeBlastSim.Lightning(style,null),style+" has no lightning");
+            // Behaviour. On the first drawn frame the sky bolt is already 9 m up and nothing else in a shock blast is above
+            // 2.5 m; a blue/cyan blast spawns exactly the violet one's voxels minus the bolt, its side sparks and the arcs.
+            double Top(NativeBlastPool pool){double top=-1e9;for(int i=0;i<pool.Drawn;i++)top=Math.Max(top,pool.Output[i*NativeBlastPool.Stride+1]);return top;}
+            foreach(double R in new[]{1.2,2.4,3,6})foreach(double q in new[]{1,NativeBlastCues.ArcQuality,.3})
+            {
+                int K(double b)=>(int)Math.Max(1,NativeBlastSim.Round(b*q*Math.Min(1.6,.55+R*.18)));
+                int Spawn(string tag,out double top,out bool lit){var sim=new NativeBlastSim();int count=sim.Blast(NativeBlastStyle.Shock,0,.95,0,R,q,false,NativeBlastSim.TintOf(tag));sim.Update(Dt);top=Top(sim.Glow);lit=false;foreach(var f in sim.Flashes)lit|=f.Intensity>0;return count;}
+                int violet=Spawn("ball-lightning",out double boltTop,out _),steps=K(22),sides=0;for(int i=0;i<steps;i++)if(i%4==2)sides++;
+                C(boltTop>8,"the probe sees Ball Lightning's sky bolt r"+R+" q"+q);
+                foreach(var tag in new[]{null,"thunderstep","static","blink-strike"})
+                {
+                    string what=(tag??"shock")+" r"+R+" q"+q;int count=Spawn(tag,out double top,out bool lit);
+                    C(top<2.5,what+": no sky bolt (highest voxel "+top+" m)");
+                    C(count==violet-steps-sides-K(5)*6,what+": only the bolt, its side sparks and the ground arcs are gone ("+count+" of "+violet+" voxels)");
+                    C(count>=NativeBlastSim.MinVoxels&&lit==(q>=.5),what+": core, shock front, ground sweep, sparks and light still draw");
+                }
+            }
+            {
+                // Blink Strike's landing still reads its gameplay radius with the shock front.
+                var sim=new NativeBlastSim();sim.Blast(NativeBlastStyle.Shock,0,.95,0,2.4,1,false,NativeBlastSim.TintOf("blink-strike"));for(int i=0;i<(int)NativeBlastSim.Round(NativeBlastSim.FrontSeconds/Dt);i++)sim.Update(Dt);
+                C(Within(sim.Glow,0,0,0,2.4,.005)>=NativeBlastSim.MinVoxels,"Blink Strike's shock front still reaches its 2.4 m radius");
+            }
+            {
+                // Storm In A Jar: after its arrival burst, the glow never rises above the telegraph motes (the source's bolts start
+                // at 3.6 m, the ground flash is .6 m wide); its clouds and motes still draw.
+                var sim=new NativeBlastSim();var f=new NativeBlastField{Id=9,Kind="storm",Fx="lightning-rod",X=0,Y=.95,Z=0,Radius=4,Born=0,Until=3};double top=-1e9,edge=0;int clouds=0,motes=0;
+                for(int i=0;i<180;i++)
+                {
+                    double t=i*Dt;sim.Field(f,t,1);sim.Update(Dt);if(t<1)continue;
+                    for(int k=0;k<sim.Glow.Drawn;k++){int w=k*NativeBlastPool.Stride;top=Math.Max(top,sim.Glow.Output[w+1]);edge=Math.Max(edge,Math.Max(sim.Glow.Output[w+3],sim.Glow.Output[w+4]));motes++;}
+                    for(int k=0;k<sim.Solid.Drawn;k++)if(sim.Solid.Output[k*NativeBlastPool.Stride+1]>3.3)clouds++;
+                }
+                C(motes>0&&top<1.25&&edge<.3,"Storm In A Jar draws no strikes (glow up to "+top+" m, largest "+edge+" m)");
+                C(clouds>0,"Storm In A Jar keeps its clouds");
+            }
+            // Source text: the bolt and arcs exist only behind Lightning, the storm branch spawns no glow, no other file draws
+            // the source's storm or sky bolt, and the fixture exporter applies the same cut and colour band.
+            string Text(string file)=>File.ReadAllText(Path.Combine(root,file));
+            int Count(string text,string what){int c=0,i=0;while((i=text.IndexOf(what,i,StringComparison.Ordinal))>=0){c++;i+=what.Length;}return c;}
+            string Between(string text,string from,string to){int a=text.IndexOf(from,StringComparison.Ordinal);Check(a>=0,"no blue/cyan lightning: the source has "+from);int b=text.IndexOf(to,a+from.Length,StringComparison.Ordinal);return b<0?text.Substring(a):text.Substring(a,b-a);}
+            string blast=Text("Assets/ChipArena/Core/NativeBlastSim.cs"),shock=Between(blast,"case NativeBlastStyle.Shock:","case NativeBlastStyle.Implosion:"),storm=Between(blast,"if(kind==\"storm\")","else if(kind==");
+            C(shock.Contains("bool lightning=Lightning(style,tint);")&&shock.Contains("if(lightning)SkyBolt(")&&shock.Contains("if(lightning)GroundArcs(")&&!shock.Contains("Glow.Spawn(")&&!shock.Contains("Solid.Spawn("),"the shock case draws its bolt and arcs only through the gated SkyBolt and GroundArcs");
+            C(Count(blast,"SkyBolt(")==2&&Count(blast,"GroundArcs(")==2,"SkyBolt and GroundArcs have no other caller");
+            C(blast.Contains("=>style==NativeBlastStyle.Shock&&!BlueCyan(Colors(style,tint).Hot);"),"Lightning excludes every blue/cyan look");
+            C(!storm.Contains("Glow.Spawn(")&&!storm.Contains("top=")&&storm.Contains("Solid.Spawn("),"the storm field branch spawns only clouds");
+            var offenders=new System.Collections.Generic.List<string>();
+            foreach(var dir in new[]{"Assets/ChipArena/Core","Assets/ChipArena/Runtime"})foreach(var file in Directory.GetFiles(Path.Combine(root,dir),"*.cs"))
+            {string text=File.ReadAllText(file),name=Path.GetFileName(file);if(text.Contains("ground+3.6")||name!="NativeBlastSim.cs"&&text.Contains("top=ground+9"))offenders.Add(name);}
+            C(offenders.Count==0,"no other file draws the source's storm strikes or sky bolt ("+string.Join(", ",offenders)+")");
+            string exporter=Text("tools/export_blast_fixtures.mjs");
+            C(exporter.Contains("OWNER_CUTS")&&exporter.Contains("function __ownerLightning(pal)")&&exporter.Contains("hue>=165&&hue<=250")&&NativeBlastSim.BlueCyanFrom==165&&NativeBlastSim.BlueCyanTo==250,"the fixture exporter applies the same cut and colour band");
+            // The lines left on area effects are violet: the teleport (Blink Strike, wormhole) and Ball Lightning's arcs.
+            C(!NativeBlastSim.BlueCyan(NativeBlastCues.TeleportColor)&&!NativeBlastSim.BlueCyan(NativeImpactCues.Lit)&&!NativeBlastSim.BlueCyan(NativeImpactCues.ArcColor),"teleport and arc lines are violet, not blue/cyan");
+            return n;
         }
         private static void Winding()
         {

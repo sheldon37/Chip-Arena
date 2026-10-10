@@ -8,7 +8,9 @@ namespace ChipArena.UnityConversion
     // authoritative effect (position and gameplay radius) or a live field, and nothing here feeds back into the match.
     // Numbers, spawn order, the Float32 particle storage and the seeded generator follow the source, so one run
     // reproduces the source's voxels. Coordinates are taken as given: the converted maps keep the source's numbers,
-    // so Unity world positions go in and Unity world positions come out.
+    // so Unity world positions go in and Unity world positions come out. One owner exception (2026-10-10): no blue or
+    // cyan lightning on area effects (NativeBlastSim.Lightning); tools/export_blast_fixtures.mjs applies the same cut to
+    // the source before it records the parity frames.
     public enum NativeBlastStyle{Fire,Shock,Implosion,Frost,Toxic,Void,Nova,Kinetic,Quake,Meteor,Mine}
     public struct NativeBlastTint{public int Core,Hot,Cool;public NativeBlastTint(int core,int hot,int cool){Core=core;Hot=hot;Cool=cool;}}
     /// <summary>A live authoritative field as the source's FieldView presents it (chip fields and ability zones).</summary>
@@ -132,6 +134,24 @@ namespace ChipArena.UnityConversion
         private struct Palette{public int Core,Hot,Cool,Smoke,Debris;}
         private static Palette Colors(NativeBlastStyle style,NativeBlastTint? tint)
         {var c=palette[(int)style];var p=new Palette{Core=c[0],Hot=c[1],Cool=c[2],Smoke=c[3],Debris=c[4]};if(tint.HasValue){p.Core=tint.Value.Core;p.Hot=tint.Value.Hot;p.Cool=tint.Value.Cool;}return p;}
+        /// <summary>Hue band (degrees) that reads as cyan through blue.</summary>
+        public const double BlueCyanFrom=165,BlueCyanTo=250;
+        /// <summary>An sRGB colour with a visible tint (max - min channel at least 24) whose hue lies in the cyan-to-blue band.
+        /// Whites, greys, violets and reds are not.</summary>
+        public static bool BlueCyan(int hex)
+        {
+            int r=(hex>>16)&255,g=(hex>>8)&255,b=hex&255,max=Math.Max(r,Math.Max(g,b)),min=Math.Min(r,Math.Min(g,b));double d=max-min;if(d<24)return false;
+            double hue=max==r?60*(((g-b)/d+6)%6):max==g?60*((b-r)/d+2):60*((r-g)/d+4);
+            return hue>=BlueCyanFrom&&hue<=BlueCyanTo;
+        }
+        /// <summary>
+        /// Owner direction 2026-10-10 (Windows test build): "Remove that blue/cyan lightning that shows when an area of effect
+        /// is happening." A Shock blast draws the source's lightning (the jagged bolt from the sky with its side sparks, and the
+        /// skittering ground arcs) only when its look is not blue or cyan: Ball Lightning's violet and the Orbital Mark's red
+        /// keep it; Thunder Step, Static, Storm In A Jar and Blink Strike (the blue palette and the cyan tint) draw none, only
+        /// their core, shock front, ground sweep, sparks and light. The storm field draws no strikes at all (Field).
+        /// </summary>
+        public static bool Lightning(NativeBlastStyle style,NativeBlastTint? tint)=>style==NativeBlastStyle.Shock&&!BlueCyan(Colors(style,tint).Hot);
         /// <summary>Maps an authoritative explosion message (the engine's blast kind, chip or ability fx tag) to a style.</summary>
         public static NativeBlastStyle StyleOf(string message)
         {
@@ -263,16 +283,12 @@ namespace ChipArena.UnityConversion
                     Smoke(14,R*.7,0);Flash(cx,cy,cz,pal.Hot,R,4,.25,compat,q);break;
                 case NativeBlastStyle.Shock:
                 {
-                    // A jagged bolt from the sky into the centre, a white core, a blue shock front and skittering arc sparks.
-                    double top=ground+9,x=cx,z=cz;int steps=N(22);
-                    for(int i=0;i<steps;i++)
-                    {
-                        double y=top-(top-ground)*((double)i/steps);x+=(random()-.5)*.45;z+=(random()-.5)*.45;if(i==steps-1){x=cx;z=cz;}
-                        Glow.Spawn(x,y,z,0,0,0,.22+(double)i/steps*.08,.22,.12,pal.Core,pal.Hot,0,0,i*.004);
-                        if(i%4==2)Glow.Spawn(x,y,z,(random()-.5)*8,(random()-.5)*3,(random()-.5)*8,.2,.1,.04,pal.Core,pal.Cool,0,2,i*.004);
-                    }
+                    // A white core, a shock front, the ground sweep and sparks. Only a look that is not blue or cyan (Lightning)
+                    // adds the source's jagged bolt from the sky before them and its skittering ground arcs after them.
+                    bool lightning=Lightning(style,tint);
+                    if(lightning)SkyBolt(cx,cz,ground,N(22),pal);
                     Core(12,R*1.6,.2,.34);Shell(px,pz,ground,R,pal.Hot,pal.Cool,M(36));Ring(px,pz,ground,R,pal.Core,pal.Cool,M(36),true,.06,.18);Sparks(26,R*3.6,pal.Cool);
-                    for(int arc=0;arc<N(5);arc++){double a=random()*Math.PI*2,len=R*(.5+random()*.5);for(int s=1;s<=6;s++){double u=s/6.0;Glow.Spawn(cx+Math.Cos(a)*len*u+(random()-.5)*.3,ground+.15+random()*.5,cz+Math.Sin(a)*len*u+(random()-.5)*.3,0,0,0,.16,.12,.05,pal.Core,pal.Cool,0,0,.03+u*.04);}}
+                    if(lightning)GroundArcs(cx,cz,ground,R,N(5),pal);
                     Flash(cx,cy,cz,pal.Hot,R,12+R*2,.3,compat,q);break;
                 }
                 case NativeBlastStyle.Implosion:
@@ -297,6 +313,20 @@ namespace ChipArena.UnityConversion
             }
             return Solid.Spawned+Glow.Spawned-spawned;
         }
+        // The Shock lightning (chip-blasts.ts), drawn only where Lightning allows it: a jagged bolt from 9 m into the centre
+        // with side sparks, then skittering arcs along the ground.
+        private void SkyBolt(double cx,double cz,double ground,int steps,Palette pal)
+        {
+            double top=ground+9,x=cx,z=cz;
+            for(int i=0;i<steps;i++)
+            {
+                double y=top-(top-ground)*((double)i/steps);x+=(random()-.5)*.45;z+=(random()-.5)*.45;if(i==steps-1){x=cx;z=cz;}
+                Glow.Spawn(x,y,z,0,0,0,.22+(double)i/steps*.08,.22,.12,pal.Core,pal.Hot,0,0,i*.004);
+                if(i%4==2)Glow.Spawn(x,y,z,(random()-.5)*8,(random()-.5)*3,(random()-.5)*8,.2,.1,.04,pal.Core,pal.Cool,0,2,i*.004);
+            }
+        }
+        private void GroundArcs(double cx,double cz,double ground,double R,int arcs,Palette pal)
+        {for(int arc=0;arc<arcs;arc++){double a=random()*Math.PI*2,len=R*(.5+random()*.5);for(int s=1;s<=6;s++){double u=s/6.0;Glow.Spawn(cx+Math.Cos(a)*len*u+(random()-.5)*.3,ground+.15+random()*.5,cz+Math.Sin(a)*len*u+(random()-.5)*.3,0,0,0,.16,.12,.05,pal.Core,pal.Cool,0,0,.03+u*.04);}}}
         private static double KindRate(string kind)
         {
             switch(kind){case "storm":return 9;case "acid":return 36;case "fire":return 64;case "frost":return 26;case "time":return 14;case "black-hole":return 50;case "repulsion":return 18;case "heal":return 20;case "implosion":return 40;case "bomb":return 10;case "mine":return 6;default:return 0;}
@@ -341,11 +371,10 @@ namespace ChipArena.UnityConversion
                     else Solid.Spawn(f.X+(random()-.5)*.4,f.Y-.3+random()*.6,f.Z+(random()-.5)*.4,0,.8,0,.45,.3,.05,0xffc04a,0xd8401c,-.4,.6,0,-1e9,1,4);
                     continue;
                 }
+                // Storm In A Jar: storm clouds drifting over the area. The source's lightning strikes (a white-to-blue bolt from
+                // 3.6 m, its ground flash and sparks) are not drawn (owner 2026-10-10: no blue/cyan lightning, see Lightning).
                 if(kind=="storm")
                 {
-                    Spot(out double sx,out double sz,out _);double x=sx,z=sz,top=ground+3.6;
-                    for(int i=0;i<12;i++){double y=top-(top-ground)*(i/11.0);Glow.Spawn(x,y,z,0,0,0,.2,.24,.12,0xffffff,pal.Hot);x+=(random()-.5)*.4;z+=(random()-.5)*.4;}
-                    Glow.Spawn(sx,ground+.15,sz,0,0,0,.18,.6,.2,0xffffff,pal.Hot);for(int i=0;i<5;i++)Glow.Spawn(sx,ground+.1,sz,(random()-.5)*5,2+random()*2,(random()-.5)*5,.3,.08,.03,0xffffff,pal.Cool,9);
                     for(int i=0;i<2;i++){Spot(out double cxs,out double czs,out _);Solid.Spawn(cxs,ground+3.5+random()*.5,czs,(random()-.5)*.3,0,(random()-.5)*.3,1.4,.45,.75,0x4a5378,0x2a3048,0,.5);}
                 }
                 else if(kind=="acid"){Spot(out double sx,out double sz,out _);Glow.Spawn(sx,ground+.05,sz,0,.9+random()*.8,0,.7+random()*.4,.14,.26,pal.Hot,pal.Cool,0,0);if(random()<.45)Solid.Spawn(sx,ground+.15,sz,(random()-.5)*.3,.45,(random()-.5)*.3,1.5,.18,.55,0x6f9a3a,0x2c3a22,-.1,1);}
