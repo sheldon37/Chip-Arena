@@ -23,6 +23,16 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-10 — Claude — Siren model: black flames restored, rimmed finish (owner playtest)
+- Branch `claude/siren-model-upgrade` (`8f940db`, base `ff81074`). The review found nothing. Merged. Presentation only.
+- Lavender cubes: `tools/export_cinematics.mjs` copied a flame cube's colour only from a material colour slot. The Siren flame material has none (the colour lives on each cube), so 420+ flame cubes in stage-dev-siren, death-siren-crush and death-siren-dissipate baked as the 0xaea4c7 fallback.
+  - Re-exported with per-cube Linear colours. Only those three clips' flame columns were spliced in; asset-lock was updated.
+- Flat black body: the rim in NativeSourceLit/NativePortrait used a fixed world axis, not the surface normal, so a front view had no outline.
+- Per-piece source rim and streak strengths (claws, tongues and wisps, body), slow breathing on the eye halos and grin glow, and a faint pale-violet edge on the in-arena flame cubes. Reduced effects stays flat.
+- SirenLookChecks pins the flame palette, no fallback colour, the rim expressions and the per-piece strengths.
+- Checks on the merged tree: compile OK; check_relay 211 PASS; Python OK; package OK; `git diff --check` clean. Not run: Unity/D3D11 shader compile, Windows, multiplayer.
+- Intro sync with the music (owner report): handed to Astra at the owner's request (NativeIntroClock / NativeAudio.SongPlayback; see the owner relay).
+
 ## 2026-10-10 — Claude — Intro NaN/boxes, Siren intro cell lights, Siren smile, seated chip draft, gun/Siren runs (owner playtest)
 - Merged into `claude/sleepy-ritchie-g8ruhv` after builders, two-lens reviews and fixes (one run was interrupted by a usage limit and resumed). Presentation only: no change to hit timing, hitboxes, damage, cooldowns, movement, networking or saves.
   - `claude/intro-nan-fix` (`5d17801`)
