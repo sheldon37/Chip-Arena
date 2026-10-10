@@ -1,5 +1,33 @@
 # Chip Arena — development log
 
+## 2026-10-10 — Claude — Hit reactions driven by the owner's Explosive pack clips (owner suggestion)
+- Branch `claude/sleepy-ritchie-g8ruhv` (PR #62): merged `claude/hit-reactions-pack` `7c4ca32` (base `2815906`) on top of `7d04b80`. Built, reviewed from two angles, fixed: three low findings, fixed in docs and checks.
+- New `tools/export_pack_reactions.mjs`, which reuses scripts/mocap's retarget code and writes only under unity/. It produces `Core/NativePackClips.Generated.cs` (40 retargeted pose tracks: 5 sets × 8 slots) and `tools/pack-reactions-provenance.json` (SHA-256 per track). The output is byte-identical on re-run.
+- No pack FBX, pack .meta or raw data is committed: the same policy as the melee mocap clips.
+- `Core/NativePackReact.cs` selects and layers the clips:
+  - GetHit F1/F2 (heavy)/L1/R1 per victim style: Armed for sword and daggers (daggers reverse-grip), 2Hand-Sword for the greatsword (hands kept on the hilt), Armed body plus the shield arm on guard for the shield, Unarmed for the fighters;
+  - Block-GetHit for melee blocks;
+  - the Stunned loop for long stuns.
+- Layering:
+  - light hits move the upper body and hips;
+  - while stunned, the full body takes the clip with the feet planted;
+  - everything is exactly 0 at `StunUntil`;
+  - clips are retimed to the reaction window, with a soft trunk-bend limit and blade clearance.
+- The procedural layer stays as fallback and modulation:
+  - hits from behind (the pack's B1 read wrong);
+  - gun and magic victims;
+  - short-stun daze;
+  - non-melee hits.
+- `MeleeMotion` hooks act only when a hit layer is bound, so the source parity checks are unchanged.
+- Checks on the merged head:
+  - unity-check: runtime+editor build OK;
+  - Python: 52 OK;
+  - package_source: passed, 1016 files;
+  - check_relay: exit 0, 264 PASS, including the pack-reaction checks (provenance, selection, blocks, stun end, blade clearance, no allocation).
+  - No FBX in the diff.
+- Risks: the heavy greatsword-on-greatsword hit from the left buckles hard, and headshot snaps on sword pilots are subtler. It still needs an in-game look on Windows.
+- Status: implemented and merged on the branch; pushed to the cloud branch; not released by Claude.
+
 ## 2026-10-10 — Claude — Pilot armor lighting: trims light the armor around them (owner request)
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62): merged `claude/armor-lighting` `eaeeb7e` (base `2815906`) on top of `d6a5dac`. Three rendered approaches were judged; the winner is shader-side spill, with grafts from the glow-lights and bloom proposals. Then built, reviewed from two angles and fixed: all four findings were real and fixed. Visual only.
 - New `Resources/NativeArmorLight.cginc`, `Core/NativeArmorLight.cs` and `Runtime/NativeArmorLights.cs`; small hunks in `NativeSourceLit.shader`, `NativeSourceModels`, `NativeSourcePresentation`, `NativeCombatGlow`, `NativeKillModels` and `NativeBuildChecks`.
