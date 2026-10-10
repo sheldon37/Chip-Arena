@@ -5,7 +5,8 @@ namespace ChipArena.UnityConversion
     // The chip draft's 3D stage (owner request 2026-10-10; presentation only). The pilot stands behind the tray: the cards sit
     // in the lower part of the screen, in front of the pilot's waist, and the pilot bows head, neck and upper spine toward
     // them and looks at whichever card is highlighted (the local picker's hover or keyboard focus, else the AI / remote
-    // picker's scan). Every move eases: the gaze is a critically damped spring, the reach, grab and wrist plant run on the
+    // picker's scan). Before the pick the arm on the considered card's side lifts toward it (draft-stage.ts). Every move
+    // eases: the gaze and the arms are critically damped springs, the reach, grab and wrist plant run on the
     // slowed timeline below with smoothstep ramps, the framing eases after layout changes, the pick's age runs on a smooth
     // clock (the authoritative one steps with ticks and network frames) and the idle breathes at IdlePace. Positions are the
     // stage rig's root frame in source axes (+x the pilot's left = screen right, +z toward the camera; Unity world is
@@ -34,8 +35,14 @@ namespace ChipArena.UnityConversion
         // it, the stage bows) and of an upward one, and the limits (the turn wider than the source's 1.05 rad, so the outer
         // card of a wide or two-row tray still reads as the one looked at; the spine, chest and neck carry half of it).
         public const float SpineShare=.2f,ChestShare=.3f,NeckShare=.4f,LookDown=1,LookUp=.55f,YawLimit=1.3f,PitchDown=.8f,PitchUp=.4f,EyeUp=.165f;
-        // Reach: shoulder to wrist at most ArmReach, the hand kept Beside its own side of the body.
-        public const float ArmReach=.5f,Beside=.16f;
+        // Reach: shoulder to wrist at most ArmReach when taking the card and Consider (draft-stage.ts CONSIDER, a soft elbow)
+        // while considering it, the hand kept Beside its own side of the body.
+        public const float ArmReach=.5f,Consider=.495f,Beside=.16f;
+        // Considering (draft-stage.ts): the arm on the local picker's highlighted card's side lifts toward it (weight spring
+        // LiftOmega) while the other lowers a little quicker (LowerOmega), so a switch of sides never holds both arms up; each
+        // arm's aim point follows the card on the reach plane (AimOmega). The arm that was lifting keeps lifting through the
+        // pick, and the pick's reach takes the larger of the two.
+        public const float LiftOmega=7,LowerOmega=9,AimOmega=9;
         // The share of the squared sideways distance that flattens a look's pitch (Aim).
         public const float SideReach=.25f;
         // The pick's timeline (seconds after the authoritative pick, with NativeDraftPlant's slowed plant): the hand starts down
@@ -70,10 +77,13 @@ namespace ChipArena.UnityConversion
         // clock (seconds), the smoothed pick age (-1 before the pick) and the look plane's depth.
         public Vector3 CameraPosition,CameraTarget,Gaze,Palm;public float Aspect=16f/9,Clock,Age=-1,LookDepth=LookZ;public bool Left;
         private readonly float restHead;private readonly Quaternion[] restArm=new Quaternion[3];
-        private float frameHeight,frameCentre,frameHeightV,frameCentreV,lastAge=-1;private Vector3 gazeV,lead;private bool framed,gazed,picked;
+        private float frameHeight,frameCentre,frameHeightV,frameCentreV,lastAge=-1;private Vector3 gazeV,lead;private bool framed,gazed,picked,carry;
+        // Per arm (0 the left, 1 the right): the considering weight, its velocity and last target, and the aim point's spring.
+        private readonly float[] armW=new float[2],armV=new float[2],armGoal=new float[2];private readonly Vector3[] armAim=new Vector3[2],armAimV=new Vector3[2];private readonly bool[] armAimed=new bool[2];
+        public float Weight(bool left)=>armW[left?0:1];
         public NativeDraftStage(){NativeDraftRules.Pose(Pose,0);Pose.World();restHead=Pose.WorldPosition[CapturedRig.Head].Y;}
-        // A new turn or pilot: the springs restart at their targets on the next frame.
-        public void Reset(){framed=gazed=picked=false;Age=lastAge=-1;}
+        // A new turn or pilot: the springs restart at their targets on the next frame and the arms start in the idle.
+        public void Reset(){framed=gazed=picked=carry=false;Age=lastAge=-1;for(int i=0;i<2;i++){armW[i]=armV[i]=armGoal[i]=0;armAimV[i]=Vector3.Zero;armAimed[i]=false;}}
 
         // The pick's age on a smooth clock: the authoritative age (`raw`, -1 before the pick) steps with the simulation tick or
         // the network frames, so the stage runs its own copy on the frame time and eases it onto the authority; it snaps on a
@@ -117,17 +127,28 @@ namespace ChipArena.UnityConversion
         {f=Vector3.Normalize(CameraTarget-CameraPosition);r=Vector3.Normalize(Vector3.Cross(f,Vector3.UnitY));u=Vector3.Cross(r,f);t=(float)Math.Tan(Fov*Math.PI/360);}
 
         // One frame over the idle in Pose (after Begin and Frame). `dt` presentation seconds, `age` the smoothed pick age (-1
-        // before the pick), `focus` the considered card (Focus), `cards` the card centres as screen fractions (first `count`).
-        // The Siren drafter keeps her idle arms and holds the chip (no reach or plant). World() is current on return.
-        public void Step(float dt,float age,int focus,Vector2[] cards,int count,bool siren,bool reduced)
+        // before the pick), `focus` the considered card (Focus), `consider` whether that card is the local picker's highlighted
+        // one (the arm on its side lifts toward it; never for the scan), `cards` the card centres as screen fractions (first
+        // `count`). The Siren drafter keeps her idle arms and holds the chip (no reach or plant). World() is current on return.
+        public void Step(float dt,float age,int focus,bool consider,Vector2[] cards,int count,bool siren,bool reduced)
         {
             dt=Math.Max(0,Math.Min(.1f,dt));var p=Pose;p.World();count=cards==null?0:Math.Min(count,cards.Length);focus=count>0?Math.Max(0,Math.Min(count-1,focus)):-1;
             // The look plane moves out for a wide or two-row tray, so the outermost card stays inside the head's turn.
             LookDepth=LookZ;for(int i=0;i<count;i++)LookDepth=Math.Max(LookDepth,Math.Abs(OnPlane(cards[i].X,cards[i].Y,LookZ).X)/OuterTurn);
             var card=focus>=0?OnPlane(cards[focus].X,cards[focus].Y,LookDepth):new Vector3(0,Cut,LookZ);var reachGoal=focus>=0?OnPlane(cards[focus].X,cards[focus].Y,ReachZ):card;
-            // The reaching hand is the one on the chosen card's side, chosen once per pick.
-            if(age<0)picked=false;else if(!picked){picked=true;Left=reachGoal.X>=0;}
+            // The reaching hand is the one on the chosen card's side, chosen once per pick; if that arm was already lifting
+            // toward a card it keeps lifting (no dip before the pick's reach takes over).
+            if(age<0)picked=false;else if(!picked){picked=true;Left=reachGoal.X>=0;carry=armGoal[Left?0:1]>0;}
             bool planting=age>=0&&!siren;float contact=NativeDraftPlant.Contact;
+            // The arms' considering springs: before the pick the side of the local picker's highlighted card, from the pick the
+            // reaching side; never for the Siren drafter.
+            int lifting=siren?-1:age>=0?(Left?0:1):consider&&focus>=0?(reachGoal.X>=0?0:1):-1;
+            for(int i=0;i<2;i++)
+            {
+                bool mine=i==lifting;float goal=mine&&(age<0||carry)?1:0;armGoal[i]=goal;
+                Spring(ref armW[i],ref armV[i],goal,goal>armW[i]?LiftOmega:LowerOmega,dt);armW[i]=MathUtil.Clamp(armW[i],0,1);
+                if(mine){if(armAimed[i])Spring(ref armAim[i],ref armAimV[i],reachGoal,reachGoal,AimOmega,dt);else{armAim[i]=reachGoal;armAimV[i]=Vector3.Zero;armAimed[i]=true;}}
+            }
             // The gaze: the card; over the last .2 s before the contact it passes to the hand taking it, then follows the chip in
             // the hand (last frame's) to the plant, and as the arms settle it eases to a point low in front, where the tray
             // was. Every hand-over blends, so no target jumps.
@@ -143,22 +164,27 @@ namespace ChipArena.UnityConversion
             // neck and head finish the look, so the reach and the plant land where they are solved.
             var eye=p.WorldPosition[CapturedRig.Head]+Vector3.Transform(Vector3.UnitY*EyeUp,p.WorldRotation[CapturedRig.Head]);var aim=Aim(eye,Gaze);var along=Vector3.Normalize(aim-eye);
             Turn(p,CapturedRig.Spine,along,SpineShare);Turn(p,CapturedRig.Chest,along,ChestShare);p.World();
-            if(planting)
+            // The arms: down and forward to their aim on the reach plane (arm's length at most: Consider, stretching to ArmReach
+            // with the pick's reach; on the hand's own side), from where the idle left the wrist over a forward arc; the joints
+            // ease from the idle into the solve. The reaching arm takes the larger of its considering weight and the pick's
+            // reach, and from the contact the plant carries it (the other arm, lowering, is raised for the plant from the idle
+            // pose it is blending to).
+            var plantLocal=Vector3.Zero;
+            for(int s=0;s<2;s++)
             {
-                // Down and forward to the card on the reach plane (arm's length at most, on the hand's own side), from where
-                // the idle left the wrist over a forward arc; the joints ease from the idle into the solve.
-                float w=Reach(age);int c=Left?CapturedRig.LClav:CapturedRig.RClav,a=c+1,hand=c+3;var shoulder=p.WorldPosition[a];var dir=reachGoal-shoulder;float len=dir.Length();
-                var point=len>1e-5f?shoulder+dir*(Math.Min(len,ArmReach)/len):shoulder;point.X=Left?Math.Max(Beside,point.X):Math.Min(-Beside,point.X);
-                var rest=p.WorldPosition[hand];var control=shoulder+new Vector3(Left?.08f:-.08f,-.3f,.3f);point=point*(w*w)+control*(2*w*(1-w))+rest*((1-w)*(1-w));
-                var local=Vector3.Transform(point-p.WorldPosition[CapturedRig.Chest],Quaternion.Inverse(p.WorldRotation[CapturedRig.Chest]));
-                if(age<contact&&w>1e-4f)
+                bool left=s==0,reaching=planting&&left==Left;float w=armW[s];if(reaching)w=Math.Max(w,Reach(age));if(!armAimed[s]||w<=1e-4f&&!reaching)continue;
+                int c=left?CapturedRig.LClav:CapturedRig.RClav,a=c+1,hand=c+3;var shoulder=p.WorldPosition[a];var dir=armAim[s]-shoulder;float len=dir.Length(),ext=reaching?Consider+(ArmReach-Consider)*Reach(age):Consider;
+                var point=len>1e-5f?shoulder+dir*(Math.Min(len,ext)/len):shoulder;point.X=left?Math.Max(Beside,point.X):Math.Min(-Beside,point.X);
+                var rest=p.WorldPosition[hand];var control=shoulder+new Vector3(left?.08f:-.08f,-.3f,.3f);point=point*(w*w)+control*(2*w*(1-w))+rest*((1-w)*(1-w));
+                var local=Vector3.Transform(point-p.WorldPosition[CapturedRig.Chest],Quaternion.Inverse(p.WorldRotation[CapturedRig.Chest]));if(reaching)plantLocal=local;
+                if((!reaching||age<contact)&&w>1e-4f)
                 {
                     for(int i=0;i<3;i++)restArm[i]=p.Rotation[a+i];
-                    CapturedRig.Arm(p,Left,local,NativeDraftPlant.ContactWrist,new Vector3(Left?1:-1,-.8f,-.25f));
+                    CapturedRig.Arm(p,left,local,NativeDraftPlant.ContactWrist,new Vector3(left?1:-1,-.8f,-.25f));
                     float k=MathUtil.Smooth(w/.6f);if(k<1)for(int i=0;i<3;i++)p.Rotation[a+i]=Quaternion.Slerp(restArm[i],p.Rotation[a+i],k);
                 }
-                Plant.Pose(p,Left,local,age);
             }
+            if(planting)Plant.Pose(p,Left,plantLocal,age);
             // The head looks from where the bow carried the eye, within the same limits.
             Turn(p,CapturedRig.Neck,along,NeckShare);p.World();eye=p.WorldPosition[CapturedRig.Head]+Vector3.Transform(Vector3.UnitY*EyeUp,p.WorldRotation[CapturedRig.Head]);Look(p,Aim(eye,Gaze));p.World();
             if(planting)Plant.Place(p,Left,age);
@@ -197,5 +223,19 @@ namespace ChipArena.UnityConversion
             p.World();var q=p.WorldRotation[CapturedRig.Head];var direction=target-(p.WorldPosition[CapturedRig.Head]+Vector3.Transform(Vector3.UnitY*EyeUp,q));
             if(direction.LengthSquared()>1e-8f)Turn(p,CapturedRig.Head,Vector3.Normalize(direction),1);
         }
+    }
+    // The local picker's highlighted card held across the gaps between cards (the pointer leaves one card well before it
+    // reaches the next, and the scan card in between can be at the far end of the tray): the last hovered or keyboard-focused
+    // card stays the considered one until another is highlighted or the turn ends (Reset), so the head never swings toward
+    // an unrelated card; the arm keeps reaching for it for HoldReach after the pointer left it, then lowers. Presentation only.
+    public sealed class NativeDraftHover
+    {
+        public const float HoldReach=.6f;
+        public int Card{get;private set;}=-1;private float away;
+        public void Reset(){Card=-1;away=0;}
+        // `hover` this frame's highlighted card (-1 none), `dt` frame seconds; returns the held card (-1 before any).
+        public int Step(int hover,float dt){if(hover>=0){Card=hover;away=0;}else if(Card>=0)away+=Math.Max(0,dt);return Card;}
+        // Whether the held card is still being reached for (the pointer on it, or between cards for under HoldReach).
+        public bool Reaching=>Card>=0&&away<HoldReach;
     }
 }
