@@ -168,6 +168,8 @@ namespace ChipArena.UnityConversion.Editor
                 Debug.Log("PASS native Unity physics: 15 source layouts / "+pads+" spawn floors and dynamic capsule settling");
             }
             finally{Physics.gravity=gravity;if(active.IsValid()&&active.isLoaded)SceneManager.SetActiveScene(active);}
+            // The death presentation's primitives (sky broadcast lines, stars and nameplate; the vent splat's SPLAT!).
+            {var shader=Resources.Load<Shader>("NativeDeathFx");if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: NativeDeathFx");}
         }
     }
 }

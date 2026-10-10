@@ -59,6 +59,8 @@ namespace ChipArena.UnityConversion
                     var root=Matrix4x4.TRS(d.position-Vector3.up*.865f,Quaternion.Euler(0,d.yaw,0),Vector3.one);
                     for(int b=0;b<22;b++){r.Body[b]=root*NativeSceneMotion.Matrix(clip,clip.victim[b],Math.Min(age,2.6f));r.Missing[b]=NativeSceneMotion.Opacity(clip,clip.victim[b],Math.Min(age,2.6f))<=.001f;}
                 }
+                // A kept vent-splat rebuilds from the body as drawn (vent-fall.ts; NativeVentDeathPresentation.cs).
+                else if(Vent(d.id) is VentBody vent&&vent.Seed==d.seed)for(int b=0;b<22;b++)r.Body[b]=vent.Bones[b];
                 else
                 {
                     if(!corpses.TryGetValue(d.id,out var corpse)||corpse.Death.seed!=d.seed)

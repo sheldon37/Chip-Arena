@@ -111,7 +111,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class ArenaPresentation
     {
         private readonly Dictionary<int,NativeCorpse> corpses=new Dictionary<int,NativeCorpse>();private readonly List<int> staleCorpses=new List<int>();
-        private void ClearCorpses(){foreach(var c in corpses.Values)c.Dispose();corpses.Clear();carriedDeaths.Clear();ReleaseKillEffects();}
+        private void ClearCorpses(){foreach(var c in corpses.Values)c.Dispose();corpses.Clear();carriedDeaths.Clear();ClearVents();ReleaseKillEffects();}
         // The clock kill effects are presented on (see PresentDeath): FieldClock, the continuous snapshot clock a guest renders at
         // (PresentationClock on the host and in the killcam replay).
         private float KillClock(NativeArena arena)=>FieldClock(arena);
@@ -127,6 +127,7 @@ namespace ChipArena.UnityConversion
             staleCorpses.Clear();
             foreach(var item in corpses){var d=item.Value.Death;var live=PilotOf(arena,item.Key);if(!DeathListed(arena,item.Key,d.seed)||arena.Time-d.at>5&&!d.kept||live!=null&&live.Hp>0&&arena.Time-live.RevivedAt>1.1f)staleCorpses.Add(item.Key);}
             foreach(int id in staleCorpses){corpses[id].Dispose();corpses.Remove(id);}
+            PruneVents(arena);
             // DeathEffects: live (not kept) pilot effects share ANIMATION.maxDeathVoxels pieces; a new one gets what is left.
             killUsed=0;foreach(var c in corpses.Values)if(c.Counted)killUsed+=c.FxCount;
             BeginKillFrame();
@@ -140,6 +141,8 @@ namespace ChipArena.UnityConversion
             // The repair owns the kept body until it hands the pose to the live rig; never also draw the old revive fade.
             if(revived&&death.kept&&revivals.TryGetValue(death.id,out var repair)&&repair.At==live.RevivedAt)return;
             if(SourceMinionDeath(death,age)||SourceDeathScene(death,age,up))return;
+            // Ward Zero vent deaths are vent-fall.ts's scripted victim (NativeVentDeathPresentation.cs), not a physics corpse.
+            if(VentStyle(death.style)){PresentVent(arena,death,pilot,KillClock(arena)-death.at,live);return;}
             if(!corpses.TryGetValue(death.id,out var corpse))
             {
                 if(corpses.Count>=32)return;CapturedAnimation.Player rig=null;bool temporary=false;
@@ -160,8 +163,6 @@ namespace ChipArena.UnityConversion
             float shown=death.kept?Math.Min(fx,(float)NativeKillEffectRules.KeepAge):fx;
             float alpha=death.kept||stock?1:Mathf.Clamp01((5-fx)/.65f);Matrix4x4 overlay=Matrix4x4.identity;
             if(style=="ascension"||style=="ghost")overlay=Matrix4x4.Translate(Vector3.up*fx*(style=="ascension"?2:1));
-            if(style=="vent-fall"){overlay=Matrix4x4.Translate(Vector3.down*Mathf.Min(15,fx*fx*9));if(fx>.6f)alpha=0;}
-            if(style=="vent-splat"){overlay=Matrix4x4.Translate(Vector3.up*Math.Max(0,1-fx/.6f)*10);if(fx>.6f&&fx<1.5f)VoxelCloud(death.position,fx-.6f,4,death.seed,30);}
             if(style=="launch")overlay=Matrix4x4.Translate(Vector3.up*Mathf.Min(20,fx*fx*9));
             if(style=="voxel-burst"||style=="confetti"||style=="siren-dissipate"||style=="siren-crush")alpha=0;
             // ragdoll.ts update(): the stock sink and shrink, then RagdollVfx (centred on the presented pelvis) and its collapse.
