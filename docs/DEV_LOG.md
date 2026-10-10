@@ -16,6 +16,28 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-10 — Claude — Animated Siren look and L33t H4x magic gait (owner request)
+- Base `claude/sleepy-ritchie-g8ruhv` at `a6de3d5`. Branches `claude/siren-look` (`e53aac9`) and `claude/leet-gait` (`90b4248`). Each was reviewed (Siren: one low DEV_LOG note, handled here; leet: no findings), then merged. Presentation only: no change to hit timing, hitboxes, damage, cooldowns, movement, networking or saves.
+- Siren:
+  - Export: `tools/export_models.mjs` now keeps the Siren's animated pieces separate: eye, grin rows, claw groups, and one shared flame box for the 112 tongue steps and 12 wisps. Palm orbs, halos and the flame pool are no longer baked. Only the `siren` model in SourceModels.json changed (19,049 to 4,817 vertices); asset-lock and provenance are updated.
+  - Face tracks: `tools/export_siren_look.mjs` writes `Resources/SirenLook.json`, the per-clip mouth and squint targets.
+  - Runtime: `Core/NativeSirenLook.cs` ports applySirenLook and the face/lean part of finishLook. Claws shorten to .32 in ranged mode; palm orbs and halos grow in, pulse and flare; eye halos glow at .42; the eyes widen, squint and cut their brows; the tongues flicker and the wisps sway; the Damnation ball swells. It is driven only by replicated Actor fields.
+  - `Runtime/NativeSirenLookPresentation.cs` draws it for the third-person and PvE boss Siren, host, guests and killcam. The drafter and portraits get the idle look with eye halos. No new shaders; first-person claws unchanged.
+  - The bank now requires the named Siren pieces, and NativeBuildChecks checks them.
+  - Offline render, source vs port, for a melee frame (rend) and a ranged frame (hellfire): same triangle count, mean difference .06 to .18 of 255.
+- L33t H4x: in the source it is a plain magic staff pilot (MAGIC stance, default magicLayer branches, .18 s release, no clips of its own).
+  - New `MagicPose.School` (5 = leet; replicated MagicVisual stays 0) and `Core/NativePoseRoute.cs` send it through the magic gait in third person and the magic cast and staff view in first person, so no sword idle, run, cut, block or stagger plays.
+  - The magic gait now shows the juggle and ports the finishPose blends for all five magic pilots.
+  - Allocation fixes: cast-phrase keys and the roll tables.
+  - `tools/export_magic_motion.mjs` adds three leet timelines, matching the source within .08 mm; `Tests/LeetMotionChecks.cs`; and `ValidateLeet` in the Unity build's ValidatePlayback.
+- Checks on the merged tree: Unity runtime+editor compile OK; check_relay 160 PASS, exit 0; Python OK (1 skip); package_source OK.
+  - Not run: Unity Editor/GPU, D3D11 player, Windows build, hosted multiplayer, on-screen check.
+- Known gaps:
+  - The Siren claw/orb blend starts when the replicated SourceRanged flag flips, not at the source's modeAt. Astra, optional: replicate NativeSirenState.ModeAt.
+  - The dev-siren intro and the Siren death cinematics stay baked scenes.
+  - The shadow pool's airborne fade is not ported.
+  - A hit-stunned magic pilot keeps the staff carry under the reaction (the source skips magicLayer there).
+
 ## 2026-10-09 — Claude — Owner playtest fixes (chip tray, DEV fighters, lightning, intros, music, accent glow, magic walk)
 - Base `claude/sleepy-ritchie-g8ruhv` at `ece4c11`. Fix branches were each reviewed, then merged: `claude/fix-accent-glow-b`, `claude/fix-magic-walk`, `claude/fix-siren-leet-intro`, `claude/fix-intro-music-d`, `claude/fix-emperor-anim-d`, `claude/fix-chip-select-d`. Lightning follow-up commit `25054a6`. All presentation or audio only.
 - Chip selection: the table is reverted and the tray draft is restored (603ca76 screen and presentation, card sizes and motion), with a wrist plant at real size: chip at most 14 cm, smaller than the 14.5 cm palm; plant at .88 s; install cue at the plant.
