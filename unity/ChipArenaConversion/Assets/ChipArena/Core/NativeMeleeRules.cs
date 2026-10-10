@@ -42,7 +42,19 @@ namespace ChipArena.UnityConversion
             return new V3((float)Math.Sin(s.Yaw)*speed,0,(float)Math.Cos(s.Yaw)*speed);
         }
         public static bool BeforeStrike(NativeMeleeSwing s,float time)=>s!=null&&s.StepAt>s.At&&time<s.At+(s.StepAt-s.At)/.55f-.5f/60;
-        public static float HitStun(ContentWeapon w,float rate)=>w.id=="daggers"?(Math.Max((float)w.interval,(float)w.windup+.16f+Recovery(w.id))+.16f)/rate+1f/30:.16f+(float)w.weight*.018f;
+        // Light direct-hit stun; fast attacks have slightly shorter recovery, and immunity prevents infinite combos.
+        public static float HitStun(ContentWeapon w,float rate)
+        {
+            float baseline=w.id=="daggers"?.12f:w.id=="sword"?.18f:w.id=="shield"?.20f:w.id=="greatsword"?.28f:.18f;
+            return Math.Max(.09f,Math.Min(.32f,baseline/Math.Max(.75f,rate)));
+        }
+        public static float FighterHitStun(bool emperor,bool heavy,float rate)
+        {
+            float baseline=heavy?.22f:emperor?.12f:.10f;
+            return Math.Max(.08f,Math.Min(.26f,baseline/Math.Max(.75f,rate)));
+        }
+        public static bool StaggerReady(float now,float stunUntil,float immuneUntil)=>now>=stunUntil&&now>=immuneUntil;
+        public static float StaggerImmuneThrough(float stunUntil)=>stunUntil+.5f;
         public static float BlockDuration(ChipStats s)=>(float)Math.Max(.1,Math.Min(.65,.3+s["blockWindow"]));
         public static float BlockCooldown(ChipStats s)=>(float)Math.Max(1.5,4*s["blockCooldown"]);
         public static float BlockStun(float damage,float impulse)=>MathUtil.Clamp(.18f+Math.Max(0,damage)*.008f+Math.Max(0,impulse)*.00025f,.25f,.95f);

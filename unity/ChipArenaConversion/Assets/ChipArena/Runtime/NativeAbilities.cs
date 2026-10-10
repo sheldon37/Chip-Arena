@@ -210,7 +210,7 @@ namespace ChipArena.UnityConversion
                         if(!remove&&(body!=null||minion!=null)&&d.id!="frag-grenade")s.Position+=delta.normalized*.05f;
                         break;
                     }
-                    if(!contact){if(NativeSpecialRules.Ceiling(Vec(s.Position),Vec(delta),s.Radius,out float ceilingAt,out var ceilingPoint)){s.Position=Vec(ceilingPoint);remove=true;Emit(EventKind.CeilingHit,s.Owner,0,s.Position,0);}else{s.Position+=delta;s.Travel+=delta.magnitude;}}
+                    if(!contact){if(NativeSpecialRules.Ceiling(Vec(s.Position),Vec(delta),s.Radius,out float ceilingAt,out var ceilingPoint)){s.Position=Vec(ceilingPoint);remove=true;}else{s.Position+=delta;s.Travel+=delta.magnitude;}}
                 }
                 bool expired=s.Life<=0||s.Travel>=s.MaxTravel-.0001f||s.Position.y<-15||d.id=="frag-grenade"&&Time>=s.Fuse;
                 if(!remove&&expired)

@@ -76,7 +76,9 @@ namespace ChipArena.UnityConversion
                 bool ceiling=NativeSpecialRules.Ceiling(Vec(b.Position),Vec(delta),b.Radius,out float fraction,out V3 center),remove=false;
                 if(ceiling&&(!hit.HasValue||delta.magnitude*fraction<=hit.Value.Distance))
                 {
-                    b.Position=Vec(center);Emit(EventKind.CeilingHit,owner,0,b.Position,0);Vector3 reflected=before+Vector3.down*b.Gravity*h*fraction;reflected.y=-Math.Abs(reflected.y);
+                    b.Position=Vec(center);bool bounces=b.Pong||b.Bounces>0;
+                    Emit(EventKind.CeilingHit,owner,0,b.Position,0,bounces?"BOUNCE":"ABSORB",color:bounces?0x75ddff:0xb5a3ff);
+                    Vector3 reflected=before+Vector3.down*b.Gravity*h*fraction;reflected.y=-Math.Abs(reflected.y);
                     if(b.Pong)remove=PongBounce(b,owner,b.Position,reflected);else if(b.Bounces>0){b.Bounces--;b.Velocity=reflected;b.Damage=Math.Min(1000,b.Damage*b.BounceRetention);}else remove=true;
                 }
                 else if(hit.HasValue){b.Velocity=before+Vector3.down*b.Gravity*h*Mathf.Clamp01(hit.Value.Distance/Math.Max(.00001f,delta.magnitude));remove=BulletImpact(b,owner,hit.Value);}else b.Position+=delta;
