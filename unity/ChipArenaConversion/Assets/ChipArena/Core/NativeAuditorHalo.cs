@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
         public readonly float[] Spin=new float[NativeAuditorHalo.Arcs],Pulse=new float[NativeAuditorHalo.Arcs];
         /// <summary>The crackle across each gap: arc i's end to the next arc's start, its strength (0 none) and jitter seed.</summary>
         public readonly Vector3[] BoltFrom=new Vector3[NativeAuditorHalo.Arcs],BoltTo=new Vector3[NativeAuditorHalo.Arcs];public readonly float[] Bolt=new float[NativeAuditorHalo.Arcs],BoltSeed=new float[NativeAuditorHalo.Arcs];
-        /// <summary>The black flames: base on the ring, height and half width (group units), sway phase, rim strength; Order draws them far to near.</summary>
+        /// <summary>The black flames: base on the ring, height and half width (group units; the shader narrows a flame seen end-on), sway phase, rim strength; Order draws them far to near.</summary>
         public readonly Vector3[] FlameBase=new Vector3[NativeAuditorHalo.Flames];public readonly float[] FlameHeight=new float[NativeAuditorHalo.Flames],FlameWidth=new float[NativeAuditorHalo.Flames],FlamePhase=new float[NativeAuditorHalo.Flames],FlameRim=new float[NativeAuditorHalo.Flames];
         public readonly int[] Order=new int[NativeAuditorHalo.Flames];
         /// <summary>The reduced halo's flat flames: animateCosmetics' scale (x, y) and in-plane tilt for each.</summary>
@@ -52,8 +52,10 @@ namespace ChipArena.UnityConversion
     /// bobbing and slowly turning, with twelve black flames on the ring) and its group motion exactly (NativePortraitRules.HaloGroup),
     /// and upgrades the look: smooth tapered arcs with a white-hot core and soft additive glow shells, the arcs turning against
     /// the flames with their own breathing so the gaps open and close, electric crackle across the gaps (always when a gap is
-    /// narrow, otherwise in short random bursts), black flames drawn by the shader (dark core, thin ember-red rim, tongues
-    /// licking upward, flickering heights), rising embers, a faint red haze and a red light on the wearer's head and shoulders.
+    /// narrow, otherwise in short random bursts), slim black horn flames drawn by the shader (tall and short ones, hooking
+    /// outward as seen and narrowing end-on like the source's flat flames, so the arcs show between them; dark core, thin
+    /// ember-red rim, tongues licking upward, flickering heights), rising embers, a faint red haze and a red light on the
+    /// wearer's head and shoulders.
     /// Reduced effects keep the arcs and the inner glow and draw the source's flat black flames with animateCosmetics' flicker.
     /// Time-dependent state is computed here, on the presentation clock; the shader adds only noise detail.
     /// </summary>
@@ -71,6 +73,12 @@ namespace ChipArena.UnityConversion
         public const int ArcSegments=64,TubeSides=10,ShellSegments=40,ShellSides=8,BoltSegments=10;
         /// <summary>The flames stand on the source's .30 ring (twelve, pi/6 apart); the haze sprite's size.</summary>
         public const float FlameRing=.30f,HazeSize=.95f;
+        /// <summary>
+        /// Slim horns like the source outline: a big flame's half width and height, the small ones' share of each (alternating,
+        /// each flame a little different so the crown has no even rhythm), and the flame quad's reach in half widths (room for
+        /// the shader's hook, sway and tongues).
+        /// </summary>
+        public const float FlameHalfWidth=.095f,FlameTall=.335f,SmallWidth=.8f,SmallHeight=.55f,FlameQuad=1.6f;
         public const float EmberSize=.022f;
         // ---- Motion -------------------------------------------------------------------------------------------------------
         /// <summary>The arcs turn at -.31 rad/s against the group's +.18 (so they drift backwards while the flames go round) and each breathes ±.085 rad.</summary>
@@ -141,7 +149,7 @@ namespace ChipArena.UnityConversion
             for(int n=0;n<Flames;n++)
             {
                 int start=m.Positions.Count;
-                for(int c=0;c<4;c++){float x=c==0||c==3?-1:1,y=c<2?-.1f:1;m.Add(Vector3.Zero,MeleeMath.Z,new Vector4(KindFlame,x,n,y),Vector4.Zero);}
+                for(int c=0;c<4;c++){float x=c==0||c==3?-FlameQuad:FlameQuad,y=c<2?-.1f:1;m.Add(Vector3.Zero,MeleeMath.Z,new Vector4(KindFlame,x,n,y),Vector4.Zero);}
                 m.Quad(start,start+1,start+2,start+3);
             }
         }
@@ -178,9 +186,10 @@ namespace ChipArena.UnityConversion
             }
             for(int n=0;n<Flames;n++)
             {
-                float a=n*MeleeMath.PI/6,big=n%2==0?1:.8f;f.FlameBase[n]=new Vector3((float)Math.Cos(a)*FlameRing,0,(float)Math.Sin(a)*FlameRing);
-                f.FlameHeight[n]=big*(.335f+.06f*(float)Math.Sin(3.1f*time+n*1.7f)+.035f*(float)Math.Sin(7.9f*time+n*2.9f)+.02f*(float)Math.Sin(13.3f*time+n*.9f));
-                f.FlameWidth[n]=big*(.15f+.015f*(float)Math.Sin(4.3f*time+n));f.FlamePhase[n]=n*1.37f;f.FlameRim[n]=.75f+.25f*(float)Math.Sin(5.3f*time+n*2.3f);f.Order[n]=n;
+                float a=n*MeleeMath.PI/6;bool big=n%2==0;f.FlameBase[n]=new Vector3((float)Math.Cos(a)*FlameRing,0,(float)Math.Sin(a)*FlameRing);
+                float tall=big?.9f+.2f*Hash(n*23+1):SmallHeight*(.9f+.2f*Hash(n*29+7));
+                f.FlameHeight[n]=tall*(FlameTall+.06f*(float)Math.Sin(3.1f*time+n*1.7f)+.035f*(float)Math.Sin(7.9f*time+n*2.9f)+.02f*(float)Math.Sin(13.3f*time+n*.9f));
+                f.FlameWidth[n]=(big?1:SmallWidth)*(FlameHalfWidth+.008f*(float)Math.Sin(4.3f*time+n));f.FlamePhase[n]=n*1.37f;f.FlameRim[n]=.75f+.25f*(float)Math.Sin(5.3f*time+n*2.3f);f.Order[n]=n;
                 // animateCosmetics: scale (.65 + .25 sin(4t + n), .65 + .35 sin(6t + 1.7n)), roll sin(5t + n) * .17.
                 NativePortraitRules.HaloFlame(n,time,out _,out _,out var scale);f.FinScale[n]=new Vector2(scale.X,scale.Y);f.FinTilt[n]=(float)Math.Sin(time*5+n)*.17f;
             }

@@ -13,6 +13,9 @@ namespace ChipArena.UnityConversion
     /// under the flames, flame slots, sparks over them, and the reduced halo's flat flames and inner glow); a halo is four
     /// draws (reduced: three) with one reused property block: nothing is allocated per frame. Draw order: the opaque arcs,
     /// the additive shells and haze, the premultiplied flames (black against the glow), then the crackle and embers.
+    /// The flames and sparks keep their own later queues (Transparent+5, +10, like the blast glow and NativeGlow halos) so
+    /// that order holds within a halo: Unity does not promise an order for equal-distance draws in one queue. Known
+    /// limitation: they draw over plain Transparent effects (smoke, field domes) even when those are nearer.
     /// The bank's static hat model stands in only when the shader is missing.
     /// </summary>
     public sealed class NativeAuditorHaloDraw:IDisposable

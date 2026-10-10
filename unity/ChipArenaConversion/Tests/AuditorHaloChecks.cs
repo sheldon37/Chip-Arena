@@ -69,6 +69,11 @@ namespace ChipArena.UnityConversion
             Near(worst,0,1e-5,"arc vertices sit on the tapered tube");
             m.Clear();NativeAuditorHalo.BuildFins(m);int outline=NativePortraitRules.FlameOutline().Count;Check(m.Positions.Count==NativeAuditorHalo.Flames*outline,"reduced flames use the source flame outline");
             m.Clear();NativeAuditorHalo.BuildFlames(m);Check(m.Positions.Count==NativeAuditorHalo.Flames*4&&m.Indices.Count==NativeAuditorHalo.Flames*6,"twelve flame slots");
+            bool reach=true;foreach(var d in m.Data)reach&=Math.Abs(Math.Abs(d.Y)-NativeAuditorHalo.FlameQuad)<1e-6;Check(reach&&NativeAuditorHalo.FlameQuad>1.4f,"flame quads leave room for the hook and tongues");
+            // Slim horns, not a wall of teardrops (review 2026-10-10): thin flames, the short ones about .55 of the tall ones.
+            double tall=0,small=0;
+            for(float t=0;t<20;t+=.37f){NativeAuditorHalo.Evaluate(t,false,f);for(int n=0;n<NativeAuditorHalo.Flames;n++){Check(f.FlameWidth[n]>.05f&&f.FlameWidth[n]<.105f,"slim flame "+n+" ("+f.FlameWidth[n]+")");if(n%2==0)tall+=f.FlameHeight[n];else small+=f.FlameHeight[n];}}
+            Check(small/tall>.45&&small/tall<.65,"short flames about .55 of the tall ones ("+small/tall+")");
         }
         // Every animated quantity moves with the clock, smoothly (a 60 fps step changes it a little, never jumps).
         private static void Motion()

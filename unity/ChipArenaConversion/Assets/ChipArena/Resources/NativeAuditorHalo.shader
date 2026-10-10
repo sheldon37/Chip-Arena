@@ -101,27 +101,37 @@ Shader "ChipArena/NativeAuditorHalo"
                 float r = dot(c, c);
                 return exp(-r * k) * saturate(1.0 - r);
             }
-            // A black flame in its quad: p.x across (-1..1 of the half width), p.y up (0 the ring .. 1 the flame's height).
-            // A swaying teardrop whose outline upward-scrolling noise eats into tongues, a soot core with a deep red heart
-            // low down and a thin ember rim that is hottest near the ring. `detail` (0..1, from the flame's size on screen)
-            // fades the tongues out on a distant flame, which keeps a clean silhouette instead of noise speckle.
-            // Returns premultiplied colour and coverage.
-            float4 HaloFlameColor(float2 p, float seed, float phase, float rimStrength, float clock, float detail, float3 soot, float3 inner, float3 rim)
+            // A black flame in its quad: p.x across (in half widths; the quad reaches past +-1 for the hook and tongues), p.y up
+            // (0 the ring .. 1 the flame's height). A slim horn, like the source's flame outline: a full base tapering to a sharp
+            // tip that hooks sideways (`lean`: outward from the ring as seen, -1..1, plus a per-flame bend from the seed) and
+            // sways, its outline eaten into tongues by upward-scrolling noise, a soot core with a deep red heart low down and a
+            // thin ember rim that is hottest near the ring. `detail` (0..1, from the flame's size on screen) fades the tongues
+            // out on a distant flame, widens it a little and turns the thin rim into a dim, broader glow at the root, so a far
+            // crown keeps a clean dark silhouette on the red line instead of speckle. Returns premultiplied colour and coverage.
+            float4 HaloFlameColor(float2 p, float seed, float phase, float rimStrength, float clock, float detail, float lean, float3 soot, float3 inner, float3 rim)
             {
                 float y = saturate(p.y);
-                float sway = sin(y * 3.4 - clock * 4.6 + phase) * 0.20 * y * y + sin(y * 7.3 - clock * 8.1 + phase * 1.7) * 0.06 * y;
-                float x = p.x - sway;
-                float width = (0.95 - 0.10 * detail) * sqrt(saturate(y * 3.0 + 0.08)) * pow(saturate(1.0 - y), 0.85);
+                float sway = sin(y * 3.4 - clock * 4.6 + phase) * 0.16 * y * y + sin(y * 7.3 - clock * 8.1 + phase * 1.7) * 0.05 * y;
+                float hook = (lean * 0.75 + (seed - 0.5) * 0.7) * y * y;
+                float x = p.x - sway - hook;
+                float width = (1.25 - 0.40 * detail) * sqrt(saturate(y * 3.0 + 0.08)) * pow(saturate(1.0 - y), 1.15);
                 float n = HaloFbm(float2(x * 2.8 + seed * 17.0, y * 1.5 - clock * 2.6 + seed * 5.0));
                 float lick = HaloNoise(float2(x * 6.0 + seed * 31.0, y * 4.0 - clock * 4.2));
-                float edge = abs(x) / max(width, 0.001) + ((n - 0.5) * 2.8 * smoothstep(0.08, 0.95, y) + (lick - 0.5) * 0.6 * y) * detail;
+                float edge = abs(x) / max(width, 0.001) + ((n - 0.5) * 2.2 * smoothstep(0.08, 0.95, y) + (lick - 0.5) * 0.5 * y) * detail;
                 float base = smoothstep(-0.1, 0.05, p.y);
                 float cover = (1.0 - smoothstep(0.8, 1.0, edge)) * base;
-                float band = smoothstep(0.70, 0.96, edge);
+                float band = smoothstep(lerp(0.45, 0.70, detail), 0.96, edge);
                 float heat = 1.0 - y;
                 float3 body = lerp(inner, soot, smoothstep(0.0, 0.5, y));
-                float3 glow = rim * band * (0.12 + 0.88 * heat * heat * heat) * rimStrength;
+                float3 glow = rim * band * (0.12 + 0.88 * heat * heat * heat) * rimStrength * lerp(0.3, 1.0, detail);
                 return float4((body + glow) * cover, cover);
+            }
+            // An ember sprite (c: -1..1 across it) whose diameter on screen is `px` pixels: a sub-pixel ember would only
+            // alias into speckle, so embers fade out as the halo gets small on screen.
+            float3 HaloEmberColor(float2 c, float alpha, float px, float3 ember, float3 white)
+            {
+                float a = HaloSoft(c, 4.0) * alpha * saturate((px - 1.5) / 2.5);
+                return ember * a + white * a * a * a * 0.35;
             }
             // ---- HALO SHARED END ----
             struct appdata {float4 vertex:POSITION;float3 normal:NORMAL;float4 data:TEXCOORD0;float4 extra:TEXCOORD1;};
@@ -158,7 +168,10 @@ Shader "ChipArena/NativeAuditorHalo"
                     // A flame slot: stands on its ring point and turns about the group's up axis to face the eye.
                     float4 f=_HaloFlames[index],g=_HaloFlames[index+12];float3 centre=mul(unity_ObjectToWorld,float4(f.xyz,1)).xyz;
                     float3 r=cross(up,ToEye(centre));float3 right=dot(r,r)>1e-8?normalize(r):UNITY_MATRIX_V[0].xyz;
-                    world=centre+right*v.data.y*g.x*scale+up*v.data.w*f.w*scale;o.info=float4(g.z,g.y,g.w,0);
+                    // Where it stands across the ring as seen (-1..1): a flame at the side hooks outward like a horn; one near
+                    // the line of sight narrows, as the source's flat flames do end-on, so the arcs behind show between them.
+                    float side=clamp(dot(centre-unity_ObjectToWorld._m03_m13_m23,right)/max(length(f.xz)*scale,1e-5),-1,1);
+                    world=centre+right*v.data.y*g.x*scale*lerp(.5,1,sqrt(abs(side)))+up*v.data.w*f.w*scale;o.info=float4(g.z,g.y,g.w,side);
                 }
                 else
                 {
@@ -170,6 +183,8 @@ Shader "ChipArena/NativeAuditorHalo"
             }
             float4 frag(v2f i):SV_Target
             {
+                // Screen-space rates outside the branches: a flame's height and a sprite's width in pixels (detail and ember fades).
+                float2 rate=fwidth(i.data.yw);
                 float kind=i.data.x,clock=_HaloA.x,opacity=_HaloA.y;float4 col=float4(0,0,0,0);int blend=0;
                 float3 eye=normalize(ToEye(i.world));float ndv=saturate(dot(normalize(i.normal),eye));
                 if(kind<.5||kind>5.5)
@@ -178,13 +193,13 @@ Shader "ChipArena/NativeAuditorHalo"
                     if(opacity<.999)clip(opacity-HaloHash(floor(i.pos.xy)));
                     col=kind<.5?float4(HaloArcColor(ndv,i.info.x,HaloTravel(i.data.y,i.data.z,clock),_HaloDeep.rgb,_HaloRed.rgb,_HaloHot.rgb,_HaloWhite.rgb),1):float4(_HaloSoot.rgb,1);blend=0;
                 }
-                else if(kind<5.5&&kind>4.5){col=HaloFlameColor(i.data.yw,i.info.x,i.info.y,i.info.z,clock,saturate(1.6-fwidth(i.data.w)*18),_HaloSoot.rgb,_HaloInner.rgb,_HaloRim.rgb)*opacity;blend=2;}
+                else if(kind<5.5&&kind>4.5){col=HaloFlameColor(i.data.yw,i.info.x,i.info.y,i.info.z,clock,saturate(1.6-rate.y*18),i.info.w,_HaloSoot.rgb,_HaloInner.rgb,_HaloRim.rgb)*opacity;blend=2;}
                 else
                 {
                     float3 c;
                     if(kind<1.5)c=_HaloGlow.rgb*HaloShell(ndv,i.data.w)*i.info.x*(1+.6*HaloTravel(i.data.y,i.data.z,clock));
                     else if(kind<2.5)c=HaloBoltColor(i.data.w,i.data.y,_HaloBolt.rgb,_HaloGlow.rgb)*i.info.x;
-                    else if(kind<3.5){float a=HaloSoft(i.data.yw,4.0)*i.info.x;c=_HaloEmber.rgb*a+_HaloWhite.rgb*a*a*a*.35;}
+                    else if(kind<3.5)c=HaloEmberColor(i.data.yw,i.info.x,2/max(rate.x,1e-4),_HaloEmber.rgb,_HaloWhite.rgb);
                     else c=_HaloGlow.rgb*HaloSoft(i.data.yw,3.0)*.03*_HaloA.z;
                     c*=opacity;col=float4(c,max(c.r,max(c.g,c.b)));blend=1;
                 }
