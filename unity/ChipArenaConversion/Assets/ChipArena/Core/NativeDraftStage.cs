@@ -29,13 +29,14 @@ namespace ChipArena.UnityConversion
         // with the fingers turned RestTurn rad in; the elbows out and back (RestPole, chest frame). The seated lean (spine, rad).
         public const float RestX=.17f,RestZ=.42f,RestUp=.13f,RestTurn=.35f,Lean=.08f;
         public static readonly Vector3 RestPole=new Vector3(1,0,-.4f),ReachPole=new Vector3(1,-.8f,-.25f);
-        // Framing: the head's top (HeadTop above the head joint, HatTop more under a hat, BossTop for the Siren) at Headroom below
-        // the screen's top, and the table top under the resting fingertips (AnchorZ) HandGap above the tray's first row, so the
+        // Framing: the head's top (HeadTop above the head joint bare-headed; under a hat or the Auditor halo its measured top, the
+        // crown Frame takes, with CrownGap over it for the bow and the turn; BossTop more for the Siren) at Headroom below the
+        // screen's top, and the table top under the resting fingertips (AnchorZ) HandGap above the tray's first row, so the
         // hands and forearms stay in view above the cards; the visible pilot (head top to table) at most MaxSeat of the screen's
         // height (never closer) and at least MinSeat (never smaller: a tall tray then covers the table's edge and the hands,
         // the head keeping its room), at least MinWidth metres across, at most MaxHeight tall. The front rim sits FrontGap
-        // under the last row.
-        public const float Headroom=.05f,HeadTop=.36f,HatTop=.24f,BossTop=.2f,AnchorZ=.5f,HandGap=.012f,MaxSeat=.74f,MinSeat=.44f,MinWidth=1.8f,MaxHeight=4f,FrontGap=.03f,DefaultTray=.72f,DefaultTrayBottom=.93f;
+        // under the last row. A crown is taken up to MaxCrown.
+        public const float Headroom=.05f,HeadTop=.36f,CrownGap=.03f,MaxCrown=1.5f,BossTop=.2f,AnchorZ=.5f,HandGap=.012f,MaxSeat=.74f,MinSeat=.44f,MinWidth=1.8f,MaxHeight=4f,FrontGap=.03f,DefaultTray=.72f,DefaultTrayBottom=.93f;
         // Springs (rad/s, critically damped): the gaze settles to 95% in about .37 s (.47 s while picking), framing in .8 s.
         // The gaze's target itself turns at most TurnSpeed rad/s (seen from the eye), so a glance across the whole display takes
         // its time instead of whipping the head through the middle.
@@ -124,12 +125,15 @@ namespace ChipArena.UnityConversion
 
         // Framing: `aspect` the screen's, `trayTop` / `trayBottom` the first card row's top edge and the last row's bottom edge
         // (fractions of the screen height from the top; negative while the tray is not laid out yet: defaults, and the framing
-        // snaps again on the first real one). Snaps on the first frame after a Reset, then eases, so a resize or a re-laid tray
-        // never cuts. The camera is solved so the head's top and the resting hands land on their rows.
-        public void Frame(float aspect,float trayTop,float trayBottom,bool hat,bool boss,float dt)
+        // snaps again on the first real one). `crown` is the worn head cosmetic's top above the head joint in the head's frame (m;
+        // 0 bare-headed): ArenaPresentation.DraftCrown measures the hat model once per outfit, as the portraits' hatTop does, and
+        // takes the Auditor halo's reach (NativeAuditorHalo.Top). Snaps on the first frame after a Reset, then eases, so a resize
+        // or a re-laid tray never cuts. The camera is solved so the head's (or the hat's) top and the resting hands land on their rows.
+        public void Frame(float aspect,float trayTop,float trayBottom,float crown,bool boss,float dt)
         {
             bool known=trayTop>=0&&MathUtil.Finite(trayTop)&&MathUtil.Finite(trayBottom)&&trayBottom>trayTop;if(!known){trayTop=DefaultTray;trayBottom=DefaultTrayBottom;framed=false;}
-            Aspect=Math.Max(.2f,aspect);float top=restHead+HeadTop+(hat?HatTop:0)+(boss?BossTop:0),hy=Table;
+            crown=MathUtil.Finite(crown)?MathUtil.Clamp(crown,0,MaxCrown):0;
+            Aspect=Math.Max(.2f,aspect);float top=restHead+Math.Max(HeadTop,crown>0?crown+CrownGap:0)+(boss?BossTop:0),hy=Table;
             float handRow=MathUtil.Clamp(trayTop,.3f,.95f)-HandGap,headRow=Headroom;
             // The camera's height and centre (on the plane z = 0) that put the head's top on its row and the hands on theirs.
             float height=(top-hy)/Math.Max(.05f,handRow-headRow),centre=top-(.5f-headRow)*height;

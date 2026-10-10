@@ -170,6 +170,18 @@ namespace ChipArena.UnityConversion
             }
             return models.RootElement.GetProperty("models");
         }
+        // Every vertex of each exported hat model in head space, back in the source frame (DraftStageChecks keeps them in view).
+        internal static Dictionary<string,Vector3[]> HatVertices(string root)
+        {
+            var result=new Dictionary<string,Vector3[]>();
+            foreach(var m in Models(root).EnumerateArray())
+            {
+                string id=m.GetProperty("id").GetString();if(!id.StartsWith("hat-",StringComparison.Ordinal))continue;var list=new List<Vector3>();
+                foreach(var s in m.GetProperty("sections").EnumerateArray()){if(s.GetProperty("bone").GetInt32()!=CapturedRig.Head)throw new Exception("hat section off the head: "+id);var p=s.GetProperty("positions");for(int i=0;i+2<p.GetArrayLength();i+=3)list.Add(new Vector3(-(float)p[i].GetDouble(),(float)p[i+1].GetDouble(),(float)p[i+2].GetDouble()));}
+                result[id.Substring(4)]=list.ToArray();
+            }
+            return result;
+        }
         // Head-space bounds of each exported hat model, back in the source frame (the export mirrors x for rig models).
         private static Dictionary<string,(Vector3 min,Vector3 max)> HatBounds(string root)
         {

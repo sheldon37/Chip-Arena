@@ -33,7 +33,7 @@ internal static class Program
             LobbyPoseChecks.Run(root);FighterMotionChecks.Run(root);LeetMotionChecks.Run();LeetPathChecks.Run(data);AuditorHaloChecks.Run(root);
             foreach(var result in EventFeedbackChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in DraftPlantChecks.Run())Console.WriteLine("PASS "+result);
-            foreach(var result in DraftStageChecks.Run())Console.WriteLine("PASS "+result);
+            foreach(var result in DraftStageChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in CinematicCameraChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in IntroPresentationChecks.Run())Console.WriteLine("PASS "+result);
             var tests = RegressionTests.Run(); tests.AddRange(RangedRegressionTests.Run());

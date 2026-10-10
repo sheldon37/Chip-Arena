@@ -52,6 +52,17 @@ namespace ChipArena.UnityConversion
         private Func<int,Matrix4x4> draftBone,draftChipBone;private Func<int,Color> draftChipPart;
         // The pick's age on the stage's smooth clock (-1 before the pick), for the tray's fly, shatter and spotlight.
         public float DraftAge=>draftStage.Age;
+        // The worn head cosmetic's top above the head joint, for the stage's framing (NativeDraftStage.Frame), measured once per
+        // outfit as the portraits' hatTop is: the hat model's head-space bounds (the meshes drawn), or the Auditor halo's
+        // reach (NativeAuditorHalo.Top); 0 bare-headed, for an unknown hat (nothing is drawn) and for the Siren drafter.
+        private string draftCrownHat;private float draftCrown;
+        private float DraftCrown(string hat,bool siren)
+        {
+            if(siren||string.IsNullOrEmpty(hat)||hat=="none")return 0;if(hat==draftCrownHat)return draftCrown;
+            draftCrownHat=hat;draftCrown=0;if(hat==NativeAuditorHalo.Hat)return draftCrown=NativeAuditorHalo.Top;
+            string id="hat-"+hat;if(sourceModels!=null)for(int i=0,n=sourceModels.PortraitPartCount(id);i<n;i++){sourceModels.PortraitPart(id,i,out var mesh,out _,out _,out _);if(mesh!=null)draftCrown=Mathf.Max(draftCrown,mesh.bounds.max.y);}
+            return draftCrown;
+        }
         // `age` the authoritative seconds since the pick (-1 before it), `focus` the considered card, `consider` whether the arm
         // lifts toward it (the local picker's highlighted card), `cards` the card centres as screen fractions (the first
         // `count`), `trayLine` / `trayBottom` the tray's top and bottom edges (fractions from the top; negative until the tray is
@@ -65,7 +76,7 @@ namespace ChipArena.UnityConversion
             // onto the authoritative one (simulation ticks and network frames would otherwise step it).
             float dt=Time.unscaledDeltaTime;bool siren=seat.spec=="siren";var stage=draftStage;var draftPose=stage.Pose;age=stage.SmoothAge(age,dt);stage.Begin(dt,reduced);double time=stage.Clock;
             if(siren)NativeSourceMotion.Sample("siren-idle-melee",reduced?0:(float)time,0,draftPose);
-            stage.Frame(camera.aspect,trayLine,trayBottom,seat.hat!="none",siren,dt);stage.Step(dt,age,focus,consider,cards,count,siren,reduced);
+            stage.Frame(camera.aspect,trayLine,trayBottom,DraftCrown(seat.hat,siren),siren,dt);stage.Step(dt,age,focus,consider,cards,count,siren,reduced);
             draftRig.Root.transform.SetPositionAndRotation(new Vector3(0,.88f,0),Quaternion.identity);
             for(int i=0;i<22;i++){draftRig.Bones[i].localPosition=CapturedAnimation.Vec(CapturedRig.Mirror(draftPose.Position[i]));draftRig.Bones[i].localRotation=CapturedAnimation.Quat(CapturedRig.Mirror(draftPose.Rotation[i]));}
             float pulse=age>=0&&!reduced?NativeDraftPlant.Pulse(age):-1,flash=pulse>=0?(1-pulse)*(1-pulse):0;
