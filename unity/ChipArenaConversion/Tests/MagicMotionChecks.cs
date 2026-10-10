@@ -6,7 +6,7 @@ using System.Text.Json;
 using ChipArena.UnityConversion;
 
 // Magic gait parity: the original character animation's magic pilots (tools/export_magic_motion.mjs: walk, run, sprint,
-// turn, stop, strafe, jump and casts on the move for all four schools) against MagicMotion over the same timelines, every
+// turn, stop, strafe, jump and casts on the move for all four schools and L33t H4x) against MagicMotion over the same timelines, every
 // recorded frame: joints, hand and toe tips, and the staff's shaft and face axes. The owner's playtest regression (the
 // torso frozen while walking) is checked directly: the pelvis, spine and chest must swing through the stride.
 internal static class MagicMotionChecks
@@ -21,9 +21,10 @@ internal static class MagicMotionChecks
         foreach(var scenario in document.RootElement.GetProperty("scenarios").EnumerateArray())
         {
             string spec=scenario.GetProperty("spec").GetString(),name=scenario.GetProperty("name").GetString();
-            int element=spec=="fire"?1:spec=="water"?2:spec=="lightning"?3:spec=="darkness"?4:0;Check(element>0,"Unknown magic spec "+spec);
+            // L33t H4x keeps MagicVisual 0 (the simulation's element effects); the presentation school comes from its spec.
+            int element=spec=="fire"?1:spec=="water"?2:spec=="lightning"?3:spec=="darkness"?4:0;
             var motion=new MagicMotion();var pose=new CapturedRig.Pose();var channels=new float[13];
-            var a=new Actor{Id=7,Weapon=WeaponId.Sword,MagicVisual=element,SourceSpec=spec,CastRate=1};
+            var a=new Actor{Id=7,Weapon=WeaponId.Sword,MagicVisual=element,SourceSpec=spec,CastRate=1};Check(MagicPose.School(a)>0,"Unknown magic spec "+spec);
             int f=0,compared=0,n=0;float max=0,sum=0;
             // Torso joint yaw range (local Euler y, radians) over the grounded walking and running frames.
             var portLo=new float[3];var portHi=new float[3];

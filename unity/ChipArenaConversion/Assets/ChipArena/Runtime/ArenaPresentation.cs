@@ -219,9 +219,11 @@ namespace ChipArena.UnityConversion
                 }
                 GunPresentation.Draw(rig,shown,Viewer?ViewerTime:time,Add); return;
             }
-            if(a.MagicVisual>0)
+            // The stand-in staff (without the source models; L33t H4x borrows the first school's).
+            int school=MagicPose.School(a);
+            if(school>0)
             {
-                DrawStaff(rig,a.MagicVisual);
+                DrawStaff(rig,school==MagicPose.Leet?1:school);
                 return;
             }
             if(!a.WeaponAway)Weapon(MeleeHand(rig,a,time),rig.Set,color);

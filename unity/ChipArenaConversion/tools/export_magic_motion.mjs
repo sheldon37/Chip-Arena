@@ -1,6 +1,7 @@
 // Magic gait parity fixtures (presentation only). Runs the pinned original character animation (locomotion in the magic
-// stance, sprint lean, magicLayer with its staff carry, cast phrase and stride sway, ground pass) for magic pilots walking,
-// running, sprinting, turning, strafing, jumping and casting on the move, and records every few frames' joints.
+// stance, sprint lean, magicLayer with its staff carry, cast phrase and stride sway, ground pass) for magic pilots (the four
+// schools and L33t H4x) walking, running, sprinting, turning, strafing, jumping and casting on the move, and records every
+// few frames' joints.
 // Usage: node tools/export_magic_motion.mjs <pinned source> <temporary output>  (the temporary output directory must
 // resolve `three` r180: link a node_modules containing it into it). Writes Tests/magic-motion-parity.json.
 import fs from 'node:fs';import path from 'node:path';import {fileURLToPath,pathToFileURL} from 'node:url';import {stripTypeScriptTypes} from 'node:module';import {createHash} from 'node:crypto';
@@ -57,6 +58,11 @@ const scenarios=[
  run('lightning','walk-cast-streak',2.4,[[.2,{move:[2.8]}],[.6,{cast:true}],[.88,{cast:true}],[1.16,{cast:true}],[2,{move:[0]}]]),
  run('water','strafe-jump',2.2,[[.2,{move:[4,1.4]}],[.8,{jump:true}],[1.6,{move:[3,Math.PI]}],[2,{move:[0]}]]),
  run('darkness','run-cast',2.4,[[.1,{move:[6.8]}],[.7,{cast:true}],[1.5,{cast:true}],[2.1,{move:[0]}]]),
+ // L33t H4x: a magic-class staff (content.ts class 'magic', stances.ts MAGIC) whose casts take the default branches and
+ // release at castWindup .18 s, one every .6 s interval.
+ run('leet','stand-walk-run-sprint-turn-stop',3.2,[[.4,{move:[2.8]}],[1.1,{move:[6.8],sprint:true}],[1.9,{yaw:.9}],[2.2,{move:[0],sprint:false}]]),
+ run('leet','walk-cast-streak',2.4,[[.2,{move:[2.8]}],[.6,{cast:true}],[1.2,{cast:true}],[1.8,{cast:true}],[2.1,{move:[0]}]]),
+ run('leet','strafe-jump-run-cast',2.6,[[.2,{move:[4,1.4]}],[.6,{jump:true}],[1.3,{move:[6.8]}],[1.5,{cast:true}],[2.2,{move:[0]}]]),
 ];
 fs.writeFileSync(process.env.MAGIC_OUT??path.join(root,'Tests/magic-motion-parity.json'),JSON.stringify({source:inventory.sourceCommit,dt:DT,record:RECORD,points:BONES.length+5+2,scenarios}));
 console.log('magic motion fixtures',scenarios.length,'scenarios',scenarios.reduce((n,s)=>n+s.frames.length,0),'frames');

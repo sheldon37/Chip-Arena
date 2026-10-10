@@ -95,7 +95,7 @@ namespace ChipArena.UnityConversion
                     }
                 }
                 Debug.Log("PASS native first-person repeat-frame playback: magic, rocket and melee-special poses remain stable between fixed ticks.");
-                ValidateMelee(parent);ValidateFighters(parent);
+                ValidateMelee(parent);ValidateFighters(parent);ValidateLeet(parent);
                 Debug.Log("PASS native animation playback: "+count+" poses / "+ClipCount+" clips; position and quaternion bindings match the source conversion.");
             }
             finally { rig.Dispose(); Release(parent); }
@@ -154,6 +154,34 @@ namespace ChipArena.UnityConversion
             }
             Debug.Log("PASS native DEV fighters: Emperor and Ansatsuken travel in their own guard on the gait, show their Shift and the juggle");
         }
+        // L33t H4x (a magic-class staff pilot whose replicated MagicVisual stays 0) through the native boundary: in third
+        // person it runs, casts, guards, rolls and is juggled on the magic gait, and its first-person view model casts with the
+        // staff; never a sword-set state, every bone finite. Core/MagicMotion is checked in Tests/LeetMotionChecks.cs.
+        private void ValidateLeet(GameObject parent)
+        {
+            using(var rig=Create(parent.transform,-5))
+            using(var view=Create(parent.transform,-6))
+            {
+                float t=3;var a=new Actor{Id=10,SourceSpec="leet",Weapon=WeaponId.Sword,Grounded=true,Hp=100,CastRate=1,Velocity=new V3(0,0,6.8f),RollDirection=new V3(0,0,1)};
+                void Pose(Player r,bool first,string want,int frames)
+                {
+                    for(int f=0;f<frames;f++,t+=1/60f)
+                    {
+                        r.ActorPose(a,new Vector3(0,0,t*a.Velocity.z),t,first);
+                        foreach(var b in r.Bones)if(float.IsNaN(b.position.x)||float.IsInfinity(b.position.y)||b.position.magnitude>1e4f)throw new InvalidOperationException("L33t H4x pose produced a non-finite bone: "+b.name);
+                    }
+                    if(r.State!=want)throw new InvalidOperationException("L33t H4x "+(first?"first-person ":"")+"shows "+r.State+", expected "+want);
+                }
+                Pose(rig,false,MagicMotion.Carry,40);
+                a.AttackAt=t;a.AttackUntil=t+.6f;Pose(rig,false,MagicMotion.Cast,20);a.AttackUntil=-100;
+                a.BlockAt=t;a.BlockUntil=t+.5f;Pose(rig,false,MagicMotion.Guard,10);a.BlockUntil=0;
+                a.RollAt=t;Pose(rig,false,MagicMotion.Roll,8);a.RollAt=-100;
+                a.JuggleUntil=t+1.25f;Pose(rig,false,MagicMotion.Juggle,10);a.JuggleUntil=0;
+                t+=1;Pose(rig,false,MagicMotion.Carry,10);
+                a.AttackAt=t;a.AttackUntil=t+.6f;Pose(view,true,"magic cast",20);
+            }
+            Debug.Log("PASS native L33t H4x: runs, casts, guards, rolls and is juggled on the magic gait with its staff, and casts in first person");
+        }
         public Player Create(Transform parent,int id) => new Player(this,parent,id);
         public sealed class Player : IDisposable
         {
@@ -207,7 +235,7 @@ namespace ChipArena.UnityConversion
             public MeleeImpacts Impacts;
             // The held weapons' reach stretch, set by the presentation before posing (the melee layers measure the stretched blade).
             public float WeaponReach=1;
-            public static bool CapturedMelee(Actor a)=>a.MagicVisual==0&&a.Weapon==WeaponId.Sword&&MeleeMotion.Handles(a.SourceSpec);
+            public static bool CapturedMelee(Actor a)=>NativePoseRoute.For(a,false)==PoseRoute.CapturedMelee;
             private void MeleePose(Actor a,Vector3 position,float time)
             {
                 Weapon=a.Weapon;Set=Mathf.Clamp(a.VisualSet,0,3);if(melee==null)melee=new MeleeMotion();melee.Impacts=Impacts;
@@ -277,15 +305,20 @@ namespace ChipArena.UnityConversion
             }
             public void ActorPose(Actor a,Vector3 position,float time,bool firstPerson=false)
             {
-                if(!firstPerson&&CapturedMelee(a)){MeleePose(a,position,time);return;}
-                if(!firstPerson&&a.MagicVisual>0){MagicGaitPose(a,position,time);return;}
-                if(!firstPerson&&a.MagicVisual==0&&NativeFighterPose.Handles(a.SourceSpec)){FighterPose(a,position,time);return;}
-                Weapon=a.Weapon; int set=Mathf.Clamp(a.VisualSet,0,3);
+                switch(NativePoseRoute.For(a,firstPerson))
+                {
+                    case PoseRoute.CapturedMelee:MeleePose(a,position,time);return;
+                    case PoseRoute.Magic:MagicGaitPose(a,position,time);return;
+                    case PoseRoute.Fighter:FighterPose(a,position,time);return;
+                }
+                // Generic: guns, the Siren and the first-person view models. A magic-class pilot (the four schools and the
+                // L33t H4x staff, MagicPose.School) never plays the sword set's cuts, block or stagger here.
+                Weapon=a.Weapon; int set=Mathf.Clamp(a.VisualSet,0,3);bool magic=MagicPose.School(a)>0,sword=NativePoseRoute.SwordLayers(a);
                 float dt=Mathf.Clamp(time-lastTime,0,.1f); bool reset=fresh||time<lastTime||time-lastTime>.35f;
                 if(reset) phase=0; lastTime=time;
                 Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,Quaternion.Euler(0,a.Yaw,0));Root.transform.localScale=Vector3.one*a.RigScale;
                 float speed=new Vector2(a.Velocity.x,a.Velocity.z).magnitude;
-                bool attack=a.MagicVisual==0&&a.Attacking(time),roll=a.Rolling(time),stun=a.StunUntil>time,ground=a.Grounded;
+                bool attack=!magic&&a.Attacking(time),roll=a.Rolling(time),stun=a.StunUntil>time,ground=a.Grounded;
                 bool special=NativeSpecialPose.Active(a,time),down=NativeSpecialPose.Down(a,time),juggle=!firstPerson&&Juggled(a,time);
                 bool moving=speed>.08f&&!attack&&!roll&&!stun&&!special&&!down&&!juggle&&ground;
                 if(moving) phase+=dt*Mathf.Min(3.7f,speed/Mathf.Min(2.1f,.62f+.22f*speed));
@@ -309,12 +342,12 @@ namespace ChipArena.UnityConversion
                         Blend(blendP,blendQ,CapturedClip.Ease((age-a.VisualWindup-a.VisualActive)/recovery)); State=cut+" recovery";
                     }
                 }
-                if(a.Weapon==WeaponId.Sword&&a.MagicVisual==0&&time<a.BlockUntil)
+                if(sword&&time<a.BlockUntil)
                 {
                     Save(blendP,blendQ); float age=time-(a.BlockAt>-90?a.BlockAt:a.BlockUntil-Rules.BlockDuration); var block=Find(set,"block");
                     Sample(set,"block",CapturedClip.Retime(new[]{0f,.13f,.36f},block.Marks,age)); Blend(blendP,blendQ,CapturedClip.Ease(age/.05f));
                 }
-                if(a.Weapon==WeaponId.Sword&&a.MagicVisual==0&&stun)
+                if(sword&&stun)
                 {
                     if(a.StunUntil!=lastStun) { stunAt=time; lastStun=a.StunUntil; }
                     Save(blendP,blendQ); var hit=Find(set,"stagger"); float span=Mathf.Max(.05f,a.StunUntil-stunAt);
@@ -348,7 +381,7 @@ namespace ChipArena.UnityConversion
                         CapturedRig.Leg(pose,i==0,foot);
                     }
                 }
-                if(a.MagicVisual>0)
+                if(magic)
                 {MagicPose.Apply(pose,a,time,firstPerson,magicChannels,magicGuard.Sample(time,time<a.BlockUntil));State=time<a.BlockUntil?"staff guard":time-a.AbilityAt<1?"ability cast":time-a.AttackAt<.8f?"magic cast":"staff carry";}
                 if(!ground&&!roll)
                 {
@@ -365,27 +398,26 @@ namespace ChipArena.UnityConversion
                 if(special){NativeSpecialPose.Special(pose,a,time,firstPerson);State=a.SpecialKind;}
                 if(down){NativeSpecialPose.Recover(pose,a,time);State="recovery "+NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time);}
                 if(juggle){NativeJugglePose.Apply(pose,time,juggleTrack,a.Velocity.y);State="juggle";}
-                if(a.Weapon==WeaponId.Sword&&a.MagicVisual==0&&ground&&!roll&&!special&&!down&&!juggle&&!NativeFighterPose.Handles(a.SourceSpec)) CapturedRig.BladeFloor(pose,false,1.28f);
+                if(sword&&ground&&!roll&&!special&&!down&&!juggle&&!NativeFighterPose.Handles(a.SourceSpec)) CapturedRig.BladeFloor(pose,false,1.28f);
                 if(firstPerson)NativeFirstPersonPose.SettleTorso(pose);
                 WritePose(); fresh=false;
             }
-            // Third-person magic pilots (host, guests, killcam) walk on the source's gait (Core/MagicMotion): the magic layer
-            // rides the gait's body bob, torso counter-twist and arm swing instead of resetting the torso over the captured
-            // sword walk, which froze it. The native roll, reaction, special and recovery layers pose before the ground pass.
+            // Third-person magic pilots (host, guests, killcam), the four schools and L33t H4x, walk on the source's gait
+            // (Core/MagicMotion): the magic layer rides the gait's body bob, torso counter-twist and arm swing instead of
+            // resetting the torso over the captured sword walk, which froze it. A juggle (observed from the replicated
+            // JuggleUntil) owns the frame; otherwise the native roll, reaction, special and recovery layers pose before the
+            // ground pass.
             private MagicMotion magicMotion;
             private void MagicGaitPose(Actor a,Vector3 position,float time)
             {
                 Weapon=a.Weapon;Set=Mathf.Clamp(a.VisualSet,0,3);if(magicMotion==null)magicMotion=new MagicMotion();
-                bool roll=a.Rolling(time),special=NativeSpecialPose.Active(a,time),down=NativeSpecialPose.Down(a,time);
+                bool juggle=Juggled(a,time),roll=MagicMotion.Rolls(a,time,juggle);
                 Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,roll?Quaternion.LookRotation(ArenaPresentation.Vec(a.RollDirection)):Quaternion.Euler(0,a.Yaw,0));Root.transform.localScale=Vector3.one*a.RigScale;
                 Vector3 at=Root.transform.position;magicMotion.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);magicMotion.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;
-                magicMotion.Sample(a,time,pose,magicChannels,magicGuard.Sample(time,time<a.BlockUntil));
-                State=time<a.BlockUntil?"staff guard":time-a.AbilityAt<1?"ability cast":time-a.AttackAt<.8f?"magic cast":"staff carry";
-                if(roll){CapturedRig.Roll(pose,(time-a.RollAt)/a.VisualRollDuration);State="roll (adapted)";}
-                if(!roll&&!special&&!down&&a.ReactionAt>-90){if(melee==null)melee=new MeleeMotion();melee.ReactOver(pose,MeleeViewOf(a,time,meleeView),time);}
-                if(special){NativeSpecialPose.Special(pose,a,time,false);State=a.SpecialKind;}
-                if(down){NativeSpecialPose.Recover(pose,a,time);State="recovery "+NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time);}
-                magicMotion.Finish(pose,time,a.Hp<=0||down||roll);
+                string state=magicMotion.Pose(a,time,pose,magicChannels,magicGuard.Sample(time,time<a.BlockUntil),juggle,juggleTrack,out bool react);
+                if(react){if(melee==null)melee=new MeleeMotion();melee.ReactOver(pose,MeleeViewOf(a,time,meleeView),time);}
+                State=ReferenceEquals(state,MagicMotion.Recovery)?"recovery "+NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time):state;
+                magicMotion.Finish(pose,time);
                 WritePose();fresh=false;lastTime=time;
             }
             public void Preview(int set,string state,float time,Vector3 position)
