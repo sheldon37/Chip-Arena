@@ -226,6 +226,7 @@ namespace ChipArena.UnityConversion
             Check(!Read("NativeSummons.cs").Contains("Fx(pos")&&Read("NativeAbilities.cs").Contains("if(d.id==\"flame-lance\")Fx(at,.6f,element);"),"no summon effect; of the surface hits only Flame Lance records one");
             string blasts=Read("NativeBlastPresentation.cs");
             Check(blasts.Contains("EventKind.Summon){sim.Impact(x,y,z,1.2,0x93db67,quality,false,true)")&&blasts.Contains("EventKind.Pong){sim.Impact(x,y,z,1.2,0xff5269,quality)")&&blasts.Contains("ExplosionAt(arena,fx,out string detail)"),"summon and pong impacts, records keyed to their Explosion events");
+            Check(!Read("NativeWorldEffects.cs").Contains("MinionDeaths")&&Read("NativeSummonPresentation.cs").Contains("if(summon&&age>="),"a horde add or summon death draws no world puff; only a summon breaks up, in SourceMinionDeath");
         }
         private static void Winding()
         {

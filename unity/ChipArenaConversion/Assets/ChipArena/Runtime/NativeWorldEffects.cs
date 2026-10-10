@@ -22,7 +22,8 @@ namespace ChipArena.UnityConversion
             }
             if(arena.MapId=="siren"&&arena.BossSongTime>=0)for(int j=0;j<NativeArena.StageVents.Length;j++)
             {var state=arena.BossTrack.Vent(arena.BossSongTime,j%2);Vector3 at=NativeArena.StageVents[j];if(state.warning>0)Ring(at+Vector3.up*.08f,1.3f,7,time*45);if(state.active){Ring(at+Vector3.up*.04f,1.4f,7,time*25);for(int k=0;k<12;k++){float a=k*2.399f,u=Mathf.Repeat(time*2+k*.13f,1);Vector3 p=at+new Vector3(Mathf.Sin(a)*.7f,u*2.2f,Mathf.Cos(a)*.7f);Add(7,Matrix4x4.TRS(p,Quaternion.Euler(0,45,0),new Vector3(.16f,.4f,.16f)*(1-u)));}}}
-            foreach(var d in arena.MinionDeaths){float age=time-d.at;if(age>=0&&age<.7f)VoxelCloud(d.position,age,4,d.seed,12);}
+            // A minion death draws no burst here: a horde add keeps its corpse (pve/horde-view.ts; gore only on a gib) and a summon
+            // breaks up at SUMMON_LOOK.death.breakAt (chaos-visuals.ts), both in SourceMinionDeath.
         }
     }
 }
