@@ -38,7 +38,7 @@ internal static class Program
             DeathFxChecks.Run(root);
             StageVentChecks.Run(root);
             SummonCeilingPickupChecks.Run(root,data);
-            LobbyPoseChecks.Run(root);FighterMotionChecks.Run(root);LeetMotionChecks.Run();LeetPathChecks.Run(data);GunMotionChecks.Run();AuditorHaloChecks.Run(root);HitReactionChecks.Run(root);
+            LobbyPoseChecks.Run(root);FighterMotionChecks.Run(root);LeetMotionChecks.Run();LeetPathChecks.Run(data);GunMotionChecks.Run();AuditorHaloChecks.Run(root);HitReactionChecks.Run(root);PackReactionChecks.Run(root);
             ArmorLightChecks.Run(root);
             foreach(var result in EventFeedbackChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in ImpactCueChecks.Run(root,data))Console.WriteLine("PASS "+result);
