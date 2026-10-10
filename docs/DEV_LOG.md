@@ -16,6 +16,52 @@ cooldowns, movement rules, or network behavior changed. Never invent a commit,
 PR, test result, release, or earlier log history. Git history identifies the commit
 containing an entry; no self-referential commit hash is required.
 
+## 2026-10-10 — Claude — Siren claw timing, weapon intros, random explosions, chip stage gaze, L33t H4x paths (owner playtest)
+- Base `claude/sleepy-ritchie-g8ruhv` at `7149fdc`. Branches, each reviewed then merged:
+  - `claude/siren-claw-timing` (`331759a`, no findings)
+  - `claude/fix-weapon-intros` (`9ed791d`)
+  - `claude/fix-random-explosions` (`34729f1`; review found a Siren add death puff, fixed)
+  - `claude/chip-stage-gaze` (`c6a416a`; review found a wrong-card gaze between cards and the missing hover arm lift, both fixed)
+  - `claude/leet-fixes-b` (`54e3db0`, checks only)
+  - Check fix `eb229a9`.
+- Siren claws:
+  - The swap starts at the authoritative snapshot time of the flag flip, not the render frame. Guests were about 0.1 s early.
+  - The idle stance now blends with the claws and orbs over .35 s with motion.ts's .5 s shudder.
+  - The sword floor guard no longer bends the right claw in Slam and Rush.
+  - Fixture: swap and swipe timelines against every source joint.
+- Weapon intros:
+  - The intro bake (`tools/export_motion.mjs`) now arms the rig like player-intros.ts, so braceWeapon poses the free arm. Rebaked left-arm tracks for intro-weapon-greatsword, rifle and machinegun; other clips byte-identical; asset-lock updated. If SourceMotion.json conflicts, rebake it, don't merge it.
+  - The glow voxels in the stage blasts fade by alpha instead of turning into opaque dark cubes. These were the artifacts.
+  - Gauntlets sit on the hand socket, and Belt Rattle shows its muzzle flash.
+  - Risk: 8 NaN alphas in the stage blob shadow, also present in the source.
+- Explosions:
+  - Removed the first-port AbilityEffects stand-ins: fire on severed add limbs (the gun-kill fireball), darkness on summons, water on revives, fire on pong bounces, and Tidal Wave/Shackles wall blasts. These calls in sim files only fed visuals.
+  - NativeBlastPresentation draws a blast only with its matching Explosion/Vacuum event, styled from the event tag (`NativeBlastCues.ExplosionTag`).
+  - The static discharge on adds is a shock arc with the lightning cue.
+  - Removed the native death particle burst and the white puff on minion deaths.
+- Chip stage:
+  - The pilot is framed behind and above the tray, bowing toward the cards. The head follows the highlighted card on a critically damped spring (about 0.4 s); the hover arm lift uses the source springs.
+  - The plant timeline is about 1.3x slower (plant and install cue at 1.14 s), and the pick runs on a smooth clock (`Core/NativeDraftStage.cs`).
+  - Cards and the wrist plant are unchanged.
+- L33t H4x:
+  - No path in the current code plays the sword set. The owner's build likely predated 7149fdc.
+  - E (Root Command) exploding at the pilot is source-faithful (`leet.ts` explode 'root'). Kept pending the owner's call.
+  - New `Tests/LeetPathChecks.cs`.
+- Checks on the merged tree:
+  - Passed: Unity runtime+editor compile OK; check_relay 168 PASS, exit 0; Python OK (1 skip); package_source OK.
+  - Not run: Unity Editor/GPU, D3D11 player, Windows build, hosted multiplayer, on-screen check.
+- For Astra:
+  - Optional `Actor.SourceModeAt` (Siren ModeAt) for exact guest/killcam swaps.
+  - Siren Side should alternate only for swipe/hellfire.
+  - `effect:"static"`/`"corpseParty"` on NativeSummons ChipBlasts.
+  - Pong event Target/From.
+  - Impact events on adds and summons.
+  - A Leet event for Admin Pause ('leet-freeze').
+  - StepLeetPilot ready check.
+- Claude follow-ups:
+  - The source's green leet-* bursts and the green Leet beams are not ported.
+  - Summon break-up timing and colours.
+
 ## 2026-10-10 — Claude — Animated Siren look and L33t H4x magic gait (owner request)
 - Base `claude/sleepy-ritchie-g8ruhv` at `a6de3d5`. Branches `claude/siren-look` (`e53aac9`) and `claude/leet-gait` (`90b4248`). Each was reviewed (Siren: one low DEV_LOG note, handled here; leet: no findings), then merged. Presentation only: no change to hit timing, hitboxes, damage, cooldowns, movement, networking or saves.
 - Siren:
