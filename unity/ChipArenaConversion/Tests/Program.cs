@@ -34,7 +34,7 @@ internal static class Program
             LobbyPoseChecks.Run(root);FighterMotionChecks.Run(root);LeetMotionChecks.Run();LeetPathChecks.Run(data);GunMotionChecks.Run();AuditorHaloChecks.Run(root);
             foreach(var result in EventFeedbackChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in DraftPlantChecks.Run())Console.WriteLine("PASS "+result);
-            foreach(var result in DraftStageChecks.Run())Console.WriteLine("PASS "+result);
+            foreach(var result in DraftStageChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in CinematicCameraChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in IntroPresentationChecks.Run())Console.WriteLine("PASS "+result);
             foreach(var result in SirenIntroChecks.Run(root))Console.WriteLine("PASS "+result);

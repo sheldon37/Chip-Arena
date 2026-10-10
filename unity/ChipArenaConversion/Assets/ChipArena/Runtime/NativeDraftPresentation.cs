@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
             if(!active&&!pve){if(draftViewing){draftViewing=false;RestoreLive();presentation.ResetPresentation();}return false;}
             var seat=pve?arena.Local.Seat:match.Seat(match.DraftSeat);if(seat==null)return false;
             // A new picker: the stage restarts (its springs snap) and frames once the tray has been laid out for them.
-            if(!draftViewing||draftViewSeat!=seat.id){RestoreLive();presentation.ResetPresentation();draftHover=-1;draftFocus=-1;draftHeld.Reset();draftViewSeat=seat.id;draftViewing=true;draftCards=Array.Empty<Rect>();draftTrayLine=-1;}
+            if(!draftViewing||draftViewSeat!=seat.id){RestoreLive();presentation.ResetPresentation();draftHover=-1;draftFocus=-1;draftHeld.Reset();draftViewSeat=seat.id;draftViewing=true;draftCards=Array.Empty<Rect>();draftTrayLine=draftTrayBottom=-1;}
             float scale=NativeUiMotion.Measure(Screen.width,Screen.height,prefs.uiScale).Scale,width=Screen.width/scale,height=Screen.height/scale;
             // The Siren pick's follow-through (NativeDraftFollow) plays the pick on its snapshot of the offers.
             bool follow=pve&&PveFollowing;var row=pve?arena.Pve.Rows[seat.id]:null;int count=follow?pveFollowChips.Count:pve?row.Open?.Offers?.Count??0:seat.offers.Count;
@@ -39,23 +39,36 @@ namespace ChipArena.UnityConversion
             // Stage lights take the picker's colour, blending to the chip's rarity over .5 s after the pick (the Siren pick: its tier).
             string tier=follow?pveFollowTier:row?.Open?.Tier;Color chipTint=chosenChip!=null?RarityColor(chosenChip.rarity):default;
             Color tint=pve?(tier=="rainbow"?Color.white:RarityColor(tier??"common")):SeatColor(seat);if(age>=0&&chosenChip!=null)tint=Color.Lerp(tint,chipTint,Mathf.Clamp01(age/.5f));
-            presentation.DraftBandTeam=seat.spec=="siren"?-1:NativeStatusVisuals.PilotBand(match.Teams,match.Cooperative,seat.AuthorityBoss,seat.team,seat.id==arena.LocalId);draftPalm=presentation.RenderDraft(seat,age,focus,consider,draftPoints,n,draftTrayLine,tint,cameraView,prefs.reducedEffects,chipTint)/scale;draftPalm.y=height-draftPalm.y;return true;
+            presentation.DraftBandTeam=seat.spec=="siren"?-1:NativeStatusVisuals.PilotBand(match.Teams,match.Cooperative,seat.AuthorityBoss,seat.team,seat.id==arena.LocalId);draftPalm=presentation.RenderDraft(seat,age,focus,consider,draftPoints,n,draftTrayLine,draftTrayBottom,tint,cameraView,prefs.reducedEffects,chipTint)/scale;draftPalm.y=height-draftPalm.y;return true;
         }
     }
     public sealed partial class ArenaPresentation
     {
         private CapturedAnimation.Player draftRig;
-        // The stage motion (NativeDraftStage: the pilot behind the tray, the bow and the gaze springs, the slowed reach and the
-        // wrist plant) and the cached draw delegates of the pilot and the held chip (no per-frame closures).
+        // The stage motion (NativeDraftStage: the pilot seated at the display table, chest up, the bow and the gaze springs, the
+        // considering lift, the slowed reach across the table and the wrist plant) and the cached draw delegates of the pilot
+        // and the held chip (no per-frame closures).
         private readonly NativeDraftStage draftStage=new NativeDraftStage();private Matrix4x4 draftChip;private Color draftChipTint;
         private Func<int,Matrix4x4> draftBone,draftChipBone;private Func<int,Color> draftChipPart;
         // The pick's age on the stage's smooth clock (-1 before the pick), for the tray's fly, shatter and spotlight.
         public float DraftAge=>draftStage.Age;
+        // The worn head cosmetic's top above the head joint, for the stage's framing (NativeDraftStage.Frame), measured once per
+        // outfit as the portraits' hatTop is: the hat model's head-space bounds (the meshes drawn), or the Auditor halo's
+        // reach (NativeAuditorHalo.Top); 0 bare-headed, for an unknown hat (nothing is drawn) and for the Siren drafter.
+        private string draftCrownHat;private float draftCrown;
+        private float DraftCrown(string hat,bool siren)
+        {
+            if(siren||string.IsNullOrEmpty(hat)||hat=="none")return 0;if(hat==draftCrownHat)return draftCrown;
+            draftCrownHat=hat;draftCrown=0;if(hat==NativeAuditorHalo.Hat)return draftCrown=NativeAuditorHalo.Top;
+            string id="hat-"+hat;if(sourceModels!=null)for(int i=0,n=sourceModels.PortraitPartCount(id);i<n;i++){sourceModels.PortraitPart(id,i,out var mesh,out _,out _,out _);if(mesh!=null)draftCrown=Mathf.Max(draftCrown,mesh.bounds.max.y);}
+            return draftCrown;
+        }
         // `age` the authoritative seconds since the pick (-1 before it), `focus` the considered card, `consider` whether the arm
         // lifts toward it (the local picker's highlighted card), `cards` the card centres as screen fractions (the first
-        // `count`), `trayLine` the tray's top edge (fraction from the top; negative until the tray is laid out). `chipTint` is the chosen chip's rarity (sRGB) for its die and the plant pulse (the stage tint when not
+        // `count`), `trayLine` / `trayBottom` the tray's top and bottom edges (fractions from the top; negative until the tray is
+        // laid out). `chipTint` is the chosen chip's rarity (sRGB) for its die and the plant pulse (the stage tint when not
         // given). Returns the reaching palm in screen pixels (the chosen card flies there).
-        public Vector2 RenderDraft(NativeSeat seat,float age,int focus,bool consider,NVector2[] cards,int count,float trayLine,Color tint,Camera camera,bool reduced,Color chipTint=default)
+        public Vector2 RenderDraft(NativeSeat seat,float age,int focus,bool consider,NVector2[] cards,int count,float trayLine,float trayBottom,Color tint,Camera camera,bool reduced,Color chipTint=default)
         {
             if(draftRig==null){draftRig=captured.Create(transform,-101);draftStage.Reset();}sourceModels.Begin();foreach(var b in batches)b.Clear();FirstPerson=false;combatGlow?.Clear();particles.Clear();
             if(draftBone==null){draftBone=b=>draftRig.Bones[b].localToWorldMatrix;draftChipBone=b=>draftChip;draftChipPart=b=>b==1?draftChipTint:Color.white;}
@@ -63,12 +76,22 @@ namespace ChipArena.UnityConversion
             // onto the authoritative one (simulation ticks and network frames would otherwise step it).
             float dt=Time.unscaledDeltaTime;bool siren=seat.spec=="siren";var stage=draftStage;var draftPose=stage.Pose;age=stage.SmoothAge(age,dt);stage.Begin(dt,reduced);double time=stage.Clock;
             if(siren)NativeSourceMotion.Sample("siren-idle-melee",reduced?0:(float)time,0,draftPose);
-            stage.Frame(camera.aspect,trayLine,seat.hat!="none",siren,dt);stage.Step(dt,age,focus,consider,cards,count,siren,reduced);
+            stage.Frame(camera.aspect,trayLine,trayBottom,DraftCrown(seat.hat,siren),siren,dt);stage.Step(dt,age,focus,consider,cards,count,siren,reduced);
             draftRig.Root.transform.SetPositionAndRotation(new Vector3(0,.88f,0),Quaternion.identity);
             for(int i=0;i<22;i++){draftRig.Bones[i].localPosition=CapturedAnimation.Vec(CapturedRig.Mirror(draftPose.Position[i]));draftRig.Bones[i].localRotation=CapturedAnimation.Quat(CapturedRig.Mirror(draftPose.Rotation[i]));}
             float pulse=age>=0&&!reduced?NativeDraftPlant.Pulse(age):-1,flash=pulse>=0?(1-pulse)*(1-pulse):0;
             camera.fieldOfView=NativeDraftStage.Fov;camera.transform.position=Stage(stage.CameraPosition);camera.transform.LookAt(Stage(stage.CameraTarget));NativeLighting.Draft(camera,tint,flash);
             var plant=stage.Plant;int hand=stage.Left?9:13;
+            // The display table in front of the pilot (NativeDraftStage.TablePiece): a dark lit slab and front face, the dim display
+            // pane, its rules and the rims glowing in the stage tint (the pilot's colour, the chip's rarity after the pick),
+            // brightening with the plant's flash. The designed cards lie over its display (NativeDraftScreen).
+            var tableTint=tint.linear;float rimFlash=1+.8f*flash;
+            for(int i=0;i<NativeDraftStage.TablePieces;i++)
+            {
+                if(!stage.TablePiece(i,out var centre,out var size,out float shade,out bool glow))continue;
+                var colour=glow?tableTint*(shade*(i==3||i==5?rimFlash:1)):new Color(shade,shade*1.04f,shade*1.18f);colour.a=1;
+                sourceModels.QueuePiece(WeaponShape.Cube,glow,Matrix4x4.TRS(Stage(centre),Quaternion.identity,CapturedAnimation.Vec(size)),colour);
+            }
             // draft-stage.ts animates the Siren drafter (animateSiren on the match clock): its idle look, eye halos lit.
             var root=draftRig.Root.transform.localToWorldMatrix;var sirenFace=siren?SirenStill(reduced?0:(float)time):null;sourceModels.Queue(siren?"siren":"pilot",root,draftBone,body:BodyTint(seat.bodyColor),accent:AccentTint(seat.accentColor),look:sirenFace);if(!siren&&!AuditorHalo(seat.hat,draftRig.Bones[CapturedRig.Head].localToWorldMatrix,(float)time,1,reduced,0,null,camera))sourceModels.Queue("hat-"+seat.hat,root,draftBone);
             if(siren){sirenLookCamera=camera;SirenLookFx(draftRig,sirenFace,0,null,reduced?0:(float)time);}

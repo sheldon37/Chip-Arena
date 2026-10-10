@@ -79,6 +79,13 @@ namespace ChipArena.UnityConversion
         /// the shader's hook, sway and tongues).
         /// </summary>
         public const float FlameHalfWidth=.095f,FlameTall=.335f,SmallWidth=.8f,SmallHeight=.55f,FlameQuad=1.6f;
+        /// <summary>
+        /// The highest the halo reaches above the head joint (head space, the head upright), for framings that must keep it in
+        /// view (the chip draft stage): HaloGroup's top bob (.46 + .012), the -.12 tilt raising the flame ring's far side, and a
+        /// big flame's tallest flicker (Evaluate: 1.1 x (FlameTall + .06 + .035 + .02), the quad's top), at the .72 group scale.
+        /// The reduced halo's flat flames and the embers (faded before they rise that high) stay under it.
+        /// </summary>
+        public static float Top=>.472f+.72f*(FlameRing*(float)Math.Sin(.12)+1.1f*(FlameTall+.115f));
         public const float EmberSize=.022f;
         // ---- Motion -------------------------------------------------------------------------------------------------------
         /// <summary>The arcs turn at -.31 rad/s against the group's +.18 (so they drift backwards while the flames go round) and each breathes ±.085 rad.</summary>
