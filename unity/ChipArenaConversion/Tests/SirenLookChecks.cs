@@ -8,9 +8,11 @@ namespace ChipArena.UnityConversion
 {
     // The Siren's animated look (Core/NativeSirenLook.cs) against tools/export_siren_look.mjs's run of the pinned source
     // (Tests/siren-look-parity.json): every piece's joint and transform after applySirenLook for scripted states, the
-    // shapeEye outlines, and 60 fps timelines of animateSirenRig (melee rend, ranged hellfire, a swap to ranged, damnation and
-    // the grab) replayed from the replicated inputs only (clip key, age, length, ranged flag) through the exported face
-    // tracks (Resources/SirenLook.json) and NativeSirenLookSmoother.
+    // shapeEye outlines, and 60 fps timelines of animateSirenRig (melee rend, ranged hellfire, swaps to ranged and back, a
+    // melee slash, damnation and the grab) replayed from the replicated inputs only (clip key, age, length, ranged flag and
+    // the snapshot's time) through the exported face tracks (Resources/SirenLook.json) and NativeSirenLookSmoother; for the
+    // swaps and the slash also the body (the idle clips blended through the swap with its shudder, else the clip itself)
+    // against every source joint, and the swaps again as a guest whose render clock trails its newest frame.
     internal static class SirenLookChecks
     {
         private static int count;
@@ -21,6 +23,55 @@ namespace ChipArena.UnityConversion
         // The source's top three rows (12 values) of one piece against the Core's row-major 16.
         private static void Piece(double[] m,int piece,JsonElement rows,double tolerance,string what)
         {int i=0;foreach(var v in rows.EnumerateArray()){Near(m[piece*16+i/4*4+i%4],v.GetDouble(),tolerance,what+" piece "+piece+" ["+i+"]");i++;}Check(i==12,what+" rows");}
+        private sealed class Motion {public string key;public float duration;public bool loop;public int frames;public float[] values;}
+        // Resources/SourceMotion.json's Siren body clips (tools/export_motion.mjs: 22 bones × position, rotation per frame).
+        private static Dictionary<string,Motion> Bodies(string root)
+        {
+            using var doc=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/SourceMotion.json")));var env=doc.RootElement;
+            Check(env.GetProperty("schema").GetInt32()==1&&env.GetProperty("commit").GetString()=="05950eaef80ff2483a9c44d898cad98be1a76bbc","motion envelope");
+            using var zip=new GZipStream(new MemoryStream(Convert.FromBase64String(env.GetProperty("data").GetString())),CompressionMode.Decompress);using var reader=new StreamReader(zip);
+            using var set=JsonDocument.Parse(reader.ReadToEnd());var map=new Dictionary<string,Motion>();
+            foreach(var c in set.RootElement.GetProperty("clips").EnumerateArray())
+            {
+                string key=c.GetProperty("key").GetString();if(!key.StartsWith("siren-"))continue;var m=new Motion{key=key,duration=(float)c.GetProperty("duration").GetDouble(),loop=c.GetProperty("loop").GetBoolean(),frames=c.GetProperty("frames").GetInt32()};
+                var values=new List<float>();foreach(var v in c.GetProperty("values").EnumerateArray())values.Add((float)v.GetDouble());m.values=values.ToArray();Check(m.values.Length==m.frames*22*7,"motion length "+key);map.Add(key,m);
+            }
+            return map;
+        }
+        // Runtime/NativeSourceMotion.Sample: looped clips wrap, others span `duration`; positions lerp, rotations slerp.
+        private static void Sample(Motion clip,float age,float duration,CapturedRig.Pose pose)
+        {
+            float wrapped=age-(float)Math.Floor(age/clip.duration)*clip.duration,fraction=clip.loop?Math.Clamp(wrapped,0,clip.duration)/clip.duration:Math.Clamp(age/(duration>0?duration:clip.duration),0,1);
+            float index=fraction*(clip.frames-1);int a=Math.Min(clip.frames-1,(int)index),b=Math.Min(clip.frames-1,a+1);float t=index-a;var v=clip.values;
+            for(int bone=0;bone<22;bone++)
+            {
+                int first=(a*22+bone)*7,last=(b*22+bone)*7;
+                pose.Position[bone]=System.Numerics.Vector3.Lerp(new System.Numerics.Vector3(v[first],v[first+1],v[first+2]),new System.Numerics.Vector3(v[last],v[last+1],v[last+2]),t);
+                pose.Rotation[bone]=System.Numerics.Quaternion.Slerp(new System.Numerics.Quaternion(v[first+3],v[first+4],v[first+5],v[first+6]),new System.Numerics.Quaternion(v[last+3],v[last+4],v[last+5],v[last+6]),t);
+            }
+        }
+        // The body the runtime shows for this frame: NativeSourceMotion.Pilot's clip, or (idle, while the swap moves the body)
+        // ArenaPresentation.SirenSwapBody's blend of the two idle clips.
+        private static void Body(Dictionary<string,Motion> bodies,string key,double time,double age,double duration,NativeSirenLookSmoother smoother,in SirenLookState state,CapturedRig.Pose pose,CapturedRig.Pose other)
+        {
+            if(key.StartsWith("siren-idle-")&&smoother.Swapping(time))
+            {
+                Sample(bodies[NativeSirenLook.IdleMelee],(float)time,0,pose);Sample(bodies[NativeSirenLook.IdleRanged],(float)time,0,other);
+                NativeSirenLook.SwapBody(pose,other,state.Ranged,smoother.Shudder(time),time,pose);
+            }
+            else Sample(bodies[key],(float)(key.StartsWith("siren-idle-")?time:age),(float)duration,pose);
+        }
+        private static double BodyGap(CapturedRig.Pose pose,JsonElement body,string what)
+        {
+            var q=new List<double>();foreach(var v in body.EnumerateArray())q.Add(v.GetDouble());Check(q.Count==22*4,what+" body joints");double worst=0;
+            for(int b=0;b<22;b++)
+            {
+                var r=pose.Rotation[b];double sign=r.X*q[b*4]+r.Y*q[b*4+1]+r.Z*q[b*4+2]+r.W*q[b*4+3]<0?-1:1;
+                double gap=Math.Max(Math.Max(Math.Abs(sign*r.X-q[b*4]),Math.Abs(sign*r.Y-q[b*4+1])),Math.Max(Math.Abs(sign*r.Z-q[b*4+2]),Math.Abs(sign*r.W-q[b*4+3])));
+                Check(gap<=2e-4,what+" joint "+b+" rotation off by "+gap);worst=Math.Max(worst,gap);
+            }
+            return worst;
+        }
         public static Dictionary<string,SirenLookClip> Tracks(string root)
         {
             using var doc=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/SirenLook.json")));var env=doc.RootElement;
@@ -61,22 +112,25 @@ namespace ChipArena.UnityConversion
                 Near(NativeSirenLook.EyeHaloAlpha(state),D(s,"eyeHalo"),1e-9,what+" eye halo");Near(NativeSirenLook.Quantized(state.Anger),D(s,"anger"),1e-9,what+" anger");states++;
             }
             // Timelines: the face targets come from the 60 fps tracks at the replicated age (interpolated between track frames
-            // for clips whose length is not a whole number of frames), smoothed by the runtime's own frame step.
+            // for clips whose length is not a whole number of frames), smoothed by the runtime's own frame step. On the host the
+            // snapshot's time is the frame's own; a guest (lag frames) renders `lag` frames behind its newest frame, whose
+            // mode, clip and time it reads while its ages run on the render clock.
             var keys=new List<string>();foreach(var k in f.GetProperty("keys").EnumerateArray())keys.Add(k.GetString());
             var keep=new List<int>();foreach(var k in f.GetProperty("timelinePieces").EnumerateArray())keep.Add(k.GetInt32());
-            double worst=0;int frames=0,balls=0;var ballMatrices=new double[32];
-            foreach(var t in f.GetProperty("timelines").EnumerateArray())
+            var bodies=Bodies(root);var pose=new CapturedRig.Pose();var other=new CapturedRig.Pose();
+            double worst=0,worstBody=0;int frames=0,balls=0,bodyFrames=0,guestFrames=0,swaps=0;var ballMatrices=new double[32];
+            void Replay(string name,List<double> drive,int count2,Dictionary<int,JsonElement> samples,int lag)
             {
-                string name=t.GetProperty("name").GetString();var drive=new List<double>();foreach(var v in t.GetProperty("drive").EnumerateArray())drive.Add(v.GetDouble());
-                var samples=new Dictionary<int,JsonElement>();foreach(var s in t.GetProperty("samples").EnumerateArray())samples[s.GetProperty("frame").GetInt32()]=s;
-                var smoother=new NativeSirenLookSmoother();int count2=t.GetProperty("frames").GetInt32();Check(drive.Count==count2*5,name+" drive");
+                var smoother=new NativeSirenLookSmoother();
                 for(int i=0;i<count2;i++)
                 {
-                    string key=keys[(int)drive[i*5]];double time=drive[i*5+1],age=drive[i*5+2],duration=drive[i*5+3];bool ranged=drive[i*5+4]>.5;
+                    int newest=Math.Min(count2-1,i+lag);string key=keys[(int)drive[i*5]];double time=drive[i*5+1],age=drive[i*5+2],duration=drive[i*5+3];
+                    bool ranged=drive[newest*5+4]>.5;double stamp=drive[newest*5+1];if(lag>0)key=keys[(int)drive[newest*5]];
                     Check(NativeSirenLook.Targets(tracks[key],age,duration,out double open,out double squint),name+" track "+key);
                     string action=key.StartsWith("siren-idle-")?null:key.Substring(6).Split('-')[0];
-                    var state=smoother.Step(time,1.0/60,open,squint,NativeSirenLook.Flare(action,age),ranged,0,true);frames++;
-                    if(!samples.TryGetValue(i,out var sample))continue;var look=sample.GetProperty("look");string what=name+" frame "+i;
+                    var state=smoother.Step(time,1.0/60,open,squint,NativeSirenLook.Flare(action,age),ranged,0,true,stamp);frames++;if(lag>0)guestFrames++;
+                    if(action=="swipe")Check(state.Ranged==0,name+" frame "+i+": the claws stay at full length through a melee slash");
+                    if(!samples.TryGetValue(i,out var sample))continue;var look=sample.GetProperty("look");string what=name+(lag>0?" (guest "+lag+" frames behind)":"")+" frame "+i;
                     foreach(var (field,value) in new[]{("ranged",state.Ranged),("open",state.Open),("squint",state.Squint),("anger",state.Anger),("flare",state.Flare),("lean",state.Lean),("glow",state.Glow)})
                     {double expected=D(look,field);worst=Math.Max(worst,Math.Abs(value-expected));Near(value,expected,1e-4,what+" "+field);}
                     var charge=sample.GetProperty("charge");bool ball=NativeSirenLook.Charge(action,age,time,ballMatrices);Check(ball==(charge.ValueKind==JsonValueKind.Array),what+" Damnation ball shown");
@@ -84,9 +138,31 @@ namespace ChipArena.UnityConversion
                     NativeSirenLook.Evaluate(state,m,shown);int p=0;
                     foreach(var rows in sample.GetProperty("pieces").EnumerateArray())Piece(m,keep[p++],rows,1e-4,what);
                     p=0;foreach(var v in sample.GetProperty("shown").EnumerateArray()){Check(shown[p]==(v.GetInt32()==1),what+" shown "+p);p++;}
+                    if(!sample.TryGetProperty("body",out var body))continue;
+                    Body(bodies,key,time,age,duration,smoother,state,pose,other);worstBody=Math.Max(worstBody,BodyGap(pose,body,what));bodyFrames++;
                 }
             }
-            Console.WriteLine($"PASS Siren look parity: {NativeSirenLook.Count} piece joints, {eyes} eye outlines, {states} applySirenLook states, {frames} timeline frames (largest look-state gap {worst:0.0e+0}, {balls} Damnation balls), {tracks.Count} face tracks; {count} checks");
+            foreach(var t in f.GetProperty("timelines").EnumerateArray())
+            {
+                string name=t.GetProperty("name").GetString();var drive=new List<double>();foreach(var v in t.GetProperty("drive").EnumerateArray())drive.Add(v.GetDouble());
+                var samples=new Dictionary<int,JsonElement>();foreach(var s in t.GetProperty("samples").EnumerateArray())samples[s.GetProperty("frame").GetInt32()]=s;
+                int count2=t.GetProperty("frames").GetInt32();Check(drive.Count==count2*5,name+" drive");
+                Replay(name,drive,count2,samples,0);
+                // A guest sees the swap's frame five frames early on its render clock; its blend still starts at the swap.
+                if(name.StartsWith("swap-to-")){Replay(name,drive,count2,samples,5);swaps++;}
+            }
+            Check(swaps==2&&bodyFrames>40,"swap timelines with bodies: "+swaps+", "+bodyFrames+" body frames");
+            // The mode stamp, and a Siren drawn again after a gap (respawn, first person, the killcam) settling into its mode.
+            Check(NativeSirenLook.ModeStamp(10.1,10)==10.1&&NativeSirenLook.ModeStamp(9.99,10)==9.99&&NativeSirenLook.ModeStamp(50,10)==10&&NativeSirenLook.ModeStamp(double.NaN,10)==10,"mode stamp");
+            {
+                var g=new NativeSirenLookSmoother();g.Step(10,0,0,0,0,false,0,true,10);var a=g.Step(10+1.0/60,1.0/60,0,0,0,true,0,true,10+1.0/60);Check(a.Ranged==0&&g.Swapping(10.1)&&g.ModeAt==10+1.0/60,"a swap starts at its stamp");
+                var b=g.Step(11.5,.05,0,0,0,false,0,true,11.5);Check(b.Ranged==0&&!g.Swapping(11.5),"after a gap the mode is settled, not swapped again");
+                var c=g.Step(5,0,0,0,0,true,0,true,5);Check(c.Ranged==1&&!g.Swapping(5),"a replay that jumps back starts settled");
+                Check(NativeSirenLook.ShudderWeight(10,10.2)==0&&NativeSirenLook.ShudderWeight(10.75,10)==0&&Math.Abs(NativeSirenLook.ShudderWeight(10.25,10)-1)<1e-12,"shudder window");
+            }
+            // The Siren takes no sword-set layer (the blade floor guard bent her right claw through the Slam and the Rush).
+            Check(!NativePoseRoute.SwordLayers(new Actor{SourceSpec="siren",Weapon=WeaponId.Sword})&&NativePoseRoute.SwordLayers(new Actor{SourceSpec="sword",Weapon=WeaponId.Sword}),"no sword layers on the Siren");
+            Console.WriteLine($"PASS Siren look parity: {NativeSirenLook.Count} piece joints, {eyes} eye outlines, {states} applySirenLook states, {frames} timeline frames ({guestFrames} as a guest; largest look-state gap {worst:0.0e+0}, {balls} Damnation balls), {bodyFrames} body frames (largest joint gap {worstBody:0.0e+0}), {tracks.Count} face tracks; {count} checks");
         }
     }
 }

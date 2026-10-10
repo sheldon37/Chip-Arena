@@ -4,8 +4,9 @@
 //    export_motion.mjs), the face targets of each frame before finishLook's smoothing (open, squint), so the runtime
 //    smooths them with its own frame time exactly as the source does (the flare is a function of the move's age).
 //  - Tests/siren-look-parity.json: every animated piece's transform relative to its joint after applySirenLook for scripted
-//    states, the eye outlines of shapeEye, and source timelines (melee, ranged, a mode swap, damnation and the grab) of
-//    animateSirenRig at 60 fps with the resulting look state, piece transforms and the Damnation ball.
+//    states, the eye outlines of shapeEye, and source timelines (melee, ranged, mode swaps both ways, a melee slash,
+//    damnation and the grab) of animateSirenRig at 60 fps with the resulting look state, piece transforms and the Damnation
+//    ball, and for the swaps and the slash every joint's rotation (the stance blend and the swap shudder).
 // Usage: node tools/export_siren_look.mjs <temporary output of export_models.mjs>
 import fs from 'node:fs';import path from 'node:path';import {pathToFileURL,fileURLToPath} from 'node:url';import {gzipSync} from 'node:zlib';
 let exportSeed=9137;Math.random=()=>{exportSeed=(Math.imul(exportSeed,1664525)+1013904223)>>>0;return exportSeed/4294967296;};
@@ -73,7 +74,7 @@ for(const anger of [0,.0125,.25,.4,.425,.5,.8,1,1.3,-.2])for(const side of [1,-1
 // 5. Timelines of animateSirenRig at 60 fps (a fresh rig each): what the clip key/age, mode and clock give the runtime.
 {
  const keep=[0,1,4,5,6,7,8,9,10,11,12,17,18,23,24,25,26,30,129,135];out.timelinePieces=keep;
- function timeline(name,start,frames,every,view){
+ function timeline(name,start,frames,every,view,body=false){
   // Per frame, what the runtime reads from the replicated pose: the clip (key index), its age and length, ranged mode.
   const rig=createCharacterRig('#70e1d0'),parts=buildSiren(rig),list=pieces(rig,parts),samples=[],drive=[];
   for(let i=0;i<frames;i++){const time=start+i/fps,v=view(time,i);animateSirenRig(rig,v,{players:[]},time,dt,0);rig.group.updateMatrixWorld(true);
@@ -81,16 +82,22 @@ for(const anger of [0,.0125,.25,.4,.425,.5,.8,1,1.3,-.2])for(const side of [1,-1
    if(!out.keys.includes(key))out.keys.push(key);drive.push(out.keys.indexOf(key),r9(time),r9(active?time-at:time),active?r9(m.until-at):0,v.siren.mode==='ranged'?1:0);
    // The Damnation ball and its halo, relative to the rig root (parts.root has no transform of its own).
    const charge=parts.charge.visible?[...rows(parts.charge.matrix),...rows(parts.chargeHalo.matrix)]:null;
-   if(i%every===0||i===frames-1)samples.push({frame:i,look:{ranged:r9(s.ranged),open:r9(s.open),squint:r9(s.squint),anger:r9(s.anger),flare:r9(s.flare),lean:r9(s.lean),glow:r9(s.glow)},charge,...capture(list,parts,keep)});}
+   // The body: each joint's local rotation (x, y, z, w), the 22 bones in export_motion.mjs order.
+   const joints=body?{body:bones.flatMap(b=>{const q=rig[b].quaternion;return [q.x,q.y,q.z,q.w].map(r9);})}:{};
+   if(i%every===0||i===frames-1)samples.push({frame:i,look:{ranged:r9(s.ranged),open:r9(s.open),squint:r9(s.squint),anger:r9(s.anger),flare:r9(s.flare),lean:r9(s.lean),glow:r9(s.glow)},charge,...capture(list,parts,keep),...joints});}
   out.timelines.push({name,frames,drive,samples});
  }
  const withMove=(kind,side)=>t=>{const v=moveView(kind,side);if(t<v.siren.move.at)v.siren.move=undefined;return v;};
  timeline('melee-rend',9.9,84,3,withMove('rend',1));
  timeline('ranged-hellfire',9.95,42,2,withMove('hellfire',-1));
- // The mode flips on frame 6 at exactly that frame's time, which is when the runtime sees the replicated flag change.
- timeline('swap-to-ranged',10,40,2,(t,i)=>({...pilot,siren:i<6?{mode:'melee',modeAt:0}:{mode:'ranged',modeAt:10+6/fps}}));
+ // The mode flips on frame 6 at exactly that frame's time, which is when the runtime sees the replicated flag change. The
+ // swaps run from 10 s so the looped idle clips (sampled from 10 s) line up with the source's clock for the body checks.
+ timeline('swap-to-ranged',10,40,2,(t,i)=>({...pilot,siren:i<6?{mode:'melee',modeAt:0}:{mode:'ranged',modeAt:10+6/fps}}),true);
  timeline('ranged-damnation',9.95,72,3,withMove('damnation',1));
  timeline('grab',10,228,6,t=>grabView());
+ timeline('swap-to-melee',10,40,2,(t,i)=>({...pilot,siren:i<6?{mode:'ranged',modeAt:0}:{mode:'melee',modeAt:10+6/fps}}),true);
+ // A melee slash from 10 s (its clip's frames are the timeline's) and the idle after it: the claws stay at full length.
+ timeline('melee-swipe',10,36,1,withMove('swipe',1),true);
 }
 fs.writeFileSync(path.join(root,'Tests/siren-look-parity.json'),JSON.stringify(out)+'\n');
 console.log('Exported',clips.length,'face tracks;',out.states.length,'states;',out.timelines.length,'timelines');

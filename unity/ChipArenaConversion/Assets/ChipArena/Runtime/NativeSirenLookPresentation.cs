@@ -191,21 +191,38 @@ namespace ChipArena.UnityConversion
     // motion.ts animateSirenRig's face smoothing and mode blend per Siren (keyed by seat), from the replicated pose only.
     public sealed partial class ArenaPresentation
     {
-        private sealed class SirenLookTrack {public readonly NativeSirenLookSmoother Smoother=new NativeSirenLookSmoother();public readonly NativeSirenLookPose Pose=new NativeSirenLookPose();}
+        private sealed class SirenLookTrack {public readonly NativeSirenLookSmoother Smoother=new NativeSirenLookSmoother();public readonly NativeSirenLookPose Pose=new NativeSirenLookPose();public CapturedRig.Pose Melee,Ranged;}
         private readonly Dictionary<int,SirenLookTrack> sirenLooks=new Dictionary<int,SirenLookTrack>();private readonly NativeSirenLookPose sirenStill=new NativeSirenLookPose();
         private NativeSirenLookDraw sirenLookDraw;private bool sirenLookFailed;private Camera sirenLookCamera;
         /// <summary>
         /// This frame's look of a Siren actor: the face targets of the clip its body plays (NativeSourceMotion.Pilot's clip, age
-        /// and length), smoothed on the presentation clock; the claws and orbs follow the replicated ranged flag over .35 s;
-        /// the flames lean with the forward speed; the flare peaks at the Hellfire and Damnation releases.
+        /// and length), smoothed on the presentation clock; the claws, the palm orbs and (idle) the stance follow the mode swap
+        /// from its authoritative time (the rendered arena's snapshot time when the replicated mode flips, not the frame that
+        /// saw it); the flames lean with the forward speed; the flare peaks at the Hellfire and Damnation releases.
         /// </summary>
-        private NativeSirenLookPose SirenLook(Actor a,float time)
+        private NativeSirenLookPose SirenLook(CapturedAnimation.Player rig,Actor a,float time)
         {
             if(!sirenLooks.TryGetValue(a.Id,out var t)){t=new SirenLookTrack();sirenLooks.Add(a.Id,t);}
             string action=string.IsNullOrEmpty(a.SourceAction)?null:a.SourceAction;double age=action==null?time:time-a.SourceAt;
             NativeSirenLook.Targets(NativeSirenLookTracks.Clip(action,a.SourceSide,a.SourceRanged),age,a.SourceUntil-a.SourceAt,out double open,out double squint);
             float yaw=a.Yaw*Mathf.Deg2Rad;double forward=a.Velocity.x*Mathf.Sin(yaw)+a.Velocity.z*Mathf.Cos(yaw);var s=t.Smoother;
-            return t.Pose.Set(s.Step(time,s.Delta(time),open,squint,NativeSirenLook.Flare(action,age),a.SourceRanged,forward,a.Alive)).SetCharge(action,age,time);
+            // WeaponLoadout is the arena this frame renders (live or killcam): its Time is the snapshot's authoritative time.
+            var state=s.Step(time,s.Delta(time),open,squint,NativeSirenLook.Flare(action,age),a.SourceRanged,forward,a.Alive,WeaponLoadout!=null?WeaponLoadout.Time:time);
+            if(action==null&&s.Swapping(time))SirenSwapBody(rig,a,t,time,state.Ranged,s.Shudder(time));
+            return t.Pose.Set(state).SetCharge(action,age,time);
+        }
+        /// <summary>
+        /// stance(t, ranged) through a mode swap: NativeSourceMotion.Pilot snaps the idle clip to the replicated mode, while the
+        /// source blends the arms with the claws over .35 s and shudders to .5 s; the rig this actor's ActorPose just posed
+        /// takes the blended idle clips instead (not while knocked down, juggled or in a special, whose layers own the frame).
+        /// </summary>
+        private void SirenSwapBody(CapturedAnimation.Player rig,Actor a,SirenLookTrack t,float time,double blend,double shudder)
+        {
+            if(rig==null||Viewer||!rigs.TryGetValue(a.Id,out var own)||!ReferenceEquals(own,rig)||NativeSpecialPose.Active(a,time)||NativeSpecialPose.Down(a,time)||NativeJugglePose.Active(a.JuggleUntil,time))return;
+            var melee=t.Melee??(t.Melee=new CapturedRig.Pose());var ranged=t.Ranged??(t.Ranged=new CapturedRig.Pose());
+            if(!NativeSourceMotion.Sample(NativeSirenLook.IdleMelee,time,0,melee)||!NativeSourceMotion.Sample(NativeSirenLook.IdleRanged,time,0,ranged))return;
+            NativeSirenLook.SwapBody(melee,ranged,blend,shudder,time,melee);
+            for(int i=0;i<rig.Bones.Length&&i<CapturedRig.Bones.Length;i++){rig.Bones[i].localPosition=CapturedAnimation.Vec(CapturedRig.Mirror(melee.Position[i]));rig.Bones[i].localRotation=CapturedAnimation.Quat(CapturedRig.Mirror(melee.Rotation[i]));}
         }
         /// <summary>A Siren nobody moves (the draft's idle): melee, mouth closed, the flames alive on `time`.</summary>
         private NativeSirenLookPose SirenStill(float time)=>sirenStill.Set(NativeSirenLook.Neutral(time));
