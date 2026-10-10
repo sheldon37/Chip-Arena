@@ -87,11 +87,11 @@ namespace ChipArena.UnityConversion
         // The source keeps posing the local pilot's hidden body rig in first person, so its own world sweep still shows in
         // front of the camera (renderer.ts:122-126; melee-trails.ts:34 checks the weapon, not the body). The rig is posed but
         // never queued.
-        private void HiddenSweep(Actor a,Vector3 position,float time)
+        private void HiddenSweep(Actor a,Vector3 position,float time,bool posed=false)
         {
             if(sourceModels==null||Viewer||!meleeSweeps.Enabled||a.WeaponAway||!NativeWeaponDressing.BladeTip(a.SourceSpec,out _))return;
             if(!rigs.TryGetValue(a.Id,out var rig)){rig=captured.Create(transform,a.Id);rig.Impacts=meleeImpacts;rigs.Add(a.Id,rig);}
-            PoseReach(rig,a,time);rig.ActorPose(a,position,time);SampleSweep(rig,a,time,rig.WeaponReach,LoadoutPilot(a.Id)?.Seat.chips);
+            if(!posed){PoseReach(rig,a,time);rig.ActorPose(a,position,time);}SampleSweep(rig,a,time,rig.WeaponReach,LoadoutPilot(a.Id)?.Seat.chips);
         }
         // melee-trails.ts:67-102 once per frame after every blade sample: prune, release and draw the additive ribbons.
         private void RenderMeleeTrails(float time)

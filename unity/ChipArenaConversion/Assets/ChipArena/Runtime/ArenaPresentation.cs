@@ -149,7 +149,7 @@ namespace ChipArena.UnityConversion
             foreach(Actor a in s.Actors)
             {
                 Vector3 p=visualPositions[a.Id];
-                if(FirstPerson&&a.Id==LocalId&&a.Alive)HiddenSweep(a,p,renderTime);
+                if(FirstPerson&&a.Id==LocalId&&a.Alive)HiddenSweep(a,p,renderTime,CapturedPlayers||Viewer||GunRules.Ranged(a.Weapon));
                 if(!a.Alive||(FirstPerson&&a.Id==LocalId)) continue;
                 int color=a.Bot?2:a.Id-1;
                 if(renderTime<a.FlashUntil) color=4;
