@@ -4,22 +4,32 @@ This separate Unity/C# project contains the native conversion candidate. The ori
 
 ## Open or build
 
-This package includes the October 7 Windows build repairs for procedural texture
-mip upload and the account component's invalid `Start(...)` callback. Use the
-whole project in a new folder; the repaired native build still needs to run.
+This source/build kit includes **Build-Windows.cmd** at the project root. It is a
+double-clickable Windows command script; no separate build executable is needed.
 
-1. Extract the whole source archive into a new folder and add `ChipArenaConversion` in Unity Hub.
-2. Open with Unity **6000.3.24f1**, choose **Chip Arena → Open test arena**, then Play.
-3. For Windows, close this project in the Editor and run **Build-Windows.cmd**.
-4. Wait for **UNITY_TEST_BUILD_READY**. Run `Builds/Windows/ChipArena-Native-Conversion-TEST.exe`.
+1. In Unity Hub, install Unity **6000.3.24f1** with **Windows Build Support** and
+   activate your license. The launcher compiler also requires **.NET Framework 4.8**.
+2. Extract the whole kit into a writable folder on your laptop. Add the extracted
+   `ChipArenaConversion` folder in Unity Hub and open it once to finish setup.
+3. Close this project in the Unity Editor, then double-click **Build-Windows.cmd**.
+   If Unity is installed elsewhere, set `UNITY_EDITOR` to its `Editor/Unity.exe`.
+4. On success, share **Builds/Chip-Arena-Windows.zip** with players. It extracts to
+   one **Chip Arena** folder containing **Chip Arena.exe** and all required files.
+   Players extract once and launch; the Update Game button is already configured.
+   For a local preview, use **Builds/Windows/Chip Arena.exe**.
 
-The builder runs the import, content, animation, shader and native physics gates before packaging `Builds/Chip-Arena-Native-Conversion-TEST-Windows.zip`. Keep the top-level launcher and `app` folder together. The EXE retains the voxel CA icon. This source archive contains no precompiled executable; an activated Windows Editor is required.
+The builder runs the native validation gates, compiles the game and updater, and
+packages them together. It opens the output folder when complete. Check
+`Builds/build.log` if it fails. Keep installed playtest copies outside this source
+folder: building replaces `Builds/Windows` and the player ZIP. The internal
+executable in `app` must stay with its supporting files.
 
-This version adds **Check for updates / Update and restart** to the menu. Install
-the newly built starter ZIP once; later published Unity players can be downloaded
-and installed from the button. No compiled Unity update has been published by this
-change. Build/publish instructions and Claude's UI handoff are in
-[Updater/README.md](Updater/README.md).
+Building on the laptop prepares the player ZIP and update feed locally; it does
+not upload them. After testing, **Publish-Native.cmd** reviews and publishes the
+local update to the existing test channel (Python 3.8+ and Git with push access
+required). **Publish-Native.cmd --status** compares it without publishing. Share
+only the player ZIP with players; the source kit and publishing tools are for the
+build machine. Details are in [Updater/README.md](Updater/README.md).
 
 ## Current implementation
 

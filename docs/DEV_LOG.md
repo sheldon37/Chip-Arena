@@ -1,5 +1,21 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Astra — Laptop build kit and correct launcher instructions
+- Owner is temporarily building on a laptop and requested the Build-Windows entrypoint.
+  Branch `codex/unity-laptop-build-kit-20261011`, cloud base `97783cb` (UBA #38).
+- Source packaging already explicitly includes `Build-Windows.cmd` and `Publish-Native.cmd`.
+  Correct the obsolete preview path to `Builds/Windows/Chip Arena.exe` and document
+  laptop setup, the pinned Editor/module/framework requirements, log location and
+  the ready-to-update `Chip-Arena-Windows.zip` output. No additional build EXE is
+  necessary; the .cmd is double-clickable. Local building and publishing remain
+  separate; no pipeline/account setting changed for the owner's laptop.
+- The companion default-branch download publisher removes the need for players
+  to navigate the raw Unity export. This source-only kit is for the owner; player
+  downloads contain the game, launcher and configured updater from first launch.
+- Source package/check results recorded in the task PR. No Unity Editor exists in
+  the authoring environment; laptop compilation/Windows playtest remains unrun.
+
+
 ## 2026-10-11 — Astra — Simple portable player folder
 - Owner requested a distribution that extracts to one `Chip Arena` folder with a clearly named `Chip Arena.exe`. Task `codex/unity-simple-package-20261011`, cloud base `507f257` (includes #102 camera/timing fixes).
 - New player download: `Chip-Arena-Windows.zip`, containing `Chip Arena/Chip Arena.exe`, its required `.config`, `native-install.txt`, a short player README, and `app/` with the complete Unity player. Only one EXE at the folder's top level. Build receipts, logs and feed payload parts remain in the separate automation delivery. Both local builds and cloud exports produce the clean ZIP; share this ZIP rather than the raw UBA/technical delivery archive.
