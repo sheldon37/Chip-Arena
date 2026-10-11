@@ -1,5 +1,38 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Claude — Damage-screen camera flip fix and Siren minion effects (owner request)
+- Branch `claude/sleepy-ritchie-g8ruhv` (PR #62): merged `claude/damage-screen-flip` `daf6048` and `claude/siren-minion-fx` `0c5871b`, both based on `497966f`. Each branch had a builder, two review lenses and a fix pass. Visual only: no simulation, networking, replicated-data or save change.
+- Camera flip ("camera seems to flip when taking damage"):
+  - Cause: the damage screen copied `CameraTarget` into a temporary texture from a command buffer at `AfterImageEffects`, then blitted it back. On D3D11 with a back-buffer or MSAA-resolved target, that copy lands top-down without Unity flagging it, so the frame drew upside down while the effect was up. Unity staff describe this round trip as flipping in forward rendering (won't-fix).
+  - Fix: new `Runtime/NativeDamageScreenImage.cs` draws through `OnRenderImage` + `Graphics.Blit`, the manual's guaranteed-orientation path. It is enabled only on the last screen camera while the effect is active, so idle frames cost nothing. The shader is unchanged apart from comments and a saturated frame tap, which keeps the tuned look on HDR sources. The `Frame`/`Release` API is unchanged.
+  - Guard: new `Tests/test_damage_screen_orientation.py`; it fails 8 assertions against the old file.
+  - The first-person melee kick was ruled out: it is NaN-guarded, soft-limited (2.6/1.2/2.8°, 3 cm) and rebuilt from the look angles every frame.
+- Other damage-time camera changes, Astra-owned and unchanged; owner to confirm which one they saw:
+  - (a) A knockdown switches first person to third person for the Down window: `ConversionGame.cs:193` `!arena.Downed(p)`, intentional per e268aa8. Electron keeps first person and hides the player's own body.
+  - (b) A melee stagger cancels ADS: the camera `aim` includes `!Incapacitated(p)` (`ConversionGame.cs:192`), mirroring the simulation's ADS gate. A third-person player who is aiming drops out of the first-person aim view, and the zoom snaps out.
+- Siren minions ("make cracked flames animate, other improvements"):
+  - The exporter baked the glow marker into colour, so cracks were static blown-out white and the tongues were static boxes. `tools/export_models.mjs` now keeps the real glow colours plus emission and a flicker code. It splits the tongues into two shared pieces and writes `Core/NativeMinionFx.Generated.cs`. Only the minion models changed; all others are byte-identical. The bank went from 6,647,451 to 6,606,479 bytes.
+  - `NativeSourceLit.shader`: each glow cell flickers on its own, plus a per-minion power drop. The drop is computed on the CPU so the haze and the crack light fade out together.
+  - New `Core/NativeMinionFx.cs` + `Runtime/NativeMinionFxPresentation.cs`:
+    - swaying, flaring crack tongues that shed tip flames;
+    - a breathing violet haze over cracked heads;
+    - the level-1 possession hint;
+    - vent emergence (pool, rim flames, sparks);
+    - death char with ember flicker, then a feet-first burn-away with flames, ash and scorch (the rig now lives 3.1 s instead of 2.3 s).
+  - Effect budgets are ranked (possessed and dying adds first, then vent climbers, nearest first) and distance-banded (full to 24 m, half to 40 m). Reduced effects halves everything. No new draw calls; no steady-state allocations.
+  - Two additions not in the source, open to owner tuning: tip-shed flames and the head haze.
+  - New `Tests/MinionFxChecks.cs` with source fixtures (`tools/export_minion_fx_fixtures.mjs`, `Tests/minion-fx-parity.json`).
+- Handoff to Astra: possession hint levels 2 and 3 (the floating grin within 25 m, the black-flame trail, the 1.35 boost) need the possession start time in the replicated minion frame (`add.Pve.PossessedAt` or `Pve.PossessionAt`). Claude adds the visuals once it is replicated.
+- Checks on merged head: `unity-check.sh` runtime+editor build OK; Python tests 59 OK (1 skipped); `package_source.py` passed; `check_relay.py` 281 PASS, 35 managed-core checks; `git diff --check 6235a82 HEAD` clean. Shader syntax checked only with glslang's HLSL front end.
+- Not run: Unity Editor import, a real D3D11/Windows build and gameplay.
+- Owner acceptance:
+  - take damage in first and third person, with anti-aliasing on and off;
+  - watch minion cracks and tongues, emergence and deaths.
+- Risks:
+  - the first-person source assumes the view-model camera's image effect receives the stacked frame; fallback: the match camera;
+  - NativeUiBlur uses the same command-buffer `CameraTarget` copy (at AfterEverything), so panel backdrops may also be upside down on D3D (unverified).
+- Release: pushed to PR #62 and fast-forwarded to `codex/unity-cloud-current`; publication waits on native CI and the UBA build of that exact head.
+
 ## 2026-10-10 — Astra — Fix real Unity UBA #32 pre-export parity blocker
 - Failed actual Unity cloud build #32 (source `c0426cb`) has an Editor PreExport failure: `Follow-up parity: ability ceiling absorbs upward projectile` (NativeFollowupValidation.cs:19). This stale Editor assertion requires a `CeilingHit` from a rocket that should be absorbed silently (the original ability-system.ts has none); the intentional removal of that event was already merged in Astra's earlier ceiling parity batch. GitHub managed/source CI did not execute this Editor-only assertion, so it was green while the real UBA failed.
 - Corrected NativeFollowupValidation to require projectile absorption **without a new CeilingHit**; preserves unrelated existing events. New Python regression guards this Editor/runtime contract in both CI source and the Windows package tests. No runtime/gameplay, shader, networking or save change.
