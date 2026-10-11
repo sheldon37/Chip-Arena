@@ -14,22 +14,22 @@ namespace ChipArena.UnityConversion
         public int Pending=>pending.Count;
         public void Reset(NativePredictionState state,int sequence=-1)
         {State=state;pending.Clear();acknowledged=lastSequence=sequence;}
-        public void Push(InputFrame input,Func<V3,V3,V3> constrain)
+        public void Push(InputFrame input,Func<V3,V3,V3> constrain,Func<V3,bool> grounded=null)
         {
             if(!input.Valid||input.Sequence<=lastSequence)return;
             lastSequence=input.Sequence;
             if(pending.Count==120)pending.RemoveAt(0);
-            pending.Add(input);State=Step(State,input,constrain);
+            pending.Add(input);State=Step(State,input,constrain,grounded);
         }
-        public void Reconcile(NativePredictionState authority,int sequence,Func<V3,V3,V3> constrain)
+        public void Reconcile(NativePredictionState authority,int sequence,Func<V3,V3,V3> constrain,Func<V3,bool> grounded=null)
         {
             if(sequence<acknowledged)return;
             acknowledged=sequence;lastSequence=Math.Max(lastSequence,sequence);
             pending.RemoveAll(i=>i.Sequence<=sequence);State=authority;
-            foreach(var input in pending)State=Step(State,input,constrain);
+            foreach(var input in pending)State=Step(State,input,constrain,grounded);
         }
         private static float Towards(float from,float to,float amount)=>from<to?Math.Min(from+amount,to):Math.Max(from-amount,to);
-        public static NativePredictionState Step(NativePredictionState state,InputFrame raw,Func<V3,V3,V3> constrain)
+        public static NativePredictionState Step(NativePredictionState state,InputFrame raw,Func<V3,V3,V3> constrain,Func<V3,bool> grounded=null)
         {
             var input=raw.Sanitized();float dt=Rules.Dt;
             if(!state.CanMove)return state;
@@ -44,6 +44,7 @@ namespace ChipArena.UnityConversion
             var wanted=state.Position+state.Velocity*dt;
             var next=constrain==null?wanted:constrain(state.Position,wanted);
             if(next.y>wanted.y+.00001f&&state.Velocity.y<0){state.Grounded=true;state.Velocity.y=0;}
+            if(grounded!=null){state.Grounded=state.Velocity.y<=0&&grounded(next);if(state.Grounded)state.Velocity.y=0;}
             state.Position=next;return state;
         }
     }

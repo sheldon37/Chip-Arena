@@ -24,19 +24,10 @@ namespace ChipArena.UnityConversion
         }
         private V3 ConstrainPrediction(V3 old,V3 desired)
         {
-            desired=NativeMapRules.ExcludeTops(Map,desired);var from=Vec(old);var delta=Vec(desired-old);float distance=delta.magnitude;
-            if(distance<.00001f)return desired;
-            var physics=root.scene.GetPhysicsScene();
-            if(physics.CapsuleCast(from+Vector3.up*.43f,from-Vector3.up*.43f,.41f,delta.normalized,out var hit,distance+.01f,WorldMask,QueryTriggerInteraction.Ignore))
-            {
-                var travel=delta.normalized*Math.Max(0,hit.distance-.01f);
-                var slide=Vector3.ProjectOnPlane(delta-travel,hit.normal);from+=travel;
-                if(slide.sqrMagnitude>1e-8f&&physics.CapsuleCast(from+Vector3.up*.43f,from-Vector3.up*.43f,.41f,slide.normalized,out var second,slide.magnitude+.01f,WorldMask,QueryTriggerInteraction.Ignore))
-                    slide=slide.normalized*Math.Max(0,second.distance-.01f);
-                return Vec(from+slide);
-            }
-            return desired;
+            desired=NativeMapRules.ExcludeTops(Map,desired);
+            return Vec(NativeGroundMotor.Constrain(root.scene.GetPhysicsScene(),Vec(old),Vec(desired)));
         }
+        private bool PredictionGrounded(V3 position)=>NativeGroundMotor.Probe(root.scene.GetPhysicsScene(),Vec(position)).Found;
         private void BufferReplica(NativeGameFrame frame,bool reset)
         {
             if(reset){replicaHistory.Clear();replicaClock.Reset(frame.time);predictionCorrection=Vector3.zero;}
@@ -44,7 +35,7 @@ namespace ChipArena.UnityConversion
             var local=frame.pilots.FirstOrDefault(p=>p.id==LocalId);
             if(local==null)return;
             var state=PredictionState(local);var before=Local.Body.position;
-            if(reset)predictor.Reset(state,local.inputAck);else predictor.Reconcile(state,local.inputAck,ConstrainPrediction);
+            if(reset)predictor.Reset(state,local.inputAck);else predictor.Reconcile(state,local.inputAck,ConstrainPrediction,PredictionGrounded);
             var error=before-Vec(predictor.State.Position);predictionCorrection=reset||error.magnitude>3?Vector3.zero:error;
             SetReplicaPosition(Local.Body,Vec(predictor.State.Position)+predictionCorrection);
         }
@@ -52,7 +43,7 @@ namespace ChipArena.UnityConversion
         {
             if(!Replica||replicaFrame==null||Local==null)return;
             Local.Input=input;Local.Yaw=input.Yaw;Local.Pitch=input.Pitch;
-            predictor.Push(input,ConstrainPrediction);SetReplicaPosition(Local.Body,Vec(predictor.State.Position)+predictionCorrection);
+            predictor.Push(input,ConstrainPrediction,PredictionGrounded);SetReplicaPosition(Local.Body,Vec(predictor.State.Position)+predictionCorrection);
         }
         public void InterpolateReplica(float delta)
         {

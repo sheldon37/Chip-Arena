@@ -18,8 +18,14 @@ namespace ChipArena.UnityConversion
         }
         public void AfterPhysics()
         {
-            foreach(var p in Pilots)if(!p.Body.isKinematic&&p.Hp>0&&beforePhysics.TryGetValue(p.Body.GetInstanceID(),out var before)){var change=p.Body.linearVelocity-before.velocity;p.Knockback+=new Vector3(change.x,0,change.z)*(float)p.Stats["knockbackTaken"];}
             Vector3 Velocity(Rigidbody body,Vector3 point){if(body==null)return Vector3.zero;if(beforePhysics.TryGetValue(body.GetInstanceID(),out var pre))return pre.velocity+Vector3.Cross(pre.angular,point-pre.position);return body.isKinematic?Vector3.zero:body.GetPointVelocity(point);}
+            foreach(var p in Pilots)if(!p.Body.isKinematic&&p.Hp>0&&beforePhysics.TryGetValue(p.Body.GetInstanceID(),out var prior))
+            {
+                Vector3 push=Vector3.zero,change=p.Body.linearVelocity-prior.velocity;change.y=0;
+                foreach(var c in contacts)if(c.pilot==p&&c.prop!=null&&c.prop.Body!=null)
+                    push+=Vec(NativeLocomotionRules.ContactPush(Vec(prior.velocity),Vec(p.Body.linearVelocity),Vec(Velocity(c.prop.Body,c.point)),Vec(c.normal),!c.prop.Body.isKinematic));
+                p.Knockback+=Vector3.ClampMagnitude(push,change.magnitude)*(float)p.Stats["knockbackTaken"];
+            }
             foreach(var c in contacts)
             {
                 var prop=c.prop;if(prop==null||prop.Body==null)continue;Vector3 a=Velocity(prop.Body,c.point);bool recent=Time-prop.SourceAt<7;

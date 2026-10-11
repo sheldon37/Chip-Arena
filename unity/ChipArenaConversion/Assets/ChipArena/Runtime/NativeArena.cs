@@ -87,7 +87,7 @@ namespace ChipArena.UnityConversion
         {
                 var stats=NativeContentRules.Stats(Content,seat.spec,seat.chips);var weapon=Content.Weapon(seat.spec);
                 var obj=new GameObject(seat.name);obj.layer=ActorLayer;obj.transform.SetParent(root.transform);var spawn=NativeMapRules.Spawn(Content,Map,Match.Seats,index,Match.Teams);obj.transform.position=Vec(spawn.pos);
-                var capsule=obj.AddComponent<CapsuleCollider>();capsule.radius=.42f;capsule.height=1.70f;capsule.sharedMaterial=surfaces["pilot"];
+                var capsule=obj.AddComponent<CapsuleCollider>();capsule.radius=NativeLocomotionRules.Radius;capsule.height=2*NativeLocomotionRules.HalfHeight;capsule.sharedMaterial=surfaces["pilot"];
                 var body=obj.AddComponent<Rigidbody>();body.mass=65;body.constraints=RigidbodyConstraints.FreezeRotation;body.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;body.interpolation=RigidbodyInterpolation.Interpolate;
                 var p=new NativePilot{Seat=seat,Weapon=weapon,Stats=stats,Body=body,Collider=capsule,Hp=(float)stats["hp"],Mana=(float)stats["maxMana"],Stamina=(float)stats["maxStamina"],Ammo=(int)Math.Ceiling(weapon.ammo*stats["ammoCapacity"]),Yaw=spawn.yaw};
                 p.Pose.Id=seat.id;p.Pose.Bot=seat.bot;p.Pose.Weapon=seat.spec=="pistol"?WeaponId.Pistol:seat.spec=="rifle"?WeaponId.Rifle:seat.spec=="machinegun"?WeaponId.MachineGun:WeaponId.Sword;
@@ -105,7 +105,7 @@ namespace ChipArena.UnityConversion
             foreach(var p in Pilots)
             {
                 if(p.Hp<=0||!p.Seat.connected)continue;p.Input=p.Seat.bot?AvoidVents(p,SandboxInput(p,Bot(p))):p.Seat.id==LocalId?input:RemoteInput(p.Seat.id);p.Input=p.Input.Sanitized();PveInput(p);
-                p.Grounded=root.scene.GetPhysicsScene().SphereCast(p.Body.position+Vector3.down*.4f,.39f,Vector3.down,out _,.17f,WorldMask,QueryTriggerInteraction.Ignore);
+                ProbePilotGround(p);
             }
             RouteLeetInputs();
             foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&p.Input.Roll)TryRoll(p);
@@ -159,7 +159,8 @@ namespace ChipArena.UnityConversion
                 step+=FighterMotion(p)+SirenMotion(p);velocity.x=p.MoveVelocity.x+step.x;velocity.z=p.MoveVelocity.z+step.z;
             }
             if(swimming&&velocity.y<=2)velocity.y+=Mathf.Clamp((-.95f-p.Body.position.y)*12-velocity.y*4,-35,35)*dt;
-            if(i.Jump&&(p.Grounded||swimming&&velocity.y<2)&&!rolling&&!locked){velocity.y=(float)((swimming?10:8.5)*p.Stats["jumpPower"]);if(p.Grounded)ChipJump(p);}
+            bool jumped=i.Jump&&(p.Grounded||swimming&&velocity.y<2)&&!rolling&&!locked;
+            if(jumped){velocity.y=(float)((swimming?10:8.5)*p.Stats["jumpPower"]);if(p.Grounded)ChipJump(p);}
             p.Body.useGravity=!swimming||velocity.y>2;
             if(p.Body.useGravity)velocity.y-=(float)(23*(p.Stats["playerGravity"]-1)*dt);
             var remaining=Vec(p.Knockback);Vector3 external=Vec(NativeMeleeRules.External(ref remaining,dt,out float steeringSpeed,Time<(p.Fighter?.WaveUntil??0)&&!rolling));if(Time<p.LaunchUntil){external=p.Knockback;external.x*=Mathf.Exp(-3.1f*dt);external.z*=Mathf.Exp(-3.1f*dt);remaining=new V3(external.x,0,external.z);}p.Knockback=Vec(remaining);
@@ -170,7 +171,9 @@ namespace ChipArena.UnityConversion
             }
             var recovery=NativeSpecialRules.RecoveryMotion(p.Down,Time,new V3(i.X,0,i.Z),i.Yaw);
             if(recovery.Length>0){p.MoveVelocity=p.Knockback=Vector3.zero;velocity.x=recovery.x;velocity.z=recovery.z;external=Vector3.zero;}
-            p.Body.linearVelocity=velocity+external;
+            velocity+=external;
+            if(GroundMotion(p,ref velocity,jumped,swimming,external.y))p.Body.useGravity=false;
+            p.Body.linearVelocity=velocity;
 
             p.Pose.Sprinting=sprint;
         }
