@@ -1,5 +1,18 @@
 # Native publishing automation development log
 
+## 2026-10-11 — Astra — GitHub draft asset URL finalization
+
+- PR #106 passed hosted Linux/Windows gates and merged as `aa2370f`. Its first
+  real run `38113975415` validated UBA #38 and uploaded the 96,112,409-byte ZIP,
+  SHA-256 `dba696b997ce2bd76ef2faebca44e79de9902b5bad8c7b39ba2cfd9e6a785115`.
+- GitHub's draft asset uses an `untagged-*` download URL until publication. The
+  initial finalization check expected the permanent tag URL too early and safely
+  stopped with the release still a draft. Move only that URL check after draft
+  publication; uploaded name/state/size/digest still must match before publishing.
+- Regression uses the observed temporary draft URL. Resume reuses the already
+  uploaded verified asset; no re-upload, overwrite or game rebuild is required.
+
+
 ## 2026-10-11 — Astra — Direct download with updates ready on first launch
 
 - Owner screenshot shows `Install the Windows starter ZIP once to enable updates`.

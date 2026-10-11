@@ -211,12 +211,18 @@ def publish(work, token, feed_token):
     else:
         raise ValueError('Unexpected existing release assets; left unchanged')
     if (asset.get('name') != NAME or asset.get('state') != 'uploaded' or asset.get('size') != size
-            or asset.get('digest') != 'sha256:' + digest or asset.get('browser_download_url') != download_url(record)):
+            or asset.get('digest') != 'sha256:' + digest):
         raise ValueError('Uploaded player ZIP does not match the prepared package; release not finalized')
     if published_record(token) != record:
         raise ValueError('Published build changed before making the player ZIP available')
     if release.get('draft'):
         release_api(release_path, feed_token, 'PATCH', dict(draft=False, prerelease=True, make_latest='false'))
+    # Draft assets use GitHub's temporary untagged URL. Validate the canonical
+    # player URL only after the release has acquired its published tag.
+    public = release_api(release_path, feed_token)
+    assets = public.get('assets', [])
+    if public.get('draft') or len(assets) != 1 or assets[0].get('browser_download_url') != download_url(record):
+        raise ValueError('Published player download URL does not match its release tag')
     verify_public_download(record, work / 'public-player.zip', size, digest)
     release = release_api(release_path, feed_token, 'PATCH', dict(body=release_body(record, digest, size, True)))
     if not completed_release(release, record):

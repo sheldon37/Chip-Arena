@@ -38,6 +38,8 @@ class PlayerDownloadTests(unittest.TestCase):
     def api(self, path, token=None, method='GET', body=None, upload=None):
         self.calls.append((path, method, body, upload))
         if method == 'GET':
+            if '?' not in path:
+                return copy.deepcopy(self.release)
             return [copy.deepcopy(self.release)] if self.release else []
         if upload:
             self.assertEqual(upload, self.seed)
@@ -45,6 +47,9 @@ class PlayerDownloadTests(unittest.TestCase):
             return self.asset
         if method == 'PATCH':
             self.release.update(body)
+            if body.get('draft') is False:
+                for asset in self.release['assets']:
+                    asset['browser_download_url'] = player.download_url(self.record)
             return copy.deepcopy(self.release)
         if method == 'POST' and path == '/releases':
             self.release = dict(body, id=12, assets=[])
@@ -98,7 +103,12 @@ class PlayerDownloadTests(unittest.TestCase):
     def test_draft_upload_publication_and_anonymous_verification(self):
         self.run_publish().assert_called_once_with(self.record, self.work / 'public-player.zip', self.size, self.digest)
         self.assertTrue(player.completed_release(self.release, self.record))
-        self.assertEqual([method for _, method, _, _ in self.calls], ['GET', 'POST', 'PATCH', 'PATCH'])
+        self.assertEqual([method for _, method, _, _ in self.calls], ['GET', 'POST', 'PATCH', 'GET', 'PATCH'])
+
+    def test_real_github_draft_asset_uses_a_temporary_untagged_url(self):
+        self.asset['browser_download_url'] = 'https://github.com/' + player.REPO + '/releases/download/untagged-fixture/' + player.NAME
+        self.run_publish()
+        self.assertTrue(player.completed_release(self.release, self.record))
 
     def test_new_release_is_created_as_draft_test_build(self):
         self.release = None
@@ -124,7 +134,7 @@ class PlayerDownloadTests(unittest.TestCase):
         self.assertFalse(player.completed_release(self.release, self.record))
         self.calls = []
         self.run_publish()
-        self.assertEqual([m for _, m, _, _ in self.calls], ['GET', 'PATCH'])
+        self.assertEqual([m for _, m, _, _ in self.calls], ['GET', 'GET', 'PATCH'])
 
     def test_conflicting_uploaded_asset_is_not_overwritten_or_published(self):
         self.release['assets'] = [dict(self.asset, digest='sha256:' + '0'*64)]
