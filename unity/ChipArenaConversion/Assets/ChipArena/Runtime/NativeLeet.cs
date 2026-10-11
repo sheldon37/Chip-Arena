@@ -93,7 +93,7 @@ namespace ChipArena.UnityConversion
                 {
                     float aggression=Mathf.Clamp01((Time-f.At)/Math.Max(1,f.Until-f.At)),noise=Mathf.Sin((f.Hops+1)*12.9898f+f.At*78.233f)*43758.5453f,r=noise-Mathf.Floor(noise),angle=target.Input.Yaw+180+(r-.5f)*2*.85f*Mathf.Rad2Deg,want=Math.Max(1.35f,gap*Mathf.Lerp(.72f,.5f,aggression));Vector3 dir=Vec(V3.Forward(angle));float distance=want;
                     if(root.scene.GetPhysicsScene().Raycast(tp+Vector3.up*.2f,dir,out var hit,want,WorldMask))distance=Math.Max(Math.Min(want,1.35f),hit.distance-.45f);
-                    Vector3 spot=tp+dir*distance;spot.x=Mathf.Clamp(spot.x,-31,31);spot.z=Mathf.Clamp(spot.z,-27,27);spot.y=tp.y-.85f;f.From=feetAt;f.Hops++;f.HopAt=Time+Mathf.Lerp(3.2f,1.3f,aggression);m.Body.position=spot+Vector3.up*1.23f;Fx(spot,1,2,feetAt,f.Owner,"slender-hop");
+                    Vector3 spot=tp+dir*distance;spot=Vec(Bounds.Clamp(Vec(spot)));spot.y=tp.y-.85f;f.From=feetAt;f.Hops++;f.HopAt=Time+Mathf.Lerp(3.2f,1.3f,aggression);m.Body.position=spot+Vector3.up*1.23f;Fx(spot,1,2,feetAt,f.Owner,"slender-hop");
                 }
             }
         }

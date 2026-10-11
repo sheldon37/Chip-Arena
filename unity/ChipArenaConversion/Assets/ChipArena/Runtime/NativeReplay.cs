@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
             var frame=arena.NetworkFrame();replayFrames.Add(frame);replayEntities+=ReplaySize(frame);
             while(replayFrames.Count>1&&(replayFrames.Count>132||replayEntities>150000||arena.Time-replayFrames[0].time>6)){replayEntities-=ReplaySize(replayFrames[0]);replayFrames.RemoveAt(0);}
         }
-        private static int ReplaySize(NativeGameFrame f)=>f.pilots.Length+f.props.Length+f.minions.Length+f.effects.Length+f.snapshot.Shots.Length+f.snapshot.Events.Length;
+        private static int ReplaySize(NativeGameFrame f)=>f.pilots.Length+f.props.Length+f.minions.Length+f.effects.Length+f.snapshot.Shots.Length+f.snapshot.Events.Length+(f.structures?.blocks?.Length??0)+(f.structures?.events?.Length??0);
         private void ClearReplay(){EndReplay();replayFrames.Clear();replayEntities=0;replayNext=0;replaySeen=0;replayWasAlive=false;spectatorId=0;}
         private void EndReplay()
         {
@@ -59,6 +59,7 @@ namespace ChipArena.UnityConversion
             if(replaySource!=a){var copy=NativeFrameCodec.Clone(a);replayArena.ApplyFrame(copy,arena.LocalId);SceneManager.MoveGameObjectToScene(replayArena.Root,replayScene);replaySource=a;}
             float blend=Mathf.Clamp01((time-(float)a.time)/Math.Max(.00001f,(float)(b.time-a.time)));
             foreach(var p in replayArena.Pilots){var x=a.pilots.First(v=>v.id==p.Seat.id);var y=b.pilots.FirstOrDefault(v=>v.id==p.Seat.id);if(y!=null&&(x.hp>0)==(y.hp>0)){p.Body.transform.position=Vector3.Lerp(x.position,y.position,blend);p.Body.position=p.Body.transform.position;p.Yaw=Mathf.LerpAngle(x.yaw,y.yaw,blend);p.Pitch=Mathf.Lerp(x.pitch,y.pitch,blend);}}
+            replayArena.SyncStructures((int)Math.Round(replayTime*60));
             foreach(var p in replayArena.Props){var x=a.props.FirstOrDefault(v=>v.id==p.Definition.id);var y=b.props.FirstOrDefault(v=>v.id==p.Definition.id);if(x!=null&&y!=null&&p.Body!=null)p.transform.SetPositionAndRotation(Vector3.Lerp(x.position,y.position,blend),Quaternion.Slerp(x.rotation,y.rotation,blend));}
             var target=replayArena.Pilots.Find(p=>p.Seat.id==replayView);if(time>replayDeath&&(target==null||target.Hp<=0||Vector3.Distance(target.Body.position,replayArena.Local.Body.position)>24))replayBody=true;if(replayBody||target==null)target=replayArena.Local;
             Vector3 focus=target.Body.position+Vector3.up*(NativeViewRules.EyeHeight+.22f)+Quaternion.Euler(0,target.Yaw,0)*Vector3.right*.85f;Quaternion rotation=Quaternion.Euler(-target.Pitch,target.Yaw,0);Vector3 offset=rotation*Vector3.back*NativeViewRules.ThirdDistance+Vector3.up*NativeViewRules.ThirdLift;

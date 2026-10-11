@@ -33,9 +33,12 @@ namespace ChipArena.UnityConversion
             bool obstacle=move.sqrMagnitude>.01f&&root.scene.GetPhysicsScene().Raycast(pos-Vector3.up*.4f,move.normalized,out _,1.1f,WorldMask,QueryTriggerInteraction.Ignore);
             if(obstacle){move=move*.25f+Quaternion.Euler(0,input.Yaw+90,0)*Vector3.forward*(Mathf.Sin(Time*.4f)>0?1:-1);input.Jump=p.Grounded;}
             if(melee&&p.Stamina<p.Weapon.cost)move=-flat*.8f;
-            if(Math.Abs(pos.x)>28)move.x=-Math.Sign(pos.x);if(Math.Abs(pos.z)>24)move.z=-Math.Sign(pos.z);
+            if(Structures!=null&&(!visible||obstacle||distance>desired+1)){move=NavigateArena(p,target,out bool jump);input.Jump|=jump&&p.Grounded;}
+            bool escaping=false;if(Structures!=null&&EscapeCollapse(pos,out var escape)){move=escape;escaping=true;}
+            if(pos.x<Bounds.minX+4)move.x=1;else if(pos.x>Bounds.maxX-4)move.x=-1;if(pos.z<Bounds.minZ+4)move.z=1;else if(pos.z>Bounds.maxZ-4)move.z=-1;
             input.X=Mathf.Clamp(move.x,-1,1);input.Z=Mathf.Clamp(move.z,-1,1);input.Shoot=melee?distance<p.Weapon.range*1.25:visible||obstacle;input.Reload=p.Weapon.ammo>0&&(p.Ammo==0||p.Seat.spec!="rifle"&&p.Ammo<2);
-            input.Roll=level>0&&melee&&distance>4&&distance<11&&Math.Abs(pos.x)<28&&Math.Abs(pos.z)<24;
+            input.Roll=level>0&&melee&&distance>4&&distance<11&&pos.x>Bounds.minX+4&&pos.x<Bounds.maxX-4&&pos.z>Bounds.minZ+4&&pos.z<Bounds.maxZ-4;
+            if(escaping){input.Shoot=input.Roll=false;return input;}
             if(p.BotBrain.Reacted&&Time>=p.BlockReady)
             {
                 bool threat=opponent?.Swing!=null&&distance<opponent.Weapon.range+1&&opponent.Swing.HitAt-Time<.24&&visible;
@@ -46,7 +49,7 @@ namespace ChipArena.UnityConversion
             if(p.Seat.spec=="siren")return SirenDecision(p,input,target,distance,visible,level);
             BotAbilities(p,ref input,target,targetVelocity,distance,visible,level);
             if((pos-p.BotPrevious).sqrMagnitude<.000025f&&move.magnitude>.2f)p.BotBlocked+=1f/60;else p.BotBlocked=0;p.BotPrevious=pos;
-            if(p.BotBlocked>.65f){input.Jump=true;input.X=Mathf.Sin(Time*3);input.Z=Mathf.Cos(Time*3);}return input;
+            if(Structures==null&&p.BotBlocked>.65f){input.Jump=true;input.X=Mathf.Sin(Time*3);input.Z=Mathf.Cos(Time*3);}return input;
         }
         private void BotAbilities(NativePilot p,ref InputFrame input,Vector3 target,Vector3 velocity,float distance,bool visible,int level)
         {

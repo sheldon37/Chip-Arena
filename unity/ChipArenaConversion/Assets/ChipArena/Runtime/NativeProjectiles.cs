@@ -60,7 +60,7 @@ namespace ChipArena.UnityConversion
             // A newly spawned fragment starts next tick, regardless of collection insertion order.
             foreach(var b in Bullets.ToArray())
             {
-                if(!Bullets.Contains(b)||StepSirenShot(b))continue;var owner=Pilots.Find(p=>p.Seat.id==b.Owner);var original=Pilots.Find(p=>p.Seat.id==b.Original);
+                if(!Bullets.Contains(b))continue;if(Structures!=null&&ShotOutside(b.Position)){Bullets.Remove(b);continue;}if(StepSirenShot(b))continue;var owner=Pilots.Find(p=>p.Seat.id==b.Owner);var original=Pilots.Find(p=>p.Seat.id==b.Original);
                 if(owner==null||b.Life<=0||b.Travel<=0||b.Pong&&(original==null||original.Hp<=0)){Bullets.Remove(b);continue;}
                 if(!LeetShotStep(b,owner,dt))continue;float scale=b.LeetKind!=null?1:ChipShotMotion(b,owner,dt);if(scale<=0)continue;float h=Math.Min(dt*scale,b.Life),age=Time-b.Born;
                 bool turned=b.Boomerang&&age>=Math.Min(.65f,24/Math.Max(1,b.FixedSpeed));
@@ -73,7 +73,7 @@ namespace ChipArena.UnityConversion
                 Vector3 before=b.Velocity;var velocity=Vec(before);Vector3 previous=b.Position;Vector3 delta=Vector3.ClampMagnitude(Vec(NativeSpecialRules.Ballistic(ref velocity,b.Gravity,h)),b.Travel);b.Velocity=Vec(velocity);b.Life-=h;b.Travel-=delta.magnitude;b.Travelled+=delta.magnitude;
                 var hit=SweepNative(b.Position,delta,b.Radius,c=>
                 {var p=c.GetComponent<NativePilotBody>()?.Pilot;var m=c.GetComponent<NativeMinionBody>()?.Minion;return (m==null||m.Hp>0&&CanHit(owner,m))&& !b.Hit.Contains(c.GetInstanceID())&&(!b.Pong||!b.Contacts.TryGetValue(c.GetInstanceID(),out float contact)||Time-contact>.18f)&&(p==null||p.Hp>0&&CanHit(owner,p)&&!Invulnerable(p));});
-                bool ceiling=NativeSpecialRules.Ceiling(Vec(b.Position),Vec(delta),b.Radius,out float fraction,out V3 center),remove=false;
+                bool ceiling=MapCeiling(Vec(b.Position),Vec(delta),b.Radius,out float fraction,out V3 center),remove=false;
                 if(ceiling&&(!hit.HasValue||delta.magnitude*fraction<=hit.Value.Distance))
                 {
                     b.Position=Vec(center);bool bounces=b.Pong||b.Bounces>0;
@@ -82,15 +82,15 @@ namespace ChipArena.UnityConversion
                     if(b.Pong)remove=PongBounce(b,owner,b.Position,reflected);else if(b.Bounces>0){b.Bounces--;b.Velocity=reflected;b.Damage=Math.Min(1000,b.Damage*b.BounceRetention);}else remove=true;
                 }
                 else if(hit.HasValue){b.Velocity=before+Vector3.down*b.Gravity*h*Mathf.Clamp01(hit.Value.Distance/Math.Max(.00001f,delta.magnitude));remove=BulletImpact(b,owner,hit.Value);}else b.Position+=delta;
-                if(b.Pong&&!remove&&(Math.Abs(b.Position.x)>32||Math.Abs(b.Position.z)>28||b.Position.y<.2f||b.Position.y>24))
+                if(b.Pong&&!remove&&(!Bounds.Contains(Vec(b.Position))||b.Position.y<.2f||b.Position.y>Bounds.ceiling))
                 {
-                    Vector3 v=b.Velocity,pos=b.Position;if(pos.x<-32||pos.x>32){pos.x=Mathf.Clamp(pos.x,-32,32);v.x=Math.Abs(v.x)*(pos.x<0?1:-1);}if(pos.z<-28||pos.z>28){pos.z=Mathf.Clamp(pos.z,-28,28);v.z=Math.Abs(v.z)*(pos.z<0?1:-1);}if(pos.y<.2f||pos.y>24){pos.y=Mathf.Clamp(pos.y,.2f,24);v.y=Math.Abs(v.y)*(pos.y<1?1:-1);}remove=PongBounce(b,owner,pos,v);
+                    Vector3 v=b.Velocity,pos=b.Position;if(pos.x<Bounds.minX||pos.x>Bounds.maxX){v.x=Math.Abs(v.x)*(pos.x<Bounds.minX?1:-1);pos.x=Mathf.Clamp(pos.x,Bounds.minX,Bounds.maxX);}if(pos.z<Bounds.minZ||pos.z>Bounds.maxZ){v.z=Math.Abs(v.z)*(pos.z<Bounds.minZ?1:-1);pos.z=Mathf.Clamp(pos.z,Bounds.minZ,Bounds.maxZ);}if(pos.y<.2f||pos.y>Bounds.ceiling){pos.y=Mathf.Clamp(pos.y,.2f,Bounds.ceiling);v.y=Math.Abs(v.y)*(pos.y<1?1:-1);}remove=PongBounce(b,owner,pos,v);
                 }
                 if(!hit.HasValue&&turned&&original!=null&&Vector3.Distance(previous+delta.normalized*Mathf.Clamp(Vector3.Dot(original.Body.position+Vector3.up*.3f-previous,delta.normalized),0,delta.magnitude),original.Body.position+Vector3.up*.3f)<.8f)
                 {
                     if(b.Direct&&ProcOnce("catch:"+b.Attack)){Emit(EventKind.Catch,original,0,b.Position,0);if(original.Weapon.@class=="ranged")original.Ammo=Math.Min(Magazine(original),original.Ammo+1);else original.Mana=Math.Min((float)original.Stats["maxMana"],original.Mana+(float)original.Weapon.cost*.5f);}remove=true;
                 }
-                if(remove||b.Life<=0||b.Travel<=0||b.Position.y<-15)Bullets.Remove(b);
+                if(remove||b.Life<=0||b.Travel<=0||ShotOutside(b.Position))Bullets.Remove(b);
             }
         }
         private bool PongBounce(NativeBullet b,NativePilot owner,Vector3 point,Vector3 velocity)
@@ -130,7 +130,7 @@ namespace ChipArena.UnityConversion
             }
             else
             {
-                DamageProp(prop,b.Damage*b.Demolition,b.Velocity.normalized*b.Impulse*(b.Direct&&b.Reflections==0&&Leet(owner,"yeet")?1000:1),hit.Point,owner);
+                DamageProp(prop,b.Damage*b.Demolition,b.Velocity.normalized*b.Impulse*(b.Direct&&b.Reflections==0&&Leet(owner,"yeet")?1000:1),hit.Point,owner,"projectile",hit.Normal);
                 if((b.Direct||b.ChipImpact)&&b.Reflections==0)ImpactChips(owner,null,prop,hit.Point,b.Velocity.normalized,b.Attack,b.Id);
                 if(prop!=null)Events.Add(new ArenaEvent{Id=nextEvent++,Kind=EventKind.Impact,Source=owner.Seat.id,Time=Time,Position=Vec(hit.Point),Normal=Vec(hit.Normal),SurfaceId=prop.Definition.id,Color=(int)Content.Weapon(b.Spec).color,Projectile=b.Id});
             }
@@ -138,7 +138,7 @@ namespace ChipArena.UnityConversion
             {b.EffectsUsed=true;var w=Content.Weapon(b.Spec);if(w.blast>0)ChipBlast(owner,hit.Point,b.Radius>.2f?3:(float)w.blast,b.Damage*.38f,b.Impulse,effect:b.Spec);if(b.Direct&&!b.Pong)SplitBullet(owner,b,hit.Point,target?.Collider.GetInstanceID());}
             if(b.Pong)return true;
             if((target!=null||minion!=null)&&b.Pierces>0){b.Pierces--;b.Hit.Add(hit.Collider.GetInstanceID());b.Position+=b.Velocity.normalized*.08f;return false;}
-            if(prop!=null&&b.Bounces>0&&Props.Contains(prop)){Emit(EventKind.Ricochet,owner,0,hit.Point,b.Damage);b.Bounces--;b.Velocity=Vector3.Reflect(b.Velocity,hit.Normal);b.Position+=b.Velocity.normalized*(b.Radius+.06f);b.Damage=Math.Min(1000,b.Damage*b.BounceRetention);return false;}
+            if(prop!=null&&b.Bounces>0&&Props.Contains(prop)&&prop.GetComponent<Collider>().enabled){Emit(EventKind.Ricochet,owner,0,hit.Point,b.Damage);b.Bounces--;b.Velocity=Vector3.Reflect(b.Velocity,hit.Normal);b.Position+=b.Velocity.normalized*(b.Radius+.06f);b.Damage=Math.Min(1000,b.Damage*b.BounceRetention);return false;}
             return true;
         }
         private void SplitBullet(NativePilot owner,NativeBullet parent,Vector3 point,int? skip)

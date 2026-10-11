@@ -24,6 +24,7 @@ namespace ChipArena.UnityConversion
         }
         private V3 ConstrainPrediction(V3 old,V3 desired)
         {
+            if(Structures!=null)desired=Bounds.Clamp(desired,.43f);
             var from=Vec(old);var delta=Vec(desired-old);float distance=delta.magnitude;
             if(distance<.00001f)return desired;
             var physics=root.scene.GetPhysicsScene();
@@ -74,7 +75,7 @@ namespace ChipArena.UnityConversion
                 var x=a.minions.FirstOrDefault(f=>f.id==m.Id);var y=b.minions.FirstOrDefault(f=>f.id==m.Id);
                 if(x!=null&&y!=null){SetReplicaPosition(m.Body,Vector3.Distance(x.position,y.position)<5?Vector3.Lerp(x.position,y.position,blend):y.position);m.Yaw=Mathf.LerpAngle(x.yaw,y.yaw,blend);}
             }
-            Physics.SyncTransforms();
+            SyncStructures((int)Math.Round(time*60));Physics.SyncTransforms();
         }
     }
 }

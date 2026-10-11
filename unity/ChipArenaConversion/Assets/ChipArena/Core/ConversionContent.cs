@@ -19,9 +19,9 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class ExclusiveOdds { public string spec;public int guaranteed;public double chance; }
     [Serializable] public sealed class ContentRotation { public float x,y,z,w=1; }
     [Serializable] public sealed class ContentBlock
-    { public string id,material; public V3 pos,size;public ContentRotation rotation;public string[] support;public bool dynamic;public float mass; }
+    { public string id,material; public V3 pos,size;public ContentRotation rotation;public string[] support;public bool dynamic;public float mass;public string group,materialClass;public bool anchor; }
     [Serializable] public sealed class ContentMap
-    { public string id,name,tag,theme,music; public int sky,floor,accent;public bool rotation;public ContentBlock[] blocks; }
+    { public string id,name,tag,theme,music; public int sky,floor,accent;public bool rotation,experimental;public ContentBlock[] blocks;public MapGameplay gameplay;public MapVisual visual; }
     [Serializable] public sealed class ContentMaterial
     { public string id;public int color;public float mass,durability,friction;public bool indestructible; }
     [Serializable] public sealed class ContentAbility
@@ -55,6 +55,7 @@ namespace ChipArena.UnityConversion
             foreach(var c in chips)foreach(var e in c.effects)if(!stats.Contains(e.stat)||!new[]{"add","mul","set"}.Contains(e.op)||double.IsNaN(e.value)||double.IsInfinity(e.value))throw new InvalidOperationException("Invalid chip effect "+c.id);
             foreach(var map in maps)
             {
+                NativeMapRules.Validate(this,map);
                 if(map.blocks.Select(b=>b.id).Distinct().Count()!=map.blocks.Length)throw new InvalidOperationException("Duplicate block IDs: "+map.id);
                 var ids=new HashSet<string>(map.blocks.Select(b=>b.id));
                 foreach(var b in map.blocks)

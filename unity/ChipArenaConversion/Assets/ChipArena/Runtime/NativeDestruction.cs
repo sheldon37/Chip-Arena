@@ -27,13 +27,13 @@ namespace ChipArena.UnityConversion
                 {var p=c.pilot;Vector3 b=Velocity(p.Body,c.point);double speed=Math.Max(0,Vector3.Dot(a-b,c.normal));double damage=a.magnitude<3.6?0:NativeDebrisRules.Damage(prop.Body.mass,speed);double capped=debrisLedger.Claim(prop.Definition.id+":"+p.Seat.id,(prop.Group??prop.Definition.id)+":"+p.Seat.id,Time,damage);if(capped>0)Damage(p,recent?prop.Source:null,(float)(capped*p.Stats["debrisTaken"]),(a-b).normalized,0,false,direct:false,primary:false,damageKind:"debris");}
                 else if(c.other?.Body!=null&&!c.other.Body.isKinematic&&c.other.Source==null&&prop.Source!=null&&recent&&a.magnitude>3.6){c.other.Source=prop.Source;c.other.SourceAt=Time;}
             }
-            StepVents();debrisLedger.End(Time);foreach(var p in Props.Where(p=>p.Body!=null&&!p.Body.isKinematic&&p.Body.position.y<-15).ToArray()){Props.Remove(p);CapturedAnimation.Release(p.gameObject);}
+            ClampMapPilots();StepVents();debrisLedger.End(Time);foreach(var p in Props.Where(p=>p.Body!=null&&!p.Body.isKinematic&&p.Body.position.y<Bounds.cleanupY).ToArray()){Props.Remove(p);CapturedAnimation.Release(p.gameObject);}
         }
         private NativePropBody AddProp(ContentBlock block,bool fragment=false,string group=null,NativePilot source=null)
         {
             var def=Content.Material(block.material);var obj=GameObject.CreatePrimitive(PrimitiveType.Cube);obj.name=block.id;obj.layer=PropLayer;obj.transform.SetParent(root.transform);obj.transform.SetPositionAndRotation(Vec(block.pos),new Quaternion(block.rotation.x,block.rotation.y,block.rotation.z,block.rotation.w));obj.transform.localScale=Vec(block.size);
             obj.GetComponent<Renderer>().sharedMaterial=materials[block.material];obj.GetComponent<Collider>().sharedMaterial=surfaces[block.material];var prop=obj.AddComponent<NativePropBody>();prop.Arena=this;prop.Definition=block;prop.Health=def.durability;prop.Indestructible=def.indestructible;prop.Fragment=fragment;prop.Group=group??block.id;prop.Source=source;prop.SourceAt=Time;
-            if(!def.indestructible){prop.Body=obj.AddComponent<Rigidbody>();prop.Body.mass=block.mass>0?block.mass:def.mass;prop.Body.isKinematic=!block.dynamic;prop.Body.linearDamping=.15f;prop.Body.angularDamping=.25f;prop.Body.collisionDetectionMode=block.dynamic?CollisionDetectionMode.ContinuousDynamic:CollisionDetectionMode.Discrete;}Props.Add(prop);if(!fragment)DetailProp(prop);return prop;
+            if(!def.indestructible&&!(NativeMapRules.Enabled(Content.Map(MapId))&&!string.IsNullOrEmpty(block.group))){prop.Body=obj.AddComponent<Rigidbody>();prop.Body.mass=block.mass>0?block.mass:def.mass;prop.Body.isKinematic=!block.dynamic;prop.Body.linearDamping=.15f;prop.Body.angularDamping=.25f;prop.Body.collisionDetectionMode=block.dynamic?CollisionDetectionMode.ContinuousDynamic:CollisionDetectionMode.Discrete;}Props.Add(prop);if(!fragment)DetailProp(prop);return prop;
         }
         private void Fracture(NativePropBody prop,Vector3 extra,NativePilot source)
         {
@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
             CapturedAnimation.Release(prop.gameObject);CheckSupports(source);
         }
         private void CheckSupports(NativePilot source)
-        {foreach(var p in Props)if(p.Body!=null&&p.Body.isKinematic&&p.Definition.support!=null&&p.Definition.support.Length>0&&p.Definition.support.All(id=>!Props.Any(q=>q.Definition.id==id&&q.Health>0))){p.Body.isKinematic=false;p.Body.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;p.Source=source;p.SourceAt=Time;p.Group="collapse-"+nextChunk++;Emit(EventKind.Collapse,source,0,p.transform.position,0,p.Definition.id);}}
+        {foreach(var p in Props)if(string.IsNullOrEmpty(p.Definition.group)&&p.Body!=null&&p.Body.isKinematic&&p.Definition.support!=null&&p.Definition.support.Length>0&&p.Definition.support.All(id=>!Props.Any(q=>q.Definition.id==id&&q.Health>0))){p.Body.isKinematic=false;p.Body.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;p.Source=source;p.SourceAt=Time;p.Group="collapse-"+nextChunk++;Emit(EventKind.Collapse,source,0,p.transform.position,0,p.Definition.id);}}
         private bool SceneLinecast(Vector3 from,Vector3 to,int mask)=>SceneLinecast(from,to,out _,mask);
         private bool SceneLinecast(Vector3 from,Vector3 to,out RaycastHit hit,int mask){var delta=to-from;return root.scene.GetPhysicsScene().Raycast(from,delta.normalized,out hit,delta.magnitude,mask,QueryTriggerInteraction.Ignore);}
     }

@@ -107,6 +107,7 @@ namespace ChipArena.UnityConversion.Editor
             foreach(var test in NativeVisualChecks.Run(data))Debug.Log("PASS "+test);
             foreach(var test in NativeDamageScreenChecks.Run())Debug.Log("PASS "+test);
             foreach(var test in NativePresentationChecks.Run(data,presentation))Debug.Log("PASS "+test);
+            CheckArenaFoundation(data);
             if(data.chips.Any(c=>!NativeArena.ImplementedChip(c)))throw new Exception("A source Chip is absent from the native draft");
             if(NativeSceneMotion.Count!=31)throw new Exception("Source cinematic scenes are incomplete");
             if(NativeSourceMotion.ClipCount!=165)throw new Exception("Source motion bank is incomplete");

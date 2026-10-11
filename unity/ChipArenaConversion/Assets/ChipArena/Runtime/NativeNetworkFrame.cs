@@ -24,11 +24,12 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed partial class NativeGameFrame:NativeMatchFrame
     {
         public int version=NativeConnection.Protocol,generation;public string map,source;public float bossSongAt,bossSongLead;
-        public bool hasPve;
+        public bool hasPve,hasStructures;public StructureSnapshot structures;
         public NativeMarkView[] marks;public NativeEntryView[] entries;public NativeDeath[] corpses;public Snapshot snapshot;public NativeSeatFrame[] seats;public NativePilotFrame[] pilots;public NativePropFrame[] props;public NativeMinionFrame[] minions;public NativeEffectFrame[] effects;public NativePveFrame pve;
         public bool Valid(ConversionContent content)
         {
             RestorePresence();
+            var definition=content.maps.FirstOrDefault(m=>m.id==map);if(definition==null||!NativeStructure.Valid(content,definition,structures))return false;
             if(rematchVotes==null||rematchVotes.Length>8||rematchVotes.Distinct().Count()!=rematchVotes.Length||rematchRequired<0||rematchRequired>8||float.IsNaN(lobbyReturnSeconds)||float.IsInfinity(lobbyReturnSeconds)||lobbyReturnSeconds<0||lobbyReturnSeconds>3.1f)return false;
             if(seats==null||seats.Any(s=>s==null)||pilots==null||pilots.Any(p=>p==null)||props==null||props.Any(p=>p==null)||minions==null||minions.Any(m=>m==null)||effects==null||effects.Any(f=>f==null)||snapshot?.Actors==null||snapshot.Actors.Any(a=>a==null)||snapshot.Shots==null||snapshot.Shots.Any(s=>s==null)||snapshot.Events==null)return false;
             bool Finite(float v)=>!float.IsNaN(v)&&!float.IsInfinity(v);bool Number(double v)=>!double.IsNaN(v)&&!double.IsInfinity(v);bool NativeVector(V3 v)=>Number(v.x)&&Number(v.y)&&Number(v.z)&&Math.Abs(v.x)<100000&&Math.Abs(v.y)<100000&&Math.Abs(v.z)<100000;bool Vector(Vector3 v)=>Finite(v.x)&&Finite(v.y)&&Finite(v.z)&&v.sqrMagnitude<1e10;
@@ -40,6 +41,7 @@ namespace ChipArena.UnityConversion
             if(pilots.Any(p=>!Finite(p.revivedAt))||snapshot.Actors.Any(a=>!Finite(a.GrabAt)||!Finite(a.GrabCrushAt)||!Finite(a.GrabUntil)||a.GrabOwner<0||a.GrabOwner!=0&&(a.GrabOwner==a.Id||!seats.Any(s=>s.id==a.GrabOwner&&s.spec=="siren")||a.GrabAt<0||a.GrabCrushAt<a.GrabAt||a.GrabUntil<a.GrabCrushAt)))return false;
             if(snapshot.Shots.Any(s=>!Mods(s.Mods)||s.SirenTarget!=0&&!seats.Any(p=>p.id==s.SirenTarget)||!Finite(s.Born)||!Finite(s.Burn)||!Finite(s.Poison)||s.Spec!=null&&s.Spec.Length>64||s.SirenKind!=null&&s.SirenKind.Length>64||s.LeetKind!=null&&s.LeetKind.Length>64)||snapshot.Actors.Any(a=>!Finite(a.LastAttack)||!Finite(a.JuggleUntil)||!Finite(a.SourceModeAt)))return false;
             if(effects.Any(e=>!Finite(e.fuse)||!Finite(e.burn)||!Finite(e.poison)||!Finite(e.lockAt)||e.effect!=null&&e.effect.Length>100)||seats.Any(s=>s.lobbyPose!=null&&s.lobbyPose.Length>32))return false;
+            if(structures!=null&&(props.Any(p=>p.definition!=null||!definition.blocks.Any(b=>string.IsNullOrEmpty(b.group)&&b.id==p.id))||props.Length!=definition.blocks.Count(b=>string.IsNullOrEmpty(b.group))))return false;
             if(pilots.Select(p=>p.id).Distinct().Count()!=pilots.Length||minions.Select(m=>m.id).Distinct().Count()!=minions.Length||props.Select(p=>p.id).Distinct().Count()!=props.Length)return false;
             foreach(var s in seats)if(s.id<1||s.name==null||s.name.Length>40||!content.weapons.Any(w=>w.id==s.spec)||s.chips==null||s.chips.Length>250||s.offers==null||s.offers.Length>12||s.chips.Any(c=>c==null||c.count<0||c.count>100||c.id==null||c.id.Length>64)||s.offers.Any(id=>id==null||id.Length>64))return false;
             if(marks!=null&&(marks.Length>32||marks.Any(m=>m==null||!Finite(m.lockAt)||!Finite(m.throwAt)||!seats.Any(s=>s.id==m.owner)||!seats.Any(s=>s.id==m.target))))return false;
@@ -75,7 +77,7 @@ namespace ChipArena.UnityConversion
             f.seats=Match.Seats.Select(s=>new NativeSeatFrame{id=s.id,name=s.name,spec=s.spec,team=s.team,roundWins=s.roundWins,score=s.score,difficulty=s.difficulty,bot=s.bot,connected=s.connected,alive=s.alive,boss=s.AuthorityBoss,bodyColor=s.bodyColor,accentColor=s.accentColor,hat=s.hat,lobbyPose=s.lobbyPose,killEffect=s.killEffect,intro=s.intro,introText=s.introText,chips=s.chips.Select(c=>new ChipCount{id=c.Key,count=c.Value}).ToArray(),offers=s.offers.ToArray()}).ToArray();
             f.pilots=Pilots.Select(p=>new NativePilotFrame{dots=DotFrames(p.Dots),slowEnd=p.SlowEnd,slowFactor=p.SlowFactor,attackAt=p.AttackAt,fighter=p.Fighter?.ViewCopy(),id=p.Seat.id,inputAck=p.Input.Sequence,moveVelocity=p.MoveVelocity,stats=Content.baseStats.Select(s=>new NumberValue{name=s.name,value=p.Stats[s.name]}).ToArray(),death=p.Death?.ViewCopy(),wounds=p.Wounds.ToArray(),revivedAt=p.RevivedAt,hp=p.Hp,mana=p.Mana,stamina=p.Stamina,ammo=p.Ammo,charges=p.ECharges,yaw=p.Yaw,pitch=p.Pitch,position=p.Body.position,velocity=p.Body.isKinematic?Vector3.zero:p.Body.linearVelocity,ready=p.Ready,qReady=p.QReady,eReady=p.EReady,reloadAt=p.ReloadAt,reloadEnd=p.ReloadEnd,blockEnd=p.BlockEnd,blockReady=p.BlockReady,rollAt=p.RollAt,rollEnd=p.RollEnd,stunEnd=p.StunEnd,down=p.Down?.ViewCopy(),holdAt=p.HoldAt,controlling=p.Controlling?.Seat.id??0,scareAt=p.ScareAt,scareUntil=p.ScareUntil,frozenUntil=p.FrozenUntil}).ToArray();
             f.snapshot.Actors=f.snapshot.Actors.Select(a=>a.ViewCopy()).ToArray();
-            f.props=Props.Select(FrameProp).ToArray();foreach(var id in frameProps.Keys.Where(id=>!Props.Any(p=>p.Definition.id==id)).ToArray())frameProps.Remove(id);
+            f.structures=Structures?.Capture();f.props=Props.Where(p=>Structures==null||string.IsNullOrEmpty(p.Definition.group)).Select(FrameProp).ToArray();foreach(var id in frameProps.Keys.Where(id=>!Props.Any(p=>p.Definition.id==id)).ToArray())frameProps.Remove(id);
             f.minions=Minions.Select(m=>new NativeMinionFrame{dots=DotFrames(m.Dots),slowUntil=m.SlowUntil,slowFactor=m.SlowFactor,id=m.Id,owner=m.Owner.Seat.id,kind=m.Kind,hp=m.Hp,maxHp=m.MaxHp,yaw=m.Yaw,speed=m.Speed,lastHitAt=m.LastHitAt,position=m.Body.position,velocity=m.Body.isKinematic?Vector3.zero:m.Body.linearVelocity,lastAttack=m.LastAttack,addKind=m.Pve?.Stats.id,lost=m.Pve?.Lost??0,entry=m.Pve?.Entry.e??0,activeAt=m.Pve?.ActiveAt??0,spawnAt=m.Pve?.SpawnAt??0,diveAt=m.Pve?.DiveAt??0,first=m.Pve?.First??true,travelling=m.Pve?.Travelling??false,crawl=m.Pve?.Crawl??false,possessedAt=m.Pve?.PossessedAt??0,possessed=m.Pve?.Possessed??false}).ToArray();
             var fx=new List<NativeEffectFrame>();
             fx.AddRange(AbilityShots.Select(s=>new NativeEffectFrame{type="ability",id=s.Id,owner=s.Owner.Seat.id,ability=s.Definition.id,position=s.Position,velocity=s.Velocity,radius=s.Radius,fuse=s.Fuse}));
@@ -92,8 +94,9 @@ namespace ChipArena.UnityConversion
         public void ApplyFrame(NativeGameFrame f,int localId)
         {
             f.RestorePresence();
+            if(!NativeStructure.Valid(Content,Content.Map(f.map),f.structures))throw new ArgumentException("Invalid structural state");
 
-            Replica=true;LocalId=localId;bool reset=replicaFrame==null||replicaFrame.generation!=f.generation;Match.ApplyNetwork(f);
+            Replica=true;LocalId=localId;bool reset=replicaFrame==null||replicaFrame.generation!=f.generation||MapId!=f.map;MapId=f.map;Match.ApplyNetwork(f);
             foreach(var sf in f.seats){var seat=Match.Seat(sf.id);if(seat==null){seat=new NativeSeat{id=sf.id};Match.Seats.Add(seat);}seat.name=sf.name;seat.spec=sf.spec;seat.team=sf.team;seat.bot=sf.bot;seat.connected=sf.connected;seat.alive=sf.alive;seat.score=sf.score;seat.roundWins=sf.roundWins;seat.AuthorityBoss=sf.boss;seat.bodyColor=sf.bodyColor;seat.accentColor=sf.accentColor;seat.hat=sf.hat;seat.lobbyPose=NativeLobbyPoses.Normalize(sf.lobbyPose);seat.killEffect=sf.killEffect;seat.intro=sf.intro;seat.introText=sf.introText;seat.offers=sf.offers.ToList();seat.chips.Clear();foreach(var c in sf.chips)seat.chips[c.id]=c.count;}
             Match.Seats.RemoveAll(s=>!f.seats.Any(x=>x.id==s.id));if(reset){Reset();Generation=f.generation;}
             if(f.pve!=null&&Pve==null)ConfigurePve(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text),false);
@@ -105,8 +108,9 @@ namespace ChipArena.UnityConversion
             }
             foreach(var pf in f.pilots)Pilots.Find(p=>p.Seat.id==pf.id).Controlling=Pilots.Find(p=>p.Seat.id==pf.controlling);
             foreach(var p in Pilots.Where(p=>!f.pilots.Any(x=>x.id==p.Seat.id)).ToArray()){Pilots.Remove(p);CapturedAnimation.Release(p.Body.gameObject);}
-            foreach(var p in Props.ToArray()){var pf=Array.Find(f.props,x=>x.id==p.Definition.id);if(pf==null){Props.Remove(p);p.GetComponent<Collider>().enabled=false;CapturedAnimation.Release(p.gameObject);continue;}if(p.Body!=null)p.Body.isKinematic=true;p.transform.SetPositionAndRotation(pf.position,pf.rotation);if(!p.Indestructible)p.Health=pf.health;}
+            foreach(var p in Props.Where(p=>Structures==null||string.IsNullOrEmpty(p.Definition.group)).ToArray()){var pf=Array.Find(f.props,x=>x.id==p.Definition.id);if(pf==null){Props.Remove(p);p.GetComponent<Collider>().enabled=false;CapturedAnimation.Release(p.gameObject);continue;}if(p.Body!=null)p.Body.isKinematic=true;p.transform.SetPositionAndRotation(pf.position,pf.rotation);if(!p.Indestructible)p.Health=pf.health;}
             foreach(var pf in f.props)if(pf.definition!=null&&!Props.Any(p=>p.Definition.id==pf.id)){var prop=AddProp(pf.definition,true);prop.Body.isKinematic=true;prop.transform.SetPositionAndRotation(pf.position,pf.rotation);}
+            if(f.structures!=null){Structures.Restore(f.structures);SyncStructures(f.structures.tick);}
             ApplyMinions(f);ApplyEffects(f);ApplyPve(f.pve);BossSongAt=f.bossSongAt;BossSongLead=f.bossSongLead;Events.Clear();Events.AddRange(f.snapshot.Events);Entries.Clear();if(f.entries!=null)Entries.AddRange(f.entries);MinionDeaths.Clear();if(f.corpses!=null)MinionDeaths.AddRange(f.corpses);foreach(var sf in f.seats)Match.Seat(sf.id).connected=sf.connected;replicaFrame=f;BufferReplica(f,reset);
         }
         private void ApplyMinions(NativeGameFrame f)

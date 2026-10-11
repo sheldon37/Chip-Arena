@@ -128,7 +128,7 @@ namespace ChipArena.UnityConversion
         }
         private Vector3 GroundPoint(Vector3 point)
         {
-            point.x=Mathf.Clamp(point.x,-31,31);point.z=Mathf.Clamp(point.z,-27,27);
+            point=Vec(Bounds.Clamp(Vec(point)));
             if(root.scene.GetPhysicsScene().Raycast(point+Vector3.up*.08f,Vector3.down,out var hit,40,WorldMask))point=hit.point;return point;
         }
         private Vector3 Muzzle(NativePilot p)=>p.Body.position+Vector3.up*.52f+Quaternion.Euler(0,p.Yaw,0)*new Vector3(.18f,0,.68f);
@@ -160,7 +160,7 @@ namespace ChipArena.UnityConversion
             {
                 Vector3 delta=prop.transform.position-at;float reach=radius+prop.transform.localScale.magnitude*.35f;
                 if(delta.magnitude>=reach)continue;float fall=1-Mathf.Clamp(delta.magnitude/reach,0,.85f);
-                DamageProp(prop,damage*fall*propScale*(float)owner.Stats["demolition"],(delta+Vector3.up*.3f).normalized*impulse*fall,at,owner);
+                DamageProp(prop,damage*fall*propScale*(float)owner.Stats["demolition"],(delta+Vector3.up*.3f).normalized*impulse*fall,at,owner,"explosion");
             }
             Emit(EventKind.Explosion,owner,0,at,damage,effect,radius);Fx(at,radius,element);return hits;
         }
@@ -210,9 +210,9 @@ namespace ChipArena.UnityConversion
                         if(!remove&&(body!=null||minion!=null)&&d.id!="frag-grenade")s.Position+=delta.normalized*.05f;
                         break;
                     }
-                    if(!contact){if(NativeSpecialRules.Ceiling(Vec(s.Position),Vec(delta),s.Radius,out float ceilingAt,out var ceilingPoint)){s.Position=Vec(ceilingPoint);remove=true;}else{s.Position+=delta;s.Travel+=delta.magnitude;}}
+                    if(!contact){if(MapCeiling(Vec(s.Position),Vec(delta),s.Radius,out float ceilingAt,out var ceilingPoint)){s.Position=Vec(ceilingPoint);remove=true;}else{s.Position+=delta;s.Travel+=delta.magnitude;}}
                 }
-                bool expired=s.Life<=0||s.Travel>=s.MaxTravel-.0001f||s.Position.y<-15||d.id=="frag-grenade"&&Time>=s.Fuse;
+                bool expired=s.Life<=0||s.Travel>=s.MaxTravel-.0001f||ShotOutside(s.Position)||d.id=="frag-grenade"&&Time>=s.Fuse;
                 if(!remove&&expired)
                 {if(d.id=="frag-grenade"||d.id=="rocket"||d.id=="ball-lightning")AbilityBlast(s.Owner,s.Position,NativeAbilityRules.Radius(d,s.Owner.Stats),s.Damage,d.id=="ball-lightning"?400:(float)d.impulse,s.Owner.Pose.MagicVisual,d.id=="rocket"?2:1,effect:d.fx??d.id);remove=true;}
                 if(remove)AbilityShots.RemoveAt(i);
