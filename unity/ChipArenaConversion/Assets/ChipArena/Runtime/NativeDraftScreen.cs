@@ -74,10 +74,13 @@ namespace ChipArena.UnityConversion
         // (NativeHoloScan); the others recede under a veil while it is up, and the keyboard focus keeps still brackets while the
         // pointer is on another card. The stage's gaze and reach follow the highlighted card (draftHover). The skipped (chosen)
         // card's level stays as it was at the pick, for FlyToPalm.
+        private Tray hoverSoundTray;private int hoverSoundCard=-1;
         private int DrawTray(Tray tray,IList<ContentChip> chips,Func<int,int> copies,float elapsed,bool enabled,int skip,Func<int,bool> hidden,bool badges=false)
         {
             int clicked=-1,n=Math.Min(tray.Cards.Length,cardHolo.Length),under=-1;float now=Time.unscaledTime;bool repaint=Event.current.type==EventType.Repaint,calm=prefs.reducedEffects;if(repaint)draftHover=-1;
             for(int i=0;i<n;i++){bool shown=i!=skip&&!hidden(i);cardReveal[i]=shown?NativeChipCard.Entrance(chips[i].rarity,elapsed-i*.22f):default;if(shown&&enabled&&cardReveal[i].Alpha>0&&U.Hover(tray.Cards[i]))under=i;}
+            // The draft card hover sound (the effects bank's ui.draft.hover; silent without LocalAssets) on entering another card.
+            if(repaint){if(enabled&&under>=0&&(under!=hoverSoundCard||tray!=hoverSoundTray))nativeAudio?.UiCue("ui.draft.hover",null,.5f);hoverSoundCard=enabled?under:-1;hoverSoundTray=tray;}
             int lit=under>=0?under:draftFocus>=0&&draftFocus<n&&cardReveal[draftFocus].Alpha>0?draftFocus:-1;bool held=enabled&&lit<0&&draftHeld.Reaching;if(enabled&&repaint&&lit>=0)draftHover=lit;
             // Levels (Repaint only), then the most highlighted visible cards for the others' veil.
             int top=-1;float first=0,second=0;
@@ -156,7 +159,7 @@ namespace ChipArena.UnityConversion
             if(chosen==null){draftTray=LayoutTray(chips,top,W,H);LowerTray(draftTray,top,H-(H<=760?54:66));}var tray=draftTray;if(tray==null||tray.Cards.Length!=chips.Count)return;draftCards=tray.Cards;draftTrayLine=tray.Top/H;draftTrayBottom=tray.Bottom/H;
             float elapsed=(float)(now-DraftStarted(seat));bool enabled=own&&chosen==null&&match.Time>=match.ReadyAt;int index=chosen!=null?chips.IndexOf(chosen):-1;
             int pick=DrawTray(tray,chips,i=>seat.chips.TryGetValue(chips[i].id,out int n)?n-(i==index?1:0):0,elapsed,enabled,index,i=>chosen!=null,false);
-            int key=DraftKeys(chips.Count,enabled,false);if(key>=0)pick=key;if(pick>=0&&enabled){nativeAudio.Play("ui",null,.4f);ChooseChip(seat.id,chips[pick].id);}
+            int key=DraftKeys(chips.Count,enabled,false);if(key>=0)pick=key;if(pick>=0&&enabled){nativeAudio.UiCue("ui.draft.pick","ui",.4f);ChooseChip(seat.id,chips[pick].id);}
             if(!enabled&&chosen==null&&draftFocus>=0&&!own)draftFocus=-1;
             if(chosen!=null)
             {

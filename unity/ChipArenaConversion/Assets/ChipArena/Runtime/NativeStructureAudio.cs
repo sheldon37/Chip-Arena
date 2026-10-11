@@ -12,6 +12,8 @@ namespace ChipArena.UnityConversion
     // the cap sees it when it starts. Synthesized clips load from Resources/StructureAudio (tools/synth_structure_audio.py,
     // asset-locked); "wood", "metal" and "dash" come from the source bank, whose 83-clip gate is untouched.
     // NativeAudio.EventSounds routes the three authoritative structure events here before generic sound routing.
+    // With the owner's effects bank (LocalAssets) each layer may take a recorded override (NativeSoundCues.Structure); the
+    // ledger then counts the override's own length, and without the bank every layer is the synthesized one, as before.
     public sealed partial class NativeAudio
     {
         private struct StructurePending{public bool Live;public NativeStructureSound Cue;public Vector3 At;public NativeStructureMaterial Material;public float Level;public uint Owner;public double Due;}
@@ -41,12 +43,16 @@ namespace ChipArena.UnityConversion
             int n=NativeStructureSounds.Plan(cue,material,level,structureLayers);var d=at-listener;float distance=d.magnitude,pan=NativeEventSounds.Pan(NativeArena.Vec(d),yaw);
             for(int i=0;i<n;i++)
             {
-                var layer=structureLayers[i];float gain=NativeStructureSounds.Gain(layer,distance);if(gain<.01f)continue;var clip=StructureClip(layer.Clip);if(clip==null)continue;
-                float rate=layer.Rate>0?layer.Rate:NativeEventSounds.Rate(layer.Clip,UnityEngine.Random.value),wait=Math.Max(0,layer.Delay);double start=now+wait;
-                if(!structureMix.Fits(start,start+NativeStructureSounds.Length(clip.length,rate)))continue;
+                var layer=structureLayers[i];float gain=NativeStructureSounds.Gain(layer,distance);if(gain<.01f)continue;
+                // A recorded override from the effects bank (NativeSoundCues.Structure, same plan, delays and ledger), else the synth.
+                var clip=BankStructureClip(layer.Clip,out var banked);if(clip==null)clip=StructureClip(layer.Clip);if(clip==null)continue;
+                float rate=banked!=null?NativeSoundBank.Rate(banked,(float)bankRandom.NextDouble()):layer.Rate>0?layer.Rate:NativeEventSounds.Rate(layer.Clip,UnityEngine.Random.value),wait=Math.Max(0,layer.Delay);double start=now+wait;
+                float seconds=banked!=null?Math.Min(clip.length,banked.MaxLength):clip.length;if(banked!=null)gain*=banked.Gain;
+                if(!structureMix.Fits(start,start+NativeStructureSounds.Length(seconds,rate)))continue;
                 int free=-1;for(int v=0;v<slots;v++)if(!voices[v].isPlaying&&!structureMix.Live(v)){free=v;break;}if(free<0)break;
-                var voice=voices[free];keyedVoices[free]=false;voice.clip=clip;voice.volume=Mathf.Clamp01(gain*Effects);voice.panStereo=pan;voice.pitch=rate;voice.PlayDelayed(wait);
-                structureClip[free]=clip;structureMix.Claim(free,start,start+NativeStructureSounds.Length(clip.length,rate),owner,cue);
+                var voice=voices[free];keyedVoices[free]=false;voice.loop=false;voice.clip=clip;voice.volume=Mathf.Clamp01(gain*Effects);voice.panStereo=pan;voice.pitch=rate;voice.PlayDelayed(wait);
+                structureClip[free]=clip;structureMix.Claim(free,start,start+NativeStructureSounds.Length(seconds,rate),owner,cue);
+                if(banked!=null){bankVoiceClip[free]=clip;bankVoicePriority[free]=NativeSoundPriority.Normal;bankVoiceEnd[free]=start+NativeStructureSounds.Length(seconds,rate)+.02;}
             }
         }
         // Once a frame from Render: plays the queued cues that are due; a new round or no arena drops them.
