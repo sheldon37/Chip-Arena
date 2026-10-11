@@ -10,15 +10,21 @@ namespace ChipArena.UnityConversion
     /// clock, backdrop life only). Everything else is untouched, and nothing runs while intros, previews or the chip draft
     /// own the screen, as none of them reach SourceWorld.
     ///  - Static city: Core/NativeBrickfallScenery.cs baked once into five ChipArena/SourceLit meshes (the near street ring
-    ///    with the viaduct and the Mercer Plaza lot, and four sectors), drawn with Graphics.DrawMesh on layer 0: no GameObjects,
-    ///    no colliders, no shadow casting (they receive the arena's shadows). One mesh per sector is cheaper than instancing
-    ///    some 15,000 distinct boxes.
+    ///    with the viaduct and the Mercer Plaza lot, and four sectors), drawn with Graphics.DrawMesh on
+    ///    NativeSceneryBuilder.BackdropLayer, which the pixel point lights leave out: no GameObjects, no colliders, no shadow
+    ///    casting (they receive the arena's shadows). One mesh per sector is cheaper than instancing some 15,000 distinct boxes.
+    ///    Behind the menu (no arena blocks there yet) a plate fills the slab's footprint.
     ///  - Moving parts: the viaduct train (one mesh, one draw while it is on the viaduct) and the two crane jibs (one
     ///    instanced draw of two).
     ///  - Life and air: Core/NativeBrickfallFx.cs quads (flocks, aviation lights, smoke columns; in the arena also sun shafts,
-    ///    motes, scraps, pigeons, tarps and collapse dust) through one NativeFxDraw: a solid and an effects batch.
-    ///  At most 9 draws (5 + train + jibs + 2; while shadows are on, the receiving meshes also enter Unity's camera depth pass),
-    ///  the life and air scaled by EffectsQuality and LowGraphics (graphics=performance).
+    ///    motes, scraps, pigeons, tarps and collapse dust) through one NativeFxDraw: a solid and an effects batch. The scraps
+    ///    fade at the arena's props (refilled each frame, <see cref="BrickfallCover"/>); the drifting dust leaves the destruction
+    ///    kit's dust wall its share of the 120 dust billboards (<see cref="BrickfallDustInUse"/>).
+    ///  At most 9 draws in the arena (5 + train + jibs + 2; the menu adds the plate). Passes: each lit mesh (sectors, train, jibs)
+    ///  draws its forward base pass plus one add pass for the rim light when Unity renders it per pixel (directional lights
+    ///  reach every layer), and no point-light passes; while shadows are on, the receiving meshes also enter the camera depth
+    ///  pass. The two effect batches are unlit, one pass each. The life and air scale with EffectsQuality and LowGraphics
+    ///  (graphics=performance).
     ///  - The dust coat: Shader global <see cref="NativeBrickfallAtmosphere.DustCoatGlobal"/> (0..1, rising with this round's
     ///    landings; 0 on every other map and behind the menu) for the block shader to read.
     /// Structure events do not exist yet (the destruction kit emits them later); <see cref="BrickfallStructure"/> is the hook.
@@ -28,7 +34,12 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>graphics=performance, or auto on a low-end GPU (NativeSettings.ApplySettings): atmosphere halves, no sun shafts.</summary>
         public bool LowGraphics;
-        private Mesh[] brickfallSectors;private Mesh brickfallTrain,brickfallJib;private Material brickfallLit;private NativeFxDraw brickfallDraw;private bool brickfallFailed;
+        /// <summary>
+        /// The destruction kit's live landing-dust billboards this frame (NativeStructureFx.PuffCount; 0 until that kit is
+        /// merged and sets it each frame): the drifting collapse dust takes only what is left of the §3.10 cap of 120.
+        /// </summary>
+        public int BrickfallDustInUse;
+        private Mesh[] brickfallSectors;private Mesh brickfallTrain,brickfallJib,brickfallPlate;private Material brickfallLit;private NativeFxDraw brickfallDraw;private bool brickfallFailed;
         private NativeBrickfallFx brickfallFx;private NativeFxLight brickfallLight;private NativeBrickfallMemory brickfallMemory;
         private readonly Matrix4x4[] brickfallJibs=new Matrix4x4[2];private float brickfallCoat=-1;
         private static readonly int DustCoatId=Shader.PropertyToID(NativeBrickfallAtmosphere.DustCoatGlobal);
@@ -57,13 +68,28 @@ namespace ChipArena.UnityConversion
             foreach(var e in arena.Events)if(e.Kind==EventKind.Explosion)brickfallMemory.Spook(e.Time,e.Position.x,e.Position.y,e.Position.z);
             var match=arena.Match;double roundStart=NativeBrickfallAtmosphere.RoundStart(match.Phase,match.FightAt,match.PhaseEnd);
             PublishDustCoat((float)NativeBrickfallAtmosphere.DustCoat(brickfallMemory,now,roundStart));
-            DrawBrickfall(now,WorldEye,true,roundStart);
+            BrickfallCover(arena);DrawBrickfall(now,WorldEye,true,roundStart);
+        }
+        /// <summary>
+        /// The paper scraps' cover: every prop's world bounding box (props are unit cubes scaled to their block size), refilled
+        /// each frame from the arena drawn, so falling pieces and the killcam replay's props count too. If static blocks later
+        /// leave arena.Props (ARENA_PROPOSAL.md §5.3), they belong here as well.
+        /// </summary>
+        private void BrickfallCover(NativeArena arena)
+        {
+            var cover=brickfallFx.Cover;cover.Clear();
+            foreach(var p in arena.Props)
+            {
+                if(p==null)continue;var m=p.transform.localToWorldMatrix;
+                float ex=.5f*(Mathf.Abs(m.m00)+Mathf.Abs(m.m01)+Mathf.Abs(m.m02)),ey=.5f*(Mathf.Abs(m.m10)+Mathf.Abs(m.m11)+Mathf.Abs(m.m12)),ez=.5f*(Mathf.Abs(m.m20)+Mathf.Abs(m.m21)+Mathf.Abs(m.m22));
+                cover.Add(m.m03-ex,m.m13-ey,m.m23-ez,m.m03+ex,m.m13+ey,m.m23+ez);
+            }
         }
         // RenderBackdrop: behind the main menu, on the render clock; no atmosphere, no dust.
         private void BrickfallBackdrop(string mapId,float time,Camera camera)
         {
             if(!NativeBrickfallScenery.Active(mapId)){BrickfallDormant();return;}
-            if(!EnsureBrickfall())return;PublishDustCoat(0);DrawBrickfall(time,camera,false,0);
+            if(!EnsureBrickfall())return;PublishDustCoat(0);brickfallFx.Cover.Clear();DrawBrickfall(time,camera,false,0);
         }
         private void BrickfallDormant(){PublishDustCoat(0);brickfallMemory?.Clear();}
         private void PublishDustCoat(float value){if(value==brickfallCoat)return;brickfallCoat=value;Shader.SetGlobalFloat(DustCoatId,value);}
@@ -75,7 +101,7 @@ namespace ChipArena.UnityConversion
                 var shader=Resources.Load<Shader>("NativeSourceLit");if(shader==null)throw new System.InvalidOperationException("NativeSourceLit shader is missing");
                 brickfallLit=new Material(shader){name="Brickfall scenery",enableInstancing=true};brickfallLit.SetFloat("_StageLit",0);
                 var built=NativeBrickfallScenery.Build();sectors=new Mesh[built.Length];for(int i=0;i<built.Length;i++)sectors[i]=BrickfallMesh(built[i],"Brickfall scenery "+i);
-                brickfallTrain=BrickfallMesh(NativeBrickfallScenery.BuildTrain(),"Brickfall train");brickfallJib=BrickfallMesh(NativeBrickfallScenery.BuildJib(),"Brickfall crane jib");
+                brickfallTrain=BrickfallMesh(NativeBrickfallScenery.BuildTrain(),"Brickfall train");brickfallJib=BrickfallMesh(NativeBrickfallScenery.BuildJib(),"Brickfall crane jib");brickfallPlate=BrickfallMesh(NativeBrickfallScenery.BuildMenuPlate(),"Brickfall menu plate");
                 brickfallDraw=new NativeFxDraw();brickfallFx=new NativeBrickfallFx();brickfallLight=new NativeFxLight();brickfallMemory=new NativeBrickfallMemory();brickfallSectors=sectors;return true;
             }
             catch(System.Exception e)
@@ -93,15 +119,17 @@ namespace ChipArena.UnityConversion
         }
         private void DrawBrickfall(float time,Camera camera,bool atmosphere,double roundStart)
         {
-            foreach(var mesh in brickfallSectors)Graphics.DrawMesh(mesh,Matrix4x4.identity,brickfallLit,0,null,0,null,ShadowCastingMode.Off,true);
+            const int backdrop=NativeSceneryBuilder.BackdropLayer;
+            foreach(var mesh in brickfallSectors)Graphics.DrawMesh(mesh,Matrix4x4.identity,brickfallLit,backdrop,null,0,null,ShadowCastingMode.Off,true);
+            if(!atmosphere)Graphics.DrawMesh(brickfallPlate,Matrix4x4.identity,brickfallLit,backdrop,null,0,null,ShadowCastingMode.Off,true);
             if(NativeBrickfallScenery.Train(time,out double head,out bool east))
-                Graphics.DrawMesh(brickfallTrain,Matrix4x4.TRS(new Vector3((float)head,(float)NativeBrickfallScenery.RailY,(float)(east?NativeBrickfallScenery.TrainNorthZ:NativeBrickfallScenery.TrainSouthZ)),Quaternion.Euler(0,east?0:180,0),Vector3.one),brickfallLit,0,null,0,null,ShadowCastingMode.Off,true);
+                Graphics.DrawMesh(brickfallTrain,Matrix4x4.TRS(new Vector3((float)head,(float)NativeBrickfallScenery.RailY,(float)(east?NativeBrickfallScenery.TrainNorthZ:NativeBrickfallScenery.TrainSouthZ)),Quaternion.Euler(0,east?0:180,0),Vector3.one),brickfallLit,backdrop,null,0,null,ShadowCastingMode.Off,true);
             for(int c=0;c<2;c++)brickfallJibs[c]=Matrix4x4.TRS(new Vector3((float)NativeBrickfallScenery.CraneX[c],(float)NativeBrickfallScenery.MastHeight,(float)NativeBrickfallScenery.CraneZ[c]),Quaternion.Euler(0,(float)NativeBrickfallScenery.CraneSlew(c,time),0),Vector3.one);
-            if(UsesInstancing)Graphics.DrawMeshInstanced(brickfallJib,0,brickfallLit,brickfallJibs,2,null,ShadowCastingMode.Off,true,0,null);
-            else for(int c=0;c<2;c++)Graphics.DrawMesh(brickfallJib,brickfallJibs[c],brickfallLit,0,null,0,null,ShadowCastingMode.Off,true);
+            if(UsesInstancing)Graphics.DrawMeshInstanced(brickfallJib,0,brickfallLit,brickfallJibs,2,null,ShadowCastingMode.Off,true,backdrop,null);
+            else for(int c=0;c<2;c++)Graphics.DrawMesh(brickfallJib,brickfallJibs[c],brickfallLit,backdrop,null,0,null,ShadowCastingMode.Off,true);
             if(camera==null)return;
             ReadBrickfallLight();var t=camera.transform;Vector3 e=t.position,r=t.right,u=t.up;
-            brickfallFx.Build(time,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,brickfallLight,Mathf.Clamp01(EffectsQuality),LowGraphics,atmosphere,brickfallMemory,roundStart);
+            brickfallFx.Build(time,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,brickfallLight,Mathf.Clamp01(EffectsQuality),LowGraphics,atmosphere,brickfallMemory,roundStart,BrickfallDustInUse);
             var q=brickfallFx.Quads;brickfallDraw.Clear();
             for(int i=0;i<q.Count;i++)
             {
@@ -124,8 +152,8 @@ namespace ChipArena.UnityConversion
         }
         private void DisposeBrickfall()
         {
-            if(brickfallSectors!=null)foreach(var m in brickfallSectors)CapturedAnimation.Release(m);brickfallSectors=null;CapturedAnimation.Release(brickfallTrain);CapturedAnimation.Release(brickfallJib);CapturedAnimation.Release(brickfallLit);
-            brickfallTrain=brickfallJib=null;brickfallLit=null;brickfallDraw?.Dispose();brickfallDraw=null;PublishDustCoat(0);
+            if(brickfallSectors!=null)foreach(var m in brickfallSectors)CapturedAnimation.Release(m);brickfallSectors=null;CapturedAnimation.Release(brickfallTrain);CapturedAnimation.Release(brickfallJib);CapturedAnimation.Release(brickfallPlate);CapturedAnimation.Release(brickfallLit);
+            brickfallTrain=brickfallJib=brickfallPlate=null;brickfallLit=null;brickfallDraw?.Dispose();brickfallDraw=null;PublishDustCoat(0);
         }
     }
 }

@@ -34,8 +34,9 @@ namespace ChipArena.UnityConversion
     /// as one solid and one effects NativeSirenFx batch, so all of this costs two draws):
     ///  - backdrop life (also behind the menu): the bird flocks, the crane aviation lights (red cubes and additive halos that
     ///    keep a minimum on-screen size), the two distant smoke columns;
-    ///  - atmosphere (in the arena and the killcam only): sun shafts, dust motes, paper scraps, pigeons, tarps and the
-    ///    drifting collapse dust (NativeBrickfallAtmosphere).
+    ///  - atmosphere (in the arena and the killcam only): sun shafts, dust motes, paper scraps (faded at <see cref="Cover"/>),
+    ///    pigeons, tarps and the drifting collapse dust (NativeBrickfallAtmosphere), whose puffs fade near the eye and take only
+    ///    what the destruction kit's dust wall leaves of the §3.10 cap of 120 dust billboards.
     /// Pure: the same clock, camera, light, quality and memory give the same quads. Premultiplied pieces are sorted far to
     /// near within each kind; the far smoke goes first. Allocation free (scratch arrays are preallocated).
     /// </summary>
@@ -43,6 +44,8 @@ namespace ChipArena.UnityConversion
     {
         public const int Capacity=2600;
         public readonly NativeFxQuads Quads=new NativeFxQuads(Capacity);
+        /// <summary>The props the paper scraps fade out at; the caller refills it before <see cref="Build"/> (empty: no fading).</summary>
+        public readonly NativeBrickfallCover Cover=new NativeBrickfallCover();
         private readonly double[] spookScratch=new double[NativeBrickfallMemory.PerPigeon];
         private readonly double[] sortKey=new double[64],corner=new double[12],cloudTime=new double[NativeBrickfallMemory.Collapses];private readonly int[] sortIndex=new int[64],cloudIndex=new int[NativeBrickfallMemory.Collapses];
         private readonly double[] puffX=new double[64],puffY=new double[64],puffZ=new double[64],puffS=new double[64],puffA=new double[64];
@@ -53,12 +56,14 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// Fills <see cref="Quads"/>. `time` is the match clock in a match (the render clock behind the menu); the camera's
         /// position and its right and up vectors orient the sprites; `atmosphere` false draws only the backdrop life (menu).
+        /// `dustInUse` is how many dust billboards the destruction kit's landing dust wall holds (NativeStructureFx), which
+        /// the drifting collapse dust leaves room for under <see cref="NativeBrickfallAtmosphere.DustBillboardCap"/>.
         /// </summary>
-        public void Build(double time,double camX,double camY,double camZ,double rightX,double rightY,double rightZ,double upX,double upY,double upZ,NativeFxLight sun,double quality,bool low,bool atmosphere,NativeBrickfallMemory memory,double roundStart)
+        public void Build(double time,double camX,double camY,double camZ,double rightX,double rightY,double rightZ,double upX,double upY,double upZ,NativeFxLight sun,double quality,bool low,bool atmosphere,NativeBrickfallMemory memory,double roundStart,int dustInUse=0)
         {
             Quads.Clear();ex=camX;ey=camY;ez=camZ;rx=rightX;ry=rightY;rz=rightZ;ux=upX;uy=upY;uz=upZ;light=sun;Shafts=Motes=Scraps=Pigeons=Birds=DustPuffs=0;
             Smoke(time,quality);
-            if(atmosphere&&memory!=null)CollapseDust(time,quality,low,memory,roundStart);
+            if(atmosphere&&memory!=null)CollapseDust(time,quality,low,memory,roundStart,dustInUse);
             Aviation(time);Flocks(time,quality,low);
             if(!atmosphere)return;
             ShaftsPass(time,quality,low);MotesPass(time,quality,low);ScrapsPass(time,quality,low);
@@ -149,9 +154,10 @@ namespace ChipArena.UnityConversion
         }
 
         // ---------------- atmosphere ----------------
-        private void CollapseDust(double time,double quality,bool low,NativeBrickfallMemory memory,double roundStart)
+        private void CollapseDust(double time,double quality,bool low,NativeBrickfallMemory memory,double roundStart,int dustInUse)
         {
-            int per=NativeBrickfallAtmosphere.Count(NativeBrickfallAtmosphere.DustPuffs,quality,low),clouds=0,n=0;
+            int per=NativeBrickfallAtmosphere.Count(NativeBrickfallAtmosphere.DustPuffs,quality,low),clouds=0,n=0,budget=Math.Min(NativeBrickfallAtmosphere.DustBudget,NativeBrickfallAtmosphere.DustBillboardCap-Math.Max(0,dustInUse));
+            if(budget<=0)return;
             // This round's landings still drifting, newest first, up to the cloud and puff budgets.
             for(int k=0;k<memory.CollapseCount;k++)
             {
@@ -161,7 +167,12 @@ namespace ChipArena.UnityConversion
             for(int c=0;c<Math.Min(clouds,NativeBrickfallAtmosphere.DustClouds);c++)
             {
                 memory.CollapseAt(cloudIndex[c],out double ct,out double cx,out double cy,out double cz,out double cr,out double ce);
-                for(int p=0;p<per&&n<NativeBrickfallAtmosphere.DustBudget;p++){NativeBrickfallAtmosphere.DustPuff(cloudIndex[c],p,cx,cy,cz,cr,ce,time-ct,out puffX[n],out puffY[n],out puffZ[n],out puffS[n],out puffA[n]);n++;}
+                // A puff the eye is near or inside (or one faded out) is not drawn and takes no billboard.
+                for(int p=0;p<per&&n<budget;p++)
+                {
+                    NativeBrickfallAtmosphere.DustPuff(cloudIndex[c],p,cx,cy,cz,cr,ce,time-ct,out puffX[n],out puffY[n],out puffZ[n],out puffS[n],out puffA[n]);
+                    double dx=puffX[n]-ex,dy=puffY[n]-ey,dz=puffZ[n]-ez;puffA[n]*=NativeBrickfallAtmosphere.DustNear(Math.Sqrt(dx*dx+dy*dy+dz*dz),puffS[n]);if(puffA[n]>.004)n++;
+                }
             }
             SortFar(n,puffX,puffY,puffZ);
             for(int k=0;k<n;k++){int i=sortIndex[k];Lit(NativeBrickfallScenery.Dust,0,.7,0,0,out double r,out double g,out double b);Sprite(puffX[i],puffY[i],puffZ[i],puffS[i],r,g,b,puffA[i],false);DustPuffs++;}
@@ -173,7 +184,7 @@ namespace ChipArena.UnityConversion
             double dx=-light.Lx,dy=-light.Ly,dz=-light.Lz,dl=Math.Sqrt(dx*dx+dy*dy+dz*dz);if(dl<1e-6)return;dx/=dl;dy/=dl;dz/=dl;
             for(int i=0;i<n;i++)
             {
-                int s=n==NativeBrickfallAtmosphere.Shafts?i:i*2;NativeBrickfallAtmosphere.Shaft(s,time,out double x,out double y,out double z,out double length,out double width,out double alpha);
+                int s=i*NativeBrickfallAtmosphere.Shafts/n;NativeBrickfallAtmosphere.Shaft(s,time,out double x,out double y,out double z,out double length,out double width,out double alpha);
                 double vx=ex-x,vy=ey-y,vz=ez-z,vd=Math.Sqrt(vx*vx+vy*vy+vz*vz);if(vd<1e-4)continue;vx/=vd;vy/=vd;vz/=vd;
                 double along=vx*dx+vy*dy+vz*dz,distance=Math.Sqrt(Math.Max(0,1-along*along))*vd;alpha*=NativeBrickfallAtmosphere.ShaftView(distance,along);if(alpha<=.002)continue;
                 double wx=dy*vz-dz*vy,wy=dz*vx-dx*vz,wz=dx*vy-dy*vx,wl=Math.Sqrt(wx*wx+wy*wy+wz*wz);if(wl<1e-6)continue;wx*=width/2/wl;wy*=width/2/wl;wz*=width/2/wl;
@@ -193,6 +204,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<n;i++)
             {
                 NativeBrickfallAtmosphere.Scrap(i,time,out double x,out double y,out double z,out double pitch,out double yaw,out double roll,out double alpha);if(alpha<=.05)continue;
+                alpha*=Cover.Clearance(x,y,z);if(alpha<=.05)continue;
                 double k=.6+.4*alpha;Box(x,y,z,.3*k,.004,.42*k,pitch,yaw,roll,i%4==0?0xC8B89A:i%4==1?NativeBrickfallScenery.Mortar:i%4==2?0xD8D0C0:NativeBrickfallScenery.Dust,.55);Scraps++;
             }
         }

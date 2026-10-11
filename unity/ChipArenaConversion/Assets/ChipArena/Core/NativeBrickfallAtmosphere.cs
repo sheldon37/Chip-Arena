@@ -37,7 +37,7 @@ namespace ChipArena.UnityConversion
             }
             Newest=Math.Max(Newest,time);
         }
-        /// <summary>A structure landing (StructureLand): spooks the pigeons and starts drifting dust and the dust coat.</summary>
+        /// <summary>A structure landing (StructureLand): spooks the pigeons and starts the drifting dust haze and the dust coat.</summary>
         public void Collapse(double time,double x,double y,double z,double radius,double energy)
         {
             if(double.IsNaN(time)||double.IsInfinity(time))return;Spook(time,x,y,z);
@@ -51,16 +51,50 @@ namespace ChipArena.UnityConversion
     }
 
     /// <summary>
+    /// What the paper scraps must not slide through: world-space boxes (min, max; metres) the presentation refills each frame
+    /// from the arena's props (Runtime/NativeBrickfallPresentation.cs: each prop's bounding box, so the killcam replay arena
+    /// gives its own). A scrap whose height lies within a box's span (± <see cref="Skin"/>) fades out as it nears the box's
+    /// footprint: gone within <see cref="Reach"/> m (about half a scrap), whole beyond another <see cref="Fade"/> m. A scrap
+    /// lifting over low cover, or skating on a floor or the foundation below it, is untouched. Fixed capacity; boxes past it
+    /// are ignored. No allocation after construction.
+    /// </summary>
+    public sealed class NativeBrickfallCover
+    {
+        public const int Capacity=512;public const double Skin=.02,Reach=.2,Fade=.4;
+        private readonly double[] box=new double[Capacity*6];
+        public int Count{get;private set;}
+        public void Clear()=>Count=0;
+        public bool Add(double minX,double minY,double minZ,double maxX,double maxY,double maxZ)
+        {
+            if(Count>=Capacity||!(maxX>=minX&&maxY>=minY&&maxZ>=minZ))return false;int o=Count*6;box[o]=minX;box[o+1]=minY;box[o+2]=minZ;box[o+3]=maxX;box[o+4]=maxY;box[o+5]=maxZ;Count++;return true;
+        }
+        /// <summary>A scrap's opacity factor at (x, y, z): 0 inside or within <see cref="Reach"/> m of a box it would cross, 1 clear of every box.</summary>
+        public double Clearance(double x,double y,double z)
+        {
+            double near=double.MaxValue;
+            for(int i=0,o=0;i<Count;i++,o+=6)
+            {
+                if(y<box[o+1]-Skin||y>box[o+4]+Skin)continue;
+                double dx=Math.Max(0,Math.Max(box[o]-x,x-box[o+3])),dz=Math.Max(0,Math.Max(box[o+2]-z,z-box[o+5])),d=dx*dx+dz*dz;if(d<near)near=d;
+            }
+            if(near>=(Reach+Fade)*(Reach+Fade))return 1;double t=Math.Max(0,Math.Min(1,(Math.Sqrt(near)-Reach)/Fade));return t*t*(3-2*t);
+        }
+    }
+
+    /// <summary>
     /// Brickfall's atmosphere (ARENA_PROPOSAL.md §2.2 "Atmosphere", §3.10 Atmosphere VFX), as pure functions of the match clock,
     /// the camera and <see cref="NativeBrickfallMemory"/>, so host, guests and the killcam draw the same air
     /// (Runtime/NativeBrickfallPresentation.cs draws it into one premultiplied and one solid NativeSirenFx batch):
     ///  - <see cref="Shafts"/> sun shafts slanting down the sun's direction through the lattice canopies and street gaps;
     ///  - <see cref="Motes"/> dust motes in a wrapped box around the camera, glinting, drifting east (none below the floor);
-    ///  - <see cref="Scraps"/> paper scraps skittering east along the open streets, lifting in gusts, tumbling;
+    ///  - <see cref="Scraps"/> paper scraps skittering east along open street runs clear of the §3.3 cover, lifting in gusts,
+    ///    tumbling, and fading out at any prop in their way (<see cref="NativeBrickfallCover"/>, filled from the arena's props);
     ///  - <see cref="NativeBrickfallMemory.Perches"/> pigeons on the frontage tops that scatter from anything startling within
     ///    <see cref="SpookRadius"/> m, circle outside the walls and come back <see cref="ReturnAfter"/> s after the last scare;
     ///  - <see cref="Tarps"/> tarps flapping on the frontage above 4 m (decoration above 3 m never pretends to be cover);
-    ///  - collapse dust from the destruction kit's landings drifting east at <see cref="DustDrift"/> m/s (<see cref="DustPuff"/>);
+    ///  - collapse dust from the destruction kit's landings drifting east at <see cref="DustDrift"/> m/s (<see cref="DustPuff"/>):
+    ///    a thin haze above head height that follows the kit's landing dust wall, fades near the eye (<see cref="DustNear"/>)
+    ///    and shares the §3.10 cap of <see cref="DustBillboardCap"/> dust billboards map-wide with that wall;
     ///  - the dust coat (<see cref="DustCoat"/>), 0..1, rising with each landing this round: a shader global the block shader can
     ///    read to grey surfaces as the round goes on.
     /// Counts follow the effects quality (Full 1, Reduced .3) and halve on graphics=performance, which also drops the shafts
@@ -69,8 +103,10 @@ namespace ChipArena.UnityConversion
     public static class NativeBrickfallAtmosphere
     {
         public const int Shafts=6,Motes=200,Scraps=30,Tarps=6,TarpCols=5,TarpRows=5;
-        public const double SpookRadius=18,ReturnAfter=25,TakeOff=1.2,Landing=4,DustDrift=.7,DustLife=24,MoteBox=16;
-        public const int DustPuffs=12,DustClouds=8,DustBudget=48;
+        public const double SpookRadius=18,ReturnAfter=25,TakeOff=1.2,Landing=4,DustDrift=.7,DustLife=16,DustPeak=.16,MoteBox=16;
+        /// <summary>Drift puffs per landing, landings drifting at once, drift puffs in all, and the §3.10 cap on live dust
+        /// billboards map-wide that the drift shares with the destruction kit's landing dust wall (the wall comes first).</summary>
+        public const int DustPuffs=12,DustClouds=8,DustBudget=48,DustBillboardCap=120;
         /// <summary>The shader global the block shader reads (0..1).</summary>
         public const string DustCoatGlobal="_ArenaDustCoat";
         private static double Hash(int a,int b=0,int c=0)=>NativeBrickfallScenery.Hash(a,b,c);
@@ -121,12 +157,19 @@ namespace ChipArena.UnityConversion
         private static double Wrap(double v)=>v-MoteBox*Math.Floor(v/MoteBox+.5);
 
         // ---------------- paper scraps ----------------
-        // Open street corridors (x0, x1, z centre, half width): the two lanes, the square's north and south streets, the markets.
-        private static readonly double[] LaneX0={-28,-28,-24,-24,-29,15},LaneX1={28,28,24,24,-15,29},LaneZ={23.6,-23.6,7.6,-7.6,4,-4},LaneHalf={1.1,1.1,.7,.7,3,3};
+        // Open street runs (x0, x1, z centre, half width), point-symmetric pairs: the lanes' open stretches (west of the news
+        // kiosk on the north lane), the square's north and south streets between the tenements and the hotel, and the market
+        // street south of the stalls. Each run's sweep (x ± .25, z ± half + .35 of sway) keeps 0.4 m from every solid of the
+        // §3.3 draft blockout (docs/arenas/scripts/brickfall_m1.py, Tests/test_brickfall_scraps.py); the real map's props fade
+        // a scrap out on top of that (NativeBrickfallCover).
+        private static readonly double[] LaneX0={-27.5,5.75,-20.25,2.5,-29,9.25},LaneX1={-5.75,27.5,-2.5,20.25,-9.25,29},LaneZ={23.75,-23.75,9.5,-9.5,3.125,-3.125},LaneHalf={.6,.6,1.4,1.4,.8,.8};
+        /// <summary>Corridor `lane`'s run: west and east ends, centre line and half width (the scrap sways .25 m along it and .35 m across).</summary>
+        public static void Corridor(int lane,out double x0,out double x1,out double z,out double half){x0=LaneX0[lane];x1=LaneX1[lane];z=LaneZ[lane];half=LaneHalf[lane];}
+        public static int Corridors=>LaneX0.Length;
         /// <summary>
         /// Scrap i at `time`: it rides one corridor east at 1.2-2.6 m/s with gusts, skittering along the ground and lifting up
         /// to 3 m now and then, tumbling; it fades in at the corridor's west end and out at its east end, then starts over.
-        /// The orientation is Unity Euler degrees.
+        /// The orientation is Unity Euler degrees. The caller also fades it at the arena's props (<see cref="NativeBrickfallCover"/>).
         /// </summary>
         public static void Scrap(int i,double time,out double x,out double y,out double z,out double pitch,out double yaw,out double roll,out double alpha)
         {
@@ -200,15 +243,26 @@ namespace ChipArena.UnityConversion
 
         // ---------------- collapse dust and the dust coat ----------------
         /// <summary>
-        /// Puff p of a landing at (lx, ly, lz) of size `radius` and `energy` 0..1, `age` s after it: puffs start spread over the
-        /// footprint, rise slowly, drift east at <see cref="DustDrift"/> m/s, swell and thin out over <see cref="DustLife"/> s.
+        /// Puff p of a landing at (lx, ly, lz) of size `radius` and `energy` 0..1, `age` s after it: the thin haze the
+        /// destruction kit's landing dust wall leaves behind (the wall is .5 opaque for 1.5 s, .2 by 3 s, gone by 7 s; this is
+        /// at most <see cref="DustPeak"/>, about .14 by 3 s and .05 by 8 s, and gone after <see cref="DustLife"/> s). Puffs start
+        /// spread over the footprint, lift out of the pilots' 0-2.5 m band within 4 s (centre at least 2.5 m + .3 × size above
+        /// the landing point), keep rising, drift east at <see cref="DustDrift"/> m/s and swell. The caller fades each puff by
+        /// its distance from the eye (<see cref="DustNear"/>).
         /// </summary>
         public static void DustPuff(int seed,int p,double lx,double ly,double lz,double radius,double energy,double age,out double x,out double y,out double z,out double size,out double alpha)
         {
-            double a=Hash(3700+seed,p)*6.283,r=Math.Sqrt(Hash(3700+seed,p,1))*radius*.7,ph=Hash(3700+seed,p,2)*6.283;
-            x=lx+Math.Cos(a)*r+DustDrift*age+Math.Sin(age*.3+ph)*.6;z=lz+Math.Sin(a)*r+Math.Cos(age*.25+ph)*.6;y=ly+1+Hash(3700+seed,p,3)*radius*.4+.28*age*(1-age/(DustLife*2));
-            size=(3+radius*.35)*(1+age*.12)*(.8+.4*Hash(3700+seed,p,4));alpha=Clamp01(energy*.9+.1)*.42*Smooth(age/.8)*Math.Pow(Clamp01(1-age/DustLife),1.4);
+            double a=Hash(3700+seed,p)*6.283,r=Math.Sqrt(Hash(3700+seed,p,1))*radius*.7,ph=Hash(3700+seed,p,2)*6.283;age=Math.Max(0,age);
+            size=(3+radius*.35)*(1+age*.06)*(.8+.4*Hash(3700+seed,p,4));
+            x=lx+Math.Cos(a)*r+DustDrift*age+Math.Sin(age*.3+ph)*.6;z=lz+Math.Sin(a)*r+Math.Cos(age*.25+ph)*.6;y=ly+1+Hash(3700+seed,p,3)*radius*.25+Smooth(age/4)*(1.5+size*.3)+.15*age;
+            alpha=Clamp01(energy*.9+.1)*DustPeak*Smooth(age/2.2)*Math.Exp(-Math.Max(0,age-2.5)/5)*Smooth((DustLife-age)/5);
         }
+        /// <summary>
+        /// A drift puff's opacity factor by the eye's distance from its centre: 0 until the eye is max(3 m, half the puff) away,
+        /// so a camera-facing puff never covers the screen from inside or pops as the eye passes its centre; full past another
+        /// max(1.5 m, a quarter of the puff).
+        /// </summary>
+        public static double DustNear(double distance,double size)=>Smooth((distance-Math.Max(3,size*.5))/Math.Max(1.5,size*.25));
         /// <summary>
         /// The dust coat at `time`: 1 - exp(-Σ), each landing since `roundStart` adding .22 × (.4 + .6 × energy) as its dust settles
         /// over 8 s, so a few collapses grey the arena noticeably and it saturates toward 1 late in a destructive round.

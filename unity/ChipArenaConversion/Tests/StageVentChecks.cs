@@ -129,7 +129,7 @@ namespace ChipArena.UnityConversion
                 "-vents[i].x","-at.x","Resources.Load<Shader>(\"NativeFieldGlow\")","CullMode.Off","RenderQueue.Transparent","NativeFieldRules.SirenDisplay(hex,1,","NativeStageVentFx.RimVertex(","NativeStageVentFx.OpenGlow(","NativeStageVentFx.PitActive(","NativeStageVentFx.EntryActive("})
                 Check(vents.Contains(hook),"vent presentation hook: "+hook);
             Check(!vents.Contains("Ring(")&&!vents.Contains("Add(7")&&!vents.Contains("cube"),"no cube rings or rising boxes");
-            foreach(var hook in new[]{"SeekerLight(seekers++,at,now)","SeekerLightsOff(seekers)","SeekerLightsOff(0)","NativeSeekerLight.Intensity(now)","NativeBlastSim.UnityLightIntensity(","NativeSeekerLight.Distance","NativeSeekerLight.Cap","l.cullingMask=~(1<<10)"})
+            foreach(var hook in new[]{"SeekerLight(seekers++,at,now)","SeekerLightsOff(seekers)","SeekerLightsOff(0)","NativeSeekerLight.Intensity(now)","NativeBlastSim.UnityLightIntensity(","NativeSeekerLight.Distance","NativeSeekerLight.Cap","l.cullingMask=~(1<<10|1<<NativeSceneryBuilder.BackdropLayer)"})
                 Check(dev.Contains(hook),"seeker light hook: "+hook);
             Check(File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Editor/NativeBuildChecks.cs")).Contains("\"NativeFieldGlow\""),"the rim's shader is build-checked");
         }

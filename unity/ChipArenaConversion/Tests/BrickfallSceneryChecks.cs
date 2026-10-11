@@ -4,12 +4,14 @@ using System.Linq;
 namespace ChipArena.UnityConversion
 {
     // Brickfall backdrop and atmosphere (Core/NativeSceneryBuilder.cs, NativeBrickfallScenery.cs, NativeBrickfallAtmosphere.cs,
-    // NativeBrickfallFx.cs; Runtime/NativeBrickfallPresentation.cs): the city is deterministic, every triangle stays outside
-    // the slab plus 2 m (x ±34, z ±30), sector meshes stay out of the arena's point-light reach, the menu orbit flies clear,
-    // nothing stands in a crane jib's sweep; the train, jibs, birds and smoke are pure functions of the clock that never enter
-    // the arena; atmosphere counts follow quality, pigeons scatter and return without jumps and the killcam reads the same
-    // memory, collapse dust drifts east and the dust coat resets with the round; the frame builder allocates nothing; and the
-    // runtime hooks, dormancy and draw rules are in place.
+    // NativeBrickfallFx.cs; Runtime/NativeBrickfallPresentation.cs): the city is deterministic, nothing enters the slab
+    // (x ±32, z ±28), whose edge the street's ground plates reach, and everything standing stays outside the slab plus 2 m
+    // (x ±34, z ±30); the menu plate fills the slab's footprint; the menu orbit flies clear, nothing stands in a crane jib's
+    // sweep; the train, jibs, birds and smoke are pure functions of the clock that never enter the arena; atmosphere counts
+    // follow quality (shafts at every quality), pigeons scatter and return without jumps and the killcam reads the same memory,
+    // paper scraps keep to their street runs and fade at props, the collapse dust is a thin haze above head height that never
+    // contains the eye and shares the 120-billboard cap, the dust coat resets with the round; the frame builder allocates
+    // nothing; and the runtime hooks, dormancy, draw layer, point-light masks and draw rules are in place.
     internal static class BrickfallSceneryChecks
     {
         private static int count;
@@ -18,7 +20,7 @@ namespace ChipArena.UnityConversion
         public static void Run(string root)
         {
             Backdrop();Moving();Atmosphere();Fx();Hooks(root);
-            Console.WriteLine("PASS brickfall scenery ("+count+" checks: deterministic five-sector city outside x ±34 / z ±30 triangle by triangle, sector bounds clear of arena point lights, menu orbit and crane sweeps clear, §3.10 palette; train schedule, direction and viaduct span, jib slew clear of the arena, aviation flashes, birds and smoke outside; quality counts, round start, motes, scraps, pigeons scatter/return/continuity/killcam memory, tarps, shafts, collapse dust and dust coat; allocation-free frame builder; runtime hooks and draw rules)");
+            Console.WriteLine("PASS brickfall scenery ("+count+" checks: deterministic five-sector city outside the slab triangle by triangle with only ground plates inside x ±34 / z ±30, ground to the slab edge, menu plate, menu orbit and crane sweeps clear, §3.10 palette; train schedule, direction and viaduct span, jib slew clear of the arena, aviation flashes, birds and smoke outside; quality counts, round start, motes, scraps in their street runs and faded at props, pigeons scatter/return/continuity/killcam memory, tarps, shafts at every quality, collapse dust haze (opacity, height, eye fade, shared cap) and dust coat; allocation-free frame builder; runtime hooks, backdrop layer, point-light masks and draw rules)");
         }
         private static bool TriangleEnters(float[] p,int a,int b,int c,double rx,double rz)
         {
@@ -39,12 +41,31 @@ namespace ChipArena.UnityConversion
             {
                 var m=a[s];Check(m.Positions.SequenceEqual(b[s].Positions)&&m.Colors.SequenceEqual(b[s].Colors)&&m.Emission.SequenceEqual(b[s].Emission)&&m.Indices.SequenceEqual(b[s].Indices),"sector "+s+" is deterministic");
                 Check(m.Indices.Length%3==0&&m.Indices.All(i=>i>=0&&i<m.Vertices)&&m.Normals.Length==m.Positions.Length&&m.Colors.Length==m.Vertices*4&&m.Emission.Length==m.Vertices*4,"sector "+s+" arrays are consistent");
-                bool clear=true;for(int t=0;t<m.Indices.Length;t+=3)if(TriangleEnters(m.Positions,m.Indices[t],m.Indices[t+1],m.Indices[t+2],NativeBrickfallScenery.InnerX,NativeBrickfallScenery.InnerZ)){clear=false;break;}
-                Check(clear,"no triangle of sector "+s+" enters x ±34 / z ±30");total+=m.Vertices;
+                // Nothing enters the slab; only the street's ground plates (top 2 cm under the street) cross the inner line.
+                bool slab=true,clear=true;
+                for(int t=0;t<m.Indices.Length;t+=3)
+                {
+                    int i0=m.Indices[t],i1=m.Indices[t+1],i2=m.Indices[t+2];if(TriangleEnters(m.Positions,i0,i1,i2,NativeBrickfallScenery.SlabX,NativeBrickfallScenery.SlabZ))slab=false;
+                    if(Math.Max(m.Positions[i0*3+1],Math.Max(m.Positions[i1*3+1],m.Positions[i2*3+1]))>0&&TriangleEnters(m.Positions,i0,i1,i2,NativeBrickfallScenery.InnerX,NativeBrickfallScenery.InnerZ))clear=false;
+                }
+                Check(slab,"no triangle of sector "+s+" enters the slab (x ±32 / z ±28)");Check(clear,"nothing of sector "+s+" above the street enters x ±34 / z ±30");total+=m.Vertices;
                 Check(m.Colors.All(v=>v>=0&&v<=1.2f)&&m.Emission.All(v=>v>=0&&v<=4),"sector "+s+" colours are linear and bounded");
             }
             Check(total<380000,"backdrop stays under 380k vertices ("+total+")");
-            Check(a[NativeBrickfallScenery.North].MinZ>=38&&a[NativeBrickfallScenery.South].MaxZ<=-44&&a[NativeBrickfallScenery.East].MinX>=42&&a[NativeBrickfallScenery.West].MaxX<=-42,"sector meshes stay beyond the reach of point lights inside the arena (±30 / ±26 plus 12 m)");
+            // The street reaches the slab's edge all round (no ring of sky at the frontage's foot), and the menu plate fills the slab.
+            bool Ground(NativeSceneryMesh m,double x,double z)
+            {
+                for(int t=0;t<m.Indices.Length;t+=3)
+                {
+                    int i0=m.Indices[t],i1=m.Indices[t+1],i2=m.Indices[t+2];if(m.Normals[i0*3+1]<.99f||Math.Abs(m.Positions[i0*3+1]+.02)>.005)continue;
+                    double ax=m.Positions[i0*3],az=m.Positions[i0*3+2],bx=m.Positions[i1*3],bz=m.Positions[i1*3+2],cx=m.Positions[i2*3],cz=m.Positions[i2*3+2];
+                    double d1=(bx-ax)*(z-az)-(bz-az)*(x-ax),d2=(cx-bx)*(z-bz)-(cz-bz)*(x-bx),d3=(ax-cx)*(z-cz)-(az-cz)*(x-cx);if((d1>=0&&d2>=0&&d3>=0)||(d1<=0&&d2<=0&&d3<=0))return true;
+                }
+                return false;
+            }
+            bool ring=true;for(double u=-1;u<=1.0001;u+=.125){if(!Ground(a[0],32.1,u*28.4)||!Ground(a[0],-32.1,u*28.4)||!Ground(a[0],u*32.4,28.1)||!Ground(a[0],u*32.4,-28.1))ring=false;}
+            Check(ring,"the street's ground starts at the slab's edge all round");
+            var plate=NativeBrickfallScenery.BuildMenuPlate();Check(plate.Vertices==4&&plate.Indices.Length==6&&plate.MinX==-32&&plate.MaxX==32&&plate.MinZ==-28&&plate.MaxZ==28&&Math.Abs(plate.MaxY+.02)<1e-5&&Ground(plate,0,0)&&Ground(plate,31.9,-27.9),"the menu plate is one up-facing quad over the slab, flush with the street");
             // The menu orbit (32 m up) never comes within 6 m of anything taller than 26 m.
             bool orbit=true;foreach(var m in a)for(int t=0;t<m.Indices.Length&&orbit;t+=3)
             {
@@ -112,8 +133,21 @@ namespace ChipArena.UnityConversion
             bool motes=true;var rng=new Random(7);
             for(int k=0;k<40;k++){double cx=rng.NextDouble()*60-30,cy=rng.NextDouble()*12,cz=rng.NextDouble()*52-26,t=rng.NextDouble()*500;for(int i=0;i<NativeBrickfallAtmosphere.Motes;i++){NativeBrickfallAtmosphere.Mote(i,cx,cy,cz,t,out double x,out double y,out double z,out double s,out double al);if(Math.Abs(x-cx)>8.001||Math.Abs(y-cy)>8.001||Math.Abs(z-cz)>8.001||al<0||al>1||y<.05&&al!=0||s<=0)motes=false;}}
             Check(motes,"motes stay in the camera's box, none below the floor");
-            bool scraps=true;for(double t=0;t<300;t+=.37)for(int i=0;i<NativeBrickfallAtmosphere.Scraps;i++){NativeBrickfallAtmosphere.Scrap(i,t,out double x,out double y,out double z,out _,out _,out _,out double al);if(Math.Abs(x)>30||Math.Abs(z)>26||y<.03||y>3.5||al<0||al>1)scraps=false;}
-            Check(scraps,"paper scraps stay on the arena's streets, under 3.5 m");
+            // Paper scraps keep to their street runs (the runs' clearance from the §3.3 cover: Tests/test_brickfall_scraps.py).
+            bool runs=true;for(int l=0;l<NativeBrickfallAtmosphere.Corridors;l++){NativeBrickfallAtmosphere.Corridor(l,out double rx0,out double rx1,out double rz,out double rh);if(rx0<-29.5||rx1>29.5||Math.Abs(rz)+rh+.35>25.5||rx1-rx0<12)runs=false;}
+            Check(runs&&NativeBrickfallAtmosphere.Corridors==6&&NativeBrickfallAtmosphere.Scraps>=NativeBrickfallAtmosphere.Corridors,"six street runs inside the play space, each with scraps");
+            bool scraps=true;for(double t=0;t<300;t+=.37)for(int i=0;i<NativeBrickfallAtmosphere.Scraps;i++)
+            {
+                NativeBrickfallAtmosphere.Scrap(i,t,out double x,out double y,out double z,out _,out _,out _,out double al);NativeBrickfallAtmosphere.Corridor(i%NativeBrickfallAtmosphere.Corridors,out double sx0,out double sx1,out double sz,out double sh);
+                if(x<sx0-.2501||x>sx1+.2501||Math.Abs(z-sz)>sh+.3501||y<.03||y>3.5||al<0||al>1)scraps=false;
+            }
+            Check(scraps,"paper scraps stay in their street runs (± .25 m along, ± .35 m across), under 3.5 m");
+            // The props' cover: a scrap fades out at a box in its height span and is untouched over it or on the floor below.
+            var cover=new NativeBrickfallCover();Check(cover.Clearance(0,.04,0)==1,"no cover, no fading");
+            cover.Add(-32,-.5,-28,32,0,28);Check(cover.Clearance(0,.04,0)==1&&cover.Clearance(5,2,5)==1,"a scrap skating on the foundation is untouched");
+            cover.Add(0,0,0,1,1.1,1);Check(cover.Clearance(.5,.5,.5)==0&&cover.Clearance(1.15,.3,.5)==0&&cover.Clearance(1.61,.3,.5)==1&&cover.Clearance(1.4,.3,.5)>0&&cover.Clearance(1.4,.3,.5)<1,"a scrap fades out within .6 m of a crate and is gone within .2 m of it");
+            Check(cover.Clearance(.5,1.5,.5)==1,"a scrap lifting over low cover is untouched");
+            var full=new NativeBrickfallCover();int added=0;for(int k=0;k<NativeBrickfallCover.Capacity+5;k++)if(full.Add(k,0,0,k+.5,1,1))added++;Check(added==NativeBrickfallCover.Capacity&&full.Count==NativeBrickfallCover.Capacity&&!full.Add(0,0,0,-1,1,1),"the cover holds a fixed number of boxes and refuses inverted ones");
             // Pigeons: perched, scattered by a scare within 18 m, back 25 s after the last scare, no jumps, killcam-safe memory.
             var mem=new NativeBrickfallMemory();var st=new double[NativeBrickfallMemory.PerPigeon];
             NativeBrickfallAtmosphere.Perch(0,out double px,out double py,out double pz,out _);Check(Math.Abs(py-14.02)<1e-9&&Math.Abs(pz)>26-.01,"pigeons perch on the 14 m frontage top");
@@ -142,12 +176,23 @@ namespace ChipArena.UnityConversion
             NativeBrickfallAtmosphere.DustPuff(1,3,0,0,0,8,1,2,out double dx0,out _,out _,out _,out double da0);NativeBrickfallAtmosphere.DustPuff(1,3,0,0,0,8,1,12,out double dx1,out _,out _,out _,out double da1);
             Check(Math.Abs((dx1-dx0)-10*NativeBrickfallAtmosphere.DustDrift)<1.3&&da0>da1&&da1>0,"collapse dust drifts east at 0.7 m/s and thins");
             NativeBrickfallAtmosphere.DustPuff(1,3,0,0,0,8,1,NativeBrickfallAtmosphere.DustLife,out _,out _,out _,out _,out double daEnd);Near(daEnd,0,"collapse dust is gone after its life");
+            // A thin haze above head height (§3.10: the kit's landing wall is .2 by 3 s and gone by 7 s; this stays thinner).
+            bool thin=true,late=true,high=true;double peak=0;
+            for(int seed=0;seed<16;seed++)for(int p=0;p<NativeBrickfallAtmosphere.DustPuffs;p++)for(double r=1;r<=20;r+=3.8)for(double age=0;age<=NativeBrickfallAtmosphere.DustLife+1;age+=.25)
+            {
+                NativeBrickfallAtmosphere.DustPuff(seed,p,0,0,0,r,1,age,out _,out double y,out _,out double size,out double al);peak=Math.Max(peak,al);
+                if(age>=3&&al>.15)thin=false;if(age>=8&&al>.06)late=false;if(age>=4&&y<2.5+.3*size)high=false;
+            }
+            Check(peak<=NativeBrickfallAtmosphere.DustPeak+1e-9&&thin,"no drift puff is above "+NativeBrickfallAtmosphere.DustPeak+" opaque, nor above .15 after 3 s ("+peak+")");Check(late,"drift puffs are .06 or less by 8 s");
+            Check(high,"after 4 s every drift puff hangs clear of the 0-2.5 m band (centre 2.5 m + .3 x its size above the landing)");
+            bool inside=true;foreach(double size in new[]{1.5,4,6.5,12,24})for(double d=0;d<=size/2;d+=.05)if(NativeBrickfallAtmosphere.DustNear(d,size)!=0)inside=false;
+            Check(inside&&NativeBrickfallAtmosphere.DustNear(2.99,2)==0&&NativeBrickfallAtmosphere.DustNear(4.51,2)==1&&NativeBrickfallAtmosphere.DustNear(12.01,16)==1,"a drift puff that contains the eye, or is within 3 m of it, is fully faded");
             Check(NativeBrickfallAtmosphere.DustCoatGlobal=="_ArenaDustCoat","the dust coat shader global");
         }
         private static void Fx()
         {
             var fx=new NativeBrickfallFx();var light=new NativeFxLight{Lx=-.53,Ly=.5,Lz=.68,Sr=1.5,Sg=.8,Sb=.3};for(int i=0;i<9;i++)light.Ambient[i]=.05;
-            var mem=new NativeBrickfallMemory();mem.Spook(10,-20,0,22);mem.Collapse(12,-5,0,3,8,1);mem.Collapse(14,6,0,-3,6,.6);
+            var mem=new NativeBrickfallMemory();mem.Spook(10,-20,0,22);mem.Collapse(12,-18,0,-14,8,1);mem.Collapse(14,18,0,-16,6,.6);
             void Frame(double t,double q,bool low,bool atmo)=>fx.Build(t,0,12.2,4,1,0,0,0,1,0,light,q,low,atmo,mem,0);
             for(int i=0;i<5;i++)Frame(20+i*.016,1,false,true);
             long before=GC.GetAllocatedBytesForCurrentThread();for(int i=0;i<60;i++)Frame(21+i*.016,1,false,true);long after=GC.GetAllocatedBytesForCurrentThread();
@@ -156,6 +201,29 @@ namespace ChipArena.UnityConversion
             var copy=(float[])fx.Quads.Corners.Clone();Frame(22,1,false,true);Check(fx.Quads.Corners.SequenceEqual(copy),"the same clock and camera build the same quads");
             Frame(22,.3,false,true);Check(fx.Quads.Count<full*.75&&fx.Shafts<=3&&fx.Pigeons==7&&fx.Birds==24&&fx.DustPuffs==8,"reduced effects thin the atmosphere");
             Frame(22,1,true,true);Check(fx.Shafts==0&&fx.Pigeons==7,"graphics=performance drops the shafts and halves the life");
+            bool every=true;for(double q=0;q<=1.0001;q+=.05){try{Frame(22,q,false,true);if(fx.Shafts>NativeBrickfallAtmosphere.Count(NativeBrickfallAtmosphere.Shafts,q,false,true))every=false;}catch(Exception){every=false;}}
+            Frame(22,.6,false,true);int shafts6=fx.Shafts;Frame(22,.8,false,true);Check(every&&shafts6>=1&&fx.Shafts>=shafts6,"every effects quality builds (4 shafts at .6, 5 at .8: "+shafts6+", "+fx.Shafts+" drawn)");
+            // Drift dust: eight landings at once take at most 48 billboards, and only what the kit's dust wall leaves of 120.
+            var many=new NativeBrickfallMemory();for(int k=0;k<8;k++)many.Collapse(30,-24+k*6,0,-20,8,1);
+            int Dust(int inUse){fx.Build(33,0,12.2,4,1,0,0,0,1,0,light,1,false,true,many,0,inUse);return fx.DustPuffs;}
+            Check(Dust(0)==NativeBrickfallAtmosphere.DustBudget&&Dust(100)==20&&Dust(120)==0&&Dust(500)==0&&Dust(-3)==NativeBrickfallAtmosphere.DustBudget,"drift dust shares the 120-billboard cap with the dust wall ("+Dust(0)+", "+Dust(100)+")");
+            // No camera-facing soft puff (drift dust, smoke) contains the eye, wherever the camera stands in the cloud.
+            bool contains=false;int seen=0;
+            for(int k=0;k<40;k++)
+            {
+                NativeBrickfallAtmosphere.DustPuff(0,k%12,-24,0,-20,8,1,1+k*.37,out double px,out double py,out double pz,out _,out _);double cx=px+(k%3-1)*1.3,cy=py+(k%5-2)*.6,cz=pz+(k%4-1.5)*.9;
+                fx.Build(31+k*.37,cx,cy,cz,1,0,0,0,1,0,light,1,false,true,many,0);seen+=fx.DustPuffs;var Q=fx.Quads;
+                for(int i=0;i<Q.Count;i++)
+                {
+                    if(Q.Layers[i]!=1||Q.Modes[i]!=1||Q.Additive[i]!=0)continue;int o=i*12;
+                    double mx=(Q.Corners[o]+Q.Corners[o+6])/2,my=(Q.Corners[o+1]+Q.Corners[o+7])/2,mz=(Q.Corners[o+2]+Q.Corners[o+8])/2,w=Math.Sqrt(Math.Pow(Q.Corners[o+3]-Q.Corners[o],2)+Math.Pow(Q.Corners[o+4]-Q.Corners[o+1],2)+Math.Pow(Q.Corners[o+5]-Q.Corners[o+2],2));
+                    if(Math.Sqrt((mx-cx)*(mx-cx)+(my-cy)*(my-cy)+(mz-cz)*(mz-cz))<=Math.Max(3,w/2))contains=true;
+                }
+            }
+            Check(!contains&&seen>0,"no drawn dust or smoke puff contains the eye or sits within 3 m of it ("+seen+" puffs drawn from inside the cloud)");
+            // The props' cover takes the scraps out where they would cross it.
+            Frame(22,1,false,true);int open=fx.Scraps;fx.Cover.Add(-40,-1,-40,40,4,40);Frame(22,1,false,true);int covered=fx.Scraps;fx.Cover.Clear();
+            Check(open>0&&covered==0,"scraps fade out inside cover ("+open+" open, "+covered+" under a box over the arena)");
             Frame(22,1,false,false);Check(fx.Shafts+fx.Motes+fx.Scraps+fx.Pigeons+fx.DustPuffs==0&&fx.Birds==48&&fx.Quads.Count>0,"behind the menu only the backdrop life is built");
             bool layers=true;for(int i=0;i<fx.Quads.Count;i++){if(fx.Quads.Layers[i]>1||fx.Quads.Modes[i]>1||fx.Quads.Colors[i*4+3]<=0||fx.Quads.Colors[i*4+3]>1)layers=false;}Check(layers,"quads carry a layer, mode and opacity");
         }
@@ -172,6 +240,18 @@ namespace ChipArena.UnityConversion
             Check(!p.Contains("AddComponent")&&!p.Contains("new GameObject")&&!p.Contains("Collider"),"no GameObjects or colliders");
             int draws=0,offs=0;int at=0;while((at=p.IndexOf("Graphics.DrawMesh",at,StringComparison.Ordinal))>=0){int open=at+"Graphics.DrawMesh".Length;if(p[open]!='('&&!p.Substring(open).StartsWith("Instanced(",StringComparison.Ordinal)){at=open;continue;}draws++;int end=p.IndexOf(';',at);if(p.Substring(at,end-at).Contains("ShadowCastingMode.Off"))offs++;at=end;}
             Check(draws>=4&&draws==offs,"every scenery draw casts no shadow");
+            // The lit scenery draws on the backdrop layer, and every pixel point light leaves that layer out (no point-light passes).
+            Check(p.Contains("const int backdrop=NativeSceneryBuilder.BackdropLayer;")&&!p.Contains("brickfallLit,0,null")&&!p.Contains("true,0,null)")&&p.Split("brickfallLit,backdrop,null").Length-1==4&&p.Contains("ShadowCastingMode.Off,true,backdrop,null)"),"every scenery mesh draws on the backdrop layer");
+            int pixel=0;foreach(var f in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Runtime"),"*.cs"))
+            {
+                var text=File.ReadAllText(f);int k=0;
+                while((k=text.IndexOf("LightRenderMode.ForcePixel",k,StringComparison.Ordinal))>=0){int cm=text.IndexOf("cullingMask",k,StringComparison.Ordinal),end=cm<0?-1:text.IndexOf(';',cm);string mask=end<0||end-k>200?"":text.Substring(k,end-k);end=Math.Max(end,k+1);Check(mask.Contains("cullingMask=~(1<<10|1<<NativeSceneryBuilder.BackdropLayer)"),Path.GetFileName(f)+": its pixel point light leaves the backdrop layer out");pixel++;k=end;}
+            }
+            Check(pixel>=3,"the blast flash, combat glow and seeker light pools are all checked ("+pixel+")");
+            foreach(int used in new[]{8,9,10,11,29,30})Check(NativeSceneryBuilder.BackdropLayer!=used,"the backdrop layer is not layer "+used);
+            Check(p.Contains("if(!atmosphere)Graphics.DrawMesh(brickfallPlate,")&&p.Contains("NativeBrickfallScenery.BuildMenuPlate()")&&p.Contains("CapturedAnimation.Release(brickfallPlate)"),"the menu plate is built, drawn behind the menu only and released");
+            Check(p.Contains("BrickfallCover(arena);DrawBrickfall(")&&p.Contains("cover.Add(m.m03-ex,m.m13-ey,m.m23-ez,m.m03+ex,m.m13+ey,m.m23+ez)")&&p.Contains("foreach(var p in arena.Props)"),"the scraps' cover is refilled from the drawn arena's props each frame");
+            Check(p.Contains("public int BrickfallDustInUse;")&&p.Contains("roundStart,BrickfallDustInUse);"),"the drift dust hears the dust wall's billboard count");
             Check(p.Contains("arena.ReplicaScene.IsValid()")&&p.Contains("PresentationClock(arena)")&&p.Contains("e.Kind==EventKind.Explosion"),"the arena clock, the killcam memory rule and explosions feed the pigeons");
             Check(p.Contains("Shader.SetGlobalFloat(DustCoatId,value)")&&p.Contains("public void BrickfallStructure(NativeArena arena,NativeBrickfallCue cue,Vector3 position,float radius,float amount,float time)"),"the dust coat global and the structure hook");
             foreach(var f in new[]{"NativeSceneryBuilder.cs","NativeBrickfallScenery.cs","NativeBrickfallAtmosphere.cs","NativeBrickfallFx.cs"})Check(!File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core",f)).Contains("UnityEngine"),f+" is engine-free Core");

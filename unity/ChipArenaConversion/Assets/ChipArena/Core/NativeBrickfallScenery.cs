@@ -6,17 +6,19 @@ namespace ChipArena.UnityConversion
     /// Brickfall's backdrop (docs/arenas/ARENA_PROPOSAL.md §2.2 "Backdrop", §3.10 Backdrop and Landmarks outside the walls): a
     /// deterministic, box-built condemned district around the 64×56 slab, built once from integer hashes so every client, the
     /// killcam and the menu draw the same city. Nothing here is sim data and nothing collides: Runtime/NativeBrickfallPresentation.cs
-    /// bakes it into a few SourceLit meshes on layer 0, for map id "brickfall" only. Every box lies beyond x ±<see cref="InnerX"/> /
-    /// z ±<see cref="InnerZ"/> (the slab plus 2 m; <see cref="NativeSceneryBuilder"/> throws otherwise); the slewing crane jibs,
-    /// the train and the bird flocks stay out too at every time (Tests/BrickfallSceneryChecks.cs).
+    /// bakes it into a few SourceLit meshes on <see cref="NativeSceneryBuilder.BackdropLayer"/> (no point light reaches it), for
+    /// map id "brickfall" only. The street's ground plates reach the slab's edge (x ±<see cref="SlabX"/> / z ±<see cref="SlabZ"/>,
+    /// the map bounds plus 2 m), so no ring of sky shows at the frontage's foot; every other box lies beyond x ±<see cref="InnerX"/>
+    /// / z ±<see cref="InnerZ"/> (the slab plus 2 m; <see cref="NativeSceneryBuilder"/> throws otherwise); the slewing crane jibs,
+    /// the train and the bird flocks stay out too at every time (Tests/BrickfallSceneryChecks.cs). Behind the menu, which draws
+    /// no arena blocks yet, <see cref="BuildMenuPlate"/> fills the slab's footprint.
     ///  - <see cref="Near"/>: the street ring, its ground frame out to the fog, kerbs, lamps, wrecks, the brick rail viaduct behind
     ///    the south frontage (arches, cornice, parapets, catenary masts), the Mercer Plaza vacant lot with its billboard;
     ///  - <see cref="North"/>..<see cref="West"/>: the second ring of 1920s walk-ups (window grids with sills, string courses,
     ///    stepped cornices with dentils, parapets, storefronts with fascias and awnings, fire escapes on the facades that face
     ///    the arena, water towers, setbacks, ghost signs), six half-demolished blocks (one in each near row, two far: exposed
     ///    slab edges, rebar, wallpapered rooms, broken brick edges, rubble), a lower far row, the skyline ring with its warm rim
-    ///    and the two 45 m tower-crane masts. Sector meshes stay clear of the arena's point lights: north/south beyond |z| 38,
-    ///    east/west beyond |x| 42.
+    ///    and the two 45 m tower-crane masts.
     /// Moving parts are pure functions of the clock the caller passes (match time in a match, so host, guests and the killcam
     /// agree; the render clock behind the menu): the train crossing the viaduct every <see cref="TrainPeriod"/> s
     /// (<see cref="Train"/>, mesh <see cref="BuildTrain"/>), the crane jibs slewing between picks (<see cref="CraneSlew"/>, mesh
@@ -27,8 +29,10 @@ namespace ChipArena.UnityConversion
     {
         public const string MapId="brickfall";
         public static bool Active(string mapId)=>mapId==MapId;
-        /// <summary>The slab (±32 / ±28) plus 2 m: nothing of the backdrop enters |x| &lt; InnerX and |z| &lt; InnerZ.</summary>
+        /// <summary>The slab (±32 / ±28) plus 2 m: nothing of the backdrop but the street's ground plates enters |x| &lt; InnerX and |z| &lt; InnerZ.</summary>
         public const double InnerX=34,InnerZ=30;
+        /// <summary>The slab's edge (the map bounds ±30 / ±26 plus 2 m): the street's ground plates start here, flush with the foundation's sides.</summary>
+        public const double SlabX=32,SlabZ=28;
         public const int Near=0,North=1,East=2,South=3,West=4,Sectors=5;
         // §3.10 palette, plus a few tones of the same families for variety.
         public const int BrickRed=0x9C4A30,BrickDark=0x7E3A26,Mortar=0xCDBB9E,Buff=0xB8774E,Terracotta=0xE3C9A0,Concrete=0x8F8A80,ConcreteDark=0x5F5A53,FreshConcrete=0xC9C2B4,FreshBrick=0xD2BFA3,
@@ -640,9 +644,11 @@ namespace ChipArena.UnityConversion
         // ---------------- the street ring ----------------
         private static void Streets(NativeSceneryBuilder b)
         {
-            const double far=330;
-            b.Box(0,-.27,(InnerZ+far)/2,far*2,.5,far-InnerZ,Asphalt);b.Box(0,-.27,-(InnerZ+far)/2,far*2,.5,far-InnerZ,Asphalt);
-            b.Box((InnerX+far)/2,-.27,0,far-InnerX,.5,InnerZ*2,Asphalt);b.Box(-(InnerX+far)/2,-.27,0,far-InnerX,.5,InnerZ*2,Asphalt);
+            // The ground plates, top 2 cm under the street, from the slab's edge out to the fog (only they may cross the inner line).
+            const double far=330;b.ExcludeX=SlabX;b.ExcludeZ=SlabZ;
+            b.Box(0,-.27,(SlabZ+far)/2,far*2,.5,far-SlabZ,Asphalt);b.Box(0,-.27,-(SlabZ+far)/2,far*2,.5,far-SlabZ,Asphalt);
+            b.Box((SlabX+far)/2,-.27,0,far-SlabX,.5,SlabZ*2,Asphalt);b.Box(-(SlabX+far)/2,-.27,0,far-SlabX,.5,SlabZ*2,Asphalt);
+            b.ExcludeX=InnerX;b.ExcludeZ=InnerZ;
             // Pavements with kerbs in front of the second ring; cobbled lots and the street beyond the viaduct.
             b.Box(0,.06,39.25,89,.16,2.5,Concrete);b.Box(0,.06,38.1,89,.17,.2,ConcreteDark);
             b.Box(43.25,.06,2.75,2.5,.16,69.5,Concrete);b.Box(42.1,.06,2.75,.2,.17,69.5,ConcreteDark);
@@ -669,6 +675,13 @@ namespace ChipArena.UnityConversion
             b.Box(-38,.7,26,1.8,1.4,3.8,Rust,shade:.8,grime:.3);b.Box(-38,1.42,26,1.9,.06,3.9,Iron);
             for(int i=0;i<4;i++){b.Box(-16+i*2.1,.42,31.2,2,.84,.6,FreshConcrete,shade:.9);b.Box(36.1,.42,-24+i*2.1,.6,.84,2,FreshConcrete,shade:.9);}
         }
+
+        /// <summary>
+        /// The menu's stand-in for the arena floor: one asphalt plate over the slab's footprint, top 2 cm under the street (the
+        /// foundation's top), so the menu's overview orbit, which draws no arena blocks yet, shows ground where the arena stands.
+        /// Drawn behind the menu only; in a match the foundation covers it.
+        /// </summary>
+        public static NativeSceneryMesh BuildMenuPlate(){var b=new NativeSceneryBuilder(1);b.Box(0,-.27,0,SlabX*2,.5,SlabZ*2,Asphalt,shade:.88,skip:1|2|16|32);return b.Bake(0);}
 
         // ---------------- the whole backdrop ----------------
         /// <summary>Builds the five static sector meshes (Near, North, East, South, West).</summary>

@@ -27,6 +27,13 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed class NativeSceneryBuilder
     {
+        /// <summary>
+        /// The render layer baked backdrop scenery draws on (unused by anything else: 8 actors, 9 props, 10 the first-person
+        /// view, 11 summons, 29 cinematics, 30 portraits). The pixel point lights (blast flashes, combat glow, seeker) leave it
+        /// out of their culling mask, so a light inside the arena never adds a forward pass over a backdrop mesh, nor lights it
+        /// through the frontage; the sun and rim still reach it. The match and menu camera renders it.
+        /// </summary>
+        public const int BackdropLayer=28;
         private sealed class Group {public readonly List<float> P=new List<float>(),N=new List<float>(),C=new List<float>(),E=new List<float>();public readonly List<int> T=new List<int>();public int Boxes;}
         private readonly Group[] groups;
         public int Current;public double ExcludeX=double.NaN,ExcludeZ=double.NaN;
