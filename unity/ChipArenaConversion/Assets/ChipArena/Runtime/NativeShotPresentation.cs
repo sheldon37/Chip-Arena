@@ -94,8 +94,9 @@ namespace ChipArena.UnityConversion
 
     /// <summary>
     /// Draws the pure NativeShotScene (source projectile models, chip modules, sparks and beams) in the arena. Opaque parts
-    /// and the voxel sparks go into one dynamic unlit NativeBlast mesh and the lit beams into one NativeSourceLit mesh,
-    /// all refilled from reused buffers each frame. Each translucent part (the tidal wave) is its own draw of a cached mesh
+    /// go into one dynamic unlit NativeBlast mesh and the lit beams into one NativeSourceLit mesh, refilled from reused
+    /// buffers each frame; the burst sparks are HDR streaks along their velocity through the shared effects renderer
+    /// (NativeVfxDraw; owner 2026-10-11 effects overhaul, in place of the source's voxel cubes). Each translucent part (the tidal wave) is its own draw of a cached mesh
     /// at its own transform, so Unity sorts it among the other transparent draws by where it is. Host and replica arenas
     /// both work; the prototype ArenaGame never creates this. Cosmetic only: nothing here touches the match.
     /// </summary>
@@ -119,13 +120,17 @@ namespace ChipArena.UnityConversion
         // Vertex colours reach the target unconverted. The scene's colours are linear (three.js working space), right for a
         // linear-space project; a gamma-space project gets them re-encoded to sRGB.
         private readonly bool gamma;
+        private readonly NativeVfxDraw vfx;private readonly bool ownsVfx;
         private NativeArena last;private int generation=-1;private float lastTime=-1;
         public int Parts=>scene.Draws.Count;public int Sparks=>scene.Bursts.Count;public int Beams=>scene.Bursts.Beams;public int Live=>scene.Live;
         /// <summary>The source BurstPool port (renderer.burst/beam) these visuals draw and step each frame; event effects spawn
         /// into it (NativeBlastPresentation via NativeImpactCues).</summary>
         public NativeBurstPool SparkPool=>scene.Bursts;
-        public NativeShotPresentation()
+        /// <summary>vfx: the shared effects renderer the owner (ArenaPresentation) begins and submits each frame; null makes
+        /// this presentation own one and submit it at the end of its own Render.</summary>
+        public NativeShotPresentation(NativeVfxDraw vfx=null)
         {
+            ownsVfx=vfx==null;this.vfx=vfx??new NativeVfxDraw();
             var unlit=Resources.Load<Shader>("NativeBlast");if(unlit==null)throw new InvalidOperationException("NativeBlast shader is missing");
             var lit=Resources.Load<Shader>("NativeSourceLit");if(lit==null)throw new InvalidOperationException("NativeSourceLit shader is missing");
             gamma=QualitySettings.activeColorSpace==ColorSpace.Gamma;
@@ -139,7 +144,7 @@ namespace ChipArena.UnityConversion
             var lambert=new Material(lit){name="Native shot beams"};lambert.SetInt("_Cull",2);lambert.SetFloat("_Ink",0);
             solid=new Layer("Native shot models",opaque);beams=new Layer("Native shot beams",lambert);
         }
-        public void Clear(){scene.Clear();own.Clear();lastTime=-1;solid.Mesh.Clear();beams.Mesh.Clear();}
+        public void Clear(){scene.Clear();own.Clear();lastTime=-1;solid.Mesh.Clear();beams.Mesh.Clear();if(ownsVfx)vfx.Clear();}
         /// <summary>Source BurstPool.spawn for other effects (event bursts): count·quality voxel sparks at a point.</summary>
         public void Burst(Vector3 at,int hex,int count,float power,float quality)=>scene.Bursts.Spawn(at.x,at.y,at.z,hex,count,power,quality);
         /// <summary>Source EventVfx.beam: a 0.09 s lit streak from a to b.</summary>
@@ -175,14 +180,8 @@ namespace ChipArena.UnityConversion
                 for(int k=0;k<p.Length;k+=3){d.M.Apply(p[k],p[k+1],p[k+2],out float x,out float y,out float z);solid.Vertices.Add(new Vector3(x,y,z));solid.Colors.Add(color);}
                 var tris=mesh.Indices;for(int k=0;k<tris.Length;k++)solid.Indices.Add(start+tris[k]);
             }
-            // Sparks: unlit axis-aligned cubes (NativeBlastSim's corner cube and Unity front-face winding, as the blast voxels).
-            var pool=scene.Bursts;var s=pool.Sparks;var corners=NativeBlastSim.CubeCorners;var pattern=NativeBlastSim.CubeTriangles;
-            for(int i=0;i<pool.Count;i++)
-            {
-                int k=i*NativeBurstPool.SparkStride;float h=(float)s[k+6]*.5f;var center=new Vector3((float)s[k],(float)s[k+1],(float)s[k+2]);var color=Shade((float)s[k+8],(float)s[k+9],(float)s[k+10],1);int start=solid.Vertices.Count;
-                for(int c=0;c<8;c++){solid.Vertices.Add(center+new Vector3(corners[c*3]*h,corners[c*3+1]*h,corners[c*3+2]*h));solid.Colors.Add(color);}
-                for(int t=0;t<pattern.Length;t++)solid.Indices.Add(start+pattern[t]);
-            }
+            // Sparks: HDR streaks along their velocity (NativeVfxDraw.Sparks; the shader takes the linear colours either way).
+            var pool=scene.Bursts;if(ownsVfx)vfx.Begin();vfx.Sparks(pool);
             // Beams: lit .022 m boxes with the source BoxGeometry normals turned by the beam rotation.
             var bd=pool.BeamData;var bp=box.Positions;var bn=box.Normals;
             for(int i=0;i<pool.Beams;i++)
@@ -192,7 +191,7 @@ namespace ChipArena.UnityConversion
                 for(int v=0;v<bp.Length;v+=3){m.Apply(bp[v],bp[v+1],bp[v+2],out float x,out float y,out float z);beams.Vertices.Add(new Vector3(x,y,z));beams.Normals.Add(r*new Vector3(bn[v],bn[v+1],bn[v+2]));beams.Colors.Add(albedo);beams.Emission.Add(glow);}
                 var tris=box.Indices;for(int t=0;t<tris.Length;t++)beams.Indices.Add(start+tris[t]);
             }
-            Draw(solid,camera);Draw(beams,camera);
+            Draw(solid,camera);Draw(beams,camera);if(ownsVfx)vfx.Submit(camera);
         }
         // A translucent part (opacity .5, no depth write): one draw of a cached mesh at the part's own transform, so its
         // bounds, and so its place in Unity's back-to-front transparent order, are where the part is.
@@ -219,7 +218,7 @@ namespace ChipArena.UnityConversion
         public void Dispose()
         {
             Clear();foreach(var layer in new[]{solid,beams}){CapturedAnimation.Release(layer.Mesh);CapturedAnimation.Release(layer.Material);}
-            foreach(var cached in translucent.Values)CapturedAnimation.Release(cached.Mesh);translucent.Clear();CapturedAnimation.Release(fade);
+            foreach(var cached in translucent.Values)CapturedAnimation.Release(cached.Mesh);translucent.Clear();CapturedAnimation.Release(fade);if(ownsVfx)vfx.Dispose();
         }
     }
 
