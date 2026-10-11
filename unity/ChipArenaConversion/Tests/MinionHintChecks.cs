@@ -1,6 +1,7 @@
 #if ARENA_TESTS
 using System;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text.Json;
 namespace ChipArena.UnityConversion
@@ -11,8 +12,8 @@ namespace ChipArena.UnityConversion
     // the grin's 25 m gate, opacity and lift over the head, the trail's gate and flame and how many flames a walk drips at
     // several frame rates and qualities. Then the Unity rules: the replicated start (an older host's frame keeps level 1), the
     // trail's slots (frame-rate independent, the same flames on host, guest and killcam replay, nothing on a rewind, a jump,
-    // standing or below level 2), the grin mesh (canvas mapping, pieces, glows, fold-free strokes, distant widening) and the
-    // runtime hooks.
+    // standing or below level 2), the grin baked against Chromium's hints.ts canvas (the fixture's `grin`; level 1 of the mip
+    // chain is the canvas's size), faded as one image over the hall, its mip chain and its background bake, and the runtime hooks.
     internal static class MinionHintChecks
     {
         private static int count;
@@ -22,8 +23,8 @@ namespace ChipArena.UnityConversion
         public static void Run(string root)
         {
             using var document=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Tests/minion-hint-parity.json")));var json=document.RootElement;
-            Levels(json);Frames(json.GetProperty("frames"));Trail(json.GetProperty("trail"));Slots();Glyph();Hooks(root);
-            Console.WriteLine("PASS minion hint ("+count+" checks: hintLevel by age; seam, halo and level 3 boost; grin 25 m gate, opacity and lift; trail gate, flame and cadence at 30/60/144 Hz and reduced; replicated start; frame-rate and client independent trail slots; grin mesh pieces, glows and fold-free strokes; runtime hooks)");
+            Levels(json);Frames(json.GetProperty("frames"));Trail(json.GetProperty("trail"));Slots();Glyph(json.GetProperty("grin"));Hooks(root);
+            Console.WriteLine("PASS minion hint ("+count+" checks: hintLevel by age; seam, halo and level 3 boost; grin 25 m gate, opacity and lift; trail gate, flame and cadence at 30/60/144 Hz and reduced; replicated start; frame-rate and client independent trail slots; grin baked from the source canvas, faded as one image, mips, background bake; runtime hooks)");
         }
         private static void Levels(JsonElement json)
         {
@@ -111,52 +112,74 @@ namespace ChipArena.UnityConversion
             Check(NativeMinionHint.Trail(g,rs,9,p,p+40,p+40.5,0,0,1,0,0,1,0,1)==0&&NativeMinionHint.Trail(g,rs,9,p,p+40.3,p+40,0,0,1,0,0,1,0,1)==0&&NativeMinionHint.Trail(g,rs,9,p,p+40,p+40,0,0,1,0,0,1,0,1)==0,"no trail over a jump, a rewind or a paused frame");
             Check(NativeMinionHint.Trail(g,rs,9,p,p+40,p+40.34,0,0,1,0,0,1,0,1)==4,"a long frame catches up its slots");
         }
-        private static void Glyph()
+        private static void Glyph(JsonElement grin)
         {
-            var pieces=NativeMinionHint.Glyph.Pieces;float[] x=NativeMinionHint.Glyph.X,y=NativeMinionHint.Glyph.Y,ox=NativeMinionHint.Glyph.OffsetX,oy=NativeMinionHint.Glyph.OffsetY,a=NativeMinionHint.Glyph.A;var index=NativeMinionHint.Glyph.Index;
-            Check(pieces.Length==6&&pieces[0].Glow&&!pieces[1].Glow&&pieces[2].Glow&&!pieces[3].Glow&&pieces[4].Glow&&!pieces[5].Glow&&pieces[3].Stroke>0&&pieces[5].Stroke>0&&pieces[1].Stroke==0&&pieces[0].Stroke==0,"pieces in the canvas's order: mouth glow, mouth, lip glow, lips, teeth glow, teeth");
-            int end=0;foreach(var piece in pieces){Check(piece.Start==end&&piece.Count>0&&piece.Indices>0&&piece.Indices%3==0,"pieces tile the vertices");end+=piece.Count;for(int i=piece.First;i<piece.First+piece.Indices;i++)Check(index[i]>=piece.Start&&index[i]<piece.Start+piece.Count,"a piece indexes its own vertices");}
-            Check(end==x.Length&&x.Length<4000,"a few thousand vertices at most ("+x.Length+")");
-            for(int v=0;v<x.Length;v++)Check(a[v]>=0&&a[v]<=1&&NativeMinionHint.Glyph.R[v]>=0&&NativeMinionHint.Glyph.R[v]<=1&&NativeMinionHint.Glyph.G[v]>=0&&NativeMinionHint.Glyph.B[v]<=1,"colours and alpha in range");
-            // The canvas mapping: path (x + 28, y - 48) on 256 x 96 shown .78 x .29 m about its centre; the grin is symmetric.
-            Near(NativeMinionHint.Glyph.MetresX(100),0,"the grin's axis is the sprite's centre",1e-12);Near(NativeMinionHint.Glyph.MetresY(96),0,"canvas row 48 is the sprite's centre",1e-12);
-            var mouth=pieces[1];double mx0=1,mx1=-1,my0=1,my1=-1;for(int v=mouth.Start;v<mouth.Start+mouth.Count;v++){mx0=Math.Min(mx0,x[v]);mx1=Math.Max(mx1,x[v]);my0=Math.Min(my0,y[v]);my1=Math.Max(my1,y[v]);Check(a[v]>.98,"the mouth filled twice at .9");}
-            Near(mx0,NativeMinionHint.Glyph.MetresX(22),"mouth left corner",1e-6);Near(mx1,NativeMinionHint.Glyph.MetresX(178),"mouth right corner",1e-6);Near(my1,NativeMinionHint.Glyph.MetresY(70),"mouth corners' height",1e-6);Near(my0,NativeMinionHint.Glyph.MetresY(104.5),"mouth's lowest point",2e-4);
-            double area=0;for(int i=mouth.First;i<mouth.First+mouth.Indices;i+=3)area+=Math.Abs(Cross(index[i],index[i+1],index[i+2],x,y,ox,oy,0))/2;
-            Near(area,NativeSirenSmile.Area(NativeSirenSmile.Grin)*NativeMinionHint.Glyph.Width/256*NativeMinionHint.Glyph.Height/96,"the mouth covers the grin path",area*.002);
-            // The violet glows: peaked near the mouth and the strokes, fading to nothing at their grids' edges; symmetric.
-            var peaks=new double[3];for(int g=0;g<3;g++){var piece=pieces[g*2];double x0=1,x1=-1,y0=1,y1=-1;for(int v=piece.Start;v<piece.Start+piece.Count;v++){peaks[g]=Math.Max(peaks[g],a[v]);x0=Math.Min(x0,x[v]);x1=Math.Max(x1,x[v]);y0=Math.Min(y0,y[v]);y1=Math.Max(y1,y[v]);}
-                for(int v=piece.Start;v<piece.Start+piece.Count;v++)if(x[v]<=x0+1e-6||x[v]>=x1-1e-6||y[v]<=y0+1e-6||y[v]>=y1-1e-6)Check(a[v]<.03,"glow "+g+" fades out at its grid's edge ("+a[v]+")");}
-            Check(peaks[0]>.6&&peaks[0]<.95&&peaks[1]>.4&&peaks[1]<.9&&peaks[2]>.3&&peaks[2]<.8,"glow peaks (mouth "+peaks[0]+", lips "+peaks[1]+", teeth "+peaks[2]+")");
-            double left=0,right=0;for(int v=pieces[0].Start;v<pieces[0].Start+pieces[0].Count;v++){if(x[v]<-.05)left+=a[v];if(x[v]>.05)right+=a[v];}Near(left,right,"the mouth glow is symmetric",left*.02);
-            // Strokes: one winding throughout at their own width and widened (no fold, so a translucent grin has no seams); the
-            // lips keep the canvas's miter spike at the corners.
-            foreach(int p in new[]{3,5})foreach(double k in new[]{1,NativeMinionHint.Glyph.MaxWiden})
+            // The bake: the 256 x 96 canvas at twice its size with Unity's whole mip chain, packed level 0 first, the same every time.
+            var img=NativeMinionHint.Glyph.Bake(NativeMinionHint.Glyph.Scale);
+            Check(img.Width==512&&img.Height==192&&img.Levels==10&&img.Widths[1]==256&&img.Heights[1]==96&&img.Widths[7]==4&&img.Heights[7]==1&&img.Widths[9]==1&&img.Heights[9]==1,"512 x 192 with ten mip levels");
+            int total=0;for(int l=0;l<img.Levels;l++){Check(img.Offset[l]==total,"levels packed in order");total+=img.Widths[l]*img.Heights[l]*4;}Check(total==img.Rgba.Length,"the raw texture data's size ("+total+" bytes)");
+            Check(NativeMinionHint.Glyph.Bake(NativeMinionHint.Glyph.Scale).Rgba.SequenceEqual(img.Rgba),"the bake is deterministic");
+            // Source parity: level 1 (the canvas's own size) against Chromium's hints.ts canvas, compared premultiplied.
+            Check(grin.GetProperty("w").GetInt32()==256&&grin.GetProperty("h").GetInt32()==96,"hints.ts's 256 x 96 canvas");
+            byte[] src;using(var z=new DeflateStream(new MemoryStream(Convert.FromBase64String(grin.GetProperty("deflate").GetString())),CompressionMode.Decompress))using(var m=new MemoryStream()){z.CopyTo(m);src=m.ToArray();}
+            Check(src.Length==256*96*4,"the canvas's texels");
+            double Diff(int x,int y)
             {
-                int pos=0,neg=0;for(int i=pieces[p].First;i<pieces[p].First+pieces[p].Indices;i+=3){double c=Cross(index[i],index[i+1],index[i+2],x,y,ox,oy,k);if(c>1e-12)pos++;else if(c<-1e-12)neg++;}
-                Check(pos==0||neg==0,(p==3?"lips":"teeth")+" stroke folds at scale "+k+" ("+pos+" / "+neg+")");
+                int i=(y*256+x)*4;double sa=src[i+3]/255.0;img.Texel(1,x,y,out double r,out double g,out double b,out double a);
+                return Math.Max(Math.Abs(a-sa),Math.Max(Math.Abs(r*a-src[i]/255.0*sa),Math.Max(Math.Abs(g*a-src[i+1]/255.0*sa),Math.Abs(b*a-src[i+2]/255.0*sa))));
             }
-            double lipX=0;for(int v=pieces[3].Start;v<pieces[3].Start+pieces[3].Count;v++)lipX=Math.Max(lipX,x[v]+ox[v]);
-            Check(lipX>NativeMinionHint.Glyph.MetresX(178+6)&&lipX<NativeMinionHint.Glyph.MetresX(178+9),"the lips' miter spike at the corner ("+lipX+")");
-            double lipW=NativeMinionHint.Glyph.LipWidth*NativeMinionHint.Glyph.Width/256;Near(pieces[3].Stroke,lipW,"lip stroke width",1e-9);
-            // Distant strokes widen to a pixel (at most twice), fading as they widen.
-            Check(NativeMinionHint.Glyph.StrokeScale(lipW,.005)==1&&Math.Abs(NativeMinionHint.Glyph.StrokeScale(lipW,lipW*1.5)-1.5)<1e-12&&NativeMinionHint.Glyph.StrokeScale(lipW,1)==2&&NativeMinionHint.Glyph.StrokeScale(0,1)==1,"stroke widening");
-        }
-        private static double Cross(int a,int b,int c,float[] x,float[] y,float[] ox,float[] oy,double k)
-        {
-            double ax=x[a]+ox[a]*k,ay=y[a]+oy[a]*k,bx=x[b]+ox[b]*k,by=y[b]+oy[b]*k,cx=x[c]+ox[c]*k,cy=y[c]+oy[c]*k;return (bx-ax)*(cy-ay)-(cx-ax)*(by-ay);
+            double sum=0,worst=0;int big=0,covered=0;for(int y=0;y<96;y++)for(int x=0;x<256;x++){double d=Diff(x,y);sum+=d;worst=Math.Max(worst,d);if(d>.1)big++;if(src[(y*256+x)*4+3]>0)covered++;}
+            Check(sum/(256*96)<.01&&big<256*96*.005&&worst<.25&&covered>256*96/3,"the bake matches the source canvas (mean "+(sum/(256*96)).ToString("0.0000")+", "+big+" texels over .1, worst "+worst.ToString("0.000")+")");
+            // Named texels (path units): the canvas's colours, as the sprite shows them over the dark hall at level 2's .68, the
+            // whole image faded at once: white teeth stay white (no glow beneath them), the dark mouth stays the canvas's.
+            foreach(var (name,px,py) in new[]{("tooth",91.0,100.0),("tooth",55.0,90.0),("lip",100.0,82.0),("lip",100.0,104.5),("mouth",100.0,96.0),("mouth glow",15.0,70.0),("glow below",100.0,120.0)})
+            {
+                int x=(int)Math.Floor(px+NativeMinionHint.Glyph.ShiftX),y=(int)Math.Floor(py+NativeMinionHint.Glyph.ShiftY),i=(y*256+x)*4;img.Texel(1,x,y,out double r,out double g,out double b,out double a);
+                Check(Diff(x,y)<.03,name+" texel ("+px+", "+py+") as the canvas holds it");
+                foreach(double o in new[]{.68,1.0}){double[] bg={26/255.0,22/255.0,32/255.0},mine={r,g,b},theirs={src[i]/255.0,src[i+1]/255.0,src[i+2]/255.0};double sa=src[i+3]/255.0;
+                    for(int c=0;c<3;c++)Near(mine[c]*a*o+bg[c]*(1-a*o),theirs[c]*sa*o+bg[c]*(1-sa*o),name+" over the hall at opacity "+o,6/255.0);}
+            }
+            img.Texel(1,(int)(91+28),(int)(100-48),out double tr,out double tg,out double tb,out double ta);Check(ta>.99&&tr>.99&&tg>.99&&tb>.99,"a tooth is opaque white, so at .68 it shows the hall through it, never the glow");
+            // The mip chain: each texel the premultiplied mean in linear light of the texels it covers above (to a byte).
+            for(int l=1;l<img.Levels;l++)
+            {
+                int w=img.Widths[l],h=img.Heights[l],pw=img.Widths[l-1],ph=img.Heights[l-1];
+                for(int y=0;y<h;y+=Math.Max(1,h/7))for(int x=0;x<w;x+=Math.Max(1,w/9))
+                {
+                    double[] mean=new double[4];int n=0;for(int yy=y*ph/h;yy<(y+1)*ph/h;yy++)for(int xx=x*pw/w;xx<(x+1)*pw/w;xx++){img.Texel(l-1,xx,yy,out double r,out double g,out double b,out double a);mean[0]+=NativeMinionHint.Glyph.Linear(r)*a;mean[1]+=NativeMinionHint.Glyph.Linear(g)*a;mean[2]+=NativeMinionHint.Glyph.Linear(b)*a;mean[3]+=a;n++;}
+                    img.Texel(l,x,y,out double mr,out double mg,out double mb,out double ma);Near(ma,mean[3]/n,"mip "+l+" alpha",1.5/255);
+                    if(ma>.2){Near(NativeMinionHint.Glyph.Linear(mr)*ma,mean[0]/n,"mip "+l+" red",.012);Near(NativeMinionHint.Glyph.Linear(mb)*ma,mean[2]/n,"mip "+l+" blue",.012);}
+                }
+            }
+            // The grin is symmetric about the canvas's middle (path x 100), and its shadows end at the canvas's edge.
+            double mirror=0;for(int y=0;y<192;y++)for(int x=0;x<256;x++){img.Texel(0,x,y,out _,out _,out _,out double a0);img.Texel(0,511-x,y,out _,out _,out _,out double a1);mirror=Math.Max(mirror,Math.Abs(a0-a1));}
+            Check(mirror<.05,"the grin is symmetric ("+mirror.ToString("0.000")+")");
+            img.Texel(0,256,0,out _,out _,out _,out double edge);img.Texel(0,256,60,out _,out _,out _,out double rim);Check(edge<rim&&edge<.2,"the mouth's glow fades toward the canvas's top edge");
+            // Prepare bakes once on the thread pool; Ready hands over the same image and never waits for it.
+            NativeMinionHint.Glyph.Prepare();NativeMinionHint.Glyph.Prepare();var clock=System.Diagnostics.Stopwatch.StartNew();
+            while(NativeMinionHint.Glyph.Ready==null&&NativeMinionHint.Glyph.Failure==null&&clock.Elapsed.TotalSeconds<30)System.Threading.Thread.Sleep(5);
+            Check(NativeMinionHint.Glyph.Failure==null&&NativeMinionHint.Glyph.Ready!=null&&NativeMinionHint.Glyph.Ready.Rgba.SequenceEqual(img.Rgba)&&NativeMinionHint.Glyph.Ready.Levels==img.Levels,"the background bake is the same image");
         }
         private static void Hooks(string root)
         {
             string R(string f)=>File.ReadAllText(Path.Combine(root,f));
             var source=R("Assets/ChipArena/Runtime/NativeSourcePresentation.cs");Check(source.Contains("add.Possessed?add.PossessedAt:float.NaN")&&source.Contains("pos.y-(add.Crawl?.44f:.85f)"),"SourceWorld hands the replicated possession start and the floor to the hint");
             var fx=R("Assets/ChipArena/Runtime/NativeMinionFxPresentation.cs");
-            Check(fx.Contains("NativeMinionHint.Level(true,job.PossessedAt,t)")&&fx.Contains("NativeMinionHint.GlyphShown(level,Vector3.Distance(feet,eye))")&&fx.Contains("feet.y=job.Ground+1")&&fx.Contains("NativeMinionHint.GlyphOpacity(level,t)")&&fx.Contains("NativeMinionHint.GlyphLift(t)"),"the grin by level, 25 m from the floor + 1 m, its opacity and lift");
+            Check(fx.Contains("NativeMinionHint.Level(true,job.PossessedAt,t)")&&fx.Contains("NativeMinionHint.GlyphShown(level,Vector3.Distance(feet,eye))")&&fx.Contains("feet.y=job.Ground+1")&&fx.Contains("NativeMinionHint.GlyphLift(t)"),"the grin by level, 25 m from the floor + 1 m, its lift");
             Check(fx.Contains("NativeMinionHint.Brightness(level)")&&fx.Contains("if(level>0)"),"seam and halo at every level, brighter at 3");
             Check(fx.Contains("NativeMinionHint.Trail(WorldFlames(),hordeTrailRandom,id,possessedAt,hordeTrailClock,hordeClock,")&&fx.Contains("Mathf.Clamp01(EffectsQuality)")&&fx.Contains("if(possessed&&body&&float.IsNaN(death))HordeTrail("),"the trail drips into the world flame pool on the presentation clock, at the effects quality, while the body is drawn");
-            Check(fx.Contains("HordeGrin(draw.Effects,")&&fx.Contains("quality>=.5f")&&fx.Contains("NativeMinionHint.Glyph.StrokeScale(piece.Stroke,pixel)"),"the grin in the effect layer, glows off with reduced effects, strokes widened far away");
             Check(fx.Split("new NativeMinionHint.SlotRandom()").Length==2,"one trail stream, made once");
-            Check(fx.Contains("if(level>0&&!hordeGrinQueued)")&&fx.Contains("ThreadPool.QueueUserWorkItem(_=>NativeMinionHint.Glyph.Warm())"),"the grin mesh builds off the main thread when a possession first shows");
+            // The grin fades as one image: one quad of the baked texture per grin, its opacity applied to the whole texel once.
+            Check(fx.Contains("HordeGrin(camera,c,(float)NativeMinionHint.GlyphOpacity(level,t))")&&fx.Contains("hordeGrinBlock.SetFloat(GrinOpacityId,opacity)")&&fx.Contains("Graphics.DrawMesh(hordeGrinQuad,")&&!fx.Contains("HordeGrin(draw.")&&fx.Split("Graphics.DrawMesh(").Length==2,"the grin is one quad at the hint's opacity");
+            Check(fx.Contains("new Texture2D(image.Width,image.Height,TextureFormat.RGBA32,image.Levels,false)")&&fx.Contains("LoadRawTextureData(image.Rgba)")&&fx.Contains("Apply(false,true)")&&fx.Contains("Resources.Load<Shader>(\"NativeMinionGrin\")")&&fx.Contains("RenderQueue.Transparent+2"),"the baked sRGB texture with its own mips, drawn after the effect layer");
+            var shader=R("Assets/ChipArena/Resources/NativeMinionGrin.shader");
+            Check(shader.Contains("Blend One OneMinusSrcAlpha")&&shader.Contains("ZWrite Off")&&shader.Contains("return float4(c.rgb*k,t.a*k);")&&shader.Contains("float k=saturate(_Opacity);")&&shader.Contains("UNITY_APPLY_FOG_COLOR(i.fogCoord,c,float4(fog*t.a,1))"),"the shader fades the premultiplied texel as one, fogged as the sprite");
+            Check(R("Assets/ChipArena/Editor/NativeBuildChecks.cs").Contains("Resources.Load<Shader>(\"NativeMinionGrin\")"),"the grin shader is build-checked");
+            // The bake starts long before level 2 and never on the main thread's draw: the first PvE frame or horde add, and the
+            // grin is left out until Ready has it.
+            Check(fx.Contains("if(arena.Pve!=null)NativeMinionHint.Glyph.Prepare();")&&fx.Contains("if(rig==null||sourceModels==null)return;NativeMinionHint.Glyph.Prepare();"),"the bake starts with the PvE arena or the first add");
+            Check(fx.Contains("var image=NativeMinionHint.Glyph.Ready;")&&fx.Contains("bool grin=hordeFxCount>0&&HordeGrinReady();")&&fx.Contains("if(level>=2&&grin)")&&!fx.Contains("QueueUserWorkItem")&&!fx.Contains("NativeMinionHint.Glyph.Bake("),"the grin waits for the bake instead of running it");
+            Check(R("Assets/ChipArena/Runtime/NativeDevEffects.cs").Contains("DisposeHordeGrin();"),"the grin's texture, quad and material are released");
         }
     }
 }

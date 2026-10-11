@@ -179,6 +179,8 @@ namespace ChipArena.UnityConversion.Editor
             // The death presentation's primitives (sky broadcast lines, stars and nameplate; the vent splat's SPLAT!).
             {var shader=Resources.Load<Shader>("NativeDeathFx");if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: NativeDeathFx");}
             foreach(var name in new[]{"NativeCeilingField","NativePickupGlow"}){var shader=Resources.Load<Shader>(name);if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: "+name);}
+            // The Siren possession grin's quad (NativeMinionFxPresentation.cs).
+            {var shader=Resources.Load<Shader>("NativeMinionGrin");if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: NativeMinionGrin");}
         }
     }
 }

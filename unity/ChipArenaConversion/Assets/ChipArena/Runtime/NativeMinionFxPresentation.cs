@@ -12,12 +12,15 @@ namespace ChipArena.UnityConversion
     //  - Glow cells (cracks, embers, dying strips) flicker in NativeSourceLit on _MinionClock, with the add's phase and this
     //    frame's power-drop bits in _GlowTint.w (NativeMinionFx.GlowW, the bits the crack haze drops on).
     //  - Tongues are the bank's horde-tongue pieces, swelling and swaying on their joints (instanced with the bodies).
-    //  - Shed licks, the cracked head's haze, the possession hint, the vent emergence and the death flames, ash and scorch go
-    //    into the shared Siren effect layers (NativeFxDraw) once the frame's rigs are posed (DevEffects).
+    //  - Shed licks, the cracked head's haze, the possession hint's seam and halo, the vent emergence and the death flames,
+    //    ash and scorch go into the shared Siren effect layers (NativeFxDraw) once the frame's rigs are posed (DevEffects).
     //  - The possession hint by its level (Core/NativeMinionHint.cs, from the replicated PossessedAt): the crown seam and halo
-    //    pulse, from level 2 the Siren's grin floating over the head within 25 m (premultiplied in the effect layer, its glows
-    //    left out with reduced effects) and the black-flame trail dripped into the world flame pool while the add walks, at
-    //    level 3 all brighter. The trail emits in SourceWorld, before the pool ticks, as the stump drips do.
+    //    pulse, from level 2 the Siren's grin floating over the head within 25 m and the black-flame trail dripped into the
+    //    world flame pool while the add walks, at level 3 all brighter. The grin is hints.ts's canvas baked once into a texture
+    //    (NativeMinionHint.Glyph, off the main thread from the first PvE frame or horde add) and drawn as one quad at its
+    //    opacity after the effect layer (Resources/NativeMinionGrin.shader), so it fades as one image as the source's sprite
+    //    does; it is one quad at every effects quality, as in the source. The trail emits in SourceWorld, before the pool
+    //    ticks, as the stump drips do.
     //  - The dying body chars joint by joint (its char in _SceneTint.a keeps the embers flickering) and burns away by rest
     //    height instead of the old dithered fade.
     // Counts follow EffectsQuality (Reduced .3 halves the effect cubes and the licks, as fx.ts halves its cubes below .5);
@@ -43,14 +46,18 @@ namespace ChipArena.UnityConversion
         private CapturedAnimation.Player hordeDeathRig;private uint hordeDeathSeed;private float hordeDeathAge;private Func<int,Matrix4x4> hordeDeathBone;private Func<int,Color> hordeDeathTint;
         private static readonly Color HordeViolet=NativeArena.ColorOf(NativeMinionFx.Violet);
         // The possessed add's trail: where and when it was last drawn, and the per-slot random stream (one delegate, made once).
-        private int hordeTrailId=-1;private float hordeTrailClock;private Vector3 hordeTrailAt;private readonly NativeMinionHint.SlotRandom hordeTrailRandom=new NativeMinionHint.SlotRandom();private static bool hordeGrinQueued;
+        private int hordeTrailId=-1;private float hordeTrailClock;private Vector3 hordeTrailAt;private readonly NativeMinionHint.SlotRandom hordeTrailRandom=new NativeMinionHint.SlotRandom();
+        // The grin's texture, quad and material (made once the bake is ready) and the block carrying its opacity.
+        private Texture2D hordeGrinTexture;private Mesh hordeGrinQuad;private Material hordeGrinMaterial;private MaterialPropertyBlock hordeGrinBlock;private bool hordeGrinFailed;
+        private static readonly int GrinOpacityId=Shader.PropertyToID("_Opacity");
 
         private static bool HordeJointShown(int lost,int joint){for(int i=0;i<HordeLimbBits.Length;i++)if((lost&HordeLimbBits[i])!=0&&BoneWithin(joint,HordeLimbBones[i]))return false;return true;}
         // A source-frame row-major matrix as a Unity matrix (x mirrored: S·M·S).
         private static Matrix4x4 FromSource(double[] s){var m=new Matrix4x4();for(int r=0;r<4;r++)for(int c=0;c<4;c++)m[r,c]=(float)(((r==0)^(c==0))?-s[r*4+c]:s[r*4+c]);return m;}
         private static Quaternion SourceTurn(double x,double y,double z){NativeFxMath.EulerQuaternion(x,y,z,out double qx,out double qy,out double qz,out double qw);return new Quaternion((float)qx,-(float)qy,-(float)qz,(float)qw);}
-        /// <summary>The clock every minion effect runs on this frame; SourceWorld calls it before it poses the adds.</summary>
-        private void BeginHordeFx(NativeArena arena){hordeFxCount=0;hordeClock=FieldClock(arena);Shader.SetGlobalFloat(MinionClockId,hordeClock);}
+        /// <summary>The clock every minion effect runs on this frame; SourceWorld calls it before it poses the adds. A PvE arena
+        /// starts the grin's bake (once, off the main thread), long before a possession can reach level 2.</summary>
+        private void BeginHordeFx(NativeArena arena){hordeFxCount=0;hordeClock=FieldClock(arena);Shader.SetGlobalFloat(MinionClockId,hordeClock);if(arena.Pve!=null)NativeMinionHint.Glyph.Prepare();}
         /// <summary>The glow tint a horde add draws with this frame: white emission, its phase and drop bits in w (NativeSourceLit
         /// MinionFlicker; BeginHordeFx has set the clock).</summary>
         private Vector4 HordeGlow(int id)=>new Vector4(1,1,1,(float)NativeMinionFx.GlowW(NativeMinionFx.Phase(id),hordeClock));
@@ -58,11 +65,12 @@ namespace ChipArena.UnityConversion
         /// A posed horde add: queues its tongues (bank pieces on its joints) and keeps its effects for DevEffects. emerge: seconds
         /// into its vent climb (NaN without one); death: seconds since it died (NaN alive); floor: the world height of the floor
         /// its emergence pool lies on; ground: the floor under it now; possessedAt: its replicated possession start (NaN when it
-        /// is not the possessed add); body: whether its body is still drawn (tongues, licks and the hint need it).
+        /// is not the possessed add); body: whether its body is still drawn (tongues, licks and the hint need it). Any add also
+        /// starts the grin's bake (a guest or killcam that never saw the arena's PvE state).
         /// </summary>
         private void HordeAdd(CapturedAnimation.Player rig,int id,float emerge,float death,float floor,float ground,float possessedAt,Vector3 velocity,int lost,bool body)
         {
-            if(rig==null||sourceModels==null)return;int variant=NativeMinionFx.Variant(id);bool possessed=!float.IsNaN(possessedAt);
+            if(rig==null||sourceModels==null)return;NativeMinionHint.Glyph.Prepare();int variant=NativeMinionFx.Variant(id);bool possessed=!float.IsNaN(possessedAt);
             if(possessed&&body&&float.IsNaN(death))HordeTrail(id,possessedAt,rig.Root.transform.position,ground,velocity);
             if(body&&!NativeMinionFx.Gone(death))
             {
@@ -84,20 +92,36 @@ namespace ChipArena.UnityConversion
             hordeTrailId=id;hordeTrailClock=hordeClock;hordeTrailAt=at;
         }
         /// <summary>
-        /// The Siren's grin (NativeMinionHint.Glyph) facing the camera at `center`: its pieces in the canvas's order, premultiplied
-        /// in the effect layer at `opacity`; a stroke widens to keep a screen pixel of coverage where one spans `pixel` m (its
-        /// alpha falls as it widens). Without `glow` (reduced effects) the violet shadows are left out.
+        /// Whether the grin can be drawn: its texture, quad and material are made here, on the main thread, the first frame the
+        /// bake (NativeMinionHint.Glyph.Prepare, started by BeginHordeFx and HordeAdd) is ready. Until then the grin is left out
+        /// rather than waited for (a guest joining a possession past level 2 sees it a few frames late, never a hitch).
         /// </summary>
-        private static void HordeGrin(NativeFxDraw.Layer layer,Vector3 center,Vector3 right,Vector3 up,float opacity,bool glow,float pixel)
+        private bool HordeGrinReady()
         {
-            var pieces=NativeMinionHint.Glyph.Pieces;float[] x=NativeMinionHint.Glyph.X,y=NativeMinionHint.Glyph.Y,ox=NativeMinionHint.Glyph.OffsetX,oy=NativeMinionHint.Glyph.OffsetY,r=NativeMinionHint.Glyph.R,g=NativeMinionHint.Glyph.G,b=NativeMinionHint.Glyph.B,a=NativeMinionHint.Glyph.A;
-            var index=NativeMinionHint.Glyph.Index;var uv=new Vector4(0,0,NativeFxDraw.Flat,NativeFxDraw.Authored);
-            for(int p=0;p<pieces.Length;p++)
-            {
-                var piece=pieces[p];if(piece.Glow&&!glow)continue;float k=(float)NativeMinionHint.Glyph.StrokeScale(piece.Stroke,pixel),fade=opacity/k;int shift=layer.Count-piece.Start;
-                for(int v=piece.Start;v<piece.Start+piece.Count;v++)layer.Vertex(center+right*(x[v]+ox[v]*k)+up*(y[v]+oy[v]*k),Vector3.up,new Color(r[v],g[v],b[v],a[v]*fade),uv,Vector4.zero,Vector4.zero);
-                for(int i=piece.First;i<piece.First+piece.Indices;i+=3)layer.Triangle(shift+index[i],shift+index[i+1],shift+index[i+2]);
-            }
+            if(hordeGrinMaterial!=null)return true;if(hordeGrinFailed)return false;var image=NativeMinionHint.Glyph.Ready;
+            if(image==null){if(NativeMinionHint.Glyph.Failure!=null){hordeGrinFailed=true;Debug.LogWarning("Siren possession grin bake failed: "+NativeMinionHint.Glyph.Failure);}return false;}
+            var shader=Resources.Load<Shader>("NativeMinionGrin");if(shader==null){hordeGrinFailed=true;Debug.LogWarning("NativeMinionGrin shader is missing");return false;}
+            hordeGrinTexture=new Texture2D(image.Width,image.Height,TextureFormat.RGBA32,image.Levels,false){name="Siren possession grin",wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Trilinear,hideFlags=HideFlags.HideAndDontSave};
+            hordeGrinTexture.LoadRawTextureData(image.Rgba);hordeGrinTexture.Apply(false,true);
+            hordeGrinQuad=new Mesh{name="Siren possession grin",hideFlags=HideFlags.HideAndDontSave,vertices=new[]{new Vector3(-.5f,-.5f,0),new Vector3(.5f,-.5f,0),new Vector3(.5f,.5f,0),new Vector3(-.5f,.5f,0)},uv=new[]{new Vector2(0,0),new Vector2(1,0),new Vector2(1,1),new Vector2(0,1)},triangles=new[]{0,1,2,0,2,3}};
+            hordeGrinBlock=new MaterialPropertyBlock();
+            hordeGrinMaterial=new Material(shader){name="Siren possession grin",renderQueue=(int)UnityEngine.Rendering.RenderQueue.Transparent+2,mainTexture=hordeGrinTexture,hideFlags=HideFlags.HideAndDontSave};
+            return true;
+        }
+        /// <summary>
+        /// The Siren's grin (hints.ts glyph(), baked by NativeMinionHint.Glyph) as one .78 x .29 m quad facing the camera at
+        /// `center`, the whole image at `opacity`, as the source's sprite fades its canvas: one draw, after the effect layer's (so
+        /// over the seam and halo it floats above).
+        /// </summary>
+        private void HordeGrin(Camera camera,Vector3 center,float opacity)
+        {
+            hordeGrinBlock.SetFloat(GrinOpacityId,opacity);
+            Graphics.DrawMesh(hordeGrinQuad,Matrix4x4.TRS(center,camera.transform.rotation,new Vector3((float)NativeMinionHint.Glyph.Width,(float)NativeMinionHint.Glyph.Height,1)),hordeGrinMaterial,0,camera,0,hordeGrinBlock,UnityEngine.Rendering.ShadowCastingMode.Off,false);
+        }
+        private void DisposeHordeGrin()
+        {
+            if(hordeGrinMaterial!=null)CapturedAnimation.Release(hordeGrinMaterial);if(hordeGrinTexture!=null)CapturedAnimation.Release(hordeGrinTexture);if(hordeGrinQuad!=null)CapturedAnimation.Release(hordeGrinQuad);
+            hordeGrinMaterial=null;hordeGrinTexture=null;hordeGrinQuad=null;hordeGrinBlock=null;
         }
         /// <summary>
         /// The horde death draw (motion.ts dyingLook): queues the posed body with each joint charred at its hashed time and shrunk
@@ -121,7 +145,7 @@ namespace ChipArena.UnityConversion
         {
             if(fxDraw==null||camera==null){hordeFxCount=0;return;}
             var draw=fxDraw;bool flat=HaloReduced;float quality=Mathf.Clamp01(EffectsQuality),rim=(float)NativeSirenLook.FlameRim;int cubes=HordeCubeBudget,lickBudget=HordeLickBudget,licks=NativeMinionFx.LickCount(quality);
-            Vector3 eye=camera.transform.position,right=camera.transform.right,up=camera.transform.up;float perMetre=2*Mathf.Tan(camera.fieldOfView*.5f*Mathf.Deg2Rad)/Mathf.Max(1,camera.pixelHeight);
+            Vector3 eye=camera.transform.position,right=camera.transform.right,up=camera.transform.up;bool grin=hordeFxCount>0&&HordeGrinReady();
             // fx.ts MinionFx by rank (the possessed and dying adds, then vent climbers, nearest first): the vent emergence pool, rim
             // flames and sparks, or the burn-away's flames, ash and scorch, at the add's distance band, all of them or none.
             for(int n=0;n<hordeFxCount;n++){var job=hordeFx[n];float distance=hordeDistance[n]=job.Rig==null?float.MaxValue:Vector3.Distance(job.Rig.Root.transform.position,eye);hordeOrder[n]=n;hordeRank[n]=job.Rig==null?float.MaxValue:(float)NativeMinionFx.Rank(job.Possessed,job.Emerge,job.Death,distance);}
@@ -167,8 +191,6 @@ namespace ChipArena.UnityConversion
                     }
                 }
                 int level=job.Possessed&&alive?NativeMinionHint.Level(true,job.PossessedAt,t):0;
-                // The grin mesh is built once (tens of ms): off the main thread as soon as a possession shows, 15 s before it is drawn.
-                if(level>0&&!hordeGrinQueued){hordeGrinQueued=true;System.Threading.ThreadPool.QueueUserWorkItem(_=>NativeMinionHint.Glyph.Warm());}
                 if(head)
                 {
                     var headBone=rig.Bones[CapturedRig.Head].localToWorldMatrix;float headChar=alive?0:(float)NativeMinionFx.Charred(job.Seed,CapturedRig.Head,job.Death);
@@ -190,14 +212,14 @@ namespace ChipArena.UnityConversion
                 }
                 // hints.ts levels 2 and 3: the grin floats upright over the head joint in the rig group (shown while the body is),
                 // facing the camera, within 25 m of the add's floor + 1 m (horde-view.ts dist); drawn over the seam and halo, as three
-                // sorts the higher sprite nearer a camera looking down.
-                if(level>=2)
+                // sorts the higher sprite nearer a camera looking down. Left out until its bake is ready (HordeGrinReady).
+                if(level>=2&&grin)
                 {
                     var rootT=rig.Root.transform;Vector3 feet=rootT.position;feet.y=job.Ground+1;
                     if(NativeMinionHint.GlyphShown(level,Vector3.Distance(feet,eye)))
                     {
                         Vector3 c=rootT.TransformPoint(rootT.InverseTransformPoint(rig.Bones[CapturedRig.Head].position)+new Vector3(0,(float)NativeMinionHint.GlyphLift(t),0));
-                        HordeGrin(draw.Effects,c,right,up,(float)NativeMinionHint.GlyphOpacity(level,t),quality>=.5f,Vector3.Distance(c,eye)*perMetre);
+                        HordeGrin(camera,c,(float)NativeMinionHint.GlyphOpacity(level,t));
                     }
                 }
             }
