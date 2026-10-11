@@ -3,6 +3,7 @@ import argparse
 from contextlib import contextmanager
 from datetime import datetime, timezone
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -13,11 +14,14 @@ import subprocess
 import sys
 import uuid
 
+import native_publish
+
 REPOSITORY = 'https://github.com/sheldon37/Chip-Arena.git'
 BRANCH = 'codex/unity-cloud-current'
 PROJECT = Path('unity/ChipArenaConversion')
 VERSION = '6000.3.24f1'
 PLAYER_ZIP = 'Chip-Arena-Windows.zip'
+GIT_EXECUTABLE = None
 # Reuse the source project's complete feed/archive/identity validators. This code
 # executes only in the local owner's build environment, never in credentialed CI.
 VALIDATE = '''import json,sys
@@ -34,7 +38,44 @@ print(json.dumps(m['build']))
 
 
 def run(args, **kwargs):
-    return subprocess.run([str(a) for a in args], check=True, **kwargs)
+    command = [str(a) for a in args]
+    if command[0] == 'git' and GIT_EXECUTABLE:
+        command[0] = GIT_EXECUTABLE
+    return subprocess.run(command, check=True, **kwargs)
+
+
+def git_candidates():
+    found = shutil.which('git')
+    if os.name == 'nt':
+        roots = []
+        if found:
+            roots.append(Path(found).parent.parent)
+        for variable, suffix in (('ProgramW6432', 'Git'), ('ProgramFiles', 'Git'),
+                                 ('LOCALAPPDATA', 'Programs/Git')):
+            if os.environ.get(variable):
+                roots.append(Path(os.environ[variable]) / suffix)
+        for root in roots:
+            for flavor in ('ucrt64', 'mingw64', 'clangarm64', 'mingw32'):
+                yield root / flavor / 'bin/git.exe'
+    if found:
+        yield Path(found)
+
+
+def select_git(candidates=None):
+    # cmd/git.exe can silently return zero without invoking Git on the owner's
+    # laptop. Prefer the supported real binary and require actual version text.
+    for path in dict.fromkeys(git_candidates() if candidates is None else candidates):
+        if not Path(path).is_file():
+            continue
+        try:
+            result = subprocess.run([str(path), '--version'], capture_output=True,
+                                    text=True, timeout=15)
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        if result.returncode == 0 and re.match(r'^git version \d+\.', result.stdout):
+            print('Using ' + result.stdout.strip() + ': ' + str(path), flush=True)
+            return str(path)
+    raise ValueError('No working Git executable was found. Install or repair Git for Windows, then reopen the builder.')
 
 
 def git(repo, *args):
@@ -181,7 +222,7 @@ def check_saved(root, record):
     return project
 
 
-def build(root, rebuild=False):
+def build(root, rebuild=False, publish_after=False):
     attempt = {'id': uuid.uuid4().hex, 'status': 'started', 'at': datetime.now(timezone.utc).isoformat()}
     save(root / 'last-attempt.json', attempt)
     try:
@@ -203,8 +244,9 @@ def build(root, rebuild=False):
         attempt['status'] = 'success'
         save(root / 'last-attempt.json', attempt)
         print('Ready: ' + str(project / 'Builds' / PLAYER_ZIP))
-        print('Test the game, then use Publish-Native.cmd to send it to the Update button.')
-        reveal(project)
+        if not publish_after:
+            print('Use Publish-Native.cmd to send this build to the Update button.')
+            reveal(project)
         return project
     except BaseException:
         attempt['status'] = 'failed'
@@ -229,30 +271,40 @@ def publish(root, status=False):
         raise ValueError('The latest build attempt did not succeed. Run Build-Windows.cmd successfully before publishing.')
     project = check_saved(root, record)
     print('Selected successful source: ' + record['sourceCommit'], flush=True)
-    args = [sys.executable, project / 'tools/publish_native_update.py', '--feed', project / 'Builds/NativeUpdateFeed',
-            '--build-log', project / 'Builds/build.log']
+    spec = importlib.util.spec_from_file_location('chip_native_validator', project / 'tools/publish_native_update.py')
+    validator = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(validator)
+    feed = project / 'Builds/NativeUpdateFeed'
+    local = validator.read_manifest((feed / 'latest.json').read_bytes())
     if status:
-        args += ['--status']
+        validator.show_status(local, validator.remote_manifest())
+        return
+    channel = root / 'Cache/native-publisher-v2.git'
+    plain_path(channel)
+    result = native_publish.publish(feed, channel, local, validator, run)
+    save(root / 'last-publication.json', dict(result, selectedSourceCommit=record['sourceCommit']))
+
+
+def perform(root, action, rebuild=False):
+    if action in ('build', 'build-publish'):
+        build(root, rebuild, publish_after=action == 'build-publish')
+        if action == 'build-publish':
+            print('Build checks passed. Publishing to the existing test Update channel...', flush=True)
+            publish(root)
     else:
-        # Reuse one publisher checkout across builds; preserve its normal clean-tree,
-        # fast-forward, manifest, hash and explicit confirmation requirements.
-        args += ['--channel-checkout', root / 'Cache/native-channel', '--publish', '--confirm']
-    run(args)
+        publish(root, action == 'status')
 
 
 def main():
+    global GIT_EXECUTABLE
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=('build', 'publish', 'status'))
+    parser.add_argument('action', choices=('build', 'build-publish', 'publish', 'status'))
     parser.add_argument('--rebuild', action='store_true', help='Rebuild even when the shared source has not changed')
     args = parser.parse_args()
-    if not shutil.which('git'):
-        raise ValueError('Install Git for Windows, then reopen the builder. Git handles GitHub sign-in when needed.')
+    GIT_EXECUTABLE = select_git()
     root = Path(__file__).absolute().parent
     with locked(root):
-        if args.action == 'build':
-            build(root, args.rebuild)
-        else:
-            publish(root, args.action == 'status')
+        perform(root, args.action, args.rebuild)
 
 
 if __name__ == '__main__':
@@ -260,5 +312,8 @@ if __name__ == '__main__':
         main()
     except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as error:
         print('Builder stopped: ' + str(error), file=sys.stderr)
-        print('Previous source folders and successful builds were kept. No update was published by the build command.', file=sys.stderr)
+        print('Source folders and successful builds were kept. If only uploading failed, rerun Publish-Native.cmd to retry without rebuilding.', file=sys.stderr)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        print('Stopped. Previous builds were kept. Rerun the same command to continue.', file=sys.stderr)
         sys.exit(1)

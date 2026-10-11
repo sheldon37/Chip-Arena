@@ -1,5 +1,13 @@
 # Chip Arena — current state
 
+2026-10-11 local release: source `beaacc7`, native `94469f03347c`, published at
+channel `20b03b8`; public archive/parts verified and owner confirms in-game update.
+Combined local builder v2 is implemented on `codex/unity-builder-combined-20261011`,
+stacked on builder PR #107. One command fetches/builds/publishes with Git executable,
+identity, retry and buffered-upload fixes. 82 Python checks pass, two Windows-only
+checks skipped; combined Windows/Unity execution remains the owner runtime check.
+See DEV_LOG for scope, delivery and exact verification. Shared game code unchanged.
+
 2026-10-10 current verified native release: **UBA #23 / 4c568429**, source `efb4fa4017e68b12dbfda2db166e52f397913539`, published through Update; public downloads verified at 18:15 UTC (receipt commit `7db75dd61f5ce2e5feefba25800644ecb4c62c91`). Includes the Siren music-clock repair; Windows listening acceptance remains unrun. This task branch restores the Siren victim animation and PvE holographic regeneration; native CI, the Unity build and publication are pending. See DEV_LOG and the task PR for the release receipt.
 
 2026-10-09 14:52 EDT current native release: **UBA #8 / 80b8edb9**, source `603ca76b69b2256d58b24abc4ac23166306e1fd4` (account PR #81 + test-isolation #83). Published through Update and all public downloads verified; receipt `b4462d36e4cc63625a48487b9ad6eb5a1de5184f`, publisher run `37974643037` attempt 2. Native CI, real Unity 6000.3.24f1 / Linear and delivery gates passed. Account service configured automatically, old blank URLs migrated once, URL field hidden. All account APIs, profile fields, signed grants and existing records retained. Sheldon already has DEV and the supplied credential matches; Windows sign-in/save/reload remains the owner's runtime check. See UNITY-LOGIC-HANDOFF and DEV_LOG.

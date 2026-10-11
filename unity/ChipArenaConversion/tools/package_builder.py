@@ -5,7 +5,8 @@ import sys
 import zipfile
 
 PROJECT = Path(__file__).resolve().parents[1]
-FILES = ('Build-Windows.cmd', 'Publish-Native.cmd', 'Run-Builder.cmd', 'builder.py', 'READ-ME.txt')
+FILES = ('Build-and-Publish.cmd', 'Build-Windows.cmd', 'Publish-Native.cmd',
+         'Check-Update-Status.cmd', 'Run-Builder.cmd', 'builder.py', 'native_publish.py', 'READ-ME.txt')
 
 
 def package(destination):

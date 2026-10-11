@@ -1,5 +1,38 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Astra — Combined local builder and recoverable publication
+- Owner confirmed installing native build `94469f03347c` from source `beaacc7`.
+  Manual recovery published channel commit `20b03b8777f14b8e4362c2ee831517269f16e6e7`;
+  public manifest, all three part hashes, complete archive hash/CRC/inventory and
+  embedded identity were verified. The original failures were missing Git author
+  identity, a silent Windows Git cmd wrapper, renamed dirty channel checkouts and
+  HTTP 408 on a chunked 91.6 MiB push. Direct ucrt64 Git plus buffered HTTP/1.1 worked.
+- Owner requested one replacement kit that fetches, builds and publishes. Branch
+  `codex/unity-builder-combined-20261011` is stacked on PR #107 / `d64126c` (the
+  standalone builder); fetched game source still comes from current cloud head.
+- `Build-and-Publish.cmd` runs the existing exact-source build/validation gates,
+  then uploads automatically. Build-only, publish-only and one-click status remain.
+  Failed fetch/build blocks stale publication; failed upload preserves last-success
+  for a no-rebuild retry. Already-published source returns successful no-op.
+- Git selection tests real version output and prefers ucrt64/mingw64 executables.
+  A separate bare partial cache creates only native update tree entries with an
+  explicit automated commit identity. Old working checkouts/backups are untouched.
+  All unrelated trees and old native objects are retained. HTTP/1.1 buffered push
+  is operation-scoped, normal fast-forward only; the remote is verified even after
+  a lost acknowledgement. Public-feed lag is distinguished from verified readiness.
+- Validation: 84 Python tests, 82 passed / two Windows-only skips. Real local Git
+  remotes exercise success, promised binary objects, missing identity, preserved
+  unrelated modes/Unicode paths, duplicate/old/corrupt builds, failed/retried push,
+  lost acknowledgement and competing publishers. Real public channel read-only
+  fetch/manifest passed; partial cache occupied 32,919 bytes. Source package check
+  passed with 1064 files. No gameplay/visual/network protocol changes or new game
+  build/feed write in this tooling task. Actual combined Unity/Windows execution
+  remains unrun here; existing owner-tested compilation entrypoint is retained.
+- Delivery: eight-file v2 builder ZIP, install over the existing builder helper
+  files while preserving Work/Cache/last-*.json. No PUBLISH phrase in the explicitly
+  requested combined flow. The kit works immediately with existing shared source;
+  task-branch integration is separate. No automatic cloud game build requested.
+
 ## 2026-10-11 — Astra — Fetch the shared source before local laptop/desktop builds
 - Owner wants the builder to fetch Claude/Astra changes without downloading a new
   source ZIP each time. Continued PR #107 / `codex/unity-laptop-build-kit-20261011`
