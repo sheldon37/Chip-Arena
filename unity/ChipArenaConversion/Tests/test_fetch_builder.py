@@ -71,6 +71,65 @@ class FetchBuilderTests(unittest.TestCase):
         with builder.locked(self.root), patch.object(builder, 'build_project', side_effect=self.compile):
             return builder.build(self.root, rebuild)
 
+    def add_installer(self):
+        # A real subprocess fixture checks argv, working directory and pre-build order.
+        (self.source / 'tools/install_local_assets.py').write_text(
+            "from pathlib import Path\nimport sys\n"
+            "p=Path(sys.argv[1]); assert p.is_absolute()\n"
+            "Path('Assets/installed.txt').write_text(p.name)\n")
+        self.advance()
+
+    def test_local_inputs_invalidate_reuse_and_install_before_compiling(self):
+        self.add_installer()
+        fallback = self.build()
+        archive = self.root / 'LocalAssets.zip'
+        archive.write_bytes(b'synthetic fixture zip input')
+        original_compile = self.compile
+        def compile_with_assets(project, unity):
+            self.assertEqual((project / 'Assets/installed.txt').read_text(), 'LocalAssets.zip')
+            return original_compile(project, unity)
+        with patch.object(builder, 'build_project', side_effect=compile_with_assets):
+            first = builder.build(self.root)
+        self.assertNotEqual(first, fallback)
+        self.assertEqual(self.build(), first)
+        archive.write_bytes(b'changed synthetic input')
+        self.assertNotEqual(self.build(), first)
+        folder = self.root / 'LocalAssets'
+        folder.mkdir()
+        sound = folder / 'synthetic.txt'
+        sound.write_text('one')
+        folder_build = self.build()
+        self.assertEqual((folder_build / 'Assets/installed.txt').read_text(), 'LocalAssets')
+        archive.write_bytes(b'ignored because folder wins')
+        self.assertEqual(self.build(), folder_build)
+        sound.write_text('two')
+        self.assertNotEqual(self.build(), folder_build)
+        shutil.rmtree(folder)
+        archive.unlink()
+        clean = self.build()
+        self.assertFalse((clean / 'Assets/installed.txt').exists())
+        self.assertIsNone(builder.previous(self.root)['localAssetsSha256'])
+
+    def test_missing_installer_and_failed_installer_block_build_and_publication(self):
+        self.build()
+        (self.root / 'LocalAssets').mkdir()
+        with self.assertRaisesRegex(ValueError, 'sound-system commit'):
+            self.build()
+        self.assertEqual(len(self.builds), 1)
+        with self.assertRaisesRegex(ValueError, 'latest build attempt'):
+            builder.publish(self.root)
+        (self.source / 'tools/install_local_assets.py').write_text(
+            "import sys; sys.stderr.write('synthetic installer failure'); sys.exit(9)")
+        self.advance()
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.build()
+        self.assertEqual(len(self.builds), 1)
+        report = (self.root / 'Latest-Build-Error.txt').read_text()
+        self.assertIn('Install optional local assets', report)
+        self.assertIn('synthetic installer failure', report)
+        with self.assertRaisesRegex(ValueError, 'latest build attempt'):
+            builder.publish(self.root)
+
     def test_fetches_new_shared_commit_and_preserves_prior_source_edits_and_build(self):
         first = self.build()
         first_manifest = (first / 'Builds/NativeUpdateFeed/latest.json').read_bytes()

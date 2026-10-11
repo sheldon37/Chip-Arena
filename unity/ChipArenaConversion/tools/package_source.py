@@ -10,7 +10,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 TOP = {'Assets', 'Packages', 'ProjectSettings', 'Tests', 'tools', 'Relay', 'Updater', 'Builder'}
 FILES = {'README.md', 'CONVERSION-STATUS.md', 'VALIDATION.md', 'ICON.md', 'ANIMATIONS.md', 'Build-Windows.cmd', 'Publish-Native.cmd', '.gitignore'}
-SKIP = {'bin', 'obj', '__pycache__', 'LocalAssets', 'Library', 'Temp', 'Logs', 'Builds', 'UserSettings'}
+SKIP = {'bin', 'obj', '__pycache__', 'LocalAssets', 'LocalAssets.zip', 'Library', 'Temp', 'Logs', 'Builds', 'UserSettings'}
 
 
 def validate_dependencies(dependencies, catalog):
@@ -30,7 +30,7 @@ def selected():
         rel = path.relative_to(ROOT)
         if rel.parts[0] == 'Builder' and (any(part in {'Cache', 'Work'} for part in rel.parts) or path.suffix in {'.lock', '.tmp'} or path.name.startswith('last-')):
             continue
-        if any(part in SKIP for part in rel.parts) or path.name == 'LocalAssets.meta':
+        if any(part in SKIP for part in rel.parts) or path.name in {'LocalAssets.meta', 'LocalAssets.zip.meta'}:
             continue
         if rel.parts[0] in TOP or rel.as_posix() in FILES:
             yield path, rel

@@ -23,3 +23,9 @@ __pycache__/
 /Builder/builder.lock
 /Builder/last-*.json
 /Builder/*.tmp
+
+# Optional licensed inputs beside standalone builders.
+LocalAssets/
+LocalAssets.zip
+LocalAssets.meta
+LocalAssets.zip.meta
