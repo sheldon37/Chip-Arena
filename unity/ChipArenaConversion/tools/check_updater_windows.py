@@ -98,7 +98,8 @@ def run():
             launched = subprocess.run([str(root / launcher_name)], cwd=base, env=environment, timeout=20)
             assert launched.returncode == 0
             wait_for(work / 'normal-start.txt')
-            assert Path((work / 'normal-start.txt').read_text()) == app
+            # .NET may expand the runner's DOS 8.3 temp path; compare directory identity.
+            assert os.path.samefile((work / 'normal-start.txt').read_text(), app)
             print('PASS Windows normal launch from another working directory: ' + launcher_name)
             new = base / (launcher_name + (' new-bad' if fails else ' new-good'))
             if fails:
