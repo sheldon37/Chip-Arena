@@ -1,5 +1,34 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Astra — Fetch the shared source before local laptop/desktop builds
+- Owner wants the builder to fetch Claude/Astra changes without downloading a new
+  source ZIP each time. Continued PR #107 / `codex/unity-laptop-build-kit-20261011`
+  from its `4e0905b` tree (shared game base `97783cb`). No overlapping builder PR.
+- New small `Chip-Arena-Builder.zip` has double-click Build-Windows and Publish-Native
+  commands, Python helper and setup instructions. Git fetches the fixed shared
+  branch `codex/unity-cloud-current` into an owned shallow cache; a sparse detached
+  version folder supplies the Unity project. Each changed source gets its own
+  output/import directory. No existing checkout, local edit or old build is reset.
+  Identical source reuses the validated prior build; `--rebuild` forces compilation.
+- Uses the pinned Unity 6000.3.24f1 build entrypoint and existing complete feed/log/
+  ZIP/player-identity validators. Only a successful validated build atomically
+  advances last-success. Failed/offline/interrupted attempts block publishing;
+  cross-process locking prevents competing builders. Publish selects the last
+  successful compiled version and retains existing explicit confirmation, scoped
+  test channel, hashes, downgrade prevention and public-feed checks. No auto-upload.
+- Source package includes Builder; generated caches/workspaces/state are excluded.
+  CI also retains the small standalone builder ZIP and exercises Git fetch/worktrees
+  plus the actual .cmd entrypoint on Windows. GitHub sign-in uses ordinary Git
+  credentials if the source is private. Git/Python/activated Unity are one-time
+  requirements. Full Unity compilation on the owner's laptop remains unrun here.
+- Local verification: 73 tests, 71 passed / two Windows-only skips; source package
+  passed with 1060 files. Real public Git fetch/sparse checkout of `97783cb` and
+  its source-package validation passed. Hosted Windows checks remain the final gate.
+- This distribution can fetch the existing cloud source immediately; unmerged
+  task branches are intentionally excluded. No Unity cloud build, gameplay, visual,
+  feed, credential or provider setting changes are made by this tooling task.
+
+
 ## 2026-10-11 — Astra — Laptop build kit and correct launcher instructions
 - Owner is temporarily building on a laptop and requested the Build-Windows entrypoint.
   Branch `codex/unity-laptop-build-kit-20261011`, cloud base `97783cb` (UBA #38).

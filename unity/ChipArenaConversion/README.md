@@ -2,7 +2,23 @@
 
 This separate Unity/C# project contains the native conversion candidate. The original Electron game and accepted Unity lab are retained. This is the full conversion candidate for the next owner test, with the feature audit in [CONVERSION-STATUS.md](CONVERSION-STATUS.md) and checks actually run in [VALIDATION.md](VALIDATION.md).
 
-## Open or build
+## Fetch and build future updates automatically
+
+Use **Builder/Build-Windows.cmd**, or the small standalone **Chip Arena Builder**
+ZIP. Install Git for Windows, Python 3.8+, the pinned Unity Editor and Windows
+Build Support once. Each click fetches `codex/unity-cloud-current`, compiles it
+locally and opens the output folder. No repeated source ZIP download is needed.
+Use **Builder/Publish-Native.cmd** after testing to publish that successful build.
+
+The builder downloads only the Unity project into separate version folders;
+local edits and old outputs are preserved. If source has not changed it verifies
+and reuses the last build. A failed fetch/build blocks publication until a later
+successful build. `--rebuild` forces compilation. Building a changed version uses
+a fresh Unity import. See **Builder/READ-ME.txt** for setup and disk housekeeping.
+The project-root scripts below remain available for explicitly building an
+existing local source checkout.
+
+## Open or build local source
 
 This source/build kit includes **Build-Windows.cmd** at the project root. It is a
 double-clickable Windows command script; no separate build executable is needed.

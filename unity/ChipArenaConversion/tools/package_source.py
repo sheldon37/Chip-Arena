@@ -8,7 +8,7 @@ import sys
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-TOP = {'Assets', 'Packages', 'ProjectSettings', 'Tests', 'tools', 'Relay', 'Updater'}
+TOP = {'Assets', 'Packages', 'ProjectSettings', 'Tests', 'tools', 'Relay', 'Updater', 'Builder'}
 FILES = {'README.md', 'CONVERSION-STATUS.md', 'VALIDATION.md', 'ICON.md', 'ANIMATIONS.md', 'Build-Windows.cmd', 'Publish-Native.cmd', '.gitignore'}
 SKIP = {'bin', 'obj', '__pycache__', 'LocalAssets', 'Library', 'Temp', 'Logs', 'Builds', 'UserSettings'}
 
@@ -28,6 +28,8 @@ def selected():
         if not path.is_file():
             continue
         rel = path.relative_to(ROOT)
+        if rel.parts[0] == 'Builder' and (any(part in {'Cache', 'Work'} for part in rel.parts) or path.suffix in {'.lock', '.tmp'} or path.name.startswith('last-')):
+            continue
         if any(part in SKIP for part in rel.parts) or path.name == 'LocalAssets.meta':
             continue
         if rel.parts[0] in TOP or rel.as_posix() in FILES:

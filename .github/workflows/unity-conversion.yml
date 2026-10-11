@@ -28,6 +28,7 @@ jobs:
         run: |
           python3 -m unittest discover -s unity/ChipArenaConversion/Tests -p 'test_*.py'
           python3 unity/ChipArenaConversion/tools/package_source.py
+          python3 unity/ChipArenaConversion/tools/package_builder.py
       - name: Native updater transactions and archive validation
         run: dotnet run --project unity/ChipArenaConversion/Updater/Tests/UpdaterTests.csproj -c Release
       - name: Retain private conversion source
@@ -37,6 +38,15 @@ jobs:
           path: |
             unity/ChipArenaConversion/Builds/Chip-Arena-Native-Conversion-Source.zip
             unity/ChipArenaConversion/Builds/Chip-Arena-Native-Conversion-Source.zip.sha256
+          if-no-files-found: error
+          retention-days: 30
+      - name: Retain the fetching builder
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: Chip-Arena-Builder
+          path: |
+            unity/ChipArenaConversion/Builds/Chip-Arena-Builder.zip
+            unity/ChipArenaConversion/Builds/Chip-Arena-Builder.zip.sha256
           if-no-files-found: error
           retention-days: 30
   native-updater-windows:
@@ -56,5 +66,7 @@ jobs:
         run: python -m unittest discover -s unity/ChipArenaConversion/Tests -p 'test_native_updater.py'
       - name: Cloud build delivery packaging on Windows
         run: python -m unittest discover -s unity/ChipArenaConversion/Tests -p 'test_cloud_build.py'
+      - name: Fetching builder and Windows command entrypoints
+        run: python -m unittest discover -s unity/ChipArenaConversion/Tests -p 'test_fetch_builder.py'
       - name: Compile shipping launcher and exercise real Windows processes
         run: python unity/ChipArenaConversion/tools/check_updater_windows.py
