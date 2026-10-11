@@ -1,5 +1,52 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Claude — Brickfall presentation: backdrop, atmosphere and destruction effects kit
+- Branch `claude/sleepy-ritchie-g8ruhv` (PR #62). Merged two branches, both from `ce3c506`, each built, reviewed and fixed:
+  - `claude/brickfall-scenery` `4aff19d`;
+  - `claude/brickfall-destruction-fx` `30d498c`.
+  - Integration commit `e3222f0` shares the 120 dust-billboard cap between the two kits.
+  - Presentation only: no sim, network, save or Astra-owned file changed.
+- Backdrop (dormant unless the map id is "brickfall"):
+  - Built once from fixed rules into 5 static sector meshes (`Core/NativeSceneryBuilder.cs`, `NativeBrickfallScenery.cs`). Everything is beyond x ±34 / z ±30, on layer 28 (not the proposal's layer 0, so arena point lights skip it), with no colliders or shadows.
+  - Contents:
+    - a near ring of 1920s walk-ups with window grids, cornices, fire escapes and water towers;
+    - six half-demolished blocks with slab edges, rebar and wallpaper;
+    - a far row and a skyline with a warm rim;
+    - a brick viaduct with a train every 45 s;
+    - two 45 m cranes with blinking aviation lights;
+    - the MERCER PLAZA billboard; birds; two smoke columns.
+  - Every motion follows match time, so host, guests and the killcam agree. It is also drawn behind the menu.
+- Atmosphere (`NativeBrickfallAtmosphere.cs`, `NativeBrickfallFx.cs`):
+  - sun shafts, dust motes, paper scraps kept out of solid cover, flapping tarps;
+  - 14 pigeons that scatter from explosions within 18 m and return after 25 s;
+  - collapse dust drifting east, thinned near the camera;
+  - an `_ArenaDustCoat` shader value (0–1) that the block shader can read.
+  - Scales with reduced effects; a new `LowGraphics` flag (graphics=performance) halves counts and drops the shafts. At most 9 draws; no allocations per frame.
+  - `ArenaPresentation.BrickfallStructure(...)` is ready for the structure events.
+- Destruction kit (`NativeStructureFx`):
+  - **Visible on today's maps:** Break events now play material bursts (masonry, concrete/stone, timber/wood, metal with a clank flash, glass with glints) instead of the generic 18-spark burst. Gibs settle on the floor they died on (a kill-effect floor raycast, §5.5).
+  - API for StressFrame / Fall / Land:
+    - the stress telegraph is never reduced: red crush footprint, grit columns, crack trickles, window/lamp strobe and sag values for the block shader;
+    - fall streamers and snapping cables, at the physical ≤6.9 m/s² for pancakes;
+    - the landing dust wall: 24–40 billboards growing 4→14 m in 1.6 s, opacity .5 / .2 / 0 at 1.5 / 3 / 7 s, at most 120 map-wide;
+    - a shock skirt, 40–120 debris voxels fading from fresh to dusty over 10 s, smoke wisps for 15 s;
+    - a 256-slot decal ring (scorch only from real explosions) that survives the killcam;
+    - camera shake by distance (≤25 m, ≤.3 m, only when camera shake is on).
+  - Deterministic from hash(mapId, segment, round index).
+  - Hook lines for Astra's `EventKind.Structure*` are marked and commented out in `Runtime/NativeStructureFxPresentation.cs` and `NativeStructureAudio.cs`.
+  - Audio: 11 deterministic procedural WAV stand-ins (724 KB) in `Resources/StructureAudio`, made by `tools/synth_structure_audio.py` with asset-lock receipts. They sit outside the 83-clip source-audio gate, under a 6-voice rubble cap that skips layers rather than whole cues. They can be replaced with real recordings later.
+  - Dev preview: Sandbox rows (developer accounts, offline) play a stand-in hotel quadrant collapse at the aim point.
+- Renders: offline emulation only. They are under Claude's scratchpad (`renders-brickfall-scenery`, `renders-brickfall-destruction`) and not committed.
+- Checks on merged head `e3222f0`: `unity-check.sh` runtime+editor build OK; Python tests OK (1 skipped); `package_source.py` passed; `check_relay.py` 291 PASS, 35 managed-core checks; `git diff --check 6235a82 HEAD` clean.
+- Not run: Unity Editor, a Windows build, real PhysX raycasts, audio playback, a playtest.
+- Owner acceptance:
+  - breaking blocks on a current map (new material bursts) and gibs on raised floors;
+  - the dev Sandbox collapse preview.
+- Pending:
+  - Brickfall lighting (`claude/brickfall-lighting` `3c2ff7e`, review approved, two minor follow-ups) and the block renderer: in progress.
+  - Wiring the structure events once Astra's grey-box and segment system land.
+- Release: pushed to PR #62 and fast-forwarded to `codex/unity-cloud-current`. Publication waits on native CI and UBA for that exact head.
+
 ## 2026-10-11 — Claude — Chip selection close-up + Holo Scan hover; impact area disc removed (owner requests)
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62). Merged two branches, both presentation only:
   - `claude/draft-closeup` `3becf46` (base `40009f1`; framing builder, three hover prototypes plus a fourth spec, a judge, hover builder, two review lenses, fix);
