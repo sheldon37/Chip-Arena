@@ -1,14 +1,14 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Rendering;
 using U=ChipArena.UnityConversion.NativeUi;
 namespace ChipArena.UnityConversion
 {
     // The local pilot's damage screen (rules: Core/NativeDamageScreen.cs; shader: Resources/NativeDamageScreen.shader).
     // Once per frame, after the live view is placed (ConversionGame.LateUpdate -> DamageScreen), the authoritative events
     // aimed at the local pilot feed the rules, every bloom and arc is re-aimed at its attacker, and NativeDamageScreenPass
-    // runs the one full-screen pass on the last screen camera before the IMGUI HUD (so the HUD, crosshair, hit marker and
-    // numbers stay crisp on top). Visual only: it reads events, HP, pilot and minion positions and the camera.
+    // runs the one full-screen pass as the last screen camera's image effect, before the IMGUI HUD (so the HUD, crosshair,
+    // hit marker and numbers stay crisp on top). Visual only: it reads events, HP, pilot and minion positions and the camera.
     // Shown only in the live local view of the fight (and the result while still alive); hidden and cleared in menus and
     // the pause menu, preview arenas, every killcam replay (the viewer's own too), intros, the draft and chip screens, the
     // Siren reveal and the PvE / Last Laugh cutscenes. While the local pilot is dead it takes no new events and fades out
@@ -120,22 +120,35 @@ namespace ChipArena.UnityConversion
         }
     }
 
-    // The damage screen's full-screen pass. While the rules are active, a command buffer on the last camera that draws to
-    // the screen (the highest enabled depth, as NativeUiBlur picks it: the first-person view-model camera while it is on)
-    // copies the finished 3D frame after image effects (so before NativeUiBlur's AfterEverything copy: panel backdrops show
-    // the tinted frame) and draws it back through NativeDamageScreen.shader. Nothing is attached while inactive or hidden,
-    // so an idle frame costs nothing; the buffer moves when the last camera changes. The 256x256 noise texture is built
-    // once with the material. Globals are written from preallocated arrays: steady frames allocate nothing. Without the
-    // shader nothing is drawn. Release(true) drops everything (ConversionGame.OnDestroy).
+    // The damage screen's full-screen pass. While the rules are active, NativeDamageScreenImage is enabled on the last
+    // camera that draws to the screen (the highest enabled depth, as NativeUiBlur picks it: the first-person view-model
+    // camera while it is on, else the match camera); its OnRenderImage draws that camera's finished image through
+    // NativeDamageScreen.shader with Graphics.Blit, Unity's single-source image effect path, which orients the source
+    // itself on every graphics API. (The first version copied BuiltinRenderTextureType.CameraTarget into a temporary from a
+    // command buffer and blitted it back: on D3D a copy of the back buffer or anti-aliased target lands top-down without a
+    // negative texel height, a known Unity behaviour it leaves as is, so the write-back turned the whole frame upside down
+    // while the effect was up: one candidate for the owner's Windows D3D11 report "camera seems to flip when taking damage";
+    // the other, a knockdown or stagger switching the view mode in ConversionGame.UpdateCamera, is not touched here.) The
+    // view-model camera clears depth only: Unity renders a camera with an enabled image effect into an intermediate target
+    // that starts from what the cameras before it drew, the same composite these cameras already rely on when they render
+    // through their HDR intermediates (the view model over the world), so the source is the whole stacked frame (the shader
+    // clamps it to 0..1, as the old 8-bit copy did). Order: the globals are written here, in LateUpdate, before any camera
+    // renders; the effect runs at the end of that camera's render, before its AfterEverything command buffers
+    // (NativeUiBlur's copy: panel backdrops show the tinted frame) and before OnGUI (the HUD, crosshair, hit marker and
+    // numbers stay crisp on top). The component is added on demand and disabled whenever the effect is inactive or hidden
+    // (Unity then skips it: no camera is forced into an intermediate target and an idle frame costs nothing); it moves when
+    // the last camera changes. The 256x256 noise texture is built once with the material. Globals are written from
+    // preallocated arrays: steady frames allocate nothing. Without the shader nothing is drawn. Release destroys the
+    // components; Release(true) also drops the material and the noise (ConversionGame.OnDestroy).
     public static class NativeDamageScreenPass
     {
-        private const CameraEvent At=CameraEvent.AfterImageEffects;
-        private static CommandBuffer buffer;private static Camera attached;private static Material material;private static Texture2D noise;private static bool missing;
+        private static NativeDamageScreenImage image;private static Camera attached;private static Material material;private static Texture2D noise;private static bool missing;
+        private static readonly List<NativeDamageScreenImage> added=new List<NativeDamageScreenImage>();
         private static Camera[] cameras=new Camera[8];
         private static readonly Vector4[] a=new Vector4[NativeDamageScreen.Slots],b=new Vector4[NativeDamageScreen.Slots],arcA=new Vector4[NativeDamageScreen.Arcs],arcB=new Vector4[NativeDamageScreen.Arcs],arcC=new Vector4[NativeDamageScreen.Arcs];
         private static readonly int idA=Shader.PropertyToID("_DmgA"),idB=Shader.PropertyToID("_DmgB"),idG=Shader.PropertyToID("_DmgG"),idL=Shader.PropertyToID("_DmgL"),idE=Shader.PropertyToID("_DmgE"),
             idK=Shader.PropertyToID("_DmgK"),idView=Shader.PropertyToID("_DmgView"),idArcA=Shader.PropertyToID("_DmgArcA"),idArcB=Shader.PropertyToID("_DmgArcB"),idArcC=Shader.PropertyToID("_DmgArcC"),
-            idRing=Shader.PropertyToID("_DmgRing"),idFx=Shader.PropertyToID("_DmgFx"),idCopy=Shader.PropertyToID("_NativeDamageCopy"),idNoise=Shader.PropertyToID("_DmgNoise");
+            idRing=Shader.PropertyToID("_DmgRing"),idFx=Shader.PropertyToID("_DmgFx"),idNoise=Shader.PropertyToID("_DmgNoise");
         // aspect: width / height; height: screen pixels; firstPerson: the guard and the ring follow the view (third person: a
         // guard .06 lower and 1.18x taller, the ring .19 H instead of .145 H); intensity: Subtle .6.
         public static void Frame(NativeDamageScreen s,bool active,float aspect=1,float height=1080,bool firstPerson=true,float intensity=1,bool reduced=false)
@@ -150,13 +163,8 @@ namespace ChipArena.UnityConversion
                 noise.LoadRawTextureData(NativeDamageScreen.NoiseTexels());noise.Apply(false,true);material.SetTexture(idNoise,noise);
             }
             var camera=LastScreenCamera();if(camera==null){Detach();return;}
-            if(buffer==null)
-            {
-                buffer=new CommandBuffer{name="NativeDamageScreen"};
-                buffer.GetTemporaryRT(idCopy,-1,-1,0,FilterMode.Bilinear,RenderTextureFormat.Default,RenderTextureReadWrite.Default);
-                buffer.Blit(BuiltinRenderTextureType.CameraTarget,idCopy);buffer.Blit(idCopy,BuiltinRenderTextureType.CameraTarget,material);buffer.ReleaseTemporaryRT(idCopy);
-            }
-            if(attached!=camera){Detach();camera.AddCommandBuffer(At,buffer);attached=camera;}
+            if(attached!=camera||image==null){Detach();image=Image(camera);attached=camera;}
+            if(!image.enabled)image.enabled=true;
             for(int i=0;i<NativeDamageScreen.Slots;i++){int o=i*4;a[i]=new Vector4(s.A[o],s.A[o+1],s.A[o+2],s.A[o+3]);b[i]=new Vector4(s.B[o],s.B[o+1],s.B[o+2],s.B[o+3]);}
             for(int i=0;i<NativeDamageScreen.Arcs;i++){int o=i*4;arcA[i]=new Vector4(s.ArcA[o],s.ArcA[o+1],s.ArcA[o+2],s.ArcA[o+3]);arcB[i]=new Vector4(s.ArcB[o],s.ArcB[o+1],s.ArcB[o+2],s.ArcB[o+3]);arcC[i]=new Vector4(s.ArcC[o],s.ArcC[o+1],s.ArcC[o+2],s.ArcC[o+3]);}
             Shader.SetGlobalVectorArray(idA,a);Shader.SetGlobalVectorArray(idB,b);Shader.SetGlobalVectorArray(idArcA,arcA);Shader.SetGlobalVectorArray(idArcB,arcB);Shader.SetGlobalVectorArray(idArcC,arcC);
@@ -174,11 +182,19 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<n;i++){var c=cameras[i];cameras[i]=null;if(c==null||c.targetTexture!=null||!c.isActiveAndEnabled)continue;if(best==null||c.depth>=best.depth)best=c;}
             return best;
         }
+        // The camera's image effect: the one already on it, or a new one (remembered for Release; destroyed cameras' entries
+        // are pruned first). AddComponent leaves it enabled.
+        private static NativeDamageScreenImage Image(Camera camera)
+        {
+            var c=camera.GetComponent<NativeDamageScreenImage>();
+            if(c==null){for(int i=added.Count-1;i>=0;i--)if(added[i]==null)added.RemoveAt(i);c=camera.gameObject.AddComponent<NativeDamageScreenImage>();added.Add(c);}
+            c.Material=material;return c;
+        }
         private static void Drop(UnityEngine.Object o){if(o==null)return;if(Application.isPlaying)UnityEngine.Object.Destroy(o);else UnityEngine.Object.DestroyImmediate(o);}
-        private static void Detach(){if(attached!=null&&buffer!=null)attached.RemoveCommandBuffer(At,buffer);attached=null;}
+        private static void Detach(){if(image!=null)image.enabled=false;image=null;attached=null;}
         public static void Release(bool all)
         {
-            Detach();if(buffer!=null){buffer.Release();buffer=null;}
+            Detach();for(int i=0;i<added.Count;i++)Drop(added[i]);added.Clear();
             if(all){Drop(material);Drop(noise);material=null;noise=null;missing=false;}
         }
     }
