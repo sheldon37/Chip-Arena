@@ -70,6 +70,8 @@ namespace ChipArena.UnityConversion
                 QueuePiece(new WeaponPiece{Shape=WeaponShape.Sphere,Glow=true,Color=color,Scale=new System.Numerics.Vector3(NativeSpellCharge.OrbScale),Rotation=System.Numerics.Quaternion.Identity},socket,layer,camera);
                 QueuePiece(new WeaponPiece{Shape=WeaponShape.Ring,Glow=true,Color=color,Scale=NativeSpellCharge.HaloScale,Rotation=pose.Halo0},socket,layer,camera);
                 QueuePiece(new WeaponPiece{Shape=WeaponShape.Ring,Glow=true,Color=color,Scale=NativeSpellCharge.HaloScale,Rotation=pose.Halo1},socket,layer,camera);
+                // Converging streaks and shrinking rings round the orb (NativeChargeFx, weapons milestone).
+                ChargeFx(socket,a,color,time,first);
             }
             if(!first)HandMotes(rig,a,time,color);
             if(pilot?.Stats==null||pilot.Seat?.chips==null)return;int n=NativeBodyChips.Build(pilot.Seat.chips,pilot.Stats,bodyChips);if(n==0)return;

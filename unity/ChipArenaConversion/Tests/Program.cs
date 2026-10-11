@@ -54,6 +54,7 @@ internal static class Program
             ArmorLightChecks.Run(root);
             BlockFxChecks.Run(root,data);
             BloomChecks.Run(root);
+            WeaponFxChecks.Run(root,data);
             BrickfallSceneryChecks.Run(root);
             foreach(var result in EventFeedbackChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in EffectsAudioChecks.Run(root))Console.WriteLine("PASS "+result);

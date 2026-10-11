@@ -63,6 +63,9 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<count;i++){var p=buffer[i];NativeWeaponDressing.Animate(ref p,time);where="enchant "+spec+" piece "+i+" t="+time;Piece(p,expected[i]);}
                 flames+=count;
             }
+            // The source flash pinned here stays the reference for when a shot flashes (age 0 to FlashLife); the arena no longer
+            // draws its cone: owner 2026-10-11 effects overhaul (weapons milestone) replaced it with the ETFX-style muzzle star
+            // (Core NativeMuzzleFx, Runtime MuzzleFx), which WeaponFxChecks pins as a Unity-owned look.
             int flashes=0;
             foreach(var f in r.GetProperty("flashes").EnumerateArray())
             {

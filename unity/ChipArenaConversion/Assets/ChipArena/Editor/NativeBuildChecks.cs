@@ -184,6 +184,9 @@ namespace ChipArena.UnityConversion.Editor
             finally{Physics.gravity=gravity;if(active.IsValid()&&active.isLoaded)SceneManager.SetActiveScene(active);}
             // The death presentation's primitives (sky broadcast lines, stars and nameplate; the vent splat's SPLAT!).
             {var shader=Resources.Load<Shader>("NativeDeathFx");if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: NativeDeathFx");}
+            // The weapons milestone's effects (muzzle stars, tracers, impacts, trails, slashes, charge) and roll afterimages
+            // (NativeWeaponFxPresentation.cs).
+            foreach(var name in new[]{"NativeWeaponFx","NativeWeaponGhost"}){var shader=Resources.Load<Shader>(name);if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: "+name);}
             foreach(var name in new[]{"NativeCeilingField","NativePickupGlow"}){var shader=Resources.Load<Shader>(name);if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: "+name);}
             // The match camera's bloom (NativeBloom.cs): its four passes must compile.
             {var shader=Resources.Load<Shader>("NativeBloom");if(shader==null||ShaderUtil.ShaderHasError(shader)||shader.passCount!=4)throw new Exception("Native source shader failed: NativeBloom");}

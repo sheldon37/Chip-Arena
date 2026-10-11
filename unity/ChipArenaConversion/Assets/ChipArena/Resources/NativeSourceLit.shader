@@ -43,11 +43,39 @@ Shader "ChipArena/SourceLit" {
   c=float3(dot(c,float3(1.60475,-0.53108,-0.07367)),dot(c,float3(-0.10208,1.10813,-0.00605)),dot(c,float3(-0.00327,-0.07276,1.07602)));
   return saturate(c);
  }
+ void StageGrade(Input i,inout fixed4 color)
+ {
+  if(ArmorTone(color,i.emission.w,_StageLit))return;
+  if(_StageLit>.5&&!Unlit(i.color.rgb,i.emission.rgb))color.rgb=StageAces(color.rgb);
+ }
+ // The hit flash (weapons effects milestone; Core/NativeHitFlash.cs): a struck pilot's body parts carry a code in the per-
+ // instance accent tint's unused w (1: none, 1 + k: a hit at strength k, 3 + k: a headshot), set by the arena's Queue. After
+ // the grade, so the flash stays HDR for the bloom: the lit colour is pulled toward white decaying through a red damage tint
+ // (headshots brighter and redder), a little more on the silhouette. Every other draw writes w = 1 and is untouched.
+ // ---- HIT FLASH SHARED BEGIN (HLSL and GLSL: float literals only) ----
+ float3 HitFlashColor(float k,float head)
+ {
+  float3 red=head>0.5?float3(1.0,0.16,0.1):float3(1.0,0.42,0.32);
+  float w=smoothstep(0.0,1.0,(k-(head>0.5?0.45:0.2))/(head>0.5?0.55:0.8));
+  return lerp(red,float3(1.0,1.0,1.0),w)*(head>0.5?2.6:1.6);
+ }
+ float HitFlashBlend(float k,float head,float rim)
+ {
+  return min(1.0,k*(head>0.5?0.95:0.82)*(0.82+0.18*rim));
+ }
+ // ---- HIT FLASH SHARED END ----
+ void HitFlash(Input i,inout fixed4 color)
+ {
+  float code=UNITY_ACCESS_INSTANCED_PROP(Props,_AccentTint).w;if(code<1.001)return;
+  float head=code>2.5?1:0;float k=saturate(code-(head>.5?3:1));
+  float rim=1-saturate(abs(dot(normalize(i.viewDir),normalize(i.worldNormal))));
+  color.rgb=lerp(color.rgb,HitFlashColor(k,head),HitFlashBlend(k,head,rim));
+ }
  void StageTone(Input i,SurfaceOutput o,inout fixed4 color)
  {
   #ifndef UNITY_PASS_FORWARDADD
-  if(ArmorTone(color,i.emission.w,_StageLit))return;
-  if(_StageLit>.5&&!Unlit(i.color.rgb,i.emission.rgb))color.rgb=StageAces(color.rgb);
+  StageGrade(i,color);
+  HitFlash(i,color);
   #endif
  }
  // The Siren ink (InkMaterial): a pale fresnel rim pow(1-|N.V|,3) and slow rising streaks, added as emission. surf never
