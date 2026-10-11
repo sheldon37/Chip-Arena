@@ -66,7 +66,10 @@ namespace ChipArena.UnityConversion
         }
         public void Dispose()
         {
-            cancellation.Dispose();StopProcess();process.Dispose();
+            cancellation.Dispose();StopProcess();
+            // Kill is asynchronous on Windows. Reap the child before releasing its executable to the updater.
+            try{process.WaitForExit(2000);}catch(InvalidOperationException){}catch(Win32Exception){}
+            process.Dispose();
             try{Directory.Delete(work,true);}catch(IOException){}catch(UnauthorizedAccessException){}
         }
         // Closing the game (including a crash) closes this job handle and kills only its connector child.

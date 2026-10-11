@@ -15,6 +15,8 @@ internal static class CloudflareChecks
     private static NativeDirectoryEntry Decode(string json)=>JsonSerializer.Deserialize<NativeDirectoryEntry>(json,new JsonSerializerOptions{IncludeFields=true});
     private static async Task Until(Func<bool> predicate)
     {var end=DateTime.UtcNow.AddSeconds(10);while(!predicate()){if(DateTime.UtcNow>end)throw new TimeoutException("Cloudflare transport did not settle");await Task.Delay(10);}}
+    private static async Task<T> LiveStep<T>(string name,Func<Task<T>> action)
+    {Console.WriteLine("Starting "+name);var result=await action();Console.WriteLine("PASS "+name);return result;}
     public static async Task Run()
     {
         Check(NativeRoomDirectory.Key("7km-r4p")=="UN7KMR4P","short codes map into the existing directory contract");
@@ -60,15 +62,15 @@ internal static class CloudflareChecks
     public static async Task Live(string project)
     {
         if(Environment.OSVersion.Platform!=PlatformID.Win32NT)throw new InvalidOperationException("Run the shipping connector check on Windows.");
-        string player=Path.Combine(Path.GetTempPath(),"Chip Arena tunnel fixture "+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(player);
+        string player=Path.Combine(Path.GetTempPath(),"Chip Arena tunnel fixture "+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(player);bool passed=false;
         try
         {
             NativeTunnelBuild.Stage(project,player);string binary=Path.Combine(player,NativeTunnelBinary.RelativePath);NativeTunnelBinary.Verify(binary);
             Console.WriteLine("PASS Windows player stages the hash-verified pinned connector and license");
             using(var stop=new CancellationTokenSource(TimeSpan.FromMinutes(3)))
-            using(var host=await NativeCloudflareHost.Start(binary,Decode,stop.Token))
-            using(var first=await NativeCloudflareHost.Join(host.Room.ToLowerInvariant(),Decode,stop.Token))
-            using(var second=await NativeCloudflareHost.Join(host.Room,Decode,stop.Token))
+            using(var host=await LiveStep("public host registration",()=>NativeCloudflareHost.Start(binary,Decode,stop.Token)))
+            using(var first=await LiveStep("first guest code lookup and connection",()=>NativeCloudflareHost.Join(host.Room.ToLowerInvariant(),Decode,stop.Token)))
+            using(var second=await LiveStep("second guest code lookup and connection",()=>NativeCloudflareHost.Join(host.Room,Decode,stop.Token)))
             {
                 Check(host.Room.Length==6&&host.CodeAvailable,"host publishes a short code after tunnel registration");
                 await Until(()=>host.Accepted.Count==2);Check(host.Accepted.TryDequeue(out var a),"first guest arrives at the host PC");Check(host.Accepted.TryDequeue(out var b),"second guest arrives at the host PC");
@@ -87,12 +89,23 @@ internal static class CloudflareChecks
                     host.Dispose();await Until(()=>second.Closed);Check(host.Closed,"leaving stops the connector and closes remote streams");
                 }
             }
-            Console.WriteLine("PASS public Cloudflare: real six-character lookup, two native clients, collision refusal, ordered traffic, 130 KB snapshot and host/guest cleanup");
+            Console.WriteLine("PASS public Cloudflare: real six-character lookup, two native clients, collision refusal, ordered traffic, 130 KB snapshot and host/guest cleanup");passed=true;
         }
         finally
         {
             // A stopped Windows child can briefly retain its executable while the OS finishes closing it.
-            for(int i=0;i<20;i++){try{Directory.Delete(player,true);break;}catch(IOException){await Task.Delay(100);}}
+            Exception cleanup=null;
+            for(int i=0;i<40;i++)
+            {
+                try{Directory.Delete(player,true);cleanup=null;break;}
+                catch(IOException e){cleanup=e;}catch(UnauthorizedAccessException e){cleanup=e;}
+                await Task.Delay(100);
+            }
+            if(cleanup!=null)
+            {
+                if(passed)throw new IOException("The stopped connector still locks its Windows package.",cleanup);
+                Console.Error.WriteLine("Connector fixture cleanup was delayed: "+cleanup.GetType().Name); // Preserve the original connection error.
+            }
         }
     }
 }
