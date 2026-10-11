@@ -1,5 +1,21 @@
 # Native publishing automation development log
 
+## 2026-10-11 — Astra — Accept the clean Chip Arena player package
+
+- Owner requested one `Chip Arena` folder and `Chip Arena.exe` for distribution.
+  Branch `codex/native-simple-package-validator`, main base `9c7d44f`.
+- Synchronize the publisher's cloud archive validator with the game packager:
+  accept the new single-root seed or the existing flat legacy seed; retain exact
+  inventory, checksum and byte-for-byte native-player gates. No relaxed payload
+  validation, permission/configuration or feed changes. Shared package helper also
+  writes `Chip-Arena-Windows.zip` beside a cloud export for player distribution.
+- Local suite: 74 tests, 73 passed / one platform skip. Hosted Linux/Windows gates
+  required before merge. This backward-compatible bridge must land before the
+  game branch `codex/unity-simple-package-20261011` is promoted to cloud.
+- No game source is merged into main. Existing automatic publication remains the
+  only feed writer; this bridge does not claim a new player is built/published.
+
+
 ## 2026-10-10 — Astra — retain failed Unity diagnostics
 
 - Branch `codex/unity-failed-build-diagnostics`, base `0cdb0058`. Unity #24
