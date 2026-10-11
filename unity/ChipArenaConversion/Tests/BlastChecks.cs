@@ -302,8 +302,10 @@ namespace ChipArena.UnityConversion
         // went to the shell, so every blast spawns as many voxels as the source's with its disc (and the lightning cut). Given the real floor
         // (NativeBlastPresentation raycasts it), a blast up to NearGround above it keeps the source's dome, and a wall, ceiling or
         // airburst blast is a sphere around its point: nothing starts under the floor or sinks into it, pieces land on the real
-        // floor, and nothing carries the source's assumed floor (y - .95). The same holds for field arrivals and the Orbital Mark lock,
-        // and a field high above its floor draws no ground glow in mid-air. Rules, behaviour and source-text scans; returns the count.
+        // floor, and nothing carries the source's assumed floor (y - .95). The same holds for field arrivals and the Orbital Mark lock.
+        // The field ground glow disc is not drawn at all any more (owner 2026-10-11 effects overhaul: "that pancake ring effect is
+        // still there"); Core's GlowShown rule is kept with the disc geometry for the source parity only. Rules, behaviour and
+        // source-text scans; returns the count.
         private static readonly NativeBlastStyle[] Falling={NativeBlastStyle.Fire,NativeBlastStyle.Mine,NativeBlastStyle.Meteor,NativeBlastStyle.Kinetic,NativeBlastStyle.Toxic,NativeBlastStyle.Quake};
         private static int NoAreaDisc(string root,JsonElement json)
         {
@@ -398,19 +400,28 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<150;i++){double t=i*Dt;a.Field(F(null),t,1);b.Field(F(Math.Max(.03,y-.95)),t,1);a.Update(Dt);b.Update(Dt);}
                 C(Same(a,b),fx+" at "+y+" m: no floor is the source's, max(.03, y - .95)");
             }
-            // The field's flat ground glow (NativeFieldRules.GlowShown): drawn as the source on the ground, gone in mid-air.
+            // Core's rule for the field's flat ground glow (NativeFieldRules.GlowShown), kept with the source's disc geometry (FieldChecks);
+            // the presentation no longer draws the disc anywhere (checked below).
             C(NativeFieldRules.GlowShown(.95,0)==1&&NativeFieldRules.GlowShown(.02,0)==1&&NativeFieldRules.GlowShown(NativeBlastSim.NearGround,0)==1&&NativeFieldRules.GlowShown(3,null)==1,"a field on the ground (or with no floor known) draws the source's glow");
             C(NativeFieldRules.GlowShown(3,0)==0&&NativeFieldRules.GlowShown(2.2,0)==0&&NativeFieldRules.GlowShown(5,NativeBlastSim.NoFloor)==0&&NativeFieldRules.GlowShown(2.95,2)==1,"a field on a wall, over a pit or high in the air draws no glow disc; a raised floor counts");
             {double last=1;bool down=true;for(double y=0;y<3;y+=.05){double g=NativeFieldRules.GlowShown(y,0);down&=g<=last+1e-12&&g>=0&&g<=1;last=g;}C(down&&Math.Abs(NativeFieldRules.GlowShown(NativeBlastSim.NearGround+NativeFieldRules.GlowFade/2,0)-.5)<1e-9,"the glow fades out smoothly with height");}
             // Source text: no disc in the sim, the presentation passes the raycast floor to every blast and impact and every field
-            // view, and the fixture exporter applies the same cut.
+            // view, no Runtime file draws the field glow disc (the pancake), the blast pools are drawn through the shared effects
+            // renderer and not as cubes, and the fixture exporter applies the same cut.
             string Text(string file)=>File.ReadAllText(Path.Combine(root,file));
             string blast=Text("Assets/ChipArena/Core/NativeBlastSim.cs"),present=Text("Assets/ChipArena/Runtime/NativeBlastPresentation.cs"),exporter=Text("tools/export_blast_fixtures.mjs"),views=Text("Assets/ChipArena/Runtime/NativeFieldPresentation.cs");
             C(!blast.Contains("Ring(")&&!blast.Contains("if(ground){"),"NativeBlastSim draws no ground disc");
             bool all=true;int calls=0;foreach(var line in present.Split('\n'))if(line.Contains("sim.Blast(")||line.Contains("sim.Impact(")){calls++;all&=line.IndexOf("floor",StringComparison.OrdinalIgnoreCase)>=0;}
             C(calls>=6&&all&&present.Contains("plan[i].Floor=FloorUnder(")&&present.Contains("NativeArena.WorldMask")&&present.Contains("h.normal.y>.5f"),"every blast and impact the presentation draws gets the raycast floor ("+calls+" calls)");
             int fieldViews=0;bool floored=true;foreach(var line in views.Split('\n'))if(line.Contains("new NativeBlastField{")){fieldViews++;floored&=line.Contains("Floor=FloorOf(");}
-            C(fieldViews==2&&floored&&views.Contains("NativeBlastPresentation.FloorUnder(physics,at,floorHits)")&&views.Contains("NativeFieldRules.GlowShown(v.Y,v.Floor)")&&present.Contains("sim.Field(views[i],now,quality);"),"every field view the emitters and glow read carries the raycast floor ("+fieldViews+" views)");
+            C(fieldViews==2&&floored&&views.Contains("NativeBlastPresentation.FloorUnder(physics,at,floorHits)")&&present.Contains("sim.Field(views[i],now,quality);"),"every field view the emitters read carries the raycast floor ("+fieldViews+" views)");
+            // Code without // comments (the comments name what was removed).
+            string Code(string text){var lines=text.Split('\n');for(int i=0;i<lines.Length;i++){int c=lines[i].IndexOf("//",StringComparison.Ordinal);if(c>=0)lines[i]=lines[i].Substring(0,c);}return string.Join("\n",lines);}
+            var discs=new System.Collections.Generic.List<string>();
+            foreach(var file in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Runtime"),"*.cs")){string code=Code(File.ReadAllText(file));if(code.Contains("NativeFieldRules.GlowDisc")||code.Contains("NativeFieldRules.GlowShown")||code.Contains("NativeFieldRules.GlowAlpha")||code.Contains("NativeFieldRules.GlowY"))discs.Add(Path.GetFileName(file));}
+            C(discs.Count==0&&!Code(views).Contains("Native field glow"),"no Runtime file draws the field ground glow disc ("+string.Join(", ",discs)+")");
+            string presentCode=Code(present);
+            C(presentCode.Contains("vfx.Blasts(sim);")&&!presentCode.Contains("CubeCorners")&&!presentCode.Contains("CubeTriangles")&&!presentCode.Contains("\"NativeBlast\"")&&!Code(views).Contains("CubeCorners"),"the blast pools and field cores are drawn through NativeVfxDraw, not as cubes");
             C(blast.Contains("Impact(ax,ay,az,R,pal.Core,q,false,true,pal.Cool,f.Floor)")&&blast.Contains("Impact(ax,ay,az,R,pal.Hot,q*.7,compat,true,pal.Cool,f.Floor)"),"the field arrival and Orbital Mark lock impacts take the view's floor");
             C(exporter.Contains("DISC_CUTS")&&exporter.Contains("disc:'2026-10-11'")&&exporter.Contains("for(let i=0,c=opts.ground?n(14)+n(26):n(20);i<c;i++)"),"the fixture exporter applies the same cut");
             return n;

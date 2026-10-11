@@ -5,8 +5,9 @@ using UnityEngine.Rendering;
 
 namespace ChipArena.UnityConversion
 {
-    // Draws the pure NativeBlastSim (source chip-blasts.ts) in the arena: one dynamic mesh per pool (unlit opaque voxels and
-    // additive glow voxels) refilled from reused buffers each frame, and three pooled point lights. Blasts are keyed to what
+    // Draws the pure NativeBlastSim (source chip-blasts.ts) in the arena through the shared effects renderer (NativeVfxDraw:
+    // each pooled particle as the primitive its role names, each shock front as one fresnel shell; owner 2026-10-11 effects
+    // overhaul, in place of the source's flat cube per voxel), and three pooled point lights. Blasts are keyed to what
     // host and guests both hold: the ability/chip effect list with its Explosion events, ability zones, chip fields, ability
     // shots and the event stream. The event stream also feeds the source's event-vfx.ts draws (NativeImpactCues): voxel
     // spark bursts and lit streaks into the projectile visuals' BurstPool port (Sparks), impacts, lines and paddles here.
@@ -16,15 +17,9 @@ namespace ChipArena.UnityConversion
     // the match.
     public sealed class NativeBlastPresentation : IDisposable
     {
-        private sealed class Layer
-        {
-            public readonly Mesh Mesh=new Mesh{indexFormat=IndexFormat.UInt32};public readonly Material Material;
-            public readonly List<Vector3> Vertices=new List<Vector3>();public readonly List<Color> Colors=new List<Color>();public readonly List<int> Indices=new List<int>();
-            public Layer(string name,Material material){Mesh.name=name;Mesh.MarkDynamic();Material=material;}
-        }
         private struct Marker{public Vector3 Position;public string Tag;public float Reach;}
         private readonly NativeBlastSim sim=new NativeBlastSim();
-        private readonly Layer solid,glow;private readonly GameObject root;private readonly Light[] lights=new Light[NativeBlastSim.LightCapacity];
+        private readonly NativeVfxDraw vfx;private readonly bool ownsVfx;private readonly GameObject root;private readonly Light[] lights=new Light[NativeBlastSim.LightCapacity];
         private HashSet<long> seen=new HashSet<long>(),seenBefore=new HashSet<long>();
         private List<Marker> sites=new List<Marker>(),sitesBefore=new List<Marker>(),shots=new List<Marker>(),shotsBefore=new List<Marker>();
         private List<NativeBlastFrame.SirenSite> sirens=new List<NativeBlastFrame.SirenSite>(),sirensBefore=new List<NativeBlastFrame.SirenSite>();private readonly HashSet<int> sirenSeats=new HashSet<int>();
@@ -40,25 +35,20 @@ namespace ChipArena.UnityConversion
         public bool MaterialBursts;
         private readonly NativeImpactCommand[] plan=new NativeImpactCommand[NativeImpactCues.MaxCommands];
         private readonly NativeSpikeRises spikeRises=new NativeSpikeRises();
-        private static readonly Bounds Everywhere=new Bounds(Vector3.zero,Vector3.one*4000);
         private const float FloorLift=.05f,FloorReach=40;private readonly RaycastHit[] floorHits=new RaycastHit[16];private PhysicsScene physics;private bool world;
         private int generation=-1,lastEvent;private float lastTime=-1;
-        public NativeBlastPresentation(Transform parent)
+        /// <summary>vfx: the shared effects renderer the owner (ArenaPresentation) begins and submits each frame; null makes
+        /// this presentation own one and submit it at the end of its own Render.</summary>
+        public NativeBlastPresentation(Transform parent,NativeVfxDraw vfx=null)
         {
-            var shader=Resources.Load<Shader>("NativeBlast");if(shader==null)throw new InvalidOperationException("NativeBlast shader is missing");
-            var opaque=new Material(shader){name="Native blast voxels",renderQueue=(int)RenderQueue.Geometry};
-            opaque.SetFloat("_Src",(float)BlendMode.One);opaque.SetFloat("_Dst",(float)BlendMode.Zero);opaque.SetFloat("_ZWrite",1);opaque.SetFloat("_Additive",0);
-            // Source renderOrder 3 for the additive pool.
-            var additive=new Material(shader){name="Native blast glow",renderQueue=(int)RenderQueue.Transparent+3};additive.SetOverrideTag("RenderType","Transparent");
-            additive.SetFloat("_Src",(float)BlendMode.SrcAlpha);additive.SetFloat("_Dst",(float)BlendMode.One);additive.SetFloat("_ZWrite",0);additive.SetFloat("_Additive",1);
-            solid=new Layer("Native blast voxels",opaque);glow=new Layer("Native blast glow",additive);
+            ownsVfx=vfx==null;this.vfx=vfx??new NativeVfxDraw();
             root=new GameObject("Native blast light pool");root.transform.SetParent(parent,false);
             for(int i=0;i<lights.Length;i++){var go=new GameObject("Blast flash "+i);go.transform.SetParent(root.transform,false);var light=go.AddComponent<Light>();light.type=LightType.Point;light.shadows=LightShadows.None;light.renderMode=LightRenderMode.ForcePixel;light.cullingMask=~(1<<10|1<<NativeSceneryBuilder.BackdropLayer);light.enabled=false;lights[i]=light;}
         }
         public void Clear()
         {
             sim.Clear();seen.Clear();seenBefore.Clear();spikeRises.Clear();sites.Clear();sitesBefore.Clear();shots.Clear();shotsBefore.Clear();sirens.Clear();sirensBefore.Clear();
-            lastEvent=0;lastTime=-1;solid.Mesh.Clear();glow.Mesh.Clear();foreach(var light in lights)if(light!=null)light.enabled=false;
+            lastEvent=0;lastTime=-1;if(ownsVfx)vfx.Clear();foreach(var light in lights)if(light!=null)light.enabled=false;
         }
         private static long Mix(long h,int v){unchecked{h^=(uint)v;h*=0x100000001b3L;return h;}}
         private static int Bits(float v)=>BitConverter.SingleToInt32Bits(v);
@@ -235,7 +225,8 @@ namespace ChipArena.UnityConversion
             double q=Math.Max(0,Math.Min(1,quality));
             // Source renderer order: event blasts, then fields(state), then update(dt), then draw.
             Remember(arena,fields);Effects(arena,now,q);Impacts(arena,now,q);SpikeRises(arena,q);Fields(fields,q);sim.Update(dt);
-            Fill(solid,sim.Solid,camera);Fill(glow,sim.Glow,camera);
+            // Every particle as its role's primitive and every front as one shell (NativeVfxDraw); no cube per voxel.
+            if(ownsVfx)vfx.Begin();vfx.Blasts(sim);if(ownsVfx)vfx.Submit(camera);
             for(int i=0;i<lights.Length;i++)
             {
                 var f=sim.Flashes[i];var light=lights[i];float intensity=NativeBlastSim.UnityLightIntensity(f.Intensity);light.enabled=intensity>.001f;if(!light.enabled)continue;
@@ -244,25 +235,6 @@ namespace ChipArena.UnityConversion
             // NativeBlockLit has no add pass, so these point lights never reach dressed arena blocks; they take the flashes through its feed.
             NativeArenaDressing.Flashes(sim.Flashes);
         }
-        private static void Fill(Layer layer,NativeBlastPool pool,Camera camera)
-        {
-            var mesh=layer.Mesh;mesh.Clear();int n=pool.Drawn;if(n==0||camera==null)return;
-            var vertices=layer.Vertices;var colors=layer.Colors;var indices=layer.Indices;vertices.Clear();colors.Clear();
-            var o=pool.Output;var corners=NativeBlastSim.CubeCorners;
-            for(int i=0;i<n;i++)
-            {
-                int w=i*NativeBlastPool.Stride;float qx=o[w+6],qy=o[w+7],qz=o[w+8],qw=o[w+9],hx=o[w+3]*.5f,hy=o[w+4]*.5f,hz=o[w+5]*.5f;
-                float xx=qx*qx,yy=qy*qy,zz=qz*qz,xy=qx*qy,xz=qx*qz,yz=qy*qz,wx=qw*qx,wy=qw*qy,wz=qw*qz;
-                var center=new Vector3(o[w],o[w+1],o[w+2]);
-                var right=new Vector3(1-2*(yy+zz),2*(xy+wz),2*(xz-wy))*hx;var up=new Vector3(2*(xy-wz),1-2*(xx+zz),2*(yz+wx))*hy;var forward=new Vector3(2*(xz+wy),2*(yz-wx),1-2*(xx+yy))*hz;
-                var color=new Color(o[w+10],o[w+11],o[w+12],1);
-                for(int c=0;c<8;c++){vertices.Add(center+right*corners[c*3]+up*corners[c*3+1]+forward*corners[c*3+2]);colors.Add(color);}
-            }
-            // Indices only grow; the same 36-index pattern repeats per voxel.
-            var pattern=NativeBlastSim.CubeTriangles;for(int i=indices.Count/pattern.Length;i<n;i++)foreach(int t in pattern)indices.Add(i*8+t);
-            mesh.SetVertices(vertices);mesh.SetColors(colors);mesh.SetTriangles(indices,0,n*pattern.Length,0,false);mesh.bounds=Everywhere;
-            Graphics.DrawMesh(mesh,Matrix4x4.identity,layer.Material,0,camera,0,null,ShadowCastingMode.Off,false);
-        }
-        public void Dispose(){Clear();CapturedAnimation.Release(solid.Mesh);CapturedAnimation.Release(glow.Mesh);CapturedAnimation.Release(solid.Material);CapturedAnimation.Release(glow.Material);CapturedAnimation.Release(root);}
+        public void Dispose(){Clear();if(ownsVfx)vfx.Dispose();CapturedAnimation.Release(root);}
     }
 }

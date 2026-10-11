@@ -48,8 +48,10 @@ internal static class Program
             StageVentChecks.Run(root);MinionFxChecks.Run(root);MinionHintChecks.Run(root);
             SummonCeilingPickupChecks.Run(root,data);
             StructureFxChecks.Run(root);
+            VfxChecks.Run(root);VfxRuntimeChecks.Run(root);
             LobbyPoseChecks.Run(root);FighterMotionChecks.Run(root);LeetMotionChecks.Run();LeetPathChecks.Run(data);GunMotionChecks.Run();AuditorHaloChecks.Run(root);HitReactionChecks.Run(root);PackReactionChecks.Run(root);
             ArmorLightChecks.Run(root);
+            BloomChecks.Run(root);
             BrickfallSceneryChecks.Run(root);
             foreach(var result in EventFeedbackChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in EffectsAudioChecks.Run(root))Console.WriteLine("PASS "+result);

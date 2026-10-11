@@ -20,6 +20,7 @@ namespace ChipArena.UnityConversion
         private bool menu=true;private float yaw,pitch=12,lastW=-1;private bool sprint;
         private string search="",error="";private GUIStyle heading,label,small,button;
         private readonly NativeVisualClock visualClock=new NativeVisualClock();
+        private NativeBloom bloom;
         private double stepMs;private readonly System.Diagnostics.Stopwatch timer=new System.Diagnostics.Stopwatch();
         private string PreferencePath=>Path.Combine(Application.persistentDataPath,"native-preferences-v1.json");
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -41,6 +42,9 @@ namespace ChipArena.UnityConversion
                 previousSimulation=Physics.simulationMode;previousGravity=Physics.gravity;ownsPhysics=true;Physics.simulationMode=SimulationMode.Script;
                 nativeAudio=gameObject.AddComponent<NativeAudio>();presentation=gameObject.AddComponent<ArenaPresentation>();presentation.Initialize(false);presentation.DebrisEnabled=false;Physics.IgnoreLayerCollision(8,11,true);Physics.IgnoreLayerCollision(11,11,true);
                 var cam=new GameObject("Native match camera");cam.transform.SetParent(transform);cameraView=cam.AddComponent<Camera>();cam.AddComponent<AudioListener>();
+                // HDR explicitly (Unity's default, which the additive effects and the damage screen already assume) and the bloom,
+                // added with the camera so it is its first image effect, ahead of the damage screen's (NativeBloom.cs).
+                cameraView.allowHDR=true;bloom=NativeBloom.Attach(cameraView);
                 cameraView.cullingMask=~(1<<10);NativeLighting.Create(transform);
                 var model=new GameObject("First-person view");model.transform.SetParent(cam.transform,false);viewModelCamera=model.AddComponent<Camera>();
                 viewModelCamera.clearFlags=CameraClearFlags.Depth;viewModelCamera.cullingMask=1<<10;viewModelCamera.depth=cameraView.depth+1;viewModelCamera.nearClipPlane=.01f;viewModelCamera.farClipPlane=10;viewModelCamera.enabled=false;presentation.ViewCamera=viewModelCamera;

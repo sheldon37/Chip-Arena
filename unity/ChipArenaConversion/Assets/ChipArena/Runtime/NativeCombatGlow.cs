@@ -6,6 +6,11 @@ using UnityEngine.Rendering;
 namespace ChipArena.UnityConversion
 {
     // Source-style additive halos/ribbons and seven reused spill lights. No fullscreen bloom dependency.
+    // Owner cut (2026-10-11 effects overhaul, "that pancake ring effect is still there"; review 2026-10-11): impact-glows.ts laid
+    // a flat .7-1.3 m glowing disc on every surface a shot hit (the floor included, so machine-gun fire left a row of them) for
+    // .85 s. It is no longer drawn: each impact gets a .12 s camera-facing contact flash through the shared effects renderer
+    // (NativeVfxDraw) instead, beside the event's burst sparks; the impact marks still drive the two spill lights for their full
+    // life (NativeGlowRules.ImpactLight) and keep their lifetime (ImpactLife, the build checks' count).
     public sealed class NativeCombatGlow : IDisposable
     {
         private sealed class SurfaceMark
@@ -35,7 +40,10 @@ namespace ChipArena.UnityConversion
             }
         }
         private readonly Geometry world=new Geometry("Native world glow"),view=new Geometry("Native view glow");
-        private readonly Material material;private readonly GameObject root;
+        private readonly Material material;private readonly GameObject root;private readonly NativeVfxDraw vfx;
+        /// <summary>The impact contact flash: seconds alive, peak HDR gain (linear) and sprite size (m), and how far off the
+        /// surface it sits (clear of the soft-particle fade against the face it hit).</summary>
+        public const float ContactLife=.12f,ContactGain=2.4f,ContactSize=.45f,ContactLift=.12f;
         private readonly Light[] projectileLights=new Light[3],impactLights=new Light[2],armorLights=new Light[2];
         private readonly Dictionary<long,NativeTrace> traces=new Dictionary<long,NativeTrace>();private readonly Stack<NativeTrace> spareTraces=new Stack<NativeTrace>();private readonly List<long> expired=new List<long>();
         // One projectile's halo, spill light and trail this frame (projectile-glow.ts and projectile-trails.ts via NativeShotRules).
@@ -67,8 +75,10 @@ namespace ChipArena.UnityConversion
         // (as the models, C6 blasts and C11 ribbons), sRGB in a gamma-space one; Light.color is always sRGB.
         private readonly bool linear;
         public int LiveMarks=>marks.Count;public int LiveTraces=>traces.Count;
-        public NativeCombatGlow(Transform parent)
+        /// <summary>vfx: the shared effects renderer the impact contact flashes queue into (the owner submits it); null draws none.</summary>
+        public NativeCombatGlow(Transform parent,NativeVfxDraw vfx=null)
         {
+            this.vfx=vfx;
             var shader=Resources.Load<Shader>("NativeGlow");if(shader==null)throw new InvalidOperationException("NativeGlow shader is missing");
             linear=QualitySettings.activeColorSpace==ColorSpace.Linear;
             material=new Material(shader);root=new GameObject("Native combat light pool");root.transform.SetParent(parent,false);
@@ -156,10 +166,13 @@ namespace ChipArena.UnityConversion
             foreach(long key in expired){var trace=traces[key];traces.Remove(key);trace.Points.Clear();trace.Seen=0;spareTraces.Push(trace);}
             if(!glow){if(submitDraws)world.Draw(material,camera,0);return;}
             for(int i=marks.Count-1;i>=0;i--){var m=marks[i];if(m.Prop==null||now<m.Born||now-m.Born>=NativeGlowRules.ImpactLife)marks.RemoveAt(i);}
-            foreach(var mark in marks)
+            // No flat halo on the surface (the owner cut above): a short camera-facing contact flash just off the face, HDR so the
+            // bloom catches it, linear for the shared renderer.
+            if(vfx!=null)foreach(var mark in marks)
             {
+                float f=Mathf.Clamp01(1-(now-mark.Born)/ContactLife);if(f<=0)continue;
                 Vector3 point=mark.Prop.transform.TransformPoint(mark.LocalPosition);Quaternion rotation=mark.Prop.transform.rotation*mark.LocalRotation;
-                world.Halo(point,rotation*Vector3.right,rotation*Vector3.up,NativeGlowRules.ImpactSize(now-mark.Born),mark.Color,NativeGlowRules.ImpactFade(now-mark.Born));
+                var color=mark.Color.linear*(ContactGain*f*f);color.a=0;vfx.Glow(point+rotation*Vector3.forward*ContactLift,color,ContactSize,NativeVfxDraw.CoreGlow);
             }
             if(Quality>=.5f)for(int i=0;i<Math.Min(2,marks.Count);i++)
             {

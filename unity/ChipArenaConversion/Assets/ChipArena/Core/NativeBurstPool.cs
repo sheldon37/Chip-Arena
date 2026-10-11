@@ -27,13 +27,19 @@ namespace ChipArena.UnityConversion
     {
         public const int InitialCapacity=180,BeamCapacity=64;
         public const double BeamLife=.09,BeamWidth=.022,Gravity=5;
-        /// <summary>Doubles per spark: position xyz, velocity xyz, edge, life left, linear rgb.</summary>
-        public const int SparkStride=11;
+        /// <summary>
+        /// Doubles per spark: the source's position xyz (0), velocity xyz (3), edge (6), life left (7), linear rgb (8); then,
+        /// beyond the source (owner 2026-10-11 effects overhaul, for a velocity-stretched streak draw): its draw role, always
+        /// <see cref="NativeFxRole.Spark"/> (11), a stable seed counted from 0 after each Clear (12), its life at spawn (13) and
+        /// its normalized age u in 0..1 (14). None of these touches a random draw, so the sparks stay the source's.
+        /// </summary>
+        public const int SparkStride=15;
+        public const int SparkRoleAt=11,SparkSeedAt=12,SparkLifeAt=13,SparkAgeAt=14;
         /// <summary>Doubles per beam: position xyz, velocity xyz, scale xyz, rotation xyzw, life left, linear rgb.</summary>
         public const int BeamStride=17;
         public int Count{get;private set;}public int Capacity{get;private set;}public int Beams{get;private set;}
         public double[] Sparks{get;private set;}public double[] BeamData{get;private set;}
-        private Func<double> random;
+        private Func<double> random;private int nextSeed;
         public NativeBurstPool(Func<double> random=null){this.random=random??new NativeShotRandom().Next;Capacity=InitialCapacity;Sparks=new double[Capacity*SparkStride];BeamData=new double[BeamCapacity*BeamStride];}
         public void Reseed(Func<double> random){this.random=random??new NativeShotRandom().Next;}
         /// <summary>BurstPool.spawn: count*quality sparks (the source loop runs while i &lt; count*quality).</summary>
@@ -46,6 +52,7 @@ namespace ChipArena.UnityConversion
                 int k=Count++*SparkStride;var s=Sparks;
                 s[k]=x;s[k+1]=y;s[k+2]=z;s[k+3]=(random()-.5)*power;s[k+4]=random()*power;s[k+5]=(random()-.5)*power;
                 s[k+6]=.035+random()*.065;s[k+7]=.25+random()*.5;s[k+8]=r;s[k+9]=g;s[k+10]=b;
+                s[k+SparkRoleAt]=(double)NativeFxRole.Spark;s[k+SparkSeedAt]=nextSeed;nextSeed=(nextSeed+1)&NativeBlastPool.SeedMask;s[k+SparkLifeAt]=s[k+7];s[k+SparkAgeAt]=0;
             }
         }
         private void Grow(){var next=new double[Capacity*2*SparkStride];Array.Copy(Sparks,next,Count*SparkStride);Sparks=next;Capacity*=2;}
@@ -69,7 +76,7 @@ namespace ChipArena.UnityConversion
             {
                 int k=i*SparkStride;double life=s[k+7]-dt;if(life<=0)continue;
                 if(write!=i)Array.Copy(s,k,s,write*SparkStride,SparkStride);int w=write*SparkStride;write++;
-                s[w+7]=life;s[w]+=s[w+3]*dt;s[w+1]+=s[w+4]*dt;s[w+2]+=s[w+5]*dt;s[w+4]-=dt*Gravity;s[w+6]*=shrink;
+                s[w+7]=life;s[w]+=s[w+3]*dt;s[w+1]+=s[w+4]*dt;s[w+2]+=s[w+5]*dt;s[w+4]-=dt*Gravity;s[w+6]*=shrink;s[w+SparkAgeAt]=Math.Min(1,Math.Max(0,1-life/s[w+SparkLifeAt]));
             }
             Count=write;var d=BeamData;write=0;
             for(int i=0;i<Beams;i++)
@@ -81,6 +88,6 @@ namespace ChipArena.UnityConversion
             Beams=write;
         }
         /// <summary>BurstPool.clear: no sparks, back to the initial capacity.</summary>
-        public void Clear(){Count=0;Beams=0;if(Capacity!=InitialCapacity){Capacity=InitialCapacity;Sparks=new double[Capacity*SparkStride];}}
+        public void Clear(){Count=0;Beams=0;nextSeed=0;if(Capacity!=InitialCapacity){Capacity=InitialCapacity;Sparks=new double[Capacity*SparkStride];}}
     }
 }

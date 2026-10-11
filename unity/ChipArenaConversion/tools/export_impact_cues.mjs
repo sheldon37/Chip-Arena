@@ -4,6 +4,10 @@
 // hit flash sparks and the slam dust and stones read back from its scene graph at fixed ages). Each event scenario also
 // states the Unity event that stands for the source events (kind, Detail, From, the colour the presentation resolves,
 // whether the target is a pilot), so Tests/ImpactCueChecks.cs can run Core/NativeImpactCues on it and compare.
+// Owner cuts in the Unity presentation (2026-10-11 effects overhaul, review 2026-10-11), not applied here: the melee hit
+// flash sparks are drawn as HDR streaks along each spark box's long axis and the slam dust points as lit, eroding smoke
+// puffs (Runtime/NativeMeleeFlash.cs through NativeVfxDraw), instead of the source's thin boxes and hard-edged squares. The
+// place, length, count, colour and fade of every spark and dust point are the source's, which these fixtures pin.
 // Usage: node tools/export_impact_cues.mjs <pinned source> <temporary output>  (link a node_modules containing three
 // r180 into the temporary output). Writes Tests/impact-cue-parity.json.
 import fs from 'node:fs';import path from 'node:path';import {fileURLToPath,pathToFileURL} from 'node:url';import {stripTypeScriptTypes} from 'node:module';import {createHash} from 'node:crypto';
