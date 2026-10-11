@@ -35,8 +35,8 @@ namespace ChipArena.UnityConversion
         /// <summary>graphics=performance, or auto on a low-end GPU (NativeSettings.ApplySettings): atmosphere halves, no sun shafts.</summary>
         public bool LowGraphics;
         /// <summary>
-        /// The destruction kit's live landing-dust billboards this frame (NativeStructureFx.PuffCount; 0 until that kit is
-        /// merged and sets it each frame): the drifting collapse dust takes only what is left of the §3.10 cap of 120.
+        /// The destruction kit's live landing-dust billboards (NativeStructureFx.PuffCount, read from the kit's last built frame
+        /// just before the atmosphere builds): the drifting collapse dust takes only what is left of the §3.10 cap of 120.
         /// </summary>
         public int BrickfallDustInUse;
         private Mesh[] brickfallSectors;private Mesh brickfallTrain,brickfallJib,brickfallPlate;private Material brickfallLit;private NativeFxDraw brickfallDraw;private bool brickfallFailed;
@@ -128,7 +128,7 @@ namespace ChipArena.UnityConversion
             if(UsesInstancing)Graphics.DrawMeshInstanced(brickfallJib,0,brickfallLit,brickfallJibs,2,null,ShadowCastingMode.Off,true,backdrop,null);
             else for(int c=0;c<2;c++)Graphics.DrawMesh(brickfallJib,brickfallJibs[c],brickfallLit,backdrop,null,0,null,ShadowCastingMode.Off,true);
             if(camera==null)return;
-            ReadBrickfallLight();var t=camera.transform;Vector3 e=t.position,r=t.right,u=t.up;
+            ReadBrickfallLight();BrickfallDustInUse=structureFx!=null?structureFx.Fx.PuffCount:0;var t=camera.transform;Vector3 e=t.position,r=t.right,u=t.up;
             brickfallFx.Build(time,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,brickfallLight,Mathf.Clamp01(EffectsQuality),LowGraphics,atmosphere,brickfallMemory,roundStart,BrickfallDustInUse);
             var q=brickfallFx.Quads;brickfallDraw.Clear();
             for(int i=0;i<q.Count;i++)
