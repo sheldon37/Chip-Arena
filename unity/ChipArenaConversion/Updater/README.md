@@ -9,12 +9,20 @@ channel, accounts, saves and gameplay protocol are independent.
 Build with Unity 6000.3.24f1 on Windows using `Build-Windows.cmd`. The build machine
 needs an activated Unity Editor, Windows Build Support and .NET Framework 4.8.
 All existing native build gates must pass. Extract the resulting
-`Builds/Chip-Arena-Native-Conversion-TEST-Windows.zip` into a new writable folder.
-Run the EXE at the top level and keep its `app` folder beside it. Shortcuts should
-point to this top-level EXE. Windows players need .NET Framework 4.8.
+`Builds/Chip-Arena-Windows.zip` into a writable location. It contains exactly one
+`Chip Arena` folder. Open that folder and run **`Chip Arena.exe`**; keep `app` and the
+supporting files beside it. Shortcuts point to `Chip Arena.exe`. Windows players
+need .NET Framework 4.8. The cloud export includes the same clean player ZIP beside
+its technical delivery bundle. Share **only `Chip-Arena-Windows.zip`** with players.
+
+The internal player filename and `app` layout remain stable for bootstrap-v1 update
+and rollback compatibility. Existing installations with the old launcher name still
+update normally; updates replace `app`, not the install folder or its launcher.
+New downloads use the friendly name. Do not rename the internal player executable.
+The old, technical seed ZIP name remains an automation input with identical contents.
 
 Keep that installed copy **outside the source project** (for example,
-`C:\ChipArena\NativeTest`). `Builds\Windows` and the starter ZIP are replaced by
+`C:\Games\Chip Arena`). `Builds\Windows` and the starter ZIP are replaced by
 each build. Extract your baseline starter before rebuilding, then leave that
 installed folder alone so it can receive the newer build through the button.
 

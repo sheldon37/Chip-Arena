@@ -87,14 +87,6 @@ namespace ChipArena.UnityConversion.Editor
             NativeLauncherCompiler.Compile(project,destination,icon);
         }
         public static void SeedZip(string install,string zip)
-        {
-            if(File.Exists(zip))File.Delete(zip);
-            using(var archive=ZipFile.Open(zip,ZipArchiveMode.Create))
-            {
-                foreach(string name in new[]{NativeUpdateRules.Executable,NativeUpdateRules.Executable+".config","native-install.txt","READ-ME.txt"})archive.CreateEntryFromFile(Path.Combine(install,name),name,CompressionLevel.Optimal);
-                string app=Path.Combine(install,"app");
-                foreach(string file in Directory.GetFiles(app,"*",SearchOption.AllDirectories))archive.CreateEntryFromFile(file,"app/"+file.Substring(app.Length+1).Replace('\\','/'),CompressionLevel.Optimal);
-            }
-        }
+        {NativeStarterPackage.Create(install,zip);}
     }
 }

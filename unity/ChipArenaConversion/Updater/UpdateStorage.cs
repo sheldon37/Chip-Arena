@@ -34,7 +34,7 @@ namespace ChipArena.NativeUpdater
         public static void ValidateRoot(string root)
         {
             root=Path.GetFullPath(root);NativeUpdateRules.RejectReparsePoints(root);
-            if(root==Path.GetPathRoot(root)||!File.Exists(Path.Combine(root,NativeUpdateRules.Executable))||File.ReadAllText(Path.Combine(root,"native-install.txt")).Trim()!=NativeUpdateRules.Product+"/1")
+            if(root==Path.GetPathRoot(root)||!File.Exists(NativeUpdateRules.LauncherPath(root))||File.ReadAllText(Path.Combine(root,"native-install.txt")).Trim()!=NativeUpdateRules.Product+"/1")
                 throw new InvalidDataException("Launch updates from the complete native starter installation.");
         }
     }

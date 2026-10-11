@@ -15,6 +15,7 @@ import zlib
 PROJECT = Path(__file__).resolve().parents[1]
 EXE = 'ChipArena-Native-Conversion-TEST.exe'
 DATA = 'ChipArena-Native-Conversion-TEST_Data'
+LAUNCHER = 'Chip Arena.exe'
 
 
 def wait_for(path, process=None):
@@ -64,36 +65,42 @@ def run():
         destination = base / 'packaged Windows'
         # Unity supplies slash-separated paths; exercise mixed separators, spaces, response file and icon.
         subprocess.run([str(driver), source.as_posix() + '\\.', destination.as_posix(), icon.as_posix()], cwd=base, check=True)
-        launcher = destination / EXE
-        assert launcher.is_file() and (destination / (EXE + '.config')).is_file()
+        launcher = destination / LAUNCHER
+        assert launcher.is_file() and (destination / (LAUNCHER + '.config')).is_file()
         print('PASS Windows packaging: exact Editor compiler step with mixed separators, spaces and icon')
         missing = source / 'Updater/UpdateInstaller.cs'
         missing.unlink()
         rejected = subprocess.run([str(driver), str(source), str(base / 'incomplete output'), str(icon)], capture_output=True, text=True)
         assert rejected.returncode != 0 and 'Native launcher source is missing' in (rejected.stdout + rejected.stderr)
-        assert not (base / 'incomplete output' / EXE).exists()
+        assert not (base / 'incomplete output' / LAUNCHER).exists()
         print('PASS Windows packaging: missing source rejected before compiler invocation')
         fixture = base / 'fixture.exe'
         subprocess.run([str(compiler), '/nologo', '/warnaserror+', '/target:exe', '/out:' + str(fixture), *refs, *common,
                         str(PROJECT / 'Updater/WindowsFixture.cs')], check=True)
-        for fails in (False, True):
-            root = base / ('rollback case' if fails else 'install case')
+        for launcher_name, fails in ((LAUNCHER, False), (LAUNCHER, True), (EXE, False), (EXE, True)):
+            root = base / (launcher_name + (' rollback case' if fails else ' install case'))
             app = root / 'app'
             work = root / '.native-update'
             app.mkdir(parents=True)
             work.mkdir()
-            shutil.copy2(launcher, root / EXE)
-            shutil.copy2(PROJECT / 'Updater/Launcher.exe.config', root / (EXE + '.config'))
+            shutil.copy2(launcher, root / launcher_name)
+            shutil.copy2(PROJECT / 'Updater/Launcher.exe.config', root / (launcher_name + '.config'))
             (root / 'native-install.txt').write_text('chip-arena-unity/1')
             (root / 'settings-sentinel').write_text('preserve')
-            for player, build in ((app, identity('a', 1)), (base / ('new-bad' if fails else 'new-good'), identity('b', 2))):
+            for player, build in ((app, identity('a', 1)), (base / (launcher_name + (' new-bad' if fails else ' new-good')), identity('b', 2))):
                 player.mkdir(exist_ok=True)
                 (player / DATA).mkdir()
                 shutil.copy2(fixture, player / EXE)
                 (player / 'UnityPlayer.dll').write_bytes(b'test fixture only')
                 (player / DATA / 'globalgamemanagers').write_bytes(b'fixture')
                 (player / 'native-build.json').write_text(json.dumps(build))
-            new = base / ('new-bad' if fails else 'new-good')
+            environment = dict(os.environ, CHIP_UPDATER_TEST_NO_DIALOG='1')
+            launched = subprocess.run([str(root / launcher_name)], cwd=base, env=environment, timeout=20)
+            assert launched.returncode == 0
+            wait_for(work / 'normal-start.txt')
+            assert Path((work / 'normal-start.txt').read_text()) == app
+            print('PASS Windows normal launch from another working directory: ' + launcher_name)
+            new = base / (launcher_name + (' new-bad' if fails else ' new-good'))
             if fails:
                 (new / 'fail-start.txt').write_text('Fail before startup acknowledgement')
             (app / 'obsolete.dll').write_text('old version only')
@@ -115,7 +122,7 @@ def run():
                                 parts=[dict(name=digest + '-0000.part', bytes=len(payload), sha256=digest)])
                 (transaction / 'request.json').write_text(json.dumps(dict(token=token, manifest=manifest, parentPid=process['pid'], parentStartedUtcTicks=process['ticks'])))
                 environment = dict(os.environ, CHIP_UPDATER_TEST_NO_DIALOG='1')
-                updater = subprocess.Popen([str(root / EXE), '--install', token], env=environment)
+                updater = subprocess.Popen([str(root / launcher_name), '--install', token], env=environment)
                 try:
                     wait_for(transaction / 'ready.txt', updater)
                     assert (app / 'obsolete.dll').exists(), 'Updater changed files while the requesting game still ran'
@@ -128,7 +135,7 @@ def run():
                     assert (app / 'obsolete.dll').exists() == fails
                     assert (root / 'settings-sentinel').read_text() == 'preserve'
                     assert not (work / 'journal.json').exists()
-                    print('PASS Windows launcher: ' + ('startup failure rollback' if fails else 'wait, install, restart and acknowledgement'))
+                    print('PASS Windows launcher ' + launcher_name + ': ' + ('startup failure rollback' if fails else 'wait, install, restart and acknowledgement'))
                 finally:
                     if updater.poll() is None:
                         updater.kill()
@@ -143,7 +150,7 @@ def run():
         app.rename(work / 'previous')
         (work / 'journal.json').write_text(json.dumps(dict(token=token, phase='old-moved', before=identity('a', 1), after=identity('b', 2))))
         try:
-            recovered = subprocess.run([str(root / EXE)], env=environment, timeout=20)
+            recovered = subprocess.run([str(root / launcher_name)], env=environment, timeout=20)
             assert recovered.returncode == 0, (work / 'updater.log').read_text()
             assert json.loads((app / 'native-build.json').read_text())['version'] == 'a' * 64
             assert not (work / 'journal.json').exists()

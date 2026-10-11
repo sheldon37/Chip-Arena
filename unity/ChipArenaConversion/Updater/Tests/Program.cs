@@ -39,7 +39,17 @@ static class Program
     }
     static void Main()
     {
-        CloudPlayerChecks.Run();
+        CloudPlayerChecks.Run();StarterPackageChecks.Run();
+        using(var f=new Fixture())
+        {
+            string old=Path.Combine(f.Root,NativeUpdateRules.Executable),friendly=Path.Combine(f.Root,NativeUpdateRules.LauncherExecutable);
+            Check(NativeUpdateRules.LauncherPath(f.Root)==old,"legacy launcher remains discoverable");
+            File.Move(old,friendly);UpdateStorage.ValidateRoot(f.Root);
+            Check(NativeUpdateRules.LauncherPath(f.Root)==friendly,"friendly launcher works without a legacy alias");
+            var request=f.Request();var installer=f.Installer();installer.Prepare(request);installer.Swap(request);f.Ack(request);installer.Confirm(request);
+            Check(UpdateStorage.Build(f.App).version==new string('b',64)&&File.Exists(friendly),"friendly installation updates while preserving launcher");
+            File.Delete(friendly);Reject(()=>UpdateStorage.ValidateRoot(f.Root),"missing launcher is rejected");
+        }
         foreach(string path in new[]{"../outside","C:/escape","a\\b","/absolute","a/../b","CON.dll","LPT1.txt","COM¹.dll","a. ","a ","a.","a//b","a:stream","dir/NUL","dir/./b"})Reject(()=>NativeUpdateRules.SafeRelativePath(path),"reject unsafe path "+path);
         Check(NativeUpdateRules.SafeRelativePath("MonoBleedingEdge/etc/mono/4.5/machine.config")!="","normal Unity path accepted");
         Check(NativeUpdateRules.IsNewer(Identity('a',1),Identity('b',2)),"new build available");
