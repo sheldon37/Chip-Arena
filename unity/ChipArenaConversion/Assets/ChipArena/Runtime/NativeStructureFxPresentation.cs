@@ -10,8 +10,11 @@ namespace ChipArena.UnityConversion
     /// both on the shared NativeFxDraw primitives (Resources/NativeSirenFx.shader), so the kit costs two draws, no Unity lights
     /// and no per-frame allocation once warm. It is fed from the arena's event stream with its own cursor, so host, guests and
     /// the killcam replay (RenderGlow on the replay arena) build the same records; every record is pure in its age on the
-    /// presentation clock. It runs inside ArenaPresentation.RenderGlow, which intros, the draft, menus' previews and the
-    /// Customize preview never reach, and clears with ResetPresentation, a new generation or a rewind.
+    /// presentation clock and the intake is deduplicated by (seed, birth). It runs inside ArenaPresentation.RenderGlow, which
+    /// intros, the draft, menus' previews and the Customize preview never reach. A new round (generation) or map, or a full
+    /// ResetPresentation, clears it; a rewind (a guest's clock correction) only re-reads the event buffer, and the killcam's
+    /// ResetPresentation(keepWorldMarks) at its start and end keeps the decals and the structure records, which the 1 s event
+    /// buffer could not rebuild, so the replay shows the marks already made and the round keeps them afterwards.
     /// <list type="bullet">
     /// <item>Break (today's maps too): the material burst replaces NativeImpactCues' 18-spark burst (NativeBlastPresentation
     /// skips it while <see cref="ArenaPresentation.Structures"/> exists). Brickfall adds chip and crack decals, scorch marks
@@ -20,9 +23,14 @@ namespace ChipArena.UnityConversion
     /// the hook is three lines in <see cref="Intake"/> (marked there) plus three in NativeAudio.EventSounds (see
     /// NativeStructureAudio.cs); until then <see cref="Stress"/>, <see cref="Fall"/>, <see cref="Land"/> and
     /// <see cref="Structure"/> are the API, and the dev Sandbox previews the whole sequence.</item>
+    /// <item>Fall timing (a hook dependency): the kit poses no blocks. Its streamers, falling debris and trailing wire ends drop at
+    /// the fall's acceleration, the contract's pancake maxAccel (6.9 m/s²) unless the hook passes the segment pose's from Core
+    /// NativeStructureRules (at most g for peel and topple pieces), and the rubble, dust wall and the window and sag release wait
+    /// for StructureLand, which must be emitted when the segment's last piece lands.</item>
     /// <item>Queries for the block shader and dressing: <see cref="Window"/> (8 Hz strobe, then black), <see cref="Sag"/>,
     /// <see cref="Freshness"/> (rubble fresh to dusty over 10 s) and <see cref="NativeStructureFx.LampStrobe"/>.</item>
-    /// <item><see cref="KillFloor"/>: the per-map kill-effect floor (§5.5 Gibs), a raycast down through static geometry.</item>
+    /// <item><see cref="KillFloor"/>: the per-map kill-effect floor (§5.5 Gibs), a raycast down that skips fracture fragments and
+    /// dynamic crates on every client alike.</item>
     /// </list>
     /// </summary>
     public sealed class NativeStructureFxPresentation : IDisposable
@@ -37,7 +45,11 @@ namespace ChipArena.UnityConversion
         public NativeStructureFx Fx=>fx;
         /// <summary>The presentation clock of the last frame (records, the preview and the shake share it).</summary>
         public float Clock{get;private set;}
+        /// <summary>Forgets everything (the dev preview's Clear Effects, a new round or map, a full ResetPresentation).</summary>
         public void Clear(){fx.Clear();draw.Clear();lastEvent=0;lastNow=-1;}
+        /// <summary>Keeps every record and decal and re-reads the event buffer (the killcam's start and end): the intake is
+        /// deduplicated and every record pure in its age, so nothing doubles and the replay shows what was already there.</summary>
+        public void Reset(){draw.Clear();lastEvent=0;lastNow=-1;}
         public void Dispose(){fx.Clear();draw.Dispose();}
         private static V3 V(Vector3 v)=>new V3(v.x,v.y,v.z);private static Vector3 U(V3 v)=>new Vector3(v.x,v.y,v.z);
 
@@ -46,8 +58,8 @@ namespace ChipArena.UnityConversion
         public void Render(NativeArena arena,Camera camera,float now,float quality)
         {
             if(arena==null||camera==null)return;
-            if(generation!=arena.Generation||now<lastNow-.25f){Clear();generation=arena.Generation;}lastNow=Math.Max(lastNow,now);Clock=now;
-            if(blockMap!=arena.MapId){blockMap=arena.MapId;blocks=arena.Content?.maps?.FirstOrDefault(m=>m.id==arena.MapId)?.blocks;}
+            if(generation!=arena.Generation||blockMap!=arena.MapId){Clear();generation=arena.Generation;blockMap=arena.MapId;blocks=arena.Content?.maps?.FirstOrDefault(m=>m.id==arena.MapId)?.blocks;}
+            else if(now<lastNow-.25f)lastEvent=0;lastNow=now;Clock=now;
             fx.Wind=NativeStructureFx.WindFor(arena.MapId);Intake(arena,now);if(QualitySettings.pixelLightCount<=3)quality=Math.Min(quality,.45f);
             fx.Frame(now,V(camera.transform.position),quality);draw.Clear();Lights();Fill(camera);draw.Draw(camera,null,now);
         }
@@ -78,24 +90,30 @@ namespace ChipArena.UnityConversion
             float floor=SurfaceBelow(arena,at+Vector3.down*(size.y*.5f-.05f),at.y-size.y*.5f);
             fx.Break(NativeStructureFx.Classify(e.Detail),NativeImpactCues.MaterialColor(arena.Content?.materials,e.Detail),e.Position,size,floor,Seed(arena,e.SurfaceId??e.Detail),e.Time,decals);
         }
+        // Only blasts and fire scorch (NativeStructureFx.ScorchScale): trampolines, static procs, wormholes and fields leave none.
         private void Scorch(NativeArena arena,in ArenaEvent e)
         {
+            float scale=NativeStructureFx.ScorchScale(e.Detail);if(scale<=0)return;
             Vector3 at=NativeArena.Vec(e.Position);float ground=SurfaceBelow(arena,at+Vector3.up*.3f,float.NaN,3.3f);if(float.IsNaN(ground))return;
-            fx.AddMark(NativeStructureMark.Scorch,new V3(at.x,ground,at.z),new V3(0,1,0),Mathf.Clamp(e.Radius*.8f,.6f,3),Seed(arena,"scorch")^(uint)BitConverter.SingleToInt32Bits(e.Time)^(uint)BitConverter.SingleToInt32Bits(e.Position.x),e.Time);
+            fx.AddMark(NativeStructureMark.Scorch,new V3(at.x,ground,at.z),new V3(0,1,0),Mathf.Clamp(e.Radius*.8f,.6f,3)*scale,Seed(arena,"scorch")^(uint)BitConverter.SingleToInt32Bits(e.Time)^(uint)BitConverter.SingleToInt32Bits(e.Position.x),e.Time);
         }
-        /// <summary>The highest static surface below <paramref name="from"/> (props mid-flight are ignored), else the fallback.</summary>
+        /// <summary>The highest surface below <paramref name="from"/> that is not <see cref="Movable"/>, else the fallback.</summary>
         private static float SurfaceBelow(NativeArena arena,Vector3 from,float fallback,float reach=40)
         {
             var physics=arena.Root.scene.GetPhysicsScene();int n=physics.Raycast(from,Vector3.down,hits,reach,NativeArena.WorldMask,QueryTriggerInteraction.Ignore);
-            float best=float.NegativeInfinity;for(int i=0;i<n;i++){if(Moving(hits[i].collider))continue;best=Math.Max(best,hits[i].point.y);}return float.IsNegativeInfinity(best)?fallback:best;
+            float best=float.NegativeInfinity;for(int i=0;i<n;i++){if(Movable(hits[i].collider))continue;best=Math.Max(best,hits[i].point.y);}return float.IsNegativeInfinity(best)?fallback:best;
         }
-        /// <summary>The ground a structure lands on: the lowest static surface under the point (through its own floors).</summary>
+        /// <summary>The ground a structure lands on: the lowest surface under the point that is not <see cref="Movable"/> (through
+        /// its own floors).</summary>
         private static float Ground(NativeArena arena,Vector3 at,float fallback)
         {
             var physics=arena.Root.scene.GetPhysicsScene();int n=physics.Raycast(new Vector3(at.x,at.y+1,at.z),Vector3.down,hits,60,NativeArena.WorldMask,QueryTriggerInteraction.Ignore);
-            float best=float.PositiveInfinity;for(int i=0;i<n;i++){if(Moving(hits[i].collider))continue;best=Math.Min(best,hits[i].point.y);}return float.IsPositiveInfinity(best)?fallback:best;
+            float best=float.PositiveInfinity;for(int i=0;i<n;i++){if(Movable(hits[i].collider))continue;best=Math.Min(best,hits[i].point.y);}return float.IsPositiveInfinity(best)?fallback:best;
         }
-        private static bool Moving(Collider c){var prop=c!=null?c.GetComponent<NativePropBody>():null;return prop!=null&&prop.Body!=null&&!prop.Body.isKinematic;}
+        /// <summary>Fracture fragments and dynamic crates: a rule on the prop's content, the same on every client. The body's kinematic
+        /// state is not (only the host simulates; guests and the killcam replay make every prop kinematic), so floors, marks and gibs
+        /// would differ between them.</summary>
+        private static bool Movable(Collider c){var prop=c!=null?c.GetComponent<NativePropBody>():null;return prop!=null&&(prop.Fragment||prop.Definition!=null&&prop.Definition.dynamic);}
 
         // ---------- structure API (§5.4) ----------
         /// <summary>The one-line event switch target: maps an authoritative structure event's §5.4 fields onto the kit.</summary>
@@ -115,9 +133,11 @@ namespace ChipArena.UnityConversion
             float floor=Ground(arena,crush?.center??centroid,centroid.y-radius);V3 center=default,half=default;if(crush.HasValue){center=V(crush.Value.center);half=V(crush.Value.extents);}
             fx.Stress(V(centroid),radius,telegraph,center,half,floor,Seed(arena,segment),time);
         }
-        /// <summary>StructureFall: segment id, position, extent, fall direction, mass in tonnes, dominant material id.</summary>
-        public void Fall(NativeArena arena,string segment,Vector3 position,float radius,Vector3 direction,float tonnes,string material,float time)
-        =>fx.Fall(V(position),radius,V(direction),tonnes,NativeStructureFx.Classify(material),Ground(arena,position,position.y-radius),Seed(arena,segment),time);
+        /// <summary>StructureFall: segment id, position, extent, fall direction, mass in tonnes, dominant material id.
+        /// <paramref name="accel"/>: the segment's fall acceleration from its pose (Core NativeStructureRules once it exists; at most
+        /// g); 0, as the event carries none, takes the contract's pancake maxAccel, 6.9 m/s².</summary>
+        public void Fall(NativeArena arena,string segment,Vector3 position,float radius,Vector3 direction,float tonnes,string material,float time,float accel=0)
+        =>fx.Fall(V(position),radius,V(direction),tonnes,NativeStructureFx.Classify(material),Ground(arena,position,position.y-radius),Seed(arena,segment),time,accel);
         /// <summary>StructureLand: segment id, position, extent, energy 0..1 (its material is the one its fall named).</summary>
         public void Land(NativeArena arena,string segment,Vector3 position,float radius,float energy,float time)
         {uint seed=Seed(arena,segment);fx.Land(V(position),radius,energy,fx.FallMaterial(seed,NativeStructureMaterial.Masonry),Ground(arena,position,position.y-radius*.5f),seed,time);}
@@ -134,7 +154,7 @@ namespace ChipArena.UnityConversion
             float now=Clock,floor=SurfaceBelow(arena,spot+Vector3.up*.6f,spot.y);var s=new V3(spot.x,floor,spot.z);uint seed=Seed(arena,"preview-"+(int)material)^(uint)Mathf.FloorToInt(now*16);
             NativeStructurePreview.Box(s,floor,out V3 center,out V3 half);V3 centroid=NativeStructurePreview.Centroid(s,floor);float radius=NativeStructurePreview.Radius;
             fx.Preview(s,material,floor,seed,now);fx.Stress(centroid,radius,NativeStructurePreview.Telegraph,center,half,floor,seed,now);
-            fx.Fall(centroid,radius,V(away),NativeStructurePreview.Mass,material,floor,seed,now+NativeStructurePreview.Telegraph);
+            fx.Fall(centroid,radius,V(away),NativeStructurePreview.Mass,material,floor,seed,now+NativeStructurePreview.Telegraph,NativeStructurePreview.Accel);
             fx.Land(new V3(s.x,floor+1.2f,s.z),radius*.8f,NativeStructurePreview.Energy,material,floor,seed,now+NativeStructurePreview.LandAt);
         }
         /// <summary>One break of each material in a row across <paramref name="right"/>, a third of a second apart.</summary>
@@ -148,8 +168,9 @@ namespace ChipArena.UnityConversion
         }
 
         /// <summary>
-        /// §5.5 Gibs: the kill-effect floor under a source-axes point (Unity x mirrored): the highest static surface within 40 m
-        /// below it, or NaN where there is none (the effect keeps its own rule there). Upper floors now hold gibs on every map.
+        /// §5.5 Gibs: the kill-effect floor under a source-axes point (Unity x mirrored): the highest surface within 40 m below it
+        /// that is not <see cref="Movable"/>, or NaN where there is none (the effect keeps its own rule there). Upper floors now hold
+        /// gibs on every map, and host, guests and the killcam find the same floor.
         /// </summary>
         public static NativeKillFloor KillFloor(NativeArena arena)
         {
@@ -226,7 +247,8 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The structure shake offset at <paramref name="eye"/>, times <paramref name="scale"/> (reduced effects .5).</summary>
         public Vector3 StructureShake(Vector3 eye,float scale)=>structureFx==null?Vector3.zero:structureFx.Shake(eye)*scale;
-        private void ClearStructureFx()=>structureFx?.Clear();
+        // keep: the killcam starts or ends (ResetPresentation(keepWorldMarks)): keep the records and decals, re-read the events.
+        private void ClearStructureFx(bool keep){if(keep)structureFx?.Reset();else structureFx?.Clear();}
         private void DisposeStructureFx(){structureFx?.Dispose();structureFx=null;structureFxFailed=false;}
     }
 
@@ -257,9 +279,11 @@ namespace ChipArena.UnityConversion
         {
             var material=(NativeStructureMaterial)Math.Max(0,Array.IndexOf(StructureMaterials,structureMaterial));Vector3 spot=StructureSpot(),away=spot-arena.Local.Body.position;away.y=0;
             kit.PreviewCollapse(arena,spot,away.sqrMagnitude>.01f?away.normalized:Vector3.forward,material);
-            Vector3 centroid=spot+Vector3.up*(NativeStructurePreview.Height*.5f);
-            nativeAudio.StructureCue(NativeStructureSound.Groan,centroid,material,.8f);nativeAudio.StructureCue(NativeStructureSound.Collapse,centroid,material,.8f,NativeStructurePreview.Telegraph);
-            nativeAudio.StructureCue(NativeStructureSound.Land,spot,material,NativeStructurePreview.Energy,NativeStructurePreview.LandAt);
+            // The later cues wait in NativeAudio's queue until they are due, so the voice cap counts each from its start and the
+            // collapse takes over this preview's groan.
+            Vector3 centroid=spot+Vector3.up*(NativeStructurePreview.Height*.5f);uint owner=NativeStructureSounds.Owner("preview-"+Time.frameCount);
+            nativeAudio.StructureCue(NativeStructureSound.Groan,centroid,material,.8f,0,owner);nativeAudio.StructureCue(NativeStructureSound.Collapse,centroid,material,.8f,NativeStructurePreview.Telegraph,owner);
+            nativeAudio.StructureCue(NativeStructureSound.Land,spot,material,NativeStructurePreview.Energy,NativeStructurePreview.LandAt,owner);
         }
     }
 }

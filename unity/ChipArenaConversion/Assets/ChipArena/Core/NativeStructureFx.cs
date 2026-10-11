@@ -29,7 +29,9 @@ namespace ChipArena.UnityConversion
     /// map.</item>
     /// <item>The coming structure events (a presentation API until Astra emits them): the stress telegraph (red crush footprint,
     /// grit columns at the four corners of the crush box, dust trickling from cracks, window and lamp strobe values, a visual
-    /// sag of at most 1° / 8 cm; never reduced), fall streamers and snapping wires, and the landing: the dust wall (24-40
+    /// sag of at most 1° / 8 cm, both held until the segment lands; never reduced), fall streamers and snapping wires that drop
+    /// at the segment's acceleration (the contract's pancake maxAccel, 6.9 m/s², unless the caller passes the pose's; never
+    /// above g), and the landing: the dust wall (24-40
     /// billboards expanding from 4 to 14 m radius in 1.6 s, up to 8 m tall, opacity .5 for 1.5 s, .2 by 3 s, gone by 7 s,
     /// thinned within 3 m of the camera), a ground shock skirt, 40-120 debris voxels that fade from fresh breaks to the dust
     /// coat over 10 s, and smoke wisps over the rubble for 15 s.</item>
@@ -38,7 +40,9 @@ namespace ChipArena.UnityConversion
     /// </list>
     /// Every piece is a pure function of its record (seed, place, birth time) and the presentation clock, never integrated, so
     /// host, guests and the killcam draw the same frame; seeds come from hash(mapId, segment or block id, round index), never
-    /// sent. A record may be born in the future (the dev preview schedules a whole sequence); it draws from its birth.
+    /// sent. A record may be born in the future (the killcam rewinds past it, the dev preview schedules a whole sequence); it
+    /// draws from its birth. Every intake is keyed by (seed, birth time), so the same event fed twice (the killcam replay, the
+    /// event buffer re-read after a reset or a guest's clock rewind) never doubles a burst, record, mark or shake.
     /// Caps: at most 120 dust billboards map-wide (telegraphs claim theirs first, then the newest records), and fixed output
     /// arrays. Reduced effects halve debris and atmosphere, never telegraphs. Runtime/NativeStructureFxPresentation.cs turns
     /// the lists into one opaque and one premultiplied mesh (NativeFxDraw on NativeSirenFx.shader).
@@ -47,7 +51,11 @@ namespace ChipArena.UnityConversion
     {
         public const int BurstSlots=24,EventSlots=6,DecalSlots=256,ShakeSlots=8,MockSlots=2;
         public const int CubeCap=1024,PuffCap=120,FlatCap=1536,LineCap=512,GlowCap=256;
-        public const float BurstLife=2.6f,StressTail=.9f,FallLife=3.4f,LandLife=15,ThinNear=3,Gravity=14;
+        public const float BurstLife=2.6f,StressTail=.9f,StressHold=4,FallLife=4.6f,LandLife=15,ThinNear=3,Gravity=14;
+        /// <summary>Fall accelerations (m/s²): the contract's pancake maxAccel (§5.2, §6.1: a rider stays on the slab) and g, the
+        /// most any falling piece takes. The streamer emission window is at most <see cref="FallWindow"/>, each puff lingers
+        /// <see cref="StreamerLinger"/>.</summary>
+        public const float PancakeAccel=6.9f,FreeFall=9.81f,FallWindow=2.6f,StreamerLinger=1.8f;
         public const float WallGrow=1.6f,WallFull=1.5f,WallThin=3,WallGone=7,WallInner=4,WallOuter=14,WallHeight=8,FreshFade=10,WispFrom=1.2f;
         public const int WallMin=24,WallMax=40,WallCore=6,DebrisMin=40,DebrisMax=120,SkirtCount=14,Wisps=8,Streamers=5,Wires=3;
         public const float SagDegrees=1,SagMetres=.08f,WindowHz=8,LampHz=4;
@@ -67,7 +75,7 @@ namespace ChipArena.UnityConversion
         public V3 Wind;
 
         private struct Burst{public bool Live;public NativeStructureMaterial Material;public V3 Center,Size;public int Color;public float Floor,Born;public uint Seed;}
-        private struct Record{public bool Live;public NativeStructureCue Cue;public NativeStructureMaterial Material;public V3 Center,Normal,BoxCenter,BoxHalf;public float Radius,Amount,Floor,Born;public uint Seed,Base;}
+        private struct Record{public bool Live;public NativeStructureCue Cue;public NativeStructureMaterial Material;public V3 Center,Normal,BoxCenter,BoxHalf;public float Radius,Amount,Floor,Born,Accel;public uint Seed,Base;}
         private struct Mark{public bool Live;public NativeStructureMark Kind;public V3 Center,Normal;public float Size,Born;public uint Seed;}
         private struct Shake{public bool Live,Rise;public V3 At;public float Peak,Born,Duration;public uint Seed;}
         private struct Mock{public bool Live;public NativeStructureMaterial Material;public V3 Spot;public float Floor,Born;public uint Seed;}
@@ -131,7 +139,28 @@ namespace ChipArena.UnityConversion
         public static float LampStrobe(float time)=>(int)Math.Floor(time*LampHz*2)%2==0?1:0;
         /// <summary>Visual-only sag over the telegraph, 0..1 of <see cref="SagDegrees"/> / <see cref="SagMetres"/>.</summary>
         public static float Sag(float age,float telegraph)=>age<=0?0:Smooth(age/Math.Max(.05f,telegraph));
-        public static float FallSeconds(float radius)=>Math.Max(.6f,Math.Min(1.2f,.55f+.05f*radius));
+        /// <summary>The acceleration a fall draws at: the pose's when the caller has it (at most g), else the contract's pancake
+        /// maxAccel.</summary>
+        public static float FallAccel(float accel)=>accel>0?Math.Max(.5f,Math.Min(FreeFall,accel)):PancakeAccel;
+        /// <summary>How long a point <paramref name="height"/> m above the floor takes to reach it at <paramref name="accel"/>
+        /// (the streamer emission window), at most <see cref="FallWindow"/>.</summary>
+        public static float FallSeconds(float height,float accel)=>Math.Max(.3f,Math.Min(FallWindow,(float)Math.Sqrt(2*Math.Max(.1f,height)/FallAccel(accel))));
+        /// <summary>
+        /// The scorch an Explosion event leaves on Brickfall, by its Detail (the fx tag, chip or weapon spec): 1 for blasts and
+        /// fire, .7 for electric strikes, 0 for the effects that are not explosions (trampoline, static, wormhole, block pulse and
+        /// supernova, the Leet block, blink landings, water, shackles, implosions and black holes, bubbles, shockwaves, untagged).
+        /// </summary>
+        public static float ScorchScale(string tag)
+        {
+            switch(tag)
+            {
+                case "frag":case "rocket":case "meteor-strike":case "flame-lance":case "fire":case "leet-nuke":case "dash-blast":case "shrapnel":case "comet":
+                case "artillery":case "sticky-bomb":case "proximity-mail":case "cluster-mine":case "mirror-mine":case "bread-crumbs":case "delayed-gratification":
+                case "revenge-mail":case "demolition-charge":case "corpse-party":return 1;
+                case "orbital-mark":case "ball-lightning":case "thunderstep":return .7f;
+                default:return 0;
+            }
+        }
         /// <summary>The crush box when the event names none: a square footprint around the centroid, floor to above the top.</summary>
         public static void DefaultBox(V3 center,float radius,float floor,out V3 boxCenter,out V3 boxHalf)
         {float r=Math.Max(.5f,radius),top=Math.Max(floor+1,center.y+r*.9f),h=r*.55f;boxHalf=new V3(h,(top-floor)*.5f,h);boxCenter=new V3(center.x,(top+floor)*.5f,center.z);}
@@ -191,6 +220,7 @@ namespace ChipArena.UnityConversion
         /// under it. <paramref name="decals"/>: also leave chip and crack marks below (Brickfall, <see cref="MapMarks"/>).</summary>
         public void Break(NativeStructureMaterial material,int color,V3 center,V3 size,float floor,uint seed,float time,bool decals)
         {
+            for(int i=0;i<BurstSlots;i++)if(bursts[i].Live&&bursts[i].Seed==seed&&bursts[i].Born==time)return;
             bursts[Oldest(bursts,BurstLive,BurstBorn)]=new Burst{Live=true,Material=material,Center=center,Size=new V3(Math.Max(.2f,size.x),Math.Max(.2f,size.y),Math.Max(.2f,size.z)),Color=color,Floor=Math.Min(floor,center.y),Born=time,Seed=seed};
             if(!decals)return;float s=BurstScale(size);V3 at=new V3(center.x,floor,center.z),up=new V3(0,1,0);
             AddMark(NativeStructureMark.Chip,at,up,(.7f+.4f*H(seed,1,90))*s,seed^MarkSalt,time);AddMark(NativeStructureMark.Crack,at,up,(1f+.5f*H(seed,2,90))*s,seed^MarkSalt^1,time);
@@ -199,32 +229,38 @@ namespace ChipArena.UnityConversion
         /// sim's crush volume when the hook has it (half extents zero: <see cref="DefaultBox"/>); floor is the ground under it.</summary>
         public void Stress(V3 centroid,float radius,float telegraph,V3 boxCenter,V3 boxHalf,float floor,uint seed,float time)
         {
+            if(Known(NativeStructureCue.Stress,seed,time))return;
             if(!(boxHalf.x>0&&boxHalf.y>0&&boxHalf.z>0))DefaultBox(centroid,radius,floor,out boxCenter,out boxHalf);telegraph=Math.Max(.4f,Math.Min(4,telegraph>0?telegraph:1.2f));
             records[Oldest(records,RecordLive,RecordBorn)]=new Record{Live=true,Cue=NativeStructureCue.Stress,Center=centroid,BoxCenter=boxCenter,BoxHalf=boxHalf,Radius=Math.Max(.5f,radius),Amount=telegraph,Floor=floor,Born=time,Seed=seed^StressSalt,Base=seed};
             AddShake(NativeStructureCue.Stress,centroid,.5f,telegraph,seed^StressSalt,time);
         }
-        /// <summary>StructureFall (§5.4: Normal = fall direction, Amount = mass in tonnes, SurfaceId = dominant material).</summary>
-        public void Fall(V3 position,float radius,V3 direction,float tonnes,NativeStructureMaterial material,float floor,uint seed,float time)
+        /// <summary>StructureFall (§5.4: Normal = fall direction, Amount = mass in tonnes, SurfaceId = dominant material).
+        /// <paramref name="accel"/>: the segment's fall acceleration from its pose (m/s², at most g); 0 takes the contract's pancake
+        /// maxAccel, so the streamers, debris and trailing wire ends ride down with slabs a rider can stay on.</summary>
+        public void Fall(V3 position,float radius,V3 direction,float tonnes,NativeStructureMaterial material,float floor,uint seed,float time,float accel=0)
         {
-            records[Oldest(records,RecordLive,RecordBorn)]=new Record{Live=true,Cue=NativeStructureCue.Fall,Material=material,Center=position,Normal=Flat(direction),Radius=Math.Max(.5f,radius),Amount=Math.Max(0,tonnes),Floor=floor,Born=time,Seed=seed^FallSalt,Base=seed};
+            if(Known(NativeStructureCue.Fall,seed,time))return;
+            records[Oldest(records,RecordLive,RecordBorn)]=new Record{Live=true,Cue=NativeStructureCue.Fall,Material=material,Center=position,Normal=Flat(direction),Radius=Math.Max(.5f,radius),Amount=Math.Max(0,tonnes),Floor=floor,Born=time,Accel=FallAccel(accel),Seed=seed^FallSalt,Base=seed};
             AddShake(NativeStructureCue.Fall,position,tonnes,0,seed^FallSalt,time);
         }
         /// <summary>StructureLand (§5.4: settle and rubble swap; Amount = energy 0..1). Land carries no material: pass the one its
         /// fall named (<see cref="FallMaterial"/>).</summary>
         public void Land(V3 position,float radius,float energy,NativeStructureMaterial material,float floor,uint seed,float time,bool decals=true)
         {
+            if(Known(NativeStructureCue.Land,seed,time))return;
             records[Oldest(records,RecordLive,RecordBorn)]=new Record{Live=true,Cue=NativeStructureCue.Land,Material=material,Center=position,Radius=Math.Max(.5f,radius),Amount=Clamp01(energy),Floor=floor,Born=time,Seed=seed^LandSalt,Base=seed};
             AddShake(NativeStructureCue.Land,position,energy,0,seed^LandSalt,time);if(!decals)return;
             float r=Math.Max(.5f,radius),k=Math.Min(1,r/5);V3 up=new V3(0,1,0);uint s=seed^LandSalt^MarkSalt;
             AddMark(NativeStructureMark.Stain,new V3(position.x,floor,position.z),up,r*2.2f,s,time);
             for(int i=0;i<8;i++){float a=i*.785398f+H(s,i,1)*.5f,d=r*(.9f+.4f*H(s,i,2));AddMark(NativeStructureMark.Crack,new V3(position.x+(float)Math.Cos(a)*d,floor,position.z+(float)Math.Sin(a)*d),up,(1.4f+H(s,i,3))*k,s+(uint)i*7919u,time);}
         }
+        private bool Known(NativeStructureCue cue,uint seed,float time){for(int i=0;i<EventSlots;i++){var r=records[i];if(r.Live&&r.Cue==cue&&r.Base==seed&&r.Born==time)return true;}return false;}
         /// <summary>The material the newest fall of the same segment (same base seed) named, else <paramref name="fallback"/>.</summary>
         public NativeStructureMaterial FallMaterial(uint seed,NativeStructureMaterial fallback)
         {float at=float.MinValue;var m=fallback;for(int i=0;i<EventSlots;i++){var r=records[i];if(r.Live&&r.Cue==NativeStructureCue.Fall&&r.Base==seed&&r.Born>at){at=r.Born;m=r.Material;}}return m;}
         /// <summary>A decal into the 256-slot ring buffer (the oldest is overwritten); normal is the surface it lies on.</summary>
         public void AddMark(NativeStructureMark kind,V3 center,V3 normal,float size,uint seed,float time)
-        {var n=Len(normal)<1e-4f?new V3(0,1,0):normal.Normalized;marks[markCursor]=new Mark{Live=true,Kind=kind,Center=center,Normal=n,Size=Math.Max(.05f,size),Born=time,Seed=seed};markCursor=(markCursor+1)%DecalSlots;}
+        {for(int i=0;i<DecalSlots;i++){var m=marks[i];if(m.Live&&m.Kind==kind&&m.Seed==seed&&m.Born==time)return;}var n=Len(normal)<1e-4f?new V3(0,1,0):normal.Normalized;marks[markCursor]=new Mark{Live=true,Kind=kind,Center=center,Normal=n,Size=Math.Max(.05f,size),Born=time,Seed=seed};markCursor=(markCursor+1)%DecalSlots;}
         /// <summary>Dev preview stand-in (<see cref="NativeStructurePreview"/>): a three-storey quadrant at the spot that sags,
         /// pancakes and swaps to rubble on the preview's stress / fall / land schedule.</summary>
         public void Preview(V3 spot,NativeStructureMaterial material,float floor,uint seed,float time)
@@ -233,19 +269,26 @@ namespace ChipArena.UnityConversion
         {shakes[Oldest(shakes,ShakeLive,ShakeBorn)]=new Shake{Live=true,Rise=cue==NativeStructureCue.Stress,At=at,Peak=NativeStructureShake.Peak(cue,amount),Born=time,Duration=NativeStructureShake.Duration(cue,telegraph),Seed=seed};}
 
         // ---------- queries (hooks for the block shader, dressing and camera) ----------
-        /// <summary>Whether <paramref name="p"/> lies in a live stress telegraph's crush box (grown .5 m): its age and length.</summary>
+        /// <summary>Whether the segment with base seed <paramref name="seed"/> has landed by <paramref name="now"/>.</summary>
+        public bool Landed(uint seed,float now){for(int i=0;i<EventSlots;i++){var r=records[i];if(r.Live&&r.Cue==NativeStructureCue.Land&&r.Base==seed&&r.Born<=now)return true;}return false;}
+        // A stress record holds from its telegraph until its segment lands (at most StressHold after the telegraph ends), so the
+        // windows stay black and the sag held while the segment falls.
+        private bool Holding(in Record r,float a,float now)=>a>=0&&(a<=r.Amount+StressTail||a<=r.Amount+StressHold&&!Landed(r.Base,now));
+        /// <summary>Whether <paramref name="p"/> lies in a holding stress record's crush box (grown .5 m): its age and length.</summary>
         public bool StressAt(V3 p,float now,out float age,out float telegraph)
         {
             age=telegraph=0;float best=float.MaxValue;bool found=false;
             for(int i=0;i<EventSlots;i++)
             {
-                var r=records[i];if(!r.Live||r.Cue!=NativeStructureCue.Stress)continue;float a=now-r.Born;if(a<0||a>r.Amount+StressTail)continue;
+                var r=records[i];if(!r.Live||r.Cue!=NativeStructureCue.Stress)continue;float a=now-r.Born;if(!Holding(r,a,now))continue;
                 V3 d=p-r.BoxCenter;if(Math.Abs(d.x)>r.BoxHalf.x+.5f||Math.Abs(d.y)>r.BoxHalf.y+.5f||Math.Abs(d.z)>r.BoxHalf.z+.5f)continue;if(a<best){best=a;age=a;telegraph=r.Amount;found=true;}
             }
             return found;
         }
-        /// <summary>The window light multiplier at p (1 outside every telegraph).</summary>
+        /// <summary>The window light multiplier at p: the 8 Hz strobe through the telegraph, 0 from its end until the segment lands,
+        /// 1 elsewhere.</summary>
         public float WindowAt(V3 p,float now)=>StressAt(p,now,out float age,out float telegraph)?WindowStrobe(age,telegraph):1;
+        /// <summary>The sag at p, 0..1: rising over the telegraph, held at 1 until the segment lands.</summary>
         public float SagAt(V3 p,float now)=>StressAt(p,now,out float age,out float telegraph)?Sag(Math.Min(age,telegraph),telegraph):0;
         /// <summary>Rubble freshness at p: 1 under a fresh landing, fading to 0 over 10 s (0 where nothing landed).</summary>
         public float FreshnessAt(V3 p,float now)
@@ -274,7 +317,7 @@ namespace ChipArena.UnityConversion
         {
             CubeCount=PuffCount=FlatCount=LineCount=GlowCount=0;float q=Clamp01(quality);
             for(int i=0;i<BurstSlots;i++)if(bursts[i].Live&&now-bursts[i].Born>=BurstLife)bursts[i].Live=false;
-            for(int i=0;i<EventSlots;i++){var r=records[i];if(r.Live&&now-r.Born>=(r.Cue==NativeStructureCue.Land?LandLife:r.Cue==NativeStructureCue.Fall?FallLife:r.Amount+StressTail))records[i].Live=false;}
+            for(int i=0;i<EventSlots;i++){var r=records[i];if(!r.Live)continue;float a=now-r.Born;if(r.Cue==NativeStructureCue.Stress?a>r.Amount+StressTail&&!Holding(r,a,now):a>=(r.Cue==NativeStructureCue.Land?LandLife:FallLife))records[i].Live=false;}
             for(int i=0;i<MockSlots;i++)if(mocks[i].Live&&now-mocks[i].Born>=NativeStructurePreview.LandAt+LandLife)mocks[i].Live=false;
             for(int i=0;i<DecalSlots;i++)if(marks[i].Live)MarkFrame(marks[i],now);
             int n=0;for(int i=0;i<EventSlots;i++)if(records[i].Live)recordOrder[n++]=i;
@@ -415,25 +458,26 @@ namespace ChipArena.UnityConversion
         }
 
         // ---------- fall: streamers and snapping wires ----------
-        private V3 FallPath(V3 p0,V3 dir,float radius,float duration,float floor,float t)
-        {float u=Math.Min(1,t/Math.Max(.05f,duration));V3 p=p0+dir*(radius*.35f*u*u)+new V3(0,-9f*t*t,0);if(p.y<floor)p.y=floor;return p;}
+        // The falling mass: down at its acceleration from rest, drifting along its fall direction.
+        private static V3 FallPath(V3 p0,V3 dir,float radius,float duration,float accel,float floor,float t)
+        {float u=Math.Min(1,t/Math.Max(.05f,duration));V3 p=p0+dir*(radius*.35f*u*u)+new V3(0,-.5f*accel*t*t,0);if(p.y<floor)p.y=floor;return p;}
         private void FallFrame(in Record r,float now,V3 eye,float q)
         {
-            float t=now-r.Born;if(t<0||t>=FallLife)return;float D=FallSeconds(r.Radius),R=r.Radius;uint seed=r.Seed;V3 c=r.Center,dir=r.Normal;float floor=r.Floor;
+            float t=now-r.Born;if(t<0||t>=FallLife)return;float R=r.Radius,A=r.Accel;uint seed=r.Seed;V3 c=r.Center,dir=r.Normal;float floor=r.Floor,D=FallSeconds(c.y+R*.35f-floor,A);
             Lerp(Dust,FreshColor(r.Material),.2f,out float dr,out float dg,out float db);int baseHex=BaseColor(r.Material),fresh=FreshColor(r.Material);
             int streamers=q<.5f?3:Streamers;
             for(int k=0;k<streamers;k++)
             {
                 V3 p0=c+new V3((H(seed,k,1)-.5f)*R,R*.35f+(H(seed,k,2)-.5f)*R*.3f,(H(seed,k,3)-.5f)*R);
-                // Puffs left behind every .11 s while the mass is still above the floor; each lingers 1.8 s.
+                // Puffs left behind every .11 s while the mass is still above the floor (its fall time); each lingers 1.8 s.
                 for(int m=0;m*.11f<=Math.Min(t,D);m++)
                 {
-                    float born=m*.11f,a=t-born;if(a>=1.8f)continue;V3 at=FallPath(p0,dir,R,D,floor,born);if(at.y<floor+.3f)break;float u=a/1.8f;
+                    float born=m*.11f,a=t-born;if(a>=StreamerLinger)continue;V3 at=FallPath(p0,dir,R,D,A,floor,born);if(at.y<floor+.3f)break;float u=a/StreamerLinger;
                     float w=.6f+1.6f*EaseOut(u);Puff(at+Wind*a+new V3(0,.25f*a,0),w,w*1.2f,dr,dg,db,.45f*(float)Math.Pow(1-u,1.4f),1.2f,.88f,eye);
                 }
                 for(int j=0;j<3;j++)
                 {
-                    float lag=t-.05f*j;if(lag<0)continue;V3 at=FallPath(p0,dir,R,D,floor,lag)+new V3((H(seed,k,10+j)-.5f)*.8f,0,(H(seed,k,20+j)-.5f)*.8f);if(at.y<=floor+.05f)continue;
+                    float lag=t-.05f*j;if(lag<0)continue;V3 at=FallPath(p0,dir,R,D,A,floor,lag)+new V3((H(seed,k,10+j)-.5f)*.8f,0,(H(seed,k,20+j)-.5f)*.8f);if(at.y<=floor+.05f)continue;
                     float e=.14f+.18f*H(seed,k,30+j);AxisAngle(Axis(seed,k*3+j,40),8*lag,out float qx,out float qy,out float qz,out float qw);Rgb(H(seed,k,50+j)<.5f?baseHex:fresh,out float cr,out float cg,out float cb);Cube(at,new V3(e,e*.8f,e*1.2f),qx,qy,qz,qw,cr,cg,cb);
                 }
             }
@@ -444,9 +488,9 @@ namespace ChipArena.UnityConversion
                 // Cables from the top of the mass to stakes on the ground: they snap; the staked half drops flat, the other half
                 // trails from the falling mass.
                 V3 anchor=new V3(c.x+out1.x*R*(1.3f+.4f*H(seed,k,61)),floor+.05f,c.z+out1.z*R*(1.3f+.4f*H(seed,k,61))),start=c+out1*(R*.45f)+new V3(0,R*.45f,0);float snap=.06f+.09f*k+.05f*H(seed,k,62);
-                V3 end=FallPath(start,dir,R,D,floor,t);
+                V3 end=FallPath(start,dir,R,D,A,floor,t);
                 if(t<snap){Line(anchor,end,.03f,wr,wg,wb,1,false);continue;}
-                float tau=t-snap;V3 brk=FallPath(start,dir,R,D,floor,snap),mid=(anchor+brk)*.5f;float L=Len(brk-anchor)*.5f;
+                float tau=t-snap;V3 brk=FallPath(start,dir,R,D,A,floor,snap),mid=(anchor+brk)*.5f;float L=Len(brk-anchor)*.5f;
                 Whip(anchor,(mid-anchor).Normalized,Flat(mid-anchor),L,tau,floor,wr,wg,wb);Whip(end,(mid-brk).Normalized,new V3(0,-1,0),L,tau,floor,wr,wg,wb);
                 if(tau<.12f){float f=1-tau/.12f;Glow(mid,.6f,Flash,f*f);for(int s2=0;s2<5;s2++){V3 d=Axis(seed,k*5+s2,70);Line(mid+d*(tau*6),mid+d*(tau*6+.12f),.018f,1,.85f,.55f,f,true);}}
             }
@@ -602,12 +646,14 @@ namespace ChipArena.UnityConversion
     public enum NativeStructureSound{PierHit,StageCrack,RebarPing,Groan,Collapse,Land,Chimney}
     /// <summary>One layer of a destruction cue: clip id ("structure/..." = synthesized, Resources/StructureAudio; else the
     /// source bank), gain, rate (0 = the bank's .97-1.03 jitter), delay in seconds, and whether it is a high layer that
-    /// distance dulls first.</summary>
+    /// distance dulls first. A plan lists its layers by priority (the low body, then transients, then tails); a layer that would
+    /// break the rubble voice cap is skipped, so the last ones are the first to drop (<see cref="NativeStructureMix"/>).</summary>
     public struct NativeStructureLayer{public string Clip;public float Gain,Rate,Delay;public bool High;}
     /// <summary>
-    /// §3.11 destruction cue routing (at most 6 rubble voices): pier hit thud + crack; stage changes (crack and gravel at S1,
-    /// rebar ping at S2); the stress groan rising with level; the collapse (snap, sub boom, rumble, glass, debris tail); landing
-    /// thuds by material; the chimney's long creak, whoosh and four thuds; one structure-level cue per segment event, replacing
+    /// §3.11 destruction cue routing (at most 6 rubble voices sounding at once, <see cref="NativeStructureMix"/>): pier hit thud +
+    /// crack; stage changes (crack and gravel at S1, rebar ping at S2); the stress groan rising with level; the collapse (sub
+    /// boom, rumble, snap, glass, debris tail), which takes over its own segment's groan voices; landing thuds by material; the
+    /// chimney's four thuds under its long creak and whoosh; one structure-level cue per segment event, replacing
     /// today's explosion per block. Distance "low-pass" is approximated by dulling the high layers faster than the low ones
     /// (one AudioSource per voice, no per-voice filter). Clips: tools/synth_structure_audio.py (deterministic, asset-locked)
     /// plus the bank's wood, metal and dash.
@@ -626,21 +672,26 @@ namespace ChipArena.UnityConversion
                 case NativeStructureSound.StageCrack:n=Add(o,n,P+"crack",.6f,0,0,true);n=Add(o,n,P+"gravel",.5f,0,.05f,true);break;
                 case NativeStructureSound.RebarPing:n=Add(o,n,P+"rebar",.55f,0,0,true);break;
                 case NativeStructureSound.Groan:n=Add(o,n,P+"groan",.45f+.45f*level,.92f+.08f*level,0,false);n=Add(o,n,P+"creak",.3f,0,.25f,true);break;
-                case NativeStructureSound.Collapse:n=Add(o,n,P+"snap",.9f,0,0,true);n=Add(o,n,P+"boom",1,1,0,false);n=Add(o,n,P+"rumble",.8f,1,.05f,false);n=Add(o,n,P+"glass",.5f,0,.12f,true);n=Add(o,n,P+"debris",.65f,0,.35f,true);break;
+                case NativeStructureSound.Collapse:n=Add(o,n,P+"boom",1,1,0,false);n=Add(o,n,P+"rumble",.8f,1,.05f,false);n=Add(o,n,P+"snap",.9f,0,0,true);n=Add(o,n,P+"glass",.5f,0,.12f,true);n=Add(o,n,P+"debris",.65f,0,.35f,true);break;
                 case NativeStructureSound.Land:
                     switch(m)
                     {
                         case NativeStructureMaterial.Timber:n=Add(o,n,P+"thud",.6f,1.15f,0,false);n=Add(o,n,"wood",.7f,.7f,.02f,true);break;
                         case NativeStructureMaterial.Metal:n=Add(o,n,P+"thud",.6f,0,0,false);n=Add(o,n,"metal",.7f,.6f,.02f,true);break;
-                        case NativeStructureMaterial.Glass:n=Add(o,n,P+"glass",.8f,0,0,true);n=Add(o,n,P+"thud",.4f,1.2f,0,false);break;
+                        case NativeStructureMaterial.Glass:n=Add(o,n,P+"thud",.4f,1.2f,0,false);n=Add(o,n,P+"glass",.8f,0,0,true);break;
                         default:n=Add(o,n,P+"thud",.9f*(.6f+.4f*level),.95f,0,false);n=Add(o,n,P+"gravel",.6f,0,.04f,true);if(level>.5f)n=Add(o,n,P+"debris",.45f,1.05f,.1f,true);break;
                     }
                     break;
                 case NativeStructureSound.Chimney:
-                    n=Add(o,n,P+"creak",1,.9f,0,true);n=Add(o,n,"dash",.7f,.6f,1,true);n=Add(o,n,P+"thud",.9f,.9f,1.6f,false);n=Add(o,n,P+"thud",.75f,1,1.85f,false);n=Add(o,n,P+"thud",.7f,1.05f,2.05f,false);n=Add(o,n,P+"thud",.6f,1.1f,2.25f,false);break;
+                    n=Add(o,n,P+"thud",.9f,.9f,1.6f,false);n=Add(o,n,P+"thud",.75f,1,1.85f,false);n=Add(o,n,P+"thud",.7f,1.05f,2.05f,false);n=Add(o,n,P+"thud",.6f,1.1f,2.25f,false);n=Add(o,n,P+"creak",1,.9f,0,true);n=Add(o,n,"dash",.7f,.6f,1,true);break;
             }
             return Math.Min(n,o.Length);
         }
+        /// <summary>The owner key of a segment's cues (FNV-1a of its id, never 0): a collapse steals only its own groan.</summary>
+        public static uint Owner(string segment){unchecked{uint h=2166136261;if(segment!=null)for(int i=0;i<segment.Length;i++)h=(h^segment[i])*16777619;return h==0?1:h;}}
+        /// <summary>The longest a layer of <paramref name="seconds"/> at <paramref name="rate"/> sounds (rate 0: the bank's slowest
+        /// jitter, .97).</summary>
+        public static double Length(double seconds,float rate)=>seconds/Math.Max(.05f,rate>0?rate:.97f);
         /// <summary>The kiln chimneys (stack-n, stack-s) topple with their own cue.</summary>
         public static bool Chimney(string segment)=>segment!=null&&segment.StartsWith("stack",StringComparison.Ordinal);
         /// <summary>The cue a structure event plays: stress groans (a chimney's lean plays the whole chimney cue), a fall collapses
@@ -655,18 +706,58 @@ namespace ChipArena.UnityConversion
     }
 
     /// <summary>
+    /// The §3.11 rubble voice cap as a ledger of the voices destruction cues hold (indices into NativeAudio's 24): a layer is
+    /// admitted only when, from its start to its end, fewer than <see cref="NativeStructureSounds.Voices"/> held layers sound at
+    /// any moment, so a layer scheduled for later counts from its start, not from when it was scheduled, and the cap holds at
+    /// every instant. A collapse takes over its own segment's groan voices (<see cref="Steals"/>). Times are dsp seconds; the
+    /// runtime (NativeStructureAudio.cs) and the managed checks drive it the same way. Fixed arrays, no allocation.
+    /// </summary>
+    public sealed class NativeStructureMix
+    {
+        public const int Slots=24;
+        private readonly bool[] live=new bool[Slots];private readonly double[] start=new double[Slots],end=new double[Slots];private readonly uint[] owner=new uint[Slots];private readonly NativeStructureSound[] sound=new NativeStructureSound[Slots];
+        public void Clear(){for(int i=0;i<Slots;i++)live[i]=false;}
+        public bool Live(int v)=>v>=0&&v<Slots&&live[v];
+        public double Start(int v)=>start[v];
+        public void Release(int v){if(v>=0&&v<Slots)live[v]=false;}
+        /// <summary>Frees every layer that has ended by <paramref name="now"/>.</summary>
+        public void Expire(double now){for(int i=0;i<Slots;i++)if(live[i]&&end[i]<=now)live[i]=false;}
+        /// <summary>Held layers sounding at <paramref name="t"/> (started, not ended).</summary>
+        public int SoundingAt(double t){int n=0;for(int i=0;i<Slots;i++)if(live[i]&&start[i]<=t&&t<end[i])n++;return n;}
+        /// <summary>Whether a layer sounding from <paramref name="s"/> to <paramref name="e"/> keeps the cap: checked at its start
+        /// and at every held layer's start inside it (where the count can rise).</summary>
+        public bool Fits(double s,double e)
+        {
+            if(SoundingAt(s)>=NativeStructureSounds.Voices)return false;
+            for(int i=0;i<Slots;i++)if(live[i]&&start[i]>s&&start[i]<e&&SoundingAt(start[i])>=NativeStructureSounds.Voices)return false;
+            return true;
+        }
+        public void Claim(int v,double s,double e,uint who,NativeStructureSound cue){if(v<0||v>=Slots)return;live[v]=true;start[v]=s;end[v]=e;owner[v]=who;sound[v]=cue;}
+        /// <summary>Whether a <paramref name="cue"/> for <paramref name="who"/> takes held voice v over: a collapse silences its
+        /// own segment's stress groan and creak (they would otherwise hold two of the six voices through its debris tail).</summary>
+        public bool Steals(int v,uint who,NativeStructureSound cue)=>cue==NativeStructureSound.Collapse&&Live(v)&&owner[v]==who&&sound[v]==NativeStructureSound.Groan;
+    }
+
+    /// <summary>
     /// The dev preview's stand-in segment (Sandbox, dev accounts): a 5.6 x 6 m three-storey hotel quadrant of §3.9 whose banded
-    /// corner pier is already gone. Telegraph 1.2 s, then a pancake (roof, floor 2 and floor 1 released at 0, .25 and .45 s,
-    /// each accelerating at 19-22 m/s²) that lands together 1 s after the telegraph, when the rubble swaps in. Pure in time.
+    /// corner pier is already gone. Telegraph 1.2 s, then a pancake: roof, floor 2 and floor 1 released at 0, .25 and .45 s, each
+    /// falling from rest at the contract's 6.9 m/s² (§5.2 maxAccel, what a rider can stay on), so floor 1 lands 1.38 s, floor 2
+    /// 1.59 s and the roof 1.64 s after the telegraph; the rubble swaps in (the preview's Land) when the roof lands. Pure in time.
     /// </summary>
     public static class NativeStructurePreview
     {
-        public const float Telegraph=1.2f,Drop=1,Width=5.6f,Depth=6,Storey=3.6f,Pier=.9f,Mass=60,Energy=.85f;public const int Storeys=3;
-        public const float LandAt=Telegraph+Drop;
+        public const float Telegraph=1.2f,Width=5.6f,Depth=6,Storey=3.6f,Pier=.9f,Mass=60,Energy=.85f,Accel=NativeStructureFx.PancakeAccel;public const int Storeys=3;
         /// <summary>Release offsets after the telegraph, by storey (floor 1, floor 2, roof).</summary>
         public static readonly float[] Stagger={.45f,.25f,0};
+        /// <summary>Storey k's slab: where it stands and where it comes to rest on the pile.</summary>
+        public static float Top(int k,float floor)=>floor+Storey*(k+1);
+        public static float Rest(int k,float floor)=>floor+.6f+.45f*k;
+        /// <summary>When storey k's slab lands, after the telegraph.</summary>
+        public static float Lands(int k)=>Stagger[k]+(float)Math.Sqrt(2*(Top(k,0)-Rest(k,0))/Accel);
+        /// <summary>The last landing after the telegraph (the roof's), and the preview's Land time.</summary>
+        public static readonly float Drop=Math.Max(Lands(0),Math.Max(Lands(1),Lands(2))),LandAt=Telegraph+Drop;
         public static float SlabY(int k,float t,float floor)
-        {float y0=floor+Storey*(k+1),rest=floor+.6f+.45f*k,rel=t-Telegraph-Stagger[k],fall=Drop-Stagger[k];if(rel<=0)return y0;return Math.Max(rest,y0-(y0-rest)*rel*rel/(fall*fall));}
+        {float y0=Top(k,floor),rel=t-Telegraph-Stagger[k];if(rel<=0)return y0;return Math.Max(Rest(k,floor),y0-.5f*Accel*rel*rel);}
         public static float Height=>Storey*Storeys;
         public static float Radius=>(float)Math.Sqrt(Width*Width*.25f+Depth*Depth*.25f+Height*Height*.25f);
         public static V3 Centroid(V3 spot,float floor)=>new V3(spot.x,floor+Height*.5f,spot.z);
