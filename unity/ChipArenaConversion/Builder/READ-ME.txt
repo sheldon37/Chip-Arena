@@ -1,35 +1,57 @@
-CHIP ARENA BUILDER
+CHIP ARENA BUILDER v2 - FETCH, BUILD AND PUBLISH
 
-One-time setup
-1. Extract this entire folder somewhere writable, such as C:\ChipArenaBuilder.
-2. Install Git for Windows and Python 3.8+ (enable its launcher or PATH option).
-3. Install Unity 6000.3.24f1 with Windows Build Support using Unity Hub. Activate
-   your license. The Windows launcher compiler also needs .NET Framework 4.8.
-   For a custom Unity location, set UNITY_EDITOR to the full Unity.exe path.
+UPGRADE YOUR EXISTING BUILDER
+Close any running builder first. Extract this ZIP into C:\ and allow its eight
+files to replace the files in C:\Chip Arena Builder. Keep Cache, Work and the
+last-*.json files. The ZIP does not contain or replace any of those folders or
+saved build records. You can also use a different writable folder on either PC.
 
-For each game update
-1. Double-click Build-Windows.cmd. It fetches the latest integrated game source
-   from codex/unity-cloud-current, builds it on this PC and opens the output folder.
-   Changes still on Claude/Codex task branches must be integrated first.
-2. Test the game using Windows\Chip Arena.exe in that output folder. The portable
-   player download is Chip-Arena-Windows.zip in the same output folder.
-3. Double-click Publish-Native.cmd. Review and confirm the build to upload it to
-   the existing test update channel. Players then use their Update Game button.
-   Git must be signed into the GitHub account with push access to the test feed.
-   Publish-Native.cmd --status checks without publishing.
+EVERYDAY USE
+Double-click Build-and-Publish.cmd.
+It fetches the newest integrated source from codex/unity-cloud-current, builds
+with Unity, validates the compiled player/update files, then publishes to the
+existing test Update Game channel. No separate Publish click or typed PUBLISH
+phrase is required. The native build gates must pass before upload. This runs
+build/package checks, not a manual gameplay playtest.
 
-The build command never publishes. Download errors or a failed/interrupted build
-stop publication until you run a successful build. With no new shared changes,
-the last validated build is reused; Build-Windows.cmd --rebuild forces a new one.
+GitHub may ask you to sign in through your browser. Use the account with access
+to the source and permission to push the test channel. No credentials are bundled.
 
-Keep the builder files together. Cache holds downloaded Git objects. Work holds
-separate source/output folders for each build; earlier copies and edits are never
-reset or overwritten. Each changed version gets a fresh Unity import, so allow
-extra time and disk space. Old Work folders can be removed manually when you no
-longer need them; keep the one identified by last-success.json if you will publish
-or reuse it. Install your regular playing copy outside Work.
+With no new source, a verified successful build is reused. If that source version
+is already published, the command finishes successfully without another upload.
+Build-and-Publish.cmd --rebuild forces a fresh local compilation when needed.
 
-This builder can be used on either laptop or desktop. Build/publish from one PC
-per update. It uses your normal GitHub sign-in if the game repository is private;
-no credentials are bundled. Keep cloud auto-publication paused while using the
-manual workflow so two machines do not compete to publish.
+OTHER BUTTONS
+Build-Windows.cmd         Fetch and build only, for testing before publication.
+Publish-Native.cmd        Publish/retry the last successful build only.
+Check-Update-Status.cmd   Compare the saved build with the public update feed.
+
+AFTER AN ERROR
+A failed fetch or build prevents publication of an older saved build. Correct
+the reported error, then rerun Build-and-Publish.cmd.
+If the build passed but uploading failed, double-click Publish-Native.cmd to
+retry the same compiled files without rebuilding. Old builds remain in Work.
+The final output distinguishes publication on GitHub from public-feed cache
+refresh. Players can use Update Game once the public feed serves the build.
+
+ONE-TIME REQUIREMENTS
+- Activated Unity 6000.3.24f1 with Windows Build Support in Unity Hub.
+- Git for Windows and Python 3.8 or newer. .NET Framework 4.8 for the launcher.
+- If Unity is elsewhere, set UNITY_EDITOR to the full path of Unity.exe.
+
+FIXES IN v2
+- Detects a real, working Git executable, including ucrt64 and mingw64 installs;
+  rejects launchers that return zero without any version output.
+- Uses a buffered HTTP/1.1 upload, the working solution to the observed HTTP 408.
+- Publication uses an automated commit identity, so fresh laptop/desktop Git
+  installs need no user.name/user.email setup. Your global Git settings stay intact.
+- Uses a separate managed cache (Cache/native-publisher-v2.git). Old native-channel
+  and backup folders are left alone; their staged files cannot block publication.
+- Downloads the current channel trees/manifest, not its entire old binary history.
+- Rechecks the remote after uploading; never force-pushes or trusts an
+  "Everything up-to-date" line after an upload error.
+
+Keep all eight builder files together. Install your playing copy outside Work.
+Use one publishing PC per update. Changes must reach codex/unity-cloud-current
+before the builder fetches them. Existing local Work edits are preserved, but
+the combined command builds the shared source, not those local edits.

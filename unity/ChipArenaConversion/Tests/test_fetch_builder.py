@@ -120,25 +120,38 @@ class FetchBuilderTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'latest build attempt'):
             builder.publish(self.root)
 
-    def test_publish_selects_last_success_after_a_new_remote_commit_and_keeps_confirmation(self):
+    def test_publish_selects_last_success_after_a_new_remote_commit(self):
         first = self.build()
         self.advance()  # Publishing does not fetch or silently select unbuilt source.
-        original = builder.run
-        calls = []
-        def run(args, **kwargs):
-            if '--publish' in args or '--status' in args:
-                calls.append([str(a) for a in args])
-                return subprocess.CompletedProcess(args, 0)
-            return original(args, **kwargs)
-        with builder.locked(self.root), patch.object(builder, 'run', side_effect=run):
+        with builder.locked(self.root), patch.object(builder.native_publish, 'publish', return_value={'status': 'published'}) as publish:
             builder.publish(self.root)
-            builder.publish(self.root, True)
-        self.assertEqual(calls[0][1], str(first / 'tools/publish_native_update.py'))
-        self.assertIn('--confirm', calls[0])
-        self.assertIn('--publish', calls[0])
-        self.assertIn(str(self.root / 'Cache/native-channel'), calls[0])
-        self.assertIn('--status', calls[1])
-        self.assertNotIn('--publish', calls[1])
+        self.assertEqual(publish.call_args.args[0], first / 'Builds/NativeUpdateFeed')
+        self.assertEqual(publish.call_args.args[1], self.root / 'Cache/native-publisher-v2.git')
+        self.assertEqual(publish.call_args.args[2]['build'], builder.previous(self.root)['build'])
+        self.assertEqual(json.loads((self.root / 'last-publication.json').read_text())['selectedSourceCommit'], builder.previous(self.root)['sourceCommit'])
+
+    def test_combined_command_builds_before_publishing_and_stops_on_failed_build(self):
+        with patch.object(builder, 'build_project', side_effect=self.compile), \
+                patch.object(builder.native_publish, 'publish', return_value={'status': 'published'}) as publish:
+            builder.perform(self.root, 'build-publish')
+            self.assertEqual(publish.call_count, 1)
+            builder.perform(self.root, 'build-publish')
+            self.assertEqual(len(self.builds), 1)  # retry reuses the validated build
+            self.advance()
+            with patch.object(builder, 'build_project', side_effect=ValueError('bad build')):
+                with self.assertRaisesRegex(ValueError, 'bad build'):
+                    builder.perform(self.root, 'build-publish')
+            self.assertEqual(publish.call_count, 2)
+
+    def test_upload_failure_keeps_successful_build_available_for_retry(self):
+        with patch.object(builder, 'build_project', side_effect=self.compile), \
+                patch.object(builder.native_publish, 'publish', side_effect=ValueError('network failed')):
+            with self.assertRaisesRegex(ValueError, 'network failed'):
+                builder.perform(self.root, 'build-publish')
+        self.assertEqual(json.loads((self.root / 'last-attempt.json').read_text())['status'], 'success')
+        with patch.object(builder.native_publish, 'publish', return_value={'status': 'published'}):
+            builder.publish(self.root)
+        self.assertEqual(len(self.builds), 1)
 
     def test_changed_cache_origin_is_refused_without_rewriting_it(self):
         self.build()
@@ -184,10 +197,11 @@ class FetchBuilderTests(unittest.TestCase):
         for path in (PROJECT / 'Builder').iterdir():
             if path.is_file():
                 shutil.copyfile(path, self.root / path.name)
-        result = subprocess.run(['cmd.exe', '/d', '/c', 'call', str(self.root / 'Build-Windows.cmd'), '--help'],
-                                cwd=self.folder, input='\n', text=True, capture_output=True, timeout=30)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn('Fetch the shared Unity source', result.stdout)
+        for name in ('Build-Windows.cmd', 'Build-and-Publish.cmd'):
+            result = subprocess.run(['cmd.exe', '/d', '/c', 'call', str(self.root / name), '--help'],
+                                    cwd=self.folder, input='\n', text=True, capture_output=True, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn('Fetch the shared Unity source', result.stdout)
         self.assertFalse((self.root / 'Cache').exists())
 
 
