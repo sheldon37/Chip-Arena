@@ -40,21 +40,21 @@ namespace ChipArena.UnityConversion
             }
             t.Top=t.Cards[0].y;t.Bottom=y-rowGap;return t;
         }
-        // The tray sits low, on the display table in front of the seated pilot (owner 2026-10-10: chest up, seated at a table
-        // with the chips laid out in front; NativeDraftStage frames the pilot and the table around it): moved down so its last
-        // row ends on `bottom` (above the nameplate and the footer), never above `top` (the heading's bottom edge). Card sizes
-        // and spacing are LayoutTray's.
+        // The tray sits low, in front of the pilot (owner 2026-10-11: the pilot close, from the solar plexus up; NativeDraftStage
+        // frames the plexus on the tray's top line): moved down so its last row ends on `bottom` (above the nameplate and the
+        // footer), never above `top` (the heading's bottom edge). Card sizes and spacing are LayoutTray's.
         private static void LowerTray(Tray t,float top,float bottom)
         {
             float off=Mathf.Max(top-t.Top+10,bottom-t.Bottom);for(int i=0;i<t.Cards.Length;i++)t.Cards[i].y+=off;t.Top+=off;t.Bottom+=off;
         }
         // draft-screen.css :before / :after shades, moved with the composition: a light one behind the heading (the pilot's head
-        // stands below it) and one rising from the tray's top edge to the bottom over the table's display and front, so the
-        // cards and the nameplate stay legible while the pilot's hands on the table stay clear.
+        // stands below it) and one rising from the tray's top edge to the bottom, deepening over its lower half, so the cards and
+        // the nameplate stay legible and the pilot reads from the solar plexus up (the lap and, under a tall hat's wider framing,
+        // the hips fade out) while the catch and the plant above the cards stay clear.
         private static void DraftShades(Tray tray,float W,float H)
         {
             float head=Mathf.Min(H*.24f,230);U.Fill(new Rect(0,0,W,head*.4f),U.Hex(0x06070b,.42f));U.Fade(new Rect(0,head*.4f,W,head*.6f),U.Hex(0x06070b,.42f));
-            float line=tray!=null&&tray.Cards.Length>0?tray.Top:H*.72f;U.Fade(new Rect(0,line-12,W,H-line+12),U.Hex(0x06070b,.5f),false);
+            float line=tray!=null&&tray.Cards.Length>0?tray.Top:H*.72f;U.Fade(new Rect(0,line-12,W,H-line+12),U.Hex(0x06070b,.5f),false);U.Fade(new Rect(0,line+(H-line)*.45f,W,(H-line)*.55f),U.Hex(0x06070b,.6f),false);
         }
         private static void Nameplate(NativeSeat seat,string label,float x,float y)
         {
@@ -71,7 +71,7 @@ namespace ChipArena.UnityConversion
                 if(i==skip||hidden(i))continue;var c=chips[i];var r=tray.Cards[i];var reveal=NativeChipCard.Entrance(c.rarity,elapsed-i*.22f);if(reveal.Alpha<=0)continue;
                 bool over=enabled&&U.Hover(r);float h=U.HoverAmount(4001+i,r,enabled);int key=4001+i;if(over&&i<cardHovered.Length&&!cardHovered[i])cardSweep[key]=now;if(i<cardHovered.Length&&Event.current.type==EventType.Repaint)cardHovered[i]=over;
                 if((over||draftFocus==i)&&enabled&&Event.current.type==EventType.Repaint)draftHover=i;
-                // The card stands on the table's display: its contact shadow and soft reflection stay on the surface (with the
+                // The card stands on the tray's display: its contact shadow and soft reflection stay on the surface (with the
                 // entrance, not the hover lift), the shadow spreading and the glow brightening as the card lifts.
                 U.Push(r.center,new Vector2(reveal.Dx,reveal.Dy),reveal.Scale*reveal.ScaleX,reveal.Degrees,reveal.Scale*reveal.ScaleY);TrayStand(r,c.rarity,reveal.Alpha,h);U.Pop();
                 float lift=-10*M.Bezier(.2f,.8f,.2f,1,h);U.Push(r.center,new Vector2(reveal.Dx,reveal.Dy+lift),reveal.Scale*reveal.ScaleX,reveal.Degrees,reveal.Scale*reveal.ScaleY);
@@ -82,8 +82,8 @@ namespace ChipArena.UnityConversion
             }
             return clicked;
         }
-        // A card's footing on the display table (NativeDraftStage): a soft contact shadow along its lower edge and a faint glow of
-        // its rarity on the glossy surface under it. `hover` 0..1 (the lift).
+        // A card's footing on the tray's display: a soft contact shadow along its lower edge and a faint glow of its rarity on
+        // the surface under it. `hover` 0..1 (the lift).
         private static void TrayStand(Rect r,string rarity,float alpha,float hover)
         {
             if(alpha<=0)return;U.Glow(new Rect(r.x+12,r.yMax-5,r.width-24,8),new Color(0,0,0,.55f*alpha*(1-.3f*hover)),10+8*hover);

@@ -45,9 +45,9 @@ namespace ChipArena.UnityConversion
     public sealed partial class ArenaPresentation
     {
         private CapturedAnimation.Player draftRig;
-        // The stage motion (NativeDraftStage: the pilot seated at the display table, chest up, the bow and the gaze springs, the
-        // considering lift, the slowed reach across the table and the wrist plant) and the cached draw delegates of the pilot
-        // and the held chip (no per-frame closures).
+        // The stage motion (NativeDraftStage: the pilot close, from the solar plexus up, the bow and the gaze springs, the
+        // considering lift, the slowed catch in front of the chest and the wrist plant) and the cached draw delegates of the
+        // pilot and the held chip (no per-frame closures).
         private readonly NativeDraftStage draftStage=new NativeDraftStage();private Matrix4x4 draftChip;private Color draftChipTint;
         private Func<int,Matrix4x4> draftBone,draftChipBone;private Func<int,Color> draftChipPart;
         // The pick's age on the stage's smooth clock (-1 before the pick), for the tray's fly, shatter and spotlight.
@@ -67,7 +67,8 @@ namespace ChipArena.UnityConversion
         // lifts toward it (the local picker's highlighted card), `cards` the card centres as screen fractions (the first
         // `count`), `trayLine` / `trayBottom` the tray's top and bottom edges (fractions from the top; negative until the tray is
         // laid out). `chipTint` is the chosen chip's rarity (sRGB) for its die and the plant pulse (the stage tint when not
-        // given). Returns the reaching palm in screen pixels (the chosen card flies there).
+        // given). Returns the reaching palm in screen pixels (the chosen card flies there, up into the hand raised in front of
+        // the chest). No table is drawn: the close framing ends at the solar plexus.
         public Vector2 RenderDraft(NativeSeat seat,float age,int focus,bool consider,NVector2[] cards,int count,float trayLine,float trayBottom,Color tint,Camera camera,bool reduced,Color chipTint=default)
         {
             if(draftRig==null){draftRig=captured.Create(transform,-101);draftStage.Reset();}sourceModels.Begin();foreach(var b in batches)b.Clear();FirstPerson=false;combatGlow?.Clear();particles.Clear();
@@ -82,16 +83,6 @@ namespace ChipArena.UnityConversion
             float pulse=age>=0&&!reduced?NativeDraftPlant.Pulse(age):-1,flash=pulse>=0?(1-pulse)*(1-pulse):0;
             camera.fieldOfView=NativeDraftStage.Fov;camera.transform.position=Stage(stage.CameraPosition);camera.transform.LookAt(Stage(stage.CameraTarget));NativeLighting.Draft(camera,tint,flash);
             var plant=stage.Plant;int hand=stage.Left?9:13;
-            // The display table in front of the pilot (NativeDraftStage.TablePiece): a dark lit slab and front face, the dim display
-            // pane, its rules and the rims glowing in the stage tint (the pilot's colour, the chip's rarity after the pick),
-            // brightening with the plant's flash. The designed cards lie over its display (NativeDraftScreen).
-            var tableTint=tint.linear;float rimFlash=1+.8f*flash;
-            for(int i=0;i<NativeDraftStage.TablePieces;i++)
-            {
-                if(!stage.TablePiece(i,out var centre,out var size,out float shade,out bool glow))continue;
-                var colour=glow?tableTint*(shade*(i==3||i==5?rimFlash:1)):new Color(shade,shade*1.04f,shade*1.18f);colour.a=1;
-                sourceModels.QueuePiece(WeaponShape.Cube,glow,Matrix4x4.TRS(Stage(centre),Quaternion.identity,CapturedAnimation.Vec(size)),colour);
-            }
             // draft-stage.ts animates the Siren drafter (animateSiren on the match clock): its idle look, eye halos lit.
             var root=draftRig.Root.transform.localToWorldMatrix;var sirenFace=siren?SirenStill(reduced?0:(float)time):null;sourceModels.Queue(siren?"siren":"pilot",root,draftBone,body:BodyTint(seat.bodyColor),accent:AccentTint(seat.accentColor),look:sirenFace);if(!siren&&!AuditorHalo(seat.hat,draftRig.Bones[CapturedRig.Head].localToWorldMatrix,(float)time,1,reduced,0,null,camera))sourceModels.Queue("hat-"+seat.hat,root,draftBone);
             if(siren){sirenLookCamera=camera;SirenLookFx(draftRig,sirenFace,0,null,reduced?0:(float)time);}
