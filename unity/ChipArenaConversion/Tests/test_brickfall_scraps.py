@@ -6,6 +6,8 @@ crosses a kiosk, a stall, a dock or a wall shows paper skating through it. The r
 the centre line ± (half width + .35) across) keeps 0.4 m from every solid in that blockout, the loading-dock ramps included.
 The real map's props also fade a scrap out at runtime (NativeBrickfallCover); that part is a managed check
 (Tests/BrickfallSceneryChecks.cs). When the blockout changes, re-pick the runs from its free cells.
+The native CI checks out only unity/ChipArenaConversion (sparse), so the blockout comparison is skipped there; the run
+shape and play-space checks need only the Unity source and always run.
 """
 import contextlib, io, re, unittest
 from pathlib import Path
@@ -30,7 +32,7 @@ class BrickfallScraps(unittest.TestCase):
     def setUpClass(cls):
         src=ATMOSPHERE.read_text(encoding='utf-8')
         cls.runs=list(zip(array(src,'LaneX0'),array(src,'LaneX1'),array(src,'LaneZ'),array(src,'LaneHalf')))
-        cls.solids=blockout()
+        cls.solids=blockout() if BLOCKOUT.exists() else None
     def test_six_point_symmetric_runs(self):
         self.assertEqual(len(self.runs),6)
         for k in range(0,6,2):
@@ -41,6 +43,7 @@ class BrickfallScraps(unittest.TestCase):
             with self.subTest(run=(x0,x1,z,h)):
                 self.assertGreaterEqual(x0-ALONG,-30);self.assertLessEqual(x1+ALONG,30);self.assertLessEqual(abs(z)+h+ACROSS,26);self.assertGreater(x1-x0,12)
     def test_runs_clear_the_draft_cover(self):
+        if self.solids is None:self.skipTest('docs/arenas/scripts/brickfall_m1.py is not in this checkout (sparse CI)')
         self.assertGreater(len(self.solids),100,'the blockout script still lists its solids')
         for x0,x1,z,h in self.runs:
             sx0,sx1,sz0,sz1=x0-ALONG-CLEAR,x1+ALONG+CLEAR,z-h-ACROSS-CLEAR,z+h+ACROSS+CLEAR
