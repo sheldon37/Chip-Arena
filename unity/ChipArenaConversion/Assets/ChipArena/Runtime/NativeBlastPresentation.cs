@@ -11,7 +11,9 @@ namespace ChipArena.UnityConversion
     // shots and the event stream. The event stream also feeds the source's event-vfx.ts draws (NativeImpactCues): voxel
     // spark bursts and lit streaks into the projectile visuals' BurstPool port (Sparks), impacts, lines and paddles here.
     // The Siren's own attack records are not blasts in the source (siren/fx.ts, NativeDevEffects) and draw nothing here.
-    // Cosmetic only; nothing here touches the match.
+    // Every blast and impact, field arrivals included, gets the real floor under it (FloorUnder; owner 2026-10-11: no flat area
+    // disc, so a wall, ceiling or airburst hit is a sphere whose pieces fall to that floor). Cosmetic only; nothing here touches
+    // the match.
     public sealed class NativeBlastPresentation : IDisposable
     {
         private sealed class Layer
@@ -36,6 +38,7 @@ namespace ChipArena.UnityConversion
         private readonly NativeImpactCommand[] plan=new NativeImpactCommand[NativeImpactCues.MaxCommands];
         private readonly NativeSpikeRises spikeRises=new NativeSpikeRises();
         private static readonly Bounds Everywhere=new Bounds(Vector3.zero,Vector3.one*4000);
+        private const float FloorLift=.05f,FloorReach=40;private readonly RaycastHit[] floorHits=new RaycastHit[16];private PhysicsScene physics;private bool world;
         private int generation=-1,lastEvent;private float lastTime=-1;
         public NativeBlastPresentation(Transform parent)
         {
@@ -115,7 +118,7 @@ namespace ChipArena.UnityConversion
                 if(now-(fx.Until-.22f)>.4f)continue;
                 // A beam record that stands for a source event with no Unity event: the L33t possession and Slenderman hop
                 // (green burst, the hop's streak) and the toy soldier's shot line. The first port's cube bars are gone.
-                if(fx.Beam){int count=NativeImpactCues.Record(fx.Element,fx.Radius,NativeArena.Vec(fx.Position),NativeArena.Vec(fx.From),Hop(arena,fx.From),plan);NativeImpactCues.Run(plan,count,sim,Sparks,quality);}
+                if(fx.Beam){int count=NativeImpactCues.Record(fx.Element,fx.Radius,NativeArena.Vec(fx.Position),NativeArena.Vec(fx.From),Hop(arena,fx.From),plan);Run(count,quality);}
                 bool siren=!fx.Beam&&fx.Element==4&&AtSiren(fx.Position);
                 // The source look: the Explosion event's message, else a teleport landing or the field, zone or ability shot
                 // that ended here. A record with neither is not one of the source's blasts (NativeBlastCues.Classify).
@@ -135,18 +138,39 @@ namespace ChipArena.UnityConversion
                 var fx=freshFx[i];string tag=fresh[i].Tag;Vector3 at=fx.Position;
                 switch(fresh[i].Cue)
                 {
-                    case NativeBlastCues.Cue.Blast:sim.Blast(NativeBlastCues.Style(tag),at.x,at.y,at.z,fx.Radius,quality*fresh[i].Quality,false,NativeBlastSim.TintOf(tag));break;
-                    case NativeBlastCues.Cue.Vacuum:sim.Blast(NativeBlastStyle.Void,at.x,at.y,at.z,fx.Radius,quality);break;
-                    case NativeBlastCues.Cue.Dud:{int count=NativeImpactCues.Dud(NativeArena.Vec(at),plan);NativeImpactCues.Run(plan,count,sim,Sparks,quality);break;}
+                    case NativeBlastCues.Cue.Blast:sim.Blast(NativeBlastCues.Style(tag),at.x,at.y,at.z,fx.Radius,quality*fresh[i].Quality,false,NativeBlastSim.TintOf(tag),FloorUnder(at));break;
+                    case NativeBlastCues.Cue.Vacuum:sim.Blast(NativeBlastStyle.Void,at.x,at.y,at.z,fx.Radius,quality,false,null,FloorUnder(at));break;
+                    case NativeBlastCues.Cue.Dud:{int count=NativeImpactCues.Dud(NativeArena.Vec(at),plan);Run(count,quality);break;}
                     case NativeBlastCues.Cue.Teleport:
                     {
                         Vector3 from=fx.From;
-                        sim.Blast(NativeBlastStyle.Void,at.x,at.y,at.z,NativeBlastCues.TeleportRadius,quality*NativeBlastCues.TeleportQuality);
-                        sim.Impact(from.x,from.y,from.z,NativeBlastCues.TeleportImpactRadius,NativeBlastCues.TeleportColor,quality);
+                        sim.Blast(NativeBlastStyle.Void,at.x,at.y,at.z,NativeBlastCues.TeleportRadius,quality*NativeBlastCues.TeleportQuality,false,null,FloorUnder(at));
+                        sim.Impact(from.x,from.y,from.z,NativeBlastCues.TeleportImpactRadius,NativeBlastCues.TeleportColor,quality,false,false,null,FloorUnder(from));
                         sim.Line(from.x,from.y,from.z,at.x,at.y,at.z,0xffffff,NativeBlastCues.TeleportColor,quality,NativeBlastCues.TeleportLineJitter,NativeBlastCues.TeleportLineLife,NativeBlastCues.TeleportLineSweep);break;
                     }
                 }
             }
+        }
+        // The floor under a blast or impact; null (the source's y - .95) without a physics scene.
+        private double? FloorUnder(Vector3 at)=>world?FloorUnder(physics,at,floorHits):(double?)null;
+        /// <summary>The arena's physics scene; false when it has none (nothing for FloorUnder to cast against).</summary>
+        internal static bool World(NativeArena arena,out PhysicsScene physics)
+        {physics=arena.Root!=null?arena.Root.scene.GetPhysicsScene():default;return arena.Root!=null&&physics.IsValid();}
+        /// <summary>The floor under a point for NativeBlastSim (blasts, impacts, field views): the nearest upward-facing world
+        /// surface straight below it, cast from just above it so a hit on the floor finds that floor (a wall face or a ceiling
+        /// above is never taken). NativeBlastSim.NoFloor over a pit or the sky. hits: a reused buffer.</summary>
+        internal static double FloorUnder(PhysicsScene physics,Vector3 at,RaycastHit[] hits)
+        {
+            int n=physics.Raycast(at+Vector3.up*FloorLift,Vector3.down,hits,FloorReach+FloorLift,NativeArena.WorldMask,QueryTriggerInteraction.Ignore);
+            float best=float.MaxValue;double floor=NativeBlastSim.NoFloor;
+            for(int i=0;i<n&&i<hits.Length;i++){var h=hits[i];if(h.normal.y>.5f&&h.distance>1e-3f&&h.distance<best){best=h.distance;floor=h.point.y;}}
+            return floor;
+        }
+        // Runs a plan of source draws; its impacts first get the floor under them.
+        private void Run(int count,double quality)
+        {
+            for(int i=0;i<count&&i<plan.Length;i++)if(plan[i].Op==NativeImpactOp.Impact)plan[i].Floor=FloorUnder(NativeArena.Vec(plan[i].A));
+            NativeImpactCues.Run(plan,count,sim,Sparks,quality);
         }
         // Slenderman's hop record starts where Slender stood: the tree's From (host and replicated alike).
         private static bool Hop(NativeArena arena,Vector3 from)
@@ -167,13 +191,15 @@ namespace ChipArena.UnityConversion
                 if(color==0&&e.Kind==EventKind.Break&&source?.Seat.spec!="siren")color=NativeImpactCues.MaterialColor(arena.Content?.materials,e.Detail);
                 else if(color==0&&e.Kind==EventKind.Impact){var w=NativeShotViews.Weapon(arena,source?.Seat.spec);if(w!=null)color=(int)w.color;}
                 var cue=new NativeImpactEvent{Kind=e.Kind,Detail=e.Detail,Position=e.Position,From=e.From,Amount=e.Amount,Radius=e.Radius,Color=color,TargetPilot=target!=null,Trails=Trails,HasTarget=target!=null,Target=target!=null?NativeArena.Vec(target.Body.position):default};
-                int count=NativeImpactCues.Plan(cue,plan);NativeImpactCues.Run(plan,count,sim,Sparks,quality);
+                int count=NativeImpactCues.Plan(cue,plan);Run(count,quality);
                 if(e.Kind!=EventKind.Impact||e.Source<=0)continue;
                 double x=e.Position.x,y=e.Position.y,z=e.Position.z;
                 NativeSeat seat=null;foreach(var s in arena.Match.Seats)if(s.id==e.Source){seat=s;break;}if(seat==null)continue;
-                if(seat.spec=="water")sim.Impact(x,y,z,.6,0x8de9ee,quality);
-                if(seat.chips.TryGetValue("kinetic",out int kinetic)&&kinetic>0)sim.Impact(x,y,z,.65+Math.Min(3,kinetic)*.25,0xffaa64,quality);
-                if(seat.chips.TryGetValue("demolition",out int demolition)&&demolition>0)sim.Impact(x,y,z,.5+.12*demolition,0xffd45f,quality);
+                bool water=seat.spec=="water",kinetic=seat.chips.TryGetValue("kinetic",out int kinetics)&&kinetics>0,demolition=seat.chips.TryGetValue("demolition",out int demolitions)&&demolitions>0;
+                double? floor=water||kinetic||demolition?FloorUnder(NativeArena.Vec(e.Position)):null;
+                if(water)sim.Impact(x,y,z,.6,0x8de9ee,quality,false,false,null,floor);
+                if(kinetic)sim.Impact(x,y,z,.65+Math.Min(3,kinetics)*.25,0xffaa64,quality,false,false,null,floor);
+                if(demolition)sim.Impact(x,y,z,.5+.12*demolitions,0xffd45f,quality,false,false,null,floor);
             }
         }
         // stage-spikes-rise (stage-hazards.ts:21): Unity's hazards emit no rise event, so it is derived from the same clock
@@ -182,11 +208,12 @@ namespace ChipArena.UnityConversion
         {
             var match=arena.Match;if(match==null)return;
             int rose=spikeRises.Step(arena.MapId,match.Phase==NativePhase.Fight&&match.Time-match.FightAt>=2,match.Time);
-            for(int bed=0;rose!=0&&bed<NativeSpikeRises.Beds;bed++)if((rose&1<<bed)!=0){int count=NativeImpactCues.SpikeRise(NativeSpikeRises.Position(bed),plan);NativeImpactCues.Run(plan,count,sim,Sparks,quality);}
+            for(int bed=0;rose!=0&&bed<NativeSpikeRises.Beds;bed++)if((rose&1<<bed)!=0){int count=NativeImpactCues.SpikeRise(NativeSpikeRises.Position(bed),plan);Run(count,quality);}
         }
-        // The field views (chip fields and ability zones: key, fx, birth) are built once per frame by NativeFieldPresentation,
-        // which draws their glow, cores and domes from the same views. The emitters run on the views' clock (fields.Clock:
-        // continuous on guests), so births and emission stay in step with the telegraphs.
+        // The field views (chip fields and ability zones: key, fx, birth, the raycast floor under them) are built once per frame
+        // by NativeFieldPresentation, which draws their glow, cores and domes from the same views. The emitters run on the views'
+        // clock (fields.Clock: continuous on guests), so births and emission stay in step with the telegraphs; the arrival and
+        // Orbital Mark lock impacts sit on the view's floor.
         private void Fields(NativeFieldPresentation fields,double quality)
         {
             if(fields==null)return;var views=fields.Views;double now=fields.Clock;
@@ -201,6 +228,7 @@ namespace ChipArena.UnityConversion
             // A rewind (killcam, new round) clears.
             if(generation!=arena.Generation||now<lastTime-.25f){Clear();generation=arena.Generation;}
             lastTime=Math.Max(lastTime,now);double dt=NativeBlastFrame.Step(Time.unscaledDeltaTime,paused);
+            world=World(arena,out physics);
             double q=Math.Max(0,Math.Min(1,quality));
             // Source renderer order: event blasts, then fields(state), then update(dt), then draw.
             Remember(arena,fields);Effects(arena,now,q);Impacts(arena,now,q);SpikeRises(arena,q);Fields(fields,q);sim.Update(dt);

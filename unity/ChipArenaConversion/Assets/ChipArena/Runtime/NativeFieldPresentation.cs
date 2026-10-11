@@ -11,7 +11,10 @@ namespace ChipArena.UnityConversion
     // strike cues and arrival bursts) from the same views, so both keep one key, birth time and fx per field.
     // Layers, each one dynamic mesh refilled from reused buffers: the edge-less ground glow (Transparent-1, as renderOrder
     // -1) and the Siren scorch decals, the time/repulsion domes and the Siren warnings (Transparent; fills, then rings), the
-    // aim preview motes (Transparent+3) and the opaque unlit cores. Host and guests draw from replicated data. Cosmetic only.
+    // aim preview motes (Transparent+3) and the opaque unlit cores. Host and guests draw from replicated data. Every view
+    // carries the raycast floor under it (NativeBlastField.Floor): the blast emitters sit its arrival impacts on that floor, and
+    // a field high above it (on a wall or a ceiling, riding a pilot in the air) draws no ground glow in mid-air (owner
+    // 2026-10-11, NativeFieldRules.GlowShown). Cosmetic only.
     public sealed class NativeFieldPresentation : IDisposable
     {
         private sealed class Layer
@@ -35,6 +38,9 @@ namespace ChipArena.UnityConversion
         private readonly List<int> colors=new List<int>();
         private readonly Dictionary<long,int> colorOf=new Dictionary<long,int>();private readonly Dictionary<long,float> zoneBorn=new Dictionary<long,float>();
         private readonly List<long> stale=new List<long>();
+        // The floor under each field and where it was cast from: cast again only when the field moves (attached fields follow
+        // their pilot, prop or add), so a static field casts once.
+        private const float FloorMove=.02f;private readonly Dictionary<long,(Vector3 at,double floor)> floorOf=new Dictionary<long,(Vector3,double)>();private readonly RaycastHit[] floorHits=new RaycastHit[16];
         private readonly Layer glow,decal,dome,warn,motes,cores;private readonly Layer[] layers;private readonly Material[] owned;
         private readonly NativeFieldCube[] cubes=new NativeFieldCube[NativeFieldRules.MaxCubes];private readonly float[] preview=new float[NativeFieldRules.PreviewCap*4];
         private int generation=-1;private float lastTime=-1;private bool linear;private NativeArena lastArena;
@@ -60,7 +66,7 @@ namespace ChipArena.UnityConversion
         }
         public void Clear()
         {
-            Views.Clear();Live.Clear();colors.Clear();colorOf.Clear();zoneBorn.Clear();lastTime=-1;lastArena=null;
+            Views.Clear();Live.Clear();colors.Clear();colorOf.Clear();zoneBorn.Clear();floorOf.Clear();lastTime=-1;lastArena=null;
             foreach(var layer in layers){layer.Clear();layer.Mesh.Clear();}
         }
         // A zone's replicated Id names it (meteor-strike's burning ground gets a fresh one, a new field exactly as in the
@@ -84,6 +90,13 @@ namespace ChipArena.UnityConversion
             Views.Add(v);colors.Add(color);
         }
         private static bool Has(NativePilot p,string chip)=>p!=null&&p.Seat.chips.TryGetValue(chip,out int count)&&count>0;
+        private bool world;private PhysicsScene physics;
+        // The floor under a field (NativeBlastPresentation.FloorUnder); null (the source's floor) without a physics scene.
+        private double? FloorOf(long id,Vector3 at)
+        {
+            if(!world)return null;if(floorOf.TryGetValue(id,out var known)&&(known.at-at).sqrMagnitude<FloorMove*FloorMove)return known.floor;
+            double floor=NativeBlastPresentation.FloorUnder(physics,at,floorHits);floorOf[id]=(at,floor);return floor;
+        }
         /// <summary>
         /// Builds this frame's field views. now is the field clock (ArenaPresentation.FieldClock): the presentation clock on the
         /// host, the continuous snapshot clock on guests, so the telegraphs animate every rendered frame.
@@ -94,12 +107,12 @@ namespace ChipArena.UnityConversion
             if(arena!=lastArena||generation!=arena.Generation||now<lastTime-.25f){Clear();generation=arena.Generation;lastArena=arena;}
             lastTime=Math.Max(lastTime,now);Clock=now;Views.Clear();colors.Clear();Live.Clear();
             // arena.Local, not ViewPilot: Leet mind control does not flip the tint. Dedicated hosts have no local pilot.
-            var viewer=arena.Local;bool pve=arena.Pve!=null,teams=arena.Match.Teams;
+            var viewer=arena.Local;bool pve=arena.Pve!=null,teams=arena.Match.Teams;world=NativeBlastPresentation.World(arena,out physics);
             var fields=arena.ChipFields;
             for(int i=0;i<fields.Count;i++)
             {
                 var f=fields[i];
-                Add(new NativeBlastField{Id=f.Id,Kind=f.Kind,Fx=Fx(f),X=f.Position.x,Y=f.Position.y,Z=f.Position.z,Radius=f.Radius,Born=f.Born,Until=f.Until},f.Owner,viewer,pve,teams);
+                Add(new NativeBlastField{Id=f.Id,Kind=f.Kind,Fx=Fx(f),X=f.Position.x,Y=f.Position.y,Z=f.Position.z,Radius=f.Radius,Born=f.Born,Until=f.Until,Floor=FloorOf(f.Id,f.Position)},f.Owner,viewer,pve,teams);
             }
             var zones=arena.AbilityZones;
             for(int i=0;i<zones.Count;i++)
@@ -116,10 +129,11 @@ namespace ChipArena.UnityConversion
                 }
                 // The mark locks when its fuse has duration left to run (NativeAbilities orbital-mark: LockAt=born+duration, Until=born+fuse).
                 double? lockAt=z.Definition.id=="orbital-mark"?z.Until-z.Definition.fuse+z.Definition.duration:(double?)null;
-                Add(new NativeBlastField{Id=key,Kind=z.Kind,Fx=Fx(z.Definition),X=z.Position.x,Y=z.Position.y,Z=z.Position.z,Radius=z.Radius,Born=born,Until=z.Until,LockAt=lockAt},z.Owner,viewer,pve,teams);
+                Add(new NativeBlastField{Id=key,Kind=z.Kind,Fx=Fx(z.Definition),X=z.Position.x,Y=z.Position.y,Z=z.Position.z,Radius=z.Radius,Born=born,Until=z.Until,LockAt=lockAt,Floor=FloorOf(key,z.Position)},z.Owner,viewer,pve,teams);
             }
             stale.Clear();foreach(var key in zoneBorn.Keys)if(!Live.Contains(key))stale.Add(key);foreach(var key in stale)zoneBorn.Remove(key);
             stale.Clear();foreach(var key in colorOf.Keys)if(!Live.Contains(key))stale.Add(key);foreach(var key in stale)colorOf.Remove(key);
+            stale.Clear();foreach(var key in floorOf.Keys)if(!Live.Contains(key))stale.Add(key);foreach(var key in stale)floorOf.Remove(key);
         }
         // Vertex colours are not colour-space converted: write linear values under Linear colour space, sRGB under Gamma.
         private Color Vertex(int hex,float alpha){var c=NativeArena.ColorOf(hex);if(linear)c=c.linear;c.a=alpha;return c;}
@@ -153,8 +167,10 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<Views.Count;i++)
             {
                 var v=Views[i];int hex=colors[i];float R=(float)v.Radius;
-                // Every field: the soft ground glow, alpha .22 at the centre falling linearly to exactly 0 at the gameplay radius.
-                Append(glow,NativeFieldRules.GlowDisc,new Vector3((float)v.X,(float)NativeFieldRules.GlowY(v.Y),(float)v.Z),R,Vertex(hex,(float)NativeFieldRules.GlowAlpha));
+                // Every field on the ground: the soft ground glow, alpha .22 at the centre falling linearly to exactly 0 at the
+                // gameplay radius. High above its floor it fades out rather than float in mid-air (GlowShown).
+                float shown=(float)NativeFieldRules.GlowShown(v.Y,v.Floor);
+                if(shown>0)Append(glow,NativeFieldRules.GlowDisc,new Vector3((float)v.X,(float)NativeFieldRules.GlowY(v.Y),(float)v.Z),R,Vertex(hex,(float)NativeFieldRules.GlowAlpha*shown));
                 if(NativeFieldRules.LookOf(v.Kind,v.Fx)==NativeFieldLook.Dome){Append(dome,NativeFieldRules.Dome,new Vector3((float)v.X,(float)NativeFieldRules.Origin(v.Y),(float)v.Z),R,Vertex(hex,(float)NativeFieldRules.DomeAlpha));continue;}
                 int n=NativeFieldRules.Cubes(v,hex,now,cubes);
                 for(int c=0;c<n;c++){var q=cubes[c];Cube(cores,new Vector3((float)q.X,(float)q.Y,(float)q.Z),new Quaternion((float)q.Qx,(float)q.Qy,(float)q.Qz,(float)q.Qw),new Vector3((float)q.Sx,(float)q.Sy,(float)q.Sz)*.5f,Vertex(q.Color,1));}
