@@ -37,3 +37,26 @@ own supplied recording (2026-10-03), 2:53. Re-encoded from the supplied ~190 kbp
 2,766,060 bytes, SHA256 `badd631e1806a462bedf5bee588f73c52e9a2c34e997fcdef789906801ce90dc`.
 It is the PvE (Siren TEST BOSS, Ward Zero) stage track until the Siren spawns and
 is not part of the PvP music rotation.
+
+## Unity effects audio (Asset Store packs, owner licence)
+
+The Unity game's recorded sound effects and UI sounds (the effects sound bank,
+`unity/ChipArenaConversion/Assets/ChipArena/Core/NativeSoundBank.cs`) are derived from Unity Asset
+Store packs that the owner licensed. The owner approved their use in the game on 2026-10-11. Each clip
+was trimmed, length-capped, loudness-normalised (with a peak limiter) and re-encoded to Ogg Vorbis for the game.
+
+| Pack | Publisher | Asset Store id |
+|---|---|---|
+| Interface and Item Sounds | Cafofo | not recorded yet (owner to add) |
+| Fantasy Game Sound Effects | Epic Sounds and FX | not recorded yet (owner to add) |
+| Battle Sound Library - Magic & Melee | Infinity PBR / Magic Pig Games | not recorded yet (owner to add) |
+| Universal Sound FX | Imphenzia | not recorded yet (owner to add) |
+
+**The files themselves are never in this repository and must not be published while the repository is
+public.** Not even transcoded clips may be published: the Asset Store licence covers shipping them inside
+a built game, not redistributing them as files. They live in the owner's private licensed-assets
+repository, whose `LICENSES.md` names the source pack and file of every clip. At build time they are copied
+into the git-ignored `unity/ChipArenaConversion/Assets/LocalAssets/Resources/EffectsAudio` with
+`unity/ChipArenaConversion/tools/install_local_assets.py`, from a folder or a zip.
+`tools/package_source.py` skips that folder. Builds without it play the original synthesized sounds:
+CI, cloud builds, other checkouts and the public source zips.

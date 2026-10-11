@@ -17,12 +17,12 @@ namespace ChipArena.UnityConversion
         {
             float t=arena.Time;deathAudio.Tick(t,menu||arena.Match.Phase==NativePhase.Lobby||arena.Match.Phase==NativePhase.Intro);if(menu)return;
             foreach(var p in arena.Pilots.Where(p=>p.Hp<=0&&p.Death!=null).OrderBy(p=>p.Death.at).ThenBy(p=>p.Death.seed))deathAudio.Add(p.Death.seed,p.Seat.id,p.Death.owner,p.Death.at,t,p.Seat.name,null);
-            foreach(var item in deathAudio.Items)for(int i=0;i<2;i++){float at=item.At+(i==0?0:1.05f);if(t<at||t-at>.25f||!Once("broadcast:"+item.Seed+":"+i,at)||Muted||Effects<=0)continue;var voice=Voice();if(voice!=null){voice.clip=i==0?(deathLaunch??(deathLaunch=DeathTone(false))):(deathBurst??(deathBurst=DeathTone(true)));voice.pitch=1;voice.panStereo=0;voice.volume=Effects;voice.Play();}if(i==1)Play("explosion",null,.7f);}
-            foreach(var e in arena.Entries)if(t>=e.openAt&&t-e.openAt<.4f&&Once("entry:"+e.entry,e.openAt))Play("metal",null,.18f);
+            foreach(var item in deathAudio.Items)for(int i=0;i<2;i++){float at=item.At+(i==0?0:1.05f);if(t<at||t-at>.25f||!Once("broadcast:"+item.Seed+":"+i,at)||Muted||Effects<=0)continue;var voice=Voice();if(voice!=null){voice.clip=i==0?(deathLaunch??(deathLaunch=DeathTone(false))):(deathBurst??(deathBurst=DeathTone(true)));voice.pitch=1;voice.panStereo=0;voice.volume=Effects;voice.Play();}if(i==1)Cue("death.broadcast","explosion",null,.7f);}
+            foreach(var e in arena.Entries)if(t>=e.openAt&&t-e.openAt<.4f&&Once("entry:"+e.entry,e.openAt))Cue("hazard.entry","metal",null,.18f);
             // pve-deny has no Unity event: my denied machine use plays from the machine log. Buys, the reveal phase and my
             // revive play from their PveBuy / PvePhase / PveRevive events, and the wave count-in from NativeAudio.Render.
             if(arena.Pve!=null)
-                foreach(var use in arena.Pve.Machines)if(use.result=="deny"&&use.owner==arena.LocalId&&t>=use.at&&t-use.at<.3f&&Once("machine:"+use.machine+":"+use.result,use.at))Play("ui",null,.3f);
+                foreach(var use in arena.Pve.Machines)if(use.result=="deny"&&use.owner==arena.LocalId&&t>=use.at&&t-use.at<.3f&&Once("machine:"+use.machine+":"+use.result,use.at))Cue("ui.error","ui",null,.3f,mine:true);
         }
         // audio.ts arcadeTone(5, true, true) for an arcade-* install: a sawtooth sweeping 120 -> 920 Hz over .25 s, its gain
         // falling .09 -> .001 over .35 s, stopped at .38 s.

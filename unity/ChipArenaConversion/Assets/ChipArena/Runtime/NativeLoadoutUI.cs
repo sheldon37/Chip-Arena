@@ -143,7 +143,7 @@ namespace ChipArena.UnityConversion
                 else
                 {
                     float h=U.HoverAmount(7400+index,r);if(repaint)DrawSpecCard(r,w,SpecCard(w,cw,narrow?1:0),selected,h,U.Hover(r),e);
-                    if(U.Button(r)&&!selected){nativeAudio?.Play("install",null,.4f);SetWeapon(w.id);}
+                    if(U.Button(r)&&!selected){nativeAudio?.UiCue("ui.loadout.select","install",.4f);SetWeapon(w.id);}
                 }
             }
         }

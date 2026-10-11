@@ -10,7 +10,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class ConversionGame
     {
         private string noticeText="";private float noticeShown=-10,noticeLast=-10;
-        private void Notice(string text){float now=Time.unscaledTime;if(now-noticeLast>6.5f)noticeShown=now;noticeText=text??"";noticeLast=now;}
+        private void Notice(string text){float now=Time.unscaledTime;if(now-noticeLast>6.5f)noticeShown=now;if((text??"")!=noticeText||now-noticeLast>6.5f)nativeAudio?.Cue("ui.notice",null,null,.5f,mine:true);noticeText=text??"";noticeLast=now;}
         private void NoticeToast()
         {
             float now=Time.unscaledTime;if(noticeText.Length==0||now-noticeLast>6.5f)return;

@@ -19,9 +19,9 @@ namespace ChipArena.UnityConversion
         private double MusicPosition=>music.clip!=null?NativeMusicSync.Position(music.timeSamples,music.clip.frequency):-1;
         private void SeekMusic(double seconds){music.timeSamples=NativeMusicSync.Sample(seconds,music.clip.frequency,music.clip.samples);}
         public void ResetCursor(){generation=-1;}
-        private void Awake(){voices=new AudioSource[24];keyedVoices=new bool[voices.Length];for(int i=0;i<voices.Length;i++){voices[i]=gameObject.AddComponent<AudioSource>();voices[i].playOnAwake=false;voices[i].spatialBlend=0;}music=gameObject.AddComponent<AudioSource>();music.playOnAwake=false;music.priority=0;introVoice=gameObject.AddComponent<AudioSource>();introVoice.playOnAwake=false;}
+        private void Awake(){NativeUi.Sound+=UiHeard;voices=new AudioSource[24];keyedVoices=new bool[voices.Length];for(int i=0;i<voices.Length;i++){voices[i]=gameObject.AddComponent<AudioSource>();voices[i].playOnAwake=false;voices[i].spatialBlend=0;}music=gameObject.AddComponent<AudioSource>();music.playOnAwake=false;music.priority=0;introVoice=gameObject.AddComponent<AudioSource>();introVoice.playOnAwake=false;}
         // A free voice for an unlimited, unpanned play (beeps, death tones); Play counts the limited cue voices itself.
-        private AudioSource Voice(){for(int i=0;i<voices.Length;i++)if(!voices[i].isPlaying){keyedVoices[i]=false;return voices[i];}return null;}
+        private AudioSource Voice(){for(int i=0;i<voices.Length;i++)if(!voices[i].isPlaying){keyedVoices[i]=false;voices[i].loop=false;return voices[i];}return null;}
         private AudioClip Clip(string id){if(!clips.TryGetValue(id,out var c)){c=Resources.Load<AudioClip>("Audio/"+id);clips[id]=c;}return c;}
         // audio.ts ArenaAudio.play / cue: `gate` names a SoundLimiter key (a limited cue, trimmed, at most 8 such voices of 24);
         // `rate` 0 takes the source's .97-1.03 per-play rate (1 for hit, ui, countdown and the hook/step clips).
@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
             int free=-1,keyed=0;for(int i=0;i<voices.Length;i++){if(!voices[i].isPlaying){if(free<0)free=i;}else if(keyedVoices[i])keyed++;}if(free<0||gate!=null&&keyed>=8)return;
             var voice=voices[free];keyedVoices[free]=gate!=null;float pan=0;
             if(position.HasValue){var d=position.Value-listener;gain*=NativeEventSounds.Falloff(d.magnitude);pan=NativeEventSounds.Pan(NativeArena.Vec(d),yaw);}
-            voice.clip=clip;voice.volume=Mathf.Clamp01(gain*Effects);voice.panStereo=pan;voice.pitch=rate>0?rate:NativeEventSounds.Rate(id,UnityEngine.Random.value);voice.Play();
+            voice.loop=false;voice.clip=clip;voice.volume=Mathf.Clamp01(gain*Effects);voice.panStereo=pan;voice.pitch=rate>0?rate:NativeEventSounds.Rate(id,UnityEngine.Random.value);voice.Play();
         }
         public void Entrance(string key,string style,float age)
         {
@@ -64,7 +64,7 @@ namespace ChipArena.UnityConversion
               int frequency=(int)(550+Mathf.Clamp01((at-mark.lockAt)/(mark.throwAt-mark.lockAt))*850);if(!beepClips.TryGetValue(frequency,out var clip)){float[] data=new float[2880];for(int n=0;n<data.Length;n++){float t=n/48000f;data[n]=Mathf.Sin(2*Mathf.PI*frequency*t)*.055f*Mathf.Pow(.001f/.055f,Math.Min(1,t/.055f));}clip=AudioClip.Create("Siren lock pulse",data.Length,1,48000,false);clip.SetData(data,0);beepClips[frequency]=clip;}var voice=Voice();if(voice==null)continue;voice.clip=clip;voice.volume=Effects;voice.panStereo=0;voice.pitch=1;voice.PlayDelayed(Math.Max(0,at-arena.Time));}
             }
         }
-        private void OnDestroy(){ClearSceneAudio();ClearSlender();foreach(var c in beepClips.Values)CapturedAnimation.Release(c);}
+        private void OnDestroy(){NativeUi.Sound-=UiHeard;ClearSceneAudio();ClearSlender();foreach(var c in beepClips.Values)CapturedAnimation.Release(c);}
         private bool Once(string key,float at){if(cues.TryGetValue(key,out float old)&&old==at)return false;cues[key]=at;return true;}
         private void Track(string id,float volume,bool pause=false,double? clock=null,object clockOwner=null,double clockEpoch=0)
         {
@@ -97,8 +97,8 @@ namespace ChipArena.UnityConversion
         {
             // audio.ts update: falloff and pan are heard from the local pilot (`listener=self.pos`), turned by the view yaw.
             if(camera!=null){listener=camera.transform.position;yaw=camera.transform.eulerAngles.y*Mathf.Deg2Rad;}if(arena?.Local?.Body!=null)listener=arena.Local.Body.position;
-            Slender(arena,menu);StructureQueue(arena);if(arena==null){Track("music/menu-afterglow",Menu);return;}
-            if(generation!=arena.Generation){generation=arena.Generation;cursor=0;deathAudio.Tick(0,true);cues.Clear();limiter.Clear();spikeRises.Clear();installCue.Clear();phase="";countdown=-1;foreach(var v in voices)v.Stop();}
+            Slender(arena,menu);StructureQueue(arena);EffectsFrame(arena,menu);if(arena==null){Track("music/menu-afterglow",Menu);return;}
+            if(generation!=arena.Generation){generation=arena.Generation;cursor=0;deathAudio.Tick(0,true);cues.Clear();limiter.Clear();spikeRises.Clear();installCue.Clear();phase="";countdown=-1;foreach(var v in voices){v.Stop();v.loop=false;}}
             var me=arena.Local;var match=arena.Match;float t=arena.Time;SceneCues(arena,menu);if(!menu)MarkBeeps(arena);
             if(menu)Track("music/menu-afterglow",Menu);
             else if(arena.BossSongTime>=0)Track("music/black-siren-protocol",Music*.55f,arena.Pve?.Holding==true&&arena.Pve.Cinematic!="intro",arena.BossTrack.Looped(arena.BossSongTime),arena,arena.BossSongAt);
@@ -118,32 +118,32 @@ namespace ChipArena.UnityConversion
             cursor=Math.Max(cursor,newest);
             foreach(var p in arena.Pilots)
             {
-                string id=p.Seat.id+":";Vector3 pos=p.Body.position;if(p==me&&t<p.ScareUntil&&Once(id+"scare",p.ScareAt)){Play("darkness",null,.9f);Play("metal",null,.6f);}
-                if(p.RollAt>0&&t-p.RollAt<.15f&&Once(id+"roll",p.RollAt))Play(p.Seat.spec=="ansatsuken"?"demon-step":"dash",pos,.45f);
-                if(p.AttackAt>0&&t-p.AttackAt<.15f&&p.Weapon.@class=="melee"&&Once(id+"attack",p.AttackAt))Play(p.Seat.spec=="emperor"?(p.Fighter?.Kind=="electric"?"electric-hook":"arcade-punch"):p.Seat.spec=="ansatsuken"?"sword":p.Seat.spec=="siren"?"darkness":p.Seat.spec,pos,.4f);
-                var cast=p.AbilityCast;string ability=cast?.Definition.id??p.Pose.AbilityId;float release=cast?.Release??p.Pose.AbilityRelease;if(ability!=null&&t>=release&&t-release<.2f&&Once(id+"cast",release)){Play(ability=="frag-grenade"||ability=="blink-strike"?"dash":ability=="rocket"?"arcade-heavy":ability=="orbital-mark"?"lightning":p.Seat.spec,pos,.6f);}
-                if(p.Death?.style=="dev-raging-demon"){float[] hits={.80f,1.02f,1.24f,1.46f,1.69f,1.94f,2.21f,2.56f};for(int i=0;i<hits.Length;i++){float at=p.Death.at+hits[i];if(t>=at&&t-at<.12f&&Once(id+"demon:"+i,at))Play(i==7?"arcade-heavy":i==3||i==5?"arcade-kick":"arcade-punch",p.Death.position,i==7?1.1f:.85f);}}
-                var f=p.Fighter;if(f?.LastHit>0&&t-f.LastHit<.15f&&Once(id+"fighter",f.LastHit))Play(f.Kind=="electric"?"electric-hook-hit":f.Kind=="tatsu"?"arcade-kick":f.Index==f.Total-1?"arcade-heavy":"arcade-punch",pos,.9f);
+                string id=p.Seat.id+":";Vector3 pos=p.Body.position;if(p==me&&t<p.ScareUntil&&Once(id+"scare",p.ScareAt)){Play("darkness",null,.9f);Play("metal",null,.6f);}bool mine=p==me;
+                if(p.RollAt>0&&t-p.RollAt<.15f&&Once(id+"roll",p.RollAt)){string roll=p.Seat.spec=="ansatsuken"?"demon-step":"dash";Cue(NativeSoundCues.Roll(roll),roll,pos,.45f,mine:mine);}
+                if(p.AttackAt>0&&t-p.AttackAt<.15f&&p.Weapon.@class=="melee"&&Once(id+"attack",p.AttackAt)){string swing=p.Seat.spec=="emperor"?(p.Fighter?.Kind=="electric"?"electric-hook":"arcade-punch"):p.Seat.spec=="ansatsuken"?"sword":p.Seat.spec=="siren"?"darkness":p.Seat.spec;Cue(NativeSoundCues.Swing(p.Seat.spec,swing),swing,pos,.4f,cover:NativeSoundCues.SwingCover(p.Seat.spec),mine:mine);}
+                var cast=p.AbilityCast;string ability=cast?.Definition.id??p.Pose.AbilityId;float release=cast?.Release??p.Pose.AbilityRelease;if(ability!=null&&t>=release&&t-release<.2f&&Once(id+"cast",release)){string clip=ability=="frag-grenade"||ability=="blink-strike"?"dash":ability=="rocket"?"arcade-heavy":ability=="orbital-mark"?"lightning":p.Seat.spec;Cue(NativeSoundCues.Cast(ability,p.Seat.spec,out string covered),clip,pos,.6f,cover:covered,mine:mine);}
+                if(p.Death?.style=="dev-raging-demon"){float[] hits={.80f,1.02f,1.24f,1.46f,1.69f,1.94f,2.21f,2.56f};for(int i=0;i<hits.Length;i++){float at=p.Death.at+hits[i];if(t>=at&&t-at<.12f&&Once(id+"demon:"+i,at)){string beat=i==7?"arcade-heavy":i==3||i==5?"arcade-kick":"arcade-punch";Cue(NativeSoundCues.Fighter(beat),beat,p.Death.position,i==7?1.1f:.85f);}}}
+                var f=p.Fighter;if(f?.LastHit>0&&t-f.LastHit<.15f&&Once(id+"fighter",f.LastHit)){string hit=f.Kind=="electric"?"electric-hook-hit":f.Kind=="tatsu"?"arcade-kick":f.Index==f.Total-1?"arcade-heavy":"arcade-punch";Cue(NativeSoundCues.Fighter(hit),hit,pos,.9f,mine:mine);}
             }
             // Source events Unity derives from state: stage-spikes-rise (stage-hazards.ts:21) and the PvP draft pick's `install`
             // (simulation.ts:156, message = the chip), whose Mishima/arcade cue routes like the PvE Install.
             int rose=spikeRises.Step(arena.MapId,match.Phase==NativePhase.Fight&&match.Time-match.FightAt>=2,match.Time);
-            for(int bed=0;rose!=0&&bed<NativeSpikeRises.Beds;bed++)if((rose&1<<bed)!=0){var s=NativeEventSounds.SpikeRise;Play(s.Clip,NativeArena.Vec(NativeSpikeRises.Position(bed)),s.Gain,s.Rate,s.Gate);}
+            for(int bed=0;rose!=0&&bed<NativeSpikeRises.Beds;bed++)if((rose&1<<bed)!=0){var s=NativeEventSounds.SpikeRise;Cue("hazard.spikes",s.Clip,NativeArena.Vec(NativeSpikeRises.Position(bed)),s.Gain,s.Rate,s.Gate);}
             // It lands on the stage's wrist plant (NativeDraftPlant.SoundAt after the pick), as the pilot presses the chip in.
             if(match.Phase==NativePhase.Draft&&match.Chosen!=null&&NativeInstallCue.DraftDue(match.ChosenAt,match.Time)&&Once("draft-install",(float)match.ChosenAt))InstallCue(match.Chosen);
-            int n=match.Phase==NativePhase.Countdown?(int)Math.Ceiling(match.PhaseEnd-match.Time):0;if(n>0&&n!=countdown)Play("countdown",null,.7f);countdown=n;
-            string current=match.Phase.ToString();if(current!=phase){if(match.Phase==NativePhase.Fight)Play("go",null,.7f);if((match.Phase==NativePhase.Result||match.Phase==NativePhase.Match&&phase!="Result")&&(match.Winner!=0||arena.Pve?.Outcome!=null))Play(arena.Pve!=null?arena.Pve.Outcome=="victory"?"win":"lose":match.SameSide(me?.Seat,match.Seat(match.Winner))?"win":"lose",null,.65f);phase=current;}
+            int n=match.Phase==NativePhase.Countdown?(int)Math.Ceiling(match.PhaseEnd-match.Time):0;if(n>0&&n!=countdown)Cue("ui.countdown","countdown",null,.7f);countdown=n;
+            string current=match.Phase.ToString();if(current!=phase){if(match.Phase==NativePhase.Fight)Cue("ui.go","go",null,.7f);if((match.Phase==NativePhase.Result||match.Phase==NativePhase.Match&&phase!="Result")&&(match.Winner!=0||arena.Pve?.Outcome!=null)){string result=arena.Pve!=null?arena.Pve.Outcome=="victory"?"win":"lose":match.SameSide(me?.Seat,match.Seat(match.Winner))?"win":"lose";Cue(result=="win"?"ui.round-won":"ui.round-lost",result,null,.65f);}phase=current;}
             // audio.ts PvE stage cues: a wave start counts in, a clear or the possession sounds "go" (my revive is its event).
             var stage=arena.Pve;if(stage!=null&&!stage.Holding)
             {
-                if(stage.Stage=="wave"&&Once("pve-wave",stage.Wave))Play("countdown",null,.6f);else if(stage.Stage=="intermission"&&stage.Wave>0&&Once("pve-clear",stage.Wave))Play("go",null,.6f);
-                if(stage.Stage=="boss"&&stage.Phase==2&&stage.Hidden&&Once("pve-possess",stage.Phase))Play("go",null,.5f);
+                if(stage.Stage=="wave"&&Once("pve-wave",stage.Wave))Cue("pve.wave","countdown",null,.6f);else if(stage.Stage=="intermission"&&stage.Wave>0&&Once("pve-clear",stage.Wave))Cue("pve.clear","go",null,.6f);
+                if(stage.Stage=="boss"&&stage.Phase==2&&stage.Hidden&&Once("pve-possess",stage.Phase))Cue("siren.reveal","go",null,.5f);
             }
             if(cues.Count>1024)cues.Clear();
         }
         // The local Siren / Ward Zero pick follow-through (NativeDraftFollow sets these each frame; FollowChip null when none).
         [NonSerialized] public string FollowChip;[NonSerialized] public float FollowStarted,FollowAge;
-        private void InstallCue(string chip){int routes=NativeEventSounds.Route(new NativeEventSounds.Context{Kind=EventKind.Install,Detail=chip},routed);for(int i=0;i<routes;i++){var s=routed[i];if(s.Tone)ArcadeTone();else Play(s.Clip,null,s.Gain,s.Rate,s.Gate);}}
+        private void InstallCue(string chip){int routes=NativeEventSounds.Route(new NativeEventSounds.Context{Kind=EventKind.Install,Detail=chip},routed);for(int i=0;i<routes;i++){var s=routed[i];if(s.Tone)ArcadeTone();else Play(s.Clip,null,s.Gain,s.Rate,s.Gate);}if(routes==0&&!NativeSoundCues.DevInstall(chip))Cue("ui.draft.plant",null,null,.6f,mine:true);}
         // One fresh event: resolve what the router needs from the arena (pilots, an impact's prop material; a Break carries
         // its material, an Explosion its fx tag, a HazardHit its hazard kind, a Teleport/Arc its source) and play its cues.
         // A pilot's death keeps the DEV kill clips on top of the source's cue, at rate 1 like audio.ts updateLove (its beats
@@ -162,7 +162,11 @@ namespace ChipArena.UnityConversion
                 TargetMe=local>0&&e.Target==local,SourceMe=local>0&&e.Source==local,TargetPilot=target!=null,Ally=source!=null&&target!=null&&arena.Match.SameSide(source.Seat,target.Seat),Pve=arena.Pve!=null,
                 Supernova=supernova>0};
             Vector3 pos=NativeArena.Vec(e.Position);int n=NativeEventSounds.Route(context,routed);
-            for(int i=0;i<n;i++){var s=routed[i];if(s.Tone)ArcadeTone();else Play(s.Clip,s.Positional?pos:(Vector3?)null,s.Gain,s.Rate,s.Gate);}
+            // The bank plan (NativeSoundPlan): with no LocalAssets bank, exactly the routed sounds above.
+            string style=e.Kind!=EventKind.Death?null:target?.Death?.style??(string.IsNullOrEmpty(source?.Seat.killEffect)?null:source.Seat.killEffect);
+            var detail=new NativeSoundDetail{WeaponDetail=e.Kind==EventKind.Explosion&&WeaponDetail(arena,e.Detail),KillStyle=style};
+            int plays=NativeSoundPlan.Event(bank,context,detail,routed,n,planned);Vector3? from=source?.Body!=null?source.Body.position:(Vector3?)null;
+            for(int i=0;i<plays;i++)Perform(planned[i],pos,from,arena.Time-e.Time,context.SourceMe||context.TargetMe);
             if(e.Kind==EventKind.Death&&target!=null){if(source?.Seat.killEffect=="dev-clown-love")Play("clown-love",pos,.8f,1);if(source?.Seat.killEffect=="dev-bass-van")Play("bass-van",pos,.8f,1);}
         }
     }

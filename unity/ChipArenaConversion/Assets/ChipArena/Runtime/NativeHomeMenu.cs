@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
         private enum PauseScreen{Menu,Settings,Sandbox}
         private MenuScreen menuScreen;private PauseScreen pauseScreen;private float menuScreenAt=-1,menuSeen=-1,screenContent=400;private Vector2 screenScroll;
         private bool updateOpen,menuFromMatch,menuBlockedNow,roomGuest,playSandbox;private MenuScreen afterMatch=MenuScreen.Home;private Rect updateCard;private GUIStyle fieldLabel,fine,codeField;
-        private void Click()=>nativeAudio?.Play("ui",null,.4f);
+        private void Click()=>nativeAudio?.UiCue("ui.click","ui",.4f);
         // CSS panel-in (.26 s cubic-bezier(.2,.8,.2,1)) progress for an element entering `delay` seconds into the screen.
         private static float In(float age,float delay,float duration)=>M.Bezier(.2f,.8f,.2f,1,M.Clamp01((age-delay)/duration));
         private void Go(MenuScreen screen)

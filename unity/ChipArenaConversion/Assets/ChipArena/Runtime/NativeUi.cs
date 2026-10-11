@@ -338,7 +338,7 @@ namespace ChipArena.UnityConversion
             Color fill=primary?Mix(Hex(0xff6b35),Hex(0xff865b),h):Mix(Hex(0x222329),Hex(0x303138),h),border=primary?Hex(0xff6b35):Mix(Hex(0x484952),Hex(0xff784b),h);
             if(primary&&h>0)Glow(new Rect(draw.x,draw.y+8,draw.width,draw.height),A(Hex(0xff6b35),.35f*h*a),16);
             Round(draw,A(fill,a),4,A(border,a));Text(draw,label,size,A(primary?Hex(0x111216):Hex(0xf5f5f7),a),TextAnchor.MiddleCenter,bold:true);
-            return Button(r,enabled)&&alpha>.5f;
+            return Pressed(r,enabled,alpha>.5f?NativeUiSounds.Button(label,primary):null)&&alpha>.5f;
         }
         private static GUIStyle Style(float size,bool bold,bool mono,TextAnchor align,bool wrap,bool italic=false)
         {
@@ -431,7 +431,32 @@ namespace ChipArena.UnityConversion
             s.alignment=align;
         }
         // A clickable region in virtual space (respects the current transform for hit testing through GUI.matrix).
-        public static bool Button(Rect r,bool enabled=true){var m=Enter();bool e=GUI.enabled;GUI.enabled=enabled;bool hit=GUI.Button(P(r),GUIContent.none,GUIStyle.none);GUI.enabled=e;GUI.matrix=m;return hit&&enabled;}
+        public static bool Button(Rect r,bool enabled=true)=>Pressed(r,enabled,NativeUiSounds.Click);
+        /// <summary>The one UI sound hook (NativeAudio listens; its effects bank plays them, silent without LocalAssets): a press
+        /// (click, back or confirm by the button), a press on a disabled button (error) and the pointer entering a button (hover).</summary>
+        public static event Action<string> Sound;
+        private static int hoverFrame=-10;private static bool hoverNow,hoverBefore;private static Vector2 hoverAt,hoverWas;
+        private static bool Pressed(Rect r,bool enabled,string sound)
+        {
+            var m=Enter();bool e=GUI.enabled;GUI.enabled=enabled;var p=P(r);var ev=Event.current;
+            if(sound!=null&&ev!=null)
+            {
+                bool over=p.Contains(ev.mousePosition);
+                if(!enabled&&over&&ev.type==EventType.MouseDown&&ev.button==0)Sound?.Invoke(NativeUiSounds.Error);
+                if(enabled&&over&&ev.type==EventType.Repaint)Hovered(p);
+            }
+            bool hit=GUI.Button(p,GUIContent.none,GUIStyle.none);GUI.enabled=e;GUI.matrix=m;
+            if(hit&&enabled&&sound!=null)Sound?.Invoke(sound);
+            return hit&&enabled;
+        }
+        // Hover edges: the first button under the pointer each frame; a sound when none was under it last frame or it moved to
+        // another button (a button's own hover lift moves it by far less than half its size).
+        private static void Hovered(Rect p)
+        {
+            int f=Time.frameCount;if(f!=hoverFrame){hoverBefore=hoverNow&&hoverFrame==f-1;hoverWas=hoverAt;hoverNow=false;hoverFrame=f;}
+            if(hoverNow)return;hoverNow=true;hoverAt=p.center;
+            if(!hoverBefore||(p.center-hoverWas).magnitude>Mathf.Max(8,Mathf.Min(p.width,p.height)*.5f))Sound?.Invoke(NativeUiSounds.Hover);
+        }
         public static bool Hover(Rect r){var m=Enter();bool h=P(r).Contains(Event.current.mousePosition);GUI.matrix=m;return h;}
         public static Color Hex(int rgb,float a=1)=>new Color(((rgb>>16)&255)/255f,((rgb>>8)&255)/255f,(rgb&255)/255f,a);
         public static Color Mix(Color a,Color b,float t)=>Color.Lerp(a,b,t);
