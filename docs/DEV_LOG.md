@@ -1,5 +1,27 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Claude — Brickfall kits integrated; lighting review fixes
+- Branch `claude/sleepy-ritchie-g8ruhv` (PR #62): merged `claude/brickfall-integration` `0d6b85e` (base `9808ab8`; builder, review, fix). Presentation only.
+- One dust coat:
+  - `Core/NativeDustCoat` is the round's only coat. Breaks are deduplicated by time and xyz; structure landings come through the new `ArenaPresentation.StructureHeard`, which also feeds the pigeons and drift.
+  - It is read at the drawn arena's field clock (so the killcam shows the coat of its moment), clears on each round rebuild, and is published as `_ArenaDustCoat` by NativeArenaDressing only.
+  - The block shader reads it. Bands, tags and lamps keep a tenth.
+- Collapse telegraph on blocks: `NativeStructureFx.StressHolding` (a per-frame early-out, so old maps pay nothing) and `TelegraphAt`. Windows strobe at 8 Hz, then go black until the segment lands; members sag up to 8 cm and lean up to 1°.
+- Band lamps: amber while locked (it mirrors §3.9's 4 s arm delay until Astra's Core function exists), red-strobing at S2 or under a telegraph, otherwise dark.
+- Lighting review fixes:
+  - Intro and Draft save, set and restore the fog state and pin 2 cascades over 65 m; the draft uses a soft key at shadow strength 1. Old maps are unchanged; an offline draft pixel diff shows 0 changed channels.
+  - The look-to-applied mapping is now pure Core (`NativeMapLooks.Applied`), called by both `NativeLighting.Apply` and MapLookChecks. The frozen oracle is still bit-identical (3,857 values).
+- Tests are now self-contained to `unity/ChipArenaConversion`: `tools/export_look_references.py` writes `Tests/look-references.json` from the Brickfall draft layout and two Electron files, with source-lock blobs. The sparse-CI python run now executes every scraps test.
+- Checks on merged head `654e89d`: `unity-check.sh` runtime+editor build OK; Python tests OK (also in a unity/-only copy); `package_source.py` passed; `check_relay.py` 311 PASS; `git diff --check 6235a82 HEAD` clean.
+- Not run: Unity import of the changed NativeBlockLit.shader, a Windows build, a playtest.
+- Waiting on Astra:
+  - the Brickfall grey-box (UnityMaps.json and its block ids);
+  - `NativeStructureRules`, so the telegraph uses segment membership and the real crush volume;
+  - the `EventKind.Structure*` events (hook lines are marked in NativeStructureFxPresentation/NativeStructureAudio);
+  - the static block list for dressing;
+  - the arm-delay Core function for the lamp.
+- Release: pushed to PR #62 and `codex/unity-cloud-current`; publication waits on native CI and UBA.
+
 ## 2026-10-11 — Claude — Brickfall lighting presets (MapLooks) and the dressed block renderer
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62): merged `claude/brickfall-blocks` `bc76111`, which contains `claude/brickfall-lighting` `3c2ff7e` (both reviewed; blocks fixed).
   - Integration commit: the backdrop light-layer check now covers point lights only (the dressed maps' ForcePixel rim is directional).
