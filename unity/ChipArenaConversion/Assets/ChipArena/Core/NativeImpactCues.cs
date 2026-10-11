@@ -6,9 +6,10 @@ namespace ChipArena.UnityConversion
     /// <summary>
     /// One source draw call: BurstPool.spawn (Burst: A, Color, Count, Power), EventVfx.beam (Beam: A to B, Color),
     /// ChipBlasts.impact (Impact: A, Radius, Color, Ground), ChipBlasts.line (Line: A to B, Color to Color1, Jitter, Life,
-    /// Sweep) or ChipBlasts.paddle (Paddle: at A facing B, Color).
+    /// Sweep) or ChipBlasts.paddle (Paddle: at A facing B, Color). Floor (Impact only, not planned here): the floor height
+    /// under A that the presentation raycasts before Run; null keeps the source's A.y - .95 (NativeBlastSim.Impact).
     /// </summary>
-    public struct NativeImpactCommand{public NativeImpactOp Op;public V3 A,B;public int Color,Color1;public double Count,Power,Radius,Jitter,Life,Sweep;public bool Ground;}
+    public struct NativeImpactCommand{public NativeImpactOp Op;public V3 A,B;public int Color,Color1;public double Count,Power,Radius,Jitter,Life,Sweep;public bool Ground;public double? Floor;}
     /// <summary>What the presentation resolves about one fresh Unity event before planning its source draws.</summary>
     public struct NativeImpactEvent
     {
@@ -175,7 +176,7 @@ namespace ChipArena.UnityConversion
                 {
                     case NativeImpactOp.Burst:sparks?.Spawn(c.A.x,c.A.y,c.A.z,c.Color,c.Count,c.Power,quality);break;
                     case NativeImpactOp.Beam:sparks?.Beam(c.A.x,c.A.y,c.A.z,c.B.x,c.B.y,c.B.z,c.Color,quality);break;
-                    case NativeImpactOp.Impact:sim?.Impact(c.A.x,c.A.y,c.A.z,c.Radius,c.Color,quality,false,c.Ground);break;
+                    case NativeImpactOp.Impact:sim?.Impact(c.A.x,c.A.y,c.A.z,c.Radius,c.Color,quality,false,c.Ground,null,c.Floor);break;
                     case NativeImpactOp.Line:sim?.Line(c.A.x,c.A.y,c.A.z,c.B.x,c.B.y,c.B.z,c.Color,c.Color1,quality,c.Jitter,c.Life,c.Sweep);break;
                     case NativeImpactOp.Paddle:sim?.Paddle(c.A.x,c.A.y,c.A.z,c.B.x,c.B.y,c.B.z,c.Color,quality);break;
                 }

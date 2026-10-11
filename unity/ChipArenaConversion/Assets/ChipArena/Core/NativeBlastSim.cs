@@ -8,9 +8,12 @@ namespace ChipArena.UnityConversion
     // authoritative effect (position and gameplay radius) or a live field, and nothing here feeds back into the match.
     // Numbers, spawn order, the Float32 particle storage and the seeded generator follow the source, so one run
     // reproduces the source's voxels. Coordinates are taken as given: the converted maps keep the source's numbers,
-    // so Unity world positions go in and Unity world positions come out. One owner exception (2026-10-10): no blue or
-    // cyan lightning on area effects (NativeBlastSim.Lightning); tools/export_blast_fixtures.mjs applies the same cut to
-    // the source before it records the parity frames.
+    // so Unity world positions go in and Unity world positions come out. Owner exceptions: no blue or cyan lightning on
+    // area effects (2026-10-10, NativeBlastSim.Lightning), and no flat area disc under blasts and impacts (2026-10-11: on a
+    // wall it read as "a floating pancake"; its voxels go to the shell, NativeBlastSim.Blast). tools/export_blast_fixtures.mjs
+    // applies the same cuts to the source before it records the parity frames. Also beyond the source: callers may pass the
+    // real floor under a blast (NativeBlastPresentation raycasts it). The source assumes every blast is at a pilot's chest
+    // and puts its floor .95 m lower, which is still the default.
     public enum NativeBlastStyle{Fire,Shock,Implosion,Frost,Toxic,Void,Nova,Kinetic,Quake,Meteor,Mine}
     public struct NativeBlastTint{public int Core,Hot,Cool;public NativeBlastTint(int core,int hot,int cool){Core=core;Hot=hot;Cool=cool;}}
     /// <summary>A live authoritative field as the source's FieldView presents it (chip fields and ability zones).</summary>
@@ -57,6 +60,8 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>Age and position of particle i (checks).</summary>
         public (double x,double y,double z,double age,double life) At(int i){int j=i*3;return (p[j],p[j+1],p[j+2],a[i*A],a[i*A+1]);}
+        /// <summary>Velocity, gravity and floor of particle i (checks).</summary>
+        public (double vx,double vy,double vz,double gravity,double floor) Motion(int i){int j=i*3,k=i*A;return (v[j],v[j+1],v[j+2],a[k+4],a[k+7]);}
         private void Kill(int i)
         {
             int last=--Count;if(i==last)return;int j=i*3,l=last*3;
@@ -113,6 +118,11 @@ namespace ChipArena.UnityConversion
         public const int SolidCapacity=900,GlowCapacity=700,LightCapacity=3;
         /// <summary>Voxels every blast puts on its gameplay radius however full the pools are (source §13.3).</summary>
         public const int MinVoxels=16;
+        /// <summary>A blast or impact at most this high above its floor is on the ground: its shell is a dome rising from the floor.
+        /// Higher up (a wall or ceiling hit, an airburst) the shell is a full sphere around it (owner 2026-10-11).</summary>
+        public const double NearGround=1.2;
+        /// <summary>The floor to pass for a point with nothing under it (a pit, the sky): nothing lands, the shell is a sphere.</summary>
+        public const double NoFloor=-1e9;
         /// <summary>three.js PointLight intensity to Unity built-in intensity; the gain NativeCombatGlow already uses.</summary>
         public const float UnityLightGain=.35f;
         public readonly NativeBlastPool Solid=new NativeBlastPool(SolidCapacity,false),Glow=new NativeBlastPool(GlowCapacity,true);
@@ -149,7 +159,7 @@ namespace ChipArena.UnityConversion
         /// is happening." A Shock blast draws the source's lightning (the jagged bolt from the sky with its side sparks, and the
         /// skittering ground arcs) only when its look is not blue or cyan: Ball Lightning's violet and the Orbital Mark's red
         /// keep it; Thunder Step, Static, Storm In A Jar and Blink Strike (the blue palette and the cyan tint) draw none, only
-        /// their core, shock front, ground sweep, sparks and light. The storm field draws no strikes at all (Field).
+        /// their core, shock front, sparks and light. The storm field draws no strikes at all (Field).
         /// </summary>
         public static bool Lightning(NativeBlastStyle style,NativeBlastTint? tint)=>style==NativeBlastStyle.Shock&&!BlueCyan(Colors(style,tint).Hot);
         /// <summary>Maps an authoritative explosion message (the engine's blast kind, chip or ability fx tag) to a style.</summary>
@@ -202,18 +212,14 @@ namespace ChipArena.UnityConversion
         // Sphere of directions, roughly even (golden spiral) with jitter.
         private void Dir(int i,int n,bool hemi,out double x,out double y,out double z)
         {y=hemi?1-(i+.5)/n:1-2*(i+.5)/n;double r=Math.Sqrt(Math.Max(0,1-y*y)),phi=i*2.39996+random()*.4;x=Math.Cos(phi)*r;z=Math.Sin(phi)*r;}
-        // Ground sweep that FILLS the blast disc (owner request 2026-10-04: no outlined area circle): each voxel slides from
-        // the centre to its own random spot inside 92% of the radius within FrontSeconds and fades there.
-        private void Ring(double px,double pz,double ground,double radius,int color0,int color1,int count,bool glow,double height=.08,double size=.16)
+        // The shock shell: the volumetric read of the blast radius (ends exactly on it). On the ground (near) the source's dome
+        // rising from the floor point under the blast; in the air (a wall or ceiling hit, an airburst) a full sphere centred on
+        // the blast whose voxels stop on the floor. It also carries the voxels of the source's flat ground disc (the sweep that
+        // filled 92% of the radius at floor height), which is cut: owner 2026-10-11, on a wall it read as "a floating pancake".
+        private void Shell(double px,double py,double pz,double floor,bool near,double radius,int color0,int color1,int count)
         {
-            var pool=glow?Glow:Solid;double r0=Math.Min(.25,radius*.2);
-            for(int i=0;i<count;i++){double a=(double)i/count*Math.PI*2+random()*.6,c=Math.Cos(a),s=Math.Sin(a),r=r0+(radius*.92-r0)*Math.Sqrt(random()),speed=(r-r0)/FrontSeconds;pool.Spawn(px+c*r0,ground+height,pz+s*r0,c*speed,0,s*speed,FrontSeconds*(1.1+random()),size,size*.3,color0,color1,0,0,0,-1e9,1,0);}
-        }
-        // Hemispherical shock shell: the volumetric read of the blast radius (ends exactly at it).
-        private void Shell(double px,double pz,double ground,double radius,int color0,int color1,int count)
-        {
-            double r0=Math.Min(.25,radius*.2),speed=(radius-r0)/FrontSeconds;
-            for(int i=0;i<count;i++){Dir(i,count,true,out double x,out double y,out double z);Glow.Spawn(px+x*r0,ground+y*r0,pz+z*r0,x*speed,y*speed,z*speed,FrontSeconds+.001,.2,.1,color0,color1);}
+            double r0=Math.Min(.25,radius*.2),speed=(radius-r0)/FrontSeconds,y0=near?floor:py,rest=near?NoFloor:floor;
+            for(int i=0;i<count;i++){Dir(i,count,near,out double x,out double y,out double z);Glow.Spawn(px+x*r0,y0+y*r0,pz+z*r0,x*speed,y*speed,z*speed,FrontSeconds+.001,.2,.1,color0,color1,0,0,0,rest);}
         }
         // Voxels that start on the radius and rush to the centre in t0 (implosions, vacuum); they never drop.
         private void Inward(double cx,double cy,double cz,double R,int count,int c0,int c1,double t0,double swirl=0,double lift=.7)
@@ -237,14 +243,21 @@ namespace ChipArena.UnityConversion
             if(h<.01){ux=1;uz=0;}else{ux/=h;uz/=h;}double vx=-ny*uz,vy=nz*ux-nx*uz,vz=ny*ux;
             for(int i=0;i<4;i++)for(int j=0;j<4;j++){double a=(i-1.5)*.16,b=(j-1.5)*.16;Glow.Spawn(x+ux*a+vx*b,y+vy*b,z+uz*a+vz*b,nx*1.5,ny*1.5,nz*1.5,.15,.15,.06,0xffffff,color);}
         }
-        /// <summary>Small volumetric impact (chip procs, splashes, field arrivals): a voxel front ending on radius, core, debris, motes, an idle light.</summary>
-        public void Impact(double px,double py,double pz,double radius,int hot,double quality,bool compat=false,bool ground=false,int? cool=null)
+        /// <summary>
+        /// Small volumetric impact (chip procs, splashes, field arrivals): a voxel front ending on radius, core, debris, motes, an
+        /// idle light. ground: the impact lies on the floor, so its front is a dome rising from it; otherwise, or more than
+        /// NearGround above its floor, the front is a sphere around the point (stopping on the floor when it is that high). The
+        /// source also slid a flat disc of voxels over the floor under a ground impact; that disc is cut (owner 2026-10-11) and its
+        /// voxels go to the front. floor: the floor height under the point (the presentation raycasts it, NoFloor for none); null
+        /// keeps the source's py - .95. Debris land on it.
+        /// </summary>
+        public void Impact(double px,double py,double pz,double radius,int hot,double quality,bool compat=false,bool ground=false,int? cool=null,double? floor=null)
         {
             int cold;if(cool.HasValue)cold=cool.Value;else{Linear(hot,out double lr,out double lg,out double lb);cold=Hex(lr*.45,lg*.45,lb*.45);}
             double q=Clamp01(quality)*(compat?.5:1);if(q<=.02)return;
-            double R=Math.Max(.3,radius),t0=FrontSeconds,g=py-.95,y0=ground?g+.12:py,scale=Math.Min(1.5,.6+R*.2);int N(double b)=>(int)Math.Max(2,Round(b*q*scale));
-            if(ground){double r0=Math.Min(.25,R*.2);for(int i=0,c=N(26);i<c;i++){double a=(double)i/c*Math.PI*2+random()*.6,x=Math.Cos(a),z=Math.Sin(a),s=(r0+(R*.92-r0)*Math.Sqrt(random())-r0)/t0;Glow.Spawn(px+x*r0,y0,pz+z*r0,x*s,0,z*s,t0*(1.1+random()),.17,.05,hot,cold);}}
-            for(int i=0,c=N(ground?14:20);i<c;i++){Dir(i,c,ground,out double x,out double y,out double z);double s=(R-.1)/t0;Glow.Spawn(px+x*.1,y0+y*.1,pz+z*.1,x*s,y*s,z*s,t0+.001,.13,.06,0xffffff,hot);}
+            double R=Math.Max(.3,radius),t0=FrontSeconds,g=floor??py-.95,scale=Math.Min(1.5,.6+R*.2);bool near=py-g<=NearGround,dome=ground&&near;
+            double y0=dome?g+.12:py,rest=near?NoFloor:g;int N(double b)=>(int)Math.Max(2,Round(b*q*scale));
+            for(int i=0,c=ground?N(14)+N(26):N(20);i<c;i++){Dir(i,c,dome,out double x,out double y,out double z);double s=(R-.1)/t0;Glow.Spawn(px+x*.1,y0+y*.1,pz+z*.1,x*s,y*s,z*s,t0+.001,.13,.06,0xffffff,hot,0,0,0,rest);}
             for(int i=0,c=N(5);i<c;i++)Glow.Spawn(px,y0+.05,pz,(random()-.5)*1.2,(random()-.2)*1.2,(random()-.5)*1.2,.16,.26,.08,0xffffff,hot);
             for(int i=0,c=N(7);i<c;i++){Dir(i,c,true,out double x,out double y,out double z);double s=R*(1.5+random()*2);Solid.Spawn(px,y0,pz,x*s,Math.Abs(y)*s+1.5,z*s,.5+random()*.3,.07+random()*.06,.04,hot,cold,12,.6,0,g+.04,1,6);}
             for(int i=0,c=N(6);i<c;i++){double a=random()*Math.PI*2,r=R*Math.Sqrt(random())*.9;Glow.Spawn(px+Math.Cos(a)*r,y0,pz+Math.Sin(a)*r,0,1.4+random(),0,.5+random()*.3,.07,.03,hot,cold,0,.4,.05);}
@@ -252,69 +265,77 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>
         /// One authoritative blast. radius is the gameplay radius from the effect; the shock front and shell end exactly
-        /// on it, the fireball fills ~60% of it, debris and smoke may travel past it (cosmetic). Returns the voxels spawned.
+        /// on it, the fireball fills ~60% of it, debris and smoke may travel past it (cosmetic). floor: the floor height under
+        /// the blast (the presentation raycasts it, NoFloor for none); null keeps the source's py - .95. Debris, fireball, smoke
+        /// and sparks land on it. Within NearGround of it the shell is a dome on the floor; higher up it is a sphere around the
+        /// blast. The source's flat ground disc is cut (owner 2026-10-11): its voxels go to the shell (Kinetic's grey solid disc
+        /// to its debris; Nova's to its front), so the count is the source's. Returns the voxels spawned.
         /// </summary>
-        public int Blast(NativeBlastStyle style,double px,double py,double pz,double radius,double quality=1,bool compat=false,NativeBlastTint? tint=null)
+        public int Blast(NativeBlastStyle style,double px,double py,double pz,double radius,double quality=1,bool compat=false,NativeBlastTint? tint=null,double? floor=null)
         {
             double q=Clamp01(quality);if(q<=0)return 0;int spawned=Solid.Spawned+Glow.Spawned;var pal=Colors(style,tint);
-            double R=Math.Max(.4,radius),k=q*(compat?.4:1)*Math.Min(1.6,.55+R*.18),ground=py-.95,cx=px,cy=Math.Max(ground+.35,py),cz=pz;
+            double R=Math.Max(.4,radius),k=q*(compat?.4:1)*Math.Min(1.6,.55+R*.18),ground=floor??py-.95,cx=px,cy=Math.Max(ground+.35,py),cz=pz;
+            // On the ground the shell, the quake's chunks and the lightning rise from the floor. In the air they start at the blast,
+            // and its airborne glow (core, shell, Nova's front) stops on the floor, where the source's ran on below it.
+            bool near=py-ground<=NearGround;double y0=near?ground:py,rest=near?NoFloor:ground;
             int N(double b)=>(int)Math.Max(1,Round(b*k));int M(double b)=>(int)Math.Max(MinVoxels,Round(b*k));
             void Core(double count,double spread,double life,double size,double rise=0)
-            {for(int i=0,c=N(count);i<c;i++){Dir(i,c,false,out double x,out double y,out double z);double s=spread*(.6+random()*.6);Glow.Spawn(cx,cy,cz,x*s,y*s*.8+rise,z*s,life*(.7+random()*.5),size*(.8+random()*.5),size*.3,pal.Core,pal.Hot,-rise*.5,3.5);}}
+            {for(int i=0,c=N(count);i<c;i++){Dir(i,c,false,out double x,out double y,out double z);double s=spread*(.6+random()*.6);Glow.Spawn(cx,cy,cz,x*s,y*s*.8+rise,z*s,life*(.7+random()*.5),size*(.8+random()*.5),size*.3,pal.Core,pal.Hot,-rise*.5,3.5,0,rest);}}
             void Fireball(double count,double reach,double life,double size,double rise)
             {for(int i=0,c=N(count);i<c;i++){Dir(i,c,false,out double x,out double y,out double z);double s=reach*(2.2+random()*1.6);Solid.Spawn(cx+x*.1,cy+Math.Abs(y)*.1,cz+z*.1,x*s,Math.Abs(y)*s*.7+rise,z*s,life*(.75+random()*.5),size*(.8+random()*.6),size*.12,pal.Hot,pal.Cool,-rise*.6,3.2,0,ground,1,2);}}
             void Smoke(double count,double reach,double delay)
             {for(int i=0,c=N(count);i<c;i++){Dir(i,c,false,out double x,out _,out double z);double s=reach*(.4+random()*.7);Solid.Spawn(cx+x*reach*.35,cy+.1,cz+z*reach*.35,x*s,1.1+random()*1.3,z*s,1.1+random()*.7,.18+random()*.12,.55+random()*.35*Math.Min(2,R/2),pal.Smoke,0x16181c,-.25,1.6,delay,ground,1,.6);}}
-            void Debris(double count,double power,int color)
-            {for(int i=0,c=N(count);i<c;i++){Dir(i,c,true,out double x,out double y,out double z);double s=power*(.5+random()*.8);Solid.Spawn(cx,cy,cz,x*s,Math.Abs(y)*s+2+random()*3,z*s,.9+random()*.6,.09+random()*.12,.06,color,color,14,.4,0,ground+.04,1,6);}}
+            void Debris(double count,double power,int color,int extra=0)
+            {for(int i=0,c=N(count)+extra;i<c;i++){Dir(i,c,true,out double x,out double y,out double z);double s=power*(.5+random()*.8);Solid.Spawn(cx,cy,cz,x*s,Math.Abs(y)*s+2+random()*3,z*s,.9+random()*.6,.09+random()*.12,.06,color,color,14,.4,0,ground+.04,1,6);}}
             void Sparks(double count,double power,int color)
             {for(int i=0,c=N(count);i<c;i++){Dir(i,c,false,out double x,out double y,out double z);double s=power*(.6+random()*.9);Glow.Spawn(cx,cy,cz,x*s,Math.Abs(y)*s+1,z*s,.35+random()*.35,.06,.03,pal.Core,color,9,.8,0,ground+.03,4);}}
             switch(style)
             {
                 case NativeBlastStyle.Fire:case NativeBlastStyle.Mine:case NativeBlastStyle.Meteor:
-                    Core(18,R*2.2,.24,.5);Fireball(42,R*.6,.7,.62,1.4);Shell(px,pz,ground,R,pal.Hot,pal.Cool,M(34));Ring(px,pz,ground,R,pal.Hot,pal.Cool,M(36),true);Smoke(16,R*.6,.18);Debris(14,R*2.6,pal.Debris);Sparks(18,R*3.2,pal.Hot);
+                    Core(18,R*2.2,.24,.5);Fireball(42,R*.6,.7,.62,1.4);Shell(px,py,pz,ground,near,R,pal.Hot,pal.Cool,M(34)+M(36));Smoke(16,R*.6,.18);Debris(14,R*2.6,pal.Debris);Sparks(18,R*3.2,pal.Hot);
                     if(style==NativeBlastStyle.Meteor)for(int i=0,c=N(10);i<c;i++)Glow.Spawn(cx+(random()-.5)*.6,cy+.2,cz+(random()-.5)*.6,(random()-.5)*1.4,6+random()*5,(random()-.5)*1.4,.55,.22,.06,pal.Core,pal.Cool,8,.5);
                     Flash(cx,cy,cz,pal.Hot,R,9+R*2,.38,compat,q);break;
                 case NativeBlastStyle.Kinetic:
-                    Core(10,R*2,.16,.3);Shell(px,pz,ground,R,pal.Hot,pal.Cool,M(40));Ring(px,pz,ground,R,pal.Core,pal.Cool,M(40),true,.06,.2);Ring(px,pz,ground,R*.98,0xd9e6ee,0x6f7d88,M(26),false,.12,.22);Debris(10,R*2.2,pal.Debris);Sparks(14,R*3,pal.Cool);Smoke(6,R*.4,.05);Flash(cx,cy,cz,pal.Hot,R,6+R,.28,compat,q);break;
+                    Core(10,R*2,.16,.3);Shell(px,py,pz,ground,near,R,pal.Hot,pal.Cool,M(40)+M(40));Debris(10,R*2.2,pal.Debris,M(26));Sparks(14,R*3,pal.Cool);Smoke(6,R*.4,.05);Flash(cx,cy,cz,pal.Hot,R,6+R,.28,compat,q);break;
                 case NativeBlastStyle.Quake:
-                    Ring(px,pz,ground,R,pal.Hot,pal.Cool,M(30),true,.05,.18);
-                    for(int i=0,c=N(26);i<c;i++){double a=(double)i/c*Math.PI*2,r=R*(.25+random()*.7),x=Math.Cos(a)*r,z=Math.Sin(a)*r;Solid.Spawn(px+x,ground,pz+z,x*.6,5+random()*4,z*.6,1.1,.2+random()*.2,.08,pal.Debris,0x3a3028,16,.3,random()*.12,ground+.05,1,4);}
+                    Shell(px,py,pz,ground,near,R,pal.Hot,pal.Cool,M(30));
+                    for(int i=0,c=N(26);i<c;i++){double a=(double)i/c*Math.PI*2,r=R*(.25+random()*.7),x=Math.Cos(a)*r,z=Math.Sin(a)*r;Solid.Spawn(px+x,y0,pz+z,x*.6,5+random()*4,z*.6,1.1,.2+random()*.2,.08,pal.Debris,0x3a3028,16,.3,random()*.12,ground+.05,1,4);}
                     Smoke(14,R*.7,0);Flash(cx,cy,cz,pal.Hot,R,4,.25,compat,q);break;
                 case NativeBlastStyle.Shock:
                 {
-                    // A white core, a shock front, the ground sweep and sparks. Only a look that is not blue or cyan (Lightning)
+                    // A white core, a shock front and sparks. Only a look that is not blue or cyan (Lightning)
                     // adds the source's jagged bolt from the sky before them and its skittering ground arcs after them.
                     bool lightning=Lightning(style,tint);
-                    if(lightning)SkyBolt(cx,cz,ground,N(22),pal);
-                    Core(12,R*1.6,.2,.34);Shell(px,pz,ground,R,pal.Hot,pal.Cool,M(36));Ring(px,pz,ground,R,pal.Core,pal.Cool,M(36),true,.06,.18);Sparks(26,R*3.6,pal.Cool);
-                    if(lightning)GroundArcs(cx,cz,ground,R,N(5),pal);
+                    if(lightning)SkyBolt(cx,cz,y0,N(22),pal);
+                    Core(12,R*1.6,.2,.34);Shell(px,py,pz,ground,near,R,pal.Hot,pal.Cool,M(36)+M(36));Sparks(26,R*3.6,pal.Cool);
+                    if(lightning)GroundArcs(cx,cz,y0,R,N(5),pal);
                     Flash(cx,cy,cz,pal.Hot,R,12+R*2,.3,compat,q);break;
                 }
                 case NativeBlastStyle.Implosion:
                     // Voxels rush in from the radius, then the centre pops.
                     Inward(cx,cy,cz,R,M(44),pal.Cool,pal.Hot,.28);
-                    Core(16,R*2.4,.3,.38);Shell(px,pz,ground,R,pal.Hot,pal.Cool,M(30));Sparks(16,R*2.8,pal.Hot);Smoke(8,R*.3,.15);Flash(cx,cy,cz,pal.Hot,R,10,.4,compat,q);break;
+                    Core(16,R*2.4,.3,.38);Shell(px,py,pz,ground,near,R,pal.Hot,pal.Cool,M(30));Sparks(16,R*2.8,pal.Hot);Smoke(8,R*.3,.15);Flash(cx,cy,cz,pal.Hot,R,10,.4,compat,q);break;
                 case NativeBlastStyle.Void:
                     Inward(cx,cy,cz,R,M(40),pal.Cool,pal.Hot,.4,.56,.5);
                     for(int i=0,c=N(10);i<c;i++)Solid.Spawn(cx,cy,cz,0,0,0,.42,.05,.26+random()*.1,0x07030f,0x1c0c33,0,0,.05,-1e9,1,5);
                     Flash(cx,cy,cz,pal.Hot,R,5,.3,compat,q);break;
                 case NativeBlastStyle.Nova:
                     Core(18,R*2.6,.25,.42);
-                    for(int i=0,c=M(56);i<c;i++){Dir(i,c,false,out double x,out double y,out double z);double r0=.25,s=(R-r0)/FrontSeconds;Glow.Spawn(cx+x*r0,cy+y*r0,cz+z*r0,x*s,y*s,z*s,FrontSeconds+.001,.24,.12,pal.Core,pal.Cool);}
-                    Ring(px,pz,ground,R,pal.Hot,pal.Cool,M(34),true);Sparks(20,R*3.4,pal.Hot);Flash(cx,cy,cz,pal.Hot,R,12,.4,compat,q);break;
+                    for(int i=0,c=M(56)+M(34);i<c;i++){Dir(i,c,false,out double x,out double y,out double z);double r0=.25,s=(R-r0)/FrontSeconds;Glow.Spawn(cx+x*r0,cy+y*r0,cz+z*r0,x*s,y*s,z*s,FrontSeconds+.001,.24,.12,pal.Core,pal.Cool,0,0,0,rest);}
+                    Sparks(20,R*3.4,pal.Hot);Flash(cx,cy,cz,pal.Hot,R,12,.4,compat,q);break;
                 case NativeBlastStyle.Frost:
                     for(int i=0,c=N(26);i<c;i++){Dir(i,c,true,out double x,out double y,out double z);double s=R*(1.4+random()*1.4);Solid.Spawn(cx,cy,cz,x*s,Math.Abs(y)*s+1.5,z*s,.9+random()*.4,.12,.05,pal.Debris,pal.Cool,9,1.5,0,ground+.04,3.5);}
-                    Core(12,R*1.6,.22,.3);Ring(px,pz,ground,R,pal.Core,pal.Cool,M(32),true);Smoke(10,R*.5,.05);Flash(cx,cy,cz,pal.Hot,R,6,.3,compat,q);break;
+                    Core(12,R*1.6,.22,.3);Shell(px,py,pz,ground,near,R,pal.Core,pal.Cool,M(32));Smoke(10,R*.5,.05);Flash(cx,cy,cz,pal.Hot,R,6,.3,compat,q);break;
                 case NativeBlastStyle.Toxic:
-                    Core(10,R*1.6,.2,.3);Fireball(20,R*.5,.7,.4,.9);Shell(px,pz,ground,R,pal.Hot,pal.Cool,M(28));Ring(px,pz,ground,R,pal.Hot,pal.Cool,M(30),true);
+                    Core(10,R*1.6,.2,.3);Fireball(20,R*.5,.7,.4,.9);Shell(px,py,pz,ground,near,R,pal.Hot,pal.Cool,M(28)+M(30));
                     for(int i=0,c=N(18);i<c;i++){Dir(i,c,false,out double x,out _,out double z);double s=R*(.3+random()*.5);Solid.Spawn(cx,cy,cz,x*s,.6+random()*.8,z*s,1.6+random()*.6,.2,.6+random()*.3,pal.Cool,pal.Smoke,-.15,1.3,.1,ground,1,.5);}
                     Debris(10,R*2,pal.Debris);Flash(cx,cy,cz,pal.Hot,R,7,.35,compat,q);break;
             }
             return Solid.Spawned+Glow.Spawned-spawned;
         }
         // The Shock lightning (chip-blasts.ts), drawn only where Lightning allows it: a jagged bolt from 9 m into the centre
-        // with side sparks, then skittering arcs along the ground.
+        // with side sparks, then skittering arcs along the ground. ground: where they land, the floor or, for a blast in the
+        // air, the blast's own height.
         private void SkyBolt(double cx,double cz,double ground,int steps,Palette pal)
         {
             double top=ground+9,x=cx,z=cz;
