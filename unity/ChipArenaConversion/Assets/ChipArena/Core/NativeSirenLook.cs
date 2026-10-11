@@ -20,7 +20,7 @@ namespace ChipArena.UnityConversion
     /// piece; the runtime mirrors x into Unity and places it on the posed joint. Pure and allocation-free.
     /// Piece order: 2 eyes (side +1, -1), 2 eye halos, upper and lower grin row, 2 claw groups (left, right hand), 2 orbs,
     /// 2 orb halos, 12 wisps (left knee then right, top to tip), 16 tongues × 7 steps (TONGUES order, base to tip); then, from
-    /// Source on, the Unity finish beyond the source (NativeSirenDetail: the couture, the mask and the cheeks, 260 pieces).
+    /// Source on, the Unity finish beyond the source (NativeSirenDetail: the couture, the mask and the cheeks, 258 pieces).
     /// The Unity finish also turns each tongue step about its own vertical axis and swells or thins it (Twist: stratified,
     /// faceted fire instead of square posts; the tip positions, the flicker and the flame pool's emitters are the source's).
     /// </summary>

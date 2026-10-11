@@ -34,6 +34,21 @@ namespace ChipArena.UnityConversion
         public const double HaloLit=.35,HaloDark=.6;
         /// <summary>The canonical fang's inset (tools/siren_design.mjs GRIN.inset); its gaps on the closed seam and once bared.</summary>
         public const double FangInset=.085,SeamInset=.02,BaredInset=.15;
+        /// <summary>
+        /// The jaw per unit open: the upper row lifts JawLift; the lower row stretches JawStretchX wide and JawStretchY tall about the
+        /// grin's origin and drops JawDrop. applySirenLook's arena jaw stretches the lower row .5 tall and drops it .03, which keeps
+        /// the interlocking rows overlapped (a white ribbon cut by slivers); the entrance's jaw drops the row away from the upper
+        /// one instead, so a dark zigzag opens between the fangs as the jaw falls and stays through the hold.
+        /// </summary>
+        public const double JawLift=.006,JawStretchX=.06,JawStretchY=.2,JawDrop=.08;
+        /// <summary>
+        /// The bite (channel Bite, 0 to 1 with the reveal): the bank grin's interlocking rows reach .74 to 1 and .68 to .9 of the
+        /// lip gap, so fully bared they tile the mouth into a white ribbon cut by slivers. The entrance trims the upper row's reach
+        /// by BiteUpper and the lower's by BiteLower and grows the fangs' gap to BiteInset, so parallel dark bands open between
+        /// the fangs (the design target's zigzag). With Bite 0 (the closed seam, and any face that never sets it) the fangs are
+        /// the bank grin's.
+        /// </summary>
+        public const double BiteUpper=.1,BiteLower=.25,BiteInset=.15;
         /// <summary>The fangs' reach per slot (tools/siren_design.mjs UPPER_REACH, LOWER_REACH): two longer fangs per row.</summary>
         public static readonly double[] UpperReach={.74,.84,.92,1.0,.86,.8,.76,.8,.86,.98,.92,.84,.74},LowerReach={.7,.78,.9,.76,.72,.68,.68,.72,.76,.9,.78,.7};
         /// <summary>The canonical fang outline (u, v): root u 0..1 at v 0, tip (.5, -1), before any inset; and its 5 fan triangles.</summary>
@@ -60,6 +75,8 @@ namespace ChipArena.UnityConversion
         public double Vis,Glow;
         /// <summary>Mouth channels: half-widths (WPos the Siren's left), lip arcs, the smirk's tilt, jaw open; the laugh and the hold's strain.</summary>
         public double WPos,WNeg,Uy,Uk,Ly,Lk,Tilt,Open,Chuckle,Strain;
+        /// <summary>The bite: the reach trim and wider gaps of the bared entrance fangs (BiteUpper, BiteLower, BiteInset); 0 is the bank grin.</summary>
+        public double Bite;
         /// <summary>Eyes: brow cut (anger), squint, the outline index (NativeSirenLook.Shape), the halos' opacity; cheek lift.</summary>
         public double Anger,Squint,HaloOpacity,Cheek;public int Shape;
         /// <summary>
@@ -102,8 +119,11 @@ namespace ChipArena.UnityConversion
         public static double Kick(double s,double t0,double a)=>s<t0?0:a*Math.Exp(-(s-t0)/.12)*Clamp((s-t0)/.03);
         /// <summary>The silent laugh: one bump on each of beats 15 and 16.</summary>
         public static double Laugh(double s)=>FBump((s-Name)/.2)+FBump((s-Beat16)/.2);
-        /// <summary>The fang's scale about its outline centre for reach fraction r: 1 bared (the canonical fang), wider on the seam so the closed teeth touch.</summary>
-        public static double FangScale(double r){double q=Clamp((.86*r-.56)/.3),inset=FangInset*(SeamInset+(BaredInset-SeamInset)*q)/BaredInset;return (1-inset)/(1-FangInset);}
+        /// <summary>
+        /// The fang's scale about its outline centre for reach fraction r and bite b: 1 bared without a bite (the canonical fang),
+        /// wider on the seam so the closed teeth touch, narrower as the bite opens the gaps (inset FangInset to BiteInset).
+        /// </summary>
+        public static double FangScale(double r,double b=0){double q=Clamp((.86*r-.56)/.3),full=FangInset+(BiteInset-FangInset)*Clamp(b),inset=full*(SeamInset+(BaredInset-SeamInset)*q)/BaredInset;return (1-inset)/(1-FangInset);}
         /// <summary>The smile cue (beat 14) and the blackout (beat 13) of a beat table (IntroBeats when it has none).</summary>
         public static double Cue(double[] beats)=>NativeSirenIntroLight.Cue(beats!=null&&beats.Length>NativeSirenIntroLight.SmileBeat?beats:IntroBeats,NativeSirenIntroLight.SmileBeat);
         public static double Blackout(double[] beats)=>NativeSirenIntroLight.Cue(beats!=null&&beats.Length>NativeSirenIntroLight.SmileBeat?beats:IntroBeats,NativeSirenIntroLight.BlackoutBeat);
@@ -123,6 +143,8 @@ namespace ChipArena.UnityConversion
             // 3. The fangs bare from the centre out, 24 ms per tooth; the lower row from .23 s.
             for(int i=0;i<UpperTeeth;i++)Reach[i]=Lerp(ClosedReach,1,OutCubic((s-.16-.024*Math.Abs(i-6))/.34));
             for(int i=0;i<LowerTeeth;i++)Reach[UpperTeeth+i]=Lerp(ClosedReach,1,OutCubic((s-.23-.024*Math.Abs(i-5.5))/.34));
+            // The bite comes in with the reveal (the closed seam has none), so the bared fangs part into a zigzag.
+            Bite=OutCubic((s-.16)/.55);
             // 4. The jaw: about .26 near .5 s, settling near .12 with a slow breath, twitching open on each chuckle.
             Open=Math.Max(0,.26*OutCubic((s-.2)/.3)-.14*InOutSine((s-.5)/.45)+.012*Math.Sin(2.2*Math.Max(0,s-.95))+.02*ch);
             // 5. Eyes: the brow cut descends, the lower edge rises; the halos swell and kick on the name beat.
@@ -152,13 +174,13 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>
         /// One fang (grin-local, before the jaw): root chord A->B on its row's arc and the tip, for this frame's mouth and reach
-        /// fraction r. tools/siren_design.mjs tooth() generalised to asymmetric half-widths, the smirk's tilt and the reveal; at
-        /// the rest mouth it is that tooth exactly (the arena grin).
+        /// fraction r. tools/siren_design.mjs tooth() generalised to asymmetric half-widths, the smirk's tilt, the reveal and the
+        /// bite; at the rest mouth without a bite it is that tooth exactly (the arena grin).
         /// </summary>
         public void FangTriangle(bool upper,int i,double r,out double ax,out double ay,out double bx,out double by,out double tx,out double ty)
         {
             int n=upper?UpperTeeth:LowerTeeth;double step=2.0/n,a=-1+(upper?i:i+.5)*step,b=a+step,m=(a+b)/2;
-            ax=X(a);bx=X(b);double xm=X(m),lean=-.22*m*(bx-ax),reach=r*(upper?UpperReach[i]:LowerReach[i]),gap=U(xm)-L(xm);
+            ax=X(a);bx=X(b);double xm=X(m),lean=-.22*m*(bx-ax),bite=Clamp(Bite),reach=r*(upper?UpperReach[i]*(1-BiteUpper*bite):LowerReach[i]*(1-BiteLower*bite)),gap=U(xm)-L(xm);
             if(upper){ay=U(ax);by=U(bx);tx=xm+lean;ty=U(xm)-gap*reach;}else{ay=L(ax);by=L(bx);tx=xm+lean;ty=L(xm)+gap*reach;}
         }
         private double X(double u)=>u<0?u*WNeg:u*WPos;
@@ -167,18 +189,18 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// The unit fang mesh onto fang i of a row for this frame's mouth channels (WPos .. Lk, Tilt, Open) and reach fraction r,
         /// into m at o: P = A + u(B - A) + vD (D = A + (B - A)/2 - tip; the lower row's mesh holds -v, so its v column is -D),
-        /// scaled about the outline centre by FangScale, then the jaw (upper up .006 open; lower x(1 + .06 open),
-        /// y(1 + .5 open) - .03 open) and the grin's origin.
+        /// scaled about the outline centre by FangScale, then the jaw (upper up JawLift open; lower x(1 + JawStretchX open),
+        /// y(1 + JawStretchY open) - JawDrop open) and the grin's origin.
         /// </summary>
         public void ToothMatrix(bool upper,int i,double r,double[] m,int o)
         {
             FangTriangle(upper,i,r,out double ax,out double ay,out double bx,out double by,out double tx,out double ty);
-            double ux=bx-ax,uy=by-ay,dx=ax+.5*ux-tx,dy=ay+.5*uy-ty,k=FangScale(r),sv=upper?1:-1;
+            double ux=bx-ax,uy=by-ay,dx=ax+.5*ux-tx,dy=ay+.5*uy-ty,k=FangScale(r,Bite),sv=upper?1:-1;
             m[o]=ux*k;m[o+1]=sv*dx*k;m[o+2]=0;m[o+3]=ax+(1-k)*(FangCentreU*ux+FangCentreV*dx);
             m[o+4]=uy*k;m[o+5]=sv*dy*k;m[o+6]=0;m[o+7]=ay+(1-k)*(FangCentreU*uy+FangCentreV*dy);
             m[o+8]=0;m[o+9]=0;m[o+10]=1;m[o+11]=MouthZ;m[o+12]=0;m[o+13]=0;m[o+14]=0;m[o+15]=1;
-            if(upper)m[o+7]+=.006*Open;
-            else{double sx=1+.06*Open,sy=1+.5*Open;for(int c=0;c<4;c++){m[o+c]*=sx;m[o+4+c]*=sy;}m[o+7]-=.03*Open;}
+            if(upper)m[o+7]+=JawLift*Open;
+            else{double sx=1+JawStretchX*Open,sy=1+JawStretchY*Open;for(int c=0;c<4;c++){m[o+c]*=sx;m[o+4+c]*=sy;}m[o+7]-=JawDrop*Open;}
         }
         // T·Rz·S (three.js Matrix4.compose with only a z rotation), z scale 1.
         private static void Trz(double[] m,int o,double px,double py,double pz,double rz,double sx,double sy)

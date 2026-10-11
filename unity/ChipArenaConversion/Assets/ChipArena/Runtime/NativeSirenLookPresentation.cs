@@ -76,9 +76,7 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed partial class NativeSirenLookDraw:IDisposable
     {
-        private readonly Mesh orb,eyeHalo,orbHalo,chargeHalo;private readonly Mesh[] crackHalo=new Mesh[CrackLevels];private readonly Material solid,effects;
-        // The nimbus glows breathe between .8 and 1 of their opacity: one baked quad per step (no per-frame mesh or colour).
-        private const int CrackLevels=6;
+        private readonly Mesh orb,eyeHalo,orbHalo,chargeHalo;private readonly Material solid,effects;
         public NativeSirenLookDraw()
         {
             var shader=Resources.Load<Shader>("NativeSirenFx");if(shader==null)throw new InvalidOperationException("NativeSirenFx shader is missing");
@@ -91,8 +89,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<n;i++){var o=new Vector3((float)sp[i*3],(float)sp[i*3+1],(float)sp[i*3+2]);points[i]=o;colors[i]=core;uv.Add(new Vector4(0,0,NativeFxDraw.OrbMode,0));p.Add(new Vector4(-o.x,o.y,o.z,1.6f));q.Add(new Vector4(rim.r,rim.g,rim.b,1));}
             orb=new Mesh{name="Native Siren palm orb"};orb.vertices=points;orb.normals=points;orb.colors=colors;orb.SetUVs(0,uv);orb.SetUVs(1,p);orb.SetUVs(2,q);orb.triangles=si;orb.RecalculateBounds();orb.UploadMeshData(true);
             eyeHalo=Quad("Native Siren eye halo",NativeSirenLook.EyeHaloColor,(float)NativeSirenLook.EyeHaloOpacity);orbHalo=Quad("Native Siren orb halo",NativeSirenLook.OrbHaloColor,(float)NativeSirenLook.OrbHaloOpacity);
-            chargeHalo=Quad("Native Siren Damnation halo",NativeSirenLook.ChargeHaloColor,(float)NativeSirenLook.ChargeHaloOpacity);
-            for(int k=0;k<CrackLevels;k++)crackHalo[k]=Quad("Native Siren nimbus glow "+k,NativeSirenDetail.GlowHex,(float)NativeSirenDetail.GlowAlpha(k/(CrackLevels-1.0)));
+            chargeHalo=Quad("Native Siren Damnation halo",NativeSirenLook.ChargeHaloColor,(float)NativeSirenLook.ChargeHaloOpacity);BuildIntroHalos();
         }
         private static Color Raw(int hex){NativeBlastSim.Linear(hex,out double r,out double g,out double b);return new Color((float)r,(float)g,(float)b,1);}
         // haloMaterial: an authored sRGB colour at its opacity, radial alpha (1-r)^1.6, additive, both faces.
@@ -120,9 +117,6 @@ namespace ChipArena.UnityConversion
                 if(look.EyeHalo>0)Sprite(eyeHalo,head*look.Local[NativeSirenLook.EyeHalo+i],turn,layer,camera,(float)NativeSirenLook.HaloSize(look.Breath));
                 if(look.Shown[NativeSirenLook.OrbHalo+i])Sprite(orbHalo,hand*look.Local[NativeSirenLook.OrbHalo+i],turn,layer,camera);
             }
-            // The two soft glows in the nimbus breaks (the detail's sprite pieces, on the head).
-            if(facing==null)return;var crack=crackHalo[Mathf.Clamp(Mathf.RoundToInt(look.Breath*(CrackLevels-1)),0,CrackLevels-1)];
-            for(int i=NativeSirenLook.Detail;i<NativeSirenLook.Count;i++)if(NativeSirenDetail.Tone(i-NativeSirenLook.Detail)==NativeSirenDetail.Sprite&&look.Shown[i])Sprite(crack,head*look.Local[i],facing.transform.rotation,layer,camera);
         }
         // A sprite: centred on the piece, its world width the piece's x scale (times `scale`), turned to the camera.
         private void Sprite(Mesh mesh,Matrix4x4 world,Quaternion turn,int layer,Camera camera,float scale=1)
@@ -130,7 +124,7 @@ namespace ChipArena.UnityConversion
             Vector3 at=world.GetColumn(3);float size=((Vector3)world.GetColumn(0)).magnitude*scale;if(size<1e-4f)return;
             Graphics.DrawMesh(mesh,Matrix4x4.TRS(at,turn,new Vector3(size,size,size)),effects,layer,camera,0,null,ShadowCastingMode.Off,false);
         }
-        public void Dispose(){DisposeIntroHalos();CapturedAnimation.Release(orb);CapturedAnimation.Release(eyeHalo);CapturedAnimation.Release(orbHalo);CapturedAnimation.Release(chargeHalo);foreach(var q in crackHalo)CapturedAnimation.Release(q);CapturedAnimation.Release(solid);CapturedAnimation.Release(effects);}
+        public void Dispose(){DisposeIntroHalos();CapturedAnimation.Release(orb);CapturedAnimation.Release(eyeHalo);CapturedAnimation.Release(orbHalo);CapturedAnimation.Release(chargeHalo);CapturedAnimation.Release(solid);CapturedAnimation.Release(effects);}
     }
 
     public sealed partial class NativeSourceModels
@@ -153,7 +147,7 @@ namespace ChipArena.UnityConversion
             Part Named(string name){foreach(var p in all)if(p.Name==name)return p;throw new InvalidDataException("Siren piece missing from the model bank: "+name);}
             Part eye=Named("siren-eye"),upper=Named("siren-teeth-upper"),lower=Named("siren-teeth-lower"),clawL=Named("siren-claws-l"),clawR=Named("siren-claws-r"),box=Named("siren-flame-box");
             // The Unity finish's shared unit boxes (tools/siren_design.mjs, Core/NativeSirenDetail.cs), one per tone.
-            var couture=new Part[NativeSirenDetail.Sprite];couture[NativeSirenDetail.Plate]=Named("siren-couture-plate");couture[NativeSirenDetail.Deep]=Named("siren-couture-deep");couture[NativeSirenDetail.Sheen]=Named("siren-couture-sheen");
+            var couture=new Part[NativeSirenDetail.Tones];couture[NativeSirenDetail.Plate]=Named("siren-couture-plate");couture[NativeSirenDetail.Deep]=Named("siren-couture-deep");couture[NativeSirenDetail.Sheen]=Named("siren-couture-sheen");
             couture[NativeSirenDetail.Ash]=Named("siren-couture-ash");couture[NativeSirenDetail.Seam]=couture[NativeSirenDetail.Filament]=Named("siren-couture-seam");couture[NativeSirenDetail.Flame]=box;
             couture[NativeSirenDetail.Seam].NoShadow=true;
             var kept=new List<Part>();foreach(var p in all){if(string.IsNullOrEmpty(p.Name))kept.Add(p);else pieceMeshes.Add(p.Mesh);if(p.Material.mainTexture!=null&&SirenHaloTexture==null)SirenHaloTexture=p.Material.mainTexture;}
@@ -177,9 +171,9 @@ namespace ChipArena.UnityConversion
                 else if(i==NativeSirenLook.Claw||i==NativeSirenLook.Claw+1)p.Part=i==NativeSirenLook.Claw?clawL:clawR;
                 else if(i>=NativeSirenLook.Detail)
                 {
-                    // Detail pieces: the tone's box (the nimbus glows are sprites, drawn by NativeSirenLookDraw); the glow lines
-                    // carry their colour as the instance tint, breathing and fading with distance (QueuePieces).
-                    int tone=NativeSirenDetail.Tone(i-NativeSirenLook.Detail);if(tone==NativeSirenDetail.Sprite)continue;p.Part=couture[tone];
+                    // Detail pieces: the tone's box; the glow lines carry their colour as the instance tint, breathing and fading
+                    // with distance (QueuePieces).
+                    int tone=NativeSirenDetail.Tone(i-NativeSirenLook.Detail);p.Part=couture[tone];
                     if(tone==NativeSirenDetail.Seam||tone==NativeSirenDetail.Filament){NativeSirenDetail.GlowColor(tone,out double r,out double g,out double b);p.Line=true;p.Tone=new Vector4((float)r,(float)g,(float)b,1);}
                 }
                 else if(i>=NativeSirenLook.Wisp)p.Part=box;
@@ -187,7 +181,7 @@ namespace ChipArena.UnityConversion
             lookPieces["siren"]=list;
         }
         // The couture tones' ink strengths (NativeSourceLit _InkRim, _InkFlow) on every model that carries them: the arena
-        // bank's unit boxes and the dev-siren entrance bake's named batches (tools/export_cinematics.mjs).
+        // bank's unit boxes and the named batches of the dev-siren entrance and Siren death bakes (tools/export_cinematics.mjs).
         private void CoutureInk()
         {
             string[] names={"siren-couture-plate","siren-couture-deep","siren-couture-sheen","siren-couture-ash"};

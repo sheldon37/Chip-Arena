@@ -9,10 +9,10 @@ namespace ChipArena.UnityConversion
     // The Siren's Unity finish beyond the source (Core/NativeSirenDetail.cs, owner request 2026-10-10) against
     // tools/export_siren_detail.mjs's run of tools/siren_design.mjs on a dressed source rig (Tests/siren-detail-parity.json):
     // the deterministic piece list (ids, groups, joints, tones), the tone constants, the stratified flame, every piece's
-    // transform for scripted look states (the source's 136 with the twist, then the 260 detail pieces); then its own rules:
+    // transform for scripted look states (the source's 136 with the twist, then the 258 detail pieces); then its own rules:
     // finite matrices over a sweep, every piece on a drawn joint, bounds, the budget, allocation-free evaluation that never
     // rewrites a static piece, nothing over the eyes or the grin (also through the entrance smile's mouth range), the glow
-    // line fade, the bank's couture parts and grin rows, and the dev-siren entrance bake's dressing.
+    // line fade, the bank's couture parts and grin rows, and the dressing of the dev-siren entrance and the Siren's death bakes.
     internal static class SirenDetailChecks
     {
         private static int count;
@@ -67,7 +67,7 @@ namespace ChipArena.UnityConversion
             using var doc=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Tests/siren-detail-parity.json")));var f=doc.RootElement;
             // 1. The piece list: deterministic, the same ids, groups, joints and tones as the design table.
             Check(f.GetProperty("count").GetInt32()==NativeSirenLook.Count&&f.GetProperty("first").GetInt32()==NativeSirenLook.Source&&NativeSirenLook.Source==136,"piece counts");
-            Check(f.GetProperty("boxes").GetInt32()==NativeSirenDetail.Boxes&&NativeSirenDetail.Count==NativeSirenDetail.Boxes+2,"box count");
+            Check(f.GetProperty("boxes").GetInt32()==NativeSirenDetail.Boxes&&NativeSirenDetail.Count==NativeSirenDetail.Boxes,"box count: every piece a box");
             var drawn=new HashSet<int>{1,2,3,5,6,7,8,9,10,11,12,13,14,18};int index=0,boxes=0,moving=0;var groups=new Dictionary<string,int>();
             foreach(var p in f.GetProperty("pieces").EnumerateArray())
             {
@@ -76,13 +76,14 @@ namespace ChipArena.UnityConversion
                 Check(drawn.Contains(NativeSirenDetail.Bone(index)),what+" rides a joint the Siren draws ("+NativeSirenDetail.Bone(index)+")");
                 Check(NativeSirenDetail.Moves(index)==p.GetProperty("moves").GetBoolean(),what+" moves");if(NativeSirenDetail.Moves(index))moving++;
                 Check((NativeSirenDetail.ClawGroup(index)>=0)==(NativeSirenDetail.Group(index)=="rings"),what+" claw group");
-                if(NativeSirenDetail.Tone(index)!=NativeSirenDetail.Sprite)boxes++;groups[NativeSirenDetail.Group(index)]=(groups.TryGetValue(NativeSirenDetail.Group(index),out int g)?g:0)+1;index++;
+                Check(NativeSirenDetail.Tone(index)>=0&&NativeSirenDetail.Tone(index)<NativeSirenDetail.Tones,what+" tone range");boxes++;groups[NativeSirenDetail.Group(index)]=(groups.TryGetValue(NativeSirenDetail.Group(index),out int g)?g:0)+1;index++;
             }
             Check(index==NativeSirenDetail.Count&&boxes==NativeSirenDetail.Boxes&&moving==NativeSirenDetail.MovingCount,"pieces "+index+", boxes "+boxes+", moving "+moving);
-            // The design's own groups and counts (collar trimmed, front panels, 27 hem ash steps, the nimbus with 2 glows).
-            foreach(var (name,n) in new[]{("collar",53),("pauldron",8),("bodice",9),("girdle",8),("gown",34),("front",8),("hem",27),("train",10),("gauntlet",16),("rings",6),("nimbus",53),("face",24),("cheek",4)})
+            // The design's own groups and counts (collar trimmed, front panels, 27 hem ash steps, the nimbus all boxes: no soft glow
+            // competes with the eyes on the head).
+            foreach(var (name,n) in new[]{("collar",53),("pauldron",8),("bodice",9),("girdle",8),("gown",34),("front",8),("hem",27),("train",10),("gauntlet",16),("rings",6),("nimbus",51),("face",24),("cheek",4)})
                 Check(groups.TryGetValue(name,out int got)&&got==n,"group "+name+": "+got);
-            // 2. Constants: tones, glow colours (three's sRGB decode x intensity), the nimbus glows, seams, talons, nimbus, cheeks, twist.
+            // 2. Constants: tones, glow colours (three's sRGB decode x intensity), seams, talons, nimbus, cheeks, twist.
             var tones=f.GetProperty("tones");int t=0;
             foreach(var ink in tones.GetProperty("ink").EnumerateArray())
             {
@@ -96,7 +97,7 @@ namespace ChipArena.UnityConversion
                 Near(r,l[0].GetDouble(),2e-6,"glow "+tone+" r");Near(gg,l[1].GetDouble(),2e-6,"glow "+tone+" g");Near(b,l[2].GetDouble(),2e-6,"glow "+tone+" b");
                 Check(glow.GetProperty("hex").GetInt32()==(tone==NativeSirenDetail.Seam?NativeSirenDetail.SeamHex:NativeSirenDetail.FilamentHex),"glow hex "+tone);
             }
-            var sprite=tones.GetProperty("sprite");Check(sprite.GetProperty("hex").GetInt32()==NativeSirenDetail.GlowHex&&D(sprite,"opacity")==NativeSirenDetail.GlowOpacity,"nimbus glow sprite");
+            Check(!tones.TryGetProperty("sprite",out _),"no nimbus glow sprites");
             Check(D(f,"seamWidth")==NativeSirenDetail.SeamWidth&&D(f.GetProperty("talons"),"claw")==NativeSirenDetail.Talon&&D(f.GetProperty("talons"),"thumb")==NativeSirenDetail.ThumbTalon,"seam width and talons");
             var nim=f.GetProperty("nimbus");Check(D(nim,"y")==NativeSirenDetail.HubY&&D(nim,"z")==NativeSirenDetail.HubZ&&D(nim,"tilt")==NativeSirenDetail.HubTilt&&D(nim,"r")==NativeSirenDetail.Radius&&D(nim,"spin")==NativeSirenDetail.Spin,"nimbus constants");
             var ch=f.GetProperty("cheek");Check(D(ch,"dx")==NativeSirenDetail.CheekX&&D(ch,"dy")==NativeSirenDetail.CheekY&&D(ch,"dz")==NativeSirenDetail.CheekZ&&D(ch,"turn")==NativeSirenDetail.CheekTurn,"cheek constants");
@@ -168,17 +169,16 @@ namespace ChipArena.UnityConversion
             Check(eyesCovered==0,"a face piece covers an eye: "+string.Join(", ",worstCover.Keys));
             Check(teethStatic==0&&teethSmile==0,"a face piece covers the grin (static "+teethStatic+" mm², through the smile's mouth "+teethSmile+" mm²): "+string.Join(", ",worstCover.Keys));
             Check(graze<=40,"cheek over the lower row at a fully open jaw: "+graze+" mm²");
-            // 7. The glow lines: the breath and the distance fade; the nimbus glows; the cheek lift.
+            // 7. The glow lines: the breath and the distance fade; the cheek lift.
             Near(NativeSirenDetail.LineGlow(1,0),1,1e-12,"line glow at rest");Near(NativeSirenDetail.LineGlow(0,0),.9,1e-12,"line glow trough");Near(NativeSirenDetail.LineGlow(1,12),1,1e-12,"line glow at 12 m");
             Near(NativeSirenDetail.LineGlow(1,17),.775,1e-12,"line glow at 17 m");Near(NativeSirenDetail.LineGlow(1,22),.55,1e-12,"line glow at 22 m");Near(NativeSirenDetail.LineGlow(1,60),.55,1e-12,"line glow far");
-            Near(NativeSirenDetail.GlowAlpha(1),.3,1e-12,"nimbus glow peak");Near(NativeSirenDetail.GlowAlpha(0),.24,1e-12,"nimbus glow trough");
             Near(NativeSirenDetail.CheekLift(.5),.3,1e-12,"cheek lift");Near(NativeSirenDetail.CheekLift(1.4),.6,1e-12,"cheek lift clamps");Near(NativeSirenDetail.CheekLift(-1),0,1e-12,"cheek lift floor");
             Check(NativeSirenDetail.Nimbus&&NativeSirenDetail.Gown,"kill switches on");
             // 8. The bank: one unit box per couture part, black-and-white glow box, the finer grin rows in the teeth parts, the
             // longer talons; the entrance bake's named couture batches.
             using(var bank=Bank(root,"SourceModels"))
             {
-                JsonElement siren=default,stage=default;foreach(var mm in bank.RootElement.GetProperty("models").EnumerateArray()){string id=mm.GetProperty("id").GetString();if(id=="siren")siren=mm;else if(id=="stage-dev-siren")stage=mm;}
+                JsonElement siren=default,stage=default,dissipate=default;foreach(var mm in bank.RootElement.GetProperty("models").EnumerateArray()){string id=mm.GetProperty("id").GetString();if(id=="siren")siren=mm;else if(id=="stage-dev-siren")stage=mm;else if(id=="death-siren-dissipate")dissipate=mm;}
                 var named=new Dictionary<string,JsonElement>();foreach(var sec in siren.GetProperty("sections").EnumerateArray()){string part=sec.GetProperty("part").GetString();if(!string.IsNullOrEmpty(part))named[part]=sec;}
                 foreach(var part in new[]{"siren-couture-plate","siren-couture-deep","siren-couture-sheen","siren-couture-ash","siren-couture-seam"})
                 {
@@ -211,13 +211,26 @@ namespace ChipArena.UnityConversion
                 double Bright(int track,double age){int fr=(int)Math.Round(age/duration*(frames2-1)),o=(track*frames2+fr)*20;return Math.Max(vals[o+17].GetDouble(),Math.Max(vals[o+18].GetDouble(),vals[o+19].GetDouble()));}
                 Check(glowTracks.Count>=25,"entrance glow tracks: "+glowTracks.Count);
                 foreach(int track in glowTracks){double lit=Bright(track,4.4),dark=Bright(track,5.8);Check(lit>.4&&dark<=lit*.15+1e-6,"entrance glow track "+track+": "+lit+" lit, "+dark+" in the blackout");}
+                // The Siren's own death (death-siren-dissipate) wears the whole finish too: every piece a named section on its own
+                // track, shown when she dies and burnt away with the body by the end; its grin rows are the bank's finer grin.
+                JsonElement death=default;foreach(var c in scenes.RootElement.GetProperty("clips").EnumerateArray())if(c.GetProperty("key").GetString()=="death-siren-dissipate")death=c;
+                int deathFrames=death.GetProperty("frames").GetInt32();var deathValues=death.GetProperty("values");int dressed=0,burnt=0,fangRows=0;var deathParts=new HashSet<string>();var deathTracks=new HashSet<int>();
+                foreach(var sec in dissipate.GetProperty("sections").EnumerateArray())
+                {
+                    string part=sec.GetProperty("part").GetString();int verts=sec.GetProperty("positions").GetArrayLength()/3;if(verts==13*15||verts==12*15)fangRows++;
+                    if(string.IsNullOrEmpty(part)||!(part.StartsWith("siren-couture-")||part=="siren-flame-box"))continue;dressed++;deathParts.Add(part);int bone=sec.GetProperty("bone").GetInt32();deathTracks.Add(bone);
+                    double shownAt=deathValues[(bone*deathFrames)*20+16].GetDouble(),goneAt=deathValues[(bone*deathFrames+deathFrames-1)*20+16].GetDouble();Check(shownAt>0,"dissipate couture section on track "+bone+" shown when she dies");if(goneAt==0)burnt++;
+                }
+                Check(dressed==NativeSirenDetail.Boxes&&deathTracks.Count==dressed,"dissipate dressing: "+dressed+" sections on "+deathTracks.Count+" tracks");
+                foreach(var part in new[]{"siren-couture-plate","siren-couture-deep","siren-couture-sheen","siren-couture-ash","siren-couture-seam","siren-flame-box"})Check(deathParts.Contains(part),"dissipate wears "+part);
+                Check(burnt==dressed,"the dissipate burns every couture piece away ("+burnt+" of "+dressed+")");Check(fangRows==2,"the dissipate grin is the finer grin ("+fangRows+" fang rows)");
             }
             // 9. The draw paths take every piece (QueuePieces and the portraits), with tints, glow and frames as described.
             string look=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeSirenLookPresentation.cs")),portraits=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativePortraits.cs")),cine=File.ReadAllText(Path.Combine(root,"tools/export_cinematics.mjs")),models=File.ReadAllText(Path.Combine(root,"tools/export_models.mjs"));
             Check(look.Contains("Named(\"siren-couture-plate\")")&&look.Contains("CoutureInk();")&&look.Contains("NativeSirenDetail.LineGlow(pose.Breath,pose.GlowDistance)")&&look.Contains("NativeSirenLook.Rest(m,Shown)"),"runtime parts, ink strengths, glow fade and static pieces");
             Check(portraits.Contains("out var glow")&&portraits.Contains("NativePortraitRules.SirenTop(s.Pose)"),"portraits draw the glow lines and frame the nimbus");
-            Check(cine.Contains("SirenDesign.dress(T,stage.rig")&&cine.Contains("bakeStatic")&&cine.Contains("SirenDesign.entranceGlow(t,sirenCues)")&&models.Contains("SirenDesign.finish(T,parts,{grin:true,talons:true})"),"exporters dress the entrance and finish the bank");
-            Console.WriteLine($"PASS Siren detail: {NativeSirenDetail.Count} pieces ({NativeSirenDetail.Boxes} boxes, {NativeSirenDetail.MovingCount} moving) match the design table and {states} dressed-rig states (largest gap {worst:0.0e+0}); {frames} sweep frames finite, within {reach:0.00} m of their joints, static pieces untouched, no allocation; eyes and grin clear (cheek graze at a fully open jaw {graze:0.0} mm²); bank parts, grin rows, talons and entrance dressing present; {count} checks");
+            Check(cine.Contains("SirenDesign.dress(T,stage.rig")&&cine.Contains("SirenDesign.dress(T,rig,parts,sirenMaterials)")&&cine.Contains("dressedDissipate();")&&cine.Contains("bakeStatic")&&cine.Contains("SirenDesign.entranceGlow(t,sirenCues)")&&models.Contains("SirenDesign.finish(T,parts,{grin:true,talons:true})"),"exporters dress the entrance and finish the bank");
+            Console.WriteLine($"PASS Siren detail: {NativeSirenDetail.Count} pieces ({NativeSirenDetail.Boxes} boxes, {NativeSirenDetail.MovingCount} moving) match the design table and {states} dressed-rig states (largest gap {worst:0.0e+0}); {frames} sweep frames finite, within {reach:0.00} m of their joints, static pieces untouched, no allocation; eyes and grin clear (cheek graze at a fully open jaw {graze:0.0} mm²); bank parts, grin rows, talons, and the entrance and death dressing present; {count} checks");
         }
     }
 }

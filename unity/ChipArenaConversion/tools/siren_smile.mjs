@@ -25,6 +25,19 @@ export const MOUTH_Z=.1638,EYE={x:.082,y:.206,z:.1645,tilt:.12,w:.05,h:.08,lift:
 export const HALO_LIT=.35,HALO_DARK=.6;
 /** The fangs' gaps: touching slivers on the closed seam, the canonical fang's own inset once bared. */
 const FANG_INSET=GRIN.inset,SEAM_INSET=.02,BARED_INSET=.15;
+/**
+ * The bite (channel bite, 0 to 1 with the reveal): fully bared, the bank grin's interlocking rows (reach .74 to 1 and .68 to .9
+ * of the lip gap) tile the mouth into a white ribbon cut by slivers, so the entrance trims the upper row's reach by .1 and the
+ * lower's by .25 and grows the fangs' gap to .15: parallel dark bands open between the fangs (the design target's zigzag).
+ * Without a bite (the closed seam, or channels that leave it out) the fangs are the bank grin's.
+ */
+export const BITE={upper:.1,lower:.25,inset:.15};
+/**
+ * The jaw per unit open: the upper row lifts .006; the lower row stretches .06 wide and .2 tall about the grin's origin and
+ * drops .08. applySirenLook's arena jaw stretches the lower row .5 tall and drops it .03, which keeps the interlocking rows
+ * overlapped; the entrance drops the row away from the upper one, so a dark zigzag opens as the jaw falls.
+ */
+export const JAW={lift:.006,stretchX:.06,stretchY:.2,drop:.08};
 
 const clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x)),lerp=(a,b,t)=>a+(b-a)*t;
 export const ease={
@@ -57,10 +70,11 @@ export function curves(s){
  const uy=lerp(CLOSED.uy,REST.uy,lift),uk=lerp(CLOSED.uk,REST.uk,lift)+.25*creep,ly=lerp(CLOSED.ly,REST.ly,lift),lk=lerp(CLOSED.lk,REST.lk,lift);
  // The smirk: both lips tilt so the left corner rides up to 19 mm higher, resolved by .78 s; the quiver keeps it alive.
  const tilt=.065*bump(s,.06,.78)+.006*strain*quiver;
- // 3. The fangs bare from the centre out, 24 ms per tooth; the lower row from .23 s.
+ // 3. The fangs bare from the centre out, 24 ms per tooth; the lower row from .23 s. The bite comes in with the reveal.
  const reachU=[],reachL=[];
  for(let i=0;i<GRIN.upper;i++)reachU.push(lerp(CLOSED.reach,REST.reach,E.outCubic((s-.16-.024*Math.abs(i-6))/.34)));
  for(let i=0;i<GRIN.lower;i++)reachL.push(lerp(CLOSED.reach,REST.reach,E.outCubic((s-.23-.024*Math.abs(i-5.5))/.34)));
+ const bite=E.outCubic((s-.16)/.55);
  // 4. The jaw drops as the teeth bare (about .26 near .5 s), settles near .12 with a slow breath, twitches on each chuckle.
  const open=Math.max(0,.26*E.outCubic((s-.2)/.3)-.14*E.inOutSine((s-.5)/.45)+.012*Math.sin(2.2*Math.max(0,s-.95))+.02*ch);
  // 5. The eyes: the brow cut descends, the lower edge rises (the cheeks' push), the halos swell and kick on the name beat.
@@ -74,7 +88,7 @@ export function curves(s){
  const neckX=.35*(.15*dip-.07*rise),chestX=-.045*bump(s,.04,.62)+.02*ch,clavicle=.07*bump(s,.06,.66)+.04*ch;
  // 8. The fangs flare on beats 15 and 16.
  const glow=vis*(1+kick(s,NAME,.28)+kick(s,BEAT16,.12)+.08*ch);
- return {s,vis,chuckle:ch,strain,wPos,wNeg,uy,uk,ly,lk,tilt,reachU,reachL,open,anger,squint,halo,c,glow,headX,headY,headZ,neckX,chestX,clavicle};
+ return {s,vis,chuckle:ch,strain,wPos,wNeg,uy,uk,ly,lk,tilt,reachU,reachL,bite,open,anger,squint,halo,c,glow,headX,headY,headZ,neckX,chestX,clavicle};
 }
 
 /** The canonical fang outline (u, v), root u 0..1 at v 0 and tip (.5, -1), before any inset; its vertex mean. */
@@ -82,30 +96,31 @@ export const FANG=[[0,0],[1,0],[.9,-.32],[.7,-.7],[.5,-1],[.33,-.66],[.12,-.3]];
 export const FANG_CENTRE=[FANG.reduce((a,p)=>a+p[0],0)/FANG.length,FANG.reduce((a,p)=>a+p[1],0)/FANG.length];
 /**
  * One fang (grin-local, before the jaw): root chord A->B on its row's arc and the tip, for smile channels p. siren_design.mjs
- * tooth() generalised to asymmetric half-widths (u > 0 the Siren's left), the smirk's tilt and a reach fraction r of the
- * rest table; at the rest channels it is that tooth exactly (the arena grin).
+ * tooth() generalised to asymmetric half-widths (u > 0 the Siren's left), the smirk's tilt, a reach fraction r of the
+ * rest table and the bite (p.bite, trimming the reach); at the rest channels without a bite it is that tooth exactly (the arena grin).
  */
 export function tooth(row,i,p,r){
  const upper=row==='upper',n=upper?GRIN.upper:GRIN.lower,step=2/n,a=-1+(upper?i:i+.5)*step,b=a+step,m=(a+b)/2;
  const X=u=>u<0?u*p.wNeg:u*p.wPos,U=x=>p.uy+p.uk*x*x+p.tilt*x,L=x=>p.ly+p.lk*x*x+p.tilt*x;
- const xa=X(a),xb=X(b),xm=X(m),lean=-.22*m*(xb-xa),reach=r*(upper?UPPER_REACH:LOWER_REACH)[i],gap=U(xm)-L(xm);
+ const bite=clamp(p.bite??0),xa=X(a),xb=X(b),xm=X(m),lean=-.22*m*(xb-xa),reach=r*(upper?UPPER_REACH:LOWER_REACH)[i]*(1-(upper?BITE.upper:BITE.lower)*bite),gap=U(xm)-L(xm);
  return upper?[[xa,U(xa)],[xb,U(xb)],[xm+lean,U(xm)-gap*reach]]:[[xa,L(xa)],[xb,L(xb)],[xm+lean,L(xm)+gap*reach]];
 }
-/** The fang's scale about its outline centre for reach fraction r: 1 when bared (the canonical fang), wider on the seam. */
-export function fangScale(r){const q=clamp((.86*r-.56)/.3),inset=FANG_INSET*(SEAM_INSET+(BARED_INSET-SEAM_INSET)*q)/BARED_INSET;return (1-inset)/(1-FANG_INSET);}
+/** The fang's scale about its outline centre for reach fraction r and bite b: 1 bared without a bite (the canonical fang),
+ *  wider on the seam, narrower as the bite opens the gaps (inset GRIN.inset to BITE.inset). */
+export function fangScale(r,b=0){const q=clamp((.86*r-.56)/.3),full=FANG_INSET+(BITE.inset-FANG_INSET)*clamp(b),inset=full*(SEAM_INSET+(BARED_INSET-SEAM_INSET)*q)/BARED_INSET;return (1-inset)/(1-FANG_INSET);}
 /**
  * The head-local transform (12 values, row-major 3x4) that maps the unit fang mesh ((u, v, z): the FANG outline inset by
  * GRIN.inset toward FANG_CENTRE; the lower row's mesh holds -v) onto fang i of `row`: P = A + u(B - A) + vD with
  * D = A + (B - A)/2 - tip (v = -1 on the tip; the lower row's v column is -D, so no fang's transform is mirrored), scaled
- * about the outline centre by fangScale, then the jaw (upper row up .006 open; lower row x(1 + .06 open), y(1 + .5 open)
- * - .03 open, as applySirenLook moves the rows) and the grin's origin.
+ * about the outline centre by fangScale, then the entrance jaw (JAW: upper row up .006 open; lower row x(1 + .06 open),
+ * y(1 + .2 open) - .08 open) and the grin's origin.
  */
 export function toothMatrix(row,i,p,r){
- const [A,B,Tp]=tooth(row,i,p,r),ux=B[0]-A[0],uy=B[1]-A[1],dx=A[0]+.5*ux-Tp[0],dy=A[1]+.5*uy-Tp[1],k=fangScale(r),[cu,cv]=FANG_CENTRE,sv=row==='upper'?1:-1;
+ const [A,B,Tp]=tooth(row,i,p,r),ux=B[0]-A[0],uy=B[1]-A[1],dx=A[0]+.5*ux-Tp[0],dy=A[1]+.5*uy-Tp[1],k=fangScale(r,p.bite??0),[cu,cv]=FANG_CENTRE,sv=row==='upper'?1:-1;
  // M·K: columns (B - A)k, ±Dk, z; origin A + (1 - k)(cu(B - A) + cv D).
  let m=[ux*k,sv*dx*k,0,A[0]+(1-k)*(cu*ux+cv*dx), uy*k,sv*dy*k,0,A[1]+(1-k)*(cu*uy+cv*dy), 0,0,1,0];
  const o=p.open;
- if(row==='upper')m[7]+=.006*o;else{const sx=1+.06*o,sy=1+.5*o;for(let c=0;c<4;c++){m[c]*=sx;m[4+c]*=sy;}m[7]-=.03*o;}
+ if(row==='upper')m[7]+=JAW.lift*o;else{const sx=1+JAW.stretchX*o,sy=1+JAW.stretchY*o;for(let c=0;c<4;c++){m[c]*=sx;m[4+c]*=sy;}m[7]-=JAW.drop*o;}
  m[11]+=MOUTH_Z;return m;
 }
 /** three.js Matrix4.compose order T·Rz·S (row-major 3x4) for the eye and halo pieces (no x or y rotation). */

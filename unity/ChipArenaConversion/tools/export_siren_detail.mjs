@@ -5,7 +5,7 @@
 //  - the stratified flame's yaw and girth per tongue step, and the finer grin's two rows (as tools/export_models.mjs bakes
 //    them into the bank's siren-teeth parts);
 //  - for scripted look states, every piece's transform relative to its joint (the source's 136 with the stratified flame,
-//    then the 260 detail pieces) and its visibility, from the dressed rig's own scene graph.
+//    then the 258 detail pieces) and its visibility, from the dressed rig's own scene graph.
 // Usage: node tools/export_siren_detail.mjs <temporary output of export_models.mjs>
 import fs from 'node:fs';import path from 'node:path';import {pathToFileURL,fileURLToPath} from 'node:url';
 import * as D from './siren_design.mjs';
@@ -26,11 +26,11 @@ const local=p=>{const m=new T.Matrix4();for(const n of p.chain){n.updateMatrix()
 const rows=m=>{const e=m.elements;return [e[0],e[4],e[8],e[12],e[1],e[5],e[9],e[13],e[2],e[6],e[10],e[14]].map(r9);};
 const shown=p=>{for(const n of [p.node,...p.chain])if(!n.visible)return false;return true;};
 const lin=hex=>new T.Color(hex).toArray().map(r9);
-const out={source:commit,count:list.length,first:D.SOURCE_PIECES,boxes:detail.filter(d=>d.tone!=='sprite').length,
+const out={source:commit,count:list.length,first:D.SOURCE_PIECES,boxes:detail.length,
  seamWidth:D.SW,talons:D.TALONS,nimbus:{y:D.NIMBUS.y,z:D.NIMBUS.z,tilt:D.NIMBUS.tilt,r:D.NIMBUS.r,spin:D.NIMBUS.spin},cheek:D.CHEEK,
  tones:{ink:['plate','deep','sheen','ash'].map(k=>({tone:k,hex:D.TONES[k].ink,linear:lin(D.TONES[k].ink),rim:D.TONES[k].rim,flow:D.TONES[k].flow,emissive:D.TONES[k].emissive??[0,0,0]})),
-  glow:['seam','filament'].map(k=>({tone:k,hex:D.TONES[k].glow,intensity:D.TONES[k].intensity,linear:D.glowLinear(T,k).toArray().map(r9)})),sprite:{hex:D.CRACK_COLOR,opacity:D.CRACK_OPACITY}},
- pieces:detail.map((d,i)=>({id:d.id,group:d.group,joint:list[D.SOURCE_PIECES+i].joint,tone:D.TONE_ORDER.indexOf(d.tone),part:d.tone==='sprite'?null:D.PARTS[d.tone],moves:!!d.anim||!!list[D.SOURCE_PIECES+i].chain.some(n=>/^couture-(nimbus|train-\d|cheek-[lr])$/.test(n.name))||d.bone.endsWith('Claws')})),
+  glow:['seam','filament'].map(k=>({tone:k,hex:D.TONES[k].glow,intensity:D.TONES[k].intensity,linear:D.glowLinear(T,k).toArray().map(r9)}))},
+ pieces:detail.map((d,i)=>({id:d.id,group:d.group,joint:list[D.SOURCE_PIECES+i].joint,tone:D.TONE_ORDER.indexOf(d.tone),part:D.PARTS[d.tone],moves:!!d.anim||!!list[D.SOURCE_PIECES+i].chain.some(n=>/^couture-(nimbus|train-\d|cheek-[lr])$/.test(n.name))||d.bone.endsWith('Claws')})),
  twist:parts.tongues.flatMap((t,n)=>t.group.children.map((c,i)=>{const w=D.TWIST(n,i);return [r9(w.yaw),r9(w.k)];})),
  grin:{upper:D.grinRow('upper').map(r9),lower:D.grinRow('lower').map(r9)},states:[]};
 const states=[

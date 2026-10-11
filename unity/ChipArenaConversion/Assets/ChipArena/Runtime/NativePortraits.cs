@@ -235,8 +235,6 @@ namespace ChipArena.UnityConversion
             }
             var radial=models.SirenHaloTexture;if(radial==null)return;
             for(int i=0;i<2&&look.EyeHalo>0;i++)SirenSprite(radial,NativeSirenLook.EyeHalo+i,NativeSirenLook.EyeHaloColor,look.EyeHalo,look,turn);
-            // The two soft glows in the nimbus breaks (the detail's sprite pieces).
-            for(int i=NativeSirenLook.Detail;i<NativeSirenLook.Count;i++)if(NativeSirenDetail.Tone(i-NativeSirenLook.Detail)==NativeSirenDetail.Sprite&&look.Shown[i])SirenSprite(radial,i,NativeSirenDetail.GlowHex,(float)NativeSirenDetail.GlowAlpha(look.Breath),look,turn);
         }
         // An additive radial sprite on a Siren piece, its width the piece's x scale, turned to the portrait camera.
         private void SirenSprite(Texture radial,int piece,int hex,float alpha,NativeSirenLookPose look,Quaternion turn)

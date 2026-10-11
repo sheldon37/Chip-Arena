@@ -17,7 +17,7 @@ const {createCharacterRig}=await load('client/character-rig'),{buildSiren,applyS
 const cue=n=>SIREN_INTRO.cues.find(c=>c.cue===n).time,cues={blackout:cue('blackout'),smile:cue('smile'),name:SIREN_INTRO.nameAt};
 if(Math.abs(cues.name-cues.smile-F.NAME)>1e-12)throw Error('name beat offset');
 const r9=x=>Number(x.toPrecision(9)),six=m=>[m[0],m[1],m[3],m[4],m[5],m[7]].map(r9);
-const rig=createCharacterRig('#70e1d0'),parts=buildSiren(rig);D.finish(T,parts,{grin:true,talons:true});const design=D.dress(T,rig,parts,M,{groups:['cheek'],sprites:false});
+const rig=createCharacterRig('#70e1d0'),parts=buildSiren(rig);D.finish(T,parts,{grin:true,talons:true});const design=D.dress(T,rig,parts,M,{groups:['cheek']});
 const cheeks=['cheek-box-l','cheek-trim-l','cheek-box-r','cheek-trim-r'].map(id=>design.objects.get(id));
 // A node's transform relative to the head, row-major 3x4.
 const local=o=>{const m=new T.Matrix4();for(let q=o;q&&q!==rig.head;q=q.parent){q.updateMatrix();m.premultiply(q.matrix);}const e=m.elements;return [e[0],e[4],e[8],e[12],e[1],e[5],e[9],e[13],e[2],e[6],e[10],e[14]];};
@@ -35,11 +35,11 @@ const samples=ages.map(age=>{
  for(const e of parts.eyes)e.position.y=F.EYE.y+F.EYE.lift*p.squint;
  design.update({time:age,clock:age,c:p.c});const glow=D.entranceGlow(age,cues),b=F.body(f.s);
  return {age:r9(age),s:r9(f.s),grin:f.grin,shape:Math.round(p.anger*40),vis:r9(p.vis),glow:r9(p.glow),wPos:r9(p.wPos),wNeg:r9(p.wNeg),uy:r9(p.uy),uk:r9(p.uk),ly:r9(p.ly),lk:r9(p.lk),tilt:r9(p.tilt),open:r9(p.open),
-  anger:r9(p.anger),squint:r9(p.squint),halo:r9(p.halo),c:r9(p.c),chuckle:r9(p.chuckle),strain:r9(p.strain),reach:[...p.reachU,...p.reachL].map(r9),
+  anger:r9(p.anger),squint:r9(p.squint),halo:r9(p.halo),c:r9(p.c),chuckle:r9(p.chuckle),strain:r9(p.strain),bite:r9(p.bite),reach:[...p.reachU,...p.reachL].map(r9),
   body:[b.headX,b.headY,b.headZ,b.neckX,b.chestX,b.clavicle].map(r9),seam:r9(glow.seam),filament:r9(glow.filament),
   teeth:f.teeth.map(six),eyes:parts.eyes.map(e=>local(e).map(r9)),cheeks:cheeks.map(o=>local(o).map(r9))};});
 const out={source:'05950eaef80ff2483a9c44d898cad98be1a76bbc',cues,beats:{blackout:F.BLACKOUT_BEAT,smile:F.SMILE_BEAT},offsets:{name:F.NAME,beat16:F.BEAT16,end:F.END,hold:F.HOLD_END},
- closed:F.CLOSED,rest:F.REST,reach:{upper:D.UPPER_REACH,lower:D.LOWER_REACH},fang:{outline:F.FANG,inset:D.GRIN.inset,shape:D.TOOTH_SHAPE.flat().map(r9),fan:D.TOOTH_FAN.flat()},
+ closed:F.CLOSED,rest:F.REST,bite:F.BITE,jaw:F.JAW,reach:{upper:D.UPPER_REACH,lower:D.LOWER_REACH},fang:{outline:F.FANG,inset:D.GRIN.inset,shape:D.TOOTH_SHAPE.flat().map(r9),fan:D.TOOTH_FAN.flat()},
  eye:F.EYE,halo:F.HALO,halos:parts.eyeHalos.map(h=>local(h).map(r9)),mouthZ:F.MOUTH_Z,samples};
 fs.writeFileSync(path.join(root,'Tests/siren-smile-face-parity.json'),JSON.stringify(out)+'\n');
 console.log('Exported',samples.length,'entrance face samples');

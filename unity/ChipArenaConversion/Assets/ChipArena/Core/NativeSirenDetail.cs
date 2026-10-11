@@ -10,8 +10,8 @@ namespace ChipArena.UnityConversion
     /// train and hem ash that dissolve like the leg wisps, bell gauntlets with elbow spikes and knuckle lames, glowing claw
     /// rings, a fractured nimbus that turns behind the head, the sculpted mask (raked brows with ash trims, a frown crease,
     /// sockets, stepped temples, jawline plates, chin and crest) and cheekbones that lift with the squint. Every piece is a
-    /// unit box (or, for the two glows in the nimbus breaks, an eye-halo sprite) on an existing joint; nothing changes a
-    /// joint, a hitbox, a collider, the simulation, a cue or a timing.
+    /// unit box on an existing joint (the eyes stay the only soft light on the head); nothing changes a joint, a hitbox, a
+    /// collider, the simulation, a cue or a timing.
     /// tools/siren_design.mjs holds the same table; Tests/SirenDetailChecks.cs holds the two to the matrices its run of a
     /// dressed source rig writes (Tests/siren-detail-parity.json). Frame and layout as NativeSirenLook: source frame (three.js,
     /// right-handed, +x the Siren's left), row-major for column vectors, 16 values per piece, joint-relative.
@@ -21,19 +21,20 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public static class NativeSirenDetail
     {
-        /// <summary>Tones: the ink plates (NativeSourceLit, _Ink 1), the glow lines, the tongues' flame box, the nimbus glows.</summary>
-        public const int Plate=0,Deep=1,Sheen=2,Ash=3,Seam=4,Filament=5,Flame=6,Sprite=7;
-        /// <summary>258 unit boxes and 2 sprites.</summary>
-        public const int Count=260,Boxes=258;
-        /// <summary>Ink tones: albedo (sRGB hex) and NativeSourceLit rim and rising-streak strengths (plate, deep, sheen, ash).</summary>
+        /// <summary>Tones: the ink plates (NativeSourceLit, _Ink 1), the glow lines, the tongues' flame box; Tones of them.</summary>
+        public const int Plate=0,Deep=1,Sheen=2,Ash=3,Seam=4,Filament=5,Flame=6,Tones=7;
+        /// <summary>258 pieces, every one a unit box.</summary>
+        public const int Count=258,Boxes=Count;
+        /// <summary>
+        /// Ink tones: albedo (sRGB hex) and NativeSourceLit rim and rising-streak strengths (plate, deep, sheen, ash), kept near the
+        /// body's (NativeSirenLook.BodyRim .2, BodyFlow .025) so the panels stay ink and the glow seams and silhouette carry the detail.
+        /// </summary>
         public static readonly int[] InkHex={0x0b0910,0x060508,0x151120,0x15131b};
-        public static readonly double[] InkRim={.42,.26,.55,.42},InkFlow={.05,.02,.08,.05};
+        public static readonly double[] InkRim={.28,.2,.34,.3},InkFlow={.03,.02,.04,.03};
         /// <summary>The ash trims' vertex emission (linear): they catch the eye glow.</summary>
         public const double AshEmitR=.07,AshEmitG=.064,AshEmitB=.09;
         /// <summary>Glow tones (unlit): the seams 0xcfc3ff at .82, the filaments 0xf1edff at 1.</summary>
         public const int SeamHex=0xcfc3ff,FilamentHex=0xf1edff;public const double SeamIntensity=.82,FilamentIntensity=1;
-        /// <summary>The nimbus glows: the eye-halo quad in 0xd8ceff at .3, breathing to .8 of it.</summary>
-        public const int GlowHex=0xd8ceff;public const double GlowOpacity=.3;
         /// <summary>Seam cross-section (m).</summary>
         public const double SeamWidth=.011;
         /// <summary>Talons (baked into the bank's claw parts): the long claws x1.15 along the blade, the thumb hook x1.08.</summary>
@@ -44,7 +45,7 @@ namespace ChipArena.UnityConversion
         public const double CheekX=.003,CheekY=.014,CheekZ=.006,CheekTurn=.14;
         /// <summary>The portrait framing's top for the Siren: about this far above the head joint, so the nimbus is not cropped.</summary>
         public const float PortraitTop=.66f;
-        /// <summary>Kill switches (owner taste): the nimbus (-51 boxes, -2 sprites) and the gown with its train and hem ash.</summary>
+        /// <summary>Kill switches (owner taste): the nimbus (-51 boxes) and the gown with its train and hem ash.</summary>
         public static readonly bool Nimbus=true,Gown=true;
         // Exporter bone order.
         private const int Pelvis=1,Spine=2,Chest=3,Head=5,LShoulder=6,LArm=7,LElbow=8,LHand=9,RShoulder=10,RArm=11,RElbow=12,RHand=13,LLeg=14,RLeg=18;
@@ -66,7 +67,7 @@ namespace ChipArena.UnityConversion
         [ThreadStatic] private static double[] scratch;
         /// <summary>The joint (exporter bone index) piece i rides (the claw rings: their hand).</summary>
         public static int Bone(int i)=>bone[i];
-        /// <summary>Piece i's tone (Plate .. Sprite).</summary>
+        /// <summary>Piece i's tone (Plate .. Flame).</summary>
         public static int Tone(int i)=>tone[i];
         /// <summary>Piece i's id in tools/siren_design.mjs and its group (collar, pauldron, bodice, girdle, gown, front, hem, train, gauntlet, rings, nimbus, face, cheek).</summary>
         public static string Id(int i)=>id[i];
@@ -89,8 +90,6 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static double LineGlow(double breath,double distance)
         {double f=Math.Max(0,Math.Min(1,(distance-12)/10)),b=Math.Max(0,Math.Min(1,breath));return (.9+.1*b)*(1+(.55-1)*f);}
-        /// <summary>The nimbus glows' opacity over a breath.</summary>
-        public static double GlowAlpha(double breath)=>GlowOpacity*(.8+.2*Math.Max(0,Math.Min(1,breath)));
         /// <summary>The arena cheek lift: .6 of the squint (a scream or a squint lifts them).</summary>
         public static double CheekLift(double squint)=>.6*Math.Max(0,Math.Min(1,squint));
         /// <summary>The four cheek pieces (cheek-box and cheek-trim, left then right): their detail piece indices.</summary>
@@ -287,9 +286,6 @@ namespace ChipArena.UnityConversion
                 double dx=.1625-.163,dy=.1865-.176,c=Math.Cos(.42),sn=Math.Sin(.42);
                 Add(Sd("cheek-trim",s),"cheek",Head,Ash,f,M(s,c*dx+sn*dy,-sn*dx+c*dy,.012),null,V(.026,.004,.005));
             }
-            // The two glows in the nimbus breaks (sprites).
-            double[] glowSlot={3,10.5},glowSize={.15,.18};
-            for(int k=0;k<2;k++){double a=PI/2-glowSlot[k]*PI/9;Add("nimbus-glow-"+k,"nimbus",Head,Sprite,"nimbus",V(Radius*Math.Cos(a),Radius*Math.Sin(a),.01),null,V(glowSize[k],glowSize[k],1));}
             return P;
         }
 

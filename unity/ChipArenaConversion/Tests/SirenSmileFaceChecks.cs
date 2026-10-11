@@ -30,6 +30,19 @@ namespace ChipArena.UnityConversion
         // The unit fang's (u, v) outlines (upper row; the lower row's holds -v) and a corner mapped by a fang's transform (head-local x, y).
         private static readonly double[] fang=new double[NativeSirenSmileFace.Fang.Length],fangLow=new double[NativeSirenSmileFace.Fang.Length];
         private static void FangPoint(double[] m,int o,int v,out double x,out double y,bool upper=true){var f=upper?fang:fangLow;double u=f[v*2],w=f[v*2+1];x=m[o]*u+m[o+1]*w+m[o+3];y=m[o+4]*u+m[o+5]*w+m[o+7];}
+        // True when fangs a and b of a face (their convex outlines) are apart: some edge normal separates the two (SAT).
+        private static bool Apart(NativeSirenSmileFace face,int a,int b)
+        {
+            int n=NativeSirenSmileFace.Fang.Length/2;var pa=new double[n*2];var pb=new double[n*2];
+            for(int v=0;v<n;v++){FangPoint(face.Tooth,a*16,v,out pa[v*2],out pa[v*2+1],a<NativeSirenSmileFace.UpperTeeth);FangPoint(face.Tooth,b*16,v,out pb[v*2],out pb[v*2+1],b<NativeSirenSmileFace.UpperTeeth);}
+            foreach(var poly in new[]{pa,pb})for(int i=0;i<n;i++)
+            {
+                int j=(i+1)%n;double nx=poly[j*2+1]-poly[i*2+1],ny=poly[i*2]-poly[j*2],a0=double.MaxValue,a1=double.MinValue,b0=double.MaxValue,b1=double.MinValue;
+                for(int v=0;v<n;v++){double da=pa[v*2]*nx+pa[v*2+1]*ny,db=pb[v*2]*nx+pb[v*2+1]*ny;a0=Math.Min(a0,da);a1=Math.Max(a1,da);b0=Math.Min(b0,db);b1=Math.Max(b1,db);}
+                if(a1<b0||b1<a0)return true;
+            }
+            return false;
+        }
 
         public static void Run(string root)
         {
@@ -45,6 +58,8 @@ namespace ChipArena.UnityConversion
             Near(D(cues,"name")-D(cues,"smile"),NativeSirenSmileFace.Name,1e-12,"contract name cue");
             // 2. Constants: the closed seam, the rest mouth (the arena grin), the fangs, the eyes and halos.
             var c0=f.GetProperty("closed");Check(D(c0,"w")==NativeSirenSmileFace.ClosedW&&D(c0,"uy")==NativeSirenSmileFace.ClosedUy&&D(c0,"uk")==NativeSirenSmileFace.ClosedUk&&D(c0,"ly")==NativeSirenSmileFace.ClosedLy&&D(c0,"lk")==NativeSirenSmileFace.ClosedLk&&D(c0,"reach")==NativeSirenSmileFace.ClosedReach,"closed seam");
+            var bt=f.GetProperty("bite");Check(D(bt,"upper")==NativeSirenSmileFace.BiteUpper&&D(bt,"lower")==NativeSirenSmileFace.BiteLower&&D(bt,"inset")==NativeSirenSmileFace.BiteInset,"bite constants");
+            var jw=f.GetProperty("jaw");Check(D(jw,"lift")==NativeSirenSmileFace.JawLift&&D(jw,"stretchX")==NativeSirenSmileFace.JawStretchX&&D(jw,"stretchY")==NativeSirenSmileFace.JawStretchY&&D(jw,"drop")==NativeSirenSmileFace.JawDrop,"entrance jaw constants");
             var r0=f.GetProperty("rest");Check(D(r0,"w")==NativeSirenSmileFace.RestW&&D(r0,"uy")==NativeSirenSmileFace.RestUy&&D(r0,"uk")==NativeSirenSmileFace.RestUk&&D(r0,"ly")==NativeSirenSmileFace.RestLy&&D(r0,"lk")==NativeSirenSmileFace.RestLk,"rest mouth");
             var ru=Values(f.GetProperty("reach").GetProperty("upper"));var rl=Values(f.GetProperty("reach").GetProperty("lower"));Check(ru.Length==13&&rl.Length==12,"reach tables");
             for(int i=0;i<13;i++)Check(ru[i]==NativeSirenSmileFace.UpperReach[i],"upper reach "+i);for(int i=0;i<12;i++)Check(rl[i]==NativeSirenSmileFace.LowerReach[i],"lower reach "+i);
@@ -60,7 +75,7 @@ namespace ChipArena.UnityConversion
             {
                 double age=D(s,"age");face.Evaluate(age,song);string at="age "+age.ToString("0.0000");samples++;
                 Cmp(face.S,D(s,"s"),at+" s");Check(face.Grin==s.GetProperty("grin").GetBoolean(),at+" grin shown");Check(face.Shape==s.GetProperty("shape").GetInt32(),at+" eye cut "+face.Shape);
-                foreach(var (v,name) in new[]{(face.Vis,"vis"),(face.Glow,"glow"),(face.WPos,"wPos"),(face.WNeg,"wNeg"),(face.Uy,"uy"),(face.Uk,"uk"),(face.Ly,"ly"),(face.Lk,"lk"),(face.Tilt,"tilt"),(face.Open,"open"),(face.Anger,"anger"),(face.Squint,"squint"),(face.HaloOpacity,"halo"),(face.Cheek,"c"),(face.Chuckle,"chuckle"),(face.Strain,"strain"),(face.Seam,"seam"),(face.Filament,"filament")})Cmp(v,D(s,name),at+" "+name);
+                foreach(var (v,name) in new[]{(face.Vis,"vis"),(face.Glow,"glow"),(face.WPos,"wPos"),(face.WNeg,"wNeg"),(face.Uy,"uy"),(face.Uk,"uk"),(face.Ly,"ly"),(face.Lk,"lk"),(face.Tilt,"tilt"),(face.Open,"open"),(face.Anger,"anger"),(face.Squint,"squint"),(face.HaloOpacity,"halo"),(face.Cheek,"c"),(face.Chuckle,"chuckle"),(face.Strain,"strain"),(face.Bite,"bite"),(face.Seam,"seam"),(face.Filament,"filament")})Cmp(v,D(s,name),at+" "+name);
                 var reach=Values(s.GetProperty("reach"));for(int i=0;i<NativeSirenSmileFace.Teeth;i++)Cmp(face.Reach[i],reach[i],at+" reach "+i);
                 var body=Values(s.GetProperty("body"));double[] mine={face.HeadX,face.HeadY,face.HeadZ,face.NeckX,face.ChestX,face.Clavicle};for(int i=0;i<6;i++)Cmp(mine[i],body[i],at+" body "+i);
                 int t=0;foreach(var row in s.GetProperty("teeth").EnumerateArray()){var v=Values(row);int o=t*16;int[] map={0,1,3,4,5,7};for(int k=0;k<6;k++)Cmp(face.Tooth[o+map[k]],v[k],at+" fang "+t+" ["+map[k]+"]");
@@ -137,6 +152,20 @@ namespace ChipArena.UnityConversion
                 }
             }
             Check(minX>-.19&&maxX<.19&&minY>-.06&&maxY<.17,"fangs stay in the mouth: x "+minX+".."+maxX+", y "+minY+".."+maxY);
+            // The bite: none on the closed seam; once bared, no upper fang overlaps the lower fangs it interlocks with, so a dark
+            // zigzag parts them through the jaw drop and the whole hold (the bank grin's rows tile into a ribbon cut by slivers).
+            face.Evaluate(At(.15),song);Check(face.Bite==0,"no bite on the closed seam");face.Evaluate(At(.8),song);Check(face.Bite>.99,"the bite is in by .8 s ("+face.Bite+")");
+            int apartFrames=0;
+            for(double s=.3;s<=NativeSirenSmileFace.HoldEnd+1e-9;s+=.02)
+            {
+                face.Evaluate(At(s),song);apartFrames++;
+                for(int i=0;i<NativeSirenSmileFace.UpperTeeth;i++)for(int j=i-1;j<=i;j++)if(j>=0&&j<NativeSirenSmileFace.LowerTeeth)Check(Apart(face,i,NativeSirenSmileFace.UpperTeeth+j),"upper fang "+i+" overlaps lower fang "+j+" at +"+s.ToString("0.00")+" s");
+            }
+            Check(apartFrames>=135,"bite frames");
+            {var bank=new NativeSirenSmileFace{WPos=NativeSirenSmileFace.RestW,WNeg=NativeSirenSmileFace.RestW,Uy=NativeSirenSmileFace.RestUy,Uk=NativeSirenSmileFace.RestUk,Ly=NativeSirenSmileFace.RestLy,Lk=NativeSirenSmileFace.RestLk};int overlapping=0;
+             for(int i=0;i<NativeSirenSmileFace.Teeth;i++)bank.ToothMatrix(i<NativeSirenSmileFace.UpperTeeth,i<NativeSirenSmileFace.UpperTeeth?i:i-NativeSirenSmileFace.UpperTeeth,1,bank.Tooth,i*16);
+             for(int i=0;i<NativeSirenSmileFace.UpperTeeth;i++)for(int j=i-1;j<=i;j++)if(j>=0&&j<NativeSirenSmileFace.LowerTeeth&&!Apart(bank,i,NativeSirenSmileFace.UpperTeeth+j))overlapping++;
+             Check(overlapping>=8,"the bank grin's rows interlock into each other without a bite ("+overlapping+" overlapping pairs)");}
             // 7. No allocation per frame.
             face.Evaluate(At(.5),song);long before=GC.GetAllocatedBytesForCurrentThread();for(int i=0;i<1000;i++)face.Evaluate(At(i*.003),song);long allocated=GC.GetAllocatedBytesForCurrentThread()-before;
             Check(allocated==0,"Evaluate allocates "+allocated+" bytes over 1000 frames");
@@ -189,7 +218,7 @@ namespace ChipArena.UnityConversion
             // and the cheeks at the smile's lift, against the eyes (their cut, squint and lift) and the 25 fangs, at 30 Hz.
             var worstCover=new Dictionary<string,double>();var xy=new double[NativeSirenLook.EyeSegments*6];double eyeCover=0,fangCover=0;int checkedFrames=0;
             NativeSirenLook.Rest(look,shown);var mask=new List<SirenDetailChecks.Footprint>();
-            for(int k=0;k<NativeSirenDetail.Count;k++)if(NativeSirenDetail.Bone(k)==5&&NativeSirenDetail.Group(k)!="nimbus"&&NativeSirenDetail.Group(k)!="cheek"&&!NativeSirenDetail.Moves(k)&&NativeSirenDetail.Tone(k)!=NativeSirenDetail.Sprite)mask.Add(SirenDetailChecks.Hull(NativeSirenDetail.Id(k),look,(NativeSirenLook.Detail+k)*16));
+            for(int k=0;k<NativeSirenDetail.Count;k++)if(NativeSirenDetail.Bone(k)==5&&NativeSirenDetail.Group(k)!="nimbus"&&NativeSirenDetail.Group(k)!="cheek"&&!NativeSirenDetail.Moves(k))mask.Add(SirenDetailChecks.Hull(NativeSirenDetail.Id(k),look,(NativeSirenLook.Detail+k)*16));
             for(int i=-3;i<=92;i++)
             {
                 face.Evaluate(At(i/30.0),song);checkedFrames++;var boxes=new List<SirenDetailChecks.Footprint>(mask);for(int k=0;k<4;k++)boxes.Add(SirenDetailChecks.Hull(NativeSirenDetail.Id(NativeSirenDetail.CheekPiece(k)),face.Cheeks,k*16));
@@ -213,6 +242,9 @@ namespace ChipArena.UnityConversion
             // 10. The runtime draws it on the bake's head track; the exporter hides the source face and bakes the body layer.
             string intros=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeIntros.cs")),draw=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeSirenFace.cs")),cine=File.ReadAllText(Path.Combine(root,"tools/export_cinematics.mjs")),scene=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeSceneMotion.cs"));
             Check(intros.Contains("if(style==\"dev-siren\")SirenEntranceFace(clip,age,camera);")&&draw.Contains("NativeSceneMotion.Matrix(clip,head,age)")&&draw.Contains("sirenFace.Set(age,introBeats)")&&draw.Contains("IntroHalos(sirenFace,at,camera,0,camera)"),"the entrance draws the native face on the head track at the entrance age");
+            // The entrance eye-halo quads are built with the drawer, never on a frame inside the smile.
+            string lookDraw=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeSirenLookPresentation.cs"));
+            Check(lookDraw.Contains("BuildIntroHalos();")&&draw.Contains("private void BuildIntroHalos()")&&!draw.Contains("introHalo[level]??"),"the entrance eye-halo quads are prebuilt in the drawer's constructor");
             Check(cine.Contains("SirenSmile.stagePose(stage.rig,siren,t,sirenCues)")&&cine.Contains("siren?stage.rig.head:null")&&scene.Contains("public int head=-1;"),"the exporter hides the source face, bakes the body layer and records the head track");
             using(var scenes=Bank(root,"SceneMotion"))
             {

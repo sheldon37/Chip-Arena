@@ -37,14 +37,39 @@ function sample(id,scene,duration,tick,victimGroup=null,exclude=null,dropped=nul
  if(head&&anchors.indexOf(head)<1)throw Error('No head track in '+id);
  clips.push({key:id,duration,frames,tracks:anchors.length,values,victim:victim.map(b=>anchors.indexOf(b)),dropped:dropped?anchors.indexOf(dropped):-1,...(head?{head:anchors.indexOf(head)}:{}),lights:[...lightTracks.values()],environment});console.log('Scene',id,anchors.length,'tracks',meshes.size,'meshes');
 }
+// The Siren's own death (siren/kills.ts sirenDissipate) builds a fresh source Siren inside the effect: it wears the Unity finish
+// too (tools/siren_design.mjs: the finer grin, the longer talons, the stratified flame and the whole couture), so the dressing
+// does not vanish on the frame she dies. It burns away with the body: sirenDissipate hides each source mesh once its front
+// (-1 + 2.4 smoothstep((age - .5) / 1.6) m above the death point) passes the height the mesh had when the effect was built;
+// each couture mesh is hidden by the same rule (the train's tail, which hangs below the front's start in the unposed rig, at the
+// start), so it keeps its own track (bakeStatic off). The dressing's three.js uuids come
+// from the seeded stream, which is put back so the effect's flame pool keeps its stream. Every Object3D the dressing makes
+// moves the three.js id sequence of the scenes sampled after it, and the weapon entrances' bakes follow that sequence, so the
+// dissipate is baked as the source has it in its place and baked again dressed after the last scene, from the same seed,
+// replacing the first bake in place (dressedDissipate).
+function dressDissipate(scene,d){
+ const kept=seed,root=scene.getObjectByName('siren-dissipate'),group=root?.children[0],parts=group&&sirenParts({group});if(!parts)throw Error('No Siren in the dissipate effect');
+ const prototype=createCharacterRig('#70e1d0'),rig={group};for(const b of bones){rig[b]=group.getObjectByName(prototype[b].name);if(!rig[b])throw Error('No '+b+' in the dissipate rig');}
+ SirenDesign.finish(T,parts,{grin:true,talons:true,twist:true});const dressing=SirenDesign.dress(T,rig,parts,sirenMaterials);seed=kept;
+ root.updateMatrixWorld(true);const burn=[],at=new T.Vector3(),sm=x=>{x=Math.min(1,Math.max(0,x));return x*x*(3-2*x);};
+ for(const o of dressing.objects.values()){o.userData.bakeStatic=false;if(o.isMesh){o.getWorldPosition(at);burn.push({o,y:Math.max(-1,at.y-d.pos.y)});}}
+ return age=>{dressing.update({time:age,clock:age,lean:0,flare:0,squint:0});const front=-1+2.4*sm((age-.5)/1.6);for(const e of burn)e.o.visible=e.y>=front;};
+}
+let dissipateSeed=null;
+function dressedDissipate(){
+ const after=seed;seed=dissipateSeed;const scene=new T.Scene(),original=createCharacterRig('#70e1d0','#e5e7eb',true),effect=sirenDissipate(scene,original.group,{...pilot},death,1,2000,{options:{gameMode:'ffa'}}),burn=dressDissipate(scene,death);
+ sample('death-siren-dissipate',scene,5,t=>{effect.update(t);burn(t);});effect.dispose();seed=after;
+ for(const [list,key] of [[models,'id'],[clips,'key']]){const first=list.findIndex(o=>o[key]==='death-siren-dissipate');if(first<0||first===list.length-1||list[list.length-1][key]!=='death-siren-dissipate')throw Error('dissipate bake order');list[first]=list.pop();}
+}
 for(const style of ['dev-clown','dev-clown-love','dev-bass-van','confetti','ascension','shrink','launch','ghost','dev-raging-demon','siren-crush','siren-dissipate']){
+ if(style==='siren-dissipate')dissipateSeed=seed;
  const scene=new T.Scene(),original=createCharacterRig('#70e1d0','#e5e7eb',true),p={...pilot},effect=(style==='dev-raging-demon'?ragingDemon:style==='siren-crush'?sirenCrush:style==='siren-dissipate'?sirenDissipate:style==='dev-clown-love'?clownLove:style==='dev-bass-van'?bassVan:cinematic(style))(scene,original.group,p,death,1,2000,{options:{gameMode:'ffa'}});
  const victim=style==='siren-dissipate'?null:style==='dev-clown-love'?scene.getObjectByName('love-partner'):style==='dev-bass-van'?scene.getObjectByName('bass-passenger'):scene.children[0].children[0];const dropped=['dev-clown','confetti','ascension','shrink','launch','ghost'].includes(style)?scene.children[0].children[1]:null;sample('death-'+style,scene,5,t=>effect.update(t),victim,null,dropped);effect.dispose();
 }
 const styles=['neon-drop','vector-slide','signal-spin','arc-salute','pulse-wave',...['sword','daggers','shield','greatsword','pistol','rifle','machinegun','fire','water','lightning','darkness'].map(s=>'weapon-'+s),'dev-emperor','dev-ansatsuken','dev-matrix','dev-siren'];
 // The dev-siren cell's Siren wears the Unity finish (tools/siren_design.mjs) in its chest-up frame: the collar, pauldrons,
 // bodice, girdle, gauntlets, claw rings, the sculpted mask and the turning nimbus (the gown and train sit below the frame;
-// the cheeks and the nimbus glows are drawn natively), the finer grin, the longer talons and the stratified flame.
+// the cheeks are drawn natively with the face), the finer grin, the longer talons and the stratified flame.
 // Its glow lines keep their own tracks, dimmed through the blackout and kindled at the smile (SirenDesign.entranceGlow, on the
 // intro's own cue times). The face is not baked: the source's eyes (one brow cut held for the whole bake) and its x-stretched
 // grin are hidden, and Core/NativeSirenSmileFace.cs draws the stare and the acted smile on the recorded head track at the
@@ -53,8 +78,9 @@ const sirenStageGroups=['collar','pauldron','bodice','girdle','gauntlet','rings'
 const sirenCues={blackout:sirenCue('blackout'),smile:sirenCue('smile'),name:sirenCue('name')};
 for(const style of styles){const stage=new PlayerIntros(),p={...pilot,hp:100,cosmetics:{...pilot.cosmetics,intro:style}},state={generation:1,setNumber:1,round:1,time:0,phase:'intro',intro:{started:0,players:['native']},players:[p],options:{gameMode:'ffa'},events:[],minions:[],projectiles:[]};const duration=style==='dev-siren'?9.0678:style==='dev-emperor'?7.8:style==='dev-matrix'?8:style==='dev-ansatsuken'?7.2:4.8;stage.update(state,16/9);
  // The dressing's three.js uuids come from the seeded stream, which is put back so the cell's flame pool keeps its stream.
- let dressing=null,siren=null;if(style==='dev-siren'){const parts=siren=sirenParts(stage.rig),kept=seed;SirenDesign.finish(T,parts,{grin:true,talons:true,twist:true});dressing=SirenDesign.dress(T,stage.rig,parts,sirenMaterials,{groups:sirenStageGroups,sprites:false,glowTracks:true});dressing.update({time:0,clock:0,c:0});seed=kept;}
+ let dressing=null,siren=null;if(style==='dev-siren'){const parts=siren=sirenParts(stage.rig),kept=seed;SirenDesign.finish(T,parts,{grin:true,talons:true,twist:true});dressing=SirenDesign.dress(T,stage.rig,parts,sirenMaterials,{groups:sirenStageGroups,glowTracks:true});dressing.update({time:0,clock:0,c:0});seed=kept;}
  sample('stage-'+style,stage.scene,duration,t=>{state.time=t;stage.update(state,16/9);if(siren)SirenSmile.stagePose(stage.rig,siren,t,sirenCues);dressing?.update({time:t,clock:t,lean:0,flare:0,c:0,glow:SirenDesign.entranceGlow(t,sirenCues)});},null,style==='dev-siren'?null:stage.rig.group,null,siren?stage.rig.head:null);stage.dispose();}
+dressedDissipate();
 function envelope(value){return JSON.stringify({schema:1,commit:inventory.sourceCommit,data:gzipSync(JSON.stringify(value),{level:9}).toString('base64')})+'\n';}
 fs.writeFileSync(path.join(root,'Assets/Conversion/Resources/SourceModels.json'),envelope({models,textures}));fs.writeFileSync(path.join(root,'Assets/Conversion/Resources/SceneMotion.json'),envelope({clips}));
 fs.writeFileSync(path.join(root,'tools/cinematic-export.json'),JSON.stringify({commit:inventory.sourceCommit,fps,clips:clips.map(({values,lights,environment,...c})=>({...c,lights:lights.length})),modelCount:models.length},null,2)+'\n');console.log('Exported',clips.length,'scenes',models.length,'models');

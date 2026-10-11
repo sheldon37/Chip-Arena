@@ -73,17 +73,17 @@ namespace ChipArena.UnityConversion
 
     public sealed partial class NativeSirenLookDraw
     {
-        // The entrance's eye halos: the eye-halo quad at the face's opacity, one baked quad per 1/40 (made on first use).
-        private const int IntroHaloLevels=40;private Mesh[] introHalo;
+        // The entrance's eye halos: the eye-halo quad at the face's opacity, one baked quad per 1/40, all built with the drawer
+        // (BuildIntroHalos, from the constructor), so the music-synced smile never makes or uploads a mesh mid-cinematic.
+        private const int IntroHaloLevels=40;private readonly Mesh[] introHalo=new Mesh[IntroHaloLevels+1];
+        private void BuildIntroHalos(){for(int level=1;level<=IntroHaloLevels;level++)introHalo[level]=Quad("Native Siren entrance eye halo "+level,NativeSirenLook.EyeHaloColor,(float)level/IntroHaloLevels);}
         /// <summary>The two eye halos of the entrance face on the baked head track, facing `facing`, at the face's linear opacity (HaloAlpha).</summary>
         public void IntroHalos(NativeSirenFacePose pose,Matrix4x4 head,Camera facing,int layer,Camera camera)
         {
-            if(pose==null||facing==null)return;int level=Mathf.Clamp(Mathf.RoundToInt((float)pose.Face.HaloAlpha*IntroHaloLevels),0,IntroHaloLevels);if(level==0)return;
-            if(introHalo==null)introHalo=new Mesh[IntroHaloLevels+1];
-            var quad=introHalo[level]??(introHalo[level]=Quad("Native Siren entrance eye halo "+level,NativeSirenLook.EyeHaloColor,(float)level/IntroHaloLevels));
+            if(pose==null||facing==null)return;int level=Mathf.Clamp(Mathf.RoundToInt((float)pose.Face.HaloAlpha*IntroHaloLevels),0,IntroHaloLevels);var quad=introHalo[level];if(quad==null)return;
             for(int i=0;i<2;i++)Sprite(quad,head*pose.Halo[i],facing.transform.rotation,layer,camera,(float)NativeSirenSmileFace.HaloSpread);
         }
-        private void DisposeIntroHalos(){if(introHalo==null)return;foreach(var q in introHalo)if(q!=null)CapturedAnimation.Release(q);introHalo=null;}
+        private void DisposeIntroHalos(){for(int level=0;level<introHalo.Length;level++){if(introHalo[level]!=null)CapturedAnimation.Release(introHalo[level]);introHalo[level]=null;}}
     }
 
     public sealed partial class ArenaPresentation

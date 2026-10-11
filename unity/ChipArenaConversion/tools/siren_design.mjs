@@ -10,27 +10,26 @@
 // geometry; `parent` names the node a def hangs from (else the bone itself). Right-side defs negate pos.x, rot.y and rot.z
 // (the whole subtree is mirrored, as the exporter mirrors x into Unity). Nothing here changes a joint, a hitbox or a timing.
 export const SOURCE_PIECES=136;
-/** Ink tones (NativeSourceLit, _Ink 1, per-part rim/flow), the glow tones (unlit, per-instance tint) and the flame box. */
+/** Ink tones (NativeSourceLit, _Ink 1, per-part rim/flow), the glow tones (unlit, per-instance tint) and the flame box. The
+ *  ink rims and streaks stay near the body's (rim .2, flow .025): the panels read as ink; the seams and silhouette carry the detail. */
 export const TONES={
- plate:{ink:0x0b0910,rim:.42,flow:.05},  // stacked plates: every plate edge reads
- deep:{ink:0x060508,rim:.26,flow:.02},   // inner layers: darker, softer rim (depth between layers)
- sheen:{ink:0x151120,rim:.55,flow:.08},  // show faces (collar fronts, bodice, pauldron tops, nimbus)
- ash:{ink:0x15131b,emissive:[.07,.064,.09],rim:.42,flow:.05},// the face sculpt's edge trims (the plate part with vertex emission)
+ plate:{ink:0x0b0910,rim:.28,flow:.03},  // stacked plates: a plate edge still catches a little light
+ deep:{ink:0x060508,rim:.2,flow:.02},    // inner layers: darker, the body's rim (depth between layers)
+ sheen:{ink:0x151120,rim:.34,flow:.04},  // show faces (collar fronts, bodice, pauldron tops, nimbus)
+ ash:{ink:0x15131b,emissive:[.07,.064,.09],rim:.3,flow:.03},// the face sculpt's edge trims (the plate part with vertex emission)
  seam:{glow:0xcfc3ff,intensity:.82},     // the glowing piping
  filament:{glow:0xf1edff,intensity:1},   // the nimbus filament and the claw rings
 };
 /** The shared bank part each tone draws with (seam and filament share one unit box, tinted per instance). */
 export const PARTS={plate:'siren-couture-plate',deep:'siren-couture-deep',sheen:'siren-couture-sheen',ash:'siren-couture-ash',seam:'siren-couture-seam',filament:'siren-couture-seam',flame:'siren-flame-box'};
-/** Tone order of Core/NativeSirenDetail.cs (Plate .. Sprite). */
-export const TONE_ORDER=['plate','deep','sheen','ash','seam','filament','flame','sprite'];
+/** Tone order of Core/NativeSirenDetail.cs (Plate .. Flame). */
+export const TONE_ORDER=['plate','deep','sheen','ash','seam','filament','flame'];
 /** Seam cross-section (m): ~.7 px at 15 m 1080p, ~2.5 px in the entrance and portraits. */
 export const SW=.011;
 /** Talons: the long claws x1.15 along the blade, the thumb hook x1.08 (baked into the claw parts). */
 export const TALONS={claw:1.15,thumb:1.08};
 /** The nimbus: hub on the head, ring radius, the missing and cracked slots. */
 export const NIMBUS={y:.32,z:-.24,tilt:-.1,r:.33,spin:.16,gaps:[3,10,11],cracks:{4:[.034,.28],9:[.028,-.24],15:[.018,.16]}};
-/** The two soft glows in the nimbus breaks (the eye-halo quad): slot, size; colour and opacity. */
-export const CRACK_GLOWS=[[3,.15],[10.5,.18]],CRACK_COLOR=0xd8ceff,CRACK_OPACITY=.3;
 /** Cheek lift per unit c (head-local metres / radians): the cheeks rise, come forward and turn up. */
 export const CHEEK={dx:.003,dy:.014,dz:.006,turn:.14};
 const L=1,R=-1;
@@ -146,8 +145,6 @@ export function table(){
   const dx=.1625-.163,dy=.1865-.176,c=Math.cos(.42),sn=Math.sin(.42);
   add(mirror({id:'cheek-trim-l',group:'cheek',bone:'head',tone:'ash',parent:frame.id,size:[.026,.004,.005],pos:[c*dx+sn*dy,-sn*dx+c*dy,.012]},s));
  }
- // The two soft glows in the nimbus breaks: sprites (the eye-halo quad), last so every box keeps its index.
- CRACK_GLOWS.forEach(([slot,size],k)=>{const a=Math.PI/2-slot*Math.PI/9;add({id:`nimbus-glow-${k}`,group:'nimbus',bone:'head',tone:'sprite',parent:hub.id,size:[size,size,1],pos:[N.r*Math.cos(a),N.r*Math.sin(a),.01]});});
  return P;
 }
 /** The drawn defs (everything but nodes), in Core/NativeSirenDetail.cs piece order (index SOURCE_PIECES + position). */
@@ -210,13 +207,13 @@ export function materials(T,M,tongue){
  * {objects (id -> Object3D), materials (tone -> material), update(state)}; state is {time, clock, lean, flare, squint, c?,
  * glow?: {seam, filament}} (glow scales the glow lines' colours; 1 without it).
  */
-export function dress(T,rig,parts,M,{groups=null,sprites=true,glowTracks=false}={}){
+export function dress(T,rig,parts,M,{groups=null,glowTracks=false}={}){
  const box=new T.BoxGeometry(1,1,1),mats=materials(T,M,parts.tongues[0].group.children[0].material),objects=new Map(),rest=new Map();
  const claws={leftClaws:parts.claws[0],rightClaws:parts.claws[1]};
  for(const d of table()){
-  if(groups&&!groups.includes(d.group))continue;if(d.tone==='sprite'&&!sprites)continue;
+  if(groups&&!groups.includes(d.group))continue;
   const parent=d.parent?objects.get(d.parent):(claws[d.bone]??rig[d.bone]);if(!parent)throw Error('No parent for '+d.id);
-  let o;if(d.tone==='node')o=new T.Group();else if(d.tone==='sprite'){o=new T.Sprite(M.haloMaterial(CRACK_COLOR,CRACK_OPACITY));}else{o=new T.Mesh(box,mats[d.tone]);o.userData.nativePart=PARTS[d.tone];o.userData.tone=d.tone;o.castShadow=d.tone!=='seam'&&d.tone!=='filament';}
+  let o;if(d.tone==='node')o=new T.Group();else{o=new T.Mesh(box,mats[d.tone]);o.userData.nativePart=PARTS[d.tone];o.userData.tone=d.tone;o.castShadow=d.tone!=='seam'&&d.tone!=='filament';}
   // bakeStatic: a scene bake (tools/export_cinematics.mjs) batches a still piece on its joint's track, whose opacity it shares.
   o.name='couture-'+d.id;o.userData.bakeStatic=!d.anim&&!(glowTracks&&(d.tone==='seam'||d.tone==='filament'));o.position.fromArray(d.pos);o.rotation.order=d.order;o.rotation.fromArray(d.rot);if(d.tone!=='node')o.scale.fromArray(d.size);
   parent.add(o);objects.set(d.id,o);rest.set(o,d);
@@ -229,7 +226,6 @@ export function dress(T,rig,parts,M,{groups=null,sprites=true,glowTracks=false}=
    else if(a.kind==='shard'){const dr=.012*Math.sin(1.3*c+2.1*a.k),aa=a.a+.03*Math.sin(.9*c+a.k);o.position.set((NIMBUS.r+.012+dr)*Math.cos(aa),(NIMBUS.r+.012+dr)*Math.sin(aa),.01+.006*Math.sin(1.7*c+a.k));o.rotation.z=aa+.7+.6*c*(a.k%2?1:-1);}
    else if(a.kind==='cheek'){const s=a.side;o.position.set(d.pos[0]+s*CHEEK.dx*cheek,d.pos[1]+CHEEK.dy*cheek,d.pos[2]+CHEEK.dz*cheek);o.rotation.z=d.rot[2]+s*CHEEK.turn*cheek;}
   }
-  const breath=.5+.5*Math.sin(c*2.4);for(const o of rest.keys())if(o.isSprite)o.material.opacity=CRACK_OPACITY*(.8+.2*breath);
   for(const tone of ['seam','filament'])mats[tone].color.copy(glowLinear(T,tone)).multiplyScalar(st.glow?.[tone]??1);
  };
  return {objects,materials:mats,update};
