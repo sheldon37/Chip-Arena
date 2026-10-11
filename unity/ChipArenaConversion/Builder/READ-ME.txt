@@ -1,4 +1,4 @@
-CHIP ARENA BUILDER v3 - FETCH, BUILD AND PUBLISH
+CHIP ARENA BUILDER v4 - FETCH, BUILD AND PUBLISH
 
 UPGRADE YOUR EXISTING BUILDER
 Close any running builder first. Extract this ZIP into C:\ and allow its nine
@@ -17,9 +17,22 @@ build/package checks, not a manual gameplay playtest.
 GitHub may ask you to sign in through your browser. Use the account with access
 to the source and permission to push the test channel. No credentials are bundled.
 
-With no new source, a verified successful build is reused. If that source version
+With unchanged source and local assets, a verified successful build is reused. If that source version
 is already published, the command finishes successfully without another upload.
 Build-and-Publish.cmd --rebuild forces a fresh local compilation when needed.
+
+OPTIONAL LICENSED SOUNDS
+Put your LocalAssets folder or LocalAssets.zip beside Build-and-Publish.cmd.
+The folder wins if both exist. Before compiling, the builder runs the fetched
+unity/ChipArenaConversion/tools/install_local_assets.py using its Python 3.
+The installer copies sounds into the fresh project's Assets/LocalAssets/.
+No input means normal fallback sounds. Adding, changing or removing the inputs
+forces a new build even if the shared source is unchanged. Keep inputs stable
+while building. An installer failure stops the build and publication; if the
+script has not landed on the shared branch yet, wait or move the inputs away.
+These licensed source files stay local: never commit or upload them to the public
+repo, CI artifacts or source ZIPs. The helper ZIP includes only its nine listed
+files. Only the validated compiled game goes through the existing update feed.
 
 OTHER BUTTONS
 Build-Windows.cmd         Fetch and build only, for testing before publication.

@@ -1,5 +1,14 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Astra — optional local licensed assets in builder v4
+- Branch `codex/local-builder-assets-20261011`, base builder v3 `0611ade` / PR #116. Tooling only; fetched game source remains `codex/unity-cloud-current`. Do not replace newer shared game code with this older tooling stack.
+- Detect LocalAssets folder (preferred) or LocalAssets.zip beside the builder; invoke the fetched tools/install_local_assets.py with the already-selected Python 3 and absolute input path before Unity compilation. No input retains fallback sounds. Missing installer or failed installation blocks compilation/publication and uses v3 error reporting.
+- Fingerprint the selected input contents: additions, edits and removals invalidate same-source reuse; a fresh worktree avoids leftover installed sounds. Stable inputs retain normal verified-build reuse and publish-only retries.
+- Ignore optional inputs at repo/project level, exclude folder/ZIP/metadata from source packages, retain the nine-file helper allowlist. CI artifacts use these sanitized packages; no licensed files were accessed or included. Only synthetic temporary fixtures were used for testing.
+- Validation: full Python suite 94 tests (92 passed, two Windows-only skips); standalone source-package tests 6 passed; source structure 1,066 files passed; whitespace check clean. Regression uses real local Git worktrees and Python subprocesses, verifies pre-compile installation, folder precedence, changed/removed assets, missing/failing installer, blocked stale publication and archive exclusions.
+- Deliver complete v4 helper ZIP over existing builder files, preserving Cache/Work/last records. Actual sound installer is not yet on shared `1adfce5` at inspection; Claude's forthcoming sound-system commit must reach the fetched branch. Real licensed-pack installation and Unity/Windows compilation remain unrun. No game/feed publication or automatic merge from this task.
+
+
 ## 2026-10-11 — Astra — automatic local build error reports
 - Owner asked to stop navigating to a different worktree's build.log after each failure. Branch `codex/unity-builder-diagnostics-20261011`, base v2 `e11ac478258b522d95b158d5565fc755f6dc4eca` / PR #110; still fetches game source from current codex/unity-cloud-current. Keep this tooling stack separate from newer shared game source.
 - Every build attempt maintains `Latest-Build.log` and `Latest-Build-Error.txt` beside the builder. On failure, print a bounded causal compiler/exception excerpt, stack frames, five recent PASS milestones, source SHA, stage and original/full log paths. Open the short UTF-8 report in Notepad automatically; `Open-Latest-Log.cmd` reopens the complete log. Prefer the actual native exception over early ignored licensing messages and generic exit wrappers; unknown failures get a bounded log tail. Package validation stderr is retained too.

@@ -235,6 +235,40 @@ def digest(path):
     return result.hexdigest()
 
 
+def local_assets(root):
+    """Select optional owner-only inputs and fingerprint them for build reuse."""
+    folder, archive = root / 'LocalAssets', root / 'LocalAssets.zip'
+    source = folder if folder.is_dir() else archive if archive.is_file() else None
+    if source is None:
+        return None, None
+    plain_path(source)
+    fingerprint = hashlib.sha256()
+    if source.is_file():
+        fingerprint.update(('zip:' + digest(source)).encode('ascii'))
+    else:
+        fingerprint.update(b'folder:')
+        for path in sorted(source.rglob('*')):
+            plain_path(path)
+            if path.is_file():
+                fingerprint.update(path.relative_to(source).as_posix().encode('utf-8') + b'\0')
+                fingerprint.update(digest(path).encode('ascii') + b'\0')
+    return source, fingerprint.hexdigest()
+
+
+def install_local_assets(project, source):
+    if source is None:
+        print('No LocalAssets folder or ZIP beside the builder; using current fallback sounds.', flush=True)
+        return
+    installer = project / 'tools/install_local_assets.py'
+    if not installer.is_file():
+        raise ValueError('LocalAssets supplied, but this shared source has no tools/install_local_assets.py. '
+                         'Wait for the sound-system commit to reach ' + BRANCH + ', or move LocalAssets away to build fallback sounds.')
+    print('Installing local licensed assets from: ' + str(source), flush=True)
+    # Run the same Python 3 selected by Run-Builder.cmd (Windows may not expose python3).
+    run([sys.executable, installer, source], cwd=project, stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE, text=True)
+
+
 def fetch(root):
     cache = root / 'Cache'
     repository = cache / 'repository.git'
@@ -332,8 +366,10 @@ def build(root, rebuild=False, publish_after=False):
         attempt['stage'] = 'Fetch shared source'
         repository, sha = fetch(root)
         attempt['sourceCommit'] = sha
+        attempt['stage'] = 'Inspect optional local assets'
+        source, assets_digest = local_assets(root)
         last = previous(root)
-        if last and last['sourceCommit'] == sha and not rebuild:
+        if last and last['sourceCommit'] == sha and last.get('localAssetsSha256') == assets_digest and not rebuild:
             attempt['stage'] = 'Validate saved build'
             project = project_for(root, last)
             project = check_saved(root, last)
@@ -342,11 +378,16 @@ def build(root, rebuild=False, publish_after=False):
         else:
             attempt['stage'] = 'Prepare source worktree'
             project = checkout(root, repository, sha)
-            attempt['stage'] = 'Unity build and package validation'
+            attempt['stage'] = 'Install optional local assets'
             attempt['project'] = project.relative_to(root).as_posix()
             save(root / 'last-attempt.json', attempt)
+            install_local_assets(project, source)
+            if local_assets(root)[1] != assets_digest:
+                raise ValueError('LocalAssets changed during installation. Rerun the build.')
+            attempt['stage'] = 'Unity build and package validation'
+            save(root / 'last-attempt.json', attempt)
             identity = build_project(project, unity)
-            record = dict(sourceCommit=sha, project=project.relative_to(root).as_posix(), build=identity,
+            record = dict(sourceCommit=sha, localAssetsSha256=assets_digest, project=project.relative_to(root).as_posix(), build=identity,
                           zipSha256=digest(project / 'Builds' / PLAYER_ZIP), attempt=attempt['id'])
         # Promote only after Unity and all packaging checks succeeded. Prior work,
         # build output and user edits remain in their original version folders.
