@@ -10,7 +10,9 @@
 //  1 Down: the same 13-tap filter, half again per level (6 levels in all: half to 1/64 size).
 //  2 Up: from the smallest level back to half size, each level plus a 9-tap tent of the smaller result (the dual-filter
 //    accumulate: every level weighs 1, so the near levels give the tight glow and the far ones the soft halo).
-//  3 Composite: the frame plus a tent of the half-size sum times the intensity (additive).
+//  3 Composite: the frame plus a tent of the half-size sum times the intensity (additive), then a hue-keeping display
+//    shoulder above 0.9 that whitens only very hot pixels (BloomShoulder; review 2026-10-11: HDR fireball puffs clipped to a
+//    white blob). With the bloom off (the low graphics tier) the frame keeps Unity's plain per-channel clip.
 // Orientation: Graphics.Blit orients its source, so every single-source pass (0, 1) reads the right way up; the two
 // passes that read a second texture (2, 3) flip that texture's v when _MainTex reports a negative texel height (D3D: the
 // camera's anti-aliased or back-buffer source stored top-down), Unity's documented rule for a second texture.
@@ -96,8 +98,20 @@ float3 BloomTent(float2 uv,float2 d)
 }
 // One up step: this level (the source) plus the tent of the smaller result.
 float3 BloomUp(float2 uv,float2 bloomUv,float2 d){return SourceTap(uv)+BloomTent(bloomUv,d);}
-// The frame plus the bloom times the intensity.
-float3 BloomComposite(float3 scene,float2 bloomUv,float2 d,float intensity){return scene+BloomTent(bloomUv,d)*intensity;}
+// The display shoulder on the brightest channel m (NativeBloomRules.Shoulder): unchanged up to 0.9, then eased into 1.0
+// (never above it) with the hue kept, so an HDR colour that is only a little over 1 (a fireball puff, a neon edge) shows its
+// own hue instead of clipping channel by channel toward yellow-white; from m = 2 it also blends toward white (fully at
+// m = 8.25), so the white-hot centres of cores and sparks still read hot.
+float3 BloomShoulder(float3 c)
+{
+ float m=BloomPeak(c);
+ float d=0.9+0.1*(1.0-exp((0.9-m)*10.0));
+ float w=clamp((m-2.0)*0.16,0.0,1.0);
+ float3 t=lerp(c*(d/max(m,0.0001)),float3(d,d,d),w);
+ return m>0.9?t:c;
+}
+// The frame plus the bloom times the intensity, through the display shoulder.
+float3 BloomComposite(float3 scene,float2 bloomUv,float2 d,float intensity){return BloomShoulder(scene+BloomTent(bloomUv,d)*intensity);}
 // SHARED END
  // The second texture's v (passes 2 and 3): flipped when the blit's source is stored top-down (see the header).
  float2 BloomUv(float2 uv)

@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
                 int owners=Directory.GetFiles(Path.Combine(root,"Assets"),"*.meta",SearchOption.AllDirectories).Count(m=>File.ReadAllText(m).Contains("guid: "+guid.Groups[1].Value));
                 Check(owners==1,"unique guid: "+file);
             }
-            Console.WriteLine("PASS Bloom ("+count+" checks: knee 0 at or below 1, continuous and monotone; 6 levels half to 1/64; off on low graphics, x.6 reduced; match camera only, HDR on, attached with the camera ahead of the damage screen; OnRenderImage -> Graphics.Blit, ARGBHalf temporaries released every frame; four passes, flip guard, GLSL-safe shared code; build gate, metas)");
+            Console.WriteLine("PASS Bloom ("+count+" checks: knee 0 at or below 1, continuous and monotone; 6 levels half to 1/64; off on low graphics, x.6 reduced; match camera only, HDR on, attached with the camera ahead of the damage screen; OnRenderImage -> Graphics.Blit, ARGBHalf temporaries released every frame; four passes, flip guard, GLSL-safe shared code; hue-keeping display shoulder; build gate, metas)");
         }
         private static void Rules()
         {
@@ -55,6 +55,13 @@ namespace ChipArena.UnityConversion
             Check(NativeBloomRules.ReducedScale==.6f&&Math.Abs(NativeBloomRules.Strength(false,true)-NativeBloomRules.Intensity*.6f)<1e-7,"Reduced effects x.6");
             Check(NativeBloomRules.Strength(true,false)==0&&NativeBloomRules.Strength(true,true)==0,"off on the low graphics tier");
             Check(NativeBloomRules.FireflyClamp>=4&&NativeBloomRules.FireflyClamp<=64,"a firefly clamp well above the knee");
+            // The display shoulder: identity up to .9, never above 1, monotone in brightness, hue kept below 2, white when very hot.
+            System.Numerics.Vector3 V(float r,float g,float b)=>new System.Numerics.Vector3(r,g,b);
+            foreach(var c in new[]{V(0,0,0),V(.9f,.5f,.1f),V(.2f,.85f,.9f),V(.5f,.5f,.5f)})Check(NativeBloomRules.Shoulder(c)==c,"the shoulder leaves colours at or below .9 alone: "+c);
+            float last=0;for(int i=0;i<=4000;i++){float m=.9f+i*.005f;var o=NativeBloomRules.Shoulder(V(m,m*.45f,m*.05f));float p=Math.Max(o.X,Math.Max(o.Y,o.Z));Check(p<=1f&&p>=last-1e-6f,"the shoulder's peak stays at most 1 and rises with brightness at "+m);last=p;}
+            var fire=NativeBloomRules.Shoulder(V(1.29f,.58f,.065f));Check(Math.Abs(fire.Y/fire.X-.58f/1.29f)<1e-5f&&Math.Abs(fire.Z/fire.X-.065f/1.29f)<1e-5f&&fire.X>.99f,"a fireball a little over 1 keeps its hue ("+fire+")");
+            var spark=NativeBloomRules.Shoulder(V(9f,4f,.45f));Check(spark.X>.99f&&Math.Abs(spark.X-spark.Z)<1e-5f,"a white-hot spark core reads white ("+spark+")");
+            var core=NativeBloomRules.Shoulder(V(3f,1.35f,.15f));Check(core.Y/core.X>.45f&&core.Y/core.X<.65f,"a hot spark body warms toward white only a little ("+core+")");
         }
         private static void Component(string c)
         {
@@ -119,14 +126,15 @@ namespace ChipArena.UnityConversion
             foreach(var id in new[]{"_BloomCurve","_BloomParams","_BloomTex"})Check(code.Contains(id)&&component.Contains("\""+id+"\""),"property "+id);
             var blocks=Regex.Matches(text,@"// SHARED BEGIN\n(.*?)// SHARED END",RegexOptions.Singleline);Check(blocks.Count==1,"one SHARED block");
             string shared=Code(blocks[0].Groups[1].Value);
-            foreach(var f in new[]{"float3 BloomSafe(","float3 BloomKnee(","float3 BloomDown(","float3 BloomTent(","float3 BloomUp(","float3 BloomComposite("})Check(shared.Contains(f),"shared "+f);
+            foreach(var f in new[]{"float3 BloomSafe(","float3 BloomKnee(","float3 BloomDown(","float3 BloomTent(","float3 BloomUp(","float3 BloomShoulder(","float3 BloomComposite("})Check(shared.Contains(f),"shared "+f);
             foreach(var token in new[]{"tex2D","sampler","_MainTex","_BloomTex","int ","uint","half","static","bool","mul(","float2x2","float3x3","float4x4","#"})Check(!shared.Contains(token),"shared code stays GLSL-compatible: no "+token.Trim());
             Check(!Regex.IsMatch(shared,@"(?<![\w.])\d+(?![\w.])"),"shared code uses float literals only");
             Check(!Regex.IsMatch(shared,@"\d[eE][+-]?\d"),"shared code has no exponent literals");
             Check(shared.Contains("c=min(max(c,float3(0.0,0.0,0.0)),float3(65504.0,65504.0,65504.0));")&&shared.Contains("return c*(min(m,limit)/max(m,0.0001));"),"firefly clamp: NaN, Inf and negatives out, brightest channel limited, hue kept");
             Check(shared.Contains("float q=clamp(b-t,0.0,2.0*kk);")&&shared.Contains("q=q*q/(4.0*kk);")&&shared.Contains("return c*(max(q,b-t-kk)/max(b,0.0001));"),"the knee matches NativeBloomRules.Weight");
             Check(shared.Contains("if(prefilter>0.5)c=BloomKnee(BloomSafe(c,curve.z),curve.x,curve.y);"),"each prefilter tap is made safe and thresholded");
-            Check(shared.Contains("return SourceTap(uv)+BloomTent(bloomUv,d);")&&shared.Contains("return scene+BloomTent(bloomUv,d)*intensity;"),"accumulating up steps and an additive composite");
+            Check(shared.Contains("return SourceTap(uv)+BloomTent(bloomUv,d);")&&shared.Contains("return BloomShoulder(scene+BloomTent(bloomUv,d)*intensity);"),"accumulating up steps and an additive composite through the display shoulder");
+            Check(shared.Contains("float d=0.9+0.1*(1.0-exp((0.9-m)*10.0));")&&shared.Contains("float w=clamp((m-2.0)*0.16,0.0,1.0);")&&shared.Contains("return m>0.9?t:c;")&&NativeBloomRules.ShoulderStart==.9f&&NativeBloomRules.ShoulderSoft==.1f&&NativeBloomRules.WhiteFrom==2f&&NativeBloomRules.WhiteRate==.16f,"the shader's shoulder is NativeBloomRules.Shoulder");
             string uv=Body(code,"float2 BloomUv(float2 uv)");
             Check(Regex.IsMatch(uv,@"#if UNITY_UV_STARTS_AT_TOP\s*if\(_MainTex_TexelSize\.y<0\.0\)uv\.y=1\.0-uv\.y;\s*#endif"),"the second texture flips when the source is stored top-down");
             Check(code.Contains("BloomUp(i.uv,BloomUv(i.uv),")&&code.Contains("BloomComposite(scene.rgb,BloomUv(i.uv),")&&!Regex.IsMatch(Body(code,"float4 FragPrefilter(v2f_img i)")+Body(code,"float4 FragDown(v2f_img i)"),"BloomUv"),"only the two-texture passes flip their second texture");

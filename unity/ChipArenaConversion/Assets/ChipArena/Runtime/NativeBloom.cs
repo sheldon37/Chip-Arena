@@ -13,7 +13,8 @@ namespace ChipArena.UnityConversion
     //    screen therefore always reads the bloomed frame (and clamps it to 0..1). NativeUiBlur's AfterEverything copy comes
     //    after both. IMGUI (the HUD, menus, crosshair, numbers) draws after every camera has rendered, so it never blooms.
     //  * Path: OnRenderImage -> Graphics.Blit only (the orientation-safe single-source path the damage screen uses; no
-    //    command buffer, no CameraTarget copy): prefilter to half size, 5 downs, 5 ups, composite. The two passes that read
+    //    command buffer, no CameraTarget copy): prefilter to half size, 5 downs, 5 ups, composite (with the hue-keeping display
+    //    shoulder above 0.9, NativeBloomRules.Shoulder; the low tier, which skips the bloom, keeps the clip). The two passes that read
     //    a second texture flip its v when the blit's source is stored top-down (the shader's BloomUv).
     //  * Cost: ARGBHalf temporaries from RenderTexture.GetTemporary (half to 1/64 size; the down and up chains together hold
     //    about two thirds of the frame's pixel count), every one released in the same frame (finally); steady frames

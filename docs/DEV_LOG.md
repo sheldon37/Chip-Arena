@@ -19,7 +19,10 @@
   - `git diff --check`: clean.
   - The shader passes an HLSL front-end check (glslang, all 4 passes). Its shared block compiles as GLSL ES 3.00 and was run through the full chain on a synthetic HDR frame: grid lines at 1.0 gain 5e-5.
 - Not run: Unity import/compile of the shader, D3D11 orientation with MSAA, real-scene look and cost, Windows build.
-- Next: tune Intensity/Knee in NativeBloomRules against the new HDR effect values once the role renderer lands.
+- Review fix (same day, second commit): this is now the only bloom; `claude/fx-base-layer` dropped its own `NativeBloomImage` so the two branches merge without an asset or shader-name clash. The composite ends in a hue-keeping display shoulder (`BloomShoulder` / `NativeBloomRules.Shoulder`): unchanged up to 0.9, eased to at most 1 with the hue kept, blending toward white only from a brightest channel of 2 (full at 8.25), so HDR fireball puffs keep their colour and spark cores still read white-hot. Only while the bloom runs; the low tier keeps the plain clip. New BloomChecks cover it (CPU mirror and shader text).
+  - Checks: `unity-check.sh` build OK; `check_relay.py` 320 PASS, 0 FAIL; Python 75 OK (1 skipped); `package_source.py` passed; `git diff --check 2bcb646 HEAD` clean; glslang HLSL front end OK (4 passes, fog/gamma variants); the SHARED block compiled as GLSL in the offline effects harness (renders with fx-base's review fix).
+  - Not run: Unity import/FXC compile, D3D11 orientation with MSAA, real-scene look and cost, Windows build.
+- Next: tune Intensity/Knee in NativeBloomRules against the new HDR effect values in an owner build.
 
 ## 2026-10-11 — Astra — Brickfall simulation/presentation connected for owner build
 - Owner explicitly requested connecting the work and pushing the update for a local build. Task branch `codex/unity-brickfall-integration-20261011`, shared base `beaacc7332f9aefddd0ce046923523870b9c0f33`; merges PR #109 simulation `8c0094060181156ec7578676d4ea1f2faca57d93`. Both agents' DEV_LOG entries and Claude's replicated possession timestamp are preserved. Shared/build destinations: `claude/sleepy-ritchie-g8ruhv` and `codex/unity-cloud-current` (fast-forward, no force).
