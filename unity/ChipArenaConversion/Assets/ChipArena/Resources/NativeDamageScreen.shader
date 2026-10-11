@@ -1,6 +1,7 @@
-// The local pilot's damage screen (rules: Core/NativeDamageScreen.cs; drawn by Runtime/NativeDamageScreenPresentation.cs):
-// one full-screen pass over a copy of the finished 3D frame, before the IMGUI HUD. All maths in linear light (the copy is
-// an sRGB target in Linear colour space, so it reads linear and the writes are encoded by the hardware).
+// The local pilot's damage screen (rules: Core/NativeDamageScreen.cs; drawn by Runtime/NativeDamageScreenPresentation.cs
+// through Runtime/NativeDamageScreenImage.cs): one full-screen pass over the finished 3D frame as the last screen camera's
+// image effect (OnRenderImage -> Graphics.Blit), before the IMGUI HUD. All maths in linear light (Linear colour space: the
+// source is an sRGB or HDR float target, which reads linear either way, and the destination encodes the writes).
 //  * Up to four wound blooms: smoky crimson that drains the frame to red glass from the edge facing the attacker (lobe
 //    angles in the screen square so every aspect reads alike), ragged by noise and dissolving back into the frame; a
 //    headshot's bloom is radially striated, with a pale flash confined to the bloom.
@@ -73,7 +74,7 @@ float Stroke(float d,float w){return saturate(w*0.5+0.5-d);}
 float EaseOut(float x){x=saturate(x);return 1.0-(1.0-x)*(1.0-x)*(1.0-x);}
 float3 ToGamma(float3 c){c=max(c,0.0);return max(1.055*pow(c,float3(0.4166667,0.4166667,0.4166667))-0.055,0.0);}
 float3 ToLinear(float3 c){c=max(c,0.0);return pow((c+0.055)/1.055,float3(2.4,2.4,2.4));}
-// The frame copy at a screen uv (y up); `flip` < 0 when the copy is stored top-down.
+// The frame at a screen uv (y up); `flip` < 0 when the source is stored top-down (either way the tap lands on the blit's uv).
 float3 Scene(float2 uv,float flip){return SceneTap(float2(uv.x,flip>0.0?uv.y:1.0-uv.y));}
 
 // One threat arc at pixel offset d from the crosshair (y up), radius r, angle ang (0 up, + clockwise); premultiplied light
@@ -329,7 +330,10 @@ float3 DamageScreen(float2 uv0,float flip,float2 fragPx)
 // END SHARED
    float4 frag(v2f_img i):SV_Target
    {
-    // Screen uv with y up. A blit source stored top-down (D3D, antialiased copy) reports a negative texel height.
+    // Graphics.Blit samples _MainTex the right way up at i.uv on every API. When its source is stored top-down (D3D: an
+    // anti-aliased or back-buffer resolve) it reports a negative texel height and i.uv runs top-down on screen; the overlay
+    // is laid out in screen uv with y up (GL convention, like a depth texture), so it flips then. Scene() undoes the flip:
+    // the frame itself is always read at i.uv.
     float flip=1.0;
     #if UNITY_UV_STARTS_AT_TOP
     if(_MainTex_TexelSize.y<0.0)flip=-1.0;
