@@ -8,6 +8,17 @@ namespace ChipArena.UnityConversion
     public static class NativeLighting
     {
         private static Material sky;private static Light moon,rim;private static bool introActive;private static readonly List<Light> stageLights=new List<Light>();
+        // Per-map looks (Resources/MapLooks.json, Core/NativeMapLooks.cs): the one Apply last used, and the low graphics tier's
+        // shadow fallback. The rim's own direction (`rimFrom`/`rimHome`): Create aims it from (14,7,12); the draft stage turns
+        // it and nothing ever turned it back, so a look without a rim direction keeps whichever of the two came last, exactly
+        // as before the looks moved into data (Electron keeps (14,7,12) throughout; changing that is the owner's call).
+        private static MapLookSet looks;private static MapLook current;private static bool lowShadows;private static Vector3 rimFrom;private static Quaternion rimHome=Quaternion.identity;
+        // The practical lights' globals for NativeBlockLit's own light block (no shader reads them before it lands): position
+        // and range, linear colour times intensity (times the flicker each frame), and the count. Unused slots sit far below.
+        private static readonly Vector4[] arenaPos=new Vector4[NativeMapLooks.MaxLights],arenaBase=new Vector4[NativeMapLooks.MaxLights],arenaColor=new Vector4[NativeMapLooks.MaxLights];private static int arenaCount;private static bool arenaFlicker;
+        private static readonly int ArenaPosId=Shader.PropertyToID("_ArenaLightPos"),ArenaColorId=Shader.PropertyToID("_ArenaLightColor"),ArenaCountId=Shader.PropertyToID("_ArenaLightCount");
+        private static readonly int HorizonId=Shader.PropertyToID("_Horizon"),ZenithId=Shader.PropertyToID("_Zenith"),MoonSizeId=Shader.PropertyToID("_MoonSize"),SunDirId=Shader.PropertyToID("_SunDir"),DiscColorId=Shader.PropertyToID("_DiscColor"),DiscShadeId=Shader.PropertyToID("_DiscShade");
+        private static readonly int HaloColorId=Shader.PropertyToID("_HaloColor"),HaloFalloffId=Shader.PropertyToID("_HaloFalloff"),StarsId=Shader.PropertyToID("_Stars"),CloudTintId=Shader.PropertyToID("_CloudTint"),CloudSpeedId=Shader.PropertyToID("_CloudSpeed");
         // The entrance stage's point lights for the source shaders' stage block (NativeStageLighting; source frame in `points`,
         // Unity frame in the uniform arrays). Unused slots sit far below the stage with no colour and decay 2, so the block's
         // pow() never sees a zero distance with a zero exponent.
@@ -27,7 +38,7 @@ namespace ChipArena.UnityConversion
         // The chip-draft stage: the cool key and the rim in the stage tint (draft-stage.ts), the rim briefly brighter while a
         // chip planted into the wrist pulses (`flash` 0..1).
         public static void Draft(Camera camera,Color tint,float flash=0)
-        {introActive=true;foreach(var light in stageLights)if(light!=null)light.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=new Color(.025f,.032f,.055f);RenderSettings.skybox=null;RenderSettings.fogStartDistance=30;RenderSettings.fogEndDistance=100;Ambient();if(moon!=null){moon.enabled=true;moon.color=new Color(.8f,.88f,1);moon.intensity=1.4f;moon.transform.rotation=Quaternion.Euler(35,-145,0);}if(rim!=null){rim.enabled=true;rim.color=tint;rim.intensity=1.2f+1.6f*Mathf.Clamp01(flash);rim.transform.rotation=Quaternion.Euler(15,35,0);}}
+        {introActive=true;foreach(var light in stageLights)if(light!=null)light.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=new Color(.025f,.032f,.055f);RenderSettings.skybox=null;RenderSettings.fogStartDistance=30;RenderSettings.fogEndDistance=100;Ambient();if(moon!=null){moon.enabled=true;moon.color=new Color(.8f,.88f,1);moon.intensity=1.4f;moon.transform.rotation=Quaternion.Euler(35,-145,0);}if(rim!=null){rim.enabled=true;rim.color=tint;rim.intensity=1.2f+1.6f*Mathf.Clamp01(flash);rim.transform.rotation=Quaternion.Euler(15,35,0);rimHome=rim.transform.rotation;}}
         private static void Ambient(){RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=NativeArena.ColorOf(0x92b4f0)*.48f;RenderSettings.ambientEquatorColor=NativeArena.ColorOf(0x9aaccd)*.27f;RenderSettings.ambientGroundColor=NativeArena.ColorOf(0x171320)*.48f;}
         // An entrance stage from the scene bank (NativeSceneMotion): three's linear backdrop, fog and lights. Colours go to sRGB
         // (Unity linearises them in Linear space); directional lights become Unity lights through NativeEntranceLight, so the
@@ -62,15 +73,67 @@ namespace ChipArena.UnityConversion
             Color middle=new Color((float)NativeEntranceLight.Ambient((skyR+groundR)*.5,linear),(float)NativeEntranceLight.Ambient((skyG+groundG)*.5,linear),(float)NativeEntranceLight.Ambient((skyB+groundB)*.5,linear));
             RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=upper;RenderSettings.ambientEquatorColor=middle;RenderSettings.ambientGroundColor=lower;
         }
-        public static void Clock(float time){if(sky!=null)sky.SetFloat("_SceneTime",time);}
+        public static void Clock(float time){if(sky!=null)sky.SetFloat("_SceneTime",time);if(arenaFlicker)PracticalLights(time);}
+        /// <summary>The map's look: its MapLooks.json entry, or today's look worked out from the map (NativeMapLooks.Fallback).</summary>
+        public static MapLook Look(ContentMap map)
+        {
+            if(looks==null){var asset=Resources.Load<TextAsset>("MapLooks");if(asset==null)throw new InvalidOperationException("MapLooks.json is missing");var set=JsonUtility.FromJson<MapLookSet>(asset.text);NativeMapLooks.Validate(set);looks=set;}
+            return NativeMapLooks.Resolve(looks,map.id,map.theme,map.sky,map.accent);
+        }
+        // The map's look (MapLooks.json). Camera, fog, sky, shadow settings, the key's colour and aim and both lights' shadow
+        // modes are written every time; the intensities, the ambient and the rim's aim wait while an entrance or the draft stage
+        // owns the lights (EndIntro restores them and calls Apply again). On the 15 old maps every value is the one this method
+        // and Create wrote before the looks moved into data (Tests/MapLookChecks.cs), except Cinder Crossing's sky (forge theme).
         public static void Apply(ContentMap map,Camera camera)
         {
-            bool indoor=map.id=="siren",cold=map.theme=="moonlit"||map.theme=="snow",fire=map.id=="forge";camera.farClipPlane=350;camera.backgroundColor=NativeArena.ColorOf(indoor?0x050407:map.sky);camera.clearFlags=indoor?CameraClearFlags.SolidColor:CameraClearFlags.Skybox;
-            RenderSettings.fogColor=indoor?NativeArena.ColorOf(0x0d0a12):Color.Lerp(NativeArena.ColorOf(map.sky),NativeArena.ColorOf(0x405677),.42f);RenderSettings.fogStartDistance=indoor?30:65;RenderSettings.fogEndDistance=indoor?118:210;
-            if(sky==null)sky=new Material(Resources.Load<Shader>("NativeNightSky"));sky.SetColor("_Horizon",NativeArena.ColorOf(fire?0x633345:cold?0x405677:0x333f64));sky.SetColor("_Zenith",NativeArena.ColorOf(fire?0x100b1c:0x080e22));sky.SetFloat("_MoonSize",map.id=="moonlit"?.065f:.028f);RenderSettings.skybox=indoor?null:sky;
-            if(moon!=null){moon.color=NativeArena.ColorOf(map.id=="outpost"?0xffc5a5:fire?0xffac9c:0xb2ceff);moon.transform.position=indoor?new Vector3(-3,30,-5):new Vector3(-8,20,-12);moon.transform.LookAt(Vector3.zero);}if(rim!=null)rim.color=NativeArena.ColorOf(map.accent);
+            var look=Look(map);current=look;var fog=look.fog;bool solid=look.sky.variant=="none";camera.farClipPlane=look.farClip;camera.backgroundColor=NativeArena.ColorOf(look.background);camera.clearFlags=solid?CameraClearFlags.SolidColor:CameraClearFlags.Skybox;
+            RenderSettings.fog=fog.mode!="none";RenderSettings.fogMode=fog.mode=="exp"?FogMode.Exponential:fog.mode=="exp2"?FogMode.ExponentialSquared:FogMode.Linear;if(RenderSettings.fogMode!=FogMode.Linear)RenderSettings.fogDensity=fog.density;
+            RenderSettings.fogColor=fog.skyLerp>0?Color.Lerp(NativeArena.ColorOf(map.sky),NativeArena.ColorOf(fog.color),fog.skyLerp):NativeArena.ColorOf(fog.color);RenderSettings.fogStartDistance=fog.start;RenderSettings.fogEndDistance=fog.end;
+            Sky(look.sky);RenderSettings.skybox=solid?null:sky;Shadows();
+            if(moon!=null){moon.color=NativeArena.ColorOf(look.key.color);Aim(moon,look.key);moon.shadows=LightShadowsOf(look.key.shadows);moon.shadowStrength=look.key.shadowStrength;}
+            if(rim!=null){rim.color=NativeArena.ColorOf(look.rim.color);rim.shadows=LightShadowsOf(look.rim.shadows);rim.shadowStrength=look.rim.shadowStrength;}
+            if(!introActive)
+            {
+                var a=look.ambient;RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=NativeArena.ColorOf(a.sky)*a.skyScale;RenderSettings.ambientEquatorColor=NativeArena.ColorOf(a.equator)*a.equatorScale;RenderSettings.ambientGroundColor=NativeArena.ColorOf(a.ground)*a.groundScale;
+                if(moon!=null)moon.intensity=look.key.intensity;if(rim!=null){rim.intensity=look.rim.intensity;if(NativeMapLooks.HasDirection(look.rim))Aim(rim,look.rim);else rim.transform.SetPositionAndRotation(rimFrom,rimHome);}
+            }
+            PracticalLights(look,Time.unscaledTime);
         }
-        // arena-lighting.ts palette, adapted to the built-in Unity renderer.
+        /// <summary>The graphics tier's shadows (NativeSettings): the low tier takes the look's fallback cascades and distance.</summary>
+        public static void Graphics(bool low){lowShadows=low;Shadows();}
+        private static void Shadows(){if(current==null)return;var s=current.shadows;QualitySettings.shadowCascades=lowShadows?s.fallbackCascades:s.cascades;QualitySettings.shadowDistance=lowShadows?s.fallbackDistance:s.distance;}
+        private static LightShadows LightShadowsOf(string kind)=>kind=="soft"?LightShadows.Soft:kind=="hard"?LightShadows.Hard:LightShadows.None;
+        // A light at `from` looking at the origin (today's rig), or shining from its elevation and bearing.
+        private static void Aim(Light light,MapLookLight l)
+        {
+            if(NativeMapLooks.HasFrom(l)){light.transform.position=new Vector3(l.from.x,l.from.y,l.from.z);light.transform.LookAt(Vector3.zero);return;}
+            NativeMapLooks.Toward(l.elevation,l.bearing,out double x,out double y,out double z);var toward=new Vector3((float)x,(float)y,(float)z);light.transform.SetPositionAndRotation(toward*24,Quaternion.LookRotation(-toward));
+        }
+        // NativeNightSky's properties; a data colour of 0 keeps the shader's default (today's night constant), others go to linear.
+        private static void Sky(MapLookSky s)
+        {
+            if(sky==null)sky=new Material(Resources.Load<Shader>("NativeNightSky"));sky.SetColor(HorizonId,NativeArena.ColorOf(s.horizon));sky.SetColor(ZenithId,NativeArena.ColorOf(s.zenith));sky.SetFloat(MoonSizeId,s.discSize);
+            NativeMapLooks.SunDirection(s,out float dx,out float dy,out float dz);sky.SetVector(SunDirId,new Vector4(dx,dy,dz,0));sky.SetVector(DiscColorId,Tint(s.disc,NativeMapLooks.DiscDefault));sky.SetVector(DiscShadeId,new Vector4(NativeMapLooks.DiscBase(s),s.crater,0,0));
+            sky.SetVector(HaloColorId,Tint(s.glow,NativeMapLooks.HaloDefault));sky.SetFloat(HaloFalloffId,NativeMapLooks.HaloFalloff(s));sky.SetFloat(StarsId,s.stars);sky.SetVector(CloudTintId,Tint(s.cloud,NativeMapLooks.CloudDefault));sky.SetFloat(CloudSpeedId,s.cloudSpeed);
+        }
+        private static Vector4 Tint(int hex,float[] fallback){if(hex==0)return new Vector4(fallback[0],fallback[1],fallback[2],0);var c=Linear(NativeArena.ColorOf(hex));return new Vector4(c.r,c.g,c.b,0);}
+        private static Color Linear(Color c)=>QualitySettings.activeColorSpace==ColorSpace.Linear?c.linear:c;
+        private static void PracticalLights(MapLook look,float time)
+        {
+            var lights=look.lights??Array.Empty<MapLookPractical>();arenaCount=Math.Min(lights.Length,NativeMapLooks.MaxLights);arenaFlicker=false;
+            for(int i=0;i<arenaPos.Length;i++)
+            {
+                if(i>=arenaCount){arenaPos[i]=new Vector4(0,-10000,0,1);arenaBase[i]=Vector4.zero;continue;}
+                var l=lights[i];var c=Linear(NativeArena.ColorOf(l.color));arenaPos[i]=new Vector4(l.pos.x,l.pos.y,l.pos.z,l.range);arenaBase[i]=new Vector4(c.r,c.g,c.b,0)*l.intensity;arenaFlicker|=NativeMapLooks.Flickers(l);
+            }
+            PracticalLights(time);
+        }
+        private static void PracticalLights(float time)
+        {
+            var lights=current?.lights;for(int i=0;i<arenaColor.Length;i++)arenaColor[i]=i<arenaCount?arenaBase[i]*(float)NativeMapLooks.Flicker(lights[i],time):Vector4.zero;
+            Shader.SetGlobalVectorArray(ArenaPosId,arenaPos);Shader.SetGlobalVectorArray(ArenaColorId,arenaColor);Shader.SetGlobalInt(ArenaCountId,arenaCount);
+        }
+        // arena-lighting.ts palette, adapted to the built-in Unity renderer: the rig and the defaults each map's look (Apply) then sets.
         public static void Create(Transform parent)
         {
             RenderSettings.ambientMode=AmbientMode.Trilight;
@@ -88,7 +151,7 @@ namespace ChipArena.UnityConversion
                 light.shadows=shadows?LightShadows.Soft:LightShadows.None;light.shadowBias=.025f;light.shadowNormalBias=.15f;return light;
             }
             RenderSettings.sun=moon=Directional("Moon key",new Vector3(-8,20,-12),0xb2c6ff,.9f,true);
-            rim=Directional("Teal rim",new Vector3(14,7,12),0x58aab4,.24f,false);
+            rim=Directional("Teal rim",new Vector3(14,7,12),0x58aab4,.24f,false);rimFrom=rim.transform.position;rimHome=rim.transform.rotation;
         }
     }
     public sealed partial class NativeArena
