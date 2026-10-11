@@ -9,9 +9,13 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class ChipStatText {public string text,tone;}
     [Serializable] public sealed class ChipTextEntry {public string id,description;public ChipStatText[] lines;}
     [Serializable] public sealed class ChipTextSet {public string commit;public ChipTextEntry[] chips;public ContentChip[] sirenTrack;}
-    // How a card is being shown this frame. Hover and Lift are eased 0..1 by the caller. `Plain` drops the clipped card art
-    // (the kits' auras, Mythic's foil) for a card drawn under a rotation, where IMGUI clips would not follow it.
-    public struct ChipLook {public float Alpha,Hover,Time,SweepAt,Bright;public bool Focus,Enabled,Chosen,Plain;public static ChipLook Idle(float time)=>new ChipLook{Alpha=1,Time=time,SweepAt=-10,Bright=1};}
+    // How a card is being shown this frame. Hover is eased 0..1 by the caller. `Plain` drops the clipped card art (the kits'
+    // auras, Mythic's foil) for a card drawn under a rotation, where IMGUI clips would not follow it. The draft tray's
+    // highlight (NativeChipArt's holo scan, NativeHoloScan's timeline): `Holo` its eased level (1 under the pointer or the
+    // keyboard focus, NativeHoloScan.Held while held across a gap) and `HoloAt` the time it engaged; `Ghost` the keyboard
+    // focus's still brackets while the pointer is on another card; `Recede` 0..1 the veil while another card is highlighted;
+    // `Charge` extra die charge (the pick's lock); `Calm` Reduced effects (the still variant).
+    public struct ChipLook {public float Alpha,Hover,Time,SweepAt,Bright,Holo,HoloAt,Recede,Charge;public bool Focus,Enabled,Chosen,Plain,Calm,Ghost;public static ChipLook Idle(float time)=>new ChipLook{Alpha=1,Time=time,SweepAt=-10,Bright=1,HoloAt=-10};}
     // Card sizes from draft-screen.css (compact tray) and style.css (.selection-focus spotlight card).
     public struct ChipSize
     {
@@ -52,13 +56,17 @@ namespace ChipArena.UnityConversion
         {
             if(c==null||look.Alpha<=.002f)return;var l=Measure(c,r.width,s);float a=look.Alpha,t=look.Time,h=look.Hover;string tier=c.rarity;Color rare=Rarity(tier);var st=NativeChipArt.For(tier,rare);
             bool legendary=tier=="legendary",mythic=tier=="mythic",siren=tier=="siren";Color A(Color x,float k=1)=>U.A(x,a*k);
+            // The holo scan at `holo` (the level times the alpha), `age` s since it engaged; under a rotation (Plain) only its halo,
+            // the die's charge and the caller's lift. The die's charge: the highlight's rise and settle plus the pick's flare.
+            float holo=look.Holo*a,age=t-look.HoloAt,charge=Mathf.Max(0,(holo>0?NativeHoloScan.DieCharge(age,look.Calm)*holo:0)+look.Charge);bool scan=holo>0&&!look.Plain;
             // Shadows: 0 0 0 1px #000a, 0 8px 0 #050608, 0 16px 34px #0009 and the tier's glow (hover: 0 14px 0, 0 26px 44px #000b
-            // and 0 0 28px rarity 26%; Siren 0 0 40px #8f73ff66); the chosen package's 60 px halo.
+            // and 0 0 28px rarity 26%; Siren 0 0 40px #8f73ff66; the holo scan's halo instead); the chosen package's 60 px halo.
             U.Round(new Rect(r.x,r.y+8+6*h,r.width,r.height),A(U.Hex(siren?0x020203:0x050608)),s.Radius);U.Glow(new Rect(r.x,r.y+16+10*h,r.width,r.height),A(new Color(0,0,0,(siren?.8f:.6f)+.13f*h)),17+5*h);
-            if(st.Glow.a>0)U.Glow(r,A(st.Glow),st.GlowSpread);if(h>0)U.Glow(r,siren?A(U.Hex(0x8f73ff),.4f*h):A(rare,.26f*h),siren?40:28);if(look.Chosen)U.Glow(r,A(rare,.42f),60);
+            if(st.Glow.a>0)U.Glow(r,A(st.Glow),st.GlowSpread);if(holo>0)NativeChipArt.HoloHalo(r,tier,rare,holo,t,look.Calm);else if(h>0)U.Glow(r,siren?A(U.Hex(0x8f73ff),.4f*h):A(rare,.26f*h),siren?40:28);if(look.Chosen)U.Glow(r,A(rare,.42f),60);
             U.Round(new Rect(r.x-1,r.y-1,r.width+2,r.height+2),A(new Color(0,0,0,.67f)),s.Radius+1);
-            // Legs: the tier's metal (pin-a → pin-b → pin-c), 7 px of every 15, inset from the corners; the bottom row mirrored.
-            NativeChipArt.Legs(r,st,s.PinInset,s.Pin,a);
+            // Legs: the tier's metal (pin-a → pin-b → pin-c), 7 px of every 15, inset from the corners; the bottom row mirrored;
+            // powered in the tier's pin colour as the holo scan's trace passes them.
+            NativeChipArt.Legs(r,st,s.PinInset,s.Pin,a);if(scan)NativeChipArt.HoloLegs(r,s.Radius,s.PinInset,s.Pin,tier,rare,holo,age,look.Calm);
             // Substrate (sub-a → sub-b; Siren's void glass) under the edge (rarity 52% into #34363f or the kit's own; hover: rarity
             // 72% into white), then the circuit traces.
             NativeChipArt.Substrate(r,st,s.Radius,Color.Lerp(st.Edge,U.Mix(Color.white,rare,.72f),h),a);NativeChipArt.Traces(r,rare,st,a);
@@ -81,15 +89,18 @@ namespace ChipArena.UnityConversion
             else if(legendary||mythic){float g=Mathf.Repeat(t,4.6f)/4.6f;if(g>=.68f)NativeChipArt.Sweep(plate,M.Bezier(.3f,.7f,.2f,1,(g-.68f)/.32f),a);}
             // The die: silicon under glass lit in the kit colour (glow 20 px at 30%, hover 32 px at 55%; Siren 22 px violet), its
             // rings, the radial light (die 26% into #0a0b0e at 50% 46%), the inner shadow, grid and gloss; the chip's line icon.
-            float bright=Mathf.Max(0,look.Bright);var die=new Rect(plate.x+7,plate.y+(plate.height-s.Die)/2,s.Die,s.Die);Color dieC=st.Die,ground=U.Hex(siren?0x050409:0x0a0b0e);
-            U.Glow(die,siren?A(U.Hex(0x9b87ff),Mathf.Min(1,(.3f+.25f*h)*bright)):A(dieC,Mathf.Min(1,(.3f+.25f*h)*bright)),(siren?22:20)+12*h);
+            // Charged: brighter by .45 of the charge, its glow wider and the icon running toward white.
+            float hot=Mathf.Min(1,charge),bright=Mathf.Max(0,look.Bright)*(1+.45f*charge);var die=new Rect(plate.x+7,plate.y+(plate.height-s.Die)/2,s.Die,s.Die);Color dieC=st.Die,ground=U.Hex(siren?0x050409:0x0a0b0e);
+            U.Glow(die,siren?A(U.Hex(0x9b87ff),Mathf.Min(1,(.3f+.25f*h)*bright)):A(dieC,Mathf.Min(1,(.3f+.25f*h)*bright)),(siren?22:20)+12*h+6*hot);
             U.Round(new Rect(die.x-4,die.y-4,die.width+8,die.height+8),siren?A(U.Hex(0xb7a8ff,.15f)):A(new Color(1,1,1,.08f+.04f*h)),6);U.Round(new Rect(die.x-3,die.y-3,die.width+6,die.height+6),A(ground),6);
             U.Round(die,A(ground),5,siren?A(U.Hex(0xb7a8ff,.6f)):A(dieC,.55f));
             float glowR=die.width*1.47f;var light=new Rect(die.center.x-glowR/2,die.y+die.height*.46f-glowR/2,glowR,glowR);
             if(siren)U.RadialStops(light,A(U.Hex(0x2d2244)),DieStopsSiren,DieAlpha);else U.RadialStops(light,A(dieC,Mathf.Min(1,.26f*bright)),DieStops,DieAlpha);
             U.RadialStops(die,A(Color.black),InnerAt,InnerAlpha);NativeChipArt.DieGlass(die,dieC,a);
             var icon=new Rect(die.center.x-s.Icon/2,die.center.y-s.Icon/2,s.Icon,s.Icon);U.Glow(icon,A(dieC,.35f*Mathf.Min(1,bright)),5);
-            NativeIcons.Draw(icon,NativeIcons.Chip(c.id),A(Color.Lerp(Color.black,dieC,Mathf.Min(1,bright))));
+            NativeIcons.Draw(icon,NativeIcons.Chip(c.id),A(Color.Lerp(Color.Lerp(Color.black,dieC,Mathf.Min(1,bright)),Color.white,.3f*hot)));
+            // The holo scan crosses the face over the spreader and the die but under every line of text.
+            if(scan)NativeChipArt.HoloScan(r,tier,rare,holo,age,look.Calm);
             // Grade label with rank pips (the kits' own colour and tracking; L44T glows), then the name (Legendary's gold and
             // Mythic's foil gradients, Siren's glitch split).
             float tx=die.xMax+9,tw=plate.xMax-8-tx,ty=plate.y+(plate.height-l.Title)/2;string grade=RarityName(tier);
@@ -116,7 +127,13 @@ namespace ChipArena.UnityConversion
             if(c.max<=6){float sw=max*7-2,sx=foot.xMax-U.Measure(count,s.Foot,false,true,.06f).x-9-sw,sy=foot.center.y-4;
                 for(int i=0;i<max;i++){var slot=new Rect(sx+i*7,sy,5,8);U.Fill(slot,i<have?A(rare):A(new Color(1,1,1,.15f)));
                     if(i==have&&look.Enabled&&!look.Chosen){float pulse=.5f-.5f*Mathf.Cos(t*2*Mathf.PI/1.4f);U.Fill(slot,A(rare,.55f*pulse));U.Round(slot,Color.clear,1,A(rare),1);}}}
-            if(look.Focus)U.Round(new Rect(r.x-7,r.y-7,r.width+14,r.height+14),Color.clear,s.Radius+4,A(rare),2);
+            // Another card highlighted: this one recedes under a veil (kept under Reduced effects; the tray's badges stay over it).
+            if(look.Recede>0)U.Round(r,A(U.Hex(0x05060a),NativeHoloScan.Veil*Mathf.Min(1,look.Recede)),s.Radius);
+            // The holo scan's lit edge on the package's own border (inside the padding, clear of the text) and its brackets outside;
+            // the keyboard focus's still brackets while the pointer is on another card; else the focus ring.
+            if(scan){NativeChipArt.HoloEdge(r,s.Radius,tier,rare,holo,age,t,look.Calm);NativeChipArt.HoloBrackets(r,tier,rare,look.Holo,a,age,t,look.Calm);}
+            if(look.Ghost){if(!look.Plain)NativeChipArt.HoloGhost(r,tier,rare,a*(1-Mathf.Clamp01(look.Holo)));}
+            else if(look.Focus&&holo<=0)U.Round(new Rect(r.x-7,r.y-7,r.width+14,r.height+14),Color.clear,s.Radius+4,A(rare),2);
             if(look.Chosen)U.Round(new Rect(r.x-6,r.y-6,r.width+12,r.height+12),Color.clear,s.Radius+4,A(rare),2);
         }
         private static readonly float[] DieStops={0,.72f,1},DieStopsSiren={0,.7f,1},DieAlpha={1,0,0},InnerAt={0,.55f,1},InnerAlpha={0,0,.7f};

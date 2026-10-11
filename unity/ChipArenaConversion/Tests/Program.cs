@@ -45,6 +45,7 @@ internal static class Program
             foreach(var result in ImpactCueChecks.Run(root,data))Console.WriteLine("PASS "+result);
             foreach(var result in DraftPlantChecks.Run())Console.WriteLine("PASS "+result);
             foreach(var result in DraftStageChecks.Run(root))Console.WriteLine("PASS "+result);
+            foreach(var result in DraftHoverChecks.Run())Console.WriteLine("PASS "+result);
             foreach(var result in CinematicCameraChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in IntroPresentationChecks.Run())Console.WriteLine("PASS "+result);
             foreach(var result in SirenIntroChecks.Run(root))Console.WriteLine("PASS "+result);

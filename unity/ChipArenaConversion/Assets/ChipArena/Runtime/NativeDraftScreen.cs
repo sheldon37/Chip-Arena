@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
     // only draws the authoritative draft (offers, ready time, pick, pick time) and sends the same choose messages.
     public sealed partial class ConversionGame
     {
-        private int draftFocus=-1;private float draftTrayLine=-1,draftTrayBottom=-1;private readonly Dictionary<int,float> cardSweep=new Dictionary<int,float>();private readonly bool[] cardHovered=new bool[16];
+        private int draftFocus=-1;private float draftTrayLine=-1,draftTrayBottom=-1;private readonly float[] cardHolo=new float[16],cardHoloAt=new float[16];private readonly NativeChipCard.Reveal[] cardReveal=new NativeChipCard.Reveal[16];
         private static float DraftRevealSeconds(string id)=>id.StartsWith("l44t-")?4.6f:id.StartsWith("arcade-")||id.StartsWith("mishima-")?4.8f:3.2f;
         // NativeMatch.NextDraft's offer pause, recovered from the replicated ready time (the turn's start is not sent).
         private double DraftStarted(NativeSeat seat)
@@ -62,26 +62,43 @@ namespace ChipArena.UnityConversion
             U.Glow(new Rect(r.x,r.y+6,r.width,r.height),new Color(0,0,0,.45f),20);U.Pill(r,U.Hex(0x0d0f16,.8f),new Color(1,1,1,.12f));var dot=new Rect(r.x+10,r.y+10.5f,9,9);U.Glow(dot,U.A(SeatColor(seat),.6f),8);U.Round(dot,SeatColor(seat),5);
             U.Text(new Rect(dot.xMax+8,r.y,nw+4,r.height),seat.name,13,U.Hex(0xf4f4f5),TextAnchor.MiddleLeft);U.Text(new Rect(dot.xMax+8+nw+8,r.y,lw+4,r.height),label.ToUpperInvariant(),10,U.Hex(0xa6a7ad),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);
         }
-        // Card entrance, hover lift and focus; returns the index clicked (or -1). `enabled` gates hover, focus and clicks.
+        // Card entrance, the highlight and focus; returns the index clicked (or -1). `enabled` gates the highlight, focus and
+        // clicks. The highlighted card is the one under the pointer (the unlifted rect), else the keyboard focus; while the
+        // pointer crosses a gap the stage's held card (NativeDraftHover.Reaching) stays up at NativeHoloScan.Held. It lifts and
+        // wears the holo scan (NativeChipArt), its level eased per card on Repaint and its timeline restarted only from fully off
+        // (NativeHoloScan); the others recede under a veil while it is up, and the keyboard focus keeps still brackets while the
+        // pointer is on another card. The stage's gaze and reach follow the highlighted card (draftHover). The skipped (chosen)
+        // card's level stays as it was at the pick, for FlyToPalm.
         private int DrawTray(Tray tray,IList<ContentChip> chips,Func<int,int> copies,float elapsed,bool enabled,int skip,Func<int,bool> hidden,bool badges=false)
         {
-            int clicked=-1;float now=Time.unscaledTime;if(Event.current.type==EventType.Repaint)draftHover=-1;
+            int clicked=-1,n=Math.Min(tray.Cards.Length,cardHolo.Length),under=-1;float now=Time.unscaledTime;bool repaint=Event.current.type==EventType.Repaint,calm=prefs.reducedEffects;if(repaint)draftHover=-1;
+            for(int i=0;i<n;i++){bool shown=i!=skip&&!hidden(i);cardReveal[i]=shown?NativeChipCard.Entrance(chips[i].rarity,elapsed-i*.22f):default;if(shown&&enabled&&cardReveal[i].Alpha>0&&U.Hover(tray.Cards[i]))under=i;}
+            int lit=under>=0?under:draftFocus>=0&&draftFocus<n&&cardReveal[draftFocus].Alpha>0?draftFocus:-1;bool held=enabled&&lit<0&&draftHeld.Reaching;if(enabled&&repaint&&lit>=0)draftHover=lit;
+            // Levels (Repaint only), then the most highlighted visible cards for the others' veil.
+            int top=-1;float first=0,second=0;
+            for(int i=0;i<n;i++)
+            {
+                if(i==skip||hidden(i))continue;
+                if(repaint){float target=enabled&&cardReveal[i].Alpha>0?NativeHoloScan.Target(lit==i,held&&draftHeld.Card==i):0;if(NativeHoloScan.Engages(cardHolo[i],target))cardHoloAt[i]=now;cardHolo[i]=NativeHoloScan.Step(cardHolo[i],target,Time.unscaledDeltaTime);}
+                float e=cardReveal[i].Alpha>=1?cardHolo[i]:0;if(e>first){second=first;first=e;top=i;}else if(e>second)second=e;
+            }
             for(int i=0;i<tray.Cards.Length;i++)
             {
-                if(i==skip||hidden(i))continue;var c=chips[i];var r=tray.Cards[i];var reveal=NativeChipCard.Entrance(c.rarity,elapsed-i*.22f);if(reveal.Alpha<=0)continue;
-                bool over=enabled&&U.Hover(r);float h=U.HoverAmount(4001+i,r,enabled);int key=4001+i;if(over&&i<cardHovered.Length&&!cardHovered[i])cardSweep[key]=now;if(i<cardHovered.Length&&Event.current.type==EventType.Repaint)cardHovered[i]=over;
-                if((over||draftFocus==i)&&enabled&&Event.current.type==EventType.Repaint)draftHover=i;
+                if(i==skip||hidden(i))continue;var c=chips[i];var r=tray.Cards[i];var reveal=i<n?cardReveal[i]:NativeChipCard.Entrance(c.rarity,elapsed-i*.22f);if(reveal.Alpha<=0)continue;
+                float h=i<n?cardHolo[i]:0,recede=reveal.Alpha>=1?NativeHoloScan.Recede(h,i==top?second:first):0;bool ghost=enabled&&under>=0&&draftFocus==i&&i!=under;
                 // The card stands on the tray's display: its contact shadow and soft reflection stay on the surface (with the
-                // entrance, not the hover lift), the shadow spreading and the glow brightening as the card lifts.
+                // entrance, not the lift), the shadow spreading and the glow brightening as the card lifts.
                 U.Push(r.center,new Vector2(reveal.Dx,reveal.Dy),reveal.Scale*reveal.ScaleX,reveal.Degrees,reveal.Scale*reveal.ScaleY);TrayStand(r,c.rarity,reveal.Alpha,h);U.Pop();
-                float lift=-10*M.Bezier(.2f,.8f,.2f,1,h);U.Push(r.center,new Vector2(reveal.Dx,reveal.Dy+lift),reveal.Scale*reveal.ScaleX,reveal.Degrees,reveal.Scale*reveal.ScaleY);
-                var look=new ChipLook{Alpha=reveal.Alpha,Hover=h,Time=now,SweepAt=cardSweep.TryGetValue(key,out float sw)?sw:-10,Bright=reveal.Bright,Focus=enabled&&draftFocus==i,Enabled=enabled,Plain=reveal.Degrees!=0};
+                U.Push(r.center,new Vector2(reveal.Dx,reveal.Dy+NativeHoloScan.Lift(h)),reveal.Scale*reveal.ScaleX,reveal.Degrees,reveal.Scale*reveal.ScaleY);
+                var look=new ChipLook{Alpha=reveal.Alpha,Hover=h,Time=now,SweepAt=-10,Bright=reveal.Bright,Focus=enabled&&draftFocus==i,Enabled=enabled,Plain=reveal.Degrees!=0,Holo=h,HoloAt=i<n?cardHoloAt[i]:-10,Calm=calm,Recede=recede,Ghost=ghost};
                 NativeChipCard.Draw(r,c,copies(i),tray.Size,look);
                 if(badges&&i<9){var b=new Rect(r.x-7,r.y-7,22,22);U.Glow(new Rect(b.x,b.y+2,b.width,b.height),new Color(0,0,0,.6f*reveal.Alpha),5);U.Round(b,U.Hex(0xf1f2f6,reveal.Alpha),6);U.Text(b,(i+1).ToString(),12,U.Hex(0x0f1015,reveal.Alpha),TextAnchor.MiddleCenter,bold:true,mono:true);}
                 U.Pop();if(enabled&&reveal.Alpha>.5f&&U.Button(r))clicked=i;
             }
             return clicked;
         }
+        // A new tray (a new turn, another picker, the next Siren pick): no card starts highlighted.
+        private void ResetHolo(){Array.Clear(cardHolo,0,cardHolo.Length);for(int i=0;i<cardHoloAt.Length;i++)cardHoloAt[i]=-10;}
         // A card's footing on the tray's display: a soft contact shadow along its lower edge and a faint glow of its rarity on
         // the surface under it. `hover` 0..1 (the lift).
         private static void TrayStand(Rect r,string rarity,float alpha,float hover)
@@ -147,11 +164,12 @@ namespace ChipArena.UnityConversion
         }
         private Tray draftTray;private float draftTrayTop;private Vector2 draftTraySize;
         // A tray after its pick, `age` seconds on: the others shatter in turn, the chosen card (`copies` owned before it) flies
-        // into the pilot's palm and fades as the hand closes.
+        // into the pilot's palm and fades as the hand closes. It leaves from its highlight as it was at the pick (DrawTray skips
+        // it, so its level holds; a spectator's is 0).
         private void PickedTray(Tray tray,IList<ContentChip> chips,int index,int copies,float age)
         {
             for(int i=0;i<chips.Count&&i<tray.Cards.Length;i++)if(i!=index)Shatter(tray.Cards[i],chips[i],age-i*.035f,i,tray.Size);
-            if(index>=0&&index<tray.Cards.Length)FlyToPalm(tray.Cards[index],chips[index],copies,age,tray.Size);
+            if(index>=0&&index<tray.Cards.Length)FlyToPalm(tray.Cards[index],chips[index],copies,age,tray.Size,index<cardHolo.Length?cardHolo[index]:0);
         }
         // chipFracture .85 s: still until 8%, a flash at 18%, then six shards fly apart, spin, shrink and fade.
         private void Shatter(Rect r,ContentChip chip,float t,int index,ChipSize size)
@@ -169,12 +187,15 @@ namespace ChipArena.UnityConversion
             }
         }
         // draft-view.ts: translate toward the palm by fly, scale 1-.88 fly, rotate -9 deg x fly, fade with the grab (the stage's
-        // slowed timeline, NativeDraftStage).
-        private void FlyToPalm(Rect r,ContentChip chip,int copies,float age,ChipSize size)
+        // slowed timeline, NativeDraftStage). It leaves from the highlight's lift at `level` (frozen at the pick), its die keeps
+        // the highlight's settled charge, and the holo scan locks onto it (NativeChipArt.HoloLock, the die's flare) for every
+        // viewer.
+        private void FlyToPalm(Rect r,ContentChip chip,int copies,float age,ChipSize size,float level=0)
         {
-            float fly=NativeDraftStage.Fly(age),fade=NativeDraftStage.Fade(age);if(fade>=1)return;Vector2 target=draftPalm;if(target==Vector2.zero)target=r.center;
-            U.Push(r.center,(target-r.center)*fly,1-.88f*fly,-9*fly);var rare=NativeChipCard.Rarity(chip.rarity);U.Glow(r,U.A(rare,.55f*(1-fade)),42);U.Round(new Rect(r.x-2,r.y-2,r.width+4,r.height+4),Color.clear,10,U.A(rare,1-fade),2);
-            var look=ChipLook.Idle(Time.unscaledTime);look.Alpha=1-fade;look.Plain=true;NativeChipCard.Draw(r,chip,copies,size,look);U.Pop();
+            float fly=NativeDraftStage.Fly(age),fade=NativeDraftStage.Fade(age);if(fade>=1)return;Vector2 target=draftPalm;if(target==Vector2.zero)target=r.center;bool calm=prefs.reducedEffects;
+            U.Push(r.center,(target-r.center)*fly+new Vector2(0,NativeHoloScan.Lift(level)*(1-fly)),1-.88f*fly,-9*fly);var rare=NativeChipCard.Rarity(chip.rarity);U.Glow(r,U.A(rare,.55f*(1-fade)),42);U.Round(new Rect(r.x-2,r.y-2,r.width+4,r.height+4),Color.clear,10,U.A(rare,1-fade),2);
+            var look=ChipLook.Idle(Time.unscaledTime);look.Alpha=1-fade;look.Plain=true;look.Calm=calm;look.Charge=NativeHoloScan.DieRest*Mathf.Clamp01(level)+NativeHoloScan.LockFlare(age,calm);NativeChipCard.Draw(r,chip,copies,size,look);
+            NativeChipArt.HoloLock(r,size.Radius,chip.rarity,rare,age,calm,1-fade);U.Pop();
         }
         // .selection-spotlight: radial backdrop and the focus block (owner, big card, confirm line) over the reveal hold.
         private void Spotlight(ContentChip chip,NativeSeat owner,float t,float duration)
@@ -204,7 +225,7 @@ namespace ChipArena.UnityConversion
         {
             if(PveFollowing){PveFollowScreen(U.W,U.H);return;}
             var v=arena.Pve;if(v==null||!v.Rows.TryGetValue(arena.Local.Seat.id,out var row)||row.Open==null||row.Open.Offers==null)return;var pick=row.Open;float W=U.W,H=U.H;
-            if(pveOpenId!=pick.Id){pveOpenId=pick.Id;pveOpenAt=Time.unscaledTime;draftFocus=-1;}float elapsed=Time.unscaledTime-pveOpenAt;
+            if(pveOpenId!=pick.Id){pveOpenId=pick.Id;pveOpenAt=Time.unscaledTime;draftFocus=-1;ResetHolo();}float elapsed=Time.unscaledTime-pveOpenAt;
             var chips=pick.Offers.Select(id=>arena.PveChip(id)).Where(c=>c!=null).ToList();bool rainbow=pick.Tier=="rainbow";Color tier=rainbow?Color.white:NativeChipCard.Rarity(pick.Tier);
             string source=rainbow?"RAINBOW · 8 MAX-RARITY CHOICES":pick.Source=="start"?"BEGINNING CHIP":(pick.Source=="wave"?"WAVE REWARD · ":"DISPENSED · ")+TierName(pick.Tier).ToUpperInvariant();
             DraftShades(pveTray,W,H);DraftHeader(source,tier,"Make your next move","Choose one Chip. This choice is yours alone.",W,H,out float top);

@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
             if(!active&&!pve){if(draftViewing){draftViewing=false;RestoreLive();presentation.ResetPresentation();}return false;}
             var seat=pve?arena.Local.Seat:match.Seat(match.DraftSeat);if(seat==null)return false;
             // A new picker: the stage restarts (its springs snap) and frames once the tray has been laid out for them.
-            if(!draftViewing||draftViewSeat!=seat.id){RestoreLive();presentation.ResetPresentation();draftHover=-1;draftFocus=-1;draftHeld.Reset();draftViewSeat=seat.id;draftViewing=true;draftCards=Array.Empty<Rect>();draftTrayLine=draftTrayBottom=-1;}
+            if(!draftViewing||draftViewSeat!=seat.id){RestoreLive();presentation.ResetPresentation();draftHover=-1;draftFocus=-1;draftHeld.Reset();ResetHolo();draftViewSeat=seat.id;draftViewing=true;draftCards=Array.Empty<Rect>();draftTrayLine=draftTrayBottom=-1;}
             float scale=NativeUiMotion.Measure(Screen.width,Screen.height,prefs.uiScale).Scale,width=Screen.width/scale,height=Screen.height/scale;
             // The Siren pick's follow-through (NativeDraftFollow) plays the pick on its snapshot of the offers.
             bool follow=pve&&PveFollowing;var row=pve?arena.Pve.Rows[seat.id]:null;int count=follow?pveFollowChips.Count:pve?row.Open?.Offers?.Count??0:seat.offers.Count;
@@ -33,7 +33,7 @@ namespace ChipArena.UnityConversion
             // being reached for. Each card's centre goes to the stage as screen fractions, for the gaze and the reach.
             double turnStart=pve?(follow?pveFollowOpened:pveOpenAt):DraftStarted(seat);float since=pve?Time.unscaledTime-(float)turnStart:(float)(match.Time-turnStart);int n=Math.Min(count,draftCards.Length);
             if(draftPoints.Length<n)draftPoints=new NVector2[Math.Max(n,draftPoints.Length*2)];for(int i=0;i<n;i++)draftPoints[i]=new NVector2(draftCards[i].center.x/width,draftCards[i].center.y/height);
-            int chosen=follow?pveFollowIndex:!pve&&match.Chosen!=null?seat.offers.IndexOf(match.Chosen):-1;if(turnStart!=draftHeldTurn){draftHeldTurn=turnStart;draftHeld.Reset();}
+            int chosen=follow?pveFollowIndex:!pve&&match.Chosen!=null?seat.offers.IndexOf(match.Chosen):-1;if(turnStart!=draftHeldTurn){draftHeldTurn=turnStart;draftHeld.Reset();ResetHolo();}
             if(chosen>=0)draftHeld.Reset();else draftHeld.Step(draftHover,Time.unscaledDeltaTime);int focus=NativeDraftStage.Focus(chosen,draftHeld.Card,since,n,prefs.reducedEffects);bool consider=chosen<0&&draftHeld.Reaching;
             if(pve)HideLive();else arena.Root.SetActive(false);viewModelCamera.enabled=false;
             // Stage lights take the picker's colour, blending to the chip's rarity over .5 s after the pick (the Siren pick: its tier).
