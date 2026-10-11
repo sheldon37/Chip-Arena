@@ -1,5 +1,11 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Astra — owner-supplied Brickfall Run stage music
+- Owner asked to add the uploaded track and send it through the existing shared Update source. Task `codex/unity-brickfall-music-20261011`, base shared `411c696` (rim-light fix retained).
+- Added the exact owner-supplied `Brickfall Run.mp3` (embedded artist: Xtrr - musiccreator), 199.944 s / 48 kHz stereo / 4,687,082 bytes, to the existing `brickfall-demolition-row` resource slot. It is a native music resource, separate from the unchanged 83-clip source bank and optional licensed LocalAssets effects. No sound ZIP or manual copy is needed for this song. Map data, general music rotation, stage pause/resume/volume controls, all simulation/animation timing and networking are unchanged.
+- Added the asset-lock receipt, streaming/stereo Unity importer metadata, provenance in ASSET-CREDITS, a real Unity build gate for the map's resolved full-length stereo clip, and `Music-Credits.txt` inside the compiled Windows update package. Kept the complete original MP3 without remastering or a seamless-loop edit; this deliberately preserves the supplied recording instead of doing the proposal's suggested Ogg/mastering conversion.
+- Verified the installed audio is byte-identical to the upload (SHA-256 `3093119a80cdac42bf46a3cbb44b5da2ec6920ec5580ef153f01ea3bc6417d25`), ffmpeg decodes the entire recording, source structure/asset hashes pass (1,207 files), five existing structure-audio checks pass, and diff whitespace is clean. Full Unity import, Windows playback/listening and compiled publication remain pending. Source integration/native CI receipts go in the PR; the owner uses the existing local Build-and-Publish while Unity Cloud build requests fail HTTP 500.
+
 ## 2026-10-11 — Claude — new block effect (owner: "add a new block effect")
 - Branch `claude/fx-block`, base `096bb80`; one local commit (not pushed, not merged, not released). Presentation only; design in `docs/MELEE-ABILITIES.md` "The new block effect".
 - New Core `NativeBlockFx` (forms, shapes, neon colours, timing curves, clash/deflect heuristic, seeded sparks, CPU mesh `NativeBlockMesh`), Runtime `NativeBlockFxPresentation` (+ `NativeBlockFxDraw` component) and `Resources/NativeBlockFx.shader` (GLSL-safe SHARED block, registered in the NativeBuildChecks gate).

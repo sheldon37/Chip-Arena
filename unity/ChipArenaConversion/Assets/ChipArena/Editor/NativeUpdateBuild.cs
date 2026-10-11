@@ -27,6 +27,7 @@ namespace ChipArena.UnityConversion.Editor
         public static NativeBuildIdentity Package(string project,string player)
         {
             NativeTunnelBuild.Stage(project,player);
+            File.Copy(Path.Combine(project,"tools","brickfall-music-credits.txt"),Path.Combine(player,"Music-Credits.txt"),true);
             var identity=new NativeBuildIdentity{version=SourceHash(project),revision=DateTime.UtcNow.Ticks};
             File.WriteAllText(Path.Combine(player,NativeUpdateRules.IdentityFile),JsonUtility.ToJson(identity,true));
             string install=Path.GetDirectoryName(player);CompileLauncher(project,install);
