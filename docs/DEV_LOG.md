@@ -1,5 +1,13 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Claude — Melee Q/E ability kit proposal (handoff to Astra)
+- Owner request: overhaul the melee abilities so melee has Q and E like magic and ranged (creative but balanced, DEV classes excluded), plus a new block effect. Branch `claude/sleepy-ritchie-g8ruhv`, base `8ec9b04`. Docs only.
+- New `docs/MELEE-ABILITIES.md`: a Q and an E for each of sword, daggers, shield and greatsword, with numbers, counterplay, shared rules, the presentation contract (ability entries, replicated state, event details, block `guard`/`clash`/`deflect` details, melee Q input) and acceptance.
+  - Q is a gap closer or a way through fire: Flash Step, Shadow Step, Bulwark Charge, Earthsplitter. ABILITIES.md records melee bots losing about 100 % of cover duels.
+  - E evolves today's specials: Rising Dragon with the Skyfall recast, Kunai Mark with the teleport recast, Aegis Ricochet, Wolf Knight with super armour.
+- Split: Astra owns the simulation, bots, replication, input and tests. Claude owns animation (Explosive pack clips), VFX on the new effects renderer, the block effect, sound (owner-approved pack audio) and the HUD/ability cards.
+- Checks: documentation only; none run. Not merged or released. Next: owner review, then Astra implements the simulation side against the contract.
+
 ## 2026-10-11 — Astra — supported ground for isolated DEV combat validation
 - Owner's new log from shared `ec0c0583d88715a87a7ac41b6aa24b47ab1c40b3` passes **all real Unity locomotion gates**, including every authored ramp variant/Brickfall flight and host/guest wall/ceiling/ledge checks. It also passes account, Siren PvP audio, codec and JsonUtility/replay checks, then fails `Native DEV combat: held E resumes after hook` before player packaging.
 - Branch `codex/unity-combat-fixture-floor-20261011`, base `ec0c058`. The combat fixture teleports pilots to (1000,10,1000/1006), outside map geometry, and previously assigned Grounded=true by hand. GroundMotion correctly refreshed support at the new position, found none, and made the held-E ground-only wave unavailable after hook recovery. This is a fixture mismatch with the ground motor, not a reason to relax the ability's grounded restriction.
