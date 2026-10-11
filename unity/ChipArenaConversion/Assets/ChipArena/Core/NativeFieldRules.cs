@@ -7,9 +7,9 @@ namespace ChipArena.UnityConversion
     // authoritative field (position, gameplay radius, born/until) and nothing here feeds back into the match.
     // Owner request 2026-10-04: chip and ability areas are never outlined. An area reads through its volume (the
     // NativeBlastSim field emitters), an edge-less ground glow that fades to exactly 0 at the gameplay radius, the cores
-    // and the translucent domes. Coordinates and rotations are the source's numbers, as in NativeBlastSim: the converted
-    // maps keep them, so the drawn scene is the source's mirrored in Z exactly like the maps, and the source's
-    // counter-clockwise front faces are Unity's clockwise front faces.
+    // and the translucent domes. Owner 2026-10-11: no ground glow in mid-air (GlowShown). Coordinates and rotations are the
+    // source's numbers, as in NativeBlastSim: the converted maps keep them, so the drawn scene is the source's mirrored in Z
+    // exactly like the maps, and the source's counter-clockwise front faces are Unity's clockwise front faces.
 
     /// <summary>One opaque unlit core cube: centre, full edge lengths, rotation (three.js Euler XYZ as a quaternion), sRGB hex.</summary>
     public struct NativeFieldCube{public double X,Y,Z,Sx,Sy,Sz,Qx,Qy,Qz,Qw;public int Color;}
@@ -93,6 +93,16 @@ namespace ChipArena.UnityConversion
         /// <summary>The field group's base height: a body-centred point (y .85-.95) sits .7 lower, a floor point stays at .07.</summary>
         public static double Origin(double y)=>Math.Max(.07,y-.7);
         public static double GlowY(double y)=>Origin(y)+.03;
+        /// <summary>How far above NativeBlastSim.NearGround the glow disc fades out.</summary>
+        public const double GlowFade=.6;
+        /// <summary>
+        /// Beyond the source (owner 2026-10-11: an area indicator left by a wall hit "appears like a floating pancake"): the share
+        /// of a field's flat ground glow that shows, given the floor under the field (NativeBlastField.Floor). 1 while the field
+        /// is at most NearGround above that floor, as every field on the ground is (a floor point, a pilot's centre); fading to
+        /// 0 over GlowFade above that, so a field on a wall or a ceiling, over a pit, or riding a pilot high in the air draws
+        /// no disc in mid-air. Its volume, cores and domes still draw. floor null (no floor known): the source, always 1.
+        /// </summary>
+        public static double GlowShown(double y,double? floor)=>floor.HasValue?Math.Max(0,Math.Min(1,1-(y-floor.Value-NativeBlastSim.NearGround)/GlowFade)):1;
         public static NativeFieldLook LookOf(string kind,string fx)
         {
             if(kind=="black-hole")return NativeFieldLook.BlackHole;

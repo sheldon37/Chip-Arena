@@ -302,7 +302,8 @@ namespace ChipArena.UnityConversion
         // went to the shell, so every blast spawns as many voxels as the source's with its disc (and the lightning cut). Given the real floor
         // (NativeBlastPresentation raycasts it), a blast up to NearGround above it keeps the source's dome, and a wall, ceiling or
         // airburst blast is a sphere around its point: nothing starts under the floor or sinks into it, pieces land on the real
-        // floor, and nothing carries the source's assumed floor (y - .95). Rules, behaviour and source-text scans; returns the count.
+        // floor, and nothing carries the source's assumed floor (y - .95). The same holds for field arrivals and the Orbital Mark lock,
+        // and a field high above its floor draws no ground glow in mid-air. Rules, behaviour and source-text scans; returns the count.
         private static readonly NativeBlastStyle[] Falling={NativeBlastStyle.Fire,NativeBlastStyle.Mine,NativeBlastStyle.Meteor,NativeBlastStyle.Kinetic,NativeBlastStyle.Toxic,NativeBlastStyle.Quake};
         private static int NoAreaDisc(string root,JsonElement json)
         {
@@ -368,13 +369,49 @@ namespace ChipArena.UnityConversion
                 var sim=new NativeBlastSim();sim.Impact(1,y,-2,1.2,0x93db67,1,false,true,null,0);for(int i=0;i<steps;i++)sim.Update(Dt);
                 C(dome?Within(sim.Glow,1,.12,-2,1.2,.005)>=8:Within(sim.Glow,1,y,-2,1.2,.005)>=8&&Lower(sim.Glow,1,y,-2,1.2)>0,"ground impact at "+y+" m: "+(dome?"a dome on the floor":"a sphere around the point"));
             }
-            // Source text: no disc in the sim, the presentation passes the raycast floor to every blast and impact, and the fixture
-            // exporter applies the same cut.
+            // Fields placed on a wall hit (chip fields at the impact point, an Orbital Mark on a wall or an airborne target): given
+            // the view's floor, the arrival and lock impacts are a sphere around the field whose pieces carry the real floor (or
+            // none), nothing starts under it, and nothing rests on the source's floor .95 m under the field. Near the floor the
+            // arrival keeps its dome; without a floor (or given the source's own) the source runs voxel for voxel.
+            bool Above(NativeBlastSim sim,double floor,out double lowest){lowest=1e9;foreach(var pool in new[]{sim.Solid,sim.Glow})for(int i=0;i<pool.Count;i++){var p=pool.At(i);var m=pool.Motion(i);lowest=Math.Min(lowest,p.y);if(p.y<floor-1e-4||m.floor>-1e8&&(m.floor<floor-1e-6||m.floor>floor+.06))return false;}return true;}
+            var arrivals=new (string kind,string fx)[]{("acid","acid-rain"),("fire","wildfire"),("bomb","sticky-bomb"),("frost","blizzard"),("heal","med-garden"),("bomb","bubble-mine"),("bomb","delayed-gratification"),("bomb","aftershock"),("storm","lightning-rod"),("time","time-warp"),("repulsion","repulsion-pad"),("black-hole","black-hole"),("mine","proximity-mail")};
+            foreach(var (kind,fx) in arrivals)foreach(double R in new[]{2.5,3.5,5})foreach(double y in new[]{3.0,5})
+            {
+                var sim=new NativeBlastSim();var f=new NativeBlastField{Id=3,Kind=kind,Fx=fx,X=1,Y=y,Z=-2,Radius=R,Born=0,Until=4,Floor=0};sim.Field(f,0,1);string what=fx+" r"+R+" field on a wall "+y+" m up";
+                bool above=Above(sim,0,out double lowest);C(sim.Glow.Count>0&&above&&lowest>y-.2,what+": its arrival is a sphere around the field (lowest spawn "+lowest+" m), nothing on the assumed floor at "+(y-.95)+" m");
+                double low=1e9;for(int i=0;i<60;i++){sim.Update(Dt);foreach(var pool in new[]{sim.Solid,sim.Glow})for(int j=0;j<pool.Drawn;j++)low=Math.Min(low,pool.Output[j*NativeBlastPool.Stride+1]);}
+                C(low>=-1e-4,what+": nothing sinks under the floor");
+            }
+            foreach(double y in new[]{2.2,3.0,5})
+            {
+                var mark=new NativeBlastField{Id=9,Kind="bomb",Fx="orbital-mark",X=1,Y=y,Z=-2,Radius=3.5,Born=0,Until=2.5,LockAt=1.9,Floor=0};var sim=new NativeBlastSim();sim.Field(mark,1.9,1);
+                bool above=Above(sim,0,out double lowest);C(sim.Glow.Count>0&&above&&lowest>y-.2,"Orbital Mark locking "+y+" m up: a sphere around the mark (lowest spawn "+lowest+" m), nothing on the assumed floor at "+(y-.95)+" m");
+            }
+            {
+                var sim=new NativeBlastSim();sim.Field(new NativeBlastField{Id=4,Kind="acid",Fx="acid-rain",X=1,Y=.95,Z=-2,Radius=3,Born=0,Until=4,Floor=0},0,1);for(int i=0;i<steps;i++)sim.Update(Dt);
+                C(Within(sim.Glow,1,.12,-2,3,.005)>=8,"a field at a pilot's centre over the floor keeps the arrival dome on the floor");
+            }
+            foreach(var (kind,fx,y) in new[]{("acid","acid-rain",3.0),("bomb","sticky-bomb",.95),("fire","wildfire",.02),("bomb","orbital-mark",3.0)})
+            {
+                NativeBlastField F(double? floor)=>new NativeBlastField{Id=5,Kind=kind,Fx=fx,X=1,Y=y,Z=-2,Radius=3,Born=0,Until=2.5,LockAt=1.9,Floor=floor};
+                var a=new NativeBlastSim();var b=new NativeBlastSim();
+                for(int i=0;i<150;i++){double t=i*Dt;a.Field(F(null),t,1);b.Field(F(Math.Max(.03,y-.95)),t,1);a.Update(Dt);b.Update(Dt);}
+                C(Same(a,b),fx+" at "+y+" m: no floor is the source's, max(.03, y - .95)");
+            }
+            // The field's flat ground glow (NativeFieldRules.GlowShown): drawn as the source on the ground, gone in mid-air.
+            C(NativeFieldRules.GlowShown(.95,0)==1&&NativeFieldRules.GlowShown(.02,0)==1&&NativeFieldRules.GlowShown(NativeBlastSim.NearGround,0)==1&&NativeFieldRules.GlowShown(3,null)==1,"a field on the ground (or with no floor known) draws the source's glow");
+            C(NativeFieldRules.GlowShown(3,0)==0&&NativeFieldRules.GlowShown(2.2,0)==0&&NativeFieldRules.GlowShown(5,NativeBlastSim.NoFloor)==0&&NativeFieldRules.GlowShown(2.95,2)==1,"a field on a wall, over a pit or high in the air draws no glow disc; a raised floor counts");
+            {double last=1;bool down=true;for(double y=0;y<3;y+=.05){double g=NativeFieldRules.GlowShown(y,0);down&=g<=last+1e-12&&g>=0&&g<=1;last=g;}C(down&&Math.Abs(NativeFieldRules.GlowShown(NativeBlastSim.NearGround+NativeFieldRules.GlowFade/2,0)-.5)<1e-9,"the glow fades out smoothly with height");}
+            // Source text: no disc in the sim, the presentation passes the raycast floor to every blast and impact and every field
+            // view, and the fixture exporter applies the same cut.
             string Text(string file)=>File.ReadAllText(Path.Combine(root,file));
-            string blast=Text("Assets/ChipArena/Core/NativeBlastSim.cs"),present=Text("Assets/ChipArena/Runtime/NativeBlastPresentation.cs"),exporter=Text("tools/export_blast_fixtures.mjs");
+            string blast=Text("Assets/ChipArena/Core/NativeBlastSim.cs"),present=Text("Assets/ChipArena/Runtime/NativeBlastPresentation.cs"),exporter=Text("tools/export_blast_fixtures.mjs"),views=Text("Assets/ChipArena/Runtime/NativeFieldPresentation.cs");
             C(!blast.Contains("Ring(")&&!blast.Contains("if(ground){"),"NativeBlastSim draws no ground disc");
             bool all=true;int calls=0;foreach(var line in present.Split('\n'))if(line.Contains("sim.Blast(")||line.Contains("sim.Impact(")){calls++;all&=line.IndexOf("floor",StringComparison.OrdinalIgnoreCase)>=0;}
             C(calls>=6&&all&&present.Contains("plan[i].Floor=FloorUnder(")&&present.Contains("NativeArena.WorldMask")&&present.Contains("h.normal.y>.5f"),"every blast and impact the presentation draws gets the raycast floor ("+calls+" calls)");
+            int fieldViews=0;bool floored=true;foreach(var line in views.Split('\n'))if(line.Contains("new NativeBlastField{")){fieldViews++;floored&=line.Contains("Floor=FloorOf(");}
+            C(fieldViews==2&&floored&&views.Contains("NativeBlastPresentation.FloorUnder(physics,at,floorHits)")&&views.Contains("NativeFieldRules.GlowShown(v.Y,v.Floor)")&&present.Contains("sim.Field(views[i],now,quality);"),"every field view the emitters and glow read carries the raycast floor ("+fieldViews+" views)");
+            C(blast.Contains("Impact(ax,ay,az,R,pal.Core,q,false,true,pal.Cool,f.Floor)")&&blast.Contains("Impact(ax,ay,az,R,pal.Hot,q*.7,compat,true,pal.Cool,f.Floor)"),"the field arrival and Orbital Mark lock impacts take the view's floor");
             C(exporter.Contains("DISC_CUTS")&&exporter.Contains("disc:'2026-10-11'")&&exporter.Contains("for(let i=0,c=opts.ground?n(14)+n(26):n(20);i<c;i++)"),"the fixture exporter applies the same cut");
             return n;
         }

@@ -12,12 +12,15 @@ namespace ChipArena.UnityConversion
     // area effects (2026-10-10, NativeBlastSim.Lightning), and no flat area disc under blasts and impacts (2026-10-11: on a
     // wall it read as "a floating pancake"; its voxels go to the shell, NativeBlastSim.Blast). tools/export_blast_fixtures.mjs
     // applies the same cuts to the source before it records the parity frames. Also beyond the source: callers may pass the
-    // real floor under a blast (NativeBlastPresentation raycasts it). The source assumes every blast is at a pilot's chest
-    // and puts its floor .95 m lower, which is still the default.
+    // real floor under a blast, impact or field (NativeBlastPresentation and NativeFieldPresentation raycast it). The source
+    // assumes every blast is at a pilot's chest and puts its floor .95 m lower, which is still the default.
     public enum NativeBlastStyle{Fire,Shock,Implosion,Frost,Toxic,Void,Nova,Kinetic,Quake,Meteor,Mine}
     public struct NativeBlastTint{public int Core,Hot,Cool;public NativeBlastTint(int core,int hot,int cool){Core=core;Hot=hot;Cool=cool;}}
-    /// <summary>A live authoritative field as the source's FieldView presents it (chip fields and ability zones).</summary>
-    public struct NativeBlastField{public long Id;public string Kind,Fx;public double X,Y,Z,Radius,Born,Until;public double? LockAt;}
+    /// <summary>A live authoritative field as the source's FieldView presents it (chip fields and ability zones). Floor, beyond
+    /// the source: the floor height under the field (NativeFieldPresentation raycasts it; NativeBlastSim.NoFloor for none), which
+    /// its arrival and Orbital Mark lock impacts sit on (NativeBlastSim.Field) and which hides its glow disc when the field is
+    /// high above it (NativeFieldRules.GlowShown). Null keeps the source's floor .95 m under the field.</summary>
+    public struct NativeBlastField{public long Id;public string Kind,Fx;public double X,Y,Z,Radius,Born,Until;public double? LockAt,Floor;}
     /// <summary>One pooled point light. Intensity and Distance are three.js PointLight values (decay 2).</summary>
     public sealed class NativeBlastFlash{public double X,Y,Z,Distance=8,At=-1e9,Peak,Life=.3,Intensity;public int Color=0xffffff;}
 
@@ -354,7 +357,10 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>
         /// Ambient emitters for a live authoritative field: telegraph motes inside the gameplay radius, an arrival impact
-        /// sized to it (source §19.2) and the §13.1 ability emitters. Rate-limited per field and by quality.
+        /// sized to it (source §19.2) and the §13.1 ability emitters. Rate-limited per field and by quality. The arrival and the
+        /// Orbital Mark lock impacts take f.Floor (Impact: a dome on the floor, or a sphere when the field sits on a wall or in
+        /// the air, its debris landing on that floor); without one they keep the source's floor. The emitters stay on the
+        /// source's floor under the field.
         /// </summary>
         public void Field(NativeBlastField f,double time,double quality,bool compat=false)
         {
@@ -363,12 +369,12 @@ namespace ChipArena.UnityConversion
             double R=f.Radius,ground=Math.Max(.03,f.Y-.95),ax=f.X,ay=ground+.95,az=f.Z,lockAt=f.LockAt??1e9;
             var style=kind=="bomb"||kind=="mine"?StyleOf(fx.Length>0?fx:kind):kind=="storm"?NativeBlastStyle.Shock:kind=="acid"||kind=="heal"?NativeBlastStyle.Toxic:kind=="frost"||kind=="time"?NativeBlastStyle.Frost:kind=="implosion"||fx=="singularity"?NativeBlastStyle.Implosion:kind=="black-hole"?NativeBlastStyle.Void:kind=="repulsion"?NativeBlastStyle.Mine:NativeBlastStyle.Fire;
             var pal=Colors(style,TintOf(fx));
-            if(fx=="orbital-mark"&&time>=lockAt&&!locked.Contains(f.Id)){locked.Add(f.Id);Impact(ax,ay,az,R,pal.Core,q,false,true,pal.Cool);Flash(ax,ay,az,pal.Hot,R,8,.3,compat,q);}
+            if(fx=="orbital-mark"&&time>=lockAt&&!locked.Contains(f.Id)){locked.Add(f.Id);Impact(ax,ay,az,R,pal.Core,q,false,true,pal.Cool,f.Floor);Flash(ax,ay,az,pal.Hot,R,8,.3,compat,q);}
             bool known=fieldClock.TryGetValue(f.Id,out double last);
             if(!known||time<last)
             {
                 fieldClock[f.Id]=time;
-                if(!known&&!fused&&time-f.Born<.3){if(kind=="implosion")Inward(ax,ay,az,R,4+(int)Round(24*q),pal.Hot,pal.Core,.5,0,.3);else Impact(ax,ay,az,R,pal.Hot,q*.7,compat,true,pal.Cool);}
+                if(!known&&!fused&&time-f.Born<.3){if(kind=="implosion")Inward(ax,ay,az,R,4+(int)Round(24*q),pal.Hot,pal.Core,.5,0,.3);else Impact(ax,ay,az,R,pal.Hot,q*.7,compat,true,pal.Cool,f.Floor);}
                 return;
             }
             int due=(int)Math.Min(6,Math.Floor((time-last)*rate*q));if(due<=0)return;fieldClock[f.Id]=last+due/(rate*q);

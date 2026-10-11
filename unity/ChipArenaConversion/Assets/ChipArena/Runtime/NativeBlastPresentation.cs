@@ -11,8 +11,9 @@ namespace ChipArena.UnityConversion
     // shots and the event stream. The event stream also feeds the source's event-vfx.ts draws (NativeImpactCues): voxel
     // spark bursts and lit streaks into the projectile visuals' BurstPool port (Sparks), impacts, lines and paddles here.
     // The Siren's own attack records are not blasts in the source (siren/fx.ts, NativeDevEffects) and draw nothing here.
-    // Every blast and impact gets the real floor under it (FloorUnder; owner 2026-10-11: no flat area disc, so a wall, ceiling
-    // or airburst hit is a sphere whose pieces fall to that floor). Cosmetic only; nothing here touches the match.
+    // Every blast and impact, field arrivals included, gets the real floor under it (FloorUnder; owner 2026-10-11: no flat area
+    // disc, so a wall, ceiling or airburst hit is a sphere whose pieces fall to that floor). Cosmetic only; nothing here touches
+    // the match.
     public sealed class NativeBlastPresentation : IDisposable
     {
         private sealed class Layer
@@ -150,15 +151,19 @@ namespace ChipArena.UnityConversion
                 }
             }
         }
-        // The floor under a blast or impact for NativeBlastSim: the nearest upward-facing world surface straight below the point,
-        // cast from just above it so a hit on the floor finds that floor (a wall face or a ceiling above is never taken).
-        // NoFloor over a pit or the sky; null (the source's y - .95) without a physics scene.
-        private double? FloorUnder(Vector3 at)
+        // The floor under a blast or impact; null (the source's y - .95) without a physics scene.
+        private double? FloorUnder(Vector3 at)=>world?FloorUnder(physics,at,floorHits):(double?)null;
+        /// <summary>The arena's physics scene; false when it has none (nothing for FloorUnder to cast against).</summary>
+        internal static bool World(NativeArena arena,out PhysicsScene physics)
+        {physics=arena.Root!=null?arena.Root.scene.GetPhysicsScene():default;return arena.Root!=null&&physics.IsValid();}
+        /// <summary>The floor under a point for NativeBlastSim (blasts, impacts, field views): the nearest upward-facing world
+        /// surface straight below it, cast from just above it so a hit on the floor finds that floor (a wall face or a ceiling
+        /// above is never taken). NativeBlastSim.NoFloor over a pit or the sky. hits: a reused buffer.</summary>
+        internal static double FloorUnder(PhysicsScene physics,Vector3 at,RaycastHit[] hits)
         {
-            if(!world)return null;
-            int n=physics.Raycast(at+Vector3.up*FloorLift,Vector3.down,floorHits,FloorReach+FloorLift,NativeArena.WorldMask,QueryTriggerInteraction.Ignore);
+            int n=physics.Raycast(at+Vector3.up*FloorLift,Vector3.down,hits,FloorReach+FloorLift,NativeArena.WorldMask,QueryTriggerInteraction.Ignore);
             float best=float.MaxValue;double floor=NativeBlastSim.NoFloor;
-            for(int i=0;i<n&&i<floorHits.Length;i++){var h=floorHits[i];if(h.normal.y>.5f&&h.distance>1e-3f&&h.distance<best){best=h.distance;floor=h.point.y;}}
+            for(int i=0;i<n&&i<hits.Length;i++){var h=hits[i];if(h.normal.y>.5f&&h.distance>1e-3f&&h.distance<best){best=h.distance;floor=h.point.y;}}
             return floor;
         }
         // Runs a plan of source draws; its impacts first get the floor under them.
@@ -205,9 +210,10 @@ namespace ChipArena.UnityConversion
             int rose=spikeRises.Step(arena.MapId,match.Phase==NativePhase.Fight&&match.Time-match.FightAt>=2,match.Time);
             for(int bed=0;rose!=0&&bed<NativeSpikeRises.Beds;bed++)if((rose&1<<bed)!=0){int count=NativeImpactCues.SpikeRise(NativeSpikeRises.Position(bed),plan);Run(count,quality);}
         }
-        // The field views (chip fields and ability zones: key, fx, birth) are built once per frame by NativeFieldPresentation,
-        // which draws their glow, cores and domes from the same views. The emitters run on the views' clock (fields.Clock:
-        // continuous on guests), so births and emission stay in step with the telegraphs.
+        // The field views (chip fields and ability zones: key, fx, birth, the raycast floor under them) are built once per frame
+        // by NativeFieldPresentation, which draws their glow, cores and domes from the same views. The emitters run on the views'
+        // clock (fields.Clock: continuous on guests), so births and emission stay in step with the telegraphs; the arrival and
+        // Orbital Mark lock impacts sit on the view's floor.
         private void Fields(NativeFieldPresentation fields,double quality)
         {
             if(fields==null)return;var views=fields.Views;double now=fields.Clock;
@@ -222,7 +228,7 @@ namespace ChipArena.UnityConversion
             // A rewind (killcam, new round) clears.
             if(generation!=arena.Generation||now<lastTime-.25f){Clear();generation=arena.Generation;}
             lastTime=Math.Max(lastTime,now);double dt=NativeBlastFrame.Step(Time.unscaledDeltaTime,paused);
-            world=arena.Root!=null;physics=world?arena.Root.scene.GetPhysicsScene():default;world&=physics.IsValid();
+            world=World(arena,out physics);
             double q=Math.Max(0,Math.Min(1,quality));
             // Source renderer order: event blasts, then fields(state), then update(dt), then draw.
             Remember(arena,fields);Effects(arena,now,q);Impacts(arena,now,q);SpikeRises(arena,q);Fields(fields,q);sim.Update(dt);
