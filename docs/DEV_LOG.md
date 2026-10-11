@@ -1,5 +1,26 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Claude — Effects overhaul milestone 1: match-camera bloom
+- Branch `claude/fx-bloom` from `2bcb646`; implemented on the branch only (not merged, not published). Bloom part of the owner's effects overhaul; the particle-role renderer and the field glow-disc removal are a parallel branch.
+- New `Runtime/NativeBloom.cs`, `Resources/NativeBloom.shader` and `Core/NativeBloomRules.cs`. This is a post effect on the match camera: OnRenderImage -> Graphics.Blit only, no command buffer.
+  - The chain: a 13-tap prefilter to half size, 6 levels down to 1/64, accumulating 9-tap tent ups and an additive composite. All passes are linear HDR on ARGBHalf temporaries, released in the same frame.
+  - Parameters: threshold 1 with a .5 soft knee (exactly 0 at or below linear 1), firefly clamp 10, intensity .4.
+  - Second-texture v flips when the source is stored top-down. The per-pixel maths sits in a GLSL-compatible SHARED BEGIN/END block.
+- The match camera sets `allowHDR=true` explicitly (the Unity default it already relied on). The bloom is attached when the camera is created, so it is always the first image effect.
+  - The damage screen's image effect is added later and runs after it: behind it on the same camera, or on the view-model camera, which renders later.
+  - IMGUI draws after all cameras, so the HUD and menus never bloom. The portrait, victim-screen and view-model cameras do not bloom.
+- Quality: ApplySettings disables the bloom on the low graphics tier and scales it x.6 with Reduced effects. It has no saved preference of its own. The shader is registered in NativeBuildChecks.
+- No gameplay, network, hit timing, hitbox, cooldown or movement change.
+- Checks:
+  - `unity-check.sh`: runtime+editor build OK.
+  - `check_relay.py`: 320 PASS, 0 FAIL, including the new `Tests/BloomChecks.cs`.
+  - Python: 75 tests OK, 1 skipped.
+  - `package_source.py`: passed.
+  - `git diff --check`: clean.
+  - The shader passes an HLSL front-end check (glslang, all 4 passes). Its shared block compiles as GLSL ES 3.00 and was run through the full chain on a synthetic HDR frame: grid lines at 1.0 gain 5e-5.
+- Not run: Unity import/compile of the shader, D3D11 orientation with MSAA, real-scene look and cost, Windows build.
+- Next: tune Intensity/Knee in NativeBloomRules against the new HDR effect values once the role renderer lands.
+
 ## 2026-10-11 — Astra — Brickfall simulation/presentation connected for owner build
 - Owner explicitly requested connecting the work and pushing the update for a local build. Task branch `codex/unity-brickfall-integration-20261011`, shared base `beaacc7332f9aefddd0ce046923523870b9c0f33`; merges PR #109 simulation `8c0094060181156ec7578676d4ea1f2faca57d93`. Both agents' DEV_LOG entries and Claude's replicated possession timestamp are preserved. Shared/build destinations: `claude/sleepy-ritchie-g8ruhv` and `codex/unity-cloud-current` (fast-forward, no force).
 - Connected StructureStress/Fall/Land to Claude's VFX, ambience/dust hooks and audio; reconstructed active warnings from replicated schedules for join/reconnect/replay. Authored crush + sweep bounds cover the hazard; all ten queued warnings retain their actual time until fall. Increased the fixed record capacity to avoid evicting concurrent warnings, keeping existing draw/puff budgets.
