@@ -73,7 +73,7 @@ namespace ChipArena.UnityConversion
             linear=QualitySettings.activeColorSpace==ColorSpace.Linear;
             material=new Material(shader);root=new GameObject("Native combat light pool");root.transform.SetParent(parent,false);
             void Create(Light[] pool,string name)
-            {for(int i=0;i<pool.Length;i++){var go=new GameObject(name+" "+i);go.transform.SetParent(root.transform,false);var light=go.AddComponent<Light>();light.type=LightType.Point;light.shadows=LightShadows.None;light.renderMode=LightRenderMode.ForcePixel;light.cullingMask=~(1<<10);light.enabled=false;pool[i]=light;}}
+            {for(int i=0;i<pool.Length;i++){var go=new GameObject(name+" "+i);go.transform.SetParent(root.transform,false);var light=go.AddComponent<Light>();light.type=LightType.Point;light.shadows=LightShadows.None;light.renderMode=LightRenderMode.ForcePixel;light.cullingMask=~(1<<10|1<<NativeSceneryBuilder.BackdropLayer);light.enabled=false;pool[i]=light;}}
             Create(projectileLights,"Projectile spill");Create(impactLights,"Impact spill");Create(armorLights,"Armor spill");
         }
         private static Color Tint(int value)=>NativeArena.ColorOf(value);

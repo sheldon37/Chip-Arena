@@ -227,7 +227,7 @@ namespace ChipArena.UnityConversion
             if(seekerLights==null)
             {
                 seekerLights=new Light[NativeSeekerLight.Cap];var root=new GameObject("Native seeker light pool");root.transform.SetParent(transform,false);
-                for(int i=0;i<seekerLights.Length;i++){var go=new GameObject("Seeker light "+i);go.transform.SetParent(root.transform,false);var l=go.AddComponent<Light>();l.type=LightType.Point;l.shadows=LightShadows.None;l.renderMode=LightRenderMode.ForcePixel;l.cullingMask=~(1<<10);l.color=NativeArena.ColorOf(NativeSeekerLight.Color);l.range=(float)NativeSeekerLight.Distance;l.enabled=false;seekerLights[i]=l;}
+                for(int i=0;i<seekerLights.Length;i++){var go=new GameObject("Seeker light "+i);go.transform.SetParent(root.transform,false);var l=go.AddComponent<Light>();l.type=LightType.Point;l.shadows=LightShadows.None;l.renderMode=LightRenderMode.ForcePixel;l.cullingMask=~(1<<10|1<<NativeSceneryBuilder.BackdropLayer);l.color=NativeArena.ColorOf(NativeSeekerLight.Color);l.range=(float)NativeSeekerLight.Distance;l.enabled=false;seekerLights[i]=l;}
             }
             var light=seekerLights[index];if(light==null)return;light.transform.position=at;light.intensity=NativeBlastSim.UnityLightIntensity(NativeSeekerLight.Intensity(now));light.enabled=true;
         }

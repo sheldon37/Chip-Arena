@@ -50,7 +50,7 @@ namespace ChipArena.UnityConversion
             additive.SetFloat("_Src",(float)BlendMode.SrcAlpha);additive.SetFloat("_Dst",(float)BlendMode.One);additive.SetFloat("_ZWrite",0);additive.SetFloat("_Additive",1);
             solid=new Layer("Native blast voxels",opaque);glow=new Layer("Native blast glow",additive);
             root=new GameObject("Native blast light pool");root.transform.SetParent(parent,false);
-            for(int i=0;i<lights.Length;i++){var go=new GameObject("Blast flash "+i);go.transform.SetParent(root.transform,false);var light=go.AddComponent<Light>();light.type=LightType.Point;light.shadows=LightShadows.None;light.renderMode=LightRenderMode.ForcePixel;light.cullingMask=~(1<<10);light.enabled=false;lights[i]=light;}
+            for(int i=0;i<lights.Length;i++){var go=new GameObject("Blast flash "+i);go.transform.SetParent(root.transform,false);var light=go.AddComponent<Light>();light.type=LightType.Point;light.shadows=LightShadows.None;light.renderMode=LightRenderMode.ForcePixel;light.cullingMask=~(1<<10|1<<NativeSceneryBuilder.BackdropLayer);light.enabled=false;lights[i]=light;}
         }
         public void Clear()
         {
