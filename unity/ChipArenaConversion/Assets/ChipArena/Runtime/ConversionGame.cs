@@ -189,8 +189,11 @@ namespace ChipArena.UnityConversion
             // C16: the Last Laugh cutscene directs this camera for the pilots in it (the demon victim screen has its own).
             if(cinematic.Direct(arena,presentation,cameraView,match.Phase==NativePhase.Fight||match.Phase==NativePhase.Result)){viewModelCamera.enabled=false;return;}
             var p=Spectator??arena.ViewPilot;Vector3 focus=p.Body.transform.position+Vector3.up*NativeViewRules.EyeHeight;var ads=content.Ads(p.Seat.spec);
-            bool aim=ads!=null&&pending.Aim&&arena.Time>=p.ReloadEnd&&arena.Time>=p.RollEnd&&arena.Time>=p.BlockEnd&&!arena.Incapacitated(p);
-            bool first=NativeViewRules.FirstPerson(prefs.firstPerson||aim,arena.Local.Hp>0&&p.Hp>0&&!arena.Downed(p),menu);
+            // Camera intent survives stagger/knockdown. The simulation independently gates ADS benefits and shots.
+            bool alive=arena.Local.Hp>0&&p.Hp>0;
+            bool aim=ads!=null&&pending.Aim&&alive&&!menu;
+            // ArenaPresentation.Render already hides the viewed pilot's world body in first person.
+            bool first=NativeViewRules.FirstPerson(prefs.firstPerson||aim,alive,menu);
             cameraView.fieldOfView=Mathf.Lerp(cameraView.fieldOfView,aim?(float)ads.fov:first?NativeViewRules.FirstFov:NativeViewRules.ThirdFov,1-Mathf.Exp(-16*Time.unscaledDeltaTime));
             Quaternion rotation=Quaternion.Euler(pitch,yaw,0);Vector3 location=focus;
             if(!first)

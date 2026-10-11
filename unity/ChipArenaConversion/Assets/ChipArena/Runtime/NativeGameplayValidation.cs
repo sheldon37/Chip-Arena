@@ -97,9 +97,43 @@ namespace ChipArena.UnityConversion
                 PveHoldTick(Pve.HoldLeft+.001f);Check(!IntroStartsBossSong&&Math.Abs(BossSongTime-Pve.HoldDuration)<.0001,"song continues after intro");
                 guest.ApplyFrame(NativeFrameCodec.Clone(NetworkFrame()),LocalId);
                 Check(!guest.IntroStartsBossSong&&Math.Abs(guest.BossSongTime-BossSongTime)<.0001,"guest song continues after intro");
+                ValidatePossessionReplication(guest);
             }
             finally{guest.Dispose();}
             Debug.Log("PASS Siren PvE audio origins: real held-intro start/tick/finish and guest frame application share one continuous song clock");
+        }
+        private void ValidatePossessionReplication(NativeArena guest)
+        {
+            void Check(bool ok,string message){if(!ok)throw new Exception("Possession replication: "+message);}
+            var add=SpawnPveAdd("shambler",true);Check(add!=null,"spawn fixture");
+            try
+            {
+                add.Pve.Possessed=true;add.Pve.PossessedAt=Time;float started=Time;
+                // Late observation must retain the host's start, rather than restart the hints locally.
+                for(int tick=0;tick<144;tick++)Match.Tick(.25);
+                var frame=NetworkFrame();Check(frame.Valid(Content),"authority frame invalid");
+                var wire=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",frame=frame})).frame;
+                var replay=NativeFrameCodec.Clone(wire);
+                foreach(var observed in new[]{wire,replay})
+                {
+                    Check(observed.Valid(Content),"codec frame invalid");guest.ApplyFrame(observed,LocalId);
+                    var remote=guest.Minions.Single(m=>m.Id==add.Id);
+                    Check(remote.Pve!=null&&remote.Pve.Possessed&&remote.Pve.PossessedAt==started,"guest/replay lost possession start");
+                    Check(Math.Abs((guest.Time-remote.Pve.PossessedAt)-(Time-started))<.0001,"late guest possession age differs");
+                }
+                foreach(float invalid in new[]{float.NaN,float.PositiveInfinity,float.NegativeInfinity,-1f})
+                {
+                    var bad=NativeFrameCodec.Clone(frame);bad.minions.Single(m=>m.id==add.Id).possessedAt=invalid;
+                    Check(!bad.Valid(Content),"invalid possession timestamp accepted");
+                }
+                add.Pve.Possessed=false;add.Pve.PossessedAt=0;
+                guest.ApplyFrame(NativeFrameCodec.Clone(NetworkFrame()),LocalId);
+                var cleared=guest.Minions.Single(m=>m.Id==add.Id).Pve;
+                Check(!cleared.Possessed&&cleared.PossessedAt==0,"stale possession survived next frame");
+                Check(JsonUtility.FromJson<NativeMinionFrame>("{\"possessed\":true}").possessedAt==0,"older frame default changed");
+                Debug.Log("PASS possession timestamp: authority capture, real network codec, replay clone, late guest age, clearing and invalid timestamp rejection");
+            }
+            finally{RemoveMinion(add,false);}
         }
         private void ValidatePveBotCombat()
         {
