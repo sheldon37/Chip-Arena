@@ -1,5 +1,10 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Claude — rim light no longer keeps the chip-draft angle
+- Owner report: after the first chip draft the arena's rim light stayed at the draft stage's angle. Branch `claude/rim-fix`, base `096bb80`.
+- Cause: `NativeLighting.Draft` turned the rim to (15,35,0) and also wrote that into `rimHome`, the direction `Apply` restores for looks without a rim aim, so every later match kept the draft angle. Now only `Create` writes `rimHome`; the draft still turns the rim for its own stage and `EndIntro`/`Apply` put it back on (14,7,12), as Electron does. Looks with a `RimAim` (Brickfall) were never affected.
+- Affected: lighting only (no gameplay, timing, networking or saves). Checks: Unity source check OK; 340 managed/relay PASS, no FAIL; 82 Python tests OK (1 skip); source package built; diff check clean. Not run: Windows build and an in-game look.
+
 ## 2026-10-11 — Astra — automatic Cloudflare rooms (owner-selected free option)
 - Owner selected Cloudflare instead of Render and requested the test Update release. Branch `codex/unity-cloudflare-rooms-20261011`, base PR #118 `883a937` (shared sound-bank base `9667065`). Supersedes the earlier shared-service deployment plan; no Render service or paid plan is needed or provisioned.
 - Default Online Create launches the existing pinned cloudflared 2026.9.3 connector automatically, pointing TCP-over-WebSocket at a loopback-only native listener. Guests look up six-character codes through the existing Site directory using an internal `UN` prefix, preserving its eight-character API and all Electron/account records. The authority stays in the host Unity process. No Site deployment, schema migration, router setup, account-service changes or simulation/animation changes.

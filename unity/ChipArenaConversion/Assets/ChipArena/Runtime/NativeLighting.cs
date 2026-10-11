@@ -9,9 +9,9 @@ namespace ChipArena.UnityConversion
     {
         private static Material sky;private static Light moon,rim;private static bool introActive;private static readonly List<Light> stageLights=new List<Light>();
         // Per-map looks (Resources/MapLooks.json, Core/NativeMapLooks.cs): the one Apply last used, and the low graphics tier's
-        // shadow fallback. The rim's own direction (`rimFrom`/`rimHome`): Create aims it from (14,7,12); the draft stage turns
-        // it and nothing ever turned it back, so a look without a rim direction keeps whichever of the two came last, exactly
-        // as before the looks moved into data (Electron keeps (14,7,12) throughout; changing that is the owner's call).
+        // shadow fallback. The rim's own direction (`rimFrom`/`rimHome`): Create aims it from (14,7,12) and only Create writes
+        // it. The draft stage turns the rim for itself, and Apply puts a look without a rim direction back on (14,7,12), so the
+        // rim no longer keeps the draft's angle after the first draft (owner fix, as Electron keeps (14,7,12) throughout).
         private static MapLookSet looks;private static MapLook current;private static bool lowShadows;private static Vector3 rimFrom;private static Quaternion rimHome=Quaternion.identity;
         // What Apply writes for the current look (Core NativeMapLooks.Applied, the mapping MapLookChecks compares to the frozen
         // ce3c506 oracle), and the fog an entrance or the draft stage found when it took the screen (EndIntro gives it back).
@@ -51,7 +51,7 @@ namespace ChipArena.UnityConversion
         // (Brickfall's linear fog, 4 cascades, .85 key) never reaches it; on every old map those are the values it had, but for
         // the fog colour, which was the map's and now is the draft's backdrop (nothing the draft draws lies beyond the 30 m start).
         public static void Draft(Camera camera,Color tint,float flash=0)
-        {EnterStage();foreach(var light in stageLights)if(light!=null)light.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=C(NativeMapLooks.DraftBackground);RenderSettings.skybox=null;WriteFog(NativeMapLooks.DraftFog);StageShadows();Ambient();if(moon!=null){moon.enabled=true;moon.color=new Color(.8f,.88f,1);moon.intensity=1.4f;moon.transform.rotation=Quaternion.Euler(35,-145,0);moon.shadows=LightShadowsOf(NativeMapLooks.StageKeyShadows);moon.shadowStrength=NativeMapLooks.StageShadowStrength;}if(rim!=null){rim.enabled=true;rim.color=tint;rim.intensity=1.2f+1.6f*Mathf.Clamp01(flash);rim.transform.rotation=Quaternion.Euler(15,35,0);rimHome=rim.transform.rotation;}}
+        {EnterStage();foreach(var light in stageLights)if(light!=null)light.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=C(NativeMapLooks.DraftBackground);RenderSettings.skybox=null;WriteFog(NativeMapLooks.DraftFog);StageShadows();Ambient();if(moon!=null){moon.enabled=true;moon.color=new Color(.8f,.88f,1);moon.intensity=1.4f;moon.transform.rotation=Quaternion.Euler(35,-145,0);moon.shadows=LightShadowsOf(NativeMapLooks.StageKeyShadows);moon.shadowStrength=NativeMapLooks.StageShadowStrength;}if(rim!=null){rim.enabled=true;rim.color=tint;rim.intensity=1.2f+1.6f*Mathf.Clamp01(flash);rim.transform.rotation=Quaternion.Euler(15,35,0);}}
         private static void Ambient(){RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=NativeArena.ColorOf(0x92b4f0)*.48f;RenderSettings.ambientEquatorColor=NativeArena.ColorOf(0x9aaccd)*.27f;RenderSettings.ambientGroundColor=NativeArena.ColorOf(0x171320)*.48f;}
         // An entrance stage from the scene bank (NativeSceneMotion): three's linear backdrop, fog and lights. Colours go to sRGB
         // (Unity linearises them in Linear space); directional lights become Unity lights through NativeEntranceLight, so the
