@@ -139,7 +139,7 @@ namespace ChipArena.UnityConversion.Editor
     }
 
     // Protect builds started from the standard Build Profiles window as well as our build menu.
-    public sealed class PrototypeRenderingBuildGuard : IPreprocessBuildWithReport
+    public sealed class PrototypeRenderingBuildGuard : IPreprocessBuildWithReport,IPostprocessBuildWithReport
     {
         public int callbackOrder => -1000;
         public void OnPreprocessBuild(BuildReport report)
@@ -147,6 +147,11 @@ namespace ChipArena.UnityConversion.Editor
             PrototypeBuild.ConfigureRendering();
             AssetDatabase.SaveAssets();
             Debug.Log("UNITY_INSTANCING_VARIANTS: Keep All (runtime actor/projectile rendering)");
+        }
+        public void OnPostprocessBuild(BuildReport report)
+        {
+            if(report.summary.platform==BuildTarget.StandaloneWindows64)
+                NativeTunnelBuild.Stage(Path.GetFullPath(Path.Combine(Application.dataPath,"..")),Path.GetDirectoryName(report.summary.outputPath));
         }
     }
 }

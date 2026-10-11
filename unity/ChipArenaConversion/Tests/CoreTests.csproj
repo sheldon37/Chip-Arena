@@ -9,4 +9,5 @@
     <EnableNETAnalyzers>false</EnableNETAnalyzers>
   </PropertyGroup>
   <ItemGroup><Compile Include="../Assets/ChipArena/Core/*.cs" /></ItemGroup>
+  <ItemGroup><Compile Include="../Assets/ChipArena/Editor/NativeTunnelBuild.cs" /></ItemGroup>
 </Project>

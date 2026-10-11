@@ -66,7 +66,7 @@ namespace ChipArena.UnityConversion
     {
         private readonly TcpListener listener;private readonly CancellationTokenSource stop=new CancellationTokenSource();private readonly Task loop;
         public readonly ConcurrentQueue<NativeConnection> Accepted=new ConcurrentQueue<NativeConnection>();public int Port=>((IPEndPoint)listener.LocalEndpoint).Port;
-        public NativeListener(int port){listener=new TcpListener(IPAddress.Any,port);listener.Start(16);loop=Task.Run(Accept);}
+        public NativeListener(int port,bool loopbackOnly=false){listener=new TcpListener(loopbackOnly?IPAddress.Loopback:IPAddress.Any,port);listener.Start(16);loop=Task.Run(Accept);}
         private async Task Accept(){try{while(!stop.IsCancellationRequested){var socket=await listener.AcceptTcpClientAsync().ConfigureAwait(false);if(Accepted.Count>=16){socket.Close();continue;}Accepted.Enqueue(new NativeConnection(socket,32768));}}catch(ObjectDisposedException){}catch(SocketException){}}
         public void Dispose(){stop.Cancel();listener.Stop();while(Accepted.TryDequeue(out var c))c.Dispose();}
     }

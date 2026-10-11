@@ -20,10 +20,11 @@ namespace ChipArena.UnityConversion
         public override async Task WriteAsync(byte[] buffer,int offset,int count,CancellationToken token)=>await socket.SendAsync(new ArraySegment<byte>(buffer,offset,count),WebSocketMessageType.Binary,true,token);
         protected override void Dispose(bool disposing){if(disposing)socket.Dispose();base.Dispose(disposing);}public override bool CanRead=>true;public override bool CanWrite=>true;public override bool CanSeek=>false;public override long Length=>throw new NotSupportedException();public override long Position{get=>throw new NotSupportedException();set=>throw new NotSupportedException();}public override void Flush(){}public override int Read(byte[] b,int o,int n)=>throw new NotSupportedException();public override void Write(byte[] b,int o,int n)=>throw new NotSupportedException();public override long Seek(long a,SeekOrigin b)=>throw new NotSupportedException();public override void SetLength(long n)=>throw new NotSupportedException();
     }
-    public sealed class NativeRelayHost:IDisposable
+    public sealed class NativeRelayHost:INativeOnlineHost
     {
         private readonly ClientWebSocket control;private readonly CancellationTokenSource stop;private readonly string origin,secret;private readonly Task loop,heartbeat;private int accepting,disposed;
         public readonly ConcurrentQueue<NativeConnection> Accepted=new ConcurrentQueue<NativeConnection>();public string Room{get;}public string Error{get;private set;}public bool Closed=>stop.IsCancellationRequested;
+        ConcurrentQueue<NativeConnection> INativeOnlineHost.Accepted=>Accepted;
         private NativeRelayHost(ClientWebSocket socket,CancellationTokenSource cancellation,string origin,string room,string secret){control=socket;stop=cancellation;this.origin=origin;Room=room;this.secret=secret;loop=Task.Run(Listen);heartbeat=Task.Run(Heartbeat);}
         public static async Task<NativeRelayHost> Host(string origin,string source,string name,bool listed,CancellationToken cancellation)
         {

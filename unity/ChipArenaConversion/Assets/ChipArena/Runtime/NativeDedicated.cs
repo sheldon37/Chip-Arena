@@ -9,13 +9,15 @@ namespace ChipArena.UnityConversion
         private bool dedicated;private int dedicatedMinimum=2;private float dedicatedEmptyAt=-1;private string dedicatedPrinted="";
         private bool InitializeDedicated()
         {
-            string[] args=Environment.GetCommandLineArgs();if(!args.Contains("--ca-server"))return false;dedicated=true;
+            string[] args=Environment.GetCommandLineArgs();
             string Option(string name,string fallback){int at=Array.IndexOf(args,name);return at>=0&&at+1<args.Length?args[at+1]:fallback;}
+            relayOverride=Option("--ca-relay","");if(UseManagedRelay)NativeWebSocketStream.Endpoint(relayOverride,"health");
+            if(!args.Contains("--ca-server"))return false;dedicated=true;
             prefs=new ConversionPreferences{name="Dedicated server",pve=args.Contains("--ca-pve"),map=Option("--ca-map","foundry"),bots=0};if(prefs.pve)prefs.map="siren";content.Map(prefs.map);
             if(!int.TryParse(Option("--ca-bots","0"),out prefs.bots)||prefs.bots<0||prefs.bots>7)throw new ArgumentException("--ca-bots must be 0–7");if(!int.TryParse(Option("--ca-min-players",prefs.pve||prefs.bots>0?"1":"2"),out dedicatedMinimum)||dedicatedMinimum<1||dedicatedMinimum>(prefs.pve?4:8))throw new ArgumentException("Invalid --ca-min-players");
             if(!prefs.pve&&prefs.bots==0&&dedicatedMinimum<2)throw new ArgumentException("Versus needs at least two players or a bot.");
             account=gameObject.AddComponent<NativeAccount>();Application.runInBackground=true;Application.targetFrameRate=60;QualitySettings.vSyncCount=0;Time.fixedDeltaTime=1f/60;Time.maximumDeltaTime=.1f;previousSimulation=Physics.simulationMode;previousGravity=Physics.gravity;ownsPhysics=true;Physics.simulationMode=SimulationMode.Script;Physics.IgnoreLayerCollision(8,11,true);Physics.IgnoreLayerCollision(11,11,true);
-            portText=Option("--ca-port","29941");prefs.relayOrigin=Option("--ca-relay","");listedRoom=args.Contains("--ca-public");if(prefs.relayOrigin.Length>0){internetRooms=true;HostRelay();}else HostRoom();menu=false;Debug.Log("Native dedicated authority starting. Players choose Ready; match starts when the minimum party is ready.");return true;
+            portText=Option("--ca-port","29941");prefs.relayOrigin=relayOverride;listedRoom=args.Contains("--ca-public");internetRooms=UseManagedRelay||args.Contains("--ca-online");if(internetRooms)HostRelay();else HostRoom();menu=false;Debug.Log("Native dedicated authority starting. Players choose Ready; match starts when the minimum party is ready.");return true;
         }
         private void DedicatedTick()
         {

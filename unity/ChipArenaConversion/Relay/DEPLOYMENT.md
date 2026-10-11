@@ -1,7 +1,8 @@
-# Shared online room service
+# Optional operator-managed relay
 
-The public endpoint is an owner-operated WebSocket forwarding service. Players
-never install a relay, enter its URL, configure their router, or run Docker.
+Normal Online rooms now use automatic Cloudflare tunnels on each host computer.
+They do not require this service or any Render subscription. This document is
+only for operators deliberately selecting `--ca-relay` on both host and guest.
 Each room's creator remains the Unity simulation authority.
 
 ## Deploy
@@ -42,28 +43,14 @@ Dockerfile.
    It does not claim Unity physics, rendering or two-machine gameplay acceptance.
 3. Record the deployed source commit, actual URL, plan/region and test result.
 
-## Publish the endpoint
+## Select the optional endpoint
 
-After the live smoke passes, write `native/online.json` in the existing
-`sheldon37/chip-arena-test-updates` repository (separate from
-`native/windows-x64/` player payloads):
+After the live smoke passes, launch the participating players with the same
+explicit `--ca-relay wss://<actual-service-host>` argument. Do not publish
+`native/online.json`: the abandoned shared-service bootstrap is not used by the
+Cloudflare client. No paid service is needed for the default Online flow.
 
-```json
-{
-  "schema": 1,
-  "protocol": 6,
-  "relayOrigin": "wss://<actual-service-host>"
-}
-```
-
-The angle-bracket value is documentation only: never publish it or an untested
-hostname. Commit and push that configuration, then read the actual public raw URL
-from `NativeOnlineService.ConfigurationUrl` to verify the released response.
-Configuration contains no credentials. Clients accept only a bounded compatible
-configuration and a secure origin without user information, path, query or
-fragment. The endpoint can be changed centrally without rebuilding every client.
-
-Finally build the exact integrated Unity commit with the owner's existing
+Build the exact integrated Unity commit with the owner's existing
 `Build-and-Publish.cmd`. Its Unity/native checks must pass before the Windows
 player is put on the Update button. An updated source branch alone is not a
 published game update.

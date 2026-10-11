@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
             RelayTick();LobbyTick();EndFlowTick();
             if(connecting?.IsCompleted==true)
             {
-                if(connecting.IsFaulted||connecting.IsCanceled)networkStatus=internetRooms?(connecting.Exception?.GetBaseException() is InvalidOperationException?NativeOnlineService.Unavailable:"Could not join. Check the code, keep the host’s room open, and make sure both games are updated."):"Could not find this local room. Check that both players are on the same network.";
+                if(connecting.IsFaulted||connecting.IsCanceled)networkStatus=internetRooms?OnlineError(connecting.Exception,"Could not join. Check the code, keep the host’s room open, and make sure both games are updated."):"Could not find this local room. Check that both players are on the same network.";
                 else{server=connecting.Result;SendServer(new NativeNetMessage{type="hello",source=content.sourceCommit,contentRevision=content.contentRevision,room=joinCode.Trim().ToUpperInvariant(),resume=resumeToken,token=account?.Token,profile=Profile()});networkStatus="Joining room…";}connecting=null;
             }
             if(Hosting)
@@ -138,13 +138,13 @@ namespace ChipArena.UnityConversion
         // lobby can still change the match rules.
         private void CreateBody()
         {
-            Fine("Create Room hosts the match on this computer. Friends join with the room code over your network, or over the internet through the conversion relay.");
+            Fine("This computer hosts the match. Share your room code so friends can join from any network.");
             BeginRules(false,578);var o=rules;
             RuleSelect(7478,RoomOpt.Versus,"Mode",VersusLabels,o.cooperative?1:0);ClassRow("Your class",ClassCardStyle.Stacked);
             if(!o.cooperative)MatchOptions(RulesPart.All,false,false);
             RuleSelect(7482,RoomOpt.Online,"Connection",ConnectionLabels,internetRooms?0:1);RuleFine(7484,internetRooms?"Friends on any network can join with your room code.":"Only players on the same local network can join.",0,4);
             if(!internetRooms){Field("Port");portText=GUILayout.TextField(portText,5,GUILayout.Width(120));Fine("The lobby shows your LAN address and invite link once the room is open. Friends on the same LAN can join with just the code.");}
-            else{listedRoom=GUILayout.Toggle(listedRoom,"Show in public room list");}
+            else if(UseManagedRelay){listedRoom=GUILayout.Toggle(listedRoom,"Show in public room list");}
             if(!o.cooperative)DraftOptions();IntroOptions();
             if(!o.cooperative)RuleCheck(7486,RoomOpt.BothDraft,"All players draft after each set",o.bothDraft);else RuleFine(7488,"Party bots and where the run starts are set in the lobby.",0,6);
             RuleFine(7494,"Keep your game open while friends are in your room.",8,6);
@@ -162,12 +162,13 @@ namespace ChipArena.UnityConversion
                 Field("Host address");GUILayout.BeginHorizontal();hostAddress=GUILayout.TextField(hostAddress,253);GUILayout.Label("Port",small,GUILayout.Width(44));portText=GUILayout.TextField(portText,5,GUILayout.Width(90));GUILayout.EndHorizontal();
                 Fine("Leave the address blank to find this code on the same LAN. If discovery is blocked, enter the host’s address. An invite link fills both.");
             }
-            else
+            else if(UseManagedRelay)
             {
                 GUI.enabled=relayConnecting==null&&connecting==null&&!listingRooms;
                 if(GUILayout.Button(listingRooms?"Finding rooms…":"Browse public rooms",button))StartCoroutine(ListRelayRooms());
                 foreach(var room in relayRooms)if(GUILayout.Button(room.name+" · "+room.players+" / "+room.capacity+" · "+room.code,button)){joinCode=room.code;JoinRoom();}GUI.enabled=true;
             }
+            else Fine("Enter the six-character code from your host. They need to keep their room open while you play.");
             ClassRow("Your class",ClassCardStyle.Stacked);
         }
         // Leave Room: close the connection or room and drop any running match (the source's Leave Room / Return to Main Menu).
