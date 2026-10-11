@@ -11,8 +11,9 @@ namespace ChipArena.UnityConversion
     // variants' tongue anchors, faces and floors (NativeMinionFx.Generated.cs), each tongue's matrix over idle, vent-climb and
     // dying frames, fx.ts MinionFx cubes for the emergence and the burn-away at full and reduced quality, and the glow cells the
     // bank must carry as flickering emission codes (never as the flag in the albedo, the first port's blown-out cracks). Then
-    // the Unity rules (flicker and add-wide drop, phases, flare, char and burn-away order, licks, hint pulse, haze, vent age)
-    // and scans of the runtime, shader and exporter hooks.
+    // the Unity rules (flicker, the add-wide drop and its float-exact glow bits, the charred embers, phases, flare, char and
+    // burn-away order, licks, hint pulse, haze, vent age, effect ranks, bands and reservations) and scans of the runtime,
+    // shader and exporter hooks.
     internal static class MinionFxChecks
     {
         private static int count;
@@ -25,7 +26,7 @@ namespace ChipArena.UnityConversion
             using var document=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Tests/minion-fx-parity.json")));var json=document.RootElement;
             Check(json.GetProperty("glowFlag").GetInt32()==16,"materials.ts GLOW_FLAG is 16");
             Variants(json.GetProperty("variants"));Tongues(json.GetProperty("tongueFrames"));Effects(json.GetProperty("fx"));Bank(root,json.GetProperty("variants"));Rules();Hooks(root);
-            Console.WriteLine("PASS minion fx ("+count+" checks: horde tongue anchors, faces and floors; tongue sway, swell and flare over idle, vent and death frames; MinionFx emergence and burn-away cubes at full and reduced quality; bank glow codes and tongue pieces; flicker, phases, char and burn-away order, licks, hint, haze; runtime, shader and exporter hooks)");
+            Console.WriteLine("PASS minion fx ("+count+" checks: horde tongue anchors, faces and floors; tongue sway, swell and flare over idle, vent and death frames; MinionFx emergence and burn-away cubes at full and reduced quality; bank glow codes and tongue pieces; flicker, drop bits, charred embers, phases, char and burn-away order, licks, hint, haze, effect ranks and bands; runtime, shader and exporter hooks)");
         }
         private static void Variants(JsonElement list)
         {
@@ -107,7 +108,24 @@ namespace ChipArena.UnityConversion
                 if(NativeMinionFx.Drop(phase,t,cls)<1)for(int k=0;k<5;k++)Check(NativeMinionFx.Flicker(NativeMinionFx.Code(cls,k*.19),phase,t)<=1-.8*f+1e-9,"the drop dims every cell of the add");
             }
             int drops=0;for(int i=0;i<7000;i++)if(NativeMinionFx.Drop(1.3,i/7.0+.01)<1)drops++;Check(drops>600&&drops<1400,"about one slot in seven drops ("+drops+")");
-            var phases=Enumerable.Range(0,64).Select(NativeMinionFx.Phase).ToArray();Check(phases.Distinct().Count()==64&&phases.All(p=>p>=0&&p<4*1.618),"every add its own glow phase");
+            var phases=Enumerable.Range(0,64).Select(NativeMinionFx.Phase).ToArray();Check(phases.Distinct().Count()==64&&phases.All(p=>p>=0&&p<=4*1.618&&p*4096==Math.Round(p*4096)),"every add its own glow phase, on the 1/4096 grid");
+            // The drop bits: decoded in float exactly as NativeSourceLit does, the phase comes back bit for bit and the bits are the
+            // drop the haze follows, for every add over a long match.
+            for(int i=0;i<4000;i++)
+            {
+                int id=i%97;double phase=NativeMinionFx.Phase(id),t=i*1.37+(i%7)*.031;float w=(float)NativeMinionFx.GlowW(phase,t),d12=w>=15.5f?1:0;w-=16*d12;float d0=w>=7.5f?1:0,back=w-8*d0;
+                Check(back==(float)phase&&(d0>0)==NativeMinionFx.Dropped(phase,t,0)&&(d12>0)==NativeMinionFx.Dropped(phase,t,1)&&NativeMinionFx.Dropped(phase,t,1)==NativeMinionFx.Dropped(phase,t,2),"glow bits carry the phase and the drop ("+id+" at "+t+")");
+                NativeMinionFx.SplitGlow(NativeMinionFx.GlowW(phase,t),out double p2,out bool s0,out bool s12);Check(Math.Abs(p2-phase)<1e-12&&s0==(d0>0)&&s12==(d12>0),"SplitGlow reads GlowW");
+                Check((NativeMinionFx.Drop(phase,t)<1)==(d0>0),"the haze drops on the crack cells' bit");
+            }
+            // Charred embers: materials.ts charred glow 3.2 over the live glow and flicker .6; no change unburnt.
+            Check(Math.Abs(NativeMinionFx.CharGlow[0]-1.882353)<1e-6&&Math.Abs(NativeMinionFx.CharGlow[1]-2.133333)<1e-6&&NativeMinionFx.CharGlow[2]==2&&NativeMinionFx.CharFlicker==.6,"charred glow and flicker");
+            for(int i=0;i<600;i++)
+            {
+                int cls=i%3;double cell=(i*.381966)%1,phase=NativeMinionFx.Phase(i),t=i*.0613,code=NativeMinionFx.Code(cls,cell),live=NativeMinionFx.Flicker(code,phase,t),burnt=NativeMinionFx.Flicker(code,phase,t,1),g=NativeMinionFx.CharGlow[cls];
+                Check(NativeMinionFx.Flicker(code,phase,t,0)==live&&burnt<=g+1e-9&&burnt>=g*(1-.6)*(1-.48)-1e-9,"charred flicker bounds");
+                if(NativeMinionFx.Dropped(phase,t,cls))Check(burnt<=g*(1-.48)+1e-9,"a charred joint's embers drop with the add");
+            }
             Check(NativeMinionFx.Phase(7)==NativeMinionFx.Phase(7)&&NativeMinionFx.Phase(3)!=NativeMinionFx.Phase(9),"adds of one variant flicker out of step");
             Check(NativeMinionFx.Variant(13)==1&&NativeMinionFx.Variant(0)==0,"variant id % 6");
             // Flare windows.
@@ -137,6 +155,14 @@ namespace ChipArena.UnityConversion
             for(double e=0;e<2.4;e+=.05){most=Math.Max(most,NativeMinionFx.Effects(seed,e,double.NaN,-.86,pts,0,1,cubes));mostLow=Math.Max(mostLow,NativeMinionFx.Effects(seed,e,double.NaN,-.86,pts,0,.3,cubes));}
             Check(most<=NativeMinionFx.EffectCubes&&mostLow<=NativeMinionFx.Pool+NativeMinionFx.Flames/2+NativeMinionFx.Sparks/2&&most>mostLow,"fx cubes capped and halved with reduced effects");
             Check(NativeMinionFx.Effects(seed,double.NaN,double.NaN,-.86,pts,6,1,cubes)==0&&NativeMinionFx.Effects(seed,2.36,double.NaN,-.86,pts,0,1,cubes)==0&&NativeMinionFx.Effects(seed,double.NaN,3.11,-.86,pts,6,1,cubes)==0,"no effects outside the climb and the death windows");
+            // Reservations cover what an add shows; ranks and distance bands (horde-view.ts: 24 full rigs, 20 m + 4 m hysteresis).
+            Check(NativeMinionFx.MostCubes(1)==NativeMinionFx.EffectCubes&&most<=NativeMinionFx.MostCubes(1)&&NativeMinionFx.MostCubes(.3)==NativeMinionFx.Pool+NativeMinionFx.Flames/2+NativeMinionFx.Sparks/2&&mostLow<=NativeMinionFx.MostCubes(.3)&&NativeMinionFx.MostCubes(-1)==0,"an add reserves its most cubes");
+            for(double x=-.5;x<3.4;x+=.05){if(!NativeMinionFx.Showing(x,double.NaN))Check(NativeMinionFx.Effects(seed,x,double.NaN,-.86,pts,0,1,cubes)==0,"no emergence cubes outside Showing");if(!NativeMinionFx.Showing(double.NaN,x))Check(NativeMinionFx.Effects(seed,double.NaN,x,-.86,pts,6,1,cubes)==0,"no burn-away cubes outside Showing");}
+            Check(NativeMinionFx.Showing(.1,double.NaN)&&NativeMinionFx.Showing(double.NaN,3.0)&&!NativeMinionFx.Showing(2.36,double.NaN)&&!NativeMinionFx.Showing(double.NaN,3.11)&&!NativeMinionFx.Showing(double.NaN,double.NaN),"Showing windows");
+            Check(NativeMinionFx.Rank(true,double.NaN,double.NaN,60)<NativeMinionFx.Rank(false,.5,double.NaN,1)&&NativeMinionFx.Rank(false,double.NaN,1,60)<NativeMinionFx.Rank(false,.5,double.NaN,1)&&NativeMinionFx.Rank(false,.5,double.NaN,60)<NativeMinionFx.Rank(false,double.NaN,double.NaN,1)&&NativeMinionFx.Rank(false,9,double.NaN,2)<NativeMinionFx.Rank(false,double.NaN,double.NaN,3),"the possessed and dying adds first, then vent climbers, then the rest, nearest first");
+            Check(NativeMinionFx.Rank(true,double.NaN,double.NaN,50)<NativeMinionFx.Rank(false,double.NaN,double.NaN,1)&&NativeMinionFx.Rank(false,double.NaN,double.NaN,4)<NativeMinionFx.Rank(false,double.NaN,double.NaN,5),"licks: the possessed add, then the nearest");
+            Check(NativeMinionFx.Band(10,1)==1&&NativeMinionFx.Band(24,1)==1&&NativeMinionFx.Band(30,1)==.3&&NativeMinionFx.Band(30,.2)==.2&&NativeMinionFx.Band(40,1)==.3&&NativeMinionFx.Band(40.01,1)<0,"effect cubes full to 24 m, halved to 40 m, none beyond");
+            Check(NativeMinionFx.MostTongues==3&&NativeMinionFx.FullRigs==24,"the budgets' units");
             // The vent age: the source puts ActiveAt at EMERGE_SECONDS for first and following adds.
             Check(double.IsNaN(NativeMinionFx.VentAge(false,10,9))&&double.IsNaN(NativeMinionFx.VentAge(true,10,7))&&Math.Abs(NativeMinionFx.VentAge(true,10,10)-NativeMinionFx.EmergeSeconds)<1e-12,"vent age");
             // Hint pulse and haze.
@@ -152,9 +178,12 @@ namespace ChipArena.UnityConversion
             var dev=R("Assets/ChipArena/Runtime/NativeDevEffects.cs");int a=dev.IndexOf("DrawHordeFx(camera);",StringComparison.Ordinal),b=dev.IndexOf("fxDraw.Draw(camera,ViewCamera,now);",StringComparison.Ordinal);Check(a>0&&b>a,"the effect layers get the minion effects before they draw");
             Check(R("Assets/ChipArena/Runtime/NativeSourceModels.cs").Contains("SplitSirenPieces(data);HordeMaterials();"),"the bank flags the horde materials and lifts the tongue pieces");
             var fx=R("Assets/ChipArena/Runtime/NativeMinionFxPresentation.cs");Check(fx.Contains("Shader.SetGlobalFloat(MinionClockId,hordeClock)")&&fx.Contains("hordeClock=FieldClock(arena)")&&fx.Contains("NativeMinionFx.LickCount(quality)")&&fx.Contains("EffectsQuality"),"one presentation clock and the effects quality");
+            Check(fx.Contains("NativeMinionFx.GlowW(NativeMinionFx.Phase(id),hordeClock)")&&fx.Contains("new Color(k,k,k,1-c)"),"the glow carries the frame's drop bits and the death tint the char");
+            Check(fx.Contains("Array.Sort(hordeRank,hordeOrder,0,hordeFxCount);")&&fx.Contains("most>0&&most<=cubes&&NativeMinionFx.Showing(job.Emerge,job.Death)")&&fx.Contains("hordeDistance[n]<LickRange&&want>0&&want<=lickBudget")&&fx.Contains("NativeMinionFx.Rank(job.Possessed,double.NaN,double.NaN,hordeDistance[n])")&&fx.Contains("NativeMinionFx.Effects(job.Seed,job.Emerge,job.Death,floor,hordePoints,points,band,hordeCubes)")&&!fx.Contains("HordeFxMax"),"effects go out by rank and band, whole adds, with no job cap");
             var shader=R("Assets/ChipArena/Resources/NativeSourceLit.shader");
-            foreach(var s in new[]{"float MinionFlicker(float code,float phase)","cls<.5?.35:cls<1.5?.85:.9","phase+=cls>.5?.37:0","frac(sin(cell*289.37+phase*7.13)*43758.5453)","sin(_MinionClock*(4+9*h)+h*40+phase*3)","floor(_MinionClock*7+phase*11)","step(.86,frac(sin(slot*12.9898+phase*78.233)*43758.5453))","lerp(1,wave,f)*(1-drop*f*.8)","if(_MinionGlow>.5&&i.emission.w>2.5)o.Emission*=MinionFlicker(i.emission.w,glowTint.w);","float3 tint=i.emission.w>2.5?1:"})
+            foreach(var s in new[]{"float MinionFlicker(float code,float w,float charred)","float d12=step(15.5,w);w-=16*d12;float d0=step(7.5,w),phase=w-8*d0;","f=lerp(cls<.5?.35:cls<1.5?.85:.9,.6,charred),drop=cls>.5?d12:d0;phase+=cls>.5?.37:0;","frac(sin(cell*289.37+phase*7.13)*43758.5453)","sin(_MinionClock*(4+9*h)+h*40+phase*3)","lerp(1,wave,f)*(1-drop*f*.8)*lerp(1,cls<.5?1.882353:cls<1.5?2.133333:2,charred)","float4 sceneTint=UNITY_ACCESS_INSTANCED_PROP(Props,_SceneTint);tint*=sceneTint.rgb;","if(_MinionGlow>.5&&i.emission.w>2.5)o.Emission*=MinionFlicker(i.emission.w,glowTint.w,1-sceneTint.a);","float3 tint=i.emission.w>2.5?1:"})
                 Check(shader.Contains(s),"NativeSourceLit minion flicker: "+s);
+            Check(!shader.Contains("floor(_MinionClock*7")&&!shader.Contains("slot*12.9898"),"NativeSourceLit takes the drop from the glow bits, never a float re-hash");
             Check(NativeMinionFx.ClassFlicker.SequenceEqual(new[]{.35,.85,.9})&&NativeMinionFx.ClassPhase.SequenceEqual(new[]{0,.37,.37}),"Core flicker classes match the shader");
             var export=R("tools/export_models.mjs");Check(export.Contains("o.name==='siren-minion-tongue'")&&export.Contains("lit=minionGlow(mat,q,instanceColor)")&&export.Contains("NativeMinionFx.Generated.cs")&&export.Contains("id:'horde-tongue'"),"the exporter decodes the glow flag and lifts the tongues");
         }

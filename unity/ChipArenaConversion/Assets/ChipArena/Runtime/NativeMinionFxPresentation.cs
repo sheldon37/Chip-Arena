@@ -8,19 +8,27 @@ namespace ChipArena.UnityConversion
     // the adds. Everything comes from what host, guests and the killcam replay all hold: the add's id (bank variant, look seed
     // and glow phase), its vent entry (ActiveAt), whether it is the possessed add, its lost limbs, its death record and the
     // presentation clock (FieldClock: smooth on guests). Presentation only: no hit, collider, timing or network state changes.
-    //  - Glow cells (cracks, embers, dying strips) flicker in NativeSourceLit on _MinionClock and the add's phase (_GlowTint.w).
+    //  - Glow cells (cracks, embers, dying strips) flicker in NativeSourceLit on _MinionClock, with the add's phase and this
+    //    frame's power-drop bits in _GlowTint.w (NativeMinionFx.GlowW, the bits the crack haze drops on).
     //  - Tongues are the bank's horde-tongue pieces, swelling and swaying on their joints (instanced with the bodies).
     //  - Shed licks, the cracked head's haze, the possession hint, the vent emergence and the death flames, ash and scorch go
     //    into the shared Siren effect layers (NativeFxDraw) once the frame's rigs are posed (DevEffects).
-    //  - The dying body chars joint by joint and burns away by rest height instead of the old dithered fade.
+    //  - The dying body chars joint by joint (its char in _SceneTint.a keeps the embers flickering) and burns away by rest
+    //    height instead of the old dithered fade.
     // Counts follow EffectsQuality (Reduced .3 halves the effect cubes and the licks, as fx.ts halves its cubes below .5);
-    // reduced effects also draw the licks flat, as the Siren's flames. Licks stop beyond LickRange; at most HordeCubeBudget
-    // effect cubes a frame. Allocation free in steady state.
+    // reduced effects also draw the licks flat, as the Siren's flames. Every add is a full rig here, where the source gives
+    // effects only to its 24 nearest full rigs (horde-view.ts), so the effects go out by NativeMinionFx.Rank: effect cubes to
+    // the possessed and dying adds, then the vent climbers, each nearest first; licks to the possessed add, then the nearest.
+    // Each add takes its effect cubes and its licks whole, reserving its most, so the cut never falls inside an add and only
+    // moves when the ranks do; each budget is 24 adds' worth. Effect cubes are full to 24 m, halved to 40 m and left out
+    // beyond (NativeMinionFx.Band); licks stop beyond LickRange, the source's full-rig radius. Allocation free in steady
+    // state (the job arrays grow to the largest horde seen).
     public sealed partial class ArenaPresentation
     {
         private struct HordeFx{public CapturedAnimation.Player Rig;public int Id,Variant,Lost;public uint Seed;public float Time,Emerge,Death,Floor,Phase;public Vector3 Velocity;public bool Possessed,Body;}
-        private const int HordeFxMax=128,HordeCubeBudget=1600;private const float LickRange=24;
-        private readonly HordeFx[] hordeFx=new HordeFx[HordeFxMax];private int hordeFxCount;private float hordeClock;
+        private const int HordeCubeBudget=NativeMinionFx.FullRigs*NativeMinionFx.EffectCubes;private const float LickRange=20;
+        private static readonly int HordeLickBudget=NativeMinionFx.FullRigs*NativeMinionFx.MostTongues*NativeMinionFx.Licks;
+        private HordeFx[] hordeFx=new HordeFx[64];private float[] hordeRank=new float[64],hordeDistance=new float[64];private int[] hordeOrder=new int[64];private int hordeFxCount;private float hordeClock;
         private readonly double[] hordeLocal=new double[16],hordePoints=new double[18];private readonly NativeMinionFx.Cube[] hordeCubes=new NativeMinionFx.Cube[NativeMinionFx.EffectCubes];
         private static readonly int MinionClockId=Shader.PropertyToID("_MinionClock");
         // fx.ts bodyPoints: head, chest, pelvis, left knee, right knee, left elbow.
@@ -36,8 +44,9 @@ namespace ChipArena.UnityConversion
         private static Quaternion SourceTurn(double x,double y,double z){NativeFxMath.EulerQuaternion(x,y,z,out double qx,out double qy,out double qz,out double qw);return new Quaternion((float)qx,-(float)qy,-(float)qz,(float)qw);}
         /// <summary>The clock every minion effect runs on this frame; SourceWorld calls it before it poses the adds.</summary>
         private void BeginHordeFx(NativeArena arena){hordeFxCount=0;hordeClock=FieldClock(arena);Shader.SetGlobalFloat(MinionClockId,hordeClock);}
-        /// <summary>The glow tint a horde add draws with: white emission, its phase in w (NativeSourceLit MinionFlicker).</summary>
-        private static Vector4 HordeGlow(int id)=>new Vector4(1,1,1,(float)NativeMinionFx.Phase(id));
+        /// <summary>The glow tint a horde add draws with this frame: white emission, its phase and drop bits in w (NativeSourceLit
+        /// MinionFlicker; BeginHordeFx has set the clock).</summary>
+        private Vector4 HordeGlow(int id)=>new Vector4(1,1,1,(float)NativeMinionFx.GlowW(NativeMinionFx.Phase(id),hordeClock));
         /// <summary>
         /// A posed horde add: queues its tongues (bank pieces on its joints) and keeps its effects for DevEffects. emerge: seconds
         /// into its vent climb (NaN without one); death: seconds since it died (NaN alive); floor: the world height of the floor
@@ -52,7 +61,7 @@ namespace ChipArena.UnityConversion
                 for(int k=0;k<NativeMinionFx.TongueCount(variant);k++)
                 {if(!NativeMinionFx.TongueMatrix(variant,k,hordeClock,flare,extra,hordeLocal,out int joint,out int layout)||!HordeJointShown(lost,joint))continue;sourceModels.QueueHordeTongue(layout,rig.Bones[joint].localToWorldMatrix*FromSource(hordeLocal));}
             }
-            if(hordeFxCount>=HordeFxMax)return;
+            if(hordeFxCount==hordeFx.Length){Array.Resize(ref hordeFx,hordeFx.Length*2);Array.Resize(ref hordeRank,hordeFx.Length);Array.Resize(ref hordeDistance,hordeFx.Length);Array.Resize(ref hordeOrder,hordeFx.Length);}
             hordeFx[hordeFxCount++]=new HordeFx{Rig=rig,Id=id,Variant=variant,Lost=lost,Seed=NativeMinionFx.Seed(id),Time=hordeClock,Emerge=emerge,Death=death,Floor=floor,Phase=(float)NativeMinionFx.Phase(id),Velocity=velocity,Possessed=possessed,Body=body};
         }
         /// <summary>
@@ -68,47 +77,62 @@ namespace ChipArena.UnityConversion
                 Vector3 c=new Vector3(-(float)rest[b*4+1],(float)rest[b*4+2],(float)rest[b*4+3]);float k=Mathf.Max(.001f,1-(float)v);
                 return m*Matrix4x4.Translate(c)*Matrix4x4.Scale(new Vector3(k,k,k))*Matrix4x4.Translate(-c);
             };
-            hordeDeathTint??=b=>{float k=1-(1-(float)NativeMinionFx.CharScale)*(float)NativeMinionFx.Charred(hordeDeathSeed,b,hordeDeathAge);return new Color(k,k,k,1);};
+            // The char darkens the joint (rgb) and, as 1 - alpha, moves its glow cells to the charred glow and flicker (NativeSourceLit).
+            hordeDeathTint??=b=>{float c=(float)NativeMinionFx.Charred(hordeDeathSeed,b,hordeDeathAge),k=1-(1-(float)NativeMinionFx.CharScale)*c;return new Color(k,k,k,1-c);};
             sourceModels.Queue(model,rig.Root.transform.localToWorldMatrix,hordeDeathBone,visible,partTint:hordeDeathTint,glow:HordeGlow(id));
         }
         /// <summary>DevEffects: the frame's horde effects into the shared effect layers, after every rig is posed.</summary>
         private void DrawHordeFx(Camera camera)
         {
             if(fxDraw==null||camera==null){hordeFxCount=0;return;}
-            var draw=fxDraw;bool flat=HaloReduced;float quality=Mathf.Clamp01(EffectsQuality),rim=(float)NativeSirenLook.FlameRim;int budget=HordeCubeBudget,licks=NativeMinionFx.LickCount(quality);
+            var draw=fxDraw;bool flat=HaloReduced;float quality=Mathf.Clamp01(EffectsQuality),rim=(float)NativeSirenLook.FlameRim;int cubes=HordeCubeBudget,lickBudget=HordeLickBudget,licks=NativeMinionFx.LickCount(quality);
             Vector3 eye=camera.transform.position,right=camera.transform.right,up=camera.transform.up;
-            for(int n=0;n<hordeFxCount;n++)
+            // fx.ts MinionFx by rank (the possessed and dying adds, then vent climbers, nearest first): the vent emergence pool, rim
+            // flames and sparks, or the burn-away's flames, ash and scorch, at the add's distance band, all of them or none.
+            for(int n=0;n<hordeFxCount;n++){var job=hordeFx[n];float distance=hordeDistance[n]=job.Rig==null?float.MaxValue:Vector3.Distance(job.Rig.Root.transform.position,eye);hordeOrder[n]=n;hordeRank[n]=job.Rig==null?float.MaxValue:(float)NativeMinionFx.Rank(job.Possessed,job.Emerge,job.Death,distance);}
+            Array.Sort(hordeRank,hordeOrder,0,hordeFxCount);
+            for(int s=0;s<hordeFxCount;s++)
             {
-                var job=hordeFx[n];var rig=job.Rig;if(rig==null)continue;var root=rig.Root.transform;double t=job.Time;bool alive=float.IsNaN(job.Death),gone=NativeMinionFx.Gone(job.Death);
-                // fx.ts MinionFx: the vent emergence pool, rim flames and sparks, or the burn-away's flames, ash and scorch.
-                int points=0;if(!alive)for(int i=0;i<HordePointBones.Length;i++){Vector3 p=root.InverseTransformPoint(rig.Bones[HordePointBones[i]].position);hordePoints[i*3]=-p.x;hordePoints[i*3+1]=p.y;hordePoints[i*3+2]=p.z;points++;}
-                float floor=root.InverseTransformPoint(new Vector3(root.position.x,job.Floor,root.position.z)).y;
-                int count=NativeMinionFx.Effects(job.Seed,job.Emerge,job.Death,floor,hordePoints,points,quality,hordeCubes);
-                for(int i=0;i<count&&budget>0;i++,budget--)
+                int n=hordeOrder[s];var job=hordeFx[n];var rig=job.Rig;if(rig==null)continue;var root=rig.Root.transform;bool alive=float.IsNaN(job.Death);
+                double band=NativeMinionFx.Band(hordeDistance[n],quality);int most=NativeMinionFx.MostCubes(band);
+                if(most>0&&most<=cubes&&NativeMinionFx.Showing(job.Emerge,job.Death))
                 {
-                    var c=hordeCubes[i];Vector3 at=root.TransformPoint(new Vector3(-(float)c.X,(float)c.Y,(float)c.Z));
-                    draw.Cube(draw.Solid,at,root.rotation*SourceTurn(c.Ex,c.Ey,c.Ez),new Vector3((float)c.Sx,(float)c.Sy,(float)c.Sz),new Color((float)c.R,(float)c.G,(float)c.B,1).gamma,NativeFxDraw.Authored);
+                    cubes-=most;int points=0;if(!alive)for(int i=0;i<HordePointBones.Length;i++){Vector3 p=root.InverseTransformPoint(rig.Bones[HordePointBones[i]].position);hordePoints[i*3]=-p.x;hordePoints[i*3+1]=p.y;hordePoints[i*3+2]=p.z;points++;}
+                    float floor=root.InverseTransformPoint(new Vector3(root.position.x,job.Floor,root.position.z)).y;
+                    int count=NativeMinionFx.Effects(job.Seed,job.Emerge,job.Death,floor,hordePoints,points,band,hordeCubes);
+                    for(int i=0;i<count;i++)
+                    {
+                        var c=hordeCubes[i];Vector3 at=root.TransformPoint(new Vector3(-(float)c.X,(float)c.Y,(float)c.Z));
+                        draw.Cube(draw.Solid,at,root.rotation*SourceTurn(c.Ex,c.Ey,c.Ez),new Vector3((float)c.Sx,(float)c.Sy,(float)c.Sz),new Color((float)c.R,(float)c.G,(float)c.B,1).gamma,NativeFxDraw.Authored);
+                    }
                 }
-                if(!job.Body||gone)continue;
-                bool near=(root.position-eye).sqrMagnitude<LickRange*LickRange,head=HordeJointShown(job.Lost,CapturedRig.Head);
-                // Shed licks off each tongue's tip, trailing as if they stayed where they were shed.
-                if(near&&licks>0)
+            }
+            // The licks, haze and hint of each drawn body, the possessed add first, then the nearest.
+            for(int n=0;n<hordeFxCount;n++){var job=hordeFx[n];hordeOrder[n]=n;hordeRank[n]=job.Rig==null?float.MaxValue:(float)NativeMinionFx.Rank(job.Possessed,double.NaN,double.NaN,hordeDistance[n]);}
+            Array.Sort(hordeRank,hordeOrder,0,hordeFxCount);
+            for(int s=0;s<hordeFxCount;s++)
+            {
+                int n=hordeOrder[s];var job=hordeFx[n];var rig=job.Rig;if(rig==null||!job.Body||NativeMinionFx.Gone(job.Death))continue;double t=job.Time;bool alive=float.IsNaN(job.Death);
+                bool head=HordeJointShown(job.Lost,CapturedRig.Head);int want=NativeMinionFx.TongueCount(job.Variant)*licks;
+                // Shed licks off each tongue's tip, trailing as if they stayed where they were shed: every tongue's or none.
+                if(hordeDistance[n]<LickRange&&want>0&&want<=lickBudget)
                 {
+                    lickBudget-=want;
                     double flare=NativeMinionFx.Flare(float.IsNaN(job.Emerge)?double.PositiveInfinity:job.Emerge,alive?double.PositiveInfinity:job.Death),extra=NativeMinionFx.TonguePhase(job.Id);
                     for(int k=0;k<NativeMinionFx.TongueCount(job.Variant);k++)
                     {
                         if(!NativeMinionFx.TongueMatrix(job.Variant,k,t,flare,extra,hordeLocal,out int joint,out _)||!HordeJointShown(job.Lost,joint))continue;
                         Vector3 tip=(rig.Bones[joint].localToWorldMatrix*FromSource(hordeLocal)).MultiplyPoint3x4(new Vector3(0,(float)NativeMinionFx.TipY,0));
-                        for(int j=0;j<licks&&budget>0;j++)
+                        for(int j=0;j<licks;j++)
                         {
-                            if(!NativeMinionFx.Lick(job.Seed,k,j,t,-job.Velocity.x,job.Velocity.z,out double dx,out double dy,out double dz,out double ex,out double ey,out double ez,out double edge,out double r,out double g,out double b))continue;budget--;
+                            if(!NativeMinionFx.Lick(job.Seed,k,j,t,-job.Velocity.x,job.Velocity.z,out double dx,out double dy,out double dz,out double ex,out double ey,out double ez,out double edge,out double r,out double g,out double b))continue;
                             Vector3 at=tip+new Vector3(-(float)dx,(float)dy,(float)dz),size=new Vector3((float)edge*.8f,(float)edge*1.7f,(float)edge*.8f);var turn=SourceTurn(ex,ey,ez);var color=new Color((float)r,(float)g,(float)b,1);
                             if(flat)draw.Cube(draw.Solid,at,turn,size,color);else draw.FlameCube(draw.Solid,at,turn,size,color,AshRaw,rim);
                         }
                     }
                 }
                 if(!head)continue;var headBone=rig.Bones[CapturedRig.Head].localToWorldMatrix;float headChar=alive?0:(float)NativeMinionFx.Charred(job.Seed,CapturedRig.Head,job.Death);
-                // The cracked head's violet haze, breathing and dropping out with the crack's light; it dies with the char.
+                // The cracked head's violet haze, breathing and dropping out with the crack's light (the GlowW bits); it dies with the char.
                 if(NativeMinionFx.Cracked[job.Variant]&&headChar<1)
                 {
                     var crack=NativeMinionFx.Crack;int o=job.Variant*3;NativeMinionFx.Haze(job.Phase,t,out double size,out double opacity);

@@ -8,19 +8,22 @@ namespace ChipArena.UnityConversion
     /// the same frame at any frame rate and after a rewind (Runtime/NativeMinionFxPresentation.cs draws them):
     ///  - the dying glow (materials.ts MinionMaterial): crack, ember and strip cells flicker per cell, and every few frames the
     ///    whole add's glow may drop out like failing power. The bank flags those cells (tools/export_models.mjs minionGlow);
-    ///    NativeSourceLit runs <see cref="Flicker"/> per pixel on the clock and the add's <see cref="Phase"/>;
+    ///    NativeSourceLit runs <see cref="Flicker"/> per pixel on the clock, with the drop hashed here once per add and frame
+    ///    (<see cref="GlowW"/>), and keeps a charred joint's embers glowing (materials.ts charred glow and flicker);
     ///  - the black-flame tongues (model.ts, motion.ts animateSirenMinion): each one swells and sways on its anchor, and
     ///    flares while the add climbs out of a vent and while it burns away (<see cref="TongueMatrix"/>);
     ///  - shed licks (a Unity addition after the Siren's own tongues, motion.ts emitFlames): each tongue sheds small black
     ///    flames from its tip that rise, trail behind a walking add and fade to violet smoke (<see cref="Lick"/>);
     ///  - the crack light's haze (Unity addition): a faint violet glow over a cracked head, breathing and dropping out with the
-    ///    crack cells (<see cref="Haze"/>);
+    ///    crack cells on the same drop bits (<see cref="Haze"/>);
     ///  - the death (motion.ts dyingLook): each joint's parts char at a hashed time, then the body burns away by rest height,
     ///    feet first and the head last (<see cref="Charred"/>, <see cref="Vanish"/>);
     ///  - fx.ts MinionFx: the black-flame pool, rim flames and violet sparks of a vent climb, and the flames, ash and scorch of
-    ///    the burn-away (<see cref="Effects"/>);
-    ///  - hints.ts possession hint level 1: a violet glow pulsing out of the possessed add's crown every ~4 s (the levels past
-    ///    15 s need the possession time, which the add frame does not carry; <see cref="HintPulse"/>).
+    ///    the burn-away (<see cref="Effects"/>), given out by priority and distance as horde-view.ts gives out full rigs
+    ///    (<see cref="Rank"/>, <see cref="Band"/>);
+    ///  - hints.ts possession hint level 1: a violet glow pulsing out of the possessed add's crown every ~4 s (<see cref="HintPulse"/>).
+    ///    Levels 2 and 3 (the grin glyph within 25 m, the black-flame trail, the 1.35 boost) need the possession time, which the
+    ///    replicated add frame does not carry (NativeMinionFrame has only `possessed`); replicating it is a networking handoff.
     /// Everything is in the source (three.js) frame; the runtime mirrors x. Allocation free.
     /// </summary>
     public static partial class NativeMinionFx
@@ -44,31 +47,47 @@ namespace ChipArena.UnityConversion
         public static int Variant(int id)=>((id%Variants)+Variants)%Variants;
         /// <summary>
         /// The add's glow phase. The source spreads minions over four material pools (pool·1.618); the bank shares one look per
-        /// variant, so the phase comes from the add's id instead and adds of one variant never flicker in step.
+        /// variant, so the phase comes from the add's id instead and adds of one variant never flicker in step. It sits on a
+        /// 1/4096 grid, so it comes back exactly out of <see cref="GlowW"/>'s drop bits in a float.
         /// </summary>
-        public static double Phase(int id)=>4*1.618*NativeGoreRules.Hash01(Seed(id),0x6d,1);
+        public static double Phase(int id)=>Math.Round(4*1.618*NativeGoreRules.Hash01(Seed(id),0x6d,1)*4096)/4096;
 
         /// <summary>The bank's glow code for a flicker class and a cell hash in [0, 1).</summary>
         public static double Code(int cls,double cell)=>GlowCode+cls+CellSpan*cell;
         /// <summary>The flicker class and the cell hash a glow code holds (NativeSourceLit MinionFlicker).</summary>
         public static void Decode(double code,out int cls,out double cell)
         {double c=Math.Floor(code-GlowCode+1e-3);cls=(int)Math.Max(0,Math.Min(2,c));cell=Clamp((code-GlowCode-cls)/CellSpan);}
+        /// <summary>materials.ts minionMaterial(charred): glow 3.2 over each class's live glow (shell 1.7, accent 1.5, strip 1.6;
+        /// edge, flex and scrap share class 0) and flicker .6, so a charred joint's embers glow on through its dark tint.</summary>
+        public static readonly double[] CharGlow={3.2/1.7,3.2/1.5,3.2/1.6};public const double CharFlicker=.6;
         /// <summary>
         /// materials.ts MinionMaterial's emission flicker for one glow cell at clock t: a per-cell wave (4 to 13 Hz) mixed in by
         /// the class's flicker, times the add-wide drop (about one slot in seven of 1/7 s loses .8 of the flicker share). The
         /// source hashes the cell centre with the pool phase; the bank holds the centre's hash, re-hashed here with the phase.
-        /// NativeSourceLit.shader MinionFlicker is the same expression.
+        /// charred (the joint's char, 0..1) moves the flicker to .6 and scales the emission by <see cref="CharGlow"/>.
+        /// NativeSourceLit.shader MinionFlicker is the same expression, except that it reads the drop from <see cref="GlowW"/>
+        /// (re-hashing the large slot argument in float rounds to other slots, and differs between GPUs); its per-cell wave keeps
+        /// a float hash, so the cells' wave phases (not the drop) may differ from this reference and between GPUs.
         /// </summary>
-        public static double Flicker(double code,double phase,double t)
+        public static double Flicker(double code,double phase,double t,double charred=0)
         {
-            Decode(code,out int cls,out double cell);double f=ClassFlicker[cls];phase+=ClassPhase[cls];
+            Decode(code,out int cls,out double cell);double f=ClassFlicker[cls]+(CharFlicker-ClassFlicker[cls])*charred,drop=Dropped(phase,t,cls)?1:0;phase+=ClassPhase[cls];
             double h=Fract(Math.Sin(cell*289.37+phase*7.13)*43758.5453),wave=.5+.5*Math.Sin(t*(4+9*h)+h*40+phase*3);
-            double slot=Math.Floor(t*7+phase*11),drop=Fract(Math.Sin(slot*12.9898+phase*78.233)*43758.5453)>=.86?1:0;
-            return (1+(wave-1)*f)*(1-drop*f*.8);
+            return (1+(wave-1)*f)*(1-drop*f*.8)*(1+(CharGlow[cls]-1)*charred);
         }
+        /// <summary>Whether the add-wide power drop is on for a flicker class at clock t (one 1/7 s slot in about seven).</summary>
+        public static bool Dropped(double phase,double t,int cls=0)
+        {phase+=ClassPhase[cls];double slot=Math.Floor(t*7+phase*11);return Fract(Math.Sin(slot*12.9898+phase*78.233)*43758.5453)>=.86;}
         /// <summary>The add-wide power drop alone (1 or 1 - .8·flicker), for effects that follow the glow (the haze).</summary>
-        public static double Drop(double phase,double t,int cls=0)
-        {double f=ClassFlicker[cls];phase+=ClassPhase[cls];double slot=Math.Floor(t*7+phase*11);return Fract(Math.Sin(slot*12.9898+phase*78.233)*43758.5453)>=.86?1-f*.8:1;}
+        public static double Drop(double phase,double t,int cls=0)=>Dropped(phase,t,cls)?1-ClassFlicker[cls]*.8:1;
+        /// <summary>
+        /// The add's _GlowTint.w at clock t: its phase (under 6.5) plus 8 while class 0's drop is on and 16 while the accent and
+        /// strip classes' is (they share one phase lift). NativeSourceLit takes the drop from these bits, so every machine dims
+        /// the crack cells in exactly the slots the haze dims (<see cref="Drop"/>).
+        /// </summary>
+        public static double GlowW(double phase,double t)=>phase+(Dropped(phase,t,0)?8:0)+(Dropped(phase,t,1)?16:0);
+        /// <summary>NativeSourceLit MinionFlicker's reading of <see cref="GlowW"/>.</summary>
+        public static void SplitGlow(double w,out double phase,out bool drop0,out bool drop12){drop12=w>=15.5;if(drop12)w-=16;drop0=w>=7.5;if(drop0)w-=8;phase=w;}
 
         // ---- tongues (motion.ts animateSirenMinion) ------------------------------------------------------------------
         /// <summary>The tongues' flare: up to 1.5 while emerging (e seconds into a vent climb, +inf without one) and up to
@@ -177,6 +196,25 @@ namespace ChipArena.UnityConversion
 
         // ---- fx.ts MinionFx ------------------------------------------------------------------------------------------
         public const int Pool=8,Flames=36,Sparks=20,EffectCubes=Pool+Flames+Sparks;
+        /// <summary>horde-view.ts HORDE_RENDER (quality): at most 24 full rigs carry minion effects, out to fullRadius 20 m plus
+        /// the 4 m hysteresis. Unity draws every add as a full rig, so its effects go out by <see cref="Rank"/> within budgets of
+        /// FullRigs adds' worth; past FullBand they are halved (fx.ts's reduced count) and past FarBand left out.</summary>
+        public const int FullRigs=24;public const double FullBand=24,FarBand=40;
+        /// <summary>The emergence or the burn-away is showing (e seconds into a vent climb, d since death; NaN without).</summary>
+        public static bool Showing(double e,double d)=>!double.IsNaN(e)&&e>=0&&e<EmergeSeconds+.4||!double.IsNaN(d)&&d>=0&&d<DeathFxSeconds;
+        /// <summary>
+        /// An add's claim on the frame's effect budgets, lowest first: the possessed and the dying adds, then the ones climbing out
+        /// of a vent, then the rest, each nearest first (distance in m, as horde-view.ts orders its full rigs). Without e and d
+        /// (NaN) it is horde-view.ts's own order, the possessed add then the nearest (the licks' order).
+        /// </summary>
+        public static double Rank(bool possessed,double e,double d,double distance)=>(possessed||!double.IsNaN(d)?0:Showing(e,double.NaN)?1:2)*1e5+Math.Max(0,Math.Min(distance,9e4));
+        /// <summary>The effects quality an add's cubes draw at, distance m from the camera: full to FullBand, halved (.3) to
+        /// FarBand, none (-1) beyond.</summary>
+        public static double Band(double distance,double quality)=>distance<=FullBand?quality:distance<=FarBand?Math.Min(quality,.3):-1;
+        /// <summary>The most cubes <see cref="Effects"/> shows at a quality: what an add reserves, so it is drawn whole or not at all.</summary>
+        public static int MostCubes(double quality)=>quality<0?0:quality<.5?Pool+Flames/2+Sparks/2:EffectCubes;
+        /// <summary>The most tongues a horde variant grows (the lick budget's unit).</summary>
+        public static int MostTongues{get{int most=0;for(int v=0;v<Variants;v++)most=Math.Max(most,TongueCount(v));return most;}}
         public const int Ink=0x0d0b0e,Smoke=0x3b3150,Rim=0xcfc6ea,Ember=0xe8dcff,Hot=0xff6a2c,Ash=0x8e8a86;
         /// <summary>One effect cube (rig-group frame, source axes): centre, Euler XYZ turn, edges, linear colour.</summary>
         public struct Cube{public double X,Y,Z,Ex,Ey,Ez,Sx,Sy,Sz,R,G,B;}
@@ -190,7 +228,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static int Effects(uint seed,double e,double d,double floor,double[] points,int pointCount,double quality,Cube[] into)
         {
-            bool em=!double.IsNaN(e)&&e>=0&&e<EmergeSeconds+.4,de=!double.IsNaN(d)&&d>=0&&d<DeathFxSeconds;if(!em&&!de)return 0;
+            if(!Showing(e,d))return 0;bool em=!double.IsNaN(e)&&e>=0&&e<EmergeSeconds+.4;
             bool low=quality<.5;int n=0;
             double R=em?.78*Sm(e/.3)*(1-Sm((e-EmergeSeconds+.2)/.5)):.62*Sm((d-.6)/.8)*(1-Sm((d-2.5)/.6));
             // The pool: overlapping rotated slabs make a ragged black disc; under a dying minion it is the scorch it leaves.
