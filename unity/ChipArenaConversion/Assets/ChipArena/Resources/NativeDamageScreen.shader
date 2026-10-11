@@ -1,7 +1,9 @@
 // The local pilot's damage screen (rules: Core/NativeDamageScreen.cs; drawn by Runtime/NativeDamageScreenPresentation.cs
 // through Runtime/NativeDamageScreenImage.cs): one full-screen pass over the finished 3D frame as the last screen camera's
 // image effect (OnRenderImage -> Graphics.Blit), before the IMGUI HUD. All maths in linear light (Linear colour space: the
-// source is an sRGB or HDR float target, which reads linear either way, and the destination encodes the writes).
+// source is an sRGB or HDR float target, which reads linear either way, and the destination encodes the writes). SceneTap
+// clamps the frame to 0..1, as the old 8-bit copy did: an HDR source holds additive glow above 1, and the blood maths scale
+// with luma, so unclamped glow would show through a bloom or the low-HP edge as pale pink instead of deep red glass.
 //  * Up to four wound blooms: smoky crimson that drains the frame to red glass from the edge facing the attacker (lobe
 //    angles in the screen square so every aspect reads alike), ragged by noise and dissolving back into the frame; a
 //    headshot's bloom is radially striated, with a pale flash confined to the bloom.
@@ -46,7 +48,7 @@ Shader "Hidden/ChipArena/NativeDamageScreen" {
    float4 _DmgFx;        // melee shock age (s, < 0 none), shock bearing (rad), headshot mark age (s, < 0 none), ring fade
    #define BRANCH [branch]
    #define UNROLL [unroll]
-   float3 SceneTap(float2 uv){return tex2Dlod(_MainTex,float4(uv,0.0,0.0)).rgb;}
+   float3 SceneTap(float2 uv){return saturate(tex2Dlod(_MainTex,float4(uv,0.0,0.0)).rgb);}
    float4 NoiseTap(float2 uv){return tex2Dlod(_DmgNoise,float4(uv,0.0,0.0));}
 // BEGIN SHARED
 static const float PI=3.14159265;

@@ -1,4 +1,5 @@
-"""The damage screen must not turn the frame upside down (owner, Windows D3D11: "camera seems to flip when taking damage").
+"""The damage screen must not turn the frame upside down (one candidate for the owner's Windows D3D11 report "camera seems
+to flip when taking damage"; a knockdown or stagger switching the view mode in ConversionGame.UpdateCamera is the other).
 
 The first version copied BuiltinRenderTextureType.CameraTarget into a temporary from a command buffer and blitted it back;
 on D3D that copy of the back buffer or an anti-aliased target lands top-down without a negative texel height, so the whole
@@ -60,7 +61,7 @@ class DamageScreenOrientation(unittest.TestCase):
         self.assertEqual(f.count('flip='),2,'flip is set only by the initialiser and the guard')
     def test_scene_is_sampled_at_the_blit_uv(self):
         overlay=ternary(re.search(r'float2 uv=float2\(i\.uv\.x,([^;]+)\);',self.frag).group(1),[('i.uv.y','iy')])
-        self.assertRegex(self.frag,r'DamageScreen\(uv,flip,');self.assertIn('float3 SceneTap(float2 uv){return tex2Dlod(_MainTex,float4(uv,0.0,0.0)).rgb;}',self.shader)
+        self.assertRegex(self.frag,r'DamageScreen\(uv,flip,');self.assertIn('float3 SceneTap(float2 uv){return saturate(tex2Dlod(_MainTex,float4(uv,0.0,0.0)).rgb);}',self.shader)
         tap=ternary(re.search(r'float3 Scene\(float2 uv,float flip\)\{return SceneTap\(float2\(uv\.x,([^;]+)\)\);\}',self.shared).group(1),[('uv.y','uy')])
         for flip in (1.0,-1.0):
             for iy in (0.0,0.125,0.5,0.8,1.0):

@@ -127,18 +127,19 @@ namespace ChipArena.UnityConversion
     // itself on every graphics API. (The first version copied BuiltinRenderTextureType.CameraTarget into a temporary from a
     // command buffer and blitted it back: on D3D a copy of the back buffer or anti-aliased target lands top-down without a
     // negative texel height, a known Unity behaviour it leaves as is, so the write-back turned the whole frame upside down
-    // while the effect was up; owner, Windows D3D11: "camera seems to flip when taking damage".) The view-model camera
-    // clears depth only: Unity renders a camera with an enabled image effect into an intermediate target that starts from
-    // what the cameras before it drew, the same composite these cameras already rely on when they render through their HDR
-    // intermediates (the view model over the world), so the source is the whole stacked frame. Order: the globals are
-    // written here, in LateUpdate, before any camera renders; the effect runs at the end of that camera's render, before
-    // its AfterEverything command buffers (NativeUiBlur's copy: panel backdrops show the tinted frame) and before OnGUI
-    // (the HUD, crosshair, hit marker and numbers stay crisp on top). The component is added on demand and disabled
-    // whenever the effect is inactive or hidden (Unity then skips it: no camera is forced into an intermediate target and
-    // an idle frame costs nothing); it moves when the last camera changes. The 256x256 noise texture is built once with the
-    // material. Globals are written from preallocated arrays: steady frames allocate nothing. Without the shader nothing is
-    // drawn. Release destroys the components; Release(true) also drops the material and the noise
-    // (ConversionGame.OnDestroy).
+    // while the effect was up: one candidate for the owner's Windows D3D11 report "camera seems to flip when taking damage";
+    // the other, a knockdown or stagger switching the view mode in ConversionGame.UpdateCamera, is not touched here.) The
+    // view-model camera clears depth only: Unity renders a camera with an enabled image effect into an intermediate target
+    // that starts from what the cameras before it drew, the same composite these cameras already rely on when they render
+    // through their HDR intermediates (the view model over the world), so the source is the whole stacked frame (the shader
+    // clamps it to 0..1, as the old 8-bit copy did). Order: the globals are written here, in LateUpdate, before any camera
+    // renders; the effect runs at the end of that camera's render, before its AfterEverything command buffers
+    // (NativeUiBlur's copy: panel backdrops show the tinted frame) and before OnGUI (the HUD, crosshair, hit marker and
+    // numbers stay crisp on top). The component is added on demand and disabled whenever the effect is inactive or hidden
+    // (Unity then skips it: no camera is forced into an intermediate target and an idle frame costs nothing); it moves when
+    // the last camera changes. The 256x256 noise texture is built once with the material. Globals are written from
+    // preallocated arrays: steady frames allocate nothing. Without the shader nothing is drawn. Release destroys the
+    // components; Release(true) also drops the material and the noise (ConversionGame.OnDestroy).
     public static class NativeDamageScreenPass
     {
         private static NativeDamageScreenImage image;private static Camera attached;private static Material material;private static Texture2D noise;private static bool missing;
