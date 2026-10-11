@@ -11,7 +11,8 @@ namespace ChipArena.UnityConversion
     // edge, heat spreader, die, label and name colours, the tier glow), the circuit traces, the brushed spreader and its
     // gleam, the die's grid and glass, and the auras: Emperor's storm orbit, bolt, current arcs and grid; Ansatsuken's seal,
     // headband, ki rings and dojo grid; L44T's binary rain; Siren's void glass, black flames, watching grin, scanlines and
-    // tear. Textures are built once on first use (never in field initializers); a frame allocates nothing.
+    // tear; and the draft tray's holo scan highlight (lit edge and comet, powered legs, brackets, scan line, halo; the pick's
+    // lock). Textures are built once on first use (never in field initializers); a frame allocates nothing.
     public static class NativeChipArt
     {
         public struct Style
@@ -220,6 +221,186 @@ namespace ChipArena.UnityConversion
         // siren-jolt (4.2 s, steps): the header's shake on the glitch beat, px.
         public static float Jolt(float t){float g=Mathf.Repeat(t,4.2f)/4.2f;return g<.65f||g>=.72f?0:g<.66f?-4:g<.67f?5:g<.69f?-2:g<.70f?3:-1;}
         private static float Smooth(float x){x=Mathf.Clamp01(x);return x*x*(3-2*x);}
+
+        // ---- the holo scan: the draft tray's highlighted card (NativeHoloScan's timeline; NativeChipCard, NativeDraftScreen) ----
+        // A tier-lit edge traced round the package's border both ways from the top-left corner, then one comet a lap; the legs
+        // powering up in the tier's pin colour as the trace passes them (brighter as the comet runs by); corner brackets that
+        // snap in outside the card over a dark keyline (so they read over the pilot's light torso); one scan line down the face
+        // under the text, over faint 3 px holo lines; and a halo of the tier's light behind the package (the die's charge is
+        // NativeChipCard's). `k` is the level times the card's alpha, `age` seconds since it engaged, `t` the screen clock. Calm
+        // (Reduced effects) keeps the still parts. Every line is at least one physical pixel; nothing allocates.
+        private struct HoloTier {public Color Edge,Head,Halo,Bracket,Tick,Scan,Pin;public float HaloAlpha,BracketGlow;public Color[] Tail;public bool Glitch,Blink,Foil;}
+        private static readonly Color[] GoldTail={U.Hex(0xfff2cb),U.Hex(0xffc96d),U.Hex(0xf39a35)},FoilTail={U.Hex(0xffb3bd),U.Hex(0xffe39a),U.Hex(0xa8ffd0),U.Hex(0x9fd8ff),U.Hex(0xe2b6ff)};
+        private static readonly Color GlitchCyan=U.Hex(0x2de2ff),Keyline=U.Hex(0x05060a);
+        // Per tier: the edge line, the comet head (Legendary's gold and Mythic's foil tail), the halo and its strength, the brackets
+        // (Mythic's four foil corners) with their glow and corner ticks, the scan and the lit legs; L44T's brackets blink once as
+        // they boot, Siren's edge and brackets jolt on the card's glitch beat.
+        private static HoloTier HoloOf(string tier,Color rare)
+        {
+            var h=new HoloTier{Edge=U.Mix(rare,Color.white,.18f),Head=U.Mix(rare,Color.white,.62f),Halo=rare,Bracket=U.Mix(rare,Color.white,.38f),Tick=U.Mix(rare,Color.white,.75f),Scan=U.Mix(rare,Color.white,.5f),Pin=U.Mix(rare,Color.white,.45f),HaloAlpha=.36f,BracketGlow=.3f};
+            switch(tier)
+            {
+                case "common":h.Edge=U.Hex(0xdfe4ec);h.Head=Color.white;h.Halo=U.Hex(0xe7ebf2);h.HaloAlpha=.2f;h.Bracket=U.Hex(0xf1f3f7);h.Tick=Color.white;h.Scan=Color.white;h.Pin=U.Hex(0xf1f5f9);h.BracketGlow=.2f;break;
+                case "legendary":h.Edge=U.Hex(0xffc96d);h.Head=U.Hex(0xfff2cb);h.Halo=U.Hex(0xffae55);h.Bracket=U.Hex(0xfff4c9);h.Tick=U.Hex(0xfff2cb);h.Scan=U.Hex(0xffe3a8);h.Pin=U.Hex(0xffe3a8);h.Tail=GoldTail;break;
+                case "mythic":h.Edge=U.Hex(0xff8a96);h.Head=U.Hex(0xfff4f6);h.Halo=U.Hex(0xff6475);h.Bracket=U.Hex(0xffe39a);h.Tick=Color.white;h.Scan=U.Hex(0xffeef0);h.Pin=U.Hex(0xffe39a);h.Tail=FoilTail;h.Foil=true;break;
+                case "mishima":h.Edge=U.Hex(0xb3b5c2);h.Head=U.Hex(0xff2448);h.Halo=U.Hex(0xff173b);h.HaloAlpha=.26f;h.Bracket=U.Hex(0xd9dbe3);h.Tick=U.Hex(0xff2448);h.Scan=U.Hex(0xff6a83);h.Pin=U.Hex(0xff6a83);break;
+                case "ansatsuken":h.Edge=U.Hex(0xff354e);h.Head=U.Hex(0xffb2bc);h.Halo=U.Hex(0xff214b);h.Bracket=U.Hex(0xffd6da);h.Tick=U.Hex(0xffb2bc);h.Scan=U.Hex(0xff8a97);h.Pin=U.Hex(0xff8a97);break;
+                case "l44t":h.Edge=U.Hex(0x3fd979);h.Head=U.Hex(0xd4ffe2);h.Halo=U.Hex(0x36ff78);h.Bracket=U.Hex(0x9effbd);h.Tick=U.Hex(0xd4ffe2);h.Scan=U.Hex(0x5eff91);h.Pin=U.Hex(0xa0ffc0);h.Blink=true;break;
+                case "siren":h.Edge=U.Hex(0x9b87ff);h.Head=U.Hex(0xf3efff);h.Halo=U.Hex(0x8f73ff);h.HaloAlpha=.38f;h.Bracket=U.Hex(0xc9bfff);h.Tick=U.Hex(0xf3efff);h.Scan=U.Hex(0xb7a8ff);h.Pin=U.Hex(0xc9bfff);h.Glitch=true;break;
+            }
+            return h;
+        }
+        private static float Px(float v)=>Mathf.Max(1,v*U.S)/U.S;
+        // The package's border as U.Round draws it at `radius`: its corner radius class (4/8/12/16 physical px) and the 1.5 px
+        // line, so the traced stretches and the comet meet the finished ring exactly.
+        private static void EdgeOf(float radius,out float R,out float w){int i=Mathf.Clamp(Mathf.RoundToInt(radius*U.S/4)-1,0,3);R=(4+i*4)/U.S;w=Px(1.5f);}
+        private static Color Cycle(float u,Color[] c){float x=Mathf.Repeat(u,1)*c.Length;int i=(int)x%c.Length;return Color.Lerp(c[i],c[(i+1)%c.Length],x-Mathf.Floor(x));}
+        // Behind the package: the halo of the tier's light (breathing, NativeHoloScan.Swell) and a tight glow of its edge.
+        public static void HoloHalo(Rect r,string tier,Color rare,float k,float t,bool calm)
+        {
+            var h=HoloOf(tier,rare);U.Glow(r,U.A(h.Halo,h.HaloAlpha*k*NativeHoloScan.Swell(t,calm)),40);U.Glow(r,U.A(h.Edge,.16f*k),10);
+        }
+        // On the package's border: the trace, then the finished ring (Mythic's drifting foil) and the comet with its bead.
+        public static void HoloEdge(Rect r,float radius,string tier,Color rare,float k,float age,float t,bool calm)
+        {
+            var h=HoloOf(tier,rare);EdgeOf(radius,out float R,out float w);var q=r;float L=Perimeter(q,R,w),start=L-Mathf.PI*(R-w/2)/4,ring=.34f*k;
+            // Siren: the edge jolts with the spreader on the glitch beat, a cyan copy on the other side.
+            float jolt=h.Glitch&&!calm?Jolt(t)*.75f:0;if(jolt!=0){U.Round(new Rect(q.x-jolt,q.y,q.width,q.height),Color.clear,radius,U.A(GlitchCyan,.35f*k),1.5f);q.x+=jolt;}
+            Color edge=h.Foil&&!calm?Cycle(t/7,FoilTail):h.Edge;float reach=NativeHoloScan.TraceReach(age,calm);
+            if(reach>=1)U.Round(q,Color.clear,radius,U.A(edge,ring),1.5f);
+            else
+            {   // The trace: both ways from the middle of the top-left arc, its leading tenth ramping up to the head, a bead on each end.
+                float half=reach*L/2,lead=Mathf.Min(half,L*.1f);Stretch(q,R,w,start-half,start+half,ring,ring,edge);
+                Stretch(q,R,w,start+half-lead,start+half,0,.9f*k,h.Head);Stretch(q,R,w,start-half,start-half+lead,.9f*k,0,h.Head);Bead(Along(q,R,w,start+half),h.Head,k);Bead(Along(q,R,w,start-half),h.Head,k);
+            }
+            // The comet: from where the trace closed, clockwise once a lap, its tail (twice the line) growing in; Legendary's gold
+            // and Mythic's foil in bands.
+            if(!NativeHoloScan.Comet(age,calm,out float head,out float tail))return;float hd=start+head*L,len=tail*L+.01f;
+            if(h.Tail==null)Stretch(q,R,2*w,hd-len,hd,0,k,h.Head);
+            else{int n=h.Tail.Length;for(int s=0;s<n;s++)Stretch(q,R,2*w,hd-len*(s+1f)/n,hd-len*s/(float)n,k*(1-(s+1f)/n),k*(1-s/(float)n),h.Tail[s]);}
+            Bead(Along(q,R,w,hd),h.Head,k);
+        }
+        // A round white-hot bead in a glow of the head colour.
+        private static void Bead(Vector2 p,Color head,float k){U.Glow(new Rect(p.x-2,p.y-2,4,4),U.A(head,.7f*k),8);U.Glow(new Rect(p.x-.8f,p.y-.8f,1.6f,1.6f),U.A(Color.Lerp(head,Color.white,.6f),Mathf.Min(1,k)),2.2f);}
+        // The outline's centre line, clockwise from the top run's left end: top, top-right arc, right, ..., top-left arc.
+        private static float Perimeter(Rect q,float R,float w)=>2*(q.width-2*R)+2*(q.height-2*R)+Mathf.PI*(R-w/2)*2;
+        private static Vector2 ArcPoint(Vector2 centre,float rc,int corner,float f){float a=(corner+f)*.5f*Mathf.PI;return centre+new Vector2(Mathf.Sin(a),-Mathf.Cos(a))*rc;}
+        private static Vector2 Centre(Rect q,float R,int corner)=>corner==0?new Vector2(q.xMax-R,q.y+R):corner==1?new Vector2(q.xMax-R,q.yMax-R):corner==2?new Vector2(q.x+R,q.yMax-R):new Vector2(q.x+R,q.y+R);
+        private static Vector2 Along(Rect q,float R,float w,float d)
+        {
+            float sw=q.width-2*R,sh=q.height-2*R,rc=R-w/2,arc=Mathf.PI*rc/2,o=w/2;d=Mathf.Repeat(d,Perimeter(q,R,w));
+            if(d<sw)return new Vector2(q.x+R+d,q.y+o);d-=sw;if(d<arc)return ArcPoint(Centre(q,R,0),rc,0,d/arc);d-=arc;
+            if(d<sh)return new Vector2(q.xMax-o,q.y+R+d);d-=sh;if(d<arc)return ArcPoint(Centre(q,R,1),rc,1,d/arc);d-=arc;
+            if(d<sw)return new Vector2(q.xMax-R-d,q.yMax-o);d-=sw;if(d<arc)return ArcPoint(Centre(q,R,2),rc,2,d/arc);d-=arc;
+            if(d<sh)return new Vector2(q.x+o,q.yMax-R-d);d-=sh;return ArcPoint(Centre(q,R,3),rc,3,Mathf.Clamp01(d/arc));
+        }
+        // The outline from d0 to d1 (any range, wrapping) at alpha a0 → a1 along it, `w` thick inside the border.
+        private static void Stretch(Rect q,float R,float w,float d0,float d1,float a0,float a1,Color c)
+        {
+            float L=Perimeter(q,R,w);if(d1-d0<=.01f||L<=0)return;if(d1-d0>L)d0=d1-L;float shift=Mathf.Floor(d0/L)*L;d0-=shift;d1-=shift;
+            if(d1<=L){Runs(q,R,w,d0,d1,a0,a1,c);return;}float am=Mathf.Lerp(a0,a1,(L-d0)/(d1-d0));Runs(q,R,w,d0,L,a0,am,c);Runs(q,R,w,0,d1-L,am,a1,c);
+        }
+        private static void Runs(Rect q,float R,float w,float d0,float d1,float a0,float a1,Color c)
+        {
+            float sw=q.width-2*R,sh=q.height-2*R,arc=Mathf.PI*(R-w/2)/2,at=0;
+            for(int p=0;p<8;p++)
+            {
+                float len=p%2==1?arc:p%4==0?sw:sh,s0=Mathf.Max(d0,at),s1=Mathf.Min(d1,at+len);
+                if(s1>s0&&len>0)
+                {
+                    float b0=Mathf.Lerp(a0,a1,(s0-d0)/(d1-d0)),b1=Mathf.Lerp(a0,a1,(s1-d0)/(d1-d0)),u0=s0-at,u1=s1-at;
+                    switch(p)
+                    {
+                        case 0:Ramp(new Rect(q.x+R+u0,q.y,u1-u0,w),true,b0,b1,c);break;
+                        case 2:Ramp(new Rect(q.xMax-w,q.y+R+u0,w,u1-u0),false,b0,b1,c);break;
+                        case 4:Ramp(new Rect(q.xMax-R-u1,q.yMax-w,u1-u0,w),true,b1,b0,c);break;
+                        case 6:Ramp(new Rect(q.x,q.yMax-R-u1,w,u1-u0),false,b1,b0,c);break;
+                        default:Corner(q,R,w,p/2,u0/len,u1/len,b0,b1,c);break;
+                    }
+                }
+                at+=len;
+            }
+        }
+        // A straight run lit `first` at its left / top end and `last` at the other: the lower alpha flat, the rest a ramp.
+        private static void Ramp(Rect q,bool horizontal,float first,float last,Color c)
+        {
+            float lo=Mathf.Min(first,last),d=Mathf.Abs(last-first);if(lo>.002f)U.Fill(q,U.A(c,lo));if(d<.004f)return;
+            if(horizontal)U.HGradient(q,last>first?Color.clear:U.A(c,d),last>first?U.A(c,d):Color.clear);else U.Fade(q,U.A(c,d),first>last);
+        }
+        // A stretch f0..f1 of a quarter arc: U.Round's own ring clipped to the stretch's box (x and y are monotone inside a
+        // quadrant, so the box holds that stretch alone), in up to three alpha steps.
+        private static void Corner(Rect q,float R,float w,int corner,float f0,float f1,float b0,float b1,Color c)
+        {
+            var centre=Centre(q,R,corner);int steps=Mathf.Max(1,Mathf.CeilToInt((f1-f0)*3-.001f));float pad=.35f/U.S;
+            for(int s=0;s<steps;s++)
+            {
+                float g0=Mathf.Lerp(f0,f1,(float)s/steps),g1=Mathf.Lerp(f0,f1,(s+1f)/steps),al=Mathf.Lerp(b0,b1,(s+.5f)/steps);if(al<=.002f)continue;
+                Vector2 a=ArcPoint(centre,R,corner,g0),b=ArcPoint(centre,R,corner,g1),e=ArcPoint(centre,R-w,corner,g0),f=ArcPoint(centre,R-w,corner,g1);
+                U.BeginBand(Rect.MinMaxRect(Mathf.Min(Mathf.Min(a.x,b.x),Mathf.Min(e.x,f.x))-pad,Mathf.Min(Mathf.Min(a.y,b.y),Mathf.Min(e.y,f.y))-pad,Mathf.Max(Mathf.Max(a.x,b.x),Mathf.Max(e.x,f.x))+pad,Mathf.Max(Mathf.Max(a.y,b.y),Mathf.Max(e.y,f.y))+pad));
+                U.Round(q,Color.clear,R,U.A(c,al),w);U.EndBand();
+            }
+        }
+        // The legs power up in the tier's pin colour as the trace passes them (NativeHoloScan.LegLit; calm: all lit, still), each
+        // row over a soft glow as long as its lit legs, a leg brighter as the comet runs by; the tips stay bare metal.
+        public static void HoloLegs(Rect r,float radius,float inset,float pin,string tier,Color rare,float k,float age,bool calm)
+        {
+            var h=HoloOf(tier,rare);EdgeOf(radius,out float R,out float w);float span=r.width-2*inset,reach=NativeHoloScan.TraceReach(age,calm),L=Perimeter(r,R,w),arc=Mathf.PI*(R-w/2)/2,sw=r.width-2*R,sh=r.height-2*R;
+            bool comet=NativeHoloScan.Comet(age,calm,out float head,out _);float hc=Mathf.Repeat(L-arc/2+head*L,L);Color hot=Color.Lerp(h.Pin,Color.white,.35f);
+            for(int row=0;row<2;row++)
+            {
+                bool bottom=row==1,any=false;float sum=0,x0=0,x1=0,y=bottom?r.yMax:r.y-pin;int count=0;
+                for(float o=0;o<span-.01f;o+=15){float lw=Mathf.Min(7,span-o),lit=NativeHoloScan.LegLit(reach,r.width,r.height,R,inset+o+lw/2,bottom);sum+=lit;count++;if(lit>.02f){if(!any)x0=r.x+inset+o;x1=r.x+inset+o+lw;any=true;}}
+                if(!any)continue;U.Glow(new Rect(x0,y+pin/2-1,x1-x0,2),U.A(h.Pin,.18f*k*sum/count),5);
+                for(float o=0;o<span-.01f;o+=15)
+                {
+                    float lw=Mathf.Min(7,span-o),cx=inset+o+lw/2,lit=NativeHoloScan.LegLit(reach,r.width,r.height,R,cx,bottom);if(lit<=.02f)continue;
+                    float bump=0;if(comet){float s=bottom?sw+arc+sh+arc+(r.width-R-cx):cx-R,d=Mathf.Repeat(s-hc,L);bump=Mathf.Max(0,1-Mathf.Min(d,L-d)/12);}
+                    U.Fill(new Rect(r.x+inset+o,bottom?y:y+1,lw,pin-1),U.A(hot,Mathf.Min(1,(.32f*lit+.4f*bump)*k)));
+                }
+            }
+        }
+        // The scan: faint 3 px holo lines while lit (Siren has its own) and the line's one pass down the face, a trailing sheen
+        // above it, clipped to the face; calm: a still sheen down from the top edge instead of the pass.
+        public static void HoloScan(Rect r,string tier,Color rare,float k,float age,bool calm)
+        {
+            var h=HoloOf(tier,rare);Ensure();var face=Inset(r,1.5f);if(!h.Glitch)U.Tile(face,scan,U.A(h.Scan,.03f*k),new Vector2(1,3));
+            if(calm){U.Fade(new Rect(face.x,face.y,face.width,Mathf.Min(60,face.height*.3f)),U.A(h.Scan,.05f*k));return;}
+            if(!NativeHoloScan.ScanPass(age,calm,out float e))return;float y=face.y-14+(face.height+28)*e,lw=face.width,th=Px(1);
+            U.BeginBand(face);U.Fade(new Rect(face.x,y-34,lw,34),U.A(h.Scan,.1f*k),false);U.Fade(new Rect(face.x,y+th,lw,8),U.A(h.Scan,.05f*k));
+            U.HGradient(new Rect(face.x,y,lw*.25f,th),Color.clear,U.A(h.Head,.26f*k));U.Fill(new Rect(face.x+lw*.25f,y,lw*.5f,th),U.A(h.Head,.26f*k));U.HGradient(new Rect(face.x+lw*.75f,y,lw*.25f,th),U.A(h.Head,.26f*k),Color.clear);U.EndBand();
+        }
+        // The corner brackets outside the card: they snap in on engage (NativeHoloScan.BracketOffset) and drift out as the level
+        // falls (the held card's rest further out); Siren's jolt on the glitch beat with a cyan copy. `a` the card's alpha.
+        public static void HoloBrackets(Rect r,string tier,Color rare,float level,float a,float age,float t,bool calm)
+        {
+            var h=HoloOf(tier,rare);Brackets(r,h,NativeHoloScan.BracketOffset(age,level,calm),level*a*NativeHoloScan.BracketOpacity(age,calm,h.Blink),h.Glitch&&!calm?Jolt(t)*.75f:0,true);
+        }
+        // The keyboard focus while the pointer is on another card: still brackets at rest, no glow (`a` the card's alpha).
+        public static void HoloGhost(Rect r,string tier,Color rare,float a){if(a>0)Brackets(r,HoloOf(tier,rare),NativeHoloScan.BracketRest,NativeHoloScan.Ghost*a,0,false);}
+        // Four square-ended L brackets `off` px outside the card's corners (the arm clear of the legs), each over a dark keyline,
+        // with a soft glow and a corner tick; Mythic's in four foil colours.
+        private static void Brackets(Rect r,HoloTier h,float off,float op,float dx,bool glow)
+        {
+            if(op<=.002f)return;op=Mathf.Min(1,op);const float th=2,tick=3.5f;float ax=Mathf.Min(18,r.width*.14f),ay=Mathf.Min(26,r.height*.16f),key=Px(1);
+            for(int c=0;c<4;c++)
+            {
+                bool right=c==1||c==2,bottom=c>=2;float px=(right?r.xMax+off:r.x-off)+dx,py=bottom?r.yMax+off:r.y-off;Color col=h.Foil?FoilTail[c]:h.Bracket;
+                // The arm along the edge and the leg down the side (not overlapping), the tick over their corner.
+                var arm=new Rect(right?px-ax:px,bottom?py-th:py,ax,th);var leg=new Rect(right?px-th:px,bottom?py-ay:py+th,th,ay-th);
+                U.Fill(new Rect(arm.x-key,arm.y-key,arm.width+2*key,arm.height+2*key),U.A(Keyline,.55f*op));U.Fill(new Rect(leg.x-key,bottom?leg.y-key:leg.y+key,leg.width+2*key,leg.height),U.A(Keyline,.55f*op));
+                if(dx!=0){U.Fill(new Rect(arm.x-2*dx,arm.y,arm.width,arm.height),U.A(GlitchCyan,.45f*op));U.Fill(new Rect(leg.x-2*dx,leg.y,leg.width,leg.height),U.A(GlitchCyan,.45f*op));}
+                if(glow){U.Glow(arm,U.A(col,h.BracketGlow*op),5);U.Glow(leg,U.A(col,h.BracketGlow*op),5);}
+                U.Fill(arm,U.A(col,op));U.Fill(leg,U.A(col,op));U.Fill(new Rect(right?px-tick:px,bottom?py-tick:py,tick,tick),U.A(h.Tick,op));
+            }
+        }
+        // The pick (NativeDraftScreen.FlyToPalm, inside the fly's transform; no clips, so safe under its rotation): the brackets
+        // clamp onto the card and its edge flares in the head colour over NativeHoloScan.Lock s with a faint light across the
+        // face (the die's flare is NativeChipCard's); calm: the brackets stay at rest and fade, a softer ring, no light.
+        public static void HoloLock(Rect r,float radius,string tier,Color rare,float age,bool calm,float a)
+        {
+            if(age<0||age>=NativeHoloScan.Lock||a<=0)return;var h=HoloOf(tier,rare);float u=age/NativeHoloScan.Lock,op=(1-u)*a;
+            Brackets(r,h,NativeHoloScan.LockOffset(age,calm),op,0,true);U.Round(r,Color.clear,radius,U.A(h.Head,(calm?.5f:.9f)*op),1.5f);if(!calm)U.Round(r,U.A(Color.white,.14f*(1-u)*(1-u)*a),radius);
+        }
 
         // ---- markup (built once): the bolt and the seal turned as the CSS turns them, the face and the card's flame row ----
         private static void BuildMarkup()

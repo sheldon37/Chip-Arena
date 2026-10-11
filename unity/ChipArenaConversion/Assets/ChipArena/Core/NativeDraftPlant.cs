@@ -5,9 +5,9 @@ namespace ChipArena.UnityConversion
     // The wrist plant on the draft stage (owner request, after the palm contact): the other forearm rises in
     // front of the chest with the inner wrist turned up toward the camera, the hand that took the chip carries it there over a
     // small arc and presses it into the wrist cuff, a short rarity pulse runs from the plant, then both arms settle back to
-    // their rest (on the draft table, NativeDraftStage). The details spotlight follows the pulse; the install cue lands on the plant (NativeInstallCue). Times are
+    // their rest (in the lap, below the close framing, NativeDraftStage). The details spotlight follows the pulse; the install cue lands on the plant (NativeInstallCue). Times are
     // seconds after the authoritative pick (the source grab's .48 s contact slowed to .62 s and the plant with it, owner
-    // 2026-10-10: smooth and unhurried; NativeDraftStage runs the reach), positions the stage rig's root frame in source axes.
+    // 2026-10-10: smooth and unhurried; NativeDraftStage runs the catch), positions the stage rig's root frame in source axes.
     // Presentation only.
     public sealed class NativeDraftPlant
     {
@@ -30,9 +30,9 @@ namespace ChipArena.UnityConversion
         public static readonly Vector3 PalmLocal=new Vector3(0,-.035f,.04f);
         public static readonly Quaternion ChipInHand=CapturedRig.Rot(CapturedRig.X,(float)Math.PI/2);
         // The presented wrist (chest frame): in front of the chest just past the midline, within the carrying arm's reach, high
-        // enough to clear the draft table the pilot bows over. Both arms travel to and from their rest (the table, or the idle)
-        // over a small Arch (chest up), so no joint blend dips a hand through the table.
-        public static Vector3 Raised(bool left)=>new Vector3(left?-.02f:.02f,.13f,.26f);
+        // enough that the plant shows well above the solar plexus the close framing cuts at (NativeDraftStage). Both arms travel
+        // to and from their rest (the lap, or the idle) over a small Arch (chest up), so no joint blend dips a hand.
+        public static Vector3 Raised(bool left)=>new Vector3(left?-.04f:.04f,.25f,.25f);
         public const float Arch=.06f;
         // Where the chip goes in: the palm side of the wrist cuff (hand frame).
         public static readonly Vector3 CuffLocal=new Vector3(0,.005f,.105f);
