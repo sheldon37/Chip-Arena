@@ -60,3 +60,16 @@ into the git-ignored `unity/ChipArenaConversion/Assets/LocalAssets/Resources/Eff
 `unity/ChipArenaConversion/tools/install_local_assets.py`, from a folder or a zip.
 `tools/package_source.py` skips that folder. Builds without it play the original synthesized sounds:
 CI, cloud builds, other checkouts and the public source zips.
+
+## Brickfall Run
+
+The owner supplied **Brickfall Run** on 2026-10-11, with the embedded artist credit
+**Xtrr - musiccreator**, for Brickfall. The complete MP3 is retained without
+transcoding (199.944 seconds, 48 kHz stereo, 4,687,082 bytes) at
+`unity/ChipArenaConversion/Assets/ChipArena/Resources/Audio/music/brickfall-demolition-row.mp3`.
+It fills Brickfall's existing `brickfall-demolition-row` track slot and uses the
+existing stage playback, loop, pause/resume and volume controls. It is excluded
+from the general music rotation. No seamless-loop edit or loudness remaster was made.
+SHA-256: `3093119a80cdac42bf46a3cbb44b5da2ec6920ec5580ef153f01ea3bc6417d25`.
+The Windows package includes `Music-Credits.txt`; this owner-supplied song is
+separate from the locally installed licensed effects bank.

@@ -1,0 +1,9 @@
+CHIP ARENA - BRICKFALL MUSIC
+
+Brickfall Run
+Artist: Xtrr - musiccreator (embedded recording credit)
+Owner-supplied recording, added 2026-10-11.
+Original file: Brickfall Run.mp3
+Full original MP3 retained without transcoding: 199.944 seconds, 48 kHz stereo.
+Internal stage track ID: brickfall-demolition-row
+SHA-256: 3093119a80cdac42bf46a3cbb44b5da2ec6920ec5580ef153f01ea3bc6417d25
