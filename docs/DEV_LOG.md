@@ -1,5 +1,13 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Astra — Brickfall H0 simulation contract
+- Branch `codex/brickfall-simulation-20261011`, exact requested base `ce3c506`. Read proposal §5 and current integration/runtime; PR #105 is a separate, incompatible foundation and is not merged here.
+- Contract: `docs/arenas/BRICKFALL-SIMULATION-CONTRACT.md`. Adds explicit pose/sweep/rubble/nav authoring, defines t0 as fall-start time, static and locally posed block collections, reversible replay restore, shared post-multiplier crush/debris allowance and deterministic credit. Protocol 6 plus runtime content hash; relay/LAN unchanged. Prefix table is the handoff to Claude before wiring presentation.
+- Owner decisions retained: self-crush, friendly-fire team rule, 6 s fallback, ten M1 segments, rebuild every round, rotation false, all old maps retained; tank/tenement-floor/Wrecker deferred.
+- H0 docs only; no simulation or Unity/Windows tests run in this commit. Implementation and acceptance results follow. No shared-branch merge or Update release.
+
+## 2026-10-11 — Claude — Arena rework: Brickfall approved as arena 1 (owner decision)
+
 ## 2026-10-11 — Claude — Arena rework: Brickfall approved as arena 1 (owner decision)
 - Owner direction: replace every stage except Ward Zero with unique maps in the current box-built style at a much higher quality bar, with buildings that collapse when exploded. Split: Claude does presentation (layout look, scenery, lighting, atmosphere, identity, destruction visuals); Astra does collision, structural sim, spawns, bots and multiplayer. First milestone: one arena, playtested before the old maps go.
 - Design workflow (read-only):
