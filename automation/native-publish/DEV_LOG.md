@@ -1,5 +1,28 @@
 # Native publishing automation development log
 
+## 2026-10-11 — Astra — Direct download with updates ready on first launch
+
+- Owner screenshot shows `Install the Windows starter ZIP once to enable updates`.
+  The raw UBA player is still launchable in the outer export, while the correctly
+  packaged updater-ready ZIP is nested inside. Prior download instructions sent
+  the owner through that ambiguous export. Owner wants no extra updater setup.
+- Branch `codex/native-player-download-20261011`, main base `06d51a6`.
+  Publish the clean `Chip-Arena-Windows.zip` directly as a test-release asset in
+  the existing `chip-arena-test-updates` repository after verified native feed
+  publication. Extract once, open `Chip Arena/Chip Arena.exe`; launcher, marker,
+  configured feed and full `app` payload are included. No game/source rebuild or
+  bootstrap change is required; current UBA #38 already contains this package.
+- Exact current cloud/native-CI, Unity/Linear/compiler, delivery inventory,
+  provenance, ZIP/hash, and byte-for-byte update-player checks precede upload.
+  Draft prerelease, scoped existing feed token, no overwrite; anonymous public
+  ZIP download is size/hash-verified before recording completion. Already verified
+  releases skip downloads, incomplete publication can resume. Main still does not
+  contain the game source; no Electron, gameplay, visual or save changes.
+- Local suite: 88 tests, 87 passed / one platform skip. Hosted Linux/Windows and
+  real public download verification remain the final integration gates. Real
+  Windows rendered gameplay remains an owner check; this task fixes distribution.
+
+
 ## 2026-10-11 — Astra — Accept the clean Chip Arena player package
 
 - Owner requested one `Chip Arena` folder and `Chip Arena.exe` for distribution.
