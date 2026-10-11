@@ -7,6 +7,19 @@ internal static class LocomotionChecks
     public static void Run(ConversionContent content)
     {
         void Check(bool ok,string why){if(!ok)throw new Exception("Locomotion: "+why);}
+        // Reproduce the native gate's one-pilot reset, then prove a held match can run beyond the entire fixture suite.
+        var match=new NativeMatch(content,1);match.Seats.Add(new NativeSeat{id=1,name="Stair check",spec="pistol"});
+        int resets=0;match.ResetRound=()=>resets++;
+        match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10,fightAt=0});
+        for(int i=0;i<302;i++)match.Tick(1d/60);
+        Check(resets==1&&match.Phase==NativePhase.Countdown,"unheld one-pilot fixture did not reproduce the round reset");
+        match.Seats[0].roundWins=0;resets=0;match.HoldResolution=()=>true;
+        match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10,fightAt=0});
+        for(int i=0;i<180000;i++)match.Tick(1d/60);
+        Check(resets==0&&match.Phase==NativePhase.Fight&&Math.Abs(match.Time-3010)<.001&&match.Seats[0].roundWins==0,"held locomotion fixture stopped its clock or resolved the round");
+        match.HoldResolution=null;for(int i=0;i<302;i++)match.Tick(1d/60);
+        Check(resets==1&&match.Phase==NativePhase.Countdown,"round resolution did not resume after the fixture hold");
+        Console.WriteLine("PASS locomotion fixture lifetime: original one-pilot reset reproduced, 180000 held ticks preserve Fight and clock, normal resolution resumes afterward");
         int ramps=0;float steepest=0;
         foreach(var map in content.maps)foreach(var b in map.blocks)
         {

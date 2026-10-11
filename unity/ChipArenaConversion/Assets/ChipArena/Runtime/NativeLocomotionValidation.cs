@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
         // Executed by the Windows build gate in an isolated arena, using the actual capsule, StepPilot and PhysX.
         public void ValidateLocomotion()
         {
-            var physics=root.scene.GetPhysicsScene();var p=Local;var fixtures=new List<GameObject>();
+            var physics=root.scene.GetPhysicsScene();var p=Local;var fixtures=new List<GameObject>();var holdResolution=Match.HoldResolution;
             var origin=new Vector3(1000,20,1000);int ramps=0,stairs=0;
             void Check(bool ok,string why){if(!ok)throw new Exception("Native locomotion: "+why);}
             GameObject Box(Vector3 at,Vector3 size,Quaternion rotation)
@@ -28,6 +28,7 @@ namespace ChipArena.UnityConversion
             {
                 p.Input=new InputFrame{X=direction.x,Z=direction.z,Yaw=Mathf.Atan2(direction.x,direction.z)*Mathf.Rad2Deg,Sprint=sprint,Jump=jump};
                 ProbePilotGround(p);StepPilot(p);BeforePhysics();physics.Simulate(1f/60);AfterPhysics();Match.Tick(1d/60);
+                Check(p.Body!=null&&ReferenceEquals(Local,p)&&Match.Phase==NativePhase.Fight,"fixture match changed phase or replaced its pilot");
             }
             void Predict(Vector3 start,Vector3 direction,float distance,bool sprint,string label)
             {
@@ -46,6 +47,9 @@ namespace ChipArena.UnityConversion
             }
             try
             {
+                // A one-pilot match otherwise wins immediately and ResetRound destroys this fixture after five seconds.
+                // Keep the real clock/motor/physics running, but suspend round resolution for this isolated gate only.
+                Match.HoldResolution=()=>true;
                 Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10,fightAt=0});
                 foreach(var map in Content.maps.Where(m=>!m.unity))
                 {
@@ -108,7 +112,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<55;i++)Tick(Vector3.forward);Check(!p.GroundAttached&&p.Body.useGravity&&p.Body.position.y<origin.y,"host hovered after leaving ledge");
                 Debug.Log("PASS native locomotion: "+ramps+" authored ramp variants across old maps, "+stairs+" actual Brickfall flights, host/guest walking/sprinting/up/down/idle, jumps, walls, low ceilings and ledge gravity (real StepPilot/PhysX)");
             }
-            finally{Clear();}
+            finally{Match.HoldResolution=holdResolution;Clear();}
         }
     }
 }
