@@ -21,9 +21,9 @@ namespace ChipArena.UnityConversion
     ///  - fx.ts MinionFx: the black-flame pool, rim flames and violet sparks of a vent climb, and the flames, ash and scorch of
     ///    the burn-away (<see cref="Effects"/>), given out by priority and distance as horde-view.ts gives out full rigs
     ///    (<see cref="Rank"/>, <see cref="Band"/>);
-    ///  - hints.ts possession hint level 1: a violet glow pulsing out of the possessed add's crown every ~4 s (<see cref="HintPulse"/>).
-    ///    Levels 2 and 3 (the grin glyph within 25 m, the black-flame trail, the 1.35 boost) need the possession time, which the
-    ///    replicated add frame does not carry (NativeMinionFrame has only `possessed`); replicating it is a networking handoff.
+    ///  - hints.ts possession hint: a violet glow pulsing out of the possessed add's crown every ~4 s (<see cref="HintPulse"/>,
+    ///    <see cref="Hint"/>, brightened at level 3). The levels, the grin within 25 m and the black-flame trail are
+    ///    NativeMinionHint.cs, timed by the replicated possession start (NativePveAdd.PossessedAt, NativeMinionFrame.possessedAt).
     /// Everything is in the source (three.js) frame; the runtime mirrors x. Allocation free.
     /// </summary>
     public static partial class NativeMinionFx
@@ -167,14 +167,14 @@ namespace ChipArena.UnityConversion
         /// <summary>hints.ts pulse: a quick swell and slow fade every 4 s (the first 1.4 s of each period), offset per add.</summary>
         public static double HintPulse(double phase,double t){double k=((t+phase*4)%4+4)%4;return k<1.4?Math.Pow(Math.Sin(Math.PI*k/1.4),2):0;}
         /// <summary>
-        /// hints.ts level 1 on the head joint (source axes): the seam box (centre, size; a short split on a cracked crown, a
+        /// hints.ts possessHint on the head joint (source axes): the seam box (centre, size; a short split on a cracked crown, a
         /// thin seam across a blank one) at opacity .55+.45·pulse, and the halo sprite at (0, .38, 0) of size .6+1.1·pulse at
-        /// opacity .18+.82·pulse.
+        /// opacity .18+.82·pulse; both opacities times `boost` (level 3's 1.35, NativeMinionHint.Brightness), capped at 1.
         /// </summary>
-        public static void Hint(bool cracked,double pulse,out double cx,out double cy,out double cz,out double sx,out double sy,out double sz,out double seam,out double halo,out double haloOpacity)
+        public static void Hint(bool cracked,double pulse,out double cx,out double cy,out double cz,out double sx,out double sy,out double sz,out double seam,out double halo,out double haloOpacity,double boost=1)
         {
             cx=cracked?-.03:0;cy=.365;cz=cracked?.03:0;sx=cracked?.09:.27;sy=.026;sz=cracked?.22:.045;
-            seam=Math.Min(1,.55+.45*pulse);halo=.6+1.1*pulse;haloOpacity=Math.Min(1,.18+.82*pulse);
+            seam=Math.Min(1,(.55+.45*pulse)*boost);halo=.6+1.1*pulse;haloOpacity=Math.Min(1,(.18+.82*pulse)*boost);
         }
 
         // ---- death (motion.ts dyingLook) -----------------------------------------------------------------------------

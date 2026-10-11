@@ -69,7 +69,7 @@ namespace ChipArena.UnityConversion
             // A horde add chars joint by joint and burns away by height (motion.ts dyingLook, replacing the first port's dithered
             // fade), then its flames, ash and scorch outlast the body to DEATH_FX_SECONDS (NativeMinionFxPresentation.cs), on the
             // presentation clock as the other death effects.
-            if(horde){float fx=hordeClock-death.at;bool body=!NativeMinionFx.Gone(fx);if(body)HordeDeathBody(rig,death.model,death.id,death.lost,fx,b=>MinionPartVisible(death.lost,b));HordeAdd(rig,death.id,float.NaN,Mathf.Max(0,fx),death.position.y-.85f,false,Vector3.zero,death.lost,body);return true;}
+            if(horde){float fx=hordeClock-death.at;bool body=!NativeMinionFx.Gone(fx);if(body)HordeDeathBody(rig,death.model,death.id,death.lost,fx,b=>MinionPartVisible(death.lost,b));HordeAdd(rig,death.id,float.NaN,Mathf.Max(0,fx),death.position.y-.85f,death.position.y-.85f,float.NaN,Vector3.zero,death.lost,body);return true;}
             sourceModels.Queue(death.model,rig.Root.transform.localToWorldMatrix,b=>rig.Bones[b].localToWorldMatrix,b=>MinionPartVisible(death.lost,b));return true;
         }
         private static bool MinionPartVisible(int lost,int b){int[] bits={1,2,4,8,16,32,64,128,256},bones={5,7,11,8,12,14,18,15,19};for(int i=0;i<bits.Length;i++)if((lost&bits[i])!=0&&BoneWithin(b,bones[i]))return false;return true;}
