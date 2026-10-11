@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-11 local builder v3: `codex/unity-builder-diagnostics-20261011`, based on v2 `e11ac478` / PR #110. Failed builds print the causal Unity error plus stack/recent passes, open `Latest-Build-Error.txt` in Notepad, and copy the complete original log to fixed `Latest-Build.log`. New Open-Latest-Log.cmd reopens it. Each attempt replaces stale diagnostics; success clears the error report. Python: 91 tests, 89 passed / two Windows-only skips; uploaded Unity log parser and source package check pass. Nine-file upgrade ZIP preserves Work/Cache/state. Windows Notepad/double-click and full Unity execution remain owner checks. Separately, ec0c058 passed every native locomotion gate; a missing-floor DEV combat fixture repair is on the current game-source task branch. This tooling branch does not replace shared game source.
+
 2026-10-11 local release: source `beaacc7`, native `94469f03347c`, published at
 channel `20b03b8`; public archive/parts verified and owner confirms in-game update.
 Combined local builder v2 is implemented on `codex/unity-builder-combined-20261011`,

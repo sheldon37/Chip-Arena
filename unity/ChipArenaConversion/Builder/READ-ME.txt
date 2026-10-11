@@ -1,7 +1,7 @@
-CHIP ARENA BUILDER v2 - FETCH, BUILD AND PUBLISH
+CHIP ARENA BUILDER v3 - FETCH, BUILD AND PUBLISH
 
 UPGRADE YOUR EXISTING BUILDER
-Close any running builder first. Extract this ZIP into C:\ and allow its eight
+Close any running builder first. Extract this ZIP into C:\ and allow its nine
 files to replace the files in C:\Chip Arena Builder. Keep Cache, Work and the
 last-*.json files. The ZIP does not contain or replace any of those folders or
 saved build records. You can also use a different writable folder on either PC.
@@ -25,8 +25,16 @@ OTHER BUTTONS
 Build-Windows.cmd         Fetch and build only, for testing before publication.
 Publish-Native.cmd        Publish/retry the last successful build only.
 Check-Update-Status.cmd   Compare the saved build with the public update feed.
+Open-Latest-Log.cmd       Open the latest full Unity log without finding Work.
 
 AFTER AN ERROR
+The console prints the useful Unity error and recent passed checks. A short
+Latest-Build-Error.txt report opens automatically in Notepad. Share that file
+first. The full log is always Latest-Build.log beside these builder files;
+double-click Open-Latest-Log.cmd to open it. Original logs are also kept in Work.
+Each build attempt refreshes these fixed files, so an early fetch failure does
+not show an older Unity error. A successful build clears the old error report.
+
 A failed fetch or build prevents publication of an older saved build. Correct
 the reported error, then rerun Build-and-Publish.cmd.
 If the build passed but uploading failed, double-click Publish-Native.cmd to
@@ -39,7 +47,7 @@ ONE-TIME REQUIREMENTS
 - Git for Windows and Python 3.8 or newer. .NET Framework 4.8 for the launcher.
 - If Unity is elsewhere, set UNITY_EDITOR to the full path of Unity.exe.
 
-FIXES IN v2
+FIXES RETAINED FROM v2
 - Detects a real, working Git executable, including ucrt64 and mingw64 installs;
   rejects launchers that return zero without any version output.
 - Uses a buffered HTTP/1.1 upload, the working solution to the observed HTTP 408.
@@ -51,7 +59,7 @@ FIXES IN v2
 - Rechecks the remote after uploading; never force-pushes or trusts an
   "Everything up-to-date" line after an upload error.
 
-Keep all eight builder files together. Install your playing copy outside Work.
+Keep all nine builder files together. Install your playing copy outside Work.
 Use one publishing PC per update. Changes must reach codex/unity-cloud-current
 before the builder fetches them. Existing local Work edits are preserved, but
 the combined command builds the shared source, not those local edits.
