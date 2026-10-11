@@ -1,0 +1,35 @@
+CHIP ARENA BUILDER
+
+One-time setup
+1. Extract this entire folder somewhere writable, such as C:\ChipArenaBuilder.
+2. Install Git for Windows and Python 3.8+ (enable its launcher or PATH option).
+3. Install Unity 6000.3.24f1 with Windows Build Support using Unity Hub. Activate
+   your license. The Windows launcher compiler also needs .NET Framework 4.8.
+   For a custom Unity location, set UNITY_EDITOR to the full Unity.exe path.
+
+For each game update
+1. Double-click Build-Windows.cmd. It fetches the latest integrated game source
+   from codex/unity-cloud-current, builds it on this PC and opens the output folder.
+   Changes still on Claude/Codex task branches must be integrated first.
+2. Test the game using Windows\Chip Arena.exe in that output folder. The portable
+   player download is Chip-Arena-Windows.zip in the same output folder.
+3. Double-click Publish-Native.cmd. Review and confirm the build to upload it to
+   the existing test update channel. Players then use their Update Game button.
+   Git must be signed into the GitHub account with push access to the test feed.
+   Publish-Native.cmd --status checks without publishing.
+
+The build command never publishes. Download errors or a failed/interrupted build
+stop publication until you run a successful build. With no new shared changes,
+the last validated build is reused; Build-Windows.cmd --rebuild forces a new one.
+
+Keep the builder files together. Cache holds downloaded Git objects. Work holds
+separate source/output folders for each build; earlier copies and edits are never
+reset or overwritten. Each changed version gets a fresh Unity import, so allow
+extra time and disk space. Old Work folders can be removed manually when you no
+longer need them; keep the one identified by last-success.json if you will publish
+or reuse it. Install your regular playing copy outside Work.
+
+This builder can be used on either laptop or desktop. Build/publish from one PC
+per update. It uses your normal GitHub sign-in if the game repository is private;
+no credentials are bundled. Keep cloud auto-publication paused while using the
+manual workflow so two machines do not compete to publish.

@@ -17,3 +17,9 @@ __pycache__/
 
 /Relay/bin/
 /Relay/obj/
+
+/Builder/Cache/
+/Builder/Work/
+/Builder/builder.lock
+/Builder/last-*.json
+/Builder/*.tmp
