@@ -1,5 +1,30 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Claude — Arena rework: Brickfall approved as arena 1 (owner decision)
+- Owner direction: replace every stage except Ward Zero with unique maps in the current box-built style at a much higher quality bar, with buildings that collapse when exploded. Split: Claude does presentation (layout look, scenery, lighting, atmosphere, identity, destruction visuals); Astra does collision, structural sim, spawns, bots and multiplayer. First milestone: one arena, playtested before the old maps go.
+- Design workflow (read-only):
+  - three readers mapped the stage, destruction, presentation and audio pipelines;
+  - four concepts were designed and two judges (gameplay/multiplayer and identity/production) scored them;
+  - a synthesis was written, then fact-checked against `40009f1` (33 corrections, all applied).
+- Owner picked **Brickfall** and accepted Claude's recommendations for everything else:
+  - self-crush yes; team crush follows friendly fire;
+  - the Wrecker is deferred until after G2;
+  - the map rebuilds every round;
+  - `rotation:false` until G3;
+  - no game-wide tone-mapping change now;
+  - kill credit goes to the last damager within 6 s;
+  - old music stays.
+  - The Udio licence is still the owner's to confirm per track.
+- Committed `docs/arenas/ARENA_PROPOSAL.md` (spec, quality bar, destruction contract §5, work split §6, gates §7, ready-to-paste Astra prompt §6.3) and `docs/arenas/scripts/` (2D blockout and spawn line-of-sight checks, section drawings; both print to stdout). PROJECT_STATE updated with the next step.
+- Why the current maps feel the same:
+  - all 14 embed the same 184-block tower set and share one 64×56 footprint and one 8-point global spawn table (`NativeArena.cs:85`);
+  - there are 4 flat materials;
+  - only 7 blocks have supports, and they never cascade.
+- Next step:
+  - Astra (§6.1 steps 1–3): UnityMaps loader with a content revision, static split, per-map spawns, all five clamps from map bounds, then the Brickfall grey-box with a minimal nav graph, for the G1 playtest.
+  - Claude (in parallel): MapLooks lighting presets and the dusk sky (old maps identical), then the looks, dressing, backdrop, destruction VFX and audio.
+- Docs only: no code, gameplay, network or save change. Nothing was run in Unity or on Windows. The layout numbers come from a 2D script.
+
 ## 2026-10-11 — Claude — Damage-screen camera flip fix and Siren minion effects (owner request)
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62): merged `claude/damage-screen-flip` `daf6048` and `claude/siren-minion-fx` `0c5871b`, both based on `497966f`. Each branch had a builder, two review lenses and a fix pass. Visual only: no simulation, networking, replicated-data or save change.
 - Camera flip ("camera seems to flip when taking damage"):
