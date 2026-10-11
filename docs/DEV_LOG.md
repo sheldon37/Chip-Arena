@@ -1,5 +1,29 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Claude — Effects overhaul milestone 1: match-camera bloom
+- Branch `claude/fx-bloom` from `2bcb646`; implemented on the branch only (not merged, not published). Bloom part of the owner's effects overhaul; the particle-role renderer and the field glow-disc removal are a parallel branch.
+- New `Runtime/NativeBloom.cs`, `Resources/NativeBloom.shader` and `Core/NativeBloomRules.cs`. This is a post effect on the match camera: OnRenderImage -> Graphics.Blit only, no command buffer.
+  - The chain: a 13-tap prefilter to half size, 6 levels down to 1/64, accumulating 9-tap tent ups and an additive composite. All passes are linear HDR on ARGBHalf temporaries, released in the same frame.
+  - Parameters: threshold 1 with a .5 soft knee (exactly 0 at or below linear 1), firefly clamp 10, intensity .4.
+  - Second-texture v flips when the source is stored top-down. The per-pixel maths sits in a GLSL-compatible SHARED BEGIN/END block.
+- The match camera sets `allowHDR=true` explicitly (the Unity default it already relied on). The bloom is attached when the camera is created, so it is always the first image effect.
+  - The damage screen's image effect is added later and runs after it: behind it on the same camera, or on the view-model camera, which renders later.
+  - IMGUI draws after all cameras, so the HUD and menus never bloom. The portrait, victim-screen and view-model cameras do not bloom.
+- Quality: ApplySettings disables the bloom on the low graphics tier and scales it x.6 with Reduced effects. It has no saved preference of its own. The shader is registered in NativeBuildChecks.
+- No gameplay, network, hit timing, hitbox, cooldown or movement change.
+- Checks:
+  - `unity-check.sh`: runtime+editor build OK.
+  - `check_relay.py`: 320 PASS, 0 FAIL, including the new `Tests/BloomChecks.cs`.
+  - Python: 75 tests OK, 1 skipped.
+  - `package_source.py`: passed.
+  - `git diff --check`: clean.
+  - The shader passes an HLSL front-end check (glslang, all 4 passes). Its shared block compiles as GLSL ES 3.00 and was run through the full chain on a synthetic HDR frame: grid lines at 1.0 gain 5e-5.
+- Not run: Unity import/compile of the shader, D3D11 orientation with MSAA, real-scene look and cost, Windows build.
+- Review fix (same day, second commit): this is now the only bloom; `claude/fx-base-layer` dropped its own `NativeBloomImage` so the two branches merge without an asset or shader-name clash. The composite ends in a hue-keeping display shoulder (`BloomShoulder` / `NativeBloomRules.Shoulder`): unchanged up to 0.9, eased to at most 1 with the hue kept, blending toward white only from a brightest channel of 2 (full at 8.25), so HDR fireball puffs keep their colour and spark cores still read white-hot. Only while the bloom runs; the low tier keeps the plain clip. New BloomChecks cover it (CPU mirror and shader text).
+  - Checks: `unity-check.sh` build OK; `check_relay.py` 320 PASS, 0 FAIL; Python 75 OK (1 skipped); `package_source.py` passed; `git diff --check 2bcb646 HEAD` clean; glslang HLSL front end OK (4 passes, fog/gamma variants); the SHARED block compiled as GLSL in the offline effects harness (renders with fx-base's review fix).
+  - Not run: Unity import/FXC compile, D3D11 orientation with MSAA, real-scene look and cost, Windows build.
+- Next: tune Intensity/Knee in NativeBloomRules against the new HDR effect values in an owner build.
+
 ## 2026-10-11 — Claude — Unity effects sound bank (licensed clips kept out of the repo)
 - Owner approved the four Asset Store sound packs (2026-10-11). The repo stays public, so the clips stay out of git. Branch `claude/fx-audio`, base `1adfce5`; not pushed by this task. Presentation and audio only.
 - New Core `NativeSoundBank` (key contract of 173 keys with space, priority and hard length caps; strict manifest reader; seeded non-repeating bags; per-key dedup), `NativeSoundCues`/`NativeSoundPlan` (bank lookup beside the unchanged `NativeEventSounds.Route`: blast style via `NativeBlastSim.StyleOf`, material, weapon, kind, covers and the per-style blast recipe) and `NativeVoicePool` (24 shared voices, 8 gated, 4 reserved from low priority, high steals low, 3 loops). Runtime `NativeEffectsAudio` loads `Resources/EffectsAudio/manifest`, which only the git-ignored `Assets/LocalAssets` provides. Without it every cue plays today's clip and routing, and every new hook stays silent.
@@ -264,14 +288,12 @@
 - Cloud archive validator accepts both the legacy flat seed and the new nested seed with exact inventory and byte-for-byte player validation. Companion main branch `codex/native-simple-package-validator` updates the publisher's independent copy; activate it before integrating this game package change. Technical seed filename retained for the existing delivery contract; its contents are the same clean ZIP.
 - Local Python/source checks: 62 tests (61 passed, 1 skipped), source packaging passed; publisher companion 74 tests (73 passed, 1 skipped). Diff whitespace clean. Hosted native/Windows checks and real UBA compile/packaging remain required; no locally built Windows game or owner gameplay acceptance claimed. No new visual assets, combat, network or save changes.
 
-
 ## 2026-10-11 — Astra — Owner-approved knockdown and ADS camera continuity
 - Owner approved both camera changes and publication through the existing Update button, including PR #102's possession timestamp. Continued on `codex/unity-possession-time-20261011` from `51d47d0` (same tree as local `ab34c88`), cloud base `40009f1`.
 - `ConversionGame.UpdateCamera`: a living pilot keeps the selected first-person view during knockdown. Existing `ArenaPresentation.Render` hides the viewed pilot's world body regardless of recovery state; the separate hands/weapon view remains. ADS camera/FOV/scope follows held Q for weapons with ADS, including stagger/recovery. Releasing Q, death or menus ends ADS. Reload/roll/block no longer switch the camera mode either; the simulation still gates ADS benefits and shooting independently in `NativeArena.StepPilot`.
 - No changes to simulation, shot availability, accuracy bonuses, damage, stamina, recovery duration, replicated input, animation assets or saves. Cinematics/replay retain their existing camera overrides.
 - Verification: inspected the input, camera, own-body suppression, view-model/scope and authority firing paths. Existing Python/source/package checks rerun for the combined patch; native CI and the actual UBA build must pass on the final cloud commit before publication. Windows visual/playtest acceptance remains unrun here.
 - Merge and test-channel publication are now explicitly authorized by the owner. Claude's level-2/3 possession visuals remain a separate handoff; the timing data is included here.
-
 
 ## 2026-10-11 — Astra — Replicate Siren minion possession start for Claude's hint visuals
 - Task branch `codex/unity-possession-time-20261011`, based on cloud `40009f11f75926a3418f3b595e87a9277ae8e0b4`. Host already records `NativePveAdd.PossessedAt`; the snapshot now carries `NativeMinionFrame.possessedAt`, validates it as finite/nonnegative, and restores it into the guest add. Network/replay consumers can use `add.Pve.Possessed` and `arena.Time - add.Pve.PossessedAt`. This is match time, not wall-clock time. No movement, damage, cooldown, possession selection, save, or camera rule change.
@@ -319,7 +341,6 @@
 - Corrected NativeFollowupValidation to require projectile absorption **without a new CeilingHit**; preserves unrelated existing events. New Python regression guards this Editor/runtime contract in both CI source and the Windows package tests. No runtime/gameplay, shader, networking or save change.
 - Branch `codex/unity-uba-ceiling-validation-20261010` from cloud `f804d2b`; merge only after both native CI jobs pass. A fresh UBA build of the merged head is still required; a passing source check alone is not publication verification. This also enables the first real compile of Claude's new shaders on the current batch.
 
-
 ## 2026-10-10 — Astra — Last Laugh crush authority and Windows update handoff
 - Owner request: fix the Siren's arm snapping to idle at the timed crush, correct the victim's facing on the drop, and distinguish the actual crush from unrelated mid-hold kills; publish the resulting Unity batch through the existing native test Update button.
 - Task branch `codex/siren-crush-release-20261010` from verified cloud head `d4cabb9455a0e749fb8665d428cc08c1db36bc92` (Claude PR #62). Simulation change: mark each grabbed victim as crushed once; detach the victim before applying the crush damage so the death handler does not cancel the holder; retain the holder's `Caught`/grab action until the existing `m.Until` (0.6 s after crush). Cancellation now zeros captive velocity only while the holder actually has them.
@@ -327,7 +348,6 @@
 - Source event timestamps, original damage values, stun, cooldown, `CrushAt`, `Until`, physical pin, ragdoll release and PvE repair code are otherwise unchanged. Network/save schemas are unchanged; snapshot `SourceAction` continues to report `grab` until the move finishes. New managed regression checks cover the 0.6 s action interval, wrapped facing, and actual-crush-only death style.
 - `tools/export_cinematics.mjs` inspection: Claude's staged/dressed Siren bake and head track are accounted for by existing export parity checks; existing dependency on three.js object-id order persists. No changes to exported models or shader assets in this task.
 - Verification/release status at implementation: source patch committed on task branch; native CI and real Windows UBA/D3D shader compile still need their exact new-head receipts. Existing `main` publisher workflow on completion of cloud native CI is the authorized native-test path. Do not publish a stale build, alter the Electron feed, or treat a green source job as a compiled Unity player. Owner Windows physics/visual/host-guest acceptance remains open.
-
 
 ## 2026-10-11 — Claude — Siren redesign ("Fallen Couturiere") and a realistic entrance smile (owner request)
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62): merged `claude/siren-detail` `0a87241` (base `0e8a3ff`) on top of `7f5e288`.
@@ -711,7 +731,6 @@ containing an entry; no self-referential commit hash is required.
 - Local whitespace/diff review passes. Partial-checkout Python suite: 35 collected, 32 passed, 1 Windows-only skip, 2 errors from absent unchanged SourceModels/SourceMotion banks. No local .NET or Unity Editor is installed. Complete-tree native CI and real Unity gates are pending; no runtime pass or publication is claimed yet.
 - Gameplay impact: Emperor cancel/movement/grounding and Leet readiness change as above; weapon damage, hitboxes and authored attack timing/cooldowns otherwise unchanged. Native snapshot adds fields; no account/profile save changes or new visual assets. Existing appearance algorithms are unchanged apart from consuming authoritative timing/target data. Windows rendered gameplay and live host/guest playtest remain unrun. Next: exact-head native CI, then verified existing test Update publication under standing owner authorization; source PR stays reviewable without an automatic shared merge.
 
-
 ## 2026-10-10 — Claude — Emperor wavedash legs and cancel blend (owner playtest); cancel fix for Astra
 - Branch `claude/emperor-wavedash` (`c8c5454`, base `530321e`). Two-lens review found nothing blocking (one low note about Unity's simulation stopping the body on a cancel, below). Merged. Presentation only.
 - Legs:
@@ -733,7 +752,6 @@ containing an entry; no self-referential commit hash is required.
 - Added an actual Unity/PhysX Editor gate to the existing PvE acceptance run: gun, magic and melee bot inputs must damage minions with Siren hidden and visible; aim must follow the selected minion with Siren on the opposite side; inherited practice settings, combat recruits, medics, unexposed/dead targets, visible boss targeting and PvP dummy preservation are checked.
 - Local diff/whitespace review passed. Python run: 49 passed, 1 Windows-only skip, 2 visual-bank failures because the connector could not retrieve the latest large SourceModels bank into this partial checkout. No visual bank is changed by this patch; GitHub will test the complete remote tree. No local Unity/.NET runtime is installed. Real Unity gate, hosted checks and publication pending; do not treat the local run as release approval.
 - Gameplay impact: bot decision/aim and PvE attack suppression fixed; weapon hit timing, hitboxes, damage, cooldowns, player movement, network schema, account/profile saves and presentation unchanged. Implemented on task branch, not yet merged or released. Next: complete-tree native CI, real Unity build and verified existing test Update publication under owner authorization.
-
 
 ## 2026-10-10 — Claude — Siren Marked crosshair and the animated, upgraded Auditor halo (owner requests)
 - Base `claude/sleepy-ritchie-g8ruhv` at `4bdd90b`. Both branches were reviewed, then merged. Presentation only: no change to hit timing, hitboxes, damage, cooldowns, movement, networking or saves.
@@ -1188,11 +1206,6 @@ containing an entry; no self-referential commit hash is required.
 - Review fix (guest path): on `3da391d` a guest rendered on the staircase visual clock, which only moves when a 20 Hz host frame arrives, so most frames held. Each held frame overwrote the stored look, so look sway was 3.5-4.8 mm instead of 12 mm, and the bob jumped about 12 mm every 50 ms. This entry first implied that the guest path matched the host; it did not. After the rebase the layer runs on `arena.ReplicaRenderTime` (PR #66's `NativeSnapshotClock`). `NativeViewSway.Sample` now also keeps the stored look and ground contact until the clock advances, so a turn or a landing on a held frame counts on the next step.
 - New managed checks: held frames are no-ops and pass their turn and landing on to the next step (60 frames; the check fails on the old code). A modelled guest (20 Hz host frames, 30 ms jitter, the snapshot clock advanced by frame time) matches the host at 60/144/240 Hz: 12.0 mm look sway, the host's bob step (5.2/2.2/1.3 mm per frame) and no held frames. With a 250 ms stall of host frames and a host clock 5 % slower than wall time (200 held frames), look sway stays at 12.0-12.1 mm. Re-run after the rebase: real-Unity runtime and Editor compile, `check_relay.py` (111 PASS lines, 35 managed-core checks), 24 unittest tests and `package_source.py` (691 files) pass. No Unity playtest or two-client run.
 - Risks/next: the guest feel depends on `ConversionGame.LateUpdate` keeping `arena.ReplicaRenderTime` as the guest render time. That clock still holds at the newest host frame when frames are late or the host's match clock runs slower than wall time. For those frames the view model freezes with the world, and the turn arrives on the next step, clamped to the 3 cm sway limit, so a long stall loses part of it. A slower presentation clock also raises look sway in proportion (13.3 mm at 0.9× in a scratch harness), because the camera turns in wall time; the host behaves the same. On guests, recoil and the landing kick start one host frame late (20 Hz snapshots, as the source's authoritative snapshot). Not changed: Unity still places fighters (ansatsuken/emperor) and Leet at the melee view offset, while the source uses (0, -.48, -.2) and the staff offset. Next: an owner playtest of the first-person feel at 60 and 144 Hz, hip-fire and ADS.
-
-
-
-
-
 
 ## 2026-10-08 — Claude — C4 class cards and weapon cards in the Unity menus
 - Built on `claude/wip-c4` (base `ea8981b`) and merged into `claude/sleepy-ritchie-g8ruhv` (PR #62). Parity item C4 in `docs/UNITY-PARITY-GAPS.md`.
@@ -2264,7 +2277,6 @@ containing an entry; no self-referential commit hash is required.
 - Not run: duel-balance (exceeded 10 min; ADS zeroing makes aimed pistol/MG/rifle shots, incl. 25 m+ ADS bots, more
   accurate at range - needs an owner balance look), native Windows/GPU, online multiplayer, packaging/update publication.
 - Next: owner review of intro look/feel and ADS feel at range; merge, then the standing test-channel publication.
-
 
 ## 2026-10-04 — Claude — combat FX on extra projectiles, weapon effects on Siren adds, hold-to-aim
 
