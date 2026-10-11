@@ -1,5 +1,42 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Claude — Chip selection close-up + Holo Scan hover; impact area disc removed (owner requests)
+- Branch `claude/sleepy-ritchie-g8ruhv` (PR #62). Merged two branches, both presentation only:
+  - `claude/draft-closeup` `3becf46` (base `40009f1`; framing builder, three hover prototypes plus a fourth spec, a judge, hover builder, two review lenses, fix);
+  - `claude/impact-no-pancake` `972dbac` (base `ce3c506`; builder, review, fix).
+- Chip selection, framing ("pilot zoomed in a lot more, solar plexus and up"), `Core/NativeDraftStage.cs` / `NativeDraftPlant.cs` / Runtime draft files:
+  - The camera is solved so the head top sits at the headroom line and a rig-derived solar plexus sits on the tray's top line. Same 24° lens; about 2.8 m instead of 3.7 m at 16:9; tilt 8°. The head is 1.29–1.40× larger.
+  - Crowns take at most 0.2 m of room (tall hats and halo flames can cross the top edge). The Siren's BossTop drops to .04. Hatted pilots and the Siren are now at least 1.25× larger than before.
+  - The display table is removed. Hands rest in the lap inside a lower shade that is opaque below the plexus, so legs and lap never show.
+  - The gaze is read through the turn, so the face stays toward the lens (FaceCamera ≥ .7 on every card).
+  - Pick: the hand rises in front of the chest to catch the card, then plants the chip above the plexus line. Same timeline: contact .62 s; install cue still at 1.14 s. The Siren drafter catches and holds.
+  - DraftStageChecks covers 11 screens (16:9 to 32:9, 4:3, 5:4, UI scales) plus pick-in-frame (132 picks) and face-toward-camera.
+- Chip selection, hover ("stylize the highlighting"): Holo Scan+ won the judge (30.5/35 against lift-and-glint, circuit-energize and socket-lock), with grafts from the others. New `Core/NativeHoloScan.cs`; drawing in `NativeChipArt`/`NativeChipCard`.
+  - The highlight:
+    - a tier-coloured trace runs both ways round the border in 0.32 s, then a light circles it every 3.2 s;
+    - the pins light as the trace passes them;
+    - corner brackets snap in outside the card, keylined to stay visible over the pilot's torso;
+    - one scan line passes under the text; the die flares; a tier glow breathes behind the card;
+    - the card lifts 10 px, and the other cards dim by up to 15%.
+  - Keyboard focus gets the same treatment. When the pointer is elsewhere, the focus card keeps faint still brackets.
+  - Per-tier touches: gold tail for Legendary, foil ring for Mythic, red current for Mishima, a bracket blink for L44T, a glitch jolt for Siren, a softer glow for Common.
+  - The pick clamps the brackets with a ring. Reduced effects keeps only the still parts.
+  - New DraftHoverChecks.
+- Impact "floating pancake" removed:
+  - `NativeBlastSim` drew a filled flat disc (Ring) at an assumed floor of py−.95 for every blast and ground impact, so wall hits left a disc and debris floating mid-air.
+  - Removed every Ring and the ground sweep in Impact. Their voxels went into the shell, so spawn counts still equal the source's.
+  - The presentation raycasts the real floor (WorldMask, upward faces only). Near the ground (≤1.2 m) the shell is a dome; higher up it is a full sphere around the hit. Debris, fireball and sparks land on the real floor.
+  - Chip-field arrivals and the Orbital Mark lock use the real floor too. A field's ground glow fades when the field floats more than 1.2 m above its floor.
+  - Owner cut recorded as `owner.disc` in `tools/export_blast_fixtures.mjs` (15 cuts in total); `blast-parity.json` regenerated (67 of 88 runs changed; the rest byte-identical). BlastChecks NoAreaDisc covers it.
+  - Gameplay radius and damage unchanged.
+- Checks on merged head `c972cd7`: `unity-check.sh` runtime+editor build OK; Python 59 OK (1 skipped); `package_source.py` passed; `check_relay.py` 289 PASS, 35 managed-core checks; `git diff --check 6235a82 HEAD` clean.
+- Not run: Unity Editor/IMGUI rendering, a real PhysX raycast, a Windows build or a playtest.
+- Owner acceptance:
+  - chip selection at your resolution: framing, a hat or halo, the Siren pick, and the hover feel at 720p;
+  - a rocket into a wall and a ground blast.
+- Known: a chip field's own ambient emitters (acid rain motes, wildfire flames) and the time/repulsion domes still sit at the field height minus .95 m, as in the source. Moving them would separate the look from the gameplay sphere; owner call.
+- Release: pushed to PR #62 and fast-forwarded to `codex/unity-cloud-current`. Publication waits on native CI and UBA for that exact head.
+
 ## 2026-10-11 — Claude — Arena rework: Brickfall approved as arena 1 (owner decision)
 - Owner direction: replace every stage except Ward Zero with unique maps in the current box-built style at a much higher quality bar, with buildings that collapse when exploded. Split: Claude does presentation (layout look, scenery, lighting, atmosphere, identity, destruction visuals); Astra does collision, structural sim, spawns, bots and multiplayer. First milestone: one arena, playtested before the old maps go.
 - Design workflow (read-only):
