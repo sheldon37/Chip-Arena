@@ -46,6 +46,7 @@ class FetchBuilderTests(unittest.TestCase):
         self.addCleanup(patch.stopall)
         patch.object(builder, 'editor', return_value='Unity fixture.exe').start()
         patch.object(builder, 'reveal').start()
+        patch.object(builder, 'open_error_report').start()
         self.builds = []
 
     def git(self, cwd, *args):
@@ -111,6 +112,40 @@ class FetchBuilderTests(unittest.TestCase):
         self.assertEqual(builder.previous(self.root), good)
         with self.assertRaisesRegex(ValueError, 'latest build attempt'):
             builder.publish(self.root)
+
+    def test_failed_process_reports_current_log_then_success_clears_error(self):
+        self.build()
+        sha = self.advance()
+        def fail(project, unity):
+            log = project / 'Builds/build.log'
+            log.parent.mkdir()
+            script = ('from pathlib import Path; import sys; '
+                      'Path(sys.argv[1]).write_text("PASS native locomotion\\n'
+                      'Exception: Native DEV combat: held E resumes after hook\\n'
+                      '  at NativeArena.ValidateDevCombatParity()\\n", encoding="utf-8"); '
+                      'sys.exit(7)')
+            subprocess.run([sys.executable, '-c', script, str(log)], check=True)
+        with patch.object(builder, 'build_project', side_effect=fail), \
+                self.assertRaises(subprocess.CalledProcessError) as failed:
+            builder.build(self.root)
+        self.assertEqual(failed.exception.returncode, 7)
+        report = (self.root / 'Latest-Build-Error.txt').read_text(encoding='utf-8')
+        self.assertIn(sha, report)
+        self.assertIn('held E resumes after hook', report)
+        self.assertIn('PASS native locomotion', report)
+        attempt = json.loads((self.root / 'last-attempt.json').read_text())
+        original = self.root / attempt['project'] / 'Builds/build.log'
+        self.assertEqual((self.root / 'Latest-Build.log').read_bytes(), original.read_bytes())
+        with self.assertRaisesRegex(ValueError, 'latest build attempt'):
+            builder.publish(self.root)
+        good = self.build()
+        self.assertIn('No build error.', (self.root / 'Latest-Build-Error.txt').read_text())
+        self.assertEqual((self.root / 'Latest-Build.log').read_bytes(), (good / 'Builds/build.log').read_bytes())
+        self.remote.rename(self.remote.with_name('offline.git'))
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.build()
+        self.assertIn('No Unity log was produced', (self.root / 'Latest-Build.log').read_text())
+        self.assertNotIn('held E resumes after hook', (self.root / 'Latest-Build-Error.txt').read_text())
 
     def test_corrupt_package_is_not_accepted_or_published(self):
         project = self.build()

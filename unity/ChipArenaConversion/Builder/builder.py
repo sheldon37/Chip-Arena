@@ -128,6 +128,105 @@ def save(path, value):
     temporary.replace(path)
 
 
+def diagnostic_file(path, text=None, source=None):
+    plain_path(path)
+    temporary = path.with_name(path.name + '.' + uuid.uuid4().hex + '.tmp')
+    try:
+        if source is not None:
+            plain_path(source)
+            shutil.copyfile(source, temporary)
+        else:
+            temporary.write_text(text, encoding='utf-8')
+        temporary.replace(path)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
+def unity_errors(log):
+    """Prefer compiler/exception causes to shutdown wrappers or early license noise."""
+    lines = log.lstrip('\ufeff').splitlines()
+    patterns = (
+        r'\berror (?:CS|BC)\d+\b',
+        r'^\s*(?:[\w.]*Exception|Fatal error)\s*:',
+        r'\b(?:error|failed|failure|aborting|crash)\b',
+    )
+    indices = []
+    for pattern in patterns:
+        indices = [i for i, line in enumerate(lines) if re.search(pattern, line, re.I)]
+        if indices:
+            break
+    if not indices:
+        return 'No recognized error marker; last log lines:\n' + '\n'.join(lines[-35:])[-12000:]
+    blocks = []
+    seen = set()
+    for i in indices[-6:]:
+        if lines[i] in seen:
+            continue
+        seen.add(lines[i])
+        block = [lines[i]]
+        for line in lines[i + 1:i + 13]:
+            if not line.strip() or not (line.startswith((' ', '\t', '(Filename:')) or re.match(r'^[\w.]+:[\w.<>]+\s*\(', line)):
+                break
+            block.append(line)
+        blocks.append('\n'.join(block))
+    return '\n\n'.join(blocks)[:12000]
+
+
+def open_error_report(path):
+    if os.name == 'nt':
+        subprocess.Popen(['notepad.exe', str(path)])
+
+
+def build_diagnostics(root, attempt, project=None, error=None):
+    # Diagnostic I/O and Notepad must never turn a good build into a failure or
+    # replace the actual exception. Original per-worktree logs remain untouched.
+    try:
+        latest = root / 'Latest-Build.log'
+        report = root / 'Latest-Build-Error.txt'
+        log = project / 'Builds/build.log' if project is not None else None
+        heading = ('Chip Arena build: ' + attempt['status'].upper() + '\n'
+                   + 'Started (UTC): ' + attempt['at'] + '\n'
+                   + 'Source: ' + attempt.get('sourceCommit', 'not fetched') + '\n'
+                   + 'Stage: ' + attempt.get('stage', 'starting') + '\n')
+        contents = ''
+        if log is not None and log.is_file():
+            diagnostic_file(latest, source=log)
+            contents = latest.read_text(encoding='utf-8-sig', errors='replace')
+            heading += 'Original log: ' + str(log) + '\n'
+        else:
+            diagnostic_file(latest, text=heading + '\nNo Unity log was produced by this attempt.\n')
+        if error is None:
+            diagnostic_file(report, text=heading + '\n' + ('Build in progress.\n' if attempt['status'] == 'started' else 'No build error.\n'))
+            return
+        if isinstance(error, subprocess.CalledProcessError):
+            detail = 'Process exited with code ' + str(error.returncode) + '.'
+            if error.stderr:
+                detail += '\n' + str(error.stderr)[-8000:]
+        else:
+            detail = str(error) or type(error).__name__
+        summary = heading + '\n' + detail + '\n'
+        if contents:
+            summary += '\nUnity error details:\n' + unity_errors(contents) + '\n'
+            passed = [line.strip() for line in contents.splitlines() if line.startswith('PASS ')][-5:]
+            if passed:
+                summary += '\nLast completed checks:\n' + '\n'.join(passed) + '\n'
+        else:
+            summary += '\nNo Unity log was produced by this attempt.\n'
+        summary += '\nFull log: ' + str(latest) + '\nError report: ' + str(report) + '\n'
+        summary += '\nShare this error report first; the full log is beside it if needed.\n'
+        diagnostic_file(report, text=summary)
+        # Preserve Unicode in the file even on a legacy Windows console encoding.
+        encoding = getattr(sys.stdout, 'encoding', None) or 'utf-8'
+        print('\n' + summary.encode(encoding, errors='replace').decode(encoding), flush=True)
+        try:
+            open_error_report(report)
+        except OSError:
+            print('Could not open Notepad. Open the error report shown above.', flush=True)
+    except (OSError, ValueError) as failure:
+        print('Could not save build diagnostics: ' + str(failure), file=sys.stderr)
+
+
 def digest(path):
     result = hashlib.sha256()
     with path.open('rb') as stream:
@@ -186,7 +285,7 @@ def editor():
 
 
 def validate(project):
-    result = run([sys.executable, '-c', VALIDATE, project], stdout=subprocess.PIPE, text=True)
+    result = run([sys.executable, '-c', VALIDATE, project], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     return json.loads(result.stdout)
 
 
@@ -225,16 +324,27 @@ def check_saved(root, record):
 def build(root, rebuild=False, publish_after=False):
     attempt = {'id': uuid.uuid4().hex, 'status': 'started', 'at': datetime.now(timezone.utc).isoformat()}
     save(root / 'last-attempt.json', attempt)
+    project = None
+    build_diagnostics(root, attempt)
     try:
+        attempt['stage'] = 'Locate Unity Editor'
         unity = editor()
+        attempt['stage'] = 'Fetch shared source'
         repository, sha = fetch(root)
+        attempt['sourceCommit'] = sha
         last = previous(root)
         if last and last['sourceCommit'] == sha and not rebuild:
+            attempt['stage'] = 'Validate saved build'
+            project = project_for(root, last)
             project = check_saved(root, last)
             record = dict(last, attempt=attempt['id'])
             print('No new shared changes. Reusing the verified successful build.', flush=True)
         else:
+            attempt['stage'] = 'Prepare source worktree'
             project = checkout(root, repository, sha)
+            attempt['stage'] = 'Unity build and package validation'
+            attempt['project'] = project.relative_to(root).as_posix()
+            save(root / 'last-attempt.json', attempt)
             identity = build_project(project, unity)
             record = dict(sourceCommit=sha, project=project.relative_to(root).as_posix(), build=identity,
                           zipSha256=digest(project / 'Builds' / PLAYER_ZIP), attempt=attempt['id'])
@@ -243,14 +353,16 @@ def build(root, rebuild=False, publish_after=False):
         save(root / 'last-success.json', record)
         attempt['status'] = 'success'
         save(root / 'last-attempt.json', attempt)
+        build_diagnostics(root, attempt, project)
         print('Ready: ' + str(project / 'Builds' / PLAYER_ZIP))
         if not publish_after:
             print('Use Publish-Native.cmd to send this build to the Update button.')
             reveal(project)
         return project
-    except BaseException:
+    except BaseException as error:
         attempt['status'] = 'failed'
         save(root / 'last-attempt.json', attempt)
+        build_diagnostics(root, attempt, project, error)
         raise
 
 
@@ -311,7 +423,11 @@ if __name__ == '__main__':
     try:
         main()
     except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as error:
-        print('Builder stopped: ' + str(error), file=sys.stderr)
+        detail = ('Process exited with code ' + str(error.returncode) + '. See the error details above.'
+                  if isinstance(error, subprocess.CalledProcessError) else str(error))
+        print('Builder stopped: ' + detail, file=sys.stderr)
+        if isinstance(error, subprocess.CalledProcessError) and error.stderr:
+            print(str(error.stderr)[-8000:], file=sys.stderr)
         print('Source folders and successful builds were kept. If only uploading failed, rerun Publish-Native.cmd to retry without rebuilding.', file=sys.stderr)
         sys.exit(1)
     except KeyboardInterrupt:
