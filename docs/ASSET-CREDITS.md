@@ -47,10 +47,10 @@ was trimmed, length-capped, loudness-normalised (with a peak limiter) and re-enc
 
 | Pack | Publisher | Asset Store id |
 |---|---|---|
-| Interface and Item Sounds | Cafofo | not recorded yet (owner to add) |
-| Fantasy Game Sound Effects | Epic Sounds and FX | not recorded yet (owner to add) |
-| Battle Sound Library - Magic & Melee | Infinity PBR / Magic Pig Games | not recorded yet (owner to add) |
-| Universal Sound FX | Imphenzia | not recorded yet (owner to add) |
+| Interface and Item Sounds | Cafofo | 89646 |
+| Fantasy Game Sound Effects | Epic Sounds and FX | 94186 |
+| Battle Sound Library - Magic & Melee | Infinity PBR / Magic Pig Games | 176417 |
+| Universal Sound FX | Imphenzia | 17256 |
 
 **The files themselves are never in this repository and must not be published while the repository is
 public.** Not even transcoded clips may be published: the Asset Store licence covers shipping them inside
