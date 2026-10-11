@@ -20,8 +20,8 @@ namespace ChipArena.UnityConversion
         public static void Run(string root)
         {
             string R(string file)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",file));
-            int roles=Roles(R),renderer=Renderer(root,R),hooks=Hooks(R),shaders=Shaders(R),shared=Shared(R),bloom=Bloom(R);
-            Console.WriteLine("PASS effects base layer renderer: "+roles+" role mappings, "+renderer+" renderer checks (sorting, off-thread atlas, submission, release, no per-frame allocation), "+hooks+" hook checks (blasts, sparks, field cores, no disc), "+shaders+" shader checks, "+shared+" Core-shared numbers, "+bloom+" bloom checks (text scans; no Unity render)");
+            int roles=Roles(R),renderer=Renderer(root,R),hooks=Hooks(R),shaders=Shaders(R),shared=Shared(R),bloom=NoBloom(root);
+            Console.WriteLine("PASS effects base layer renderer: "+roles+" role mappings, "+renderer+" renderer checks (sorting, off-thread atlas, submission, release, no per-frame allocation), "+hooks+" hook checks (blasts, sparks, field cores, no disc), "+shaders+" shader checks, "+shared+" Core-shared numbers, "+bloom+" bloom ownership checks (text scans; no Unity render)");
         }
         // Every role has its primitive; the shell voxels are not drawn one by one; smoke grows on its raw size.
         private static int Roles(Func<string,string> R)
@@ -33,28 +33,37 @@ namespace ChipArena.UnityConversion
                 ("Shell","case NativeFxRole.Shell:break;"),("Mote","Glow(at,color*MoteGain,edge*MoteSize,Mote,"),("Core","Glow(at,color*CoreGain,edge*CoreSize,CoreGlow,"),
                 ("Bubble","Glow(at,color*RingGain,edge*RingSize,Ring,"),("Snow","Glow(at,c,edge*SnowSize,Snow,"),("Spark","Streak(at,velocity,color*SparkGain,"),
                 ("Ember","Streak(at,velocity,color*EmberGain,"),("Streak","Streak(at,velocity,color*StreakGain,"),("Bolt/Line","Link(i,(int)seed);"),
-                ("Smoke","Puff(at,color*SmokeAlbedo,SmokeOpacity,raw*SmokeSize,SmokeMode,"),("Cloud","Puff(at,color*SmokeAlbedo,CloudOpacity,raw*CloudSize,SmokeMode,"),
-                ("Dark","Puff(at,color,DarkOpacity,raw*DarkSize,DarkMode,"),("Fireball","Puff(at,color,1,raw*FireballSize,FireballMode,"),("Flame","Puff(at,color*FlameTint,1,edge*FlameSize,FireballMode,"),
-                ("Debris/Rock","Chunk(o,w,(int)seed,u,color,role==NativeFxRole.Rock);"),("Shard","Crystal(o,w,color);")
+                ("Smoke","Puff(at,Lift(color)*SmokeAlbedo,SmokeOpacity,raw*SmokeSize,SmokeMode,"),("Cloud","Puff(at,Lift(color)*SmokeAlbedo,CloudOpacity,raw*CloudSize,SmokeMode,u,seed,floor,glow:CloudGlowOf(color));"),
+                ("Dark","DarkCore(at,edge,color);"),("Fireball","Puff(at,color,1,o[w+NativeBlastPool.StartSizeAt]*FireballSize*(FireballBirth+FireballBillow*u),FireballMode,"),("Flame","Puff(at,color*FlameTint,1,edge*FlameSize,FireballMode,u*FlameAge,"),
+                ("Debris/Rock/HotDebris","case NativeFxRole.Debris:case NativeFxRole.Rock:case NativeFxRole.HotDebris:Chunk(o,w,(int)seed,u,color,role);"),("Shard","Crystal(o,w,(int)seed,color);")
             };
             foreach(var (role,code) in expect){Check(draw.Contains(code),role+" draws as its primitive");n++;}
             Check(draw.Contains("public void Blasts(NativeBlastSim sim){if(sim==null)return;Pool(sim.Solid);Pool(sim.Glow);Shocks(sim);}")&&draw.Contains("var shape=s.Dome?dome:shell;"),"each front is one shell, a dome or a sphere");n++;
             Check(draw.Contains("chunks[(seed%NativeVfxMeshes.ChunkVariants+NativeVfxMeshes.ChunkVariants)%NativeVfxMeshes.ChunkVariants]")&&draw.Contains("new Shape(NativeVfxMeshes.Shard)"),"rubble picks a chunk by seed; ice is the crystal shard");n++;
-            Check(draw.Contains("Array.Sort(linkSeed,linkIndex,0,links);")&&draw.Contains("if(gap<1||gap>(bolt?2:1))continue;"),"bolt and line points join their seed neighbours");n++;
+            Check(draw.Contains("Array.Sort(linkSeed,linkIndex,0,links);")&&draw.Contains("if(!NativeBlastPool.Linked(o,a,b))continue;")&&!draw.Contains("gap>(bolt?2:1)"),"bolt and line points join their seed neighbours within one strand (Core's rule)");n++;
+            // The look fixes of the review (2026-10-11).
+            Check(draw.Contains("float lum=.2126f*c.r+.7152f*c.g+.0722f*c.b;return c*Mathf.Clamp(SmokeLift/Mathf.Max(lum,1e-3f),1,SmokeLiftMax);")&&draw.Contains("SmokeLift=.12f,SmokeLiftMax=4f"),"smoke albedo is lifted to a minimum luminance, hue kept");n++;
+            Check(draw.Contains("emissive=HotColor*(HotGain*hot*hot)+color*ChunkSelf;")&&draw.Contains("float hot=Mathf.Clamp01(1-u/HotLife);")&&draw.Contains("Edges(o,w)*(rock?RockScale:DebrisScale)"),"fire-family debris glows hot and cools; chunks cover what the cubes did");n++;
+            Check(draw.Contains("Sphere(at,radius,new Color(.004f,.002f,.008f,0),hue*DarkRim,Color.clear);"),"Void's dark core is an opaque orb with an HDR rim");n++;
+            Check(draw.Contains("q=Quaternion.Slerp(q,lie,rest);")&&draw.Contains("Quaternion.AngleAxis(-90,Vector3.forward)")&&draw.Contains("color*CrystalGlow,color*CrystalRim")&&draw.Contains("CrystalGlow=.5f,CrystalRim=2.6f"),"crystals settle into a seeded resting pose; brighter edges");n++;
+            Check(draw.Contains("if(s.Style==NativeBlastStyle.Quake)continue;")&&draw.Contains("BlastShock=1.2f,ImpactShock=.5f,NovaShock=1.9f"),"Quake draws no front; quieter blast and impact fronts");n++;
             Check(draw.Contains("(float)NativeVfxMeshes.BombTipY*scale.y")&&draw.Contains("float pulse=(float)pose.Emissive")&&draw.Contains("if(pose.FuseLit)Glow("),"the modelled bomb glows with the fuse pulse and a tip glow while the fuse shows");n++;
             return n;
         }
         private static int Renderer(string root,Func<string,string> R)
         {
             int n=0;string text=R("Runtime/NativeVfxDraw.cs"),draw=Code(text);
-            Check(draw.Contains("keys[i]=-Vector3.Dot(puffs[i].Centre-eye,forward);order[i]=i;")&&draw.Contains("Array.Sort(keys,order,0,puffCount);")&&draw.Contains("ref var p=ref puffs[order[k]];"),"the billboards are sorted far to near every frame");n++;
+            Check(draw.Contains("keys[i]=-Vector3.Dot(p.Centre-eye,forward)+(p.Mode==CoreGlow?CoreLead*p.Size:0);order[i]=i;")&&draw.Contains("Array.Sort(keys,order,0,puffCount);")&&draw.Contains("ref var p=ref puffs[order[k]];"),"the billboards are sorted far to near every frame, core glows a little nearer");n++;
+            Check(draw.Contains("var bounds=puffCount>0?new Bounds((lo+hi)*.5f,hi-lo):Everywhere;")&&draw.Contains("billboards.Draw(billboardMaterial,camera,bounds);")&&draw.Contains("Mesh.SetSubMesh(0,new SubMeshDescriptor(0,IndexCount){bounds=bounds,"),"the billboard batch is bounded by what it holds, so Unity sorts it among the transparent draws");n++;
+            Check(draw.Contains("camera.depthTextureMode|=DepthTextureMode.Depth;depthCamera=camera;")&&draw.Contains("if(depthCamera!=null&&(depthCamera!=camera||Low)){depthCamera.depthTextureMode&=~DepthTextureMode.Depth;")&&draw.Contains("billboardMaterial.SetFloat(SoftId,!Low&&")&&draw.Contains("shockMaterial.SetFloat(LowId,Low?1:0);"),"soft particles: a depth texture on the normal tiers only, taken back on the low tier");n++;
+            Check(draw.Contains("size*(Low?LowPuff:1)")&&draw.Contains("LowPuff=.8f"),"the low tier draws smaller puffs");n++;
             Check(draw.Contains("if(Interlocked.CompareExchange(ref built,1,0)!=0)return;")&&draw.Contains("ThreadPool.QueueUserWorkItem(BuildTextures)")&&draw.Contains("var atlas=NativeVfxTextures.SmokeAtlas();"),"the smoke atlas is built once per process, off the main thread");n++;
             var builders=Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Runtime"),"*.cs").Where(f=>Code(File.ReadAllText(f)).Contains("NativeVfxTextures.SmokeAtlas(")).Select(Path.GetFileName).ToList();
             Check(builders.Count==1&&builders[0]=="NativeVfxDraw.cs","only the shared renderer builds the atlas ("+string.Join(", ",builders)+")");n++;
             Check(Regex.Matches(draw,@"NativeVfxTextures\.SmokeAtlas\(").Count==1&&draw.Contains("if(atlas!=null||Volatile.Read(ref built)!=2)return;")&&draw.Contains("billboardMaterial.SetFloat(ReadyId,1);"),"the main thread only uploads the finished bytes, then switches the puffs from their stand-in");n++;
             Check(draw.Contains("atlas.SetPixelData(a,0);atlas.Apply(true,true);")&&draw.Contains("TextureFormat.RGBA32,true,true)")&&draw.Contains("noise.SetPixelData(n,0);noise.Apply(false,true);"),"the textures upload as linear RGBA32 (mipmapped atlas), CPU copies released");n++;
-            Check(draw.Contains("Graphics.DrawMesh(Mesh,Matrix4x4.identity,material,0,camera,0,null,ShadowCastingMode.Off,false);")&&draw.Contains("lit.Draw(litMaterial,camera);billboards.Draw(billboardMaterial,camera);shocks.Draw(shockMaterial,camera);"),"three draws a frame to the given camera, layer 0, no shadows");n++;
-            Check(draw.Contains("renderQueue=(int)RenderQueue.Transparent+3")&&draw.Contains("renderQueue=(int)RenderQueue.Geometry")&&draw.Contains("renderQueue=(int)RenderQueue.Transparent+4"),"billboards after the domes, lit meshes opaque, shells after the puffs");n++;
+            Check(draw.Contains("Graphics.DrawMesh(Mesh,Matrix4x4.identity,material,0,camera,0,null,ShadowCastingMode.Off,false);")&&draw.Contains("lit.Draw(litMaterial,camera);billboards.Draw(billboardMaterial,camera,bounds);shocks.Draw(shockMaterial,camera);"),"three draws a frame to the given camera, layer 0, no shadows");n++;
+            Check(draw.Contains("renderQueue=(int)RenderQueue.Transparent,")&&draw.Contains("renderQueue=(int)RenderQueue.Geometry")&&draw.Contains("renderQueue=(int)RenderQueue.Transparent+4"),"billboards in the Transparent queue with the domes, lit meshes opaque, shells after the puffs");n++;
             foreach(var release in new[]{"billboards.Mesh","lit.Mesh","shocks.Mesh","billboardMaterial","litMaterial","shockMaterial","atlas","noise"}){Check(draw.Contains("CapturedAnimation.Release("+release+")"),"Dispose releases "+release);n++;}
             Check(!draw.Contains("new List<")&&!draw.Contains("ToArray(")&&!draw.Contains("AddComponent<")&&!draw.Contains("ParticleSystem")&&!draw.Contains("new Light"),"no per-frame collections, no components, lights or particle systems");n++;
             // Arrays are only replaced when they must grow (Array.Resize), never per frame.
@@ -75,12 +84,17 @@ namespace ChipArena.UnityConversion
             Check(field.Contains("if(NativeFieldRules.Bomb(v,now,out var pose))vfx.Bomb(pose,hex);")&&field.Contains("vfx.Sphere(core,")&&field.Contains("vfx.Streak(at,velocity,")&&!field.Contains("CubeCorners")&&!field.Contains("Native field cores"),"field cores: the modelled bomb, the black hole's lit core and the orbiting streaks, no cubes");n++;
             Check(!field.Contains("NativeFieldRules.GlowDisc")&&!field.Contains("Native field glow")&&field.Contains("if(look==NativeFieldLook.Dome){Append(dome,NativeFieldRules.Dome,"),"no field ground glow disc (the pancake); the time and repulsion domes stay");n++;
             Check(field.Contains("vfx.Glow(new Vector3(preview[w],preview[w+1],preview[w+2]),color,size*preview[w+3],NativeVfxDraw.Mote);"),"the aim preview motes are soft glows");n++;
-            Check(arena.Contains("vfx=new NativeVfxDraw();blasts=new NativeBlastPresentation(transform,vfx);shots=new NativeShotPresentation(vfx);")&&arena.Contains("fieldTelegraphs=new NativeFieldPresentation(vfx);"),"one shared renderer for the blasts, sparks and field cores");n++;
-            int begin=arena.IndexOf("vfx?.Begin();fieldTelegraphs?.Collect(arena,fields);",StringComparison.Ordinal),blasts=arena.IndexOf("blasts?.Render(arena,camera,now,BlastQuality,paused,fieldTelegraphs);",StringComparison.Ordinal),submit=arena.IndexOf("shots?.Render(arena,camera,fields,BlastQuality,paused,shotTracker);vfx?.Submit(camera);",StringComparison.Ordinal);
-            Check(begin>=0&&blasts>begin&&submit>blasts,"RenderGlow begins the renderer, queues the blasts, field cores and sparks, then submits once");n++;
+            Check(arena.Contains("blasts=new NativeBlastPresentation(transform,vfx);shots=new NativeShotPresentation(vfx);")&&arena.Contains("fieldTelegraphs=new NativeFieldPresentation(vfx);"),"one shared renderer for the blasts, sparks and field cores");n++;
+            Check(arena.Contains("vfx=new NativeVfxDraw();combatGlow=new NativeCombatGlow(transform,vfx);")&&arena.Contains("meleeFlash=new NativeMeleeFlashPresentation(vfx);"),"the melee flash and the combat glow's contact flashes share the renderer");n++;
+            int begin=arena.IndexOf("if(vfx!=null)vfx.Low=LowGraphics;vfx?.Begin();fieldTelegraphs?.Collect(arena,fields);",StringComparison.Ordinal),blasts=arena.IndexOf("blasts?.Render(arena,camera,now,BlastQuality,paused,fieldTelegraphs);",StringComparison.Ordinal);
+            int melee=arena.IndexOf("meleeFlash?.Render(arena,camera,fields,WeaponEffectsQuality);",StringComparison.Ordinal),early=arena.IndexOf("if(combatGlow==null){vfx?.Submit(camera);return;}",StringComparison.Ordinal),glow=arena.IndexOf("combatGlow.Render(arena,camera,",StringComparison.Ordinal),submit=arena.IndexOf("vfx?.Submit(camera);}",glow<0?0:glow,StringComparison.Ordinal);
+            Check(begin>=0&&blasts>begin&&melee>blasts&&early>melee&&glow>early&&submit>glow&&Regex.Matches(arena,@"vfx\?\.Submit\(camera\)").Count==2,"RenderGlow tiers and begins the renderer, queues the blasts, field cores, sparks, melee and contact flashes, then submits once on either path");n++;
+            string combat=Code(R("Runtime/NativeCombatGlow.cs")),melee2=Code(R("Runtime/NativeMeleeFlash.cs"));
+            Check(!Regex.IsMatch(combat,@"world\.Halo\(point,rotation\*")&&!combat.Contains("NativeGlowRules.ImpactSize(")&&combat.Contains("vfx.Glow(point+rotation*Vector3.forward*ContactLift,color,ContactSize,NativeVfxDraw.CoreGlow);")&&combat.Contains("float f=Mathf.Clamp01(1-(now-mark.Born)/ContactLife);")&&combat.Contains("SetLight(impactLights[i],"),"no flat glowing disc on a hit surface (the second pancake): a short contact flash; the spill lights stay");n++;
+            Check(!melee2.Contains("Box(")&&!melee2.Contains("CubeCorners")&&!melee2.Contains("Resources.Load<Shader>(\"NativeBlast\")")&&melee2.Contains("vfx.Streak(origin+")&&melee2.Contains("vfx.Smoke(root+")&&melee2.Contains("if(ownsVfx)vfx.Submit(camera);"),"melee sparks are streaks and slam dust is smoke puffs, no cuboids or squares; the stones stay");n++;
             Check(arena.Contains("vfx?.Clear();")&&arena.Contains("vfx?.Dispose();"),"reset clears and destroy disposes the renderer");n++;
             // Nothing in the renderer path reads back into the match.
-            foreach(var (name,code) in new[]{("NativeVfxDraw",Code(R("Runtime/NativeVfxDraw.cs"))),("NativeBloomImage",Code(R("Runtime/NativeBloomImage.cs")))}){Check(!code.Contains("arena.")&&!code.Contains("Match")&&!code.Contains("Events"),name+" reads no match state");n++;}
+            {var code=Code(R("Runtime/NativeVfxDraw.cs"));Check(!code.Contains("arena.")&&!code.Contains("Match")&&!code.Contains("Events"),"NativeVfxDraw reads no match state");n++;}
             return n;
         }
         private static int Shaders(Func<string,string> R)
@@ -89,23 +103,27 @@ namespace ChipArena.UnityConversion
             Check(vfx.Contains("Blend One OneMinusSrcAlpha")&&vfx.Contains("ZWrite Off")&&vfx.Contains("\"LightMode\"=\"ForwardBase\"")&&vfx.Contains("#pragma multi_compile_fog")&&vfx.Contains("#pragma target 3.5"),"billboards: premultiplied, no depth write, forward base, fog, SM3.5");n++;
             Check(vfx.Contains("UNITY_APPLY_FOG_COLOR(i.fogCoord,c,float4(unity_FogColor.rgb*c.a,0));"),"premultiplied fog: smoke fogs to the fog colour, additive glows to black");n++;
             // The C# modes and the shader's thresholds agree.
-            Check(draw.Contains("public const float Mote=0,CoreGlow=1,Ring=2,Snow=3,StreakMode=4,SmokeMode=5,FireballMode=6,DarkMode=7;")&&vfx.Contains("if(mode<3.5)c=i.color*VfxGlow(i.uv.xy,mode);")&&vfx.Contains("else if(mode<4.5)c=i.color*VfxStreak(")&&vfx.Contains("if(mode<5.5)c=VfxSmoke(")&&vfx.Contains("else if(mode<6.5)c=VfxFireball(")&&vfx.Contains("else c=VfxDark("),"billboard modes match the renderer's constants");n++;
+            Check(draw.Contains("public const float Mote=0,CoreGlow=1,Ring=2,Snow=3,StreakMode=4,SmokeMode=5,FireballMode=6;")&&vfx.Contains("if(mode<3.5)c=i.color*VfxGlow(i.uv.xy,mode);")&&vfx.Contains("else if(mode<4.5)c=i.color*VfxStreak(")&&vfx.Contains("if(mode<5.5)")&&vfx.Contains("c=VfxSmoke(")&&vfx.Contains("else c=VfxFireball(")&&!vfx.Contains("VfxDark("),"billboard modes match the renderer's constants");n++;
+            Check(!vfx.Contains("float3(1.0, 0.86, 0.58)")&&vfx.Contains("float glow = (0.6 + 0.5 * heat) * (0.65 + 0.35 * tex.g) * saturate(1.3 - u * 1.25);")&&vfx.Contains("float alpha = cover * (0.85 + 0.1 * soot);"),"fireballs keep their hue (no white lerp), nearly opaque");n++;
+            Check(vfx.Contains("UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);")&&vfx.Contains("SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture,UNITY_PROJ_COORD(i.screen))")&&vfx.Contains("(_VfxSoft>0.5?VfxSoftFade(scene,i.screen.z,")&&vfx.Contains("o.screen=ComputeScreenPos(o.pos);"),"soft particles fade against the scene's depth, selected off without a depth texture");n++;
+            Check(vfx.Contains("c.rgb+=i.color.rgb*(i.flash.w*c.a*(1.0-u));")&&vfx.Contains("o.flash=float4(flash*_VfxFlashGain,v.axis.x);")&&draw.Contains("new Vector4(glow,0,0,aspect)"),"a saturated cloud glows a little in its own colour");n++;
             Check(vfx.Contains("ShadeSH9(float4(0,1,0,1))")&&vfx.Contains("_LightColor0.rgb")&&vfx.Contains("_ArenaFlashColor[k].rgb*VfxFlashFalloff(v.vertex,_ArenaFlashPos[k])"),"smoke is lit by the ambient, the main light and the three blast flashes");n++;
             Check(vfx.Contains("(world.y-v.life.w)/max(0.05,size*0.3)")&&vfx.Contains("c*=saturate(i.data.w);")&&vfx.Contains("float nearFade=saturate((depth-0.2)/max(0.35,size*0.6));"),"puffs fade below their floor and near the camera");n++;
             Check(vfx.Contains("tex2D(_VfxAtlas,i.uv.zw)")&&vfx.Contains("lerp(VfxPuffStandIn(i.uv.xy),tex2D(_VfxAtlas,i.uv.zw),_VfxAtlasReady)"),"the atlas is sampled outside the mode branches, the stand-in until it is uploaded");n++;
             Check(lit.Contains("Blend [_Src] [_Dst]")&&lit.Contains("Cull [_Cull]")&&lit.Contains("\"LightMode\"=\"ForwardBase\"")&&lit.Contains("#pragma target 3.5")&&lit.Contains("#pragma multi_compile_fog"),"lit meshes and shells: one shader, render state per material");n++;
-            Check(lit.Contains("float base = lerp(1.0, smoothstep(0.0, 0.35, height), dome);")&&draw.Contains("B=new Vector4(seed,isDome,n.y,0)"),"a dome shell's base fades out: no ring on the floor");n++;
-            Check(lit.Contains("float rim = pow(1.0 - facing, 3.0);")&&lit.Contains("float body = 0.03 + 0.97 * rim;")&&lit.Contains("float nearFade=saturate((length(_WorldSpaceCameraPos-i.world)-0.4)/2.2);")&&draw.Contains("shockMaterial.SetFloat(\"_Dst\",(float)BlendMode.One)"),"the shell is an additive fresnel rim with a nearly clear centre");n++;
+            Check(lit.Contains("float base = lerp(1.0, smoothstep(0.05, 0.5, height), dome);")&&draw.Contains("B=new Vector4(seed,isDome,n.y,r)"),"a dome shell's base fades out: no ring or bowl on the floor");n++;
+            Check(lit.Contains("float body = pow(1.0 - facing, 4.0);")&&!lit.Contains("0.03 + 0.97")&&lit.Contains("float travel = 0.15 + 0.85 * exp(-4.0 * progress);")&&lit.Contains("float nearFade=saturate((length(_WorldSpaceCameraPos-i.world)-0.4)/2.2);")&&draw.Contains("shockMaterial.SetFloat(\"_Dst\",(float)BlendMode.One)"),"the shell is a thin additive fresnel rim with a clear centre, bright at the arrival");n++;
+            Check(lit.Contains("float front=dot(n,view)<0.0&&length(_WorldSpaceCameraPos-(i.world-n*i.b.w))>i.b.w?0.0:1.0;")&&lit.Contains("if(_Shock>0.5&&_VfxLow<0.5)grain=tex2Dlod(_VfxNoise,"),"front faces only from outside the shell; no noise read on the low tier");n++;
             Check(lit.Contains("VfxLitFlash(v.vertex,n,_ArenaFlashPos[k],_ArenaFlashColor[k])")&&lit.Contains("ShadeSH9(float4(n,1.0))"),"lit meshes take the ambient, the main light and the blast flashes");n++;
-            Check(gate.Contains("foreach(var name in new[]{\"NativeVfx\",\"NativeVfxLit\",\"NativeBloom\"}){var shader=Resources.Load<Shader>(name);if(shader==null||ShaderUtil.ShaderHasError(shader))")&&gate.Contains("CheckVfx();"),"the new shaders are build-checked, with the renderer's Editor check");n++;
-            foreach(var name in new[]{"Resources/NativeVfx.shader","Resources/NativeVfxLit.shader","Resources/NativeBloom.shader","Runtime/NativeVfxDraw.cs","Runtime/NativeBloomImage.cs","Editor/NativeVfxBuildChecks.cs"})
+            Check(gate.Contains("foreach(var name in new[]{\"NativeVfx\",\"NativeVfxLit\"}){var shader=Resources.Load<Shader>(name);if(shader==null||ShaderUtil.ShaderHasError(shader))")&&gate.Contains("CheckVfx();"),"the new shaders are build-checked, with the renderer's Editor check");n++;
+            foreach(var name in new[]{"Resources/NativeVfx.shader","Resources/NativeVfxLit.shader","Runtime/NativeVfxDraw.cs","Editor/NativeVfxBuildChecks.cs"})
             {Check(Regex.IsMatch(R(name+".meta"),@"^guid: [0-9a-f]{32}$",RegexOptions.Multiline),name+" has its .meta");n++;}
             return n;
         }
         // The numbers the shaders share with Core, and the SHARED blocks stay in the GLSL-compatible subset.
         private static int Shared(Func<string,string> R)
         {
-            int n=0;string vfx=R("Resources/NativeVfx.shader"),lit=R("Resources/NativeVfxLit.shader"),bloom=R("Resources/NativeBloom.shader");
+            int n=0;string vfx=R("Resources/NativeVfx.shader"),lit=R("Resources/NativeVfxLit.shader");
             // Atlas tile by seed (shader: tile = seed mod 16, column tile mod 4, row tile / 4 from the bottom, 0.25 per tile) is Core's TileRect.
             Check(NativeVfxTextures.SmokeTiles==4&&NativeVfxTextures.SmokeVariants==16&&vfx.Contains("float tile=v.life.y-16.0*floor(v.life.y/16.0),col=tile-4.0*floor(tile/4.0),row=floor(tile/4.0);")&&vfx.Contains("*0.46+0.5)*0.25)"),"the shader's atlas tiles are Core's 4 x 4");n++;
             for(int seed=0;seed<200;seed+=7)
@@ -121,7 +139,7 @@ namespace ChipArena.UnityConversion
             double worst=0;for(double d=0;d<=1;d+=.125)for(double t=0;t<=1;t+=.0625)for(double u=0;u<=1.0001;u+=.03125)
             {double e=Math.Max(0,Math.Min(1,(t+.15-u*1.15)/.15)),shader=u<1?d*e*e*(3-2*e):0;worst=Math.Max(worst,Math.Abs(shader-NativeVfxTextures.Dissolve(d,t,u)));}
             Check(worst<1e-12,"the shader's erosion formula equals Core's at every sample ("+worst+")");n++;
-            foreach(var (name,text,begin,end) in new[]{("NativeVfx",vfx,"VFX SHARED BEGIN","VFX SHARED END"),("NativeVfxLit",lit,"VFX LIT SHARED BEGIN","VFX LIT SHARED END"),("NativeBloom",bloom,"BLOOM SHARED BEGIN","BLOOM SHARED END")})
+            foreach(var (name,text,begin,end) in new[]{("NativeVfx",vfx,"VFX SHARED BEGIN","VFX SHARED END"),("NativeVfxLit",lit,"VFX LIT SHARED BEGIN","VFX LIT SHARED END")})
             {
                 var block=Code(Between(text,begin,end));
                 Check(!block.Contains("mul(")&&!block.Contains("x3")&&!block.Contains("x4")&&!block.Contains("tex2D"),name+" SHARED: no matrices or texture reads");
@@ -130,15 +148,15 @@ namespace ChipArena.UnityConversion
             }
             return n;
         }
-        private static int Bloom(Func<string,string> R)
+        // The match camera's bloom lives on its own branch (claude/fx-bloom: Runtime/NativeBloom.cs, Resources/NativeBloom.shader,
+        // Core/NativeBloomRules.cs and Tests/BloomChecks.cs). This branch adds no second bloom, so the two merge cleanly: no
+        // bloom component, shader or camera hook here.
+        private static int NoBloom(string root)
         {
-            int n=0;string image=Code(R("Runtime/NativeBloomImage.cs")),shader=R("Resources/NativeBloom.shader"),game=Code(R("Runtime/ConversionGame.cs")),settings=Code(R("Runtime/NativeSettings.cs")),damage=Code(R("Runtime/NativeDamageScreenPresentation.cs"));
-            Check(image.Contains("private void OnRenderImage(RenderTexture source,RenderTexture destination)")&&image.Contains("Graphics.Blit(source,destination);return;")&&image.Contains("Graphics.Blit(source,destination,material,3);"),"bloom is an OnRenderImage effect through Graphics.Blit, passing the frame through when off");n++;
-            Check(!image.Contains("CommandBuffer")&&!image.Contains("CameraTarget")&&!image.Contains("BuiltinRenderTextureType"),"no camera-target round trip (the damage screen's flip lesson)");n++;
-            Check(image.Contains("RenderTexture.ReleaseTemporary(levels[i])")&&image.Contains("CapturedAnimation.Release(material)"),"temporaries and the material are released");n++;
-            Check(shader.Contains("if(_MainTex_TexelSize.y<0.0)uv.y=1.0-uv.y;")&&Regex.Matches(shader,@"\n\s*Pass\s*\n").Count==4&&shader.Contains("Blend One One"),"four passes; the additive upsample; the second texture follows a flipped source");n++;
-            int camera=game.IndexOf("cameraView=cam.AddComponent<Camera>();",StringComparison.Ordinal),added=game.IndexOf("bloom=cam.AddComponent<NativeBloomImage>();",StringComparison.Ordinal);
-            Check(camera>=0&&added>camera&&!damage.Contains("NativeBloom")&&settings.Contains("if(bloom!=null)bloom.Low=low;"),"the match camera gets the bloom first (before the damage screen's effect), low graphics reaches it");n++;
+            int n=0;
+            foreach(var file in new[]{"Assets/ChipArena/Runtime/NativeBloomImage.cs","Assets/ChipArena/Resources/NativeBloom.shader"}){Check(!File.Exists(Path.Combine(root,file)),"no second bloom here: "+file);n++;}
+            foreach(var file in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Runtime"),"*.cs"))
+            {Check(!Code(File.ReadAllText(file)).Contains("NativeBloomImage"),"no second bloom hook: "+Path.GetFileName(file));n++;}
             return n;
         }
     }

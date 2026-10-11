@@ -9,8 +9,9 @@ namespace ChipArena.UnityConversion
         private Mesh cube;
         private CapturedAnimation captured;
         private NativeCombatGlow combatGlow;private NativeBlastPresentation blasts;private NativeFieldPresentation fieldTelegraphs;private NativeMeleeFlashPresentation meleeFlash;
-        // The shared effects renderer (owner 2026-10-11 effects overhaul): the blasts, field cores and burst sparks queue into it
-        // during RenderGlow and it draws them once, sorted, after the projectile visuals.
+        // The shared effects renderer (owner 2026-10-11 effects overhaul): the blasts, field cores, burst sparks, melee hit sparks
+        // and slam dust and the impact contact flashes queue into it during RenderGlow, and it draws them once, sorted, at the
+        // end (after the combat glow, also on its early return). It follows the low graphics tier (LowGraphics).
         private NativeVfxDraw vfx;
         public float GlowQuality=1,BlastQuality=1;public bool TrailsEnabled=true;
         // The clock of the field telegraphs, their C6 field emitters, the eruption stand-in (C9) and the projectile models,
@@ -22,7 +23,7 @@ namespace ChipArena.UnityConversion
         private float FieldClock(NativeArena arena)=>arena.Replica&&hazardClock<=arena.Time&&arena.Time-hazardClock<1?hazardClock:PresentationClock(arena);
         // paused: the match itself is stopped (offline menu), so the blasts hold still; see NativeBlastFrame.Step.
         public void RenderGlow(NativeArena arena,Camera camera,bool paused=false)
-        {float now=PresentationClock(arena),fields=FieldClock(arena);vfx?.Begin();fieldTelegraphs?.Collect(arena,fields);StructureFx(arena,camera,fields);if(blasts!=null)blasts.Trails=TrailsEnabled;blasts?.Render(arena,camera,now,BlastQuality,paused,fieldTelegraphs);EventWorldFx(arena,camera,fields);fieldTelegraphs?.Render(arena,camera,fields,abilityPreview,abilityPreviewClamped);shotTracker.Begin(arena,arena.Generation,arena.Replica,arena.Time);shots?.Render(arena,camera,fields,BlastQuality,paused,shotTracker);vfx?.Submit(camera);meleeFlash?.Render(arena,camera,fields,WeaponEffectsQuality);DevEffects(arena,camera,fields);if(combatGlow==null)return;combatGlow.Tracker=shotTracker;combatGlow.Clock=fields;combatGlow.Quality=GlowQuality;combatGlow.Trails=TrailsEnabled;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.ViewPilot.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);}
+        {float now=PresentationClock(arena),fields=FieldClock(arena);if(vfx!=null)vfx.Low=LowGraphics;vfx?.Begin();fieldTelegraphs?.Collect(arena,fields);StructureFx(arena,camera,fields);if(blasts!=null)blasts.Trails=TrailsEnabled;blasts?.Render(arena,camera,now,BlastQuality,paused,fieldTelegraphs);EventWorldFx(arena,camera,fields);fieldTelegraphs?.Render(arena,camera,fields,abilityPreview,abilityPreviewClamped);shotTracker.Begin(arena,arena.Generation,arena.Replica,arena.Time);shots?.Render(arena,camera,fields,BlastQuality,paused,shotTracker);meleeFlash?.Render(arena,camera,fields,WeaponEffectsQuality);DevEffects(arena,camera,fields);if(combatGlow==null){vfx?.Submit(camera);return;}combatGlow.Tracker=shotTracker;combatGlow.Clock=fields;combatGlow.Quality=GlowQuality;combatGlow.Trails=TrailsEnabled;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.ViewPilot.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);vfx?.Submit(camera);}
         private readonly AudioClip[] gunSounds=new AudioClip[4];
         private AudioClip reloadStart,reloadEnd,hitSound;
         private AudioSource localAudio;
@@ -84,7 +85,7 @@ namespace ChipArena.UnityConversion
             }
             for(int i=7;i<materials.Count;i++){materials[i].SetColor("_Emission",colors[i]*.55f);compatibilityMaterials[i].SetColor("_Emission",colors[i]*.55f);}
             Debug.Log($"Unity prototype renderer: {RenderingMode}; {SystemInfo.graphicsDeviceType}; {SystemInfo.graphicsDeviceName}; shaderSupported={shader.isSupported}");
-            captured=new CapturedAnimation();if(!buildArena){combatGlow=new NativeCombatGlow(transform);vfx=new NativeVfxDraw();blasts=new NativeBlastPresentation(transform,vfx);shots=new NativeShotPresentation(vfx);blasts.Sparks=shots.SparkPool;meleeFlash=new NativeMeleeFlashPresentation();sourceModels=new NativeSourceModels();}
+            captured=new CapturedAnimation();if(!buildArena){vfx=new NativeVfxDraw();combatGlow=new NativeCombatGlow(transform,vfx);blasts=new NativeBlastPresentation(transform,vfx);shots=new NativeShotPresentation(vfx);blasts.Sparks=shots.SparkPool;meleeFlash=new NativeMeleeFlashPresentation(vfx);sourceModels=new NativeSourceModels();}
             if(!buildArena)fieldTelegraphs=new NativeFieldPresentation(vfx);
             string[] soundNames={"","pistol","rifle","machinegun"};
             for(int i=1;i<4;i++) gunSounds[i]=Resources.Load<AudioClip>("GunAudio/"+soundNames[i]);

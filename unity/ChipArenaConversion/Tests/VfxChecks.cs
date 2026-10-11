@@ -21,8 +21,8 @@ namespace ChipArena.UnityConversion
         private static void Near(double a,double b,double tolerance,string what){if(!(Math.Abs(a-b)<=tolerance))throw new Exception("Vfx check failed: "+what+": "+a+" != "+b);}
         public static void Run(string root)
         {
-            int sites=Sites(root),roles=Roles(),seeds=Seeds(),shocks=Shocks(),smoke=Smoke(root),pool=DrawList(),sparks=Sparks();
-            Console.WriteLine("PASS effects base layer: "+sites+" blast spawn sites name a role, "+roles+" pinned role histograms and sets (11 styles, tints, impacts, lines, paddles, 20 fields), "+seeds+" seed and draw-order checks, "+shocks+" shock front checks, "+smoke+" smoke colour checks, "+pool+" draw-list and determinism checks, "+sparks+" burst spark checks");
+            int sites=Sites(root),roles=Roles(),seeds=Seeds(),shocks=Shocks(),smoke=Smoke(root),pool=DrawList(),strands=Strands(),sparks=Sparks();
+            Console.WriteLine("PASS effects base layer: "+sites+" blast spawn sites name a role, "+roles+" pinned role histograms and sets (11 styles, tints, impacts, lines, paddles, 20 fields), "+seeds+" seed and draw-order checks, "+shocks+" shock front checks, "+smoke+" smoke colour checks, "+pool+" draw-list and determinism checks, "+strands+" strand checks (no segment between arcs, spokes or lines), "+sparks+" burst spark checks");
             int atlas=Atlas(out double ms),meshes=Meshes(),bomb=Bomb();
             Console.WriteLine("PASS effects base layer assets: smoke atlas (512 px, 16 puffs, built in "+ms.ToString("0.0")+" ms on this runtime; not a timed gate), noise tile, "+atlas+" texture checks, "+meshes+" mesh checks (4 rubble chunks, crystal shard, chip bomb, shock shell and dome) and "+bomb+" bomb pose checks");
         }
@@ -45,7 +45,8 @@ namespace ChipArena.UnityConversion
             foreach(var dir in new[]{"Assets/ChipArena/Core","Assets/ChipArena/Runtime","Assets/ChipArena/Editor"})foreach(var file in Directory.GetFiles(Path.Combine(root,dir),"*.cs"))
             {
                 var calls=SpawnCalls(File.ReadAllText(file));
-                foreach(var call in calls){Check(Regex.IsMatch(call,@",role:NativeFxRole\.[A-Z][a-z]+\)$"),Path.GetFileName(file)+": a pool spawn without its role: "+call);n++;}
+                // The role is the last argument: one literal role, or a choice between two (fire-family debris).
+                foreach(var call in calls){Check(Regex.IsMatch(call,@",role:(?:\w+\?NativeFxRole\.[A-Z][A-Za-z]+:)?NativeFxRole\.[A-Z][A-Za-z]+\)$"),Path.GetFileName(file)+": a pool spawn without its role: "+call);n++;}
                 if(Path.GetFileName(file)=="NativeBlastSim.cs")total=calls.Count;
             }
             Check(total==42,"NativeBlastSim's 42 spawn sites ("+total+")");
@@ -63,12 +64,13 @@ namespace ChipArena.UnityConversion
             var sb=new StringBuilder();foreach(var kv in h)sb.Append(kv.Key).Append(' ').Append(kv.Value).Append(' ');return sb.ToString().TrimEnd();
         }
         // Pinned 2026-10-11: each style at r 3, quality 1, on the default floor, every spawned particle (delayed ones included).
+        // Fire, Mine and Meteor debris is HotDebris (review 2026-10-11), the same 15 spawns.
         private static readonly (string what,string roles)[] Pinned={
-            ("Fire","Core 20 Fireball 46 Shell 76 Smoke 17 Debris 15 Spark 20"),("Shock","Core 13 Shell 78 Spark 28"),
+            ("Fire","Core 20 Fireball 46 Shell 76 Smoke 17 Spark 20 HotDebris 15"),("Shock","Core 13 Shell 78 Spark 28"),
             ("Implosion","Core 17 Shell 33 Smoke 9 Spark 17 Streak 48"),("Frost","Core 13 Shell 35 Smoke 11 Shard 28"),
             ("Toxic","Core 11 Fireball 22 Shell 64 Debris 11 Cloud 20"),("Void","Dark 11 Streak 44"),("Nova","Core 20 Shell 98 Spark 22"),
             ("Kinetic","Core 11 Shell 88 Smoke 7 Debris 39 Spark 15"),("Quake","Shell 33 Smoke 15 Rock 28"),
-            ("Meteor","Core 20 Fireball 46 Shell 76 Smoke 17 Debris 15 Spark 20 Ember 11"),("Mine","Core 20 Fireball 46 Shell 76 Smoke 17 Debris 15 Spark 20"),
+            ("Meteor","Core 20 Fireball 46 Shell 76 Smoke 17 Spark 20 Ember 11 HotDebris 15"),("Mine","Core 20 Fireball 46 Shell 76 Smoke 17 Spark 20 HotDebris 15"),
             ("ball-lightning",PinnedBall),("impact air",PinnedImpactAir),("impact ground",PinnedImpactGround),("line",PinnedLine),("paddle",PinnedPaddle)};
         private const string PinnedBall="Core 13 Shell 78 Spark 34 Bolt 54",PinnedImpactAir="Mote 5 Core 5 Shell 18 Debris 6",PinnedImpactGround="Mote 5 Core 4 Shell 34 Debris 6",PinnedLine="Line 24",PinnedPaddle="Mote 16";
         // The set of roles each fixture field spawns over 2.4 s (its arrival impact included), as BlastChecks runs them.
@@ -228,10 +230,14 @@ namespace ChipArena.UnityConversion
             Check(NativeBlastSim.SmokeEnd(NativeBlastStyle.Frost)!=NativeBlastSim.DarkSmoke&&NativeBlastSim.Luminance(NativeBlastSim.SmokeEnd(NativeBlastStyle.Frost))>.25,"frost steam is no longer black");
             // The fixture exporter applies the same cut (and the seed cut) to the source, and the fixture says so.
             string exporter=File.ReadAllText(Path.Combine(root,"tools/export_blast_fixtures.mjs"));
-            Check(exporter.Contains("const FX_CUTS=[")&&exporter.Contains("function __ownerSmokeEnd(style,smoke)")&&exporter.Contains("['frost','kinetic','shock','nova','implosion']")&&exporter.Contains("e=c=>(c+(l-c)*.4)*.5")&&NativeBlastSim.SmokeGrey==.4&&NativeBlastSim.SmokeDim==.5,"the exporter mirrors SmokeEnd");
+            Check(exporter.Contains("const FX_CUTS=[")&&exporter.Contains("function __ownerSmokeEnd(style,smoke)")&&exporter.Contains("['frost','kinetic','shock','nova','implosion','quake']")&&exporter.Contains("e=c=>(c+(l-c)*.4)*.5")&&NativeBlastSim.SmokeGrey==.4&&NativeBlastSim.SmokeDim==.5,"the exporter mirrors SmokeEnd");
+            int light=0;foreach(NativeBlastStyle style in Enum.GetValues(typeof(NativeBlastStyle)))if(NativeBlastSim.LightSmoke(style))light++;Check(light==6&&NativeBlastSim.LightSmoke(NativeBlastStyle.Quake),"six light smoke styles, Quake's dust among them, as the exporter lists");
+            // The fuse sparks' start: the exporter moves the source's ground + .85 to the modelled tip, ground + .472 without a floor.
+            var bombField=new NativeBlastField{Kind="bomb",X=0,Y=.95,Z=0,Radius=3,Born=0,Until=3};
+            Check(exporter.Contains("this.glow.spawn(f.pos.x,ground+.472,f.pos.z,")&&Math.Abs(NativeFieldRules.BombTipY(bombField)-(Math.Max(.03,bombField.Y-.95)+.472))<1e-12,"the exporter mirrors the fuse sparks' start at the modelled tip");
             Check(exporter.Contains("this.euler.set(age*sp*1.3+this.seed[i],age*sp+this.seed[i]*.7,0);")&&exporter.Contains("this.seed[i]=this.seed[last];"),"the exporter mirrors the stable tumble");
             using(var doc=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Tests/blast-parity.json"))))
-            {var fx=doc.RootElement.GetProperty("owner").GetProperty("fx");Check(fx.GetProperty("date").GetString()=="2026-10-11"&&fx.GetProperty("smoke").GetBoolean()&&fx.GetProperty("seed").GetBoolean()&&fx.GetProperty("cuts").GetInt32()==7,"the parity frames carry the effects overhaul cuts");}
+            {var fx=doc.RootElement.GetProperty("owner").GetProperty("fx");Check(fx.GetProperty("date").GetString()=="2026-10-11"&&fx.GetProperty("smoke").GetBoolean()&&fx.GetProperty("seed").GetBoolean()&&fx.GetProperty("quakeDust").GetBoolean()&&fx.GetProperty("fuseTip").GetBoolean()&&fx.GetProperty("cuts").GetInt32()==8,"the parity frames carry the effects overhaul cuts");}
             return n+5;
         }
 
@@ -249,7 +255,7 @@ namespace ChipArena.UnityConversion
         }
         private static int DrawList()
         {
-            int n=0;Check(NativeBlastPool.Stride==21&&NativeBlastPool.RoleAt==13&&NativeBlastPool.AgeAt==14&&NativeBlastPool.SeedAt==15&&NativeBlastPool.VelocityAt==16&&NativeBlastPool.RawSizeAt==19&&NativeBlastPool.FloorAt==20,"the draw list layout");
+            int n=0;Check(NativeBlastPool.Stride==23&&NativeBlastPool.RoleAt==13&&NativeBlastPool.AgeAt==14&&NativeBlastPool.SeedAt==15&&NativeBlastPool.VelocityAt==16&&NativeBlastPool.RawSizeAt==19&&NativeBlastPool.FloorAt==20&&NativeBlastPool.StrandAt==21&&NativeBlastPool.StartSizeAt==22,"the draw list layout (the source's 0-12 first)");
             // Determinism with every new field and the shock records: two runs, a Reset replay, an injected generator.
             var a=new NativeBlastSim();var b=new NativeBlastSim();Script(a,45);Script(b,45);Check(a.Solid.Drawn+a.Glow.Drawn>100&&a.Shocks.Count>0&&Same(a,b),"two seeded runs draw identical lists and fronts");
             b.Reset();Script(b,45);Check(Same(a,b),"Reset replays the same lists, seeds and fronts");
@@ -267,10 +273,63 @@ namespace ChipArena.UnityConversion
                         var p=pool.At(i);if(p.age<0)continue;int w=drawn++*NativeBlastPool.Stride;var m=pool.Motion(i);var id=pool.Identity(i);double u=Math.Min(1,p.age/p.life);
                         Check(o[w]==(float)p.x&&o[w+NativeBlastPool.RoleAt]==(float)(int)id.role&&o[w+NativeBlastPool.SeedAt]==id.seed&&Math.Abs(o[w+NativeBlastPool.AgeAt]-u)<1e-6,"entry identity and age");
                         Check(o[w+NativeBlastPool.VelocityAt]==(float)m.vx&&o[w+NativeBlastPool.VelocityAt+1]==(float)m.vy&&o[w+NativeBlastPool.VelocityAt+2]==(float)m.vz&&o[w+NativeBlastPool.FloorAt]==(float)m.floor,"entry velocity and floor");
-                        double raw=o[w+NativeBlastPool.RawSizeAt],edge=o[w+3];Check(o[w+NativeBlastPool.AgeAt]>=0&&o[w+NativeBlastPool.AgeAt]<=1&&(pool.Glow?Math.Abs(edge-raw)<1e-6:Math.Abs(edge-raw*Math.Min(1,(1-u)*4))<1e-5),"raw size before the opaque pool's end shrink");n+=3;
+                        double raw=o[w+NativeBlastPool.RawSizeAt],edge=o[w+3];Check(o[w+NativeBlastPool.AgeAt]>=0&&o[w+NativeBlastPool.AgeAt]<=1&&(pool.Glow?Math.Abs(edge-raw)<1e-6:Math.Abs(edge-raw*Math.Min(1,(1-u)*4))<1e-5),"raw size before the opaque pool's end shrink");
+                        // The start size is size0: the raw size lerps from it toward size1 (so raw = start at u 0).
+                        Check(o[w+NativeBlastPool.StartSizeAt]>0&&o[w+NativeBlastPool.StrandAt]==pool.Strand(i)&&pool.Strand(i)==id.seed,"start size and a lone particle's own strand");n+=4;
                     }
                     Check(drawn==pool.Drawn,"every drawn entry checked");
                 }
+            }
+            return n;
+        }
+
+        // ---- strands: Bolt and Line segments never bridge two arcs, spokes or lines ----
+        // The renderer's old rule (seed neighbours of one role within the join distance, no strand), to show what it joined.
+        private static bool OldLinked(float[] o,int a,int b)
+        {
+            int role=(int)(o[a+NativeBlastPool.RoleAt]+.5f);if(role!=(int)(o[b+NativeBlastPool.RoleAt]+.5f)||role!=(int)NativeFxRole.Bolt&&role!=(int)NativeFxRole.Line)return false;
+            bool bolt=role==(int)NativeFxRole.Bolt;int gap=(int)(o[b+NativeBlastPool.SeedAt]-o[a+NativeBlastPool.SeedAt]);if(gap<1||gap>(bolt?2:1))return false;
+            double dx=o[b]-o[a],dy=o[b+1]-o[a+1],dz=o[b+2]-o[a+2],len=Math.Sqrt(dx*dx+dy*dy+dz*dz);return len>=1e-4&&len<=(bolt?NativeBlastPool.BoltJoin:NativeBlastPool.LineJoin);
+        }
+        // Joins between seed-sorted Bolt/Line points of a pool's draw list: within strands, across strands (must be 0), and what
+        // the old rule would have bridged across strands.
+        private static (int within,int across,int old,int strands) Joins(NativeBlastPool pool)
+        {
+            var o=pool.Output;var points=new List<int>();var strands=new HashSet<float>();
+            for(int i=0;i<pool.Drawn;i++){int w=i*NativeBlastPool.Stride;var role=(NativeFxRole)(int)(o[w+NativeBlastPool.RoleAt]+.5f);if(role==NativeFxRole.Bolt||role==NativeFxRole.Line){points.Add(w);strands.Add(o[w+NativeBlastPool.StrandAt]);}}
+            points.Sort((x,y)=>o[x+NativeBlastPool.SeedAt].CompareTo(o[y+NativeBlastPool.SeedAt]));int within=0,across=0,old=0;
+            for(int k=0;k+1<points.Count;k++)
+            {
+                int a=points[k],b=points[k+1];bool same=o[a+NativeBlastPool.StrandAt]==o[b+NativeBlastPool.StrandAt];
+                if(NativeBlastPool.Linked(o,a,b)){if(same)within++;else across++;}
+                if(!same&&OldLinked(o,a,b))old++;
+            }
+            return (within,across,old,strands.Count);
+        }
+        private static int Strands()
+        {
+            int n=0;
+            // Four arc spokes (an Arc event with no from point and no radius, NativeImpactCues.Plan): four Line strands.
+            {
+                var sim=new NativeBlastSim();var plan=new NativeImpactCommand[NativeImpactCues.MaxCommands];
+                int count=NativeImpactCues.Plan(new NativeImpactEvent{Kind=EventKind.Arc,Position=new V3(0,1,0)},plan);NativeImpactCues.Run(plan,count,sim,null,1);
+                int oldTotal=0,within=0;
+                for(int f=0;f<6;f++){sim.Update(Dt);var j=Joins(sim.Glow);Check(j.across==0,"spokes: no segment between two spokes (frame "+f+")");oldTotal+=j.old;within+=j.within;if(f==0)Check(j.strands==4,"four spokes, four strands ("+j.strands+")");n++;}
+                Check(oldTotal>0&&within>0,"the seed-only rule bridged the spokes ("+oldTotal+"); each spoke still joins its own points ("+within+")");n++;
+            }
+            // Ball Lightning (the violet Shock look, which draws the sky bolt and ground arcs) at R .8, 1.2, 2 and 3.
+            foreach(double R in new[]{.8,1.2,2,3})
+            {
+                var sim=new NativeBlastSim();sim.Blast(NativeBlastStyle.Shock,0,.95,0,R,1,false,NativeBlastSim.TintOf("ball-lightning"),0);int oldTotal=0,within=0;
+                for(int f=0;f<12;f++){sim.Update(Dt);var j=Joins(sim.Glow);Check(j.across==0,"ball lightning R "+R+": no segment between the bolt and an arc or two arcs (frame "+f+")");oldTotal+=j.old;within+=j.within;n++;}
+                Check(within>0,"ball lightning R "+R+": the bolt and the arcs still join their own points");if(R==1.2)Check(oldTotal>0,"ball lightning R 1.2: the seed-only rule bridged arcs ("+oldTotal+")");n++;
+            }
+            // Strands are seeds: a line's points share its first seed, back-to-back lines differ, Clear restarts them.
+            {
+                var sim=new NativeBlastSim();sim.Line(0,1,0,2,1,0,0xffffff,0xb66cff,1);int first=sim.Glow.Count;sim.Line(2,1,0,4,1,0,0xffffff,0xb66cff,1);
+                for(int i=0;i<sim.Glow.Count;i++)Check(sim.Glow.Strand(i)==(i<first?0:first),"line point "+i+" carries its line's first seed");
+                var q=new NativeBlastPool(4,true);q.Spawn(0,0,0,0,0,0,1,.1,.1,0,0,strand:77,role:NativeFxRole.Line);q.Spawn(0,0,0,0,0,0,1,.1,.1,0,0,role:NativeFxRole.Line);Check(q.Strand(0)==77&&q.Strand(1)==1&&q.NextSeed==2,"an explicit strand, else the particle's own seed");
+                q.Clear();Check(q.NextSeed==0,"Clear restarts the seeds strands come from");n+=3;
             }
             return n;
         }
@@ -374,7 +433,8 @@ namespace ChipArena.UnityConversion
             {
                 var m=NativeVfxMeshes.Shard;var p=m.Positions;double top=-1,bottom=1;var hull=new HashSet<string>();
                 for(int i=0;i<m.VertexCount;i++){top=Math.Max(top,p[i*3+1]);bottom=Math.Min(bottom,p[i*3+1]);hull.Add(Key(p,i));for(int a=0;a<3;a++)Check(Math.Abs(p[i*3+a])<=.5+1e-9,"the shard fits the unit box");}
-                Check(top==.5&&bottom==-.5&&hull.Count==8&&m.TriangleCount==12,"the shard is a hexagonal bipyramid with tips at +-.5");n+=Solid(m,m.Triangles,0,-.12,0,"crystal shard",true);
+                double ring=1e9;for(int i=0;i<m.VertexCount;i++)if(Math.Abs(p[i*3+1])<.3)ring=Math.Min(ring,Math.Sqrt(p[i*3]*p[i*3]+p[i*3+2]*p[i*3+2]));
+                Check(top==.5&&bottom==-.5&&hull.Count==8&&m.TriangleCount==12&&ring>=.44-1e-9,"the shard is a hexagonal bipyramid with tips at +-.5, its ring at least .44 out ("+ring+")");n+=Solid(m,m.Triangles,0,-.12,0,"crystal shard",true);
             }
             {
                 var m=NativeVfxMeshes.Shell;Check(m.VertexCount==162&&m.TriangleCount==320,"the shell is a 2-subdivision icosphere");
@@ -422,7 +482,9 @@ namespace ChipArena.UnityConversion
                 for(double t=1;t<f.Until;t+=1/97.0)
                 {
                     Check(NativeFieldRules.Bomb(f,t,out var pose)&&pose.Look==look,kind+" "+fx+": a modelled body");int c=NativeFieldRules.Cubes(f,0x123456,t,cubes);var body=cubes[0];
-                    Check(pose.X==body.X&&pose.Y==body.Y&&pose.Z==body.Z&&pose.Qx==body.Qx&&pose.Qy==body.Qy&&pose.Qz==body.Qz&&pose.Qw==body.Qw&&pose.Body==body.Color,"pose follows the source body cube");
+                    // The source body cube's x/z, spin and colour; its height stands the casing on the bomb's floor (owner cut).
+                    Check(pose.X==body.X&&pose.Z==body.Z&&pose.Qx==body.Qx&&pose.Qy==body.Qy&&pose.Qz==body.Qz&&pose.Qw==body.Qw&&pose.Body==body.Color,"pose follows the source body cube");
+                    Near(pose.Y-pose.Sy*NativeVfxMeshes.BombDiameter*.5,NativeFieldRules.BombBase(f)+NativeFieldRules.BombLift,1e-12,"the casing stands on its floor");
                     Near(pose.Sx*.38,body.Sx,1e-12,"scale x");Near(pose.Sy*.38,body.Sy,1e-12,"scale y");Near(pose.Sz*.38,body.Sz,1e-12,"scale z");
                     bool fuse=c>1&&cubes[1].Sx==.1&&Math.Abs(cubes[1].Y-pose.FuseY)<1e-12;Check(fuse==pose.FuseLit,"fuse shows exactly when the source's fuse cube does");
                     Check(pose.FuseLit==(pose.Emissive>0)&&pose.Emissive<=1&&pose.Emissive>=0,"the band and tip glow exactly while the fuse shows");
@@ -435,7 +497,20 @@ namespace ChipArena.UnityConversion
             int Blinks(double from,double to){int k=0;bool last=false;for(double t=from;t<to;t+=.002){NativeFieldRules.Bomb(g,t,out var p);if(p.FuseLit&&!last)k++;last=p.FuseLit;}return k;}
             Check(Blinks(2.5,3.5)>Blinks(0,1)+2,"the blink speeds up ("+Blinks(0,1)+" -> "+Blinks(2.5,3.5)+" per second)");
             int flicker=0;for(double t=3.5;t<4;t+=.002){NativeFieldRules.Bomb(g,t,out var p);if(!p.FuseLit&&Math.Sin(t*(6+p.Progress*20))>-.2)flicker++;}Check(flicker>0,"the last half second flickers off");
-            NativeFieldRules.Bomb(g,0,out var p0);Check(p0.Sx==1&&p0.Sy==1&&p0.FuseLit&&p0.Emissive>0&&Math.Abs(p0.FuseY-p0.Y-.26)<1e-12&&Math.Abs(NativeVfxMeshes.BombTipY-.262)<1e-12,"at rest: scale 1, fuse lit, tip where the source's fuse cube sat");
+            NativeFieldRules.Bomb(g,0,out var p0);NativeFieldRules.Cubes(g,0x123456,0,cubes);Check(p0.Sx==1&&p0.Sy==1&&p0.FuseLit&&p0.Emissive>0&&Math.Abs(p0.FuseY-cubes[0].Y-.26)<1e-12&&Math.Abs(NativeVfxMeshes.BombTipY-.262)<1e-12,"at rest: scale 1, fuse lit, the tip .262 over the casing as the source's fuse cube sat .26 over its body");
+            // On the floor (owner cut, review 2026-10-11): a field on a flat floor or a raised platform stands its bomb on it, the
+            // tip above it; without a floor, or high above one, the emitters' ground (y - .95, at least .03) is the base.
+            foreach(var (y,floor,expect) in new (double,double?,double)[]{(0,0,0),(.95,0,0),(2,2,2),(2.95,2,2),(.95,null,.03),(.5,null,.03),(5,0,4.05),(5,NativeBlastSim.NoFloor,4.05)})
+            {
+                var f=new NativeBlastField{Kind="bomb",X=1,Y=y,Z=2,Radius=3,Born=0,Until=4,Floor=floor};NativeFieldRules.Bomb(f,0,out var p);
+                Near(NativeFieldRules.BombBase(f),expect,1e-12,"bomb base at y "+y+" floor "+floor);Near(p.Y-NativeVfxMeshes.BombDiameter*.5*p.Sy,expect+NativeFieldRules.BombLift,1e-12,"casing bottom at y "+y+" floor "+floor);
+                double tip=p.Y+NativeVfxMeshes.BombTipY*p.Sy;Check(tip>expect+.4&&Math.Abs(NativeFieldRules.BombTipY(f)-tip)<1e-12,"the fuse tip is above the floor at y "+y+" floor "+floor+" ("+tip+")");
+                // The fuse sparks start at that tip.
+                var sim=new NativeBlastSim();f.Id=9;sim.Field(f,0,1);for(int i=1;i<40;i++)sim.Field(f,i*Dt,1);int sparks=0;
+                for(int i=0;i<sim.Glow.Count;i++)if(sim.Glow.Identity(i).role==NativeFxRole.Spark){Near(sim.Glow.At(i).y,(float)NativeFieldRules.BombTipY(f),1e-5,"a fuse spark starts at the tip (y "+y+" floor "+floor+")");sparks++;}
+                Check(sparks>0,"the bomb throws fuse sparks (y "+y+" floor "+floor+")");n+=4;
+            }
+            var mineField=new NativeBlastField{Kind="mine",X=0,Y=0,Z=0,Radius=3,Born=0,Until=4,Floor=0};NativeFieldRules.Bomb(mineField,1,out var mp);Near(mp.Y,.1,1e-12,"the flat mine sits on the floor: centre .08 + .02 up");
             double peak=0;for(double t=3;t<3.5;t+=.001){NativeFieldRules.Bomb(g,t,out var p);peak=Math.Max(peak,p.Emissive);}Check(peak>.95,"the glow peaks near full late in the fuse ("+peak+")");
             return n+5;
         }

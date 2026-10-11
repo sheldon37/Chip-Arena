@@ -182,9 +182,9 @@ namespace ChipArena.UnityConversion.Editor
             foreach(var name in new[]{"NativeCeilingField","NativePickupGlow"}){var shader=Resources.Load<Shader>(name);if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: "+name);}
             // The Siren possession grin's quad (NativeMinionFxPresentation.cs).
             {var shader=Resources.Load<Shader>("NativeMinionGrin");if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: NativeMinionGrin");}
-            // The effects overhaul's renderer (NativeVfxDraw: sprites, streaks and puffs; lit meshes and shock shells) and the
-            // match camera's bloom (NativeBloomImage).
-            foreach(var name in new[]{"NativeVfx","NativeVfxLit","NativeBloom"}){var shader=Resources.Load<Shader>(name);if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: "+name);}
+            // The effects overhaul's renderer (NativeVfxDraw: sprites, streaks and puffs; lit meshes and shock shells). The match
+            // camera's bloom is its own branch's (claude/fx-bloom: NativeBloom.cs and its build check).
+            foreach(var name in new[]{"NativeVfx","NativeVfxLit"}){var shader=Resources.Load<Shader>(name);if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: "+name);}
             CheckVfx();
         }
     }

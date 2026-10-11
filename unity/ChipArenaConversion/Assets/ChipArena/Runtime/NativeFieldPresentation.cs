@@ -61,8 +61,8 @@ namespace ChipArena.UnityConversion
             Material Transparent(string name,int queue,CullMode cull,float offset=0,float radial=0)
             {var m=new Material(shader){name=name,renderQueue=queue};m.SetFloat("_Cull",(float)cull);m.SetFloat("_Offset",offset);m.SetFloat("_Radial",radial);return m;}
             int t=(int)RenderQueue.Transparent;
-            // Source draw order: decals (renderOrder -1), dome and warning ring (0); the effects renderer's sprites and puffs are
-            // Transparent+3 and NativeCombatGlow's halos Transparent+10.
+            // Source draw order: decals (renderOrder -1), dome and warning ring (0); the effects renderer's sprites and puffs share
+            // the Transparent queue, sorted with the domes by their batch's bounds, and NativeCombatGlow's halos are Transparent+10.
             var decalMaterial=Transparent("Native Siren scorch",t-1,CullMode.Back,-2,(float)NativeFieldRules.ScorchFalloff);
             var domeMaterial=Transparent("Native field dome",t,CullMode.Back);var warnMaterial=Transparent("Native Siren warning",t,CullMode.Off);
             decal=new Layer("Native Siren scorch",decalMaterial);dome=new Layer("Native field dome",domeMaterial);warn=new Layer("Native Siren warning",warnMaterial);

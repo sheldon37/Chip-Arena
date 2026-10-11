@@ -8,7 +8,8 @@ namespace ChipArena.UnityConversion.Editor
     {
         // The effects overhaul's shared renderer (Runtime/NativeVfxDraw.cs): one frame of every blast style on the floor, an
         // impact, burst sparks and the modelled chip bomb queue sprites and puffs, lit meshes and shock shells; Submit draws and
-        // empties the queue; the smoke atlas built off the main thread is uploaded; Dispose releases. No frame is rendered.
+        // empties the queue and asks for the depth texture (soft particles) except on the low tier; the smoke atlas built off
+        // the main thread is uploaded; Dispose releases. No frame is rendered.
         private static void CheckVfx()
         {
             var host=new GameObject("Effects renderer check");var camera=host.AddComponent<Camera>();camera.enabled=false;
@@ -28,6 +29,9 @@ namespace ChipArena.UnityConversion.Editor
                     if(vfx.Billboards==0||vfx.LitVertices<NativeVfxMeshes.Bomb.VertexCount||vfx.ShockVertices==0||sim.Shocks.Count==0)
                         throw new Exception($"Effects renderer queued {vfx.Billboards} billboards, {vfx.LitVertices} lit and {vfx.ShockVertices} shell vertices for {sim.Shocks.Count} fronts");
                     vfx.Submit(camera);if(vfx.Billboards!=0||vfx.LitVertices!=0||vfx.ShockVertices!=0)throw new Exception("Effects renderer Submit kept its queue");
+                    // Soft particles ask the camera for a depth texture on the normal tiers and give it back on the low tier.
+                    if((camera.depthTextureMode&DepthTextureMode.Depth)==0)throw new Exception("Effects renderer did not ask for the depth texture (soft particles)");
+                    vfx.Low=true;vfx.Submit(camera);if((camera.depthTextureMode&DepthTextureMode.Depth)!=0)throw new Exception("Effects renderer kept the depth texture on the low tier");vfx.Low=false;
                     var clock=Stopwatch.StartNew();while(!vfx.AtlasReady&&clock.ElapsedMilliseconds<15000){System.Threading.Thread.Sleep(10);vfx.Submit(camera);}
                     if(!vfx.AtlasReady)throw new Exception("The smoke atlas was not built and uploaded within 15 s");
                 }

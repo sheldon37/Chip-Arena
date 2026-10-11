@@ -45,7 +45,8 @@ namespace ChipArena.UnityConversion
         /// lengths as it did the cube. Pick one per particle by seed (for example seed % ChunkVariants).</summary>
         public static readonly NativeVfxMesh[] Chunks=BuildChunks();
         /// <summary>One crystal shard: a slightly irregular hexagonal bipyramid along +Y, flat-shaded, in the voxel's unit box
-        /// with its tips at y = ±.5. The pool's stretch (3.5 on every Shard spawn) makes it long.</summary>
+        /// with its tips at y = ±.5 and its ring nearly filling the box across. The pool's stretch (3.5 on every Shard spawn)
+        /// makes it long.</summary>
         public static readonly NativeVfxMesh Shard=BuildShard();
         /// <summary>The chip bomb in metres at scale 1, centred on its casing: a low-poly casing (diameter BombDiameter), a
         /// raised equator band (Emissive BandGlow), a top cap, a short fuse stem and the fuse tip at BombTipY (Emissive TipGlow).
@@ -120,7 +121,9 @@ namespace ChipArena.UnityConversion
         private static NativeVfxMesh BuildShard()
         {
             var random=new NativeBlastRandom(0x5a4du);var pts=new List<double[]>();double ring=-.12;
-            for(int i=0;i<6;i++){double a=(i+(random.Next()-.5)*.35)*Math.PI/3,r=.3+random.Next()*.08;pts.Add(V(Math.Cos(a)*r,ring+(random.Next()-.5)*.06,Math.Sin(a)*r));}
+            // Ring radius .44-.5 of the voxel edge (review 2026-10-11: at .3-.38 the crystal was a hairline needle beside the
+            // slab it replaced); the same draws as before, so the shape's jitter is unchanged.
+            for(int i=0;i<6;i++){double a=(i+(random.Next()-.5)*.35)*Math.PI/3,r=.44+random.Next()*.06;pts.Add(V(Math.Cos(a)*r,ring+(random.Next()-.5)*.06,Math.Sin(a)*r));}
             pts.Add(V((random.Next()-.5)*.08,.5,(random.Next()-.5)*.08));pts.Add(V((random.Next()-.5)*.06,-.5,(random.Next()-.5)*.06));
             var b=new Builder();double cy=ring;
             for(int i=0;i<6;i++){var p=pts[i];var q=pts[(i+1)%6];b.Out(p,q,pts[6],0,cy,0,0,0);b.Out(q,p,pts[7],0,cy,0,0,0);}

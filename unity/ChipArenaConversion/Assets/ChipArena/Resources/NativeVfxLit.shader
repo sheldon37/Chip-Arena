@@ -9,12 +9,15 @@
 //   COLOR      albedo rgb, a: specular strength
 //   TEXCOORD0  emissive rgb (linear, HDR), w: gloss (0..1)
 //   TEXCOORD1  fresnel rim colour rgb (linear, HDR), w unused
-// Shock material (_Shock 1; additive, no depth write, both faces): one expanding fresnel shell per blast, impact or Nova front
-// (Core NativeBlastSim.Shocks): a bright rim and a nearly clear centre, broken up a little by the noise tile, dimming as
-// it travels and fading out at the gameplay radius; a dome's base fades so it never draws a ring on the floor.
+// Shock material (_Shock 1; additive, no depth write, Cull Off): one expanding fresnel shell per blast, impact or Nova front
+// (Core NativeBlastSim.Shocks): a thin bright rim with a clear centre (no veil), broken up a little by the noise tile (not
+// on the low graphics tier, _VfxLow), bright at the arrival and quickly dimmer as it travels, fading out at the gameplay
+// radius; a dome's base fades so it never draws a ring or a bowl on the floor. While the camera is outside the shell only
+// its front faces draw (the far inner face would add a second arch and a tint over the whole interior: the glassy bubble of
+// review 2026-10-11); from inside, the surrounding shell draws.
 //   COLOR      hot colour rgb (linear, HDR, times the record's fade), a: front progress (0..1)
 //   TEXCOORD0  cool colour rgb (the same scale), w: normalized age u
-//   TEXCOORD1  seed, dome (0/1), height on the unit shell (normal y), w unused
+//   TEXCOORD1  seed, dome (0/1), height on the unit shell (normal y), w: the shell's radius (m)
 Shader "ChipArena/NativeVfxLit"
 {
     Properties
@@ -26,6 +29,7 @@ Shader "ChipArena/NativeVfxLit"
         _Shock("Shock shell",Float)=0
         _VfxNoise("Noise tile (RGBA linear)",2D)="gray"{}
         _VfxFlashGain("Blast flash light",Float)=1
+        _VfxLow("Low graphics tier",Float)=0
     }
     SubShader
     {
@@ -45,7 +49,7 @@ Shader "ChipArena/NativeVfxLit"
             #include "UnityCG.cginc"
             #include "UnityLightingCommon.cginc"
             sampler2D _VfxNoise;
-            float _Shock,_VfxFlashGain;
+            float _Shock,_VfxFlashGain,_VfxLow;
             float4 _ArenaFlashPos[3];
             float4 _ArenaFlashColor[3];
             // ---- VFX LIT SHARED BEGIN (HLSL and GLSL: float literals only, no matrices, no implicit conversions) ----
@@ -69,17 +73,17 @@ Shader "ChipArena/NativeVfxLit"
                 float fresnel = pow(1.0 - saturate(dot(n, v)), 3.0);
                 return albedo * diffuse + sun * glint + rim * fresnel + emissive;
             }
-            // The shock shell: rim brightness by the view angle (both faces), a clear centre, the noise breakup, the dome's base
-            // fade, from the hot to the cool colour as it travels, brightest while it is young.
+            // The shock shell: a thin rim by the view angle and a clear centre, the noise breakup, the dome's base fade, from the
+            // hot to the cool colour as it travels; full at the arrival (progress 0), .46 a quarter of the way, .27 half way and
+            // .17 at the gameplay radius.
             float3 VfxShock(float3 hot, float3 cool, float progress, float n_dot_v, float height, float dome, float breakup)
             {
                 float facing = saturate(abs(n_dot_v));
-                float rim = pow(1.0 - facing, 3.0);
-                float body = 0.03 + 0.97 * rim;
-                float base = lerp(1.0, smoothstep(0.0, 0.35, height), dome);
-                float travel = 1.0 - 0.6 * progress;
+                float body = pow(1.0 - facing, 4.0);
+                float base = lerp(1.0, smoothstep(0.05, 0.5, height), dome);
+                float travel = 0.15 + 0.85 * exp(-4.0 * progress);
                 float3 tint = lerp(hot, cool, saturate(progress * 1.1));
-                return tint * (body * base * travel * travel * (0.45 + 1.1 * breakup));
+                return tint * (body * base * travel * (0.45 + 1.1 * breakup));
             }
             // ---- VFX LIT SHARED END ----
             struct appdata
@@ -121,14 +125,18 @@ Shader "ChipArena/NativeVfxLit"
             float4 frag(v2f i):SV_Target
             {
                 float3 n=normalize(i.normal),view=normalize(_WorldSpaceCameraPos-i.world);
-                // The shell's breakup, sampled outside the branch: the noise tile projected along y, drifting with its seed and age.
-                float4 grain=tex2D(_VfxNoise,n.xz*0.42+float2(i.b.x*0.137,i.b.x*0.291+i.a.w*0.35));
+                // The shell's breakup: the noise tile projected along y, drifting with its seed and age (no mips, so a level-0
+                // read may sit in the branch); the low tier skips the read.
+                float4 grain=float4(0.5,0.5,0.5,0.5);
+                if(_Shock>0.5&&_VfxLow<0.5)grain=tex2Dlod(_VfxNoise,float4(n.xz*0.42+float2(i.b.x*0.137,i.b.x*0.291+i.a.w*0.35),0,0));
                 float4 c;
                 if(_Shock>0.5)
                 {
                     // Fades where the shell passes the camera, so a front around the viewer does not fill the screen.
                     float nearFade=saturate((length(_WorldSpaceCameraPos-i.world)-0.4)/2.2);
-                    c=float4(VfxShock(i.color.rgb,i.a.rgb,i.color.a,dot(n,view),i.b.z,i.b.y,grain.r*0.6+grain.g*0.4)*nearFade,0);
+                    // Front faces only while the camera is outside the shell (its centre: this point less the radius along n).
+                    float front=dot(n,view)<0.0&&length(_WorldSpaceCameraPos-(i.world-n*i.b.w))>i.b.w?0.0:1.0;
+                    c=float4(VfxShock(i.color.rgb,i.a.rgb,i.color.a,dot(n,view),i.b.z,i.b.y,grain.r*0.6+grain.g*0.4)*(nearFade*front),0);
                     UNITY_APPLY_FOG_COLOR(i.fogCoord,c,float4(0,0,0,0));
                 }
                 else

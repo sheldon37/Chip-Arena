@@ -9,38 +9,63 @@ namespace ChipArena.UnityConversion
     /// <summary>
     /// The shared effects renderer of the 2026-10-11 effects overhaul (owner: "The effects seem a bit outdated and there still
     /// seems to be cube placeholders for certain impact effects"). The blast pools (NativeBlastSim: blasts, impacts, field
-    /// emitters, slam dust and every other NativeImpactCues draw), the burst sparks (NativeBurstPool) and the field cores
-    /// (NativeFieldPresentation) hand their particles here each frame; each particle is drawn as the primitive its Core
-    /// <see cref="NativeFxRole"/> names instead of one flat cube:
+    /// emitters and every other NativeImpactCues draw), the burst sparks (NativeBurstPool), the field cores
+    /// (NativeFieldPresentation), the melee hit sparks and slam dust (NativeMeleeFlashPresentation) and the impact contact
+    /// flashes (NativeCombatGlow) hand their particles here each frame; each blast particle is drawn as the primitive its
+    /// Core <see cref="NativeFxRole"/> names instead of one flat cube:
     ///  - Mote, Line points, Bolt points: a soft HDR glow sprite; Core: a larger, softer one; Bubble: a ring; Snow: a pale one.
     ///  - Spark, Ember, Streak and the burst sparks: a streak along the velocity (a capsule with a hot core), length from the
-    ///    speed with a minimum; Bolt and Line neighbours (consecutive seeds) are also joined by an HDR segment.
-    ///  - Smoke, Cloud: a lit atlas smoke puff that erodes over its life (the raw size, not the cube's end shrink); Dark: a
-    ///    light-eating puff; Fireball, Flame: an emissive atlas puff handing off into soot.
-    ///  - Debris, Rock: a lit irregular rubble chunk (NativeVfxMeshes.Chunks by seed); Shard: a lit crystal.
-    ///  - Shell: not drawn per voxel; each front is one expanding fresnel shell from NativeBlastSim.Shocks.
+    ///    speed with a minimum; Bolt and Line seed neighbours within one strand (NativeBlastPool.Linked) are also joined by an
+    ///    HDR segment.
+    ///  - Smoke, Cloud: a lit atlas smoke puff that erodes over its life (the raw size, not the cube's end shrink), its
+    ///    albedo lifted to a minimum luminance so soot still reads on the navy floor; saturated clouds (toxic, acid) glow a
+    ///    little in their own colour. Fireball, Flame: an emissive atlas puff in its own hue (the Core glows are the white-hot
+    ///    centre), drawn from its start size and billowing as it erodes, handing off into soot. Dark (Void): an opaque black
+    ///    orb with an HDR fresnel rim in its hue, like the black hole's core.
+    ///  - Debris, Rock: a lit irregular rubble chunk (NativeVfxMeshes.Chunks by seed); HotDebris (fire-family): the same,
+    ///    glowing hot out of the fireball and cooling; Shard: a lit crystal that settles into a seeded resting pose on the floor.
+    ///  - Shell: not drawn per voxel; each front is one expanding fresnel shell from NativeBlastSim.Shocks (front faces only
+    ///    while the camera is outside it); Quake's front is not drawn (its slabs and dust show the radius).
     /// Three draws a frame, each one dynamic mesh refilled from reused arrays (no per-frame allocation): every sprite, streak
-    /// and puff in one premultiplied mesh sorted back to front (Resources/NativeVfx.shader, Transparent+3), the lit meshes
-    /// (NativeVfxLit.shader, opaque) and the shock shells (NativeVfxLit.shader, additive, Transparent+4). Graphics.DrawMesh to
-    /// the given camera, layer 0, no shadows. The smoke atlas and noise tile (Core NativeVfxTextures) are built once per
-    /// process on a worker thread and uploaded when ready; until then the puffs draw a round stand-in. Everything here is
-    /// cosmetic and a pure function of the particles handed in (seeded in Core, aged on the presentation clock), so host,
-    /// guests and the killcam draw the same frame; nothing reads back into the match.
+    /// and puff in one premultiplied mesh sorted back to front (Resources/NativeVfx.shader, queue Transparent with bounds
+    /// round what it holds, so Unity sorts the batch among the field domes, the tidal wave and the dust by where it is), the
+    /// lit meshes (NativeVfxLit.shader, opaque) and the shock shells (NativeVfxLit.shader, additive, Transparent+4).
+    /// Graphics.DrawMesh to the given camera, layer 0, no shadows. Soft particles: the puffs and glows fade where they meet the
+    /// scene's depth (the camera's depth texture, which the shadowed key light already makes Unity render in forward); not on
+    /// the low graphics tier (<see cref="Low"/>: no shadows there, so no depth pass is added; the puffs are also drawn at .8
+    /// size and the shells skip their noise tap; the GPU cost of either tier is not measured). Known limit (M1): draws in later
+    /// transparent queues (NativeCombatGlow's halos at +10, the beacon, repair and kill effects) are not dimmed by smoke in
+    /// front of them. The smoke atlas and noise tile (Core NativeVfxTextures) are built once per process on a worker thread
+    /// and uploaded when ready; until then the puffs draw a round stand-in. Everything here is cosmetic and a pure function of
+    /// the particles handed in (seeded in Core, aged on the presentation clock), so host, guests and the killcam draw the same
+    /// frame; nothing reads back into the match.
     /// </summary>
     public sealed class NativeVfxDraw : IDisposable
     {
-        /// <summary>Billboard modes (NativeVfx.shader TEXCOORD1.z): glow profiles 0-3, then streak, smoke, fireball, dark.</summary>
-        public const float Mote=0,CoreGlow=1,Ring=2,Snow=3,StreakMode=4,SmokeMode=5,FireballMode=6,DarkMode=7;
+        /// <summary>Billboard modes (NativeVfx.shader TEXCOORD1.z): glow profiles 0-3, then streak, smoke, fireball.</summary>
+        public const float Mote=0,CoreGlow=1,Ring=2,Snow=3,StreakMode=4,SmokeMode=5,FireballMode=6;
         /// <summary>The floor of a puff that has none (no floor fade).</summary>
         public const float NoFloor=-1e9f;
         // ---- the look: sprite size per voxel edge and HDR gain per role (stylized, punchy; the bloom takes what passes 1) ----
         private const float MoteSize=2.6f,MoteGain=1.7f,CoreSize=2.4f,CoreGain=1.3f,RingSize=2.6f,RingGain=1.4f,SnowSize=2.4f,SnowGain=.9f,SnowCover=.3f;
         private const float SparkWidth=1.3f,SparkGain=3.2f,SparkBlur=.045f,EmberWidth=1.6f,EmberGain=2.6f,EmberBlur=.03f,StreakWidth=1.5f,StreakGain=2.2f,StreakBlur=.05f;
-        private const float BoltGain=3.6f,LineGain=2.6f,PointGlow=.6f,PointSize=2.2f,BoltJoin=1.6f,LineJoin=1.5f;
-        private const float SmokeSize=2.6f,SmokeOpacity=.85f,SmokeAlbedo=1.25f,CloudSize=2.6f,CloudOpacity=.62f,DarkSize=2f,DarkOpacity=.95f;
-        private const float ChunkSelf=.3f,FireballSize=2.4f,FlameSize=2.1f,FlameAspect=1.5f,FlameTint=.5f;
+        private const float BoltGain=3.6f,LineGain=2.6f,PointGlow=.6f,PointSize=2.2f;
+        // Smoke albedo is lifted (hue kept) to at least SmokeLift luminance, by at most SmokeLiftMax: the palette's soot
+        // (Kinetic 0x3b4650, Fire's near-black end) otherwise vanished into the navy floor (review 2026-10-11).
+        private const float SmokeSize=2.6f,SmokeOpacity=.85f,SmokeAlbedo=1.25f,SmokeLift=.12f,SmokeLiftMax=4f,CloudSize=2.6f,CloudOpacity=.62f,CloudGlow=.35f;
+        private const float DarkRim=3f;
+        private const float ChunkSelf=.3f,DebrisScale=1.45f,RockScale=1.3f,HotLife=.35f,HotGain=2.2f;
+        private static readonly Color HotColor=new Color(1,.42f,.12f,0);
+        // Flames burn in their own hue (FlameTint) and age slower in the puff (FlameAge), so a tongue stays hot for most of its
+        // short life instead of handing off into soot at a third of it (the fireball formula alone left fire fields dull brown).
+        private const float FireballSize=2.4f,FireballBirth=.85f,FireballBillow=.5f,FlameSize=2.1f,FlameAspect=1.5f,FlameTint=1.1f,FlameAge=.7f;
+        private const float CrystalAlbedo=.55f,CrystalSpec=1.1f,CrystalGloss=.92f,CrystalGlow=.5f,CrystalRim=2.6f;
         private const float BurstGain=2.4f,BurstBlur=.05f;
-        private const float BlastShock=1.5f,ImpactShock=1.3f,NovaShock=1.9f;
+        private const float BlastShock=1.2f,ImpactShock=.5f,NovaShock=1.9f;
+        // Core glows sort this many of their sizes nearer the camera, so the white-hot centre draws over the fireball puffs.
+        private const float CoreLead=.75f;
+        // The low graphics tier draws the puffs at this size.
+        private const float LowPuff=.8f;
         private const int NoiseSize=64;
 
         [StructLayout(LayoutKind.Sequential)]
@@ -61,6 +86,7 @@ namespace ChipArena.UnityConversion
             new VertexAttributeDescriptor(VertexAttribute.TexCoord1,VertexAttributeFormat.Float32,4)
         };
         private static readonly Bounds Everywhere=new Bounds(Vector3.zero,Vector3.one*4000);
+        private static readonly int SoftId=Shader.PropertyToID("_VfxSoft"),LowId=Shader.PropertyToID("_VfxLow");
         private const MeshUpdateFlags Quiet=MeshUpdateFlags.DontValidateIndices|MeshUpdateFlags.DontRecalculateBounds|MeshUpdateFlags.DontNotifyMeshUsers|MeshUpdateFlags.DontResetBoneBounds;
 
         // One dynamic mesh: vertex and index arrays that only grow, uploaded with the advanced Mesh API. Quad batches keep a
@@ -84,14 +110,15 @@ namespace ChipArena.UnityConversion
                 int first=VertexCount;VertexCount=need;indexStart=IndexCount;IndexCount+=indices;return first;
             }
             private void Quads(int from){for(int q=from;q<Indices.Length/6;q++){int i=q*6,v=q*4;Indices[i]=v;Indices[i+1]=v+1;Indices[i+2]=v+2;Indices[i+3]=v;Indices[i+4]=v+2;Indices[i+5]=v+3;}indicesDirty=true;}
-            public void Draw(Material material,Camera camera)
+            public void Draw(Material material,Camera camera)=>Draw(material,camera,Everywhere);
+            public void Draw(Material material,Camera camera,Bounds bounds)
             {
                 if(VertexCount==0||IndexCount==0||material==null||camera==null)return;
                 if(vertexCapacity!=Vertices.Length){Mesh.SetVertexBufferParams(Vertices.Length,layout);vertexCapacity=Vertices.Length;}
                 if(indexCapacity!=Indices.Length){Mesh.SetIndexBufferParams(Indices.Length,IndexFormat.UInt32);indexCapacity=Indices.Length;indicesDirty=true;Mesh.subMeshCount=1;}
                 Mesh.SetVertexBufferData(Vertices,0,0,VertexCount,0,Quiet);
                 if(!quads)Mesh.SetIndexBufferData(Indices,0,0,IndexCount,Quiet);else if(indicesDirty){Mesh.SetIndexBufferData(Indices,0,0,Indices.Length,Quiet);indicesDirty=false;}
-                Mesh.SetSubMesh(0,new SubMeshDescriptor(0,IndexCount){bounds=Everywhere,firstVertex=0,vertexCount=VertexCount},Quiet);Mesh.bounds=Everywhere;
+                Mesh.SetSubMesh(0,new SubMeshDescriptor(0,IndexCount){bounds=bounds,firstVertex=0,vertexCount=VertexCount},Quiet);Mesh.bounds=bounds;
                 Graphics.DrawMesh(Mesh,Matrix4x4.identity,material,0,camera,0,null,ShadowCastingMode.Off,false);
             }
         }
@@ -138,13 +165,21 @@ namespace ChipArena.UnityConversion
         public int LitVertices=>lit.VertexCount;public int ShockVertices=>shocks.VertexCount;
         /// <summary>The smoke atlas and noise tile are uploaded (until then the puffs draw their round stand-in).</summary>
         public bool AtlasReady=>atlas!=null;
+        /// <summary>The low graphics tier (ArenaPresentation.LowGraphics): no soft particles (no depth texture is asked for),
+        /// puffs at .8 size, no noise tap on the shells.</summary>
+        public bool Low;
+        /// <summary>The billboards' bounds at the last Submit (checks).</summary>
+        public Bounds BillboardBounds{get;private set;}
+        // The camera this renderer asked for a depth texture (soft particles), so it can take the request back.
+        private Camera depthCamera;
 
         public NativeVfxDraw()
         {
             var vfx=Resources.Load<Shader>("NativeVfx");if(vfx==null)throw new InvalidOperationException("NativeVfx shader is missing");
             var lighting=Resources.Load<Shader>("NativeVfxLit");if(lighting==null)throw new InvalidOperationException("NativeVfxLit shader is missing");
-            // After the field domes and Siren effects (Transparent, +1) and the old glow voxels' slot (+3); before the combat glow halos (+10).
-            billboardMaterial=new Material(vfx){name="Native vfx billboards",renderQueue=(int)RenderQueue.Transparent+3,hideFlags=HideFlags.HideAndDontSave};
+            // In the Transparent queue with the field domes, the Siren warnings, the tidal wave and the dust; the batch's bounds
+            // (Submit) put it in Unity's back-to-front order among them. Before the combat glow halos (+10).
+            billboardMaterial=new Material(vfx){name="Native vfx billboards",renderQueue=(int)RenderQueue.Transparent,hideFlags=HideFlags.HideAndDontSave};
             litMaterial=new Material(lighting){name="Native vfx lit",renderQueue=(int)RenderQueue.Geometry,hideFlags=HideFlags.HideAndDontSave};
             litMaterial.SetFloat("_Src",(float)BlendMode.One);litMaterial.SetFloat("_Dst",(float)BlendMode.Zero);litMaterial.SetFloat("_ZWrite",1);litMaterial.SetFloat("_Cull",(float)CullMode.Back);litMaterial.SetFloat("_Shock",0);
             // The shells draw over the puffs inside them (both faces: a rim from outside, the surrounding shell from inside).
@@ -177,8 +212,22 @@ namespace ChipArena.UnityConversion
         }
         // A puff's roll: a seeded tilt (small, so the atlas's baked light stays on top) drifting slowly over its life.
         private static float Roll(float seed,float u){uint h=(uint)seed*2654435761u;h^=h>>15;h*=0x2c1b3c6du;h^=h>>12;return ((h&0xffff)/65536f-.5f)*.9f+u*((h&0x10000)!=0?.35f:-.35f);}
-        private void Puff(Vector3 at,Color albedo,float opacity,float size,float mode,float u,float seed,float floor,float aspect=1,bool upright=false)
-        {albedo.a=opacity;Add(at,albedo,size,upright?0:Roll(seed,u),u,seed,mode,floor,new Vector4(0,0,0,aspect));}
+        // glow: a smoke puff's own-colour emission (NativeVfx.shader mode 5, TEXCOORD2.x).
+        private void Puff(Vector3 at,Color albedo,float opacity,float size,float mode,float u,float seed,float floor,float aspect=1,bool upright=false,float glow=0)
+        {albedo.a=opacity;Add(at,albedo,size*(Low?LowPuff:1),upright?0:Roll(seed,u),u,seed,mode,floor,new Vector4(glow,0,0,aspect));}
+        /// <summary>A lit, eroding smoke puff (the blast smoke's look) for other effects: albedo linear, opacity 0..1, size the
+        /// quad's width (m), u its normalized age, seed its atlas tile and roll, floor the height it fades out below
+        /// (<see cref="NoFloor"/> for none).</summary>
+        public void Smoke(Vector3 at,Color albedo,float opacity,float size,float u,float seed,float floor)=>Puff(at,albedo,opacity,size,SmokeMode,u,seed,floor);
+        // Smoke albedo lifted to at least SmokeLift luminance (hue kept, at most x SmokeLiftMax).
+        private static Color Lift(Color c){float lum=.2126f*c.r+.7152f*c.g+.0722f*c.b;return c*Mathf.Clamp(SmokeLift/Mathf.Max(lum,1e-3f),1,SmokeLiftMax);}
+        // A cloud's own glow: CloudGlow for a saturated colour (toxic gas, acid fumes; sRGB saturation above about .5), none
+        // for a grey one (storm clouds), ramped so a colour drifting across the edge never pops.
+        private static float CloudGlowOf(Color c)
+        {
+            float r=(float)Math.Pow(Math.Max(c.r,0),1/2.2),g=(float)Math.Pow(Math.Max(c.g,0),1/2.2),b=(float)Math.Pow(Math.Max(c.b,0),1/2.2),max=Math.Max(r,Math.Max(g,b)),min=Math.Min(r,Math.Min(g,b));
+            float sat=max>1e-4f?(max-min)/max:0;return CloudGlow*Mathf.Clamp01((sat-.45f)/.1f);
+        }
 
         /// <summary>A blast sim's frame: both pools' draw lists and its shock fronts.</summary>
         public void Blasts(NativeBlastSim sim){if(sim==null)return;Pool(sim.Solid);Pool(sim.Glow);Shocks(sim);}
@@ -208,19 +257,23 @@ namespace ChipArena.UnityConversion
                     {
                         Link(i,(int)seed);Glow(at,color*((role==NativeFxRole.Bolt?BoltGain:LineGain)*PointGlow),edge*PointSize,Mote,u,seed);break;
                     }
-                    case NativeFxRole.Smoke:Puff(at,color*SmokeAlbedo,SmokeOpacity,raw*SmokeSize,SmokeMode,u,seed,floor);break;
-                    case NativeFxRole.Cloud:Puff(at,color*SmokeAlbedo,CloudOpacity,raw*CloudSize,SmokeMode,u,seed,floor);break;
-                    case NativeFxRole.Dark:Puff(at,color,DarkOpacity,raw*DarkSize,DarkMode,u,seed,floor);break;
-                    case NativeFxRole.Fireball:Puff(at,color,1,raw*FireballSize,FireballMode,u,seed,floor);break;
-                    case NativeFxRole.Flame:Puff(at,color*FlameTint,1,edge*FlameSize,FireballMode,u,seed,floor,FlameAspect,true);break;
-                    case NativeFxRole.Debris:case NativeFxRole.Rock:Chunk(o,w,(int)seed,u,color,role==NativeFxRole.Rock);break;
-                    case NativeFxRole.Shard:Crystal(o,w,color);break;
+                    case NativeFxRole.Smoke:Puff(at,Lift(color)*SmokeAlbedo,SmokeOpacity,raw*SmokeSize,SmokeMode,u,seed,floor);break;
+                    case NativeFxRole.Cloud:Puff(at,Lift(color)*SmokeAlbedo,CloudOpacity,raw*CloudSize,SmokeMode,u,seed,floor,glow:CloudGlowOf(color));break;
+                    // The edge carries the opaque pool's end shrink, so the orb goes small instead of popping out.
+                    case NativeFxRole.Dark:DarkCore(at,edge,color);break;
+                    // From the start size (size0), billowing as it erodes, not the source's shrink to size1 (review 2026-10-11:
+                    // the puffs shrank to 12% and the fireball broke apart).
+                    case NativeFxRole.Fireball:Puff(at,color,1,o[w+NativeBlastPool.StartSizeAt]*FireballSize*(FireballBirth+FireballBillow*u),FireballMode,u,seed,floor);break;
+                    case NativeFxRole.Flame:Puff(at,color*FlameTint,1,edge*FlameSize,FireballMode,u*FlameAge,seed,floor,FlameAspect,true);break;
+                    case NativeFxRole.Debris:case NativeFxRole.Rock:case NativeFxRole.HotDebris:Chunk(o,w,(int)seed,u,color,role);break;
+                    case NativeFxRole.Shard:Crystal(o,w,(int)seed,color);break;
                     default:Glow(at,color*MoteGain,edge*MoteSize,Mote,u,seed);break;
                 }
             }
             Segments(o);
         }
-        // Bolt and Line points join their neighbours: consecutive seeds (a Bolt may skip one, its side spark) and close by.
+        // Bolt and Line points join their neighbours within their strand (NativeBlastPool.Linked: seed neighbours, a Bolt may
+        // skip one, its side spark; close by).
         private void Link(int index,int seed)
         {
             if(links==linkSeed.Length){Array.Resize(ref linkSeed,links*2);Array.Resize(ref linkIndex,links*2);}
@@ -232,11 +285,9 @@ namespace ChipArena.UnityConversion
             Array.Sort(linkSeed,linkIndex,0,links);
             for(int k=0;k+1<links;k++)
             {
-                int a=linkIndex[k]*NativeBlastPool.Stride,b=linkIndex[k+1]*NativeBlastPool.Stride,gap=linkSeed[k+1]-linkSeed[k];
-                int role=(int)(o[a+NativeBlastPool.RoleAt]+.5f);if(role!=(int)(o[b+NativeBlastPool.RoleAt]+.5f))continue;bool bolt=role==(int)NativeFxRole.Bolt;
-                if(gap<1||gap>(bolt?2:1))continue;
-                var pa=new Vector3(o[a],o[a+1],o[a+2]);var pb=new Vector3(o[b],o[b+1],o[b+2]);Vector3 d=pb-pa;float len=d.magnitude;
-                if(len<1e-4f||len>(bolt?BoltJoin:LineJoin))continue;
+                int a=linkIndex[k]*NativeBlastPool.Stride,b=linkIndex[k+1]*NativeBlastPool.Stride;
+                if(!NativeBlastPool.Linked(o,a,b))continue;bool bolt=(int)(o[a+NativeBlastPool.RoleAt]+.5f)==(int)NativeFxRole.Bolt;
+                var pa=new Vector3(o[a],o[a+1],o[a+2]);var pb=new Vector3(o[b],o[b+1],o[b+2]);Vector3 d=pb-pa;
                 var color=new Color(o[a+10]+o[b+10],o[a+11]+o[b+11],o[a+12]+o[b+12],0)*(.5f*(bolt?BoltGain:LineGain));
                 float width=Mathf.Min(o[a+3],o[b+3])*(bolt?1.1f:.9f),u=(o[a+NativeBlastPool.AgeAt]+o[b+NativeBlastPool.AgeAt])*.5f;
                 Add((pa+pb)*.5f,color,width,0,u,linkSeed[k],StreakMode,NoFloor,new Vector4(d.x,d.y,d.z,0));
@@ -254,16 +305,34 @@ namespace ChipArena.UnityConversion
         private static Vector3 At(float[] o,int w)=>new Vector3(o[w],o[w+1],o[w+2]);
         private static Vector3 Edges(float[] o,int w)=>new Vector3(o[w+3],o[w+4],o[w+5]);
         private static Quaternion Turn(float[] o,int w)=>new Quaternion(o[w+6],o[w+7],o[w+8],o[w+9]);
-        // Rubble: flat-shaded chunks by seed, lit; still-hot (bright, early) pieces glow and cool.
-        private void Chunk(float[] o,int w,int seed,float u,Color color,bool rock)
+        // Rubble: flat-shaded chunks by seed, lit, scaled up so a chunk covers about what the cube did (a hull is a third to a
+        // half of its box). Fire-family debris (HotDebris) leaves the fireball glowing orange-hot and cools over its first
+        // HotLife of life; other bright (impact) pieces glow and cool by their colour; a little of its own colour as emission
+        // keeps the stylized rubble readable against a night arena.
+        private void Chunk(float[] o,int w,int seed,float u,Color color,NativeFxRole role)
         {
-            float lum=.2126f*color.r+.7152f*color.g+.0722f*color.b,hot=Mathf.Clamp01((lum-.3f)*2.2f)*(1-u)*1.2f;
-            var shape=chunks[(seed%NativeVfxMeshes.ChunkVariants+NativeVfxMeshes.ChunkVariants)%NativeVfxMeshes.ChunkVariants];
-            // A little of its own colour as emission keeps the stylized rubble readable against a night arena.
-            LitMesh(shape,At(o,w),Turn(o,w),Edges(o,w),color*(rock?.9f:.85f),rock?.1f:.15f,rock?.2f:.25f,color*(hot+ChunkSelf),color*.6f+new Color(.04f,.04f,.05f,0));
+            bool rock=role==NativeFxRole.Rock;var shape=chunks[(seed%NativeVfxMeshes.ChunkVariants+NativeVfxMeshes.ChunkVariants)%NativeVfxMeshes.ChunkVariants];Color emissive;
+            if(role==NativeFxRole.HotDebris){float hot=Mathf.Clamp01(1-u/HotLife);emissive=HotColor*(HotGain*hot*hot)+color*ChunkSelf;}
+            else{float lum=.2126f*color.r+.7152f*color.g+.0722f*color.b,hot=Mathf.Clamp01((lum-.3f)*2.2f)*(1-u)*1.2f;emissive=color*(hot+ChunkSelf);}
+            LitMesh(shape,At(o,w),Turn(o,w),Edges(o,w)*(rock?RockScale:DebrisScale),color*(rock?.9f:.85f),rock?.1f:.15f,rock?.2f:.25f,emissive,color*.6f+new Color(.04f,.04f,.05f,0));
         }
-        // Ice: a crystal along the voxel's long axis, a bright fresnel edge in its tint, a glint and a little emission.
-        private void Crystal(float[] o,int w,Color color)=>LitMesh(shard,At(o,w),Turn(o,w),Edges(o,w),color*.55f,1.1f,.92f,color*.22f,color*1.7f);
+        // Ice: a crystal along the voxel's long axis, a bright HDR fresnel edge in its tint (the bloom catches it), a glint and
+        // some emission. A landed crystal bounces every frame (the pool's floor bounce flips its velocity, so its velocity pose
+        // swings), so near its floor it settles into a resting pose: lying on its side (+Y along +X), turned about +Y by its
+        // seed (the golden angle), blended in over the last half edge of height.
+        private void Crystal(float[] o,int w,int seed,Color color)
+        {
+            var q=Turn(o,w);var e=Edges(o,w);float height=o[w+1]-o[w+NativeBlastPool.FloorAt],rest=Mathf.Clamp01(1-(height-.03f)/(.5f*Mathf.Max(e.x,1e-4f)));
+            if(rest>0){var lie=Quaternion.AngleAxis(((long)seed*137508L%360000L)*.001f,Vector3.up)*Quaternion.AngleAxis(-90,Vector3.forward);q=Quaternion.Slerp(q,lie,rest);}
+            LitMesh(shard,At(o,w),q,e,color*CrystalAlbedo,CrystalSpec,CrystalGloss,color*CrystalGlow,color*CrystalRim);
+        }
+        // Void's light-eating core: an opaque black orb (radius the particle's edge) with an HDR fresnel rim in its own hue,
+        // the black hole's core look (NativeFieldPresentation).
+        private void DarkCore(Vector3 at,float radius,Color color)
+        {
+            if(radius<1e-3f)return;float max=Mathf.Max(color.r,Mathf.Max(color.g,color.b));var hue=max>1e-5f?color*(1/max):new Color(1,1,1,0);hue.a=0;
+            Sphere(at,radius,new Color(.004f,.002f,.008f,0),hue*DarkRim,Color.clear);
+        }
 
         /// <summary>The shock fronts: one fresnel shell (a dome on the floor or a sphere) per record, on the sim's clock.</summary>
         public void Shocks(NativeBlastSim sim)
@@ -271,12 +340,14 @@ namespace ChipArena.UnityConversion
             var list=sim.Shocks;double t=sim.Time;
             for(int i=0;i<list.Count;i++)
             {
-                var s=list[i];double fade=s.Fade(t);float r=(float)s.RadiusAt(t);if(!(fade>0)||r<1e-3f)continue;
+                // Quake's front is not drawn: its heaved slabs (.25-.95 R) and its dust already show the radius.
+                var s=list[i];if(s.Style==NativeBlastStyle.Quake)continue;double fade=s.Fade(t);float r=(float)s.RadiusAt(t);if(!(fade>0)||r<1e-3f)continue;
                 float gain=(s.Kind==NativeShockKind.Nova?NovaShock:s.Kind==NativeShockKind.Impact?ImpactShock:BlastShock)*(float)fade;
                 var hot=new Color((float)s.HotR*gain,(float)s.HotG*gain,(float)s.HotB*gain,(float)s.Progress(t));var cool=new Vector4((float)s.CoolR*gain,(float)s.CoolG*gain,(float)s.CoolB*gain,(float)s.U(t));
                 var shape=s.Dome?dome:shell;var centre=new Vector3((float)s.X,(float)s.Y,(float)s.Z);float seed=s.Seed,isDome=s.Dome?1:0;
                 int first=shocks.Add(shape.P.Length,shape.T.Length,out int ti);var verts=shocks.Vertices;var tris=shocks.Indices;
-                for(int k=0;k<shape.P.Length;k++){var n=shape.N[k];verts[first+k]=new MeshVertex{Position=centre+shape.P[k]*r,Normal=n,Color=hot,A=cool,B=new Vector4(seed,isDome,n.y,0)};}
+                // B.w: the radius, so the shader finds the centre and draws only front faces while the camera is outside.
+                for(int k=0;k<shape.P.Length;k++){var n=shape.N[k];verts[first+k]=new MeshVertex{Position=centre+shape.P[k]*r,Normal=n,Color=hot,A=cool,B=new Vector4(seed,isDome,n.y,r)};}
                 for(int k=0;k<shape.T.Length;k++)tris[ti+k]=first+shape.T[k];
             }
         }
@@ -336,15 +407,31 @@ namespace ChipArena.UnityConversion
             noise.SetPixelData(n,0);noise.Apply(false,true);
             billboardMaterial.SetTexture(AtlasId,atlas);billboardMaterial.SetFloat(ReadyId,1);shockMaterial.SetTexture(NoiseId,noise);
         }
-        /// <summary>Draws this frame's queue to <paramref name="camera"/>: the billboards sorted far to near (view depth), the
-        /// lit meshes and the shock shells; then the queue is empty for the next frame.</summary>
+        // Soft particles need the camera's depth texture: asked for on the normal tiers (the shadowed key light already makes
+        // forward render it), taken back on the low tier or when the camera changes; only a request this renderer made.
+        private void SoftDepth(Camera camera)
+        {
+            if(depthCamera!=null&&(depthCamera!=camera||Low)){depthCamera.depthTextureMode&=~DepthTextureMode.Depth;depthCamera=null;}
+            if(!Low&&(camera.depthTextureMode&DepthTextureMode.Depth)==0){camera.depthTextureMode|=DepthTextureMode.Depth;depthCamera=camera;}
+            billboardMaterial.SetFloat(SoftId,!Low&&(camera.depthTextureMode&DepthTextureMode.Depth)!=0?1:0);shockMaterial.SetFloat(LowId,Low?1:0);
+        }
+        /// <summary>Draws this frame's queue to <paramref name="camera"/>: the billboards sorted far to near (view depth; a
+        /// core glow CoreLead of its size nearer), bounded by what they hold, the lit meshes and the shock shells; then the
+        /// queue is empty for the next frame.</summary>
         public void Submit(Camera camera)
         {
             if(camera==null){Begin();return;}
-            Upload();
-            var view=camera.transform;Vector3 eye=view.position,forward=view.forward;
-            for(int i=0;i<puffCount;i++){keys[i]=-Vector3.Dot(puffs[i].Centre-eye,forward);order[i]=i;}
+            Upload();SoftDepth(camera);
+            var view=camera.transform;Vector3 eye=view.position,forward=view.forward,lo=Vector3.one*float.MaxValue,hi=Vector3.one*float.MinValue;
+            for(int i=0;i<puffCount;i++)
+            {
+                ref var p=ref puffs[i];keys[i]=-Vector3.Dot(p.Centre-eye,forward)+(p.Mode==CoreGlow?CoreLead*p.Size:0);order[i]=i;
+                // A billboard reaches half its size from its centre; a streak also half its segment.
+                float reach=p.Size*.5f+(p.Mode==StreakMode?new Vector3(p.Axis.x,p.Axis.y,p.Axis.z).magnitude*.5f:0);
+                lo=Vector3.Min(lo,p.Centre-Vector3.one*reach);hi=Vector3.Max(hi,p.Centre+Vector3.one*reach);
+            }
             if(puffCount>1)Array.Sort(keys,order,0,puffCount);
+            var bounds=puffCount>0?new Bounds((lo+hi)*.5f,hi-lo):Everywhere;BillboardBounds=bounds;
             billboards.Clear();
             if(puffCount>0)
             {
@@ -358,12 +445,12 @@ namespace ChipArena.UnityConversion
                     verts[v+3]=new BillboardVertex{Centre=p.Centre,Color=p.Color,Shape=new Vector4(-1,1,p.Size,p.Roll),Life=life,Axis=p.Axis};
                 }
             }
-            lit.Draw(litMaterial,camera);billboards.Draw(billboardMaterial,camera);shocks.Draw(shockMaterial,camera);
+            lit.Draw(litMaterial,camera);billboards.Draw(billboardMaterial,camera,bounds);shocks.Draw(shockMaterial,camera);
             Begin();
         }
         public void Dispose()
         {
-            Begin();
+            Begin();if(depthCamera!=null){depthCamera.depthTextureMode&=~DepthTextureMode.Depth;depthCamera=null;}
             CapturedAnimation.Release(billboards.Mesh);CapturedAnimation.Release(lit.Mesh);CapturedAnimation.Release(shocks.Mesh);
             CapturedAnimation.Release(billboardMaterial);CapturedAnimation.Release(litMaterial);CapturedAnimation.Release(shockMaterial);
             if(atlas!=null)CapturedAnimation.Release(atlas);if(noise!=null)CapturedAnimation.Release(noise);atlas=null;noise=null;

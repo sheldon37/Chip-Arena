@@ -11,11 +11,13 @@ namespace ChipArena.UnityConversion
     // so Unity world positions go in and Unity world positions come out. Owner exceptions: no blue or cyan lightning on
     // area effects (2026-10-10, NativeBlastSim.Lightning), and no flat area disc under blasts and impacts (2026-10-11: on a
     // wall it read as "a floating pancake"; its voxels go to the shell, NativeBlastSim.Blast). tools/export_blast_fixtures.mjs
-    // applies the same cuts to the source before it records the parity frames. The 2026-10-11 effects overhaul adds two more
-    // there: light styles' smoke no longer fades to near-black (SmokeEnd), and a voxel's tumble follows its stable seed, not
-    // its pool slot (NativeBlastPool.Update). It also tags every particle with a draw role (NativeFxRole), writes role, age,
-    // seed, velocity, raw size and floor into the draw list, and records one NativeBlastShock per shock front, all without
-    // touching a random draw, count, lifetime, velocity or size. Also beyond the source: callers may pass the
+    // applies the same cuts to the source before it records the parity frames. The 2026-10-11 effects overhaul adds more
+    // there: light styles' smoke (Quake's dust among them) no longer fades to near-black (SmokeEnd), a voxel's tumble follows
+    // its stable seed, not its pool slot (NativeBlastPool.Update), and a chip bomb's fuse sparks start at the modelled bomb's
+    // fuse tip on its floor (NativeFieldRules.BombTipY), not .85 m over the source's ground. It also tags every particle with
+    // a draw role (NativeFxRole), writes role, age, seed, velocity, raw size, floor, strand and start size into the draw list,
+    // and records one NativeBlastShock per shock front, all without touching a random draw, count, lifetime, velocity or
+    // size. Also beyond the source: callers may pass the
     // real floor under a blast, impact or field (NativeBlastPresentation and NativeFieldPresentation raycast it). The source
     // assumes every blast is at a pilot's chest and puts its floor .95 m lower, which is still the default.
     public enum NativeBlastStyle{Fire,Shock,Implosion,Frost,Toxic,Void,Nova,Kinetic,Quake,Meteor,Mine}
@@ -129,6 +131,10 @@ namespace ChipArena.UnityConversion
         Bubble=16,
         /// <summary>Glow. A falling snowflake (frost field): a small soft pale mote, not HDR-hot.</summary>
         Snow=17,
+        /// <summary>Solid. Rubble thrown by a fire-family blast (Fire, Mine and Meteor debris): a lit rubble chunk that leaves
+        /// the fireball glowing hot and cools over its first third of life (review 2026-10-11: every debris colour is dark, so
+        /// the colour-keyed heat never fired and fire debris read as black specks). Draw-only: spawned exactly as Debris.</summary>
+        HotDebris=18,
     }
 
     /// <summary>Growable voxel particle pool (structure of arrays, swap-remove on expiry) and its per-frame draw list.</summary>
@@ -140,11 +146,14 @@ namespace ChipArena.UnityConversion
         /// (3), rotation quaternion xyzw (6), linear rgb (10). Beyond the source (owner 2026-10-11 effects overhaul):
         /// <see cref="NativeFxRole"/> as a float (<see cref="RoleAt"/>), normalized age u in 0..1 (<see cref="AgeAt"/>), the
         /// stable per-particle seed, an integer below 2^24 (<see cref="SeedAt"/>), velocity xyz in m/s (<see cref="VelocityAt"/>),
-        /// the raw edge before the opaque pool's end shrink (<see cref="RawSizeAt"/>; the glow pool's edge is already raw) and
-        /// the particle's floor height (<see cref="FloorAt"/>; <see cref="NativeBlastSim.NoFloor"/> for none).
+        /// the raw edge before the opaque pool's end shrink (<see cref="RawSizeAt"/>; the glow pool's edge is already raw), the
+        /// particle's floor height (<see cref="FloorAt"/>; <see cref="NativeBlastSim.NoFloor"/> for none), its strand
+        /// (<see cref="StrandAt"/>: the seed of the first point of the line, arc or bolt it belongs to, so a renderer joins Bolt
+        /// and Line points only within one strand; a lone particle's own seed) and its edge at birth (<see cref="StartSizeAt"/>,
+        /// size0: a puff drawn from its start size can billow instead of shrinking with the source's size1).
         /// </summary>
-        public const int Stride=21;
-        public const int RoleAt=13,AgeAt=14,SeedAt=15,VelocityAt=16,RawSizeAt=19,FloorAt=20;
+        public const int Stride=23;
+        public const int RoleAt=13,AgeAt=14,SeedAt=15,VelocityAt=16,RawSizeAt=19,FloorAt=20,StrandAt=21,StartSizeAt=22;
         /// <summary>Seeds count spawns from 0 after each Clear and wrap below 2^24, so a seed is exact as a float.</summary>
         public const int SeedMask=0xffffff;
         public readonly bool Glow;public int Count,Spawned,Capacity,Drawn;
@@ -152,11 +161,16 @@ namespace ChipArena.UnityConversion
         public double SizeScale=1;
         /// <summary>Drawn voxels after the last Update. Glow colours are already faded (additive: final colour = rgb).</summary>
         public float[] Output;
-        private readonly int initial;private float[] p,v,c0,c1,a;private int[] seed;private byte[] role;private int nextSeed;
-        public NativeBlastPool(int capacity,bool glow){Glow=glow;initial=capacity;Capacity=capacity;p=new float[capacity*3];v=new float[capacity*3];c0=new float[capacity*3];c1=new float[capacity*3];a=new float[capacity*A];seed=new int[capacity];role=new byte[capacity];Output=new float[capacity*Stride];}
+        private readonly int initial;private float[] p,v,c0,c1,a;private int[] seed,strand;private byte[] role;private int nextSeed;
+        public NativeBlastPool(int capacity,bool glow){Glow=glow;initial=capacity;Capacity=capacity;p=new float[capacity*3];v=new float[capacity*3];c0=new float[capacity*3];c1=new float[capacity*3];a=new float[capacity*A];seed=new int[capacity];strand=new int[capacity];role=new byte[capacity];Output=new float[capacity*Stride];}
+        /// <summary>The seed the next spawn gets: a line, arc or bolt reads it before its first point and passes it to every
+        /// point as their shared strand.</summary>
+        public int NextSeed=>nextSeed;
         /// <summary>The source's spawn. role (beyond the source): what the particle is drawn as; null is
-        /// <see cref="NativeFxRole.Mote"/> in the glow pool and <see cref="NativeFxRole.Debris"/> in the opaque pool.</summary>
-        public void Spawn(double x,double y,double z,double vx,double vy,double vz,double life,double size0,double size1,int color0,int color1,double gravity=0,double drag=0,double delay=0,double floor=-1e9,double stretch=1,double spin=0,NativeFxRole? role=null)
+        /// <see cref="NativeFxRole.Mote"/> in the glow pool and <see cref="NativeFxRole.Debris"/> in the opaque pool. strand
+        /// (beyond the source): the strand the particle belongs to (<see cref="StrandAt"/>); negative is its own seed. Neither
+        /// touches a random draw.</summary>
+        public void Spawn(double x,double y,double z,double vx,double vy,double vz,double life,double size0,double size1,int color0,int color1,double gravity=0,double drag=0,double delay=0,double floor=-1e9,double stretch=1,double spin=0,NativeFxRole? role=null,int strand=-1)
         {
             if(Count==Capacity)Resize(Capacity*2);
             int i=Count++;Spawned++;int j=i*3,k=i*A;
@@ -164,14 +178,14 @@ namespace ChipArena.UnityConversion
             NativeBlastSim.Linear(color0,out double r,out double g,out double b);c0[j]=(float)r;c0[j+1]=(float)g;c0[j+2]=(float)b;
             NativeBlastSim.Linear(color1,out r,out g,out b);c1[j]=(float)r;c1[j+1]=(float)g;c1[j+2]=(float)b;
             a[k]=(float)-delay;a[k+1]=(float)Math.Max(.01,life);a[k+2]=(float)(size0*SizeScale);a[k+3]=(float)(size1*SizeScale);a[k+4]=(float)gravity;a[k+5]=(float)drag;a[k+6]=(float)delay;a[k+7]=(float)floor;a[k+8]=(float)stretch;a[k+9]=(float)spin;
-            seed[i]=nextSeed;nextSeed=(nextSeed+1)&SeedMask;this.role[i]=(byte)(role??(Glow?NativeFxRole.Mote:NativeFxRole.Debris));
+            seed[i]=nextSeed;this.strand[i]=strand<0?nextSeed:strand&SeedMask;nextSeed=(nextSeed+1)&SeedMask;this.role[i]=(byte)(role??(Glow?NativeFxRole.Mote:NativeFxRole.Debris));
         }
         // Arrays are replaced only at a capacity boundary (doubling, as the source's InstancedMesh pools).
         private void Resize(int capacity)
         {
             float[] Grow(float[] old,int stride){var next=new float[capacity*stride];Array.Copy(old,next,Math.Min(old.Length,Math.Min(Count,capacity)*stride));return next;}
             p=Grow(p,3);v=Grow(v,3);c0=Grow(c0,3);c1=Grow(c1,3);a=Grow(a,A);Output=new float[capacity*Stride];Capacity=capacity;if(Drawn>capacity)Drawn=capacity;
-            int keep=Math.Min(Count,capacity);var seeds=new int[capacity];Array.Copy(seed,seeds,keep);seed=seeds;var roles=new byte[capacity];Array.Copy(role,roles,keep);role=roles;
+            int keep=Math.Min(Count,capacity);var seeds=new int[capacity];Array.Copy(seed,seeds,keep);seed=seeds;var strands=new int[capacity];Array.Copy(strand,strands,keep);strand=strands;var roles=new byte[capacity];Array.Copy(role,roles,keep);role=roles;
         }
         /// <summary>Age and position of particle i (checks).</summary>
         public (double x,double y,double z,double age,double life) At(int i){int j=i*3;return (p[j],p[j+1],p[j+2],a[i*A],a[i*A+1]);}
@@ -179,13 +193,15 @@ namespace ChipArena.UnityConversion
         public (double vx,double vy,double vz,double gravity,double floor) Motion(int i){int j=i*3,k=i*A;return (v[j],v[j+1],v[j+2],a[k+4],a[k+7]);}
         /// <summary>Role and stable seed of live particle i (checks).</summary>
         public (NativeFxRole role,int seed) Identity(int i)=>((NativeFxRole)role[i],seed[i]);
+        /// <summary>The strand of live particle i (checks).</summary>
+        public int Strand(int i)=>strand[i];
         private void Kill(int i)
         {
             int last=--Count;if(i==last)return;int j=i*3,l=last*3;
             for(int n=0;n<3;n++){p[j+n]=p[l+n];v[j+n]=v[l+n];c0[j+n]=c0[l+n];c1[j+n]=c1[l+n];}
             int k=i*A,m=last*A;for(int n=0;n<A;n++)a[k+n]=a[m+n];
             // Beyond the source: the moved particle keeps its seed and role, so nothing about it snaps when another expires.
-            seed[i]=seed[last];role[i]=role[last];
+            seed[i]=seed[last];strand[i]=strand[last];role[i]=role[last];
         }
         public void Update(double dt)
         {
@@ -227,11 +243,27 @@ namespace ChipArena.UnityConversion
                 int w=n*Stride;
                 o[w]=p[j];o[w+1]=p[j+1];o[w+2]=p[j+2];o[w+3]=(float)sx;o[w+4]=(float)sy;o[w+5]=(float)sz;
                 o[w+6]=(float)qx;o[w+7]=(float)qy;o[w+8]=(float)qz;o[w+9]=(float)qw;o[w+10]=(float)r0;o[w+11]=(float)g0;o[w+12]=(float)b0;
-                o[w+RoleAt]=role[i];o[w+AgeAt]=(float)u;o[w+SeedAt]=seed[i];o[w+VelocityAt]=v[j];o[w+VelocityAt+1]=v[j+1];o[w+VelocityAt+2]=v[j+2];o[w+RawSizeAt]=(float)raw;o[w+FloorAt]=a[k+7];n++;
+                o[w+RoleAt]=role[i];o[w+AgeAt]=(float)u;o[w+SeedAt]=seed[i];o[w+VelocityAt]=v[j];o[w+VelocityAt+1]=v[j+1];o[w+VelocityAt+2]=v[j+2];o[w+RawSizeAt]=(float)raw;o[w+FloorAt]=a[k+7];o[w+StrandAt]=strand[i];o[w+StartSizeAt]=(float)size0;n++;
             }
             Drawn=n;
         }
         public void Clear(){Count=0;Drawn=0;nextSeed=0;if(Capacity!=initial){Count=0;Resize(initial);}}
+        /// <summary>Longest gap (m) a Bolt or a Line segment bridges between two drawn neighbours.</summary>
+        public const float BoltJoin=1.6f,LineJoin=1.5f;
+        /// <summary>
+        /// Whether a renderer joins two drawn points of <see cref="Output"/> (offsets a and b, a's seed below b's) with a
+        /// segment (owner 2026-10-11 effects overhaul: a beam or streak joining its neighbours). Both Bolt or both Line, in
+        /// the same strand (<see cref="StrandAt"/>; review 2026-10-11: by seed alone, back-to-back arcs, spokes and lines were
+        /// joined end to start), seed neighbours (a Bolt may skip one, the sky bolt's side spark between its points) and at
+        /// most BoltJoin / LineJoin apart. Cosmetic only.
+        /// </summary>
+        public static bool Linked(float[] o,int a,int b)
+        {
+            int role=(int)(o[a+RoleAt]+.5f);if(role!=(int)(o[b+RoleAt]+.5f)||role!=(int)NativeFxRole.Bolt&&role!=(int)NativeFxRole.Line||o[a+StrandAt]!=o[b+StrandAt])return false;
+            bool bolt=role==(int)NativeFxRole.Bolt;int gap=(int)(o[b+SeedAt]-o[a+SeedAt]);if(gap<1||gap>(bolt?2:1))return false;
+            float dx=o[b]-o[a],dy=o[b+1]-o[a+1],dz=o[b+2]-o[a+2],len=(float)Math.Sqrt(dx*dx+dy*dy+dz*dz);
+            return len>=1e-4f&&len<=(bolt?BoltJoin:LineJoin);
+        }
     }
 
     public sealed class NativeBlastSim
@@ -308,8 +340,9 @@ namespace ChipArena.UnityConversion
         /// <summary>A light style's smoke ends at SmokeDim of its own luminance, SmokeGrey of the way to grey; never below SmokeFloor.</summary>
         public const double SmokeDim=.5,SmokeGrey=.4,SmokeFloor=.35;
         /// <summary>Styles whose smoke is steam, frost or dust: Frost (and the Geyser Wall tint), Kinetic (Tidal Wave, frag, dash
-        /// and block pulses), Shock, Nova and Implosion. Fire, Mine, Meteor, Quake, Toxic and Void smoke stays sooty.</summary>
-        public static bool LightSmoke(NativeBlastStyle style)=>style==NativeBlastStyle.Frost||style==NativeBlastStyle.Kinetic||style==NativeBlastStyle.Shock||style==NativeBlastStyle.Nova||style==NativeBlastStyle.Implosion;
+        /// and block pulses), Shock, Nova, Implosion and Quake (its smoke is the ground's dust; review 2026-10-11: it turned to
+        /// soot). Fire, Mine, Meteor, Toxic and Void smoke stays sooty.</summary>
+        public static bool LightSmoke(NativeBlastStyle style)=>style==NativeBlastStyle.Frost||style==NativeBlastStyle.Kinetic||style==NativeBlastStyle.Shock||style==NativeBlastStyle.Nova||style==NativeBlastStyle.Implosion||style==NativeBlastStyle.Quake;
         /// <summary>Relative luminance (Rec. 709 weights) of an sRGB hex in the linear working space.</summary>
         public static double Luminance(int hex){Linear(hex,out double r,out double g,out double b);return .2126*r+.7152*g+.0722*b;}
         /// <summary>The style's smoke colour (the source palette; tints do not change it).</summary>
@@ -400,8 +433,8 @@ namespace ChipArena.UnityConversion
         /// <summary>A line of glow voxels from a to b (arcs, teleport and rally streaks); sweep delays the far end so it travels.</summary>
         public void Line(double ax,double ay,double az,double bx,double by,double bz,int color0,int color1,double quality,double jitter=.25,double life=.14,double sweep=0)
         {
-            double d=Math.Sqrt((bx-ax)*(bx-ax)+(by-ay)*(by-ay)+(bz-az)*(bz-az));int c=(int)Math.Min(40,Math.Max(3,Round(d*5*quality)));
-            for(int i=0;i<=c;i++){double u=(double)i/c,j=i>0&&i<c?jitter:0;Glow.Spawn(ax+(bx-ax)*u+(random()-.5)*j,ay+(by-ay)*u+(random()-.5)*j,az+(bz-az)*u+(random()-.5)*j,0,0,0,life,.11,.05,color0,color1,0,0,u*sweep,role:NativeFxRole.Line);}
+            double d=Math.Sqrt((bx-ax)*(bx-ax)+(by-ay)*(by-ay)+(bz-az)*(bz-az));int c=(int)Math.Min(40,Math.Max(3,Round(d*5*quality))),strand=Glow.NextSeed;
+            for(int i=0;i<=c;i++){double u=(double)i/c,j=i>0&&i<c?jitter:0;Glow.Spawn(ax+(bx-ax)*u+(random()-.5)*j,ay+(by-ay)*u+(random()-.5)*j,az+(bz-az)*u+(random()-.5)*j,0,0,0,life,.11,.05,color0,color1,0,0,u*sweep,strand:strand,role:NativeFxRole.Line);}
         }
         /// <summary>Pong rally paddle flash: a 4x4 voxel square at the bounce point, facing and drifting along the rally.</summary>
         public void Paddle(double x,double y,double z,double dx,double dy,double dz,int color,double quality)
@@ -452,8 +485,10 @@ namespace ChipArena.UnityConversion
             {for(int i=0,c=N(count);i<c;i++){Dir(i,c,false,out double x,out double y,out double z);double s=reach*(2.2+random()*1.6);Solid.Spawn(cx+x*.1,cy+Math.Abs(y)*.1,cz+z*.1,x*s,Math.Abs(y)*s*.7+rise,z*s,life*(.75+random()*.5),size*(.8+random()*.6),size*.12,pal.Hot,pal.Cool,-rise*.6,3.2,0,ground,1,2,role:NativeFxRole.Fireball);}}
             void Smoke(double count,double reach,double delay)
             {for(int i=0,c=N(count);i<c;i++){Dir(i,c,false,out double x,out _,out double z);double s=reach*(.4+random()*.7);Solid.Spawn(cx+x*reach*.35,cy+.1,cz+z*reach*.35,x*s,1.1+random()*1.3,z*s,1.1+random()*.7,.18+random()*.12,.55+random()*.35*Math.Min(2,R/2),pal.Smoke,smokeEnd,-.25,1.6,delay,ground,1,.6,role:NativeFxRole.Smoke);}}
+            // Fire, Mine and Meteor debris is HotDebris (drawn glowing out of the fireball, cooling); every other style's is Debris.
+            bool hot=style==NativeBlastStyle.Fire||style==NativeBlastStyle.Mine||style==NativeBlastStyle.Meteor;
             void Debris(double count,double power,int color,int extra=0)
-            {for(int i=0,c=N(count)+extra;i<c;i++){Dir(i,c,true,out double x,out double y,out double z);double s=power*(.5+random()*.8);Solid.Spawn(cx,cy,cz,x*s,Math.Abs(y)*s+2+random()*3,z*s,.9+random()*.6,.09+random()*.12,.06,color,color,14,.4,0,ground+.04,1,6,role:NativeFxRole.Debris);}}
+            {for(int i=0,c=N(count)+extra;i<c;i++){Dir(i,c,true,out double x,out double y,out double z);double s=power*(.5+random()*.8);Solid.Spawn(cx,cy,cz,x*s,Math.Abs(y)*s+2+random()*3,z*s,.9+random()*.6,.09+random()*.12,.06,color,color,14,.4,0,ground+.04,1,6,role:hot?NativeFxRole.HotDebris:NativeFxRole.Debris);}}
             void Sparks(double count,double power,int color)
             {for(int i=0,c=N(count);i<c;i++){Dir(i,c,false,out double x,out double y,out double z);double s=power*(.6+random()*.9);Glow.Spawn(cx,cy,cz,x*s,Math.Abs(y)*s+1,z*s,.35+random()*.35,.06,.03,pal.Core,color,9,.8,0,ground+.03,4,role:NativeFxRole.Spark);}}
             switch(style)
@@ -505,16 +540,16 @@ namespace ChipArena.UnityConversion
         // air, the blast's own height.
         private void SkyBolt(double cx,double cz,double ground,int steps,Palette pal)
         {
-            double top=ground+9,x=cx,z=cz;
+            double top=ground+9,x=cx,z=cz;int strand=Glow.NextSeed;
             for(int i=0;i<steps;i++)
             {
                 double y=top-(top-ground)*((double)i/steps);x+=(random()-.5)*.45;z+=(random()-.5)*.45;if(i==steps-1){x=cx;z=cz;}
-                Glow.Spawn(x,y,z,0,0,0,.22+(double)i/steps*.08,.22,.12,pal.Core,pal.Hot,0,0,i*.004,role:NativeFxRole.Bolt);
-                if(i%4==2)Glow.Spawn(x,y,z,(random()-.5)*8,(random()-.5)*3,(random()-.5)*8,.2,.1,.04,pal.Core,pal.Cool,0,2,i*.004,role:NativeFxRole.Spark);
+                Glow.Spawn(x,y,z,0,0,0,.22+(double)i/steps*.08,.22,.12,pal.Core,pal.Hot,0,0,i*.004,strand:strand,role:NativeFxRole.Bolt);
+                if(i%4==2)Glow.Spawn(x,y,z,(random()-.5)*8,(random()-.5)*3,(random()-.5)*8,.2,.1,.04,pal.Core,pal.Cool,0,2,i*.004,strand:strand,role:NativeFxRole.Spark);
             }
         }
         private void GroundArcs(double cx,double cz,double ground,double R,int arcs,Palette pal)
-        {for(int arc=0;arc<arcs;arc++){double a=random()*Math.PI*2,len=R*(.5+random()*.5);for(int s=1;s<=6;s++){double u=s/6.0;Glow.Spawn(cx+Math.Cos(a)*len*u+(random()-.5)*.3,ground+.15+random()*.5,cz+Math.Sin(a)*len*u+(random()-.5)*.3,0,0,0,.16,.12,.05,pal.Core,pal.Cool,0,0,.03+u*.04,role:NativeFxRole.Bolt);}}}
+        {for(int arc=0;arc<arcs;arc++){double a=random()*Math.PI*2,len=R*(.5+random()*.5);int strand=Glow.NextSeed;for(int s=1;s<=6;s++){double u=s/6.0;Glow.Spawn(cx+Math.Cos(a)*len*u+(random()-.5)*.3,ground+.15+random()*.5,cz+Math.Sin(a)*len*u+(random()-.5)*.3,0,0,0,.16,.12,.05,pal.Core,pal.Cool,0,0,.03+u*.04,strand:strand,role:NativeFxRole.Bolt);}}}
         private static double KindRate(string kind)
         {
             switch(kind){case "storm":return 9;case "acid":return 36;case "fire":return 64;case "frost":return 26;case "time":return 14;case "black-hole":return 50;case "repulsion":return 18;case "heal":return 20;case "implosion":return 40;case "bomb":return 10;case "mine":return 6;default:return 0;}
@@ -575,7 +610,9 @@ namespace ChipArena.UnityConversion
                 else if(kind=="black-hole"){double a=random()*Math.PI*2,r=R*(.7+random()*.3),t0=.6,x=Math.Cos(a)*r,z=Math.Sin(a)*r;Glow.Spawn(f.X+x,ground+.7+(random()-.5),f.Z+z,-x/t0-z*.8,(random()-.5)*.4,-z/t0+x*.8,t0,.12,.04,pal.Hot,pal.Core,0,0,0,-1e9,2.5,role:NativeFxRole.Streak);}
                 // Reverse Grenade: motes stream inward from the radius onto the spinning gravity bomb during the mark.
                 else if(kind=="implosion"){double a=random()*Math.PI*2,x=Math.Cos(a)*R,z=Math.Sin(a)*R,t0=.5;Glow.Spawn(f.X+x,ground+.15+random()*.6,f.Z+z,-x/t0,0,-z/t0,t0,.13,.05,pal.Hot,pal.Core,0,0,0,-1e9,2.5,role:NativeFxRole.Streak);}
-                else if(kind=="bomb")Glow.Spawn(f.X,ground+.85,f.Z,(random()-.5)*1.4,1.4+random(),(random()-.5)*1.4,.3,.06,.02,0xffffff,pal.Hot,6,role:NativeFxRole.Spark);
+                // The fuse sparks leave the modelled bomb's fuse tip (owner cut 2026-10-11: the source's ground + .85 sat 15 cm above
+                // it once the bomb stands on its floor; NativeFieldRules.BombTipY). Same draws, only the start height moved.
+                else if(kind=="bomb")Glow.Spawn(f.X,NativeFieldRules.BombTipY(f),f.Z,(random()-.5)*1.4,1.4+random(),(random()-.5)*1.4,.3,.06,.02,0xffffff,pal.Hot,6,role:NativeFxRole.Spark);
                 else if(kind=="repulsion"){double a=random()*Math.PI*2;Glow.Spawn(f.X+Math.Cos(a)*.4,ground+.3+random()*.8,f.Z+Math.Sin(a)*.4,Math.Cos(a)*R/.5,0,Math.Sin(a)*R/.5,.45,.12,.04,0xffd0da,0xff728f,0,.9,0,-1e9,1.2,role:NativeFxRole.Streak);}
                 else if(kind=="heal"){Spot(out double sx,out double sz,out _);Glow.Spawn(sx,ground+.1,sz,0,1.1,0,.9,.12,.05,0xd6ffe4,0x79ffa9,role:NativeFxRole.Mote);}
             }

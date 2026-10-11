@@ -3,9 +3,10 @@
 // ability aim preview (client/ability-preview.ts) and record what they draw for Tests/FieldChecks.cs.
 // Owner cuts in the Unity presentation (2026-10-11 effects overhaul, Runtime/NativeFieldPresentation.cs), not applied here:
 // the ground glow disc is not drawn at all ("that pancake ring effect is still there"), and the core cubes are drawn as the
-// modelled chip bomb (NativeFieldRules.Bomb, same timing), the black hole's lit core and halo and orbit streaks, the preview
-// motes as soft glows. Core still plans the source's disc and cubes (NativeFieldRules.GlowDisc, Cubes), which these
-// fixtures pin, so they record the source unchanged.
+// modelled chip bomb (NativeFieldRules.Bomb, same timing, standing on its floor rather than hovering at the source's body
+// cube height: review 2026-10-11), the black hole's lit core and halo and orbit streaks, the preview motes as soft glows.
+// Core still plans the source's disc and cubes (NativeFieldRules.GlowDisc, Cubes), which these fixtures pin, so they record
+// the source unchanged. (The bomb's fuse sparks start at the modelled tip: tools/export_blast_fixtures.mjs FX_CUTS.)
 // Usage: node tools/export_field_fixtures.mjs <source checkout at 05950ea with node_modules (three, esbuild)>
 import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import {fileURLToPath} from 'node:url';import {createRequire} from 'node:module';import {createHash} from 'node:crypto';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),source=path.resolve(process.argv[2]);

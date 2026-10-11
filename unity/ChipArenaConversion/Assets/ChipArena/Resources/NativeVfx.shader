@@ -2,21 +2,25 @@
 // placeholders for certain impact effects"). Every pooled blast, impact, field and spark particle that is not a lit mesh
 // is one camera-facing quad in a single dynamic mesh (Runtime/NativeVfxDraw.cs), expanded here from per-vertex data and
 // drawn premultiplied (Blend One OneMinusSrcAlpha), so glows (alpha 0: purely additive) and smoke (alpha > 0) share one
-// back-to-front sorted draw and a glow behind a smoke puff is covered by it. Built-in forward base pass (main light and
-// ambient SH), SM3.5, Linear colour, scene fog (premultiplied, so additive light fogs toward black). Colours arrive linear;
-// glows may exceed 1 for the bloom (Runtime/NativeBloomImage.cs).
+// back-to-front sorted draw and a glow behind a smoke puff is covered by it. Queue Transparent (the material), sorted among
+// the other transparent draws by the batch's bounds. Built-in forward base pass (main light and ambient SH), SM3.5, Linear
+// colour, scene fog (premultiplied, so additive light fogs toward black). Colours arrive linear; glows may exceed 1 for the
+// match camera's bloom (Runtime/NativeBloom.cs, branch claude/fx-bloom).
 //   POSITION   particle centre (world; a streak's segment midpoint)
 //   COLOR      linear rgb (HDR for glows), a: coverage (smoke opacity; 0 for an additive glow)
 //   TEXCOORD0  corner x, corner y (each -1 or 1), full size (m; a streak's width), roll (rad)
 //   TEXCOORD1  normalized age u (0..1), seed, mode, floor height (-1e9: none)
-//   TEXCOORD2  streak: world segment, tail to head (xyz) and taper (w); billboards: height/width (w)
+//   TEXCOORD2  streak: world segment, tail to head (xyz) and taper (w); billboards: x a smoke puff's own-colour glow,
+//              w height/width
 // Modes (NativeVfxDraw constants): 0 mote, 1 core, 2 ring (bubble), 3 snow (soft glow sprites); 4 streak (a capsule along
 // the segment, oriented to the camera, a hot core, dimmer tail); 5 smoke (an atlas puff, lit by the ambient, the main light
-// and the three blast flashes, eroding over u instead of shrinking); 6 fireball (an atlas puff with an emissive ramp from a
-// white-hot core through the particle's colour, handing off into soot); 7 dark (a light-eating puff with a faint rim).
-// Smoke, fireball and dark puffs fade where they dip below their floor and near the camera. The smoke atlas
-// (Core/NativeVfxTextures.SmokeAtlas: R density, G baked light, B erosion threshold, A edge) is built off the main thread;
-// until it is uploaded (_VfxAtlasReady 0) the puffs use a round stand-in with the same channels.
+// and the three blast flashes, eroding over u instead of shrinking; a saturated cloud adds a little glow in its colour);
+// 6 fireball (an atlas puff glowing in the particle's own hue, densest and hottest young, handing off into soot; the
+// white-hot centre is the Core glows', review 2026-10-11).
+// Smoke and fireball puffs fade where they dip below their floor; every quad fades near the camera and, soft particles,
+// where it meets the scene's depth (_CameraDepthTexture, _VfxSoft 1; 0 on the low graphics tier, which asks for no depth
+// texture). The smoke atlas (Core/NativeVfxTextures.SmokeAtlas: R density, G baked light, B erosion threshold, A edge) is
+// built off the main thread; until it is uploaded (_VfxAtlasReady 0) the puffs use a round stand-in with the same channels.
 Shader "ChipArena/NativeVfx"
 {
     Properties
@@ -24,6 +28,7 @@ Shader "ChipArena/NativeVfx"
         _VfxAtlas("Smoke atlas (RGBA linear)",2D)="black"{}
         _VfxAtlasReady("Atlas uploaded",Float)=0
         _VfxFlashGain("Blast flash light on smoke",Float)=1
+        _VfxSoft("Soft particles (depth texture)",Float)=0
     }
     SubShader
     {
@@ -43,7 +48,8 @@ Shader "ChipArena/NativeVfx"
             #include "UnityCG.cginc"
             #include "UnityLightingCommon.cginc"
             sampler2D _VfxAtlas;
-            float _VfxAtlasReady,_VfxFlashGain;
+            float _VfxAtlasReady,_VfxFlashGain,_VfxSoft;
+            UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
             // The three blast flashes (NativeArenaDressing.Flashes): position and range, colour times intensity as Unity applies it.
             float4 _ArenaFlashPos[3];
             float4 _ArenaFlashColor[3];
@@ -129,29 +135,26 @@ Shader "ChipArena/NativeVfx"
                 float3 col = albedo * (ambient + direct + glow + rim);
                 return float4(col * a, a);
             }
-            // A fireball puff: emissive in the particle's colour, darker at its thin edges, a yellow-white core where it is dense and
-            // young, cooling over its life; it covers what is behind it (so stacked puffs build a fireball, not a white blob) and
-            // from mid-life hands off into lit soot.
+            // A fireball puff: emissive in the particle's own hue (darker at its thin edges, brighter where it is dense and young,
+            // cooling over its life), nearly opaque, so stacked puffs converge on about 1.3 x the hue rather than clipping to
+            // white (review 2026-10-11; the Core glows drawn over them are the white-hot centre); from mid-life it hands off into
+            // lit soot.
             float4 VfxFireball(float4 tex, float u, float opacity, float3 tint, float3 sootLight)
             {
                 float cover = VfxDissolve(tex.r, tex.b, u * 0.9) * opacity * VfxBirth(u);
                 float heat = saturate(tex.r * 1.2 - u * 1.1 + 0.05);
                 float3 fire = lerp(tint * 0.55, tint, smoothstep(0.0, 0.5, heat));
-                fire = lerp(fire, float3(1.0, 0.86, 0.58), smoothstep(0.62, 1.0, heat) * 0.55);
-                float glow = (0.7 + 1.5 * heat) * (0.6 + 0.4 * tex.g) * saturate(1.3 - u * 1.25);
+                float glow = (0.6 + 0.5 * heat) * (0.65 + 0.35 * tex.g) * saturate(1.3 - u * 1.25);
                 float soot = saturate((u - 0.3) * 1.8);
-                float alpha = cover * (0.55 + 0.3 * soot);
+                float alpha = cover * (0.85 + 0.1 * soot);
                 float3 sootColor = lerp(float3(0.05, 0.045, 0.04), tint * 0.16, 0.3);
                 float3 col = fire * (glow * cover * (1.0 - soot * 0.85)) + sootColor * sootLight * (cover * soot);
                 return float4(col, alpha);
             }
-            // A light-eating puff (Void's dark cores): nearly black, nearly opaque, a faint rim in its own hue.
-            float4 VfxDark(float4 tex, float u, float opacity, float3 tint, float3 ambient)
+            // Soft particles: 0 where the quad touches the scene's depth, 1 a fade length in front of it (eye depths in m).
+            float VfxSoftFade(float sceneDepth, float depth, float fadeLength)
             {
-                float a = VfxDissolve(tex.r, tex.b, u) * opacity * VfxBirth(u);
-                float3 hue = tint / max(max(tint.r, max(tint.g, tint.b)), 0.0001);
-                float3 col = tint * ambient * 0.5 + hue * ((0.12 + 0.75 * tex.a) * (1.0 - u));
-                return float4(col * a, a);
+                return saturate((sceneDepth - depth) / max(fadeLength, 0.01));
             }
             // ---- VFX SHARED END ----
             struct appdata
@@ -167,12 +170,13 @@ Shader "ChipArena/NativeVfx"
                 float4 pos:SV_POSITION;
                 float4 color:COLOR;
                 float4 uv:TEXCOORD0;    // corner (streak: along, across) and the atlas uv
-                float4 data:TEXCOORD1;  // u, mode, streak half length (half widths), height above the floor (in fade lengths)
+                float4 data:TEXCOORD1;  // u, mode, streak half length (half widths; other modes: the soft fade length, m), height above the floor (in fade lengths)
                 float4 amb0:TEXCOORD2;  // ambient from above, forward scatter
                 float4 amb1:TEXCOORD3;  // ambient from below, near-camera fade
                 float4 sun:TEXCOORD4;   // main light (height weighted), streak taper
-                float4 flash:TEXCOORD5; // blast flashes at the puff
+                float4 flash:TEXCOORD5; // blast flashes at the puff, w: a smoke puff's own-colour glow
                 UNITY_FOG_COORDS(6)
+                float4 screen:TEXCOORD7;// screen position (xy, w) for the depth texture, z: the fragment's eye depth
             };
             v2f vert(appdata v)
             {
@@ -200,8 +204,10 @@ Shader "ChipArena/NativeVfx"
                 o.uv=float4(coords.xy,(float2(col,row)+float2(v.shape.x*mirror,v.shape.y)*0.46+0.5)*0.25);
                 float depth=dot(v.vertex-_WorldSpaceCameraPos,-back);
                 float nearFade=saturate((depth-0.2)/max(0.35,size*0.6));
-                bool puff=mode>4.5;
-                o.data=float4(v.life.x,mode,coords.z,puff?(world.y-v.life.w)/max(0.05,size*0.3):1.0);
+                bool puff=mode>4.5,streak=mode>3.5&&mode<4.5;
+                // Soft fade length: a third of the quad (at least 8 cm, at most .8 m); a streak's thin body uses 8 cm.
+                o.data=float4(v.life.x,mode,streak?coords.z:clamp(size*0.3,0.08,0.8),puff?(world.y-v.life.w)/max(0.05,size*0.3):1.0);
+                o.screen=ComputeScreenPos(o.pos);o.screen.z=dot(world-_WorldSpaceCameraPos,-back);
                 o.amb0=0;o.amb1=float4(0,0,0,nearFade);o.sun=float4(0,0,0,v.axis.w);o.flash=0;
                 if(puff)
                 {
@@ -211,7 +217,7 @@ Shader "ChipArena/NativeVfx"
                     o.sun.rgb=_LightColor0.rgb*saturate(0.25+0.75*toLight.y);
                     float3 flash=0;
                     for(int k=0;k<3;k++)flash+=_ArenaFlashColor[k].rgb*VfxFlashFalloff(v.vertex,_ArenaFlashPos[k]);
-                    o.flash=float4(flash*_VfxFlashGain,0);
+                    o.flash=float4(flash*_VfxFlashGain,v.axis.x);
                 }
                 UNITY_TRANSFER_FOG(o,o.pos);
                 return o;
@@ -221,18 +227,24 @@ Shader "ChipArena/NativeVfx"
                 float mode=i.data.y,u=i.data.x;
                 // Sampled outside the branches (no gradients in divergent flow); the stand-in until the atlas is uploaded.
                 float4 tex=lerp(VfxPuffStandIn(i.uv.xy),tex2D(_VfxAtlas,i.uv.zw),_VfxAtlasReady);
+                float scene=LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture,UNITY_PROJ_COORD(i.screen)));
                 float4 c;
                 if(mode<3.5)c=i.color*VfxGlow(i.uv.xy,mode);
                 else if(mode<4.5)c=i.color*VfxStreak(float3(i.uv.xy,i.data.z),i.sun.w);
                 else
                 {
                     float3 ambient=lerp(i.amb1.rgb,i.amb0.rgb,tex.g);
-                    if(mode<5.5)c=VfxSmoke(tex,u,i.color.a,i.color.rgb,i.amb0.rgb,i.amb1.rgb,i.sun.rgb,i.amb0.a,i.flash.rgb);
-                    else if(mode<6.5)c=VfxFireball(tex,u,i.color.a,i.color.rgb,ambient+i.sun.rgb*(0.2+0.8*tex.g)+i.flash.rgb);
-                    else c=VfxDark(tex,u,i.color.a,i.color.rgb,ambient);
+                    if(mode<5.5)
+                    {
+                        c=VfxSmoke(tex,u,i.color.a,i.color.rgb,i.amb0.rgb,i.amb1.rgb,i.sun.rgb,i.amb0.a,i.flash.rgb);
+                        // A saturated cloud (toxic gas, acid fumes) glows a little in its own colour, fading with its life.
+                        c.rgb+=i.color.rgb*(i.flash.w*c.a*(1.0-u));
+                    }
+                    else c=VfxFireball(tex,u,i.color.a,i.color.rgb,ambient+i.sun.rgb*(0.2+0.8*tex.g)+i.flash.rgb);
                     c*=saturate(i.data.w);
                 }
-                c*=i.amb1.a;
+                // A select, not a blend: whatever an unrendered depth texture holds never reaches the colour.
+                c*=i.amb1.a*(_VfxSoft>0.5?VfxSoftFade(scene,i.screen.z,mode>3.5&&mode<4.5?0.08:i.data.z):1.0);
                 UNITY_APPLY_FOG_COLOR(i.fogCoord,c,float4(unity_FogColor.rgb*c.a,0));
                 #if defined(UNITY_COLORSPACE_GAMMA)
                 c.rgb=LinearToGammaSpace(c.rgb);
