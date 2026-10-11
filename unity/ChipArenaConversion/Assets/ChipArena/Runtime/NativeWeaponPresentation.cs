@@ -47,10 +47,13 @@ namespace ChipArena.UnityConversion
         // enchant (both daggers) and, in third person, this frame's blade sample. First person draws on the view weapon:
         // modules at half size and hidden past half ADS (first-person-view.ts:89), enchant and flash unscaled. The flash and the
         // modules dim with the rig's block cooldown (rigFactor); the enchant is exempt (block-cooldown-tint.ts:15).
+        // Owner 2026-10-11 effects overhaul (weapons milestone): the source's single glow cone (NativeWeaponDressing.MuzzleFlash,
+        // still the pinned reference for when a shot flashes) is drawn as an ETFX-style muzzle star instead (MuzzleFx,
+        // NativeWeaponFxPresentation.cs), on the same socket, layer and camera.
         private void WeaponDressing(CapturedAnimation.Player rig,Actor a,float time,bool first,int layer,Camera camera,float reach)
         {
             if(sourceModels==null||Viewer||rig==introRig)return;string spec=a.SourceSpec;
-            if(NativeWeaponDressing.MuzzleFlash(spec,a.LastShot,time,out var flash))QueuePiece(flash,rig.Bones[CapturedRig.RHand].localToWorldMatrix,layer,camera,rigFactor);
+            MuzzleFx(rig,a,time,first);
             var pilot=LoadoutPilot(a.Id);
             if(!first)SampleSweep(rig,a,time,reach,pilot?.Seat.chips);
             if(pilot?.Stats==null||pilot.Weapon==null||pilot.Seat.chips==null)return;var chips=pilot.Seat.chips;var stats=pilot.Stats;bool daggers=spec=="daggers";
@@ -83,7 +86,8 @@ namespace ChipArena.UnityConversion
         // off-hand blade (Combo+1 is the attack index MeleeMotion animates).
         private void SampleSweep(CapturedAnimation.Player rig,Actor a,float time,float reach,System.Collections.Generic.IReadOnlyDictionary<string,int> chips)
         {
-            if(!meleeSweeps.Enabled||a.WeaponAway||!NativeWeaponDressing.BladeTip(a.SourceSpec,out var tip)||!NativeWeaponDressing.Sweeping(a,time))return;
+            // A standard melee strike draws its slash crescent instead (NativeSlashFx, owner 2026-10-11 weapons milestone).
+            if(!meleeSweeps.Enabled||a.WeaponAway||NativeSlashFx.Replaces(a,time)||!NativeWeaponDressing.BladeTip(a.SourceSpec,out var tip)||!NativeWeaponDressing.Sweeping(a,time))return;
             int hand=a.SourceSpec=="daggers"&&(a.Combo+1)%2==0?CapturedRig.LHand:CapturedRig.RHand;var m=SourceWeaponBone(rig,a,time,false,hand,reach);
             meleeSweeps.Add(SweepKey.Of(a),a.SourceSpec,NativeWeaponDressing.SweepColor(chips),CapturedAnimation.Num(m.MultiplyPoint3x4(Vector3.zero)),CapturedAnimation.Num(m.MultiplyPoint3x4(CapturedAnimation.Vec(CapturedRig.Mirror(tip)))),time);
         }
@@ -106,11 +110,12 @@ namespace ChipArena.UnityConversion
         {
             if(sourceModels==null)return;int generation=WeaponLoadout?.Generation??-1;
             if(!ReferenceEquals(sweepArena,WeaponLoadout)||generation!=sweepGeneration){meleeSweeps.Clear();sweepArena=WeaponLoadout;sweepGeneration=generation;}
+            WeaponFxFrame(time);
             meleeSweeps.Update(time,TrailsEnabled,WeaponEffectsQuality);
             if(meleeSweeps.Count==0)return;if(meleeRibbons==null)meleeRibbons=new NativeMeleeRibbons();meleeRibbons.Draw(meleeSweeps,time);
         }
-        private void ClearWeaponPresentation(){meleeSweeps.Clear();sweepArena=null;sweepGeneration=-1;}
-        private void DisposeWeaponPresentation(){ClearWeaponPresentation();meleeRibbons?.Dispose();meleeRibbons=null;WeaponLoadout=null;}
+        private void ClearWeaponPresentation(){meleeSweeps.Clear();sweepArena=null;sweepGeneration=-1;ClearWeaponFx();}
+        private void DisposeWeaponPresentation(){ClearWeaponPresentation();meleeRibbons?.Dispose();meleeRibbons=null;WeaponLoadout=null;DisposeWeaponFx();}
     }
     // The ribbon meshes of every live sweep in one dynamic mesh: additive, unlit, double-sided, depth-tested, no depth write,
     // never culled (melee-trails.ts:87: MeshBasicMaterial opacity .7, vertexColors, AdditiveBlending, toneMapped false).

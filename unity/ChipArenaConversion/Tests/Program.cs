@@ -52,6 +52,7 @@ internal static class Program
             LobbyPoseChecks.Run(root);FighterMotionChecks.Run(root);LeetMotionChecks.Run();LeetPathChecks.Run(data);GunMotionChecks.Run();AuditorHaloChecks.Run(root);HitReactionChecks.Run(root);PackReactionChecks.Run(root);
             ArmorLightChecks.Run(root);
             BloomChecks.Run(root);
+            WeaponFxChecks.Run(root,data);
             BrickfallSceneryChecks.Run(root);
             foreach(var result in EventFeedbackChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in EffectsAudioChecks.Run(root))Console.WriteLine("PASS "+result);

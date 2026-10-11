@@ -75,6 +75,11 @@ namespace ChipArena.UnityConversion
         // (as the models, C6 blasts and C11 ribbons), sRGB in a gamma-space one; Light.color is always sRGB.
         private readonly bool linear;
         public int LiveMarks=>marks.Count;public int LiveTraces=>traces.Count;
+        // Muzzle light pulses (owner 2026-10-11 weapons milestone, NativeMuzzleFx.Light): the arena offers each live muzzle star
+        // before Render; a pulse lights only a projectile spill light the nearest projectiles left free this frame (no light
+        // beyond the seven pooled ones), and the offers are used once.
+        private readonly Vector3[] pulseAt=new Vector3[3];private readonly float[] pulsePower=new float[3];private int pulses;
+        public void Pulse(Vector3 at,float intensity){if(pulses<pulseAt.Length&&intensity>.001f){pulseAt[pulses]=at;pulsePower[pulses]=intensity;pulses++;}}
         /// <summary>vfx: the shared effects renderer the impact contact flashes queue into (the owner submits it); null draws none.</summary>
         public NativeCombatGlow(Transform parent,NativeVfxDraw vfx=null)
         {
@@ -102,7 +107,7 @@ namespace ChipArena.UnityConversion
         private void DisableLights(){Disable(projectileLights);Disable(impactLights);Disable(armorLights);}
         private void ClearTraces(){foreach(var trace in traces.Values){trace.Points.Clear();trace.Seen=0;spareTraces.Push(trace);}traces.Clear();}
         public void Clear()
-        {ClearTraces();own.Clear();marks.Clear();lastEvent=0;lastTime=-1;world.Clear();view.Clear();DisableLights();spill.Clear();}
+        {ClearTraces();own.Clear();marks.Clear();lastEvent=0;lastTime=-1;world.Clear();view.Clear();DisableLights();spill.Clear();pulses=0;}
         private void AddShot(in NativeShotView v,float clock,Vector3 camera)
         {
             if(v.Siren)return;var position=new Vector3((float)v.X,(float)v.Y,(float)v.Z);
@@ -111,7 +116,7 @@ namespace ChipArena.UnityConversion
         }
         public void Render(NativeArena arena,Camera camera,Camera viewCamera,bool first,Dictionary<int,CapturedAnimation.Player> rigs,CapturedAnimation.Player viewRig,Matrix4x4? viewStaff,bool submitDraws=true)
         {
-            NativeArmorLights.Apply(Quality);
+            NativeArmorLights.Apply(Quality);int pulseCount=pulses;pulses=0;
             float now=arena.Time;if(generation!=arena.Generation||now<lastTime){Clear();generation=arena.Generation;}float spillDt=lastTime<0?0:now-lastTime;lastTime=now;
             world.Clear();view.Clear();DisableLights();
             // Combat glow off (a Unity setting; the source has none) drops halos, lights and marks but not the projectile
@@ -143,6 +148,7 @@ namespace ChipArena.UnityConversion
             // The nearest three (one on low quality) light the scene in their halo colour.
             int lit=glow?NativeShotRules.Nearest(glowDistances,Quality<.5f?1:3,nearest):0;
             for(int i=0;i<lit;i++){var s=glowShots[nearest[i]];SetLight(projectileLights[i],s.Position,Tint(s.Halo),s.Intensity,s.Range);}
+            if(glow&&Quality>=.5f)for(int i=lit,k=0;i<projectileLights.Length&&k<pulseCount;i++,k++)SetLight(projectileLights[i],pulseAt[k],Tint(NativeMuzzleFx.LightColor),pulsePower[k],NativeMuzzleFx.LightRange);
             if(glow)foreach(var e in arena.Events)
             {
                 if(e.Id<=lastEvent)continue;lastEvent=e.Id;
