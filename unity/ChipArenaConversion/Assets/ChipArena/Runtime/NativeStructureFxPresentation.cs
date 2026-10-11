@@ -19,18 +19,15 @@ namespace ChipArena.UnityConversion
     /// <item>Break (today's maps too): the material burst replaces NativeImpactCues' 18-spark burst (NativeBlastPresentation
     /// skips it while <see cref="ArenaPresentation.Structures"/> exists). Brickfall adds chip and crack decals, scorch marks
     /// under explosions and the collapse dust drift; elsewhere those stay dormant.</item>
-    /// <item>Structure events (docs/arenas/ARENA_PROPOSAL.md §5.4) are not emitted yet. When Core/ArenaModel.cs gains the kinds,
-    /// the hook is three lines in <see cref="Intake"/> (marked there) plus three in NativeAudio.EventSounds (see
-    /// NativeStructureAudio.cs); until then <see cref="Stress"/>, <see cref="Fall"/>, <see cref="Land"/> and
-    /// <see cref="Structure"/> are the API, and the dev Sandbox previews the whole sequence. Each of them, and the preview,
-    /// also hands the event to ArenaPresentation.StructureHeard: the Brickfall atmosphere (pigeons, drifting dust) and the
-    /// round's dust coat (landings) hear every structure event through this one intake.</item>
+    /// <item>StructureStress, StructureFall and StructureLand feed this kit and the audio router. Replicated schedules
+    /// reconstruct active telegraphs on join/reconnect and replay; authored crush and sweep bounds define warning coverage.
+    /// StructureHeard also feeds the existing atmosphere and round dust coat.</item>
     /// <item>Fall timing (a hook dependency): the kit poses no blocks. Its streamers, falling debris and trailing wire ends drop at
     /// the fall's acceleration, the contract's pancake maxAccel (6.9 m/s²) unless the hook passes the segment pose's from Core
     /// NativeStructureRules (at most g for peel and topple pieces), and the rubble, dust wall and the window and sag release wait
     /// for StructureLand, which must be emitted when the segment's last piece lands.</item>
     /// <item>The dressed blocks' telegraph: NativeArenaDressing reads <see cref="Fx"/> each frame on the same field clock
-    /// (NativeStructureFx.StressHolding, then TelegraphAt per block: the 8 Hz window strobe then black and the sag) and
+    /// (NativeStructureFx.StressHolding, then TelegraphFor per segment block: the 8 Hz window strobe then black and the sag) and
     /// <see cref="NativeStructureFx.LampStrobe"/> for the band lamps. <see cref="Window"/>, <see cref="Sag"/> and
     /// <see cref="Freshness"/> (rubble fresh to dusty over 10 s) answer the same at a point on this kit's last clock.</item>
     /// <item><see cref="KillFloor"/>: the per-map kill-effect floor (§5.5 Gibs), a raycast down that skips fracture fragments and
@@ -66,7 +63,7 @@ namespace ChipArena.UnityConversion
             if(arena==null||camera==null)return;
             if(generation!=arena.Generation||blockMap!=arena.MapId){Clear();generation=arena.Generation;blockMap=arena.MapId;blocks=arena.Content?.maps?.FirstOrDefault(m=>m.id==arena.MapId)?.blocks;}
             else if(now<lastNow-.25f)lastEvent=0;lastNow=now;Clock=now;
-            fx.Wind=NativeStructureFx.WindFor(arena.MapId);Intake(arena,now);if(QualitySettings.pixelLightCount<=3)quality=Math.Min(quality,.45f);
+            fx.Wind=NativeStructureFx.WindFor(arena.MapId);Intake(arena,now);SyncStructures(arena,now);if(QualitySettings.pixelLightCount<=3)quality=Math.Min(quality,.45f);
             fx.Frame(now,V(camera.transform.position),quality);draw.Clear();Lights();Fill(camera);draw.Draw(camera,null,now);
         }
         private void Intake(NativeArena arena,float now)
@@ -80,13 +77,36 @@ namespace ChipArena.UnityConversion
                 {
                     case EventKind.Break:if(age<NativeStructureFx.BurstLife)Break(arena,e,brickfall);break;
                     case EventKind.Explosion:if(brickfall&&age<1)Scorch(arena,e);break;
-                    // Structure events (§5.4). When Core/ArenaModel.cs has the kinds, uncomment these three lines:
-                    // case EventKind.StructureStress:Structure(arena,NativeStructureCue.Stress,e);break;
-                    // case EventKind.StructureFall:Structure(arena,NativeStructureCue.Fall,e);break;
-                    // case EventKind.StructureLand:Structure(arena,NativeStructureCue.Land,e);break;
+                    // Authoritative structure events (§5.4).
+                    case EventKind.StructureStress:Structure(arena,NativeStructureCue.Stress,e);break;
+                    case EventKind.StructureFall:Structure(arena,NativeStructureCue.Fall,e);break;
+                    case EventKind.StructureLand:Structure(arena,NativeStructureCue.Land,e);break;
                 }
             }
             lastEvent=Math.Max(lastEvent,newest);
+        }
+        // Joining/reconnecting or rewinding can start after the one-second event window. Rebuild live effects from
+        // replicated segment schedules; this does not play old audio or change collision. The final telegraph is guaranteed.
+        private void SyncStructures(NativeArena arena,float now)
+        {
+            if(arena.Structures==null||arena.Map.segments==null)return;
+            foreach(var d in arena.Map.segments)
+            {
+                var s=arena.Structures.Get(d.id);if(s.state==0)continue;uint seed=Seed(arena,d.id);
+                Vector3 center=NativeArena.Vec(d.crush.center);float radius=d.crush.size.Length/2;
+                if((s.state==1||s.state==2)&&!fx.HasCue(NativeStructureCue.Stress,seed))
+                {float birth=Math.Min(now,s.t0-d.telegraph);Stress(arena,d.id,center,radius,s.t0-birth,birth,WarningBounds(d));}
+                if(s.state>=2&&now<s.t0+NativeStructureFx.FallLife&&!fx.HasCue(NativeStructureCue.Fall,seed))
+                    Fall(arena,d.id,center,radius,NativeArena.Vec(d.direction),d.mass,d.material,s.t0,d.maxAccel);
+                float land=s.t0+NativeStructureRules.Duration(d);
+                if(s.state==3&&now<land+NativeStructureFx.LandLife&&!fx.HasCue(NativeStructureCue.Land,seed))Land(arena,d.id,center,radius,1,land);
+            }
+        }
+        private static Bounds WarningBounds(StructureDefinition d)
+        {
+            var box=new Bounds(NativeArena.Vec(d.crush.center),NativeArena.Vec(d.crush.size));
+            foreach(var sweep in d.sweeps??Array.Empty<MapVolume>())box.Encapsulate(new Bounds(NativeArena.Vec(sweep.center),NativeArena.Vec(sweep.size)));
+            return box;
         }
         private ContentBlock Block(string id){if(blocks==null||string.IsNullOrEmpty(id))return null;for(int i=0;i<blocks.Length;i++)if(blocks[i].id==id)return blocks[i];return null;}
         private static uint Seed(NativeArena arena,string id)=>NativeStructureFx.Seed(arena.MapId,id,NativeStructureFx.RoundIndex(arena.Match.Set,arena.Match.Round));
@@ -125,11 +145,15 @@ namespace ChipArena.UnityConversion
         /// <summary>The one-line event switch target: maps an authoritative structure event's §5.4 fields onto the kit.</summary>
         public void Structure(NativeArena arena,NativeStructureCue cue,in ArenaEvent e)
         {
+            string segment=e.Detail;var definition=arena.Map.segments?.FirstOrDefault(s=>s.id==segment);
+            if(definition!=null&&fx.HasCue(cue,Seed(arena,e.Detail)))return;
+            var state=definition!=null?arena.Structures.Get(definition.id):null;
+            float time=state!=null&&cue!=NativeStructureCue.Stress?state.t0+(cue==NativeStructureCue.Land?NativeStructureRules.Duration(definition):0):e.Time;
             switch(cue)
             {
-                case NativeStructureCue.Stress:Stress(arena,e.Detail,NativeArena.Vec(e.Position),e.Radius,e.Amount,e.Time);break;
-                case NativeStructureCue.Fall:Fall(arena,e.Detail,NativeArena.Vec(e.Position),e.Radius,NativeArena.Vec(e.Normal),e.Amount,e.SurfaceId,e.Time);break;
-                default:Land(arena,e.Detail,NativeArena.Vec(e.Position),e.Radius,e.Amount,e.Time);break;
+                case NativeStructureCue.Stress:Stress(arena,e.Detail,NativeArena.Vec(e.Position),e.Radius,e.Amount,time,definition!=null?WarningBounds(definition):(Bounds?)null);break;
+                case NativeStructureCue.Fall:Fall(arena,e.Detail,NativeArena.Vec(e.Position),e.Radius,NativeArena.Vec(e.Normal),e.Amount,e.SurfaceId,time,definition?.maxAccel??0);break;
+                default:Land(arena,e.Detail,NativeArena.Vec(e.Position),e.Radius,e.Amount,time);break;
             }
         }
         /// <summary>StructureStress: segment id, centroid, extent, telegraph seconds. <paramref name="crush"/>: the sim's crush
@@ -140,13 +164,13 @@ namespace ChipArena.UnityConversion
             fx.Stress(V(centroid),radius,telegraph,center,half,floor,Seed(arena,segment),time);Owner?.StructureHeard(arena,NativeStructureCue.Stress,centroid,radius,telegraph,time);
         }
         /// <summary>StructureFall: segment id, position, extent, fall direction, mass in tonnes, dominant material id.
-        /// <paramref name="accel"/>: the segment's fall acceleration from its pose (Core NativeStructureRules once it exists; at most
+        /// <paramref name="accel"/>: the segment's fall acceleration from its pose (Core NativeStructureRules; at most
         /// g); 0, as the event carries none, takes the contract's pancake maxAccel, 6.9 m/s².</summary>
         public void Fall(NativeArena arena,string segment,Vector3 position,float radius,Vector3 direction,float tonnes,string material,float time,float accel=0)
         {fx.Fall(V(position),radius,V(direction),tonnes,NativeStructureFx.Classify(material),Ground(arena,position,position.y-radius),Seed(arena,segment),time,accel);Owner?.StructureHeard(arena,NativeStructureCue.Fall,position,radius,tonnes,time);}
         /// <summary>StructureLand: segment id, position, extent, energy 0..1 (its material is the one its fall named).</summary>
         public void Land(NativeArena arena,string segment,Vector3 position,float radius,float energy,float time)
-        {uint seed=Seed(arena,segment);fx.Land(V(position),radius,energy,fx.FallMaterial(seed,NativeStructureMaterial.Masonry),Ground(arena,position,position.y-radius*.5f),seed,time);Owner?.StructureHeard(arena,NativeStructureCue.Land,position,radius,energy,time);}
+        {uint seed=Seed(arena,segment);var definition=arena.Map.segments?.FirstOrDefault(s=>s.id==segment);var material=definition!=null?NativeStructureFx.Classify(definition.material):NativeStructureMaterial.Masonry;fx.Land(V(position),radius,energy,fx.FallMaterial(seed,material),Ground(arena,position,position.y-radius*.5f),seed,time);Owner?.StructureHeard(arena,NativeStructureCue.Land,position,radius,energy,time);}
         /// <summary>Camera shake offset heard at <paramref name="eye"/> (§3.10; the caller applies it only with camera shake on).</summary>
         public Vector3 Shake(Vector3 eye)=>U(fx.ShakeOffset(Clock,V(eye)));
         public float Window(Vector3 p)=>fx.WindowAt(V(p),Clock);

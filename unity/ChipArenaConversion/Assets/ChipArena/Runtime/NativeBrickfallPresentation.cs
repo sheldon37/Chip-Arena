@@ -68,13 +68,12 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>
         /// The paper scraps' cover: every prop's world bounding box (props are unit cubes scaled to their block size), refilled
-        /// each frame from the arena drawn, so falling pieces and the killcam replay's props count too. If static blocks later
-        /// leave arena.Props (ARENA_PROPOSAL.md §5.3), they belong here as well.
+        /// each frame from AllBlocks in the drawn arena, including static cover, falling pieces, rubble and killcam geometry.
         /// </summary>
         private void BrickfallCover(NativeArena arena)
         {
             var cover=brickfallFx.Cover;cover.Clear();
-            foreach(var p in arena.Props)
+            foreach(var p in arena.AllBlocks)
             {
                 if(p==null)continue;var m=p.transform.localToWorldMatrix;
                 float ex=.5f*(Mathf.Abs(m.m00)+Mathf.Abs(m.m01)+Mathf.Abs(m.m02)),ey=.5f*(Mathf.Abs(m.m10)+Mathf.Abs(m.m11)+Mathf.Abs(m.m12)),ez=.5f*(Mathf.Abs(m.m20)+Mathf.Abs(m.m21)+Mathf.Abs(m.m22));

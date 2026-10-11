@@ -102,7 +102,7 @@ namespace ChipArena.UnityConversion
             {
                 if(prop==null||prop.Indestructible)continue;string id="prop:"+prop.Definition.id;Vector3 delta=prop.transform.position-origin;
                 if(action.Hit.Contains(id)||!NativeSpecialRules.Strike(Vec(delta),range,Math.Min(.8f,prop.Definition.size.Length*.3f),action.Yaw,kind)||!MeleeVisible(origin,prop.transform.position,p,prop.GetComponent<Collider>()))continue;
-                action.Hit.Add(id);DamageProp(prop,(float)(p.Weapon.damage*p.Stats["damage"])*1.12f,(delta+Vector3.up*(kind=="slam"?.2f:.5f)).normalized*impulse*(float)p.Stats["impulse"],prop.transform.position,p);
+                action.Hit.Add(id);DamageProp(prop,(float)(p.Weapon.damage*p.Stats["damage"])*1.12f,(delta+Vector3.up*(kind=="slam"?.2f:.5f)).normalized*impulse*(float)p.Stats["impulse"],prop.transform.position,p,"melee");
             }
         }
         private void ThrowMelee(NativePilot p,NativeMeleeAction action)
@@ -158,7 +158,7 @@ namespace ChipArena.UnityConversion
             }
             else
             {
-                var prop=hit.Collider.GetComponent<NativePropBody>();DamageProp(prop,s.Damage,s.Velocity.normalized*s.Impulse,hit.Point,s.Owner);
+                var prop=hit.Collider.GetComponent<NativePropBody>();DamageProp(prop,s.Damage,s.Velocity.normalized*s.Impulse,hit.Point,s.Owner,"melee");
                 if(prop!=null)Events.Add(new ArenaEvent{Id=nextEvent++,Kind=EventKind.Impact,Source=s.Owner.Seat.id,Time=Time,Position=Vec(hit.Point),Normal=Vec(hit.Normal),SurfaceId=prop.Definition.id,Color=(int)s.Original.Weapon.color,Projectile=s.Id});
             }
             if(s.Shield){s.Returning=true;return false;}return true;

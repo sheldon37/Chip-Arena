@@ -11,10 +11,7 @@ namespace ChipArena.UnityConversion
     // PlayDelayed (the chimney's creak, whoosh and four thuds); a cue asked for later waits in a small queue until it is due, so
     // the cap sees it when it starts. Synthesized clips load from Resources/StructureAudio (tools/synth_structure_audio.py,
     // asset-locked); "wood", "metal" and "dash" come from the source bank, whose 83-clip gate is untouched.
-    // Event hook, once Core/ArenaModel.cs has the structure kinds: in EventSounds, before the NativeEventSounds.Route call, add
-    //   if(e.Kind==EventKind.StructureStress){StructureEvent(NativeStructureCue.Stress,e);return;}
-    //   if(e.Kind==EventKind.StructureFall){StructureEvent(NativeStructureCue.Fall,e);return;}
-    //   if(e.Kind==EventKind.StructureLand){StructureEvent(NativeStructureCue.Land,e);return;}
+    // NativeAudio.EventSounds routes the three authoritative structure events here before generic sound routing.
     public sealed partial class NativeAudio
     {
         private struct StructurePending{public bool Live;public NativeStructureSound Cue;public Vector3 At;public NativeStructureMaterial Material;public float Level;public uint Owner;public double Due;}
@@ -55,7 +52,7 @@ namespace ChipArena.UnityConversion
         // Once a frame from Render: plays the queued cues that are due; a new round or no arena drops them.
         private void StructureQueue(NativeArena arena)
         {
-            int generation=arena?.Generation??-1;if(generation!=structureQueueGeneration){structureQueueGeneration=generation;for(int i=0;i<structureQueue.Length;i++)structureQueue[i].Live=false;structureMix.Clear();return;}
+            int generation=arena?.Generation??-1;if(generation!=structureQueueGeneration){structureQueueGeneration=generation;for(int i=0;i<structureQueue.Length;i++)structureQueue[i].Live=false;structureMix.Clear();structureFalls.Clear();return;}
             double now=AudioSettings.dspTime;for(int i=0;i<structureQueue.Length;i++){var q=structureQueue[i];if(!q.Live||now<q.Due)continue;structureQueue[i].Live=false;StructureCue(q.Cue,q.At,q.Material,q.Level,0,q.Owner);}
         }
         /// <summary>A structure event's cue (§5.4 fields): stress groans, a fall collapses, a landing thuds by the fall's material.</summary>

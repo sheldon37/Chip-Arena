@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
             try
             {
                 var asset=Resources.Load<TextAsset>("GameContent");if(asset==null)throw new InvalidOperationException("GameContent.json is missing");
-                content=JsonUtility.FromJson<ConversionContent>(asset.text);content.Validate();if(InitializeDedicated())return;
+                content=JsonUtility.FromJson<ConversionContent>(asset.text);NativeUnityMapLoader.Load(content);content.Validate();if(InitializeDedicated())return;
 #if UNITY_STANDALONE_WIN && !UNITY_EDITOR
                 singleInstance=new NativeSingleInstance("Local\\ChipArena.Native.Player");if(!singleInstance.Acquired){Application.Quit(0);return;}
 #endif
@@ -157,7 +157,7 @@ namespace ChipArena.UnityConversion
                 // An out-of-range (sky) or arena-clamped aim draws the source's gapped preview.
                 previewClamped=(point-p.Body.position).sqrMagnitude>(float)(held.range*held.range);
                 point=p.Body.position+Vector3.ClampMagnitude(point-p.Body.position,(float)held.range);
-                float clampedX=Mathf.Clamp(point.x,-31,31),clampedZ=Mathf.Clamp(point.z,-27,27);previewClamped|=clampedX!=point.x||clampedZ!=point.z;point.x=clampedX;point.z=clampedZ;
+                var clamped=arena.ClampMap(point);previewClamped|=clamped!=point;point=clamped;
                 if(held.kind!="throw"&&Physics.Raycast(point+Vector3.up*.08f,Vector3.down,out var ground,40,NativeArena.WorldMask))point=ground.point;
                 preview=point;
             }

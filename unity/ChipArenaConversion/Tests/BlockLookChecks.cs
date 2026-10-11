@@ -200,7 +200,7 @@ namespace ChipArena.UnityConversion
                 Check(a1==.7f&&a2==.4f&&d1==NativeBlockLooks.Stage1&&d2==NativeBlockLooks.Stage2&&b1==d1&&b2==d2&&e1==d1&&e2==d2,"a block's stages when two descending shares inside 0..1, else 66/33%");
                 var brick=new ContentMaterial{id="brick",durability=120};float scale=NativeBlockLooks.StageMax(new ContentBlock{id="hotel-pier-nw",material="brick"},brick,out float s1,out float s2);
                 Check(scale==120&&s1==NativeBlockLooks.Stage1&&s2==NativeBlockLooks.Stage2&&NativeBlockLooks.StageMax(new ContentBlock(),null,out _,out _)==0,"today a block's scale is its material's durability at 66/33%");
-                Check(typeof(ContentBlock).GetField("hp")==null&&typeof(ContentBlock).GetField("stages")==null,"ContentBlock has no hp or stages yet (when Astra adds them, StageMax(ContentBlock, ...) reads them and this check changes)");
+                scale=NativeBlockLooks.StageMax(new ContentBlock{hp=140,stages=new[]{.7f,.25f}},brick,out s1,out s2);Check(scale==140&&s1==.7f&&s2==.25f,"authored hp and stage thresholds override the material defaults");
                 for(int i=0;i<=200;i++)
                 {
                     float f=i/200f;Check(Math.Abs(NativeBlockLooks.Normalised(f,d1,d2)-f)<1e-6f,"default thresholds leave health as it is ("+f+")");
@@ -232,7 +232,8 @@ namespace ChipArena.UnityConversion
             Kit("hotel-n-sill-3","terracotta");Kit("hotel-ne-cornice-1","terracotta");Kit("frontage-n-coping","terracotta");Kit("market-wall-w-arch-2","terracotta");Kit("hotel-n-string-1","terracotta");Kit("hotel-ne-quoin-2","terracotta");
             Kit("hotel-n-window-4","window-lit");Kit("mercer-sign","neon");Kit("kessels-neon-1","neon");Kit("kessels-shutter-1","corrugated");Kit("ashby-lane-boards-2","timber");Kit("market-canopy-3","steel-green");Kit("lane-n","cobble");Kit("yard-sw","cobble");Kit("street-n","asphalt");Kit("square-ne","cobble");
             Check(K("kessels-neon-1").Color==0xFF5A4E&&K("mercer-sign").Color==0x4FA8FF,"kit colours: coral shop neon, MERCER blue");
-            foreach(var e in bl)Check(!KitStems.Any(k=>e.block.Contains(k)),"sim entry "+e.block+" names no kit part");
+            var authored=System.Text.Json.JsonSerializer.Deserialize<UnityMapContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true}).maps.Single(m=>m.id=="brickfall");
+            foreach(var e in bl)Check(!KitStems.Any(k=>e.block.Contains(k))||authored.blocks.Any(b=>NativeBlockLooks.Glob(e.block,b.id)),"sim entry "+e.block+" names an authored block, not only a kit part");
             Check(kl.Length>0&&kl.All(e=>!e.band&&e.note.StartsWith("kit: ",StringComparison.Ordinal)&&KitStems.Any(k=>e.block.Contains(k))),"every kit entry is a kit part (no band, noted kit:)");
             Check(!bl.Any(e=>e.look=="demolition")&&!bl.Concat(kl).Any(e=>e.block.StartsWith("barrier",StringComparison.Ordinal)),"no Brickfall block takes the all-over demolition stripes (2.3 has no such element)");
             // 3.9 / 5.3 static blocks: their entries wait for the static block path, and say so.

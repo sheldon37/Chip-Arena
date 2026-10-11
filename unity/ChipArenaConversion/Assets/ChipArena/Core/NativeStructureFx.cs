@@ -3,7 +3,7 @@ using System;
 namespace ChipArena.UnityConversion
 {
     public enum NativeStructureMaterial{Masonry,Concrete,Timber,Metal,Glass}
-    /// <summary>The structure events of docs/arenas/ARENA_PROPOSAL.md §5.4 (Astra adds the EventKinds; this is their look).</summary>
+    /// <summary>The structure events of docs/arenas/ARENA_PROPOSAL.md §5.4 (authoritative EventKinds drive their look).</summary>
     public enum NativeStructureCue{Stress,Fall,Land}
     public enum NativeStructureMark{Scorch,Chip,Crack,Stain}
     /// <summary>An opaque debris cube: centre, full edges, rotation, albedo (sRGB 0..1).</summary>
@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
     /// halves, mortar grit and a mortar puff; concrete chunks, grit and grey dust; timber splinters, chips and sawdust; metal
     /// spark streaks, bent plates and a clank flash; glass shards that glint. They replace the generic 18-spark burst on every
     /// map.</item>
-    /// <item>The coming structure events (a presentation API until Astra emits them): the stress telegraph (red crush footprint,
+    /// <item>The authoritative structure events: the stress telegraph (red crush footprint,
     /// grit columns at the four corners of the crush box, dust trickling from cracks; and for the dressed blocks inside the box,
     /// which NativeArenaDressing poses from <see cref="TelegraphAt"/> each frame, the 8 Hz window strobe then black, the red band
     /// lamp strobe and a visual sag of at most 1° / 8 cm, held until the segment lands; never reduced), fall streamers and snapping wires that drop
@@ -50,7 +50,7 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed class NativeStructureFx
     {
-        public const int BurstSlots=24,EventSlots=6,DecalSlots=256,ShakeSlots=8,MockSlots=2;
+        public const int BurstSlots=24,EventSlots=48,DecalSlots=256,ShakeSlots=8,MockSlots=2;
         public const int CubeCap=1024,PuffCap=120,FlatCap=1536,LineCap=512,GlowCap=256;
         public const float BurstLife=2.6f,StressTail=.9f,StressHold=4,FallLife=4.6f,LandLife=15,ThinNear=3,Gravity=14;
         /// <summary>Fall accelerations (m/s²): the contract's pancake maxAccel (§5.2, §6.1: a rider stays on the slab) and g, the
@@ -231,7 +231,7 @@ namespace ChipArena.UnityConversion
         public void Stress(V3 centroid,float radius,float telegraph,V3 boxCenter,V3 boxHalf,float floor,uint seed,float time)
         {
             if(Known(NativeStructureCue.Stress,seed,time))return;
-            if(!(boxHalf.x>0&&boxHalf.y>0&&boxHalf.z>0))DefaultBox(centroid,radius,floor,out boxCenter,out boxHalf);telegraph=Math.Max(.4f,Math.Min(4,telegraph>0?telegraph:1.2f));
+            if(!(boxHalf.x>0&&boxHalf.y>0&&boxHalf.z>0))DefaultBox(centroid,radius,floor,out boxCenter,out boxHalf);telegraph=Math.Max(.4f,Math.Min(120,telegraph>0?telegraph:1.2f));
             records[Oldest(records,RecordLive,RecordBorn)]=new Record{Live=true,Cue=NativeStructureCue.Stress,Center=centroid,BoxCenter=boxCenter,BoxHalf=boxHalf,Radius=Math.Max(.5f,radius),Amount=telegraph,Floor=floor,Born=time,Seed=seed^StressSalt,Base=seed};
             AddShake(NativeStructureCue.Stress,centroid,.5f,telegraph,seed^StressSalt,time);
         }
@@ -255,6 +255,8 @@ namespace ChipArena.UnityConversion
             AddMark(NativeStructureMark.Stain,new V3(position.x,floor,position.z),up,r*2.2f,s,time);
             for(int i=0;i<8;i++){float a=i*.785398f+H(s,i,1)*.5f,d=r*(.9f+.4f*H(s,i,2));AddMark(NativeStructureMark.Crack,new V3(position.x+(float)Math.Cos(a)*d,floor,position.z+(float)Math.Sin(a)*d),up,(1.4f+H(s,i,3))*k,s+(uint)i*7919u,time);}
         }
+        public bool HasCue(NativeStructureCue cue,uint seed)
+        {for(int i=0;i<EventSlots;i++)if(records[i].Live&&records[i].Cue==cue&&records[i].Base==seed)return true;return false;}
         private bool Known(NativeStructureCue cue,uint seed,float time){for(int i=0;i<EventSlots;i++){var r=records[i];if(r.Live&&r.Cue==cue&&r.Base==seed&&r.Born==time)return true;}return false;}
         /// <summary>The material the newest fall of the same segment (same base seed) named, else <paramref name="fallback"/>.</summary>
         public NativeStructureMaterial FallMaterial(uint seed,NativeStructureMaterial fallback)
@@ -303,7 +305,17 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public bool TelegraphAt(V3 p,float now,out float window,out V3 drop,out float qx,out float qy,out float qz,out float qw)
         {
-            int i=StressRecord(p,now);window=1;drop=new V3();qx=qy=qz=0;qw=1;if(i<0)return false;var r=records[i];
+            return Telegraph(StressRecord(p,now),p,now,out window,out drop,out qx,out qy,out qz,out qw);
+        }
+        // Authored maps bind a block to its segment, not whichever nearby crush volume overlaps it.
+        public bool TelegraphFor(uint seed,V3 p,float now,out float window,out V3 drop,out float qx,out float qy,out float qz,out float qw)
+        {
+            int found=-1;for(int i=0;i<EventSlots;i++){var r=records[i];if(r.Live&&r.Cue==NativeStructureCue.Stress&&r.Base==seed&&Holding(r,now-r.Born,now)){found=i;break;}}
+            return Telegraph(found,p,now,out window,out drop,out qx,out qy,out qz,out qw);
+        }
+        private bool Telegraph(int i,V3 p,float now,out float window,out V3 drop,out float qx,out float qy,out float qz,out float qw)
+        {
+            window=1;drop=new V3();qx=qy=qz=0;qw=1;if(i<0)return false;var r=records[i];
             float age=now-r.Born,T=r.Amount,top=r.BoxCenter.y+r.BoxHalf.y,h=Clamp01((p.y-r.Floor)/Math.Max(.5f,top-r.Floor)),s=Sag(Math.Min(age,T),T)*h;
             window=WindowStrobe(age,T);drop=new V3(0,-s*SagMetres,0);
             float dx=p.x-r.BoxCenter.x,dz=p.z-r.BoxCenter.z,l=(float)Math.Sqrt(dx*dx+dz*dz);

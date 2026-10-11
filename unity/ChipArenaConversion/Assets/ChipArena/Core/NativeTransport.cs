@@ -13,7 +13,7 @@ namespace ChipArena.UnityConversion
     // Conversion-only wire version. Never joins an Electron room or evaluates remote code.
     public sealed class NativeConnection:IDisposable
     {
-        public const byte Protocol=5;
+        public const byte Protocol=6;
         public const int MaxFrame=2*1024*1024;
         private static readonly UTF8Encoding Utf8=new UTF8Encoding(false,true);
         private readonly TcpClient client;private readonly Stream stream;private readonly CancellationTokenSource stop=new CancellationTokenSource();

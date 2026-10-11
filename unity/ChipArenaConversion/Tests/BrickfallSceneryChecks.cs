@@ -248,7 +248,7 @@ namespace ChipArena.UnityConversion
             Check(pixel>=3,"the blast flash, combat glow and seeker light pools are all checked ("+pixel+")");
             foreach(int used in new[]{8,9,10,11,29,30})Check(NativeSceneryBuilder.BackdropLayer!=used,"the backdrop layer is not layer "+used);
             Check(p.Contains("if(!atmosphere)Graphics.DrawMesh(brickfallPlate,")&&p.Contains("NativeBrickfallScenery.BuildMenuPlate()")&&p.Contains("CapturedAnimation.Release(brickfallPlate)"),"the menu plate is built, drawn behind the menu only and released");
-            Check(p.Contains("BrickfallCover(arena);DrawBrickfall(")&&p.Contains("cover.Add(m.m03-ex,m.m13-ey,m.m23-ez,m.m03+ex,m.m13+ey,m.m23+ez)")&&p.Contains("foreach(var p in arena.Props)"),"the scraps' cover is refilled from the drawn arena's props each frame");
+            Check(p.Contains("BrickfallCover(arena);DrawBrickfall(")&&p.Contains("cover.Add(m.m03-ex,m.m13-ey,m.m23-ez,m.m03+ex,m.m13+ey,m.m23+ez)")&&p.Contains("foreach(var p in arena.AllBlocks)"),"the scraps' cover includes the drawn arena's static, carried and rubble blocks each frame");
             Check(p.Contains("public int BrickfallDustInUse;")&&p.Contains("roundStart,BrickfallDustInUse);"),"the drift dust hears the dust wall's billboard count");
             Check(p.Contains("arena.ReplicaScene.IsValid()")&&p.Contains("PresentationClock(arena)")&&p.Contains("e.Kind==EventKind.Explosion"),"the arena clock, the killcam memory rule and explosions feed the pigeons");
             string dressing=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeArenaDressing.cs"));

@@ -48,8 +48,8 @@ namespace ChipArena.UnityConversion
             var fx=new NativeStructureFx();fx.Land(new V3(0,1,0),7.2f,1,NativeStructureMaterial.Masonry,0,7,0,false);fx.Frame(1,Eye,1);
             int ring=0;for(int i=0;i<fx.PuffCount;i++){var p=fx.Puffs[i];float r=(float)Math.Sqrt(p.Center.x*p.Center.x+p.Center.z*p.Center.z);if(r>9&&r<16)ring++;Check(p.Alpha<=.5f+1e-4f,"no billboard above .5 opacity");}
             Check(ring==NativeStructureFx.WallCount(1,1)-NativeStructureFx.WallCore&&fx.CubeCount==NativeStructureFx.DebrisCount(1,1),"wall ring and debris at full quality ("+ring+", "+fx.CubeCount+")");
-            for(int i=0;i<6;i++)fx.Land(new V3(i*3,1,0),7.2f,1,NativeStructureMaterial.Concrete,0,(uint)(100+i),.1f*i,false);fx.Frame(1,Eye,1);
-            Check(fx.PuffCount==NativeStructureFx.PuffCap&&fx.LiveRecords==NativeStructureFx.EventSlots,"at most 120 live billboards map-wide, six event slots");
+            for(int i=0;i<NativeStructureFx.EventSlots+1;i++)fx.Land(new V3(i*3,1,0),7.2f,1,NativeStructureMaterial.Concrete,0,(uint)(100+i),.01f*i,false);fx.Frame(1,Eye,1);
+            Check(fx.PuffCount==NativeStructureFx.PuffCap&&fx.LiveRecords==NativeStructureFx.EventSlots,"at most 120 live billboards map-wide, bounded event slots");
             fx.Frame(20,Eye,1);Check(fx.PuffCount==0&&fx.CubeCount==0&&fx.LiveRecords==0,"everything gone after 15 s");
         }
         private static void Bursts()
@@ -307,7 +307,7 @@ namespace ChipArena.UnityConversion
             string dressing=R("NativeArenaDressing.cs");
             foreach(var cue in new[]{"Stress","Fall","Land"})Check(fx.Contains("Owner?.StructureHeard(arena,NativeStructureCue."+cue+",")&&fx.Contains("Owner.StructureHeard(arena,NativeStructureCue."+cue+","),cue+" reaches the atmosphere and the dust coat, from the events and from the preview");
             Check(fx.Contains("structureFx=new NativeStructureFxPresentation{Owner=this};")&&dressing.Contains("arenaDressing.Render(arena,FieldClock(arena),dustCoat,structureFx?.Fx);")&&arena.Contains("float now=PresentationClock(arena),fields=FieldClock(arena);")&&arena.Contains("StructureFx(arena,camera,fields);"),"the dressing reads the telegraph on the field clock the kit's records run on");
-            Check(dressing.Contains("bool tell=structures!=null&&structures.StressHolding(now)")&&dressing.Contains("if(tell&&structures.TelegraphAt(")&&dressing.Contains("color.w=window;")&&dressing.Contains("flags|=NativeBlockLooks.Lamp(stage,stressed,locked,redOn);"),"one early-out a frame, then per block the window light, the sag and the band lamp");
+            Check(dressing.Contains("bool tell=structures!=null&&structures.StressHolding(now)")&&dressing.Contains("if(tell)")&&dressing.Contains("structures.TelegraphFor(")&&dressing.Contains("color.w=window;")&&dressing.Contains("flags|=NativeBlockLooks.Lamp(stage,stressed,locked,redOn);"),"one early-out a frame, then per block the window light, the sag and the band lamp");
             Check(fx.Contains("return prop!=null&&(prop.Fragment||prop.Definition!=null&&prop.Definition.dynamic);")&&!fx.Contains("isKinematic"),"floors skip fragments and dynamic crates by content, the same on host, guests and killcam");
             Check(fx.Contains("float scale=NativeStructureFx.ScorchScale(e.Detail);if(scale<=0)return;"),"scorch only under explosive effects");
             Check(audio.Contains("if(!structureMix.Fits(start,")&&!audio.Contains(">=NativeStructureSounds.Voices)return;")&&audio.Contains("if(structureMix.Steals(v,owner,cue))")&&nativeAudio.Contains("Slender(arena,menu);StructureQueue(arena);"),"the runtime skips one layer over the cap, steals its own groan and plays queued cues when due");
@@ -316,7 +316,7 @@ namespace ChipArena.UnityConversion
             Check(game.Contains("if(prefs.cameraShake&&!menu&&Spectator==null&&!cinematic.Directing)cameraView.transform.position+=presentation.StructureShake("),"structure shake only with camera shake on, in a live local view");
             Check(sandbox.Contains("StructureFxRows();")&&fx.Contains("if(arena?.Sandbox!=true||!account.Developer||Online||kit==null)return;"),"the preview is a dev-only offline Sandbox row");
             Check(death.Contains("NativeStructureFxPresentation.KillFloor(arena)")&&kill.Contains("quality,budget,floor);"),"kill effects take the per-map floor");
-            foreach(var cue in new[]{"Stress","Fall","Land"})Check(fx.Contains("// case EventKind.Structure"+cue+":Structure(arena,NativeStructureCue."+cue+",e);break;")&&audio.Contains("if(e.Kind==EventKind.Structure"+cue+"){StructureEvent(NativeStructureCue."+cue+",e);return;}"),"the "+cue+" hook lines are ready");
+            foreach(var cue in new[]{"Stress","Fall","Land"})Check(fx.Contains("case EventKind.Structure"+cue+":Structure(arena,NativeStructureCue."+cue+",e);break;")&&nativeAudio.Contains("if(e.Kind==EventKind.Structure"+cue+"){StructureEvent(NativeStructureCue."+cue+",e);return;}"),"the "+cue+" events reach the VFX and audio");
             Check(!fx.Contains("AddComponent<Light>")&&!fx.Contains("AddComponent<AudioSource>")&&!audio.Contains("AddComponent<AudioSource>"),"no new Unity lights or audio sources");
             Check(!fx.Contains("new List<")&&!fx.Contains("ToArray()"),"no per-frame collections in the presentation");
         }

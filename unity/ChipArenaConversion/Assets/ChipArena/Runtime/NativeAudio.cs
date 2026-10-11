@@ -150,9 +150,13 @@ namespace ChipArena.UnityConversion
         // are timed to the clip).
         private void EventSounds(NativeArena arena,List<ArenaEvent> events,int index,NativePilot me)
         {
-            var e=events[index];NativePilot source=null,target=null;foreach(var p in arena.Pilots){if(p.Seat.id==e.Source)source=p;if(p.Seat.id==e.Target)target=p;}
+            var e=events[index];
+            if(e.Kind==EventKind.StructureStress){StructureEvent(NativeStructureCue.Stress,e);return;}
+            if(e.Kind==EventKind.StructureFall){StructureEvent(NativeStructureCue.Fall,e);return;}
+            if(e.Kind==EventKind.StructureLand){StructureEvent(NativeStructureCue.Land,e);return;}
+            NativePilot source=null,target=null;foreach(var p in arena.Pilots){if(p.Seat.id==e.Source)source=p;if(p.Seat.id==e.Target)target=p;}
             int local=me?.Seat.id??0;if(e.Kind==EventKind.Install&&local>0&&e.Source==local&&installCue.Hold(e.Detail))return;string material=e.Kind==EventKind.Break?e.Detail:null;int supernova=0;
-            if(e.Kind==EventKind.Impact)foreach(var prop in arena.Props)if(prop.Definition.id==e.SurfaceId){material=prop.Definition.material;break;}
+            if(e.Kind==EventKind.Impact)foreach(var prop in arena.AllBlocks)if(prop.Definition.id==e.SurfaceId){material=prop.Definition.material;break;}
             if(e.Kind==EventKind.BlockPulse)source?.Seat.chips?.TryGetValue("supernova",out supernova);
             var context=new NativeEventSounds.Context{Kind=e.Kind,Detail=e.Detail,SourceSpec=source?.Seat.spec,Material=material,Amount=e.Amount,Radius=e.Radius,
                 TargetMe=local>0&&e.Target==local,SourceMe=local>0&&e.Source==local,TargetPilot=target!=null,Ally=source!=null&&target!=null&&arena.Match.SameSide(source.Seat,target.Seat),Pve=arena.Pve!=null,

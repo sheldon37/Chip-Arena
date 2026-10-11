@@ -43,7 +43,7 @@ namespace ChipArena.UnityConversion
             if(!clear)
             {
                 broadcastDeaths.Clear();foreach(var p in arena.Pilots)if(p.Hp<=0&&p.Death!=null)broadcastDeaths.Add(p);broadcastDeaths.Sort(ByDeath);
-                foreach(var p in broadcastDeaths)if(!broadcasts.Seen(p.Death.seed))broadcasts.Add(p.Death.seed,p.Seat.id,p.Death.owner,p.Death.at,t,p.Seat.name,arena.Match.Seat(p.Death.owner)?.name);
+                foreach(var p in broadcastDeaths)if(!broadcasts.Seen(p.Death.seed))broadcasts.Add(p.Death.seed,p.Seat.id,p.Death.owner,p.Death.at,t,p.Seat.name,arena.Match.Seat(p.Death.owner)?.name,p.Death.damageKind);
             }
             staleStages.Clear();foreach(int id in broadcastStages.Keys){bool live=false;foreach(var a in broadcasts.Items)if(a.Seed==id){live=true;break;}if(!live)staleStages.Add(id);}
             foreach(int id in staleStages){broadcastStages[id].Dispose();broadcastStages.Remove(id);}
@@ -83,7 +83,7 @@ namespace ChipArena.UnityConversion
                 NativeBroadcastFx.NamePixel(0,0,out float nx,out float ny);NativeBroadcastFx.NamePixel(1,1,out float rx,out float dy);Vector3 origin=H(nx,ny,NativeBroadcastFx.NameZ);
                 Vector3 right=H(rx,ny,NativeBroadcastFx.NameZ)-origin,down=H(nx,dy,NativeBroadcastFx.NameZ)-origin;var ink=fx.Hex(NativeBroadcastFx.NameColor,s.NameAlpha);var font=fx.TextFont;float half=NativeBroadcastFx.CanvasWidth*.5f;
                 fx.Text(fx.Quads,font,item.Upper,32,FontStyle.Normal,NativeBroadcastFx.NameSizes[0],half,NativeBroadcastFx.NameRows[0],NativeBroadcastFx.MaxTextWidth,origin,right,down,ink);
-                fx.Text(fx.Quads,font,NativeBroadcastFx.Verb(item.Killer!=null),32,FontStyle.Normal,NativeBroadcastFx.NameSizes[1],half,NativeBroadcastFx.NameRows[1],NativeBroadcastFx.MaxTextWidth,origin,right,down,ink);
+                fx.Text(fx.Quads,font,item.DamageKind=="collapse"?"COLLAPSE":NativeBroadcastFx.Verb(item.Killer!=null),32,FontStyle.Normal,NativeBroadcastFx.NameSizes[1],half,NativeBroadcastFx.NameRows[1],NativeBroadcastFx.MaxTextWidth,origin,right,down,ink);
                 if(item.Killer!=null)fx.Text(fx.Quads,font,item.Killer,32,FontStyle.Normal,NativeBroadcastFx.NameSizes[2],half,NativeBroadcastFx.NameRows[2],NativeBroadcastFx.MaxTextWidth,origin,right,down,ink);
             }
             fx?.Draw();

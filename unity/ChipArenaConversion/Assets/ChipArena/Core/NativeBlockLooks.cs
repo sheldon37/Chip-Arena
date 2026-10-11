@@ -20,7 +20,7 @@ namespace ChipArena.UnityConversion
     /// the DANGER tag, fitted to the block's height (<see cref="BandFit"/>), and the band lamp at the band's middle; the dust
     /// coat mostly spares them (<see cref="BandCoatKeep"/>) and a stub (S3) or a loose fragment shows none of them.</item>
     /// <item>Stages (3.9, 5.3): health over the block's stage scale (<see cref="StageMax"/>: 5.2's per-block `hp` and
-    /// `stages` once ConversionContent carries them, today its material's durability and 66/33%). S0 above the first
+    /// `stages`, falling back to material durability and 66/33%). S0 above the first
     /// threshold, S1 down to the second, S2 above 0, S3 at 0 (a 24% stub; only a prop the sim keeps at 0 health shows it: no
     /// prop does today, a broken one leaves Props). Indestructible blocks stay S0.</item>
     /// <item>Meshes: one unit mesh per stage whose vertices carry a lattice (A, B) per axis: the shader places each at
@@ -117,11 +117,9 @@ namespace ChipArena.UnityConversion
         public static int Stage(float fraction,float s1,float s2)=>fraction>s1?0:fraction>s2?1:fraction>0?2:3;
         /// <summary>
         /// A block's stage scale and thresholds (3.9, 5.3: stage = replicated health / content `hp`, with the block's own
-        /// `stages`), the one place NativeArenaDressing reads them. ContentBlock has neither field yet (5.2's `hp` and `stages`
-        /// are Astra's to add to ConversionContent); until it does this is the material's durability and 66/33%, and once it
-        /// does only this overload changes, to StageMax(block.hp, durability) and Thresholds(block.stages).
+        /// `stages`), the one place NativeArenaDressing reads them. Legacy blocks fall back to material durability and 66/33%.
         /// </summary>
-        public static float StageMax(ContentBlock block,ContentMaterial material,out float s1,out float s2){Thresholds(null,out s1,out s2);return StageMax(0,material!=null?material.durability:0);}
+        public static float StageMax(ContentBlock block,ContentMaterial material,out float s1,out float s2){Thresholds(block?.stages,out s1,out s2);return StageMax(block?.hp??0,material!=null?material.durability:0);}
         /// <summary>The block's `hp` when it has one (above 0), else the material's durability.</summary>
         public static float StageMax(float hp,float durability)=>hp>0?hp:durability;
         /// <summary>A block's `stages` (two descending shares strictly inside 0..1), else 3.9's 66/33%.</summary>
@@ -154,11 +152,9 @@ namespace ChipArena.UnityConversion
         public static int Lamp(int stage,bool stressed,bool locked,bool redOn)=>stage==3?0:stage==2||stressed?(redOn?LampRed:0):locked?LampAmber:0;
         /// <summary>
         /// Whether the members are locked (the amber lamp): before the fight (countdown, draft, intro) and for its first
-        /// <see cref="LockSeconds"/> after FightAt, on the replicated match clock. This mirrors 3.9 fairness rule 1 as written;
-        /// the sim's arm delay is Astra's (5.4 makes it a pure Core function of round, FightAt and time), and this should switch
-        /// to that function once it exists (Astra has not built the lock yet).
+        /// <see cref="LockSeconds"/> after FightAt, using the same arming rule as structural damage.
         /// </summary>
-        public static bool Locked(NativePhase phase,double fightAt,double now)=>phase==NativePhase.Countdown||phase==NativePhase.Draft||phase==NativePhase.Intro||phase==NativePhase.Fight&&now<fightAt+LockSeconds;
+        public static bool Locked(NativePhase phase,double fightAt,double now)=>phase==NativePhase.Countdown||phase==NativePhase.Draft||phase==NativePhase.Intro||phase==NativePhase.Fight&&!NativeStructureRules.Armed(phase,fightAt,now);
         /// <summary>FNV-1a of the block id: the same on the host, guests and the killcam, since every frame carries the id.</summary>
         public static uint Hash(string id){uint h=2166136261;if(id!=null)foreach(char c in id){h^=c;h*=16777619;}return h;}
         public static float Seed(string id)=>(Hash(id)&0xFFFFFF)/16777216f;

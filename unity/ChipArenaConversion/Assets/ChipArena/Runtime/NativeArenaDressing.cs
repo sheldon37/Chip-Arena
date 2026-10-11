@@ -7,8 +7,8 @@ namespace ChipArena.UnityConversion
 {
     /// <summary>
     /// ArenaDressing (ARENA_PROPOSAL.md 2.2 "Block geometry"; rules in Core/NativeBlockLooks.cs). For a map whose look opts in
-    /// (MapLooks.json `blocks.dressed`; only Brickfall, which has no map data yet), or for every map under the dev preview
-    /// (the `--ca-dress-blocks` command line), each prop in arena.Props is drawn as an instanced bevelled block through
+    /// (MapLooks.json `blocks.dressed`; Brickfall), or for every map under the dev preview
+    /// (the `--ca-dress-blocks` command line), each block in arena.AllBlocks is drawn as an instanced bevelled block through
     /// Resources/NativeBlockLit.shader and its authority cube and trim renderers are switched off with
     /// Renderer.forceRenderingOff. That flag is separate from Renderer.enabled, which is all the appearance preview, killcam
     /// and Siren-pick hide paths toggle (NativePreview, NativeReplay, NativeDraftPresentation) and which instanced draws
@@ -16,13 +16,10 @@ namespace ChipArena.UnityConversion
     /// live view, and the killcam with its replay arena in place of the live one. The preview, entrance intros, the chip
     /// draft and the Siren pick return before RenderAbilities. Maps that do not opt in are never touched.
     /// Every frame each instance follows its prop's transform (falling props and fragments), takes its damage stage from
-    /// health over its stage scale (NativeBlockLooks.StageMax: the material's durability until ContentBlock carries 5.2's
-    /// `hp` and `stages`), and joins that stage's mesh batch (NativeBlockLooks.MeshFor; 5 meshes): draws of up to 500 blocks
+    /// health over its authored hp and stages (NativeBlockLooks.StageMax; material defaults for legacy blocks), and joins that stage's mesh batch (NativeBlockLooks.MeshFor; 5 meshes): draws of up to 500 blocks
     /// of any size and look (NativeBlockLooks.Draws; the main pass, repeated by each shadow cascade and the depth pass). A
-    /// fragment takes the look of the block it broke from (the prop that left Props in the same frame within reach of it,
-    /// minus the band and tag) and keeps it for the round by its id, so the killcam's replay arena, whose fragments carry the
-    /// same ids, and every rebind after it show the same look; a guest who joins after a break has no parent to take it from
-    /// until fragments carry their parent's id (5.3).
+    /// fragment inherits its authored parent's look, minus the band and tag, including on late join and replay. Legacy
+    /// fragments without a parent retain the nearby removed-block fallback.
     /// The round's one dust coat (Core NativeDustCoat, owned by ArenaPresentation): this feeds it every Break and Collapse of
     /// the live arena (also while the killcam draws its replay arena, as the live round goes on), the destruction kit feeds it
     /// the structure landings (ArenaPresentation.StructureHeard), and each frame it is read at the drawn arena's clock (the
@@ -36,10 +33,8 @@ namespace ChipArena.UnityConversion
     /// and at S2, glows amber while the members are locked, else stays dark (NativeBlockLooks.Lamp, Locked). With no stress
     /// record the per-block query is skipped (one check a frame; old maps never have one), and no band means no lamp work.
     /// No allocations per frame in steady state; new props and new fragment looks allocate once.
-    /// Static blocks: only arena.Props are drawn. Blocks Astra splits out of Props (5.3 `static`: cores, frontage, shops,
-    /// kiosks, market walls, docks, the truck, tenement floors) keep their own renderers until Astra exposes the static block
-    /// list; then this draws that list once per round and hides those renderers the same way (MapLooks.json marks the
-    /// blockLooks entries that wait on it).
+    /// AllBlocks includes static, carried and rubble geometry. Only a segment's own members receive its visual telegraph;
+    /// overlapping warnings do not sag neighbouring static floors or unrelated structures.
     /// </summary>
     public sealed class NativeArenaDressing : MonoBehaviour
     {
@@ -48,7 +43,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The last frame's instanced draws and blocks (main pass).</summary>
         public int Draws{get;private set;}public int Instances{get;private set;}
         private const float BoundsSize=200;
-        private sealed class Entry {public int Look,Color,Flags,Seen;public uint Hash;public float Seed,Max,S1,S2,Reach;public bool Pending;public Vector3 Last;public Vector4 Size,Rest,Linear;}
+        private sealed class Entry {public int Look,Color,Flags,Seen;public string Segment;public uint Hash;public float Seed,Max,S1,S2,Reach;public bool Pending;public Vector3 Last;public Vector4 Size,Rest,Linear;}
         private sealed class Batch {public readonly Matrix4x4[] Matrices=new Matrix4x4[NativeBlockLooks.Chunk];public readonly Vector4[] Size=new Vector4[NativeBlockLooks.Chunk],Rest=new Vector4[NativeBlockLooks.Chunk],Color=new Vector4[NativeBlockLooks.Chunk],Look=new Vector4[NativeBlockLooks.Chunk];}
         private struct Gone {public Vector3 Position;public float Reach;public int Look,Color,Flags,Frame;public Vector4 Linear;}
         private struct Kept {public int Look,Color,Flags;}
@@ -94,11 +89,11 @@ namespace ChipArena.UnityConversion
             if(liveArena!=null&&liveArena.Generation==liveGeneration)Feed(liveArena,coat);
             coat.At(now);Publish(coat.Wide);
             var match=arena.Match;bool tell=structures!=null&&structures.StressHolding(now),locked=match!=null&&NativeBlockLooks.Locked(match.Phase,match.FightAt,now),redOn=NativeStructureFx.LampStrobe(now)>0;
-            foreach(var p in arena.Props){if(p==null||p.Definition==null)continue;if(!entries.TryGetValue(p,out var e)){e=Create(p);entries.Add(p,e);}e.Seen=frame;}
+            foreach(var p in arena.AllBlocks){if(p==null||p.Definition==null)continue;if(!entries.TryGetValue(p,out var e)){e=Create(p);entries.Add(p,e);}e.Seen=frame;}
             foreach(var pair in entries)if(pair.Value.Seen!=frame)removed.Add(pair.Key);
             foreach(var p in removed){var e=entries[p];entries.Remove(p);gone[goneNext]=new Gone{Position=e.Last,Reach=e.Reach,Look=e.Look,Color=e.Color,Flags=e.Flags,Linear=e.Linear,Frame=frame};goneNext=(goneNext+1)%gone.Length;spare.Push(e);}
             removed.Clear();for(int s=0;s<counts.Length;s++)counts[s]=0;
-            foreach(var p in arena.Props)
+            foreach(var p in arena.AllBlocks)
             {
                 if(p==null||p.Definition==null||!entries.TryGetValue(p,out var e))continue;var t=p.transform;Vector3 pos=t.position;Quaternion rot=t.rotation;
                 if(e.Pending){e.Pending=false;Inherit(e,p.Definition.id,pos,frame);}e.Last=pos;
@@ -107,7 +102,13 @@ namespace ChipArena.UnityConversion
                 if(stage==3){float drop=size.y*(1-NativeBlockLooks.StubShare);pos-=rot*new Vector3(0,drop,0);size.y*=NativeBlockLooks.StubShare;rest.y-=drop;}
                 // The 3.9 telegraph: sag (moving the instance only; the rest-space pattern stays glued) and the window light.
                 float window=1;bool stressed=false;
-                if(tell&&structures.TelegraphAt(new V3(pos.x,pos.y,pos.z),now,out window,out V3 sag,out float qx,out float qy,out float qz,out float qw)){stressed=true;pos+=new Vector3(sag.x,sag.y,sag.z);rot=new Quaternion(qx,qy,qz,qw)*rot;}
+                if(tell)
+                {
+                    V3 point=new V3(pos.x,pos.y,pos.z),sag=default;float qx=0,qy=0,qz=0,qw=1;
+                    if(arena.Map.unity){if(e.Segment!=null)stressed=structures.TelegraphFor(NativeStructureFx.Seed(arena.MapId,e.Segment,NativeStructureFx.RoundIndex(match.Set,match.Round)),point,now,out window,out sag,out qx,out qy,out qz,out qw);}
+                    else stressed=structures.TelegraphAt(point,now,out window,out sag,out qx,out qy,out qz,out qw);
+                    if(stressed){pos+=new Vector3(sag.x,sag.y,sag.z);rot=new Quaternion(qx,qy,qz,qw)*rot;}
+                }
                 int flags=e.Flags|NativeBlockLooks.Spin(e.Hash,stage);if((e.Flags&NativeBlockLooks.Band)!=0)flags|=NativeBlockLooks.Lamp(stage,stressed,locked,redOn);
                 rest.w=coat.Local(pos.x,pos.z);var color=e.Linear;color.w=window;
                 Add(NativeBlockLooks.MeshFor(stage,size.y),Matrix4x4.TRS(pos,rot,Vector3.one),size,rest,color,new Vector4(e.Look,NativeBlockLooks.Normalised(f,e.S1,e.S2),e.Seed,flags));
@@ -128,9 +129,12 @@ namespace ChipArena.UnityConversion
         private Entry Create(NativePropBody prop)
         {
             var e=spare.Count>0?spare.Pop():new Entry();var b=prop.Definition;materials.TryGetValue(b.material??"",out var m);int content=b.material=="foundation"?floor:m!=null?m.color:0xffffff;
-            var c=NativeBlockLooks.Resolve(look?.blockLooks,Preview?preview:null,b.id,b.material,content);
+            ContentBlock parent=null;if(prop.Fragment&&!string.IsNullOrEmpty(b.parent))foreach(var candidate in drawn.Map.blocks)if(candidate.id==b.parent){parent=candidate;break;}
+            var c=NativeBlockLooks.Resolve(look?.blockLooks,Preview?preview:null,parent?.id??b.id,parent?.material??b.material,content);
+            e.Segment=null;if(!prop.Fragment&&b.role!="rubble"&&b.role!="static")foreach(var segment in drawn.Map.segments??Array.Empty<StructureDefinition>())
+                if(segment.id==b.segment||Array.Exists(segment.supports,s=>s.member==b.id)){e.Segment=segment.id;break;}
             // A loose fragment never carries the band or tag; one whose look this round already knows takes it back.
-            e.Look=c.Look;e.Color=c.Color;e.Flags=prop.Fragment?c.Flags&~(NativeBlockLooks.Band|NativeBlockLooks.Tag)|NativeBlockLooks.Fragment:c.Flags;e.Pending=prop.Fragment;
+            e.Look=c.Look;e.Color=c.Color;e.Flags=prop.Fragment?c.Flags&~(NativeBlockLooks.Band|NativeBlockLooks.Tag)|NativeBlockLooks.Fragment:c.Flags;e.Pending=prop.Fragment&&parent==null;
             if(prop.Fragment&&kept.TryGetValue(b.id??"",out var k)){e.Look=k.Look;e.Color=k.Color;e.Flags=k.Flags;e.Pending=false;}
             e.Hash=NativeBlockLooks.Hash(b.id);e.Seed=NativeBlockLooks.Seed(b.id);e.Max=NativeBlockLooks.StageMax(b,m,out e.S1,out e.S2);e.Seen=0;
             e.Size=new Vector4(b.size.x*.5f,b.size.y*.5f,b.size.z*.5f,NativeBlockLooks.Chamfer);e.Rest=new Vector4(b.pos.x,b.pos.y,b.pos.z,0);e.Reach=e.Size.magnitude+.3f;e.Last=prop.transform.position;

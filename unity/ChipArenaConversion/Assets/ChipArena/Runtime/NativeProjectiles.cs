@@ -130,7 +130,7 @@ namespace ChipArena.UnityConversion
             }
             else
             {
-                DamageProp(prop,b.Damage*b.Demolition,b.Velocity.normalized*b.Impulse*(b.Direct&&b.Reflections==0&&Leet(owner,"yeet")?1000:1),hit.Point,owner);
+                DamageProp(prop,b.Damage*b.Demolition,b.Velocity.normalized*b.Impulse*(b.Direct&&b.Reflections==0&&Leet(owner,"yeet")?1000:1),hit.Point,owner,"bullet");
                 if((b.Direct||b.ChipImpact)&&b.Reflections==0)ImpactChips(owner,null,prop,hit.Point,b.Velocity.normalized,b.Attack,b.Id);
                 if(prop!=null)Events.Add(new ArenaEvent{Id=nextEvent++,Kind=EventKind.Impact,Source=owner.Seat.id,Time=Time,Position=Vec(hit.Point),Normal=Vec(hit.Normal),SurfaceId=prop.Definition.id,Color=(int)Content.Weapon(b.Spec).color,Projectile=b.Id});
             }
