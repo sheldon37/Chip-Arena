@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
     public sealed class NativeSirenState
     {public bool Ranged;public float ModeAt=-100,Scale=1,Reach=1,Cooldown=1;public int Side=1,MaxRains=int.MaxValue,MaxEruptions=int.MaxValue;public readonly Dictionary<string,float> Ready=new Dictionary<string,float>();public NativeSirenMove Move;}
     public sealed class NativeSirenMove
-    {public SirenRule Rule;public int Id,Side;public float At,HitAt,EndAt,Until,TrailAt,CaughtAt,CrushAt;public NativePilot Target,Caught;public Vector3 Direction,Aim;public bool Fired;public readonly HashSet<int> Hit=new HashSet<int>();}
+    {public SirenRule Rule;public int Id,Side;public float At,HitAt,EndAt,Until,TrailAt,CaughtAt,CrushAt;public NativePilot Target,Caught;public Vector3 Direction,Aim;public bool Fired,Crushed;public readonly HashSet<int> Hit=new HashSet<int>();}
     public sealed class NativeSirenField
     {public NativePilot Owner;public int Id;public string Kind;public Vector3 Position;public float Radius,At,Until,Next;public bool Fired;}
     public sealed partial class NativePilot {public NativeSirenState Siren;public NativePilot HeldBy;}
@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
         private NativeSirenState Siren(NativePilot p)=>p.Siren??(p.Siren=new NativeSirenState());
         private bool SirenArmor(NativePilot p)=>Dev(p,"siren")&&p.Hp>0&&p.Siren?.Move!=null&&p.Siren.Move.Rule.Id!="swipe"&&p.Siren.Move.Rule.Id!="hellfire"&&Time<p.Siren.Move.Until;
         private void CancelSiren(NativePilot p)
-        {var m=p.Siren?.Move;if(m?.Caught!=null){m.Caught.HeldBy=null;m.Caught.Body.useGravity=true;m.Caught.Knockback=m.Caught.MoveVelocity=m.Caught.Body.linearVelocity=Vector3.zero;}if(p.Siren!=null)p.Siren.Move=null;if(p.HeldBy!=null){var owner=p.HeldBy;p.HeldBy=null;CancelSiren(owner);}p.Body.useGravity=true;}
+        {var m=p.Siren?.Move;if(m?.Caught!=null&&m.Caught.HeldBy==p){m.Caught.HeldBy=null;m.Caught.Body.useGravity=true;m.Caught.Knockback=m.Caught.MoveVelocity=m.Caught.Body.linearVelocity=Vector3.zero;}if(p.Siren!=null)p.Siren.Move=null;if(p.HeldBy!=null){var owner=p.HeldBy;p.HeldBy=null;CancelSiren(owner);}p.Body.useGravity=true;}
         private NativePilot SirenTarget(NativePilot p,float range,bool aimed=false)=>Pilots.Where(q=>q.Hp>0&&q.Seat.connected&&Enemy(p,q)&&Vector3.Distance(q.Body.position,p.Body.position+Vector3.up*.45f)<=range&&(!aimed||Vector3.Dot((q.Body.position-p.Body.position-Vector3.up*.45f).normalized,Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch)))>.7f)&&MeleeVisible(p.Body.position+Vector3.up*.45f,q.Body.position,p,q.Collider,Pve!=null)).OrderBy(q=>(q.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();
         private bool StartSiren(NativePilot p,string id)
         {
@@ -83,7 +83,18 @@ namespace ChipArena.UnityConversion
         {var p=q.HeldBy;var m=p?.Siren?.Move;if(p==null||m==null||p.Hp<=0||q.Hp<=0){if(p!=null)CancelSiren(p);return false;}float lift=Mathf.Clamp01((Time-m.CaughtAt)/.5f);Vector3 point=p.Body.position+Quaternion.Euler(0,p.Input.Yaw,0)*new Vector3(0,(.2f+lift*.75f)*Siren(p).Scale,Siren(p).Scale);q.Body.position=point;q.Body.linearVelocity=q.Knockback=q.MoveVelocity=Vector3.zero;q.Body.useGravity=false;return true;}
         private void StepSirenWorld()
         {
-            foreach(var p in Pilots){var m=p.Siren?.Move;if(m?.Caught==null)continue;var q=m.Caught;if(p.Hp<=0||q.Hp<=0||!q.Seat.connected){CancelSiren(p);continue;}if(Time>=m.CrushAt){if(Pve!=null)Damage(q,p,(float)q.Stats["hp"]*.6f*NativePveRules.BossDamage(PartySize),Vector3.zero,0,false,direct:false,primary:false);else Damage(q,p,q.Hp+1,Vector3.zero,0,false,forced:true,primary:false);CancelSiren(p);}else PinSirenVictim(q);}
+            foreach(var p in Pilots)
+            {
+                var m=p.Siren?.Move;if(m?.Caught==null||m.Crushed)continue;var q=m.Caught;
+                if(p.Hp<=0||q.Hp<=0||!q.Seat.connected){CancelSiren(p);continue;}
+                if(Time<m.CrushAt){PinSirenVictim(q);continue;}
+                // The crush happens once, but Last Laugh's pose must finish its 0.6 s hang until m.Until.
+                // Release before Damage: lethal damage calls CancelSiren(victim), which must not cancel her holder.
+                m.Crushed=true;q.HeldBy=null;q.Body.useGravity=true;
+                if(Pve!=null)Damage(q,p,(float)q.Stats["hp"]*.6f*NativePveRules.BossDamage(PartySize),Vector3.zero,0,false,direct:false,primary:false,sirenCrush:true);
+                else Damage(q,p,q.Hp+1,Vector3.zero,0,false,forced:true,primary:false,sirenCrush:true);
+                // Keep m.Caught and the original m.Until so SourceAction remains "grab"; no repeated damage.
+            }
             foreach(var f in SirenFields.ToArray())
             {
                 if(f.Owner.Hp<=0||!f.Owner.Seat.connected||Time>=f.Until){SirenFields.Remove(f);continue;}
