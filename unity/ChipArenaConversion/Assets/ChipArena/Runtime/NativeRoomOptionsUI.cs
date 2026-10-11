@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
     // (NativeLobbyLogic.cs), which re-broadcasts a host's room; the player's own team goes through ChangeTeam. UI only.
     public sealed partial class ConversionGame
     {
-        private enum RoomOpt{Mode,Versus,FriendlyFire,Sets,Rounds,Map,RandomMap,Bots,Difficulty,SkipBotDrafts,SkipIntros,BothDraft,Choices,Timer,Mirror,Stationary,BotWeapon,BotTeam,HostTeam,SkipWaves,Online,Connection}
+        private enum RoomOpt{Experimental,Mode,Versus,FriendlyFire,Sets,Rounds,Map,RandomMap,Bots,Difficulty,SkipBotDrafts,SkipIntros,BothDraft,Choices,Timer,Mirror,Stationary,BotWeapon,BotTeam,HostTeam,SkipWaves,Online,Connection}
         private enum RulesPart{All,Essential,Advanced}
         private static readonly string[] ModeLabels={"Free-for-all","Teams"},VersusLabels={"Versus","Boss Test"},ConnectionLabels={"Local network","Internet relay"};
         private static readonly string[] SetLabels=Numbered(10,5),RoundLabels=Numbered(10,2),ChoiceLabels=Numbered(12,6);
@@ -27,12 +27,12 @@ namespace ChipArena.UnityConversion
         private static readonly string[] PracticeBotLabels=BotCounts(1,7);private static readonly string[][] RoomBotLabels={BotCounts(0,0),BotCounts(0,1),BotCounts(0,2),BotCounts(0,3),BotCounts(0,4),BotCounts(0,5),BotCounts(0,6),BotCounts(0,7)};
         private static string[] Numbered(int n,int standard){var a=new string[n];for(int i=0;i<n;i++)a[i]=(i+1)+(i+1==standard?" (default)":"");return a;}
         private static string[] BotCounts(int from,int to){var a=new string[to-from+1];for(int n=from;n<=to;n++)a[n-from]=n+(n==1?" bot":" bots");return a;}
-        private string[] mapIds,mapLabels,botWeaponIds,botWeaponLabels;
+        private bool listedExperimental;private string[] mapIds,mapLabels,botWeaponIds,botWeaponLabels;
         // ARENA: Random, then every arena (main.ts matchOptions arena); bot loadouts: Random weapon, then the ordinary weapons
         // by class (lobby-ui.ts botLoadouts; NativeRoomOptions.Normalize keeps no DEV weapon for a bot).
         private void RuleLists()
         {
-            if(mapIds!=null)return;var maps=content.maps??new ContentMap[0];mapIds=new string[maps.Length];mapLabels=new string[maps.Length+1];mapLabels[0]="Random";
+            bool experimental=rules?.experimentalMaps??prefs.experimentalMaps;if(mapIds!=null&&listedExperimental==experimental)return;listedExperimental=experimental;var maps=new List<ContentMap>(NativeMapRules.Selectable(content,experimental)).ToArray();mapIds=new string[maps.Length];mapLabels=new string[maps.Length+1];mapLabels[0]="Random";
             for(int i=0;i<maps.Length;i++){mapIds[i]=maps[i].id;mapLabels[i+1]=maps[i].name;}
             var weapons=new List<ContentWeapon>();foreach(var c in NativeLoadoutText.Classes)foreach(var w in content.weapons)if(!w.devOnly&&w.@class==c)weapons.Add(w);
             botWeaponIds=new string[weapons.Count];botWeaponLabels=new string[weapons.Count+1];botWeaponLabels[0]="Random weapon";for(int i=0;i<weapons.Count;i++){botWeaponIds[i]=weapons[i].id;botWeaponLabels[i+1]=weapons[i].name;}
@@ -57,7 +57,7 @@ namespace ChipArena.UnityConversion
         private NativeRoomOptions RulesNow()
         {
             if(RulesGuest&&menuScreen==MenuScreen.Lobby)return GuestRules;var m=rulesMirror;
-            m.map=prefs.map;m.cooperative=prefs.pve;m.teams=prefs.teams;m.friendlyFire=prefs.friendlyFire;m.bots=prefs.bots;m.rounds=prefs.rounds;m.sets=prefs.sets;m.choices=prefs.choices;m.selectionSeconds=prefs.selectionSeconds;
+            m.experimentalMaps=prefs.experimentalMaps;m.map=prefs.map;m.cooperative=prefs.pve;m.teams=prefs.teams;m.friendlyFire=prefs.friendlyFire;m.bots=prefs.bots;m.rounds=prefs.rounds;m.sets=prefs.sets;m.choices=prefs.choices;m.selectionSeconds=prefs.selectionSeconds;
             m.skipBotDrafts=prefs.skipBotDrafts;m.bothDraft=prefs.bothDraft;m.skipPlayerIntros=prefs.skipPlayerIntros;m.randomizeMap=prefs.randomizeMap;m.mirrorWeapons=prefs.mirrorWeapons;m.stationary=prefs.stationary;m.skipWaves=prefs.skipWaves;
             m.botDifficulty=prefs.botDifficulty;m.botOptions=prefs.botOptions??Array.Empty<NativeBotOption>();m.hostTeam=prefs.team;m.autoStart=prefs.autoStart;return m;
         }
@@ -98,6 +98,7 @@ namespace ChipArena.UnityConversion
                 case RoomOpt.FriendlyFire:o.friendlyFire=v==1;break;
                 case RoomOpt.Sets:o.sets=v+1;break;
                 case RoomOpt.Rounds:o.rounds=v+1;break;
+                case RoomOpt.Experimental:o.experimentalMaps=v==1;break;
                 case RoomOpt.Map:o.map=v<=0||v>mapIds.Length?"random":mapIds[v-1];break;
                 case RoomOpt.RandomMap:o.randomizeMap=v==1;break;
                 case RoomOpt.Bots:o.bots=v;break;
@@ -250,6 +251,7 @@ namespace ChipArena.UnityConversion
             if(part!=RulesPart.Advanced)MapGrid();
             if(part!=RulesPart.Essential)
             {
+                RuleCheck(7548,RoomOpt.Experimental,"Experimental arenas",o.experimentalMaps);
                 RuleCheck(7549,RoomOpt.RandomMap,"Randomize map after each set",o.randomizeMap);
                 if(practice)BotsAndDifficulty(PracticeBotLabels,Mathf.Clamp(o.bots,1,7)-1,1,DifficultyIndex(o.botDifficulty));
                 else{int max=RoomBotMax(lobby);BotsAndDifficulty(RoomBotLabels[max],Mathf.Clamp(lobby?LobbyBotCount(o):o.bots,0,max),0,DifficultyIndex(o.botDifficulty));}

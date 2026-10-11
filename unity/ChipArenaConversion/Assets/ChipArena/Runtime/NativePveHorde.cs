@@ -36,7 +36,7 @@ namespace ChipArena.UnityConversion
                 if(Time<a.ActiveAt)
                 {Vector3 to=Vec(a.Entry.@exit.Position(.9f));if(a.Entry.kind=="vent")m.Body.position=to+Quaternion.Euler(0,m.Yaw,0)*Vec(NativeEntryRules.Climb(Time,a.ActiveAt));else m.Body.position=Vector3.Lerp(Vec(a.Entry.from.Position(.9f)),to,Mathf.Clamp01((Time-a.WalkAt)/Math.Max(.1f,a.ActiveAt-a.WalkAt)));m.Collider.enabled=Time>=a.ExposedAt;continue;}
                 if(m.Body.isKinematic){m.Body.isKinematic=false;m.Collider.enabled=true;m.Body.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;}
-                if(m.Body.position.y<-6){if(a.Possessed)FoundPveBoss(new Vector3(0,0,24.2f));RemoveMinion(m,false);continue;}
+                if(m.Body.position.y<Bounds.killY){if(a.Possessed)FoundPveBoss(new Vector3(0,0,24.2f));RemoveMinion(m,false);continue;}
                 foreach(var pair in m.Dots.ToArray()){var dot=pair.Value;while(m.Hp>0&&dot.Next<=Time+1e-8&&dot.Next<=dot.Until+1e-8){HitMinion(m,Pilots.Find(p=>p.Seat.id==dot.Source),(float)(dot.Dps*.25),Vector3.zero,0,kind:"field");dot.Next+=.25;}if(Time>dot.Until)m.Dots.Remove(pair.Key);}if(m.Hp<=0)continue;
                 Vector3 at=m.Body.position;var target=a.Target;
                 if(Time>=a.ThinkAt||target==null||target.Hp<=0||!target.Seat.connected)

@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
             {Vector3 delta=target.Body.position-at;float fall=NativeProjectileRules.Falloff(delta.magnitude,radius);if(target.Hp<=0||!CanHit(owner,target)||fall<=0||!MeleeVisible(at+delta.normalized*.1f,target.Body.position,owner,target.Collider))continue;total+=Damage(target,owner,damage*fall,delta.normalized,impulse*fall,false,direct:false,primary:false,damageKind:"blast");}
             foreach(var m in Minions.ToArray()){Vector3 d=m.Body.position-at;float f=NativeProjectileRules.Falloff(d.magnitude,radius);if(f>0&&CanHit(owner,m)&&MeleeVisible(at,m.Body.position,owner,m.Collider))total+=HitMinion(m,owner,damage,d.normalized,impulse*f,at,"blast",radius);}
             if(props)foreach(var prop in Props.ToArray())
-            {if(prop==null||prop.Indestructible)continue;Vector3 delta=prop.transform.position-at;float reach=radius+prop.Definition.size.Length*.35f;if(delta.magnitude>=reach||!MeleeVisible(at,prop.transform.position,owner,prop.GetComponent<Collider>()))continue;float fall=1-Mathf.Clamp(delta.magnitude/reach,0,.85f);DamageProp(prop,damage*fall*(float)owner.Stats["demolition"],(delta+Vector3.up*.3f).normalized*impulse*fall,at,owner);}
+            {if(prop==null||prop.Indestructible)continue;Vector3 delta=prop.transform.position-at;float reach=radius+prop.Definition.size.Length*.35f;if(delta.magnitude>=reach||!MeleeVisible(at,prop.transform.position,owner,prop.GetComponent<Collider>()))continue;float fall=1-Mathf.Clamp(delta.magnitude/reach,0,.85f);DamageProp(prop,damage*fall*(float)owner.Stats["demolition"],(delta+Vector3.up*.3f).normalized*impulse*fall,at,owner,"explosion");}
             return total;
         }
         private void Vacuum(NativePilot owner,Vector3 at,float impulse)
@@ -79,7 +79,7 @@ namespace ChipArena.UnityConversion
         {
             float length=Math.Min(12,delta.magnitude);if(length<.01f)return;var scene=root.scene.GetPhysicsScene();Vector3 origin=p.Body.position+Vector3.up*.12f;
             if(scene.CapsuleCast(origin+Vector3.up*.43f,origin-Vector3.up*.43f,.42f,delta.normalized,out var hit,length,WorldMask,QueryTriggerInteraction.Ignore)&&Vector3.Dot(hit.normal,delta.normalized)<-.05f)length=Math.Max(0,hit.distance-.15f);
-            Vector3 target=origin+delta.normalized*length;target.x=Mathf.Clamp(target.x,-31,31);target.z=Mathf.Clamp(target.z,-27,27);if(!RoomFor(p,target))return;p.Body.position=target;p.Body.linearVelocity=p.Knockback=p.MoveVelocity=Vector3.zero;Physics.SyncTransforms();Emit(EventKind.Teleport,p,0,target,0,effect,from:origin);Fx(target,1,3,origin,p,"teleport");
+            Vector3 target=origin+delta.normalized*length;target=Vec(Bounds.Clamp(Vec(target)));if(!RoomFor(p,target))return;p.Body.position=target;p.Body.linearVelocity=p.Knockback=p.MoveVelocity=Vector3.zero;Physics.SyncTransforms();Emit(EventKind.Teleport,p,0,target,0,effect,from:origin);Fx(target,1,3,origin,p,"teleport");
         }
         private bool ChipSave(NativePilot p,float damage,bool forced)
         {if(forced||damage<p.Hp||!Has(p,"second-chance")||!ProcOnce(p.Seat.id+":exit"))return false;p.Hp=1;EmergencyExit(p);return true;}

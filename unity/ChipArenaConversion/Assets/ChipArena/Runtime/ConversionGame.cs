@@ -7,7 +7,7 @@ using U=ChipArena.UnityConversion.NativeUi;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class ConversionPreferences
-    { public bool fullscreen;public int team;public string botDifficulty="normal";public NativeBotOption[] botOptions=Array.Empty<NativeBotOption>();public bool skipPlayerIntros,randomizeMap,autoStart=true;public int choices=6,selectionSeconds=18;public bool bothDraft;public string relayOrigin="";public string graphics="auto",sirenMode="Q";public float sensitivity=1,audio=.3f,music=.35f,menuMusic=.6f,uiScale=1;public bool trails=true,reducedEffects,cameraShake;public string lobbyPose="weapon";public NativePendingEffect[] pendingEffects=Array.Empty<NativePendingEffect>();public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll",intro="neon-drop",introText="Ready to make an impact",accountOrigin=NativeAccount.DefaultOrigin;public int accountServiceVersion;public bool overrideIntro;public string name="Pilot",map="moonlit",weapon="pistol";public int bots=3,sets=5,rounds=2;public string combatGlow="Full",damageScreen="Full";public bool pve,skipWaves;public bool mirrorWeapons,teams,friendlyFire,stationary,skipBotDrafts,sound=true,firstPerson;
+    { public bool fullscreen;public int team;public string botDifficulty="normal";public NativeBotOption[] botOptions=Array.Empty<NativeBotOption>();public bool experimentalMaps;public bool skipPlayerIntros,randomizeMap,autoStart=true;public int choices=6,selectionSeconds=18;public bool bothDraft;public string relayOrigin="";public string graphics="auto",sirenMode="Q";public float sensitivity=1,audio=.3f,music=.35f,menuMusic=.6f,uiScale=1;public bool trails=true,reducedEffects,cameraShake;public string lobbyPose="weapon";public NativePendingEffect[] pendingEffects=Array.Empty<NativePendingEffect>();public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll",intro="neon-drop",introText="Ready to make an impact",accountOrigin=NativeAccount.DefaultOrigin;public int accountServiceVersion;public bool overrideIntro;public string name="Pilot",map="moonlit",weapon="pistol";public int bots=3,sets=5,rounds=2;public string combatGlow="Full",damageScreen="Full";public bool pve,skipWaves;public bool mirrorWeapons,teams,friendlyFire,stationary,skipBotDrafts,sound=true,firstPerson;
         // Older Unity installs shipped an unconfigured account URL. Upgrade it once;
         // thereafter an empty URL is the player's explicit offline choice.
         public bool MigrateAccountService()
@@ -29,13 +29,13 @@ namespace ChipArena.UnityConversion
             try
             {
                 var asset=Resources.Load<TextAsset>("GameContent");if(asset==null)throw new InvalidOperationException("GameContent.json is missing");
-                content=JsonUtility.FromJson<ConversionContent>(asset.text);content.Validate();if(InitializeDedicated())return;
+                content=JsonUtility.FromJson<ConversionContent>(asset.text);var arenas=Resources.Load<TextAsset>("ArenaMaps");if(arenas!=null)NativeMapRules.Append(content,JsonUtility.FromJson<MapCatalog>(arenas.text));content.Validate();if(InitializeDedicated())return;
 #if UNITY_STANDALONE_WIN && !UNITY_EDITOR
                 singleInstance=new NativeSingleInstance("Local\\ChipArena.Native.Player");if(!singleInstance.Acquired){Application.Quit(0);return;}
 #endif
                 prefs=NativeFileStore.Read(PreferencePath,s=>JsonUtility.FromJson<ConversionPreferences>(s),()=>new ConversionPreferences(),out var preferenceWarning);if(preferenceWarning!=null)networkStatus=preferenceWarning;
                 if(prefs.MigrateAccountService())Save();
-                if(prefs.map!="random"&&!content.maps.Any(m=>m.id==prefs.map))prefs.map="moonlit";
+                if(prefs.map!="random"&&!NativeMapRules.Selectable(content,prefs.experimentalMaps).Any(m=>m.id==prefs.map))prefs.map="moonlit";
                 if(!content.weapons.Any(w=>w.id==prefs.weapon&&!w.devOnly))prefs.weapon="pistol";prefs.bots=Mathf.Clamp(prefs.bots,prefs.pve?0:1,prefs.pve?3:7);
                 InitializeAccount();Application.runInBackground=true;Application.targetFrameRate=144;QualitySettings.vSyncCount=0;Time.fixedDeltaTime=1f/60;Time.maximumDeltaTime=.1f;
                 previousSimulation=Physics.simulationMode;previousGravity=Physics.gravity;ownsPhysics=true;Physics.simulationMode=SimulationMode.Script;
@@ -56,6 +56,7 @@ namespace ChipArena.UnityConversion
         private void StartMatch()
         {
             Time.timeScale=1;sandboxSpeed=1;endFlow.Reset();
+            var checkedOptions=CaptureRoomOptions();checkedOptions.Normalize(content);prefs.map=checkedOptions.map;
             if(prefs.pve){prefs.map="siren";prefs.bots=Mathf.Clamp(prefs.bots,0,3);}else prefs.bots=Mathf.Clamp(prefs.bots,Online||dedicated?0:1,7);
             if(server!=null)return;if(prefs.pve&&peers.Count(p=>p.Seat!=null&&p.Connection?.Closed==false)>(dedicated?4:3)){networkStatus="Siren co-op supports up to four party members.";return;}if(Hosting&&peers.Any(p=>p.Seat!=null&&p.Connection?.Closed==false&&!p.Ready)){networkStatus="Wait for the other pilots to be ready.";return;}
             // Refuse a match that cannot start (a host alone with no bots, or every pilot on one team) before the running arena
@@ -155,7 +156,7 @@ namespace ChipArena.UnityConversion
                 // An out-of-range (sky) or arena-clamped aim draws the source's gapped preview.
                 previewClamped=(point-p.Body.position).sqrMagnitude>(float)(held.range*held.range);
                 point=p.Body.position+Vector3.ClampMagnitude(point-p.Body.position,(float)held.range);
-                float clampedX=Mathf.Clamp(point.x,-31,31),clampedZ=Mathf.Clamp(point.z,-27,27);previewClamped|=clampedX!=point.x||clampedZ!=point.z;point.x=clampedX;point.z=clampedZ;
+                var bounded=arena.Bounds.Clamp(NativeArena.Vec(point));float clampedX=bounded.x,clampedZ=bounded.z;previewClamped|=clampedX!=point.x||clampedZ!=point.z;point.x=clampedX;point.z=clampedZ;
                 if(held.kind!="throw"&&Physics.Raycast(point+Vector3.up*.08f,Vector3.down,out var ground,40,NativeArena.WorldMask))point=ground.point;
                 preview=point;
             }
@@ -341,7 +342,7 @@ namespace ChipArena.UnityConversion
         private void MapGrid()
         {
             var o=rules;RuleField(7464,"ARENA");RuleSelect(7466,RoomOpt.Map,null,mapLabels,MapIndex(o));
-            int k=Array.IndexOf(mapIds,o.map);string desc=o.map=="random"?"Choose from all arenas when the match is created.":k>=0?content.maps[k].tag:null;RuleFine(7470,desc,rulesNarrow?0:4,rulesNarrow?4:6);
+            int k=Array.IndexOf(mapIds,o.map);string desc=o.map=="random"?"Choose from the standard arenas when the match is created.":k>=0?content.Map(mapIds[k]).tag:null;RuleFine(7470,desc,rulesNarrow?0:4,rulesNarrow?4:6);
         }
         private void Catalogue()
         {

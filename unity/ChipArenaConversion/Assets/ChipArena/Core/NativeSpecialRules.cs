@@ -39,12 +39,12 @@ namespace ChipArena.UnityConversion
         }
         public static string Phase(float landed,float pickup,float roll,float rollEnd,bool used,float time)
         {if(landed<0||time<landed)return "air";if(rollEnd>=0&&time>=rollEnd)return "rise";if(roll>=0&&time>=roll)return "roll";if(!used&&time<pickup)return "legs-up";return time<landed+.2f?"land":"flat";}
-        public static bool Ceiling(V3 position,V3 delta,float radius,out float fraction,out V3 center)
+        public static bool Ceiling(V3 position,V3 delta,float radius,out float fraction,out V3 center,MapBounds bounds=null)
         {
-            fraction=0;center=new V3();float y=24-radius;
+            fraction=0;center=new V3();bounds=bounds??new MapBounds();float y=bounds.ceiling-radius;
             if(delta.y<=0&&position.y<y)return false;fraction=position.y>=y?0:(y-position.y)/delta.y;
             if(!MathUtil.Finite(fraction)||fraction<0||fraction>1)return false;center=position+delta*fraction;
-            if(Math.Abs(center.x)>32+radius||Math.Abs(center.z)>28+radius)return false;center.y=y-.015f;return true;
+            if(!bounds.Contains(center,-radius))return false;center.y=y-.015f;return true;
         }
         public static V3 Ballistic(ref V3 velocity,float gravity,float dt){var delta=velocity*dt+new V3(0,-.5f*gravity*dt*dt,0);velocity.y-=gravity*dt;return delta;}
     }

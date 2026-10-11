@@ -1,0 +1,779 @@
+{
+  "schema": 1,
+  "maps": [
+    {
+      "id": "arena-1-lab",
+      "name": "Arena 1 \u2014 Simulation Lab (Experimental)",
+      "tag": "Structural simulation test blockout",
+      "theme": "foundry",
+      "music": "",
+      "sky": 1778737,
+      "floor": 3423308,
+      "accent": 7520212,
+      "rotation": false,
+      "experimental": true,
+      "blocks": [
+        {
+          "id": "lab-floor",
+          "pos": {
+            "x": 0,
+            "y": -0.5,
+            "z": 0
+          },
+          "size": {
+            "x": 80,
+            "y": 1,
+            "z": 36
+          },
+          "material": "foundation",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        {
+          "id": "west-pillar-0",
+          "pos": {
+            "x": -14.5,
+            "y": 2,
+            "z": -2.5
+          },
+          "size": {
+            "x": 1,
+            "y": 4,
+            "z": 1
+          },
+          "material": "stone",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "group": "west-supports",
+          "anchor": true,
+          "support": [],
+          "materialClass": "concrete",
+          "mass": 150
+        },
+        {
+          "id": "west-pillar-1",
+          "pos": {
+            "x": -14.5,
+            "y": 2,
+            "z": 2.5
+          },
+          "size": {
+            "x": 1,
+            "y": 4,
+            "z": 1
+          },
+          "material": "stone",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "group": "west-supports",
+          "anchor": true,
+          "support": [],
+          "materialClass": "concrete",
+          "mass": 150
+        },
+        {
+          "id": "west-pillar-2",
+          "pos": {
+            "x": -9.5,
+            "y": 2,
+            "z": -2.5
+          },
+          "size": {
+            "x": 1,
+            "y": 4,
+            "z": 1
+          },
+          "material": "stone",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "group": "west-supports",
+          "anchor": true,
+          "support": [],
+          "materialClass": "concrete",
+          "mass": 150
+        },
+        {
+          "id": "west-pillar-3",
+          "pos": {
+            "x": -9.5,
+            "y": 2,
+            "z": 2.5
+          },
+          "size": {
+            "x": 1,
+            "y": 4,
+            "z": 1
+          },
+          "material": "stone",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "group": "west-supports",
+          "anchor": true,
+          "support": [],
+          "materialClass": "concrete",
+          "mass": 150
+        },
+        {
+          "id": "west-deck-0",
+          "pos": {
+            "x": -13.5,
+            "y": 4.3,
+            "z": -1.5
+          },
+          "size": {
+            "x": 3,
+            "y": 0.6,
+            "z": 3
+          },
+          "material": "stone",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "group": "west-roof",
+          "support": [
+            "west-pillar-0",
+            "west-pillar-1",
+            "west-pillar-2",
+            "west-pillar-3"
+          ],
+          "materialClass": "concrete",
+          "mass": 100
+        },
+        {
+          "id": "west-deck-1",
+          "pos": {
+            "x": -13.5,
+            "y": 4.3,
+            "z": 1.5
+          },
+          "size": {
+            "x": 3,
+            "y": 0.6,
+            "z": 3
+          },
+          "material": "stone",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "group": "west-roof",
+          "support": [
+            "west-pillar-0",
+            "west-pillar-1",
+            "west-pillar-2",
+            "west-pillar-3"
+          ],
+          "materialClass": "concrete",
+          "mass": 100
+        },
+        {
+          "id": "west-deck-2",
+          "pos": {
+            "x": -10.5,
+            "y": 4.3,
+            "z": -1.5
+          },
+          "size": {
+            "x": 3,
+            "y": 0.6,
+            "z": 3
+          },
+          "material": "stone",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "group": "west-roof",
+          "support": [
+            "west-pillar-0",
+            "west-pillar-1",
+            "west-pillar-2",
+            "west-pillar-3"
+          ],
+          "materialClass": "concrete",
+          "mass": 100
+        },
+        {
+          "id": "west-deck-3",
+          "pos": {
+            "x": -10.5,
+            "y": 4.3,
+            "z": 1.5
+          },
+          "size": {
+            "x": 3,
+            "y": 0.6,
+            "z": 3
+          },
+          "material": "stone",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "group": "west-roof",
+          "support": [
+            "west-pillar-0",
+            "west-pillar-1",
+            "west-pillar-2",
+            "west-pillar-3"
+          ],
+          "materialClass": "concrete",
+          "mass": 100
+        },
+        {
+          "id": "west-upper-box",
+          "pos": {
+            "x": -12,
+            "y": 5.1,
+            "z": 0
+          },
+          "size": {
+            "x": 2,
+            "y": 1,
+            "z": 2
+          },
+          "material": "wood",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "group": "west-upper",
+          "support": [
+            "west-deck-0",
+            "west-deck-1",
+            "west-deck-2",
+            "west-deck-3"
+          ],
+          "materialClass": "wood",
+          "mass": 30
+        },
+        {
+          "id": "west-step-0",
+          "pos": {
+            "x": -18,
+            "y": 0.5,
+            "z": 0
+          },
+          "size": {
+            "x": 1,
+            "y": 1,
+            "z": 2
+          },
+          "material": "foundation",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        {
+          "id": "west-step-1",
+          "pos": {
+            "x": -17,
+            "y": 1.0,
+            "z": 0
+          },
+          "size": {
+            "x": 1,
+            "y": 2,
+            "z": 2
+          },
+          "material": "foundation",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        {
+          "id": "west-step-2",
+          "pos": {
+            "x": -16,
+            "y": 1.5,
+            "z": 0
+          },
+          "size": {
+            "x": 1,
+            "y": 3,
+            "z": 2
+          },
+          "material": "foundation",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        {
+          "id": "west-step-3",
+          "pos": {
+            "x": -15,
+            "y": 2.0,
+            "z": 0
+          },
+          "size": {
+            "x": 1,
+            "y": 4,
+            "z": 2
+          },
+          "material": "foundation",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        {
+          "id": "east-pillar-0",
+          "pos": {
+            "x": 9.5,
+            "y": 2,
+            "z": -2.5
+          },
+          "size": {
+            "x": 1,
+            "y": 4,
+            "z": 1
+          },
+          "material": "stone",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "group": "east-supports",
+          "anchor": true,
+          "support": [],
+          "materialClass": "concrete",
+          "mass": 150
+        },
+        {
+          "id": "east-pillar-1",
+          "pos": {
+            "x": 9.5,
+            "y": 2,
+            "z": 2.5
+          },
+          "size": {
+            "x": 1,
+            "y": 4,
+            "z": 1
+          },
+          "material": "stone",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "group": "east-supports",
+          "anchor": true,
+          "support": [],
+          "materialClass": "concrete",
+          "mass": 150
+        },
+        {
+          "id": "east-pillar-2",
+          "pos": {
+            "x": 14.5,
+            "y": 2,
+            "z": -2.5
+          },
+          "size": {
+            "x": 1,
+            "y": 4,
+            "z": 1
+          },
+          "material": "stone",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "group": "east-supports",
+          "anchor": true,
+          "support": [],
+          "materialClass": "concrete",
+          "mass": 150
+        },
+        {
+          "id": "east-pillar-3",
+          "pos": {
+            "x": 14.5,
+            "y": 2,
+            "z": 2.5
+          },
+          "size": {
+            "x": 1,
+            "y": 4,
+            "z": 1
+          },
+          "material": "stone",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "group": "east-supports",
+          "anchor": true,
+          "support": [],
+          "materialClass": "concrete",
+          "mass": 150
+        },
+        {
+          "id": "east-deck-0",
+          "pos": {
+            "x": 10.5,
+            "y": 4.3,
+            "z": -1.5
+          },
+          "size": {
+            "x": 3,
+            "y": 0.6,
+            "z": 3
+          },
+          "material": "stone",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "group": "east-roof",
+          "support": [
+            "east-pillar-0",
+            "east-pillar-1",
+            "east-pillar-2",
+            "east-pillar-3"
+          ],
+          "materialClass": "concrete",
+          "mass": 100
+        },
+        {
+          "id": "east-deck-1",
+          "pos": {
+            "x": 10.5,
+            "y": 4.3,
+            "z": 1.5
+          },
+          "size": {
+            "x": 3,
+            "y": 0.6,
+            "z": 3
+          },
+          "material": "stone",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "group": "east-roof",
+          "support": [
+            "east-pillar-0",
+            "east-pillar-1",
+            "east-pillar-2",
+            "east-pillar-3"
+          ],
+          "materialClass": "concrete",
+          "mass": 100
+        },
+        {
+          "id": "east-deck-2",
+          "pos": {
+            "x": 13.5,
+            "y": 4.3,
+            "z": -1.5
+          },
+          "size": {
+            "x": 3,
+            "y": 0.6,
+            "z": 3
+          },
+          "material": "stone",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "group": "east-roof",
+          "support": [
+            "east-pillar-0",
+            "east-pillar-1",
+            "east-pillar-2",
+            "east-pillar-3"
+          ],
+          "materialClass": "concrete",
+          "mass": 100
+        },
+        {
+          "id": "east-deck-3",
+          "pos": {
+            "x": 13.5,
+            "y": 4.3,
+            "z": 1.5
+          },
+          "size": {
+            "x": 3,
+            "y": 0.6,
+            "z": 3
+          },
+          "material": "stone",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "group": "east-roof",
+          "support": [
+            "east-pillar-0",
+            "east-pillar-1",
+            "east-pillar-2",
+            "east-pillar-3"
+          ],
+          "materialClass": "concrete",
+          "mass": 100
+        },
+        {
+          "id": "east-upper-box",
+          "pos": {
+            "x": 12,
+            "y": 5.1,
+            "z": 0
+          },
+          "size": {
+            "x": 2,
+            "y": 1,
+            "z": 2
+          },
+          "material": "wood",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "group": "east-upper",
+          "support": [
+            "east-deck-0",
+            "east-deck-1",
+            "east-deck-2",
+            "east-deck-3"
+          ],
+          "materialClass": "wood",
+          "mass": 30
+        },
+        {
+          "id": "east-step-0",
+          "pos": {
+            "x": 6,
+            "y": 0.5,
+            "z": 0
+          },
+          "size": {
+            "x": 1,
+            "y": 1,
+            "z": 2
+          },
+          "material": "foundation",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        {
+          "id": "east-step-1",
+          "pos": {
+            "x": 7,
+            "y": 1.0,
+            "z": 0
+          },
+          "size": {
+            "x": 1,
+            "y": 2,
+            "z": 2
+          },
+          "material": "foundation",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        {
+          "id": "east-step-2",
+          "pos": {
+            "x": 8,
+            "y": 1.5,
+            "z": 0
+          },
+          "size": {
+            "x": 1,
+            "y": 3,
+            "z": 2
+          },
+          "material": "foundation",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        {
+          "id": "east-step-3",
+          "pos": {
+            "x": 9,
+            "y": 2.0,
+            "z": 0
+          },
+          "size": {
+            "x": 1,
+            "y": 4,
+            "z": 2
+          },
+          "material": "foundation",
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        }
+      ],
+      "gameplay": {
+        "enabled": true,
+        "bounds": {
+          "minX": -40,
+          "maxX": 40,
+          "minZ": -18,
+          "maxZ": 18,
+          "ceiling": 28,
+          "killY": -8,
+          "cleanupY": -18
+        },
+        "ffa": [
+          {
+            "x": -34,
+            "y": 0.9,
+            "z": -10
+          },
+          {
+            "x": -34,
+            "y": 0.9,
+            "z": 0
+          },
+          {
+            "x": -34,
+            "y": 0.9,
+            "z": 10
+          },
+          {
+            "x": 34,
+            "y": 0.9,
+            "z": -10
+          },
+          {
+            "x": 34,
+            "y": 0.9,
+            "z": 0
+          },
+          {
+            "x": 34,
+            "y": 0.9,
+            "z": 10
+          },
+          {
+            "x": 0,
+            "y": 0.9,
+            "z": -14
+          },
+          {
+            "x": 0,
+            "y": 0.9,
+            "z": 14
+          }
+        ],
+        "teams": [],
+        "groups": [
+          {
+            "id": "west-supports",
+            "building": "west"
+          },
+          {
+            "id": "west-roof",
+            "building": "west"
+          },
+          {
+            "id": "west-upper",
+            "building": "west"
+          },
+          {
+            "id": "east-supports",
+            "building": "east"
+          },
+          {
+            "id": "east-roof",
+            "building": "east"
+          },
+          {
+            "id": "east-upper",
+            "building": "east"
+          }
+        ],
+        "hazards": [],
+        "spawnProtection": 2.5,
+        "telegraph": 0.75,
+        "maxFalling": 16,
+        "maxCollapses": 2
+      },
+      "visual": {
+        "version": 1,
+        "json": "{}"
+      }
+    }
+  ]
+}

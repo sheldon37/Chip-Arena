@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
     {
         public void CapturePresence()
         {
-            hasPve=pve!=null;
+            hasPve=pve!=null;hasStructures=structures!=null;
             if(props!=null)foreach(var p in props)if(p!=null)p.hasDefinition=p.definition!=null;
             if(pilots!=null)foreach(var p in pilots)if(p!=null)
             {p.hasDeath=p.death!=null;p.hasFighter=p.fighter!=null;p.hasDown=p.down!=null;CaptureDeath(p.death);}
@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
         {if(d!=null){if(!d.hasActor)d.actor=null;if(!d.hasWound)d.wound=null;}}
         public void RestorePresence()
         {
-            if(!hasPve)pve=null;
+            if(!hasPve)pve=null;if(!hasStructures)structures=null;
             if(props!=null)foreach(var p in props)if(p!=null&&!p.hasDefinition)p.definition=null;
             if(pilots!=null)foreach(var p in pilots)if(p!=null)
             {if(!p.hasDeath)p.death=null;if(!p.hasFighter)p.fighter=null;if(!p.hasDown)p.down=null;RestoreDeath(p.death);}

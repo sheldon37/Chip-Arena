@@ -68,7 +68,7 @@ namespace ChipArena.UnityConversion
         }
         public void Reset()
         {
-            if(!Replica&&RandomizeMapEachSet&&Match.Set!=mapSet){var maps=Content.maps.Where(m=>m.id!="siren"&&m.id!=MapId).ToArray();if(mapSet>0&&maps.Length>0)MapId=maps[random.Next(maps.Length)].id;mapSet=Match.Set;}
+            if(!Replica&&RandomizeMapEachSet&&Match.Set!=mapSet){var maps=Content.maps.Where(m=>m.id!="siren"&&!m.experimental&&m.id!=MapId).ToArray();if(mapSet>0&&maps.Length>0)MapId=maps[random.Next(maps.Length)].id;mapSet=Match.Set;}
             Generation++;Entries.Clear();MinionDeaths.Clear();DestroyScene();Pve=null;pveEntries.Clear();pveNavigation=null;remoteInputs.Clear();debrisLedger.Clear();contacts.Clear();root=new GameObject("Native match authority");
             if(ReplicaScene.IsValid())UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(root,ReplicaScene);
             var map=Content.Map(MapId);var shader=Resources.Load<Shader>("NativeLit");
@@ -76,13 +76,14 @@ namespace ChipArena.UnityConversion
             {materials[definition.id]=new Material(shader){color=ColorOf(definition.id=="foundation"?map.floor:definition.color)};surfaces[definition.id]=new PhysicsMaterial(definition.id){dynamicFriction=definition.friction,staticFriction=definition.friction,bounciness=0};}
             if(!surfaces.ContainsKey("pilot"))surfaces["pilot"]=new PhysicsMaterial("Pilot friction"){dynamicFriction=0,staticFriction=0,bounciness=0,frictionCombine=PhysicsMaterialCombine.Minimum};
             foreach(var block in map.blocks)AddProp(block);
+            ResetStructures(map);
             for(int i=0;i<Match.Seats.Count;i++)SpawnPilot(Match.Seats[i],i);
             Physics.SyncTransforms();
         }
         private NativePilot SpawnPilot(NativeSeat seat,int index)
         {
                 var stats=NativeContentRules.Stats(Content,seat.spec,seat.chips);var weapon=Content.Weapon(seat.spec);
-                var obj=new GameObject(seat.name);obj.layer=ActorLayer;obj.transform.SetParent(root.transform);obj.transform.position=Vec(Content.spawns[Math.Min(index,Content.spawns.Length-1)]);
+                var obj=new GameObject(seat.name);obj.layer=ActorLayer;obj.transform.SetParent(root.transform);obj.transform.position=SpawnPosition(seat,index);
                 var capsule=obj.AddComponent<CapsuleCollider>();capsule.radius=.42f;capsule.height=1.70f;capsule.sharedMaterial=surfaces["pilot"];
                 var body=obj.AddComponent<Rigidbody>();body.mass=65;body.constraints=RigidbodyConstraints.FreezeRotation;body.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;body.interpolation=RigidbodyInterpolation.Interpolate;
                 var p=new NativePilot{Seat=seat,Weapon=weapon,Stats=stats,Body=body,Collider=capsule,Hp=(float)stats["hp"],Mana=(float)stats["maxMana"],Stamina=(float)stats["maxStamina"],Ammo=(int)Math.Ceiling(weapon.ammo*stats["ammoCapacity"]),Yaw=Mathf.Atan2(-obj.transform.position.x,-obj.transform.position.z)*Mathf.Rad2Deg};
@@ -95,12 +96,12 @@ namespace ChipArena.UnityConversion
         public NativePilot Local=>Pilots.Find(p=>p.Seat.id==LocalId);
         public void Step(InputFrame input)
         {
-            if(PveHoldTick(1f/60))return;foreach(var p in Pilots)if(!p.Seat.connected&&p.Seat.disconnectedAt>=0&&Time-p.Seat.disconnectedAt>=12){p.Hp=0;p.Seat.alive=false;}SandboxStep();Match.Tick(1d/60);if(Pve==null&&Match.Phase==NativePhase.Intro&&Match.IntroStyle=="dev-siren"&&BossSongAt<0)BossSongAt=(float)Match.IntroStarted;if(Pve!=null&&!Pve.Started&&Match.Phase==NativePhase.Fight)StartPve();StepHazards();StepSirenStage();if(Match.Phase!=NativePhase.Fight){foreach(var p in Pilots)if(p.Body!=null&&!p.Body.isKinematic)p.Body.linearVelocity=Vector3.zero;return;}
+            if(PveHoldTick(1f/60))return;foreach(var p in Pilots)if(!p.Seat.connected&&p.Seat.disconnectedAt>=0&&Time-p.Seat.disconnectedAt>=12){p.Hp=0;p.Seat.alive=false;}SandboxStep();Match.Tick(1d/60);if(Pve==null&&Match.Phase==NativePhase.Intro&&Match.IntroStyle=="dev-siren"&&BossSongAt<0)BossSongAt=(float)Match.IntroStarted;if(Pve!=null&&!Pve.Started&&Match.Phase==NativePhase.Fight)StartPve();StepHazards();StepSirenStage();StepStructures();if(Match.Phase!=NativePhase.Fight){foreach(var p in Pilots)if(p.Body!=null&&!p.Body.isKinematic)p.Body.linearVelocity=Vector3.zero;return;}
             Events.RemoveAll(e=>Time-e.Time>1); // Preserve the full burst for its natural glow lifetime.
             // Establish every defense before resolving attacks.
             foreach(var p in Pilots)
             {
-                if(p.Hp<=0||!p.Seat.connected)continue;p.Input=p.Seat.bot?AvoidVents(p,SandboxInput(p,Bot(p))):p.Seat.id==LocalId?input:RemoteInput(p.Seat.id);p.Input=p.Input.Sanitized();PveInput(p);
+                if(p.Hp<=0||!p.Seat.connected)continue;p.Input=p.Seat.bot?AvoidVents(p,SandboxInput(p,Bot(p))):p.Seat.id==LocalId?input:RemoteInput(p.Seat.id);p.Input=p.Input.Sanitized();if(Structures!=null){if(p.Input.AimTarget.Length>.01f)p.Input.AimTarget=Bounds.Clamp(p.Input.AimTarget);if(p.Input.AbilityTarget.Length>.01f)p.Input.AbilityTarget=Bounds.Clamp(p.Input.AbilityTarget);}PveInput(p);
                 p.Grounded=root.scene.GetPhysicsScene().SphereCast(p.Body.position+Vector3.down*.4f,.39f,Vector3.down,out _,.17f,WorldMask,QueryTriggerInteraction.Ignore);
             }
             RouteLeetInputs();
@@ -108,7 +109,7 @@ namespace ChipArena.UnityConversion
             foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&p.Input.Block)TryBlock(p);
             foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected){AdvanceDots(p);if(p.Hp>0&&!Frozen(p))StepPilot(p);}
             StepBullets();StepAbilityWorld();StepMeleeShots();StepChipFields();StepMinions();StepFighterWorld();StepLeetWorld();StepSirenWorld();RestoreLeetInputs();
-            foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&p.Body.position.y<-6){if(Pve!=null&&p==Pve.Boss)PlacePveBoss(new Vector3(0,.9f,24.2f));else Damage(p,null,p.Hp+1,Vector3.zero,0,false,true);}
+            foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&p.Body.position.y<Bounds.killY){if(Pve!=null&&p==Pve.Boss)PlacePveBoss(new Vector3(0,.9f,24.2f));else Damage(p,null,p.Hp+1,Vector3.zero,0,false,true);}
             float overtime=NativeCombatRules.Overtime(Match.Time-Match.FightAt,Content.config.FirstOrDefault(v=>v.name=="maxRoundSeconds")?.value??100,Match.Cooperative,SandboxAllowed);if(overtime>0)foreach(var p in Pilots)if(p.Hp>0)Damage(p,null,overtime,Vector3.zero,0,false,forced:true);
             StepPve();Match.Resolve();
         }
@@ -214,7 +215,7 @@ namespace ChipArena.UnityConversion
         private void Blast(NativePilot source,Vector3 position,float radius,float damage,float impulse)
         {
             foreach(var p in Pilots){Vector3 delta=p.Body.position-position;if(p.Hp<=0||!CanHit(source,p)||delta.magnitude>radius||SceneLinecast(position+Vector3.up*.05f,p.Body.position,WorldMask))continue;float scale=1-delta.magnitude/radius;Damage(p,source,damage*scale,delta.normalized,impulse*scale,false,false,false,damageKind:"blast");}
-            foreach(var prop in Props.ToArray())if(prop!=null&&(prop.transform.position-position).magnitude<radius)DamageProp(prop,damage,(prop.transform.position-position).normalized*impulse,position,source);
+            foreach(var prop in Props.ToArray())if(prop!=null&&(prop.transform.position-position).magnitude<radius)DamageProp(prop,damage,(prop.transform.position-position).normalized*impulse,position,source,"explosion");
         }
         private void StepHazards()
         {
@@ -230,9 +231,10 @@ namespace ChipArena.UnityConversion
                 }
             }
         }
-        private void DamageProp(NativePropBody prop,float amount,Vector3 impulse,Vector3 point,NativePilot source=null)
+        private void DamageProp(NativePropBody prop,float amount,Vector3 impulse,Vector3 point,NativePilot source=null,string cause="impact",Vector3? normal=null)
         {
-            if(prop==null||prop.Indestructible||!Props.Contains(prop))return;bool dynamic=prop.Body!=null&&!prop.Body.isKinematic;
+            if(prop==null||prop.Indestructible||!Props.Contains(prop)||Replica)return;
+            if(DamageStructure(prop,amount,impulse,point,source,cause,normal))return;bool dynamic=prop.Body!=null&&!prop.Body.isKinematic;
             if(dynamic){prop.Source=source;prop.SourceAt=Time;prop.Body.AddForceAtPosition(impulse,point,ForceMode.Impulse);}prop.Health-=amount;if(prop.Health<=0&&!prop.Fragment)Fracture(prop,dynamic?Vector3.zero:impulse,source);
         }
         private void SurfaceImpact(RaycastHit hit,NativePilot source,int projectile,int color)
