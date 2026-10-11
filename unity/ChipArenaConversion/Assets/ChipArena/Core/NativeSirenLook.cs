@@ -19,11 +19,14 @@ namespace ChipArena.UnityConversion
     /// written relative to its joint in the source frame (three.js, right-handed), row-major for column vectors, 16 values per
     /// piece; the runtime mirrors x into Unity and places it on the posed joint. Pure and allocation-free.
     /// Piece order: 2 eyes (side +1, -1), 2 eye halos, upper and lower grin row, 2 claw groups (left, right hand), 2 orbs,
-    /// 2 orb halos, 12 wisps (left knee then right, top to tip), 16 tongues × 7 steps (TONGUES order, base to tip).
+    /// 2 orb halos, 12 wisps (left knee then right, top to tip), 16 tongues × 7 steps (TONGUES order, base to tip); then, from
+    /// Source on, the Unity finish beyond the source (NativeSirenDetail: the couture, the mask and the cheeks, 258 pieces).
+    /// The Unity finish also turns each tongue step about its own vertical axis and swells or thins it (Twist: stratified,
+    /// faceted fire instead of square posts; the tip positions, the flicker and the flame pool's emitters are the source's).
     /// </summary>
     public static class NativeSirenLook
     {
-        public const int Eye=0,EyeHalo=2,GrinUpper=4,GrinLower=5,Claw=6,Orb=8,OrbHalo=10,Wisp=12,Tongue=24,Count=136;
+        public const int Eye=0,EyeHalo=2,GrinUpper=4,GrinLower=5,Claw=6,Orb=8,OrbHalo=10,Wisp=12,Tongue=24,Source=136,Detail=Source,Count=Source+NativeSirenDetail.Count;
         public const int TongueCount=16,TongueSteps=7,WispSteps=6,EyeSegments=40,Shapes=41;
         public const double EyeHaloOpacity=.42,OrbHaloOpacity=.32,Swap=.35,FaceRate=18,LeanRate=6;
         /// <summary>motion.ts's swap shudder runs SIREN_TIMING.swap + .15 s from the mode change.</summary>
@@ -56,6 +59,7 @@ namespace ChipArena.UnityConversion
             j[GrinUpper]=j[GrinLower]=Head;
             for(int i=0;i<2*WispSteps;i++)j[Wisp+i]=i<WispSteps?LKnee:RKnee;
             for(int t=0;t<TongueCount;t++)for(int s=0;s<TongueSteps;s++)j[Tongue+t*TongueSteps+s]=(int)Tongues[t*6];
+            for(int i=0;i<NativeSirenDetail.Count;i++)j[Detail+i]=NativeSirenDetail.Bone(i);
             return j;
         }
         private static double Clamp(double x,double a,double b)=>x<a?a:x>b?b:x;
@@ -88,12 +92,20 @@ namespace ChipArena.UnityConversion
             m[o+8]=(bf-ae*d)*sx;m[o+9]=(be+af*d)*sy;m[o+10]=a*c*sz;m[o+11]=pz;
             m[o+12]=0;m[o+13]=0;m[o+14]=0;m[o+15]=1;
         }
-        /// <summary>m[o..] = parent · T(p)·S(s), where parent is a TRS matrix with no shear (the tongue group).</summary>
-        private static void Child(double[] m,int o,double[] g,double px,double py,double pz,double sx,double sy,double sz)
+        /// <summary>
+        /// The stratified flame (Unity finish): tongue n's step i turns .52·i + .9·n about its own vertical axis and its girth
+        /// scales by 1 + .16·sin(3.7·n + 2.3·i), fixed per step (tools/siren_design.mjs TWIST).
+        /// </summary>
+        public static void Twist(int n,int i,out double yaw,out double girth){yaw=.52*i+.9*n;girth=1+.16*Math.Sin(3.7*n+2.3*i);}
+        private static readonly double[] twist=BuildTwist();
+        private static double[] BuildTwist(){var t=new double[TongueCount*TongueSteps*3];for(int n=0;n<TongueCount;n++)for(int i=0;i<TongueSteps;i++){Twist(n,i,out double yaw,out double k);int o=(n*TongueSteps+i)*3;t[o]=Math.Cos(yaw);t[o+1]=Math.Sin(yaw);t[o+2]=k;}return t;}
+        /// <summary>m[o..] = parent · T(p)·Ry(yaw)·S(sx·k, sy, sz·k), parent a TRS matrix with no shear (the tongue group); the twist (cos, sin, k) at tw.</summary>
+        private static void Child(double[] m,int o,double[] g,double px,double py,double pz,double sx,double sy,double sz,int tw)
         {
+            double c=twist[tw],sn=twist[tw+1],k=twist[tw+2];
             for(int r=0;r<3;r++)
             {
-                int i=r*4;m[o+i]=g[i]*sx;m[o+i+1]=g[i+1]*sy;m[o+i+2]=g[i+2]*sz;m[o+i+3]=g[i]*px+g[i+1]*py+g[i+2]*pz+g[i+3];
+                int i=r*4;m[o+i]=(g[i]*c-g[i+2]*sn)*sx*k;m[o+i+1]=g[i+1]*sy;m[o+i+2]=(g[i]*sn+g[i+2]*c)*sz*k;m[o+i+3]=g[i]*px+g[i+1]*py+g[i+2]*pz+g[i+3];
             }
             m[o+12]=0;m[o+13]=0;m[o+14]=0;m[o+15]=1;
         }
@@ -132,7 +144,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<TongueSteps;i++)
                 {
                     double size=TongueStep[i*2],h=TongueStep[i*2+1];int piece=Tongue+n*TongueSteps+i;
-                    Child(m,piece*16,g,.012*i*Math.Sin(t*6.1+phase+i*.7),at+h/2,.008*i*Math.Sin(t*5.3+phase*1.3+i*.9),size,h,size);shown[piece]=true;at+=h*.9;
+                    Child(m,piece*16,g,.012*i*Math.Sin(t*6.1+phase+i*.7),at+h/2,.008*i*Math.Sin(t*5.3+phase*1.3+i*.9),size,h,size,(n*TongueSteps+i)*3);shown[piece]=true;at+=h*.9;
                 }
             }
             // Below each knee the leg is a tapering wisp: each box sways, bobs and pulses; the tips trail the lean.
@@ -141,7 +153,11 @@ namespace ChipArena.UnityConversion
                 int step=i%WispSteps;double y=WispStep[step*2],size=WispStep[step*2+1],f=(double)step/WispSteps;
                 Compose(m,(Wisp+i)*16,.035*f*Math.Sin(t*4.1+i*1.3),y-.01*Math.Sin(t*5+i),-.01-.12*f*s.Lean,0,0,0,size*(.85+.25*Math.Sin(t*6.2+i*2.1)),.1,size*(.85+.25*Math.Sin(t*5.3+i)));shown[Wisp+i]=true;
             }
+            // The Unity finish's moving pieces (the static ones hold what Rest wrote): the cheeks lift with the squint.
+            NativeSirenDetail.Evaluate(s,m,shown,Detail,Claw,NativeSirenDetail.CheekLift(squint));
         }
+        /// <summary>The Unity finish's static pieces (written once: Evaluate leaves them as they are) and every detail piece's visibility.</summary>
+        public static void Rest(double[] m,bool[] shown)=>NativeSirenDetail.Rest(m,shown,Detail);
         /// <summary>
         /// The face targets of clip at age (NativeSourceMotion.Sample's frame mapping: looped clips wrap, others span
         /// duration, or the clip's own length when duration is 0). False when the clip has no frames.

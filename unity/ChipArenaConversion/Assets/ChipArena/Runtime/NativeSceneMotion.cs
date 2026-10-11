@@ -5,12 +5,12 @@ using UnityEngine;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class NativeSceneLight {public string kind;public float[] values;}
-    [Serializable] public sealed class NativeSceneClip {public string key;public float duration;public int frames,tracks,dropped=-1;public int[] victim;public float[] values,environment;public NativeSceneLight[] lights;[NonSerialized] public bool[] voxel;}
+    [Serializable] public sealed class NativeSceneClip {public string key;public float duration;public int frames,tracks,dropped=-1;/* The posed head's track (dev-siren: the entrance face rides it); -1 when the clip records none. */public int head=-1;public int[] victim;public float[] values,environment;public NativeSceneLight[] lights;[NonSerialized] public bool[] voxel;}
     [Serializable] public sealed class NativeSceneClips {public NativeSceneClip[] clips;}
     public static class NativeSceneMotion
     {
         private static Dictionary<string,NativeSceneClip> clips;
-        private static void Ensure(){if(clips!=null)return;var set=JsonUtility.FromJson<NativeSceneClips>(NativeSourceModels.Decode("SceneMotion"));clips=new Dictionary<string,NativeSceneClip>();foreach(var c in set.clips){if(c.frames<2||c.tracks<1||c.duration<=0||c.values.Length!=c.frames*c.tracks*20||c.values.Any(v=>!MathUtil.Finite(v))||c.victim.Any(v=>v<0||v>=c.tracks)||c.environment==null||c.environment.Length!=c.frames*8||c.environment.Any(v=>!MathUtil.Finite(v))||c.lights==null||c.lights.Any(l=>l.values.Length!=c.frames*11||l.values.Any(v=>!MathUtil.Finite(v))))throw new InvalidOperationException("Invalid cosmetic scene: "+c.key);clips.Add(c.key,c);}}
+        private static void Ensure(){if(clips!=null)return;var set=JsonUtility.FromJson<NativeSceneClips>(NativeSourceModels.Decode("SceneMotion"));clips=new Dictionary<string,NativeSceneClip>();foreach(var c in set.clips){if(c.frames<2||c.tracks<1||c.duration<=0||c.values.Length!=c.frames*c.tracks*20||c.values.Any(v=>!MathUtil.Finite(v))||c.victim.Any(v=>v<0||v>=c.tracks)||c.head<-1||c.head>=c.tracks||c.environment==null||c.environment.Length!=c.frames*8||c.environment.Any(v=>!MathUtil.Finite(v))||c.lights==null||c.lights.Any(l=>l.values.Length!=c.frames*11||l.values.Any(v=>!MathUtil.Finite(v))))throw new InvalidOperationException("Invalid cosmetic scene: "+c.key);clips.Add(c.key,c);}}
         public static int Count{get{Ensure();return clips.Count;}}
         public static NativeSceneClip Get(string key){Ensure();return clips.TryGetValue(key,out var clip)?clip:null;}
         public static Matrix4x4 Matrix(NativeSceneClip c,int track,float age)

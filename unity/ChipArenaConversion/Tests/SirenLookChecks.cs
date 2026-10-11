@@ -13,6 +13,11 @@ namespace ChipArena.UnityConversion
     // the snapshot's time) through the exported face tracks (Resources/SirenLook.json) and NativeSirenLookSmoother; for the
     // swaps and the slash also the body (the idle clips blended through the swap with its shudder, else the clip itself)
     // against every source joint, and the swaps again as a guest whose render clock trails its newest frame.
+    // Unity finish beyond the source (owner request 2026-10-10, an explicit baseline like BodyRim/FlameRim): the 136 source
+    // pieces stay verified exactly; the only change to them is the stratified flame (NativeSirenLook.Twist), so each tongue
+    // step's fixture matrix is compared after the same fixed twist, Ry(yaw)·diag(k, 1, k) on the right (the step's tip, its
+    // flicker and its sway are the source's). The fixture is never refreshed for it. The detail pieces after Source have
+    // their own checks (Tests/SirenDetailChecks.cs).
     internal static class SirenLookChecks
     {
         private static int count;
@@ -20,9 +25,19 @@ namespace ChipArena.UnityConversion
         private static void Near(double a,double b,double tolerance,string what){Check(Math.Abs(a-b)<=tolerance&&!double.IsNaN(a),what+": "+a+" != "+b);}
         private static SirenLookState State(JsonElement s)=>new SirenLookState{Ranged=D(s,"ranged"),Open=D(s,"open"),Squint=D(s,"squint"),Anger=D(s,"anger"),Glow=D(s,"glow"),Time=D(s,"time"),Lean=D(s,"lean"),Flare=D(s,"flare"),Clock=D(s,"clock")};
         private static double D(JsonElement e,string name)=>e.GetProperty(name).GetDouble();
-        // The source's top three rows (12 values) of one piece against the Core's row-major 16.
+        // The source's top three rows (12 values) of one piece against the Core's row-major 16 (a tongue step after its twist).
         private static void Piece(double[] m,int piece,JsonElement rows,double tolerance,string what)
-        {int i=0;foreach(var v in rows.EnumerateArray()){Near(m[piece*16+i/4*4+i%4],v.GetDouble(),tolerance,what+" piece "+piece+" ["+i+"]");i++;}Check(i==12,what+" rows");}
+        {
+            var e=new double[12];int i=0;foreach(var v in rows.EnumerateArray()){if(i<12)e[i]=v.GetDouble();i++;}Check(i==12,what+" rows");TwistBaseline(piece,e);
+            for(i=0;i<12;i++)Near(m[piece*16+i/4*4+i%4],e[i],tolerance,what+" piece "+piece+" ["+i+"]");
+        }
+        /// <summary>The Unity finish's stratified flame on a source tongue step's rows (12 values, in place); other pieces unchanged.</summary>
+        internal static void TwistBaseline(int piece,double[] e)
+        {
+            if(piece<NativeSirenLook.Tongue||piece>=NativeSirenLook.Tongue+NativeSirenLook.TongueCount*NativeSirenLook.TongueSteps)return;
+            int k=piece-NativeSirenLook.Tongue;NativeSirenLook.Twist(k/NativeSirenLook.TongueSteps,k%NativeSirenLook.TongueSteps,out double yaw,out double girth);double c=Math.Cos(yaw),s=Math.Sin(yaw);
+            for(int r=0;r<3;r++){double x=e[r*4],z=e[r*4+2];e[r*4]=(x*c-z*s)*girth;e[r*4+2]=(x*s+z*c)*girth;}
+        }
         private sealed class Motion {public string key;public float duration;public bool loop;public int frames;public float[] values;}
         // Resources/SourceMotion.json's Siren body clips (tools/export_motion.mjs: 22 bones × position, rotation per frame).
         private static Dictionary<string,Motion> Bodies(string root)
@@ -98,7 +113,8 @@ namespace ChipArena.UnityConversion
             Check(NativeFlameField.Fade(NativeFlameTone.Black)==0x5b5078&&NativeFlameField.Fade(NativeFlameTone.Soot)==0x2b2436&&NativeFlameField.Fade(NativeFlameTone.Smoke)==0x7d7299&&NativeFlameField.Fade(NativeFlameTone.Ember)==0x2a2233,"flame fade palette");
             {var rng=new Random(5);for(int i=0;i<64;i++){NativeFlameField.Start(NativeFlameTone.Black,rng.NextDouble,out double r,out double g,out double b);Check(Math.Max(r,Math.Max(g,b))<.012,"black flame starts black: "+r+","+g+","+b);}}
             // The bank: no section anywhere keeps the exporter's fallback colour; the entrance's and the kills' flame slots
-            // (one 24-vertex cube per FlameField slot) are white and unlit, tinted per frame by their scene track.
+            // (one 24-vertex cube per FlameField slot) are white and unlit, tinted per frame by their scene track. The entrance's
+            // Unity-finish glow lines (named siren-couture-seam batches, also white and track-tinted) are not flame slots.
             var slots=new Dictionary<string,HashSet<int>>{{"stage-dev-siren",new HashSet<int>()},{"death-siren-crush",new HashSet<int>()},{"death-siren-dissipate",new HashSet<int>()}};
             using(var bank=Bank(root,"SourceModels"))foreach(var m in bank.RootElement.GetProperty("models").EnumerateArray())
             {
@@ -107,7 +123,7 @@ namespace ChipArena.UnityConversion
                 {
                     var c=sec.GetProperty("colors");var e=sec.GetProperty("emission");int n=c.GetArrayLength()/4;
                     Check(n==0||!IsFallback(c[0].GetSingle(),c[1].GetSingle(),c[2].GetSingle()),"fallback colour in "+id);
-                    if(mine!=null&&n==24&&!sec.GetProperty("ink").GetBoolean()&&c[0].GetSingle()==1&&c[1].GetSingle()==1&&c[2].GetSingle()==1&&e[0].GetSingle()==1&&e[2].GetSingle()==1)mine.Add(sec.GetProperty("bone").GetInt32());
+                    if(mine!=null&&n==24&&string.IsNullOrEmpty(sec.GetProperty("part").GetString())&&!sec.GetProperty("ink").GetBoolean()&&c[0].GetSingle()==1&&c[1].GetSingle()==1&&c[2].GetSingle()==1&&e[0].GetSingle()==1&&e[2].GetSingle()==1)mine.Add(sec.GetProperty("bone").GetInt32());
                 }
             }
             int rows=0;
@@ -164,7 +180,7 @@ namespace ChipArena.UnityConversion
             }
             using var doc=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Tests/siren-look-parity.json")));var f=doc.RootElement;
             Check(f.GetProperty("fps").GetInt32()==60&&D(f,"smoothing")==NativeSirenLook.FaceRate&&D(f,"swap")==NativeSirenLook.Swap,"fixture constants");
-            int n=0;foreach(var j in f.GetProperty("joints").EnumerateArray()){Check(NativeSirenLook.Joint(n)==j.GetInt32(),"joint of piece "+n);n++;}Check(n==NativeSirenLook.Count,"piece count "+n);
+            int n=0;foreach(var j in f.GetProperty("joints").EnumerateArray()){Check(NativeSirenLook.Joint(n)==j.GetInt32(),"joint of piece "+n);n++;}Check(n==NativeSirenLook.Source&&NativeSirenLook.Count==NativeSirenLook.Source+NativeSirenDetail.Count,"piece count "+n);
             var xy=new double[NativeSirenLook.EyeSegments*6];int eyes=0;
             foreach(var e in f.GetProperty("eyes").EnumerateArray())
             {
@@ -175,8 +191,8 @@ namespace ChipArena.UnityConversion
             foreach(var s in f.GetProperty("states").EnumerateArray())
             {
                 var state=State(s.GetProperty("state"));NativeSirenLook.Evaluate(state,m,shown);string what="state "+states;int p=0;
-                foreach(var rows in s.GetProperty("pieces").EnumerateArray())Piece(m,p++,rows,2e-7,what);Check(p==NativeSirenLook.Count,what+" pieces");
-                p=0;foreach(var v in s.GetProperty("shown").EnumerateArray()){Check(shown[p]==(v.GetInt32()==1),what+" shown "+p);p++;}
+                foreach(var rows in s.GetProperty("pieces").EnumerateArray())Piece(m,p++,rows,2e-7,what);Check(p==NativeSirenLook.Source,what+" pieces");
+                p=0;foreach(var v in s.GetProperty("shown").EnumerateArray()){Check(shown[p]==(v.GetInt32()==1),what+" shown "+p);p++;}Check(p==NativeSirenLook.Source,what+" shown count");
                 Near(NativeSirenLook.EyeHaloAlpha(state),D(s,"eyeHalo"),1e-9,what+" eye halo");Near(NativeSirenLook.Quantized(state.Anger),D(s,"anger"),1e-9,what+" anger");states++;
             }
             // Timelines: the face targets come from the 60 fps tracks at the replicated age (interpolated between track frames
@@ -238,7 +254,7 @@ namespace ChipArena.UnityConversion
             // The Siren takes no sword-set layer (the blade floor guard bent her right claw through the Slam and the Rush).
             Check(!NativePoseRoute.SwordLayers(new Actor{SourceSpec="siren",Weapon=WeaponId.Sword})&&NativePoseRoute.SwordLayers(new Actor{SourceSpec="sword",Weapon=WeaponId.Sword}),"no sword layers on the Siren");
             int flameRows=Flames(root);
-            Console.WriteLine($"PASS Siren look parity: {flameRows} baked black-flame rows, {NativeSirenLook.Count} piece joints, {eyes} eye outlines, {states} applySirenLook states, {frames} timeline frames ({guestFrames} as a guest; largest look-state gap {worst:0.0e+0}, {balls} Damnation balls), {bodyFrames} body frames (largest joint gap {worstBody:0.0e+0}), {tracks.Count} face tracks; {count} checks");
+            Console.WriteLine($"PASS Siren look parity: {flameRows} baked black-flame rows, {NativeSirenLook.Source} source piece joints (tongue steps against the Unity finish's twist baseline), {eyes} eye outlines, {states} applySirenLook states, {frames} timeline frames ({guestFrames} as a guest; largest look-state gap {worst:0.0e+0}, {balls} Damnation balls), {bodyFrames} body frames (largest joint gap {worstBody:0.0e+0}), {tracks.Count} face tracks; {count} checks");
         }
     }
 }

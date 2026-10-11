@@ -1711,8 +1711,8 @@
     },
     {
       "id": "siren",
-      "batches": 24,
-      "vertices": 4817
+      "batches": 29,
+      "vertices": 5249
     },
     {
       "id": "horde-0",
@@ -2055,5 +2055,5 @@
       "vertices": 50
     }
   ],
-  "uncompressedBytes": 66755914
+  "uncompressedBytes": 66788529
 }

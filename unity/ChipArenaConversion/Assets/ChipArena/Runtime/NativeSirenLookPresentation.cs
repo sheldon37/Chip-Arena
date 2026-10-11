@@ -16,13 +16,18 @@ namespace ChipArena.UnityConversion
         public int Shape;public float EyeHalo;public SirenLookState State;
         /// <summary>The eyes' and grin's breathing this frame (NativeSirenLook.Breath); 1, the source's look, unless a caller sets it.</summary>
         public float Breath=1;
+        /// <summary>The viewer's distance (m) for the detail's glow lines (NativeSirenDetail.LineGlow); 0, unfaded, unless a caller sets it.</summary>
+        public float GlowDistance;
         /// <summary>The Damnation ball and its halo relative to the rig root, while one shows (SetCharge).</summary>
         public bool Charging;public Matrix4x4 ChargeBall,ChargeHalo;
         private readonly double[] m=new double[NativeSirenLook.Count*16],charge=new double[32];
+        // The detail's static pieces are placed once; Set mirrors the source's pieces and the detail's moving ones.
+        public NativeSirenLookPose(){NativeSirenLook.Rest(m,Shown);for(int i=NativeSirenLook.Detail;i<NativeSirenLook.Count;i++)Local[i]=Mirror(m,i*16);}
         public NativeSirenLookPose Set(in SirenLookState s)
         {
             NativeSirenLook.Evaluate(s,m,Shown);Shape=NativeSirenLook.Shape(s.Anger);EyeHalo=(float)NativeSirenLook.EyeHaloAlpha(s);State=s;
-            for(int i=0;i<NativeSirenLook.Count;i++)Local[i]=Mirror(m,i*16);
+            for(int i=0;i<NativeSirenLook.Source;i++)Local[i]=Mirror(m,i*16);
+            for(int k=0,n=NativeSirenDetail.MovingCount;k<n;k++){int i=NativeSirenLook.Detail+NativeSirenDetail.Moving(k);Local[i]=Mirror(m,i*16);}
             Charging=false;return this;
         }
         /// <summary>The Damnation windup ball for the pose's action at `age` (none for any other action).</summary>
@@ -69,7 +74,7 @@ namespace ChipArena.UnityConversion
     /// The palm orbs (orbMaterial) and the eye and orb halos (additive radial sprites) on the Siren's own NativeSirenFx shader:
     /// one shared unit sphere and two baked sprite quads drawn per piece, so nothing is rebuilt or allocated per frame.
     /// </summary>
-    public sealed class NativeSirenLookDraw:IDisposable
+    public sealed partial class NativeSirenLookDraw:IDisposable
     {
         private readonly Mesh orb,eyeHalo,orbHalo,chargeHalo;private readonly Material solid,effects;
         public NativeSirenLookDraw()
@@ -84,7 +89,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<n;i++){var o=new Vector3((float)sp[i*3],(float)sp[i*3+1],(float)sp[i*3+2]);points[i]=o;colors[i]=core;uv.Add(new Vector4(0,0,NativeFxDraw.OrbMode,0));p.Add(new Vector4(-o.x,o.y,o.z,1.6f));q.Add(new Vector4(rim.r,rim.g,rim.b,1));}
             orb=new Mesh{name="Native Siren palm orb"};orb.vertices=points;orb.normals=points;orb.colors=colors;orb.SetUVs(0,uv);orb.SetUVs(1,p);orb.SetUVs(2,q);orb.triangles=si;orb.RecalculateBounds();orb.UploadMeshData(true);
             eyeHalo=Quad("Native Siren eye halo",NativeSirenLook.EyeHaloColor,(float)NativeSirenLook.EyeHaloOpacity);orbHalo=Quad("Native Siren orb halo",NativeSirenLook.OrbHaloColor,(float)NativeSirenLook.OrbHaloOpacity);
-            chargeHalo=Quad("Native Siren Damnation halo",NativeSirenLook.ChargeHaloColor,(float)NativeSirenLook.ChargeHaloOpacity);
+            chargeHalo=Quad("Native Siren Damnation halo",NativeSirenLook.ChargeHaloColor,(float)NativeSirenLook.ChargeHaloOpacity);BuildIntroHalos();
         }
         private static Color Raw(int hex){NativeBlastSim.Linear(hex,out double r,out double g,out double b);return new Color((float)r,(float)g,(float)b,1);}
         // haloMaterial: an authored sRGB colour at its opacity, radial alpha (1-r)^1.6, additive, both faces.
@@ -119,14 +124,14 @@ namespace ChipArena.UnityConversion
             Vector3 at=world.GetColumn(3);float size=((Vector3)world.GetColumn(0)).magnitude*scale;if(size<1e-4f)return;
             Graphics.DrawMesh(mesh,Matrix4x4.TRS(at,turn,new Vector3(size,size,size)),effects,layer,camera,0,null,ShadowCastingMode.Off,false);
         }
-        public void Dispose(){CapturedAnimation.Release(orb);CapturedAnimation.Release(eyeHalo);CapturedAnimation.Release(orbHalo);CapturedAnimation.Release(chargeHalo);CapturedAnimation.Release(solid);CapturedAnimation.Release(effects);}
+        public void Dispose(){DisposeIntroHalos();CapturedAnimation.Release(orb);CapturedAnimation.Release(eyeHalo);CapturedAnimation.Release(orbHalo);CapturedAnimation.Release(chargeHalo);CapturedAnimation.Release(solid);CapturedAnimation.Release(effects);}
     }
 
     public sealed partial class NativeSourceModels
     {
         // A Siren piece: its joint, the shared part it draws (the flame box serves all 124 tongue steps and wisps, so they
         // instance in one draw), or one of the 41 brow cuts of its eye. Orbs and halos have no part (NativeSirenLookDraw).
-        private sealed class Piece {public int Index,Bone;public Part Part;public Part[] Shapes;}
+        private sealed class Piece {public int Index,Bone;public Part Part;public Part[] Shapes;public bool Line;public Vector4 Tone=Vector4.one;}
         private readonly Dictionary<string,Piece[]> lookPieces=new Dictionary<string,Piece[]>();private readonly List<Mesh> pieceMeshes=new List<Mesh>();
         private static NativeSirenLookPose restLook;
         private static readonly int InkId=Shader.PropertyToID("_Ink"),InkRimId=Shader.PropertyToID("_InkRim"),InkFlowId=Shader.PropertyToID("_InkFlow");
@@ -141,15 +146,19 @@ namespace ChipArena.UnityConversion
             if(!models.TryGetValue("siren",out var all))return;
             Part Named(string name){foreach(var p in all)if(p.Name==name)return p;throw new InvalidDataException("Siren piece missing from the model bank: "+name);}
             Part eye=Named("siren-eye"),upper=Named("siren-teeth-upper"),lower=Named("siren-teeth-lower"),clawL=Named("siren-claws-l"),clawR=Named("siren-claws-r"),box=Named("siren-flame-box");
+            // The Unity finish's shared unit boxes (tools/siren_design.mjs, Core/NativeSirenDetail.cs), one per tone.
+            var couture=new Part[NativeSirenDetail.Tones];couture[NativeSirenDetail.Plate]=Named("siren-couture-plate");couture[NativeSirenDetail.Deep]=Named("siren-couture-deep");couture[NativeSirenDetail.Sheen]=Named("siren-couture-sheen");
+            couture[NativeSirenDetail.Ash]=Named("siren-couture-ash");couture[NativeSirenDetail.Seam]=couture[NativeSirenDetail.Filament]=Named("siren-couture-seam");couture[NativeSirenDetail.Flame]=box;
+            couture[NativeSirenDetail.Seam].NoShadow=true;
             var kept=new List<Part>();foreach(var p in all){if(string.IsNullOrEmpty(p.Name))kept.Add(p);else pieceMeshes.Add(p.Mesh);if(p.Material.mainTexture!=null&&SirenHaloTexture==null)SirenHaloTexture=p.Material.mainTexture;}
             models["siren"]=kept.ToArray();
-            // The eyes and teeth cast no shadow (buildSiren).
-            upper.NoShadow=lower.NoShadow=true;
+            // The eyes and teeth cast no shadow (buildSiren). The dev-siren entrance draws its fangs one by one (NativeSirenFace.cs).
+            upper.NoShadow=lower.NoShadow=true;SirenFangs(data,upper);
             // buildSiren's ink strengths per piece (NativeSourceLit _InkRim, _InkFlow): the claws' CLAW, the tongues' and wisps' TONGUE.
             foreach(var claw in new[]{clawL,clawR}){claw.Material.SetFloat(InkRimId,(float)NativeSirenLook.ClawRim);claw.Material.SetFloat(InkFlowId,(float)NativeSirenLook.ClawFlow);}
             box.Material.SetFloat(InkRimId,(float)NativeSirenLook.TongueRim);box.Material.SetFloat(InkFlowId,(float)NativeSirenLook.TongueFlow);
             foreach(var p in kept)if(p.Material.GetFloat(InkId)>.5f){p.Material.SetFloat(InkRimId,(float)NativeSirenLook.BodyRim);p.Material.SetFloat(InkFlowId,(float)NativeSirenLook.BodyFlow);}
-            SourceSection section=null;foreach(var m in data.models)if(m.id=="siren")foreach(var s in m.sections)if(s.part=="siren-eye")section=s;
+            CoutureInk();SourceSection section=null;foreach(var m in data.models)if(m.id=="siren")foreach(var s in m.sections)if(s.part=="siren-eye")section=s;
             var color=new Color(section.colors[0],section.colors[1],section.colors[2],section.colors[3]);var glow=new Vector4(section.emission[0],section.emission[1],section.emission[2],section.emission[3]);
             var shapes=new Part[2][];var xy=new double[NativeSirenLook.EyeSegments*6];
             for(int side=0;side<2;side++){shapes[side]=new Part[NativeSirenLook.Shapes];for(int k=0;k<NativeSirenLook.Shapes;k++){NativeSirenLook.EyeOutline(side==0?1:-1,k/40.0,xy);var mesh=EyeMesh(xy,color,glow,side,k);pieceMeshes.Add(mesh);shapes[side][k]=new Part{Name="siren-eye",Bone=-1,Mesh=mesh,Material=eye.Material,NoShadow=true};}}
@@ -160,9 +169,27 @@ namespace ChipArena.UnityConversion
                 if(i<NativeSirenLook.EyeHalo)p.Shapes=shapes[i-NativeSirenLook.Eye];
                 else if(i==NativeSirenLook.GrinUpper)p.Part=upper;else if(i==NativeSirenLook.GrinLower)p.Part=lower;
                 else if(i==NativeSirenLook.Claw||i==NativeSirenLook.Claw+1)p.Part=i==NativeSirenLook.Claw?clawL:clawR;
+                else if(i>=NativeSirenLook.Detail)
+                {
+                    // Detail pieces: the tone's box; the glow lines carry their colour as the instance tint, breathing and fading
+                    // with distance (QueuePieces).
+                    int tone=NativeSirenDetail.Tone(i-NativeSirenLook.Detail);p.Part=couture[tone];
+                    if(tone==NativeSirenDetail.Seam||tone==NativeSirenDetail.Filament){NativeSirenDetail.GlowColor(tone,out double r,out double g,out double b);p.Line=true;p.Tone=new Vector4((float)r,(float)g,(float)b,1);}
+                }
                 else if(i>=NativeSirenLook.Wisp)p.Part=box;
             }
             lookPieces["siren"]=list;
+        }
+        // The couture tones' ink strengths (NativeSourceLit _InkRim, _InkFlow) on every model that carries them: the arena
+        // bank's unit boxes and the named batches of the dev-siren entrance and Siren death bakes (tools/export_cinematics.mjs).
+        private void CoutureInk()
+        {
+            string[] names={"siren-couture-plate","siren-couture-deep","siren-couture-sheen","siren-couture-ash"};
+            foreach(var model in models.Values)foreach(var p in model)
+            {
+                if(p.Name==null||!p.Name.StartsWith("siren-couture-")||p.Material==null||p.Material.GetFloat(InkId)<.5f)continue;int tone=Array.IndexOf(names,p.Name);if(tone<0)continue;
+                p.Material.SetFloat(InkRimId,(float)NativeSirenDetail.InkRim[tone]);p.Material.SetFloat(InkFlowId,(float)NativeSirenDetail.InkFlow[tone]);
+            }
         }
         // shapeEye's fan in the bank's frame: x mirrored and each triangle's winding turned over, as the exporter stores models.
         private static Mesh EyeMesh(double[] xy,Color color,Vector4 glow,int side,int shape)
@@ -175,7 +202,7 @@ namespace ChipArena.UnityConversion
         // Queue's Siren pieces, each on its joint under the look (the rest look without one); joints repeat, so each is read once.
         private void QueuePieces(Piece[] list,Matrix4x4 root,Func<int,Matrix4x4> bone,Func<int,bool> visible,int layer,Camera camera,Color bc,Color ac,float opacity,Func<int,float> partOpacity,Func<int,Color> partTint,Vector4? glow,NativeSirenLookPose look)
         {
-            var pose=look??RestLook;int jointBone=int.MinValue;var joint=root;
+            var pose=look??RestLook;int jointBone=int.MinValue;var joint=root;float line=(float)NativeSirenDetail.LineGlow(pose.Breath,pose.GlowDistance);
             foreach(var p in list)
             {
                 var part=p.Shapes!=null?p.Shapes[pose.Shape]:p.Part;if(part==null||!pose.Shown[p.Index]||visible!=null&&!visible(p.Bone))continue;
@@ -183,15 +210,18 @@ namespace ChipArena.UnityConversion
                 var key=(part,layer);if(!draws.TryGetValue(key,out var d)){d=new Draws{Part=part,Layer=layer,Camera=camera};draws.Add(key,d);}
                 // The grin breathes with the eye halos (NativeSirenLook.GrinGlow; the pose's Breath is 1 unless the arena set it).
                 var g=glow??Vector4.one;if(p.Index==NativeSirenLook.GrinUpper||p.Index==NativeSirenLook.GrinLower){float k=(float)NativeSirenLook.GrinGlow(pose.Breath);g.x*=k;g.y*=k;g.z*=k;}
+                else if(p.Line){g.x*=p.Tone.x*line;g.y*=p.Tone.y*line;g.z*=p.Tone.z*line;}
                 d.Matrices.Add(joint*pose.Local[p.Index]);d.Bodies.Add(new Vector4(bc.r,bc.g,bc.b,opacity*(partOpacity?.Invoke(p.Bone)??1)));d.Accents.Add(new Vector4(ac.r,ac.g,ac.b,1));d.Tints.Add(partTint?.Invoke(p.Bone)??Color.white);d.Glows.Add(g);
             }
         }
         // The portraits draw the pieces themselves (their own camera and material).
         public int PortraitPieceCount(string id)=>id!=null&&lookPieces.TryGetValue(id,out var list)?list.Length:0;
-        public bool PortraitPiece(string id,int index,NativeSirenLookPose look,out Mesh mesh,out int bone,out Matrix4x4 local,out Material material)
+        public bool PortraitPiece(string id,int index,NativeSirenLookPose look,out Mesh mesh,out int bone,out Matrix4x4 local,out Material material)=>PortraitPiece(id,index,look,out mesh,out bone,out local,out material,out _);
+        /// <summary>A Siren piece for the portraits, with the emission tint it draws with (the detail's glow lines: their colour).</summary>
+        public bool PortraitPiece(string id,int index,NativeSirenLookPose look,out Mesh mesh,out int bone,out Matrix4x4 local,out Material material,out Vector4 glow)
         {
             var p=lookPieces[id][index];var pose=look??RestLook;var part=p.Shapes!=null?p.Shapes[pose.Shape]:p.Part;
-            mesh=part?.Mesh;material=part?.Material;bone=p.Bone;local=pose.Local[index];return part!=null&&pose.Shown[index];
+            mesh=part?.Mesh;material=part?.Material;bone=p.Bone;local=pose.Local[index];glow=p.Line?p.Tone*(float)NativeSirenDetail.LineGlow(pose.Breath,0):Vector4.one;glow.w=1;return part!=null&&pose.Shown[index];
         }
         private void DisposePieces(){foreach(var mesh in pieceMeshes)CapturedAnimation.Release(mesh);pieceMeshes.Clear();lookPieces.Clear();}
     }
@@ -218,7 +248,9 @@ namespace ChipArena.UnityConversion
             // WeaponLoadout is the arena this frame renders (live or killcam): its Time is the snapshot's authoritative time.
             var state=s.Step(time,s.Delta(time),open,squint,NativeSirenLook.Flare(action,age),a.SourceRanged,forward,a.Alive,WeaponLoadout!=null?WeaponLoadout.Time:time,a.SourceModeAt);
             if(action==null&&s.Swapping(time))SirenSwapBody(rig,a,t,time,state.Ranged,s.Shudder(time));
-            t.Pose.Set(state).SetCharge(action,age,time);t.Pose.Breath=HaloReduced?1:(float)NativeSirenLook.Breath(time);return t.Pose;
+            t.Pose.Set(state).SetCharge(action,age,time);t.Pose.Breath=HaloReduced?1:(float)NativeSirenLook.Breath(time);
+            // The detail's glow lines fade with the viewer's distance (NativeSirenDetail.LineGlow).
+            var eye=sirenLookCamera!=null?sirenLookCamera:Camera.main;t.Pose.GlowDistance=eye!=null&&rig!=null?Vector3.Distance(eye.transform.position,rig.Root.transform.position):0;return t.Pose;
         }
         /// <summary>
         /// stance(t, ranged) through a mode swap: NativeSourceMotion.Pilot snaps the idle clip to the replicated mode, while the

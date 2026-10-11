@@ -12,7 +12,9 @@ class SirenLookChecks(unittest.TestCase):
         cls.siren=next(m for m in resource('SourceModels')['models'] if m['id']=='siren')
     def test_pieces_are_named_sections_in_their_own_frames(self):
         named={s['part']:s for s in self.siren['sections'] if s['part']}
-        self.assertEqual(set(named),{'siren-eye','siren-teeth-upper','siren-teeth-lower','siren-claws-l','siren-claws-r','siren-flame-box'})
+        # The source's pieces, then the Unity finish's unit boxes (tools/siren_design.mjs; Core/NativeSirenDetail.cs places them).
+        couture={'siren-couture-plate','siren-couture-deep','siren-couture-sheen','siren-couture-ash','siren-couture-seam'}
+        self.assertEqual(set(named),{'siren-eye','siren-teeth-upper','siren-teeth-lower','siren-claws-l','siren-claws-r','siren-flame-box'}|couture)
         for name,s in named.items():
             with self.subTest(piece=name):
                 self.assertEqual(s['bone'],-1)
@@ -20,6 +22,12 @@ class SirenLookChecks(unittest.TestCase):
         # One unit box serves every tongue step and wisp; the eye is a unit oval (its brow cuts are rebuilt natively).
         box=named['siren-flame-box']['positions'];self.assertEqual(len(box),24*3);self.assertAlmostEqual(max(map(abs,box)),.5,6)
         eye=named['siren-eye']['positions'];self.assertEqual(len(eye),120*3);self.assertAlmostEqual(max(abs(v) for v in eye[0::3]),1,5)
+        for name in couture:
+            with self.subTest(part=name):
+                p=named[name]['positions'];self.assertEqual(len(p),24*3);self.assertAlmostEqual(max(map(abs,p)),.5,6)
+                self.assertTrue(all(w==0 for w in named[name]['emission'][3::4]),'couture parts take no body or accent tint')
+        # The finer grin (13 upper and 12 lower fangs, 5 triangles each) replaces the source's 11 and 10 single triangles.
+        self.assertEqual(len(named['siren-teeth-upper']['indices']),13*5*3);self.assertEqual(len(named['siren-teeth-lower']['indices']),12*5*3)
     def test_static_batches_hold_no_piece(self):
         static=[s for s in self.siren['sections'] if not s['part']]
         # Joint batches plus the shadow pool; the world-space flame pool (420 collapsed cubes) is no longer exported.
