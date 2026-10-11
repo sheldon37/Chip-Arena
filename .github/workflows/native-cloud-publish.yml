@@ -97,6 +97,20 @@ jobs:
           git -C native-channel config user.name 'github-actions[bot]'
           git -C native-channel config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           python automation/native-publish/tools/auto_publish.py publish --work "$RUNNER_TEMP/native-delivery" --channel "$GITHUB_WORKSPACE/native-channel"
+      - name: Prepare the updater-ready player download
+        id: player_download
+        if: steps.build.outputs.ready == 'true' && (github.event_name != 'workflow_dispatch' || inputs.mode == 'publish')
+        env:
+          UNITY_SERVICE_KEY_ID: ${{ secrets.UNITY_SERVICE_KEY_ID }}
+          UNITY_SERVICE_SECRET: ${{ secrets.UNITY_SERVICE_SECRET }}
+          GH_TOKEN: ${{ github.token }}
+        run: python automation/native-publish/tools/publish_player_download.py prepare --work "$RUNNER_TEMP/native-player-download"
+      - name: Publish and verify the direct Windows download
+        if: steps.player_download.outputs.ready == 'true' && (github.event_name != 'workflow_dispatch' || inputs.mode == 'publish')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NATIVE_FEED_TOKEN: ${{ secrets.NATIVE_FEED_TOKEN }}
+        run: python automation/native-publish/tools/publish_player_download.py publish --work "$RUNNER_TEMP/native-player-download"
       - name: Keep diagnostic logs in the private game repository
         if: always() && (steps.build.outcome != 'skipped' || steps.prepare.outcome != 'skipped')
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -107,5 +121,6 @@ jobs:
             ${{ runner.temp }}/native-delivery/build-failure.json
             ${{ runner.temp }}/native-delivery/delivery/build.log
             ${{ runner.temp }}/native-delivery/publication.json
+            ${{ runner.temp }}/native-player-download/player-download.json
           if-no-files-found: ignore
           retention-days: 7

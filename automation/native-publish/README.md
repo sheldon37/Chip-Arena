@@ -9,6 +9,29 @@ and native test channel remain unchanged. The scripts here retrieve the complete
 cloud delivery, validate it and publish to the existing `native/windows-x64`
 subtree of `sheldon37/chip-arena-test-updates`. Electron `feed/` is preserved.
 
+## Player download
+
+Players use the **Chip-Arena-Windows.zip** asset on the newest native test build at
+<https://github.com/sheldon37/chip-arena-test-updates/releases>. Extract the ZIP,
+open **Chip Arena**, and run **Chip Arena.exe**. The configured Update Game button
+works from the first launch. Distribute this asset directly; Unity's raw export
+contains a standalone player that cannot update itself. The technical cloud
+archive is an automation input, not the player installation.
+
+After the native feed passes its existing public-download verification, the
+publisher validates the matching Unity delivery again and uploads its clean ZIP
+as a draft GitHub prerelease in the existing test repository. It checks GitHub's
+asset SHA-256/size, publishes, then downloads it without credentials and compares
+all bytes via SHA-256 before recording success. Source archives, logs, feed parts
+and technical bundles are not release assets. Releases are explicitly test builds.
+
+The existing Contents-write `NATIVE_FEED_TOKEN` is sufficient; no new hosting,
+Unity build, permission or player setup is needed. Unity credentials are used only
+in the read-only preparation step. Publication uses the scoped feed credential.
+Already verified releases skip repeat downloads. Interrupted draft/upload/public
+verification work resumes without replacing any existing asset; a conflicting
+asset stops with an error. Old test releases and the Electron feed stay intact.
+
 ## One-time browser setup
 
 1. Merge the automation-only PR into `sheldon37/Chip-Arena` **main**. GitHub
