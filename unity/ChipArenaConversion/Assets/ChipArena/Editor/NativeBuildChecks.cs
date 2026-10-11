@@ -95,7 +95,7 @@ namespace ChipArena.UnityConversion.Editor
                     throw new InvalidOperationException("NativeAccount declares an invalid Unity Start callback");
             NativeSourceModels.ValidateTextureImports();
             var asset=Resources.Load<TextAsset>("GameContent");if(asset==null)throw new Exception("Missing native GameContent asset");
-            var data=JsonUtility.FromJson<ConversionContent>(asset.text);NativeUnityMapLoader.Load(data);
+            var data=JsonUtility.FromJson<ConversionContent>(asset.text);NativeUnityMapLoader.Load(data);CheckLegacyMapDefaults(data);
             var fixtures=JsonUtility.FromJson<ParityFixtures>(File.ReadAllText(Path.Combine(Application.dataPath,"../Tests/source-parity.json")));
             foreach(var test in NativeParityChecks.Run(data,fixtures))Debug.Log("PASS "+test);
             var presentation=JsonUtility.FromJson<PresentationFixtures>(File.ReadAllText(Path.Combine(Application.dataPath,"../Tests/presentation-parity.json")));

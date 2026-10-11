@@ -11,7 +11,30 @@ internal static class BrickfallChecks
         void Check(bool ok,string why){if(!ok)throw new Exception("Brickfall: "+why);}
         var opts=new JsonSerializerOptions{IncludeFields=true};string text=File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json"));
         var data=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),opts);
+        // JsonUtility can instantiate omitted inline classes; System.Text.Json leaves them null.
+        // Model both null and empty nested arrays so the managed suite catches the native load failure.
+        for(int i=0;i<data.maps.Length;i++)
+        {
+            var old=data.maps[i];old.bounds=new MapBounds();old.nav=new MapNav();old.spawns=new MapSpawns();
+            if(i%2==1){old.spawns.ffa=Array.Empty<MapSpawn>();old.spawns.teams=Array.Empty<MapTeamSpawns>();old.nav.nodes=Array.Empty<MapNavNode>();old.nav.links=Array.Empty<MapNavLink>();}
+        }
         NativeMapRules.Merge(data,JsonSerializer.Deserialize<UnityMapContent>(text,opts),text);var map=data.Map("brickfall");
+        var legacySeats=Enumerable.Range(0,8).Select(i=>new NativeSeat{id=i+1,team=i%2}).ToArray();
+        foreach(var old in data.maps.Where(m=>!m.unity))
+        {
+            foreach(bool teams in new[]{false,true})for(int i=0;i<8;i++)
+            {
+                var spawn=NativeMapRules.Spawn(data,old,legacySeats,i,teams);var expected=data.spawns[i];
+                Check((spawn.pos-expected).Length<.001&&Math.Abs(spawn.yaw-Math.Atan2(-expected.x,-expected.z)*180/Math.PI)<.001,"legacy spawn/yaw "+old.id);
+            }
+            Check(old.spawns==null&&old.nav==null&&old.bounds==null,"legacy inline defaults "+old.id);
+            Check((NativeMapRules.Clamp(old,new V3(100,4,-100))-new V3(31,4,-27)).Length<.001,"legacy player bounds "+old.id);
+            Check((NativeMapRules.Clamp(old,new V3(-100,4,100),true)-new V3(-28,4,24)).Length<.001,"legacy bot bounds "+old.id);
+        }
+        var malformed=JsonSerializer.Deserialize<UnityMapContent>(text,opts).maps[0];malformed.spawns=new MapSpawns();bool rejected=false;
+        try{NativeMapRules.Validate(malformed);}catch(InvalidOperationException){rejected=true;}
+        Check(rejected,"missing authored Unity spawn table silently accepted");
+        Console.WriteLine("PASS legacy map loading: omitted inline defaults, 15 maps / 240 FFA-team spawns, player/bot bounds; invalid Unity spawns rejected");
         Check(data.maps.Length==16&&data.maps.Count(m=>m.rotation)==legacy.maps.Count(m=>m.rotation)&&!map.rotation,"old maps or rotation changed");
         Check(data.contentRevision.Length==64&&data.contentRevision!=NativeMapRules.Revision(text+" "),"revision not byte sensitive");
         Check(!NativeMapRules.Compatible(5,data.sourceCommit,data.contentRevision,data)&&!NativeMapRules.Compatible(6,data.sourceCommit,null,data)&&!NativeMapRules.Compatible(6,data.sourceCommit,NativeMapRules.Revision(text+" "),data)&&NativeMapRules.Compatible(6,data.sourceCommit,data.contentRevision,data),"old/mismatched join compatibility");

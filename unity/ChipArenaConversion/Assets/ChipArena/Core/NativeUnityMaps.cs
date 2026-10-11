@@ -26,6 +26,11 @@ namespace ChipArena.UnityConversion
         {
             if(u==null||u.schema!=1||u.maps==null||u.materials==null)throw new InvalidOperationException("Invalid UnityMaps schema");
             if(c.maps.Any(m=>m.unity))throw new InvalidOperationException("UnityMaps already loaded");
+            // GameContent's legacy maps use global spawns/bounds and the legacy bot path.
+            // JsonUtility can create empty inline objects for these absent supplemental fields.
+            // Normalize at the shared load boundary so every runtime/build-check consumer agrees.
+            // Authored UnityMaps below still require their own validated tables and bounds.
+            foreach(var m in c.maps){m.bounds=null;m.spawns=null;m.nav=null;m.segments=null;m.pilotBlocks=null;}
             c.contentRevision=Revision(text);c.materials=c.materials.Concat(u.materials).ToArray();
             if(c.materials.Select(m=>m.id).Distinct().Count()!=c.materials.Length)throw new InvalidOperationException("Duplicate material");
             foreach(var m in u.maps){m.unity=true;Validate(m);}
