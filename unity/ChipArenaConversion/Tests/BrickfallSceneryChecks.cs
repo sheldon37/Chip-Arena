@@ -10,7 +10,7 @@ namespace ChipArena.UnityConversion
     // sweep; the train, jibs, birds and smoke are pure functions of the clock that never enter the arena; atmosphere counts
     // follow quality (shafts at every quality), pigeons scatter and return without jumps and the killcam reads the same memory,
     // paper scraps keep to their street runs and fade at props, the collapse dust is a thin haze above head height that never
-    // contains the eye and shares the 120-billboard cap, the dust coat resets with the round; the frame builder allocates
+    // contains the eye and shares the 120-billboard cap (the dust coat is the round's one NativeDustCoat); the frame builder allocates
     // nothing; and the runtime hooks, dormancy, draw layer, point-light masks and draw rules are in place.
     internal static class BrickfallSceneryChecks
     {
@@ -20,7 +20,7 @@ namespace ChipArena.UnityConversion
         public static void Run(string root)
         {
             Backdrop();Moving();Atmosphere();Fx();Hooks(root);
-            Console.WriteLine("PASS brickfall scenery ("+count+" checks: deterministic five-sector city outside the slab triangle by triangle with only ground plates inside x ±34 / z ±30, ground to the slab edge, menu plate, menu orbit and crane sweeps clear, §3.10 palette; train schedule, direction and viaduct span, jib slew clear of the arena, aviation flashes, birds and smoke outside; quality counts, round start, motes, scraps in their street runs and faded at props, pigeons scatter/return/continuity/killcam memory, tarps, shafts at every quality, collapse dust haze (opacity, height, eye fade, shared cap) and dust coat; allocation-free frame builder; runtime hooks, backdrop layer, point-light masks and draw rules)");
+            Console.WriteLine("PASS brickfall scenery ("+count+" checks: deterministic five-sector city outside the slab triangle by triangle with only ground plates inside x ±34 / z ±30, ground to the slab edge, menu plate, menu orbit and crane sweeps clear, §3.10 palette; train schedule, direction and viaduct span, jib slew clear of the arena, aviation flashes, birds and smoke outside; quality counts, round start, motes, scraps in their street runs and faded at props, pigeons scatter/return/continuity/killcam memory, tarps, shafts at every quality, collapse dust haze (opacity, height, eye fade, shared cap); one structure hook for pigeons, drift and the dust coat; allocation-free frame builder; runtime hooks, backdrop layer, point-light masks and draw rules)");
         }
         private static bool TriangleEnters(float[] p,int a,int b,int c,double rx,double rz)
         {
@@ -167,12 +167,9 @@ namespace ChipArena.UnityConversion
             Check(tarps,"tarps hang above 4 m within a metre of the frontage");
             for(int i=0;i<NativeBrickfallAtmosphere.Shafts;i++){NativeBrickfallAtmosphere.Shaft(i,i*7.3,out double x,out double y,out double z,out double l,out double w,out double al);Check(Math.Abs(x)<30&&Math.Abs(z)<26&&y>3&&l>w&&al>0&&al<.13,"shaft "+i+" hangs in the arena air");}
             Check(NativeBrickfallAtmosphere.ShaftView(.5,0)==0&&NativeBrickfallAtmosphere.ShaftView(10,1)==0&&NativeBrickfallAtmosphere.ShaftView(10,0)==1,"shafts fade near the eye and edge-on");
-            // Collapse dust and the dust coat.
-            var dust=new NativeBrickfallMemory();Near(NativeBrickfallAtmosphere.DustCoat(dust,100,0),0,"no dust coat before a collapse");
-            dust.Collapse(50,0,0,0,8,1);dust.Collapse(50,0,0,0,8,1);Check(dust.CollapseCount==1,"a landing fed twice counts once");
-            double c0=NativeBrickfallAtmosphere.DustCoat(dust,50,0),c1=NativeBrickfallAtmosphere.DustCoat(dust,54,0),c2=NativeBrickfallAtmosphere.DustCoat(dust,70,0);Check(c0==0&&c1>0&&c2>c1&&c2<1,"the dust coat rises as a landing settles");
-            Near(NativeBrickfallAtmosphere.DustCoat(dust,49,0),0,"a killcam frame before the landing has no dust coat");Near(NativeBrickfallAtmosphere.DustCoat(dust,70,60),0,"a rebuilt round starts clean");
-            for(int k=0;k<40;k++)dust.Collapse(60+k,k,0,0,6,.5);Check(dust.CollapseCount==NativeBrickfallMemory.Collapses&&NativeBrickfallAtmosphere.DustCoat(dust,200,0)<1,"landings are capped and the coat saturates below 1");
+            // Collapse dust (the dust coat is the round's one NativeDustCoat now: BlockLookChecks).
+            var dust=new NativeBrickfallMemory();dust.Collapse(50,0,0,0,8,1);dust.Collapse(50,0,0,0,8,1);Check(dust.CollapseCount==1,"a landing fed twice counts once");
+            for(int k=0;k<40;k++)dust.Collapse(60+k,k,0,0,6,.5);Check(dust.CollapseCount==NativeBrickfallMemory.Collapses,"landings are capped");
             NativeBrickfallAtmosphere.DustPuff(1,3,0,0,0,8,1,2,out double dx0,out _,out _,out _,out double da0);NativeBrickfallAtmosphere.DustPuff(1,3,0,0,0,8,1,12,out double dx1,out _,out _,out _,out double da1);
             Check(Math.Abs((dx1-dx0)-10*NativeBrickfallAtmosphere.DustDrift)<1.3&&da0>da1&&da1>0,"collapse dust drifts east at 0.7 m/s and thins");
             NativeBrickfallAtmosphere.DustPuff(1,3,0,0,0,8,1,NativeBrickfallAtmosphere.DustLife,out _,out _,out _,out _,out double daEnd);Near(daEnd,0,"collapse dust is gone after its life");
@@ -187,7 +184,7 @@ namespace ChipArena.UnityConversion
             Check(high,"after 4 s every drift puff hangs clear of the 0-2.5 m band (centre 2.5 m + .3 x its size above the landing)");
             bool inside=true;foreach(double size in new[]{1.5,4,6.5,12,24})for(double d=0;d<=size/2;d+=.05)if(NativeBrickfallAtmosphere.DustNear(d,size)!=0)inside=false;
             Check(inside&&NativeBrickfallAtmosphere.DustNear(2.99,2)==0&&NativeBrickfallAtmosphere.DustNear(4.51,2)==1&&NativeBrickfallAtmosphere.DustNear(12.01,16)==1,"a drift puff that contains the eye, or is within 3 m of it, is fully faded");
-            Check(NativeBrickfallAtmosphere.DustCoatGlobal=="_ArenaDustCoat","the dust coat shader global");
+            Check(NativeDustCoat.Global=="_ArenaDustCoat","the dust coat shader global belongs to the round's one coat");
         }
         private static void Fx()
         {
@@ -254,7 +251,8 @@ namespace ChipArena.UnityConversion
             Check(p.Contains("BrickfallCover(arena);DrawBrickfall(")&&p.Contains("cover.Add(m.m03-ex,m.m13-ey,m.m23-ez,m.m03+ex,m.m13+ey,m.m23+ez)")&&p.Contains("foreach(var p in arena.Props)"),"the scraps' cover is refilled from the drawn arena's props each frame");
             Check(p.Contains("public int BrickfallDustInUse;")&&p.Contains("roundStart,BrickfallDustInUse);"),"the drift dust hears the dust wall's billboard count");
             Check(p.Contains("arena.ReplicaScene.IsValid()")&&p.Contains("PresentationClock(arena)")&&p.Contains("e.Kind==EventKind.Explosion"),"the arena clock, the killcam memory rule and explosions feed the pigeons");
-            Check(p.Contains("Shader.SetGlobalFloat(DustCoatId,value)")&&p.Contains("public void BrickfallStructure(NativeArena arena,NativeBrickfallCue cue,Vector3 position,float radius,float amount,float time)"),"the dust coat global and the structure hook");
+            string dressing=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeArenaDressing.cs"));
+            Check(!p.Contains("SetGlobalFloat")&&p.Contains("public void BrickfallStructure(NativeArena arena,NativeBrickfallCue cue,Vector3 position,float radius,float amount,float time)")&&dressing.Contains("BrickfallStructure(arena,cue==NativeStructureCue.Stress?NativeBrickfallCue.Stress:")&&dressing.Contains("if(cue==NativeStructureCue.Land)dustCoat.Land(time,position.x,position.z,radius,amount);")&&dressing.Contains("coat.At(now);Publish(coat.Wide);"),"one structure hook feeds the pigeons, the drift and the round's one dust coat, which only the dressing publishes");
             foreach(var f in new[]{"NativeSceneryBuilder.cs","NativeBrickfallScenery.cs","NativeBrickfallAtmosphere.cs","NativeBrickfallFx.cs"})Check(!File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core",f)).Contains("UnityEngine"),f+" is engine-free Core");
         }
     }

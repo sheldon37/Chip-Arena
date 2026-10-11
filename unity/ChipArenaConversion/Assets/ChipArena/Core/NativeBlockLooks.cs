@@ -7,8 +7,9 @@ namespace ChipArena.UnityConversion
     /// Arena blocks drawn through Resources/NativeBlockLit.shader by NativeArenaDressing (ARENA_PROPOSAL.md 2.2 "Block geometry"
     /// and "Surfaces", 2.3, 2.4). The rules the runtime, the shader and the checks share: the look keys (their index is the
     /// shader's LOOK_* id), look selection from MapLooks.json, damage stages, per-block seeds and mesh variants, the bevelled
-    /// stage meshes and the vertex lattice the shader expands them with, the draw budget, the blast-flash fall-off and the
-    /// dust coat. Pure; Build allocates once per stage mesh, nothing else allocates.
+    /// stage meshes and the vertex lattice the shader expands them with, the draw budget, the blast-flash fall-off, the band
+    /// lamp (<see cref="Lamp"/>) and the round's one dust coat (<see cref="NativeDustCoat"/>). Pure; Build allocates once per
+    /// stage mesh, nothing else allocates.
     /// <list type="bullet">
     /// <item>Selection (<see cref="Resolve"/>): the map's blockLooks, then MapLooks.json's dev `preview` list, then the material's
     /// default look. Within a list an exact block id wins, then the first glob in list order that matches (`*` matches any
@@ -16,8 +17,8 @@ namespace ChipArena.UnityConversion
     /// "material:brick" entry. A listed look takes the entry's
     /// `color`, else the look's palette colour (3.10); a material default keeps the block's own content colour, so a dev
     /// preview on an old map keeps today's colours under the new surfaces. `band` paints the 2.3 load-bearing chevrons and
-    /// the DANGER tag, fitted to the block's height (<see cref="BandFit"/>); the dust coat mostly spares them
-    /// (<see cref="BandCoatKeep"/>) and a stub (S3) or a loose fragment shows neither.</item>
+    /// the DANGER tag, fitted to the block's height (<see cref="BandFit"/>), and the band lamp at the band's middle; the dust
+    /// coat mostly spares them (<see cref="BandCoatKeep"/>) and a stub (S3) or a loose fragment shows none of them.</item>
     /// <item>Stages (3.9, 5.3): health over the block's stage scale (<see cref="StageMax"/>: 5.2's per-block `hp` and
     /// `stages` once ConversionContent carries them, today its material's durability and 66/33%). S0 above the first
     /// threshold, S1 down to the second, S2 above 0, S3 at 0 (a 24% stub; only a prop the sim keeps at 0 health shows it: no
@@ -39,9 +40,10 @@ namespace ChipArena.UnityConversion
         public static readonly int[] Palette={-1,0x9C4A30,0xB8774E,0xE3C9A0,0x8F8A80,0x3E6B5A,0xB4834F,0x2B2A2E,0x3A3836,0x6B625A,0x6E8F96,0x4FA8FF,0x7D8478,0xF4B321};
         public const int Plain=0,BrickRed=1,BrickBuff=2,Terracotta=3,ConcreteBoard=4,SteelGreen=5,Timber=6,Tar=7,Asphalt=8,Cobble=9,WindowLit=10,Neon=11,Corrugated=12,Demolition=13;
         /// <summary>Per-instance flags (bits of the shader's flags value): the 2.3 chevron band and the DANGER tag (each drawn only
-        /// with its own bit, so a look never implies the tag), a fragment (fresh break tint), window strobe and dark (the
-        /// telegraph layer's; nothing sets them yet), and the mesh's 180-degree turns.</summary>
-        public const int Band=1,Tag=2,Fragment=4,Strobe=8,Dark=16,SpinY=32,SpinZ=64;
+        /// with its own bit, so a look never implies the tag), a fragment (fresh break tint), the band lamp lit amber or red this
+        /// frame (<see cref="Lamp"/>; neither: the lamp is dark), and the mesh's 180-degree turns. The window light of the 3.9
+        /// telegraph is not a flag: NativeArenaDressing sends it per instance (_BlockColor.w, NativeStructureFx.TelegraphAt).</summary>
+        public const int Band=1,Tag=2,Fragment=4,LampAmber=8,LampRed=16,SpinY=32,SpinZ=64;
         /// <summary>The chamfer (m, 4-6 cm in 2.2), its clamp share of a half extent, the corner darkening's reach in chamfers (30 cm).</summary>
         public const float Chamfer=.05f,ClampShare=.42f,Inner=6;
         /// <summary>Bevel highlight, corner darkening and the vertex colour scale they are stored at (the shader multiplies by 1/ShadeStore).</summary>
@@ -52,9 +54,14 @@ namespace ChipArena.UnityConversion
         /// BandMax (BandShare of the flat face) centred on the block. The DANGER tag plate: half height, gap to the band, the
         /// clearance it keeps from a bevel, and the half width a face needs for it (the plate is .28 m each side).</summary>
         public const float BandLow=1,BandHigh=1.6f,BandFullMin=1.9f,BandMax=.6f,BandShare=.8f,TagHalf=.12f,TagGap=.08f,TagClear=.02f,TagMinHalfWidth=.3f;
-        /// <summary>The share of the dust coat the band and the tag keep (2.1 rule 4: telegraphs are never reduced; the rest of
-        /// the coat greys the face around them).</summary>
+        /// <summary>The share of the dust coat the band, the tag and the lamp keep (2.1 rule 4: telegraphs are never reduced; the
+        /// rest of the coat greys the face around them).</summary>
         public const float BandCoatKeep=.1f;
+        /// <summary>The 2.3 band lamp NativeBlockLit draws at the middle of the band on each side face (m): the lens and its dark
+        /// housing ring, and its glow over the lens colour (amber #FFB000, danger red #D6332A). How long the members stay locked
+        /// after FightAt (3.9 fairness rule 1), which the amber lamp shows.</summary>
+        public const float LampLens=.055f,LampHousing=.075f,LampGlow=1.5f,LockSeconds=4;
+        public const int LampAmberColor=0xFFB000,LampRedColor=0xD6332A;
         /// <summary>Instances per draw (one D3D11 constant buffer holds 500 of the shader's per-instance block) and the arena's draw budget (2.4).</summary>
         public const int Chunk=500,DrawBudget=60,Stages=4;
 
@@ -138,6 +145,20 @@ namespace ChipArena.UnityConversion
             float above=high+TagGap+TagHalf,below=low-TagGap-TagHalf;
             tag=above+TagHalf<=height-c-TagClear?above:below-TagHalf>=c+TagClear?below:-1;
         }
+        /// <summary>
+        /// The band lamp's flag for a banded member this frame (2.3: "locked (the first 4 s of each fight); it goes dark once armed
+        /// and strobes red at the last damage stage"): red while <paramref name="redOn"/> (NativeStructureFx.LampStrobe's 4 Hz on
+        /// the presentation clock, so host, guests and the killcam blink together) at S2 or while the member's segment telegraph
+        /// holds (3.9; never reduced), else amber while <paramref name="locked"/>, else dark. A stub (S3) has no band and no lamp.
+        /// </summary>
+        public static int Lamp(int stage,bool stressed,bool locked,bool redOn)=>stage==3?0:stage==2||stressed?(redOn?LampRed:0):locked?LampAmber:0;
+        /// <summary>
+        /// Whether the members are locked (the amber lamp): before the fight (countdown, draft, intro) and for its first
+        /// <see cref="LockSeconds"/> after FightAt, on the replicated match clock. This mirrors 3.9 fairness rule 1 as written;
+        /// the sim's arm delay is Astra's (5.4 makes it a pure Core function of round, FightAt and time), and this should switch
+        /// to that function once it exists (Astra has not built the lock yet).
+        /// </summary>
+        public static bool Locked(NativePhase phase,double fightAt,double now)=>phase==NativePhase.Countdown||phase==NativePhase.Draft||phase==NativePhase.Intro||phase==NativePhase.Fight&&now<fightAt+LockSeconds;
         /// <summary>FNV-1a of the block id: the same on the host, guests and the killcam, since every frame carries the id.</summary>
         public static uint Hash(string id){uint h=2166136261;if(id!=null)foreach(char c in id){h^=c;h*=16777619;}return h;}
         public static float Seed(string id)=>(Hash(id)&0xFFFFFF)/16777216f;
@@ -253,28 +274,92 @@ namespace ChipArena.UnityConversion
         }
     }
     /// <summary>
-    /// The dust coat (2.2 "a dust-coat grid", 3.10 "a dust coat that greys nearby surfaces as the round goes on"): a 2 m grid
-    /// over x and z within ±48 m that every Break and Collapse event dusts (PerBreak at the event, falling off linearly to
-    /// Radius), capped at Cap and cleared each round. NativeArenaDressing samples it at each block's centre into the
-    /// instance's dust amount; MapLooks `blocks.dust` adds a map-wide base in the shader. Allocation-free after construction.
+    /// The arena's one dust coat for the round (2.2 "a dust-coat grid", 3.10 "a dust coat that greys nearby surfaces as the round
+    /// goes on"): the only coat NativeBlockLit reads. Fed on the match clock; every entry is idempotent on (time, place), so an
+    /// event fed again (the killcam's replay arena, an event buffer re-read after a rewind) never doubles:
+    /// <list type="bullet">
+    /// <item><see cref="Break"/>: every Break and Collapse event on a dressed map (NativeArenaDressing's intake from the live
+    /// arena, also while the killcam draws): <see cref="PerBreak"/> at the event, falling off linearly to <see cref="Radius"/>,
+    /// on a 2 m grid within ±48 m, each cell capped at <see cref="Cap"/>.</item>
+    /// <item><see cref="Land"/>: every structure landing (StructureLand on Brickfall and the dev Sandbox collapse preview, both
+    /// through the destruction kit and ArenaPresentation.StructureHeard): a local coat of <see cref="LandLocal"/> × (.4 + .6
+    /// energy) out to <see cref="LandReach"/> × its radius (6-14 m, the dust wall's reach) and the map-wide level 1 - exp(-Σ
+    /// <see cref="LandWide"/> × (.4 + .6 energy)) (the curve the atmosphere published on its own before), both settling in over
+    /// <see cref="Settle"/> s as the dust wall thins.</item>
+    /// </list>
+    /// Reads are at a clock (<see cref="At"/>): only entries at or before it count, so the killcam, replaying a past moment on
+    /// the same match clock, shows the coat as it was then; a later clock stamps the new entries, an earlier one rebuilds the
+    /// grid (at most <see cref="BreakSlots"/> stamps). Outputs: <see cref="Wide"/> (published as the <see cref="Global"/> shader
+    /// value, 0..1) and <see cref="Local"/> at a block's centre (the instance's dust, at most <see cref="Cap"/>). NativeBlockLit
+    /// adds MapLooks `blocks.dust`, <see cref="WideShare"/> × Wide and Local, weighs the sum by face (tops 1, sides .55) and
+    /// keeps a tenth of it on the band, tag and lamp (<see cref="NativeBlockLooks.BandCoatKeep"/>). Cleared at each round
+    /// rebuild (NativeArenaDressing: a new live arena or generation). Past the slots the oldest entries fold into a base that
+    /// every clock sees (only after 512 breaks or 16 landings in one round, long before any killcam window). Allocation-free
+    /// after construction.
     /// </summary>
     public sealed class NativeDustCoat
     {
-        public const float Cell=2,Extent=48,PerBreak=.12f,Radius=6,Cap=.8f;public const int Size=48;
-        private readonly float[] grid=new float[Size*Size];
-        public void Clear()=>Array.Clear(grid,0,grid.Length);
-        public void Add(float x,float z,float amount=PerBreak,float radius=Radius)
+        public const float Cell=2,Extent=48,PerBreak=.12f,Radius=6,Cap=.8f,LandLocal=.3f,LandReach=1.6f,LandReachMin=6,LandReachMax=14,WideShare=.6f;
+        public const double Settle=8,LandWide=.22;public const int Size=48,BreakSlots=512,LandSlots=16;
+        /// <summary>The map-wide level's shader global (0..1; NativeArenaDressing publishes 0 while no dressed map is drawn).</summary>
+        public const string Global="_ArenaDustCoat";
+        private readonly float[] grid=new float[Size*Size],baseGrid=new float[Size*Size];
+        private readonly double[] breakAt=new double[BreakSlots];private readonly float[] breakX=new float[BreakSlots],breakZ=new float[BreakSlots];private readonly bool[] stamped=new bool[BreakSlots];private int breaks,nextBreak;
+        private readonly double[] landAt=new double[LandSlots];private readonly float[] landX=new float[LandSlots],landZ=new float[LandSlots],landReach=new float[LandSlots],landWeight=new float[LandSlots],settled=new float[LandSlots];private int lands,nextLand;
+        private double clock=double.NegativeInfinity,baseSum;
+        /// <summary>The map-wide level at the last <see cref="At"/> clock (0..1).</summary>
+        public float Wide{get;private set;}
+        public int Breaks=>breaks;public int Lands=>lands;
+        public void Clear(){Array.Clear(grid,0,grid.Length);Array.Clear(baseGrid,0,baseGrid.Length);breaks=nextBreak=lands=nextLand=0;baseSum=0;clock=double.NegativeInfinity;Wide=0;}
+        /// <summary>A Break or Collapse at (x, z) at match time `time`; false when it is already in (or not a number).</summary>
+        public bool Break(double time,float x,float z)
         {
-            if(!(radius>0)||!(amount>0))return;int x0=Index(x-radius),x1=Index(x+radius),z0=Index(z-radius),z1=Index(z+radius);
-            for(int i=x0;i<=x1;i++)for(int j=z0;j<=z1;j++){float cx=(i+.5f)*Cell-Extent,cz=(j+.5f)*Cell-Extent,d=(float)Math.Sqrt((cx-x)*(cx-x)+(cz-z)*(cz-z));if(d>=radius)continue;int k=i*Size+j;grid[k]=Math.Min(Cap,grid[k]+amount*(1-d/radius));}
+            if(!Valid(time,x,z))return false;for(int i=0;i<breaks;i++)if(Same(breakAt[i],breakX[i],breakZ[i],time,x,z))return false;
+            int k;if(breaks<BreakSlots)k=breaks++;else{k=nextBreak;nextBreak=(nextBreak+1)%BreakSlots;Stamp(baseGrid,breakX[k],breakZ[k],PerBreak,Radius);if(!stamped[k])Stamp(grid,breakX[k],breakZ[k],PerBreak,Radius);}
+            breakAt[k]=time;breakX[k]=x;breakZ[k]=z;stamped[k]=false;return true;
         }
-        /// <summary>Bilinear between cell centres; 0 outside the grid.</summary>
+        /// <summary>A structure landing at (x, z) at `time`, its radius (m) and energy (0..1); false when it is already in.</summary>
+        public bool Land(double time,float x,float z,float radius,float energy)
+        {
+            if(!Valid(time,x,z))return false;for(int i=0;i<lands;i++)if(Same(landAt[i],landX[i],landZ[i],time,x,z))return false;
+            int k;if(lands<LandSlots)k=lands++;else{k=nextLand;nextLand=(nextLand+1)%LandSlots;baseSum+=LandWide*landWeight[k];Stamp(baseGrid,landX[k],landZ[k],LandLocal*landWeight[k],landReach[k]);Stamp(grid,landX[k],landZ[k],LandLocal*landWeight[k],landReach[k]);}
+            float e=energy>0?Math.Min(1,energy):0,r=radius>0?radius:0;
+            landAt[k]=time;landX[k]=x;landZ[k]=z;landWeight[k]=.4f+.6f*e;landReach[k]=Math.Max(LandReachMin,Math.Min(LandReachMax,r*LandReach));settled[k]=0;return true;
+        }
+        /// <summary>Moves the coat to the clock `now`: stamps the breaks due by then (rebuilding first when the clock went back)
+        /// and settles the landings, which sets <see cref="Wide"/> and what <see cref="Local"/> returns.</summary>
+        public void At(double now)
+        {
+            if(double.IsNaN(now))return;
+            if(now<clock-1e-3){Array.Copy(baseGrid,grid,grid.Length);Array.Clear(stamped,0,breaks);}
+            for(int i=0;i<breaks;i++)if(!stamped[i]&&breakAt[i]<=now){Stamp(grid,breakX[i],breakZ[i],PerBreak,Radius);stamped[i]=true;}
+            clock=now;double sum=baseSum;
+            for(int k=0;k<lands;k++){float s=landAt[k]<=now?(float)Smooth((now-landAt[k])/Settle):0;settled[k]=s;sum+=LandWide*landWeight[k]*s;}
+            Wide=(float)(1-Math.Exp(-sum));
+        }
+        /// <summary>The coat at a block centre (x, z) at the last <see cref="At"/> clock: the break grid plus the settling
+        /// landings' local coat, at most <see cref="Cap"/>.</summary>
+        public float Local(float x,float z)
+        {
+            float g=Sample(x,z);
+            for(int k=0;k<lands;k++){float s=settled[k];if(!(s>0))continue;float dx=x-landX[k],dz=z-landZ[k],d=(float)Math.Sqrt(dx*dx+dz*dz);if(d<landReach[k])g+=LandLocal*landWeight[k]*(1-d/landReach[k])*s;}
+            return Math.Min(Cap,g);
+        }
+        /// <summary>The break grid alone, bilinear between cell centres; 0 outside the grid.</summary>
         public float Sample(float x,float z)
         {
             float fx=(x+Extent)/Cell-.5f,fz=(z+Extent)/Cell-.5f;if(!(fx>-1&&fz>-1&&fx<Size&&fz<Size))return 0;int ix=(int)Math.Floor(fx),iz=(int)Math.Floor(fz);float tx=fx-ix,tz=fz-iz;
-            return Lerp(Lerp(At(ix,iz),At(ix+1,iz),tx),Lerp(At(ix,iz+1),At(ix+1,iz+1),tx),tz);
+            return Lerp(Lerp(GridAt(ix,iz),GridAt(ix+1,iz),tx),Lerp(GridAt(ix,iz+1),GridAt(ix+1,iz+1),tx),tz);
         }
-        private float At(int i,int j)=>i<0||j<0||i>=Size||j>=Size?0:grid[i*Size+j];
+        private static void Stamp(float[] cells,float x,float z,float amount,float radius)
+        {
+            if(!(radius>0)||!(amount>0))return;int x0=Index(x-radius),x1=Index(x+radius),z0=Index(z-radius),z1=Index(z+radius);
+            for(int i=x0;i<=x1;i++)for(int j=z0;j<=z1;j++){float cx=(i+.5f)*Cell-Extent,cz=(j+.5f)*Cell-Extent,d=(float)Math.Sqrt((cx-x)*(cx-x)+(cz-z)*(cz-z));if(d>=radius)continue;int k=i*Size+j;cells[k]=Math.Min(Cap,cells[k]+amount*(1-d/radius));}
+        }
+        private static bool Valid(double t,float x,float z)=>!double.IsNaN(t)&&!double.IsInfinity(t)&&!float.IsNaN(x)&&!float.IsNaN(z)&&!float.IsInfinity(x)&&!float.IsInfinity(z);
+        private static bool Same(double t0,float x0,float z0,double t,float x,float z)=>Math.Abs(t0-t)<1e-3&&Math.Abs(x0-x)<.05f&&Math.Abs(z0-z)<.05f;
+        private static double Smooth(double x){x=x<0?0:x>1?1:x;return x*x*(3-2*x);}
+        private float GridAt(int i,int j)=>i<0||j<0||i>=Size||j>=Size?0:grid[i*Size+j];
         private static float Lerp(float a,float b,float t)=>a+(b-a)*t;
         private static int Index(float v)=>Math.Max(0,Math.Min(Size-1,(int)Math.Floor((v+Extent)/Cell)));
     }

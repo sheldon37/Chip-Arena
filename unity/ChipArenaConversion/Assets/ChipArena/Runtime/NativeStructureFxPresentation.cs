@@ -22,13 +22,17 @@ namespace ChipArena.UnityConversion
     /// <item>Structure events (docs/arenas/ARENA_PROPOSAL.md §5.4) are not emitted yet. When Core/ArenaModel.cs gains the kinds,
     /// the hook is three lines in <see cref="Intake"/> (marked there) plus three in NativeAudio.EventSounds (see
     /// NativeStructureAudio.cs); until then <see cref="Stress"/>, <see cref="Fall"/>, <see cref="Land"/> and
-    /// <see cref="Structure"/> are the API, and the dev Sandbox previews the whole sequence.</item>
+    /// <see cref="Structure"/> are the API, and the dev Sandbox previews the whole sequence. Each of them, and the preview,
+    /// also hands the event to ArenaPresentation.StructureHeard: the Brickfall atmosphere (pigeons, drifting dust) and the
+    /// round's dust coat (landings) hear every structure event through this one intake.</item>
     /// <item>Fall timing (a hook dependency): the kit poses no blocks. Its streamers, falling debris and trailing wire ends drop at
     /// the fall's acceleration, the contract's pancake maxAccel (6.9 m/s²) unless the hook passes the segment pose's from Core
     /// NativeStructureRules (at most g for peel and topple pieces), and the rubble, dust wall and the window and sag release wait
     /// for StructureLand, which must be emitted when the segment's last piece lands.</item>
-    /// <item>Queries for the block shader and dressing: <see cref="Window"/> (8 Hz strobe, then black), <see cref="Sag"/>,
-    /// <see cref="Freshness"/> (rubble fresh to dusty over 10 s) and <see cref="NativeStructureFx.LampStrobe"/>.</item>
+    /// <item>The dressed blocks' telegraph: NativeArenaDressing reads <see cref="Fx"/> each frame on the same field clock
+    /// (NativeStructureFx.StressHolding, then TelegraphAt per block: the 8 Hz window strobe then black and the sag) and
+    /// <see cref="NativeStructureFx.LampStrobe"/> for the band lamps. <see cref="Window"/>, <see cref="Sag"/> and
+    /// <see cref="Freshness"/> (rubble fresh to dusty over 10 s) answer the same at a point on this kit's last clock.</item>
     /// <item><see cref="KillFloor"/>: the per-map kill-effect floor (§5.5 Gibs), a raycast down that skips fracture fragments and
     /// dynamic crates on every client alike.</item>
     /// </list>
@@ -36,6 +40,8 @@ namespace ChipArena.UnityConversion
     public sealed class NativeStructureFxPresentation : IDisposable
     {
         private readonly NativeStructureFx fx=new NativeStructureFx();private readonly NativeFxDraw draw=new NativeFxDraw();
+        /// <summary>The presentation that hears every structure event this kit takes in (ArenaPresentation.StructureHeard).</summary>
+        internal ArenaPresentation Owner;
         private int generation=-1,lastEvent;private float lastNow=-1;private string blockMap;private ContentBlock[] blocks;
         private readonly int[] order=new int[NativeStructureFx.PuffCap];private readonly float[] depth=new float[NativeStructureFx.PuffCap];
         private readonly Color[] faceLight=new Color[6];private Color topLight,bottomLight;
@@ -131,16 +137,16 @@ namespace ChipArena.UnityConversion
         public void Stress(NativeArena arena,string segment,Vector3 centroid,float radius,float telegraph,float time,Bounds? crush=null)
         {
             float floor=Ground(arena,crush?.center??centroid,centroid.y-radius);V3 center=default,half=default;if(crush.HasValue){center=V(crush.Value.center);half=V(crush.Value.extents);}
-            fx.Stress(V(centroid),radius,telegraph,center,half,floor,Seed(arena,segment),time);
+            fx.Stress(V(centroid),radius,telegraph,center,half,floor,Seed(arena,segment),time);Owner?.StructureHeard(arena,NativeStructureCue.Stress,centroid,radius,telegraph,time);
         }
         /// <summary>StructureFall: segment id, position, extent, fall direction, mass in tonnes, dominant material id.
         /// <paramref name="accel"/>: the segment's fall acceleration from its pose (Core NativeStructureRules once it exists; at most
         /// g); 0, as the event carries none, takes the contract's pancake maxAccel, 6.9 m/s².</summary>
         public void Fall(NativeArena arena,string segment,Vector3 position,float radius,Vector3 direction,float tonnes,string material,float time,float accel=0)
-        =>fx.Fall(V(position),radius,V(direction),tonnes,NativeStructureFx.Classify(material),Ground(arena,position,position.y-radius),Seed(arena,segment),time,accel);
+        {fx.Fall(V(position),radius,V(direction),tonnes,NativeStructureFx.Classify(material),Ground(arena,position,position.y-radius),Seed(arena,segment),time,accel);Owner?.StructureHeard(arena,NativeStructureCue.Fall,position,radius,tonnes,time);}
         /// <summary>StructureLand: segment id, position, extent, energy 0..1 (its material is the one its fall named).</summary>
         public void Land(NativeArena arena,string segment,Vector3 position,float radius,float energy,float time)
-        {uint seed=Seed(arena,segment);fx.Land(V(position),radius,energy,fx.FallMaterial(seed,NativeStructureMaterial.Masonry),Ground(arena,position,position.y-radius*.5f),seed,time);}
+        {uint seed=Seed(arena,segment);fx.Land(V(position),radius,energy,fx.FallMaterial(seed,NativeStructureMaterial.Masonry),Ground(arena,position,position.y-radius*.5f),seed,time);Owner?.StructureHeard(arena,NativeStructureCue.Land,position,radius,energy,time);}
         /// <summary>Camera shake offset heard at <paramref name="eye"/> (§3.10; the caller applies it only with camera shake on).</summary>
         public Vector3 Shake(Vector3 eye)=>U(fx.ShakeOffset(Clock,V(eye)));
         public float Window(Vector3 p)=>fx.WindowAt(V(p),Clock);
@@ -156,6 +162,8 @@ namespace ChipArena.UnityConversion
             fx.Preview(s,material,floor,seed,now);fx.Stress(centroid,radius,NativeStructurePreview.Telegraph,center,half,floor,seed,now);
             fx.Fall(centroid,radius,V(away),NativeStructurePreview.Mass,material,floor,seed,now+NativeStructurePreview.Telegraph,NativeStructurePreview.Accel);
             fx.Land(new V3(s.x,floor+1.2f,s.z),radius*.8f,NativeStructurePreview.Energy,material,floor,seed,now+NativeStructurePreview.LandAt);
+            // The atmosphere and the dust coat hear the preview as they would the real events (each at its scheduled time).
+            if(Owner!=null){Owner.StructureHeard(arena,NativeStructureCue.Stress,U(centroid),radius,NativeStructurePreview.Telegraph,now);Owner.StructureHeard(arena,NativeStructureCue.Fall,U(centroid),radius,NativeStructurePreview.Mass,now+NativeStructurePreview.Telegraph);Owner.StructureHeard(arena,NativeStructureCue.Land,new Vector3(s.x,floor+1.2f,s.z),radius*.8f,NativeStructurePreview.Energy,now+NativeStructurePreview.LandAt);}
         }
         /// <summary>One break of each material in a row across <paramref name="right"/>, a third of a second apart.</summary>
         public void PreviewBursts(NativeArena arena,Vector3 spot,Vector3 right)
@@ -242,7 +250,7 @@ namespace ChipArena.UnityConversion
         private void StructureFx(NativeArena arena,Camera camera,float now)
         {
             if(sourceModels==null||arena==null)return;
-            if(structureFx==null&&!structureFxFailed){try{structureFx=new NativeStructureFxPresentation();}catch(Exception e){structureFxFailed=true;Debug.LogWarning("Destruction effects disabled: "+e.Message);}}
+            if(structureFx==null&&!structureFxFailed){try{structureFx=new NativeStructureFxPresentation{Owner=this};}catch(Exception e){structureFxFailed=true;Debug.LogWarning("Destruction effects disabled: "+e.Message);}}
             if(blasts!=null)blasts.MaterialBursts=structureFx!=null;structureFx?.Render(arena,camera,now,BlastQuality);
         }
         /// <summary>The structure shake offset at <paramref name="eye"/>, times <paramref name="scale"/> (reduced effects .5).</summary>

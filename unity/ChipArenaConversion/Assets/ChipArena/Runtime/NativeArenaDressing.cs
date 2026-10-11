@@ -22,8 +22,20 @@ namespace ChipArena.UnityConversion
     /// fragment takes the look of the block it broke from (the prop that left Props in the same frame within reach of it,
     /// minus the band and tag) and keeps it for the round by its id, so the killcam's replay arena, whose fragments carry the
     /// same ids, and every rebind after it show the same look; a guest who joins after a break has no parent to take it from
-    /// until fragments carry their parent's id (5.3). Break and Collapse events in the live arena dust a NativeDustCoat for
-    /// the round. No allocations per frame in steady state; new props and new fragment looks allocate once.
+    /// until fragments carry their parent's id (5.3).
+    /// The round's one dust coat (Core NativeDustCoat, owned by ArenaPresentation): this feeds it every Break and Collapse of
+    /// the live arena (also while the killcam draws its replay arena, as the live round goes on), the destruction kit feeds it
+    /// the structure landings (ArenaPresentation.StructureHeard), and each frame it is read at the drawn arena's clock (the
+    /// field clock, the destruction kit's), so the killcam shows the coat of the moment it replays: its map-wide level goes
+    /// out as the _ArenaDustCoat global (0 while no dressed map is drawn), each block's local level as its instance dust. It is
+    /// cleared when the live arena is rebuilt (a new round or arena). The band, tag and lamp keep a tenth of it (the shader).
+    /// The collapse telegraph (3.9, 3.10, from Core NativeStructureFx.TelegraphAt on the same clock and records as the
+    /// destruction kit's footprint, grit and sound): every block inside a holding stress box sags (down at most 8 cm and
+    /// leaning at most 1 degree outward, scaled by its height in the box) and sends its window light (8 Hz strobe through the
+    /// telegraph, then black until the segment lands; window-look blocks show it); a banded member's lamp strobes red there
+    /// and at S2, glows amber while the members are locked, else stays dark (NativeBlockLooks.Lamp, Locked). With no stress
+    /// record the per-block query is skipped (one check a frame; old maps never have one), and no band means no lamp work.
+    /// No allocations per frame in steady state; new props and new fragment looks allocate once.
     /// Static blocks: only arena.Props are drawn. Blocks Astra splits out of Props (5.3 `static`: cores, frontage, shops,
     /// kiosks, market walls, docks, the truck, tenement floors) keep their own renderers until Astra exposes the static block
     /// list; then this draws that list once per round and hides those renderers the same way (MapLooks.json marks the
@@ -47,11 +59,11 @@ namespace ChipArena.UnityConversion
         private readonly Gone[] gone=new Gone[32];private int goneNext;
         // Fragment looks inherited this round, by fragment id (live and killcam arenas share the ids); cleared with the dust coat.
         private readonly Dictionary<string,Kept> kept=new Dictionary<string,Kept>();
-        private readonly NativeDustCoat coat=new NativeDustCoat();private NativeArena liveArena;private int liveGeneration=-1,lastEvent;
+        private NativeArena liveArena;private int liveGeneration=-1,lastEvent;private float published=-1;
         private NativeArena drawn;private int generation=-1;private string mapId;private MapLook look;private MapLookBlock[] preview;private bool dressed;private int floor;
         private Mesh[] meshes;private Material material;private MaterialPropertyBlock block;private bool instancing;
         private static readonly int SizeId=Shader.PropertyToID("_BlockSize"),RestId=Shader.PropertyToID("_BlockRest"),ColorId=Shader.PropertyToID("_BlockColor"),LookId=Shader.PropertyToID("_BlockLook");
-        private static readonly int HazeId=Shader.PropertyToID("_ArenaHaze"),HazeTopId=Shader.PropertyToID("_ArenaHazeTop"),DustId=Shader.PropertyToID("_ArenaDust");
+        private static readonly int HazeId=Shader.PropertyToID("_ArenaHaze"),HazeTopId=Shader.PropertyToID("_ArenaHazeTop"),DustId=Shader.PropertyToID("_ArenaDust"),CoatId=Shader.PropertyToID(NativeDustCoat.Global);
         private static readonly int FlashPosId=Shader.PropertyToID("_ArenaFlashPos"),FlashColorId=Shader.PropertyToID("_ArenaFlashColor");
         private static readonly Vector4[] flashPos=new Vector4[NativeBlastSim.LightCapacity],flashColor=new Vector4[NativeBlastSim.LightCapacity];
 
@@ -72,12 +84,16 @@ namespace ChipArena.UnityConversion
             }
             Shader.SetGlobalVectorArray(FlashPosId,flashPos);Shader.SetGlobalVectorArray(FlashColorId,flashColor);
         }
-        public void Render(NativeArena arena)
+        /// <summary>Draws the arena's dressed blocks. now: the drawn arena's field clock (the destruction kit's); coat: the round's
+        /// dust coat; structures: the destruction kit's records (null before its first frame).</summary>
+        public void Render(NativeArena arena,float now,NativeDustCoat coat,NativeStructureFx structures)
         {
-            Draws=Instances=0;if(arena?.Root==null)return;
-            if(!ReferenceEquals(arena,drawn)||arena.Generation!=generation||!ReferenceEquals(arena.MapId,mapId))Rebind(arena);
-            if(!dressed)return;if(material==null)Build();int frame=Time.frameCount;
-            if(ReferenceEquals(arena,liveArena))Coat(arena);
+            Draws=Instances=0;if(arena?.Root==null||coat==null)return;
+            if(!ReferenceEquals(arena,drawn)||arena.Generation!=generation||!ReferenceEquals(arena.MapId,mapId))Rebind(arena,coat);
+            if(!dressed){Publish(0);return;}if(material==null)Build();int frame=Time.frameCount;
+            if(liveArena!=null&&liveArena.Generation==liveGeneration)Feed(liveArena,coat);
+            coat.At(now);Publish(coat.Wide);
+            var match=arena.Match;bool tell=structures!=null&&structures.StressHolding(now),locked=match!=null&&NativeBlockLooks.Locked(match.Phase,match.FightAt,now),redOn=NativeStructureFx.LampStrobe(now)>0;
             foreach(var p in arena.Props){if(p==null||p.Definition==null)continue;if(!entries.TryGetValue(p,out var e)){e=Create(p);entries.Add(p,e);}e.Seen=frame;}
             foreach(var pair in entries)if(pair.Value.Seen!=frame)removed.Add(pair.Key);
             foreach(var p in removed){var e=entries[p];entries.Remove(p);gone[goneNext]=new Gone{Position=e.Last,Reach=e.Reach,Look=e.Look,Color=e.Color,Flags=e.Flags,Linear=e.Linear,Frame=frame};goneNext=(goneNext+1)%gone.Length;spare.Push(e);}
@@ -89,14 +105,18 @@ namespace ChipArena.UnityConversion
                 float f=NativeBlockLooks.Fraction(p.Health,e.Max,p.Indestructible);int stage=NativeBlockLooks.Stage(f,e.S1,e.S2);Vector4 size=e.Size,rest=e.Rest;
                 // S3 is a stub of the block's lower 24% (same base, same rest-space pattern).
                 if(stage==3){float drop=size.y*(1-NativeBlockLooks.StubShare);pos-=rot*new Vector3(0,drop,0);size.y*=NativeBlockLooks.StubShare;rest.y-=drop;}
-                rest.w=coat.Sample(pos.x,pos.z);
-                Add(NativeBlockLooks.MeshFor(stage,size.y),Matrix4x4.TRS(pos,rot,Vector3.one),size,rest,e.Linear,new Vector4(e.Look,NativeBlockLooks.Normalised(f,e.S1,e.S2),e.Seed,e.Flags|NativeBlockLooks.Spin(e.Hash,stage)));
+                // The 3.9 telegraph: sag (moving the instance only; the rest-space pattern stays glued) and the window light.
+                float window=1;bool stressed=false;
+                if(tell&&structures.TelegraphAt(new V3(pos.x,pos.y,pos.z),now,out window,out V3 sag,out float qx,out float qy,out float qz,out float qw)){stressed=true;pos+=new Vector3(sag.x,sag.y,sag.z);rot=new Quaternion(qx,qy,qz,qw)*rot;}
+                int flags=e.Flags|NativeBlockLooks.Spin(e.Hash,stage);if((e.Flags&NativeBlockLooks.Band)!=0)flags|=NativeBlockLooks.Lamp(stage,stressed,locked,redOn);
+                rest.w=coat.Local(pos.x,pos.z);var color=e.Linear;color.w=window;
+                Add(NativeBlockLooks.MeshFor(stage,size.y),Matrix4x4.TRS(pos,rot,Vector3.one),size,rest,color,new Vector4(e.Look,NativeBlockLooks.Normalised(f,e.S1,e.S2),e.Seed,flags));
             }
             NativeLighting.ArenaRim();var k=look?.blocks;Color haze=k!=null?Linear(NativeArena.ColorOf(k.hazeColor)):Color.black;
             Shader.SetGlobalVector(HazeId,new Vector4(haze.r,haze.g,haze.b,k!=null?k.haze:0));Shader.SetGlobalFloat(HazeTopId,k!=null&&k.hazeTop>0?k.hazeTop:1);Shader.SetGlobalFloat(DustId,k!=null?k.dust:0);
             for(int s=0;s<counts.Length;s++)for(int start=0,i=0;start<counts[s];start+=NativeBlockLooks.Chunk,i++){int n=Math.Min(NativeBlockLooks.Chunk,counts[s]-start);Draw(meshes[s],batches[s][i],n);Draws++;Instances+=n;}
         }
-        private void Rebind(NativeArena arena)
+        private void Rebind(NativeArena arena,NativeDustCoat coat)
         {
             foreach(var e in entries.Values)spare.Push(e);entries.Clear();drawn=arena;generation=arena.Generation;mapId=arena.MapId;
             var map=arena.Content.Map(mapId);look=NativeLighting.Look(map);preview=NativeLighting.LookSet().preview;dressed=NativeBlockLooks.Dressed(look,Preview);floor=map.floor;
@@ -114,7 +134,7 @@ namespace ChipArena.UnityConversion
             if(prop.Fragment&&kept.TryGetValue(b.id??"",out var k)){e.Look=k.Look;e.Color=k.Color;e.Flags=k.Flags;e.Pending=false;}
             e.Hash=NativeBlockLooks.Hash(b.id);e.Seed=NativeBlockLooks.Seed(b.id);e.Max=NativeBlockLooks.StageMax(b,m,out e.S1,out e.S2);e.Seen=0;
             e.Size=new Vector4(b.size.x*.5f,b.size.y*.5f,b.size.z*.5f,NativeBlockLooks.Chamfer);e.Rest=new Vector4(b.pos.x,b.pos.y,b.pos.z,0);e.Reach=e.Size.magnitude+.3f;e.Last=prop.transform.position;
-            var lin=Linear(NativeArena.ColorOf(e.Color));e.Linear=new Vector4(lin.r,lin.g,lin.b,0);
+            var lin=Linear(NativeArena.ColorOf(e.Color));e.Linear=new Vector4(lin.r,lin.g,lin.b,1);
             prop.GetComponentsInChildren(true,renderers);foreach(var r in renderers)r.forceRenderingOff=true;renderers.Clear();
             return e;
         }
@@ -127,13 +147,15 @@ namespace ChipArena.UnityConversion
             if(best<0)return;var g=gone[best];e.Look=g.Look;e.Color=g.Color;e.Linear=g.Linear;e.Flags=(g.Flags&~(NativeBlockLooks.Band|NativeBlockLooks.Tag))|NativeBlockLooks.Fragment;
             if(id!=null)kept[id]=new Kept{Look=e.Look,Color=e.Color,Flags=e.Flags};
         }
-        // Break and Collapse events dust the coat once each (event ids only grow within a round; a lower newest id restarts).
-        private void Coat(NativeArena arena)
+        // The live arena's Break and Collapse events into the coat at their match times (event ids only grow within a round; a
+        // lower newest id restarts the cursor, and the coat ignores an entry it already has).
+        private void Feed(NativeArena arena,NativeDustCoat coat)
         {
             int newest=0;foreach(var ev in arena.Events)newest=Math.Max(newest,ev.Id);if(newest<lastEvent)lastEvent=0;
-            foreach(var ev in arena.Events)if(ev.Id>lastEvent&&(ev.Kind==EventKind.Break||ev.Kind==EventKind.Collapse))coat.Add(ev.Position.x,ev.Position.z);
+            foreach(var ev in arena.Events)if(ev.Id>lastEvent&&(ev.Kind==EventKind.Break||ev.Kind==EventKind.Collapse))coat.Break(ev.Time,ev.Position.x,ev.Position.z);
             lastEvent=Math.Max(lastEvent,newest);
         }
+        private void Publish(float wide){if(wide==published)return;published=wide;Shader.SetGlobalFloat(CoatId,wide);}
         private void Add(int mesh,Matrix4x4 matrix,Vector4 size,Vector4 rest,Vector4 color,Vector4 code)
         {
             int n=counts[mesh],chunk=n/NativeBlockLooks.Chunk,i=n%NativeBlockLooks.Chunk;var list=batches[mesh];if(chunk>=list.Count)list.Add(new Batch());var b=list[chunk];
@@ -172,8 +194,21 @@ namespace ChipArena.UnityConversion
     }
     public sealed partial class ArenaPresentation
     {
-        private NativeArenaDressing arenaDressing;
-        // The arena's dressed blocks (NativeArenaDressing): RenderAbilities runs this for the live arena and the killcam's replay arena.
-        private void ArenaDressing(NativeArena arena){if(arenaDressing==null)arenaDressing=gameObject.AddComponent<NativeArenaDressing>();arenaDressing.Render(arena);}
+        private NativeArenaDressing arenaDressing;private readonly NativeDustCoat dustCoat=new NativeDustCoat();
+        /// <summary>The round's one dust coat (Core NativeDustCoat): breaks from NativeArenaDressing, landings from StructureHeard.</summary>
+        public NativeDustCoat DustCoat=>dustCoat;
+        // The arena's dressed blocks (NativeArenaDressing): RenderAbilities runs this for the live arena and the killcam's replay
+        // arena, on its field clock (the destruction kit's), with the kit's records for the collapse telegraph.
+        private void ArenaDressing(NativeArena arena){if(arenaDressing==null)arenaDressing=gameObject.AddComponent<NativeArenaDressing>();arenaDressing.Render(arena,FieldClock(arena),dustCoat,structureFx?.Fx);}
+        /// <summary>
+        /// One structure event (ARENA_PROPOSAL.md 5.4) for the kits beside the destruction kit, which calls this from its intake
+        /// and its dev Sandbox preview: the atmosphere (pigeons and drifting dust, Brickfall only: BrickfallStructure) and the
+        /// round's dust coat (landings). Both are idempotent on time and place, so an event fed again never doubles.
+        /// </summary>
+        internal void StructureHeard(NativeArena arena,NativeStructureCue cue,Vector3 position,float radius,float amount,float time)
+        {
+            BrickfallStructure(arena,cue==NativeStructureCue.Stress?NativeBrickfallCue.Stress:cue==NativeStructureCue.Fall?NativeBrickfallCue.Fall:NativeBrickfallCue.Land,position,radius,amount,time);
+            if(cue==NativeStructureCue.Land)dustCoat.Land(time,position.x,position.z,radius,amount);
+        }
     }
 }
