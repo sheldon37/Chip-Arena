@@ -1,5 +1,14 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Astra — Replicate Siren minion possession start for Claude's hint visuals
+- Task branch `codex/unity-possession-time-20261011`, based on cloud `40009f11f75926a3418f3b595e87a9277ae8e0b4`. Host already records `NativePveAdd.PossessedAt`; the snapshot now carries `NativeMinionFrame.possessedAt`, validates it as finite/nonnegative, and restores it into the guest add. Network/replay consumers can use `add.Pve.Possessed` and `arena.Time - add.Pve.PossessedAt`. This is match time, not wall-clock time. No movement, damage, cooldown, possession selection, save, or camera rule change.
+- Claude handoff: the timing field is ready on this task branch for the level-2 floating grin and level-3 black-flame trail/visual boost. No hint visuals implemented here. The additive JSON field defaults to zero for older frames; mixed-version peers do not gain accurate possession age from an old host. No protocol bump.
+- Added an actual-Unity PvE build gate exercising authority capture, real network encode/decode, replay clone, guest application after 36 seconds, repeated observation without resetting the start, state clearing, omitted-field default, and nonfinite/negative rejection.
+- Local verification: Python suite 59 collected, 58 passed / 1 skipped; source packaging passed (1050 files); diff whitespace check passed. No local .NET SDK or Unity Editor available, so the managed checks run in native CI; the new runtime gate requires UBA/Editor execution. Windows visual and live multiplayer acceptance remain unrun.
+- Owner decision pending, as explicitly marked in the request: retain first person during knockdown with own body hidden; retain ADS camera while Q is held during stagger while simulation still blocks shots. Both remain unchanged.
+- Release at handoff: `40009f1` cloud native CI passed (run 38107942516); publisher 38108008594 was in progress ensuring its exact Unity build. This patch is implemented on a task branch, not merged or released. Repository AGENTS.md leaves merges to the owner; integrate this branch after approval, then require native CI and a real UBA build of the new cloud head before its test-channel publication.
+
+
 ## 2026-10-11 — Claude — Damage-screen camera flip fix and Siren minion effects (owner request)
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62): merged `claude/damage-screen-flip` `daf6048` and `claude/siren-minion-fx` `0c5871b`, both based on `497966f`. Each branch had a builder, two review lenses and a fix pass. Visual only: no simulation, networking, replicated-data or save change.
 - Camera flip ("camera seems to flip when taking damage"):
