@@ -169,7 +169,7 @@ namespace ChipArena.UnityConversion
         {
             string map=PreviewMapId;var definition=content.Map(map);if(definition==null||presentation==null)return;
             if(backdropMap!=map){backdropMap=map;NativeLighting.Apply(definition,cameraView);}
-            viewModelCamera.enabled=false;ArenaPresentation.OverviewCamera(cameraView,Time.unscaledTime);presentation.RenderBackdrop(content.sourceCommit,map,Time.unscaledTime);
+            viewModelCamera.enabled=false;ArenaPresentation.OverviewCamera(cameraView,Time.unscaledTime);presentation.RenderBackdrop(content.sourceCommit,map,Time.unscaledTime,cameraView);
         }
         private void FixedUpdate()
         {

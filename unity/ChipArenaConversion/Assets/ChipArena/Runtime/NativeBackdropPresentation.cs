@@ -5,9 +5,11 @@ namespace ChipArena.UnityConversion
     {
         // The main menu's backdrop when no match exists: the selected map, its scenery and hazards, as renderer.ts draws the
         // idle state behind the menu. Ward Zero's moving parts rest in their PvP pose (cells stubbed, vents and doors shut).
-        public void RenderBackdrop(string commit,string mapId,float time)
+        // Brickfall draws its own backdrop (NativeBrickfallPresentation.cs); `camera` orients its sprites.
+        public void RenderBackdrop(string commit,string mapId,float time,Camera camera=null)
         {
             if(sourceModels==null)return;sourceModels.Begin();sourceModels.Queue("map-"+mapId,Matrix4x4.identity);HazardPresentation(mapId,time);SceneryMotion(commit,mapId);
+            BrickfallBackdrop(mapId,time,camera);
             if(mapId=="siren")
             {
                 if(wardMotion==null){wardMotion=JsonUtility.FromJson<NativeWardMotion>(Resources.Load<TextAsset>("WardMotion").text);if(wardMotion.commit!=commit)throw new System.InvalidOperationException("Ward motion source differs");}
