@@ -63,7 +63,7 @@ namespace ChipArena.UnityConversion
             sirenFx?.Clear();ClearStageVents();viewFlames?.Clear();fxDraw?.Clear();SeekerLightsOff(0);ClearDevFighters();sirenTracks.Clear();sirenChar.Clear();sirenFieldFlags.Clear();sirenShots.Clear();markTracker.Clear();
             fxArena=null;fxGeneration=-1;fxEvent=0;fxLast=viewLast=float.NegativeInfinity;viewAcc=0;
         }
-        private void DisposeDevEffects(){ClearDevEffects();DisposeSirenLooks();fxDraw?.Dispose();fxDraw=null;sirenInk=null;ghostsLoaded=false;ghostPilot=ghostGloves=null;ghostHats.Clear();}
+        private void DisposeDevEffects(){ClearDevEffects();DisposeSirenLooks();DisposeHordeGrin();fxDraw?.Dispose();fxDraw=null;sirenInk=null;ghostsLoaded=false;ghostPilot=ghostGloves=null;ghostHats.Clear();}
         private static Vector3 Src(Vector3 v)=>new Vector3(-v.x,v.y,v.z);
         // A Unity transform matrix in the source frame (x mirrored): S·M·S, row-major into o at offset.
         private static void Source(Matrix4x4 m,double[] o,int offset)
