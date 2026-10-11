@@ -14,17 +14,22 @@ namespace ChipArena.UnityConversion
             var a=Pilots[0];var b=Pilots[1];int local=LocalId;var saved=Match.Seats.Select(s=>(seat:s,spec:s.spec,access:s.access)).ToArray();
             // Editor-only fixture object. Never changes the shared Guest instance or the signed production verifier.
             var grant=new NativeAccess();typeof(NativeAccess).GetProperty("Developer").GetSetMethod(true).Invoke(grant,new object[]{true});typeof(NativeAccess).GetProperty("Expires").GetSetMethod(true).Invoke(grant,new object[]{double.MaxValue});
+            // The isolated combat positions are outside the authored map. Grounded abilities
+            // must use real support, since StepPilot refreshes ground after a teleport.
+            var floor=new GameObject("DEV combat validation floor");floor.layer=PropLayer;floor.transform.SetParent(root.transform);
+            floor.transform.position=new Vector3(1000,10-NativeLocomotionRules.HalfHeight-NativeLocomotionRules.Skin-.1f,1003);floor.AddComponent<BoxCollider>().size=new Vector3(12,.2f,16);
             void Setup(string spec="emperor")
             {
                 Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10});LocalId=local;remoteInputs.Clear();Bullets.Clear();Events.Clear();AbilityEffects.Clear();StormTrails.Clear();
                 foreach(var p in new[]{a,b})
                 {
                     CancelSiren(p);CancelMelee(p);CancelSpecial(p);CancelAbilities(p);p.Fighter=null;p.Siren=null;p.Seat.chips.Clear();p.Seat.spec=p==a?spec:"pistol";p.Seat.access=grant;p.Seat.bot=false;p.Seat.alive=p.Seat.connected=true;
-                    p.Weapon=Content.Weapon(p.Seat.spec);p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,p.Seat.chips);p.Hp=p.Mana=p.Stamina=100;p.Grounded=true;p.Body.isKinematic=false;p.Collider.enabled=true;
+                    p.Weapon=Content.Weapon(p.Seat.spec);p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,p.Seat.chips);p.Hp=p.Mana=p.Stamina=100;p.Grounded=p.GroundAttached=false;p.Ground=default;p.GroundPosition=default;p.Body.isKinematic=false;p.Collider.enabled=true;
                     p.Body.position=new Vector3(1000,10,p==a?1000:1006);p.Body.linearVelocity=p.Knockback=p.MoveVelocity=Vector3.zero;p.Down=null;p.Juggle=null;p.Roll=null;p.Dots.Clear();p.Death=null;p.Wounds.Clear();
                     p.Ready=p.QReady=p.EReady=p.ReloadEnd=p.BlockEnd=p.RollEnd=p.StunEnd=p.FrozenUntil=p.ScareUntil=p.ShieldUntil=p.CastAt=p.AttackEnd=p.LaunchUntil=0;p.Ammo=Magazine(p);p.Input=new InputFrame();p.RegenAt=Time+20;
                 }
                 Physics.SyncTransforms();
+                foreach(var p in new[]{a,b}){ProbePilotGround(p);Check(p.Grounded,"combat fixture floor, seat="+p.Seat.id);}
             }
             try
             {
@@ -42,7 +47,7 @@ namespace ChipArena.UnityConversion
                     int attack=a.Fighter.Id;float end=a.Fighter.Until;
                     a.Input=guest?RemoteInput(a.Seat.id):a.Input.HeldOnly();Check(!a.Input.AbilityQ&&a.Input.AbilityEHeld,"tap consumed, held E retained");
                     while(Time<end-.02f){Match.Tick(1d/60);StepFighter(a);Check(a.Fighter.Id==attack&&a.Fighter.Kind=="electric","E chain interrupts hook recovery");}
-                    Match.Tick(.05);StepFighter(a);Check(a.Fighter.Kind=="wave","held E resumes after hook");
+                    Match.Tick(.05);StepFighter(a);Check(a.Fighter.Kind=="wave","held E resumes after hook, grounded="+a.Grounded+", kind="+a.Fighter.Kind+", ready="+a.Ready+", time="+Time);
                 }
                 Setup();a.Input.AbilityEHeld=true;StepPilot(a);Match.Tick(1d/60);a.Input.Shoot=true;StepPilot(a);Check(a.Fighter.Kind=="jab","jab cannot cancel wave");Near(a.Body.linearVelocity.z,9,"jab retains push");
                 Setup();a.Grounded=false;a.Input.AbilityEHeld=true;StepFighter(a);Check(a.Fighter.Kind==null&&a.Knockback==Vector3.zero,"airborne wave started");
@@ -73,6 +78,7 @@ namespace ChipArena.UnityConversion
             }
             finally
             {
+                UnityEngine.Object.DestroyImmediate(floor);
                 foreach(var x in saved){x.seat.spec=x.spec;x.seat.access=x.access;x.seat.chips.Clear();}LocalId=local;remoteInputs.Clear();Reset();Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10});
             }
         }
