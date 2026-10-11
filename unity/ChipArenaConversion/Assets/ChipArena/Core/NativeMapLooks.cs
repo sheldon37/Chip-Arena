@@ -39,18 +39,26 @@ namespace ChipArena.UnityConversion
     /// NativeBlockLit.shader; the authority cube renderers are hidden); missing or false keeps today's renderers. `dust` is
     /// a map-wide dust coat (0..1) under the per-block coat, `haze` the ground haze's opacity at the street (0..1), falling
     /// to 0 at `hazeTop` m, in `hazeColor`.</item>
-    /// <item>`blockLooks` (read by NativeArenaDressing, Core/NativeBlockLooks.cs): `block` is an exact block id, a glob ("*"
-    /// matches any run: "hotel-pier-*"; the first matching glob in list order wins, so specific ones go first) or
-    /// "material:brick" (used when no id or glob matches); `look` a NativeBlockLooks key ("brick-red"); `color` the base
-    /// colour (0: the look's 3.10 palette colour); `band` paints the 2.3 load-bearing chevron band (1.0-1.6 m above the
-    /// block's base) and its DANGER tag; `note` is for people (the 3.3 legend element it covers). Brickfall's entries expect
-    /// the grey-box to keep the id stems of docs/arenas/scripts/brickfall_m1.py and ARENA_PROPOSAL.md 5.2: frontage-, stack-
-    /// (stack-*-base* banded), hotel- (hotel-pier-nw/-ne/-sw/-se banded, hotel-core-, hotel-floor-, hotel-roof), ashby- and
-    /// bray- (ashby-pier-F1.. banded, -core, -floor-, -roof), bridge- (bridge-*-bearing* banded), kessels, dunmores, market-,
-    /// storeroom-, kiosk-, news-kiosk-, phonebox-, tram-shelter-, monument-, barricade-, pallet-, sandbag-, stall-, dock-,
-    /// truck-, and parts named -sill-, -lintel-, -cornice-, -string-, -quoin-, -coping, -window-, -boards-, -shutter, -ramp,
-    /// -canopy, -neon-, -rubble-; mercer-sign, -slab, street-, lane-, yard-, square-, barrier-. Anything else falls back to
-    /// its material's look.</item>
+    /// <item>`blockLooks` (read by NativeArenaDressing, Core/NativeBlockLooks.cs): looks for sim blocks only (2.1 rule 5: decor
+    /// never goes into sim data). `block` is an exact block id, a glob ("*" matches any run: "hotel-pier-*"; the first
+    /// matching glob in list order wins, so specific ones go first) or "material:brick" (used when no id or glob matches);
+    /// `look` a NativeBlockLooks key ("brick-red"); `color` the base colour (0: the look's 3.10 palette colour); `band` paints
+    /// the 2.3 load-bearing chevron band and its DANGER tag, fitted to the block's height (NativeBlockLooks.BandFit: 1.0-1.6 m
+    /// above its base on blocks 1.9 m tall or more); `note` is for people (the 3.3 legend element it covers). Brickfall's
+    /// entries expect the grey-box to keep the sim id stems of docs/arenas/scripts/brickfall_m1.py and ARENA_PROPOSAL.md 5.2:
+    /// members (hotel-pier-nw/-ne/-sw/-se, ashby-/bray-pier-F1..R2, stack-*-base*, bridge-*-bearing*; banded), masonry
+    /// panels and shells (hotel-, ashby-, bray-, stack-, bridge-), floor and roof plates (hotel-floor-, -roof), the roof stair
+    /// house, ramps (-ramp), the street slab (-slab), cover (barricade-, pallet-, sandbag-, stall-, phonebox-, monument-),
+    /// static blocks (frontage-, the cores -core, kessels, dunmores, market-, kiosk-, news-kiosk-, storeroom-, tram-shelter-,
+    /// dock-, truck-, the tenement floors ashby-/bray-floor-) and rubble sets (-rubble-). Anything else falls back to its
+    /// material's look. Entries whose note ends "[static]" cover blocks that 3.9 and 5.3 make `static`; those leave
+    /// arena.Props at 6.1 step 2, before the grey-box, so the entries apply only once NativeArenaDressing draws Astra's static
+    /// block list (not built yet; until then those blocks keep their plain renderers).</item>
+    /// <item>`kitLooks`: looks for NativeDressingKits' parts (2.2 "Set dressing"; not built yet, so nothing reads this list),
+    /// keyed the same way by kit part id. These are presentation only and never grey-box blocks: windows are open holes in
+    /// the sim walls (3.10) and their glazing, boards, sills, lintels, string courses, cornices, quoins, coping, arches,
+    /// shutters, canopies, signage and neon, and the lane, yard and square paving painted on the slab are kit parts attached
+    /// to a block id. A kit entry has no `band` and no "material:" pattern.</item>
     /// <item>Stubs the later passes fill; nothing reads them yet: `dressing` (articulation kit id), `backdrop`, `atmosphere`
     /// and `ambience` ids. Empty means today's.</item>
     /// </list>
@@ -59,7 +67,7 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class MapLook
     {
         public string id,look;public float farClip;public int background;public MapLookLight key,rim;public MapLookAmbient ambient;public MapLookFog fog;
-        public MapLookShadows shadows;public MapLookSky sky;public MapLookPractical[] lights;public MapLookBlock[] blockLooks;public string dressing,backdrop,atmosphere,ambience;public MapLookBlocks blocks;
+        public MapLookShadows shadows;public MapLookSky sky;public MapLookPractical[] lights;public MapLookBlock[] blockLooks,kitLooks;public string dressing,backdrop,atmosphere,ambience;public MapLookBlocks blocks;
     }
     [Serializable] public sealed class MapLookLight {public int color;public float intensity,elevation,bearing,shadowStrength;public V3 from;public string shadows;}
     [Serializable] public sealed class MapLookAmbient {public int sky,equator,ground;public float skyScale,equatorScale,groundScale;}
@@ -103,7 +111,7 @@ namespace ChipArena.UnityConversion
                 shadows=new MapLookShadows{cascades=2,distance=65,fallbackCascades=2,fallbackDistance=65},
                 sky=new MapLookSky{variant=indoor?"none":"night",horizon=volcanic?0x633345:cold?0x405677:0x333f64,zenith=volcanic?0x100b1c:0x080e22,discSize=id=="moonlit"?.065f:DiscSizeDefault,
                     halo=NightHalo,stars=StarsDefault,crater=CraterDefault,cloudSpeed=CloudSpeedDefault,dir=new V3(SunDirDefault[0],SunDirDefault[1],SunDirDefault[2])},
-                lights=Array.Empty<MapLookPractical>(),blockLooks=Array.Empty<MapLookBlock>(),dressing="",backdrop="",atmosphere="",ambience=""};
+                lights=Array.Empty<MapLookPractical>(),blockLooks=Array.Empty<MapLookBlock>(),kitLooks=Array.Empty<MapLookBlock>(),dressing="",backdrop="",atmosphere="",ambience=""};
         }
         public static bool HasFrom(MapLookLight l)=>l!=null&&(l.from.x!=0||l.from.y!=0||l.from.z!=0);
         /// <summary>Whether the light has its own direction (a position or an elevation/bearing); a rim without one keeps the rig's.</summary>
@@ -166,7 +174,7 @@ namespace ChipArena.UnityConversion
                     if(!FlickerKinds.Contains(l.flicker??"")||l.depth<0||l.depth>1)Fail(id,"practical light flicker "+l.id);
                     if(l.flicker=="fire"&&!(l.rate>0))Fail(id,"fire flicker needs a rate: "+l.id);if(l.flicker=="stutter"&&!(l.length>0&&l.period>l.length))Fail(id,"stutter needs period > length > 0: "+l.id);
                 }
-                BlockLooks(id,m.blockLooks);
+                BlockLooks(id,m.blockLooks);BlockLooks(id+" kit",m.kitLooks);foreach(var b in m.kitLooks??Array.Empty<MapLookBlock>())if(b.band||b.block.StartsWith("material:",StringComparison.Ordinal))Fail(id,"kit look "+b.block+" with a band or a material");
                 var k=m.blocks;if(k!=null&&(!Finite(k.dust,k.haze,k.hazeTop)||k.dust<0||k.dust>1||k.haze<0||k.haze>1||k.haze>0&&!(k.hazeTop>0)||!Rgb(k.hazeColor)))Fail(id,"blocks");
             }
             BlockLooks("preview",set.preview);

@@ -6,10 +6,11 @@ Shader "ChipArena/NativeBlockLit"
     // its lattice to the instance's half extents with a fixed chamfer, the fragment stage draws the look in rest space
     // (object position plus the block's rest centre, so courses line up across blocks and stay glued to a falling piece).
     // Per instance: _BlockSize (half extents, chamfer), _BlockRest (rest centre, dust coat), _BlockColor (base colour, linear),
-    // _BlockLook (look id, health / max, seed, flags). Lighting: the key light with its shadow map and the SH ambient as
-    // Unity's Lambert applies them, plus, in place of an add pass (so no Unity point light or second directional light
-    // reaches these blocks), the rim light (_ArenaRim*, NativeLighting.ArenaRim), MapLooks' 8 practical lights (_ArenaLight*,
-    // its own arrays, never the entrance stage's _StageLight*) and the 3 blast flashes (_ArenaFlash*,
+    // _BlockLook (look id, health share as NativeBlockLooks.Normalised gives it, seed, flags). Lighting: the key light with
+    // its shadow map and the SH ambient as Unity's Lambert applies them, plus, in place of an add pass (so no per-pixel
+    // Unity light other than the key reaches these blocks; NativeLighting keeps the rim per-pixel on dressed maps, so it
+    // never lands in the SH either), the rim light (_ArenaRim*, NativeLighting.ArenaRim), MapLooks' 8 practical lights
+    // (_ArenaLight*, its own arrays, never the entrance stage's _StageLight*) and the 3 blast flashes (_ArenaFlash*,
     // NativeArenaDressing.Flashes); then the ground haze and fog.
     Properties {}
     SubShader
@@ -128,9 +129,20 @@ Shader "ChipArena/NativeBlockLit"
             uint bit=uint(14.0-(row*3.0+col)+0.5);
             return float((uint(g+0.5)>>bit)&1u)*saturate(1.0-f/0.01);
         }
+        // The 2.3 band fitted to the block's height (NativeBlockLooks.BandFit, m above its base): x, y the band, z the tag
+        // plate's centre (-1: no room). 1.0-1.6 m on blocks 1.9 m tall or more, else up to 0.6 m centred; the tag 8 cm above the
+        // band, else below it, only where it clears a bevel by 2 cm.
+        float3 BkBand(float height)
+        {
+            float c=min(0.05,0.21*height);
+            float2 band=height>=1.9?float2(1.0,1.6):height*0.5+float2(-0.5,0.5)*min(0.6,0.8*(height-2.0*c));
+            float above=band.y+0.2;float below=band.x-0.2;
+            return float3(band,above+0.12<=height-c-0.02?above:(below-0.12>=c+0.02?below:-1.0));
+        }
         struct BlockSurf {float3 albedo;float3 emit;};
         // The look in rest space (pat), then the shared layers: band and tag paint, vertex shade, fresh breaks, rebar, cracks,
-        // edge wear, the grime ramp, top-face dust and soot, the dust coat. fwP: fwidth(pat), taken before any branch.
+        // edge wear, the grime ramp, top-face dust and soot, the dust coat (light on the band and tag). fwP: fwidth(pat), taken
+        // before any branch. health: NativeBlockLooks.Normalised (the block's thresholds at 66/33%).
         BlockSurf BlockSurface(float3 obj,float3 pat,float3 fwP,float3 nO,float3 hs,float code,float health,float3 base,float seed,float4 shade,float dust,float time)
         {
             float flv=floor(code/16.0+0.001);float look=code-16.0*flv;uint fl=uint(flv+0.5);
@@ -236,26 +248,31 @@ Shader "ChipArena/NativeBlockLit"
             }
             else if(BkIs(look,LOOK_DEMOLITION))
             {
-                // Yellow and black stripes over the whole block (2.3).
+                // Yellow and black stripes over the whole block (the 2.3 colours; the DANGER tag only with FLAG_TAG).
                 alb=lerp(BK_YELLOW,BK_BLACK,BkStripe((uv.x+uv.y)/0.35,fwm/0.35));
             }
             else
             {
                 alb=base*(1.0+0.06*(BkNoise(uv*3.0+seed*5.0)-0.5)*detail);
             }
-            // The 2.3 load-bearing band: chevrons 1.0-1.6 m above the block's base between black rules, and its DANGER tag.
-            if((fl&FLAG_BAND)!=0u&&!top)
+            // The 2.3 load-bearing band: chevrons between black rules where BkBand fits them, and the DANGER tag, each only with
+            // its own flag (never on a stub, whose member is gone).
+            float inBand=0.0;float plate=0.0;
+            if((fl&(FLAG_BAND|FLAG_TAG))!=0u&&!top&&health>0.0)
             {
-                float inBand=smoothstep(1.0-fw.y,1.0+fw.y,yb)*(1.0-smoothstep(1.6-fw.y,1.6+fw.y,yb));
-                float rule=max(1.0-smoothstep(0.0,0.015+fw.y,abs(yb-1.0)),1.0-smoothstep(0.0,0.015+fw.y,abs(yb-1.6)));
-                alb=lerp(alb,lerp(BK_YELLOW,BK_BLACK,max(BkStripe((across+abs(yb-1.3))/0.3,fwm/0.3),rule)),inBand);emit*=1.0-inBand;
-            }
-            bool demo=BkIs(look,LOOK_DEMOLITION);
-            if(((fl&FLAG_TAG)!=0u||demo)&&!top&&halfAcross>0.3&&hs.y>0.13)
-            {
-                float2 tp=float2(across,demo?obj.y:yb-1.8);
-                float plate=(1.0-smoothstep(0.28-fwm,0.28+fwm,abs(tp.x)))*(1.0-smoothstep(0.12-fwm,0.12+fwm,abs(tp.y)));
-                alb=lerp(alb,lerp(BK_DANGER,BK_INK,BkGlyphs(tp,fwm)),plate);emit*=1.0-plate;
+                float3 bt=BkBand(2.0*hs.y);
+                if((fl&FLAG_BAND)!=0u)
+                {
+                    inBand=smoothstep(bt.x-fw.y,bt.x+fw.y,yb)*(1.0-smoothstep(bt.y-fw.y,bt.y+fw.y,yb));
+                    float rule=max(1.0-smoothstep(0.0,0.015+fw.y,abs(yb-bt.x)),1.0-smoothstep(0.0,0.015+fw.y,abs(yb-bt.y)));
+                    alb=lerp(alb,lerp(BK_YELLOW,BK_BLACK,max(BkStripe((across+abs(yb-0.5*(bt.x+bt.y)))/0.3,fwm/0.3),rule)),inBand);emit*=1.0-inBand;
+                }
+                if((fl&FLAG_TAG)!=0u&&bt.z>0.0&&halfAcross>0.3)
+                {
+                    float2 tp=float2(across,yb-bt.z);
+                    plate=(1.0-smoothstep(0.28-fwm,0.28+fwm,abs(tp.x)))*(1.0-smoothstep(0.12-fwm,0.12+fwm,abs(tp.y)));
+                    alb=lerp(alb,lerp(BK_DANGER,BK_INK,BkGlyphs(tp,fwm)),plate);emit*=1.0-plate;
+                }
             }
             // Vertex shade (NativeBlockLooks: bevels +18%, corners -22%, stored x .8), then fresh breaks on chips, stubs and fragments.
             alb*=shade.rgb*1.25;
@@ -292,8 +309,10 @@ Shader "ChipArena/NativeBlockLit"
                 alb=lerp(alb,BK_DUST,0.08*smoothstep(0.35,0.75,BkFbm(uv*0.35+seed*3.0)));
                 alb=lerp(alb,BK_SOOT,0.06*smoothstep(0.6,0.8,BkNoise(uv*0.25+float2(19.0,19.0))));
             }
-            // The dust coat: map-wide (_ArenaDust) plus this block's (the 2 m grid), heavier on top faces.
+            // The dust coat: map-wide (_ArenaDust) plus this block's (the 2 m grid), heavier on top faces; the band and the tag
+            // keep a tenth of it (NativeBlockLooks.BandCoatKeep), so a pier's telegraph stays clean as breaks pile up around it.
             float coat=saturate(saturate(_ArenaDust+dust)*(nO.y>0.7?1.0:0.55)*(0.75+0.5*BkNoise(uv*1.3)));
+            coat*=1.0-0.9*max(inBand,plate);
             BlockSurf s;s.albedo=lerp(alb,BK_COAT,coat);s.emit=emit*(1.0-0.5*coat);return s;
         }
         // The rim light, MapLooks' practical lights ((1 - (d/r)^2)^2, NativeMapLooks.Attenuation) and the blast flashes

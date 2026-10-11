@@ -16,12 +16,18 @@ namespace ChipArena.UnityConversion
     /// live view, and the killcam with its replay arena in place of the live one. The preview, entrance intros, the chip
     /// draft and the Siren pick return before RenderAbilities. Maps that do not opt in are never touched.
     /// Every frame each instance follows its prop's transform (falling props and fragments), takes its damage stage from
-    /// health over its material's durability, and joins that stage's mesh batch (NativeBlockLooks.MeshFor; 5 meshes): draws
-    /// of up to 500 blocks of any size and
-    /// look (NativeBlockLooks.Draws; the main pass, repeated by each shadow cascade and the depth pass). A fragment takes the
-    /// look of the block it broke from: the prop that left Props in the same frame within reach of it. Break and Collapse
-    /// events in the live arena dust a NativeDustCoat for the round. No allocations per frame in steady state; new props
-    /// allocate their entry once. Static blocks that Astra splits out of Props (5.3) are not drawn here yet.
+    /// health over its stage scale (NativeBlockLooks.StageMax: the material's durability until ContentBlock carries 5.2's
+    /// `hp` and `stages`), and joins that stage's mesh batch (NativeBlockLooks.MeshFor; 5 meshes): draws of up to 500 blocks
+    /// of any size and look (NativeBlockLooks.Draws; the main pass, repeated by each shadow cascade and the depth pass). A
+    /// fragment takes the look of the block it broke from (the prop that left Props in the same frame within reach of it,
+    /// minus the band and tag) and keeps it for the round by its id, so the killcam's replay arena, whose fragments carry the
+    /// same ids, and every rebind after it show the same look; a guest who joins after a break has no parent to take it from
+    /// until fragments carry their parent's id (5.3). Break and Collapse events in the live arena dust a NativeDustCoat for
+    /// the round. No allocations per frame in steady state; new props and new fragment looks allocate once.
+    /// Static blocks: only arena.Props are drawn. Blocks Astra splits out of Props (5.3 `static`: cores, frontage, shops,
+    /// kiosks, market walls, docks, the truck, tenement floors) keep their own renderers until Astra exposes the static block
+    /// list; then this draws that list once per round and hides those renderers the same way (MapLooks.json marks the
+    /// blockLooks entries that wait on it).
     /// </summary>
     public sealed class NativeArenaDressing : MonoBehaviour
     {
@@ -30,14 +36,17 @@ namespace ChipArena.UnityConversion
         /// <summary>The last frame's instanced draws and blocks (main pass).</summary>
         public int Draws{get;private set;}public int Instances{get;private set;}
         private const float BoundsSize=200;
-        private sealed class Entry {public int Look,Color,Flags,Seen;public uint Hash;public float Seed,Max,Reach;public bool Pending;public Vector3 Last;public Vector4 Size,Rest,Linear;}
+        private sealed class Entry {public int Look,Color,Flags,Seen;public uint Hash;public float Seed,Max,S1,S2,Reach;public bool Pending;public Vector3 Last;public Vector4 Size,Rest,Linear;}
         private sealed class Batch {public readonly Matrix4x4[] Matrices=new Matrix4x4[NativeBlockLooks.Chunk];public readonly Vector4[] Size=new Vector4[NativeBlockLooks.Chunk],Rest=new Vector4[NativeBlockLooks.Chunk],Color=new Vector4[NativeBlockLooks.Chunk],Look=new Vector4[NativeBlockLooks.Chunk];}
         private struct Gone {public Vector3 Position;public float Reach;public int Look,Color,Flags,Frame;public Vector4 Linear;}
+        private struct Kept {public int Look,Color,Flags;}
         private readonly Dictionary<NativePropBody,Entry> entries=new Dictionary<NativePropBody,Entry>();private readonly Stack<Entry> spare=new Stack<Entry>();
         private readonly List<NativePropBody> removed=new List<NativePropBody>();private readonly List<Renderer> renderers=new List<Renderer>();
         private readonly Dictionary<string,ContentMaterial> materials=new Dictionary<string,ContentMaterial>();
         private readonly List<Batch>[] batches={new List<Batch>(),new List<Batch>(),new List<Batch>(),new List<Batch>(),new List<Batch>()};private readonly int[] counts=new int[NativeBlockLooks.Meshes];
         private readonly Gone[] gone=new Gone[32];private int goneNext;
+        // Fragment looks inherited this round, by fragment id (live and killcam arenas share the ids); cleared with the dust coat.
+        private readonly Dictionary<string,Kept> kept=new Dictionary<string,Kept>();
         private readonly NativeDustCoat coat=new NativeDustCoat();private NativeArena liveArena;private int liveGeneration=-1,lastEvent;
         private NativeArena drawn;private int generation=-1;private string mapId;private MapLook look;private MapLookBlock[] preview;private bool dressed;private int floor;
         private Mesh[] meshes;private Material material;private MaterialPropertyBlock block;private bool instancing;
@@ -76,12 +85,12 @@ namespace ChipArena.UnityConversion
             foreach(var p in arena.Props)
             {
                 if(p==null||p.Definition==null||!entries.TryGetValue(p,out var e))continue;var t=p.transform;Vector3 pos=t.position;Quaternion rot=t.rotation;
-                if(e.Pending){e.Pending=false;Inherit(e,pos,frame);}e.Last=pos;
-                float f=NativeBlockLooks.Fraction(p.Health,e.Max,p.Indestructible);int stage=NativeBlockLooks.Stage(f);Vector4 size=e.Size,rest=e.Rest;
+                if(e.Pending){e.Pending=false;Inherit(e,p.Definition.id,pos,frame);}e.Last=pos;
+                float f=NativeBlockLooks.Fraction(p.Health,e.Max,p.Indestructible);int stage=NativeBlockLooks.Stage(f,e.S1,e.S2);Vector4 size=e.Size,rest=e.Rest;
                 // S3 is a stub of the block's lower 24% (same base, same rest-space pattern).
                 if(stage==3){float drop=size.y*(1-NativeBlockLooks.StubShare);pos-=rot*new Vector3(0,drop,0);size.y*=NativeBlockLooks.StubShare;rest.y-=drop;}
                 rest.w=coat.Sample(pos.x,pos.z);
-                Add(NativeBlockLooks.MeshFor(stage,size.y),Matrix4x4.TRS(pos,rot,Vector3.one),size,rest,e.Linear,new Vector4(e.Look,f,e.Seed,e.Flags|NativeBlockLooks.Spin(e.Hash,stage)));
+                Add(NativeBlockLooks.MeshFor(stage,size.y),Matrix4x4.TRS(pos,rot,Vector3.one),size,rest,e.Linear,new Vector4(e.Look,NativeBlockLooks.Normalised(f,e.S1,e.S2),e.Seed,e.Flags|NativeBlockLooks.Spin(e.Hash,stage)));
             }
             NativeLighting.ArenaRim();var k=look?.blocks;Color haze=k!=null?Linear(NativeArena.ColorOf(k.hazeColor)):Color.black;
             Shader.SetGlobalVector(HazeId,new Vector4(haze.r,haze.g,haze.b,k!=null?k.haze:0));Shader.SetGlobalFloat(HazeTopId,k!=null&&k.hazeTop>0?k.hazeTop:1);Shader.SetGlobalFloat(DustId,k!=null?k.dust:0);
@@ -92,25 +101,31 @@ namespace ChipArena.UnityConversion
             foreach(var e in entries.Values)spare.Push(e);entries.Clear();drawn=arena;generation=arena.Generation;mapId=arena.MapId;
             var map=arena.Content.Map(mapId);look=NativeLighting.Look(map);preview=NativeLighting.LookSet().preview;dressed=NativeBlockLooks.Dressed(look,Preview);floor=map.floor;
             materials.Clear();foreach(var m in arena.Content.materials)if(m!=null&&m.id!=null)materials[m.id]=m;
-            // The killcam's replay arena (in its own scene) shares the live round's dust coat; a new round or arena starts a clean one.
-            if(!arena.ReplicaScene.IsValid()&&(!ReferenceEquals(arena,liveArena)||arena.Generation!=liveGeneration)){liveArena=arena;liveGeneration=arena.Generation;lastEvent=0;coat.Clear();for(int i=0;i<gone.Length;i++)gone[i].Frame=-1;}
+            // The killcam's replay arena (in its own scene) shares the live round's dust coat and fragment looks; a new round or arena
+            // starts clean ones.
+            if(!arena.ReplicaScene.IsValid()&&(!ReferenceEquals(arena,liveArena)||arena.Generation!=liveGeneration)){liveArena=arena;liveGeneration=arena.Generation;lastEvent=0;coat.Clear();kept.Clear();for(int i=0;i<gone.Length;i++)gone[i].Frame=-1;}
         }
         private Entry Create(NativePropBody prop)
         {
             var e=spare.Count>0?spare.Pop():new Entry();var b=prop.Definition;materials.TryGetValue(b.material??"",out var m);int content=b.material=="foundation"?floor:m!=null?m.color:0xffffff;
             var c=NativeBlockLooks.Resolve(look?.blockLooks,Preview?preview:null,b.id,b.material,content);
-            e.Look=c.Look;e.Color=c.Color;e.Flags=c.Flags|(prop.Fragment?NativeBlockLooks.Fragment:0);e.Hash=NativeBlockLooks.Hash(b.id);e.Seed=NativeBlockLooks.Seed(b.id);e.Max=m!=null?m.durability:0;e.Pending=prop.Fragment;e.Seen=0;
+            // A loose fragment never carries the band or tag; one whose look this round already knows takes it back.
+            e.Look=c.Look;e.Color=c.Color;e.Flags=prop.Fragment?c.Flags&~(NativeBlockLooks.Band|NativeBlockLooks.Tag)|NativeBlockLooks.Fragment:c.Flags;e.Pending=prop.Fragment;
+            if(prop.Fragment&&kept.TryGetValue(b.id??"",out var k)){e.Look=k.Look;e.Color=k.Color;e.Flags=k.Flags;e.Pending=false;}
+            e.Hash=NativeBlockLooks.Hash(b.id);e.Seed=NativeBlockLooks.Seed(b.id);e.Max=NativeBlockLooks.StageMax(b,m,out e.S1,out e.S2);e.Seen=0;
             e.Size=new Vector4(b.size.x*.5f,b.size.y*.5f,b.size.z*.5f,NativeBlockLooks.Chamfer);e.Rest=new Vector4(b.pos.x,b.pos.y,b.pos.z,0);e.Reach=e.Size.magnitude+.3f;e.Last=prop.transform.position;
             var lin=Linear(NativeArena.ColorOf(e.Color));e.Linear=new Vector4(lin.r,lin.g,lin.b,0);
             prop.GetComponentsInChildren(true,renderers);foreach(var r in renderers)r.forceRenderingOff=true;renderers.Clear();
             return e;
         }
-        // A new fragment takes the look of the closest block that left Props this frame within that block's reach (no band or tag).
-        private void Inherit(Entry e,Vector3 at,int frame)
+        // A new fragment takes the look of the closest block that left Props this frame within that block's reach (no band or
+        // tag), and the round keeps it under the fragment's id.
+        private void Inherit(Entry e,string id,Vector3 at,int frame)
         {
             int best=-1;float near=float.MaxValue;
             for(int i=0;i<gone.Length;i++){if(gone[i].Frame!=frame)continue;float d=(gone[i].Position-at).magnitude;if(d<=gone[i].Reach&&d<near){near=d;best=i;}}
             if(best<0)return;var g=gone[best];e.Look=g.Look;e.Color=g.Color;e.Linear=g.Linear;e.Flags=(g.Flags&~(NativeBlockLooks.Band|NativeBlockLooks.Tag))|NativeBlockLooks.Fragment;
+            if(id!=null)kept[id]=new Kept{Look=e.Look,Color=e.Color,Flags=e.Flags};
         }
         // Break and Collapse events dust the coat once each (event ids only grow within a round; a lower newest id restarts).
         private void Coat(NativeArena arena)

@@ -16,9 +16,12 @@ namespace ChipArena.UnityConversion
     /// "material:brick" entry. A listed look takes the entry's
     /// `color`, else the look's palette colour (3.10); a material default keeps the block's own content colour, so a dev
     /// preview on an old map keeps today's colours under the new surfaces. `band` paints the 2.3 load-bearing chevrons and
-    /// the DANGER tag.</item>
-    /// <item>Stages (3.9): S0 above 66% health, S1 down to 34%, S2 above 0, S3 at 0 (a 24% stub; only a prop the sim keeps
-    /// at 0 health shows it: no prop does today, a broken one leaves Props). Indestructible blocks stay S0.</item>
+    /// the DANGER tag, fitted to the block's height (<see cref="BandFit"/>); the dust coat mostly spares them
+    /// (<see cref="BandCoatKeep"/>) and a stub (S3) or a loose fragment shows neither.</item>
+    /// <item>Stages (3.9, 5.3): health over the block's stage scale (<see cref="StageMax"/>: 5.2's per-block `hp` and
+    /// `stages` once ConversionContent carries them, today its material's durability and 66/33%). S0 above the first
+    /// threshold, S1 down to the second, S2 above 0, S3 at 0 (a 24% stub; only a prop the sim keeps at 0 health shows it: no
+    /// prop does today, a broken one leaves Props). Indestructible blocks stay S0.</item>
     /// <item>Meshes: one unit mesh per stage whose vertices carry a lattice (A, B) per axis: the shader places each at
     /// A·h + sign(B)·min(|B|·c, .42·|A|·h) for the instance's half extents h and chamfer c, so one mesh serves every block
     /// size with a fixed 5 cm chamfer (thin blocks clamp it), and the corner darkening ends 30 cm (B = 6) in from each
@@ -35,8 +38,9 @@ namespace ChipArena.UnityConversion
         /// <summary>Each look's base colour (sRGB) when its entry names none: ARENA_PROPOSAL.md 3.10. Plain has none (-1: the block's own colour).</summary>
         public static readonly int[] Palette={-1,0x9C4A30,0xB8774E,0xE3C9A0,0x8F8A80,0x3E6B5A,0xB4834F,0x2B2A2E,0x3A3836,0x6B625A,0x6E8F96,0x4FA8FF,0x7D8478,0xF4B321};
         public const int Plain=0,BrickRed=1,BrickBuff=2,Terracotta=3,ConcreteBoard=4,SteelGreen=5,Timber=6,Tar=7,Asphalt=8,Cobble=9,WindowLit=10,Neon=11,Corrugated=12,Demolition=13;
-        /// <summary>Per-instance flags (bits of the shader's flags value): the 2.3 chevron band and DANGER tag, a fragment (fresh
-        /// break tint), window strobe and dark (the telegraph layer's; nothing sets them yet), and the mesh's 180-degree turns.</summary>
+        /// <summary>Per-instance flags (bits of the shader's flags value): the 2.3 chevron band and the DANGER tag (each drawn only
+        /// with its own bit, so a look never implies the tag), a fragment (fresh break tint), window strobe and dark (the
+        /// telegraph layer's; nothing sets them yet), and the mesh's 180-degree turns.</summary>
         public const int Band=1,Tag=2,Fragment=4,Strobe=8,Dark=16,SpinY=32,SpinZ=64;
         /// <summary>The chamfer (m, 4-6 cm in 2.2), its clamp share of a half extent, the corner darkening's reach in chamfers (30 cm).</summary>
         public const float Chamfer=.05f,ClampShare=.42f,Inner=6;
@@ -44,6 +48,13 @@ namespace ChipArena.UnityConversion
         public const float EdgeHighlight=1.18f,CornerDark=.78f,ShadeStore=.8f;
         /// <summary>Stage thresholds on health / max (3.9), the S2 waist (in chamfers: 8 cm in) and the S3 stub's share of the height.</summary>
         public const float Stage1=.66f,Stage2=.33f,Waist=1.6f,StubShare=.24f;
+        /// <summary>The 2.3 band (m above the block's base) on blocks at least BandFullMin tall; on shorter ones a band of at most
+        /// BandMax (BandShare of the flat face) centred on the block. The DANGER tag plate: half height, gap to the band, the
+        /// clearance it keeps from a bevel, and the half width a face needs for it (the plate is .28 m each side).</summary>
+        public const float BandLow=1,BandHigh=1.6f,BandFullMin=1.9f,BandMax=.6f,BandShare=.8f,TagHalf=.12f,TagGap=.08f,TagClear=.02f,TagMinHalfWidth=.3f;
+        /// <summary>The share of the dust coat the band and the tag keep (2.1 rule 4: telegraphs are never reduced; the rest of
+        /// the coat greys the face around them).</summary>
+        public const float BandCoatKeep=.1f;
         /// <summary>Instances per draw (one D3D11 constant buffer holds 500 of the shader's per-instance block) and the arena's draw budget (2.4).</summary>
         public const int Chunk=500,DrawBudget=60,Stages=4;
 
@@ -93,9 +104,40 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>Whether NativeArenaDressing draws the map's blocks: its look opts in (`blocks.dressed`), or the dev preview is on.</summary>
         public static bool Dressed(MapLook look,bool preview)=>preview||look?.blocks!=null&&look.blocks.dressed;
-        /// <summary>Health as a share of the material's durability (1 for indestructible blocks and a zero durability).</summary>
+        /// <summary>Health as a share of the block's stage scale (1 for indestructible blocks and a zero scale).</summary>
         public static float Fraction(float health,float max,bool indestructible)=>indestructible||!(max>0)?1:Math.Max(0,Math.Min(1,health/max));
-        public static int Stage(float fraction)=>fraction>Stage1?0:fraction>Stage2?1:fraction>0?2:3;
+        public static int Stage(float fraction)=>Stage(fraction,Stage1,Stage2);
+        public static int Stage(float fraction,float s1,float s2)=>fraction>s1?0:fraction>s2?1:fraction>0?2:3;
+        /// <summary>
+        /// A block's stage scale and thresholds (3.9, 5.3: stage = replicated health / content `hp`, with the block's own
+        /// `stages`), the one place NativeArenaDressing reads them. ContentBlock has neither field yet (5.2's `hp` and `stages`
+        /// are Astra's to add to ConversionContent); until it does this is the material's durability and 66/33%, and once it
+        /// does only this overload changes, to StageMax(block.hp, durability) and Thresholds(block.stages).
+        /// </summary>
+        public static float StageMax(ContentBlock block,ContentMaterial material,out float s1,out float s2){Thresholds(null,out s1,out s2);return StageMax(0,material!=null?material.durability:0);}
+        /// <summary>The block's `hp` when it has one (above 0), else the material's durability.</summary>
+        public static float StageMax(float hp,float durability)=>hp>0?hp:durability;
+        /// <summary>A block's `stages` (two descending shares strictly inside 0..1), else 3.9's 66/33%.</summary>
+        public static void Thresholds(float[] stages,out float s1,out float s2)
+        {if(stages!=null&&stages.Length==2&&stages[0]<1&&stages[0]>stages[1]&&stages[1]>0){s1=stages[0];s2=stages[1];}else{s1=Stage1;s2=Stage2;}}
+        /// <summary>The health the shader reads (its cracks start at 66% and its spalls and rebar at 33%): the fraction mapped
+        /// piecewise linearly so the block's own thresholds land on 66/33% (the identity for the default thresholds).</summary>
+        public static float Normalised(float fraction,float s1,float s2)=>fraction>s1?Stage1+(fraction-s1)/(1-s1)*(1-Stage1):fraction>s2?Stage2+(fraction-s2)/(s1-s2)*(Stage1-Stage2):fraction>0?fraction/s2*Stage2:0;
+        /// <summary>
+        /// The 2.3 band and DANGER tag on a side face of a block `height` m tall (NativeBlockLit's BkBand; m above the block's
+        /// base). The flat face runs from the bevel (the chamfer, clamped on thin blocks as <see cref="Corner"/> clamps it) to
+        /// height minus the bevel. The band is 1.0-1.6 m on blocks at least 1.9 m tall, else at most .6 m (80% of the flat face)
+        /// centred on the block. The .24 m tag plate sits 8 cm above the band where it clears the top bevel by 2 cm, else 8 cm
+        /// below it where it clears the bottom bevel, else nowhere (`tag` -1); the shader also needs a face more than .3 m
+        /// either side of its middle for it.
+        /// </summary>
+        public static void BandFit(float height,out float low,out float high,out float tag)
+        {
+            float c=Math.Min(Chamfer,ClampShare*height*.5f);
+            if(height>=BandFullMin){low=BandLow;high=BandHigh;}else{float half=.5f*Math.Min(BandMax,BandShare*(height-2*c));low=height*.5f-half;high=height*.5f+half;}
+            float above=high+TagGap+TagHalf,below=low-TagGap-TagHalf;
+            tag=above+TagHalf<=height-c-TagClear?above:below-TagHalf>=c+TagClear?below:-1;
+        }
         /// <summary>FNV-1a of the block id: the same on the host, guests and the killcam, since every frame carries the id.</summary>
         public static uint Hash(string id){uint h=2166136261;if(id!=null)foreach(char c in id){h^=c;h*=16777619;}return h;}
         public static float Seed(string id)=>(Hash(id)&0xFFFFFF)/16777216f;

@@ -84,8 +84,9 @@ namespace ChipArena.UnityConversion
         public static MapLook Look(ContentMap map)=>NativeMapLooks.Resolve(LookSet(),map.id,map.theme,map.sky,map.accent);
         private static readonly int ArenaRimDirId=Shader.PropertyToID("_ArenaRimDir"),ArenaRimColorId=Shader.PropertyToID("_ArenaRimColor");
         /// <summary>
-        /// NativeBlockLit's rim (it has no add pass, so Unity's second directional light never reaches it): the rim light's live
-        /// direction and its colour times intensity as Unity applies them (NativeEntranceLight.Applied); black while it is off.
+        /// NativeBlockLit's rim (it has no add pass, and Apply keeps the rim per-pixel on dressed maps, so Unity's second
+        /// directional light never reaches it): the rim light's live direction and its colour times intensity as Unity applies
+        /// them (NativeEntranceLight.Applied); black while it is off.
         /// </summary>
         public static void ArenaRim()
         {
@@ -105,7 +106,10 @@ namespace ChipArena.UnityConversion
             RenderSettings.fogColor=fog.skyLerp>0?Color.Lerp(NativeArena.ColorOf(map.sky),NativeArena.ColorOf(fog.color),fog.skyLerp):NativeArena.ColorOf(fog.color);RenderSettings.fogStartDistance=fog.start;RenderSettings.fogEndDistance=fog.end;
             Sky(look.sky);RenderSettings.skybox=solid?null:sky;Shadows();
             if(moon!=null){moon.color=NativeArena.ColorOf(look.key.color);Aim(moon,look.key);moon.shadows=LightShadowsOf(look.key.shadows);moon.shadowStrength=look.key.shadowStrength;}
-            if(rim!=null){rim.color=NativeArena.ColorOf(look.rim.color);rim.shadows=LightShadowsOf(look.rim.shadows);rim.shadowStrength=look.rim.shadowStrength;}
+            // On a dressed map the rim is always a pixel light: an Auto rim that pixel lights crowd out (3 slots on the low tier
+            // against the forced combat, blast and seeker lights) lands in the SH, which NativeBlockLit adds on top of its own rim
+            // term. Other maps keep Unity's default (Auto), as before.
+            if(rim!=null){rim.color=NativeArena.ColorOf(look.rim.color);rim.shadows=LightShadowsOf(look.rim.shadows);rim.shadowStrength=look.rim.shadowStrength;rim.renderMode=NativeBlockLooks.Dressed(look,NativeArenaDressing.Preview)?LightRenderMode.ForcePixel:LightRenderMode.Auto;}
             if(!introActive)
             {
                 var a=look.ambient;RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=NativeArena.ColorOf(a.sky)*a.skyScale;RenderSettings.ambientEquatorColor=NativeArena.ColorOf(a.equator)*a.equatorScale;RenderSettings.ambientGroundColor=NativeArena.ColorOf(a.ground)*a.groundScale;

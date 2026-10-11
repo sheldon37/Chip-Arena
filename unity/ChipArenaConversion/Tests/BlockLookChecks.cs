@@ -10,8 +10,10 @@ namespace ChipArena.UnityConversion
     // Arena block looks (Core/NativeBlockLooks.cs, Resources/NativeBlockLit.shader, MapLooks.json blockLooks/blocks/preview):
     // the shader's look ids, flags, colours and formulas against the Core rules and ARENA_PROPOSAL.md 2.3/3.10, the stage
     // meshes (closed, outward at every block size and turn, never past the collider, the chamfer, shades, chips, waist and
-    // stub), stages, look selection (Brickfall's entries, the draft script's ids, the dev preview, material defaults), the
-    // opt-in (no old map changes by default), the draw budget, the dust coat, the flash fall-off and validation.
+    // stub), stages and the stage scale, the band and tag fitted to every banded member and spared by the dust coat, look
+    // selection (Brickfall's sim entries, kit parts kept out of them, the [static] marks, the draft script's ids, the dev
+    // preview, material defaults), the opt-in (no old map changes by default), the draw budget, the dust coat, the flash
+    // fall-off and validation.
     internal static class BlockLookChecks
     {
         private static int count;
@@ -41,7 +43,7 @@ namespace ChipArena.UnityConversion
             Check(shader.Contains("#define BK_DARK_COURSE 0.63"),"dark course factor");
             yield return "block looks: 14 look ids, 7 flags, the 3.10 palette and 13 shader colours (2.3 chevron yellow/black, danger red) match the Core and the proposal";
             // Formulas the Core mirrors, SM 3.5 rules, the light block's own arrays.
-            foreach(var expr in new[]{"float3 p=a*h+sign(b)*min(abs(b)*c,0.42*abs(a)*h);","#define BK_GRIME 0.22","1.0-smoothstep(1.2,1.8,yb)","smoothstep(1.0-fw.y,1.0+fw.y,yb)*(1.0-smoothstep(1.6-fw.y,1.6+fw.y,yb))",
+            foreach(var expr in new[]{"float3 p=a*h+sign(b)*min(abs(b)*c,0.42*abs(a)*h);","#define BK_GRIME 0.22","1.0-smoothstep(1.2,1.8,yb)","inBand=smoothstep(bt.x-fw.y,bt.x+fw.y,yb)*(1.0-smoothstep(bt.y-fw.y,bt.y+fw.y,yb));",
                 "float a=saturate(1.0-q*q);","_ArenaLightColor[k].rgb*(a*a*saturate(dot(n,d/len)))","saturate(5.0*(1.0-q))/(1.0+25.0*q)","smoothstep(4.0,40.0,dist)","alb*=shade.rgb*1.25;",
                 "float4 _ArenaLightPos[8];float4 _ArenaLightColor[8];float4 _ArenaFlashPos[3];float4 _ArenaFlashColor[3];","\"LightMode\"=\"ForwardBase\"","\"LightMode\"=\"ShadowCaster\"","#pragma target 3.5","#pragma multi_compile_instancing","ShadeSH9(float4(nW,1.0))","UNITY_LIGHT_ATTENUATION(atten,i,i.world.xyz)","UNITY_APPLY_FOG(i.fogCoord,c)"})
                 Check(shader.Contains(expr),"shader has "+expr);
@@ -56,7 +58,64 @@ namespace ChipArena.UnityConversion
             var gm=Regex.Match(shader,@"float g=L<0\.5\?(\d+)\.0:L<1\.5\?(\d+)\.0:L<2\.5\?(\d+)\.0:L<3\.5\?(\d+)\.0:L<4\.5\?(\d+)\.0:(\d+)\.0;");Check(gm.Success,"glyph table");
             string[][] font={new[]{"110","101","101","101","110"},new[]{"010","101","111","101","101"},new[]{"110","101","101","101","101"},new[]{"011","100","101","101","011"},new[]{"111","100","110","100","111"},new[]{"110","101","110","101","101"}};
             for(int l=0;l<6;l++){int g=int.Parse(gm.Groups[l+1].Value);for(int r=0;r<5;r++)for(int c=0;c<3;c++)Check(((g>>(14-(r*3+c)))&1)==(font[l][r][c]=='1'?1:0),"glyph "+"DANGER"[l]+" row "+r);}
-            yield return "block looks: the shader's lattice, grime ramp (22% to 1.2 m, gone by 1.8 m), 1.0-1.6 m band, fall-offs and haze are the Core's; forward base + shadow caster, SM 3.5, no vertex derivatives, own 8+3 light arrays; the tag spells DANGER";
+            yield return "block looks: the shader's lattice, grime ramp (22% to 1.2 m, gone by 1.8 m), fitted band, fall-offs and haze are the Core's; forward base + shadow caster, SM 3.5, no vertex derivatives, own 8+3 light arrays; the tag spells DANGER";
+            // The band and tag: BkBand is NativeBlockLooks.BandFit, each is drawn only with its own flag (the demolition look
+            // implies no tag), never on a stub, and the dust coat spares them.
+            string G(float v)=>((double)v).ToString("0.0###",CultureInfo.InvariantCulture);
+            foreach(var expr in new[]{"float c=min("+G(NativeBlockLooks.Chamfer)+","+G(NativeBlockLooks.ClampShare*.5f)+"*height);",
+                "float2 band=height>="+G(NativeBlockLooks.BandFullMin)+"?float2("+G(NativeBlockLooks.BandLow)+","+G(NativeBlockLooks.BandHigh)+"):height*0.5+float2(-0.5,0.5)*min("+G(NativeBlockLooks.BandMax)+","+G(NativeBlockLooks.BandShare)+"*(height-2.0*c));",
+                "float above=band.y+"+G(NativeBlockLooks.TagGap+NativeBlockLooks.TagHalf)+";float below=band.x-"+G(NativeBlockLooks.TagGap+NativeBlockLooks.TagHalf)+";",
+                "above+"+G(NativeBlockLooks.TagHalf)+"<=height-c-"+G(NativeBlockLooks.TagClear)+"?above:(below-"+G(NativeBlockLooks.TagHalf)+">=c+"+G(NativeBlockLooks.TagClear)+"?below:-1.0)",
+                "float3 bt=BkBand(2.0*hs.y);","if((fl&(FLAG_BAND|FLAG_TAG))!=0u&&!top&&health>0.0)","if((fl&FLAG_TAG)!=0u&&bt.z>0.0&&halfAcross>"+G(NativeBlockLooks.TagMinHalfWidth)+")",
+                "float2 tp=float2(across,yb-bt.z);","coat*=1.0-"+G(1-NativeBlockLooks.BandCoatKeep)+"*max(inBand,plate);","(nO.y>0.7?1.0:0.55)*(0.75+0.5*BkNoise(uv*1.3))"})
+                Check(shader.Contains(expr),"shader has "+expr);
+            Check(!Regex.IsMatch(code,@"\bdemo\b")&&Regex.Matches(code,@"BkGlyphs\(tp").Count==1,"the tag is drawn in one place, only with FLAG_TAG");
+            Check(Math.Abs(NativeBlockLooks.TagHalf*2-.24f)<1e-6&&Math.Abs(NativeBlockLooks.ClampShare*.5f-.21f)<1e-6,"the plate is .24 m tall; the shader's .21 is the chamfer clamp per metre of height");
+            {
+                float lo,hi,tag;NativeBlockLooks.BandFit(3.6f,out lo,out hi,out tag);Check(lo==1&&hi==1.6f&&Math.Abs(tag-1.8f)<1e-5,"a 3.6 m pier: 2.3's band at 1.0-1.6 m, the tag at 1.8 m");
+                NativeBlockLooks.BandFit(1.95f,out lo,out hi,out tag);Check(lo==1&&hi==1.6f&&Math.Abs(tag-.8f)<1e-5,"a 1.95 m block: the band at 1.0-1.6 m, the tag below it (no room above)");
+                NativeBlockLooks.BandFit(1.8f,out lo,out hi,out tag);Check(Math.Abs(lo-.6f)<1e-5&&Math.Abs(hi-1.2f)<1e-5&&Math.Abs(tag-1.4f)<1e-5,"a 1.8 m chimney base: a .6 m band centred at .9 m, the tag above it");
+                NativeBlockLooks.BandFit(1f,out lo,out hi,out tag);Check(Math.Abs(lo-.2f)<1e-5&&Math.Abs(hi-.8f)<1e-5&&tag<0,"a 1.0 m bearing: a .6 m band centred, no room for the tag");
+                int fitted=0,tagged=0;
+                for(int i=1;i<=1440;i++)
+                {
+                    float h=i*.01f,c=Math.Min(NativeBlockLooks.Chamfer,NativeBlockLooks.ClampShare*h*.5f);NativeBlockLooks.BandFit(h,out lo,out hi,out tag);fitted++;
+                    Check(lo>=c-1e-5&&hi<=h-c+1e-5&&hi>lo,"band inside the flat face at "+h+" m: "+lo+".."+hi);
+                    if(h>=.5f)Check(hi-lo>=.3f-1e-5,"a band at least .3 m tall on a block of "+h+" m");
+                    if(h>=NativeBlockLooks.BandFullMin)Check(lo==NativeBlockLooks.BandLow&&hi==NativeBlockLooks.BandHigh,"2.3's 1.0-1.6 m band at "+h+" m");
+                    if(tag<0){Check(h<1.4f,"a tag on every block 1.4 m tall or more ("+h+" m)");continue;}tagged++;
+                    float t0=tag-NativeBlockLooks.TagHalf,t1=tag+NativeBlockLooks.TagHalf;
+                    Check(t0>=c+NativeBlockLooks.TagClear-1e-5&&t1<=h-c-NativeBlockLooks.TagClear+1e-5,"tag plate clear of the bevels at "+h+" m");
+                    Check(t0>=hi+NativeBlockLooks.TagGap-1e-5||t1<=lo-NativeBlockLooks.TagGap+1e-5,"tag plate apart from the band at "+h+" m");
+                    if(h>=1.99f)Check(Math.Abs(tag-1.8f)<1e-5,"the tag at 1.8 m once it fits above the 1.0-1.6 m band ("+h+" m)");
+                }
+                Check(fitted==1440&&tagged>1000,"band fit swept over .01-14.4 m ("+tagged+" with a tag)");
+            }
+            {
+                // Every banded Brickfall entry at its member's smallest size: the draft layout's piers (docs/arenas/scripts/
+                // brickfall_m1.py: hotel 1.2 x 3.6 x 1.2, tenement 1.0 x 3.6 x 1.0) and the render stand-ins for the members
+                // 3.9 names without a size (bridge bearing .8 x 1.0 x .8, chimney base ring 2.6 x 1.8 x 2.6).
+                var bfLooks=NativeMapLooks.Find(MapLookChecks.Load(root),"brickfall").blockLooks;
+                var members=new[]{("hotel-pier-nw",1.2f,3.6f,true),("ashby-pier-F1",1f,3.6f,true),("bray-pier-R2",1f,3.6f,true),("bridge-ashby-bearing",.8f,1f,false),("stack-n-base",2.6f,1.8f,true)};
+                foreach(var (id,w,h,tagged) in members)
+                {
+                    var c=NativeBlockLooks.Resolve(bfLooks,null,id,"brick",0);Check((c.Flags&NativeBlockLooks.Band)!=0&&(c.Flags&NativeBlockLooks.Tag)!=0,id+" is banded");
+                    NativeBlockLooks.BandFit(h,out float lo,out float hi,out float tag);Check(hi-lo>=.5f&&lo>=.05f&&hi<=h-.05f,id+" at "+h+" m shows a band of "+(hi-lo)+" m");
+                    Check((tag>0&&w*.5f>NativeBlockLooks.TagMinHalfWidth)==tagged,id+(tagged?" shows":" has no room for")+" the DANGER tag");
+                }
+                foreach(var e in bfLooks.Where(e=>e.band))Check(members.Any(m=>NativeBlockLooks.Score(e.block,m.Item1,"brick")>0),"banded entry "+e.block+" has a member size checked");
+                string draftPy=Path.Combine(root,"../../docs/arenas/scripts/brickfall_m1.py");
+                if(File.Exists(draftPy)){var tops=Regex.Matches(File.ReadAllText(draftPy),@"add\(f?'[a-z-]*pier[^\n]*?, ([0-9.]+), 'P'").Select(m=>float.Parse(m.Groups[1].Value,CultureInfo.InvariantCulture)).ToArray();Check(tops.Length==2&&tops.All(t=>t>=3.6f),"the draft's piers are 3.6 m tall ("+tops.Length+" pier rows)");}
+            }
+            {
+                // The coat at its heaviest on a side face (a saturated map and block coat x .55 x the noise's 1.25) against the band.
+                double Y(double[] c)=>.2126*c[0]+.7152*c[1]+.0722*c[2];
+                double[] V(string name){var m=Regex.Match(shader,@"#define BK_"+name+@" float3\(([-0-9.]+),([-0-9.]+),([-0-9.]+)\)");return Enumerable.Range(1,3).Select(k=>double.Parse(m.Groups[k].Value,CultureInfo.InvariantCulture)).ToArray();}
+                double yellow=Y(V("YELLOW")),black=Y(V("BLACK")),dust=Y(V("COAT")),side=Math.Min(1,.55*1.25);
+                double Ratio(double t)=>(yellow*(1-t)+dust*t+.05)/(black*(1-t)+dust*t+.05);
+                Check(Ratio(side*NativeBlockLooks.BandCoatKeep)>=6&&Ratio(side*NativeBlockLooks.BandCoatKeep)>=.65*Ratio(0)&&Ratio(side)<2,"the band keeps "+Ratio(side*NativeBlockLooks.BandCoatKeep).ToString("0.0")+":1 yellow/black contrast under the heaviest coat (clean "+Ratio(0).ToString("0.0")+":1; the full coat would leave "+Ratio(side).ToString("0.0")+":1)");
+            }
+            yield return "block looks: the 2.3 band and DANGER tag fit every block height (1.0-1.6 m with the tag at 1.8 m on tall members, a centred band and the tag only where its plate fits on short ones; every banded Brickfall member shows its band), only with their own flags, never on a stub, and keep at least 6:1 contrast under the heaviest dust coat";
             // Stage meshes at every size and turn: closed, outward, inside the collider; the chamfer, shades, chips, waist and stub.
             var sizes=new[]{(1f,1f,1f),(2.5f,3.05f,.3f),(1.2f,3.6f,1.2f),(64f,1.5f,56f),(.3f,14.4f,.3f),(.04f,.04f,.04f),(8f,.24f,1.2f),(.46f*2.5f,.44f*3.05f,.88f*.3f)};
             int[] verts={216,216,264,216,216},tris={188,188,252,188,188};
@@ -112,22 +171,51 @@ namespace ChipArena.UnityConversion
             // Stages, seeds and turns.
             Check(NativeBlockLooks.Stage(1)==0&&NativeBlockLooks.Stage(.67f)==0&&NativeBlockLooks.Stage(.66f)==1&&NativeBlockLooks.Stage(.34f)==1&&NativeBlockLooks.Stage(.33f)==2&&NativeBlockLooks.Stage(.01f)==2&&NativeBlockLooks.Stage(0)==3,"stages at 3.9's 66/33/0%");
             Check(NativeBlockLooks.Fraction(40,120,false)==1/3f&&NativeBlockLooks.Fraction(-5,120,false)==0&&NativeBlockLooks.Fraction(10,0,true)==1&&NativeBlockLooks.Fraction(10,0,false)==1&&NativeBlockLooks.Fraction(200,120,false)==1,"health fraction, clamped; indestructible and zero durability stay whole");
+            // The stage scale (5.3: health / content hp, per-block stages), routed through one Core helper.
+            Check(NativeBlockLooks.StageMax(140,120)==140&&NativeBlockLooks.StageMax(0,120)==120&&NativeBlockLooks.StageMax(-1,120)==120,"a block's hp wins over its material's durability");
+            {
+                NativeBlockLooks.Thresholds(new[]{.7f,.4f},out float a1,out float a2);NativeBlockLooks.Thresholds(null,out float d1,out float d2);NativeBlockLooks.Thresholds(new[]{.3f,.6f},out float b1,out float b2);NativeBlockLooks.Thresholds(new[]{1f,.5f},out float e1,out float e2);
+                Check(a1==.7f&&a2==.4f&&d1==NativeBlockLooks.Stage1&&d2==NativeBlockLooks.Stage2&&b1==d1&&b2==d2&&e1==d1&&e2==d2,"a block's stages when two descending shares inside 0..1, else 66/33%");
+                var brick=new ContentMaterial{id="brick",durability=120};float scale=NativeBlockLooks.StageMax(new ContentBlock{id="hotel-pier-nw",material="brick"},brick,out float s1,out float s2);
+                Check(scale==120&&s1==NativeBlockLooks.Stage1&&s2==NativeBlockLooks.Stage2&&NativeBlockLooks.StageMax(new ContentBlock(),null,out _,out _)==0,"today a block's scale is its material's durability at 66/33%");
+                Check(typeof(ContentBlock).GetField("hp")==null&&typeof(ContentBlock).GetField("stages")==null,"ContentBlock has no hp or stages yet (when Astra adds them, StageMax(ContentBlock, ...) reads them and this check changes)");
+                for(int i=0;i<=200;i++)
+                {
+                    float f=i/200f;Check(Math.Abs(NativeBlockLooks.Normalised(f,d1,d2)-f)<1e-6f,"default thresholds leave health as it is ("+f+")");
+                    Check(NativeBlockLooks.Stage(NativeBlockLooks.Normalised(f,a1,a2))==NativeBlockLooks.Stage(f,a1,a2),"the shader's stage at "+f+" with 70/40% thresholds is the mesh's");
+                }
+                Check(NativeBlockLooks.Stage(.7f,.7f,.4f)==1&&NativeBlockLooks.Stage(.71f,.7f,.4f)==0&&NativeBlockLooks.Stage(.4f,.7f,.4f)==2&&NativeBlockLooks.Stage(0,.7f,.4f)==3,"stages at a block's own thresholds");
+                // With 5.2's sample pier (hp 140, stages .66/.33) on brick (120): S1 at 66% of 140, not of 120.
+                float pier=NativeBlockLooks.StageMax(140,120);Check(NativeBlockLooks.Stage(NativeBlockLooks.Fraction(93,pier,false))==0&&NativeBlockLooks.Stage(NativeBlockLooks.Fraction(92,pier,false))==1&&NativeBlockLooks.Stage(NativeBlockLooks.Fraction(92,120,false))==0,"a 140 HP pier enters S1 at 92 HP (66%), where durability would wait for 79");
+            }
             Check(NativeBlockLooks.Seed("hotel-pier-nw")==NativeBlockLooks.Seed("hotel-pier-nw")&&NativeBlockLooks.Seed("hotel-pier-nw")!=NativeBlockLooks.Seed("hotel-pier-ne"),"seeds are per id and repeatable");
             var seeds=content.maps.SelectMany(m=>m.blocks).Select(b=>NativeBlockLooks.Seed(b.id)).ToArray();Check(seeds.All(s=>s>=0&&s<1)&&seeds.Average()>.4&&seeds.Average()<.6,"seeds spread over [0,1)");
             var spins=content.maps.SelectMany(m=>m.blocks).Select(b=>NativeBlockLooks.Spin(b.id,1)).GroupBy(x=>x).Count();Check(spins==4&&content.maps.SelectMany(m=>m.blocks).All(b=>(NativeBlockLooks.Spin(b.id,3)&NativeBlockLooks.SpinZ)==0),"all four turns occur; a stub never turns over");
-            yield return "block looks: damage stages S0-S3 at 66/33/0% of the material's durability; per-id seeds and turns (the same on every client)";
+            yield return "block looks: damage stages S0-S3 at the block's thresholds (66/33/0% by default) of its stage scale (a block hp over its material's durability once ContentBlock has one; the shader's health remapped to match); per-id seeds and turns (the same on every client)";
             // Look selection.
-            var set=MapLookChecks.Load(root);var bf=NativeMapLooks.Find(set,"brickfall");var bl=bf.blockLooks;
+            var set=MapLookChecks.Load(root);var bf=NativeMapLooks.Find(set,"brickfall");var bl=bf.blockLooks;var kl=bf.kitLooks;
             NativeBlockLooks.Choice R(string id,string material="brick",int color=0x123456)=>NativeBlockLooks.Resolve(bl,null,id,material,color);
+            NativeBlockLooks.Choice K(string id)=>NativeBlockLooks.Resolve(kl,null,id,"",0x123456);
+            void Kit(string id,string key){var c=K(id);Check(c.Listed&&c.Look==NativeBlockLooks.Id(key)&&c.Flags==0,"kit part "+id+" -> "+key);}
             void Is(string id,string key,bool band,string material="brick"){var c=R(id,material);Check(c.Look==NativeBlockLooks.Id(key)&&((c.Flags&NativeBlockLooks.Band)!=0)==band&&((c.Flags&NativeBlockLooks.Tag)!=0)==band&&c.Listed,id+" -> "+key+(band?" banded":"")+" (got "+NativeBlockLooks.Keys[c.Look]+")");}
             foreach(string pier in new[]{"hotel-pier-nw","hotel-pier-ne","hotel-pier-sw","hotel-pier-se"})Is(pier,"brick-buff",true);
             foreach(string pier in new[]{"ashby-pier-F1","ashby-pier-R2","bray-pier-F3"})Is(pier,"brick-red",true);
             Is("stack-n-base","brick-red",true);Is("stack-n-drum-2","brick-red",false);Is("bridge-ashby-bearing","steel-green",true);Is("bridge-ashby-deck","steel-green",false);
-            Is("hotel-n0","brick-buff",false);Is("hotel-seam-w","brick-buff",false);Is("hotel-core-w","concrete-board",false);Is("hotel-roof","tar",false);Is("hotel-roof-stair","brick-buff",false);Is("hotel-n-sill-3","terracotta",false);Is("hotel-ne-cornice-1","terracotta",false);
-            Is("frontage-n","brick-red",false);Is("frontage-n-coping","terracotta",false);Is("ashby-lane0","brick-red",false);Is("ashby-core","concrete-board",false);Is("kessels","terracotta",false);Is("market-wall-w0","brick-red",false);Is("market-wall-w-arch-2","terracotta",false);
+            Is("hotel-n0","brick-buff",false);Is("hotel-seam-w","brick-buff",false);Is("hotel-core-w","concrete-board",false);Is("hotel-roof","tar",false);Is("hotel-roof-stair","brick-buff",false);Is("hotel-floor-1","concrete-board",false);
+            Is("frontage-n","brick-red",false);Is("ashby-lane0","brick-red",false);Is("ashby-core","concrete-board",false);Is("ashby-floor-1","concrete-board",false);Is("kessels","terracotta",false);Is("market-wall-w0","brick-red",false);
             Is("tram-shelter-n","steel-green",false);Is("monument-ne","terracotta",false);Is("barricade-w","timber",false);Is("pallet-sw0","timber",false);Is("stall-w3","timber",false);Is("sandbag-0","plain",false);Is("dock-sw","concrete-board",false);Is("truck-sw","corrugated",false);
-            Is("hotel-n-window-4","window-lit",false);Is("mercer-sign","neon",false);Is("kessels-neon-1","neon",false);Is("brickfall-slab","asphalt",false);Is("lane-n","cobble",false);Is("barrier-3","demolition",false);
-            Check(R("sandbag-0").Color==0x9C8B6E&&R("dock-sw").Color==0x5F5A53&&R("kessels-neon-1").Color==0xFF5A4E&&R("mercer-sign").Color==0x4FA8FF&&R("hotel-pier-nw").Color==0xB8774E,"entry colours, else the look's palette colour");
+            Is("brickfall-slab","asphalt",false);Is("hotel-nw-rubble-1","brick-buff",false);Is("kiosk-w","steel-green",false);Is("news-kiosk-n","steel-green",false);
+            Check(R("sandbag-0").Color==0x9C8B6E&&R("dock-sw").Color==0x5F5A53&&R("hotel-pier-nw").Color==0xB8774E,"entry colours, else the look's palette colour");
+            // Decor is kit parts (2.1 rule 5, 2.2 "Set dressing", 3.10 "windows are open holes"), never sim block looks.
+            Kit("hotel-n-sill-3","terracotta");Kit("hotel-ne-cornice-1","terracotta");Kit("frontage-n-coping","terracotta");Kit("market-wall-w-arch-2","terracotta");Kit("hotel-n-string-1","terracotta");Kit("hotel-ne-quoin-2","terracotta");
+            Kit("hotel-n-window-4","window-lit");Kit("mercer-sign","neon");Kit("kessels-neon-1","neon");Kit("kessels-shutter-1","corrugated");Kit("ashby-lane-boards-2","timber");Kit("market-canopy-3","steel-green");Kit("lane-n","cobble");Kit("yard-sw","cobble");Kit("street-n","asphalt");Kit("square-ne","cobble");
+            Check(K("kessels-neon-1").Color==0xFF5A4E&&K("mercer-sign").Color==0x4FA8FF,"kit colours: coral shop neon, MERCER blue");
+            foreach(var e in bl)Check(!KitStems.Any(k=>e.block.Contains(k)),"sim entry "+e.block+" names no kit part");
+            Check(kl.Length>0&&kl.All(e=>!e.band&&e.note.StartsWith("kit: ",StringComparison.Ordinal)&&KitStems.Any(k=>e.block.Contains(k))),"every kit entry is a kit part (no band, noted kit:)");
+            Check(!bl.Any(e=>e.look=="demolition")&&!bl.Concat(kl).Any(e=>e.block.StartsWith("barrier",StringComparison.Ordinal)),"no Brickfall block takes the all-over demolition stripes (2.3 has no such element)");
+            // 3.9 / 5.3 static blocks: their entries wait for the static block path, and say so.
+            foreach(var e in bl){bool stat=StaticStems.Contains(e.block);Check(e.note.EndsWith(" [static]",StringComparison.Ordinal)==stat,e.block+(stat?" is marked [static]":" is not static"));}
+            Check(StaticStems.All(x=>bl.Any(e=>e.block==x)),"every static stem has an entry");
             var none=R("chunk-12","brick",0x9C4A30);Check(!none.Listed&&none.Look==NativeBlockLooks.BrickRed&&none.Color==0x9C4A30,"an unlisted block takes its material's look and keeps its own colour");
             Check(NativeBlockLooks.MaterialDefault("stone")==NativeBlockLooks.ConcreteBoard&&NativeBlockLooks.MaterialDefault("wood")==NativeBlockLooks.Timber&&NativeBlockLooks.MaterialDefault("metal")==NativeBlockLooks.SteelGreen&&NativeBlockLooks.MaterialDefault("foundation")==NativeBlockLooks.Asphalt&&NativeBlockLooks.MaterialDefault("glass")==NativeBlockLooks.WindowLit&&NativeBlockLooks.MaterialDefault("unobtainium")==NativeBlockLooks.Plain,"material defaults");
             var rules=new[]{new MapLookBlock{block="material:stone",look="tar"},new MapLookBlock{block="tower-wall-*",look="cobble"},new MapLookBlock{block="tower-*",look="timber"},new MapLookBlock{block="tower-wall-3",look="neon"},new MapLookBlock{block="*-wall-*",look="asphalt"}};
@@ -136,10 +224,10 @@ namespace ChipArena.UnityConversion
             Check(NativeBlockLooks.Resolve(rules,new[]{new MapLookBlock{block="keep",look="cobble"}},"keep","wood",0).Look==NativeBlockLooks.Cobble&&NativeBlockLooks.Resolve(rules,new[]{new MapLookBlock{block="tower-*",look="neon"}},"tower-roof","stone",0).Look==NativeBlockLooks.Timber,"the preview list only fills in where the map's own list has nothing");
             Check(NativeBlockLooks.Glob("a*b*c","axxbyyc")&&NativeBlockLooks.Glob("*","")&&NativeBlockLooks.Glob("hotel-*","hotel-")&&!NativeBlockLooks.Glob("hotel-*","hote")&&!NativeBlockLooks.Glob("a*c","ab")&&NativeBlockLooks.Glob("*-pier-*","hotel-pier-nw")&&!NativeBlockLooks.Glob("stack-*-base*","stack-n"),"glob matching");
             Check(NativeBlockLooks.Score("material:brick","x","brick")==0&&NativeBlockLooks.Score("material:brick","x","bricks")==-1&&NativeBlockLooks.Score("material:brick","x","bric")==-1&&NativeBlockLooks.Score("x","x","")==int.MaxValue&&NativeBlockLooks.Score("x*","xy","")==1&&NativeBlockLooks.Score("x*","y","")==-1,"match scores");
-            var used=new HashSet<string>(bl.Select(b=>b.look));foreach(var key in new[]{"brick-red","brick-buff","terracotta","concrete-board","steel-green","timber","tar","asphalt","cobble","window-lit","neon"})Check(used.Contains(key),"Brickfall uses the 3.10 look "+key);
+            var used=new HashSet<string>(bl.Concat(kl).Select(b=>b.look));foreach(var key in new[]{"brick-red","brick-buff","terracotta","concrete-board","steel-green","timber","tar","asphalt","cobble","window-lit","neon"})Check(used.Contains(key),"Brickfall uses the 3.10 look "+key);
             Check(bl.All(b=>!string.IsNullOrEmpty(b.note))&&bl.Where(b=>b.band).All(b=>b.look=="brick-red"||b.look=="brick-buff"||b.look=="steel-green"),"every Brickfall entry is documented; banded members are brick or steel");
             Check(bf.blocks!=null&&bf.blocks.dressed&&bf.blocks.haze==.15f&&bf.blocks.hazeTop==2.5f&&bf.blocks.hazeColor==0xCF9A74&&bf.blocks.dust>=0&&bf.blocks.dust<.1f,"Brickfall opts in, with 3.10's 15% ground haze to 2.5 m in the fog colour");
-            yield return "block looks: Brickfall's blockLooks give the 2.3/3.10 looks by id stem (banded hotel, tenement, chimney and bridge members), exact > first glob > material: > material default, and use all 11 3.10 looks";
+            yield return "block looks: Brickfall's blockLooks give sim blocks the 2.3/3.10 looks by id stem (banded hotel, tenement, chimney and bridge members; [static] marks on 3.9's static blocks), kit parts (windows, trims, signage, paving) live in kitLooks, exact > first glob > material: > material default, and all 11 3.10 looks are used";
             // The draft layout's element names (docs/arenas/scripts/brickfall_m1.py) resolve to listed looks.
             string draft=Path.Combine(root,"../../docs/arenas/scripts/brickfall_m1.py");bool hasDraft=File.Exists(draft);
             if(hasDraft)
@@ -181,9 +269,15 @@ namespace ChipArena.UnityConversion
             Reject(s=>NativeMapLooks.Find(s,"brickfall").blockLooks[0].look="marble","an unknown look key");Reject(s=>NativeMapLooks.Find(s,"brickfall").blockLooks[0].color=0x1000000,"a block colour beyond 0xFFFFFF");
             Reject(s=>NativeMapLooks.Find(s,"brickfall").blockLooks[0].block="material:","an empty material entry");Reject(s=>NativeMapLooks.Find(s,"brickfall").blocks.haze=1.5f,"haze above 1");
             Reject(s=>NativeMapLooks.Find(s,"brickfall").blocks.hazeTop=0,"haze with no top");Reject(s=>NativeMapLooks.Find(s,"brickfall").blocks.dust=float.NaN,"a NaN dust coat");Reject(s=>s.preview[0].look="","a preview entry without a look");
+            Reject(s=>NativeMapLooks.Find(s,"brickfall").kitLooks[0].band=true,"a banded kit part");Reject(s=>NativeMapLooks.Find(s,"brickfall").kitLooks[0].block="material:brick","a kit entry by material");Reject(s=>NativeMapLooks.Find(s,"brickfall").kitLooks[0].look="glass","a kit entry with an unknown look");
             NativeMapLooks.Validate(set);
-            yield return "block looks: validation rejects unknown looks, bad colours, empty patterns, bad haze and dust, bad preview entries ("+count+" checks in all)";
+            yield return "block looks: validation rejects unknown looks, bad colours, empty patterns, bad haze and dust, bad preview entries and banded or material kit entries ("+count+" checks in all)";
         }
+        // Kit part names (2.2 "Set dressing", 3.10): presentation only, never sim block ids.
+        private static readonly string[] KitStems={"-window-","-sill-","-lintel-","-cornice-","-string-","-quoin-","-coping","-boards-","-shutter","-canopy","-neon-","-arch","mercer-sign","street-","lane-","yard-","square-"};
+        // Brickfall's blockLooks entries for 3.9's static blocks (cores, frontage, shops, kiosks, market walls, docks, truck,
+        // tenement floors) and 5.3's (shelters, storerooms).
+        private static readonly HashSet<string> StaticStems=new HashSet<string>{"frontage-*","hotel-core-*","ashby-core*","bray-core*","ashby-floor-*","bray-floor-*","kessels*","dunmores*","market-*","storeroom-*","news-kiosk-*","kiosk-*","tram-shelter-*","dock-*","truck-*"};
         // The shader's vertex stage on the CPU: lattice positions for half extents h and a turn; normals turned the same way.
         private static double[] Positions(NativeBlockLooks.StageMesh m,float hx,float hy,float hz,int spin,out double[] normals)
         {
