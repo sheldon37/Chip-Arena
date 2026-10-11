@@ -1,5 +1,29 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Claude — Brickfall lighting presets (MapLooks) and the dressed block renderer
+- Branch `claude/sleepy-ritchie-g8ruhv` (PR #62): merged `claude/brickfall-blocks` `bc76111`, which contains `claude/brickfall-lighting` `3c2ff7e` (both reviewed; blocks fixed).
+  - Integration commit: the backdrop light-layer check now covers point lights only (the dressed maps' ForcePixel rim is directional).
+  - Presentation only.
+- Lighting:
+  - New `Resources/MapLooks.json` + `Core/NativeMapLooks.cs` (Claude-owned, never in the network frame): key and rim lights, trilight ambient, fog, cascades with a low-tier fallback, sky, 8 practical lights.
+  - `NativeLighting.Apply` reads it. The 14 other old maps are bit-identical (MapLookChecks: 3,857 values against a frozen oracle and fixture).
+  - Cinder Crossing (lavaworks) now gets the forge sky, as in Electron's night-world.ts.
+  - `NativeNightSky.shader` gains sun/moon, halo, star and cloud properties whose defaults reproduce today's sky.
+  - Brickfall's "golden-demolition" look follows §3.10 (dormant until a map with id brickfall exists).
+- Blocks:
+  - `Core/NativeBlockLooks.cs`: look selection by id, glob or material; damage stages; 5 bevelled unit meshes.
+  - `Resources/NativeBlockLit.shader`: procedural brick/concrete/rivet/plank/corrugation/tar/asphalt/cobble/window/neon looks; the chevron band and DANGER tag fitted to each member; wear, grime, dust and soot; cracks and spalls by health; its own 8 practical-light arrays plus rim and 3 blast flashes.
+  - `Runtime/NativeArenaDressing.cs`: instanced; at most 5 main-pass draws at the prop cap.
+  - Opt-in per map via MapLooks. Only Brickfall opts in, so old maps are unchanged. The dev preview is the `--ca-dress-blocks` command-line flag.
+  - Brickfall's blockLooks use the draft layout's id stems (documented in MapLooks). Kit parts (windows, sills, cornices and so on) are presentation dressing, not sim blocks.
+- Known, for later:
+  - Dressing of Astra's future `static` blocks needs their list.
+  - After the first chip draft the arena rim stays at the draft's angle (pre-existing; restoring Electron's (14,7,12) would change every old map's in-match look, so it is the owner's call).
+  - The two lighting review minors are open: fog state in Intro/Draft; the parity check mirrors Apply rather than calling it.
+- Checks on merged head: `unity-check.sh` runtime+editor build OK; Python tests OK (also in a unity/-only copy); `package_source.py` passed; `check_relay.py` 309 PASS; `git diff --check 6235a82 HEAD` clean.
+- Not run: Unity import of NativeBlockLit/NativeNightSky (SM 3.5 limits), a Windows build, a playtest.
+- Release: pushed to PR #62 and `codex/unity-cloud-current`; publication waits on native CI and UBA.
+
 ## 2026-10-11 — Claude — Siren possession hint levels 2 and 3 (on Astra's replicated PossessedAt)
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62): merged `claude/possession-hints` `efb8fdf` (base `7c39c47`; builder, review, fix). Presentation only; it reads Astra's `NativePveAdd.PossessedAt` (51d47d0) and changes no sim or network data.
 - `Core/NativeMinionHint.cs`:
