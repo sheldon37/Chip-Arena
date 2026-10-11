@@ -241,11 +241,12 @@ namespace ChipArena.UnityConversion
             int draws=0,offs=0;int at=0;while((at=p.IndexOf("Graphics.DrawMesh",at,StringComparison.Ordinal))>=0){int open=at+"Graphics.DrawMesh".Length;if(p[open]!='('&&!p.Substring(open).StartsWith("Instanced(",StringComparison.Ordinal)){at=open;continue;}draws++;int end=p.IndexOf(';',at);if(p.Substring(at,end-at).Contains("ShadowCastingMode.Off"))offs++;at=end;}
             Check(draws>=4&&draws==offs,"every scenery draw casts no shadow");
             // The lit scenery draws on the backdrop layer, and every pixel point light leaves that layer out (no point-light passes).
+            // Directional lights (the arena rim, ForcePixel on dressed maps) are not point lights and are not checked here.
             Check(p.Contains("const int backdrop=NativeSceneryBuilder.BackdropLayer;")&&!p.Contains("brickfallLit,0,null")&&!p.Contains("true,0,null)")&&p.Split("brickfallLit,backdrop,null").Length-1==4&&p.Contains("ShadowCastingMode.Off,true,backdrop,null)"),"every scenery mesh draws on the backdrop layer");
             int pixel=0;foreach(var f in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Runtime"),"*.cs"))
             {
                 var text=File.ReadAllText(f);int k=0;
-                while((k=text.IndexOf("LightRenderMode.ForcePixel",k,StringComparison.Ordinal))>=0){int cm=text.IndexOf("cullingMask",k,StringComparison.Ordinal),end=cm<0?-1:text.IndexOf(';',cm);string mask=end<0||end-k>200?"":text.Substring(k,end-k);end=Math.Max(end,k+1);Check(mask.Contains("cullingMask=~(1<<10|1<<NativeSceneryBuilder.BackdropLayer)"),Path.GetFileName(f)+": its pixel point light leaves the backdrop layer out");pixel++;k=end;}
+                while((k=text.IndexOf("LightRenderMode.ForcePixel",k,StringComparison.Ordinal))>=0){if(text.LastIndexOf("LightType.Point",k,Math.Min(k,300),StringComparison.Ordinal)<0){k++;continue;}int cm=text.IndexOf("cullingMask",k,StringComparison.Ordinal),end=cm<0?-1:text.IndexOf(';',cm);string mask=end<0||end-k>200?"":text.Substring(k,end-k);end=Math.Max(end,k+1);Check(mask.Contains("cullingMask=~(1<<10|1<<NativeSceneryBuilder.BackdropLayer)"),Path.GetFileName(f)+": its pixel point light leaves the backdrop layer out");pixel++;k=end;}
             }
             Check(pixel>=3,"the blast flash, combat glow and seeker light pools are all checked ("+pixel+")");
             foreach(int used in new[]{8,9,10,11,29,30})Check(NativeSceneryBuilder.BackdropLayer!=used,"the backdrop layer is not layer "+used);
