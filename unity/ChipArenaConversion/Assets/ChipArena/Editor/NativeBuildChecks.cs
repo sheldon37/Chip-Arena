@@ -188,6 +188,8 @@ namespace ChipArena.UnityConversion.Editor
             // The effects overhaul's renderer (NativeVfxDraw: sprites, streaks and puffs; lit meshes and shock shells). The match
             // camera's bloom is its own branch's (claude/fx-bloom: NativeBloom.cs and its build check).
             foreach(var name in new[]{"NativeVfx","NativeVfxLit"}){var shader=Resources.Load<Shader>(name);if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: "+name);}
+            // The block effect (NativeBlockFxPresentation: guards, clashes and deflects).
+            {var shader=Resources.Load<Shader>("NativeBlockFx");if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: NativeBlockFx");}
             CheckVfx();
         }
     }

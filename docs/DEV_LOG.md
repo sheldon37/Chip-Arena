@@ -1,5 +1,17 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Claude — new block effect (owner: "add a new block effect")
+- Branch `claude/fx-block`, base `096bb80`; one local commit (not pushed, not merged, not released). Presentation only; design in `docs/MELEE-ABILITIES.md` "The new block effect".
+- New Core `NativeBlockFx` (forms, shapes, neon colours, timing curves, clash/deflect heuristic, seeded sparks, CPU mesh `NativeBlockMesh`), Runtime `NativeBlockFxPresentation` (+ `NativeBlockFxDraw` component) and `Resources/NativeBlockFx.shader` (GLSL-safe SHARED block, registered in the NativeBuildChecks gate).
+- Guard: while the replicated block window is open (guests open it at BlockUntil - BlockDuration(stats)), a ward in the weapon colour in front of the weapon: sword slim arc, greatsword tall wide arc, daggers twin arcs, shield hex dome, other classes a chest ward; animated scanlines/cells. First person: a small arch over the view weapon on the layer-10 view camera.
+- Clash: guard flash and cracks (held .2 s past a late block), HDR spark spray along the blade, star and needles, upright ring facing the attacker (.18 s); the blocker's camera gets a 50 ms kick (camera shake setting, x.4 with Reduced effects; never Time.timeScale). Deflect: a streak along the reflected shot's velocity (else back toward the attacker) and a ping.
+- Until Astra adds the Block Detail: Target (attacker) melee-class within reach + 1.25 m, or seatless (PvE add) = clash, else deflect; Detail `clash`/`deflect` overrides, `guard` draws no hit. Known misread: a blocked summon strike.
+- Removed the cyan block bursts: native `NativeBlastPresentation` skips Block (the NativeImpactCues parity plan is unchanged) and the prototype lab's HitBurst no longer includes Block. Hooks: one call in `ArenaPresentation.Render`, one hitch line in `ConversionGame`. Reduced effects thins sprays; the low tier halves segments and sparks.
+- No change to hit timing, hitboxes, damage, cooldowns, movement or networking.
+- Checks: `unity-check.sh` OK; `check_relay.py` 341 PASS (base 340; new `PASS Block fx`), no FAIL; Python 82 OK (1 skipped); `package_source.py` passed; `git diff --check` clean; glslang HLSL OK. Offline WebGL2 before/after sheets per melee weapon, third and first person (scratch only).
+- Not run: Unity Editor import/FXC, Windows play, multiplayer, D3D11 look and GPU cost.
+- Next: owner build review. Astra: Block Detail `guard`/`clash`/`deflect` with attacker id and contact point.
+
 ## 2026-10-11 — Claude — rim light no longer keeps the chip-draft angle
 - Owner report: after the first chip draft the arena's rim light stayed at the draft stage's angle. Branch `claude/rim-fix`, base `096bb80`.
 - Cause: `NativeLighting.Draft` turned the rim to (15,35,0) and also wrote that into `rimHome`, the direction `Apply` restores for looks without a rim aim, so every later match kept the draft angle. Now only `Create` writes `rimHome`; the draft still turns the rim for its own stage and `EndIntro`/`Apply` put it back on (14,7,12), as Electron does. Looks with a `RimAim` (Brickfall) were never affected.
