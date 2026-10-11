@@ -15,6 +15,12 @@ namespace ChipArena.UnityConversion.Editor
             if(preferences.map!="random"||preferences.lobbyPose!="crossed-arms"||!preferences.fullscreen)throw new Exception("Saved pilot pose/map/fullscreen did not round trip");
             var profile=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="ready",profile=new NativeProfile{cosmetics=new NativeCosmetics{lobbyPose="crossed-arms"}}}));
             if(profile.profile.cosmetics.lobbyPose!="crossed-arms")throw new Exception("Ready/save DTO lost lobby pose");
+            // The portrait backdrop (prefs.lobbyBack) is saved with the pilot and sent in the ready/profile cosmetics like the
+            // pose; a save from before backdrops loads as the tick ring.
+            var backPrefs=JsonUtility.FromJson<ConversionPreferences>(JsonUtility.ToJson(new ConversionPreferences{lobbyBack="circuit"}));
+            var backReady=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="ready",profile=new NativeProfile{cosmetics=new NativeCosmetics{lobbyBack="circuit"}}}));
+            if(backPrefs.lobbyBack!="circuit"||backReady.profile.cosmetics.lobbyBack!="circuit"||NativePortraitBacks.Index(JsonUtility.FromJson<ConversionPreferences>("{\"name\":\"Old Pilot\"}").lobbyBack)!=NativePortraitBacks.TickRing)
+                throw new Exception("Saved pilot/ready DTO lost the portrait backdrop, or an old save did not load as the tick ring");
             var original=authority.Local.Death;
             var scene=EditorSceneManager.NewPreviewScene();NativeArena replica=null;
             try
@@ -61,6 +67,13 @@ namespace ChipArena.UnityConversion.Editor
                 invalid=NativeFrameCodec.Clone(visual);invalid.pilots[0].dots[0].dps=double.NaN;if(invalid.Valid(authority.Content))throw new Exception("Nonfinite status accepted");
                 replica.ApplyFrame(copy,authority.LocalId);if(guestPilot.Dots.Count!=0||replica.AbilityZones.Count!=0||replica.Bullets.Count!=0)throw new Exception("Expired replicated effects survived the next frame");
                 Debug.Log("PASS guest/replay visual contracts: lobby pose, DoT/slow, fighter timestamps, reflected shot flags/mods, ability fuse, zone identity/attachment, melee effects and chip source; malformed payloads rejected");
+                // Portrait backdrops ride the seat frame like the lobby pose: a known key arrives, an unknown one (another
+                // client's newer style) is the tick ring, and an over-long key fails validation.
+                var backs=NativeFrameCodec.Clone(copy);backs.seats[0].lobbyBack="warp";backs.seats[1].lobbyBack="not-a-backdrop";backs=NativeFrameCodec.Clone(backs);
+                if(!backs.Valid(authority.Content))throw new Exception("Portrait backdrop frame failed validation");replica.ApplyFrame(backs,authority.LocalId);
+                if(replica.Match.Seat(backs.seats[0].id)?.lobbyBack!="warp"||replica.Match.Seat(backs.seats[1].id)?.lobbyBack!=NativePortraitBacks.Default)throw new Exception("Guest/replay lost or did not normalise the portrait backdrop");
+                var longBack=NativeFrameCodec.Clone(copy);longBack.seats[0].lobbyBack=new string('x',NativePortraitBacks.MaxLength+1);if(longBack.Valid(authority.Content))throw new Exception("Over-long portrait backdrop accepted");
+                replica.ApplyFrame(copy,authority.LocalId);
                 var moved=NativeFrameCodec.Clone(frame);moved.time+=1;moved.pilots[1].position+=Vector3.right*3;
                 replica.ApplyFrame(moved,authority.LocalId);replica.InterpolateReplica(.1f);
                 var remote=replica.Pilots.First(p=>p.Seat.id==moved.pilots[1].id);

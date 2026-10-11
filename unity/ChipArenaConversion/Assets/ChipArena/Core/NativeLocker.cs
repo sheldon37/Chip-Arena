@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
         public static readonly string[] Icons={"palette","skull","sparkles","swords","gem"};
         public static readonly string[] Subtitles=
         {
-            "Callsign, colours, headwear and idle pose.",
+            "Callsign, colours, headwear, idle pose and backdrop.",
             "How opponents see you finish them.",
             "Your match intro and the line under your name.",
             "Preferred class and weapon, and that weapon's abilities.",

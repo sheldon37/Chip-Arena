@@ -12,6 +12,8 @@ namespace ChipArena.UnityConversion
         // thereafter an empty URL is the player's explicit offline choice.
         public bool MigrateAccountService()
         {if(accountServiceVersion>=1)return false;if(string.IsNullOrWhiteSpace(accountOrigin))accountOrigin=NativeAccount.DefaultOrigin;accountServiceVersion=1;return true;}
+        // The portrait backdrop picked in the Locker (NativePortraitBacks key; absent in older saves: the tick ring).
+        public string lobbyBack=NativePortraitBacks.Default;
     }
     public sealed partial class ConversionGame : MonoBehaviour
     {
