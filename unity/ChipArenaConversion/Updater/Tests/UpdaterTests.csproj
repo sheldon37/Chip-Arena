@@ -1,4 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><ImplicitUsings>disable</ImplicitUsings><Nullable>disable</Nullable><TreatWarningsAsErrors>true</TreatWarningsAsErrors><EnableNETAnalyzers>false</EnableNETAnalyzers></PropertyGroup>
-  <ItemGroup><Compile Include="../UpdateStorage.cs"/><Compile Include="../UpdateInstaller.cs"/><Compile Include="../../Assets/ChipArena/Core/NativeUpdateRules.cs"/><Compile Include="../../Assets/ChipArena/Editor/NativeCloudPlayer.cs"/></ItemGroup>
+  <ItemGroup><Compile Include="../UpdateStorage.cs"/><Compile Include="../UpdateInstaller.cs"/><Compile Include="../../Assets/ChipArena/Core/NativeUpdateRules.cs"/><Compile Include="../../Assets/ChipArena/Editor/NativeCloudPlayer.cs"/><Compile Include="../../Assets/ChipArena/Editor/NativeStarterPackage.cs"/></ItemGroup>
 </Project>

@@ -42,16 +42,18 @@ class CloudBuildTests(unittest.TestCase):
     def save_receipt(self):
         (self.builds / 'cloud-build-receipt.json').write_text(json.dumps(self.receipt))
 
-    def seed(self, identity=None):
+    def seed(self, identity=None, legacy=False):
+        prefix = '' if legacy else 'Chip Arena/'
+        launcher = 'ChipArena-Native-Conversion-TEST.exe' if legacy else 'Chip Arena.exe'
         with zipfile.ZipFile(self.builds / cloud.SEED, 'w') as archive:
-            for name in ('ChipArena-Native-Conversion-TEST.exe', 'ChipArena-Native-Conversion-TEST.exe.config', 'READ-ME.txt'):
-                archive.writestr(name, 'fixture')
-            archive.writestr('native-install.txt', 'chip-arena-unity/1\n')
+            for name in (launcher, launcher + '.config', 'READ-ME.txt'):
+                archive.writestr(prefix + name, 'fixture')
+            archive.writestr(prefix + 'native-install.txt', 'chip-arena-unity/1\n')
             part = self.builds / 'NativeUpdateFeed/objects' / self.manifest['parts'][0]['name']
             with zipfile.ZipFile(part) as player:
                 for name in player.namelist():
                     data = json.dumps(identity).encode() if name == 'native-build.json' and identity else player.read(name)
-                    archive.writestr('app/' + name, data)
+                    archive.writestr(prefix + 'app/' + name, data)
 
     def run_package(self):
         return cloud.package(self.project, self.player, self.env)
@@ -131,6 +133,29 @@ class CloudBuildTests(unittest.TestCase):
         cloud.publisher.validate_build_log(unpacked / 'NativeUpdateFeed', unpacked / 'build.log')
         self.assertEqual(cloud.publisher.validate(unpacked / 'NativeUpdateFeed'), self.manifest)
 
+    def test_player_download_is_one_game_folder_with_one_top_level_exe(self):
+        self.run_package()
+        portable = self.player.parent / cloud.PORTABLE
+        self.assertEqual(portable.read_bytes(), (self.builds / cloud.SEED).read_bytes())
+        self.assertIn(cloud.digest(portable), portable.with_suffix('.zip.sha256').read_text())
+        with zipfile.ZipFile(portable) as archive:
+            names = archive.namelist()
+            self.assertEqual({n.split('/')[0] for n in names}, {'Chip Arena'})
+            self.assertEqual([n for n in names if n.count('/') == 1 and n.endswith('.exe')], ['Chip Arena/Chip Arena.exe'])
+            self.assertTrue(all('NativeUpdateFeed' not in n and 'cloud-build' not in n for n in names))
+
+    def test_old_flat_starter_remains_valid_during_rollout(self):
+        self.seed(legacy=True)
+        self.run_package()
+
+    def test_rejects_extra_or_mixed_root_files(self):
+        for extra in ('Other.exe', 'Chip Arena/Other.exe', 'native-install.txt', 'Chip Arena/../escape'):
+            self.seed()
+            with zipfile.ZipFile(self.builds / cloud.SEED, 'a') as archive:
+                archive.writestr(extra, 'unexpected')
+            with self.assertRaisesRegex(ValueError, 'inventory'):
+                self.run_package()
+
     def test_rejects_missing_or_stale_cloud_context(self):
         for variable in self.env:
             with self.subTest(variable=variable):
@@ -177,7 +202,7 @@ class CloudBuildTests(unittest.TestCase):
         seed = self.builds / cloud.SEED
         with zipfile.ZipFile(seed) as archive:
             files = {name: archive.read(name) for name in archive.namelist()}
-        files['app/UnityPlayer.dll'] = b'tamper!'
+        files['Chip Arena/app/UnityPlayer.dll'] = b'tamper!'
         with zipfile.ZipFile(seed, 'w') as archive:
             for name, data in files.items():
                 archive.writestr(name, data)

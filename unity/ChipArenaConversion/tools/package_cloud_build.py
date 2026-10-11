@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path, PureWindowsPath
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -14,6 +15,7 @@ import publish_native_update as publisher
 
 SEED = 'Chip-Arena-Native-Conversion-TEST-Windows.zip'
 DELIVERY = 'Chip-Arena-Native-Cloud-Delivery.zip'
+PORTABLE = 'Chip-Arena-Windows.zip'
 
 
 def editor_log_path(value):
@@ -45,15 +47,17 @@ def validate_seed(seed, feed, manifest):
                     stream.write(block)
         stream.seek(0)
         with zipfile.ZipFile(stream) as player, zipfile.ZipFile(seed) as starter:
-            required = {'ChipArena-Native-Conversion-TEST.exe', 'ChipArena-Native-Conversion-TEST.exe.config',
-                        'native-install.txt', 'READ-ME.txt'}
             names = starter.namelist()
-            if len(set(names)) != len(names) or set(names) != required | {'app/' + name for name in player.namelist()}:
+            # Validate old builds too: the publisher may still be finishing one during rollout.
+            prefix = 'Chip Arena/' if 'Chip Arena/Chip Arena.exe' in names else ''
+            launcher = 'Chip Arena.exe' if prefix else 'ChipArena-Native-Conversion-TEST.exe'
+            required = {prefix + name for name in (launcher, launcher + '.config', 'native-install.txt', 'READ-ME.txt')}
+            if len(set(names)) != len(names) or set(names) != required | {prefix + 'app/' + name for name in player.namelist()}:
                 raise ValueError('Incomplete or unexpected starter ZIP inventory')
-            if starter.read('native-install.txt') != b'chip-arena-unity/1\n' or starter.testzip() is not None:
+            if starter.read(prefix + 'native-install.txt') != b'chip-arena-unity/1\n' or starter.testzip() is not None:
                 raise ValueError('Invalid or corrupt starter ZIP')
             for row in player.infolist():
-                other = starter.getinfo('app/' + row.filename)
+                other = starter.getinfo(prefix + 'app/' + row.filename)
                 if other.file_size != row.file_size:
                     raise ValueError('Starter ZIP differs from the native feed')
                 with player.open(row) as left, starter.open(other) as right:
@@ -112,6 +116,10 @@ def package(project, player, environment):
     finally:
         temporary.unlink(missing_ok=True)
     output.with_suffix('.zip.sha256').write_text(digest(output) + '  ' + output.name + '\n')
+    # This is the only ZIP to share with players; keep delivery receipts/feed parts separate.
+    shutil.copyfile(seed, player.parent / PORTABLE)
+    (player.parent / (PORTABLE + '.sha256')).write_text(digest(seed) + '  ' + PORTABLE + '\n')
+    print('PLAYER_DOWNLOAD_READY: ' + str(player.parent / PORTABLE))
     print('NATIVE_CLOUD_DELIVERY_READY: ' + str(output))
     print('Source commit: ' + receipt['sourceCommit'] + '; candidate only; no feed publication.')
     return output

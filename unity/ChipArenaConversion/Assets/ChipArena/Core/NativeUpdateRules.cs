@@ -51,6 +51,15 @@ namespace ChipArena.UnityConversion
     {
         public const string Product="chip-arena-unity",Channel="native-test",Platform="windows-x64";
         public const string Executable="ChipArena-Native-Conversion-TEST.exe",DataDirectory="ChipArena-Native-Conversion-TEST_Data";
+        public const string LauncherExecutable="Chip Arena.exe",DistributionFolder="Chip Arena",PortableZip="Chip-Arena-Windows.zip";
+        // Keep the player identity stable so existing bootstrap-v1 installations can still update/roll back.
+        public static string LauncherPath(string root)
+        {
+            string friendly=Path.Combine(root,LauncherExecutable),legacy=Path.Combine(root,Executable);
+            if(File.Exists(friendly))return friendly;
+            if(File.Exists(legacy))return legacy;
+            throw new FileNotFoundException("Chip Arena launcher is missing. Extract the complete game folder again.",friendly);
+        }
         public const string Feed="https://raw.githubusercontent.com/sheldon37/chip-arena-test-updates/main/native/windows-x64/";
         public const string WorkDirectory=".native-update",IdentityFile="native-build.json";
         public const int BootstrapVersion=1,MaxFiles=20000,MaxManifestBytes=128*1024;
