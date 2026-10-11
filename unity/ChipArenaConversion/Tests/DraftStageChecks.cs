@@ -7,12 +7,15 @@ using ChipArena.UnityConversion;
 // framed close, from the solar plexus up (the plexus derived from the rig's spine, chest and neck joints, on or just above the
 // tray's top line; the head's top clear of the screen's top edge and above the cards; the face above the first row but on the
 // tallest trays, which cover the chest instead) on every aspect ratio (16:9, 16:10, 21:9, 32:9, 4:3, 5:4) and interface
-// scale, larger than the seated table framing it replaces; the resting hands in the lap below that line; every hat (its real
-// vertices) and the Auditor halo in view through the browse and the pick, framed on their measured tops; the bowed gaze
-// following each highlighted card, spring settling without overshoot, the highlighted card held across the gaps between
-// cards, the hand on the highlighted card's side lifting out of the lap toward it (one side at a time); the pick in frame (the
-// catching palm, where the card flies, above the cards in front of the chest on the chosen card's side; the wrist plant above
-// the plexus) for the PvP draft, the Siren pick, a spectated picker and the Siren drafter; no frame-to-frame snaps at
+// scale, at least 1.25 times the seated table framing it replaces for bare heads, hats, the Auditor halo and the Siren drafter
+// alike (a crown takes at most CrownRoom, so crowned pilots stay near the bare-headed scale); the resting hands and the hips
+// inside the lower shade's opaque band (NativeDraftScreen.DraftShades), so nothing under the plexus line shows; every hat's
+// brim and lower part (its real vertices up to the crown room) and the Auditor halo's ring in view through the browse and the
+// pick; the gaze following each highlighted card with the visor kept toward the camera, spring settling without overshoot,
+// the highlighted card held across the gaps between cards, the hand on the highlighted card's side rising out of the shade
+// above the tray's top line toward it (one side at a time); the pick in frame (the catching palm above the cards in front of
+// the chest on the chosen card's side, the card flying to the solved catch the palm meets at the contact; the wrist plant
+// above the plexus) for the PvP draft, the Siren pick, a spectated picker and the Siren drafter; no frame-to-frame snaps at
 // 30/60/144/240 Hz through browse, pick, catch, plant and return, the smoothed pick clock, and 0 bytes per frame. The card
 // rects follow NativeDraftScreen.LayoutTray / LowerTray with a fixed card height (Unity measures the text).
 internal static class DraftStageChecks
@@ -38,9 +41,17 @@ internal static class DraftStageChecks
     private static float Angle(Quaternion a,Quaternion b){float d=Math.Min(1,Math.Abs(Quaternion.Dot(a,b)));return 2*(float)Math.Acos(d);}
     private static void Frame(NativeDraftStage s,float dt,float rawAge,int focus,Vector2[] cards,float aspect,float trayTop,float trayBottom,bool siren=false,bool consider=false,float crown=0)
     {float age=s.SmoothAge(rawAge,dt);s.Begin(dt,false);if(siren)SirenIdle(s.Pose,s.Clock);s.Frame(aspect,trayTop,trayBottom,crown,siren,dt);s.Step(dt,age,focus,consider,cards,cards.Length,siren,false);}
-    // The highest screen row (fraction from the top) that any vertex of a hat model (head space) reaches on the posed head.
-    private static float HatRow(NativeDraftStage s,Vector3[] hat)
-    {var q=s.Pose.WorldRotation[CapturedRig.Head];var o=s.Pose.WorldPosition[CapturedRig.Head];float row=float.MaxValue;foreach(var v in hat)row=Math.Min(row,s.Project(o+Vector3.Transform(v,q)).Y);return row;}
+    // The highest screen row (fraction from the top) that any vertex of a hat model (head space) reaches on the posed head, up to
+    // `below` m over the head joint (the crown room Frame keeps for it; a taller tip may cross the top edge).
+    private static float HatRow(NativeDraftStage s,Vector3[] hat,float below=float.MaxValue)
+    {var q=s.Pose.WorldRotation[CapturedRig.Head];var o=s.Pose.WorldPosition[CapturedRig.Head];float row=float.MaxValue;foreach(var v in hat)if(v.Y<=below)row=Math.Min(row,s.Project(o+Vector3.Transform(v,q)).Y);return row;}
+    // The part of a cosmetic Frame keeps in view: up to its crown room over the bare head's top, less the gap for the bow.
+    private static readonly float Kept=NativeDraftStage.HeadTop+NativeDraftStage.CrownRoom-NativeDraftStage.CrownGap;
+    // The Auditor halo's ring (its group's centre, NativeAuditorHalo.Evaluate on the stage's clock) as a screen row.
+    private static float RingRow(NativeDraftStage s,AuditorHaloFrame f)
+    {NativeAuditorHalo.Evaluate(s.Clock,false,f);var q=s.Pose.WorldRotation[CapturedRig.Head];return s.Project(s.Pose.WorldPosition[CapturedRig.Head]+Vector3.Transform(f.GroupPosition,q)).Y;}
+    // How much of its forward the head turns to the camera (1 facing the lens).
+    private static float FaceCamera(NativeDraftStage s){var p=s.Pose;return Vector3.Dot(Forward(p,CapturedRig.Head),Vector3.Normalize(s.CameraPosition-p.WorldPosition[CapturedRig.Head]));}
     // The same for the Auditor halo's flame tips (NativeAuditorHalo.Evaluate on the stage's clock, the quads' tops).
     private static float HaloRow(NativeDraftStage s,AuditorHaloFrame f)
     {
@@ -65,15 +76,15 @@ internal static class DraftStageChecks
     private static float HeadYaw(CapturedRig.Pose p){var f=Forward(p,CapturedRig.Head);return (float)Math.Atan2(f.X,f.Z);}
     private static bool OnScreen(Vector2 v,float margin)=>v.X>=margin&&v.X<=1-margin&&v.Y>=margin&&v.Y<=1-margin;
     // The seated table framing this close-up replaced (NativeDraftStage before 2026-10-11: the 24 degree lens tilted 12 degrees,
-    // the head's top .05 from the top, the table top under the resting fingertips (y -.065, z .5) .012 above the first card row,
-    // the head-top-to-table span between .44 and .74 of the screen, at least 1.8 m across): the screen share of the resting
-    // head (.36 m standing at z 0).
-    private static float OldSeatShare(float restHead,float aspect,float trayTop)
+    // the head's top (under a crown its measured top and .03 more, the Siren .2 more) .05 from the top, the table top under the
+    // resting fingertips (y -.065, z .5) .012 above the first card row, the head-top-to-table span between .44 and .74 of the
+    // screen, at least 1.8 m across): the screen share of the resting head (.36 m standing at z 0).
+    private static float OldSeatShare(float restHead,float aspect,float trayTop,float crown=0,bool boss=false)
     {
         float tilt=12*(float)Math.PI/180,t=(float)Math.Tan(12*Math.PI/180),sn=(float)Math.Sin(tilt),cs=(float)Math.Cos(tilt);
         float Row(float y,float z,float centre,float height){float d=height*.5f/t,dy=y-(centre+sn*d),dz=z-cs*d,depth=-sn*dy-cs*dz,up=cs*dy-sn*dz;return (1-up/(Math.Max(1e-4f,depth)*t))*.5f;}
         float Solve(float y,float z,float row,float centre,float height){for(int i=0;i<8;i++){float r=Row(y,z,centre,height)-row,d=(Row(y,z,centre+1e-3f,height)-row-r)/1e-3f;if(Math.Abs(d)<1e-7f)break;centre-=r/d;}return centre;}
-        float top=restHead+.36f,hy=-.065f,hand=Math.Clamp(trayTop,.3f,.95f)-.012f,h=(top-hy)/Math.Max(.05f,hand-.05f),c=top-.45f*h;
+        float top=restHead+Math.Max(.36f,crown>0?crown+.03f:0)+(boss?.2f:0),hy=-.065f,hand=Math.Clamp(trayTop,.3f,.95f)-.012f,h=(top-hy)/Math.Max(.05f,hand-.05f),c=top-.45f*h;
         for(int i=0;i<8;i++)
         {
             const float e=1e-3f;float r1=Row(top,0,c,h)-.05f,r2=Row(hy,.5f,c,h)-hand,a11=(Row(top,0,c+e,h)-.05f-r1)/e,a12=(Row(top,0,c,h+e)-.05f-r1)/e,a21=(Row(hy,.5f,c+e,h)-hand-r2)/e,a22=(Row(hy,.5f,c,h+e)-hand-r2)/e,det=a11*a22-a12*a21;
@@ -104,33 +115,41 @@ internal static class DraftStageChecks
         Check(tallest!=null&&Crown(hats[tallest])>.9f,"the tallest hat ("+tallest+") is not measured");var tall=hats[tallest];float tallCrown=Crown(tall);
 
         // Composition and gaze on every screen, PvP and the Siren pick, 3 to 12 offers (one or two rows), with and without the
-        // tallest hat (its real vertices kept in view on every frame), and the Siren drafter.
-        float worstGaze=0,worstHeadroom=1,worstAim=0,maxYaw=0,smallest=9,largest=0,worstHat=1,worstPlexus=0,lowestPitch=0;int cases=0,covered=0;
-        foreach(var sc in Screens)foreach(int kind in new[]{0,1,2,3})foreach(int n in new[]{3,5,6,8,12})
+        // tallest hat (its brim and lower part up to the crown room kept in view on every frame), and the Siren drafter.
+        float worstGaze=0,worstHeadroom=1,worstAim=0,maxYaw=0,smallest=9,largest=0,crownedLeast=9,nearBare=9,worstHat=1,worstPlexus=0,lowestPitch=0,worstFace=1,worstShade=1;int cases=0,covered=0;var bare=new Dictionary<int,float>();var ring=new AuditorHaloFrame();
+        foreach(var sc in Screens)foreach(int kind in new[]{0,1,2,3,4})foreach(int n in new[]{3,5,6,8,12})
         {
-            bool pve=kind==1,siren=kind==2,hat=kind==3;
+            bool pve=kind==1,siren=kind==2,hat=kind==3,halo=kind==4;
             var rects=Tray(n,sc.W,sc.H,pve,out float top,out float bottom);var cards=Centres(rects,sc.W,sc.H);float trayTop=top/sc.H,trayBottom=bottom/sc.H;var s=new NativeDraftStage();
-            float crown=hat?tallCrown:0;string what0=sc.Name+" "+n+" cards";
-            void HatInView(string when){if(!hat)return;float row=HatRow(s,tall);worstHat=Math.Min(worstHat,row);Check(row>=.02f,what0+": the "+tallest+" hat's top at "+row+" ("+when+")");}
+            float crown=hat?tallCrown:halo?NativeAuditorHalo.Top:0;string what0=sc.Name+" "+n+" cards";
+            void HatInView(string when){if(!hat&&!halo)return;float row=hat?HatRow(s,tall,Kept):RingRow(s,ring);worstHat=Math.Min(worstHat,row);Check(row>=.02f,what0+": the "+(hat?tallest+" hat's brim and lower part":"Auditor halo's ring")+" at "+row+" ("+when+")");}
             for(int f=0;f<30;f++){Frame(s,1/60f,-1,0,cards,sc.Scale,trayTop,trayBottom,siren,false,crown);HatInView("settling");}
-            var p=s.Pose;string what=sc.Name+" "+n+" cards"+(pve?" (Siren pick)":siren?" (Siren drafter)":hat?" (hat)":"");
+            var p=s.Pose;string what=sc.Name+" "+n+" cards"+(pve?" (Siren pick)":siren?" (Siren drafter)":hat?" (hat)":halo?" (Auditor halo)":"");
             // From the solar plexus up: the head's top in view under the top edge and above the cards, the face well above the
             // first row; the plexus on or just above the tray's top line (a tall tray covers it, and the face of a very tall one,
-            // instead, the head keeping its room); the resting hands in the lap below that line, palms down.
-            float headTop=hat?HatRow(s,tall):s.Project(new Vector3(0,restHead+NativeDraftStage.HeadTop+(siren?NativeDraftStage.BossTop:0),0)).Y;
+            // instead, the head keeping its room); the resting hands (palms down) and the hips inside the lower shade's opaque band.
+            float headTop=s.Project(new Vector3(0,restHead+NativeDraftStage.HeadTop+(siren?NativeDraftStage.BossTop:0),0)).Y;
             Check(headTop>=.02f&&headTop<trayTop-.08f,what+": head top at "+headTop+" with the tray at "+trayTop);worstHeadroom=Math.Min(worstHeadroom,headTop);
             bool capped=s.Project(s.RestPlexus).Y>trayTop-NativeDraftStage.PlexusGap+.004f;float plexus=s.Project(NativeDraftStage.Plexus(p)).Y;
             Check(capped||s.Project(Eye(p)).Y<trayTop-.1f,what+": the face behind the first row ("+s.Project(Eye(p)).Y+" against "+trayTop+")");
             Check(plexus>=trayTop-.045f,what+": the solar plexus at "+plexus+" high above the tray's top line at "+trayTop+" (the stomach shows)");
             if(capped)covered++;else{Check(plexus<=trayTop+.012f,what+": the solar plexus at "+plexus+" behind the cards (top line "+trayTop+")");worstPlexus=Math.Max(worstPlexus,Math.Abs(plexus-trayTop));}
+            float line=s.ShadeLine(trayTop),deep=s.ShadeDeep(line);
+            Check(s.PlexusRow>=0&&line>=plexus-.005f,what+": the lower shade's line at "+line+" over the plexus at "+plexus);
             foreach(bool left in new[]{true,false})
             {
-                var hand=p.WorldPosition[left?CapturedRig.LHand:CapturedRig.RHand];var sp=s.Project(hand);
-                Check(sp.Y>Math.Max(plexus,trayTop)+.05f,what+": a resting hand above the plexus line ("+sp.Y+")");Check((hand-NativeDraftStage.RestHand(left)).Length()<.01f,what+": a hand does not rest in the lap ("+hand+")");
+                var hand=p.WorldPosition[left?CapturedRig.LHand:CapturedRig.RHand];var sp=s.Project(hand);worstShade=Math.Min(worstShade,sp.Y-deep);
+                Check(sp.Y>deep+.015f,what+": a resting hand at "+sp.Y+" shows above the shade's opaque band ("+deep+")");Check((hand-NativeDraftStage.RestHand(left)).Length()<.01f,what+": a hand does not rest in the lap ("+hand+")");
                 Check(Vector3.Transform(Vector3.UnitZ,p.WorldRotation[left?CapturedRig.LHand:CapturedRig.RHand]).Y<-.75f,what+": a resting palm is not down");
             }
-            // Close: the resting head several times larger on the screen than the seated table framing showed it, the pilot centred.
-            if(!siren&&!hat){float share=s.Project(new Vector3(0,restHead,0)).Y-s.Project(new Vector3(0,restHead+.36f,0)).Y,old=OldSeatShare(restHead,sc.Scale,trayTop),k=share/old;smallest=Math.Min(smallest,k);largest=Math.Max(largest,k);Check(k>=(capped?.98f:1.25f),what+": the head only "+k+"x its table-framing size");}
+            float hips=s.Project(p.WorldPosition[CapturedRig.Pelvis]).Y;worstShade=Math.Min(worstShade,hips-deep);Check(hips>deep+.015f,what+": the hips at "+hips+" show above the shade's opaque band ("+deep+")");
+            // Close: the resting head at least 1.25 times its share in the seated table framing (that framing took the whole crown,
+            // and .2 more for the Siren), crowned and Siren pilots too, and near the bare head's share on the same tray; centred.
+            {
+                float share=s.Project(new Vector3(0,restHead,0)).Y-s.Project(new Vector3(0,restHead+.36f,0)).Y,old=OldSeatShare(restHead,sc.Scale,trayTop,crown,siren),k=share/old;
+                Check(k>=(capped?.98f:1.25f),what+": the head only "+k+"x its table-framing size");
+                if(kind==0){bare[n]=share;smallest=Math.Min(smallest,k);largest=Math.Max(largest,k);}else if(!pve){crownedLeast=Math.Min(crownedLeast,k);float near=share/bare[n];nearBare=Math.Min(nearBare,near);Check(near>=.75f,what+": the head only "+near+" of its bare-headed size");}
+            }
             float x=s.Project(p.WorldPosition[CapturedRig.Chest]).X;Check(Math.Abs(x-.5f)<.02f,what+": the pilot is not centred ("+x+")");
             // The gaze lands on each card in turn: its point projects onto the card's centre, and the head's aim falls nearest that
             // card among its row (yaw ordered left to right), looking down at the cards.
@@ -145,19 +164,22 @@ internal static class DraftStageChecks
                 Check(nearest==i,what+": the head turns nearest card "+nearest+", not "+i);if(Math.Abs(own)<NativeDraftStage.YawLimit-.05f)worstAim=Math.Max(worstAim,Math.Abs(own-headYaw));
                 Check(worstAim<.09f,what+": the head turns "+Math.Abs(own-headYaw)+" rad off card "+i);
                 var fwd=Forward(p,CapturedRig.Head);float yaw=(float)Math.Atan2(fwd.X,fwd.Z),pitch=(float)Math.Asin(Math.Clamp(fwd.Y,-1,1));maxYaw=Math.Max(maxYaw,Math.Abs(yaw));lowestPitch=Math.Min(lowestPitch,pitch);
-                Check(capped||pitch<(siren?-.1f:hat?-.12f:-.2f),what+": the head does not look down at card "+i+" (pitch "+pitch+")");
+                Check(capped||pitch<-.03f,what+": the head does not look down at card "+i+" (pitch "+pitch+")");
                 if(row==lastRow)Check(yaw>lastYaw,what+": head yaw not ordered at card "+i);lastYaw=yaw;lastRow=row;
-                // The lean: the upper spine and neck bow toward the cards too, not only the head (the Siren is hunched already;
-                // under the tallest hat the framing is wider, the cards lie farther and the chest bows a little less).
-                Check(capped||siren||Forward(p,CapturedRig.Chest).Y<(hat?-.06f:-.08f)&&Forward(p,CapturedRig.Neck).Y<(hat?-.12f:-.15f),what+": the chest and neck do not bow (card "+i+", chest "+Forward(p,CapturedRig.Chest).Y+", neck "+Forward(p,CapturedRig.Neck).Y+")");
+                // Close up the face stays to the camera: the visor, not the head's top or side, faces the lens on every card.
+                float face=FaceCamera(s);worstFace=Math.Min(worstFace,face);Check(face>=NativeDraftStage.FaceCamera,what+": the head turns its face away from the camera at card "+i+" ("+face+")");
+                // The lean: the upper spine and neck bow toward the cards too, not only the head (the Siren is hunched already).
+                Check(capped||siren||Forward(p,CapturedRig.Chest).Y<-.01f&&Forward(p,CapturedRig.Neck).Y<-.04f,what+": the chest and neck do not bow (card "+i+", chest "+Forward(p,CapturedRig.Chest).Y+", neck "+Forward(p,CapturedRig.Neck).Y+")");
             }
             cases++;
         }
-        yield return "Draft stage close-up on "+Screens.Length+" screens and interface scales (16:9, 16:10, 21:9, 32:9, 4:3, 5:4), PvP draft and Siren pick trays, the Siren drafter and a hat, 3-12 offers ("+cases+" layouts): the solar plexus (rig spine-neck midpoint on the chest's front) within "+(worstPlexus*100).ToString("0.0")+"% of the tray's top line ("+covered+" tall trays cover it to keep the head's room), the head's top >= "+(worstHeadroom*100).ToString("0")+"% from the top and above the cards, the face well above the first row (but on the tallest trays), the resting hands in the lap below the line, palms down; the "+tallest+" hat, "+tallCrown.ToString("0.00")+" m over the head joint, whole within "+(worstHat*100).ToString("0.0")+"% of the top at worst; the head "+smallest.ToString("0.00")+"-"+largest.ToString("0.00")+"x its size in the seated table framing; gaze on every card within "+worstGaze.ToString("0.0")+" px, head turned nearest the highlighted card (within "+(worstAim*57.3f).ToString("0.0")+" deg, yaw up to "+(maxYaw*57.3f).ToString("0")+" deg, looking down up to "+(-lowestPitch*57.3f).ToString("0")+" deg), chest and neck bowed";
+        yield return "Draft stage close-up on "+Screens.Length+" screens and interface scales (16:9, 16:10, 21:9, 32:9, 4:3, 5:4), PvP draft and Siren pick trays, the Siren drafter, a hat and the Auditor halo, 3-12 offers ("+cases+" layouts): the solar plexus (rig spine-neck midpoint on the chest's front) within "+(worstPlexus*100).ToString("0.0")+"% of the tray's top line ("+covered+" tall trays cover it to keep the head's room), the head's top >= "+(worstHeadroom*100).ToString("0")+"% from the top and above the cards, the face well above the first row (but on the tallest trays), the resting hands (palms down) and the hips at least "+(worstShade*100).ToString("0.0")+"% inside the lower shade's opaque band; the "+tallest+" hat ("+tallCrown.ToString("0.00")+" m over the head joint) in view up to "+Kept.ToString("0.00")+" m and the halo's ring, within "+(worstHat*100).ToString("0.0")+"% of the top at worst; the head "+smallest.ToString("0.00")+"-"+largest.ToString("0.00")+"x its size in the seated table framing bare-headed, at least "+crownedLeast.ToString("0.00")+"x under the hat and the halo and as the Siren drafter (at least "+nearBare.ToString("0.00")+" of the bare-headed size); gaze on every card within "+worstGaze.ToString("0.0")+" px, head turned nearest the highlighted card (within "+(worstAim*57.3f).ToString("0.0")+" deg, yaw up to "+(maxYaw*57.3f).ToString("0")+" deg, looking down up to "+(-lowestPitch*57.3f).ToString("0")+" deg) with its face at least "+worstFace.ToString("0.00")+" toward the camera, chest and neck bowed";
 
-        // Every hat (framed on its measured top, as ArenaPresentation.DraftCrown measures it) and the Auditor halo (framed on
-        // NativeAuditorHalo.Top, which bounds its flames at every moment and the source halo the reduced one draws) stay whole
-        // in view on every screen through a browse across a 6-card PvP and an 8-card Siren-pick tray and the pick (30 Hz).
+        // Every hat (framed on its measured top, as ArenaPresentation.DraftCrown measures it, up to CrownRoom over the bare head)
+        // keeps its brim and lower part (its vertices up to the crown room) in view, and the Auditor halo (framed on
+        // NativeAuditorHalo.Top, which bounds its flames at every moment and the source halo the reduced one draws) its ring, on
+        // every screen through a browse across a 6-card PvP and an 8-card Siren-pick tray and the pick (30 Hz); a taller tip or
+        // the flames may cross the top edge.
         {
             var id=new CapturedRig.Pose();for(int b=0;b<CapturedRig.Bones.Length;b++){id.WorldRotation[b]=Quaternion.Identity;id.WorldPosition[b]=Vector3.Zero;}
             var hf=new AuditorHaloFrame();float reach=0;
@@ -167,40 +189,49 @@ internal static class DraftStageChecks
                 for(int n=0;n<NativeAuditorHalo.Flames;n++)reach=Math.Max(reach,(hf.GroupPosition+Vector3.Transform((hf.FlameBase[n]+new Vector3(0,hf.FlameHeight[n],0))*hf.GroupScale,hf.GroupRotation)).Y);
             }
             Check(NativeAuditorHalo.Top>=reach&&NativeAuditorHalo.Top<reach+.03f,"the halo's top "+NativeAuditorHalo.Top+" for a reach of "+reach);
-            float worst=1;string where="";var names=new List<string>(hats.Keys){NativeAuditorHalo.Hat};
-            foreach(string hat in names)foreach(var sc in Screens)foreach(bool pve in new[]{false,true})
+            float worst=1;string where="";int whole=0;var names=new List<string>(hats.Keys){NativeAuditorHalo.Hat};
+            foreach(string hat in names)
             {
-                int n=pve?8:6;var rects=Tray(n,sc.W,sc.H,pve,out float top,out float bottom);var cards=Centres(rects,sc.W,sc.H);var s=new NativeDraftStage();var hold=new NativeDraftHover();bool halo=hat==NativeAuditorHalo.Hat;
-                float crown=halo?NativeAuditorHalo.Top:Crown(hats[hat]),dt=1/30f,pickAt=1.2f+.6f*n;
-                for(int f=0;f<=(int)((pickAt+3.5f)*30);f++)
+                bool halo=hat==NativeAuditorHalo.Hat,short_=!halo&&Crown(hats[hat])<=Kept;if(short_)whole++;
+                foreach(var sc in Screens)foreach(bool pve in new[]{false,true})
                 {
-                    float t=f*dt;int hover=t<1.2f?-1:Math.Min(n-1,(int)((t-1.2f)/.6f));float raw=t>=pickAt?t-pickAt:-1;int focus=Considered(hold,raw>=0?n-1:-1,hover,t,n,dt,out bool consider);
-                    Frame(s,dt,raw,focus,cards,sc.Scale,top/sc.H,bottom/sc.H,false,consider,crown);float row=halo?HaloRow(s,hf):HatRow(s,hats[hat]);
-                    if(row<worst){worst=row;where=hat+" "+sc.Name+(pve?" Siren pick":"")+" t "+t.ToString("0.00");}Check(row>=.02f,"the "+hat+" top at "+row+" on "+sc.Name+(pve?" (Siren pick)":"")+" at t "+t.ToString("0.00"));
+                    int n=pve?8:6;var rects=Tray(n,sc.W,sc.H,pve,out float top,out float bottom);var cards=Centres(rects,sc.W,sc.H);var s=new NativeDraftStage();var hold=new NativeDraftHover();
+                    float crown=halo?NativeAuditorHalo.Top:Crown(hats[hat]),dt=1/30f,pickAt=1.2f+.6f*n;
+                    for(int f=0;f<=(int)((pickAt+3.5f)*30);f++)
+                    {
+                        float t=f*dt;int hover=t<1.2f?-1:Math.Min(n-1,(int)((t-1.2f)/.6f));float raw=t>=pickAt?t-pickAt:-1;int focus=Considered(hold,raw>=0?n-1:-1,hover,t,n,dt,out bool consider);
+                        Frame(s,dt,raw,focus,cards,sc.Scale,top/sc.H,bottom/sc.H,false,consider,crown);float row=halo?RingRow(s,hf):HatRow(s,hats[hat],Kept);
+                        if(row<worst){worst=row;where=hat+" "+sc.Name+(pve?" Siren pick":"")+" t "+t.ToString("0.00");}Check(row>=.02f,"the "+hat+(halo?" ring":" brim")+" at "+row+" on "+sc.Name+(pve?" (Siren pick)":"")+" at t "+t.ToString("0.00"));
+                    }
                 }
             }
-            yield return "Draft stage hats: all "+hats.Count+" hats (framed on their measured tops, up to "+tallCrown.ToString("0.00")+" m over the head joint) and the Auditor halo (its top "+NativeAuditorHalo.Top.ToString("0.000")+" m bounds its flames and the source halo, "+reach.ToString("0.000")+" m) stay whole in view through browse and pick on "+Screens.Length+" screens, 6-card PvP and 8-card Siren-pick trays (highest at "+(worst*100).ToString("0.0")+"% from the top: "+where+")";
+            yield return "Draft stage hats: all "+hats.Count+" hats (framed on their measured tops but at most "+NativeDraftStage.CrownRoom.ToString("0.00")+" m over the bare head, up to "+tallCrown.ToString("0.00")+" m over the head joint) keep their brims and lower parts in view ("+whole+" whole), and the Auditor halo its ring (its top "+NativeAuditorHalo.Top.ToString("0.000")+" m bounds its flames and the source halo, "+reach.ToString("0.000")+" m), through browse and pick on "+Screens.Length+" screens, 6-card PvP and 8-card Siren-pick trays (highest at "+(worst*100).ToString("0.0")+"% from the top: "+where+")";
         }
 
         // The pick in frame: on every screen, for a one-row PvP tray and the two-row Siren pick, picking the outermost card on
         // either side, as the local picker (the arm was considering it) and as a spectated picker (no highlight), the catching
-        // palm (where the chosen card flies) is on screen at the contact, in front of the chest on the card's side and, over a
-        // one-row tray, above the cards; the wrist plant (carry end to sink) is on screen above the solar plexus and over a
-        // one-row tray above the cards; the Siren drafter's catch is in frame too and held to the return.
+        // palm is on screen at the contact, in front of the chest on the card's side and, over a one-row tray, above the cards;
+        // the card flies to the stage's solved catch (CatchPalm), which holds still on the screen through the flight (so the card
+        // never dips toward the hand still rising from the lap) and is where the palm meets it at the contact; the wrist plant
+        // (carry end to sink) is on screen above the solar plexus and over a one-row tray above the cards; the Siren drafter's
+        // catch is in frame too and held to the return.
         {
-            float worstCatch=1,worstPlantRow=1,worstSide=1;int picks=0;
+            float worstCatch=1,worstPlantRow=1,worstSide=1,worstDrift=0,worstMeet=0;int picks=0;
             foreach(var sc in Screens)foreach(int kind in new[]{0,1,2})foreach(bool lastCard in new[]{false,true})foreach(bool local in new[]{true,false})
             {
                 bool pve=kind==1,siren=kind==2;int n=pve?8:5,chosen=lastCard?n-1:0;var rects=Tray(n,sc.W,sc.H,pve,out float top,out float bottom);var cards=Centres(rects,sc.W,sc.H);float trayTop=top/sc.H,dt=1/60f;
                 bool oneRow=rects[n-1].Y<=rects[0].Y+1;var s=new NativeDraftStage();var hold=new NativeDraftHover();string what=sc.Name+(pve?" Siren pick":siren?" Siren drafter":" PvP")+" card "+chosen+(local?"":" (spectated)");
+                Vector2 firstCatch=default;bool flying=false;
                 for(int f=0;f<=(int)(4.4f*60);f++)
                 {
                     float t=f*dt,raw=t>=2?t-2:-1;int focus=Considered(hold,raw>=0?chosen:-1,local&&t>=1?chosen:-1,t,n,dt,out bool consider);
                     Frame(s,dt,raw,focus,cards,sc.Scale,trayTop,bottom/sc.H,siren,consider&&local);float age=s.Age;
+                    if(age>=NativeDraftStage.FlyStart&&age<=NativeDraftPlant.Contact){var c=s.Project(s.CatchPalm);if(!flying){firstCatch=c;flying=true;}float drift=Math.Max(Math.Abs(c.X-firstCatch.X)*sc.Scale,Math.Abs(c.Y-firstCatch.Y));worstDrift=Math.Max(worstDrift,drift);Check(drift<.03f,what+": the catch the card flies to drifts "+drift+" of the screen at "+age.ToString("0.00"));}
                     if(age>=0&&Math.Abs(age-NativeDraftPlant.Contact)<.5f*dt+.001f)
                     {
                         var palm=s.Project(s.Palm);bool side=(s.Palm.X>=0)==(cards[chosen].X>=.5f);float chestZ=s.Pose.WorldPosition[CapturedRig.Chest].Z;picks++;
                         Check(OnScreen(palm,.02f),what+": the catch off the screen ("+palm+")");Check(side,what+": the catch on the wrong side ("+s.Palm.X+")");Check(s.Palm.Z>chestZ+.2f,what+": the catch not in front of the chest ("+s.Palm+")");
+                        float meet=(s.Palm-s.CatchPalm).Length();worstMeet=Math.Max(worstMeet,meet);Check(meet<.02f,what+": the palm meets the card "+meet+" m from the catch it flew to");
                         if(oneRow){Check(palm.Y<trayTop-.03f,what+": the catch behind the cards ("+palm.Y+" against "+trayTop+")");worstCatch=Math.Min(worstCatch,trayTop-palm.Y);}
                         worstSide=Math.Min(worstSide,Math.Min(palm.X,1-palm.X));
                     }
@@ -212,7 +243,7 @@ internal static class DraftStageChecks
                     }
                 }
             }
-            yield return "Draft pick in frame on "+Screens.Length+" screens (PvP, Siren pick and Siren drafter, outer cards both sides, local and spectated; "+picks+" picks): the catching palm, where the chosen card flies, in front of the chest on the card's side, on screen (>= "+(worstSide*100).ToString("0")+"% from a side) and at least "+(worstCatch*100).ToString("0.0")+"% above a one-row tray; the wrist plant above the solar plexus and at least "+(worstPlantRow*100).ToString("0.0")+"% above a one-row tray; the Siren drafter's catch held in frame to the return";
+            yield return "Draft pick in frame on "+Screens.Length+" screens (PvP, Siren pick and Siren drafter, outer cards both sides, local and spectated; "+picks+" picks): the catching palm in front of the chest on the card's side, on screen (>= "+(worstSide*100).ToString("0")+"% from a side) and at least "+(worstCatch*100).ToString("0.0")+"% above a one-row tray; the card flies to the solved catch (still within "+(worstDrift*100).ToString("0.0")+"% of the screen through the flight, met by the palm within "+(worstMeet*1000).ToString("0")+" mm); the wrist plant above the solar plexus and at least "+(worstPlantRow*100).ToString("0.0")+"% above a one-row tray; the Siren drafter's catch held in frame to the return";
         }
 
         // Settling: a step across the whole display and a step to a neighbour settle without overshoot (95% in .45 s, 1% in 1.1 s).
@@ -265,9 +296,11 @@ internal static class DraftStageChecks
         }
 
         // Considering (draft-stage.ts): at 30/60/144/240 Hz, the hand on the highlighted card's side lifts out of the lap and moves
-        // toward the card while the other stays resting, on every card of a wide tray; the Siren drafter's claws stay resting.
+        // toward the card while the other stays resting, on every card of a wide tray; the Siren drafter's claws stay resting. On
+        // every screen, over a one-row tray (3 to 6 cards) and the two-row Siren pick, the lifted wrist shows: above the tray's top
+        // line (the cards would hide it) and above the lower shade's line.
         {
-            var sc=Screens[1];var rects=Tray(6,sc.W,sc.H,false,out float top,out float bottom);var cards=Centres(rects,sc.W,sc.H);float trayTop=top/sc.H,trayBottom=bottom/sc.H;float worstToward=0,worstUp=1,worstDown=0,leastLift=9,worstRest=0;
+            var sc=Screens[1];var rects=Tray(6,sc.W,sc.H,false,out float top,out float bottom);var cards=Centres(rects,sc.W,sc.H);float trayTop=top/sc.H,trayBottom=bottom/sc.H;float worstToward=0,worstUp=1,worstDown=0,leastLift=9,worstRest=0,worstShow=1;
             foreach(int hz in new[]{30,60,144,240})for(int i=0;i<6;i++)foreach(bool siren in new[]{false,true})
             {
                 var s=new NativeDraftStage();float dt=1f/hz;for(int f=0;f<(int)(1.2f*hz);f++)Frame(s,dt,-1,i,cards,sc.Scale,trayTop,trayBottom,siren,true);
@@ -278,9 +311,19 @@ internal static class DraftStageChecks
                 var move=hand-restHand;var want=goal-restHand;move.Y=want.Y=0;float toward=(float)Math.Acos(Math.Clamp(Vector3.Dot(Vector3.Normalize(move),Vector3.Normalize(want)),-1,1));
                 worstToward=Math.Max(worstToward,toward);leastLift=Math.Min(leastLift,hand.Y-restHand.Y);worstRest=Math.Max(worstRest,(other-NativeDraftStage.RestHand(!left)).Length());
             }
+            foreach(var sc2 in Screens)foreach(int n in new[]{3,5,6,8})foreach(bool pve in new[]{false,true})
+            {
+                if(pve!=(n==8))continue;var r2=Tray(n,sc2.W,sc2.H,pve,out float top2,out float bottom2);var c2=Centres(r2,sc2.W,sc2.H);float tray2=top2/sc2.H;bool oneRow=r2[n-1].Y<=r2[0].Y+1;
+                foreach(int i in new[]{0,n/2,n-1})
+                {
+                    var s=new NativeDraftStage();for(int f=0;f<72;f++)Frame(s,1/60f,-1,i,c2,sc2.Scale,tray2,bottom2/sc2.H,false,true);bool left=s.OnDisplay(c2[i].X,c2[i].Y).X>=0;
+                    float wrist=s.Project(s.Pose.WorldPosition[left?CapturedRig.LHand:CapturedRig.RHand]).Y,line=s.ShadeLine(tray2),edge=oneRow?Math.Min(tray2,line):line;worstShow=Math.Min(worstShow,edge-wrist);
+                    Check(wrist<edge-.01f,sc2.Name+" "+n+" cards: the considering wrist for card "+i+" at "+wrist+" hides behind the cards or the shade (line "+edge+")");
+                }
+            }
             Check(worstUp>.97f&&worstDown<.03f,"considering arm at "+worstUp+", the other at "+worstDown);Check(worstToward<.6f,"the considering hand moves "+worstToward+" rad away from its card");
             Check(leastLift>.05f,"the considering hand lifts only "+leastLift+" m out of the lap");Check(worstRest<.01f,"the other hand leaves the lap by "+worstRest+" m");
-            yield return "Considering: the hand on the highlighted card's side lifts "+(leastLift*100).ToString("0")+"+ cm out of the lap and moves toward it (within "+(worstToward*57.3f).ToString("0")+" deg) while the other rests (within "+(worstRest*1000).ToString("0")+" mm) on all 6 cards of a 3440x1440 tray at 30-240 Hz; the Siren drafter's claws stay resting";
+            yield return "Considering: the hand on the highlighted card's side lifts "+(leastLift*100).ToString("0")+"+ cm out of the lap and moves toward it (within "+(worstToward*57.3f).ToString("0")+" deg) while the other rests (within "+(worstRest*1000).ToString("0")+" mm) on all 6 cards of a 3440x1440 tray at 30-240 Hz, and on every screen the lifted wrist shows at least "+(worstShow*100).ToString("0.0")+"% above the tray's top line and the lower shade's; the Siren drafter's claws stay resting";
         }
 
         // Motion at 30/60/144/240 Hz through the boot scan, quick hover changes (far and near, switching sides), the pick on the

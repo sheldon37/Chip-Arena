@@ -48,13 +48,18 @@ namespace ChipArena.UnityConversion
             float off=Mathf.Max(top-t.Top+10,bottom-t.Bottom);for(int i=0;i<t.Cards.Length;i++)t.Cards[i].y+=off;t.Top+=off;t.Bottom+=off;
         }
         // draft-screen.css :before / :after shades, moved with the composition: a light one behind the heading (the pilot's head
-        // stands below it) and one rising from the tray's top edge to the bottom, deepening over its lower half, so the cards and
-        // the nameplate stay legible and the pilot reads from the solar plexus up (the lap and, under a tall hat's wider framing,
-        // the hips fade out) while the catch and the plant above the cards stay clear.
-        private static void DraftShades(Tray tray,float W,float H)
+        // stands below it) and the lower one on the stage's framing (ArenaPresentation.DraftShade: NativeDraftStage.ShadeLine /
+        // ShadeDeep): from 12 px above the plexus line (the tray's top edge, or under the resting plexus when a tall tray covers
+        // it) it deepens to opaque a little under the plexus, with the pilot's size, and holds to the bottom, in the stage's
+        // backdrop colour (the draft camera clears to about #06080e). It stays after the pick (on the tray's last layout), so the
+        // pilot reads from the solar plexus up in every state: the lap, the resting hands and the legs never show, while the
+        // cards, the nameplate, the spotlight and a hand raised above the line (the considering lift, the catch and the plant)
+        // draw over it.
+        private void DraftShades(Tray tray,float W,float H)
         {
             float head=Mathf.Min(H*.24f,230);U.Fill(new Rect(0,0,W,head*.4f),U.Hex(0x06070b,.42f));U.Fade(new Rect(0,head*.4f,W,head*.6f),U.Hex(0x06070b,.42f));
-            float line=tray!=null&&tray.Cards.Length>0?tray.Top:H*.72f;U.Fade(new Rect(0,line-12,W,H-line+12),U.Hex(0x06070b,.5f),false);U.Fade(new Rect(0,line+(H-line)*.45f,W,(H-line)*.55f),U.Hex(0x06070b,.6f),false);
+            float top=tray!=null&&tray.Cards.Length>0?tray.Top/H:NativeDraftStage.DefaultTray;presentation.DraftShade(top,out float line,out float deep);line*=H;deep*=H;var shade=U.Hex(0x06070b,NativeDraftStage.ShadeOpaque);
+            U.Fade(new Rect(0,line-12,W,deep-line+12),shade,false);U.Fill(new Rect(0,deep,W,H-deep),shade);
         }
         private static void Nameplate(NativeSeat seat,string label,float x,float y)
         {
@@ -90,9 +95,9 @@ namespace ChipArena.UnityConversion
                 // entrance, not the lift), the shadow spreading and the glow brightening as the card lifts.
                 U.Push(r.center,new Vector2(reveal.Dx,reveal.Dy),reveal.Scale*reveal.ScaleX,reveal.Degrees,reveal.Scale*reveal.ScaleY);TrayStand(r,c.rarity,reveal.Alpha,h);U.Pop();
                 U.Push(r.center,new Vector2(reveal.Dx,reveal.Dy+NativeHoloScan.Lift(h)),reveal.Scale*reveal.ScaleX,reveal.Degrees,reveal.Scale*reveal.ScaleY);
-                var look=new ChipLook{Alpha=reveal.Alpha,Hover=h,Time=now,SweepAt=-10,Bright=reveal.Bright,Focus=enabled&&draftFocus==i,Enabled=enabled,Plain=reveal.Degrees!=0,Holo=h,HoloAt=i<n?cardHoloAt[i]:-10,Calm=calm,Recede=recede,Ghost=ghost};
+                // The Siren pick's number badge sits on the card's top-left corner, under the holo scan's brackets (NativeChipCard).
+                var look=new ChipLook{Alpha=reveal.Alpha,Hover=h,Time=now,SweepAt=-10,Bright=reveal.Bright,Focus=enabled&&draftFocus==i,Enabled=enabled,Plain=reveal.Degrees!=0,Holo=h,HoloAt=i<n?cardHoloAt[i]:-10,Calm=calm,Recede=recede,Ghost=ghost,Badge=badges&&i<9?i+1:0};
                 NativeChipCard.Draw(r,c,copies(i),tray.Size,look);
-                if(badges&&i<9){var b=new Rect(r.x-7,r.y-7,22,22);U.Glow(new Rect(b.x,b.y+2,b.width,b.height),new Color(0,0,0,.6f*reveal.Alpha),5);U.Round(b,U.Hex(0xf1f2f6,reveal.Alpha),6);U.Text(b,(i+1).ToString(),12,U.Hex(0x0f1015,reveal.Alpha),TextAnchor.MiddleCenter,bold:true,mono:true);}
                 U.Pop();if(enabled&&reveal.Alpha>.5f&&U.Button(r))clicked=i;
             }
             return clicked;
@@ -187,12 +192,14 @@ namespace ChipArena.UnityConversion
             }
         }
         // draft-view.ts: translate toward the palm by fly, scale 1-.88 fly, rotate -9 deg x fly, fade with the grab (the stage's
-        // slowed timeline, NativeDraftStage). It leaves from the highlight's lift at `level` (frozen at the pick), its die keeps
+        // slowed timeline, NativeDraftStage). It flies straight to where the palm meets it at the contact (the stage's solved
+        // catch, draftCatch), not the live palm still rising from the lap, so it never dips toward the hand first; the hand
+        // arrives there as the card fades. It leaves from the highlight's lift at `level` (frozen at the pick), its die keeps
         // the highlight's settled charge, and the holo scan locks onto it (NativeChipArt.HoloLock, the die's flare) for every
         // viewer.
         private void FlyToPalm(Rect r,ContentChip chip,int copies,float age,ChipSize size,float level=0)
         {
-            float fly=NativeDraftStage.Fly(age),fade=NativeDraftStage.Fade(age);if(fade>=1)return;Vector2 target=draftPalm;if(target==Vector2.zero)target=r.center;bool calm=prefs.reducedEffects;
+            float fly=NativeDraftStage.Fly(age),fade=NativeDraftStage.Fade(age);if(fade>=1)return;Vector2 target=draftCatch!=Vector2.zero?draftCatch:draftPalm;if(target==Vector2.zero)target=r.center;bool calm=prefs.reducedEffects;
             U.Push(r.center,(target-r.center)*fly+new Vector2(0,NativeHoloScan.Lift(level)*(1-fly)),1-.88f*fly,-9*fly);var rare=NativeChipCard.Rarity(chip.rarity);U.Glow(r,U.A(rare,.55f*(1-fade)),42);U.Round(new Rect(r.x-2,r.y-2,r.width+4,r.height+4),Color.clear,10,U.A(rare,1-fade),2);
             var look=ChipLook.Idle(Time.unscaledTime);look.Alpha=1-fade;look.Plain=true;look.Calm=calm;look.Charge=NativeHoloScan.DieRest*Mathf.Clamp01(level)+NativeHoloScan.LockFlare(age,calm);NativeChipCard.Draw(r,chip,copies,size,look);
             NativeChipArt.HoloLock(r,size.Radius,chip.rarity,rare,age,calm,1-fade);U.Pop();

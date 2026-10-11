@@ -7,7 +7,8 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class ConversionGame
     {
-        private int draftHover=-1,draftViewSeat;private bool draftViewing;private Rect[] draftCards=Array.Empty<Rect>();private Vector2 draftPalm;private NVector2[] draftPoints=new NVector2[16];
+        // draftPalm / draftCatch: the reaching palm and, from the pick, where it meets the card at the contact (virtual px).
+        private int draftHover=-1,draftViewSeat;private bool draftViewing;private Rect[] draftCards=Array.Empty<Rect>();private Vector2 draftPalm,draftCatch;private NVector2[] draftPoints=new NVector2[16];
         // The highlighted card held across the gaps between cards for the turn it was highlighted in (NativeDraftHover).
         private readonly NativeDraftHover draftHeld=new NativeDraftHover();private double draftHeldTurn=double.NaN;
         private readonly Dictionary<Renderer,bool> pickVisibility=new Dictionary<Renderer,bool>();
@@ -39,7 +40,8 @@ namespace ChipArena.UnityConversion
             // Stage lights take the picker's colour, blending to the chip's rarity over .5 s after the pick (the Siren pick: its tier).
             string tier=follow?pveFollowTier:row?.Open?.Tier;Color chipTint=chosenChip!=null?RarityColor(chosenChip.rarity):default;
             Color tint=pve?(tier=="rainbow"?Color.white:RarityColor(tier??"common")):SeatColor(seat);if(age>=0&&chosenChip!=null)tint=Color.Lerp(tint,chipTint,Mathf.Clamp01(age/.5f));
-            presentation.DraftBandTeam=seat.spec=="siren"?-1:NativeStatusVisuals.PilotBand(match.Teams,match.Cooperative,seat.AuthorityBoss,seat.team,seat.id==arena.LocalId);draftPalm=presentation.RenderDraft(seat,age,focus,consider,draftPoints,n,draftTrayLine,draftTrayBottom,tint,cameraView,prefs.reducedEffects,chipTint)/scale;draftPalm.y=height-draftPalm.y;return true;
+            presentation.DraftBandTeam=seat.spec=="siren"?-1:NativeStatusVisuals.PilotBand(match.Teams,match.Cooperative,seat.AuthorityBoss,seat.team,seat.id==arena.LocalId);draftPalm=presentation.RenderDraft(seat,age,focus,consider,draftPoints,n,draftTrayLine,draftTrayBottom,tint,cameraView,prefs.reducedEffects,out var catchAt,chipTint)/scale;draftPalm.y=height-draftPalm.y;
+            draftCatch=catchAt/scale;draftCatch.y=height-draftCatch.y;return true;
         }
     }
     public sealed partial class ArenaPresentation
@@ -52,6 +54,9 @@ namespace ChipArena.UnityConversion
         private Func<int,Matrix4x4> draftBone,draftChipBone;private Func<int,Color> draftChipPart;
         // The pick's age on the stage's smooth clock (-1 before the pick), for the tray's fly, shatter and spotlight.
         public float DraftAge=>draftStage.Age;
+        // The tray's lower shade on the stage's framing (fractions from the top): its line for a tray whose first row's top is
+        // `trayTop` and where it turns opaque (NativeDraftStage.ShadeLine / ShadeDeep).
+        public void DraftShade(float trayTop,out float line,out float deep){line=draftStage.ShadeLine(trayTop);deep=draftStage.ShadeDeep(line);}
         // The worn head cosmetic's top above the head joint, for the stage's framing (NativeDraftStage.Frame), measured once per
         // outfit as the portraits' hatTop is: the hat model's head-space bounds (the meshes drawn), or the Auditor halo's
         // reach (NativeAuditorHalo.Top); 0 bare-headed, for an unknown hat (nothing is drawn) and for the Siren drafter.
@@ -67,9 +72,10 @@ namespace ChipArena.UnityConversion
         // lifts toward it (the local picker's highlighted card), `cards` the card centres as screen fractions (the first
         // `count`), `trayLine` / `trayBottom` the tray's top and bottom edges (fractions from the top; negative until the tray is
         // laid out). `chipTint` is the chosen chip's rarity (sRGB) for its die and the plant pulse (the stage tint when not
-        // given). Returns the reaching palm in screen pixels (the chosen card flies there, up into the hand raised in front of
-        // the chest). No table is drawn: the close framing ends at the solar plexus.
-        public Vector2 RenderDraft(NativeSeat seat,float age,int focus,bool consider,NVector2[] cards,int count,float trayLine,float trayBottom,Color tint,Camera camera,bool reduced,Color chipTint=default)
+        // given). Returns the reaching palm in screen pixels and, in `catchAt`, where that palm meets the card at the contact
+        // (NativeDraftStage.CatchPalm: the chosen card flies straight there, into the hand raised in front of the chest; the palm
+        // before the pick). No table is drawn: the close framing ends at the solar plexus, under the tray's lower shade.
+        public Vector2 RenderDraft(NativeSeat seat,float age,int focus,bool consider,NVector2[] cards,int count,float trayLine,float trayBottom,Color tint,Camera camera,bool reduced,out Vector2 catchAt,Color chipTint=default)
         {
             if(draftRig==null){draftRig=captured.Create(transform,-101);draftStage.Reset();}sourceModels.Begin();foreach(var b in batches)b.Clear();FirstPerson=false;combatGlow?.Clear();particles.Clear();
             if(draftBone==null){draftBone=b=>draftRig.Bones[b].localToWorldMatrix;draftChipBone=b=>draftChip;draftChipPart=b=>b==1?draftChipTint:Color.white;}
@@ -100,7 +106,7 @@ namespace ChipArena.UnityConversion
                 for(int ring=0;ring<2;ring++){float u=Mathf.Clamp01(pulse*1.35f-ring*.3f),fade=(1-u)*(1-u);if(u<=0||fade<.03f)continue;float r=.06f+.14f*NativeUiMotion.Bezier(.2f,.8f,.2f,1,u);sourceModels.QueuePiece(WeaponShape.Ring,true,Matrix4x4.TRS(at,axis,new Vector3(r,r,r*.6f)),rare*(1.6f*fade));}
                 float s=.03f*(1-pulse);if(s>.002f)sourceModels.QueuePiece(WeaponShape.Cube,true,Matrix4x4.TRS(at,Quaternion.identity,Vector3.one*s),rare*2);
             }
-            TeamBands(draftRig,DraftBandTeam);DrawBatches(null,0,false);sourceModels.Flush(UsesInstancing);return camera.WorldToScreenPoint(palm);
+            TeamBands(draftRig,DraftBandTeam);DrawBatches(null,0,false);sourceModels.Flush(UsesInstancing);catchAt=camera.WorldToScreenPoint(Stage(stage.CatchPalm));return camera.WorldToScreenPoint(palm);
         }
         // A stage rig root-frame point (source axes) in Unity world space (the rig root stands at y .88, unrotated).
         private static Vector3 Stage(NVector p)=>new Vector3(-p.X,p.Y+.88f,p.Z);

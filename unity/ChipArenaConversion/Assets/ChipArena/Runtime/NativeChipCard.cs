@@ -14,8 +14,9 @@ namespace ChipArena.UnityConversion
     // highlight (NativeChipArt's holo scan, NativeHoloScan's timeline): `Holo` its eased level (1 under the pointer or the
     // keyboard focus, NativeHoloScan.Held while held across a gap) and `HoloAt` the time it engaged; `Ghost` the keyboard
     // focus's still brackets while the pointer is on another card; `Recede` 0..1 the veil while another card is highlighted;
-    // `Charge` extra die charge (the pick's lock); `Calm` Reduced effects (the still variant).
-    public struct ChipLook {public float Alpha,Hover,Time,SweepAt,Bright,Holo,HoloAt,Recede,Charge;public bool Focus,Enabled,Chosen,Plain,Calm,Ghost;public static ChipLook Idle(float time)=>new ChipLook{Alpha=1,Time=time,SweepAt=-10,Bright=1,HoloAt=-10};}
+    // `Charge` extra die charge (the pick's lock); `Calm` Reduced effects (the still variant); `Badge` the Siren pick's number
+    // badge on the top-left corner (1-9; 0 none), drawn over the lit edge and under the brackets.
+    public struct ChipLook {public float Alpha,Hover,Time,SweepAt,Bright,Holo,HoloAt,Recede,Charge;public int Badge;public bool Focus,Enabled,Chosen,Plain,Calm,Ghost;public static ChipLook Idle(float time)=>new ChipLook{Alpha=1,Time=time,SweepAt=-10,Bright=1,HoloAt=-10};}
     // Card sizes from draft-screen.css (compact tray) and style.css (.selection-focus spotlight card).
     public struct ChipSize
     {
@@ -129,12 +130,21 @@ namespace ChipArena.UnityConversion
                     if(i==have&&look.Enabled&&!look.Chosen){float pulse=.5f-.5f*Mathf.Cos(t*2*Mathf.PI/1.4f);U.Fill(slot,A(rare,.55f*pulse));U.Round(slot,Color.clear,1,A(rare),1);}}}
             // Another card highlighted: this one recedes under a veil (kept under Reduced effects; the tray's badges stay over it).
             if(look.Recede>0)U.Round(r,A(U.Hex(0x05060a),NativeHoloScan.Veil*Mathf.Min(1,look.Recede)),s.Radius);
-            // The holo scan's lit edge on the package's own border (inside the padding, clear of the text) and its brackets outside;
-            // the keyboard focus's still brackets while the pointer is on another card; else the focus ring.
-            if(scan){NativeChipArt.HoloEdge(r,s.Radius,tier,rare,holo,age,t,look.Calm);NativeChipArt.HoloBrackets(r,tier,rare,look.Holo,a,age,t,look.Calm);}
-            if(look.Ghost){if(!look.Plain)NativeChipArt.HoloGhost(r,tier,rare,a*(1-Mathf.Clamp01(look.Holo)));}
-            else if(look.Focus&&holo<=0)U.Round(new Rect(r.x-7,r.y-7,r.width+14,r.height+14),Color.clear,s.Radius+4,A(rare),2);
+            // The holo scan's lit edge on the package's own border (inside the padding, clear of the text), else the focus ring;
+            // the Siren pick's number badge over them; then the scan's brackets outside, or the keyboard focus's still brackets
+            // while the pointer is on another card, so the badge never hides the top-left bracket.
+            if(scan)NativeChipArt.HoloEdge(r,s.Radius,tier,rare,holo,age,t,look.Calm);
+            if(!look.Ghost&&look.Focus&&holo<=0)U.Round(new Rect(r.x-7,r.y-7,r.width+14,r.height+14),Color.clear,s.Radius+4,A(rare),2);
+            if(look.Badge>0)Badge(r,look.Badge,a);
+            if(scan)NativeChipArt.HoloBrackets(r,tier,rare,look.Holo,a,age,t,look.Calm);
+            if(look.Ghost&&!look.Plain)NativeChipArt.HoloGhost(r,tier,rare,a*(1-Mathf.Clamp01(look.Holo)));
             if(look.Chosen)U.Round(new Rect(r.x-6,r.y-6,r.width+12,r.height+12),Color.clear,s.Radius+4,A(rare),2);
+        }
+        // The Siren pick's number badge (its 1-9 keys, pve/chip-screen.ts): a light 22 px rounded badge with the dark number over
+        // the card's top-left corner.
+        private static void Badge(Rect r,int number,float a)
+        {
+            var b=new Rect(r.x-7,r.y-7,22,22);U.Glow(new Rect(b.x,b.y+2,b.width,b.height),new Color(0,0,0,.6f*a),5);U.Round(b,U.Hex(0xf1f2f6,a),6);U.Text(b,number.ToString(),12,U.Hex(0x0f1015,a),TextAnchor.MiddleCenter,bold:true,mono:true);
         }
         private static readonly float[] DieStops={0,.72f,1},DieStopsSiren={0,.7f,1},DieAlpha={1,0,0},InnerAt={0,.55f,1},InnerAlpha={0,0,.7f};
         // Legendary: linear-gradient(180deg, #fff2cb, #ffc96d 55%, #f39a35) clipped to the name (with its warm glow); Mythic:
