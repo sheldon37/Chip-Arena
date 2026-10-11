@@ -1,5 +1,43 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Claude — Siren redesign ("Fallen Couturiere") and a realistic entrance smile (owner request)
+- Branch `claude/sleepy-ritchie-g8ruhv` (PR #62): merged `claude/siren-detail` `0a87241` (base `0e8a3ff`) on top of `7f5e288`.
+  - Three rendered design concepts were judged. The winner is couture-horror, with grafts: faithful-plus's sculpted mask face, finer fangs and flame twist; eldritch's animated cheeks and distance fade.
+  - A model builder, then a smile builder, then review from two angles and fixes: all six findings were real and fixed. Visual only.
+- Model:
+  - 258 detail boxes on the existing Siren bones, generated deterministically by `tools/siren_design.mjs` and ported in `Core/NativeSirenDetail.cs` (matches the JS to 4.3e-9).
+  - Pieces: a trimmed pleated collar, pauldrons, a bodice V and dorsal ridge, the gown (peplum, skirt, slit panels), an animated train with ash hem steps, gauntlets and claw rings, a broken nimbus arc, the sculpted mask face, animated cheeks, a finer 13/12 fang grin, talons ×1.15 and a stratified flame twist.
+  - Glow lines breathe and fade with distance.
+  - `NativeSirenLook` Count is now 136 source + 260 detail.
+  - Every draw path shows it (arena, killcam, entrance bake, portraits, draft seat, PvE boss), and the Siren death bake is dressed too. First person is unchanged.
+  - Cost: +258 boxes, about +4 solid draws, +1 glow draw and 4 shadow casters per camera. No new shader.
+- Smile:
+  - Before, the source simply stretched the grin sideways and the old bake held the eyes at full anger.
+  - `Core/NativeSirenSmileFace.cs` (mirrored by `tools/siren_smile.mjs`) and `Runtime/NativeSirenFace.cs` now draw the face natively on the baked head track:
+    - the blank stare is restored;
+    - at the smile cue (beat 14, unchanged) a closed fang seam flickers in, the left corner leads into a smirk, and the 25 fangs bare from the centre with a bite;
+    - the jaw drops and settles, the eyes narrow from below as the cheeks rise, and the halos and fangs flare;
+    - a silent laugh lands on song beats 15 and 16, and the held grin strains with a 4.1 Hz quiver.
+  - Cue times, durations, the intro clock and the music sync are unchanged.
+- Tooling Astra should know about:
+  - `tools/export_cinematics.mjs` (exporter tooling) was changed: it hides the source eyes and grin in the dev-siren bake, records the head track, bakes the body layer, and re-bakes the dressed Siren death.
+  - Clips were spliced so only the stage-dev-siren clip and the death-siren-dissipate clip changed. A re-export elsewhere differs only by last-digit float noise.
+  - There is an older exporter fragility: bakes depend on the three.js object-id sequence. It was worked around, not fixed.
+  - `SceneMotion.json` is now about 15 MB, and the asset-lock receipts are updated.
+  - Please review these exporter edits.
+- Checks on the merged head:
+  - unity-check: runtime+editor build OK;
+  - Python: 52 OK;
+  - package_source: passed, 1038 files;
+  - check_relay: exit 0, 280 PASS, including Siren look parity, Siren detail and Siren smile face.
+  - The new Editor build check uses public members only.
+- Not run: the Unity Editor, a Windows build or in-game look, multiplayer.
+- Known risks:
+  - the arena's bank grin still looks striped in 3/4 view;
+  - couture plates read a little lighter than the ink body because of the glow seams;
+  - the gown changes the silhouette, on purpose.
+- Status: implemented and merged on the branch; pushed to the cloud branch; not released by Claude.
+
 ## 2026-10-11 — Claude — Damage screen effect (owner request)
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62): merged `claude/damage-screen-fx` `fd1a789` (base `d6a5dac`) on top of `c0426cb`.
   - Three rendered concepts were judged. The winner is the cinematic "wound bloom", with grafts from the tactical concept and one from the visceral one.
