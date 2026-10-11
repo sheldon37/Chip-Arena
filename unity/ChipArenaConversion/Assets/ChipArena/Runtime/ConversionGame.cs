@@ -7,7 +7,7 @@ using U=ChipArena.UnityConversion.NativeUi;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class ConversionPreferences
-    { public bool fullscreen;public int team;public string botDifficulty="normal";public NativeBotOption[] botOptions=Array.Empty<NativeBotOption>();public bool skipPlayerIntros,randomizeMap,autoStart=true;public int choices=6,selectionSeconds=18;public bool bothDraft;public string relayOrigin="";public string graphics="auto",sirenMode="Q";public float sensitivity=1,audio=.3f,music=.35f,menuMusic=.6f,uiScale=1;public bool trails=true,reducedEffects,cameraShake;public string lobbyPose="weapon";public NativePendingEffect[] pendingEffects=Array.Empty<NativePendingEffect>();public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll",intro="neon-drop",introText="Ready to make an impact",accountOrigin=NativeAccount.DefaultOrigin;public int accountServiceVersion;public bool overrideIntro;public string name="Pilot",map="moonlit",weapon="pistol";public int bots=3,sets=5,rounds=2;public string combatGlow="Full";public bool pve,skipWaves;public bool mirrorWeapons,teams,friendlyFire,stationary,skipBotDrafts,sound=true,firstPerson;
+    { public bool fullscreen;public int team;public string botDifficulty="normal";public NativeBotOption[] botOptions=Array.Empty<NativeBotOption>();public bool skipPlayerIntros,randomizeMap,autoStart=true;public int choices=6,selectionSeconds=18;public bool bothDraft;public string relayOrigin="";public string graphics="auto",sirenMode="Q";public float sensitivity=1,audio=.3f,music=.35f,menuMusic=.6f,uiScale=1;public bool trails=true,reducedEffects,cameraShake;public string lobbyPose="weapon";public NativePendingEffect[] pendingEffects=Array.Empty<NativePendingEffect>();public string bodyColor="#e5e7eb",accentColor="#70e1d0",hat="none",killEffect="impact-ragdoll",intro="neon-drop",introText="Ready to make an impact",accountOrigin=NativeAccount.DefaultOrigin;public int accountServiceVersion;public bool overrideIntro;public string name="Pilot",map="moonlit",weapon="pistol";public int bots=3,sets=5,rounds=2;public string combatGlow="Full",damageScreen="Full";public bool pve,skipWaves;public bool mirrorWeapons,teams,friendlyFire,stationary,skipBotDrafts,sound=true,firstPerson;
         // Older Unity installs shipped an unconfigured account URL. Upgrade it once;
         // thereafter an empty URL is the player's explicit offline choice.
         public bool MigrateAccountService()
@@ -110,7 +110,9 @@ namespace ChipArena.UnityConversion
             }
             else pending=new InputFrame{Yaw=yaw,Pitch=-pitch};
         }
-        private void LateUpdate()
+        // The damage screen reads the frame after the live view is placed, so it runs after every early return of LateFrame.
+        private void LateUpdate(){LateFrame();DamageScreen();}
+        private void LateFrame()
         {
             NativeUiBlur.Frame();if(cameraView==null)return;cinematic.BeginFrame();if(PreviewFrame())return;ObserveReplay();if(arena!=null&&RenderReplay())return;nativeAudio.Muted=!prefs.sound;nativeAudio.Entrance(arena!=null&&!menu&&IntroActive?arena.Generation+":"+IntroPilot?.Seat.id+":"+IntroStyle:null,arena!=null&&IntroActive?IntroStyle:null,arena!=null&&IntroActive?IntroAge:0);PveFollowAudio();nativeAudio.Render(arena,menu,cameraView);SlenderFrame();if(arena==null){MenuBackdrop();return;}backdropMap=null;
             if(DraftFrame())return;if(!menu&&IntroActive){arena.Root.SetActive(false);viewModelCamera.enabled=false;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;presentation.RenderIntro(arena,IntroPilot,IntroStyle,IntroClockAge(),cameraView);return;}introClock.Reset();NativeLighting.EndIntro(content.Map(arena.MapId),cameraView);arena.Root.SetActive(true);
@@ -362,6 +364,6 @@ namespace ChipArena.UnityConversion
                 if(NativeUi.Button(r))inspectSeat=p.id;cy+=46;
             }
         }
-        private void OnDestroy(){NativeUiBlur.Release(true);singleInstance?.Dispose();cinematic.Dispose();CapturedAnimation.Release(slenderNoise);Time.timeScale=1;EndPreview();ClearReplay();CloseNetwork();if(scopeMask!=null)CapturedAnimation.Release(scopeMask);arena?.Dispose();if(ownsPhysics){Physics.simulationMode=previousSimulation;Physics.gravity=previousGravity;}Cursor.lockState=CursorLockMode.None;Cursor.visible=true;}
+        private void OnDestroy(){NativeUiBlur.Release(true);NativeDamageScreenPass.Release(true);singleInstance?.Dispose();cinematic.Dispose();CapturedAnimation.Release(slenderNoise);Time.timeScale=1;EndPreview();ClearReplay();CloseNetwork();if(scopeMask!=null)CapturedAnimation.Release(scopeMask);arena?.Dispose();if(ownsPhysics){Physics.simulationMode=previousSimulation;Physics.gravity=previousGravity;}Cursor.lockState=CursorLockMode.None;Cursor.visible=true;}
     }
 }

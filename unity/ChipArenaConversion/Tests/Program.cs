@@ -22,6 +22,7 @@ internal static class Program
             foreach(var result in NativeMeleeChecks.Run(data,melee))Console.WriteLine("PASS "+result);
             foreach(var result in NativeMotionChecks.Run())Console.WriteLine("PASS "+result);
             foreach(var result in NativeVisualChecks.Run(data))Console.WriteLine("PASS "+result);
+            foreach(var result in NativeDamageScreenChecks.Run())Console.WriteLine("PASS "+result);
             foreach(var result in NativePresentationChecks.Run(data,presentation))Console.WriteLine("PASS "+result);
             foreach(var result in NativeParityChecks.Run(data,fixtures))Console.WriteLine("PASS "+result);
             foreach(var result in MeleeMotionChecks.Run(root))Console.WriteLine("PASS "+result);
