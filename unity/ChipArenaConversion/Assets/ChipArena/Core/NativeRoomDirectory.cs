@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class NativeDirectoryEntry { public string code,origin; public long expires; }
-    public sealed class NativeOnlineRoomException:IOException { public NativeOnlineRoomException(string message):base(message){} }
+    public sealed class NativeOnlineRoomException:IOException { public NativeOnlineRoomException(string message):base(message){} public NativeOnlineRoomException(string message,Exception inner):base(message,inner){} }
 
     // Reuse the existing eight-character directory without changing the Electron service or its records.
     // UN is an internal namespace; players see and enter only the six random characters.

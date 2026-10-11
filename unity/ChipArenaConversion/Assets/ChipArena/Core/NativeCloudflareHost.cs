@@ -74,14 +74,24 @@ namespace ChipArena.UnityConversion
         public static async Task<NativeConnection> Connect(string origin,CancellationToken token)
         {
             var endpoint=new Uri(NativeRoomDirectory.TunnelOrigin(origin).Replace("https://","wss://")+"/");
-            for(int attempt=0;attempt<3;attempt++)
+            Exception last=null;
+            using(var deadline=CancellationTokenSource.CreateLinkedTokenSource(token))
             {
-                token.ThrowIfCancellationRequested();
-                try{return new NativeConnection(await NativeWebSocketStream.Connect(endpoint,token).ConfigureAwait(false));}
-                catch(Exception e)when(e is WebSocketException||e is OperationCanceledException)
-                {token.ThrowIfCancellationRequested();if(attempt==2)break;await Task.Delay(1000,token).ConfigureAwait(false);}
+                // Registration can precede DNS/edge routing. Three fast failures used to give up in two seconds.
+                deadline.CancelAfter(40000);
+                for(int attempt=0;attempt<20;attempt++)
+                {
+                    token.ThrowIfCancellationRequested();
+                    try{return new NativeConnection(await NativeWebSocketStream.Connect(endpoint,deadline.Token).ConfigureAwait(false));}
+                    catch(Exception e)when(e is WebSocketException||e is OperationCanceledException)
+                    {
+                        last=e;token.ThrowIfCancellationRequested();if(deadline.IsCancellationRequested||attempt==19)break;
+                        try{await Task.Delay(2000,deadline.Token).ConfigureAwait(false);}
+                        catch(OperationCanceledException){token.ThrowIfCancellationRequested();break;}
+                    }
+                }
             }
-            throw new NativeOnlineRoomException("Could not reach the host. Ask them to keep their room open and try again.");
+            throw new NativeOnlineRoomException("Could not reach the host. Ask them to keep their room open and try again.",last);
         }
         public void Dispose()
         {
