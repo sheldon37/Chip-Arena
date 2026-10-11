@@ -30,8 +30,9 @@ class CinematicChecks(unittest.TestCase):
                 self.assertTrue(-1<=section['texture']<len(self.textures),model['id'])
     def test_complete_geometry_and_tracks(self):
         self.assertEqual(len(self.clips),31)
-        # 133 source models plus the six Ward Zero beacon beams exported as moving parts.
-        self.assertEqual(len(self.models),139)
+        # 133 source models plus the six Ward Zero beacon beams exported as moving parts and the horde-tongue pieces
+        # (the Siren minions' black-flame tongues, animated by Core/NativeMinionFx.cs).
+        self.assertEqual(len(self.models),140)
         for key,c in self.clips.items():
             self.assertIn(key,self.models)
             self.assertEqual(len(c['values']),c['frames']*c['tracks']*20,key)

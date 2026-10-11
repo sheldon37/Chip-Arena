@@ -37,7 +37,7 @@ internal static class Program
             SirenSmileChecks.Run(root);SirenDetailChecks.Run(root);SirenSmileFaceChecks.Run(root);
             HudPlaceholderChecks.Run(root);
             DeathFxChecks.Run(root);
-            StageVentChecks.Run(root);
+            StageVentChecks.Run(root);MinionFxChecks.Run(root);
             SummonCeilingPickupChecks.Run(root,data);
             LobbyPoseChecks.Run(root);FighterMotionChecks.Run(root);LeetMotionChecks.Run();LeetPathChecks.Run(data);GunMotionChecks.Run();AuditorHaloChecks.Run(root);HitReactionChecks.Run(root);PackReactionChecks.Run(root);
             ArmorLightChecks.Run(root);

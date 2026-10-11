@@ -16,8 +16,17 @@ let wardGlow=false;const snap=n=>Number(n.toFixed(6));
 function texture(m){const t=m.map;if(!t?.image?.data)return -1;if(textureIds.has(t))return textureIds.get(t);const id=textures.length;textureIds.set(t,id);textures.push({width:t.image.width,height:t.image.height,channels:t.format===T.RGBAFormat?4:1,pixels:Buffer.from(t.image.data).toString('base64'),repeat:[t.repeat.x,t.repeat.y]});return id;}
 // Render-only source LineSegments become narrow, vertex-coloured strips in the native mesh batch.
 function lineMeshes(group){const made=[];group.traverse(o=>{if(!o.isLineSegments)return;const position=o.geometry.getAttribute('position'),color=o.geometry.getAttribute('color'),indices=o.geometry.index,vertices=[],normals=[],colors=[],triangles=[];const count=indices?.count??position.count;for(let i=0;i+1<count;i+=2){const ia=indices?indices.getX(i):i,ib=indices?indices.getX(i+1):i+1,a=new T.Vector3().fromBufferAttribute(position,ia),b=new T.Vector3().fromBufferAttribute(position,ib),d=b.clone().sub(a);if(d.lengthSq()<1e-12)continue;const normal=Math.abs(d.clone().normalize().y)>.9?new T.Vector3(1,0,0):new T.Vector3(0,1,0),width=new T.Vector3().crossVectors(d,normal).normalize().multiplyScalar(.009),offset=vertices.length/3;for(const [p,j]of [[a.clone().sub(width),ia],[a.clone().add(width),ia],[b.clone().add(width),ib],[b.clone().sub(width),ib]]){vertices.push(...p.toArray());normals.push(...normal.toArray());colors.push(color?color.getX(j):1,color?color.getY(j):1,color?color.getZ(j):1);}triangles.push(offset,offset+1,offset+2,offset,offset+2,offset+3);}const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(vertices,3));geo.setAttribute('normal',new T.Float32BufferAttribute(normals,3));geo.setAttribute('color',new T.Float32BufferAttribute(colors,3));geo.setIndex(triangles);const base=Array.isArray(o.material)?o.material[0]:o.material,mat=new T.MeshBasicMaterial({color:base.color,vertexColors:base.vertexColors,transparent:base.transparent,opacity:base.opacity,side:T.DoubleSide}),mesh=new T.Mesh(geo,mat);mesh.name='native-line-strip';made.push([o,mesh]);});for(const [o,m]of made)o.add(m);return made;}
+// Siren minion glow cells (minions/materials.ts): an instance colour whose red channel reaches GLOW_FLAG marks a glowing cell
+// (a crack, an ember, a dying strip) and the colour minus the flag is its multiplier. The bank keeps that multiplier as the
+// cell's colour and its category's glow (uGlow) as its emission; emission.w is 3 + the flicker class (0 shell, 1 accent plate,
+// 2 glow strip: uFlicker .35/.85/.9) + .98 x the cell's hash (the source shader's, from the cell centre without the material
+// pool's phase), which NativeSourceLit flickers per add (Core/NativeMinionFx.cs Flicker). Other materials return null.
+const GLOW_FLAG=16;
+function minionGlow(mat,q,c){const u=mat.minionUniforms;if(!u||c.r<GLOW_FLAG-.5)return null;c.r-=GLOW_FLAG;c.g-=GLOW_FLAG;c.b-=GLOW_FLAG;
+ const e=q.elements,s=Math.sin(e[12]*127.1+e[13]*311.7+e[14]*74.7)*43758.5453,h=s-Math.floor(s),k=u.uGlow.value,f=u.uFlicker.value;
+ return {r:mat.color.r*c.r*k,g:mat.color.g*c.g*k,b:mat.color.b*c.b*k,w:3+(f>.87?2:f>.6?1:0)+.98*h};}
 function exportModel(id,group,rig=null,only=null,anchorsOverride=null,forceVisibility=false,pieces=null){const convertedLines=lineMeshes(group);group.updateMatrixWorld(true);const groups=new Map(),anchors=anchorsOverride??(rig?bones.map(n=>rig[n]):[]);let originalMeshes=0;
- group.traverse(o=>{const piece=pieces?.get(o);if(!o.isMesh||o.name==='clouded-night-sky'||only&&!only(o)||piece===null)return;if(!forceVisibility)for(let q=o;q;q=q.parent)if(!q.visible)return;if(o.name.includes('flame-field')||o.name==='siren-minion-fx'||o.isSkinnedMesh)return;
+ group.traverse(o=>{const piece=pieces?.get(o);if(!o.isMesh||o.name==='clouded-night-sky'||only&&!only(o)||piece===null)return;if(!forceVisibility)for(let q=o;q;q=q.parent)if(!q.visible)return;if(o.name.includes('flame-field')||o.name==='siren-minion-fx'||o.name==='siren-minion-tongue'||o.isSkinnedMesh)return;
   const geometry=o.geometry,pos=geometry.getAttribute('position');if(!pos)return;let anchor=-1;if(!piece)for(let q=anchorsOverride?o:o.parent;q;q=q.parent){anchor=anchors.indexOf(q);if(anchor>=0)break;}
   // An animated piece keeps its own frame (identity at its frame node); the runtime places it on its joint each frame.
   let local=new T.Matrix4();if(piece){for(let node=o;node!==piece.frame;node=node.parent)local.premultiply(node.matrix);}else if(anchor>=0){for(let node=o;node&&node!==anchors[anchor];node=node.parent)local.premultiply(node.matrix);}else local.copy(o.matrixWorld).premultiply(group.matrixWorld.clone().invert());
@@ -26,8 +35,8 @@ function exportModel(id,group,rig=null,only=null,anchorsOverride=null,forceVisib
   const glow=mat.emissive?mat.emissive.clone().multiplyScalar(mat.emissiveIntensity??1):mat.isMeshBasicMaterial||mat.isShaderMaterial?base.clone():new T.Color(0);const ink=mat.sirenUniforms?.uRimStrength?.value??0;
   const part=piece?piece.part:id==='pilot'?o.name:o.userData.nativePart??'',tex=texture(mat),transparent=!!mat.transparent,opacity=forceVisibility?1:wardGlow&&mat.transparent&&mat.uniforms?.uOpacity?mat.uniforms.uOpacity.value:mat.opacity??1,key=[anchor,tex,transparent,mat.side!==T.FrontSide,ink>0,part].join(':');let out=groups.get(key);if(!out){out={part,bone:anchor,texture:tex,transparent,doubleSide:mat.side!==T.FrontSide,ink:ink>0,positions:[],normals:[],colors:[],emission:[],uv:[],indices:[]};groups.set(key,out);}
   const normal=geometry.getAttribute('normal'),uv=geometry.getAttribute('uv'),vertexColor=geometry.getAttribute('color'),index=geometry.index,matrix=new T.Matrix4(),instanceColor=new T.Color(1,1,1),p=new T.Vector3(),n=new T.Vector3(),color=new T.Color(),count=o.isInstancedMesh?o.count:1;
-  for(let instance=0;instance<count;instance++){matrix.copy(local);if(o.isInstancedMesh){const q=new T.Matrix4();o.getMatrixAt(instance,q);if(wardGlow&&Math.abs(q.determinant())<1e-12)continue;matrix.multiply(q);if(o.instanceColor)o.getColorAt(instance,instanceColor);}const nm=new T.Matrix3().getNormalMatrix(matrix),offset=out.positions.length/3;
-   for(let i=0;i<pos.count;i++){p.fromBufferAttribute(pos,i).applyMatrix4(matrix);n.set(0,1,0);if(normal)n.fromBufferAttribute(normal,i).applyMatrix3(nm).normalize();if(rig){p.x=-p.x;n.x=-n.x;}out.positions.push(snap(p.x),snap(p.y),snap(p.z));out.normals.push(snap(n.x),snap(n.y),snap(n.z));color.copy(base).multiply(instanceColor);if(vertexColor&&mat.vertexColors)color.multiply(new T.Color(vertexColor.getX(i),vertexColor.getY(i),vertexColor.getZ(i)));out.colors.push(snap(color.r),snap(color.g),snap(color.b),snap(opacity*(vertexColor?.itemSize===4?vertexColor.getW(i):1)));out.emission.push(snap(glow.r*instanceColor.r),snap(glow.g*instanceColor.g),snap(glow.b*instanceColor.b),rig&&/^(hip-shell|abdomen-shell|ribcage|upper-chest|collar|blank-head|crown)$|-(upper-arm|forearm|thumb|thigh|calf|shin)$/.test(o.name)?1:rig&&/^(waist-band|sternum|armor-)|-(shoulder-cap|cuff|kneecap)$/.test(o.name)?2:0);out.uv.push(uv?snap(uv.getX(i)):0,uv?snap(uv.getY(i)):0);}
+  for(let instance=0;instance<count;instance++){matrix.copy(local);let lit=null;if(o.isInstancedMesh){const q=new T.Matrix4();o.getMatrixAt(instance,q);if(wardGlow&&Math.abs(q.determinant())<1e-12)continue;matrix.multiply(q);if(o.instanceColor){o.getColorAt(instance,instanceColor);lit=minionGlow(mat,q,instanceColor);}}const nm=new T.Matrix3().getNormalMatrix(matrix),offset=out.positions.length/3;
+   for(let i=0;i<pos.count;i++){p.fromBufferAttribute(pos,i).applyMatrix4(matrix);n.set(0,1,0);if(normal)n.fromBufferAttribute(normal,i).applyMatrix3(nm).normalize();if(rig){p.x=-p.x;n.x=-n.x;}out.positions.push(snap(p.x),snap(p.y),snap(p.z));out.normals.push(snap(n.x),snap(n.y),snap(n.z));color.copy(base).multiply(instanceColor);if(vertexColor&&mat.vertexColors)color.multiply(new T.Color(vertexColor.getX(i),vertexColor.getY(i),vertexColor.getZ(i)));out.colors.push(snap(color.r),snap(color.g),snap(color.b),snap(opacity*(vertexColor?.itemSize===4?vertexColor.getW(i):1)));if(lit)out.emission.push(snap(lit.r),snap(lit.g),snap(lit.b),snap(lit.w));else out.emission.push(snap(glow.r*instanceColor.r),snap(glow.g*instanceColor.g),snap(glow.b*instanceColor.b),rig&&/^(hip-shell|abdomen-shell|ribcage|upper-chest|collar|blank-head|crown)$|-(upper-arm|forearm|thumb|thigh|calf|shin)$/.test(o.name)?1:rig&&/^(waist-band|sternum|armor-)|-(shoulder-cap|cuff|kneecap)$/.test(o.name)?2:0);out.uv.push(uv?snap(uv.getX(i)):0,uv?snap(uv.getY(i)):0);}
    let length=index?index.count:pos.count;for(let i=0;i+2<length;i+=3){let a=index?index.getX(i):i,b=index?index.getX(i+1):i+1,c=index?index.getX(i+2):i+2;out.indices.push(offset+a,offset+(rig?c:b),offset+(rig?b:c));}
   }originalMeshes++;
  });for(const [o,m]of convertedLines){o.remove(m);m.geometry.dispose();m.material.dispose();}models.push({id,sections:[...groups.values()]});console.log(id,originalMeshes,'source meshes ->',groups.size,'native batches');}
@@ -63,7 +72,56 @@ function sirenPieces(parts){const map=new Map(),own=(o,part)=>map.set(o,{part,fr
  parts.claws.forEach((g,i)=>g.children.forEach(c=>map.set(c,{part:i?'siren-claws-r':'siren-claws-l',frame:g})));
  const boxes=[...parts.tongues.flatMap(t=>t.group.children),...parts.wisps];own(boxes[0],'siren-flame-box');for(const b of boxes.slice(1))map.set(b,null);
  for(const o of [...parts.orbs,parts.flames.mesh,parts.charge])map.set(o,null);return map;}
-for(let i=0;i<6;i++){const m=createSirenMinion(100+i);m.rig.group.traverse(o=>{if(o.name==='siren-minion-fx')o.visible=false;});exportModel('horde-'+i,m.rig.group,m.rig);}
+// The six PvE horde variants (Runtime/NativeSourcePresentation.cs draws add id % 6). Their black-flame tongues leave the joint
+// batches: the two tongue layouts become the horde-tongue pieces (in their own frame, x mirrored, each triangle turned over)
+// and Core/NativeMinionFx.Generated.cs records where each variant grows them, which Core/NativeMinionFx.cs sways and swells
+// every frame as motion.ts does. No Object3D is made here, so the seeded stream of later exports is unchanged.
+const horde=[];for(let i=0;i<6;i++){const m=createSirenMinion(100+i);m.rig.group.traverse(o=>{if(o.name==='siren-minion-fx')o.visible=false;});exportModel('horde-'+i,m.rig.group,m.rig);horde.push(m);}
+function tongueSection(part,o){const mat=o.material,g=o.geometry,pos=g.getAttribute('position'),normal=g.getAttribute('normal'),uv=g.getAttribute('uv'),index=g.index,q=new T.Matrix4(),c=new T.Color(),p=new T.Vector3(),n=new T.Vector3();
+ const out={part,bone:-1,texture:-1,transparent:!!mat.transparent,doubleSide:mat.side!==T.FrontSide,ink:(mat.sirenUniforms?.uRimStrength?.value??0)>0,positions:[],normals:[],colors:[],emission:[],uv:[],indices:[]};
+ for(let k=0;k<o.count;k++){o.getMatrixAt(k,q);o.getColorAt(k,c);const nm=new T.Matrix3().getNormalMatrix(q),offset=out.positions.length/3;
+  for(let i=0;i<pos.count;i++){p.fromBufferAttribute(pos,i).applyMatrix4(q);n.fromBufferAttribute(normal,i).applyMatrix3(nm).normalize();out.positions.push(snap(-p.x),snap(p.y),snap(p.z));out.normals.push(snap(-n.x),snap(n.y),snap(n.z));out.colors.push(snap(mat.color.r*c.r),snap(mat.color.g*c.g),snap(mat.color.b*c.b),snap(mat.opacity??1));out.emission.push(0,0,0,0);out.uv.push(snap(uv.getX(i)),snap(uv.getY(i)));}
+  for(let i=0;i+2<index.count;i+=3)out.indices.push(offset+index.getX(i),offset+index.getX(i+2),offset+index.getX(i+1));}
+ return out;}
+{const layout=k=>{for(const m of horde)for(let j=k;j<m.tongues.length;j+=2)return m.tongues[j].mesh;throw Error('No horde tongue of layout '+k);};
+ models.push({id:'horde-tongue',sections:[0,1].map(k=>tongueSection('horde-tongue-'+k,layout(k)))});console.log('horde-tongue 2 tongue layouts -> 2 pieces');
+ const num=v=>Number.isNaN(v)?'double.NaN':String(Number((Math.abs(v)<5e-7?0:v).toFixed(6))),list=a=>a.map(num).join(','),tongues=[],start=[0],joints=[],layouts=[],crack=[],floor=[],rest=[];
+ for(const m of horde){const B=bones.map(n=>m.rig[n]);
+  m.tongues.forEach((g,j)=>{const b=B.indexOf(g.mesh.parent);if(b<0)throw Error('A horde tongue is not on a rig joint');joints.push(b);layouts.push(j%2);tongues.push(...g.mesh.position.toArray(),...g.base.toArray(),g.height,g.phase);});start.push(joints.length);
+  // The crack light's centre: the cracked head's glow cells on its front face, in the head joint's frame.
+  const head=m.rig.group.getObjectByName('blank-head'),q=new T.Matrix4(),c=new T.Color(),at=new T.Vector3(),sum=new T.Vector3();let cells=0;
+  if(m.look.face==='cracked')for(let k=0;k<head.count;k++){head.getColorAt(k,c);head.getMatrixAt(k,q);at.setFromMatrixPosition(q);if(c.r<GLOW_FLAG-.5||at.z<=0)continue;sum.add(at.applyMatrix4(head.matrix));cells++;}
+  crack.push(...(cells?sum.multiplyScalar(1/cells).toArray():[NaN,NaN,NaN]));floor.push(m.floor);}
+ // Per joint: the rest height (rig group) of its parts' centres and the centre of their bounds in the joint frame, over the
+ // parts any variant shows (every variant shares the rig).
+ const parts=new Map();for(const m of horde){const B=bones.map(n=>m.rig[n]);for(const p of m.parts){let b=-1,local=p.mesh.matrix.clone();for(let o=p.mesh.parent;o;o=o.parent){b=B.indexOf(o);if(b>=0)break;local.premultiply(o.matrix);}if(b<0||parts.has(p.mesh.name))continue;parts.set(p.mesh.name,{b,y:p.y,local});}}
+ const all=[...parts.values()],low=Math.min(...all.map(p=>p.y)),high=Math.max(...all.map(p=>p.y));
+ for(let b=0;b<bones.length;b++){const own=all.filter(p=>p.b===b);if(!own.length){rest.push(NaN,NaN,NaN,NaN);continue;}const box=new T.Box3();for(const p of own)for(let k=0;k<8;k++)box.expandByPoint(new T.Vector3(k&1?.5:-.5,k&2?.5:-.5,k&4?.5:-.5).applyMatrix4(p.local));const mid=box.getCenter(new T.Vector3());rest.push(own.reduce((s,p)=>s+p.y,0)/own.length,mid.x,mid.y,mid.z);}
+ fs.writeFileSync(path.join(root,'Assets/ChipArena/Core/NativeMinionFx.Generated.cs'),`// Generated by tools/export_models.mjs from the pinned source (${inventory.sourceCommit}):
+// client/siren/minions/model.ts createSirenMinion(100 + v) for the six PvE horde variants the bank holds as horde-0..5 (an add
+// draws variant id % 6). Per variant: its face, the rig-group height of the floor under its boots, the black-flame tongues it
+// grows on its burns and crown split (joint, tongue layout = the bank's horde-tongue piece, then anchor xyz in the joint frame,
+// the base turn out of the surface as a quaternion xyzw, height and flicker phase) and the centre of its head crack's light
+// (the front glow cells, head joint frame; NaN when blank). Per CapturedRig joint: the rest height of its parts' centres in
+// the rig group and the centre of their bounds in the joint frame (NaN without parts), and the lowest and highest part centre.
+// All in source (three.js) axes. Core/NativeMinionFx.cs animates them. Do not edit.
+namespace ChipArena.UnityConversion
+{
+    public static partial class NativeMinionFx
+    {
+        public const int Variants=${horde.length};
+        public static readonly bool[] Cracked={${horde.map(m=>String(m.look.face==='cracked')).join(',')}};
+        public static readonly double[] Floor={${list(floor)}};
+        public static readonly int[] TongueStart={${start.join(',')}};
+        public static readonly int[] TongueJoint={${joints.join(',')}};
+        public static readonly int[] TongueLayout={${layouts.join(',')}};
+        public static readonly double[] TongueFrame={${list(tongues)}};
+        public static readonly double[] Crack={${list(crack)}};
+        public static readonly double[] JointRest={${list(rest)}};
+        public const double RestLow=${num(low)},RestHigh=${num(high)};
+    }
+}
+`);}
 const {buildSummon}=await load('summon-visuals');for(const kind of ['toy','zombie']){const r=buildSummon(kind);r.group.scale.setScalar(1);exportModel('summon-'+kind,r.group,r);}
 const {buildSlender}=await load('slender-model');const slender=buildSlender(),slenderNodes=[];slender.traverse(n=>{if(n.isGroup)slenderNodes.push(n);});slender.updateMatrixWorld(true);exportModel('slender',slender,true,null,slenderNodes,true);
 fs.writeFileSync(path.join(root,'Assets/Conversion/Resources/SlenderRig.json'),JSON.stringify({commit:inventory.sourceCommit,nodes:slenderNodes.map(n=>{let tentacle=-1,segment=-1;for(let p=n;p;p=p.parent){if(p.name==='slender-seg')segment++;if(p.name==='slender-tentacle')tentacle=p.userData.index;}return {name:n.name,parent:slenderNodes.indexOf(n.parent),position:n.position.toArray(),rotation:n.quaternion.toArray(),scale:n.scale.toArray(),tentacle,segment};})})+'\n');

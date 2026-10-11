@@ -1,11 +1,11 @@
 Shader "ChipArena/SourceLit" {
- Properties { _SceneTint("Scene tint",Color)=(1,1,1,1) _MainTex("Texture",2D)="white"{} _BodyTint("Body tint",Color)=(1,1,1,1) _AccentTint("Accent tint",Color)=(1,1,1,1) _GlowTint("Emission tint (linear)",Vector)=(1,1,1,1) _Ink("Siren ink",Float)=0 _InkRim("Ink rim",Float)=.3 _InkFlow("Ink flow",Float)=.025 _InkFill("Ink fill",Float)=0 _InkColor("Ink colour",Color)=(.039,.031,.055,1) _Cull("Cull",Float)=2 }
+ Properties { _SceneTint("Scene tint",Color)=(1,1,1,1) _MainTex("Texture",2D)="white"{} _BodyTint("Body tint",Color)=(1,1,1,1) _AccentTint("Accent tint",Color)=(1,1,1,1) _GlowTint("Emission tint (linear)",Vector)=(1,1,1,1) _Ink("Siren ink",Float)=0 _InkRim("Ink rim",Float)=.3 _InkFlow("Ink flow",Float)=.025 _InkFill("Ink fill",Float)=0 _InkColor("Ink colour",Color)=(.039,.031,.055,1) _Cull("Cull",Float)=2 _MinionGlow("Siren minion glow",Float)=0 }
  SubShader { Tags { "RenderType"="Opaque" } Cull [_Cull]
  CGPROGRAM
  #pragma surface surfArmor Lambert fullforwardshadows addshadow vertex:vert finalcolor:StageTone
  #pragma target 3.5
  #pragma multi_compile_instancing
- sampler2D _MainTex;float _Ink,_InkRim,_InkFlow,_InkFill;float4 _InkColor;
+ sampler2D _MainTex;float _Ink,_InkRim,_InkFlow,_InkFill,_MinionGlow,_MinionClock;float4 _InkColor;
  #include "NativeArmorLight.cginc"
  UNITY_INSTANCING_BUFFER_START(Props)
  UNITY_DEFINE_INSTANCED_PROP(float4,_BodyTint)
@@ -54,8 +54,24 @@ Shader "ChipArena/SourceLit" {
  // writes o.Normal, so viewDir and worldNormal are both world space (dotting viewDir with a fixed axis lit the whole body
  // by the camera's heading and left the silhouette without its rim). _InkRim and _InkFlow are set per part (the claws and
  // flame tongues burn brighter: NativeSourceModels.SplitSirenPieces).
+ // Siren minion glow cells (materials.ts MinionMaterial; Core/NativeMinionFx.cs Flicker is the same expression): the bank's
+ // emission.w is 3 + flicker class (0 shell .35, 1 accent plate .85, 2 glow strip .9) + .98 x the cell's hash. Each cell
+ // waves at its own 4-13 Hz on the arena's presentation time (_MinionClock, set per frame) and, about one 1/7 s slot in
+ // seven, the add's whole glow drops by .8 of its flicker share. _GlowTint.w carries the add's phase plus the drop bits
+ // (Core NativeMinionFx.GlowW: + 8 while class 0 drops, + 16 while classes 1 and 2 do; horde-* materials only, their
+ // _ArmorLight is 0 so nothing else reads it). The drop is hashed once per add and frame on the CPU in double precision,
+ // so host, guests and the killcam dim the same slots as the crack's haze on any GPU; the per-cell wave hash is float, so
+ // the cells' wave phases may differ between GPU vendors. A charred joint (charred = 1 - _SceneTint.a, the burn-away's
+ // char) keeps flickering embers: materials.ts charred glow 3.2 over the class's live glow and flicker .6.
+ float MinionFlicker(float code,float w,float charred)
+ {
+  float d12=step(15.5,w);w-=16*d12;float d0=step(7.5,w),phase=w-8*d0;
+  float cls=clamp(floor(code-2.999),0,2),cell=saturate((code-3-cls)/.98),f=lerp(cls<.5?.35:cls<1.5?.85:.9,.6,charred),drop=cls>.5?d12:d0;phase+=cls>.5?.37:0;
+  float h=frac(sin(cell*289.37+phase*7.13)*43758.5453),wave=.5+.5*sin(_MinionClock*(4+9*h)+h*40+phase*3);
+  return lerp(1,wave,f)*(1-drop*f*.8)*lerp(1,cls<.5?1.882353:cls<1.5?2.133333:2,charred);
+ }
  void vert(inout appdata_full v,out Input o){UNITY_INITIALIZE_OUTPUT(Input,o);o.emission=v.texcoord1;}
- void surf(Input i,inout SurfaceOutput o){float4 shell=UNITY_ACCESS_INSTANCED_PROP(Props,_BodyTint);if(shell.a<.999)clip(shell.a-frac(sin(dot(floor(i.worldPos*120),float3(12.9898,78.233,37.719)))*43758.5453));float4 accent=UNITY_ACCESS_INSTANCED_PROP(Props,_AccentTint);float3 tint=i.emission.w>1.5?accent.rgb:i.emission.w>.5?shell.rgb:1;tint*=UNITY_ACCESS_INSTANCED_PROP(Props,_SceneTint).rgb;float4 tex=tex2D(_MainTex,i.uv_MainTex);o.Albedo=i.color.rgb*tint*tex.rgb;o.Emission=i.emission.rgb*tint*UNITY_ACCESS_INSTANCED_PROP(Props,_GlowTint).rgb;if(_InkFill>.5){o.Albedo=_InkColor.rgb;o.Emission=float3(0,0,0);}float rim=pow(1-saturate(abs(dot(normalize(i.viewDir),normalize(i.worldNormal)))),3);float rise=sin(i.worldPos.y*23-_Time.y*6.5+sin(i.worldPos.x*13+_Time.y*1.7)*2.2+i.worldPos.z*9);o.Emission+=_Ink*float3(.62,.56,.82)*(rim*_InkRim+smoothstep(.7,1,rise)*_InkFlow);if(_StageLit>.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=StageLight(o.Albedo,i.worldPos,normalize(i.worldNormal));o.Alpha=i.color.a*tex.a*shell.a;}
+ void surf(Input i,inout SurfaceOutput o){float4 shell=UNITY_ACCESS_INSTANCED_PROP(Props,_BodyTint);if(shell.a<.999)clip(shell.a-frac(sin(dot(floor(i.worldPos*120),float3(12.9898,78.233,37.719)))*43758.5453));float4 accent=UNITY_ACCESS_INSTANCED_PROP(Props,_AccentTint);float3 tint=i.emission.w>2.5?1:i.emission.w>1.5?accent.rgb:i.emission.w>.5?shell.rgb:1;float4 sceneTint=UNITY_ACCESS_INSTANCED_PROP(Props,_SceneTint);tint*=sceneTint.rgb;float4 tex=tex2D(_MainTex,i.uv_MainTex);o.Albedo=i.color.rgb*tint*tex.rgb;float4 glowTint=UNITY_ACCESS_INSTANCED_PROP(Props,_GlowTint);o.Emission=i.emission.rgb*tint*glowTint.rgb;if(_MinionGlow>.5&&i.emission.w>2.5)o.Emission*=MinionFlicker(i.emission.w,glowTint.w,1-sceneTint.a);if(_InkFill>.5){o.Albedo=_InkColor.rgb;o.Emission=float3(0,0,0);}float rim=pow(1-saturate(abs(dot(normalize(i.viewDir),normalize(i.worldNormal)))),3);float rise=sin(i.worldPos.y*23-_Time.y*6.5+sin(i.worldPos.x*13+_Time.y*1.7)*2.2+i.worldPos.z*9);o.Emission+=_Ink*float3(.62,.56,.82)*(rim*_InkRim+smoothstep(.7,1,rise)*_InkFlow);if(_StageLit>.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=StageLight(o.Albedo,i.worldPos,normalize(i.worldNormal));o.Alpha=i.color.a*tex.a*shell.a;}
  // Pilot armor lights (NativeArmorLight.cginc): surf, then the trims' profile and their spill on the armour around them;
  // inked (_InkFill) and non-pilot materials (_ArmorLight 0) are untouched.
  void surfArmor(Input i,inout SurfaceOutput o)
