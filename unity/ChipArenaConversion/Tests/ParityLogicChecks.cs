@@ -48,6 +48,18 @@ internal static class ParityLogicChecks
         Check(NativeCombatRules.Headshot(new V3(),0,new V3(0,.64f,-3),new V3(0,0,1),0,false),"head trajectory receives bonus");
         foreach(var hit in new[]{new V3(.3f,.45f,-3),new V3(.35f,.5f,-3),new V3(0,.4f,-3)})Check(!NativeCombatRules.Headshot(new V3(),0,hit,new V3(0,0,1),.03f,false),"shoulder is not the head");
         Check(!NativeCombatRules.Headshot(new V3(),0,new V3(0,.64f,-3),new V3(0,0,1),0,true),"downed/juggled pilots do not receive headshots");
+        Check(NativeSirenRules.GrabPose(true,13.2f,13.8f)&&NativeSirenRules.GrabPose(true,13.79f,13.8f)
+            &&!NativeSirenRules.GrabPose(true,13.8f,13.8f)&&!NativeSirenRules.GrabPose(false,13.3f,13.8f),
+            "Last Laugh retains the holder's grab pose for 0.6 s after the crush, then ends");
+        Check(Math.Abs(NativeSirenRules.CrushDeathYaw(0)-180f)<1e-5f
+            &&Math.Abs(NativeSirenRules.CrushDeathYaw(270)-90f)<1e-5f
+            &&Math.Abs(NativeSirenRules.CrushDeathYaw(-90)-90f)<1e-5f,
+            "Last Laugh death faces the Siren's held angle, including yaw wrap");
+        Check(NativeSirenRules.DeathStyle("sword",true,"gibs")=="siren-crush"
+            &&NativeSirenRules.DeathStyle("sword",false,"gibs")=="gibs"
+            &&NativeSirenRules.DeathStyle("sword",false,null)=="impact-ragdoll"
+            &&NativeSirenRules.DeathStyle("siren",true,"gibs")=="siren-dissipate",
+            "only the actual crush overrides ordinary deaths mid-hold");
         Check(Math.Abs(NativeMeleeRules.HitStun(content.Weapon("daggers"),1)-.12f)<1e-5f
             &&Math.Abs(NativeMeleeRules.HitStun(content.Weapon("sword"),1)-.18f)<1e-5f
             &&Math.Abs(NativeMeleeRules.HitStun(content.Weapon("shield"),1)-.20f)<1e-5f
