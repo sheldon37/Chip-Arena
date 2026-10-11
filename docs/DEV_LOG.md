@@ -1,5 +1,21 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Claude — Effects overhaul, base layer (owner: "cube placeholders", "that pancake ring effect is still there")
+- Branch `claude/fx-base-layer`, base `2bcb646` (Brickfall integration merge). Two commits: Core `f72d153` (particle roles, seeds, shock records, smoke colour, atlas/noise/meshes, bomb pose; exporter `owner.fx` cuts, `blast-parity.json` regenerated) and the Runtime commit that follows it. Not pushed, not merged, not released.
+- Runtime: new shared renderer `Runtime/NativeVfxDraw.cs` draws every pooled particle as its Core role's primitive instead of a flat cube:
+  - glows/streaks/smoke/fireballs: one premultiplied billboard mesh, sorted back to front, `Resources/NativeVfx.shader`;
+  - rubble, crystals and the modelled chip bomb: one lit mesh;
+  - shock fronts: one additive fresnel shell per `NativeBlastSim.Shocks` record (`Resources/NativeVfxLit.shader`).
+  - Smoke is lit by the ambient, the moon and the 3 blast flashes (the `_ArenaFlash*` globals) and erodes with the Core atlas; the atlas is built once on a worker thread.
+- Hooks: blasts (`NativeBlastPresentation`), burst sparks (`NativeShotPresentation`) and field cores (`NativeFieldPresentation`) go through the renderer; ArenaPresentation begins and submits it once per RenderGlow. The 3 flash lights and the block flash feed are unchanged.
+- The field ground glow disc (`NativeFieldRules.GlowDisc`) is no longer drawn anywhere. Chip bomb, implosion bomb and mine draw as the lit bomb model on the Core pulse. The black hole has a dark lit core with a rim and halo; implosion and accretion orbits draw as HDR streaks; the aim preview motes are glows. The time and repulsion domes are unchanged.
+- Bloom: `Runtime/NativeBloomImage.cs` + `Resources/NativeBloom.shader`, an OnRenderImage/Graphics.Blit effect added first on the match camera (before the damage screen). Threshold 1 on HDR; low graphics starts at quarter resolution.
+- Cosmetic only: no gameplay, events, network data, timing, hit timing, hitboxes, damage, cooldowns or movement change. The sim's counts, motion and random draws are the Core commit's (unchanged by this one). The exporters note the presentation cuts; the fixtures are unchanged.
+- Checks: `unity-check.sh` runtime+editor build OK; `check_relay.py` exit 0 with no FAIL; Python unittest OK; `package_source.py` passed; `git diff --check 2bcb646 HEAD` clean. New managed `VfxRuntimeChecks` scans and updated BlastChecks no-disc scans are included. HLSL syntax (glslang, fog/gamma variants) and the SHARED blocks as GLSL compiled for all three shaders. An offline WebGL2 harness ran the real NativeVfxDraw against a UnityEngine stub and the shaders' SHARED code for 21 scenarios; it is a scratch tool, not in the repo.
+- Not run: Unity Editor import and FXC compile of the new shaders, the Editor `CheckVfx` build check, Windows play, multiplayer and visual review in the real game.
+- Risks: the advanced Mesh API path and the HDR/bloom chain are untested on D3D11. The arrival shells of large fields are strong at close range. Flames are still atlas puffs.
+- Next: owner build and review. Later milestones cover flame shapes, kill/death effects and the Siren/Brickfall kits.
+
 ## 2026-10-11 — Astra — Brickfall simulation/presentation connected for owner build
 - Owner explicitly requested connecting the work and pushing the update for a local build. Task branch `codex/unity-brickfall-integration-20261011`, shared base `beaacc7332f9aefddd0ce046923523870b9c0f33`; merges PR #109 simulation `8c0094060181156ec7578676d4ea1f2faca57d93`. Both agents' DEV_LOG entries and Claude's replicated possession timestamp are preserved. Shared/build destinations: `claude/sleepy-ritchie-g8ruhv` and `codex/unity-cloud-current` (fast-forward, no force).
 - Connected StructureStress/Fall/Land to Claude's VFX, ambience/dust hooks and audio; reconstructed active warnings from replicated schedules for join/reconnect/replay. Authored crush + sweep bounds cover the hazard; all ten queued warnings retain their actual time until fall. Increased the fixed record capacity to avoid evicting concurrent warnings, keeping existing draw/puff budgets.

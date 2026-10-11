@@ -9,12 +9,16 @@ namespace ChipArena.UnityConversion
     // ability aim preview of client/ability-preview.ts), drawn from the pure NativeFieldRules. Builds, once per frame, the
     // source's FieldViews from chip fields and ability zones; NativeBlastPresentation runs its field emitters (the volumes,
     // strike cues and arrival bursts) from the same views, so both keep one key, birth time and fx per field.
-    // Layers, each one dynamic mesh refilled from reused buffers: the edge-less ground glow (Transparent-1, as renderOrder
-    // -1) and the Siren scorch decals, the time/repulsion domes and the Siren warnings (Transparent; fills, then rings), the
-    // aim preview motes (Transparent+3) and the opaque unlit cores. Host and guests draw from replicated data. Every view
-    // carries the raycast floor under it (NativeBlastField.Floor): the blast emitters sit its arrival impacts on that floor, and
-    // a field high above it (on a wall or a ceiling, riding a pilot in the air) draws no ground glow in mid-air (owner
-    // 2026-10-11, NativeFieldRules.GlowShown). Cosmetic only.
+    // Layers, each one dynamic mesh refilled from reused buffers: the Siren scorch decals (Transparent-1, as renderOrder -1),
+    // the time/repulsion domes and the Siren warnings (Transparent; fills, then rings). The field cores and the aim preview
+    // motes go to the shared effects renderer (NativeVfxDraw; owner 2026-10-11 effects overhaul): the chip bomb, implosion
+    // bomb and mine as the lit, modelled bomb (NativeFieldRules.Bomb) with its band and fuse glowing on the fuse pulse and a
+    // hot glow on the fuse tip, the implosion's orbiting motes and the black hole's accretion as HDR streaks, its core as a
+    // dark lit sphere with a rim and a halo ring, the preview motes as soft glows. Owner 2026-10-11 ("that pancake ring effect
+    // is still there"): the source's flat ground glow disc (NativeFieldRules.GlowDisc, alpha .22 out to the gameplay radius
+    // under every field for its whole life) is no longer drawn; nothing gameplay reads it, and the field's volume (its
+    // NativeBlastSim emitters) shows where it is. Host and guests draw from replicated data. Every view carries the raycast
+    // floor under it (NativeBlastField.Floor): the blast emitters sit its arrival impacts on that floor. Cosmetic only.
     public sealed class NativeFieldPresentation : IDisposable
     {
         private sealed class Layer
@@ -41,33 +45,33 @@ namespace ChipArena.UnityConversion
         // The floor under each field and where it was cast from: cast again only when the field moves (attached fields follow
         // their pilot, prop or add), so a static field casts once.
         private const float FloorMove=.02f;private readonly Dictionary<long,(Vector3 at,double floor)> floorOf=new Dictionary<long,(Vector3,double)>();private readonly RaycastHit[] floorHits=new RaycastHit[16];
-        private readonly Layer glow,decal,dome,warn,motes,cores;private readonly Layer[] layers;private readonly Material[] owned;
-        private readonly NativeFieldCube[] cubes=new NativeFieldCube[NativeFieldRules.MaxCubes];private readonly float[] preview=new float[NativeFieldRules.PreviewCap*4];
+        private readonly Layer decal,dome,warn;private readonly Layer[] layers;private readonly Material[] owned;
+        private readonly NativeVfxDraw vfx;private readonly bool ownsVfx;
+        private readonly NativeFieldCube[] cubes=new NativeFieldCube[NativeFieldRules.MaxCubes],before=new NativeFieldCube[NativeFieldRules.MaxCubes];private readonly float[] preview=new float[NativeFieldRules.PreviewCap*4];
         private int generation=-1;private float lastTime=-1;private bool linear;private NativeArena lastArena;
         /// <summary>The clock of the last <see cref="Collect"/>; NativeBlastPresentation runs the field emitters on it.</summary>
         public float Clock{get;private set;}
         private string previewSpec;private ContentAbility previewAbility;
-        public NativeFieldPresentation()
+        /// <summary>vfx: the shared effects renderer the owner (ArenaPresentation) begins and submits each frame; null makes
+        /// this presentation own one and submit it at the end of its own Render.</summary>
+        public NativeFieldPresentation(NativeVfxDraw vfx=null)
         {
+            ownsVfx=vfx==null;this.vfx=vfx??new NativeVfxDraw();
             var shader=Resources.Load<Shader>("NativeFieldGlow");if(shader==null)throw new InvalidOperationException("NativeFieldGlow shader is missing");
-            var blast=Resources.Load<Shader>("NativeBlast");if(blast==null)throw new InvalidOperationException("NativeBlast shader is missing");
             Material Transparent(string name,int queue,CullMode cull,float offset=0,float radial=0)
             {var m=new Material(shader){name=name,renderQueue=queue};m.SetFloat("_Cull",(float)cull);m.SetFloat("_Offset",offset);m.SetFloat("_Radial",radial);return m;}
             int t=(int)RenderQueue.Transparent;
-            // Source draw order: glow disc and decals (renderOrder -1), dome and warning ring (0), preview motes (3); the additive
-            // blast glow is Transparent+3 and NativeCombatGlow's halos Transparent+10.
-            var glowMaterial=Transparent("Native field glow",t-1,CullMode.Back);var decalMaterial=Transparent("Native Siren scorch",t-1,CullMode.Back,-2,(float)NativeFieldRules.ScorchFalloff);
-            var domeMaterial=Transparent("Native field dome",t,CullMode.Back);var warnMaterial=Transparent("Native Siren warning",t,CullMode.Off);var moteMaterial=Transparent("Native aim preview",t+3,CullMode.Back);
-            var coreMaterial=new Material(blast){name="Native field cores",renderQueue=(int)RenderQueue.Geometry};
-            coreMaterial.SetFloat("_Src",(float)BlendMode.One);coreMaterial.SetFloat("_Dst",(float)BlendMode.Zero);coreMaterial.SetFloat("_ZWrite",1);coreMaterial.SetFloat("_Additive",0);
-            glow=new Layer("Native field glow",glowMaterial);decal=new Layer("Native Siren scorch",decalMaterial);dome=new Layer("Native field dome",domeMaterial);
-            warn=new Layer("Native Siren warning",warnMaterial);motes=new Layer("Native aim preview",moteMaterial);cores=new Layer("Native field cores",coreMaterial);
-            layers=new[]{glow,decal,dome,warn,motes,cores};owned=new[]{glowMaterial,decalMaterial,domeMaterial,warnMaterial,moteMaterial,coreMaterial};
+            // Source draw order: decals (renderOrder -1), dome and warning ring (0); the effects renderer's sprites and puffs are
+            // Transparent+3 and NativeCombatGlow's halos Transparent+10.
+            var decalMaterial=Transparent("Native Siren scorch",t-1,CullMode.Back,-2,(float)NativeFieldRules.ScorchFalloff);
+            var domeMaterial=Transparent("Native field dome",t,CullMode.Back);var warnMaterial=Transparent("Native Siren warning",t,CullMode.Off);
+            decal=new Layer("Native Siren scorch",decalMaterial);dome=new Layer("Native field dome",domeMaterial);warn=new Layer("Native Siren warning",warnMaterial);
+            layers=new[]{decal,dome,warn};owned=new[]{decalMaterial,domeMaterial,warnMaterial};
         }
         public void Clear()
         {
             Views.Clear();Live.Clear();colors.Clear();colorOf.Clear();zoneBorn.Clear();floorOf.Clear();lastTime=-1;lastArena=null;
-            foreach(var layer in layers){layer.Clear();layer.Mesh.Clear();}
+            foreach(var layer in layers){layer.Clear();layer.Mesh.Clear();}if(ownsVfx)vfx.Clear();
         }
         // A zone's replicated Id names it (meteor-strike's burning ground gets a fresh one, a new field exactly as in the
         // source). A zone without one (Id 0) is named by its owner, ability, kind and expiry, fixed for its life.
@@ -150,12 +154,6 @@ namespace ChipArena.UnityConversion
             }
             var t=mesh.Triangles;for(int i=0;i<t.Length;i++)layer.Indices.Add(start+t[i]);
         }
-        private static void Cube(Layer layer,Vector3 center,Quaternion rotation,Vector3 half,Color color)
-        {
-            int start=layer.Vertices.Count;var corners=NativeBlastSim.CubeCorners;
-            for(int c=0;c<8;c++){layer.Vertices.Add(center+rotation*new Vector3(corners[c*3]*half.x,corners[c*3+1]*half.y,corners[c*3+2]*half.z));layer.Colors.Add(color);layer.Uv.Add(Vector2.zero);}
-            foreach(int t in NativeBlastSim.CubeTriangles)layer.Indices.Add(start+t);
-        }
         /// <summary>
         /// Draws the views from the last <see cref="Collect"/>, the Siren floor telegraphs and the aim preview. preview is the
         /// local E aim point (null when not aiming); clamped: the aim was out of range or clamped to the arena.
@@ -163,21 +161,44 @@ namespace ChipArena.UnityConversion
         public void Render(NativeArena arena,Camera camera,float now,Vector3? aim,bool clamped)
         {
             linear=QualitySettings.activeColorSpace==ColorSpace.Linear;
-            foreach(var layer in layers)layer.Clear();
+            foreach(var layer in layers)layer.Clear();if(ownsVfx)vfx.Begin();
             for(int i=0;i<Views.Count;i++)
             {
                 var v=Views[i];int hex=colors[i];float R=(float)v.Radius;
-                // Every field on the ground: the soft ground glow, alpha .22 at the centre falling linearly to exactly 0 at the
-                // gameplay radius. High above its floor it fades out rather than float in mid-air (GlowShown).
-                float shown=(float)NativeFieldRules.GlowShown(v.Y,v.Floor);
-                if(shown>0)Append(glow,NativeFieldRules.GlowDisc,new Vector3((float)v.X,(float)NativeFieldRules.GlowY(v.Y),(float)v.Z),R,Vertex(hex,(float)NativeFieldRules.GlowAlpha*shown));
-                if(NativeFieldRules.LookOf(v.Kind,v.Fx)==NativeFieldLook.Dome){Append(dome,NativeFieldRules.Dome,new Vector3((float)v.X,(float)NativeFieldRules.Origin(v.Y),(float)v.Z),R,Vertex(hex,(float)NativeFieldRules.DomeAlpha));continue;}
-                int n=NativeFieldRules.Cubes(v,hex,now,cubes);
-                for(int c=0;c<n;c++){var q=cubes[c];Cube(cores,new Vector3((float)q.X,(float)q.Y,(float)q.Z),new Quaternion((float)q.Qx,(float)q.Qy,(float)q.Qz,(float)q.Qw),new Vector3((float)q.Sx,(float)q.Sy,(float)q.Sz)*.5f,Vertex(q.Color,1));}
+                // No flat ground glow disc under any field (owner 2026-10-11: the "pancake"); the dome looks keep their dome.
+                var look=NativeFieldRules.LookOf(v.Kind,v.Fx);
+                if(look==NativeFieldLook.Dome){Append(dome,NativeFieldRules.Dome,new Vector3((float)v.X,(float)NativeFieldRules.Origin(v.Y),(float)v.Z),R,Vertex(hex,(float)NativeFieldRules.DomeAlpha));continue;}
+                if(look!=NativeFieldLook.Glow)Cores(v,hex,now,look);
             }
             SirenTelegraphs(arena,now);
             if(aim.HasValue)Preview(arena,aim.Value,clamped,now);
             foreach(var layer in layers)layer.Draw(camera);
+            if(ownsVfx)vfx.Submit(camera);
+        }
+        // Seconds between the two core plans that give the orbiting motes their velocity (for their streaks).
+        private const float OrbitStep=1/60f;
+        private static Vector3 At(in NativeFieldCube c)=>new Vector3((float)c.X,(float)c.Y,(float)c.Z);
+        // The field cores (ChaosVisuals.update's cubes, NativeFieldRules.Cubes, keep the timing): the chip bomb, implosion bomb
+        // and mine as the modelled bomb; the implosion's six orbiting cubes and the black hole's ten accretion cubes as HDR
+        // streaks along their orbit (the planner's last six or ten, at now and a step before); the black hole's dark core as a
+        // lit sphere with a rim in the field's colour and a soft halo ring.
+        private void Cores(in NativeBlastField v,int hex,float now,NativeFieldLook look)
+        {
+            int n=NativeFieldRules.Cubes(v,hex,now,cubes),m=NativeFieldRules.Cubes(v,hex,now-OrbitStep,before),orbit=look==NativeFieldLook.Implosion?6:look==NativeFieldLook.BlackHole?10:0;
+            var glow=NativeVfxDraw.Linear(hex);
+            if(NativeFieldRules.Bomb(v,now,out var pose))vfx.Bomb(pose,hex);
+            else if(look==NativeFieldLook.BlackHole&&n>0)
+            {
+                var core=At(cubes[0]);
+                vfx.Sphere(core,(float)cubes[0].Sx*.5f,new Color(.004f,.002f,.008f,0),glow*2.4f,Color.clear);
+                vfx.Glow(core,glow*.55f,(float)cubes[0].Sx*2.4f,NativeVfxDraw.Ring);
+            }
+            if(orbit==0||n<orbit||m<orbit)return;
+            for(int j=0;j<orbit;j++)
+            {
+                var c=cubes[n-orbit+j];var at=At(c);var velocity=(at-At(before[m-orbit+j]))/OrbitStep;
+                vfx.Streak(at,velocity,NativeVfxDraw.Linear(c.Color)*2.2f,(float)c.Sx*1.2f,(float)c.Sx,.06f,.9f);
+            }
         }
         // siren/fx.ts: a black scorch decal under every fire patch; an eruption's pulsing warning ring and the dark fill that
         // grows to its radius until the burst. The black flames, the eruption column and the rain stay with C12.
@@ -215,12 +236,13 @@ namespace ChipArena.UnityConversion
                 for(int k=-1;k<=1;k++){Vector3 at=point+side*(float)(NativeFieldRules.GeyserSpacing*k);if(Physics.Raycast(at+Vector3.up*2,Vector3.down,out var hit,6,NativeArena.WorldMask))at=hit.point;used=NativeFieldRules.PreviewMotes(at.x,at.y,at.z,radius,clamped,now,preview,used);}
             }
             else used=NativeFieldRules.PreviewMotes(point.x,point.y,point.z,radius,clamped,now,preview,used);
-            Color color=Vertex(NativeFieldRules.PreviewColor,(float)NativeFieldRules.PreviewAlpha);float half=(float)NativeFieldRules.PreviewSize*.5f;
-            for(int i=0;i<used;i++){int w=i*4;Cube(motes,new Vector3(preview[w],preview[w+1],preview[w+2]),Quaternion.identity,Vector3.one*(half*preview[w+3]),color);}
+            // Soft glows in place of the source's translucent cubes (owner 2026-10-11 effects overhaul), as bright as their opacity.
+            Color color=NativeVfxDraw.Linear(NativeFieldRules.PreviewColor)*(float)(NativeFieldRules.PreviewAlpha*1.6);float size=(float)NativeFieldRules.PreviewSize*2.6f;
+            for(int i=0;i<used;i++){int w=i*4;vfx.Glow(new Vector3(preview[w],preview[w+1],preview[w+2]),color,size*preview[w+3],NativeVfxDraw.Mote);}
         }
         public void Dispose()
         {
-            Clear();foreach(var layer in layers)CapturedAnimation.Release(layer.Mesh);foreach(var m in owned)CapturedAnimation.Release(m);
+            Clear();foreach(var layer in layers)CapturedAnimation.Release(layer.Mesh);foreach(var m in owned)CapturedAnimation.Release(m);if(ownsVfx)vfx.Dispose();
         }
     }
 }

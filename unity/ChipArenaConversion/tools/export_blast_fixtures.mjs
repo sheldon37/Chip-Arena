@@ -39,6 +39,10 @@ const DISC_CUTS=[
 // into another slot (a resting shard snapped); it is now a per-voxel seed counted from 0 after each clear and carried
 // through the swap (NativeBlastPool), equal to i until the first expiry. Neither touches a random draw, count, lifetime,
 // velocity or size. The draw roles, the extra draw-list floats and the shock records have no source counterpart.
+// Presentation-only owner cuts (Runtime/NativeVfxDraw.cs, same date), outside these frames: each voxel is drawn as the
+// primitive its role names (sprites, streaks, lit eroding smoke, emissive fireballs, rubble and crystal meshes) instead of a
+// flat cube, and a front's Shell voxels are not drawn one by one but as one fresnel shell per NativeBlastSim.Shocks record.
+// The voxels recorded here are the ones those draws read, unchanged.
 const FX_CUTS=[
  ["pal.smoke,0x16181c,","pal.smoke,__ownerSmokeEnd(style,pal.smoke),"],
  ["this.a=new Float32Array(capacity*VoxelPool.A);","this.a=new Float32Array(capacity*VoxelPool.A);this.seed=new Float64Array(capacity);this.nextSeed=0;"],
