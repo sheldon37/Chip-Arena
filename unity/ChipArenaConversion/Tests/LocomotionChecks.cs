@@ -27,6 +27,7 @@ internal static class LocomotionChecks
             if(!b.id.Contains("stair")||n.y>=.999f)continue;
             ramps++;float angle=(float)(Math.Acos(n.y)*180/Math.PI);steepest=Math.Max(steepest,angle);
             Check(NativeLocomotionRules.Walkable(n),map.id+" stair rejected: "+angle);
+            Check(NativeLocomotionRules.RampContact(n,n),map.id+" actual ramp face treated as a blocked riser");
             var uphill=new V3(-n.x,0,-n.z).Normalized;
             foreach(float speed in new[]{-9.18f,-6.8f,0,6.8f,9.18f})
             {
@@ -37,6 +38,19 @@ internal static class LocomotionChecks
             }
         }
         Check(ramps==228&&steepest>47&&steepest<49,"actual old-map stair inventory changed; review traversal coverage");
+        var edge=new V3(0,.8f,-.6f);Check(NativeLocomotionRules.Walkable(edge)&&!NativeLocomotionRules.RampContact(edge,new V3(0,1,0)),"rounded tread edge bypasses step clearance");
+        foreach(float speed in new[]{6.8f,9.18f})
+        {
+            var motion=new V3(0,0,speed/60);var stopped=NativeLocomotionRules.BlockedStep(motion,edge,.01f);
+            Check(stopped.Length<.00001f,"refused step still drives into the riser");
+            var approach=NativeLocomotionRules.BlockedStep(motion,edge,.07f);
+            Check(Math.Abs(approach.z-.05f)<.00001f&&approach.y==0,"blocked-step approach lost skin or invented lift");
+        }
+        var sideways=NativeLocomotionRules.BlockedStep(new V3(.08f,0,.1f),edge,.01f);
+        Check(Math.Abs(sideways.x-.08f)<.00001f&&Math.Abs(sideways.z)<.00001f&&sideways.y==0,"blocked step prevents sideways escape");
+        var away=NativeLocomotionRules.BlockedStep(new V3(0,0,-.1f),edge,0);
+        Check(Math.Abs(away.z+.1f)<.00001f,"blocked step prevents backing away");
+        Console.WriteLine("PASS locomotion clearance: rounded edge requires step clearance, refused walk/sprint stop at skin, sideways/backward escape retained, all 228 ramp faces accepted");
         // Analytic frictionless ramp contact using the production knockback/steering rules. The old AfterPhysics
         // fed every solver velocity delta back into knockback; demonstrate its downhill feedback at a real 48° grade.
         var normal=new V3(0,(float)Math.Cos(48*Math.PI/180),-(float)Math.Sin(48*Math.PI/180));

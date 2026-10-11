@@ -99,14 +99,30 @@ namespace ChipArena.UnityConversion
                     }
                     stairs++;
                 }
-                // Clearance: same capsule against a tall wall, and a short step with too little headroom.
-                foreach(bool lowCeiling in new[]{false,true})
+                Debug.Log("PASS native locomotion traversal: "+ramps+" authored ramp variants and "+stairs+" Brickfall flights (host/guest, walk/sprint, idle, descent and stair jumps)");
+                // Clearance: refuse walls/insufficient headroom, but still climb a step when the ceiling allows it.
+                foreach(int clearance in new[]{0,1,2})
                 {
+                    bool wall=clearance==0,blocked=clearance<2;string label=wall?"tall wall":blocked?"low ceiling":"passable overhead step";
                     Clear();Box(origin-Vector3.up*.2f,new Vector3(8,.4f,8),Quaternion.identity);
-                    Box(origin+new Vector3(0,lowCeiling?.075f:1.5f,1),new Vector3(3,lowCeiling?.15f:3,1),Quaternion.identity);
-                    if(lowCeiling)Box(origin+new Vector3(0,1.84f,.4f),new Vector3(4,.1f,4),Quaternion.identity);
-                    Place(origin+Vector3.up*.875f);for(int i=0;i<90;i++)Tick(Vector3.forward);
-                    Check(p.Body.position.z<origin.z+.5f&&p.Body.position.y<origin.y+1,lowCeiling?"stepped through ceiling":"climbed a wall");
+                    Box(origin+new Vector3(0,wall?1.5f:.075f,1),new Vector3(3,wall?3:.15f,1),Quaternion.identity);
+                    if(!wall)Box(origin+new Vector3(0,blocked?1.84f:2.10f,.4f),new Vector3(4,.1f,4),Quaternion.identity);
+                    foreach(bool sprint in new[]{false,true})
+                    {
+                        var start=origin+Vector3.up*.875f;Place(start);
+                        void Refused(Vector3 at,string who,int tick)=>Check(at.z<origin.z+.5f&&at.y<origin.y+1,label+" "+who+" "+(sprint?"sprint":"walk")+" crossed obstruction at tick "+tick+"; offset="+(at-origin).ToString("F4"));
+                        for(int i=0;i<90&&(blocked||p.Body.position.z<origin.z+1);i++){Tick(Vector3.forward,sprint);if(blocked)Refused(p.Body.position,"host",i);}
+                        if(!blocked)Check(p.Body.position.z>=origin.z+1&&p.Body.position.y>origin.y+.98f,label+" host refused valid clearance; offset="+(p.Body.position-origin).ToString("F4"));
+                        var state=new NativePredictionState{Position=Vec(start),Grounded=true,CanMove=true,CanSprint=true,Speed=6.8f,Gravity=23,JumpSpeed=8.5f};
+                        var input=new InputFrame{Z=1,Sprint=sprint};
+                        for(int i=0;i<90&&(blocked||state.Position.z<origin.z+1);i++)
+                        {
+                            state=NativePrediction.Step(state,input,(a,b)=>Vec(NativeGroundMotor.Constrain(physics,Vec(a),Vec(b))),at=>NativeGroundMotor.Probe(physics,Vec(at)).Found);
+                            if(blocked)Refused(Vec(state.Position),"guest",i);
+                        }
+                        if(!blocked)Check(state.Position.z>=origin.z+1&&state.Position.y>origin.y+.98f,label+" guest refused valid clearance; offset="+(Vec(state.Position)-origin).ToString("F4"));
+                    }
+                    Debug.Log("PASS native locomotion clearance: "+label+" (host/guest, walk/sprint)");
                 }
                 Clear();Box(origin-Vector3.up*.2f,new Vector3(3,.4f,3),Quaternion.identity);Place(origin+Vector3.up*.875f);
                 for(int i=0;i<55;i++)Tick(Vector3.forward);Check(!p.GroundAttached&&p.Body.useGravity&&p.Body.position.y<origin.y,"host hovered after leaving ledge");
