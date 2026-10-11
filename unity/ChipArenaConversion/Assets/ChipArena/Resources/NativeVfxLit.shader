@@ -17,7 +17,10 @@
 // review 2026-10-11); from inside, the surrounding shell draws.
 //   COLOR      hot colour rgb (linear, HDR, times the record's fade), a: front progress (0..1)
 //   TEXCOORD0  cool colour rgb (the same scale), w: normalized age u
-//   TEXCOORD1  seed, dome (0/1), height on the unit shell (normal y), w: the shell's radius (m)
+//   TEXCOORD1  seed, dome (0/1; 2: Quake's slam wave), height on the unit shell (normal y; the slam wave: 0 at its foot to 1 at
+//              its top), w: the shell's radius (m)
+// Toon pass (2026-10-11): Quake's slam wave is a short upright open cylinder on the floor, both faces drawn, bright at its foot
+// and fading to its top (VfxSlam); never a flat ring.
 Shader "ChipArena/NativeVfxLit"
 {
     Properties
@@ -85,6 +88,18 @@ Shader "ChipArena/NativeVfxLit"
                 float3 tint = lerp(hot, cool, saturate(progress * 1.1));
                 return tint * (body * base * travel * (0.45 + 1.1 * breakup));
             }
+            // Quake's slam wave: an upright wall, rising softly off the floor (no bright line where it meets it), brightest a third
+            // of the way up and fading to its top,
+            // bright only at its silhouette (seen face on from above it would fill its circle like a disc), broken by the noise,
+            // from hot to cool as it travels.
+            float3 VfxSlam(float3 hot, float3 cool, float progress, float n_dot_v, float height, float breakup)
+            {
+                float facing = saturate(abs(n_dot_v));
+                float foot = smoothstep(0.0, 0.3, height) * (1.0 - height) * 1.6;
+                float edge = pow(1.0 - facing, 2.5);
+                float3 tint = lerp(hot, cool, saturate(progress * 1.2));
+                return tint * (foot * edge * (0.5 + breakup));
+            }
             // ---- VFX LIT SHARED END ----
             struct appdata
             {
@@ -134,9 +149,11 @@ Shader "ChipArena/NativeVfxLit"
                 {
                     // Fades where the shell passes the camera, so a front around the viewer does not fill the screen.
                     float nearFade=saturate((length(_WorldSpaceCameraPos-i.world)-0.4)/2.2);
-                    // Front faces only while the camera is outside the shell (its centre: this point less the radius along n).
+                    // Front faces only while the camera is outside the shell (its centre: this point less the radius along n); the
+                    // slam wave's wall shows both faces.
                     float front=dot(n,view)<0.0&&length(_WorldSpaceCameraPos-(i.world-n*i.b.w))>i.b.w?0.0:1.0;
-                    c=float4(VfxShock(i.color.rgb,i.a.rgb,i.color.a,dot(n,view),i.b.z,i.b.y,grain.r*0.6+grain.g*0.4)*(nearFade*front),0);
+                    if(i.b.y>1.5)c=float4(VfxSlam(i.color.rgb,i.a.rgb,i.color.a,dot(n,view),i.b.z,grain.r*0.6+grain.g*0.4)*nearFade,0);
+                    else c=float4(VfxShock(i.color.rgb,i.a.rgb,i.color.a,dot(n,view),i.b.z,i.b.y,grain.r*0.6+grain.g*0.4)*(nearFade*front),0);
                     UNITY_APPLY_FOG_COLOR(i.fogCoord,c,float4(0,0,0,0));
                 }
                 else

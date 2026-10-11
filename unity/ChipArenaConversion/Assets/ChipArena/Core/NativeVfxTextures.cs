@@ -89,6 +89,152 @@ namespace ChipArena.UnityConversion
         /// <summary>FNV-1a 64-bit hash of a byte array (determinism checks).</summary>
         public static ulong Hash(byte[] data){ulong h=14695981039346656037UL;foreach(byte b in data){h^=b;h*=1099511628211UL;}return h;}
 
+        // ---- the toon sheet (effects overhaul, toon pass, owner 2026-10-11: chunky cartoon puffs with a hard two-tone shadow,
+        // crescent and round flash flipbooks, sharp spike sparks; rebuilt here from circles and polygons, no pack art) ----
+        /// <summary>The toon sheet: ToonWidth x ToonHeight RGBA8, ToonColumns x ToonRows tiles of ToonTile px (8 x 4 of 128 px).
+        /// Tile t is column t % 8, row t / 8 from the bottom (<see cref="ToonRect"/>; same byte layout as the smoke atlas).</summary>
+        public const int ToonWidth=1024,ToonHeight=512,ToonTile=128,ToonColumns=8,ToonRows=4;
+        /// <summary>Tiles 0..ToonPuffs-1 are puffs; then the round flash flipbook (FlashFrames frames from FlashFirst), the
+        /// crescent licks (Crescents variants from CrescentFirst) and four spark sprites: a spike (arrowhead, tip toward +x),
+        /// a lens, a four-point star and a droplet (round head toward +x).</summary>
+        public const int ToonPuffs=16,FlashFirst=16,FlashFrames=8,CrescentFirst=24,Crescents=4,SpikeTile=28,LensTile=29,StarTile=30,DropTile=31;
+        public const uint ToonSeed=0x70a1;
+        /// <summary>Signed distances are stored as .5 + d / (2 ToonSdfRange), d in tile units (the tile's half-width is 1),
+        /// positive inside: .5 is the edge, so a shader draws a crisp edge with a one-pixel ramp at any size.</summary>
+        public const double ToonSdfRange=.25;
+        /// <summary>A puff's light, in tile space (x right, y up): from the upper left. The self shadow tests the point
+        /// ToonShadow away from the light, a front lobe's cast shadow the point ToonCast toward it.</summary>
+        public const double ToonLightX=-.5,ToonLightY=.8660254037844386,ToonShadow=.17,ToonCast=.13;
+        /// <summary>Every shape lies inside this radius of its tile's centre, so the quad (which spans .92 of the tile) never
+        /// shows a neighbour.</summary>
+        public const double ToonReach=.86;
+
+        /// <summary>
+        /// The toon sheet. Puff tiles (0-15), from 1 to 6 overlapping circular lobes per puff in a seeded draw order:
+        /// R the signed distance to the puff's silhouette (the union of its lobes); G the lit distance, positive where the lobe on
+        /// top is lit: inside itself ToonShadow away from the light (so each lobe's lower right is a hard shadow crescent) and
+        /// not under a lobe drawn in front of it ToonCast toward the light (its cast shadow); B the erosion field, the life
+        /// fraction a texel survives to (low at the silhouette and on cell borders, high at round cell centres, so a dissolve
+        /// eats the puff into blobs instead of fading it); A the signed distance to the edge of the lobe on top (internal
+        /// outlines between lobes). Flash and sprite tiles (16-31): R the shape's signed distance, G its hot core's (R less
+        /// .1), B a soft round halo 0..1, A 0. Pure exactly rounded arithmetic: the same bytes on every IEEE runtime.
+        /// </summary>
+        public static byte[] ToonSheet(uint seed=ToonSeed)
+        {
+            int W=ToonWidth,T=ToonTile;var data=new byte[ToonWidth*ToonHeight*4];
+            for(int t=0;t<ToonColumns*ToonRows;t++)
+            {
+                int ox=(t%ToonColumns)*T,oy=(t/ToonColumns)*T;
+                if(t<ToonPuffs)ToonPuff(data,W,ox,oy,T,seed+(uint)t*0x9e37u,t);
+                else ToonShape(data,W,ox,oy,T,t);
+            }
+            return data;
+        }
+        /// <summary>The UV rectangle of toon sheet tile t (0..31): u0, v0 at its bottom-left, u1, v1 at its top-right.</summary>
+        public static void ToonRect(int t,out double u0,out double v0,out double u1,out double v1)
+        {int i=((t%(ToonColumns*ToonRows))+ToonColumns*ToonRows)%(ToonColumns*ToonRows);u0=(double)(i%ToonColumns)/ToonColumns;v0=(double)(i/ToonColumns)/ToonRows;u1=u0+1.0/ToonColumns;v1=v0+1.0/ToonRows;}
+        /// <summary>A stored distance (byte / 255) back to tile units.</summary>
+        public static double ToonDistance(byte b)=>(b/255.0-.5)*2*ToonSdfRange;
+        private static byte Sdf(double d)=>Byte(.5+d/(2*ToonSdfRange));
+        /// <summary>
+        /// The reference toon erosion for a texel of erosion field b at life fraction u: 1 while b is above the cut, 0 below,
+        /// the cut rising from 0 at ToonEatFrom to just past 1 at u = 1 (smoothstep), so a puff is whole for its first part of
+        /// life and is then eaten from its rim and cell borders into blobs. The shader takes the same cut with a one-pixel edge.
+        /// </summary>
+        public static double ToonCut(double u){double x=Clamp01((u-ToonEatFrom)/(1-ToonEatFrom));return x*x*(3-2*x)*1.02;}
+        public const double ToonEatFrom=.42;
+
+        private static void ToonPuff(byte[] data,int W,int ox,int oy,int T,uint seed,int tile)
+        {
+            uint s=seed;double Next(){s=unchecked(s*1664525u+1013904223u);return s/4294967296.0;}
+            // Lobes: a big one near the centre, the rest round it (more above than below, as billows pile up), overlapping it.
+            // The last two tiles are simple: one round puff and a pair (trails, small distant puffs).
+            int k=tile==ToonPuffs-1?1:tile==ToonPuffs-2?2:3+(int)(Next()*4);
+            var cx=new double[k];var cy=new double[k];var cr=new double[k];
+            for(int i=0;i<k;i++)
+            {
+                double a=Next()*Math.PI*2,x,y,r;
+                if(i==0){r=k==1?.62:.4+Next()*.1;x=(Next()-.5)*.12;y=(Next()-.5)*.1-.04;}
+                else{r=.22+Next()*.17;double d=cr[0]*(.55+Next()*.5);if(Sin(a)<-.35)a=Math.PI*2-a;x=cx[0]+Cos(a)*d;y=cy[0]+Sin(a)*d*.9;}
+                double reach=Math.Sqrt(x*x+y*y)+r;if(reach>ToonReach){double f=ToonReach/reach;x*=f;y*=f;r*=f;}
+                cx[i]=x;cy[i]=y;cr[i]=r;
+            }
+            // A seeded draw order (Fisher-Yates), so which lobe overlaps which varies per tile.
+            for(int i=k-1;i>0;i--){int j=(int)(Next()*(i+1));if(j>i)j=i;(cx[i],cx[j])=(cx[j],cx[i]);(cy[i],cy[j])=(cy[j],cy[i]);(cr[i],cr[j])=(cr[j],cr[i]);}
+            uint cells=s^0x4f1bu;double jx=Next()*16,jy=Next()*16;
+            for(int py=0;py<T;py++)for(int px=0;px<T;px++)
+            {
+                double x=(px+.5)/T*2-1,y=(py+.5)/T*2-1,union=-9;int top=-1,near=0;
+                for(int i=0;i<k;i++){double dx=x-cx[i],dy=y-cy[i],d=cr[i]-Math.Sqrt(dx*dx+dy*dy);if(d>union){union=d;near=i;}if(d>0)top=i;}
+                int t=top>=0?top:near;
+                double sx=x-ToonLightX*ToonShadow-cx[t],sy=y-ToonLightY*ToonShadow-cy[t],lit=cr[t]-Math.Sqrt(sx*sx+sy*sy);
+                for(int i=t+1;i<k;i++){double dx=x+ToonLightX*ToonCast-cx[i],dy=y+ToonLightY*ToonCast-cy[i],c=Math.Sqrt(dx*dx+dy*dy)-cr[i];if(c<lit)lit=c;}
+                double tx=x-cx[t],ty=y-cy[t],own=cr[t]-Math.Sqrt(tx*tx+ty*ty);
+                // Erosion: interior depth and round Worley cells (F1 near 0 at a cell's point, so the point's surroundings last).
+                double depth=Clamp01(union/.24),blob=1-Clamp01(Cells(x*2.4+jx,y*2.4+jy,cells)*1.25);
+                double B=Sdf(union)>=128?Clamp01(.08+.47*depth+.45*blob*(.4+.6*depth)):0;
+                int w=((oy+py)*W+ox+px)*4;data[w]=Sdf(union);data[w+1]=Sdf(lit);data[w+2]=Byte(B);data[w+3]=Sdf(own);
+            }
+        }
+        // Flash flipbook, crescents and sprites: signed distances of circles and polygons (exact, or a close bound near the edge).
+        private static void ToonShape(byte[] data,int W,int ox,int oy,int T,int tile)
+        {
+            for(int py=0;py<T;py++)for(int px=0;px<T;px++)
+            {
+                double x=(px+.5)/T*2-1,y=(py+.5)/T*2-1,d=Shape(tile,x,y),halo=Clamp01(1-Math.Sqrt(x*x+y*y)/.95);
+                int w=((oy+py)*W+ox+px)*4;data[w]=Sdf(d);data[w+1]=Sdf(d-.1);data[w+2]=Byte(halo*halo);data[w+3]=0;
+            }
+        }
+        private static double Disc(double x,double y,double cx,double cy,double r){double dx=x-cx,dy=y-cy;return r-Math.Sqrt(dx*dx+dy*dy);}
+        // The signed distance (positive inside) of sprite tile t at tile point (x, y).
+        private static double Shape(int t,double x,double y)
+        {
+            if(t>=FlashFirst&&t<FlashFirst+FlashFrames)
+            {
+                // A round flash (frame 0, a full disc) that a growing, upward-sliding hole eats into a thinning crescent.
+                double f=(double)(t-FlashFirst)/(FlashFrames-1),ro=.5+.34*Math.Sqrt(f),disc=Disc(x,y,0,0,ro);
+                if(t==FlashFirst)return disc;
+                double rh=ro*1.06*Math.Sqrt(f*Math.Sqrt(f)),hy=-ro*(.6*(1-f)+.1);return Math.Min(disc,-Disc(x,y,0,hy,rh));
+            }
+            if(t>=CrescentFirst&&t<CrescentFirst+Crescents)
+            {
+                // A crescent bulging toward +x (the way it flies), long across y; thicker or more curved per variant.
+                int v=t-CrescentFirst;double ro=.86-.06*v,front=.8,cxo=front-ro,thick=.2+.06*v;
+                return Math.Min(Disc(x,y,cxo,0,ro),-Disc(x,y,cxo-thick,0,ro*1.02));
+            }
+            switch(t)
+            {
+                case SpikeTile:
+                {
+                    // An arrowhead: tip at +x, a concave back.
+                    double tri=Polygon(x,y,new[]{.86,0,-.72,.44,-.72,-.44});return Math.Min(tri,-Disc(x,y,-1.42,0,.86));
+                }
+                case LensTile:return Math.Min(Disc(x,y,0,1.75,1.95),Disc(x,y,0,-1.75,1.95));
+                case StarTile:
+                {
+                    double h=Math.Min(Disc(x,y,0,2.1,2.22),Disc(x,y,0,-2.1,2.22)),v=Math.Min(Disc(x,y,2.1,0,2.22),Disc(x,y,-2.1,0,2.22));
+                    return Math.Max(Math.Max(h,v),Disc(x,y,0,0,.16));
+                }
+                default:
+                {
+                    // A droplet: a round head toward +x, a tail tapering to a point at -.86.
+                    double head=Disc(x,y,.42,0,.4);if(x>=.42)return head;double q=Clamp01((x+.86)/1.28),w=.4*q*Math.Sqrt(q);
+                    return Math.Max(head,Math.Min(w-Math.Abs(y),x+.86));
+                }
+            }
+        }
+        // The signed distance to a convex or simple polygon (x0, y0, x1, y1, ...): positive inside (even-odd), exact.
+        private static double Polygon(double x,double y,double[] p)
+        {
+            int n=p.Length/2;double best=1e9;bool inside=false;
+            for(int i=0,j=n-1;i<n;j=i++)
+            {
+                double ax=p[j*2],ay=p[j*2+1],bx=p[i*2],by=p[i*2+1],ex=bx-ax,ey=by-ay,wx=x-ax,wy=y-ay,h=Clamp01((wx*ex+wy*ey)/(ex*ex+ey*ey)),dx=wx-ex*h,dy=wy-ey*h,d=dx*dx+dy*dy;
+                if(d<best)best=d;if((ay>y)!=(by>y)&&x<ax+(y-ay)*ex/ey)inside=!inside;
+            }
+            return inside?Math.Sqrt(best):-Math.Sqrt(best);
+        }
+
         // ---- the puff shape ----
         // Height-field slope for the baked lighting (per unit of the billow height over the tile's half-width).
         private const double HeightSlope=.35;

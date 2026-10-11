@@ -10,13 +10,20 @@
 //   COLOR      linear rgb (HDR for glows), a: coverage (smoke opacity; 0 for an additive glow)
 //   TEXCOORD0  corner x, corner y (each -1 or 1), full size (m; a streak's width), roll (rad)
 //   TEXCOORD1  normalized age u (0..1), seed, mode, floor height (-1e9: none)
-//   TEXCOORD2  streak: world segment, tail to head (xyz) and taper (w); billboards: x a smoke puff's own-colour glow,
-//              w height/width
+//   TEXCOORD2  streak and sprite: world segment, tail to head (xyz) and taper (w); toon water: segment (xyz) and its shadow
+//              colour as a packed sRGB hex (w); billboards: x a smoke puff's own-colour glow, y toon fire's ash colour as a
+//              packed sRGB hex, w height/width
 // Modes (NativeVfxDraw constants): 0 mote, 1 core, 2 ring (bubble), 3 snow (soft glow sprites); 4 streak (a capsule along
 // the segment, oriented to the camera, a hot core, dimmer tail); 5 smoke (an atlas puff, lit by the ambient, the main light
 // and the three blast flashes, eroding over u instead of shrinking; a saturated cloud adds a little glow in its colour);
 // 6 fireball (an atlas puff glowing in the particle's own hue, densest and hottest young, handing off into soot; the
 // white-hot centre is the Core glows', review 2026-10-11).
+// Toon pass (owner 2026-10-11, after the Asset Store pack study; every shape is Core's procedural toon sheet,
+// NativeVfxTextures.ToonSheet, signed distances drawn with a one-pixel edge): 7 toon smoke (hard lobes, a two-tone shadow and
+// lobe outlines, mostly its own colour with a little scene light, eaten into blobs late in its life), 8 toon fire (white-hot,
+// flame, orange, then ash), 9 toon water (pale lit tone, blue shadow tone, a white rim on its lit edge; oriented along its
+// segment), 10 flash (a camera-facing toon sheet sprite; the round flash flipbook plays over its life) and 11 sprite (a toon
+// sheet sprite along its segment: crescent licks, spikes, droplets). TEXCOORD1.w is a sprite's tile for 10 and 11.
 // Smoke and fireball puffs fade where they dip below their floor; every quad fades near the camera and, soft particles,
 // where it meets the scene's depth (_CameraDepthTexture, _VfxSoft 1; 0 on the low graphics tier, which asks for no depth
 // texture). The smoke atlas (Core/NativeVfxTextures.SmokeAtlas: R density, G baked light, B erosion threshold, A edge) is
@@ -26,6 +33,7 @@ Shader "ChipArena/NativeVfx"
     Properties
     {
         _VfxAtlas("Smoke atlas (RGBA linear)",2D)="black"{}
+        _VfxToon("Toon sheet (RGBA linear)",2D)="black"{}
         _VfxAtlasReady("Atlas uploaded",Float)=0
         _VfxFlashGain("Blast flash light on smoke",Float)=1
         _VfxSoft("Soft particles (depth texture)",Float)=0
@@ -47,7 +55,7 @@ Shader "ChipArena/NativeVfx"
             #pragma target 3.5
             #include "UnityCG.cginc"
             #include "UnityLightingCommon.cginc"
-            sampler2D _VfxAtlas;
+            sampler2D _VfxAtlas,_VfxToon;
             float _VfxAtlasReady,_VfxFlashGain,_VfxSoft;
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
             // The three blast flashes (NativeArenaDressing.Flashes): position and range, colour times intensity as Unity applies it.
@@ -75,7 +83,7 @@ Shader "ChipArena/NativeVfx"
             float2 VfxStreakOffset(float2 axis, float2 corner, float hw, out float3 coords)
             {
                 float len = length(axis);
-                float2 dir = len > 0.00001 ? axis / len : float2(1.0, 0.0);
+                float2 dir = len > 0.00001 ? axis / len : float2(0.0, 1.0);
                 float2 side = float2(-dir.y, dir.x);
                 float hl = len * 0.5;
                 float reach = hl + hw;
@@ -156,6 +164,95 @@ Shader "ChipArena/NativeVfx"
             {
                 return saturate((sceneDepth - depth) / max(fadeLength, 0.01));
             }
+            // ---- toon pass ----
+            // An sRGB hex packed in a float (exact below 2^24) to linear colour (Unity's GammaToLinearSpace fit).
+            float3 VfxHexLinear(float hex)
+            {
+                float r = floor(hex / 65536.0);
+                float g = floor((hex - r * 65536.0) / 256.0);
+                float b = hex - r * 65536.0 - g * 256.0;
+                float3 c = float3(r, g, b) / 255.0;
+                return c * (c * (c * 0.305306011 + 0.682171111) + 0.012522878);
+            }
+            // Core/NativeVfxTextures.ToonCut: the erosion cut at life u (0 until ToonEatFrom, just past 1 at u = 1).
+            float VfxToonCut(float u)
+            {
+                float x = saturate((u - 0.42) / 0.58);
+                return x * x * (3.0 - 2.0 * x) * 1.02;
+            }
+            // The toon sheet channels of a round stand-in puff (before the sheet is uploaded): a disc lit from above.
+            float4 VfxToonStandIn(float2 c)
+            {
+                float d = 0.7 - 0.92 * length(c);
+                float lit = 0.62 - 0.92 * length(c + float2(-0.12, 0.2));
+                return float4(0.5 + d * 2.0, 0.5 + lit * 2.0, 0.6, 0.5 + d * 2.0);
+            }
+            // A toon puff from its toon sheet texel tex (R silhouette, G lit, B erosion, A lobe edge; signed distances at .5) and
+            // the texel's one-pixel widths aa (fwidth of tex): x its coverage (silhouette and erosion), y lit (1 lit, 0 in a shadow
+            // crescent), z an outline band along the lobe edges and round the holes the erosion eats.
+            float3 VfxToonMask(float4 tex, float4 aa, float cut)
+            {
+                float4 w = max(aa * 0.75, float4(0.004, 0.004, 0.004, 0.004));
+                float inside = saturate((tex.r - 0.5) / w.r + 0.5);
+                float eaten = saturate((tex.b - cut) / w.b + 0.5);
+                float lit = saturate((tex.g - 0.5) / w.g + 0.5);
+                float lobe = 1.0 - saturate((tex.a - 0.56) / w.a + 0.5);
+                float hole = cut > 0.0001 ? 1.0 - saturate((tex.b - cut - 0.05) / w.b + 0.5) : 0.0;
+                return float3(inside * eaten, lit, max(lobe, hole));
+            }
+            // The light on a toon puff: mostly its own colour (the toon references are unlit), some ambient and moon, the flashes.
+            float3 VfxToonLight(float3 ambTop, float3 sun, float3 flash)
+            {
+                return 0.78 + 0.3 * (ambTop + sun) + 0.8 * flash;
+            }
+            // Toon smoke, premultiplied: the lit tone, a darker and cooler shadow tone in the crescents, darker outlines; a saturated
+            // cloud adds a little of its own glow.
+            float4 VfxToonSmoke(float3 mask, float opacity, float3 albedo, float3 ambTop, float3 ambBottom, float3 sun, float3 flash, float glow)
+            {
+                float3 shade = (0.5 + 0.25 * ambBottom + 0.35 * flash) * float3(0.86, 0.9, 1.04);
+                float3 col = albedo * lerp(shade, VfxToonLight(ambTop, sun, flash), mask.y);
+                col = col * (1.0 - 0.28 * mask.z) + albedo * glow;
+                float a = mask.x * saturate(opacity);
+                return float4(col * a, a);
+            }
+            // Toon fire, premultiplied: white-hot, its flame, orange, then its ash (lit like smoke); the shadow tone deeper and redder;
+            // HDR while hot, for the bloom.
+            float4 VfxToonFire(float3 mask, float u, float opacity, float3 flame, float3 ash, float3 light)
+            {
+                float3 orange = flame * float3(1.0, 0.42, 0.16);
+                float3 hot = lerp(flame * 1.25 + float3(0.35, 0.3, 0.2), flame, saturate(u / 0.12));
+                float3 fire = lerp(hot, orange, saturate((u - 0.12) / 0.26));
+                float cool = saturate((u - 0.34) / 0.16);
+                float emit = 1.0 + 1.4 * (1.0 - saturate(u / 0.3));
+                float3 lit = lerp(fire * emit, ash * light, cool);
+                float3 shadow = lerp(fire * float3(0.92, 0.5, 0.28) * emit, ash * light * float3(0.62, 0.66, 0.8), cool);
+                float3 col = lerp(shadow, lit, mask.y) * (1.0 - 0.3 * mask.z);
+                float a = mask.x * saturate(opacity);
+                return float4(col * a, a);
+            }
+            // Toon water, premultiplied: its lit tone, its shadow tone in the crescents and outlines, a white rim on its lit edge.
+            float4 VfxToonWater(float3 mask, float4 tex, float4 aa, float opacity, float3 lit, float3 shade, float3 light)
+            {
+                float w = max(aa.r * 0.75, 0.004);
+                float rim = (1.0 - saturate((tex.r - 0.6) / w + 0.5)) * mask.y;
+                float3 col = lerp(shade * (0.7 + 0.3 * light), lit * light, mask.y);
+                col = lerp(col, shade * 0.55, mask.z * 0.6);
+                col = lerp(col, float3(1.15, 1.2, 1.25), rim * 0.85);
+                float a = mask.x * saturate(opacity);
+                return float4(col * a, a);
+            }
+            // A toon sheet sprite (the flash flipbook, crescents, spikes, droplets), premultiplied: its colour with a hotter core;
+            // color.a 0 adds it with a soft halo, above 0 blends it at that coverage.
+            float4 VfxToonSprite(float4 tex, float4 aa, float4 color)
+            {
+                float4 w = max(aa * 0.75, float4(0.004, 0.004, 0.004, 0.004));
+                float shape = saturate((tex.r - 0.5) / w.r + 0.5);
+                float core = saturate((tex.g - 0.5) / w.g + 0.5);
+                float peak = max(max(color.r, color.g), color.b);
+                float3 col = lerp(color.rgb, color.rgb * 1.35 + float3(0.25, 0.25, 0.25) * peak, core);
+                float halo = tex.b * (1.0 - saturate(color.a * 4.0));
+                return float4(col * shape + color.rgb * (halo * 0.22), shape * color.a);
+            }
             // ---- VFX SHARED END ----
             struct appdata
             {
@@ -177,6 +274,8 @@ Shader "ChipArena/NativeVfx"
                 float4 flash:TEXCOORD5; // blast flashes at the puff, w: a smoke puff's own-colour glow
                 UNITY_FOG_COORDS(6)
                 float4 screen:TEXCOORD7;// screen position (xy, w) for the depth texture, z: the fragment's eye depth
+                float4 toon:TEXCOORD8;  // the toon sheet uv (xy)
+                float4 alt:TEXCOORD9;   // toon fire's ash, toon water's shadow colour (rgb, linear)
             };
             v2f vert(appdata v)
             {
@@ -185,9 +284,12 @@ Shader "ChipArena/NativeVfx"
                 // World-space camera axes: the rows of the view matrix.
                 float3 right=UNITY_MATRIX_V[0].xyz,up=UNITY_MATRIX_V[1].xyz,back=UNITY_MATRIX_V[2].xyz;
                 float2 offset;float3 coords=float3(v.shape.xy,0.0);
-                if(mode>3.5&&mode<4.5)
+                // Streaks, toon water and sprites lie along their segment; the rest face the camera at their roll.
+                bool oriented=mode>3.5&&mode<4.5||mode>8.5&&mode<9.5||mode>10.5;
+                float2 screenAxis=float2(dot(v.axis.xyz,right),dot(v.axis.xyz,up));
+                if(oriented)
                 {
-                    offset=VfxStreakOffset(float2(dot(v.axis.xyz,right),dot(v.axis.xyz,up)),v.shape.xy,hw,coords);
+                    offset=VfxStreakOffset(screenAxis,v.shape.xy,hw,coords);
                 }
                 else
                 {
@@ -202,11 +304,24 @@ Shader "ChipArena/NativeVfx"
                 float tile=v.life.y-16.0*floor(v.life.y/16.0),col=tile-4.0*floor(tile/4.0),row=floor(tile/4.0);
                 float mirror=frac(v.life.y*0.5)>0.25?-1.0:1.0;
                 o.uv=float4(coords.xy,(float2(col,row)+float2(v.shape.x*mirror,v.shape.y)*0.46+0.5)*0.25);
+                // The toon sheet (8 x 4 tiles): a puff's tile by seed (16 puffs, mirrored by parity); a flash's from TEXCOORD1.w
+                // (the round flipbook from tile 16 advances over its life, later tiles stay put); a sprite's from TEXCOORD1.w with
+                // x along its segment; toon water's puff with its top along the segment (flipped so it never hangs upside down).
+                float sheet=tile,along=coords.x/(coords.z+1.0);float2 tc=float2(v.shape.x*mirror,v.shape.y);
+                if(mode>10.5){sheet=v.life.w;tc=float2(along,coords.y);}
+                else if(mode>9.5){sheet=v.life.w<23.5?v.life.w+min(floor(v.life.x*8.0),7.0):v.life.w;tc=v.shape.xy;}
+                else if(mode>8.5){float s=screenAxis.y<0.0?-1.0:1.0;tc=float2(-coords.y*s,along*s);}
+                float sheetCol=sheet-8.0*floor(sheet/8.0),sheetRow=floor(sheet/8.0);
+                o.toon=float4((sheetCol+tc.x*0.46+0.5)*0.125,(sheetRow+tc.y*0.46+0.5)*0.25,0,0);
+                o.alt=float4(VfxHexLinear(mode>8.5?v.axis.w:v.axis.y),0);
                 float depth=dot(v.vertex-_WorldSpaceCameraPos,-back);
                 float nearFade=saturate((depth-0.2)/max(0.35,size*0.6));
-                bool puff=mode>4.5,streak=mode>3.5&&mode<4.5;
-                // Soft fade length: a third of the quad (at least 8 cm, at most .8 m); a streak's thin body uses 8 cm.
-                o.data=float4(v.life.x,mode,streak?coords.z:clamp(size*0.3,0.08,0.8),puff?(world.y-v.life.w)/max(0.05,size*0.3):1.0);
+                bool puff=mode>4.5&&mode<9.5,streak=mode>3.5&&mode<4.5,toonPuff=mode>6.5&&mode<9.5;
+                // Soft fade length: a third of the quad (at least 8 cm, at most .8 m); a streak's thin body uses 8 cm. A toon puff
+                // meets the floor and the scene nearly crisply (an eighth of its size, 5-25 cm): a long fade at its foot reads as a
+                // glowing ring on the floor.
+                float fadeLength=toonPuff?clamp(size*0.12,0.05,0.25):clamp(size*0.3,0.08,0.8);
+                o.data=float4(v.life.x,mode,streak?coords.z:fadeLength,puff?(world.y-v.life.w)/fadeLength:1.0);
                 o.screen=ComputeScreenPos(o.pos);o.screen.z=dot(world-_WorldSpaceCameraPos,-back);
                 o.amb0=0;o.amb1=float4(0,0,0,nearFade);o.sun=float4(0,0,0,v.axis.w);o.flash=0;
                 if(puff)
@@ -227,11 +342,12 @@ Shader "ChipArena/NativeVfx"
                 float mode=i.data.y,u=i.data.x;
                 // Sampled outside the branches (no gradients in divergent flow); the stand-in until the atlas is uploaded.
                 float4 tex=lerp(VfxPuffStandIn(i.uv.xy),tex2D(_VfxAtlas,i.uv.zw),_VfxAtlasReady);
+                float4 toon=lerp(VfxToonStandIn(i.uv.xy),tex2D(_VfxToon,i.toon.xy),_VfxAtlasReady);float4 aa=fwidth(toon);
                 float scene=LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture,UNITY_PROJ_COORD(i.screen)));
                 float4 c;
                 if(mode<3.5)c=i.color*VfxGlow(i.uv.xy,mode);
                 else if(mode<4.5)c=i.color*VfxStreak(float3(i.uv.xy,i.data.z),i.sun.w);
-                else
+                else if(mode<9.5)
                 {
                     float3 ambient=lerp(i.amb1.rgb,i.amb0.rgb,tex.g);
                     if(mode<5.5)
@@ -240,9 +356,17 @@ Shader "ChipArena/NativeVfx"
                         // A saturated cloud (toxic gas, acid fumes) glows a little in its own colour, fading with its life.
                         c.rgb+=i.color.rgb*(i.flash.w*c.a*(1.0-u));
                     }
-                    else c=VfxFireball(tex,u,i.color.a,i.color.rgb,ambient+i.sun.rgb*(0.2+0.8*tex.g)+i.flash.rgb);
+                    else if(mode<6.5)c=VfxFireball(tex,u,i.color.a,i.color.rgb,ambient+i.sun.rgb*(0.2+0.8*tex.g)+i.flash.rgb);
+                    else
+                    {
+                        float3 mask=VfxToonMask(toon,aa,VfxToonCut(u)),light=VfxToonLight(i.amb0.rgb,i.sun.rgb,i.flash.rgb);
+                        if(mode<7.5)c=VfxToonSmoke(mask,i.color.a,i.color.rgb,i.amb0.rgb,i.amb1.rgb,i.sun.rgb,i.flash.rgb,i.flash.w*(1.0-u));
+                        else if(mode<8.5)c=VfxToonFire(mask,u,i.color.a,i.color.rgb,i.alt.rgb,light);
+                        else c=VfxToonWater(mask,toon,aa,i.color.a,i.color.rgb,i.alt.rgb,light);
+                    }
                     c*=saturate(i.data.w);
                 }
+                else c=VfxToonSprite(toon,aa,i.color);
                 // A select, not a blend: whatever an unrendered depth texture holds never reaches the colour.
                 c*=i.amb1.a*(_VfxSoft>0.5?VfxSoftFade(scene,i.screen.z,mode>3.5&&mode<4.5?0.08:i.data.z):1.0);
                 UNITY_APPLY_FOG_COLOR(i.fogCoord,c,float4(unity_FogColor.rgb*c.a,0));
