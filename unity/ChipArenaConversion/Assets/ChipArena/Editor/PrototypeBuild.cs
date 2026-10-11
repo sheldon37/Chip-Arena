@@ -126,16 +126,13 @@ namespace ChipArena.UnityConversion.Editor
                 throw new Exception("The Windows player is incomplete: UnityPlayer.dll or its game data folder is missing.");
             var identity=NativeUpdateBuild.Package(root,folder);string install=Path.GetDirectoryName(folder);
             File.WriteAllText(Path.Combine(install,"READ-ME.txt"),
-                "Chip Arena Native Conversion - CONVERSION CANDIDATE\r\n\r\nRun ChipArena-Native-Conversion-TEST.exe. Keep the entire folder together.\r\n"+
-                "Use the EXE in the top folder: it is the stable launcher. Keep its app subfolder together. Updates are in the game menu.\r\n"+
-                "Updates download published Unity player builds, verify them, restart and restore the previous build if startup fails. Settings stay in the existing user-data folder.\r\n"+
-                "WASD move, double-tap W sprint, mouse look, LMB fire/attack, Q aim/magic ability, E ability, V first/third-person, R reload, RMB block, Shift dodge, Space jump.\r\n"+
-                "Choose weapon and map before starting. G scoreboard / build inspection. Tab melee lock-on. Esc menu. Local, LAN and configured relay rooms.\r\n"+
-                "15 maps, 236 Chips, native PvP and Ward Zero co-op. Full conversion remains in active completion.\r\n"+
-                "Read CONVERSION-STATUS.md and VALIDATION.md for implementation boundaries and unrun native acceptance.\r\n"+
-                "Built with Unity "+Application.unityVersion+". Core checks and player build passed on the build machine; human gameplay acceptance is separate.\r\n");
+                "CHIP ARENA\r\n\r\nOpen Chip Arena.exe to play.\r\n"+
+                "Keep this whole Chip Arena folder together, including the app folder. You can move it or make a shortcut to Chip Arena.exe.\r\n"+
+                "Use Update Game from the main menu for future updates. Your settings and account stay saved.\r\n\r\n"+
+                "WASD move, double-tap W sprint, mouse look, LMB attack, Q aim/ability, E ability, V camera, R reload, RMB block, Shift dodge, Space jump. Esc opens the menu.\r\n");
             string zip=Path.Combine(root,"Builds","Chip-Arena-Native-Conversion-TEST-Windows.zip");
             NativeUpdateBuild.SeedZip(install,zip);
+            File.Copy(zip,Path.Combine(root,"Builds",NativeUpdateRules.PortableZip),true);
             Debug.Log("UNITY_TEST_BUILD_READY: "+zip);
             return identity;
         }

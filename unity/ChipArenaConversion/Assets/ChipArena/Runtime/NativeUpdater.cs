@@ -31,7 +31,7 @@ namespace ChipArena.UnityConversion
             string app=Path.GetFullPath(Path.Combine(Application.dataPath,".."));root=Path.GetFullPath(Path.Combine(app,".."));
             try
             {
-                if(Path.GetFileName(app)!="app"||!File.Exists(Path.Combine(root,NativeUpdateRules.Executable))||File.ReadAllText(Path.Combine(root,"native-install.txt")).Trim()!=NativeUpdateRules.Product+"/1")
+                if(Path.GetFileName(app)!="app"||!File.Exists(NativeUpdateRules.LauncherPath(root))||File.ReadAllText(Path.Combine(root,"native-install.txt")).Trim()!=NativeUpdateRules.Product+"/1")
                     throw new InvalidOperationException("Install the Windows starter ZIP once to enable updates.");
                 NativeUpdateRules.RejectReparsePoints(root);
                 Installed=JsonUtility.FromJson<NativeBuildIdentity>(File.ReadAllText(Path.Combine(app,NativeUpdateRules.IdentityFile)));NativeUpdateRules.ValidateBuild(Installed);
@@ -131,7 +131,7 @@ namespace ChipArena.UnityConversion
                     using(var parent=Process.GetCurrentProcess())install=new NativeUpdateRequest{manifest=manifest,token=token,parentPid=parent.Id,parentStartedUtcTicks=parent.StartTime.ToUniversalTime().Ticks};
                     File.WriteAllText(Path.Combine(transaction,"request.json"),JsonUtility.ToJson(install));
                     State=NativeUpdateState.Preparing;Status="Preparing the update. The game will restart automatically…";
-                    using(var helper=Process.Start(new ProcessStartInfo{FileName=Path.Combine(root,NativeUpdateRules.Executable),Arguments="--install "+token,WorkingDirectory=root,UseShellExecute=false}))
+                    using(var helper=Process.Start(new ProcessStartInfo{FileName=NativeUpdateRules.LauncherPath(root),Arguments="--install "+token,WorkingDirectory=root,UseShellExecute=false}))
                     {
                         handedOff=true;float timeout=Time.realtimeSinceStartup+300;
                         while(!File.Exists(Path.Combine(transaction,"ready.txt")))
