@@ -564,6 +564,72 @@
       "bytes": 177648,
       "gitBlob": "39813e99bae17cec879ecff572a0a06980361c44",
       "source": "public/images/l44t-slenderman.jpg"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/StructureAudio/thud.wav",
+      "bytes": 24300,
+      "gitBlob": "b83e3b14eebdec47ab4c8102c7cf9bb949cc593f",
+      "source": "tools/synth_structure_audio.py"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/StructureAudio/crack.wav",
+      "bytes": 17684,
+      "gitBlob": "becb09d681b18143e20777500984501172e68d7d",
+      "source": "tools/synth_structure_audio.py"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/StructureAudio/gravel.wav",
+      "bytes": 35324,
+      "gitBlob": "de52b193bc3b5b1b801279beb5a861535411aa04",
+      "source": "tools/synth_structure_audio.py"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/StructureAudio/rebar.wav",
+      "bytes": 57374,
+      "gitBlob": "18fda20d5178482c7b55d2d12d4777e130b8ace2",
+      "source": "tools/synth_structure_audio.py"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/StructureAudio/groan.wav",
+      "bytes": 79424,
+      "gitBlob": "4b5b062c8f8c92d9abf34912c6ebb40274268b51",
+      "source": "tools/synth_structure_audio.py"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/StructureAudio/creak.wav",
+      "bytes": 66194,
+      "gitBlob": "1300f78ecd04563536b4666f40d31a22d414defc",
+      "source": "tools/synth_structure_audio.py"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/StructureAudio/snap.wav",
+      "bytes": 15478,
+      "gitBlob": "ad035a6366f8ad7b93dfec432531592a6df411c6",
+      "source": "tools/synth_structure_audio.py"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/StructureAudio/boom.wav",
+      "bytes": 66194,
+      "gitBlob": "35f674c29975e062a5e781a07948b723a385ebec",
+      "source": "tools/synth_structure_audio.py"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/StructureAudio/rumble.wav",
+      "bytes": 123524,
+      "gitBlob": "eda682c9f23d1eb1ed72d184c549fe873d445c33",
+      "source": "tools/synth_structure_audio.py"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/StructureAudio/glass.wav",
+      "bytes": 61784,
+      "gitBlob": "fe855a51c04710c51b25d41442c07af76ca07081",
+      "source": "tools/synth_structure_audio.py"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/StructureAudio/debris.wav",
+      "bytes": 167624,
+      "gitBlob": "10b70d6bc8a268a8136cef2568acdba9081afe8e",
+      "source": "tools/synth_structure_audio.py"
     }
   ]
 }

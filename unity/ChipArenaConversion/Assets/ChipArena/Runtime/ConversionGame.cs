@@ -136,6 +136,8 @@ namespace ChipArena.UnityConversion
                 foreach(var e in arena.Events)if(e.Id>shakeEvent&&prefs.cameraShake&&NativeShakeRules.Fresh(arena.Time,e.Time)&&NativeShakeRules.Triggers(e.Kind,e.Target,e.Amount,p.Seat.id))shakeAmount=NativeShakeRules.Amount;
                 shakeEvent=Math.Max(shakeEvent,newest);
                 if(shakeAmount>0){if(!menu&&Spectator==null&&!cinematic.Directing)cameraView.transform.position+=Vector3.right*NativeShakeRules.Offset(shakeAmount,UnityEngine.Random.value);shakeAmount=NativeShakeRules.Decay(shakeAmount,Time.unscaledDeltaTime);}
+                // Structure stress, falls and landings shake by distance (Core NativeStructureShake, within 25 m) under the same rules.
+                if(prefs.cameraShake&&!menu&&Spectator==null&&!cinematic.Directing)cameraView.transform.position+=presentation.StructureShake(cameraView.transform.position,prefs.reducedEffects?.5f:1);
             }
             presentation.SoundEnabled=false;presentation.LocalId=arena.ViewPilot.Seat.id;
             float renderTime=arena.Replica?arena.ReplicaRenderTime:visualClock.Sample(match.Time,Time.timeAsDouble-Time.fixedTimeAsDouble,menu);

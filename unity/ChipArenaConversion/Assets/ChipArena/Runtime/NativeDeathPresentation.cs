@@ -164,7 +164,7 @@ namespace ChipArena.UnityConversion
                 bool counted=pilot&&!death.kept;int budget=death.kept?NativeKillEffectRules.KeptBudget:counted?NativeKillEffectRules.MaxDeathVoxels-killUsed:NativeKillEffectRules.MaxDeathVoxels;
                 bool hatModel=!string.IsNullOrEmpty(death.actor?.Hat)&&death.actor.Hat!="none"&&sourceModels.Has("hat-"+death.actor.Hat);
                 int band=pilot&&live!=null&&(death.model??"pilot")=="pilot"?NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,live.Seat.AuthorityBoss,live.Seat.team,live.Seat.id==arena.LocalId):-1;
-                corpse.SetupKill(budget,Mathf.Clamp01(EffectsQuality),counted,hatModel,band);if(counted)killUsed+=corpse.FxCount;
+                corpse.SetupKill(budget,Mathf.Clamp01(EffectsQuality),counted,hatModel,band,NativeStructureFxPresentation.KillFloor(arena));if(counted)killUsed+=corpse.FxCount;
             }
             corpse.Step(age);string style=corpse.Style??"impact-ragdoll";bool stock=StockEnding(style);
             // What the effect looks like (swarm, burst, fragments, spray fade and splats, the stock sink and shrink, the fades)

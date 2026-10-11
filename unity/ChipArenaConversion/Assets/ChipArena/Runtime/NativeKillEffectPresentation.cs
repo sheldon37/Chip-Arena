@@ -55,8 +55,10 @@ namespace ChipArena.UnityConversion
         internal int Band=-1;
         /// <summary>Builds the effect pieces for a corpse that received <paramref name="budget"/> (DeathEffects: 280 minus the
         /// live effects' counts, or a kept body's 96). <paramref name="hat"/>: the hat model exists. <paramref name="band"/>: the
-        /// team band colour index in a teams match (team-identity.ts bands are part of the rig the source cuts and copies), or -1.</summary>
-        internal void SetupKill(int budget,double quality,bool counted,bool hat,int band=-1)
+        /// team band colour index in a teams match (team-identity.ts bands are part of the rig the source cuts and copies), or -1.
+        /// <paramref name="floor"/>: the map's kill-effect floor (NativeStructureFxPresentation.KillFloor; gibs settle on upper
+        /// floors), or null for the source's flat one.</summary>
+        internal void SetupKill(int budget,double quality,bool counted,bool hat,int band=-1,NativeKillFloor floor=null)
         {
             Band=band>=0&&band<NativeStatusVisuals.TeamColors.Length?band:-1;
             Counted=counted;bool low=quality<.5;var wound=Death.wound;bool crush=Crushed;int parts=Parts.Count-(crush?1:0);budget=Math.Max(0,budget);
@@ -75,7 +77,7 @@ namespace ChipArena.UnityConversion
                 if(!rig)return;var matrices=new double[RigCount*16];var colors=new int[RigCount];
                 for(int i=0;i<RigCount;i++){NativeKillEffectRules.BoxWorld(RigBoxes[i],bind[RigBoxes[i].Bone],scratch,world);Array.Copy(world,0,matrices,i*16,16);colors[i]=NativeKillEffectRules.BoxColor(RigBoxes[i],body,accent);}
                 var p=Death.position;var v=Death.velocity;var d=Death.direction;
-                Burst=new NativeKillBurst(matrices,colors,RigCount,Death.seed,-p.x,p.y,p.z,-v.x,v.y,v.z,-d.x,d.y,d.z,quality,budget);FxCount=Burst.Count;return;
+                Burst=new NativeKillBurst(matrices,colors,RigCount,Death.seed,-p.x,p.y,p.z,-v.x,v.y,v.z,-d.x,d.y,d.z,quality,budget,floor);FxCount=Burst.Count;return;
             }
             FxCount=parts;
             if(NativeKillEffectRules.Swarm(Style)){Swarm=new NativeKillSwarm(Style,Death.seed,Math.Max(0,budget-parts),quality);FxCount+=Swarm.Count;}
@@ -144,7 +146,8 @@ namespace ChipArena.UnityConversion
             }
             CapCells=cells.ToArray();CapColors=cellColors.ToArray();
             int sprayBudget=gibSpray?Math.Max(0,budget-parts-2):Math.Max(0,Math.Max(0,budget-parts-Caps.Count)-(Debris?.Count??0));
-            if(sprayPart>=0)Spray=new NativeKillSpray(Death.seed,sprayBudget,quality,gib?KillSprayProfile.Gibber:crush?KillSprayProfile.Crush:KillSprayProfile.Sever,Death.position.y-.85);
+            double ground=gib&&floor!=null?floor(-Death.position.x,Death.position.y,Death.position.z):double.NaN;
+            if(sprayPart>=0)Spray=new NativeKillSpray(Death.seed,sprayBudget,quality,gib?KillSprayProfile.Gibber:crush?KillSprayProfile.Crush:KillSprayProfile.Sever,Death.position.y-.85,double.IsNaN(ground)?0:ground);
             FxCount+=Caps.Count+(Debris?.Count??0)+(Spray?.Count??0);
         }
         private static bool Shown(KillBox[] list){foreach(var b in list)if(!b.Hidden)return true;return false;}

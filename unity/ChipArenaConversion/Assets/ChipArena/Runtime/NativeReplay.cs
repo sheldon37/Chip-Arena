@@ -31,7 +31,7 @@ namespace ChipArena.UnityConversion
             if(replayRunning&&arena?.Local?.Hp<=0&&match?.Phase==NativePhase.Fight)replayReturnAt=Time.unscaledTime;
             replayRunning=false;replaySource=null;var old=replayArena;replayArena=null;
             try{old?.Dispose();}
-            finally{if(replayScene.IsValid())SceneManager.UnloadSceneAsync(replayScene);replayScene=default;foreach(var pair in liveVisibility)if(pair.Key!=null)pair.Key.enabled=pair.Value;liveVisibility.Clear();presentation?.ResetPresentation();nativeAudio?.ResetCursor();}
+            finally{if(replayScene.IsValid())SceneManager.UnloadSceneAsync(replayScene);replayScene=default;foreach(var pair in liveVisibility)if(pair.Key!=null)pair.Key.enabled=pair.Value;liveVisibility.Clear();presentation?.ResetPresentation(true);nativeAudio?.ResetCursor();}
         }
         private void SpectatorControls()
         {
@@ -51,7 +51,7 @@ namespace ChipArena.UnityConversion
             if(!replayRunning&&replayDeath>=0&&(arena.Time>=replayDeath+.6f||Time.unscaledTime>=replayWait))
             {
                 if(replayFrames.Count<2){replayDeath=-1;return false;}replayStart=Math.Max((float)replayFrames[0].time,replayDeath-3);replayEnd=replayDeath+1.25f;replayStarted=Time.unscaledTime;replayRunning=true;replayBody=false;
-                replayScene=SceneManager.CreateScene("Killcam presentation",new CreateSceneParameters(LocalPhysicsMode.Physics3D));replayArena=new NativeArena(content,new NativeMatch(content),arena.MapId){Replica=true,LocalId=arena.LocalId,ReplicaScene=replayScene};presentation.ResetPresentation();nativeAudio.ResetCursor();
+                replayScene=SceneManager.CreateScene("Killcam presentation",new CreateSceneParameters(LocalPhysicsMode.Physics3D));replayArena=new NativeArena(content,new NativeMatch(content),arena.MapId){Replica=true,LocalId=arena.LocalId,ReplicaScene=replayScene};presentation.ResetPresentation(true);nativeAudio.ResetCursor();
 
             }
             if(!replayRunning)return false;foreach(var r in arena.Root.GetComponentsInChildren<Renderer>()){if(!liveVisibility.ContainsKey(r))liveVisibility[r]=r.enabled;r.enabled=false;}float time=replayStart+Time.unscaledTime-replayStarted;replayTime=time;if(time>replayEnd||time>replayFrames[replayFrames.Count-1].time+.5){EndReplay();return false;}

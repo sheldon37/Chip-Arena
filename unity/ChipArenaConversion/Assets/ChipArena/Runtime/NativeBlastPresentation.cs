@@ -35,6 +35,9 @@ namespace ChipArena.UnityConversion
         public NativeBurstPool Sparks;
         /// <summary>The projectile trails setting: the source streaks an impact from its from point only with trails on.</summary>
         public bool Trails=true;
+        /// <summary>The destruction kit draws Break events as material bursts (NativeStructureFxPresentation): skip the source's
+        /// 18-spark break burst then.</summary>
+        public bool MaterialBursts;
         private readonly NativeImpactCommand[] plan=new NativeImpactCommand[NativeImpactCues.MaxCommands];
         private readonly NativeSpikeRises spikeRises=new NativeSpikeRises();
         private static readonly Bounds Everywhere=new Bounds(Vector3.zero,Vector3.one*4000);
@@ -183,7 +186,7 @@ namespace ChipArena.UnityConversion
         {
             foreach(var e in arena.Events)
             {
-                if(e.Id<=lastEvent)continue;lastEvent=e.Id;if(now-e.Time>.4f)continue;
+                if(e.Id<=lastEvent)continue;lastEvent=e.Id;if(now-e.Time>.4f||e.Kind==EventKind.Break&&MaterialBursts)continue;
                 NativePilot source=null,target=null;foreach(var p in arena.Pilots){if(p.Seat.id==e.Source)source=p;if(p.Seat.id==e.Target)target=p;}
                 // The colour the source event carries where Unity's has none: a break's material (none for the Siren's seeker
                 // breaks), an impact's weapon colour.
