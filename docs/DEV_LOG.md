@@ -1,5 +1,11 @@
 # Chip Arena — development log
 
+## 2026-10-10 — Astra — Fix real Unity UBA #32 pre-export parity blocker
+- Failed actual Unity cloud build #32 (source `c0426cb`) has an Editor PreExport failure: `Follow-up parity: ability ceiling absorbs upward projectile` (NativeFollowupValidation.cs:19). This stale Editor assertion requires a `CeilingHit` from a rocket that should be absorbed silently (the original ability-system.ts has none); the intentional removal of that event was already merged in Astra's earlier ceiling parity batch. GitHub managed/source CI did not execute this Editor-only assertion, so it was green while the real UBA failed.
+- Corrected NativeFollowupValidation to require projectile absorption **without a new CeilingHit**; preserves unrelated existing events. New Python regression guards this Editor/runtime contract in both CI source and the Windows package tests. No runtime/gameplay, shader, networking or save change.
+- Branch `codex/unity-uba-ceiling-validation-20261010` from cloud `f804d2b`; merge only after both native CI jobs pass. A fresh UBA build of the merged head is still required; a passing source check alone is not publication verification. This also enables the first real compile of Claude's new shaders on the current batch.
+
+
 ## 2026-10-10 — Astra — Last Laugh crush authority and Windows update handoff
 - Owner request: fix the Siren's arm snapping to idle at the timed crush, correct the victim's facing on the drop, and distinguish the actual crush from unrelated mid-hold kills; publish the resulting Unity batch through the existing native test Update button.
 - Task branch `codex/siren-crush-release-20261010` from verified cloud head `d4cabb9455a0e749fb8665d428cc08c1db36bc92` (Claude PR #62). Simulation change: mark each grabbed victim as crushed once; detach the victim before applying the crush damage so the death handler does not cancel the holder; retain the holder's `Caught`/grab action until the existing `m.Until` (0.6 s after crush). Cancellation now zeros captive velocity only while the holder actually has them.
