@@ -7,10 +7,11 @@ using NQuaternion=System.Numerics.Quaternion;
 namespace ChipArena.UnityConversion
 {
     // What a portrait shows: the pilot's weapon, lobby pose, hat and colours (#rrggbb as ints). A value, compared field by
-    // field, so a card asks for its portrait every frame without allocating.
+    // field, so a card asks for its portrait every frame without allocating. `Yaw` (degrees about the podium's axis, the
+    // Locker's turntable) is not part of the look: turning re-renders the same slot without deriving it again.
     public struct PortraitLook
     {
-        public string Spec,Pose,Hat;public int Body,Accent;
+        public string Spec,Pose,Hat;public int Body,Accent;public float Yaw;
         public bool Same(in PortraitLook o)=>Spec==o.Spec&&Pose==o.Pose&&Hat==o.Hat&&Body==o.Body&&Accent==o.Accent;
     }
     // The live 3D pilot portraits of the menu, lobby and results cards (client/menu-portraits.ts MenuPortraits at 05950ea):
@@ -33,7 +34,7 @@ namespace ChipArena.UnityConversion
         public const int Layer=30,Slots=12,TextureCap=1280;
         private sealed class Slot
         {
-            public int Key=int.MinValue,W,H,Frame=-10,TopPose=-1;public float Seen=-10,Aspect=1,Top;public PortraitLook Look;public bool Ready;public RenderTexture Texture;
+            public int Key=int.MinValue,W,H,Frame=-10,TopPose=-1;public float Seen=-10,Aspect=1,Top,Yaw;public PortraitLook Look;public bool Ready;public RenderTexture Texture;
             public readonly MeleeRig Rig=new MeleeRig();public readonly CapturedRig.Pose Pose=new CapturedRig.Pose();
             // Derived once per look (no per-frame strings or colour maths): model ids, the idle clip and the colour tints.
             public string Spec="pistol",Hat="none",WeaponModel,HatModel,IdleClip;public Vector4 BodyTint,AccentTint,EdgeTint,FlexTint;
@@ -74,7 +75,7 @@ namespace ChipArena.UnityConversion
             foreach(var s in slots){if(s.Key==key){slot=s;break;}if(free==null&&(s.Key==int.MinValue||now-s.Seen>.5f))free=s;}
             if(slot==null){if(free==null)return null;slot=free;Clear(slot);slot.Key=key;slot.Derive(look);}
             else if(!slot.Look.Same(look))slot.Derive(look);
-            slot.W=w;slot.H=h;slot.Aspect=width/height;slot.Frame=Time.frameCount;slot.Seen=now;
+            slot.W=w;slot.H=h;slot.Aspect=width/height;slot.Yaw=look.Yaw;slot.Frame=Time.frameCount;slot.Seen=now;
             if(!slot.Ready||slot.Texture==null)return null;top=slot.Top;return slot.Texture;
         }
         private static void Clear(Slot s){if(s.Texture!=null)RenderTexture.ReleaseTemporary(s.Texture);s.Texture=null;s.Ready=false;s.Key=int.MinValue;s.TopPose=-1;s.Frame=-10;}
@@ -170,11 +171,13 @@ namespace ChipArena.UnityConversion
             var frame=NativePortraitRules.Frame(pose,s.Aspect,s.Top);var turn=Quaternion.LookRotation(CapturedAnimation.Vec(CapturedRig.Mirror(frame.Target-frame.Position)),Vector3.up);
             // Each slot's stage stands far from the others and from the arena, so one render never frames another pilot.
             var origin=new Vector3(2000+index*60,-500,0);var root=origin+Vector3.up*NativePortraitRules.GroupY;
-            for(int b=0;b<22;b++)bones[b]=Matrix4x4.TRS(root+CapturedAnimation.Vec(CapturedRig.Mirror(s.Pose.WorldPosition[b])),CapturedAnimation.Quat(CapturedRig.Mirror(s.Pose.WorldRotation[b])),Vector3.one);
-            var rootMatrix=Matrix4x4.Translate(root);view.transform.SetPositionAndRotation(origin+CapturedAnimation.Vec(CapturedRig.Mirror(frame.Position)),turn);
+            // The turntable (Locker stage): the whole stage turns about the podium's axis; the framing, camera and lights stay.
+            var spin=s.Yaw==0?Matrix4x4.identity:Matrix4x4.Translate(origin)*Matrix4x4.Rotate(Quaternion.Euler(0,s.Yaw,0))*Matrix4x4.Translate(-origin);
+            for(int b=0;b<22;b++)bones[b]=spin*Matrix4x4.TRS(root+CapturedAnimation.Vec(CapturedRig.Mirror(s.Pose.WorldPosition[b])),CapturedAnimation.Quat(CapturedRig.Mirror(s.Pose.WorldRotation[b])),Vector3.one);
+            var rootMatrix=spin*Matrix4x4.Translate(root);view.transform.SetPositionAndRotation(origin+CapturedAnimation.Vec(CapturedRig.Mirror(frame.Position)),turn);
             // Scene: the podium, the chair when sitting, the pilot, its hat or halo, the held weapons.
-            Basic(podium,Matrix4x4.TRS(origin+Vector3.up*NativePortraitRules.PodiumY,Quaternion.identity,Vector3.one),NativePortraitRules.PodiumColor,0,opaque);
-            if(pose==NativeLobbyPoses.Chair)foreach(var piece in NativePortraitRules.Chair)Basic(box,Matrix4x4.TRS(origin+CapturedAnimation.Vec(CapturedRig.Mirror(piece.Position)),Quaternion.identity,CapturedAnimation.Vec(piece.Size)),piece.Color,0,opaque);
+            Basic(podium,spin*Matrix4x4.TRS(origin+Vector3.up*NativePortraitRules.PodiumY,Quaternion.identity,Vector3.one),NativePortraitRules.PodiumColor,0,opaque);
+            if(pose==NativeLobbyPoses.Chair)foreach(var piece in NativePortraitRules.Chair)Basic(box,spin*Matrix4x4.TRS(origin+CapturedAnimation.Vec(CapturedRig.Mirror(piece.Position)),Quaternion.identity,CapturedAnimation.Vec(piece.Size)),piece.Color,0,opaque);
             foreach(var p in Parts(siren?"siren":"pilot"))
             {
                 var m=p.Bone>=0&&p.Bone<22?bones[p.Bone]:rootMatrix;if(p.Joint>=0)m*=Matrix4x4.Rotate(CapturedAnimation.Quat(CapturedRig.Mirror(MeleeMath.AxisAngle(MeleeMath.X,NativeLobbyPoses.CoverAngle(s.Rig,p.Joint)))));

@@ -39,48 +39,13 @@ namespace ChipArena.UnityConversion
         private bool AllowedWeapon(ContentWeapon w)=>(!prefs.pve||w.id!="siren")&&(!w.devOnly||(account?.Access??NativeAccess.Guest).Allows("weapon:"+w.id,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()));
         private void InitializeAccount()
         {
-            account=gameObject.AddComponent<NativeAccount>();account.Accepted=(data,load)=>{if(arena?.Local!=null)arena.Local.Seat.access=account.Access;if(server!=null)SendServer(new NativeNetMessage{type="auth-refresh",token=account.Token});if(!load)return;if(!data.hasProfile){account.Save(Profile());return;}var p=data.profile;if(p==null)return;prefs.name=NativeCosmeticRules.Name(p.name);prefs.accentColor=NativeCosmeticRules.Color(p.color,"#70e1d0");var c=p.cosmetics??new NativeCosmetics();prefs.bodyColor=NativeCosmeticRules.Color(c.bodyColor,"#e5e7eb");prefs.hat=NativeCosmeticRules.Hat(c.hat,account.Access);prefs.lobbyPose=c.lobbyPose??"weapon";prefs.killEffect=NativeCosmeticRules.Kill(NativePendingEffect.Restore(prefs.pendingEffects,data.id,c.killEffect,e=>NativeCosmeticRules.Allowed(account.Access,"effect",e)),account.Access);prefs.intro=NativeCosmeticRules.Intro(c.intro,account.Access);prefs.introText=c.introText;prefs.overrideIntro=c.overrideWeaponIntro;if(content.weapons.Any(w=>w.id==c.preferredSpec&&AllowedWeapon(w)))prefs.weapon=c.preferredSpec;accountPassword=accountRecovery="";Save();};
+            account=gameObject.AddComponent<NativeAccount>();account.Accepted=(data,load)=>{if(arena?.Local!=null)arena.Local.Seat.access=account.Access;if(server!=null)SendServer(new NativeNetMessage{type="auth-refresh",token=account.Token});if(!load)return;if(!data.hasProfile){account.Save(Profile());return;}var p=data.profile;if(p==null)return;prefs.name=NativeCosmeticRules.Name(p.name);prefs.accentColor=NativeCosmeticRules.Color(p.color,"#70e1d0");var c=p.cosmetics??new NativeCosmetics();prefs.bodyColor=NativeCosmeticRules.Color(c.bodyColor,"#e5e7eb");prefs.hat=NativeCosmeticRules.Hat(c.hat,account.Access);prefs.lobbyPose=c.lobbyPose??"weapon";prefs.killEffect=NativeCosmeticRules.Kill(NativePendingEffect.Restore(prefs.pendingEffects,data.id,c.killEffect,e=>NativeCosmeticRules.Allowed(account.Access,"effect",e)),account.Access);prefs.intro=NativeCosmeticRules.Intro(c.intro,account.Access);prefs.introText=c.introText;prefs.overrideIntro=c.overrideWeaponIntro;if(content.weapons.Any(w=>w.id==c.preferredSpec&&AllowedWeapon(w)))prefs.weapon=c.preferredSpec;accountPassword=accountRecovery="";Save();LockerRebase();};
             try{account.Configure(prefs.accountOrigin,true);}catch(ArgumentException){prefs.accountOrigin="";}
         }
-        // Customize (main.ts customize screen): name, preferred weapon, colours, headwear, kill effect, intro and its text.
-        private void CustomizeBody()
-        {
-            Field("Player name");prefs.name=GUILayout.TextField(prefs.name??"",20);
-            ClassRow("Preferred class",ClassCardStyle.Customize);WeaponCards("Preferred weapon",true);Fine("Your preferred weapon is your pilot's default and is sent to rooms you join.");
-            LobbyPosePicker();
-            Field("Colours");GUILayout.BeginHorizontal();ColourField("Body",ref prefs.bodyColor,"#e5e7eb");GUILayout.Space(12);ColourField("Accent",ref prefs.accentColor,"#70e1d0");GUILayout.EndHorizontal();
-            var hats=NativeCosmeticRules.Hats.Where(id=>NativeCosmeticRules.Allowed(account.Access,"hat",id)).ToArray();var kills=NativeCosmeticRules.Kills.Where(id=>NativeCosmeticRules.Allowed(account.Access,"effect",id)).ToArray();
-            Field("Headwear");prefs.hat=ChoiceGrid(hats,prefs.hat,NativeCosmeticRules.LabelsOf(hats));
-            Field("Kill effect");prefs.killEffect=ChoiceGrid(kills,prefs.killEffect,NativeCosmeticRules.LabelsOf(kills));
-            Field("Match intro");prefs.overrideIntro=GUILayout.Toggle(prefs.overrideIntro,"Use a custom entrance instead of this weapon’s signature");
-            if(prefs.overrideIntro){var intros=NativeCosmeticRules.Intros.Where(id=>NativeCosmeticRules.Allowed(account.Access,"intro",id)).ToArray();prefs.intro=ChoiceGrid(intros,prefs.intro,NativeCosmeticRules.LabelsOf(intros));}
-            Field("Intro text");prefs.introText=GUILayout.TextField(prefs.introText??"Ready to make an impact",64);Fine("Shown under your name while your entrance plays. Preview Intro plays it on its own.");
-        }
-        // A #rrggbb field with a live swatch of the colour it will save as, and a row of preset swatches standing in for the
-        // source's colour picker (input type=color): clicking one sets the field.
+        // The Customize screen is the Locker (NativeLockerUI.cs). Its colour rows offer these presets beside the #rrggbb field
+        // (the source's colour picker, input type=color).
         private static readonly string[] BodyPresets={"#e5e7eb","#9ca3af","#4b5563","#1f2937","#fca5a5","#fdba74","#fde68a","#86efac","#93c5fd","#c4b5fd","#f9a8d4","#f4f4f5"};
         private static readonly string[] AccentPresets={"#70e1d0","#ff6b35","#ffd27a","#7ed78a","#69a6ff","#ba94f5","#ff6575","#65dce0","#f18dcc","#ffa565","#b8aabb","#ffffff"};
-        // A preset clicked in the deferred drawing: applied to the field on the next event.
-        private readonly System.Collections.Generic.Dictionary<string,string> colourPicks=new System.Collections.Generic.Dictionary<string,string>();
-        private void ColourField(string name,ref string value,string fallback)
-        {
-            if(colourPicks.TryGetValue(name,out var pick)){value=pick;colourPicks.Remove(name);}
-            GUILayout.BeginVertical();GUILayout.Label(name,small);GUILayout.BeginHorizontal();var swatch=GUILayoutUtility.GetRect(30,30,GUILayout.Width(30),GUILayout.Height(30));
-            if(Event.current.type==EventType.Repaint){var c=GUI.color;GUI.color=HexColor(NativeCosmeticRules.Color(value,fallback),0xffffff);GUI.DrawTexture(swatch,Texture2D.whiteTexture);GUI.color=c;}
-            value=GUILayout.TextField(value??fallback,7);GUILayout.EndHorizontal();
-            var row=GUILayoutUtility.GetRect(0,62,GUILayout.ExpandWidth(true));var presets=fallback=="#e5e7eb"?BodyPresets:AccentPresets;string current=value;
-            NativeUi.Defer(()=>
-            {
-                float size=Mathf.Min(22,(row.width-5*6)/6);
-                for(int i=0;i<presets.Length;i++)
-                {
-                    var r=new Rect(row.x+2+(i%6)*(size+6),row.y+6+(i/6)*(size+6),size,size);bool on=string.Equals(current,presets[i],StringComparison.OrdinalIgnoreCase);float h=NativeUi.HoverAmount(name.GetHashCode()^i*977,r);
-                    NativeUi.Round(new Rect(r.x-2*h,r.y-2*h,r.width+4*h,r.height+4*h),HexColor(presets[i],0xffffff),5,on?NativeUi.Hex(0xff6b35):NativeUi.Mix(new Color(1,1,1,.18f),NativeUi.Hex(0xff784b),h),on?2:1);
-                    if(NativeUi.Button(r)){colourPicks[name]=presets[i];Click();}
-                }
-            });
-            GUILayout.EndVertical();
-        }
         public void ReloadSavedPilot()=>account?.ReloadSavedProfile();
         private void SavePilot()
         {

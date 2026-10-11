@@ -31,11 +31,13 @@ namespace ChipArena.UnityConversion
             if(screen==MenuScreen.Boss){prefs.pve=true;prefs.bots=Mathf.Clamp(prefs.bots,0,3);sandboxWanted=false;}
             // A room opens at the top of both lobby columns; Customize and Settings return to where the lobby was.
             if(screen==MenuScreen.Lobby&&menuScreen!=MenuScreen.Customize&&menuScreen!=MenuScreen.Settings){lobbyRosterScroll=lobbyRoomScroll=Vector2.zero;lobbyRosterContent=lobbyRoomContent=400;}
+            // Entering the Locker takes the look it can revert to (Preview Intro's way back stays in the same session).
+            if(screen==MenuScreen.Customize&&menuScreen!=MenuScreen.Customize)LockerEnter();
             menuScreen=screen;menuScreenAt=Time.unscaledTime;screenScroll=Vector2.zero;screenContent=400;GUIUtility.keyboardControl=0;
         }
         // Escape on the main menu: close the update card, else return to the home screen (the source close X); the room
-        // lobby stays until Leave Room.
-        private void MenuBack(){if(updateOpen&&menuScreen==MenuScreen.Home){updateOpen=false;return;}if(menuScreen!=MenuScreen.Home&&menuScreen!=MenuScreen.Lobby)Go(MenuScreen.Home);}
+        // lobby stays until Leave Room. The Locker asks before dropping unsaved changes (LockerBack).
+        private void MenuBack(){if(updateOpen&&menuScreen==MenuScreen.Home){updateOpen=false;return;}if(menuScreen==MenuScreen.Customize){LockerBack();return;}if(menuScreen!=MenuScreen.Home&&menuScreen!=MenuScreen.Lobby)Go(MenuScreen.Home);}
         private void MenuStyles()
         {
             if(fieldLabel!=null)return;fieldLabel=new GUIStyle(small){fontSize=12,fontStyle=FontStyle.Bold,wordWrap=true};fieldLabel.normal.textColor=U.Hex(0xc0c1ca);fieldLabel.margin=new RectOffset(4,4,18,6);
@@ -433,13 +435,8 @@ namespace ChipArena.UnityConversion
             }
         }
         private static bool RoomCodeShape(string code){if(code.Length!=8)return false;foreach(char ch in code)if(NativeRoomCodes.Alphabet.IndexOf(char.ToUpperInvariant(ch))<0)return false;return true;}
-        private void CustomizeScreen(float age)
-        {
-            var l=BeginScreen("CUSTOMIZATION","Your pilot",560,age,true,left:true);if(l.Closed){Go(MenuScreen.Home);return;}
-            ScreenBody(l,CustomizeBody);if(l.Card.width>0)PilotCard(l.Card,"LIVE PREVIEW",l.Enter,"Your lobby look is visible to everyone in your room.");
-            int a=ScreenActions(l,("check","Save Pilot",true,true),("play","Preview Intro",false,true));
-            if(a==0){SavePilot();if(server!=null&&InRoom)SendServer(new NativeNetMessage{type="profile",profile=Profile(),token=account?.Token});if(Hosting)LobbyBroadcast();Go(MenuScreen.Home);}else if(a==1)StartPreview();
-        }
+        // Customize is the Locker (NativeLockerUI.cs): categories, the pilot on its turntable, item cards, Save / Revert.
+        private void CustomizeScreen(float age)=>LockerScreen(age);
         private void SettingsScreen(float age,Action back)
         {
             var l=BeginScreen("CHIP ARENA","Settings",640,age);if(l.Closed){back();return;}

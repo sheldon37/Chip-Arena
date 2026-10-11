@@ -2,13 +2,13 @@ using UnityEngine;
 using U=ChipArena.UnityConversion.NativeUi;
 namespace ChipArena.UnityConversion
 {
-    // C14 in the menus: the live 3D pilot portraits (NativePortraits.cs) on the pilot card (Play, Boss Test, Create, Join and
-    // Customize's LIVE PREVIEW), the room lobby's pilot cards (host, guests and bots) and the PvE results cards, as the
-    // source draws a portrait-stage canvas in each (lobby-ui.ts pilotCard, main.ts:163 pilot-showcase, pve/results.ts), and
-    // Customize's IDLE ANIMATION picker (main.ts:131 lobbyPoseOptions). The card animations stay as the portrait's frame: the
-    // card entrance, the accent glow and the turning tick ring with its orbiting dot sit behind the pilot, and the pilot
-    // emblem (PilotEmblem) stands in until the portrait is ready, where it cannot render, or where the stage is too small.
-    // Drawing only: the pose is prefs.lobbyPose (saved and sent in the profile's cosmetics by Save Pilot, as before).
+    // C14 in the menus: the live 3D pilot portraits (NativePortraits.cs) on the pilot card (Play, Boss Test, Create, Join),
+    // the Locker's turntable stage (NativeLockerUI.cs), the room lobby's pilot cards (host, guests and bots) and the PvE
+    // results cards, as the source draws a portrait-stage canvas in each (lobby-ui.ts pilotCard, main.ts:163
+    // pilot-showcase, pve/results.ts). The card animations stay as the portrait's frame: the card entrance, the accent glow
+    // and the turning tick ring with its orbiting dot sit behind the pilot, and the pilot emblem (PilotEmblem) stands in
+    // until the portrait is ready, where it cannot render, or where the stage is too small. Drawing only: the pose is
+    // prefs.lobbyPose (picked in the Locker's IDLE POSE cards, saved and sent in the profile's cosmetics by Save Pilot).
     public sealed partial class ConversionGame
     {
         private NativePortraitRenderer portraitRenderer;
@@ -155,32 +155,6 @@ namespace ChipArena.UnityConversion
             }
             foreach(var r in v.Rows.Values){var s=r.Pilot?.Seat;if(s!=null&&s.spec==p.weapon&&s.name==p.name)return s;}
             return null;
-        }
-
-        // main.ts:131 lobbyPoseOptions under IDLE ANIMATION (lobby.css .lobby-pose-options): the four lobby poses in a
-        // two-column grid (10 px gaps) of 64 px options, the 24 px icon and the 14 px label; #202029 on a #4c4653 edge,
-        // #30303a / #8e7d95 on hover, the chosen one #3d2c28 on #efb587 with its icon in #efb587. A pick sets prefs.lobbyPose,
-        // which Save Pilot stores and sends with the rest of the look.
-        private void LobbyPosePicker()
-        {
-            Field("Idle animation");GUILayout.Space(4);var grid=GUILayoutUtility.GetRect(0,64*2+10,GUILayout.ExpandWidth(true));GUILayout.Space(14);
-            int current=NativeLobbyPoses.Index(prefs.lobbyPose);
-            U.Defer(()=>
-            {
-                float w=(grid.width-10)/2;bool paint=Event.current.type==EventType.Repaint;
-                for(int i=0;i<NativeLobbyPoses.Keys.Length;i++)
-                {
-                    var r=new Rect(grid.x+(i%2)*(w+10),grid.y+(i/2)*74,w,64);bool on=i==current;float h=on?0:U.HoverAmount(7720+i,r);
-                    if(paint)
-                    {
-                        U.Round(r,on?U.Hex(0x3d2c28):U.Mix(U.Hex(0x202029),U.Hex(0x30303a),h),9,on?U.Hex(0xefb587):U.Mix(U.Hex(0x4c4653),U.Hex(0x8e7d95),h));
-                        if(on)U.Round(new Rect(r.x+1,r.y+1,r.width-2,r.height-2),Color.clear,8,U.Hex(0xefb587,.19f));
-                        NativeIcons.Draw(new Rect(r.x+12,r.center.y-12,24,24),NativeLobbyPoses.Icons[i],on?U.Hex(0xefb587):U.Hex(0xbbb0c8));
-                        U.Text(new Rect(r.x+48,r.y,r.width-58,r.height),NativeLobbyPoses.Labels[i],14,on?U.Hex(0xfff1e5):U.Hex(0xd6d0dd),TextAnchor.MiddleLeft,wrap:true);
-                    }
-                    if(U.Button(r)&&!on){prefs.lobbyPose=NativeLobbyPoses.Keys[i];Click();}
-                }
-            });
         }
     }
 }

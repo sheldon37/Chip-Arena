@@ -1,5 +1,14 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Claude — Customize becomes the Locker (presentation)
+- Owner request: a clean, stylized Customize for kill effects, appearance, weapon abilities and (future) weapon skins. Branch `claude/customize-locker`, base `1adfce5`; local commit only (not pushed, not merged, not released).
+- New `Runtime/NativeLockerUI.cs` + `Core/NativeLocker.cs`: full-screen Locker with a category rail (Appearance, Kill Effects, Entrance, Loadout, Weapon Skins), the live portrait on a turntable (drag to turn, idle sway; `PortraitLook.Yaw` is a render input outside `Same()`, so turning never re-derives the slot) and item cards with hover try-on (colours, hat, pose, weapon). Kill effects get animated rect emblems; Entrance folds the override toggle into a "Weapon signature" card; Loadout shows class, weapon and Q/E slots read from content `abilities` (melee E from `secondary`; empty melee Q says it is coming); Weapon Skins is drawing only.
+- Saving is unchanged: same prefs fields, `SavePilot`, the room `profile` message and `LobbyBroadcast`; every list goes through `NativeCosmeticRules.Allowed`. New: Save is disabled until something changes and the Locker stays open after saving; Revert restores the look on entry; Escape/close with changes asks (Keep editing / Discard / Save & leave). In a room it returns to the lobby. Old `CustomizeBody`/`ColourField`/`LobbyPosePicker` removed.
+- Hand-off to Astra: ability loadout and weapon skin fields (profile, account, network seat) and host validation. Hooks: `LockerEquippedAbility` / `LockerAbilityPicks` (currently first option, not selectable). A kill-effect preview on a dummy was not built (death effects are arena physics presentation, not portrait meshes); the extension point is noted in the kill cards.
+- No impact on hit timing, hitboxes, damage, cooldowns, movement or networking.
+- Checks: Unity 6000.3.24f1 API compile OK; managed + real relay exit 0, 324 PASS lines (new `PASS Locker: 235 checks`); Python 75 OK / 1 skipped; source packaging 1154 files; `git diff --check` clean. Offline IMGUI renders of every tab at 1280x720, 1920x1080, 3440x1440 and UI scale 1.5 (placeholder silhouette portrait, hats not drawn by the stub).
+- Not run: Unity Editor/Windows play, the real turntable portrait, drag/scroll feel. Next: owner review on Windows; Astra's loadout fields.
+
 ## 2026-10-11 — Claude — Melee Q/E ability kit proposal (handoff to Astra)
 - Owner request: overhaul the melee abilities so melee has Q and E like magic and ranged (creative but balanced, DEV classes excluded), plus a new block effect. Branch `claude/sleepy-ritchie-g8ruhv`, base `8ec9b04`. Docs only.
 - New `docs/MELEE-ABILITIES.md`: a Q and an E for each of sword, daggers, shield and greatsword, with numbers, counterplay, shared rules, the presentation contract (ability entries, replicated state, event details, block `guard`/`clash`/`deflect` details, melee Q input) and acceptance.
