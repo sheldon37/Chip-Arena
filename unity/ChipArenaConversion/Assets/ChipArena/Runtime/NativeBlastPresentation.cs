@@ -13,8 +13,9 @@ namespace ChipArena.UnityConversion
     // spark bursts and lit streaks into the projectile visuals' BurstPool port (Sparks), impacts, lines and paddles here.
     // The Siren's own attack records are not blasts in the source (siren/fx.ts, NativeDevEffects) and draw nothing here.
     // Every blast and impact, field arrivals included, gets the real floor under it (FloorUnder; owner 2026-10-11: no flat area
-    // disc, so a wall, ceiling or airburst hit is a sphere whose pieces fall to that floor). Cosmetic only; nothing here touches
-    // the match.
+    // disc, so a wall, ceiling or airburst hit is a sphere whose pieces fall to that floor). Toon pass (owner 2026-10-11): water
+    // staff globes that vanish at their floor splash (Globes; the match emits no event for a floor hit). Cosmetic only; nothing
+    // here touches the match.
     public sealed class NativeBlastPresentation : IDisposable
     {
         private struct Marker{public Vector3 Position;public string Tag;public float Reach;}
@@ -47,7 +48,7 @@ namespace ChipArena.UnityConversion
         }
         public void Clear()
         {
-            sim.Clear();seen.Clear();seenBefore.Clear();spikeRises.Clear();sites.Clear();sitesBefore.Clear();shots.Clear();shotsBefore.Clear();sirens.Clear();sirensBefore.Clear();
+            sim.Clear();seen.Clear();seenBefore.Clear();globes.Clear();spikeRises.Clear();sites.Clear();sitesBefore.Clear();shots.Clear();shotsBefore.Clear();sirens.Clear();sirensBefore.Clear();
             lastEvent=0;lastTime=-1;if(ownsVfx)vfx.Clear();foreach(var light in lights)if(light!=null)light.enabled=false;
         }
         private static long Mix(long h,int v){unchecked{h^=(uint)v;h*=0x100000001b3L;return h;}}
@@ -195,6 +196,45 @@ namespace ChipArena.UnityConversion
                 if(demolition)sim.Impact(x,y,z,.5+.12*demolitions,0xffd45f,quality,false,false,null,floor);
             }
         }
+        // ---- water globes hitting the floor (toon pass, owner 2026-10-11: a splash when water-magic globes hit the floor) ----
+        private struct Globe{public Vector3 Position,Velocity;public float Radius,Gravity;public int Stamp;}
+        private readonly Dictionary<int,Globe> globes=new Dictionary<int,Globe>();private readonly List<int> gone=new List<int>();private int globeStamp;
+        // The match emits no event when a shot hits the floor (only a prop hit is an Impact), so the water staff's shots are watched
+        // in the replicated shot list, which host, guests and the killcam all hold: one that is gone this frame is tested from the
+        // state it was last seen in (Core NativeWaterSplash.Landing against the raycast floor under it) and splashes there,
+        // unless a hit, impact, block or ricochet event lies near its last stretch of path (it hit something else). A rewind
+        // clears the list without splashing (Clear). Cosmetic and deterministic in what it reads.
+        private void Globes(NativeArena arena,float now,double quality)
+        {
+            globeStamp++;float gravity=-1;
+            foreach(var b in arena.Bullets)
+            {
+                if(b.Spec!="water"||b.SirenKind!=null||b.LeetKind!=null)continue;
+                // A guest's replicated shot has no gravity: the weapon's (the projectileGravity stat is the host's only).
+                if(gravity<0){var weapons=arena.Content?.weapons;gravity=10;if(weapons!=null)foreach(var w in weapons)if(w.id=="water"){gravity=(float)w.gravity;break;}}
+                globes[b.Id]=new Globe{Position=b.Position,Velocity=b.Velocity,Radius=b.Radius,Gravity=b.Gravity>0?b.Gravity:gravity,Stamp=globeStamp};
+            }
+            gone.Clear();foreach(var pair in globes)if(pair.Value.Stamp!=globeStamp)gone.Add(pair.Key);
+            foreach(int id in gone)
+            {
+                var g=globes[id];globes.Remove(id);double? under=FloorUnder(g.Position);if(!under.HasValue)continue;
+                if(!NativeWaterSplash.Landing(g.Position.x,g.Position.y,g.Position.z,g.Velocity.x,g.Velocity.y,g.Velocity.z,g.Gravity,g.Radius,under.Value,out double x,out double z,out double t))continue;
+                var at=new Vector3((float)x,(float)under.Value,(float)z);if(HitNear(arena,now,g.Position,at))continue;
+                // The floor where it lands (stairs, ledges), not only under where it was last seen.
+                double floor=FloorUnder(at+Vector3.up*.3f)??under.Value;sim.Splash(x,floor,z,NativeWaterSplash.Size(g.Radius),quality);
+            }
+        }
+        private static bool HitNear(NativeArena arena,float now,Vector3 from,Vector3 to)
+        {
+            var events=arena.Events;
+            for(int i=events.Count-1;i>=0;i--)
+            {
+                var e=events[i];if(e.Time<now-.25f)break;
+                if(e.Kind!=EventKind.Hit&&e.Kind!=EventKind.Impact&&e.Kind!=EventKind.Block&&e.Kind!=EventKind.Ricochet)continue;
+                if(NativeWaterSplash.NearPath(from.x,from.y,from.z,to.x,to.y,to.z,e.Position.x,e.Position.y,e.Position.z))return true;
+            }
+            return false;
+        }
         // stage-spikes-rise (stage-hazards.ts:21): Unity's hazards emit no rise event, so it is derived from the same clock
         // NativeAudio plays its cue from, and bursts the bed's dust.
         private void SpikeRises(NativeArena arena,double quality)
@@ -224,7 +264,7 @@ namespace ChipArena.UnityConversion
             world=World(arena,out physics);
             double q=Math.Max(0,Math.Min(1,quality));
             // Source renderer order: event blasts, then fields(state), then update(dt), then draw.
-            Remember(arena,fields);Effects(arena,now,q);Impacts(arena,now,q);SpikeRises(arena,q);Fields(fields,q);sim.Update(dt);
+            Remember(arena,fields);Effects(arena,now,q);Impacts(arena,now,q);SpikeRises(arena,q);Globes(arena,now,q);Fields(fields,q);sim.Update(dt);
             // Every particle as its role's primitive and every front as one shell (NativeVfxDraw); no cube per voxel.
             if(ownsVfx)vfx.Begin();vfx.Blasts(sim);if(ownsVfx)vfx.Submit(camera);
             for(int i=0;i<lights.Length;i++)

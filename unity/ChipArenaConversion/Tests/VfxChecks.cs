@@ -23,8 +23,10 @@ namespace ChipArena.UnityConversion
         {
             int sites=Sites(root),roles=Roles(),seeds=Seeds(),shocks=Shocks(),smoke=Smoke(root),pool=DrawList(),strands=Strands(),sparks=Sparks();
             Console.WriteLine("PASS effects base layer: "+sites+" blast spawn sites name a role, "+roles+" pinned role histograms and sets (11 styles, tints, impacts, lines, paddles, 20 fields), "+seeds+" seed and draw-order checks, "+shocks+" shock front checks, "+smoke+" smoke colour checks, "+pool+" draw-list and determinism checks, "+strands+" strand checks (no segment between arcs, spokes or lines), "+sparks+" burst spark checks");
-            int atlas=Atlas(out double ms),meshes=Meshes(),bomb=Bomb();
+            int atlas=Atlas(out double ms),toon=Toon(out double toonMs),meshes=Meshes(),bomb=Bomb();
             Console.WriteLine("PASS effects base layer assets: smoke atlas (512 px, 16 puffs, built in "+ms.ToString("0.0")+" ms on this runtime; not a timed gate), noise tile, "+atlas+" texture checks, "+meshes+" mesh checks (4 rubble chunks, crystal shard, chip bomb, shock shell and dome) and "+bomb+" bomb pose checks");
+            int reads=ToonFxChecks.Run(root);
+            Console.WriteLine("PASS effects toon pass: toon sheet (1024 x 512, 16 hard-shadow puffs, 8-frame round flash, 4 crescents, spike, lens, star, droplet; built in "+toonMs.ToString("0.0")+" ms, not a timed gate), "+toon+" toon sheet checks and "+reads+" composition, timing, splash and no-disc checks");
         }
 
         // ---- every NativeBlastPool.Spawn call names its role ----
@@ -49,7 +51,7 @@ namespace ChipArena.UnityConversion
                 foreach(var call in calls){Check(Regex.IsMatch(call,@",role:(?:\w+\?NativeFxRole\.[A-Z][A-Za-z]+:)?NativeFxRole\.[A-Z][A-Za-z]+\)$"),Path.GetFileName(file)+": a pool spawn without its role: "+call);n++;}
                 if(Path.GetFileName(file)=="NativeBlastSim.cs")total=calls.Count;
             }
-            Check(total==42,"NativeBlastSim's 42 spawn sites ("+total+")");
+            Check(total==74,"NativeBlastSim's 74 spawn sites (toon pass; "+total+")");
             // The spawn default (no role) is Mote in the glow pool and Debris in the opaque pool.
             var pool=new NativeBlastPool(4,true);pool.Spawn(0,0,0,0,0,0,1,.1,.1,0xffffff,0xffffff);var solid=new NativeBlastPool(4,false);solid.Spawn(0,0,0,0,0,0,1,.1,.1,0xffffff,0xffffff);
             Check(pool.Identity(0).role==NativeFxRole.Mote&&solid.Identity(0).role==NativeFxRole.Debris,"the default roles");
@@ -63,16 +65,18 @@ namespace ChipArena.UnityConversion
             foreach(var pool in new[]{sim.Solid,sim.Glow})for(int i=0;i<pool.Count;i++){var r=pool.Identity(i).role;h[r]=h.TryGetValue(r,out int c)?c+1:1;}
             var sb=new StringBuilder();foreach(var kv in h)sb.Append(kv.Key).Append(' ').Append(kv.Value).Append(' ');return sb.ToString().TrimEnd();
         }
-        // Pinned 2026-10-11: each style at r 3, quality 1, on the default floor, every spawned particle (delayed ones included).
-        // Fire, Mine and Meteor debris is HotDebris (review 2026-10-11), the same 15 spawns.
+        // Pinned 2026-10-11 (toon pass): each style at r 3, quality 1, on the default floor, every spawned particle (delayed ones
+        // included), the two water looks, Blink Strike (cyan: no crackle) and a water globe's floor splash.
         private static readonly (string what,string roles)[] Pinned={
-            ("Fire","Core 20 Fireball 46 Shell 76 Smoke 17 Spark 20 HotDebris 15"),("Shock","Core 13 Shell 78 Spark 28"),
-            ("Implosion","Core 17 Shell 33 Smoke 9 Spark 17 Streak 48"),("Frost","Core 13 Shell 35 Smoke 11 Shard 28"),
-            ("Toxic","Core 11 Fireball 22 Shell 64 Debris 11 Cloud 20"),("Void","Dark 11 Streak 44"),("Nova","Core 20 Shell 98 Spark 22"),
-            ("Kinetic","Core 11 Shell 88 Smoke 7 Debris 39 Spark 15"),("Quake","Shell 33 Smoke 15 Rock 28"),
-            ("Meteor","Core 20 Fireball 46 Shell 76 Smoke 17 Spark 20 Ember 11 HotDebris 15"),("Mine","Core 20 Fireball 46 Shell 76 Smoke 17 Spark 20 HotDebris 15"),
+            ("Fire","Core 4 Fireball 26 Shell 39 Smoke 5 Spark 24 HotDebris 11 Flash 2 Lick 8 Halo 1"),("Shock","Core 9 Shell 52 Spark 11 Bolt 50 Flash 2"),
+            ("Implosion","Core 9 Shell 33 Spark 13 Cloud 11 Streak 39 Flash 2"),("Frost","Core 7 Shell 35 Spark 13 Shard 15 Snow 13 Spike 17 Mist 7 Halo 1"),
+            ("Toxic","Core 5 Shell 44 Smoke 112 Debris 7 Spark 9 Cloud 11 Flash 3 Blob 7 Halo 1"),("Void","Smoke 9 Cloud 9 Dark 4 Streak 35 Droplet 13 Halo 1"),("Nova","Core 11 Shell 65 Spark 15 Flash 1 Lick 17"),
+            ("Kinetic","Core 7 Shell 52 Smoke 15 Debris 13 Spark 24"),("Quake","Shell 33 Smoke 29 Debris 7 Rock 15"),
+            ("Meteor","Core 4 Fireball 31 Shell 39 Smoke 5 Spark 39 Ember 11 HotDebris 15 Flash 3 Lick 8 Halo 1"),("Mine","Core 4 Fireball 20 Shell 39 Smoke 5 Spark 33 HotDebris 11 Flash 2 Lick 8 Halo 1"),
+            ("tidal-wave","Core 5 Shell 52 Water 15 Droplet 20 Mist 3"),("geyser-wall","Core 1 Shell 35 Water 46 Droplet 32 Mist 5"),("blink-strike","Core 9 Shell 52 Spark 11 Flash 2"),
+            ("splash","Mote 1 Flash 1 Water 9 Droplet 16 Mist 1"),
             ("ball-lightning",PinnedBall),("impact air",PinnedImpactAir),("impact ground",PinnedImpactGround),("line",PinnedLine),("paddle",PinnedPaddle)};
-        private const string PinnedBall="Core 13 Shell 78 Spark 34 Bolt 54",PinnedImpactAir="Mote 5 Core 5 Shell 18 Debris 6",PinnedImpactGround="Mote 5 Core 4 Shell 34 Debris 6",PinnedLine="Line 24",PinnedPaddle="Mote 16";
+        private const string PinnedBall="Core 9 Shell 52 Spark 17 Bolt 104 Flash 2",PinnedImpactAir="Mote 5 Core 5 Shell 18 Debris 6",PinnedImpactGround="Mote 5 Core 4 Shell 34 Debris 6",PinnedLine="Line 24",PinnedPaddle="Mote 16";
         // The set of roles each fixture field spawns over 2.4 s (its arrival impact included), as BlastChecks runs them.
         private static readonly (string kind,string fx,string roles)[] FieldRoles={
             ("black-hole",null,"Mote Core Shell Debris Streak"),("acid",null,"Mote Core Shell Debris Cloud Bubble"),
@@ -90,7 +94,8 @@ namespace ChipArena.UnityConversion
             {
                 var sim=new NativeBlastSim();
                 if(Enum.TryParse<NativeBlastStyle>(what,out var style))sim.Blast(style,0,.95,0,3);
-                else if(what=="ball-lightning")sim.Blast(NativeBlastStyle.Shock,0,.95,0,3,1,false,NativeBlastSim.TintOf(what));
+                else if(what=="ball-lightning"||what=="blink-strike"||what=="tidal-wave"||what=="geyser-wall")sim.Blast(NativeBlastSim.StyleOf(what),0,.95,0,3,1,false,NativeBlastSim.TintOf(what));
+                else if(what=="splash")sim.Splash(0,0,0,1,1);
                 else if(what=="impact air")sim.Impact(0,.95,0,1.5,0xffaa64,1);
                 else if(what=="impact ground")sim.Impact(0,.95,0,1.2,0x93db67,1,false,true);
                 else if(what=="line")sim.Line(0,.95,0,4,1.5,2,0xffffff,0xb66cff,1,.3,.22,.08);
@@ -98,7 +103,8 @@ namespace ChipArena.UnityConversion
                 string h=Histogram(sim);got.Append("(\"").Append(what).Append("\",\"").Append(h).Append("\"),");if(h!=roles)ok=false;n++;
                 // A tint never changes the roles (only colours): the tinted looks match their style.
             }
-            foreach(var (style,tag) in new[]{(NativeBlastStyle.Kinetic,"frag"),(NativeBlastStyle.Kinetic,"tidal-wave"),(NativeBlastStyle.Frost,"geyser-wall"),(NativeBlastStyle.Shock,"blink-strike"),(NativeBlastStyle.Fire,"flame-lance")})
+            // The two water looks (tidal-wave, geyser-wall) have their own composition (pinned above); blink-strike (cyan) draws no crackle.
+            foreach(var (style,tag) in new[]{(NativeBlastStyle.Kinetic,"frag"),(NativeBlastStyle.Fire,"flame-lance")})
             {var a=new NativeBlastSim();a.Blast(style,0,.95,0,3,1,false,NativeBlastSim.TintOf(tag));var b=new NativeBlastSim();b.Blast(style,0,.95,0,3);Check(Histogram(a)==Histogram(b),tag+" has its style's roles");n++;}
             var fields=new StringBuilder();
             foreach(var (kind,fx,roles) in FieldRoles)
@@ -165,17 +171,25 @@ namespace ChipArena.UnityConversion
             foreach(NativeBlastStyle style in Enum.GetValues(typeof(NativeBlastStyle)))foreach(double R in new[]{.4,1.2,3,6})foreach(var (y,floor) in new (double,double?)[]{(.95,null),(3,0),(5,NativeBlastSim.NoFloor)})
             {
                 var sim=new NativeBlastSim();sim.Blast(style,1,y,-2,R,1,false,null,floor);string what=style+" r"+R+" at "+y;
-                int expected=style==NativeBlastStyle.Void?0:1;Check(sim.Shocks.Count==expected,what+": one shock record per front ("+sim.Shocks.Count+")");n++;if(expected==0)continue;
-                var s=sim.Shocks[0];double g=floor??y-.95;bool near=y-g<=NativeBlastSim.NearGround;
-                Check(s.Radius==Math.Max(.4,R)&&s.Born==0&&s.Life==NativeBlastSim.ShockLife&&s.Floor==g&&s.Seed==0,what+": record radius, birth, life, floor and seed");
+                int expected=style==NativeBlastStyle.Void?0:style==NativeBlastStyle.Quake?2:1;Check(sim.Shocks.Count==expected,what+": one shock record per front, and Quake's slam wave ("+sim.Shocks.Count+")");n++;if(expected==0)continue;
+                var s=sim.Shocks[0];double g=floor??y-.95;bool near=y-g<=NativeBlastSim.NearGround,implosion=style==NativeBlastStyle.Implosion;double born=implosion?NativeBlastSim.ImplosionPop:0;
+                Check(s.Radius==Math.Max(.4,R)&&s.Born==born&&s.Life==NativeBlastSim.ShockLife&&s.Floor==g&&s.Seed==0,what+": record radius, birth (Implosion's at its pop), life, floor and seed");
+                if(style==NativeBlastStyle.Quake)
+                {
+                    // The slam wave: an upright wall on the floor point, from SlamStart to SlamReach of the radius in SlamTravel, never a dome.
+                    var w=sim.Shocks[1];double rr=Math.Max(.4,R);
+                    Check(w.Kind==NativeShockKind.Slam&&!w.Dome&&w.Y==(near?g:y)&&Math.Abs(w.Start-NativeBlastSim.SlamStart*rr)<1e-12&&Math.Abs(w.Radius-NativeBlastSim.SlamReach*rr)<1e-12&&w.Travel==NativeBlastSim.SlamTravel&&w.FrontTime==NativeBlastSim.SlamTravel&&w.Life==NativeBlastSim.SlamLife&&w.Height==Math.Max(NativeBlastSim.SlamMinHeight,NativeBlastSim.SlamHeight*rr)&&w.Seed==1,what+": the slam wave record");
+                    Check(w.RadiusAt(w.Born+NativeBlastSim.SlamTravel)==w.Radius&&w.RadiusAt(w.Born+NativeBlastSim.SlamTravel*.5)<w.Radius&&w.Fade(w.Born+NativeBlastSim.SlamLife)==0,what+": the slam wave reaches its radius at SlamTravel and is gone at SlamLife");n+=2;
+                }
+                if(implosion){Check(!s.Started(0)&&s.Started(born)&&s.RadiusAt(born)==s.Start,what+": the front waits for the pop");for(int i=0;i<(int)NativeBlastSim.Round(born/Dt);i++)sim.Update(Dt);n++;}
                 Check(style==NativeBlastStyle.Nova?(s.Kind==NativeShockKind.Nova&&!s.Dome&&s.Y==Math.Max(g+.35,y)&&s.Start==.25):(s.Kind==NativeShockKind.Blast&&s.Dome==near&&s.Y==(near?g:y)&&s.Start==Math.Min(.25,s.Radius*.2)),what+": record origin and shape");
                 Check(s.Style==style&&s.Voxels>=NativeBlastSim.MinVoxels,what+": record style and voxels");
                 for(int i=0;i<steps;i++){sim.Update(Dt);if(i<steps-1)Check(s.RadiusAt(sim.Time)<s.Radius,what+": still growing");}
                 // The sim clock sums frame steps, so it lands on FrontSeconds to within rounding; the record itself is exact there.
-                Check(Math.Abs(sim.Time-NativeBlastSim.FrontSeconds)<1e-12&&s.RadiusAt(s.Born+NativeBlastSim.FrontSeconds)==s.Radius&&s.Progress(s.Born+NativeBlastSim.FrontSeconds)==1&&Math.Abs(s.RadiusAt(sim.Time)-s.Radius)<1e-9&&s.Fade(sim.Time)==1,what+": the record ends exactly on the gameplay radius at FrontSeconds");
+                Check(Math.Abs(sim.Time-born-NativeBlastSim.FrontSeconds)<1e-12&&s.RadiusAt(s.Born+NativeBlastSim.FrontSeconds)==s.Radius&&s.Progress(s.Born+NativeBlastSim.FrontSeconds)==1&&Math.Abs(s.RadiusAt(sim.Time)-s.Radius)<1e-9&&s.Fade(sim.Time)==1,what+": the record ends exactly on the gameplay radius at FrontSeconds");
                 Check(Within(sim.Glow,s.X,s.Y,s.Z,s.Radius,.005)>=NativeBlastSim.MinVoxels,what+": its Shell voxels are on the record's radius");
-                Check(sim.Shocks.Count==1,what+": alive through the fade");
-                for(int i=0;i<12;i++)sim.Update(Dt);Check(sim.Shocks.Count==0,what+": expired after ShockLife");n+=5;
+                Check(sim.Shocks.Count>=1&&sim.Shocks[0].Kind!=NativeShockKind.Slam,what+": alive through the fade");
+                for(int i=0;i<12;i++)sim.Update(Dt);Check(sim.Shocks.Count==0,what+": expired after ShockLife (and the slam wave after SlamLife)");n+=5;
             }
             // Shell records match their voxels mid-flight too (the front is linear).
             {
@@ -205,40 +219,46 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- smoke colour ----
+        // Base layer: light styles' smoke no longer fades to near-black. Toon pass (2026-10-11): dark styles' smoke ends slate
+        // (never the source's near-black DarkSmoke), and no puff a blast spawns ends near-black except Void's ink, which is black
+        // on purpose (its black shapes over the violet glow).
         private static int Smoke(string root)
         {
             int n=0;
             foreach(NativeBlastStyle style in Enum.GetValues(typeof(NativeBlastStyle)))
             {
                 int end=NativeBlastSim.SmokeEnd(style),smoke=NativeBlastSim.SmokeColor(style);double l=NativeBlastSim.Luminance(smoke),le=NativeBlastSim.Luminance(end);
-                if(!NativeBlastSim.LightSmoke(style)){Check(end==NativeBlastSim.DarkSmoke,style+" smoke stays sooty");n++;continue;}
+                if(!NativeBlastSim.LightSmoke(style)){Check(end!=NativeBlastSim.DarkSmoke&&le>2*NativeBlastSim.Luminance(NativeBlastSim.DarkSmoke)||style==NativeBlastStyle.Void&&end!=NativeBlastSim.DarkSmoke,style+" smoke ends slate, not near-black ("+end.ToString("x6")+")");n++;continue;}
                 Check(le>=NativeBlastSim.SmokeFloor*l&&le<=.7*l,style+" smoke ends darker but at least "+NativeBlastSim.SmokeFloor+" of its luminance ("+le/l+")");
                 NativeBlastSim.Linear(smoke,out double r,out double g,out double b);NativeBlastSim.Linear(end,out double er,out double eg,out double eb);
                 Check(Math.Max(er,Math.Max(eg,eb))-Math.Min(er,Math.Min(eg,eb))<=(Math.Max(r,Math.Max(g,b))-Math.Min(r,Math.Min(g,b)))*.7+1e-3,style+" smoke ends less saturated");n+=2;
-                // Behaviour: every drawn Smoke particle of the style (and its tints) stays above the floor through its life.
-                foreach(var tag in new string[]{null,"geyser-wall","tidal-wave","frag"})
-                {
-                    if(tag!=null&&NativeBlastSim.StyleOf(tag)!=style)continue;
-                    var sim=new NativeBlastSim();sim.Blast(style,0,.95,0,3,1,false,NativeBlastSim.TintOf(tag));int seen=0;double low=1e9;
-                    for(int f=0;f<200;f++){sim.Update(Dt);var o=sim.Solid.Output;for(int i=0;i<sim.Solid.Drawn;i++){int w=i*NativeBlastPool.Stride;if((NativeFxRole)o[w+NativeBlastPool.RoleAt]!=NativeFxRole.Smoke)continue;seen++;low=Math.Min(low,.2126*o[w+10]+.7152*o[w+11]+.0722*o[w+12]);}}
-                    // Shock and Nova blasts draw no smoke (the source's); the others do.
-                    if(seen==0){Check(style==NativeBlastStyle.Shock||style==NativeBlastStyle.Nova,style+" draws smoke");continue;}
-                    Check(low>=NativeBlastSim.SmokeFloor*l*(1-1e-5),style+(tag!=null?" "+tag:"")+" smoke never darkens below "+NativeBlastSim.SmokeFloor+" of its own luminance (lowest "+low/l+")");n++;
-                }
             }
-            Check(NativeBlastSim.LightSmoke(NativeBlastStyle.Frost)&&NativeBlastSim.LightSmoke(NativeBlastStyle.Kinetic)&&!NativeBlastSim.LightSmoke(NativeBlastStyle.Fire)&&!NativeBlastSim.LightSmoke(NativeBlastStyle.Void),"light and dark styles");
-            Check(NativeBlastSim.SmokeEnd(NativeBlastStyle.Frost)!=NativeBlastSim.DarkSmoke&&NativeBlastSim.Luminance(NativeBlastSim.SmokeEnd(NativeBlastStyle.Frost))>.25,"frost steam is no longer black");
-            // The fixture exporter applies the same cut (and the seed cut) to the source, and the fixture says so.
+            Check(NativeBlastSim.SmokeEnd(NativeBlastStyle.Fire)==NativeBlastSim.Slate&&NativeBlastSim.Slate==0x3e4556&&NativeBlastSim.FireYellow==0xffce00,"fire smoke ends slate #3E4556; fire puffs start #FFCE00");
+            // Behaviour: the end colour of every puff (Smoke, Cloud, Mist, Fireball, Water) of every look but Void, which is dark on
+            // purpose: black ink over its violet glow, then a lilac ring that sinks into navy.
+            double floor=NativeBlastSim.Luminance(0x1d1f2a);
+            foreach(var (style,tag) in new (NativeBlastStyle,string)[]{(NativeBlastStyle.Fire,null),(NativeBlastStyle.Mine,null),(NativeBlastStyle.Meteor,null),(NativeBlastStyle.Kinetic,null),(NativeBlastStyle.Kinetic,"frag"),(NativeBlastStyle.Kinetic,"tidal-wave"),(NativeBlastStyle.Frost,null),(NativeBlastStyle.Frost,"geyser-wall"),(NativeBlastStyle.Toxic,null),(NativeBlastStyle.Quake,null),(NativeBlastStyle.Implosion,null)})
+            {
+                var sim=new NativeBlastSim();sim.Blast(style,0,.95,0,3,1,false,NativeBlastSim.TintOf(tag));int puffs=0;double low=1e9;
+                for(int i=0;i<sim.Solid.Count;i++)
+                {
+                    var role=sim.Solid.Identity(i).role;if(role!=NativeFxRole.Smoke&&role!=NativeFxRole.Cloud&&role!=NativeFxRole.Mist&&role!=NativeFxRole.Fireball&&role!=NativeFxRole.Water)continue;
+                    var c=sim.Solid.Colors(i);puffs++;low=Math.Min(low,NativeBlastSim.Luminance(c.to));
+                }
+                Check(puffs>0&&low>=floor,(tag??style.ToString())+": its puffs end slate or lighter, never near-black (lowest end luminance "+low+", "+puffs+" puffs)");n++;
+            }
+            // The Electron exporter still mirrors the base layer's cuts for the source frames it records (impacts, fields, lines,
+            // paddles), and the fixture says so.
             string exporter=File.ReadAllText(Path.Combine(root,"tools/export_blast_fixtures.mjs"));
-            Check(exporter.Contains("const FX_CUTS=[")&&exporter.Contains("function __ownerSmokeEnd(style,smoke)")&&exporter.Contains("['frost','kinetic','shock','nova','implosion','quake']")&&exporter.Contains("e=c=>(c+(l-c)*.4)*.5")&&NativeBlastSim.SmokeGrey==.4&&NativeBlastSim.SmokeDim==.5,"the exporter mirrors SmokeEnd");
-            int light=0;foreach(NativeBlastStyle style in Enum.GetValues(typeof(NativeBlastStyle)))if(NativeBlastSim.LightSmoke(style))light++;Check(light==6&&NativeBlastSim.LightSmoke(NativeBlastStyle.Quake),"six light smoke styles, Quake's dust among them, as the exporter lists");
-            // The fuse sparks' start: the exporter moves the source's ground + .85 to the modelled tip, ground + .472 without a floor.
+            Check(exporter.Contains("const FX_CUTS=[")&&exporter.Contains("function __ownerSmokeEnd(style,smoke)")&&exporter.Contains("e=c=>(c+(l-c)*.4)*.5")&&NativeBlastSim.SmokeGrey==.4&&NativeBlastSim.SmokeDim==.5,"the exporter keeps the light-smoke cut (light styles only; its source blasts are no longer recorded)");
+            int light=0;foreach(NativeBlastStyle style in Enum.GetValues(typeof(NativeBlastStyle)))if(NativeBlastSim.LightSmoke(style))light++;Check(light==6&&NativeBlastSim.LightSmoke(NativeBlastStyle.Quake)&&exporter.Contains("['frost','kinetic','shock','nova','implosion','quake']"),"six light smoke styles, Quake's dust among them, as the exporter lists");
             var bombField=new NativeBlastField{Kind="bomb",X=0,Y=.95,Z=0,Radius=3,Born=0,Until=3};
             Check(exporter.Contains("this.glow.spawn(f.pos.x,ground+.472,f.pos.z,")&&Math.Abs(NativeFieldRules.BombTipY(bombField)-(Math.Max(.03,bombField.Y-.95)+.472))<1e-12,"the exporter mirrors the fuse sparks' start at the modelled tip");
             Check(exporter.Contains("this.euler.set(age*sp*1.3+this.seed[i],age*sp+this.seed[i]*.7,0);")&&exporter.Contains("this.seed[i]=this.seed[last];"),"the exporter mirrors the stable tumble");
+            Check(exporter.Contains("No blast runs since the toon pass")&&!exporter.Contains("run({kind:'blast'"),"the exporter records no source blast runs since the toon pass");
             using(var doc=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Tests/blast-parity.json"))))
             {var fx=doc.RootElement.GetProperty("owner").GetProperty("fx");Check(fx.GetProperty("date").GetString()=="2026-10-11"&&fx.GetProperty("smoke").GetBoolean()&&fx.GetProperty("seed").GetBoolean()&&fx.GetProperty("quakeDust").GetBoolean()&&fx.GetProperty("fuseTip").GetBoolean()&&fx.GetProperty("cuts").GetInt32()==8,"the parity frames carry the effects overhaul cuts");}
-            return n+5;
+            return n+7;
         }
 
         // ---- the extended draw list ----
@@ -255,7 +275,7 @@ namespace ChipArena.UnityConversion
         }
         private static int DrawList()
         {
-            int n=0;Check(NativeBlastPool.Stride==23&&NativeBlastPool.RoleAt==13&&NativeBlastPool.AgeAt==14&&NativeBlastPool.SeedAt==15&&NativeBlastPool.VelocityAt==16&&NativeBlastPool.RawSizeAt==19&&NativeBlastPool.FloorAt==20&&NativeBlastPool.StrandAt==21&&NativeBlastPool.StartSizeAt==22,"the draw list layout (the source's 0-12 first)");
+            int n=0;Check(NativeBlastPool.Stride==25&&NativeBlastPool.RoleAt==13&&NativeBlastPool.AgeAt==14&&NativeBlastPool.SeedAt==15&&NativeBlastPool.VelocityAt==16&&NativeBlastPool.RawSizeAt==19&&NativeBlastPool.FloorAt==20&&NativeBlastPool.StrandAt==21&&NativeBlastPool.StartSizeAt==22&&NativeBlastPool.HexFromAt==23&&NativeBlastPool.HexToAt==24,"the draw list layout (the source's 0-12 first; toon pass: the spawn colours at 23 and 24)");
             // Determinism with every new field and the shock records: two runs, a Reset replay, an injected generator.
             var a=new NativeBlastSim();var b=new NativeBlastSim();Script(a,45);Script(b,45);Check(a.Solid.Drawn+a.Glow.Drawn>100&&a.Shocks.Count>0&&Same(a,b),"two seeded runs draw identical lists and fronts");
             b.Reset();Script(b,45);Check(Same(a,b),"Reset replays the same lists, seeds and fronts");
@@ -275,7 +295,8 @@ namespace ChipArena.UnityConversion
                         Check(o[w+NativeBlastPool.VelocityAt]==(float)m.vx&&o[w+NativeBlastPool.VelocityAt+1]==(float)m.vy&&o[w+NativeBlastPool.VelocityAt+2]==(float)m.vz&&o[w+NativeBlastPool.FloorAt]==(float)m.floor,"entry velocity and floor");
                         double raw=o[w+NativeBlastPool.RawSizeAt],edge=o[w+3];Check(o[w+NativeBlastPool.AgeAt]>=0&&o[w+NativeBlastPool.AgeAt]<=1&&(pool.Glow?Math.Abs(edge-raw)<1e-6:Math.Abs(edge-raw*Math.Min(1,(1-u)*4))<1e-5),"raw size before the opaque pool's end shrink");
                         // The start size is size0: the raw size lerps from it toward size1 (so raw = start at u 0).
-                        Check(o[w+NativeBlastPool.StartSizeAt]>0&&o[w+NativeBlastPool.StrandAt]==pool.Strand(i)&&pool.Strand(i)==id.seed,"start size and a lone particle's own strand");n+=4;
+                        Check(o[w+NativeBlastPool.StartSizeAt]>0&&o[w+NativeBlastPool.StrandAt]==pool.Strand(i)&&pool.Strand(i)==id.seed,"start size and a lone particle's own strand");
+                        var hex=pool.Colors(i);Check(o[w+NativeBlastPool.HexFromAt]==hex.from&&o[w+NativeBlastPool.HexToAt]==hex.to&&hex.from>=0&&hex.from<0x1000000&&(int)(float)hex.from==hex.from,"the spawn colours, exact as floats");n+=5;
                     }
                     Check(drawn==pool.Drawn,"every drawn entry checked");
                 }
@@ -348,6 +369,59 @@ namespace ChipArena.UnityConversion
             }
             pool.Clear();pool.Spawn(0,0,0,0xffffff,1,1,1);Check(pool.Sparks[NativeBurstPool.SparkSeedAt]==0,"Clear restarts spark seeds");
             return n+2;
+        }
+
+        // ---- the toon sheet (toon pass) ----
+        private const ulong ToonHash=0x4587c2a0eec33824UL;
+        private static int Toon(out double ms)
+        {
+            int n=0;var sw=Stopwatch.StartNew();var t=NativeVfxTextures.ToonSheet();sw.Stop();ms=sw.Elapsed.TotalMilliseconds;int W=NativeVfxTextures.ToonWidth,H=NativeVfxTextures.ToonHeight,T=NativeVfxTextures.ToonTile;
+            Check(t.Length==W*H*4&&W==T*NativeVfxTextures.ToonColumns&&H==T*NativeVfxTextures.ToonRows&&T==128&&NativeVfxTextures.ToonColumns*NativeVfxTextures.ToonRows==32,"toon sheet layout: 8 x 4 tiles of 128 px");
+            Check(NativeVfxTextures.Hash(NativeVfxTextures.ToonSheet())==NativeVfxTextures.Hash(t),"the toon sheet is deterministic");
+            ulong hash=NativeVfxTextures.Hash(t);Check(hash==ToonHash,"pinned toon sheet hash (now 0x"+hash.ToString("x16")+")");n+=3;
+            Check(NativeVfxTextures.FlashFirst==NativeVfxTextures.ToonPuffs&&NativeVfxTextures.CrescentFirst==NativeVfxTextures.FlashFirst+NativeVfxTextures.FlashFrames&&NativeVfxTextures.SpikeTile==NativeVfxTextures.CrescentFirst+NativeVfxTextures.Crescents&&NativeVfxTextures.DropTile==31,"tile plan: 16 puffs, 8 flash frames, 4 crescents, spike, lens, star, droplet");n++;
+            // Texel (tile, x, y) in tile space (-1..1, y up): its channels.
+            byte C(int tile,double x,double y,int ch){int px=(int)Math.Floor((x+1)/2*T),py=(int)Math.Floor((y+1)/2*T);px=Math.Max(0,Math.Min(T-1,px));py=Math.Max(0,Math.Min(T-1,py));int ox=(tile%8)*T,oy=(tile/8)*T;return t[((oy+py)*W+ox+px)*4+ch];}
+            bool Inside(int tile,double x,double y)=>C(tile,x,y,0)>=128;
+            for(int tile=0;tile<32;tile++)
+            {
+                // Every shape stays within ToonReach of its tile's centre (the quad spans .92 of the tile): no neighbour shows.
+                int inside=0,outside=0,erosion=0;bool reach=true,clean=true;
+                for(int py=0;py<T;py++)for(int px=0;px<T;px++)
+                {
+                    double x=(px+.5)/T*2-1,y=(py+.5)/T*2-1,r=Math.Sqrt(x*x+y*y);int w=(((tile/8)*T+py)*W+(tile%8)*T+px)*4;bool inn=t[w]>=128;
+                    if(inn){inside++;if(r>NativeVfxTextures.ToonReach+.02)reach=false;if(tile<16&&t[w+2]==0)erosion++;}else{outside++;if(tile<16&&t[w+2]!=0)clean=false;}
+                }
+                Check(inside>40&&reach,"toon tile "+tile+": a shape inside its reach ("+inside+" texels)");Check(clean&&erosion==0,"toon tile "+tile+": the erosion field covers the puff and only the puff");n+=2;
+                if(tile<16)
+                {
+                    // The hard shadow: some of a puff is shadowed (G below .5; lower right crescents and cast shadows), at least 40% of it lit.
+                    int shadow=0,lit=0;for(int py=0;py<T;py+=2)for(int px=0;px<T;px+=2){int w=(((tile/8)*T+py)*W+(tile%8)*T+px)*4;if(t[w]<128)continue;if(t[w+1]<128)shadow++;else lit++;}
+                    Check(shadow>8&&lit*5>(lit+shadow)*2,"toon puff "+tile+": a hard shadow band under a mostly lit body ("+shadow+" shadow, "+lit+" lit)");n++;
+                }
+            }
+            // The erosion eats the puffs into blobs: at the start every puff texel survives, near the end only blob cores, at the end none.
+            {
+                int all=0,early=0,late=0,end=0;for(int tile=0;tile<16;tile++)for(int py=0;py<T;py++)for(int px=0;px<T;px++){int w=(((tile/8)*T+py)*W+(tile%8)*T+px)*4;if(t[w]<128)continue;all++;double b=t[w+2]/255.0;if(b>NativeVfxTextures.ToonCut(.2))early++;if(b>NativeVfxTextures.ToonCut(.85))late++;if(b>NativeVfxTextures.ToonCut(1))end++;}
+                Check(early==all&&late>0&&late<all/3&&end==0,"toon erosion: whole at u .2 ("+early+"/"+all+"), blob cores at u .85 ("+late+"), gone at 1 ("+end+")");n++;
+                Check(NativeVfxTextures.ToonCut(0)==0&&NativeVfxTextures.ToonCut(NativeVfxTextures.ToonEatFrom)==0&&NativeVfxTextures.ToonCut(1)>1,"the cut is 0 until ToonEatFrom and passes 1 at the end");n++;
+            }
+            // The round flash flipbook: frame 0 a full disc; a hole rising from below eats it (its lower middle is open by frame 4)
+            // into a thin crescent at the top in the last frame.
+            {
+                double lowest=9;int last=0;for(int py=0;py<T;py++)for(int px=0;px<T;px++){double x=(px+.5)/T*2-1,y=(py+.5)/T*2-1;if(Inside(NativeVfxTextures.FlashFirst+7,x,y)){last++;lowest=Math.Min(lowest,y);}}
+                Check(Inside(NativeVfxTextures.FlashFirst,0,0)&&Inside(NativeVfxTextures.FlashFirst,0,-.3)&&!Inside(NativeVfxTextures.FlashFirst+4,0,-.3)&&Inside(NativeVfxTextures.FlashFirst+4,0,.6)&&last>40&&lowest>.3,"the round flash: a disc eaten from below into a thin crescent (last frame "+last+" texels, lowest "+lowest.ToString("0.00")+")");n++;
+            }
+            Check(Inside(NativeVfxTextures.SpikeTile,.6,0)&&!Inside(NativeVfxTextures.SpikeTile,-.7,0)&&!Inside(NativeVfxTextures.SpikeTile,.6,.3),"the spike: an arrowhead toward +x with a concave back");
+            Check(Inside(NativeVfxTextures.LensTile,0,0)&&Inside(NativeVfxTextures.LensTile,.7,0)&&!Inside(NativeVfxTextures.LensTile,0,.3),"the lens: long along x, thin across");
+            Check(Inside(NativeVfxTextures.StarTile,0,.7)&&Inside(NativeVfxTextures.StarTile,.7,0)&&!Inside(NativeVfxTextures.StarTile,.5,.5),"the star: four points");
+            Check(Inside(NativeVfxTextures.DropTile,.5,0)&&!Inside(NativeVfxTextures.DropTile,-.95,0)&&!Inside(NativeVfxTextures.DropTile,.5,.5),"the droplet: a round head toward +x");
+            for(int c=0;c<NativeVfxTextures.Crescents;c++)Check(Inside(NativeVfxTextures.CrescentFirst+c,.7,0)&&!Inside(NativeVfxTextures.CrescentFirst+c,0,0),"crescent "+c+": bulging toward +x, hollow behind");
+            n+=4+NativeVfxTextures.Crescents;
+            // Distances decode back to tile units; the UV rectangles tile the sheet.
+            Check(Math.Abs(NativeVfxTextures.ToonDistance(128)-(128/255.0-.5)*.5)<1e-12&&Math.Abs(NativeVfxTextures.ToonDistance(255)-NativeVfxTextures.ToonSdfRange)<1e-12,"stored distances decode to tile units");
+            NativeVfxTextures.ToonRect(NativeVfxTextures.DropTile,out double u0,out double v0,out double u1,out double v1);Check(u0==.875&&v0==.75&&u1==1&&v1==1,"tile 31 is the top-right tile");n+=2;
+            return n;
         }
 
         // ---- textures ----

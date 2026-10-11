@@ -1,12 +1,16 @@
 #if ARENA_TESTS
 using System;
+using System.Globalization;
 using System.IO;
 using System.Text.Json;
 namespace ChipArena.UnityConversion
 {
-    // Chip blasts: NativeBlastSim against the pinned source's drawn frames (tools/export_blast_fixtures.mjs runs
-    // client/chip-blasts.ts with the owner's cuts), plus determinism, front timing, pool capacities, minimum voxels, quality
-    // scaling, the effect cues, the renderer's cube winding, and the owner's lightning and area-disc cuts.
+    // Chip blasts: NativeBlastSim's impacts, fields, lines and paddles against the pinned source's drawn frames
+    // (tools/export_blast_fixtures.mjs runs client/chip-blasts.ts with the owner's cuts); its blasts against Unity-owned pinned
+    // frames (Tests/blast-pinned.json, since the toon pass of 2026-10-11 retuned every style: the owner asked for the overhaul
+    // and Electron parity is no longer required for it; regenerate with CHIP_PIN_BLASTS=1 after an intended change); plus
+    // determinism, front timing to the gameplay radius, pool capacities, minimum voxels, quality scaling, spawn budgets, the
+    // effect cues, the renderer's cube winding, and the owner's lightning and area-disc cuts.
     internal static class BlastChecks
     {
         private const double Dt=1.0/60;
@@ -17,14 +21,27 @@ namespace ChipArena.UnityConversion
             using var document=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Tests/blast-parity.json")));var json=document.RootElement;var k=json.GetProperty("constants");var capacity=k.GetProperty("capacity");
             Check(k.GetProperty("frontSeconds").GetDouble()==NativeBlastSim.FrontSeconds&&k.GetProperty("minVoxels").GetInt32()==NativeBlastSim.MinVoxels,"front seconds and minimum voxels match the source");
             Check(capacity.GetProperty("solid").GetInt32()==NativeBlastSim.SolidCapacity&&capacity.GetProperty("glow").GetInt32()==NativeBlastSim.GlowCapacity&&capacity.GetProperty("lights").GetInt32()==NativeBlastSim.LightCapacity,"pool capacities match the source");
-            int cases=0,frames=0;foreach(var c in json.GetProperty("cases").EnumerateArray()){frames+=Replay(c,cases);cases++;}
-            Determinism();Front();Capacity();Minimum();Quality();Cues();Frames();Winding();StandIns(root);int lightning=NoBlueLightning(root,json),disc=NoAreaDisc(root,json);
-            Console.WriteLine("PASS "+cases+" source chip blast runs ("+frames+" drawn frames: 11 styles x 3 radii, quality/compat, tints, impacts, 20 fields, line, paddle) and blast determinism, front, capacity, minimum-voxel, quality, cue, frame-rule and winding checks, the event-to-effect table (no blast without a source blast), "+lightning+" no-blue/cyan-lightning checks (owner 2026-10-10) and "+disc+" no-area-disc and real-floor checks (owner 2026-10-11)");
+            var blasts=json.GetProperty("blasts");Check(blasts.GetProperty("owner").GetString()=="unity"&&blasts.GetProperty("since").GetString()=="2026-10-11"&&blasts.GetProperty("fixture").GetString()==PinnedFile,"the source frames hand the blasts to the Unity-owned fixture");
+            int cases=0,frames=0;foreach(var c in json.GetProperty("cases").EnumerateArray()){Check(c.GetProperty("kind").GetString()!="blast","no source blast run is replayed");frames+=Replay(c,cases);cases++;}
+            // The Unity-owned blast frames: written from the sim with CHIP_PIN_BLASTS=1, replayed (with the spawn count) otherwise.
+            string pinPath=Path.Combine(root,PinnedFile);if(Environment.GetEnvironmentVariable("CHIP_PIN_BLASTS")=="1")File.WriteAllText(pinPath,Pin());
+            using var pinDoc=JsonDocument.Parse(File.ReadAllText(pinPath));var pinned=pinDoc.RootElement;int pinnedCases=0,pinnedFrames=0;
+            Check(pinned.GetProperty("source").GetProperty("kind").GetString()=="unity"&&pinned.GetProperty("source").GetProperty("since").GetString()=="2026-10-11","the pinned blast frames are Unity-owned");
+            var expected=PinCases();Check(pinned.GetProperty("cases").GetArrayLength()==expected.Count,"the pinned fixture holds every planned case ("+pinned.GetProperty("cases").GetArrayLength()+" of "+expected.Count+")");
+            foreach(var c in pinned.GetProperty("cases").EnumerateArray()){Check(Name(c)==expected[pinnedCases].Name,"pinned case "+pinnedCases+" is "+expected[pinnedCases].Name+" ("+Name(c)+")");pinnedFrames+=Replay(c,cases+pinnedCases);pinnedCases++;}
+            Determinism();Front();Capacity();Minimum();Quality();Cues();Frames();Winding();StandIns(root);int lightning=NoBlueLightning(root,json),disc=NoAreaDisc(root,json),budget=ToonFxChecks.Budgets();
+            Console.WriteLine("PASS "+cases+" source chip blast runs ("+frames+" drawn frames: impacts, 20 fields, line, paddle), "+pinnedCases+" Unity-owned pinned blast runs ("+pinnedFrames+" frames: 11 styles x 3 radii, quality/compat, tints and water looks, airbursts, floor splashes) and blast determinism, front-to-radius timing, capacity, minimum-voxel, quality, cue, frame-rule and winding checks, the event-to-effect table (no blast without a source blast), "+lightning+" no-blue/cyan-lightning checks (owner 2026-10-10), "+disc+" no-area-disc and real-floor checks (owner 2026-10-11) and "+budget+" toon-pass budget checks");
         }
         private static void Start(NativeBlastSim sim,JsonElement c,out NativeBlastField? field)
         {
             string kind=c.GetProperty("kind").GetString(),effect=c.GetProperty("effect").GetString();double R=c.GetProperty("radius").GetDouble(),q=c.GetProperty("quality").GetDouble();bool compat=c.GetProperty("compat").GetBoolean();field=null;
-            if(kind=="blast"){string tag=c.TryGetProperty("tag",out var t)?t.GetString():null;var style=Parse(effect);if(tag!=null)Check(NativeBlastSim.StyleOf(tag)==style,"style of "+tag);sim.Blast(style,0,.95,0,R,q,compat,NativeBlastSim.TintOf(tag));}
+            if(kind=="blast")
+            {
+                string tag=c.TryGetProperty("tag",out var t)?t.GetString():null;var style=Parse(effect);if(tag!=null)Check(NativeBlastSim.StyleOf(tag)==style,"style of "+tag);
+                double y=c.TryGetProperty("y",out var yy)?yy.GetDouble():.95;double? floor=c.TryGetProperty("floor",out var ff)?ff.GetDouble():(double?)null;
+                int spawned=sim.Blast(style,0,y,0,R,q,compat,NativeBlastSim.TintOf(tag),floor);if(c.TryGetProperty("spawned",out var n))Check(spawned==n.GetInt32(),Name(c)+" spawns its pinned "+n.GetInt32()+" particles ("+spawned+")");
+            }
+            else if(kind=="splash"){int spawned=sim.Splash(0,0,0,R,q);Check(spawned==c.GetProperty("spawned").GetInt32(),Name(c)+" spawns its pinned particles ("+spawned+")");}
             else if(kind=="impact")sim.Impact(0,.95,0,R,c.GetProperty("hot").GetInt32(),q,compat,c.GetProperty("ground").GetBoolean());
             else if(kind=="field"){var fx=c.GetProperty("fx");field=new NativeBlastField{Id=7,Kind=effect,Fx=fx.ValueKind==JsonValueKind.Null?null:fx.GetString(),X=0,Y=.95,Z=0,Radius=R,Born=0,Until=c.GetProperty("until").GetDouble(),LockAt=c.GetProperty("lockAt").GetDouble()};}
             else if(kind=="line")sim.Line(0,.95,0,4,1.5,2,0xffffff,0xb66cff,1,.3,.22,.08);
@@ -32,10 +49,67 @@ namespace ChipArena.UnityConversion
             else throw new Exception("Unknown fixture kind "+kind);
         }
         private static void Near(double a,double b,double tolerance,string what){if(!(Math.Abs(a-b)<=tolerance+Math.Abs(b)*2e-5))throw new Exception("Chip blast parity: "+what+": "+a+" != "+b);}
+        private static string Name(JsonElement c)=>c.GetProperty("kind").GetString()+":"+c.GetProperty("effect").GetString()+(c.TryGetProperty("fx",out var fx)&&fx.ValueKind==JsonValueKind.String?":"+fx.GetString():"")+(c.TryGetProperty("tag",out var t)?":"+t.GetString():"")
+            +" r"+c.GetProperty("radius").GetDouble().ToString("R",CultureInfo.InvariantCulture)+" q"+c.GetProperty("quality").GetDouble().ToString("R",CultureInfo.InvariantCulture)+(c.GetProperty("compat").GetBoolean()?" compat":"")+(c.TryGetProperty("y",out var y)?" y"+y.GetDouble().ToString("R",CultureInfo.InvariantCulture):"");
+
+        // ---- the Unity-owned pinned blast frames (toon pass, 2026-10-11) ----
+        public const string PinnedFile="Tests/blast-pinned.json";
+        private static readonly double[] PinTimes={.05,.15,.3,.6,1,1.6,2.4};
+        private sealed class PinCase{public string Name,Kind,Effect,Tag;public double Radius,Quality=1,Y=.95;public double? Floor;public bool Compat;}
+        // Every style at three radii, at low quality and in compatibility mode, every tint (the two water looks among them), an
+        // airburst of the floor-hugging looks over a real floor, and two floor splashes.
+        private static System.Collections.Generic.List<PinCase> PinCases()
+        {
+            var list=new System.Collections.Generic.List<PinCase>();string S(NativeBlastStyle s)=>s.ToString().ToLowerInvariant();
+            PinCase B(NativeBlastStyle s,double r,double q=1,bool compat=false,string tag=null,double y=.95,double? floor=null){var c=new PinCase{Kind="blast",Effect=S(s),Tag=tag,Radius=r,Quality=q,Compat=compat,Y=y,Floor=floor};return c;}
+            foreach(NativeBlastStyle s in Enum.GetValues(typeof(NativeBlastStyle)))foreach(double r in new[]{1.2,3,6})list.Add(B(s,r));
+            foreach(NativeBlastStyle s in Enum.GetValues(typeof(NativeBlastStyle)))foreach(var (q,compat) in new[]{(.3,false),(1.0,true)})list.Add(B(s,3,q,compat));
+            foreach(var tag in new[]{"frag","tidal-wave","geyser-wall","orbital-mark","blink-strike","ball-lightning","flame-lance"})list.Add(B(NativeBlastSim.StyleOf(tag),3,tag=="flame-lance"?.5:1,false,tag));
+            foreach(var s in new[]{NativeBlastStyle.Fire,NativeBlastStyle.Quake,NativeBlastStyle.Toxic})list.Add(B(s,3,1,false,null,3,0));
+            list.Add(B(NativeBlastStyle.Frost,3,1,false,"geyser-wall",.15,0));
+            foreach(double size in new[]{1,1.6})list.Add(new PinCase{Kind="splash",Effect="splash",Radius=size});
+            foreach(var c in list)c.Name=c.Kind+":"+c.Effect+(c.Tag!=null?":"+c.Tag:"")+" r"+c.Radius.ToString("R",CultureInfo.InvariantCulture)+" q"+c.Quality.ToString("R",CultureInfo.InvariantCulture)+(c.Compat?" compat":"")+(c.Kind=="blast"&&(c.Y!=.95||c.Floor.HasValue)?" y"+c.Y.ToString("R",CultureInfo.InvariantCulture):"");
+            return list;
+        }
+        private static string J(double v)=>v.ToString("R",CultureInfo.InvariantCulture);
+        private static double R4(double v)=>Math.Round(v*1e5)/1e5;
+        private static double R7(double v)=>v==0?0:double.Parse(v.ToString("G7",CultureInfo.InvariantCulture),CultureInfo.InvariantCulture);
+        // The pinned fixture, in the source fixture's frame format: per frame the drawn counts, index-weighted sums of position,
+        // edge and colour over both pools (solid first), the first drawn particle and every lit pooled light.
+        private static string Pin()
+        {
+            var sb=new System.Text.StringBuilder();
+            sb.Append("{\"source\":{\"kind\":\"unity\",\"sim\":\"Assets/ChipArena/Core/NativeBlastSim.cs\",\"since\":\"2026-10-11\",\"why\":\"effects toon pass: the owner-requested overhaul retunes every blast style; Electron parity is no longer required for it\",\"regenerate\":\"CHIP_PIN_BLASTS=1 (Tests/BlastChecks.cs)\"},");
+            sb.Append("\"dt\":").Append(J(Dt)).Append(",\"cases\":[");bool firstCase=true;
+            foreach(var c in PinCases())
+            {
+                var sim=new NativeBlastSim();int spawned=c.Kind=="splash"?sim.Splash(0,0,0,c.Radius,c.Quality):sim.Blast(Parse(c.Effect),0,c.Y,0,c.Radius,c.Quality,c.Compat,NativeBlastSim.TintOf(c.Tag),c.Floor);
+                if(!firstCase)sb.Append(',');firstCase=false;
+                sb.Append("{\"kind\":\"").Append(c.Kind).Append("\",\"effect\":\"").Append(c.Effect).Append('"');if(c.Tag!=null)sb.Append(",\"tag\":\"").Append(c.Tag).Append('"');
+                sb.Append(",\"radius\":").Append(J(c.Radius)).Append(",\"quality\":").Append(J(c.Quality)).Append(",\"compat\":").Append(c.Compat?"true":"false");
+                if(c.Kind=="blast"&&(c.Y!=.95||c.Floor.HasValue)){sb.Append(",\"y\":").Append(J(c.Y));if(c.Floor.HasValue)sb.Append(",\"floor\":").Append(J(c.Floor.Value));}
+                sb.Append(",\"spawned\":").Append(spawned).Append(",\"frames\":[");int frame=0;bool firstFrame=true;
+                foreach(double t in PinTimes)
+                {
+                    int target=(int)NativeBlastSim.Round(t/Dt);while(frame<target){sim.Update(Dt);frame++;}
+                    var sums=new double[9];int n=0;float[] first=null;
+                    foreach(var pool in new[]{sim.Solid,sim.Glow})for(int i=0;i<pool.Drawn;i++){int w=i*NativeBlastPool.Stride;var o=pool.Output;n++;if(first==null){first=new float[13];Array.Copy(o,w,first,0,13);}for(int j=0;j<6;j++)sums[j]+=o[w+j]*(double)n;for(int j=0;j<3;j++)sums[6+j]+=o[w+10+j]*(double)n;}
+                    if(!firstFrame)sb.Append(',');firstFrame=false;
+                    sb.Append("{\"t\":").Append(J(R4(frame*Dt))).Append(",\"solid\":").Append(sim.Solid.Drawn).Append(",\"glow\":").Append(sim.Glow.Drawn).Append(",\"sums\":[");
+                    for(int j=0;j<9;j++){if(j>0)sb.Append(',');sb.Append(J(R7(sums[j])));}
+                    sb.Append("],\"first\":");if(first==null)sb.Append("null");else{sb.Append('[');for(int j=0;j<13;j++){if(j>0)sb.Append(',');sb.Append(J(R4(first[j])));}sb.Append(']');}
+                    sb.Append(",\"lights\":[");bool firstLight=true;
+                    foreach(var f in sim.Flashes){if(!(f.Intensity>0))continue;NativeBlastSim.Linear(f.Color,out double r,out double g,out double b);if(!firstLight)sb.Append(',');firstLight=false;sb.Append('[');var l=new[]{f.X,f.Y,f.Z,r,g,b,f.Intensity,f.Distance};for(int j=0;j<8;j++){if(j>0)sb.Append(',');sb.Append(J(R4(l[j])));}sb.Append(']');}
+                    sb.Append("]}");
+                }
+                sb.Append("]}");
+            }
+            return sb.Append("]}\n").ToString();
+        }
         private static int Replay(JsonElement c,int index)
         {
             var sim=new NativeBlastSim();Start(sim,c,out var field);int frame=0,count=0;double q=c.GetProperty("quality").GetDouble();bool compat=c.GetProperty("compat").GetBoolean();
-            string name="#"+index+" "+c.GetProperty("kind").GetString()+":"+c.GetProperty("effect").GetString()+(c.TryGetProperty("fx",out var fxName)&&fxName.ValueKind==JsonValueKind.String?":"+fxName.GetString():"")+" r"+c.GetProperty("radius").GetDouble();
+            string name="#"+index+" "+Name(c);
             foreach(var f in c.GetProperty("frames").EnumerateArray())
             {
                 int target=(int)NativeBlastSim.Round(f.GetProperty("t").GetDouble()/Dt);
@@ -89,15 +163,18 @@ namespace ChipArena.UnityConversion
         {int n=0;for(int i=0;i<pool.Count;i++){var p=pool.At(i);if(p.age<0)continue;double dx=p.x-cx,dy=horizontal?0:p.y-cy,dz=p.z-cz;if(Math.Abs(Math.Sqrt(dx*dx+dy*dy+dz*dz)-radius)<=tolerance)n++;}return n;}
         private static readonly NativeBlastStyle[] ShellStyles={NativeBlastStyle.Fire,NativeBlastStyle.Mine,NativeBlastStyle.Meteor,NativeBlastStyle.Kinetic,NativeBlastStyle.Shock,NativeBlastStyle.Implosion,NativeBlastStyle.Toxic,NativeBlastStyle.Frost,NativeBlastStyle.Quake};
         // The volumetric front reaches the gameplay radius exactly at FrontSeconds: the shell from the ground point under the
-        // blast, Nova's sphere from its centre; implosions start on the radius.
+        // blast, Nova's sphere from its centre; implosions start on the radius. Toon pass (Unity-owned timing): Implosion's front
+        // waits for its pop, so it reaches the radius at ImplosionPop + FrontSeconds.
+        private static int Pop(NativeBlastStyle style)=>style==NativeBlastStyle.Implosion?(int)NativeBlastSim.Round(NativeBlastSim.ImplosionPop/Dt):0;
         private static void Front()
         {
             int steps=(int)NativeBlastSim.Round(NativeBlastSim.FrontSeconds/Dt);Check(Math.Abs(steps*Dt-NativeBlastSim.FrontSeconds)<1e-9,"front time is whole frames");
+            Check(Math.Abs(Pop(NativeBlastStyle.Implosion)*Dt-NativeBlastSim.ImplosionPop)<1e-9,"Implosion's pop is whole frames");
             foreach(double R in new[]{.4,1.2,3,6})
             {
                 foreach(var style in ShellStyles)
                 {
-                    var sim=new NativeBlastSim();sim.Blast(style,2,1.35,-1,R);for(int i=0;i<steps-1;i++)sim.Update(Dt);
+                    var sim=new NativeBlastSim();sim.Blast(style,2,1.35,-1,R);for(int i=0;i<steps-1+Pop(style);i++)sim.Update(Dt);
                     int early=Within(sim.Glow,2,.4,-1,R,.005);sim.Update(Dt);int at=Within(sim.Glow,2,.4,-1,R,.005);
                     Check(at>=NativeBlastSim.MinVoxels&&at>early+NativeBlastSim.MinVoxels/2,style+" front reaches r="+R+" at "+NativeBlastSim.FrontSeconds+" s ("+early+" -> "+at+")");
                     sim.Update(Dt);Check(Within(sim.Glow,2,.4,-1,R,.005)<at-NativeBlastSim.MinVoxels/2,style+" front ends on the radius r="+R);
@@ -125,7 +202,7 @@ namespace ChipArena.UnityConversion
             {
                 var sim=new NativeBlastSim();int n=sim.Blast(style,0,.95,0,.4,.01);Check(n>=NativeBlastSim.MinVoxels,style+" keeps "+NativeBlastSim.MinVoxels+" voxels at the lowest quality ("+n+")");
                 if(style==NativeBlastStyle.Implosion||style==NativeBlastStyle.Void)Check(Within(sim.Glow,0,0,0,.4,1e-4,true)>=NativeBlastSim.MinVoxels,style+" minimum front");
-                for(int i=0;i<steps;i++)sim.Update(Dt);
+                for(int i=0;i<steps+Pop(style);i++)sim.Update(Dt);
                 if(Array.IndexOf(ShellStyles,style)>=0)Check(Within(sim.Glow,0,0,0,.4,.005)>=NativeBlastSim.MinVoxels,style+" minimum shell on the radius");
                 if(style==NativeBlastStyle.Nova)Check(Within(sim.Glow,0,.95,0,.4,.005)>=NativeBlastSim.MinVoxels,"nova minimum front");
                 Check(new NativeBlastSim().Blast(style,0,.95,0,3,0)==0,style+" spawns nothing at quality 0");
@@ -240,10 +317,13 @@ namespace ChipArena.UnityConversion
             foreach(int hex in new[]{0xbfe6ff,0x6f8dff,0x8fd6ff,0x9ffcff,0x1fc4e6,0x8fb8ff,0x9fd2ff,0x55dcff,0x80dfff,0x32b8ff})C(NativeBlastSim.BlueCyan(hex),hex.ToString("x6")+" is blue/cyan");
             foreach(int hex in new[]{0xffffff,0xf2ffff,0x9a9a9a,0xd7a6ff,0x8a4cff,0xc2a3ff,0xc4b4ff,0xb66cff,0xff9a8a,0xe8323a,0xff304f,0x55ff88,0xffc23a})C(!NativeBlastSim.BlueCyan(hex),hex.ToString("x6")+" is not blue/cyan");
             foreach(var tag in new[]{"thunder","thunderstep","static","storm","lightning-rod","blink-strike"})C(NativeBlastSim.StyleOf(tag)==NativeBlastStyle.Shock&&!NativeBlastSim.Lightning(NativeBlastStyle.Shock,NativeBlastSim.TintOf(tag)),tag+" draws no lightning");
+            // Toon pass: the plain Shock palette is violet now; it still draws no sky bolt or ground arcs (only the short crackle).
+            foreach(int hex in new[]{0xc9a2ff,0x8a4cff,0xb98cff,0x2a2048})C(!NativeBlastSim.BlueCyan(hex),"the toon Shock palette "+hex.ToString("x6")+" is violet");
             foreach(var tag in new[]{"ball-lightning","orbital-mark"})C(NativeBlastSim.Lightning(NativeBlastSim.StyleOf(tag),NativeBlastSim.TintOf(tag)),tag+" keeps its violet or red lightning");
             foreach(NativeBlastStyle style in Enum.GetValues(typeof(NativeBlastStyle)))if(style!=NativeBlastStyle.Shock)C(!NativeBlastSim.Lightning(style,null),style+" has no lightning");
             // Behaviour. On the first drawn frame the sky bolt is already 9 m up and nothing else in a shock blast is above
-            // 2.5 m; a blue/cyan blast spawns exactly the violet one's voxels minus the bolt, its side sparks and the arcs.
+            // 2.5 m; a plain (violet) blast spawns exactly Ball Lightning's voxels minus the bolt, its side sparks and the ground
+            // arcs; a blue/cyan one (Blink Strike) also draws no crackle, and none of a plain blast's colours is blue or cyan.
             double Top(NativeBlastPool pool){double top=-1e9;for(int i=0;i<pool.Drawn;i++)top=Math.Max(top,pool.Output[i*NativeBlastPool.Stride+1]);return top;}
             foreach(double R in new[]{1.2,2.4,3,6})foreach(double q in new[]{1,NativeBlastCues.ArcQuality,.3})
             {
@@ -253,9 +333,10 @@ namespace ChipArena.UnityConversion
                 C(boltTop>8,"the probe sees Ball Lightning's sky bolt r"+R+" q"+q);
                 foreach(var tag in new[]{null,"thunderstep","static","blink-strike"})
                 {
-                    string what=(tag??"shock")+" r"+R+" q"+q;int count=Spawn(tag,out double top,out bool lit);
+                    string what=(tag??"shock")+" r"+R+" q"+q;int count=Spawn(tag,out double top,out bool lit);bool cyan=tag=="blink-strike";
                     C(top<2.5,what+": no sky bolt (highest voxel "+top+" m)");
-                    C(count==violet-steps-sides-K(5)*6,what+": only the bolt, its side sparks and the ground arcs are gone ("+count+" of "+violet+" voxels)");
+                    C(count==violet-steps-sides-K(5)*6-(cyan?(K(6)+K(3))*5:0),what+": only the bolt, its side sparks and the ground arcs are gone"+(cyan?", and the crackle":"")+" ("+count+" of "+violet+" voxels)");
+                    if(!cyan){var sim=new NativeBlastSim();sim.Blast(NativeBlastStyle.Shock,0,.95,0,R,q,false,NativeBlastSim.TintOf(tag));bool blue=false;foreach(var pool in new[]{sim.Solid,sim.Glow})for(int i=0;i<pool.Count;i++){var hx=pool.Colors(i);blue|=NativeBlastSim.BlueCyan(hx.from)||NativeBlastSim.BlueCyan(hx.to);}C(!blue,what+": no blue or cyan colour anywhere");}
                     C(count>=NativeBlastSim.MinVoxels&&lit==(q>=.5),what+": core, shock front, sparks and light still draw");
                 }
             }
@@ -283,9 +364,9 @@ namespace ChipArena.UnityConversion
             int Count(string text,string what){int c=0,i=0;while((i=text.IndexOf(what,i,StringComparison.Ordinal))>=0){c++;i+=what.Length;}return c;}
             string Between(string text,string from,string to){int a=text.IndexOf(from,StringComparison.Ordinal);Check(a>=0,"no blue/cyan lightning: the source has "+from);int b=text.IndexOf(to,a+from.Length,StringComparison.Ordinal);return b<0?text.Substring(a):text.Substring(a,b-a);}
             string blast=Text("Assets/ChipArena/Core/NativeBlastSim.cs"),shock=Between(blast,"case NativeBlastStyle.Shock:","case NativeBlastStyle.Implosion:"),storm=Between(blast,"if(kind==\"storm\")","else if(kind==");
-            C(shock.Contains("bool lightning=Lightning(style,tint);")&&shock.Contains("if(lightning)SkyBolt(")&&shock.Contains("if(lightning)GroundArcs(")&&!shock.Contains("Glow.Spawn(")&&!shock.Contains("Solid.Spawn("),"the shock case draws its bolt and arcs only through the gated SkyBolt and GroundArcs");
-            C(Count(blast,"SkyBolt(")==2&&Count(blast,"GroundArcs(")==2,"SkyBolt and GroundArcs have no other caller");
-            C(blast.Contains("=>style==NativeBlastStyle.Shock&&!BlueCyan(Colors(style,tint).Hot);"),"Lightning excludes every blue/cyan look");
+            C(shock.Contains("bool lightning=Lightning(style,tint);")&&shock.Contains("if(lightning)SkyBolt(")&&shock.Contains("if(lightning)GroundArcs(")&&shock.Contains("if(!BlueCyan(pal.Hot))Crackle(")&&!shock.Contains("Glow.Spawn(")&&!shock.Contains("Solid.Spawn("),"the shock case draws its bolt and arcs only through the gated SkyBolt and GroundArcs, its crackle only for a look that is not blue or cyan");
+            C(Count(blast,"SkyBolt(")==2&&Count(blast,"GroundArcs(")==2&&Count(blast,"Crackle(")==2,"SkyBolt, GroundArcs and Crackle have no other caller");
+            C(blast.Contains("=>style==NativeBlastStyle.Shock&&tint.HasValue&&!BlueCyan(tint.Value.Hot);"),"Lightning excludes every blue/cyan look and the plain palette");
             C(!storm.Contains("Glow.Spawn(")&&!storm.Contains("top=")&&storm.Contains("Solid.Spawn("),"the storm field branch spawns only clouds");
             var offenders=new System.Collections.Generic.List<string>();
             foreach(var dir in new[]{"Assets/ChipArena/Core","Assets/ChipArena/Runtime"})foreach(var file in Directory.GetFiles(Path.Combine(root,dir),"*.cs"))
@@ -323,11 +404,9 @@ namespace ChipArena.UnityConversion
             }
             foreach(double R in new[]{.3,.6,1.2,1.5,2.4})foreach(bool ground in new[]{true,false})foreach(var (y,floor) in spots)
             {var sim=new NativeBlastSim();sim.Impact(1,y,-2,R,0xffaa64,1,false,ground,null,floor);C(sim.Glow.Count>0&&Flat(sim,-1e9,NativeBlastSim.FrontSeconds+.005)==0,(ground?"ground ":"")+"impact r"+R+" at "+y+" m: no disc voxels");}
-            // The disc's voxels are re-spent: spawn counts equal the source's with its disc and the lightning cut (chip-blasts.ts at
-            // 05950ea with OWNER_CUTS only; r 1.2, 3, 6 at quality 1 and r 3 at .3; impacts r .6, 1.2, 2 on and off the ground).
-            var budget=new (NativeBlastStyle style,int[] counts)[]{(NativeBlastStyle.Fire,new[]{137,194,285,68}),(NativeBlastStyle.Shock,new[]{85,119,177,45}),(NativeBlastStyle.Implosion,new[]{87,124,183,45}),(NativeBlastStyle.Frost,new[]{62,87,128,32}),
-                (NativeBlastStyle.Toxic,new[]{89,128,186,51}),(NativeBlastStyle.Void,new[]{39,55,80,19}),(NativeBlastStyle.Nova,new[]{98,140,205,47}),(NativeBlastStyle.Kinetic,new[]{114,160,234,61}),(NativeBlastStyle.Quake,new[]{54,76,112,30}),(NativeBlastStyle.Meteor,new[]{145,205,301,71}),(NativeBlastStyle.Mine,new[]{137,194,285,68})};
-            foreach(var (style,counts) in budget){var runs=new[]{(1.2,1.0),(3.0,1.0),(6.0,1.0),(3.0,.3)};for(int i=0;i<runs.Length;i++){int got=new NativeBlastSim().Blast(style,0,.95,0,runs[i].Item1,runs[i].Item2);C(got==counts[i],style+" r"+runs[i].Item1+" q"+runs[i].Item2+" spawns the source's "+counts[i]+" voxels ("+got+")");}}
+            // Impact spawn counts equal the source's with its disc cut (chip-blasts.ts at 05950ea with OWNER_CUTS; r .6, 1.2, 2 on and
+            // off the ground). Blast counts are Unity-owned since the toon pass: pinned per case in Tests/blast-pinned.json
+            // ("spawned", checked in Replay) and capped in Budgets.
             foreach(var (ground,R,count) in new[]{(true,.6,42),(true,1.2,49),(true,2.0,58),(false,.6,27),(false,1.2,32),(false,2.0,38)})
             {var sim=new NativeBlastSim();sim.Impact(0,.95,0,R,0xffaa64,1,false,ground);C(sim.Solid.Spawned+sim.Glow.Spawned==count,(ground?"ground ":"")+"impact r"+R+" spawns the source's "+count+" voxels");}
             // Without a floor the source's y - .95 applies, voxel for voxel.
@@ -362,7 +441,7 @@ namespace ChipArena.UnityConversion
             int Lower(NativeBlastPool pool,double cx,double cy,double cz,double radius){int d=0;for(int i=0;i<pool.Count;i++){var p=pool.At(i);if(p.age<0||p.y>=cy-.1*radius)continue;double dx=p.x-cx,dy=p.y-cy,dz=p.z-cz;if(Math.Abs(Math.Sqrt(dx*dx+dy*dy+dz*dz)-radius)<=.005)d++;}return d;}
             foreach(var style in ShellStyles)foreach(var (y,R,dome) in new[]{(.95,1.2,true),(.95,3.0,true),(NativeBlastSim.NearGround,1.2,true),(NativeBlastSim.NearGround+.05,1.2,false),(3.0,1.2,false),(3.0,3.0,false)})
             {
-                var sim=new NativeBlastSim();sim.Blast(style,1,y,-2,R,1,false,null,0);for(int i=0;i<steps;i++)sim.Update(Dt);string what=style+" r"+R+" at "+y+" m";
+                var sim=new NativeBlastSim();sim.Blast(style,1,y,-2,R,1,false,null,0);for(int i=0;i<steps+Pop(style);i++)sim.Update(Dt);string what=style+" r"+R+" at "+y+" m";
                 if(dome)C(Within(sim.Glow,1,0,-2,R,.005)>=NativeBlastSim.MinVoxels,what+": a dome on the floor");
                 else C(Within(sim.Glow,1,y,-2,R,.005)>=NativeBlastSim.MinVoxels&&Lower(sim.Glow,1,y,-2,R)>0&&Within(sim.Glow,1,0,-2,R,.005)<NativeBlastSim.MinVoxels/2,what+": a sphere around the blast, not a dome");
             }
