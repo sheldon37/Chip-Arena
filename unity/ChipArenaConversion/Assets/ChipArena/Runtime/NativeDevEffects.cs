@@ -80,7 +80,7 @@ namespace ChipArena.UnityConversion
             if(arena!=fxArena||arena.Generation!=fxGeneration||arena.Match.Set!=fxSet||arena.Match.Round!=fxRound||now<fxLast-.25f)
             {ClearDevEffects();fxArena=arena;fxGeneration=arena.Generation;fxSet=arena.Match.Set;fxRound=arena.Match.Round;}
             fxLast=now;fxFrame++;var fx=sirenFx;fx.Begin(now,BlastQuality);fxDraw.Clear();sirenChar.Clear();
-            SirenPilots(arena,now);SirenHits(arena,now);SirenShots(arena,camera,now);SirenFields(arena,now);fx.Tick();DrawSirenFx(camera);SirenMarks(arena,camera,now);SirenViewModel(arena,now);DevFighters(arena,camera,now);
+            SirenPilots(arena,now);SirenHits(arena,now);SirenShots(arena,camera,now);SirenFields(arena,now);fx.Tick();DrawSirenFx(camera);SirenMarks(arena,camera,now);SirenViewModel(arena,now);DevFighters(arena,camera,now);DrawHordeFx(camera);
             fxDraw.Draw(camera,ViewCamera,now);
         }
         private NativePilot SeatPilot(NativeArena arena,int seat){var list=arena.Pilots;for(int i=0;i<list.Count;i++)if(list[i].Seat.id==seat)return list[i];return null;}

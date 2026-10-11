@@ -59,14 +59,18 @@ namespace ChipArena.UnityConversion
             bool summon=NativeSummonBreak.SummonModel(death.model,out bool toy),horde=death.model?.StartsWith("horde-")==true;if(!summon&&!horde)return false;
             // At SUMMON_LOOK.death.breakAt the rig hides and three bursts fire up the body in the gib colours, once.
             if(summon&&summonBreakups.Due(death.id,death.seed,age))for(int i=0;i<NativeSummonBreak.Bursts;i++){NativeSummonBreak.Burst(toy,i,out float lift,out int color,out int count);SourceBurst(death.position+Vector3.up*lift,color,count,NativeSummonBreak.BurstPower);}
-            if(summon&&age>=NativeSummonBreak.BreakAt)return true;if(horde&&age>=2.3f)return true;
+            if(summon&&age>=NativeSummonBreak.BreakAt)return true;if(horde&&age>=NativeMinionFx.DeathFxSeconds)return true;
             if(!minionRigs.TryGetValue(death.id,out var rig)){rig=captured.Create(transform,death.id);minionRigs.Add(death.id,rig);}
-            if(summon)NativeSummonPose.Death(minionPose,toy,age);else NativeSourceMotion.Sample(death.model+"-death",age,2.3f,minionPose);
+            if(summon)NativeSummonPose.Death(minionPose,toy,age);else NativeSourceMotion.Sample(death.model+"-death",Mathf.Min(age,2.3f),2.3f,minionPose);
             NativePoseWriter.Write(rig.Bones,minionPose,"a summon rig");
             // poseSummonDeath's jitter before the break-up moves the rig group's x (source axes; Unity's x is mirrored).
             Vector3 at=summon?death.position-Vector3.right*NativeSummonBreak.Shake(age):death.position;
             rig.Root.transform.SetPositionAndRotation(at,Quaternion.Euler(0,death.yaw,0));rig.Root.transform.localScale=Vector3.one*(summon?(toy?NativeSummonBreak.ToyScale:NativeSummonBreak.ZombieScale):1);
-            sourceModels.Queue(death.model,rig.Root.transform.localToWorldMatrix,b=>rig.Bones[b].localToWorldMatrix,b=>MinionPartVisible(death.lost,b),opacity:summon?1:Mathf.Clamp01((2.3f-age)/.3f));return true;
+            // A horde add chars joint by joint and burns away by height (motion.ts dyingLook, replacing the first port's dithered
+            // fade), then its flames, ash and scorch outlast the body to DEATH_FX_SECONDS (NativeMinionFxPresentation.cs), on the
+            // presentation clock as the other death effects.
+            if(horde){float fx=hordeClock-death.at;bool body=!NativeMinionFx.Gone(fx);if(body)HordeDeathBody(rig,death.model,death.id,death.lost,fx,b=>MinionPartVisible(death.lost,b));HordeAdd(rig,death.id,float.NaN,Mathf.Max(0,fx),death.position.y-.85f,false,Vector3.zero,death.lost,body);return true;}
+            sourceModels.Queue(death.model,rig.Root.transform.localToWorldMatrix,b=>rig.Bones[b].localToWorldMatrix,b=>MinionPartVisible(death.lost,b));return true;
         }
         private static bool MinionPartVisible(int lost,int b){int[] bits={1,2,4,8,16,32,64,128,256},bones={5,7,11,8,12,14,18,15,19};for(int i=0;i<bits.Length;i++)if((lost&bits[i])!=0&&BoneWithin(b,bones[i]))return false;return true;}
     }

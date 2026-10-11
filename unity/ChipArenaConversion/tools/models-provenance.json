@@ -1716,33 +1716,38 @@
     },
     {
       "id": "horde-0",
-      "batches": 24,
-      "vertices": 22704
+      "batches": 21,
+      "vertices": 21480
     },
     {
       "id": "horde-1",
-      "batches": 23,
-      "vertices": 22008
+      "batches": 21,
+      "vertices": 21192
     },
     {
       "id": "horde-2",
-      "batches": 22,
-      "vertices": 23856
+      "batches": 20,
+      "vertices": 23040
     },
     {
       "id": "horde-3",
-      "batches": 21,
-      "vertices": 19560
+      "batches": 20,
+      "vertices": 19152
     },
     {
       "id": "horde-4",
-      "batches": 22,
-      "vertices": 22824
+      "batches": 20,
+      "vertices": 22008
     },
     {
       "id": "horde-5",
-      "batches": 23,
-      "vertices": 24792
+      "batches": 20,
+      "vertices": 23568
+    },
+    {
+      "id": "horde-tongue",
+      "batches": 2,
+      "vertices": 816
     },
     {
       "id": "summon-toy",
@@ -2055,5 +2060,5 @@
       "vertices": 50
     }
   ],
-  "uncompressedBytes": 66788529
+  "uncompressedBytes": 66574072
 }

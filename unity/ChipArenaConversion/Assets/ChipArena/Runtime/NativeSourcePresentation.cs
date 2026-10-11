@@ -36,7 +36,9 @@ namespace ChipArena.UnityConversion
         {
             if(sourceModels==null)return;sourceModels.Queue("map-"+arena.MapId,Matrix4x4.identity);HazardPresentation(arena);SceneryMotion(arena);if(arena.MapId=="siren")WardPresentation(arena);
             PveMachinePresentation(arena);
-            foreach(int id in minionRigs.Keys.Where(id=>!arena.Minions.Any(m=>m.Id==id)&&!arena.MinionDeaths.Any(d=>d.id==id&&arena.Time-d.at<2.3f)).ToArray()){minionRigs[id].Dispose();minionRigs.Remove(id);}
+            // A dead add's rig stays posed until its death effects end (NativeMinionFxPresentation.cs: flames rise off its joints).
+            foreach(int id in minionRigs.Keys.Where(id=>!arena.Minions.Any(m=>m.Id==id)&&!arena.MinionDeaths.Any(d=>d.id==id&&arena.Time-d.at<NativeMinionFx.DeathFxSeconds)).ToArray()){minionRigs[id].Dispose();minionRigs.Remove(id);}
+            BeginHordeFx(arena);
             foreach(var m in arena.Minions)
             {
                 if(m.Hp<=0)continue;if(m.Kind=="slender"){SlenderModel(arena,m);continue;}if(!minionRigs.TryGetValue(m.Id,out var rig)){rig=captured.Create(transform,m.Id);minionRigs.Add(m.Id,rig);}Vector3 pos=m.Body.transform.position;int variant=m.Id%6;string kind="idle";float age=arena.Time,duration=0;
@@ -49,7 +51,10 @@ namespace ChipArena.UnityConversion
                 NativePoseWriter.Write(rig.Bones,minionPose,"a horde rig");
                 rig.Root.transform.SetPositionAndRotation(pos,Quaternion.Euler(0,m.Yaw,0));rig.Root.transform.localScale=Vector3.one*(m.Pve!=null?1:m.Kind=="toy"?.6f:.85f);
                 int lost=add?.Lost??0;bool Visible(int b){int[] bits={1,2,4,8,16,32,64,128,256},bones={5,7,11,8,12,14,18,15,19};for(int i=0;i<bits.Length;i++)if((lost&bits[i])!=0&&BoneWithin(b,bones[i]))return false;return true;}
-                sourceModels.Queue(m.Pve==null?"summon-"+m.Kind:"horde-"+variant,rig.Root.transform.localToWorldMatrix,b=>rig.Bones[b].localToWorldMatrix,Visible);
+                sourceModels.Queue(m.Pve==null?"summon-"+m.Kind:"horde-"+variant,rig.Root.transform.localToWorldMatrix,b=>rig.Bones[b].localToWorldMatrix,Visible,glow:add!=null?HordeGlow(m.Id):(Vector4?)null);
+                // Siren minion effects (NativeMinionFxPresentation.cs): tongues and their licks, the crack haze, the possession hint
+                // and a vent climb's emergence pool (on the vent's floor; the source counts its age to ActiveAt = 1.95 s).
+                if(add!=null){bool vent=add.Entry.kind=="vent";HordeAdd(rig,m.Id,add.Travelling?float.NaN:(float)NativeMinionFx.VentAge(vent,add.ActiveAt,hordeClock),float.NaN,vent?NativeArena.Vec(add.Entry.@exit.Position(.9f)).y-.9f:pos.y-.85f,add.Possessed,arena.Replica?m.NetworkVelocity:m.Body.linearVelocity,lost,true);}
             }
             // C17: severed limbs fly off as chunks (the rigs above are posed), and the downed get revive beacons.
             PveGore(arena);PveBeacons(arena);
