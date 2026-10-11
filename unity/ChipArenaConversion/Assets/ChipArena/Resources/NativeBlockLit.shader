@@ -5,8 +5,10 @@ Shader "ChipArena/NativeBlockLit"
     // in a vertex stage). One unit mesh per damage stage is instanced for every block size and look: the vertex stage expands
     // its lattice to the instance's half extents with a fixed chamfer, the fragment stage draws the look in rest space
     // (object position plus the block's rest centre, so courses line up across blocks and stay glued to a falling piece).
-    // Per instance: _BlockSize (half extents, chamfer), _BlockRest (rest centre, dust coat), _BlockColor (base colour, linear),
-    // _BlockLook (look id, health share as NativeBlockLooks.Normalised gives it, seed, flags). Lighting: the key light with
+    // Per instance: _BlockSize (half extents, chamfer), _BlockRest (rest centre, the block's local dust coat), _BlockColor (base
+    // colour, linear; window light: the 3.9 telegraph's 8 Hz strobe then black, 1 elsewhere), _BlockLook (look id, health share
+    // as NativeBlockLooks.Normalised gives it, seed, flags: band, tag, fragment, the band lamp lit amber or red, mesh turns).
+    // The round's map-wide dust level is the _ArenaDustCoat global (Core NativeDustCoat, with the local coat). Lighting: the key light with
     // its shadow map and the SH ambient as Unity's Lambert applies them, plus, in place of an add pass (so no per-pixel
     // Unity light other than the key reaches these blocks; NativeLighting keeps the rim per-pixel on dressed maps, so it
     // never lands in the SH either), the rim light (_ArenaRim*, NativeLighting.ArenaRim), MapLooks' 8 practical lights
@@ -41,18 +43,18 @@ Shader "ChipArena/NativeBlockLit"
         #define LOOK_NEON 11.0
         #define LOOK_CORRUGATED 12.0
         #define LOOK_DEMOLITION 13.0
-        // Flags: NativeBlockLooks.Band, Tag, Fragment, Strobe, Dark, SpinY, SpinZ.
+        // Flags: NativeBlockLooks.Band, Tag, Fragment, LampAmber, LampRed, SpinY, SpinZ.
         #define FLAG_BAND 1u
         #define FLAG_TAG 2u
         #define FLAG_FRAGMENT 4u
-        #define FLAG_STROBE 8u
-        #define FLAG_DARK 16u
+        #define FLAG_LAMP_AMBER 8u
+        #define FLAG_LAMP_RED 16u
         #define FLAG_SPIN_Y 32u
         #define FLAG_SPIN_Z 64u
         // ARENA_PROPOSAL.md 3.10 colours in linear light: mortar #CDBB9E, window frame #1F2A30, lit window #FFB45E, rust
         // #7A3E22, demolition yellow #F4B321, black #1C1A18, danger red #D6332A, tag lettering #F2EDE4, dust #B8A68F, soot
-        // #4A403A, the dust coat #B3A48E, fresh concrete #C9C2B4 and fresh brick #D2BFA3. The dark course #7E3A26 is the brick
-        // red #9C4A30 times .63 in linear light.
+        // #4A403A, the dust coat #B3A48E, fresh concrete #C9C2B4, fresh brick #D2BFA3 and the band lamp's amber #FFB000 (its red
+        // is the danger red). The dark course #7E3A26 is the brick red #9C4A30 times .63 in linear light.
         #define BK_MORTAR float3(0.6105,0.4969,0.3419)
         #define BK_FRAME float3(0.0137,0.0232,0.0296)
         #define BK_LIT float3(1.0000,0.4564,0.1119)
@@ -66,10 +68,11 @@ Shader "ChipArena/NativeBlockLit"
         #define BK_COAT float3(0.4508,0.3712,0.2705)
         #define BK_FRESH_CONCRETE float3(0.5841,0.5395,0.4564)
         #define BK_FRESH_BRICK float3(0.6445,0.5210,0.3663)
+        #define BK_LAMP_AMBER float3(1.0000,0.4342,0.0000)
         #define BK_DARK_COURSE 0.63
         // The grime ramp: side faces 22% darker up to 1.2 m above the block's base, fading out by 1.8 m (3.10 readability).
         #define BK_GRIME 0.22
-        float4 _ArenaLightPos[8];float4 _ArenaLightColor[8];float4 _ArenaFlashPos[3];float4 _ArenaFlashColor[3];float4 _ArenaRimDir;float4 _ArenaRimColor;float4 _ArenaHaze;float _ArenaHazeTop;float _ArenaDust;
+        float4 _ArenaLightPos[8];float4 _ArenaLightColor[8];float4 _ArenaFlashPos[3];float4 _ArenaFlashColor[3];float4 _ArenaRimDir;float4 _ArenaRimColor;float4 _ArenaHaze;float _ArenaHazeTop;float _ArenaDust;float _ArenaDustCoat;
         // The vertex lattice (NativeBlockLooks.Corner) and the instance's 180-degree mesh turns, which only pick other chipped corners.
         float3 BlockLattice(float3 a,float3 b,float3 h,float c,float flags,inout float3 n)
         {
@@ -140,10 +143,11 @@ Shader "ChipArena/NativeBlockLit"
             return float3(band,above+0.12<=height-c-0.02?above:(below-0.12>=c+0.02?below:-1.0));
         }
         struct BlockSurf {float3 albedo;float3 emit;};
-        // The look in rest space (pat), then the shared layers: band and tag paint, vertex shade, fresh breaks, rebar, cracks,
-        // edge wear, the grime ramp, top-face dust and soot, the dust coat (light on the band and tag). fwP: fwidth(pat), taken
-        // before any branch. health: NativeBlockLooks.Normalised (the block's thresholds at 66/33%).
-        BlockSurf BlockSurface(float3 obj,float3 pat,float3 fwP,float3 nO,float3 hs,float code,float health,float3 base,float seed,float4 shade,float dust,float time)
+        // The look in rest space (pat), then the shared layers: band, tag and lamp paint, vertex shade, fresh breaks, rebar,
+        // cracks, edge wear, the grime ramp, top-face dust and soot, the dust coat (light on the band, tag and lamp). fwP:
+        // fwidth(pat), taken before any branch. health: NativeBlockLooks.Normalised (the block's thresholds at 66/33%). dust: the
+        // block's local coat. win: its window light (NativeStructureFx.WindowStrobe through NativeArenaDressing; 1 elsewhere).
+        BlockSurf BlockSurface(float3 obj,float3 pat,float3 fwP,float3 nO,float3 hs,float code,float health,float3 base,float seed,float4 shade,float dust,float win)
         {
             float flv=floor(code/16.0+0.001);float look=code-16.0*flv;uint fl=uint(flv+0.5);
             float3 ax=abs(nO);bool top=ax.y>=max(ax.x,ax.z);bool sideX=!top&&ax.x>=ax.z;
@@ -225,10 +229,11 @@ Shader "ChipArena/NativeBlockLit"
             }
             else if(BkIs(look,LOOK_WINDOW))
             {
-                // Panes 50 x 70 cm in dark frames; about 35% lit, some behind a curtain; Strobe flashes them at 8 Hz, Dark puts them out.
+                // Panes 50 x 70 cm in dark frames; about 35% lit, some behind a curtain; the telegraph's window light strobes them
+                // (1 or .12 at 8 Hz) and then puts them out (0) until the segment lands.
                 float2 pane=floor(uv/float2(0.5,0.7));float2 pv=frac(uv/float2(0.5,0.7));
                 float fr=max(BkJoint(uv.x,0.5,0.045,fw.x),BkJoint(uv.y,0.7,0.045,fw.y));
-                float lit=step(BkHash2(pane+seed*37.0),0.35);if((fl&FLAG_DARK)!=0u)lit=0.0;if((fl&FLAG_STROBE)!=0u)lit*=step(0.5,frac(time*8.0));
+                float lit=step(BkHash2(pane+seed*37.0),0.35)*win;
                 float curtain=step(0.5,BkHash2(pane*1.9+float2(3.0,3.0)))*step(0.62,pv.y);
                 alb=lerp(lerp(base*(0.55+0.45*pv.y),BK_LIT*0.2,lit),BK_FRAME,fr);emit=BK_LIT*(0.7+0.3*BkHash2(pane*3.1))*(1.0-0.55*curtain)*lit*(1.0-fr);
                 if(top){alb=BK_FRAME;emit=float3(0.0,0.0,0.0);}
@@ -255,9 +260,9 @@ Shader "ChipArena/NativeBlockLit"
             {
                 alb=base*(1.0+0.06*(BkNoise(uv*3.0+seed*5.0)-0.5)*detail);
             }
-            // The 2.3 load-bearing band: chevrons between black rules where BkBand fits them, and the DANGER tag, each only with
-            // its own flag (never on a stub, whose member is gone).
-            float inBand=0.0;float plate=0.0;
+            // The 2.3 load-bearing band: chevrons between black rules where BkBand fits them, the DANGER tag and the band lamp,
+            // each only with its own flag (never on a stub, whose member is gone).
+            float inBand=0.0;float plate=0.0;float lamp=0.0;
             if((fl&(FLAG_BAND|FLAG_TAG))!=0u&&!top&&health>0.0)
             {
                 float3 bt=BkBand(2.0*hs.y);
@@ -272,6 +277,15 @@ Shader "ChipArena/NativeBlockLit"
                     float2 tp=float2(across,yb-bt.z);
                     plate=(1.0-smoothstep(0.28-fwm,0.28+fwm,abs(tp.x)))*(1.0-smoothstep(0.12-fwm,0.12+fwm,abs(tp.y)));
                     alb=lerp(alb,lerp(BK_DANGER,BK_INK,BkGlyphs(tp,fwm)),plate);emit*=1.0-plate;
+                }
+                // The lamp at the band's middle (NativeBlockLooks.Lamp: amber while locked, red on the 4 Hz strobe at S2 or under a
+                // stress telegraph, else dark glass): a dark housing ring round a lens that glows when lit.
+                if((fl&FLAG_BAND)!=0u)
+                {
+                    float ld=length(float2(across,yb-0.5*(bt.x+bt.y)));
+                    lamp=1.0-smoothstep(0.075-fwm,0.075+fwm,ld);float lens=1.0-smoothstep(0.055-fwm,0.055+fwm,ld);
+                    float3 lc=(fl&FLAG_LAMP_RED)!=0u?BK_DANGER:((fl&FLAG_LAMP_AMBER)!=0u?BK_LAMP_AMBER:float3(0.0,0.0,0.0));
+                    alb=lerp(lerp(alb,BK_FRAME,lamp),lerp(float3(0.03,0.03,0.035),lc*0.35,step(0.0001,lc.r)),lens);emit=lerp(emit*(1.0-lamp),lc*1.5,lens);
                 }
             }
             // Vertex shade (NativeBlockLooks: bevels +18%, corners -22%, stored x .8), then fresh breaks on chips, stubs and fragments.
@@ -309,10 +323,11 @@ Shader "ChipArena/NativeBlockLit"
                 alb=lerp(alb,BK_DUST,0.08*smoothstep(0.35,0.75,BkFbm(uv*0.35+seed*3.0)));
                 alb=lerp(alb,BK_SOOT,0.06*smoothstep(0.6,0.8,BkNoise(uv*0.25+float2(19.0,19.0))));
             }
-            // The dust coat: map-wide (_ArenaDust) plus this block's (the 2 m grid), heavier on top faces; the band and the tag
-            // keep a tenth of it (NativeBlockLooks.BandCoatKeep), so a pier's telegraph stays clean as breaks pile up around it.
-            float coat=saturate(saturate(_ArenaDust+dust)*(nO.y>0.7?1.0:0.55)*(0.75+0.5*BkNoise(uv*1.3)));
-            coat*=1.0-0.9*max(inBand,plate);
+            // The round's one dust coat (Core NativeDustCoat): the map's base (MapLooks blocks.dust), .6 x the map-wide level of
+            // this round's landings (_ArenaDustCoat) and this block's own (breaks and nearby landings), heavier on top faces; the
+            // band, the tag and the lamp keep a tenth of it (NativeBlockLooks.BandCoatKeep), so a pier's telegraph stays clean.
+            float coat=saturate(saturate(_ArenaDust+0.6*_ArenaDustCoat+dust)*(nO.y>0.7?1.0:0.55)*(0.75+0.5*BkNoise(uv*1.3)));
+            coat*=1.0-0.9*max(max(inBand,plate),lamp);
             BlockSurf s;s.albedo=lerp(alb,BK_COAT,coat);s.emit=emit*(1.0-0.5*coat);return s;
         }
         // The rim light, MapLooks' practical lights ((1 - (d/r)^2)^2, NativeMapLooks.Attenuation) and the blast flashes
@@ -363,7 +378,7 @@ Shader "ChipArena/NativeBlockLit"
             {
                 v2f o;UNITY_SETUP_INSTANCE_ID(v);UNITY_INITIALIZE_OUTPUT(v2f,o);
                 float4 size=UNITY_ACCESS_INSTANCED_PROP(BlockProps,_BlockSize);float4 rest=UNITY_ACCESS_INSTANCED_PROP(BlockProps,_BlockRest);float4 col=UNITY_ACCESS_INSTANCED_PROP(BlockProps,_BlockColor);float4 look=UNITY_ACCESS_INSTANCED_PROP(BlockProps,_BlockLook);
-                BlockVertex(v);o.pos=UnityObjectToClipPos(v.vertex);o.world=float4(mul(unity_ObjectToWorld,v.vertex).xyz,0.0);
+                BlockVertex(v);o.pos=UnityObjectToClipPos(v.vertex);o.world=float4(mul(unity_ObjectToWorld,v.vertex).xyz,col.w);
                 o.obj=float4(v.vertex.xyz,rest.w);o.pat=float4(v.vertex.xyz+rest.xyz,look.x+16.0*look.w);o.size=float4(size.xyz,look.y);o.col=float4(col.rgb,look.z);o.shade=v.color;
                 o.nO=v.normal;o.nW=UnityObjectToWorldNormal(v.normal);
                 UNITY_TRANSFER_SHADOW(o,float2(0.0,0.0));UNITY_TRANSFER_FOG(o,o.pos);return o;
@@ -372,7 +387,7 @@ Shader "ChipArena/NativeBlockLit"
             {
                 float3 fwP=fwidth(i.pat.xyz);
                 float3 nO=BlockOrient(cross(ddx(i.obj.xyz),ddy(i.obj.xyz)),i.nO);float3 nW=BlockOrient(cross(ddx(i.world.xyz),ddy(i.world.xyz)),i.nW);
-                BlockSurf s=BlockSurface(i.obj.xyz,i.pat.xyz,fwP,nO,i.size.xyz,i.pat.w,i.size.w,i.col.rgb,i.col.w,i.shade,i.obj.w,_Time.y);
+                BlockSurf s=BlockSurface(i.obj.xyz,i.pat.xyz,fwP,nO,i.size.xyz,i.pat.w,i.size.w,i.col.rgb,i.col.w,i.shade,i.obj.w,i.world.w);
                 UNITY_LIGHT_ATTENUATION(atten,i,i.world.xyz);
                 float3 light=ShadeSH9(float4(nW,1.0))+_LightColor0.rgb*(saturate(dot(nW,_WorldSpaceLightPos0.xyz))*atten)+BlockLights(i.world.xyz,nW);
                 fixed4 c=fixed4(BlockHaze(s.albedo*light+s.emit,i.world.xyz,distance(i.world.xyz,_WorldSpaceCameraPos)),1.0);

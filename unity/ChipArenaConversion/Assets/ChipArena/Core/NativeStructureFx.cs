@@ -28,8 +28,9 @@ namespace ChipArena.UnityConversion
     /// spark streaks, bent plates and a clank flash; glass shards that glint. They replace the generic 18-spark burst on every
     /// map.</item>
     /// <item>The coming structure events (a presentation API until Astra emits them): the stress telegraph (red crush footprint,
-    /// grit columns at the four corners of the crush box, dust trickling from cracks, window and lamp strobe values, a visual
-    /// sag of at most 1° / 8 cm, both held until the segment lands; never reduced), fall streamers and snapping wires that drop
+    /// grit columns at the four corners of the crush box, dust trickling from cracks; and for the dressed blocks inside the box,
+    /// which NativeArenaDressing poses from <see cref="TelegraphAt"/> each frame, the 8 Hz window strobe then black, the red band
+    /// lamp strobe and a visual sag of at most 1° / 8 cm, held until the segment lands; never reduced), fall streamers and snapping wires that drop
     /// at the segment's acceleration (the contract's pancake maxAccel, 6.9 m/s², unless the caller passes the pose's; never
     /// above g), and the landing: the dust wall (24-40
     /// billboards expanding from 4 to 14 m radius in 1.6 s, up to 8 m tall, opacity .5 for 1.5 s, .2 by 3 s, gone by 7 s,
@@ -268,22 +269,46 @@ namespace ChipArena.UnityConversion
         private void AddShake(NativeStructureCue cue,V3 at,float amount,float telegraph,uint seed,float time)
         {shakes[Oldest(shakes,ShakeLive,ShakeBorn)]=new Shake{Live=true,Rise=cue==NativeStructureCue.Stress,At=at,Peak=NativeStructureShake.Peak(cue,amount),Born=time,Duration=NativeStructureShake.Duration(cue,telegraph),Seed=seed};}
 
-        // ---------- queries (hooks for the block shader, dressing and camera) ----------
+        // ---------- queries (NativeArenaDressing's block telegraph, the camera) ----------
         /// <summary>Whether the segment with base seed <paramref name="seed"/> has landed by <paramref name="now"/>.</summary>
         public bool Landed(uint seed,float now){for(int i=0;i<EventSlots;i++){var r=records[i];if(r.Live&&r.Cue==NativeStructureCue.Land&&r.Base==seed&&r.Born<=now)return true;}return false;}
         // A stress record holds from its telegraph until its segment lands (at most StressHold after the telegraph ends), so the
         // windows stay black and the sag held while the segment falls.
         private bool Holding(in Record r,float a,float now)=>a>=0&&(a<=r.Amount+StressTail||a<=r.Amount+StressHold&&!Landed(r.Base,now));
-        /// <summary>Whether <paramref name="p"/> lies in a holding stress record's crush box (grown .5 m): its age and length.</summary>
-        public bool StressAt(V3 p,float now,out float age,out float telegraph)
+        /// <summary>Whether any stress telegraph holds at <paramref name="now"/>: NativeArenaDressing's once-a-frame early-out, so
+        /// with no stress record (every old map, and Brickfall between collapses) no block is queried.</summary>
+        public bool StressHolding(float now){for(int i=0;i<EventSlots;i++){var r=records[i];if(r.Live&&r.Cue==NativeStructureCue.Stress&&Holding(r,now-r.Born,now))return true;}return false;}
+        // The youngest holding stress record whose crush box (grown .5 m) holds p, or -1.
+        private int StressRecord(V3 p,float now)
         {
-            age=telegraph=0;float best=float.MaxValue;bool found=false;
+            int found=-1;float best=float.MaxValue;
             for(int i=0;i<EventSlots;i++)
             {
                 var r=records[i];if(!r.Live||r.Cue!=NativeStructureCue.Stress)continue;float a=now-r.Born;if(!Holding(r,a,now))continue;
-                V3 d=p-r.BoxCenter;if(Math.Abs(d.x)>r.BoxHalf.x+.5f||Math.Abs(d.y)>r.BoxHalf.y+.5f||Math.Abs(d.z)>r.BoxHalf.z+.5f)continue;if(a<best){best=a;age=a;telegraph=r.Amount;found=true;}
+                V3 d=p-r.BoxCenter;if(Math.Abs(d.x)>r.BoxHalf.x+.5f||Math.Abs(d.y)>r.BoxHalf.y+.5f||Math.Abs(d.z)>r.BoxHalf.z+.5f)continue;if(a<best){best=a;found=i;}
             }
             return found;
+        }
+        /// <summary>Whether <paramref name="p"/> lies in a holding stress record's crush box (grown .5 m): its age and length.</summary>
+        public bool StressAt(V3 p,float now,out float age,out float telegraph)
+        {int i=StressRecord(p,now);if(i<0){age=telegraph=0;return false;}age=now-records[i].Born;telegraph=records[i].Amount;return true;}
+        /// <summary>
+        /// The 3.9 telegraph of a dressed block whose centre is <paramref name="p"/> (NativeArenaDressing, per instance; false and
+        /// nothing outside every holding stress box): <paramref name="window"/> is its window light (<see cref="WindowStrobe"/>:
+        /// the 8 Hz strobe through the telegraph, then 0 until the segment lands), and the sag (<see cref="Sag"/>, held at full
+        /// until the landing) moves it by <paramref name="drop"/> and turns it about its centre by the quaternion (qx, qy, qz, qw),
+        /// both scaled by its height in the crush box (0 at the box's floor, so the ground and the street stay put, 1 at its top):
+        /// down by at most <see cref="SagMetres"/> and leaning outward from the box's centre line by at most
+        /// <see cref="SagDegrees"/> (not at all within 5 cm of that line). Pure in its record and the clock; allocation-free.
+        /// </summary>
+        public bool TelegraphAt(V3 p,float now,out float window,out V3 drop,out float qx,out float qy,out float qz,out float qw)
+        {
+            int i=StressRecord(p,now);window=1;drop=new V3();qx=qy=qz=0;qw=1;if(i<0)return false;var r=records[i];
+            float age=now-r.Born,T=r.Amount,top=r.BoxCenter.y+r.BoxHalf.y,h=Clamp01((p.y-r.Floor)/Math.Max(.5f,top-r.Floor)),s=Sag(Math.Min(age,T),T)*h;
+            window=WindowStrobe(age,T);drop=new V3(0,-s*SagMetres,0);
+            float dx=p.x-r.BoxCenter.x,dz=p.z-r.BoxCenter.z,l=(float)Math.Sqrt(dx*dx+dz*dz);
+            if(l>=.05f&&s>0)AxisAngle(new V3(dz/l,0,-dx/l),s*SagDegrees*(float)(Math.PI/180),out qx,out qy,out qz,out qw);
+            return true;
         }
         /// <summary>The window light multiplier at p: the 8 Hz strobe through the telegraph, 0 from its end until the segment lands,
         /// 1 elsewhere.</summary>

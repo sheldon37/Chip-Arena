@@ -9,10 +9,12 @@ using System.Text.RegularExpressions;
 namespace ChipArena.UnityConversion
 {
     // Per-map looks (Resources/MapLooks.json, Core/NativeMapLooks.cs). For the 15 old maps every value NativeLighting now
-    // applies is evaluated from the data with the same Unity colour maths and compared, field by field and bit for bit, to
-    // Tests/map-looks-parity.json (Tests/MapLookOracle.cs run once at ce3c506, before the move) and to the oracle itself.
+    // applies is computed by the very function NativeLighting.Apply calls (Core NativeMapLooks.Applied) and compared, field by
+    // field and bit for bit, to Tests/map-looks-parity.json (Tests/MapLookOracle.cs run once at ce3c506, before the move) and
+    // to the oracle itself. The entrance and draft stages own the fog and the shadows (on every old map those equal the map's).
     // The one intended difference is Cinder Crossing's sky: the volcanic horizon and zenith now follow the forge theme, as
-    // src/client/night-world.ts does (`volcanic=m.theme==='forge'`), where ce3c506 keyed them on the id "forge". Also: the
+    // src/client/night-world.ts does (`volcanic=m.theme==='forge'`), where ce3c506 keyed them on the id "forge"; every map's
+    // sky and moon colours are checked against the Electron keys frozen in Tests/look-references.json. Also: the
     // fallback for maps without an entry equals each entry, the sky shader's property defaults are the old constants,
     // Brickfall's golden-demolition preset is ARENA_PROPOSAL.md 3.10 as written, flicker and fall-off, and validation.
     internal static class MapLookChecks
@@ -22,22 +24,17 @@ namespace ChipArena.UnityConversion
         private static void Same(float a,float b,string what)=>Check(BitConverter.SingleToInt32Bits(a)==BitConverter.SingleToInt32Bits(b),what+": "+a.ToString("R",CultureInfo.InvariantCulture)+" != "+b.ToString("R",CultureInfo.InvariantCulture));
         private static void Same(float[] a,float[] b,string what){Check(a!=null&&b!=null&&a.Length==b.Length,what+" length");for(int i=0;i<a.Length;i++)Same(a[i],b[i],what+"["+i+"]");}
         private static void Near(double a,double b,double tolerance,string what)=>Check(Math.Abs(a-b)<=tolerance,what+": "+a+" != "+b);
-        // What NativeLighting.Create then Apply(map) now leave behind, from the resolved look, in the oracle's terms.
+        // What NativeLighting.Create then Apply(map) now leave behind: Core NativeMapLooks.Applied, the function Apply calls, in
+        // the oracle's terms (colours as Unity's Color holds them; a rim with no direction keeps Create's).
         private static OldMapLight Applied(MapLook look,ContentMap map)
         {
-            var s=new OldMapLight{id=map.id};var c=new Func<int,float[]>(OldMapLighting.ColorOf);
-            s.ambientMode="trilight";s.ambientSky=OldMapLighting.Mul(c(look.ambient.sky),look.ambient.skyScale);s.ambientEquator=OldMapLighting.Mul(c(look.ambient.equator),look.ambient.equatorScale);s.ambientGround=OldMapLighting.Mul(c(look.ambient.ground),look.ambient.groundScale);
-            s.fog=look.fog.mode!="none";s.fogMode=look.fog.mode;s.shadowCascades=look.shadows.cascades;s.shadowDistance=look.shadows.distance;
-            s.keyIntensity=look.key.intensity;s.keyShadows=look.key.shadows;s.keyStrength=look.key.shadowStrength;s.rimIntensity=look.rim.intensity;s.rimShadows=look.rim.shadows;
-            // A rim without its own direction keeps the rig's (Create's (14,7,12) until a draft turns it), as before.
-            s.rimFrom=NativeMapLooks.HasDirection(look.rim)?null:new[]{14f,7f,12f};
-            bool solid=look.sky.variant=="none";s.farClip=look.farClip;s.background=c(look.background);s.clear=solid?"solid":"skybox";
-            s.fogColor=look.fog.skyLerp>0?OldMapLighting.Lerp(c(map.sky),c(look.fog.color),look.fog.skyLerp):c(look.fog.color);s.fogStart=look.fog.start;s.fogEnd=look.fog.end;
-            s.horizon=c(look.sky.horizon);s.zenith=c(look.sky.zenith);s.moonSize=look.sky.discSize;s.skybox=!solid;
-            s.keyColor=c(look.key.color);s.keyFrom=NativeMapLooks.HasFrom(look.key)?new[]{look.key.from.x,look.key.from.y,look.key.from.z}:null;s.rimColor=c(look.rim.color);
-            NativeMapLooks.SunDirection(look.sky,out float dx,out float dy,out float dz);s.sunDir=new[]{dx,dy,dz};
-            s.halo=look.sky.glow==0?NativeMapLooks.HaloDefault:null;s.haloFalloff=NativeMapLooks.HaloFalloff(look.sky);s.disc=look.sky.disc==0?NativeMapLooks.DiscDefault:null;
-            s.discShade=new[]{NativeMapLooks.DiscBase(look.sky),look.sky.crater};s.stars=look.sky.stars;s.cloud=look.sky.cloud==0?NativeMapLooks.CloudDefault:null;s.cloudSpeed=look.sky.cloudSpeed;
+            var a=new MapLookState();NativeMapLooks.Applied(look,map.sky,false,a);float[] C(MapLookColor c)=>new[]{c.r,c.g,c.b,c.a};float[] T(MapLookTint t)=>t.Hex==0?new[]{t.R,t.G,t.B}:null;
+            var s=new OldMapLight{id=map.id,ambientMode="trilight",ambientSky=C(a.AmbientSky),ambientEquator=C(a.AmbientEquator),ambientGround=C(a.AmbientGround)};
+            s.fog=a.Fog.On;s.fogMode=!a.Fog.On?"none":a.Fog.Mode==MapFogMode.Linear?"linear":a.Fog.Mode==MapFogMode.Exponential?"exp":"exp2";s.shadowCascades=a.Cascades;s.shadowDistance=a.ShadowDistance;
+            s.keyIntensity=a.KeyIntensity;s.keyShadows=a.KeyShadows;s.keyStrength=a.KeyStrength;s.rimIntensity=a.RimIntensity;s.rimShadows=a.RimShadows;s.rimFrom=a.RimAim.Has?null:NativeMapLooks.RigRim;
+            s.farClip=a.FarClip;s.background=C(a.Background);s.clear=a.Skybox?"skybox":"solid";s.skybox=a.Skybox;s.fogColor=C(a.Fog.Color);s.fogStart=a.Fog.Start;s.fogEnd=a.Fog.End;
+            s.horizon=C(a.Horizon);s.zenith=C(a.Zenith);s.moonSize=a.MoonSize;s.keyColor=C(a.KeyColor);s.keyFrom=a.KeyAim.From?new[]{a.KeyAim.X,a.KeyAim.Y,a.KeyAim.Z}:null;s.rimColor=C(a.RimColor);
+            s.sunDir=new[]{a.SunX,a.SunY,a.SunZ};s.halo=T(a.Halo);s.haloFalloff=a.HaloFalloff;s.disc=T(a.Disc);s.discShade=new[]{a.DiscBase,a.Crater};s.stars=a.Stars;s.cloud=T(a.Cloud);s.cloudSpeed=a.CloudSpeed;
             return s;
         }
         private static void Compare(OldMapLight a,OldMapLight e,string what,bool electronSky)
@@ -61,6 +58,10 @@ namespace ChipArena.UnityConversion
                 sunDir=A("sunDir"),halo=A("halo"),disc=A("disc"),discShade=A("discShade"),cloud=A("cloud")};
         }
         internal static MapLookSet Load(string root)=>JsonSerializer.Deserialize<MapLookSet>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/MapLooks.json")),new JsonSerializerOptions{IncludeFields=true});
+        /// <summary>Tests/look-references.json: the repository files outside the Unity project the look checks compare against (the
+        /// Brickfall draft blockout, the Electron sky and moon keys), frozen by tools/export_look_references.py; the checks read
+        /// only files under the project (the native CI's sparse checkout and the source package hold nothing else).</summary>
+        internal static JsonElement References(string root)=>JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Tests/look-references.json"))).RootElement;
         public static IEnumerable<string> Run(string root,ConversionContent content)
         {
             var set=Load(root);NativeMapLooks.Validate(set);
@@ -78,15 +79,53 @@ namespace ChipArena.UnityConversion
                 Check(entry.shadows.fallbackCascades==entry.shadows.cascades&&entry.shadows.fallbackDistance==entry.shadows.distance,map.id+" no shadow change on the low tier");
                 Check(!NativeMapLooks.HasDirection(entry.rim)&&NativeMapLooks.HasFrom(entry.key),map.id+" key from today's position, rim on the rig's direction");
             }
-            yield return "map looks: the 15 old maps' lighting, fog, shadows and sky from MapLooks.json equal ce3c506 bit for bit ("+(count-sameBefore)+" values; Cinder Crossing's sky follows Electron's forge theme)";
-            // The volcanic sky in Electron: both forge-themed maps.
-            // The Electron expressions, checked against src/client when the repository is around them (the source package has only the Unity project).
-            string world=Path.Combine(root,"../../src/client/night-world.ts"),sceneryFile=Path.Combine(root,"../../src/client/map-scenery.ts");bool electronFiles=File.Exists(world)&&File.Exists(sceneryFile);
-            if(electronFiles){var electron=File.ReadAllText(world);Check(electron.Contains("volcanic=m.theme==='forge'")&&electron.Contains("horizon=new T.Color(volcanic?0x633345:cold?0x405677:0x333f64),zenith=new T.Color(volcanic?0x100b1c:0x080e22)"),"night-world.ts keys the volcanic sky on the forge theme");
-                Check(File.ReadAllText(sceneryFile).Contains("moon?.color.set(id==='outpost'?0xffc5a5:id==='forge'?0xffac9c:0xb2ceff)"),"map-scenery.ts keys the moon colour on the id");}
-            foreach(var map in content.maps.Where(m=>m.theme=="forge")){var s=NativeMapLooks.Find(set,map.id).sky;Check(s.horizon==0x633345&&s.zenith==0x100b1c,map.id+" volcanic sky");}
-            Check(NativeMapLooks.Find(set,"lavaworks").key.color==0xb2ceff&&NativeMapLooks.Find(set,"forge").key.color==0xffac9c,"moon colours stay keyed on the id");
-            yield return "map looks: Cinder Crossing (forge theme) takes the volcanic sky as night-world.ts does; Obsidian Forge alone keeps the ember moon, as map-scenery.ts"+(electronFiles?" (both read from src/client)":" (src/client not present)");
+            int values=count-sameBefore;
+            Check(NativeMapLooks.RigRim.SequenceEqual(new[]{14f,7f,12f})&&NativeMapLooks.RigKey.SequenceEqual(new[]{-8f,20f,-12f}),"Create's rig positions");
+            string lighting=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeLighting.cs"));
+            string Between(string from,string to){int i=lighting.IndexOf(from,StringComparison.Ordinal),j=lighting.IndexOf(to,i+1,StringComparison.Ordinal);Check(i>=0&&j>i,"NativeLighting has "+from);return lighting.Substring(i,j-i);}
+            string apply=Between("public static void Apply(","/// <summary>The graphics tier's shadows");
+            Check(apply.Contains("NativeMapLooks.Applied(look,map.sky,NativeArenaDressing.Preview,s);")&&!apply.Contains("look.fog")&&!apply.Contains("look.key")&&!apply.Contains("look.rim")&&!apply.Contains("look.ambient")&&!apply.Contains("look.sky"),"Apply writes what NativeMapLooks.Applied computes, and nothing it computes itself");
+            Check(lighting.Contains("Rig(NativeMapLooks.RigKey)")&&lighting.Contains("Rig(NativeMapLooks.RigRim)"),"Create aims from the Core rig positions");
+            yield return "map looks: the 15 old maps' lighting, fog, shadows and sky from MapLooks.json, through the Core mapping Apply calls, equal ce3c506 bit for bit ("+values+" values; Cinder Crossing's sky follows Electron's forge theme)";
+            // The entrance and draft stages own the fog and the shadows: on every old map the pinned values are the map's own, on
+            // Brickfall they are not (so nothing of its look leaks into an entrance or the draft); EndIntro gives back the fog found.
+            var draftFog=NativeMapLooks.DraftFog;var introFog=NativeMapLooks.StageFog(MapLookColor.Of(.1f,.2f,.3f),9,26);
+            Check(draftFog.On&&draftFog.Mode==MapFogMode.Linear&&!draftFog.WritesDensity&&draftFog.Start==30&&draftFog.End==100&&draftFog.Color.r==.025f&&draftFog.Color.g==.032f&&draftFog.Color.b==.055f&&draftFog.Color.a==1,"the draft fogs into its own backdrop from 30 to 100 m (draft-stage.ts fogs to its background)");
+            Check(introFog.On&&introFog.Mode==MapFogMode.Linear&&!introFog.WritesDensity&&introFog.Start==9&&introFog.End==26&&introFog.Color.g==.2f,"an entrance's fog is on and linear in the clip's colour and range");
+            foreach(var map in content.maps)
+            {
+                var st=new MapLookState();NativeMapLooks.Applied(NativeMapLooks.Find(set,map.id),map.sky,false,st);
+                Check(st.Fog.On==draftFog.On&&st.Fog.Mode==draftFog.Mode&&!st.Fog.WritesDensity,map.id+": its fog is on and linear, as every stage's (an entrance sees what it saw before)");
+                Check(st.ShadowCascades(false)==NativeMapLooks.StageCascades&&st.ShadowCascades(true)==NativeMapLooks.StageCascades&&st.Shadows(false)==NativeMapLooks.StageShadowDistance&&st.Shadows(true)==NativeMapLooks.StageShadowDistance,map.id+": its shadows on both tiers are the stages' 2 cascades over 65 m");
+                Check(st.KeyShadows==NativeMapLooks.StageKeyShadows&&st.KeyStrength==NativeMapLooks.StageShadowStrength,map.id+": its key is soft at full strength, as the draft pins it");
+            }
+            {
+                var st=new MapLookState();NativeMapLooks.Applied(NativeMapLooks.Find(set,"brickfall"),0,false,st);
+                Check(st.Cascades!=NativeMapLooks.StageCascades&&st.ShadowDistance!=NativeMapLooks.StageShadowDistance&&st.KeyStrength!=NativeMapLooks.StageShadowStrength&&(st.Fog.Start!=draftFog.Start||st.Fog.End!=draftFog.End)&&st.RimPixel,"Brickfall's own shadows, key strength and fog differ from the stages', so the pin is what keeps them out (its rim stays per-pixel for the dressed blocks)");
+            }
+            string intro=Between("public static void Intro(","public static void Clock("),draft=Between("public static void Draft(","private static void Ambient("),end=Between("public static void EndIntro(","// An entrance or the draft takes the screen");
+            Check(intro.Contains("EnterStage();")&&intro.Contains("WriteFog(NativeMapLooks.StageFog(MapLookColor.Of(fog.r,fog.g,fog.b),env[e+6],env[e+7]));StageShadows();")&&!intro.Contains("RenderSettings.fog"),"an entrance writes its whole fog and pins the stage shadows every frame");
+            Check(draft.Contains("EnterStage();")&&draft.Contains("WriteFog(NativeMapLooks.DraftFog);StageShadows();")&&draft.Contains("camera.backgroundColor=C(NativeMapLooks.DraftBackground);")&&draft.Contains("moon.shadows=LightShadowsOf(NativeMapLooks.StageKeyShadows);moon.shadowStrength=NativeMapLooks.StageShadowStrength;")&&!draft.Contains("RenderSettings.fog"),"the draft writes its whole fog, pins the stage shadows and the key's shadow strength");
+            Check(end.Contains("WriteFog(stageFog);Apply(map,camera);")&&lighting.Contains("private static void EnterStage(){if(introActive)return;introActive=true;stageFog=ReadFog();}")&&apply.Contains("WriteFog(s.Fog);if(introActive)stageFog=ReadFog();"),"EndIntro gives back the fog the stage found (density included; an Apply during a stage updates it), then Apply sets the map's look");
+            Check(lighting.Contains("Density=RenderSettings.fogDensity")&&lighting.Contains("if(f.WritesDensity)RenderSettings.fogDensity=f.Density;"),"the saved fog keeps the density and the restore writes it");
+            yield return "map looks: entrances and the chip draft own the fog (on, linear, their own colour and range) and the shadows (2 cascades over 65 m; the draft's key soft at full strength), restored at EndIntro; every old map's own values are exactly these, Brickfall's are not";
+            // The Electron sky and moon keys (night-world.ts and map-scenery.ts at the source lock's commit), as
+            // tools/export_look_references.py froze them in Tests/look-references.json; their blobs are the lock's.
+            var electron=References(root).GetProperty("electron");var sourceLock=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"tools/source-lock.json"))).RootElement;
+            Check(electron.GetProperty("commit").GetString()==sourceLock.GetProperty("commit").GetString()&&sourceLock.GetProperty("files").EnumerateArray().Count(f=>electron.GetProperty("files").TryGetProperty(f.GetProperty("path").GetString(),out var b)&&b.GetString()==f.GetProperty("git_blob_sha").GetString())==2,"the frozen Electron keys come from the source lock's night-world.ts and map-scenery.ts");
+            var skyKeys=electron.GetProperty("sky");var moonKeys=electron.GetProperty("moon");var coldThemes=skyKeys.GetProperty("cold").EnumerateArray().Select(x=>x.GetString()).ToArray();
+            string sealedTheme=skyKeys.GetProperty("sealedTheme").GetString(),volcanicTheme=skyKeys.GetProperty("volcanic").GetString();int SkyHex(string part,string n)=>skyKeys.GetProperty(part).GetProperty(n).GetInt32();
+            Check(skyKeys.GetProperty("volcanicKey").GetString()=="theme"&&volcanicTheme=="forge"&&moonKeys.GetProperty("key").GetString()=="id","night-world.ts keys the volcanic sky on the forge theme; map-scenery.ts keys the moon colour on the id");
+            int skies=0;
+            foreach(var map in content.maps)
+            {
+                var look=NativeMapLooks.Find(set,map.id);int moonColor=moonKeys.GetProperty("byId").TryGetProperty(map.id,out var byId)?byId.GetInt32():moonKeys.GetProperty("other").GetInt32();
+                Check(look.key.color==moonColor,map.id+" moon colour as map-scenery.ts");if(map.theme==sealedTheme)continue;skies++;
+                bool volcanic=map.theme==volcanicTheme,cold=coldThemes.Contains(map.theme);
+                Check(look.sky.horizon==SkyHex("horizon",volcanic?"volcanic":cold?"cold":"other")&&look.sky.zenith==SkyHex("zenith",volcanic?"volcanic":"other"),map.id+" ("+map.theme+") sky as night-world.ts");
+            }
+            Check(skies==14&&content.maps.Count(m=>m.theme==volcanicTheme)==2,"14 skies checked (Ward Zero is sealed: Electron draws none), both forge-themed maps volcanic");
+            yield return "map looks: every old map's sky follows night-world.ts (Cinder Crossing's forge theme takes the volcanic sky; sealed Ward Zero has none) and every moon colour map-scenery.ts (Obsidian Forge alone keeps the ember moon), from the Electron keys frozen in Tests/look-references.json";
             // A map with no entry: today's look from the map itself, and resolution order.
             var unknown=new ContentMap{id="test-yard",theme="snow",sky=0x0c1c30,accent=0x80e4ff};var fb=NativeMapLooks.Resolve(set,unknown.id,unknown.theme,unknown.sky,unknown.accent);
             Check(fb.id=="test-yard"&&fb.sky.horizon==0x405677&&fb.rim.color==0x80e4ff&&fb.background==0x0c1c30&&fb.sky.variant=="night","fallback for a map without an entry");

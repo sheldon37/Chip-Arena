@@ -9,7 +9,8 @@ namespace ChipArena.UnityConversion
     /// The Brickfall atmosphere's memory of what happened, on the match clock: per pigeon the last few times something within
     /// <see cref="NativeBrickfallAtmosphere.SpookRadius"/> m spooked it (any Explosion event, and structure stress, fall and
     /// landing cues), and the last <see cref="Collapses"/> structure landings (time, place, size, energy) for the drifting
-    /// collapse dust and the dust coat. Every write is idempotent on (time, place), so the presentation can feed the same
+    /// collapse dust (the dust coat is the round's one NativeDustCoat, fed by the same landings). Every write is idempotent on
+    /// (time, place), so the presentation can feed the same
     /// event in every frame it stays in the event list, and the killcam replay can feed it again; reads take only entries at
     /// or before the clock they are asked about, so the killcam, replaying a past moment on the same match clock, sees the
     /// pigeons and dust exactly as they were. Fixed arrays: no allocation after construction.
@@ -37,7 +38,7 @@ namespace ChipArena.UnityConversion
             }
             Newest=Math.Max(Newest,time);
         }
-        /// <summary>A structure landing (StructureLand): spooks the pigeons and starts the drifting dust haze and the dust coat.</summary>
+        /// <summary>A structure landing (StructureLand): spooks the pigeons and starts the drifting dust haze.</summary>
         public void Collapse(double time,double x,double y,double z,double radius,double energy)
         {
             if(double.IsNaN(time)||double.IsInfinity(time))return;Spook(time,x,y,z);
@@ -95,8 +96,8 @@ namespace ChipArena.UnityConversion
     ///  - collapse dust from the destruction kit's landings drifting east at <see cref="DustDrift"/> m/s (<see cref="DustPuff"/>):
     ///    a thin haze above head height that follows the kit's landing dust wall, fades near the eye (<see cref="DustNear"/>)
     ///    and shares the §3.10 cap of <see cref="DustBillboardCap"/> dust billboards map-wide with that wall;
-    ///  - the dust coat (<see cref="DustCoat"/>), 0..1, rising with each landing this round: a shader global the block shader can
-    ///    read to grey surfaces as the round goes on.
+    ///  - not the dust coat: landings reach the round's one coat (Core NativeDustCoat, which NativeBlockLit reads) through
+    ///    ArenaPresentation.StructureHeard, next to this memory.
     /// Counts follow the effects quality (Full 1, Reduced .3) and halve on graphics=performance, which also drops the shafts
     /// (<see cref="Count"/>). Unity frame, metres, seconds.
     /// </summary>
@@ -107,8 +108,6 @@ namespace ChipArena.UnityConversion
         /// <summary>Drift puffs per landing, landings drifting at once, drift puffs in all, and the §3.10 cap on live dust
         /// billboards map-wide that the drift shares with the destruction kit's landing dust wall (the wall comes first).</summary>
         public const int DustPuffs=12,DustClouds=8,DustBudget=48,DustBillboardCap=120;
-        /// <summary>The shader global the block shader reads (0..1).</summary>
-        public const string DustCoatGlobal="_ArenaDustCoat";
         private static double Hash(int a,int b=0,int c=0)=>NativeBrickfallScenery.Hash(a,b,c);
         private static double Range(double lo,double hi,int a,int b=0,int c=0)=>lo+(hi-lo)*Hash(a,b,c);
         private static double Frac(double v)=>v-Math.Floor(v);
@@ -241,7 +240,7 @@ namespace ChipArena.UnityConversion
             x=TarpX[t]+ux*(u+sway)+nx*(.06+billow);z=TarpZ[t]+uz*(u+sway)+nz*(.06+billow);y=Math.Max(TarpMinHeight,TarpTop-v*TarpHeight+billow*.25*v);
         }
 
-        // ---------------- collapse dust and the dust coat ----------------
+        // ---------------- collapse dust ----------------
         /// <summary>
         /// Puff p of a landing at (lx, ly, lz) of size `radius` and `energy` 0..1, `age` s after it: the thin haze the
         /// destruction kit's landing dust wall leaves behind (the wall is .5 opaque for 1.5 s, .2 by 3 s, gone by 7 s; this is
@@ -263,15 +262,6 @@ namespace ChipArena.UnityConversion
         /// max(1.5 m, a quarter of the puff).
         /// </summary>
         public static double DustNear(double distance,double size)=>Smooth((distance-Math.Max(3,size*.5))/Math.Max(1.5,size*.25));
-        /// <summary>
-        /// The dust coat at `time`: 1 - exp(-Σ), each landing since `roundStart` adding .22 × (.4 + .6 × energy) as its dust settles
-        /// over 8 s, so a few collapses grey the arena noticeably and it saturates toward 1 late in a destructive round.
-        /// </summary>
-        public static double DustCoat(NativeBrickfallMemory memory,double time,double roundStart)
-        {
-            double sum=0;for(int k=0;k<memory.CollapseCount;k++){memory.CollapseAt(k,out double t,out _,out _,out _,out _,out double e);if(t<roundStart||t>time)continue;sum+=.22*(.4+.6*e)*Smooth((time-t)/8);}
-            return 1-Math.Exp(-sum);
-        }
 
         // ---------------- lighting the CPU-built pieces ----------------
         /// <summary>

@@ -10,10 +10,12 @@ namespace ChipArena.UnityConversion
     // Arena block looks (Core/NativeBlockLooks.cs, Resources/NativeBlockLit.shader, MapLooks.json blockLooks/blocks/preview):
     // the shader's look ids, flags, colours and formulas against the Core rules and ARENA_PROPOSAL.md 2.3/3.10, the stage
     // meshes (closed, outward at every block size and turn, never past the collider, the chamfer, shades, chips, waist and
-    // stub), stages and the stage scale, the band and tag fitted to every banded member and spared by the dust coat, look
-    // selection (Brickfall's sim entries, kit parts kept out of them, the [static] marks, the draft script's ids, the dev
-    // preview, material defaults), the opt-in (no old map changes by default), the draw budget, the dust coat, the flash
-    // fall-off and validation.
+    // stub), stages and the stage scale, the band and tag fitted to every banded member and spared by the dust coat, the band
+    // lamp and the telegraph's window light (per instance from the CPU clock), look selection (Brickfall's sim entries, kit
+    // parts kept out of them, the [static] marks, the draft script's elements and piers as Tests/look-references.json froze
+    // them, the dev preview, material defaults), the opt-in (no old map changes by default), the draw budget, the round's one
+    // dust coat (breaks, stacked breaks of one tick and landings on the match clock, killcam rewinds, order independence,
+    // folding, no allocations), the flash fall-off and validation.
     internal static class BlockLookChecks
     {
         private static int count;
@@ -26,14 +28,14 @@ namespace ChipArena.UnityConversion
             string[] names={"PLAIN","BRICK_RED","BRICK_BUFF","TERRACOTTA","CONCRETE","STEEL","TIMBER","TAR","ASPHALT","COBBLE","WINDOW","NEON","CORRUGATED","DEMOLITION"};
             Check(names.Length==NativeBlockLooks.Keys.Length&&NativeBlockLooks.Palette.Length==NativeBlockLooks.Keys.Length,"one shader id and palette colour per key");
             for(int i=0;i<names.Length;i++){var m=Regex.Match(shader,@"#define LOOK_"+names[i]+@" ([0-9.]+)\r?\n");Check(m.Success&&float.Parse(m.Groups[1].Value,CultureInfo.InvariantCulture)==i,"LOOK_"+names[i]+" is "+i+" ("+NativeBlockLooks.Keys[i]+")");Check(NativeBlockLooks.Id(NativeBlockLooks.Keys[i])==i,"Id("+NativeBlockLooks.Keys[i]+")");}
-            foreach(var (n,v) in new[]{("BAND",NativeBlockLooks.Band),("TAG",NativeBlockLooks.Tag),("FRAGMENT",NativeBlockLooks.Fragment),("STROBE",NativeBlockLooks.Strobe),("DARK",NativeBlockLooks.Dark),("SPIN_Y",NativeBlockLooks.SpinY),("SPIN_Z",NativeBlockLooks.SpinZ)})
+            foreach(var (n,v) in new[]{("BAND",NativeBlockLooks.Band),("TAG",NativeBlockLooks.Tag),("FRAGMENT",NativeBlockLooks.Fragment),("LAMP_AMBER",NativeBlockLooks.LampAmber),("LAMP_RED",NativeBlockLooks.LampRed),("SPIN_Y",NativeBlockLooks.SpinY),("SPIN_Z",NativeBlockLooks.SpinZ)})
                 Check(shader.Contains("#define FLAG_"+n+" "+v+"u"),"FLAG_"+n+" = "+v);
             int allFlags=NativeBlockLooks.SpinZ*2-1;Check(allFlags*16+NativeBlockLooks.Keys.Length<1<<24,"look + 16 x flags stays exact in a float");
             // 3.10 palette per look key.
             var palette=new Dictionary<string,int>{["brick-red"]=0x9C4A30,["brick-buff"]=0xB8774E,["terracotta"]=0xE3C9A0,["concrete-board"]=0x8F8A80,["steel-green"]=0x3E6B5A,["timber"]=0xB4834F,["tar"]=0x2B2A2E,["asphalt"]=0x3A3836,["cobble"]=0x6B625A,["window-lit"]=0x6E8F96,["neon"]=0x4FA8FF,["demolition"]=0xF4B321};
             foreach(var p in palette)Check(NativeBlockLooks.Palette[NativeBlockLooks.Id(p.Key)]==p.Value,p.Key+" palette");Check(NativeBlockLooks.Palette[NativeBlockLooks.Plain]==-1,"plain keeps the block's colour");
             // Shader colours: the 3.10 / 2.3 hex values in linear light.
-            var colours=new Dictionary<string,int>{["MORTAR"]=0xCDBB9E,["FRAME"]=0x1F2A30,["LIT"]=0xFFB45E,["RUST"]=0x7A3E22,["YELLOW"]=0xF4B321,["BLACK"]=0x1C1A18,["DANGER"]=0xD6332A,["INK"]=0xF2EDE4,["DUST"]=0xB8A68F,["SOOT"]=0x4A403A,["COAT"]=0xB3A48E,["FRESH_CONCRETE"]=0xC9C2B4,["FRESH_BRICK"]=0xD2BFA3};
+            var colours=new Dictionary<string,int>{["MORTAR"]=0xCDBB9E,["FRAME"]=0x1F2A30,["LIT"]=0xFFB45E,["RUST"]=0x7A3E22,["YELLOW"]=0xF4B321,["BLACK"]=0x1C1A18,["DANGER"]=0xD6332A,["INK"]=0xF2EDE4,["DUST"]=0xB8A68F,["SOOT"]=0x4A403A,["COAT"]=0xB3A48E,["FRESH_CONCRETE"]=0xC9C2B4,["FRESH_BRICK"]=0xD2BFA3,["LAMP_AMBER"]=NativeBlockLooks.LampAmberColor};
             foreach(var c in colours)
             {
                 var m=Regex.Match(shader,@"#define BK_"+c.Key+@" float3\(([-0-9.]+),([-0-9.]+),([-0-9.]+)\)");Check(m.Success,"BK_"+c.Key+" defined");
@@ -41,7 +43,8 @@ namespace ChipArena.UnityConversion
             }
             for(int k=0;k<3;k++){double ratio=Lin((0x7E3A26>>(16-8*k))&255)/Lin((0x9C4A30>>(16-8*k))&255);Check(Math.Abs(ratio-.63)<.03,"dark course #7E3A26 = brick red x .63 in linear light, channel "+k+": "+ratio);}
             Check(shader.Contains("#define BK_DARK_COURSE 0.63"),"dark course factor");
-            yield return "block looks: 14 look ids, 7 flags, the 3.10 palette and 13 shader colours (2.3 chevron yellow/black, danger red) match the Core and the proposal";
+            Check(NativeBlockLooks.LampAmberColor==0xFFB000&&NativeBlockLooks.LampRedColor==0xD6332A&&shader.Contains("?BK_DANGER:"),"the band lamp is amber #FFB000 or the 2.3 danger red");
+            yield return "block looks: 14 look ids, 7 flags, the 3.10 palette and 14 shader colours (2.3 chevron yellow/black, danger red, the lamp's amber) match the Core and the proposal";
             // Formulas the Core mirrors, SM 3.5 rules, the light block's own arrays.
             foreach(var expr in new[]{"float3 p=a*h+sign(b)*min(abs(b)*c,0.42*abs(a)*h);","#define BK_GRIME 0.22","1.0-smoothstep(1.2,1.8,yb)","inBand=smoothstep(bt.x-fw.y,bt.x+fw.y,yb)*(1.0-smoothstep(bt.y-fw.y,bt.y+fw.y,yb));",
                 "float a=saturate(1.0-q*q);","_ArenaLightColor[k].rgb*(a*a*saturate(dot(n,d/len)))","saturate(5.0*(1.0-q))/(1.0+25.0*q)","smoothstep(4.0,40.0,dist)","alb*=shade.rgb*1.25;",
@@ -67,7 +70,7 @@ namespace ChipArena.UnityConversion
                 "float above=band.y+"+G(NativeBlockLooks.TagGap+NativeBlockLooks.TagHalf)+";float below=band.x-"+G(NativeBlockLooks.TagGap+NativeBlockLooks.TagHalf)+";",
                 "above+"+G(NativeBlockLooks.TagHalf)+"<=height-c-"+G(NativeBlockLooks.TagClear)+"?above:(below-"+G(NativeBlockLooks.TagHalf)+">=c+"+G(NativeBlockLooks.TagClear)+"?below:-1.0)",
                 "float3 bt=BkBand(2.0*hs.y);","if((fl&(FLAG_BAND|FLAG_TAG))!=0u&&!top&&health>0.0)","if((fl&FLAG_TAG)!=0u&&bt.z>0.0&&halfAcross>"+G(NativeBlockLooks.TagMinHalfWidth)+")",
-                "float2 tp=float2(across,yb-bt.z);","coat*=1.0-"+G(1-NativeBlockLooks.BandCoatKeep)+"*max(inBand,plate);","(nO.y>0.7?1.0:0.55)*(0.75+0.5*BkNoise(uv*1.3))"})
+                "float2 tp=float2(across,yb-bt.z);","coat*=1.0-"+G(1-NativeBlockLooks.BandCoatKeep)+"*max(max(inBand,plate),lamp);","(nO.y>0.7?1.0:0.55)*(0.75+0.5*BkNoise(uv*1.3))"})
                 Check(shader.Contains(expr),"shader has "+expr);
             Check(!Regex.IsMatch(code,@"\bdemo\b")&&Regex.Matches(code,@"BkGlyphs\(tp").Count==1,"the tag is drawn in one place, only with FLAG_TAG");
             Check(Math.Abs(NativeBlockLooks.TagHalf*2-.24f)<1e-6&&Math.Abs(NativeBlockLooks.ClampShare*.5f-.21f)<1e-6,"the plate is .24 m tall; the shader's .21 is the chamfer clamp per metre of height");
@@ -93,8 +96,9 @@ namespace ChipArena.UnityConversion
             }
             {
                 // Every banded Brickfall entry at its member's smallest size: the draft layout's piers (docs/arenas/scripts/
-                // brickfall_m1.py: hotel 1.2 x 3.6 x 1.2, tenement 1.0 x 3.6 x 1.0) and the render stand-ins for the members
-                // 3.9 names without a size (bridge bearing .8 x 1.0 x .8, chimney base ring 2.6 x 1.8 x 2.6).
+                // brickfall_m1.py: hotel 1.2 x 3.6 x 1.2, tenement 1.0 x 3.6 x 1.0; every draft pier is checked against these
+                // from Tests/look-references.json) and the render stand-ins for the members 3.9 names without a size (bridge
+                // bearing .8 x 1.0 x .8, chimney base ring 2.6 x 1.8 x 2.6).
                 var bfLooks=NativeMapLooks.Find(MapLookChecks.Load(root),"brickfall").blockLooks;
                 var members=new[]{("hotel-pier-nw",1.2f,3.6f,true),("ashby-pier-F1",1f,3.6f,true),("bray-pier-R2",1f,3.6f,true),("bridge-ashby-bearing",.8f,1f,false),("stack-n-base",2.6f,1.8f,true)};
                 foreach(var (id,w,h,tagged) in members)
@@ -104,8 +108,14 @@ namespace ChipArena.UnityConversion
                     Check((tag>0&&w*.5f>NativeBlockLooks.TagMinHalfWidth)==tagged,id+(tagged?" shows":" has no room for")+" the DANGER tag");
                 }
                 foreach(var e in bfLooks.Where(e=>e.band))Check(members.Any(m=>NativeBlockLooks.Score(e.block,m.Item1,"brick")>0),"banded entry "+e.block+" has a member size checked");
-                string draftPy=Path.Combine(root,"../../docs/arenas/scripts/brickfall_m1.py");
-                if(File.Exists(draftPy)){var tops=Regex.Matches(File.ReadAllText(draftPy),@"add\(f?'[a-z-]*pier[^\n]*?, ([0-9.]+), 'P'").Select(m=>float.Parse(m.Groups[1].Value,CultureInfo.InvariantCulture)).ToArray();Check(tops.Length==2&&tops.All(t=>t>=3.6f),"the draft's piers are 3.6 m tall ("+tops.Length+" pier rows)");}
+                int piers=0;
+                foreach(var e in MapLookChecks.References(root).GetProperty("draft").GetProperty("elements").EnumerateArray())
+                {
+                    string id=e[0].GetString();if(!id.Contains("-pier-"))continue;piers++;var m=members.Where(k=>k.Item1.StartsWith(id.Substring(0,id.IndexOf("-pier-")+6),StringComparison.Ordinal)).ToArray();
+                    double w=e[2].GetDouble()-e[1].GetDouble(),d=e[4].GetDouble()-e[3].GetDouble(),top=e[5].GetDouble();
+                    Check(m.Length==1&&Math.Abs(top-3.6)<1e-6&&Math.Min(w,d)>=m[0].Item2-1e-6,"draft pier "+id+" ("+w+" x "+top+" x "+d+") is 3.6 m tall and at least its member's checked width");
+                }
+                Check(piers==14,"the draft's 14 piers (hotel 4, Ashby 5, Bray 5) checked: "+piers);
             }
             {
                 // The coat at its heaviest on a side face (a saturated map and block coat x .55 x the noise's 1.25) against the band.
@@ -116,6 +126,18 @@ namespace ChipArena.UnityConversion
                 Check(Ratio(side*NativeBlockLooks.BandCoatKeep)>=6&&Ratio(side*NativeBlockLooks.BandCoatKeep)>=.65*Ratio(0)&&Ratio(side)<2,"the band keeps "+Ratio(side*NativeBlockLooks.BandCoatKeep).ToString("0.0")+":1 yellow/black contrast under the heaviest coat (clean "+Ratio(0).ToString("0.0")+":1; the full coat would leave "+Ratio(side).ToString("0.0")+":1)");
             }
             yield return "block looks: the 2.3 band and DANGER tag fit every block height (1.0-1.6 m with the tag at 1.8 m on tall members, a centred band and the tag only where its plate fits on short ones; every banded Brickfall member shows its band), only with their own flags, never on a stub, and keep at least 6:1 contrast under the heaviest dust coat";
+            // The band lamp (2.3) and the 3.9 telegraph's window light: per instance from NativeArenaDressing on the CPU clock.
+            foreach(var expr in new[]{"float ld=length(float2(across,yb-0.5*(bt.x+bt.y)));","lamp=1.0-smoothstep("+G(NativeBlockLooks.LampHousing)+"-fwm,"+G(NativeBlockLooks.LampHousing)+"+fwm,ld);","float lens=1.0-smoothstep("+G(NativeBlockLooks.LampLens)+"-fwm,"+G(NativeBlockLooks.LampLens)+"+fwm,ld);",
+                "float3 lc=(fl&FLAG_LAMP_RED)!=0u?BK_DANGER:((fl&FLAG_LAMP_AMBER)!=0u?BK_LAMP_AMBER:float3(0.0,0.0,0.0));","emit=lerp(emit*(1.0-lamp),lc*"+G(NativeBlockLooks.LampGlow)+",lens);",
+                "float lit=step(BkHash2(pane+seed*37.0),0.35)*win;","o.world=float4(mul(unity_ObjectToWorld,v.vertex).xyz,col.w);","i.shade,i.obj.w,i.world.w);"})Check(shader.Contains(expr),"shader has "+expr);
+            Check(!Regex.IsMatch(Regex.Replace(Body("BlockSurf BlockSurface("),@"//[^\n]*",""),@"_Time|\btime\b")&&!code.Contains("FLAG_STROBE")&&!code.Contains("FLAG_DARK"),"the window strobe and the lamp blink come from the CPU's presentation clock (host, guests and the killcam agree), not the shader's _Time");
+            Check(NativeBlockLooks.LampHousing>NativeBlockLooks.LampLens&&2*NativeBlockLooks.LampHousing<=.3f-1e-6,"the lamp's housing fits the .3 m band of the shortest member");
+            Check(NativeBlockLooks.Lamp(0,false,true,true)==NativeBlockLooks.LampAmber&&NativeBlockLooks.Lamp(1,false,true,false)==NativeBlockLooks.LampAmber&&NativeBlockLooks.Lamp(0,false,false,true)==0&&NativeBlockLooks.Lamp(1,false,false,true)==0,"amber while locked, dark once armed");
+            Check(NativeBlockLooks.Lamp(2,false,false,true)==NativeBlockLooks.LampRed&&NativeBlockLooks.Lamp(2,false,true,false)==0&&NativeBlockLooks.Lamp(0,true,true,true)==NativeBlockLooks.LampRed&&NativeBlockLooks.Lamp(1,true,false,false)==0,"red on the strobe at S2 or under a stress telegraph (locked or not), dark between blinks");
+            Check(NativeBlockLooks.Lamp(3,true,true,true)==0,"a stub (S3) has no lamp");
+            Check(NativeBlockLooks.LockSeconds==4&&NativeBlockLooks.Locked(NativePhase.Countdown,0,5)&&NativeBlockLooks.Locked(NativePhase.Fight,10,13.99)&&!NativeBlockLooks.Locked(NativePhase.Fight,10,14)&&!NativeBlockLooks.Locked(NativePhase.Result,10,11)&&!NativeBlockLooks.Locked(NativePhase.Lobby,0,0),"members are locked before the fight and for its first 4 s (3.9 rule 1)");
+            {int blinks=0;bool last=false;for(int i=0;i<1000;i++){bool on=NativeBlockLooks.Lamp(2,false,false,NativeStructureFx.LampStrobe(i*.001f)>0)!=0;if(on&&!last)blinks++;last=on;}Check(blinks==4,"the red lamp blinks 4 times a second: "+blinks);}
+            yield return "block looks: the band lamp (amber while locked, red on the 4 Hz strobe at S2 or under a stress telegraph, else dark glass; spared by the coat) and the 8 Hz window light come per instance from the CPU clock, not the shader's time";
             // Stage meshes at every size and turn: closed, outward, inside the collider; the chamfer, shades, chips, waist and stub.
             var sizes=new[]{(1f,1f,1f),(2.5f,3.05f,.3f),(1.2f,3.6f,1.2f),(64f,1.5f,56f),(.3f,14.4f,.3f),(.04f,.04f,.04f),(8f,.24f,1.2f),(.46f*2.5f,.44f*3.05f,.88f*.3f)};
             int[] verts={216,216,264,216,216},tris={188,188,252,188,188};
@@ -228,18 +250,14 @@ namespace ChipArena.UnityConversion
             Check(bl.All(b=>!string.IsNullOrEmpty(b.note))&&bl.Where(b=>b.band).All(b=>b.look=="brick-red"||b.look=="brick-buff"||b.look=="steel-green"),"every Brickfall entry is documented; banded members are brick or steel");
             Check(bf.blocks!=null&&bf.blocks.dressed&&bf.blocks.haze==.15f&&bf.blocks.hazeTop==2.5f&&bf.blocks.hazeColor==0xCF9A74&&bf.blocks.dust>=0&&bf.blocks.dust<.1f,"Brickfall opts in, with 3.10's 15% ground haze to 2.5 m in the fog colour");
             yield return "block looks: Brickfall's blockLooks give sim blocks the 2.3/3.10 looks by id stem (banded hotel, tenement, chimney and bridge members; [static] marks on 3.9's static blocks), kit parts (windows, trims, signage, paving) live in kitLooks, exact > first glob > material: > material default, and all 11 3.10 looks are used";
-            // The draft layout's element names (docs/arenas/scripts/brickfall_m1.py) resolve to listed looks.
-            string draft=Path.Combine(root,"../../docs/arenas/scripts/brickfall_m1.py");bool hasDraft=File.Exists(draft);
-            if(hasDraft)
+            // The draft layout's element names (docs/arenas/scripts/brickfall_m1.py, every element it lists, mirrors included, as
+            // tools/export_look_references.py froze them in Tests/look-references.json) resolve to listed looks.
             {
-                string py=File.ReadAllText(draft);var ids=new List<string>();
-                foreach(Match m in Regex.Matches(py,@"\badd\('([a-z][a-z0-9-]*)'"))ids.Add(m.Groups[1].Value);foreach(Match m in Regex.Matches(py,@"wall_[xz]\('([a-z][a-z0-9-]*)'"))ids.Add(m.Groups[1].Value+"0");
-                foreach(Match m in Regex.Matches(py,@"f'([a-z-]+)\{i\}'"))ids.Add(m.Groups[1].Value+"0");foreach(Match m in Regex.Matches(py,@"add\('ashby-pier-' \+ nm"))ids.Add("ashby-pier-F1");
-                if(py.Contains("mname='bray-pier-' + nm"))ids.Add("bray-pier-F1");if(py.Contains("f'hotel-pier-{"))ids.Add("hotel-pier-nw");
-                Check(ids.Count>=30,"draft script elements found: "+ids.Count);
-                foreach(string id in ids.Distinct()){var c=R(id);Check(c.Listed,"draft element "+id+" has a Brickfall look");if(id.Contains("-pier-"))Check((c.Flags&NativeBlockLooks.Band)!=0,"draft pier "+id+" is banded");}
+                var draft=MapLookChecks.References(root).GetProperty("draft");var ids=draft.GetProperty("elements").EnumerateArray().Select(e=>e[0].GetString()).ToArray();
+                Check(draft.GetProperty("path").GetString()=="docs/arenas/scripts/brickfall_m1.py"&&ids.Length>100&&ids.Distinct().Count()==ids.Length,"draft elements frozen: "+ids.Length);
+                foreach(string id in ids){var c=R(id);Check(c.Listed,"draft element "+id+" has a Brickfall look");if(id.Contains("-pier-"))Check((c.Flags&NativeBlockLooks.Band)!=0,"draft pier "+id+" is banded");}
+                yield return "block looks: every element the draft script lists ("+ids.Length+", frozen in Tests/look-references.json) resolves to a listed look and every pier is banded";
             }
-            yield return "block looks: "+(hasDraft?"every element named by docs/arenas/scripts/brickfall_m1.py resolves to a listed look and every pier is banded":"draft script not present (source package); names checked from 5.2 only");
             // Opt-in: no old map is dressed without the dev flag; the preview dresses them with today's colours under the new surfaces.
             int previewed=0,listedPreview=0,draws=0;
             foreach(var map in content.maps)
@@ -258,12 +276,35 @@ namespace ChipArena.UnityConversion
             Check(draws==1&&NativeBlockLooks.Draws(360,0,0,0,0)==1&&NativeBlockLooks.Draws(501,0,0,0,0)==2&&NativeBlockLooks.Draws(200,80,40,40,40)==5&&NativeBlockLooks.Draws(0,0,0,0,0)==0,"draws: one per 500 blocks of a mesh (every old map: 1; the 360-prop cap spread over all five meshes: 5)");
             Check(NativeBlockLooks.Draws(360,360,360,360,360)<=NativeBlockLooks.DrawBudget&&NativeBlockLooks.DrawBudget==60,"the 360-prop cap fits 2.4's 60-draw arena budget in any stage mix");
             yield return "block looks: the 15 old maps stay on today's renderers unless --ca-dress-blocks is given ("+previewed+" blocks previewed, "+listedPreview+" by the preview list); each old map is 1 instanced draw, the prop cap at most 5 of 60";
-            // Dust coat, flash fall-off.
-            var coat=new NativeDustCoat();coat.Add(1,1);Check(Math.Abs(coat.Sample(1,1)-NativeDustCoat.PerBreak)<.03f,"a break dusts about PerBreak at its point: "+coat.Sample(1,1));Check(coat.Sample(1+NativeDustCoat.Radius+NativeDustCoat.Cell,1)==0,"nothing beyond the radius");
-            for(int i=0;i<40;i++)coat.Add(1,1);Check(coat.Sample(1,1)<=NativeDustCoat.Cap+1e-6f&&coat.Sample(1,1)>NativeDustCoat.Cap-.05f,"the coat caps");Check(coat.Sample(200,0)==0&&coat.Sample(float.NaN,0)==0,"0 off the grid");coat.Clear();Check(coat.Sample(1,1)==0,"a new round clears it");
+            // The round's one dust coat: breaks and landings on the match clock.
+            var coat=new NativeDustCoat();
+            Check(coat.Break(10,1,2,1)&&!coat.Break(10,1,2,1)&&!coat.Break(10,1.01f,2.01f,1)&&coat.Breaks==1&&!coat.Break(double.NaN,0,0,0)&&!coat.Break(10,0,float.NaN,0),"a break fed twice counts once");coat.At(9);Check(coat.Sample(1,1)==0&&coat.Local(1,1)==0,"nothing before the break's time");
+            coat.At(10);Check(Math.Abs(coat.Sample(1,1)-NativeDustCoat.PerBreak)<.03f&&coat.Local(1,1)==coat.Sample(1,1),"a break dusts about PerBreak at its point: "+coat.Sample(1,1));Check(coat.Sample(1+NativeDustCoat.Radius+NativeDustCoat.Cell,1)==0,"nothing beyond the radius");
+            for(int i=0;i<40;i++)coat.Break(11+i,1,2,1);coat.At(60);Check(coat.Sample(1,1)<=NativeDustCoat.Cap+1e-6f&&coat.Sample(1,1)>NativeDustCoat.Cap-.05f,"the coat caps");Check(coat.Sample(200,0)==0&&coat.Sample(float.NaN,0)==0,"0 off the grid");
+            coat.At(10.5);Check(Math.Abs(coat.Sample(1,1)-NativeDustCoat.PerBreak)<.03f,"a killcam frame at 10.5 s sees the first break only (the grid rebuilds)");coat.At(60);Check(coat.Sample(1,1)>NativeDustCoat.Cap-.05f&&coat.Wide==0,"the live clock sees them all again; breaks leave the map-wide level alone");
+            coat.Clear();Check(coat.Sample(1,1)==0&&coat.Breaks==0&&coat.Lands==0&&coat.Wide==0,"a new round clears it");
+            // Stacked members one blast breaks in the same tick (Break events at each prop's own centre: same x, z and time).
+            Check(coat.Break(30,5,1.8f,5)&&coat.Break(30,5,5.4f,5)&&!coat.Break(30,5,5.4f,5)&&coat.Breaks==2,"stacked breaks of one tick each count; each fed again does not");
+            coat.At(30);Check(Math.Abs(coat.Sample(5,5)-2*NativeDustCoat.PerBreak)<1e-5f,"two stacked breaks stamp twice: "+coat.Sample(5,5));coat.Clear();
+            Check(coat.Land(50,0,0,8,1)&&!coat.Land(50,0,0,8,1)&&coat.Lands==1,"a landing fed twice counts once");coat.At(49.9);Check(coat.Wide==0&&coat.Local(0,0)==0,"a killcam frame before the landing has none of it");
+            coat.At(52);float w52=coat.Wide,l52=coat.Local(0,0);coat.At(58);float w58=coat.Wide,l58=coat.Local(0,0);coat.At(80);float w80=coat.Wide,l80=coat.Local(0,0);
+            Check(w52>0&&w58>w52&&w80>=w58&&Math.Abs(w80-(1-Math.Exp(-NativeDustCoat.LandWide)))<1e-6,"the map-wide level settles in over 8 s to 1 - exp(-.22) for one full-energy landing ("+w80+")");
+            Check(l52>0&&l58>l52&&Math.Abs(l80-NativeDustCoat.LandLocal)<1e-5&&coat.Local(12.7f,0)>0&&coat.Local(12.9f,0)==0,"the local coat settles to .3 at the landing, out to 1.6 x its 8 m radius");
+            coat.Land(60,30,0,1,0);coat.At(80);Check(coat.Local(35.9f,0)>0&&coat.Local(36.1f,0)==0,"a small landing still dusts 6 m");
+            for(int k=0;k<40;k++)coat.Land(70+k,k-20,5,6,.5f);coat.At(400);Check(coat.Lands==NativeDustCoat.LandSlots&&coat.Wide<1&&coat.Wide>.9f,"landings past the slots fold into the base and the coat saturates below 1 ("+coat.Wide+")");
+            {
+                // Order independence (a guest or the killcam feeding the same entries in another order sees the same coat), folding
+                // past the slots, and no allocations once built.
+                var a=new NativeDustCoat();var b=new NativeDustCoat();for(int i=0;i<300;i++)a.Break(i*.1,(i*7)%60-30,i%3,(i*11)%50-25);for(int i=299;i>=0;i--)b.Break(i*.1,(i*7)%60-30,i%3,(i*11)%50-25);
+                a.Land(12,4,4,6,.7f);b.Land(12,4,4,6,.7f);a.At(20);b.At(20);bool same=a.Wide==b.Wide;for(float x=-40;x<=40;x+=1.3f)for(float z=-40;z<=40;z+=1.7f)same&=Math.Abs(a.Local(x,z)-b.Local(x,z))<1e-5f;Check(same,"the coat does not depend on the order entries arrive in (to float rounding)");
+                a.At(5);b.At(29.9);b.At(5);same=true;for(float x=-40;x<=40;x+=1.3f)for(float z=-40;z<=40;z+=1.7f)same&=Math.Abs(a.Local(x,z)-b.Local(x,z))<1e-5f;Check(same,"stepping back to a clock gives the coat built straight to it");
+                var big=new NativeDustCoat();for(int i=0;i<NativeDustCoat.BreakSlots+88;i++)big.Break(i*.05,(i%40)-20,0,(i/40)-8);big.At(1000);Check(big.Breaks==NativeDustCoat.BreakSlots&&big.Sample(0,0)>0,"breaks past the slots fold into the base");
+                big.At(0);long before=GC.GetAllocatedBytesForCurrentThread();for(int i=0;i<300;i++){big.At(i*.1);big.Local(i%30-15,0);}big.At(-1);big.At(30);long after=GC.GetAllocatedBytesForCurrentThread();Check(after==before,"the coat allocates nothing per frame ("+(after-before)+" bytes)");
+            }
+            Check(NativeDustCoat.Global=="_ArenaDustCoat"&&shader.Contains("float _ArenaDustCoat;")&&shader.Contains("saturate(_ArenaDust+"+G(NativeDustCoat.WideShare)+"*_ArenaDustCoat+dust)"),"the shader adds the map base, .6 x the map-wide level and the block's own coat");
             Check(NativeBlockLooks.FlashFalloff(0,8)==1&&NativeBlockLooks.FlashFalloff(8,8)==0&&NativeBlockLooks.FlashFalloff(9,8)==0&&NativeBlockLooks.FlashFalloff(1,0)==0&&NativeBlockLooks.FlashFalloff(7.99,8)<.002,"flash fall-off 1 at the flash, 0 at its range, continuous at the cut");
             double prev=2;for(int i=0;i<=100;i++){double f=NativeBlockLooks.FlashFalloff(i*.08,8);Check(f<=prev,"flash fall-off decreases");prev=f;}Check(Math.Abs(NativeBlockLooks.FlashFalloff(4,8)-1/(1+25*.25))<1e-12,"Unity's 1/(1+25q^2) at half range");
-            yield return "block looks: the dust coat (a break dusts 6 m around it, capped, cleared each round) and the blast-flash fall-off";
+            yield return "block looks: the round's one dust coat (a break dusts 6 m around it, a landing 6-14 m around it and the whole map as it settles over 8 s; capped, killcam-true on the match clock, order-free, cleared each round, no allocations) and the blast-flash fall-off";
             // Validation.
             void Reject(Action<MapLookSet> mutate,string what){var bad=MapLookChecks.Load(root);mutate(bad);bool threw=false;try{NativeMapLooks.Validate(bad);}catch(InvalidOperationException){threw=true;}Check(threw,"rejects "+what);}
             Reject(s=>NativeMapLooks.Find(s,"brickfall").blockLooks[0].look="marble","an unknown look key");Reject(s=>NativeMapLooks.Find(s,"brickfall").blockLooks[0].color=0x1000000,"a block colour beyond 0xFFFFFF");

@@ -78,13 +78,103 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class MapLookBlock {public string block,look,note;public int color;public bool band;}
     [Serializable] public sealed class MapLookBlocks {public bool dressed;public float dust,haze,hazeTop;public int hazeColor;}
 
+    /// <summary>A UnityEngine.Color's four floats as Color holds them (display values; Unity linearises them in Linear space),
+    /// with the Color maths NativeLighting used before this moved into Core (ColorOf, Lerp with t clamped, scaling with the
+    /// alpha), so the values Unity receives are the same bit for bit.</summary>
+    public struct MapLookColor
+    {
+        public float r,g,b,a;
+        public static MapLookColor Of(int hex)=>new MapLookColor{r=((hex>>16)&255)/255f,g=((hex>>8)&255)/255f,b=(hex&255)/255f,a=1};
+        public static MapLookColor Of(float r,float g,float b)=>new MapLookColor{r=r,g=g,b=b,a=1};
+        public static MapLookColor Lerp(MapLookColor x,MapLookColor y,float t){t=t<0?0:t>1?1:t;return new MapLookColor{r=x.r+(y.r-x.r)*t,g=x.g+(y.g-x.g)*t,b=x.b+(y.b-x.b)*t,a=x.a+(y.a-x.a)*t};}
+        public MapLookColor Scaled(float k)=>new MapLookColor{r=r*k,g=g*k,b=b*k,a=a*k};
+    }
+    /// <summary>Unity's fog modes by their UnityEngine.FogMode values.</summary>
+    public enum MapFogMode{Linear=1,Exponential=2,ExponentialSquared=3}
+    /// <summary>RenderSettings' fog as NativeLighting writes it: on, mode, colour, the linear start and end, and the density,
+    /// written only when `WritesDensity` (Apply writes it for exp and exp2 only; a stage's restore writes the one it found).</summary>
+    public struct MapFogState{public bool On,WritesDensity;public MapFogMode Mode;public MapLookColor Color;public float Start,End,Density;}
+    /// <summary>A light's aim as NativeLighting applies it: none (`Has` false: a rim that keeps the rig's direction), a point
+    /// it looks at the origin from (`From`), or the unit direction toward the light (it sits 24 m out along it, looking back).</summary>
+    public struct MapLookAim{public bool Has,From;public float X,Y,Z;}
+    /// <summary>A sky tint: `Hex` 0 keeps the shader default (R, G, B, already linear); otherwise NativeLighting linearises Hex
+    /// in the active colour space.</summary>
+    public struct MapLookTint{public int Hex;public float R,G,B;}
+    /// <summary>Everything NativeLighting.Apply writes for a look (<see cref="NativeMapLooks.Applied"/>): the camera, the fog,
+    /// NativeNightSky's properties, the shadow settings on both graphics tiers, the key and rim lights, the trilight ambient.</summary>
+    public sealed class MapLookState
+    {
+        public float FarClip;public MapLookColor Background;public bool Skybox;public MapFogState Fog;
+        public MapLookColor Horizon,Zenith;public float MoonSize,SunX,SunY,SunZ,DiscBase,Crater,HaloFalloff,Stars,CloudSpeed;public MapLookTint Disc,Halo,Cloud;
+        public int Cascades,FallbackCascades;public float ShadowDistance,FallbackDistance;
+        public MapLookColor KeyColor,RimColor;public MapLookAim KeyAim,RimAim;public string KeyShadows,RimShadows;public float KeyStrength,RimStrength,KeyIntensity,RimIntensity;
+        /// <summary>A dressed map keeps the rim per-pixel (NativeBlockLit adds its own rim term; an SH rim would count twice).</summary>
+        public bool RimPixel;
+        public MapLookColor AmbientSky,AmbientEquator,AmbientGround;
+        public int ShadowCascades(bool low)=>low?FallbackCascades:Cascades;
+        public float Shadows(bool low)=>low?FallbackDistance:ShadowDistance;
+    }
+
     /// <summary>
     /// Loader rules for Resources/MapLooks.json: lookup, today's fallback, validation, light and sky directions, the sky
-    /// shader's derived values and the practical lights' flicker and fall-off. Pure; Flicker and Attenuation allocate nothing.
+    /// shader's derived values, the practical lights' flicker and fall-off, the look-to-applied-values mapping NativeLighting.Apply
+    /// and Tests/MapLookChecks both call (<see cref="Applied"/>), and the fog and shadows the entrance and draft stages own.
+    /// Pure; Applied, Flicker and Attenuation allocate nothing.
     /// </summary>
     public static class NativeMapLooks
     {
         public const int Schema=1,MaxLights=8;
+        /// <summary>NativeLighting.Create's rig: the key at (-8, 20, -12) and the rim at (14, 7, 12), both looking at the origin
+        /// (a rim with no direction of its own keeps the rig's, or the draft stage's turn of it).</summary>
+        public static readonly float[] RigKey={-8,20,-12},RigRim={14,7,12};
+        /// <summary>
+        /// What NativeLighting.Apply writes for `look` on a map whose own sky colour is `mapSky` (the base of a skyLerp fog), with
+        /// the dev dressing preview (`dressPreview`: NativeArenaDressing.Preview) on or off, into `into`: the camera's far plane,
+        /// background and clear (a "none" sky is a solid background), the fog (a "none" mode is fog off in Linear mode; the
+        /// density only for exp and exp2), the sky's properties (tints of 0 keep the shader defaults), both tiers' shadows, the
+        /// key (always aimed) and rim (aimed only with a direction of its own; per-pixel on a dressed map) with their colours,
+        /// shadow modes, strengths and intensities, and the trilight ambient (each colour times its scale before Unity
+        /// linearises it). The one mapping: Tests/MapLookChecks compares its output for the 15 old maps to the ce3c506 oracle and
+        /// fixture bit for bit.
+        /// </summary>
+        public static void Applied(MapLook look,int mapSky,bool dressPreview,MapLookState into)
+        {
+            var s=into;var f=look.fog;var k=look.sky;var sh=look.shadows;var a=look.ambient;
+            s.FarClip=look.farClip;s.Background=MapLookColor.Of(look.background);s.Skybox=k.variant!="none";
+            var mode=f.mode=="exp"?MapFogMode.Exponential:f.mode=="exp2"?MapFogMode.ExponentialSquared:MapFogMode.Linear;
+            s.Fog=new MapFogState{On=f.mode!="none",Mode=mode,WritesDensity=mode!=MapFogMode.Linear,Density=f.density,Color=f.skyLerp>0?MapLookColor.Lerp(MapLookColor.Of(mapSky),MapLookColor.Of(f.color),f.skyLerp):MapLookColor.Of(f.color),Start=f.start,End=f.end};
+            s.Horizon=MapLookColor.Of(k.horizon);s.Zenith=MapLookColor.Of(k.zenith);s.MoonSize=k.discSize;SunDirection(k,out s.SunX,out s.SunY,out s.SunZ);
+            s.Disc=Tint(k.disc,DiscDefault);s.DiscBase=DiscBase(k);s.Crater=k.crater;s.Halo=Tint(k.glow,HaloDefault);s.HaloFalloff=HaloFalloff(k);s.Stars=k.stars;s.Cloud=Tint(k.cloud,CloudDefault);s.CloudSpeed=k.cloudSpeed;
+            s.Cascades=sh.cascades;s.ShadowDistance=sh.distance;s.FallbackCascades=sh.fallbackCascades;s.FallbackDistance=sh.fallbackDistance;
+            s.KeyColor=MapLookColor.Of(look.key.color);s.KeyAim=Aim(look.key);s.KeyShadows=look.key.shadows;s.KeyStrength=look.key.shadowStrength;s.KeyIntensity=look.key.intensity;
+            s.RimColor=MapLookColor.Of(look.rim.color);s.RimAim=HasDirection(look.rim)?Aim(look.rim):default;s.RimShadows=look.rim.shadows;s.RimStrength=look.rim.shadowStrength;s.RimIntensity=look.rim.intensity;
+            s.RimPixel=NativeBlockLooks.Dressed(look,dressPreview);
+            s.AmbientSky=MapLookColor.Of(a.sky).Scaled(a.skyScale);s.AmbientEquator=MapLookColor.Of(a.equator).Scaled(a.equatorScale);s.AmbientGround=MapLookColor.Of(a.ground).Scaled(a.groundScale);
+        }
+        private static MapLookTint Tint(int hex,float[] fallback)=>hex==0?new MapLookTint{R=fallback[0],G=fallback[1],B=fallback[2]}:new MapLookTint{Hex=hex};
+        // A light at `from` looking at the origin (today's rig), or shining from its elevation and bearing (float casts as Apply made them).
+        private static MapLookAim Aim(MapLookLight l)
+        {
+            if(HasFrom(l))return new MapLookAim{Has=true,From=true,X=l.from.x,Y=l.from.y,Z=l.from.z};
+            Toward(l.elevation,l.bearing,out double x,out double y,out double z);return new MapLookAim{Has=true,X=(float)x,Y=(float)y,Z=(float)z};
+        }
+        /// <summary>
+        /// The fog the entrance and draft stages own while they hold the screen (NativeLighting.Intro and Draft write it every
+        /// frame; EndIntro gives back the fog it found, then Apply the map's): on, Linear (three's Fog, and the only fog variant
+        /// the builds keep, Editor/PrototypeBuild), the stage's colour and range, the density left alone. Every old map's look is
+        /// linear fog that is on, so its entrances and draft see what they saw before; a map's own fog (Brickfall's) never
+        /// reaches them.
+        /// </summary>
+        public static MapFogState StageFog(MapLookColor color,float start,float end)=>new MapFogState{On=true,Mode=MapFogMode.Linear,Color=color,Start=start,End=end};
+        /// <summary>The chip draft's backdrop (its camera background) and its fog, 30 to 100 m into that backdrop, as draft-stage.ts
+        /// fogs to its own background (its pilot and tray sit within 4 m of the camera, so nothing it draws reaches the fog).</summary>
+        public static readonly MapLookColor DraftBackground=MapLookColor.Of(.025f,.032f,.055f);
+        public const float DraftFogStart=30,DraftFogEnd=100;
+        public static MapFogState DraftFog=>StageFog(DraftBackground,DraftFogStart,DraftFogEnd);
+        /// <summary>The stages' shadows: the old rig's 2 cascades over 65 m and, in the draft, a soft key at full strength. Every
+        /// old map's look has exactly these on both tiers, so pinning them changes nothing there, and a map's own (Brickfall's 4
+        /// cascades over 75 m and a .85 key) stays out of the entrances and the draft.</summary>
+        public const int StageCascades=2;public const float StageShadowDistance=65,StageShadowStrength=1;public const string StageKeyShadows="soft";
         /// <summary>NativeNightSky.shader's property defaults: the constants the night sky hard-coded before it had properties.</summary>
         public static readonly float[] SunDirDefault={-.4f,.46f,-.78f},DiscDefault={.79f,.86f,1f},HaloDefault={.16f,.21f,.3f},CloudDefault={.24f,.29f,.40f};
         public const float HaloFalloffDefault=12,DiscBaseDefault=.76f,CraterDefault=.24f,StarsDefault=1,CloudSpeedDefault=1,DiscSizeDefault=.028f;

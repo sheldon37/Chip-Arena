@@ -25,10 +25,10 @@ namespace ChipArena.UnityConversion
     ///  reach every layer), and no point-light passes; while shadows are on, the receiving meshes also enter the camera depth
     ///  pass. The two effect batches are unlit, one pass each. The life and air scale with EffectsQuality and LowGraphics
     ///  (graphics=performance).
-    ///  - The dust coat: Shader global <see cref="NativeBrickfallAtmosphere.DustCoatGlobal"/> (0..1, rising with this round's
-    ///    landings; 0 on every other map and behind the menu) for the block shader to read.
-    /// Structure events do not exist yet (the destruction kit emits them later); <see cref="BrickfallStructure"/> is the hook.
-    /// Allocation free after the one-time bake.
+    ///  - Not the dust coat: the round's one coat is Core NativeDustCoat (landings and breaks), which NativeArenaDressing
+    ///    publishes and NativeBlockLit reads; the same landings reach it next to <see cref="BrickfallStructure"/>.
+    /// Structure events do not exist yet (Astra emits them later); the destruction kit's intake, and its dev Sandbox preview,
+    /// call <see cref="BrickfallStructure"/> through ArenaPresentation.StructureHeard. Allocation free after the one-time bake.
     /// </summary>
     public sealed partial class ArenaPresentation
     {
@@ -41,17 +41,14 @@ namespace ChipArena.UnityConversion
         public int BrickfallDustInUse;
         private Mesh[] brickfallSectors;private Mesh brickfallTrain,brickfallJib,brickfallPlate;private Material brickfallLit;private NativeFxDraw brickfallDraw;private bool brickfallFailed;
         private NativeBrickfallFx brickfallFx;private NativeFxLight brickfallLight;private NativeBrickfallMemory brickfallMemory;
-        private readonly Matrix4x4[] brickfallJibs=new Matrix4x4[2];private float brickfallCoat=-1;
-        private static readonly int DustCoatId=Shader.PropertyToID(NativeBrickfallAtmosphere.DustCoatGlobal);
-        /// <summary>The dust coat last published (0..1).</summary>
-        public float BrickfallDustCoat=>Mathf.Max(0,brickfallCoat);
+        private readonly Matrix4x4[] brickfallJibs=new Matrix4x4[2];
 
         /// <summary>
-        /// The destruction kit's hook (ARENA_PROPOSAL.md §5.4): call once per StructureStress, StructureFall and StructureLand
-        /// event, as often as the event stays in the list (writes are idempotent on time and place), with the event's
-        /// Position, Radius, Amount and Time. Stress and Fall startle the pigeons within 18 m; Land also starts drifting
-        /// collapse dust (Amount = energy 0..1) and raises the dust coat. Brickfall only; anything else is ignored. Example:
-        /// foreach(var e in arena.Events)if(e.Kind==EventKind.StructureLand)BrickfallStructure(arena,NativeBrickfallCue.Land,Vec(e.Position),e.Radius,e.Amount,e.Time);
+        /// The structure events' hook for the atmosphere (ARENA_PROPOSAL.md §5.4), called by ArenaPresentation.StructureHeard for
+        /// every StructureStress, StructureFall and StructureLand the destruction kit takes in (and its dev Sandbox preview), as
+        /// often as the event stays in the list (writes are idempotent on time and place), with the event's Position, Radius,
+        /// Amount and Time. Stress and Fall startle the pigeons within 18 m; Land also starts drifting collapse dust (Amount =
+        /// energy 0..1). Brickfall only; anything else is ignored. The dust coat takes the same landings in StructureHeard.
         /// </summary>
         public void BrickfallStructure(NativeArena arena,NativeBrickfallCue cue,Vector3 position,float radius,float amount,float time)
         {
@@ -67,7 +64,6 @@ namespace ChipArena.UnityConversion
             if(!arena.ReplicaScene.IsValid()&&now+5<brickfallMemory.Newest)brickfallMemory.Clear();
             foreach(var e in arena.Events)if(e.Kind==EventKind.Explosion)brickfallMemory.Spook(e.Time,e.Position.x,e.Position.y,e.Position.z);
             var match=arena.Match;double roundStart=NativeBrickfallAtmosphere.RoundStart(match.Phase,match.FightAt,match.PhaseEnd);
-            PublishDustCoat((float)NativeBrickfallAtmosphere.DustCoat(brickfallMemory,now,roundStart));
             BrickfallCover(arena);DrawBrickfall(now,WorldEye,true,roundStart);
         }
         /// <summary>
@@ -89,10 +85,9 @@ namespace ChipArena.UnityConversion
         private void BrickfallBackdrop(string mapId,float time,Camera camera)
         {
             if(!NativeBrickfallScenery.Active(mapId)){BrickfallDormant();return;}
-            if(!EnsureBrickfall())return;PublishDustCoat(0);brickfallFx.Cover.Clear();DrawBrickfall(time,camera,false,0);
+            if(!EnsureBrickfall())return;brickfallFx.Cover.Clear();DrawBrickfall(time,camera,false,0);
         }
-        private void BrickfallDormant(){PublishDustCoat(0);brickfallMemory?.Clear();}
-        private void PublishDustCoat(float value){if(value==brickfallCoat)return;brickfallCoat=value;Shader.SetGlobalFloat(DustCoatId,value);}
+        private void BrickfallDormant(){brickfallMemory?.Clear();}
         private bool EnsureBrickfall()
         {
             if(brickfallSectors!=null)return true;if(brickfallFailed)return false;Mesh[] sectors=null;
@@ -153,7 +148,7 @@ namespace ChipArena.UnityConversion
         private void DisposeBrickfall()
         {
             if(brickfallSectors!=null)foreach(var m in brickfallSectors)CapturedAnimation.Release(m);brickfallSectors=null;CapturedAnimation.Release(brickfallTrain);CapturedAnimation.Release(brickfallJib);CapturedAnimation.Release(brickfallPlate);CapturedAnimation.Release(brickfallLit);
-            brickfallTrain=brickfallJib=brickfallPlate=null;brickfallLit=null;brickfallDraw?.Dispose();brickfallDraw=null;PublishDustCoat(0);
+            brickfallTrain=brickfallJib=brickfallPlate=null;brickfallLit=null;brickfallDraw?.Dispose();brickfallDraw=null;
         }
     }
 }

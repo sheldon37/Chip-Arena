@@ -10,7 +10,8 @@ namespace ChipArena.UnityConversion
     // telegraphs never reduced and claiming their billboards first; purity in age (a late-adopted record, a second store and
     // the killcam draw the same frame) and allocation-free frames; intake deduplicated by (seed, birth) and kept through the
     // killcam; fresh-to-dusty rubble; the 256-decal ring; scorch only under explosive effects; shake by distance; window strobe
-    // and sag held until the segment lands; falls at the contract's pancake acceleration (at most g); the cue routing, the
+    // and sag held until the segment lands, and the dressed blocks' telegraph built from them (window light, sag by height in
+    // the crush box, outward lean, the once-a-frame early-out); falls at the contract's pancake acceleration (at most g); the cue routing, the
     // synthesized clips and the rubble voice cap (stress -> collapse -> land with every layer audible); the preview pancake at
     // 6.9 m/s²; the per-map kill-effect floor; and scans of the runtime hooks (Break replaces the spark burst, RenderGlow,
     // reset and killcam keep, shake, sandbox, gib floor, one floor rule on every client, the marked structure-event hook lines,
@@ -23,8 +24,8 @@ namespace ChipArena.UnityConversion
         private static readonly V3 Eye=new V3(0,1.6f,-30);
         public static void Run(string root)
         {
-            Rules();Wall();Bursts();Telegraph();Hold();Falls();Purity();Persist();Rubble();Marks();Shake();Sounds(root);Mix(root);Preview();KillFloor();Hooks(root);
-            Console.WriteLine("PASS structure fx ("+count+" checks: material classes and seed rule; dust wall timing, radius 4-14 m, height, 24-40 billboards, 120 cap, near thinning; five material bursts; telegraph never reduced and first in the cap; window and sag held until the landing; falls at 6.9 m/s² (at most g); pure in age, killcam-equal and allocation-free; deduplicated intake kept through the killcam; fresh-to-dusty rubble; 256-decal ring; explosive-only scorch; shake by distance; cue routing and synthesized clips; rubble voice cap with stress, collapse and landing all audible; preview pancake at 6.9 m/s²; per-map kill floor; runtime hooks)");
+            Rules();Wall();Bursts();Telegraph();Hold();Blocks();Falls();Purity();Persist();Rubble();Marks();Shake();Sounds(root);Mix(root);Preview();KillFloor();Hooks(root);
+            Console.WriteLine("PASS structure fx ("+count+" checks: material classes and seed rule; dust wall timing, radius 4-14 m, height, 24-40 billboards, 120 cap, near thinning; five material bursts; telegraph never reduced and first in the cap; window and sag held until the landing; the dressed blocks' telegraph (window light, sag by height, outward lean, early-out, no allocations); falls at 6.9 m/s² (at most g); pure in age, killcam-equal and allocation-free; deduplicated intake kept through the killcam; fresh-to-dusty rubble; 256-decal ring; explosive-only scorch; shake by distance; cue routing and synthesized clips; rubble voice cap with stress, collapse and landing all audible; preview pancake at 6.9 m/s²; per-map kill floor; runtime hooks)");
         }
         private static void Rules()
         {
@@ -97,6 +98,32 @@ namespace ChipArena.UnityConversion
             lone.Frame(T+NativeStructureFx.StressHold+.1f,Eye,1);Check(lone.LiveRecords==0&&lone.WindowAt(inside,T+NativeStructureFx.StressHold+.1f)==1,"a landing that never comes releases after the hold");
         }
         private static float StressTailOf()=>NativeStructureFx.StressTail;
+        // NativeArenaDressing's block telegraph (TelegraphAt): the window light, the sag scaled by height in the crush box, the
+        // lean outward from its centre line, the once-a-frame early-out and the release at the landing.
+        private static void Blocks()
+        {
+            var fx=new NativeStructureFx();uint seed=202;float T=1.2f,t0=10;
+            Check(!fx.StressHolding(0)&&!fx.TelegraphAt(new V3(0,3,0),0,out float w0,out V3 d0,out _,out _,out _,out float q0)&&w0==1&&d0.y==0&&q0==1,"no stress record: no block is posed");
+            fx.Stress(new V3(0,5.4f,0),7.2f,T,new V3(0,5.9f,0),new V3(2.8f,5.9f,3),0,seed,t0);
+            Check(!fx.StressHolding(t0-.1f)&&fx.StressHolding(t0)&&fx.StressHolding(t0+T+1),"holding from the stress event on");
+            V3 top=new V3(2.5f,11.5f,0),low=new V3(2.5f,0,0),axis=new V3(0,6,0),outside=new V3(9,3,0);float h=top.y/11.8f;bool lit=false,dimmed=false;
+            for(float t=t0;t<t0+T+2;t+=.01f)
+            {
+                Check(fx.TelegraphAt(top,t,out float w,out V3 d,out float qx,out float qy,out float qz,out float qw),"a block in the box is telegraphed at "+t);
+                Check(w==fx.WindowAt(top,t),"its window light is the kit's ("+t+")");if(t<t0+T-.005f){lit|=w==1;dimmed|=w>0&&w<.2f;}else if(t>t0+T+.005f)Check(w==0,"black after the telegraph until the landing ("+t+")");
+                float sag=fx.SagAt(top,t);Check(Near(d.y,-sag*h*NativeStructureFx.SagMetres,1e-6)&&d.x==0&&d.z==0&&d.y>=-NativeStructureFx.SagMetres-1e-6,"the sag drops it by at most 8 cm, scaled by its height in the box ("+t+")");
+                double angle=2*Math.Asin(Math.Min(1,Math.Sqrt(qx*qx+qy*qy+qz*qz)))*180/Math.PI;Check(Near(angle,sag*h*NativeStructureFx.SagDegrees,1e-4)&&angle<=NativeStructureFx.SagDegrees+1e-4,"and leans it by at most 1 degree ("+t+")");
+                // Up rotated by the lean: v + w t + q x t, t = 2 q x v (v = up).
+                double tx=2*(-qz),ty=0,tz=2*qx,ux=qw*tx+(qy*tz-qz*ty),uz=qw*tz+(qx*ty-qy*tx);Check(sag==0||ux>0&&Math.Abs(uz)<1e-6,"it leans outward, away from the box's centre line ("+t+")");
+            }
+            Check(lit&&dimmed,"the windows strobe between lit and dim through the telegraph");
+            Check(fx.TelegraphAt(low,t0+T,out _,out V3 dl,out _,out _,out _,out float ql)&&dl.y==0&&ql==1,"a block at the box's floor stays put: the street does not sag");
+            Check(fx.TelegraphAt(axis,t0+T,out _,out V3 da,out _,out _,out _,out float qa)&&da.y<0&&qa==1,"a block on the box's centre line drops but does not lean");
+            Check(!fx.TelegraphAt(outside,t0+T,out float wo,out _,out _,out _,out _,out _)&&wo==1,"outside the box nothing changes");
+            {long before=GC.GetAllocatedBytesForCurrentThread();for(int i=0;i<500;i++){fx.StressHolding(t0+i*.003f);fx.TelegraphAt(new V3(i%5,i%11,0),t0+i*.003f,out _,out _,out _,out _,out _,out _);}long after=GC.GetAllocatedBytesForCurrentThread();Check(after==before,"the block telegraph allocates nothing ("+(after-before)+" bytes)");}
+            fx.Land(new V3(0,1.2f,0),5.8f,.85f,NativeStructureMaterial.Masonry,0,seed,t0+T+1.6f,false);fx.Frame(t0+T+1.7f,Eye,1);
+            Check(!fx.StressHolding(t0+T+1.7f)&&!fx.TelegraphAt(top,t0+T+1.7f,out float wl,out _,out _,out _,out _,out _)&&wl==1,"released once the segment has landed");
+        }
         private static void Falls()
         {
             // The falling debris rides the mass down: its height's second difference is the fall's acceleration.
@@ -275,6 +302,12 @@ namespace ChipArena.UnityConversion
             string replay=R("NativeReplay.cs"),nativeAudio=R("NativeAudio.cs");
             Check(replay.Contains("ReplicaScene=replayScene};presentation.ResetPresentation(true);")&&replay.Contains("liveVisibility.Clear();presentation?.ResetPresentation(true);")&&fx.Contains("if(keep)structureFx?.Reset();else structureFx?.Clear();"),"the killcam's start and end keep the decals and structure records");
             Check(fx.Contains("if(generation!=arena.Generation||blockMap!=arena.MapId){Clear();")&&fx.Contains("else if(now<lastNow-.25f)lastEvent=0;"),"a new round or map clears; a rewind only re-reads the events");
+            // One intake for every kit: the stress, fall and landing calls (and the preview) hand the event on; the dressed blocks
+            // read the telegraph on the kit's own field clock.
+            string dressing=R("NativeArenaDressing.cs");
+            foreach(var cue in new[]{"Stress","Fall","Land"})Check(fx.Contains("Owner?.StructureHeard(arena,NativeStructureCue."+cue+",")&&fx.Contains("Owner.StructureHeard(arena,NativeStructureCue."+cue+","),cue+" reaches the atmosphere and the dust coat, from the events and from the preview");
+            Check(fx.Contains("structureFx=new NativeStructureFxPresentation{Owner=this};")&&dressing.Contains("arenaDressing.Render(arena,FieldClock(arena),dustCoat,structureFx?.Fx);")&&arena.Contains("float now=PresentationClock(arena),fields=FieldClock(arena);")&&arena.Contains("StructureFx(arena,camera,fields);"),"the dressing reads the telegraph on the field clock the kit's records run on");
+            Check(dressing.Contains("bool tell=structures!=null&&structures.StressHolding(now)")&&dressing.Contains("if(tell&&structures.TelegraphAt(")&&dressing.Contains("color.w=window;")&&dressing.Contains("flags|=NativeBlockLooks.Lamp(stage,stressed,locked,redOn);"),"one early-out a frame, then per block the window light, the sag and the band lamp");
             Check(fx.Contains("return prop!=null&&(prop.Fragment||prop.Definition!=null&&prop.Definition.dynamic);")&&!fx.Contains("isKinematic"),"floors skip fragments and dynamic crates by content, the same on host, guests and killcam");
             Check(fx.Contains("float scale=NativeStructureFx.ScorchScale(e.Detail);if(scale<=0)return;"),"scorch only under explosive effects");
             Check(audio.Contains("if(!structureMix.Fits(start,")&&!audio.Contains(">=NativeStructureSounds.Voices)return;")&&audio.Contains("if(structureMix.Steals(v,owner,cue))")&&nativeAudio.Contains("Slender(arena,menu);StructureQueue(arena);"),"the runtime skips one layer over the cap, steals its own groan and plays queued cues when due");
