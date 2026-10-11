@@ -205,9 +205,12 @@ namespace ChipArena.UnityConversion
                 bool native=sourceModels!=null;
                 if(DebrisEnabled&&(e.Kind==EventKind.Break||e.Kind==EventKind.Death&&!native)) Debris(Vec(e.Position)+Vector3.up*.3f,e.Kind==EventKind.Death?materials[2]:materials[3]);
                 // The prototype lab's particle burst, only for the kinds it was written for. Native arenas draw the source's
-                // voxel sparks and streaks for these events instead (NativeImpactCues via NativeBlastPresentation).
-                if(NativeEventFeedback.HitBurst(e.Kind,native)) Burst(Vec(e.Position), e.Kind==EventKind.Block?new Color(.3f,.9f,1):e.Kind==EventKind.Death?new Color(1,.2f,.35f):new Color(1,.7f,.3f),e.Kind==EventKind.Death?24:12);
+                // voxel sparks and streaks for these events instead (NativeImpactCues via NativeBlastPresentation). A Block is the
+                // block effect's clash or deflect everywhere (NativeBlockFxPresentation), no burst.
+                if(NativeEventFeedback.HitBurst(e.Kind,native)) Burst(Vec(e.Position), e.Kind==EventKind.Death?new Color(1,.2f,.35f):new Color(1,.7f,.3f),e.Kind==EventKind.Death?24:12);
             }
+            // The block effect: guards on open block windows, clashes and deflects (after the rigs and the view weapon are posed).
+            RenderBlockFx(s,renderTime);
         }
         private void PrepareCapturedPose(Actor a,Vector3 position,float time)
         {

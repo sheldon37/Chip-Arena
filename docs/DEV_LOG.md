@@ -1,5 +1,17 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Claude — new block effect (owner: "add a new block effect")
+- Branch `claude/fx-block`, base `096bb80`; one local commit (not pushed, not merged, not released). Presentation only; design in `docs/MELEE-ABILITIES.md` "The new block effect".
+- New Core `NativeBlockFx` (forms, shapes, neon colours, timing curves, clash/deflect heuristic, seeded sparks, CPU mesh `NativeBlockMesh`), Runtime `NativeBlockFxPresentation` (+ `NativeBlockFxDraw` component) and `Resources/NativeBlockFx.shader` (GLSL-safe SHARED block, registered in the NativeBuildChecks gate).
+- Guard: while the replicated block window is open (guests open it at BlockUntil - BlockDuration(stats)), a ward in the weapon colour in front of the weapon: sword slim arc, greatsword tall wide arc, daggers twin arcs, shield hex dome, other classes a chest ward; animated scanlines/cells. First person: a small arch over the view weapon on the layer-10 view camera.
+- Clash: guard flash and cracks (held .2 s past a late block), HDR spark spray along the blade, star and needles, upright ring facing the attacker (.18 s); the blocker's camera gets a 50 ms kick (camera shake setting, x.4 with Reduced effects; never Time.timeScale). Deflect: a streak along the reflected shot's velocity (else back toward the attacker) and a ping.
+- Until Astra adds the Block Detail: Target (attacker) melee-class within reach + 1.25 m, or seatless (PvE add) = clash, else deflect; Detail `clash`/`deflect` overrides, `guard` draws no hit. Known misread: a blocked summon strike.
+- Removed the cyan block bursts: native `NativeBlastPresentation` skips Block (the NativeImpactCues parity plan is unchanged) and the prototype lab's HitBurst no longer includes Block. Hooks: one call in `ArenaPresentation.Render`, one hitch line in `ConversionGame`. Reduced effects thins sprays; the low tier halves segments and sparks.
+- No change to hit timing, hitboxes, damage, cooldowns, movement or networking.
+- Checks: `unity-check.sh` OK; `check_relay.py` 341 PASS (base 340; new `PASS Block fx`), no FAIL; Python 82 OK (1 skipped); `package_source.py` passed; `git diff --check` clean; glslang HLSL OK. Offline WebGL2 before/after sheets per melee weapon, third and first person (scratch only).
+- Not run: Unity Editor import/FXC, Windows play, multiplayer, D3D11 look and GPU cost.
+- Next: owner build review. Astra: Block Detail `guard`/`clash`/`deflect` with attacker id and contact point.
+
 ## 2026-10-11 — Astra — automatic Cloudflare rooms (owner-selected free option)
 - Owner selected Cloudflare instead of Render and requested the test Update release. Branch `codex/unity-cloudflare-rooms-20261011`, base PR #118 `883a937` (shared sound-bank base `9667065`). Supersedes the earlier shared-service deployment plan; no Render service or paid plan is needed or provisioned.
 - Default Online Create launches the existing pinned cloudflared 2026.9.3 connector automatically, pointing TCP-over-WebSocket at a loopback-only native listener. Guests look up six-character codes through the existing Site directory using an internal `UN` prefix, preserving its eight-character API and all Electron/account records. The authority stays in the host Unity process. No Site deployment, schema migration, router setup, account-service changes or simulation/animation changes.

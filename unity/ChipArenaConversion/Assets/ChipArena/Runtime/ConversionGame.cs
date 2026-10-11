@@ -149,6 +149,8 @@ namespace ChipArena.UnityConversion
             // Melee hit kick (Core/NativeHitReact): first person, a live local view and Settings · camera shake on (reduced
             // with reduced effects); applied after the aim point above, and the view is rebuilt from the look angles next frame.
             if(!menu&&Spectator==null&&!cinematic.Directing&&presentation.FirstPerson&&prefs.cameraShake){presentation.ObserveHits(frame);presentation.HitKick(cameraView.transform,frame,arena.ViewPilot.Seat.id,renderTime,prefs.reducedEffects?.4f:1);}
+            // The block effect's clash hitch (Core/NativeBlockFx.Hitch): the blocker's own view, first or third person, camera shake on.
+            if(!menu&&Spectator==null&&!cinematic.Directing&&prefs.cameraShake)presentation.BlockHitch(cameraView.transform,frame,arena.ViewPilot.Seat.id,renderTime,prefs.reducedEffects?.4f:1);
             presentation.WeaponLoadout=arena;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;
             presentation.Render(frame,renderTime,false);
             Vector3? preview=null;bool previewClamped=false;

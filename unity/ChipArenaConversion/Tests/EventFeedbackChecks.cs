@@ -119,8 +119,9 @@ namespace ChipArena.UnityConversion
             // PvE "under attack" (pve/tracks.ts AttackedTrack): any hit on me with damage, burn and poison ticks included.
             Check(NativeEventFeedback.Attacked(E(1,EventKind.BurnTick,2,1,at,amount:.5f,target:1),1,1.5f,1.2f)&&NativeEventFeedback.Attacked(E(1,EventKind.Hit,2,1,at,amount:5,target:1),1,2.1f,1.2f)&&!NativeEventFeedback.Attacked(E(1,EventKind.Hit,2,1,at,amount:5,target:1),1,2.2f,1.2f)
                 &&!NativeEventFeedback.Attacked(E(1,EventKind.Heal,1,1,at,amount:5,target:1),1,1.1f,1.2f)&&!NativeEventFeedback.Attacked(E(1,EventKind.Hit,2,1,at,amount:.04f,target:1),1,1.1f,1.2f)&&!NativeEventFeedback.Attacked(E(1,EventKind.Hit,2,1,at,amount:5,target:3),1,1.1f,1.2f),"under attack");
-            // The prototype lab's legacy hit burst keeps exactly the kinds it was written for, plus collapse.
-            foreach(EventKind kind in Enum.GetValues(typeof(EventKind)))Check(NativeEventFeedback.HitBurst(kind)==(kind==EventKind.Hit||kind==EventKind.Headshot||kind==EventKind.Block||kind==EventKind.Death||kind==EventKind.Break||kind==EventKind.Impact||kind==EventKind.Collapse),"burst "+kind);
+            // The prototype lab's legacy hit burst keeps exactly the kinds it was written for, plus collapse; a Block is the block
+            // effect's clash or deflect instead (NativeBlockFx, Tests/BlockFxChecks.cs).
+            foreach(EventKind kind in Enum.GetValues(typeof(EventKind)))Check(NativeEventFeedback.HitBurst(kind)==(kind==EventKind.Hit||kind==EventKind.Headshot||kind==EventKind.Death||kind==EventKind.Break||kind==EventKind.Impact||kind==EventKind.Collapse),"burst "+kind);
             // A native arena never draws it: event-vfx.ts:29's voxel sparks replace it (NativeImpactCues, Tests/ImpactCueChecks.cs)
             // and a death draws none (owner playtest 2026-10-10: Siren add kills popped a red burst).
             foreach(EventKind kind in Enum.GetValues(typeof(EventKind)))Check(!NativeEventFeedback.HitBurst(kind,true),"native burst "+kind);

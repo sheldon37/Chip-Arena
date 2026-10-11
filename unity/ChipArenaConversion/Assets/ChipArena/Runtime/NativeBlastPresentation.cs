@@ -177,6 +177,8 @@ namespace ChipArena.UnityConversion
             foreach(var e in arena.Events)
             {
                 if(e.Id<=lastEvent)continue;lastEvent=e.Id;if(now-e.Time>.4f||e.Kind==EventKind.Break&&MaterialBursts)continue;
+                // A Block is the block effect's clash or deflect (NativeBlockFxPresentation), not event-vfx.ts's 6-spark blockHit burst.
+                if(e.Kind==EventKind.Block)continue;
                 NativePilot source=null,target=null;foreach(var p in arena.Pilots){if(p.Seat.id==e.Source)source=p;if(p.Seat.id==e.Target)target=p;}
                 // The colour the source event carries where Unity's has none: a break's material (none for the Siren's seeker
                 // breaks), an impact's weapon colour.

@@ -104,6 +104,11 @@ shockwave.
   about 50 ms) and a metal clang from the pack sounds. The attacker's recoil already plays.
 - **Deflect:** a reflected projectile gets a bright deflection streak and a ping.
 - **Cooldown:** the existing block-cooldown tint stays.
+- **Implemented (presentation, branch `claude/fx-block`):** Core `NativeBlockFx`, Runtime `NativeBlockFxPresentation`,
+  `Resources/NativeBlockFx.shader`. Until the Block Detail below exists, a Block event is a clash when its Target (the
+  attacker) is melee-class and within its reach + 1.25 m, or has no seat (a PvE add); otherwise a deflect. A Detail of
+  `clash` or `deflect` overrides that guess and `guard` draws no hit. Known misread: a blocked summon strike (its Target is
+  the summoner).
 
 ## Contract for presentation (what Claude needs from the simulation)
 
