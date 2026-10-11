@@ -1,5 +1,19 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Claude — Siren possession hint levels 2 and 3 (on Astra's replicated PossessedAt)
+- Branch `claude/sleepy-ritchie-g8ruhv` (PR #62): merged `claude/possession-hints` `efb8fdf` (base `7c39c47`; builder, review, fix). Presentation only; it reads Astra's `NativePveAdd.PossessedAt` (51d47d0) and changes no sim or network data.
+- `Core/NativeMinionHint.cs`:
+  - Level by possession age, as in `src/client/siren/minions/hints.ts`: under 15 s is 1, under 35 s is 2, then 3.
+  - Level 2: the floating Siren grin over the possessed add, within 25 m of the camera. `hints.ts`'s canvas is baked once into one premultiplied texture (built off the main thread before first use) and drawn as one quad through the new `Resources/NativeMinionGrin.shader`. That shader is added to the `NativeBuildChecks` shader gate. The grin fades as one image like the source sprite; mean difference from Chromium's canvas is .0039.
+  - Black-flame trail: the gore drip flame at 12/s (3.6/s under reduced effects) while the add walks. It starts at level 2, as the source does (horde-view.ts `level>=2`), not level 3 as earlier handoff notes said.
+  - Level 3: a 1.35 brightness boost on the seam, halo and grin.
+  - Deterministic from PossessedAt and the presentation clock (host, guests, killcam). No per-frame allocations.
+- New `Tests/MinionHintChecks.cs` with source fixtures (`tools/export_minion_hint_fixtures.mjs`, `Tests/minion-hint-parity.json`).
+- Also on the branch before this merge: `a52c85c` makes `test_brickfall_scraps` skip its `docs/` blockout comparison under the native CI's sparse checkout, which had failed native-source on `7c39c47`. Native CI passed on `a52c85c`. Tests must only read files under `unity/ChipArenaConversion`.
+- Checks on merged head `ece3047`: `unity-check.sh` runtime+editor build OK; Python tests OK (1 skipped; also OK in a unity/-only copy); `package_source.py` passed; `check_relay.py` 292 PASS; `git diff --check 6235a82 HEAD` clean.
+- Not run: Unity Editor (the new shader's import), a Windows build, live PvE with guests.
+- Release: pushed to PR #62 and `codex/unity-cloud-current`. Publication waits on native CI and UBA.
+
 ## 2026-10-11 — Claude — Brickfall presentation: backdrop, atmosphere and destruction effects kit
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62). Merged two branches, both from `ce3c506`, each built, reviewed and fixed:
   - `claude/brickfall-scenery` `4aff19d`;
