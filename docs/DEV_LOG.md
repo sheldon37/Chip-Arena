@@ -1,5 +1,31 @@
 # Chip Arena — development log
 
+## 2026-10-11 — Claude — Damage screen effect (owner request)
+- Branch `claude/sleepy-ritchie-g8ruhv` (PR #62): merged `claude/damage-screen-fx` `fd1a789` (base `d6a5dac`) on top of `c0426cb`.
+  - Three rendered concepts were judged. The winner is the cinematic "wound bloom", with grafts from the tactical concept and one from the visceral one.
+  - Then built, reviewed from two angles and fixed. All five findings were real and fixed, including two photosensitivity issues: the heartbeat now peaks at 2.7 swells/s and flashes are capped at about 3/s. Visual only.
+- Files:
+  - `Core/NativeDamageScreen.cs`: pure rules, no allocations after construction.
+  - `Core/NativeDamageScreenChecks.cs`: 14 checks, also run by the Editor build checks (public members only).
+  - `Resources/NativeDamageScreen.shader`: target 3.5, tex2Dlod only, listed in `NativeBuildChecks`.
+  - `Runtime/NativeDamageScreenPresentation.cs`: one CommandBuffer at AfterImageEffects, attached only while active.
+- What it shows:
+  - **Wound bloom:** a smoky crimson bloom at the screen edge facing the attacker, scaled by damage over max HP (melee ×1.2), merged per side and live re-aimed.
+  - **Threat ring:** per-attacker arcs on a crosshair ring with ▲/▼ elevation carets; headshot rails and diamond; a melee shock arc; a dashed ring for hazards or hits with no source. In third person the ring is wider and dimmed over the pilot.
+  - **States:** burn flames and poison drips; a low-HP heartbeat (reach capped at about 22% of the edge); a heal wavefront; an impact flash.
+  - **HP lag chip** on the health bar.
+- Where it hides: menus, previews, every killcam replay, intro, draft, PvE picks and holds, the Siren reveal and cutscenes. It fades out when you die.
+- New setting: "Damage screen effect" Off / Subtle / Full (default Full) under Effects. It is a new preference with a default, so it is compatible with existing settings files.
+- Checks on the merged head:
+  - unity-check: runtime+editor build OK;
+  - Python: 52 OK;
+  - package_source: passed, 1024 files;
+  - check_relay: exit 0, 278 PASS.
+  - `git diff --check` is clean.
+- Not run: a real FXC SM3.5 compile, the Windows player, live multiplayer. Offline renders used the shader's shared block compiled as GLSL over arena frames.
+- Optional for Astra: put the attacker or blast origin in `ArenaEvent.From` on Hit/Headshot. `DamageSource` marks where it plugs in. The arcs currently locate attackers by pilot, or the nearest summon or add within 3.5 m.
+- Status: implemented and merged on the branch; pushed to the cloud branch; not released by Claude.
+
 ## 2026-10-10 — Claude — Hit reactions driven by the owner's Explosive pack clips (owner suggestion)
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62): merged `claude/hit-reactions-pack` `7c4ca32` (base `2815906`) on top of `7d04b80`. Built, reviewed from two angles, fixed: three low findings, fixed in docs and checks.
 - New `tools/export_pack_reactions.mjs`, which reuses scripts/mocap's retarget code and writes only under unity/. It produces `Core/NativePackClips.Generated.cs` (40 retargeted pose tracks: 5 sets × 8 slots) and `tools/pack-reactions-provenance.json` (SHA-256 per track). The output is byte-identical on re-run.
