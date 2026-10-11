@@ -26,10 +26,11 @@ namespace ChipArena.UnityConversion
                 &&arena.Pve?.Holding!=true&&(match.Phase==NativePhase.Fight||match.Phase==NativePhase.Result)&&prefs.damageScreen!="Off";
             if(!show){if(damageGeneration>=0){damageScreen.Clear();damageGeneration=-1;}NativeDamageScreenPass.Frame(null,false);return;}
             // Envelopes run on the unscaled frame clock (smooth on guests, whose match clock moves in network steps); the match
-            // clock only decides which events are fresh and catches rewinds.
+            // clock only decides which events are fresh and catches rewinds. An empty list (events are pruned after 1 s, and
+            // guests copy that list) is a lull: everything keeps running, as the camera shake treats it.
             float clock=arena.Time,now=Time.unscaledTime;var events=arena.Events;int newest=0;
             for(int i=0;i<events.Count;i++)newest=Math.Max(newest,events[i].Id);
-            if(damageGeneration!=arena.Generation||clock<damageTime-1e-3f||newest<damageEvent)
+            if(NativeDamageScreen.Rewound(arena.Generation,damageGeneration,clock,damageTime,newest,damageEvent))
             {
                 // A view that just opened starts after the events already in the list: it never replays old hits.
                 damageScreen.Clear();damageGeneration=arena.Generation;damageEvent=newest;

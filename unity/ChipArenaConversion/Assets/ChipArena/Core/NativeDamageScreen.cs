@@ -12,14 +12,16 @@ namespace ChipArena.UnityConversion
     //    dissolves back into the edge. Close hits on the same side merge. Each slot keeps its attacker and is re-aimed every
     //    frame (smoothed, so the smoke slides round the edge as either pilot moves).
     //  * The threat ring round the crosshair: six per-attacker arcs (segments, keyline, outward chevron, a white core that
-    //    snaps in at most 4 times a second), re-aimed every frame at the attacker's bearing; carets for an attacker above or
+    //    snaps in at most every .34 s), re-aimed every frame at the attacker's bearing; carets for an attacker above or
     //    below; twin rails, a hollow diamond and a reticle mark for a headshot; an expanding shock arc for a melee hit; a
     //    dashed ring (never a bearing) for hazards and hits with no source.
-    //  * Each hit also kicks a trauma (brief colour drain) and an impact flash (radial chromatic split, exposure dip), capped
-    //    at 4 Hz; a headshot flashes twice.
+    //  * Each hit also kicks a trauma (brief colour drain) and an impact flash (radial chromatic split, exposure dip), one
+    //    flash at most every .34 s (under 3 a second); a headshot's flash is paler at the struck edge and rings out longer,
+    //    still one peak.
     //  * BurnTick / PoisonTick feed element fields (fire licks up from the bottom, poison hangs and drips from the top); they
     //    never make blooms or arcs. Heal: a cool lift, and a wave of light for a real heal.
-    //  * Low HP: a churning edge pooled in the corners with a lub-dub heartbeat that quickens near death, and a colour drain.
+    //  * Low HP: a churning edge pooled in the corners with a lub-dub heartbeat that quickens near death (at most 82 bpm, so
+    //    lub and dub together stay under 3 swells a second, each about 130-170 ms wide), and a colour drain.
     //  * Death: no new events; everything fades over .5 s with a grey beat.
     // Reduced effects: no chromatic split, no heartbeat motion (a still pulse), no noise drift, no arc snap-in or shock motion.
     public sealed class NativeDamageScreen
@@ -38,12 +40,14 @@ namespace ChipArena.UnityConversion
         // Same-side merge window; bloom re-aim time constant.
         public const float MergeCos=.82f,MergeWindow=.30f,AimTau=.08f;
         public const float LowStart=.38f,LowFull=.08f,DeathStart=.15f,DeathFull=.04f,LagUp=.35f,LagDown=.06f;
-        public const float BpmCalm=62,BpmPanic=112;
+        // Heartbeat: 58 bpm as the low state starts, 82 near death. Lub and dub both count as swells, so 82 bpm is 2.7 a second.
+        public const float BpmCalm=58,BpmPanic=82;
         public const float HealWaveTime=.6f,HealBig=.08f;
         public const float TickAdd=.22f,FireHold=.7f,PoisonHold=.8f;
-        // Photosensitivity: a new impact flash (or an attacker's white core) at most every .25 s (4 Hz) unless the new hit's
-        // flash is half again as strong. Showing fades in over .08 s; death fades everything out over .5 s.
-        public const float FlashGap=.25f,ShowIn=.08f,DeathFade=.5f;
+        // Photosensitivity: every flash peak (the impact flash, a headshot's pale flash, an attacker's white core, the headshot
+        // reticle mark) at most every .34 s, under 3 a second, however hard or fast the hits land; a hit inside the gap shows
+        // through its bloom, arc and trauma only. Showing fades in over .08 s; death fades everything out over .5 s.
+        public const float FlashGap=.34f,ShowIn=.08f,DeathFade=.5f;
         // Threat ring radius in screen heights: first person, and third person (larger, so the bottom arcs clear the pilot).
         public const float RingFirst=.145f,RingThird=.19f;
         // Arc envelope (s): attack, hold (+ by severity), fade (+ by severity); white core 80 ms (140 for a headshot); snap-in
@@ -77,15 +81,15 @@ namespace ChipArena.UnityConversion
         public readonly float[] A=new float[Slots*4],B=new float[Slots*4],ArcA=new float[Arcs*4],ArcB=new float[Arcs*4],ArcC=new float[Arcs*4];
         public float Flash,Chroma,Desat,Dip,Low,Death,Pulse,Clock,Fire,Poison,Heal,HealWave,FireTick,PoisonTick,HeadFlash,Track,ShockAge=-1,ShockAngle,MarkAge=-1,RingFade,Fade=1,Shown;
         public bool Active;
-        private float fire,poison,heal,trauma,flashAt=-10,flashAmp,headAt=-10,fireAt=-10,poisonAt=-10,healAt=-10,shockAt=-10,markAt=-10,shown=1,phase,lastNow=-1;
+        private float fire,poison,heal,trauma,flashAt=-10,flashAmp,fireAt=-10,poisonAt=-10,healAt=-10,shockAt=-10,markAt=-10,shown=1,phase,lastNow=-1;
         private V3 shockFrom,right=new V3(1,0,0),up=new V3(0,1,0),forward=new V3(0,0,1);private int shockKey;
-        private bool alive=true;
+        private bool alive=true,flashHead;
 
         public void Clear()
         {
             for(int i=0;i<Slots;i++)Bloom[i]=default;for(int i=0;i<Arcs;i++)Ring[i]=default;
             Array.Clear(A,0,A.Length);Array.Clear(B,0,B.Length);Array.Clear(ArcA,0,ArcA.Length);Array.Clear(ArcB,0,ArcB.Length);Array.Clear(ArcC,0,ArcC.Length);
-            fire=poison=heal=trauma=0;flashAt=headAt=fireAt=poisonAt=healAt=shockAt=markAt=-10;flashAmp=0;shown=1;phase=0;lastNow=-1;alive=true;shockKey=0;shockFrom=default;
+            fire=poison=heal=trauma=0;flashAt=fireAt=poisonAt=healAt=shockAt=markAt=-10;flashAmp=0;flashHead=false;shown=1;phase=0;lastNow=-1;alive=true;shockKey=0;shockFrom=default;
             Flash=Chroma=Desat=Dip=Low=Death=Pulse=Clock=Fire=Poison=Heal=HealWave=FireTick=PoisonTick=HeadFlash=Track=ShockAngle=RingFade=Shown=0;ShockAge=MarkAge=-1;Fade=1;Active=false;
         }
         public static float Severity(float fraction)
@@ -158,9 +162,8 @@ namespace ChipArena.UnityConversion
             }
             ArcHit(now,s,head,melee,key!=0&&weight>0?key:OmniKey,from);
             trauma=Math.Min(1,trauma+.5f*s+(head?.25f:0));
-            float left=FlashCurve(now-flashAt,false)*flashAmp,amp=.5f+.5f*s;
-            if(now-flashAt>=FlashGap||amp>=1.5f*flashAmp){flashAmp=Math.Max(left,amp);flashAt=now;}
-            if(head&&now-headAt>=FlashGap)headAt=now;
+            // One flash peak per FlashGap, headshot or not: no stronger-hit bypass and no second beat.
+            if(now-flashAt>=FlashGap){flashAmp=.5f+.5f*s;flashAt=now;flashHead=head;}
         }
         private void ArcHit(float now,float s,bool head,bool melee,int key,V3 from)
         {
@@ -218,7 +221,7 @@ namespace ChipArena.UnityConversion
         public void Step(float now,float dt,float hp,bool living,bool reduced,bool split,V3 right,V3 up,V3 forward)
         {
             dt=float.IsNaN(dt)?0:Math.Max(0,Math.Min(.1f,dt));this.right=right;this.up=up;this.forward=forward;
-            if(lastNow>=0&&now<lastNow-1e-3f){for(int i=0;i<Slots;i++)Bloom[i].Live=false;for(int i=0;i<Arcs;i++)Ring[i].Live=false;flashAt=headAt=fireAt=poisonAt=healAt=shockAt=markAt=-10;}lastNow=now;
+            if(lastNow>=0&&now<lastNow-1e-3f){for(int i=0;i<Slots;i++)Bloom[i].Live=false;for(int i=0;i<Arcs;i++)Ring[i].Live=false;flashAt=fireAt=poisonAt=healAt=shockAt=markAt=-10;}lastNow=now;
             alive=living;Fade=living?Math.Min(1,Fade+dt/.25f):Math.Max(0,Fade-dt/DeathFade);Shown=Math.Min(1,Shown+dt/ShowIn);float vis=Fade*Shown;
             hp=Clamp01(float.IsNaN(hp)?1:hp);if(!living)hp=Math.Min(shown,hp);
             shown=hp<shown?shown+(hp-shown)*(1-(float)Math.Exp(-dt/LagDown)):shown+(hp-shown)*(1-(float)Math.Exp(-dt/LagUp));
@@ -226,10 +229,10 @@ namespace ChipArena.UnityConversion
             float bpm=BpmCalm+(BpmPanic-BpmCalm)*Math.Max(Low*.55f,Death);phase+=dt*bpm/60;phase-=(float)Math.Floor(phase);
             Pulse=reduced?.35f:LubDub(phase);if(!reduced){Clock+=dt;if(Clock>512)Clock-=512;}
             trauma=Math.Max(0,trauma-dt*.8f);
-            float f=FlashCurve(now-flashAt,false)*flashAmp+(now-headAt<.4f?.8f*FlashCurve(now-headAt-.11f,true):0);
-            Flash=Math.Min(1.2f,f)*vis;
-            HeadFlash=now-headAt<.4f?Math.Min(1,FlashCurve(now-headAt,false)+.8f*FlashCurve(now-headAt-.11f,true))*vis:0;
-            Chroma=split?Math.Min(1,Flash*(.45f+.55f*trauma)*(now-headAt<.3f?1.5f:1)+.18f*Death):0;
+            float sinceFlash=now-flashAt;
+            Flash=Math.Min(1,FlashCurve(sinceFlash,flashHead)*flashAmp)*vis;
+            HeadFlash=flashHead?Math.Min(1,FlashCurve(sinceFlash,true))*vis:0;
+            Chroma=split?Math.Min(1,Flash*(.45f+.55f*trauma)*(flashHead&&sinceFlash<.3f?1.5f:1)+.18f*Death):0;
             // Dying: a grey beat that fades out with the rest.
             Desat=Math.Min(.75f,(.35f*trauma+(living?0:.6f))*vis+.5f*Low+.15f*Death);Dip=.10f*Math.Min(1,Flash);
             // Element fields hold while ticks keep coming (a tick every .25 s settles near .5-.75) and fade within ~2 s after.
@@ -304,16 +307,21 @@ namespace ChipArena.UnityConversion
         public static float SnapOffset(float age)=>age>=Snap||age<0?0:SnapDistance*(float)Math.Pow(1-age/Snap,3);
         public static float FlashLevel(float age,bool head)=>age<0?0:Math.Max(0,1-age/(head?ArcHeadFlash:ArcFlash));
         public static float HalfWidthDeg(float sev,bool melee)=>HalfWidth+HalfWidthSev*sev+(melee?MeleeWidth:0);
-        // The impact flash: an exponential .06 s fall (a short .02 s rise when `soft`, for the headshot's second beat).
-        public static float FlashCurve(float age,bool soft)
-        {
-            if(age<0)return 0;if(soft&&age<.02f)return age/.02f;return (float)Math.Exp(-(soft?age-.02f:age)/.06f);
-        }
-        // A heartbeat: the lub at 4% of the beat and the softer dub at 24%.
+        // The impact flash: an exponential fall, .06 s (a headshot rings out over .11 s); one peak either way.
+        public static float FlashCurve(float age,bool head)=>age<0?0:(float)Math.Exp(-age/(head?.11f:.06f));
+        // A heartbeat that swells rather than blinks: the lub at the start of the beat and a softer dub .3 of a beat later,
+        // Gaussians in the beat phase (periodic, so the wrap never steps) about 128 and 146 ms wide at half height at 82 bpm
+        // (wider when calmer).
         public static float LubDub(float x)
         {
-            float a=(x-.04f)/.045f,b=(x-.24f)/.055f;return Math.Max((float)Math.Exp(-a*a),.65f*(float)Math.Exp(-b*b));
+            float a=x-(float)Math.Floor(x+.5f),b=x-.3f;b-=(float)Math.Floor(b+.5f);a/=.105f;b/=.12f;
+            return Math.Max((float)Math.Exp(-a*a),.55f*(float)Math.Exp(-b*b));
         }
+        // Whether the event list rewound, so the screen must start over: a new arena generation, a clock that ran backwards,
+        // or a listed event id lower than the last one consumed. An emptied list (the host prunes events after 1 s, and a
+        // guest copies that list) is a lull, not a rewind: blooms, arcs, the low-HP state and element fields keep running.
+        public static bool Rewound(int generation,int lastGeneration,float clock,float lastClock,int newest,int lastEvent)
+            =>generation!=lastGeneration||clock<lastClock-1e-3f||(newest>0&&newest<lastEvent);
 
         // The health box's lag chip (the overhead HealthLag rule): the lost part stays for .22 s after the last loss, then
         // drains at .9 of max HP per second; a heal, a new round or a clock jump snaps it. Returns the lagged ratio.

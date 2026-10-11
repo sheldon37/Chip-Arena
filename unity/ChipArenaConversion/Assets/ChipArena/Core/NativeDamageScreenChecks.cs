@@ -5,8 +5,9 @@ namespace ChipArena.UnityConversion
 {
     // Managed checks for the damage screen rules (NativeDamageScreen), run by NativeBuildChecks and Tests/CoreTests: severity,
     // direction mapping, bloom merging and slot reuse, element ticks, low HP and heartbeat, heal relief, death fade and finite
-    // outputs, the baked noise, the per-attacker threat arcs, live re-aim, the 4 Hz flash cap, the HP lag chip and a
-    // steady state that allocates nothing. Visual rules only.
+    // outputs, the baked noise, the per-attacker threat arcs, live re-aim, the flash cap (one peak per .34 s, headshots
+    // included), a heartbeat that swells under 3 times a second, an emptied event list that is not a rewind, the HP lag
+    // chip and a steady state that allocates nothing. Visual rules only.
     public static class NativeDamageScreenChecks
     {
         public static IEnumerable<string> Run()
@@ -49,7 +50,16 @@ namespace ChipArena.UnityConversion
             Run(2,.07f);Check(s.Low>.99f&&s.Death>.5f&&s.Pulse>=0&&s.Pulse<=1&&s.Desat>.4f,"near death");
             float lo=1,hi=0;for(int i=0;i<90;i++){Run(dt,.07f);lo=Math.Min(lo,s.Pulse);hi=Math.Max(hi,s.Pulse);}Check(hi>.9f&&lo<.1f,"heartbeat pulses");
             float clock=s.Clock;Run(.5f,.07f,true,true);Check(Near(s.Pulse,.35f)&&s.Chroma==0&&s.Clock==clock,"reduced effects still the pulse, the drift and the split");
-            yield return "damage screen low HP: colour drain and a heartbeat that reduced effects stills";
+            // Photosensitivity: at 4% HP (the fastest beat) lub and dub together swell fewer than 3 times a second, and the
+            // lub stays above half height for at least .11 s (a swell, not a blink).
+            Run(2,.04f);int swells=0,run=0;float narrowest=9,top=0,p0=s.Pulse,p1=s.Pulse;
+            for(int i=0;i<600;i++)
+            {
+                Run(dt,.04f);float p2=s.Pulse;if(p1>.2f&&p1>=p0&&p1>p2)swells++;
+                if(p2>.5f){run++;top=Math.Max(top,p2);}else{if(top>.9f&&i>run)narrowest=Math.Min(narrowest,run*dt);run=0;top=0;}p0=p1;p1=p2;
+            }
+            Check(swells>=20&&swells<30&&narrowest>=.11f,"heartbeat: "+swells+" swells in 10 s, narrowest lub "+narrowest+" s");
+            yield return "damage screen low HP: colour drain and a heartbeat that swells under 3 times a second, stilled by reduced effects";
             s.Hit(t,.05f,false,false,7,new V3(-4,0,0),1);Run(.05f,.45f);int arcs=Arcs();
             s.Healed(t,.38f);Run(.05f,.45f);Check(s.HealWave>0&&s.Heal>.5f&&Arcs()==arcs,"a real heal sweeps the wave and leaves the arcs");
             Run(1,.45f);s.Healed(t,.02f);Run(.05f,.47f);Check(s.HealWave==0,"regen does not sweep");Run(2,1);Check(s.Low==0,"healed HP leaves the low state");
@@ -90,16 +100,28 @@ namespace ChipArena.UnityConversion
             float bx=s.A[0],by=s.A[1];Check(bx<-.5f&&by>-.6f,"the bloom eases toward the new side");Run(.4f);Check(s.A[1]<-.95f&&Math.Abs(s.A[0])<.2f,"the bloom settles on the attacker");
             float yawRight=(float)Math.PI/2;s.Step(t+dt,dt,1,true,false,true,V3.Forward(180),U,V3.Forward(90));t+=dt;Check(Near(s.ArcA[0],yawRight,.02f),"turning the camera re-aims the arc");
             yield return "damage screen live re-aim: arcs follow their attacker every frame, blooms slide round the edge";
-            // Photosensitivity: a machine gun at 10 Hz flashes an attacker's white core and the impact flash at most at 4 Hz.
-            s.Clear();t=80;int cores=0,flashes=0;float lastCore=0,lastFlash=0;
-            for(int i=0;i<60;i++)
+            // Photosensitivity: body hits or headshots at 12 Hz for 10 s. Every flash peak (the impact flash, a headshot's pale
+            // flash, the attacker's white core) comes at most every .34 s: under 3 a second, never more than 3 in any second.
+            foreach(bool headshots in new[]{false,true})
             {
-                if(i%6==0)s.Hit(t,.06f,false,false,41,new V3(-3,0,2),1);t+=dt;s.Step(t,dt,1,true,false,true,R,U,F);
-                float core=s.ArcB[1];if(core>lastCore+.5f)cores++;lastCore=core;if(s.Flash>lastFlash+.2f)flashes++;lastFlash=s.Flash;
+                s.Clear();t=80;int cores=0,flashes=0,pale=0,most=0;float lastCore=0,lastFlash=0,lastPale=0,next=t;var onsets=new List<float>();
+                for(int i=0;i<600;i++)
+                {
+                    if(t>=next-1e-4f){s.Hit(t,.06f,headshots,false,41,new V3(-3,0,2),1);next+=1f/12;}t+=dt;s.Step(t,dt,1,true,false,true,R,U,F);
+                    float core=s.ArcB[1];if(core>lastCore+.5f)cores++;lastCore=core;if(s.Flash>lastFlash+.2f){flashes++;onsets.Add(t);}lastFlash=s.Flash;
+                    if(s.HeadFlash>lastPale+.2f)pale++;lastPale=s.HeadFlash;
+                }
+                for(int i=0;i<onsets.Count;i++){int n=0;for(int j=i;j<onsets.Count&&onsets[j]-onsets[i]<1;j++)n++;most=Math.Max(most,n);}
+                Check(flashes>=20&&flashes<30&&cores>=20&&cores<30&&pale==(headshots?flashes:0)&&most<=3,(headshots?"headshots":"body hits")+" at 12 Hz: flashes "+flashes+", cores "+cores+", pale "+pale+", most in a second "+most);
             }
-            Check(cores>=3&&cores<=4&&flashes>=3&&flashes<=4,"4 Hz cap: cores "+cores+", flashes "+flashes);
-            s.Hit(t,.6f,false,false,42,new V3(3,0,2),1);t+=dt;s.Step(t,dt,1,true,false,true,R,U,F);Check(s.Flash>.7f,"a much stronger hit still flashes");
-            yield return "damage screen flashes at most 4 times a second per attacker and globally";
+            s.Clear();t=85;Run(.1f);s.Hit(t,.06f,false,false,42,new V3(3,0,2),1);for(int i=0;i<3;i++){t+=dt;s.Step(t,dt,1,true,false,true,R,U,F);}float flash0=s.Flash;
+            s.Hit(t,.6f,true,false,43,new V3(-3,0,2),1);t+=dt;s.Step(t,dt,1,true,false,true,R,U,F);Check(s.Flash<=flash0+1e-4f&&s.HeadFlash==0,"a heavier hit or a headshot inside the gap does not flash again");
+            for(int i=0;i<21;i++){t+=dt;s.Step(t,dt,1,true,false,true,R,U,F);}s.Hit(t,.6f,false,false,42,new V3(3,0,2),1);t+=dt;s.Step(t,dt,1,true,false,true,R,U,F);Check(s.Flash>.7f,"a heavy hit after the gap flashes");
+            yield return "damage screen flashes at most once every .34 s (headshots included), per attacker and globally";
+            // An emptied event list (the host prunes events after 1 s; guests copy it) is a lull, not a rewind.
+            Check(!NativeDamageScreen.Rewound(3,3,12,11.9f,0,40)&&!NativeDamageScreen.Rewound(3,3,12,11.9f,41,40),"an emptied list or newer events go on");
+            Check(NativeDamageScreen.Rewound(3,3,12,11.9f,12,40)&&NativeDamageScreen.Rewound(4,3,12,11.9f,50,40)&&NativeDamageScreen.Rewound(3,3,11,12,50,40),"lower ids, a new generation or a clock rewind start over");
+            yield return "damage screen keeps running through a lull with no events; rewinds still reset it";
             // The HP lag chip: holds the lost part .22 s, then drains .9 of max HP per second; heals and new owners snap it.
             var lag=new NativeDamageScreen.Lag();float lt=0,lv=NativeDamageScreen.LagStep(ref lag,1,lt,1);
             for(int i=0;i<3;i++){lt+=.05f;lv=NativeDamageScreen.LagStep(ref lag,1,lt,.6f);}Check(Near(lv,1),"lag holds");

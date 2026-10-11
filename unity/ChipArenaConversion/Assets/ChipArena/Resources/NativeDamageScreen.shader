@@ -5,9 +5,11 @@
 //    angles in the screen square so every aspect reads alike), ragged by noise and dissolving back into the frame; a
 //    headshot's bloom is radially striated, with a pale flash confined to the bloom.
 //  * Impact chromatic split (radial, zero at the centre) and exposure dip; colour drain from trauma and low HP.
-//  * Low HP: a churning crimson edge pooled in the corners, swelled by the heartbeat. Burn: soot and flame tongues with
-//    rising embers from the bottom and lower sides, heat shimmer. Poison: a sickly film and slow drips from the top and
-//    upper sides, a sway. Heal: a cool lift and a ragged wave of light out to the frame.
+//  * Low HP: a churning crimson edge pooled in the corners that the heartbeat gently swells (reach, density and a warm rim
+//    each rise by a fraction, never a blink). Burn: soot and flame tongues with rising embers from the bottom and lower
+//    sides, heat shimmer. Poison: a sickly film and slow drips from the top and upper sides, a sway. Heal: a cool lift of
+//    the edge band (a multiply, so black stays black) and, for a real heal, one thin soft wavefront of light out past
+//    the corners.
 //  * Nothing above reaches the crosshair: it is multiplied by a centre guard (lower and taller in third person).
 //  * Then the threat ring round the crosshair, drawn over the guard but never inside R - 6 u (u = H / 1080 px): six
 //    per-attacker arcs (three segments, dark keyline, outward chevron, white core; twin rails and a hollow diamond for a
@@ -209,7 +211,7 @@ float3 DamageScreen(float2 uv0,float flip,float2 fragPx)
 
  // ---- Wound blooms + the low-HP edge: one union of opacity, one rim --------------------------------------------
  float2 qd=q/max(length(q),1e-4);
- float A=0.0;float rim=0.0;float headM=0.0;
+ float A=0.0;float rim=0.0;float rimLow=0.0;float headM=0.0;
  UNROLL for(int k=0;k<4;k++)
  {
   float4 a=_DmgA[k];float4 b=_DmgB[k];if(a.w<=0.001)continue;
@@ -228,19 +230,20 @@ float3 DamageScreen(float2 uv0,float flip,float2 fragPx)
   rim+=a.w*m*(1.0-m)*4.0*(1.0-th);                            // a warm inner glow where the bloom thins
   if(head)headM=max(headM,m*a.w);
  }
- // Low HP: a slow churning omni edge pooled in the corners (never an even frame); the heartbeat swells it; near death it
- // reaches further, to about a fifth of the height at the corners. corner: 1 toward the screen diagonals.
+ // Low HP: a slow churning omni edge pooled in the corners (never an even frame); near death it reaches further, to about
+ // a fifth of the height at the corners. The heartbeat is a swell, not a flash: +10% reach, +12% density and a warm rim
+ // from .16 to .24 (the bloom rim's impact boost never applies here). corner: 1 toward the screen diagonals.
  float corner=saturate(abs(qd.x*qd.y)*2.0);
  if(_DmgL.x>0.001)
  {
-  float reach=(0.05+0.06*_DmgL.x+0.03*_DmgL.y)*(1.0+0.18*_DmgL.z)*(0.6+0.6*corner);
+  float reach=(0.05+0.06*_DmgL.x+0.03*_DmgL.y)*(1.0+0.10*_DmgL.z)*(0.6+0.6*corner);
   float nn=nz(p*2.2+float2(t*0.05,t*0.035)+float2(2.96,4.88),8.0).r;
   float v=edge/(reach*(0.6+0.7*nn))+(n2-0.5)*0.22;
   float m=pow(saturate(1.0-v),1.6)*(0.55+0.9*n3);
-  A=1.0-(1.0-A)*(1.0-min(1.0,m)*ss(0.0,0.18,_DmgL.x)*(0.45+0.3*_DmgL.x)*(0.8+0.25*_DmgL.z));
-  rim+=(0.2+0.4*_DmgL.z)*ss(0.0,0.18,_DmgL.x)*m*(1.0-min(1.0,m))*4.0;
+  A=1.0-(1.0-A)*(1.0-min(1.0,m)*ss(0.0,0.18,_DmgL.x)*(0.45+0.3*_DmgL.x)*(0.90+0.12*_DmgL.z));
+  rimLow=(0.16+0.08*_DmgL.z)*ss(0.0,0.18,_DmgL.x)*m*(1.0-min(1.0,m))*4.0;
  }
- A*=safe*I;rim*=safe*I*(0.35+0.65*min(1.0,_DmgG.x+_DmgL.z*_DmgL.x));
+ A*=safe*I;rim=(rim*(0.35+0.65*min(1.0,_DmgG.x))+rimLow)*safe*I;
  // Blood: the scene seen through deep red glass, darker at the very edge, a faint ember glow so black still reads red.
  float core=exp(-edge/0.06);
  float3 blood=luma(col)*float3(0.62,0.06,0.07)+float3(0.065,0.003,0.005)*(0.45+1.1*n3);
@@ -291,16 +294,25 @@ float3 DamageScreen(float2 uv0,float flip,float2 fragPx)
   col=lerp(col,col*float3(0.18,0.32,0.04)+float3(0.035,0.085,0.006),drip*kp*0.85);
   col+=float3(0.55,0.95,0.25)*(shine*0.35+band*0.03*_DmgK.y)*kp;
  }
- // ---- Heal: a cool, clean lift at the edges; a real heal sweeps a ragged wave of light out to the frame -------------
+ // ---- Heal: a cool, clean lift of the edge band; a real heal sends one thin wavefront of light out past the corners ---
  if(_DmgE.z>0.001||_DmgE.w>0.0)
  {
-  float reach=(0.07+0.09*_DmgE.z)*(0.6+0.7*corner);
-  float m=pow(saturate(1.0-edge/(reach*(0.55+0.9*n1))),1.4)*_DmgE.z;
-  float en=1.0-saturate(edge/0.5)+(n1-0.5)*0.28+(n3-0.5)*0.12;     // ragged, so the wave never draws a frame
-  float w=_DmgE.w>0.0?lerp(0.30,1.15,1.0-sq(1.0-_DmgE.w)):-1.0;
-  float wave=_DmgE.w>0.0?ss(w-0.45,w,en)*ss(w+0.20,w-0.05,en)*pow(saturate(1.0-_DmgE.w),1.3)*(0.6+0.6*corner):0.0;
-  float lift=(m*0.55+wave*0.55)*safe*I;
-  col+=col*0.50*lift+float3(0.45,0.95,0.90)*0.05*lift;
+  float3 mint=float3(0.55,1.0,0.90);
+  float reach=(0.06+0.08*_DmgE.z)*(0.6+0.7*corner);
+  float m=pow(saturate(1.0-edge/(reach*(0.8+0.4*n1))),1.6)*_DmgE.z;
+  float wave=0.0;
+  if(_DmgE.w>0.0)
+  {
+   // An ellipse in the screen square (1 at the edge midpoints, 1.41 at the corners) easing out from .4 to 1.55: a thin
+   // front, crisp ahead and trailing softly behind, barely wavy, faded in away from the guard and out at the frame.
+   float k=1.0-sq(1.0-_DmgE.w);float rq=length(q);
+   float wd=rq-lerp(0.40,1.55,k)+(n1-0.5)*0.05;float ww=0.022+0.035*k;wd/=wd>0.0?ww*0.7:ww*1.6;
+   wave=exp(-wd*wd)*pow(saturate(1.0-_DmgE.w),1.2)*ss(0.30,0.70,rq);
+  }
+  float lift=m*0.45*safe*I;float wl=wave*safe*I;
+  // A multiply (black stays black); only the thin front adds a trace of light, mostly in proportion to the scene.
+  col*=1.0+mint*(lift+wl*1.4);
+  col+=mint*wl*(0.008+0.06*min(luma(col),0.5));
  }
  col*=1.0-_DmgG.w*I;
 
