@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
         }
         public static async Task<NativeConnection> Connect(string code,string source,CancellationToken cancellation)
         {
-            if(code==null||code.Length!=8||code.Any(c=>!NativeRoomCodes.Alphabet.Contains(c)))throw new ArgumentException("Enter the eight-character LAN room code.");
+            code=NativeRoomCodes.RawOnline(code);
             using(var socket=new UdpClient(AddressFamily.InterNetwork))using(var timeout=CancellationTokenSource.CreateLinkedTokenSource(cancellation))
             {
                 socket.EnableBroadcast=true;socket.Client.Bind(new IPEndPoint(IPAddress.Any,0));timeout.CancelAfter(3500);
@@ -54,7 +54,7 @@ namespace ChipArena.UnityConversion
         {
             address=code=null;port=0;if(value==null||value.Length>512||!Uri.TryCreate(value,UriKind.Absolute,out var uri)||uri.Scheme!="chiparena"||uri.Host!="lan"||uri.UserInfo.Length>0||uri.Fragment.Length>0)return false;
             foreach(var part in uri.Query.TrimStart('?').Split('&')){var pair=part.Split('=');if(pair.Length!=2)return false;string decoded=Uri.UnescapeDataString(pair[1]);if(pair[0]=="address")address=decoded;else if(pair[0]=="port")int.TryParse(decoded,out port);else if(pair[0]=="code")code=decoded.ToUpperInvariant();else return false;}
-            return IPAddress.TryParse(address,out var ip)&&ip.AddressFamily==AddressFamily.InterNetwork&&port>0&&port<=65535&&code?.Length==8&&code.All(c=>NativeRoomCodes.Alphabet.Contains(c));
+            return IPAddress.TryParse(address,out var ip)&&ip.AddressFamily==AddressFamily.InterNetwork&&port>0&&port<=65535&&NativeRoomCodes.Valid(code);
         }
         public void Dispose(){stop.Cancel();listener.Dispose();}
     }

@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
         {
             // Leaving Settings keeps what was changed (applied and saved); leaving Create / Join abandons a pending connection.
             if(menuScreen==MenuScreen.Settings&&screen!=MenuScreen.Settings){ApplySettings();Save();}
-            if((menuScreen==MenuScreen.Create||menuScreen==MenuScreen.Join)&&screen!=MenuScreen.Lobby&&!InRoom&&(connecting!=null||relayConnecting!=null||server!=null)){CloseNetwork();networkStatus="Connection cancelled.";}
+            if((menuScreen==MenuScreen.Create||menuScreen==MenuScreen.Join)&&screen!=MenuScreen.Lobby&&!InRoom&&(connecting!=null||relayConnecting!=null||server!=null||listingRooms)){CloseNetwork();networkStatus="Connection cancelled.";}
             if(screen!=MenuScreen.Home)updateOpen=false;playSandbox=false;
             if(screen==MenuScreen.Play){prefs.pve=false;prefs.bots=Mathf.Clamp(prefs.bots,1,7);sandboxWanted=false;}
             if(screen==MenuScreen.Boss){prefs.pve=true;prefs.bots=Mathf.Clamp(prefs.bots,0,3);sandboxWanted=false;}
@@ -381,8 +381,8 @@ namespace ChipArena.UnityConversion
         {if(string.IsNullOrEmpty(text))return;var p=l.Panel;var line=U.Wrap(text,13,p.width-64,false,1);U.Text(new Rect(p.x+32,p.yMax-30-48-20-24,p.width-64,18),line.Count>0?line[0]:text,13,error?U.Hex(0xff8a7a,l.Enter):U.Hex(0xa6a7ad,l.Enter),TextAnchor.MiddleLeft);}
         // Join's own entry checks are errors as well (the source shows a refused join entry in .connection-error), though
         // their wording names none of the failure words below.
-        private const string JoinCodeShapeError="Enter a CA- online code, an 8-character local code, or a room invite link.";
-        private bool NetworkError=>networkStatus==JoinCodeShapeError||networkStatus.IndexOf("fail",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("disconnect",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("does not match",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("is full",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("add a bot",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("both teams",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("invalid",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("could not",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("choose a port",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("rejected",StringComparison.OrdinalIgnoreCase)>=0;
+        private const string JoinCodeShapeError="Enter the six-character room code or paste a room invite link.";
+        private bool NetworkError=>networkStatus==JoinCodeShapeError||networkStatus.IndexOf("unavailable",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("fail",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("disconnect",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("does not match",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("is full",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("add a bot",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("both teams",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("invalid",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("could not",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("choose a port",StringComparison.OrdinalIgnoreCase)>=0||networkStatus.IndexOf("rejected",StringComparison.OrdinalIgnoreCase)>=0;
 
         private void PlayScreen(float age)
         {
@@ -413,18 +413,18 @@ namespace ChipArena.UnityConversion
         }
         private void CreateScreen(float age)
         {
-            var l=BeginScreen("CHIP ARENA","Host a private room",650,age,true);if(l.Closed){Go(MenuScreen.Home);return;}
+            var l=BeginScreen("CHIP ARENA","Host a private room",650,age,true);if(l.Closed){CloseNetwork();Go(MenuScreen.Home);return;}
             ScreenBody(l,CreateBody);if(l.Card.width>0)PilotCard(l.Card,"YOUR PILOT",l.Enter,"Guests see your pilot in the room lobby.");
             bool busy=relayConnecting!=null;ScreenStatus(l,networkStatus,NetworkError);
             if(ScreenActions(l,("play",busy?"Starting server…":"Create Room",true,!busy&&connecting==null))==0){if(internetRooms)HostRelay();else HostRoom();}
         }
         private void JoinScreen(float age)
         {
-            var l=BeginScreen("CHIP ARENA","Join a private room",650,age,true);if(l.Closed){Go(MenuScreen.Home);return;}
+            var l=BeginScreen("CHIP ARENA","Join a private room",650,age,true);if(l.Closed){CloseNetwork();Go(MenuScreen.Home);return;}
             ScreenBody(l,JoinBody);if(l.Card.width>0)PilotCard(l.Card,"YOUR PILOT",l.Enter,"Your loadout is sent to the host when you join.");
             bool busy=connecting!=null||server!=null&&!InRoom;ScreenStatus(l,networkStatus,NetworkError);MarkRoomStale();
             // A pasted room invite link joins through JoinInvite (its address, port and code); anything else is a room code:
-            // CA- selects the online relay; the eight-character payload remains compatible with existing native rooms.
+            // Online is the default; Local network is an optional connection mode. Legacy CA- codes remain pasteable.
             if(ScreenActions(l,("play",busy?"Finding room…":"Join Room",true,!busy&&joinCode.Trim().Length>0))==0)
             {
                 string entry=joinCode.Trim();if(JoinInvite(entry))return;
@@ -434,7 +434,7 @@ namespace ChipArena.UnityConversion
                 else JoinRoom();
             }
         }
-        private static bool RoomCodeShape(string code){if(code.Length!=8)return false;foreach(char ch in code)if(NativeRoomCodes.Alphabet.IndexOf(char.ToUpperInvariant(ch))<0)return false;return true;}
+        private static bool RoomCodeShape(string code)=>NativeRoomCodes.TryNormalize(code,out _);
         // Customize is the Locker (NativeLockerUI.cs): categories, the pilot on its turntable, item cards, Save / Revert.
         private void CustomizeScreen(float age)=>LockerScreen(age);
         private void SettingsScreen(float age,Action back)

@@ -200,12 +200,11 @@ namespace ChipArena.UnityConversion
             if(HostLost)return "DISCONNECTED";
             if(!Online)return arena==null?"LOCAL ENGINE":arena.Sandbox?"LOCAL SANDBOX":arena.Pve!=null?"LOCAL BOSS TEST":"LOCAL PRACTICE";
             bool lost=!Hosting&&(server==null||server.Closed),stalled=!Hosting&&!lost&&(DateTime.UtcNow-server.LastReceived).TotalSeconds>3;
-            return lost?"DISCONNECTED":stalled?"CONNECTION STALLED":listener!=null?"LAN · HOST":Hosting?"INTERNET RELAY · HOST":internetRooms?"INTERNET RELAY":"LOCAL NETWORK";
+            return lost?"DISCONNECTED":stalled?"CONNECTION STALLED":listener!=null?"LAN · HOST":Hosting?"ONLINE · HOST":internetRooms?"ONLINE":"LOCAL NETWORK";
         }
         // The lobby pill's text with the source's " · N MS" (main.ts drawHud, mode online): the round trip from
         // ConnectionMetrics, read twice a second; rebuilt only when a part changes.
-        // The room code as the lobby shows it: an online room's CA- code (relay host, or a guest of an internet room), else
-        // the 8-character local code. Cached per code so the pill does not format it every frame.
+        // Show the same short code for hosts and guests. Older eight-character codes remain supported.
         private string shownRaw,shownCode;private bool shownOnline;
         private string ShownRoomCode()
         {

@@ -3,10 +3,13 @@ using ChipArena.UnityConversion;
 
 internal static class Program
 {
-    private static int Main()
+    private static int Main(string[] args)
     {
         try
         {
+            if(args.Length==2&&args[0]=="--relay-smoke")
+            {var json=System.IO.File.ReadAllText(System.IO.Path.Combine(ProjectRoot(),"Assets/Conversion/Resources/GameContent.json"));using(var doc=System.Text.Json.JsonDocument.Parse(json))RelayChecks.Run(args[1],doc.RootElement.GetProperty("sourceCommit").GetString()).GetAwaiter().GetResult();return 0;}
+            OnlineRoomChecks.Run();
             AnimationChecks.Run();
             string root=ProjectRoot();
             InteractionChecks.Run(root);

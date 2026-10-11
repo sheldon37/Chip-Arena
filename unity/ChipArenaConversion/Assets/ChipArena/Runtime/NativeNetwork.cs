@@ -22,8 +22,8 @@ namespace ChipArena.UnityConversion
         public NativeConnectionReport ConnectionMetrics=>server?.Metrics.Report(!server.Closed)??new NativeConnectionReport();
         public string ConnectionReportJson()=>JsonUtility.ToJson(ConnectionMetrics,true);
         public NativeConnectionReport[] PeerMetrics=>peers.Where(p=>p.Seat!=null&&p.Connection!=null).Select(p=>{var report=p.Connection.Metrics.Report(!p.Connection.Closed);report.seatId=p.Seat.id;report.name=p.Seat.name;return report;}).ToArray();
-        public string[] LanAddresses=>NativeLanDiscovery.Addresses();public string RoomCode=>relayHost!=null?NativeRoomCodes.Online(roomCode):roomCode;public string InviteUrl=>listener==null?null:NativeLanDiscovery.Invite(LanAddresses.FirstOrDefault()??"127.0.0.1",listener.Port,roomCode);
-        public bool JoinInvite(string invite){if(!NativeLanDiscovery.ParseInvite(invite,out var address,out int port,out var code))return false;internetRooms=false;hostAddress=address;portText=port.ToString();joinCode=code;JoinRoom();return true;}
+        public string[] LanAddresses=>NativeLanDiscovery.Addresses();public string RoomCode=>relayHost!=null?NativeRoomCodes.Online(roomCode):roomCode;public string InviteUrl=>relayHost!=null?NativeRoomCodes.Invite(roomCode):listener==null?null:NativeLanDiscovery.Invite(LanAddresses.FirstOrDefault()??"127.0.0.1",listener.Port,roomCode);
+        public bool JoinInvite(string invite){if(NativeRoomCodes.ParseInvite(invite,out var onlineCode)){internetRooms=true;joinCode=onlineCode;JoinRoom();return true;}if(!NativeLanDiscovery.ParseInvite(invite,out var address,out int port,out var code))return false;internetRooms=false;hostAddress=address;portText=port.ToString();joinCode=code;JoinRoom();return true;}
         private bool Online=>Hosting||server!=null;private bool Hosting=>listener!=null||relayHost!=null;
         // In a room: hosting, or a guest the host has welcomed (JoinRoom resets networkId to 0; welcome assigns 1-8).
         private bool InRoom=>Hosting||server!=null&&networkId>=1;private string joinError="";
@@ -38,19 +38,19 @@ namespace ChipArena.UnityConversion
         private void JoinRoom()
         {
             Time.timeScale=1;EndPreview();
-            if(connecting!=null)return;if((joinCode??"").Trim().StartsWith("CA-",StringComparison.OrdinalIgnoreCase))internetRooms=true;if(internetRooms){try{joinCode=NativeRoomCodes.RawOnline(joinCode);}catch(ArgumentException e){networkStatus=e.Message;return;}}int port=0;if(!internetRooms&&(!int.TryParse(portText,out port)||port<1||port>65535)){networkStatus="Invalid port.";return;}joinError="";
-            server?.Dispose();server=null;receivedOptions=null;lobbySeats=Array.Empty<NativeSeatFrame>();prefs.pve=false;networkReady=false;networkId=0;frameOrder.Reset();connectStop?.Cancel();connectStop=new CancellationTokenSource();try{connecting=internetRooms?NativeRelayHost.Join(prefs.relayOrigin,joinCode.Trim().ToUpperInvariant(),content.sourceCommit,connectStop.Token):string.IsNullOrWhiteSpace(hostAddress)?NativeLanDiscovery.Connect(joinCode.Trim().ToUpperInvariant(),content.sourceCommit,connectStop.Token):NativeConnection.Connect(hostAddress.Trim(),port,connectStop.Token);}catch(ArgumentException e){networkStatus=e.Message;return;}networkStatus="Connecting…";
+            if(connecting!=null||relayConnecting!=null)return;if((joinCode??"").Trim().StartsWith("CA-",StringComparison.OrdinalIgnoreCase)&&NativeRoomCodes.TryNormalize(joinCode.Trim().Substring(3),out var legacyCode)&&legacyCode.Length==8)internetRooms=true;try{joinCode=NativeRoomCodes.RawOnline(joinCode);}catch(ArgumentException e){networkStatus=e.Message;return;}int port=0;if(!internetRooms&&(!int.TryParse(portText,out port)||port<1||port>65535)){networkStatus="Invalid port.";return;}joinError="";
+            server?.Dispose();server=null;receivedOptions=null;lobbySeats=Array.Empty<NativeSeatFrame>();prefs.pve=false;networkReady=false;networkId=0;frameOrder.Reset();connectStop?.Cancel();connectStop=new CancellationTokenSource();try{connecting=internetRooms?JoinOnlineRoom(joinCode,connectStop.Token):string.IsNullOrWhiteSpace(hostAddress)?NativeLanDiscovery.Connect(joinCode.Trim().ToUpperInvariant(),content.sourceCommit,connectStop.Token):NativeConnection.Connect(hostAddress.Trim(),port,connectStop.Token);}catch(ArgumentException e){networkStatus=e.Message;return;}networkStatus="Connecting…";
         }
         private void CloseNetwork()
-        {if(receivedOptions!=null)prefs.pve=false;receivedOptions=null;lanDiscovery?.Dispose();lanDiscovery=null;connectStop?.Cancel();if(connecting!=null){var abandoned=connecting;_=abandoned.ContinueWith(t=>{if(t.Status==TaskStatus.RanToCompletion)t.Result.Dispose();});}connecting=null;if(relayConnecting!=null){var abandoned=relayConnecting;_=abandoned.ContinueWith(t=>{if(t.Status==TaskStatus.RanToCompletion)t.Result.Dispose();});}relayConnecting=null;relayHost?.Dispose();relayHost=null;listener?.Dispose();listener=null;server?.Dispose();server=null;foreach(var peer in peers)peer.Connection?.Dispose();peers.Clear();lobbySeats=Array.Empty<NativeSeatFrame>();networkReady=false;networkId=1;resumeToken="";}
+        {listStop?.Cancel();relayRooms=Array.Empty<NativeRoomListing>();if(receivedOptions!=null)prefs.pve=false;receivedOptions=null;lanDiscovery?.Dispose();lanDiscovery=null;connectStop?.Cancel();if(connecting!=null){var abandoned=connecting;_=abandoned.ContinueWith(t=>{if(t.Status==TaskStatus.RanToCompletion)t.Result.Dispose();});}connecting=null;if(relayConnecting!=null){var abandoned=relayConnecting;_=abandoned.ContinueWith(t=>{if(t.Status==TaskStatus.RanToCompletion)t.Result.Dispose();});}relayConnecting=null;relayHost?.Dispose();relayHost=null;listener?.Dispose();listener=null;server?.Dispose();server=null;foreach(var peer in peers)peer.Connection?.Dispose();peers.Clear();lobbySeats=Array.Empty<NativeSeatFrame>();networkReady=false;networkId=1;resumeToken="";}
         private void SendServer(NativeNetMessage message){message.epoch=networkEpoch;message.generation=arena?.Generation??0;server?.Send(NativeNetCodec.Encode(message));}
         private void NetworkTick()
         {
             RelayTick();LobbyTick();EndFlowTick();
             if(connecting?.IsCompleted==true)
             {
-                if(connecting.IsFaulted||connecting.IsCanceled)networkStatus="Could not connect. Code discovery needs the same LAN; if broadcasts are blocked, enter the host address and port.";
-                else{server=connecting.Result;SendServer(new NativeNetMessage{type="hello",source=content.sourceCommit,contentRevision=content.contentRevision,room=joinCode.Trim().ToUpperInvariant(),resume=resumeToken,token=account?.Token,profile=Profile()});networkStatus="Joining conversion room…";}connecting=null;
+                if(connecting.IsFaulted||connecting.IsCanceled)networkStatus=internetRooms?(connecting.Exception?.GetBaseException() is InvalidOperationException?NativeOnlineService.Unavailable:"Could not join. Check the code, keep the host’s room open, and make sure both games are updated."):"Could not find this local room. Check that both players are on the same network.";
+                else{server=connecting.Result;SendServer(new NativeNetMessage{type="hello",source=content.sourceCommit,contentRevision=content.contentRevision,room=joinCode.Trim().ToUpperInvariant(),resume=resumeToken,token=account?.Token,profile=Profile()});networkStatus="Joining room…";}connecting=null;
             }
             if(Hosting)
             {
@@ -142,9 +142,9 @@ namespace ChipArena.UnityConversion
             BeginRules(false,578);var o=rules;
             RuleSelect(7478,RoomOpt.Versus,"Mode",VersusLabels,o.cooperative?1:0);ClassRow("Your class",ClassCardStyle.Stacked);
             if(!o.cooperative)MatchOptions(RulesPart.All,false,false);
-            RuleCheck(7482,RoomOpt.Online,"Online room",internetRooms);RuleFine(7484,internetRooms?"Create a public join code for friends.":"LAN only. Friends use your local-network invite link.",0,4);
+            RuleSelect(7482,RoomOpt.Online,"Connection",ConnectionLabels,internetRooms?0:1);RuleFine(7484,internetRooms?"Friends on any network can join with your room code.":"Only players on the same local network can join.",0,4);
             if(!internetRooms){Field("Port");portText=GUILayout.TextField(portText,5,GUILayout.Width(120));Fine("The lobby shows your LAN address and invite link once the room is open. Friends on the same LAN can join with just the code.");}
-            else{Field("Relay URL");prefs.relayOrigin=GUILayout.TextField(prefs.relayOrigin??"",240);listedRoom=GUILayout.Toggle(listedRoom,"List my room for other players");}
+            else{listedRoom=GUILayout.Toggle(listedRoom,"Show in public room list");}
             if(!o.cooperative)DraftOptions();IntroOptions();
             if(!o.cooperative)RuleCheck(7486,RoomOpt.BothDraft,"All players draft after each set",o.bothDraft);else RuleFine(7488,"Party bots and where the run starts are set in the lobby.",0,6);
             RuleFine(7494,"Keep your game open while friends are in your room.",8,6);
@@ -155,7 +155,7 @@ namespace ChipArena.UnityConversion
         private void JoinBody()
         {
             BeginRules(false,578);
-            RuleSelect(7490,RoomOpt.Connection,"Connection",ConnectionLabels,internetRooms?1:0);
+            RuleSelect(7490,RoomOpt.Connection,"Connection",ConnectionLabels,internetRooms?0:1);
             RuleField(7496,"ROOM CODE");JoinCodeField();
             if(!internetRooms)
             {
@@ -164,8 +164,8 @@ namespace ChipArena.UnityConversion
             }
             else
             {
-                Field("Relay URL");prefs.relayOrigin=GUILayout.TextField(prefs.relayOrigin??"",240);GUI.enabled=relayConnecting==null&&connecting==null;
-                if(GUILayout.Button("Refresh room list",button))StartCoroutine(ListRelayRooms());
+                GUI.enabled=relayConnecting==null&&connecting==null&&!listingRooms;
+                if(GUILayout.Button(listingRooms?"Finding rooms…":"Browse public rooms",button))StartCoroutine(ListRelayRooms());
                 foreach(var room in relayRooms)if(GUILayout.Button(room.name+" · "+room.players+" / "+room.capacity+" · "+room.code,button)){joinCode=room.code;JoinRoom();}GUI.enabled=true;
             }
             ClassRow("Your class",ClassCardStyle.Stacked);

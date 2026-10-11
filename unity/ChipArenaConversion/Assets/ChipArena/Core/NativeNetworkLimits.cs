@@ -37,12 +37,4 @@ namespace ChipArena.UnityConversion
         private double since;private int count;
         public bool Allow(double now){if(now-since>=1||now<since){since=now;count=0;}return ++count<=8;}
     }
-    public static class NativeRoomCodes
-    {
-        public static string Online(string code)=>"CA-"+RawOnline(code);
-        public static string RawOnline(string code)
-        {string raw=(code??"").Trim().ToUpperInvariant();if(raw.StartsWith("CA-",StringComparison.Ordinal))raw=raw.Substring(3);if(raw.Length!=8||raw.Any(c=>!Alphabet.Contains(c)))throw new ArgumentException("Enter a CA- online room code.");return raw;}
-        public const string Alphabet="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-        public static string Create(){var bytes=new byte[8];using(var random=RandomNumberGenerator.Create())random.GetBytes(bytes);var chars=new char[8];for(int i=0;i<8;i++)chars[i]=Alphabet[bytes[i]&31];return new string(chars);}
-    }
 }

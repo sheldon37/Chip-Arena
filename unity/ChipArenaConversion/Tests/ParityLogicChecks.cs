@@ -17,8 +17,8 @@ internal static class ParityLogicChecks
         var order=new NativeFrameOrder();Check(order.Control(4)&&!order.Frame(3,1,9),"lobby prevents stale match resurrection");
         Check(order.Frame(5,0,1)&&!order.Frame(5,0,1)&&!order.Frame(5,0,.5)&&order.Frame(5,1,0)&&!order.Frame(5,0,2),"epochs/generations/timestamps advance monotonically");
         var budget=new NativeMessageBudget();Check(Enumerable.Range(0,100).Count(i=>budget.Allow(1))==8&&budget.Allow(2),"one guest cannot amplify a control burst");
-        Check(NativeRoomCodes.Alphabet.Distinct().Count()==32&&Enumerable.Range(0,100).All(_=>NativeRoomCodes.Create().All(c=>NativeRoomCodes.Alphabet.Contains(c))),"8 uniformly sampled base32 symbols preserve 40 bits of room entropy");
-        Console.WriteLine("PASS presentation event budget, epoch/generation fencing, lobby rate budget and 40-bit room codes");
+        Check(NativeRoomCodes.Alphabet.Distinct().Count()==32&&Enumerable.Range(0,100).All(_=>NativeRoomCodes.Create().Length==6&&NativeRoomCodes.Create().All(c=>NativeRoomCodes.Alphabet.Contains(c))),"6 uniformly sampled base32 symbols provide 30 bits of room entropy");
+        Console.WriteLine("PASS presentation event budget, epoch/generation fencing, lobby rate budget and 30-bit room codes");
     }
     private static void Signatures()
     {

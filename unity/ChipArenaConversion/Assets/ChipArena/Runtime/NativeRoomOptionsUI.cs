@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
     {
         private enum RoomOpt{Mode,Versus,FriendlyFire,Sets,Rounds,Map,RandomMap,Bots,Difficulty,SkipBotDrafts,SkipIntros,BothDraft,Choices,Timer,Mirror,Stationary,BotWeapon,BotTeam,HostTeam,SkipWaves,Online,Connection}
         private enum RulesPart{All,Essential,Advanced}
-        private static readonly string[] ModeLabels={"Free-for-all","Teams"},VersusLabels={"Versus","Boss Test"},ConnectionLabels={"Local network","Internet relay"};
+        private static readonly string[] ModeLabels={"Free-for-all","Teams"},VersusLabels={"Versus","Boss Test"},ConnectionLabels={"Online","Local network (LAN)"};
         private static readonly string[] SetLabels=Numbered(10,5),RoundLabels=Numbered(10,2),ChoiceLabels=Numbered(12,6);
         private static readonly string[] DifficultyIds={"dummy","easy","normal","hard"},DifficultyLabels={"Dummy","Easy","Normal","Hard"};
         private static readonly string[] BetweenSetsLabels={"Players who lost the set draft","All players draft"},PartyBotLabels={"0","1","2","3"};
@@ -65,7 +65,7 @@ namespace ChipArena.UnityConversion
         // .settings-row); `estimate` is the row width before a repaint has measured it; `inset` matches the form's 4 px margins.
         // The rows rest disabled while a guest connection is open, in a room or still joining (SetRoomOptions refuses then,
         // and the Join screen's connection should not change under a pending join).
-        private bool GuestConnection=>!Hosting&&(server!=null||connecting!=null);
+        private bool GuestConnection=>!Hosting&&(server!=null||connecting!=null||relayConnecting!=null);
         private void BeginRules(bool narrow,float estimate,float inset=4){rules=RulesNow();rulesLocked=GuestConnection;rulesNarrow=narrow;rulesEstimate=estimate;rulesL=rulesR=inset;RuleLists();}
         private static NativeBotOption BotOption(NativeRoomOptions o,int i)=>o?.botOptions!=null&&i<o.botOptions.Length?o.botOptions[i]:null;
         // A bot's team as NativeLobbyRules.Bot seats it: its own choice, else the alternating default.
@@ -85,7 +85,7 @@ namespace ChipArena.UnityConversion
         // Applied in the replay's mouse event, so the next layout pass already sees the new rows.
         private void ApplyRule(RoomOpt opt,int v,int arg)
         {
-            if(opt==RoomOpt.Online||opt==RoomOpt.Connection){internetRooms=v==1;return;}
+            if(opt==RoomOpt.Online||opt==RoomOpt.Connection){if(connecting!=null||relayConnecting!=null)return;listStop?.Cancel();internetRooms=v==0;return;}
             // An open guest connection changes no rules: RoomOptions is then the host's copy (or none) and SetRoomOptions
             // refuses; a guest's own team goes through the lobby's team picker.
             if(!Hosting&&server!=null)return;
@@ -354,7 +354,7 @@ namespace ChipArena.UnityConversion
             var field=RuleRow(7498,46);string typed=GUI.TextField(field,joinCode??"",2048,joinStyle);
             if(typed!=joinCode)joinCode=typed.IndexOf(':')>=0?typed:typed.ToUpperInvariant();
             float e=GUI.color.a;bool empty=string.IsNullOrEmpty(joinCode);
-            U.Defer(()=>{if(empty&&Event.current.type==EventType.Repaint)U.Text(new Rect(field.x+15,field.y,field.width-30,field.height),"CA-ABCD-2345 OR ROOM INVITE LINK",15,U.Hex(0x8b8c94,e),TextAnchor.MiddleLeft,tracking:.06f);});
+            U.Defer(()=>{if(empty&&Event.current.type==EventType.Repaint)U.Text(new Rect(field.x+15,field.y,field.width-30,field.height),"7KMR4P OR ROOM INVITE LINK",15,U.Hex(0x8b8c94,e),TextAnchor.MiddleLeft,tracking:.06f);});
         }
 
         // ---- Cached strings ----------------------------------------------------------------------------------------------

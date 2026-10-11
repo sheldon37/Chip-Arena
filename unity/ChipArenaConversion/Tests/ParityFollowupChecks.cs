@@ -15,7 +15,7 @@ internal static class ParityFollowupChecks
         human.connected=false;Check(!NativeCombatRules.MinionCanHit(human,boss,true,true,true),"disconnected attackers cannot hit horde");human.connected=true;boss.connected=true;
         Check(NativeCombatRules.MinionCanHit(human,boss,true,true,false),"visible boss phase keeps adds hittable");
         var ally=new NativeSeat{id=2,team=0};Check(!NativeCombatRules.MinionCanHit(human,ally,false,true,false)&&NativeCombatRules.MinionCanHit(human,ally,false,true,true),"normal summoned ally keeps friendly-fire rules");
-        Check(NativeRoomCodes.RawOnline(" ca-abcdefgh ")=="ABCDEFGH"&&NativeRoomCodes.Online("ABCDEFGH")=="CA-ABCDEFGH"&&NativeRoomCodes.RawOnline("ABCDEFGH")=="ABCDEFGH","online prefix round trips without changing relay identity");
+        Check(NativeRoomCodes.RawOnline(" ca-abcdefgh ")=="ABCDEFGH"&&NativeRoomCodes.Online("ABCDEFGH")=="ABCDEFGH"&&NativeRoomCodes.RawOnline("ABCDEFGH")=="ABCDEFGH","legacy online prefix is accepted without changing relay identity");
         foreach(string invalid in new[]{"CA-ABC","CA-ABCD0FGH","CA-ABCDEFG!"}){bool rejected=false;try{NativeRoomCodes.RawOnline(invalid);}catch(ArgumentException){rejected=true;}Check(rejected,"invalid online room code rejected");}
         var effects=NativePendingEffect.Remember(null,"a","confetti","ragdoll",_=>true);
         Check(NativePendingEffect.Restore(effects,"a","ragdoll",_=>true)=="confetti"&&NativePendingEffect.Restore(effects,"b","ragdoll",_=>true)=="ragdoll","pending effects isolated by account and preserved across stale cloud reply");
