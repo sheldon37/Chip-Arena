@@ -280,7 +280,8 @@ namespace ChipArena.UnityConversion
     /// <list type="bullet">
     /// <item><see cref="Break"/>: every Break and Collapse event on a dressed map (NativeArenaDressing's intake from the live
     /// arena, also while the killcam draws): <see cref="PerBreak"/> at the event, falling off linearly to <see cref="Radius"/>,
-    /// on a 2 m grid within ±48 m, each cell capped at <see cref="Cap"/>.</item>
+    /// on a 2 m grid within ±48 m, each cell capped at <see cref="Cap"/>. A break's place is its prop's centre with its height,
+    /// so stacked members one blast breaks in the same tick (same x, z) each add their own stamp.</item>
     /// <item><see cref="Land"/>: every structure landing (StructureLand on Brickfall and the dev Sandbox collapse preview, both
     /// through the destruction kit and ArenaPresentation.StructureHeard): a local coat of <see cref="LandLocal"/> × (.4 + .6
     /// energy) out to <see cref="LandReach"/> × its radius (6-14 m, the dust wall's reach) and the map-wide level 1 - exp(-Σ
@@ -304,19 +305,20 @@ namespace ChipArena.UnityConversion
         /// <summary>The map-wide level's shader global (0..1; NativeArenaDressing publishes 0 while no dressed map is drawn).</summary>
         public const string Global="_ArenaDustCoat";
         private readonly float[] grid=new float[Size*Size],baseGrid=new float[Size*Size];
-        private readonly double[] breakAt=new double[BreakSlots];private readonly float[] breakX=new float[BreakSlots],breakZ=new float[BreakSlots];private readonly bool[] stamped=new bool[BreakSlots];private int breaks,nextBreak;
+        private readonly double[] breakAt=new double[BreakSlots];private readonly float[] breakX=new float[BreakSlots],breakY=new float[BreakSlots],breakZ=new float[BreakSlots];private readonly bool[] stamped=new bool[BreakSlots];private int breaks,nextBreak;
         private readonly double[] landAt=new double[LandSlots];private readonly float[] landX=new float[LandSlots],landZ=new float[LandSlots],landReach=new float[LandSlots],landWeight=new float[LandSlots],settled=new float[LandSlots];private int lands,nextLand;
         private double clock=double.NegativeInfinity,baseSum;
         /// <summary>The map-wide level at the last <see cref="At"/> clock (0..1).</summary>
         public float Wide{get;private set;}
         public int Breaks=>breaks;public int Lands=>lands;
         public void Clear(){Array.Clear(grid,0,grid.Length);Array.Clear(baseGrid,0,baseGrid.Length);breaks=nextBreak=lands=nextLand=0;baseSum=0;clock=double.NegativeInfinity;Wide=0;}
-        /// <summary>A Break or Collapse at (x, z) at match time `time`; false when it is already in (or not a number).</summary>
-        public bool Break(double time,float x,float z)
+        /// <summary>A Break or Collapse at (x, y, z) at match time `time` (it stamps at x, z; y keeps stacked breaks of one tick
+        /// apart); false when it is already in (or not a number).</summary>
+        public bool Break(double time,float x,float y,float z)
         {
-            if(!Valid(time,x,z))return false;for(int i=0;i<breaks;i++)if(Same(breakAt[i],breakX[i],breakZ[i],time,x,z))return false;
+            if(!Valid(time,x,z)||float.IsNaN(y)||float.IsInfinity(y))return false;for(int i=0;i<breaks;i++)if(Same(breakAt[i],breakX[i],breakZ[i],time,x,z)&&Math.Abs(breakY[i]-y)<.05f)return false;
             int k;if(breaks<BreakSlots)k=breaks++;else{k=nextBreak;nextBreak=(nextBreak+1)%BreakSlots;Stamp(baseGrid,breakX[k],breakZ[k],PerBreak,Radius);if(!stamped[k])Stamp(grid,breakX[k],breakZ[k],PerBreak,Radius);}
-            breakAt[k]=time;breakX[k]=x;breakZ[k]=z;stamped[k]=false;return true;
+            breakAt[k]=time;breakX[k]=x;breakY[k]=y;breakZ[k]=z;stamped[k]=false;return true;
         }
         /// <summary>A structure landing at (x, z) at `time`, its radius (m) and energy (0..1); false when it is already in.</summary>
         public bool Land(double time,float x,float z,float radius,float energy)

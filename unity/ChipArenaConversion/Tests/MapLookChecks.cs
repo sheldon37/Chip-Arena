@@ -13,7 +13,8 @@ namespace ChipArena.UnityConversion
     // field and bit for bit, to Tests/map-looks-parity.json (Tests/MapLookOracle.cs run once at ce3c506, before the move) and
     // to the oracle itself. The entrance and draft stages own the fog and the shadows (on every old map those equal the map's).
     // The one intended difference is Cinder Crossing's sky: the volcanic horizon and zenith now follow the forge theme, as
-    // src/client/night-world.ts does (`volcanic=m.theme==='forge'`), where ce3c506 keyed them on the id "forge". Also: the
+    // src/client/night-world.ts does (`volcanic=m.theme==='forge'`), where ce3c506 keyed them on the id "forge"; every map's
+    // sky and moon colours are checked against the Electron keys frozen in Tests/look-references.json. Also: the
     // fallback for maps without an entry equals each entry, the sky shader's property defaults are the old constants,
     // Brickfall's golden-demolition preset is ARENA_PROPOSAL.md 3.10 as written, flicker and fall-off, and validation.
     internal static class MapLookChecks
@@ -57,6 +58,10 @@ namespace ChipArena.UnityConversion
                 sunDir=A("sunDir"),halo=A("halo"),disc=A("disc"),discShade=A("discShade"),cloud=A("cloud")};
         }
         internal static MapLookSet Load(string root)=>JsonSerializer.Deserialize<MapLookSet>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/MapLooks.json")),new JsonSerializerOptions{IncludeFields=true});
+        /// <summary>Tests/look-references.json: the repository files outside the Unity project the look checks compare against (the
+        /// Brickfall draft blockout, the Electron sky and moon keys), frozen by tools/export_look_references.py; the checks read
+        /// only files under the project (the native CI's sparse checkout and the source package hold nothing else).</summary>
+        internal static JsonElement References(string root)=>JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Tests/look-references.json"))).RootElement;
         public static IEnumerable<string> Run(string root,ConversionContent content)
         {
             var set=Load(root);NativeMapLooks.Validate(set);
@@ -104,14 +109,23 @@ namespace ChipArena.UnityConversion
             Check(end.Contains("WriteFog(stageFog);Apply(map,camera);")&&lighting.Contains("private static void EnterStage(){if(introActive)return;introActive=true;stageFog=ReadFog();}")&&apply.Contains("WriteFog(s.Fog);if(introActive)stageFog=ReadFog();"),"EndIntro gives back the fog the stage found (density included; an Apply during a stage updates it), then Apply sets the map's look");
             Check(lighting.Contains("Density=RenderSettings.fogDensity")&&lighting.Contains("if(f.WritesDensity)RenderSettings.fogDensity=f.Density;"),"the saved fog keeps the density and the restore writes it");
             yield return "map looks: entrances and the chip draft own the fog (on, linear, their own colour and range) and the shadows (2 cascades over 65 m; the draft's key soft at full strength), restored at EndIntro; every old map's own values are exactly these, Brickfall's are not";
-            // The volcanic sky in Electron: both forge-themed maps.
-            // The Electron expressions, checked against src/client when the repository is around them (the source package has only the Unity project).
-            string world=Path.Combine(root,"../../src/client/night-world.ts"),sceneryFile=Path.Combine(root,"../../src/client/map-scenery.ts");bool electronFiles=File.Exists(world)&&File.Exists(sceneryFile);
-            if(electronFiles){var electron=File.ReadAllText(world);Check(electron.Contains("volcanic=m.theme==='forge'")&&electron.Contains("horizon=new T.Color(volcanic?0x633345:cold?0x405677:0x333f64),zenith=new T.Color(volcanic?0x100b1c:0x080e22)"),"night-world.ts keys the volcanic sky on the forge theme");
-                Check(File.ReadAllText(sceneryFile).Contains("moon?.color.set(id==='outpost'?0xffc5a5:id==='forge'?0xffac9c:0xb2ceff)"),"map-scenery.ts keys the moon colour on the id");}
-            foreach(var map in content.maps.Where(m=>m.theme=="forge")){var s=NativeMapLooks.Find(set,map.id).sky;Check(s.horizon==0x633345&&s.zenith==0x100b1c,map.id+" volcanic sky");}
-            Check(NativeMapLooks.Find(set,"lavaworks").key.color==0xb2ceff&&NativeMapLooks.Find(set,"forge").key.color==0xffac9c,"moon colours stay keyed on the id");
-            yield return "map looks: Cinder Crossing (forge theme) takes the volcanic sky as night-world.ts does; Obsidian Forge alone keeps the ember moon, as map-scenery.ts"+(electronFiles?" (both read from src/client)":" (src/client not present)");
+            // The Electron sky and moon keys (night-world.ts and map-scenery.ts at the source lock's commit), as
+            // tools/export_look_references.py froze them in Tests/look-references.json; their blobs are the lock's.
+            var electron=References(root).GetProperty("electron");var sourceLock=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"tools/source-lock.json"))).RootElement;
+            Check(electron.GetProperty("commit").GetString()==sourceLock.GetProperty("commit").GetString()&&sourceLock.GetProperty("files").EnumerateArray().Count(f=>electron.GetProperty("files").TryGetProperty(f.GetProperty("path").GetString(),out var b)&&b.GetString()==f.GetProperty("git_blob_sha").GetString())==2,"the frozen Electron keys come from the source lock's night-world.ts and map-scenery.ts");
+            var skyKeys=electron.GetProperty("sky");var moonKeys=electron.GetProperty("moon");var coldThemes=skyKeys.GetProperty("cold").EnumerateArray().Select(x=>x.GetString()).ToArray();
+            string sealedTheme=skyKeys.GetProperty("sealedTheme").GetString(),volcanicTheme=skyKeys.GetProperty("volcanic").GetString();int SkyHex(string part,string n)=>skyKeys.GetProperty(part).GetProperty(n).GetInt32();
+            Check(skyKeys.GetProperty("volcanicKey").GetString()=="theme"&&volcanicTheme=="forge"&&moonKeys.GetProperty("key").GetString()=="id","night-world.ts keys the volcanic sky on the forge theme; map-scenery.ts keys the moon colour on the id");
+            int skies=0;
+            foreach(var map in content.maps)
+            {
+                var look=NativeMapLooks.Find(set,map.id);int moonColor=moonKeys.GetProperty("byId").TryGetProperty(map.id,out var byId)?byId.GetInt32():moonKeys.GetProperty("other").GetInt32();
+                Check(look.key.color==moonColor,map.id+" moon colour as map-scenery.ts");if(map.theme==sealedTheme)continue;skies++;
+                bool volcanic=map.theme==volcanicTheme,cold=coldThemes.Contains(map.theme);
+                Check(look.sky.horizon==SkyHex("horizon",volcanic?"volcanic":cold?"cold":"other")&&look.sky.zenith==SkyHex("zenith",volcanic?"volcanic":"other"),map.id+" ("+map.theme+") sky as night-world.ts");
+            }
+            Check(skies==14&&content.maps.Count(m=>m.theme==volcanicTheme)==2,"14 skies checked (Ward Zero is sealed: Electron draws none), both forge-themed maps volcanic");
+            yield return "map looks: every old map's sky follows night-world.ts (Cinder Crossing's forge theme takes the volcanic sky; sealed Ward Zero has none) and every moon colour map-scenery.ts (Obsidian Forge alone keeps the ember moon), from the Electron keys frozen in Tests/look-references.json";
             // A map with no entry: today's look from the map itself, and resolution order.
             var unknown=new ContentMap{id="test-yard",theme="snow",sky=0x0c1c30,accent=0x80e4ff};var fb=NativeMapLooks.Resolve(set,unknown.id,unknown.theme,unknown.sky,unknown.accent);
             Check(fb.id=="test-yard"&&fb.sky.horizon==0x405677&&fb.rim.color==0x80e4ff&&fb.background==0x0c1c30&&fb.sky.variant=="night","fallback for a map without an entry");

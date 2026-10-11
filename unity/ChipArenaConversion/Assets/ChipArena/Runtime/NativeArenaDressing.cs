@@ -147,12 +147,12 @@ namespace ChipArena.UnityConversion
             if(best<0)return;var g=gone[best];e.Look=g.Look;e.Color=g.Color;e.Linear=g.Linear;e.Flags=(g.Flags&~(NativeBlockLooks.Band|NativeBlockLooks.Tag))|NativeBlockLooks.Fragment;
             if(id!=null)kept[id]=new Kept{Look=e.Look,Color=e.Color,Flags=e.Flags};
         }
-        // The live arena's Break and Collapse events into the coat at their match times (event ids only grow within a round; a
-        // lower newest id restarts the cursor, and the coat ignores an entry it already has).
+        // The live arena's Break and Collapse events into the coat at their match times and places, height included (event ids
+        // only grow within a round; a lower newest id restarts the cursor, and the coat ignores an entry it already has).
         private void Feed(NativeArena arena,NativeDustCoat coat)
         {
             int newest=0;foreach(var ev in arena.Events)newest=Math.Max(newest,ev.Id);if(newest<lastEvent)lastEvent=0;
-            foreach(var ev in arena.Events)if(ev.Id>lastEvent&&(ev.Kind==EventKind.Break||ev.Kind==EventKind.Collapse))coat.Break(ev.Time,ev.Position.x,ev.Position.z);
+            foreach(var ev in arena.Events)if(ev.Id>lastEvent&&(ev.Kind==EventKind.Break||ev.Kind==EventKind.Collapse))coat.Break(ev.Time,ev.Position.x,ev.Position.y,ev.Position.z);
             lastEvent=Math.Max(lastEvent,newest);
         }
         private void Publish(float wide){if(wide==published)return;published=wide;Shader.SetGlobalFloat(CoatId,wide);}

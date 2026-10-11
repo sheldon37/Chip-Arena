@@ -12,9 +12,10 @@ namespace ChipArena.UnityConversion
     // meshes (closed, outward at every block size and turn, never past the collider, the chamfer, shades, chips, waist and
     // stub), stages and the stage scale, the band and tag fitted to every banded member and spared by the dust coat, the band
     // lamp and the telegraph's window light (per instance from the CPU clock), look selection (Brickfall's sim entries, kit
-    // parts kept out of them, the [static] marks, the draft script's ids, the dev preview, material defaults), the opt-in (no
-    // old map changes by default), the draw budget, the round's one dust coat (breaks and landings on the match clock, killcam
-    // rewinds, order independence, folding, no allocations), the flash fall-off and validation.
+    // parts kept out of them, the [static] marks, the draft script's elements and piers as Tests/look-references.json froze
+    // them, the dev preview, material defaults), the opt-in (no old map changes by default), the draw budget, the round's one
+    // dust coat (breaks, stacked breaks of one tick and landings on the match clock, killcam rewinds, order independence,
+    // folding, no allocations), the flash fall-off and validation.
     internal static class BlockLookChecks
     {
         private static int count;
@@ -95,8 +96,9 @@ namespace ChipArena.UnityConversion
             }
             {
                 // Every banded Brickfall entry at its member's smallest size: the draft layout's piers (docs/arenas/scripts/
-                // brickfall_m1.py: hotel 1.2 x 3.6 x 1.2, tenement 1.0 x 3.6 x 1.0) and the render stand-ins for the members
-                // 3.9 names without a size (bridge bearing .8 x 1.0 x .8, chimney base ring 2.6 x 1.8 x 2.6).
+                // brickfall_m1.py: hotel 1.2 x 3.6 x 1.2, tenement 1.0 x 3.6 x 1.0; every draft pier is checked against these
+                // from Tests/look-references.json) and the render stand-ins for the members 3.9 names without a size (bridge
+                // bearing .8 x 1.0 x .8, chimney base ring 2.6 x 1.8 x 2.6).
                 var bfLooks=NativeMapLooks.Find(MapLookChecks.Load(root),"brickfall").blockLooks;
                 var members=new[]{("hotel-pier-nw",1.2f,3.6f,true),("ashby-pier-F1",1f,3.6f,true),("bray-pier-R2",1f,3.6f,true),("bridge-ashby-bearing",.8f,1f,false),("stack-n-base",2.6f,1.8f,true)};
                 foreach(var (id,w,h,tagged) in members)
@@ -106,8 +108,14 @@ namespace ChipArena.UnityConversion
                     Check((tag>0&&w*.5f>NativeBlockLooks.TagMinHalfWidth)==tagged,id+(tagged?" shows":" has no room for")+" the DANGER tag");
                 }
                 foreach(var e in bfLooks.Where(e=>e.band))Check(members.Any(m=>NativeBlockLooks.Score(e.block,m.Item1,"brick")>0),"banded entry "+e.block+" has a member size checked");
-                string draftPy=Path.Combine(root,"../../docs/arenas/scripts/brickfall_m1.py");
-                if(File.Exists(draftPy)){var tops=Regex.Matches(File.ReadAllText(draftPy),@"add\(f?'[a-z-]*pier[^\n]*?, ([0-9.]+), 'P'").Select(m=>float.Parse(m.Groups[1].Value,CultureInfo.InvariantCulture)).ToArray();Check(tops.Length==2&&tops.All(t=>t>=3.6f),"the draft's piers are 3.6 m tall ("+tops.Length+" pier rows)");}
+                int piers=0;
+                foreach(var e in MapLookChecks.References(root).GetProperty("draft").GetProperty("elements").EnumerateArray())
+                {
+                    string id=e[0].GetString();if(!id.Contains("-pier-"))continue;piers++;var m=members.Where(k=>k.Item1.StartsWith(id.Substring(0,id.IndexOf("-pier-")+6),StringComparison.Ordinal)).ToArray();
+                    double w=e[2].GetDouble()-e[1].GetDouble(),d=e[4].GetDouble()-e[3].GetDouble(),top=e[5].GetDouble();
+                    Check(m.Length==1&&Math.Abs(top-3.6)<1e-6&&Math.Min(w,d)>=m[0].Item2-1e-6,"draft pier "+id+" ("+w+" x "+top+" x "+d+") is 3.6 m tall and at least its member's checked width");
+                }
+                Check(piers==14,"the draft's 14 piers (hotel 4, Ashby 5, Bray 5) checked: "+piers);
             }
             {
                 // The coat at its heaviest on a side face (a saturated map and block coat x .55 x the noise's 1.25) against the band.
@@ -242,18 +250,14 @@ namespace ChipArena.UnityConversion
             Check(bl.All(b=>!string.IsNullOrEmpty(b.note))&&bl.Where(b=>b.band).All(b=>b.look=="brick-red"||b.look=="brick-buff"||b.look=="steel-green"),"every Brickfall entry is documented; banded members are brick or steel");
             Check(bf.blocks!=null&&bf.blocks.dressed&&bf.blocks.haze==.15f&&bf.blocks.hazeTop==2.5f&&bf.blocks.hazeColor==0xCF9A74&&bf.blocks.dust>=0&&bf.blocks.dust<.1f,"Brickfall opts in, with 3.10's 15% ground haze to 2.5 m in the fog colour");
             yield return "block looks: Brickfall's blockLooks give sim blocks the 2.3/3.10 looks by id stem (banded hotel, tenement, chimney and bridge members; [static] marks on 3.9's static blocks), kit parts (windows, trims, signage, paving) live in kitLooks, exact > first glob > material: > material default, and all 11 3.10 looks are used";
-            // The draft layout's element names (docs/arenas/scripts/brickfall_m1.py) resolve to listed looks.
-            string draft=Path.Combine(root,"../../docs/arenas/scripts/brickfall_m1.py");bool hasDraft=File.Exists(draft);
-            if(hasDraft)
+            // The draft layout's element names (docs/arenas/scripts/brickfall_m1.py, every element it lists, mirrors included, as
+            // tools/export_look_references.py froze them in Tests/look-references.json) resolve to listed looks.
             {
-                string py=File.ReadAllText(draft);var ids=new List<string>();
-                foreach(Match m in Regex.Matches(py,@"\badd\('([a-z][a-z0-9-]*)'"))ids.Add(m.Groups[1].Value);foreach(Match m in Regex.Matches(py,@"wall_[xz]\('([a-z][a-z0-9-]*)'"))ids.Add(m.Groups[1].Value+"0");
-                foreach(Match m in Regex.Matches(py,@"f'([a-z-]+)\{i\}'"))ids.Add(m.Groups[1].Value+"0");foreach(Match m in Regex.Matches(py,@"add\('ashby-pier-' \+ nm"))ids.Add("ashby-pier-F1");
-                if(py.Contains("mname='bray-pier-' + nm"))ids.Add("bray-pier-F1");if(py.Contains("f'hotel-pier-{"))ids.Add("hotel-pier-nw");
-                Check(ids.Count>=30,"draft script elements found: "+ids.Count);
-                foreach(string id in ids.Distinct()){var c=R(id);Check(c.Listed,"draft element "+id+" has a Brickfall look");if(id.Contains("-pier-"))Check((c.Flags&NativeBlockLooks.Band)!=0,"draft pier "+id+" is banded");}
+                var draft=MapLookChecks.References(root).GetProperty("draft");var ids=draft.GetProperty("elements").EnumerateArray().Select(e=>e[0].GetString()).ToArray();
+                Check(draft.GetProperty("path").GetString()=="docs/arenas/scripts/brickfall_m1.py"&&ids.Length>100&&ids.Distinct().Count()==ids.Length,"draft elements frozen: "+ids.Length);
+                foreach(string id in ids){var c=R(id);Check(c.Listed,"draft element "+id+" has a Brickfall look");if(id.Contains("-pier-"))Check((c.Flags&NativeBlockLooks.Band)!=0,"draft pier "+id+" is banded");}
+                yield return "block looks: every element the draft script lists ("+ids.Length+", frozen in Tests/look-references.json) resolves to a listed look and every pier is banded";
             }
-            yield return "block looks: "+(hasDraft?"every element named by docs/arenas/scripts/brickfall_m1.py resolves to a listed look and every pier is banded":"draft script not present (source package); names checked from 5.2 only");
             // Opt-in: no old map is dressed without the dev flag; the preview dresses them with today's colours under the new surfaces.
             int previewed=0,listedPreview=0,draws=0;
             foreach(var map in content.maps)
@@ -274,11 +278,14 @@ namespace ChipArena.UnityConversion
             yield return "block looks: the 15 old maps stay on today's renderers unless --ca-dress-blocks is given ("+previewed+" blocks previewed, "+listedPreview+" by the preview list); each old map is 1 instanced draw, the prop cap at most 5 of 60";
             // The round's one dust coat: breaks and landings on the match clock.
             var coat=new NativeDustCoat();
-            Check(coat.Break(10,1,1)&&!coat.Break(10,1,1)&&coat.Breaks==1&&!coat.Break(double.NaN,0,0),"a break fed twice counts once");coat.At(9);Check(coat.Sample(1,1)==0&&coat.Local(1,1)==0,"nothing before the break's time");
+            Check(coat.Break(10,1,2,1)&&!coat.Break(10,1,2,1)&&!coat.Break(10,1.01f,2.01f,1)&&coat.Breaks==1&&!coat.Break(double.NaN,0,0,0)&&!coat.Break(10,0,float.NaN,0),"a break fed twice counts once");coat.At(9);Check(coat.Sample(1,1)==0&&coat.Local(1,1)==0,"nothing before the break's time");
             coat.At(10);Check(Math.Abs(coat.Sample(1,1)-NativeDustCoat.PerBreak)<.03f&&coat.Local(1,1)==coat.Sample(1,1),"a break dusts about PerBreak at its point: "+coat.Sample(1,1));Check(coat.Sample(1+NativeDustCoat.Radius+NativeDustCoat.Cell,1)==0,"nothing beyond the radius");
-            for(int i=0;i<40;i++)coat.Break(11+i,1,1);coat.At(60);Check(coat.Sample(1,1)<=NativeDustCoat.Cap+1e-6f&&coat.Sample(1,1)>NativeDustCoat.Cap-.05f,"the coat caps");Check(coat.Sample(200,0)==0&&coat.Sample(float.NaN,0)==0,"0 off the grid");
+            for(int i=0;i<40;i++)coat.Break(11+i,1,2,1);coat.At(60);Check(coat.Sample(1,1)<=NativeDustCoat.Cap+1e-6f&&coat.Sample(1,1)>NativeDustCoat.Cap-.05f,"the coat caps");Check(coat.Sample(200,0)==0&&coat.Sample(float.NaN,0)==0,"0 off the grid");
             coat.At(10.5);Check(Math.Abs(coat.Sample(1,1)-NativeDustCoat.PerBreak)<.03f,"a killcam frame at 10.5 s sees the first break only (the grid rebuilds)");coat.At(60);Check(coat.Sample(1,1)>NativeDustCoat.Cap-.05f&&coat.Wide==0,"the live clock sees them all again; breaks leave the map-wide level alone");
             coat.Clear();Check(coat.Sample(1,1)==0&&coat.Breaks==0&&coat.Lands==0&&coat.Wide==0,"a new round clears it");
+            // Stacked members one blast breaks in the same tick (Break events at each prop's own centre: same x, z and time).
+            Check(coat.Break(30,5,1.8f,5)&&coat.Break(30,5,5.4f,5)&&!coat.Break(30,5,5.4f,5)&&coat.Breaks==2,"stacked breaks of one tick each count; each fed again does not");
+            coat.At(30);Check(Math.Abs(coat.Sample(5,5)-2*NativeDustCoat.PerBreak)<1e-5f,"two stacked breaks stamp twice: "+coat.Sample(5,5));coat.Clear();
             Check(coat.Land(50,0,0,8,1)&&!coat.Land(50,0,0,8,1)&&coat.Lands==1,"a landing fed twice counts once");coat.At(49.9);Check(coat.Wide==0&&coat.Local(0,0)==0,"a killcam frame before the landing has none of it");
             coat.At(52);float w52=coat.Wide,l52=coat.Local(0,0);coat.At(58);float w58=coat.Wide,l58=coat.Local(0,0);coat.At(80);float w80=coat.Wide,l80=coat.Local(0,0);
             Check(w52>0&&w58>w52&&w80>=w58&&Math.Abs(w80-(1-Math.Exp(-NativeDustCoat.LandWide)))<1e-6,"the map-wide level settles in over 8 s to 1 - exp(-.22) for one full-energy landing ("+w80+")");
@@ -288,10 +295,10 @@ namespace ChipArena.UnityConversion
             {
                 // Order independence (a guest or the killcam feeding the same entries in another order sees the same coat), folding
                 // past the slots, and no allocations once built.
-                var a=new NativeDustCoat();var b=new NativeDustCoat();for(int i=0;i<300;i++)a.Break(i*.1,(i*7)%60-30,(i*11)%50-25);for(int i=299;i>=0;i--)b.Break(i*.1,(i*7)%60-30,(i*11)%50-25);
+                var a=new NativeDustCoat();var b=new NativeDustCoat();for(int i=0;i<300;i++)a.Break(i*.1,(i*7)%60-30,i%3,(i*11)%50-25);for(int i=299;i>=0;i--)b.Break(i*.1,(i*7)%60-30,i%3,(i*11)%50-25);
                 a.Land(12,4,4,6,.7f);b.Land(12,4,4,6,.7f);a.At(20);b.At(20);bool same=a.Wide==b.Wide;for(float x=-40;x<=40;x+=1.3f)for(float z=-40;z<=40;z+=1.7f)same&=Math.Abs(a.Local(x,z)-b.Local(x,z))<1e-5f;Check(same,"the coat does not depend on the order entries arrive in (to float rounding)");
                 a.At(5);b.At(29.9);b.At(5);same=true;for(float x=-40;x<=40;x+=1.3f)for(float z=-40;z<=40;z+=1.7f)same&=Math.Abs(a.Local(x,z)-b.Local(x,z))<1e-5f;Check(same,"stepping back to a clock gives the coat built straight to it");
-                var big=new NativeDustCoat();for(int i=0;i<NativeDustCoat.BreakSlots+88;i++)big.Break(i*.05,(i%40)-20,(i/40)-8);big.At(1000);Check(big.Breaks==NativeDustCoat.BreakSlots&&big.Sample(0,0)>0,"breaks past the slots fold into the base");
+                var big=new NativeDustCoat();for(int i=0;i<NativeDustCoat.BreakSlots+88;i++)big.Break(i*.05,(i%40)-20,0,(i/40)-8);big.At(1000);Check(big.Breaks==NativeDustCoat.BreakSlots&&big.Sample(0,0)>0,"breaks past the slots fold into the base");
                 big.At(0);long before=GC.GetAllocatedBytesForCurrentThread();for(int i=0;i<300;i++){big.At(i*.1);big.Local(i%30-15,0);}big.At(-1);big.At(30);long after=GC.GetAllocatedBytesForCurrentThread();Check(after==before,"the coat allocates nothing per frame ("+(after-before)+" bytes)");
             }
             Check(NativeDustCoat.Global=="_ArenaDustCoat"&&shader.Contains("float _ArenaDustCoat;")&&shader.Contains("saturate(_ArenaDust+"+G(NativeDustCoat.WideShare)+"*_ArenaDustCoat+dust)"),"the shader adds the map base, .6 x the map-wide level and the block's own coat");
