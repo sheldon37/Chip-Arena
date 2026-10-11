@@ -265,9 +265,11 @@ namespace ChipArena.UnityConversion
         public readonly bool[] PoolVisible=new bool[MaxPools];public readonly double[] PoolPos=new double[MaxPools*3],PoolScale=new double[MaxPools*2],PoolRz=new double[MaxPools];
         /// <summary>After <see cref="Update"/>: drop i is drawn when Shown[i] (position Pos, rotation Q, scale S).</summary>
         public readonly bool[] Shown=new bool[MaxDrops];public readonly double[] Q=new double[MaxDrops*4],S=new double[MaxDrops*3];public double PoolOpacity;
-        public NativeKillSpray(int seed,int budget,double quality,KillSprayProfile profile,double floor)
+        /// <summary><paramref name="gibberFloor"/>: where the Gibber's fountain splats (the source's 0; the kill-effect floor
+        /// under the body on maps with upper floors, §5.5).</summary>
+        public NativeKillSpray(int seed,int budget,double quality,KillSprayProfile profile,double floor,double gibberFloor=0)
         {
-            Profile=profile;Floor=profile==KillSprayProfile.Gibber?0:floor;this.seed=unchecked((uint)seed);
+            Profile=profile;Floor=profile==KillSprayProfile.Gibber?gibberFloor:floor;this.seed=unchecked((uint)seed);
             int full=profile==KillSprayProfile.Gibber?150:profile==KillSprayProfile.Sever?70:60,low=profile==KillSprayProfile.Gibber?55:profile==KillSprayProfile.Sever?30:26;
             Drops=Math.Min(quality<.5?low:full,Math.Max(0,budget-10));Pools=Math.Max(0,Math.Min(10,budget-Drops));Count=Drops+Pools;
             for(int i=0;i<MaxPools;i++){PoolScale[i*2]=PoolScale[i*2+1]=1;}
@@ -373,13 +375,21 @@ namespace ChipArena.UnityConversion
         }
     }
 
+    /// <summary>
+    /// The surface height under a source-axes point, or NaN where there is none (docs/arenas/ARENA_PROPOSAL.md §5.5 Gibs). The
+    /// runtime answers it with a raycast down through the map's static geometry
+    /// (NativeStructureFxPresentation.KillFloor), so gibs settle on upper floors instead of the flat y .05 floor.
+    /// </summary>
+    public delegate double NativeKillFloor(double x,double y,double z);
     /// <summary>death-effects.ts voxelBurst: the rig's boxes cut into ~19 cm cubes, an even pick of them thrown out from the
-    /// body; pure in age. Construct once per death.</summary>
+    /// body; pure in age. Construct once per death. With a <see cref="NativeKillFloor"/> each cube rests .05 m above the surface
+    /// under it, or under where it lands when that is lower (it falls off the ledge); without one, or where it answers NaN, the
+    /// source's flat floor (.05 inside the 64 x 56 arena, -8 outside).</summary>
     public sealed class NativeKillBurst
     {
         public readonly int Count;private readonly double[] start,vel,spin,floor,size;public readonly int[] Colors;
         /// <summary><paramref name="boxes"/> holds world matrices (16 doubles each, unit cubes) in rig traversal order.</summary>
-        public NativeKillBurst(double[] boxes,int[] boxColors,int boxCount,int seed,double px,double py,double pz,double vx,double vy,double vz,double dx,double dy,double dz,double quality,int budget)
+        public NativeKillBurst(double[] boxes,int[] boxColors,int boxCount,int seed,double px,double py,double pz,double vx,double vy,double vz,double dx,double dy,double dz,double quality,int budget,NativeKillFloor floorAt=null)
         {
             double[] cx=null,cs=null;int[] cc=null;
             // Two passes: count the candidates, then cut them (no cap, so the even pick matches the source for any rig).
@@ -409,6 +419,11 @@ namespace ChipArena.UnityConversion
                 vel[i*3]=(x-px)*3.5+rx+ix+dx*2;vel[i*3+1]=(y-py)*3.5+ry+iy+dy*2;vel[i*3+2]=(z-pz)*3.5+rz+iz+dz*2;
                 spin[i*3]=Random()*9-4.5;spin[i*3+1]=Random()*9-4.5;spin[i*3+2]=Random()*9-4.5;
                 floor[i]=Math.Abs(x)<NativeKillEffectRules.ArenaHalfWidth&&Math.Abs(z)<NativeKillEffectRules.ArenaHalfDepth?.05:-8;size[i]=cs[c];Colors[i]=cc[c];
+                if(floorAt!=null)
+                {
+                    double under=floorAt(x,y,z);if(double.IsNaN(under))continue;double f=under+.05,vy0=vel[i*3+1],hit=(vy0+Math.Sqrt(Math.Max(0,vy0*vy0+2*12*Math.Max(0,y-f))))/12;
+                    double there=floorAt(x+vel[i*3]*hit,Math.Min(y,f+1),z+vel[i*3+2]*hit);floor[i]=!double.IsNaN(there)&&there+.05<f-.3?there+.05:f;
+                }
             }
         }
         /// <summary>Chunk <paramref name="i"/> at <paramref name="age"/>: position, Euler XYZ rotation and uniform scale.</summary>
