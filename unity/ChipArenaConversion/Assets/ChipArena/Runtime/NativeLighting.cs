@@ -13,8 +13,8 @@ namespace ChipArena.UnityConversion
         // it and nothing ever turned it back, so a look without a rim direction keeps whichever of the two came last, exactly
         // as before the looks moved into data (Electron keeps (14,7,12) throughout; changing that is the owner's call).
         private static MapLookSet looks;private static MapLook current;private static bool lowShadows;private static Vector3 rimFrom;private static Quaternion rimHome=Quaternion.identity;
-        // The practical lights' globals for NativeBlockLit's own light block (no shader reads them before it lands): position
-        // and range, linear colour times intensity (times the flicker each frame), and the count. Unused slots sit far below.
+        // The practical lights' globals for NativeBlockLit's own light block (only dressed blocks read them): position and
+        // range, linear colour times intensity (times the flicker each frame), and the count. Unused slots sit far below.
         private static readonly Vector4[] arenaPos=new Vector4[NativeMapLooks.MaxLights],arenaBase=new Vector4[NativeMapLooks.MaxLights],arenaColor=new Vector4[NativeMapLooks.MaxLights];private static int arenaCount;private static bool arenaFlicker;
         private static readonly int ArenaPosId=Shader.PropertyToID("_ArenaLightPos"),ArenaColorId=Shader.PropertyToID("_ArenaLightColor"),ArenaCountId=Shader.PropertyToID("_ArenaLightCount");
         private static readonly int HorizonId=Shader.PropertyToID("_Horizon"),ZenithId=Shader.PropertyToID("_Zenith"),MoonSizeId=Shader.PropertyToID("_MoonSize"),SunDirId=Shader.PropertyToID("_SunDir"),DiscColorId=Shader.PropertyToID("_DiscColor"),DiscShadeId=Shader.PropertyToID("_DiscShade");
@@ -74,11 +74,25 @@ namespace ChipArena.UnityConversion
             RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=upper;RenderSettings.ambientEquatorColor=middle;RenderSettings.ambientGroundColor=lower;
         }
         public static void Clock(float time){if(sky!=null)sky.SetFloat("_SceneTime",time);if(arenaFlicker)PracticalLights(time);}
-        /// <summary>The map's look: its MapLooks.json entry, or today's look worked out from the map (NativeMapLooks.Fallback).</summary>
-        public static MapLook Look(ContentMap map)
+        /// <summary>Resources/MapLooks.json, loaded and validated once.</summary>
+        public static MapLookSet LookSet()
         {
             if(looks==null){var asset=Resources.Load<TextAsset>("MapLooks");if(asset==null)throw new InvalidOperationException("MapLooks.json is missing");var set=JsonUtility.FromJson<MapLookSet>(asset.text);NativeMapLooks.Validate(set);looks=set;}
-            return NativeMapLooks.Resolve(looks,map.id,map.theme,map.sky,map.accent);
+            return looks;
+        }
+        /// <summary>The map's look: its MapLooks.json entry, or today's look worked out from the map (NativeMapLooks.Fallback).</summary>
+        public static MapLook Look(ContentMap map)=>NativeMapLooks.Resolve(LookSet(),map.id,map.theme,map.sky,map.accent);
+        private static readonly int ArenaRimDirId=Shader.PropertyToID("_ArenaRimDir"),ArenaRimColorId=Shader.PropertyToID("_ArenaRimColor");
+        /// <summary>
+        /// NativeBlockLit's rim (it has no add pass, so Unity's second directional light never reaches it): the rim light's live
+        /// direction and its colour times intensity as Unity applies them (NativeEntranceLight.Applied); black while it is off.
+        /// </summary>
+        public static void ArenaRim()
+        {
+            if(rim==null||!rim.isActiveAndEnabled||!(rim.intensity>0)){Shader.SetGlobalVector(ArenaRimColorId,Vector4.zero);return;}
+            bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear,linearIntensity=GraphicsSettings.lightsUseLinearIntensity;var c=rim.color;float i=rim.intensity;
+            Shader.SetGlobalVector(ArenaRimDirId,-rim.transform.forward);
+            Shader.SetGlobalVector(ArenaRimColorId,new Vector4((float)NativeEntranceLight.Applied(c.r,i,linear,linearIntensity),(float)NativeEntranceLight.Applied(c.g,i,linear,linearIntensity),(float)NativeEntranceLight.Applied(c.b,i,linear,linearIntensity),0));
         }
         // The map's look (MapLooks.json). Camera, fog, sky, shadow settings, the key's colour and aim and both lights' shadow
         // modes are written every time; the intensities, the ambient and the rim's aim wait while an entrance or the draft stage

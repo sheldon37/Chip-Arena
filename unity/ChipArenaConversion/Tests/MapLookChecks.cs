@@ -74,7 +74,7 @@ namespace ChipArena.UnityConversion
                 var entry=NativeMapLooks.Find(set,map.id);Check(entry!=null,map.id+" has a MapLooks entry");
                 Compare(Applied(entry,map),e,map.id+" data vs ce3c506",map.id=="lavaworks");
                 Compare(Applied(NativeMapLooks.Fallback(map.id,map.theme,map.sky,map.accent),map),e,map.id+" fallback vs ce3c506",map.id=="lavaworks");
-                Check(entry.lights.Length==0&&entry.blockLooks.Length==0&&entry.dressing==""&&entry.backdrop==""&&entry.atmosphere==""&&entry.ambience=="",map.id+" stubs empty");
+                Check(entry.lights.Length==0&&entry.blockLooks.Length==0&&entry.dressing==""&&entry.backdrop==""&&entry.atmosphere==""&&entry.ambience==""&&!NativeBlockLooks.Dressed(entry,false),map.id+" stubs empty, blocks not dressed");
                 Check(entry.shadows.fallbackCascades==entry.shadows.cascades&&entry.shadows.fallbackDistance==entry.shadows.distance,map.id+" no shadow change on the low tier");
                 Check(!NativeMapLooks.HasDirection(entry.rim)&&NativeMapLooks.HasFrom(entry.key),map.id+" key from today's position, rim on the rig's direction");
             }
@@ -122,7 +122,7 @@ namespace ChipArena.UnityConversion
             Check(barrels[0].pos.x==-barrels[1].pos.x&&barrels[0].pos.z==-barrels[1].pos.z&&barrels[0].pos.x>-30&&barrels[0].pos.x<-14&&barrels[0].pos.z>-26&&barrels[0].pos.z<-12,"barrels mirrored, the first in the Brick Yard (x -30..-14, z -26..-12)");
             var crane=L["crane-flood"];Check(crane.color==0xFFF1D6&&crane.pos.z>28&&crane.flicker=="","crane floodlight #FFF1D6 outside the north wall");
             Check(Math.Sqrt(Math.Pow(crane.pos.x-0,2)+Math.Pow(crane.pos.y-6,2)+Math.Pow(crane.pos.z-6,2))<crane.range,"the floodlight reaches the hotel's north face");
-            Check(b.blockLooks.Length==0&&b.dressing==""&&b.backdrop==""&&b.atmosphere==""&&b.ambience=="","later passes' stubs empty");
+            Check(b.dressing==""&&b.backdrop==""&&b.atmosphere==""&&b.ambience=="","later passes' stubs empty (block looks: BlockLookChecks)");
             Check(!content.maps.Any(m=>m.id=="brickfall"),"dormant: no brickfall map yet");
             yield return "map looks: golden-demolition is ARENA_PROPOSAL.md 3.10 as written (sun, rim, trilight, shadows, fog, dusk sky, 8 practical lights) and dormant until a brickfall map exists";
             // Flicker and fall-off.

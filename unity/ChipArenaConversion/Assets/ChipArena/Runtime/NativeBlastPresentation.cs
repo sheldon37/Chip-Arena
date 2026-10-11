@@ -210,6 +210,8 @@ namespace ChipArena.UnityConversion
                 var f=sim.Flashes[i];var light=lights[i];float intensity=NativeBlastSim.UnityLightIntensity(f.Intensity);light.enabled=intensity>.001f;if(!light.enabled)continue;
                 light.transform.position=new Vector3((float)f.X,(float)f.Y,(float)f.Z);light.color=NativeArena.ColorOf(f.Color);light.intensity=intensity;light.range=(float)f.Distance;
             }
+            // NativeBlockLit has no add pass, so these point lights never reach dressed arena blocks; they take the flashes through its feed.
+            NativeArenaDressing.Flashes(sim.Flashes);
         }
         private static void Fill(Layer layer,NativeBlastPool pool,Camera camera)
         {

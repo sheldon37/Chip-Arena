@@ -3,8 +3,12 @@ using System.Collections.Generic;
 
 namespace ChipArena.UnityConversion
 {
-    /// <summary>Resources/MapLooks.json: one look per map id (presentation only; never part of the network frame).</summary>
-    [Serializable] public sealed class MapLookSet {public int schema;public MapLook[] maps;}
+    /// <summary>
+    /// Resources/MapLooks.json: one look per map id (presentation only; never part of the network frame). `preview`: block
+    /// looks for the dev preview only (NativeArenaDressing.Preview, the `--ca-dress-blocks` command line), which dresses
+    /// every map; a map's own blockLooks win over it. No map's look changes without that flag.
+    /// </summary>
+    [Serializable] public sealed class MapLookSet {public int schema;public MapLook[] maps;public MapLookBlock[] preview;}
     /// <summary>
     /// One map's look. `id` is the map id it applies to; `look` names the preset (unique; "golden-demolition" for Brickfall).
     /// Colours are sRGB ints (0xRRGGBB) and vectors {x,y,z} in the Unity world frame, as in GameContent.json; JsonUtility reads
@@ -27,19 +31,35 @@ namespace ChipArena.UnityConversion
     /// (0..1); the lit cloud tint `cloud` and drift `cloudSpeed`. A `glow`, `disc` or `cloud` of 0 keeps the shader's
     /// default, which is today's night constant.</item>
     /// <item>`lights`: up to 8 practical point lights (`pos`, sRGB `color` times `intensity` in linear light, `range`) for
-    /// NativeBlockLit's own light block, which reads the `_ArenaLightPos/_ArenaLightColor/_ArenaLightCount` globals
-    /// NativeLighting writes; no shader reads them before that block lands (step 5). `flicker` "" (steady), "fire" (three
+    /// NativeBlockLit's own light block, which reads the `_ArenaLightPos/_ArenaLightColor` globals NativeLighting writes
+    /// (unused slots are black), so only dressed blocks take them. `flicker` "" (steady), "fire" (three
     /// sines at `rate`, 1.5x and 1.23x it, dipping by up to `depth`) or "stutter" (two dips of `depth` inside the first
     /// `length` seconds of every `period`); `phase` offsets the clock in seconds.</item>
-    /// <item>Stubs the later passes fill; nothing reads them yet: `blockLooks` (block id or id prefix to a look key such as
-    /// "brick-red"), `dressing` (articulation kit id), `backdrop`, `atmosphere` and `ambience` ids. Empty means today's.</item>
+    /// <item>`blocks`: `dressed` opts the map's blocks into NativeArenaDressing (instanced bevelled blocks through
+    /// NativeBlockLit.shader; the authority cube renderers are hidden); missing or false keeps today's renderers. `dust` is
+    /// a map-wide dust coat (0..1) under the per-block coat, `haze` the ground haze's opacity at the street (0..1), falling
+    /// to 0 at `hazeTop` m, in `hazeColor`.</item>
+    /// <item>`blockLooks` (read by NativeArenaDressing, Core/NativeBlockLooks.cs): `block` is an exact block id, a glob ("*"
+    /// matches any run: "hotel-pier-*"; the first matching glob in list order wins, so specific ones go first) or
+    /// "material:brick" (used when no id or glob matches); `look` a NativeBlockLooks key ("brick-red"); `color` the base
+    /// colour (0: the look's 3.10 palette colour); `band` paints the 2.3 load-bearing chevron band (1.0-1.6 m above the
+    /// block's base) and its DANGER tag; `note` is for people (the 3.3 legend element it covers). Brickfall's entries expect
+    /// the grey-box to keep the id stems of docs/arenas/scripts/brickfall_m1.py and ARENA_PROPOSAL.md 5.2: frontage-, stack-
+    /// (stack-*-base* banded), hotel- (hotel-pier-nw/-ne/-sw/-se banded, hotel-core-, hotel-floor-, hotel-roof), ashby- and
+    /// bray- (ashby-pier-F1.. banded, -core, -floor-, -roof), bridge- (bridge-*-bearing* banded), kessels, dunmores, market-,
+    /// storeroom-, kiosk-, news-kiosk-, phonebox-, tram-shelter-, monument-, barricade-, pallet-, sandbag-, stall-, dock-,
+    /// truck-, and parts named -sill-, -lintel-, -cornice-, -string-, -quoin-, -coping, -window-, -boards-, -shutter, -ramp,
+    /// -canopy, -neon-, -rubble-; mercer-sign, -slab, street-, lane-, yard-, square-, barrier-. Anything else falls back to
+    /// its material's look.</item>
+    /// <item>Stubs the later passes fill; nothing reads them yet: `dressing` (articulation kit id), `backdrop`, `atmosphere`
+    /// and `ambience` ids. Empty means today's.</item>
     /// </list>
     /// A map with no entry gets <see cref="NativeMapLooks.Fallback"/>, which is today's look worked out from the map itself.
     /// </summary>
     [Serializable] public sealed class MapLook
     {
         public string id,look;public float farClip;public int background;public MapLookLight key,rim;public MapLookAmbient ambient;public MapLookFog fog;
-        public MapLookShadows shadows;public MapLookSky sky;public MapLookPractical[] lights;public MapLookBlock[] blockLooks;public string dressing,backdrop,atmosphere,ambience;
+        public MapLookShadows shadows;public MapLookSky sky;public MapLookPractical[] lights;public MapLookBlock[] blockLooks;public string dressing,backdrop,atmosphere,ambience;public MapLookBlocks blocks;
     }
     [Serializable] public sealed class MapLookLight {public int color;public float intensity,elevation,bearing,shadowStrength;public V3 from;public string shadows;}
     [Serializable] public sealed class MapLookAmbient {public int sky,equator,ground;public float skyScale,equatorScale,groundScale;}
@@ -47,7 +67,8 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class MapLookShadows {public int cascades,fallbackCascades;public float distance,fallbackDistance;}
     [Serializable] public sealed class MapLookSky {public string variant;public int horizon,zenith,glow,disc,cloud;public float discSize,halo,stars,crater,cloudSpeed,elevation,bearing;public V3 dir;}
     [Serializable] public sealed class MapLookPractical {public string id,flicker;public V3 pos;public int color;public float intensity,range,rate,period,length,depth,phase;}
-    [Serializable] public sealed class MapLookBlock {public string block,look;}
+    [Serializable] public sealed class MapLookBlock {public string block,look,note;public int color;public bool band;}
+    [Serializable] public sealed class MapLookBlocks {public bool dressed;public float dust,haze,hazeTop;public int hazeColor;}
 
     /// <summary>
     /// Loader rules for Resources/MapLooks.json: lookup, today's fallback, validation, light and sky directions, the sky
@@ -145,8 +166,16 @@ namespace ChipArena.UnityConversion
                     if(!FlickerKinds.Contains(l.flicker??"")||l.depth<0||l.depth>1)Fail(id,"practical light flicker "+l.id);
                     if(l.flicker=="fire"&&!(l.rate>0))Fail(id,"fire flicker needs a rate: "+l.id);if(l.flicker=="stutter"&&!(l.length>0&&l.period>l.length))Fail(id,"stutter needs period > length > 0: "+l.id);
                 }
-                foreach(var b in m.blockLooks??Array.Empty<MapLookBlock>())if(b==null||string.IsNullOrEmpty(b.block)||string.IsNullOrEmpty(b.look))Fail(id,"block look");
+                BlockLooks(id,m.blockLooks);
+                var k=m.blocks;if(k!=null&&(!Finite(k.dust,k.haze,k.hazeTop)||k.dust<0||k.dust>1||k.haze<0||k.haze>1||k.haze>0&&!(k.hazeTop>0)||!Rgb(k.hazeColor)))Fail(id,"blocks");
             }
+            BlockLooks("preview",set.preview);
+        }
+        // An entry needs a block pattern (an id, a glob, or "material:" and a name) and a known look key.
+        private static void BlockLooks(string id,MapLookBlock[] list)
+        {
+            foreach(var b in list??Array.Empty<MapLookBlock>())
+                if(b==null||string.IsNullOrEmpty(b.block)||b.block=="material:"||NativeBlockLooks.Id(b.look)<0||!Rgb(b.color))Fail(id,"block look "+b?.block);
         }
         private static bool Cascades(int n)=>n==1||n==2||n==4;
     }
