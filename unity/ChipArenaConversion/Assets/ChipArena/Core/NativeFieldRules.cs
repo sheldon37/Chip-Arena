@@ -25,6 +25,37 @@ namespace ChipArena.UnityConversion
     /// <summary>What a field draws besides its ground glow.</summary>
     public enum NativeFieldLook{Glow,BlackHole,Bomb,Mine,Implosion,Dome}
 
+    /// <summary>
+    /// A chip bomb, implosion bomb or mine body at one moment, for drawing the modelled bomb (NativeVfxMeshes.Bomb) lit, with
+    /// its band and fuse tip glowing (owner 2026-10-11 effects overhaul: the bomb was a grey box with a blinking white box).
+    /// The timing is exactly the source cube look's (<see cref="NativeFieldRules.Cubes"/>): the same body centre, spin,
+    /// BombEdge pulse, FuseVisible blink speeding up with the fuse and final-half-second flicker. Cosmetic only.
+    /// </summary>
+    public struct NativeBombPose
+    {
+        public NativeFieldLook Look;
+        /// <summary>The body centre (the source's body cube centre: .4 m above the field origin, .1 m for a mine).</summary>
+        public double X,Y,Z;
+        /// <summary>Scale of the bomb mesh per axis; 1 is its rest size (casing diameter NativeVfxMeshes.BombDiameter, the
+        /// source's .38 m body cube edge). A bomb or implosion pulses uniformly by ±12% (BombEdge); a mine is the source's flat
+        /// .5 x .16 x .5 body and does not pulse.</summary>
+        public double Sx,Sy,Sz;
+        /// <summary>The body's spin: three.js Euler(implosion ? age*2.5 : 0, age*2, 0) as a quaternion, used directly as a Unity
+        /// Quaternion exactly as NativeFieldPresentation draws the source's body cube.</summary>
+        public double Qx,Qy,Qz,Qw;
+        /// <summary>The source's fuse cube centre (.66 m above the field origin, .22 m for a mine), not spun with the body.</summary>
+        public double FuseX,FuseY,FuseZ;
+        /// <summary>The source's fuse cube shows this frame (FuseVisible): its blink and its final-half-second flicker.</summary>
+        public bool FuseLit;
+        /// <summary>Fuse progress u (0 at birth, 1 at the end), the blink rate in rad/s (6 + 20u), seconds since birth and left.</summary>
+        public double Progress,BlinkRate,Age,Left;
+        /// <summary>Band and fuse-tip glow, 0..1: above 0 exactly while FuseLit, with a soft edge on each blink
+        /// (<see cref="NativeFieldRules.BombGlow"/>), and growing with the fuse. Multiply the emissive parts by it.</summary>
+        public double Emissive;
+        /// <summary>The casing's sRGB colour (the source's body cube: 0x2a0f46 for an implosion, 0x3a3434 otherwise).</summary>
+        public int Body;
+    }
+
     public static class NativeFieldRules
     {
         /// <summary>
@@ -152,6 +183,28 @@ namespace ChipArena.UnityConversion
             if(FuseVisible(age,u,left))n=Put(into,n,gx,gy+(mine?.22:.66),gz,.1,.1,.1,0,0,0xffffff);
             if(implosion)for(int i=0;i<6;i++){double a=i*Math.PI/3+age*(6+u*10),r=OrbitRadius(u);n=Put(into,n,gx+Math.Cos(a)*r,gy+.4+Math.Sin(a+i)*.18,gz+Math.Sin(a)*r,.12,.12,.12,age*7,a,color);}
             return n;
+        }
+
+        /// <summary>The emissive weight of a bomb's band and fuse tip (see <see cref="NativeBombPose.Emissive"/>): 0 whenever the
+        /// source's fuse cube is hidden; while it shows, a ramp from .15 (blink phase sin = -.2, where the cube appears) to 1
+        /// (sin >= .3), scaled from 75% at birth to 100% at the end of the fuse.</summary>
+        public static double BombGlow(double age,double u,double left)
+        {
+            if(!FuseVisible(age,u,left))return 0;double e=Smooth((Math.Sin(age*(6+u*20))+.2)/.5);
+            return (.15+.85*e)*(.75+.25*u);
+        }
+        /// <summary>
+        /// The modelled bomb's pose and emissive pulse for a Bomb, Implosion or Mine look at time (false, and a default pose,
+        /// for any other look). Same timing as <see cref="Cubes"/>, which still plans the source's cubes for parity.
+        /// </summary>
+        public static bool Bomb(NativeBlastField f,double time,out NativeBombPose pose)
+        {
+            pose=default;var look=LookOf(f.Kind,f.Fx);if(look!=NativeFieldLook.Bomb&&look!=NativeFieldLook.Implosion&&look!=NativeFieldLook.Mine)return false;
+            double gx=f.X,gy=Origin(f.Y),gz=f.Z,age=time-f.Born,left=f.Until-time,u=Progress(f.Born,f.Until,time);bool mine=look==NativeFieldLook.Mine,implosion=look==NativeFieldLook.Implosion;
+            var c=new NativeFieldCube();Euler(ref c,implosion?age*2.5:0,age*2);double s=mine?1:BombEdge(age,u)/.38;
+            pose=new NativeBombPose{Look=look,X=gx,Y=gy+(mine?.1:.4),Z=gz,Sx=mine?.5/.38:s,Sy=mine?.16/.38:s,Sz=mine?.5/.38:s,Qx=c.Qx,Qy=c.Qy,Qz=c.Qz,Qw=c.Qw,
+                FuseX=gx,FuseY=gy+(mine?.22:.66),FuseZ=gz,FuseLit=FuseVisible(age,u,left),Progress=u,BlinkRate=6+u*20,Age=age,Left=left,Emissive=BombGlow(age,u,left),Body=implosion?0x2a0f46:0x3a3434};
+            return true;
         }
 
         // three.js CircleGeometry(1, segments) turned to face +Y (rotation.x = -PI/2): a centre vertex, then segments+1 rim vertices.

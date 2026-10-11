@@ -41,6 +41,7 @@ internal static class Program
             StageVentChecks.Run(root);MinionFxChecks.Run(root);MinionHintChecks.Run(root);
             SummonCeilingPickupChecks.Run(root,data);
             StructureFxChecks.Run(root);
+            VfxChecks.Run(root);
             LobbyPoseChecks.Run(root);FighterMotionChecks.Run(root);LeetMotionChecks.Run();LeetPathChecks.Run(data);GunMotionChecks.Run();AuditorHaloChecks.Run(root);HitReactionChecks.Run(root);PackReactionChecks.Run(root);
             ArmorLightChecks.Run(root);
             BrickfallSceneryChecks.Run(root);
