@@ -1,5 +1,14 @@
 # Chip Arena — development log
 
+## 2026-10-10 — Astra — Last Laugh crush authority and Windows update handoff
+- Owner request: fix the Siren's arm snapping to idle at the timed crush, correct the victim's facing on the drop, and distinguish the actual crush from unrelated mid-hold kills; publish the resulting Unity batch through the existing native test Update button.
+- Task branch `codex/siren-crush-release-20261010` from verified cloud head `d4cabb9455a0e749fb8665d428cc08c1db36bc92` (Claude PR #62). Simulation change: mark each grabbed victim as crushed once; detach the victim before applying the crush damage so the death handler does not cancel the holder; retain the holder's `Caught`/grab action until the existing `m.Until` (0.6 s after crush). Cancellation now zeros captive velocity only while the holder actually has them.
+- Explicit `sirenCrush` authority flag on `Damage -> RecordDeath`: only lethal damage from that timed crush selects `siren-crush`. Bystander/DoT deaths while held retain their usual kill effects. The death yaw is the Siren holder's yaw + 180° as drawn; root position remains the authority's held body anchor, with the presentation's existing 0.08 s pose carry (exact rendered claw transform is not available inside simulation).
+- Source event timestamps, original damage values, stun, cooldown, `CrushAt`, `Until`, physical pin, ragdoll release and PvE repair code are otherwise unchanged. Network/save schemas are unchanged; snapshot `SourceAction` continues to report `grab` until the move finishes. New managed regression checks cover the 0.6 s action interval, wrapped facing, and actual-crush-only death style.
+- `tools/export_cinematics.mjs` inspection: Claude's staged/dressed Siren bake and head track are accounted for by existing export parity checks; existing dependency on three.js object-id order persists. No changes to exported models or shader assets in this task.
+- Verification/release status at implementation: source patch committed on task branch; native CI and real Windows UBA/D3D shader compile still need their exact new-head receipts. Existing `main` publisher workflow on completion of cloud native CI is the authorized native-test path. Do not publish a stale build, alter the Electron feed, or treat a green source job as a compiled Unity player. Owner Windows physics/visual/host-guest acceptance remains open.
+
+
 ## 2026-10-11 — Claude — Siren redesign ("Fallen Couturiere") and a realistic entrance smile (owner request)
 - Branch `claude/sleepy-ritchie-g8ruhv` (PR #62): merged `claude/siren-detail` `0a87241` (base `0e8a3ff`) on top of `7f5e288`.
   - Three rendered design concepts were judged. The winner is couture-horror, with grafts: faithful-plus's sculpted mask face, finer fangs and flame twist; eldritch's animated cheeks and distance fade.
