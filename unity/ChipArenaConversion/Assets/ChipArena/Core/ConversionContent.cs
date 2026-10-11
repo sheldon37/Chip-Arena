@@ -19,9 +19,9 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class ExclusiveOdds { public string spec;public int guaranteed;public double chance; }
     [Serializable] public sealed class ContentRotation { public float x,y,z,w=1; }
     [Serializable] public sealed class ContentBlock
-    { public string id,material; public V3 pos,size;public ContentRotation rotation;public string[] support;public bool dynamic;public float mass; }
+    { public string id,material,role,parent,segment; public float hp; public V3 pos,size;public ContentRotation rotation;public string[] support;public bool dynamic;public float mass; }
     [Serializable] public sealed class ContentMap
-    { public string id,name,tag,theme,music; public int sky,floor,accent;public bool rotation;public ContentBlock[] blocks; }
+    { public string id,name,tag,theme,music,ambience,look; public int sky,floor,accent;public bool rotation;[NonSerialized] public bool unity;public ContentBlock[] blocks;public MapBounds bounds;public MapSpawns spawns;public StructureDefinition[] segments;public MapNav nav;public MapPilotBlock[] pilotBlocks; }
     [Serializable] public sealed class ContentMaterial
     { public string id;public int color;public float mass,durability,friction;public bool indestructible; }
     [Serializable] public sealed class ContentAbility
@@ -34,7 +34,7 @@ namespace ChipArena.UnityConversion
     { public string spec,overlay;public double fov,spread,settle,move,sens,kick,interval,bloom; }
     [Serializable] public sealed class ConversionContent
     {
-        public int schema;public string sourceCommit;
+        public int schema;public string sourceCommit;[NonSerialized] public string contentRevision;
         public ContentWeapon[] weapons;public ContentChip[] chips;public ContentMap[] maps;
         public ContentMaterial[] materials;public ContentAbility[] abilities;public ContentAds[] ads;
         public NumberValue[] baseStats,config,weights;public RarityData[] rarities;

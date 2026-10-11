@@ -148,7 +148,7 @@ namespace ChipArena.UnityConversion
         private void Grid()
         {
             if(gridTick==arena.Time)return;gridTick=arena.Time;
-            if(gridAt<0){if(arena.Time<poll&&propCount>=0)return;poll=arena.Time+.5f;if(propCount==arena.Props.Count)return;propCount=arena.Props.Count;gridAt=0;}
+            if(gridAt<0){if(arena.Time<poll&&propCount>=0)return;poll=arena.Time+.5f;if(propCount==arena.NavigationRevision)return;propCount=arena.NavigationRevision;gridAt=0;}
             var scene=arena.Root.scene.GetPhysicsScene();int end=Math.Min(blocked.Length,gridAt+256);
             for(;gridAt<end;gridAt++){Vector3 at=Center(gridAt);int n;while((n=scene.OverlapCapsule(at-Vector3.up*.2f,at+Vector3.up*.5f,.43f,overlaps,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))==overlaps.Length)Array.Resize(ref overlaps,overlaps.Length*2);rebuilding[gridAt]=false;for(int k=0;k<n;k++)if(overlaps[k].bounds.max.y>.18f){rebuilding[gridAt]=true;break;}}
             if(gridAt==blocked.Length){Array.Copy(rebuilding,blocked,blocked.Length);version++;gridAt=-1;}

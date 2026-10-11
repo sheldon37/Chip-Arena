@@ -32,7 +32,7 @@ proposal, not the different, unmerged experimental-lab contract in PR #105.
 - Replicated `segments[] {id,state,t0}` uses states 0 intact, 1 stressed,
   2 falling, 3 rubble. **t0 is the scheduled start of falling**, including while
   stressed; intact t0=0. Queued segments become stressed immediately (therefore
-  cascade immediately), then wait for a slot; t0 is updated to a finite future
+  cascade immediately), then wait for a slot; t0 is fixed to a finite future
   start when scheduled. At least the authored telegraph elapses before motion.
   Frame restore is reversible, including rubble -> intact for replay rewinds.
 - Every moved block is evaluated from its immutable content pose and t0. Carried
@@ -45,8 +45,10 @@ proposal, not the different, unmerged experimental-lab contract in PR #105.
   allowed; team crush follows friendly fire. This is a separate damage path,
   not forced damage that bypasses the normal mitigation rules.
 - Structural credit: highest summed actual damage to triggering supports in the
-  last 10 seconds, then newest hit, then stable pilot ID. Cascade credit follows
-  the failed supporting segment. Without structural credit, use the victim's
+  last 10 seconds, then newest hit, then stable pilot ID. Cascade attribution follows
+  the failed supporting segment. Triggering member IDs are frozen at stress;
+  damage expires after 10 seconds even while a segment queues. Without
+  structural credit, use the victim's
   most recent pilot damager within 6 seconds, otherwise environmental credit.
 - `StructureStress`, `StructureFall`, `StructureLand` retain §5.4 payloads.
   Hit/Death events add `DamageKind=collapse`; Hit.Detail is the segment ID.
@@ -60,6 +62,45 @@ proposal, not the different, unmerged experimental-lab contract in PR #105.
   and cannot become new standable ceilings for stacked jump chips.
 - Tank, tenement floor collapse and Wrecker remain deferred. These are ten M1
   segments. The map reconstructs on every round reset.
+
+## Grey-box handoff to Claude
+
+The checked-in generator is `unity/ChipArenaConversion/tools/generate_brickfall.py`.
+It consumes the draft footprint; it does not modify the proposal or exporter.
+The generated map has 507 initial blocks: 363 static, 26 carried, 74 masonry,
+14 structural members and 30 cover props. Initial prop frame: 118. Ten segments
+swap to 106 total static rubble boxes. Nav: 2,364 nodes / 3,983 links.
+
+Existing prefix families above are retained; no `MapLooks.json` or presentation
+file is edited. Additional static IDs are `ashby-stair-landing-*` and
+`bray-stair-landing-*`. Hotel panel IDs include quadrant, draft name, footprint
+coordinates and storey; look matching should use the quadrant/family prefix,
+not infer a floor from a final numeric suffix. Debris carries `parent` and
+`segment`; rubble uses `rubble-<segment>-*`.
+
+Simulation-driven layout adjustments from the draft:
+
+- The hotel core has real landing doors, a filled ground stair underside and
+  thin upper flights. Roof stair-house sides stop at z=4.2, leaving the northern
+  1.6 m side exits clear for capsules. Two tenement switchback landings are added.
+- Second-floor bridge portals are widened in the hotel and cut above y=6.96 in
+  the tenement rear panels. Ground opening LOS is unchanged. Bridge tear-hinge
+  poses use the authored tenement-end pivot regardless of which support fails;
+  choosing a dynamic surviving end would need another replicated field.
+- Hotel rubble has 0.2 m steps, a low seam apron and extra room at the southwest
+  stair foot. Bridge rubble is 1.2 m high. Facade saddles are two metres wide;
+  frontage routes stay open in the 1 m capsule-width raster for all 1,024 states.
+- Sweep boxes conservatively include all authored corner poses, including the
+  initial chimney rear edge and bridge rails. Closest spawn-to-sweep clearance
+  is 3.082 m. Telegraphs must use the authored `crush` and `sweeps` data.
+- `AllBlocks` is the combined collection for presentation. `Props` alone omits
+  static scenery and rubble. Carried blocks remain in `Props` for look parenting
+  but do not appear in prop frames. Guests and killcam pose those blocks locally.
+
+`DamageKind` is the serialized C# field on Hit/Death; its value is `collapse`.
+Hit/Death `Detail` is the segment ID. Structure event fields remain exactly the
+§5.4 contract. Visual/audio routing, yellow bands, warning decals, dressing,
+lighting, menu treatment and the COLLAPSE feed label are Claude's integration.
 
 ## Gates and publication
 

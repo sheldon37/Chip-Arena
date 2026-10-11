@@ -73,7 +73,7 @@ namespace ChipArena.UnityConversion
                 if(prop==null||prop.Indestructible)continue;Vector3 delta=prop.transform.position-origin;float extra=Math.Min(.8f,prop.Definition.size.Length*.3f);
                 if(!NativeMeleeRules.Contact(swing,Time,Vec(delta),extra)||!swing.Contact("prop:"+prop.Definition.id,Time,Vec(delta),extra,MeleeVisible(origin,prop.transform.position,p,prop.GetComponent<Collider>())))continue;
                 ImpactChips(p,null,prop,prop.transform.position,delta.normalized,swing.Id,swing.Id);
-                DamageProp(prop,(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale*p.Stats["demolition"]),(delta+Vector3.up*.15f).normalized*(float)(p.Weapon.impulse*p.Stats["impulse"]*swing.DamageScale),prop.transform.position,p);
+                DamageProp(prop,(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale*p.Stats["demolition"]),(delta+Vector3.up*.15f).normalized*(float)(p.Weapon.impulse*p.Stats["impulse"]*swing.DamageScale),prop.transform.position,p,"melee");
             }
         }
         private void StunMelee(NativePilot p,float seconds)

@@ -95,7 +95,7 @@ namespace ChipArena.UnityConversion.Editor
                     throw new InvalidOperationException("NativeAccount declares an invalid Unity Start callback");
             NativeSourceModels.ValidateTextureImports();
             var asset=Resources.Load<TextAsset>("GameContent");if(asset==null)throw new Exception("Missing native GameContent asset");
-            var data=JsonUtility.FromJson<ConversionContent>(asset.text);
+            var data=JsonUtility.FromJson<ConversionContent>(asset.text);NativeUnityMapLoader.Load(data);
             var fixtures=JsonUtility.FromJson<ParityFixtures>(File.ReadAllText(Path.Combine(Application.dataPath,"../Tests/source-parity.json")));
             foreach(var test in NativeParityChecks.Run(data,fixtures))Debug.Log("PASS "+test);
             var presentation=JsonUtility.FromJson<PresentationFixtures>(File.ReadAllText(Path.Combine(Application.dataPath,"../Tests/presentation-parity.json")));
@@ -110,7 +110,7 @@ namespace ChipArena.UnityConversion.Editor
             if(data.chips.Any(c=>!NativeArena.ImplementedChip(c)))throw new Exception("A source Chip is absent from the native draft");
             if(NativeSceneMotion.Count!=31)throw new Exception("Source cinematic scenes are incomplete");
             if(NativeSourceMotion.ClipCount!=165)throw new Exception("Source motion bank is incomplete");
-            using(var models=new NativeSourceModels()){foreach(var map in data.maps)if(!models.Has("map-"+map.id))throw new Exception("Missing map model: "+map.id);foreach(var weapon in data.weapons)if(!models.Has("weapon-"+weapon.id)&&weapon.id!="siren")throw new Exception("Missing weapon model: "+weapon.id);foreach(var part in new[]{"saw","saw-track","spikes","spikes-cones","spikes-surface","lava","lava-surface","lava-currents","lava-bubble-0","lava-bubble-1"})if(!models.Has("hazard-"+part))throw new Exception("Missing stage hazard model: "+part);
+            using(var models=new NativeSourceModels()){foreach(var map in data.maps.Where(m=>!m.unity))if(!models.Has("map-"+map.id))throw new Exception("Missing map model: "+map.id);foreach(var weapon in data.weapons)if(!models.Has("weapon-"+weapon.id)&&weapon.id!="siren")throw new Exception("Missing weapon model: "+weapon.id);foreach(var part in new[]{"saw","saw-track","spikes","spikes-cones","spikes-surface","lava","lava-surface","lava-currents","lava-bubble-0","lava-bubble-1"})if(!models.Has("hazard-"+part))throw new Exception("Missing stage hazard model: "+part);
                 // Pilot armor lights: the eleven glowing trims and the parts they light (NativeArmorLight.cginc tables).
                 if(models.ArmorEmitters!=11||models.ArmorReceivers<37||models.ArmorHeld<6)throw new Exception("Pilot armor light tables are incomplete: "+models.ArmorEmitters+" emitters, "+models.ArmorReceivers+" receivers, "+models.ArmorHeld+" held");
                 // The Siren's animated pieces split from its joint batches, and a face track for every Siren clip.
@@ -149,14 +149,14 @@ namespace ChipArena.UnityConversion.Editor
                         for(int i=0;i<90;i++)physics.Simulate(1f/60);
                         if(!MathUtil.Finite(probeBody.position.y)||probeBody.position.y>=99)
                             throw new Exception("Preview physics did not advance the falling probe: "+map.id);
-                        foreach(var spawn in data.spawns)
+                        foreach(var spawn in map.spawns==null?data.spawns:map.spawns.ffa.Concat(map.spawns.teams.SelectMany(t=>t.points)).Select(s=>s.pos).ToArray())
                         {
                             if(!physics.Raycast(NativeArena.Vec(spawn),Vector3.down,out var hit,4,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))throw new Exception("Native spawn has no floor: "+map.id+" / "+spawn.x+","+spawn.z);
                             if(hit.normal.y<.5f)throw new Exception("Native spawn floor is too steep: "+map.id);pads++;
                         }
                         foreach(var pilot in arena.Pilots)if(!MathUtil.Finite(pilot.Body.position.y)||pilot.Body.position.y<-.5f)throw new Exception("Native capsule fell through the map: "+map.id);
-                        if(arena.Props.Count!=map.blocks.Length)throw new Exception("Native map lost blocks: "+map.id);
-                        if(map==data.maps[0])
+                        if(arena.AllBlocks.Count()!=map.blocks.Length)throw new Exception("Native map lost blocks: "+map.id);
+                        if(map==data.maps.First(m=>!m.unity))
                         {
                             var shown=arena.Snapshot(true);var pilot=arena.Local;
                             if(ReferenceEquals(shown.Actors[0],pilot.Pose)||Vector3.Distance(NativeArena.Vec(shown.Actors[0].Position),pilot.Body.transform.position-Vector3.up*.865f)>.00001f)
@@ -164,6 +164,7 @@ namespace ChipArena.UnityConversion.Editor
                             float hp=pilot.Pose.Hp;shown.Actors[0].Hp=0;if(pilot.Pose.Hp!=hp)throw new Exception("Render snapshot changed authority");
                             CheckNetworkSerialization(arena);CheckCombatParity(data);CheckInteractionFeedback(data);CheckPresentation(arena);CheckGlow(arena,match);CheckShots(arena);arena.ValidateMelee();arena.ValidateSpecials();arena.ValidateRangedAndMagic();
                         }
+                        if(map.id=="brickfall"){arena.ValidateBrickfallRuntime();CheckBrickfallReplica(arena);}
                         if(map.id=="siren")arena.ValidatePveEconomy(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text));
                         Debug.Log("PASS native map "+map.id+": isolated Edit-mode physics, 8 spawn floors, capsule settling");
                     }

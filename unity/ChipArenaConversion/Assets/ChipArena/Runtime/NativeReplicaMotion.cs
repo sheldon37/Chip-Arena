@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
         }
         private V3 ConstrainPrediction(V3 old,V3 desired)
         {
-            var from=Vec(old);var delta=Vec(desired-old);float distance=delta.magnitude;
+            desired=NativeMapRules.ExcludeTops(Map,desired);var from=Vec(old);var delta=Vec(desired-old);float distance=delta.magnitude;
             if(distance<.00001f)return desired;
             var physics=root.scene.GetPhysicsScene();
             if(physics.CapsuleCast(from+Vector3.up*.43f,from-Vector3.up*.43f,.41f,delta.normalized,out var hit,distance+.01f,WorldMask,QueryTriggerInteraction.Ignore))
@@ -59,6 +59,7 @@ namespace ChipArena.UnityConversion
             if(replicaHistory.Count==0)return;
             double time=replicaClock.Advance(delta);while(replicaHistory.Count>2&&replicaHistory[1].time<=time)replicaHistory.RemoveAt(0);
             var a=replicaHistory[0];var b=replicaHistory.Count>1?replicaHistory[1]:a;
+            if(Map.unity)RestoreStructures(a.segments,(float)time,a.props);
             float blend=Mathf.Clamp01((float)((time-a.time)/Math.Max(.00001,b.time-a.time)));
             foreach(var p in Pilots)
             {

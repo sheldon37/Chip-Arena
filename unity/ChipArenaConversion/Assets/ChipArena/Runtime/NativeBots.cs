@@ -29,13 +29,14 @@ namespace ChipArena.UnityConversion
             float desired=NativeBotRules.Desired(p.Weapon);var flat=new Vector3(delta.x,0,delta.z).normalized;Vector3 move=distance>desired+1?flat:distance<desired-1?-flat*.8f:Vector3.zero;
             if(level>0&&!melee&&visible)move+=Quaternion.Euler(0,input.Yaw+90,0)*Vector3.forward*(Mathf.Sin(Time*1.1f+p.Seat.id)>0?.65f:-.65f);
             if(level>0&&!melee&&(p.ReloadEnd>Time||p.Weapon.ammo>0&&p.Ammo<=1||p.Mana<18))
-            {var cover=Props.Where(c=>c!=null&&!c.Fragment&&!c.Definition.dynamic&&c.Definition.material!="foundation"&&c.Definition.size.y>1).OrderBy(c=>(c.transform.position-pos).sqrMagnitude).FirstOrDefault();if(cover!=null){var safe=cover.transform.position+(cover.transform.position-target).normalized*(Math.Max(cover.Definition.size.x,cover.Definition.size.z)*.6f+1);move=Vector3.Distance(safe,pos)<1?Vector3.zero:new Vector3(safe.x-pos.x,0,safe.z-pos.z).normalized;}}
+            {var cover=AllBlocks.Where(c=>c!=null&&!c.Fragment&&!c.Definition.dynamic&&c.Definition.material!="foundation"&&c.Definition.size.y>1).OrderBy(c=>(c.transform.position-pos).sqrMagnitude).FirstOrDefault();if(cover!=null){var safe=cover.transform.position+(cover.transform.position-target).normalized*(Math.Max(cover.Definition.size.x,cover.Definition.size.z)*.6f+1);move=Vector3.Distance(safe,pos)<1?Vector3.zero:new Vector3(safe.x-pos.x,0,safe.z-pos.z).normalized;}}
+            if(Map.unity)move=StructureNavMove(p,target,move);
             bool obstacle=move.sqrMagnitude>.01f&&root.scene.GetPhysicsScene().Raycast(pos-Vector3.up*.4f,move.normalized,out _,1.1f,WorldMask,QueryTriggerInteraction.Ignore);
-            if(obstacle){move=move*.25f+Quaternion.Euler(0,input.Yaw+90,0)*Vector3.forward*(Mathf.Sin(Time*.4f)>0?1:-1);input.Jump=p.Grounded;}
+            if(obstacle){if(!Map.unity)move=move*.25f+Quaternion.Euler(0,input.Yaw+90,0)*Vector3.forward*(Mathf.Sin(Time*.4f)>0?1:-1);input.Jump=p.Grounded;}
             if(melee&&p.Stamina<p.Weapon.cost)move=-flat*.8f;
-            if(Math.Abs(pos.x)>28)move.x=-Math.Sign(pos.x);if(Math.Abs(pos.z)>24)move.z=-Math.Sign(pos.z);
+            var clamped=ClampMap(pos,true);if(clamped.x!=pos.x)move.x=Math.Sign(clamped.x-pos.x);if(clamped.z!=pos.z)move.z=Math.Sign(clamped.z-pos.z);
             input.X=Mathf.Clamp(move.x,-1,1);input.Z=Mathf.Clamp(move.z,-1,1);input.Shoot=melee?distance<p.Weapon.range*1.25:visible||obstacle;input.Reload=p.Weapon.ammo>0&&(p.Ammo==0||p.Seat.spec!="rifle"&&p.Ammo<2);
-            input.Roll=level>0&&melee&&distance>4&&distance<11&&Math.Abs(pos.x)<28&&Math.Abs(pos.z)<24;
+            input.Roll=level>0&&melee&&distance>4&&distance<11&&ClampMap(pos,true)==pos;
             if(p.BotBrain.Reacted&&Time>=p.BlockReady)
             {
                 bool threat=opponent?.Swing!=null&&distance<opponent.Weapon.range+1&&opponent.Swing.HitAt-Time<.24&&visible;

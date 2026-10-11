@@ -128,7 +128,7 @@ namespace ChipArena.UnityConversion
         }
         private Vector3 GroundPoint(Vector3 point)
         {
-            point.x=Mathf.Clamp(point.x,-31,31);point.z=Mathf.Clamp(point.z,-27,27);
+            point=ClampMap(point);
             if(root.scene.GetPhysicsScene().Raycast(point+Vector3.up*.08f,Vector3.down,out var hit,40,WorldMask))point=hit.point;return point;
         }
         private Vector3 Muzzle(NativePilot p)=>p.Body.position+Vector3.up*.52f+Quaternion.Euler(0,p.Yaw,0)*new Vector3(.18f,0,.68f);
@@ -158,6 +158,7 @@ namespace ChipArena.UnityConversion
             foreach(var m in Minions.ToArray()){Vector3 delta=m.Body.position-at;float fall=NativeAbilityRules.BlastFalloff(delta.magnitude,radius);if(m.Hp>0&&CanHit(owner,m)&&fall>0&&MeleeVisible(at,m.Body.position,owner,m.Collider)){float actual=HitMinion(m,owner,damage,delta.normalized,impulse*fall,at,"blast",radius);AbilityOnDamage(owner,actual);if(actual>0)onMinion?.Invoke();}}
             foreach(var prop in Props.ToArray())if(prop!=null&&!prop.Indestructible)
             {
+                if(!string.IsNullOrEmpty(prop.Definition.role)){StructureBlast(prop,owner,at,radius,damage*propScale,impulse);continue;}
                 Vector3 delta=prop.transform.position-at;float reach=radius+prop.transform.localScale.magnitude*.35f;
                 if(delta.magnitude>=reach)continue;float fall=1-Mathf.Clamp(delta.magnitude/reach,0,.85f);
                 DamageProp(prop,damage*fall*propScale*(float)owner.Stats["demolition"],(delta+Vector3.up*.3f).normalized*impulse*fall,at,owner);

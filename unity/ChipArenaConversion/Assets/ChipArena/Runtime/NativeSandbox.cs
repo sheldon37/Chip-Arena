@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
         }
         private void SandboxRestore(NativePilot p)
         {
-            CancelSiren(p);CancelFighter(p);CancelSpecial(p);CancelMelee(p);CancelAbilities(p);ReleaseControl(p);p.Down=null;p.Juggle=null;p.Dots.Clear();p.Death=null;p.Wounds.Clear();p.FrozenUntil=p.ScareUntil=0;p.ScareBy=null;p.RevivedAt=Time;p.Seat.alive=true;p.Body.isKinematic=false;p.Body.position=Vec(Content.spawns[Math.Min(Pilots.IndexOf(p),Content.spawns.Length-1)]);p.Body.linearVelocity=p.Knockback=p.MoveVelocity=Vector3.zero;p.Collider.enabled=true;p.Hp=(float)p.Stats["hp"];SandboxRefresh(p);
+            if(!TrySandboxSpawn(p,out var spawn))return;CancelSiren(p);CancelFighter(p);CancelSpecial(p);CancelMelee(p);CancelAbilities(p);ReleaseControl(p);p.Down=null;p.Juggle=null;p.Dots.Clear();p.Death=null;p.Wounds.Clear();p.FrozenUntil=p.ScareUntil=0;p.ScareBy=null;p.RevivedAt=Time;p.Seat.alive=true;p.Body.isKinematic=false;p.Body.position=spawn;p.Body.linearVelocity=p.Knockback=p.MoveVelocity=Vector3.zero;p.Collider.enabled=true;p.Hp=(float)p.Stats["hp"];SandboxRefresh(p);
         }
         private void SandboxRefresh(NativePilot p)
         {CancelAbilities(p);CancelFighter(p);CancelSpecial(p);CancelMelee(p);p.Ready=p.QReady=p.EReady=p.RollReady=p.BlockReady=p.ReloadEnd=p.StunEnd=p.RollEnd=p.AttackEnd=0;p.Stamina=(float)p.Stats["maxStamina"];p.Mana=(float)p.Stats["maxMana"];p.Ammo=Magazine(p);p.ECharges=NativeAbilityRules.Charges(p.Stats);if(p.Siren!=null)p.Siren.Ready.Clear();foreach(string key in chipCooldowns.Keys.Where(k=>k.StartsWith(p.Seat.id+":")).ToArray())chipCooldowns.Remove(key);}
