@@ -31,7 +31,7 @@ namespace ChipArena.UnityConversion
             if(death.kept&&death.style!="siren-crush")return false;if(death.kept)age=Math.Min(age,2.6f);string key="death-"+death.style;var clip=NativeSceneMotion.Get(key);if(clip==null)return false;Matrix4x4 root=Matrix4x4.TRS(death.position-Vector3.up*.865f,Quaternion.Euler(0,death.yaw,0),Vector3.one);
             CinematicRoute(death,out int layer,out Camera only);// C16: the victim's own Raging Demon screen draws it alone (NativeCinematicCamera.cs)
             float fade=revival>=0?1-Mathf.Clamp01(revival/.8f):1;sourceModels.Queue(key,root,b=>root*NativeSceneMotion.Matrix(clip,b,age),b=>NativeSceneMotion.Opacity(clip,b,age)>.001f,layer:layer,camera:only,opacity:fade,partOpacity:b=>NativeSceneMotion.Opacity(clip,b,age),partTint:b=>NativeSceneMotion.Tint(clip,b,age));
-            if(clip.dropped>=0&&!string.IsNullOrEmpty(death.actor?.SourceSpec))sourceModels.Queue("loose-"+death.actor.SourceSpec,root*NativeSceneMotion.Matrix(clip,clip.dropped,age),layer:layer,camera:only,opacity:fade*NativeSceneMotion.Opacity(clip,clip.dropped,age));
+            if(clip.dropped>=0&&!string.IsNullOrEmpty(death.actor?.SourceSpec))sourceModels.Queue(Skinned(death.actor,"loose-"+death.actor.SourceSpec),root*NativeSceneMotion.Matrix(clip,clip.dropped,age),layer:layer,camera:only,opacity:fade*NativeSceneMotion.Opacity(clip,clip.dropped,age));
             if(clip.victim.Length==22)
             {
                 if(!carriedDeaths.TryGetValue(death.id,out var carried)||carried.seed!=death.seed){var matrices=new Matrix4x4[22];if(rigs.TryGetValue(death.id,out var rig)||minionRigs.TryGetValue(death.id,out rig))for(int i=0;i<22;i++)matrices[i]=rig.Bones[i].localToWorldMatrix;else for(int i=0;i<22;i++)matrices[i]=root*NativeSceneMotion.Matrix(clip,clip.victim[i],0);carried=(death.seed,matrices);carriedDeaths[death.id]=carried;}
@@ -40,7 +40,7 @@ namespace ChipArena.UnityConversion
                 float alpha=fade*(death.style=="ghost"?Math.Max(0,.6f-age*.12f):1);Color body=BodyTint(death.actor?.BodyColor),accent=AccentTint(death.actor?.AccentColor);if(death.style=="siren-crush"){body=Color.Lerp(body,NativeArena.ColorOf(0x0c0a10),.85f);accent=Color.Lerp(accent,NativeArena.ColorOf(0x0c0a10),.85f);}
                 sourceModels.Queue((death.model??"pilot")=="pilot"?sourceModels.WoundedPilot(death.id,death.actor?.Wounds,death.actor?.BodyColor,ForceCompatibilityRendering):death.model,root,Bone,Visible,layer,only,body:body,accent:accent,opacity:alpha);
                 if(!string.IsNullOrEmpty(death.actor?.Hat)&&!(Visible(CapturedRig.Head)&&AuditorHalo(death.actor.Hat,Bone(CapturedRig.Head),death.at+age,alpha,HaloReduced,layer,only)))sourceModels.Queue("hat-"+death.actor.Hat,root,Bone,Visible,layer,only,opacity:alpha);
-                bool weapon=death.style!="dev-bass-van"&&death.style!="dev-raging-demon"&&(death.style!="dev-clown"||age<.3f);if(weapon&&!string.IsNullOrEmpty(death.actor?.SourceSpec))sourceModels.Queue("weapon-"+death.actor.SourceSpec,root,Bone,Visible,layer,only,opacity:alpha);
+                bool weapon=death.style!="dev-bass-van"&&death.style!="dev-raging-demon"&&(death.style!="dev-clown"||age<.3f);if(weapon&&!string.IsNullOrEmpty(death.actor?.SourceSpec))sourceModels.Queue(Skinned(death.actor,"weapon-"+death.actor.SourceSpec),root,Bone,Visible,layer,only,opacity:alpha);
             }
             return true;
         }

@@ -21,6 +21,11 @@ namespace ChipArena.UnityConversion.Editor
             var backReady=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="ready",profile=new NativeProfile{cosmetics=new NativeCosmetics{lobbyBack="circuit"}}}));
             if(backPrefs.lobbyBack!="circuit"||backReady.profile.cosmetics.lobbyBack!="circuit"||NativePortraitBacks.Index(JsonUtility.FromJson<ConversionPreferences>("{\"name\":\"Old Pilot\"}").lobbyBack)!=NativePortraitBacks.TickRing)
                 throw new Exception("Saved pilot/ready DTO lost the portrait backdrop, or an old save did not load as the tick ring");
+            // Weapon skins (Core/NativeWeaponSkins.cs) are saved and sent the same way; an old save reads as every weapon Standard.
+            var skinPrefs=JsonUtility.FromJson<ConversionPreferences>(JsonUtility.ToJson(new ConversionPreferences{weaponSkins="sword:prototype"}));
+            var skinReady=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="ready",profile=new NativeProfile{cosmetics=new NativeCosmetics{weaponSkins="pistol:prototype,sword:prototype"}}}));
+            if(skinPrefs.weaponSkins!="sword:prototype"||skinReady.profile.cosmetics.weaponSkins!="pistol:prototype,sword:prototype"||NativeWeaponSkins.Index(JsonUtility.FromJson<ConversionPreferences>("{\"name\":\"Old Pilot\"}").weaponSkins,"sword")!=NativeWeaponSkins.StandardIndex)
+                throw new Exception("Saved pilot/ready DTO lost the weapon skins, or an old save did not load as Standard");
             var original=authority.Local.Death;
             var scene=EditorSceneManager.NewPreviewScene();NativeArena replica=null;
             try
@@ -86,6 +91,11 @@ namespace ChipArena.UnityConversion.Editor
                 if(!backs.Valid(authority.Content))throw new Exception("Portrait backdrop frame failed validation");replica.ApplyFrame(backs,authority.LocalId);
                 if(replica.Match.Seat(backs.seats[0].id)?.lobbyBack!="warp"||replica.Match.Seat(backs.seats[1].id)?.lobbyBack!=NativePortraitBacks.Default)throw new Exception("Guest/replay lost or did not normalise the portrait backdrop");
                 var longBack=NativeFrameCodec.Clone(copy);longBack.seats[0].lobbyBack=new string('x',NativePortraitBacks.MaxLength+1);if(longBack.Valid(authority.Content))throw new Exception("Over-long portrait backdrop accepted");
+                // Weapon skins ride the seat frame too: a picked skin arrives, junk normalises away (Standard), an over-long map fails.
+                var skins=NativeFrameCodec.Clone(copy);skins.seats[0].weaponSkins="sword:prototype,rifle:prototype";skins.seats[1].weaponSkins="sword:gold,nope";skins=NativeFrameCodec.Clone(skins);
+                if(!skins.Valid(authority.Content))throw new Exception("Weapon skin frame failed validation");replica.ApplyFrame(skins,authority.LocalId);
+                if(replica.Match.Seat(skins.seats[0].id)?.weaponSkins!="rifle:prototype,sword:prototype"||replica.Match.Seat(skins.seats[1].id)?.weaponSkins!="")throw new Exception("Guest/replay lost or did not normalise the weapon skins");
+                var longSkins=NativeFrameCodec.Clone(copy);longSkins.seats[0].weaponSkins=new string('x',NativeWeaponSkins.MaxLength+1);if(longSkins.Valid(authority.Content))throw new Exception("Over-long weapon skin map accepted");
                 replica.ApplyFrame(copy,authority.LocalId);
                 var melee=NativeFrameCodec.Clone(copy);var ma=melee.snapshot.Actors[0];
                 ma.CommitAt=1;ma.CommitUntil=1.62f;ma.CommitYaw=24;ma.SwingAt=1.14f;ma.SwingUntil=1.30f;ma.StepAt=1.077f;ma.StepUntil=1.268f;ma.StepDistance=2.2f;ma.ChainAt=1.5f;ma.ComboUntil=2.02f;ma.MeleeBufferUntil=1.8f;ma.SprintAttack=ma.OpenerLunge=true;

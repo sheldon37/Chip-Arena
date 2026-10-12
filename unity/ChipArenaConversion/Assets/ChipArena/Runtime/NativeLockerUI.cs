@@ -26,14 +26,14 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<string,ContentWeapon> lockerIntroWeapon=new Dictionary<string,ContentWeapon>();private NativeAccess lockerAccess;private string lockerAbilitySpec,lockerNameRaw,lockerName="Pilot";
         private readonly List<NativeLocker.AbilityOption> lockerQ=new List<NativeLocker.AbilityOption>(4),lockerE=new List<NativeLocker.AbilityOption>(4);
         private readonly Dictionary<(int,string),string> lockerText=new Dictionary<(int,string),string>();private GUIStyle lockerField,lockerHex;private string lockerKillsLabel="",lockerSkinsLabel="",lockerAbilityHint;
-        private struct LockerLook{public string Name,Weapon,Pose,Body,Accent,Hat,Kill,Intro,IntroText;public bool Override;public string Back;}
+        private struct LockerLook{public string Name,Weapon,Pose,Body,Accent,Hat,Kill,Intro,IntroText;public bool Override;public string Back,Skins;}
         private LockerLook lockerBase;
         private static readonly float[] LkGlowAt={0f,.6f,1f},LkGlowA={1f,.25f,0f},LkRingAt={0f,.9f,.955f,1f},LkRingA={0f,0f,1f,0f},LkDiscAt={0f,.96f,1f},LkDiscA={1f,1f,0f};
 
         // ---- Baseline, Save, Revert, leaving -------------------------------------------------------------------------
-        private LockerLook LockerNow()=>new LockerLook{Name=prefs.name,Weapon=prefs.weapon,Pose=prefs.lobbyPose,Body=prefs.bodyColor,Accent=prefs.accentColor,Hat=prefs.hat,Kill=prefs.killEffect,Intro=prefs.intro,IntroText=prefs.introText,Override=prefs.overrideIntro,Back=prefs.lobbyBack};
+        private LockerLook LockerNow()=>new LockerLook{Name=prefs.name,Weapon=prefs.weapon,Pose=prefs.lobbyPose,Body=prefs.bodyColor,Accent=prefs.accentColor,Hat=prefs.hat,Kill=prefs.killEffect,Intro=prefs.intro,IntroText=prefs.introText,Override=prefs.overrideIntro,Skins=prefs.weaponSkins,Back=prefs.lobbyBack};
         private bool LockerDirty()
-        {var b=lockerBase;return b.Name!=prefs.name||b.Weapon!=prefs.weapon||b.Pose!=prefs.lobbyPose||b.Body!=prefs.bodyColor||b.Accent!=prefs.accentColor||b.Hat!=prefs.hat||b.Kill!=prefs.killEffect||b.Intro!=prefs.intro||b.IntroText!=prefs.introText||b.Override!=prefs.overrideIntro||b.Back!=prefs.lobbyBack;}
+        {var b=lockerBase;return b.Name!=prefs.name||b.Weapon!=prefs.weapon||b.Pose!=prefs.lobbyPose||b.Body!=prefs.bodyColor||b.Accent!=prefs.accentColor||b.Hat!=prefs.hat||b.Kill!=prefs.killEffect||b.Intro!=prefs.intro||b.IntroText!=prefs.introText||b.Override!=prefs.overrideIntro||b.Back!=prefs.lobbyBack||b.Skins!=prefs.weaponSkins;}
         // An account profile loaded while the Locker is open becomes its baseline (it is the saved look).
         private void LockerRebase(){if(menuScreen==MenuScreen.Customize)lockerBase=LockerNow();}
         // Go(Customize) from another screen (Preview Intro's way back keeps the session).
@@ -45,7 +45,7 @@ namespace ChipArena.UnityConversion
         private void LockerRevert()
         {
             var b=lockerBase;bool weapon=prefs.weapon!=b.Weapon;
-            prefs.name=b.Name;prefs.weapon=b.Weapon;prefs.lobbyPose=b.Pose;prefs.bodyColor=b.Body;prefs.accentColor=b.Accent;prefs.hat=b.Hat;prefs.killEffect=b.Kill;prefs.intro=b.Intro;prefs.introText=b.IntroText;prefs.overrideIntro=b.Override;prefs.lobbyBack=b.Back;
+            prefs.name=b.Name;prefs.weapon=b.Weapon;prefs.lobbyPose=b.Pose;prefs.bodyColor=b.Body;prefs.accentColor=b.Accent;prefs.hat=b.Hat;prefs.killEffect=b.Kill;prefs.intro=b.Intro;prefs.introText=b.IntroText;prefs.overrideIntro=b.Override;prefs.lobbyBack=b.Back;prefs.weaponSkins=b.Skins;
             GUIUtility.keyboardControl=0;
             // A host's weapon pick re-broadcasts its seat (SetWeapon); putting the weapon back does the same.
             if(weapon&&Hosting&&arena==null)LobbyBroadcast();
@@ -72,7 +72,7 @@ namespace ChipArena.UnityConversion
             lockerKills.Clear();foreach(var id in NativeCosmeticRules.Kills)if(NativeCosmeticRules.Allowed(access,"effect",id))lockerKills.Add(id);
             lockerIntros.Clear();foreach(var id in NativeCosmeticRules.Intros)if(NativeCosmeticRules.Allowed(access,"intro",id))lockerIntros.Add(id);
             foreach(var id in lockerIntros)if(!lockerIntroWeapon.ContainsKey(id)&&id.StartsWith("weapon-",StringComparison.Ordinal)){var w=LockerWeaponById(id.Substring(7));if(w!=null)lockerIntroWeapon[id]=w;}
-            lockerSkins.Clear();foreach(var w in content.weapons)if(AllowedWeapon(w))lockerSkins.Add(w.id);
+            lockerSkins.Clear();foreach(var w in content.weapons)if(AllowedWeapon(w)&&NativeWeaponSkins.Skinned(w.id))lockerSkins.Add(w.id);
             lockerKillsLabel=lockerKills.Count+" EFFECTS";lockerSkinsLabel=lockerSkins.Count+" WEAPONS";
         }
         private void LockerAbilities()
@@ -212,7 +212,7 @@ namespace ChipArena.UnityConversion
                 case NativeLocker.Loadout:
                     MenuClasses();MenuWeapons();LkHead(true);LkReserve(54);LkHead();LkReserve(LkGrid(lockerW,menuWeapons.Count,LkRowMin,LkRowH));
                     LkHead();LkReserve(LkAbilityH(lockerQ));GUILayout.Space(LkGap);LkReserve(LkAbilityH(lockerE));LkReserve(40);break;
-                default:LkReserve(76);LkHead();LkReserve(LkGrid(lockerW,lockerSkins.Count,LkSkinMin,LkSkinH));break;
+                default:LkSkinsLayout();break;
             }
             GUILayout.EndVertical();if(lockerDraw==null)lockerDraw=LockerDeferred;U.Defer(lockerDraw);GUILayout.Space(10);
             GUILayout.EndScrollView();GUILayout.EndArea();GUI.enabled=enabled;GUI.color=c;U.EndDeferred(view,lockerScroll[tab]);
@@ -626,27 +626,8 @@ namespace ChipArena.UnityConversion
             U.Dashed(new Rect(r.x+10,r.y,r.width-20,1),c);U.Dashed(new Rect(r.x+10,r.yMax-1,r.width-20,1),c);U.Dashed(new Rect(r.x,r.y+10,1,r.height-20),c,false);U.Dashed(new Rect(r.xMax-1,r.y+10,1,r.height-20),c,false);
         }
 
-        // ---- Weapon skins (coming soon: drawn only, nothing here is clickable or saved) -------------------------------
+        // ---- Weapon skins: drawn by Runtime/NativeLockerSkinsUI.cs (LkSkinsLayout / LkSkins) ---------------------------------
         private static readonly string LockMarkup=LkSvg("<rect x=\"5\" y=\"11\" width=\"14\" height=\"9.5\" rx=\"2\"/><path d=\"M8 11V7.5A4 4 0 0 1 16 7.5V11\"/>");
-        private void LkSkins(Rect banner,Rect head,Rect grid,float e)
-        {
-            U.RoundGradient(banner,U.Hex(0x2a2333,e),U.Hex(0x1d1e24,e),10,U.Hex(0x4c4653,e),1,true);var well=new Rect(banner.x+18,banner.center.y-22,44,44);U.Round(well,U.Hex(0x15161b,e),10,U.Hex(0x6b5b8a,e));
-            NativeIcons.Draw(new Rect(well.x+11,well.y+11,22,22),"gem",U.Hex(0xc9bfff,e));
-            U.Text(new Rect(well.xMax+16,banner.y+16,banner.width-100,22),"Weapon skins are coming soon",16,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true);
-            var lines=U.Wrap("Every weapon will get finishes to collect and equip. Nothing here can be picked yet.",13,banner.width-well.xMax+banner.x-32,false,2);
-            for(int i=0;i<lines.Count;i++)U.Text(new Rect(well.xMax+16,banner.y+40+i*17,banner.width-100,17),lines[i],13,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);
-            LkHeading(head,lockerSkinsLabel,"Locked until skins arrive");
-            for(int i=0;i<lockerSkins.Count;i++)
-            {
-                var w=LockerWeaponById(lockerSkins[i]);if(w==null)continue;var r=LkCell(grid,i,LkSkinMin,LkSkinH);
-                U.Round(r,U.Hex(0x1a1b20,e),10,U.Hex(0x34353d,e));var v=new Rect(r.x+8,r.y+8,r.width-16,r.height-58);U.Round(v,U.Hex(0x111216,e),8);
-                for(int gy=0;gy<4;gy++)for(int gx=0;gx<7;gx++)U.Fill(new Rect(v.x+10+gx*(v.width-20)/6f-1,v.y+10+gy*(v.height-20)/3f-1,2,2),U.Hex(0x2a2b33,e));
-                float s=Mathf.Min(v.height-18,54);NativeIcons.Draw(new Rect(v.center.x-s/2,v.center.y-s/2,s,s),NativeIcons.Spec(w.id),U.Hex(0x3c3d47,e));
-                var lk=new Rect(v.xMax-28,v.y+8,20,20);U.RadialStops(lk,U.Hex(0x23242b,e),LkDiscAt,LkDiscA);NativeIcons.DrawMarkup(new Rect(lk.x+3,lk.y+3,14,14),"locker-lock",LockMarkup,24,U.Hex(0x9d9ea7,e));
-                var wn=U.Wrap(w.name,14,r.width-24,true,1);U.Text(new Rect(r.x+12,v.yMax+8,r.width-24,18),wn.Count>0?wn[0]:w.name,14,U.Hex(0xc0c1ca,e),TextAnchor.MiddleLeft,bold:true);
-                U.Text(new Rect(r.x+12,v.yMax+26,r.width-24,14),"COMING SOON",9,U.Hex(0x8f909a,e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);
-            }
-        }
 
         // ---- Stage: the pilot on its turntable -------------------------------------------------------------------------
         private const int LockerPortraitKey=3;
@@ -663,7 +644,7 @@ namespace ChipArena.UnityConversion
                 U.RadialStops(new Rect(r.center.x-rx*1.2f,fy-ry*1.6f,rx*2.4f,ry*3.2f),U.A(accent,.22f*e),LkGlowAt,LkGlowA);U.RadialStops(new Rect(r.center.x-rx,fy-ry,rx*2,ry*2),U.A(accent,.6f*e),LkRingAt,LkRingA);
                 float yaw=LockerYawShown(t)*Mathf.Deg2Rad;for(int i=0;i<8;i++){float a=i*Mathf.PI/4-yaw,depth=Mathf.Cos(a);var p=new Vector2(r.center.x+Mathf.Sin(a)*rx,fy+depth*ry);U.Fill(new Rect(p.x-1.5f,p.y-1.5f,3,3),U.A(accent,(.25f+.6f*Mathf.Clamp01(depth))*e));}
             }
-            var look=new PortraitLook{Spec=w.id,Pose=pose,Hat=lockerHat??prefs.hat,Body=HexOf(body),Accent=HexOf(accent),Yaw=LockerYawShown(t)};
+            var look=new PortraitLook{Spec=w.id,Pose=pose,Hat=lockerHat??prefs.hat,Body=HexOf(body),Accent=HexOf(accent),Yaw=LockerYawShown(t),Skin=LockerSkinShown(w.id)};
             float ring=Mathf.Min(86,r.width*.26f);PortraitStage(r,LockerPortraitKey,look,lockerBack??prefs.lobbyBack,accent,body,NativeIcons.Spec(w.id),tone,e,t,0,new Vector2(r.center.x,r.y+r.height*.42f),ring,28,false);
             U.Text(new Rect(r.x+16,r.y+14,200,14),"LIVE PREVIEW",10,U.Hex(0xff996f,e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.16f);
             if(lockerHat!=null||lockerPose!=null||lockerBody!=null||lockerAccent!=null||lockerWeapon!=null||lockerBack!=null)U.Text(new Rect(r.x,r.y+14,r.width-16,14),"TRYING ON",10,U.Hex(0xc9bfff,e),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.16f);

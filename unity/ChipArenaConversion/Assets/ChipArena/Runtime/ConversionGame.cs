@@ -14,6 +14,8 @@ namespace ChipArena.UnityConversion
         {if(accountServiceVersion>=1)return false;if(string.IsNullOrWhiteSpace(accountOrigin))accountOrigin=NativeAccount.DefaultOrigin;accountServiceVersion=1;return true;}
         // The portrait backdrop picked in the Locker (NativePortraitBacks key; absent in older saves: the tick ring).
         public string lobbyBack=NativePortraitBacks.Default;
+        // The Locker's per-weapon skins (NativeWeaponSkins map; absent in older saves: every weapon Standard).
+        public string weaponSkins="";
     }
     public sealed partial class ConversionGame : MonoBehaviour
     {

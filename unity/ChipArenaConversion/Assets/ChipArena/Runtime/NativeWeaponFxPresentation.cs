@@ -131,7 +131,7 @@ namespace ChipArena.UnityConversion
                 var root=rig.Root.transform.position;var at=new NVector3(root.x,root.y,root.z);
                 if(!afterimages.Due(a.Id,at,a.RollAt,time,q))continue;int slot=afterimages.Take(a.Id,at,a.RollAt,time,q);var pose=afterimagePoses[slot];
                 pose.Root=rig.Root.transform.localToWorldMatrix;for(int b=0;b<22&&b<rig.Bones.Length;b++)pose.Bones[b]=rig.Bones[b].localToWorldMatrix;
-                string weapon=null;if(!a.WeaponAway&&NativeWeaponDressing.SocketShown(a.SourceSpec)){string w="weapon-"+a.SourceSpec;if(!afterimageModels.TryGetValue(w,out weapon))afterimageModels[w]=weapon=sourceModels.Afterimage(w);}
+                string weapon=null;if(!a.WeaponAway&&NativeWeaponDressing.SocketShown(a.SourceSpec)){string w=SkinnedHeld(a);if(!afterimageModels.TryGetValue(w,out weapon))afterimageModels[w]=weapon=sourceModels.Afterimage(w);}
                 afterimageWeapon[slot]=weapon;pose.Armed=weapon!=null;
                 if(pose.Armed){float reach=WeaponReach(rig,a,time);for(int b=0;b<22&&b<rig.Bones.Length;b++)pose.Weapon[b]=SourceWeaponBone(rig,a,time,false,b,reach);}
                 afterimageTints[slot]=NativeWeaponFxShapes.Fx(NativeAfterimages.Color(a.AccentColor));

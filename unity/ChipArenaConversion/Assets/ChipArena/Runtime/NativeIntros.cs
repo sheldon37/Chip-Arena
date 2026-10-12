@@ -26,14 +26,14 @@ namespace ChipArena.UnityConversion
     }
     public sealed partial class ArenaPresentation
     {
-        private CapturedAnimation.Player introRig;private int introActor;private Func<int,Matrix4x4> introHand;private Matrix4x4 introGrip=Matrix4x4.identity;
+        private CapturedAnimation.Player introRig;private int introActor;private string introSkins;private Color introAccent=Color.white;private Func<int,Matrix4x4> introHand;private Matrix4x4 introGrip=Matrix4x4.identity;
         // This frame's baked entrance stage, read by delegates made once (no closure per frame).
         private NativeSceneClip stageClip;private float stageAge;private string stageStyle,stageKey;private bool[] stageGlow;private readonly Dictionary<string,bool[]> stageGlows=new Dictionary<string,bool[]>();
         private Func<int,Matrix4x4> stageBone;private Func<int,bool> stageShown;private Func<int,float> stageOpacity;private Func<int,Color> stageTint;
         private bool[] stageSoft;private readonly Dictionary<string,(bool[] soft,string model)> stageSofts=new Dictionary<string,(bool[],string)>();
         public void RenderIntro(NativeArena arena,NativePilot pilot,string style,float age,Camera camera)
         {
-            if(pilot==null)return;style=NativeIntroRules.Entrance(style,pilot.Seat.spec);sirenLookCamera=camera;if(introRig==null||introActor!=pilot.Seat.id){introRig?.Dispose();introRig=captured.Create(transform,-100);introActor=pilot.Seat.id;}
+            if(pilot==null)return;introSkins=pilot.Seat.weaponSkins;introAccent=AccentTint(pilot.Seat.accentColor);style=NativeIntroRules.Entrance(style,pilot.Seat.spec);sirenLookCamera=camera;if(introRig==null||introActor!=pilot.Seat.id){introRig?.Dispose();introRig=captured.Create(transform,-100);introActor=pilot.Seat.id;}
             sourceModels.Begin();foreach(var b in batches)b.Clear();FirstPerson=false;combatGlow?.Clear();particles.Clear();
             Actor actor=null;foreach(var a in arena.Snapshot().Actors)if(a.Id==pilot.Seat.id){actor=a;break;}actor??=pilot.Pose;
             var script=NativeEntranceDirector.Script(style);if(script!=null){DirectedIntro(script,arena,pilot,actor,style,age,camera);return;}
@@ -99,7 +99,7 @@ namespace ChipArena.UnityConversion
         }
         private void EntranceGhosts(NativeEntranceScript script,string style,float t)
         {
-            string model=sourceModels.EntranceGhost("pilot");if(model==null)return;string weapon=NativeIntroRules.IntroWeapon(style);string weaponGhost=weapon!=null?sourceModels.EntranceGhost(weapon):null;
+            string model=sourceModels.EntranceGhost("pilot");if(model==null)return;string weapon=IntroModel(NativeIntroRules.IntroWeapon(style));string weaponGhost=weapon!=null?sourceModels.EntranceGhost(weapon):null;
             entranceGhostBone??=b=>b>=0&&b<22?entranceGhostBones[b]:Matrix4x4.identity;entranceGhostWeapon??=b=>(b>=0&&b<22?entranceGhostBones[b]:Matrix4x4.identity)*introGrip;
             int n=script.Ghosts(t,entranceGhosts);bool holo=script.Holo(t,out var hc,out float ho,out var hoff);
             for(int i=0;i<n+(holo?1:0);i++)
@@ -137,12 +137,14 @@ namespace ChipArena.UnityConversion
         // stage prop, grabbed at 4 s) is the only staff. The model rides the wrist joints it was exported on (staffs: the left
         // hand, where poseWeaponIntro moves the weapon) at NativeIntroRules.IntroGrip; the baked intro clips pose both arms from
         // the armed rig (tools/export_motion.mjs), so the braced weapons keep the free hand on their support grip.
+        // The entrance weapon in the pilot's own skin for that weapon (Core/NativeWeaponSkins.cs).
+        private string IntroModel(string id){if(id==null||sourceModels==null)return id;var skinned=NativeWeaponSkins.ModelIn(id,introSkins);return sourceModels.Has(skinned)?skinned:id;}
         private void IntroWeapon(string style,float age)
         {
-            string model=NativeIntroRules.IntroWeapon(style);if(model==null)return;
+            string model=IntroModel(NativeIntroRules.IntroWeapon(style));if(model==null)return;
             introGrip=Matrix4x4.Translate(CapturedAnimation.Vec(CapturedRig.Mirror(NativeIntroRules.IntroGrip(style))));
             if(introHand==null)introHand=b=>introRig.Bones[b].localToWorldMatrix*introGrip;
-            sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,introHand);
+            sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,introHand,accent:introAccent);
             if(NativeIntroRules.IntroMuzzleFlash(style,age,out var flash))QueuePiece(flash,introHand(CapturedRig.RHand),0,null);
         }
         // The baked entrance stage (tools/export_cinematics.mjs, the rig excluded) with its lights. ChipBlasts' glow voxels are

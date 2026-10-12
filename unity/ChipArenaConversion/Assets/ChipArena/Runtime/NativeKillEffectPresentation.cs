@@ -25,7 +25,8 @@ namespace ChipArena.UnityConversion
         private Func<int,Matrix4x4> presentedBone;private Func<int,bool> shownBone;private string hatModel,looseModel;
         /// <summary>The hat and dropped-weapon model ids (built once, not per frame).</summary>
         internal string HatModel=>hatModel??=string.IsNullOrEmpty(Death.actor?.Hat)?null:"hat-"+Death.actor.Hat;
-        internal string LooseModel=>looseModel??=string.IsNullOrEmpty(Death.actor?.SourceSpec)?null:"loose-"+Death.actor.SourceSpec;
+        // The dropped weapon in the victim's own skin (Core/NativeWeaponSkins.cs; its seat, as every client replicates it).
+        internal string LooseModel=>looseModel??=string.IsNullOrEmpty(Death.actor?.SourceSpec)?null:NativeWeaponSkins.Model("loose-"+Death.actor.SourceSpec,NativeWeaponSkins.Index(arena?.Match?.Seat(Death.actor.Id)?.weaponSkins,Death.actor.SourceSpec));
         /// <summary>The bone matrices to draw with this frame (cached delegate: no per-frame allocation).</summary>
         internal Func<int,Matrix4x4> PresentedBone=>presentedBone??=Presented;internal Func<int,bool> ShownBone=>shownBone??=Shown;
 

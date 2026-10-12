@@ -63,7 +63,7 @@ namespace ChipArena.UnityConversion
                 if(count>0)for(int hand=0;hand<(daggers?2:1);hand++)
                 {
                     var parent=SourceWeaponBone(rig,a,time,first,hand==0?CapturedRig.RHand:CapturedRig.LHand,reach);if(first)parent*=Matrix4x4.Scale(Vector3.one*NativeWeaponDressing.FirstPersonModuleScale);
-                    for(int i=0;i<count;i++){var p=weaponPieces[i];NativeWeaponDressing.Animate(ref p,time);QueuePiece(p,parent,layer,camera,rigFactor);}
+                    for(int i=0;i<count;i++){var p=weaponPieces[i];NativeWeaponDressing.Animate(ref p,time);QueuePiece(p,first?parent:SkinPiece(a,p,parent),layer,camera,rigFactor);}
                 }
             }
             // renderer.ts:83-84,129: elements only on melee-class weapons, from the burn and poison stats; stacks from the chips.
@@ -72,7 +72,7 @@ namespace ChipArena.UnityConversion
             if(flames>0)for(int hand=0;hand<(daggers?2:1);hand++)
             {
                 var parent=SourceWeaponBone(rig,a,time,first,hand==0?CapturedRig.RHand:CapturedRig.LHand,reach);
-                for(int i=0;i<flames;i++){var p=weaponPieces[i];NativeWeaponDressing.Animate(ref p,time);QueuePiece(p,parent,layer,camera);}
+                for(int i=0;i<flames;i++){var p=weaponPieces[i];NativeWeaponDressing.Animate(ref p,time);QueuePiece(p,SkinPiece(a,p,parent),layer,camera);}
             }
         }
         // standard-melee-effects.ts:21: a thrown dagger or shield keeps the owner's enchant (elements and stacks), flying with it.

@@ -10,7 +10,7 @@ using ChipArena.UnityConversion;
 // The Locker (the Customize screen): its categories and card text (Core/NativeLocker.cs) and the weapon ability slots
 // read from content, engine-free; then source checks of the IMGUI screen (Runtime/NativeLockerUI.cs) that the categories
 // are all drawn, restricted cosmetics stay behind NativeCosmeticRules.Allowed, Save Pilot keeps the old save-and-send path
-// and the weapon skins tab draws nothing interactive. Drawing itself is checked by the offline menu renders, not here.
+// and the weapon skins tab only picks skins. Drawing itself is checked by the offline menu renders, not here.
 internal static class LockerChecks
 {
     private static int count;
@@ -27,9 +27,9 @@ internal static class LockerChecks
         Check(NativeLocker.Labels.Length==5&&NativeLocker.Icons.Length==5&&NativeLocker.Subtitles.Length==5,"a label, icon and subtitle per category");
         Check(NativeLocker.Labels.SequenceEqual(new[]{"Appearance","Kill Effects","Entrance","Loadout","Weapon Skins"}),"category labels");
         foreach(var icon in NativeLocker.Icons)Check(icons.Contains(icon),"category icon "+icon+" is in Icons.json");
-        for(int i=0;i<5;i++)Check(NativeLocker.Interactive(i)==(i!=NativeLocker.WeaponSkins)&&NativeLocker.Soon(i)==(i==NativeLocker.WeaponSkins),"only the weapon skins are coming soon and non-interactive ("+keys[i]+")");
+        for(int i=0;i<5;i++)Check(NativeLocker.Interactive(i)&&!NativeLocker.Soon(i),"every category is live, none coming soon ("+keys[i]+")");
         foreach(var tab in new[]{"Appearance","KillEffects","Entrance","Loadout"})Check(Count(ui,"case NativeLocker."+tab+":")==2,"category "+tab+" is laid out and drawn");
-        Check(ui.Contains("default:LkReserve(76);")&&ui.Contains("default:LkSkins(lockerSlots[0],lockerSlots[1],lockerSlots[2],e);break;"),"the weapon skins category is laid out and drawn");
+        Check(ui.Contains("default:LkSkinsLayout();break;")&&ui.Contains("default:LkSkins(lockerSlots[0],lockerSlots[1],lockerSlots[2],e);break;"),"the weapon skins category is laid out and drawn");
         Check(ui.Contains("for(int i=0;i<NativeLocker.Count;i++)")&&ui.Contains("NativeLocker.Labels[i]")&&ui.Contains("lockerTabNext=i;"),"the rail offers every category");
 
         // 2. Restricted cosmetics stay hidden: every list comes through NativeCosmeticRules.Allowed, and the gate itself is
@@ -37,7 +37,7 @@ internal static class LockerChecks
         Check(ui.Contains("foreach(var id in NativeCosmeticRules.Hats)if(NativeCosmeticRules.Allowed(access,\"hat\",id))lockerHats.Add(id);")
             &&ui.Contains("foreach(var id in NativeCosmeticRules.Kills)if(NativeCosmeticRules.Allowed(access,\"effect\",id))lockerKills.Add(id);")
             &&ui.Contains("foreach(var id in NativeCosmeticRules.Intros)if(NativeCosmeticRules.Allowed(access,\"intro\",id))lockerIntros.Add(id);")
-            &&ui.Contains("foreach(var w in content.weapons)if(AllowedWeapon(w))lockerSkins.Add(w.id);"),"hats, kill effects, intros and skin weapons are filtered by the access rules");
+            &&ui.Contains("foreach(var w in content.weapons)if(AllowedWeapon(w)&&NativeWeaponSkins.Skinned(w.id))lockerSkins.Add(w.id);"),"hats, kill effects, intros and skin weapons are filtered by the access rules");
         foreach(var raw in new[]{"NativeCosmeticRules.Hats","NativeCosmeticRules.Kills","NativeCosmeticRules.Intros"})Check(Count(ui,raw)==1,raw+" is read only by the gated list builder");
         Check(Regex.Matches(ui,@"for\(int i=0;i<locker(Hats|Kills|Intros)\.Count;i\+\+\)").Count==3,"the cards draw the gated lists");
         Check(ui.Contains("NativeLoadoutText.InClass")||ui.Contains("MenuWeapons();"),"the weapon cards use the loadout's gated weapon list (MenuWeapons)");
@@ -62,19 +62,21 @@ internal static class LockerChecks
         Check(home.Contains("private void CustomizeScreen(float age)=>LockerScreen(age);")&&home.Contains("if(screen==MenuScreen.Customize&&menuScreen!=MenuScreen.Customize)LockerEnter();"),"Customize opens the Locker and takes its baseline on entry");
         Check(home.Contains("if(menuScreen==MenuScreen.Customize){LockerBack();return;}")&&ui.Contains("private void LockerBack(){if(lockerConfirm){lockerConfirm=false;return;}if(LockerDirty())lockerConfirm=true;else LockerLeave();}"),"Escape and close ask before dropping unsaved changes");
         Check(ui.Contains("private void LockerLeave(){lockerConfirm=false;Go(InRoom?MenuScreen.Lobby:MenuScreen.Home);}")&&lobby.Contains("(\"palette\",\"Customize\",MenuScreen.Customize)"),"the lobby's Customize entry returns to the lobby");
-        foreach(var field in new[]{"name","weapon","lobbyPose","bodyColor","accentColor","hat","killEffect","intro","introText","overrideIntro"})
+        foreach(var field in new[]{"name","weapon","lobbyPose","bodyColor","accentColor","hat","killEffect","intro","introText","overrideIntro","weaponSkins"})
             Check(Regex.IsMatch(ui,@"b\.\w+!=prefs\."+field+@"\b")&&Regex.IsMatch(ui,@"prefs\."+field+@"=b\.\w+;"),"the baseline covers and restores prefs."+field);
         Check(profile.Contains("LockerRebase();};"),"an account profile loaded meanwhile becomes the baseline");
 
-        // 4. The weapon skins tab is drawing only: no buttons, hover state, clicks or writes.
-        string skins=Body(ui,"private void LkSkins(");
-        Check(skins.Length>200,"the weapon skins drawing exists");
-        foreach(var bad in new[]{"Button(","HoverAmount(","Hover(","Click(","prefs.","SetWeapon(","menuClass="})Check(!skins.Contains(bad),"the weapon skins tab has no "+bad);
+        // 4. The weapon skins tab (Runtime/NativeLockerSkinsUI.cs) picks a skin per weapon: its only write is prefs.weaponSkins
+        // through the normalizing setter (saved by Save Pilot), hovering only tries one on the stage.
+        string skins=Body(R("NativeLockerSkinsUI.cs"),"private void LkSkins(");
+        Check(skins.Length>200&&!ui.Contains("private void LkSkins("),"the weapon skins drawing lives in its own file");
+        Check(Regex.Matches(skins,@"prefs\.\w+=").Count==1&&skins.Contains("prefs.weaponSkins=NativeWeaponSkins.With(prefs.weaponSkins,w.id,NativeWeaponSkins.Keys[k]);"),"the skin selector writes only the skin map");
+        foreach(var bad in new[]{"SetWeapon(","menuClass=","SavePilot(","Save("})Check(!skins.Contains(bad),"the weapon skins tab has no "+bad);
 
         // 5. Nothing inside the scroll clip is drawn rotated or scaled (a transformed draw would carry the clip with it).
         Check(!ui.Contains("U.Push("),"no transformed draws in the Locker");
         // 6. The turntable turns without deriving the portrait again.
-        Check(portraits.Contains("public bool Same(in PortraitLook o)=>Spec==o.Spec&&Pose==o.Pose&&Hat==o.Hat&&Body==o.Body&&Accent==o.Accent;")&&portraits.Contains("slot.Yaw=look.Yaw;")&&portraits.Contains("bones[b]=spin*Matrix4x4.TRS("),"yaw is a render input, not part of the look");
+        Check(portraits.Contains("public bool Same(in PortraitLook o)=>Spec==o.Spec&&Pose==o.Pose&&Hat==o.Hat&&Body==o.Body&&Accent==o.Accent&&Skin==o.Skin;")&&portraits.Contains("slot.Yaw=look.Yaw;")&&portraits.Contains("bones[b]=spin*Matrix4x4.TRS("),"yaw is a render input, not part of the look");
 
         // 7. Ability slots read from content, by spec and slot; several options per slot are kept in content order.
         var options=new List<NativeLocker.AbilityOption>();var inv=CultureInfo.InvariantCulture;
@@ -104,7 +106,7 @@ internal static class LockerChecks
         Check(NativeLocker.SlotOptions(data,data.Weapon("emperor"),"q",options)==1&&NativeLocker.SlotOptions(data,data.Weapon("ansatsuken"),"q",options)==0&&NativeLocker.EmptySlot(data.Weapon("ansatsuken"),"q").Contains("DEV"),"DEV kits show their own keys");
         Check(ui.Contains("private int LockerEquippedAbility(")&&ui.Contains("private static bool LockerAbilityPicks=>false;"),"ability picks wait for the loadout field (no invented persistence)");
 
-        Console.WriteLine("PASS Locker: "+count+" checks (five categories, gated cosmetic lists, the Save Pilot path and unsaved-changes prompt, inert weapon skins, content ability slots)");
+        Console.WriteLine("PASS Locker: "+count+" checks (five categories, gated cosmetic lists, the Save Pilot path and unsaved-changes prompt, the weapon skin selector, content ability slots)");
     }
     private static int Count(string s,string what){int n=0;for(int i=s.IndexOf(what,StringComparison.Ordinal);i>=0;i=s.IndexOf(what,i+what.Length,StringComparison.Ordinal))n++;return n;}
     private static string[] Ids(string source,string name)
