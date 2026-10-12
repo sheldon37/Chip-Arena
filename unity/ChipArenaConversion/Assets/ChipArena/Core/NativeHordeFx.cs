@@ -171,5 +171,67 @@ namespace ChipArena.UnityConversion
             offset=Vector3.Zero;size=alpha=0;if(since<0||since>.5f)return false;float a=(float)(Math.PI*2*(i+Hash(seed,i,61))/DustCount),v=(.5f+.7f*Hash(seed,i,62))*power;float s=1-(float)Math.Exp(-since*6);
             offset=new Vector3((float)Math.Cos(a)*v*s*.5f,.03f+.12f*s*power,(float)Math.Sin(a)*v*s*.5f);size=(.05f+.05f*Hash(seed,i,63))*(.6f+.8f*s)*power;alpha=.45f*(1-Sm(since/.5f));return true;
         }
+        // ---- the brute's slam, upgraded: dust thrown round the disc, cracks run out of it ----
+        public const int SlamDust=10,Cracks=7;
+        /// <summary>Dust puff i of a slam `since` s after its strike, round a disc of `radius`: offset from the centre (m), size, opacity.</summary>
+        public static bool SlamPuff(uint seed,int i,float since,float radius,out Vector3 offset,out float size,out float alpha)
+        {
+            offset=Vector3.Zero;size=alpha=0;if(since<0||since>.9f)return false;float a=(float)(Math.PI*2*(i+.5f*Hash(seed,i,21))/SlamDust),u=since/.9f;
+            float r=radius*(.55f+.55f*(1-(1-u)*(1-u)))+.1f*Hash(seed,i,22);offset=new Vector3((float)Math.Cos(a)*r,.08f+.35f*u*(.6f+.4f*Hash(seed,i,23)),(float)Math.Sin(a)*r);
+            size=.25f+.4f*u+.15f*Hash(seed,i,24);alpha=.55f*Sm(since/.05f)*(1-u)*(1-u);return true;
+        }
+        /// <summary>Crack i run out of a slam: its direction (rad), length (m) and opacity `since` s after the strike (they stay a moment).</summary>
+        public static bool Crack(uint seed,int i,float since,float radius,out float angle,out float length,out float alpha)
+        {
+            angle=length=alpha=0;if(since<0||since>1.6f)return false;angle=(float)(Math.PI*2*(i+.6f*Hash(seed,i,25))/Cracks);
+            length=radius*(.45f+.5f*Hash(seed,i,26))*Sm(since/.12f);alpha=.85f*(1-Sm((since-.9f)/.7f));return true;
+        }
+
+        // ---- the brute's jump-down (Core/NativeHordeDrop) ----
+        /// <summary>The landing spot's telegraph `age` s after SpawnAt (`land` the touchdown age): the ring's radius (m, closing in to
+        /// the slam's) and opacity, and the ink tear's size over the spot at the drop height; false once it has landed.</summary>
+        public static bool DropMark(float age,float land,out float radius,out float alpha,out float tear)
+        {
+            radius=alpha=tear=0;if(age<0||age>land+.02f)return false;float u=Clamp01(age/Math.Max(.1f,land));
+            radius=NativeHordeDrop.SlamRadius*(1.35f-.35f*u*u);alpha=(.25f+.55f*u)*Sm(age/.15f)*(.85f+.15f*(float)Math.Sin(age*24));
+            tear=Sm(age/.25f)*(1-Sm((age-(land-.35f))/.35f));return true;
+        }
+        /// <summary>The landing slam's ring `since` s after touchdown: radius (m), width share, opacity; false when done.</summary>
+        public static bool LandWave(float since,out float radius,out float inner,out float alpha)
+        {
+            radius=inner=alpha=0;if(since<0||since>.6f)return false;float u=since/.6f;
+            radius=.4f+(NativeHordeDrop.SlamRadius+.6f)*(1-(1-u)*(1-u)*(1-u));inner=.7f+.22f*u;alpha=.9f*(1-u)*(1-u);return true;
+        }
+        /// <summary>Debris piece i of the landing (a smaller throw than the smash's).</summary>
+        public static bool LandDebris(uint seed,int i,float since,out Vector3 offset,out float size,out float spin,out float alpha)
+        {
+            bool ok=Debris(seed^0x51ed,i,since,out offset,out size,out spin,out alpha);offset*=.8f;size*=.85f;return ok;
+        }
+
+        // ---- camera shake near a slam (position offset and a short pitch kick; Settings · camera shake gates it) ----
+        public const int ShakeSlots=6;
+        public struct Shake{public bool Live;public Vector3 At;public float Born,Peak,Range,Kick;public uint Seed;}
+        /// <summary>Remembers a slam's shake: at `at` (Unity world), its peak offset (m), reach (m) and, for a pilot inside the
+        /// disc, the kick (deg) that throws the view up and back. The oldest slot is reused; the same slam twice is ignored.</summary>
+        public static void AddShake(Shake[] slots,Vector3 at,float born,float peak,float range,float kick,uint seed)
+        {
+            int o=0;for(int i=0;i<slots.Length;i++){if(slots[i].Live&&slots[i].Seed==seed&&Math.Abs(slots[i].Born-born)<.05f)return;if(!slots[i].Live){o=i;break;}if(slots[i].Born<slots[o].Born)o=i;}
+            slots[o]=new Shake{Live=true,At=at,Born=born,Peak=peak,Range=range,Kick=kick,Seed=seed};
+        }
+        public const float ShakeSeconds=.55f;
+        /// <summary>The sum of the live shakes at the eye `eye` at time `now`: a position offset (m) and a pitch kick (deg, up).</summary>
+        public static Vector3 ShakeAt(Shake[] slots,Vector3 eye,float now,out float pitch)
+        {
+            var sum=Vector3.Zero;pitch=0;
+            for(int i=0;i<slots.Length;i++)
+            {
+                ref var s=ref slots[i];if(!s.Live)continue;float t=now-s.Born;if(t<0||t>ShakeSeconds){if(t>ShakeSeconds||t<-1)s.Live=false;continue;}
+                float d=Vector3.Distance(eye,s.At),fall=d>=s.Range?0:(1-d/s.Range)*(1-d/s.Range);if(fall<=0&&s.Kick<=0)continue;
+                float env=(1-t/ShakeSeconds)*(1-t/ShakeSeconds)*Math.Min(1,t/.02f),w=t*55;
+                sum+=new Vector3((float)Math.Sin(w+s.Seed%7),(float)Math.Sin(w*1.31f+1.7f)*.8f,(float)Math.Sin(w*.87f+3.1f)*.6f)*(s.Peak*fall*env);
+                pitch+=s.Kick*env*(float)Math.Exp(-t*7);
+            }
+            return sum;
+        }
     }
 }

@@ -113,6 +113,16 @@ deterministically (the pistol: Armed walk and strafes, Unarmed run in eight dire
 staff: 2Hand-Staff mirrored onto the left-hand staff; plus Unarmed-Sprint; the choices are its SETS table), then run the
 Tests project (`Tests/RangedLocomotionChecks.cs` checks the hashes, contact-foot slip, the aim, the torso, distinct carries,
 transitions, the first-person bob and the hooks).
+The Unity Siren zombies use the owner's MoCap Online ZOMBIE PRO pack (licensed; FBX, .meta, textures and audio never
+committed): extract its `Assets/Zombie_27` (the `MotusMan_v55` rig, `Animation/In_Place` and the `Root_Motion` walk, shamble,
+chase, sprint and crawl takes, each FBX with its .meta) outside the repository, then
+`node unity/ChipArenaConversion/tools/export_pack_zombie.mjs <extract>/Assets/Zombie_27` rewrites
+`Assets/ChipArena/Core/NativePackZombie.Generated.cs` and `tools/pack-zombie-provenance.json` deterministically (gait cycles
+cut from the loops at the left foot's strike with their natural speed and foot phases read from the root-motion twins,
+idles, single blows cut from the attack loops with hand-set marks, knockbacks, deaths, the entrances and the jump-down;
+the choices are its CLIPS table; the rig profile is `scripts/mocap/zombie-pack.mjs`), then run the Tests project
+(`Tests/ZombieMotionChecks.cs` checks the hashes, planted feet on the drawn rig, the strike timing, entrances, deaths, the
+drop and the hooks).
 
 ## CI and agent access
 

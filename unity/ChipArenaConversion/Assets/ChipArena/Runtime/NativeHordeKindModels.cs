@@ -3,18 +3,19 @@ using UnityEngine;
 
 namespace ChipArena.UnityConversion
 {
-    // The Siren minion kinds' models in the source-model bank (Core/NativeHordeModels.cs): every kind, look and crowd tier
-    // ("minion-<kind>-<look>-<full|reduced|impostor>") is sculpted once when the bank loads, beside the untouched bank horde-0..5
-    // (the old death records and the classic look still name those). Each kind has one NativeSourceLit material: the minion glow
-    // (its seams flicker cell by cell and drop with the add's power, NativeMinionFx) and the Siren's ink rim and flow, so a dark
-    // add keeps a lavender edge against the night. The reduced and impostor tiers cast no shadows (the horde's far crowd).
+    // The Siren minion kinds' models in the source-model bank (Core/NativeHordeModels.cs, the zombies of NativeZombieModels.cs):
+    // every kind, look and crowd tier ("minion-<kind>-<look>-<full|reduced|impostor>") is sculpted once when the bank loads, beside
+    // the untouched bank horde-0..5 (the old death records and the classic look still name those). Each kind has one NativeSourceLit
+    // material: the minion glow (its ink veins flicker cell by cell and drop with the add's power, NativeMinionFx) and a faint
+    // touch of the Siren's ink rim and flow on the rotted skin, so the crowd keeps her lavender edge against the night without
+    // washing the zombies out. The reduced and impostor tiers cast no shadows (the horde's far crowd).
     public sealed partial class NativeSourceModels
     {
         /// <summary>The minion models built at load, and each one's triangles (the build checks hold them to the tier budgets).</summary>
         public int HordeKindModelCount{get;private set;}
         public readonly Dictionary<string,int> HordeKindTriangles=new Dictionary<string,int>();
-        /// <summary>The Siren's ink shading on the minions: a rim a little stronger than the Siren's body, a faint rising flow.</summary>
-        public const float HordeInkRim=.36f,HordeInkFlow=.012f;
+        /// <summary>The Siren's ink shading on the zombies: a soft rim (the skin and torn suit keep their colours), a faint rising flow.</summary>
+        public const float HordeInkRim=.16f,HordeInkFlow=.008f;
         private void HordeKindModels()
         {
             var shader=Resources.Load<Shader>("NativeSourceLit");if(shader==null)throw new System.InvalidOperationException("Source material shader is missing");

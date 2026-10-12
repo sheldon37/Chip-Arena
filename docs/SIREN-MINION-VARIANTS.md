@@ -9,6 +9,11 @@ below is implemented in the simulation yet. The numbers are starting proposals; 
 any change here so the presentation follows (Core/NativeHordeKinds.cs holds the presentation's copy, and
 Tests/HordeKindChecks.cs fails when the authority's attack formula or capsules change without it).
 
+Update (2026-10-12, zombies): the kinds now draw as zombies built from the pilot body on the owner's zombie mocap,
+entrances included, and the brute gets a knock-back smash look and a jump-down entrance from map data. That presentation,
+its jump-down contract and the brute's knock-back, landing-slam, drop-entry and hit-volume proposals are in
+docs/SIREN-ZOMBIES.md (with its own prompt for Astra). Everything below still holds.
+
 ## 1. What already works without new rules
 
 The network already carries each add's kind (`NativeMinionFrame.addKind` = `PveAddStats.id`). The presentation resolves
@@ -53,7 +58,8 @@ add of any kind is presented with the lunge.
 
 ## 3. Behaviours (proposed)
 
-- **Brute: charge and slam.** It keeps today's smash (1.6 m disc 1.2 m ahead at `hit` .43). New charge when its target is
+- **Brute: charge and slam.** It keeps today's smash (1.6 m disc 1.2 m ahead at `hit` .43; its knock-back and the
+  jump-down's landing slam: docs/SIREN-ZOMBIES.md section 4). New charge when its target is
   6-12 m away with a clear line, with an 8 s cooldown:
   - .6 s wind-up, then a straight charge at 7 m/s for up to 1.6 s on the line fixed at the wind-up's end.
   - The first pilot it meets takes 18 damage and impulse 600, and the charge ends.
@@ -138,7 +144,8 @@ Small replicated fields that would make the presentation exact (all optional; to
 
 ## 7. Presentation keys (for reference)
 
-- **Models:** `minion-<kind>-<look>-<full|reduced|impostor>`, built in code (Core/NativeHordeModels.cs).
+- **Models:** `minion-<kind>-<look>-<full|reduced|impostor>`, built in code (Core/NativeHordeModels.cs; the zombie
+  builders in Core/NativeZombieModels.cs).
   - Looks: shambler 3, the rest 2, chosen by the add's id.
   - The nearest 24 adds (16 on the low graphics tier) draw full, the rest within 40 m reduced, impostors beyond.
 - **Audio:** existing effects-bank keys only, silent without the owner's LocalAssets bank.

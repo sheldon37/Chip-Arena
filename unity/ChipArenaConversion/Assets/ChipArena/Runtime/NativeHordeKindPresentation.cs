@@ -18,8 +18,10 @@ namespace ChipArena.UnityConversion
     //    draw the full model, the rest within 40 m the reduced one and the far crowd the impostor, with 3 m of hysteresis.
     //  - Animation: Core/NativeHordeMotion poses every add on its own planted feet and seed; attacks wind up into a telegraph and
     //    strike at LastAttack + the authority's hit time (NativeHordeKinds.Strike), recover by its Recover, and a stagger that
-    //    the authority applies in the wind-up cancels the shown blow as it cancels the real one. Entering and diving adds keep the
-    //    baked vent / door / cell / dive clips (the entries are timed to the authority's own entry timeline).
+    //    the authority applies in the wind-up cancels the shown blow as it cancels the real one. The entrances are the zombie's too
+    //    (owner 2026-10-12: "They still use old model when entering through doors and vents"): a vent climb claws up and hauls
+    //    over the rim, a door or cell walks it in on the gait after a waking twitch, a dive throws it into the shaft, and the
+    //    brute's jump-down (NativeHordeDrop) leaps, falls and slams; all on the kind's own model, timed to the authority's entry.
     //  - Felt hits (Core/NativeHordeReact) from the replicated hits: directional recoil, the shove and stagger-back steps, the
     //    authority's stagger reel, a hit-stop on melee blows and the struck flash (NativeHitFlash) on the body; Siren ink sprays
     //    from the wound and lands as splats that stay (the felt hits' blood sim on its ink flag).
@@ -157,28 +159,42 @@ namespace ChipArena.UnityConversion
             if(s.Lost>=0){int fresh=a.Lost&~s.Lost;if(fresh!=0)HordeSever(rig,s,fresh,now,pos.y-NativeHordeKinds.RootHeight(real,a.Crawl));}s.Lost=a.Lost;
             Vector3 velocity=arena.Replica?m.NetworkVelocity:m.Body.isKinematic?Vector3.zero:m.Body.linearVelocity;float yaw=m.Yaw;
             float ground=pos.y-NativeHordeKinds.RootHeight(real,a.Crawl);
-            bool entering=!a.Travelling&&now<a.ActiveAt;
+            bool entering=!a.Travelling&&now<a.ActiveAt;uint seed=NativeHordeKinds.Seed(m.Id);
             if(a.Travelling)
             {
-                // Diving into a vent: the baked dive (hidden after it), on the kind's body.
-                if(now-a.DiveAt>=.9f)return true;NativeSourceMotion.Sample("horde-0-dive",now-a.DiveAt,.9f,minionPose);s.Gait.Reset();
+                // Diving into a vent: it throws itself forward into the shaft on the zombie take (hidden after .9 s).
+                if(now-a.DiveAt>=.9f)return true;NativeHordeGait.Dive(minionPose,kind,seed,now-a.DiveAt);s.Gait.Reset();
             }
-            else if(entering)
+            else if(entering&&a.Entry.kind=="vent")
             {
-                if(now<a.SpawnAt)return true;string entry=a.Entry.kind;var timeline=NativeEntryRules.Timeline(entry,true);float duration=timeline.duration,age=duration-(a.ActiveAt-now);
-                if(entry=="vent")pos=NativeArena.Vec(a.Entry.@exit.Position(.9f));NativeSourceMotion.Sample(entry=="vent"?"horde-0-vent":entry=="door"?"horde-0-door":"horde-0-cell",age,duration,minionPose);s.Gait.Reset();
+                // Climbing out of a vent: the body where the authority's climb has it (exit plus NativeEntryRules.Climb, turned to
+                // the add's facing), clawing up to the rim, hauling over it and standing on the zombie take.
+                if(now<a.SpawnAt)return true;var climb=NativeEntryRules.Climb(now,a.ActiveAt);float tau=1.95f-(a.ActiveAt-now);
+                var standing=NativeArena.Vec(a.Entry.@exit.Position(.9f));pos=standing+Quaternion.Euler(0,yaw,0)*new Vector3(0,climb.y,climb.z);ground=standing.y-.9f;
+                NativeHordeGait.VentClimb(minionPose,kind,seed,tau,new NVector(0,climb.y+(.9f-NativeHordeKinds.RootHeight(real,false)),climb.z));s.Gait.Reset();
+            }
+            else if(entering&&NativeHordeDrop.Is(a.Entry))
+            {
+                // The brute's jump-down (Core/NativeHordeDrop): the landing spot telegraphed, the leap, the fall and the slam.
+                if(now<a.SpawnAt)return true;float height=NativeHordeDrop.HeightOf(a.Entry);var land=NativeArena.Vec(a.Entry.@exit.Position(0));
+                bool shown=NativeHordeGait.Drop(minionPose,seed,now-a.SpawnAt,a.ActiveAt-a.SpawnAt,height,out float lift,out var phase);
+                HordeDropJob(m.Id,kind,land,a.Entry.yaw*Mathf.Rad2Deg,height,now-a.SpawnAt,a.ActiveAt-a.SpawnAt,seed);s.Gait.Reset();
+                if(!shown)return true;pos=land+Vector3.up*(NativeHordeKinds.RootHeight(real,false)+lift);ground=land.y;yaw=a.Entry.yaw*Mathf.Rad2Deg;
             }
             else
             {
                 var st=a.Stats;var attack=NativeHordeKinds.AttackOf(kind,st?.attack,a.Crawl);float strike=NativeHordeKinds.Strike(st?.hit??.34f,a.Crawl,a.Lost),recover=NativeHordeKinds.Recover(st?.hit??.34f,st?.cycle??1,a.Crawl,a.Lost);
-                float age=now-m.LastAttack;if(age<0||age>recover+.3f)age=float.NaN;
+                float age=now-m.LastAttack;if(age<0||age>recover+.3f||entering)age=float.NaN;
+                // A door or cell walks the add in (the authority moves it from behind the opening): the gait plants its steps on that
+                // walk, the wait before it plays the zombie's waking twitch. The floor is the entry's, not the walk's raised centre.
+                if(entering){if(now<a.SpawnAt)return true;ground=NativeArena.Vec(a.Entry.@exit.Position(0)).y;}
                 // A blow the authority cancelled (stagger in the wind-up) fades out at once instead of landing.
                 if(!float.IsNaN(age)&&s.CancelFor==m.LastAttack&&now>=s.CancelAt)age=float.NaN;
                 var target=HordeTarget(arena,pos);
                 ref var f=ref hordeInput[0];
                 f=new HordeMotionInput{Kind=kind,Look=s.Look,Id=m.Id,Seed=NativeHordeKinds.Seed(m.Id),Time=now,Yaw=yaw,Ground=ground,Root=new NVector(pos.x,pos.y,pos.z),Velocity=new NVector(velocity.x,velocity.y,velocity.z),
                     Crawl=a.Crawl,Possessed=a.Possessed,Lost=a.Lost,AttackAge=age,Strike=strike,Recover=recover,Attack=attack,Side=HordeSide(m.LastAttack,a.Lost),Health=m.MaxHp>0?m.Hp/m.MaxHp:1,
-                    HasTarget=target!=null,Target=target!=null?ToN(target.Body.position):default};
+                    HasTarget=target!=null,Target=target!=null?ToN(target.Body.position):default,Entering=entering,EntryAge=now-a.SpawnAt,EntryWalk=a.WalkAt-a.SpawnAt};
                 s.Gait.Pose(f,minionPose,s.React);yaw=s.Gait.Yaw;
                 HordeKindJob(s,m.Id,kind,attack,age,strike,recover,pos,m.Yaw,ground,st,target,rig,arena.Time);
                 if(s.Gait.Landed!=0)HordeDust(s,kind,ground,now);
@@ -263,7 +279,7 @@ namespace ChipArena.UnityConversion
         {
             HordeKindsCamera(camera);if(fxDraw==null||camera==null||arena==null){hordeJobCount=0;return;}
             var draw=fxDraw;float quality=Mathf.Clamp01(EffectsQuality),now=hordeClock;Vector3 eye=camera.transform.position,right=camera.transform.right,up=camera.transform.up;bool low=quality<.5f;
-            HordeSpitEvents(arena,now);
+            HordeSpitEvents(arena,now);HordeLocal(arena);
             for(int n=0;n<hordeJobCount;n++){hordeJobOrder[n]=n;hordeJobRank[n]=Vector3.Distance(hordeJobs[n].Root,eye);}
             Array.Sort(hordeJobRank,hordeJobOrder,0,hordeJobCount);int budget=NativeMinionFx.FullRigs;
             for(int r=0;r<hordeJobCount;r++)
@@ -280,6 +296,8 @@ namespace ChipArena.UnityConversion
                         if(NativeHordeFx.SlamTelegraph(a,H,out float rim,out float fill,out float fa)){draw.Ring(draw.Effects,c,.93f,NativeHordeKinds.SmashRadius,Alpha(seam,rim),NativeFxDraw.Authored+NativeFxDraw.Additive);if(fill>.02f)draw.Ring(draw.Effects,c+Vector3.up*.002f,0,fill,Alpha(seam,fa),NativeFxDraw.Authored+NativeFxDraw.Additive);}
                         if(NativeHordeFx.Shockwave(a-H,out float rr,out float inner,out float al)){draw.Ring(draw.Effects,c+Vector3.up*.006f,inner,rr,Alpha(new Color(1,.85f,.7f),al),NativeFxDraw.Authored+NativeFxDraw.Additive);draw.Sprite(draw.Effects,c+Vector3.up*.25f,right,up,1.8f*(1-Mathf.Clamp01((a-H)/.3f)),Alpha(seam,al),NativeFxDraw.Authored+NativeFxDraw.Additive);}
                         for(int i=0;i<NativeHordeFx.DebrisCount;i+=half?2:1)if(NativeHordeFx.Debris(j.Seed,i,a-H,out var o,out float sz,out float spin,out float da))draw.Cube(draw.Solid,c+new Vector3(o.X,o.Y+sz*.5f,o.Z),Quaternion.Euler(spin*57.3f,spin*40f,spin*17f),Vector3.one*sz*da,new Color(.07f,.06f,.09f),NativeFxDraw.Authored);
+                        // The zombie brute's hammer: dust round the disc, cracks out of it, and the shake (a kick inside the disc).
+                        if(a>=H){HordeSlamExtras(draw,c,a-H,j.Seed^0x5a3,NativeHordeKinds.SmashRadius,right,up,half||low,seam);if(a-H<.12f)HordeSmashShake(c,now-(a-H),j.Seed^(uint)j.Id,NativeHordeKinds.SmashRadius);}
                         break;
                     }
                     case NativeHordeKinds.Attack.Lunge:case NativeHordeKinds.Attack.Pounce:
@@ -318,6 +336,7 @@ namespace ChipArena.UnityConversion
                 }
             }
             hordeJobCount=0;
+            DrawHordeDrops(draw,now,right,up,low);
             HordeGlobsDraw(draw,now,right,up,quality);
             // Footfall dust.
             for(int i=0;i<hordeDust.Length;i++){var d=hordeDust[i];if(d.Power<=0)continue;float since=now-d.Born;if(since<0||since>.5f)continue;for(int k=0;k<NativeHordeFx.DustCount;k+=low?2:1)if(NativeHordeFx.Dust(d.Seed,k,since,d.Power,out var o,out float sz,out float al))draw.Sprite(draw.Effects,d.At+new Vector3(o.X,o.Y,o.Z),right,up,sz*2.4f,Alpha(new Color(.42f,.38f,.48f),al),NativeFxDraw.Authored);}
@@ -479,8 +498,11 @@ namespace ChipArena.UnityConversion
         // ================================================================================================================
         private readonly CapturedAnimation.Player[] galleryRigs=new CapturedAnimation.Player[NativeHordeKinds.Count];
         private readonly HordeKindState[] galleryStates=new HordeKindState[NativeHordeKinds.Count];private Vector3 galleryAt;private float galleryYaw,galleryStart=float.NaN;
-        /// <summary>The gallery's loop (s): idle, walk a circle, run, two attacks, three hits (dagger, sword, greatsword), death.</summary>
-        public const float GalleryLoop=16;
+        /// <summary>The gallery's loop (s): the entrances (the shambler climbs out of a vent, the runner walks in through a door after
+        /// its waking twitch, the brute jumps down onto its spot with the slam; the rest wake), idle, walk a circle, run, two attacks,
+        /// three hits (dagger, sword, greatsword), death.</summary>
+        public const float GalleryLoop=19,GalleryEntrance=3;
+        private static readonly float[] GalleryHitAt={15.4f,16,16.7f},GalleryHitAmount={14,26,48};private static readonly string[] GalleryHitSpecs={"daggers","sword","greatsword"};
         private void HordeGallery(NativeArena arena)
         {
             var me=arena.Local;if(me?.Body==null)return;float now=hordeClock;
@@ -489,31 +511,51 @@ namespace ChipArena.UnityConversion
             for(int k=0;k<NativeHordeKinds.Count;k++)
             {
                 int id=990000+k;if(galleryRigs[k]==null){galleryRigs[k]=captured.Create(transform,id);galleryStates[k]=new HordeKindState();galleryStates[k].Reset(id);galleryStates[k].Kind=k;galleryStates[k].Look=0;galleryStates[k].React.Bind(k);}
-                var rig=galleryRigs[k];var s=galleryStates[k];var st=NativeHordeKinds.ProposedRow(k);float t=Mathf.Repeat(now-galleryStart+k*.37f,GalleryLoop);
+                var rig=galleryRigs[k];var s=galleryStates[k];var st=NativeHordeKinds.ProposedRow(k);float t=Mathf.Repeat(now-galleryStart+k*.37f,GalleryLoop);uint seed=NativeHordeKinds.Seed(id);
                 Vector3 slot=galleryAt+across*((k-(NativeHordeKinds.Count-1)*.5f)*1.9f);Vector3 pos=slot;float yaw=yawToMe;Vector3 vel=Vector3.zero;float age=float.NaN;
                 var attack=NativeHordeKinds.AttackOf(k,st.attack,false);float strike=NativeHordeKinds.Strike(st.hit,false,0),recover=NativeHordeKinds.Recover(st.hit,st.cycle,false,0);
+                bool entering=false;float entryAge=0,entryWalk=0;
+                // The entrances (presentation only: the same poses and effects the live adds play from their replicated entries).
+                if(t<GalleryEntrance)
+                {
+                    if(k==NativeHordeKinds.Brute)
+                    {
+                        bool shown=NativeHordeGait.Drop(minionPose,seed,t,GalleryEntrance,NativeHordeDrop.DefaultHeight,out float lift,out _);HordeDropJob(id,k,new Vector3(slot.x,ground,slot.z),yaw,NativeHordeDrop.DefaultHeight,t,GalleryEntrance,seed);
+                        s.Gait.Reset();if(!shown)continue;NativePoseWriter.Write(rig.Bones,minionPose,"a gallery rig");rig.Root.transform.SetPositionAndRotation(slot+Vector3.up*lift,Quaternion.Euler(0,yaw,0));
+                        HordeQueue(rig,NativeHordeModels.Id(k,0,NativeHordeModels.Full),id,0,0,0,HordeGlow(id),1);HordeAdd(rig,id,float.NaN,float.NaN,ground,ground,float.NaN,Vector3.zero,0,true,k*8);continue;
+                    }
+                    if(k==NativeHordeKinds.Shambler)
+                    {
+                        float tau=Mathf.Min(t,1.95f);var climb=NativeEntryRules.Climb(tau,1.95f);var at=slot+Quaternion.Euler(0,yaw,0)*new Vector3(0,climb.y,climb.z);
+                        NativeHordeGait.VentClimb(minionPose,k,seed,tau,new NVector(0,climb.y,climb.z));s.Gait.Reset();NativePoseWriter.Write(rig.Bones,minionPose,"a gallery rig");rig.Root.transform.SetPositionAndRotation(at,Quaternion.Euler(0,yaw,0));
+                        HordeQueue(rig,NativeHordeModels.Id(k,0,NativeHordeModels.Full),id,0,0,0,HordeGlow(id),1);HordeAdd(rig,id,(float)NativeMinionFx.VentAge(true,1.95f,tau),float.NaN,ground,ground,float.NaN,Vector3.zero,0,true,k*8);continue;
+                    }
+                    // A door's walk-in: the waking twitch, then 2.3 m in 1.2 s on the gait; the others wake where they stand.
+                    entering=true;entryAge=t;entryWalk=k==NativeHordeKinds.Runner?.6f:GalleryEntrance;
+                    if(k==NativeHordeKinds.Runner){float fwd=yaw*Mathf.Deg2Rad;var dir=new Vector3(Mathf.Sin(fwd),0,Mathf.Cos(fwd));float u=Mathf.Clamp01((t-.6f)/1.2f);pos=slot-dir*2.3f*(1-u);if(t>=.6f&&t<1.8f)vel=dir*(2.3f/1.2f);}
+                }
+                float g=t-GalleryEntrance;
                 // walk a circle (2-6 s), run it (6-8 s): real motion, so the feet plant
-                if(t>=2&&t<8){float speed=t<6?st.walk:Mathf.Min(st.run,3.2f),rad=.75f,ang=(t-2)*speed/rad;pos=slot+new Vector3(Mathf.Cos(ang)-1,0,Mathf.Sin(ang))*rad;vel=new Vector3(-Mathf.Sin(ang),0,Mathf.Cos(ang))*speed;yaw=Mathf.Atan2(vel.x,vel.z)*Mathf.Rad2Deg;}
-                else if(t>=8.4f&&t<8.4f+recover)age=t-8.4f;else if(t>=10.3f&&t<10.3f+recover)age=t-10.3f;
+                if(g>=2&&g<8){float speed=g<6?st.walk:Mathf.Min(st.run,3.2f),rad=.75f,ang=(g-2)*speed/rad;pos=slot+new Vector3(Mathf.Cos(ang)-1,0,Mathf.Sin(ang))*rad;vel=new Vector3(-Mathf.Sin(ang),0,Mathf.Cos(ang))*speed;yaw=Mathf.Atan2(vel.x,vel.z)*Mathf.Rad2Deg;}
+                else if(g>=8.4f&&g<8.4f+recover)age=g-8.4f;else if(g>=10.3f&&g<10.3f+recover)age=g-10.3f;
                 // three hits from me: a dagger, a sword, a greatsword
-                float[] hitAt={12.4f,13,13.7f};float[] amount={14,26,48};string[] specs={"daggers","sword","greatsword"};
-                for(int h=0;h<3;h++){float at=galleryStart+Mathf.Floor((now-galleryStart+k*.37f)/GalleryLoop)*GalleryLoop-k*.37f+hitAt[h];if(now>=at&&s.React.Newest<at-.01f){var w=NativeStaggerRules.Classify(specs[h],"melee",amount[h]);float yr2=yawToMe*Mathf.Deg2Rad;s.React.Add(at,new NVector2(-Mathf.Sin(yr2),-Mathf.Cos(yr2)),w,amount[h],true,false,amount[h]>=st.hp*.25f,st.stagger);}}
-                if(t>=14.4f)
+                for(int h=0;h<3;h++){float at=galleryStart+Mathf.Floor((now-galleryStart+k*.37f)/GalleryLoop)*GalleryLoop-k*.37f+GalleryHitAt[h];if(now>=at&&s.React.Newest<at-.01f){var w=NativeStaggerRules.Classify(GalleryHitSpecs[h],"melee",GalleryHitAmount[h]);float yr2=yawToMe*Mathf.Deg2Rad;s.React.Add(at,new NVector2(-Mathf.Sin(yr2),-Mathf.Cos(yr2)),w,GalleryHitAmount[h],true,false,GalleryHitAmount[h]>=st.hp*.25f,st.stagger);}}
+                if(g>=14.4f)
                 {
                     // The death, then hidden until the loop starts over.
-                    float d=t-14.4f;NativeHordeGait.Death(minionPose,k,NativeHordeKinds.Seed(id),Mathf.Min(d,2.3f),new NVector2(0,-1));NativePoseWriter.Write(rig.Bones,minionPose,"a gallery rig");
+                    float d=g-14.4f;NativeHordeGait.Death(minionPose,k,seed,Mathf.Min(d,2.3f),new NVector2(0,-1));NativePoseWriter.Write(rig.Bones,minionPose,"a gallery rig");
                     rig.Root.transform.SetPositionAndRotation(slot,Quaternion.Euler(0,yaw,0));bool body=!NativeMinionFx.Gone(d)&&!(k==NativeHordeKinds.Bloater&&d>=NativeHordeGait.BurstAt);
                     if(body)HordeDeathBody(rig,NativeHordeModels.Id(k,0,NativeHordeModels.Full),id,0,d,b=>true);HordeAdd(rig,id,float.NaN,d,ground,ground,float.NaN,Vector3.zero,0,body,k*8);
                     if(k==NativeHordeKinds.Bloater){float since=d-NativeHordeGait.BurstAt;if(since>=0&&since<1.5f&&hordeBurstCount<hordeBursts.Length)hordeBursts[hordeBurstCount++]=new HordeBurstJob{At=slot,Since=since,Seed=NativeGoreRules.FnvDigits(id)};}
                     s.Gait.Reset();continue;
                 }
                 ref var f=ref hordeInput[0];
-                f=new HordeMotionInput{Kind=k,Look=0,Id=id,Seed=NativeHordeKinds.Seed(id),Time=now,Yaw=yaw,Ground=ground,Root=ToN(pos),Velocity=ToN(vel),AttackAge=age,Strike=strike,Recover=recover,Attack=attack,Side=1,Health=1,HasTarget=true,Target=ToN(me.Body.position)};
+                f=new HordeMotionInput{Kind=k,Look=0,Id=id,Seed=seed,Time=now,Yaw=yaw,Ground=ground,Root=ToN(pos),Velocity=ToN(vel),AttackAge=age,Strike=strike,Recover=recover,Attack=attack,Side=1,Health=1,HasTarget=!entering,Target=ToN(me.Body.position),Entering=entering,EntryAge=entryAge,EntryWalk=entryWalk};
                 s.Gait.Pose(f,minionPose,s.React);s.Distance=Vector3.Distance(pos,hordeEye);
                 HordeKindJob(s,id,k,attack,age,strike,recover,pos,yaw,ground,st,me,rig,now);
                 NativePoseWriter.Write(rig.Bones,minionPose,"a gallery rig");rig.Root.transform.SetPositionAndRotation(pos,Quaternion.Euler(0,s.Gait.Yaw,0));
                 float swell=NativeHordeFx.Swell(attack,age,strike),gk=NativeHordeFx.Brighten(age,strike,recover);var glow=HordeGlow(id);
-                float flash=1;for(int h=0;h<3;h++){float at=galleryStart+Mathf.Floor((now-galleryStart+k*.37f)/GalleryLoop)*GalleryLoop-k*.37f+hitAt[h];if(now>=at&&now-at<.12f)flash=NativeHitFlash.Code(now-at,false,EffectsQuality);}
+                float flash=1;for(int h=0;h<3;h++){float at=galleryStart+Mathf.Floor((now-galleryStart+k*.37f)/GalleryLoop)*GalleryLoop-k*.37f+GalleryHitAt[h];if(now>=at&&now-at<.12f)flash=NativeHitFlash.Code(now-at,false,EffectsQuality);}
                 HordeQueue(rig,NativeHordeModels.Id(k,0,NativeHordeModels.Full),id,0,0,swell,new Vector4(gk,gk,gk,glow.w),flash);
                 HordeAdd(rig,id,float.NaN,float.NaN,ground,ground,float.NaN,vel,0,true,k*8);
             }
@@ -523,7 +565,7 @@ namespace ChipArena.UnityConversion
         private void ClearHordeKinds(NativeArena arena)
         {
             foreach(var s in hordeKindStates.Values)hordeKindSpare.Push(s);hordeKindStates.Clear();hordeDead.Clear();hordeKindArena=arena;hordeKindGeneration=arena?.Generation??-1;hordeKindEvent=0;hordeSpitEvent=0;hordeSpitEvents.Clear();hordeSpat.Clear();
-            for(int i=0;i<hordeParts.Length;i++)hordeParts[i].Live=false;for(int i=0;i<hordeGlobs.Length;i++)hordeGlobs[i].Flight=0;for(int i=0;i<hordeDust.Length;i++)hordeDust[i].Power=0;hordeJobCount=0;hordeBurstCount=0;
+            for(int i=0;i<hordeParts.Length;i++)hordeParts[i].Live=false;for(int i=0;i<hordeGlobs.Length;i++)hordeGlobs[i].Flight=0;for(int i=0;i<hordeDust.Length;i++)hordeDust[i].Power=0;hordeJobCount=0;hordeBurstCount=0;ClearHordeZombieFx();
         }
     }
 
@@ -539,7 +581,9 @@ namespace ChipArena.UnityConversion
             if(arena?.Pve==null)return;if(arena.Generation!=hordeCueGeneration){hordeCueGeneration=arena.Generation;hordeStrides.Clear();hordeLast.Clear();}float t=arena.Time;
             foreach(var m in arena.Minions)
             {
-                var a=m.Pve;if(a==null||m.Hp<=0||a.Stats==null||a.Travelling||t<a.ActiveAt)continue;int real=NativeHordeKinds.Resolve(a.Stats.id),kind=NativeHordeKinds.Preview>=0&&NativeHordeKinds.Preview<NativeHordeKinds.Count?NativeHordeKinds.Preview:real;
+                var a=m.Pve;if(a==null||m.Hp<=0||a.Stats==null||a.Travelling)continue;
+                // The brute's jump-down lands with the slam's thud (existing bank keys: the Siren's slam over the ground impact).
+                if(t<a.ActiveAt){if(NativeHordeDrop.Is(a.Entry)){float land=NativeHordeDrop.LandAt(a.ActiveAt);if(t>=land&&t-land<.12f&&Once("add"+m.Id+"d",land)){BankPlay(NativeHordeKinds.StrikeCue(NativeHordeKinds.Attack.Smash),m.Body.position,NativeHordeKinds.StrikeGain);BankPlay(NativeHordeKinds.StrikeUnder(NativeHordeKinds.Attack.Smash),m.Body.position,NativeHordeKinds.UnderGain,0,null,false,null,.7f);}}continue;}int real=NativeHordeKinds.Resolve(a.Stats.id),kind=NativeHordeKinds.Preview>=0&&NativeHordeKinds.Preview<NativeHordeKinds.Count?NativeHordeKinds.Preview:real;
                 var attack=NativeHordeKinds.AttackOf(kind,a.Stats.attack,a.Crawl);float strike=NativeHordeKinds.Strike(a.Stats.hit,a.Crawl,a.Lost);Vector3 pos=m.Body.position;
                 // The cue keys are only built inside a cue's window (no string per add per frame).
                 string wind=NativeHordeKinds.WindupCue(attack);if(wind!=null&&t>=m.LastAttack&&t-m.LastAttack<.15f&&Once("add"+m.Id+"w",m.LastAttack))BankPlay(wind,pos,NativeHordeKinds.WindupGain);
