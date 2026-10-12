@@ -13,6 +13,8 @@ namespace ChipArena.UnityConversion
         public const float FanInterval=.075f,FanDamage=.8f,FanSpread=2.2f;
         public const float OverdriveDuration=4,VentDuration=.8f,OverdriveRate=1.6f,OverdriveMove=.8f;
         public static bool Q(string id)=>id=="fan-hammer"||id=="overdrive";
+        // Shared by the keyboard adapter and managed input regression checks.
+        public static bool KeyboardQ(ConversionContent data,string spec,bool keyDown)=>keyDown&&(data.Weapon(spec).@class=="magic"||NativeMeleeRules.Standard(spec)||Q(data.Ability(spec,"q")?.id)||data.Ability(spec,"q")?.id=="volley");
         public static bool Scope(string spec)=>spec=="rifle";
         public static NativeFanBurst Fan(float time,int ammo)=>new NativeFanBurst{At=time,Limit=Math.Min(FanRounds,Math.Max(0,ammo))};
         public static bool Overdrive(float time,float at,float until)=>until>at&&time>=at&&time<until;

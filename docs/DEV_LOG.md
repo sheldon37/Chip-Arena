@@ -1,5 +1,14 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Astra — Bow roll crash and keyboard Volley
+- Branch `codex/bow-roll-keyboard-fixes`, shared base `aead19c`. Owner reproduced missing Bow/Cyber Lord weights and Bow Q filtered before the ability dispatcher.
+- Added Bow weight 4 (base roll: 0.45 s, 5.48 m, 23 stamina) and Cyber Lord weight 3 (0.4375 s, 5.66 m, 23 stamina). Weight lookup falls back to 4 for absent tables/entries; content validation rejects missing/invalid shipped weights.
+- Extracted the keyboard Q gate to `NativeRangedRules.KeyboardQ`, called directly with `Input.GetKeyDown(KeyCode.Q)` in ConversionGame. Volley is allowed here; `NativeRangedRules.Q` remains gun-only because it also selects the gun dispatcher/presentation. Rifle ADS and the special Emperor/Siren input routes are preserved.
+- `BowInputChecks` runs in the full suite: every shipped weapon has exactly one weight and rolls, missing weight fails validation but does not null-dereference, keyboard edge/latching drives Bow Volley, idle/held input does not retrigger, existing Q and rifle ADS are preserved. Source guard verifies the actual Unity keyboard adapter calls this tested gate without another filter.
+- Checks: full `check_relay.py` exit 0, 566 PASS lines, including real relay/LAN checks. The .NET CLI intermittently crashed while reading process StartTime; compiled fresh assemblies with SDK MSBuild.dll (0 warnings/errors), then ran the full script using its supported --compiled-relay/--compiled-tests options. Conversion Python unittest: 95 tests OK (1 skip), including test_component_field_init.py; prototype Python: 4 OK. git diff --check clean; parsed JSON diff contains only the two added weights.
+- No first-person orientation, lobby stance, visuals, accounts, damage, hit timing or wire-format changes. Unity Editor/Windows physical-key playtest remains unrun; the managed check exercises the production keyboard gate and verifies its Input.GetKeyDown wiring, not Unity's hardware API.
+- Status: implemented/tested on task branch; PR handoff pending. Not merged or published to the Update feed. Integrate with Claude's presentation work before the next Windows build.
+
 ## 2026-10-12 — Astra — owner-selected Factory and Cyber City music
 - Branch `codex/factory-cybercity-music-20261012`, base shared `dfd45f32`. Owner supplied Anvil Loop Arena for Factory and Neon Riot Circuit for Cyber City and requested the update source push.
 - Bundled both original MP3s byte-for-byte under Resources/Audio/music, with streaming import metadata, unique GUIDs and asset-lock receipts. Tracks are 192.840 s and 204.792 s; embedded credit Xtrr - musiccreator, hashes in tools/factory-cybercity-music-credits.txt.
