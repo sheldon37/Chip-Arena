@@ -153,7 +153,7 @@ namespace ChipArena.UnityConversion
                 case EventKind.Heal:if(c.TargetMe)n=X(o,n,"chip.heal",.5f);break;
                 case EventKind.PveMoney:if(c.SourceMe)n=X(o,n,"pve.money",.5f);break;
                 case EventKind.Vacuum:n=X(o,n,"chip.vacuum",.7f);break;
-                case EventKind.Teleport:if(c.Detail!="blink-strike")n=X(o,n,"chip.teleport",.7f);break;
+                case EventKind.Teleport:if(c.Detail!="blink-strike"&&!NativeMeleeKitFx.Tag(c.Detail))n=X(o,n,"chip.teleport",.7f);break;
                 case EventKind.Split:n=X(o,n,"chip.split",.5f);break;
                 case EventKind.Ricochet:n=X(o,n,"gun.ricochet",.55f);break;
                 case EventKind.Pong:n=X(o,n,"chip.pong",.6f);break;

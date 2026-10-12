@@ -10,7 +10,7 @@ namespace ChipArena.UnityConversion
         public float Effects=.3f,Music=.35f,Menu=.6f;public bool Muted;
         private readonly Dictionary<string,AudioClip> clips=new Dictionary<string,AudioClip>();
         private readonly NativeSoundLimiter limiter=new NativeSoundLimiter();private bool[] keyedVoices;
-        private readonly NativeEventSounds.Sound[] routed=new NativeEventSounds.Sound[NativeEventSounds.MaxSounds];private readonly NativeSpikeRises spikeRises=new NativeSpikeRises();private readonly NativeInstallCue installCue=new NativeInstallCue();
+        private readonly NativeEventSounds.Sound[] routed=new NativeEventSounds.Sound[NativeEventSounds.MaxSounds];private readonly NativeKitSound[] kitSounds=new NativeKitSound[NativeMeleeKitSounds.Max];private readonly NativeSpikeRises spikeRises=new NativeSpikeRises();private readonly NativeInstallCue installCue=new NativeInstallCue();
         private readonly Dictionary<string,float> cues=new Dictionary<string,float>();
         private AudioSource[] voices;private AudioSource music,introVoice;private string introKey="";private float introGain=1;private readonly Dictionary<int,AudioClip> beepClips=new Dictionary<int,AudioClip>();private string track="",phase="",resumeTrack;private float resumeTime;private bool musicHeld;private int cursor,generation=-1,countdown=-1,rotation=-1;private Vector3 listener;private float yaw;
         private readonly string[] rotationTracks={"foundry-rush","orange-line","kinetic-city","afterburner","night-circuit","critical-mass","jump-drive","neon-recoil","overpass","last-set"};
@@ -125,6 +125,8 @@ namespace ChipArena.UnityConversion
                 if(p.AttackAt>0&&t-p.AttackAt<.15f&&p.Weapon.@class=="melee"&&Once(id+"attack",p.AttackAt)){string swing=p.Seat.spec=="emperor"?(p.Fighter?.Kind=="electric"?"electric-hook":"arcade-punch"):p.Seat.spec=="ansatsuken"?"sword":p.Seat.spec=="siren"?"darkness":p.Seat.spec;Cue(NativeSoundCues.Swing(p.Seat.spec,swing),swing,pos,.4f,cover:NativeSoundCues.SwingCover(p.Seat.spec),mine:mine);}
                 var cast=p.AbilityCast;string ability=cast?.Definition.id??p.Pose.AbilityId;float release=cast?.Release??p.Pose.AbilityRelease;if(ability!=null&&t>=release&&t-release<.2f&&Once(id+"cast",release)){string clip=ability=="frag-grenade"||ability=="blink-strike"?"dash":ability=="rocket"?"arcade-heavy":ability=="orbital-mark"?"lightning":p.Seat.spec;Cue(NativeSoundCues.Cast(ability,p.Seat.spec,out string covered),clip,pos,.6f,cover:covered,mine:mine);}
                 if(p.Death?.style=="dev-raging-demon"){float[] hits={.80f,1.02f,1.24f,1.46f,1.69f,1.94f,2.21f,2.56f};for(int i=0;i<hits.Length;i++){float at=p.Death.at+hits[i];if(t>=at&&t-at<.12f&&Once(id+"demon:"+i,at)){string beat=i==7?"arcade-heavy":i==3||i==5?"arcade-kick":"arcade-punch";Cue(NativeSoundCues.Fighter(beat),beat,p.Death.position,i==7?1.1f:.85f);}}}
+                // A melee Q/E cast's release (the dash, throw, slash or leap leaving): the replicated kit's Release, once per cast.
+                var kit=p.Pose?.MeleeKit;if(kit!=null&&MeleeKitMotion.Known(kit.Kind)&&t>=kit.Release&&t-kit.Release<.15f&&kit.Phase!="windup"&&kit.Phase!="recast"&&Once(id+"kit",kit.Release)){bool recast=kit.Phase=="fall"||p.Pose.SpecialKind=="skyfall"||p.Pose.SpecialKind=="kunai-recast";int k=NativeMeleeKitSounds.Release(kit.Kind,recast,kitSounds);for(int i=0;i<k;i++)Cue(kitSounds[i].Key,kitSounds[i].Clip,pos,kitSounds[i].Gain,mine:mine);}
                 var f=p.Fighter;if(f?.LastHit>0&&t-f.LastHit<.15f&&Once(id+"fighter",f.LastHit)){string hit=f.Kind=="electric"?"electric-hook-hit":f.Kind=="tatsu"?"arcade-kick":f.Index==f.Total-1?"arcade-heavy":"arcade-punch";Cue(NativeSoundCues.Fighter(hit),hit,pos,.9f,mine:mine);}
             }
             // Source events Unity derives from state: stage-spikes-rise (stage-hazards.ts:21) and the PvP draft pick's `install`
@@ -169,6 +171,8 @@ namespace ChipArena.UnityConversion
             var detail=new NativeSoundDetail{WeaponDetail=e.Kind==EventKind.Explosion&&WeaponDetail(arena,e.Detail),KillStyle=style};
             int plays=NativeSoundPlan.Event(bank,context,detail,routed,n,planned);Vector3? from=source?.Body!=null?source.Body.position:(Vector3?)null;
             for(int i=0;i<plays;i++)Perform(planned[i],pos,from,arena.Time-e.Time,context.SourceMe||context.TargetMe);
+            // The melee Q/E kit's cues (Core/NativeMeleeKitSounds): bank keys with today's built-in clips as their fallback.
+            if(NativeMeleeKitFx.Kinds(e.Kind)&&NativeMeleeKitFx.Tag(e.Detail)){int k=NativeMeleeKitSounds.Event(e.Kind,e.Detail,e.Amount,context.TargetMe,kitSounds);for(int i=0;i<k;i++)Cue(kitSounds[i].Key,kitSounds[i].Clip,pos,kitSounds[i].Gain,mine:context.SourceMe||context.TargetMe);}
             if(e.Kind==EventKind.Death&&target!=null){if(source?.Seat.killEffect=="dev-clown-love")Play("clown-love",pos,.8f,1);if(source?.Seat.killEffect=="dev-bass-van")Play("bass-van",pos,.8f,1);}
         }
     }

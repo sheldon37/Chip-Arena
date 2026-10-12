@@ -231,9 +231,8 @@ namespace ChipArena.UnityConversion
             if(d.kind=="ads")return "Q  Aim (hold)";
             if(NativeMeleeRules.Standard(p.Seat.spec))
             {
-                var k=p.MeleeKit;float remaining=(slot=="q"?p.QReady:p.EReady)-arena.Time;
-                string status=slot=="e"&&k.RecastUntil>arena.Time?"recast":k.Kind==d.id&&k.Until>arena.Time?"active":remaining>0?remaining.ToString("0.0")+"s":p.Stamina<NativeAbilityRules.Cost(d,p.Stats)?"low stamina":"ready";
-                return slot.ToUpper()+"  "+d.name+" · "+status;
+                var card=NativeMeleeKitHud.Of(slot,d.id,p.MeleeKit,(slot=="q"?p.QReady:p.EReady)-arena.Time,NativeAbilityRules.Cooldown(d,p.Stats),p.Stamina,NativeAbilityRules.Cost(d,p.Stats),arena.Time);
+                return slot.ToUpper()+"  "+d.name+" · "+card.State.ToLowerInvariant();
             }
             float left=slot=="q"?p.QReady-arena.Time:p.ECharges>0?0:p.EReady-arena.Time;
             string state=p.AbilityCast?.Definition==d?"casting":left>0?left.ToString("0.0")+"s":p.Mana<NativeAbilityRules.Cost(d,p.Stats)?"low mana":"ready";
@@ -279,6 +278,9 @@ namespace ChipArena.UnityConversion
                 {
                     if(arena.Downed(p))Prompt(U.H/2+80,"RECOVERING  ·  WASD chooses roll direction",14,NativeUi.Hex(0xd7d8de));
                     if(arena.RiposteOpen(p))Prompt(U.H/2+40,"RIPOSTE  ·  LMB counter",17,NativeUi.Hex(0xff996f));
+                    // A Kunai mark on me (the marker can teleport behind me while it lasts): every pilot's replicated kit.
+                    float marked=0;foreach(var q in arena.Pilots)marked=Math.Max(marked,NativeMeleeKitHud.MarkLeft(q.MeleeKit,p.Seat.id,arena.Time));
+                    if(marked>0&&p.Hp>0)Prompt(U.H/2+120,"MARKED  ·  "+marked.ToString("0.0")+"s",15,NativeUi.Hex(0xff4a5e));
                 }
                 if(!menu&&match.Phase==NativePhase.Countdown)CountdownOverlay();
                 if(!menu&&match.Phase==NativePhase.Result)ResultOverlay();

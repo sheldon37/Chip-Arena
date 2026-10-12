@@ -55,6 +55,7 @@ internal static class Program
             LobbyPoseChecks.Run(root);FighterMotionChecks.Run(root);LeetMotionChecks.Run();LeetPathChecks.Run(data);GunMotionChecks.Run();AuditorHaloChecks.Run(root);HitReactionChecks.Run(root);PackReactionChecks.Run(root);JumpMotionChecks.Run(root);
             ArmorLightChecks.Run(root);
             BlockFxChecks.Run(root,data);
+            MeleeKitPresentationChecks.Run(root,data);
             BloomChecks.Run(root);
             WeaponFxChecks.Run(root,data);
             BrickfallSceneryChecks.Run(root);

@@ -141,6 +141,8 @@ namespace ChipArena.UnityConversion
         public static bool Sweeping(Actor a,float time)
         {
             if(a==null||!a.Alive||!Melee(a.SourceSpec))return false;
+            // A melee Q/E cast sweeps through its strike windows only (Core/MeleeKitMotion.Sweeps).
+            if(MeleeKitMotion.Owns(a,time))return MeleeKitMotion.Sweeps(a,time);
             if(a.SpecialReleased&&(a.SpecialKind=="sword-launch"||a.SpecialKind=="wolf-spin")&&time<a.SpecialUntil)return true;
             float at=(a.SourceSpec=="emperor"||a.SourceSpec=="ansatsuken")&&a.LastAttack>a.AttackAt?a.LastAttack:a.AttackAt;
             float rate=a.CastRate>0?a.CastRate:1,age=Math.Max(0,time-at);bool swing=a.SwingAt>-90;
