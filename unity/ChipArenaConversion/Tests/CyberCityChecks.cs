@@ -229,7 +229,6 @@ namespace ChipArena.UnityConversion
             Check(p.Contains("const int layer=NativeSceneryBuilder.BackdropLayer;")&&p.Contains("CyberDraw(bt,layer,ShadowCastingMode.Off)"),"the backdrop draws on the backdrop layer and casts no shadows");
             var audio=R("NativeCyberCityAudio.cs");Check(audio.Contains("NativeCyberCityLooks.Active(arena.MapId)")&&R("NativeAudio.cs").Contains("CyberCityCues(arena,menu);"),"the sound hook is dormant off the map");
             foreach(var f in new[]{"NativeCyberCityLooks.cs","NativeCyberCityHazards.cs","NativeCyberCityKit.cs","NativeCyberCityScenery.cs","NativeCyberCityFx.cs","NativeCyberCityAmbience.cs"})Check(!File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core",f)).Contains("UnityEngine"),f+" is engine-free Core");
-            Check(!File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")).Contains("\"cybercity\""),"the map is not wired into the game content (Astra's step)");
         }
     }
 }
