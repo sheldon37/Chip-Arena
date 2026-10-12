@@ -44,7 +44,7 @@ namespace ChipArena.UnityConversion
         private void RollPveOffers(NativePilot p,NativePvePick pick)
         {
             bool rainbow=pick.Tier=="rainbow";var weights=Pve.Content.offerWeights.First(x=>x.id==pick.Tier).weights.ToDictionary(x=>x.name,x=>x.value);if(p.Seat.spec=="leet"&&!rainbow)weights["l44t"]=weights["legendary"];
-            int count=rainbow?8:Match.Choices;pick.Offers=NativeContentRules.Offers(Content,p.Seat.spec,p.Seat.chips,Pve.EconomyRandom.Next,count,c=>ImplementedChip(c)&&c.rarity!="siren",weights,!rainbow);
+            const int count=3;pick.Offers=NativeContentRules.Offers(Content,p.Seat.spec,p.Seat.chips,Pve.EconomyRandom.Next,count,c=>ImplementedChip(c)&&c.rarity!="siren",weights,!rainbow);
             if(!p.Seat.bot&&!rainbow&&Pve.EconomyRandom.Next()<.3){var available=Pve.Content.moneyChips.Where(c=>!p.Seat.chips.TryGetValue(c.id,out int n)||n<c.max).ToArray();if(available.Length>0){var tiers=Content.rarities.Where(r=>weights.TryGetValue(r.id,out double w)&&w>0&&available.Any(c=>c.rarity==r.id)).Select(r=>new NumberValue{name=r.id,value=weights[r.id]}).ToArray();string tier=tiers.Length>0?NativePveRules.Weighted(tiers,Pve.EconomyRandom.Next):null;var pool=tier!=null?available.Where(c=>c.rarity==tier).ToArray():available;if(pool.Length==0)pool=available;var chosen=pool[Math.Min(pool.Length-1,(int)(Pve.EconomyRandom.Next()*pool.Length))];if(pick.Offers.Count>=count)pick.Offers.RemoveAt(pick.Offers.Count-1);pick.Offers.Add(chosen.id);}}
         }
         public ContentChip PveChip(string id)=>Content.chips.FirstOrDefault(c=>c.id==id)??Pve?.Content.moneyChips.FirstOrDefault(c=>c.id==id);
@@ -59,13 +59,24 @@ namespace ChipArena.UnityConversion
         {float hp=(float)p.Stats["hp"];p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,p.Seat.chips);if(p.Hp>0)p.Hp=Math.Min((float)p.Stats["hp"],p.Hp+Math.Max(0,(float)p.Stats["hp"]-hp));p.Mana=Math.Min(p.Mana,(float)p.Stats["maxMana"]);p.Stamina=Math.Min(p.Stamina,(float)p.Stats["maxStamina"]);p.Ammo=Math.Min(p.Ammo,Magazine(p));}
         private void PveInput(NativePilot p)
         {
-            if(Pve==null||!Pve.Rows.TryGetValue(p.Seat.id,out var row))return;if(p.Input.Interact&&!p.Seat.bot&&p.Hp>0&&row.Open==null)PveInteract(p,row);
+            if(Pve==null||!Pve.Rows.TryGetValue(p.Seat.id,out var row))return;CollectPvePickups(p);if(p.Input.Interact&&!p.Seat.bot&&p.Hp>0&&row.Open==null)PveInteract(p,row);
             if(row.Open!=null){if(p.Seat.bot&&Time>=row.ThinkAt){var best=row.Open.Offers.Where(id=>PveChip(id)?.mechanic!="pve-money").OrderByDescending(id=>NativeChipRanks.BotRank(PveChip(id)?.rarity)).FirstOrDefault();if(best!=null)ChoosePve(p,row.Open.Id,best);}if(row.Open!=null)p.Input=new InputFrame{Yaw=p.Input.Yaw,Pitch=p.Input.Pitch};}
+        }
+        private void CollectPvePickups(NativePilot p)
+        {
+            if(Replica||Pve==null||Pve.Holding||p.Seat.bot||!p.Seat.connected||p.Hp<=0)return;
+            // The host collects personal drops during normal movement. Queue the choice without opening a combat-blocking screen.
+            for(int i=0;i<Pve.Pickups.Count;)
+            {
+                var pickup=Pve.Pickups[i];var delta=pickup.Position-p.Body.position;
+                if(pickup.Owner==p&&Time>=pickup.Born&&delta.x*delta.x+delta.z*delta.z<=1.6f*1.6f&&Math.Abs(delta.y)<=1.2f)
+                {Pve.Pickups.RemoveAt(i);GrantPvePick(p,pickup.Tier,false,"machine");}
+                else i++;
+            }
         }
         private void PveInteract(NativePilot p,NativePveRow row)
         {
             float Flat(Vector3 q)=>new Vector2(q.x-p.Body.position.x,q.z-p.Body.position.z).magnitude;
-            var pickup=Pve.Pickups.Where(k=>k.Owner==p&&Time>=k.Born&&Flat(k.Position)<=1.6f).OrderBy(k=>Flat(k.Position)).FirstOrDefault();if(pickup!=null){Pve.Pickups.Remove(pickup);GrantPvePick(p,pickup.Tier,false,"machine");return;}
             var dead=Members().Where(q=>q.Hp<=0&&q.Seat.connected&&!InShaft(q)&&Flat(q.Body.position)<=2.2f).OrderBy(q=>Flat(q.Body.position)).FirstOrDefault();if(dead!=null){var target=Pve.Rows[dead.Seat.id];int price=NativePveRules.RevivePrice(target.Revived);if(row.Money<price){row.Notice="Not enough money to revive";row.NoticeUntil=Time+1.4f;return;}row.Money-=price;row.Spent+=price;row.Revives++;target.Revived++;RevivePve(dead);return;}
             var m=Pve.Content.machines.Where(x=>Flat(Vec(x.front.Position()))<=2.2f).OrderBy(x=>Flat(Vec(x.front.Position()))).FirstOrDefault();if(m==null)return;void Use(string result){Pve.Machines.RemoveAll(u=>Time-u.at>4);while(Pve.Machines.Count>=32)Pve.Machines.RemoveAt(0);Pve.Machines.Add(new NativeMachineUse{machine=m.m,owner=p.Seat.id,result=result,at=Time});}int cost=m.kind=="chip"?NativePveRules.ChipPrice(row.Bought):m.kind=="recruit"?300:75;
             if(row.Money<cost){row.Notice="Not enough money";row.NoticeUntil=Time+1.4f;Use("deny");return;}
