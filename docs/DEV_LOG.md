@@ -1,7 +1,7 @@
 # Chip Arena — development log
 
 ## 2026-10-12 — Claude — merged Astra's Cyber Lord kit (#142); the Cyber Lord visuals read her fields
-- Branch `claude/cyberlord`. Shared head `607ebce` merged as `eb0e645`. PR #142 head `8a2ed88` merged as `116ea8a` (merge, mapping and pins together). Then the shared heads `27e6e8f` (Cyber City, PR #143; merged as `96fe55e`) and `bb3c8f6` (PR #144) merged, so the branch fast-forwards onto the shared head. Not pushed, merged or released.
+- Branch `claude/cyberlord`. Shared head `607ebce` merged as `eb0e645`. PR #142 head `8a2ed88` merged as `116ea8a` (merge, mapping and pins together). Then the shared heads `27e6e8f` (Cyber City, PR #143; merged as `96fe55e`), `bb3c8f6` (PR #144; `a431bb6`) and `dfd45f3` (PR #145 and the field-initializer guard) merged, so the branch fast-forwards onto the shared head. Not pushed, merged or released.
 - Her `NativeCyberKit` (`Core/NativeCyberRules.cs`), `Actor.Cyber` and `Runtime/NativeCyberLord.cs` are kept as she wrote them. My proposed kit, `NativeCyberCast` and the `Actor.CyberKit` slot are deleted. Her `Tests/CyberChecks.cs` keeps its name; the presentation test is `CyberLordChecks`.
 - `CyberLordFeed.Read` is still the one mapping, now onto her fields. Full table in `docs/CYBER-LORD.md`.
   - Combo: `Kind` cyber-*, `Combo`, `At` to `Until`, hit on `Release`.
@@ -24,10 +24,10 @@
   - Parity inventory: 15 source weapons, the Bow and the DEV-only Cyber Lord, with its 6 abilities.
   - Weapon card line `12 DMG · 3.6 / SEC · 2.2 M`; developer melee and DEV lists gain cyberlord.
   - Weapon skins and the base chip-module digest exclude the unarmed Cyber Lord (no socket). The digest is unchanged.
-- Checks on `116ea8a`, repeated on the `27e6e8f` and `bb3c8f6` merges:
+- Checks on `116ea8a`, repeated on the `27e6e8f`, `bb3c8f6` and `dfd45f3` merges:
   - Unity runtime+editor build OK.
   - `check_relay.py` exit 0 (562, then 564 PASS). It also passes in a copy holding only the Unity folder, where the Cyber Lord spec text is skipped.
-  - Python unittest 93 OK (1 skipped).
+  - Python unittest 93 OK (1 skipped), then 95 with `test_component_field_init.py`, which passes. My ArenaPresentation parts create no native object in a field initializer.
   - `package_source.py` OK; Builds removed.
   - `git diff --check` clean; `tests/accounts.test.ts` 9/9.
 - Not run: Unity Editor, Windows, two-client play. The offline renders were not refreshed for her timings.
@@ -39,6 +39,20 @@
   - The six abilities' content `text` is their ids, and the Locker shows that text.
   - Accounts do not accept the `dev-cyberlord` entrance.
 - No hit timing, hitbox, damage, cooldown, movement or network change from the presentation.
+
+## 2026-10-12 — Claude — guard: no Unity native objects in component field initializers
+- Context: the owner's Windows log showed a constructor failure from my Cyber City presentation. `NativeCyberCityPresentation.metroOne` created a MaterialPropertyBlock in an ArenaPresentation field initializer. Unity refused to construct the component, which left later partial fields null (`cyberViews`) and broke host/guest setup. Astra fixed it in `82b837e` (PR #144, merged by the owner).
+- Audit of all MonoBehaviours, including ArenaPresentation's 69 partial files: no other case, following the managed helpers that field initializers construct.
+- New `Tests/test_component_field_init.py` runs with the Python suite. It scans instance field initializers of every MonoBehaviour/ScriptableObject in `Assets/ChipArena` for native construction, directly or through the helper constructors, plus `Shader.Find`, `Resources.Load`, `Time`, `Screen`, `Application` and similar reads. It fails on `3cf02f1` with exactly the `metroOne` line and passes on the current tree. It is a text scan, not a Unity run.
+- Checks on `bb3c8f6` plus this test: Unity build OK; relay exit 0 (563 PASS); Python unittest OK (1 skipped); package_source OK.
+- Not run: Unity Editor, Windows. The next Windows build must confirm the interaction gate. No gameplay, timing or network change.
+
+## 2026-10-12 — Astra — Bow build-gate dispatch correction
+- Branch `codex/bow-build-gate-fix-20261012`, base shared/cloud `bb3c8f6`. Owner's Windows run passes Kernel Panic and progresses beyond ArenaPresentation construction, then fails `ability did not release volley`.
+- Cause: the all-live-abilities fixture invokes generic PressAbility for Bow, leaving AbilityCast pending because StepAbilities routes Bow to its dedicated input handler. Gameplay already uses the latter path. Route Bow fixtures through actual Q/E input and StepAbilities instead of generic windup/release assumptions.
+- New native checks cover five Volley arrows, Rain's .6-second telegraph/first arrow and twelve-arrow catch-up without duplicates, 8/12-second cooldowns, nock recovery, repeated-input cooldown rejection and no mana/ammo/E-charge spending even with empty pools. Setup clears prior Bow draw/rain state. Other generic handlers retain all checks; gameplay code is unchanged.
+- Checks: Bow content/fixture routing contract verified (live ids/slots/cooldowns/costs), `git diff --check` passed. Prior base's 35 managed-core groups passed in the immediately preceding repair; not rerun for this Editor-only fixture change because that suite does not compile or exercise it. Unity Editor/PhysX/Windows execution remains pending through the owner’s next Build-and-Publish run.
+- Publication: continuing approved build repair/merge; PR/shared/cloud receipts in GitHub. No compiled package published here.
 
 ## 2026-10-12 — Astra — ArenaPresentation constructor build blocker
 - Branch `codex/arena-constructor-fix-20261012`, base shared/cloud `27e6e8f`. Owner's Windows log confirms Kernel Panic authority now passes, then host/guest interaction setup logs Unity `CreateImpl` constructor errors and null `cyberViews` in CyberPoseTime.

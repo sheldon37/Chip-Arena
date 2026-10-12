@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
             void Setup(string spec)
             {
                 wall.SetActive(false);Bullets.Clear();AbilityShots.Clear();AbilityZones.Clear();AbilityEffects.Clear();MeleeShots.Clear();abilityEchoes.Clear();ChipFields.Clear();Match.Teams=false;
-                foreach(var p in new[]{a,b}){CancelSiren(p);CancelFighter(p);CancelSpecial(p);CancelMelee(p);CancelAbilities(p);p.Seat.chips.Clear();p.Seat.spec=p==a?spec:"sword";p.Seat.bot=false;p.Seat.alive=p.Seat.connected=true;p.Weapon=Content.Weapon(p.Seat.spec);p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,p.Seat.chips);p.Hp=p.Mana=p.Stamina=100;p.Body.isKinematic=false;p.Body.position=new Vector3(1000,10,p==a?1000:1002);p.Body.linearVelocity=p.Knockback=p.MoveVelocity=Vector3.zero;p.Collider.enabled=true;p.Down=null;p.Juggle=null;p.Roll=null;p.Death=null;p.Wounds.Clear();p.Dots.Clear();p.OverdriveAt=p.OverdriveUntil=p.VentUntil=0;p.Ready=p.QReady=p.EReady=p.ReloadEnd=p.BlockEnd=p.RollEnd=p.StunEnd=p.FrozenUntil=p.ScareUntil=p.ShieldUntil=p.CastAt=p.AttackEnd=0;p.ECharges=1;p.Ammo=Magazine(p);p.Yaw=p==a?0:180;p.Pitch=0;p.Input=new InputFrame{Yaw=p.Yaw,AimTarget=Vec(b.Body.position)};p.RegenAt=Time+20;}
+                foreach(var p in new[]{a,b}){CancelSiren(p);CancelFighter(p);CancelSpecial(p);CancelMelee(p);CancelAbilities(p);p.Seat.chips.Clear();p.Seat.spec=p==a?spec:"sword";p.Seat.bot=false;p.Seat.alive=p.Seat.connected=true;p.Weapon=Content.Weapon(p.Seat.spec);p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,p.Seat.chips);p.Hp=p.Mana=p.Stamina=100;p.Body.isKinematic=false;p.Body.position=new Vector3(1000,10,p==a?1000:1002);p.Body.linearVelocity=p.Knockback=p.MoveVelocity=Vector3.zero;p.Collider.enabled=true;p.Down=null;p.Juggle=null;p.Roll=null;p.Death=null;p.Wounds.Clear();p.Dots.Clear();p.BowDrawAt=-1;p.BowRainAt=-100;p.BowRainNext=0;p.OverdriveAt=p.OverdriveUntil=p.VentUntil=0;p.Ready=p.QReady=p.EReady=p.ReloadEnd=p.BlockEnd=p.RollEnd=p.StunEnd=p.FrozenUntil=p.ScareUntil=p.ShieldUntil=p.CastAt=p.AttackEnd=0;p.ECharges=1;p.Ammo=Magazine(p);p.Yaw=p==a?0:180;p.Pitch=0;p.Input=new InputFrame{Yaw=p.Yaw,AimTarget=Vec(b.Body.position)};p.RegenAt=Time+20;}
                 a.Input=new InputFrame{Yaw=0,AimTarget=Vec(b.Body.position),AbilityTarget=Vec(b.Body.position)};Physics.SyncTransforms();
             }
             NativeBullet Shot(string spec){Setup(spec);a.Input.Shoot=true;StepPilot(a);if(a.Weapon.@class=="magic"){Check(Bullets.Count==0&&a.CastAt>Time,"magic released before windup "+spec);a.Input.Shoot=false;Advance(a.CastAt-Time+.001f);StepPilot(a);}Check(Bullets.Count==1,"primary release "+spec);return Bullets[0];}
@@ -32,6 +32,33 @@ namespace ChipArena.UnityConversion
                 float ready=ability.slot=="q"?a.QReady:a.EReady;
                 Check(Math.Abs(ready-(Time+NativeAbilityRules.Cooldown(ability,a.Stats)))<.0003f,"cooldown after "+ability.id);
                 Check(a.ECharges==charges-(ability.slot=="e"?1:0),"charges after "+ability.id);
+            }
+            void CheckBowAbilityRelease(ContentAbility ability)
+            {
+                Check(ability.id=="volley"||ability.id=="rain-of-arrows","unhandled Bow ability "+ability.id);
+                Setup("bow");a.Mana=0;a.Ammo=0;a.ECharges=0;
+                a.Input.AbilityQ=ability.slot=="q";a.Input.AbilityE=ability.slot=="e";
+                float at=Time,scale=(float)a.Stats["abilityCooldown"];
+                // Bow Q/E commit through input, without generic windup, mana or E charges.
+                StepAbilities(a);
+                Check(a.AbilityCast==null&&a.Pose.AbilityId==ability.id,"Bow input dispatch "+ability.id);
+                float ready=ability.slot=="q"?a.QReady:a.EReady;
+                Check(Math.Abs(ready-(at+(ability.slot=="q"?8:12)*scale))<.001f,"Bow cooldown "+ability.id);
+                Check(Math.Abs(a.Ready-(at+NativeBowRules.Nock))<.001f,"Bow nock recovery "+ability.id);
+                if(ability.slot=="q")
+                    Check(Bullets.Count==5&&Bullets.All(x=>x.Detail=="volley"),"Bow Volley releases five arrows");
+                else
+                {
+                    Check(Bullets.Count==0&&a.BowRainAt==at&&a.BowRainNext==0,"Bow Rain telegraph before arrows");
+                    Advance(.5f);StepBow(a);Check(Bullets.Count==0,"Bow Rain must wait .6 seconds");
+                    Advance(.11f);StepBow(a);Check(Bullets.Count==1&&a.BowRainNext==1,"Bow Rain first arrow");
+                    Advance(1.2f);StepBow(a);
+                    Check(Bullets.Count==12&&a.BowRainNext==12&&Bullets.All(x=>x.Detail=="rain"&&x.Velocity.y<0),"Bow Rain catches up to twelve downward arrows");
+                    StepBow(a);Check(Bullets.Count==12,"Bow Rain cannot duplicate arrows");
+                }
+                int count=Bullets.Count;StepAbilities(a);
+                Check(Bullets.Count==count&&(ability.slot=="q"?a.QReady:a.EReady)==ready,"Bow cooldown blocks repeat "+ability.id);
+                Check(a.Mana==0&&a.Ammo==0&&a.ECharges==0,"Bow abilities do not consume mana/ammo/charges "+ability.id);
             }
             try
             {
@@ -49,6 +76,7 @@ namespace ChipArena.UnityConversion
                     // Standard melee uses Special and pays stamina at commitment. Its Q/E
                     // dispatcher/release contract is checked by ValidateSpecials, not AbilityCast.
                     if(NativeMeleeRules.Standard(weapon.id))continue;
+                    if(weapon.id=="bow"){CheckBowAbilityRelease(ability);continue;}
                     Setup(weapon.id);CheckAbilityRelease(ability,(float)a.Stats["maxMana"]);
                     Setup(weapon.id);
                     // Gun E abilities cost no mana: they must still cast from an empty pool.
