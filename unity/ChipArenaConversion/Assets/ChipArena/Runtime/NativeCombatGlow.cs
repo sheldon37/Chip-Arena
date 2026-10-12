@@ -52,7 +52,7 @@ namespace ChipArena.UnityConversion
         private static readonly int[] viewHands={CapturedRig.LHand,CapturedRig.RHand};
         private readonly List<SurfaceMark> marks=new List<SurfaceMark>();private int generation=-1,lastEvent;
         private float lastTime=-1;public float Quality=1;public bool Trails=true;
-        /// <summary>The magic effects draw these projectiles' own look (NativeMagicFx.Owns: the Tidal Wave): no halo or trail
+        /// <summary>The magic effects draw these projectiles' own look (NativeMagicFx.Owns: the Tidal Wave, the darkness orb): no halo or trail
         /// here; their spill light stays.</summary>
         public bool MagicLooks;
         /// <summary>

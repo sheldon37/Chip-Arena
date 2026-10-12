@@ -536,6 +536,8 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>A smooth lit sphere (the black hole's core): albedo, a fresnel rim (HDR) and emission, all linear.</summary>
         public void Sphere(Vector3 at,float radius,Color albedo,Color rim,Color emissive)=>LitMesh(orb,at,Quaternion.identity,Vector3.one*radius,albedo,.6f,.85f,emissive,rim);
+        /// <summary>The same sphere with its own specular strength (0: no glint, a matte light-eating core).</summary>
+        public void Sphere(Vector3 at,float radius,Color albedo,Color rim,Color emissive,float spec)=>LitMesh(orb,at,Quaternion.identity,Vector3.one*radius,albedo,spec,.85f,emissive,rim);
         /// <summary>A linear colour from an sRGB hex (exactly Core's NativeBlastSim.Linear).</summary>
         public static Color Linear(int hex){NativeBlastSim.Linear(hex,out double r,out double g,out double b);return new Color((float)r,(float)g,(float)b,0);}
 

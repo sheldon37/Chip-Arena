@@ -122,8 +122,9 @@ namespace ChipArena.UnityConversion
         private readonly bool gamma;
         private readonly NativeVfxDraw vfx;private readonly bool ownsVfx;
         private NativeArena last;private int generation=-1;private float lastTime=-1;
-        /// <summary>The magic effects (NativeMagicFxPresentation) draw the Tidal Wave's own body: its source box is skipped
-        /// (the scene still holds it, so the source parity and the counts are unchanged).</summary>
+        /// <summary>The magic effects (NativeMagicFxPresentation) draw the Tidal Wave's body and the darkness void orb: their
+        /// source box, icosahedron and darkness tail streaks are skipped (the scene still holds them, so the source parity and the
+        /// counts are unchanged).</summary>
         public bool MagicLooks;
         public int Parts=>scene.Draws.Count;public int Sparks=>scene.Bursts.Count;public int Beams=>scene.Bursts.Beams;public int Live=>scene.Live;
         /// <summary>The source BurstPool port (renderer.burst/beam) these visuals draw and step each frame; event effects spawn
@@ -171,8 +172,12 @@ namespace ChipArena.UnityConversion
             foreach(var s in arena.MeleeShots){NativeShotViews.Melee(arena,s,tracker,now,out var v);scene.Shot(v);}
             scene.End(dt);Fill(camera);
         }
-        // The shapes only the projectiles NativeMagicFx.Owns use (the Tidal Wave's box).
-        private static bool MagicOwned(NativeShotShape shape)=>shape==NativeShotShape.TidalWave;
+        // The shapes only the projectiles NativeMagicFx.Owns use (the Tidal Wave's box, the darkness orb's icosahedron), and the
+        // darkness orb's tail streak colour (NativeShotScene: 0x6c458e, used by nothing else).
+        private static bool MagicOwned(NativeShotShape shape)=>shape==NativeShotShape.TidalWave||shape==NativeShotShape.DarkIco;
+        private static readonly double[] darkBeam=DarkBeam();
+        private static double[] DarkBeam(){NativeBlastSim.Linear(0x6c458e,out double r,out double g,out double b);return new[]{r,g,b};}
+        private static bool DarkTail(double r,double g,double b)=>Math.Abs(r-darkBeam[0])<1e-6&&Math.Abs(g-darkBeam[1])<1e-6&&Math.Abs(b-darkBeam[2])<1e-6;
         private Color Shade(float r,float g,float b,float a)=>gamma?new Color(Mathf.LinearToGammaSpace(r),Mathf.LinearToGammaSpace(g),Mathf.LinearToGammaSpace(b),a):new Color(r,g,b,a);
         private void Fill(Camera camera)
         {
@@ -191,7 +196,7 @@ namespace ChipArena.UnityConversion
             var bd=pool.BeamData;var bp=box.Positions;var bn=box.Normals;
             for(int i=0;i<pool.Beams;i++)
             {
-                int k=i*NativeBurstPool.BeamStride;var m=NativeShotAffine.Compose(bd[k],bd[k+1],bd[k+2],bd[k+9],bd[k+10],bd[k+11],bd[k+12],bd[k+6],bd[k+7],bd[k+8]);var r=new Quaternion((float)bd[k+9],(float)bd[k+10],(float)bd[k+11],(float)bd[k+12]);
+                int k=i*NativeBurstPool.BeamStride;if(MagicLooks&&DarkTail(bd[k+14],bd[k+15],bd[k+16]))continue;var m=NativeShotAffine.Compose(bd[k],bd[k+1],bd[k+2],bd[k+9],bd[k+10],bd[k+11],bd[k+12],bd[k+6],bd[k+7],bd[k+8]);var r=new Quaternion((float)bd[k+9],(float)bd[k+10],(float)bd[k+11],(float)bd[k+12]);
                 float lr=(float)bd[k+14],lg=(float)bd[k+15],lb=(float)bd[k+16];var albedo=Shade(lr,lg,lb,1);var e=Shade(lr*.7f,lg*.7f,lb*.7f,0);var glow=new Vector4(e.r,e.g,e.b,0);int start=beams.Vertices.Count;
                 for(int v=0;v<bp.Length;v+=3){m.Apply(bp[v],bp[v+1],bp[v+2],out float x,out float y,out float z);beams.Vertices.Add(new Vector3(x,y,z));beams.Normals.Add(r*new Vector3(bn[v],bn[v+1],bn[v+2]));beams.Colors.Add(albedo);beams.Emission.Add(glow);}
                 var tris=box.Indices;for(int t=0;t<tris.Length;t++)beams.Indices.Add(start+tris[t]);

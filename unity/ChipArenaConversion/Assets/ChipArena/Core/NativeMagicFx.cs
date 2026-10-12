@@ -21,6 +21,12 @@ namespace ChipArena.UnityConversion
         /// <summary>The live Tidal Wave ability shots.</summary>
         int Waves{get;}
         bool Wave(int index,out NativeMagicShot shot);
+        /// <summary>The live darkness primary orbs (Owner: the firer, kept through a reflect; Born: the replicated spawn time).</summary>
+        int Orbs{get;}
+        bool Orb(int index,out NativeMagicShot shot);
+        /// <summary>The right-hand spell socket of an actor (NativeSpellCharge.Socket); view: it is the local first-person
+        /// viewer's view-model hand, drawn on the view layer.</summary>
+        bool Hand(int id,out Vector3 hand,out bool view);
         /// <summary>The drawn feet position of an actor (its smoothed root).</summary>
         bool Feet(int id,out Vector3 feet);
         /// <summary>The posed chest of an actor (the first-person viewer's: under its eye).</summary>
@@ -53,6 +59,11 @@ namespace ChipArena.UnityConversion
         void Water(Vector3 at,Vector3 lit,int shade,float opacity,float size,Vector3 segment,float u,float seed,float floor);
         /// <summary>A blended teardrop along segment (its head at head): water drops, ink threads.</summary>
         void Drop(Vector3 head,Vector3 segment,Vector3 color,float coverage,float width,float u,float seed);
+        /// <summary>A smooth matte lit sphere (the black-hole core, no glint): albedo, an HDR fresnel rim and emission, linear.</summary>
+        void Sphere(Vector3 at,float radius,Vector3 albedo,Vector3 rim,Vector3 emissive);
+        /// <summary>A glow on the first-person view-model layer (the caster's own hand): profile 0 soft, 1 hot core, 2 ring, 3
+        /// sparkle; coverage above 0 darkens.</summary>
+        void View(Vector3 at,Vector3 color,float coverage,float size,int profile);
     }
 
     /// <summary>One vertex of a wave body or a mark (Runtime/NativeMagicFxPresentation uploads these as they are;
@@ -120,7 +131,8 @@ namespace ChipArena.UnityConversion
     /// <summary>
     /// The water and darkness magic presentation (owner 2026-10-12: "Water still uses a basic model for Q : Tidal Wave. Also
     /// darkness basic attack could use some revamping"; Claude's visuals over Astra's unchanged simulation). The Tidal Wave
-    /// (NativeTidalWaveFx) replaces the source's translucent box. Every effect is a pure function of what host, guests and the
+    /// (NativeTidalWaveFx) replaces the source's translucent box, the void orb (NativeVoidOrbFx) the darkness primary's pale
+    /// icosahedron, its energy trail and halo. Every effect is a pure function of what host, guests and the
     /// killcam replay all hold (the replicated shots and actors, the replicated events, the world's floors), on the
     /// presentation clock; nothing here reaches the authority, hit timing, hitboxes, damage, knockback or the network frame.
     /// The meshes are built once; a frame allocates nothing once its pools are warm.
@@ -128,12 +140,14 @@ namespace ChipArena.UnityConversion
     public sealed class NativeMagicFx
     {
         public readonly NativeTidalWaveFx Tide=new NativeTidalWaveFx();
+        public readonly NativeVoidOrbFx Void=new NativeVoidOrbFx();
         public readonly NativeMagicDecals Decals=new NativeMagicDecals(256);
         private int cursor;private float clock=float.NegativeInfinity;
-        /// <summary>The projectiles whose model these effects replace: the Tidal Wave ability shot. The projectile visuals and
-        /// the combat glow skip their model, halo and trail (the spill light stays).</summary>
-        public static bool Owns(in NativeShotView v)=>!v.Siren&&v.Kind==NativeShotKind.Ability&&v.Ability=="tidal-wave";
-        public void Clear(){Tide.Clear();Decals.Clear();cursor=0;clock=float.NegativeInfinity;}
+        /// <summary>The projectiles whose model these effects replace: the Tidal Wave ability shot and the darkness primary orb
+        /// (not a hadouken or sword beam). The projectile visuals, the combat glow and the energy trails skip their model, halo
+        /// and trail (the spill light and chip modules stay).</summary>
+        public static bool Owns(in NativeShotView v)=>!v.Siren&&(v.Kind==NativeShotKind.Ability&&v.Ability=="tidal-wave"||v.Kind==NativeShotKind.Bullet&&v.Spec=="darkness"&&v.Arcade==0&&!v.SwordBeam);
+        public void Clear(){Tide.Clear();Void.Clear();Decals.Clear();cursor=0;clock=float.NegativeInfinity;}
         /// <summary>The source spec of a seat among the actors (null when it has none).</summary>
         public static string Spec(IReadOnlyList<Actor> actors,int id){if(actors==null)return null;for(int i=0;i<actors.Count;i++){var a=actors[i];if(a!=null&&a.Id==id)return a.SourceSpec;}return null;}
         public static Actor Find(IReadOnlyList<Actor> actors,int id){if(actors==null)return null;for(int i=0;i<actors.Count;i++){var a=actors[i];if(a!=null&&a.Id==id)return a;}return null;}
@@ -147,16 +161,18 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<events.Count;i++)
             {
                 var e=events[i];if(e.Id<=cursor||time-e.Time>2)continue;
-                if(e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot)Tide.Hit(e,Spec(actors,e.Source));
+                if(e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot){string spec=Spec(actors,e.Source);Tide.Hit(e,spec);Void.Hit(e,spec);}
+                else if(e.Kind==EventKind.Heal)Void.Heal(e);
             }
             if(newest>cursor)cursor=newest;
         }
-        /// <summary>Draws every live magic effect of the frame at `time` (the presentation clock); quality: effects quality
-        /// (Reduced .3); low: the low graphics tier.</summary>
-        public void Draw(IMagicFxSink sink,IMagicFxScene scene,float time,float quality,bool low)
+        /// <summary>Draws every live magic effect of the frame at `time` (the presentation clock); simTime: the darkness pulse and
+        /// wobble clock (NativeShotScene's state.time: the match clock on the host, the presentation clock on a replica);
+        /// quality: effects quality (Reduced .3); low: the low graphics tier.</summary>
+        public void Draw(IMagicFxSink sink,IMagicFxScene scene,float time,float simTime,float quality,bool low)
         {
             Decals.Clear();if(sink==null||scene==null)return;
-            Tide.Draw(sink,scene,Decals,time,quality,low);
+            Tide.Draw(sink,scene,Decals,time,quality,low);Void.Draw(sink,scene,Decals,time,simTime,quality,low);
         }
     }
 }

@@ -78,8 +78,8 @@ namespace ChipArena.UnityConversion
     }
 
     // The water and darkness magic presentation's arena hook (Core/NativeMagicFx; owner 2026-10-12). RenderGlow calls MagicFx right
-    // after the projectile models: the replicated Tidal Wave shots (at the shot tracker's presented positions), the snapshot's
-    // actors, their posed rigs, the world's floors and walls under them, the replicated slow and the event buffer go to the
+    // after the projectile models: the replicated Tidal Wave shots and darkness orbs (at the shot tracker's presented positions),
+    // the snapshot's actors, their posed rigs and right-hand sockets (the first-person viewer's on the view layer), the world's floors and walls under them, the replicated slow and the event buffer go to the
     // Core effects, whose particles go into the shared effects renderer and whose wave bodies and marks are drawn here. Host,
     // guests and the killcam replay draw the same frame. Effects quality (Reduced) and the low graphics tier thin them as the
     // other effects do. Presentation only: nothing here reaches the authority, hit timing, hitboxes, damage, knockback or the
@@ -98,9 +98,10 @@ namespace ChipArena.UnityConversion
             if(magicDraw==null||vfx==null||camera==null||arena==null)return;
             if(!ReferenceEquals(magicArena,arena)||magicGeneration!=arena.Generation||now<magicClock-.25f){magicFx.Clear();magicArena=arena;magicGeneration=arena.Generation;}
             magicClock=Math.Max(magicClock,now);
-            magicScene??=new MagicScene(this);magicSink??=new MagicSink();magicScene.Bind(arena,kitSnapshot,now,camera);magicSink.Bind(vfx);
+            magicScene??=new MagicScene(this);magicSink??=new MagicSink();magicScene.Bind(arena,kitSnapshot,now,camera);magicSink.Bind(vfx,WeaponFxDraw,FirstPerson&&!ScopeActive&&ViewCamera!=null&&viewRig!=null);
             magicFx.Observe(arena.Events,now,magicScene.Actors);
-            magicFx.Draw(magicSink,magicScene,now,Mathf.Clamp01(BlastQuality),LowGraphics);
+            // The darkness pulse and wobble keep NativeShotScene's clock: the match clock on the host, this clock on a replica.
+            magicFx.Draw(magicSink,magicScene,now,arena.Replica?now:arena.Time,Mathf.Clamp01(BlastQuality),LowGraphics);
             magicDraw.Submit(magicFx,camera,LowGraphics,vfx.NoiseTexture);
         }
         private void ClearMagicFx(){magicFx.Clear();magicArena=null;magicGeneration=-1;magicClock=-1;}
@@ -110,7 +111,7 @@ namespace ChipArena.UnityConversion
         private sealed class MagicScene:IMagicFxScene
         {
             private readonly ArenaPresentation p;private NativeArena arena;private float time;private Camera camera;private PhysicsScene physics;private bool world;
-            private readonly List<Actor> actors=new List<Actor>();private readonly List<NativeMagicShot> waves=new List<NativeMagicShot>();private readonly RaycastHit[] hits=new RaycastHit[16];
+            private readonly List<Actor> actors=new List<Actor>();private readonly List<NativeMagicShot> waves=new List<NativeMagicShot>(),orbs=new List<NativeMagicShot>();private readonly RaycastHit[] hits=new RaycastHit[16];
             public MagicScene(ArenaPresentation owner){p=owner;}
             public void Bind(NativeArena a,Snapshot s,float t,Camera c)
             {
@@ -121,10 +122,26 @@ namespace ChipArena.UnityConversion
                     if(shot.Definition==null||shot.Definition.id!="tidal-wave")continue;NativeShotViews.Ability(a,shot,p.shotTracker,t,out var v);
                     waves.Add(new NativeMagicShot{Key=NativeShotScene.Key(v.Kind,v.Id),Id=v.Id,Owner=shot.Owner?.Seat?.id??0,Position=new NVector((float)v.X,(float)v.Y,(float)v.Z),Velocity=new NVector((float)v.VX,(float)v.VY,(float)v.VZ),Radius=(float)v.Radius});
                 }
+                orbs.Clear();
+                foreach(var b in a.Bullets)
+                {
+                    if(b.Spec!="darkness"||b.SirenKind!=null||b.LeetKind!=null)continue;NativeShotViews.Bullet(a,b,p.shotTracker,t,out var v);if(!NativeMagicFx.Owns(v))continue;
+                    orbs.Add(new NativeMagicShot{Key=NativeShotScene.Key(v.Kind,v.Id),Id=v.Id,Owner=b.Original!=0?b.Original:b.Owner,Position=new NVector((float)v.X,(float)v.Y,(float)v.Z),Velocity=new NVector((float)v.VX,(float)v.VY,(float)v.VZ),Radius=(float)v.Radius,Born=b.Born});
+                }
             }
             public IReadOnlyList<Actor> Actors=>actors;
             public int Waves=>waves.Count;
             public bool Wave(int i,out NativeMagicShot shot){shot=waves[i];return true;}
+            public int Orbs=>orbs.Count;
+            public bool Orb(int i,out NativeMagicShot shot){shot=orbs[i];return true;}
+            private static readonly Vector3 socket=CapturedAnimation.Vec(CapturedRig.Mirror(NativeSpellCharge.Socket));
+            public bool Hand(int id,out NVector hand,out bool view)
+            {
+                hand=default;view=false;CapturedAnimation.Player rig;
+                if(p.FirstPerson&&id==p.LocalId){if(p.viewRig==null||p.ViewCamera==null||p.ScopeActive)return false;rig=p.viewRig;view=true;}
+                else if(!p.rigs.TryGetValue(id,out rig))return false;
+                var at=rig.Bones[CapturedRig.RHand].localToWorldMatrix.MultiplyPoint3x4(socket);hand=new NVector(at.x,at.y,at.z);return true;
+            }
             public bool Feet(int id,out NVector feet)
             {
                 if(p.visualPositions.TryGetValue(id,out var at)){feet=new NVector(at.x,at.y,at.z);return true;}
@@ -160,14 +177,16 @@ namespace ChipArena.UnityConversion
         // The Core effects' particles onto the shared effects renderer.
         private sealed class MagicSink:IMagicFxSink
         {
-            private NativeVfxDraw vfx;
-            public void Bind(NativeVfxDraw v){vfx=v;}
+            private NativeVfxDraw vfx;private NativeWeaponFxDraw draw;private bool viewOk;
+            public void Bind(NativeVfxDraw v,NativeWeaponFxDraw d,bool view){vfx=v;draw=d;viewOk=view&&d!=null;}
             private static Vector3 U(NVector v)=>new Vector3(v.X,v.Y,v.Z);private static Color C(NVector c,float a=0)=>new Color(c.X,c.Y,c.Z,a);
             public void Glow(NVector at,NVector color,float coverage,float size,int profile,float u,float seed)=>vfx.Glow(U(at),C(color,coverage),size,profile,u,seed);
             public void Streak(NVector head,NVector velocity,NVector color,float width,float minLength,float blur,float taper,float u,float seed)=>vfx.Streak(U(head),U(velocity),C(color),width,minLength,blur,taper,u,seed);
             public void Smoke(NVector at,NVector albedo,float opacity,float size,float u,float seed,float floor)=>vfx.Smoke(U(at),C(albedo),opacity,size,u,seed,floor);
             public void Water(NVector at,NVector lit,int shade,float opacity,float size,NVector segment,float u,float seed,float floor)=>vfx.Water(U(at),C(lit),shade,opacity,size,U(segment),u,seed,floor);
             public void Drop(NVector head,NVector segment,NVector color,float coverage,float width,float u,float seed)=>vfx.Drop(U(head),U(segment),C(color,coverage),width,u,seed);
+            public void Sphere(NVector at,float radius,NVector albedo,NVector rim,NVector emissive)=>vfx.Sphere(U(at),radius,C(albedo),C(rim),C(emissive),0);
+            public void View(NVector at,NVector color,float coverage,float size,int profile){if(viewOk)draw.Glow(true,U(at),C(color,coverage),size,profile);}
         }
     }
 }
