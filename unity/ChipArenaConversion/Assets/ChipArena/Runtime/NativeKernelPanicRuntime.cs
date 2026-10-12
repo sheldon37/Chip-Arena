@@ -99,7 +99,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<count;i++)
             {
                 var q=kernelHits[i].collider.GetComponent<NativePilotBody>()?.Pilot;
-                if(q==null||q==p||q.Hp<=0||!q.Seat.connected||!CanHit(p,q)||KernelBusy(q)||q.ScareBy!=null||q.HeldBy!=null||q.Seat.AuthorityBoss)continue;
+                if(q==null||q==p||q.Hp<=0||!q.Seat.connected||!CanHit(p,q)||KernelBusy(q)||q.ScareBy!=null||q.HeldBy!=null||q.Seat.AuthorityBoss||!MeleeVisible(origin,q.Body.position,p,q.Collider))continue;
                 float contact=kernelHits[i].distance;
                 if(contact>first||contact==first&&target!=null&&q.Seat.id>target.Seat.id)continue;
                 first=contact;target=q;
