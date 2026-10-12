@@ -58,7 +58,7 @@ namespace ChipArena.UnityConversion
                 {
                     Setup(spec);a.Stamina=0;Check(!TrySpecial(a)&&a.Special==null&&a.EReady==0,"unfunded E spent cooldown");a.Stamina=100;
                     a.StunEnd=Time+1;Check(!TrySpecial(a),"E during stun");a.StunEnd=0;
-                    if(spec=="greatsword"){a.Grounded=false;Check(!TrySpecial(a),"airborne leap");a.Grounded=true;}
+                    if(spec=="greatsword"){a.Grounded=false;Check(!TrySpecial(a),"airborne Whirlwind");a.Grounded=true;}
                     Check(TrySpecial(a),"E start "+spec);NearNative(a.Stamina,100-NativeAbilityRules.Cost(Content.Ability(spec,"e"),a.Stats),"E resource");NearNative(a.EReady-Time,NativeAbilityRules.Cooldown(Content.Ability(spec,"e"),a.Stats),"E cooldown");
                     Check(!TrySpecial(a)&&!TryMelee(a)&&!TryBlock(a),"committed special interrupted");
                     StepSpecial(a);Check(!a.Special.Released&&MeleeShots.Count==0&&b.Hp==100,"special released early");
@@ -73,9 +73,7 @@ namespace ChipArena.UnityConversion
                 Advance(.401f);b.Input.X=1;StepRecovery(b);StepPilot(b);NearNative(b.Body.linearVelocity.x,6,"recovery travel");b.Input.X=-1;StepRecovery(b);StepPilot(b);NearNative(b.Body.linearVelocity.x,6,"recovery heading changed");
                 Advance(.61f);StepRecovery(b);Check(b.Down==null&&!Incapacitated(b),"recovery failed to end");
 
-                Setup("greatsword");Position(b,1010);TrySpecial(a);Advance(a.Special.Release-Time+.001f);StepSpecial(a);NearNative(a.Knockback.y,10,"leap kick");
-                Position(b,1002);Advance(.05f);StepSpecial(a);float direct=b.Hp;Check(direct<100&&b.Down!=null,"air spin hit");
-                Advance(.17f);a.Grounded=true;StepSpecial(a);Check(a.Special.Landed>=0&&MeleeImpacts.Count==1,"landing slam");Check(b.Hp==direct,"spin and slam double-hit");StepSpecial(a);Check(MeleeImpacts.Count==1,"duplicate landing effect");
+                ValidateWhirlwind(Setup,Advance,Position,a,b,wall);
 
                 var dagger=Release("daggers");dagger.Position=new Vector3(1000,100,1000);dagger.Velocity=Vector3.forward*120;wall.SetActive(true);Physics.SyncTransforms();StepMeleeShots();Check(MeleeShots.Count==0&&b.Hp==100,"dagger tunneled through cover");
                 dagger=Release("daggers");Position(b,1002);dagger.Position=new Vector3(1000,100,1000);dagger.Velocity=Vector3.forward*120;Physics.SyncTransforms();StepMeleeShots();Check(b.Hp<100&&MeleeShots.Count==0,"swept dagger missed capsule");
@@ -116,12 +114,12 @@ namespace ChipArena.UnityConversion
                 Check(a.MeleeKit.Absorbed==3&&a.Special.Phase=="recovery"&&!AbsorbCharge(a,Vector3.back,a.Body.position,4),"absorb cap/end");
                 Setup("shield");Position(b,1001);wall.transform.position=new Vector3(1000,100,1002.5f);wall.SetActive(true);Physics.SyncTransforms();TryMeleeAbility(a,"q");Advance(a.Special.Release-Time+.001f);StepSpecial(a);MeleeAbilityMotion(a);for(int tick=0;tick<24;tick++){Advance(1f/60);StepMeleeKitWorld();}NearNative(b.Hp,70,"charge plus wall budget");Check(b.StunEnd>Time,"wall stun");wall.transform.position=new Vector3(1000,100,1001);
                 Setup("greatsword");Position(b,1004);TryMeleeAbility(a,"q");Advance(a.Special.Release-Time+.001f);StepSpecial(a);Advance(.16f);StepMeleeKitWorld();NearNative(b.Hp,70,"fissure front hit");Advance(.1f);StepMeleeKitWorld();NearNative(b.Hp,70,"fissure hit once");Check(b.SlowFactor==.7f&&a.MeleeKit.FissureSpeed==25,"fissure trail contract");
-                Setup("greatsword");Position(b,1020);TryMeleeAbility(a,"e");Advance(a.Special.Release-Time+.001f);StepSpecial(a);Damage(a,b,20,Vector3.back,0,false,melee:true,weaponHit:true);Check(!StaggerMelee(a,.3f)&&a.Special!=null&&a.Hp==80,"light armour ignored damage or staggered");Damage(a,b,25,Vector3.back,0,false,melee:true,weaponHit:true);Check(StaggerMelee(a,.3f)&&a.Special==null,"heavy hit did not break armour");
+
                 Setup("sword");Position(b,1020);Check(TryMelee(a),"buffer setup");var first=a.Swing;float afterFirst=a.Stamina;Advance(first.HitUntil-Time-.001f);a.Input.Attack=true;StepMeleeInput(a);a.Input.Attack=false;Check(a.Swing==first,"buffer cut active");Advance(NativeMeleeKitRules.ChainAt(first)-Time+.001f);StepMeleeInput(a);Check(a.Swing!=first&&a.Swing!=null&&Time<first.Until,"released button lost queued chain");NearNative(a.Stamina,afterFirst-(float)a.Weapon.cost,"per-chain stamina");
                 Setup("sword");Position(b,1020);TryMelee(a);first=a.Swing;a.Stamina=0;a.Input.Attack=true;Advance(NativeMeleeKitRules.ChainAt(first)-Time+.001f);StepMeleeInput(a);Check(a.Swing==first&&a.Stamina==0,"unfunded chain");
                 Setup("sword");TryBlock(b);Damage(b,a,10,Vector3.forward,0,false,melee:true,hitPoint:b.Collider.ClosestPoint(a.Body.position));Check(Events.Exists(e=>e.Kind==EventKind.Block&&e.Detail=="guard")&&Events.Exists(e=>e.Kind==EventKind.Block&&e.Detail=="clash"&&e.Target==a.Seat.id),"block semantic tags/attacker");
-                Debug.Log("PASS native melee kit: Q/E funding and commitment, recasts, blink cover, armour, charge absorption/carry/wall cap, fissure once-only hits/slow, input buffering and per-swing stamina");
-                Debug.Log("PASS native E specials: costs/gates, launcher/pickup, juggle cap, protected recovery, real-landing/shared-ledger slam, swept throws/overlaps/cover, reflection caps, harmless shield return/catch and owner cleanup");
+                Debug.Log("PASS native melee kit: Q/E funding and commitment, recasts, blink cover, Whirlwind, charge absorption/carry/wall cap, fissure once-only hits/slow, input buffering and per-swing stamina");
+                Debug.Log("PASS native E specials: costs/gates, launcher/pickup, juggle cap, protected recovery, Whirlwind ticks/recovery, swept throws/overlaps/cover, reflection caps, harmless shield return/catch and owner cleanup");
             }
             finally{Map.bounds=bounds;CapturedAnimation.Release(wall);MeleeShots.Clear();MeleeImpacts.Clear();meleeFissures.Clear();meleeCarries.Clear();}
         }

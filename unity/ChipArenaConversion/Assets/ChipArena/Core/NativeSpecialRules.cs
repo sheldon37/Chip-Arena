@@ -5,7 +5,7 @@ namespace ChipArena.UnityConversion
 {
     public sealed class NativeMeleeAction
     {
-        public string Kind,Fx,Phase;public int Target;public float Distance;public V3 Direction,Aim;public float At,Release,Until,Yaw,Landed=-1;public bool Released;public int Shot;
+        public string Kind,Fx,Phase;public int Target,Tick;public float Distance;public V3 Direction,Aim;public float At,Release,Until,RecoverUntil,Yaw,Landed=-1;public bool Released;public int Shot;
         public readonly HashSet<string> Hit=new HashSet<string>();
     }
     [Serializable] public sealed class NativeRecovery
