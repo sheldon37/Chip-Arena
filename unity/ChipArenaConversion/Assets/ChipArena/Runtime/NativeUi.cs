@@ -317,11 +317,11 @@ namespace ChipArena.UnityConversion
             if(!stops.TryGetValue(key,out var t)){float f=k/24f;t=Make(48,48,(x,y)=>{float dx=x-23.5f,dy=y-23.5f,d=Mathf.Sqrt(dx*dx+dy*dy),a=Mathf.Repeat(Mathf.Atan2(dx,dy)/(2*Mathf.PI),1);return new Color(1,1,1,Mathf.Clamp01(23.5f-d)*(a<=f?1:0));});stops[key]=t;}
             var m=Enter();var o=GUI.color;GUI.color=Tone(c);GUI.DrawTexture(P(r),t);GUI.color=o;GUI.matrix=m;
         }
-        // CSS .panel (visual revision): #17181df5, 1px #45464e, 10px radius, deep shadow, backdrop-filter: blur(16px); `enter`
-        // 0..1 runs panel-in.
+        // CSS .panel in the cyber palette: navy glass (NativeCyberTheme.Panel), a 1px edge, 10px radius, deep shadow,
+        // backdrop-filter: blur(16px); `enter` 0..1 runs panel-in.
         public static void Panel(Rect r,float enter=1,Color fill=default,Color border=default)
         {
-            if(fill.a<=0)fill=Hex(0x17181d,.96f);if(border.a<=0)border=Hex(0x45464e);
+            if(fill.a<=0)fill=NativeCyberTheme.Panel(.95f);if(border.a<=0)border=NativeCyberTheme.Edge();
             Glow(new Rect(r.x,r.y+30,r.width,r.height),new Color(0,0,0,.45f*enter),60);Backdrop(r,10,16,enter);Round(r,A(fill,enter),10,A(border,enter));
         }
         public static float PanelIn(float age)=>NativeUiMotion.Bezier(.2f,.8f,.2f,1,NativeUiMotion.Clamp01(age/.26f));
@@ -331,13 +331,14 @@ namespace ChipArena.UnityConversion
         {
             hover.TryGetValue(id,out float v);if(Event.current.type==EventType.Repaint){float target=enabled&&Hover(r)?1:0;v=Mathf.MoveTowards(v,target,Time.unscaledDeltaTime/.15f);hover[id]=v;}return v;
         }
-        // CSS .btn / .btn.primary (visual revision): hover lifts 1 px and warms the border; returns true on click.
+        // CSS .btn / .btn.primary in the cyber palette (NativeCyberTheme): hover lifts 1 px and lights the border cyan; returns
+        // true on click.
         public static bool Btn(Rect r,string label,bool primary=false,bool enabled=true,float alpha=1,float size=15)
         {
             int id=label.GetHashCode()^((int)r.x*73856093)^((int)r.y*19349663);float h=HoverAmount(id,r,enabled);var draw=new Rect(r.x,r.y-h,r.width,r.height);float a=alpha*(enabled?1:.45f);
-            Color fill=primary?Mix(Hex(0xff6b35),Hex(0xff865b),h):Mix(Hex(0x222329),Hex(0x303138),h),border=primary?Hex(0xff6b35):Mix(Hex(0x484952),Hex(0xff784b),h);
-            if(primary&&h>0)Glow(new Rect(draw.x,draw.y+8,draw.width,draw.height),A(Hex(0xff6b35),.35f*h*a),16);
-            Round(draw,A(fill,a),4,A(border,a));Text(draw,label,size,A(primary?Hex(0x111216):Hex(0xf5f5f7),a),TextAnchor.MiddleCenter,bold:true);
+            Color fill=primary?Mix(NativeCyberTheme.Cyan(),NativeCyberTheme.CyanSoft(),h):Mix(NativeCyberTheme.Indigo(.92f),Hex(0x1b2552,.95f),h),border=primary?NativeCyberTheme.CyanSoft():Mix(NativeCyberTheme.Edge(),NativeCyberTheme.Cyan(),h);
+            if(primary&&h>0)Glow(new Rect(draw.x,draw.y+8,draw.width,draw.height),NativeCyberTheme.Cyan(.35f*h*a),16);
+            Round(draw,A(fill,a),4,A(border,a));Text(draw,label,size,A(primary?NativeCyberTheme.Void():NativeCyberTheme.Ink(),a),TextAnchor.MiddleCenter,bold:true);
             return Pressed(r,enabled,alpha>.5f?NativeUiSounds.Button(label,primary):null)&&alpha>.5f;
         }
         private static GUIStyle Style(float size,bool bold,bool mono,TextAnchor align,bool wrap,bool italic=false)

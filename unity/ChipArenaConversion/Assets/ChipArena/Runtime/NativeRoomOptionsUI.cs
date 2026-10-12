@@ -171,8 +171,8 @@ namespace ChipArena.UnityConversion
         private static void CheckBox(Rect b,bool on,bool enabled,float hover,float e)
         {
             float a=e*(enabled?1:.5f);
-            if(on){U.Round(b,U.A(U.Mix(U.Hex(0xff6b35),U.Hex(0xff865b),hover),a),4);NativeIcons.DrawMarkup(new Rect(b.x+2,b.y+2,14,14),"room-check",CheckTick,24,U.Hex(0x3b3b3b,a));}
-            else U.Round(b,U.Hex(0x3b3b3b,a),4,U.A(U.Mix(U.Hex(0x858585),U.Hex(0xff784b),hover),a));
+            if(on){U.Round(b,U.A(U.Mix(U.Hex(NativeCyberTheme.CyanHex),U.Hex(NativeCyberTheme.CyanSoftHex),hover),a),4);NativeIcons.DrawMarkup(new Rect(b.x+2,b.y+2,14,14),"room-check",CheckTick,24,U.Hex(0x3b3b3b,a));}
+            else U.Round(b,U.Hex(0x3b3b3b,a),4,U.A(U.Mix(U.Hex(0x858585),U.Hex(NativeCyberTheme.CyanHex),hover),a));
         }
         // label.field: 12 px caps #c0c1ca, 10 px above it and 8 px to the control below.
         private void RuleField(int id,string text)
