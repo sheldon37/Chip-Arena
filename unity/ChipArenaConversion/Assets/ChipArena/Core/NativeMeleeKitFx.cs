@@ -51,7 +51,7 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed class NativeMeleeKitFx
     {
-        public struct Record{public int Id,Source,Target;public EventKind Kind;public float Time,Amount,Radius;public Vector3 Position,From,Normal;public string Fx;}
+        public struct Record{public int Id,Source,Target;public EventKind Kind;public float Time,Amount,Radius;public Vector3 Position,From,Normal;public string Fx;public bool WallSlam;}
         private readonly List<Record> records=new List<Record>();private int cursor;private float clock=float.NegativeInfinity;
         public IReadOnlyList<Record> Records=>records;
         public const int MaxRecords=96;public const float RecordSeconds=1.6f;
@@ -72,7 +72,7 @@ namespace ChipArena.UnityConversion
             {
                 var e=events[i];if(e.Id<=cursor||!Kinds(e.Kind)||!Tag(e.Detail)||time-e.Time>RecordSeconds)continue;
                 if(records.Count>=MaxRecords)records.RemoveAt(0);
-                records.Add(new Record{Id=e.Id,Source=e.Source,Target=e.Target,Kind=e.Kind,Time=e.Time,Amount=e.Amount,Radius=e.Radius,Position=N(e.Position),From=N(e.From),Normal=N(e.Normal),Fx=e.Detail});
+                records.Add(new Record{Id=e.Id,Source=e.Source,Target=e.Target,Kind=e.Kind,Time=e.Time,Amount=e.Amount,Radius=e.Radius,Position=N(e.Position),From=N(e.From),Normal=N(e.Normal),Fx=e.Detail,WallSlam=e.WallSlam});
             }
             if(newest>cursor)cursor=newest;
             for(int i=records.Count-1;i>=0;i--)if(time-records[i].Time>RecordSeconds)records.RemoveAt(i);
@@ -524,10 +524,11 @@ namespace ChipArena.UnityConversion
                     break;
             }
         }
-        // A Bulwark hit is the wall slam when an earlier Bulwark hit on the same target by the same pilot came just before it.
+        // A Bulwark hit is the wall slam: the authority's AbilityHit.WallSlam flag; without it (older streams), an earlier Bulwark
+        // hit on the same target by the same pilot just before it.
         private bool Wall(in Record e,IKitFxScene scene,out Actor victim)
         {
-            victim=Find(scene,e.Target);
+            victim=Find(scene,e.Target);if(e.WallSlam)return true;
             for(int i=0;i<records.Count;i++){var r=records[i];if(r.Id!=e.Id&&r.Kind==EventKind.AbilityHit&&r.Fx=="bulwark-charge"&&r.Source==e.Source&&r.Target==e.Target&&r.Time<e.Time&&e.Time-r.Time<.6f)return true;}
             return false;
         }

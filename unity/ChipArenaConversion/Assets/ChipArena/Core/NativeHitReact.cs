@@ -255,9 +255,10 @@ namespace ChipArena.UnityConversion
             if(!staggers.TryGetValue(e.Target,out var ring))staggers[e.Target]=ring=new Ring();
             // Pellets from one gun in one tick are one volley.
             if(ring.Count>0){ref var n=ref ring.Newest;if(n.Source==e.Source&&Math.Abs(n.At-e.Time)<.004f&&!n.Melee&&!melee){n.Amount+=e.Amount;n.Weight=NativeStaggerRules.Volley(n.Weight,spec,n.Amount);n.Scale=NativeStaggerRules.Scale(n.Weight,n.Amount);n.Head|=e.Kind==EventKind.Headshot;return;}}
-            // Where it came from: a blast's centre, else the attacker, else the hit point.
-            bool has=false;V3 dir=default,at=target!=null?target.Position:e.Position;
-            if(e.Detail=="blast")for(int i=0;i<blastCount&&!has;i++)if(blasts[i].Source==e.Source&&Math.Abs(blasts[i].At-e.Time)<.02f)has=NativeStaggerRules.Push(at,blasts[i].Position,out dir);
+            // Where it came from: the authority's hit direction (ArenaEvent.Normal, filled for pilots since PR #136 as for adds), else
+            // a blast's centre, else the attacker, else the hit point.
+            bool has=NativeStaggerRules.Along(e.Normal,out V3 dir);V3 at=target!=null?target.Position:e.Position;
+            if(!has&&e.Detail=="blast")for(int i=0;i<blastCount&&!has;i++)if(blasts[i].Source==e.Source&&Math.Abs(blasts[i].At-e.Time)<.02f)has=NativeStaggerRules.Push(at,blasts[i].Position,out dir);
             if(!has&&attacker!=null)has=NativeStaggerRules.Push(at,attacker.Position,out dir);
             if(!has)has=NativeStaggerRules.Push(at,e.Position,out dir);
             bool longStun=target!=null&&target.StunUntil-e.Time>NativeStagger.LongStun&&Math.Abs(target.ReactionAt-e.Time)<.004f;

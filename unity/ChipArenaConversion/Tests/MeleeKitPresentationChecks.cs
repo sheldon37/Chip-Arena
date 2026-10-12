@@ -359,7 +359,11 @@ namespace ChipArena.UnityConversion
             {
                 events.Clear();caster.SourceSpec="shield";caster.VisualSet=3;events.Add(E(id++,EventKind.Absorb,1,1,77,new Vector3(0,1.3f,1.5f),"bulwark-charge",3,normal:-Vector3.UnitZ));Expect("absorb flare (hex spokes, third absorb shatters)",r=>r.Lines>=6&&r.Streaks>=6,1.05f);
                 events.Clear();events.Add(E(id++,EventKind.AbilityHit,1,1,2,new Vector3(0,1.1f,3.6f),"bulwark-charge",20));events.Add(E(id++,EventKind.AbilityHit,1.1f,1,2,new Vector3(0,1.2f,6.4f),"bulwark-charge",10));victim.StunUntil=1.8f;
-                Expect("wall slam: star burst and stun stars",r=>r.Streaks>=20&&r.Sprites>=3,1.2f);victim.StunUntil=0;
+                Expect("wall slam: star burst and stun stars",r=>r.Streaks>=20&&r.Sprites>=3,1.2f);
+                // The authority's explicit flag (AbilityHit.WallSlam, PR #136) makes a lone wall hit the slam without the earlier carry hit.
+                events.Clear();events.Add(E(id++,EventKind.AbilityHit,1.1f,1,2,new Vector3(0,1.2f,6.4f),"bulwark-charge",10));var plain=Frame(scene,events,1.2f,1,false);
+                events.Clear();var slam=E(id++,EventKind.AbilityHit,1.1f,1,2,new Vector3(0,1.2f,6.4f),"bulwark-charge",10);slam.WallSlam=true;events.Add(slam);
+                Expect("flagged lone wall slam",r=>r.Streaks>=plain.Streaks+14&&r.Sprites>=plain.Sprites+3,1.2f);victim.StunUntil=0;
             }
             if(kinds.Contains("aegis-ricochet"))
             {

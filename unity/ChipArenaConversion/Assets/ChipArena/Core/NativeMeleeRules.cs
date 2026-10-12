@@ -8,6 +8,8 @@ namespace ChipArena.UnityConversion
     public sealed class NativeMeleeSwing
     {
         public string Spec;public int Index,Id,Remaining;public bool Followup,SprintAttack,OpenerLunge,Air;public float PlungeAt,ImpactAt=-1;public float ChainAt;
+        // A landing attack's carried horizontal velocity (native m/s) through its hang and plunge (NativeAirAttackSimulation.Carry).
+        public V3 Carry;
         // Prediction never resolves contacts; copy before mutating a replay state.
         public NativeMeleeSwing PredictionCopy()=>(NativeMeleeSwing)MemberwiseClone();public float DamageScale=1;public float At,HitAt,HitUntil,Until,Yaw,StepAt,StepUntil,Distance,Range,Arc;
         private readonly HashSet<string> hit=new HashSet<string>();

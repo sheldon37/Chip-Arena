@@ -48,8 +48,10 @@ namespace ChipArena.UnityConversion
             bool sprint=!kitBusy&&input.Sprint&&state.CanSprint&&!input.Shoot&&!input.Aim&&dot>=.6f;
             state.Sprinting=sprint&&!swinging;
             float speed=state.Speed*(sprint?Rules.SprintMultiplier:1)*(whirling?NativeWhirlwindRules.MoveScale:1)*(NativeRangedRules.Overdrive(state.Time,state.OverdriveAt,state.OverdriveUntil)?NativeRangedRules.OverdriveMove:1);
-            state.Velocity.x=rooted?0:Towards(state.Velocity.x,input.X*speed,Rules.Acceleration*dt);
-            state.Velocity.z=rooted?0:Towards(state.Velocity.z,input.Z*speed,Rules.Acceleration*dt);
+            // A landing attack carries its committed horizontal velocity (x .6) through the hang and plunge.
+            bool carried=swinging&&NativeAirAttackSimulation.Falling(state.Swing);
+            state.Velocity.x=carried?state.Swing.Carry.x:rooted?0:Towards(state.Velocity.x,input.X*speed,Rules.Acceleration*dt);
+            state.Velocity.z=carried?state.Swing.Carry.z:rooted?0:Towards(state.Velocity.z,input.Z*speed,Rules.Acceleration*dt);
             var jump=NativeJumpSimulation.Try(state.JumpSpec,input.Jump,state.Grounded,state.Swimming,kitBusy||swinging||state.Time<state.RollUntil,
                 state.Velocity.y,state.JumpSpeed,ref state.AirJumps,out float launch);
             if(jump!=NativeJumpKind.None){state.Velocity.y=launch;state.Grounded=false;if(jump==NativeJumpKind.Air)state.AirJumpAt=state.Time;}
@@ -60,7 +62,7 @@ namespace ChipArena.UnityConversion
             var next=constrain==null?wanted:constrain(state.Position,wanted);
             if(next.y>wanted.y+.00001f&&state.Velocity.y<0){state.Grounded=true;state.Velocity.y=0;}
             if(grounded!=null){state.Grounded=state.Velocity.y<=0&&grounded(next);if(state.Grounded)state.Velocity.y=0;}
-            if(state.Grounded){state.AirJumps=0;if(NativeAirAttackSimulation.Falling(state.Swing)){NativeAirAttackSimulation.Land(state.Swing,state.Time);state.Ready=state.Swing.Until;state.ComboUntil=state.Ready+NativeMeleeFeel.ComboPause;}}state.Position=next;return state;
+            if(state.Grounded){state.AirJumps=0;if(NativeAirAttackSimulation.Falling(state.Swing)){NativeAirAttackSimulation.Land(state.Swing,state.Time);state.Ready=state.Swing.Until;state.ComboUntil=NativeAirAttackSimulation.ComboUntil(state.Swing);}}state.Position=next;return state;
         }
     }
     // A bounded clock on the host snapshot timeline, rather than frame-rate-dependent lerp-to-latest.

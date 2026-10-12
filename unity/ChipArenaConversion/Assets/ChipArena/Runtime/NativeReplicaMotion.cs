@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
                 if(a.SprintAttack)NativeSprintAttack.Apply(swing,a.CastRate);
                 swing.HitAt=a.CommitAt+(a.Followup?.08f/a.CastRate:a.VisualWindup);swing.HitUntil=swing.HitAt+a.VisualActive;swing.Until=a.CommitUntil;
                 swing.StepAt=a.StepAt;swing.StepUntil=a.StepUntil;swing.Distance=a.StepDistance;swing.ChainAt=a.ChainAt;
-                swing.Air=a.AirAttack;swing.PlungeAt=a.PlungeAt;swing.ImpactAt=a.ImpactAt;
+                swing.Air=a.AirAttack;swing.PlungeAt=a.PlungeAt;swing.ImpactAt=a.ImpactAt;swing.Carry=new V3(frame.moveVelocity.x,0,frame.moveVelocity.z);
                 swing.Followup=a.Followup;swing.SprintAttack=a.SprintAttack;swing.OpenerLunge=a.OpenerLunge;swing.Remaining=a.SwingRemaining;
             }
             bool melee=p!=null&&NativeMeleeRules.Standard(p.Seat.spec)&&frame.reloadEnd<=Time&&frame.blockEnd<=Time;

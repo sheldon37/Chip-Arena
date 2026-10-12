@@ -636,7 +636,7 @@ real hit window. It changes no hit timing, hitbox, damage, cooldown, movement, s
 
 ### Simulation handoff (Astra)
 
-These are proposals, not implemented. A real plunging attack is simulation:
+Implemented in PR #136 (`eff9743`) with Claude's follow-up on `claude/melee-sim` (.6 carry, dagger-only combo, presentation reads); see MELEE-SIMULATION-HANDOFF. The proposal below is the handoff record. A real plunging attack is simulation:
 - `Swing.Air`, replicated as `Actor.AirAttack` (or similar), with a plunge start and an impact or land time;
 - a landing-timed hit around the impact point, its bonus damage and its recovery;
 - an impact event.
