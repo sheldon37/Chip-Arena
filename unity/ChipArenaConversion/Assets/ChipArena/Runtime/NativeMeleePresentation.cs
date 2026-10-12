@@ -27,6 +27,7 @@ namespace ChipArena.UnityConversion
             a.SwingAt=s!=null&&Time<=s.HitUntil?s.HitAt:-100;a.SwingUntil=s!=null&&Time<=s.HitUntil?s.HitUntil:-100;
             a.CommitAt=live?s.At:-100;a.CommitUntil=live?p.AttackEnd:-100;a.CommitYaw=live?s.Yaw*Mathf.Rad2Deg:a.Yaw;
             a.StepAt=live?s.StepAt:0;a.StepUntil=live?s.StepUntil:0;a.StepDistance=live?s.Distance:0;a.Followup=live&&s.Followup;a.SprintAttack=live&&s.SprintAttack;a.OpenerLunge=live&&s.OpenerLunge;
+            a.AirAttack=live&&s.Air;a.PlungeAt=live?s.PlungeAt:0;a.ImpactAt=live?s.ImpactAt:-1;a.AirborneAt=p.AirborneAt;a.AirAttackUsed=p.AirAttackUsed;
             a.SwingRemaining=live?s.Remaining:0;a.ChainAt=live?s.ChainAt:0;a.MeleeBufferUntil=p.MeleeBufferedUntil;a.ComboUntil=p.MeleeComboUntil;a.Hurricane=Has(p,"hurricane");
             var h=p.Reaction;a.ReactionAt=h?.At??-100;a.ReactionUntil=h?.Until??0;a.ReactionYaw=h?.Yaw??0;a.ReactionTurn=h?.Turn??0;a.ReactionStrength=h?.Strength??0;
             a.ReactionDir=h!=null?new V3(h.Direction.X,h.Direction.Y,h.Direction.Z):new V3();a.ReactionPoint=h!=null?new V3(h.Point.X,h.Point.Y,h.Point.Z):new V3();a.ReactionZone=h?.Zone??0;a.ReactionParry=h?.Parry??false;

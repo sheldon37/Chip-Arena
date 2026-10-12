@@ -36,12 +36,13 @@ namespace ChipArena.UnityConversion
         private bool TryMelee(NativePilot p,bool chained=false)
         {
             if(SpecialBusy(p)||!NativeMeleeRules.Standard(p.Seat.spec)||Time<p.RollEnd||Incapacitated(p)||!chained&&(Time<p.AttackEnd||Time<p.Ready)||p.ReloadEnd>Time||p.AbilityCast!=null||p.CastAt>0||Time<p.BlockEnd&&!RiposteOpen(p))return false;
+            bool air=!p.Grounded;if(air&&(!NativeAirAttackSimulation.Starts(p.Grounded,p.AirborneAt,p.AirAttackUsed,Time,p.Input)||chained))return false;
             bool sprint=NativeSprintAttack.Starts(chained,Time>p.MeleeComboUntil?1:p.Combo+2,p.Grounded,p.Input,p.Pose.Sprinting);
-            float cost=NativeSprintAttack.Cost(p.Weapon,p.Stats,sprint);if(p.Stamina<cost)return false;
+            float cost=NativeSprintAttack.Cost(p.Weapon,p.Stats,sprint)*(air?1.25f:1);if(p.Stamina<cost)return false;
             float scale=ChipMeleeStart(p);p.Stamina-=cost;if(Time>p.MeleeComboUntil)p.Combo=-1;p.Combo++;p.LastAttack=p.AttackAt=Time;if(!chained)p.Yaw=p.Input.Yaw;
             p.Swing=NativeMeleeFeel.Begin(p.Weapon,p.Stats,Time,p.Combo+1,p.Yaw*Mathf.Deg2Rad);
             if(sprint)NativeSprintAttack.Apply(p.Swing,(float)p.Stats["attackRate"]);
-            AimMeleeStep(p,chained);
+            if(air){NativeAirAttackSimulation.Apply(p.Swing);p.AirAttackUsed=true;}else AimMeleeStep(p,chained);
             p.Swing.Id=nextAttack++;p.Swing.DamageScale*=scale;p.Swing.Remaining=(int)p.Stats["extraStrikes"];p.Swing.Until=Math.Max(p.Swing.Until,Time+(float)((p.Weapon.windup+.16+p.Stats["extraStrikes"]*.24+.12)/p.Stats["attackRate"]));
             p.MeleeComboUntil=p.Swing.Until+NativeMeleeFeel.ComboPause;
             p.HitAt=p.Swing.HitAt;p.HitPending=true;p.AttackEnd=p.Ready=p.Swing.Until;p.RegenAt=p.AttackEnd+.45f;
@@ -64,6 +65,14 @@ namespace ChipArena.UnityConversion
         private void StepMelee(NativePilot p)
         {
             var swing=p.Swing;if(swing==null)return;TurnMelee(p);
+            if(NativeAirAttackSimulation.Falling(swing))
+            {
+                if(Time>=swing.Until){CancelMelee(p);return;}
+                if(!p.Grounded)return;
+                NativeAirAttackSimulation.Land(swing,Time);p.HitAt=Time;p.AttackEnd=p.Ready=swing.Until;p.MeleeComboUntil=swing.Until+NativeMeleeFeel.ComboPause;p.RegenAt=swing.Until+.45f;
+                Emit(EventKind.Land,p,0,p.Ground.Found?p.Ground.Point:p.Body.position-Vector3.up*.865f,0,"melee-air",NativeAirAttackSimulation.Radius(swing.Spec),normal:p.Ground.Found?p.Ground.Normal:Vector3.up);
+            }
+            if(swing.Air&&Time>swing.HitUntil&&Time<swing.Until)return;
             if(Time>swing.HitUntil){p.HitPending=false;if(swing.Remaining>0){p.Combo++;float rate=(float)p.Stats["attackRate"];var echo=NativeMeleeFeel.Begin(p.Weapon,p.Stats,Time,p.Combo+1,p.Yaw*Mathf.Deg2Rad);echo.Id=swing.Id;echo.Followup=true;echo.Remaining=swing.Remaining-1;echo.DamageScale=.45f;echo.HitAt=Time+.08f/rate;echo.HitUntil=echo.HitAt+.16f/rate;echo.StepAt=echo.At+.08f/rate*.55f;echo.StepUntil=echo.HitAt+.16f/rate*.8f;echo.Until=Math.Max(swing.Until,echo.HitUntil+NativeMeleeRules.Recovery(p.Seat.spec)/rate);p.Swing=echo;p.MeleeComboUntil=echo.Until+NativeMeleeFeel.ComboPause;p.AttackAt=p.LastAttack=Time;p.HitAt=echo.HitAt;p.HitPending=true;p.AttackEnd=p.Ready=echo.Until;p.RegenAt=p.AttackEnd+.45f;}else if(Time>=swing.Until)p.Swing=null;return;}
             if(Time<swing.HitAt)return;
             Vector3 origin=p.Body.position+Vector3.up*.15f;

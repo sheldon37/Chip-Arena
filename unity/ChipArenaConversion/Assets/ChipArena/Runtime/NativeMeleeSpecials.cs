@@ -42,6 +42,7 @@ namespace ChipArena.UnityConversion
         }
         private void PrimaryMeleeImpact(NativePilot owner,NativePilot target)
         {
+            if(owner.Swing?.Air==true){StaggerMelee(target,NativeMeleeRules.HitStun(owner.Weapon,(float)owner.Stats["attackRate"]));return;}
             if(owner.Swing?.SprintAttack==true&&owner.Seat.spec=="shield"){StaggerMelee(target,.35f);return;}
             if(NativeSpecialRules.Pickup(target.Down,Time))LaunchMelee(target,owner,4.8f,true);
             else if(target.Down!=null&&target.Down.Landed<0&&Time<target.Down.JuggleUntil&&target.Down.JuggleHits<2)

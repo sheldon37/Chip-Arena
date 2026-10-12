@@ -169,7 +169,7 @@ damage, cooldowns, movement, stamina or network data.
 | 1 | P1 steady locomotion torso | PRESENTATION | S | No sim impact | Done on `claude/melee-feel` |
 | 2 | S1 LMB input buffer | SIMULATION | S | No timing/hitbox/damage/cooldown change; one edge bit on the wire. Biggest "multiple swings" fix | Done (Astra, `fdd1914`) |
 | 3 | P2–P8 swing retime, follow-through, real recovery length, turn blend, cut B pop, dagger windups, crescent sync | PRESENTATION | M | No sim impact | Done on `claude/melee-feel` |
-| 3b | S0 un-mirror the hitbox sweep (`NativeMeleeRules.Angle` in the native frame) | SIMULATION | XS | Which side of the arc is hit first; arc, reach and timing unchanged. Needs the contact parity check converted to the native frame | Done (Astra, `f566b9a`); 3 cuts still sweep against their blade (S0b) |
+| 3b | S0 un-mirror the hitbox sweep (`NativeMeleeRules.Angle` in the native frame) | SIMULATION | XS | Which side of the arc is hit first; arc, reach and timing unchanged. Needs the contact parity check converted to the native frame | Done (Astra, `f566b9a`); S0b corrected on codex/unity-night-handoff-20261012 |
 | 4 | G1 melee Q/E kit (docs/MELEE-ABILITIES.md) | SIMULATION; animation, VFX, HUD PRESENTATION | L | New abilities, damage, cooldowns, replication | Simulation done (Astra); presentation is a separate task |
 | 5 | S2 chain points | SIMULATION | M | Chained DPS +20–25 %; stun escape window ~0.40→0.26 s | Done (Astra) |
 | 6 | S3 windup turning | SIMULATION | S–M | Hitbox yaw can change before the active window only | Done (Astra) |
@@ -644,3 +644,8 @@ These are proposals, not implemented. A real plunging attack is simulation:
 The presentation then needs only one line, `MeleeViewOf` setting `v.AirAttack`, plus the same flag in `AirView`,
 `NativeAirAttackFxPresentation` and `AirAttackCues` (each passes -1 today). The air take's strike would then key to the
 plunge's own window.
+
+
+### Astra night implementation, 2026-10-12
+
+`codex/unity-night-handoff-20261012` integrates sprint PR #133, implements the owner's landing-timed jump attack (explicit Air/PlungeAt/ImpactAt state, guest prediction and Land event), and corrects S0b with an enforced eleven-cut captured-blade check. See MELEE-SIMULATION-HANDOFF's night section for the precise simulation and replication contract. The earlier proposal/presentation-only status above is historical; Windows animation retiming and real native duel measurements are still pending. No animation clips are changed by this simulation patch.

@@ -36,6 +36,13 @@ namespace ChipArena.UnityConversion.Editor
                 replica=new NativeArena(authority.Content,new NativeMatch(authority.Content),authority.MapId){Replica=true,LocalId=authority.LocalId,ReplicaScene=scene};
                 replica.ApplyFrame(copy,authority.LocalId);
                 if(replica.Pve!=null||replica.Root.scene!=scene)throw new Exception("PvP replay/replica escaped its isolated scene or created PvE");
+                var devCosmetics=NativeFrameCodec.Clone(copy);devCosmetics.phase=NativePhase.Intro;devCosmetics.introStyle="sheldon-intro";devCosmetics.introSeat=devCosmetics.seats[0].id;
+                devCosmetics.seats[0].hat="sheldon-head";devCosmetics.seats[0].intro="sheldon-intro";devCosmetics.seats[0].overrideIntro=true;devCosmetics.snapshot.Actors[0].Hat="sheldon-head";
+                devCosmetics=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",frame=devCosmetics})).frame;replica.ApplyFrame(devCosmetics,authority.LocalId);
+                if(replica.Match.IntroStyle!="sheldon-intro"||replica.Match.Seat(devCosmetics.seats[0].id).hat!="sheldon-head"||replica.Pilots[0].Pose.Hat!="sheldon-head")throw new Exception("Host-approved DEV cosmetics did not reach a guest");
+                if(NativeCosmeticRules.Hat("sheldon-head",NativeAccess.Guest)!="none"||NativeCosmeticRules.OverrideIntro("sheldon-intro",true,NativeAccess.Guest))throw new Exception("Guest could select DEV-only Sheldon cosmetics");
+                replica.ApplyFrame(copy,authority.LocalId);
+                Debug.Log("PASS DEV cosmetics: host-approved Sheldon hat/intro survive real frame codec and guest application; guest selection remains denied");
                 var draft=NativeFrameCodec.Clone(copy);draft.phase=NativePhase.Draft;draft.draftSeat=draft.seats[1].id;draft.chosen=null;draft.readyAt=draft.time;
                 draft.seats[1].offers=new[]{authority.Content.chips.First(c=>c.rarity=="common").id};
                 draft=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=draft})).frame;
