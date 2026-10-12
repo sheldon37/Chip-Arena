@@ -1,5 +1,11 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Astra — isolate Kernel Panic build validation
+- Branch `codex/kernel-panic-build-fix-20261012`, base shared `5e0a19c`; fixes the owner’s Windows gate failure on `9607246` (`connect locks both and removes colliders`).
+- Root cause: `ValidateFollowupParity` leaves seat B marked `AuthorityBoss`, a configured PvE match and sandbox state. The following Kernel Panic fixture reuses that arena, so the real capsule connect correctly rejects B as a boss. Clearing only the boss flag would also leave PvE damage/sandbox behavior contaminating later assertions.
+- Run Kernel Panic in a fresh NativeMatch/NativeArena and dedicated preview physics scene after disposing the prior fixture. Add a clean-state precondition and a boss-exclusion regression case; restore the saved boss flag in cleanup. Gameplay rules, immunity, damage, animation timing and replication are unchanged.
+- Checks: `/tmp/chip-dotnet/dotnet run --project unity/ChipArenaConversion/Tests/CoreTests.csproj -c Release` passed (35 final managed-core groups, including Kernel Panic); `git diff --check` passed. The managed suite does not compile/execute the Editor-only fixture. Unity Editor/PhysX and Windows build are unavailable here and remain required via the local builder.
+- Integration: owner approved merging PR #143 and updating the builder source on 2026-10-12. Refreshed against shared `dfe1917`, preserving both sides of the DEV_LOG-only conflict; the two fix source files are unchanged. Merge/build-source advancement follows this resolution; no compiled update published. Unity/Windows validation remains for Build-and-Publish; do not bypass the gate.
 ## 2026-10-12 — Claude — CI: relay startup wait is a deadline
 - `native-source` failed on `3cf02f1` with "Relay startup timed out" before any test ran. The relay was unchanged. The cause: `tools/check_relay.py` polled 200 times, and a refused connection returns at once, so the poll gave the relay only ~10 s to start; the busy runner needed longer.
 - The wait is now a deadline: 60 s by default, set with `--startup-timeout` or `CHIP_RELAY_STARTUP_SECONDS`. Test behaviour and the test timeout are unchanged.
