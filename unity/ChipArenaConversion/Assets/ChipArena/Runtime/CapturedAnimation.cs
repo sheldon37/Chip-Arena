@@ -297,6 +297,8 @@ namespace ChipArena.UnityConversion
             private void MeleePose(Actor a,Vector3 position,float time)
             {
                 Weapon=a.Weapon;Set=Mathf.Clamp(a.VisualSet,0,3);if(melee==null)melee=new MeleeMotion();melee.Impacts=Impacts;melee.JumpLayer=JumpLayer;melee.Locomotion=Locomotion;melee.SprintLayer=SprintLayer;
+                // The Whirlwind's wide, stepping stance under its spinning upper body (zero for anything else).
+                MeleeKitMotion.Stance(a,time,melee.Gait);
                 float dt=meleeTime<-90||time<meleeTime||time-meleeTime>.35f?1/60f:Mathf.Min(.1f,time-meleeTime);meleeTime=time;
                 var v=MeleeViewOf(a,time,meleeView);v.Reach=WeaponReach;bool roll=a.Rolling(time),special=NativeSpecialPose.Active(a,time),down=NativeSpecialPose.Down(a,time),juggle=Juggled(a,time);v.Juggle=juggle;
                 float yaw=-melee.PresentedYaw(v,time,v.Yaw)*Mathf.Rad2Deg;
@@ -311,6 +313,8 @@ namespace ChipArena.UnityConversion
                     if(down)NativeSpecialPose.Recover(pose,a,time);
                     if(juggle)NativeJugglePose.Apply(pose,time,juggleTrack,a.Velocity.y);
                     r.ReadPose(pose);
+                    // The Whirlwind re-lays the gait's own ankles under its spin: the ground pass keeps them as layered legs.
+                    if(special&&MeleeKitMotion.RidesGait(a,time))r.LegsLayered=true;
                 });
                 melee.Rig.WritePose(pose);WritePose();fresh=false;lastTime=time;
                 State=juggle?"juggle":roll?"roll (adapted)":special?a.SpecialKind:down?"recovery "+NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time):melee.State;

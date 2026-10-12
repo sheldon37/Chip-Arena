@@ -70,6 +70,8 @@ namespace ChipArena.UnityConversion
     {
         public readonly MeleeRig Rig=new MeleeRig();
         private readonly MeleeGait gait=new MeleeGait();
+        // The gait under the action layers (its stance inputs, MeleeKitMotion.Stance).
+        public MeleeGait Gait=>gait;
         private readonly float[] row=new float[CapturedClip.Channels],rowB=new float[CapturedClip.Channels],rowC=new float[CapturedClip.Channels];
         private readonly MeleeCapture.RecoveryCache recovery=new MeleeCapture.RecoveryCache();private readonly MeleeRig fitScratch=new MeleeRig();
         private readonly MeleeCapture.WristHistory wrists=new MeleeCapture.WristHistory();

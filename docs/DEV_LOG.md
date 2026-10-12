@@ -1,5 +1,42 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Claude — greatsword Whirlwind presentation (owner: "Change the E animation on greatsword; completely ... a whirlwind attack? Spinning around for a short period while able to move ... add weight realism", "(Think like Garens spinning attack)")
+- Branch `claude/whirlwind`, base shared `c0e5aa1`, fast-forwarded to shared `1af916c` (Astra's Whirlwind rule, PR #132 `e69292a`) before the first commit. On the branch only: not pushed, merged or released. Contract and numbers: `docs/MELEE-ABILITIES.md` "Greatsword E: Whirlwind (owner 2026-10-12)".
+- Built against Astra's real contract. Pulses at `Release + k x .45`, so the tip crosses the facing at every pulse; the posed tip is 2 deg off at all seven. `Until` is the spin end and `RecoverUntil` the recovery end; `RecastKind="whirlwind"` drives the HUD. My first proposal (first pulse after a .35 s spin-up) is superseded: the spin-up now lives in the windup's uncoil.
+- Motion (`Core/MeleeKitMotion`):
+  - Windup: a heavy wind-back. The blade drops from the guard to drag low behind the right hip (coil 1 rad, hands peak 17 rad/s), the hips load and sink. The uncoil eases from rest to the full 13.96 rad/s spin by Release (peak 1.06x).
+  - Spin: the upper body and level blade turn about the spine. The chest leads the trailing blade by .3 rad. The torso leans 7.4 deg back and 9.7 deg away from the blade, and the head leads 18 deg. The hips sit 15 cm low with a 2 cm dip each turn and a 4.5 cm mass shift. The blade dips on the far side of each turn.
+  - Recovery: even deceleration. The full spin's momentum carries a 69 deg last turn over .17 s and stops facing front; an early recast stops within .15-.25 s, then the weight drops and the tip goes to the floor.
+  - First person: the camera never turns (the view chest varies 4.3 deg). The blade crosses the lower view each turn.
+  - Wolf Knight's kit poses, FX and audio were removed: nothing can replicate `Kind="wolf-knight"` now. The legacy `wolf-spin` phrase stays, because the Unity warm-up and `NativeSpecialChecks` still use it.
+- Legs are the gait's own planted feet, not the layer's:
+  - Small default-off hooks: `MeleeGait.Widen/Shuffle/Planted`, `MeleeMotion.Gait`, and one call each in `CapturedAnimation` for `MeleeKitMotion.Stance` and `RidesGait`, which sets `LegsLayered`.
+  - The overlay re-lays the gait's ankles under its body and pelvis change, so standing feet mark time once per turn per foot.
+  - Moving, the legs run the gait at the actual 5.44 m/s while the torso spins.
+- Effects (`Core/NativeMeleeKitFx`):
+  - windup: a 2.6 m telegraph ring with ticks, and drag sparks;
+  - spin: the accent arc ribbon (widest at the tip, left behind by travel), the radius ring, wind and dust, and low-tip sparks;
+  - each pulse: the existing hit flash plus a slash; the stop: a dust puff and the tip on the floor.
+  - Reduced and low tiers thin them.
+- Audio and HUD:
+  - audio: `melee.greatsword.spin`, `.swing` each later pulse, `impact.ground` + `melee.greatsword.hit` at the stop (`NativeMeleeKitSounds.Spin`, one `NativeAudio` line);
+  - HUD: SPINNING then END EARLY; the Recast event draws and plays nothing.
+- Animation impact: presentation only. No change to hit timing, hitboxes, damage, cooldowns, movement or network data. The gait hooks are inert unless a Whirlwind sets them (checked).
+- Checks on the committed tree:
+  - `unity-check.sh` (repo root): runtime+editor OK.
+  - Python unittest: OK (1 skipped). `package_source.py`: passed (1,340 files). `git diff --check c0e5aa1 HEAD`: clean.
+  - `check_relay.py`: no FAIL, but its fixed 90 s test cap expired under the shared machine's load (27-37 on 4 cores; Astra hit the same). An unmodified scratch copy with only a 400 s cap: exit 0, 427 PASS, 0 FAIL.
+  - The managed set is `MeleeKitPresentationChecks`, 1884 checks: pulse sync, rate continuity at every boundary for the full spin and six recast times, the early stop, foot slip on the real third-person route, stepping, first person, effects, HUD and audio.
+  - Foot slip: flat-planted feet 0.000 m/s in a standing and a 5.44 m/s moving spin; the plain-run baseline is .014.
+- Offline WebGL contact sheets in the session scratchpad: standing side/front, moving side/top-down, early end, first person.
+- Not run: Unity Editor, Windows play, two-client/guest view, killcam.
+- Risks:
+  - owner taste on the turret spin over striding legs;
+  - the worst early-recast case (torso facing backward) turns home at a 1.33x spin-rate peak;
+  - one heel-up toe-off frame per ~1.8 s of moving spin falls 2.6 cm short of the gait's target at the leg's reach;
+  - the runtime blade-sweep ribbon (`NativeWeaponDressing.Sweeping`) adds to the kit arc and was not rendered offline;
+  - the first-person forearms are prominent at the lower right.
+
 ## 2026-10-12 — Astra — replace greatsword E with Whirlwind
 - Branch `codex/unity-greatsword-whirlwind-20261012`, base current shared/cloud `c0e5aa1` (preserves Claude's latest jump attacks and Q/E presentation). Owner explicitly replaces Wolf Knight with a steerable spin; pushes/merges remain authorized. Integration/CI receipts are recorded in the task PR.
 - Native greatsword E now resolves `whirlwind`: fixed .3 s windup / 3 s active / .5 s recovery, 45 stamina and 11 s cooldown from commitment with existing cost/cooldown modifiers. Seven radial pulses at 0/.45/.90/1.35/1.80/2.25/2.70 active seconds deal 8.5 base each (59.5 total per target), base radius 2.6 m with normal reach/damage modifiers. Only pulse 1 attempts .12 s normal stagger. Contacts recheck visibility, teams, protection, roll and timed block; block still punishes/cancels the caster. Removes the old leap/slam and super armour from this ability.
