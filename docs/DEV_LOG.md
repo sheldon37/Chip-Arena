@@ -1,5 +1,36 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Claude — Bow fixes: first-person bow mirrored; Bow lobby stance
+- Branch `claude/bow-fixes`, base shared `aead19c` (contains Astra's Bow rules, the NativeBowWire rewiring `607ebce` and #145). Not pushed, merged or released.
+- Owner's Windows playtest: "first person on bow is also reversed" and "bow currently doesn't have a stance on lobby".
+- Root cause (first person): the view layout was the mirror image of the third-person right-handed archer. The rig frame has +x as the rig's left. `ViewEye.X=-.167` put the camera 16.7 cm to the right of the arrow line, so the nock, the string hand and the riser sat left of the crosshair and the string ran off to the left. `ViewCant=-.32` tipped the top limb left, against third person's `Cant=+.17` (top limb right), and the Volley's extra cant was mirrored too. The old BowChecks pin encoded this layout. Not reversed: the arrow's direction, the bow in the left hand, and the screen-symmetric meter.
+- Fix (`Core/NativeBowMotion.cs`): `ViewSide=.06`. The eye now sits 6 cm left of the arrow, so the nock is at the right jaw under the eye. `ViewCant=+.32`. One `CantOf(fan,firstPerson)` serves the bow pose and the Volley arrows' fan in `NativeBowPresentation`. Probe at full draw: nock 6.0 cm right of and 19.2 cm under the eye, top limb 19 cm right. Third person seen from its own head: 5.8 cm right, top limb right. The signs match.
+- Lobby (`Core/NativeLobbyPoses.cs`):
+  - `HeldBone(spec)`: the Bow rides the left hand, as its models of both skins are built on it. The portrait draws only the held joint's sections, so before this the bow was never drawn and the arms hung at rest.
+  - New native hero stance: the left wrist low at the left side (in the bow frame used in play), the elbow tucked back, the riser upright, the top limb forward of the shoulder, the lower tip behind the left heel, and the recurve turned to the card camera. The right hand is relaxed. The Rooftop crowd uses `HeldBone` too.
+  - Known gap, unchanged: the seated rooftop pilot's lip prop still picks the right hand, so a Bow pilot shows no prop there. A bow lying flat needs its own placement.
+- Prototype bow limbs (`Core/NativeWeaponModels.Bow.cs`): each limb box was turned the wrong way about x, so the chords zigzagged up to 9 cm off the limb line and read as loose sticks in the lobby close-ups. Fixed, and the Prototype pin was re-pinned (`0xae34fccc266bc756`). Arrow and quiver pins are unchanged. The Standard is unaffected.
+- Checks added:
+  - `BowChecks` Orientation, in the view frame at full draw: the arrow runs from the nock down the camera's forward, and the nock and string hand are right of and under the eye. The left hand holds the riser at the bow wrist, more than .6 m ahead. The string runs between the riser and the camera. The top limb cants right. These signs match third person from its head. Also covered: carry, early draw, release and the Volley's cant. It fails on the old layout.
+  - `BowChecks`: the Prototype limbs follow their centre line (fails at 8.7 cm on the old boxes).
+  - `LobbyPoseChecks` Bow block:
+    - joints and portrait model ids for both skins, with every section on the held joint;
+    - the bow shows only standing, upright with the recurve to the camera;
+    - over 6 breaths: at least 4 cm above the floor (6.8 measured), at least 12 cm clear of the body segments (18.6 measured), and under the crown;
+    - the Rooftop uses the same joint.
+    It fails without the stance or with the right-hand joint.
+- Renders (offline harness on the real Core code, not Unity): first-person strip before and after at carry .9, early draw 1.15, full 1.85, release 2.42, nock 2.62 and Volley 3.21/3.3. The side and shoulder (third person) tiles are pixel-identical before and after (AE 0 on all 14). The lobby pilot card, the Locker turns 35/-40/90/180 and close views of both skins.
+- Checks on the final tree:
+  - Unity runtime+editor build OK.
+  - `check_relay.py` exit 0 (566 PASS, 35 managed-core groups), and also exit 0 (566 PASS) in a copy holding only `unity/ChipArenaConversion`. The full tree skips the Cyber Lord spec text (no `docs/NEW-KITS.md`) and the copy skips the horde kinds spec; both skips predate this branch.
+  - Python unittest 95 OK (1 skipped), including `test_component_field_init.py`.
+  - `package_source.py` OK (1642 source files); Builds removed.
+  - `git diff --check` clean.
+- Not run: Unity Editor, Windows, play.
+- Remaining risk: during the early draw (about .1-.3 s in) the string forearm passes close to the camera as a large block, now at the bottom right. This predates the fix.
+- Not mine, untouched (Astra): rolling with the Bow crashes (content weights have no bow/cyberlord), and Q never sends AbilityQ for "volley".
+- Animation impact: presentation only. No hit timing, hitbox, damage, cooldown, movement, network or content change.
+
 ## 2026-10-12 — Astra — owner-selected Factory and Cyber City music
 - Branch `codex/factory-cybercity-music-20261012`, base shared `dfd45f32`. Owner supplied Anvil Loop Arena for Factory and Neon Riot Circuit for Cyber City and requested the update source push.
 - Bundled both original MP3s byte-for-byte under Resources/Audio/music, with streaming import metadata, unique GUIDs and asset-lock receipts. Tracks are 192.840 s and 204.792 s; embedded credit Xtrr - musiccreator, hashes in tools/factory-cybercity-music-credits.txt.
