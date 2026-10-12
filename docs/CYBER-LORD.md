@@ -43,7 +43,7 @@ The source is `Actor.Kernel` (`NativeKernelPanic`). It is on both participants; 
 `KernelPanicPath.Victim` and `Caster` follow those points exactly as `NativeKernelPanicRules.Sample` moves the bodies:
 the victim eases between its points within each step, and the caster teleports at each step. `NativeKernelPanicRules`
 also supplies the numbers: windup .25, cut-in .6, steps at 0 / .45 / .95 / 1.35 / 1.9 s, recovery at 2.6 s, the end at
-3.4 s, cooldown 30 and mana 60.
+3.4 s, cooldown 20 and mana 60. The owner increased opener reach to 12 m and sweep radius to 1.2 m on 2026-10-12.
 
 The hits land on the step starts (`HitAt`), so every take's impact is pinned there. The kick and the hammer wind up in
 the last .1 s and .08 s of the previous step, then strike as the host teleports the body in. Step 4's three hits arrive
@@ -133,10 +133,55 @@ game never calls it.
 Owner rule kept: no glowing disc, ring or tile lies on the floor. Areas read through their volume. Slam waves are upright.
 `CyberLordChecks` checks this on every drawn piece.
 
+## Idle stance
+
+The owner asked: "Id like to add a idle pose for the DEV Cyber Lord class (Matching the sheldon look) slight glitch
+effects". The code is in `Core/CyberLordIdle.cs`. It follows the Sheldon Intro's resolved ending
+(`NativeSheldonIntroScript` Stare and Arms).
+
+**The pose**
+- The figure stands upright. The pelvis keeps only its heading and the hips rise 3.5 cm. The gait keeps the feet planted.
+- The left hand rests on the hood's front edge at the temple, fingers over the brim, at the intro's `HandOnHood` and
+  `HandTurn`. The arm starts from the intro's raised-arm key and keeps that elbow's side.
+- With no Sheldon Head hood, two fingers rest at the bare temple instead.
+- The right arm hangs loose, and the chest is turned a little toward the raised hand.
+- A slow breath (3.2 s) lifts the chest and shoulders. The head holds its stare on the facing, chin a touch down, and
+  follows a share of the view's pitch. Neither the breath nor the stance take under it moves the head or the hips.
+
+**When it shows**
+- A third-person pilot settles into it after 0.9 s standing still, blending in over 0.6 s. The pilot must be alive,
+  grounded, not sprinting, at ground speed of 0.35 m/s or less, with the gait's travel at zero.
+- It blends out within 0.08 s on any of these: a step, a jab, a cast, a guard, a roll, a hit reaction, a stun, a jump,
+  or Kernel Panic.
+- A swing or cast must have finished its settle and blend out first, and only then does the 0.9 s still time start.
+- A fresh rig of a pilot already standing still (a late join, the killcam) shows the idle at once. Every window comes
+  from the replicated actor and its view. The only memory is when the pilot last moved.
+- The presented state is `cyber-idle`. First person is unchanged.
+
+**The glitch** is slight and occasional: about one moment every 4 s, some 6% of the idle's frames. It is seeded per
+pilot, on the Sheldon Intro's 24 Hz steps, and only shows once the stance has settled. There are four kinds:
+- an RGB-split shimmer (`Split`): a magenta and a cyan ghost of the posed body, 2 to 4 cm apart across it, for 0.2 s;
+- a slice tear (`Slice`, `HeadSlice`): the upper body, and some steps the head, torn up to 5.5 cm sideways for 0.125 s;
+- a scanline band (`Scan`): a band sweeping the hardlight parts over 0.5 s and flickering them dim and bright;
+- a rare twitch (`Twitch`): two steps of a neck and shoulder jolt, in some 6.5 s slots.
+
+With reduced effects there is no slice and no twitch. The split rises and falls once at a lower strength, and the band
+only brightens softly, so nothing strobes. In a match the tear and the twitch are in the rig's pose. The runtime draws
+the ghosts (`CyberIdleGhosts`) and the band (`CyberLordBody`).
+
+**Portraits** (lobby, Locker, pilot card, the Kernel Panic cut-in)
+- A Cyber Lord in the standing pose uses `CyberLordIdlePose.Stand` through `NativeLobbyPoses.Sample`, the new overload
+  that takes the hat, reduced effects and a seed. It stands even on both feet, unarmed, turned a little to the camera.
+- `Runtime/NativePortraits.cs` draws its hardlight look (unlit boxes) with the scanline band, and the split ghosts as
+  additive tinted copies.
+- With reduced motion (portrait time 0) it holds still and does not glitch. Every other pilot's lobby pose is unchanged.
+
+The idle is presentation only. It reads the actor and never writes it, and the hitboxes are the capsule, not the pose.
+
 ## Kernel Panic
 
 - **Opener.** The .25 s windup cocks the fist and drives the lunge punch, which lands at the contact. There the host
-  moves the body up to 6 m at once, and an RGB-split blink trail shows the path for .3 s.
+  moves the body up to 12 m at once, and an RGB-split blink trail shows the path for .3 s.
   - Whiff: a fizzle and the stumble out through the .6 s recovery. The card shows the half cooldown.
   - Connect: the caster freezes on the punch with a hardlight tremor, and the sparks hang in the air.
 - **Cut-in, .6 s** (`Core/NativeKernelPanicView.cs` KernelPanicCutIn, drawn by `Runtime/NativeCyberLordScreen.cs`).
@@ -207,6 +252,8 @@ constructs and voxels and drops smoke.
 
 None on the rules. The takes are timed to the replicated windows and hits; they never drive them. The participants' clock
 warp is presentation only, and the bodies stand where the snapshot puts them.
+The idle stance moves only the drawn rig: the hips 3.5 cm up over the same planted feet, and the glitch's tear up to
+5.5 cm sideways. The capsule, movement, hit timing and the network frame are untouched.
 
 ## What the rules side still needs to provide (Astra)
 
@@ -233,6 +280,7 @@ Kernel Panic (PR #138) and the kit (PR #142) are done. The presentation falls ba
 - the effect lifecycles, the tiers and the no-floor-disc rule;
 - the camera, clock and cut-in rules;
 - the DEV gate on every UI entry, the HUD states and the audio keys;
+- the idle stance: its triggers and blend out, the pose, the glitch schedule, reduced effects and the portraits;
 - zero per-frame allocation.
 
 The offline renders come from a scratch WebGL harness: real Core, real `NativeVfxDraw` and `NativeWeaponFxDraw`, and the

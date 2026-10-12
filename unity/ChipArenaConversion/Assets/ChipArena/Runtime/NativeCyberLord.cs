@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
         {
             if(!CyberAllowed(p)||!visible)return;input.Shoot=distance<=2.2f;input.Attack=input.Shoot;
             if(CyberBusy(p))return;var enemy=Pilots.FirstOrDefault(q=>q.Hp>0&&CanHit(p,q)&&Vector3.Distance(q.Body.position,target)<.1f);
-            if(distance<=6&&p.Mana>=60&&Time>=p.KernelReady&&enemy!=null&&Time>=enemy.BlockEnd)input.SirenAbility=4;
+            if(distance<=NativeKernelPanicRules.Range&&p.Mana>=NativeKernelPanicRules.Mana&&Time>=p.KernelReady&&enemy!=null&&Time>=enemy.BlockEnd)input.SirenAbility=4;
             else if(p.Mana>=40&&Time>=p.Cyber.CrashReady&&Pilots.Count(q=>q.Hp>0&&CanHit(p,q)&&Vector3.Distance(q.Body.position,p.Body.position)<=4)>=2)input.SirenAbility=3;
             else if(distance<=6&&p.Mana>=15&&Time>=p.Cyber.PacketReady)input.SirenAbility=1;
             else if(distance>3&&distance<=12&&p.Mana>=20&&Time>=p.Cyber.QReady)input.AbilityQ=true;

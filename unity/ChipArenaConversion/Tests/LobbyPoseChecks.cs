@@ -136,6 +136,52 @@ namespace ChipArena.UnityConversion
             NativePortraitRules.SleepMark(0,0,false,out var off0,out float sc0,out float op0);Check(off0==new Vector2(0,8)&&Math.Abs(sc0-.7f)<1e-6&&op0==0,"sleep mark start");
             NativePortraitRules.SleepMark(0,3.3f*.2f,false,out _,out _,out float op1);Near(op1,.8,1e-5,"sleep mark peak");NativePortraitRules.SleepMark(2,0,true,out var off2,out _,out float op2);Check(off2==new Vector2(27,-27)&&op2==.6f,"reduced sleep marks");
             Console.WriteLine("PASS lobby poses and portrait scene vs the original (lobby-poses.ts, menu-portraits.ts, auditor-halo.ts, character-rig.ts): "+poses+" poses ("+idle+" idle-held), worst joint "+(worstP*1000).ToString("0.0000")+" mm / "+worstQ.ToString("0.000000")+" rad, "+frames+" framings, "+tops+" hat tops (worst "+(worstTop*1000).ToString("0.0")+" mm), "+parts+" part classes, "+vertices+" primitive vertices; "+count+" assertions");
+            BowStance();
+        }
+        // The Bow's standing pose (native: the source has no bow, so no parity case). The bow rides the left wrist in the bow
+        // frame it is drawn in during play (every section of both skins is built on the left hand, and the portrait draws
+        // only the held joint's sections), shows only standing, rests upright at the left side with its recurve turned to the
+        // card camera, both tips off the podium and clear of the body, the same at every breath; the Rooftop uses the joint.
+        private static void BowStance()
+        {
+            int count=0;void Check(bool ok,string what){if(!ok)throw new Exception("Bow lobby stance: "+what);count++;}
+            const string spec=NativeBowWire.Spec;
+            Check(NativeLobbyPoses.HeldBone(spec)==CapturedRig.LHand&&NativeLobbyPoses.HeldBone("fire")==CapturedRig.LHand&&NativeLobbyPoses.HeldBone("pistol")==CapturedRig.RHand&&NativeLobbyPoses.HeldBone("sword")==CapturedRig.RHand,"held joints");
+            string proto=NativeWeaponSkins.PrototypeHeld(spec);
+            Check(NativeWeaponSkins.Model(proto,NativeWeaponSkins.PrototypeIndex)==NativeBowModels.PrototypeHeldId&&NativeWeaponSkins.Model(proto,NativeWeaponSkins.StandardIndex)==NativeWeaponSkins.StandardModel(spec,0)&&NativeWeaponSkins.StandardModel(spec,0)!=null,"portrait model ids of both skins");
+            var skins=new[]{("Standard",new[]{NativeWeaponModels.Build(spec,0),NativeWeaponModels.Build(spec,1),NativeWeaponModels.Build(spec,2)}),("Prototype",new[]{NativeBowModels.Part(false,NativeBowModels.Held,0)})};
+            foreach(var (name,meshes) in skins)foreach(var m in meshes)
+            {Check(m!=null&&m.Sections.Count>0,name+" model");foreach(var s in m.Sections)Check(s.Bone==NativeLobbyPoses.HeldBone(spec),name+" section on the held joint (the portrait draws only those): "+s.Bone);}
+            var rig=new MeleeRig();var pose=new CapturedRig.Pose();
+            for(int p=0;p<NativeLobbyPoses.Keys.Length;p++){rig.Reset();NativeLobbyPoses.Sample(rig,spec,p,1.3f,out var h,out var o);Check(h.Visible==(p==NativeLobbyPoses.Weapon)&&!o.Visible,"the bow shows only standing ("+NativeLobbyPoses.Keys[p]+")");}
+            // The body as segments between joints (the left arm holds the bow); the head box rises above its joint.
+            int[] chain={CapturedRig.Pelvis,CapturedRig.Spine,CapturedRig.Spine,CapturedRig.Chest,CapturedRig.Chest,CapturedRig.Neck,CapturedRig.Pelvis,CapturedRig.LHip,CapturedRig.LHip,CapturedRig.LKnee,CapturedRig.LKnee,CapturedRig.LFoot,CapturedRig.LFoot,CapturedRig.LToe,
+                CapturedRig.Pelvis,CapturedRig.RHip,CapturedRig.RHip,CapturedRig.RKnee,CapturedRig.RKnee,CapturedRig.RFoot,CapturedRig.RFoot,CapturedRig.RToe,CapturedRig.Chest,CapturedRig.LClav,CapturedRig.LClav,CapturedRig.LArm,CapturedRig.Chest,CapturedRig.RClav,CapturedRig.RClav,CapturedRig.RArm,CapturedRig.RArm,CapturedRig.RElbow,CapturedRig.RElbow,CapturedRig.RHand};
+            float Segment(Vector3 x,Vector3 a,Vector3 b){var d=b-a;float u=d.LengthSquared()<1e-10f?0:Math.Clamp(Vector3.Dot(x-a,d)/d.LengthSquared(),0,1);return Vector3.Distance(x,a+d*u);}
+            var floor=new Vector3(0,NativePortraitRules.GroupY,0);Vector3 first=Vector3.Zero;float worstLow=float.MaxValue,worstClear=float.MaxValue;
+            foreach(float t in new[]{0f,.8f,1.9f,3.7f,7.3f,11.1f})
+            {
+                rig.Reset();NativeLobbyPoses.Sample(rig,spec,NativeLobbyPoses.Weapon,t,out var held,out _);rig.WritePose(pose);pose.World();string at=" @"+t;
+                Check(held.Visible&&held.Bone==CapturedRig.LHand&&held.Position==Vector3.Zero&&held.Rotation==Quaternion.Identity,"held in the left wrist's frame (the bow frame, as in play)"+at);
+                for(int b=0;b<22;b++)Check(float.IsFinite(pose.WorldPosition[b].X+pose.WorldPosition[b].Y+pose.WorldPosition[b].Z),"finite pose"+at);
+                var q=pose.WorldRotation[held.Bone];var hand=pose.WorldPosition[held.Bone]+floor;
+                Vector3 up=Vector3.Transform(Vector3.UnitY,q),face=Vector3.Transform(Vector3.UnitX,q),forward=Vector3.Transform(Vector3.UnitZ,q);
+                Check(up.Y>.9f,"riser upright"+at+": "+up);Check(Math.Abs(face.Z)>.7f,"recurve turned to the card camera"+at+": "+face);Check(forward.X>.6f,"the back of the bow out to the left, the string toward the body"+at+": "+forward);
+                Check(hand.X>.25f&&hand.Y>.55f&&hand.Y<.85f,"the bow hand low at the left side"+at+": "+hand);
+                if(t==0)first=hand;else Check(Vector3.Distance(hand,first)<.02f,"breathing barely moves the bow"+at);
+                foreach(var (name,meshes) in skins)
+                {
+                    float low=float.MaxValue,top=float.MinValue,clear=float.MaxValue;
+                    foreach(var s in meshes[0].Sections)foreach(var v in s.Positions)
+                    {var w=hand+Vector3.Transform(v,q);low=Math.Min(low,w.Y);top=Math.Max(top,w.Y);for(int i=0;i+1<chain.Length;i+=2)clear=Math.Min(clear,Segment(w,pose.WorldPosition[chain[i]]+floor,pose.WorldPosition[chain[i+1]]+floor));
+                        var head=pose.WorldPosition[CapturedRig.Head]+floor;clear=Math.Min(clear,Segment(w,head,head+Vector3.Transform(new Vector3(0,.22f,0),pose.WorldRotation[CapturedRig.Head])));}
+                    Check(low>.04f,name+" lower tip off the podium"+at+": "+low);Check(top<pose.WorldPosition[CapturedRig.Head].Y+floor.Y+.1f,name+" top tip below the crown (the card frames the pilot)"+at+": "+top);
+                    Check(clear>.12f,name+" bow clear of the body"+at+": "+clear);worstLow=Math.Min(worstLow,low);worstClear=Math.Min(worstClear,clear);
+                }
+            }
+            var crowd=new NativeRooftopActors.State();NativeRooftopActors.Sample(new NativeRooftopActors.Look{Id="bow",Spec=spec,Hat="none",Body="#e5e7eb",Accent="#22e6ff",Script=NativeRooftopActors.Runner,L1=16,Gap=9,L2=9,Arc=2,Speed=7,Cycle=8},crowd,0);
+            Check(crowd.Weapon.Visible&&crowd.Weapon.Bone==CapturedRig.LHand,"the Rooftop holds the bow on the same joint");
+            Console.WriteLine("PASS Bow lobby stance (native): left-hand bow of both skins upright at the left side, recurve to the camera, lowest point "+(worstLow*100).ToString("0.0")+" cm above the floor, "+(worstClear*100).ToString("0.0")+" cm clear of the body; "+count+" assertions");
         }
         // The angle between two rotations, precise near zero (acos of a float dot is not: 1e-3 rad at dot 1-1.2e-7).
         private static double Angle(Quaternion a,Quaternion b)

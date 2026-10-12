@@ -20,7 +20,8 @@ using ChipArena.UnityConversion;
 //  5. tiers: reduced effects and the low graphics tier thin everything; reduced never strobes, shakes or cuts hard;
 //  6. the camera, the participants' clock and the cut-in;
 //  7. the DEV gate on every UI entry, the HUD cards, the entrance, the audio keys;
-//  8. no per-frame allocation.
+//  8. no per-frame allocation;
+//  9. the idle stance and its glitch.
 // Pixels are checked by the offline renders, not here; nothing here runs Unity.
 internal static class CyberLordChecks
 {
@@ -113,8 +114,8 @@ internal static class CyberLordChecks
             ("6 m, 50 degree cone of 8 glitch shards",CyberLordSpec.BurstRange==6&&CyberLordSpec.BurstAngle==50&&CyberLordSpec.BurstShards==8),("Cooldown 4 s,\n  15 mana",CyberLordSpec.Cooldowns[2]==4&&CyberLordSpec.Costs[2]==15),
             ("within 12 m for 2.5 s",CyberLordSpec.LinkRange==12&&CyberLordSpec.LinkSeconds==2.5f),("beyond 15 m. Cooldown 10 s, 25 mana",CyberLordSpec.LinkBreak==15&&CyberLordSpec.Cooldowns[3]==10&&CyberLordSpec.Costs[3]==25),
             ("a .5 s windup ground slam that makes a 4 m field",CyberLordSpec.CrashWindup==.5f&&CyberLordSpec.CrashRadius==4),("1.0 s \"glitched\"\n  stun. Cooldown 14 s, 40 mana",CyberLordSpec.CrashStun==1&&CyberLordSpec.Cooldowns[4]==14&&CyberLordSpec.Costs[4]==40),
-            ("A .25 s windup",CyberLordSpec.PanicWindup==.25f),("6 m hardlight lunge-punch",CyberLordSpec.PanicLunge==6),("radius .6 m",CyberLordSpec.PanicRadius==.6f),("**Whiff:** .6 s recovery, and half the cooldown",CyberLordSpec.PanicWhiff==.6f),
-            ("Cooldown 30 s, 60 mana",CyberLordSpec.Cooldowns[5]==30&&CyberLordSpec.Costs[5]==60),("a .6 s \"skill cut-in\"",CyberLordSpec.CutIn==.6f),
+            ("A .25 s windup",CyberLordSpec.PanicWindup==.25f),("12 m hardlight lunge-punch",CyberLordSpec.PanicLunge==12),("radius 1.2 m",CyberLordSpec.PanicRadius==1.2f),("**Whiff:** .6 s recovery, and half the cooldown",CyberLordSpec.PanicWhiff==.6f),
+            ("Cooldown 20 s, 60 mana",CyberLordSpec.Cooldowns[5]==20&&CyberLordSpec.Costs[5]==60),("a .6 s \"skill cut-in\"",CyberLordSpec.CutIn==.6f),
             ("launches the victim 8 m back along the facing, rising 1.5 m",KernelPanicPath.Launch==8&&KernelPanicPath.LaunchRise==1.5f),("| 2. Blink-behind | .45 s |",KernelPanicPath.Steps[1]==.45f),("kicks them straight up 5 m",KernelPanicPath.KickUp==5),
             ("| 3. Blink-above | .95 s |",KernelPanicPath.Steps[2]==.95f),("| 4. Fork bomb | 1.35 s |",KernelPanicPath.Steps[3]==1.35f),("| 5. Kernel Panic | 1.9 s |",KernelPanicPath.Steps[4]==1.9f),("| 1. Breaker | 0 s |",KernelPanicPath.Steps[0]==0),
             ("| Recovery | from 2.6 s | Caster recovers for .8 s",KernelPanicPath.Recovery==2.6f&&Math.Abs(KernelPanicPath.RecoverySeconds-.8f)<1e-5f),("a 5 m shockwave",KernelPanicPath.Shockwave==5),("about 3.4 s",Math.Abs(KernelPanicPath.End-3.4f)<1e-5f)})
@@ -562,6 +563,128 @@ internal static class CyberLordChecks
         yield return $"Cyber Lord DEV gate, HUD, entrance and audio: {count-c0} checks (DEV tile, badge and gate on the entrance; the cards, mana rows, cut-in and banner only for a Cyber Lord; the cards' states; {NativeCyberLordSounds.Keys.Length} existing bank keys and {NativeCyberLordSounds.Clips.Length} shipped fallback clips)";
 
         // ------------------------------------------------------------------------------------------------------------------
+        // 9. The idle stance and its glitch (Core/CyberLordIdle.cs; owner: "a idle pose ... (Matching the sheldon look) slight
+        //    glitch effects")
+        // ------------------------------------------------------------------------------------------------------------------
+        c0=count;
+        {
+            // A Cyber Lord on the fighter route (MeleeMotion.FighterBase, the style layer, FighterFinish), as the arena poses it.
+            Actor pilot=null;var mo=new MeleeMotion();var cy=new CyberLordMotion();var mv=new MeleeView{Id="1",Spec=CyberLordSpec.Id,Grounded=true};
+            void Fresh(string hat){pilot=CyberLordFixture.Pilot(1,Vector3.Zero,0);pilot.Hat=hat;mo=new MeleeMotion();cy=new CyberLordMotion();mv=new MeleeView{Id="1",Spec=CyberLordSpec.Id,Grounded=true};}
+            string PoseAt(float t)
+            {
+                mv.Vel=new Vector3(-pilot.Velocity.x,pilot.Velocity.y,pilot.Velocity.z);mv.Grounded=pilot.Grounded;mv.BlockTime=t<pilot.BlockUntil?pilot.BlockUntil-t:0;mv.LastBlock=pilot.BlockAt;mv.HitStunUntil=pilot.StunUntil;
+                mo.Rig.GroupPosition=new Vector3(0,.865f,0);mo.Rig.GroupYaw=0;mo.FighterBase(mv,t,1/60f);var st=cy.Style(mo,pilot,t,pilot.StunUntil>t);mo.FighterFinish(mv,t,1/60f);return st;
+            }
+            float Hold(float from,float to){for(float t=from;t<to-1e-4f;t+=1/60f)PoseAt(t);return cy.IdleWeight;}
+            // A pilot already standing still (a late join, the killcam's fresh rig) shows the stance at once; its state is cyber-idle.
+            Fresh(NativeSheldonHead.Hat);Check(PoseAt(.5f)=="cyber-idle"&&cy.IdleWeight>.999f,"a still pilot on a fresh rig stands in the idle at once");
+            // Every action blends it out within BlendOut (plus a frame), and it waits the still time after the move has settled
+            // and blended out (the presentation's own settle) before it returns.
+            foreach(var (label,act,end) in new (string,Action<float>,float)[]{
+                ("a step",t=>{pilot.Velocity=new V3(0,0,2.5f);},3.5f),("a jab",t=>CyberLordFixture.Combo(pilot,0,t),3+CyberLordSpec.ComboDurations[0]+CyberLordMotion.BlendOut),
+                ("a cast",t=>CyberLordFixture.Firewall(pilot,t),3+CyberLordSpec.CastSeconds[CyberLordSpec.E]+CyberLordSpec.Settle[CyberLordSpec.E]+CyberLordMotion.BlendOut),("the guard",t=>{pilot.BlockAt=t;pilot.BlockUntil=t+.5f;},3.5f),
+                ("a roll",t=>pilot.RollAt=t,3+pilot.VisualRollDuration),("a hit reaction",t=>{pilot.ReactionAt=t;pilot.ReactionUntil=t+.3f;},3.3f),("a stun",t=>pilot.StunUntil=t+.4f,3.4f),
+                ("a jump",t=>pilot.Grounded=false,3.4f),("Kernel Panic",t=>CyberLordFixture.KernelPanic(pilot,t,0,Vector3.Zero,connect:false),3+NativeKernelPanicRules.Windup+NativeKernelPanicRules.WhiffRecovery+CyberLordMotion.BlendOut)})
+            {
+                Fresh(NativeSheldonHead.Hat);Hold(1,3);Check(cy.IdleWeight>.999f,label+": idle before it");act(3);
+                float w=Hold(3,3+CyberLordIdle.BlendOut+1.5f/60);Check(w<=.02f,label+" blends the idle out at once ("+w+")");
+                // (The step and the jump end at `end`; the still time counts from the last busy frame.)
+                float stop=end;if(label=="a step"){Hold(3+CyberLordIdle.BlendOut+1.5f/60,stop);pilot.Velocity=default;}else if(label=="a jump"){Hold(3+CyberLordIdle.BlendOut+1.5f/60,stop);pilot.Grounded=true;}
+                else Hold(3+CyberLordIdle.BlendOut+1.5f/60,stop);
+                float settle=label=="a step"?.6f:.05f;
+                Check(Hold(stop,stop+CyberLordIdle.Delay-.06f)<=.001f,label+": the stance waits the still time");
+                Check(Hold(stop+CyberLordIdle.Delay-.06f,stop+CyberLordIdle.Delay+CyberLordIdle.BlendIn+settle+.1f)>.99f,label+": and blends back after it ("+cy.IdleWeight+")");
+            }
+            // The pose: the left hand on the hood (or at the bare temple), the right arm loose, the head held in the stare on the
+            // facing while the breath lifts the chest, all over the gait's planted legs; the actor is never written.
+            foreach(bool hood in new[]{true,false})
+            {
+                Fresh(hood?NativeSheldonHead.Hat:"none");string before=JsonSerializer.Serialize(pilot.ViewCopy(),json);
+                float lo=1,hi=-1,worstHead=0,worstHand=0;Quaternion stare=default;bool firstFrame=true;float minBody=9,maxBody=-9;
+                for(float t=1;t<6;t+=1/60f)
+                {
+                    PoseAt(t);var r=mo.Rig;var g=cy.IdleGlitch;if(g.Visible)continue;
+                    var head=r.ChainQuat(CapturedRig.Head,-1);var handAt=r.ChainPoint(CapturedRig.Head,-1)+Vector3.Transform(hood?CyberLordIdlePose.HandOnHood:CyberLordIdlePose.HandAtTemple,head);
+                    worstHand=Math.Max(worstHand,(r.ChainPoint(CapturedRig.LHand,-1)-handAt).Length());
+                    if(firstFrame){stare=head;firstFrame=false;}else worstHead=Math.Max(worstHead,2*(float)Math.Acos(Math.Min(1,Math.Abs(Quaternion.Dot(stare,head)))));
+                    float clav=r.ChainPoint(CapturedRig.RArm,-1).Y;lo=Math.Min(lo,clav);hi=Math.Max(hi,clav);
+                    float body=r.ChainPoint(CapturedRig.Pelvis,-1).Y;minBody=Math.Min(minBody,body);maxBody=Math.Max(maxBody,body);
+                    Check(r.ChainPoint(CapturedRig.RHand,-1).Y<r.ChainPoint(CapturedRig.Pelvis,-1).Y+.05f,"the right arm hangs loose ("+(hood?"hood":"bare")+")");
+                    foreach(var q in r.Q)Check(float.IsFinite(q.W)&&Math.Abs(q.Length()-1)<1e-3f,"finite rotations in the idle");
+                }
+                Check(worstHand<.03f,(hood?"the hand on the hood":"two fingers at the temple")+" (worst "+worstHand.ToString("0.000")+" m)");
+                Check(worstHead<.004f,"the head holds its stare through the breath (worst "+worstHead.ToString("0.0000")+" rad)");
+                Check(hi-lo>.006f&&hi-lo<.04f,"the breath lifts the shoulders visibly ("+(hi-lo).ToString("0.000")+" m)");
+                Check(maxBody-minBody<.004f,"the hips hold still under the breath");
+                Check(JsonSerializer.Serialize(pilot.ViewCopy(),json)==before,"the idle never writes the actor (the hitboxes are the capsule)");
+            }
+            {
+                // The stance stands where the fighter stance does: the hips rise only CyberLordIdlePose.Rise over the same feet.
+                Fresh(NativeSheldonHead.Hat);PoseAt(2);var a0=mo.Rig.ChainPoint(CapturedRig.LFoot,-1);var p0=mo.Rig.ChainPoint(CapturedRig.Pelvis,-1);
+                var ref1=CyberLordFixture.Pilot(1,Vector3.Zero,0);ref1.Velocity=new V3(0,0,.0001f);var mo2=new MeleeMotion();var cy2=new CyberLordMotion();var mv2=new MeleeView{Id="1",Spec=CyberLordSpec.Id,Grounded=true};
+                ref1.BlockAt=-100;ref1.AttackAt=1.95f;ref1.AttackUntil=2.5f;mo2.Rig.GroupPosition=new Vector3(0,.865f,0);mo2.FighterBase(mv2,2,1/60f);cy2.Style(mo2,ref1,2,false);mo2.FighterFinish(mv2,2,1/60f);
+                Check(cy2.IdleWeight<.001f,"(the reference pilot is busy)");var a1=mo2.Rig.ChainPoint(CapturedRig.LFoot,-1);var p1=mo2.Rig.ChainPoint(CapturedRig.Pelvis,-1);
+                Check((a0-a1).Length()<.01f&&Math.Abs(p0.X-p1.X)<.02f&&Math.Abs(p0.Z-p1.Z)<.03f&&p0.Y-p1.Y<CyberLordIdlePose.Rise+.02f,"the stance keeps the gait's feet and the body's place ("+(p0-p1)+")");
+            }
+            // The glitch: seeded per pilot and deterministic, only on the settled stance, slight and occasional; reduced effects
+            // keep the soft version (no slice, no twitch, no strobing).
+            {
+                int frames=0,shown=0,twitches=0;bool split=false,slice=false,scan=false,twitch=false,lastTwitch=false;float worstSlice=0;int differ=0;
+                for(float t=0;t<180;t+=1/60f)
+                {
+                    var g=CyberLordIdlePose.Glitch(1,t,1,false);var again=CyberLordIdlePose.Glitch(1,t,1,false);frames++;
+                    Check(g.Slice==again.Slice&&g.Split==again.Split&&g.Scan==again.Scan&&g.Twitch==again.Twitch&&g.ScanY==again.ScanY,"the glitch is a pure function of the seed and the time");
+                    if(g.Visible)shown++;split|=g.Split>0&&g.Slice==0;slice|=g.Slice!=0;scan|=g.Scan>0;bool tw=g.Twitch!=0;if(tw&&!lastTwitch)twitches++;lastTwitch=tw;twitch|=tw;worstSlice=Math.Max(worstSlice,Math.Abs(g.Slice));
+                    var other=CyberLordIdlePose.Glitch(2,t,1,false);if(other.Visible!=g.Visible)differ++;
+                    Check(!CyberLordIdlePose.Glitch(1,t,CyberLordIdlePose.Settled-.01f,false).Visible,"no glitch while the stance settles");
+                }
+                float share=(float)shown/frames;
+                Check(split&&slice&&scan&&twitch,"every glitch kind occurs (split "+split+", slice "+slice+", scan "+scan+", twitch "+twitch+")");
+                Check(share>.02f&&share<.14f,"the glitch is occasional: "+(100*share).ToString("0.0")+"% of the idle's frames");
+                Check(twitches>=3&&twitches<=30,"the twitch is rare ("+twitches+" in 180 s)");Check(worstSlice<=CyberLordIdlePose.SliceMax+1e-5f,"the slice stays slight");
+                Check(differ>frames/50,"each pilot has its own schedule");
+                float prev=0,worstStep=0;int reducedShown=0;
+                for(float t=0;t<180;t+=1/60f)
+                {
+                    var g=CyberLordIdlePose.Glitch(1,t,1,true);if(g.Visible)reducedShown++;
+                    Check(g.Slice==0&&g.HeadSlice==0&&g.Twitch==0&&g.Split<=CyberLordIdlePose.ReducedSplit+1e-5f,"reduced effects: no tear or twitch, a softer split");
+                    worstStep=Math.Max(worstStep,Math.Abs(g.Split-prev));prev=g.Split;
+                    var pc=new CyberPiece{Bone=CapturedRig.Chest,Position=new Vector3(0,.1f,.15f)};float gain=CyberLordIdlePose.ScanGain(g,pc,3,true);Check(gain>=1-1e-5f&&gain<=1.5f,"reduced effects: the band only brightens softly");
+                }
+                Check(worstStep<.06f,"reduced effects: the split eases in and out (largest 60 Hz step "+worstStep.ToString("0.000")+")");Check(reducedShown>0,"reduced effects keep a glitch");
+                var full=new CyberIdleGlitch{Scan=1,ScanY=CapturedRig.Bones[CapturedRig.Chest].Position.Y-.135f+.1f,Step=4};float lo=9,hi=0;
+                for(int i=0;i<12;i++){var pc=new CyberPiece{Bone=CapturedRig.Chest,Position=new Vector3(0,.1f,.15f)};full.Step=i;float k=CyberLordIdlePose.ScanGain(full,pc,i,false);lo=Math.Min(lo,k);hi=Math.Max(hi,k);}
+                Check(lo<.5f&&hi>1.5f&&CyberLordIdlePose.ScanGain(full,new CyberPiece{Bone=CapturedRig.LFoot},0,false)==1,"the scanline band flickers the hardlight parts inside it only");
+            }
+            // In a match the glitch reaches the pose (the tear moves the upper body off the hips; the twitch turns the neck).
+            {
+                Fresh(NativeSheldonHead.Hat);float tear=0;
+                for(float t=1;t<40;t+=1/60f){PoseAt(t);var g=cy.IdleGlitch;if(g.Slice!=0){var r=mo.Rig;tear=Math.Max(tear,Math.Abs(r.P[CapturedRig.Spine].X-CapturedRig.Bones[CapturedRig.Spine].Position.X));}}
+                Check(tear>.01f&&tear<=CyberLordIdlePose.SliceMax+1e-4f,"the tear shifts the upper body ("+tear.ToString("0.000")+" m)");
+                cy.Reduced=true;Fresh(NativeSheldonHead.Hat);cy.Reduced=true;for(float t=1;t<40;t+=1/60f){PoseAt(t);Check(cy.IdleGlitch.Slice==0&&cy.IdleGlitch.Twitch==0,"reduced effects never tear the pose");}
+            }
+            // The portraits (NativeLobbyPoses): the Cyber Lord stands in the same stance, unarmed; every other pilot as before.
+            {
+                var r=new MeleeRig();var rb=new MeleeRig();
+                NativeLobbyPoses.Sample(r,CyberLordSpec.Id,NativeLobbyPoses.Weapon,1.3f,NativeSheldonHead.Hat,false,7,out var w,out var off,out var g);
+                var head=r.ChainQuat(CapturedRig.Head,-1);var handAt=r.ChainPoint(CapturedRig.Head,-1)+Vector3.Transform(CyberLordIdlePose.HandOnHood,head);
+                Check(!w.Visible&&!off.Visible&&(r.ChainPoint(CapturedRig.LHand,-1)-handAt).Length()<.03f,"the lobby stance: unarmed, the hand on the hood");
+                Check(Math.Abs(r.ChainPoint(CapturedRig.LFoot,-1).Y-r.ChainPoint(CapturedRig.RFoot,-1).Y)<.01f&&r.ChainPoint(CapturedRig.RHand,-1).Y<r.ChainPoint(CapturedRig.Pelvis,-1).Y+.05f,"standing even, the right arm loose");
+                NativeLobbyPoses.Sample(r,CyberLordSpec.Id,NativeLobbyPoses.Weapon,0,"none",false,7,out _,out _,out var still);Check(!still.Visible,"reduced motion (portrait time 0): the stance holds still, no glitch");
+                foreach(var other in new[]{"sword","pistol","emperor","siren","fire"})foreach(int pose in new[]{NativeLobbyPoses.Weapon,NativeLobbyPoses.Chair,NativeLobbyPoses.Crossed})
+                {
+                    r.Reset();rb.Reset();NativeLobbyPoses.Sample(r,other,pose,1.1f,"hat-x",false,3,out var w1,out var o1,out var g1);NativeLobbyPoses.Sample(rb,other,pose,1.1f,out var w2,out var o2);
+                    bool same=w1.Visible==w2.Visible&&o1.Visible==o2.Visible&&!g1.Visible;for(int b=0;b<MeleeRig.N;b++)same&=r.Q[b]==rb.Q[b]&&r.P[b]==rb.P[b];
+                    Check(same,"every other pilot's lobby pose is unchanged ("+other+" "+pose+")");
+                }
+                int lobbyGlitch=0;for(float t=0;t<60;t+=1/30f){NativeLobbyPoses.Sample(r,CyberLordSpec.Id,NativeLobbyPoses.Weapon,t,NativeSheldonHead.Hat,true,7,out _,out _,out var gr);if(gr.Visible)lobbyGlitch++;Check(gr.Slice==0&&gr.Twitch==0,"reduced effects: the portrait never tears");}
+                Check(lobbyGlitch>0,"the portrait glitches too");
+            }
+        }
+        yield return $"Cyber Lord idle: {count-c0} checks (a still pilot settles after {CyberLordIdle.Delay} s over {CyberLordIdle.BlendIn} s and leaves it within {CyberLordIdle.BlendOut} s on a step, jab, cast, guard, roll, reaction, stun, jump or Kernel Panic; the hand on the hood or temple, the stare held, the breath visible, the feet and body kept, the actor untouched; the glitch seeded, slight, occasional and soft when reduced; the lobby stance, every other pilot's unchanged)";
+
+        // ------------------------------------------------------------------------------------------------------------------
         // 8. No per-frame allocation (after the first frame builds its tables)
         // ------------------------------------------------------------------------------------------------------------------
         c0=count;
@@ -569,6 +692,7 @@ internal static class CyberLordChecks
             var nul=new Null();var fxN=new NativeCyberLordFx();var sc=new Scene{LocalId=1,ViewerId=1};sc.List.AddRange(actors);var pieces=new CyberPiece[NativeCyberLordLook.Capacity];var o=new NativeKitSound[NativeCyberLordSounds.Max];
             var mo=new MeleeMotion();var cy=new CyberLordMotion();var mv=new MeleeView{Id="1",Spec=CyberLordSpec.Id,Grounded=true};var pose=new CapturedRig.Pose();var vpose=new CapturedRig.Pose();var feedView=new CyberLordView();var chars2=new char[KernelPanicCutIn.Title.Length];
             for(int b=0;b<MeleeRig.N;b++){vpose.Rotation[b]=Quaternion.Identity;vpose.Position[b]=CapturedRig.Bones[b].Position;}
+            var idlePilot=CyberLordFixture.Pilot(1,Vector3.Zero,0);idlePilot.Hat=NativeSheldonHead.Hat;var idleRig=new MeleeMotion();var idleMotion=new CyberLordMotion();var lobbyRig=new MeleeRig();
             var parts=new (string name,Action<float> run)[]{
                 ("effects",t=>{fxN.Observe(events,t);fxN.Draw(nul,sc,t,1,false);fxN.Draw(nul,sc,t,.3f,true);fxN.FlareOf(1,t);}),
                 ("look",t=>{CyberLordFeed.Read(actors[0],feedView);NativeCyberLordLook.Pieces(t,8,fxN.FlareOf(1,t),false,NativeCyberLordLook.BodySolid(feedView,t),1,false,pieces);NativeCyberLordLook.Pieces(t,8,default,true,1,.3f,true,pieces);}),
@@ -578,6 +702,8 @@ internal static class CyberLordChecks
                 ("camera",t=>{KernelPanicCamera.At(feedView,KernelPanicCamera.Clock(feedView,t,false),false,false,true,16/9f);KernelPanicCamera.At(feedView,KernelPanicCamera.Clock(feedView,t,true),true,true,false,1.3f);KernelPanicFeel.Screen(feedView,t,false,false);}),
                 ("cut-in",t=>{var cs=KernelPanicCutIn.At(t-feedView.PanicConnect,false);KernelPanicCutIn.Typed(cs.Typed,cs.Seed,chars2);KernelPanicCutIn.Banner(t-feedView.PanicConnect);}),
                 ("sounds",t=>{for(int s=0;s<NativeCyberLordSounds.Slots;s++)NativeCyberLordSounds.State(feedView,s,o,out _);NativeCyberLordSounds.Event(EventKind.Hit,CyberHit.Palm,false,o);}),
+                ("idle",t=>{idleRig.Rig.GroupPosition=new Vector3(0,.865f,0);idleRig.FighterBase(mv,t+20,1/60f);idleMotion.Style(idleRig,idlePilot,t+20,false);idleRig.FighterFinish(mv,t+20,1/60f);
+                    var g=CyberLordIdlePose.Glitch(1,t+20,1,false);for(int i=0;i<4;i++)CyberLordIdlePose.ScanGain(g,pieces[i],i,false);CyberLordIdlePose.Stand(lobbyRig,t,true,1,false);}),
             };
             CyberLordFeed.Read(actors[0],feedView);
             foreach(var (name,run) in parts){for(float t=8;t<13;t+=1/60f)run(t);}
@@ -587,6 +713,6 @@ internal static class CyberLordChecks
                 Check(bytes==0,"a 60 Hz playthrough of the busy timeline allocates "+bytes+" bytes in the "+name);
             }
         }
-        yield return $"Cyber Lord allocation: 0 bytes over 300 frames of the busy timeline (effects, look, rigs, HUD cards, camera, clock, cut-in, sounds); {count} checks in all";
+        yield return $"Cyber Lord allocation: 0 bytes over 300 frames of the busy timeline (effects, look, rigs, HUD cards, camera, clock, cut-in, sounds, the idle stance and glitch); {count} checks in all";
     }
 }

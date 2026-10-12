@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
     /// Shared: `start` (s after the arm time, FightAt + 4 s) and `offset` (s) place the first cycle, `period` repeats it;
     /// `lethal` (instant kill inside the live volume) or `damage`; `push` (m/s, non-lethal hits).
     /// </summary>
-    [Serializable] public sealed class FactoryHazard
+    [Serializable] public class FactoryHazard
     {
         public string id,kind;public V3 a,b,axis,size;
         public float radius,start,period,offset,warn,rise,travel,dwell,hoist,carry,damage,tick,push;public bool lethal,alternate;public MapVolume[] zones;

@@ -350,12 +350,15 @@ namespace ChipArena.UnityConversion
                 else if(down){r.WritePose(pose);NativeSpecialPose.Recover(pose,a,time);r.ReadPose(pose);State="recovery";}
                 else if(dodge){r.WritePose(pose);CapturedRig.Roll(pose,(time-a.RollAt)/a.VisualRollDuration);r.ReadPose(pose);State="roll (adapted)";}
                 // The DEV Cyber Lord's unarmed style (Core/CyberLordMotion: the pack's stance, combo and abilities on its replicated windows).
-                else if(cyber){cyberMotion??=new CyberLordMotion();State=cyberMotion.Style(melee,a,time,stun);}
+                else if(cyber){cyberMotion??=new CyberLordMotion();cyberMotion.Reduced=ReducedEffects;State=cyberMotion.Style(melee,a,time,stun);}
                 else if(NativeSourceMotion.Fighter(fighterClip,a,time,stun,out string key,true)){NativeFighterPose.Style(melee,fighterClip,a,stun,time);State=stun?"hit reaction":key;}
                 melee.FighterFinish(v,time,dt);
                 r.WritePose(pose);WritePose();fresh=false;lastTime=time;
             }
             private CyberLordMotion cyberMotion;
+            /// <summary>The DEV Cyber Lord's motion on this rig (its idle stance's weight and glitch), null for any other pilot so far;
+            /// and whether effects are reduced (the presentation sets it before posing: the idle glitch's softer version).</summary>
+            public CyberLordMotion CyberMotion=>cyberMotion;public bool ReducedEffects;
             /// <summary>Re-poses this rig's last pose through `layer` (a presentation overlay: the Kernel Panic victim's tumble,
             /// Core/CyberLordMotion.VictimPose); the bones are left as they were when it declines.</summary>
             public bool Overlay(Func<CapturedRig.Pose,bool> layer){ReadPose();if(layer==null||!layer(pose))return false;WritePose();return true;}

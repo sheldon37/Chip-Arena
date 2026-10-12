@@ -12,9 +12,11 @@ namespace ChipArena.UnityConversion
     //  - CyberPoseTime / CyberVictimPose (PrepareCapturedPose): Kernel Panic's participants on their hit-stopped clock, and its
     //    victim's tumble layered over the victim's own route (Core/CyberLordMotion.VictimPose);
     //  - CyberLordBody / CyberReveal (SourceCharacter): the hardlight gauntlets, fists, seams, crest and shimmer on the rig's
-    //    joints (Core/NativeCyberLordLook), and the Data Dash's dithered body;
+    //    joints (Core/NativeCyberLordLook) with the idle stance's scanline band (Core/CyberLordIdle.cs), and the Data Dash's
+    //    dithered body;
     //  - CyberLordFx (RenderGlow, before the weapons drawer is submitted): the effects (Core/NativeCyberLordFx), the glitched
-    //    pilots' RGB-split ghosts and pixel blocks, and the fork-bomb clones posed on rigs of their own.
+    //    pilots' RGB-split ghosts and pixel blocks, the idle stance's split shimmer, and the fork-bomb clones posed on rigs of
+    //    their own.
     // Host, guests, spectators and the killcam replay draw the same frame from the same data. Effects quality (Reduced) and the
     // low graphics tier thin it as the other effects do. Presentation only: nothing here reaches the authority, the network
     // frame, hit timing, hitboxes, damage or movement.
@@ -34,6 +36,10 @@ namespace ChipArena.UnityConversion
         private CyberScene cyberScene;private CyberSink cyberSink;
         private readonly CapturedAnimation.Player[] cyberCloneRigs=new CapturedAnimation.Player[3];private readonly Actor[] cyberCloneActors={new Actor(),new Actor(),new Actor()};
         private readonly GhostPose[] cyberGhostPoses={new GhostPose(),new GhostPose(),new GhostPose(),new GhostPose(),new GhostPose(),new GhostPose()};
+        // The idle stance's RGB-split shimmer: two ghosts each for up to four glitching pilots at once.
+        private readonly GhostPose[] cyberIdleGhosts={new GhostPose(),new GhostPose(),new GhostPose(),new GhostPose(),new GhostPose(),new GhostPose(),new GhostPose(),new GhostPose()};
+        /// <summary>The idle split ghosts' strength at a full glitch step (the stun's glitched ghosts reach about .42).</summary>
+        private const float CyberIdleGhostOpacity=.3f;
 
         /// <summary>Start of Render: this frame's Cyber Lord views (CyberLordFeed), the cyber events, the look's form times.</summary>
         private void BeginCyberLord(Snapshot s,float time)
@@ -86,7 +92,9 @@ namespace ChipArena.UnityConversion
             // The Hardlight Boot entrance forms and flares the look on its own clock (Core/NativeCyberLordIntro.cs).
             if(rig==introRig&&entranceScript is NativeCyberLordIntroScript intro){time=entranceTime;formAt=NativeCyberLordIntroScript.FormAt;flare=intro.Flare(time);solid=1;}
             int n=NativeCyberLordLook.Pieces(time,formAt,flare,first,solid,Mathf.Clamp01(WeaponEffectsQuality),LowGraphics,cyberPieces);
-            for(int i=0;i<n;i++)QueueCyberPiece(cyberPieces[i],rig.Bones[cyberPieces[i].Bone].localToWorldMatrix,1,layer,camera);
+            // The idle stance's scanline band over the hardlight parts (Core/CyberLordIdle.cs; none in first person or the entrance).
+            var glitch=!first&&rig!=introRig&&rig.CyberMotion!=null?rig.CyberMotion.IdleGlitch:default;bool reduced=WeaponEffectsQuality<.5f;
+            for(int i=0;i<n;i++)QueueCyberPiece(cyberPieces[i],rig.Bones[cyberPieces[i].Bone].localToWorldMatrix,CyberLordIdlePose.ScanGain(glitch,cyberPieces[i],i,reduced),layer,camera);
         }
         private void QueueCyberPiece(in CyberPiece p,Matrix4x4 bone,float gain,int layer,Camera camera)
         {
@@ -107,6 +115,7 @@ namespace ChipArena.UnityConversion
         private void CyberGhosts(Snapshot s,float time,float q)
         {
             string pilot=Ghost("pilot");if(pilot==null)return;int pose=0;
+            CyberIdleGhosts(s,pilot);
             for(int i=0;i<cyberFx.Ghosts;i++)
             {
                 var g=cyberFx.Ghost(i);var tint=new Color(g.Tint.X,g.Tint.Y,g.Tint.Z,0);
@@ -131,6 +140,24 @@ namespace ChipArena.UnityConversion
             }
         }
 
+        // The idle stance's RGB-split shimmer (Core/CyberLordIdlePose.Glitch): a magenta and a cyan ghost of the posed rig, a few
+        // centimetres apart across it, for the glitch's steps; never on the local pilot's own body in first person.
+        private void CyberIdleGhosts(Snapshot s,string pilot)
+        {
+            int used=0;var magenta=NativeCyberLordFx.Lin(NativeCyberLordFx.Magenta);var cyan=NativeCyberLordFx.Lin(NativeCyberLordFx.Cyan);
+            foreach(var a in s.Actors)
+            {
+                if(!CyberLordFeed.Handles(a)||FirstPerson&&a.Id==LocalId||used+2>cyberIdleGhosts.Length)continue;
+                if(!rigs.TryGetValue(a.Id,out var rig)||rig?.Bones==null||rig.CyberMotion==null)continue;var g=rig.CyberMotion.IdleGlitch;if(!(g.Split>1e-3f))continue;
+                var across=rig.Root.transform.right*(g.SplitOffset*.5f);
+                for(int k=0;k<2;k++)
+                {
+                    var gp=cyberIdleGhosts[used++];var off=Matrix4x4.Translate(k==0?across:-across);var c=k==0?magenta:cyan;
+                    gp.Root=off*rig.Root.transform.localToWorldMatrix;for(int b=0;b<22&&b<rig.Bones.Length;b++)gp.Bones[b]=off*rig.Bones[b].localToWorldMatrix;
+                    sourceModels.Queue(pilot,gp.Root,gp.Bone,null,0,null,new Color(c.X,c.Y,c.Z,0),null,g.Split*CyberIdleGhostOpacity);
+                }
+            }
+        }
         // What the Core effects read of this presentation (allocation-free once bound).
         private sealed class CyberScene:ICyberFxScene
         {

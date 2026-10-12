@@ -30,7 +30,7 @@ namespace ChipArena.UnityConversion
             {
                 Check(Pve==null&&!Sandbox&&!Match.Teams&&!a.Seat.AuthorityBoss&&!b.Seat.AuthorityBoss,"fixture requires clean PvP seats, without PvE/boss/sandbox state");
                 Setup();a.Seat.access=NativeAccess.Guest;Check(!StartKernelPanic(a),"non-DEV rejected");a.Seat.access=grant;
-                Check(StartKernelPanic(a)&&Math.Abs(a.Mana-40)<.001f&&a.KernelReady==40,"cast spends mana/cooldown");b.Hp=10;Clock(10.25f);
+                Check(StartKernelPanic(a)&&Math.Abs(a.Mana-40)<.001f&&a.KernelReady==30,"cast spends mana/cooldown");b.Hp=10;Clock(10.25f);
                 Check(a.Kernel.Active&&ReferenceEquals(a.Kernel,b.Kernel)&&!a.Collider.enabled&&!b.Collider.enabled,"connect locks both and removes colliders");
                 var copy=JsonUtility.FromJson<NativeKernelPanic>(JsonUtility.ToJson(a.Kernel));Check(copy.Valid()&&copy.Victim==b.Seat.id&&copy.VictimPoints.Length==6,"Unity JSON carries resolved path");
                 Check(Damage(b,null,1000,Vector3.zero,0,false,forced:true)==0&&b.Hp==10,"even environment/forced outsiders cannot damage victim");
@@ -40,7 +40,13 @@ namespace ChipArena.UnityConversion
                 Clock(12.75f);Check(b.Hp==0&&a.Kernel.Next==5,"finisher kills");
                 for(int step=1;step<=5;step++)Check(Events.Any(e=>e.Detail=="kernel-panic-"+step),"per-step event "+step);
                 Clock(14.25f);Check(a.Kernel.Outcome==4&&!a.Body.isKinematic&&a.Collider.enabled&&!b.Collider.enabled,"recovery restores only living bodies");
-                Setup();b.Body.position=new Vector3(0,100,14);Physics.SyncTransforms();Check(StartKernelPanic(a),"whiff cast");Clock(10.25f);Check(a.Kernel.Outcome==2&&a.KernelReady==25&&Math.Abs(a.Ready-10.85f)<.001f,"whiff recovery and half refund");
+                Setup();b.Body.position=new Vector3(0,100,14);Physics.SyncTransforms();Check(StartKernelPanic(a),"whiff cast");Clock(10.25f);Check(a.Kernel.Outcome==2&&a.KernelReady==20&&Math.Abs(a.Ready-10.85f)<.001f,"whiff recovery and half refund");
+                Setup();b.Body.position=new Vector3(0,100,10);Physics.SyncTransforms();Check(StartKernelPanic(a),"long reach cast");Clock(10.25f);Check(a.Kernel.Active&&a.Kernel.Victim==b.Seat.id,"capture beyond old 6 metre reach");
+                Setup();b.Body.position=new Vector3(1.3f,100,9);Physics.SyncTransforms();Check(StartKernelPanic(a),"wide reach cast");Clock(10.25f);Check(a.Kernel.Active&&a.Kernel.Victim==b.Seat.id,"wide sweep catches off-axis target");
+                Setup();b.Body.position=new Vector3(1.3f,100,9);
+                var cover=new GameObject("Kernel widened sweep cover");cover.layer=PropLayer;cover.transform.SetParent(root.transform);cover.transform.position=new Vector3(.65f,100,4.5f);cover.AddComponent<BoxCollider>().size=new Vector3(.2f,3,2);
+                try{Physics.SyncTransforms();Check(StartKernelPanic(a),"side cover cast");Clock(10.25f);Check(a.Kernel.Outcome==2&&b.Kernel==null,"wide sweep cannot capture through side cover");}
+                finally{UnityEngine.Object.DestroyImmediate(cover);Physics.SyncTransforms();}
                 Setup();b.Seat.AuthorityBoss=true;Check(StartKernelPanic(a),"boss exclusion cast");Clock(10.25f);Check(a.Kernel.Outcome==2&&b.Hp==100&&b.Kernel==null,"authority bosses cannot be connected");b.Seat.AuthorityBoss=false;
                 Setup();b.BlockEnd=20;Check(StartKernelPanic(a),"blocked cast");Clock(10.25f);Check(a.Kernel.Outcome==2&&b.Hp==100,"block prevents connect");
                 Setup();Check(StartKernelPanic(a),"disconnect cast");Clock(10.25f);a.Seat.connected=false;Clock(10.3f);Check(a.Kernel.Outcome==3&&!b.Body.isKinematic&&b.Collider.enabled,"disconnect releases victim");

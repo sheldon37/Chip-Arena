@@ -25,7 +25,7 @@ internal static class BowChecks
     private static float Reach(in NativeBowPose.Frame f)=>Math.Max(f.BowReach,f.DrawWeight>.5f?f.DrawReach:0);
     private static float LineDistance(Vector3 p,Vector3 o,Vector3 dir){dir=Vector3.Normalize(dir);var v=p-o;return (v-dir*Vector3.Dot(v,dir)).Length();}
     // The Prototype Series is pinned: its meshes may only change on purpose (update these with the reason in the commit).
-    private const ulong ProtoBow=0x6921910c38750e96UL,ProtoArrow=0xa6ea543d1452d3c0UL,ProtoQuiver=0x47160f2966502e94UL;
+    private const ulong ProtoBow=0xae34fccc266bc756UL,ProtoArrow=0xa6ea543d1452d3c0UL,ProtoQuiver=0x47160f2966502e94UL;
     public static void Run(string root)
     {
         var log=new List<string>();count=0;
@@ -60,6 +60,11 @@ internal static class BowChecks
         int[] arrow={NativeBowModels.ArrowMesh(true,0).Triangles,NativeBowModels.ArrowMesh(true,1).Triangles,NativeBowModels.ArrowMesh(true,2).Triangles},quiver={NativeBowModels.QuiverMesh(true,0).Triangles,NativeBowModels.QuiverMesh(true,1).Triangles,NativeBowModels.QuiverMesh(true,2).Triangles};
         Check(arrow[0]<=240&&arrow[1]<arrow[0]&&arrow[2]<arrow[1],"the arrow (drawn many times: stuck arrows, the volley) stays light and thins out ("+string.Join("/",arrow)+")");
         Check(quiver[0]<=1000&&quiver[1]<quiver[0]&&quiver[2]<quiver[1],"the quiver within 1000 triangles and thinning ("+string.Join("/",quiver)+")");
+        // The Prototype's limbs are box chords along the limb's centre line: each box's long axis follows its chord (a box turned
+        // the other way about x zigzags off the line by up to 9 cm).
+        var chords=new[]{0,3,6,9,11}.Select(i=>new Vector2(NativeBowModels.LimbPath[i].Y,NativeBowModels.LimbPath[i].Z)).ToArray();
+        float OffLine(Vector2 x){float best=1;for(int i=0;i+1<chords.Length;i++){var a=chords[i];var d=chords[i+1]-a;float u=Math.Clamp(Vector2.Dot(x-a,d)/d.LengthSquared(),0,1);best=Math.Min(best,Vector2.Distance(x,a+d*u));}return best;}
+        foreach(bool top in new[]{true,false}){float off=0;foreach(var s in NativeBowModels.Part(false,top?NativeBowModels.UpperLimb:NativeBowModels.LowerLimb,0).Sections)foreach(var v in s.Positions)off=Math.Max(off,OffLine(new Vector2(top?v.Y:-v.Y,v.Z)));Check(off<.025f,"the Prototype "+(top?"upper":"lower")+" limb follows its centre line ("+off+" m off)");}
         ulong pb=NativeBowModels.Hash(NativeBowModels.Part(false,NativeBowModels.Held,0)),pa=NativeBowModels.Hash(NativeBowModels.ArrowMesh(false,0)),pq=NativeBowModels.Hash(NativeBowModels.QuiverMesh(false,0));
         Check(pb==ProtoBow&&pa==ProtoArrow&&pq==ProtoQuiver,"the Prototype Series is pinned (bow 0x"+pb.ToString("x16")+", arrow 0x"+pa.ToString("x16")+", quiver 0x"+pq.ToString("x16")+")");
         // The ids drawn (the Prototype Series is drawn at its one tier: BowHeld and the bank use tier 0 for it).
@@ -205,8 +210,41 @@ internal static class BowChecks
         }
         Check(worst<1,"first person: the drawn arrow points down the view at the crosshair within 1 degree (worst "+worst.ToString("0.00")+")");
         Check(reach<=.522f,"first person: the arms reach (worst "+reach.ToString("0.000")+")");
-        Check(NativeBowPose.ViewEye.Y>NativeBowPose.ViewAnchor.Y&&NativeBowPose.ViewEye.X<NativeBowPose.ViewAnchor.X,"first person: the nock sits under and right of the eye, so the arrow comes in from the lower right");
+        Orientation(log);
         log.Add($"first person: the drawn arrow down the view within {worst:0.00} degrees at every pitch, the arms reaching (worst {reach:0.000} m)");
+    }
+    // The view is the same right-handed archer third person shows (the owner's playtest: "first person on bow is also reversed";
+    // the view had the camera right of the arrow line and the bow canted the other way, a left-handed archer's view). Source
+    // frame, +x the rig's LEFT: relative to the eye, x < 0 is the right of the screen.
+    private static void Orientation(List<string> log)
+    {
+        var a=Pilot(46);var pose=new CapturedRig.Pose();var eye=NativeBowPose.ViewEye;
+        NativeBowPose.Frame At(float t){a.BowDrawAt=t>=1&&t<2.4f?1:-1;if(t>=2.4f){a.BowReleaseAt=2.4f;a.BowDraw=1;}pose.Reset();var f=NativeBowPose.View(pose,a,t);NativeFirstPersonPose.SettleTorso(pose);return f;}
+        Vector3 Tip(in NativeBowPose.Frame f,bool top)=>f.BowWrist+Vector3.Transform(NativeBow.Anchor(top,f.Pull),f.BowRotation);
+        Vector3 Grip(in NativeBowPose.Frame f)=>f.BowWrist+Vector3.Transform(NativeBow.Grip,f.BowRotation);
+        Vector3 Forward(in NativeBowPose.Frame f)=>Vector3.Transform(Vector3.UnitZ,f.BowRotation);
+        // Full draw: the arrow tip down the camera's forward axis, the nock and the string hand low right, the riser in the bow
+        // (left) hand ahead, the string between the riser and the camera, the top limb canted right.
+        var full=At(1.9f);var nock=full.Nock-eye;var head=full.Nock+Forward(full)*NativeBow.ArrowLength-eye;var grip=Grip(full)-eye;var top=Tip(full,true)-eye;
+        Check(Vector3.Dot(Vector3.Normalize(head-nock),Vector3.UnitZ)>Math.Cos(D)&&head.Z>nock.Z+.8f,"first person: the arrow points from the nock down the camera's forward axis");
+        Check(nock.X<-.02f&&nock.Y<-.1f&&(pose.WorldPosition[CapturedRig.RHand]-eye).X<0,"first person: the nock and the string (right) hand sit low and to the right of the eye ("+nock.X.ToString("0.000")+")");
+        Check(Vector3.Distance(pose.WorldPosition[CapturedRig.LHand],full.BowWrist)<.02f&&Angle(Vector3.Transform(Vector3.UnitZ,pose.WorldRotation[CapturedRig.LHand]),Forward(full))<1&&grip.Z>.6f,"first person: the riser sits in the left hand, out ahead on the arrow line");
+        Check(grip.Z-nock.Z>.6f&&top.Z<grip.Z&&Tip(full,false).Z-eye.Z<grip.Z,"first person: the string runs between the riser and the camera (nock and tips behind the riser)");
+        Check(top.X<grip.X-.05f,"first person: the top limb cants to the right, away from the crosshair ("+(top.X-grip.X).ToString("0.000")+")");
+        // The same archer third person draws, seen from its own head along the aim: the same sides.
+        var d=new Driver();var tp=Pilot(47);tp.BowDrawAt=1;for(float t=0;t<=1.9f+1e-4f;t+=1/60f)d.Step(tp,t);var g=d.Motion.Shot;
+        var hq=d.Pose.WorldRotation[CapturedRig.Head];var hp=d.Pose.WorldPosition[CapturedRig.Head]+Vector3.Transform(new Vector3(0,.165f,.1f),hq);
+        var z=Vector3.Normalize(g.Aim);var x=Vector3.Normalize(Vector3.Cross(Vector3.UnitY,z));
+        float Side(Vector3 w)=>Vector3.Dot(w-hp,x);float tpCant=Side(g.BowWrist+Vector3.Transform(NativeBow.Anchor(true,g.Pull),g.BowRotation))-Side(g.BowWrist+Vector3.Transform(NativeBow.Grip,g.BowRotation));
+        Check(Side(g.Nock)<0&&tpCant<0,"third person: the nock right of the head and the top limb canted right ("+Side(g.Nock).ToString("0.000")+", "+tpCant.ToString("0.000")+")");
+        Check(Math.Sign(nock.X)==Math.Sign(Side(g.Nock))&&Math.Sign(top.X-grip.X)==Math.Sign(tpCant),"first and third person show the same right-handed archer");
+        // Carry: the bow low in the left hand on the left of the view; early draw and release keep the sides; the Volley lays the bow
+        // over further right; every phase's arrow points ahead.
+        var carry=At(.9f);Check((pose.WorldPosition[CapturedRig.LHand]-eye).X>0&&(carry.BowWrist-eye).Y<-.1f,"first person carry: the bow low on the left");
+        var early=At(1.15f);Check((early.Nock-eye).X<0&&Forward(early).Z>.99f,"first person early draw: the string hand right of the eye, the arrow ahead");
+        var rel=At(2.43f);Check(Forward(rel).Z>.95f,"first person release: the bow still faces down the view");
+        Check(NativeBowPose.CantOf(1,true)>NativeBowPose.CantOf(0,true)&&NativeBowPose.CantOf(0,true)>0&&NativeBowPose.CantOf(0,false)==NativeBowPose.Cant,"the Volley cants the bow further right in both views; third person keeps its cant");
+        log.Add($"first-person orientation: the arrow down the camera's forward axis, the nock {-nock.X*100:0} cm right of and {-nock.Y*100:0} cm below the eye, the riser in the left hand {grip.Z:0.00} m out, the string behind it, the top limb canted right, as third person draws it");
     }
 
     // ---- 6. stuck arrows: walls 6 s, pilots until death or the round's end ----
