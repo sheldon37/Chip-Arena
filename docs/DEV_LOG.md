@@ -1,5 +1,11 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Codex — owner-supplied main menu music
+- Branch `codex/unity-main-menu-music-20261012`, base shared/cloud `0c026f0`. Replaces only the Unity `music/menu-afterglow` asset with the complete uploaded “Chip Arena Main.mp3”; preserves the importer GUID and existing menu playback/volume behavior. No code, gameplay, networking or animation changes.
+- Updated asset receipt and attribution, including the existing packaged Music-Credits.txt source. Legacy Electron recording and historical conversion inventory remain unchanged.
+- Verification: exact upload-byte comparison, full MP3 decode, source asset/packaging validation and diff whitespace checks. Unity Editor/Windows listening and compiled publication require the local Build-and-Publish workflow. Source integration is recorded in the task PR; no compiled release claimed here.
+
+
 ## 2026-10-12 — Astra — Claude's dagger air jump and native melee sweep handoff
 - Branch `codex/unity-melee-followup-20261012`, base merged death-results repair `3bb8995f` / PR #127. Owner explicitly requested this handoff after the corpse fix was pushed/merged; that order is preserved. Both native jobs passed for #127 (38204779260) and its merged cloud head (38204933565). Integrated Claude's concurrent draft-row spacing fix `e0c2442e` and chain/turn/lunge presentation `0c026f0`, preserving all log entries. Source integration and publication receipts for this follow-up are recorded in its PR.
 - `NativeJumpSimulation` shares commitment across authority, the lab and guest prediction: daggers get one air jump at 90% of the scaled jump speed, setting vertical velocity; landing resets the budget, including walking off ledges. Attack/roll/incapacitation locks refuse it; lava retains its own stroke. A same-tick newly committed primary blocks jumping in host and prediction. Obstructed dagger bots may use the air jump when upward velocity has fallen to 2 m/s. Respawn/revive clears stale jump state.
