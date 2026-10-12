@@ -391,7 +391,9 @@ namespace ChipArena.UnityConversion
                     Save(blendP,blendQ); var run=Find(set,"run"); Sample(set,"run",run.Marks[0]+phase*run.Duration); Blend(blendP,blendQ,CapturedClip.Ease((speed-3.2f)/2.8f)*keep);
                     State=speed>4?"run":"walk";
                 }
-                if(attack)
+                // A swing begun in the air plays the weapon's jump attack (Core/NativeAirAttack) instead of the cut below.
+                bool air=!magic&&!GunRules.Ranged(a.Weapon)&&AirView(a,position,time,set,firstPerson,attack);
+                if(attack&&!air)
                 {
                     string cut="cut"+(char)('A'+a.Combo%(set==1?4:set==0?3:2)); var c=Find(set,cut);
                     float age=time-a.AttackAt,recovery=Mathf.Max(.001f,a.VisualDuration-a.VisualWindup-a.VisualActive);
@@ -467,6 +469,29 @@ namespace ChipArena.UnityConversion
                 if(sword&&ground&&!roll&&!special&&!down&&!juggle&&!NativeFighterPose.Handles(a.SourceSpec)) CapturedRig.BladeFloor(pose,false,1.28f);
                 if(firstPerson)NativeFirstPersonPose.SettleTorso(pose);
                 WritePose(); fresh=false;
+            }
+            // ---- the first-person jump attack (Core/NativeAirAttack; the third-person rigs pose it in MeleeMotion) ----
+            // The view rig keeps its own jump track and air-attack watch over the presented root (the rule the rig and the impact
+            // effects use). A swing begun in the air poses the weapon's air take on a scratch rig, its chest bowed so the raised
+            // weapon hangs in view and chops down through it, blended in over .04 s and settling into the guard after the window.
+            private readonly NativeJumpTrack airTrack=new NativeJumpTrack();private readonly NativeAirAttackWatch airWatch=new NativeAirAttackWatch();
+            private MeleeRig airRig;private readonly float[] airRow=new float[CapturedClip.Channels];private readonly CapturedRig.Pose airPose=new CapturedRig.Pose();
+            private bool AirView(Actor a,Vector3 position,float time,int set,bool firstPerson,bool attack)
+            {
+                bool blocked=a.Hp<=0||a.Rolling(time)||a.StunUntil>time||a.JuggleUntil>time||NativeSpecialPose.Active(a,time)||NativeSpecialPose.Down(a,time);
+                airTrack.Observe(time,a.Grounded,position.y,blocked);
+                airWatch.Observe(airTrack,a.AttackAt>-90?a.AttackAt:-100,a.CommitUntil>-90?a.CommitUntil:a.AttackAt+a.VisualDuration,-1,time,blocked);
+                var clip=NativeAirAttackRules.Clip(a.SourceSpec);var melee=MeleeSet.For(a.SourceSpec);
+                if(!attack||clip==null||melee==null||!airWatch.Air||airWatch.SwingAt!=a.AttackAt)return false;
+                float windup=a.VisualWindup,active=a.VisualActive,recovery=Mathf.Max(.001f,a.VisualDuration-windup-active),landed=airWatch.Landed(time),age=time-a.AttackAt;
+                age-=NativeAirAttackRules.Frozen(age,float.IsNaN(landed)?float.NaN:airWatch.ImpactAt-a.AttackAt,windup,active,airWatch.Strength);
+                clip.Sample(NativeAirAttackRules.ClipTime(clip,age,windup,active,recovery),airRow);
+                airRig??=new MeleeRig();airRig.Reset();airRig.WeaponVisible=!a.WeaponAway;airRig.WeaponReach=WeaponReach;
+                MeleeCapture.Apply(airRig,melee,airRow,CaptureOptions.Of(1,melee.Fit,MeleeClear.Turn,legs:0));airRig.WritePose(airPose);
+                if(firstPerson)NativeAirAttackRules.ViewPose(airPose,NativeAirAttackRules.ViewPitch(age,windup,active,recovery));
+                Save(blendP,blendQ);NativePoseWriter.Write(Bones,airPose,"a jump attack view model");Blend(blendP,blendQ,CapturedClip.Ease((time-a.AttackAt)/.04f));
+                if(age>windup+active){Save(blendP,blendQ);Sample(set,"idle",time);Blend(blendP,blendQ,MeleeSwing.Settle(age,windup,active,recovery));}
+                State="air attack"+(float.IsNaN(landed)?"":" landed");return true;
             }
             // Third-person magic pilots (host, guests, killcam), the four schools and L33t H4x, walk on the source's gait
             // (Core/MagicMotion): the magic layer rides the gait's body bob, torso counter-twist and arm swing instead of

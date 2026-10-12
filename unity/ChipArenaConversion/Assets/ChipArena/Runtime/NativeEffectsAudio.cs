@@ -154,7 +154,7 @@ namespace ChipArena.UnityConversion
             FlushUi();BankCaps();
             int generation=arena?.Generation??-1;if(generation!=bankGeneration){bankGeneration=generation;StopLoops();strides.Clear();bank.ResetClock();}
             if(arena==null||menu||bank.Count==0){FadeLoops(false,null);return;}
-            FieldCues(arena);FadeLoops(true,arena);MoveCues(arena);MoveFeelCues(arena);
+            FieldCues(arena);FadeLoops(true,arena);MoveCues(arena);MoveFeelCues(arena);AirAttackCues(arena);
         }
 
         // ---------- field hooks: born cues, mine arming, fuse beeps and loops tied to the field's life ----------
