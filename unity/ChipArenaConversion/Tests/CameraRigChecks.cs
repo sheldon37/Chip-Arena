@@ -23,7 +23,7 @@ internal static class CameraRigChecks
     private static string Cm(float m)=>(m*100).ToString("0.00")+" cm";
     public static void Run(string root)
     {
-        var log=new List<string>();Modes(log);Convergence(log);LockOn(log);Collision(log);Maps(root,log);Blends(log);Focus(log);Sprint(log);Allocation(log);Classic(root,log);
+        var log=new List<string>();Modes(log);Convergence(log);AuthorityRule(log);LockOn(log);Collision(log);Maps(root,log);Blends(log);Focus(log);Sprint(log);Allocation(log);Classic(root,log);
         foreach(var line in log)Console.WriteLine("PASS camera rig: "+line);
     }
 
@@ -105,7 +105,7 @@ internal static class CameraRigChecks
         var distances=new[]{2f,3,5,8,10,15,20,30,45,60};
         foreach(var m in All)
         {
-            float worstEye=0,worstGun=0,worstAbility=0,worstBodyAbility=0,worstRaw=0,worstYaw=0;int cases=0;
+            float worstEye=0,worstGun=0,worstAbility=0,worstBodyAbility=0,worstOld=0,worstClassicAbility=0,worstRaw=0,worstYaw=0;int cases=0,stopped=0;
             foreach(float d in distances)foreach(float side in new[]{-3f,0,2.5f})foreach(float height in new[]{-.5f,0,1.6f})foreach(bool wall in new[]{false,true})
             {
                 // The target: a pilot hit volume (a .45 m sphere at its chest) or a point on a wall facing the pilot.
@@ -136,12 +136,21 @@ internal static class CameraRigChecks
                 if(converges)worstRaw=Math.Max(worstRaw,NativeAimConvergence.Miss(eye,NativeAimConvergence.Direction(yaw,-pitch),P));
                 // The primary: NativeArena.Fire starts at body + .3 up + yaw (.2, 0, .48) and flies at AimTarget (= P).
                 var start=body+Vector3.UnitY*.3f+Yawed(sentYaw,new Vector3(.2f,0,.48f));worstGun=Math.Max(worstGun,NativeAimConvergence.Miss(start,P-start,P));
-                // A gun or magic ability: the authority casts its point along the look from the eye against the world (a pilot is
-                // not in that mask: the wall behind it), backs off .03 m, and flies from Muzzle (.52 up, yaw (.18, 0, .68)).
+                // A gun or magic ability: AuthorityAim casts its point along the look from the eye against the world (a pilot is
+                // not in that mask: the wall behind it) and backs off .03 m; the shot flies from Muzzle (.52 up, yaw (.18, 0,
+                // .68)). AimedAbilityPoint: the reported AbilityTarget (= P) on that ray and the authority's own ray meeting the
+                // pilot there stop it at the pilot instead.
                 var muzzle=body+Vector3.UnitY*.52f+Yawed(sentYaw,new Vector3(.18f,0,.68f));
                 Vector3 hitPoint;if(wall){float s=(target.Z-eye.Z)/look.Z;hitPoint=eye+look*s-look*.03f;}else{float s=(target.Z+6-eye.Z)/look.Z;hitPoint=eye+look*Math.Min(s,60);}
+                float oldMiss=NativeAimConvergence.Miss(muzzle,hitPoint-muzzle,P);
+                if(NativeAimConvergence.OnLook(eye,look,P,(hitPoint-eye).Length(),out float along))
+                {
+                    float bodyAt=wall?-1:RaySphere(eye,look,target,.45f);
+                    if(NativeAimConvergence.Confirms(along,bodyAt,(hitPoint-eye).Length())){hitPoint=eye+look*bodyAt-look*.03f;stopped++;}
+                }
                 float abilityMiss=NativeAimConvergence.Miss(muzzle,hitPoint-muzzle,P);
-                if(converges||m.First){if(wall)worstAbility=Math.Max(worstAbility,abilityMiss);else worstBodyAbility=Math.Max(worstBodyAbility,abilityMiss);}
+                if(converges||m.First){if(wall)worstAbility=Math.Max(worstAbility,abilityMiss);else{worstBodyAbility=Math.Max(worstBodyAbility,abilityMiss);worstOld=Math.Max(worstOld,oldMiss);}}
+                else{worstClassicAbility=Math.Max(worstClassicAbility,Math.Abs(abilityMiss-oldMiss));}
                 cases++;
             }
             Check(worstGun<.02f,m.Name+": the primary from the real muzzle passes "+Cm(worstGun)+" from the crosshair point");
@@ -149,12 +158,16 @@ internal static class CameraRigChecks
             {
                 Check(worstEye<.02f,m.Name+": the sent look from the eye passes "+Cm(worstEye)+" from the crosshair point");
                 Check(worstAbility<.02f,m.Name+": an ability at a world point lands "+Cm(worstAbility)+" from it");
-                Check(worstBodyAbility<Capsule,m.Name+": an ability at a pilot passes "+Cm(worstBodyAbility)+" from the crosshair point, inside its capsule");
+                Check(worstBodyAbility<.02f&&stopped==cases/2,m.Name+": an ability at a pilot passes "+Cm(worstBodyAbility)+" from the crosshair point ("+stopped+" stopped at the pilot)");
                 Check(worstYaw<=NativeAimConvergence.MaxYaw,m.Name+": the look turns at most "+worstYaw.ToString("0.0")+" degrees");
                 log.Add(m.Name+": "+cases+" targets 2-60 m (pilot volumes and walls, left/centre/right, low/level/high): the primary from the real muzzle passes within "+Cm(worstGun)+", the sent look from the eye within "+Cm(worstEye)+
-                    ", an ability at a world point within "+Cm(worstAbility)+" (at a pilot "+Cm(worstBodyAbility)+", inside its .42 m capsule); the look turns at most "+worstYaw.ToString("0.0")+" deg"+(m.First?"":"; the unconverged camera look would miss by up to "+Cm(worstRaw)));
+                    ", an ability at a world point within "+Cm(worstAbility)+" and at a pilot within "+Cm(worstBodyAbility)+" (the authority's ray stops at the pilot; before, up to "+Cm(worstOld)+"); the look turns at most "+worstYaw.ToString("0.0")+" deg"+(m.First?"":"; the unconverged camera look would miss by up to "+Cm(worstRaw)));
             }
-            else log.Add(m.Name+": unchanged input (no convergence, as before): the primary still passes within "+Cm(worstGun)+" (it flies at AimTarget); the eye look keeps its old offset (up to "+Cm(worstRaw)+") as before");
+            else
+            {
+                Check(stopped==0&&worstClassicAbility==0,"classic: the authority never takes the reported point ("+stopped+")");
+                log.Add(m.Name+": unchanged input (no convergence, as before): the primary still passes within "+Cm(worstGun)+" (it flies at AimTarget); the eye look keeps its old offset (up to "+Cm(worstRaw)+") and the authority's ability point is exactly AuthorityAim, as before");
+            }
         }
         // Clamps: a wall almost at the muzzle, the sky, and hits behind the pilot's shot origin.
         {
@@ -174,6 +187,30 @@ internal static class CameraRigChecks
             float bearing=(float)(Math.Atan2(target.X-eye.X,target.Z-eye.Z)*180/Math.PI);Check(Math.Abs(NativeAimConvergence.DeltaAngle(y,bearing))<5,"melee faces a pilot "+d+" m under the crosshair");
         }
         log.Add("clamps: 25 degrees around the look (a wall at the muzzle, a high point), the sky keeps the look, hits behind the shot origin skipped, the yaw continuous; melee turns to a pilot under the crosshair at 2-5 m");
+    }
+
+    // ---- the authority's ability ray (NativeAbilities.AimedAbilityPoint through NativeAimConvergence.OnLook / Confirms) ----
+    private static void AuthorityRule(List<string> log)
+    {
+        var eye=new Vector3(0,Centre+Eye,0);var look=Vector3.UnitZ;
+        Check(NativeAimConvergence.OnLook(eye,look,eye+new Vector3(.1f,0,8),20,out float along)&&Math.Abs(along-8)<1e-4f,"a report on the look selects its depth");
+        Check(!NativeAimConvergence.OnLook(eye,look,eye+new Vector3(.2f,0,8),20,out _),"a report .2 m off the look is refused");
+        Check(!NativeAimConvergence.OnLook(eye,look,eye+new Vector3(0,0,25),20,out _)&&!NativeAimConvergence.OnLook(eye,look,eye+new Vector3(0,0,19.995f),20,out _),"a report at or past the authority's world point (a wall or the range) is refused");
+        Check(!NativeAimConvergence.OnLook(eye,look,eye+new Vector3(0,0,-3),20,out _)&&!NativeAimConvergence.OnLook(eye,look,eye+new Vector3(0,0,.2f),20,out _),"a report behind or at the eye is refused");
+        Check(!NativeAimConvergence.OnLook(eye,look,new Vector3(float.NaN,0,5),20,out _),"a non-finite report is refused");
+        Check(NativeAimConvergence.Confirms(8,7.7f,20)&&!NativeAimConvergence.Confirms(8,-1,20)&&!NativeAimConvergence.Confirms(8,6.9f,20)&&!NativeAimConvergence.Confirms(8,21,20),"only a body the authority's own ray meets near the reported depth, before the world point, confirms it");
+        // Classic: its crosshair ray runs .55 m above the eye ray (parallel), so no report qualifies at any pitch or distance.
+        int classic=0,shoulder=0,checkedShoulder=0;
+        foreach(float pitch in new[]{-70f,-45,-20,0,12,30,50,70})foreach(float d in new[]{1f,3,8,20,45})
+        {
+            NativeCameraRig.Basis(0,pitch,out var f,out _);var cam=eye-f*NativeViewRules.ThirdDistance+Vector3.UnitY*NativeViewRules.ThirdLift;var report=cam+f*(NativeViewRules.ThirdDistance+d);
+            if(NativeAimConvergence.OnLook(eye,NativeAimConvergence.Direction(0,-pitch),report,60,out _))classic++;
+            // A shoulder rig aimed the same way: its converged look passes the report.
+            var rig=Rig(All[0]);var at=rig.Place(eye,0,pitch,0,Dt,Open);var P=at+f*((eye-at).Length()+d);
+            NativeAimConvergence.Angles(eye,P,0,pitch,out float y,out float p);if(Math.Abs(NativeAimConvergence.DeltaAngle(0,y))<NativeAimConvergence.MaxYaw-.01f&&Math.Abs(p+pitch)<NativeAimConvergence.MaxPitch-.01f){checkedShoulder++;if(NativeAimConvergence.OnLook(eye,NativeAimConvergence.Direction(y,p),P,80,out _))shoulder++;}
+        }
+        Check(classic==0,"classic never qualifies ("+classic+" of 40 looks)");Check(shoulder==checkedShoulder&&checkedShoulder>=30,"a converged shoulder look always carries its report ("+shoulder+"/"+checkedShoulder+")");
+        log.Add("authority: a gun or magic ability's own aim ray stops only at a body it meets within .6 m of a report lying within .15 m of the ray, .3 m out and before the world point (off-ray, past a wall or the range, behind the eye and NaN refused); classic never qualifies (0 of 40 looks), converged shoulder looks always do ("+shoulder+"/"+checkedShoulder+")");
     }
 
     // ---- lock-on framing ----
@@ -358,17 +395,23 @@ internal static class CameraRigChecks
         Check(sc.Contains("convergeAim=shoulderView&&Spectator==null&&!menu;")&&sc.Contains("if(!convergeAim||cinematic.Directing)return;")&&sc.Contains("aimSkip=convergeAim?")&&cg.Contains("hit.distance<aimSkip)continue;"),"Classic and first person send the camera look and the old AimTarget (no convergence, no skip)");
         Check(lk.Contains("LockLook(eye,target.point,out float wantYaw,out float wantPitch)")&&sc.Contains("if(!shoulderView||presentation.FirstPerson){wantYaw=Mathf.Atan2(d.x,d.z)*Mathf.Rad2Deg;wantPitch=Mathf.Clamp(-Mathf.Atan2(d.y,new Vector2(d.x,d.z).magnitude)*Mathf.Rad2Deg+3.438f,-63,63);return;}"),"Classic and first person keep the original lock-on look");
         Check(sp.Contains("!first&&!aim?ShoulderSprintFov():0")&&sc.Contains("ShoulderSprintFov()=>shoulderView&&")&&sc.Contains("if(!shoulderView||presentation.FirstPerson)return;"),"Classic keeps no third-person sprint kick, as before");
-        // The aim convergence sits after the camera-ray targets and before the shakes; the authority is untouched.
+        // The aim convergence sits after the camera-ray targets and before the shakes.
         int target=cg.IndexOf("pending.AbilityTarget=NativeArena.Vec(AimPoint("),converge=cg.IndexOf("ConvergeAim(p);"),shake=cg.IndexOf("NativeShakeRules.Offset(");
         Check(target>0&&converge>target&&shake>converge,"the convergence follows AimTarget/AbilityTarget, before any shake moves the camera");
-        foreach(var f in new[]{"Runtime/NativeArena.cs","Runtime/NativeProjectiles.cs","Runtime/NativeAbilities.cs","Runtime/NativeParityValidation.cs","Runtime/NativeMelee.cs","Runtime/NativeMeleeAbilities.cs","Runtime/NativeNetworkFrame.cs","Core/WireCodec.cs","Core/ArenaModel.cs","Core/NativeMeleePrediction.cs"})
-            Check(!R(f).Contains("NativeCameraRig")&&!R(f).Contains("NativeAimConvergence"),f+" (authority, prediction and wire) does not use the camera");
+        // The authority's one addition: gun and magic Q/E stop their own aim ray at a confirmed body (bots excluded); the
+        // primary, hit validation, prediction and the wire are untouched; AuthorityAim and its wall check remain.
+        string ab=R("Runtime/NativeAbilities.cs"),pv=R("Runtime/NativeParityValidation.cs");
+        Check(ab.Contains("Vector3 point=AimedAbilityPoint(p,(float)d.range);")&&ab.Contains("Vector3 point=AuthorityAim(p,range);if(p.Seat.bot||p.Input.AbilityTarget.Length<.01f)return point;")
+            &&ab.Contains("return NativeAimConvergence.Confirms(along,body,world)?at-look*.03f:point;")&&ab.Contains("if(q==p||!(q!=null&&q.Hp>0||m!=null&&m.Hp>0)"),"the authority ends a gun or magic ability's own ray at a confirmed live body, never the caster; bots keep AuthorityAim");
+        Check(pv.Contains("private Vector3 AuthorityAim(NativePilot p,float range)")&&pv.Contains("\"reported target cannot bypass a wall\""),"AuthorityAim and its wall check are unchanged");
+        foreach(var f in new[]{"Runtime/NativeArena.cs","Runtime/NativeProjectiles.cs","Runtime/NativeParityValidation.cs","Runtime/NativeMelee.cs","Runtime/NativeMeleeAbilities.cs","Runtime/NativeNetworkFrame.cs","Runtime/NativeReplicaMotion.cs","Core/WireCodec.cs","Core/ArenaModel.cs","Core/NativeMeleePrediction.cs"})
+            Check(!R(f).Contains("NativeCameraRig")&&!R(f).Contains("NativeAimConvergence"),f+" (primaries, melee, prediction and wire) does not use the camera");
         // Preferences and keys.
         Check(cg.Contains("public string cameraMode=NativeCameraModes.Default;public bool shoulderLeft;")&&cg.Contains("prefs.cameraMode=NativeCameraModes.Sanitize(prefs.cameraMode);"),"the saved camera has a default (older saves: the right shoulder) and is sanitized on load");
         Check(st.Contains("Field(\"Camera\");NativeCameraModes.Choose(ChoiceGrid(NativeCameraModes.Choices,"),"Settings · Camera offers the five modes");
         Check(sc.Contains("Input.GetKeyDown(KeyCode.X)")&&cg.Contains("CameraKeys(typing);"),"X swaps the shoulder");
         var keyed=Directory.GetFiles(Path.Combine(root,"Assets/ChipArena"),"*.cs",SearchOption.AllDirectories).Where(f=>File.ReadAllText(f).Contains("KeyCode.X")).Select(Path.GetFileName).ToArray();
         Check(keyed.Length==1&&keyed[0]=="NativeShoulderCamera.cs","X is bound nowhere else ("+string.Join(",",keyed)+")");
-        log.Add("Classic is the old camera: its original placement code verbatim (settled), 60 degree FOV, unconverged look and AimTarget, the original lock-on look and no third-person sprint kick; authority, prediction and wire code untouched; the saved camera defaults to the right shoulder; Settings · Camera; X bound only here");
+        log.Add("Classic is the old camera: its original placement code verbatim (settled), 60 degree FOV, unconverged look and AimTarget, the original lock-on look and no third-person sprint kick; the authority's one addition (gun/magic Q/E aim ray stops at a confirmed body) wired, AuthorityAim kept, primaries, prediction and wire code untouched; the saved camera defaults to the right shoulder; Settings · Camera; X bound only here");
     }
 }

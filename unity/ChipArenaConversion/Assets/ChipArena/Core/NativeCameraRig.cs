@@ -210,7 +210,8 @@ namespace ChipArena.UnityConversion
     /// already fires primaries from the real muzzle at AimTarget), and sends Yaw/Pitch pointing the pilot's eye origin
     /// (body + EyeHeight, the authority's AuthorityAim origin for gun and magic abilities) at P, within 25 degrees of the
     /// camera's look. Melee only turns toward a body under the crosshair; otherwise it keeps the far point (the camera's look).
-    /// The authority is unchanged; guests predict with the same frame.
+    /// Guests predict with the same frame. The one authority addition (OnLook/Confirms) stops a gun or magic ability's own aim
+    /// ray at a pilot or minion under the crosshair; primaries, hit validation and the wire format are unchanged.
     /// </summary>
     public static class NativeAimConvergence
     {
@@ -235,6 +236,24 @@ namespace ChipArena.UnityConversion
         {
             direction=Vector3.Normalize(direction);var d=point-origin;float along=Math.Max(0,Vector3.Dot(d,direction));return (d-direction*along).Length();
         }
+        /// <summary>
+        /// Authority side (owner's overnight request 2026-10-12). A gun or magic Q/E point is the authority's own ray from the
+        /// eye along the sent look against the world (AuthorityAim), so a crosshair on a pilot put it on the wall behind. With
+        /// the look converged, the client's AbilityTarget (P) lies on that ray. When it does (within LookTolerance, at least .3 m
+        /// out, nearer than the authority's world point) the authority stops its own ray at a live body it meets within BodySlack
+        /// of that depth (Confirms). The report only picks a depth on the authority's ray, never past a wall or the range. The
+        /// classic camera's crosshair ray runs parallel to the eye ray at least .19 m off (.55 m lift at pitch 70), so Classic
+        /// never qualifies and keeps AuthorityAim exactly; first person qualifies (its ray is the eye ray).
+        /// </summary>
+        public const float LookTolerance=.15f,BodySlack=.6f;
+        public static bool OnLook(Vector3 eye,Vector3 look,Vector3 reported,float world,out float along)
+        {
+            look=Vector3.Normalize(look);var d=reported-eye;along=Vector3.Dot(d,look);
+            if(!(along>=.3f)||!(along<world-.01f))return false;
+            return (d-look*along).Length()<=LookTolerance;
+        }
+        /// <summary>Whether the authority's own body hit (distance along its ray, -1 for none) confirms the reported depth.</summary>
+        public static bool Confirms(float along,float body,float world)=>body>=0&&body<world&&Math.Abs(body-along)<=BodySlack;
     }
 
     /// <summary>The third-person sprint weight and stride for the shoulder rigs' FOV kick and bob (NativeSprintRules.Fov and

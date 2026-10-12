@@ -5,7 +5,8 @@ namespace ChipArena.UnityConversion
 {
     // Settings · Camera (Core/NativeCameraRig.cs): the shoulder rigs, their aim convergence and lock-on framing, the swap key,
     // and their sprint FOV kick and bob. Classic, once settled, runs UpdateCamera's original code and sends the look unchanged;
-    // first person is unchanged. Presentation and the client's input look only: the authority and the wire format are untouched.
+    // first person is unchanged. Presentation and the client's input look; the wire format is untouched (the authority's one
+    // addition, NativeAbilities.AimedAbilityPoint, ends a gun or magic ability's aim ray at a body under the crosshair).
     public sealed partial class ConversionGame
     {
         private readonly NativeCameraRig cameraRig=new NativeCameraRig();private readonly NativeCameraSprint cameraSprint=new NativeCameraSprint();
