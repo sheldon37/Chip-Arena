@@ -34,7 +34,8 @@ namespace ChipArena.UnityConversion
     ///    a pure function of its age, faster in its last second).
     /// Three draws a frame, each one dynamic mesh refilled from reused arrays (no per-frame allocation): every sprite, streak
     /// and puff in one premultiplied mesh sorted back to front (Resources/NativeVfx.shader, queue Transparent with bounds
-    /// round what it holds, so Unity sorts the batch among the field domes, the tidal wave and the dust by where it is), the
+    /// round what it holds, so Unity sorts the batch among the field domes and the dust by where it is; the Tidal Wave's body,
+    /// NativeMagicFxDraw, draws just before it at Transparent-1, so the wave's own spray and splashes lie over the water), the
     /// lit meshes (NativeVfxLit.shader, opaque) and the shock shells (NativeVfxLit.shader, additive, Transparent+4).
     /// Graphics.DrawMesh to the given camera, layer 0, no shadows. Soft particles: the puffs and glows fade where they meet the
     /// scene's depth (the camera's depth texture, which the shadowed key light already makes Unity render in forward); not on
@@ -196,7 +197,7 @@ namespace ChipArena.UnityConversion
         {
             var vfx=Resources.Load<Shader>("NativeVfx");if(vfx==null)throw new InvalidOperationException("NativeVfx shader is missing");
             var lighting=Resources.Load<Shader>("NativeVfxLit");if(lighting==null)throw new InvalidOperationException("NativeVfxLit shader is missing");
-            // In the Transparent queue with the field domes, the Siren warnings, the tidal wave and the dust; the batch's bounds
+            // In the Transparent queue with the field domes, the Siren warnings and the dust (the Tidal Wave body just before); the batch's bounds
             // (Submit) put it in Unity's back-to-front order among them. Before the combat glow halos (+10).
             billboardMaterial=new Material(vfx){name="Native vfx billboards",renderQueue=(int)RenderQueue.Transparent,hideFlags=HideFlags.HideAndDontSave};
             litMaterial=new Material(lighting){name="Native vfx lit",renderQueue=(int)RenderQueue.Geometry,hideFlags=HideFlags.HideAndDontSave};
@@ -240,6 +241,19 @@ namespace ChipArena.UnityConversion
         /// for none). Toon pass (2026-10-11): drawn as a toon puff (hard lobes, two-tone shadow, eaten into blobs late in life),
         /// the default look for smoke; <see cref="SoftSmoke"/> keeps the base layer's soft lit puff.</summary>
         public void Smoke(Vector3 at,Color albedo,float opacity,float size,float u,float seed,float floor)=>Toon(at,albedo,Mathf.Clamp01(opacity),size,ToonSmokeMode,u,seed,floor);
+        /// <summary>A toon water puff (the Water role's look) for other effects: its lit tone (linear) and shadow tone (an sRGB
+        /// hex), opacity, size, stretched along segment, u its normalized age (eaten into blobs late), seed, floor height.</summary>
+        public void Water(Vector3 at,Color lit,int shade,float opacity,float size,Vector3 segment,float u,float seed,float floor)=>Oriented(at,lit,Mathf.Clamp01(opacity),size,segment,shade,u,seed,floor);
+        /// <summary>A blended teardrop along segment, its round head at head (the Droplet role's look: water drops, ink threads);
+        /// color linear, its alpha the coverage.</summary>
+        public void Drop(Vector3 head,Vector3 segment,Color color,float width,float u,float seed)
+        {
+            if(!(width>1e-4f))return;float len=segment.magnitude;
+            if(len<width*2.5f)segment=len>1e-5f?segment*(width*2.5f/len):new Vector3(0,width*2.5f,0);
+            Sprite(head,segment,color,width,NativeVfxTextures.DropTile,u,seed);
+        }
+        /// <summary>The noise tile once uploaded (null before): the magic effects' water flow reads it.</summary>
+        public Texture NoiseTexture=>noise;
         /// <summary>The base layer's soft lit smoke puff (atlas erosion), same arguments as <see cref="Smoke"/>.</summary>
         public void SoftSmoke(Vector3 at,Color albedo,float opacity,float size,float u,float seed,float floor)=>Puff(at,albedo,opacity,size,SmokeMode,u,seed,floor);
         // The toon puffs' gentler lift: authored darks (slate, ink) stay dark, only near-black soot is raised a little.

@@ -122,6 +122,9 @@ namespace ChipArena.UnityConversion
         private readonly bool gamma;
         private readonly NativeVfxDraw vfx;private readonly bool ownsVfx;
         private NativeArena last;private int generation=-1;private float lastTime=-1;
+        /// <summary>The magic effects (NativeMagicFxPresentation) draw the Tidal Wave's own body: its source box is skipped
+        /// (the scene still holds it, so the source parity and the counts are unchanged).</summary>
+        public bool MagicLooks;
         public int Parts=>scene.Draws.Count;public int Sparks=>scene.Bursts.Count;public int Beams=>scene.Bursts.Beams;public int Live=>scene.Live;
         /// <summary>The source BurstPool port (renderer.burst/beam) these visuals draw and step each frame; event effects spawn
         /// into it (NativeBlastPresentation via NativeImpactCues).</summary>
@@ -168,6 +171,8 @@ namespace ChipArena.UnityConversion
             foreach(var s in arena.MeleeShots){NativeShotViews.Melee(arena,s,tracker,now,out var v);scene.Shot(v);}
             scene.End(dt);Fill(camera);
         }
+        // The shapes only the projectiles NativeMagicFx.Owns use (the Tidal Wave's box).
+        private static bool MagicOwned(NativeShotShape shape)=>shape==NativeShotShape.TidalWave;
         private Color Shade(float r,float g,float b,float a)=>gamma?new Color(Mathf.LinearToGammaSpace(r),Mathf.LinearToGammaSpace(g),Mathf.LinearToGammaSpace(b),a):new Color(r,g,b,a);
         private void Fill(Camera camera)
         {
@@ -175,7 +180,7 @@ namespace ChipArena.UnityConversion
             var draws=scene.Draws;
             for(int i=0;i<draws.Count;i++)
             {
-                var d=draws[i];var color=Shade(d.R,d.G,d.B,d.A);if(d.A<.999f){DrawTranslucent(d,color,camera);continue;}
+                var d=draws[i];if(MagicLooks&&MagicOwned(d.Shape))continue;var color=Shade(d.R,d.G,d.B,d.A);if(d.A<.999f){DrawTranslucent(d,color,camera);continue;}
                 var mesh=NativeShotShapes.Mesh(d.Shape);var p=mesh.Positions;int start=solid.Vertices.Count;
                 for(int k=0;k<p.Length;k+=3){d.M.Apply(p[k],p[k+1],p[k+2],out float x,out float y,out float z);solid.Vertices.Add(new Vector3(x,y,z));solid.Colors.Add(color);}
                 var tris=mesh.Indices;for(int k=0;k<tris.Length;k++)solid.Indices.Add(start+tris[k]);

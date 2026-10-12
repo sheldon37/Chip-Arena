@@ -47,11 +47,14 @@ namespace ChipArena.UnityConversion
         private readonly Light[] projectileLights=new Light[3],impactLights=new Light[2],armorLights=new Light[2];
         private readonly Dictionary<long,NativeTrace> traces=new Dictionary<long,NativeTrace>();private readonly Stack<NativeTrace> spareTraces=new Stack<NativeTrace>();private readonly List<long> expired=new List<long>();
         // One projectile's halo, spill light and trail this frame (projectile-glow.ts and projectile-trails.ts via NativeShotRules).
-        private struct ShotGlow{public long Key;public Vector3 Position;public float Radius,Intensity,Range,Width;public int Halo,Trail;public bool Traced;}
+        private struct ShotGlow{public long Key;public Vector3 Position;public float Radius,Intensity,Range,Width;public int Halo,Trail;public bool Traced,NoHalo;}
         private readonly List<ShotGlow> glowShots=new List<ShotGlow>();private readonly List<double> glowDistances=new List<double>();private readonly int[] nearest=new int[3];
         private static readonly int[] viewHands={CapturedRig.LHand,CapturedRig.RHand};
         private readonly List<SurfaceMark> marks=new List<SurfaceMark>();private int generation=-1,lastEvent;
         private float lastTime=-1;public float Quality=1;public bool Trails=true;
+        /// <summary>The magic effects draw these projectiles' own look (NativeMagicFx.Owns: the Tidal Wave): no halo or trail
+        /// here; their spill light stays.</summary>
+        public bool MagicLooks;
         /// <summary>
         /// Armor halo size and opacity factor, the pooled armor spill intensity (three units) and its range (m; armor-glow.ts: 1,
         /// 8 and 3.6). The pool reaches 2.4 m, at a strength that keeps the floor under the pilot as lit as at 3.6 m, so a
@@ -112,7 +115,7 @@ namespace ChipArena.UnityConversion
         {
             if(v.Siren)return;var position=new Vector3((float)v.X,(float)v.Y,(float)v.Z);
             glowDistances.Add((position-camera).sqrMagnitude);
-            glowShots.Add(new ShotGlow{Key=NativeShotScene.Key(v.Kind,v.Id),Position=position,Radius=(float)v.Radius,Halo=NativeShotRules.HaloColor(v,clock),Trail=NativeShotRules.TrailColor(v,clock),Width=(float)NativeShotRules.TrailWidth(v),Traced=NativeShotRules.HasTrail(v),Intensity=(float)NativeShotRules.LightIntensity(v),Range=(float)NativeShotRules.LightRange(v)});
+            glowShots.Add(new ShotGlow{Key=NativeShotScene.Key(v.Kind,v.Id),Position=position,Radius=(float)v.Radius,Halo=NativeShotRules.HaloColor(v,clock),Trail=NativeShotRules.TrailColor(v,clock),Width=(float)NativeShotRules.TrailWidth(v),Traced=NativeShotRules.HasTrail(v)&&!(MagicLooks&&NativeMagicFx.Owns(v)),NoHalo=MagicLooks&&NativeMagicFx.Owns(v),Intensity=(float)NativeShotRules.LightIntensity(v),Range=(float)NativeShotRules.LightRange(v)});
         }
         public void Render(NativeArena arena,Camera camera,Camera viewCamera,bool first,Dictionary<int,CapturedAnimation.Player> rigs,CapturedAnimation.Player viewRig,Matrix4x4? viewStaff,bool submitDraws=true)
         {
@@ -135,7 +138,7 @@ namespace ChipArena.UnityConversion
             foreach(var shot in arena.MeleeShots){NativeShotViews.Melee(arena,shot,tracker,clock,out var v);AddShot(v,clock,eye);}
             for(int n=0;n<glowShots.Count;n++)
             {
-                var shot=glowShots[n];if(glow)world.Halo(shot.Position,right,up,NativeGlowRules.HaloSize(shot.Radius,Quality),ShotTint(shot.Halo),.88f);
+                var shot=glowShots[n];if(glow&&!shot.NoHalo)world.Halo(shot.Position,right,up,NativeGlowRules.HaloSize(shot.Radius,Quality),ShotTint(shot.Halo),.88f);
                 if(!Trails||!shot.Traced)continue;
                 if(!traces.TryGetValue(shot.Key,out var trace))
                 {
