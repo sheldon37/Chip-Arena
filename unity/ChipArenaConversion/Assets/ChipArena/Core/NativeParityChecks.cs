@@ -15,7 +15,7 @@ namespace ChipArena.UnityConversion
         public static List<string> Run(ConversionContent data,ParityFixtures fixtures)
         {
             data.Validate();Check(data.sourceCommit==fixtures.sourceCommit,"Source receipts differ");
-            Check(data.weapons.Length==15&&data.chips.Length==236&&data.maps.Count(m=>!m.unity)==15&&data.maps.Where(m=>!m.unity).Sum(m=>m.blocks.Length)==3451&&data.abilities.Length==14,"Content inventory differs from pinned source");
+            Check(data.weapons.Length==15&&data.chips.Length==236&&data.maps.Count(m=>!m.unity)==15&&data.maps.Where(m=>!m.unity).Sum(m=>m.blocks.Length)==3451&&data.abilities.Count(a=>!NativeMeleeRules.Standard(a.spec))==14,"Content inventory differs from pinned source");
             int values=0;
             foreach(var c in fixtures.cases)
             {

@@ -33,3 +33,19 @@ test('short passwords register, authenticate and recover; empty and oversized pa
   assert.equal((await f.request('login',{username:'short_pass',password:'b'})).status,200);
  }finally{f.db.close();}
 });
+
+
+test('native account cosmetics survive save, reload and a second login without granting DEV access',async()=>{
+ const f=await fixture();try{
+  const first:any=await(await f.request('register',{username:'nativepilot',password})).json();assert.equal(first.account.profileSchema,2);
+  let revision=0;
+  for(const intro of ['orbital-drop','grid-rez','holo-projection','blackout','skyline-zip','hero-landing','overclock']){
+   const response=await f.request('profile',{revision,profile:{name:'Native',class:'melee',color:'#123456',cosmetics:{intro,overrideWeaponIntro:true,lobbyBack:'hex-field',preferredSpec:'sword',hat:'auditor-halo'}}},first.session);
+   assert.equal(response.status,200);const saved:any=await response.json();revision=saved.account.revision;
+   const reread:any=await(await f.request('me',undefined,first.session)).json();
+   assert.equal(reread.account.profile.cosmetics.intro,intro);assert.equal(reread.account.profile.cosmetics.overrideWeaponIntro,true);assert.equal(reread.account.profile.cosmetics.lobbyBack,'hex-field');assert.equal(reread.account.profile.cosmetics.hat,'none');
+  }
+  const second:any=await(await f.request('login',{username:'nativepilot',password})).json();assert.equal(second.account.profile.cosmetics.intro,'overclock');assert.equal(second.account.profile.cosmetics.lobbyBack,'hex-field');
+  const bad:any=await(await f.request('profile',{revision,profile:{cosmetics:{intro:'dev-siren',lobbyBack:'<script>',overrideWeaponIntro:true}}},first.session)).json();assert.equal(bad.account.profile.cosmetics.intro,'neon-drop');assert.equal(bad.account.profile.cosmetics.lobbyBack,'tick-ring');assert.equal(bad.account.developer,false);
+ }finally{f.db.close();}
+});

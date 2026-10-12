@@ -10,7 +10,7 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class NativeCosmetics
     {public bool overrideWeaponIntro;public string lobbyPose="weapon",preferredSpec="pistol",intro=NativeIntroRules.Default,introText="Ready to make an impact",bodyColor="#e5e7eb",hat="none",killEffect="impact-ragdoll";public string lobbyBack;}
     [Serializable] public sealed class NativeProfile {public string name="Pilot",@class="ranged",color="#70e1d0";public NativeCosmetics cosmetics=new NativeCosmetics();}
-    [Serializable] public sealed class NativeAccountData {public string id,username;public NativeProfile profile;public bool hasProfile,developer;public string[] unlocks,flags;public int revision,grantVersion;}
+    [Serializable] public sealed class NativeAccountData {public string id,username;public NativeProfile profile;public bool hasProfile,developer;public string[] unlocks,flags;public int revision,grantVersion,profileSchema;}
     [Serializable] public sealed class NativeAccountResponse {public string error,token,session,recoveryCode;public NativeAccountData account;public NativeAccountData[] players;}
     [Serializable] public sealed class NativeLoginRequest {public string username,password,recoveryCode;public bool remember;}
     [Serializable] public sealed class NativeProfileRequest {public int revision;public NativeProfile profile;}

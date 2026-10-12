@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeArena
     {
         private Collider[] shotOverlaps=new Collider[32];private RaycastHit[] shotSweeps=new RaycastHit[64];
-        private struct NativeContact {public Collider Collider;public Vector3 Point,Normal;public float Distance;}
+        private struct NativeContact {public Collider Collider;public Vector3 Point,Contact,Normal;public float Distance;}
         private NativeContact? SweepNative(Vector3 from,Vector3 delta,float radius,Func<Collider,bool> accepts)
         {
             var scene=root.scene.GetPhysicsScene();int count;Collider overlap=null;
@@ -19,11 +19,11 @@ namespace ChipArena.UnityConversion
                 var c=shotOverlaps[i];if(!accepts(c))continue;bool wall=c.GetComponent<NativePilotBody>()==null&&c.GetComponent<NativeMinionBody>()==null;
                 if(overlap==null||wall&&(overlap.GetComponent<NativePilotBody>()!=null||overlap.GetComponent<NativeMinionBody>()!=null)||wall==(overlap.GetComponent<NativePilotBody>()==null&&overlap.GetComponent<NativeMinionBody>()==null)&&c.GetInstanceID()<overlap.GetInstanceID())overlap=c;
             }
-            if(overlap!=null)return new NativeContact{Collider=overlap,Point=from,Normal=-delta.normalized};
+            if(overlap!=null)return new NativeContact{Collider=overlap,Point=from,Contact=overlap.ClosestPoint(from-delta.normalized*radius),Normal=-delta.normalized};
             float distance=delta.magnitude;if(distance<.000001f)return null;
             while((count=scene.SphereCast(from,radius,delta.normalized,shotSweeps,distance,ShotMask,QueryTriggerInteraction.Ignore))==shotSweeps.Length)Array.Resize(ref shotSweeps,shotSweeps.Length*2);
             NativeContact? closest=null;
-            for(int i=0;i<count;i++){var hit=shotSweeps[i];if(!accepts(hit.collider)||closest.HasValue&&hit.distance>=closest.Value.Distance)continue;closest=new NativeContact{Collider=hit.collider,Point=from+delta.normalized*hit.distance,Normal=hit.normal,Distance=hit.distance};}
+            for(int i=0;i<count;i++){var hit=shotSweeps[i];if(!accepts(hit.collider)||closest.HasValue&&hit.distance>=closest.Value.Distance)continue;closest=new NativeContact{Collider=hit.collider,Point=from+delta.normalized*hit.distance,Contact=hit.point,Normal=hit.normal,Distance=hit.distance};}
             return closest;
         }
         private bool Has(NativePilot p,string chip)=>p!=null&&p.Seat.chips.TryGetValue(chip,out int count)&&count>0;
@@ -109,9 +109,10 @@ namespace ChipArena.UnityConversion
         private bool BulletImpact(NativeBullet b,NativePilot owner,NativeContact hit)
         {
             b.Position=hit.Point;var minion=hit.Collider.GetComponent<NativeMinionBody>()?.Minion;var target=hit.Collider.GetComponent<NativePilotBody>()?.Pilot;var prop=hit.Collider.GetComponent<NativePropBody>();
+            if(target!=null&&AbsorbCharge(target,b.Velocity,hit.Contact,b.Id))return true;
             if(target!=null&&Time<target.BlockEnd)
             {
-                BlockProc(target,owner,hit.Point);if(b.Reflections>=3)return true;b.Reflections++;b.Owner=target.Seat.id;b.Direct=b.ChipImpact=b.Boomerang=false;b.Homing=0;b.Hit.Clear();b.Attack=nextAttack++;
+                BlockProc(target,owner,hit.Contact,"deflect");if(b.Reflections>=3)return true;b.Reflections++;b.Owner=target.Seat.id;b.Direct=b.ChipImpact=b.Boomerang=false;b.Homing=0;b.Hit.Clear();b.Attack=nextAttack++;
                 b.Damage=Math.Min(100,b.Damage*(float)target.Stats["reflectDamage"]);b.Velocity=-b.Velocity.normalized*(b.Pong?b.FixedSpeed:Math.Min(120,b.Velocity.magnitude*(float)target.Stats["reflectSpeed"]));b.Position+=b.Velocity.normalized*.025f;if(b.Pong)b.RallyMark=b.Position;return false;
             }
             if(b.LeetKind=="brain"){if(target!=null)Possess(owner,target);return true;}LeetImpact(owner,b,hit.Point);

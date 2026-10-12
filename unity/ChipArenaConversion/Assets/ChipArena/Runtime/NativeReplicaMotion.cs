@@ -10,17 +10,27 @@ namespace ChipArena.UnityConversion
         private readonly List<NativeGameFrame> replicaHistory=new List<NativeGameFrame>();
         private readonly NativeSnapshotClock replicaClock=new NativeSnapshotClock();
         private readonly NativePrediction predictor=new NativePrediction();
-        private Vector3 predictionCorrection;
+        private Vector3 predictionCorrection;private float predictionPoseAt=-100,predictionPoseOffset;
         public float ReplicaRenderTime=>(float)replicaClock.Time;
         private static void SetReplicaPosition(Rigidbody body,Vector3 position)
         {body.interpolation=RigidbodyInterpolation.None;body.transform.position=position;body.position=position;}
         private NativePredictionState PredictionState(NativePilotFrame frame)
         {
-            var p=Local;bool unlocked=p!=null&&frame.hp>0&&p.Pose.GrabOwner==0&&Match.Phase==NativePhase.Fight&&frame.stunEnd<=Time&&frame.rollEnd<=Time&&frame.down==null&&string.IsNullOrEmpty(frame.fighter?.Kind)&&p.Pose.AttackUntil<=Time;
-            return new NativePredictionState{Position=Vec(frame.position),Velocity=new V3(frame.moveVelocity.x,frame.velocity.y,frame.moveVelocity.z),
+            var p=Local;bool unlocked=p!=null&&frame.hp>0&&p.Pose.GrabOwner==0&&Match.Phase==NativePhase.Fight&&frame.stunEnd<=Time&&frame.frozenUntil<=Time&&frame.scareUntil<=Time&&frame.rollEnd<=Time&&frame.down==null&&string.IsNullOrEmpty(frame.fighter?.Kind)&&(p.Pose.AttackUntil<=Time||p.Pose.CommitUntil>Time);
+            var a=p?.Pose;NativeMeleeSwing swing=null;
+            if(p!=null&&a.CommitUntil>Time&&NativeMeleeRules.Standard(p.Seat.spec))
+            {
+                swing=NativeMeleeFeel.Begin(p.Weapon,p.Stats,a.CommitAt,a.Combo+1,a.CommitYaw*Mathf.Deg2Rad);
+                swing.HitAt=a.CommitAt+(a.Followup?.08f/a.CastRate:a.VisualWindup);swing.HitUntil=swing.HitAt+a.VisualActive;swing.Until=a.CommitUntil;
+                swing.StepAt=a.StepAt;swing.StepUntil=a.StepUntil;swing.Distance=a.StepDistance;swing.ChainAt=a.ChainAt;
+                swing.Followup=a.Followup;swing.SprintAttack=a.SprintAttack;swing.OpenerLunge=a.OpenerLunge;swing.Remaining=a.SwingRemaining;
+            }
+            bool melee=p!=null&&NativeMeleeRules.Standard(p.Seat.spec)&&frame.reloadEnd<=Time&&frame.blockEnd<=Time;
+            return new NativePredictionState{Time=Time,RollUntil=frame.rollEnd,Ready=frame.ready,Stamina=frame.stamina,Combo=a?.Combo??-1,ComboUntil=a?.ComboUntil??0,BufferUntil=a?.MeleeBufferUntil??-1,
+                MeleeWeapon=melee?p.Weapon:null,MeleeStats=melee?p.Stats:null,Swing=swing,Position=Vec(frame.position),Velocity=new V3(frame.moveVelocity.x,frame.velocity.y,frame.moveVelocity.z),
                 Speed=p==null?6.8f:(float)(6.8*p.Stats["speed"])*(p.Input.Aim&&p.Weapon.@class=="ranged"?(float)Content.Ads(p.Seat.spec).move:1),
                 Gravity=p==null?23:(float)(23*p.Stats["playerGravity"]),JumpSpeed=p==null?8.5f:(float)(8.5*p.Stats["jumpPower"]),
-                Grounded=p?.Pose.Grounded??false,CanMove=unlocked,CanSprint=unlocked&&frame.stamina>0&&frame.reloadEnd<=Time&&frame.blockEnd<=Time};
+                Sprinting=p?.Pose.Sprinting??false,Grounded=p?.Pose.Grounded??false,CanMove=unlocked,CanSprint=unlocked&&frame.stamina>0&&frame.reloadEnd<=Time&&frame.blockEnd<=Time};
         }
         private V3 ConstrainPrediction(V3 old,V3 desired)
         {
@@ -30,20 +40,34 @@ namespace ChipArena.UnityConversion
         private bool PredictionGrounded(V3 position)=>NativeGroundMotor.Probe(root.scene.GetPhysicsScene(),Vec(position)).Found;
         private void BufferReplica(NativeGameFrame frame,bool reset)
         {
-            if(reset){replicaHistory.Clear();replicaClock.Reset(frame.time);predictionCorrection=Vector3.zero;}
+            if(reset){predictionPoseAt=-100;replicaHistory.Clear();replicaClock.Reset(frame.time);predictionCorrection=Vector3.zero;}
             replicaHistory.Add(frame);while(replicaHistory.Count>32)replicaHistory.RemoveAt(0);replicaClock.Observe(frame.time);
             var local=frame.pilots.FirstOrDefault(p=>p.id==LocalId);
             if(local==null)return;
             var state=PredictionState(local);var before=Local.Body.position;
-            if(reset)predictor.Reset(state,local.inputAck);else predictor.Reconcile(state,local.inputAck,ConstrainPrediction,PredictionGrounded);
+            if(reset)predictor.Reset(state,local.inputAck);else predictor.Reconcile(state,local.inputAck,ConstrainPrediction,PredictionGrounded,id=>MeleeLockPoint(Local,id));
             var error=before-Vec(predictor.State.Position);predictionCorrection=reset||error.magnitude>3?Vector3.zero:error;
             SetReplicaPosition(Local.Body,Vec(predictor.State.Position)+predictionCorrection);
         }
         public void PredictReplica(InputFrame input)
         {
             if(!Replica||replicaFrame==null||Local==null)return;
-            Local.Input=input;Local.Yaw=input.Yaw;Local.Pitch=input.Pitch;
-            predictor.Push(input,ConstrainPrediction,PredictionGrounded);SetReplicaPosition(Local.Body,Vec(predictor.State.Position)+predictionCorrection);
+            Local.Input=input;Local.Yaw=Local.Pose.CommitUntil>Time?Local.Pose.CommitYaw:Local.MeleeKit.Until>Time?Local.MeleeKit.Yaw*Mathf.Rad2Deg:input.Yaw;Local.Pitch=input.Pitch;
+            predictor.Push(input,ConstrainPrediction,PredictionGrounded,id=>MeleeLockPoint(Local,id));
+            if(predictor.State.Swing!=null)Local.Yaw=predictor.State.Swing.Yaw*Mathf.Rad2Deg;SetReplicaPosition(Local.Body,Vec(predictor.State.Position)+predictionCorrection);
+        }
+        private void PredictedMeleePose(Actor a)
+        {
+            var state=predictor.State;var s=state.Swing;if(state.MeleeWeapon==null||!state.CanMove)return;
+            if(s==null){a.CommitUntil=a.AttackUntil=Math.Min(a.AttackUntil,state.Time);a.SwingAt=a.SwingUntil=-100;return;}
+            // Translate only the transient local pose onto the interpolated presentation clock.
+            // Recorded authority timestamps and remote actors are never rewritten.
+            if(predictionPoseAt!=s.At){predictionPoseAt=s.At;predictionPoseOffset=ReplicaRenderTime-state.Time;}
+            float offset=predictionPoseOffset;
+            a.Combo=state.Combo;a.AttackAt=a.LastAttack=a.CommitAt=s.At+offset;a.AttackUntil=a.CommitUntil=s.Until+offset;a.CommitYaw=s.Yaw*Mathf.Rad2Deg;
+            a.SwingAt=s.HitAt+offset;a.SwingUntil=s.HitUntil+offset;a.StepAt=s.StepAt+offset;a.StepUntil=s.StepUntil+offset;a.StepDistance=s.Distance;
+            a.ChainAt=s.ChainAt+offset;a.Followup=s.Followup;a.SprintAttack=s.SprintAttack;a.OpenerLunge=s.OpenerLunge;
+            a.VisualWindup=s.HitAt-s.At;a.VisualActive=s.HitUntil-s.HitAt;a.VisualDuration=s.Until-s.At;
         }
         public void InterpolateReplica(float delta)
         {

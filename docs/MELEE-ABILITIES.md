@@ -1,6 +1,6 @@
-# Melee abilities (Q / E) — design proposal
+# Melee abilities (Q / E) — design and simulation contract
 
-Status: proposal, owner request 2026-10-11 ("overhaul melee abilities … magic / ranged have Q and E; change this for
+Status: simulation implemented on `codex/melee-abilities-20261012` (base `19c00c7`), pending integration, native playtest and Claude presentation. See [MELEE-SIMULATION-HANDOFF.md](MELEE-SIMULATION-HANDOFF.md). Original owner request 2026-10-11 ("overhaul melee abilities … magic / ranged have Q and E; change this for
 melee … creative direction, fun but balanced; can change abilities for melee as needed, not DEV ones"). Unity only.
 DEV classes (Siren, Emperor, Ansatsuken, L33T) are out of scope.
 
@@ -40,7 +40,7 @@ resource). The basic combo keeps its current costs.
 ## Sword — Duelist (all-rounder, juggle combos)
 
 **Q · Flash Step** (`flash-step`): a dash-thrust along the aim.
-- Windup .12 s, then 7 m in .22 s; stops at walls and at the first enemy hit.
+- Windup .15 s, then 7 m in .22 s; stops at walls and at the first enemy hit.
 - That enemy takes 26 damage and .35 s hitstun.
 - On a hit, half the cooldown is refunded.
 - Cooldown 6 s, 18 stamina.
@@ -59,7 +59,7 @@ resource). The basic combo keeps its current costs.
 - An afterimage decoy stays behind for 1 s, and bots target it.
 - The next dagger hit within 1.5 s deals +40 % (stacks with `backstab`).
 - No damage of its own.
-- Cooldown 7 s, 20 stamina. It's a reposition with a .1 s windup, not an escape from stun.
+- Cooldown 7 s, 20 stamina. It's a reposition with a .15 s windup, not an escape from stun.
 
 **E · Kunai Mark** (`kunai-mark`, evolves `dagger-throw`): the spinning dagger throw, same gravity and range.
 - On a hit: 18 damage plus a **Mark** for 4 s. The mark is a red sigil over the target that every player can see.
@@ -73,16 +73,16 @@ resource). The basic combo keeps its current costs.
 **Q · Bulwark Charge** (`bulwark-charge`): a shield-first bull rush.
 - 8 m in .45 s with a .15 s windup.
 - While charging, frontal projectiles hit the shield and are absorbed: up to 3, after which the charge ends.
-- The first enemy hit is carried and knocked back 6 m for 20 damage. If it is driven into a wall, it takes another 15
+- The first enemy hit is carried and knocked back 6 m for 20 damage. If it is driven into a wall, it takes another 10
   and .6 s stun.
 - The charge stops at the first hit or at a wall.
 - Cooldown 8 s, 25 stamina.
 
 **E · Aegis Ricochet** (`aegis-ricochet`, evolves `shield-throw`): the shield throw now bounces.
-- It bounces to up to 2 more enemies within 7 m of the last hit, 22 damage each.
+- It bounces to up to 2 more enemies within 7 m of the last hit, 20 damage each.
 - The first target is knocked down, as today. The shield then returns.
 - While the shield is out, the thrower can't block. That's the risk.
-- Cooldown 9 s, 35 stamina. Up to 66 split across three targets; 22 on a single target plus the knockdown.
+- Cooldown 9 s, 35 stamina. Up to 60 split across three targets; 20 on a single target plus the knockdown.
 
 ## Greatsword — Juggernaut (heavy, area, reach)
 

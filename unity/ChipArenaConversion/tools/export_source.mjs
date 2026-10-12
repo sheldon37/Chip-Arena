@@ -27,6 +27,7 @@ const leet=await get('src/shared/leet-content.ts'),arcade=await get('src/shared/
 const souls=await get('src/shared/souls-combat.ts'),hazards=await get('src/shared/stage-hazards.ts');
 const pairs=o=>Object.entries(o).filter(([,v])=>typeof v==='number').map(([name,value])=>({name,value}));
 const kits=[];for(const [spec,kit] of Object.entries({...gun.GUN_KITS,...magic.MAGIC_KITS}))for(const [slot,ability]of Object.entries(kit))if(slot==='q'||slot==='e')kits.push({spec,slot,...ability});
+kits.push(...JSON.parse(fs.readFileSync(path.join(project,'tools/melee-abilities.json'),'utf8')));
 const catalogue={schema:1,sourceCommit:lock.commit,weapons:Object.values(content.WEAPONS),chips:content.CHIPS,
  baseStats:pairs(content.BASE_STATS),config:pairs(config.CONFIG),
  rarities:Object.entries(content.RARITIES).map(([id,data])=>({id,...data,leetWeight:leet.LEET_WEIGHTS[id]||0})),
