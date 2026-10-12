@@ -1,5 +1,10 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Astra — validate Cyber Lord's procedural model
+- Branch `codex/unity-cyberlord-model-check-20261012`, shared base `4b94a6db`. Owner's new Windows log confirms compilation progressed past the audio fix, then NativeBuildChecks failed on an expected weapon-cyberlord asset. Cyber Lord intentionally uses NativeCyberLordLook bone-attached hardlight primitives via QueueCyberPiece, not a held weapon-bank model.
+- Replace that incorrect asset requirement for CyberLordSpec.Id with a dedicated first/third-person procedural model check: nonempty pieces, valid rig bones, both fists, and the actual QueuePiece glow mesh/material creation path. Other weapon-bank requirements remain. No presentation or simulation changes; Claude's look is retained.
+- Actual checks: full managed CoreTests rerun exits 0 (35 final managed-core groups, including Cyber Lord checks), using the existing Release assembly after verifying Core/Tests are unchanged from its build commit ba0cfb36. Source validation passes (1,650 files), git diff --check passes. Publication receipt is in the task PR. Unity API compilation and execution of the new native check are unavailable here; the owner's next Build-and-Publish must run it. No Windows gameplay or compiled release claim.
+
 ## 2026-10-12 — Astra — Cyber City audio compilation repair
 - Branch `codex/unity-cybercity-audio-compile-20261012`, shared base `72c88ec0` (PR #148). Owner's Windows build stopped at NativeCyberCityAudio.cs:20 with CS0103 because the new Array.Empty fallback lacked a System import.
 - Qualified the fallback as System.Array.Empty, matching System.Array.IndexOf already used in this file. No hazard, cue, timing, geometry or networking behavior changes.
