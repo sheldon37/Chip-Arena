@@ -162,7 +162,7 @@ namespace ChipArena.UnityConversion
             if(!ReferenceEquals(emitterArena,arena)||emitterGeneration!=arena.Generation||now<emitterClock-.25f){ClearEmitters();emitterArena=arena;emitterGeneration=arena.Generation;}
             emitterClock=Math.Max(emitterClock,now);
             float q=BlastQuality;bool low=LowGraphics,trails=TrailsEnabled;Vector3 eye=camera!=null?camera.transform.position:Vector3.zero;
-            foreach(var b in arena.Bullets){NativeShotViews.Bullet(arena,b,shotTracker,now,out var v);ShotFx(draw,v,now,q,low,trails,eye);}
+            foreach(var b in arena.Bullets){NativeShotViews.Bullet(arena,b,shotTracker,now,out var v);ShotFx(draw,v,now,q,low,trails,eye,GunKitTracer(b,v));}
             foreach(var s in arena.AbilityShots){NativeShotViews.Ability(arena,s,shotTracker,now,out var v);ShotFx(draw,v,now,q,low,trails,eye);}
             staleEmitters.Clear();foreach(var pair in emitters)if(pair.Value.Frame!=weaponFrame)staleEmitters.Add(pair.Key);
             foreach(long key in staleEmitters){spareEmitters.Push(emitters[key]);emitters.Remove(key);}
@@ -173,10 +173,12 @@ namespace ChipArena.UnityConversion
                 if(!(age<p.Life)||age<-.5f){trailSprites[i]=trailSprites[--trailSpriteCount];continue;}
                 NativeWeaponFxShapes.Sprite(draw,p.At,p.Drift,p.Color,p.Size,p.Life,age);i++;
             }
+            // The pistol / machine-gun Q kit (NativeGunKitPresentation.cs) on the pose clock, before the drawer is submitted.
+            GunKitFx();
             ImpactFx(draw,arena,now,q,low);
             draw.Submit(camera,FirstPerson&&!ScopeActive?ViewCamera:null);
         }
-        private void ShotFx(NativeWeaponFxDraw draw,in NativeShotView v,float now,float q,bool low,bool trails,Vector3 eye)
+        private void ShotFx(NativeWeaponFxDraw draw,in NativeShotView v,float now,float q,bool low,bool trails,Vector3 eye,NativeTracerLook look=default)
         {
             bool tracer=NativeTracerFx.Traced(v),energy=NativeTrailFx.Energy(v);if(!tracer&&!energy)return;
             long key=NativeShotScene.Key(v.Kind,v.Id);var at=new Vector3((float)v.X,(float)v.Y,(float)v.Z);
@@ -186,7 +188,7 @@ namespace ChipArena.UnityConversion
                 e.Halo=NativeWeaponFxShapes.Lin(NativeShotRules.HaloColor(v,now));e.Radius=NativeTrailFx.Radius(v.Radius);emitters.Add(key,e);
             }
             e.Frame=weaponFrame;var velocity=new Vector3((float)v.VX,(float)v.VY,(float)v.VZ);
-            if(tracer){if(trails)NativeWeaponFxShapes.Tracer(draw,at,velocity,Vector3.Distance(at,e.Origin)+.25f,v.Spec);e.Last=at;e.LastAt=now;return;}
+            if(tracer){if(trails){float flown=Vector3.Distance(at,e.Origin)+.25f;if(look.Kit)KitTracer(draw,at,velocity,flown,look);else NativeWeaponFxShapes.Tracer(draw,at,velocity,flown,v.Spec);}e.Last=at;e.LastAt=now;return;}
             // Energy: the core and glow on the model, then the trail sprites every Spacing metres flown and the ribbon.
             NativeWeaponFxShapes.EnergyCore(draw,at,eye,e.Halo,e.Radius,v.Spec,.93f+.07f*Mathf.Sin(now*23+(e.Seed&63)));
             if(trails)

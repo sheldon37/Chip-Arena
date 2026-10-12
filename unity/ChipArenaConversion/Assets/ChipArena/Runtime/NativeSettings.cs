@@ -12,7 +12,9 @@ namespace ChipArena.UnityConversion
             // The Siren mode key comes first and only for pilots who can play the Siren (main.ts settings).
             if(account.Developer||(account.Access??NativeAccess.Guest).Allows("weapon:siren",DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())){Field("Siren mode key");prefs.sirenMode=ChoiceGrid(new[]{"Q","F","V"},prefs.sirenMode);Fine("V also changes the camera view.");}
             Field("Graphics");prefs.graphics=ChoiceGrid(new[]{"auto","high","performance"},prefs.graphics,new[]{"Auto · targets 60 FPS","High · sharper image","Performance · no shadows"});
-            Field("Camera view");prefs.firstPerson=ChoiceRow(new[]{"Third person","First person"},prefs.firstPerson?1:0)==1;Fine("Press V during play to switch views.");
+            // Settings · Camera (Core/NativeCameraModes): the two shoulders, Close action, Classic (the old camera) and first person.
+            Field("Camera");NativeCameraModes.Choose(ChoiceGrid(NativeCameraModes.Choices,NativeCameraModes.Choice(prefs.cameraMode,prefs.shoulderLeft,prefs.firstPerson),NativeCameraModes.Labels),ref prefs.cameraMode,ref prefs.shoulderLeft,ref prefs.firstPerson);
+            Fine("V switches to first person and back; "+NativeCameraModes.SwapKey+" swaps the shoulder during play.");
             Field("Controls");prefs.sensitivity=Slider("Mouse sensitivity",prefs.sensitivity,.2f,2.5f);
             Field("Audio");prefs.sound=!GUILayout.Toggle(!prefs.sound,"Mute audio");SoundTestRow();prefs.audio=Slider("Effects volume",prefs.audio,0,1);prefs.music=Slider("Arena music volume",prefs.music,0,1);prefs.menuMusic=Slider("Menu music volume",prefs.menuMusic,0,1);
             if(nativeAudio!=null){nativeAudio.Effects=Mathf.Clamp01(prefs.audio);nativeAudio.Music=Mathf.Clamp01(prefs.music);nativeAudio.Menu=Mathf.Clamp01(prefs.menuMusic);}

@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
             if(lockPressed>=0&&!lockAcquired&&now-lockPressed>=.4f){lockTarget=0;lockPressed=-1;}
             if(Input.GetKeyUp(KeyCode.Tab)&&lockPressed>=0){if(!lockAcquired&&lockTarget!=0){var current=targets.FirstOrDefault(t=>t.id==lockTarget);float angle=Mathf.Atan2(current.point.x-eye.x,current.point.z-eye.z)*Mathf.Rad2Deg;lockTarget=nearby.Where(t=>t.id!=lockTarget).OrderBy(t=>Mathf.Repeat(Mathf.Atan2(t.point.x-eye.x,t.point.z-eye.z)*Mathf.Rad2Deg-angle,360)).Select(t=>t.id).DefaultIfEmpty(lockTarget).First();}lockPressed=-1;}
             var target=targets.FirstOrDefault(t=>t.id==lockTarget);if(target.id==0||Vector3.Distance(target.point,eye)>24){lockTarget=0;return;}
-            if(!Visible(target.point)){if(lockHidden<0)lockHidden=now;if(now-lockHidden>=1)lockTarget=0;return;}lockHidden=-1;lockPoint=target.point;Vector3 d=target.point-eye;float blend=1-Mathf.Exp(-14*Time.unscaledDeltaTime);yaw=Mathf.LerpAngle(yaw,Mathf.Atan2(d.x,d.z)*Mathf.Rad2Deg,blend);pitch=Mathf.Lerp(pitch,Mathf.Clamp(-Mathf.Atan2(d.y,new Vector2(d.x,d.z).magnitude)*Mathf.Rad2Deg+3.438f,-63,63),blend);
+            if(!Visible(target.point)){if(lockHidden<0)lockHidden=now;if(now-lockHidden>=1)lockTarget=0;return;}lockHidden=-1;lockPoint=target.point;LockLook(eye,target.point,out float wantYaw,out float wantPitch);float blend=1-Mathf.Exp(-14*Time.unscaledDeltaTime);yaw=Mathf.LerpAngle(yaw,wantYaw,blend);pitch=Mathf.Lerp(pitch,wantPitch,blend);
         }
         private void LockHud(float scale)
         {if(!lockPoint.HasValue)return;var p=cameraView.WorldToScreenPoint(lockPoint.Value);if(p.z<=0)return;GUI.Label(new Rect(p.x/scale-12,(Screen.height-p.y)/scale-14,28,30),"◇",heading);}

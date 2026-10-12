@@ -35,6 +35,11 @@ namespace ChipArena.UnityConversion
         public NativeJumpMotion JumpLayer;
         /// <summary>The per-weapon sprint carry (Core/NativeSprintMotion) under the gun hold; null keeps the source port.</summary>
         public NativeSprintMotion SprintLayer;
+        /// <summary>The pack's directional walk, run and sprint carry (Core/NativeRangedLocomotion) under the gun hold; null keeps
+        /// the source port.</summary>
+        public NativeRangedLocomotion Locomotion;
+        /// <summary>Whether the gait holds a foot planted on the floor (the contact foot), as the last frame left it.</summary>
+        public bool Planted(bool left)=>gait.Planted(left);
         public static string Spec(WeaponId w)=>w==WeaponId.Rifle?"rifle":w==WeaponId.MachineGun?"machinegun":"pistol";
         public static string StateOf(Actor a,float time,float motion)=>a.ReloadUntil>time?Reload:time<a.BlockUntil?Block:time-a.LastShot<.2f?Fire:a.Aiming?Aim:!a.Grounded?Jump:motion>.05f?Carry:Ready;
         private Actor shown;private bool shownJuggled;
@@ -60,7 +65,7 @@ namespace ChipArena.UnityConversion
         /// <summary>After Pose (and the caller's hit reaction): the ground pass, then pose-transitions.ts finishPose.</summary>
         public void Finish(CapturedRig.Pose pose,float time)
         {
-            Rig.ReadPose(pose);gait.GroundPass(Rig,view,time,dt,GroundSkipped);
+            Rig.ReadPose(pose);gait.GroundPass(Rig,view,time,dt,GroundSkipped);Locomotion?.Seat(Rig,gait,view.Grounded,time,GroundSkipped);
             if(shown!=null)transition.Apply(Rig,shown,time,shownJuggled);shown=null;
             Rig.WritePose(pose);pose.World();
         }
@@ -112,8 +117,11 @@ namespace ChipArena.UnityConversion
             // melee-guard sprintLean: the guns have no stance lean, only the sprint lean.
             float run=MeleeMath.Ease((r.Motion-.1f)/.65f);
             sprintBlend+=((v.Sprinting?1:0)-sprintBlend)*(1-(float)Math.Exp(-Math.Min(.05f,Math.Max(0,dt))*10));
+            float sprint=SprintLayer?.Advance(r,a,time,dt)??0;
+            // The pack carry replaces the gait's torso and the pistol's arm swing; the leans ride on it.
+            Locomotion?.Gun(r,v,v.Spec,time,sprint);
             if(sprintBlend>1e-4f)r.AddE(CapturedRig.Spine,.12f*sprintBlend*run,0,0);
-            float sprint=SprintLayer?.Lean(r,a,v.Spec,time,dt)??0;
+            SprintLayer?.Lean(r,v.Spec,sprint,gait.BodyBob);
             JumpLayer?.Ranged(r,a,v.Spec,time,dt,.4f);
             UpdateAim(a,time,restart);
             var h=RangedPose.HoldOf(a,time,aim);float k=h.Weight;
@@ -125,6 +133,7 @@ namespace ChipArena.UnityConversion
                 Toward(CapturedRig.Spine,RangedPose.SpineAim(h)-new Vector3(body.X,pelvis.Y,0),k);Toward(CapturedRig.Chest,chest,k);
                 Toward(CapturedRig.Neck,RangedPose.NeckAim(h),k);Toward(CapturedRig.Head,RangedPose.HeadAim(h),k);
                 Toward(CapturedRig.LClav,RangedPose.LClavAim(h),k);Toward(CapturedRig.RClav,RangedPose.RClavAim(h),k);
+                Locomotion?.Aim(r,v.Spec,k);
             }
             r.WritePose(pose);pose.World();
             // The carry's stride wobble (carryOrientation), less the chest's forward pitch (the run and sprint lean would
@@ -133,7 +142,9 @@ namespace ChipArena.UnityConversion
             Vector3 ahead=Vector3.Transform(Vector3.UnitZ,pose.WorldRotation[CapturedRig.Chest]);float lean=(float)Math.Asin(MeleeMath.Clamp(-ahead.Y,-1,1));
             float sway=MeleeMath.Clamp(r.Motion,0,1),sx=(float)Math.Cos(2*r.Stride)*(h.LongGun?.05f:.04f)*sway-lean,sy=(float)Math.Sin(r.Stride)*(h.LongGun?.06f:.05f)*sway;
             bool pistol=!h.LongGun;
-            RangedPose.Arms(pose,a,time,h,pistol?k:1,pistol?(1-k)*MeleeMath.Ease(r.Motion/.35f):0,sx,sy);
+            // The long guns' lowered carry: the pack's run carry where the arena rig has it (one blend with the aim, no pop).
+            Vector3 carryAt=RangedPose.CarryTarget;Quaternion carryAim=RangedPose.CarryOrientation(h.LongGun,sx,sy);Locomotion?.LongGun(a,lean,ref carryAt,ref carryAim);
+            RangedPose.Arms(pose,a,time,h,pistol?k:1,pistol?(1-k)*MeleeMath.Ease(r.Motion/.35f):0,sx,sy,carryAt,carryAim);
             SprintLayer?.Gun(pose,a,sprint*(1-k),r.Stride);
             RangedAbilityPose.Apply(pose,a,time,false);
         }

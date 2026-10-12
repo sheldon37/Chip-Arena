@@ -291,6 +291,8 @@ namespace ChipArena.UnityConversion
             private NativeLocomotionCarry locomotion;private NativeLocomotionCarry Locomotion=>Hits!=null?locomotion??=new NativeLocomotionCarry():null;
             // The per-weapon sprint carry (Core/NativeSprintMotion), on the same arena rigs.
             private NativeSprintMotion sprint;private NativeSprintMotion SprintLayer=>Hits!=null?sprint??=new NativeSprintMotion():null;
+            // The pack's directional gun and magic travel carry (Core/NativeRangedLocomotion), on the same arena rigs.
+            private NativeRangedLocomotion rangedLocomotion;private NativeRangedLocomotion RangedLocomotion=>Hits!=null?rangedLocomotion??=new NativeRangedLocomotion():null;
             // The held weapons' reach stretch, set by the presentation before posing (the melee layers measure the stretched blade).
             public float WeaponReach=1;
             public static bool CapturedMelee(Actor a)=>NativePoseRoute.For(a,false)==PoseRoute.CapturedMelee;
@@ -356,7 +358,7 @@ namespace ChipArena.UnityConversion
                 v.LastAttack=a.AttackAt;v.Windup=a.VisualWindup;v.AttackRate=a.CastRate>0?a.CastRate:1;v.AttackIndex=a.Combo+1;
                 v.SwingAt=a.SwingAt>-90?a.SwingAt:float.NaN;v.SwingUntil=a.SwingAt>-90?a.SwingUntil:float.NaN;
                 v.Commit=a.CommitAt>-90;v.CommitAt=a.CommitAt;v.CommitUntil=a.CommitUntil;v.CommitYaw=-a.CommitYaw*D;v.StepAt=a.StepAt;v.StepUntil=a.StepUntil;v.StepDistance=a.StepDistance;v.Followup=a.Followup;v.Hurricane=a.Hurricane;
-                v.OpenerLunge=a.OpenerLunge;v.SprintAttack=a.SprintAttack;
+                v.AirAttack=a.AirAttack?1:0;v.OpenerLunge=a.OpenerLunge;v.SprintAttack=a.SprintAttack;
                 v.Guarding=false;v.BlockTime=time<a.BlockUntil?a.BlockUntil-time:0;v.LastBlock=a.BlockAt;v.HitStunUntil=a.StunUntil;
                 v.RollAt=a.RollAt;v.RollUntil=a.RollAt>-90?a.RollAt+a.VisualRollDuration:-100;
                 v.ActionKind=a.SpecialKind;v.ActionAt=a.SpecialAt;v.ActionUntil=a.SpecialUntil;
@@ -484,7 +486,7 @@ namespace ChipArena.UnityConversion
             {
                 bool blocked=a.Hp<=0||a.Rolling(time)||a.StunUntil>time||a.JuggleUntil>time||NativeSpecialPose.Active(a,time)||NativeSpecialPose.Down(a,time);
                 airTrack.Observe(time,a.Grounded,position.y,blocked);
-                airWatch.Observe(airTrack,a.AttackAt>-90?a.AttackAt:-100,a.CommitUntil>-90?a.CommitUntil:a.AttackAt+a.VisualDuration,-1,time,blocked);
+                airWatch.Observe(airTrack,a.AttackAt>-90?a.AttackAt:-100,a.CommitUntil>-90?a.CommitUntil:a.AttackAt+a.VisualDuration,a.AirAttack?1:0,time,blocked);
                 var clip=NativeAirAttackRules.Clip(a.SourceSpec);var melee=MeleeSet.For(a.SourceSpec);
                 if(!attack||clip==null||melee==null||!airWatch.Air||airWatch.SwingAt!=a.AttackAt)return false;
                 float windup=a.VisualWindup,active=a.VisualActive,recovery=Mathf.Max(.001f,a.VisualDuration-windup-active),landed=airWatch.Landed(time),age=time-a.AttackAt;
@@ -505,7 +507,7 @@ namespace ChipArena.UnityConversion
             private MagicMotion magicMotion;private NativeSirenDrift sirenDrift;
             private void MagicGaitPose(Actor a,Vector3 position,float time)
             {
-                Weapon=a.Weapon;Set=Mathf.Clamp(a.VisualSet,0,3);if(magicMotion==null)magicMotion=new MagicMotion();magicMotion.JumpLayer=JumpLayer;magicMotion.SprintLayer=SprintLayer;
+                Weapon=a.Weapon;Set=Mathf.Clamp(a.VisualSet,0,3);if(magicMotion==null)magicMotion=new MagicMotion();magicMotion.JumpLayer=JumpLayer;magicMotion.SprintLayer=SprintLayer;magicMotion.Locomotion=RangedLocomotion;
                 bool juggle=Juggled(a,time),roll=MagicMotion.Rolls(a,time,juggle);
                 Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,roll?Quaternion.LookRotation(ArenaPresentation.Vec(a.RollDirection)):Quaternion.Euler(0,a.Yaw,0));Root.transform.localScale=Vector3.one*a.RigScale;
                 Vector3 at=Root.transform.position;magicMotion.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);magicMotion.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;
@@ -523,7 +525,7 @@ namespace ChipArena.UnityConversion
             private GunMotion gunMotion;
             private void GunGaitPose(Actor a,Vector3 position,float time)
             {
-                Weapon=a.Weapon;Set=0;if(gunMotion==null)gunMotion=new GunMotion();gunMotion.JumpLayer=JumpLayer;gunMotion.SprintLayer=SprintLayer;
+                Weapon=a.Weapon;Set=0;if(gunMotion==null)gunMotion=new GunMotion();gunMotion.JumpLayer=JumpLayer;gunMotion.SprintLayer=SprintLayer;gunMotion.Locomotion=RangedLocomotion;
                 bool juggle=Juggled(a,time),roll=!juggle&&a.Rolling(time);
                 Root.transform.SetPositionAndRotation(position+Vector3.up*.865f,roll?Quaternion.LookRotation(ArenaPresentation.Vec(a.RollDirection)):Quaternion.Euler(0,a.Yaw,0));Root.transform.localScale=Vector3.one*a.RigScale;
                 Vector3 at=Root.transform.position;gunMotion.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);gunMotion.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;

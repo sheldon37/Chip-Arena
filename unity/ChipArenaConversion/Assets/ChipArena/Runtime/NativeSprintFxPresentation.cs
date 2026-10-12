@@ -84,9 +84,11 @@ namespace ChipArena.UnityConversion
         /// effects (Core/NativeSprintRules.Fov).</summary>
         public float SprintFov(bool shake,bool reduced)=>FirstPerson&&viewRig!=null?NativeSprintRules.Fov(viewSway.Sprint,shake,reduced):0;
         /// <summary>The first-person camera's sprint bob and roll at the view stride (camera shake only; applied after the aim
-        /// point is taken, as the other camera shakes are, and rebuilt from the look angles next frame).</summary>
+        /// point is taken, as the other camera shakes are, and rebuilt from the look angles next frame). It also keeps the
+        /// setting for the view weapon's per-weapon bob (ApplyViewSway, NativeViewSway).</summary>
         public void SprintSway(Transform camera,bool shake,bool reduced)
         {
+            viewShake=shake?(reduced?.5f:1):0;
             if(camera==null||!FirstPerson||viewRig==null)return;NativeSprintRules.CameraSway(viewSway.Sprint,viewSway.Stride,shake,reduced,out float up,out float roll);
             if(up==0&&roll==0)return;camera.SetPositionAndRotation(camera.position+camera.up*up,camera.rotation*Quaternion.Euler(0,0,roll));
         }
@@ -121,16 +123,17 @@ namespace ChipArena.UnityConversion
     public sealed partial class ConversionGame
     {
         // The first-person sprint FOV kick rides on top of the camera's own FOV ease (UpdateCamera) and stays out of the view-model
-        // camera, so the hands keep their framing while the world widens.
+        // camera, so the hands keep their framing while the world widens. The shoulder cameras take the same kick and bob from
+        // the view pilot's sprint (NativeShoulderCamera.cs); Classic keeps none, as before.
         private float sprintKick;
         // settled: the camera's FOV eased toward its target from the last frame's FOV without its kick (FieldOfView - sprintKick).
         private float SprintFov(bool first,bool aim,float settled)
         {
-            sprintKick=first&&!aim&&!menu?presentation.SprintFov(prefs.cameraShake,prefs.reducedEffects):0;return settled+sprintKick;
+            sprintKick=first&&!aim&&!menu?presentation.SprintFov(prefs.cameraShake,prefs.reducedEffects):!first&&!aim?ShoulderSprintFov():0;return settled+sprintKick;
         }
         private void SprintSway()
         {
-            if(!menu&&Spectator==null&&!cinematic.Directing)presentation.SprintSway(cameraView.transform,prefs.cameraShake,prefs.reducedEffects);
+            if(!menu&&Spectator==null&&!cinematic.Directing){presentation.SprintSway(cameraView.transform,prefs.cameraShake,prefs.reducedEffects);ShoulderSway();}
         }
     }
 }
