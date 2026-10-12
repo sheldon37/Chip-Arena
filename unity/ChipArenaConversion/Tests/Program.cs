@@ -60,6 +60,7 @@ internal static class Program
             ArmorLightChecks.Run(root);
             BlockFxChecks.Run(root,data);
             MeleeKitPresentationChecks.Run(root,data);
+            MagicFxChecks.Run(root);
             GunKitChecks.Run(root,data);
             BloomChecks.Run(root);
             WeaponFxChecks.Run(root,data);

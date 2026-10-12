@@ -67,11 +67,14 @@ namespace ChipArena.UnityConversion
             if(pose.Visible&&color>=0)
             {
                 var socket=rig.Bones[CapturedRig.RHand].localToWorldMatrix*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(NativeSpellCharge.Socket)),CapturedAnimation.Quat(CapturedRig.Mirror(pose.Rotation)),Vector3.one*pose.Scale);
-                QueuePiece(new WeaponPiece{Shape=WeaponShape.Sphere,Glow=true,Color=color,Scale=new System.Numerics.Vector3(NativeSpellCharge.OrbScale),Rotation=System.Numerics.Quaternion.Identity},socket,layer,camera);
+                // The darkness cast is the void orb's dark gather (NativeMagicFx, owner 2026-10-12): no glowing ball or white streaks,
+                // its two halos ring the forming black core.
+                bool voidCast=MagicLooks&&a.SourceSpec=="darkness";
+                if(!voidCast)QueuePiece(new WeaponPiece{Shape=WeaponShape.Sphere,Glow=true,Color=color,Scale=new System.Numerics.Vector3(NativeSpellCharge.OrbScale),Rotation=System.Numerics.Quaternion.Identity},socket,layer,camera);
                 QueuePiece(new WeaponPiece{Shape=WeaponShape.Ring,Glow=true,Color=color,Scale=NativeSpellCharge.HaloScale,Rotation=pose.Halo0},socket,layer,camera);
                 QueuePiece(new WeaponPiece{Shape=WeaponShape.Ring,Glow=true,Color=color,Scale=NativeSpellCharge.HaloScale,Rotation=pose.Halo1},socket,layer,camera);
                 // Converging streaks and shrinking rings round the orb (NativeChargeFx, weapons milestone).
-                ChargeFx(socket,a,color,time,first);
+                if(!voidCast)ChargeFx(socket,a,color,time,first);
             }
             if(!first)HandMotes(rig,a,time,color);
             if(pilot?.Stats==null||pilot.Seat?.chips==null)return;int n=NativeBodyChips.Build(pilot.Seat.chips,pilot.Stats,bodyChips);if(n==0)return;
