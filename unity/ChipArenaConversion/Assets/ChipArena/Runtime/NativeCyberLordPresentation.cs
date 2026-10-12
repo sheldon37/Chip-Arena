@@ -123,7 +123,8 @@ namespace ChipArena.UnityConversion
                 {
                     if(!rigs.TryGetValue(g.Actor,out var rig)||rig?.Bones==null||pose>=cyberGhostPoses.Length)continue;var gp=cyberGhostPoses[pose++];var off=Matrix4x4.Translate(new Vector3(g.Offset.X,g.Offset.Y,g.Offset.Z));
                     gp.Root=off*rig.Root.transform.localToWorldMatrix;for(int b=0;b<22&&b<rig.Bones.Length;b++)gp.Bones[b]=off*rig.Bones[b].localToWorldMatrix;
-                    sourceModels.Queue(pilot,gp.Root,gp.Bone,null,0,null,tint,null,g.Opacity);
+                    // The glitched pilot in its own body skin (NativeBodySkinPresentation.cs; the Prototype ghost only as a fallback).
+                    sourceModels.Queue(Ghost(BodyModel(BodySkin(g.Actor),BodyTier(rig.Root.transform.position,false)))??pilot,gp.Root,gp.Bone,null,0,null,tint,null,g.Opacity);
                     if(i%2==0){var c=rig.Bones[CapturedRig.Chest].position+Vector3.up*.1f;cyberFx.GlitchBlocks(cyberSink,g.Actor,new NVector(c.x,c.y,c.z),g.Opacity/.42f,time,q,LowGraphics);}
                 }
                 else if(g.Kind==CyberGhost.Clone&&g.Index>=0&&g.Index<cyberCloneRigs.Length)
@@ -132,15 +133,15 @@ namespace ChipArena.UnityConversion
                     var clone=cyberCloneActors[g.Index];NativeCyberLordFx.CloneActor(clone,caster,g);var rig=cyberCloneRigs[g.Index]??=captured.Create(transform,-820-g.Index);float at=NativeCyberLordFx.CloneTime(g);
                     rig.ActorPose(clone,new Vector3(g.Position.X,g.Position.Y,g.Position.Z),at);var root=rig.Root.transform.localToWorldMatrix;
                     if(pose>=cyberGhostPoses.Length)continue;var gp=cyberGhostPoses[pose++];gp.Root=root;for(int b=0;b<22&&b<rig.Bones.Length;b++)gp.Bones[b]=rig.Bones[b].localToWorldMatrix;
-                    sourceModels.Queue(pilot,gp.Root,gp.Bone,null,0,null,tint,null,g.Opacity);
+                    sourceModels.Queue(Ghost(BodyModel(BodySkin(g.Actor),BodyTier(rig.Root.transform.position,false)))??pilot,gp.Root,gp.Bone,null,0,null,tint,null,g.Opacity);
                     var flare=new NativeCyberLordLook.Flare{Left=1,Right=1};int n=NativeCyberLordLook.Pieces(at,-100,flare,false,g.Opacity,.3f,true,cyberPieces);
                     for(int k=0;k<n;k++)QueueCyberPiece(cyberPieces[k],rig.Bones[cyberPieces[k].Bone].localToWorldMatrix,1,0,null);
                 }
             }
         }
 
-        // The idle stance's RGB-split shimmer (Core/CyberLordIdlePose.Glitch): a magenta and a cyan ghost of the posed rig, a few
-        // centimetres apart across it, for the glitch's steps; never on the local pilot's own body in first person.
+        // The idle stance's RGB-split shimmer (Core/CyberLordIdlePose.Glitch): a magenta and a cyan ghost of the posed rig (in its
+        // body skin), a few centimetres apart across it, for the glitch's steps; never on the local pilot's own body in first person.
         private void CyberIdleGhosts(Snapshot s,string pilot)
         {
             int used=0;var magenta=NativeCyberLordFx.Lin(NativeCyberLordFx.Magenta);var cyan=NativeCyberLordFx.Lin(NativeCyberLordFx.Cyan);
@@ -148,12 +149,12 @@ namespace ChipArena.UnityConversion
             {
                 if(!CyberLordFeed.Handles(a)||FirstPerson&&a.Id==LocalId||used+2>cyberIdleGhosts.Length)continue;
                 if(!rigs.TryGetValue(a.Id,out var rig)||rig?.Bones==null||rig.CyberMotion==null)continue;var g=rig.CyberMotion.IdleGlitch;if(!(g.Split>1e-3f))continue;
-                var across=rig.Root.transform.right*(g.SplitOffset*.5f);
+                var across=rig.Root.transform.right*(g.SplitOffset*.5f);string shell=Ghost(BodyModel(BodySkin(a.Id),BodyTier(rig.Root.transform.position,false)))??pilot;
                 for(int k=0;k<2;k++)
                 {
                     var gp=cyberIdleGhosts[used++];var off=Matrix4x4.Translate(k==0?across:-across);var c=k==0?magenta:cyan;
                     gp.Root=off*rig.Root.transform.localToWorldMatrix;for(int b=0;b<22&&b<rig.Bones.Length;b++)gp.Bones[b]=off*rig.Bones[b].localToWorldMatrix;
-                    sourceModels.Queue(pilot,gp.Root,gp.Bone,null,0,null,new Color(c.X,c.Y,c.Z,0),null,g.Split*CyberIdleGhostOpacity);
+                    sourceModels.Queue(shell,gp.Root,gp.Bone,null,0,null,new Color(c.X,c.Y,c.Z,0),null,g.Split*CyberIdleGhostOpacity);
                 }
             }
         }
