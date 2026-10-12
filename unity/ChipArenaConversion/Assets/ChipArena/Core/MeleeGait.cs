@@ -55,6 +55,10 @@ namespace ChipArena.UnityConversion
         public float PelvisYawScale=1;
         // The last Locomotion's backpedal share (0 forward or strafing, 1 running backward), read by the melee torso.
         public float Back{get;private set;}
+        // The last Locomotion's stride bob of the body (m; 0 at the stride's mid line), read by the sprint glide.
+        public float BodyBob{get;private set;}
+        // Whether a foot is planted (in contact, held still on the floor) after the last Locomotion; read by the checks.
+        public bool Planted(bool left)=>has&&feet!=null&&feet[left?0:1].planted;
         // Both feet re-seated on the stance (spawn, reset, teleport or a near-instant flip), reusing the rig's two feet.
         private Foot[] IdleFeet(string spec)
         {
@@ -187,7 +191,7 @@ namespace ChipArena.UnityConversion
             // Body: bob lowest at mid-stance, lateral sway over the stance foot, lean about the ankles, living idle.
             float ph2=r.Stride+phaseOffset,idleW=1-MeleeMath.Clamp(run,0,1),ph=phase;
             float shift=((float)Math.Sin(now*MeleeMath.TAU/4.3f+ph)*.6f+(float)Math.Sin(now*MeleeMath.TAU/7.1f+ph*1.7f)*.4f)*idleW,breath=(float)Math.Sin(now*MeleeMath.TAU*.25f+ph)*idleW;
-            float moveW=weight,bob=-(.008f+.010f*sprint)*moveW*(float)Math.Cos(2*ph2-MeleeMath.TAU*contact),sway=(float)Math.Cos(ph2-MeleeMath.PI*contact)*.012f*(1-sprint*.4f)*moveW;
+            float moveW=weight,bob=-(.008f+.010f*sprint)*moveW*(float)Math.Cos(2*ph2-MeleeMath.TAU*contact),sway=(float)Math.Cos(ph2-MeleeMath.PI*contact)*.012f*(1-sprint*.4f)*moveW;BodyBob=bob;
             float bodyLean=RunLean*weight*Math.Max(0,forward)*(1-back)+.05f*weight*back+lean+dashLean+dip*1.1f;
             float vy=p.Grounded?0:p.Vel.Y,airAge=now-airAt,push=air*Math.Max(MeleeMath.Ease((vy-3)/3),Math.Max(1-MeleeMath.Ease(airAge/.12f),dashLean/.15f)),descend=air*MeleeMath.Ease((-vy-2)/3),apex=Math.Max(0,air-push-descend);
             float sinceRoll=p.RollUntil>-90&&time>=p.RollUntil?time-p.RollUntil:1,postRoll=.08f*(1-MeleeMath.Ease(sinceRoll/.22f));

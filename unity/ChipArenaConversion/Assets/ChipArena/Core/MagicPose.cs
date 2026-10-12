@@ -185,8 +185,12 @@ namespace ChipArena.UnityConversion
         public bool GroundSkipped{get;private set;}
         // The jump layer (Core/NativeJumpMotion) under the magic layer; null keeps the source port (parity checks).
         public NativeJumpMotion JumpLayer;
-        // The sprint carry (Core/NativeSprintMotion: hands trailing back, the staff angled back); null keeps the source port.
+        // The sprint carry (Core/NativeSprintMotion: each school's sprint, the staff angled with it); null keeps the source port.
         public NativeSprintMotion SprintLayer;
+        // The pack's directional walk, run and sprint carry (Core/NativeRangedLocomotion: the staff set); null keeps the source port.
+        public NativeRangedLocomotion Locomotion;
+        // Whether the gait holds a foot planted on the floor (the contact foot), as the last frame left it.
+        public bool Planted(bool left)=>gait.Planted(left);
         /// <summary>
         /// One third-person frame after the caller placed the rig (Rig.GroupPosition / GroupYaw): the gait and magic layer
         /// (Sample), then sampleCharacter's overrides: a juggle (`juggled`, observed into `juggle`) owns the frame with
@@ -209,7 +213,7 @@ namespace ChipArena.UnityConversion
         // After Pose (and the caller's hit reaction): the ground pass, then pose-transitions.ts finishPose.
         public void Finish(CapturedRig.Pose pose,float time)
         {
-            Rig.ReadPose(pose);gait.GroundPass(Rig,view,time,dt,GroundSkipped);
+            Rig.ReadPose(pose);gait.GroundPass(Rig,view,time,dt,GroundSkipped);Locomotion?.Seat(Rig,gait,view.Grounded,time,GroundSkipped);
             if(shown!=null)Transition(shown,time,shownJuggled);shown=null;
             Rig.WritePose(pose);pose.World();
         }
@@ -237,11 +241,14 @@ namespace ChipArena.UnityConversion
             // melee-guard sprintLean: the magic specs have no stance lean, only the sprint lean.
             float run=MeleeMath.Ease((r.Motion-.1f)/.65f);
             sprintBlend+=((v.Sprinting?1:0)-sprintBlend)*(1-(float)Math.Exp(-Math.Min(.05f,Math.Max(0,dt))*10));
+            float sprint=SprintLayer?.Advance(r,a,time,dt)??0;
+            // The pack carry replaces the gait's torso and arm swing (the staff hand rides it); the leans ride on it.
+            float pack=Locomotion?.Magic(r,v,v.Spec,time,sprint)??0;
             if(sprintBlend>1e-4f)r.AddE(CapturedRig.Spine,.12f*sprintBlend*run,0,0);
-            float sprint=SprintLayer?.Lean(r,a,v.Spec,time,dt)??0;
+            SprintLayer?.Lean(r,v.Spec,sprint,gait.BodyBob);
             JumpLayer?.Ranged(r,a,v.Spec,time,dt,.5f);
-            // magicLayer: the staff carry, faded out with speed so the arm swings with the gait.
-            float pitch=v.Pitch,carry=MeleeMath.Clamp(1-MeleeMath.Ease((r.Motion-.10f)/.65f),0,1);
+            // magicLayer: the staff carry, faded out with speed so the arm swings with the gait (and under the pack's staff hand).
+            float pitch=v.Pitch,carry=MeleeMath.Clamp(1-MeleeMath.Ease((r.Motion-.10f)/.65f),0,1)*(1-pack);
             r.Slerp(CapturedRig.LArm,MeleeMath.Euler(-.24f-pitch*.08f,-.08f,.16f),carry);r.Slerp(CapturedRig.LElbow,MeleeMath.Euler(-.42f,0,0),carry);r.SetE(CapturedRig.LHand,0,0,0);
             float c=MagicPose.Sample(a,time,pitch,false,channels),tilt=.12f;
             if(c>.001f)
@@ -249,17 +256,19 @@ namespace ChipArena.UnityConversion
                 // Hip/shoulder separation added over the gait (pelvis leads, chest follows, the head stays on the target).
                 var o=channels;float twist=o[7]*(school==4?1.15f:school==2?1.1f:1)*c;
                 r.AddE(CapturedRig.Pelvis,0,twist*.35f,0);r.AddE(CapturedRig.Spine,0,twist*.65f,0);r.AddE(CapturedRig.Chest,0,twist*.48f,0);
-                var head=r.E[CapturedRig.Head];r.SetE(CapturedRig.Head,head.X,-twist*.55f,head.Z);
+                // The head and casting shoulder take the phrase's yaw; over the pack carry (`pack`) they blend onto it by the
+                // phrase's weight from their own (the pack sets the shoulder), so a cast's first and last frames never snap them.
+                var head=r.E[CapturedRig.Head];r.SetE(CapturedRig.Head,head.X,MeleeMath.Lerp(-twist*.55f,head.Y+(-twist*.55f/Math.Max(c,1e-3f)-head.Y)*c,pack),head.Z);
                 r.AddE(CapturedRig.Body,o[8]*c,0,0);r.P[CapturedRig.Body]+=new Vector3(0,-o[10]*c,o[9]*c);
-                var clav=r.E[CapturedRig.RClav];r.SetE(CapturedRig.RClav,clav.X,-.12f*c,clav.Z);r.AddE(CapturedRig.LArm,o[12]*c,0,0);
+                var clav=r.E[CapturedRig.RClav];r.SetE(CapturedRig.RClav,clav.X,MeleeMath.Lerp(-.12f*c,clav.Y+(-.12f-clav.Y)*c,pack),clav.Z);r.AddE(CapturedRig.LArm,o[12]*c,0,0);
                 r.Slerp(CapturedRig.RArm,MeleeMath.Euler(o[0],o[1],o[2]),c);r.Slerp(CapturedRig.RElbow,MeleeMath.Euler(o[3],0,0),c);r.Slerp(CapturedRig.RHand,MeleeMath.Euler(o[4],o[5],o[6]),c);
                 tilt+=MagicPose.CastTilt(a,time,false,o,c);
             }
-            SprintLayer?.Magic(r,sprint);
+            SprintLayer?.Magic(r,v.Spec,time,sprint);
             r.WritePose(pose);
             // Staff upright in chest space with the small stride sway.
             float sway=MeleeMath.Clamp(r.Motion,0,1);
-            MagicPose.Staff(pose,a,time,tilt+(float)Math.Cos(2*r.Stride)*.04f*sway+(SprintLayer?.StaffTilt??0),(float)Math.Sin(r.Stride)*.08f*sway,guardWeight);
+            MagicPose.Staff(pose,a,time,tilt+(float)Math.Cos(2*r.Stride)*.04f*sway*(1-pack)+(SprintLayer?.StaffTilt??0)+(Locomotion?.StaffTilt??0),(float)Math.Sin(r.Stride)*.08f*sway*(1-.6f*pack),guardWeight);
         }
         // Ground pass only (the parity fixtures' timelines never change the transition key): the pelvis follows the travel
         // (chest counter-rotated) and the legs re-plant.

@@ -57,6 +57,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The chest-space carry orientation of the gun hand (rifle/MG barrel forward-down across the body, pistol
         /// muzzle-down low ready), with the stride's wobble added (radians).</summary>
         public static Quaternion CarryOrientation(bool longGun,float swayX,float swayY)=>CapturedRig.Euler((longGun?.3f:.62f)+swayX,(longGun?.38f:.18f)+swayY,longGun?-.35f:-.12f);
+        /// <summary>The chest-space grip the lowered gun is carried at.</summary>
+        public static readonly Vector3 CarryTarget=new Vector3(-.24f,-.02f,.25f);
         /// <summary>The whole hold over a rest pose (first-person view model, the gun viewer and the checks): the aimed torso
         /// with the pelvis square, then the arms and the gun.</summary>
         public static void Apply(CapturedRig.Pose p,Actor a,float time,float aimWeight)
@@ -82,9 +84,11 @@ namespace ChipArena.UnityConversion
         /// the grip (or running the reload choreography). `brace` below 1 (the third-person pistol carry, ranged-motion.ts
         /// braceWeapon's weight) blends both arms from the arms already posed (the gait's swing) onto that hold; `carry` then
         /// turns the gun hand toward the carry orientation in chest space (orientHeld); swayX/swayY add the stride's wobble to
-        /// the carry orientation. Apply passes (1, 0, 0, 0): the hold as it has always been.
+        /// the carry orientation. Apply passes (1, 0, 0, 0): the hold as it has always been. `carryTarget` / `carryAim` replace
+        /// the lowered carry's grip and orientation (Core/NativeRangedLocomotion's run carries); null keeps CarryTarget and
+        /// CarryOrientation.
         /// </summary>
-        public static void Arms(CapturedRig.Pose p,Actor a,float time,in Hold h,float brace,float carry,float swayX,float swayY)
+        public static void Arms(CapturedRig.Pose p,Actor a,float time,in Hold h,float brace,float carry,float swayX,float swayY,Vector3? carryTarget=null,Quaternion? carryAim=null)
         {
             bool longGun=h.LongGun,mg=h.MachineGun;float kick=h.Kick,e=h.Envelope,u=h.Phase,tuck=h.Tuck,guard=h.Guard,hold=h.Weight,pitch=h.Pitch;
             if(brace<1)for(int i=0;i<6;i++)SwingArms[i]=p.Rotation[ArmJoints[i]];
@@ -93,8 +97,8 @@ namespace ChipArena.UnityConversion
             target-=Vector3.Transform(Vector3.UnitZ,aim)*kick*(longGun?.045f:.035f);
             if(hold<1)
             {
-                aim=Quaternion.Slerp(CarryOrientation(longGun,swayX,swayY),aim,hold);
-                target=Vector3.Lerp(new Vector3(-.24f,-.02f,.25f),target,hold);
+                aim=Quaternion.Slerp(carryAim??CarryOrientation(longGun,swayX,swayY),aim,hold);
+                target=Vector3.Lerp(carryTarget??CarryTarget,target,hold);
             }
             if(guard>0) { aim=Quaternion.Slerp(aim,CapturedRig.Euler(longGun?-1.05f:-1.25f,longGun?.55f:.1f,longGun?.75f:0),guard);target=Vector3.Lerp(target,new Vector3(-.1f,.18f,.28f),guard); }
             aim*=CapturedRig.Euler(-.25f*tuck,longGun?.1f*tuck:-.25f*tuck,.5f*tuck);

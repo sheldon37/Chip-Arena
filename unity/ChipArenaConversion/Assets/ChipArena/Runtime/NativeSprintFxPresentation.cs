@@ -84,9 +84,11 @@ namespace ChipArena.UnityConversion
         /// effects (Core/NativeSprintRules.Fov).</summary>
         public float SprintFov(bool shake,bool reduced)=>FirstPerson&&viewRig!=null?NativeSprintRules.Fov(viewSway.Sprint,shake,reduced):0;
         /// <summary>The first-person camera's sprint bob and roll at the view stride (camera shake only; applied after the aim
-        /// point is taken, as the other camera shakes are, and rebuilt from the look angles next frame).</summary>
+        /// point is taken, as the other camera shakes are, and rebuilt from the look angles next frame). It also keeps the
+        /// setting for the view weapon's per-weapon bob (ApplyViewSway, NativeViewSway).</summary>
         public void SprintSway(Transform camera,bool shake,bool reduced)
         {
+            viewShake=shake?(reduced?.5f:1):0;
             if(camera==null||!FirstPerson||viewRig==null)return;NativeSprintRules.CameraSway(viewSway.Sprint,viewSway.Stride,shake,reduced,out float up,out float roll);
             if(up==0&&roll==0)return;camera.SetPositionAndRotation(camera.position+camera.up*up,camera.rotation*Quaternion.Euler(0,0,roll));
         }
