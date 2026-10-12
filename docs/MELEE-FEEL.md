@@ -821,3 +821,121 @@ The probe and checks are offline (no Unity Editor, Windows or two-client play). 
 lag or smooth its swing's timing. The pinned feet hold regardless, but the landing targets assume the authority's step
 curve. Uneven floors are not handled: the floor is taken as flat at the body's height, as before. Owner taste is open on
 the stride-first long steps, the follow step's timing and the deeper shield drop.
+
+## Sprint attacks (owner 2026-10-12: "can we give melee's a "sprint" attack? Of course each melee gets their own.")
+
+### Presentation (Claude, `claude/melee-steps`)
+
+Implemented on the branch only, not merged or released. The simulation is Astra's (`Core/NativeSprintAttack`, PR #133,
+merged into this branch at `44c79cf`); see "weapon sprint primaries" in MELEE-SIMULATION-HANDOFF. This presentation
+reads only her replicated fields (`SprintAttack`, `VisualWindup/Active/Duration`, `SwingAt/Until`,
+`StepAt/Until/Distance`, `ChainAt`, the hop through `Grounded` and the root height). It changes no hit timing, hitbox,
+damage, cooldown, movement, stamina or network data.
+
+- **Pack takes.** `tools/export_pack_sprint_attacks.mjs` retargets one running attack per weapon into
+  `Core/NativePackSprintAttacks.Generated.cs`. `tools/pack-sprint-attacks-provenance.json` records each track's SHA-256,
+  which `Tests/SprintAttackPoseChecks` recomputes.
+  - Sword "Lunging Slash": `Armed-Run-Attack-R1`, a long, low horizontal slash.
+  - Daggers "Twin Lunge": `Armed-Run-Attack-Dual`, both blades together.
+  - Shield "Shoulder Charge": `Armed-Shield-Run-Forward-Charge`, mirrored onto the shield arm.
+  - Greatsword "Leaping Cleave": `2Hand-Sword-Run-Forward-Attack1`, a wide two-handed sweep.
+- **Timing** (`MeleeMotion.SprintCut`; `NativeSprintAttackRules.ClipTime`; the `sprint/*` shapes in `MeleeSwing`). Each
+  take's lead-in plays over the real windup, its strike across the real hit window, then the follow-through and the
+  settle into the guard over the recovery.
+  - Measured strike: sword 62 m/s at 0.267 s (window 0.16–0.34); shield furthest out, 92 cm, at 0.233 s (0.12–0.28);
+    greatsword 83 m/s at 0.50 s (0.48–0.64).
+  - The daggers' twin follows Astra's two sweeps (`NativeSprintAttack.Pulse`, half a window each, the second reversed).
+    The take's cross-cut plays over the first half, at its furthest at 0.167 s (0.12–0.24). Over the second half it whips
+    back out, easing into the opened pose. The right blade crosses 99 cm and comes back 106 cm.
+  - A chain after a sprint attack enters the next cut from the take's live pose. The daggers can chain 0.15 s after
+    their window.
+- **Shield bash.** The charge already carries the shield near full reach, so the bash comes from the body. The chest
+  turns the shield forward and pitches over it, the body pushes on 0.18 m, and the shield goes out a further 0.10 m. The
+  bash peaks 60% into the window and is drawn back over the first 30% of the recovery.
+- **Lean.** The takes drive their own trunk into the lunge, so a sprint attack keeps only the footwork's plant lean (no
+  opener lean, no momentum lean). Stacked, the lean pitched the shield's trunk to 90°.
+
+  | Weapon | Before: cut A on Astra's timing | After: own take |
+  | --- | ---: | ---: |
+  | Sword | 42° | 39° |
+  | Daggers | 65° | 49° |
+  | Shield | 26° | 60° (a dropped-shoulder charge) |
+  | Greatsword | 26° | 28° |
+
+- **Footwork** (`Core/MeleeFootwork`, from the sprint run-up). The steps of 2.0–2.6 m start with the swing
+  (`StepAt = At`) and are long, stride-first steps. The greatsword's sprint attack is a leap on Astra's hop:
+  - **Off:** both feet leave with the body (the rear 20 ms later), and a foot still in the air from the run goes
+    straight into its leap.
+  - **In the air:** they ride tucked under the body: 26 cm (lead) and 20 cm (rear) at mid-flight.
+  - **Down:** they land as the body lands. Each is held until the body is within 2 cm of the floor, the lead first and
+    the rear 30 ms later.
+  - `NativeJumpMotion.Leap`, a minimal hook set before each `Melee` call, makes the jump layer draw no air or landing
+    pose while the leap is drawn. Its air legs and leg-return blend dragged the landing soles 6–19 m/s and sank them
+    12 cm.
+  - A sprint attack is never read as a jump attack, though the hop is airborne. The rig, first-person view, jump-attack
+    impact and jump-attack sound all pass `explicitAir = 0` for one.
+- **First person** (`CapturedAnimation.SprintView`). The same take, clip time and shield bash on a scratch rig. It is kept
+  through the greatsword's hop, blended in over 0.04 s and settled into the guard after the window.
+- **Effects** (`Runtime/NativeSprintAttackFxPresentation.cs`, `Core/NativeSprintAttackFx`, `NativeSprintAttackWatch`).
+  Every peer runs the same watch.
+  - An entry dust burst at the feet.
+  - Weapon-accent speed streaks through the hit window.
+  - The greatsword's landing ring once it is down inside its window (`NativeSprintAttackRules.RingLive`, as Astra's
+    `Ring`): dust rolling out and a ring of accent light spreading to her 1.6 m round the feet. None if it is still
+    falling through the window (off a ledge).
+  - The daggers' crescents draw the twin's two opposed sweeps (`NativeSlashFx.Frame`), one per half window.
+  - All of it thins with Reduced effects and Low graphics.
+- **Sound** (`NativeAudio.SprintAttackCues`): existing keys only. `move.roll` scuffs the entry. The landing ring adds
+  `impact.ground` over the hop's own jump and landing sounds (`NativeEffectsAudio`), so the landing is not doubled.
+
+### Before and after (offline probe, 60 Hz, flat floor, attackRate 1)
+
+Each pilot runs at 9.18 m/s into one sprint attack on Astra's profile, with the arena rig's jump, locomotion and sprint
+layers. "Before" is this branch before the sprint presentation (`2371fa6`): Astra's timing and the footwork's cut A.
+Slip is the worst sole slip about its slowest pivot.
+
+| Weapon | Slip, before → after (m/s) | Sink, before → after | Notes |
+| --- | --- | --- | --- |
+| Sword | 0.044 → 0.041 | 0 → 0 | |
+| Daggers | 0.270 → 0.052 | 0 → 0 | |
+| Shield | 0.041 → 0.041 | 0 → 0 | |
+| Greatsword | 18.9 → 0.025 | 12.4 cm → 0 | Hops 62 cm; feet tucked 24 cm over the stance; both land at 0.467 s as the body does (the window opens at 0.48) |
+
+Renders were made offline from the probe (side, front and its first-person replica, before over after); they are
+scratch output, not committed.
+
+### Tests
+
+`Tests/SprintAttackPoseChecks` runs on Astra's profiles (`NativeSprintAttack.Apply`, the hop under 23 m/s², with the
+jump layer attached as on the arena rigs):
+- provenance and decode;
+- the clip time, including the twin played out and back;
+- the shield bash;
+- strikes in the window and the twin's opposed sweeps;
+- pinned soles (at most 0.26 m/s, 0 mm into the floor);
+- the leap: feet off through the hop, tucked, the jump layer idle, landing with the body (also when the body comes down
+  late, at 0.60 s);
+- plain swings and chains keep their cuts;
+- the watch: one entry, one ring, none off a ledge or under a special;
+- the effects above the floor and inside the ring, the twin crescents, thinning;
+- the hooks.
+
+`Tests/MeleeFeelChecks` sprint entries now use the same profiles and hop. Astra's `Tests/SprintAttackChecks` (simulation)
+is unchanged.
+
+### Limits and handoff
+
+- No Unity Editor, Windows or two-client run; the effects, the sounds and the first-person view model were compiled
+  against the Unity player API, not seen in play.
+- The probe's first-person render is a replica of `SprintView`.
+- A guest's interpolated `Grounded` and height drive the leap. The landing hold covers a late flag, but this is not
+  measured.
+- Owner taste is open on:
+  - the take choices (the greatsword's wide sweep rather than an overhead chop);
+  - the shield's 60° charge;
+  - the depth of the greatsword's landing crouch (hips 23 cm under the run, 10 cm under the standing guard).
+- **For Astra** (simulation):
+  - The step profile starts at rest (`StepAt = At`, smoothstep) while `MoveVelocity` is zeroed. A 9.2 m/s sprint drops to
+    about 1.7 m/s for a frame, then lunges at up to 13 m/s, a visible hitch in the root (pelvis 9.2 m/s change in one
+    frame). A step curve that starts at the entry speed would carry the run's momentum.
+  - The hitbox sweeps horizontally while the shield bashes straight ahead.

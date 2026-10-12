@@ -1,5 +1,37 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Claude — per-weapon sprint attack presentation (owner: "can we give melee's a "sprint" attack? Of course each melee gets their own.")
+- Branch `claude/melee-steps`, after the footwork commit `5312cc2`. It merges Astra's sprint simulation `44c79cf` (PR #133; merge `2371fa6`, DEV_LOG/PROJECT_STATE keep both sides). Separate commit on the branch only: not pushed, merged or released. Details: MELEE-FEEL "Sprint attacks".
+- Presentation over Astra's replicated fields only. Each weapon plays its own pack running take (exporter `tools/export_pack_sprint_attacks.mjs`, derived curves only) on the real swing timing:
+  - sword "Lunging Slash";
+  - daggers "Twin Lunge": cross-cut, then whips back out over the reversed second sweep;
+  - shield "Shoulder Charge": with a body-driven bash peaking in the window;
+  - greatsword "Leaping Cleave": on her hop.
+- Other changes:
+  - footwork leap: both feet leave with the hopping body, ride tucked under it, and land as it lands;
+  - jump layer: a minimal `NativeJumpMotion.Leap` hook, so it draws no air or landing pose over the leap;
+  - a sprint attack is never read as a jump attack (rig, first person, jump-attack effects and sound);
+  - first-person view through the hop;
+  - effects: entry dust, accent streaks, a 1.6 m landing ring keyed to her ring going live, and twin crescents;
+  - sounds: existing keys only.
+- Probe on her profiles, slip before → after, worst sole slip about its pivot:
+  - greatsword: 18.9 → 0.025 m/s, and sink 12.4 cm → 0;
+  - daggers: 0.27 → 0.05 m/s;
+  - sword and shield: unchanged (≤0.044).
+  - Trunk lean: the sprint takes keep only the plant lean (the stacked lean had pitched the shield to 90°).
+- Animation impact: presentation only. No change to hit timing, hitboxes, damage, cooldowns, movement, stamina, prediction or network data.
+- Checks:
+  - `unity-check.sh` on the repo root: OK;
+  - `check_relay.py`: 433 PASS, exit 0 (1 m 29 s wall under load, near its 90 s test timeout; an earlier run under load ~35 timed out with the suite passing directly);
+  - Python unittest: 86 OK, 1 skipped;
+  - `package_source.py`: 1354 files, OK;
+  - `git diff --check`: clean;
+  - managed melee set: 48 PASS, including the new `Tests/SprintAttackPoseChecks.cs`; `MeleeFeelChecks` sprint entries now use her profiles and the hop.
+- Not run: Unity Editor/Windows play, two-client (a guest's interpolated `Grounded` drives the leap), the effects and sounds in play.
+- Risks and next steps:
+  - owner taste on the takes, the 60° shield charge and the greatsword's landing crouch;
+  - for Astra: the step starts at rest while `MoveVelocity` is zeroed, so the sprint visibly hitches (9.2 → 1.7 m/s for a frame, then a 13 m/s lunge). A step curve that starts at the entry speed would carry the momentum.
+
 ## 2026-10-12 — Claude — melee footwork: pinned soles and real attack steps (owner: "Also, at more realism to the basic attack animation. Currently~ They slide across with their feet on the ground, make this appear a lot better.")
 - Branch `claude/melee-steps`, base shared `c0e5aa1`, fast-forwarded to shared `1af916c` (Astra's Whirlwind) before the commit. One commit on the branch only: not pushed, merged or released. Details, the per-weapon numbers and the limits are in `docs/MELEE-FEEL.md` "Footwork".
 - Cause: measured at the soles, not the ankles, the swing's rear foot dragged its toe 1.8–4.6 cm under the floor at 4.7–17.6 m/s, steps cleared the floor by 2.9 cm, and planted feet turned flat with the body.

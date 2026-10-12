@@ -294,7 +294,7 @@ internal static class MeleeFeelChecks
     private struct Sole{public float Low,Pitch,Heading;public Vector3 Toe,Heel,Mid,Ankle;}
     private static Sole SoleOf(MeleeRig r,bool left)
     {
-        int fb=left?CapturedRig.LFoot:CapturedRig.RFoot;Quaternion g=Quaternion.CreateFromAxisAngle(Vector3.UnitY,r.GroupYaw);float floor=r.GroupPosition.Y+MeleeRig.FLOOR-MeleeFootwork.Sole,low=float.MaxValue;
+        int fb=left?CapturedRig.LFoot:CapturedRig.RFoot;Quaternion g=Quaternion.CreateFromAxisAngle(Vector3.UnitY,r.GroupYaw);float floor=MeleeRig.FLOOR-MeleeFootwork.Sole,low=float.MaxValue;
         Vector3 W(Vector3 v)=>Vector3.Transform(v,g)+r.GroupPosition;
         foreach(var box in CapturedRig.Boxes)
         {
@@ -312,7 +312,7 @@ internal static class MeleeFeelChecks
     private static Play Drive(ConversionContent data,string spec,float[] presses,float lockDistance=0,bool sprint=false,float turnTo=0,float turnAt=99,float until=2.4f,bool wall=false)
     {
         var w=data.Weapon(spec);var stats=NativeContentRules.Stats(data,spec,new Dictionary<string,int>());float rate=(float)stats["attackRate"];var p=new Pilot(spec);var v=p.View;var play=new Play();
-        const float T0=1;NativeMeleeSwing swing=null;Struck cur=null;float attackEnd=0,comboUntil=0,buffer=-1,yaw=0;int combo=-1;Vector3 at=Vector3.Zero,target=new Vector3(0,0,lockDistance);Vector3? prevTip=null;var prevSole=new Sole?[2];var air=new (float at,float clear,Vector3 from,bool swing)[2];air[0].at=air[1].at=-1;
+        const float T0=1;NativeMeleeSwing swing=null;Struck cur=null;float attackEnd=0,comboUntil=0,buffer=-1,yaw=0,vy=0;int combo=-1;bool grounded=true;Vector3 at=Vector3.Zero,target=new Vector3(0,0,lockDistance);Vector3? prevTip=null;var prevSole=new Sole?[2];var air=new (float at,float clear,Vector3 from,bool swing)[2];air[0].at=air[1].at=-1;
         var set=MeleeSet.For(spec);
         for(int f=0;f*Dt<T0+until;f++)
         {
@@ -324,15 +324,17 @@ internal static class MeleeFeelChecks
             if((edge||queued)&&(chain||t>=attackEnd))
             {
                 if(t>comboUntil)combo=-1;combo++;if(!chain)yaw=input;
-                swing=NativeMeleeFeel.Begin(w,stats,t,combo+1,yaw);swing.SprintAttack=!chain&&sprint&&play.Swings.Count==0;
-                Vector3 d=target-at;if(lockDistance>0&&Vector3.Dot(d,new Vector3((float)Math.Sin(yaw),0,(float)Math.Cos(yaw)))>0){swing.Distance=NativeMeleeFeel.Distance(spec,chain,d.Length());swing.OpenerLunge=!chain&&swing.Distance>NativeMeleeFeel.DefaultStep(spec);}
+                swing=NativeMeleeFeel.Begin(w,stats,t,combo+1,yaw);
+                // A sprint entry is Astra's sprint attack (NativeSprintAttack: its own step and timing, the greatsword's hop).
+                if(!chain&&sprint&&play.Swings.Count==0){NativeSprintAttack.Apply(swing,rate);if(NativeSprintAttack.Hop(swing)){vy=NativeSprintAttack.HopSpeed(swing,23);grounded=false;}}
+                Vector3 d=target-at;if(lockDistance>0&&!swing.SprintAttack&&Vector3.Dot(d,new Vector3((float)Math.Sin(yaw),0,(float)Math.Cos(yaw)))>0){swing.Distance=NativeMeleeFeel.Distance(spec,chain,d.Length());swing.OpenerLunge=!chain&&swing.Distance>NativeMeleeFeel.DefaultStep(spec);}
                 swing.Until=Math.Max(swing.Until,t+(float)((w.windup+.28)/rate));comboUntil=swing.Until+NativeMeleeFeel.ComboPause;attackEnd=swing.Until;buffer=-1;
                 cur=new Struck{At=t-T0,HitAt=swing.HitAt-T0,HitUntil=swing.HitUntil-T0,ChainAt=swing.ChainAt-T0,Distance=swing.Distance,Chained=chain,Opener=swing.OpenerLunge,Index=combo+1};play.Swings.Add(cur);
             }
             bool live=swing!=null&&t<attackEnd,run=sprint&&play.Swings.Count==0;var st=swing!=null&&live?NativeMeleeRules.Step(swing,t,Dt):new V3();
             Vector3 vel=new Vector3(st.x,0,(run?9.18f:0)+st.z);
             // The source frame mirrors the native one: x and yaw negate.
-            v.Vel=new Vector3(-vel.X,0,vel.Z);v.Sprinting=run;v.Yaw=live?-swing.Yaw:-input;
+            v.Vel=new Vector3(-vel.X,vy,vel.Z);v.Grounded=grounded;v.Sprinting=run;v.Yaw=live?-swing.Yaw:-input;
             if(cur!=null)
             {
                 v.LastAttack=cur.At+T0;v.Windup=cur.HitAt-cur.At;v.AttackRate=rate;v.AttackIndex=combo+1;bool window=swing!=null&&t<=swing.HitUntil;v.SwingAt=window?swing.HitAt:float.NaN;v.SwingUntil=window?swing.HitUntil:float.NaN;
@@ -363,7 +365,8 @@ internal static class MeleeFeelChecks
                 }
                 prevSole[k]=so;
             }
-            play.Beats.Add(b);p.Position+=(wall?new Vector3(0,0,run?9.18f:0):v.Vel)*Dt;at+=(wall?Vector3.Zero:vel)*Dt;
+            play.Beats.Add(b);p.Position+=(wall?new Vector3(0,0,run?9.18f:0):new Vector3(v.Vel.X,0,v.Vel.Z))*Dt;at+=(wall?Vector3.Zero:vel)*Dt;
+            if(!grounded){vy-=23*Dt;p.Position.Y+=vy*Dt;if(p.Position.Y<=0){p.Position.Y=0;vy=0;grounded=true;}}
         }
         return play;
     }
@@ -441,10 +444,12 @@ internal static class MeleeFeelChecks
             }
             float Most(Play pl){float m=float.MinValue;foreach(var b in pl.Beats)if(b.T>=s.HitAt&&b.T<=s.HitUntil)m=Math.Max(m,b.Pitch);return m;}
             float lean=Most(lunge)-Most(plain);leanLow=Math.Min(leanLow,lean);Check(lean>=6,spec+" opener leans "+lean.ToString("0.0")+" deg further than a default step through the hit window (at least 6)");
-            // A swing entered from a sprint carries the run's momentum: the chest pitches on over the planted feet.
-            var dash=Drive(data,spec,new[]{0f},sprint:true,until:1.2f);Feet(dash,spec+" sprint entry",Skid,SkidTotal);
-            float carry=0,still=0;foreach(var b in dash.Beats)if(b.T>=.03f&&b.T<=.12f)carry+=b.Pitch;foreach(var b in plain.Beats)if(b.T>=.03f&&b.T<=.12f)still+=b.Pitch;float more=(carry-still)/6;
-            Check(more>=4,spec+" sprint entry leans "+more.ToString("0.0")+" deg further than a standing swing over 0.03-0.12 s (at least 4)");
+            // A swing entered from a sprint (Astra's sprint attack) plays its own take (Core/NativeSprintAttackVisuals): the chest
+            // pitches further on over the planted feet than a standing swing's, at its most through the windup and the window.
+            var dash=Drive(data,spec,new[]{0f},sprint:true,until:1.2f);Feet(dash,spec+" sprint entry",Skid,SkidTotal);var ds=dash.Swings[0];
+            float Fore(Play pl){float m=float.MinValue;foreach(var b in pl.Beats)if(b.T>=0&&b.T<=ds.HitUntil)m=Math.Max(m,b.Pitch);return m;}
+            float more=Fore(dash)-Fore(plain);
+            Check(more>=4,spec+" sprint entry leans "+more.ToString("0.0")+" deg further than a standing swing through its windup and window (at least 4)");
             // A swing that does not travel (a lock target within reach: no step; or the body held by a wall) keeps both soles
             // planted: no step, no slip.
             foreach(var (pl,what) in new[]{(Drive(data,spec,new[]{0f},1f,until:1.2f),"swing with no step"),(Drive(data,spec,new[]{0f},until:1.2f,wall:true),"swing into a wall")})

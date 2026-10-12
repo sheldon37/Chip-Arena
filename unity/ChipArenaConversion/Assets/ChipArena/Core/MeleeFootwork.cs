@@ -39,7 +39,9 @@ namespace ChipArena.UnityConversion
             :new Tune{ReachF=.36f,Hold=.38f,LeadExtra=.07f,Rho=.22f,MaxFlight=.07f,Lift=.08f,Roll=.06f,FollowDur=.12f,Drop=.03f,DropHold=.05f,DropRise=.45f,Width=.2f};
 
         // One swing as the footwork reads it (absolute times).
-        public struct Swing{public float At,StepAt,StepUntil,Distance,HitAt,HitUntil,End;public bool LeadLeft;public string Spec;}
+        // Sprint: a sprint attack (Core/NativeSprintAttackVisuals): a longer, lower lunge and a heavier decel; the greatsword leaps
+        // with the authority's hop (NativeSprintAttack.Hop).
+        public struct Swing{public float At,StepAt,StepUntil,Distance,HitAt,HitUntil,End;public bool LeadLeft,Sprint;public string Spec;}
         // A foot as posed: the ankle in group space, the foot's group heading, pitch (+ heel up) and toe bend; Contact while the
         // sole touches the floor; Landing: how much a lifted foot still needs the hips low (leaving the floor or coming down, 0..1).
         public struct FootPose{public Vector3 Ankle;public float Yaw,Pitch,Toe,Landing;public bool Contact;}
@@ -61,7 +63,9 @@ namespace ChipArena.UnityConversion
             public void Add(Step s){if(Count<Steps.Length)Steps[Count++]=s;}
         }
         private readonly Foot[] feet={new Foot(),new Foot()};
-        private Swing swing;private Tune tune;private Vector2 startBody;private float last=float.NaN,distance,leadZ;private int lead;private bool stand;
+        private Swing swing;private Tune tune;private Vector2 startBody;private float last=float.NaN,distance,leadZ;private int lead;private bool stand,leap;
+        // The leap's tuck: how far the lead and the trailing foot draw up under the airborne body at the flight's middle (m).
+        public const float LeapTuck=.26f,LeapTrail=.2f;
         // The stepping foot's touchdown (scheduled until it lands); NaN for a swing that does not step.
         public float PlantAt{get;private set;}=float.NaN;
         public bool Long{get;private set;}
@@ -92,21 +96,32 @@ namespace ChipArena.UnityConversion
         // ---- the plan, made once as the swing starts ----
         public void Begin(in Swing s,Vector3 body,float yaw,Shown left,Shown right)
         {
-            swing=s;tune=For(s.Spec);last=s.At;startBody=new Vector2(body.X,body.Z);distance=Math.Max(0,s.Distance);lead=s.LeadLeft?0:1;
+            swing=s;tune=For(s.Spec);last=s.At;
+            if(s.Sprint){tune.LeadExtra+=.05f;tune.Drop*=1.5f;tune.DropHold+=.04f;tune.Rho=Math.Min(.6f,tune.Rho+.12f);if(s.Spec=="daggers")tune.Lift*=.75f;}startBody=new Vector2(body.X,body.Z);distance=Math.Max(0,s.Distance);lead=s.LeadLeft?0:1;
             var st=MeleeStance.For(s.Spec);float sl=s.LeadLeft?1:-1;leadZ=st.LeadZ+tune.LeadExtra;
             // The cut's stance (the lead foot forward on the cut's side, the rear behind it, toes out as the guard turns them).
             float lx=sl*tune.Width,ly=sl*st.LeadToe,rx=-sl*Math.Abs(st.RearX),rz=st.RearZ,ry=-sl*st.RearToe;
             for(int i=0;i<2;i++)Seat(feet[i],i==0?left:right,yaw);
             var L=feet[lead];var R=feet[1-lead];
             Vector2 Local(Vector2 w){Vector2 d=w-startBody;return new Vector2(Vector2.Dot(d,Lat(yaw)),Vector2.Dot(d,Fwd(yaw)));}
-            float zbL=Local(Ankle(L)).Y,zbR=Local(Ankle(R)).Y;stand=distance<StandStep;Long=false;PlantAt=float.NaN;
+            float zbL=Local(Ankle(L)).Y,zbR=Local(Ankle(R)).Y;stand=distance<StandStep;Long=false;PlantAt=float.NaN;leap=false;
             if(!stand)
             {
                 float early=swing.At+.01f,leadLift=Math.Max(early,s.StepAt-.35f*(s.StepAt-s.At)),plantReach=TravelAt(distance+leadZ-tune.ReachF);
                 float plant=Math.Max(Math.Max(plantReach,s.HitAt-.03f),leadLift+.09f),force=zbR+tune.Hold<distance?TravelAt(zbR+tune.Hold):float.PositiveInfinity;
                 float flight=force<plant?plant-force:0;Long=distance>=LongStep||flight>tune.MaxFlight;
                 float follow=Math.Max(s.HitUntil+tune.Rho*(s.End-s.HitUntil),0);
-                if(!Long)
+                if(s.Sprint&&NativeSprintAttackRules.Leaps(s.Spec))
+                {
+                    // The leap (the authority hops the body as the swing starts and brings it down with the hit window): both
+                    // feet push off at once and ride tucked under the body, the lead reaching forward; they land as the body
+                    // comes down (held until it is), the lead first and the rear a moment after, squared behind it.
+                    float land=Math.Max(s.At+.12f,s.HitAt-.015f);Long=leap=true;
+                    L.Add(new Step{Lift=s.At,Land=land,X=lx,Z=leadZ,Yaw=ly,Kind=Kind.Lead,Roll=tune.Roll,Strike=-.24f});
+                    R.Add(new Step{Lift=s.At+.02f,Land=land+.03f,X=rx,Z=rz,Yaw=ry,Kind=Kind.Stride,Roll=.07f,Strike=-.12f});
+                    PlantAt=land;
+                }
+                else if(!Long)
                 {
                     L.Add(new Step{Lift=leadLift,Land=plant,X=lx,Z=leadZ,Yaw=ly,Kind=Kind.Lead,Motion=true,Reach=true,Roll=tune.Roll,Strike=-.28f});
                     float lift=Math.Max(plant+.03f,s.HitUntil-.06f),land=Math.Min(Math.Max(follow,Math.Max(lift+tune.FollowDur,plant+.06f)),Math.Max(lift+.08f,s.End-.04f));
@@ -135,7 +150,7 @@ namespace ChipArena.UnityConversion
             {
                 var f=feet[i];if(f.Mode!=Mode.Flight)continue;
                 float catchLand=s.At+MeleeMath.Clamp(.06f+.8f*(f.FromY-FLOOR),.06f,.12f);
-                if(f.Count>0&&f.Steps[0].Lift<=s.At+.1f&&f.Steps[0].Land<=s.At+.3f){f.Flying=0;f.Next=1;f.LiftAt=s.At;f.LandAt=Math.Max(f.Steps[0].Land,s.At+.06f);f.Height=Height(f.Steps[0]);continue;}
+                if(f.Count>0&&f.Steps[0].Lift<=s.At+.1f&&(leap||f.Steps[0].Land<=s.At+.3f)){f.Flying=0;f.Next=1;f.LiftAt=s.At;f.LandAt=Math.Max(f.Steps[0].Land,s.At+.06f);f.Height=Height(f.Steps[0]);continue;}
                 Vector2 ahead=Local(f.From+f.FromVel*.05f);float side=i==0?1:-1;
                 var c=new Step{Lift=s.At,Land=catchLand,X=side*Math.Abs(i==lead?lx:rx),Z=MeleeMath.Clamp(ahead.Y-Travel(catchLand),-.22f,.28f),Yaw=i==lead?ly:ry,Kind=Kind.Catch,Roll=.04f,Strike=-.08f};
                 Array.Copy(f.Steps,0,f.Steps,1,Math.Min(f.Count,f.Steps.Length-1));f.Steps[0]=c;f.Count=Math.Min(f.Count+1,f.Steps.Length);
@@ -151,7 +166,7 @@ namespace ChipArena.UnityConversion
             else if(clear<.015f){f.Mode=Mode.Roll;f.RollAt=swing.At;f.RollPitch=pitch;f.RollTime=.05f;f.Pitch=pitch;f.Ball=a-fw*HeelAnkleZ(pitch)+fw*(BallZ-HeelZ);}
             else{f.Mode=Mode.Flight;f.From=a;f.FromY=s.Ankle.Y;f.FromYaw=s.Yaw;f.FromPitch=pitch;f.FromToe=0;f.FromVel=new Vector2(s.Velocity.X,s.Velocity.Z);if(f.FromVel.Length()>12)f.FromVel*=12/f.FromVel.Length();}
         }
-        private float Height(in Step s)=>s.Kind==Kind.Catch?.03f:s.Kind==Kind.Follow?tune.Lift*.75f:s.Kind==Kind.Stride?tune.Lift:tune.Lift*(1+.4f*MeleeMath.Clamp(distance/1.2f,0,1));
+        private float Height(in Step s)=>leap?(s.Kind==Kind.Lead?LeapTuck:LeapTrail):s.Kind==Kind.Catch?.03f:s.Kind==Kind.Follow?tune.Lift*.75f:s.Kind==Kind.Stride?tune.Lift:tune.Lift*(1+.4f*MeleeMath.Clamp(distance/1.2f,0,1));
         private static float MinFlight(Kind k)=>k==Kind.Lead?.09f:k==Kind.Stride?.08f:k==Kind.Follow?.1f:.05f;
 
         // ---- the pose at `time` (world body position and heading, the source frame); out: each foot by side (0 left) ----
@@ -163,9 +178,12 @@ namespace ChipArena.UnityConversion
         // Where the body is at `at` (ahead of `time`, or a moment before it at a touchdown between frames).
         private Vector2 Predict(Vector2 body,float yaw,float time,float at,float k)=>body+Fwd(yaw)*(k*(Travel(at)-Travel(time)));
         private Vector2 Target(Vector2 body,float yaw,float time,float k,in Step s,float land)=>Predict(body,yaw,time,land,k)+Lat(yaw)*s.X+Fwd(yaw)*s.Z;
-        // hips: each hip in group space (0 left), from which a planted ankle's reach is measured.
-        public void Pose(float time,Vector3 body3,float yaw,Vector3[] hips,FootPose[] o)
+        // hips: each hip in group space (0 left), from which a planted ankle's reach is measured. air: the body's height over
+        // the floor it left (the leap's hop; 0 while grounded): a leap's foot on the floor stays on it, and its feet land as the
+        // body does.
+        public void Pose(float time,Vector3 body3,float yaw,Vector3[] hips,FootPose[] o,float air=0)
         {
+            air=MathUtil.Finite(air)?Math.Max(0,air):0;
             float t=float.IsNaN(last)?time:Math.Max(time,last),dt=float.IsNaN(last)?0:MeleeMath.Clamp(t-last,0,.05f);last=t;
             Vector2 body=new Vector2(body3.X,body3.Z),fw=Fwd(yaw);float k=Progress(body,t),moved=Vector2.Distance(body,startBody);
             for(int i=0;i<2;i++)
@@ -176,10 +194,10 @@ namespace ChipArena.UnityConversion
                 {
                     // (looking a frame ahead: at a lunge's peak the hips cover 10 cm a frame)
                     ref var s=ref f.Steps[f.Next];float behind=Behind(f,i,body,yaw,hips,out float hold)+k*(Travel(t+Frame)-Travel(t));
-                    bool go=f.Mode==Mode.Planted&&t>=s.Lift&&(!s.Motion||moved>=Math.Min(.03f,.25f*distance)),forced=s.Reach&&behind>=hold+(f.Mode==Mode.Roll?.02f:0);
+                    bool go=f.Mode==Mode.Planted&&t>=s.Lift&&(!s.Motion||moved>=Math.Min(.03f,.25f*distance)),forced=s.Reach&&behind>=hold+(f.Mode==Mode.Roll?.02f:0)||leap&&air>LeapLeave;
                     if(go||forced)
                     {
-                        float p=f.Pitch;Vector2 a=Ankle(f);float y=f.Mode==Mode.Roll?RollY(f,t,out p,out a):BallAnkleY(p);
+                        float p=f.Pitch;Vector2 a=Ankle(f);float y=(f.Mode==Mode.Roll?RollY(f,t,out p,out a):BallAnkleY(p))-(leap?air:0);
                         f.Mode=Mode.Flight;f.Flying=f.Next++;f.From=a;f.FromY=y;f.FromYaw=f.Yaw;f.FromPitch=p;f.FromToe=f.Toe;f.FromVel=Vector2.Zero;
                         f.LiftAt=t;f.LandAt=Math.Max(s.Land,t+MinFlight(s.Kind));f.Height=Height(s);
                         if(s.Kind==Kind.Lead)PlantAt=f.LandAt;
@@ -188,12 +206,17 @@ namespace ChipArena.UnityConversion
                 if(f.Mode==Mode.Flight)
                 {
                     ref var s=ref f.Steps[f.Flying];f.ToYaw=yaw+s.Yaw;f.To=Target(body,yaw,t,k,s,f.LandAt)+Fwd(f.ToYaw)*BallZ;
-                    if(t>=f.LandAt){f.Mode=Mode.Roll;f.Ball=f.To;f.Yaw=f.ToYaw;f.RollAt=f.LandAt;f.RollPitch=s.Strike;f.RollTime=s.Roll;f.Toe=0;if(s.Kind==Kind.Lead)PlantAt=f.LandAt;}
+                    // (a leap's foot held up by a body still coming down strikes as it touches)
+                    if(t>=f.LandAt&&!(leap&&air>LeapDown)){float touch=leap&&t>f.LandAt+Frame?t:f.LandAt;f.Mode=Mode.Roll;f.Ball=f.To;f.Yaw=f.ToYaw;f.RollAt=touch;f.RollPitch=s.Strike;f.RollTime=s.Roll;f.Toe=0;if(s.Kind==Kind.Lead)PlantAt=touch;}
                 }
                 if(f.Mode==Mode.Roll&&t>=f.RollAt+f.RollTime){f.Mode=Mode.Planted;f.Pitch=0;}
                 o[i]=PoseOf(f,i,t,dt,body,yaw,hips);
+                // A leap's foot still on the floor as the body leaves it stays on the floor (the push-off frame of the hop).
+                if(leap&&o[i].Contact)o[i].Ankle.Y-=air;
             }
         }
+        // A foot on the floor lifts once the body is this high over it; a leap's feet touch down once it is this low (m).
+        public const float LeapLeave=.04f,LeapDown=.02f;
         private static Vector2 Ankle(Foot f)=>f.Mode==Mode.Flight?f.From:f.Ball+Fwd(f.Yaw)*BallAnkleZ(Math.Max(0,f.Pitch));
         // How far a grounded ankle has been left by its hip across the floor (the hip in group space -> world).
         // hold: how far it may be left before it must lift, the tune's Hold or less where the hips stand too high for the leg

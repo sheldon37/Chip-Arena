@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-12 sprint attack presentation: `claude/melee-steps` (footwork + Astra's `44c79cf` merged) gives each melee weapon its own pack sprint take on her timing. It includes the daggers' twin, the shield bash, the greatsword leap on her hop with the 1.6 m landing ring, first person, effects and existing sounds. Presentation only; branch only, not pushed, merged or released; Unity Editor/Windows play not run. See MELEE-FEEL "Sprint attacks" and DEV_LOG.
+
 2026-10-12 melee footwork: `claude/melee-steps` (shared `1af916c`) pins every swing's soles on the floor and gives the cuts real steps timed to the simulated step window (lead plants in the hit window, rear recovery step, stride-first long lunges, planted no-step/wall swings, hip drop, toe pivots). Presentation only. Branch only; not pushed, merged or released; Unity Editor/Windows play not run. See MELEE-FEEL "Footwork" and DEV_LOG.
 
 2026-10-12 sprint primaries: `codex/unity-sprint-attacks-20261012` on shared `1af916c` implements the four owner-specified sprint attacks, common host/guest timing, twin hits, shield stagger/knockback and greatsword hop/ring. Managed/relay checks (428 PASS), Unity API compilation and source validation pass. Local only: automatic approval review blocked the GitHub push pending explicit publication authorization. Unity/Windows play, Claude pose/VFX acceptance, integration and compiled Update publication remain pending; see DEV_LOG and MELEE-SIMULATION-HANDOFF.

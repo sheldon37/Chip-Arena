@@ -236,7 +236,7 @@ namespace ChipArena.UnityConversion
             }
             // The steps (Core/MeleeFootwork): every foot on the floor pinned where it stands, the others on real steps timed to
             // the simulated travel; then the hips down into the plant and low enough that each grounded foot is reached.
-            stepped=true;stepHips[0]=r.ChainPoint(CapturedRig.LHip,-1);stepHips[1]=r.ChainPoint(CapturedRig.RHip,-1);footwork.Pose(now,r.GroupPosition,r.GroupYaw,stepHips,stepPose);
+            stepped=true;stepHips[0]=r.ChainPoint(CapturedRig.LHip,-1);stepHips[1]=r.ChainPoint(CapturedRig.RHip,-1);footwork.Pose(now,r.GroupPosition,r.GroupYaw,stepHips,stepPose,p.Grounded?0:Math.Max(0,r.GroupPosition.Y-footFloor));
             if(seat){PlantDrop(p,a,weight,Lunge(p,full));SeatSteps(weight);}
             for(int i=0;i<2;i++)
             {
@@ -278,13 +278,14 @@ namespace ChipArena.UnityConversion
         public static float Lunge(MeleeView p,float full)=>p.Commit?MeleeMath.Clamp((full-NativeMeleeFeel.DefaultStep(p.Spec))/.9f,0,1)*(p.OpenerLunge?1:.6f):0;
         // The torso leans into a lunge's travel (most as the lead foot plants, easing out through the recovery), and a swing
         // entered from a sprint (SprintAttack) carries the run's momentum: the body pitches on over the planted feet as the
-        // authority stops it dead, then rights itself through the hit window.
+        // authority stops it dead, then rights itself through the hit window. A sprint attack's take already drives its trunk
+        // into the lunge (SprintCut), so it keeps only the plant's lean (stacked, the trunk pitched past 50-90 deg).
         public const float LungeLean=.3f,MomentumLean=.24f,MomentumCarry=.06f;
         private void StepLean(MeleeView p,Attack a,float phase)
         {
             float now=p.LastAttack+a.Age,stepUntil=p.Commit?p.StepUntil:p.LastAttack+a.Windup+a.Window*.8f,full=Travel(p,p.LastAttack,a.Windup,a.Window,stepUntil),age=Math.Max(0,a.Age);
-            float f=full>.01f?Travel(p,p.LastAttack,a.Windup,a.Window,now)/full:0,lean=LungeLean*Lunge(p,full)*MeleeMath.Ease(f/.7f)*(1-MeleeMath.Ease((phase-1.8f)/.9f));
-            float carry=p.SprintAttack?MeleeMath.Ease(age/.06f)*(1-MeleeMath.Ease((age-.06f)/(a.Windup+a.Window))):0;
+            bool take=SprintSwing(p);float f=full>.01f?Travel(p,p.LastAttack,a.Windup,a.Window,now)/full:0,lean=take?0:LungeLean*Lunge(p,full)*MeleeMath.Ease(f/.7f)*(1-MeleeMath.Ease((phase-1.8f)/.9f));
+            float carry=p.SprintAttack&&!take?MeleeMath.Ease(age/.06f)*(1-MeleeMath.Ease((age-.06f)/(a.Windup+a.Window))):0;
             // Every step leans the trunk into its cut as the lead foot plants (Unity-owned, docs/MELEE-FEEL.md "Footwork"), and
             // the hips lead the shoulders into the strike: the pelvis turns toward the blade's sweep ahead of the chest, which
             // keeps the capture's facing, and gives the turn back through the window.
@@ -383,7 +384,7 @@ namespace ChipArena.UnityConversion
         // chain) enters from its live follow-through or recovery, which carries on under the entry blend, straight into the
         // next windup: entering from the guard snapped the pose back toward it and hitched. A held swing that starts at the
         // last one's end keeps the guard entry (the follow-through has settled there).
-        private struct SwingMemo{public bool Has,Air;public string Id,Spec;public int Index;public float At,Windup,Window,Recovery,Rate,End,Drawn;}
+        private struct SwingMemo{public bool Has,Air,Sprint;public string Id,Spec;public int Index;public float At,Windup,Window,Recovery,Rate,End,Drawn;}
         private SwingMemo swingNow,swingPrev;private float swingTime=float.NaN;
         private readonly MeleeCapture.RecoveryCache chainRecovery=new MeleeCapture.RecoveryCache();private readonly Vector3[] chainKept={Vector3.UnitX,Vector3.UnitX};
         private void TrackSwing(MeleeView p,Attack a,float time)
@@ -403,8 +404,8 @@ namespace ChipArena.UnityConversion
         public static float ChainEntry(float windup)=>Math.Min(.85f*windup,Math.Max(.1f,.5f*windup));
         private void ChainBase(MeleeSet set,MeleeView p,float time)
         {
-            var c=swingPrev;var air=c.Air?NativeAirAttackRules.Clip(p.Spec):null;var clip=air??CutClip(set,c.Index);float age=time-c.At;bool dagger=p.Spec=="daggers"&&air==null;
-            clip.Sample(air!=null?NativeAirAttackRules.ClipTime(clip,age,c.Windup,c.Window,c.Recovery):MeleeSwing.ClipTime(clip,age,c.Windup,c.Window,c.Recovery,dagger),row);
+            var c=swingPrev;CapturedClip air=c.Air?NativeAirAttackRules.Clip(p.Spec):null,sprint=c.Sprint?NativeSprintAttackRules.Clip(p.Spec):null;var clip=air??sprint??CutClip(set,c.Index);float age=time-c.At;bool dagger=p.Spec=="daggers"&&air==null&&sprint==null;
+            clip.Sample(air!=null?NativeAirAttackRules.ClipTime(clip,age,c.Windup,c.Window,c.Recovery):sprint!=null?NativeSprintAttackRules.ClipTime(clip,p.Spec,age,c.Windup,c.Window,c.Recovery):MeleeSwing.ClipTime(clip,age,c.Windup,c.Window,c.Recovery,dagger),row);
             if(age>c.Windup+c.Window&&set.Idle!=null&&!dagger)
             {
                 set.Idle.Sample(c.At+c.Windup+c.Window+c.Recovery,rowB);
@@ -425,15 +426,17 @@ namespace ChipArena.UnityConversion
             }
             shownBeforeTime=same?shownTime:float.NaN;shownTime=time;shownId=p.Id;
         }
-        private readonly MeleeFootwork footwork=new MeleeFootwork();private readonly MeleeFootwork.FootPose[] stepPose=new MeleeFootwork.FootPose[2];private readonly Vector3[] stepHips=new Vector3[2];private bool stepped;
+        private readonly MeleeFootwork footwork=new MeleeFootwork();private readonly MeleeFootwork.FootPose[] stepPose=new MeleeFootwork.FootPose[2];private readonly Vector3[] stepHips=new Vector3[2];private bool stepped;private float footFloor;
         private void StartFeet(MeleeView p,Attack a,float time)
         {
             if(footAt==p.LastAttack)return;
             footAt=p.LastAttack;footHas=shownId==p.Id&&time>shownTime&&time-shownTime<.1f;
+            // The root height of the floor the swing starts on (a hop leaves it: MeleeFootwork measures the body's height over it).
+            var track=JumpLayer?.Track??airTrack;footFloor=p.Grounded||!track.Has?Rig.GroupPosition.Y:track.Floor;
             // The footwork's plan (Core/MeleeFootwork) from the feet as shown, or from the cut's stance where none were.
             Describe(p.Spec,Math.Max(0,(p.AttackIndex>0?p.AttackIndex:1)-1),out int sign,out _,out _);
             float stepAt=p.Commit?p.StepAt:p.LastAttack+a.Windup*.55f,stepUntil=p.Commit?p.StepUntil:p.LastAttack+a.Windup+a.Window*.8f,full=Travel(p,p.LastAttack,a.Windup,a.Window,stepUntil);
-            var swing=new MeleeFootwork.Swing{At=p.LastAttack,StepAt=stepAt,StepUntil=stepUntil,Distance=full,HitAt=p.LastAttack+a.Windup,HitUntil=p.LastAttack+a.Windup+a.Window,End=p.LastAttack+a.Windup+a.Window+a.Recovery,LeadLeft=sign>0,Spec=p.Spec};
+            var swing=new MeleeFootwork.Swing{At=p.LastAttack,StepAt=stepAt,StepUntil=stepUntil,Distance=full,HitAt=p.LastAttack+a.Windup,HitUntil=p.LastAttack+a.Windup+a.Window,End=p.LastAttack+a.Windup+a.Window+a.Recovery,LeadLeft=sign>0,Spec=p.Spec,Sprint=SprintSwing(p)};
             Quaternion g=Quaternion.CreateFromAxisAngle(Vector3.UnitY,Rig.GroupYaw);var shown=new MeleeFootwork.Shown[2];
             for(int i=0;i<2;i++)
             {
@@ -492,13 +495,15 @@ namespace ChipArena.UnityConversion
             // The jump layer's own track (observed last frame, after this sample's pose); without one, the rig's own reading.
             var t=JumpLayer?.Track;bool owned=p.Hp<=0||p.Juggle||p.Down||p.Rolling(time)||p.HitStunUntil>time||p.Action(time);
             if(t==null){airTrack.Observe(time,p.Grounded,Rig.GroupPosition.Y,owned);t=airTrack;}
-            AirWatch.Observe(t,p.LastAttack>-90?p.LastAttack:-100,p.LastAttack+a.Windup+a.Window+a.Recovery,p.AirAttack,time,owned);
+            AirWatch.Observe(t,p.LastAttack>-90?p.LastAttack:-100,p.LastAttack+a.Windup+a.Window+a.Recovery,p.SprintAttack?0:p.AirAttack,time,owned);
         }
         private bool AirSwing(MeleeView p)=>AirWatch.Air&&AirWatch.SwingAt==p.LastAttack&&NativeAirAttackRules.Clip(p.Spec)!=null;
         // The jump layer's landing drop scale while a landed air attack is still being drawn (its end hands the deeper hips back
         // through the pose transition into the guard).
         private float HeavyLanding(MeleeView p,float time)=>airLive&&!float.IsNaN(AirWatch.Landed(time))?NativeAirAttackRules.LandScale(AirWatch.Strength):1;
         private bool airLive;
+        // The greatsword's leaping sprint attack is being drawn: its footwork, not the jump layer, poses the hop (NativeJumpMotion.Leap).
+        private bool leapLive;
         private void AirCut(MeleeSet set,MeleeView p,Attack a,float lag,float weight,float time)
         {
             var clip=NativeAirAttackRules.Clip(p.Spec);float rate=p.AttackRate>0?p.AttackRate:1,recoverySeconds=a.Recovery,landed=AirWatch.Landed(time),standY=Rig.P[CapturedRig.Body].Y;
@@ -520,6 +525,32 @@ namespace ChipArena.UnityConversion
                 Vector3 b=Rig.P[CapturedRig.Body];b.Y=standY+(b.Y-standY)*(1-e)-NativeAirAttackRules.HeavyCrouch*k;Rig.P[CapturedRig.Body]=b;Rig.AddE(CapturedRig.Body,.12f*k,0,0);Rig.AddE(CapturedRig.Spine,.22f*k,0,0);
             }
             State="air attack"+(float.IsNaN(landed)?"":" landed")+(recovering?" recovery":"");
+        }
+        // ---- the sprint attack (Unity-owned, Core/NativeSprintAttackVisuals, docs/MELEE-FEEL.md "Sprint attacks") ----
+        // A swing the authority flags as entered from a sprint (Astra's NativeSprintAttack: grounded openers only, so the
+        // greatsword's hop keeps it) plays the weapon's own running take instead of its first cut, on the swing's replicated
+        // timing (NativeSprintAttackRules.ClipTime: its lead-in over the windup, its strike across the hit window, the daggers'
+        // twin out and back, the follow-through into the guard over the recovery); the shield's bash drives the shield out at
+        // the hit. The feet are the footwork's, the run's stride carrying into the strike; the greatsword leaps on the hop
+        // (the jump layer leaves it to the footwork: NativeJumpMotion.Leap). The take carries its own lean (StepLean).
+        private bool SprintSwing(MeleeView p)=>!AirSwing(p)&&NativeSprintAttackRules.Plays(p.Spec,p.SprintAttack,false);
+        private void SprintCut(MeleeSet set,MeleeView p,Attack a,float lag,float weight)
+        {
+            var clip=NativeSprintAttackRules.Clip(p.Spec);float rate=p.AttackRate>0?p.AttackRate:1,recoverySeconds=a.Recovery,age=a.Age-lag;
+            clip.Sample(NativeSprintAttackRules.ClipTime(clip,p.Spec,age,a.Windup,a.Window,recoverySeconds),row);
+            float bash=p.Spec=="shield"?NativeSprintAttackRules.Bash(age,a.Windup,a.Window,recoverySeconds):0;
+            if(bash>0){row[MeleeCapture.Grip+2]+=NativeSprintAttackRules.BashReach*bash;row[MeleeCapture.Grip+1]+=NativeSprintAttackRules.BashLift*bash;}
+            bool recovering=age>a.Windup+a.Window;
+            if(recovering&&set.Idle!=null)
+            {
+                set.Idle.Sample(p.LastAttack+a.Windup+a.Window+recoverySeconds,rowB);
+                MeleeCapture.FollowThrough(Rig,set,row,rowB,MeleeSwing.Settle(age,a.Windup,a.Window,recoverySeconds),p.LastAttack,p.AttackIndex,rate,recovery,keptAxes,fitScratch);
+            }
+            else MeleeCapture.Apply(Rig,set,row,CaptureOptions.Of(weight,set.Fit,MeleeClear.Turn,legs:0));
+            // The shield's bash: the shield shoulder driven forward over the pitched chest as the body pushes on.
+            if(bash>0){Rig.AddE(CapturedRig.Spine,NativeSprintAttackRules.BashPitch*bash*weight,NativeSprintAttackRules.BashTurn*bash*weight,0);Vector3 b=Rig.P[CapturedRig.Body];b.Z+=NativeSprintAttackRules.BashPush*bash*weight;Rig.P[CapturedRig.Body]=b;}
+            PhraseFootwork(p,a,weight,0);
+            State="sprint attack"+(recovering?" recovery":"");
         }
         private static readonly float[] BlockKeys={0,.13f,.36f},BlockHitKeys={0,.1f,.45f};private readonly float[] staggerKeys={0,0,0};
         private bool raiseHas;private float raiseSince,raiseTime;
@@ -738,15 +769,15 @@ namespace ChipArena.UnityConversion
                     // follow-up, the cut it follows); its footwork blends from the ankles as the gait placed them.
                     // A chain enters from the last swing's live follow-through instead (ChainBase), its feet from where they stood.
                     bool chained=Chained(p);CarryHold(RunCarry(),time,p);float entry=chained?ChainEntry(a.Windup):PhraseEntry(p,a.Windup),k=a.Age<entry?MeleeMath.Ease(a.Age/entry):1,carry=MeleeReady(p,time);
-                    StartFeet(p,a,time);bool air=AirSwing(p);
+                    StartFeet(p,a,time);bool air=AirSwing(p),sprint=!air&&SprintSwing(p);
                     if(k<1){entryAnkles[0]=r.AnkleInGroup(true);entryAnkles[1]=r.AnkleInGroup(false);if(chained)ChainBase(set,p,time);else if(!(p.Followup&&FollowupBase(set,p)))Ready(set,p,time,carry);}
-                    if(air)AirCut(set,p,a,HitStop(p,a),k,time);else Cut(set,p,a,HitStop(p,a),k);swingNow.Drawn=time;swingNow.Air=airLive=air;
+                    if(air)AirCut(set,p,a,HitStop(p,a),k,time);else if(sprint)SprintCut(set,p,a,HitStop(p,a),k);else Cut(set,p,a,HitStop(p,a),k);swingNow.Drawn=time;swingNow.Air=airLive=air;swingNow.Sprint=sprint;leapLive=sprint&&NativeSprintAttackRules.Leaps(p.Spec);
                 }
                 var light=ReactionOf(p);if(light!=null)React(p,light,time,false);
             }
             // The gait takes the footwork's feet over exactly (not within its 1.5 cm), so a swing hands its planted soles on unmoved.
             gait.SyncTolerance=stepped?0:MeleeGait.SyncNear;stepped=false;
-            if(JumpLayer!=null)JumpLayer.LandScale=HeavyLanding(p,time);
+            if(JumpLayer!=null){JumpLayer.LandScale=HeavyLanding(p,time);JumpLayer.Leap=leapLive;}leapLive=false;
             SprintLayer?.Melee(r,p,time,dt);
             JumpLayer?.Melee(r,p,time,dt);
             HitLayer?.Layer(r,time);
@@ -823,6 +854,10 @@ namespace ChipArena.UnityConversion
             {"greatsword/cutA",new Shape(0,.40f,.47f,.49f)},{"greatsword/cutB",new Shape(0,.43f,.54f,.555f)},
             // The air attacks (NativeAirAttackRules: the windup is their own raise and hang; the window plays the chop and the
             // take's held impact, so the blade reaches the bottom two thirds of the way through it).
+            // The sprint takes (NativeSprintAttackRules), from their posed blade tips: the sword's slash whips across the front at
+            // up to 100 m/s; the daggers cross both blades (the twin plays it out and back); the shield's charge holds the shield
+            // out (its bash is the rig's); the greatsword's cleave sweeps in from the right as its hop comes down.
+            {"sprint/sword",new Shape(0,.333f,.433f,.55f)},{"sprint/daggers",new Shape(0,.067f,.2f,.38f)},{"sprint/shield",new Shape(0,.2f,.4f,.55f)},{"sprint/greatsword",new Shape(0,.2f,.333f,.45f)},
             {"air/sword",new Shape(0,.133f,.233f,.3f)},{"air/daggers",new Shape(0,.133f,.233f,.3f)},{"air/shield",new Shape(0,.133f,.233f,.3f)},{"air/greatsword",new Shape(0,.133f,.233f,.3f)},
         };
         // A clip without a shape keeps its contact marks.
