@@ -181,6 +181,10 @@ namespace ChipArena.UnityConversion
         public NativeHitLayer HitLayer;
         // The jump layer (Core/NativeJumpMotion), after the action layers and before the hit layer; null where HitLayer is.
         public NativeJumpMotion JumpLayer;
+        // The pack's directional travel carry (Core/NativeLocomotionCarry); null keeps the captured walk and run (source parity).
+        public NativeLocomotionCarry Locomotion;
+        // The per-weapon sprint carry (Core/NativeSprintMotion), before the jump layer; null where JumpLayer is.
+        public NativeSprintMotion SprintLayer;
         private float HitStop(MeleeView p,Attack a)
         {
             if(!HitStopKeys.TryGetValue(p.Spec,out var k)||string.IsNullOrEmpty(p.Id)||Impacts==null)return 0;float t=p.LastAttack+a.Age,h=Impacts.HitAt(p.Id,t,.5f);
@@ -329,8 +333,12 @@ namespace ChipArena.UnityConversion
             if(walking)
             {
                 float phase=MeleeMath.Frac(Rig.Stride/MeleeMath.TAU);
+                // The pack's directional walk and run carries (Core/NativeLocomotionCarry) where the rig has them; else the captured pair.
+                if(Locomotion!=null&&Locomotion.Carry(Rig,set,p,carry,k,phase,time)){}
+                else{
                 if(carry*k<.999f){set.Walk.Sample(set.Walk.Marks[0]+phase*set.Walk.Duration,row);DampTorso(set.Walk,row,WalkTorsoKeep);MeleeCapture.Apply(Rig,set,row,CaptureOptions.Of(carry,set.Fit,legs:0,root:0));}
                 if(k>.001f){set.Run.Sample(set.Run.Marks[0]+phase*set.Run.Duration,row);DampTorso(set.Run,row,RunTorsoKeep);MeleeCapture.Apply(Rig,set,row,CaptureOptions.Of(carry*k,set.Fit,legs:0,root:0));}
+                }
                 SteadyTorso(carry,carry*k);
                 State=k>.5f?"run":"walk";
             }
@@ -657,6 +665,7 @@ namespace ChipArena.UnityConversion
                 }
                 var light=ReactionOf(p);if(light!=null)React(p,light,time,false);
             }
+            SprintLayer?.Melee(r,p,time,dt);
             JumpLayer?.Melee(r,p,time,dt);
             HitLayer?.Layer(r,time);
             gait.GroundPass(r,p,time,dt,p.Hp<=0||p.Juggle||p.Down||p.Rolling(time));

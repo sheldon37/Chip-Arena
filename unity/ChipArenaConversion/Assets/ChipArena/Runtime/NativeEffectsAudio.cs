@@ -263,7 +263,7 @@ namespace ChipArena.UnityConversion
                 else if(!s.Grounded&&grounded&&t-s.AirAt>=NativeFootsteps.MinAir)BankPlay("move.land",pos,mine?.45f:.55f,0,null,mine);
                 var delta=pos-s.Last;delta.y=0;float moved=delta.magnitude;
                 if(moved>NativeFootsteps.MaxStep||!grounded||t<p.RollEnd)s.Distance=0;
-                else if(steps&&moved/Math.Max(1e-3f,Time.unscaledDeltaTime)>=NativeFootsteps.MinSpeed){s.Distance+=moved;if(s.Distance>=NativeFootsteps.Stride){s.Distance-=NativeFootsteps.Stride;BankPlay(step,pos,mine?.3f:.45f);}}
+                else if(steps&&moved/Math.Max(1e-3f,Time.unscaledDeltaTime)>=NativeFootsteps.MinSpeed){s.Distance+=moved;bool sprint=p.Pose.Sprinting;float stride=NativeFootsteps.StrideFor(sprint);if(s.Distance>=stride){s.Distance-=stride;BankPlay(step,pos,(mine?.3f:.45f)*(sprint?NativeFootsteps.SprintGain:1),0,null,false,null,sprint?NativeFootsteps.SprintRate:1);}}
                 if(mine&&p.Pose.Aiming!=s.Aiming&&p.Weapon?.@class=="ranged")BankPlay("gun.ads",null,.5f,0,null,true);
                 s.Last=pos;s.Grounded=grounded;s.Aiming=p.Pose.Aiming;strides[id]=s;
             }
