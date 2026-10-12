@@ -1,5 +1,54 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Claude — plunging stab presentation (owner: "Can we add a downward jump attack as well? If the player is facing downwards?"; choice "Plunging stab")
+- Branch `claude/plunge-stab` on shared head `6486be8`. Signed commits on the branch only: not pushed, merged or released. Spec: docs/NEW-KITS.md section 1. Details: MELEE-FEEL "Plunging stab".
+- Scope: the visuals only. Astra builds the rule: trigger, drop, hits, replication, prediction and bots. Her fields do not exist yet, so nothing changes in play: every air attack still shows as the forward jump attack until her kind field lands. Proven on fixtures and timelines from the spec's numbers.
+- Field mapping, one place (`Core/NativePlungeStab.cs`, `NativePlungeFields.Of`/`Impact`/`Height`/`Direct`):
+  - read today: `Actor.AirAttack`, `PlungeAt`, `ImpactAt`, and the commitment end after landing (the recovery's end);
+  - stand-ins: `Kind(a)` (proposed `AirKind == "down"`, returns none today) and `Height(a)` (proposed fall height, NaN today: the watch measures the presented drop);
+  - the impact event `Land`, Detail `melee-down` (Position, Radius, `Amount` read as the height when filled);
+  - every presenter reads `NativePlungeData` only.
+- Fields needed from Astra (any names; tell me or edit `NativePlungeFields`):
+  - an air-attack kind on the actor, `"down"` for the plunge, from the host swing and guest prediction (`NativeMeleePresentation`, `NativeReplicaMotion`);
+  - the fall height at impact (actor field or `Land.Amount`);
+  - `Land` with Detail `melee-down`, the ring radius and the weapon;
+  - optionally a Hit Detail for the direct victim.
+  - Keep `PlungeAt` = windup end, `ImpactAt` = landing, commitment end = stuck recovery end.
+- What it does:
+  - Classification (`NativePlungeRules.Classify`/`ForwardFlag`): only the replicated kind makes a plunge. Sprint attacks and owned swings never do. The forward jump attack's four watches (rig, first person, impact effect, cues) never take a plunge; the forward attack is unchanged without the kind.
+  - Poses (`Core/NativePlungePose.cs`, `MeleeMotion.PlungeCut`):
+    - per weapon: tuck, committed blade-first drop with legs drawn up, plant (the contact fixed in the floor, the hips crouching deeper for bigger falls), stuck strain, pull-out (the greatsword rocks and wrenches free last: 0.60 s after landing against 0.20/0.33/0.38 s), settle into the guard on planted soles;
+    - daggers both reversed; sword one-handed; shield bottom rim first, free arm back, the side sword sheathed; greatsword two-handed reverse grip, point down;
+    - the pack has no downward or plunge take (its air attacks all chop forward), so the keys are authored and solved through the rig's IK;
+    - only numbers are committed, no pack data.
+  - First person (`CapturedAnimation.PlungeView`, `NativePlungePose.ViewPose`): the blade points at the ground under the camera's real pitch (`Player.ViewPitch`, set in `RenderFirstPerson`). The air-tear rides the view blade's point. The sprint's vignette and speed lines take the drop (`NativePlungeRules.ScreenWeight`, 1.8x faster) under the Reduced and Low rules.
+  - Effects (`Core/NativePlungeFx.cs`, glue in `Runtime/NativeAirAttackFxPresentation.cs`):
+    - drop streaks and an air-tear;
+    - impact flash, shock ring, a ring of light at the rule's radius, cracks, sparks, grit and a dust wave;
+    - the destruction kit's crater stain, chip and cracks, rubble from 3.5 m, and the camera kick;
+    - sizes by the 2-8 m fall weight: crater 0.4R-1.0R, cracks 0.45R-1.4R, dust 1.1R-2.1R, kick 3.5-10 cm (the jump attack's is 2.5-6.5 cm). The kick goes through the structure shake: the camera-shake setting, Reduced halving it, the 0.3 m cap;
+    - the direct victim's flash, ring and sparks; the pull-out's grit.
+  - Audio (`NativeAudio.AirAttackCues`): existing keys only:
+    - drop: `structure.whoosh` with the weapon's swing (shield: `melee.miss`);
+    - impact: `impact.ground`, `move.land`, `structure.thud` by height, and the weapon's hit (shield: `melee.shield.bash`);
+    - pull-out: `impact.debris` and a short swing.
+- Other files touched minimally: `MeleeMotion` (the plunge branch, `JumpLayer.Leap`, the floor guard, the end-transition feet, `Chained`, the forward flag), `CapturedAnimation`, `NativeViewPresentation` (one line), `NativeSprintFxPresentation` (the screen weight and line rate). Two pinned strings in `Tests/SprintAttackPoseChecks` follow the new hook form; their meaning is unchanged.
+- Animation impact: none on rules. No hit timing, hitbox, damage, cooldown, stamina, movement or network change. The poses follow the replicated times only. A plunge's rig owns the legs in the air (the jump layer stands aside, as for the greatsword leap).
+- Checks (final tree): `unity-check.sh` runtime and editor build OK; `check_relay.py` exit 0, 513 PASS, 0 FAIL, with the 11 new `plunging stab` groups and the real WebSocket relay (two earlier runs at load 17-25 hit the script's 90 s limit after 423/428 passes; retried at lower load, script unchanged; the plunge groups take 0.7 s of the 71 s run); Python 91 tests OK, 1 skipped; `package_source.py` OK, `Builds` removed; `git diff --check 6486be8 HEAD` clean.
+- Renders (offline, three.js stand-in over the real NativeVfx shader blocks, not Unity), `scratchpad/plunge-stab/renders/`:
+  - before/after per weapon at 3 and 8 m: side, front, first person with the speed-line screen;
+  - the forward jump attack beside the plunge;
+  - the direct and ring victims;
+  - the Reduced and Low tiers.
+- Not run: Unity Editor or play, Windows, a guest client, the real effects renderer or bloom.
+- Risks:
+  - The first-person blade is foreshortened by nature; it is leaned toward the view to read, and is unseen on device.
+  - The shield reads thin from the side.
+  - Rubble cubes take the destruction kit's concrete look whatever the floor.
+  - The direct/ring split guesses from timing and distance until a Detail exists.
+  - If Astra's numbers change, the presentation follows the replicated times; the pull/free shares are presentation tuning.
+- Next: Astra adds the kind and height; then a one-line change in `NativePlungeFields` and an owner review on Windows.
+
 ## 2026-10-12 — Claude — spec for the plunging stab, the Bow and Cyber Lord (owner: "Can we add a downward jump attack as well? If the player is facing downwards? ... I want to add two more classes, one for ranged and one for dev. For ranged i want to add a "Bow" class. For Dev, a class called "Cyber Lord". This is an unarmed class, using cyber themed abilities. (1-4 hotkeys used along with Q and E) it will be a melee spellcasting hybrid.")
 - Branch `claude/new-kits` on shared `b97bb8e`; docs only. New `docs/NEW-KITS.md` holds the owner's choices (Astra builds the rules, Claude the visuals; Bow "tap or hold-to-draw"; Cyber Lord "hardlight brawler"; downward attack "plunging stab") and proposed rule numbers, replicated data and bot notes for all three, plus the presentation scope.
 - For Astra: the rules, prediction, replication and bots in that file are yours to implement; numbers are starting proposals and field names suggestions. Record any change in NEW-KITS.md so the presentation follows it.
