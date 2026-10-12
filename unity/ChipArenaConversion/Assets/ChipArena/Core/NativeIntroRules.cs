@@ -18,9 +18,10 @@ namespace ChipArena.UnityConversion
         // native phase length unchanged (9.0678 s for a PvP Siren intro), which is a gameplay-timing difference left for review.
         public static double OverlayDuration(string style)=>style=="dev-siren"?7.2678:Duration(style);
         // Presentation only below: what the client stages for the replicated style; match timing keeps that style.
-        // The entrances the client can stage: the eleven weapon signatures and seven procedural entrances, all directed
-        // (NativeEntranceDirector; the signatures re-stage their baked clips), and the four DEV entrances (baked stages).
-        public static readonly string[] Entrances={"weapon-sword","weapon-daggers","weapon-shield","weapon-greatsword","weapon-pistol","weapon-rifle","weapon-machinegun","weapon-fire","weapon-water","weapon-lightning","weapon-darkness","orbital-drop","grid-rez","holo-projection","blackout","skyline-zip","hero-landing","overclock","dev-emperor","dev-ansatsuken","dev-matrix","dev-siren"};
+        // The entrances the client can stage: the twelve weapon signatures and seven procedural entrances, all directed
+        // (NativeEntranceDirector; the signatures re-stage their baked clips, the Bow's Arrowfall is keyed natively), and the
+        // four DEV entrances (baked stages).
+        public static readonly string[] Entrances={"weapon-sword","weapon-daggers","weapon-shield","weapon-greatsword","weapon-pistol","weapon-rifle","weapon-machinegun","weapon-bow","weapon-fire","weapon-water","weapon-lightning","weapon-darkness","orbital-drop","grid-rez","holo-projection","blackout","skyline-zip","hero-landing","overclock","dev-emperor","dev-ansatsuken","dev-matrix","dev-siren"};
         /// <summary>The procedural entrances: tied to no weapon, so any pilot can pick them (owner 2026-10-11).</summary>
         public static readonly string[] Procedural={"orbital-drop","grid-rez","holo-projection","blackout","skyline-zip","hero-landing","overclock"};
         /// <summary>
@@ -49,7 +50,8 @@ namespace ChipArena.UnityConversion
         /// (shared/cosmetics.ts), which knows the weapon, DEV and retired generic ids but not the procedural entrances, and
         /// stores those as 'neon-drop'. The client remembers its own pick against that value (NativePendingEffect).
         /// </summary>
-        public static string ServiceIntro(string intro)=>intro!=null&&(intro.StartsWith("weapon-",StringComparison.Ordinal)&&Pickable(intro)||intro.StartsWith("dev-",StringComparison.Ordinal)||Array.IndexOf(Retired,intro)>=0)?intro:"neon-drop";
+        // The Bow's Arrowfall is native too (the Electron list predates the Bow): stored as 'neon-drop' and remembered locally.
+        public static string ServiceIntro(string intro)=>intro!=null&&(intro.StartsWith("weapon-",StringComparison.Ordinal)&&Pickable(intro)&&intro!=NativeBowEntrance.Id||intro.StartsWith("dev-",StringComparison.Ordinal)||Array.IndexOf(Retired,intro)>=0)?intro:"neon-drop";
         // The weapon model the intro rig holds, or null. player-intros.ts builds a weapon into the bare intro rig for a weapon
         // intro (WEAPON_INTROS[style].spec: the model "weapon-"+spec is the style itself; daggers fill both hands) and for the
         // Emperor's Oath (buildWeapon(weapon/offWeapon,'emperor'), shown by poseEmperor; weapon-emperor holds both gauntlets).
@@ -140,6 +142,8 @@ namespace ChipArena.UnityConversion
             // The procedural entrances play the retired generic stings (150 bpm beds with a 3.2 s accent); their beats are on that grid.
             switch(style){case "orbital-drop":case "overclock":return "audio/intros/pulse-wave";case "hero-landing":return "audio/intros/neon-drop";case "skyline-zip":return "audio/intros/vector-slide";
                 case "grid-rez":return "audio/intros/signal-spin";case "holo-projection":case "blackout":return "audio/intros/arc-salute";
+                // The Bow's Arrowfall (native, no source sting) lands its beats on the 150 bpm neon-drop bed until intro.weapon-bow is licensed.
+                case "weapon-bow":return "audio/intros/neon-drop";
                 // The DEV Sheldon Intro's music is its LocalAssets key (intro.sheldon-intro, NativeSheldonIntro's beat marks); without it, a built-in sting.
                 case "sheldon-intro":return "audio/intros/signal-spin";}
             return "audio/intros/"+style;
@@ -153,7 +157,7 @@ namespace ChipArena.UnityConversion
             {
                 case "dev-siren":return "DEV · Black Siren Protocol";case "dev-emperor":return "DEV · Emperor’s Oath";case "dev-ansatsuken":return "DEV · Rain Warrior";case "dev-matrix":return "DEV · L33T Throne";case "sheldon-intro":return "DEV · Sheldon Intro";
                 case "weapon-sword":return "Flash Draw";case "weapon-daggers":return "Twin Phantom";case "weapon-greatsword":return "Colossus Oath";case "weapon-shield":return "Bastion Drop";
-                case "weapon-pistol":return "Deadeye";case "weapon-rifle":return "Longwatch";case "weapon-machinegun":return "Belt Rattle";case "weapon-fire":return "Cinder Crown";
+                case "weapon-pistol":return "Deadeye";case "weapon-rifle":return "Longwatch";case "weapon-machinegun":return "Belt Rattle";case "weapon-bow":return "Arrowfall";case "weapon-fire":return "Cinder Crown";
                 case "weapon-water":return "Tidal Serpent";case "weapon-lightning":return "Thunderstep";case "weapon-darkness":return "Eventide Gate";
                 case "orbital-drop":return "Orbital Drop";case "grid-rez":return "Grid Rez";case "holo-projection":return "Holo Projection";case "blackout":return "Blackout";
                 case "skyline-zip":return "Skyline Zip";case "hero-landing":return "Hero Landing";case "overclock":return "Overclock";

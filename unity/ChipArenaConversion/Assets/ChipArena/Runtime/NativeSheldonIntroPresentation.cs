@@ -18,13 +18,14 @@ namespace ChipArena.UnityConversion
         public NativeSheldonGlitch Glitch{get;private set;}
         public Color GlitchTint{get;private set;}=Color.cyan;
         /// <summary>
-        /// Starts a Sheldon Intro frame: the script's effects tier, the pilot copied in the Sheldon Head look (the hood whatever
-        /// hat is equipped, the suit dark, the glow and accents in its hat colour, cyan on Auto), the face for this moment and
-        /// the screen glitch. Returns the actor to draw (the pilot's own actor is untouched).
+        /// Starts a Sheldon Intro frame: the script's effects and graphics tiers (its set is cheaper on both), the pilot copied
+        /// in the Sheldon Head look (the hood whatever hat is equipped, the suit dark, the glow and accents in its hat colour,
+        /// cyan on Auto), the face for this moment and the screen glitch. Returns the actor to draw (the pilot's own actor is
+        /// untouched).
         /// </summary>
         private Actor SheldonIntroBegin(NativeSheldonIntroScript script,Actor actor,NativePilot pilot,float t)
         {
-            bool reduced=HaloReduced;script.Reduced=reduced;
+            bool reduced=HaloReduced;script.Reduced=reduced;script.Low=LowGraphics;
             var look=actor.ViewCopy();look.Hat=NativeSheldonHead.Hat;look.HatColor=pilot.Seat.hatColor;look.BodyColor=NativeSheldonIntro.Suit;look.AccentColor=NativeSheldonIntro.Accent(pilot.Seat.hatColor);
             sheldonScriptFace=NativeSheldonIntro.Face(t,reduced);
             Glitch=NativeSheldonIntro.Glitch(t,reduced,LowGraphics);GlitchTint=HatBody(NativeSheldonHead.Hat,pilot.Seat.hatColor)??Color.cyan;GlitchFrame=Time.frameCount;

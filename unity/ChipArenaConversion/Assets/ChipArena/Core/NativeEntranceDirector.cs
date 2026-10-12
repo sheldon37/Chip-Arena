@@ -249,14 +249,14 @@ namespace ChipArena.UnityConversion
         private static readonly Dictionary<string,Func<NativeEntranceScript>> makers=new Dictionary<string,Func<NativeEntranceScript>>
         {
             {"weapon-sword",()=>new FlashDraw()},{"weapon-daggers",()=>new TwinPhantom()},{"weapon-shield",()=>new BastionDrop()},{"weapon-greatsword",()=>new ColossusOath()},
-            {"weapon-pistol",()=>new Deadeye()},{"weapon-rifle",()=>new Longwatch()},{"weapon-machinegun",()=>new BeltRattle()},
+            {"weapon-pistol",()=>new Deadeye()},{"weapon-rifle",()=>new Longwatch()},{"weapon-machinegun",()=>new BeltRattle()},{NativeBowEntrance.Id,()=>new NativeBowEntrance()},
             {"orbital-drop",()=>new OrbitalDrop()},{"grid-rez",()=>new GridRez()},{"holo-projection",()=>new HoloProjection()},{"blackout",()=>new Blackout()},
             {"skyline-zip",()=>new SkylineZip()},{"hero-landing",()=>new HeroLanding()},{"overclock",()=>new Overclock()},
             {"weapon-fire",()=>new CinderCrown()},{"weapon-water",()=>new TidalSerpent()},{"weapon-lightning",()=>new Thunderstep()},{"weapon-darkness",()=>new EventideGate()},
             // The DEV Sheldon Intro (Core/NativeSheldonIntro.cs; not in NativeIntroRules.Entrances: only live DEV access picks it).
             {NativeSheldonIntro.Style,()=>new NativeSheldonIntroScript()},
         };
-        /// <summary>True for a style the director stages (the eleven weapon signatures, the procedural entrances and the Sheldon Intro).</summary>
+        /// <summary>True for a style the director stages (the twelve weapon signatures, the procedural entrances and the Sheldon Intro).</summary>
         public static bool Directed(string style)=>style!=null&&makers.ContainsKey(style);
         /// <summary>The style's script (made once and kept: its anchors are built on first use).</summary>
         public static NativeEntranceScript Script(string style)

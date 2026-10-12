@@ -40,6 +40,9 @@ namespace ChipArena.UnityConversion
             // Stage lights take the picker's colour, blending to the chip's rarity over .5 s after the pick (the Siren pick: its tier).
             string tier=follow?pveFollowTier:row?.Open?.Tier;Color chipTint=chosenChip!=null?RarityColor(chosenChip.rarity):default;
             Color tint=pve?(tier=="rainbow"?Color.white:RarityColor(tier??"common")):SeatColor(seat);if(age>=0&&chosenChip!=null)tint=Color.Lerp(tint,chipTint,Mathf.Clamp01(age/.5f));
+            // The backdrop's heading band (the heading's bottom row, NativeDraftScreen.DraftHeader) and its variant: the PvE / Siren
+            // personal pick's ward, the rainbow pick's prism.
+            presentation.DraftHeadLine=draftHeadLine;presentation.DraftWard=pve;presentation.DraftPrism=pve&&tier=="rainbow";
             presentation.DraftBandTeam=seat.spec=="siren"?-1:NativeStatusVisuals.PilotBand(match.Teams,match.Cooperative,seat.AuthorityBoss,seat.team,seat.id==arena.LocalId);draftPalm=presentation.RenderDraft(seat,age,focus,consider,draftPoints,n,draftTrayLine,draftTrayBottom,tint,cameraView,prefs.reducedEffects,out var catchAt,chipTint)/scale;draftPalm.y=height-draftPalm.y;
             draftCatch=catchAt/scale;draftCatch.y=height-draftCatch.y;return true;
         }
@@ -88,6 +91,8 @@ namespace ChipArena.UnityConversion
             NativePoseWriter.Write(draftRig.Bones,draftPose,"the draft rig");
             float pulse=age>=0&&!reduced?NativeDraftPlant.Pulse(age):-1,flash=pulse>=0?(1-pulse)*(1-pulse):0;
             camera.fieldOfView=NativeDraftStage.Fov;camera.transform.position=Stage(stage.CameraPosition);camera.transform.LookAt(Stage(stage.CameraTarget));NativeLighting.Draft(camera,tint,flash);
+            // The animated cyber corridor behind the pilot (NativeDraftBackdropPresentation.cs), on the stage's frame step.
+            DraftBackdrop(camera,tint,age,pulse,trayLine,reduced,siren,dt);
             var plant=stage.Plant;int hand=stage.Left?9:13;
             // draft-stage.ts animates the Siren drafter (animateSiren on the match clock): its idle look, eye halos lit.
             var root=draftRig.Root.transform.localToWorldMatrix;var sirenFace=siren?SirenStill(reduced?0:(float)time):null;int bodySkin=NativeBodySkins.Of(seat.weaponSkins);sourceModels.Queue(siren?"siren":BodyModel(bodySkin,BodyCloseTier),root,draftBone,body:BodyTint(seat.bodyColor),accent:BodyAccent(bodySkin,seat.accentColor,seat.hat,seat.hatColor),look:sirenFace);if(!siren&&!AuditorHalo(seat.hat,draftRig.Bones[CapturedRig.Head].localToWorldMatrix,(float)time,1,reduced,0,null,camera,seat.hatColor))sourceModels.Queue(HatModel(seat.hat,seat.hatColor),root,draftBone,body:HatBody(seat.hat,seat.hatColor));

@@ -143,6 +143,7 @@ namespace ChipArena.UnityConversion
         private string IntroModel(string id){if(id==null||sourceModels==null)return id;var skinned=NativeWeaponSkins.ModelIn(id,introSkins);return sourceModels.Has(skinned)?skinned:id;}
         private void IntroWeapon(string style,float age)
         {
+            if(style==NativeBowEntrance.Id&&entranceScript is NativeBowEntrance bow){BowIntro(bow,entranceTime);return;}
             string model=IntroModel(NativeIntroRules.IntroWeapon(style));if(model==null)return;
             introGrip=Matrix4x4.Translate(CapturedAnimation.Vec(CapturedRig.Mirror(NativeIntroRules.IntroGrip(style))));
             if(introHand==null)introHand=b=>introRig.Bones[b].localToWorldMatrix*introGrip;

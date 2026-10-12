@@ -206,6 +206,8 @@ namespace ChipArena.UnityConversion.Editor
             {var shader=Resources.Load<Shader>("NativeBloom");if(shader==null||ShaderUtil.ShaderHasError(shader)||shader.passCount!=4)throw new Exception("Native source shader failed: NativeBloom");}
             // The Siren possession grin's quad (NativeMinionFxPresentation.cs).
             {var shader=Resources.Load<Shader>("NativeMinionGrin");if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: NativeMinionGrin");}
+            // The chip draft's animated cyber backdrop (NativeDraftBackdropPresentation.cs).
+            {var shader=Resources.Load<Shader>("NativeDraftBackdrop");if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: NativeDraftBackdrop");}
             // The effects overhaul's renderer (NativeVfxDraw: sprites, streaks and puffs; lit meshes and shock shells). The match
             // camera's bloom is its own branch's (claude/fx-bloom: NativeBloom.cs and its build check).
             foreach(var name in new[]{"NativeVfx","NativeVfxLit"}){var shader=Resources.Load<Shader>(name);if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: "+name);}

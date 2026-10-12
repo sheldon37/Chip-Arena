@@ -167,7 +167,7 @@ namespace ChipArena.UnityConversion
             // interpolated snapshot time (this clock) on a replica.
             scene.Begin(now,arena.Replica?now:arena.Time,dt,Math.Max(0,quality));
             // Siren shots are the Siren effects' own orbs and flame trails (ArenaPresentation.DevEffects, C12).
-            foreach(var b in arena.Bullets){NativeShotViews.Bullet(arena,b,tracker,now,out var v);if(!v.Siren)scene.Shot(v);}
+            foreach(var b in arena.Bullets){NativeShotViews.Bullet(arena,b,tracker,now,out var v);if(!v.Siren&&!NativeBowWire.Is(v.Spec))scene.Shot(v);}
             foreach(var s in arena.AbilityShots){NativeShotViews.Ability(arena,s,tracker,now,out var v);scene.Shot(v);}
             foreach(var s in arena.MeleeShots){NativeShotViews.Melee(arena,s,tracker,now,out var v);scene.Shot(v);}
             scene.End(dt);Fill(camera);

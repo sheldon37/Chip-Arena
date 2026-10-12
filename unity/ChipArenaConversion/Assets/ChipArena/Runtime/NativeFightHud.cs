@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
             HealReadout(box);
             if(match.Phase==NativePhase.Fight&&(p.Seat.spec=="ansatsuken"||p.Seat.spec=="emperor"))FighterHud(p,W,H);
             if(p.Seat.spec=="siren")SirenHud(p,W);
-            Hitmarker();
+            Hitmarker();BowMeter(p);
         }
         // The top-centre status tag (SET / ROUND, the PvE stage): a chamfered navy tag 26 high at y 20, mono 12 tracked,
         // with a tone diamond either side.
@@ -117,6 +117,9 @@ namespace ChipArena.UnityConversion
                     float qLeft=p.QReady-t,span=qSpan.Update(qLeft,(float)NativeAbilityRules.Cooldown(d,p.Stats));var gc=NativeGunKitHud.Of(d.id,NativeGunKit.Of(p.Pose,t),t,qLeft,span,p.Ammo,p.ReloadEnd>t);
                     cards.Add(new Card{Key="Q · "+d.name.ToUpperInvariant(),State=gc.State,Icon=gc.Icon,Ready=gc.Ready,Active=gc.Active,Low=gc.Venting||gc.Low,Dial=gc.Dial});continue;
                 }
+                // The bow's Volley and Rain of Arrows (Core/NativeBowHud): LOOSING, MARKED / RAINING, the cooldown, their icons.
+                if(d!=null&&NativeBowHud.Covers(d.id)){float bowLeft=(slot=="q"?p.QReady:p.ECharges>0?t:p.EReady)-t,span=(slot=="q"?qSpan:eSpan).Update(bowLeft,(float)NativeAbilityRules.Cooldown(d,p.Stats));var bc=NativeBowHud.Of(d.id,NativeBowWire.Of(p.Pose),t,bowLeft,span);
+                    cards.Add(new Card{Key=slot.ToUpperInvariant()+" · "+d.name.ToUpperInvariant(),State=bc.State,Icon=bc.Icon,Ready=bc.Ready,Active=bc.Active,Low=bc.Low,Dial=bc.Dial});continue;}
                 string status=AbilityStatus(p,slot);if(string.IsNullOrEmpty(status)||d==null&&slot=="q")continue;
                 int dot=status.IndexOf(" · ",StringComparison.Ordinal);string name,state;
                 if(dot>0){name=status.Substring(0,dot).Replace("  "," · ").ToUpperInvariant();state=status.Substring(dot+3);}

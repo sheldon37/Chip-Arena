@@ -95,13 +95,15 @@ class CinematicChecks(unittest.TestCase):
     def test_every_staged_entrance_has_its_scene_and_motion(self):
         # NativeIntroRules.Entrances is what RenderIntro stages (anything else stages the pilot's weapon signature). The DEV
         # entrances play their baked stages; the weapon signatures re-stage their baked clips through the entrance director;
-        # the procedural entrances are the director's own and need no bake.
+        # the procedural entrances and the Bow's Arrowfall (keyed natively, Core/NativeBowEntrance.cs) are the director's own
+        # and need no bake.
         import re
         core=(ROOT/'Assets/ChipArena/Core/NativeIntroRules.cs').read_text(encoding='utf-8')
         styles=re.findall(r'"([a-z-]+)"',re.search(r'Entrances=\{([^}]*)\}',core).group(1))
         procedural=re.findall(r'"([a-z-]+)"',re.search(r'Procedural=\{([^}]*)\}',core).group(1))
         retired=re.findall(r'"([a-z-]+)"',re.search(r'Retired=\{([^}]*)\}',core).group(1))
-        self.assertEqual(len(styles),22)
+        self.assertEqual(len(styles),23)
+        native=set(procedural)|{'weapon-bow'}
         self.assertEqual(set(retired),{'neon-drop','vector-slide','signal-spin','arc-salute','pulse-wave'})
         self.assertFalse(set(retired)&set(styles))
         self.assertTrue(set(procedural)<=set(styles))
@@ -109,9 +111,11 @@ class CinematicChecks(unittest.TestCase):
         director=(ROOT/'Assets/ChipArena/Core/NativeEntranceDirector.cs').read_text(encoding='utf-8')
         for style in styles:
             with self.subTest(style=style):
-                if style in procedural or style.startswith('weapon-'):
+                if style=='weapon-bow':
+                    self.assertIn('{NativeBowEntrance.Id,()=>new NativeBowEntrance()}',director)
+                elif style in procedural or style.startswith('weapon-'):
                     self.assertIn('{"'+style+'",',director)
-                if style in procedural:continue
+                if style in native:continue
                 self.assertIn('intro-'+style,motion)
                 if style.startswith('dev-'):
                     self.assertIn('stage-'+style,self.clips)

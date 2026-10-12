@@ -24,9 +24,9 @@ internal static class IntroMotionChecks
         var intros=Clips(root,"SourceMotion","intro-");var stages=Clips(root,"SceneMotion","stage-");
         // The pinned banks keep all twenty source bakes (the five retired generic entrances' clips stay in the pinned export,
         // unreferenced); every staged entrance with a bake (the eleven weapon signatures the director re-stages, the four DEV
-        // stages) has its clip and stage, and the procedural entrances need none.
+        // stages) has its clip and stage, and the procedural entrances and the Bow's Arrowfall (keyed natively) need none.
         Check(intros.Count==20&&stages.Count==20,"twenty intro clips and stages");
-        var baked=NativeIntroRules.Entrances.Where(s=>Array.IndexOf(NativeIntroRules.Procedural,s)<0).ToArray();Check(baked.Length==15,"fifteen baked entrances");
+        var baked=NativeIntroRules.Entrances.Where(s=>Array.IndexOf(NativeIntroRules.Procedural,s)<0&&s!=NativeBowEntrance.Id).ToArray();Check(baked.Length==15,"fifteen baked entrances");
         foreach(var s in baked)Check(intros.ContainsKey("intro-"+s)&&stages.ContainsKey("stage-"+s),s+" has its clip and stage");
         var weapons=baked.Where(s=>NativeIntroMotion.WeaponIntro(s)>=0).ToArray();Check(weapons.Length==11,"eleven weapon intros");
         // NativeSourceMotion prepares every weapon intro's plan as it loads the clips; the checks run on prepared plans.
