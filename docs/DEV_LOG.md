@@ -1,5 +1,12 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Claude — guard: no Unity native objects in component field initializers
+- Context: the owner's Windows log showed a constructor failure from my Cyber City presentation. `NativeCyberCityPresentation.metroOne` created a MaterialPropertyBlock in an ArenaPresentation field initializer. Unity refused to construct the component, which left later partial fields null (`cyberViews`) and broke host/guest setup. Astra fixed it in `82b837e` (PR #144, merged by the owner).
+- Audit of all MonoBehaviours, including ArenaPresentation's 69 partial files: no other case, following the managed helpers that field initializers construct.
+- New `Tests/test_component_field_init.py` runs with the Python suite. It scans instance field initializers of every MonoBehaviour/ScriptableObject in `Assets/ChipArena` for native construction, directly or through the helper constructors, plus `Shader.Find`, `Resources.Load`, `Time`, `Screen`, `Application` and similar reads. It fails on `3cf02f1` with exactly the `metroOne` line and passes on the current tree. It is a text scan, not a Unity run.
+- Checks on `bb3c8f6` plus this test: Unity build OK; relay exit 0 (563 PASS); Python unittest OK (1 skipped); package_source OK.
+- Not run: Unity Editor, Windows. The next Windows build must confirm the interaction gate. No gameplay, timing or network change.
+
 ## 2026-10-12 — Astra — Bow build-gate dispatch correction
 - Branch `codex/bow-build-gate-fix-20261012`, base shared/cloud `bb3c8f6`. Owner's Windows run passes Kernel Panic and progresses beyond ArenaPresentation construction, then fails `ability did not release volley`.
 - Cause: the all-live-abilities fixture invokes generic PressAbility for Bow, leaving AbilityCast pending because StepAbilities routes Bow to its dedicated input handler. Gameplay already uses the latter path. Route Bow fixtures through actual Q/E input and StepAbilities instead of generic windup/release assumptions.
