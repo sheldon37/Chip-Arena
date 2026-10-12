@@ -22,14 +22,20 @@ namespace ChipArena.UnityConversion
     }
     public sealed class NativeFrameOrder
     {
-        public int Epoch{get;private set;}= -1;private int generation=-1;private double time=-1;
-        public void Reset(){Epoch=-1;generation=-1;time=-1;}
-        public bool Control(int epoch){if(epoch<0||epoch<Epoch)return false;if(epoch>Epoch){Epoch=epoch;generation=-1;time=-1;}return true;}
-        public bool Frame(int epoch,int nextGeneration,double nextTime)
+        public int Epoch{get;private set;}= -1;private int generation=-1;private double time=-1;private long sequence;
+        public void Reset(){Epoch=-1;generation=-1;time=-1;sequence=0;}
+        public bool Control(int epoch){if(epoch<0||epoch<Epoch)return false;if(epoch>Epoch){Epoch=epoch;generation=-1;time=-1;sequence=0;}return true;}
+        // Siren cinematics freeze simulation time while their presentation and chip/control state keeps changing.
+        // A host capture sequence orders these frames without advancing gameplay timers; zero retains legacy ordering.
+        public bool Frame(int epoch,int nextGeneration,double nextTime,long nextSequence=0)
         {
-            if(epoch<0||epoch<Epoch||nextGeneration<0||double.IsNaN(nextTime)||double.IsInfinity(nextTime)||nextTime<0)return false;
-            if(epoch==Epoch&&(nextGeneration<generation||nextGeneration==generation&&nextTime<=time))return false;
-            if(!Control(epoch))return false;generation=nextGeneration;time=nextTime;return true;
+            if(epoch<0||epoch<Epoch||nextGeneration<0||nextSequence<0||double.IsNaN(nextTime)||double.IsInfinity(nextTime)||nextTime<0)return false;
+            if(epoch==Epoch)
+            {
+                if(nextGeneration<generation)return false;
+                if(nextGeneration==generation&&(nextTime<time||(nextSequence>0?nextSequence<=sequence:sequence>0||nextTime<=time)))return false;
+            }
+            if(!Control(epoch))return false;generation=nextGeneration;time=nextTime;sequence=nextSequence;return true;
         }
     }
     public sealed class NativeMessageBudget

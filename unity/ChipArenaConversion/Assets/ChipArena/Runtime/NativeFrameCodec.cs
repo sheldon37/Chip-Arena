@@ -22,7 +22,10 @@ namespace ChipArena.UnityConversion
         {if(d!=null){if(!d.hasActor)d.actor=null;if(!d.hasWound)d.wound=null;}}
         public void RestorePresence()
         {
+            // JsonUtility turns null strings into empty strings. Runtime draft/end-state gates use null as "not chosen/ended".
+            chosen=string.IsNullOrEmpty(chosen)?null:chosen;introStyle=string.IsNullOrEmpty(introStyle)?null:introStyle;
             if(!hasPve)pve=null;
+            if(pve!=null){pve.cinematic=string.IsNullOrEmpty(pve.cinematic)?null:pve.cinematic;pve.outcome=string.IsNullOrEmpty(pve.outcome)?null:pve.outcome;pve.notice=string.IsNullOrEmpty(pve.notice)?null:pve.notice;}
             if(props!=null)foreach(var p in props)if(p!=null&&!p.hasDefinition)p.definition=null;
             if(pilots!=null)foreach(var p in pilots)if(p!=null)
             {if(!p.hasDeath)p.death=null;if(!p.hasFighter)p.fighter=null;if(!p.hasDown)p.down=null;RestoreDeath(p.death);}
