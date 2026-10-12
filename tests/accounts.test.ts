@@ -69,10 +69,10 @@ test('native tints persist and Sheldon cosmetics require a DEV account',async()=
   const dev:any=await(await f.request('login',{username:'Sheldon',password})).json();
   const user:any=await(await f.request('register',{username:'colours',password})).json();
   for(const [pilot,allowed] of [[dev,true],[user,false]] as const){
-   const c={hatColor:'#aBc123',backColor:'#123456',hat:'sheldon-head',intro:'sheldon-intro',overrideWeaponIntro:true};
+   const c={preferredSpec:'cyberlord',hatColor:'#aBc123',backColor:'#123456',hat:'sheldon-head',intro:'sheldon-intro',overrideWeaponIntro:true};
    const save=await f.request('profile',{revision:0,profile:{cosmetics:c}},pilot.session);assert.equal(save.status,200);
    const read:any=await(await f.request('me',undefined,pilot.session)).json();const got=read.account.profile.cosmetics;
-   assert.equal(got.hatColor,c.hatColor);assert.equal(got.backColor,c.backColor);assert.equal(got.hat,allowed?'sheldon-head':'none');assert.equal(got.intro,allowed?'sheldon-intro':'neon-drop');
+   assert.equal(got.preferredSpec,allowed?'cyberlord':undefined);assert.equal(got.hatColor,c.hatColor);assert.equal(got.backColor,c.backColor);assert.equal(got.hat,allowed?'sheldon-head':'none');assert.equal(got.intro,allowed?'sheldon-intro':'neon-drop');
    const bad:any=await(await f.request('profile',{revision:1,profile:{cosmetics:{hatColor:'',backColor:'<script>',hat:'sheldon-head',intro:'sheldon-intro'}}},pilot.session)).json();
    assert.equal(bad.account.profile.cosmetics.hatColor,'');assert.equal(bad.account.profile.cosmetics.backColor,'');
    // The Sheldon Clothes body skin: kept on the DEV account, Standard ('' for the body) on any other; weapon picks stay.

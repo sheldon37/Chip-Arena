@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
         public int Id,Owner,Reflections;public Vector3 Position,Velocity;public float Damage,Gravity,Radius,Life=3,Travel=160,Impulse;
         public string SirenKind;public int SirenTarget;public string LeetKind;public Vector3? LockTarget;public float ReleaseAt;public bool LeetLaunched;public string Spec;public HashSet<int> Hit=new HashSet<int>();
         public int Original,Attack,Bounces,Pierces;public float Born,Travelled,FixedSpeed,BounceRetention= .7f,Homing,Burn,Poison,Demolition=1,ReturnAt=-1,RallyCap,RallyBonus;public NativeShotScale Motion=new NativeShotScale();public float MotionScale{get=>Motion.Value;set=>Motion.Value=value;}
-        public bool Hadoken,Super;public bool Direct=true,ChipImpact,WeaponFx,EffectsUsed,Pong,Boomerang,Zigzag,Relaunched;public Vector3 RallyMark,BaseVelocity;
+        public bool CyberPacket;public bool Hadoken,Super;public bool Direct=true,ChipImpact,WeaponFx,EffectsUsed,Pong,Boomerang,Zigzag,Relaunched;public Vector3 RallyMark,BaseVelocity;
         public Dictionary<string,int> Mods=new Dictionary<string,int>();public readonly Dictionary<int,float> Contacts=new Dictionary<int,float>();
     }
     public sealed partial class NativeArena : IDisposable
@@ -113,7 +113,7 @@ namespace ChipArena.UnityConversion
             foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&p.Input.Roll)TryRoll(p);
             foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&p.Input.Block)TryBlock(p);
             foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected){AdvanceDots(p);if(p.Hp>0&&!Frozen(p))StepPilot(p);}
-            StepMeleeKitWorld();StepBullets();StepAbilityWorld();StepMeleeShots();StepChipFields();StepMinions();StepFighterWorld();StepLeetWorld();StepSirenWorld();RestoreLeetInputs();
+            StepMeleeKitWorld();StepCyberWorld();StepBullets();StepAbilityWorld();StepMeleeShots();StepChipFields();StepMinions();StepFighterWorld();StepLeetWorld();StepSirenWorld();RestoreLeetInputs();
             foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&p.Body.position.y<-6){if(Pve!=null&&p==Pve.Boss)PlacePveBoss(new Vector3(0,.9f,24.2f));else Damage(p,null,p.Hp+1,Vector3.zero,0,false,true);}
             float overtime=NativeCombatRules.Overtime(Match.Time-Match.FightAt,Content.config.FirstOrDefault(v=>v.name=="maxRoundSeconds")?.value??100,Match.Cooperative,SandboxAllowed);if(overtime>0)foreach(var p in Pilots)if(p.Hp>0)Damage(p,null,overtime,Vector3.zero,0,false,forced:true);
             StepPve();Match.Resolve();CancelInvalidKernel();
@@ -269,7 +269,7 @@ namespace ChipArena.UnityConversion
             if(Replica&&replicaFrame!=null)return ReplicaSnapshot();
             foreach(var p in Pilots)
             {
-                var a=p.Pose;a.Kernel=p.Kernel?.ViewCopy();a.Wounds=p.Wounds.ToArray();a.Weapon=p.Seat.spec=="pistol"?WeaponId.Pistol:p.Seat.spec=="rifle"?WeaponId.Rifle:p.Seat.spec=="machinegun"?WeaponId.MachineGun:WeaponId.Sword;a.VisualSet=p.Seat.spec=="daggers"?1:p.Seat.spec=="greatsword"?2:p.Seat.spec=="shield"?3:0;a.MagicVisual=p.Seat.spec=="fire"?1:p.Seat.spec=="water"?2:p.Seat.spec=="lightning"?3:p.Seat.spec=="darkness"?4:0;a.SourceSpec=p.Seat.spec;a.BodyColor=p.Seat.bodyColor;a.AccentColor=p.Seat.accentColor;a.Hat=p.Seat.hat;a.HatColor=p.Seat.hatColor;a.SourceAction=p.Fighter?.Kind;a.SourceAt=p.Fighter?.At??0;a.SourceUntil=p.Fighter?.Until??0;a.SourceTotal=p.Fighter?.Total??0;a.SourceIndex=p.Fighter?.Index??0;a.RigScale=p.Siren?.Scale??1;
+                var a=p.Pose;a.Cyber=p.Cyber.ViewCopy();a.Kernel=p.Kernel?.ViewCopy();a.Wounds=p.Wounds.ToArray();a.Weapon=p.Seat.spec=="pistol"?WeaponId.Pistol:p.Seat.spec=="rifle"?WeaponId.Rifle:p.Seat.spec=="machinegun"?WeaponId.MachineGun:WeaponId.Sword;a.VisualSet=p.Seat.spec=="daggers"?1:p.Seat.spec=="greatsword"?2:p.Seat.spec=="shield"?3:0;a.MagicVisual=p.Seat.spec=="fire"?1:p.Seat.spec=="water"?2:p.Seat.spec=="lightning"?3:p.Seat.spec=="darkness"?4:0;a.SourceSpec=p.Seat.spec;a.BodyColor=p.Seat.bodyColor;a.AccentColor=p.Seat.accentColor;a.Hat=p.Seat.hat;a.HatColor=p.Seat.hatColor;a.SourceAction=p.Fighter?.Kind;a.SourceAt=p.Fighter?.At??0;a.SourceUntil=p.Fighter?.Until??0;a.SourceTotal=p.Fighter?.Total??0;a.SourceIndex=p.Fighter?.Index??0;a.RigScale=p.Siren?.Scale??1;
                 if(p.Seat.spec=="siren"){var m=p.Siren?.Move;a.SourceAction=NativeSirenRules.GrabPose(m?.Caught!=null,Time,m?.Until??0)?"grab":m?.Rule.Id;a.SourceAt=m?.Caught!=null?m.CaughtAt:m?.At??0;a.SourceUntil=m?.Until??0;a.SourceSide=m?.Side??1;a.SourceRanged=p.Siren?.Ranged??false;a.SourceModeAt=p.Siren?.ModeAt??-100;}
                 var hold=p.HeldBy?.Siren?.Move;bool held=hold?.Caught==p&&p.Hp>0&&p.Seat.connected;
                 a.GrabOwner=held?p.HeldBy.Seat.id:0;a.GrabAt=held?hold.CaughtAt:0;a.GrabCrushAt=held?hold.CrushAt:0;a.GrabUntil=held?hold.Until:0;

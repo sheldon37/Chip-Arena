@@ -111,6 +111,7 @@ namespace ChipArena.UnityConversion
             Vector3 delta=b.Velocity/60+Vector3.down*b.Gravity/(2*3600);b.Velocity.y-=b.Gravity/60;float left=delta.magnitude;Vector3 dir=delta.normalized;
             for(int i=0;i<512&&left>.000001f;i++)
             {
+                if(CyberAbsorb(p,b.Position,b.Position+dir*left,b.Radius)){Bullets.Remove(b);break;}
                 var hit=SweepNative(b.Position,dir*left,b.Radius,c=>{var q=c.GetComponent<NativePilotBody>()?.Pilot;return q!=null?q.Hp>0&&q.Seat.connected&&CanHit(p,q)&&!Invulnerable(q)&&!NativeSpecialRules.Protected(q.Down,Time)&&(!seeker||q.Seat.id==b.SirenTarget):c.GetComponent<NativePropBody>()!=null;});
                 if(!hit.HasValue){b.Position+=dir*left;break;}var h=hit.Value;b.Position=h.Point;var target=h.Collider.GetComponent<NativePilotBody>()?.Pilot;var prop=h.Collider.GetComponent<NativePropBody>();
                 if(seeker&&prop!=null&&!prop.Indestructible){DamageProp(prop,prop.Health+1,Vector3.zero,h.Point);left-=h.Distance;continue;}

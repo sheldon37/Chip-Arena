@@ -42,6 +42,7 @@ namespace ChipArena.UnityConversion
         private bool AbilityBusy(NativePilot p)=>p.Fan!=null||p.AbilityCast!=null||p.CastAt>0||Time<p.RollEnd||Time<p.AttackEnd||Incapacitated(p);
         private void StepAbilities(NativePilot p)
         {
+            if(p.Seat.spec=="cyberlord"){StepCyberInput(p);return;}
             if(NativeMeleeRules.Standard(p.Seat.spec)){StepMeleeAbilityInput(p);return;}
             int max=NativeAbilityRules.Charges(p.Stats);
             if(Content.Ability(p.Seat.spec,"e")!=null&&p.ECharges<max&&Time>=p.EReady){p.ECharges++;if(p.ECharges<max)p.EReady=Time+NativeAbilityRules.Cooldown(Content.Ability(p.Seat.spec,"e"),p.Stats);}
@@ -222,6 +223,7 @@ namespace ChipArena.UnityConversion
                 if(!s.Resting)
                 {
                     Vector3 delta=Vector3.ClampMagnitude(s.Velocity*dt+Vector3.down*(.5f*s.Gravity*dt*dt),Math.Max(0,s.MaxTravel-s.Travel));s.Velocity.y-=s.Gravity*dt;
+                    if(CyberAbsorb(s.Owner,s.Position,s.Position+delta,s.Radius)){AbilityShots.RemoveAt(i);continue;}
                     var hits=ProjectileHits(s.Position,s.Radius,delta);
                     bool contact=false;
                     foreach(var h in hits)

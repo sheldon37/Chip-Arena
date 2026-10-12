@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
         private bool StartKernelPanic(NativePilot p)
         {
             long now=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            if(p.Seat.spec!="cyberlord"||!p.Seat.access.Developer||p.Seat.access.Expires<=now||p.Hp<=0||!p.Seat.connected||Incapacitated(p)||Time<p.Ready||Time<p.KernelReady||Time<p.AttackEnd||Time<p.RollEnd||Time<p.BlockEnd||p.AbilityCast!=null||p.Special!=null||p.Mana<NativeKernelPanicRules.Mana*(float)p.Stats["resourceCost"])return false;
+            if(p.Seat.spec!="cyberlord"||!p.Seat.access.DeveloperWeapon("cyberlord",now)||p.Hp<=0||!p.Seat.connected||Incapacitated(p)||Time<p.Ready||Time<p.KernelReady||Time<p.AttackEnd||Time<p.RollEnd||Time<p.BlockEnd||p.AbilityCast!=null||p.Special!=null||p.Mana<NativeKernelPanicRules.Mana*(float)p.Stats["resourceCost"])return false;
             p.Mana-=NativeKernelPanicRules.Mana*(float)p.Stats["resourceCost"];
             p.KernelReady=Time+NativeKernelPanicRules.Cooldown;
             p.Kernel=new NativeKernelPanic{Id=nextAttack++,Caster=p.Seat.id,Seed=random.Next(),At=Time,Until=Time+NativeKernelPanicRules.Windup,Ready=p.KernelReady,CasterStart=Vec(p.Body.position),Anchor=Vec(p.Body.position),Facing=GunRules.Direction(p.Input.Yaw,p.Input.Pitch)};
