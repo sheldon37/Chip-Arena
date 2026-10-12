@@ -7,6 +7,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativePilot
     {
         public NativeKernelPanic Kernel;public float KernelReady;
+        public float KernelTravelled;
         public bool KernelKinematic,KernelCollider,KernelPinned;
     }
     public sealed partial class NativeArena
@@ -18,8 +19,8 @@ namespace ChipArena.UnityConversion
             long now=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             if(p.Seat.spec!="cyberlord"||!p.Seat.access.DeveloperWeapon("cyberlord",now)||p.Hp<=0||!p.Seat.connected||Incapacitated(p)||Time<p.Ready||Time<p.KernelReady||Time<p.AttackEnd||Time<p.RollEnd||Time<p.BlockEnd||p.AbilityCast!=null||p.Special!=null||p.Mana<NativeKernelPanicRules.Mana*(float)p.Stats["resourceCost"])return false;
             p.Mana-=NativeKernelPanicRules.Mana*(float)p.Stats["resourceCost"];
-            p.KernelReady=Time+NativeKernelPanicRules.Cooldown;
-            p.Kernel=new NativeKernelPanic{Id=nextAttack++,Caster=p.Seat.id,Seed=random.Next(),At=Time,Until=Time+NativeKernelPanicRules.Windup,Ready=p.KernelReady,CasterStart=Vec(p.Body.position),Anchor=Vec(p.Body.position),Facing=GunRules.Direction(p.Input.Yaw,p.Input.Pitch)};
+            p.KernelReady=Time+NativeKernelPanicRules.Cooldown;p.KernelTravelled=0;
+            p.Kernel=new NativeKernelPanic{Id=nextAttack++,Caster=p.Seat.id,Seed=random.Next(),At=Time,Until=Time+NativeKernelPanicRules.Windup+NativeKernelPanicRules.Range/NativeKernelPanicRules.LungeSpeed,Ready=p.KernelReady,CasterStart=Vec(p.Body.position),Anchor=Vec(p.Body.position),Facing=V3.Forward(p.Input.Yaw)};
             p.Yaw=p.Input.Yaw;p.AttackAt=p.LastAttack=Time;p.AttackEnd=p.Ready=p.Kernel.Until;p.MoveVelocity=Vector3.zero;if(!p.Body.isKinematic){var v=p.Body.linearVelocity;p.Body.linearVelocity=new Vector3(0,v.y,0);}
             return true;
         }
@@ -90,7 +91,11 @@ namespace ChipArena.UnityConversion
         }
         private void ConnectKernel(NativePilot p)
         {
-            var s=p.Kernel;var origin=p.Body.position;var facing=Vec(s.Facing);var end=KernelTravel(origin,origin+facing*NativeKernelPanicRules.Range);float range=Vector3.Dot(end-origin,facing);
+            var s=p.Kernel;var origin=p.Body.position;var facing=Vec(s.Facing);
+            float requested=Math.Min(NativeKernelPanicRules.LungeSpeed/60f,NativeKernelPanicRules.Range-p.KernelTravelled);
+            float range=ForwardAbilityStep(origin,facing,requested,out bool wall);
+            var end=ClampMap(origin+facing*range);range=Math.Max(0,Vector3.Dot(end-origin,facing));
+            wall|=range+1e-4f<requested;
             // Real capsule sweep: all colliders, nearest enemy contact, with a stable id tie-break.
             var scene=root.scene.GetPhysicsScene();int count;
             while((count=scene.CapsuleCast(origin+Vector3.up*.43f,origin-Vector3.up*.43f,NativeKernelPanicRules.Radius,facing,kernelHits,range,ShotMask,QueryTriggerInteraction.Ignore))==kernelHits.Length)
@@ -104,7 +109,19 @@ namespace ChipArena.UnityConversion
                 if(contact>first||contact==first&&target!=null&&q.Seat.id>target.Seat.id)continue;
                 first=contact;target=q;
             }
-            if(target==null){p.Body.position=end;KernelWhiff(p);return;}
+            foreach(var q in Pilots)
+            {
+                if(q==p||q.Hp<=0||!q.Seat.connected||!CanHit(p,q)||KernelBusy(q)||q.ScareBy!=null||q.HeldBy!=null||q.Seat.AuthorityBoss||!q.Collider.enabled)continue;
+                var nearest=q.Collider.ClosestPoint(origin);
+                if(Vector3.Dot(q.Body.position-origin,facing)<0||(nearest-origin).sqrMagnitude>NativeKernelPanicRules.Radius*NativeKernelPanicRules.Radius||!MeleeVisible(origin,q.Body.position,p,q.Collider))continue;
+                if(first>0||target==null||q.Seat.id<target.Seat.id){first=0;target=q;}
+            }
+            if(target==null)
+            {
+                p.Body.position=end;p.KernelTravelled+=range;
+                if(wall||p.KernelTravelled>=NativeKernelPanicRules.Range-.001f)KernelWhiff(p);
+                return;
+            }
             p.Body.position=origin+facing*Math.Max(0,first-.08f);
             if(Time<target.BlockEnd||Invulnerable(target)||Time<target.ShieldUntil||NativeSpecialRules.Protected(target.Down,Time))
             {if(Time<target.BlockEnd)BlockProc(target,p,target.Body.position,"kernel-panic");KernelWhiff(p);return;}
@@ -141,7 +158,7 @@ namespace ChipArena.UnityConversion
                 if(s.Outcome==0)
                 {
                     if(Time<p.StunEnd||Downed(p)||p.Juggle!=null||Frozen(p)){EndKernel(p,3);continue;}
-                    if(Time>=s.Until)ConnectKernel(p);continue;
+                    if(Time>=s.At+NativeKernelPanicRules.Windup)ConnectKernel(p);continue;
                 }
                 if(!s.Active)continue;
                 NativeKernelPanicRules.Sample(s,Time,out var casterAt,out var victimAt);
