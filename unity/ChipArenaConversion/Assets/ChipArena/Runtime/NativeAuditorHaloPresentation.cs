@@ -24,6 +24,10 @@ namespace ChipArena.UnityConversion
         private readonly MaterialPropertyBlock block=new MaterialPropertyBlock();
         private readonly AuditorHaloFrame frame=new AuditorHaloFrame();private readonly AuditorHaloUniforms uniforms=new AuditorHaloUniforms();
         private readonly Vector4[] bolts=new Vector4[NativeAuditorHalo.Arcs*2],flameSlots=new Vector4[NativeAuditorHalo.Flames*2],finSlots=new Vector4[NativeAuditorHalo.Flames],embers=new Vector4[NativeAuditorHalo.Embers];
+        // A picked hat colour re-hues the material palette per draw (NativeHatLooks.Rehue); Auto sets nothing (the materials' own).
+        private static readonly string[] PaletteIds={"_HaloDeep","_HaloRed","_HaloHot","_HaloWhite","_HaloGlow","_HaloBolt","_HaloEmber","_HaloSoot","_HaloInner","_HaloRim"};
+        private static readonly int[] PaletteHex={NativeAuditorHalo.Deep,NativeAuditorHalo.Red,NativeAuditorHalo.Hot,NativeAuditorHalo.White,NativeAuditorHalo.GlowColor,NativeAuditorHalo.BoltColor,NativeAuditorHalo.EmberColor,NativeAuditorHalo.Soot,NativeAuditorHalo.Inner,NativeAuditorHalo.Rim};
+        private readonly Vector4[] palette=new Vector4[PaletteIds.Length];private string paletteFor;private readonly bool linearSpace;
         private static readonly int AId=Shader.PropertyToID("_HaloA"),SpinId=Shader.PropertyToID("_HaloSpin"),PulseId=Shader.PropertyToID("_HaloPulse"),BoltsId=Shader.PropertyToID("_HaloBolts"),
             FlamesId=Shader.PropertyToID("_HaloFlames"),FinsId=Shader.PropertyToID("_HaloFins"),EmbersId=Shader.PropertyToID("_HaloEmbers");
         /// <summary>The group's world centre and the halo light's strength (0..1) after the last Draw.</summary>
@@ -37,7 +41,7 @@ namespace ChipArena.UnityConversion
         }
         private NativeAuditorHaloDraw(Shader shader,bool fog)
         {
-            bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear;
+            bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear;linearSpace=linear;
             Material Make(string name,BlendMode src,BlendMode dst,bool write,int queue,bool transparent)
             {
                 var m=new Material(shader){name=name,renderQueue=queue,hideFlags=HideFlags.HideAndDontSave};m.SetFloat("_Src",(float)src);m.SetFloat("_Dst",(float)dst);m.SetFloat("_ZWrite",write?1:0);m.SetFloat("_HaloFog",fog?1:0);
@@ -74,7 +78,7 @@ namespace ChipArena.UnityConversion
         /// reduced halo. `eye`: the camera the flames are ordered for (null: unordered). Drawn on `layer` for `camera` (null:
         /// every camera drawing the layer), casting no shadow.
         /// </summary>
-        public void Draw(Matrix4x4 head,float time,float opacity,bool simple,Camera eye,int layer,Camera camera)
+        public void Draw(Matrix4x4 head,float time,float opacity,bool simple,Camera eye,int layer,Camera camera,string color=null)
         {
             Light=0;if(opacity<=.001f)return;
             NativeAuditorHalo.Evaluate(time,simple,frame);
@@ -86,6 +90,7 @@ namespace ChipArena.UnityConversion
             Copy(uniforms.Bolts,bolts);Copy(uniforms.Flames,flameSlots);Copy(uniforms.Fins,finSlots);Copy(uniforms.Embers,embers);
             block.Clear();block.SetVector(AId,V(uniforms.A));block.SetVector(SpinId,V(uniforms.Spin));block.SetVector(PulseId,V(uniforms.Pulse));
             block.SetVectorArray(BoltsId,bolts);block.SetVectorArray(FlamesId,flameSlots);block.SetVectorArray(FinsId,finSlots);block.SetVectorArray(EmbersId,embers);
+            if(!NativeHatLooks.IsAuto(color)){Rehue(color);for(int i=0;i<palette.Length;i++)block.SetVector(PaletteIds[i],palette[i]);}
             Graphics.DrawMesh(arcs,group,opaque,layer,camera,0,block,ShadowCastingMode.Off,false,null,LightProbeUsage.Off,null);
             if(simple)
             {
@@ -98,6 +103,12 @@ namespace ChipArena.UnityConversion
         }
         private static Vector4 V(System.Numerics.Vector4 v)=>new Vector4(v.X,v.Y,v.Z,v.W);
         private static void Copy(System.Numerics.Vector4[] from,Vector4[] to){for(int i=0;i<to.Length;i++)to[i]=V(from[i]);}
+        // The palette re-hued to `color`, made again only when the colour changes.
+        private void Rehue(string color)
+        {
+            if(paletteFor==color)return;paletteFor=color;
+            for(int i=0;i<palette.Length;i++){int hex=NativeHatLooks.Rehue(PaletteHex[i],color);var c=new Color((hex>>16&255)/255f,(hex>>8&255)/255f,(hex&255)/255f,1);palette[i]=linearSpace?(Vector4)c.linear:(Vector4)c;}
+        }
         public void Dispose(){foreach(var o in new UnityEngine.Object[]{arcs,flames,glow,sparks,fins,simpleGlow,opaque,premultiplied,additive,sparkle})if(o!=null)CapturedAnimation.Release(o);}
     }
 
@@ -114,24 +125,24 @@ namespace ChipArena.UnityConversion
         /// Whether `hat` is the Auditor halo and it was drawn on `head` (else the caller queues the bank's hat model) at
         /// `clock`, faded by `opacity`, reduced when `simple`, on `layer` for `camera` (null: all), flames ordered for `eye`.
         /// </summary>
-        private bool AuditorHalo(string hat,Matrix4x4 head,float clock,float opacity,bool simple,int layer,Camera camera,Camera eye=null)
+        private bool AuditorHalo(string hat,Matrix4x4 head,float clock,float opacity,bool simple,int layer,Camera camera,Camera eye=null,string color=null)
         {
             if(hat!=NativeAuditorHalo.Hat||haloFailed)return false;
             if(haloDraw==null){haloDraw=NativeAuditorHaloDraw.Create(true);if(haloDraw==null){haloFailed=true;return false;}}
-            haloDraw.Draw(head,clock,opacity,simple,eye!=null?eye:HaloEye,layer,camera);
+            haloDraw.Draw(head,clock,opacity,simple,eye!=null?eye:HaloEye,layer,camera,color);
             // Not for the view-model layer or a single camera's private shot (the light would reach every camera).
-            if(!simple&&layer==0&&camera==null&&haloDraw.Light>.01f)HaloLight(haloDraw.Centre,haloDraw.Light);
+            if(!simple&&layer==0&&camera==null&&haloDraw.Light>.01f)HaloLight(haloDraw.Centre,haloDraw.Light,color);
             return true;
         }
         /// <summary>The camera the flames are ordered for: the arena camera the last frame used (DevEffects), the stage camera, else the main one.</summary>
         private Camera HaloEye=>sirenLookCamera!=null?sirenLookCamera:Camera.main;
-        private void HaloLight(Vector3 at,float strength)
+        private void HaloLight(Vector3 at,float strength,string color=null)
         {
             if(haloLightFrame!=Time.frameCount){haloLightFrame=Time.frameCount;haloLightsUsed=0;}
             if(haloLightsUsed>=HaloLights)return;int i=haloLightsUsed++;
             var light=haloLights[i];
             if(light==null){var go=new GameObject("Auditor halo light "+i);go.transform.SetParent(transform,false);light=go.AddComponent<Light>();light.type=LightType.Point;light.renderMode=LightRenderMode.ForceVertex;light.shadows=LightShadows.None;light.range=1.25f;light.color=NativeArena.ColorOf(NativeAuditorHalo.LightColor);haloLights[i]=light;}
-            light.transform.position=at+Vector3.down*.05f;light.intensity=.8f*strength;haloLit[i]=Time.frameCount;if(!light.enabled)light.enabled=true;
+            light.color=NativeArena.ColorOf(NativeHatLooks.Rehue(NativeAuditorHalo.LightColor,color));light.transform.position=at+Vector3.down*.05f;light.intensity=.8f*strength;haloLit[i]=Time.frameCount;if(!light.enabled)light.enabled=true;
         }
         // A light set in an earlier frame and not this one is turned off (no halo drew, or the presentation stopped rendering).
         private void LateUpdate(){for(int i=0;i<HaloLights;i++){var light=haloLights[i];if(light!=null&&light.enabled&&haloLit[i]<Time.frameCount)light.enabled=false;}}

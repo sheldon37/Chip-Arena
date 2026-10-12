@@ -85,7 +85,7 @@ namespace ChipArena.UnityConversion
         public static Actor DecoyActor(Actor a,NativeMeleeKit k)
         {
             float release=k.AfterimageUntil-DecoySeconds,at=release-.15f;
-            return new Actor{Id=a.Id,SourceSpec=a.SourceSpec,Weapon=a.Weapon,VisualSet=a.VisualSet,Yaw=a.Yaw,CastRate=1,Hp=100,Grounded=true,BodyColor=a.BodyColor,AccentColor=a.AccentColor,Hat=a.Hat,
+            return new Actor{Id=a.Id,SourceSpec=a.SourceSpec,Weapon=a.Weapon,VisualSet=a.VisualSet,Yaw=a.Yaw,CastRate=1,Hp=100,Grounded=true,BodyColor=a.BodyColor,AccentColor=a.AccentColor,Hat=a.Hat,HatColor=a.HatColor,
                 SpecialKind="shadow-step",SpecialAt=at,SpecialRelease=release,SpecialUntil=release+.3f,MeleeKit=new NativeMeleeKit{Kind="shadow-step",Phase="windup",At=at,Release=release,Until=release+.3f,Yaw=k.Yaw}};
         }
         public const float DecoySeconds=1;

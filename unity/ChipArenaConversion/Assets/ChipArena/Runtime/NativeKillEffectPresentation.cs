@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
         private Matrix4x4 overlay=Matrix4x4.identity;private float sink,partScale=1;
         private Func<int,Matrix4x4> presentedBone;private Func<int,bool> shownBone;private string hatModel,looseModel;
         /// <summary>The hat and dropped-weapon model ids (built once, not per frame).</summary>
-        internal string HatModel=>hatModel??=string.IsNullOrEmpty(Death.actor?.Hat)?null:"hat-"+Death.actor.Hat;
+        internal string HatModel=>hatModel??=string.IsNullOrEmpty(Death.actor?.Hat)?null:NativeHatLooks.Model(Death.actor.Hat,Death.actor.HatColor);
         // The dropped weapon in the victim's own skin (Core/NativeWeaponSkins.cs; its seat, as every client replicates it).
         internal string LooseModel=>looseModel??=string.IsNullOrEmpty(Death.actor?.SourceSpec)?null:NativeWeaponSkins.Model("loose-"+Death.actor.SourceSpec,NativeWeaponSkins.Index(arena?.Match?.Seat(Death.actor.Id)?.weaponSkins,Death.actor.SourceSpec));
         /// <summary>The bone matrices to draw with this frame (cached delegate: no per-frame allocation).</summary>
@@ -302,7 +302,7 @@ namespace ChipArena.UnityConversion
             {
                 debris.LooseAt(corpse.LooseHat,age,out double x,out double y,out double z,out double qx,out double qy,out double qz,out double qw,out double s);
                 var start=corpse.HatStart;killLooseHat=Matrix4x4.TRS(new Vector3(-(float)x,(float)y,(float)z),new Quaternion((float)qx,-(float)qy,-(float)qz,(float)qw),Vector3.one*(float)s)*Matrix4x4.Translate(-start)*corpse.Bind[5];
-                if(!AuditorHalo(corpse.Death.actor?.Hat,killLooseHat,corpse.Death.at+age,alpha,HaloReduced,0,null))sourceModels.QueueShadowless(corpse.HatModel,Matrix4x4.identity,LooseHatBone,null,null,null,alpha);
+                if(!AuditorHalo(corpse.Death.actor?.Hat,killLooseHat,corpse.Death.at+age,alpha,HaloReduced,0,null,color:corpse.Death.actor?.HatColor))sourceModels.QueueShadowless(corpse.HatModel,Matrix4x4.identity,LooseHatBone,SheldonHood,HatBody(corpse.Death.actor?.Hat,corpse.Death.actor?.HatColor),null,alpha);
             }
         }
         private Matrix4x4 killLooseHat;private Func<int,Matrix4x4> looseHatBone;private Func<int,Matrix4x4> LooseHatBone=>looseHatBone??=b=>killLooseHat;

@@ -6,15 +6,16 @@ using NVector=System.Numerics.Vector3;
 using NQuaternion=System.Numerics.Quaternion;
 namespace ChipArena.UnityConversion
 {
-    // What a portrait shows: the pilot's weapon, lobby pose, hat and colours (#rrggbb as ints). A value, compared field by
-    // field, so a card asks for its portrait every frame without allocating. `Yaw` (degrees about the podium's axis, the
-    // Locker's turntable) is not part of the look: turning re-renders the same slot without deriving it again.
+    // What a portrait shows: the pilot's weapon, lobby pose, hat and colours (#rrggbb as ints; the hat colour as its saved
+    // text, null or "" Auto: NativeHatLooks). A value, compared field by field, so a card asks for its portrait every frame without allocating. `Yaw`
+    // (degrees about the podium's axis, the Locker's turntable) is not part of the look: turning re-renders the same slot
+    // without deriving it again.
     public struct PortraitLook
     {
-        public string Spec,Pose,Hat;public int Body,Accent;public float Yaw;
+        public string Spec,Pose,Hat,HatColor;public int Body,Accent;public float Yaw;
         /// <summary>The weapon's skin key (Core/NativeWeaponSkins.cs; null or unknown: Standard).</summary>
         public string Skin;
-        public bool Same(in PortraitLook o)=>Spec==o.Spec&&Pose==o.Pose&&Hat==o.Hat&&Body==o.Body&&Accent==o.Accent&&Skin==o.Skin;
+        public bool Same(in PortraitLook o)=>Spec==o.Spec&&Pose==o.Pose&&Hat==o.Hat&&Body==o.Body&&Accent==o.Accent&&Skin==o.Skin&&HatColor==o.HatColor;
     }
     // The live 3D pilot portraits of the menu, lobby and results cards (client/menu-portraits.ts MenuPortraits at 05950ea):
     // the pilot's own source model in its colours, with its hat (the Auditor halo: the arena's shared animated drawer,
@@ -39,11 +40,13 @@ namespace ChipArena.UnityConversion
             public int Key=int.MinValue,W,H,Frame=-10,TopPose=-1;public float Seen=-10,Aspect=1,Top,Yaw;public PortraitLook Look;public bool Ready;public RenderTexture Texture;
             public readonly MeleeRig Rig=new MeleeRig();public readonly CapturedRig.Pose Pose=new CapturedRig.Pose();
             // Derived once per look (no per-frame strings or colour maths): model ids, the idle clip and the colour tints.
-            public string Spec="pistol",Hat="none",WeaponModel,HatModel,IdleClip;public Vector4 BodyTint,AccentTint,EdgeTint,FlexTint;
+            public string Spec="pistol",Hat="none",WeaponModel,HatModel,HatColor="",IdleClip;public Vector4 BodyTint,AccentTint,EdgeTint,FlexTint,HatTint;
             public void Derive(in PortraitLook look)
             {
                 Look=look;Spec=string.IsNullOrEmpty(look.Spec)?"pistol":look.Spec;Hat=Spec=="siren"||string.IsNullOrEmpty(look.Hat)?"none":look.Hat;
-                WeaponModel=NativeWeaponSkins.Model(NativeWeaponSkins.PrototypeHeld(Spec),look.Skin==NativeWeaponSkins.Prototype?NativeWeaponSkins.PrototypeIndex:NativeWeaponSkins.StandardIndex);HatModel="hat-"+Hat;IdleClip=Spec=="siren"?"siren-idle-melee":Spec+"-idle";TopPose=-1;
+                // A picked hat colour: the bank's tintable twin with the colour as its body tint (Auto: the authored hat, untinted).
+                string color=NativeHatLooks.Normalize(look.HatColor);int tint=NativeHatLooks.Tint(Hat,color);HatColor=color;
+                WeaponModel=NativeWeaponSkins.Model(NativeWeaponSkins.PrototypeHeld(Spec),look.Skin==NativeWeaponSkins.Prototype?NativeWeaponSkins.PrototypeIndex:NativeWeaponSkins.StandardIndex);HatModel=NativeHatLooks.Model(Hat,color)??"hat-none";HatTint=tint<0?Vector4.one:V4(NativePortraitRules.Linear(tint));IdleClip=Spec=="siren"?"siren-idle-melee":Spec+"-idle";TopPose=-1;
                 BodyTint=V4(NativePortraitRules.BodyTint(look.Body));AccentTint=V4(NativePortraitRules.AccentTint(look.Accent));EdgeTint=V4(NativePortraitRules.EdgeTint(look.Body));FlexTint=V4(NativePortraitRules.FlexTint(look.Body));
             }
         }
@@ -157,7 +160,8 @@ namespace ChipArena.UnityConversion
         {
             min=max=NVector.Zero;if(!hatBounds.TryGetValue(model,out var b))
             {
-                bool any=false;foreach(var p in Parts(model)){if(p.Mesh==null)continue;if(!any){b=p.Mesh.bounds;any=true;}else b.Encapsulate(p.Mesh.bounds);}
+                // Head-space parts only (the Sheldon Head's mantle and drapes ride the chest and clavicles).
+                bool any=false;foreach(var p in Parts(model)){if(p.Mesh==null||p.Bone!=CapturedRig.Head)continue;if(!any){b=p.Mesh.bounds;any=true;}else b.Encapsulate(p.Mesh.bounds);}
                 if(!any)return false;hatBounds[model]=b;
             }
             min=new NVector(-b.max.x,b.min.y,b.min.z);max=new NVector(-b.min.x,b.max.y,b.max.z);return true;
@@ -187,8 +191,9 @@ namespace ChipArena.UnityConversion
                 Model(p,m,siren?Vector4.one:s.BodyTint,siren?Vector4.one:s.AccentTint,scene,siren?Vector4.one:Vector4.zero);
             }
             if(siren)SirenPieces(time,turn);
-            if(!siren&&hat==NativeAuditorHalo.Hat&&haloDraw!=null)haloDraw.Draw(bones[CapturedRig.Head],time,1,Reduced,view,Layer,view);
-            else if(!siren&&hat!="none")foreach(var p in Parts(s.HatModel))Model(p,p.Bone>=0&&p.Bone<22?bones[p.Bone]:rootMatrix,Vector4.one,Vector4.one,Vector4.one,Vector4.one);
+            if(!siren&&hat==NativeAuditorHalo.Hat&&haloDraw!=null)haloDraw.Draw(bones[CapturedRig.Head],time,1,Reduced,view,Layer,view,s.HatColor);
+            else if(!siren&&hat==NativeSheldonHead.Hat&&Parts(NativeSourceModels.SheldonLive).Length>0)SheldonHead(s,index,time,rootMatrix);
+            else if(!siren&&hat!="none")foreach(var p in Parts(s.HatModel))Model(p,p.Bone>=0&&p.Bone<22?bones[p.Bone]:rootMatrix,s.HatTint,Vector4.one,Vector4.one,Vector4.one);
             if(weapon.Visible||offhand.Visible)foreach(var p in Parts(s.WeaponModel))
             {
                 LobbyHeld held;if(weapon.Visible&&p.Bone==weapon.Bone)held=weapon;else if(offhand.Visible&&p.Bone==offhand.Bone)held=offhand;else continue;
@@ -226,6 +231,20 @@ namespace ChipArena.UnityConversion
             block.SetVector(BodyId,body);block.SetVector(AccentId,accent);block.SetVector(SceneId,scene);block.SetVector(GlowId,glow);block.SetFloat(InkId,p.Ink);
             Draw(p.Mesh,m,p.Transparent?(p.DoubleSide?transparentDouble:transparent):p.DoubleSide?opaqueDouble:opaque);
         }
+        // The Sheldon Head: its shell like any hat, then the face and ring animated on the portrait clock (idle breathing and
+        // blinks, the ring turning; reduced effects slows the ring), tinted with the hat colour (cyan on Auto).
+        private readonly Dictionary<int,Part> sheldonPieces=new Dictionary<int,Part>();
+        private void SheldonHead(Slot s,int index,float time,Matrix4x4 rootMatrix)
+        {
+            foreach(var p in Parts(NativeSourceModels.SheldonLive))Model(p,p.Bone>=0&&p.Bone<22?bones[p.Bone]:rootMatrix,s.HatTint,Vector4.one,Vector4.one,Vector4.one);
+            var models=presentation.PortraitModels;var face=NativeSheldonHead.Evaluate(time,s.Key,-1,-1,Reduced);
+            for(int i=NativeSheldonHead.EyeLeft;i<=NativeSheldonHead.RingGlow;i++)
+            {
+                if(!models.SheldonPiece(i,face,out var mesh,out var local,out var material)||mesh==null||material==null)continue;
+                if(!sheldonPieces.TryGetValue(i,out var part)){part=new Part{Bone=CapturedRig.Head,Class=NativePortraitRules.PartOther,Joint=-1,Transparent=material.renderQueue>=3000,DoubleSide=material.GetFloat("_Cull")==0,Ink=0,Texture=null,St=new Vector4(1,1,0,0)};sheldonPieces[i]=part;}
+                part.Mesh=mesh;float k=i<NativeSheldonHead.Ring?face.Glow:1;Model(part,bones[CapturedRig.Head]*local,s.HatTint,Vector4.one,Vector4.one,new Vector4(k,k,k,1));
+            }
+        }
         // menu-portraits.ts animates the Siren (animateSiren): its idle look on the portrait clock (claws out, eyes and grin at
         // rest, tongues and wisps alive) and the eye halos, sprites turned to the portrait camera.
         private void SirenPieces(float time,Quaternion turn)
@@ -253,7 +272,7 @@ namespace ChipArena.UnityConversion
         {
             foreach(var s in slots)if(s!=null)Clear(s);
             foreach(var o in new UnityEngine.Object[]{opaque,opaqueDouble,transparent,transparentDouble,additive,resolve,box,podium,haloQuad})if(o!=null)CapturedAnimation.Release(o);haloDraw?.Dispose();haloDraw=null;
-            if(view!=null)CapturedAnimation.Release(view.gameObject);view=null;parts.Clear();hatBounds.Clear();pieceParts.Clear();
+            if(view!=null)CapturedAnimation.Release(view.gameObject);view=null;parts.Clear();hatBounds.Clear();pieceParts.Clear();sheldonPieces.Clear();
         }
     }
     public sealed partial class ArenaPresentation

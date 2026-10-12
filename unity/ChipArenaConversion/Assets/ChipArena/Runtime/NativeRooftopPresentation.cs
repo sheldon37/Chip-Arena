@@ -8,7 +8,7 @@ using NVector4=System.Numerics.Vector4;
 namespace ChipArena.UnityConversion
 {
     /// <summary>The player's look on the home screen's rooftop: the weapon id (its source spec), hat and colours (prefs).</summary>
-    public struct RooftopPilot {public string Spec,Hat,Body,Accent;}
+    public struct RooftopPilot {public string Spec,Hat,Body,Accent,HatColor;}
     /// <summary>
     /// The home screen's background, "Pilot's Rooftop" (owner 2026-10-12; Core NativeRooftopCity, NativeRooftopActors,
     /// NativeRooftopArt): the deterministic cyber city built once per quality tier into a handful of meshes and drawn for the
@@ -289,7 +289,9 @@ namespace ChipArena.UnityConversion
                 var bones=cast.Bones[i];var p=s.Pose;for(int b=0;b<bones.Length;b++)bones[b]=group*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(p.WorldPosition[b])),CapturedAnimation.Quat(CapturedRig.Mirror(p.WorldRotation[b])),Vector3.one);
                 bool siren=look.Spec=="siren";
                 sourceModels.Queue(siren?"siren":"pilot",group,cast.Bone[i],null,0,camera,cast.Body[i],cast.Accent[i],look:siren?SirenStill(reduced?0:time):null);
-                if(!siren&&look.Hat!="none"&&!AuditorHalo(look.Hat,bones[CapturedRig.Head],time,1,reduced,0,camera,camera))sourceModels.Queue("hat-"+look.Hat,group,cast.Bone[i],null,0,camera);
+                // Your pilot's hat in its colour, the Sheldon Head animated (NativeHatPresentation.cs); the crowd keeps Auto.
+                string hatColor=i==0?pilot.HatColor:null;
+                if(!siren&&look.Hat!="none"&&!AuditorHalo(look.Hat,bones[CapturedRig.Head],time,1,reduced,0,camera,camera,hatColor)&&!SheldonStill(look.Hat,hatColor,group,cast.Bone[i],bones[CapturedRig.Head],time,i,reduced,0,camera))sourceModels.Queue(HatModel(look.Hat,hatColor),group,cast.Bone[i],null,0,camera,body:HatBody(look.Hat,hatColor));
                 if(i>0&&!siren&&(s.Weapon.Visible||s.Offhand.Visible))sourceModels.Queue("weapon-"+look.Spec,group,cast.Held[i],cast.HeldShown[i],0,camera,accent:cast.Accent[i],glow:HeldGlow);
                 // The seated pilot's weapon lies flat on the lip at its right, pointing along it (fists stay on the hands).
                 if(i==0&&!siren&&!NativeLobbyPoses.Fighter(look.Spec))

@@ -80,7 +80,7 @@ namespace ChipArena.UnityConversion
         private void DrawVent(VentBody v,NativeDeath death,float clock,bool extras=true)
         {
             var root=v.Root;sourceModels.Queue("pilot",root,v.Bone,null,body:BodyTint(death.actor?.BodyColor),accent:AccentTint(death.actor?.AccentColor));
-            if(v.Hat!=null&&!AuditorHalo(v.Hat,v.At(CapturedRig.Head),death.at+clock,1,HaloReduced,0,null))sourceModels.Queue("hat-"+v.Hat,root,v.Bone);
+            if(v.Hat!=null&&!AuditorHalo(v.Hat,v.At(CapturedRig.Head),death.at+clock,1,HaloReduced,0,null,color:death.actor?.HatColor))sourceModels.Queue(HatModel(v.Hat,death.actor?.HatColor),root,v.Bone,body:HatBody(v.Hat,death.actor?.HatColor));
             if(v.Weapon!=null)sourceModels.Queue(v.Weapon,root,v.WeaponBone,v.WeaponShown);
             if(v.Band>=0&&StatusReady())for(int k=0;k<bandLocal.Length;k++)teamBands[v.Band].Add(v.At(NativeStatusVisuals.BandBones[k])*bandLocal[k]);
             if(!v.Splat||!extras||!v.Landed)return;

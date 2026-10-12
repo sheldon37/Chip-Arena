@@ -27,9 +27,10 @@ namespace ChipArena.UnityConversion
             sourceModels.Queue(model,rig.Root.transform.localToWorldMatrix,Bone,Visible,layer,camera,BodyTint(a.BodyColor),AccentTint(a.AccentColor),partOpacity:reveal,partTint:tint,look:look,hitFlash:flash);
             if(look!=null)SirenLookFx(rig,look,layer,camera,time);
             if(!first)LivingWounds(rig,a,time);
-            // The hat rides the head (hidden on the first-person view model); the Auditor halo animates (NativeAuditorHaloPresentation.cs).
+            // The hat rides the head (hidden on the first-person view model); the Auditor halo animates (NativeAuditorHaloPresentation.cs),
+            // the Sheldon Head's face and ring too (NativeHatPresentation.cs); a picked hat colour tints the hat (NativeHatLooks).
             bool headShown=reveal==null||reveal(CapturedRig.Head)>.5f;
-            if(headShown)if(!first&&!string.IsNullOrEmpty(a.Hat)&&a.SourceSpec!="siren"&&!AuditorHalo(a.Hat,rig.Bones[CapturedRig.Head].localToWorldMatrix,float.IsNaN(halo)?time:halo,1,HaloReduced,layer,camera))sourceModels.Queue("hat-"+a.Hat,rig.Root.transform.localToWorldMatrix,Bone,null,layer,camera,partTint:dressed?tint:null,hitFlash:flash);
+            if(headShown)if(!first&&!string.IsNullOrEmpty(a.Hat)&&a.SourceSpec!="siren"&&!AuditorHalo(a.Hat,rig.Bones[CapturedRig.Head].localToWorldMatrix,float.IsNaN(halo)?time:halo,1,HaloReduced,layer,camera,color:a.HatColor)&&!SheldonHead(a,rig.Root.transform.localToWorldMatrix,Bone,float.IsNaN(halo)?time:halo,layer,camera,dressed?tint:null,flash))sourceModels.Queue(HatModel(a.Hat,a.HatColor),rig.Root.transform.localToWorldMatrix,Bone,null,layer,camera,body:HatBody(a.Hat,a.HatColor),partTint:dressed?tint:null,hitFlash:flash);
             if(dressed)BodyDressing(rig,a,time,first,layer,camera);
             bool armed=NativeWeaponDressing.SocketShown(a.SourceSpec)&&!a.WeaponAway&&weapon&&!NativeSirenVictimPose.Active(a,time);float reach=armed?WeaponReach(rig,a,time):1;Matrix4x4 WeaponBone(int b)=>SourceWeaponBone(rig,a,time,first,b,reach);
             if(armed){string held=HeldWeaponModel(rig,a,first);sourceModels.Queue(held,rig.Root.transform.localToWorldMatrix,WeaponBone,b=>!a.MainWeaponAway||a.SourceSpec!="daggers"||b!=CapturedRig.RHand,layer,camera,accent:AccentTint(a.AccentColor),hitFlash:StandardModel(held)?flash:1,partTint:tint,glow:HeldGlow);WeaponDressing(rig,a,time,first,layer,camera,reach);}

@@ -15,8 +15,9 @@ namespace ChipArena.UnityConversion
     /// builder copies to Assets/LocalAssets/Resources/EffectsAudio (tools/install_local_assets.py), and Unity merges every
     /// Resources folder, so they load as EffectsAudio/&lt;key&gt;/&lt;clip&gt;. Without that folder the bank is empty and every cue
     /// plays today's source clip and routing (NativeSoundPlan, NativeAudio.Cue). The intro.&lt;style&gt; keys are the match
-    /// entrances' music (owner 2026-10-12, every non-DEV entrance): 2D, 4.8 s (the entrance's length), played from its first
-    /// listed clip on the intro voice by NativeAudio.Entrance (later clips are alternates: reorder the list to switch).
+    /// entrances' music (owner 2026-10-12, every non-DEV entrance, and the owner's DEV Sheldon Intro, cut to its beat marks in
+    /// NativeSheldonIntro): 2D, 4.8 s (the entrance's length), played from its first listed clip on the intro voice by
+    /// NativeAudio.Entrance (later clips are alternates: reorder the list to switch).
     /// </summary>
     public static class NativeSoundKeys
     {
@@ -61,7 +62,7 @@ namespace ChipArena.UnityConversion
             K("intro.weapon-sword",F,4.8f,H),K("intro.weapon-daggers",F,4.8f,H),K("intro.weapon-shield",F,4.8f,H),K("intro.weapon-greatsword",F,4.8f,H),K("intro.weapon-pistol",F,4.8f,H),K("intro.weapon-rifle",F,4.8f,H),
             K("intro.weapon-machinegun",F,4.8f,H),K("intro.weapon-fire",F,4.8f,H),K("intro.weapon-water",F,4.8f,H),K("intro.weapon-lightning",F,4.8f,H),K("intro.weapon-darkness",F,4.8f,H),
             K("intro.orbital-drop",F,4.8f,H),K("intro.grid-rez",F,4.8f,H),K("intro.holo-projection",F,4.8f,H),K("intro.blackout",F,4.8f,H),K("intro.skyline-zip",F,4.8f,H),K("intro.hero-landing",F,4.8f,H),
-            K("intro.overclock",F,4.8f,H),
+            K("intro.overclock",F,4.8f,H),K("intro.sheldon-intro",F,4.8f,H),
         };
         private static Dictionary<string,int> index;
         public static bool Find(string key,out Def def)
@@ -73,7 +74,7 @@ namespace ChipArena.UnityConversion
         public const string IntroPrefix="intro.";
         /// <summary>Whether <paramref name="key"/> is an entrance-music key (intro.&lt;style&gt;).</summary>
         public static bool IsIntro(string key)=>key!=null&&key.StartsWith(IntroPrefix,StringComparison.Ordinal);
-        /// <summary>The entrance-music key of <paramref name="style"/> (intro.&lt;style&gt;), or null when the style has none (the DEV
+        /// <summary>The entrance-music key of <paramref name="style"/> (intro.&lt;style&gt;), or null when the style has none (the dev-
         /// entrances, retired or unknown styles): those always play their built-in music.</summary>
         public static string Intro(string style){if(string.IsNullOrEmpty(style))return null;string key=IntroPrefix+style;return Known(key)?key:null;}
     }

@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion
                 bool Visible(int b)=>NativeSceneMotion.Opacity(clip,clip.victim[b],age)>.001f;
                 float alpha=fade*(death.style=="ghost"?Math.Max(0,.6f-age*.12f):1);Color body=BodyTint(death.actor?.BodyColor),accent=AccentTint(death.actor?.AccentColor);if(death.style=="siren-crush"){body=Color.Lerp(body,NativeArena.ColorOf(0x0c0a10),.85f);accent=Color.Lerp(accent,NativeArena.ColorOf(0x0c0a10),.85f);}
                 sourceModels.Queue((death.model??"pilot")=="pilot"?sourceModels.WoundedPilot(death.id,death.actor?.Wounds,death.actor?.BodyColor,ForceCompatibilityRendering):death.model,root,Bone,Visible,layer,only,body:body,accent:accent,opacity:alpha);
-                if(!string.IsNullOrEmpty(death.actor?.Hat)&&!(Visible(CapturedRig.Head)&&AuditorHalo(death.actor.Hat,Bone(CapturedRig.Head),death.at+age,alpha,HaloReduced,layer,only)))sourceModels.Queue("hat-"+death.actor.Hat,root,Bone,Visible,layer,only,opacity:alpha);
+                if(!string.IsNullOrEmpty(death.actor?.Hat)&&!(Visible(CapturedRig.Head)&&AuditorHalo(death.actor.Hat,Bone(CapturedRig.Head),death.at+age,alpha,HaloReduced,layer,only,color:death.actor.HatColor)))sourceModels.Queue(HatModel(death.actor.Hat,death.actor.HatColor),root,Bone,Visible,layer,only,body:HatBody(death.actor.Hat,death.actor.HatColor),opacity:alpha);
                 bool weapon=death.style!="dev-bass-van"&&death.style!="dev-raging-demon"&&(death.style!="dev-clown"||age<.3f);if(weapon&&!string.IsNullOrEmpty(death.actor?.SourceSpec))sourceModels.Queue(Skinned(death.actor,"weapon-"+death.actor.SourceSpec),root,Bone,Visible,layer,only,opacity:alpha);
             }
             return true;

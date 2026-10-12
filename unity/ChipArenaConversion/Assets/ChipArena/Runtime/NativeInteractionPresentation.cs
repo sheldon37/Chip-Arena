@@ -129,7 +129,7 @@ namespace ChipArena.UnityConversion
                     Matrix4x4 Bone(int b)=>r.Body[b];bool Old(int b)=>!r.Missing[b]&&(!r.Place||front*1.2f<r.Coordinate[b]);bool Healed(int b)=>r.Place&&front*1.2f>=r.Coordinate[b];
                     sourceModels.QueueShadowless(wounded,Matrix4x4.identity,Bone,Old,BodyTint(pilot.Seat.bodyColor),AccentTint(pilot.Seat.accentColor),alpha);
                     if(r.Place)sourceModels.QueueShadowless("pilot",Matrix4x4.identity,Bone,Healed,BodyTint(pilot.Seat.bodyColor),AccentTint(pilot.Seat.accentColor),alpha);
-                    if(!string.IsNullOrEmpty(pilot.Seat.hat)&&(!r.Missing[CapturedRig.Head]||r.Place&&front>=r.Coordinate[CapturedRig.Head]))sourceModels.QueueShadowless("hat-"+pilot.Seat.hat,Matrix4x4.identity,Bone,null,null,null,alpha);
+                    if(!string.IsNullOrEmpty(pilot.Seat.hat)&&(!r.Missing[CapturedRig.Head]||r.Place&&front>=r.Coordinate[CapturedRig.Head]))sourceModels.QueueShadowless(HatModel(pilot.Seat.hat,pilot.Seat.hatColor),Matrix4x4.identity,Bone,null,HatBody(pilot.Seat.hat,pilot.Seat.hatColor),null,alpha);
                 }
                 bool third=!(FirstPerson&&r.Id==LocalId);
                 if(rise&&!third)continue;

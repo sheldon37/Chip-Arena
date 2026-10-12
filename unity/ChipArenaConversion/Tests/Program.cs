@@ -45,6 +45,7 @@ internal static class Program
             ClassIconChecks.Run(root,data);
             RooftopChecks.Run(root);
             PortraitBackChecks.Run(root);
+            HatLookChecks.Run(root);
             NativeSystemsChecks.Run(root,data);WoundCarveChecks.Run(root);CollapseChecks.Run(root);ExtraPresentationChecks.Run(root);BlastChecks.Run(root);FieldChecks.Run(root);ShotChecks.Run(root,data);
             foreach(var result in FirstPersonSwayChecks.Run(root,data))Console.WriteLine("PASS "+result);
             StatusVisualChecks.Run(root);GoreBeaconChecks.Run(root);GoreHitChecks.Run();KillEffectChecks.Run(root);SirenFxChecks.Run(root);SirenMarkChecks.Run(root);SirenLookChecks.Run(root);DevFxChecks.Run(root);
@@ -78,6 +79,7 @@ internal static class Program
             foreach(var result in SirenIntroChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in IntroMotionChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in EntranceDirectorChecks.Run(root))Console.WriteLine("PASS "+result);
+            foreach(var result in SheldonIntroChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in PackIntroChecks.Run(root))Console.WriteLine("PASS "+result);
             foreach(var result in MapLookChecks.Run(root,data))Console.WriteLine("PASS "+result);
             foreach(var result in BlockLookChecks.Run(root,data))Console.WriteLine("PASS "+result);

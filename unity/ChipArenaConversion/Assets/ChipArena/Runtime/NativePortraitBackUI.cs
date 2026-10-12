@@ -336,11 +336,12 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- Locker card ---------------------------------------------------------------------------------------------------
-        // A BACKDROP card's visual: the style live behind a voxel bust in the pilot's colours, clipped to the card's well.
-        private void LkBackVisual(Rect v,int style,float e,float hover,Color body,Color accent,float t)
+        // A BACKDROP card's visual: the style live behind a voxel bust in the pilot's colours, clipped to the card's well. The
+        // style takes `backdrop` (the picked backdrop colour, else the accent: NativeHatLooks.Back); the bust keeps the accent.
+        private void LkBackVisual(Rect v,int style,float e,float hover,Color body,Color accent,float t,Color backdrop)
         {
             U.BeginBand(v);float R=Mathf.Min(v.height*.38f,v.width*.24f);var c=new Vector2(v.center.x,v.y+v.height*.52f);
-            if(style==NativePortraitBacks.TickRing)PortraitRing(c,R,accent,e,t,20,true);else PortraitBack(style,v,c,R,accent,body,e,t,prefs.reducedEffects,.5f);
+            if(style==NativePortraitBacks.TickRing)PortraitRing(c,R,backdrop,e,t,20,true);else PortraitBack(style,v,c,R,backdrop,body,e,t,prefs.reducedEffects,.5f);
             // The bust, in the voxel pilot's proportions (PilotStage's pilot stands here): a big head with its accent visor,
             // the neck, and the torso with accent shoulder pads and the chest stripe, a little shaded so the backdrop reads.
             float u=R,lift=2*hover;var head=new Rect(c.x-u*.36f,c.y-u*.98f-lift,u*.72f,u*.66f);var torso=new Rect(c.x-u*.5f,c.y-u*.18f-lift,u*1f,v.yMax-c.y+u*.18f+lift+2);

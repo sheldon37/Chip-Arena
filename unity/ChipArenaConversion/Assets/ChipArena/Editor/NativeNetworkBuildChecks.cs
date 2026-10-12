@@ -26,6 +26,15 @@ namespace ChipArena.UnityConversion.Editor
             var skinReady=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="ready",profile=new NativeProfile{cosmetics=new NativeCosmetics{weaponSkins="pistol:prototype,sword:prototype"}}}));
             if(skinPrefs.weaponSkins!="sword:prototype"||skinReady.profile.cosmetics.weaponSkins!="pistol:prototype,sword:prototype"||NativeWeaponSkins.Index(JsonUtility.FromJson<ConversionPreferences>("{\"name\":\"Old Pilot\"}").weaponSkins,"sword")!=NativeWeaponSkins.StandardIndex)
                 throw new Exception("Saved pilot/ready DTO lost the weapon skins, or an old save did not load as Standard");
+            // Headwear and backdrop colours (NativeHatLooks) travel the same way; an old save and an old profile are Auto.
+            var colourPrefs=JsonUtility.FromJson<ConversionPreferences>(JsonUtility.ToJson(new ConversionPreferences{hatColor="#22e6ff",backColor="#ff3dcf"}));
+            var colourReady=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="ready",profile=new NativeProfile{cosmetics=new NativeCosmetics{hatColor="#22e6ff",backColor="#ff3dcf",hat="sheldon-head"}}}));
+            var oldPrefs=JsonUtility.FromJson<ConversionPreferences>("{\"name\":\"Old Pilot\"}");
+            if(colourPrefs.hatColor!="#22e6ff"||colourPrefs.backColor!="#ff3dcf"||colourReady.profile.cosmetics.hatColor!="#22e6ff"||colourReady.profile.cosmetics.backColor!="#ff3dcf"||!NativeHatLooks.IsAuto(oldPrefs.hatColor)||!NativeHatLooks.IsAuto(oldPrefs.backColor))
+                throw new Exception("Saved pilot/ready DTO lost the hat or backdrop colour, or an old save did not load as Auto");
+            // The Sheldon Head is DEV-only: the host strips it from a guest or a grant, keeps it for DEV access.
+            if(NativeCosmeticRules.Hat("sheldon-head",NativeAccess.Guest)!="none"||NativeCosmeticRules.Hat("sheldon-head",null)!="none"||NativeCosmeticRules.Hat("cap",NativeAccess.Guest)!="cap")
+                throw new Exception("A non-DEV request kept the Sheldon Head");
             var original=authority.Local.Death;
             var scene=EditorSceneManager.NewPreviewScene();NativeArena replica=null;
             try
@@ -103,6 +112,13 @@ namespace ChipArena.UnityConversion.Editor
                 if(!skins.Valid(authority.Content))throw new Exception("Weapon skin frame failed validation");replica.ApplyFrame(skins,authority.LocalId);
                 if(replica.Match.Seat(skins.seats[0].id)?.weaponSkins!="rifle:prototype,sword:prototype"||replica.Match.Seat(skins.seats[1].id)?.weaponSkins!="")throw new Exception("Guest/replay lost or did not normalise the weapon skins");
                 var longSkins=NativeFrameCodec.Clone(copy);longSkins.seats[0].weaponSkins=new string('x',NativeWeaponSkins.MaxLength+1);if(longSkins.Valid(authority.Content))throw new Exception("Over-long weapon skin map accepted");
+                // Hat and backdrop colours ride the seat frame too: a colour arrives (lower-cased), junk is Auto, an older
+                // host's frame without them is Auto, an over-long one fails validation; the Sheldon Head id is shown as sent.
+                var colours=NativeFrameCodec.Clone(copy);colours.seats[0].hatColor="#22E6FF";colours.seats[0].backColor="#ff3dcf";colours.seats[0].hat="sheldon-head";colours.seats[1].hatColor="red";colours.seats[1].backColor=null;colours=NativeFrameCodec.Clone(colours);
+                if(!colours.Valid(authority.Content))throw new Exception("Colour frame failed validation");replica.ApplyFrame(colours,authority.LocalId);
+                var cs0=replica.Match.Seat(colours.seats[0].id);var cs1=replica.Match.Seat(colours.seats[1].id);
+                if(cs0?.hatColor!="#22e6ff"||cs0.backColor!="#ff3dcf"||cs0.hat!="sheldon-head"||cs1?.hatColor!=""||cs1.backColor!="")throw new Exception("Guest/replay lost or did not normalise the hat/backdrop colours or the DEV hat");
+                var longColour=NativeFrameCodec.Clone(copy);longColour.seats[0].hatColor="#22e6ff00";if(longColour.Valid(authority.Content))throw new Exception("Over-long hat colour accepted");
                 replica.ApplyFrame(copy,authority.LocalId);
                 var melee=NativeFrameCodec.Clone(copy);var ma=melee.snapshot.Actors[0];
                 ma.CommitAt=1;ma.CommitUntil=1.62f;ma.CommitYaw=24;ma.SwingAt=1.14f;ma.SwingUntil=1.30f;ma.StepAt=1.077f;ma.StepUntil=1.268f;ma.StepDistance=2.2f;ma.ChainAt=1.5f;ma.ComboUntil=2.02f;ma.MeleeBufferUntil=1.8f;ma.SprintAttack=ma.OpenerLunge=true;

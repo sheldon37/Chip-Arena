@@ -191,8 +191,9 @@ internal static class PortraitBackChecks
         Check(ui.Contains("if(backScale!=U.S||backTextures.Count>192)")&&ui.Contains("Object.Destroy(old)"),"baked textures are made again when the kit scale changes, and bounded");
         Check(ui.Contains("U.BeginBand(v);")&&ui.Contains("U.EndBand();"),"Locker card previews are clipped to their well");
 
-        // 14. PortraitStage: the Tick Ring stays the default frame exactly as before; every caller passes its backdrop.
-        Check(portrait.Contains("if(style==NativePortraitBacks.TickRing)PortraitRing(c,ring,accent,e,t+phase,ticks,clipped);")&&portrait.Contains("else PortraitBack(style,stage,c,ring,accent,body,e,t+phase,prefs.reducedEffects,NativePortraitBacks.HeadAbove(pose));"),"PortraitStage keeps the Tick Ring by default and dispatches the others");
+        // 14. PortraitStage: the Tick Ring stays the default frame exactly as before; every caller passes its backdrop. The
+        // backdrop takes the picked backdrop colour, else the accent as before (NativeHatLooks, HatLookChecks).
+        Check(portrait.Contains("Color tint=backColor<0?accent:U.Hex(backColor);")&&portrait.Contains("if(style==NativePortraitBacks.TickRing)PortraitRing(c,ring,tint,e,t+phase,ticks,clipped);")&&portrait.Contains("else PortraitBack(style,stage,c,ring,tint,body,e,t+phase,prefs.reducedEffects,NativePortraitBacks.HeadAbove(pose));"),"PortraitStage keeps the Tick Ring by default and dispatches the others");
         Check(portrait.Contains("private static void PortraitRing(Vector2 c,float ring,Color accent,float e,float t,int ticks,bool clipped)")&&portrait.Contains("bool major=i%7==0;float deg=i/(float)ticks*360+t*12,h=major?9:5;"),"the Tick Ring itself is unchanged");
         Check(portrait.Contains("PortraitStage(stage,1,look,prefs.lobbyBack,"),"the home pilot card shows the saved backdrop");
         Check(portrait.Contains("back=NativePortraitBacks.Normalize(prefs.lobbyBack);")&&portrait.Contains("back=NativePortraitBacks.Normalize(seat.lobbyBack);")&&portrait.Contains("back=NativePortraitBacks.Normalize(s.lobbyBack);"),"cards show your own backdrop, the PvE seat's and the lobby seat's (normalised)");
@@ -200,16 +201,16 @@ internal static class PortraitBackChecks
 
         // 15. The Locker: a BACKDROP section in Appearance; hover tries it on, a click equips it; baseline, dirty and revert.
         Check(locker.Contains("LkHeading(lockerSlots[k++],\"BACKDROP\",\"The effect behind your pilot in lobbies\");")&&locker.Contains("LkReserve(LkGrid(lockerW,NativePortraitBacks.Count,LkItemMin,LkItemH));"),"the BACKDROP section is laid out and drawn");
-        Check(locker.Contains("if(hot)lockerBack=NativePortraitBacks.Keys[i];")&&locker.Contains("&&!on)prefs.lobbyBack=NativePortraitBacks.Keys[i];")&&locker.Contains("lockerWeapon=lockerBack=null;")&&locker.Contains("||lockerWeapon!=null||lockerBack!=null)"),"hover previews (TRYING ON), click equips, the hover resets each repaint");
-        Check(Regex.IsMatch(locker,@"b\.Back!=prefs\.lobbyBack\b")&&locker.Contains("prefs.lobbyBack=b.Back;")&&locker.Contains("Back=prefs.lobbyBack}"),"the Locker baseline covers, dirties and reverts the backdrop");
+        Check(locker.Contains("if(hot)lockerBack=NativePortraitBacks.Keys[i];")&&locker.Contains("&&!on)prefs.lobbyBack=NativePortraitBacks.Keys[i];")&&locker.Contains("lockerWeapon=lockerBack=lockerHatColor=lockerBackColor=null;")&&locker.Contains("||lockerWeapon!=null||lockerBack!=null||"),"hover previews (TRYING ON), click equips, the hover resets each repaint");
+        Check(Regex.IsMatch(locker,@"b\.Back!=prefs\.lobbyBack\b")&&locker.Contains("prefs.lobbyBack=b.Back;")&&locker.Contains("Back=prefs.lobbyBack,"),"the Locker baseline covers, dirties and reverts the backdrop");
 
         // 16. The field travels like lobbyPose: prefs (default), profile cosmetics (no initializer, so an account profile
         // without it leaves the local pref alone), host seat (normalised), lobby and match seat frames (capped, normalised).
         Check(game.Contains("public string lobbyBack=NativePortraitBacks.Default;"),"prefs default to the Tick Ring");
-        Check(account.Contains("killEffect=\"impact-ragdoll\";public string lobbyBack;}"),"profile cosmetics carry the backdrop with no default");
+        Check(account.Contains("killEffect=\"impact-ragdoll\";public string lobbyBack;")&&account.Contains("public string hatColor,backColor;}"),"profile cosmetics carry the backdrop with no default");
         Check(network.Contains("cosmetics=new NativeCosmetics{lobbyPose=prefs.lobbyPose,lobbyBack=prefs.lobbyBack,")&&network.Contains("lobbyBack=NativePortraitBacks.Normalize(c.lobbyBack),"),"Profile() sends it and the host seat normalises it");
         Check(lobby.Contains("lobbyPose=s.lobbyPose,lobbyBack=s.lobbyBack,"),"the lobby seat frame carries it");
-        Check(frame.Contains("introText,lobbyPose,lobbyBack;")&&frame.Contains("s.lobbyBack!=null&&s.lobbyBack.Length>NativePortraitBacks.MaxLength")&&frame.Contains("lobbyPose=s.lobbyPose,lobbyBack=s.lobbyBack,")&&frame.Contains("seat.lobbyBack=NativePortraitBacks.Normalize(sf.lobbyBack);"),"the match seat frame carries, caps and normalises it");
+        Check(frame.Contains("introText,lobbyPose,lobbyBack;public string weaponSkins;public string hatColor,backColor;")&&frame.Contains("s.lobbyBack!=null&&s.lobbyBack.Length>NativePortraitBacks.MaxLength")&&frame.Contains("lobbyPose=s.lobbyPose,lobbyBack=s.lobbyBack,")&&frame.Contains("seat.lobbyBack=NativePortraitBacks.Normalize(sf.lobbyBack);"),"the match seat frame carries, caps and normalises it");
         Check(profile.Contains("if(!string.IsNullOrEmpty(c.lobbyBack))prefs.lobbyBack=NativePortraitBacks.Normalize(c.lobbyBack);"),"an account load adopts a backdrop only when the profile has one");
 
         Console.WriteLine("PASS Portrait backdrops: "+count+" checks ("+n+" backdrops; normalisation, deterministic style maths, reduced effects, clip-safe drawers, Locker section and the lobbyPose-style network path)");
