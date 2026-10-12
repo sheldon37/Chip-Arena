@@ -53,7 +53,7 @@ namespace ChipArena.UnityConversion
         private void WeaponDressing(CapturedAnimation.Player rig,Actor a,float time,bool first,int layer,Camera camera,float reach)
         {
             if(sourceModels==null||Viewer||rig==introRig)return;string spec=a.SourceSpec;
-            MuzzleFx(rig,a,time,first);
+            MuzzleFx(rig,a,time,first);BladeBlood(rig,a,time,first,layer,camera,reach);
             var pilot=LoadoutPilot(a.Id);
             if(!first)SampleSweep(rig,a,time,reach,pilot?.Seat.chips);
             if(pilot?.Stats==null||pilot.Weapon==null||pilot.Seat.chips==null)return;var chips=pilot.Seat.chips;var stats=pilot.Stats;bool daggers=spec=="daggers";
@@ -63,7 +63,7 @@ namespace ChipArena.UnityConversion
                 if(count>0)for(int hand=0;hand<(daggers?2:1);hand++)
                 {
                     var parent=SourceWeaponBone(rig,a,time,first,hand==0?CapturedRig.RHand:CapturedRig.LHand,reach);if(first)parent*=Matrix4x4.Scale(Vector3.one*NativeWeaponDressing.FirstPersonModuleScale);
-                    for(int i=0;i<count;i++){var p=weaponPieces[i];NativeWeaponDressing.Animate(ref p,time);QueuePiece(p,parent,layer,camera,rigFactor);}
+                    for(int i=0;i<count;i++){var p=weaponPieces[i];NativeWeaponDressing.Animate(ref p,time);QueuePiece(p,first?parent:SkinPiece(a,p,parent),layer,camera,rigFactor);}
                 }
             }
             // renderer.ts:83-84,129: elements only on melee-class weapons, from the burn and poison stats; stacks from the chips.
@@ -72,7 +72,19 @@ namespace ChipArena.UnityConversion
             if(flames>0)for(int hand=0;hand<(daggers?2:1);hand++)
             {
                 var parent=SourceWeaponBone(rig,a,time,first,hand==0?CapturedRig.RHand:CapturedRig.LHand,reach);
-                for(int i=0;i<flames;i++){var p=weaponPieces[i];NativeWeaponDressing.Animate(ref p,time);QueuePiece(p,parent,layer,camera);}
+                for(int i=0;i<flames;i++){var p=weaponPieces[i];NativeWeaponDressing.Animate(ref p,time);QueuePiece(p,SkinPiece(a,p,parent),layer,camera);}
+            }
+        }
+        // A blade that drew blood carries it on its edge (Core/NativeBlood: the ledger's melee hits by this pilot, fading over
+        // ten seconds; the ledger and so the blood clear with the round), both daggers, third and first person.
+        private void BladeBlood(CapturedAnimation.Player rig,Actor a,float time,bool first,int layer,Camera camera,float reach)
+        {
+            string spec=a.SourceSpec;if(spec!="sword"&&spec!="daggers"&&spec!="greatsword"||a.WeaponAway)return;float amount=hitLedger.BladeBlood(a.Id,time);if(amount<.02f)return;
+            for(int hand=0;hand<(spec=="daggers"?2:1);hand++)
+            {
+                var parent=SourceWeaponBone(rig,a,time,first,hand==0?CapturedRig.RHand:CapturedRig.LHand,reach);
+                for(int i=0;i<NativeBloodRules.Slivers;i++)if(NativeBloodRules.Sliver(spec,i,amount,out var c,out var size))
+                {var piece=new WeaponPiece{Shape=WeaponShape.Cube,Color=i%2==0?NativeBloodRules.Rim:NativeBloodRules.Core,Position=c,Scale=size,Rotation=System.Numerics.Quaternion.Identity,Orbit=-1};QueuePiece(piece,SkinPiece(a,piece,parent),layer,camera);}
             }
         }
         // standard-melee-effects.ts:21: a thrown dagger or shield keeps the owner's enchant (elements and stacks), flying with it.

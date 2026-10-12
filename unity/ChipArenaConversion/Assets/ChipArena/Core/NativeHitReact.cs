@@ -106,7 +106,11 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The first-person kick: Unity camera-local Euler degrees (x pitch down, y yaw right, z roll left) and offset (metres).</summary>
         public struct Kick{public float Pitch,Yaw,Roll;public Vector3 Offset;public float Weight;}
-        public const float KickPitch=2.6f,KickYaw=1.2f,KickRoll=2.8f,KickOffset=.03f;
+        public const float KickPitch=3.1f,KickYaw=1.4f,KickRoll=3.2f,KickOffset=.034f;
+        /// <summary>The felt-hit share of the melee kick (owner 2026-10-12: hits "more felt"), and each stagger weight's kick for
+        /// the hits the melee kick does not cover (bullets, magic, blasts): a flinch, a step and a heavy blow.</summary>
+        public const float MeleeKick=1.2f;
+        public static float StaggerKick(StaggerWeight w)=>w==StaggerWeight.Heavy?1f:w==StaggerWeight.Step?.62f:w==StaggerWeight.Flinch?.36f:0;
         /// <summary>
         /// The local pilot's camera kick for a melee hit (`hit` matched to the actor's reaction) or a blocked melee blow (`block`):
         /// the view snaps away from the blow (pitches up from the front, down from behind, rolls with a side push, a little
@@ -114,14 +118,24 @@ namespace ChipArena.UnityConversion
         /// recovery within .3-.48 s; a block kicks at 40%. `scale` is the settings scale (0 with camera shake off). Bounded by
         /// the Kick* limits whatever the inputs; false (and a zero kick) when nothing applies. Never touches aim or input.
         /// </summary>
-        public static bool CameraKick(Actor a,float time,HitSource hit,HitSource block,float scale,out Kick k)
+        public static bool CameraKick(Actor a,float time,HitSource hit,HitSource block,float scale,out Kick k)=>CameraKick(a,time,hit,block,scale,out k,null,0);
+        /// <summary>As above, plus the felt-hit kick of the local pilot's recent non-melee staggering hits (`staggers`, the
+        /// ledger's records oldest first): a short snap away from where each came from, by its weight, within the same limits.</summary>
+        public static bool CameraKick(Actor a,float time,HitSource hit,HitSource block,float scale,out Kick k,StaggerHit[] staggers,int count)
         {
             k=default;if(a==null||!(scale>0)||!(a.Hp>0))return false;scale=Math.Min(1,scale);
             float pitch=0,yaw=0,roll=0;Vector3 off=Vector3.Zero;float weight=0;
+            if(staggers!=null)for(int i=0;i<count&&i<staggers.Length;i++)
+            {
+                var g=staggers[i];if(g.Melee||!g.HasDir||g.Weight==StaggerWeight.None)continue;float age=time-g.At;if(!(age>=0)||age>.5f)continue;
+                float e=Envelope(age,.018f,.012f,.2f+.06f*(int)g.Weight),A=StaggerKick(g.Weight)*MeleeMath.Clamp(g.Scale,.7f,1.25f)*scale*e;
+                Vector3 d=Unit(Local(new V3(g.Dir.x,0,g.Dir.z),-a.Yaw*(float)Math.PI/180));d.Y=0;
+                pitch+=d.Z*2.1f*A*(g.Head?1.4f:1);roll+=d.X*2.3f*A;yaw+=-d.X*.6f*A;off+=new Vector3(-d.X*.012f,-.006f,d.Z*.015f)*A;weight=Math.Max(weight,e*scale);
+            }
             if(hit.Melee&&a.ReactionAt>-90&&!a.ReactionParry&&Math.Abs(hit.At-a.ReactionAt)<.004f&&time>=a.ReactionAt)
             {
                 float h=MeleeMath.Clamp(hit.Heft,MinHeft,MaxHeft),age=time-a.ReactionAt,dur=.3f+.12f*h,e=Envelope(age,.02f,.018f,dur-.038f);
-                float s=Finite(a.ReactionStrength,.6f),A=h*(.7f+.3f*MeleeMath.Clamp(s,0,1))*scale*e;Vector3 d=Unit(new Vector3(Finite(a.ReactionDir.x,0),0,Finite(a.ReactionDir.z,-1)));
+                float s=Finite(a.ReactionStrength,.6f),A=h*(.7f+.3f*MeleeMath.Clamp(s,0,1))*scale*e*MeleeKick;Vector3 d=Unit(new Vector3(Finite(a.ReactionDir.x,0),0,Finite(a.ReactionDir.z,-1)));
                 bool head=hit.Head||a.ReactionZone==1;float v=Variant(a.ReactionAt);
                 pitch+=d.Z*2.1f*A*(head?1.5f:1);roll+=d.X*2.3f*A+v*.5f*A;yaw+=-d.X*.8f*A;off+=new Vector3(-d.X*.014f,-.008f,d.Z*.018f)*A;weight=Math.Max(weight,e*scale);
             }
@@ -203,17 +217,76 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<int,HitSource> hits=new Dictionary<int,HitSource>(),blocks=new Dictionary<int,HitSource>();
         private readonly Dictionary<int,Strike> strikes=new Dictionary<int,Strike>();
         private int last;
-        public void Clear(){hits.Clear();blocks.Clear();strikes.Clear();last=0;}
+        /// <summary>Bumped by every <see cref="Clear"/>, so a rig's stagger knows its hits started over.</summary>
+        public int Epoch{get;private set;}
+        public void Clear(){hits.Clear();blocks.Clear();strikes.Clear();foreach(var r in staggers.Values)r.Clear();foreach(var b in blades.Values)b.Clear();blows.Clear();last=0;Epoch++;}
         private static Actor Find(Actor[] actors,int id){if(actors==null||id<=0)return null;for(int i=0;i<actors.Length;i++)if(actors[i]!=null&&actors[i].Id==id)return actors[i];return null;}
+        // ---- felt hits (Core/NativeStagger), melee kill blows (Core/NativeMeleeSlice) and blade blood (Core/NativeBlood) ----
+        public const int StaggerSlots=8,BladeSlots=6;
+        private sealed class Ring
+        {
+            public readonly StaggerHit[] Items=new StaggerHit[StaggerSlots];public int Count,Head;
+            public void Clear(){Count=0;Head=0;}
+            public ref StaggerHit Newest=>ref Items[(Head+Count-1)%StaggerSlots];
+            public void Add(in StaggerHit h){if(Count<StaggerSlots){Items[(Head+Count)%StaggerSlots]=h;Count++;}else{Items[Head]=h;Head=(Head+1)%StaggerSlots;}}
+        }
+        private sealed class Blade{public readonly float[] At=new float[BladeSlots];public int Count,Next;public void Clear(){Count=0;Next=0;}}
+        private readonly Dictionary<int,Ring> staggers=new Dictionary<int,Ring>();private readonly Dictionary<int,Blade> blades=new Dictionary<int,Blade>();
+        private readonly Dictionary<int,MeleeBlow> blows=new Dictionary<int,MeleeBlow>();private int serial;
+        private struct Blast{public int Source;public float At;public V3 Position;}
+        private readonly Blast[] blasts=new Blast[16];private int blastCount;
+        /// <summary>The recent staggering hits on `target`, oldest first, into `into` (at most <see cref="StaggerSlots"/>).</summary>
+        public int Staggers(int target,StaggerHit[] into)
+        {
+            if(into==null||!staggers.TryGetValue(target,out var r))return 0;int n=Math.Min(r.Count,into.Length);
+            for(int i=0;i<n;i++)into[i]=r.Items[(r.Head+r.Count-n+i)%StaggerSlots];return n;
+        }
+        /// <summary>The latest melee blow on `target` landed at `at` (within a tick), with its attacker's replicated swing.</summary>
+        public bool Blow(int target,float at,out MeleeBlow blow)=>blows.TryGetValue(target,out blow)&&Math.Abs(blow.At-at)<.02f;
+        /// <summary>How bloody `source`'s blade is at `time` (0..1): each damaging melee hit adds .4, kept for 4 s and gone by 10 s.</summary>
+        public float BladeBlood(int source,float time)
+        {
+            if(!blades.TryGetValue(source,out var b))return 0;float sum=0;
+            for(int i=0;i<b.Count;i++)sum+=NativeBloodRules.BladeShare(time-b.At[i]);return Math.Min(1,sum);
+        }
+        private void Stagger(in ArenaEvent e,Actor attacker,Actor target,bool melee)
+        {
+            string spec=e.Source==0?null:attacker?.SourceSpec;var w=NativeStaggerRules.Classify(spec,e.Detail??"direct",e.Amount);if(w==StaggerWeight.None)return;
+            if(!staggers.TryGetValue(e.Target,out var ring))staggers[e.Target]=ring=new Ring();
+            // Pellets from one gun in one tick are one volley.
+            if(ring.Count>0){ref var n=ref ring.Newest;if(n.Source==e.Source&&Math.Abs(n.At-e.Time)<.004f&&!n.Melee&&!melee){n.Amount+=e.Amount;n.Weight=NativeStaggerRules.Volley(n.Weight,spec,n.Amount);n.Scale=NativeStaggerRules.Scale(n.Weight,n.Amount);n.Head|=e.Kind==EventKind.Headshot;return;}}
+            // Where it came from: the authority's hit direction (ArenaEvent.Normal, filled for pilots since PR #136 as for adds), else
+            // a blast's centre, else the attacker, else the hit point.
+            bool has=NativeStaggerRules.Along(e.Normal,out V3 dir);V3 at=target!=null?target.Position:e.Position;
+            if(!has&&e.Detail=="blast")for(int i=0;i<blastCount&&!has;i++)if(blasts[i].Source==e.Source&&Math.Abs(blasts[i].At-e.Time)<.02f)has=NativeStaggerRules.Push(at,blasts[i].Position,out dir);
+            if(!has&&attacker!=null)has=NativeStaggerRules.Push(at,attacker.Position,out dir);
+            if(!has)has=NativeStaggerRules.Push(at,e.Position,out dir);
+            bool longStun=target!=null&&target.StunUntil-e.Time>NativeStagger.LongStun&&Math.Abs(target.ReactionAt-e.Time)<.004f;
+            // Its place in a chain from the same attacker (the previous link within ChainSeconds).
+            int chain=0;if(ring.Count>0){ref var n=ref ring.Newest;if(n.Source==e.Source&&e.Time-n.At>=0&&e.Time-n.At<=NativeStaggerRules.ChainSeconds)chain=n.Chain+1;}
+            ring.Add(new StaggerHit{At=e.Time,Amount=e.Amount,Weight=w,Scale=NativeStaggerRules.Scale(w,e.Amount),Head=e.Kind==EventKind.Headshot,Melee=melee,HasDir=has,Dir=dir,Source=e.Source,Serial=++serial,Long=longStun,Chain=chain});
+        }
+        private void MeleeHit(in ArenaEvent e,Actor attacker)
+        {
+            if(attacker==null||e.Source<=0)return;
+            if(!blades.TryGetValue(e.Source,out var b))blades[e.Source]=b=new Blade();
+            b.At[b.Next]=e.Time;b.Next=(b.Next+1)%BladeSlots;b.Count=Math.Min(BladeSlots,b.Count+1);
+            var a=attacker;bool special=a.SpecialKind!=null&&e.Time>=a.SpecialAt-.05f&&e.Time<=a.SpecialUntil+.05f,kit=e.Detail=="ability"&&a.MeleeKit!=null&&!string.IsNullOrEmpty(a.MeleeKit.Kind);
+            blows[e.Target]=new MeleeBlow{At=e.Time,Source=e.Source,Spec=a.SourceSpec,CommitYaw=a.CommitYaw,Index=a.Combo+1,SwingAt=a.SwingAt,SwingUntil=a.SwingUntil,Air=!a.Grounded,
+                Special=special?a.SpecialKind:null,Kit=kit?a.MeleeKit.Kind:null,From=a.Position,Yaw=a.Yaw,Detail=e.Detail,Amount=e.Amount};
+        }
         public void Observe(Snapshot s)
         {
             var events=s?.Events;if(events==null)return;int newest=0;
             for(int i=0;i<events.Length;i++)if(events[i].Id>newest)newest=events[i].Id;
             // Event ids restart with a new arena (a new match, the killcam's replica): start over.
             if(newest>0&&newest<last)Clear();
+            blastCount=0;
             for(int i=0;i<events.Length;i++)
             {
-                var e=events[i];if(e.Id<=last||e.Target<=0)continue;
+                var e=events[i];if(e.Id<=last)continue;
+                if(e.Kind==EventKind.Explosion&&blastCount<blasts.Length)blasts[blastCount++]=new Blast{Source=e.Source,At=e.Time,Position=e.Position};
+                if(e.Target<=0)continue;
                 if(e.Kind==EventKind.Emperor||e.Kind==EventKind.Arcade)strikes[e.Target]=new Strike{Source=e.Source,At=e.Time,Amount=e.Amount};
             }
             for(int i=0;i<events.Length;i++)
@@ -234,6 +307,10 @@ namespace ChipArena.UnityConversion
                     if(hits.TryGetValue(e.Target,out var old))
                         store=Math.Abs(old.At-e.Time)<.004f?hit.Melee||!old.Melee:reacted||target==null||!(Math.Abs(old.At-target.ReactionAt)<.004f);
                     if(store)hits[e.Target]=hit;
+                    Stagger(e,e.Source==0?null:attacker,target,hit.Melee);
+                    // A standard melee weapon's swing, thrown blade or Q/E kit hit ("ability": the Whirlwind's pulses, Earthsplitter):
+                    // the blow a kill is sliced by and the blood on the blade.
+                    if(e.Amount>0&&NativeHitRules.Standard(spec)&&(hit.Melee||e.Detail=="ability"))MeleeHit(e,attacker);
                 }
                 else if(e.Kind==EventKind.Block&&e.Source>0)
                 {
@@ -303,6 +380,8 @@ namespace ChipArena.UnityConversion
         private float hitBody;
         private readonly NativePackPose pack=new NativePackPose();private readonly float[] packAt=new float[3],packMarks=new float[3];
         private bool blockSecond;
+        // The share of the melee accent's own hip push while the stagger shifts the hips (so the two never add up past its bound).
+        private float pushShare=1;
         public NativeHitLayer(){change=Apply;}
         /// <summary>
         /// Whether the layer's pack clips own this stun (the captured melee route then holds the guard instead of its captured
@@ -329,20 +408,33 @@ namespace ChipArena.UnityConversion
         public void Bind(MeleeMotion m,Actor a,NativeHitLedger hits,HitVictim victim){if(m==null)return;m.HitLayer=this;bound=m;actor=a;ledger=hits;kind=victim;rigYaw=float.NaN;}
         private MeleeMotion bound;
         /// <summary>The gun and magic routes: over the posed native pose (in `scratch`), before the route's Finish.</summary>
-        public void Over(MeleeRig scratch,CapturedRig.Pose pose,Actor a,NativeHitLedger hits,HitVictim victim,float time,float yaw)
+        public void Over(MeleeRig scratch,CapturedRig.Pose pose,Actor a,NativeHitLedger hits,HitVictim victim,float time,float yaw,Vector3? at=null)
         {
             actor=a;ledger=hits;kind=victim;rigYaw=yaw;Applied=false;ImpactWeight=DazeWeight=BlockWeight=0;PackSet=NativePackRules.None;PackWeight=PackStunWeight=PackBlockWeight=PackBody=0;
-            if(scratch==null||pose==null||!Wanted(a,time))return;scratch.ReadPose(pose);scratch.GroupYaw=yaw;Layer(scratch,time);scratch.WritePose(pose);
+            if(scratch==null||pose==null)return;stagger.Observe(hits,a,time);if(!Wanted(a,time)){stagger.Drop();return;}
+            scratch.ReadPose(pose);scratch.GroupYaw=yaw;if(at.HasValue)scratch.GroupPosition=at.Value;Layer(scratch,time);scratch.WritePose(pose);
         }
+        /// <summary>
+        /// After the route's pose transitions (MeleeMotion.FinishPose, GunMotion / MagicMotion.Finish), which blend every bone
+        /// from the pose shown when an action changed: the feet the stagger planted this frame are put back where it planted
+        /// them, so a transition never slides them. On a posed pose (the gun and magic routes) through the scratch rig.
+        /// </summary>
+        public void Replant(MeleeRig r)=>stagger.Replant(r);
+        public void Replant(MeleeRig scratch,CapturedRig.Pose pose){if(scratch==null||pose==null||!stagger.Placed)return;scratch.ReadPose(pose);stagger.Replant(scratch);scratch.WritePose(pose);pose.World();}
+        /// <summary>The felt-hit stagger this layer runs (Core/NativeStagger), for the checks.</summary>
+        public NativeStagger Stagger=>stagger;
+        private readonly NativeStagger stagger=new NativeStagger();
         // Dead, juggled, knocked down, rolling, in an E special, held by the Siren, the Siren herself, or no arena ledger
         // (intro, portrait, corpse and viewer rigs): the route's own layer owns the frame.
         private static bool Skip(Actor a,float time)=>a==null||!(a.Hp>0)||a.SourceSpec=="siren"||a.GrabOwner!=0||NativeJugglePose.Active(a.JuggleUntil,time)||NativeSpecialPose.Down(a,time)||a.Rolling(time)||NativeSpecialPose.Active(a,time);
-        private bool Wanted(Actor a,float time)=>ledger!=null&&!Skip(a,time)&&(a.ReactionAt>-90&&time>=a.ReactionAt&&time<a.ReactionAt+2||a.StunUntil>time||time<a.BlockUntil+.5f);
+        private bool Wanted(Actor a,float time)=>ledger!=null&&!Skip(a,time)&&(a.ReactionAt>-90&&time>=a.ReactionAt&&time<a.ReactionAt+2||a.StunUntil>time||time<a.BlockUntil+.5f||stagger.Wanted(time));
         // per-frame values Apply reads
         private float stunAt,stunUntil,daze,blockE,blockHeft,oldE,oldHeft;private Vector3 blockDir,oldDir;private bool stepping,stepBased;private float stepU,stepPlant,stepAt;private Vector3 stepDir,stepBase;private float stepHeft;
         public void Layer(MeleeRig r,float time)
         {
-            Applied=false;ImpactWeight=DazeWeight=BlockWeight=0;PackSet=NativePackRules.None;PackWeight=PackStunWeight=PackBlockWeight=PackBody=0;var a=actor;if(r==null||!Wanted(a,time))return;
+            Applied=false;ImpactWeight=DazeWeight=BlockWeight=0;PackSet=NativePackRules.None;PackWeight=PackStunWeight=PackBlockWeight=PackBody=0;var a=actor;if(r==null)return;
+            // The captured-melee and fighter routes come here straight from MeleeMotion (Over has already read the hits).
+            if(float.IsNaN(rigYaw))stagger.Observe(ledger,a,time);if(!Wanted(a,time)){stagger.Drop();return;}
             float yaw=float.IsNaN(rigYaw)?r.GroupYaw:rigYaw;rig=r;now=time;
             // The reaction being shown (a new one keeps the interrupted blow's tail for .09 s).
             bool reaction=a.ReactionAt>-90&&time>=a.ReactionAt;
@@ -386,15 +478,31 @@ namespace ChipArena.UnityConversion
             // A pack clip's window (Core/NativePackReact) can outlast the procedural accent's.
             impact|=PackShowing(ref current,time)||previous.Live&&previous.At<current.At&&time-current.At<.09f&&PackShowing(ref previous,time);
             bool blockClip=shoveLive&&NativePackRules.SetFor(a.SourceSpec,kind)>=0&&NativePackRules.BlockWeight(time-shove.At)>0;
-            if(!impact&&!(daze>0)&&blockE==0&&oldE==0&&!stepping&&!blockClip)return;
+            bool staggered=stagger.Wanted(time)&&!a.ReactionParry;
+            if(!impact&&!(daze>0)&&blockE==0&&oldE==0&&!stepping&&!blockClip&&!staggered){stagger.Drop();return;}
             // While stunned (planted feet) keep the ankles where the route put them; otherwise the ground pass re-plants the gait's feet.
             bool hold=grounded&&(r.LegsAuthored||r.LegsLayered||a.StunUntil>time);
-            if(hold)for(int i=0;i<2;i++)heldAnkle[i]=r.ReadAnkle(i==0,out heldFoot[i],out heldKnee[i]);
+            if(hold||staggered)for(int i=0;i<2;i++)heldAnkle[i]=r.ReadAnkle(i==0,out heldFoot[i],out heldKnee[i]);
             // The catch step is measured from where the foot stood when the blow landed (the gait follows the placed ankles,
             // so a step measured from the current ankle would keep adding up).
             if(stepping&&(!stepBased||stepAt!=current.At)){stepBased=true;stepAt=current.At;stepBase=heldAnkle[stepDir.X>=0?0:1];}
+            Vector3 routeBody=r.P[CapturedRig.Body];pushShare=staggered?.35f:1;
             change();
-            if(hold)
+            // The felt-hit stagger (Core/NativeStagger) over everything above: the hips shift along the blow, the upper body
+            // recoils (lighter where the melee accent and pack clips already recoil it), and the feet stay planted in the
+            // world, stepping when the hips or the push leave them behind.
+            bool stepped=false;
+            if(staggered)
+            {
+                stagger.Body(r,a,ledger,time,MeleeRecoil);
+                // Everything together never shifts the hips more than the stagger's hard bound from where the route put them.
+                Vector3 b=r.P[CapturedRig.Body],off=new Vector3(b.X-routeBody.X,0,b.Z-routeBody.Z);float l=off.Length();
+                if(l>NativeStaggerRules.HardHip){off*=NativeStaggerRules.HardHip/l;r.P[CapturedRig.Body]=new Vector3(routeBody.X+off.X,b.Y,routeBody.Z+off.Z);}
+                // The stagger's real steps replace the old catch step (it slid its foot home inside the stun).
+                stepped=stagger.Feet(r,a,time,heldAnkle,heldFoot,heldKnee,a.StunUntil>time);stepping=false;
+            }
+            else stagger.Drop();
+            if(hold&&!stepped)
             {
                 for(int i=0;i<2;i++)
                 {
@@ -440,6 +548,8 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>How much of the procedural accent, daze and block shove a fully weighted pack clip replaces.</summary>
         public const float PackShare=.55f,StunShare=.65f,BlockShare=.5f;
+        /// <summary>The stagger's upper-body recoil for a melee blow, whose accent and pack clip already recoil the trunk.</summary>
+        public const float MeleeRecoil=.15f;
         /// <summary>A light (unstunned) blow's share of its clip: the upper body and a little of the hips over the gait.</summary>
         public const float LightPack=.6f;
         /// <summary>The share of a hit or block clip's turn about the vertical the pilot shows (the captures spin up to 67°).</summary>
@@ -503,7 +613,7 @@ namespace ChipArena.UnityConversion
             Vector3 d=NativeHitRules.Reframe(h.Dir,h.FromYaw,yaw);float front=Math.Max(0,-d.Z),back=Math.Max(0,d.Z),sx=d.X,v=h.Variant;
             bool moving=!h.Stunned&&actor!=null&&actor.Velocity.x*actor.Velocity.x+actor.Velocity.z*actor.Velocity.z>1;
             // The root presentation (hips) is knocked along the blow and dips; the planted feet hold while stunned.
-            Vector3 b=r.P[CapturedRig.Body];float push=(h.Stunned?.05f:.02f)*(moving?.5f:1);
+            Vector3 b=r.P[CapturedRig.Body];float push=(h.Stunned?.05f:.02f)*(moving?.5f:1)*pushShare;
             b.X+=d.X*push*A*e1;b.Z+=d.Z*push*A*e1;b.Y-=(h.Stunned?.03f:.01f)*A*e1;r.P[CapturedRig.Body]=b;
             r.AddE(CapturedRig.Body,d.Z*.07f*A*e1,h.Turn*.3f*A*e1,-d.X*.06f*A*e1);
             r.AddE(CapturedRig.Spine,(back*.15f-front*.1f)*A*e2,0,-sx*.1f*A*e2);

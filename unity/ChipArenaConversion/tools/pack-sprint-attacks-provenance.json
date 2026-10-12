@@ -1,0 +1,75 @@
+{
+ "pack": "Explosive RPG Character Mecanim Animation Pack (owner licence; FBX never committed)",
+ "channels": 64,
+ "quantum": 0.00390625,
+ "clips": [
+  {
+   "clip": "sprint/sword",
+   "source": "Armed-Run-Attack-R1",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 60,
+   "frames": 49,
+   "marks": [
+    0,
+    0.8
+   ],
+   "heading": -0.3594,
+   "sha256": "1c1a97d0baccc3b9ddc528a4127e7db3c3ed0fca5acb3a61b7d207637ead40ac",
+   "input": "e0a3a08eb1914cfef0e57a9bf7a008ed3f953aadffd29e88661d2e4760269541"
+  },
+  {
+   "clip": "sprint/daggers",
+   "source": "Armed-Run-Attack-Dual",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 60,
+   "frames": 49,
+   "marks": [
+    0,
+    0.8
+   ],
+   "heading": -0.3594,
+   "sha256": "8f3e6d5031ededb2b676bccd8eceb031538b1a0c4a885d9557e934a8cbab9ad9",
+   "input": "5e6c5f9b6e4f2db28add3dfb965cd858bfa0daa4f45bc0e98ea38e1b662953ea"
+  },
+  {
+   "clip": "sprint/shield",
+   "source": "Armed-Shield-Run-Forward-Charge (mirrored)",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 60,
+   "frames": 49,
+   "marks": [
+    0,
+    0.8
+   ],
+   "heading": 0.3594,
+   "sha256": "e6e865f70265a4844e9d7df9d94e1a68fb43132183537cbd2cbcf8af2995fad9",
+   "input": "be8c46de78d82bc0b452f93314e42bcd294123981d933777d75b5b10bed19e64"
+  },
+  {
+   "clip": "sprint/greatsword",
+   "source": "2Hand-Sword-Run-Forward-Attack1",
+   "range": [
+    0,
+    24
+   ],
+   "fps": 60,
+   "frames": 49,
+   "marks": [
+    0,
+    0.8
+   ],
+   "heading": -1.1004,
+   "sha256": "3c5af5973b504345ed1bf0d8e72384635112129078560ef6e826da912baeabc0",
+   "input": "4b3c67c0298f1b6131d63fc9f9493b3bf8562cc87fd2acd7115c376afdd48043"
+  }
+ ]
+}

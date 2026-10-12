@@ -129,7 +129,7 @@ namespace ChipArena.UnityConversion
             var pill=new Rect(r.xMax-w,y,w,h);if(all)U.Glow(pill,U.Hex(0x3ddc84,.25f*e),20);
             U.Round(pill,all?U.Hex(0x11301f,e):U.Hex(0x2a201c,e),Mathf.Min(16,h/2),all?U.Hex(0x3ddc84,e):U.Hex(0xf4b878,.4f*e));
             U.Text(new Rect(pill.x+16,y,nw+4,h),n,22,U.Hex(0xffffff,e),TextAnchor.MiddleLeft,bold:true,tracking:.02f);
-            U.Text(new Rect(pill.x+16+nw+8,y+2,lw+4,h),"READY",13,all?U.Hex(0x8ff0b6,e):U.Hex(0xf4c8a0,e),TextAnchor.MiddleLeft,bold:true,tracking:.16f);
+            U.Text(new Rect(pill.x+16+nw+8,y+2,lw+4,h),"READY",13,all?U.Hex(0x8ff0b6,e):U.Hex(NativeCyberTheme.CyanSoftHex,e),TextAnchor.MiddleLeft,bold:true,tracking:.16f);
         }
         // `result`: the PvE results variant (pve.css .pve-result .pilot-card) without the ready pill or class line, the name
         // at 18 px.
@@ -170,7 +170,7 @@ namespace ChipArena.UnityConversion
             float tw=U.Measure(text,12,true,false,.12f).x,w=PillWidth(p),h=row.height;var pill=new Rect(row.xMax-w,row.y,w,h);x=pill.x;
             if(ready)U.Glow(pill,U.A(ReadyGreen,.3f*a),16);
             U.Round(pill,ready?U.A(ReadyGreen,a):U.Hex(0x1b1a20,.9f*a),Mathf.Min(16,h/2),ready?U.A(ReadyGreen,a):!p.connected?new Color(1,1,1,.12f*a):U.Hex(0xf4b878,.4f*a));
-            Color ink=ready?U.Hex(0x062413,a):!p.connected?U.Hex(0xa6a7ad,a):U.Hex(0xf4c8a0,a);
+            Color ink=ready?U.Hex(0x062413,a):!p.connected?U.Hex(0xa6a7ad,a):U.Hex(NativeCyberTheme.CyanSoftHex,a);
             NativeIcons.Draw(new Rect(pill.x+12,pill.center.y-7,14,14),icon,ink);U.Text(new Rect(pill.x+12+14+6,pill.y,tw+4,h),text,12,ink,TextAnchor.MiddleLeft,bold:true,tracking:.12f);
         }
         // .pilot-class-fx: a dim 2 px line in the weapon colour with a light that sweeps across it (lobby-metal, 3.6 s);
@@ -206,7 +206,7 @@ namespace ChipArena.UnityConversion
             if(Event.current.type==EventType.Repaint)
             {
                 var dot=new Rect(r.x,r.center.y-4.5f,9,9);U.Radial(new Rect(dot.x-9,dot.y-9,27,27),U.A(tc,.3f*a));U.Disc(dot,U.A(tc,a));U.Text(new Rect(r.x+15,r.y,Mathf.Max(10,box.x-r.x-20),r.height),"Team",12,U.Hex(0xc7c1ce,a),TextAnchor.MiddleLeft);
-                U.Round(box,U.Hex(0x222329,a),4,U.A(U.Mix(U.Mix(U.Hex(0x333333),tc,.45f),U.Hex(0xff784b),h),a*s));
+                U.Round(box,U.Hex(NativeCyberTheme.IndigoHex,a),4,U.A(U.Mix(U.Mix(U.Hex(0x333333),tc,.45f),U.Hex(NativeCyberTheme.CyanHex),h),a*s));
                 U.Text(new Rect(box.x+8,box.y,box.width-30,box.height),TeamNames[team],12,U.Hex(0xf5f5f7,a*s),TextAnchor.MiddleLeft);
                 NativeIcons.DrawMarkup(new Rect(box.xMax-21,box.center.y-7,14,14),"chevron-down",ChevronDown,24,U.Hex(0xf5f5f7,.7f*a*s));
             }
@@ -237,7 +237,7 @@ namespace ChipArena.UnityConversion
             for(int t=0;t<8;t++)
             {
                 var row=TeamPopupRow(box,t);if(U.Hover(row))U.Round(row,U.Hex(0x303138),4);var dot=new Rect(row.x+9,row.center.y-4.5f,9,9);U.Disc(dot,TeamColor(t));
-                U.Text(new Rect(row.x+26,row.y,row.width-50,row.height),TeamNames[t],12,U.Hex(0xf5f5f7),TextAnchor.MiddleLeft);if(t==teamPopupTeam)NativeIcons.Draw(new Rect(row.xMax-22,row.center.y-7,14,14),"check",U.Hex(0xff996f));
+                U.Text(new Rect(row.x+26,row.y,row.width-50,row.height),TeamNames[t],12,U.Hex(0xf5f5f7),TextAnchor.MiddleLeft);if(t==teamPopupTeam)NativeIcons.Draw(new Rect(row.xMax-22,row.center.y-7,14,14),"check",U.Hex(NativeCyberTheme.CyanSoftHex));
             }
         }
         // .lobby-empty: a dashed card holding the next seat while the room has fewer than two pilots.
@@ -263,10 +263,10 @@ namespace ChipArena.UnityConversion
             if(blocked){if(r.width<60)return;var why=U.Wrap("Choose at least two teams to start.",14,r.width,false,3);float wy=r.center.y-why.Count*10.5f;foreach(var w in why){U.Text(new Rect(r.x,wy,r.width,21),w,14,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);wy+=21;}return;}
             int waiting=Mathf.Max(0,total-ready);string lead,rest;Color tone;
             NativeSeatFrame mine=null;if(!Hosting)foreach(var s in RoomSeats)if(s!=null&&s.id==networkId)mine=s;string want=LobbyWeapon(prefs.weapon)?.name??prefs.weapon;
-            if(total==0){lead=Hosting?"Waiting for pilots":"Joining the room…";rest=Hosting?"· Share your room code.":"";tone=U.Hex(0xf4c8a0);}
-            else if(mine!=null&&mine.spec!=prefs.weapon){lead="Send Loadout";rest="so the host gives you "+want+".";tone=U.Hex(0xf4c8a0);}
-            else if(Hosting&&!prefs.pve&&total<2){lead="Add a bot";rest="or wait for a pilot to join.";tone=U.Hex(0xf4c8a0);}
-            else if(waiting>0){lead="Waiting for "+waiting+" pilot"+(waiting==1?"":"s");rest="· "+(Hosting?"Start when every pilot is ready.":"The host starts the match.");tone=U.Hex(0xf4c8a0);}
+            if(total==0){lead=Hosting?"Waiting for pilots":"Joining the room…";rest=Hosting?"· Share your room code.":"";tone=U.Hex(NativeCyberTheme.CyanSoftHex);}
+            else if(mine!=null&&mine.spec!=prefs.weapon){lead="Send Loadout";rest="so the host gives you "+want+".";tone=U.Hex(NativeCyberTheme.CyanSoftHex);}
+            else if(Hosting&&!prefs.pve&&total<2){lead="Add a bot";rest="or wait for a pilot to join.";tone=U.Hex(NativeCyberTheme.CyanSoftHex);}
+            else if(waiting>0){lead="Waiting for "+waiting+" pilot"+(waiting==1?"":"s");rest="· "+(Hosting?"Start when every pilot is ready.":"The host starts the match.");tone=U.Hex(NativeCyberTheme.CyanSoftHex);}
             else{lead="Everyone is ready.";rest=Hosting?(prefs.pve?"Start the boss fight when you are.":"Start the match when you are."):"Waiting for the host to start.";tone=U.Hex(0x8ff0b6);}
             // 14 px, line-height 1.5: the lead in its tone, then the rest; both wrap within the space beside the buttons.
             if(r.width<60)return;var lines=U.Wrap(lead+"\u0001 "+rest,14,r.width,true,3);float lh=21,y=r.center.y-lines.Count*lh/2;
@@ -313,7 +313,7 @@ namespace ChipArena.UnityConversion
         // clip has its clip mapped by the rotation too (Unity's draw-time clip), which cut it away near the column edge.
         private const string FoldOpenMark="<path d=\"M7 9.5 L12 14.5 L17 9.5\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.6\" stroke-linecap=\"square\" stroke-linejoin=\"miter\"/>";
         private const string FoldClosedMark="<path d=\"M9.5 7 L14.5 12 L9.5 17\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.6\" stroke-linecap=\"square\" stroke-linejoin=\"miter\"/>";
-        private static void FoldChevron(Vector2 c,bool open,float e)=>NativeIcons.DrawMarkup(new Rect(c.x-8,c.y-8,16,16),open?"fold-open":"fold-closed",open?FoldOpenMark:FoldClosedMark,24,U.Hex(0xefb587,e));
+        private static void FoldChevron(Vector2 c,bool open,float e)=>NativeIcons.DrawMarkup(new Rect(c.x-8,c.y-8,16,16),open?"fold-open":"fold-closed",open?FoldOpenMark:FoldClosedMark,24,U.Hex(NativeCyberTheme.CyanSoftHex,e));
         // Called after the open fold's content: closes its inset and keeps its height for the next paint's frame.
         private void AdvancedEnd()
         {
@@ -337,7 +337,7 @@ namespace ChipArena.UnityConversion
             if(Event.current.type==EventType.Repaint)
             {
                 float a=alpha,t=enabled?1:.55f,c=enabled?1:.35f;
-                U.Round(r,U.Hex(0x222329,a),4,U.A(U.Mix(U.Hex(0x484952),U.Hex(0xff784b),hf),a*(enabled?1:.7f)));if(hf>0)U.Round(r,U.A(U.Hex(0x26272d),hf*a),4);
+                U.Round(r,U.Hex(NativeCyberTheme.IndigoHex,a),4,U.A(U.Mix(U.Hex(NativeCyberTheme.EdgeHex),U.Hex(NativeCyberTheme.CyanHex),hf),a*(enabled?1:.7f)));if(hf>0)U.Round(r,U.A(U.Hex(0x26272d),hf*a),4);
                 string text=labels[index];float size=U.Measure(text,15).x<=name.width-18?15:14;U.Text(new Rect(r.x+14,r.y,name.width-16,r.height),size>14?text:Fit(text,14,name.width-18,false,0),size,U.Hex(0xf5f5f7,a*t),TextAnchor.MiddleLeft);
                 U.Fill(new Rect(name.xMax-1,r.y+10,1,r.height-20),U.Hex(0x484952,a));
                 if(hp>0)U.Round(prev,new Color(1,1,1,.07f*hp*a),4);if(hn>0)U.Round(next,new Color(1,1,1,.07f*hn*a),4);
@@ -356,9 +356,10 @@ namespace ChipArena.UnityConversion
         {
             string text=ConnectionPillText(out bool lost);
             float w=14+6+8+U.Measure(text,12,false,true).x+14;var r=new Rect(right-w,top,w,36);
-            U.Fill(r,U.Hex(0x45464f));U.Fill(new Rect(r.x+1,r.y+1,r.width-2,r.height-2),U.Hex(0x18191e,.91f));
-            U.Round(new Rect(r.x+14,r.center.y-3,6,6),lost?U.Hex(0xef9b7a):U.Hex(0x59dd83),3);
-            U.Text(new Rect(r.x+28,r.y,w-42,r.height),text,12,U.Hex(0xc3c4ce),TextAnchor.MiddleLeft,mono:true);
+            // Cyber chrome: a chamfered navy tag, the light good (danger once disconnected) with its glow.
+            NativeHudChrome.Cut(r,NativeCyberTheme.Navy(.91f),NativeHudCyber.TagCut);NativeHudChrome.Outline(r,NativeCyberTheme.Edge(),NativeHudCyber.TagCut);
+            var light=new Rect(r.x+14,r.center.y-3,6,6);Color tone=lost?NativeCyberTheme.Danger():NativeCyberTheme.Good();U.Glow(light,U.A(tone,.5f),4);U.Round(light,tone,3);
+            U.Text(new Rect(r.x+28,r.y,w-42,r.height),text,12,NativeCyberTheme.Ink(.9f),TextAnchor.MiddleLeft,mono:true);
         }
 
         // ---- Room column -----------------------------------------------------------------------------------------------
@@ -411,7 +412,7 @@ namespace ChipArena.UnityConversion
             // The label breaks after ROOM CODE when the column is too narrow for one line.
             if(two){int cut=label.IndexOf(" · ",StringComparison.Ordinal);U.Text(new Rect(r.x+16,y,w,14),label.Substring(0,cut),10,U.Hex(0x8da7ae,e),TextAnchor.MiddleLeft,tracking:.16f);U.Text(new Rect(r.x+16,y+14,w,14),Fit(label.Substring(cut+3),10,w,false,.16f),10,U.Hex(0x8da7ae,e),TextAnchor.MiddleLeft,tracking:.16f);y+=28;}
             else{U.Text(new Rect(r.x+16,y,w,14),label,10,U.Hex(0x8da7ae,e),TextAnchor.MiddleLeft,tracking:.16f);y+=14;}
-            bool has=!string.IsNullOrEmpty(code);y+=4;U.Text(new Rect(r.x+16,y,w,30),has?code:"—",24,U.Hex(0xff996f,e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.09f);y+=30;
+            bool has=!string.IsNullOrEmpty(code);y+=4;U.Text(new Rect(r.x+16,y,w,30),has?code:"—",24,U.Hex(NativeCyberTheme.CyanSoftHex,e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.09f);y+=30;
             if(lanLines.Count>0){y+=2;foreach(var line in lanLines){U.Text(new Rect(r.x+16,y,w,14),line,10,U.Hex(0x8da7ae,e),TextAnchor.MiddleLeft,tracking:.16f);y+=14;}}
             y+=12;if(MenuButton(new Rect(r.x+16,y,w,40),"copy","Copy Code",null,true,has,e,14,true)){GUIUtility.systemCopyBuffer=code;Notice("Room code copied.");}
             if(link&&MenuButton(new Rect(r.x+16,y+48,w,40),"copy","Copy Invite Link",null,false,inviteLink!=null,e,14,true)){GUIUtility.systemCopyBuffer=inviteLink;Notice("Invite link copied.");}

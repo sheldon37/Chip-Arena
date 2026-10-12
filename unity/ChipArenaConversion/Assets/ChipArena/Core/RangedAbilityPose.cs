@@ -9,6 +9,8 @@ namespace ChipArena.UnityConversion
         private static readonly float[] Keys=new float[6];private static readonly Vector3[] Points=new Vector3[6];
         public static void Apply(CapturedRig.Pose pose,Actor a,float time,bool firstPerson)
         {
+            // The pistol / machine-gun Q kit (Core/NativeGunKitMotion: Fan the Hammer, Overdrive) on both gun rig routes.
+            NativeGunKitMotion.Apply(pose,a,time,firstPerson);
             float age=time-a.AbilityAt,release=a.AbilityRelease-a.AbilityAt,rel=time-a.AbilityRelease;
             if(age<0||age>3||a.AbilityId==null)return;
             if(a.AbilityId=="rocket")

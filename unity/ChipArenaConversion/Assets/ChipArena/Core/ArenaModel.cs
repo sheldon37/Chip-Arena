@@ -50,12 +50,13 @@ namespace ChipArena.UnityConversion
         // Captured-melee presentation (MeleeMotion): the swing window, authoritative step and commitment, Hurricane, and the
         // hit reaction in the struck pilot's facing frame (source frame: +x the rig's left, radians). Never read by authority.
         public float SwingAt=-100,SwingUntil=-100,CommitAt=-100,CommitUntil=-100,CommitYaw,StepAt,StepUntil,StepDistance;public bool Followup,Hurricane,SprintAttack,OpenerLunge;
-        public int SwingRemaining;public float ChainAt,MeleeBufferUntil=-1,ComboUntil;
+        public bool AirAttack,AirAttackUsed,MainWeaponAway;public float PlungeAt,ImpactAt=-1,AirborneAt=-1;public int SwingRemaining;public float ChainAt,MeleeBufferUntil=-1,ComboUntil;
         public float ReactionAt=-100,ReactionUntil,ReactionYaw,ReactionTurn,ReactionStrength;public V3 ReactionDir,ReactionPoint;public int ReactionZone;public bool ReactionParry;
         public float VisualWindup=Rules.SwordWindup,VisualActive=Rules.SwordActive,VisualDuration=Rules.SwordDuration,VisualRollDuration=Rules.RollDuration;
         public int Id, Team, Combo, Action, Kills, LastInput;
         public WeaponId Weapon;
         public int Ammo, ShotsFired, AimShots;
+        public float OverdriveAt,OverdriveUntil,VentUntil;
         public bool Aiming;
         public float Pitch, AimYaw, AimAt=-100, LastShot=-100, ReloadAt=-100, ReloadUntil;
         internal readonly int[] Magazines={0,7,3,48};
@@ -101,7 +102,7 @@ namespace ChipArena.UnityConversion
         public V3 Position;
         public float Amount;
         // Native surface FX payload; the retained lab wire format is unchanged.
-        public string Detail,DamageKind;public float Radius;public V3 From;public float Time;public V3 Normal;public string SurfaceId;public int Color,Projectile;
+        public bool WallSlam;public string Detail,DamageKind;public float Radius;public V3 From;public float Time;public V3 Normal;public string SurfaceId;public int Color,Projectile;
     }
 
     [Serializable]

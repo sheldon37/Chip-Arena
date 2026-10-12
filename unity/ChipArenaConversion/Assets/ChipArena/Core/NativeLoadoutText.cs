@@ -34,6 +34,31 @@ namespace ChipArena.UnityConversion
             return (fallback??first)?.id??current;
         }
         public static string Description(ContentWeapon w)=>(w?.description??"")+(w!=null&&w.gravity>0?" Projectiles fall; aim higher at range.":"");
+        // The weapon tiles' info strip (shown on hover, under the grid): a one-line role drawn from each description, without
+        // ability names so it stays true as kits change. Another weapon shows its description's first sentence.
+        public static string Role(ContentWeapon w)
+        {
+            switch(w?.id)
+            {
+                case null:return "";
+                case "siren":return "DEV boss · melee and ranged modes";
+                case "emperor":return "DEV · chained punches and launches";
+                case "ansatsuken":return "DEV · arcade punches, kicks and specials";
+                case "leet":return "DEV · binary bolts that lock on";
+                case "pistol":return "Precise sidearm · 7-round magazine";
+                case "rifle":return "Long-range sniper · 3 heavy rounds";
+                case "machinegun":return "Rapid automatic fire · 48 rounds";
+                case "fire":return "Firebolts that blast and burn";
+                case "water":return "Fast globes that soak and slow";
+                case "lightning":return "Rapid bolts that chain between enemies";
+                case "darkness":return "Heavy orbs that drain health";
+                case "sword":return "Three flowing cuts with hitstun";
+                case "daggers":return "Fast alternating cuts and low lunges";
+                case "shield":return "Slams that knock enemies down";
+                case "greatsword":return "Low sweeping cuts, pivoting footwork";
+            }
+            string d=w.description??"";int end=d.IndexOf(". ",StringComparison.Ordinal);return (end>0?d.Substring(0,end):d).TrimEnd('.');
+        }
         // `${damage} DMG · ${(1/interval).toFixed(1)} / SEC` + cost (STAMINA for melee, MANA otherwise) + melee range.
         // Invariant formatting: comma-decimal Windows locales must still read 2.5, not 2,5.
         public static string Stats(ContentWeapon w)

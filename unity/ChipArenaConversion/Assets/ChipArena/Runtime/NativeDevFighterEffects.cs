@@ -50,7 +50,7 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<int,FighterTrack> fighterTracks=new Dictionary<int,FighterTrack>();private readonly Dictionary<int,LeetMemo> leetMemos=new Dictionary<int,LeetMemo>();
         private readonly Dictionary<int,Quaternion> hadoukenTurns=new Dictionary<int,Quaternion>();private readonly Dictionary<string,string> ghostHats=new Dictionary<string,string>();
         private readonly List<NukeBlast> nukeBlasts=new List<NukeBlast>();private readonly List<int> devStale=new List<int>();private readonly double[] tongue=new double[NativeHadoukenFx.Points*2*3];
-        private int devEvent,devFrame;private string ghostPilot,ghostGloves;private bool ghostsLoaded;
+        private int devEvent,devFrame;private string ghostPilot,ghostGloves;private bool ghostsLoaded;private readonly string[] demonGloves=new string[NativeDemonGhosts.Slots];
         private static readonly Color BoltGlow=Alpha(NativeArena.ColorOf(NativeEmperorBolts.GlowColor),NativeEmperorBolts.GlowOpacity),BoltDark=Alpha(NativeArena.ColorOf(NativeEmperorBolts.DarkColor),NativeEmperorBolts.DarkOpacity),
             BoltCore=Alpha(NativeArena.ColorOf(NativeEmperorBolts.CoreColor),NativeEmperorBolts.CoreOpacity),LeetGreen=NativeArena.ColorOf(NativeLeetFx.FieldGreen),BarkTint=NativeArena.ColorOf(NativeLeetFx.Bark).linear,
             GhostViolet=NativeArena.ColorOf(NativeDemonGhosts.Violet).linear,GhostIndigo=NativeArena.ColorOf(NativeDemonGhosts.Indigo).linear;
@@ -253,7 +253,7 @@ namespace ChipArena.UnityConversion
             foreach(var p in arena.Pilots)
             {
                 var a=p.Pose;if(a==null||a.SourceSpec!="ansatsuken"||p.Hp<=0||!p.Seat.connected||!a.Rolling(now)||FirstPerson&&arena.ViewPilot==p||!rigs.TryGetValue(p.Seat.id,out var rig))continue;
-                if(!ghosts.Due(p.Seat.id,now,a.RollAt,q))continue;var pose=ghostPoses[ghosts.Take(p.Seat.id,now,q)];
+                if(!ghosts.Due(p.Seat.id,now,a.RollAt,q))continue;int slot=ghosts.Take(p.Seat.id,now,q);var pose=ghostPoses[slot];demonGloves[slot]=NativeWeaponSkins.Index(p.Seat.weaponSkins,"ansatsuken")==NativeWeaponSkins.PrototypeIndex?ghostGloves:sourceModels.Ghost(SkinnedHeld(a))??ghostGloves;
                 pose.Root=rig.Root.transform.localToWorldMatrix;for(int b=0;b<22&&b<rig.Bones.Length;b++)pose.Bones[b]=rig.Bones[b].localToWorldMatrix;
                 pose.Armed=ghostGloves!=null&&!a.WeaponAway;if(pose.Armed){float reach=WeaponReach(rig,a,now);for(int b=0;b<22&&b<rig.Bones.Length;b++)pose.Weapon[b]=SourceWeaponBone(rig,a,now,false,b,reach);}
                 pose.Hat=null;if(!string.IsNullOrEmpty(a.Hat)){if(!ghostHats.TryGetValue(a.Hat,out var hat)){hat=sourceModels.Ghost("hat-"+a.Hat);ghostHats[a.Hat]=hat;}pose.Hat=hat;}
@@ -263,7 +263,7 @@ namespace ChipArena.UnityConversion
                 if(!ghosts.Live(s,now))continue;var owner=SeatPilot(arena,ghosts.Owner[s]);if(owner==null||owner.Hp<=0)continue;
                 var pose=ghostPoses[s];Color tint=NativeDemonGhosts.Color(s)==NativeDemonGhosts.Indigo?GhostIndigo:GhostViolet;float opacity=(float)NativeDemonGhosts.Fade(now-ghosts.At[s]);
                 sourceModels.Queue(ghostPilot,pose.Root,pose.Bone,null,0,null,tint,null,opacity);
-                if(pose.Armed)sourceModels.Queue(ghostGloves,pose.Root,pose.WeaponBone,null,0,null,tint,null,opacity);
+                if(pose.Armed)sourceModels.Queue(demonGloves[s]??ghostGloves,pose.Root,pose.WeaponBone,null,0,null,tint,null,opacity);
                 if(pose.Hat!=null)sourceModels.Queue(pose.Hat,pose.Root,pose.Bone,null,0,null,tint,null,opacity);
             }
         }

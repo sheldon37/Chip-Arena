@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
                     p.Seat.bot=false;p.Seat.alive=true;p.Hp=p.Stamina=p.Mana=100;p.Collider.enabled=true;p.Body.isKinematic=false;
                     p.Ready=p.AttackEnd=p.BlockEnd=p.BlockReady=p.RollEnd=p.RollReady=p.StunEnd=p.StaggerImmune=p.ReloadEnd=0;p.CastAt=0;p.RegenAt=Time+10;
                     p.MeleeKit=new NativeMeleeKit();p.MeleeBufferedUntil=-1;p.MeleeComboUntil=0;p.Pose.Sprinting=false;p.ArmourHitUntil=0;p.Swing=null;p.Special=null;p.Down=null;p.Roll=null;p.Combo=-1;p.RiposteAt=p.BlockAt=-100;p.RiposteBy=-1;p.Dots.Clear();CancelAbilities(p);
-                    p.Grounded=true;p.Input=new InputFrame{Yaw=p==a?0:180};p.Yaw=p.Input.Yaw;
+                    p.AirborneAt=-1;p.AirAttackUsed=false;p.Grounded=true;p.Input=new InputFrame{Yaw=p==a?0:180};p.Yaw=p.Input.Yaw;
                     Position(p,new Vector3(1000,100,p==a?1000:1002));
                 }
             }
@@ -39,6 +39,47 @@ namespace ChipArena.UnityConversion
                     Position(b,new Vector3(1000,100,1002));Advance((a.Swing.HitAt+a.Swing.HitUntil)/2-Time);StepMelee(a);
                     NearNative(b.Hp,100-(float)a.Weapon.damage,"late entry into sweep "+spec);float hp=b.Hp;Advance(.001f);StepMelee(a);Check(b.Hp==hp,"duplicate primary contact");
                 }
+                // Landing attacks use the real hit, block and roll handlers; airtime never resolves damage.
+                foreach(string spec in new[]{"daggers","sword","shield","greatsword"})
+                {
+                    foreach(string defense in new[]{"none","block","roll","wall"})
+                    {
+                        Setup(spec);a.Grounded=false;a.AirborneAt=Time-.2f;a.Input.Attack=true;
+                        Check(TryMelee(a)&&a.Swing.Air&&a.AirAttackUsed,"air commitment "+spec);
+                        NearNative(a.Stamina,100-NativeMeleeFeel.Cost(a.Weapon,a.Stats)*1.25f,"air stamina");
+                        Advance(.2f);StepMelee(a);Check(b.Hp==100,"airborne damage");
+                        if(defense=="block")Check(TryBlock(b),"landing defender block");
+                        if(defense=="roll"){b.Roll=NativeContentRules.Roll(Content,b.Seat.spec,b.Stats);b.RollAt=Time-.1f;b.RollEnd=Time+.3f;}
+                        if(defense=="wall"){wall.SetActive(true);Physics.SyncTransforms();}
+                        a.Grounded=true;StepMelee(a);
+                        if(defense=="none"){NearNative(b.Hp,100-(float)a.Weapon.damage*(spec=="greatsword"?1.5f:1.3f),"landing damage");Check(b.StunEnd>Time,"landing stagger");Check(Events.Exists(e=>e.Kind==EventKind.Hit&&e.Source==a.Seat.id&&e.Target==b.Seat.id&&e.Time==Time&&e.Normal.Length>.9f),"pilot hit carries its actual direction");float hp=b.Hp;StepMelee(a);Check(b.Hp==hp,"duplicate landing hit");NearNative(a.Ready-Time,NativeAirAttackSimulation.Recovery(spec),"landing recovery");}
+                        else Check(b.Hp==100,"landing defense "+defense);
+                    }
+                }
+                Debug.Log("PASS native landing attacks: four weapons, no air damage, cost, landing damage/stagger/recovery, dedup, block/roll/cover");
+                // Sprint contacts use the real damage/defense route; do not replace these with profile-only checks.
+                foreach(string spec in new[]{"sword","daggers","shield","greatsword"})
+                {
+                    Setup(spec);a.Input.Attack=a.Input.Sprint=true;a.Input.Z=1;
+                    float cost=NativeMeleeFeel.Cost(a.Weapon,a.Stats)*1.3f;
+                    a.Stamina=cost-.01f;Check(!TryMelee(a)&&a.Swing==null,"unfunded sprint "+spec);a.Stamina=100;
+                    Check(TryMelee(a)&&a.Swing.SprintAttack,"sprint start "+spec);NearNative(a.Stamina,100-cost,"sprint commitment cost");
+                    Check(!TryBlock(a),"sprint block cancel "+spec);
+                    if(spec=="greatsword")Check(!a.Grounded&&a.Body.linearVelocity.y>0,"sprint hop launch");
+                    float hit=a.Swing.HitAt+(a.Swing.HitUntil-a.Swing.HitAt)*(spec=="daggers"?.25f:.5f);
+                    Advance(hit-Time);StepMelee(a);float scale=spec=="sword"?1.2f:spec=="daggers"?.7f:spec=="shield"?.9f:1.4f;
+                    NearNative(b.Hp,100-(float)a.Weapon.damage*scale,"sprint damage "+spec);
+                    if(spec=="shield"){NearNative(b.StunEnd-Time,.35f,"charge stagger");Check(b.Down==null,"charge must not launch");}
+                    float hp=b.Hp;StepMelee(a);NearNative(b.Hp,hp,"sprint duplicate contact");
+                    if(spec=="daggers"){Advance(.12f);StepMelee(a);NearNative(b.Hp,100-(float)a.Weapon.damage*1.4f,"twin second hit");}
+                }
+                Setup("greatsword");a.Input.Attack=a.Input.Sprint=true;a.Input.Z=1;TryMelee(a);Position(b,new Vector3(1000,100,998.5f));
+                Advance(a.Swing.HitAt-Time+.02f);StepMelee(a);Check(b.Hp==100,"airborne ring");a.Grounded=true;StepMelee(a);Check(b.Hp<100,"landed rear ring");
+                Setup("greatsword");a.Input.Attack=a.Input.Sprint=true;a.Input.Z=1;TryMelee(a);Position(b,new Vector3(1000,100,998.5f));
+                Advance(a.Swing.HitAt-Time+.02f);a.Grounded=true;b.Roll=NativeContentRules.Roll(Content,b.Seat.spec,b.Stats);b.RollAt=Time-.1f;b.RollEnd=Time+.3f;
+                StepMelee(a);Check(b.Hp==100,"ring roll defense");
+                Setup("greatsword");a.Input.Attack=a.Input.Sprint=true;a.Input.Z=1;TryMelee(a);Position(b,new Vector3(1000,100,998.5f));
+                Advance(a.Swing.HitAt-Time+.02f);a.Grounded=true;Check(TryBlock(b),"ring defender block");StepMelee(a);Check(b.Hp==100&&a.Swing==null,"ring block interrupts");
                 Setup();Check(TryMelee(a),"wall attack setup");Advance((a.Swing.HitAt+a.Swing.HitUntil)/2-Time);wall.SetActive(true);Physics.SyncTransforms();StepMelee(a);Check(b.Hp==100,"melee passed through cover");
                 wall.SetActive(false);Physics.SyncTransforms();StepMelee(a);Check(b.Hp<100,"blocked ray spent contact ledger");
                 Setup();Match.Teams=true;a.Seat.team=b.Seat.team=0;TryMelee(a);Advance((a.Swing.HitAt+a.Swing.HitUntil)/2-Time);StepMelee(a);Check(b.Hp==100,"friendly fire bypass");
@@ -63,8 +104,8 @@ namespace ChipArena.UnityConversion
                 Setup();a.Seat.bot=true;TryMelee(a);Check(!TryRoll(a),"bot used human roll cancel");
                 Setup();Position(a,new Vector3(1000,10,1000));a.Grounded=false;a.Knockback=new Vector3(6,4,0);StepPilot(a);
                 NearNative(a.Body.linearVelocity.x,6*Mathf.Exp(-3.1f/60),"external velocity integration");NearNative(a.Body.linearVelocity.y,4,"one-shot vertical kick");Check(a.Knockback.y==0,"lift retained for next tick");
-                Setup();Position(b,new Vector3(1000,100,1005));a.Input.LockTarget=b.Seat.id;a.Input.Sprint=true;a.Input.Z=1;
-                Check(TryMelee(a)&&a.Swing.OpenerLunge&&a.Swing.SprintAttack,"opener/sprint flags");NearNative(a.Swing.Distance,2.2f,"host lock lunge cap");
+                Setup();Position(b,new Vector3(1000,100,1005));a.Input.LockTarget=b.Seat.id;a.Input.Z=1;
+                Check(TryMelee(a)&&a.Swing.OpenerLunge&&!a.Swing.SprintAttack,"normal opener flag");NearNative(a.Swing.Distance,2.2f,"host lock lunge cap");
                 Position(b,new Vector3(1005,100,1005));Advance(Rules.Dt);StepMelee(a);
                 NearNative(a.Yaw,12,"windup turn rate");NearNative(a.Swing.Yaw*Mathf.Rad2Deg,a.Yaw,"commit yaw follows turn");
                 float heading=a.Yaw;Advance(a.Swing.HitAt-Time);a.Input.LockTarget=0;a.Input.Yaw=180;StepMelee(a);NearNative(a.Yaw,heading,"active yaw locked");

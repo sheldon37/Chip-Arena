@@ -57,6 +57,7 @@ internal static class JumpSimulationChecks
         locked.CanMove=true;locked.RollUntil=1;
         Check(NativePrediction.Step(locked,new InputFrame{Jump=true},Floor,Ground).AirJumps==0,"guest roll rejects air jump");
         locked.RollUntil=0;locked.MeleeWeapon=content.Weapon("daggers");locked.MeleeStats=NativeContentRules.Stats(content,"daggers",new Dictionary<string,int>());locked.Stamina=100;
+        locked.Time=1;locked.AirborneAt=.5f;
         var attackJump=NativePrediction.Step(locked,new InputFrame{Jump=true,Attack=true},Floor,Ground);
         Check(attackJump.Swing!=null&&attackJump.AirJumps==0,"same-tick attack commitment blocks guest air jump");
         var json=new JsonSerializerOptions{IncludeFields=true,IgnoreReadOnlyProperties=true};var copy=JsonSerializer.Deserialize<Actor>(JsonSerializer.Serialize(new Actor{AirJumps=1,AirJumpAt=3.5f,Grounded=false},json),json);
@@ -66,7 +67,7 @@ internal static class JumpSimulationChecks
         Check(track.AirJumps==1&&Near(track.AirJumpAt,1.25f),"explicit signal needs no velocity inference and does not repeat");
         Console.WriteLine("PASS dagger air jump: shared lab/prediction trajectories, landing reset, locks, swim separation, impulse scaling, edge replay and replicated signal");
 
-        foreach(var cut in new[]{("sword",1,1),("sword",2,-1),("sword",3,1),("daggers",1,1),("daggers",2,-1),("shield",1,1),("shield",2,1),("greatsword",1,1),("greatsword",2,-1)})
+        foreach(var cut in new[]{("sword",1,1),("sword",2,-1),("sword",3,1),("daggers",1,1),("daggers",2,-1),("daggers",3,-1),("daggers",4,-1),("shield",1,-1),("shield",2,-1),("greatsword",1,1),("greatsword",2,-1)})
         {
             var stats=NativeContentRules.Stats(content,cut.Item1,new Dictionary<string,int>());
             var swing=NativeMeleeRules.Begin(content.Weapon(cut.Item1),stats,2,cut.Item2,0);
@@ -75,6 +76,6 @@ internal static class JumpSimulationChecks
             Check(swing.Contact("first",swing.HitAt,first,.01f,true)&&!swing.Contact("last",swing.HitAt,last,.01f,true),cut+": native blade enters on the correct side");
             Check(swing.Contact("last",swing.HitUntil,last,.01f,true)&&!swing.Contact("first",swing.HitUntil,first,.01f,true),cut+": opposite side then one-hit ledger");
         }
-        Console.WriteLine("PASS native melee sweep order: all nine combo cuts enter/leave on the captured blade side with per-target contact ledgers");
+        Console.WriteLine("PASS native melee sweep order: all eleven combo cuts enter/leave on the captured blade side with per-target contact ledgers");
     }
 }

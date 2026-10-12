@@ -51,7 +51,7 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed class NativeMeleeKitFx
     {
-        public struct Record{public int Id,Source,Target;public EventKind Kind;public float Time,Amount,Radius;public Vector3 Position,From,Normal;public string Fx;}
+        public struct Record{public int Id,Source,Target;public EventKind Kind;public float Time,Amount,Radius;public Vector3 Position,From,Normal;public string Fx;public bool WallSlam;}
         private readonly List<Record> records=new List<Record>();private int cursor;private float clock=float.NegativeInfinity;
         public IReadOnlyList<Record> Records=>records;
         public const int MaxRecords=96;public const float RecordSeconds=1.6f;
@@ -72,7 +72,7 @@ namespace ChipArena.UnityConversion
             {
                 var e=events[i];if(e.Id<=cursor||!Kinds(e.Kind)||!Tag(e.Detail)||time-e.Time>RecordSeconds)continue;
                 if(records.Count>=MaxRecords)records.RemoveAt(0);
-                records.Add(new Record{Id=e.Id,Source=e.Source,Target=e.Target,Kind=e.Kind,Time=e.Time,Amount=e.Amount,Radius=e.Radius,Position=N(e.Position),From=N(e.From),Normal=N(e.Normal),Fx=e.Detail});
+                records.Add(new Record{Id=e.Id,Source=e.Source,Target=e.Target,Kind=e.Kind,Time=e.Time,Amount=e.Amount,Radius=e.Radius,Position=N(e.Position),From=N(e.From),Normal=N(e.Normal),Fx=e.Detail,WallSlam=e.WallSlam});
             }
             if(newest>cursor)cursor=newest;
             for(int i=records.Count-1;i>=0;i--)if(time-records[i].Time>RecordSeconds)records.RemoveAt(i);
@@ -177,9 +177,7 @@ namespace ChipArena.UnityConversion
                 case "kunai-mark":
                     if(c.Recast&&lead)Shimmer(s,scene,a,u,time,seed,q,low);
                     break;
-                case "wolf-knight":
-                    if(lead)Squat(s,feet,u,time,seed,q,low);
-                    break;
+                case "whirlwind":Whirlwind(s,scene,a,c,time,q,low,view,edge,core,seed);break;
                 case "aegis-ricochet":
                     if(lead&&!view&&scene.Blade(a,false,out var sr,out var st)){var mid=(sr+st)*.5f;float spin=time*14;for(int i=0;i<Count(6,q,low);i++){float ang=spin+i*1.047f;var d=new Vector3((float)Math.Cos(ang),(float)Math.Sin(ang)*.6f,(float)Math.Sin(ang)*.8f);s.Sprite(false,mid+d*(.32f+.1f*u),edge*(1.4f*u),.08f,Sparkle);}}
                     break;
@@ -268,11 +266,83 @@ namespace ChipArena.UnityConversion
             }
             s.Glow(behind+Vector3.UnitY*.9f,Lin(MarkRed,1.4f*u*flick),0,1.4f,Core,u,seed);GroundRing(s,behind,.55f,.1f,Lin(MarkRed,2f),u,low?10:16);
         }
-        // The Wolf Knight's squat: gold armour light gathering on the pilot, dust pressed out of the floor.
-        private static void Squat(IKitFxSink s,Vector3 feet,float u,float time,long seed,float q,bool low)
+        // The Whirlwind (greatsword E): the hit-radius telegraph ring and floor sparks as the blade drags through the wind-back;
+        // from the uncoil on, the blade's arc ribbon (weapon accent, widest and brightest toward the tip), a faint ring at the hit
+        // radius brightening as the blade comes round the front, wind and dust swirling round the feet and sparks where the tip
+        // passes low; at the stop, a dust puff and the tip meeting the floor. All keyed to the replicated clock
+        // (MeleeKitMotion.Spin) and the posed blade; the caster's own arc rides its first-person view blade.
+        private static void Whirlwind(IKitFxSink s,IKitFxScene scene,Actor a,in KitClock c,float time,float q,bool low,bool view,Vector3 edge,Vector3 core,long seed)
         {
-            s.Glow(feet+Vector3.UnitY*1.0f,Lin(ArmourGold,1.4f*u),0,1.6f*u+.2f,Core,u,seed);
-            if(!low)for(int i=0;i<Count(6,q,low);i++){float a=i/6f*6.2832f;s.Smoke(feet+new Vector3((float)Math.Cos(a)*(.4f+.5f*u),.1f,(float)Math.Sin(a)*(.4f+.5f*u)),Lin(Dust),.5f*u,.5f,u*.5f,seed+i,feet.Y);}
+            var w=MeleeKitMotion.Spin(c,time);float k=w.Speed,radius=NativeWhirlwindRules.Radius;Vector3 feet=scene.Feet(a);float floor=feet.Y;
+            Vector3 axis=scene.Chest(a,out var ch)?new Vector3(ch.X,floor,ch.Z):feet;var vel=new Vector3(a.Velocity.x,0,a.Velocity.z);float sign=w.Rate>=0?1:-1;
+            bool hasTip=scene.Blade(a,false,out var root,out var tip)&&!view;
+            if(c.Part==KitPart.Windup)
+            {
+                // The telegraph: the 2.6 m ring filling in through the windup, ticks pointing in at the pilot.
+                float u=Clamp01((time-c.At)/c.Windup),fill=Smooth(u/.5f),pulse=.8f+.2f*(float)Math.Sin(time*30);
+                GroundRing(s,feet,radius,.08f,edge*(1.4f+1.6f*u),fill*pulse,low?24:40);
+                for(int i=0;i<(low?4:8);i++){float ang=i*.7854f;var d=new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang));Vector3 o=new Vector3(feet.X,floor+.035f,feet.Z)+d*(radius-.04f),inner=o-d*(.4f*fill);var side=new Vector3(-d.Z,0,d.X)*.035f;s.Band(false,inner-side,o-side,o+side,inner+side,.15f*fill,fill,core*2f);}
+                if(hasTip)Drag(s,tip,floor,Around(axis,tip,sign),time,seed,q);
+            }
+            if(k>.02f)
+            {
+                float pass=.5f+.5f*(float)Math.Cos(w.Tip);
+                GroundRing(s,feet,radius,.05f,edge*1.2f,(.16f+.24f*pass)*k,low?24:40);
+                if(hasTip)Arc(s,false,axis,root,tip,vel,w.Rate,k,edge,core,q,low,2.6f);
+                else if(view&&scene.ViewBlade(false,out var vr,out var vt))
+                {
+                    // First person: the arc streaks behind the view blade only while it sweeps the lower view.
+                    Vector3 eye=feet+Vector3.UnitY*(.865f+NativeViewRules.EyeHeight);float seen=Smooth(((float)Math.Cos(w.Tip)+.3f)/.6f);
+                    if(seen>.01f)Arc(s,true,new Vector3(eye.X,vr.Y,eye.Z),vr,vt,Vector3.Zero,w.Rate,k*seen,edge,core,q,low,1.1f);
+                }
+                Swirl(s,axis,floor,w.Grip,w.Rate,k,edge,seed,q,low);
+                if(hasTip)Drag(s,tip,floor,Around(axis,tip,sign),time,seed+7,q);
+            }
+            if(!float.IsNaN(w.Stop)&&time>=w.Stop&&time-w.Stop<.6f)
+            {
+                // The stop: the weight comes down, dust pushed out from the feet, and the tip meets the floor.
+                float age=time-w.Stop,u=age/.6f;
+                if(!low)for(int i=0;i<Count(8,q,low);i++){float ang=i/8f*6.2832f+H(seed+i,151);var d=new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang));s.Smoke(feet+d*(.3f+.9f*Smooth(u*1.5f))+Vector3.UnitY*.12f,Lin(Dust),.6f*(1-u),.45f+.5f*u,u,seed+i+160,floor);}
+                if(age<.3f){float v=age/.3f;GroundRing(s,feet,.4f+1.3f*Smooth(v),.12f*(1-v)+.03f,Lin(Dust,1.6f)+edge*.4f,(1-v)*(1-v)*.8f,low?16:28);}
+                if(hasTip&&tip.Y<floor+.35f&&age<.25f)
+                {
+                    float v=age/.25f;Vector3 at=new Vector3(tip.X,floor+.03f,tip.Z);s.Glow(at,Lin(Ember,2.4f*(1-v)),0,.35f+.3f*v,Core,v,seed+3);
+                    for(int i=0;i<Count(8,q,low);i++){var d=Vector3.Normalize(new Vector3(H(seed+i,152)-.5f,.6f+.8f*H(seed+i,153),H(seed+i,154)-.5f));float sp=3+4*H(seed+i,155);s.Streak(at+d*(sp*age)+new Vector3(0,-6*age*age,0),d*sp,Lin(GreatCore,2.8f*(1-v)),.022f,.08f,.03f,.9f,v,seed+i+170);}
+                }
+            }
+        }
+        // The direction a point at `p` travels as it turns about the vertical through `axis` (sign: + toward the pilot's left).
+        private static Vector3 Around(Vector3 axis,Vector3 p,float sign){var d=p-axis;d.Y=0;var l=new Vector3(-d.Z,0,d.X)*sign;return l.LengthSquared()>1e-6f?Vector3.Normalize(l):Vector3.UnitZ;}
+        // The blade's arc: where it was over the last `span` radians (turned back about the spin axis, left behind by the
+        // pilot's travel), a soft accent band from a third of the blade to the tip and a brighter, hotter band over its outer
+        // third (widest at the tip, where it moves fastest), both fading along the arc.
+        private static void Arc(IKitFxSink s,bool view,Vector3 axis,Vector3 root,Vector3 tip,Vector3 vel,float rate,float k,Vector3 edge,Vector3 core,float q,bool low,float span)
+        {
+            float om=Math.Abs(rate);if(om<.5f||k<=.01f)return;float sign=rate>=0?1:-1,phi=Math.Min(span,om*.17f);int n=Count(14,q,low);
+            Vector3 Past(Vector3 p,float ang,float dt){var d=p-axis;float y=d.Y;d.Y=0;var l=new Vector3(-d.Z,0,d.X);var r=d*(float)Math.Cos(ang)+l*(float)Math.Sin(ang);return axis+r+new Vector3(0,y,0)-vel*dt;}
+            Vector3 inner=Vector3.Lerp(root,tip,.32f),outer=Vector3.Lerp(root,tip,.7f),end=tip+(tip-root)*.04f;var hot=Vector3.Lerp(edge,core,.35f)*2.2f;
+            for(int i=0;i<n;i++)
+            {
+                float f0=i/(float)n,f1=(i+1)/(float)n,a0=-sign*phi*f0,a1=-sign*phi*f1,t0=phi*f0/om,t1=phi*f1/om,b0=k*(float)Math.Pow(1-f0,1.4f),b1=k*(float)Math.Pow(1-f1,1.4f);
+                s.Band(view,Past(inner,a0,t0),Past(inner,a1,t1),Past(tip,a1,t1),Past(tip,a0,t0),b0*.35f,b1*.35f,edge*1.3f);
+                s.Band(view,Past(outer,a0,t0),Past(outer,a1,t1),Past(end,a1,t1),Past(end,a0,t0),b0,b1,hot);
+            }
+        }
+        // Wind running round the pilot with the blade, and dust lifted and swirled out from the feet.
+        private static void Swirl(IKitFxSink s,Vector3 axis,float floor,float turn,float rate,float k,Vector3 edge,long seed,float q,bool low)
+        {
+            float sign=rate>=0?1:-1,om=Math.Abs(rate);
+            for(int i=0;i<Count(10,q,low);i++)
+            {
+                float h=H(seed+i,141),ang=h*6.2832f+.6f*turn,r=.9f+.9f*H(seed+i,142),y=floor+.15f+1.2f*H(seed+i,143);var d=new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang));
+                s.Streak(new Vector3(axis.X,y,axis.Z)+d*r,new Vector3(-d.Z,0,d.X)*(sign*om*r*.5f),edge*(.9f*k),.02f,.4f,.05f,.9f,h,seed+i+120);
+            }
+            if(low)return;
+            for(int i=0;i<Count(7,q,low);i++)
+            {
+                float h=H(seed+i,144),ph=(h+turn*.08f*sign)%1f;if(ph<0)ph+=1;float ang=h*6.2832f+.45f*turn,r=.45f+.9f*ph;var d=new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang));
+                s.Smoke(new Vector3(axis.X,floor+.1f+.25f*ph,axis.Z)+d*r,Lin(Dust),.34f*k*(float)Math.Sin(Math.PI*ph),.45f+.3f*ph,ph,seed+i+130,floor);
+            }
         }
 
         // ---------------------------------------------------------------------------------------------------------------
@@ -443,15 +513,22 @@ namespace ChipArena.UnityConversion
                     if(victim!=null&&victim.StunUntil>e.Time+.2f&&age<victim.StunUntil-e.Time){Vector3 head=scene.Feet(victim)+Vector3.UnitY*2.05f;for(int i=0;i<3;i++){float a=age*7+i*2.094f;s.Sprite(false,head+new Vector3((float)Math.Cos(a)*.32f,.05f*(float)Math.Sin(a*2),(float)Math.Sin(a)*.32f),Lin(ArmourGold,2.2f),.12f,Sparkle);}}
                     break;
                 }
+                case "whirlwind":
+                {
+                    // Each pulse: the blade's slash drawn across the struck target in the spin's sense of turn.
+                    var src=Find(scene,e.Source);if(src==null||age>.16f)break;float u=age/.16f;Vector3 d=at-scene.Feet(src);d.Y=0;if(d.LengthSquared()<1e-4f)break;d=Vector3.Normalize(d);var t=new Vector3(-d.Z,0,d.X);
+                    s.Line(false,at-t*.55f,at+t*(.6f+.4f*u),core*(3.2f*(1-u)),.06f*(1-u)+.012f,false);break;
+                }
                 case "earthsplitter":
                     if(age<.4f){float u=age/.4f;for(int i=0;i<Count(6,q,low);i++){var v=new Vector3(H(seed+i,98)-.5f,1.2f,H(seed+i,99)-.5f)*6;s.Streak(at+v*age+new Vector3(0,-4.6f*age*age,0),v,Lin(GreatCore,2.6f*(1-u)),.04f,.14f,.03f,.9f,u,seed+i+80);}}
                     break;
             }
         }
-        // A Bulwark hit is the wall slam when an earlier Bulwark hit on the same target by the same pilot came just before it.
+        // A Bulwark hit is the wall slam: the authority's AbilityHit.WallSlam flag; without it (older streams), an earlier Bulwark
+        // hit on the same target by the same pilot just before it.
         private bool Wall(in Record e,IKitFxScene scene,out Actor victim)
         {
-            victim=Find(scene,e.Target);
+            victim=Find(scene,e.Target);if(e.WallSlam)return true;
             for(int i=0;i<records.Count;i++){var r=records[i];if(r.Id!=e.Id&&r.Kind==EventKind.AbilityHit&&r.Fx=="bulwark-charge"&&r.Source==e.Source&&r.Target==e.Target&&r.Time<e.Time&&e.Time-r.Time<.6f)return true;}
             return false;
         }
@@ -477,21 +554,21 @@ namespace ChipArena.UnityConversion
         }
         private static void Land(IKitFxSink s,in Record e,float age,Vector3 edge,Vector3 core,long seed,float q,bool low)
         {
-            bool wolf=e.Fx=="wolf-knight";float life=wolf?.7f:.55f;if(age>life)return;float u=age/life,radius=e.Radius>0?e.Radius:(wolf?3.7f:2);
-            Vector3 c=e.Position-new Vector3(0,.84f,0);var ring=wolf?Lin(ArmourGold):edge;var hot=wolf?Lin(GreatCore):core;
+            const float life=.55f;if(age>life)return;float u=age/life,radius=e.Radius>0?e.Radius:2;
+            Vector3 c=e.Position-new Vector3(0,.84f,0);var ring=edge;var hot=core;
             // The wave: a bright band on the floor racing out to the strike radius, fading as it goes.
-            float rr=radius*Smooth(Math.Min(1,age/(wolf?.28f:.22f))),width=.25f+.35f*(1-u),b=(1-u)*(1-u);int n=low?16:28;
+            float rr=radius*Smooth(Math.Min(1,age/.22f)),width=.25f+.35f*(1-u),b=(1-u)*(1-u);int n=low?16:28;
             for(int i=0;i<n;i++)
             {
                 float a0=i/(float)n*6.2832f,a1=(i+1)/(float)n*6.2832f;Vector3 d0=new Vector3((float)Math.Cos(a0),0,(float)Math.Sin(a0)),d1=new Vector3((float)Math.Cos(a1),0,(float)Math.Sin(a1));Vector3 y=new Vector3(0,.03f,0);
                 s.Band(false,c+y+d0*Math.Max(0,rr-width),c+y+d1*Math.Max(0,rr-width),c+y+d1*rr,c+y+d0*rr,b,b,ring*2.6f);
             }
             if(age<.18f){float k=age/.18f;s.Glow(c+Vector3.UnitY*.3f,hot*(3.5f*(1-k)),0,1.2f+1.5f*k,Core,k,seed);}
-            // The Skyfall's blade-light pillar; the Wolf Knight's thrown rock and dust.
-            if(!wolf&&age<.3f){float k=age/.3f;s.Line(false,c,c+Vector3.UnitY*(2.4f*(1-k*.4f)),core*(2.6f*(1-k)),.09f*(1-k)+.015f,false);}
-            for(int i=0;i<Count(wolf?14:9,q,low);i++)
+            // The Skyfall's blade-light pillar, thrown grit and dust.
+            if(age<.3f){float k=age/.3f;s.Line(false,c,c+Vector3.UnitY*(2.4f*(1-k*.4f)),core*(2.6f*(1-k)),.09f*(1-k)+.015f,false);}
+            for(int i=0;i<Count(9,q,low);i++)
             {
-                float a=i/(float)Count(wolf?14:9,q,low)*6.2832f+H(seed+i,111);var d=new Vector3((float)Math.Cos(a),0,(float)Math.Sin(a));
+                float a=i/(float)Count(9,q,low)*6.2832f+H(seed+i,111);var d=new Vector3((float)Math.Cos(a),0,(float)Math.Sin(a));
                 if(age<.45f){float k=age/.45f;var v=d*(4+3*H(seed+i,112))+Vector3.UnitY*(3+3*H(seed+i,113));s.Streak(c+d*.3f+v*age+new Vector3(0,-11.5f*age*age,0)+Vector3.UnitY*.1f,v-new Vector3(0,23*age,0),hot*(2.4f*(1-k)),.035f,.12f,.03f,.9f,k,seed+i);}
                 if(!low)s.Smoke(c+d*(rr*.9f)+Vector3.UnitY*.15f,Lin(Dust),.6f*(1-u),.5f+.6f*u,u,seed+i+40,c.Y);
             }
@@ -499,7 +576,7 @@ namespace ChipArena.UnityConversion
         private static void Recast(IKitFxSink s,IKitFxScene scene,in Record e,float age,Vector3 edge,Vector3 core,long seed,float q,bool low)
         {
             // The recast's tell: a thin line from the caster to its target for the anticipation (.2 s), red for the Kunai.
-            if(age>.22f)return;float u=age/.22f;var t=Find(scene,e.Target);Vector3 to=t!=null?(scene.Chest(t,out var c)?c:scene.Feet(t)+Vector3.UnitY*1.2f):e.Position;
+            if(age>.22f||e.Fx=="whirlwind")return;float u=age/.22f;var t=Find(scene,e.Target);Vector3 to=t!=null?(scene.Chest(t,out var c)?c:scene.Feet(t)+Vector3.UnitY*1.2f):e.Position;
             var tint=e.Fx=="kunai-mark"?Lin(MarkRed):edge;var src=Find(scene,e.Source);Vector3 from=src!=null?(scene.Chest(src,out var sc)?sc:scene.Feet(src)+Vector3.UnitY*1.2f):e.From;
             float flick=.6f+.4f*(float)Math.Sin(age*120);s.Line(false,from,Vector3.Lerp(from,to,Smooth(u*2)),tint*(2.2f*flick),.025f,false);
             s.Glow(to,tint*(1.6f*u*flick),0,.8f,Ring,u,seed);

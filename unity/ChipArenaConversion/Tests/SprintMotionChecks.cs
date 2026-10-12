@@ -30,14 +30,14 @@ internal static class SprintMotionChecks
         foreach(var busy in new Action<Actor>[]{x=>x.AttackAt=4.8f,x=>{x.AttackAt=4.5f;x.AttackUntil=5.5f;},x=>x.BlockUntil=6,x=>x.RollAt=4.9f,x=>x.StunUntil=6,x=>x.JuggleUntil=6,x=>x.LastShot=4.9f,x=>x.Aiming=true,x=>x.ReloadUntil=6,x=>x.AbilityAt=4.8f,x=>{x.CommitAt=4.9f;x.CommitUntil=5.4f;},x=>x.Hp=0})
         {var b=new Actor{Id=1,Hp=100,Grounded=true,Sprinting=true,Velocity=new V3(0,0,SprintSpeed)};busy(b);Check(NativeSprintRules.Busy(b,5)&&!NativeSprintRules.Shows(b,5),"an action drops the sprint");}
         var carries=new HashSet<string>();
-        foreach(var s in new[]{"sword","daggers","shield","greatsword","pistol","rifle","machinegun","fire"})carries.Add(NativeSprintRules.CarryOf(s));
-        Check(carries.Count==8&&!carries.Contains(NativeSprintRules.None)&&NativeSprintRules.CarryOf("water")==NativeSprintRules.Trail&&NativeSprintRules.CarryOf("leet")==NativeSprintRules.Trail,"eight distinct carries (the four schools and L33t H4x share the trailing hands)");
+        foreach(var s in new[]{"sword","daggers","shield","greatsword","pistol","rifle","machinegun","fire","water","lightning","darkness","leet"})carries.Add(NativeSprintRules.CarryOf(s));
+        Check(carries.Count==12&&!carries.Contains(NativeSprintRules.None)&&!carries.Contains(NativeSprintRules.Trail),"twelve distinct carries (each school and L33t H4x its own)");
         Check(NativeSprintRules.CarryOf("emperor")==NativeSprintRules.None&&NativeSprintRules.CarryOf("ansatsuken")==NativeSprintRules.None&&NativeSprintRules.CarryOf("siren")==NativeSprintRules.None,"the DEV fighters and the Siren keep their own locomotion");
         // The blend: a ramp over .15 s eased at both ends (its first and last frames move least), never 17% in one 60 Hz frame.
         float w=0,step=0,first=0;for(int f=0;f<9;f++){float n=NativeSprintRules.Step(w,true,Dt);float d=NativeSprintRules.Shape(n)-NativeSprintRules.Shape(w);if(f==0)first=d;step=Math.Max(step,d);w=n;}
         w=NativeSprintRules.Shape(w);Check(w>.999f&&step<.17f&&first<step*.25f,"the blend reaches "+w.ToString("0.00")+" in .15 s, at most "+step.ToString("0.00")+" a frame, starting at rest ("+first.ToString("0.000")+")");
         float back=NativeSprintRules.Step(.5f,false,Dt);Check(back<.5f&&NativeSprintRules.Shape(back)<NativeSprintRules.Shape(.5f)&&NativeSprintRules.Step(1,true,1)==1&&NativeSprintRules.Step(0,false,1)==0,"a reversal ramps back from where it is");
-        log.Add("the sprint shows from the replicated flag while grounded above "+NativeSprintRules.MinSpeed+" m/s; twelve actions drop it; eight distinct carries, the DEV fighters and the Siren keep theirs; the blend reaches "+(w*100).ToString("0")+"% in .15 s");
+        log.Add("the sprint shows from the replicated flag while grounded above "+NativeSprintRules.MinSpeed+" m/s; twelve actions drop it; twelve distinct carries, the DEV fighters and the Siren keep theirs; the blend reaches "+(w*100).ToString("0")+"% in .15 s");
     }
     // One route's pilot moving along +z at `speed` (the root travels, so planted feet are planted in the world).
     private sealed class Pilot
@@ -51,7 +51,7 @@ internal static class SprintMotionChecks
             A=new Actor{Id=7,SourceSpec=spec,Weapon=w,MagicVisual=mv,Grounded=true,Hp=100,CastRate=1,Ammo=w==WeaponId.Sword?0:GunRules.Get(w).Magazine,VisualSet=spec=="daggers"?1:spec=="greatsword"?2:spec=="shield"?3:0};
             Layer=layer?new NativeSprintMotion():null;Route=GunRules.Ranged(w)?"gun":mv>0||spec=="leet"?"magic":"melee";
             if(Route=="melee"){Melee=new MeleeMotion{Impacts=new MeleeImpacts(),Locomotion=new NativeLocomotionCarry(),SprintLayer=Layer};V.Id="7";V.Spec=spec;}
-            else if(Route=="gun")Gun=new GunMotion{SprintLayer=Layer};else Magic=new MagicMotion{SprintLayer=Layer};
+            else if(Route=="gun")Gun=new GunMotion{SprintLayer=Layer,Locomotion=new NativeRangedLocomotion()};else Magic=new MagicMotion{SprintLayer=Layer,Locomotion=new NativeRangedLocomotion()};
         }
         public void Frame(float t,float speed,bool sprinting)
         {
@@ -82,21 +82,25 @@ internal static class SprintMotionChecks
             float t=1+f*Dt;p.Frame(t,SprintSpeed,true);twin.Frame(t,SprintSpeed,true);if(f<90)continue;
             var c=YawPitchRoll(p.Pose.WorldRotation[CapturedRig.Chest]);yaw.Add(c.X);nod.Add(c.Y);roll.Add(c.Z);sway.Add(p.Pose.WorldPosition[CapturedRig.Head].X*100);
             right+=p.InChest(CapturedRig.RHand);left+=p.InChest(CapturedRig.LHand);pump.Add(p.InChest(CapturedRig.RHand).Z);n++;
-            foreach(int b in Feet)feet=Math.Max(feet,Vector3.Distance(p.World(b),twin.World(b)));
+            // The planted feet (the gun and magic gaits tell which; a crouched sprint's swing foot may lift a little less).
+            foreach(int b in Feet){bool lf=b==CapturedRig.LFoot||b==CapturedRig.LToe;if(!(p.Gun?.Planted(lf)??p.Magic?.Planted(lf)??true))continue;feet=Math.Max(feet,Vector3.Distance(p.World(b),twin.World(b)));}
         }
         return new Sprinted{Yaw=yaw.PP,Roll=roll.PP,Nod=nod.PP,Sway=sway.PP,Feet=feet,Right=right/n,Left=left/n,ZPump=pump.PP};
     }
-    private static readonly string[] Melee={"sword","daggers","shield","greatsword"},Ranged={"pistol","rifle","machinegun"},Magic={"fire","water","leet"};
+    private static readonly string[] Melee={"sword","daggers","shield","greatsword"},Ranged={"pistol","rifle","machinegun"},Magic={"fire","water","lightning","darkness","leet"};
     private static void Carries(List<string> log)
     {
         var now=new Dictionary<string,Sprinted>();var old=new Dictionary<string,Sprinted>();float worstFeet=0;string torso="";
-        foreach(var spec in new[]{"sword","daggers","shield","greatsword","pistol","rifle","machinegun","fire","water","leet"})
+        foreach(var spec in new[]{"sword","daggers","shield","greatsword","pistol","rifle","machinegun","fire","water","lightning","darkness","leet"})
         {
             var s=Measure(spec,true);var o=Measure(spec,false);now[spec]=s;old[spec]=o;worstFeet=Math.Max(worstFeet,s.Feet);
             string g=spec+": chest twist "+s.Yaw.ToString("0.0")+", roll "+s.Roll.ToString("0.0")+", nod "+s.Nod.ToString("0.0")+" deg, head sway "+s.Sway.ToString("0.0")+" cm";
-            // The owner's sword/daggers targets; the run bounds elsewhere (the greatsword's nod sat at 6.1 before the sprint).
+            // The owner's sword/daggers targets; the run bounds elsewhere (the greatsword's nod sat at 6.1 before the sprint). The
+            // gun and magic sprints (owner 2026-10-12: a heavy lumbering machine gun, a low stalking darkness) keep MeleeFeelChecks'
+            // run bounds.
             if(spec=="sword"||spec=="daggers")Check(s.Yaw<=15&&s.Roll<=6&&s.Nod<=6&&s.Sway<=3,g+" (the owner's targets)");
-            else Check(s.Yaw<=15&&s.Roll<=6&&s.Nod<=7.5f&&s.Sway<=3,g+" (sprint bounds)");
+            else if(Array.IndexOf(Melee,spec)>=0)Check(s.Yaw<=15&&s.Roll<=6&&s.Nod<=7.5f&&s.Sway<=3,g+" (sprint bounds)");
+            else Check(s.Yaw<=15&&s.Roll<=8&&s.Nod<=7.5f&&s.Sway<=6,g+" (gun and magic sprint bounds)");
             Check(s.Feet<.005f,spec+": the feet stay the gait's planted feet ("+(s.Feet*1000).ToString("0.0")+" mm)");
             Check(Vector3.Distance(s.Right,o.Right)>.08f||Vector3.Distance(s.Left,o.Left)>.08f,spec+": the sprint changes the carry ("+Vector3.Distance(s.Right,o.Right).ToString("0.00")+" m)");
             torso+=(torso.Length>0?"; ":"")+spec+" "+o.Sway.ToString("0.0")+"->"+s.Sway.ToString("0.0")+" cm";
@@ -108,9 +112,15 @@ internal static class SprintMotionChecks
         Check(now["daggers"].ZPump>.3f,"daggers: the fists pump hard ("+now["daggers"].ZPump.ToString("0.00")+" m)");
         Check(now["shield"].Right.Z>.2f&&now["shield"].Right.Y>-.1f,"shield: up in front of the chest ("+now["shield"].Right+")");
         Check(now["greatsword"].Right.Y>0&&Vector3.Distance(now["greatsword"].Right,now["greatsword"].Left)<.25f,"greatsword: both hands up at the shoulder ("+now["greatsword"].Right+")");
-        Check(now["pistol"].Right.Y>-.05f&&now["machinegun"].Right.Y<now["rifle"].Right.Y-.05f,"pistol at port arms, the machine gun lower than the rifle's high port");
-        foreach(var m in Magic)Check(now[m].Right.Z<-.05f&&now[m].Left.Z<-.05f,m+": both hands trail back");
-        log.Add("10 weapons sprinting at "+SprintSpeed+" m/s: distinct carries (blade low behind, pumping daggers, shield up, greatsword on the shoulder, port arms, high port, low ready, trailing hands), the feet exactly the gait's (worst "+(worstFeet*1000).ToString("0.0")+" mm), the steady torso within bounds (head sway "+torso+")");
+        Check(now["pistol"].ZPump>.3f&&now["pistol"].Right.Y<-.05f,"pistol: both fists pump hard, the gun hand low ("+now["pistol"].ZPump.ToString("0.00")+" m, "+now["pistol"].Right+")");
+        Check(now["machinegun"].Right.Y>now["rifle"].Right.Y&&now["machinegun"].Right.X<now["rifle"].Right.X-.05f,"the machine gun heaved onto the shoulder, higher and further out than the rifle's high port ("+now["machinegun"].Right+" vs "+now["rifle"].Right+")");
+        Check(now["fire"].Right.Y<-.2f&&now["fire"].ZPump>.2f&&now["fire"].Right.Z<0,"fire: both hands low, clawing hard past the hips ("+now["fire"].Right+", "+now["fire"].ZPump.ToString("0.00")+" m)");
+        Check(Math.Abs(now["water"].Right.X)>.3f&&Math.Abs(now["water"].Left.X)>.3f,"water: the hands out wide to the sides ("+now["water"].Right+")");
+        Check(Math.Abs(now["lightning"].Right.X)<.3f&&now["lightning"].Right.Z>-.05f&&now["lightning"].Right.Y>-.2f,"lightning: the hands tight in front ("+now["lightning"].Right+")");
+        Check(now["darkness"].Right.Y<-.2f&&now["darkness"].Right.Z<-.2f&&now["darkness"].Right.Y<now["water"].Right.Y,"darkness: the hands back and low ("+now["darkness"].Right+")");
+        Check(now["leet"].Right.Z<-.3f&&now["leet"].Right.Y>now["fire"].Right.Y+.1f,"L33t H4x: the arms flung straight back, higher than fire's ("+now["leet"].Right+")");
+        Distinct(Magic);
+        log.Add("12 weapons sprinting at "+SprintSpeed+" m/s: distinct carries (blade low behind, pumping daggers, shield up, greatsword on the shoulder, the pistol tucked with both fists pumping, high port, the machine gun on the shoulder, fire's hands clawing low past the hips, water's out wide, lightning's tight in front, darkness back and low, L33t H4x's flung back), the feet exactly the gait's (worst "+(worstFeet*1000).ToString("0.0")+" mm), the steady torso within bounds (head sway "+torso+")");
     }
     private static void Blend(List<string> log)
     {
@@ -186,7 +196,7 @@ internal static class SprintMotionChecks
             }
             Check(inAt>.94f&&outAt>0&&outAt<=.16f,spec+": the view carry blends in ("+inAt+") and a swing fades it within .15 s ("+outAt+")");
         }
-        Check(pitch["sword"]<-.15f&&pitch["greatsword"]>.12f&&pitch["pistol"]>.15f&&pitch["machinegun"]<-.1f,"per weapon: the sword tips down, the greatsword back over the shoulder, the pistol up at port arms, the machine gun down at a low ready");
+        Check(pitch["sword"]<-.15f&&pitch["greatsword"]>.12f&&pitch["pistol"]<-.15f&&pitch["machinegun"]<-.1f&&pitch["rifle"]>.1f,"per weapon: the sword tips down, the greatsword back over the shoulder, the pistol tucked muzzle-down, the machine gun dropped low, the rifle up at high port");
         // Raw source inputs (no Spec) keep the source view layer exactly, even with the flag.
         var raw=new NativeViewSway();var src=new NativeViewSway();
         for(int f=0;f<90;f++){var i=new NativeViewSwayInput{Pilot=1,Time=f*Dt,VelocityZ=SprintSpeed,Grounded=true,Gait=true};var s=i;s.Sprint=true;var x=raw.Sample(s);var y=src.Sample(i);Check(x.X==y.X&&x.Y==y.Y&&x.Z==y.Z&&x.Pitch==y.Pitch&&x.Roll==y.Roll&&raw.Sprint==0,"raw inputs keep the source view layer");}
@@ -194,7 +204,7 @@ internal static class SprintMotionChecks
         Check(NativeSprintRules.Fov(1,true,false)>=4&&NativeSprintRules.Fov(1,true,false)<=6&&NativeSprintRules.Fov(1,true,true)==NativeSprintRules.Fov(1,true,false)*.5f&&NativeSprintRules.Fov(1,false,false)==0&&NativeSprintRules.Fov(0,true,false)==0&&NativeSprintRules.Fov(.5f,true,false)==NativeSprintRules.Fov(1,true,false)*.5f,"the FOV kick: eased by the weight, half Reduced, none without camera shake");
         float bob=0,roll=0;for(float s=0;s<6.3f;s+=.05f){NativeSprintRules.CameraSway(1,s,true,false,out float u,out float r);bob=Math.Min(bob,u);roll=Math.Max(roll,Math.Abs(r));NativeSprintRules.CameraSway(1,s,false,false,out u,out r);Check(u==0&&r==0,"no camera bob without camera shake");NativeSprintRules.CameraSway(1,s,true,true,out float ur,out _);Check(Math.Abs(ur)<=Math.Abs(NativeSprintRules.CameraBob)*.5f+1e-6f,"Reduced effects halve the bob");}
         Check(bob<-.01f&&bob>=-.0121f&&roll>.4f&&roll<=.51f,"the camera bob (cm) and roll (deg) stay light ("+bob+", "+roll+")");
-        log.Add("first person: per-weapon view carries (pitch sword "+pitch["sword"].ToString("0.00")+", greatsword +"+pitch["greatsword"].ToString("0.00")+", pistol +"+pitch["pistol"].ToString("0.00")+" rad; up to "+(upMost*100).ToString("0.0")+" cm), in within .15 s and out within .15 s of a swing; raw source inputs exact; a "+NativeSprintRules.FovKick+" deg FOV kick (half Reduced, none without camera shake) and a "+(-bob*100).ToString("0.0")+" cm / "+roll.ToString("0.0")+" deg camera bob");
+        log.Add("first person: per-weapon view carries (pitch sword "+pitch["sword"].ToString("0.00")+", greatsword +"+pitch["greatsword"].ToString("0.00")+", pistol "+pitch["pistol"].ToString("0.00")+" rad; up to "+(upMost*100).ToString("0.0")+" cm), in within .15 s and out within .15 s of a swing; raw source inputs exact; a "+NativeSprintRules.FovKick+" deg FOV kick (half Reduced, none without camera shake) and a "+(-bob*100).ToString("0.0")+" cm / "+roll.ToString("0.0")+" deg camera bob");
     }
     private static void Fx(List<string> log)
     {
@@ -235,12 +245,12 @@ internal static class SprintMotionChecks
         string Read(string f)=>File.ReadAllText(Path.Combine(root,f));
         string mm=Read("Assets/ChipArena/Core/MeleeMotion.cs"),gm=Read("Assets/ChipArena/Core/GunMotion.cs"),mp=Read("Assets/ChipArena/Core/MagicPose.cs"),ca=Read("Assets/ChipArena/Runtime/CapturedAnimation.cs");
         Check(mm.Contains("SprintLayer?.Melee(r,p,time,dt);\n            JumpLayer?.Melee(r,p,time,dt);"),"MeleeMotion lays the sprint carry after the action layers, before the jump layer");
-        Check(gm.Contains("float sprint=SprintLayer?.Lean(r,a,v.Spec,time,dt)??0;")&&gm.Contains("SprintLayer?.Gun(pose,a,sprint*(1-k),r.Stride);")&&mp.Contains("SprintLayer?.Magic(r,sprint);"),"the gun and magic routes take their carries");
+        Check(gm.Contains("float sprint=SprintLayer?.Advance(r,a,time,dt)??0;")&&gm.Contains("SprintLayer?.Lean(r,v.Spec,sprint,gait.BodyBob);")&&gm.Contains("SprintLayer?.Gun(pose,a,sprint*(1-k),r.Stride);")&&mp.Contains("SprintLayer?.Lean(r,v.Spec,sprint,gait.BodyBob);")&&mp.Contains("SprintLayer?.Magic(r,v.Spec,time,sprint);"),"the gun and magic routes take their carries");
         Check(ca.Contains("SprintLayer=>Hits!=null?sprint??=new NativeSprintMotion():null;")&&ca.Contains("melee.SprintLayer=SprintLayer;")&&ca.Contains("gunMotion.SprintLayer=SprintLayer;")&&ca.Contains("magicMotion.SprintLayer=SprintLayer;"),"the arena rigs (host, guests, killcam, spectators) get the layer; source parity and other rigs do not");
         string cg=Read("Assets/ChipArena/Runtime/ConversionGame.cs");
         Check(cg.Contains("cameraView.fieldOfView=SprintFov(first,aim,Mathf.Lerp(cameraView.fieldOfView-sprintKick,")&&cg.Contains("viewModelCamera.fieldOfView=cameraView.fieldOfView-sprintKick;")&&cg.Contains("SprintSway();"),"the camera takes the FOV kick (not the view model) and the bob after the aim point");
         Check(Read("Assets/ChipArena/Runtime/NativeJumpFxPresentation.cs").Contains("SprintFx(arena,now);")&&Read("Assets/ChipArena/Runtime/NativeEffectsAudio.cs").Contains("float stride=NativeFootsteps.StrideFor(sprint);"),"the sprint effect and footstep cadence are wired");
-        foreach(var f in new[]{"Assets/ChipArena/Core/ArenaWorld.cs","Assets/ChipArena/Core/NativePrediction.cs"})Check(!Read(f).Contains("NativeSprint"),f+" (sprint speed, stamina and prediction) is untouched by the presentation");
+        foreach(var f in new[]{"Assets/ChipArena/Core/ArenaWorld.cs","Assets/ChipArena/Core/NativePrediction.cs"})Check(!Read(f).Contains("NativeSprintMotion")&&!Read(f).Contains("NativeSprintFx")&&!Read(f).Contains("NativeSprintRules"),f+" has no sprint presentation dependencies (NativeSprintAttack is simulation)");
         log.Add("hooks: melee, gun and magic routes; arena rigs only; camera FOV kick and bob; the effect and the footstep cadence; sprint simulation untouched");
     }
 }

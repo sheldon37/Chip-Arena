@@ -22,9 +22,19 @@ function access(row:any):Access{return {accountId:row.id,developer:row.developer
 // Native profile ids are stored by the shared service without adding them to Electron's rendering catalog.
 const NATIVE_INTROS=new Set(['orbital-drop','grid-rez','holo-projection','blackout','skyline-zip','hero-landing','overclock']);
 const LOBBY_BACKS=new Set(['tick-ring','clean-glow','sunburst','hex-field','circuit','equalizer','warp','embers','orbitals','glitch','crown-halo','neon-diamond']);
+// Unity weapon skins (unity/.../Core/NativeWeaponSkins.cs Normalize): "spec:skin" picks, comma separated, strictly allowlisted;
+// only non-default picks are kept, once per weapon (the last wins), in weapon order. Anything else is the Standard skin ('').
+const SKIN_WEAPONS=['pistol','rifle','machinegun','fire','water','lightning','darkness','sword','daggers','shield','greatsword','emperor','ansatsuken','leet'];
+const WEAPON_SKINS=new Set(['standard','prototype']);
+function weaponSkinMap(raw:unknown){
+ if(typeof raw!=='string'||!raw)return '';const picks=new Map<string,string>();
+ for(const entry of raw.slice(0,4096).split(',')){const i=entry.indexOf(':');if(i<=0)continue;const spec=entry.slice(0,i).trim(),skin=entry.slice(i+1).trim();if(SKIN_WEAPONS.includes(spec)&&WEAPON_SKINS.has(skin))picks.set(spec,skin);}
+ return SKIN_WEAPONS.filter(s=>picks.has(s)&&picks.get(s)!=='standard').map(s=>s+':'+picks.get(s)).join(',');
+}
 function accountCosmetics(raw:any,a:Access){
  const clean=cosmetics(raw,a);
- return {...clean,lobbyBack:LOBBY_BACKS.has(raw?.lobbyBack)?raw.lobbyBack:'tick-ring',intro:NATIVE_INTROS.has(raw?.intro)?raw.intro:clean.intro};
+ const tint=(value:unknown)=>typeof value==='string'&&/^#[0-9a-f]{6}$/i.test(value)?value:'';
+ return {...clean,hatColor:tint(raw?.hatColor),backColor:tint(raw?.backColor),hat:raw?.hat==='sheldon-head'&&a.developer?'sheldon-head':clean.hat,lobbyBack:LOBBY_BACKS.has(raw?.lobbyBack)?raw.lobbyBack:'tick-ring',weaponSkins:weaponSkinMap(raw?.weaponSkins),intro:raw?.intro==='sheldon-intro'&&a.developer?'sheldon-intro':NATIVE_INTROS.has(raw?.intro)?raw.intro:clean.intro};
 }
 function savedProfile(raw:any,a:Access){return {name:typeof raw?.name==='string'?raw.name.replace(/[<>\u0000-\u001f]/g,'').slice(0,20)||'Pilot':'Pilot',class:(['ranged','melee','magic'].includes(raw?.class)||raw?.class==='dev'&&a.developer)?raw.class:'ranged',color:/^#[0-9a-f]{6}$/i.test(raw?.color||'')?raw.color:'#ff6b35',cosmetics:accountCosmetics(raw?.cosmetics,a)};}
 function view(row:any){return {id:row.id,username:row.username,profileSchema:2,...access(row),profile:savedProfile(JSON.parse(row.profile),access(row)),hasProfile:row.profile!=='{}',revision:row.revision,grantVersion:row.grant_version};}

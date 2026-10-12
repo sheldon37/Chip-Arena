@@ -53,8 +53,20 @@ namespace ChipArena.UnityConversion
         // The share of the stance's pelvis turn the hips take (motion-quality: the rifle's is scaled by its aim weight); 1 for
         // every other spec.
         public float PelvisYawScale=1;
+        // SyncFeet keeps its own foot within this of an action layer's ankle (a captured swing's footwork syncs exactly).
+        public const float SyncNear=.015f;public float SyncTolerance=SyncNear;
+        // A layer that spins the upper body over these legs (MeleeKitMotion's Whirlwind, MeleeKitMotion.Stance): Widen (m)
+        // sets each foot's stance that much further out (the running track .4 of it), and Shuffle (steps a second per foot)
+        // keeps the feet stepping on their stance spots while the pilot stands, so planted feet keep re-planting under the
+        // spin and never slide. 0, the default, leaves the gait exactly as it was.
+        public float Widen,Shuffle;
         // The last Locomotion's backpedal share (0 forward or strafing, 1 running backward), read by the melee torso.
         public float Back{get;private set;}
+        // The last Locomotion's stride bob of the body (m; 0 at the stride's mid line), read by the sprint glide.
+        public float BodyBob{get;private set;}
+        // Whether a foot is planted (in contact, held still on the floor) after the last Locomotion; read by the checks and the
+        // ranged/magic seat (NativeRangedLocomotion), which measure and hold slip on it.
+        public bool Planted(bool left)=>has&&feet!=null&&feet[left?0:1].planted;
         // Both feet re-seated on the stance (spawn, reset, teleport or a near-instant flip), reusing the rig's two feet.
         private Foot[] IdleFeet(string spec)
         {
@@ -130,7 +142,7 @@ namespace ChipArena.UnityConversion
             float dip=landDepth*Landing(now-landAt);r.Land=dip;
             float run=r.Motion,weight=Math.Min(run,1),back=MeleeMath.Ease((-forward-.3f)/.4f)*MeleeMath.Clamp(speed/1.5f,0,1),side=Math.Abs(strafe)*MeleeMath.Clamp(speed/1.5f,0,1);
             Back=back;float D=CycleLength(speed)*MeleeMath.Lerp(1,.8f,back),S=Stance*MeleeMath.Lerp(1,.7f,back),contact=MeleeMath.Clamp(S/D,ContactMin,ContactMax);
-            float rate=ground&&speed>.05f?Math.Min(speed/D,MaxCadence):0;if(settling&&ground)rate=Math.Max(rate,SettleCadence);if(planted)rate=0;
+            float rate=ground&&speed>.05f?Math.Min(speed/D,MaxCadence):0;if(settling&&ground)rate=Math.Max(rate,SettleCadence);if(Shuffle>0&&ground)rate=Math.Max(rate,Shuffle);if(planted)rate=0;
             float prevStride=r.Stride;r.Stride+=MeleeMath.TAU*rate*dt;phaseOffset*=(float)Math.Exp(-dt*10);
             float sprint=MeleeMath.Ease((run-.32f)/.65f)*(1-back),moving=MeleeMath.Clamp(speed/2,0,1),heel=.1f*weight,toeOff=(.22f+.3f*sprint)*moving;
             if(landing)
@@ -140,14 +152,14 @@ namespace ChipArena.UnityConversion
             }
             // Hips turn toward the travel direction (backward travel keeps them facing the aim).
             float hipTravel=speed>1e-3f?(float)Math.Atan2(lvx,lvz):0;if(Math.Abs(hipTravel)>1.9f)hipTravel=MeleeMath.Wrap(hipTravel-MeleeMath.PI);hipTravel=MeleeMath.Clamp(hipTravel,-TravelYawMax,TravelYawMax)*MeleeMath.Clamp((speed-.1f)/.6f,0,1)*moving;
-            var idle=idleFeet;IdleInto(p.Spec,idle);float mean=(MeleeMath.Wrap(feet[0].yaw-idle[0].yaw)+MeleeMath.Wrap(feet[1].yaw-idle[1].yaw))/2,turn=MeleeMath.Clamp(mean,-TurnDeadZone,TurnDeadZone);
+            var idle=idleFeet;IdleInto(p.Spec,idle);if(Widen!=0){idle[0].x+=Widen;idle[1].x-=Widen;}float mean=(MeleeMath.Wrap(feet[0].yaw-idle[0].yaw)+MeleeMath.Wrap(feet[1].yaw-idle[1].yaw))/2,turn=MeleeMath.Clamp(mean,-TurnDeadZone,TurnDeadZone);
             var stance=MeleeStance.For(p.Spec);hipYaw=MeleeMath.Lerp(turn+stance.PelvisYaw*PelvisYawScale,hipTravel,moving);
             bool settle=false;
             if(ground)for(int i=0;i<2;i++)
             {
                 var f=feet[i];float sx=i==1?-1:1,u=MeleeMath.Frac(r.Stride/MeleeMath.TAU+(i==1?.5f:0)),pu=MeleeMath.Frac(prevStride/MeleeMath.TAU+(i==1?.5f:0));bool wrapped=r.Stride>prevStride&&u<pu-.5f;
                 // Landing target: the stance or the running track turned with the hips, plus half a stance along the velocity.
-                float ch=(float)Math.Cos(hipTravel),shy=(float)Math.Sin(hipTravel),nx=sx*MeleeMath.Lerp(.125f,.1f,sprint),land=rate>1e-3f&&speed>1e-3f?(speed*contact/(2*rate)-StanceBias*sprint)/speed:0;
+                float ch=(float)Math.Cos(hipTravel),shy=(float)Math.Sin(hipTravel),nx=sx*(MeleeMath.Lerp(.125f,.1f,sprint)+.4f*Widen),land=rate>1e-3f&&speed>1e-3f?(speed*contact/(2*rate)-StanceBias*sprint)/speed:0;
                 f.lx=MeleeMath.Lerp(idle[i].x,nx*ch,moving)+lvx*land;f.lz=MeleeMath.Lerp(idle[i].z,-nx*shy,moving)+lvz*land;
                 {var h=hips[i];float reach=(float)Math.Sqrt(LAND_REACH*LAND_REACH-.44f*.44f),ex=f.lx-h.X,ez=f.lz-h.Z,e=Hyp(ex,ez);if(e>reach){f.lx=h.X+ex*reach/e;f.lz=h.Z+ez*reach/e;}}
                 f.lyaw=MeleeMath.Lerp(idle[i].yaw,hipTravel+sx*.05f,moving);
@@ -157,7 +169,7 @@ namespace ChipArena.UnityConversion
                 {
                     f.x-=gdx;f.z-=gdz;
                     float hx=sx*.13f*(float)Math.Cos(legYaw),hz=-sx*.13f*(float)Math.Sin(legYaw);bool over=Hyp(f.x-hx,f.z-hz)>.4f;
-                    if(!planted&&((u>=contact&&(speed>=.25f||!settled))||over)){f.planted=false;f.fx=f.x;f.fy=f.y;f.fz=f.z;f.fyaw=f.yaw;f.uLift=Math.Min(pu<contact&&u>=contact&&!wrapped?contact:u,.97f);}
+                    if(!planted&&((u>=contact&&(speed>=.25f||!settled||Shuffle>0))||over)){f.planted=false;f.fx=f.x;f.fy=f.y;f.fz=f.z;f.fyaw=f.yaw;f.uLift=Math.Min(pu<contact&&u>=contact&&!wrapped?contact:u,.97f);}
                     else{float us=u<contact?u/contact:1,roll=MeleeMath.PoseCurve(RollKeys,K(-heel,0,0,toeOff),us)*MeleeMath.Clamp(speed/1.5f,0,1);f.pitch=roll;f.y=FLOOR+.09f*(float)Math.Sin(Math.Max(0,roll));f.toe=-Math.Max(0,roll)*.85f;}
                 }
                 if(!f.planted)
@@ -187,7 +199,7 @@ namespace ChipArena.UnityConversion
             // Body: bob lowest at mid-stance, lateral sway over the stance foot, lean about the ankles, living idle.
             float ph2=r.Stride+phaseOffset,idleW=1-MeleeMath.Clamp(run,0,1),ph=phase;
             float shift=((float)Math.Sin(now*MeleeMath.TAU/4.3f+ph)*.6f+(float)Math.Sin(now*MeleeMath.TAU/7.1f+ph*1.7f)*.4f)*idleW,breath=(float)Math.Sin(now*MeleeMath.TAU*.25f+ph)*idleW;
-            float moveW=weight,bob=-(.008f+.010f*sprint)*moveW*(float)Math.Cos(2*ph2-MeleeMath.TAU*contact),sway=(float)Math.Cos(ph2-MeleeMath.PI*contact)*.012f*(1-sprint*.4f)*moveW;
+            float moveW=weight,bob=-(.008f+.010f*sprint)*moveW*(float)Math.Cos(2*ph2-MeleeMath.TAU*contact),sway=(float)Math.Cos(ph2-MeleeMath.PI*contact)*.012f*(1-sprint*.4f)*moveW;BodyBob=bob;
             float bodyLean=RunLean*weight*Math.Max(0,forward)*(1-back)+.05f*weight*back+lean+dashLean+dip*1.1f;
             float vy=p.Grounded?0:p.Vel.Y,airAge=now-airAt,push=air*Math.Max(MeleeMath.Ease((vy-3)/3),Math.Max(1-MeleeMath.Ease(airAge/.12f),dashLean/.15f)),descend=air*MeleeMath.Ease((-vy-2)/3),apex=Math.Max(0,air-push-descend);
             float sinceRoll=p.RollUntil>-90&&time>=p.RollUntil?time-p.RollUntil:1,postRoll=.08f*(1-MeleeMath.Ease(sinceRoll/.22f));
@@ -250,7 +262,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<2;i++)
             {
                 var f=feet[i];if(!captured)cap[i]=r.ReadAnkle(i==0,out capQ[i],out _);Vector3 c=cap[i];
-                if(Vector3.Distance(c,new Vector3(f.sx,f.sy,f.sz))<.015f)continue;
+                if(Vector3.Distance(c,new Vector3(f.sx,f.sy,f.sz))<SyncTolerance)continue;
                 Vector3 fwd=Vector3.Transform(MeleeMath.Z,capQ[i]);
                 f.x=f.fx=f.sx=c.X;f.z=f.fz=f.sz=c.Z;f.y=f.fy=f.sy=Math.Max(FLOOR,c.Y);f.yaw=f.fyaw=f.syaw=(float)Math.Atan2(fwd.X,fwd.Z);f.pitch=f.spitch=(float)Math.Asin(MeleeMath.Clamp(-fwd.Y,-1,1));f.toe=0;
                 f.planted=c.Y<FLOOR+.015f;if(!f.planted)f.uLift=Math.Min(MeleeMath.Frac(r.Stride/MeleeMath.TAU+(i==1?.5f:0)),.97f);

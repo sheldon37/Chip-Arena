@@ -273,6 +273,14 @@ namespace ChipArena.UnityConversion
         private void Sprite(Vector3 head,Vector3 segment,Color color,float width,int tile,float u,float seed)=>Add(head-segment*.5f,color,width,0,u,seed,SpriteMode,tile,new Vector4(segment.x,segment.y,segment.z,0));
         // A camera-facing toon sheet sprite at any roll; tile FlashFirst plays the round flipbook over u, later tiles stay put.
         private void Flash(Vector3 at,Color color,float size,int tile,float u,float seed){uint h=(uint)seed*0x9e3779b1u;Add(at,color,size,(h>>8)/16777216f*6.2831853f,u,seed,FlashMode,tile,new Vector4(0,0,0,1));}
+        /// <summary>A blood droplet in flight (Core/NativeBlood): the toon sheet's blended teardrop along its velocity, `width` m
+        /// across; color linear, its alpha the coverage. The low tier keeps every drop (they are few and short-lived).</summary>
+        public void Blood(Vector3 head,Vector3 velocity,Color color,float width,float seed)
+        {
+            var seg=velocity*DropBlur;float least=width*2.4f;
+            if(seg.magnitude<least)seg=velocity.magnitude>1e-4f?velocity.normalized*least:new Vector3(0,least,0);
+            Sprite(head,seg,color,width*DropWidth,NativeVfxTextures.DropTile,0,seed);
+        }
         // Toon growth over life (the study's size curves): from start to 1 at peak, then to end while the erosion eats it.
         private static float Grow(float u,float start,float peak,float end)=>u<peak?start+(1-start)*u/peak:1+(end-1)*(u-peak)/(1-peak);
         private static Color Hex(float[] o,int at)=>Linear((int)o[at]);
