@@ -24,6 +24,11 @@ namespace ChipArena.UnityConversion
             // stands in for. It applies and saves at once through SetFullscreen, and shows the window's actual mode, which the
             // player's Alt+Enter can change without the saved preference.
             Field("Interface");bool now=Screen.fullScreenMode!=FullScreenMode.Windowed,full=GUILayout.Toggle(now,"Full screen");if(full!=now)SetFullscreen(full);prefs.uiScale=Mathf.Round(Slider("Interface scale",prefs.uiScale>0?prefs.uiScale:1,.75f,1.5f)*20)/20;Fine("Scales every menu and overlay; the canvas follows as you drag.");
+            if(account.Developer)
+            {
+                Field("Developer");bool console=GUILayout.Toggle(prefs.developmentConsole,"Show development console");
+                if(console!=prefs.developmentConsole){prefs.developmentConsole=console;SyncDevelopmentConsole();Save();}
+            }
             Field("Credits");Fine("Icons: Lucide (ISC licence), from the source client.");
         }
         // .sound-test: Test Sound (13 px .btn with the volume icon) and the status in 12 px mono #aac5ce beside it.
@@ -37,6 +42,19 @@ namespace ChipArena.UnityConversion
             });
         }
         private float Slider(string name,float value,float min,float max){GUILayout.Label(name+"  "+value.ToString("0.00"),small);return GUILayout.HorizontalSlider(value,min,max);}
+        // Development builds keep Player.log, but never pop the overlay before a verified DEV opts in.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void HideDevelopmentConsole(){Debug.developerConsoleEnabled=false;Debug.developerConsoleVisible=false;}
+        private bool developmentConsoleEnabled;
+        private void SyncDevelopmentConsole()
+        {
+            bool enabled=!dedicated&&account!=null&&account.Developer&&prefs?.developmentConsole==true;
+            if(Debug.developerConsoleEnabled!=enabled)Debug.developerConsoleEnabled=enabled;
+            // Show once on opt-in; respect Unity's close button until another error or a fresh opt-in.
+            if(enabled!=developmentConsoleEnabled)Debug.developerConsoleVisible=enabled;
+            else if(!enabled&&Debug.developerConsoleVisible)Debug.developerConsoleVisible=false;
+            developmentConsoleEnabled=enabled;
+        }
         private bool windowModeInitialized;private int windowModeRequestedAt=-100;
         private void SyncFullscreen()
         {
@@ -48,6 +66,7 @@ namespace ChipArena.UnityConversion
         public void SetFullscreen(bool enabled){windowModeInitialized=true;windowModeRequestedAt=Time.frameCount;prefs.fullscreen=enabled;Screen.fullScreenMode=enabled?FullScreenMode.FullScreenWindow:FullScreenMode.Windowed;Save();}
         private void ApplySettings()
         {
+            SyncDevelopmentConsole();
             if(!windowModeInitialized)SetFullscreen(prefs.fullscreen);else SyncFullscreen();
             prefs.sensitivity=Mathf.Clamp(prefs.sensitivity,.2f,2.5f);prefs.audio=Mathf.Clamp01(prefs.audio);prefs.music=Mathf.Clamp01(prefs.music);prefs.menuMusic=Mathf.Clamp01(prefs.menuMusic);
             bool low=prefs.graphics=="performance"||prefs.graphics=="auto"&&(SystemInfo.graphicsMemorySize<2048||SystemInfo.graphicsShaderLevel<45);QualitySettings.shadows=low?ShadowQuality.Disable:ShadowQuality.All;QualitySettings.antiAliasing=low?0:4;QualitySettings.pixelLightCount=low?3:9;NativeLighting.Graphics(low);

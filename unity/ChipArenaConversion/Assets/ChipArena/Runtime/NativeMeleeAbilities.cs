@@ -29,6 +29,14 @@ namespace ChipArena.UnityConversion
             if(target.collider==null||Vector3.Distance(p.Body.position,target.at)>24||!MeleeVisible(p.Body.position,target.at,p,target.collider))return null;
             return Vec(target.at);
         }
+        private V3? KunaiLockPoint(NativePilot p,int id)
+        {
+            if(id==0)return null;var target=MeleeTarget(p,id);
+            if(target.collider==null||!target.collider.enabled||target.pilot!=null&&!Enemy(p,target.pilot)||target.minion!=null&&(!Enemy(p,target.minion)||target.minion.Pve!=null&&(target.minion.Pve.Travelling||Time<target.minion.Pve.ActiveAt)))return null;
+            var point=target.at+Vector3.up*(target.minion?.Pve?.Crawl==true?0:.2f);
+            if(Vector3.Distance(p.Body.position,point)>24||!MeleeVisible(p.Body.position+Vector3.up*.3f,point,p,target.collider))return null;
+            return Vec(point);
+        }
         private void AimMeleeStep(NativePilot p,bool chained)
         {
             var point=MeleeLockPoint(p,p.Input.LockTarget);if(!point.HasValue)return;
@@ -81,6 +89,11 @@ namespace ChipArena.UnityConversion
             var a=new NativeMeleeAction{Kind=slot=="e"?NativeSpecialRules.Kind(p.Seat.spec):d.id,Fx=d.id,Phase="windup",At=Time,Release=release,Yaw=p.Input.Yaw*Mathf.Deg2Rad,Until=release+(d.id=="flash-step"?.22f:d.id=="bulwark-charge"?.45f:slot=="e"?NativeSpecialRules.Recovery(p.Seat.spec)/(float)p.Stats["attackRate"]:.3f)};
             if(d.id=="whirlwind")a=NativeWhirlwindRules.Begin(Time,p.Input.Yaw*Mathf.Deg2Rad);
             a.Direction=V3.Forward(p.Input.Yaw);a.Aim=p.Input.AbilityTarget.Length>.01f?Vec((Vec(p.Input.AbilityTarget)-p.Body.position-Vector3.up*.3f).normalized):GunRules.Direction(p.Input.Yaw,p.Input.Pitch);
+            if(d.id=="kunai-mark")
+            {
+                var point=KunaiLockPoint(p,p.Input.LockTarget);
+                if(point.HasValue){a.LockTarget=p.Input.LockTarget;a.Aim=NativeMeleeKitRules.KunaiAim(Vec(p.Body.position+Vector3.up*.3f),point.Value,30*(float)p.Stats["projectileSpeed"],18*(float)p.Stats["projectileGravity"]);}
+            }
             if(d.id=="shadow-step"){var move=new V3(p.Input.X,0,p.Input.Z);if(move.Length>.1f)a.Direction=move.Normalized;}
             p.Special=a;p.AttackAt=-100;p.LastAttack=Time;p.AttackEnd=p.Ready=NativeMeleeKitRules.End(a);p.MoveVelocity=Vector3.zero;p.RegenAt=p.Ready+.45f;
             if(slot=="q")p.QReady=Time+NativeAbilityRules.Cooldown(d,p.Stats);else{p.EReady=Time+NativeAbilityRules.Cooldown(d,p.Stats);p.ECharges=0;}

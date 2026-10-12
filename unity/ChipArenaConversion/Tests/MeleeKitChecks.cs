@@ -9,6 +9,7 @@ internal static class MeleeKitChecks
     private static void Check(bool ok,string why){if(!ok)throw new Exception("Melee kit: "+why);}
     public static void Run(ConversionContent data)
     {
+        KunaiAim();
         var kits=data.abilities.Where(a=>NativeMeleeRules.Standard(a.spec)).ToArray();
         Check(kits.Length==8&&kits.Select(a=>a.spec+":"+a.slot).Distinct().Count()==8,"eight unique Q/E entries");
         foreach(var a in kits)
@@ -54,5 +55,26 @@ internal static class MeleeKitChecks
         Check(NativePendingEffect.Restore(pending,"a","hero-landing",allowed)=="overclock","failed native-aware save keeps local choice");
         Check(NativePendingEffect.Restore(pending,"a","overclock",allowed)=="overclock"&&pending[0].account==null,"acknowledged native save clears fallback");
         Console.WriteLine("PASS melee kit: eight ability/bot entries, combined budgets, chip telegraph floor, buffer/chain boundaries, authoritative steps, armour threshold, snapshot isolation/validation and account fallback migration");
+    }
+    private static void KunaiAim()
+    {
+        int cases=0;var origin=new V3(2,3,4);
+        foreach(float speed in new[]{30,45,60})foreach(float gravity in new[]{0,9,18,27})
+        foreach(float range in new[]{3,8,16,22})foreach(float height in new[]{-6,0,6})foreach(float yaw in new[]{0,90,210})
+        {
+            var target=origin+V3.Forward(yaw)*range+new V3(0,height,0);
+            var direction=NativeMeleeKitRules.KunaiAim(origin,target,speed,gravity);var velocity=direction*speed;
+            float travel=range/new V3(velocity.x,0,velocity.z).Length;var position=origin;
+            for(float left=travel;left>.000001f;){float dt=Math.Min(left,Rules.Dt);position+=NativeSpecialRules.Ballistic(ref velocity,gravity,dt);left-=dt;}
+            Check((position-target).Length<.003f,"locked kunai trajectory at height "+height+", range "+range+", speed "+speed+", gravity "+gravity);
+            Check(Math.Abs(direction.Length-1)<.0001f,"lock preserves projectile speed");cases++;
+        }
+        var old=GunRules.Direction(0,-3.438f)*30;float at=10/old.z;
+        float miss=Math.Abs(old.y*at-9*at*at+.1f);
+        Check(miss>1.4f,"reproduce camera-downward aim plus gravity missing same-height body");
+        var fallback=NativeMeleeKitRules.KunaiAim(new V3(),new V3(0,20,24),5,18);
+        Check((fallback-new V3(0,20,24).Normalized).Length<.0001f,"unreachable target uses true direction without artificial range");
+        Check(NativeMeleeKitRules.KunaiAim(new V3(),new V3(0,5,0),30,18).y==1&&NativeMeleeKitRules.KunaiAim(new V3(),new V3(),30,18).Length==0,"vertical and coincident aim are finite");
+        Console.WriteLine("PASS locked Kunai aim: downward-camera miss reproduced; "+cases+" integrated flights hit low/level/high targets with speed/gravity modifiers; finite vertical/unreachable fallback");
     }
 }
