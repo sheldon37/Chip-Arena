@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
 
         // ---- the replicated phase sequences (NativeMeleeAbilities: TryMeleeAbility, StepMeleeAbility, MeleeAbilityMotion,
         // TryMeleeRecast, MeleeRecastStrike, StepMeleeKitWorld) at attackRate 1 ----
-        private struct Span{public float From,To;public string Phase;public float At,Release,Until,Landed;public string Special;}
+        private struct Span{public float From,To;public string Phase;public float At,Release,Until,Landed,RecoverUntil;public string Special;}
         private sealed class Timeline{public string Kind,Spec;public readonly List<Span> Spans=new List<Span>();}
         private static Timeline Cast(string kind,string spec,string special,float at,float release,params (float to,string phase,float until)[] phases)
         {
@@ -46,26 +46,40 @@ namespace ChipArena.UnityConversion
             list.Add(Cast("bulwark-charge","shield","bulwark-charge",1,1.15f,(1.15f,"windup",1.6f),(1.32f,"active",1.6f),(1.52f,"recovery",1.52f)));
             list.Add(Cast("aegis-ricochet","shield","shield-throw",1,1.3f,(1.3f,"windup",1.7f),(1.7f,"recovery",1.7f)));
             list.Add(Cast("earthsplitter","greatsword","earthsplitter",1,1.45f,(1.45f,"windup",1.75f),(1.75f,"recovery",1.75f)));
-            var wolf=Cast("wolf-knight","greatsword","wolf-spin",1,1.28f,(1.28f,"windup",4.78f),(2.15f,"active",4.78f),(2.7f,"recovery",2.7f));for(int i=0;i<wolf.Spans.Count;i++){var s=wolf.Spans[i];s.Landed=s.Phase=="recovery"?2.15f:-1;wolf.Spans[i]=s;}list.Add(wolf);
+            list.Add(Whirl(-1));list.Add(Whirl(1.2f));
             return list.Where(t=>MeleeKitMotion.Known(t.Kind)).ToArray();
+        }
+        // The Whirlwind as Astra's rule replicates it (NativeWhirlwindRules: Begin, Advance, Recast; NativeMeleeAbilities
+        // CaptureMeleeKit): Until is the spin's end (moved up by an early recast), RecoverUntil the recovery's.
+        private static Timeline Whirl(float recastAfter)
+        {
+            var a=NativeWhirlwindRules.Begin(1,0);bool early=recastAfter>0;float recast=a.Release+recastAfter;
+            var t=new Timeline{Kind="whirlwind",Spec="greatsword"};
+            Span S(float from,float to,string phase,float until,float recover)=>new Span{From=from,To=to,Phase=phase,At=a.At,Release=a.Release,Until=until,RecoverUntil=recover,Landed=-1,Special="whirlwind"};
+            t.Spans.Add(S(a.At,a.Release,"windup",a.Until,a.RecoverUntil));
+            if(!early){t.Spans.Add(S(a.Release,a.Until,"active",a.Until,a.RecoverUntil));t.Spans.Add(S(a.Until,a.RecoverUntil,"recovery",a.Until,a.RecoverUntil));return t;}
+            t.Spans.Add(S(a.Release,recast,"active",a.Until,a.RecoverUntil));NativeWhirlwindRules.Advance(a,recast);NativeWhirlwindRules.Recast(a,recast);
+            t.Spans.Add(S(a.Until,a.RecoverUntil,"recovery",a.Until,a.RecoverUntil));return t;
         }
         private static Actor Pilot(string spec)=>new Actor{Id=1,SourceSpec=spec,Weapon=WeaponId.Sword,VisualSet=spec=="daggers"?1:spec=="greatsword"?2:spec=="shield"?3:0,CastRate=1,Hp=100,Grounded=true,MeleeKit=new NativeMeleeKit()};
         // The actor as the snapshot carries it at `time` (the span holding it), or no cast.
         private static void At(Actor a,Timeline t,float time,int spanIndex=-1)
         {
-            var k=a.MeleeKit;k.Kind=null;k.Phase=null;a.SpecialKind=null;a.SpecialAt=-100;a.SpecialUntil=0;a.SpecialLanded=-1;
+            var k=a.MeleeKit;k.Kind=null;k.Phase=null;k.RecastKind=null;k.RecastUntil=0;k.RecoverUntil=0;a.SpecialKind=null;a.SpecialAt=-100;a.SpecialUntil=0;a.SpecialLanded=-1;
             for(int i=0;i<t.Spans.Count;i++)
             {
                 var s=t.Spans[i];if(spanIndex>=0?i!=spanIndex:time<s.From||time>=s.To)continue;
-                k.Kind=t.Kind;k.Phase=s.Phase;k.At=s.At;k.Release=s.Release;k.Until=s.Until;a.SpecialKind=s.Special;a.SpecialAt=s.At;a.SpecialRelease=s.Release;a.SpecialUntil=s.Until;a.SpecialReleased=time>=s.Release;a.SpecialLanded=s.Landed;return;
+                k.Kind=t.Kind;k.Phase=s.Phase;k.At=s.At;k.Release=s.Release;k.Until=s.Until;k.RecoverUntil=s.RecoverUntil;a.SpecialKind=s.Special;a.SpecialAt=s.At;a.SpecialRelease=s.Release;a.SpecialUntil=Math.Max(s.Until,s.RecoverUntil);a.SpecialReleased=time>=s.Release;a.SpecialLanded=s.Landed;
+                if(t.Kind=="whirlwind"){k.RecastKind=s.Phase=="active"&&time>=s.Release+NativeWhirlwindRules.MinimumSpin?"whirlwind":null;k.RecastUntil=k.RecastKind!=null?s.Until:0;k.Target=0;}
+                return;
             }
         }
         private static CapturedRig.Pose Guard(int set){var row=new float[CapturedClip.Channels];CapturedClips.Sets[set].First(c=>c.StateName=="idle").Sample(0,row);var p=new CapturedRig.Pose();CapturedRig.Sample(row,set,p);return p;}
 
         public static void Run(string root,ConversionContent data)
         {
-            Poses();Continuity();Effects();Hud(data);Sounds(root);Sources(root);
-            Console.WriteLine("PASS Melee kit presentation ("+count+" checks: "+string.Join(", ",MeleeKitMotion.Kinds)+" own a pose in every replicated phase (no T-pose, guard or legacy phrase, third person and first-person arms), continuous across phase boundaries and within phases, effects a pure function of replicated actors and events with quality tiers, Q/E cards for cooldown/recast/stamina, audio bank keys with built-in fallbacks, runtime hooks, no authority-only reads, metas)");
+            Poses();Continuity();Whirlwind();Effects();Hud(data);Sounds(root);Sources(root);
+            Console.WriteLine("PASS Melee kit presentation ("+count+" checks: "+string.Join(", ",MeleeKitMotion.Kinds)+" own a pose in every replicated phase (no T-pose, guard or legacy phrase, third person and first-person arms), continuous across phase boundaries and within phases; the Whirlwind's tip crossing the front at every pulse, its rate continuous, an early end stopping within .2 s, planted feet that never slide and keep stepping under a standing and a moving spin, a first-person view that never turns; effects a pure function of replicated actors and events with quality tiers, Q/E cards for cooldown/recast/stamina, audio bank keys with built-in fallbacks, runtime hooks, no authority-only reads, metas)");
         }
         private static void Poses()
         {
@@ -95,9 +109,136 @@ namespace ChipArena.UnityConversion
                 }
                 At(a,t,t.Spans[0].From-.01f);Check(!MeleeKitMotion.Owns(a,t.Spans[0].From-.01f),"no layer before the cast "+t.Kind);
             }
-            // The Wolf Knight flips in third person only; the view arms never somersault.
-            var wolf=Timelines().FirstOrDefault(x=>x.Kind=="wolf-knight");
-            if(wolf!=null){var a=Pilot("greatsword");At(a,wolf,1.66f);MeleeKitMotion.Sample(a,1.66f,k);Check(k.Flip>2&&k.Flip<4.3f,"Wolf Knight is upside down mid-flight");var p=new CapturedRig.Pose();var before=p.Rotation[CapturedRig.Body];MeleeKitMotion.Apply(p,a,1.66f,true);Check(p.Rotation[CapturedRig.Body].Equals(before),"first person never flips the view rig");}
+        }
+        // ---- the Whirlwind's motion (Astra's NativeWhirlwindRules; Claude's presentation) ----
+        private const float D2R=(float)Math.PI/180,R2D=180/(float)Math.PI;
+        private static MeleeKitMotion.Whirl SpinAt(Actor a,Timeline t,float time,int span=-1){At(a,t,time,span);Check(MeleeKitMotion.Clock(a,time,out var c),"Whirlwind clock at "+time);return MeleeKitMotion.Spin(c,time);}
+        private static void Whirlwind()
+        {
+            var full=Whirl(-1);var a=Pilot("greatsword");float rel=full.Spans[1].From;
+            // Each pulse (Release + k x Interval): the tip crosses the front at the full rate, on the clock and on the posed blade.
+            for(int k=0;k<NativeWhirlwindRules.MaxTicks;k++)
+            {
+                float t=rel+k*NativeWhirlwindRules.Interval;var w=SpinAt(a,full,t);
+                Check(Math.Abs(MeleeMath.Wrap(w.Tip))<1e-3f&&Math.Abs(w.Rate-MeleeKitMotion.WhirlRate)<1e-3f,"Whirlwind tip crosses the front at full rate at pulse "+k);
+                MeleeKitMotion.Clock(a,t+.01f,out var c);Check(MeleeKitMotion.Pulse(c,t+.01f,out float at)==k&&Math.Abs(at-t)<1e-4f,"Whirlwind pulse "+k+" from the clock");
+                var p=Guard(2);MeleeKitMotion.Apply(p,a,t,false);p.World();var tip=p.WorldPosition[CapturedRig.RHand]+Vector3.Transform(new Vector3(0,0,MeleeKitMotion.WhirlBlade),p.WorldRotation[CapturedRig.RHand]);
+                float bearing=(float)Math.Atan2(tip.X,tip.Z);Check(Math.Abs(bearing)<.3f&&tip.Z>1,"the posed blade tip is out in front at pulse "+k+" ("+bearing.ToString("0.00")+" rad)");
+            }
+            // The turn and its rate are continuous where the phases meet (the uncoil into the spin, the spin into the stop).
+            var ends=new[]{-1f,.5f,.8f,1.1f,1.2f,1.7f,2.6f};
+            foreach(float after in ends)
+            {
+                var tl=Whirl(after);string what=after<0?"full":"early "+after.ToString("0.0")+" s";
+                for(int i=0;i+1<tl.Spans.Count;i++)
+                {
+                    float tb=tl.Spans[i].To;var w0=SpinAt(a,tl,tb-1e-4f,i);var w1=SpinAt(a,tl,tb+1e-4f,i+1);
+                    Check(Math.Abs(w0.Grip-w1.Grip)<.01f&&Math.Abs(w0.Rate-w1.Rate)<.6f&&Math.Abs(w0.Torso-w1.Torso)<.02f,"Whirlwind turn continuous "+tl.Spans[i].Phase+" -> "+tl.Spans[i+1].Phase+" ("+what+")");
+                }
+                // The stop: an even deceleration (no snap) within its bound, then home to the facing and the guard by RecoverUntil.
+                var r=tl.Spans[2];float prevG=float.NaN,prevRate=0,decel=0,stepped=0,turnBack=0,stopped=float.NaN;
+                for(float t=r.From;t<r.To-1e-4f;t+=1/240f)
+                {
+                    var w=SpinAt(a,tl,t,2);
+                    if(!float.IsNaN(prevG)){float step=Math.Abs(w.Grip-prevG)*240;if(w.Since<0){stepped=Math.Max(stepped,step);decel=Math.Max(decel,(prevRate-w.Rate)*240);}else turnBack=Math.Max(turnBack,step);}
+                    if(float.IsNaN(stopped)&&w.Speed<.05f)stopped=t-r.From;prevG=w.Grip;prevRate=w.Rate;
+                }
+                float bound=after<0?MeleeKitMotion.WhirlStopMax:MeleeKitMotion.WhirlStopEarlyMax;
+                Check(stopped<=bound+.01f,"Whirlwind stops within "+bound+" s ("+what+": "+stopped.ToString("0.000")+" s)");
+                Check(stepped<=MeleeKitMotion.WhirlRate*1.02f&&decel<=MeleeKitMotion.WhirlRate/MeleeKitMotion.WhirlStopMin*1.05f,"Whirlwind decelerates evenly, never snapping ("+what+": "+decel.ToString("0")+" rad/s^2)");
+                Check(turnBack<=1.6f*MeleeKitMotion.WhirlRate,"the turn home after the stop is no faster than the spin's own pace x1.6 ("+what+": "+turnBack.ToString("0.0")+" rad/s)");
+                var we=SpinAt(a,tl,r.To-1e-3f,2);Check(Math.Abs(MeleeMath.Wrap(we.Grip))<.01f&&we.Settle>.98f,"Whirlwind home to the facing and the guard by RecoverUntil ("+what+")");
+                At(a,tl,r.To+1e-3f);Check(!MeleeKitMotion.Owns(a,r.To+1e-3f),"the Whirlwind's layer ends at RecoverUntil ("+what+")");
+            }
+            // The full spin's momentum carries its last partial turn into a stop facing the front (no turn back).
+            var last=SpinAt(a,full,full.Spans[2].From+MeleeKitMotion.WhirlStopMax,2);Check(Math.Abs(MeleeMath.Wrap(last.Grip))<.01f,"the full spin comes to rest facing the front");
+            // Weight while spinning: low hips, a counterbalancing lean away from the blade, the head leading into the turn.
+            {
+                var o=new KitPose();At(a,full,rel+1);MeleeKitMotion.Sample(a,rel+1,o);
+                Check(o.Body.Y<-.14f&&o.ChestX<-.1f&&o.ChestZ<-.15f&&o.HeadY>.25f&&o.Gait>.99f,"Whirlwind weight: hips low, lean back and away from the blade, head leading, legs on the gait");
+            }
+            Feet();View();
+        }
+        // The third-person melee route as the arena rigs run it (CapturedAnimation.MeleePose: the pack carry, the gait stance
+        // hook, the special overlay and its layered legs), in the native frame; a foot is planted where the gait put it on the floor.
+        private sealed class WalkRig
+        {
+            public readonly MeleeMotion Melee=new MeleeMotion{Locomotion=new NativeLocomotionCarry()};private readonly MeleeView v=new MeleeView();private readonly CapturedRig.Pose pose=new CapturedRig.Pose();private float last=-100;
+            public readonly Vector3[] Ankle=new Vector3[2];public bool Hook=true;
+            public void Pose(Actor a,Vector3 position,float time)
+            {
+                float dt=last<-90?1/60f:time-last;last=time;
+                v.Id=a.Id.ToString();v.Spec=a.SourceSpec;v.Yaw=-a.Yaw*D2R;v.Vel=new Vector3(-a.Velocity.x,a.Velocity.y,a.Velocity.z);v.Grounded=true;v.Hp=a.Hp;v.AttackRate=1;v.Reach=1;
+                v.ActionKind=a.SpecialKind;v.ActionAt=a.SpecialAt;v.ActionUntil=a.SpecialUntil;
+                float yaw=-Melee.PresentedYaw(v,time,v.Yaw)*R2D;var at=position+new Vector3(0,.865f,0);
+                Melee.Rig.GroupPosition=new Vector3(-at.X,at.Y,at.Z);Melee.Rig.GroupYaw=-yaw*D2R;if(Hook)MeleeKitMotion.Stance(a,time,Melee.Gait);
+                bool special=NativeSpecialPose.Active(a,time);
+                Melee.Sample(v,time,dt,r=>{r.WritePose(pose);if(special)NativeSpecialPose.Special(pose,a,time,false);r.ReadPose(pose);if(special&&MeleeKitMotion.RidesGait(a,time))r.LegsLayered=true;});
+                Melee.Rig.WritePose(pose);pose.World();var root=Matrix4x4.CreateFromQuaternion(Quaternion.CreateFromAxisAngle(Vector3.UnitY,yaw*D2R))*Matrix4x4.CreateTranslation(at);
+                for(int i=0;i<2;i++){var p=pose.WorldPosition[i==0?CapturedRig.LFoot:CapturedRig.RFoot];Ankle[i]=Vector3.Transform(new Vector3(-p.X,p.Y,p.Z),root);}
+            }
+        }
+        // A standing and a moving Whirlwind (x MoveScale of the 6.8 m/s run, strafing) driven by the rule itself: planted feet
+        // never slide and both feet keep stepping. A plain run with the hook on is the gait unchanged.
+        private static void Feet()
+        {
+            foreach(bool move in new[]{false,true})
+            {
+                var a=Pilot("greatsword");var rig=new WalkRig();var act=NativeWhirlwindRules.Begin(1,0);Vector3 pos=Vector3.Zero;float speed=6.8f*NativeWhirlwindRules.MoveScale;
+                var last=new Vector3[2];var had=new bool[2];int contact=0;var lifts=new int[2];float slip=0;
+                for(int f=0;;f++)
+                {
+                    float t=.6f+f/60f;if(t>NativeMeleeKitRules.End(act)+.05f)break;
+                    NativeWhirlwindRules.Advance(act,t);while(NativeWhirlwindRules.NextTick(act,t)){}
+                    var k=a.MeleeKit;bool live=t>=act.At&&t<NativeMeleeKitRules.End(act);
+                    k.Kind=live?act.Fx:null;k.Phase=live?act.Phase:null;k.At=act.At;k.Release=act.Release;k.Until=act.Until;k.RecoverUntil=NativeMeleeKitRules.End(act);k.Tick=act.Tick;
+                    a.SpecialKind=live?act.Kind:null;a.SpecialAt=act.At;a.SpecialRelease=act.Release;a.SpecialUntil=NativeMeleeKitRules.End(act);a.SpecialReleased=act.Released;
+                    float v=move?speed*MeleeKitMotion.Smooth((t-act.Release-.02f)/.18f)*(t<act.Until?1:Math.Max(0,1-(t-act.Until)/.1f)):0;a.Velocity=new V3(-v,0,0);pos+=new Vector3(-v,0,0)/60f;
+                    rig.Pose(a,pos,t);bool spinning=t>=act.Release+.25f&&t<act.Until;
+                    for(int i=0;i<2;i++)
+                    {
+                        // In contact: planted by the gait and flat on the floor (a rolling toe-off lifts the ankle off it).
+                        bool planted=rig.Melee.Gait.Planted(i==0)&&Math.Abs(rig.Ankle[i].Y-(.865f-.795f))<.005f;
+                        if(spinning&&planted&&had[i]){slip=Math.Max(slip,new Vector2(rig.Ankle[i].X-last[i].X,rig.Ankle[i].Z-last[i].Z).Length()*60);contact++;}
+                        if(spinning&&had[i]&&!planted)lifts[i]++;
+                        last[i]=rig.Ankle[i];had[i]=planted;
+                    }
+                }
+                string what=move?"moving spin ("+speed.ToString("0.0")+" m/s strafe)":"standing spin";
+                Check(contact>(move?20:120)&&slip<.05f,"Whirlwind "+what+": planted feet never slide ("+slip.ToString("0.000")+" m/s over "+contact+" planted frames)");
+                Check(lifts[0]>=4&&lifts[1]>=4,"Whirlwind "+what+": both feet keep stepping ("+lifts[0]+"/"+lifts[1]+" steps)");
+            }
+            // The stance hook is the gait unchanged for anything that is not a Whirlwind.
+            var x=new WalkRig();var y=new WalkRig{Hook=false};var runner=Pilot("greatsword");runner.Velocity=new V3(-5,0,0);float worst=0;
+            for(int f=0;f<90;f++){float t=1+f/60f;var p=new Vector3(-5*f/60f,0,0);x.Pose(runner,p,t);y.Pose(runner,p,t);worst=Math.Max(worst,Math.Max((x.Ankle[0]-y.Ankle[0]).Length(),(x.Ankle[1]-y.Ankle[1]).Length()));}
+            Check(worst<1e-6f,"the gait's Whirlwind stance inputs are inert for any other pilot");
+        }
+        // First person (the generic view-model route: the set's idle, the special overlay, SettleTorso): the view rig never
+        // turns with the spin; the blade lies out ahead as it crosses the front at each pulse and the hands sweep the lower view.
+        private static void View()
+        {
+            var full=Whirl(-1);var a=Pilot("greatsword");var row=new float[CapturedClip.Channels];var idle=CapturedClips.Sets[2].First(c=>c.StateName=="idle");
+            float worstYaw=0,lowYaw=10,highYaw=-10,minX=1,maxX=-1,bladeLow=1,bladeHigh=-1;bool bodyStill=true;
+            for(float t=full.Spans[0].From;t<full.Spans[2].To;t+=1/60f)
+            {
+                At(a,full,t);var p=new CapturedRig.Pose();idle.Sample(CapturedClip.Wrap(t,idle.Duration),row);CapturedRig.Sample(row,2,p);var body=p.Rotation[CapturedRig.Body];
+                NativeSpecialPose.Special(p,a,t,true);NativeFirstPersonPose.SettleTorso(p);p.World();bodyStill&=p.Rotation[CapturedRig.Body].Equals(body);
+                var fwd=Vector3.Transform(Vector3.UnitZ,p.WorldRotation[CapturedRig.Chest]);float yaw=(float)Math.Atan2(fwd.X,fwd.Z);
+                if(t>=full.Spans[1].From&&t<full.Spans[1].To){lowYaw=Math.Min(lowYaw,yaw);highYaw=Math.Max(highYaw,yaw);worstYaw=highYaw-lowYaw;}
+                if(t>=full.Spans[1].From+.5f&&t<full.Spans[1].From+.5f+NativeWhirlwindRules.Interval)
+                {
+                    minX=Math.Min(minX,p.WorldPosition[CapturedRig.RHand].X);maxX=Math.Max(maxX,p.WorldPosition[CapturedRig.RHand].X);
+                    var blade=Vector3.Transform(Vector3.UnitZ,p.WorldRotation[CapturedRig.RHand]);if(blade.Z>0){bladeLow=Math.Min(bladeLow,blade.X);bladeHigh=Math.Max(bladeHigh,blade.X);}
+                }
+            }
+            Check(bodyStill&&worstYaw<.25f,"first person the view rig never turns with the spin (its chest yaw varies "+worstYaw.ToString("0.00")+" rad over the spin)");
+            Check(maxX-minX>.2f&&bladeLow<-.6f&&bladeHigh>.6f,"first person each turn the braced hands sweep ("+minX.ToString("0.00")+" to "+maxX.ToString("0.00")+" m) and the blade crosses the view side to side ("+bladeLow.ToString("0.00")+" to "+bladeHigh.ToString("0.00")+")");
+            for(int k=1;k<NativeWhirlwindRules.MaxTicks;k+=2)
+            {
+                float t=full.Spans[1].From+k*NativeWhirlwindRules.Interval;At(a,full,t);var p=new CapturedRig.Pose();idle.Sample(CapturedClip.Wrap(t,idle.Duration),row);CapturedRig.Sample(row,2,p);
+                MeleeKitMotion.Apply(p,a,t,true);p.World();var blade=Vector3.Transform(Vector3.UnitZ,p.WorldRotation[CapturedRig.RHand]);
+                Check(blade.Z>.7f,"first person the blade lies out ahead as it crosses the front at pulse "+k);
+            }
         }
         private static float Angle(Quaternion a,Quaternion b){float d=Math.Abs(Quaternion.Dot(a,b));return 2*(float)Math.Acos(Math.Min(1,d));}
         private static void Continuity()
@@ -236,10 +377,23 @@ namespace ChipArena.UnityConversion
                 k.FissureLength=3;var clamped=Frame(scene,events,1.6f,1,false);Check(clamped.BandPoints.Count>0&&clamped.BandPoints.All(v=>v.Z<=3.81f),"fissure clamped to FissureLength");
                 k.FissureUntil=0;
             }
-            if(kinds.Contains("wolf-knight"))
+            // The super-armour glint still follows its replicated flag (no kit raises it since the Whirlwind replaced Wolf Knight).
+            events.Clear();caster.SourceSpec="greatsword";caster.VisualSet=2;caster.MeleeKit.SuperArmour=true;Expect("super armour glint",r=>r.Glows>=2&&r.Sprites>=8,1);caster.MeleeKit.SuperArmour=false;
+            if(kinds.Contains("whirlwind"))
             {
-                events.Clear();caster.SourceSpec="greatsword";caster.VisualSet=2;caster.MeleeKit.SuperArmour=true;Expect("super armour glint",r=>r.Glows>=2&&r.Sprites>=8,1);caster.MeleeKit.SuperArmour=false;
-                events.Add(E(id++,EventKind.Land,1,1,0,new Vector3(0,.865f,6),"wolf-knight",0,3.7f));Expect("Wolf Knight landing wave",r=>r.Bands>=16,1.15f);
+                var whirl=Whirl(-1);float rel=whirl.Spans[1].From,pulse=rel+2*NativeWhirlwindRules.Interval;events.Clear();
+                At(caster,whirl,1.15f);Expect("Whirlwind telegraph: the 2.6 m ring and its ticks through the windup",r=>r.Bands>=28,1.15f);
+                At(caster,whirl,pulse+.05f);var spin=Frame(scene,events,pulse+.05f,1,false);
+                Check(spin.Bands>=30&&spin.Streaks>=8&&spin.Smokes>=3,"Whirlwind spin: blade arc, radius ring, wind and dust ("+spin.Bands+" bands, "+spin.Streaks+" streaks, "+spin.Smokes+" smoke)");
+                var thin=Frame(scene,events,pulse+.05f,.3f,false);var lowTier=Frame(scene,events,pulse+.05f,1,true);
+                Check(thin.Total<spin.Total&&lowTier.Total<spin.Total&&lowTier.Smokes==0,"Whirlwind effects thin with Reduced effects and the low tier (no smoke)");
+                var copy=new Scene();foreach(var x in scene.List)copy.List.Add((Actor)Fields(x));Check(Frame(copy,events,pulse+.05f,1,false).Calls.SequenceEqual(spin.Calls),"Whirlwind effects: a replicated copy draws the same frame");
+                scene.ViewerId=1;At(caster,whirl,pulse);Check(Frame(scene,events,pulse,1,false).View>=14,"first person the arc streaks on the view blade as it crosses the front");scene.ViewerId=0;
+                At(caster,whirl,whirl.Spans[2].From+.25f);Check(Frame(scene,events,whirl.Spans[2].From+.25f,1,false).Smokes>=4,"the stop's dust puff");
+                // Each pulse's hit (the caster at rest here): the existing flash and sparks on the struck target, and the slash across it.
+                caster.MeleeKit=new NativeMeleeKit();caster.SpecialKind=null;events.Add(E(id++,EventKind.AbilityHit,pulse,1,2,new Vector3(0,1.1f,3.8f),"whirlwind",NativeWhirlwindRules.Damage,normal:-Vector3.UnitZ));
+                Expect("Whirlwind pulse hit: flash, sparks and the slash across the target",r=>r.Glows>=2&&r.Streaks>=3&&r.Lines>=1,pulse+.05f);
+                events.Clear();events.Add(E(id++,EventKind.Recast,pulse,1,0,new Vector3(0,.865f,0),"whirlwind"));Expect("the early end draws no target tell",r=>r.Total==0,pulse+.05f);events.Clear();
             }
             // Determinism: a JSON round trip of the snapshot (as guests and the killcam receive it) draws the identical frame,
             // and drawing twice changes nothing (no hidden state).
@@ -280,6 +434,15 @@ namespace ChipArena.UnityConversion
             var span=new NativeMeleeKitHud.Span();Check(span.Update(6,6)==6&&span.Update(5.9f,6)==6,"span from the started cooldown");Check(span.Update(2.9f,6)==6,"a refund keeps the span (the dial jumps on)");
             Check(span.Update(0,6)==6&&span.Update(4,6)==4,"a new shorter cooldown (Kunai miss 4 s) is its own span");
             foreach(var a in data.abilities.Where(x=>NativeMeleeRules.Standard(x.spec)))Check(a.cost>0&&a.cooldown>0,"every melee card has a cost and cooldown: "+a.id);
+            // The Whirlwind: the cast, the spin (SPINNING, then END EARLY once the simulation opens the recast), the stop.
+            var w=NativeWhirlwindRules.Begin(1,0);var kit=new NativeMeleeKit{Kind="whirlwind",Phase="windup",At=w.At,Release=w.Release,Until=w.Until,RecoverUntil=w.RecoverUntil};
+            Check(NativeMeleeKitHud.Of("e","whirlwind",kit,10,11,100,45,1.1f).State=="ACTIVE","Whirlwind card: the windup is the cast");
+            kit.Phase="active";var spinning=NativeMeleeKitHud.Of("e","whirlwind",kit,10,11,100,45,w.Release+.2f);Check(spinning.State=="SPINNING"&&!spinning.Recast&&spinning.Active,"Whirlwind card: spinning before the recast opens");
+            kit.RecastKind="whirlwind";kit.RecastUntil=w.Until;var endEarly=NativeMeleeKitHud.Of("e","whirlwind",kit,9,11,100,45,w.Release+1.5f);
+            Check(endEarly.State=="END EARLY"&&endEarly.Recast&&Math.Abs(endEarly.Dial-.5f)<1e-3f,"Whirlwind card: END EARLY while E can end the spin, its dial draining to the spin's end");
+            kit.Phase="recovery";kit.RecastKind=null;kit.Until=w.Release+1.5f;kit.RecoverUntil=kit.Until+NativeWhirlwindRules.Recovery;
+            Check(NativeMeleeKitHud.Of("e","whirlwind",kit,9,11,100,45,kit.Until+.2f).State=="ACTIVE","Whirlwind card: the stop is still the cast (until RecoverUntil)");
+            Check(NativeLocker.AbilityIcon("whirlwind",null)=="rotate-cw","Whirlwind ability icon");
         }
         private static void Sounds(string root)
         {
@@ -294,6 +457,16 @@ namespace ChipArena.UnityConversion
             }
             Check(heard>=MeleeKitMotion.Kinds.Length,"every cast's release is heard");
             Check(NativeMeleeKitSounds.Event(EventKind.AbilityHit,"blink-strike",1,false,o)==0,"other abilities keep their own cues");
+            // The Whirlwind: a whoosh as the blade comes round at every pulse after the first (the release carries that one) and
+            // the heavy stop, each once (keyed by its moment), from the replicated clock; the early end has no cue of its own.
+            foreach(float after in new[]{-1f,1.2f})
+            {
+                var tl=Whirl(after);var a=Pilot("greatsword");var cues=new HashSet<float>();int keys=0;
+                for(float t=tl.Spans[0].From;t<tl.Spans[2].To;t+=1/60f){At(a,tl,t);int n=NativeMeleeKitSounds.Spin(a,t,.15f,o,out float at);for(int i=0;i<n;i++){Check(NativeSoundKeys.Known(o[i].Key)&&(o[i].Clip==null||clips.Contains(o[i].Clip)),"Whirlwind cue key "+o[i].Key);keys++;}if(n>0)cues.Add(at);}
+                int pulses=0;for(int k=1;k<NativeWhirlwindRules.MaxTicks;k++)if(tl.Spans[1].From+k*NativeWhirlwindRules.Interval<tl.Spans[1].To)pulses++;
+                Check(cues.Count==pulses+1&&keys>0,"Whirlwind cues: a whoosh per turn and the stop ("+cues.Count+" for "+pulses+" turns"+(after>0?", early":"")+")");
+            }
+            Check(NativeMeleeKitSounds.Event(EventKind.Recast,"whirlwind",0,false,o)==0,"the Whirlwind's early end is heard as its stop");
         }
         private static void Sources(string root)
         {
@@ -308,6 +481,8 @@ namespace ChipArena.UnityConversion
             var arena=R("Assets/ChipArena/Runtime/ArenaPresentation.cs");Check(arena.Contains("RenderMeleeKit(s,renderTime);")&&arena.Contains("MeleeKitFx(arena,camera,fields);meleeFlash?.Render(arena,camera,fields,WeaponEffectsQuality);WeaponFx(arena,camera,fields);")&&arena.Contains("ClearMeleeKit();"),"arena hooks: Render, RenderGlow before the weapons drawer, reset");
             var audio=R("Assets/ChipArena/Runtime/NativeAudio.cs");Check(audio.Contains("NativeMeleeKitSounds.Event(")&&audio.Contains("NativeMeleeKitSounds.Release("),"audio hooks");
             var hudRt=R("Assets/ChipArena/Runtime/NativeFightHud.cs");Check(hudRt.Contains("NativeMeleeKitHud.Of(")&&hudRt.Contains("NativeMeleeKitHud.ShieldAway("),"HUD hooks");
+            var captured=R("Assets/ChipArena/Runtime/CapturedAnimation.cs");Check(captured.Contains("MeleeKitMotion.Stance(a,time,melee.Gait);")&&captured.Contains("if(special&&MeleeKitMotion.RidesGait(a,time))r.LegsLayered=true;"),"Whirlwind hooks: the gait stance and the layered legs on the arena rigs");
+            Check(audio.Contains("NativeMeleeKitSounds.Spin(p.Pose,t,"),"Whirlwind audio hook");
             var dressing=R("Assets/ChipArena/Core/NativeWeaponDressing.cs");Check(dressing.Contains("MeleeKitMotion.Sweeps(a,time)"),"blade trails follow the kit's strike windows");
             foreach(string file in new[]{"Core/MeleeKitMotion.cs","Core/NativeMeleeKitFx.cs","Core/NativeMeleeKitHud.cs","Core/NativeMeleeKitSounds.cs","Runtime/NativeMeleeKitPresentation.cs"})
             {

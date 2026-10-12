@@ -29,8 +29,22 @@ namespace ChipArena.UnityConversion
                 case "bulwark-charge":n=S(o,n,"move.roll","dash",.55f);break;
                 case "aegis-ricochet":n=S(o,n,"melee.shield.throw","shield",.6f);break;
                 case "earthsplitter":break;// FissureStart carries the slam
-                case "wolf-knight":n=S(o,n,"melee.greatsword.spin","greatsword",.6f);n=S(o,n,"move.jump","jump",.4f);break;
+                case "whirlwind":n=S(o,n,"melee.greatsword.spin","greatsword",.6f);break;// the first pulse's sweep; Spin carries the rest
             }
+            return n;
+        }
+        /// <summary>
+        /// The Whirlwind's cues between the release and the stop, from the replicated clock: a whoosh each time the blade comes
+        /// round the front (every pulse after the first, which the release carries) and, as the turn stops, the heavy blade's
+        /// weight coming down. at: the cue's moment (each cue once; NativeAudio keys it by this). 0 when nothing is due within
+        /// `fresh` seconds. Better cues for the owner's bank: a looping spin whoosh and a heavy metal scrape-stop.
+        /// </summary>
+        public static int Spin(Actor a,float time,float fresh,NativeKitSound[] o,out float at)
+        {
+            at=float.NaN;if(!MeleeKitMotion.Clock(a,time,out var c)||c.Kind!="whirlwind")return 0;int n=0;
+            int k=MeleeKitMotion.Pulse(c,time,out float pulse);
+            if(k>=1&&time-pulse<fresh){at=pulse;n=S(o,n,"melee.greatsword.swing","greatsword",.42f);return n;}
+            if(c.Part==KitPart.Recovery){var w=MeleeKitMotion.Spin(c,time);if(time>=w.Stop&&time-w.Stop<fresh){at=w.Stop;n=S(o,n,"impact.ground","stone",.45f);n=S(o,n,"melee.greatsword.hit","greatsword",.22f);}}
             return n;
         }
         /// <summary>A kit event's cues. targetMe: the local pilot is the event's target (it already hears its hurt).</summary>
@@ -44,11 +58,12 @@ namespace ChipArena.UnityConversion
                 // The weapon's own impact on top of the routed (proc) hit tick, for everyone but the victim.
                 case EventKind.AbilityHit:if(!targetMe)n=S(o,n,NativeSoundCues.BodyImpact(spec),spec,.55f);if(fx=="bulwark-charge"||fx=="earthsplitter")n=S(o,n,"impact.ground","stone",.4f);break;
                 case EventKind.Teleport:n=S(o,n,"magic.blink-strike",fx=="shadow-step"?"demon-step":"dash",.55f);break;
-                case EventKind.Recast:n=fx=="rising-dragon"?S(o,n,"move.jump","jump",.5f):S(o,n,"magic.blink-strike","demon-step",.45f);break;
+                // The Whirlwind's early end has no tell of its own: its stop (Spin) is heard as the blade comes down.
+                case EventKind.Recast:n=fx=="whirlwind"?0:fx=="rising-dragon"?S(o,n,"move.jump","jump",.5f):S(o,n,"magic.blink-strike","demon-step",.45f);break;
                 case EventKind.Mark:if(amount>0)n=S(o,n,"gun.orbital.mark","metal",.35f);break;
                 case EventKind.Absorb:n=S(o,n,"melee.shield.block","parry",.5f);break;
                 case EventKind.Bounce:n=S(o,n,"impact.metal","metal",.5f);break;
-                case EventKind.Land:n=S(o,n,"blast.quake","stone",fx=="wolf-knight"?.75f:.6f);n=S(o,n,"move.land","explosion",fx=="wolf-knight"?.35f:.25f);break;
+                case EventKind.Land:n=S(o,n,"blast.quake","stone",.6f);n=S(o,n,"move.land","explosion",.25f);break;
                 case EventKind.FissureStart:n=S(o,n,"blast.quake","stone",.8f);n=S(o,n,"melee.greatsword.hit","greatsword",.5f);break;
             }
             return n;
