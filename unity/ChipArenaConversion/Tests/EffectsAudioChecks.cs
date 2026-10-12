@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
             }
             passed.Add("hover audio: 10,000 stationary repaints cue once; slot/offer/keyboard edges, disabled/re-entry/reset, fixed 40/70 ms ticks and overlap budget pass");
             // ---------- key contract ----------
-            var keys=NativeSoundKeys.All;Check(keys.Length==173&&keys.Select(k=>k.Key).Distinct().Count()==keys.Length,"173 unique keys ("+keys.Length+")");
+            var keys=NativeSoundKeys.All;Check(keys.Length==191&&keys.Select(k=>k.Key).Distinct().Count()==keys.Length&&keys.Count(k=>NativeSoundKeys.IsIntro(k.Key))==18,"173 effect keys and 18 entrance-music keys, unique ("+keys.Length+")");
             foreach(var k in keys)
             {
                 Check(Regex.IsMatch(k.Key,"^[a-z]+(\\.[a-z0-9-]+)+$")&&NativeSoundKeys.Known(k.Key),k.Key+" name");
@@ -165,7 +165,7 @@ namespace ChipArena.UnityConversion
             foreach(var file in Directory.EnumerateFiles(Path.Combine(root,"Assets/ChipArena"),"*.cs",SearchOption.AllDirectories))
             {if(Path.GetFileName(file)=="NativeSoundBank.cs")continue;foreach(Match m in KeyLiteral.Matches(File.ReadAllText(file)))named.Add(m.Groups[1].Value);}
             var unknown=named.Where(k=>!NativeSoundKeys.Known(k)).ToList();Check(unknown.Count==0,"code names unknown keys: "+string.Join(", ",unknown));
-            var unhooked=keys.Select(k=>k.Key).Where(k=>!named.Contains(k)).ToList();Check(named.Count>=150,"hooked keys "+named.Count);
+            var unhooked=keys.Select(k=>k.Key).Where(k=>!named.Contains(k)&&!NativeSoundKeys.IsIntro(k)).ToList();Check(named.Count>=150,"hooked keys "+named.Count);
             passed.Add("effects audio: all "+named.Count+" bank keys named in code exist in the key contract; not hooked yet: "+string.Join(", ",unhooked));
 
             // ---------- voice budget ----------

@@ -31,10 +31,22 @@ namespace ChipArena.UnityConversion
             bankLoaded=true;var text=Resources.Load<TextAsset>(NativeSoundKeys.Manifest);
             bank=NativeSoundBank.Parse(text!=null?text.text:null,(uint)Environment.TickCount);
             foreach(var error in bank.Errors)Debug.LogWarning("Effects audio manifest: "+error);
-            foreach(var e in bank.Entries)for(int i=0;i<e.Count;i++)bankPreload.Enqueue(e.Path(i));
+            // Entrance music preloads only the clip that plays (the first); its alternates load if they are moved first.
+            foreach(var e in bank.Entries)for(int i=0,n=NativeSoundKeys.IsIntro(e.Key)?Math.Min(1,e.Count):e.Count;i<n;i++)bankPreload.Enqueue(e.Path(i));
             bankVoiceClip=new AudioClip[voices.Length];bankVoicePriority=new NativeSoundPriority[voices.Length];bankVoiceEnd=new double[voices.Length];busyScratch=new bool[voices.Length];heldScratch=new NativeSoundPriority[voices.Length];
         }
         private AudioClip BankClip(string path){if(!bankClips.TryGetValue(path,out var c)){c=Resources.Load<AudioClip>(path);bankClips[path]=c;}return c;}
+        /// <summary>
+        /// The music clip of entrance <paramref name="style"/>: its intro key's first clip (NativeSoundBank.IntroClip) while
+        /// LocalAssets has one that loads, with the entry's gain trim; else exactly today's sting <paramref name="sting"/> at gain 1.
+        /// The DEV entrances have no intro key, so they always keep theirs (the Siren plays its boss song, not a sting).
+        /// </summary>
+        private AudioClip IntroClip(string style,string sting,out float gain)
+        {
+            if(!bankLoaded)LoadBank();string path=bank.IntroClip(style,out gain);var clip=path!=null?BankClip(path):null;
+            if(clip!=null&&clip.loadState!=AudioDataLoadState.Failed)return clip;
+            gain=1;return Clip(sting);
+        }
 
         /// <summary>
         /// A cue with a bank key and today's fallback: the bank's variation while <paramref name="key"/> has clips, nothing while

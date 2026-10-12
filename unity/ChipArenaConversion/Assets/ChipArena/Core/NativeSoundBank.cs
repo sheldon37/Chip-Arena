@@ -14,7 +14,9 @@ namespace ChipArena.UnityConversion
     /// clips and their manifest are never in this repository: they live in a private assets repository that the owner's
     /// builder copies to Assets/LocalAssets/Resources/EffectsAudio (tools/install_local_assets.py), and Unity merges every
     /// Resources folder, so they load as EffectsAudio/&lt;key&gt;/&lt;clip&gt;. Without that folder the bank is empty and every cue
-    /// plays today's source clip and routing (NativeSoundPlan, NativeAudio.Cue).
+    /// plays today's source clip and routing (NativeSoundPlan, NativeAudio.Cue). The intro.&lt;style&gt; keys are the match
+    /// entrances' music (owner 2026-10-12, every non-DEV entrance): 2D, 4.8 s (the entrance's length), played from its first
+    /// listed clip on the intro voice by NativeAudio.Entrance (later clips are alternates: reorder the list to switch).
     /// </summary>
     public static class NativeSoundKeys
     {
@@ -55,6 +57,11 @@ namespace ChipArena.UnityConversion
             K("structure.land.timber",P,1.5f,N),K("structure.rebar",P,1.5f,N),K("structure.rumble",P,3f,N),K("structure.snap",P,.6f,N),K("structure.thud",P,1.2f,N),K("structure.whoosh",P,2f,N),
             K("ui.back",F,.4f,H),K("ui.click",F,.25f,H),K("ui.confirm",F,1f,H),K("ui.countdown",F,.5f,H),K("ui.draft.hover",F,.3f,H),K("ui.draft.pick",F,.8f,H),K("ui.draft.plant",F,1f,H),K("ui.error",F,.7f,H),
             K("ui.go",F,1.5f,H),K("ui.hover",F,.15f,H),K("ui.loadout.select",F,1f,H),K("ui.notice",F,1f,H),K("ui.round-lost",F,3f,H),K("ui.round-won",F,3f,H),K("ui.toggle",F,.4f,H),
+            // Entrance music (NativeIntroRules.Entrances without the DEV ones): the 11 weapon signatures, then the 7 procedural entrances.
+            K("intro.weapon-sword",F,4.8f,H),K("intro.weapon-daggers",F,4.8f,H),K("intro.weapon-shield",F,4.8f,H),K("intro.weapon-greatsword",F,4.8f,H),K("intro.weapon-pistol",F,4.8f,H),K("intro.weapon-rifle",F,4.8f,H),
+            K("intro.weapon-machinegun",F,4.8f,H),K("intro.weapon-fire",F,4.8f,H),K("intro.weapon-water",F,4.8f,H),K("intro.weapon-lightning",F,4.8f,H),K("intro.weapon-darkness",F,4.8f,H),
+            K("intro.orbital-drop",F,4.8f,H),K("intro.grid-rez",F,4.8f,H),K("intro.holo-projection",F,4.8f,H),K("intro.blackout",F,4.8f,H),K("intro.skyline-zip",F,4.8f,H),K("intro.hero-landing",F,4.8f,H),
+            K("intro.overclock",F,4.8f,H),
         };
         private static Dictionary<string,int> index;
         public static bool Find(string key,out Def def)
@@ -63,6 +70,12 @@ namespace ChipArena.UnityConversion
             if(key!=null&&index.TryGetValue(key,out int at)){def=All[at];return true;}def=default;return false;
         }
         public static bool Known(string key)=>Find(key,out _);
+        public const string IntroPrefix="intro.";
+        /// <summary>Whether <paramref name="key"/> is an entrance-music key (intro.&lt;style&gt;).</summary>
+        public static bool IsIntro(string key)=>key!=null&&key.StartsWith(IntroPrefix,StringComparison.Ordinal);
+        /// <summary>The entrance-music key of <paramref name="style"/> (intro.&lt;style&gt;), or null when the style has none (the DEV
+        /// entrances, retired or unknown styles): those always play their built-in music.</summary>
+        public static string Intro(string style){if(string.IsNullOrEmpty(style))return null;string key=IntroPrefix+style;return Known(key)?key:null;}
     }
 
     /// <summary>One manifest entry: the clip names under EffectsAudio/&lt;key&gt;/, a gain trim on the routed gain, a base rate and
@@ -94,6 +107,10 @@ namespace ChipArena.UnityConversion
         /// <summary>Whether <paramref name="key"/> has at least one clip; false for null, unknown or empty keys.</summary>
         public bool Has(string key)=>key!=null&&entries.TryGetValue(key,out var e)&&e.Count>0;
         public NativeSoundEntry Entry(string key)=>key!=null&&entries.TryGetValue(key,out var e)?e:null;
+        /// <summary>The resource path of entrance <paramref name="style"/>'s music, its intro key's first clip (the others are
+        /// alternates), with the entry's gain trim; null (gain 1) when the style has no intro key (DEV, retired, unknown) or no
+        /// clip is installed, so the caller plays today's sting exactly as before.</summary>
+        public string IntroClip(string style,out float gain){var e=Entry(NativeSoundKeys.Intro(style));if(e==null||e.Count==0){gain=1;return null;}gain=e.Gain;return e.Path(0);}
         /// <summary>The next variation of <paramref name="key"/>: a seeded shuffle bag, so every clip plays once per round of the
         /// bag and the same clip never plays twice in a row (with two or more clips).</summary>
         public int Next(string key)

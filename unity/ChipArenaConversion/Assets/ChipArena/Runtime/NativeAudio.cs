@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
         private readonly NativeSoundLimiter limiter=new NativeSoundLimiter();private bool[] keyedVoices;
         private readonly NativeEventSounds.Sound[] routed=new NativeEventSounds.Sound[NativeEventSounds.MaxSounds];private readonly NativeSpikeRises spikeRises=new NativeSpikeRises();private readonly NativeInstallCue installCue=new NativeInstallCue();
         private readonly Dictionary<string,float> cues=new Dictionary<string,float>();
-        private AudioSource[] voices;private AudioSource music,introVoice;private string introKey="";private readonly Dictionary<int,AudioClip> beepClips=new Dictionary<int,AudioClip>();private string track="",phase="",resumeTrack;private float resumeTime;private bool musicHeld;private int cursor,generation=-1,countdown=-1,rotation=-1;private Vector3 listener;private float yaw;
+        private AudioSource[] voices;private AudioSource music,introVoice;private string introKey="";private float introGain=1;private readonly Dictionary<int,AudioClip> beepClips=new Dictionary<int,AudioClip>();private string track="",phase="",resumeTrack;private float resumeTime;private bool musicHeld;private int cursor,generation=-1,countdown=-1,rotation=-1;private Vector3 listener;private float yaw;
         private readonly string[] rotationTracks={"foundry-rush","orange-line","kinetic-city","afterburner","night-circuit","critical-mass","jump-drive","neon-recoil","overpass","last-set"};
         private readonly Queue<string> bag=new Queue<string>();
         private readonly NativeMusicSync musicSync=new NativeMusicSync();private bool musicPaused,musicStarting,musicPlayed;private double musicStartedAt,musicEpoch;private object musicClockOwner;
@@ -34,11 +34,13 @@ namespace ChipArena.UnityConversion
             if(position.HasValue){var d=position.Value-listener;gain*=NativeEventSounds.Falloff(d.magnitude);pan=NativeEventSounds.Pan(NativeArena.Vec(d),yaw);}
             voice.loop=false;voice.clip=clip;voice.volume=Mathf.Clamp01(gain*Effects);voice.panStereo=pan;voice.pitch=rate>0?rate:NativeEventSounds.Rate(id,UnityEngine.Random.value);voice.Play();
         }
+        // The entrance's music from intro age `age` (a late joiner seeks into it): the installed LocalAssets clip of the style's
+        // intro key when there is one (IntroClip, with its manifest gain trim), else today's sting at the music volume.
         public void Entrance(string key,string style,float age)
         {
             string sting=NativeIntroRules.IntroSting(style);
-            if(key==null||sting==null||Muted||Music<=0){introVoice.Stop();introKey="";return;}introVoice.volume=Music;
-            if(introKey==key)return;introKey=key;introVoice.Stop();introVoice.clip=Clip(sting);if(introVoice.clip==null||age>=introVoice.clip.length)return;introVoice.time=Math.Max(0,age);introVoice.Play();
+            if(key==null||sting==null||Muted||Music<=0){introVoice.Stop();introKey="";return;}introVoice.volume=Mathf.Clamp01(Music*introGain);
+            if(introKey==key)return;introKey=key;introVoice.Stop();introVoice.clip=IntroClip(style,sting,out introGain);introVoice.volume=Mathf.Clamp01(Music*introGain);if(introVoice.clip==null||age>=introVoice.clip.length)return;introVoice.time=Math.Max(0,age);introVoice.Play();
         }
         // audio.ts previewIntro: the Customize preview holds the menu music; the dev-siren entrance plays its boss song from
         // the preview's age instead of a sting (the cell's flashes are cued to it), every other entrance its sting.

@@ -72,6 +72,22 @@ into the git-ignored `unity/ChipArenaConversion/Assets/LocalAssets/Resources/Eff
 `tools/package_source.py` skips that folder. Builds without it play the original synthesized sounds:
 CI, cloud builds, other checkouts and the public source zips.
 
+## Unity entrance music (Asset Store packs, owner licence)
+
+The Unity game's match-entrance music (the `intro.<style>` keys of the same licensed bank, one per non-DEV
+entrance; owner request 2026-10-12) is edited from Unity Asset Store music the owner licensed, with
+sound-effect layers from the packs above. The owner approved their use on 2026-10-11. Each sting is cut so
+its big accent lands on the entrance's hit and its resolve on the 3.2 s name card, 4.8 s long with a short
+tail fade, loudness-matched to the built-in sting it replaces and encoded as Ogg Vorbis.
+
+| Pack | Publisher | Asset Store id |
+|---|---|---|
+| Ultimate Game Music Collection | John Leonard French | 37351 |
+
+The same rules apply as for the effects audio: the files are never in this repository, the private
+licensed-assets repository's `LICENSES.md` names every source file, they install into the git-ignored
+`Assets/LocalAssets` with `tools/install_local_assets.py`, and builds without them play the built-in stings.
+
 ## Brickfall Run
 
 The owner supplied **Brickfall Run** on 2026-10-11, with the embedded artist credit
