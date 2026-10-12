@@ -35,10 +35,10 @@ namespace ChipArena.UnityConversion
     public static class NativeBlockLooks
     {
         /// <summary>Look keys; the index is the id NativeBlockLit.shader reads (its LOOK_* defines).</summary>
-        public static readonly string[] Keys={"plain","brick-red","brick-buff","terracotta","concrete-board","steel-green","timber","tar","asphalt","cobble","window-lit","neon","corrugated","demolition"};
+        public static readonly string[] Keys={"plain","brick-red","brick-buff","terracotta","concrete-board","steel-green","timber","tar","asphalt","cobble","window-lit","neon","corrugated","demolition","factory-grating"};
         /// <summary>Each look's base colour (sRGB) when its entry names none: ARENA_PROPOSAL.md 3.10. Plain has none (-1: the block's own colour).</summary>
-        public static readonly int[] Palette={-1,0x9C4A30,0xB8774E,0xE3C9A0,0x8F8A80,0x3E6B5A,0xB4834F,0x2B2A2E,0x3A3836,0x6B625A,0x6E8F96,0x4FA8FF,0x7D8478,0xF4B321};
-        public const int Plain=0,BrickRed=1,BrickBuff=2,Terracotta=3,ConcreteBoard=4,SteelGreen=5,Timber=6,Tar=7,Asphalt=8,Cobble=9,WindowLit=10,Neon=11,Corrugated=12,Demolition=13;
+        public static readonly int[] Palette={-1,0x9C4A30,0xB8774E,0xE3C9A0,0x8F8A80,0x3E6B5A,0xB4834F,0x2B2A2E,0x3A3836,0x6B625A,0x6E8F96,0x4FA8FF,0x7D8478,0xF4B321,0x8C9296};
+        public const int Plain=0,BrickRed=1,BrickBuff=2,Terracotta=3,ConcreteBoard=4,SteelGreen=5,Timber=6,Tar=7,Asphalt=8,Cobble=9,WindowLit=10,Neon=11,Corrugated=12,Demolition=13,FactoryGrating=14;
         /// <summary>Per-instance flags (bits of the shader's flags value): the 2.3 chevron band and the DANGER tag (each drawn only
         /// with its own bit, so a look never implies the tag), a fragment (fresh break tint), the band lamp lit amber or red this
         /// frame (<see cref="Lamp"/>; neither: the lamp is dark), and the mesh's 180-degree turns. The window light of the 3.9

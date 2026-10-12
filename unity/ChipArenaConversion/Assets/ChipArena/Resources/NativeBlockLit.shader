@@ -43,6 +43,7 @@ Shader "ChipArena/NativeBlockLit"
         #define LOOK_NEON 11.0
         #define LOOK_CORRUGATED 12.0
         #define LOOK_DEMOLITION 13.0
+        #define LOOK_FACTORY_GRATING 14.0
         // Flags: NativeBlockLooks.Band, Tag, Fragment, LampAmber, LampRed, SpinY, SpinZ.
         #define FLAG_BAND 1u
         #define FLAG_TAG 2u
@@ -255,6 +256,27 @@ Shader "ChipArena/NativeBlockLit"
             {
                 // Yellow and black stripes over the whole block (the 2.3 colours; the DANGER tag only with FLAG_TAG).
                 alb=lerp(BK_YELLOW,BK_BLACK,BkStripe((uv.x+uv.y)/0.35,fwm/0.35));
+            }
+            else if(BkIs(look,LOOK_FACTORY_GRATING))
+            {
+                // Pressed steel grating (the Factory's decks, treads and cages; FACTORY_PROPOSAL.md 3.10): on top faces 3.4 cm
+                // bearing bars along the longer axis and cross rods every 10 cm over a dark void (filtered to their mean far
+                // away), a brighter worn line down the middle; on the sides of thin blocks the flat-bar edge, on taller ones a
+                // 5 cm welded mesh in a 4 cm frame; galvanised mottling throughout.
+                float3 voidc=base*0.2;
+                if(top)
+                {
+                    bool turn=hs.z>hs.x;float2 gv=turn?uv.yx:uv;float2 gf=turn?fw.yx:fw;
+                    float bar=BkJoint(gv.y,0.034,0.016,gf.y);float rod=BkJoint(gv.x,0.10,0.007,gf.x);float m=max(bar,rod);
+                    float wear=1.0-smoothstep(0.2,0.65,abs(turn?obj.x:obj.z)/max(turn?hs.x:hs.z,0.01));
+                    alb=lerp(voidc,base*(0.88+0.24*BkNoise(gv*float2(0.6,3.0)+seed*7.0))*(1.0+0.14*wear*detail),m);
+                }
+                else if(hs.y>0.3)
+                {
+                    float wire=max(BkJoint(uv.x,0.05,0.005,fw.x),BkJoint(uv.y,0.05,0.005,fw.y));
+                    alb=lerp(voidc*0.8,base*(0.9+0.15*BkNoise(uv*2.0+seed)),wire);alb=lerp(alb,base,1.0-smoothstep(0.03,0.05+fwm,edge));
+                }
+                else alb=base*(0.95+0.1*BkNoise(uv*float2(4.0,1.0)+seed*3.0));
             }
             else
             {
