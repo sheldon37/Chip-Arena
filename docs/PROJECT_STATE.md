@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-12 ranged Q presentation: `claude/ranged-q` (base `1af916c`, Astra's PR #134 / `44278a9` merged in) adds the visuals for Fan the Hammer and Overdrive on her replicated contract: poses, effects, audio, HUD Q cards and icons, and the first-person camera kick. The rifle-only ADS is verified. Presentation only. On the branch; not pushed, merged or released; no Unity Editor or Windows play. See RANGED-ABILITIES and DEV_LOG.
+
 2026-10-12 ranged Q: `codex/unity-ranged-q-20261012` replaces pistol/MG ADS with Fan the Hammer (up to four paid rounds, .075 s spacing, .8 damage / 2.2 spread, auto reload) and Overdrive (4 s / 1.6 fire rate / no bloom / .8 movement, then .8 s vent). Rifle scope stays. New replicated buff/vent clocks and guest movement are ready for Claude; contract in RANGED-ABILITIES. Shared icons/palette `f026b9e` integrated; 437 managed/relay checks and 91 Python tests pass. Native/Windows execution, presentation and compiled publication remain pending; task PR/DEV_LOG carry integration receipts.
 
 2026-10-12 class icons: `claude/class-icons` (base `c0e5aa1`, shared `1af916c` merged) replaces the generic Lucide class/weapon glyphs with 19 original filled icons (`ClassIcons.json` from `tools/export_class_icons.mjs`, small drawings at 22 px and below). They are drawn by the now engine-free rasteriser (`Core/NativeIconRaster`; Lucide output bit-identical). The HUD health box gets its weapon icon back. Presentation only. On the branch; not pushed, merged or released. Unity Editor/Windows not run; see DEV_LOG.

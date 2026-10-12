@@ -1,5 +1,54 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Claude — Fan the Hammer and Overdrive presentation (owner: "Change Q on Pistol and Machine Gun (Aim Down Sights doesnt help much). Give them new abilities")
+
+- **Branch:** `claude/ranged-q`, base `1af916c`. Astra's simulation (PR #134, `d175290`, shared head `44278a9`) was merged in `d7b21e1` before the work commit.
+- **Status:** signed commits on the branch only. Not pushed, merged or released.
+- **Rules:** Astra's, unchanged. The presentation reads her contract only:
+  - Overdrive: `OverdriveAt`/`OverdriveUntil`/`VentUntil`.
+  - Fan: the cast stamped on the pose (`AbilityId`/`AbilityAt`), plus `LastShot`, `Ammo` and `Reload*`.
+  - My provisional `FanAt`/`FanShots` contract fields were dropped on merge.
+  - `docs/RANGED-ABILITIES.md` now carries a presentation section after her contract.
+- **Fan the Hammer** (`Core/NativeGunKit*`, through `RangedAbilityPose` on both gun rig routes):
+  - Pose: a low-chest fan hold (first person: in view, canted). The off hand slaps the hammer on each round's .075 s schedule. Stacked recoil uses a curve derived from the pack's `Pistol-Attack-R1/R3`; the strike speed comes from the `Dual1-3` volleys (`tools/derive_fan_hammer.mjs` → `tools/fan-hammer-provenance.json`, derived numbers only).
+  - Effects: a hammer glint per slap, brass from the port, a smoking barrel, warmer fanned tracers.
+  - First person: a camera kick per round, under the camera-shake setting.
+  - Audio: a `gun.dryfire` slap per round.
+- **Overdrive:**
+  - Pose: a braced, lower, forward-leaning stance with per-round shake that grows with heat. The vent tilts the gun onto its side, muzzle up.
+  - Effects: a six-barrel spin-up with motion blur; a barrel glow from orange to white-hot; additive heat shimmer; steam; hotter, brighter and longer tracers; then vent jets and side-vent steam bursts while the glow turns red and cools.
+  - First person: a faint bottom-edge heat haze, and a camera buzz under the camera-shake setting.
+  - Audio: the `chip.delayed.charge` whine and the `siren.vents` hiss, both with built-in fallbacks.
+  - The generic cast cue is skipped for both Q ids, so the first round has no doubled gunshot.
+- **HUD and Locker:**
+  - Q cards with icons (`hammer`, `gauge`): FANNING, NO AMMO / RELOADING, ACTIVE with time left, VENTING, and cooldown dials.
+  - `AbilityStatus` routes the kit before its "Q  Aim (hold)" line, so that line now prints for the rifle only.
+  - The Locker's provisional `crosshair`/`zap` icons are replaced by the same `hammer`/`gauge` icons.
+- **ADS:** verified, no camera edit. Astra's `NativeRangedRules.Scope` gates both the Q input and `UpdateCamera`, and only the rifle has an ADS entry.
+- **Hooks** (one line or one hunk each): `RangedAbilityPose`, `NativeWeaponFxPresentation` (`WeaponFx`/`ShotFx`), `ConversionGame` (status, kick), `NativeFightHud` (card), `NativeAudio` (cues), `NativeLocker` (icons).
+- **Checks run:** `Tests/GunKitChecks` (16,281 checks).
+  - The fan is replayed on the host's tick schedule (`NativeRangedRules.Fan`) for 1-7 rounds at 30/60/120 Hz, plus cancelled and reloading bursts.
+  - Overdrive phases match `NativeRangedRules.Overdrive`/`Vent` exactly.
+  - Every phase owns a third- and first-person pose. The off hand moves at up to 17.9 m/s; the gun's step stays within the rounds' own `RangedPose` recoil reset.
+  - Effects keep their quality tiers, and a public-field copy draws the same frame.
+  - Also covered: rifle-only ADS, HUD states, the derived curve against its provenance, bank keys, and 0 bytes allocated over 200 frames on the pose/effects/tracer paths.
+  - Five checks (results below):
+    - `unity-check.sh` on the repo root: OK.
+    - `check_relay`: PASS 438, FAIL 0.
+    - Python: OK, one existing skip.
+    - Source packaging: passes.
+    - `git diff --check 1af916c HEAD`: clean.
+- **Renders:** offline only, from synthetic replicated timelines on the PR #134 fields, through the real Core poses and drawers in a WebGL harness. Saved in the session scratchpad (`ranged-q/renders`), not committed.
+- **Not run:** no Unity Editor, Windows or two-client play.
+- **Impact on rules:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. Animation is presentation only, and the wire format is Astra's.
+- **Risks:**
+  - The fan's end after a cut burst is inferred .09 s after a round is overdue.
+  - The fast slap may read as a blur at 60 fps.
+  - Heat haze is additive shimmer, not refraction.
+  - The vent steam uses soft wisps.
+  - Owner listening and tuning are pending.
+- **Next:** owner Windows playtest of the feel; Astra may add an explicit round count if late joiners mid-burst matter.
+
 ## 2026-10-12 — Astra — ranged Q: Fan the Hammer and Overdrive
 - Branch `codex/unity-ranged-q-20261012`, initial shared/cloud base `1af916c`; integrated shared `f026b9e` (Claude's class icons/palette) before final checks. Implementation `f267508`, with integration/follow-up commits; source PR records push/merge and CI receipts. Owner authorizes pushes/merges. No compiled release is claimed.
 - Pistol Q is `fan-hammer` / `burst`: immediately fire the first of up to four available rounds, then on the anchored .075 s cadence, .8 normal damage and 2.2 base spread. Uses ordinary projectiles, per-round Shot events with Detail `fan`, ammo/chip/contact rules and automatic normal reload if emptied. Rejects empty/capped activation; interruptions cancel only the unpaid rounds and keep cooldown. Seven-second base Q cooldown, no mana/stamina charge. MG Q is `overdrive` / `buff`: four seconds at 1.6 fire rate, base cone without bloom and .8 controlled movement; then .8 s primary-fire vent. Ten-second base cooldown, no other charge; active Shot Detail `overdrive`. Existing cooldown and weapon chip modifiers remain.

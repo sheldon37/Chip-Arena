@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
             if(!melee){float max=(float)p.Stats["maxStamina"];y+=9;U.Text(new Rect(ix,y,iw,14),"Stamina",11,U.Hex(0xb4b6c5),TextAnchor.MiddleLeft);U.Text(new Rect(ix,y,iw,14),Mathf.FloorToInt(p.Stamina)+" / "+Mathf.RoundToInt(max),13,U.Hex(0x9fd3ff),TextAnchor.MiddleRight,mono:true);y+=14+6;
                 U.Round(new Rect(ix,y,iw,3),new Color(1,1,1,.09f),2);if(max>0)U.Round(new Rect(ix,y,iw*Mathf.Clamp01(p.Stamina/max),3),p.Pose.Sprinting?U.Hex(0xf8db94):U.Hex(0x7cc4ff),2);}
         }
-        private struct Card {public string Key,State,Sub;public bool Ready,Active,Recast;public float Dial;}
+        private struct Card {public string Key,State,Sub,Icon;public bool Ready,Active,Recast,Hot;public float Dial;}
         private readonly NativeMeleeKitHud.Span qSpan=new NativeMeleeKitHud.Span(),eSpan=new NativeMeleeKitHud.Span();
         private NativeMeleeKitHud.Card MeleeCard(NativePilot p,string slot,ContentAbility d)
         {
@@ -57,6 +57,12 @@ namespace ChipArena.UnityConversion
                 var d=content.Ability(p.Seat.spec,slot);
                 // Standard melee Q/E (Core/NativeMeleeKitHud): the recast window, the cast, the cooldown actually started, stamina.
                 if(d!=null&&NativeMeleeRules.Standard(p.Seat.spec)){var kc=MeleeCard(p,slot,d);cards.Add(new Card{Key=slot.ToUpperInvariant()+" · "+d.name.ToUpperInvariant(),State=kc.State,Ready=kc.Ready,Active=kc.Active,Dial=kc.Dial,Recast=kc.Recast});continue;}
+                // The pistol / machine-gun Q kit (Core/NativeGunKitHud): its icon, fanning, Overdrive's active time and vent, cooldown, ammo.
+                if(d!=null&&slot=="q"&&NativeGunKit.Covers(d.id))
+                {
+                    float qLeft=p.QReady-t,span=qSpan.Update(qLeft,(float)NativeAbilityRules.Cooldown(d,p.Stats));var gc=NativeGunKitHud.Of(d.id,NativeGunKit.Of(p.Pose,t),t,qLeft,span,p.Ammo,p.ReloadEnd>t);
+                    cards.Add(new Card{Key="Q · "+d.name.ToUpperInvariant(),State=gc.State,Icon=gc.Icon,Ready=gc.Ready,Active=gc.Active,Hot=gc.Venting||gc.Low,Dial=gc.Dial});continue;
+                }
                 string status=AbilityStatus(p,slot);if(string.IsNullOrEmpty(status)||d==null&&slot=="q")continue;
                 int dot=status.IndexOf(" · ",StringComparison.Ordinal);string name=dot>0?status.Substring(0,dot).Replace("  "," · ").ToUpperInvariant():slot.ToUpperInvariant(),state=dot>0?status.Substring(dot+3):"";
                 float left=d==null?Math.Max(0,p.EReady-t):slot=="q"?p.QReady-t:p.ECharges>0?0:p.EReady-t,cd=d!=null&&d.cooldown>0?(float)d.cooldown:1;
@@ -64,10 +70,13 @@ namespace ChipArena.UnityConversion
             }
             float x=right;for(int i=cards.Count-1;i>=0;i--)
             {
-                var c=cards[i];float kw=U.Measure(c.Key,10,false,true).x,vw=U.Measure(c.State,c.Ready?12:13,c.Ready,true,c.Ready?.08f:0).x,w=Mathf.Max(78,Mathf.Max(kw,vw)+20+(c.Dial>=0?12:0)),h=8+14+5+16+8;var r=new Rect(x-w,bottom-h,w,h);
-                U.Round(r,Ink(.65f),9,c.Recast?U.Hex(0xffc35a,.75f):c.Active?U.Hex(0x59dd83,.6f):new Color(1,1,1,.094f));U.Text(new Rect(r.x+10,r.y+8,w-20,14),c.Key,10,U.Hex(0xb0b3c2),TextAnchor.MiddleLeft,mono:true);
-                U.Text(new Rect(r.x+10,r.y+8+14+5,w-20,16),c.State,c.Ready?12:13,c.Ready?U.Hex(0x59dd83):c.Recast?U.Hex(0xffd27a):c.State=="LOW MANA"||c.State=="LOW STAMINA"||c.State=="SHIELD OUT"?U.Hex(0xff8a7a):U.Hex(0xf3f3f5),TextAnchor.MiddleLeft,bold:c.Ready,mono:true,tracking:c.Ready?.08f:0);
-                if(c.Dial>=0){var dial=new Rect(r.xMax-17,r.y+6,11,11);U.Round(dial,new Color(1,1,1,.12f),6);U.Pie(dial,c.State=="LOW MANA"||c.State=="LOW STAMINA"?U.Hex(0xff7a6b):c.Recast?U.Hex(0xffc35a):U.Hex(0x59dd83),Mathf.Max(.01f,c.Dial));}
+                var c=cards[i];float ic=c.Icon!=null?18:0,kw=U.Measure(c.Key,10,false,true).x+ic,vw=U.Measure(c.State,c.Ready?12:13,c.Ready,true,c.Ready?.08f:0).x,w=Mathf.Max(78,Mathf.Max(kw,vw)+20+(c.Dial>=0?12:0)),h=8+14+5+16+8;var r=new Rect(x-w,bottom-h,w,h);
+                U.Round(r,Ink(.65f),9,c.Hot?U.Hex(0xff6a3d,.8f):c.Recast?U.Hex(0xffc35a,.75f):c.Active?U.Hex(0x59dd83,.6f):new Color(1,1,1,.094f));
+                // A kit card's line icon (Lucide, NativeIcons) ahead of its key, tinted with the card's state.
+                if(c.Icon!=null)NativeIcons.Draw(new Rect(r.x+10,r.y+8,14,14),c.Icon,c.Hot?U.Hex(0xff9a6a):c.Active?U.Hex(0x7fe8a0):c.Ready?U.Hex(0xe6e8ef):U.Hex(0xb0b3c2));
+                U.Text(new Rect(r.x+10+ic,r.y+8,w-20-ic,14),c.Key,10,U.Hex(0xb0b3c2),TextAnchor.MiddleLeft,mono:true);
+                U.Text(new Rect(r.x+10,r.y+8+14+5,w-20,16),c.State,c.Ready?12:13,c.Ready?U.Hex(0x59dd83):c.Hot?U.Hex(0xff9a6a):c.Recast?U.Hex(0xffd27a):c.State=="LOW MANA"||c.State=="LOW STAMINA"||c.State=="SHIELD OUT"?U.Hex(0xff8a7a):U.Hex(0xf3f3f5),TextAnchor.MiddleLeft,bold:c.Ready,mono:true,tracking:c.Ready?.08f:0);
+                if(c.Dial>=0){var dial=new Rect(r.xMax-17,r.y+6,11,11);U.Round(dial,new Color(1,1,1,.12f),6);U.Pie(dial,c.State=="LOW MANA"||c.State=="LOW STAMINA"||c.Hot?U.Hex(0xff7a6b):c.Recast?U.Hex(0xffc35a):U.Hex(0x59dd83),Mathf.Max(.01f,c.Dial));}
                 x=r.x-5;
             }
         }
