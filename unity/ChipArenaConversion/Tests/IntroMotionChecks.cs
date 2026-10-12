@@ -22,15 +22,19 @@ internal static class IntroMotionChecks
     public static IEnumerable<string> Run(string root)
     {
         var intros=Clips(root,"SourceMotion","intro-");var stages=Clips(root,"SceneMotion","stage-");
+        // The pinned banks keep all twenty source bakes (the five retired generic entrances' clips stay in the pinned export,
+        // unreferenced); every staged entrance with a bake (the eleven weapon signatures the director re-stages, the four DEV
+        // stages) has its clip and stage, and the procedural entrances need none.
         Check(intros.Count==20&&stages.Count==20,"twenty intro clips and stages");
-        foreach(var s in NativeIntroRules.Entrances)Check(intros.ContainsKey("intro-"+s)&&stages.ContainsKey("stage-"+s),s+" has its clip and stage");
-        var weapons=NativeIntroRules.Entrances.Where(s=>NativeIntroMotion.WeaponIntro(s)>=0).ToArray();Check(weapons.Length==11,"eleven weapon intros");
+        var baked=NativeIntroRules.Entrances.Where(s=>Array.IndexOf(NativeIntroRules.Procedural,s)<0).ToArray();Check(baked.Length==15,"fifteen baked entrances");
+        foreach(var s in baked)Check(intros.ContainsKey("intro-"+s)&&stages.ContainsKey("stage-"+s),s+" has its clip and stage");
+        var weapons=baked.Where(s=>NativeIntroMotion.WeaponIntro(s)>=0).ToArray();Check(weapons.Length==11,"eleven weapon intros");
         // NativeSourceMotion prepares every weapon intro's plan as it loads the clips; the checks run on prepared plans.
         foreach(var s in weapons){var c=intros["intro-"+s];NativeIntroMotion.Prepare(s,c.Values,c.Frames,c.Duration);}
         var pose=new CapturedRig.Pose();var bake=new CapturedRig.Pose();long samples=0;
         // 1. Finite joints and part matrices: every baked frame time, midway between frames, one ulp either side, the ends,
         // past the end (the preview tail), before the start, a match clock on 1/60 s ticks, and non-finite clocks.
-        foreach(var s in NativeIntroRules.Entrances)
+        foreach(var s in baked)
         {
             var c=intros["intro-"+s];var ages=new List<float>{0,-0f,-1,c.Duration,c.Duration+.7f,1e6f,float.NaN,float.PositiveInfinity,float.NegativeInfinity};
             for(int f=0;f<c.Frames;f++){float at=f*c.Duration/(c.Frames-1);ages.Add(at);ages.Add(MathF.BitIncrement(at));ages.Add(MathF.BitDecrement(at));ages.Add(at+.5f*c.Duration/(c.Frames-1));}
@@ -43,11 +47,11 @@ internal static class IntroMotionChecks
                 samples++;
             }
         }
-        yield return "intro poses: "+samples+" samples of all 20 entrances (every baked frame, midpoints, +-1 ulp, ends, preview tail, 1/60 s match ticks, NaN/Inf clocks) give finite joints, world matrices and weapon parts";
+        yield return "intro poses: "+samples+" samples of all 15 baked entrances (every baked frame, midpoints, +-1 ulp, ends, preview tail, 1/60 s match ticks, NaN/Inf clocks) give finite joints, world matrices and weapon parts";
         // 2. The layer only touches the weapon intros, and there only the arms, spine, chest and head: the root, hips and
         // legs are the bake's own at every sample (planted feet never slide); it is deterministic and allocation-free.
         long legs=0;
-        foreach(var s in NativeIntroRules.Entrances)
+        foreach(var s in baked)
         {
             var c=intros["intro-"+s];bool weapon=NativeIntroMotion.WeaponIntro(s)>=0;
             for(int i=0;i<=120;i++)
@@ -66,13 +70,13 @@ internal static class IntroMotionChecks
                 int n=0;for(float age=0;age<c.Duration;age+=.11f){NativeIntroMotion.Pose(s,copy,c.Frames,c.Duration,age,pose);Check(Same(pose,prepared[n++],0,22),s+" is not deterministic at "+age.ToString("0.00")+" s");}
                 NativeIntroMotion.Prepare(s,c.Values,c.Frames,c.Duration);
             }
-            var all=NativeIntroRules.Entrances.Select(s=>(style:s,clip:intros["intro-"+s])).ToArray();
+            var all=baked.Select(s=>(style:s,clip:intros["intro-"+s])).ToArray();
             foreach(var (s,c) in all)NativeIntroMotion.Pose(s,c.Values,c.Frames,c.Duration,0,pose);
             long before=GC.GetAllocatedBytesForCurrentThread();
             foreach(var (s,c) in all)for(float age=0;age<c.Duration;age+=1/60f)NativeIntroMotion.Pose(s,c.Values,c.Frames,c.Duration,age,pose);
             long bytes=GC.GetAllocatedBytesForCurrentThread()-before;Check(bytes==0,"the intro pose allocates "+bytes+" bytes over a playthrough");
         }
-        yield return $"weapon intros: {legs} samples keep the bake's root, hips and legs exactly; prepared plans equal fresh ones; 0 bytes allocated over 60 Hz playthroughs of all 20 entrances";
+        yield return $"weapon intros: {legs} samples keep the bake's root, hips and legs exactly; prepared plans equal fresh ones; 0 bytes allocated over 60 Hz playthroughs of all 15 baked entrances";
         // 3. Clearance: no forearm, hand or held weapon sinks deeper than baked (beyond 1 cm, or 2.5 cm of contact), and none sinks more than 2.5 cm
         // into the torso or head wherever its hand is free to move (not anchoring a baked effect; the greatsword's two-hand
         // drag, wind-up and slam stay as baked until the hoist).

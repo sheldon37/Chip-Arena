@@ -165,9 +165,12 @@ internal static class SirenIntroChecks
         // 7. Music: the Siren entrance plays black-siren-protocol from its first frame (no sting); every other entrance its sting.
         string song=NativeIntroRules.IntroSong("dev-siren");Check(song=="music/black-siren-protocol"&&NativeIntroRules.IntroSting("dev-siren")==null,"Siren intro music route");
         Check(track.GetProperty("file").GetString()==song+".mp3"&&File.Exists(Path.Combine(root,"Assets/Conversion/Resources/Audio/"+song+".mp3")),"boss song resource");
-        int stings=0;foreach(var s in NativeIntroRules.Entrances){if(s=="dev-siren")continue;string sting=NativeIntroRules.IntroSting(s);Check(sting=="audio/intros/"+s&&NativeIntroRules.IntroSong(s)==null,s+" music route");if(File.Exists(Path.Combine(root,"Assets/Conversion/Resources/Audio/"+sting+".mp3")))stings++;}
+        // The procedural entrances play the retired generic stings (their beats sit on that 0.4 s grid); every other its own.
+        int stings=0;foreach(var s in NativeIntroRules.Entrances){if(s=="dev-siren")continue;string sting=NativeIntroRules.IntroSting(s);bool procedural=Array.IndexOf(NativeIntroRules.Procedural,s)>=0;
+            Check((procedural?Array.IndexOf(NativeIntroRules.Retired,sting.Substring(13))>=0:sting=="audio/intros/"+s)&&NativeIntroRules.IntroSong(s)==null,s+" music route");if(File.Exists(Path.Combine(root,"Assets/Conversion/Resources/Audio/"+sting+".mp3")))stings++;}
+        foreach(var r in NativeIntroRules.Retired)Check(NativeIntroRules.IntroSting(r)==null,r+" is retired and routes nothing");
         Check(NativeIntroRules.IntroSting(null)==null&&NativeIntroRules.IntroSting("weapon-siren")==null&&NativeIntroRules.IntroSong(null)==null,"unknown styles route nothing");
-        yield return "intro music: dev-siren plays "+song+" from its first frame (bulb beats on the song's beats); "+stings+" of 19 other entrances have their sting";
+        yield return "intro music: dev-siren plays "+song+" from its first frame (bulb beats on the song's beats); "+stings+" of 21 other entrances have their sting";
         // 8. The source shaders carry the stage block the Core describes: Max-sized arrays, the falloff, the tone curve and the gate.
         foreach(var name in new[]{"NativeSourceLit","NativeSourceTransparent"})
         {

@@ -43,7 +43,10 @@ internal static class LockerChecks
         Check(ui.Contains("NativeLoadoutText.InClass")||ui.Contains("MenuWeapons();"),"the weapon cards use the loadout's gated weapon list (MenuWeapons)");
         Check(profile.Contains("public static bool Allowed(NativeAccess a,string type,string id)=>id!=null&&(id!=\"dev-gibber\"||(a??NativeAccess.Guest).Developer)&&( !id.StartsWith(\"dev-\")&&id!=\"auditor-halo\"||(a??NativeAccess.Guest).Allows(type+\":\"+id,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()));"),"the cosmetic gate is unchanged");
         var hats=Ids(profile,"Hats");var kills=Ids(profile,"Kills");var intros=Ids(profile,"Intros");
-        Check(hats.Length==11&&kills.Length==22&&intros.Length==20,"cosmetic id lists parsed ("+hats.Length+"/"+kills.Length+"/"+intros.Length+")");
+        Check(hats.Length==11&&kills.Length==22&&intros.Length==22,"cosmetic id lists parsed ("+hats.Length+"/"+kills.Length+"/"+intros.Length+")");
+        Check(intros.SequenceEqual(NativeIntroRules.Entrances.OrderBy(i=>Array.IndexOf(intros,i)))&&intros.OrderBy(i=>i).SequenceEqual(NativeIntroRules.Entrances.OrderBy(i=>i)),"the Locker offers exactly the staged entrances");
+        foreach(var id in NativeIntroRules.Procedural)Check(NativeLocker.IntroIcon(id)!=null&&!NativeLocker.DevItem(id),"the procedural entrance "+id+" has its icon and no DEV badge");
+        foreach(var id in NativeIntroRules.Retired)Check(Array.IndexOf(intros,id)<0&&NativeLocker.IntroText(id).Length==0&&NativeLocker.IntroIcon(id)==null,"the retired "+id+" is gone from the Locker");
         foreach(var id in hats.Concat(kills).Concat(intros))Check(NativeLocker.DevItem(id)==(id.StartsWith("dev-")||id=="auditor-halo"),"DEV badge for "+id);
         foreach(var id in hats)Check(NativeLocker.HatText(id).Length>0,"headwear text for "+id);
         foreach(var id in kills)Check(NativeLocker.KillText(id).Length>0&&(NativeLocker.KillColor(id)!=0xc0c1ca||id=="ragdoll"),"kill effect text and colour for "+id);

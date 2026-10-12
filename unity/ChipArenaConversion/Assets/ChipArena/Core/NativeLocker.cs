@@ -105,17 +105,19 @@ namespace ChipArena.UnityConversion
         public static readonly string[] PoseTexts={"A ready stance with your weapon.","Lounging on the lobby chair.","Napping until the match starts.","Arms crossed, waiting."};
         public static string PoseText(int index)=>index>=0&&index<PoseTexts.Length?PoseTexts[index]:"";
 
-        // Entrances: the generic intros by their feel, the weapon intros as that weapon's signature, the DEV entrances.
-        public static string IntroName(string id,string label)=>id=="neon-drop"?"Neon Drop":Clean(label);
+        // Entrances: the procedural entrances by what they stage, the weapon intros as that weapon's signature, the DEV entrances.
+        public static string IntroName(string id,string label)=>Clean(label);
         public static string IntroText(string id)
         {
             switch(id)
             {
-                case "neon-drop":return "The classic neon drop-in.";
-                case "vector-slide":return "Slides in along a vector trail.";
-                case "signal-spin":return "Spins in on a signal flare.";
-                case "arc-salute":return "Lands with a crisp salute.";
-                case "pulse-wave":return "Arrives on a pulse of energy.";
+                case "orbital-drop":return "A drop pod slams down and blows its door open.";
+                case "grid-rez":return "Built voxel by voxel out of the arena grid.";
+                case "holo-projection":return "Flickers in as a hologram, then locks solid.";
+                case "blackout":return "The lights cut. A spotlight slams on.";
+                case "skyline-zip":return "Rides a cable in from the skyline.";
+                case "hero-landing":return "Falls from the sky into a crater landing.";
+                case "overclock":return "Installs a chip and surges with power.";
                 case "dev-siren":return "The Siren's boss protocol reveal.";
                 case "dev-emperor":return "The Emperor's storm entrance.";
                 case "dev-ansatsuken":return "The rain warrior's entrance.";
@@ -128,7 +130,8 @@ namespace ChipArena.UnityConversion
         {
             switch(id)
             {
-                case "neon-drop":return "sparkles";case "vector-slide":return "move-right";case "signal-spin":return "rotate-cw";case "arc-salute":return "hand";case "pulse-wave":return "activity";
+                case "orbital-drop":return "rocket";case "grid-rez":return "boxes";case "holo-projection":return "scan";case "blackout":return "eclipse";
+                case "skyline-zip":return "spline";case "hero-landing":return "chevrons-down-up";case "overclock":return "cpu";
                 case "dev-siren":return "skull";case "dev-emperor":return "cloud-lightning";case "dev-ansatsuken":return "hand-fist";case "dev-matrix":return "terminal";
             }
             return null;
