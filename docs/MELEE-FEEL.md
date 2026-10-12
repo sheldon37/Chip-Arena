@@ -440,6 +440,70 @@ is the largest speed and the total distance of an ankle on the floor; L / R are 
 Not run: the Unity Editor, the Windows build, two-client networking, the killcam on a live match, the bot duel harness
 and a live playtest. The closing-damage figures assume perfect aim against a non-dodging target (an upper bound).
 
+## Melee travel from the pack (owner 2026-10-12: "the arms kind of wiggle around when running. Make it look more natural when moving~ Refer to the movement in our animation pack")
+
+- **Cause.** The voxel legs step at about 2.6 times the captured run's cadence. The captured carry's arm pump, phased to
+  those steps, read as flapping hands: 13–33 cm of hand travel per stride at a run.
+- **Clips.** `Core/NativeLocomotionCarry` lays the pack's directional loops over the captured melee route, from
+  `tools/export_pack_locomotion.mjs`:
+  - Walk-Slow;
+  - Walk and the seven strafes;
+  - Run in eight directions.
+
+  The sets are sword and daggers from Armed (the daggers in a reverse grip), shield from Armed-Shield (mirrored, so its
+  left and right clips swap), and greatsword from 2Hand-Sword.
+- **Blending.** The two clips bracketing the travel direction are blended, each phased from its own left-foot strike to
+  the gait's stride.
+- **Carry.** The weapon hand keeps 15% (run) or 25% (walk) of the per-stride swing, and the free hand 35% or 45%. The
+  torso keeps the steady-torso shares, less again off the forward line. A strafe's mean hip turn is folded into the spine,
+  so the chest keeps facing the aim.
+- **Legs** stay the gait's procedural planted feet: no skating.
+- **Result.** At a run the hands travel 2–4 cm per stride, and every torso component stays within the bounds below. First
+  person keeps 30% of the captured pump.
+- **Where it applies:** arena rigs only. The source-parity checks keep the captured walk and run.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+
+## Sprint (owner 2026-10-12: "Also, add a sprinting animation for all weapons. (Different on weapon of course)", "And a sprint effect to know when we're sprinting", "Make sprint effect visible in first person too")
+
+- **When.** `NativeSprintRules.Shows`: the replicated `Actor.Sprinting` flag (host, guests, killcam and spectators all
+  have it), grounded, above 4 m/s, and not busy. A swing or cast and its recovery, a block, aim, reload or shot, a roll,
+  stun, juggle, knockdown, special or death drops it. The blend is a 0.15 s ramp, eased at both ends.
+- **Per-weapon carry** (`Core/NativeSprintMotion`, over each route's run, the gait's planted feet unchanged):
+  - sword: the blade swept low behind the hip, the free arm pumping (a ninja run);
+  - daggers: both reverse-grip fists pumping hard and low;
+  - shield: up in front of the chest, the shield shoulder leading;
+  - greatsword: on the right shoulder in both hands, with a heavier bob;
+  - pistol: port arms;
+  - rifle: high port, both hands;
+  - machine gun: a low ready, both hands;
+  - magic and L33t H4x: both hands trailing back, the staff angled back.
+
+  The DEV fighters and the Siren keep their own locomotion. Each route also gets a small extra forward lean (sword .07,
+  daggers .1, greatsword .14, shield .03, pistol .04, rifle .03, machine gun .02, magic .04 rad).
+- **Steady torso at 9.18 m/s** (before → after): head sway sword 2.3 → 2.5 cm, daggers 2.3 → 2.6, shield 2.1 → 2.0,
+  greatsword 4.7 → 2.6, guns and magic 2.2 → 2.5–2.8. Chest roll stays at or under 5.5° and twist under 15°. The lean is
+  what adds sway: a forward-leaned spine turns the chest's counter-twist into a little sideways head travel, so the guns'
+  and magic's leans were halved to stay under 3 cm.
+- **Third-person effect** (`Core/NativeSprintFx`, `Runtime/NativeSprintFxPresentation`): six accent streaks trail level
+  off the shoulders, hips, head and back, and three dust puffs kick up behind each footfall (every 1.24 m). Both are
+  camera-facing, never on the floor. They are skipped for the view pilot in first person.
+- **First person:**
+  - the view weapon takes a per-weapon sprint carry and a stronger stride bob (`NativeSprintRules.ViewCarry` in
+    `NativeViewSway`): the sword drops and tips down, the greatsword lifts toward the shoulder, the pistol muzzle comes up,
+    the rifle cants across, the machine gun dips;
+  - the camera gets an eased +5° FOV kick, kept out of the view-model camera so the hands keep their framing, and a
+    1.2 cm / 0.5° bob;
+  - tinted speed lines stream out in the outer third of the screen, over a soft edge vignette (an `OnGUI` behind the
+    HUD). The tint is the weapon's hue mixed with the pilot's accent.
+- **Settings.** Camera shake off removes the FOV kick and the bob. Reduced effects halves them, thins the streaks, dust
+  and lines, and dims the vignette. Low graphics halves the counts again.
+- **Sound.** The footstep cadence quickens while sprinting (a step every 1.55 m instead of 1.9 m, slightly brighter). The
+  bank has no wind or whoosh loop that fits, so a `move.sprint` loop would be a sound-bank addition.
+- **HUD.** The existing SPRINTING tag (`NativeSprintTag`) is unchanged and reads the same flag. Weapons without a tint of
+  their own take its colour.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement, stamina or networking. Sprint speed,
+  input and prediction are untouched.
+
 ## Jump and double jump (owner 2026-10-12: "can we add jump animations? (Of course, changes based on weapon. Daggers can double-jump)")
 
 ### Presentation (Claude, `claude/jump-anim`)
@@ -470,7 +534,9 @@ and a live playtest. The closing-damage figures assume perfect aim against a non
     floor;
   - the dagger swing played faster as a whoosh.
 
-  No simulation change was made: today only a launch while already airborne (a Siren vent, for example) can trigger it.
+  Since Astra's air jump (`f566b9a`, merged into the shared head), the replicated `Actor.AirJumpAt` drives the flip, burst
+  and whoosh explicitly (`NativeJumpTrack.AirJumpSignal`), so a vent launch no longer shows a flip; the vertical-speed
+  inference remains only for rigs without the signal (the source-parity checks).
 - **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
 
 ### Simulation handoff (Astra)

@@ -255,7 +255,7 @@ namespace ChipArena.UnityConversion
         public const int Segments=22;
         public static bool Covers(string spec)=>NativeMeleeRules.Standard(spec);
         /// <summary>The crescent stands in for the ribbon: a standard melee pilot's strike, not a released sword launch or wolf spin.</summary>
-        public static bool Replaces(Actor a,float time)=>a!=null&&Covers(a.SourceSpec)&&!(a.SpecialReleased&&(a.SpecialKind=="sword-launch"||a.SpecialKind=="wolf-spin")&&time<a.SpecialUntil);
+        public static bool Replaces(Actor a,float time)=>a!=null&&Covers(a.SourceSpec)&&!(a.SpecialReleased&&(a.SpecialKind=="sword-launch"||a.SpecialKind=="wolf-spin")&&time<a.SpecialUntil)&&!MeleeKitMotion.Sweeps(a,time);
         public static bool Look(string spec,out SlashLook look)
         {
             switch(spec)

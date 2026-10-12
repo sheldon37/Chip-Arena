@@ -153,7 +153,7 @@ namespace ChipArena.UnityConversion
                 case EventKind.Heal:if(c.TargetMe)n=X(o,n,"chip.heal",.5f);break;
                 case EventKind.PveMoney:if(c.SourceMe)n=X(o,n,"pve.money",.5f);break;
                 case EventKind.Vacuum:n=X(o,n,"chip.vacuum",.7f);break;
-                case EventKind.Teleport:if(c.Detail!="blink-strike")n=X(o,n,"chip.teleport",.7f);break;
+                case EventKind.Teleport:if(c.Detail!="blink-strike"&&!NativeMeleeKitFx.Tag(c.Detail))n=X(o,n,"chip.teleport",.7f);break;
                 case EventKind.Split:n=X(o,n,"chip.split",.5f);break;
                 case EventKind.Ricochet:n=X(o,n,"gun.ricochet",.55f);break;
                 case EventKind.Pong:n=X(o,n,"chip.pong",.6f);break;
@@ -343,6 +343,10 @@ namespace ChipArena.UnityConversion
     public static class NativeFootsteps
     {
         public const float Stride=1.9f,MinSpeed=1.5f,MaxStep=3,MinAir=.25f;
+        /// <summary>The sprint's cadence (owner 2026-10-12, sprint presentation): a step every 1.55 m at 9.18 m/s (5.9 steps a
+        /// second against the run's 3.6), a little brighter and louder.</summary>
+        public const float SprintStride=1.55f,SprintRate=1.08f,SprintGain=1.15f;
+        public static float StrideFor(bool sprinting)=>sprinting?SprintStride:Stride;
         public static string Surface(string map)
         {
             switch(map)

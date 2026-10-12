@@ -33,6 +33,8 @@ namespace ChipArena.UnityConversion
         public bool GroundSkipped{get;private set;}
         /// <summary>The jump layer (Core/NativeJumpMotion) under the gun hold; null keeps the source port (parity checks).</summary>
         public NativeJumpMotion JumpLayer;
+        /// <summary>The per-weapon sprint carry (Core/NativeSprintMotion) under the gun hold; null keeps the source port.</summary>
+        public NativeSprintMotion SprintLayer;
         public static string Spec(WeaponId w)=>w==WeaponId.Rifle?"rifle":w==WeaponId.MachineGun?"machinegun":"pistol";
         public static string StateOf(Actor a,float time,float motion)=>a.ReloadUntil>time?Reload:time<a.BlockUntil?Block:time-a.LastShot<.2f?Fire:a.Aiming?Aim:!a.Grounded?Jump:motion>.05f?Carry:Ready;
         private Actor shown;private bool shownJuggled;
@@ -111,6 +113,7 @@ namespace ChipArena.UnityConversion
             float run=MeleeMath.Ease((r.Motion-.1f)/.65f);
             sprintBlend+=((v.Sprinting?1:0)-sprintBlend)*(1-(float)Math.Exp(-Math.Min(.05f,Math.Max(0,dt))*10));
             if(sprintBlend>1e-4f)r.AddE(CapturedRig.Spine,.12f*sprintBlend*run,0,0);
+            float sprint=SprintLayer?.Lean(r,a,v.Spec,time,dt)??0;
             JumpLayer?.Ranged(r,a,v.Spec,time,dt,.4f);
             UpdateAim(a,time,restart);
             var h=RangedPose.HoldOf(a,time,aim);float k=h.Weight;
@@ -131,6 +134,7 @@ namespace ChipArena.UnityConversion
             float sway=MeleeMath.Clamp(r.Motion,0,1),sx=(float)Math.Cos(2*r.Stride)*(h.LongGun?.05f:.04f)*sway-lean,sy=(float)Math.Sin(r.Stride)*(h.LongGun?.06f:.05f)*sway;
             bool pistol=!h.LongGun;
             RangedPose.Arms(pose,a,time,h,pistol?k:1,pistol?(1-k)*MeleeMath.Ease(r.Motion/.35f):0,sx,sy);
+            SprintLayer?.Gun(pose,a,sprint*(1-k),r.Stride);
             RangedAbilityPose.Apply(pose,a,time,false);
         }
     }

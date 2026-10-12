@@ -21,6 +21,8 @@ namespace ChipArena.UnityConversion
         {var e=NativeFirstPersonPose.EulerXYZ(p.Rotation[bone]);p.Rotation[bone]=Euler(e.X+x,e.Y+y,e.Z+z);}
         public static Quaternion HeldRotation(Actor a,float time,bool left=false)
         {
+            // The melee Q/E layer aims the weapon with its grips (Core/MeleeKitMotion).
+            if(MeleeKitMotion.Owns(a,time))return MeleeKitMotion.Held(a,time,left);
             if(!Active(a,time)||a.SpecialKind=="wolf-spin")return Quaternion.Identity;
             Envelope(a,time,out float coil,out _,out _,out float weight);
             float x=left?.95f:a.SpecialKind=="sword-launch"?.95f:a.SpecialKind=="shield-throw"?1.15f:1;
@@ -28,6 +30,8 @@ namespace ChipArena.UnityConversion
         }
         public static void Special(Pose p,Actor a,float time,bool firstPerson)
         {
+            // A melee Q/E cast (replicated MeleeKit) has its own per-ability phrases (Core/MeleeKitMotion).
+            if(MeleeKitMotion.Apply(p,a,time,firstPerson))return;
             if(!Active(a,time))return;
             Envelope(a,time,out float coil,out float d,out float recovery,out float weight);
             void Blend(int b,float x,float y=0,float z=0)=>p.Rotation[b]=Quaternion.Slerp(p.Rotation[b],Euler(x,y,z),weight);
