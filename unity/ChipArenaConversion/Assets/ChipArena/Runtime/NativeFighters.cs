@@ -107,7 +107,7 @@ namespace ChipArena.UnityConversion
         private void ConfirmFighter(NativePilot p,NativePilot q,float actual,bool electric,float stun,bool echo=false,bool meleeStrike=true)
         {
             var f=Fighter(p);bool emperor=Dev(p,"emperor");if(f.ComboTarget!=q.Seat.id||Time-f.LastHit>(emperor?1.35f:1.1f)){f.Hits=0;f.ComboDamage=0;}f.ComboTarget=q.Seat.id;f.Hits++;f.ComboDamage+=actual;f.LastHit=Time;
-            if(q.Hp>0&&!SirenArmor(q))
+            if(q.Hp>0&&!SirenArmor(q)&&!NativeMeleeKitRules.LightArmour(q.MeleeKit,Time,actual))
             {
                 var old=q.Juggle;bool pickup=NativeSpecialRules.Pickup(q.Down,Time),air=old!=null||!q.Grounded||pickup;
                 // Strikes get a short, immunity-gated stun; projectiles and delayed echoes do not refresh it.
@@ -125,7 +125,7 @@ namespace ChipArena.UnityConversion
         private void StepFighterWorld()
         {
             foreach(var e in FighterEchoes.ToArray())
-            {if(e.Remaining<=0||Time>e.Until||e.Owner.Hp<=0){FighterEchoes.Remove(e);continue;}if(Time<e.At)continue;foreach(var q in Pilots)if(q!=e.Spare&&q.Hp>0&&CanHit(e.Owner,q)&&Vector3.Distance(q.Body.position,e.Position)<e.Radius&&MeleeVisible(e.Position,q.Body.position,e.Owner,q.Collider)){if(Time<q.BlockEnd){BlockProc(q,e.Owner,q.Body.position);continue;}float actual=Damage(q,e.Owner,e.Damage,e.Direction,e.Remaining==1?e.Impulse:25,false,primary:false);if(actual>0)ConfirmFighter(e.Owner,q,actual,e.Electric,e.Remaining==1?.26f:.14f,true,false);}e.Remaining--;e.At+=e.Gap;}
+            {if(e.Remaining<=0||Time>e.Until||e.Owner.Hp<=0){FighterEchoes.Remove(e);continue;}if(Time<e.At)continue;foreach(var q in Pilots)if(q!=e.Spare&&q.Hp>0&&CanHit(e.Owner,q)&&Vector3.Distance(q.Body.position,e.Position)<e.Radius&&MeleeVisible(e.Position,q.Body.position,e.Owner,q.Collider)){if(Time<q.BlockEnd){BlockProc(q,e.Owner,q.Collider.ClosestPoint(e.Position),"clash");continue;}float actual=Damage(q,e.Owner,e.Damage,e.Direction,e.Remaining==1?e.Impulse:25,false,primary:false);if(actual>0)ConfirmFighter(e.Owner,q,actual,e.Electric,e.Remaining==1?.26f:.14f,true,false);}e.Remaining--;e.At+=e.Gap;}
             foreach(var trail in StormTrails.ToArray())
             {if(Time>=trail.Until||trail.Owner.Hp<=0){StormTrails.Remove(trail);continue;}foreach(var q in Pilots)if(q.Hp>0&&CanHit(trail.Owner,q)&&!trail.Hit.Contains(q.Seat.id)&&Vector3.Distance(q.Body.position,trail.Position)<1.4f&&MeleeVisible(trail.Position,q.Body.position,trail.Owner,q.Collider)){trail.Hit.Add(q.Seat.id);Damage(q,trail.Owner,6*(float)trail.Owner.Stats["damage"],Vector3.zero,0,false,primary:false);}}
             foreach(var q in Pilots)

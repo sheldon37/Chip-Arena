@@ -87,6 +87,22 @@ namespace ChipArena.UnityConversion.Editor
                 if(replica.Match.Seat(backs.seats[0].id)?.lobbyBack!="warp"||replica.Match.Seat(backs.seats[1].id)?.lobbyBack!=NativePortraitBacks.Default)throw new Exception("Guest/replay lost or did not normalise the portrait backdrop");
                 var longBack=NativeFrameCodec.Clone(copy);longBack.seats[0].lobbyBack=new string('x',NativePortraitBacks.MaxLength+1);if(longBack.Valid(authority.Content))throw new Exception("Over-long portrait backdrop accepted");
                 replica.ApplyFrame(copy,authority.LocalId);
+                var melee=NativeFrameCodec.Clone(copy);var ma=melee.snapshot.Actors[0];
+                ma.CommitAt=1;ma.CommitUntil=1.62f;ma.CommitYaw=24;ma.SwingAt=1.14f;ma.SwingUntil=1.30f;ma.StepAt=1.077f;ma.StepUntil=1.268f;ma.StepDistance=2.2f;ma.ChainAt=1.5f;ma.ComboUntil=2.02f;ma.MeleeBufferUntil=1.8f;ma.SprintAttack=ma.OpenerLunge=true;
+                ma.MeleeKit=new NativeMeleeKit{Kind="aegis-ricochet",Phase="active",At=1,Release=1.3f,Until=4,Yaw=.7f,RecastKind="kunai-mark",Target=2,RecastUntil=5,MarkTarget=2,MarkUntil=5,ShieldOut=true,ShieldPosition=new V3(1,2,3),ShieldChain=new[]{2,3},Afterimage=new V3(3,2,1),AfterimageUntil=2,FissureStart=new V3(1,0,2),FissureDirection=new V3(0,0,1),FissureSpeed=25,FissureLength=10,FissureAt=1,FissureUntil=3,SuperArmour=true,Absorbed=3};
+                melee.seats[0].intro="orbital-drop";melee.seats[0].overrideIntro=true;
+                melee=NativeFrameCodec.Clone(melee);if(!melee.Valid(authority.Content))throw new Exception("Melee kit frame rejected");replica.ApplyFrame(melee,authority.LocalId);
+                var mp=replica.Pilots.First(p=>p.Seat.id==ma.Id);var mk=mp.MeleeKit;
+                if(mp.Pose.CommitYaw!=24||mp.Pose.StepDistance!=2.2f||mp.Pose.ChainAt!=1.5f||mp.Pose.ComboUntil!=2.02f||mp.Pose.MeleeBufferUntil!=1.8f||!mp.Pose.SprintAttack||!mp.Pose.OpenerLunge)throw new Exception("JsonUtility/guest lost melee feel fields");
+                var edge=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="input",input=new InputFrame{Sequence=4,Attack=true,Shoot=true,LockTarget=2}})).input;
+                if(!edge.Attack||!edge.Shoot||edge.LockTarget!=2||edge.HeldOnly().Attack)throw new Exception("Input edge/lock contract lost");
+                var badFeel=NativeFrameCodec.Clone(melee);badFeel.snapshot.Actors[0].CommitYaw=float.NaN;if(badFeel.Valid(authority.Content))throw new Exception("Nonfinite melee commit yaw accepted");
+                if(mk.Kind!="aegis-ricochet"||mk.Phase!="active"||mk.RecastUntil!=5||mk.MarkTarget!=2||mk.MarkUntil!=5||!mk.ShieldOut||mk.ShieldChain.Length!=2||mk.ShieldPosition.z!=3||mk.FissureSpeed!=25||mk.FissureLength!=10||mk.AfterimageUntil!=2||!mk.SuperArmour||mk.Absorbed!=3||!replica.Match.Seats[0].overrideIntro||replica.Match.Seats[0].intro!="orbital-drop")throw new Exception("JsonUtility/guest lost melee or entrance state");
+                melee.snapshot.Actors[0].MeleeKit.ShieldChain[0]=99;if(mk.ShieldChain[0]!=2)throw new Exception("Replica aliases replay melee history");
+                melee.seats[0].intro="pulse-wave";replica.ApplyFrame(NativeFrameCodec.Clone(melee),authority.LocalId);if(replica.Match.Seats[0].overrideIntro||replica.Match.Seats[0].intro!=NativeIntroRules.Default)throw new Exception("Retired seat entrance was not migrated");
+                melee.snapshot.Actors[0].MeleeKit.Absorbed=4;if(melee.Valid(authority.Content))throw new Exception("Unbounded absorbed count accepted");
+                replica.ApplyFrame(copy,authority.LocalId);
+                Debug.Log("PASS melee snapshot contract: real JsonUtility phase/recast/mark/chain/fissure/afterimage/armour/absorb round trip, deep-copy isolation and old/new entrance seat normalization");
                 var moved=NativeFrameCodec.Clone(frame);moved.time+=1;moved.pilots[1].position+=Vector3.right*3;
                 replica.ApplyFrame(moved,authority.LocalId);replica.InterpolateReplica(.1f);
                 var remote=replica.Pilots.First(p=>p.Seat.id==moved.pilots[1].id);
@@ -123,9 +139,9 @@ namespace ChipArena.UnityConversion.Editor
             var profile=new NativeProfile{name="Saved Pilot",@class="magic",color="#123456",cosmetics=new NativeCosmetics{lobbyPose="crossed",preferredSpec="lightning",intro="pulse-wave",introText="My saved entrance",bodyColor="#abcdef",hat="crown",killEffect="ragdoll-petals",overrideWeaponIntro=true}};
             string expected=JsonUtility.ToJson(profile);
             var saved=JsonUtility.FromJson<NativeProfileRequest>(JsonUtility.ToJson(new NativeProfileRequest{revision=17,profile=profile}));
-            var loaded=JsonUtility.FromJson<NativeAccountResponse>(JsonUtility.ToJson(new NativeAccountResponse{account=new NativeAccountData{id="fixture-account",profile=profile,hasProfile=true,revision=17,grantVersion=4,developer=true,unlocks=new[]{"weapon:emperor","hat:auditor-halo"},flags=new[]{"playtester","vip"}}}));
+            var loaded=JsonUtility.FromJson<NativeAccountResponse>(JsonUtility.ToJson(new NativeAccountResponse{account=new NativeAccountData{id="fixture-account",profile=profile,hasProfile=true,revision=17,profileSchema=2,grantVersion=4,developer=true,unlocks=new[]{"weapon:emperor","hat:auditor-halo"},flags=new[]{"playtester","vip"}}}));
             var ready=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="ready",profile=profile}));
-            if(saved.revision!=17||JsonUtility.ToJson(saved.profile)!=expected||JsonUtility.ToJson(loaded.account.profile)!=expected||JsonUtility.ToJson(ready.profile)!=expected||!loaded.account.hasProfile||!loaded.account.developer||loaded.account.revision!=17||loaded.account.grantVersion!=4||loaded.account.unlocks.Length!=2||loaded.account.flags.Length!=2)throw new Exception("Account save/reload or lobby payload dropped profile fields, grants or flags");
+            if(saved.revision!=17||JsonUtility.ToJson(saved.profile)!=expected||JsonUtility.ToJson(loaded.account.profile)!=expected||JsonUtility.ToJson(ready.profile)!=expected||!loaded.account.hasProfile||!loaded.account.developer||loaded.account.revision!=17||loaded.account.profileSchema!=2||loaded.account.grantVersion!=4||loaded.account.unlocks.Length!=2||loaded.account.flags.Length!=2)throw new Exception("Account save/reload or lobby payload dropped profile fields, grants or flags");
             var go=new GameObject("Account compatibility check");
             try
             {

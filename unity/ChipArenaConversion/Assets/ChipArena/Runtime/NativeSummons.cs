@@ -75,7 +75,7 @@ namespace ChipArena.UnityConversion
                     if(!goal.HasValue)continue;Vector3 origin=at+Vector3.up*(toy?.25f:0),target=goal.Value+Vector3.up*(toy?.35f:0),aim=target-origin;Collider collider=m.Foe?.Hp>0?m.Foe.Collider:m.Other.Collider;
                     if(toy)Fx(target,.1f,0,origin,m.Owner,"minionShot");if(aim.magnitude>(toy?9.5f:2.4f)||!SummonVisible(m,origin+Vector3.up*(toy?0:.3f),target+Vector3.up*(toy?0:.3f),collider))continue;
                     float damage=(toy?8:12)*(float)m.Owner.Stats["damage"],impulse=toy?50:120;Vector3 flat=new Vector3(aim.x,0,aim.z).normalized;
-                    if(m.Foe?.Hp>0){if(Time<m.Foe.BlockEnd){BlockProc(m.Foe,m.Owner,at);if(!toy)m.Body.AddForce((at-m.Foe.Body.position).normalized*400,ForceMode.Impulse);}else Damage(m.Foe,m.Owner,damage,flat,impulse*(float)m.Owner.Stats["impulse"],false,direct:false,primary:false);}
+                    if(m.Foe?.Hp>0){if(Time<m.Foe.BlockEnd){BlockProc(m.Foe,m.Owner,m.Foe.Collider.ClosestPoint(at),"clash");if(!toy)m.Body.AddForce((at-m.Foe.Body.position).normalized*400,ForceMode.Impulse);}else Damage(m.Foe,m.Owner,damage,flat,impulse*(float)m.Owner.Stats["impulse"],false,direct:false,primary:false);}
                     else if(m.Other?.Hp>0)HitMinion(m.Other,m.Owner,damage,flat,impulse);continue;
                 }
                 if(Time<m.NextAttack&&m.LastAttack>=0&&Time-m.LastAttack<windup+recover){if(Time-m.LastAttack>windup+.12f)m.Body.linearVelocity=new Vector3(0,velocity.y,0);continue;}

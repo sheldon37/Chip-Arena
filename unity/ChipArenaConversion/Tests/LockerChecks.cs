@@ -83,7 +83,7 @@ internal static class LockerChecks
             var w=data.Weapon(a.spec);int n=NativeLocker.SlotOptions(data,w,a.slot,options);var expected=data.abilities.Where(x=>x.spec==a.spec&&x.slot==a.slot).ToArray();
             Check(n==expected.Length&&options.Select(o=>o.Id).SequenceEqual(expected.Select(x=>x.id)),a.spec+" "+a.slot+" options from content");
             var o0=options.First(o=>o.Id==a.id);Check(o0.Name==a.name&&o0.Text==a.text&&o0.Cooldown==a.cooldown&&o0.Cost==a.cost&&!o0.FromWeapon,a.spec+" "+a.slot+" option fields");
-            Check(o0.Meta==(a.kind=="ads"?"Hold":a.cooldown>0?a.cooldown.ToString("0.#",inv)+" s cooldown":"No cooldown")+" · "+(a.cost>0?a.cost.ToString("0.#",inv)+" mana":"no cost"),a.spec+" "+a.slot+" meta "+o0.Meta);
+            Check(o0.Meta==(a.kind=="ads"?"Hold":a.cooldown>0?a.cooldown.ToString("0.#",inv)+" s cooldown":"No cooldown")+" · "+(a.cost>0?a.cost.ToString("0.#",inv)+(w.@class=="melee"?" stamina":" mana"):"no cost"),a.spec+" "+a.slot+" meta "+o0.Meta);
             Check(icons.Contains(o0.Icon)&&o0.Icon!="sparkles",a.spec+" "+a.slot+" icon "+o0.Icon);
         }
         {
@@ -94,9 +94,11 @@ internal static class LockerChecks
         foreach(var spec in new[]{"sword","daggers","shield","greatsword"})
         {
             var w=data.Weapon(spec);
-            Check(NativeLocker.SlotOptions(data,w,"q",options)==0&&NativeLocker.EmptySlot(w,"q").Contains("on the way"),spec+" Q is empty for now");
-            Check(NativeLocker.SlotOptions(data,w,"e",options)==1&&options[0].FromWeapon&&options[0].Id==w.secondary&&options[0].Name==NativeLocker.MeleeSpecial(spec)&&options[0].Cooldown==w.secondaryCooldown&&options[0].Cost==w.secondaryCost,spec+" E is its stamina special");
-            Check(options[0].Text.Length>10&&!options[0].Text.Contains("stamina")&&options[0].Meta.EndsWith(" stamina")&&icons.Contains(options[0].Icon),spec+" E text, meta and icon");
+            foreach(var slot in new[]{"q","e"})
+            {
+                Check(NativeLocker.SlotOptions(data,w,slot,options)==1&&!options[0].FromWeapon&&options[0].Id==data.Ability(spec,slot).id,spec+" content kit "+slot);
+                Check(options[0].Meta.EndsWith(" stamina")&&icons.Contains(options[0].Icon),spec+" stamina and icon "+slot);
+            }
         }
         Check(NativeLocker.Move(data.Weapon("sword").description,"E: ")=="Rising slash launches enemies for a brief aerial juggle.","the E sentence of a description");
         Check(NativeLocker.SlotOptions(data,data.Weapon("emperor"),"q",options)==1&&NativeLocker.SlotOptions(data,data.Weapon("ansatsuken"),"q",options)==0&&NativeLocker.EmptySlot(data.Weapon("ansatsuken"),"q").Contains("DEV"),"DEV kits show their own keys");

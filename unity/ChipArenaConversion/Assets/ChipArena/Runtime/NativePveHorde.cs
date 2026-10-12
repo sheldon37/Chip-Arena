@@ -81,7 +81,7 @@ namespace ChipArena.UnityConversion
                 if(a.Stats.attack=="smash"&&!a.Crawl){Vector3 center=at+dir*1.2f;if(new Vector2(q.Body.position.x-center.x,q.Body.position.z-center.z).magnitude>1.6f)continue;}
                 else if(q!=a.Target||dist>reach||dist>.001f&&Vector3.Dot(dir,new Vector3(d.x,0,d.z).normalized)<(a.Stats.attack=="lunge"?.5f:.35f))continue;
                 if(Math.Abs(d.y)>1.8f||!MeleeVisible(at+Vector3.up*(a.Crawl?.1f:.45f),q.Body.position,m.Owner,q.Collider,true)||Invulnerable(q))continue;
-                if(Time<q.BlockEnd){BlockProc(q,m.Owner,q.Body.position);a.StaggerAt=Time+.6f;a.External=-d.normalized*3;}else Damage(q,null,damage,new Vector3(d.x,0,d.z).normalized,impulse,false,primary:false,melee:true);
+                if(Time<q.BlockEnd){BlockProc(q,m.Owner,q.Collider.ClosestPoint(m.Body.position),"clash");a.StaggerAt=Time+.6f;a.External=-d.normalized*3;}else Damage(q,null,damage,new Vector3(d.x,0,d.z).normalized,impulse,false,primary:false,melee:true);
             }
         }
         private float HitPveAdd(NativeMinion m,NativePilot source,float amount,Vector3 dir,float impulse,Vector3? point,string kind,float radius,bool head)

@@ -197,7 +197,8 @@ namespace ChipArena.UnityConversion
                 case "ads":return w!=null&&w.id=="rifle"?"scan-line":"crosshair";case "frag-grenade":return "bomb";case "rocket":return "rocket";case "orbital-mark":return "target";
                 case "flame-lance":return "flame";case "meteor-strike":return "sun";case "tidal-wave":return "waves";case "geyser-wall":return "droplets";
                 case "blink-strike":return "zap";case "ball-lightning":return "orbit";case "shadow-shackles":return "anchor";case "singularity":return "eclipse";
-                case "sword-launch":return "move-up";case "dagger-throw":return "corner-up-right";case "shield-throw":return "shield";case "wolf-spin":return "rotate-cw";
+                case "flash-step":case "shadow-step":return "wind";case "earthsplitter":return "move-up";case "bulwark-charge":return "shield";
+                case "rising-dragon":case "sword-launch":return "move-up";case "kunai-mark":case "dagger-throw":return "corner-up-right";case "aegis-ricochet":case "shield-throw":return "shield";case "wolf-knight":case "wolf-spin":return "rotate-cw";
                 case "wavedash":return "wind";case "tatsu":return "rotate-cw";case "root":return "terminal";
             }
             return "sparkles";

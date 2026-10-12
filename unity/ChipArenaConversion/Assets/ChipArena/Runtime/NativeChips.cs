@@ -17,9 +17,9 @@ namespace ChipArena.UnityConversion
         private bool ProcOnce(string key)=>procLedger.Add(key);
         private bool ChipReady(NativePilot p,string key,float seconds){key=p.Seat.id+":"+key;if(chipCooldowns.TryGetValue(key,out float until)&&Time<until)return false;chipCooldowns[key]=Time+seconds;return true;}
         private float Heal(NativePilot p,float amount){if(p==null||p.Hp<=0||amount<=0)return 0;float actual=Math.Min(amount,Math.Max(0,(float)p.Stats["hp"]-p.Hp));p.Hp+=actual;if(actual>0)Emit(EventKind.Heal,p,p.Seat.id,p.Body.position,actual);return actual;}
-        private void BlockProc(NativePilot p,NativePilot attacker,Vector3 point)
+        private void BlockProc(NativePilot p,NativePilot attacker,Vector3 point,string detail="clash")
         {
-            Emit(EventKind.Block,p,attacker?.Seat.id??0,point,0);if(Dev(p,"ansatsuken")){CancelFighter(p);p.BlockReady=p.BlockEnd=p.Ready=p.StunEnd=0;p.ShieldUntil=Time+.1f;}if(p.BlockProcUsed)return;p.BlockProcUsed=true;
+            Emit(EventKind.Block,p,attacker?.Seat.id??0,point,0,detail,normal:attacker!=null?(attacker.Body.position-point).normalized:Vector3.up);if(Dev(p,"ansatsuken")){CancelFighter(p);p.BlockReady=p.BlockEnd=p.Ready=p.StunEnd=0;p.ShieldUntil=Time+.1f;}if(p.BlockProcUsed)return;p.BlockProcUsed=true;
             Heal(p,(float)p.Stats["blockHeal"]);if(p.Weapon.ammo>0)p.Ammo=Math.Min(Magazine(p),p.Ammo+(int)p.Stats["blockAmmo"]);
             if(p.Stats["blockPulseDamage"]>0){Emit(EventKind.BlockPulse,p,0,p.Body.position,(float)p.Stats["blockPulseDamage"],radius:3);ChipBlast(p,p.Body.position,3,(float)p.Stats["blockPulseDamage"],(float)p.Stats["blockPulseImpulse"],effect:Has(p,"supernova")?"supernova":"block-pulse");}
             if(Has(p,"supernova"))p.BlockReady=Math.Min(p.BlockReady,Time+.6f);

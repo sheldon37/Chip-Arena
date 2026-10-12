@@ -9,35 +9,40 @@ namespace ChipArena.UnityConversion
     {
         private RaycastHit[] meleeSightHits=new RaycastHit[32];
         public bool RiposteOpen(NativePilot p)=>Time<p.BlockEnd&&p.RiposteAt>=p.BlockAt;
-        private void CancelMelee(NativePilot p){p.Swing=null;p.HitPending=false;p.AttackEnd=0;}
+        private void CancelMelee(NativePilot p){p.Swing=null;p.HitPending=false;p.AttackEnd=0;p.MeleeBufferedUntil=-1;}
         private bool TryBlock(NativePilot p)
         {
+            if(p.Seat.spec=="shield"&&MeleeShots.Any(s=>s.Shield&&s.Original==p))return false;
             if(Time<p.BlockReady||Time<p.BlockEnd||Time<p.RollEnd||Incapacitated(p)||Time<p.AttackEnd)return false;
             if(LeetBlock(p))return true;
             p.BlockAt=Time;p.BlockEnd=Time+NativeMeleeRules.BlockDuration(p.Stats);p.BlockReady=Time+(Dev(p,"ansatsuken")?0:NativeMeleeRules.BlockCooldown(p.Stats));
-            CancelFighter(p);p.BlockProcUsed=false;p.RiposteAt=-100;CancelMelee(p);CancelSpecial(p);CancelAbilities(p);return true;
+            CancelFighter(p);p.BlockProcUsed=false;p.RiposteAt=-100;CancelMelee(p);CancelSpecial(p);CancelAbilities(p);Emit(EventKind.Block,p,0,p.Body.position+Vec(V3.Forward(p.Yaw))*.55f,0,"guard");return true;
         }
         private bool TryRoll(NativePilot p)
         {
             if(Dev(p,"ansatsuken"))
             {if(Time<p.RollReady||Incapacitated(p)||Time<p.BlockEnd)return false;CancelFighter(p);CancelMelee(p);CancelAbilities(p);p.Roll=new RollValues{duration=.3,distance=6.6,iframeStart=.05,iframeSeconds=.2};p.RollAt=Time;p.RollEnd=Time+.3f;p.RollReady=Time+Math.Max(.5f,2.8f*(float)p.Stats["dashCooldown"]);p.RollDirection=new Vector3(p.Input.X,0,p.Input.Z).normalized;if(p.RollDirection.sqrMagnitude<.01f)p.RollDirection=Vec(V3.Forward(p.Input.Yaw));ChipRoll(p);return true;}
             bool live=Time<p.AttackEnd||p.Swing!=null,cancel=!p.Seat.bot&&NativeMeleeRules.Standard(p.Seat.spec)&&live;
-            if(SpecialBusy(p)||!p.Grounded||Time<p.RollReady||Time<p.RollEnd||Incapacitated(p)||p.ReloadEnd>Time||p.AbilityCast!=null||p.CastAt>0||live&&!cancel||Time<p.BlockEnd&&!RiposteOpen(p))return false;
+            bool abilityWindup=p.Special?.Fx!=null&&Time<p.Special.Release;
+            if(SpecialBusy(p)&&!abilityWindup||!p.Grounded||Time<p.RollReady||Time<p.RollEnd||Incapacitated(p)||p.ReloadEnd>Time||p.AbilityCast!=null||p.CastAt>0||live&&!cancel&&!abilityWindup||Time<p.BlockEnd&&!RiposteOpen(p))return false;
             var roll=NativeContentRules.Roll(Content,p.Seat.spec,p.Stats);if(p.Stamina<roll.cost)return false;
-            if(cancel&&NativeMeleeRules.BeforeStrike(p.Swing,Time))p.Ready=Math.Min(p.Ready,Time+(float)roll.duration);
+            if(abilityWindup||cancel&&NativeMeleeRules.BeforeStrike(p.Swing,Time))p.Ready=Math.Min(p.Ready,Time+(float)roll.duration);
             p.Roll=roll;p.RollAt=Time;p.RollEnd=Time+(float)roll.duration;p.RollReady=Time+(float)roll.cooldown;p.Stamina-=(float)roll.cost;
-            CancelAbilities(p);CancelMelee(p);p.RegenAt=p.RollEnd+.45f;p.BlockEnd=0;p.MoveVelocity=Vector3.zero;
+            CancelSpecial(p);CancelAbilities(p);CancelMelee(p);p.RegenAt=p.RollEnd+.45f;p.BlockEnd=0;p.MoveVelocity=Vector3.zero;
             p.RollDirection=new Vector3(p.Input.X,0,p.Input.Z).normalized;if(p.RollDirection.sqrMagnitude<.01f)p.RollDirection=Quaternion.Euler(0,p.Input.Yaw,0)*Vector3.forward;
             ChipRoll(p);
             return true;
         }
-        private bool TryMelee(NativePilot p)
+        private bool TryMelee(NativePilot p,bool chained=false)
         {
-            if(SpecialBusy(p)||!NativeMeleeRules.Standard(p.Seat.spec)||Time<p.RollEnd||Incapacitated(p)||Time<p.AttackEnd||Time<p.Ready||p.ReloadEnd>Time||p.AbilityCast!=null||p.CastAt>0||Time<p.BlockEnd&&!RiposteOpen(p))return false;
+            if(SpecialBusy(p)||!NativeMeleeRules.Standard(p.Seat.spec)||Time<p.RollEnd||Incapacitated(p)||!chained&&(Time<p.AttackEnd||Time<p.Ready)||p.ReloadEnd>Time||p.AbilityCast!=null||p.CastAt>0||Time<p.BlockEnd&&!RiposteOpen(p))return false;
             float cost=(float)((p.Weapon.cost+p.Stats["extraStrikes"]*2)*p.Stats["resourceCost"]);if(p.Stamina<cost)return false;
-            float scale=ChipMeleeStart(p);p.Stamina-=cost;p.Combo++;p.LastAttack=p.AttackAt=Time;p.Yaw=p.Input.Yaw;
-            p.Swing=NativeMeleeRules.Begin(p.Weapon,p.Stats,Time,p.Combo+1,p.Input.Yaw*Mathf.Deg2Rad);
+            float scale=ChipMeleeStart(p);p.Stamina-=cost;if(Time>p.MeleeComboUntil)p.Combo=-1;p.Combo++;p.LastAttack=p.AttackAt=Time;if(!chained)p.Yaw=p.Input.Yaw;
+            p.Swing=NativeMeleeFeel.Begin(p.Weapon,p.Stats,Time,p.Combo+1,p.Yaw*Mathf.Deg2Rad);
+            p.Swing.SprintAttack=!chained&&p.Grounded&&NativeMeleeFeel.SprintAttack(p.Input,p.Pose.Sprinting);
+            AimMeleeStep(p,chained);
             p.Swing.Id=nextAttack++;p.Swing.DamageScale=scale;p.Swing.Remaining=(int)p.Stats["extraStrikes"];p.Swing.Until=Math.Max(p.Swing.Until,Time+(float)((p.Weapon.windup+.16+p.Stats["extraStrikes"]*.24+.12)/p.Stats["attackRate"]));
+            p.MeleeComboUntil=p.Swing.Until+NativeMeleeFeel.ComboPause;
             p.HitAt=p.Swing.HitAt;p.HitPending=true;p.AttackEnd=p.Ready=p.Swing.Until;p.RegenAt=p.AttackEnd+.45f;
             p.BlockEnd=0;p.MoveVelocity=Vector3.zero;return true;
         }
@@ -54,20 +59,20 @@ namespace ChipArena.UnityConversion
         }
         private void StepMelee(NativePilot p)
         {
-            var swing=p.Swing;if(swing==null)return;
-            if(Time>swing.HitUntil){p.HitPending=false;if(swing.Remaining>0){p.Combo++;float rate=(float)p.Stats["attackRate"];var echo=NativeMeleeRules.Begin(p.Weapon,p.Stats,Time,p.Combo+1,p.Input.Yaw*Mathf.Deg2Rad);echo.Id=swing.Id;echo.Followup=true;echo.Remaining=swing.Remaining-1;echo.DamageScale=.45f;echo.HitAt=Time+.08f/rate;echo.HitUntil=echo.HitAt+.16f/rate;echo.StepAt=echo.At+.08f/rate*.55f;echo.StepUntil=echo.HitAt+.16f/rate*.8f;echo.Until=Math.Max(swing.Until,echo.HitUntil+NativeMeleeRules.Recovery(p.Seat.spec)/rate);p.Swing=echo;p.AttackAt=p.LastAttack=Time;p.HitAt=echo.HitAt;p.HitPending=true;p.AttackEnd=p.Ready=echo.Until;p.RegenAt=p.AttackEnd+.45f;}else if(Time>=swing.Until)p.Swing=null;return;}
+            var swing=p.Swing;if(swing==null)return;TurnMelee(p);
+            if(Time>swing.HitUntil){p.HitPending=false;if(swing.Remaining>0){p.Combo++;float rate=(float)p.Stats["attackRate"];var echo=NativeMeleeFeel.Begin(p.Weapon,p.Stats,Time,p.Combo+1,p.Yaw*Mathf.Deg2Rad);echo.Id=swing.Id;echo.Followup=true;echo.Remaining=swing.Remaining-1;echo.DamageScale=.45f;echo.HitAt=Time+.08f/rate;echo.HitUntil=echo.HitAt+.16f/rate;echo.StepAt=echo.At+.08f/rate*.55f;echo.StepUntil=echo.HitAt+.16f/rate*.8f;echo.Until=Math.Max(swing.Until,echo.HitUntil+NativeMeleeRules.Recovery(p.Seat.spec)/rate);p.Swing=echo;p.MeleeComboUntil=echo.Until+NativeMeleeFeel.ComboPause;p.AttackAt=p.LastAttack=Time;p.HitAt=echo.HitAt;p.HitPending=true;p.AttackEnd=p.Ready=echo.Until;p.RegenAt=p.AttackEnd+.45f;}else if(Time>=swing.Until)p.Swing=null;return;}
             if(Time<swing.HitAt)return;
             Vector3 origin=p.Body.position+Vector3.up*.15f;
             foreach(var target in Pilots)
             {
                 if(target.Hp<=0||!CanHit(p,target))continue;var delta=target.Body.position-origin;
                 if(!NativeMeleeRules.Contact(swing,Time,Vec(delta),.45f)||!swing.Contact("pilot:"+target.Seat.id,Time,Vec(delta),.45f,MeleeVisible(origin,target.Body.position,p,target.Collider)))continue;
-                float actual=Damage(target,p,(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),(delta+Vector3.up*.15f).normalized,(float)(p.Weapon.impulse*p.Stats["impulse"]*swing.DamageScale),false,melee:true,weaponHit:true);
+                float actual=Damage(target,p,(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),(delta+Vector3.up*.15f).normalized,(float)(p.Weapon.impulse*p.Stats["impulse"]*swing.DamageScale),false,melee:true,weaponHit:true,hitPoint:target.Collider.ClosestPoint(origin));
                 if(actual>0){ImpactChips(p,target,null,target.Body.position,delta.normalized,swing.Id,swing.Id);if(target.Hp>0)PrimaryMeleeImpact(p,target);}
                 if(p.Hp<=0||p.Swing!=swing)return; // A block or thorns death interrupts remaining contacts.
             }
             foreach(var m in Minions.ToArray())
-            {Vector3 delta=m.Body.position-origin;if(m.Hp<=0||!CanHit(p,m)||!swing.Contact("minion:"+m.Id,Time,Vec(delta),.3f,MeleeVisible(origin,m.Body.position,p,m.Collider)))continue;Vector3 point=m.Body.position;float actual=HitMinion(m,p,(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),delta.normalized,(float)(p.Weapon.impulse*p.Stats["impulse"]*swing.DamageScale));MinionWeaponHit(m,p,actual,(float)(p.Weapon.burn+p.Stats["burn"]),(float)p.Stats["poison"]);ImpactChips(p,null,null,point,delta.normalized,swing.Id,swing.Id);}
+            {Vector3 delta=m.Body.position-origin;if(m.Hp<=0||!CanHit(p,m)||!swing.Contact("minion:"+m.Id,Time,Vec(delta),.3f,MeleeVisible(origin,m.Body.position,p,m.Collider)))continue;Vector3 point=m.Body.position;float actual=MeleeMinionHit(m,p,(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),delta.normalized,(float)(p.Weapon.impulse*p.Stats["impulse"]*swing.DamageScale));MinionWeaponHit(m,p,actual,(float)(p.Weapon.burn+p.Stats["burn"]),(float)p.Stats["poison"]);ImpactChips(p,null,null,point,delta.normalized,swing.Id,swing.Id);}
             foreach(var prop in Props.ToArray())
             {
                 if(prop==null||prop.Indestructible)continue;Vector3 delta=prop.transform.position-origin;float extra=Math.Min(.8f,prop.Definition.size.Length*.3f);
@@ -86,7 +91,7 @@ namespace ChipArena.UnityConversion
         private bool StaggerMelee(NativePilot p,float seconds)
         {
             // A normal melee hit never staggers a boss, a downed/juggled target, or a pilot still in the recovery grace.
-            if(p.Hp<=0||p.Seat.spec=="siren"||Pve?.Boss==p||Downed(p)||p.Juggle!=null||!NativeMeleeRules.StaggerReady(Time,p.StunEnd,p.StaggerImmune))return false;
+            if(p.ArmourHitUntil>=Time&&p.ArmourHitUntil>0||p.Hp<=0||p.Seat.spec=="siren"||Pve?.Boss==p||Downed(p)||p.Juggle!=null||!NativeMeleeRules.StaggerReady(Time,p.StunEnd,p.StaggerImmune))return false;
             StunMelee(p,seconds);p.StaggerImmune=NativeMeleeRules.StaggerImmuneThrough(p.StunEnd);return true;
         }
         private void SuccessfulMeleeBlock(NativePilot blocker,NativePilot attacker,float damage,Vector3 direction,float impulse)
