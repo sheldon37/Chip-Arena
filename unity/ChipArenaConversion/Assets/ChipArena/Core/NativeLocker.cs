@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
         public static bool Soon(int category)=>category==WeaponSkins;
 
         // Restricted cosmetics (shown only when NativeCosmeticRules.Allowed lets them through) carry a DEV badge.
-        public static bool DevItem(string id)=>id!=null&&(id.StartsWith("dev-",StringComparison.Ordinal)||id=="auditor-halo");
+        public static bool DevItem(string id)=>id!=null&&(id.StartsWith("dev-",StringComparison.Ordinal)||id=="auditor-halo"||id==NativeHatLooks.SheldonHead);
         // A cosmetic label without its DEV marking (the badge says it instead): "Gibber · DEV ONLY" -> "Gibber",
         // "DEV · Rain Warrior" -> "Rain Warrior".
         public static string Clean(string label)
@@ -98,6 +98,7 @@ namespace ChipArena.UnityConversion
                 case "halo":return "A soft ring above the head.";
                 case "cowboy":return "Wide brim, frontier style.";
                 case "auditor-halo":return "Red broken arcs ringed by black flames.";
+                case "sheldon-head":return "A dark hood, a glowing grin and a broken ring.";
                 default:return "";
             }
         }

@@ -15,6 +15,8 @@ namespace ChipArena.UnityConversion
         // The portrait backdrop picked in the Locker (NativePortraitBacks key; absent in older saves: the tick ring).
         public string lobbyBack=NativePortraitBacks.Default;
         public bool developmentConsole;
+        // The headwear and backdrop colours picked in the Locker (NativeHatLooks: "" Auto, else #rrggbb; absent in older saves: Auto).
+        public string hatColor="",backColor="";
     }
     public sealed partial class ConversionGame : MonoBehaviour
     {

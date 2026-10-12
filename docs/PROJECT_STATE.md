@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-12 hats: `claude/hats` on shared `f4252ae` adds Locker HAT COLOUR and BACKDROP COLOUR pickers (Auto keeps the old look; colours travel like the backdrop key) and the DEV-only Sheldon Head hood (procedural; animated face and ring). The account service already stores both colours and the DEV ids (PR #136); its Worker deploy is pending. On the branch; not pushed, merged or released. Unity Editor/Windows not run; see DEV_LOG.
+
 2026-10-12 night handoff: `codex/unity-night-handoff-20261012` on `3a6b2dd`, refreshed through shared `a090abf`, integrates sprint PR #133, landing-timed melee jump attacks with guest prediction, S0b sweep corrections and explicit Q/E recovery/wall/hand/flight state. Account source accepts tints and DEV-only Sheldon cosmetics; exact skin property contract has not landed. See DEV_LOG/MELEE-SIMULATION-HANDOFF and the task PR for validation and merge receipts. Unity/Windows, native duel measurements, account-service deployment and compiled Update publication remain pending.
 
 2026-10-12 sprint primaries: `codex/unity-sprint-attacks-20261012` on shared `1af916c` implements the four owner-specified sprint attacks, common host/guest timing, twin hits, shield stagger/knockback and greatsword hop/ring. Managed/relay checks (428 PASS), Unity API compilation and source validation pass. Published as PR #133 and merged into the shared head by Claude on 2026-10-12. Unity/Windows play, Claude pose/VFX acceptance and compiled Update publication remain pending; see DEV_LOG and MELEE-SIMULATION-HANDOFF.

@@ -194,7 +194,7 @@ namespace ChipArena.UnityConversion
                 corpse=new NativeCorpse(death,rig,arena,slice);corpses[death.id]=corpse;if(temporary)rig.Dispose();
                 BleedDeath(death,slice,KillClock(arena));
                 bool counted=pilot&&!death.kept&&!remains;int budget=death.kept?NativeKillEffectRules.KeptBudget:counted?NativeKillEffectRules.MaxDeathVoxels-killUsed:NativeKillEffectRules.MaxDeathVoxels;
-                bool hatModel=!string.IsNullOrEmpty(death.actor?.Hat)&&death.actor.Hat!="none"&&sourceModels.Has("hat-"+death.actor.Hat);
+                bool hatModel=!string.IsNullOrEmpty(death.actor?.Hat)&&death.actor.Hat!="none"&&sourceModels.Has(HatModel(death.actor.Hat,death.actor.HatColor));
                 int band=pilot&&live!=null&&(death.model??"pilot")=="pilot"?NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,live.Seat.AuthorityBoss,live.Seat.team,live.Seat.id==arena.LocalId):-1;
                 corpse.SetupKill(budget,Mathf.Clamp01(EffectsQuality),counted,hatModel,band,NativeStructureFxPresentation.KillFloor(arena));if(counted)killUsed+=corpse.FxCount;
             }
@@ -242,14 +242,16 @@ namespace ChipArena.UnityConversion
                     ice=new Color((float)r,(float)g,(float)b,1);var glow=new Color((float)er,(float)eg,(float)eb,1);
                     if(sourceModels.QueueRecolor(model,Matrix4x4.identity,corpse.PresentedBone,corpse.ShownBone,ice,glow,alpha))
                     {
-                        recolored=true;if(hat)sourceModels.QueueRecolor(corpse.HatModel,Matrix4x4.identity,corpse.PresentedBone,null,ice,glow,alpha);
+                        recolored=true;if(hat)sourceModels.QueueRecolor(corpse.HatModel,Matrix4x4.identity,corpse.PresentedBone,null,ice,glow,alpha);else if(corpse.HatModel!=null&&death.actor?.Hat==NativeSheldonHead.Hat)sourceModels.QueueRecolor(corpse.HatModel,Matrix4x4.identity,corpse.PresentedBone,SheldonBody,ice,glow,alpha);
                         if(weapon)sourceModels.QueueRecolor(corpse.LooseModel,drop.Value,null,null,ice,glow,alpha);
                     }
                 }
                 if(!recolored)
                 {
                     sourceModels.QueueShadowless(model,Matrix4x4.identity,corpse.PresentedBone,corpse.ShownBone,BodyTint(death.actor?.BodyColor),AccentTint(death.actor?.AccentColor),alpha);
-                    if(hat&&!AuditorHalo(death.actor?.Hat,corpse.PresentedBone(CapturedRig.Head),clock,alpha,HaloReduced,0,null))sourceModels.QueueShadowless(corpse.HatModel,Matrix4x4.identity,corpse.PresentedBone,null,null,null,alpha);if(weapon)sourceModels.QueueShadowless(corpse.LooseModel,drop.Value,null,null,null,null,alpha);
+                    if(hat&&!AuditorHalo(death.actor?.Hat,corpse.PresentedBone(CapturedRig.Head),clock,alpha,HaloReduced,0,null,color:death.actor?.HatColor))sourceModels.QueueShadowless(corpse.HatModel,Matrix4x4.identity,corpse.PresentedBone,null,HatBody(death.actor?.Hat,death.actor?.HatColor),null,alpha);
+                    // A thrown or crushed head takes the Sheldon Head's hood with it; its mantle and drapes stay on the body.
+                    else if(!hat&&corpse.HatModel!=null&&death.actor?.Hat==NativeSheldonHead.Hat)sourceModels.QueueShadowless(corpse.HatModel,Matrix4x4.identity,corpse.PresentedBone,SheldonBody,HatBody(death.actor.Hat,death.actor.HatColor),null,alpha);if(weapon)sourceModels.QueueShadowless(corpse.LooseModel,drop.Value,null,null,null,null,alpha);
                 }
                 // team-identity.ts bands ride in the part copies (unlit team colour; Frostbreak turns them ice, lit here). They are
                 // opaque, so a fading body drops them halfway.

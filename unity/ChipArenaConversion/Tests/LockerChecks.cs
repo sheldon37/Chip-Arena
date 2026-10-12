@@ -33,7 +33,8 @@ internal static class LockerChecks
         Check(ui.Contains("for(int i=0;i<NativeLocker.Count;i++)")&&ui.Contains("NativeLocker.Labels[i]")&&ui.Contains("lockerTabNext=i;"),"the rail offers every category");
 
         // 2. Restricted cosmetics stay hidden: every list comes through NativeCosmeticRules.Allowed, and the gate itself is
-        // unchanged (dev- items and the Auditor Halo need a grant; the Gibber needs DEV access).
+        // unchanged but for the Sheldon Head (dev- items and the Auditor Halo need a grant; the Gibber and the Sheldon Head need
+        // DEV access itself).
         Check(ui.Contains("foreach(var id in NativeCosmeticRules.Hats)if(NativeCosmeticRules.Allowed(access,\"hat\",id))lockerHats.Add(id);")
             &&ui.Contains("foreach(var id in NativeCosmeticRules.Kills)if(NativeCosmeticRules.Allowed(access,\"effect\",id))lockerKills.Add(id);")
             &&ui.Contains("foreach(var id in NativeCosmeticRules.Intros)if(NativeCosmeticRules.Allowed(access,\"intro\",id))lockerIntros.Add(id);")
@@ -41,13 +42,17 @@ internal static class LockerChecks
         foreach(var raw in new[]{"NativeCosmeticRules.Hats","NativeCosmeticRules.Kills","NativeCosmeticRules.Intros"})Check(Count(ui,raw)==1,raw+" is read only by the gated list builder");
         Check(Regex.Matches(ui,@"for\(int i=0;i<locker(Hats|Kills|Intros)\.Count;i\+\+\)").Count==3,"the cards draw the gated lists");
         Check(ui.Contains("NativeLoadoutText.InClass")||ui.Contains("MenuWeapons();"),"the weapon cards use the loadout's gated weapon list (MenuWeapons)");
-        Check(profile.Contains("public static bool Allowed(NativeAccess a,string type,string id)=>id!=null&&((id!=\"sheldon-head\"&&id!=\"sheldon-intro\")||(a??NativeAccess.Guest).Developer&&(a??NativeAccess.Guest).Expires>DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())&&(id!=\"dev-gibber\"||(a??NativeAccess.Guest).Developer)&&( !id.StartsWith(\"dev-\")&&id!=\"auditor-halo\"||(a??NativeAccess.Guest).Allows(type+\":\"+id,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()));"),"legacy grants remain gated and Sheldon cosmetics additionally require unexpired DEV access");
+        var gate=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core/NativeHatLooks.cs"));
+        Check(profile.Contains("public static bool Allowed(NativeAccess a,string type,string id)=>NativeCosmeticGate.Allowed(a,type,id,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());")
+            &&gate.Contains("public static bool DevOnly(string id)=>id==\"dev-gibber\"||id==NativeHatLooks.SheldonHead||id==SheldonIntro;")
+            &&gate.Contains("public static bool Restricted(string id)=>id!=null&&(id.StartsWith(\"dev-\",StringComparison.Ordinal)||id==\"auditor-halo\"||id==NativeHatLooks.SheldonHead||id==SheldonIntro);")
+            &&gate.Contains("public static bool Allowed(NativeAccess a,string type,string id,double now)=>id!=null&&(!DevOnly(id)||(a??NativeAccess.Guest).Developer)&&(!Restricted(id)||(a??NativeAccess.Guest).Allows(type+\":\"+id,now));"),"the cosmetic gate is unchanged for legacy grants (moved to Core; the Sheldon Head and Sheldon Intro join the Gibber behind live DEV access)");
         var hats=Ids(profile,"Hats");var kills=Ids(profile,"Kills");var intros=Ids(profile,"Intros");
-        Check(hats.Length==11&&kills.Length==22&&intros.Length==22,"cosmetic id lists parsed ("+hats.Length+"/"+kills.Length+"/"+intros.Length+")");
+        Check(hats.Length==12&&kills.Length==22&&intros.Length==22,"cosmetic id lists parsed ("+hats.Length+"/"+kills.Length+"/"+intros.Length+")");
         Check(intros.SequenceEqual(NativeIntroRules.Entrances.OrderBy(i=>Array.IndexOf(intros,i)))&&intros.OrderBy(i=>i).SequenceEqual(NativeIntroRules.Entrances.OrderBy(i=>i)),"the Locker offers exactly the staged entrances");
         foreach(var id in NativeIntroRules.Procedural)Check(NativeLocker.IntroIcon(id)!=null&&!NativeLocker.DevItem(id),"the procedural entrance "+id+" has its icon and no DEV badge");
         foreach(var id in NativeIntroRules.Retired)Check(Array.IndexOf(intros,id)<0&&NativeLocker.IntroText(id).Length==0&&NativeLocker.IntroIcon(id)==null,"the retired "+id+" is gone from the Locker");
-        foreach(var id in hats.Concat(kills).Concat(intros))Check(NativeLocker.DevItem(id)==(id.StartsWith("dev-")||id=="auditor-halo"),"DEV badge for "+id);
+        foreach(var id in hats.Concat(kills).Concat(intros))Check(NativeLocker.DevItem(id)==(id.StartsWith("dev-")||id=="auditor-halo"||id=="sheldon-head"),"DEV badge for "+id);
         foreach(var id in hats)Check(NativeLocker.HatText(id).Length>0,"headwear text for "+id);
         foreach(var id in kills)Check(NativeLocker.KillText(id).Length>0&&(NativeLocker.KillColor(id)!=0xc0c1ca||id=="ragdoll"),"kill effect text and colour for "+id);
         foreach(var id in intros)Check(NativeLocker.IntroText(id).Length>0,"entrance text for "+id);
@@ -62,7 +67,7 @@ internal static class LockerChecks
         Check(home.Contains("private void CustomizeScreen(float age)=>LockerScreen(age);")&&home.Contains("if(screen==MenuScreen.Customize&&menuScreen!=MenuScreen.Customize)LockerEnter();"),"Customize opens the Locker and takes its baseline on entry");
         Check(home.Contains("if(menuScreen==MenuScreen.Customize){LockerBack();return;}")&&ui.Contains("private void LockerBack(){if(lockerConfirm){lockerConfirm=false;return;}if(LockerDirty())lockerConfirm=true;else LockerLeave();}"),"Escape and close ask before dropping unsaved changes");
         Check(ui.Contains("private void LockerLeave(){lockerConfirm=false;Go(InRoom?MenuScreen.Lobby:MenuScreen.Home);}")&&lobby.Contains("(\"palette\",\"Customize\",MenuScreen.Customize)"),"the lobby's Customize entry returns to the lobby");
-        foreach(var field in new[]{"name","weapon","lobbyPose","bodyColor","accentColor","hat","killEffect","intro","introText","overrideIntro"})
+        foreach(var field in new[]{"name","weapon","lobbyPose","bodyColor","accentColor","hat","killEffect","intro","introText","overrideIntro","lobbyBack","hatColor","backColor"})
             Check(Regex.IsMatch(ui,@"b\.\w+!=prefs\."+field+@"\b")&&Regex.IsMatch(ui,@"prefs\."+field+@"=b\.\w+;"),"the baseline covers and restores prefs."+field);
         Check(profile.Contains("LockerRebase();};"),"an account profile loaded meanwhile becomes the baseline");
 
@@ -74,7 +79,7 @@ internal static class LockerChecks
         // 5. Nothing inside the scroll clip is drawn rotated or scaled (a transformed draw would carry the clip with it).
         Check(!ui.Contains("U.Push("),"no transformed draws in the Locker");
         // 6. The turntable turns without deriving the portrait again.
-        Check(portraits.Contains("public bool Same(in PortraitLook o)=>Spec==o.Spec&&Pose==o.Pose&&Hat==o.Hat&&Body==o.Body&&Accent==o.Accent;")&&portraits.Contains("slot.Yaw=look.Yaw;")&&portraits.Contains("bones[b]=spin*Matrix4x4.TRS("),"yaw is a render input, not part of the look");
+        Check(portraits.Contains("public bool Same(in PortraitLook o)=>Spec==o.Spec&&Pose==o.Pose&&Hat==o.Hat&&Body==o.Body&&Accent==o.Accent&&HatColor==o.HatColor;")&&portraits.Contains("slot.Yaw=look.Yaw;")&&portraits.Contains("bones[b]=spin*Matrix4x4.TRS("),"yaw is a render input, not part of the look");
 
         // 7. Ability slots read from content, by spec and slot; several options per slot are kept in content order.
         var options=new List<NativeLocker.AbilityOption>();var inv=CultureInfo.InvariantCulture;

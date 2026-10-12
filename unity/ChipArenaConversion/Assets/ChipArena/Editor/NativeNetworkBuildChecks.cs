@@ -21,6 +21,15 @@ namespace ChipArena.UnityConversion.Editor
             var backReady=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="ready",profile=new NativeProfile{cosmetics=new NativeCosmetics{lobbyBack="circuit"}}}));
             if(backPrefs.lobbyBack!="circuit"||backReady.profile.cosmetics.lobbyBack!="circuit"||NativePortraitBacks.Index(JsonUtility.FromJson<ConversionPreferences>("{\"name\":\"Old Pilot\"}").lobbyBack)!=NativePortraitBacks.TickRing)
                 throw new Exception("Saved pilot/ready DTO lost the portrait backdrop, or an old save did not load as the tick ring");
+            // Headwear and backdrop colours (NativeHatLooks) travel the same way; an old save and an old profile are Auto.
+            var colourPrefs=JsonUtility.FromJson<ConversionPreferences>(JsonUtility.ToJson(new ConversionPreferences{hatColor="#22e6ff",backColor="#ff3dcf"}));
+            var colourReady=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="ready",profile=new NativeProfile{cosmetics=new NativeCosmetics{hatColor="#22e6ff",backColor="#ff3dcf",hat="sheldon-head"}}}));
+            var oldPrefs=JsonUtility.FromJson<ConversionPreferences>("{\"name\":\"Old Pilot\"}");
+            if(colourPrefs.hatColor!="#22e6ff"||colourPrefs.backColor!="#ff3dcf"||colourReady.profile.cosmetics.hatColor!="#22e6ff"||colourReady.profile.cosmetics.backColor!="#ff3dcf"||!NativeHatLooks.IsAuto(oldPrefs.hatColor)||!NativeHatLooks.IsAuto(oldPrefs.backColor))
+                throw new Exception("Saved pilot/ready DTO lost the hat or backdrop colour, or an old save did not load as Auto");
+            // The Sheldon Head is DEV-only: the host strips it from a guest or a grant, keeps it for DEV access.
+            if(NativeCosmeticRules.Hat("sheldon-head",NativeAccess.Guest)!="none"||NativeCosmeticRules.Hat("sheldon-head",null)!="none"||NativeCosmeticRules.Hat("cap",NativeAccess.Guest)!="cap")
+                throw new Exception("A non-DEV request kept the Sheldon Head");
             var original=authority.Local.Death;
             var scene=EditorSceneManager.NewPreviewScene();NativeArena replica=null;
             try
@@ -93,6 +102,13 @@ namespace ChipArena.UnityConversion.Editor
                 if(!backs.Valid(authority.Content))throw new Exception("Portrait backdrop frame failed validation");replica.ApplyFrame(backs,authority.LocalId);
                 if(replica.Match.Seat(backs.seats[0].id)?.lobbyBack!="warp"||replica.Match.Seat(backs.seats[1].id)?.lobbyBack!=NativePortraitBacks.Default)throw new Exception("Guest/replay lost or did not normalise the portrait backdrop");
                 var longBack=NativeFrameCodec.Clone(copy);longBack.seats[0].lobbyBack=new string('x',NativePortraitBacks.MaxLength+1);if(longBack.Valid(authority.Content))throw new Exception("Over-long portrait backdrop accepted");
+                // Hat and backdrop colours ride the seat frame too: a colour arrives (lower-cased), junk is Auto, an older
+                // host's frame without them is Auto, an over-long one fails validation; the Sheldon Head id is shown as sent.
+                var colours=NativeFrameCodec.Clone(copy);colours.seats[0].hatColor="#22E6FF";colours.seats[0].backColor="#ff3dcf";colours.seats[0].hat="sheldon-head";colours.seats[1].hatColor="red";colours.seats[1].backColor=null;colours=NativeFrameCodec.Clone(colours);
+                if(!colours.Valid(authority.Content))throw new Exception("Colour frame failed validation");replica.ApplyFrame(colours,authority.LocalId);
+                var cs0=replica.Match.Seat(colours.seats[0].id);var cs1=replica.Match.Seat(colours.seats[1].id);
+                if(cs0?.hatColor!="#22e6ff"||cs0.backColor!="#ff3dcf"||cs0.hat!="sheldon-head"||cs1?.hatColor!=""||cs1.backColor!="")throw new Exception("Guest/replay lost or did not normalise the hat/backdrop colours or the DEV hat");
+                var longColour=NativeFrameCodec.Clone(copy);longColour.seats[0].hatColor="#22e6ff00";if(longColour.Valid(authority.Content))throw new Exception("Over-long hat colour accepted");
                 replica.ApplyFrame(copy,authority.LocalId);
                 var melee=NativeFrameCodec.Clone(copy);var ma=melee.snapshot.Actors[0];
                 ma.CommitAt=1;ma.CommitUntil=1.62f;ma.CommitYaw=24;ma.SwingAt=1.14f;ma.SwingUntil=1.30f;ma.StepAt=1.077f;ma.StepUntil=1.268f;ma.StepDistance=2.2f;ma.ChainAt=1.5f;ma.ComboUntil=2.02f;ma.MeleeBufferUntil=1.8f;ma.SprintAttack=ma.OpenerLunge=true;
