@@ -66,6 +66,7 @@ internal static class Program
             BloomChecks.Run(root);
             WeaponFxChecks.Run(root,data);
             WeaponSkinChecks.Run(root,data);
+            ChipModuleChecks.Run(root,data);
             BodySkinChecks.Run(root,data);
             BrickfallSceneryChecks.Run(root);
             foreach(var result in EventFeedbackChecks.Run(root))Console.WriteLine("PASS "+result);

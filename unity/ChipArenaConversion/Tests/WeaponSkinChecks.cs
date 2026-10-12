@@ -160,7 +160,8 @@ namespace ChipArena.UnityConversion
                 Check(!NativeWeaponModels.Stretch(spec,WeaponStretch.Blade,1,out _,out _)&&!NativeWeaponModels.Stretch(spec,WeaponStretch.Rigid,float.NaN,out _,out _),spec+" no correction at reach 1 or invalid reach");
             }
 
-            // 5. Chip modules and blade enchants attach to the Standard models (they are placed from the shared sockets).
+            // 5. The source's chip pieces and enchants, placed from the shared sockets, still land on or by the Standard models. (A
+            // Standard weapon now draws the designed modules instead: Core/NativeChipModules*.cs, checked by ChipModuleChecks.)
             var pieces=new WeaponPiece[NativeWeaponDressing.MaxPieces];
             var chips=new Dictionary<string,int>{{"ricochet",2},{"velocity",2},{"magazine",3},{"fire-rate",2},{"demolition",1},{"overclock",1}};
             foreach(var spec in designed)

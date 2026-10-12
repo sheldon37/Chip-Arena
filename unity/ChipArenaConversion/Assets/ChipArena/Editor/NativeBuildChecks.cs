@@ -115,6 +115,10 @@ namespace ChipArena.UnityConversion.Editor
                 int designed=0;foreach(var spec in NativeWeaponSkins.Weapons){if(!models.Has(NativeWeaponSkins.PrototypeHeld(spec)))throw new Exception("Missing Prototype Series model: "+spec);if(!NativeWeaponModels.Designed(spec))continue;designed++;for(int tier=0;tier<NativeWeaponSkins.Tiers;tier++)if(!models.Has(NativeWeaponSkins.StandardModel(spec,tier)??""))throw new Exception("Missing Standard weapon model: "+spec+" tier "+tier);if(!models.Has(NativeWeaponSkins.StandardLoose(spec)??""))throw new Exception("Missing Standard loose weapon model: "+spec);}
                 if(models.StandardWeaponModels!=designed*(NativeWeaponSkins.Tiers+1))throw new Exception("Standard weapon model count "+models.StandardWeaponModels);
                 Debug.Log("PASS native weapon skins: "+NativeWeaponSkins.Weapons.Length+" weapons with Prototype Series models, "+designed+" with Standard models ("+models.StandardWeaponModels+" Standard tier and loose models)");
+                // Chip modules on the Standard skins (Core/NativeChipModules*.cs): every part mesh the layouts can place is in the bank.
+                int chipMeshes=0;foreach(var m in NativeChipModules.Meshes()){chipMeshes++;if(!models.Has(NativeChipModules.ModelId(m.spec,m.part,m.variant,m.tier,m.left)??""))throw new Exception("Missing chip module mesh: "+(m.spec??"shared")+" "+m.part+" "+m.variant+" tier "+m.tier+(m.left?" left":""));}
+                if(models.ChipModuleModels!=chipMeshes)throw new Exception("Chip module mesh count "+models.ChipModuleModels+" / "+chipMeshes);
+                Debug.Log("PASS native chip modules: "+models.ChipModuleModels+" Standard-skin module meshes (parts, variants, tiers, the left dagger's copies)");
                 // Pilot body skins (Core/NativeBodySkins.cs): the Standard and Sheldon Clothes bodies at three tiers each, within budget,
                 // every part lit by its own armour table; the Prototype stays the bank's "pilot".
                 if(models.PilotBodyModels!=6||!models.Has(NativeBodySkins.PrototypeModel))throw new Exception("Pilot body models are incomplete: "+models.PilotBodyModels);

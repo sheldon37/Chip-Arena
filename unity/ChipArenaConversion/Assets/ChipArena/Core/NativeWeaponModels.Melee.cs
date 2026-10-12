@@ -156,8 +156,8 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- shield: a bowed heater shield (steel rim, enamel field, a chip-circuit emblem round a glowing boss) and a side sword ----
-        private static readonly float[] HeaterOutline={0,-.34f,.12f,-.27f,.21f,-.17f,.27f,-.06f,.296f,.06f,.302f,.2f,.302f,.355f,.288f,.402f,.25f,.42f,0,.425f,-.25f,.42f,-.288f,.402f,-.302f,.355f,-.302f,.2f,-.296f,.06f,-.27f,-.06f,-.21f,-.17f,-.12f,-.27f};
-        private static float Bow(float x)=>.032f*(1-(x/.3f)*(x/.3f));
+        internal static readonly float[] HeaterOutline={0,-.34f,.12f,-.27f,.21f,-.17f,.27f,-.06f,.296f,.06f,.302f,.2f,.302f,.355f,.288f,.402f,.25f,.42f,0,.425f,-.25f,.42f,-.288f,.402f,-.302f,.355f,-.302f,.2f,-.296f,.06f,-.27f,-.06f,-.21f,-.17f,-.12f,-.27f};
+        internal static float Bow(float x)=>.032f*(1-(x/.3f)*(x/.3f));
         private static Vector3[] Bowed(Vector3[] ring,float z){var o=new Vector3[ring.Length];for(int i=0;i<o.Length;i++)o[i]=V(ring[i].X,ring[i].Y,z+Bow(ring[i].X));return o;}
         private static void Shield(WeaponSculpt k)
         {
