@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
             switch(spec)
             {
                 case "sword":return Sword;case "daggers":return Daggers;case "greatsword":return Greatsword;case "shield":return Shield;
-                case "rifle":case "machinegun":return Shooting;case "pistol":case "emperor":case "ansatsuken":return Unarmed;
+                case "rifle":case "machinegun":return Shooting;case "bow":case "pistol":case "emperor":case "ansatsuken":return Unarmed;
                 case "fire":case "water":case "lightning":case "darkness":case "leet":return Staff;
                 default:return None;
             }
@@ -37,7 +37,7 @@ namespace ChipArena.UnityConversion
             if(set<0||set>=NativePackJumps.Sets.Length)return null;var s=NativePackJumps.Sets[set];return slot>=0&&slot<s.Length?s[slot]:null;
         }
         /// <summary>Whether a second upward impulse in the air shows the dagger flip (the owner's "Daggers can double-jump").</summary>
-        public static bool Flips(string spec)=>spec=="daggers";
+        public static bool Flips(string spec)=>NativeJumpSimulation.CanAirJump(spec);
 
         // ---- phase detection on the presented root (host, guests, killcam and spectators all draw the same thing) ----
         /// <summary>

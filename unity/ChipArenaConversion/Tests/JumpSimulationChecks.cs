@@ -13,8 +13,8 @@ internal static class JumpSimulationChecks
         {
             int used=0;
             var jump=NativeJumpSimulation.Try(weapon.id,true,false,false,false,-15,8.5f,ref used,out float v);
-            Check(jump==(weapon.id=="daggers"?NativeJumpKind.Air:NativeJumpKind.None),weapon.id+" air permission");
-            if(weapon.id=="daggers")Check(used==1&&Near(v,7.65f),"air impulse replaces falling speed");
+            Check(jump==((weapon.id=="daggers"||weapon.id=="bow")?NativeJumpKind.Air:NativeJumpKind.None),weapon.id+" air permission");
+            if(weapon.id=="daggers"||weapon.id=="bow")Check(used==1&&Near(v,7.65f),"air impulse replaces falling speed");
             Check(NativeJumpSimulation.Try(weapon.id,true,false,false,false,v,8.5f,ref used,out _)==NativeJumpKind.None,"third jump refused "+weapon.id);
             Check(NativeJumpSimulation.Try(weapon.id,true,true,false,false,-1,17,ref used,out v)==NativeJumpKind.Ground&&used==0&&v==17,"landing reset and jumpPower scaling "+weapon.id);
         }
@@ -42,6 +42,13 @@ internal static class JumpSimulationChecks
             if(i==21)Check(actor.AirJumps==1&&Near(actor.AirJumpAt,20*Rules.Dt),"third edge does not refresh the event");
         }
         Check(jumps==2,"air jump available again after actual landing");
+        var bowState=initial;bowState.JumpSpec="bow";bowState.Bow=true;var daggerState=initial;
+        for(int i=1;i<=150;i++)
+        {
+            var input=new InputFrame{Sequence=i,Jump=i==1||i==20||i==21||i==115||i==125};
+            bowState=NativePrediction.Step(bowState,input,Floor,Ground);daggerState=NativePrediction.Step(daggerState,input,Floor,Ground);
+            Check(Near(bowState.Position.y,daggerState.Position.y)&&Near(bowState.Velocity.y,daggerState.Velocity.y)&&bowState.AirJumps==daggerState.AirJumps&&bowState.AirJumpAt==daggerState.AirJumpAt,"Bow matches dagger double-jump trajectory and landing reset tick "+i);
+        }
         var predictor=new NativePrediction();predictor.Reset(initial,0);var authority=initial;
         for(int i=1;i<=35;i++)
         {
@@ -65,7 +72,7 @@ internal static class JumpSimulationChecks
         var track=new NativeJumpTrack{Explicit=true};track.Observe(1,true,0,false);track.AirJumpSignal(-100);
         for(int i=1;i<=30;i++){float t=1+i/60f;track.Observe(t,false,i/60f,false);track.AirJumpSignal(i>=15?1.25f:-100);}
         Check(track.AirJumps==1&&Near(track.AirJumpAt,1.25f),"explicit signal needs no velocity inference and does not repeat");
-        Console.WriteLine("PASS dagger air jump: shared lab/prediction trajectories, landing reset, locks, swim separation, impulse scaling, edge replay and replicated signal");
+        Console.WriteLine("PASS dagger/Bow air jump: shared lab/prediction trajectories, landing reset, locks, swim separation, impulse scaling, edge replay and replicated signal");
 
         foreach(var cut in new[]{("sword",1,1),("sword",2,-1),("sword",3,1),("daggers",1,1),("daggers",2,-1),("daggers",3,-1),("daggers",4,-1),("shield",1,-1),("shield",2,-1),("greatsword",1,1),("greatsword",2,-1)})
         {

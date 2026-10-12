@@ -30,12 +30,12 @@ namespace ChipArena.UnityConversion
             try
             {
                 Match.HoldResolution=()=>true;Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10,fightAt=10});Physics.gravity=Vector3.down*Rules.Gravity;
-                foreach(string spec in new[]{"sword","daggers","shield","greatsword","pistol","fire"})
+                foreach(string spec in new[]{"sword","daggers","shield","greatsword","pistol","fire","bow"})
                 {
                     Setup(spec);for(int i=0;i<20;i++)Tick();Check(p.Grounded,"fixture supports "+spec);
                     Tick(true);Check(!p.Grounded&&p.Body.linearVelocity.y>7&&p.AirJumps==0,"ground jump "+spec);
                     for(int i=0;i<18;i++)Tick();float before=p.Body.linearVelocity.y;Tick(true);
-                    Check(spec=="daggers"?p.AirJumps==1&&p.Body.linearVelocity.y>7:p.AirJumps==0&&p.Body.linearVelocity.y<before,"dagger-only air jump "+spec);
+                    Check((spec=="daggers"||spec=="bow")?p.AirJumps==1&&p.Body.linearVelocity.y>7:p.AirJumps==0&&p.Body.linearVelocity.y<before,"dagger/Bow air jump "+spec);
                     float at=p.AirJumpAt;before=p.Body.linearVelocity.y;Tick(true);
                     Check(p.AirJumpAt==at&&p.Body.linearVelocity.y<before,"third press refused "+spec);
                     for(int i=0;i<180&&!p.Grounded;i++)Tick();Check(p.Grounded&&p.AirJumps==0,"landing resets "+spec);

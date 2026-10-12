@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
     }
     public static class NativeCyberRules
     {
-        public const float DashCooldown=.5f;
+        public const float DashCooldown=0;
         public static void Predict(NativeCyberKit s,InputFrame input,float time,V3 position,ref float mana,float rate,float costScale,float cooldownScale,Func<V3,V3,V3> constrain)
         {
             if(time<s.Until||input.Block||input.Roll||input.CancelAbilities)return;

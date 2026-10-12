@@ -13,8 +13,9 @@ internal static class CyberChecks
         Check(NativeCyberRules.WallCross(new V3(2.5f,2.5f,-2),new V3(2.5f,2.5f,2),new V3(),0,0,out float t)&&t==.5f,"wall exact edge");
         Check(!NativeCyberRules.WallCross(new V3(2.501f,1,-2),new V3(2.501f,1,2),new V3(),0,0,out _)&&!NativeCyberRules.WallCross(new V3(0,2.501f,-2),new V3(0,2.501f,2),new V3(),0,0,out _),"wall not oversized");
         var kit=new NativeCyberKit();float mana=100;NativeCyberRules.Predict(kit,new InputFrame{AbilityQ=true},1,new V3(),ref mana,1,1,1,(a,b)=>b);
-        Check(mana==80&&kit.QReady==1.5f&&kit.DashTo.z==7&&Math.Abs(NativeCyberRules.DashPosition(kit,1.1f).z-3.5f)<.001,"dash prediction distance, mana, cooldown");
+        Check(mana==80&&kit.QReady==1&&kit.DashTo.z==7&&Math.Abs(NativeCyberRules.DashPosition(kit,1.1f).z-3.5f)<.001,"dash prediction distance, mana, cooldown");
         NativeCyberRules.Predict(kit,new InputFrame{AbilityQ=true},1.1f,new V3(),ref mana,1,1,1,(a,b)=>b);Check(mana==80,"held dash cannot double-spend");
+        NativeCyberRules.Predict(kit,new InputFrame{AbilityQ=true},1.2f,new V3(),ref mana,1,1,2,(a,b)=>b);Check(mana==60&&kit.At==1.2f&&kit.QReady==1.2f,"dash recasts at recovery with zero cooldown even under multiplier");
         var actor=new Actor{Cyber=kit};var copied=actor.ViewCopy();kit.DashTo.z=2;Check(copied.Cyber.DashTo.z==7,"snapshot deep copy");
         var opts=new JsonSerializerOptions{IncludeFields=true,IgnoreReadOnlyProperties=true};var decoded=JsonSerializer.Deserialize<NativeCyberKit>(JsonSerializer.Serialize(copied.Cyber,opts),opts);Check(decoded.Valid()&&decoded.DashTo.z==7,"network value roundtrip");decoded.WallUntil=float.NaN;Check(!decoded.Valid(),"malformed clock rejected");
         var user=new NativeAccess();typeof(NativeAccess).GetProperty("Expires").SetValue(user,1000d);((HashSet<string>)typeof(NativeAccess).GetField("grants",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(user)).Add("weapon:cyberlord");Check(!user.Allows("weapon:cyberlord",1),"grant never unlocks Cyber Lord");

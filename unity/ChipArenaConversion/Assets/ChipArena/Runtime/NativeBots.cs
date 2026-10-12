@@ -34,7 +34,7 @@ namespace ChipArena.UnityConversion
             {var cover=AllBlocks.Where(c=>c!=null&&!c.Fragment&&!c.Definition.dynamic&&c.Definition.material!="foundation"&&c.Definition.size.y>1).OrderBy(c=>(c.transform.position-pos).sqrMagnitude).FirstOrDefault();if(cover!=null){var safe=cover.transform.position+(cover.transform.position-target).normalized*(Math.Max(cover.Definition.size.x,cover.Definition.size.z)*.6f+1);move=Vector3.Distance(safe,pos)<1?Vector3.zero:new Vector3(safe.x-pos.x,0,safe.z-pos.z).normalized;}}
             if(Map.unity)move=StructureNavMove(p,target,move);
             bool obstacle=move.sqrMagnitude>.01f&&root.scene.GetPhysicsScene().Raycast(pos-Vector3.up*.4f,move.normalized,out _,1.1f,WorldMask,QueryTriggerInteraction.Ignore);
-            if(obstacle){if(!Map.unity)move=NativeMeleeRules.Standard(p.Seat.spec)?MeleeApproachLane(p,move):move*.25f+Quaternion.Euler(0,input.Yaw+90,0)*Vector3.forward*(Mathf.Sin(Time*.4f)>0?1:-1);input.Jump=p.Grounded||p.Seat.spec=="daggers"&&p.AirJumps==0&&p.Body.linearVelocity.y<=2;}
+            if(obstacle){if(!Map.unity)move=NativeMeleeRules.Standard(p.Seat.spec)?MeleeApproachLane(p,move):move*.25f+Quaternion.Euler(0,input.Yaw+90,0)*Vector3.forward*(Mathf.Sin(Time*.4f)>0?1:-1);input.Jump=p.Grounded||NativeJumpSimulation.CanAirJump(p.Seat.spec)&&p.AirJumps==0&&p.Body.linearVelocity.y<=2;}
             if(NativeWhirlwindRules.Active(p.Special,Time))move=distance>1.8f?move:Vector3.zero;
             else if(melee&&p.Stamina<p.Weapon.cost)move=-flat*.8f;
             var clamped=ClampMap(pos,true);if(clamped.x!=pos.x)move.x=Math.Sign(clamped.x-pos.x);if(clamped.z!=pos.z)move.z=Math.Sign(clamped.z-pos.z);
@@ -64,7 +64,7 @@ namespace ChipArena.UnityConversion
             if(NativeMeleeRules.Standard(p.Seat.spec)&&visible&&!p.Grounded&&delta.y<=-2&&new Vector2(delta.x,delta.z).magnitude<=3&&NativeAirAttackSimulation.Starts(false,p.AirborneAt,p.AirAttackUsed,Time,new InputFrame{Attack=true}))
             {input.Pitch=Math.Min(-45,input.Pitch);input.Attack=input.Shoot=true;input.AbilityQ=input.AbilityE=input.Sprint=false;}
             if((pos-p.BotPrevious).sqrMagnitude<.000025f&&move.magnitude>.2f)p.BotBlocked+=1f/60;else p.BotBlocked=0;p.BotPrevious=pos;
-            if(p.BotBlocked>.65f){input.Jump=p.Grounded||p.Seat.spec=="daggers"&&p.AirJumps==0&&p.Body.linearVelocity.y<=2;input.X=Mathf.Sin(Time*3);input.Z=Mathf.Cos(Time*3);}if(!SupportedStageMove(pos,new Vector3(input.X,0,input.Z))){input.X=input.Z=0;input.Jump=input.Roll=input.Sprint=false;}return input;
+            if(p.BotBlocked>.65f){input.Jump=p.Grounded||NativeJumpSimulation.CanAirJump(p.Seat.spec)&&p.AirJumps==0&&p.Body.linearVelocity.y<=2;input.X=Mathf.Sin(Time*3);input.Z=Mathf.Cos(Time*3);}if(!SupportedStageMove(pos,new Vector3(input.X,0,input.Z))){input.X=input.Z=0;input.Jump=input.Roll=input.Sprint=false;}return input;
         }
         private Vector3 MeleeApproachLane(NativePilot p,Vector3 desired)
         {

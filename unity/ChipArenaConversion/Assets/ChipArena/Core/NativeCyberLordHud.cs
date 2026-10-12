@@ -38,9 +38,9 @@ namespace ChipArena.UnityConversion
         {
             var c=new Card{Key=CyberLordSpec.Keys[slot],Name=CyberLordSpec.Names[slot],Icon=Icons[slot]};float cost=CyberLordSpec.Costs[slot];
             var p=v.Phase(slot,time);float ready=ReadyAt(v,slot,readyAt),left=ready-time,span=slot==CyberLordSpec.Four&&v.PanicOutcome==CyberLordSpec.Whiff?CyberLordSpec.Cooldowns[slot]*.5f:CyberLordSpec.Cooldowns[slot];
-            if(slot==CyberLordSpec.Four&&v.PanicLive(time)){c.State="PANIC";c.Active=true;c.Dial=1-Clamp01(left/span);return c;}
-            if(p.Live&&p.Part<2||slot==CyberLordSpec.Two&&time>=v.LinkAt&&time<v.LinkUntil||slot==CyberLordSpec.E&&time>=v.WallBorn&&time<v.WallUntil){c.State="ACTIVE";c.Active=true;c.Dial=1-Clamp01(left/span);return c;}
-            if(left>0){c.State=Time(left);c.Dial=1-Clamp01(left/span);c.Low=mana<cost;return c;}
+            if(slot==CyberLordSpec.Four&&v.PanicLive(time)){c.State="PANIC";c.Active=true;c.Dial=span>0?1-Clamp01(left/span):1;return c;}
+            if(p.Live&&p.Part<2||slot==CyberLordSpec.Two&&time>=v.LinkAt&&time<v.LinkUntil||slot==CyberLordSpec.E&&time>=v.WallBorn&&time<v.WallUntil){c.State="ACTIVE";c.Active=true;c.Dial=span>0?1-Clamp01(left/span):1;return c;}
+            if(left>0){c.State=Time(left);c.Dial=span>0?1-Clamp01(left/span):1;c.Low=mana<cost;return c;}
             if(mana<cost){c.State="LOW MANA";c.Low=true;c.Dial=1;return c;}
             c.State="READY";c.Ready=true;c.Dial=1;return c;
         }

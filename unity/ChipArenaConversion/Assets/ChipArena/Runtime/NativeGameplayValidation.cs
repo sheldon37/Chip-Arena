@@ -68,7 +68,9 @@ namespace ChipArena.UnityConversion
                     if(ability.slot=="e")Check(a.EReady==Ready()&&a.Cyber.WallUntil==at+4,"Firewall state and HUD cooldown");
                     if(ability.slot=="2")Check(a.Cyber.LinkTarget==b.Seat.id&&a.Cyber.LinkUntil==at+2.5f,"Siphon Link target and duration");
                     float ready=Ready();Advance(a.Cyber.Until-Time+.01f);StepAbilities(a);
-                    Check(a.Cyber.At==at&&Ready()==ready&&Math.Abs(a.Mana-expectedMana)<.001f,"Cyber Lord cooldown prevents repeat after recovery "+ability.id);
+                    if(ability.id=="data-dash")
+                        Check(a.Cyber.At>at&&Ready()==a.Cyber.At&&Math.Abs(a.Mana-(2*expectedMana-100))<.001f,"Data Dash recasts after recovery without cooldown");
+                    else Check(a.Cyber.At==at&&Ready()==ready&&Math.Abs(a.Mana-expectedMana)<.001f,"Cyber Lord cooldown prevents repeat after recovery "+ability.id);
                 }
                 finally{a.Seat.access=savedAccess;a.Cyber=new NativeCyberKit();a.CyberTrailTick=a.CyberWallTick=a.CyberLinkTick=0;}
             }
