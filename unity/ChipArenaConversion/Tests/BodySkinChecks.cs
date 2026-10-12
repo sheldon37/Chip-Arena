@@ -273,7 +273,7 @@ namespace ChipArena.UnityConversion
                 ("NativePortraits.cs","var bodyParts=siren?Parts(\"siren\"):Parts(s.BodyModel);","portraits, lobby poses and the Locker stage"),
                 ("NativePortraitUI.cs","look.BodySkin=NativeWeaponSkins.Of(seat.weaponSkins,NativeBodySkins.Entry);","result cards"),
                 ("NativeLockerUI.cs","BodySkin=BodySkinShown()","the Locker preview"),
-                ("NativeKillEffectPresentation.cs","RigCount=NativeBodyModels.Gibs(NativeBodySkins.Of(","gibs and crush fragments"),
+                ("NativeKillEffectPresentation.cs","int bodySkin=NativeBodySkins.Of(arena?.Match?.Seat(Death.actor?.Id??Death.id)?.weaponSkins);","gibs and crush fragments"),
                 ("NativeWoundGeometry.cs","public string WoundedPilot(int id,NativeWound[] impacts,string bodyHex,bool low=false,string basis=NativeBodySkins.PrototypeModel)","wounds carve onto any body"),
                 ("NativeSheldonIntroPresentation.cs","look.BodyColor=NativeSheldonIntro.Suit;","the Sheldon Intro's suit"),
                 ("NativeNetwork.cs","weaponSkins=GatedSkins(),","the profile sends the gated map"),

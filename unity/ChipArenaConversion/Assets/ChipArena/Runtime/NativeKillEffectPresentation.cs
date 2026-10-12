@@ -72,11 +72,13 @@ namespace ChipArena.UnityConversion
             bool rig=(Death.model??"pilot")=="pilot";var bind=new double[22][];for(int i=0;i<22;i++)bind[i]=Source(Bind[i]);
             int body=NativeKillEffectRules.ParseHex(Death.actor?.BodyColor,0xe5e7eb),accent=NativeKillEffectRules.ParseHex(Death.actor?.AccentColor,0x70e1d0);
             var scratch=new double[16];var world=new double[16];
+            // The body skin the pilot wore: its cloth joins the gibs and its own colours paint the boxes (Core/NativeBodyModels.cs).
+            int bodySkin=NativeBodySkins.Of(arena?.Match?.Seat(Death.actor?.Id??Death.id)?.weaponSkins);
             if(rig)
             {
                 RigBoxes=new KillBox[NativeKillBoxes.MaxRigBoxes];RigCount=NativeKillBoxes.Rig(Death.actor?.SourceSpec,Death.actor?.Hat,RigBoxes);
                 // The body skin's cloth joins the gibs (Core/NativeBodyModels.cs: the Sheldon Clothes' coat panels).
-                RigCount=NativeBodyModels.Gibs(NativeBodySkins.Of(arena?.Match?.Seat(Death.actor?.Id??Death.id)?.weaponSkins),RigBoxes,RigCount);
+                RigCount=NativeBodyModels.Gibs(bodySkin,RigBoxes,RigCount);
                 if(Band>=0)RigCount=NativeKillBoxes.Bands(RigBoxes,RigCount,NativeStatusVisuals.TeamColors[Band]);BoxLocal=new Matrix4x4[RigCount];
                 for(int i=0;i<RigCount;i++){var b=RigBoxes[i];NativeKillEffectRules.Compose(scratch,b.Px,b.Py,b.Pz,b.Qx,b.Qy,b.Qz,b.Qw,b.Sx,b.Sy,b.Sz);BoxLocal[i]=Unity(scratch);}
             }
@@ -84,7 +86,7 @@ namespace ChipArena.UnityConversion
             if(Style=="voxel-burst")
             {
                 if(!rig)return;var matrices=new double[RigCount*16];var colors=new int[RigCount];
-                for(int i=0;i<RigCount;i++){NativeKillEffectRules.BoxWorld(RigBoxes[i],bind[RigBoxes[i].Bone],scratch,world);Array.Copy(world,0,matrices,i*16,16);colors[i]=NativeKillEffectRules.BoxColor(RigBoxes[i],body,accent);}
+                for(int i=0;i<RigCount;i++){NativeKillEffectRules.BoxWorld(RigBoxes[i],bind[RigBoxes[i].Bone],scratch,world);Array.Copy(world,0,matrices,i*16,16);colors[i]=NativeBodyModels.GibColor(bodySkin,RigBoxes[i],body,accent);}
                 var p=Death.position;var v=Death.velocity;var d=Death.direction;
                 Burst=new NativeKillBurst(matrices,colors,RigCount,Death.seed,-p.x,p.y,p.z,-v.x,v.y,v.z,-d.x,d.y,d.z,quality,budget,floor);FxCount=Burst.Count;return;
             }
@@ -102,7 +104,7 @@ namespace ChipArena.UnityConversion
                 if(capBudget<1)return false;capBudget--;uint seed=unchecked((uint)Death.seed^(uint)(Caps.Count+1)*0x9e3779b1u);
                 string meshName=NativeKillBoxes.CapMesh(joint);int section=-1;for(int i=0;i<RigCount;i++)if(RigBoxes[i].Name==meshName){section=i;break;}
                 double width=(section>=0?RigBoxes[section].Sx:.16)*.92,depth=(section>=0?RigBoxes[section].Sz:.16)*.92;
-                NativeKillEffectRules.Linear(section>=0?NativeKillEffectRules.BoxColor(RigBoxes[section],body,accent):body,out double sr,out double sg,out double sb);
+                NativeKillEffectRules.Linear(section>=0?NativeBodyModels.GibColor(bodySkin,RigBoxes[section],body,accent):body,out double sr,out double sg,out double sb);
                 var jm=bind[joint];double sign=joint==5||joint==2?1:-1,bx=jm[4],by=jm[5],bz=jm[6],bl=Math.Sqrt(bx*bx+by*by+bz*bz);if(bl<1e-9)bl=1;bx*=sign/bl;by*=sign/bl;bz*=sign/bl;
                 var inverses=new List<double>();var inv=new double[16];
                 for(int i=0;i<RigCount;i++){var b=RigBoxes[i];if(b.Root!=owner||b.Zone!=0||b.Detail||b.Hidden)continue;NativeKillEffectRules.BoxWorld(b,bind[b.Bone],scratch,world);NativeKillEffectRules.Invert(world,inv);inverses.AddRange(inv);}
@@ -144,7 +146,7 @@ namespace ChipArena.UnityConversion
                 // CrushDebris: the crushed part's boxes and what its sockets carried (the hat; a weapon here flies as the corpse's
                 // own dropped weapon, but still takes its place in the fragment budget).
                 var sources=new List<double>();var sourceColors=new List<double>();int sourceCount=0;
-                for(int i=0;i<RigCount;i++){var b=RigBoxes[i];if(b.Root!=crushed||b.Zone!=0||b.Hidden)continue;NativeKillEffectRules.BoxWorld(b,bind[b.Bone],scratch,world);sources.AddRange(world);NativeKillEffectRules.Linear(NativeKillEffectRules.BoxColor(b,body,accent),out double r,out double g,out double bb);sourceColors.Add(r);sourceColors.Add(g);sourceColors.Add(bb);sourceCount++;}
+                for(int i=0;i<RigCount;i++){var b=RigBoxes[i];if(b.Root!=crushed||b.Zone!=0||b.Hidden)continue;NativeKillEffectRules.BoxWorld(b,bind[b.Bone],scratch,world);sources.AddRange(world);NativeKillEffectRules.Linear(NativeBodyModels.GibColor(bodySkin,b,body,accent),out double r,out double g,out double bb);sourceColors.Add(r);sourceColors.Add(g);sourceColors.Add(bb);sourceCount++;}
                 var loose=new List<double>();int s0=NativeKillBoxes.SpecIndex(Death.actor?.SourceSpec);
                 void Loose(int bone){var m=bind[bone];loose.Add(m[12]);loose.Add(m[13]);loose.Add(m[14]);}
                 if(crushed==5&&hat){var socket=NativeKillBoxes.HatSocket;HatStart=Bind[5].MultiplyPoint3x4(new Vector3(-socket[0],socket[1],socket[2]));LooseHat=0;loose.Add(-HatStart.x);loose.Add(HatStart.y);loose.Add(HatStart.z);}
