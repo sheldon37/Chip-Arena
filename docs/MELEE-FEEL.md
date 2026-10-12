@@ -2,6 +2,8 @@
 
 Simulation follow-up: the Q/E kit and owner-requested S1–S5/S7/G8 work are implemented on `codex/unity-melee-abilities-20261012`; see [the simulation handoff](MELEE-SIMULATION-HANDOFF.md) for exact live values, owner-versus-proposal differences, replicated fields and the native duel command. The evaluation and proposal below describe the `19c00c7` baseline. Native duel and Windows/two-client acceptance are still pending.
 
+Second simulation follow-up: `codex/unity-melee-followup-20261012` on `3bb8995f` implements S0's native sweep direction and the dagger jump handoff below. Daggers get one air jump per airtime at `0.9 × JumpSpeed × jumpPower`, available after walking off a ledge too; landing resets it. Host, lab and guest prediction share commitment rules, including action locks and separate lava strokes. `Actor.AirJumps/AirJumpAt` carry the authority state; guest reconciliation restores/replays the budget. Claude's existing flip, burst and whoosh now consume the explicit signal, with the local prediction clock mapped for presentation and one cue per airtime. Obstructed dagger bots may use it near the apex. No input-wire change or optional balance tuning; the native duel gate is still pending. See DEV_LOG/task PR for verification and merge receipts.
+
 Owner request, 2026-10-12 (verbatim): "we may need to balance melee to stand on par with ranged/magic. They need more
 ways to gap close, and also, we need to improve the "fluidity" of them, it doesnt feel smooth swinging right now now.
 Think like dark souls swinging, its fluid and allows multiple swings. Maybe we need small movements forward when swinging
@@ -401,6 +403,8 @@ and a live playtest. The closing-damage figures assume perfect aim against a non
 - **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
 
 ### Simulation handoff (Astra)
+
+Implemented in the second simulation follow-up above, including the optional explicit signal. The proposed rule and integration points below are retained as the handoff record.
 
 **The rule (daggers only)**
 - One air jump per airtime, available once the pilot is airborne. It resets on landing (`Grounded`).

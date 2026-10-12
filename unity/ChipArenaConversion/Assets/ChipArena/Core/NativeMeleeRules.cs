@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace ChipArena.UnityConversion
 {
     // Primary-only contracts from souls-combat.ts / simulation.ts / blocking.ts at 05950ea.
-    // Angles here are radians; native input/camera yaw remains degrees.
+    // Angles here are native radians (+x/right); source fixtures reflect x and yaw. Input/camera yaw remains degrees.
     public sealed class NativeMeleeSwing
     {
         public string Spec;public int Index,Id,Remaining;public bool Followup,SprintAttack,OpenerLunge;public float ChainAt;
@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
                 Distance=w.id=="daggers"?.85f:w.id=="sword"?.65f:w.id=="shield"?.55f:.45f,Range=(float)(w.range*stats["reach"]),Arc=(float)((w.id=="sword"&&index%3==0?.8:w.arc)*stats["meleeArc"])};
         }
         public static bool Reverse(NativeMeleeSwing s)=>(s.Spec=="daggers"||s.Spec=="greatsword")&&s.Index%2==0||s.Spec=="sword"&&s.Index%3==2;
-        public static float Angle(NativeMeleeSwing s,float time)=>s.Yaw+(MathUtil.Clamp((time-s.HitAt)/(s.HitUntil-s.HitAt),0,1)-.5f)*Math.Min((float)Math.PI*2,s.Arc)*(Reverse(s)?-1:1);
+        public static float Angle(NativeMeleeSwing s,float time)=>s.Yaw-(MathUtil.Clamp((time-s.HitAt)/(s.HitUntil-s.HitAt),0,1)-.5f)*Math.Min((float)Math.PI*2,s.Arc)*(Reverse(s)?-1:1);
         public static bool Contact(NativeMeleeSwing s,float time,V3 delta,float extra)
         {
             if(time<s.HitAt||time>s.HitUntil)return false;

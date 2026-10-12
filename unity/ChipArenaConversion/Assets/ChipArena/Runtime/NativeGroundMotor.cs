@@ -88,6 +88,7 @@ namespace ChipArena.UnityConversion
         {
             p.GroundPosition=p.Body.position;p.Ground=NativeGroundMotor.Probe(root.scene.GetPhysicsScene(),p.GroundPosition);
             p.Grounded=p.Ground.Found&&(p.GroundAttached||Vector3.Dot(p.Body.linearVelocity,p.Ground.Normal)<=1);
+            if(p.Grounded)p.AirJumps=0;
         }
         private bool GroundMotion(NativePilot p,ref Vector3 velocity,bool jump,bool swimming,float impulseY)
         {
