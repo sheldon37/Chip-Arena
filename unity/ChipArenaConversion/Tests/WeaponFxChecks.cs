@@ -106,11 +106,16 @@ namespace ChipArena.UnityConversion
                 {
                     var s=NativeMeleeRules.Begin(content.Weapon(spec),stats,1,index,.4f);
                     Check(!NativeSlashFx.Frame(s,look,s.HitAt-.001f,false,out _,out _,out _,out _),spec+" nothing before the hit window");
-                    Check(NativeSlashFx.Frame(s,look,s.HitAt+.004f,false,out float tail,out float head,out _,out _)&&(look.MaxArc<s.Arc||Near(tail,NativeMeleeRules.Angle(s,s.HitAt),1e-4)),spec+" tail at the swing's start angle");
+                    // Since 2026-10-12 the crescent follows the visible blade of the cut the pilot plays (MeleeSwing.VisibleSweep): its
+                    // tail at the arc's end where the blade enters, its head where the blade has swept to, opening the blade's way.
+                    float span=Math.Min(look.MaxArc,s.Arc),dir=NativeSlashFx.Direction(s);var visible=NativeSlashFx.Visible(s);
+                    Check(visible!=null&&(dir==1||dir==-1),spec+" the cut's visible blade is known");
+                    Check(NativeSlashFx.Frame(s,look,s.HitAt+.004f,false,out float tail,out float head,out _,out _)&&Near(tail,s.Yaw-dir*span/2,1e-4),spec+" tail at the arc's end where the blade enters");
                     float mid=(s.HitAt+s.HitUntil)/2;NativeSlashFx.Frame(s,look,mid,false,out float t2,out float h2,out float a2,out _);
-                    if(look.MaxArc>=s.Arc)Check(Near(h2,NativeMeleeRules.Angle(s,mid),1e-4),spec+" the head follows NativeMeleeRules.Angle");
-                    Check((h2-t2)*(NativeMeleeRules.Reverse(s)?-1:1)>0,spec+" the crescent opens in the swing's direction (reverse "+NativeMeleeRules.Reverse(s)+")");
-                    Check(NativeSlashFx.Frame(s,look,s.HitUntil+look.Fade*.5f,false,out _,out _,out float fading,out _)&&fading<a2&&!NativeSlashFx.Frame(s,look,s.HitUntil+look.Fade+.001f,false,out _,out _,out _,out _),spec+" a fast fade after the window");
+                    Check(Near(h2,t2+dir*span*MeleeSwing.Swept(visible,.5f,span),1e-4),spec+" the head follows the visible blade");
+                    NativeSlashFx.Frame(s,look,s.HitUntil-.001f,false,out float t3,out float h3,out float a3,out _);
+                    Check((h3-t3)*dir>0&&(h3-h2)*dir>=-1e-5&&(h2-t2)*dir>=-1e-5,spec+" the crescent opens and grows the blade's way");
+                    Check(NativeSlashFx.Frame(s,look,s.HitUntil+look.Fade*.5f,false,out _,out _,out float fading,out _)&&fading<a3&&!NativeSlashFx.Frame(s,look,s.HitUntil+look.Fade+.001f,false,out _,out _,out _,out _),spec+" a fast fade after the window");
                     Check(Math.Abs(h2-t2)<=Math.Min(look.MaxArc,s.Arc)+1e-4,spec+" never wider than the swing's arc");
                     if(look.Twin)Check(!NativeSlashFx.Frame(s,look,s.HitAt+.001f,true,out _,out _,out _,out _)&&NativeSlashFx.Frame(s,look,s.HitAt+(s.HitUntil-s.HitAt)*.3f,true,out _,out _,out _,out _),spec+" the twin arc trails a quarter window");
                 }

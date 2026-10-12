@@ -21,10 +21,15 @@ internal static class MeleeMotionChecks
     private static readonly Vector3[] Local={new Vector3(0,0,1),new Vector3(0,0,1),new Vector3(0,.3f,0),new Vector3(0,.2f,0),new Vector3(0,.2f,0),new Vector3(0,0,.1f),new Vector3(0,0,.1f)};
     public const string PinnedFile="Tests/melee-motion-pinned.json";
     private const string Since="2026-10-12";
-    // Scenario (without its -reach suffix) -> what the owner asked to change. "torso": the steady locomotion torso (owner
-    // 2026-10-12, "notice how the body rocks when moving"): the captured walk/run torso swing is damped about its carry posture
+    // Scenario (without its -reach suffix) -> what the owner asked to change (2026-10-12).
+    // "torso" ("notice how the body rocks when moving"): the captured walk/run torso swing is damped about its carry posture
     // and the procedural pelvis twist countered, so walking and running frames move the chest, arms and blade.
-    private static readonly Dictionary<string,string> Deviations=new Dictionary<string,string>{{"stand-walk-run-stop","torso"},{"run-attack-block","torso"},{"strafe-jump","torso"}};
+    // "swing" ("it doesnt feel smooth swinging"): each cut's authored sweep plays across the hit window (MeleeSwing), the
+    // follow-through carries on past it into the real recovery (the replicated attack end), a changed commit yaw eases in, the
+    // hit-stop's lost time is caught up at most 1.3x and transitions into, out of and between swings keep their velocity, so
+    // every attacking frame moves the whole rig (the clip's hips and the footwork's recovery timing included).
+    private static readonly Dictionary<string,string> Deviations=new Dictionary<string,string>{{"stand-walk-run-stop","torso"},{"strafe-jump","torso"},
+        {"run-attack-block","torso+swing"},{"combo","swing"},{"echo-hurricane","swing"},{"fast-rate","swing"}};
     private static string Deviation(string name){int r=name.IndexOf("-reach",StringComparison.Ordinal);return Deviations.TryGetValue(r<0?name:name.Substring(0,r),out var d)?d:null;}
     // The points a torso-only deviation leaves on the original: body, pelvis, spine root, both legs and the toe tips.
     private static bool LowerBody(int point)=>point<=2||point>=CapturedRig.LHip&&point<MeleeRig.N||point>=MeleeRig.N+5;

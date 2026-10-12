@@ -10,6 +10,11 @@ using ChipArena.UnityConversion;
 // a sprint, strafing, backpedalling and circling a lock-on target (the sword and daggers run within the owner's targets:
 // 15 deg twist, 6 deg roll, 6 deg nod, 3 cm head sway; before the fix 52 deg, 20 deg, 23 deg and 6 cm), the run's hunch
 // stays lifted, and the chest turns without a pop through speed ramps, turns, stops and runs into and out of a swing.
+// Swings (held-LMB chains through the authority's NativeMeleeRules timing, whiffs and hits): the shared swing timing
+// (MeleeSwing) is continuous and monotone; the blade's fastest motion lands inside the hit window (sword at least 40 m/s and
+// greatsword 30 m/s on average there, before the retime 18-31); no frame jumps (the greatsword's 106 m/s pop, the 66 m/s
+// pop of a swing begun after a 40 deg camera turn); the follow-through leaves the window moving (no dead stop) and held
+// shields and greatswords no longer stand at the guard between swings; the slash crescent's head stays on the posed blade.
 internal static class MeleeFeelChecks
 {
     private const float Dt=1/60f,Deg=180/(float)Math.PI;
@@ -19,6 +24,8 @@ internal static class MeleeFeelChecks
     {
         foreach(var r in Torso())yield return r;
         foreach(var r in Continuity(data))yield return r;
+        foreach(var r in Timing(data))yield return r;
+        foreach(var r in Swings(data))yield return r;
     }
 
     // ---- the pilot driver ----
@@ -127,5 +134,126 @@ internal static class MeleeFeelChecks
             if(jump>worstSwing){worstSwing=jump;swingAt=spec;}
         }
         yield return "melee locomotion continuity: the chest rate steps at most "+worstRamp.ToString("0")+" deg/s per frame through speed ramps, turns, strafes, backpedals and stops ("+rampAt+") and "+worstSwing.ToString("0")+" running into and out of a swing ("+swingAt+")";
+    }
+
+    // ---- the shared swing timing (third person, first-person view model, crescent) ----
+    private static IEnumerable<string> Timing(ConversionContent data)
+    {
+        int cuts=0;
+        foreach(var spec in Specs)
+        {
+            var set=MeleeSet.For(spec);var w=data.Weapon(spec);float windup=(float)w.windup,active=.16f,recovery=Math.Max(MeleeMotion.Recovery(spec),(float)w.interval-windup-active);
+            foreach(var clip in set.Cuts)
+            {
+                var sh=MeleeSwing.For(clip);Check(sh.Start>=clip.Marks[0]&&sh.Start<sh.SweepStart&&sh.SweepStart<sh.SweepEnd&&sh.SweepEnd<=sh.FollowEnd&&sh.FollowEnd<=clip.Marks[3],clip.Name+" shape ordered within the clip");
+                foreach(bool keep in new[]{false,true})
+                {
+                    float prev=MeleeSwing.ClipTime(clip,0,windup,active,recovery,keep);Check(Math.Abs(prev-sh.Start)<1e-5f,clip.Name+" starts at its shape's start");
+                    for(int f=1;f<=600;f++)
+                    {
+                        float age=f*(windup+active+recovery+.05f)/600,ct=MeleeSwing.ClipTime(clip,age,windup,active,recovery,keep);
+                        Check(ct>=prev-1e-5f,clip.Name+" clip time never runs back (age "+age.ToString("0.000")+")");Check(ct-prev<.02f,clip.Name+" clip time continuous (age "+age.ToString("0.000")+")");prev=ct;
+                    }
+                    Check(Math.Abs(MeleeSwing.ClipTime(clip,windup,windup,active,recovery,keep)-sh.SweepStart)<1e-4f&&Math.Abs(MeleeSwing.ClipTime(clip,windup+active,windup,active,recovery,keep)-sh.SweepEnd)<1e-4f,clip.Name+" the sweep spans the hit window");
+                    float end=MeleeSwing.ClipTime(clip,windup+active+recovery,windup,active,recovery,keep);
+                    Check(keep?Math.Abs(end-clip.Marks[3])<1e-4f:Math.Abs(end-sh.FollowEnd)<1e-4f,clip.Name+(keep?" the kept recovery ends on its settled mark":" the follow-through comes to rest at its end"));
+                    // Leaving the window the clip keeps the window's rate (no dead stop); entering it, the windup ends near that rate.
+                    float rate=(sh.SweepEnd-sh.SweepStart)/active,e=1e-3f,after=(MeleeSwing.ClipTime(clip,windup+active+e,windup,active,recovery,keep)-sh.SweepEnd)/e;
+                    Check(Math.Abs(after-rate)<.08f*rate+.02f,clip.Name+" the follow-through leaves at the window's rate ("+after.ToString("0.00")+" vs "+rate.ToString("0.00")+")");
+                }
+                Check(MeleeSwing.Settle(windup+active,windup,active,recovery)<1e-5f&&Math.Abs(MeleeSwing.Settle(windup+active+recovery,windup,active,recovery)-1)<1e-4f,clip.Name+" the guard blend runs over the recovery");
+                cuts++;
+            }
+        }
+        yield return "melee swing timing: "+cuts+" cuts start on their shape, play their sweep across the hit window and leave it at the window's rate, follow through to rest (or the daggers' kept recovery to its mark) and never run back";
+    }
+
+    // ---- held swing chains ----
+    private sealed class Frame{public float T,Tip,TipR,TipL,Yaw,BearingR,BearingL,Head;public string Phase;public int Swing;public bool HasHead;}
+    // Four swings held as ConversionGame sends LMB (each starts at the last one's AttackEnd), optionally landing mid-window and
+    // with a 40 deg camera turn through the first recovery; the presented rig, its fastest blade tip and the crescent per frame.
+    private static List<Frame> Chain(ConversionContent data,string spec,bool hit,bool turn)
+    {
+        var w=data.Weapon(spec);var stats=NativeContentRules.Stats(data,spec,new Dictionary<string,int>());var p=new Pilot(spec);var v=p.View;var frames=new List<Frame>();
+        NativeSlashFx.Look(spec,out var look);NativeMeleeSwing swing=null;float end=0,input=0;int swings=0;Vector3? prevR=null,prevL=null;
+        for(int f=0;f<400;f++)
+        {
+            float t=1+f*Dt;
+            if(turn&&swings==1&&swing!=null&&t>swing.HitUntil&&t<end)input=Math.Min(40/Deg,input+40/Deg*Dt/.2f);
+            if(swing!=null&&t>swing.HitUntil&&t>=swing.Until)swing=null;
+            if(swings<4&&t>=end&&t>=1.1f)
+            {
+                swings++;swing=NativeMeleeRules.Begin(w,stats,t,swings,input);swing.Until=Math.Max(swing.Until,t+(float)((w.windup+.28)/stats["attackRate"]));end=swing.Until;
+                if(hit)p.Motion.Impacts.RecordHit(v.Id,(swing.HitAt+swing.HitUntil)/2);
+            }
+            bool live=swing!=null&&t<end;var st=swing!=null?NativeMeleeRules.Step(swing,t,Dt):new V3();
+            // The source frame mirrors the native one: x and yaw negate.
+            v.Vel=new Vector3(-st.x,0,st.z);v.Yaw=live?-swing.Yaw:-input;
+            if(swing!=null){v.LastAttack=swing.At;v.Windup=swing.HitAt-swing.At;v.AttackRate=(float)stats["attackRate"];v.AttackIndex=swings;v.SwingAt=t<=swing.HitUntil?swing.HitAt:float.NaN;v.SwingUntil=t<=swing.HitUntil?swing.HitUntil:float.NaN;
+                v.Commit=live;v.CommitAt=swing.At;v.CommitUntil=end;v.CommitYaw=-swing.Yaw;v.StepAt=swing.StepAt;v.StepUntil=swing.StepUntil;v.StepDistance=swing.Distance;}
+            else v.Commit=false;
+            p.Pose(t);p.Position+=v.Vel*Dt;
+            var r=p.Motion.Rig;var set=MeleeSet.For(spec);Quaternion g=Quaternion.CreateFromAxisAngle(Vector3.UnitY,r.GroupYaw);
+            Vector3 Tip(int hand)=>Vector3.Transform(r.ChainPoint(hand,-1)+Vector3.Transform(r.Reached(set.Tip),r.ChainQuat(hand,-1)),g)+r.GroupPosition;
+            Vector3 tr=Tip(CapturedRig.RHand),tl=Tip(CapturedRig.LHand);float sr=prevR.HasValue?Vector3.Distance(tr,prevR.Value)/Dt:0,sl=prevL.HasValue?Vector3.Distance(tl,prevL.Value)/Dt:0;prevR=tr;prevL=tl;
+            bool left=set.Dual&&sl>sr;Vector3 pelvis=Vector3.Transform(r.ChainPoint(CapturedRig.Pelvis,-1),g)+r.GroupPosition;
+            var fr=new Frame{T=t,Tip=left?sl:sr,TipR=sr,TipL=set.Dual?sl:0,Swing=swings,Phase=swing==null?"after":t<swing.HitAt?"windup":t<=swing.HitUntil?"active":"recovery",Yaw=-r.GroupYaw,
+                BearingR=-(float)Math.Atan2(tr.X-pelvis.X,tr.Z-pelvis.Z),BearingL=-(float)Math.Atan2(tl.X-pelvis.X,tl.Z-pelvis.Z)};
+            if(swing!=null&&NativeSlashFx.Frame(swing,look,t,false,out _,out float head,out _,out _)){fr.Head=head;fr.HasHead=true;}
+            frames.Add(fr);if(swings>=4&&t>end+.3f)break;
+        }
+        return frames;
+    }
+    private static float Mean(List<Frame> fs,int swing,string phase){float s=0;int n=0;foreach(var f in fs)if(f.Swing==swing&&f.Phase==phase){s+=f.Tip;n++;}return n>0?s/n:0;}
+    private static IEnumerable<string> Swings(ConversionContent data)
+    {
+        var mins=new Dictionary<string,float>{{"sword",40},{"greatsword",30},{"daggers",12},{"shield",7}};string means="";float worstSpike=0;string spikeAt="";int synced=0,dwell=0;float worstSync=0;
+        foreach(var spec in Specs)
+        {
+            float low=float.MaxValue;
+            foreach(bool hit in new[]{false,true})
+            {
+                var fs=Chain(data,spec,hit,false);
+                for(int k=1;k<=4;k++)
+                {
+                    float m=Mean(fs,k,"active");if(!hit){low=Math.Min(low,m);Check(m>=mins[spec],spec+" swing "+k+" moves the blade "+m.ToString("0.0")+" m/s on average through the hit window (at least "+mins[spec]+")");}
+                    // The fastest frame of the swing lands in its window (the daggers' 90 ms windup also repositions both blades).
+                    Frame peak=null;foreach(var f in fs)if(f.Swing==k&&f.Phase!="after"&&(peak==null||f.Tip>peak.Tip))peak=f;
+                    if(spec!="daggers"&&!hit)Check(peak.Phase=="active",spec+" swing "+k+" peaks in the "+peak.Phase+" ("+peak.Tip.ToString("0")+" m/s), not inside the hit window");
+                    // No dead stop where the follow-through takes over (the daggers keep their captured recovery and wrist limiter).
+                    if(spec!="daggers"&&!hit){Frame lastActive=null,firstRecovery=null;foreach(var f in fs)if(f.Swing==k){if(f.Phase=="active")lastActive=f;else if(f.Phase=="recovery"&&firstRecovery==null)firstRecovery=f;}
+                        Check(firstRecovery.Tip>=.25f*lastActive.Tip&&firstRecovery.Tip>=2,spec+" swing "+k+" stops dead leaving the window ("+lastActive.Tip.ToString("0.0")+" -> "+firstRecovery.Tip.ToString("0.0")+" m/s)");}
+                }
+                // No one-frame pop: a frame several times faster than both neighbours, or an absurd tip speed.
+                for(int i=1;i+1<fs.Count;i++){float n=Math.Max(fs[i-1].Tip,fs[i+1].Tip),ratio=fs[i].Tip/Math.Max(2,n);if(fs[i].Tip>8&&ratio>worstSpike){worstSpike=ratio;spikeAt=spec+(hit?" hits":" whiffs")+" "+fs[i].Phase+" "+fs[i].Tip.ToString("0")+" m/s";}Check(fs[i].Tip<150,spec+(hit?" hits":"")+" blade tip at "+fs[i].Tip.ToString("0")+" m/s");}
+                // Held swings reach the guard as the next one starts: at most 3 frames below 1 m/s within 0.1 s of the boundary
+                // (before: 7 for the shield and greatsword, which stood at the guard for 0.08-0.10 s).
+                if(!hit)for(int k=2;k<=4;k++)
+                {
+                    float at=0;foreach(var f in fs)if(f.Swing==k){at=f.T;break;}
+                    int still=0,run=0;foreach(var f in fs)if(f.T>=at-.1f-1e-4f&&f.T<at+.1f){run=f.Tip<1?run+1:0;still=Math.Max(still,run);}
+                    Check(still<=3,spec+" stands at the guard "+still+" frames before swing "+k);dwell=Math.Max(dwell,still);
+                }
+                // The slash crescent's head stays on the posed blade while the blade crosses the arc (for the daggers the blade that
+                // travels further through the window, as the crescent picks it).
+                if(!hit&&spec!="shield")for(int k=1;k<=4;k++)
+                {
+                    float pr=0,pl=0;foreach(var f in fs)if(f.Swing==k&&f.Phase=="active"){pr+=f.TipR;pl+=f.TipL;}
+                    foreach(var f in fs)if(f.Swing==k&&f.Phase=="active"&&f.HasHead)
+                    {
+                        NativeSlashFx.Look(spec,out var look);float bearing=pl>pr?f.BearingL:f.BearingR,half=Math.Min(look.MaxArc,spec=="sword"&&k%3==0?.8f:(float)data.Weapon(spec).arc)*.45f;
+                        if(Math.Abs(MeleeMath.Wrap(bearing-f.Yaw))>half)continue;float err=Math.Abs(MeleeMath.Wrap(f.Head-bearing));synced++;worstSync=Math.Max(worstSync,err);
+                        Check(err<.2f,spec+" swing "+k+" crescent head "+(err*Deg).ToString("0")+" deg off the blade at "+f.T.ToString("0.000"));
+                    }
+                }
+            }
+            means+=(means.Length>0?", ":"")+spec+" "+low.ToString("0");
+        }
+        Check(worstSpike<=2.5f,"blade tip pop: "+spikeAt+" is x"+worstSpike.ToString("0.0")+" its neighbours");
+        // A swing begun after a 40 deg camera turn eases its facing over MeleeMotion.TurnBlend instead of one frame.
+        var turn=Chain(data,"sword",false,true);float jump=0,turnSpike=0;
+        for(int i=1;i<turn.Count;i++){jump=Math.Max(jump,Math.Abs(MeleeMath.Wrap(turn[i].Yaw-turn[i-1].Yaw)));if(i+1<turn.Count&&turn[i].Tip>8)turnSpike=Math.Max(turnSpike,turn[i].Tip/Math.Max(2,Math.Max(turn[i-1].Tip,turn[i+1].Tip)));}
+        Check(jump*Deg<=20&&turnSpike<=2.5f,"a swing after a 40 deg camera turn: facing step "+(jump*Deg).ToString("0")+" deg per frame, blade pop x"+turnSpike.ToString("0.0"));
+        yield return "melee swings: held chains move the blade through the hit window at least "+means+" m/s on average (whiffs), the sword, shield and greatsword peak inside it and leave it moving, no frame pops (worst x"+worstSpike.ToString("0.0")+", "+spikeAt+"), held swings meet the next one (at most "+dwell+" frames below 1 m/s), a 40 deg turn eases in ("+(jump*Deg).ToString("0")+" deg per frame at most), the crescent head stays within "+(worstSync*Deg).ToString("0")+" deg of the blade over "+synced+" frames";
     }
 }
