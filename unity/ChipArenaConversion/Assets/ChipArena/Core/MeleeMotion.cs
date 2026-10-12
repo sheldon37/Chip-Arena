@@ -70,6 +70,8 @@ namespace ChipArena.UnityConversion
     {
         public readonly MeleeRig Rig=new MeleeRig();
         private readonly MeleeGait gait=new MeleeGait();
+        // The gait under the action layers (its stance inputs, MeleeKitMotion.Stance).
+        public MeleeGait Gait=>gait;
         private readonly float[] row=new float[CapturedClip.Channels],rowB=new float[CapturedClip.Channels],rowC=new float[CapturedClip.Channels];
         private readonly MeleeCapture.RecoveryCache recovery=new MeleeCapture.RecoveryCache();private readonly MeleeRig fitScratch=new MeleeRig();
         private readonly MeleeCapture.WristHistory wrists=new MeleeCapture.WristHistory();
@@ -715,7 +717,7 @@ namespace ChipArena.UnityConversion
             JumpLayer?.Melee(r,p,time,dt);
             HitLayer?.Layer(r,time);
             gait.GroundPass(r,p,time,dt,p.Hp<=0||p.Juggle||p.Down||p.Rolling(time));
-            FinishPose(p,time);
+            FinishPose(p,time);HitLayer?.Replant(r);
             FloorGuard(set,p,time);
             CaptureTo(trLast);KeepShownAnkles(p,time);
         }
@@ -737,7 +739,7 @@ namespace ChipArena.UnityConversion
             JumpLayer?.Fighter(Rig,p,time,dt);
             HitLayer?.Layer(Rig,time);
             gait.GroundPass(Rig,p,time,dt,p.Hp<=0||p.Juggle||p.Down||p.Rolling(time));
-            FinishPose(p,time);
+            FinishPose(p,time);HitLayer?.Replant(Rig);
         }
         // gaitFoot: this sample's gait ankle target, heading, pitch and toe for a foot (the fighter layers edit over it).
         public bool GaitFoot(bool left,out Vector3 target,out float yaw,out float pitch,out float toe)=>gait.GaitFoot(left,out target,out yaw,out pitch,out toe);

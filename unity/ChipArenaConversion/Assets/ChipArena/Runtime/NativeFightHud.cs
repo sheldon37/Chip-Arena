@@ -20,13 +20,14 @@ namespace ChipArena.UnityConversion
             if(p.Seat.spec=="siren")SirenHud(p,W);
             Hitmarker();
         }
-        // .healthbox: weapon and HP (rounded up), the HP bar, the weapon resource and, off melee, stamina.
+        // .healthbox: weapon (its 15 px spec icon, 7 px gap, the name) and HP (rounded up), the HP bar, the weapon resource and,
+        // off melee, stamina.
         private void HealthBox(NativePilot p,float x,float bottom)
         {
             bool melee=p.Weapon.@class=="melee",magic=p.Weapon.@class=="magic",ranged=p.Weapon.@class=="ranged";float w=224,pad=14,h=12+17+7+5+9+14+6+3+(melee?0:9+14+6+3)+12;var r=new Rect(x,bottom-h,w,h);
             SprintTag(p,r);
             U.Round(r,Ink(.69f),10,new Color(1,1,1,.094f));float y=r.y+12,ix=r.x+pad,iw=w-2*pad;
-            U.Text(new Rect(ix,y,iw,17),p.Weapon.name,12,U.Hex(0xe8e9ef),TextAnchor.MiddleLeft);U.Text(new Rect(ix,y,iw,17),Mathf.CeilToInt(Math.Max(0,p.Hp)).ToString(),17,U.Hex(0xf3f3f5),TextAnchor.MiddleRight,mono:true);y+=17+7;
+            NativeIcons.Draw(new Rect(ix,y+1,15,15),NativeIcons.Spec(p.Weapon.id),U.Hex(0xe8e9ef));U.Text(new Rect(ix+22,y,iw-22,17),p.Weapon.name,12,U.Hex(0xe8e9ef),TextAnchor.MiddleLeft);U.Text(new Rect(ix,y,iw,17),Mathf.CeilToInt(Math.Max(0,p.Hp)).ToString(),17,U.Hex(0xf3f3f5),TextAnchor.MiddleRight,mono:true);y+=17+7;
             float hp=Mathf.Clamp01(p.Hp/Mathf.Max(1,(float)p.Stats["hp"]));U.Round(new Rect(ix,y,iw,5),new Color(1,1,1,.09f),4);DamageLagChip(new Rect(ix,y,iw,5),p,hp);if(hp>0)U.Round(new Rect(ix,y,iw*hp,5),U.Hex(0x59dd83),4);y+=5+9;
             string label,value;float fill;
             if(ranged){int cap=(int)Math.Ceiling(p.Weapon.ammo*p.Stats["ammoCapacity"]);label=p.ReloadEnd>arena.Time?"Reloading "+(p.ReloadEnd-arena.Time).ToString("0.0")+"s":"Magazine";value=p.Ammo+" / "+cap;fill=cap>0?p.Ammo/(float)cap:0;}

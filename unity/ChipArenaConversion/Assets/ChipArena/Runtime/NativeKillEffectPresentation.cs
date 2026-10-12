@@ -47,8 +47,14 @@ namespace ChipArena.UnityConversion
         /// or below 0.</summary>
         internal float FxAge(float clockAge){if(clockAge>fxAge)fxAge=clockAge;return fxAge;}
         private Matrix4x4 Presented(int b){int a=Anchor[b];return PartMatrix(a)*CollapseFoot(b)*inverse[a]*Bind[b];}
-        private bool Shown(int b)=>Death.wound?.kind!="crush"||Anchor[b]!=Death.wound.part;
-        internal bool Crushed=>Death.wound?.kind=="crush"&&Parts.ContainsKey(Death.wound.part);
+        private bool Shown(int b)=>CrushPart<0||Anchor[b]!=CrushPart;
+        internal bool Crushed=>CrushPart>=0&&Parts.ContainsKey(CrushPart);
+        /// <summary>The slice's further stump fountains (a cleave's second and third cuts, a crush beside a cut), each on its part.</summary>
+        internal NativeKillSpray[] ExtraSprays=Array.Empty<NativeKillSpray>();private int[] extraPart=Array.Empty<int>();private Vector3[] extraPoint=Array.Empty<Vector3>(),extraNormal=Array.Empty<Vector3>();
+        private int[] splatsSeen=new int[1];
+        /// <summary>How many of fountain `index`'s landings (0 the main one) the persistent splats have taken (Runtime/NativeBloodPresentation).</summary>
+        internal int SplatsSeen(int index)=>index>=0&&index<splatsSeen.Length?splatsSeen[index]:0;
+        internal void SawSplats(int index,int landed){if(index>=splatsSeen.Length)Array.Resize(ref splatsSeen,index+1);if(index>=0)splatsSeen[index]=landed;}
         internal Vector3 PresentedPosition(int part)=>PartMatrix(part).GetColumn(3);
 
         /// <summary>The team band colour index (NativeStatusVisuals.TeamColors) the pilot wore at death, or -1.</summary>
@@ -61,7 +67,7 @@ namespace ChipArena.UnityConversion
         internal void SetupKill(int budget,double quality,bool counted,bool hat,int band=-1,NativeKillFloor floor=null)
         {
             Band=band>=0&&band<NativeStatusVisuals.TeamColors.Length?band:-1;
-            Counted=counted;bool low=quality<.5;var wound=Death.wound;bool crush=Crushed;int parts=Parts.Count-(crush?1:0);budget=Math.Max(0,budget);
+            Counted=counted;bool low=quality<.5;var wound=Death.wound;bool crush=Crushed;int parts=Parts.Count-(crush?1:0);budget=Math.Max(0,budget);int crushPart=CrushPart;
             bool rig=(Death.model??"pilot")=="pilot";var bind=new double[22][];for(int i=0;i<22;i++)bind[i]=Source(Bind[i]);
             int body=NativeKillEffectRules.ParseHex(Death.actor?.BodyColor,0xe5e7eb),accent=NativeKillEffectRules.ParseHex(Death.actor?.AccentColor,0x70e1d0);
             var scratch=new double[16];var world=new double[16];
@@ -82,10 +88,11 @@ namespace ChipArena.UnityConversion
             FxCount=parts;
             if(NativeKillEffectRules.Swarm(Style)){Swarm=new NativeKillSwarm(Style,Death.seed,Math.Max(0,budget-parts),quality);FxCount+=Swarm.Count;}
             if(!rig)return;
-            // The fatal wound (the authority's sever / crush, or the Gibber's part): caps, spray and fragments, as ragdoll.ts.
-            bool gib=Style=="dev-gibber";int severed=gib?(wound?.part??5):wound!=null&&wound.destroyed&&wound.kind=="sever"?wound.part:-1;
-            // A part the authority crushed has no body to sever (it is hidden and frozen): the Gibber then breaks it into fragments.
-            if(!Parts.ContainsKey(severed)||crush&&severed==wound.part)severed=-1;if(severed<0&&!crush)return;bool gibSpray=gib&&severed>=0;
+            // The fatal wound (the authority's sever / crush, or the Gibber's part) and a melee slice's cuts (Core/NativeMeleeSlice):
+            // caps, sprays and fragments, as ragdoll.ts does for its one part.
+            bool gib=Style=="dev-gibber";var cutParts=new List<int>();foreach(int j in Severed)if(Parts.ContainsKey(j)&&!(crush&&j==crushPart))cutParts.Add(j);
+            bool throat=Slice!=null&&Slice.Throat&&Parts.ContainsKey(CapturedRig.Spine);
+            if(cutParts.Count==0&&!crush&&!throat)return;bool gibSpray=gib&&cutParts.Count>0;var emitters=new List<(int part,Vector3 point,Vector3 normal,bool crush)>();
             int capBudget=Math.Max(0,budget-parts);var cells=new List<Matrix4x4>();var cellColors=new List<Color>();var buffer=new KillCell[NativeKillCaps.MaxCells];
             bool AddCap(int joint,int on,bool parentSide,bool ragged,int owner)
             {
@@ -106,7 +113,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<n;i++){var c=buffer[i];cells.Add(Mirror(c.X,c.Y,c.Z,c.Qx,c.Qy,c.Qz,c.Qw,c.Sx,c.Sy,c.Sz));cellColors.Add(new Color((float)c.R,(float)c.G,(float)c.B,1));}
                 Caps.Add(new KillCap{Part=on,Local=inverse[on]*Unity(cap),Start=start,Count=n});return true;
             }
-            int Parent(int b){int p=CapturedRig.Bones[b].Parent;while(p>=0&&(!Parts.ContainsKey(p)||crush&&p==wound.part))p=CapturedRig.Bones[p].Parent;return p;}
+            int Parent(int b){int p=CapturedRig.Bones[b].Parent;while(p>=0&&(!Parts.ContainsKey(p)||crush&&p==crushPart))p=CapturedRig.Bones[p].Parent;return p;}
             int NearestRoot(int b){int p=CapturedRig.Bones[b].Parent;while(p>=0&&!Parts.ContainsKey(p))p=CapturedRig.Bones[p].Parent;return p;}
             void Anchor(int joint,int part)
             {
@@ -115,15 +122,22 @@ namespace ChipArena.UnityConversion
             }
             void FromCap(){var last=Caps[Caps.Count-1];sprayPart=last.Part;sprayPoint=last.Local.GetColumn(3);sprayNormal=last.Local.MultiplyVector(Vector3.up).normalized;}
             int stumpParent=-1;
-            if(severed>=0)
+            foreach(int severed in cutParts)
             {
-                stumpParent=Parent(severed);if(stumpParent<0)return;Anchor(severed,stumpParent);
+                stumpParent=Parent(severed);if(stumpParent<0)continue;Anchor(severed,stumpParent);
                 if(capBudget>=2){bool stump=AddCap(severed,stumpParent,true,false,stumpParent);int at=Caps.Count;AddCap(severed,severed,false,false,severed);if(stump&&!gib){var s=Caps[at-1];sprayPart=s.Part;sprayPoint=s.Local.GetColumn(3);sprayNormal=s.Local.MultiplyVector(Vector3.up).normalized;}}
+                emitters.Add((sprayPart,sprayPoint,sprayNormal,false));
             }
-            else
+            if(throat)
             {
-                int crushed=wound.part;foreach(var b in Parts.Keys)if(b!=crushed&&NearestRoot(b)==crushed)AddCap(b,b,false,true,b);
-                stumpParent=Parent(crushed);if(stumpParent>=0){Anchor(crushed,stumpParent);if(AddCap(crushed,stumpParent,true,true,stumpParent))FromCap();}
+                // A slit throat: no cut, the neck gushes forward and down off the chest part.
+                Anchor(CapturedRig.Head,CapturedRig.Spine);Vector3 forward=((Vector3)Bind[CapturedRig.Head].GetColumn(2)).normalized;
+                sprayNormal=inverse[CapturedRig.Spine].MultiplyVector((forward*.85f+Vector3.down*.3f).normalized).normalized;emitters.Add((sprayPart,sprayPoint,sprayNormal,false));
+            }
+            if(crush)
+            {
+                int crushed=crushPart;float momentum=wound!=null&&wound.kind=="crush"&&wound.part==crushed?wound.momentum:40,severity=wound!=null&&wound.kind=="crush"&&wound.part==crushed?wound.severity:1;foreach(var b in Parts.Keys)if(b!=crushed&&NearestRoot(b)==crushed)AddCap(b,b,false,true,b);
+                stumpParent=Parent(crushed);if(stumpParent>=0){Anchor(crushed,stumpParent);if(AddCap(crushed,stumpParent,true,true,stumpParent))FromCap();emitters.Add((sprayPart,sprayPoint,sprayNormal,true));}
                 // CrushDebris: the crushed part's boxes and what its sockets carried (the hat; a weapon here flies as the corpse's
                 // own dropped weapon, but still takes its place in the fragment budget).
                 var sources=new List<double>();var sourceColors=new List<double>();int sourceCount=0;
@@ -139,16 +153,25 @@ namespace ChipArena.UnityConversion
                 {
                     // ragdoll.ts: the fragments inherit bodyPartVelocity(death.motion, wound, part, direction); Unity's death velocity
                     // is the source's motion.velocity (body velocity plus external push at death).
-                    var o=bind[crushed];var v=Death.velocity;var d=Death.direction;NativeKillEffectRules.DetachedVelocity(-v.x,v.y,v.z,crushed,wound.momentum,-d.x,d.y,d.z,out double ix,out double iy,out double iz);
-                    Debris=new NativeKillDebris(sources.ToArray(),sourceColors.ToArray(),sourceCount,loose.ToArray(),loose.Count/3,o[12],o[13],o[14],-dir.x,dir.y,dir.z,ix,iy,iz,2,wound.severity,unchecked((uint)Death.seed),limit,Death.position.y-.85);
+                    var o=bind[crushed];var v=Death.velocity;var d=Death.direction;NativeKillEffectRules.DetachedVelocity(-v.x,v.y,v.z,crushed,momentum,-d.x,d.y,d.z,out double ix,out double iy,out double iz);
+                    Debris=new NativeKillDebris(sources.ToArray(),sourceColors.ToArray(),sourceCount,loose.ToArray(),loose.Count/3,o[12],o[13],o[14],-dir.x,dir.y,dir.z,ix,iy,iz,2,severity,unchecked((uint)Death.seed),limit,Death.position.y-.85);
                     if(LooseHat>=Debris.Loose)LooseHat=-1;
                 }
             }
             CapCells=cells.ToArray();CapColors=cellColors.ToArray();
             int sprayBudget=gibSpray?Math.Max(0,budget-parts-2):Math.Max(0,Math.Max(0,budget-parts-Caps.Count)-(Debris?.Count??0));
             double ground=gib&&floor!=null?floor(-Death.position.x,Death.position.y,Death.position.z):double.NaN;
-            if(sprayPart>=0)Spray=new NativeKillSpray(Death.seed,sprayBudget,quality,gib?KillSprayProfile.Gibber:crush?KillSprayProfile.Crush:KillSprayProfile.Sever,Death.position.y-.85,double.IsNaN(ground)?0:ground);
-            FxCount+=Caps.Count+(Debris?.Count??0)+(Spray?.Count??0);
+            // The first fountain is the source's (all of its budget when it is alone); a slice's others share half of it.
+            if(emitters.Count>0){var e0=emitters[0];sprayPart=e0.part;sprayPoint=e0.point;sprayNormal=e0.normal;}else sprayPart=-1;
+            int extras=Math.Max(0,emitters.Count-1),main=extras>0?sprayBudget/2:sprayBudget;
+            if(sprayPart>=0)Spray=new NativeKillSpray(Death.seed,main,quality,gib?KillSprayProfile.Gibber:emitters[0].crush?KillSprayProfile.Crush:KillSprayProfile.Sever,Death.position.y-.85,double.IsNaN(ground)?0:ground);
+            if(extras>0)
+            {
+                int each=Math.Max(0,(sprayBudget-main)/extras);ExtraSprays=new NativeKillSpray[extras];extraPart=new int[extras];extraPoint=new Vector3[extras];extraNormal=new Vector3[extras];
+                for(int i=0;i<extras;i++){var e=emitters[i+1];extraPart[i]=e.part;extraPoint[i]=e.point;extraNormal[i]=e.normal;ExtraSprays[i]=new NativeKillSpray(Death.seed*31+i+1,each,quality,e.crush?KillSprayProfile.Crush:KillSprayProfile.Sever,Death.position.y-.85,double.IsNaN(ground)?0:ground);}
+            }
+            int extraCount=0;foreach(var x in ExtraSprays)extraCount+=x.Count;
+            FxCount+=Caps.Count+(Debris?.Count??0)+(Spray?.Count??0)+extraCount;
         }
         private static bool Shown(KillBox[] list){foreach(var b in list)if(!b.Hidden)return true;return false;}
         /// <summary>GibberVfx.step at the end of each fixed physics step: emits from the moving stump (part body pose). The
@@ -156,7 +179,12 @@ namespace ChipArena.UnityConversion
         /// step as the source's.</summary>
         private void StepSpray()
         {
-            if(Spray==null||sprayPart<0||!Parts.TryGetValue(sprayPart,out var body))return;var m=body.transform.localToWorldMatrix;
+            for(int i=0;i<ExtraSprays.Length;i++)
+            {
+                if(!Parts.TryGetValue(extraPart[i],out var on))continue;var mx=on.transform.localToWorldMatrix;
+                Vector3 px=mx.MultiplyPoint3x4(extraPoint[i]),nx=mx.MultiplyVector(extraNormal[i]);ExtraSprays[i].Step(sprayElapsed,-px.x,px.y,px.z,-nx.x,nx.y,nx.z);
+            }
+            if(Spray==null||sprayPart<0||!Parts.TryGetValue(sprayPart,out var body)){sprayElapsed+=1/60.0;return;}var m=body.transform.localToWorldMatrix;
             Vector3 p=m.MultiplyPoint3x4(sprayPoint),n=m.MultiplyVector(sprayNormal);Spray.Step(sprayElapsed,-p.x,p.y,p.z,-n.x,n.y,n.z);sprayElapsed+=1/60.0;
         }
         private double sprayElapsed;
@@ -238,9 +266,13 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>GibberVfx: drops and splat disks. <paramref name="alpha"/>: the body's fade (a kept body being revived);
         /// the opaque drops shrink with it, the splats fade.</summary>
-        private void KillSpray(NativeCorpse corpse,float age,float alpha)
+        private void KillSpray(NativeCorpse corpse,float age,float alpha,float now)
         {
-            var spray=corpse.Spray;if(spray==null||alpha<=.001f)return;spray.Update(age);float glow=spray.Glow?.3f:0;
+            KillSpray(corpse,corpse.Spray,0,age,alpha,now);for(int i=0;i<corpse.ExtraSprays.Length;i++)KillSpray(corpse,corpse.ExtraSprays[i],i+1,age,alpha,now);
+        }
+        private void KillSpray(NativeCorpse corpse,NativeKillSpray spray,int index,float age,float alpha,float now)
+        {
+            if(spray==null)return;KillSplats(corpse,spray,index,now);if(alpha<=.001f)return;spray.Update(age);float glow=spray.Glow?.3f:0;
             for(int d=0;d<spray.Drops;d++)
             {
                 if(!spray.Shown[d])continue;spray.DropColor(d,out double r,out double g,out double b);

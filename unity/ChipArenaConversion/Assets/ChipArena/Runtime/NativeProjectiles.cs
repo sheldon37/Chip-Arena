@@ -28,7 +28,7 @@ namespace ChipArena.UnityConversion
         }
         private bool Has(NativePilot p,string chip)=>p!=null&&p.Seat.chips.TryGetValue(chip,out int count)&&count>0;
         private bool Has(NativeBullet p,string chip)=>p.Mods.TryGetValue(chip,out int count)&&count!=0;
-        private void Fire(NativePilot p)
+        private void Fire(NativePilot p,bool fan=false)
         {
             var w=p.Weapon;bool pong=p.Stats["pong"]>0&&!w.devOnly&&p.VolleyIndex++%Math.Max(1,(int)Math.Ceiling(.24/w.interval))==0;
             if(pong){var balls=Bullets.Where(b=>b.Pong&&b.Original==p.Seat.id).ToArray();if(balls.Length>=24)Bullets.Remove(balls[0]);}
@@ -39,20 +39,20 @@ namespace ChipArena.UnityConversion
             bool returning=p.Stats["boomerang"]>0&&!pong;float speed=(float)(w.speed*p.Stats["projectileSpeed"]),gravity=pong||returning?0:(float)(w.gravity*p.Stats["projectileGravity"]);
             if(pong)speed=Mathf.Clamp(speed,30,80);
             float pitch=p.Aiming&&gravity>0?GunRules.BallisticPitch(distance,offset.y,speed,gravity):Mathf.Atan2(offset.y,distance)*Mathf.Rad2Deg;
-            double spread=w.spread;var ads=Content.Ads(p.Seat.spec);if(p.Aiming&&ads!=null){spread*=1+(ads.spread-1)*Mathf.Clamp01((Time-p.AimAt)/(float)ads.settle);if(ads.bloom>0&&Time-p.LastShot<=.25f)spread=Math.Min(w.spread,spread+ads.bloom*p.AimShots);}
-            p.AimShots=Time-p.LastShot>.25f?1:p.AimShots+1;p.LastShot=Time;if(w.@class!="magic")p.Ready=Time+(float)(w.interval/p.Stats["attackRate"])*(p.Aiming&&ads!=null&&ads.interval>0?(float)ads.interval:1);p.Pose.ShotsFired++;
+            bool overdrive=Overdriving(p);double spread=NativeRangedRules.Spread(w.spread,fan);var ads=Content.Ads(p.Seat.spec);if(!fan&&!overdrive&&p.Aiming&&ads!=null){spread*=1+(ads.spread-1)*Mathf.Clamp01((Time-p.AimAt)/(float)ads.settle);if(ads.bloom>0&&Time-p.LastShot<=.25f)spread=Math.Min(w.spread,spread+ads.bloom*p.AimShots);}
+            p.AimShots=overdrive?0:Time-p.LastShot>.25f?1:p.AimShots+1;p.LastShot=Time;if(w.@class!="magic")p.Ready=Time+NativeRangedRules.Interval(w.interval,p.Stats["attackRate"],overdrive)*(p.Aiming&&ads!=null&&ads.interval>0?(float)ads.interval:1);p.Pose.ShotsFired++;
             int count=NativeProjectileRules.Volley(p.Stats,pong),attack=nextAttack++;float empowerment=Time<p.EmpowerUntil&&p.EmpowerShots>0?1+(float)p.Stats["qEmpower"]:1;if(empowerment>1)p.EmpowerShots--;
             var volley=new List<NativeBullet>();
             for(int i=0;i<count&&ProjectileCount<100;i++)
             {
                 Vector3 dir=(Vec(GunRules.Direction(yaw+NativeProjectileRules.Fan(i,count,(float)p.Stats["fanDegrees"]),pitch))+new Vector3((float)(random.NextDouble()-.5),(float)(random.NextDouble()-.5),(float)(random.NextDouble()-.5))*(float)spread).normalized;
-                var shot=new NativeBullet{Id=nextBullet++,Attack=attack,Owner=p.Seat.id,Original=p.Seat.id,Spec=p.Seat.spec,Born=Time,Position=start,Velocity=dir*speed,BaseVelocity=dir*speed,FixedSpeed=speed,Damage=(float)(w.damage*p.Stats["damage"])*(count>1?.75f:1)*(w.ammo>0&&p.Ammo==0?1+(float)p.Stats["lastRound"]:1)*empowerment,Gravity=gravity,Radius=(float)((w.shotRadius>0?w.shotRadius:w.@class=="magic"?.14:.045)*p.Stats["projectileSize"]),Impulse=(float)(w.impulse*p.Stats["impulse"]),Bounces=(int)p.Stats["bounces"],Pierces=(int)p.Stats["pierces"],BounceRetention=(float)p.Stats["bounceRetention"],Burn=(float)(w.burn+p.Stats["burn"]),Poison=(float)p.Stats["poison"],Demolition=(float)p.Stats["demolition"],Homing=(float)p.Stats["homing"],Life=returning?4:3,Travel=returning?320:160,Boomerang=returning,Zigzag=p.Stats["zigzag"]>0,Mods=new Dictionary<string,int>(p.Seat.chips)};
+                var shot=new NativeBullet{Id=nextBullet++,Attack=attack,Owner=p.Seat.id,Original=p.Seat.id,Spec=p.Seat.spec,Born=Time,Position=start,Velocity=dir*speed,BaseVelocity=dir*speed,FixedSpeed=speed,Damage=(float)(w.damage*p.Stats["damage"])*(fan?NativeRangedRules.FanDamage:1)*(count>1?.75f:1)*(w.ammo>0&&p.Ammo==0?1+(float)p.Stats["lastRound"]:1)*empowerment,Gravity=gravity,Radius=(float)((w.shotRadius>0?w.shotRadius:w.@class=="magic"?.14:.045)*p.Stats["projectileSize"]),Impulse=(float)(w.impulse*p.Stats["impulse"]),Bounces=(int)p.Stats["bounces"],Pierces=(int)p.Stats["pierces"],BounceRetention=(float)p.Stats["bounceRetention"],Burn=(float)(w.burn+p.Stats["burn"]),Poison=(float)p.Stats["poison"],Demolition=(float)p.Stats["demolition"],Homing=(float)p.Stats["homing"],Life=returning?4:3,Travel=returning?320:160,Boomerang=returning,Zigzag=p.Stats["zigzag"]>0,Mods=new Dictionary<string,int>(p.Seat.chips)};
                 if(pong){shot.Pong=true;shot.RallyMark=start;shot.RallyCap=speed*1.6f;shot.RallyBonus=Math.Min(shot.Damage*.15f,8);shot.Bounces=Math.Min(6,(int)Math.Ceiling(3d/Math.Ceiling(.24/w.interval))+(int)p.Stats["bounces"]);shot.Life=3.5f;shot.Travel=200;shot.Homing=0;shot.Pierces=0;shot.Zigzag=false;}
                 var obstruction=SweepNative(eye,start-eye,shot.Radius,c=>c!=p.Collider&&c.GetComponent<NativePilotBody>()==null);
                 if(obstruction.HasValue&&BulletImpact(shot,p,obstruction.Value))continue;Bullets.Add(shot);volley.Add(shot);
             }
             SpawnChipShots(p,volley);LeetSpawned(p,volley);if(p.Stats["recoil"]>0)p.Knockback-=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch))*Math.Min(15,(float)p.Stats["recoil"]);
-            Emit(EventKind.Shot,p,0,start,(int)p.Pose.Weapon);
+            Emit(EventKind.Shot,p,0,start,(int)p.Pose.Weapon,fan?"fan":overdrive?"overdrive":null);
         }
         private void StepBullets()
         {

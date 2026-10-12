@@ -52,11 +52,11 @@ internal static class HitReactionChecks
             {
                 gun.Rig.GroupPosition=new Vector3(0,.865f,0);gun.Rig.GroupYaw=-A.Yaw*D;gun.Pose(A,t,Pose,false,juggle,out bool react);
                 if(react){View(t);scratch.ReactOver(Pose,view,t);}
-                if(Ledger!=null)Layer.Over(scratch.Rig,Pose,A,Ledger,HitVictim.Gun,t,gun.Rig.GroupYaw);gun.Finish(Pose,t);return;
+                if(Ledger!=null)Layer.Over(scratch.Rig,Pose,A,Ledger,HitVictim.Gun,t,gun.Rig.GroupYaw);gun.Finish(Pose,t);if(Ledger!=null)Layer.Replant(scratch.Rig,Pose);return;
             }
             magic.Rig.GroupPosition=new Vector3(0,.865f,0);magic.Rig.GroupYaw=-A.Yaw*D;magic.Pose(A,t,Pose,channels,0,false,juggle,out bool r2);
             if(r2){View(t);scratch.ReactOver(Pose,view,t);}
-            if(Ledger!=null)Layer.Over(scratch.Rig,Pose,A,Ledger,HitVictim.Magic,t,magic.Rig.GroupYaw);magic.Finish(Pose,t);
+            if(Ledger!=null)Layer.Over(scratch.Rig,Pose,A,Ledger,HitVictim.Magic,t,magic.Rig.GroupYaw);magic.Finish(Pose,t);if(Ledger!=null)Layer.Replant(scratch.Rig,Pose);
         }
     }
     internal static int eventId;
@@ -194,13 +194,20 @@ internal static class HitReactionChecks
             Vector3 best=Vector3.Zero,at=Vector3.Zero;bool has=false;
             Scene(victim,"sword",angle,.25f,30,(s,t)=>{var p=s.On.Pose.WorldPosition[bone];if(!has){has=true;at=p;}var d=p-at;if(d.Length()>best.Length())best=d;},2.4f);return best;
         }
+        // The pilot's lowest point (the double-over's head drop) from where it stood as the blow landed: the felt-hit stagger
+        // (Core/NativeStagger) shifts the hips back on top, so the largest move is no longer the drop itself.
+        Vector3 Lowest(string victim,float angle,int bone)
+        {
+            Vector3 best=Vector3.Zero,at=Vector3.Zero;bool has=false;
+            Scene(victim,"sword",angle,.25f,30,(s,t)=>{var p=s.On.Pose.WorldPosition[bone];if(!has){has=true;at=p;}var d=p-at;if(d.Y<best.Y)best=d;},2.4f);return best;
+        }
         foreach(var victim in new[]{"sword","rifle","fire","emperor"})
         {
             if(victim=="emperor")continue; // fighter style clips need the baked source motion (Runtime), checked offline
             Vector3 front;
             // The captured melee victim takes the pack's GetHit-F1 from the front: the blow doubles it over, the hips
             // driven back and the head dropping over them (Core/NativePackReact); the procedural routes snap the head back.
-            if(victim=="sword"){front=Moved(victim,0,CapturedRig.Body);var head=Moved(victim,0,CapturedRig.Head);Check(front.Z<-.02f&&head.Y<-.05f,victim+": a blow from the front drives the hips back ("+front+") and doubles the body over ("+head+")");}
+            if(victim=="sword"){front=Moved(victim,0,CapturedRig.Body);var head=Lowest(victim,0,CapturedRig.Head);Check(front.Z<-.02f&&head.Y<-.05f,victim+": a blow from the front drives the hips back ("+front+") and doubles the body over ("+head+")");}
             else{front=Peak(victim,0,CapturedRig.Head);Check(front.Z<-.02f,victim+": a blow from the front snaps the head back ("+front+")");}
             var back=Peak(victim,180,CapturedRig.Chest);Check(back.Z>.01f,victim+": a blow from behind lurches the torso forward ("+back+")");
             var right=Peak(victim,-90,CapturedRig.Chest);Check(right.X>.01f,victim+": a blow from the right pushes the torso to the left ("+right+")");
@@ -305,13 +312,19 @@ internal static class HitReactionChecks
     }
     private static void NonMelee(List<string> log)
     {
+        // Owner 2026-10-12 ("hits ... more felt"): a pistol or magic hit now staggers too (Core/NativeStagger: the hips, the
+        // upper body, a step for a heavier hit), but it never takes the melee accent, the pack clips or the daze, it stays small
+        // and it is gone again within about a second.
+        float worstPistol=0,worstMagic=0;
         foreach(var victim in new[]{"sword","rifle","fire"})
         {
-            float m=0;Scene(victim,"pistol",0,0,23,(s,t)=>m=Math.Max(m,s.MaxDelta()),3);
-            Check(m<1e-5f,victim+": a pistol hit keeps only the source's light reaction (layer "+m+")");
-            float g=0;Scene(victim,"fire",0,0,24,(s,t)=>g=Math.Max(g,s.MaxDelta()),3);Check(g<1e-5f,victim+": a magic hit adds nothing ("+g+")");
+            float m=0,melee=0,after=0;Scene(victim,"pistol",0,0,23,(s,t)=>{m=Math.Max(m,s.MaxDelta());var L=s.On.Layer;melee=Math.Max(melee,Math.Max(L.ImpactWeight,Math.Max(L.PackWeight,L.DazeWeight)));if(t>Hit+1.2f)after=Math.Max(after,s.MaxDelta());},3.4f);
+            Check(m>.005f&&m<.16f&&melee==0&&after<.003f,victim+": a pistol hit flinches (felt-hit stagger "+m+" m), takes no melee accent ("+melee+") and settles ("+after+")");
+            float g=0,gm=0,ga=0;Scene(victim,"fire",0,0,24,(s,t)=>{g=Math.Max(g,s.MaxDelta());var L=s.On.Layer;gm=Math.Max(gm,Math.Max(L.ImpactWeight,Math.Max(L.PackWeight,L.DazeWeight)));if(t>Hit+1.2f)ga=Math.Max(ga,s.MaxDelta());},3.4f);
+            Check(g>.005f&&g<.2f&&gm==0&&ga<.003f,victim+": a magic hit staggers ("+g+" m), no melee accent ("+gm+"), settles ("+ga+")");
+            worstPistol=Math.Max(worstPistol,m);worstMagic=Math.Max(worstMagic,g);
         }
-        log.Add("pistol and magic hits add no layer on sword, rifle and fire pilots (the source's light reaction only)");
+        log.Add("pistol and magic hits stagger sword, rifle and fire pilots (at most "+(worstPistol*100).ToString("0.0")+" / "+(worstMagic*100).ToString("0.0")+" cm off the route) with no melee accent, pack clip or daze, and settle within 1.2 s");
     }
     private static void Stun(List<string> log)
     {
@@ -355,19 +368,20 @@ internal static class HitReactionChecks
     }
     private static void Planted(List<string> log)
     {
-        float feet=0,grip=0,gunGrip=0;
-        // The pack clip owns the captured melee victim's stun (no captured stagger or catch step under it): its feet stay where
-        // they stood as the blow landed; the gun pilot's procedural catch step is measured against its route.
-        {Vector3 l0=Vector3.Zero,r0=Vector3.Zero;bool has=false;
-         Scene("sword","greatsword",0,.376f,52,(s,t)=>{var P=s.On.Pose.WorldPosition;if(!has){has=true;l0=P[CapturedRig.LFoot];r0=P[CapturedRig.RFoot];}if(t<Hit+.376f)feet=Math.Max(feet,Math.Max((P[CapturedRig.LFoot]-l0).Length(),(P[CapturedRig.RFoot]-r0).Length()));},2.6f);}
+        float feet=0,grip=0,gunGrip=0,lift=0;
+        // The pack clip owns the captured melee victim's stun; the felt-hit stagger (Core/NativeStagger) steps its feet: a
+        // foot on the floor never slides (its speed while planted), a stepping foot lifts and plants.
+        {Vector3[] last=new Vector3[2];bool has=false;
+         Scene("sword","greatsword",0,.376f,52,(s,t)=>{var P=s.On.Pose.WorldPosition;
+          for(int i=0;i<2;i++){var f=P[i==0?CapturedRig.LFoot:CapturedRig.RFoot];bool down=f.Y<=MeleeRig.FLOOR+.002f&&last[i].Y<=MeleeRig.FLOOR+.002f;if(has&&down)feet=Math.Max(feet,new Vector2(f.X-last[i].X,f.Z-last[i].Z).Length()/Dt);if(has)lift=Math.Max(lift,f.Y-MeleeRig.FLOOR);last[i]=f;}has=true;},2.6f);}
         // The greatsword's pack clip owns its stun: its hands are never further apart than the route holds them or than they
         // were as the blow landed, beyond the few millimetres of the route's own pose transition into the reaction (its captured
         // stagger lets them part by up to 5 cm; the clip keeps the hilt).
         {float hold=float.NaN;Scene("greatsword","sword",0,.25f,30,(s,t)=>{float on=Vector3.Distance(s.On.Pose.WorldPosition[CapturedRig.LHand],s.On.Pose.WorldPosition[CapturedRig.RHand]);float off=Vector3.Distance(s.Off.Pose.WorldPosition[CapturedRig.LHand],s.Off.Pose.WorldPosition[CapturedRig.RHand]);if(float.IsNaN(hold))hold=on;grip=Math.Max(grip,on-Math.Max(off,hold));},2.6f);}
         Scene("rifle","greatsword",0,.376f,52,(s,t)=>{float on=Vector3.Distance(s.On.Pose.WorldPosition[CapturedRig.LHand],s.On.Pose.WorldPosition[CapturedRig.RHand]),off=Vector3.Distance(s.Off.Pose.WorldPosition[CapturedRig.LHand],s.Off.Pose.WorldPosition[CapturedRig.RHand]);gunGrip=Math.Max(gunGrip,Math.Abs(on-off));},2.6f);
-        Check(feet<.01f,"a stunned melee pilot's feet stay planted under the layer ("+feet+" m)");
+        Check(feet<.03f&&lift>.03f,"a stunned melee pilot's planted feet never slide ("+feet+" m/s) and its stagger steps lift ("+lift+" m)");
         Check(grip<.004f&&gunGrip<.002f,"two-handed grips keep their hands together (greatsword "+grip+", rifle "+gunGrip+")");
-        log.Add("planted feet within "+(feet*1000).ToString("0.0")+" mm while stunned; greatsword and rifle grips within "+(Math.Max(grip,gunGrip)*1000).ToString("0.00")+" mm");
+        log.Add("planted feet slip at most "+(feet*1000).ToString("0.0")+" mm/s while stunned, stagger steps lift "+(lift*100).ToString("0.0")+" cm; greatsword and rifle grips within "+(Math.Max(grip,gunGrip)*1000).ToString("0.00")+" mm");
     }
     private static void Bounds(List<string> log)
     {
@@ -379,13 +393,13 @@ internal static class HitReactionChecks
         // the route's same bone on that frame, the rig's largest turn at most PackFramePop more than the route's; the worst
         // today, about .6 / .5 rad, is a greatsword F2 entry bringing the two-handed hilt's shoulder in).
         const float PackPop=.7f,PackFramePop=.6f;
-        float worstAngle=0,worstBody=0,worstImpact=0,worstStep=0,worstTravel=0,worstPop=0,worstFramePop=0;int frames=0,packed=0,packFrames=0;
+        float worstDip=0,worstAngle=0,worstBody=0,worstImpact=0,worstStep=0,worstTravel=0,worstPop=0,worstFramePop=0;int frames=0,packed=0,packFrames=0;
         var last=new Quaternion[CapturedRig.Bones.Length];var lastOff=new Quaternion[CapturedRig.Bones.Length];
         for(int n=0;n<40;n++)
         {
             string victim=victims[rnd.Next(victims.Length)],attacker=attackers[rnd.Next(attackers.Length)];float angle=(float)rnd.NextDouble()*360-180,stun=(float)(rnd.NextDouble()*1.5),dmg=(float)(rnd.NextDouble()*80);
             bool head=rnd.Next(4)==0;bool fighter=NativeHitRules.Fighter(attacker);string detail=attacker=="siren"?"secondary":"direct";
-            bool pack=false,has=false,wasPack=false;float angleRun=0,bodyRun=0;Vector3 hips0=Vector3.Zero;
+            bool pack=false,has=false,wasPack=false;float angleRun=0,bodyRun=0,dipRun=0;Vector3 hips0=Vector3.Zero;
             var s=Scene(victim,attacker,angle,stun,dmg,(r,t)=>
             {
                 frames++;var P=r.On.Pose;var L=r.On.Layer;bool laid=L.PackWeight>0||L.PackStunWeight>0||L.PackBlockWeight>0,gauge=has&&(laid||wasPack);
@@ -399,14 +413,15 @@ internal static class HitReactionChecks
                 if(gauge){packFrames++;worstStep=Math.Max(worstStep,step);worstFramePop=Math.Max(worstFramePop,step-routeStep);}
                 wasPack=laid;
                 if(!has)hips0=P.Position[CapturedRig.Body];has=true;worstTravel=Math.Max(worstTravel,(P.Position[CapturedRig.Body]-hips0).Length());
-                bodyRun=Math.Max(bodyRun,r.Delta(CapturedRig.Body).Length());
+                // The hips' shift off the route over the floor (the felt-hit stagger's bound; its dip is on top).
+                var hd=r.Delta(CapturedRig.Body);bodyRun=Math.Max(bodyRun,new Vector2(hd.X,hd.Z).Length());dipRun=Math.Max(dipRun,hd.Length());
                 Check(L.ImpactWeight>=-.05f&&L.ImpactWeight<=1.0001f&&L.DazeWeight>=0&&L.DazeWeight<=1&&L.BlockWeight>=-.05f&&L.BlockWeight<=1.0001f,"blend weights bounded");worstImpact=Math.Max(worstImpact,L.ImpactWeight);
                 Check(L.PackWeight>=0&&L.PackWeight<=1&&L.PackStunWeight>=0&&L.PackStunWeight<=1&&L.PackBlockWeight>=0&&L.PackBlockWeight<=1&&L.PackBody>=0&&L.PackBody<=1,"pack weights bounded");
                 pack|=laid;
             },3.4f,head,detail,fighter);
-            if(pack)packed++;else{worstAngle=Math.Max(worstAngle,angleRun);worstBody=Math.Max(worstBody,bodyRun);}
+            if(pack)packed++;else{worstAngle=Math.Max(worstAngle,angleRun);worstBody=Math.Max(worstBody,bodyRun);worstDip=Math.Max(worstDip,dipRun);}
         }
-        Check(worstAngle<1.2f&&worstBody<.12f,"bounded procedural bone offsets (max "+worstAngle+" rad, hips "+worstBody+" m)");
+        Check(worstAngle<1.2f&&worstBody<=NativeStaggerRules.HardHip+.005f&&worstDip<.19f,"bounded procedural bone offsets (max "+worstAngle+" rad, hips "+worstBody+" m over the floor, "+worstDip+" m with the dip)");
         Check(packFrames>0&&worstPop<=PackPop&&worstFramePop<=PackFramePop&&worstTravel<.25f,"pack-driven rigs stay continuous (on "+packFrames+" clip frames a bone turns at most "+worstPop+" rad more in a frame than the route's same bone, the rig's largest turn at most "+worstFramePop+" rad more than the route's on that frame; hips travel "+worstTravel+" m)");
         Check(packed>=8,"the random blows exercise the pack clips ("+packed+" of 40)");
         log.Add(frames+" frames over 40 random blows (victims, weapons, sides, stuns, damage, headshots; "+packed+" with pack clips): finite; procedural bone turn <= "+worstAngle.ToString("0.000")+" rad, hips <= "+(worstBody*100).ToString("0.0")+" cm; on clip frames the largest bone turn in one frame "+worstStep.ToString("0.00")+" rad, at most "+worstPop.ToString("0.00")+" rad (bone) / "+worstFramePop.ToString("0.00")+" rad (rig) over the route's same frame, hips travel <= "+(worstTravel*100).ToString("0.0")+" cm; weights in range");

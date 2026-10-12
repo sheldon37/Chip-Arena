@@ -103,6 +103,78 @@ resource). The basic combo keeps its current costs.
 - Replication: `MeleeKit.Kind="whirlwind"`, `Phase=windup/active/recovery`, `Release` spin start, `Until` spin end (shortens on recast), `RecoverUntil` recovery end, `Tick` emitted pulse count (0–7, including misses). `Yaw` follows steering. Targetless recast uses `RecastKind="whirlwind"`, `RecastUntil=Until`, `Target=0`, only after the minimum spin.
 - `AbilityCast`, one `AbilityHit` per successful pulse/target, and targetless early-stop `Recast` carry `Detail="whirlwind"`. No artificial landing event. `SpecialKind="whirlwind"`; `SpecialUntil`/`AttackUntil` include recovery. Claude owns matching spin poses/VFX/sounds/HUD; old Wolf Knight presentation must not be reused as a flip.
 
+## Greatsword E: Whirlwind (owner 2026-10-12)
+
+Owner: "Change the E animation on greatsword; completely. Lets change it into something like ... a whirlwind attack?
+Spinning around for a short period while able to move. (Of course, its a great sword so make sure to add weight realism)",
+"(Think like Garens spinning attack)". The rule is Astra's (above, `Core/NativeWhirlwindRules`, PR #132). This section
+is the presentation's contract with it (Claude, branch `claude/whirlwind`).
+
+**Rule as built vs. the first proposal.** Claude's draft put the first pulse .35 s into the spin, after a spin-up. Astra's
+rule pulses at `Release + k × .45` for k = 0..6 (seven pulses, 59.5 base), so the first pulse lands at `Release`. The
+presentation follows the rule: the spin-up moved into the windup's uncoil, so the blade already crosses the front at full
+speed when the spin starts. The draft's `RecoverUntil` and pulse counter shipped as `RecoverUntil` and `Tick`.
+
+**What the presentation reads (all replicated).**
+- `MeleeKit.Kind/Phase/At/Release/Until/RecoverUntil`.
+  - The cast owns the pose from `At` to `RecoverUntil`.
+  - Recovery starts at `Until`, the spin end; an early recast moves it up.
+- Pulse k's moment is `Release + k × Interval`, from the clock. `Tick` agrees with it, but the pose doesn't need it.
+- `RecastKind="whirlwind"` drives the HUD's END EARLY state.
+- `SpecialKind/SpecialUntil` gate the rig routes, as for every kit E.
+- Events:
+  - `AbilityHit` (one per pulse per target) draws the hit flash and slash and plays the impact.
+  - `AbilityCast` draws the cast ring.
+  - The targetless `Recast` draws and plays nothing; the stop shows the early end.
+
+**Motion (`Core/MeleeKitMotion`).**
+- **Windup (.3 s).** The heavy blade drops from the high guard and drags low behind the right hip, its tip on the floor.
+  - The hips load right while the torso coils.
+  - The knees bend and the weight drops, then the hips fire first.
+  - The hands come round with the blade trailing. Their rate eases up from rest to the full spin by `Release`, peaking about 1.06× the full rate in the uncoil.
+- **Active.**
+  - One turn per pulse: the blade tip crosses the facing at every pulse.
+  - The upper body and level blade spin about the spine, over the gait's legs.
+  - The hips drive each turn, and the chest leads the trailing blade by .3 rad.
+  - The torso leans back and away from the blade (counterbalance) and the head leads into the turn.
+  - The hips sit 15 cm low, with a 2 cm dip each turn and a 4.5 cm mass shift against the blade.
+  - The blade dips low (sparks) on the far side of each turn.
+- **Legs.** They stay the gait's, with planted, world-anchored feet:
+  - the stance widens 8 cm;
+  - standing feet mark time once per turn per foot (`MeleeGait.Widen/Shuffle`, both off by default);
+  - moving, the legs run the gait from the actual velocity under the spinning upper body.
+- **Recovery (.5 s).** The turn decelerates evenly from the full rate.
+  - When its momentum can reach the facing, it stops facing the front. The full spin always does: a 70° last partial turn over .17 s.
+  - An early recast stops within .15–.25 s, then turns back the short way if needed.
+  - The weight drops, the hips and mass lurch on, and the blade's tip goes down to the floor.
+  - Then the pilot returns to the guard.
+- **First person.** The camera never turns.
+  - The braced hands ride a low orbit.
+  - Each turn the blade comes in from the right, lies out ahead across the lower view as it crosses the front, and leaves to the left with an arc streak.
+  - For the rest of the turn it points down behind the camera.
+
+**Effects (`Core/NativeMeleeKitFx`), audio, HUD.**
+- **Windup.** A 2.6 m telegraph ring with inward ticks, and floor sparks from the dragged tip.
+- **Spin:**
+  - an accent arc ribbon behind the blade, brightest and widest toward the tip, left behind by the pilot's travel;
+  - a faint ring at the hit radius, brightening at each pass;
+  - wind and dust swirling round the feet;
+  - sparks where the tip passes low.
+- **Hits.** The existing hit flash plus a slash across each struck target.
+- **Stop.** A dust puff, plus sparks where the tip meets the floor.
+- **Quality.** Reduced effects and the low tier thin the effects (no smoke on low).
+- **Audio** (existing bank keys only):
+  - `melee.greatsword.spin` on the release;
+  - `melee.greatsword.swing` at each later pulse;
+  - `impact.ground` + `melee.greatsword.hit` at the stop.
+  - Wanted from the owner's bank: a looping spin whoosh and a heavy scrape-stop.
+- **HUD.** The E card reads SPINNING, then END EARLY (amber, its dial draining to the spin end) once the recast opens. The locker icon is `rotate-cw`.
+
+**Notes for Astra (no simulation change requested).**
+- The presentation assumes the fixed phases above (no attack-rate scaling), as the rule states.
+- Guests: the spin pose is a pure function of the replicated kit, so a guest's predicted motion only moves the legs (gait velocity).
+- The kit's Wolf Knight presentation was removed: no ability can replicate `Kind="wolf-knight"` and `SuperArmour` is never raised. The legacy `wolf-spin` special phrase stays, because the Unity warm-up check and `NativeSpecialChecks` still use it.
+
 ## The new block effect (Claude, presentation only)
 
 - **Guard:** while the block window is open, an energy guard arc in the weapon's colour appears in front of the weapon

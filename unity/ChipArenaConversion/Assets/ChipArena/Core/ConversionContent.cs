@@ -46,7 +46,7 @@ namespace ChipArena.UnityConversion
         public ContentMaterial Material(string id) => Array.Find(materials,x=>x.id==id)??throw new ArgumentException("Unknown material: "+id);
         public double Weight(string spec) => Array.Find(weights,x=>x.name==spec).value;
         public ContentAbility Ability(string spec,string slot) => Array.Find(abilities,x=>x.spec==spec&&x.slot==slot);
-        public ContentAds Ads(string spec) => Array.Find(ads,x=>x.spec==spec);
+        public ContentAds Ads(string spec) => NativeRangedRules.Scope(spec)?Array.Find(ads,x=>x.spec==spec):null;
         public void Validate()
         {
             if(schema!=1||sourceCommit==null||sourceCommit.Length!=40)throw new InvalidOperationException("Invalid conversion content receipt");
