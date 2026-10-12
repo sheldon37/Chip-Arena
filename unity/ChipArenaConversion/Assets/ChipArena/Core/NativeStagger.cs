@@ -63,7 +63,7 @@ namespace ChipArena.UnityConversion
             if(!(amount>=1)||float.IsInfinity(amount))return StaggerWeight.None;
             switch(detail)
             {
-                case "field":case "thorns":case "stage-vent":case "collapse":return StaggerWeight.None;
+                case "maglev":case "grid":case "hazard":case "field":case "thorns":case "stage-vent":case "collapse":return StaggerWeight.None;
                 case "debris":case "chain":return StaggerWeight.Flinch;
                 case "blast":return amount>=18?StaggerWeight.Heavy:StaggerWeight.Step;
             }

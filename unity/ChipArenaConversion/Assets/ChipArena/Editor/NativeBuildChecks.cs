@@ -183,6 +183,7 @@ namespace ChipArena.UnityConversion.Editor
                             float hp=pilot.Pose.Hp;shown.Actors[0].Hp=0;if(pilot.Pose.Hp!=hp)throw new Exception("Render snapshot changed authority");
                             CheckNetworkSerialization(arena);CheckCombatParity(data);CheckInteractionFeedback(data);CheckPresentation(arena);CheckGlow(arena,match);CheckShots(arena);arena.ValidateMelee();arena.ValidateSpecials();arena.ValidateRangedAndMagic();
                         }
+                        if(map.id=="factory"||map.id=="cybercity")arena.ValidateStageHazardRuntime();
                         if(map.id=="brickfall"){arena.ValidateCorpsePhysics();arena.ValidateBrickfallRuntime();CheckBrickfallReplica(arena);}
                         if(map.id=="siren")arena.ValidatePveEconomy(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text));
                         Debug.Log("PASS native map "+map.id+": isolated Edit-mode physics, 8 spawn floors, capsule settling");

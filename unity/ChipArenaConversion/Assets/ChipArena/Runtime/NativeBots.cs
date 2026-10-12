@@ -64,7 +64,7 @@ namespace ChipArena.UnityConversion
             if(NativeMeleeRules.Standard(p.Seat.spec)&&visible&&!p.Grounded&&delta.y<=-2&&new Vector2(delta.x,delta.z).magnitude<=3&&NativeAirAttackSimulation.Starts(false,p.AirborneAt,p.AirAttackUsed,Time,new InputFrame{Attack=true}))
             {input.Pitch=Math.Min(-45,input.Pitch);input.Attack=input.Shoot=true;input.AbilityQ=input.AbilityE=input.Sprint=false;}
             if((pos-p.BotPrevious).sqrMagnitude<.000025f&&move.magnitude>.2f)p.BotBlocked+=1f/60;else p.BotBlocked=0;p.BotPrevious=pos;
-            if(p.BotBlocked>.65f){input.Jump=p.Grounded||p.Seat.spec=="daggers"&&p.AirJumps==0&&p.Body.linearVelocity.y<=2;input.X=Mathf.Sin(Time*3);input.Z=Mathf.Cos(Time*3);}return input;
+            if(p.BotBlocked>.65f){input.Jump=p.Grounded||p.Seat.spec=="daggers"&&p.AirJumps==0&&p.Body.linearVelocity.y<=2;input.X=Mathf.Sin(Time*3);input.Z=Mathf.Cos(Time*3);}if(!SupportedStageMove(pos,new Vector3(input.X,0,input.Z))){input.X=input.Z=0;input.Jump=input.Roll=input.Sprint=false;}return input;
         }
         private Vector3 MeleeApproachLane(NativePilot p,Vector3 desired)
         {

@@ -82,6 +82,7 @@ namespace ChipArena.UnityConversion
         private readonly List<(NativePropBody body,Bounds previous,StructureDefinition segment)> posedStructureBlocks=new List<(NativePropBody,Bounds,StructureDefinition)>();
         public void PoseStructures(float time,bool authority=false)
         {
+            PoseStageLoads(time);
             if(Structures==null||Map.segments==null||Map.segments.Length==0)return;posedStructureBlocks.Clear();bool moved=false;
             foreach(var d in Map.segments)
             {
@@ -154,7 +155,7 @@ namespace ChipArena.UnityConversion
         {
             result=Vector3.zero;var preferred=NativeMapRules.Spawn(Content,Map,Match.Seats,Math.Max(0,Pilots.IndexOf(p)),Match.Teams);
             var points=new[]{preferred.pos}.Concat(Map.spawns?.ffa.Select(x=>x.pos)??Content.spawns);
-            foreach(var point in points){var at=Vec(point);if(Map.unity&&(Pilots.Any(q=>q!=p&&q.Hp>0&&Enemy(p,q)&&Vector3.Distance(q.Body.position,at)<8)||UnsafeStructure(at)))continue;if(!Map.unity||Walkable(at,out at)){result=at;return true;}}return false;
+            foreach(var point in points){var at=Vec(point);if(Map.unity&&(Pilots.Any(q=>q!=p&&q.Hp>0&&Enemy(p,q)&&Vector3.Distance(q.Body.position,at)<8)||UnsafeStructure(at)||UnsafeStagePath(at,at,3)))continue;if(!Map.unity||Walkable(at,out at)){result=at;return true;}}return false;
         }
         private bool UnsafeStructure(Vector3 at)=>Map.segments!=null&&Map.segments.Any(s=>(Structures.Get(s.id).state==1||Structures.Get(s.id).state==2)&&NativeStructureRules.Swept(s,Vec(at),.85f));
     }
