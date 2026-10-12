@@ -340,7 +340,7 @@ namespace ChipArena.UnityConversion
         }
         private void OnDestroy()
         {
-            ClearSourceActors();DisposeDevEffects();DisposeEventWorldFx();DisposeStructureFx();DisposeHalos();DisposeBrickfall();sourceModels?.Dispose();combatGlow?.Dispose();blasts?.Dispose();meleeFlash?.Dispose();fieldTelegraphs?.Dispose();shots?.Dispose();vfx?.Dispose();DisposeStatus();viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
+            rooftop?.Dispose();rooftop=null;ClearSourceActors();DisposeDevEffects();DisposeEventWorldFx();DisposeStructureFx();DisposeHalos();DisposeBrickfall();sourceModels?.Dispose();combatGlow?.Dispose();blasts?.Dispose();meleeFlash?.Dispose();fieldTelegraphs?.Dispose();shots?.Dispose();vfx?.Dispose();DisposeStatus();viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
             foreach(var m in materials) CapturedAnimation.Release(m);
             foreach(var m in compatibilityMaterials) CapturedAnimation.Release(m);
             if(particleMaterial!=null) CapturedAnimation.Release(particleMaterial);

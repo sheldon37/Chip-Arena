@@ -43,6 +43,7 @@ internal static class Program
             foreach(var result in LoadoutGridChecks.Run(data))Console.WriteLine("PASS "+result);
             LockerChecks.Run(root,data);
             ClassIconChecks.Run(root,data);
+            RooftopChecks.Run(root);
             PortraitBackChecks.Run(root);
             NativeSystemsChecks.Run(root,data);WoundCarveChecks.Run(root);CollapseChecks.Run(root);ExtraPresentationChecks.Run(root);BlastChecks.Run(root);FieldChecks.Run(root);ShotChecks.Run(root,data);
             foreach(var result in FirstPersonSwayChecks.Run(root,data))Console.WriteLine("PASS "+result);

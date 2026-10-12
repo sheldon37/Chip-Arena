@@ -4,14 +4,16 @@ using System.Linq;
 using UnityEngine;
 using M=ChipArena.UnityConversion.NativeUiMotion;
 using U=ChipArena.UnityConversion.NativeUi;
+using C=ChipArena.UnityConversion.NativeCyberTheme;
 namespace ChipArena.UnityConversion
 {
-    // The source menus rebuilt natively: the home screen (main.ts drawMenu with style.css / lobby.css / pve.css, the live
-    // look after every override layer) over the orbiting map, its panel screens (Play vs Bots, Create / Join Room, the room
+    // The source menus rebuilt natively: the home screen, its panel screens (Play vs Bots, Create / Join Room, the room
     // lobby, Boss Test, Customize, Settings, Account, DEV Menu, Catalogue) and the in-match pause menu. Chrome, navigation
     // and actions are kit-drawn; each panel body is the existing GUILayout form, inside its own area and scroll view, so
-    // every setting keeps its validation and save path. Beyond the source: animated title letters and a light sweep,
-    // drifting voxel motes, a sheen on the primary action, keys 1-4 for the four numbered entries, and a pilot card.
+    // every setting keeps its validation and save path. The home screen is the cyber redesign (owner 2026-10-12) over the
+    // rooftop (NativeRooftopPresentation.cs): the vector wordmark, constellation entries (keys 1-4), the Update Game circle,
+    // hexagon buttons, the Connection report pill and the pilot's nameplate; the panel screens keep the orbiting map behind
+    // the cyan panel chrome (NativeCyberTheme).
     public sealed partial class ConversionGame
     {
         private enum MenuScreen{Home,Play,Create,Join,Lobby,Boss,Customize,Settings,Account,Dev,Catalogue}
@@ -62,7 +64,7 @@ namespace ChipArena.UnityConversion
             // The open Connection report (NativeConnectionReport.cs) blocks everything under its backdrop, as its ::backdrop takes the pointer.
             menuBlockedNow=reportOpen||menuScreen==MenuScreen.Home&&updateOpen&&updateCard.width>0&&U.Hover(updateCard);
             float age=now-menuScreenAt;bool home=menuScreen==MenuScreen.Home;
-            MenuShade(1);MenuMotes(home?1:.5f);TopBar(home);Footer();
+            MenuShade(1,home);if(!home)MenuMotes(.5f);TopBar(home);Footer();
             switch(menuScreen)
             {
                 case MenuScreen.Home:HomeScreen(age);break;
@@ -81,16 +83,34 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- Backdrop ------------------------------------------------------------------------------------------------
-        // .home-shade: linear-gradient(90deg,#101114fa 0%,#101114e8 34%,#10111422 78%) over the orbiting map, with a soft
-        // top and bottom vignette so the bar and footer read at every aspect ratio.
-        private void MenuShade(float strength)
+        // The cyber shade (owner 2026-10-12: "a cyber theme~ So cyan instead of orange"). Home: dark behind the menu column and
+        // open over the rooftop vista, a top band and a soft pool under the hexagon buttons, a deep foot under the footer and a
+        // light vignette (every label measured 6.5:1 or better on the concept renders). The panel screens keep the visual
+        // revision's side shade, in the void navy.
+        private void MenuShade(float strength,bool home=false)
         {
-            float W=U.W,H=U.H;Color ink=U.Hex(0x101114);
-            U.Fill(new Rect(0,0,W*.34f,H),U.A(ink,.91f*strength));U.HGradient(new Rect(0,0,W*.34f,H),U.A(ink,.78f*strength),Color.clear);
-            U.Fill(new Rect(W*.34f,0,W*.66f,H),U.A(ink,.13f*strength));U.HGradient(new Rect(W*.34f,0,W*.44f,H),U.A(ink,.897f*strength),Color.clear);
-            U.Fade(new Rect(0,0,W,150),U.Hex(0x0b0c0f,.55f*strength));U.Fade(new Rect(0,H-200,W,200),U.Hex(0x0b0c0f,.6f*strength),false);
+            float W=U.W,H=U.H;
+            if(!home)
+            {
+                U.Fill(new Rect(0,0,W*.34f,H),C.Void(.91f*strength));U.HGradient(new Rect(0,0,W*.34f,H),C.Void(.78f*strength),Color.clear);
+                U.Fill(new Rect(W*.34f,0,W*.66f,H),C.Void(.13f*strength));U.HGradient(new Rect(W*.34f,0,W*.44f,H),C.Void(.897f*strength),Color.clear);
+                U.Fade(new Rect(0,0,W,150),C.Void(.55f*strength));U.Fade(new Rect(0,H-200,W,200),C.Void(.6f*strength),false);return;
+            }
+            Ramp(new Rect(0,0,280,H),.9f,.8f,strength,true);Ramp(new Rect(280,0,235,H),.8f,.44f,strength,true);Ramp(new Rect(515,0,265,H),.44f,0,strength,true);
+            U.Fade(new Rect(0,0,W,170),C.Void(.62f*strength));
+            float x0=HomeX;U.RadialStops(new Rect(W-x0-150-330,70-330,660,660),C.Void(.42f*strength),new[]{0f,.06f,1f},new[]{1f,1f,0f});
+            Ramp(new Rect(0,H-230,W,138),0,.55f,strength,false);Ramp(new Rect(0,H-92,W,92),.55f,.9f,strength,false);
+            float R=.75f*Mathf.Max(W,H),inner=.35f*Mathf.Min(W,H)/R;U.RadialStops(new Rect(W*.55f-R,H*.45f-R,2*R,2*R),C.Void(.38f*strength),new[]{0f,inner,1f},new[]{0f,0f,1f});
         }
-        // Voxel motes drifting up through the shaded side: deterministic per index, so they never pop between frames.
+        // A linear ramp of the void from alpha `a` to `b` (left to right, or top to bottom): the lower alpha as a flat fill under
+        // a ramp to transparent, so the composite is exactly linear.
+        private static void Ramp(Rect r,float a,float b,float k,bool horizontal)
+        {
+            a*=k;b*=k;float lo=Mathf.Min(a,b),hi=Mathf.Max(a,b);if(lo>0)U.Fill(r,C.Void(lo));if(hi<=lo)return;var c=C.Void((hi-lo)/(1-lo));
+            if(horizontal){if(a>b)U.HGradient(r,c,Color.clear);else U.HGradient(r,Color.clear,c);}else U.Fade(r,c,a>b);
+        }
+        // Data motes drifting up through the shaded side of the panel screens (the home screen's rooftop has its own):
+        // deterministic per index, so they never pop between frames.
         private static void MenuMotes(float alpha)
         {
             float W=U.W,H=U.H,t=Time.unscaledTime;
@@ -99,182 +119,265 @@ namespace ChipArena.UnityConversion
                 float h1=Mathf.Repeat(Mathf.Sin(i*12.9898f)*43758.5453f,1),h2=Mathf.Repeat(Mathf.Sin(i*78.233f)*24634.6345f,1),h3=Mathf.Repeat(Mathf.Sin(i*39.425f)*11753.13f,1);
                 float speed=7+h2*16,size=2+Mathf.Floor(h3*3),span=H+60,y=H+20-Mathf.Repeat(t*speed+h1*span,span),x=h1*W*.62f+Mathf.Sin(t*.35f+i)*10;
                 float life=Mathf.Clamp01((H+20-y)/160)*Mathf.Clamp01(y/180),a=(.05f+.13f*h3)*life*alpha;
-                U.Fill(new Rect(x,y,size,size),i%3==0?U.Hex(0xff8a5b,a*1.3f):new Color(1,1,1,a));
+                U.Fill(new Rect(x,y,size,size),i%3==0?C.Cyan(a*1.3f):i%7==0?C.Magenta(a):C.CyanSoft(a*.8f));
             }
         }
 
-        // ---- Top bar and footer --------------------------------------------------------------------------------------
-        // .topbar (24 px from the top, 30 px sides): the brandmark, CHIP ARENA and the PROTOTYPE badge; on the home screen
-        // the Update Game pill at the right with its status line beneath (main.ts drawUpdateControl).
+        // ---- Wordmark, top bar and footer ----------------------------------------------------------------------------
+        // The home column's left edge (and the footer's margins): at least 64, 4.5% of the canvas width.
+        private static float HomeX=>Mathf.Max(64,U.W*.045f);
+        // The CHIP ARENA wordmark: the brandmark (a cyan tile, a navy inset ring and four pin ticks above and below) and
+        // NativeRooftopArt's chamfered monoline capitals (the same strokes the rooftop's holo screens carry), CHIP in ink and
+        // ARENA in cyan, each over a soft halo of its own colour; with `age` >= 0 the letters rise in one by one. `height` is the
+        // cap height. Returns the width.
+        private static readonly string[] wordmarkKeys=new string[128],haloKeys=new string[128];private static float wordmarkStroke=-1,haloStroke=-1;
+        private static readonly Dictionary<char,string> wordmarkMarkup=new Dictionary<char,string>(),haloMarkup=new Dictionary<char,string>();
+        private static float Wordmark(float x,float y,float height,float alpha,float age)
+        {
+            float gs=height/NativeRooftopArt.GlyphHeight,bm=height*.72f,by=y+(height-bm)/2;
+            U.Glow(new Rect(x,by,bm,bm),C.Cyan(.32f*alpha),3+height*.2f);U.Fill(new Rect(x,by,bm,bm),C.Cyan(alpha));U.Fill(new Rect(x+2,by+2,bm-4,bm-4),C.Navy(alpha));
+            float inset=bm*.27f;U.Fill(new Rect(x+inset,by+inset,bm-2*inset,bm-2*inset),C.Cyan(alpha));
+            float pin=Mathf.Max(2,bm*.115f),step=(bm-2)/4;for(int k=0;k<4;k++){float px=x+3+k*step;U.Fill(new Rect(px,by-5,pin,2),C.CyanSoft(.85f*alpha));U.Fill(new Rect(px,by+bm+3,pin,2),C.CyanSoft(.85f*alpha));}
+            // stroke in glyph units: 2.4 at the home size, never under ~1.5 px; the halo three times as wide
+            float stroke=Mathf.Max(2.4f,1.5f/gs),halo=stroke*3.2f;
+            if(stroke!=wordmarkStroke){wordmarkStroke=stroke;wordmarkMarkup.Clear();Array.Clear(wordmarkKeys,0,wordmarkKeys.Length);}if(halo!=haloStroke){haloStroke=halo;haloMarkup.Clear();Array.Clear(haloKeys,0,haloKeys.Length);}
+            float lx=x+bm+height*.61f,u=0;bool second=false;int n=0;
+            foreach(char ch in "CHIP ARENA")
+            {
+                if(ch==' '){u+=20;second=true;continue;}
+                float w=NativeRooftopArt.LetterWidth(ch),e=age<0?1:In(age,.06f+n*.035f,.5f);var r=new Rect(lx+(u-(NativeRooftopArt.GlyphHeight-w)/2)*gs,y+14*gs*(1-e),40*gs,40*gs);
+                if(!wordmarkMarkup.TryGetValue(ch,out var svg)){svg=NativeRooftopArt.Letter(ch,stroke);wordmarkMarkup[ch]=svg;wordmarkKeys[ch]="wm-"+ch+"-"+stroke.ToString("0.00",System.Globalization.CultureInfo.InvariantCulture);}
+                if(!haloMarkup.TryGetValue(ch,out var hsvg)){hsvg=NativeRooftopArt.Letter(ch,halo);haloMarkup[ch]=hsvg;haloKeys[ch]="wmh-"+ch+"-"+halo.ToString("0.00",System.Globalization.CultureInfo.InvariantCulture);}
+                Color ink=second?C.Cyan():C.Ink(),glow=second?C.Cyan():C.CyanSoft();
+                NativeIcons.DrawMarkup(r,haloKeys[ch],hsvg,NativeRooftopArt.GlyphHeight,U.A(glow,(second?.26f:.16f)*alpha*e),192);NativeIcons.DrawMarkup(r,wordmarkKeys[ch],svg,NativeRooftopArt.GlyphHeight,U.A(ink,alpha*e));
+                u+=w+13;n++;
+            }
+            return bm+height*.61f+(u-13)*gs;
+        }
+        // The top bar of the panel screens: the wordmark at 16 px (the home screen draws its own at 36); the room's
+        // connection pill at the right in the lobby. The PROTOTYPE tag lives in the footer.
         private void TopBar(bool home)
         {
-            float W=U.W,x=30,cy=24+19;
-            Brandmark(new Rect(x,cy-14.5f,29,29));float tx=x+29+12;
-            U.Text(new Rect(tx,cy-11,260,22),"CHIP ARENA",16,U.Hex(0xf4f4f5),TextAnchor.MiddleLeft,bold:true,tracking:.08f);
-            float bx=tx+U.Measure("CHIP ARENA",16,true,false,.08f).x+18,bw=U.Measure("PROTOTYPE",11,false,true,.08f).x+14;var badge=new Rect(bx,cy-10.5f,bw,21);
-            U.Round(badge,U.Hex(0x18191e,.91f),4,U.Hex(0x45464f));U.Text(badge,"PROTOTYPE",11,U.Hex(0xc3c4ce),TextAnchor.MiddleCenter,mono:true,tracking:.08f);
-            if(home&&Updater!=null)UpdateControl(W-30,24);
-            if(menuScreen==MenuScreen.Lobby&&InRoom)ConnectionPill(W-30,24);
+            if(home)return;Wordmark(30,31,16,1,-1);
+            if(menuScreen==MenuScreen.Lobby&&InRoom)ConnectionPill(U.W-30,24);
         }
-        // .brandmark: a 29 px orange square with a 5 px #152733 inset ring and 2 px dashed #a7cfc2 rules 5 px above and
-        // below; the dashes march slowly here.
-        private static void Brandmark(Rect r)
+        // The footer on every menu screen: a hairline, the PROTOTYPE tag, the build and controls at the left and the arena
+        // and pilot counts at the right, in mono.
+        private void Footer()
         {
-            U.Fill(r,U.Hex(0xff6b35));U.Fill(new Rect(r.x+2,r.y+2,r.width-4,r.height-4),U.Hex(0x152733));U.Fill(new Rect(r.x+7,r.y+7,r.width-14,r.height-14),U.Hex(0xff6b35));
-            float off=Mathf.Repeat(Time.unscaledTime*6,10),x0=r.x-5,x1=r.xMax+5;
-            foreach(float y in new[]{r.y-5,r.yMax+3})for(float x=x0-10+off;x<x1;x+=10){float a=Mathf.Max(x,x0),b=Mathf.Min(x+6,x1);if(b>a)U.Fill(new Rect(a,y,b-a,2),U.Hex(0xa7cfc2));}
+            float W=U.W,H=U.H,x0=HomeX,fy=H-40;U.Fill(new Rect(x0,fy-14,W-2*x0,1),C.CyanSoft(.22f));
+            float pw=U.Measure("PROTOTYPE",9,true,true,.15f).x+12;var tag=new Rect(x0,fy-9,pw,18);U.Round(tag,C.Navy(.8f),4,C.Cyan(.55f));U.Text(tag,"PROTOTYPE",9,C.Cyan(),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.15f);
+            string build=Updater?.Installed!=null?"BUILD "+NativeUpdater.Short(Updater.Installed.version):"NATIVE BUILD";
+            U.Text(new Rect(x0+pw+14,fy-8,W-2*x0-pw-14,16),build+"   /   DESKTOP CONTROLS",10.5f,C.Ink(.78f),TextAnchor.MiddleLeft,mono:true);
+            U.Text(new Rect(x0,fy-8,W-2*x0,16),content.maps.Count(m=>m.rotation)+" ARENAS   ·   2–8 PILOTS",10.5f,C.Ink(.78f),TextAnchor.MiddleRight,mono:true);
         }
-        private string UpdateBadge(NativeUpdater u,out Color color,out bool pulse)
+        // The Update Game control, a circle beside the menu (main.ts drawUpdateControl's role): a dotted ring turning slowly, a
+        // navy disc with the state's icon (the download's percentage while downloading, its ring filling; a spinner while
+        // checking, verifying, preparing or restarting) and a two-line state label to its upper left. A click opens the update
+        // card (UpdatePanel) beside it and checks again (the automatic check runs once per launch) unless one is running, an
+        // update is waiting or the updater is off; the card stays open on its own while an update downloads and installs.
+        private void UpdateCircle(Vector2 c,float r,float alpha)
         {
-            var s=u.State;pulse=s==NativeUpdateState.Available;color=pulse?U.Hex(0xffc590):s==NativeUpdateState.Error?U.Hex(0xff9a8d):s==NativeUpdateState.Downloading||s==NativeUpdateState.Verifying||s==NativeUpdateState.Preparing||s==NativeUpdateState.Restarting?U.Hex(0xffc590):U.Hex(0xb5b0be);
-            switch(s)
+            var u=Updater;var s=u.State;float t=Time.unscaledTime;bool spin=s==NativeUpdateState.Checking||s==NativeUpdateState.Verifying||s==NativeUpdateState.Preparing||s==NativeUpdateState.Restarting;
+            bool busy=s==NativeUpdateState.Downloading||s==NativeUpdateState.Verifying||s==NativeUpdateState.Preparing||s==NativeUpdateState.Restarting,live=s==NativeUpdateState.Available||busy;
+            var hit=new Rect(c.x-r-12,c.y-r-12,2*r+24,2*r+24);bool blocked=MenuBlocked();float h=Mathf.Max(U.HoverAmount(9101,hit,!blocked),updateOpen?1:0);
+            Color accent=s==NativeUpdateState.Error?C.Danger():live?C.Cyan():C.Muted();float pulse=s==NativeUpdateState.Available?.5f+.5f*Mathf.Sin(t*3.7f):0;
+            U.RadialStops(new Rect(c.x-r*2.1f,c.y-r*2.1f,r*4.2f,r*4.2f),U.A(live?C.Cyan():C.Muted(),((live?.20f:.10f)+.08f*h+.08f*pulse)*alpha),new[]{0f,.29f,1f},new[]{1f,1f,0f});
+            for(int k=0;k<48;k++){float a=k/48f*Mathf.PI*2+t*.12f,d=k%4==0?2.6f:1.6f;var dot=new Vector2(c.x+Mathf.Cos(a)*(r+9),c.y+Mathf.Sin(a)*(r+9));U.Disc(new Rect(dot.x-d/2,dot.y-d/2,d,d),live?C.CyanSoft(.6f*alpha):C.Muted(.4f*alpha));}
+            if(s==NativeUpdateState.Downloading){float p=Mathf.Clamp01(u.Progress);var ring=new Rect(c.x-r-4.5f,c.y-r-4.5f,2*r+9,2*r+9);U.Glow(ring,C.Cyan(.25f*alpha),6);U.Pie(ring,C.Cyan(alpha),p);}
+            var disc=new Rect(c.x-r,c.y-r,2*r,2*r);U.Disc(disc,C.Void(.95f*alpha));U.RadialStops(disc,U.Hex(0x1e2c60,.95f*alpha),new[]{0f,.75f,1f},new[]{1f,.35f,0f});
+            U.RadialStops(disc,U.A(U.Mix(C.CyanSoft(.45f),C.Cyan(),h),alpha),new[]{0f,.94f,.97f,1f},new[]{0f,0f,1f,0f});U.RadialStops(new Rect(c.x-r+5,c.y-r+5,2*r-10,2*r-10),C.Cyan(.12f*alpha),new[]{0f,.94f,.97f,1f},new[]{0f,0f,1f,0f});
+            if(spin)for(int i=0;i<8;i++){float a=t*4-i*.32f;var d=new Rect(c.x+Mathf.Cos(a)*(r+3)-1.6f,c.y+Mathf.Sin(a)*(r+3)-1.6f,3.2f,3.2f);U.Disc(d,U.A(accent,alpha*(1-i/8f)));}
+            if(s==NativeUpdateState.Downloading)U.Text(disc,Mathf.RoundToInt(Mathf.Clamp01(u.Progress)*100)+"%",15,C.Ink(alpha),TextAnchor.MiddleCenter,bold:true);
+            else NativeIcons.Draw(new Rect(c.x-12,c.y-12,24,24),s==NativeUpdateState.Current?"check":s==NativeUpdateState.Error?"circle-alert":"download",U.A(live?C.CyanSoft():s==NativeUpdateState.Error?C.Danger():C.Muted(),alpha));
+            UpdateLines(u,out string top,out string bottom);float lx=c.x-r-14,ly=c.y-r-18;
+            U.Text(new Rect(lx-260,ly-22,260,16),top,11,C.Ink(.94f*alpha),TextAnchor.MiddleRight,bold:true,tracking:.2f,shadow:C.Void(.8f*alpha));
+            U.Text(new Rect(lx-260,ly-6,260,16),bottom,11,U.A(s==NativeUpdateState.Error?C.Danger():live?C.Cyan():C.Ink(.94f),alpha*(1-.45f*pulse)),TextAnchor.MiddleRight,bold:true,tracking:.2f,shadow:C.Void(.8f*alpha));
+            U.Polygon(new Rect(lx+4,ly+6,10,12),Arrow,new[]{0f,1f},new[]{1f,1f},U.A(accent,.85f*alpha));
+            if(U.Button(hit)&&!blocked){updateOpen=!updateOpen;Click();if(updateOpen&&!u.Busy&&(s==NativeUpdateState.Idle||s==NativeUpdateState.Current||s==NativeUpdateState.Error))u.CheckForUpdates();}
+            if(busy)updateOpen=true;
+            updateAnchor=new Vector2(Mathf.Min(U.W-16,c.x+r+24+UpdateCardWidth),Mathf.Max(70,c.y-r-8));
+        }
+        private static readonly Vector2[] Arrow={new Vector2(0,.5f),new Vector2(1,0),new Vector2(1,1)};
+        // The circle's two-line label: what the updater is doing in two words (the card carries the full status line).
+        private static void UpdateLines(NativeUpdater u,out string top,out string bottom)
+        {
+            switch(u.State)
             {
-                case NativeUpdateState.Available:return "Update Available!";
-                case NativeUpdateState.Current:return "Latest build";
-                case NativeUpdateState.Checking:return "Checking for updates…";
-                case NativeUpdateState.Downloading:return "Downloading "+Mathf.RoundToInt(Mathf.Clamp01(u.Progress)*100)+"%";
-                case NativeUpdateState.Verifying:return "Verifying update…";
-                case NativeUpdateState.Preparing:return "Preparing update…";
-                case NativeUpdateState.Restarting:return "Restarting…";
-                case NativeUpdateState.Error:return "Update check failed";
-                // Idle covers three different outcomes; say which (the card shows the full status text).
-                case NativeUpdateState.Idle:return NotPublished(u)?"No update published yet":(u.Status??"").IndexOf("cancel",StringComparison.OrdinalIgnoreCase)>=0?"Update cancelled":"Not checked yet";
-                default:return "Updater off · open for details";
+                case NativeUpdateState.Available:top="UPDATE";bottom="AVAILABLE";return;
+                case NativeUpdateState.Downloading:top="DOWNLOADING";bottom="UPDATE";return;
+                case NativeUpdateState.Verifying:top="VERIFYING";bottom="UPDATE";return;
+                case NativeUpdateState.Preparing:top="PREPARING";bottom="UPDATE";return;
+                case NativeUpdateState.Restarting:top="RESTARTING";bottom="GAME";return;
+                case NativeUpdateState.Checking:top="CHECKING";bottom="UPDATES";return;
+                case NativeUpdateState.Current:top="LATEST";bottom="BUILD";return;
+                case NativeUpdateState.Error:top="UPDATE";bottom="CHECK FAILED";return;
+                // Idle covers three different outcomes; say which.
+                case NativeUpdateState.Idle:if(NotPublished(u)){top="NO UPDATE";bottom="PUBLISHED";}else if((u.Status??"").IndexOf("cancel",StringComparison.OrdinalIgnoreCase)>=0){top="UPDATE";bottom="CANCELLED";}else{top="UPDATE";bottom="GAME";}return;
+                default:top="UPDATER OFF";bottom="DETAILS";return;
             }
         }
         // NativeUpdater reports a missing feed (HTTP 404 on latest.json) as Idle with this status.
         private static bool NotPublished(NativeUpdater u)=>u.State==NativeUpdateState.Idle&&(u.Status??"").StartsWith("No Unity update",StringComparison.Ordinal);
-        // .update-pill + .update-alert. The source opens the desktop updater window; here the pill opens the update card
-        // (UpdatePanel) beneath it, which stays open on its own while a download is verified, prepared and installed.
-        private void UpdateControl(float right,float top)
-        {
-            var u=Updater;string label="Update Game";float w=17+15+8+U.Measure(label,12,true).x+17;var r=new Rect(right-w,top,w,38);
-            float h=U.HoverAmount(9101,r,!MenuBlocked());
-            U.Glow(new Rect(r.x,r.y+5,r.width,r.height),new Color(0,0,0,.27f),18);
-            // Two fixed capsules (rest gradient, hover fill faded in by h) so the hover transition reuses cached textures.
-            U.Capsule(r,new[]{0f,1f},new[]{U.Hex(0x302a32),U.Hex(0x191a22)},U.Mix(U.Hex(0x71616a),U.Hex(0xefb587),Mathf.Max(h,updateOpen?1:0)));
-            if(h>0)U.Capsule(new Rect(r.x+1,r.y+1,r.width-2,r.height-2),new[]{0f},new[]{U.Hex(0x393039)},default,h);
-            U.Fill(new Rect(r.x+19,r.y+1,r.width-38,1),new Color(1,1,1,.05f));
-            NativeIcons.Draw(new Rect(r.x+17,r.center.y-7.5f,15,15),"download",U.Hex(0xefb587));U.Text(new Rect(r.x+17+15+8,r.y,r.width,r.height),label,12,U.Hex(0xf4e6dc),TextAnchor.MiddleLeft,bold:true);
-            // Opening the card also checks again (the automatic check runs once per launch), unless one is running,
-            // an update is already waiting or the updater is off.
-            if(U.Button(r)&&!MenuBlocked()){updateOpen=!updateOpen;Click();var st=u.State;if(updateOpen&&!u.Busy&&(st==NativeUpdateState.Idle||st==NativeUpdateState.Current||st==NativeUpdateState.Error))u.CheckForUpdates();}
-            string text=UpdateBadge(u,out var color,out bool pulse);float a=pulse?M.Keys(Mathf.Repeat(Time.unscaledTime/1.7f,1),new[]{0f,.5f,1f},new[]{1f,.4f,1f},M.EaseInOut):1;
-            float bw=U.Measure(text,12,pulse).x+16;var b=new Rect(r.center.x-bw/2,r.yMax+7,bw,20);
-            if(b.xMax>right){b.x=right-bw;}U.Round(b,U.Hex(0x101114,.8f),6);U.Text(b,text,12,U.A(color,a),TextAnchor.MiddleCenter,bold:pulse,glow:pulse?U.Hex(0xffac68,.25f*a):default);
-            var s=u.State;if(s==NativeUpdateState.Downloading||s==NativeUpdateState.Verifying||s==NativeUpdateState.Preparing||s==NativeUpdateState.Restarting)updateOpen=true;
-            updateAnchor=new Vector2(right,b.yMax+10);
-        }
         private Vector2 updateAnchor;
         private void UpdateDropdown(){if(Updater!=null&&updateOpen)UpdatePanel(updateAnchor.x,updateAnchor.y);else updateCard=Rect.zero;}
         // While the update card is open, controls underneath it ignore the pointer (IMGUI gives clicks to the first control).
         // Computed once per event at the top of HomeMenu, untransformed, from the card drawn last frame.
         private bool MenuBlocked()=>menuBlockedNow;
-        // .bottom-line: a #415362 rule 23 px above the bottom with the build and arena counts in 12 px mono.
-        private void Footer()
-        {
-            float W=U.W,H=U.H,y=H-23-14;U.Fill(new Rect(30,y-13,W-60,1),U.Hex(0x415362,.8f));
-            string build=Updater?.Installed!=null?"BUILD "+NativeUpdater.Short(Updater.Installed.version):"NATIVE BUILD";
-            U.Text(new Rect(30,y,W-60,14),build+"   /   DESKTOP CONTROLS",12,U.Hex(0xa8a9b3),TextAnchor.MiddleLeft,mono:true);
-            U.Text(new Rect(30,y,W-60,14),content.maps.Count(m=>m.rotation)+" ARENAS   ·   2–8 PILOTS",12,U.Hex(0xa8a9b3),TextAnchor.MiddleRight,mono:true);
-        }
 
         // ---- Home screen ---------------------------------------------------------------------------------------------
-        // .home-lobby: a block up to 1160 px wide centred in the menu area (90 px top, 64 px bottom padding), the 460 px
-        // menu column at the left and the Boss Test pill at the right, centred against the column; under 860 px the pill
-        // moves below the column, right-aligned. Entrance stagger from style.css:139 and pve.css:21.
+        // The redesigned home (owner 2026-10-12, Duelyst-style reference) over the rooftop: the wordmark and its pin rule; the
+        // four numbered entries on a hairline divider with their constellation glyphs (keys 1-4); the quiet rows (Developer
+        // Sandbox offline and the Catalogue for developers, Quit); the Update Game circle; the hexagon buttons at the top right
+        // (Customize, Settings, Account and, for developers, DEV); the Connection report pill at the top centre; and the pilot's
+        // nameplate under its seated pilot, which opens Customize. Short canvases scale the column to fit above the footer.
         private void HomeScreen(float age)
         {
-            float W=U.W,H=U.H,blockW=Mathf.Min(1160,W-56),x0=(W-blockW)/2,colW=Mathf.Min(460,blockW);bool stacked=blockW<860;
-            float size=Mathf.Clamp(W*.066f,68,104),line=size*.96f;bool dev=account.Developer;
-            float colH=15+20+line*2+23+15*1.65f*2+27+3*48+16+9+40+46;
-            var boss=BossPillSize();float totalH=stacked?colH+18+boss.y:colH,fit=Mathf.Clamp((H-150)/totalH,.6f,1),y0=Mathf.Max(80,90+(H-154-totalH*fit)/2);
-            HomeKeys();
-            // Short canvases (a large interface scale on a small window) scale the whole block to fit between bar and footer.
-            U.Push(new Vector2(W/2,y0),Vector2.zero,fit);
-            float ce=In(age,0,.26f);U.Push(new Vector2(x0+colW/2,y0+colH/2),new Vector2(0,10*(1-ce)),.99f+.01f*ce);float y=y0;
-            // Warm light behind the title.
-            U.RadialStops(new Rect(x0-160,y0-40,colW+320,line*2+200),U.Hex(0xff6b35,.075f*ce),new[]{0f,.55f,1f},new[]{1f,.35f,0f});
-            // Eyebrow with an accent rule.
-            float rule=18*In(age,.05f,.4f);U.Fill(new Rect(x0,y+6.5f,rule,2),U.Hex(0xff6b35,ce));
-            U.Text(new Rect(x0+28,y,colW,15),"VOXEL COMBAT / UP TO 8 PILOTS",12,U.Hex(0xadb0b9,ce),TextAnchor.MiddleLeft,bold:true,tracking:.2f);y+=15+20;
-            HomeTitle(x0,y,size,line,age,ce);y+=line*2+23;
-            foreach(string text in new[]{"Install your edge.","Turn the arena into a weapon."}){U.Text(new Rect(x0,y,colW,15*1.65f),text,15,U.Hex(0xc0c1c7,ce),TextAnchor.MiddleLeft);y+=15*1.65f;}y+=27;
-            var items=new[]{("swords","Play vs Bots","01",MenuScreen.Play),("network","Create Room","02",MenuScreen.Create),("users","Join Room","03",MenuScreen.Join)};
-            for(int i=0;i<items.Length;i++)
-            {
-                float e=In(age,i*.04f,.3f);var r=new Rect(x0,y,colW,48);U.Push(r.center,new Vector2(0,10*(1-e)),.99f+.01f*e);
-                if(MenuButton(r,items[i].Item1,items[i].Item2,items[i].Item3,i==0,true,ce*e))Go(items[i].Item4);U.Pop();y+=48+8;
-            }
-            y+=-8+9;
-            // .submenus: Customize, Settings, the account tile and (developers) DEV Menu, sharing the column equally.
-            string user=account.Account?.username;string accountLabel=user!=null?user+" · Account":dev?"DEV · Account":"Log in / Register";
-            var tiles=new List<(string icon,string label,Action go)>{("palette","Customize",()=>Go(MenuScreen.Customize)),("settings","Settings",()=>Go(MenuScreen.Settings)),("users",accountLabel,()=>Go(MenuScreen.Account))};
-            if(dev)tiles.Add((null,"DEV Menu",()=>{if(account.Account==null){accountNotice="Log in once to activate registered DEV tools.";Go(MenuScreen.Account);}else Go(MenuScreen.Dev);}));
-            var widths=TileWidths(tiles.Select(t=>t.label).ToArray(),tiles.Select(t=>t.icon).ToArray(),colW,out bool icons);float tx=x0;
-            for(int i=0;i<tiles.Count;i++){float e=In(age,.1f+i*.035f,.3f);var r=new Rect(tx,y,widths[i],40);U.Push(r.center,new Vector2(0,8*(1-e)));if(Tile(r,icons?tiles[i].icon:null,tiles[i].label,ce*e,i==2&&user!=null?user:null))tiles[i].go();U.Pop();tx+=widths[i]+8;}
-            y+=40;
-            // .subtle-link row: Developer Sandbox (developers, offline), the conversion catalogue (developers only: the source
-            // has no such screen and its import notes are not for players) and Quit.
-            float lx=x0;float le=ce*In(age,.22f,.3f);
-            if(dev&&!Online&&SubtleLink(ref lx,y+15,"flask-conical","Developer Sandbox",le)){Go(MenuScreen.Play);playSandbox=true;}
-            if(dev&&SubtleLink(ref lx,y+15,"book-open","Catalogue",le))Go(MenuScreen.Catalogue);
-            if(SubtleLink(ref lx,y+15,"log-out","Quit",le)){Save();Application.Quit();}
-            U.Pop();
-            float be=In(age,.12f,.34f);var br=stacked?new Rect(x0+colW-boss.x,y0+colH+18,boss.x,boss.y):new Rect(x0+blockW-boss.x,y0+colH/2-boss.y/2,boss.x,boss.y);
-            U.Push(br.center,new Vector2(0,10*(1-be)),.99f+.01f*be);if(BossPill(br,be))Go(MenuScreen.Boss);U.Pop();U.Pop();
+            float W=U.W,H=U.H,x0=HomeX;bool dev=account.Developer;HomeKeys();float ce=In(age,0,.26f);
+            const float wy=86,gh=36,rh=58;float ry=wy+gh+16,top=ry+56,lastMain=top+rh*3;int quiet=(dev&&!Online?1:0)+(dev?1:0)+1;float bottom=lastMain+rh*.9f+6+34*(quiet-1)+18;
+            float fit=Mathf.Clamp((H-70-wy+20)/(bottom-wy+20),.6f,1);U.Push(new Vector2(x0,wy-20),Vector2.zero,fit);
+            float ww=Wordmark(x0,wy,gh,ce,age);
+            // the chip-pin rule: a hairline with leg ticks, its first run in cyan and its last in magenta
+            float rule=ww*In(age,.1f,.5f);U.Fill(new Rect(x0,ry,rule,1),C.CyanSoft(.30f*ce));U.Fill(new Rect(x0,ry-.5f,Mathf.Min(rule,26+10),2),C.Cyan(ce));
+            for(float px=x0+48;px<x0+rule;px+=9)U.Fill(new Rect(px,ry+1,1,3),C.CyanSoft(.30f*ce));if(rule>=ww-.5f)U.Fill(new Rect(x0+ww-14,ry-.5f,14,2),C.Magenta(.85f*ce));
+            // the entries on their divider
+            float dx=x0+50;U.Fill(new Rect(dx,top-18,1,(lastMain-top+36)*In(age,.08f,.4f)),C.CyanSoft(.22f*ce));
+            var items=new[]{("play","PLAY VS BOTS","01",MenuScreen.Play),("create","CREATE ROOM","02",MenuScreen.Create),("join","JOIN ROOM","03",MenuScreen.Join),("boss","BOSS TEST","04",MenuScreen.Boss)};
+            for(int i=0;i<items.Length;i++){float e=In(age,.1f+i*.05f,.3f);U.Push(new Vector2(x0,top+i*rh),new Vector2(12*(1-e),0));if(HomeEntry(i,top+i*rh,items[i].Item1,items[i].Item2,items[i].Item3,i==3?"PVE · THE SIREN":null,ce*e))Go(items[i].Item4);U.Pop();}
+            // .subtle-link's quiet rows: Developer Sandbox (developers, offline), the conversion catalogue (developers only: the
+            // source has no such screen and its import notes are not for players) and Quit.
+            float qy=lastMain+rh*.9f+6,qe=ce*In(age,.3f,.3f);
+            if(dev&&!Online&&QuietRow(ref qy,"sandbox","SANDBOX","DEV",qe)){Go(MenuScreen.Play);playSandbox=true;}
+            if(dev&&QuietRow(ref qy,"catalogue","CATALOGUE","DEV",qe))Go(MenuScreen.Catalogue);
+            if(QuietRow(ref qy,"quit","QUIT",null,qe)){Save();Application.Quit();}
+            if(Updater!=null)UpdateCircle(new Vector2(x0+500,top+rh*1.5f),36,ce*In(age,.2f,.4f));
+            // The update card is drawn outside the fitted column: carry its anchor through the same scale.
+            U.Pop();if(Updater!=null){var pivot=new Vector2(x0,wy-20);updateAnchor=pivot+(updateAnchor-pivot)*fit;}
+            HexRow(age,ce,out float hexLeft);ReportPill(hexLeft,ce);Nameplate(ce*In(age,.35f,.4f));
         }
-        // .submenus is a flex row of flex:1 tiles: equal shares, except a tile whose content needs more keeps its natural
-        // width and the rest share what is left. When even that overflows, every icon goes (Tile then shortens or shrinks).
-        private static float[] TileWidths(string[] labels,string[] icons,float total,out bool withIcons)
+        // One numbered entry: its constellation glyph, a 21 px tracked label and its mono key; hover lights a cyan band from
+        // the divider with a glowing bar, brightens the glyph and lifts the label to white. Boss Test carries its PVE line in
+        // violet.
+        private bool HomeEntry(int index,float y,string glyph,string label,string key,string sub,float alpha)
         {
-            float gaps=8*(labels.Length-1);withIcons=true;
-            for(int pass=0;pass<2;pass++)
-            {
-                bool useIcons=pass==0;var natural=labels.Select((l,i)=>16+U.Measure(l,13,true).x+(useIcons&&icons[i]!=null?19+18:0)).ToArray();if(natural.Sum()+gaps>total&&pass==0)continue;
-                withIcons=useIcons;var widths=new float[labels.Length];var open=Enumerable.Range(0,labels.Length).ToList();float left=total-gaps;
-                while(open.Count>0){float share=left/open.Count;var big=open.Where(i=>natural[i]>share).ToList();if(big.Count==0){foreach(int i in open)widths[i]=share;break;}foreach(int i in big){widths[i]=natural[i];left-=natural[i];open.Remove(i);}}
-                if(left<0){float k=(total-gaps)/widths.Sum();for(int i=0;i<widths.Length;i++)widths[i]*=k;}return widths;
-            }
-            return labels.Select(_=>(total-gaps)/labels.Length).ToArray();
+            float x0=HomeX,ix=x0+2,dx=x0+50,lx=x0+72;var hit=new Rect(ix-6,y-rh2,dx+398-ix+6,rh2*2);bool blocked=MenuBlocked();
+            float h=U.HoverAmount(9120+index,hit,!blocked&&alpha>.5f);bool boss=sub!=null;
+            if(h>0){U.HGradient(new Rect(dx+1,y-22,420,44),C.Cyan(.20f*h*alpha),Color.clear);U.Glow(new Rect(dx-1,y-22,3,44),C.Cyan(.5f*h*alpha),7);U.Fill(new Rect(dx-1,y-22,3,44),C.Cyan(h*alpha));}
+            Color tint=boss?U.Hex(0xb7a3ff,.9f):C.CyanSoft(.7f);Constellation(new Rect(ix,y-13,26,26),glyph,U.Mix(tint,C.Cyan(),h),alpha);
+            float ty=boss?y-6:y,shift=3*h;Color ink=U.Mix(C.Ink(.94f),Color.white,h);
+            U.Text(new Rect(lx+shift,ty-14,460,28),label,21,U.A(ink,alpha),TextAnchor.MiddleLeft,tracking:.17f,glow:h>0?C.Cyan(.6f*h*alpha):default,shadow:C.Void(.7f*alpha));
+            float tw=U.Measure(label,21,false,false,.17f).x;
+            if(boss)U.Text(new Rect(lx+1+shift,y+6,300,16),sub,10,U.Hex(0xc4b2ff,alpha),TextAnchor.MiddleLeft,bold:true,tracking:.24f,shadow:C.Void(.7f*alpha));
+            U.Text(new Rect(lx+tw+16+shift,ty-7,40,16),key,10,U.A(U.Mix(C.Ink(.78f),C.CyanSoft(),h),alpha),TextAnchor.MiddleLeft,mono:true);
+            bool clicked=!blocked&&alpha>.5f&&U.Button(hit);if(clicked)Click();return clicked;
         }
-        // Keys 1-4 open the four numbered entries (the source prints 01-04 but binds nothing).
+        private const float rh2=26;
+        // A quiet row under the entries: a small constellation glyph and a 13.5 px tracked label (the DEV tag in magenta);
+        // advances `y` by a row.
+        private bool QuietRow(ref float y,string glyph,string label,string tag,float alpha)
+        {
+            float x0=HomeX,lx=x0+72;var hit=new Rect(x0,y-14,lx-x0+U.Measure(label,13.5f,false,false,.2f).x+(tag!=null?50:12),28);bool blocked=MenuBlocked();
+            float h=U.HoverAmount(label.GetHashCode()^7919,hit,!blocked&&alpha>.5f);
+            Constellation(new Rect(x0+7,y-8,16,16),glyph,U.Mix(C.Muted(.75f),C.Cyan(),h),alpha);
+            float tw=U.Measure(label,13.5f,false,false,.2f).x;U.Text(new Rect(lx+2*h,y-10,300,20),label,13.5f,U.A(U.Mix(C.Ink(.72f),Color.white,h),alpha),TextAnchor.MiddleLeft,tracking:.2f,shadow:C.Void(.6f*alpha));
+            if(tag!=null)U.Text(new Rect(lx+tw+12+2*h,y-7,60,14),tag,8.5f,U.Hex(0xff7ddf,alpha),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);
+            y+=34;bool clicked=!blocked&&alpha>.5f&&U.Button(hit);if(clicked)Click();return clicked;
+        }
+        // Constellation glyphs (24 x 24, our own): hairlines between nodes at .75 of the colour, the nodes as dots in full.
+        private static readonly Dictionary<string,(string lines,string dots)> constellations=Constellations();
+        private static Dictionary<string,(string lines,string dots)> Constellations()
+        {
+            var src=new Dictionary<string,(string l,float[] d)>
+            {
+                ["play"]=("M4 20L20 4M4 4L20 20M7 13L11 17M13 7L17 11",new float[]{4,20,20,4,4,4,20,20,12,12,7,13,17,11}),
+                ["create"]=("M12 4L5 18M12 4L19 18M5 18H19M12 4V12M5 18L12 12L19 18",new float[]{12,4,5,18,19,18,12,12}),
+                ["join"]=("M3 12H15M11 8L15 12L11 16M18 4V20M18 4L21 6V18L18 20",new float[]{3,12,15,12,11,8,11,16,18,4,18,20,21,6,21,18}),
+                ["boss"]=("M12 3L21 19H3Z M9 13L12 10L15 13L12 16Z",new float[]{12,3,21,19,3,19,12,13}),
+                ["sandbox"]=("M10 3V9L5 19H19L14 9V3M7 15H17",new float[]{10,3,14,3,5,19,19,19,10,9,14,9}),
+                ["catalogue"]=("M12 6V20M12 6L4 4V18L12 20L20 18V4Z",new float[]{4,4,20,4,4,18,20,18,12,6,12,20}),
+                ["quit"]=("M10 4H4V20H10M9 12H20M16 8L20 12L16 16",new float[]{4,4,4,20,20,12,16,8,16,16}),
+            };
+            var map=new Dictionary<string,(string,string)>();
+            foreach(var kv in src)
+            {
+                var dots=new System.Text.StringBuilder();for(int i=0;i+1<kv.Value.d.Length;i+=2)dots.Append("<circle cx=\"").Append(kv.Value.d[i]).Append("\" cy=\"").Append(kv.Value.d[i+1]).Append("\" r=\"1.55\" fill=\"#fff\"/>");
+                map[kv.Key]=("<path d=\""+kv.Value.l+"\" fill=\"none\" stroke=\"#fff\" stroke-width=\"1.1\"/>",dots.ToString());
+            }
+            return map;
+        }
+        private static void Constellation(Rect r,string id,Color c,float alpha)
+        {
+            if(!constellations.TryGetValue(id,out var g))return;
+            NativeIcons.DrawMarkup(r,"cst-l-"+id,g.lines,24,U.A(c,.75f*alpha));NativeIcons.DrawMarkup(r,"cst-d-"+id,g.dots,24,U.A(c,alpha));
+        }
+        // Hexagon buttons at the top right (24-unit circumradius on a 48 box, a point up): Customize, Settings, the account
+        // (its name once logged in) and, for developers, DEV (which asks for one login first, as the DEV Menu did).
+        private const string HexFill="<defs><linearGradient id=\"hx\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#131a3d\"/><stop offset=\"1\" stop-color=\"#05070f\"/></linearGradient></defs><path d=\"M24 2L43.05 13V35L24 46L4.95 35V13Z\" fill=\"url(#hx)\"/>";
+        private const string HexEdge="<path d=\"M24 2L43.05 13V35L24 46L4.95 35V13Z\" fill=\"none\" stroke=\"#fff\" stroke-width=\"1.3\"/>";
+        private const string HexInner="<path d=\"M24 6L39.6 15V33L24 42L8.4 33V15Z\" fill=\"none\" stroke=\"#fff\" stroke-width=\"1\"/>";
+        private void HexRow(float age,float ce,out float left)
+        {
+            float W=U.W,x0=HomeX;bool dev=account.Developer;string user=account.Account?.username;
+            var hexes=new List<(string icon,string label,Action go)>{("palette","CUSTOMIZE",()=>Go(MenuScreen.Customize)),("settings","SETTINGS",()=>Go(MenuScreen.Settings)),("users",user!=null?user.ToUpperInvariant():dev?"DEV ACCOUNT":"LOG IN",()=>Go(MenuScreen.Account))};
+            if(dev)hexes.Add(("terminal","DEV",()=>{if(account.Account==null){accountNotice="Log in once to activate registered DEV tools.";Go(MenuScreen.Account);}else Go(MenuScreen.Dev);}));
+            const float hr=25,hs=92,hy=54;float hx=W-x0-14-(hexes.Count-1)*hs;left=hx-hr;
+            for(int i=0;i<hexes.Count;i++){float e=ce*In(age,.12f+i*.04f,.3f);U.Push(new Vector2(hx,hy),new Vector2(0,-8*(1-e)));if(Hex(new Vector2(hx,hy),hr,hexes[i].icon,hexes[i].label,e,9130+i))hexes[i].go();U.Pop();hx+=hs;}
+        }
+        private bool Hex(Vector2 c,float r,string icon,string label,float alpha,int id)
+        {
+            float box=r*48/22;var rect=new Rect(c.x-box/2,c.y-box/2,box,box);var hit=new Rect(c.x-r,c.y-r,2*r,2*r+24);bool blocked=MenuBlocked();float h=U.HoverAmount(id,hit,!blocked&&alpha>.5f);
+            U.Glow(new Rect(c.x-r*.8f,c.y-r*.6f,r*1.6f,r*1.6f),new Color(0,0,0,.55f*alpha),14);if(h>0)U.Glow(new Rect(c.x-r*.7f,c.y-r*.7f,r*1.4f,r*1.4f),C.Cyan(.22f*h*alpha),14);
+            NativeIcons.DrawMarkup(rect,"hex-fill",HexFill,48,new Color(1,1,1,.86f*alpha));NativeIcons.DrawMarkup(rect,"hex-edge",HexEdge,48,U.A(U.Mix(C.CyanSoft(.6f),C.Cyan(),h),alpha));NativeIcons.DrawMarkup(rect,"hex-inner",HexInner,48,C.Cyan((.16f+.2f*h)*alpha));
+            NativeIcons.Draw(new Rect(c.x-11,c.y-11,22,22),icon,U.A(U.Mix(C.Ink(),Color.white,h),alpha));
+            string text=Fit(label,9.5f,88,true,.16f);U.Text(new Rect(c.x-60,c.y+r+7,120,16),text,9.5f,U.A(U.Mix(C.Ink(),C.CyanSoft(),h),alpha),TextAnchor.MiddleCenter,bold:true,tracking:.16f,shadow:C.Void(.8f*alpha));
+            bool clicked=!blocked&&alpha>.5f&&U.Button(hit);if(clicked)Click();return clicked;
+        }
+        // The Connection report pill at the top centre (the source's diagnostics, also in Settings), left out when the canvas is
+        // too narrow to keep it clear of the hexagons.
+        private void ReportPill(float hexLeft,float alpha)
+        {
+            const string label="CONNECTION REPORT";float tw=U.Measure(label,9.5f,true,false,.16f).x,pw=tw+12+14+16,px=U.W/2-pw/2;if(px+pw>hexLeft-24)return;
+            var r=new Rect(px,16,pw,24);bool blocked=MenuBlocked();float h=U.HoverAmount(9140,r,!blocked&&alpha>.5f);
+            U.Round(r,C.Navy(.72f*alpha),12,U.A(U.Mix(C.CyanSoft(.32f),C.Cyan(),h),alpha));NativeIcons.Draw(new Rect(px+10,22,12,12),"activity",C.Cyan(alpha));
+            U.Text(new Rect(px+28,16,tw+8,24),label,9.5f,U.A(U.Mix(C.Ink(.92f),Color.white,h),alpha),TextAnchor.MiddleLeft,bold:true,tracking:.16f);
+            if(!blocked&&alpha>.5f&&U.Button(r)){Click();OpenConnectionReport();}
+        }
+        // The pilot's nameplate (owner 2026-10-12: kept; it opens Customize): under the seated pilot's projected feet on the
+        // rooftop (a fixed spot over the map orbit), a leader line to a rule with the class icon, the name and the weapon and
+        // class in the accent colour lifted toward white so it reads on the night.
+        private void Nameplate(float alpha)
+        {
+            if(alpha<=0)return;if(!RooftopFeet(out var feet))feet=new Vector2(U.W*.64f,U.H*.6f);
+            var weapon=content.weapons.FirstOrDefault(w=>w.id==prefs.weapon)??content.weapons[0];Color accent=HexColor(prefs.accentColor,C.CyanHex),lifted=U.Mix(accent,Color.white,.45f);
+            float nx=feet.x+46,ny=feet.y+18;var hit=new Rect(nx-10,ny-30,240,52);bool blocked=MenuBlocked();float h=U.HoverAmount(9141,hit,!blocked&&alpha>.5f);
+            Ramp(new Rect(nx-10,ny-30,192,52),.72f,.55f,alpha,true);Ramp(new Rect(nx+182,ny-30,48,52),.55f,0,alpha,true);
+            Color line=U.A(U.Mix(C.CyanSoft(.45f),C.Cyan(),h),alpha);Line(new Vector2(feet.x+10,feet.y+4),new Vector2(nx-6,ny),line);U.Fill(new Rect(nx-6,ny-.5f,196,1),line);
+            NativeIcons.Draw(new Rect(nx,ny-25,22,22),NativeIcons.Spec(weapon.id),U.A(accent,alpha));float tx=nx+30;
+            U.Text(new Rect(tx,ny-21,220,18),NativeCosmeticRules.Name(prefs.name).ToUpperInvariant(),11.5f,U.A(U.Mix(C.Ink(.94f),Color.white,h),alpha),TextAnchor.MiddleLeft,bold:true,tracking:.22f,shadow:C.Void(.8f*alpha));
+            string cls=weapon.@class=="ranged"?"RANGED":weapon.@class=="magic"?"MAGIC":weapon.@class=="melee"?"MELEE":"DEV";
+            U.Text(new Rect(tx,ny+4,220,16),weapon.name.ToUpperInvariant()+"  ·  "+cls,9.5f,U.A(lifted,alpha),TextAnchor.MiddleLeft,bold:true,tracking:.2f,shadow:C.Void(.8f*alpha));
+            if(!blocked&&alpha>.5f&&U.Button(hit)){Click();Go(MenuScreen.Customize);}
+        }
+        // A hairline from a to b (virtual px).
+        private static void Line(Vector2 a,Vector2 b,Color c,float width=1)
+        {var d=b-a;float len=d.magnitude;if(len<.5f||c.a<=0)return;U.Push(a,Vector2.zero,1,Mathf.Atan2(d.y,d.x)*Mathf.Rad2Deg);U.Fill(new Rect(a.x,a.y-width/2,len,width),c);U.Pop();}
+        // Keys 1-4 open the four numbered entries.
         private void HomeKeys()
         {
             var e=Event.current;if(e.type!=EventType.KeyDown||GUIUtility.keyboardControl!=0||updateOpen)return;
             int k=e.keyCode>=KeyCode.Alpha1&&e.keyCode<=KeyCode.Alpha4?e.keyCode-KeyCode.Alpha1:e.keyCode>=KeyCode.Keypad1&&e.keyCode<=KeyCode.Keypad4?e.keyCode-KeyCode.Keypad1:-1;if(k<0)return;
             e.Use();Click();Go(k==0?MenuScreen.Play:k==1?MenuScreen.Create:k==2?MenuScreen.Join:MenuScreen.Boss);
         }
-        // .title: CHIP / ARENA. at clamp(68px,6.6vw,104px), weight 900, tracking -.065em, line-height .96, ARENA. in #ff6b35.
-        // Letters rise in one by one, and a light sweep crosses ARENA. every few seconds.
-        private static void HomeTitle(float x,float y,float size,float line,float age,float alpha)
-        {
-            string[] words={"CHIP","ARENA."};int n=0;float gap=-.065f*size,sweep=Mathf.Repeat(Time.unscaledTime,6.5f)/1.4f;
-            for(int w=0;w<2;w++)
-            {
-                float cx=x,total=0;foreach(char ch in words[w])total+=U.Measure(ch.ToString(),size,true).x+gap;
-                if(w==1)U.RadialStops(new Rect(x-30,y+line-20,total+60,line+40),U.Hex(0xff6b35,.16f*alpha),new[]{0f,.6f,1f},new[]{1f,.3f,0f});
-                foreach(char ch in words[w])
-                {
-                    string s=ch.ToString();float cw=U.Measure(s,size,true).x,e=In(age,.06f+n*.035f,.5f);var r=new Rect(cx,y,cw+size*.2f,line);
-                    U.Push(new Vector2(cx+cw/2,y+line/2),new Vector2(0,22*(1-e)));
-                    Color c=w==0?U.Hex(0xf4f4f5):U.Hex(0xff6b35);U.Text(r,s,size,U.A(c,alpha*e),TextAnchor.MiddleLeft,bold:true,shadow:new Color(0,0,0,.35f*alpha*e));
-                    if(w==1&&sweep<1){float d=Mathf.Abs((cx+cw/2-x)/Mathf.Max(1,total)-sweep*1.4f+.2f);float k=Mathf.Clamp01(1-d*4);if(k>0)U.Text(r,s,size,U.Hex(0xffc4a3,alpha*e*k*.85f),TextAnchor.MiddleLeft,bold:true);}
-                    U.Pop();cx+=cw+gap;n++;
-                }
-                y+=line;
-            }
-        }
-        // .btn / .btn.primary (visual revision): icon, label and an optional mono key at the right; hover lifts 1 px and
-        // warms the edge, press scales to .985, the primary warms to #ff865b with an orange underglow and carries a sheen.
+        // .btn / .btn.primary in the cyber palette: icon, label and an optional mono key at the right; hover lifts 1 px and
+        // lights the edge cyan, press scales to .985; the primary is cyan with void ink, a cyan underglow and a sheen.
         private bool MenuButton(Rect r,string icon,string text,string key=null,bool primary=false,bool enabled=true,float alpha=1,float size=15,bool center=false)
         {
             int id=text.GetHashCode()^((int)r.x*73856093)^((int)r.y*19349663);bool blocked=MenuBlocked();float h=U.HoverAmount(id,r,enabled&&!blocked);
             bool press=enabled&&!blocked&&U.Hover(r)&&Input.GetMouseButton(0);float a=alpha*(enabled?1:.45f);var d=new Rect(r.x,r.y-h,r.width,r.height);
             if(press){float s=.985f;d=new Rect(d.center.x-d.width*s/2,r.center.y-r.height*s/2,d.width*s,d.height*s);}
-            Color fill=primary?U.Mix(U.Hex(0xff6b35),U.Hex(0xff865b),h):U.Mix(U.Hex(0x222329),U.Hex(0x303138),h),edge=primary?U.Hex(0xff6b35):U.Mix(U.Hex(0x484952),U.Hex(0xff784b),h),ink=primary?U.Hex(0x111216):U.Hex(0xf5f5f7);
-            if(primary&&h>0)U.Glow(new Rect(d.x+6,d.y+10,d.width-12,d.height-8),U.Hex(0xff6b35,.45f*h*a),16);
-            U.Round(d,U.A(fill,a),4,U.A(edge,a));if(primary&&enabled)Sheen(d,a);
+            Color fill=primary?U.Mix(C.Cyan(),C.CyanSoft(),h):U.Mix(C.Indigo(.92f),U.Hex(0x1b2552,.95f),h),edge=primary?C.CyanSoft():U.Mix(C.Edge(),C.Cyan(),h),ink=primary?C.Void():C.Ink();
+            if(primary&&h>0)U.Glow(new Rect(d.x+6,d.y+10,d.width-12,d.height-8),C.Cyan(.45f*h*a),16);
+            U.Round(d,U.A(fill,a),4,U.A(edge,a));if(!primary&&h>0)U.Fill(new Rect(d.x+1,d.y+1,3,d.height-2),C.Cyan(h*a));if(primary&&enabled)Sheen(d,a);
             float iconSize=size>=15?19:17,textW=U.Measure(text,size,true).x,start=center?d.center.x-((icon!=null?iconSize+18:0)+textW)/2:d.x+18;
             if(icon!=null)NativeIcons.Draw(new Rect(start+(center?0:2*h),d.center.y-iconSize/2,iconSize,iconSize),icon,U.A(ink,a));
             float tx=start+(icon!=null?iconSize+(center?18:27):0);U.Text(new Rect(tx,d.y,d.xMax-tx,d.height),text,size,U.A(ink,a),TextAnchor.MiddleLeft,bold:true);
@@ -288,20 +391,6 @@ namespace ChipArena.UnityConversion
             var l=Rect.MinMaxRect(Mathf.Max(d.x+2,bx),d.y+2,Mathf.Min(d.xMax-2,bx+band/2),d.yMax-2);var r=Rect.MinMaxRect(Mathf.Max(d.x+2,bx+band/2),d.y+2,Mathf.Min(d.xMax-2,bx+band),d.yMax-2);
             var c=new Color(1,1,1,.22f*alpha);if(l.width>0)U.HGradient(l,Color.clear,c);if(r.width>0)U.HGradient(r,c,Color.clear);
         }
-        // .submenus .btn: centred icon and 13 px label (the row drops icons together when any label would not fit); a label
-        // still too long falls back to `shorter`, then shrinks to fit.
-        private bool Tile(Rect r,string icon,string text,float alpha,string shorter=null)
-        {
-            float room=r.width-16,size=13,w=U.Measure(text,size,true).x;if(w>room&&shorter!=null){text=shorter;w=U.Measure(text,size,true).x;}if(icon!=null&&19+18+w>room)icon=null;if(w>room)size=Mathf.Max(10,size*room/w);
-            return MenuButton(r,icon,text,null,false,true,alpha,size,true);
-        }
-        // .subtle-link: transparent, 13 px #a9aab5 brightening on hover, with its icon.
-        private bool SubtleLink(ref float x,float y,string icon,string text,float alpha)
-        {
-            float w=16+7+U.Measure(text,13).x;var r=new Rect(x,y-4,w,26);x+=w+22;bool blocked=MenuBlocked();float h=U.HoverAmount(text.GetHashCode()^7919,r,!blocked);
-            Color c=U.A(U.Mix(U.Hex(0xa9aab5),U.Hex(0xe6f4ec),h),alpha);NativeIcons.Draw(new Rect(r.x,y-.5f,16,16),icon,c);U.Text(new Rect(r.x+23,r.y,w,r.height),text,13,c,TextAnchor.MiddleLeft);
-            bool hit=!blocked&&alpha>.5f&&U.Button(r);if(hit)Click();return hit;
-        }
         // pve/menu.ts SKULL (48 x 48): the bone in a #fbf9ff → #d9d3e6 → #9d95ad gradient, sockets, nose and teeth in
         // #09080d; the eyes are drawn separately so they can brighten to white on hover as in pve.css.
         private const string SkullMarkup="<defs><linearGradient id=\"bone\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#fbf9ff\"/><stop offset=\".62\" stop-color=\"#d9d3e6\"/><stop offset=\"1\" stop-color=\"#9d95ad\"/></linearGradient></defs>"
@@ -314,31 +403,6 @@ namespace ChipArena.UnityConversion
             NativeIcons.DrawMarkup(new Rect(r.x,r.y+1,r.width,r.height),"skull",SkullMarkup,48,new Color(0,0,0,.8f*alpha));NativeIcons.DrawMarkup(r,"skull",SkullMarkup,48,new Color(1,1,1,alpha));
             NativeIcons.DrawMarkup(r,"skull-eyes",SkullEyes,48,U.A(U.Mix(U.Hex(0xc9bcff),Color.white,eyes),alpha));
         }
-        private static Vector2 BossPillSize(){float text=Mathf.Max(U.Measure("BOSS TEST",19,true,false,.17f).x,U.Measure("PVE · THE SIREN",11,true,false,.16f).x);return new Vector2(10+52+14+text+14+U.Measure("04",16).x+22,70);}
-        // .boss-pill: a glossy black capsule (#3a3942 → #17171d 45% → #030305 55% → #0e0e13) with a gloss cap, violet aura
-        // (#7d5cff), the skull in a 52 px radial socket, BOSS TEST / PVE · THE SIREN and its 04 key; hover lifts 2 px,
-        // brightens the edge to #b7a8ff and runs the one-second sheen.
-        private float bossHoverAt=-9;
-        private bool BossPill(Rect r,float alpha)
-        {
-            bool blocked=MenuBlocked();float h=U.HoverAmount(9102,r,!blocked);if(h>0&&bossHoverAt<0)bossHoverAt=Time.unscaledTime;if(h<=0)bossHoverAt=-9;
-            var d=new Rect(r.x,r.y-2*h,r.width,r.height);float breathe=.5f+.5f*Mathf.Sin(Time.unscaledTime*2.4f);
-            U.Glow(new Rect(d.x,d.y+16,d.width,d.height),new Color(0,0,0,(.7f+.1f*h)*alpha),34);U.Glow(d,U.Hex(0x7d5cff,(.12f+.05f*breathe+.2f*h)*alpha),30+10*h);
-            U.Capsule(new Rect(d.x-1,d.y-1,d.width+2,d.height+2),new[]{0f},new[]{Color.black},default,alpha);
-            U.Capsule(d,new[]{0f,.45f,.55f,1f},new[]{U.Hex(0x3a3942),U.Hex(0x17171d),U.Hex(0x030305),U.Hex(0x0e0e13)},U.Mix(new Color(1,1,1,.19f),U.Hex(0xb7a8ff,.65f),h),alpha);
-            U.Capsule(new Rect(d.x+16,d.y+3,d.width-32,d.height*.45f),new[]{0f,1f},new[]{new Color(1,1,1,.26f),new Color(1,1,1,.02f)},default,alpha);
-            U.Fade(new Rect(d.x+d.height/2,d.yMax-10,d.width-d.height,8),new Color(0,0,0,.45f*alpha),false);
-            if(bossHoverAt>=0){float t=M.EaseOut(M.Clamp01((Time.unscaledTime-bossHoverAt)/1f)),k=t<.25f?t/.25f:1-(t-.25f)/.75f;float bx=d.x+(-.45f+1.7f*t)*d.width,bw=d.width*.32f;
-                var band=Rect.MinMaxRect(Mathf.Max(d.x+d.height/2,bx),d.y+6,Mathf.Min(d.xMax-d.height/2,bx+bw),d.yMax-6);if(band.width>0&&k>0){var c=new Color(1,1,1,.19f*k*alpha);U.HGradient(new Rect(band.x,band.y,band.width/2,band.height),Color.clear,c);U.HGradient(new Rect(band.center.x,band.y,band.width/2,band.height),c,Color.clear);}}
-            var socket=new Rect(d.x+10,d.center.y-26,52,52);U.Radial(new Rect(socket.x-10,socket.y-10,72,72),U.Hex(0xb7a8ff,.15f*alpha));U.Disc(socket,U.A(U.Hex(0x060508),alpha));
-            U.RadialStops(new Rect(socket.x-6,socket.y-14,64,64),U.Hex(0x302c39,alpha),new[]{0f,.72f,1f},new[]{1f,.0f,0f});U.RadialStops(socket,new Color(1,1,1,.09f*alpha),new[]{0f,.92f,.97f,1f},new[]{0f,0f,1f,0f});
-            Skull(new Rect(socket.center.x-18,socket.center.y-18,36,36),alpha,Mathf.Max(h,.25f*breathe));
-            float tx=socket.xMax+14;U.Text(new Rect(tx,d.center.y-21,200,22),"BOSS TEST",19,new Color(.965f,.953f,1,alpha),TextAnchor.MiddleLeft,bold:true,tracking:.17f,shadow:new Color(0,0,0,alpha));
-            U.Text(new Rect(tx,d.center.y+5,200,14),"PVE · THE SIREN",11,U.Hex(0xc9bfff,alpha),TextAnchor.MiddleLeft,bold:true,tracking:.16f);
-            U.Text(new Rect(d.x,d.y,d.width-22,d.height),"04",16,U.Hex(0xd9d2f0,alpha),TextAnchor.MiddleRight);
-            bool hit=!blocked&&alpha>.5f&&U.Button(r);if(hit)Click();return hit;
-        }
-
         // ---- Panel screens -------------------------------------------------------------------------------------------
         private struct ScreenLayout{public Rect Panel,Body,Card;public float Enter;public bool Closed;}
         // main.ts panel(): eyebrow, 30 px title and the close X over a .panel (#17181df5, #45464e edge, 10 px radius, 32 px
@@ -353,11 +417,16 @@ namespace ChipArena.UnityConversion
             float px=left?Mathf.Max(28,W*.05f):(W-total)/2,maxH=Mathf.Max(320,H-(lobby?140:158)),bottom=actions?26+20+48+30:pad-2,ph=Mathf.Min(maxH,top+head+screenContent+bottom),cardH=card>0?Mathf.Min(maxH,Mathf.Max(ph,520)):0;
             float py=Mathf.Max(80,90+(H-154-Mathf.Max(ph,cardH))/2);
             var panel=new Rect(px,py+dy,pw,ph);
-            if(lobby){U.Glow(new Rect(panel.x,panel.y+30,panel.width,panel.height),new Color(0,0,0,.45f*e),60);U.Backdrop(panel,10,16,e);U.RoundGradient(panel,U.Hex(0x25212b,.96f*e),U.Hex(0x17191f,.97f*e),10,U.Hex(0x45464e,e),1,true);}
-            else U.Panel(panel,e);
-            U.Text(new Rect(panel.x+pad,panel.y+pad-2,pw-120,16),eyebrow,12,U.Hex(0xc0c1ca,e),TextAnchor.MiddleLeft,bold:true,tracking:lobby?.18f:.2f);
-            U.Text(new Rect(panel.x+pad,panel.y+pad+20,pw-120,38),title,30,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true,tracking:-.03f);
-            bool closed=false;if(close){var x=new Rect(panel.xMax-pad-40,panel.y+pad-4,40,40);float h=U.HoverAmount(9103,x);U.Round(x,U.A(U.Mix(U.Hex(0x222329),U.Hex(0x303138),h),e),4,U.A(U.Mix(U.Hex(0x45464e),U.Hex(0xff6b35),h),e));NativeIcons.Draw(new Rect(x.center.x-10.5f,x.center.y-10.5f,21,21),"x",U.Hex(0xf4f4f5,e));closed=U.Button(x);if(closed)Click();}
+            // The cyber panel (the HUD's holographic chrome, as the pause menu wears it): navy glass over the blurred frame,
+            // chamfered corners, scanlines, the cyan run along the top and brackets; the room's shell a shade deeper.
+            U.Glow(new Rect(panel.x,panel.y+30,panel.width,panel.height),new Color(0,0,0,.45f*e),60);U.Backdrop(panel,0,16,e);
+            NativeHudChrome.Panel(panel,e,default,14,NativeHudChrome.Corners.Diagonal,true,lobby?.96f:.94f);
+            U.Text(new Rect(panel.x+pad,panel.y+pad-2,pw-120,16),eyebrow,12,C.CyanSoft(.9f*e),TextAnchor.MiddleLeft,bold:true,tracking:lobby?.18f:.2f);
+            U.Text(new Rect(panel.x+pad,panel.y+pad+20,pw-120,38),title,30,C.Ink(e),TextAnchor.MiddleLeft,bold:true,tracking:-.03f);
+            // The close X in a small hexagon (the home screen's buttons), lit cyan on hover.
+            bool closed=false;if(close){var x=new Rect(panel.xMax-pad-40,panel.y+pad-4,40,40);float h=U.HoverAmount(9103,x);float box=18*48/22f;var hx=new Rect(x.center.x-box/2,x.center.y-box/2,box,box);
+                NativeIcons.DrawMarkup(hx,"hex-fill",HexFill,48,new Color(1,1,1,.9f*e));NativeIcons.DrawMarkup(hx,"hex-edge",HexEdge,48,U.A(U.Mix(C.Edge(),C.Cyan(),h),e));if(h>0)U.Glow(new Rect(x.x+8,x.y+8,24,24),C.Cyan(.2f*h*e),10);
+                NativeIcons.Draw(new Rect(x.center.x-9,x.center.y-9,18,18),"x",U.A(U.Mix(C.Ink(),Color.white,h),e));closed=U.Button(x);if(closed)Click();}
             var layout=new ScreenLayout{Panel=panel,Enter=e,Closed=closed,Body=new Rect(panel.x+pad,panel.y+top+head,pw-2*pad,ph-top-head-bottom),Card=card>0?new Rect(panel.xMax+26,panel.y,card,cardH):Rect.zero};
             return layout;
         }
@@ -372,13 +441,13 @@ namespace ChipArena.UnityConversion
         private int ScreenActions(ScreenLayout l,params (string icon,string label,bool primary,bool enabled)[] items)
         {
             var p=l.Panel;float y=p.yMax-30-48,x=p.x+32,iw=p.width-64,gap=10,w=(iw-gap*(items.Length-1))/items.Length;int hit=-1;
-            U.Fill(new Rect(x,y-20,iw,1),U.Hex(0x4b414c,.7f*l.Enter));
+            U.Fill(new Rect(x,y-20,iw,1),C.Edge(.9f*l.Enter));U.Fill(new Rect(x,y-20,28*l.Enter,1),C.Cyan(.8f*l.Enter));
             for(int i=0;i<items.Length;i++)if(MenuButton(new Rect(x+i*(w+gap),y,w,48),items[i].icon,items[i].label,null,items[i].primary,items[i].enabled,l.Enter,15,true))hit=i;
             return hit;
         }
         // A one-line status under the actions' rule (errors in the source's .connection-error red).
         private static void ScreenStatus(ScreenLayout l,string text,bool error=false)
-        {if(string.IsNullOrEmpty(text))return;var p=l.Panel;var line=U.Wrap(text,13,p.width-64,false,1);U.Text(new Rect(p.x+32,p.yMax-30-48-20-24,p.width-64,18),line.Count>0?line[0]:text,13,error?U.Hex(0xff8a7a,l.Enter):U.Hex(0xa6a7ad,l.Enter),TextAnchor.MiddleLeft);}
+        {if(string.IsNullOrEmpty(text))return;var p=l.Panel;var line=U.Wrap(text,13,p.width-64,false,1);U.Text(new Rect(p.x+32,p.yMax-30-48-20-24,p.width-64,18),line.Count>0?line[0]:text,13,error?U.Hex(0xff8aa0,l.Enter):C.Muted(l.Enter),TextAnchor.MiddleLeft);}
         // Join's own entry checks are errors as well (the source shows a refused join entry in .connection-error), though
         // their wording names none of the failure words below.
         private const string JoinCodeShapeError="Enter the six-character room code or paste a room invite link.";
@@ -483,16 +552,16 @@ namespace ChipArena.UnityConversion
         private void PilotCard(Rect r,string tag,float e,string note)
         {
             var weapon=content.weapons.FirstOrDefault(w=>w.id==prefs.weapon)??content.weapons[0];Color accent=HexColor(prefs.accentColor,0x70e1d0),body=HexColor(prefs.bodyColor,0xe5e7eb),tone=U.Hex((int)weapon.color);float t=Time.unscaledTime;
-            U.Glow(new Rect(r.x,r.y+18,r.width,r.height),new Color(0,0,0,.33f*e),45);U.Round(r,U.Hex(0x1b1a21,e),16,U.Hex(0x514955,e));
+            U.Glow(new Rect(r.x,r.y+18,r.width,r.height),new Color(0,0,0,.33f*e),45);U.Round(r,C.Panel(e),16,C.Edge(e));
             U.RadialStops(new Rect(r.x+r.width*.05f,r.y+r.height*.06f,r.width*.9f,r.height*.72f),U.A(accent,.2f*e),new[]{0f,.64f,1f},new[]{1f,0f,0f});
-            U.Text(new Rect(r.x+22,r.y+20,60,16),"01",12,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft,mono:true);U.Text(new Rect(r.x,r.y+20,r.width-22,16),tag,11,U.Hex(0xff996f,e),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.16f);
+            U.Text(new Rect(r.x+22,r.y+20,60,16),"01",12,C.Muted(e),TextAnchor.MiddleLeft,mono:true);U.Text(new Rect(r.x,r.y+20,r.width-22,16),tag,11,C.Cyan(e),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.16f);
             float y=PilotStage(r,accent,body,weapon,e,t,note);
             string name=NativeCosmeticRules.Name(prefs.name);float ns=Mathf.Clamp(r.width*.075f,22,30);
             U.Text(new Rect(r.x+16,y,r.width-32,ns*1.3f),name,ns,U.Hex(0xf4f4f5,e),TextAnchor.MiddleCenter,bold:true);y+=ns*1.3f+4;
             U.Text(new Rect(r.x+16,y,r.width-32,18),weapon.name.ToUpperInvariant(),13,U.A(U.Mix(tone,Color.white,.25f),e),TextAnchor.MiddleCenter,bold:true,tracking:.12f);y+=20;
             float under=60+30*(.5f+.5f*Mathf.Sin(t*1.6f));U.Fill(new Rect(r.center.x-under/2,y+2,under,2),U.A(tone,.85f*e));y+=12;
             U.Text(new Rect(r.x+16,y,r.width-32,16),ClassLabel(weapon.@class),10,U.Hex(0xa6a7ad,e),TextAnchor.MiddleCenter,mono:true,tracking:.1f);y+=30;
-            float sw=(r.width-44-12)/2;for(int i=0;i<2;i++){var s=new Rect(r.x+22+i*(sw+12),y,sw,30);U.Round(s,U.Hex(0x111216,.7f*e),6,new Color(1,1,1,.07f*e));U.Disc(new Rect(s.x+9,s.y+8,14,14),U.A(i==0?body:accent,e));U.Text(new Rect(s.x+30,s.y,s.width-34,s.height),i==0?"BODY":"ACCENT",10,U.Hex(0xc0c1ca,e),TextAnchor.MiddleLeft,mono:true,tracking:.12f);}y+=44;
+            float sw=(r.width-44-12)/2;for(int i=0;i<2;i++){var s=new Rect(r.x+22+i*(sw+12),y,sw,30);U.Round(s,C.Navy(.8f*e),6,C.Edge(.8f*e));U.Disc(new Rect(s.x+9,s.y+8,14,14),U.A(i==0?body:accent,e));U.Text(new Rect(s.x+30,s.y,s.width-34,s.height),i==0?"BODY":"ACCENT",10,U.Hex(0xc0c1ca,e),TextAnchor.MiddleLeft,mono:true,tracking:.12f);}y+=44;
             foreach(var (k,v) in new[]{("HEADWEAR",prefs.hat),("KILL EFFECT",prefs.killEffect),("INTRO",prefs.overrideIntro&&NativeIntroRules.Pickable(prefs.intro)?prefs.intro:"weapon-signature")})
             {if(y+18>r.yMax-46)break;U.Text(new Rect(r.x+22,y,r.width-44,18),k,10,U.Hex(0x8f909a,e),TextAnchor.MiddleLeft,mono:true,tracking:.12f);U.Text(new Rect(r.x+110,y,r.width-132,18),Fit(NativeCosmeticRules.Label(v??"none").Replace(" · DEV ONLY",""),12,r.width-132,false,0),12,U.Hex(0xe6e7ec,e),TextAnchor.MiddleRight);y+=22;}
             if(note!=null){var lines=U.Wrap(note,12,r.width-44,false,3);float ny=r.yMax-18-lines.Count*17;foreach(var line in lines){U.Text(new Rect(r.x+22,ny,r.width-44,17),line,12,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);ny+=17;}}

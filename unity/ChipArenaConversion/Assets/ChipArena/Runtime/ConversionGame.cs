@@ -124,7 +124,7 @@ namespace ChipArena.UnityConversion
         private void LateUpdate(){LateFrame();DamageScreen();}
         private void LateFrame()
         {
-            NativeUiBlur.Frame();if(cameraView==null)return;cinematic.BeginFrame();if(PreviewFrame())return;ObserveReplay();if(arena!=null&&RenderReplay())return;nativeAudio.Muted=!prefs.sound;nativeAudio.Entrance(arena!=null&&!menu&&IntroActive?arena.Generation+":"+IntroPilot?.Seat.id+":"+IntroStyle:null,arena!=null&&IntroActive?IntroStyle:null,arena!=null&&IntroActive?IntroAge:0);PveFollowAudio();nativeAudio.Render(arena,menu,cameraView);SlenderFrame();if(arena==null){MenuBackdrop();return;}backdropMap=null;
+            NativeUiBlur.Frame();if(cameraView==null)return;cinematic.BeginFrame();if(PreviewFrame())return;ObserveReplay();if(arena!=null&&RenderReplay())return;nativeAudio.Muted=!prefs.sound;nativeAudio.Entrance(arena!=null&&!menu&&IntroActive?arena.Generation+":"+IntroPilot?.Seat.id+":"+IntroStyle:null,arena!=null&&IntroActive?IntroStyle:null,arena!=null&&IntroActive?IntroAge:0);PveFollowAudio();nativeAudio.Render(arena,menu,cameraView);SlenderFrame();if(arena==null){MenuBackdrop();return;}RooftopLeave();backdropMap=null;
             if(DraftFrame())return;if(!menu&&IntroActive){arena.Root.SetActive(false);viewModelCamera.enabled=false;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;presentation.RenderIntro(arena,IntroPilot,IntroStyle,IntroClockAge(),cameraView);return;}introClock.Reset();NativeLighting.EndIntro(content.Map(arena.MapId),cameraView);arena.Root.SetActive(true);
             var p=arena.ViewPilot;bool play=!menu&&match.Phase==NativePhase.Fight&&p.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true;
             UpdateCamera();
@@ -178,13 +178,32 @@ namespace ChipArena.UnityConversion
             presentation.RenderAbilities(arena,preview,previewClamped);presentation.RenderStatus(arena,cameraView,prefs.reducedEffects?.3f:1);
             presentation.GlowQuality=prefs.reducedEffects?.3f:prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?.4f:1;presentation.BlastQuality=prefs.reducedEffects?.3f:1;presentation.RenderGlow(arena,cameraView,menu&&!Online);presentation.FinishSourceFrame();
         }
-        // No match: the selected map behind the menu with the source's slow overview orbit (renderer.ts idle camera).
-        private string backdropMap;
+        // No match: the home screen's rooftop over the cyber city (NativeRooftopPresentation.cs; owner 2026-10-12: the home
+        // screen only), else the selected map behind the menu with the source's slow overview orbit (renderer.ts idle camera),
+        // as Play vs Bots, the room screens, Boss Test and the others keep. The rooftop writes its own camera framing and night
+        // look; leaving it gives the camera back its field of view and near plane and re-applies the map look.
+        private string backdropMap;private bool rooftopShown;private float rooftopFov,rooftopNear;
         private void MenuBackdrop()
         {
+            if(menuScreen==MenuScreen.Home&&!InRoom&&presentation!=null&&presentation.RooftopSupported)
+            {
+                if(!rooftopShown){rooftopShown=true;rooftopFov=cameraView.fieldOfView;rooftopNear=cameraView.nearClipPlane;}
+                backdropMap=null;viewModelCamera.enabled=false;float quality=presentation.LowGraphics?.34f:prefs.reducedEffects?.6f:1;
+                var pilot=new RooftopPilot{Spec=prefs.weapon,Hat=prefs.hat,Body=prefs.bodyColor,Accent=prefs.accentColor};
+                if(presentation.RenderRooftop(cameraView,(float)(Time.unscaledTimeAsDouble%4800.0),pilot,quality,prefs.reducedEffects))return;
+            }
+            RooftopLeave();
             string map=PreviewMapId;var definition=content.Map(map);if(definition==null||presentation==null)return;
             if(backdropMap!=map){backdropMap=map;NativeLighting.Apply(definition,cameraView);}
             viewModelCamera.enabled=false;ArenaPresentation.OverviewCamera(cameraView,Time.unscaledTime);presentation.RenderBackdrop(content.sourceCommit,map,Time.unscaledTime,cameraView);
+        }
+        private void RooftopLeave(){if(!rooftopShown)return;rooftopShown=false;cameraView.fieldOfView=rooftopFov;cameraView.nearClipPlane=rooftopNear;backdropMap=null;}
+        // Where the seated pilot's feet hang over the lip, on the virtual canvas (the home screen's nameplate follows them), while
+        // the rooftop is shown and the point is in front of the camera.
+        private bool RooftopFeet(out Vector2 point)
+        {
+            point=default;if(!rooftopShown||cameraView==null)return false;var s=cameraView.WorldToScreenPoint(new Vector3(0,.25f,-2f));if(s.z<=0)return false;
+            point=new Vector2(s.x/NativeUi.S,(Screen.height-s.y)/NativeUi.S);return true;
         }
         private void FixedUpdate()
         {
