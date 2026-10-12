@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
         private Revival StartRevival(NativePilot p,CapturedAnimation.Player rig,float time)
         {
             var d=p.Death;var r=new Revival{Id=p.Seat.id,At=p.RevivedAt,Death=d,Seed=d?.seed??p.Seat.id};
-            sourceModels.RepairBoxes(p.Seat.spec=="siren"?"siren":BodyModel(BodySkin(p.Seat.id),NativeBodySkins.Full),r.Boxes);
+            sourceModels.RepairBoxes(p.Seat.spec=="siren"?"siren":"pilot",r.Boxes);
             if(d?.kept==true)
             {
                 r.Body=new Matrix4x4[22];float age=Math.Max(0,time-d.at);

@@ -10,7 +10,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeSourceModels
     {
         // One pilot's carved wound parts (Prototype boxes carved by NativeWoundCarve) and the wounded models composed from them:
-        // one per body it is drawn on (the Prototype "pilot", or a Standard / Sheldon Clothes tier), each the body's parts with
+        // one per body it is drawn on (the Prototype "pilot", or a tier of another body skin), each the body's parts with
         // the wounded ones replaced by name. The carved parts are shared, so a tier change composes an array and carves nothing.
         private sealed class Carved {public string Signature;public Part[] Owned;public HashSet<string> Replaced;public readonly Dictionary<string,string> Models=new Dictionary<string,string>();}
         private readonly Dictionary<int,Carved> wounds=new Dictionary<int,Carved>();private static NativeWoundPart[] woundParts;
