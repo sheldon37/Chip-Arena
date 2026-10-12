@@ -1,5 +1,10 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Astra — Cyber City audio compilation repair
+- Branch `codex/unity-cybercity-audio-compile-20261012`, shared base `72c88ec0` (PR #148). Owner's Windows build stopped at NativeCyberCityAudio.cs:20 with CS0103 because the new Array.Empty fallback lacked a System import.
+- Qualified the fallback as System.Array.Empty, matching System.Array.IndexOf already used in this file. No hazard, cue, timing, geometry or networking behavior changes.
+- Actual checks: source packaging validation passes (1,650 files), git diff --check passes. The supplied full build log reports this compiler error; managed CoreTests do not compile this Unity runtime file. Unity compilation, Editor/Windows gameplay and compiled release are not run here; rerun the owner's Build-and-Publish after the source update. Publication receipt is in the task PR.
+
 ## 2026-10-12 — Astra — Factory and Cyber City stage simulations
 - Task `codex/unity-stage-hazards-20261012`, base shared `aead19c4` (music PR #146 merged). Reviewed both proposals/contracts and Brickfall precedent; agreements are recorded at the top of both contracts.
 - Both stages are selectable, excluded from Random. Deterministic generator imports the original drafts: Factory 353 blocks, 11 hazards, 4,876 nav nodes / 9,054 links; Cyber City 702 blocks, 3 hazards, two billboard segments with original rubble, 5,437 nodes / 8,882 links. All original geometry, IDs, timings, bounds, spawns and pilot barriers are retained. No ID/geometry handoff change for Claude. Owner songs are assigned in map content.
