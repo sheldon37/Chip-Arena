@@ -45,11 +45,13 @@ namespace ChipArena.UnityConversion
             PveMachinePresentation(arena);
             // A dead add's rig stays posed until its death effects end (NativeMinionFxPresentation.cs: flames rise off its joints).
             foreach(int id in minionRigs.Keys.Where(id=>!arena.Minions.Any(m=>m.Id==id)&&!arena.MinionDeaths.Any(d=>d.id==id&&arena.Time-d.at<NativeMinionFx.DeathFxSeconds)).ToArray()){minionRigs[id].Dispose();minionRigs.Remove(id);}
-            BeginHordeFx(arena);
+            BeginHordeFx(arena);HordeKindsBegin(arena);
             foreach(var m in arena.Minions)
             {
                 if(m.Hp<=0)continue;if(m.Kind=="slender"){SlenderModel(arena,m);continue;}if(!minionRigs.TryGetValue(m.Id,out var rig)){rig=captured.Create(transform,m.Id);minionRigs.Add(m.Id,rig);}Vector3 pos=m.Body.transform.position;int variant=m.Id%6;string kind="idle";float age=arena.Time,duration=0;
                 var add=m.Pve;
+                // The Siren minion kinds (NativeHordeKindPresentation.cs): each add's kind model, tier, gait, attacks and felt hits.
+                if(add!=null&&HordeKindAdd(arena,m,rig,pos))continue;
                 if(add?.Travelling==true){if(arena.Time-add.DiveAt>=.9f)continue;kind="dive";age=arena.Time-add.DiveAt;duration=.9f;}
                 else if(add!=null&&arena.Time<add.ActiveAt){if(arena.Time<add.SpawnAt)continue;kind=add.Entry.kind;var timeline=NativeEntryRules.Timeline(kind,true);duration=timeline.duration;age=duration-(add.ActiveAt-arena.Time);if(kind=="vent")pos=NativeArena.Vec(add.Entry.@exit.Position(.9f));}
                 else if(arena.Time-m.LastAttack>=0&&arena.Time-m.LastAttack<.9f){kind=add?.Crawl==true?"lunge":add?.Stats.attack??(m.Kind=="toy"?"club":"swipe");age=arena.Time-m.LastAttack;duration=.9f;}
@@ -65,9 +67,9 @@ namespace ChipArena.UnityConversion
                 if(add!=null){bool vent=add.Entry.kind=="vent";HordeAdd(rig,m.Id,add.Travelling?float.NaN:(float)NativeMinionFx.VentAge(vent,add.ActiveAt,hordeClock),float.NaN,vent?NativeArena.Vec(add.Entry.@exit.Position(.9f)).y-.9f:pos.y-.85f,pos.y-(add.Crawl?.44f:.85f),add.Possessed?add.PossessedAt:float.NaN,arena.Replica?m.NetworkVelocity:m.Body.linearVelocity,lost,true);}
             }
             // C17: severed limbs fly off as chunks (the rigs above are posed), and the downed get revive beacons.
-            PveGore(arena);PveBeacons(arena);
+            HordeKindsEnd(arena);PveGore(arena);PveBeacons(arena);
         }
-        private void ClearSourceActors(){ClearRevives();ClearRigDressing();ClearWardZero();ClearSirenLooks();ClearDevEffects();draftRig?.Dispose();draftRig=null;ClearBroadcasts();slenderHops.Clear();ClearSceneryMotion();ClearWoundSpray();sourceModels?.ClearWounds();ClearCorpses();if(pitMaterial!=null){CapturedAnimation.Release(pitMaterial);pitMaterial=null;}introRig?.Dispose();introRig=null;foreach(var rig in minionRigs.Values)rig.Dispose();minionRigs.Clear();sourceModels?.Begin();}
+        private void ClearSourceActors(){ClearRevives();ClearRigDressing();ClearWardZero();ClearSirenLooks();ClearDevEffects();draftRig?.Dispose();draftRig=null;ClearBroadcasts();slenderHops.Clear();ClearSceneryMotion();ClearWoundSpray();sourceModels?.ClearWounds();ClearCorpses();if(pitMaterial!=null){CapturedAnimation.Release(pitMaterial);pitMaterial=null;}introRig?.Dispose();introRig=null;foreach(var rig in minionRigs.Values)rig.Dispose();minionRigs.Clear();ClearHordeKinds(null);ClearHordeGallery();sourceModels?.Begin();}
         public void FinishSourceFrame()=>sourceModels?.Flush(UsesInstancing);
     }
 }
