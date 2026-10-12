@@ -16,6 +16,18 @@ internal static class ParityLogicChecks
         string invite=NativeLanDiscovery.Invite("192.168.1.4",30001,"ABCDEFGH");Check(NativeLanDiscovery.ParseInvite(invite,out var address,out int port,out var code)&&address=="192.168.1.4"&&port==30001&&code=="ABCDEFGH"&&!NativeLanDiscovery.ParseInvite("https://example.com",out _,out _,out _),"LAN invites round trip and reject unrelated URLs");
         var order=new NativeFrameOrder();Check(order.Control(4)&&!order.Frame(3,1,9),"lobby prevents stale match resurrection");
         Check(order.Frame(5,0,1)&&!order.Frame(5,0,1)&&!order.Frame(5,0,.5)&&order.Frame(5,1,0)&&!order.Frame(5,0,2),"epochs/generations/timestamps advance monotonically");
+        var held=new NativeFrameOrder();Check(held.Frame(8,2,20,1),"first cinematic frame accepted");
+        // The 5 s reveal and 9.0678 s intro share one simulation timestamp. Each 20 Hz capture must reach the guest.
+        for(int i=2;i<=284;i++)Check(held.Frame(8,2,20,i),"frozen-clock cinematic capture "+i+" accepted");
+        Check(!held.Frame(8,2,20,284)&&!held.Frame(8,2,20,283)&&!held.Frame(8,2,19,285)&&!held.Frame(8,2,21,0),"duplicate, reordered, regressed and sequence-stripped frames rejected");
+        Check(held.Frame(8,2,20.05,285)&&!held.Frame(7,2,30,999)&&!held.Frame(8,1,30,999),"fight resumes and old epoch/generation cannot resurrect");
+        Check(held.Frame(8,3,0,1)&&held.Control(9)&&held.Frame(9,0,0,1)&&!held.Frame(9,0,0,-1),"sequence restarts only at a new generation/epoch; negative rejected");
+        held.Reset();Check(held.Frame(9,0,0,1),"reconnect resets capture ordering");
+        // JsonUtility's empty-string representation must still mean no choice, including after a real choice/new turn.
+        var draft=new NativeMatch(new ConversionContent());var df=new NativeMatchFrame{phase=NativePhase.Draft,draftSeat=2,chosen="",readyAt=10,time=11};
+        draft.ApplyNetwork(df);Check(draft.Phase==NativePhase.Draft&&draft.DraftSeat==2&&draft.Chosen==null&&draft.Time>=draft.ReadyAt,"guest empty choice keeps draft cards available");
+        df.chosen="test-chip";draft.ApplyNetwork(df);Check(draft.Chosen=="test-chip","real chosen chip retained");df.chosen="";draft.ApplyNetwork(df);Check(draft.Chosen==null,"next guest turn clears the previous chosen chip");
+        Console.WriteLine("PASS guest screens: 284 frozen-clock reveal/intro captures accepted, stale/duplicate frames rejected, empty PvP choice remains unchosen");
         var budget=new NativeMessageBudget();Check(Enumerable.Range(0,100).Count(i=>budget.Allow(1))==8&&budget.Allow(2),"one guest cannot amplify a control burst");
         Check(NativeRoomCodes.Alphabet.Distinct().Count()==32&&Enumerable.Range(0,100).All(_=>NativeRoomCodes.Create().Length==6&&NativeRoomCodes.Create().All(c=>NativeRoomCodes.Alphabet.Contains(c))),"6 uniformly sampled base32 symbols provide 30 bits of room entropy");
         Console.WriteLine("PASS presentation event budget, epoch/generation fencing, lobby rate budget and 30-bit room codes");

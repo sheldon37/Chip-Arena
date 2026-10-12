@@ -477,9 +477,9 @@
     },
     {
       "path": "Assets/Conversion/Resources/Audio/music/restricted-zone-pulse.mp3",
-      "bytes": 2766060,
-      "gitBlob": "990ed1fea5e47c0388e09761f576806886c04cd2",
-      "source": "public/music/restricted-zone-pulse.mp3"
+      "bytes": 4897730,
+      "gitBlob": "b17b8e993af427dca3ffc288f55dcaec7b0f0b08",
+      "source": "Owner-supplied Ward Zero (1).mp3 (2026-10-11; replaces native minion-wave track only)"
     },
     {
       "path": "Assets/Conversion/Resources/Audio/music/skyline-run.mp3",

@@ -29,11 +29,24 @@ namespace ChipArena.UnityConversion.Editor
                 if(frame.snapshot.Actors[0].Hp!=saved||!ReferenceEquals(frame.props[0],again.props[0]))throw new Exception("Replay capture mutated actor history or failed to share static props");authority.Local.Pose.Hp=saved;
                 var message=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=frame}));
                 var copy=message.frame;
+                if(frame.sequence<=0||again.sequence<=frame.sequence||copy.sequence!=frame.sequence||again.time!=frame.time)
+                    throw new Exception("Capture order must survive JsonUtility and advance independently of simulation time");
                 if(message.epoch!=7||!copy.Valid(authority.Content)||copy.pve!=null||copy.pilots.Any(p=>p.death!=null||p.down!=null)||copy.props.Any(p=>p.definition!=null))
                     throw new Exception("Real JsonUtility match-frame round trip lost optional field presence");
                 replica=new NativeArena(authority.Content,new NativeMatch(authority.Content),authority.MapId){Replica=true,LocalId=authority.LocalId,ReplicaScene=scene};
                 replica.ApplyFrame(copy,authority.LocalId);
                 if(replica.Pve!=null||replica.Root.scene!=scene)throw new Exception("PvP replay/replica escaped its isolated scene or created PvE");
+                var draft=NativeFrameCodec.Clone(copy);draft.phase=NativePhase.Draft;draft.draftSeat=draft.seats[1].id;draft.chosen=null;draft.readyAt=draft.time;
+                draft.seats[1].offers=new[]{authority.Content.chips.First(c=>c.rarity=="common").id};
+                draft=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=draft})).frame;
+                replica.ApplyFrame(draft,draft.draftSeat);
+                if(draft.chosen!=null||replica.Match.Chosen!=null||replica.Match.Phase!=NativePhase.Draft||replica.Local.Seat.offers.Count!=1||replica.Match.DraftSeat!=replica.LocalId)
+                    throw new Exception("Guest draft was already chosen or lost its local offers after JsonUtility");
+                draft.chosen=draft.seats[1].offers[0];replica.ApplyFrame(NativeFrameCodec.Clone(draft),draft.draftSeat);
+                if(replica.Match.Chosen!=draft.chosen)throw new Exception("Guest lost the confirmed draft pick");
+                draft.chosen="";replica.ApplyFrame(NativeFrameCodec.Clone(draft),draft.draftSeat);
+                if(replica.Match.Chosen!=null)throw new Exception("Guest next draft kept the old chosen chip");
+                replica.ApplyFrame(copy,authority.LocalId);
                 var intro=NativeFrameCodec.Clone(copy);intro.phase=NativePhase.Intro;intro.introStyle="dev-siren";
                 intro.introStarted=10.1234567;intro.time=intro.introStarted+2;intro.bossSongAt=(float)intro.introStarted;intro.bossSongLead=0;
                 replica.ApplyFrame(NativeFrameCodec.Clone(intro),authority.LocalId);

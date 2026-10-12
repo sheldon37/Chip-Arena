@@ -38,6 +38,17 @@ own supplied recording (2026-10-03), 2:53. Re-encoded from the supplied ~190 kbp
 It is the PvE (Siren TEST BOSS, Ward Zero) stage track until the Siren spawns and
 is not part of the PvP music rotation.
 
+### Native Ward Zero replacement (2026-10-11)
+
+The owner supplied **Ward Zero** (`Ward Zero (1).mp3`), credited in its metadata to
+**Xtrr - musiccreator**. The native Unity resource
+`unity/ChipArenaConversion/Assets/Conversion/Resources/Audio/music/restricted-zone-pulse.mp3`
+now contains that exact recording: 208.032 seconds, 48 kHz stereo, 4,897,730 bytes,
+SHA256 `421a6f277da35fd22f7e7b212104d6d6673fce96042a1916f51e281a60c7640e`.
+Its existing resource key/import settings are retained; it plays for minion waves
+until the boss song begins. **Black Siren Protocol** and its beat map are unchanged.
+The historical Electron resource described above is unchanged.
+
 ## Unity effects audio (Asset Store packs, owner licence)
 
 The Unity game's recorded sound effects and UI sounds (the effects sound bank,

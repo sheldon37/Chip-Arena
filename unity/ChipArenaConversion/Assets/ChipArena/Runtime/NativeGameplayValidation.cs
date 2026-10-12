@@ -87,20 +87,36 @@ namespace ChipArena.UnityConversion
             ValidatePveBotCombat();
             // The held PvE entrance advances its song while match time is frozen, then transfers the full intro duration
             // to BossSongLead. Exercise the real start/tick path and the guest's actual frame application.
-            BeginPveHold("intro");float started=Time;Check(IntroStartsBossSong&&Math.Abs(BossSongTime)<.0001,"intro/song start together");
-            PveHoldTick(.65f);Check(Time==started&&IntroStartsBossSong&&Math.Abs(BossSongTime-.65)<.0001,"held intro/song age");
             var guest=new NativeArena(Content,new NativeMatch(Content),MapId){Replica=true,ReplicaScene=root.scene};
             try
             {
-                guest.ApplyFrame(NativeFrameCodec.Clone(NetworkFrame()),LocalId);
+                var order=new NativeFrameOrder();
+                void Deliver()
+                {
+                    var packet=NativeFrameBudget.Encode(NetworkFrame(),7);Check(packet!=null,"guest presentation packet fits budget");
+                    var msg=NativeNetCodec.Decode(NativeConnection.Decode(packet,NativeFrameBudget.MaxJsonBytes));var f=msg.frame;
+                    Check(f.Valid(Content)&&order.Frame(msg.epoch,f.generation,f.time,f.sequence),"fresh guest presentation frame accepted while game clock is frozen");
+                    guest.ApplyFrame(f,LocalId);Check(guest.Pve.Outcome==null,"unfinished guest PvE is not an empty-string outcome");
+                }
+                BeginPveHold("reveal",1);float started=Time;Deliver();Check(guest.Pve.Cinematic=="reveal"&&guest.Pve.Holding,"guest sees reveal");
+                PveHoldTick(Pve.HoldLeft+.001f);Deliver();Check(Time==started&&guest.Pve.Cinematic=="intro"&&guest.Pve.Holding,"guest sees reveal-to-intro transition at same timestamp");
+                Check(IntroStartsBossSong&&Math.Abs(BossSongTime)<.0001,"intro/song start together");
+                PveHoldTick(.65f);Deliver();Check(Time==started&&IntroStartsBossSong&&Math.Abs(BossSongTime-.65)<.0001,"held intro/song age");
                 Check(guest.IntroStartsBossSong&&Math.Abs(guest.BossSongTime-BossSongTime)<.0001,"guest held intro/song age");
                 PveHoldTick(Pve.HoldLeft+.001f);Check(!IntroStartsBossSong&&Math.Abs(BossSongTime-Pve.HoldDuration)<.0001,"song continues after intro");
-                guest.ApplyFrame(NativeFrameCodec.Clone(NetworkFrame()),LocalId);
+                Deliver();
                 Check(!guest.IntroStartsBossSong&&Math.Abs(guest.BossSongTime-BossSongTime)<.0001,"guest song continues after intro");
+                // Personal chip UI is driven by the requesting seat's open pick and all its offers, never another row.
+                GrantPvePick(Local,"common",true);Deliver();var open=Pve.Rows[LocalId].Open;var remote=guest.Pve.Rows[LocalId].Open;
+                Check(remote!=null&&remote.Id==open.Id&&remote.Offers.SequenceEqual(open.Offers)&&remote.Offers.All(id=>guest.PveChip(id)!=null),"complete guest personal chip screen");
+                ClosePvePick(Local);Deliver();Check(guest.Pve.Rows[LocalId].Open==null,"guest choose-later clears personal screen at the same timestamp");
+                Check(OpenPvePick(Local,open.Id),"reopen guest fixture");Deliver();Check(guest.Pve.Rows[LocalId].Open?.Id==open.Id,"guest reopen at the same timestamp");
+                var late=new NativeArena(Content,new NativeMatch(Content),MapId){Replica=true,ReplicaScene=root.scene};
+                try{late.ApplyFrame(NativeFrameCodec.Clone(NetworkFrame()),LocalId);Check(late.Pve.Rows[LocalId].Open.Offers.SequenceEqual(open.Offers),"late guest recovers open personal screen");}finally{late.Dispose();}
                 ValidatePossessionReplication(guest);
             }
             finally{guest.Dispose();}
-            Debug.Log("PASS Siren PvE audio origins: real held-intro start/tick/finish and guest frame application share one continuous song clock");
+            Debug.Log("PASS Siren guest screens/audio: real reveal/intro/start/tick/finish traverse framed codec/order/apply at frozen time; personal picks, choose-later/reopen and late join retain all offers");
         }
         private void ValidatePossessionReplication(NativeArena guest)
         {
