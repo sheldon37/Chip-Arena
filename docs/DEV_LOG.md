@@ -1,5 +1,11 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Astra — repair the air-jump guest-input build fixture
+- Branch `codex/unity-airjump-gate-fix-20261012`, base current shared/cloud `a77edc6` (includes the owner's new main-menu music). Owner's actual Windows Unity log for `c16573c` stops at `Native air jump: coalesced air edge consumed once`; all preceding air-jump assertions and the locomotion gate completed. PR #128 mistakenly submitted the test packets for `LocalId`, which `AcceptInput` deliberately rejects.
+- The native validation now uses a distinct guest ID and explicitly checks host-seat rejection, coalesced jump delivery once with held movement retained, duplicate-packet refusal, and delivery of the next edge. Both fixture queues are cleared afterward. No production input, physics, jump rules, animation, network schema, assets or validation bypass changed.
+- Regression: a temporary .NET harness compiles the actual queue methods and the original/repaired fixture bodies against the existing Core input type. The original reproduces the owner's exception for all eight host IDs; the repaired fixture passes for all eight. Core/Runtime and the affected native validation compile against genuine Unity player API assemblies (three existing unused-field warnings; Editor scene signatures are compile-only). Source packaging passes (1,301 files); whitespace checks pass.
+- Full managed/Core plus real local relay suite passes (403 PASS, exit 0). Source integration/CI receipts are recorded in the task PR. Unity Editor/PhysX execution, Windows packaging and rendered gameplay cannot run here. The owner must rerun the existing Build-and-Publish command for remaining native gates and compiled test-channel publication; no new compiled release is claimed.
+
 ## 2026-10-12 — Codex — owner-supplied main menu music
 - Branch `codex/unity-main-menu-music-20261012`, base shared/cloud `0c026f0`. Replaces only the Unity `music/menu-afterglow` asset with the complete uploaded “Chip Arena Main.mp3”; preserves the importer GUID and existing menu playback/volume behavior. No code, gameplay, networking or animation changes.
 - Updated asset receipt and attribution, including the existing packaged Music-Credits.txt source. Legacy Electron recording and historical conversion inventory remain unchanged.
