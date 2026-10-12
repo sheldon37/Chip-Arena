@@ -107,7 +107,30 @@ internal static class PackIntroChecks
             Check(GC.GetAllocatedBytesForCurrentThread()==before,p.Style+": a playthrough allocates");
         }
         yield return "pack intros: poses are pure functions of time (shuffled and reversed evaluation agree) and a 60 Hz playthrough allocates nothing";
-        // 5. The daggers (and any signature without a track) are the baked clip and its weapon-intro layer, bit for bit.
+        // 5. The guns' detail shots read: the muzzle (and the pistol's hand; down the aim, the target too) projects inside the
+        // frame with a 15% margin and the pilot's body covers at most 40% of it, so a new pose never leaves a close-up on an empty frame or a wall of armour.
+        int detail=0;float worstCover=0,worstEdge=0;string coverAt="",edgeAt="";
+        foreach(var (style,shotsToCheck) in Detail)
+        {
+            if(NativePackIntro.For(style)==null)continue;var sc=Bind(style,clips);
+            foreach(int k in shotsToCheck)
+            {
+                float from=AgeOf(sc,sc.Shots[k].At),to=AgeOf(sc,sc.Shots[k+1].At);
+                for(float age=from+.04f;age<to-.04f;age+=1/60f)
+                {
+                    float t=sc.Clock(age);sc.Camera(age,out var view);sc.Pose(t,pose,out var r,out var q);pose.World();detail++;
+                    float edge=Edge(view,sc.Anchor(NativeEntranceAnchor.RightTip,t));if(style=="weapon-pistol")edge=Math.Max(edge,Edge(view,sc.Anchor(NativeEntranceAnchor.RightHand,t)));
+                    // The view down the aim also holds the target.
+                    if(k==2&&sc is GunEntrance gun)edge=Math.Max(edge,Edge(view,gun.TargetPoint));
+                    if(edge>worstEdge){worstEdge=edge;edgeAt=style+" shot "+k+" at "+age.ToString("0.00");}
+                    float cover=Cover(view,pose,r,q);if(cover>worstCover){worstCover=cover;coverAt=style+" shot "+k+" at "+age.ToString("0.00");}
+                    Check(edge<=.85f,style+" detail shot "+k+" loses the muzzle at "+age.ToString("0.00")+" (|x|,|y| "+edge.ToString("0.00")+")");
+                    Check(cover<=.4f,style+" detail shot "+k+" is "+(cover*100).ToString("0")+"% pilot at "+age.ToString("0.00"));
+                }
+            }
+        }
+        yield return $"pack intros: gun detail shots keep the muzzle (the pistol's hand, and the target down the aim) inside 85% of the frame (worst {worstEdge:0.00}, {edgeAt}) and the pilot under 40% of it (worst {worstCover*100:0}%, {coverAt}) over {detail} samples";
+        // 6. The daggers (and any signature without a track) are the baked clip and its weapon-intro layer, bit for bit.
         int baked=0;
         foreach(var style in NativeIntroRules.Entrances.Where(s=>NativeEntranceDirector.Script(s) is NativeWeaponEntrance))
         {
@@ -121,6 +144,40 @@ internal static class PackIntroChecks
         Fingerprint(Bind("weapon-daggers",clips),out long fp,out long fc,out long ff);
         Check(fp==DaggersPose&&fc==DaggersCamera&&ff==DaggersFx,$"Twin Phantom changed (pose {fp}, camera {fc}, effects {ff})");
         yield return $"pack intros: Twin Phantom (daggers) is unchanged (pose, camera and effects fingerprints over 145 frames match 512348d) and every signature without a pack track poses its baked clip bit for bit ({baked} frames)";
+    }
+    // The detail shots of the gun entrances (indices into their Shots): the twirl and the over-the-shoulder view down the aim;
+    // the drop into the crouched aim and the scope view; the feed and the hands.
+    private static readonly (string style,int[] shots)[] Detail={("weapon-pistol",new[]{1,2}),("weapon-rifle",new[]{1,2}),("weapon-machinegun",new[]{1})};
+    // The match age at which presentation time `t` is reached (the clock is monotone).
+    private static float AgeOf(NativeEntranceScript sc,float t){float lo=0,hi=5;for(int i=0;i<40;i++){float m=(lo+hi)*.5f;if(sc.Clock(m)<t)lo=m;else hi=m;}return hi;}
+    private const float Aspect=16/9f;
+    // Where point `p` projects in view `v` (x, y in -1..1 across the frame; far outside, or behind, when off screen).
+    private static Vector2 Project(NativeEntranceView v,Vector3 p,out bool front)
+    {
+        var f=Vector3.Normalize(v.Look-v.Eye);var right=Vector3.Normalize(Vector3.Cross(f,v.Up));var up=Vector3.Cross(right,f);var d=p-v.Eye;float z=Vector3.Dot(d,f);front=z>.05f;
+        float tan=(float)Math.Tan(v.Fov*Math.PI/360);return front?new Vector2(Vector3.Dot(d,right)/(z*tan*Aspect),Vector3.Dot(d,up)/(z*tan)):new Vector2(9,9);
+    }
+    private static float Edge(NativeEntranceView v,Vector3 p){var s=Project(v,p,out bool front);return front?Math.Max(Math.Abs(s.X),Math.Abs(s.Y)):9;}
+    // The share of the frame the pilot's body boxes cover (each box's projected bounds on a 64 x 36 grid; a box reaching
+    // behind the lens covers the frame).
+    private static readonly bool[] grid=new bool[64*36];
+    private static float Cover(NativeEntranceView v,CapturedRig.Pose pose,Vector3 root,Quaternion rotation)
+    {
+        Array.Clear(grid,0,grid.Length);
+        foreach(var b in CapturedRig.Boxes)
+        {
+            var q=Quaternion.Normalize(rotation*pose.WorldRotation[b.Bone]);var c=root+Vector3.Transform(pose.WorldPosition[b.Bone]+Vector3.Transform(b.Position,pose.WorldRotation[b.Bone]),rotation);
+            float x0=9,x1=-9,y0=9,y1=-9;bool behind=false,any=false;
+            for(int i=0;i<8;i++)
+            {
+                var corner=c+Vector3.Transform(new Vector3((i&1)==0?-.5f:.5f,(i&2)==0?-.5f:.5f,(i&4)==0?-.5f:.5f)*b.Size,q);var s=Project(v,corner,out bool front);
+                if(!front){behind=true;continue;}any=true;x0=Math.Min(x0,s.X);x1=Math.Max(x1,s.X);y0=Math.Min(y0,s.Y);y1=Math.Max(y1,s.Y);
+            }
+            if(behind&&any){x0=-1;x1=1;y0=-1;y1=1;}else if(!any)continue;
+            int gx0=Math.Max(0,(int)Math.Floor((x0+1)*32)),gx1=Math.Min(63,(int)Math.Ceiling((x1+1)*32)-1),gy0=Math.Max(0,(int)Math.Floor((y0+1)*18)),gy1=Math.Min(35,(int)Math.Ceiling((y1+1)*18)-1);
+            for(int gy=gy0;gy<=gy1;gy++)for(int gx=gx0;gx<=gx1;gx++)grid[gy*64+gx]=true;
+        }
+        int n=0;foreach(bool g in grid)if(g)n++;return n/(float)grid.Length;
     }
     private static bool Same(float[] a,JsonElement e){var b=e.EnumerateArray().Select(x=>x.GetSingle()).ToArray();return a.Length==b.Length&&a.Zip(b).All(x=>Math.Abs(x.First-x.Second)<1e-4f);}
     private static NativeEntranceScript Bind(string style,Dictionary<string,Clip> clips)

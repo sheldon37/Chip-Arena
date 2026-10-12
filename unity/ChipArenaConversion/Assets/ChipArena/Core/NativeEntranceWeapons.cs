@@ -258,16 +258,21 @@ namespace ChipArena.UnityConversion
         {
             var muzzle=Anchor(NativeEntranceAnchor.RightTip,FirstShot);var dir=Aim(false,FirstShot);dir.Y=Math.Max(0,Math.Min(.04f,dir.Y));dir=Vector3.Normalize(dir);
             TargetAt=muzzle+dir*Range;TargetHit=FirstShot+Range/TracerSpeed;
-            // The over-the-shoulder shot (OverShoulder >= 0): placed in the world behind the gun shoulder, the target downrange.
+            // The over-the-shoulder shot (OverShoulder >= 0): placed in the world behind and beside the gun hand on its aim
+            // (OverBack behind, OverShoulderSide to the right, OverUp above), looking between the hand and the target so the gun
+            // in the foreground and the target downrange share the frame with the body off to one side.
             if(OverShoulder>=0&&OverShoulder<Shots.Length)
             {
-                var flat=Vector3.Normalize(new Vector3(dir.X,0,dir.Z));var right=new Vector3(-flat.Z,0,flat.X);var shoulder=Anchor(NativeEntranceAnchor.RightShoulder,FirstShot);
-                var e0=shoulder-flat*1.75f+right*(OverShoulderSide+.07f)+new Vector3(0,.5f,0);var e1=shoulder-flat*1.45f+right*OverShoulderSide+new Vector3(0,.42f,0);var look=new Vector3(TargetAt.X,TargetAt.Y-.05f,TargetAt.Z);
-                ref var sh=ref Shots[OverShoulder];sh.Orbit=false;sh.Track=0;sh.TrackY=0;sh.Face=-1;sh.Follow=-1;sh.Eye0=e0;sh.Eye1=(e0+e1)*.5f;sh.Eye2=e1;sh.Look0=look;sh.Look1=look;sh.Look2=look;
+                var flat=Vector3.Normalize(new Vector3(dir.X,0,dir.Z));var right=new Vector3(-flat.Z,0,flat.X);var hand=Anchor(NativeEntranceAnchor.RightHand,FirstShot);
+                var e0=hand-flat*(OverBack+.2f)+right*(OverShoulderSide+.05f)+new Vector3(0,OverUp+.05f,0);var e1=hand-flat*OverBack+right*OverShoulderSide+new Vector3(0,OverUp,0);
+                Vector3 Between(Vector3 e){var a=Vector3.Normalize(hand-e);var b=Vector3.Normalize(TargetAt-e);return e+Vector3.Normalize(a+b)*4;}
+                ref var sh=ref Shots[OverShoulder];sh.Orbit=false;sh.Track=0;sh.TrackY=0;sh.Face=-1;sh.Follow=-1;sh.Eye0=e0;sh.Eye1=(e0+e1)*.5f;sh.Eye2=e1;sh.Look0=Between(e0);sh.Look2=Between(e1);sh.Look1=(sh.Look0+sh.Look2)*.5f;
             }
         }
         /// <summary>The shot that becomes the over-the-shoulder view down the range (-1: none).</summary>
-        protected int OverShoulder=-1;protected float OverShoulderSide=.48f;
+        protected int OverShoulder=-1;protected float OverShoulderSide=.75f,OverBack=1.1f,OverUp=.25f;
+        /// <summary>The target downrange (the muzzle's aim at the first shot).</summary>
+        public Vector3 TargetPoint{get{Prepare();return TargetAt;}}
         protected const float TracerSpeed=24;
         public override void Props(float t,INativeEntranceProps props,float quality){base.Props(t,props,quality);Prepare();Target(props,t,TargetAt,-Aim(false,FirstShot),TargetHit,Accent);}
         protected void Shot(INativeEntranceFx fx,float t,float at,float q,float size,int seed,bool tracer=true,bool casing=true)
@@ -288,7 +293,7 @@ namespace ChipArena.UnityConversion
     {
         public Deadeye():base("weapon-pistol",2.12f,0xffd99f,9)
         {
-            OverShoulder=2;OverShoulderSide=.72f;
+            OverShoulder=2;OverShoulderSide=1.2f;OverBack=2.0f;OverUp=.4f;
             Shots=new[]
             {
                 Orbit(0,NativeEntranceCut.Cut,38,36,30,18,4.0f,3.3f,.7f,.8f,V(0,1.0f,0),V(0,1.0f,0),0,1,face:.2f),
@@ -322,12 +327,12 @@ namespace ChipArena.UnityConversion
     {
         public Longwatch():base("weapon-rifle",1.8f,0xace1ff,13)
         {
-            OverShoulder=2;OverShoulderSide=.8f;
+            OverShoulder=2;OverShoulderSide=1.1f;OverBack=2.0f;OverUp=.45f;
             Shots=new[]
             {
                 Orbit(0,NativeEntranceCut.Cut,40,38,-36,-24,4.4f,3.6f,.5f,.6f,V(0,.8f,0),V(0,.85f,0),0,1,face:.3f),
-                // The drop into the crouched aim: three-quarter on the off side, pushing in as the rifle comes level.
-                Shot(.75f,NativeEntranceCut.Cut,38,35,V(1.9f,1.05f,2.7f),V(1.6f,.95f,2.4f),V(0,.85f,0),V(0,.75f,0),1,1,face:1.0f),
+                // The drop into the crouched aim: three-quarter on the off side, following the rifle as it comes level.
+                Follow(Shot(.75f,NativeEntranceCut.Cut,46,42,V(2.2f,1.1f,3.1f),V(1.95f,1.0f,2.8f),V(0,.05f,0),V(0,0,0),1,1,face:1.0f),NativeEntranceAnchor.RightHand),
                 // The scope view: behind the shoulder, down the beam to the target.
                 Shot(1.3f,NativeEntranceCut.Cut,42,38,V(-1.0f,1.8f,-2.3f),V(-.88f,1.74f,-2.05f),V(.1f,1.0f,8),V(.1f,1.02f,8),1,1,face:1.5f),
                 // The shot: low in front, the flash and the brake jets hanging in slow motion.
@@ -378,7 +383,7 @@ namespace ChipArena.UnityConversion
             {
                 Orbit(0,NativeEntranceCut.Cut,40,38,26,14,4.3f,3.4f,.45f,.55f,V(0,.95f,0),V(0,.95f,0),0,1,face:.3f),
                 // The feed and the hands: a slow long-lens orbit.
-                Follow(Orbit(.7f,NativeEntranceCut.Cut,34,32,-62,-34,3.4f,3.1f,1.05f,1.0f,V(0,.05f,0),V(0,.05f,0),3,1,face:1.1f),NativeEntranceAnchor.RightHand),
+                Follow(Orbit(.7f,NativeEntranceCut.Cut,42,40,-62,-34,3.7f,3.4f,1.05f,1.0f,V(0,.05f,0),V(0,.05f,0),3,1,face:1.1f),NativeEntranceAnchor.RightHand),
                 // Low in front, looking up the barrel.
                 Shot(1.45f,NativeEntranceCut.Cut,44,42,V(.7f,.28f,3.2f),V(.6f,.26f,2.9f),V(0,1.0f,.3f),V(0,.98f,.3f),1,1,face:1.8f),
                 // The burst from the side, the tracers and brass slowed.

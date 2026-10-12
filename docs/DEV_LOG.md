@@ -1,5 +1,11 @@
 # Chip Arena — development log
 
+## 2026-10-12 — Claude — gun entrance detail-shot framing (coordinator review of `a4414aa`)
+- Branch `claude/intro-melee` on `a4414aa`; not pushed, merged or released. Deadeye's over-the-shoulder view had become mostly the pilot's body at the frame edge; Longwatch's scope view caught only the head's edge, and its drop shot was crowded by the head.
+- `GunEntrance` now places the view down the aim behind and beside the gun hand (`OverBack`, `OverShoulderSide`, `OverUp`; Deadeye 2.0 / 1.2 / .4 m, Longwatch 2.0 / 1.1 / .45 m), looking between the hand and the target. Longwatch's drop shot follows the rifle hand, wider; Belt Rattle's feed orbit is wider. Deadeye's aim arrives .2 s earlier (Idle-Pistol-R from 0.85 s), so the view opens on the aim. Shield, the other entrances and every effect, timing and hit mark are unchanged.
+- New managed check (`PackIntroChecks`): during the gun detail shots (Deadeye twirl and over-the-shoulder, Longwatch drop and scope view, Belt Rattle feed) the muzzle, the pistol's hand, and down the aim the target, project inside 85% of the frame, and the pilot's body boxes cover at most 40% of it (now worst 28%).
+- Checks: `unity-check.sh` OK; `check_relay.py` exit 0, 368 PASS, no FAIL; Python unittest 82 OK (1 skipped); `package_source.py` passed; `git diff --check` clean. Shield and gun sheets re-rendered. Animation impact: none (camera and the pistol's aim timing before its unchanged 2.12 s shot).
+
 ## 2026-10-12 — Claude — pack pilot motion for the shield and gun entrances (owner scope update: "change the player animations on the rest too ... (except daggers, those are good)")
 - Branch `claude/intro-melee`, on top of `ad0e2d6` (sword/greatsword); implemented on the branch only (not pushed, merged or released).
 - Exporter (`tools/export_pack_intros.mjs`) gains grip 'gun' (barrel along the fist's metacarpals), per-weapon support grips (gameplay `RangedPose.Support`: long guns (.025, -.03, .10) held throughout; the greatsword's .11 down the grip), `faceBy: 'chest'` (the gun stances turn the hips ~.5 rad off the chest), `aim` (raise the weapon arm about the shoulder) and `kick` (authored recoil: the pack's rifle fire barely moves the gun). Sword and greatsword tracks are byte-identical.

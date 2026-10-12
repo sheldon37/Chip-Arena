@@ -71,8 +71,8 @@ const ENTRANCES=[
  // Deadeye: a slick reload checking the pistol, the arm thrown out into the one-hand aim held on the target, Attack-R1's
  // shot pinned to the 2.12 s hit (its kick starting on it) and the recoil carried up into the barrel-up hold.
  {style:'weapon-pistol',grip:'gun',hit:2.12,facing:-.25,faceBy:'chest',seq:[
-  {file:PI('Reload-R1'),keys:[[0,.3],[1.2,1.5]]},
-  {file:A('Idle-Pistol-R'),blend:.3,loop:true,keys:[[1.05,0],[2.1,.6]]},
+  {file:PI('Reload-R1'),keys:[[0,.3],[1.05,1.5]]},
+  {file:A('Idle-Pistol-R'),blend:.3,loop:true,keys:[[.85,0],[2.1,.75]]},
   {file:PI('Attack-R1'),blend:.12,keys:[[1.9,.25],[2.12,.365],[2.3,.47],[2.6,.52],[4.8,.55]]},
  ]},
  // Longwatch: the low ready, a drop into a crouch (Crouch-Idle's legs) with Fire-Rifle1's shouldered aim over it, raised
