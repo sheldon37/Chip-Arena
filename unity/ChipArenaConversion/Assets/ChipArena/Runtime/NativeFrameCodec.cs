@@ -10,6 +10,7 @@ namespace ChipArena.UnityConversion
         public void CapturePresence()
         {
             hasPve=pve!=null;
+            if(snapshot?.Actors!=null)foreach(var a in snapshot.Actors)if(a!=null)a.HasKernel=a.Kernel!=null;
             if(props!=null)foreach(var p in props)if(p!=null)p.hasDefinition=p.definition!=null;
             if(pilots!=null)foreach(var p in pilots)if(p!=null)
             {p.hasDeath=p.death!=null;p.hasFighter=p.fighter!=null;p.hasDown=p.down!=null;CaptureDeath(p.death);}
@@ -17,14 +18,15 @@ namespace ChipArena.UnityConversion
             if(pve?.rows!=null)foreach(var row in pve.rows)if(row?.picks!=null)foreach(var pick in row.picks)if(pick!=null)pick.hasOffers=pick.offers!=null;
         }
         private static void CaptureDeath(NativeDeath d)
-        {if(d!=null){d.hasActor=d.actor!=null;d.hasWound=d.wound!=null;}}
+        {if(d!=null){d.hasActor=d.actor!=null;d.hasWound=d.wound!=null;if(d.actor!=null)d.actor.HasKernel=d.actor.Kernel!=null;}}
         private static void RestoreDeath(NativeDeath d)
-        {if(d!=null){if(!d.hasActor)d.actor=null;if(!d.hasWound)d.wound=null;}}
+        {if(d!=null){if(!d.hasActor)d.actor=null;if(d.actor!=null&&!d.actor.HasKernel)d.actor.Kernel=null;if(!d.hasWound)d.wound=null;}}
         public void RestorePresence()
         {
             // JsonUtility turns null strings into empty strings. Runtime draft/end-state gates use null as "not chosen/ended".
             chosen=string.IsNullOrEmpty(chosen)?null:chosen;introStyle=string.IsNullOrEmpty(introStyle)?null:introStyle;
             if(!hasPve)pve=null;
+            if(snapshot?.Actors!=null)foreach(var a in snapshot.Actors)if(a!=null&&!a.HasKernel)a.Kernel=null;
             if(pve!=null){pve.cinematic=string.IsNullOrEmpty(pve.cinematic)?null:pve.cinematic;pve.outcome=string.IsNullOrEmpty(pve.outcome)?null:pve.outcome;pve.notice=string.IsNullOrEmpty(pve.notice)?null:pve.notice;}
             if(props!=null)foreach(var p in props)if(p!=null&&!p.hasDefinition)p.definition=null;
             if(pilots!=null)foreach(var p in pilots)if(p!=null)

@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
         public readonly List<NativeMeleeShot> MeleeShots=new List<NativeMeleeShot>();
         public readonly List<NativeMeleeImpact> MeleeImpacts=new List<NativeMeleeImpact>();
         public bool Downed(NativePilot p)=>p.Down!=null&&Time<p.Down.Until;
-        public bool Incapacitated(NativePilot p)=>Time<p.StunEnd||Downed(p)||p.Juggle!=null;
+        public bool Incapacitated(NativePilot p)=>KernelBusy(p)||Time<p.StunEnd||Downed(p)||p.Juggle!=null;
         private bool SpecialBusy(NativePilot p)=>p.Special!=null&&Time<NativeMeleeKitRules.End(p.Special);
         private int ProjectileCount=>Bullets.Count+AbilityShots.Count+MeleeShots.Count;
         private void CancelSpecial(NativePilot p){if(p.Special!=null){p.Special=null;p.Ready=Math.Min(p.Ready,Time);p.AttackEnd=0;p.MeleeKit.SuperArmour=false;p.MeleeKit.Kind=p.MeleeKit.Phase=null;}}
