@@ -183,7 +183,7 @@ namespace ChipArena.UnityConversion
             if(t>=Release&&t<Split+.06f)
             {
                 var p=SkyArrow(Math.Min(t,Split));var head=p+releaseDir*NativeBow.ArrowLength;float fade=1-NativeEntranceMath.Ramp(t,Split,Split+.06f);
-                fx.Streak(head,releaseDir*SkySpeed,(white*2.4f+Accent*1.4f)*fade,.03f,1.4f,.4f,.9f,0,4560);fx.Glow(head,Accent*(1.6f*fade),0,.22f,0,0,4561);
+                fx.Streak(head,releaseDir*SkySpeed,(white*2.4f+Accent*1.4f)*fade,.022f,1.0f,.06f,.9f,0,4560);fx.Glow(head,Accent*(1.6f*fade),0,.22f,0,0,4561);
                 float trail=Math.Min(SkySpeed*(t-Release),7);if(trail>.1f)fx.Streak(p,releaseDir*trail,Accent*(.7f*fade),.012f,0,1,.95f,0,4562);
             }
             // The split overhead: a star and the volley's streaks fanning out of it.
