@@ -9,7 +9,7 @@ The proposal contradicted its own shared limits. This implementation follows the
 
 The eight entries live in `tools/melee-abilities.json`, included by `tools/export_source.mjs` and already present in `Resources/GameContent.json`. Existing DEV and ranged/magic ability entries stay intact. Stamina uses abilityCost/resourceCost; cooldown uses abilityCooldown. Ability windups use the ability attack-rate helper with a .15 s floor. Sword/dagger/shield E recovery retains the existing special recovery divided by attackRate.
 
-Recasts cost no additional stamina. Sword's .9 s recast window follows a successful launch; without the recast its original cast cooldown becomes 7 s. Skyfall and Kunai recasts have .2 s anticipation and recheck target, range, line of sight and free destination before striking. Teleports sweep the whole capsule path against cover. Skyfall waits for actual ground contact before its wave/bounce. A missed Kunai reduces E to four seconds from throw release. Rolls cancel windups, including recast windups, but not committed active abilities; cancellation spends the original cost/cooldown.
+Recasts cost no additional stamina. Sword's .9 s recast window follows a successful launch; without the recast its original cast cooldown becomes 7 s. Skyfall and Kunai recasts have .2 s anticipation and recheck target, range, line of sight and free destination before striking. Teleports sweep the whole capsule path against cover. Skyfall waits for actual ground contact before its wave/bounce. A missed Kunai reduces E to four seconds from throw release. Locked Kunai casts use the existing `InputFrame.LockTarget` identity: the host validates a living hostile within 24 m and line of sight, then aims a low ballistic arc at its body point (body + .2 m, or the crawler body). It samples the target again at release and compensates for current projectile speed/gravity. Invalid initial locks use manual aim; a lost lock retains the last committed direction. There is no post-release homing or guaranteed hit. Existing replicated melee effect position/velocity drives guests and killcam; no new wire fields or VFX guesswork are needed. Rolls cancel windups, including recast windups, but not committed active abilities; cancellation spends the original cost/cooldown.
 
 Bulwark absorbs three frontal projectiles at most; rear projectiles still hit. It stops on contact and carries the victim through swept collision for up to 6 m. Its wall stun extends that same impact, with the normal post-stun grace. Fissure damage is once per target; the travelled ground strip slows everyone by ×.7 for its two-second life. Every ability hit goes through timed-block, roll and damage rules. Whirlwind has no legacy leap, slam or super armour. Blocking an attack still punishes its attacker.
 
@@ -88,3 +88,64 @@ Owner Builder v4 already invokes `python tools/install_local_assets.py <source>`
 Integrated managed/relay suite: 379 PASS, including the new NativeMeleeFeelChecks and Claude's torso checks. Python: 86 tests, one skip. Account integration: 8 passing tests; TypeScript check passes. Core/Runtime and the changed native network/build fixtures compile against genuine Unity player API assemblies (only Editor preview-scene entry points are compile stubs). Source package check and diff whitespace pass.
 
 `ValidateSpecials` now exercises Q/E funding/commitment, roll windows, recasts, cover, absorb cap, carry/wall budget, fissure hit ledger/slow, armour and queued paid swings. NativeNetworkBuildChecks exercises the actual JsonUtility/guest/replay contract and entrance normalization. These fixtures are part of the existing Windows build gate, but **have not run in Unity Editor here**. Windows building, two-client/late-join/killcam play, balance duels and new Q/E VFX/audio integration are unrun. Claude's existing torso/entrance updates are integrated; his matching swing retime/blends remain separate presentation work. Account deployment and compiled test-channel publication are still pending; this is a source handoff.
+
+
+## 2026-10-12 — weapon sprint primaries (Astra)
+
+`NativeSprintAttack` supplies the host and predicted profiles. A grounded first-combo
+LMB edge with sprint intent/current sprint commits 1.3x normal stamina, stops sprint
+for the commitment, and retains `SprintAttack`. Held LMB, air attacks, chained
+swings and extra-strike echoes do not gain the sprint profile. Bots already sprint
+while approaching and can commit the same opener after their reaction delay.
+
+Base timings (seconds; attack-rate modifiers divide all times):
+
+| Weapon | Windup | Active | Recovery | Step | Damage |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Sword / Lunging Slash | .16 | .18 | .45 | 2.2 m | 1.2x |
+| Daggers / Twin Lunge | .12 | .24 | .25 | 2.6 m | .7x per hit |
+| Shield / Shoulder Charge | .12 | .16 | .50 | 2.0 m | .9x |
+| Greatsword / Leaping Cleave | .48 | .16 | .70 | 2.4 m | 1.4x |
+
+The twin has two independent sweeps/contact ledgers 0.12 seconds apart at base
+rate; a normal dagger combo can start .15 seconds after the twin active window.
+Other profiles retain their full recovery. Steps are fixed distances, constrained
+by normal world collision, without lock-target magnetism replacing the profile.
+Shield successful pilot hits use .35-second stagger with existing boss/armour and
+anti-stunlock immunity, not the normal shield launch. Base unopposed horizontal
+knockback integrates to 2.5 m under the existing drag; stats, steering and obstacles
+can change the result.
+
+Greatsword launches a physical hop with forward travel continuing in air. On level
+ground its base flight is approximately .48 seconds. During its active window a
+landed attacker also tests a 1.6 m radial area with visibility and normal defenses.
+Ring damage was unspecified: implementation uses the same 1.4x cleave and shares
+its contact ledger, so blade plus ring never doubles a victim's damage. No separate
+blast/proc bypass. Ledges can prevent a landing/ring during this window.
+
+Presentation contract: existing `SprintAttack`, `VisualWindup`, `VisualActive`,
+`VisualDuration`, `SwingAt/Until`, `CommitAt/Until`, `StepAt/Until/Distance`, and
+`ChainAt`; no packet-schema addition. Host now exports actual swing windows rather
+than the weapon's default windows. Guest restores them and predicts the same hop,
+step and cost. Claude owns unique low dagger/shoulder/cleave poses, twin-sweep
+presentation and landing-ring VFX; timing adapters already consume these fields.
+No new art/audio or presentation assets are authored here.
+
+Validation status and branch/publication state: see the corresponding DEV_LOG entry.
+
+
+## 2026-10-12 night simulation handoff
+
+Sprint attacks from PR #133 are integrated on `codex/unity-night-handoff-20261012`. They retain the profiles above and the existing SprintAttack/timing/step fields. S0b now follows all eleven captured cuts: dagger C and both shield cuts reverse; the four-cut dagger cycle preserves D. The captured-blade comparison is an assertion, not a warning.
+
+A fresh airborne LMB after .15 s starts one landing attack per airtime. It costs 1.25 times normal swing stamina, hangs .15 s, then plunges at -14 m/s through normal capsule/world collision. There are no midair hits. On ground contact the forward arc and ring share one per-target ledger and normal sight/team/block/roll protection. Ring radii: daggers 1.4, sword 1.6, shield 1.8, greatsword 2.4 m; damage 1.3 times normal (greatsword 1.5); ordinary light stagger, not shield launch. Recovery starts at actual impact: .25/.35/.4/.55 s respectively. Extra-strike echoes wait until that recovery finishes. A canceled plunge still consumes that airtime's opportunity.
+
+`NativeMeleeSwing.Air`, `PlungeAt`, `ImpactAt` are authoritative; actor snapshots expose `AirAttack`, `PlungeAt`, `ImpactAt`, `AirborneAt`, `AirAttackUsed`. ImpactAt is -1 before ground contact; `Land` with Detail `melee-air` carries the world ground contact position, surface normal and ring radius. Impact rewrites the swing hit/recovery clocks. Host and guest prediction share hang/plunge/landing rules; rollback never repays stamina or reapplies an acknowledged input. The ten-second pending commitment is a safety timeout, not a flight duration for animation. Claude's explicit-air hooks are connected; pose timing/VFX should consume PlungeAt/ImpactAt rather than infer flight from the provisional hit window. No pose clips were retuned here.
+
+Every Q/E kit now carries `RecoverAt` (-1 until recovery actually starts, or a known Whirlwind boundary) and `RecoverUntil` (pilot commitment end). Skyfall starts landing recovery on ground contact without the old .15 s floor. Kunai recast explicitly enters recovery after release, including a failed target recheck. `AbilityHit.WallSlam` is true only for Bulwark's wall impact; Detail remains `bulwark-charge` for existing FX routing.
+
+Aegis has two independent clocks: Until/RecoverUntil describe the pilot action, while `ShieldOut` ends only on actual catch/removal and `ShieldUntil` estimates the current outward/return leg end from authoritative projectile life/travel/position. Do not use the short pilot recovery to hide the flying shield. Kunai sets `Actor.MainWeaponAway` instead of the all-weapons `WeaponAway`; the source and fallback render paths hide only the thrown right-hand dagger.
+
+Account service now stores hatColor/backColor as six-digit hex or empty Auto and accepts sheldon-head/sheldon-intro only for DEV accounts. Native selection normalization also requires an unexpired DEV grant; host-approved hat/intro IDs are transmitted unchanged to guests without granting them DEV access. Cosmetic models/catalogue additions and native colour DTOs remain Claude's work. The per-weapon skin property name has not been pushed to DEV_LOG on the inspected shared head, so its account allowlist is pending that exact contract. Account Worker deployment is separate from the Unity player build; this source change does not claim it is live.
+
+Claude's latest blood/stagger request is implemented: pilot Hit/Headshot carries normalized actual damage direction in ArenaEvent.Normal, matching adds. His slicing fix needs no wound-classification change. No host camera-convergence change was reported. Actual Unity/PhysX gates, Windows/two-client acceptance and native duel win rates remain unrun: the duel command reports that Unity Editor is unavailable here. No additional balance tuning was performed.

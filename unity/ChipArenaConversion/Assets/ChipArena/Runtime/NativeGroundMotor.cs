@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
         private const float Skin=NativeLocomotionRules.Skin,Step=NativeLocomotionRules.StepHeight,Reach=NativeLocomotionRules.GroundReach;
         private const float Pole=Half-Radius,Lift=.5f;
         private static readonly Collider[] overlaps=new Collider[16];
-        public struct Ground {public bool Found;public float Gap;public Vector3 Normal;}
+        public struct Ground {public bool Found;public float Gap;public Vector3 Normal,Point;}
         private static bool Walkable(Vector3 n)=>NativeLocomotionRules.Walkable(NativeArena.Vec(n));
         private static Vector3 SurfaceNormal(RaycastHit hit)
         {
@@ -24,13 +24,13 @@ namespace ChipArena.UnityConversion
             if(physics.SphereCast(position+Vector3.up*(Lift-Pole),Radius-Skin,Vector3.down,out var hit,Lift+Reach+Skin*2,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))
             {
                 var normal=SurfaceNormal(hit);float gap=hit.distance-Lift-Skin/Math.Max(NativeLocomotionRules.MinGroundY,normal.y);
-                if(Walkable(normal)&&gap>=-.06f&&gap<=Reach)return new Ground{Found=true,Gap=gap,Normal=normal};
+                if(Walkable(normal)&&gap>=-.06f&&gap<=Reach)return new Ground{Found=true,Gap=gap,Normal=normal,Point=hit.point};
             }
             // A nearby riser can intercept the broad probe before the floor directly under the feet.
             if(physics.Raycast(position,Vector3.down,out hit,Half+Reach,NativeArena.WorldMask,QueryTriggerInteraction.Ignore)&&Walkable(hit.normal))
             {
                 float gap=hit.distance-Pole-Radius/hit.normal.y;
-                if(gap>=-.06f&&gap<=Reach)return new Ground{Found=true,Gap=gap,Normal=hit.normal};
+                if(gap>=-.06f&&gap<=Reach)return new Ground{Found=true,Gap=gap,Normal=hit.normal,Point=hit.point};
             }
             return default;
         }
@@ -88,7 +88,7 @@ namespace ChipArena.UnityConversion
         {
             p.GroundPosition=p.Body.position;p.Ground=NativeGroundMotor.Probe(root.scene.GetPhysicsScene(),p.GroundPosition);
             p.Grounded=p.Ground.Found&&(p.GroundAttached||Vector3.Dot(p.Body.linearVelocity,p.Ground.Normal)<=1);
-            if(p.Grounded)p.AirJumps=0;
+            if(p.Grounded){p.AirJumps=0;p.AirborneAt=-1;p.AirAttackUsed=false;}else if(p.AirborneAt<0)p.AirborneAt=Time;
         }
         private bool GroundMotion(NativePilot p,ref Vector3 velocity,bool jump,bool swimming,float impulseY)
         {

@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
         private float FieldClock(NativeArena arena)=>arena.Replica&&hazardClock<=arena.Time&&arena.Time-hazardClock<1?hazardClock:PresentationClock(arena);
         // paused: the match itself is stopped (offline menu), so the blasts hold still; see NativeBlastFrame.Step.
         public void RenderGlow(NativeArena arena,Camera camera,bool paused=false)
-        {float now=PresentationClock(arena),fields=FieldClock(arena);if(vfx!=null)vfx.Low=LowGraphics;vfx?.Begin();fieldTelegraphs?.Collect(arena,fields);StructureFx(arena,camera,fields);if(blasts!=null)blasts.Trails=TrailsEnabled;blasts?.Render(arena,camera,now,BlastQuality,paused,fieldTelegraphs);EventWorldFx(arena,camera,fields);fieldTelegraphs?.Render(arena,camera,fields,abilityPreview,abilityPreviewClamped);shotTracker.Begin(arena,arena.Generation,arena.Replica,arena.Time);shots?.Render(arena,camera,fields,BlastQuality,paused,shotTracker);MeleeKitFx(arena,camera,fields);meleeFlash?.Render(arena,camera,fields,WeaponEffectsQuality);WeaponFx(arena,camera,fields);DevEffects(arena,camera,fields);JumpFx(arena,fields);AirAttackFx(arena,fields);if(combatGlow==null){vfx?.Submit(camera);return;}combatGlow.Tracker=shotTracker;combatGlow.Clock=fields;combatGlow.Quality=GlowQuality;combatGlow.Trails=TrailsEnabled;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.ViewPilot.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);vfx?.Submit(camera);}
+        {float now=PresentationClock(arena),fields=FieldClock(arena);if(vfx!=null)vfx.Low=LowGraphics;vfx?.Begin();fieldTelegraphs?.Collect(arena,fields);StructureFx(arena,camera,fields);if(blasts!=null)blasts.Trails=TrailsEnabled;blasts?.Render(arena,camera,now,BlastQuality,paused,fieldTelegraphs);EventWorldFx(arena,camera,fields);fieldTelegraphs?.Render(arena,camera,fields,abilityPreview,abilityPreviewClamped);shotTracker.Begin(arena,arena.Generation,arena.Replica,arena.Time);shots?.Render(arena,camera,fields,BlastQuality,paused,shotTracker);MeleeKitFx(arena,camera,fields);meleeFlash?.Render(arena,camera,fields,WeaponEffectsQuality);WeaponFx(arena,camera,fields);DevEffects(arena,camera,fields);JumpFx(arena,fields);AirAttackFx(arena,fields);BloodFx(arena,camera,fields);if(combatGlow==null){vfx?.Submit(camera);return;}combatGlow.Tracker=shotTracker;combatGlow.Clock=fields;combatGlow.Quality=GlowQuality;combatGlow.Trails=TrailsEnabled;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.ViewPilot.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);vfx?.Submit(camera);}
         private readonly AudioClip[] gunSounds=new AudioClip[4];
         private AudioClip reloadStart,reloadEnd,hitSound;
         private AudioSource localAudio;
@@ -126,7 +126,7 @@ namespace ChipArena.UnityConversion
         /// kit keeps its decals and structure records (NativeStructureFxPresentation.Reset), which the event buffer cannot rebuild.</summary>
         public void ResetPresentation(bool keepWorldMarks=false)
         {
-            ClearSourceActors();combatGlow?.Clear();blasts?.Clear();ClearStructureFx(keepWorldMarks);fieldTelegraphs?.Clear();shots?.Clear();vfx?.Clear();meleeFlash?.Clear();ClearMeleeKit();shotTracker.Clear();hitLedger.Clear();aimMotion.Reset();viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
+            ClearSourceActors();combatGlow?.Clear();blasts?.Clear();ClearStructureFx(keepWorldMarks);ClearBlood(!keepWorldMarks);fieldTelegraphs?.Clear();shots?.Clear();vfx?.Clear();meleeFlash?.Clear();ClearMeleeKit();shotTracker.Clear();hitLedger.Clear();aimMotion.Reset();viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
             foreach(var source in shotAudio) if(source!=null) source.Stop(); if(localAudio!=null) localAudio.Stop();
             foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear();
             foreach(var o in debris) if(o!=null) Destroy(o); debris.Clear();
@@ -249,7 +249,7 @@ namespace ChipArena.UnityConversion
                 DrawStaff(rig,school==MagicPose.Leet?1:school);
                 return;
             }
-            if(!a.WeaponAway)Weapon(MeleeHand(rig,a,time),rig.Set,color);
+            if(!a.WeaponAway&&!a.MainWeaponAway)Weapon(MeleeHand(rig,a,time),rig.Set,color);
             if(rig.Set==1) Weapon(MeleeHand(rig,a,time,true),1,color);
         }
         private static Matrix4x4 MeleeHand(CapturedAnimation.Player rig,Actor a,float time,bool left=false)

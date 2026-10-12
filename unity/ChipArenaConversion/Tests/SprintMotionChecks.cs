@@ -240,7 +240,7 @@ internal static class SprintMotionChecks
         string cg=Read("Assets/ChipArena/Runtime/ConversionGame.cs");
         Check(cg.Contains("cameraView.fieldOfView=SprintFov(first,aim,Mathf.Lerp(cameraView.fieldOfView-sprintKick,")&&cg.Contains("viewModelCamera.fieldOfView=cameraView.fieldOfView-sprintKick;")&&cg.Contains("SprintSway();"),"the camera takes the FOV kick (not the view model) and the bob after the aim point");
         Check(Read("Assets/ChipArena/Runtime/NativeJumpFxPresentation.cs").Contains("SprintFx(arena,now);")&&Read("Assets/ChipArena/Runtime/NativeEffectsAudio.cs").Contains("float stride=NativeFootsteps.StrideFor(sprint);"),"the sprint effect and footstep cadence are wired");
-        foreach(var f in new[]{"Assets/ChipArena/Core/ArenaWorld.cs","Assets/ChipArena/Core/NativePrediction.cs"})Check(!Read(f).Contains("NativeSprint"),f+" (sprint speed, stamina and prediction) is untouched by the presentation");
+        foreach(var f in new[]{"Assets/ChipArena/Core/ArenaWorld.cs","Assets/ChipArena/Core/NativePrediction.cs"})Check(!Read(f).Contains("NativeSprintMotion")&&!Read(f).Contains("NativeSprintFx")&&!Read(f).Contains("NativeSprintRules"),f+" has no sprint presentation dependencies (NativeSprintAttack is simulation)");
         log.Add("hooks: melee, gun and magic routes; arena rigs only; camera FOV kick and bob; the effect and the footstep cadence; sprint simulation untouched");
     }
 }

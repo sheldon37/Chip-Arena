@@ -194,6 +194,7 @@ namespace ChipArena.UnityConversion
         {
             switch(id)
             {
+                case "fan-hammer":return "crosshair";case "overdrive":return "zap";
                 case "ads":return w!=null&&w.id=="rifle"?"scan-line":"crosshair";case "frag-grenade":return "bomb";case "rocket":return "rocket";case "orbital-mark":return "target";
                 case "flame-lance":return "flame";case "meteor-strike":return "sun";case "tidal-wave":return "waves";case "geyser-wall":return "droplets";
                 case "blink-strike":return "zap";case "ball-lightning":return "orbit";case "shadow-shackles":return "anchor";case "singularity":return "eclipse";

@@ -104,7 +104,8 @@ internal static class ClassIconChecks
         string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f));string icons=R("NativeIcons.cs"),hud=R("NativeFightHud.cs");
         Check(icons.Contains("Resources.Load<TextAsset>(\"ClassIcons\")")&&icons.Contains("NativeIconRaster.Resolve(artClasses,classes,artFallback,id)")&&icons.Contains("NativeIconRaster.Resolve(artSpecs,specs,artFallback,id)"),"NativeIcons resolves classes and specs to the art");
         Check(icons.Contains("NativeIconRaster.UseSmall(e.small,px,artSmallPx)")&&icons.Contains("NativeIconRaster.Mode.Art")&&icons.Contains("NativeIconRaster.Mode.Lucide")&&icons.Contains("NativeIconRaster.Mode.Markup"),"NativeIcons draws art, Lucide and markup through their own modes");
-        Check(hud.Contains("NativeIcons.Draw(new Rect(ix,y+1,15,15),NativeIcons.Spec(p.Weapon.id),U.Hex(0xe8e9ef))")&&hud.Contains("new Rect(ix+22,y,iw-22,17),p.Weapon.name"),"the HUD health box shows the weapon icon (15 px, 7 px gap) before its name");
+        // (The cyber HUD restyle tints the icon from the shared palette and fits the upper-case name beside the HP readout.)
+        Check(hud.Contains("NativeIcons.Draw(new Rect(ix,y+5,15,15),NativeIcons.Spec(p.Weapon.id),NativeCyberTheme.CyanSoft())")&&hud.Contains("new Rect(ix+22,y+3,room,18),Fit(p.Weapon.name"),"the HUD health box shows the weapon icon (15 px, 7 px gap) before its name");
         Console.WriteLine("PASS Class icons: "+count+" checks (NativeIcons loads and resolves the art; the HUD health box draws the weapon icon)");
     }
 }

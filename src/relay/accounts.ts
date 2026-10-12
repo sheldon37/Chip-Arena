@@ -33,8 +33,8 @@ function weaponSkinMap(raw:unknown){
 }
 function accountCosmetics(raw:any,a:Access){
  const clean=cosmetics(raw,a);
- Object.assign(clean,{weaponSkins:weaponSkinMap(raw?.weaponSkins)});
- return {...clean,lobbyBack:LOBBY_BACKS.has(raw?.lobbyBack)?raw.lobbyBack:'tick-ring',intro:NATIVE_INTROS.has(raw?.intro)?raw.intro:clean.intro};
+ const tint=(value:unknown)=>typeof value==='string'&&/^#[0-9a-f]{6}$/i.test(value)?value:'';
+ return {...clean,hatColor:tint(raw?.hatColor),backColor:tint(raw?.backColor),hat:raw?.hat==='sheldon-head'&&a.developer?'sheldon-head':clean.hat,lobbyBack:LOBBY_BACKS.has(raw?.lobbyBack)?raw.lobbyBack:'tick-ring',weaponSkins:weaponSkinMap(raw?.weaponSkins),intro:raw?.intro==='sheldon-intro'&&a.developer?'sheldon-intro':NATIVE_INTROS.has(raw?.intro)?raw.intro:clean.intro};
 }
 function savedProfile(raw:any,a:Access){return {name:typeof raw?.name==='string'?raw.name.replace(/[<>\u0000-\u001f]/g,'').slice(0,20)||'Pilot':'Pilot',class:(['ranged','melee','magic'].includes(raw?.class)||raw?.class==='dev'&&a.developer)?raw.class:'ranged',color:/^#[0-9a-f]{6}$/i.test(raw?.color||'')?raw.color:'#ff6b35',cosmetics:accountCosmetics(raw?.cosmetics,a)};}
 function view(row:any){return {id:row.id,username:row.username,profileSchema:2,...access(row),profile:savedProfile(JSON.parse(row.profile),access(row)),hasProfile:row.profile!=='{}',revision:row.revision,grantVersion:row.grant_version};}

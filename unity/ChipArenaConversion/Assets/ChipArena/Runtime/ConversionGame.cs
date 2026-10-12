@@ -16,6 +16,7 @@ namespace ChipArena.UnityConversion
         public string lobbyBack=NativePortraitBacks.Default;
         // The Locker's per-weapon skins (NativeWeaponSkins map; absent in older saves: every weapon Standard).
         public string weaponSkins="";
+        public bool developmentConsole;
     }
     public sealed partial class ConversionGame : MonoBehaviour
     {
@@ -88,6 +89,7 @@ namespace ChipArena.UnityConversion
         private float shakeAmount;private int shakeEvent,shakeGeneration=-1;
         private void Update()
         {
+            SyncDevelopmentConsole();
             if(content==null)return;if(dedicated){DedicatedTick();return;}if(cameraView==null)return;SyncFullscreen();NetworkTick();
             // The main menu is always open without a match (an Escape there steps back instead), so the updater's install gate holds.
             if(arena==null)menu=true;if(!menu)pauseScreen=PauseScreen.Menu;
@@ -106,13 +108,13 @@ namespace ChipArena.UnityConversion
             SpectatorControls();var p=arena.ViewPilot;
             UpdateLock();if(play)
             {
-                var ads=content.Ads(p.Seat.spec);bool aiming=ads!=null&&Input.GetKey(KeyCode.Q);
+                var ads=content.Ads(p.Seat.spec);bool aiming=NativeRangedRules.Scope(p.Seat.spec)&&ads!=null&&Input.GetKey(KeyCode.Q);
                 if(!lockPoint.HasValue&&!cinematic.Directing){yaw+=Input.GetAxisRaw("Mouse X")*2*prefs.sensitivity*(aiming?(float)ads.sens:1);pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f*prefs.sensitivity*(aiming?(float)ads.sens:1),-70,70);}
                 if(Input.GetKeyDown(KeyCode.W)){if(Time.unscaledTime-lastW<.3f)sprint=true;lastW=Time.unscaledTime;}if(!Input.GetKey(KeyCode.W))sprint=false;
                 var move=Quaternion.Euler(0,yaw,0)*new Vector3((Input.GetKey(KeyCode.D)?1:0)-(Input.GetKey(KeyCode.A)?1:0),0,(Input.GetKey(KeyCode.W)?1:0)-(Input.GetKey(KeyCode.S)?1:0)).normalized;
                 pending.X=move.x;pending.Z=move.z;pending.Yaw=yaw;pending.Pitch=-pitch;pending.Sprint=sprint;pending.Aim=aiming;
                 pending.Shoot=Input.GetMouseButton(0);pending.Attack|=Input.GetMouseButtonDown(0);pending.LockTarget=lockPoint.HasValue?lockTarget:0;
-                pending.AbilityQ|=(p.Weapon.@class=="magic"||NativeMeleeRules.Standard(p.Seat.spec))&&Input.GetKeyDown(KeyCode.Q);pending.AbilityE|=Input.GetKeyDown(KeyCode.E);pending.AbilityEReleased|=Input.GetKeyUp(KeyCode.E);pending.AbilityEHeld=Input.GetKey(KeyCode.E);
+                pending.AbilityQ|=(p.Weapon.@class=="magic"||NativeMeleeRules.Standard(p.Seat.spec)||NativeRangedRules.Q(content.Ability(p.Seat.spec,"q")?.id))&&Input.GetKeyDown(KeyCode.Q);pending.AbilityE|=Input.GetKeyDown(KeyCode.E);pending.AbilityEReleased|=Input.GetKeyUp(KeyCode.E);pending.AbilityEHeld=Input.GetKey(KeyCode.E);
                 pending.Hadoken|=Input.GetKeyDown(KeyCode.Alpha1);pending.HadokenHeld=Input.GetKey(KeyCode.Alpha1);pending.Uppercut|=Input.GetKeyDown(KeyCode.Alpha2);
                 for(int key=0;key<4;key++)if(Input.GetKeyDown(KeyCode.Alpha1+key))pending.SirenAbility=(byte)(key+1);
                 pending.AbilityQ|=p.Seat.spec=="emperor"&&Input.GetKeyDown(KeyCode.Q)||p.Seat.spec=="siren"&&Input.GetKeyDown(prefs.sirenMode=="F"?KeyCode.F:prefs.sirenMode=="V"?KeyCode.V:KeyCode.Q);
@@ -206,7 +208,7 @@ namespace ChipArena.UnityConversion
             var p=Spectator??arena.ViewPilot;Vector3 focus=p.Body.transform.position+Vector3.up*NativeViewRules.EyeHeight;var ads=content.Ads(p.Seat.spec);
             // Camera intent survives stagger/knockdown. The simulation independently gates ADS benefits and shots.
             bool alive=arena.Local.Hp>0&&p.Hp>0;
-            bool aim=ads!=null&&pending.Aim&&alive&&!menu;
+            bool aim=NativeRangedRules.Scope(p.Seat.spec)&&ads!=null&&pending.Aim&&alive&&!menu;
             // ArenaPresentation.Render already hides the viewed pilot's world body in first person.
             bool first=NativeViewRules.FirstPerson(prefs.firstPerson||aim,alive,menu);
             cameraView.fieldOfView=SprintFov(first,aim,Mathf.Lerp(cameraView.fieldOfView-sprintKick,aim?(float)ads.fov:first?NativeViewRules.FirstFov:NativeViewRules.ThirdFov,1-Mathf.Exp(-16*Time.unscaledDeltaTime)));
@@ -279,11 +281,11 @@ namespace ChipArena.UnityConversion
                 if(!menu&&fighting&&p.Hp>0&&!presentation.ScopeActive)Crosshair();
                 if(!menu&&match.Phase==NativePhase.Fight)
                 {
-                    if(arena.Downed(p))Prompt(U.H/2+80,"RECOVERING  ·  WASD chooses roll direction",14,NativeUi.Hex(0xd7d8de));
-                    if(arena.RiposteOpen(p))Prompt(U.H/2+40,"RIPOSTE  ·  LMB counter",17,NativeUi.Hex(0xff996f));
+                    if(arena.Downed(p))Prompt(U.H/2+80,"RECOVERING  ·  WASD chooses roll direction",14,NativeCyberTheme.Ink());
+                    if(arena.RiposteOpen(p))Prompt(U.H/2+40,"RIPOSTE  ·  LMB counter",17,NativeCyberTheme.Warn());
                     // A Kunai mark on me (the marker can teleport behind me while it lasts): every pilot's replicated kit.
                     float marked=0;foreach(var q in arena.Pilots)marked=Math.Max(marked,NativeMeleeKitHud.MarkLeft(q.MeleeKit,p.Seat.id,arena.Time));
-                    if(marked>0&&p.Hp>0)Prompt(U.H/2+120,"MARKED  ·  "+marked.ToString("0.0")+"s",15,NativeUi.Hex(0xff4a5e));
+                    if(marked>0&&p.Hp>0)Prompt(U.H/2+120,"MARKED  ·  "+marked.ToString("0.0")+"s",15,NativeCyberTheme.Danger());
                 }
                 if(!menu&&match.Phase==NativePhase.Countdown)CountdownOverlay();
                 if(!menu&&match.Phase==NativePhase.Result)ResultOverlay();
@@ -376,17 +378,18 @@ namespace ChipArena.UnityConversion
         private void Board(float width)
         {
             if(inspectSeat!=0)return;float W=NativeUi.W,w=360,x=W-24-w,y=62;var seats=match.Seats.Where(s=>!s.AuthorityBoss).ToList();float h=14+20+10+seats.Count*46+10;
-            NativeUi.Round(new Rect(x,y,w,h),NativeUi.Hex(0x13141c,.92f),10,new Color(1,1,1,.14f));NativeUi.Text(new Rect(x+14,y+14,w-28,20),arena?.Pve!=null?"PARTY":"PILOTS",12,NativeUi.Hex(0xedf2fc),TextAnchor.MiddleLeft,bold:true,tracking:.08f);
-            NativeUi.Text(new Rect(x+14,y+14,w-28,20),"Click to inspect a build",11,NativeUi.Hex(0xaeb6c8),TextAnchor.MiddleRight);float cy=y+44;
+            // The pilot board in the cyber HUD chrome: a holographic panel, chamfered rows lifting into a cyan edge on hover.
+            NativeHudChrome.Panel(new Rect(x,y,w,h),1,default,NativeHudCyber.Cut,NativeHudChrome.Corners.Diagonal,true,.94f);NativeUi.Text(new Rect(x+14,y+14,w-28,20),arena?.Pve!=null?"PARTY":"PILOTS",12,NativeCyberTheme.Ink(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);
+            NativeUi.Text(new Rect(x+14,y+14,w-28,20),"Click to inspect a build",11,NativeCyberTheme.Muted(),TextAnchor.MiddleRight);float cy=y+44;
             foreach(var p in seats)
             {
                 var r=new Rect(x+10,cy,w-20,40);float hv=NativeUi.HoverAmount(7100+p.id,r);bool you=p.id==arena?.Local?.Seat.id;var pilot=arena?.Pilots.Find(q=>q.Seat==p);bool alive=pilot!=null&&pilot.Hp>0&&p.connected;
-                NativeUi.Round(new Rect(r.x,r.y-hv,r.width,r.height),NativeUi.Mix(NativeUi.Hex(0x18191f,.9f),NativeUi.Hex(0x22232a),hv),6,NativeUi.Mix(new Color(1,1,1,.06f),NativeUi.Hex(0xff784b),hv));
+                var row=new Rect(r.x,r.y-hv,r.width,r.height);NativeHudChrome.Cut(row,NativeUi.Mix(NativeCyberTheme.Indigo(.9f),NativeCyberTheme.Indigo(),hv),NativeHudCyber.TagCut);NativeHudChrome.Outline(row,NativeUi.Mix(NativeCyberTheme.Edge(.8f),NativeCyberTheme.Cyan(),hv),NativeHudCyber.TagCut);
                 NativeUi.Fill(new Rect(r.x,r.y+6-hv,2,r.height-12),match.Teams?TeamColor(p.team):SeatColor(p));
-                NativeUi.Text(new Rect(r.x+12,r.y-hv,r.width-24,22),p.name+(you?"  · YOU":""),13,NativeUi.Hex(0xf4f4f5,alive?1:.6f),TextAnchor.MiddleLeft,bold:you);
-                NativeUi.Text(new Rect(r.x+12,r.y+19-hv,r.width-24,18),(content.weapons.FirstOrDefault(c=>c.id==p.spec)?.name??p.spec)+"  ·  "+p.chips.Values.Sum()+" chips",11,NativeUi.Hex(0xa6a7ad),TextAnchor.MiddleLeft);
-                NativeUi.Text(new Rect(r.x+12,r.y-hv,r.width-24,22),arena?.Pve!=null?"":"SETS "+p.score+" · ROUNDS "+p.roundWins,11,NativeUi.Hex(0xd6d7e1),TextAnchor.MiddleRight,mono:true);
-                NativeUi.Text(new Rect(r.x+12,r.y+19-hv,r.width-24,18),!p.connected?"OFFLINE":alive?"ALIVE":"OUT",10,alive?NativeUi.Hex(0xa9f4ca):NativeUi.Hex(0xa4a9b6),TextAnchor.MiddleRight,mono:true,tracking:.1f);
+                NativeUi.Text(new Rect(r.x+12,r.y-hv,r.width-24,22),p.name+(you?"  · YOU":""),13,NativeCyberTheme.Ink(alive?1:.6f),TextAnchor.MiddleLeft,bold:you);
+                NativeUi.Text(new Rect(r.x+12,r.y+19-hv,r.width-24,18),(content.weapons.FirstOrDefault(c=>c.id==p.spec)?.name??p.spec)+"  ·  "+p.chips.Values.Sum()+" chips",11,NativeCyberTheme.Muted(),TextAnchor.MiddleLeft);
+                NativeUi.Text(new Rect(r.x+12,r.y-hv,r.width-24,22),arena?.Pve!=null?"":"SETS "+p.score+" · ROUNDS "+p.roundWins,11,NativeCyberTheme.CyanSoft(),TextAnchor.MiddleRight,mono:true);
+                NativeUi.Text(new Rect(r.x+12,r.y+19-hv,r.width-24,18),!p.connected?"OFFLINE":alive?"ALIVE":"OUT",10,alive?NativeCyberTheme.Good():NativeCyberTheme.Muted(),TextAnchor.MiddleRight,mono:true,tracking:.1f);
                 if(NativeUi.Button(r))inspectSeat=p.id;cy+=46;
             }
         }

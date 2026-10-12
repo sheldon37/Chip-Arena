@@ -127,6 +127,8 @@ namespace ChipArena.UnityConversion
                 if(p.Death?.style=="dev-raging-demon"){float[] hits={.80f,1.02f,1.24f,1.46f,1.69f,1.94f,2.21f,2.56f};for(int i=0;i<hits.Length;i++){float at=p.Death.at+hits[i];if(t>=at&&t-at<.12f&&Once(id+"demon:"+i,at)){string beat=i==7?"arcade-heavy":i==3||i==5?"arcade-kick":"arcade-punch";Cue(NativeSoundCues.Fighter(beat),beat,p.Death.position,i==7?1.1f:.85f);}}}
                 // A melee Q/E cast's release (the dash, throw, slash or leap leaving): the replicated kit's Release, once per cast.
                 var kit=p.Pose?.MeleeKit;if(kit!=null&&MeleeKitMotion.Known(kit.Kind)&&t>=kit.Release&&t-kit.Release<.15f&&kit.Phase!="windup"&&kit.Phase!="recast"&&Once(id+"kit",kit.Release)){bool recast=kit.Phase=="fall"||p.Pose.SpecialKind=="skyfall"||p.Pose.SpecialKind=="kunai-recast";int k=NativeMeleeKitSounds.Release(kit.Kind,recast,kitSounds);for(int i=0;i<k;i++)Cue(kitSounds[i].Key,kitSounds[i].Clip,pos,kitSounds[i].Gain,mine:mine);}
+                // The Whirlwind's whoosh each turn and its heavy stop (Core/NativeMeleeKitSounds.Spin), each cue once.
+                if(p.Pose!=null){int w=NativeMeleeKitSounds.Spin(p.Pose,t,.15f,kitSounds,out float whirlAt);if(w>0&&Once(id+"whirl",whirlAt))for(int i=0;i<w;i++)Cue(kitSounds[i].Key,kitSounds[i].Clip,pos,kitSounds[i].Gain,mine:mine);}
                 var f=p.Fighter;if(f?.LastHit>0&&t-f.LastHit<.15f&&Once(id+"fighter",f.LastHit)){string hit=f.Kind=="electric"?"electric-hook-hit":f.Kind=="tatsu"?"arcade-kick":f.Index==f.Total-1?"arcade-heavy":"arcade-punch";Cue(NativeSoundCues.Fighter(hit),hit,pos,.9f,mine:mine);}
             }
             // Source events Unity derives from state: stage-spikes-rise (stage-hazards.ts:21) and the PvP draft pick's `install`

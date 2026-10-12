@@ -52,8 +52,10 @@ namespace ChipArena.UnityConversion
             if(k<.1f){float u=ease(k/.1f);a=u;s=1.25f-.25f*u;}else if(k<.82f)a=1;else{float u=ease((k-.82f)/.18f);a=1-u;dy=-12*u;}
             bool siren=b.Tone=="boss"||b.Tone=="phase"||b.Tone=="found",deny=b.Tone=="deny";
             float F=deny?18:b.Tone=="boss"?Mathf.Clamp(W*.054f,34,76):Mathf.Clamp(W*.046f,30,64),top=deny?H*.5f+86:H*.24f;
-            Color c=b.Tone=="clear"||b.Tone=="respawn"?U.Hex(0xb6ffc8):b.Tone=="victory"?U.Hex(0xffe7a6):b.Tone=="defeat"||deny?U.Hex(0xff8a7a):siren?U.Hex(0xf6f3ff):Color.white;
-            Color glow=b.Tone=="clear"?U.Hex(0x59dd83,.4f):b.Tone=="victory"?U.Hex(0xffb84a,.6f):b.Tone=="defeat"?U.Hex(0xff3535,.6f):siren?U.Hex(0x9b87ff,.8f):deny?default:U.Hex(0xff6b35,.4f);
+            // Cyber tones: good for a cleared wave / respawn, warn (gold) for victory, danger for defeat and refusals, the Siren's
+            // violet glow, and cyan for the waves.
+            Color c=b.Tone=="clear"||b.Tone=="respawn"?NativeCyberTheme.Good():b.Tone=="victory"?NativeCyberTheme.Warn():b.Tone=="defeat"||deny?NativeCyberTheme.Danger():NativeCyberTheme.Ink();
+            Color glow=b.Tone=="clear"?NativeCyberTheme.Good(.4f):b.Tone=="victory"?NativeCyberTheme.Warn(.6f):b.Tone=="defeat"?NativeCyberTheme.Danger(.6f):siren?NativeCyberTheme.Violet(.8f):deny?default:NativeCyberTheme.Cyan(.45f);
             string title=siren?b.Title:b.Title.ToUpperInvariant();float track=deny?.16f:siren?.04f:.06f;
             U.Push(new Vector2(W/2,top+F/2),new Vector2(0,dy),s);
             if(siren&&b.Tone!="found")
@@ -65,7 +67,8 @@ namespace ChipArena.UnityConversion
             if(!string.IsNullOrEmpty(b.Sub))
             {
                 string sub=b.Sub.ToUpperInvariant();float sw=U.Measure(sub,13,true,true,.14f).x+24;var r=new Rect(W/2-sw/2,top+F+10,sw,24);
-                U.Pill(r,U.Hex(0x0b0c12,.78f*a),Color.clear);U.Text(r,sub,13,U.A(b.Tone=="clear"?U.Hex(0x9ff0b8):siren?U.Hex(0xd9d0ff):U.Hex(0xffcfae),a),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.14f);
+                Color tone=b.Tone=="clear"||b.Tone=="respawn"?NativeCyberTheme.Good():siren?NativeCyberTheme.Violet():b.Tone=="victory"?NativeCyberTheme.Warn():b.Tone=="defeat"?NativeCyberTheme.Danger():NativeCyberTheme.Cyan();
+                NativeHudChrome.Tag(r,tone,a,false);U.Text(r,sub,13,U.A(b.Tone=="clear"?NativeCyberTheme.Good():siren?NativeCyberTheme.Ink():NativeCyberTheme.CyanSoft(),a),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.14f);
             }
             U.Pop();
         }

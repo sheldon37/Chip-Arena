@@ -79,37 +79,42 @@ namespace ChipArena.UnityConversion
                 var d=arena.Local.Death;var killer=d!=null&&d.owner>0&&d.owner!=arena.Local.Seat.id?arena.Pilots.Find(x=>x.Seat.id==d.owner):null;bool self=killer==null;
                 float age=replayTime-replayStart,span=Mathf.Max(.001f,replayEnd-replayStart),progress=Mathf.Clamp01(age/span),mark=Mathf.Clamp01((replayDeath-replayStart)/span),close=replayEnd-.3f;
                 float Out(float duration,Func<float,float> ease)=>ease(NativeUiMotion.Progress(replayTime,close,duration));Func<float,float> easeIn=t=>NativeUiMotion.Bezier(.42f,0,1,1,t),bar=t=>NativeUiMotion.Bezier(.5f,0,.8f,.4f,t),pop=t=>NativeUiMotion.Bezier(.2f,.8f,.2f,1,t);
-                Color accent=self?NativeUi.Hex(0xff535f):killer!=null?SeatColor(killer.Seat):NativeUi.Hex(0xff6b35);float kb=Mathf.Clamp(H*.072f,34,64),g=24;
+                // Cyber broadcast frame: void letterbox, the killer's own colour as the accent (danger for a self-elimination), the
+                // timeline in ink up to the fatal hit and danger after it, and the KILL CAM tag glitching once as it opens.
+                Color accent=self?NativeCyberTheme.Danger():killer!=null?SeatColor(killer.Seat):NativeCyberTheme.Danger();float kb=Mathf.Clamp(H*.072f,34,64),g=24;
                 // Letterbox grows in over .34 s and closes over the last .26 s; vignette and the single cut flash.
-                float lb=pop(NativeUiMotion.Progress(age,0,.34f))*(1-Out(.26f,bar));NativeUi.Fill(new Rect(0,0,W,kb*lb),NativeUi.Hex(0x050608,.9f));NativeUi.Fill(new Rect(0,H-kb*lb,W,kb*lb),NativeUi.Hex(0x050608,.9f));
-                float vig=NativeUiMotion.EaseOut(NativeUiMotion.Progress(age,0,.4f))*(1-Out(.26f,easeIn));NativeUi.RadialStops(new Rect(-W*.25f,-H*.2f,W*1.5f,H*1.4f),NativeUi.Hex(0x0a0204,.66f*vig),new[]{0,.58f,1,1.05f},new[]{0f,0f,1f,1f});
+                float lb=pop(NativeUiMotion.Progress(age,0,.34f))*(1-Out(.26f,bar));NativeUi.Fill(new Rect(0,0,W,kb*lb),NativeCyberTheme.Void(.9f));NativeUi.Fill(new Rect(0,H-kb*lb,W,kb*lb),NativeCyberTheme.Void(.9f));
+                if(lb>0){NativeUi.Fill(new Rect(0,kb*lb-NativeHudChrome.Snap(1),W,NativeHudChrome.Snap(1)),NativeCyberTheme.Cyan(.35f*lb));NativeUi.Fill(new Rect(0,H-kb*lb,W,NativeHudChrome.Snap(1)),NativeCyberTheme.Cyan(.35f*lb));}
+                float vig=NativeUiMotion.EaseOut(NativeUiMotion.Progress(age,0,.4f))*(1-Out(.26f,easeIn));NativeUi.RadialStops(new Rect(-W*.25f,-H*.2f,W*1.5f,H*1.4f),NativeCyberTheme.Void(.66f*vig),new[]{0,.58f,1,1.05f},new[]{0f,0f,1f,1f});
                 NativeUi.Round(new Rect(0,0,W,H),Color.clear,4,NativeUi.A(accent,.45f*vig),2);
                 float flash=.7f*(1-NativeUiMotion.EaseOut(NativeUiMotion.Progress(age,0,.26f)));NativeUi.RadialStops(new Rect(-W*.2f,-H*.2f,W*1.4f,H*1.4f),new Color(1,1,1,flash),new[]{0,.75f,1},new[]{.5f,.125f,.125f});
                 // Tag: blinking REC dot, KILL CAM and the clock relative to the fatal hit.
                 float tag=pop(NativeUiMotion.Progress(age,0,.36f)),ty=kb/2;bool blink=Mathf.Repeat(Time.unscaledTime,1.1f)<.55f||replayTime>=close;float tx=g-14*(1-tag),ta=.45f+.55f*tag;
-                var dot=new Rect(tx,ty-4.5f,9,9);NativeUi.Glow(dot,NativeUi.Hex(0xff3b47,.5f*ta),6);NativeUi.Round(dot,NativeUi.Hex(0xff3b47,(blink&&replayTime<close?1:.4f)*ta),6);
-                NativeUi.Text(new Rect(tx+19,ty-8,120,16),"KILL CAM",13,new Color(1,1,1,ta),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.2f);float rel=replayTime-replayDeath;string clock=rel<-.05f?"−"+Mathf.Abs(rel).ToString("0.0")+"s":rel>.05f?"+"+rel.ToString("0.0")+"s":"0.0s";
-                var ck=new Rect(tx+19+NativeUi.Measure("KILL CAM",13,true,true,.2f).x+10,ty-11,66,22);NativeUi.Round(ck,new Color(1,1,1,.08f*ta),4);NativeUi.Text(new Rect(ck.x,ck.y,ck.width-7,ck.height),clock,13,NativeUi.Hex(0xd6d7e1,ta),TextAnchor.MiddleRight,mono:true,tracking:.06f);
+                var dot=new Rect(tx,ty-4.5f,9,9);NativeUi.Glow(dot,NativeCyberTheme.Danger(.5f*ta),6);NativeUi.Round(dot,NativeCyberTheme.Danger((blink&&replayTime<close?1:.4f)*ta),6);
+                var camLine=new Rect(tx+19,ty-8,120,16);NativeHudChrome.Glitch(camLine,"KILL CAM",13,age-.1f,ta,TextAnchor.MiddleLeft,prefs.reducedEffects,true,true,.2f);
+                NativeUi.Text(camLine,"KILL CAM",13,NativeCyberTheme.Ink(ta),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.2f);float rel=replayTime-replayDeath;string clock=rel<-.05f?"−"+Mathf.Abs(rel).ToString("0.0")+"s":rel>.05f?"+"+rel.ToString("0.0")+"s":"0.0s";
+                var ck=new Rect(tx+19+NativeUi.Measure("KILL CAM",13,true,true,.2f).x+10,ty-11,66,22);NativeHudChrome.Tag(ck,NativeCyberTheme.Cyan(),ta,false);NativeUi.Text(new Rect(ck.x,ck.y,ck.width-7,ck.height),clock,13,NativeCyberTheme.Ink(ta),TextAnchor.MiddleRight,mono:true,tracking:.06f);
                 // Lower third: who and how, just above the bottom letterbox.
                 float card=pop(NativeUiMotion.Progress(age,.08f,.4f))*(1-Out(.26f,easeIn)),cx=g-22*(1-pop(NativeUiMotion.Progress(age,.08f,.4f)))-16*Out(.26f,easeIn);string who=self?"You were eliminated":"Eliminated by",name=self?KillCause(d,null):killer.Seat.name,how=self?"No killer · replaying your view":(killer.Weapon.name+"  ·  "+KillCause(d,killer));
                 float fs=Mathf.Clamp(W*.024f,20,28),cw=Mathf.Min(440,W-2*g),ch=10+14+fs*1.1f+5+(match.Teams&&!self?20:0)+18+11,cy=H-kb-16-ch;
-                NativeUi.HGradient(new Rect(cx,cy,cw*.7f,ch),NativeUi.Hex(0x0d0f16,.94f*card),NativeUi.Hex(0x0d0f16,.78f*card));NativeUi.HGradient(new Rect(cx+cw*.7f,cy,cw*.3f,ch),NativeUi.Hex(0x0d0f16,.78f*card),Color.clear);NativeUi.Fill(new Rect(cx,cy,3,ch),NativeUi.A(accent,card));
-                float ly=cy+10;NativeUi.Text(new Rect(cx+16,ly,cw-34,14),who.ToUpperInvariant(),10,NativeUi.Hex(0xa6a7ad,card),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.2f);ly+=16;
+                var lower=new Rect(cx,cy,cw,ch);NativeHudChrome.Panel(lower,card,accent);NativeUi.Fill(new Rect(cx,cy+6,3,ch-12),NativeUi.A(accent,card));
+                float ly=cy+10;NativeUi.Text(new Rect(cx+16,ly,cw-34,14),who.ToUpperInvariant(),10,NativeCyberTheme.Muted(card),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.2f);ly+=16;
                 NativeUi.Text(new Rect(cx+16,ly,cw-34,fs*1.1f),name,fs,NativeUi.A(accent,card),TextAnchor.MiddleLeft,bold:true,tracking:-.02f,shadow:new Color(0,0,0,card));ly+=fs*1.1f+3;
                 if(match.Teams&&!self){var tc=TeamColor(killer.Seat.team);string tn=NativeMatch.TeamNames[TeamIndex(killer.Seat.team)].ToUpperInvariant();var tr=new Rect(cx+16,ly,NativeUi.Measure(tn,10,true,true,.12f).x+12,16);NativeUi.Round(tr,Color.clear,4,NativeUi.A(tc,card));NativeUi.Text(tr,tn,10,NativeUi.A(tc,card),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.12f);ly+=20;}
-                NativeUi.Text(new Rect(cx+16,ly,cw-34,18),how,13,NativeUi.Hex(0xd6d7e1,card),TextAnchor.MiddleLeft);
+                NativeUi.Text(new Rect(cx+16,ly,cw-34,18),how,13,NativeCyberTheme.Ink(card),TextAnchor.MiddleLeft);
                 // Timeline in the bottom letterbox: white up to the fatal-hit diamond, red after it.
                 float tl=(.45f+.55f*NativeUiMotion.Progress(age,.1f,.4f))*(1-Out(.24f,easeIn)),tw=Mathf.Min(520,W*.44f),tlx=(W-tw)/2,tly=H-kb/2-8;
-                NativeUi.Text(new Rect(tlx,tly-14,tw,12),replayView==d?.owner&&!self?"KILLER’S VIEW":"YOUR FINAL MOMENTS",10,NativeUi.Hex(0xa6a7ad,tl),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.18f);
-                var track=new Rect(tlx,tly+4,tw,4);NativeUi.Round(new Rect(track.x,track.y,tw*mark,4),new Color(1,1,1,.165f*tl),4);NativeUi.Round(new Rect(track.x+tw*mark,track.y,tw*(1-mark),4),NativeUi.Hex(0xff535f,.2f*tl),4);
-                NativeUi.Round(new Rect(track.x,track.y,tw*Mathf.Min(progress,mark),4),NativeUi.Hex(0xf4f4f5,tl),4);if(progress>mark)NativeUi.Round(new Rect(track.x+tw*mark,track.y,tw*(progress-mark),4),NativeUi.Hex(0xff535f,tl),4);
+                NativeUi.Text(new Rect(tlx,tly-14,tw,12),replayView==d?.owner&&!self?"KILLER’S VIEW":"YOUR FINAL MOMENTS",10,NativeCyberTheme.Muted(tl),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.18f);
+                var track=new Rect(tlx,tly+4,tw,4);NativeUi.Fill(new Rect(track.x,track.y,tw*mark,4),NativeCyberTheme.Edge(.9f*tl));NativeUi.Fill(new Rect(track.x+tw*mark,track.y,tw*(1-mark),4),NativeCyberTheme.Danger(.22f*tl));
+                NativeUi.Fill(new Rect(track.x,track.y,tw*Mathf.Min(progress,mark),4),NativeCyberTheme.Ink(tl));if(progress>mark)NativeUi.Fill(new Rect(track.x+tw*mark,track.y,tw*(progress-mark),4),NativeCyberTheme.Danger(tl));
                 float hit=replayTime>=replayDeath?NativeUiMotion.EaseOut(NativeUiMotion.Progress(replayTime,replayDeath,.5f)):1;var mk=new Vector2(track.x+tw*mark,track.y+2);
-                if(replayTime>=replayDeath&&hit<1)NativeUi.Glow(new Rect(mk.x-5,mk.y-5,10,10),NativeUi.Hex(0xff535f,.8f*(1-hit)*tl),12*hit);
-                NativeUi.Push(mk,Vector2.zero,1,45);NativeUi.Round(new Rect(mk.x-7,mk.y-7,14,14),NativeUi.Hex(0x050608,tl),2);NativeUi.Round(new Rect(mk.x-5,mk.y-5,10,10),replayTime>=replayDeath?NativeUi.Hex(0xff535f,tl):NativeUi.Hex(0x16171c,tl),2,NativeUi.Hex(0xff535f,tl),2);NativeUi.Pop();
+                if(replayTime>=replayDeath&&hit<1)NativeUi.Glow(new Rect(mk.x-5,mk.y-5,10,10),NativeCyberTheme.Danger(.8f*(1-hit)*tl),12*hit);
+                NativeUi.Push(mk,Vector2.zero,1,45);NativeUi.Fill(new Rect(mk.x-7,mk.y-7,14,14),NativeCyberTheme.Void(tl));NativeUi.Fill(new Rect(mk.x-5,mk.y-5,10,10),NativeCyberTheme.Danger(tl));if(replayTime<replayDeath)NativeUi.Fill(new Rect(mk.x-3,mk.y-3,6,6),NativeCyberTheme.Navy(tl));NativeUi.Pop();
                 // Skip pill (Space), bottom right in the letterbox.
                 float sk=(.45f+.55f*NativeUiMotion.Progress(age,0,.3f))*(1-Out(.2f,easeIn));var sr=new Rect(W-g-150,H-kb/2-17,150,34);float sh=NativeUi.HoverAmount(9137,sr);
-                NativeUi.Pill(sr,NativeUi.Mix(NativeUi.Hex(0x16171c,.9f*sk),NativeUi.Hex(0x2a2b33,sk),sh),NativeUi.Mix(new Color(1,1,1,.22f*sk),NativeUi.A(accent,sk),sh));NativeUi.Text(new Rect(sr.x+14,sr.y,90,sr.height),"Skip replay",13,NativeUi.Hex(0xf4f4f5,sk),TextAnchor.MiddleLeft,bold:true);
-                var kr=new Rect(sr.xMax-8-48,sr.y+8,48,18);NativeUi.Pill(kr,new Color(1,1,1,.11f*sk),Color.clear);NativeUi.Text(kr,"Space",10,NativeUi.Hex(0xf4f4f5,sk),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.06f);
+                NativeHudChrome.Cut(sr,NativeUi.Mix(NativeCyberTheme.Navy(.9f*sk),NativeCyberTheme.Indigo(sk),sh),NativeHudCyber.TagCut);NativeHudChrome.Outline(sr,NativeUi.Mix(NativeCyberTheme.Edge(sk),NativeCyberTheme.Cyan(sk),sh),NativeHudCyber.TagCut);
+                NativeUi.Text(new Rect(sr.x+14,sr.y,90,sr.height),"Skip replay",13,NativeCyberTheme.Ink(sk),TextAnchor.MiddleLeft,bold:true);
+                NativeHudChrome.Key(new Rect(sr.xMax-8-48,sr.y+8,48,18),"Space",sk);
                 if(NativeUi.Button(sr)&&sk>.5f)EndReplay();
                 return;
             }
@@ -118,8 +123,8 @@ namespace ChipArena.UnityConversion
             {
                 NativeUi.RadialStops(new Rect(-W*.2f,-H*.2f,W*1.4f,H*1.4f),new Color(1,1,1,.9f*(1-NativeUiMotion.EaseOut(Mathf.Clamp01(back/.45f)))),new[]{0,.7f,1},new[]{.33f,0,0});
                 float k=back/1.6f,live=k<.12f?NativeUiMotion.EaseOut(k/.12f):k<.75f?1:1-NativeUiMotion.EaseOut((k-.75f)/.25f),dy=k<.12f?-6*(1-NativeUiMotion.EaseOut(k/.12f)):0;var chip=new Rect(24,22+dy,74,22);
-                NativeUi.Pill(chip,NativeUi.Hex(0x0d0f16,.85f*live),NativeUi.Hex(0x59dd83,.4f*live));var ld=new Rect(chip.x+9,chip.y+7,8,8);NativeUi.Glow(ld,NativeUi.Hex(0x59dd83,.6f*live),5);NativeUi.Round(ld,NativeUi.Hex(0x59dd83,live),4);
-                NativeUi.Text(new Rect(chip.x+24,chip.y,chip.width-28,chip.height),"LIVE",11,NativeUi.Hex(0xd6f8e1,live),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.2f);
+                NativeHudChrome.Tag(chip,NativeCyberTheme.Good(),live,false);var ld=new Rect(chip.x+9,chip.y+7,8,8);NativeUi.Glow(ld,NativeCyberTheme.Good(.6f*live),5);NativeUi.Round(ld,NativeCyberTheme.Good(live),4);
+                NativeUi.Text(new Rect(chip.x+24,chip.y,chip.width-28,chip.height),"LIVE",11,NativeCyberTheme.Good(live),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.2f);
             }
             if(arena?.Local?.Hp<=0&&match.Phase==NativePhase.Fight)SpectatorLabel();
         }
@@ -130,11 +135,11 @@ namespace ChipArena.UnityConversion
             string title=p!=null?"SPECTATING "+p.Seat.name.ToUpperInvariant():pve?"DOWN":"ELIMINATED",info=p==null?null:(match.Teams&&!pve?NativeMatch.TeamNames[TeamIndex(p.Seat.team)]+" team · ":"")+Mathf.CeilToInt(p.Hp)+" / "+Mathf.RoundToInt((float)p.Stats["hp"])+" HP";
             string hint=candidates>0?"← / → to cycle surviving players":"No surviving players. Waiting for the next round.";
             float w=Mathf.Max(300,Mathf.Max(NativeUi.Measure(title,18,true).x,NativeUi.Measure(hint,14).x)+44),h=12+24+(info!=null?24:0)+(candidates>1?58:0)+20+12,x=(W-w)/2,y=H-32-h;
-            NativeUi.Round(new Rect(x,y,w,h),NativeUi.Hex(0x080b16,.87f),12,NativeUi.Hex(0x44567b));float cy=y+12;
-            NativeUi.Text(new Rect(x,cy,w,24),title,18,NativeUi.Hex(0xf4f4f5),TextAnchor.MiddleCenter,bold:true);cy+=24;
-            if(info!=null){NativeUi.Text(new Rect(x,cy,w,22),info,14,NativeUi.Hex(0xbfc0c9),TextAnchor.MiddleCenter);cy+=24;}
+            NativeHudChrome.Panel(new Rect(x,y,w,h));float cy=y+12;
+            NativeUi.Text(new Rect(x,cy,w,24),title,18,NativeCyberTheme.Ink(),TextAnchor.MiddleCenter,bold:true);cy+=24;
+            if(info!=null){NativeUi.Text(new Rect(x,cy,w,22),info,14,NativeCyberTheme.CyanSoft(),TextAnchor.MiddleCenter,mono:true);cy+=24;}
             if(candidates>1){float bw=120;if(NativeUi.Btn(new Rect(W/2-bw-5,cy+5,bw,40),"← Previous",size:13))CycleSpectator(-1);if(NativeUi.Btn(new Rect(W/2+5,cy+5,bw,40),"Next →",size:13))CycleSpectator(1);cy+=58;}
-            NativeUi.Text(new Rect(x,cy,w,20),hint,14,NativeUi.Hex(0xa6a7ad),TextAnchor.MiddleCenter);
+            NativeUi.Text(new Rect(x,cy,w,20),hint,14,NativeCyberTheme.Muted(),TextAnchor.MiddleCenter);
         }
         private void CycleSpectator(int step)
         {

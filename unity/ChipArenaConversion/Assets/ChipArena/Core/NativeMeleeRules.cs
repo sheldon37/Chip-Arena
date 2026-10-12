@@ -7,13 +7,14 @@ namespace ChipArena.UnityConversion
     // Angles here are native radians (+x/right); source fixtures reflect x and yaw. Input/camera yaw remains degrees.
     public sealed class NativeMeleeSwing
     {
-        public string Spec;public int Index,Id,Remaining;public bool Followup,SprintAttack,OpenerLunge;public float ChainAt;
+        public string Spec;public int Index,Id,Remaining;public bool Followup,SprintAttack,OpenerLunge,Air;public float PlungeAt,ImpactAt=-1;public float ChainAt;
         // Prediction never resolves contacts; copy before mutating a replay state.
         public NativeMeleeSwing PredictionCopy()=>(NativeMeleeSwing)MemberwiseClone();public float DamageScale=1;public float At,HitAt,HitUntil,Until,Yaw,StepAt,StepUntil,Distance,Range,Arc;
         private readonly HashSet<string> hit=new HashSet<string>();
-        public bool Contact(string id,float time,V3 delta,float extra,bool visible)
+        public bool Contact(string id,float time,V3 delta,float extra,bool visible,bool grounded=false)
         {
-            if(!visible||hit.Contains(id)||!NativeMeleeRules.Contact(this,time,delta,extra))return false;
+            id+=":"+NativeSprintAttack.Pulse(this,time);
+            if(!visible||hit.Contains(id)||!NativeMeleeRules.Contact(this,time,delta,extra)&&!NativeSprintAttack.Ring(this,time,delta,extra,grounded))return false;
             hit.Add(id);return true;
         }
     }
@@ -28,10 +29,16 @@ namespace ChipArena.UnityConversion
                 Until=at+Math.Max((float)w.interval/rate,windup+active+Recovery(w.id)/rate),StepAt=at+windup*.55f,StepUntil=at+windup+active*.8f,
                 Distance=w.id=="daggers"?.85f:w.id=="sword"?.65f:w.id=="shield"?.55f:.45f,Range=(float)(w.range*stats["reach"]),Arc=(float)((w.id=="sword"&&index%3==0?.8:w.arc)*stats["meleeArc"])};
         }
-        public static bool Reverse(NativeMeleeSwing s)=>(s.Spec=="daggers"||s.Spec=="greatsword")&&s.Index%2==0||s.Spec=="sword"&&s.Index%3==2;
-        public static float Angle(NativeMeleeSwing s,float time)=>s.Yaw-(MathUtil.Clamp((time-s.HitAt)/(s.HitUntil-s.HitAt),0,1)-.5f)*Math.Min((float)Math.PI*2,s.Arc)*(Reverse(s)?-1:1);
+        public static bool Reverse(NativeMeleeSwing s)=>s.Spec=="shield"||s.Spec=="daggers"&&(s.Index%2==0||s.Index%4==3)||s.Spec=="greatsword"&&s.Index%2==0||s.Spec=="sword"&&s.Index%3==2;
+        public static float Angle(NativeMeleeSwing s,float time)
+        {
+            float phase=MathUtil.Clamp((time-s.HitAt)/(s.HitUntil-s.HitAt),0,1);bool reverse=Reverse(s);
+            if(s.SprintAttack&&s.Spec=="daggers"){int pulse=NativeSprintAttack.Pulse(s,time);phase=phase*2-pulse;reverse=pulse==1;}
+            return s.Yaw-(phase-.5f)*Math.Min((float)Math.PI*2,s.Arc)*(reverse?-1:1);
+        }
         public static bool Contact(NativeMeleeSwing s,float time,V3 delta,float extra)
         {
+            if(s.Air)return NativeAirAttackSimulation.Contact(s,time,delta,extra);
             if(time<s.HitAt||time>s.HitUntil)return false;
             float distance=delta.Length;if(Math.Abs(delta.y)>1.6f+extra||distance>s.Range+extra)return false;
             float angle=Angle(s,time);var direction=new V3((float)Math.Sin(angle),0,(float)Math.Cos(angle));
@@ -43,7 +50,7 @@ namespace ChipArena.UnityConversion
             float speed=s.Distance*(MathUtil.Smooth((time+dt-s.StepAt)/span)-MathUtil.Smooth((time-s.StepAt)/span))/dt;
             return new V3((float)Math.Sin(s.Yaw)*speed,0,(float)Math.Cos(s.Yaw)*speed);
         }
-        public static bool BeforeStrike(NativeMeleeSwing s,float time)=>s!=null&&s.StepAt>s.At&&time<s.At+(s.StepAt-s.At)/.55f-.5f/60;
+        public static bool BeforeStrike(NativeMeleeSwing s,float time)=>s!=null&&time<s.HitAt-.5f/60;
         // Light direct-hit stun; fast attacks have slightly shorter recovery, and immunity prevents infinite combos.
         public static float HitStun(ContentWeapon w,float rate)
         {

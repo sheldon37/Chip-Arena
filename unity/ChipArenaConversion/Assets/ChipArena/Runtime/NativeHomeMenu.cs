@@ -534,14 +534,16 @@ namespace ChipArena.UnityConversion
             // as HomeScreen fits its block. The top stays at least 80 down, under the lobby-return banner. Push scales the
             // buttons' hit areas with them.
             float fit=Mathf.Min(1,(H-80-24)/ph);
-            var p=new Rect(arena.Sandbox?(W-pw)/2:Mathf.Max(28,W*.05f),Mathf.Max(80,(H-ph*fit)/2)+10*(1-e),pw,ph);U.Push(new Vector2(arena.Sandbox?p.center.x:p.x,p.y),Vector2.zero,fit);U.Panel(p,e);
-            U.Text(new Rect(p.x+32,p.y+30,iw,16),"CHIP ARENA",12,U.Hex(0xc0c1ca,e),TextAnchor.MiddleLeft,bold:true,tracking:.2f);U.Text(new Rect(p.x+32,p.y+52,iw,38),"Match menu",30,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true,tracking:-.03f);
-            float y=p.y+108;foreach(var s in statusLines){U.Text(new Rect(p.x+32,y,iw,16*1.6f),s,16,U.Hex(0xbfc0c9,e),TextAnchor.MiddleLeft);y+=16*1.6f;}y+=16;
+            // The in-match panel in the cyber HUD chrome (NativeHudChrome); the buttons stay the shared MenuButton.
+            var p=new Rect(arena.Sandbox?(W-pw)/2:Mathf.Max(28,W*.05f),Mathf.Max(80,(H-ph*fit)/2)+10*(1-e),pw,ph);U.Push(new Vector2(arena.Sandbox?p.center.x:p.x,p.y),Vector2.zero,fit);
+            U.Glow(new Rect(p.x,p.y+30,p.width,p.height),new Color(0,0,0,.45f*e),60);U.Backdrop(p,0,16,e);NativeHudChrome.Panel(p,e,default,14,NativeHudChrome.Corners.Diagonal,true,.94f);
+            U.Text(new Rect(p.x+32,p.y+30,iw,16),"CHIP ARENA",12,NativeCyberTheme.CyanSoft(e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.2f);U.Text(new Rect(p.x+32,p.y+52,iw,38),"Match menu",30,NativeCyberTheme.Ink(e),TextAnchor.MiddleLeft,bold:true,tracking:-.03f);
+            float y=p.y+108;foreach(var s in statusLines){U.Text(new Rect(p.x+32,y,iw,16*1.6f),s,16,NativeCyberTheme.Muted(e),TextAnchor.MiddleLeft);y+=16*1.6f;}y+=16;
             // A guest's note sits under Return to Lobby, as in the source's menu list.
             Action chosen=null;for(int i=0;i<items.Count;i++){float be=In(age,i*.03f,.3f);var r=new Rect(p.x+32,y,iw,48);U.Push(r.center,new Vector2(0,8*(1-be)));if(MenuButton(r,items[i].icon,items[i].label,null,items[i].primary,items[i].enabled,e*be))chosen=items[i].act;U.Pop();y+=56;
-                if(guest&&items[i].label=="Return to Lobby"){U.Text(new Rect(p.x+32,y-4,iw,18),"The host can return everyone to the lobby.",13,U.Hex(0xa6a7ad,e*be),TextAnchor.MiddleLeft);y+=24;}}y-=8;y+=20;
-            foreach(var s in hintLines){U.Text(new Rect(p.x+32,y,iw,13*1.55f),s,13,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);y+=13*1.55f;}y+=8;
-            foreach(var s in diagLines){U.Text(new Rect(p.x+32,y,iw,16),s,11,U.Hex(0x7c7d86,e),TextAnchor.MiddleLeft,mono:true);y+=16;}
+                if(guest&&items[i].label=="Return to Lobby"){U.Text(new Rect(p.x+32,y-4,iw,18),"The host can return everyone to the lobby.",13,NativeCyberTheme.Muted(e*be),TextAnchor.MiddleLeft);y+=24;}}y-=8;y+=20;
+            foreach(var s in hintLines){U.Text(new Rect(p.x+32,y,iw,13*1.55f),s,13,NativeCyberTheme.Muted(e),TextAnchor.MiddleLeft);y+=13*1.55f;}y+=8;
+            foreach(var s in diagLines){U.Text(new Rect(p.x+32,y,iw,16),s,11,NativeCyberTheme.Muted(.8f*e),TextAnchor.MiddleLeft,mono:true);y+=16;}
             U.Pop();if(chosen!=null){pauseScreen=PauseScreen.Menu;chosen();}
         }
         // Greedy lines of `  ·  `-separated parts measured in the mono face they are drawn in (not cached: the values change).

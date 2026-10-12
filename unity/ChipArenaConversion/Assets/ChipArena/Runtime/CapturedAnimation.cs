@@ -297,6 +297,8 @@ namespace ChipArena.UnityConversion
             private void MeleePose(Actor a,Vector3 position,float time)
             {
                 Weapon=a.Weapon;Set=Mathf.Clamp(a.VisualSet,0,3);if(melee==null)melee=new MeleeMotion();melee.Impacts=Impacts;melee.JumpLayer=JumpLayer;melee.Locomotion=Locomotion;melee.SprintLayer=SprintLayer;
+                // The Whirlwind's wide, stepping stance under its spinning upper body (zero for anything else).
+                MeleeKitMotion.Stance(a,time,melee.Gait);
                 float dt=meleeTime<-90||time<meleeTime||time-meleeTime>.35f?1/60f:Mathf.Min(.1f,time-meleeTime);meleeTime=time;
                 var v=MeleeViewOf(a,time,meleeView);v.Reach=WeaponReach;bool roll=a.Rolling(time),special=NativeSpecialPose.Active(a,time),down=NativeSpecialPose.Down(a,time),juggle=Juggled(a,time);v.Juggle=juggle;
                 float yaw=-melee.PresentedYaw(v,time,v.Yaw)*Mathf.Rad2Deg;
@@ -311,6 +313,8 @@ namespace ChipArena.UnityConversion
                     if(down)NativeSpecialPose.Recover(pose,a,time);
                     if(juggle)NativeJugglePose.Apply(pose,time,juggleTrack,a.Velocity.y);
                     r.ReadPose(pose);
+                    // The Whirlwind re-lays the gait's own ankles under its spin: the ground pass keeps them as layered legs.
+                    if(special&&MeleeKitMotion.RidesGait(a,time))r.LegsLayered=true;
                 });
                 melee.Rig.WritePose(pose);WritePose();fresh=false;lastTime=time;
                 State=juggle?"juggle":roll?"roll (adapted)":special?a.SpecialKind:down?"recovery "+NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time):melee.State;
@@ -352,7 +356,7 @@ namespace ChipArena.UnityConversion
                 v.LastAttack=a.AttackAt;v.Windup=a.VisualWindup;v.AttackRate=a.CastRate>0?a.CastRate:1;v.AttackIndex=a.Combo+1;
                 v.SwingAt=a.SwingAt>-90?a.SwingAt:float.NaN;v.SwingUntil=a.SwingAt>-90?a.SwingUntil:float.NaN;
                 v.Commit=a.CommitAt>-90;v.CommitAt=a.CommitAt;v.CommitUntil=a.CommitUntil;v.CommitYaw=-a.CommitYaw*D;v.StepAt=a.StepAt;v.StepUntil=a.StepUntil;v.StepDistance=a.StepDistance;v.Followup=a.Followup;v.Hurricane=a.Hurricane;
-                v.OpenerLunge=a.OpenerLunge;v.SprintAttack=a.SprintAttack;
+                v.AirAttack=a.AirAttack?1:0;v.OpenerLunge=a.OpenerLunge;v.SprintAttack=a.SprintAttack;
                 v.Guarding=false;v.BlockTime=time<a.BlockUntil?a.BlockUntil-time:0;v.LastBlock=a.BlockAt;v.HitStunUntil=a.StunUntil;
                 v.RollAt=a.RollAt;v.RollUntil=a.RollAt>-90?a.RollAt+a.VisualRollDuration:-100;
                 v.ActionKind=a.SpecialKind;v.ActionAt=a.SpecialAt;v.ActionUntil=a.SpecialUntil;
@@ -480,7 +484,7 @@ namespace ChipArena.UnityConversion
             {
                 bool blocked=a.Hp<=0||a.Rolling(time)||a.StunUntil>time||a.JuggleUntil>time||NativeSpecialPose.Active(a,time)||NativeSpecialPose.Down(a,time);
                 airTrack.Observe(time,a.Grounded,position.y,blocked);
-                airWatch.Observe(airTrack,a.AttackAt>-90?a.AttackAt:-100,a.CommitUntil>-90?a.CommitUntil:a.AttackAt+a.VisualDuration,-1,time,blocked);
+                airWatch.Observe(airTrack,a.AttackAt>-90?a.AttackAt:-100,a.CommitUntil>-90?a.CommitUntil:a.AttackAt+a.VisualDuration,a.AirAttack?1:0,time,blocked);
                 var clip=NativeAirAttackRules.Clip(a.SourceSpec);var melee=MeleeSet.For(a.SourceSpec);
                 if(!attack||clip==null||melee==null||!airWatch.Air||airWatch.SwingAt!=a.AttackAt)return false;
                 float windup=a.VisualWindup,active=a.VisualActive,recovery=Mathf.Max(.001f,a.VisualDuration-windup-active),landed=airWatch.Landed(time),age=time-a.AttackAt;
@@ -507,9 +511,9 @@ namespace ChipArena.UnityConversion
                 Vector3 at=Root.transform.position;magicMotion.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);magicMotion.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;
                 string state=magicMotion.Pose(a,time,pose,magicChannels,magicGuard.Sample(time,time<a.BlockUntil),juggle,juggleTrack,out bool react);
                 if(react){if(melee==null)melee=new MeleeMotion();melee.ReactOver(pose,MeleeViewOf(a,time,meleeView),time);}
-                if(Hits!=null)hitLayer.Over((melee??=new MeleeMotion()).Rig,pose,a,Hits,HitVictim.Magic,time,magicMotion.Rig.GroupYaw);
+                if(Hits!=null)hitLayer.Over((melee??=new MeleeMotion()).Rig,pose,a,Hits,HitVictim.Magic,time,magicMotion.Rig.GroupYaw,magicMotion.Rig.GroupPosition);
                 State=ReferenceEquals(state,MagicMotion.Recovery)?"recovery "+NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time):state;
-                magicMotion.Finish(pose,time);
+                magicMotion.Finish(pose,time);if(Hits!=null)hitLayer.Replant(melee.Rig,pose);
                 WritePose();fresh=false;lastTime=time;
             }
             // Third-person gun pilots (host, guests, bots and the killcam) run on the source's gait in the gun's stance
@@ -525,8 +529,8 @@ namespace ChipArena.UnityConversion
                 Vector3 at=Root.transform.position;gunMotion.Rig.GroupPosition=new NVector(-at.x,at.y,at.z);gunMotion.Rig.GroupYaw=-Root.transform.eulerAngles.y*Mathf.Deg2Rad;
                 State=gunMotion.Pose(a,time,pose,juggle,juggleTrack,out bool react);
                 if(react){if(melee==null)melee=new MeleeMotion();melee.ReactOver(pose,MeleeViewOf(a,time,meleeView),time);}
-                if(Hits!=null)hitLayer.Over((melee??=new MeleeMotion()).Rig,pose,a,Hits,HitVictim.Gun,time,gunMotion.Rig.GroupYaw);
-                gunMotion.Finish(pose,time);
+                if(Hits!=null)hitLayer.Over((melee??=new MeleeMotion()).Rig,pose,a,Hits,HitVictim.Gun,time,gunMotion.Rig.GroupYaw,gunMotion.Rig.GroupPosition);
+                gunMotion.Finish(pose,time);if(Hits!=null)hitLayer.Replant(melee.Rig,pose);
                 WritePose();fresh=false;lastTime=time;
             }
             public void Preview(int set,string state,float time,Vector3 position)

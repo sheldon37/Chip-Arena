@@ -181,15 +181,17 @@ internal static class PackReactionChecks
     {
         foreach(var victim in new[]{"sword","daggers","greatsword","shield"})foreach(var attacker in new[]{"pistol","fire"})
         {
+            // Owner 2026-10-12: every damaging hit is felt (Core/NativeStagger), so a bullet or bolt now moves the pilot a
+            // little; it still plays no pack clip and never drives the route's stun.
             float m=0,w=0;bool drove=false;Scene(victim,attacker,0,0,23,(s,t)=>{m=Math.Max(m,s.MaxDelta());var L=s.On.Layer;w=Math.Max(w,Math.Max(L.PackWeight,Math.Max(L.PackStunWeight,L.PackBlockWeight)));drove|=L.Drives(t);},2.8f);
-            Check(m<1e-5f&&w==0&&!drove,victim+" hit by "+attacker+": no clip and no layer ("+m+", "+w+")");
+            Check(m<.2f&&w==0&&!drove,victim+" hit by "+attacker+": no clip, only the felt-hit stagger ("+m+" m, "+w+")");
         }
         foreach(var victim in new[]{"rifle","fire"})
         {
             float w=0;Scene(victim,"greatsword",0,.28f,52,(s,t)=>{var L=s.On.Layer;w=Math.Max(w,Math.Max(L.PackWeight,Math.Max(L.PackStunWeight,L.PackBlockWeight)));},2.8f);
             Check(w==0,victim+": a melee blow on a "+victim+" pilot stays procedural ("+w+")");
         }
-        log.Add("pistol and magic hits on the four melee styles play no clip and add nothing; gun and magic pilots stay procedural under melee blows");
+        log.Add("pistol and magic hits on the four melee styles play no clip (only the felt-hit stagger); gun and magic pilots stay procedural under melee blows");
     }
     private static void Finite(List<string> log)
     {

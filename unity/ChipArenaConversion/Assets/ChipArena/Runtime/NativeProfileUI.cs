@@ -30,12 +30,12 @@ namespace ChipArena.UnityConversion
         public static string Name(string name){name=Regex.Replace(name??"Pilot","[<>\\p{Cc}\\p{Cf}]"," ").Trim();return name.Length==0?"Pilot":name.Substring(0,Math.Min(20,name.Length));}
         public static string IntroText(string value){value=Regex.Replace(value??"","[<>\\p{Cc}\\p{Cf}]"," ").Trim();return value.Substring(0,Math.Min(64,value.Length));}
         public static string Color(string value,string fallback)=>value!=null&&Regex.IsMatch(value,"^#[0-9a-fA-F]{6}$")?value:fallback;
-        public static bool Allowed(NativeAccess a,string type,string id)=>id!=null&&(id!="dev-gibber"||(a??NativeAccess.Guest).Developer)&&( !id.StartsWith("dev-")&&id!="auditor-halo"||(a??NativeAccess.Guest).Allows(type+":"+id,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()));
-        public static string Hat(string value,NativeAccess a)=>Hats.Contains(value)&&Allowed(a,"hat",value)?value:"none";
+        public static bool Allowed(NativeAccess a,string type,string id)=>id!=null&&((id!="sheldon-head"&&id!="sheldon-intro")||(a??NativeAccess.Guest).Developer&&(a??NativeAccess.Guest).Expires>DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())&&(id!="dev-gibber"||(a??NativeAccess.Guest).Developer)&&( !id.StartsWith("dev-")&&id!="auditor-halo"||(a??NativeAccess.Guest).Allows(type+":"+id,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()));
+        public static string Hat(string value,NativeAccess a)=>(value=="sheldon-head"||Hats.Contains(value))&&Allowed(a,"hat",value)?value:"none";
         public static string Kill(string value,NativeAccess a)=>Kills.Contains(value)&&Allowed(a,"effect",value)?value:"impact-ragdoll";
-        public static string Intro(string value,NativeAccess a)=>Intros.Contains(value)&&Allowed(a,"intro",value)?value:NativeIntroRules.Default;
+        public static string Intro(string value,NativeAccess a)=>(value=="sheldon-intro"||Intros.Contains(value))&&Allowed(a,"intro",value)?value:NativeIntroRules.Default;
         /// <summary>The override flag that goes with a received or loaded pick: off unless the pick is one this client stages and may use.</summary>
-        public static bool OverrideIntro(string value,bool overrideIntro,NativeAccess a)=>overrideIntro&&Intros.Contains(value)&&Allowed(a,"intro",value);
+        public static bool OverrideIntro(string value,bool overrideIntro,NativeAccess a)=>overrideIntro&&(value=="sheldon-intro"||Intros.Contains(value))&&Allowed(a,"intro",value);
     }
     public sealed partial class ConversionGame
     {
