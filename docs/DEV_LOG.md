@@ -1,7 +1,7 @@
 # Chip Arena — development log
 
 ## 2026-10-12 — Claude — merged Astra's Cyber Lord kit (#142); the Cyber Lord visuals read her fields
-- Branch `claude/cyberlord`. Shared head `607ebce` merged as `eb0e645`. PR #142 head `8a2ed88` merged as `116ea8a` (merge, mapping and pins together). Then the newest shared head `27e6e8f` (Cyber City, PR #143) merged in the next commit, so the branch fast-forwards onto it. Not pushed, merged or released.
+- Branch `claude/cyberlord`. Shared head `607ebce` merged as `eb0e645`. PR #142 head `8a2ed88` merged as `116ea8a` (merge, mapping and pins together). Then the shared heads `27e6e8f` (Cyber City, PR #143; merged as `96fe55e`) and `bb3c8f6` (PR #144) merged, so the branch fast-forwards onto the shared head. Not pushed, merged or released.
 - Her `NativeCyberKit` (`Core/NativeCyberRules.cs`), `Actor.Cyber` and `Runtime/NativeCyberLord.cs` are kept as she wrote them. My proposed kit, `NativeCyberCast` and the `Actor.CyberKit` slot are deleted. Her `Tests/CyberChecks.cs` keeps its name; the presentation test is `CyberLordChecks`.
 - `CyberLordFeed.Read` is still the one mapping, now onto her fields. Full table in `docs/CYBER-LORD.md`.
   - Combo: `Kind` cyber-*, `Combo`, `At` to `Until`, hit on `Release`.
@@ -24,7 +24,7 @@
   - Parity inventory: 15 source weapons, the Bow and the DEV-only Cyber Lord, with its 6 abilities.
   - Weapon card line `12 DMG · 3.6 / SEC · 2.2 M`; developer melee and DEV lists gain cyberlord.
   - Weapon skins and the base chip-module digest exclude the unarmed Cyber Lord (no socket). The digest is unchanged.
-- Checks on `116ea8a`, repeated on the `27e6e8f` merge:
+- Checks on `116ea8a`, repeated on the `27e6e8f` and `bb3c8f6` merges:
   - Unity runtime+editor build OK.
   - `check_relay.py` exit 0 (562, then 564 PASS). It also passes in a copy holding only the Unity folder, where the Cyber Lord spec text is skipped.
   - Python unittest 93 OK (1 skipped).
@@ -39,6 +39,12 @@
   - The six abilities' content `text` is their ids, and the Locker shows that text.
   - Accounts do not accept the `dev-cyberlord` entrance.
 - No hit timing, hitbox, damage, cooldown, movement or network change from the presentation.
+
+## 2026-10-12 — Astra — ArenaPresentation constructor build blocker
+- Branch `codex/arena-constructor-fix-20261012`, base shared/cloud `27e6e8f`. Owner's Windows log confirms Kernel Panic authority now passes, then host/guest interaction setup logs Unity `CreateImpl` constructor errors and null `cyberViews` in CyberPoseTime.
+- `NativeCyberCityPresentation.metroOne` allocated a native MaterialPropertyBlock in an ArenaPresentation instance field initializer, even on non-Cyber-City maps. Unity rejects that construction and later partial-class initializers do not finish. Defer that allocation to the actual compatibility draw path and reuse it thereafter. No null-guard masking, visual redesign, simulation, timing, hitbox or network changes. Claude's MetroBatch allocations remain inside render-time setup, not component construction.
+- Validation: 35 managed-core groups passed with the current shared Bow/Cyber City changes (DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 /tmp/chip-dotnet/dotnet run --project unity/ChipArenaConversion/Tests/CoreTests.csproj -c Release). This suite does not execute MonoBehaviour native constructors. `git diff --check` passed. Unity Editor/PhysX, native allocation and Windows build cannot be executed here; next Build-and-Publish run must verify the interaction gate. Presentation ownership handoff: Claude, preserve deferred native allocation when editing this renderer.
+- Publication: follow-up to the owner's approved build repair/merge. Source PR and shared/cloud integration receipts are in GitHub; no compiled package published from this environment.
 
 ## 2026-10-12 — Astra — isolate Kernel Panic build validation
 - Branch `codex/kernel-panic-build-fix-20261012`, base shared `5e0a19c`; fixes the owner’s Windows gate failure on `9607246` (`connect locks both and removes colliders`).

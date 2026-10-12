@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
         private Material metroMaterial;private Mesh metroMesh;private bool metroFailed;private NativeFxDraw metroDraw;private NativeCyberCityFx metroFx;private readonly NativeFxLight metroLight=new NativeFxLight();
         private NativeCyberBox[] metroBackdrop;private readonly List<MetroBatch> metroBack=new List<MetroBatch>(),metroCast=new List<MetroBatch>(),metroTrim=new List<MetroBatch>();private int metroCastUsed,metroTrimUsed;
         private NativeCyberCityKit metroKit;private NativeCyberFxScene metroScene;private MapHazard[] metroHazards;private NativeHazardState[] metroStates=Array.Empty<NativeHazardState>();
-        private NativePropBody[] metroParents=Array.Empty<NativePropBody>();private float[] metroSeeds=Array.Empty<float>();private readonly MaterialPropertyBlock metroOne=new MaterialPropertyBlock();private readonly Dictionary<string,int> metroIndex=new Dictionary<string,int>();
+        private NativePropBody[] metroParents=Array.Empty<NativePropBody>();private float[] metroSeeds=Array.Empty<float>();private MaterialPropertyBlock metroOne;private readonly Dictionary<string,int> metroIndex=new Dictionary<string,int>();
         private NativeCyberScreen[] metroScreens=new NativeCyberScreen[4];private int[] metroScreenBlock=Array.Empty<int>();private string[] metroScreenSegment=Array.Empty<string>();private Vector3[] metroRestCenter=Array.Empty<Vector3>();private Vector2[] metroRestHalf=Array.Empty<Vector2>();
         private NativeArena metroArena;private int metroGeneration=-1;private Mesh metroPlate;private Matrix4x4 metroPlateMatrix;
         private static readonly int MetroSizeId=Shader.PropertyToID("_BlockSize"),MetroRestId=Shader.PropertyToID("_BlockRest"),MetroColorId=Shader.PropertyToID("_BlockColor"),MetroLookId=Shader.PropertyToID("_BlockLook");
@@ -210,7 +210,9 @@ namespace ChipArena.UnityConversion
             if(layer==0)MetroUpload(b);
             if(UsesInstancing){Graphics.DrawMeshInstanced(metroMesh,0,metroMaterial,b.M,b.Count,b.Block,shadows,true,layer,null);return;}
             // Compatibility rendering: the kit one by one; the backdrop (thousands of boxes) is left out.
-            if(layer!=0)return;var one=metroOne;
+            // Unity native allocations are forbidden in MonoBehaviour field initializers.
+            // Reuse one block, created only on the main-thread compatibility draw path.
+            if(layer!=0)return;var one=metroOne??=new MaterialPropertyBlock();
             for(int i=0;i<b.Count;i++){one.Clear();one.SetVector(MetroSizeId,b.Size[i]);one.SetVector(MetroRestId,b.Rest[i]);one.SetVector(MetroColorId,b.Color[i]);one.SetVector(MetroLookId,b.Look[i]);Graphics.DrawMesh(metroMesh,b.M[i],metroMaterial,0,null,0,one,shadows,true);}
         }
         // The stage-0 block mesh as NativeArenaDressing builds it: the preview cube in POSITION, the lattice in TEXCOORD0/1, the
