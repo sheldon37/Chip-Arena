@@ -158,6 +158,8 @@ namespace ChipArena.UnityConversion
             if(!menu&&Spectator==null&&!cinematic.Directing&&presentation.FirstPerson&&prefs.cameraShake){presentation.ObserveHits(frame);presentation.HitKick(cameraView.transform,frame,arena.ViewPilot.Seat.id,renderTime,prefs.reducedEffects?.4f:1);}
             // The block effect's clash hitch (Core/NativeBlockFx.Hitch): the blocker's own view, first or third person, camera shake on.
             if(!menu&&Spectator==null&&!cinematic.Directing&&prefs.cameraShake)presentation.BlockHitch(cameraView.transform,frame,arena.ViewPilot.Seat.id,renderTime,prefs.reducedEffects?.4f:1);
+            // The gun Q kit's first-person kick (Core/NativeGunKitMotion.CameraKick): fanned rounds, Overdrive's buzz; camera shake on.
+            if(!menu&&Spectator==null&&!cinematic.Directing&&prefs.cameraShake)presentation.GunKitKick(cameraView.transform,frame,arena.ViewPilot.Seat.id,renderTime,prefs.reducedEffects?.4f:1);
             presentation.WeaponLoadout=arena;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;
             presentation.Render(frame,renderTime,false);
             Vector3? preview=null;bool previewClamped=false;
@@ -231,6 +233,8 @@ namespace ChipArena.UnityConversion
                 string name=p.Seat.spec=="sword"?"Rising slash":p.Seat.spec=="daggers"?"Dagger throw":p.Seat.spec=="shield"?"Shield throw":"Wolf leap";
                 return "E  "+name+" · "+specialState;
             }
+            // The pistol / machine-gun Q kit (Core/NativeGunKitHud): fanning, active time, venting, cooldown, ammo.
+            if(slot=="q"&&NativeGunKit.Covers(d.id))return NativeGunKitHud.Status(d.name,NativeGunKitHud.Of(d.id,NativeGunKit.Of(p.Pose,arena.Time),arena.Time,p.QReady-arena.Time,(float)NativeAbilityRules.Cooldown(d,p.Stats),p.Ammo,p.ReloadEnd>arena.Time));
             if(d.kind=="ads")return "Q  Aim (hold)";
             if(NativeMeleeRules.Standard(p.Seat.spec))
             {
