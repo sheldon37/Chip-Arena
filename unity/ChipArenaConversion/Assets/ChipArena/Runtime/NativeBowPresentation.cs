@@ -99,11 +99,14 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// The chip modules on the bow, laid out as on the other ranged weapons (NativeWeaponDressing.Modules, the 'muzzle' just
         /// ahead of the riser) about the arrow line; and the enchant flames (burn, poison: the melee rule's elements, here on the
-        /// ranged bow's arrowhead, where the arrow carries them) round the nocked arrowhead. Not in the menus or the intro.
+        /// ranged bow's arrowhead, where the arrow carries them) round the nocked arrowhead. Not in the menus or the intro. A
+        /// Standard bow draws its designed modules instead (StandardBowDressing); these are the Prototype Series pieces.
         /// </summary>
         private void BowDressing(Actor a,in NativeBowPose.Frame f,in NativeBow.View v,float time,bool first,int layer,Camera camera)
         {
             if(Viewer)return;var pilot=LoadoutPilot(a.Id);if(pilot?.Stats==null||pilot.Weapon==null||pilot.Seat.chips==null)return;var chips=pilot.Seat.chips;var stats=pilot.Stats;
+            // A Standard bow carries the designed modules and arrow enchant (NativeChipModulePresentation.cs); the Prototype keeps these pieces.
+            if(StandardBowDressing(a,pilot,f,v,time,first,layer,camera))return;
             var line=bowHand*Matrix4x4.Translate(CapturedAnimation.Vec(CapturedRig.Mirror(NativeBowModels.ModuleOffset)));if(first)line*=Matrix4x4.Scale(Vector3.one*NativeWeaponDressing.FirstPersonModuleScale);
             int count=NativeWeaponDressing.Modules(NativeBowWire.Spec,true,(int)pilot.Weapon.color,chips,stats,weaponPieces);
             for(int i=0;i<count;i++){var p=weaponPieces[i];NativeWeaponDressing.Animate(ref p,time);QueuePiece(p,line,layer,camera,rigFactor);}

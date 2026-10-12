@@ -68,6 +68,7 @@ internal static class Program
             BloomChecks.Run(root);
             WeaponFxChecks.Run(root,data);
             WeaponSkinChecks.Run(root,data);
+            ChipModuleChecks.Run(root,data);
             BowChecks.Run(root);
             BodySkinChecks.Run(root,data);
             BrickfallSceneryChecks.Run(root);
